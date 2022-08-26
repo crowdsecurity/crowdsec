@@ -15,9 +15,10 @@ const (
 	SEND_CUSTOM_SCENARIOS  = "custom"
 	SEND_TAINTED_SCENARIOS = "tainted"
 	SEND_MANUAL_SCENARIOS  = "manual"
+	RECEIVE_DECISIONS      = "decisions_poll"
 )
 
-var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS}
+var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS, RECEIVE_DECISIONS}
 
 var DefaultConsoleConfigFilePath = DefaultConfigPath("console.yaml")
 
@@ -25,6 +26,7 @@ type ConsoleConfig struct {
 	ShareManualDecisions  *bool `yaml:"share_manual_decisions"`
 	ShareTaintedScenarios *bool `yaml:"share_tainted"`
 	ShareCustomScenarios  *bool `yaml:"share_custom"`
+	ReceiveDecisions      *bool `yaml:"receive_decisions"`
 }
 
 func (c *LocalApiServerCfg) LoadConsoleConfig() error {
@@ -34,6 +36,7 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 		c.ConsoleConfig.ShareCustomScenarios = types.BoolPtr(true)
 		c.ConsoleConfig.ShareTaintedScenarios = types.BoolPtr(true)
 		c.ConsoleConfig.ShareManualDecisions = types.BoolPtr(false)
+		c.ConsoleConfig.ReceiveDecisions = types.BoolPtr(false)
 		return nil
 	}
 
@@ -57,6 +60,10 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 	if c.ConsoleConfig.ShareManualDecisions == nil {
 		log.Debugf("no share_manual scenarios found, setting to false")
 		c.ConsoleConfig.ShareManualDecisions = types.BoolPtr(false)
+	}
+	if c.ConsoleConfig.ReceiveDecisions == nil {
+		log.Debugf("no receive_decisions scenarios found, setting to false")
+		c.ConsoleConfig.ReceiveDecisions = types.BoolPtr(false)
 	}
 	log.Debugf("Console configuration '%s' loaded successfully", c.ConsoleConfigPath)
 

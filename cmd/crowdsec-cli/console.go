@@ -219,6 +219,12 @@ Disable given information push to the central API.`,
 							activated = string(emoji.CheckMarkButton)
 						}
 						table.Append([]string{option, activated, "Send alerts from tainted scenarios to the console"})
+					case csconfig.RECEIVE_DECISIONS:
+						activated := string(emoji.CrossMark)
+						if *csConfig.API.Server.ConsoleConfig.ReceiveDecisions {
+							activated = string(emoji.CheckMarkButton)
+						}
+						table.Append([]string{option, activated, "Receive decisions from the console polling API"})
 					}
 				}
 				table.Render()
@@ -258,6 +264,19 @@ Disable given information push to the central API.`,
 func SetConsoleOpts(args []string, wanted bool) {
 	for _, arg := range args {
 		switch arg {
+		case csconfig.RECEIVE_DECISIONS:
+			/*for each flag check if it's already set before setting it*/
+			if csConfig.API.Server.ConsoleConfig.ReceiveDecisions != nil {
+				if *csConfig.API.Server.ConsoleConfig.ReceiveDecisions == wanted {
+					log.Infof("%s already set to %t", csconfig.RECEIVE_DECISIONS, wanted)
+				} else {
+					log.Infof("%s set to %t", csconfig.RECEIVE_DECISIONS, wanted)
+					*csConfig.API.Server.ConsoleConfig.ReceiveDecisions = wanted
+				}
+			} else {
+				log.Infof("%s set to %t", csconfig.RECEIVE_DECISIONS, wanted)
+				csConfig.API.Server.ConsoleConfig.ReceiveDecisions = types.BoolPtr(wanted)
+			}
 		case csconfig.SEND_CUSTOM_SCENARIOS:
 			/*for each flag check if it's already set before setting it*/
 			if csConfig.API.Server.ConsoleConfig.ShareCustomScenarios != nil {

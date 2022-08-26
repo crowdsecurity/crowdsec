@@ -324,13 +324,18 @@ func (s *APIServer) Run(apiReady chan bool) error {
 			return nil
 		})
 
-		s.apic.pullTomb.Go(func() error {
-			if err := s.apic.PullPAPI(); err != nil {
-				log.Errorf("papi pull: %s", err)
-				return err
-			}
-			return nil
-		})
+		//csConfig.API.Server.ConsoleConfig.ShareCustomScenarios
+
+		if *s.consoleConfig.ReceiveDecisions == true {
+			log.Infof("Starting PAPI decision receiver")
+			s.apic.pullTomb.Go(func() error {
+				if err := s.apic.PullPAPI(); err != nil {
+					log.Errorf("papi pull: %s", err)
+					return err
+				}
+				return nil
+			})
+		}
 
 		s.apic.metricsTomb.Go(func() error {
 			if err := s.apic.SendMetrics(); err != nil {
