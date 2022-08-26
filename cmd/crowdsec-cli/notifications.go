@@ -215,8 +215,7 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 					return errors.Wrapf(err, "Can't unmarshal the data given in the alert flag")
 				}
 			}
-
-			if remediation {
+			if !remediation {
 				alert.Remediation = true
 			}
 
@@ -274,8 +273,8 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 			return nil
 		},
 	}
-	cmdNotificationsReinject.Flags().BoolVarP(&remediation, "remediation", "r", false, "Overwrite remediation flag to match default profile configuration")
-	cmdNotificationsReinject.Flags().StringVarP(&alertOverride, "alert", "a", "", "JSON string used to override alert fields (see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object")
+	cmdNotificationsReinject.Flags().BoolVarP(&remediation, "remediation", "r", false, "Set Alert.Remediation to false in the reinjected alert (see your profile filter configuration)")
+	cmdNotificationsReinject.Flags().StringVarP(&alertOverride, "alert", "a", "", "JSON string used to override alert fields in the reinjected alert (see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
 	cmdNotifications.AddCommand(cmdNotificationsReinject)
 	return cmdNotifications
 }
