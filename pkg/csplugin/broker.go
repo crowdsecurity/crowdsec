@@ -11,7 +11,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/Masterminds/sprig"
+	"github.com/Masterminds/sprig/v3"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
@@ -31,9 +31,9 @@ const (
 	CrowdsecPluginKey     string = "CROWDSEC_PLUGIN_KEY"
 )
 
-//The broker is responsible for running the plugins and dispatching events
-//It receives all the events from the main process and stacks them up
-//It is as well notified by the watcher when it needs to deliver events to plugins (based on time or count threshold)
+// The broker is responsible for running the plugins and dispatching events
+// It receives all the events from the main process and stacks them up
+// It is as well notified by the watcher when it needs to deliver events to plugins (based on time or count threshold)
 type PluginBroker struct {
 	PluginChannel                   chan ProfileAlert
 	alertsByPluginName              map[string][]*models.Alert
