@@ -471,7 +471,7 @@ cscli decisions delete --type captcha
 				}
 			} else {
 				if _, err = strconv.Atoi(delDecisionId); err != nil {
-					log.Fatalf("Unable to understand %s as integer: %v", delDecisionId, err)
+					log.Fatalf("Unable to convert %s as integer: %v", delDecisionId, err)
 				}
 				decisions, _, err = Client.Decisions.DeleteOne(context.Background(), delDecisionId)
 				if err != nil {
