@@ -1,4 +1,4 @@
-package kafkacquisition
+package kafkaacquisition
 
 import (
 	"context"

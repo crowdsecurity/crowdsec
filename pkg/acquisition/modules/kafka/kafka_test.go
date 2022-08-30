@@ -1,4 +1,4 @@
-package kafkacquisition
+package kafkaacquisition
 
 import (
 	"context"
@@ -24,7 +24,7 @@ func TestConfigure(t *testing.T) {
 			config: `
 foobar: bla
 source: kafka`,
-			expectedErr: "line 2: field foobar not found in type kafkacquisition.KafkaConfiguration",
+			expectedErr: "line 2: field foobar not found in type kafkaacquisition.KafkaConfiguration",
 		},
 		{
 			config:      `source: kafka`,
