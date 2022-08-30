@@ -12,7 +12,7 @@ import (
 
 type DecisionDeleteService service
 
-//DecisionDeleteService purposedly reuses AddSignalsRequestItemDecisions model
+//DecisionDeleteService purposely reuses AddSignalsRequestItemDecisions model
 func (d *DecisionDeleteService) Add(ctx context.Context, deletedDecisions *models.AddSignalsRequestItemDecisions) (interface{}, *Response, error) {
 	var response interface{}
 

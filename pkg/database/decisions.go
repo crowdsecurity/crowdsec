@@ -489,6 +489,9 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 	}
 
 	count, err := c.BulkDeleteDecisions(DecisionsToDelete, true)
+	if err != nil {
+		return "0", nil, errors.Wrapf(DeleteFail, "soft delete decisions with provided filter : %s", err)
+	}
 	return strconv.Itoa(count), DecisionsToDelete, err
 }
 

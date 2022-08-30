@@ -326,7 +326,7 @@ func (s *APIServer) Run(apiReady chan bool) error {
 
 		//csConfig.API.Server.ConsoleConfig.ShareCustomScenarios
 
-		if *s.consoleConfig.ReceiveDecisions == true {
+		if s.consoleConfig.ReceiveDecisions != nil && *s.consoleConfig.ReceiveDecisions {
 			log.Infof("Starting PAPI decision receiver")
 			s.apic.pullTomb.Go(func() error {
 				if err := s.apic.PullPAPI(); err != nil {
