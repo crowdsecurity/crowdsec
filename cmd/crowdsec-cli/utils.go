@@ -787,9 +787,9 @@ func getDBClient() (*database.Client, error) {
 	if err := csConfig.LoadDBConfig(); err != nil {
 		return nil, err
 	}
-	dbClient, err = database.NewClient(csConfig.DbConfig)
+	ret, err := database.NewClient(csConfig.DbConfig)
 	if err != nil {
 		return nil, err
 	}
-	return dbClient, nil
+	return ret, nil
 }

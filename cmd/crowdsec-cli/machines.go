@@ -328,7 +328,8 @@ cscli machines add MyTestMachine --password MyPassword
 			}
 		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			dbClient, err := getDBClient()
+			var err error
+			dbClient, err = getDBClient()
 			if err != nil {
 				cobra.CompError("unable to create new database client: " + err.Error())
 				return nil, cobra.ShellCompDirectiveNoFileComp
