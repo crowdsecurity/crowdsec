@@ -2,9 +2,6 @@ name: Functional tests (Postgres)
 
 on:
   workflow_call:
-    secrets:
-      DATABASE_PASSWORD:
-        required: true
 
 env:
   PREFIX_TEST_NAMES_WITH_FILE: true
@@ -19,7 +16,7 @@ jobs:
       database:
         image: postgres:latest
         env:
-          POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          POSTGRES_PASSWORD: "secret"
         ports:
           - 5432:5432
         options: >-
@@ -62,7 +59,7 @@ jobs:
         DB_BACKEND: pgx
         PGHOST: 127.0.0.1
         PGPORT: 5432
-        PGPASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        PGPASSWORD: "secret"
         PGUSER: postgres
 
     - name: "Run tests (DB_BACKEND: pgx)"
@@ -71,7 +68,7 @@ jobs:
         DB_BACKEND: pgx
         PGHOST: 127.0.0.1
         PGPORT: 5432
-        PGPASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        PGPASSWORD: "secret"
         PGUSER: postgres
 
     - name: "Build crowdsec and fixture (DB_BACKEND: postgres)"
@@ -80,7 +77,7 @@ jobs:
         DB_BACKEND: postgres
         PGHOST: 127.0.0.1
         PGPORT: 5432
-        PGPASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        PGPASSWORD: "secret"
         PGUSER: postgres
 
     - name: "Run tests (DB_BACKEND: postgres)"
@@ -89,7 +86,7 @@ jobs:
         DB_BACKEND: postgres
         PGHOST: 127.0.0.1
         PGPORT: 5432
-        PGPASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        PGPASSWORD: "secret"
         PGUSER: postgres
 
     - name: "Show crowdsec logs"

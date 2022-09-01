@@ -34,20 +34,14 @@ jobs:
     uses: ./.github/workflows/bats-mysql.yml
     with:
       database_image: mariadb:latest
-    secrets:
-      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD}}
 
   mysql:
     uses: ./.github/workflows/bats-mysql.yml
     with:
       database_image: mysql:latest
-    secrets:
-      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD}}
 
   postgres:
     uses: ./.github/workflows/bats-postgres.yml
-    secrets:
-      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD}}
 
   hub:
     uses: ./.github/workflows/bats-hub.yml
