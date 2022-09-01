@@ -90,6 +90,7 @@ func (s *HTTPPlugin) Configure(ctx context.Context, config *protobufs.Config) (*
 	d := PluginConfig{}
 	err := yaml.Unmarshal(config.Config, &d)
 	s.PluginConfigByName[d.Name] = d
+	logger.Debug(fmt.Sprintf("HTTP plugin '%s' use URL '%s'", d.Name, d.URL))
 	return &protobufs.Empty{}, err
 }
 

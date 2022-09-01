@@ -254,7 +254,7 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 			if err != nil {
 				return err
 			}
-
+			data = []byte(os.ExpandEnv(string(data)))
 			_, err = pluginClient.Configure(context.Background(), &protobufs.Config{Config: data})
 			if err != nil {
 				return errors.Wrapf(err, "while configuring %s", pc.Name)
@@ -347,6 +347,7 @@ func ParsePluginConfigFile(path string) ([]PluginConfig, error) {
 	}
 	dec := yaml.NewDecoder(yamlFile)
 	dec.SetStrict(true)
+
 	for {
 		pc := PluginConfig{}
 		err = dec.Decode(&pc)
