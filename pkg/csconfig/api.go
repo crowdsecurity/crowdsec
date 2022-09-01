@@ -171,50 +171,64 @@ type TLSCfg struct {
 }
 
 func (c *Config) LoadAPIServer() error {
+
+	if c.DisableAPI {
+		log.Warning("crowdsec local API is disabled from flag")
+	}
+
+	if c.API.Server == nil {
+		log.Warning("crowdsec local API is disabled because its configuration is not present")
+		c.DisableAPI = true
+	}
+
 	if c.API.Server.Enable == nil {
 		// if the option is not present, it is enabled by default
 		c.API.Server.Enable = types.BoolPtr(true)
 	}
-	if c.API.Server != nil && !c.DisableAPI && *c.API.Server.Enable {
-		if err := c.LoadCommon(); err != nil {
-			return fmt.Errorf("loading common configuration: %s", err)
-		}
-		c.API.Server.LogDir = c.Common.LogDir
-		c.API.Server.LogMedia = c.Common.LogMedia
-		c.API.Server.CompressLogs = c.Common.CompressLogs
-		c.API.Server.LogMaxSize = c.Common.LogMaxSize
-		c.API.Server.LogMaxAge = c.Common.LogMaxAge
-		c.API.Server.LogMaxFiles = c.Common.LogMaxFiles
-		if c.API.Server.UseForwardedForHeaders && c.API.Server.TrustedProxies == nil {
-			c.API.Server.TrustedProxies = &[]string{"0.0.0.0/0"}
-		}
-		if c.API.Server.TrustedProxies != nil {
-			c.API.Server.UseForwardedForHeaders = true
-		}
-		if err := c.API.Server.LoadProfiles(); err != nil {
-			return errors.Wrap(err, "while loading profiles for LAPI")
-		}
-		if c.API.Server.ConsoleConfigPath == "" {
-			c.API.Server.ConsoleConfigPath = DefaultConsoleConfigFilePath
-		}
-		if err := c.API.Server.LoadConsoleConfig(); err != nil {
-			return errors.Wrap(err, "while loading console options")
-		}
-
-		if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
-			if err := c.API.Server.OnlineClient.Load(); err != nil {
-				return errors.Wrap(err, "loading online client credentials")
-			}
-		}
-		if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
-			log.Printf("push and pull to Central API disabled")
-		}
-		if err := c.LoadDBConfig(); err != nil {
-			return err
-		}
-	} else {
-		log.Warning("crowdsec local API is disabled")
+	if !*c.API.Server.Enable {
+		log.Warning("crowdsec local API is disabled because 'enable' is set to false")
 		c.DisableAPI = true
+	}
+
+	if c.DisableAPI {
+		return nil
+	}
+
+	if err := c.LoadCommon(); err != nil {
+		return fmt.Errorf("loading common configuration: %s", err)
+	}
+	c.API.Server.LogDir = c.Common.LogDir
+	c.API.Server.LogMedia = c.Common.LogMedia
+	c.API.Server.CompressLogs = c.Common.CompressLogs
+	c.API.Server.LogMaxSize = c.Common.LogMaxSize
+	c.API.Server.LogMaxAge = c.Common.LogMaxAge
+	c.API.Server.LogMaxFiles = c.Common.LogMaxFiles
+	if c.API.Server.UseForwardedForHeaders && c.API.Server.TrustedProxies == nil {
+		c.API.Server.TrustedProxies = &[]string{"0.0.0.0/0"}
+	}
+	if c.API.Server.TrustedProxies != nil {
+		c.API.Server.UseForwardedForHeaders = true
+	}
+	if err := c.API.Server.LoadProfiles(); err != nil {
+		return errors.Wrap(err, "while loading profiles for LAPI")
+	}
+	if c.API.Server.ConsoleConfigPath == "" {
+		c.API.Server.ConsoleConfigPath = DefaultConsoleConfigFilePath
+	}
+	if err := c.API.Server.LoadConsoleConfig(); err != nil {
+		return errors.Wrap(err, "while loading console options")
+	}
+
+	if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
+		if err := c.API.Server.OnlineClient.Load(); err != nil {
+			return errors.Wrap(err, "loading online client credentials")
+		}
+	}
+	if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
+		log.Printf("push and pull to Central API disabled")
+	}
+	if err := c.LoadDBConfig(); err != nil {
+		return err
 	}
 
 	return nil
