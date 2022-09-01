@@ -347,7 +347,6 @@ func ParsePluginConfigFile(path string) ([]PluginConfig, error) {
 	}
 	dec := yaml.NewDecoder(yamlFile)
 	dec.SetStrict(true)
-
 	for {
 		pc := PluginConfig{}
 		err = dec.Decode(&pc)
