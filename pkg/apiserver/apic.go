@@ -35,13 +35,12 @@ var SCOPE_CAPI_ALIAS string = "crowdsecurity/community-blocklist" //we don't use
 var SCOPE_LISTS string = "lists"
 
 type apic struct {
-	pullInterval       time.Duration
-	pushInterval       time.Duration
-	metricsInterval    time.Duration
-	dbClient           *database.Client
-	apiClient          *apiclient.ApiClient
-	AlertsAddChan      chan []*models.Alert
-	DecisionDeleteChan chan []*models.Decision
+	pullInterval    time.Duration
+	pushInterval    time.Duration
+	metricsInterval time.Duration
+	dbClient        *database.Client
+	apiClient       *apiclient.ApiClient
+	AlertsAddChan   chan []*models.Alert
 
 	mu            sync.Mutex
 	pushTomb      tomb.Tomb
@@ -127,20 +126,19 @@ func alertToSignal(alert *models.Alert, scenarioTrust string) *models.AddSignals
 func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig) (*apic, error) {
 	var err error
 	ret := &apic{
-		AlertsAddChan:      make(chan []*models.Alert),
-		DecisionDeleteChan: make(chan []*models.Decision),
-		dbClient:           dbClient,
-		mu:                 sync.Mutex{},
-		startup:            true,
-		credentials:        config.Credentials,
-		pullTomb:           tomb.Tomb{},
-		pushTomb:           tomb.Tomb{},
-		metricsTomb:        tomb.Tomb{},
-		scenarioList:       make([]string, 0),
-		consoleConfig:      consoleConfig,
-		pullInterval:       PullInterval,
-		pushInterval:       PushInterval,
-		metricsInterval:    MetricsInterval,
+		AlertsAddChan:   make(chan []*models.Alert),
+		dbClient:        dbClient,
+		mu:              sync.Mutex{},
+		startup:         true,
+		credentials:     config.Credentials,
+		pullTomb:        tomb.Tomb{},
+		pushTomb:        tomb.Tomb{},
+		metricsTomb:     tomb.Tomb{},
+		scenarioList:    make([]string, 0),
+		consoleConfig:   consoleConfig,
+		pullInterval:    PullInterval,
+		pushInterval:    PushInterval,
+		metricsInterval: MetricsInterval,
 	}
 
 	password := strfmt.Password(config.Credentials.Password)
@@ -148,10 +146,7 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 	if err != nil {
 		return nil, errors.Wrapf(err, "while parsing '%s'", config.Credentials.URL)
 	}
-	PapiURL, err := url.Parse(types.PAPIBaseURL)
-	if err != nil {
-		return nil, errors.Wrapf(err, "while parsing '%s'", types.PAPIBaseURL)
-	}
+
 	ret.scenarioList, err = ret.FetchScenariosListFromDB()
 	if err != nil {
 		return nil, errors.Wrap(err, "while fetching scenarios from db")
@@ -161,108 +156,12 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 		Password:       password,
 		UserAgent:      fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 		URL:            apiURL,
-		PapiURL:        PapiURL,
 		VersionPrefix:  "v2",
 		Scenarios:      ret.scenarioList,
 		UpdateScenario: ret.FetchScenariosListFromDB,
 	})
 
 	return ret, err
-}
-
-func (a *apic) SyncDecisions() error {
-	defer types.CatchPanic("lapi/syncDecisionsToCAPI")
-
-	var cache models.AddSignalsRequestItemDecisions
-	ticker := time.NewTicker(a.pushInterval)
-	log.Infof("Start decisions sync to CrowdSec Central API (interval: %s)", PushInterval)
-
-	for {
-		select {
-		case <-a.pushTomb.Dying(): // if one apic routine is dying, do we kill the others?
-			a.pullTomb.Kill(nil)
-			a.metricsTomb.Kill(nil)
-			log.Infof("push tomb is dying, sending cache (%d elements) before exiting", len(cache))
-			if len(cache) == 0 {
-				return nil
-			}
-			go a.SendDeletedDecisions(&cache)
-			return nil
-		case <-ticker.C:
-			if len(cache) > 0 {
-				a.mu.Lock()
-				cacheCopy := cache
-				cache = make([]*models.AddSignalsRequestItemDecisionsItem, 0)
-				a.mu.Unlock()
-				log.Infof("Signal push: %d signals to push", len(cacheCopy))
-				go a.SendDeletedDecisions(&cacheCopy)
-			}
-		case deletedDecisions := <-a.DecisionDeleteChan:
-
-			if a.consoleConfig.ShareManualDecisions != nil && *a.consoleConfig.ShareManualDecisions {
-				var tmpDecisions []*models.AddSignalsRequestItemDecisionsItem
-				for _, decision := range deletedDecisions {
-
-					x := &models.AddSignalsRequestItemDecisionsItem{
-						Duration: types.StrPtr(*decision.Duration),
-						ID:       new(int64),
-						Origin:   types.StrPtr(*decision.Origin),
-						Scenario: types.StrPtr(*decision.Scenario),
-						Scope:    types.StrPtr(*decision.Scope),
-						Type:     types.StrPtr(*decision.Type),
-						Until:    decision.Until,
-						Value:    types.StrPtr(*decision.Value),
-					}
-					if decision.Simulated != nil {
-						x.Simulated = *decision.Simulated
-					}
-					tmpDecisions = append(tmpDecisions, x)
-				}
-
-				a.mu.Lock()
-				cache = append(cache, tmpDecisions...)
-				a.mu.Unlock()
-			}
-		}
-	}
-
-	// ticker := time.NewTicker(a.pushInterval)
-	// var DeletedDecisionsCache models.AddSignalsRequestItemDecisions
-	// DeletedDecisionsCache = make([]*models.AddSignalsRequestItemDecisionsItem, 0)
-
-	// for {
-	// 	select {
-	// 	case <-ticker.C:
-	// 		if len(DeletedDecisionsCache) > 0 {
-	// 			log.Printf("dumping deleted decisions")
-	// 			log.Printf(spew.Sdump(DeletedDecisionsCache))
-
-	// 			DeletedDecisionsCache = make([]*models.AddSignalsRequestItemDecisionsItem, 0)
-	// 		}
-	// 	case deletedDecisions := <-a.DecisionDeleteChan:
-	// 		//only share deletion if users wants to share manual decision
-	// 		if a.consoleConfig.ShareManualDecisions != nil && *a.consoleConfig.ShareManualDecisions {
-	// 			log.Printf("got delete yo %+v", deletedDecisions)
-	// 			for _, decision := range deletedDecisions {
-
-	// 				x := &models.AddSignalsRequestItemDecisionsItem{
-	// 					Duration: types.StrPtr(*decision.Duration),
-	// 					ID:       new(int64),
-	// 					Origin:   types.StrPtr(*decision.Origin),
-	// 					Scenario: types.StrPtr(*decision.Scenario),
-	// 					Scope:    types.StrPtr(*decision.Scope),
-	// 					Type:     types.StrPtr(*decision.Type),
-	// 					Until:    decision.Until,
-	// 					Value:    types.StrPtr(*decision.Value),
-	// 				}
-	// 				if decision.Simulated != nil {
-	// 					x.Simulated = *decision.Simulated
-	// 				}
-	// 				DeletedDecisionsCache = append(DeletedDecisionsCache, x)
-	// 			}
-	// 		}
-	// 	}
-	// }
 }
 
 // keep track of all alerts in cache and push it to CAPI every PushInterval.

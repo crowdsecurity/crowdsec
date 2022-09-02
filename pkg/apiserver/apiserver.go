@@ -220,7 +220,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		//controller.DecisionDeleteChan = apiClient.DecisionDeleteChan
 
 		log.Infof("Loading PAPI Client")
-		papiClient, err = NewPAPI(apiClient, dbClient)
+		papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig)
 		if err != nil {
 			return &APIServer{}, err
 		}
@@ -317,8 +317,8 @@ func (s *APIServer) Run(apiReady chan bool) error {
 			return nil
 		})
 
-		s.apic.pushTomb.Go(func() error {
-			if err := s.apic.SyncDecisions(); err != nil {
+		s.papi.syncTomb.Go(func() error {
+			if err := s.papi.SyncDecisions(); err != nil {
 				log.Errorf("capi decisions sync: %s", err)
 				return err
 			}
@@ -337,7 +337,7 @@ func (s *APIServer) Run(apiReady chan bool) error {
 
 		if s.consoleConfig.ReceiveDecisions != nil && *s.consoleConfig.ReceiveDecisions {
 			log.Infof("Starting PAPI decision receiver")
-			s.apic.pullTomb.Go(func() error {
+			s.papi.pullTomb.Go(func() error {
 				if err := s.papi.Pull(); err != nil {
 					log.Errorf("papi pull: %s", err)
 					return err
