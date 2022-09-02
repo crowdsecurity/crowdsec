@@ -18,7 +18,6 @@ require (
 	github.com/crowdsecurity/grokky v0.0.0-20220120093523-d5b3478363fa
 	github.com/crowdsecurity/machineid v1.0.2
 	github.com/davecgh/go-spew v1.1.1
-	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/dghubble/sling v1.3.0
 	github.com/docker/docker v20.10.2+incompatible
 	github.com/docker/go-connections v0.4.0
@@ -38,7 +37,6 @@ require (
 	github.com/hashicorp/go-hclog v1.0.0
 	github.com/hashicorp/go-plugin v1.4.2
 	github.com/hashicorp/go-version v1.2.1
-	github.com/influxdata/go-syslog/v3 v3.0.0
 	github.com/jackc/pgx/v4 v4.14.1
 	github.com/jarcoal/httpmock v1.1.0
 	github.com/jszwec/csvutil v1.5.1
@@ -148,7 +146,6 @@ require (
 	github.com/oklog/run v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2-0.20211117181255-693428a734f5 // indirect
-	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
 	github.com/pierrec/lz4/v4 v4.1.15 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/common v0.30.0 // indirect
@@ -158,7 +155,6 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
-	github.com/segmentio/kafka-go v0.4.32 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tidwall/gjson v1.13.0 // indirect
 	github.com/ugorji/go/codec v1.2.6 // indirect
