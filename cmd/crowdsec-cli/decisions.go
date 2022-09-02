@@ -470,6 +470,9 @@ cscli decisions delete --type captcha
 					log.Fatalf("Unable to delete decisions : %v", err)
 				}
 			} else {
+				if _, err = strconv.Atoi(delDecisionId); err != nil {
+					log.Fatalf("id '%s' is not an integer: %v", delDecisionId, err)
+				}
 				decisions, _, err = Client.Decisions.DeleteOne(context.Background(), delDecisionId)
 				if err != nil {
 					log.Fatalf("Unable to delete decision : %v", err)
