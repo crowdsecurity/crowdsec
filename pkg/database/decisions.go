@@ -396,6 +396,8 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 			}
 		case "scopes":
 			decisions = decisions.Where(decision.ScopeEQ(value[0]))
+		case "uuid":
+			decisions = decisions.Where(decision.UUIDIn(value...))
 		case "origin":
 			decisions = decisions.Where(decision.OriginEQ(value[0]))
 		case "value":

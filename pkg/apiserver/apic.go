@@ -201,7 +201,6 @@ func (a *apic) SyncDecisions() error {
 
 			if a.consoleConfig.ShareManualDecisions != nil && *a.consoleConfig.ShareManualDecisions {
 				var tmpDecisions []*models.AddSignalsRequestItemDecisionsItem
-				log.Printf("got delete yo %+v", deletedDecisions)
 				for _, decision := range deletedDecisions {
 
 					x := &models.AddSignalsRequestItemDecisionsItem{

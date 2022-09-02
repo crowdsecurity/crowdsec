@@ -41,6 +41,7 @@ type APIServer struct {
 	router         *gin.Engine
 	httpServer     *http.Server
 	apic           *apic
+	papi           *Papi
 	httpServerTomb tomb.Tomb
 	consoleConfig  *csconfig.ConsoleConfig
 }
@@ -207,6 +208,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	}
 
 	var apiClient *apic
+	var papiClient *Papi
 
 	if config.OnlineClient != nil && config.OnlineClient.Credentials != nil {
 		log.Printf("Loading CAPI pusher")
@@ -215,13 +217,19 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 			return &APIServer{}, err
 		}
 		controller.AlertsAddChan = apiClient.AlertsAddChan
-		/*this should be opt-in ?*/
-		controller.DecisionDeleteChan = apiClient.DecisionDeleteChan
+		//controller.DecisionDeleteChan = apiClient.DecisionDeleteChan
+
+		log.Infof("Loading PAPI Client")
+		papiClient, err = NewPAPI(apiClient, dbClient)
+		if err != nil {
+			return &APIServer{}, err
+		}
 	} else {
 		apiClient = nil
 		controller.AlertsAddChan = nil
 		controller.DecisionDeleteChan = nil
 	}
+
 	if trustedIPs, err := config.GetTrustedIPs(); err == nil {
 		controller.TrustedIPs = trustedIPs
 	} else {
@@ -237,6 +245,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		flushScheduler: flushScheduler,
 		router:         router,
 		apic:           apiClient,
+		papi:           papiClient,
 		httpServerTomb: tomb.Tomb{},
 		consoleConfig:  config.ConsoleConfig,
 	}, nil
@@ -329,7 +338,7 @@ func (s *APIServer) Run(apiReady chan bool) error {
 		if s.consoleConfig.ReceiveDecisions != nil && *s.consoleConfig.ReceiveDecisions {
 			log.Infof("Starting PAPI decision receiver")
 			s.apic.pullTomb.Go(func() error {
-				if err := s.apic.PullPAPI(); err != nil {
+				if err := s.papi.Pull(); err != nil {
 					log.Errorf("papi pull: %s", err)
 					return err
 				}
