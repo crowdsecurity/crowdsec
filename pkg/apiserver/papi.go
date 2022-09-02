@@ -136,7 +136,6 @@ func (p *Papi) Pull() error {
 
 		message, ok := event.Data.(Message)
 		if !ok {
-			log.Infof("MESSAGE: %+v", event.Data)
 			log.Errorf("polling papi message format is not compatible")
 			// do we want to continue or exit ?
 			continue
