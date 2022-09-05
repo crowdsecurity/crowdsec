@@ -21,4 +21,4 @@ clean:
 	@$(RM) $(BINARY_NAME) $(WIN_IGNORE_ERR)
 
 static: clean
-	$(GOBUILD) $(LD_OPTS_STATIC) -o $(BINARY_NAME) -a -tags netgo
+	$(GOBUILD) $(LD_OPTS_STATIC) -o $(BINARY_NAME) -a

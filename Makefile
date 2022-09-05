@@ -59,7 +59,7 @@ LD_OPTS_VARS= \
 -X 'github.com/crowdsecurity/crowdsec/pkg/csconfig.defaultDataDir=$(DEFAULT_DATADIR)'
 
 export LD_OPTS=-ldflags "-s -w $(LD_OPTS_VARS)"
-export LD_OPTS_STATIC=-ldflags "-s -w $(LD_OPTS_VARS) -extldflags '-static'"
+export LD_OPTS_STATIC=-ldflags "-s -w $(LD_OPTS_VARS) -extldflags '-static'" -tags netgo,osusergo,sqlite_omit_load_extension
 
 GOCMD=go
 GOTEST=$(GOCMD) test

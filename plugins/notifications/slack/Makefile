@@ -20,4 +20,4 @@ clean:
 
 
 static: clean
-	$(GOBUILD) $(LD_OPTS_STATIC) -o $(BINARY_NAME) -a -tags netgo
+	$(GOBUILD) $(LD_OPTS_STATIC) -o $(BINARY_NAME) -a
