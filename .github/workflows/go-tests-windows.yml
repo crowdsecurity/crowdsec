@@ -18,7 +18,9 @@ jobs:
   build:
     name: "Build + tests"
     runs-on: windows-2022
-
+    strategy:
+      matrix:
+        build-type: ["build", "static"]
     steps:
 
     - name: "Set up Go 1.19"
@@ -35,7 +37,7 @@ jobs:
 
     - name: Build
       run: |
-        make build
+        make ${{ matrix.build-type }}
 
     - name: Run tests
       run: |
