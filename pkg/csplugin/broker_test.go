@@ -4,7 +4,6 @@ package csplugin
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -279,7 +278,7 @@ func writeconfig(t *testing.T, config PluginConfig, path string) {
 	if err != nil {
 		t.Fatalf("unable to marshal config file : %s", err)
 	}
-	if err := ioutil.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, data, 0644); err != nil {
 		t.Fatalf("unable to write config file %s : %s", path, err)
 	}
 }
@@ -378,7 +377,7 @@ func TestBrokerRunGroupAndTimeThreshold_TimeFirst(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(alerts))
 	//restore config
-	if err := ioutil.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
+	if err := os.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
 		t.Fatalf("unable to write config file %s", err)
 	}
 }
@@ -427,7 +426,7 @@ func TestBrokerRunGroupAndTimeThreshold_CountFirst(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(alerts))
 	//restore config
-	if err := ioutil.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
+	if err := os.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
 		t.Fatalf("unable to write config file %s", err)
 	}
 }
@@ -476,7 +475,7 @@ func TestBrokerRunGroupThreshold(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(alerts))
 	//restore config
-	if err := ioutil.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
+	if err := os.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
 		t.Fatalf("unable to write config file %s", err)
 	}
 }
@@ -521,7 +520,7 @@ func TestBrokerRunTimeThreshold(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(alerts))
 	//restore config
-	if err := ioutil.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
+	if err := os.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
 		t.Fatalf("unable to write config file %s", err)
 	}
 }

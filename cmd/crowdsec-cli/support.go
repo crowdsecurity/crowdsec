@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -381,7 +380,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			if err != nil {
 				log.Fatalf("could not finalize zip file: %s", err)
 			}
-			err = ioutil.WriteFile(outFile, w.Bytes(), 0600)
+			err = os.WriteFile(outFile, w.Bytes(), 0600)
 			if err != nil {
 				log.Fatalf("could not write zip file to %s: %s", outFile, err)
 			}
