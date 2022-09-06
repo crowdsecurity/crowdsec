@@ -1,3 +1,4 @@
+# vim: set ft=yaml.ansible:
 ---
 - name: "prepare functional tests"
   hosts: all

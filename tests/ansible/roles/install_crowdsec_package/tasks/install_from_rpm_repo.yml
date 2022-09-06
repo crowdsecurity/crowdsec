@@ -1,3 +1,4 @@
+# vim: set ft=yaml.ansible:
 ---
 - name: "install crowdsec from the package repository"
   become: true

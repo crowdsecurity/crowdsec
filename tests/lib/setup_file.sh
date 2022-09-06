@@ -4,10 +4,6 @@
 # https://github.com/bats-core/bats-core/blob/master/docs/source/warnings/BW02.rst
 bats_require_minimum_version 1.5.0
 
-# this should have effect globally, for all tests
-# https://github.com/bats-core/bats-core/blob/master/docs/source/warnings/BW02.rst
-bats_require_minimum_version 1.5.0
-
 debug() {
     echo 'exec 1<&-; exec 2<&-; exec 1>&3; exec 2>&1'
 }

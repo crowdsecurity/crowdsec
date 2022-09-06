@@ -1,3 +1,4 @@
+# vim: set ft=yaml.ansible:
 ---
 - import_playbook: provision_dependencies.yml
 - import_playbook: provision_test_suite.yml

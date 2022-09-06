@@ -1,3 +1,4 @@
+# vim: set ft=yaml.ansible:
 ---
 
 package_version_deb: "{{ lookup('ansible.builtin.env', 'TEST_PACKAGE_VERSION_DEB') }}"

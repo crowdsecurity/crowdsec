@@ -1,3 +1,4 @@
+# vim: set ft=yaml.ansible:
 ---
 - name: "lookup $TEST_SUITE_GIT"
   ansible.builtin.set_fact:
@@ -22,7 +23,7 @@
         name:
           - unzip
 
-    - name: "install tests: create crowdsec dir"
+    - name: "install tests: create source dir"
       become: false
       ansible.builtin.file:
         path: "{{ ansible_env.HOME }}/crowdsec"
