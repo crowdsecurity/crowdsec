@@ -34,7 +34,7 @@ var linesRead = prometheus.NewCounterVec(
 
 type FileConfiguration struct {
 	Filenames                         []string
-	ExcludeRegexps                    []string
+	ExcludeRegexps                    []string `yaml:"exclude_regexps"`
 	Filename                          string
 	ForceInotify                      bool `yaml:"force_inotify"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
@@ -107,6 +107,19 @@ func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
 			continue
 		}
 		for _, file := range files {
+
+			//check if file is excluded
+			excluded := false
+			for _, pattern := range f.exclude_regexps {
+				if pattern.MatchString(file) {
+					excluded = true
+					f.logger.Infof("Skipping file %s as it matches exclude pattern %s", file, pattern)
+					break
+				}
+			}
+			if excluded {
+				continue
+			}
 			if files[0] != pattern && f.config.Mode == configuration.TAIL_MODE { //we have a glob pattern
 				directory := filepath.Dir(file)
 				f.logger.Debugf("Will add watch to directory: %s", directory)
