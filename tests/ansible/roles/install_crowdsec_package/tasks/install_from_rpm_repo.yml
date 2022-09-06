@@ -10,7 +10,7 @@
     - name: "stable rpm repo"
       ansible.builtin.command:
         cmd: "/root/rpm.sh"
-      changed_when: false
+      changed_when: true
 
     - name: "testing rpm repo script"
       ansible.builtin.get_url:
@@ -20,7 +20,7 @@
     - name: "testing rpm repo"
       ansible.builtin.command:
         cmd: "/root/rpm-testing.sh"
-      changed_when: false
+      changed_when: true
 
     - name: "install crowdsec"
       ansible.builtin.package:

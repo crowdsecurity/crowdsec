@@ -66,7 +66,7 @@
     - name: "look for .environment.sh"
       ansible.builtin.slurp:
         src: "{{ ansible_env.HOME }}/crowdsec/tests/.environment.sh"
-      changed_when: false
+      changed_when: true
       register: envfile
     - name: "cat .environment.sh"
       ansible.builtin.debug:
