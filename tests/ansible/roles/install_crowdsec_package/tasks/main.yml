@@ -1,3 +1,4 @@
+# vim: set ft=yaml.ansible:
 ---
 - name: "set releasever for RedHat family"
   ansible.builtin.set_fact:

@@ -1,3 +1,4 @@
+# vim: set ft=yaml.ansible:
 ---
 - name: "tweak systemd configuration for tests"
   become: true
@@ -31,7 +32,7 @@
     - name: "look for .environment.sh"
       ansible.builtin.slurp:
         src: "{{ ansible_env.HOME }}/crowdsec/tests/.environment.sh"
-      changed_when: false
+      changed_when: true
       register: envfile
     - name: "cat .environment.sh"
       ansible.builtin.debug:
@@ -59,7 +60,7 @@
         # pidof -> /usr/sbin
         # bash -> /opt/bash/bin
         PATH: "/opt/bash/bin:{{ ansible_env.PATH }}:/usr/sbin:/usr/local/sbin"
-      changed_when: false
+      changed_when: true
       when:
         - (item.path | basename) not in skip_tests.split(',')
   rescue:
@@ -88,7 +89,7 @@
         # pidof -> /usr/sbin
         # bash -> /opt/bash/bin
         PATH: "/opt/bash/bin:{{ ansible_env.PATH }}:/usr/sbin:/usr/local/sbin"
-      changed_when: false
+      changed_when: true
       when:
         - (item.path | basename) not in skip_tests.split(',')
   rescue:

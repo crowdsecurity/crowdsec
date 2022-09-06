@@ -1,9 +1,18 @@
+# vim: set ft=yaml.ansible:
 ---
-- src: geerlingguy.mysql
-- src: geerlingguy.repo-epel
-- src: gantsign.golang
-- src: https://github.com/crowdsecurity/ansible-role-postgresql
-  version: crowdsec
-  name: geerlingguy.postgresql
+roles:
+  - src: geerlingguy.mysql
+  - src: geerlingguy.repo-epel
+  - src: gantsign.golang
+  - src: https://github.com/crowdsecurity/ansible-role-postgresql
+    version: crowdsec
+    name: geerlingguy.postgresql
 
+#collections:
+#  - name: crowdsecurity.testing
+#    source: ~/src/crowdsecurity.testing/crowdsecurity/testing
+#    type: dir
 
+#  - name: crowdsecurity.testing
+#    src: https://github.com/crowdsecurity/crowdsecurity.testing
+#    version: main
