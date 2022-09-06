@@ -26,6 +26,9 @@ jobs:
   sqlite:
     uses: ./.github/workflows/bats-sqlite-coverage.yml
 
+  sqlite-static:
+    uses: ./.github/workflows/bats-sqlite-coverage-static.yml
+
   # Jobs for Postgres (and sometimes MySQL) can have failing tests on GitHub
   # CI, but they pass when run on devs' machines or in the release checks. We
   # disable them here by default. Remove the if..false to enable them.
@@ -35,13 +38,26 @@ jobs:
     with:
       database_image: mariadb:latest
 
+  mariadb-static:
+    uses: ./.github/workflows/bats-mysql-static.yml
+    with:
+      database_image: mariadb:latest
+
   mysql:
     uses: ./.github/workflows/bats-mysql.yml
     with:
       database_image: mysql:latest
 
+  mysql-static:
+    uses: ./.github/workflows/bats-mysql-static.yml
+    with:
+      database_image: mysql:latest
+
   postgres:
     uses: ./.github/workflows/bats-postgres.yml
+
+  postgres-static:
+    uses: ./.github/workflows/bats-postgres-static.yml
 
   hub:
     uses: ./.github/workflows/bats-hub.yml
