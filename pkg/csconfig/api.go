@@ -154,6 +154,7 @@ type LocalApiServerCfg struct {
 	LogMaxAge              int                 `yaml:"-"`
 	LogMaxFiles            int                 `yaml:"-"`
 	TrustedIPs             []string            `yaml:"trusted_ips,omitempty"`
+	PapiLogLevel           *log.Level          `yaml:"papi_log_level"`
 }
 
 type TLSCfg struct {
@@ -193,6 +194,11 @@ func (c *Config) LoadAPIServer() error {
 		}
 		if err := c.API.Server.LoadConsoleConfig(); err != nil {
 			return errors.Wrap(err, "while loading console options")
+		}
+
+		logLevel := log.InfoLevel
+		if c.API.Server.PapiLogLevel == nil {
+			c.API.Server.PapiLogLevel = &logLevel
 		}
 
 		if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {

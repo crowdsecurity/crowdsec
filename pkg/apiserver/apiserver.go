@@ -220,7 +220,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		//controller.DecisionDeleteChan = apiClient.DecisionDeleteChan
 
 		log.Infof("Loading PAPI Client")
-		papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig)
+		papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
 		if err != nil {
 			return &APIServer{}, err
 		}

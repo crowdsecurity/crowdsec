@@ -3,6 +3,7 @@ package apiserver
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/url"
 	"sync"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/jcuga/golongpoll/client"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 )
@@ -34,7 +36,7 @@ var (
 )
 
 func PapiError(err error) bool {
-	log.Warningf("PAPI/ERROR : %s", err)
+	log.Warningf("papi: %s", err.Error())
 	return true
 }
 
@@ -44,6 +46,11 @@ type Header struct {
 	Timestamp     time.Time `json:"timestamp"`
 	Message       string    `json:"message"`
 	UUID          string    `json:"uuid"`
+	Source        *Source   `json:"source"`
+}
+
+type Source struct {
+	User string `json:"user"`
 }
 
 type Message struct {
@@ -67,9 +74,10 @@ type Papi struct {
 	syncTomb      tomb.Tomb
 	SyncInterval  time.Duration
 	consoleConfig *csconfig.ConsoleConfig
+	Logger        *log.Entry
 }
 
-func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig) (*Papi, error) {
+func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig, logLevel log.Level) (*Papi, error) {
 	PapiURL, err := url.Parse(types.PAPIBaseURL)
 	if err != nil {
 		return nil, errors.Wrapf(err, "while parsing '%s'", types.PAPIBaseURL)
@@ -91,6 +99,12 @@ func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.Cons
 		DeleteDecisionChannel: make(chan []*models.Decision),
 	}
 
+	logger := logrus.New()
+	if err := types.ConfigureLogger(logger); err != nil {
+		return &Papi{}, fmt.Errorf("creating papi logger: %s", err)
+	}
+	logger.SetLevel(logLevel)
+
 	papi := &Papi{
 		URL:          PapiURL.String(),
 		Client:       longPollClient,
@@ -101,6 +115,7 @@ func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.Cons
 		pullTomb:     tomb.Tomb{},
 		syncTomb:     tomb.Tomb{},
 		apiClient:    apic.apiClient,
+		Logger:       logger.WithFields(log.Fields{"interval": SyncInterval.Seconds(), "source": "papi"}),
 	}
 
 	return papi, nil
@@ -110,12 +125,12 @@ func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.Cons
 func (p *Papi) Pull() error {
 
 	defer types.CatchPanic("lapi/PullPAPI")
-	log.Infof("Starting Polling API Pull")
+	p.Logger.Infof("Starting Polling API Pull")
 
 	lastTimestamp := time.Now().UTC()
 	lastTimestampStr, err := p.DBClient.GetConfigItem(PapiPullKey)
 	if err != nil {
-		log.Warningf("failed to get last timestamp for papi pull: %s", err)
+		p.Logger.Warningf("failed to get last timestamp for papi pull: %s", err)
 		//return errors.Wrap(err, "failed to get last timestamp for papi pull")
 	}
 	//value doesn't exist, it's first time we're pulling
@@ -131,7 +146,7 @@ func (p *Papi) Pull() error {
 		}
 	}
 
-	log.Infof("Starting PAPI pull (since:%s)", lastTimestamp)
+	p.Logger.Infof("Starting PAPI pull (since:%s)", lastTimestamp)
 	for event := range p.Client.Start(lastTimestamp) {
 		//update last timestamp in database
 		newTime := time.Now().UTC()
@@ -139,31 +154,46 @@ func (p *Papi) Pull() error {
 		if err != nil {
 			return errors.Wrap(err, "failed to marshal last timestamp")
 		}
-
+		p.Logger.Debugf("message received: %+v", event.Data)
 		data, err := json.Marshal(event.Data)
 		if err != nil {
-			log.Errorf("marshal message error: %s", err)
+			p.Logger.Errorf("marshal message error: %s", err)
+			continue
 		}
 
 		message := &Message{}
 		if err := json.Unmarshal(data, message); err != nil {
-			log.Errorf("polling papi message format is not compatible: %+v", event.Data)
+			p.Logger.Errorf("polling papi message format is not compatible: %+v", event.Data)
 			// do we want to continue or exit ?
 			continue
 		}
 
+		if message.Header == nil {
+			p.Logger.Errorf("no header in message, skipping")
+			continue
+		}
+
+		if message.Header.Source == nil {
+			p.Logger.Errorf("no source user in header message, skipping")
+			continue
+		}
+
 		if operationFunc, ok := operationMap[message.Header.OperationType]; ok {
+			p.Logger.Debugf("Calling operation '%s'", message.Header.OperationType)
 			err := operationFunc(message, p)
 			if err != nil {
-				log.Errorf("'%s %s failed: %s", message.Header.OperationType, message.Header.OperationCmd, err)
+				p.Logger.Errorf("'%s %s failed: %s", message.Header.OperationType, message.Header.OperationCmd, err)
 				continue
 			}
+		} else {
+			p.Logger.Errorf("operation '%s' unknown, continue", message.Header.OperationType)
+			continue
 		}
 
 		if err := p.DBClient.SetConfigItem(PapiPullKey, string(binTime)); err != nil {
 			return errors.Wrap(err, "failed to update last timestamp")
 		} else {
-			log.Debugf("set last timestamp to %s", newTime)
+			p.Logger.Debugf("set last timestamp to %s", newTime)
 		}
 
 	}
@@ -175,13 +205,13 @@ func (p *Papi) SyncDecisions() error {
 
 	var cache models.AddSignalsRequestItemDecisions
 	ticker := time.NewTicker(p.SyncInterval)
-	log.Infof("Start decisions sync to CrowdSec Central API (interval: %s)", PushInterval)
+	p.Logger.Infof("Start decisions sync to CrowdSec Central API (interval: %s)", PushInterval)
 
 	for {
 		select {
 		case <-p.syncTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			p.pullTomb.Kill(nil)
-			log.Infof("sync decisions tomb is dying, sending cache (%d elements) before exiting", len(cache))
+			p.Logger.Infof("sync decisions tomb is dying, sending cache (%d elements) before exiting", len(cache))
 			if len(cache) == 0 {
 				return nil
 			}
@@ -193,7 +223,7 @@ func (p *Papi) SyncDecisions() error {
 				cacheCopy := cache
 				cache = make([]*models.AddSignalsRequestItemDecisionsItem, 0)
 				p.mu.Unlock()
-				log.Infof("sync decisions: %d deleted decisions to push", len(cacheCopy))
+				p.Logger.Infof("sync decisions: %d deleted decisions to push", len(cacheCopy))
 				go p.SendDeletedDecisions(&cacheCopy)
 			}
 		case deletedDecisions := <-p.Channels.DeleteDecisionChannel:
@@ -217,7 +247,7 @@ func (p *Papi) SyncDecisions() error {
 					}
 					tmpDecisions = append(tmpDecisions, x)
 				}
-
+				p.Logger.Debugf("adding %d decisions deletions to cache", len(tmpDecisions))
 				p.mu.Lock()
 				cache = append(cache, tmpDecisions...)
 				p.mu.Unlock()
@@ -243,7 +273,7 @@ func (p *Papi) SendDeletedDecisions(cacheOrig *models.AddSignalsRequestItemDecis
 			defer cancel()
 			_, _, err := p.apiClient.DecisionDelete.Add(ctx, &send)
 			if err != nil {
-				log.Errorf("Error while sending final chunk to central API : %s", err)
+				p.Logger.Errorf("Error while sending final chunk to central API : %s", err)
 				return
 			}
 			break
@@ -254,7 +284,7 @@ func (p *Papi) SendDeletedDecisions(cacheOrig *models.AddSignalsRequestItemDecis
 		_, _, err := p.apiClient.DecisionDelete.Add(ctx, &send)
 		if err != nil {
 			//we log it here as well, because the return value of func might be discarded
-			log.Errorf("Error while sending chunk to central API : %s", err)
+			p.Logger.Errorf("Error while sending chunk to central API : %s", err)
 		}
 		pageStart += bulkSize
 		pageEnd += bulkSize

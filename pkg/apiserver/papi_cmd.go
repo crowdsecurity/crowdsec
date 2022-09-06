@@ -78,8 +78,16 @@ func AlertCmd(message *Message, p *Papi) error {
 		alert.Message = types.StrPtr("")
 		alert.Scenario = types.StrPtr("")
 		alert.Source = &models.Source{}
-		alert.Source.Scope = types.StrPtr(SCOPE_CAPI)
-		alert.Source.Value = types.StrPtr("")
+		alert.Source.Scope = types.StrPtr(SCOPE_PAPI)
+		alert.Source.Value = &message.Header.Source.User
+		alert.Scenario = &message.Header.Message
+
+		for _, decision := range alert.Decisions {
+			if *decision.Scenario == "" {
+				decision.Scenario = &message.Header.Message
+			}
+		}
+
 		//use a different method : alert and/or decision might already be partially present in the database
 		_, err = p.DBClient.CreateOrUpdateAlert("", alert)
 		if err != nil {

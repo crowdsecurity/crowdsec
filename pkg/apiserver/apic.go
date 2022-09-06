@@ -33,6 +33,7 @@ var (
 var SCOPE_CAPI string = "CAPI"
 var SCOPE_CAPI_ALIAS string = "crowdsecurity/community-blocklist" //we don't use "CAPI" directly, to make it less confusing for the user
 var SCOPE_LISTS string = "lists"
+var SCOPE_PAPI string = "console"
 
 type apic struct {
 	pullInterval    time.Duration
