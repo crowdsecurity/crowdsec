@@ -99,7 +99,7 @@ func testOneParser(pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing
 	)
 	log.Warningf("testing %s", dir)
 	parser_cfg_file := fmt.Sprintf("%s/parsers.yaml", dir)
-	cfg, err := ioutil.ReadFile(parser_cfg_file)
+	cfg, err := os.ReadFile(parser_cfg_file)
 	if err != nil {
 		return fmt.Errorf("failed opening %s : %s", parser_cfg_file, err)
 	}

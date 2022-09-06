@@ -109,7 +109,7 @@ func NewMetabase(configPath string, containerName string) (*Metabase, error) {
 }
 
 func (m *Metabase) LoadConfig(configPath string) error {
-	yamlFile, err := ioutil.ReadFile(configPath)
+	yamlFile, err := os.ReadFile(configPath)
 	if err != nil {
 		return err
 	}

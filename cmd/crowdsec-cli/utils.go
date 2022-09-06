@@ -593,7 +593,7 @@ func RestoreHub(dirPath string) error {
 		}
 		/*restore the upstream items*/
 		upstreamListFN := fmt.Sprintf("%s/upstream-%s.json", itemDirectory, itype)
-		file, err := ioutil.ReadFile(upstreamListFN)
+		file, err := os.ReadFile(upstreamListFN)
 		if err != nil {
 			return fmt.Errorf("error while opening %s : %s", upstreamListFN, err)
 		}

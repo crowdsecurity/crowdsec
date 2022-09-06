@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -267,7 +266,7 @@ func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
 	if s.TLS.CACertPath != "" {
 		if clientAuthType > tls.RequestClientCert {
 			log.Infof("(tls) Client Auth Type set to %s", clientAuthType.String())
-			caCert, err = ioutil.ReadFile(s.TLS.CACertPath)
+			caCert, err = os.ReadFile(s.TLS.CACertPath)
 			if err != nil {
 				return nil, errors.Wrap(err, "Error opening cert file")
 			}

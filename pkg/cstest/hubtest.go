@@ -58,7 +58,7 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest,
 	}
 
 	hubIndexFile := filepath.Join(hubPath, ".index.json")
-	bidx, err := ioutil.ReadFile(hubIndexFile)
+	bidx, err := os.ReadFile(hubIndexFile)
 	if err != nil {
 		return HubTest{}, fmt.Errorf("unable to read index file: %s", err)
 	}

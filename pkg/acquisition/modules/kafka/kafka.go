@@ -6,7 +6,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"strconv"
 	"time"
 
@@ -188,7 +188,7 @@ func (kc *KafkaConfiguration) NewTLSConfig() (*tls.Config, error) {
 	}
 	tlsConfig.Certificates = []tls.Certificate{cert}
 
-	caCert, err := ioutil.ReadFile(kc.TLS.CaCert)
+	caCert, err := os.ReadFile(kc.TLS.CaCert)
 	if err != nil {
 		return &tlsConfig, err
 	}

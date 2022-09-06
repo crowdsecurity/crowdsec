@@ -22,7 +22,7 @@ package yamlpatch
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 
@@ -36,7 +36,7 @@ func trimcr(s string) string {
 }
 
 func mustRead(t testing.TB, fname string) []byte {
-	contents, err := ioutil.ReadFile(fname)
+	contents, err := os.ReadFile(fname)
 	require.NoError(t, err, "failed to read file: %s", fname)
 	return contents
 }

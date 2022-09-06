@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -109,7 +110,7 @@ func (ta *TLSAuth) isCRLRevoked(cert *x509.Certificate) (bool, error) {
 		ta.logger.Warn("no crl_path, skipping CRL check")
 		return false, nil
 	}
-	crlContent, err := ioutil.ReadFile(ta.CrlPath)
+	crlContent, err := os.ReadFile(ta.CrlPath)
 	if err != nil {
 		ta.logger.Warnf("could not read CRL file, skipping check: %s", err)
 		return false, nil
