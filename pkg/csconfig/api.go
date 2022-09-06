@@ -179,15 +179,18 @@ func (c *Config) LoadAPIServer() error {
 	if c.API.Server == nil {
 		log.Warning("crowdsec local API is disabled because its configuration is not present")
 		c.DisableAPI = true
+		return nil
 	}
 
 	if c.API.Server.Enable == nil {
 		// if the option is not present, it is enabled by default
 		c.API.Server.Enable = types.BoolPtr(true)
 	}
+
 	if !*c.API.Server.Enable {
 		log.Warning("crowdsec local API is disabled because 'enable' is set to false")
 		c.DisableAPI = true
+		return nil
 	}
 
 	if c.DisableAPI {
