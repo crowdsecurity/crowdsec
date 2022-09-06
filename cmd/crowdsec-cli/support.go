@@ -5,9 +5,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -73,7 +74,7 @@ func collectMetrics() ([]byte, []byte, error) {
 
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not read metrics from prometheus endpoint: %s", err)
 	}
@@ -176,7 +177,7 @@ func collectAPIStatus(login string, password string, endpoint string, prefix str
 
 func collectCrowdsecConfig() []byte {
 	log.Info("Collecting crowdsec config")
-	config, err := ioutil.ReadFile(*csConfig.FilePath)
+	config, err := os.ReadFile(*csConfig.FilePath)
 	if err != nil {
 		return []byte(fmt.Sprintf("could not read config file: %s", err))
 	}
@@ -188,7 +189,7 @@ func collectCrowdsecConfig() []byte {
 
 func collectCrowdsecProfile() []byte {
 	log.Info("Collecting crowdsec profile")
-	config, err := ioutil.ReadFile(csConfig.API.Server.ProfilesPath)
+	config, err := os.ReadFile(csConfig.API.Server.ProfilesPath)
 	if err != nil {
 		return []byte(fmt.Sprintf("could not read profile file: %s", err))
 	}
@@ -200,7 +201,7 @@ func collectAcquisitionConfig() map[string][]byte {
 	ret := make(map[string][]byte)
 
 	for _, filename := range csConfig.Crowdsec.AcquisitionFiles {
-		fileContent, err := ioutil.ReadFile(filename)
+		fileContent, err := os.ReadFile(filename)
 		if err != nil {
 			ret[filename] = []byte(fmt.Sprintf("could not read file: %s", err))
 		} else {
@@ -379,7 +380,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			if err != nil {
 				log.Fatalf("could not finalize zip file: %s", err)
 			}
-			err = ioutil.WriteFile(outFile, w.Bytes(), 0600)
+			err = os.WriteFile(outFile, w.Bytes(), 0600)
 			if err != nil {
 				log.Fatalf("could not write zip file to %s: %s", outFile, err)
 			}

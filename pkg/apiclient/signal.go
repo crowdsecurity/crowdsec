@@ -26,7 +26,7 @@ func (s *SignalService) Add(ctx context.Context, signals *models.AddSignalsReque
 	if err != nil {
 		return nil, resp, errors.Wrap(err, "while performing request")
 	}
-	if resp.Response.StatusCode != 200 {
+	if resp.Response.StatusCode != http.StatusOK {
 		log.Warnf("Signal push response : http %s", resp.Response.Status)
 	} else {
 		log.Debugf("Signal push response : http %s", resp.Response.Status)

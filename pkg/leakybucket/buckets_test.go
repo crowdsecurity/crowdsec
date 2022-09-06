@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"sync"
@@ -44,7 +43,7 @@ func TestBucket(t *testing.T) {
 		}
 	} else {
 		wg := new(sync.WaitGroup)
-		fds, err := ioutil.ReadDir("./tests/")
+		fds, err := os.ReadDir("./tests/")
 		if err != nil {
 			t.Fatalf("Unable to read test directory : %s", err)
 		}
@@ -91,7 +90,7 @@ func testOneBucket(t *testing.T, dir string, tomb *tomb.Tomb) error {
 
 	/*load the scenarios*/
 	stagecfg = dir + "/scenarios.yaml"
-	if stagefiles, err = ioutil.ReadFile(stagecfg); err != nil {
+	if stagefiles, err = os.ReadFile(stagecfg); err != nil {
 		t.Fatalf("Failed to load stage file %s : %s", stagecfg, err)
 	}
 

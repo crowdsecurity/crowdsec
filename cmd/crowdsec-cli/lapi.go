@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/url"
+	"os"
 	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -103,7 +103,7 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 				log.Fatalf("unable to marshal api credentials: %s", err)
 			}
 			if dumpFile != "" {
-				err = ioutil.WriteFile(dumpFile, apiConfigDump, 0644)
+				err = os.WriteFile(dumpFile, apiConfigDump, 0644)
 				if err != nil {
 					log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
 				}

@@ -4,7 +4,6 @@ package csplugin
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -264,7 +263,7 @@ func TestBrokerInit(t *testing.T) {
 
 func readconfig(t *testing.T, path string) ([]byte, PluginConfig) {
 	var config PluginConfig
-	orig, err := ioutil.ReadFile("tests/notifications/dummy.yaml")
+	orig, err := os.ReadFile("tests/notifications/dummy.yaml")
 	if err != nil {
 		t.Fatalf("unable to read config file %s : %s", path, err)
 	}
@@ -279,7 +278,7 @@ func writeconfig(t *testing.T, config PluginConfig, path string) {
 	if err != nil {
 		t.Fatalf("unable to marshal config file : %s", err)
 	}
-	if err := ioutil.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, data, 0644); err != nil {
 		t.Fatalf("unable to write config file %s : %s", path, err)
 	}
 }
@@ -311,7 +310,7 @@ func TestBrokerNoThreshold(t *testing.T) {
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	time.Sleep(200 * time.Millisecond)
 	//we expect one now
-	content, err := ioutil.ReadFile("./out")
+	content, err := os.ReadFile("./out")
 	if err != nil {
 		log.Errorf("Error reading file: %s", err)
 	}
@@ -325,7 +324,7 @@ func TestBrokerNoThreshold(t *testing.T) {
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	time.Sleep(200 * time.Millisecond)
 	//we expect one again, as we cleaned the file
-	content, err = ioutil.ReadFile("./out")
+	content, err = os.ReadFile("./out")
 	if err != nil {
 		log.Errorf("Error reading file: %s", err)
 	}
@@ -371,14 +370,14 @@ func TestBrokerRunGroupAndTimeThreshold_TimeFirst(t *testing.T) {
 	assert.NoFileExists(t, "./out")
 	time.Sleep(1 * time.Second)
 	//after 1 seconds, we should have data
-	content, err := ioutil.ReadFile("./out")
+	content, err := os.ReadFile("./out")
 	assert.NoError(t, err)
 	var alerts []models.Alert
 	err = json.Unmarshal(content, &alerts)
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(alerts))
 	//restore config
-	if err := ioutil.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
+	if err := os.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
 		t.Fatalf("unable to write config file %s", err)
 	}
 }
@@ -418,7 +417,7 @@ func TestBrokerRunGroupAndTimeThreshold_CountFirst(t *testing.T) {
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	time.Sleep(100 * time.Millisecond)
 	//and now we should
-	content, err := ioutil.ReadFile("./out")
+	content, err := os.ReadFile("./out")
 	if err != nil {
 		log.Errorf("Error reading file: %s", err)
 	}
@@ -427,7 +426,7 @@ func TestBrokerRunGroupAndTimeThreshold_CountFirst(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(alerts))
 	//restore config
-	if err := ioutil.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
+	if err := os.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
 		t.Fatalf("unable to write config file %s", err)
 	}
 }
@@ -467,7 +466,7 @@ func TestBrokerRunGroupThreshold(t *testing.T) {
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	time.Sleep(100 * time.Millisecond)
 	//and now we should
-	content, err := ioutil.ReadFile("./out")
+	content, err := os.ReadFile("./out")
 	if err != nil {
 		log.Errorf("Error reading file: %s", err)
 	}
@@ -476,7 +475,7 @@ func TestBrokerRunGroupThreshold(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 4, len(alerts))
 	//restore config
-	if err := ioutil.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
+	if err := os.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
 		t.Fatalf("unable to write config file %s", err)
 	}
 }
@@ -512,7 +511,7 @@ func TestBrokerRunTimeThreshold(t *testing.T) {
 	assert.NoFileExists(t, "./out")
 	time.Sleep(1 * time.Second)
 	//and now we should
-	content, err := ioutil.ReadFile("./out")
+	content, err := os.ReadFile("./out")
 	if err != nil {
 		log.Errorf("Error reading file: %s", err)
 	}
@@ -521,7 +520,7 @@ func TestBrokerRunTimeThreshold(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(alerts))
 	//restore config
-	if err := ioutil.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
+	if err := os.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
 		t.Fatalf("unable to write config file %s", err)
 	}
 }
@@ -553,7 +552,7 @@ func TestBrokerRunSimple(t *testing.T) {
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	time.Sleep(time.Millisecond * 200)
 
-	content, err := ioutil.ReadFile("./out")
+	content, err := os.ReadFile("./out")
 	if err != nil {
 		log.Errorf("Error reading file: %s", err)
 	}

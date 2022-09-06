@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -181,7 +181,7 @@ func restoreConfigFromDirectory(dirPath string) error {
 		if err != nil {
 			log.Warningf("failed to open %s : %s", backupOldAPICfg, err)
 		} else {
-			byteValue, _ := ioutil.ReadAll(jsonFile)
+			byteValue, _ := io.ReadAll(jsonFile)
 			err = json.Unmarshal(byteValue, &oldAPICfg)
 			if err != nil {
 				return fmt.Errorf("failed to load json file %s : %s", backupOldAPICfg, err)
@@ -200,7 +200,7 @@ func restoreConfigFromDirectory(dirPath string) error {
 			if csConfig.API.Server.OnlineClient != nil && csConfig.API.Server.OnlineClient.CredentialsFilePath != "" {
 				apiConfigDumpFile = csConfig.API.Server.OnlineClient.CredentialsFilePath
 			}
-			err = ioutil.WriteFile(apiConfigDumpFile, apiConfigDump, 0644)
+			err = os.WriteFile(apiConfigDumpFile, apiConfigDump, 0644)
 			if err != nil {
 				return fmt.Errorf("write api credentials in '%s' failed: %s", apiConfigDumpFile, err)
 			}

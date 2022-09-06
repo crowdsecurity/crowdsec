@@ -5,7 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"strings"
 	"time"
 
@@ -171,7 +171,7 @@ func (k *KinesisSource) decodeFromSubscription(record []byte) ([]CloudwatchSubsc
 		k.logger.Error(err)
 		return nil, err
 	}
-	decompressed, err := ioutil.ReadAll(r)
+	decompressed, err := io.ReadAll(r)
 	if err != nil {
 		k.logger.Error(err)
 		return nil, err

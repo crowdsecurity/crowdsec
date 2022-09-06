@@ -2,7 +2,7 @@ package parser
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -31,7 +31,7 @@ type Parsers struct {
 func Init(c map[string]interface{}) (*UnixParserCtx, error) {
 	r := UnixParserCtx{}
 	r.Grok = grokky.NewBase()
-	files, err := ioutil.ReadDir(c["patterns"].(string))
+	files, err := os.ReadDir(c["patterns"].(string))
 	if err != nil {
 		return nil, err
 	}
