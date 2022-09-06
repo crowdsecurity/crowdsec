@@ -6,7 +6,6 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime/debug"
@@ -100,7 +99,7 @@ func Clone(a, b interface{}) error {
 }
 
 func WriteStackTrace(iErr interface{}) string {
-	tmpfile, err := ioutil.TempFile("", "crowdsec-crash.*.txt")
+	tmpfile, err := os.CreateTemp("", "crowdsec-crash.*.txt")
 	if err != nil {
 		log.Fatal(err)
 	}
