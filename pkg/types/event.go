@@ -52,6 +52,23 @@ func (e *Event) GetType() string {
 	}
 }
 
+func (e *Event) GetMeta(key string) string {
+	if e.Type == OVFLW {
+		for _, alert := range e.Overflow.APIAlerts {
+			if alert.GetMeta(key) != "" {
+				return alert.GetMeta(key)
+			}
+		}
+	} else if e.Type == LOG {
+		for k, v := range e.Meta {
+			if k == key {
+				return v
+			}
+		}
+	}
+	return ""
+}
+
 //Move in leakybuckets
 const (
 	Undefined = ""
