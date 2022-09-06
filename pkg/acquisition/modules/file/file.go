@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -33,6 +34,7 @@ var linesRead = prometheus.NewCounterVec(
 
 type FileConfiguration struct {
 	Filenames                         []string
+	ExcludeRegexps                    []string
 	Filename                          string
 	ForceInotify                      bool `yaml:"force_inotify"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
@@ -45,6 +47,7 @@ type FileSource struct {
 	tails              map[string]bool
 	logger             *log.Entry
 	files              []string
+	exclude_regexps    []*regexp.Regexp
 }
 
 func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
@@ -73,6 +76,13 @@ func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
 	f.watcher, err = fsnotify.NewWatcher()
 	if err != nil {
 		return errors.Wrapf(err, "Could not create fsnotify watcher")
+	}
+	for _, exclude := range f.config.ExcludeRegexps {
+		re, err := regexp.Compile(exclude)
+		if err != nil {
+			return errors.Wrapf(err, "Could not compile regexp %s", exclude)
+		}
+		f.exclude_regexps = append(f.exclude_regexps, re)
 	}
 	f.logger.Tracef("Actual FileAcquisition Configuration %+v", f.config)
 	for _, pattern := range f.config.Filenames {
@@ -232,6 +242,19 @@ func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 		return f.monitorNewFiles(out, t)
 	})
 	for _, file := range f.files {
+		//before opening the file, check if we need to specifically avoid it. (XXX)
+		skip := false
+		for _, pattern := range f.exclude_regexps {
+			if pattern.MatchString(file) {
+				f.logger.Infof("file %s matches exclusion pattern %s, skipping", file, pattern.String())
+				skip = true
+				break
+			}
+		}
+		if skip {
+			continue
+		}
+
 		//cf. https://github.com/crowdsecurity/crowdsec/issues/1168
 		//do not rely on stat, reclose file immediately as it's opened by Tail
 		fd, err := os.Open(file)
@@ -252,6 +275,7 @@ func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 			f.logger.Warnf("%s is a directory, ignoring it.", file)
 			continue
 		}
+
 		tail, err := tail.TailFile(file, tail.Config{ReOpen: true, Follow: true, Poll: true, Location: &tail.SeekInfo{Offset: 0, Whence: io.SeekEnd}})
 		if err != nil {
 			f.logger.Errorf("Could not start tailing file %s : %s", file, err)
@@ -304,6 +328,20 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 				if !matched {
 					continue
 				}
+
+				//before opening the file, check if we need to specifically avoid it. (XXX)
+				skip := false
+				for _, pattern := range f.exclude_regexps {
+					if pattern.MatchString(event.Name) {
+						f.logger.Infof("file %s matches exclusion pattern %s, skipping", event.Name, pattern.String())
+						skip = true
+						break
+					}
+				}
+				if skip {
+					continue
+				}
+
 				if f.tails[event.Name] {
 					//we already have a tail on it, do not start a new one
 					logger.Debugf("Already tailing file %s, not creating a new tail", event.Name)
