@@ -448,6 +448,21 @@ func chunkDecisions(decisions []*ent.Decision, chunkSize int) [][]*ent.Decision 
 func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([]string, error) {
 	ret := []string{}
 	bulkSize := 20
+	var owner *ent.Machine
+	var err error
+
+	if machineId != "" {
+		owner, err = c.QueryMachineByID(machineId)
+		if err != nil {
+			if errors.Cause(err) != UserNotExists {
+				return []string{}, errors.Wrapf(QueryFail, "machine '%s': %s", machineId, err)
+			}
+			c.Log.Debugf("CreateAlertBulk: Machine Id %s doesn't exist", machineId)
+			owner = nil
+		}
+	} else {
+		owner = nil
+	}
 
 	c.Log.Debugf("writing %d items", len(alertList))
 	bulk := make([]*ent.AlertCreate, 0, bulkSize)
@@ -457,14 +472,6 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		var metas []*ent.Meta
 		var events []*ent.Event
 
-		owner, err := c.QueryMachineByID(machineId)
-		if err != nil {
-			if errors.Cause(err) != UserNotExists {
-				return []string{}, errors.Wrapf(QueryFail, "machine '%s': %s", alertItem.MachineID, err)
-			}
-			c.Log.Debugf("CreateAlertBulk: Machine Id %s doesn't exist", machineId)
-			owner = nil
-		}
 		startAtTime, err := time.Parse(time.RFC3339, *alertItem.StartAt)
 		if err != nil {
 			c.Log.Errorf("CreateAlertBulk: Failed to parse startAtTime '%s', defaulting to now: %s", *alertItem.StartAt, err)

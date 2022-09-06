@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"context"
+	"encoding/json"
 	"net/url"
 	"sync"
 	"time"
@@ -23,9 +24,13 @@ var (
 
 const (
 	PapiPullKey = "papi:last_pull"
+)
 
-	addDecisionOrder    = "add_decision"
-	deleteDecisionOrder = "delete_decision"
+var (
+	operationMap = map[string]func(*Message, *Papi) error{
+		"decision": DecisionCmd,
+		"alert":    AlertCmd,
+	}
 )
 
 func PapiError(err error) bool {
@@ -34,15 +39,16 @@ func PapiError(err error) bool {
 }
 
 type Header struct {
-	Operation string
-	Timestamp time.Time
-	Message   string
-	UUID      string
+	OperationType string    `json:"operation_type"`
+	OperationCmd  string    `json:"operation_cmd"`
+	Timestamp     time.Time `json:"timestamp"`
+	Message       string    `json:"message"`
+	UUID          string    `json:"uuid"`
 }
 
 type Message struct {
 	Header *Header
-	Data   interface{}
+	Data   interface{} `json:"data"`
 }
 
 type OperationChannels struct {
@@ -134,76 +140,24 @@ func (p *Papi) Pull() error {
 			return errors.Wrap(err, "failed to marshal last timestamp")
 		}
 
-		message, ok := event.Data.(Message)
-		if !ok {
-			log.Errorf("polling papi message format is not compatible")
+		data, err := json.Marshal(event.Data)
+		if err != nil {
+			log.Errorf("marshal message error: %s", err)
+		}
+
+		message := &Message{}
+		if err := json.Unmarshal(data, message); err != nil {
+			log.Errorf("polling papi message format is not compatible: %+v", event.Data)
 			// do we want to continue or exit ?
 			continue
 		}
 
-		switch message.Header.Operation {
-		case deleteDecisionOrder:
-			UUIDs, ok := message.Data.([]string)
-			if !ok {
-				log.Errorf("message for '%s' contains bad data format", message.Header.Operation)
-				continue
-			}
-			filter := make(map[string][]string)
-			filter["uuid"] = UUIDs
-			_, deletedDecisions, err := p.DBClient.SoftDeleteDecisionsWithFilter(filter)
+		if operationFunc, ok := operationMap[message.Header.OperationType]; ok {
+			err := operationFunc(message, p)
 			if err != nil {
-				log.Errorf("unable to delete decisions %+v : %s", UUIDs, err)
+				log.Errorf("'%s %s failed: %s", message.Header.OperationType, message.Header.OperationCmd, err)
 				continue
 			}
-			decisions := make([]*models.Decision, 0)
-			for _, deletedDecision := range deletedDecisions {
-				dec := &models.Decision{
-					UUID:     deletedDecision.UUID,
-					Origin:   &deletedDecision.Origin,
-					Scenario: &deletedDecision.Scenario,
-					Scope:    &deletedDecision.Scope,
-					Value:    &deletedDecision.Value,
-					ID:       int64(deletedDecision.ID),
-					Until:    deletedDecision.Until.String(),
-					Type:     &deletedDecision.Type,
-				}
-				decisions = append(decisions, dec)
-			}
-			p.Channels.DeleteDecisionChannel <- decisions
-
-		case addDecisionOrder:
-			alert, ok := message.Data.(models.Alert)
-			if !ok {
-				log.Errorf("message for '%s' contains bad alert format", message.Header.Operation)
-				continue
-			}
-			log.Infof("Received order %s from PAPI (%d decisions)", alert.UUID, len(alert.Decisions))
-
-			/*Fix the alert with missing mandatory items*/
-			alert.StartAt = types.StrPtr(time.Now().UTC().Format(time.RFC3339))
-			alert.StopAt = types.StrPtr(time.Now().UTC().Format(time.RFC3339))
-			alert.EventsCount = types.Int32Ptr(0)
-			alert.Capacity = types.Int32Ptr(0)
-			alert.Leakspeed = types.StrPtr("")
-			alert.Simulated = types.BoolPtr(false)
-			alert.ScenarioHash = types.StrPtr("")
-			alert.ScenarioVersion = types.StrPtr("")
-			alert.Message = types.StrPtr("")
-			alert.Scenario = types.StrPtr("")
-			alert.Source = &models.Source{}
-			alert.Source.Scope = types.StrPtr(SCOPE_CAPI)
-			alert.Source.Value = types.StrPtr("")
-			//use a different method : alert and/or decision might already be partially present in the database
-			_, err = p.DBClient.CreateOrUpdateAlert("", &alert)
-			if err != nil {
-				log.Errorf("Failed to create alerts in DB: %s", err)
-			} else {
-				p.Channels.AddAlertChannel <- []*models.Alert{&alert}
-			}
-
-		default:
-			log.Errorf("unknown message operation '%s'", message.Header.Operation)
-			continue
 		}
 
 		if err := p.DBClient.SetConfigItem(PapiPullKey, string(binTime)); err != nil {
@@ -211,6 +165,7 @@ func (p *Papi) Pull() error {
 		} else {
 			log.Debugf("set last timestamp to %s", newTime)
 		}
+
 	}
 	return nil
 }
