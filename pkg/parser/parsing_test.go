@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
@@ -39,7 +38,7 @@ func TestParser(t *testing.T) {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
 		}
 	} else {
-		fds, err := ioutil.ReadDir("./tests/")
+		fds, err := os.ReadDir("./tests/")
 		if err != nil {
 			t.Fatalf("Unable to read test directory : %s", err)
 		}
@@ -72,7 +71,7 @@ func BenchmarkParser(t *testing.B) {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
 		}
 	} else {
-		fds, err := ioutil.ReadDir("./tests/")
+		fds, err := os.ReadDir("./tests/")
 		if err != nil {
 			t.Fatalf("Unable to read test directory : %s", err)
 		}

@@ -5,7 +5,6 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"net"
 	"net/http"
@@ -614,7 +613,7 @@ func RestoreHub(dirPath string) error {
 		}
 
 		/*restore the local and tainted items*/
-		files, err := ioutil.ReadDir(itemDirectory)
+		files, err := os.ReadDir(itemDirectory)
 		if err != nil {
 			return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory, err)
 		}
@@ -635,7 +634,7 @@ func RestoreHub(dirPath string) error {
 					return fmt.Errorf("error while creating stage directory %s : %s", stagedir, err)
 				}
 				/*find items*/
-				ifiles, err := ioutil.ReadDir(itemDirectory + "/" + stage + "/")
+				ifiles, err := os.ReadDir(itemDirectory + "/" + stage + "/")
 				if err != nil {
 					return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory+"/"+stage, err)
 				}

@@ -2,7 +2,6 @@ package cstest
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -98,7 +97,7 @@ func (h *HubTest) LoadTestItem(name string) (*HubTestItem, error) {
 }
 
 func (h *HubTest) LoadAllTests() error {
-	testsFolder, err := ioutil.ReadDir(h.HubTestPath)
+	testsFolder, err := os.ReadDir(h.HubTestPath)
 	if err != nil {
 		return err
 	}

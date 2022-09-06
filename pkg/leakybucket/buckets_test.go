@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"sync"
@@ -44,7 +43,7 @@ func TestBucket(t *testing.T) {
 		}
 	} else {
 		wg := new(sync.WaitGroup)
-		fds, err := ioutil.ReadDir("./tests/")
+		fds, err := os.ReadDir("./tests/")
 		if err != nil {
 			t.Fatalf("Unable to read test directory : %s", err)
 		}
