@@ -328,7 +328,7 @@ func (m *Metabase) DownloadDatabase(force bool) error {
 	if err != nil {
 		return fmt.Errorf("failed request to fetch metabase db : %s", err)
 	}
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("got http %d while requesting metabase db %s, stop", resp.StatusCode, m.InternalDBURL)
 	}
 	defer resp.Body.Close()

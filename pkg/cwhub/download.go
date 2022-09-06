@@ -47,7 +47,7 @@ func DownloadHubIdx(hub *csconfig.Hub) ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed http request for hub index")
 	}
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("bad http code %d while requesting %s", resp.StatusCode, req.URL.String())
 	}
 	defer resp.Body.Close()
@@ -151,7 +151,7 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 	if err != nil {
 		return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", req.URL.String()))
 	}
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return target, fmt.Errorf("bad http code %d for %s", resp.StatusCode, req.URL.String())
 	}
 	defer resp.Body.Close()

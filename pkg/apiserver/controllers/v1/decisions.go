@@ -70,7 +70,7 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 		PrometheusBouncersHasEmptyDecision(gctx)
 	}
 
-	if gctx.Request.Method == "HEAD" {
+	if gctx.Request.Method == http.MethodHead {
 		gctx.String(http.StatusOK, "")
 		return
 	}
@@ -181,7 +181,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
 			}
-			if gctx.Request.Method == "HEAD" {
+			if gctx.Request.Method == http.MethodHead {
 				gctx.String(http.StatusOK, "")
 				return
 			}

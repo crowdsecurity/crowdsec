@@ -38,7 +38,7 @@ func downloadFile(url string, destPath string) error {
 		return err
 	}
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("download response 'HTTP %d' : %s", resp.StatusCode, string(body))
 	}
 
