@@ -3,7 +3,7 @@ package cstest
 import (
 	"bufio"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"regexp"
 	"sort"
@@ -260,7 +260,7 @@ func LoadParserDump(filepath string) (*ParserResults, error) {
 	}
 	defer dumpData.Close()
 
-	results, err := ioutil.ReadAll(dumpData)
+	results, err := io.ReadAll(dumpData)
 	if err != nil {
 		return nil, err
 	}

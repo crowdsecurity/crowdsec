@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -181,7 +182,7 @@ func restoreConfigFromDirectory(dirPath string) error {
 		if err != nil {
 			log.Warningf("failed to open %s : %s", backupOldAPICfg, err)
 		} else {
-			byteValue, _ := ioutil.ReadAll(jsonFile)
+			byteValue, _ := io.ReadAll(jsonFile)
 			err = json.Unmarshal(byteValue, &oldAPICfg)
 			if err != nil {
 				return fmt.Errorf("failed to load json file %s : %s", backupOldAPICfg, err)

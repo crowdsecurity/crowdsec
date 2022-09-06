@@ -333,7 +333,7 @@ func (m *Metabase) DownloadDatabase(force bool) error {
 		return fmt.Errorf("got http %d while requesting metabase db %s, stop", resp.StatusCode, m.InternalDBURL)
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed request read while fetching metabase db : %s", err)
 	}

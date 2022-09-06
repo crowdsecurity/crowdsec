@@ -5,7 +5,7 @@ import (
 	"crypto"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -57,7 +57,7 @@ func (ta *TLSAuth) ocspQuery(server string, cert *x509.Certificate, issuer *x509
 		return nil, err
 	}
 	defer httpResponse.Body.Close()
-	output, err := ioutil.ReadAll(httpResponse.Body)
+	output, err := io.ReadAll(httpResponse.Body)
 	if err != nil {
 		ta.logger.Error("TLSAuth: cannot read HTTP response from OCSP")
 		return nil, err
