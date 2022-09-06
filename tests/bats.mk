@@ -63,6 +63,8 @@ endef
 
 bats-all: bats-clean bats-build bats-fixture bats-test bats-test-hub
 
+bats-all-static: bats-clean bats-build-static bats-fixture bats-test bats-test-hub
+
 # Source this to run the scripts outside of the Makefile
 # Old versions of make don't have $(file) directive
 bats-environment: export ENV:=$(ENV)
@@ -80,6 +82,14 @@ bats-build: bats-environment bats-check-requirements
 	@install -m 0755 cmd/crowdsec/crowdsec cmd/crowdsec-cli/cscli $(BIN_DIR)/
 	@install -m 0755 plugins/notifications/*/notification-* $(PLUGIN_DIR)/
 	@BINCOVER_TESTING=$(BINCOVER_TESTING) DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR) $(MAKE) goversion crowdsec-bincover cscli-bincover
+	@install -m 0755 cmd/crowdsec/crowdsec.cover cmd/crowdsec-cli/cscli.cover $(BIN_DIR)/
+
+bats-build-static: bats-environment bats-check-requirements
+	@mkdir -p $(BIN_DIR) $(LOG_DIR) $(PID_DIR) $(PLUGIN_DIR)
+	@BINCOVER_TESTING=$(BINCOVER_TESTING) DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR) $(MAKE) goversion crowdsec_static cscli_static plugins_static
+	@install -m 0755 cmd/crowdsec/crowdsec cmd/crowdsec-cli/cscli $(BIN_DIR)/
+	@install -m 0755 plugins/notifications/*/notification-* $(PLUGIN_DIR)/
+	@BINCOVER_TESTING=$(BINCOVER_TESTING) DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR) $(MAKE) goversion crowdsec-bincover_static cscli-bincover_static
 	@install -m 0755 cmd/crowdsec/crowdsec.cover cmd/crowdsec-cli/cscli.cover $(BIN_DIR)/
 
 # Create a reusable package with initial configuration + data
