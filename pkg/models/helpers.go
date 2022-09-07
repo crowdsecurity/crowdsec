@@ -41,6 +41,15 @@ func (e *Event) GetMeta(key string) string {
 	return ""
 }
 
+func (a *Alert) GetMeta(key string) string {
+	for _, meta := range a.Meta {
+		if meta.Key == key {
+			return meta.Value
+		}
+	}
+	return ""
+}
+
 func (s Source) GetValue() string {
 	if s.Value == nil {
 		return ""
