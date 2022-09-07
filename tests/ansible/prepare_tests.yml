@@ -1,21 +1,21 @@
 # vim: set ft=yaml.ansible:
 ---
-- name: "prepare functional tests"
+
+- name: "Prepare fixture for the functional tests"
   hosts: all
   gather_facts: true
   vars_files:
     - vars/go.yml
     - vars/mysql.yml
     - vars/postgres.yml
-  environment:
-    PGHOST: 127.0.0.1
-    PGPORT: 5432
-    PGPASSWORD: "{{ postgresql_users[0].password }}"
-    PGUSER: postgres
-    MYSQL_HOST: localhost
-    MYSQL_PORT: 3306
-    MYSQL_PASSWORD: "{{ mysql_root_password }}"
-    MYSQL_USER: "root"
   roles:
-    - role: install_crowdsec_package
-    - role: make_fixture
+    - name: make_fixture
+      environment:
+        PGHOST: 127.0.0.1
+        PGPORT: 5432
+        PGPASSWORD: "{{ postgresql_users[0].password }}"
+        PGUSER: postgres
+        MYSQL_HOST: localhost
+        MYSQL_PORT: 3306
+        MYSQL_PASSWORD: "{{ mysql_root_password }}"
+        MYSQL_USER: "root"

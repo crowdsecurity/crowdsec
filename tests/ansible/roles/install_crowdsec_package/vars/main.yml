@@ -1,9 +1,0 @@
-# vim: set ft=yaml.ansible:
----
-
-package_version_deb: "{{ lookup('ansible.builtin.env', 'TEST_PACKAGE_VERSION_DEB') }}"
-package_version_rpm: "{{ lookup('ansible.builtin.env', 'TEST_PACKAGE_VERSION_RPM') }}"
-package_file: "{{ lookup('ansible.builtin.env', 'TEST_PACKAGE_FILE') }}"
-package_dir: "{{ lookup('ansible.builtin.env', 'TEST_PACKAGE_DIR') }}"
-package_testing: "{{ lookup('ansible.builtin.env', 'PACKAGE_TESTING') }}"
-

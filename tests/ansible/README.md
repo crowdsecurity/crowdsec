@@ -11,7 +11,7 @@ operating systems, or architectures.
 The ansible hosts should be expendable machines with at least 1GB RAM, do not
 expect them to be stable if you use them for anything else after the tests.
 
-Install the requirements with `ansible-galaxy install -r requiements.yml`.
+Install (or update) the requirements with `ansible-galaxy install -r requirements.yml --force`.
 
 There are several Ansible playbooks. You can use `run-all.yml` to configure the
 installation and run the tests, or run the playbooks separately to iterate while developing.
@@ -20,9 +20,11 @@ installation and run the tests, or run the playbooks separately to iterate while
 
 - provision-dependencies.yml: install the bats requirements (bash, netcat, cfssl, etc.), compilers, and database.
 
-- provision-test-suite.yml: install the tests scripts and bats environment.
+- provision-test-suite.yml: install the tests scripts and bats environment, and the crowdsec sources if we want to build the `crowdsec under test`.
 
-- prepare-tests.yml: install the package under test, and create the test fixture data.
+- install_binary_package.yml: install the `crowdsec under test` from a binary package (already released or not).
+
+- prepare-tests.yml: create the test fixture data.
 
 - run-tests.yml: run the functional tests. This is not idempotent and can be run multiple times.
 
@@ -67,7 +69,7 @@ ansible won't be able to see them.
 - `TEST_PACKAGE_DIR`: optional (but conflicts with `TEST_PACKAGE_FILE`), the path
   to a directory containing packages with the following layout:
 
-  For DEB: `{{ package_dir }}/{{ ansible_distribution_release }}/{{ ansible_architecture.replace('x86_64', 'amd64' }}/crowdsec_*.deb`
+  For DEB: `{{ package_dir }}/{{ ansible_distribution_release }}/crowdsec_*_{{ ansible_architecture.replace('x86_64', 'amd64') }}.deb`
   For RPM: `{{ package_dir }}/{{ releasever }}/RPMS/{{ ansible_architecture }}/crowdsec-*.{{ releasever }}.{{ ansible_architecture }}.rpm`
 
 - `TEST_SKIP`: optional, comma-separated list of scripts that won't be executed.
@@ -130,6 +132,7 @@ The data was created with crowdsec v1.4.1.
 | AmazonLinux 2             | ✓ (1)         | ✓ (1)      | old-db          | old-db     | wip              |
 | CentOS 7                  | ✓             | ✓          | old-db          | old-db     | ✓                |
 | CentOS 8                  | ✓             | ✓          | ✓               | ✓          | ✓                |
+| CentOS 9                  | ✓             | ✓          | ✓               | ✓          | ✓                |
 | Debian 9 (stretch)        | ✓             | ✓          | old-db          | old-db     | wip              |
 | Debian 10 (buster)        | ✓             | ✓          | ✓               | ✓          | ✓                |
 | Debian 11 (bullseye)      | ✓             | ✓          | ✓               | ✓          | ✓                |
@@ -150,9 +153,11 @@ The data was created with crowdsec v1.4.1.
 
 Note: all tests with `local/<database>` are expected to pass for `pkg/<database>` as well.
 
-wip - missing ansible or bats parts, working on it
+wip - missing ansible or bats parts, could be fixed in a future release
 
-old-db - the database that ships with the distribution is not supported (Postgres < 10)
+old-db - the database that ships with the distribution is not supported
+(Postgres < 10). Won't fix, feel free to install the DB from an unofficial
+repository.
 
 0 - MySQL or MariaDB, depending on distribution defaults
 
