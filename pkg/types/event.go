@@ -55,8 +55,10 @@ func (e *Event) GetType() string {
 func (e *Event) GetMeta(key string) string {
 	if e.Type == OVFLW {
 		for _, alert := range e.Overflow.APIAlerts {
-			if alert.GetMeta(key) != "" {
-				return alert.GetMeta(key)
+			for _, event := range alert.Events {
+				if event.GetMeta(key) != "" {
+					return event.GetMeta(key)
+				}
 			}
 		}
 	} else if e.Type == LOG {
