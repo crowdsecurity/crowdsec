@@ -20,6 +20,13 @@ func (r Report) New(alert *models.Alert) *Report {
 type ReportResponse struct {
 	Data struct {
 		IpAdress             string `json:"ipAddress"`
-		AbuseConfidenceScore string `json:"abuseConfidenceScore"`
-	}
+		AbuseConfidenceScore int    `json:"abuseConfidenceScore"`
+	} `json:"data"`
+}
+
+type ReportResponseError struct {
+	Errors []struct {
+		Detail string `json:"detail"`
+		Status int    `json:"status"`
+	} `json:"errors"`
 }

@@ -1,13 +1,8 @@
-type: abuseipdb         # Don't change
+type: abuseipdb # Don't change
 name: abuseipdb_default # Must match the registered plugin in the profile
 
 # One of "trace", "debug", "info", "warn", "error", "off"
 log_level: info
-
-# group_wait:         # Time to wait collecting alerts before relaying a message to this plugin, eg "30s"
-# group_threshold:    # Amount of alerts that triggers a message before <group_wait> has expired, eg "10"
-# max_retry:          # Number of attempts to relay messages to plugins in case of error
-# timeout:            # Time to wait for response from the plugin before considering the attempt a failure, eg "10s"
 
 #-------------------------
 # plugin-specific options
@@ -15,7 +10,7 @@ log_level: info
 # The following template receives a list of models.Alert objects
 # The output goes in the logs and to a text file, if defined
 format: |
-  {{.|toJson}}
+    {{.|toJson}}
 
 # Api key for abuseipdb (https://www.abuseipdb.com/account/api)
 api_key: changeme
@@ -23,7 +18,6 @@ api_key: changeme
 # output_file:        # notifications will be appended here. optional
 
 ---
-
 # type: abuseipdb
 # name: abuseipdb_second_notification
 # ...

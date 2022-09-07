@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -50,7 +49,7 @@ func (s *AbuseipdbPlugin) Notify(ctx context.Context, notification *protobufs.No
 	alerts := []models.Alert{}
 	err := json.Unmarshal([]byte(notification.Text), &alerts)
 	if err != nil {
-		logger.Error(err.Error())
+		logger.Error(fmt.Sprintf("Failed to unmarshal notification: %s", err))
 	}
 
 	for _, alert := range alerts {
@@ -75,17 +74,32 @@ func (s *AbuseipdbPlugin) Notify(ctx context.Context, notification *protobufs.No
 
 		response, err := client.Do(request)
 		if err != nil {
-			logger.Error(fmt.Sprintf("Failed to make HTTP request : %s", err))
+			logger.Error(fmt.Sprintf("Failed to make HTTP request: %s", err))
 			return nil, err
 		}
 
 		defer response.Body.Close()
 
-		bodyText, err := ioutil.ReadAll(response.Body)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read response body got error %s", err)
+		if response.StatusCode != http.StatusOK {
+			report_response_error := ReportResponseError{}
+			err = json.NewDecoder(response.Body).Decode(&report_response_error)
+			if err != nil {
+				logger.Error(fmt.Sprintf("Failed to decode JSON response: %s", err))
+				return nil, err
+			}
+			for _, err := range report_response_error.Errors {
+				logger.Error(fmt.Sprintf("Report failed: %s with status %d", err.Detail, err.Status))
+			}
+			return &protobufs.Empty{}, nil
 		}
-		logger.Info(string(bodyText))
+
+		report_response := ReportResponse{}
+		err = json.NewDecoder(response.Body).Decode(&report_response)
+		if err != nil {
+			logger.Error(fmt.Sprintf("Failed to decode JSON response: %s", err))
+			return nil, err
+		}
+		logger.Info(fmt.Sprintf("Successfully reported %s with confidence score of %d", report_response.Data.IpAdress, report_response.Data.AbuseConfidenceScore))
 	}
 
 	return &protobufs.Empty{}, nil

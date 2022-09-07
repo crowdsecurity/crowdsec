@@ -11,4 +11,5 @@ decisions:
 #   - splunk_default # Set the splunk url and token in /etc/crowdsec/notifications/splunk.yaml before enabling this.
 #   - http_default   # Set the required http parameters in /etc/crowdsec/notifications/http.yaml before enabling this.
 #   - email_default  # Set the required email parameters in /etc/crowdsec/notifications/email.yaml before enabling this.
+#   - abuseipdb_default # Set the required abuseipdb parameters in /etc/crowdsec/notifications/abuseipdb.yaml before enabling this.
 on_success: break
