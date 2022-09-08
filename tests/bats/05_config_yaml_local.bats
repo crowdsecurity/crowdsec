@@ -128,10 +128,16 @@ teardown() {
     echo -e "---\nfilename: ${tmpfile}\nlabels:\n  type: syslog\n" >>"${ACQUIS_YAML}"
 
     ./instance-crowdsec start
+    sleep .5
     fake_log >>"${tmpfile}"
-    sleep 1
+
+    # this could be simplified, but some systems are slow and we don't want to
+    # wait more than required
+    for ((i=0;i<30;i++)); do
+        sleep .5
+        run -0 --separate-stderr cscli decisions list -o json
+        run -0 jq --exit-status '.[].decisions[0] | [.value,.type] == ["1.1.1.172","captcha"]' <(output) && break
+    done
     rm -f -- "${tmpfile}"
-    run -0 --separate-stderr cscli decisions list -o json
-    run -0 jq -c '.[].decisions[0] | [.value,.type]' <(output)
-    assert_output '["1.1.1.172","captcha"]'
+    [[ "${status}" -eq 0 ]] || fail "captcha not triggered"
 }

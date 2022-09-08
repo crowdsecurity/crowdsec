@@ -14,8 +14,9 @@ import (
 
 var ctx = context.Background()
 
-func resetTestTomb(testTomb *tomb.Tomb) {
+func resetTestTomb(testTomb *tomb.Tomb, pw *PluginWatcher) {
 	testTomb.Kill(nil)
+	<-pw.PluginEvents
 	if err := testTomb.Wait(); err != nil {
 		log.Fatal(err)
 	}
@@ -64,8 +65,7 @@ func TestPluginWatcherInterval(t *testing.T) {
 	defer cancel()
 	err := listenChannelWithTimeout(ct, pw.PluginEvents)
 	assert.ErrorContains(t, err, "context deadline exceeded")
-
-	resetTestTomb(&testTomb)
+	resetTestTomb(&testTomb, &pw)
 	testTomb = tomb.Tomb{}
 	pw.Start(&testTomb)
 
@@ -73,7 +73,7 @@ func TestPluginWatcherInterval(t *testing.T) {
 	defer cancel()
 	err = listenChannelWithTimeout(ct, pw.PluginEvents)
 	assert.NilError(t, err)
-	resetTestTomb(&testTomb)
+	resetTestTomb(&testTomb, &pw)
 	// This is to avoid the int complaining
 }
 
@@ -113,5 +113,5 @@ func TestPluginAlertCountWatcher(t *testing.T) {
 	defer cancel()
 	err = listenChannelWithTimeout(ct, pw.PluginEvents)
 	assert.NilError(t, err)
-	resetTestTomb(&testTomb)
+	resetTestTomb(&testTomb, &pw)
 }

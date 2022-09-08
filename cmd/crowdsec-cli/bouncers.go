@@ -1,10 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"os"
 	"time"
 
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
@@ -12,6 +12,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/enescakir/emoji"
 	"github.com/olekukonko/tablewriter"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -19,6 +20,60 @@ import (
 var keyIP string
 var keyLength int
 var key string
+
+func getBouncers(dbClient *database.Client) ([]byte, error) {
+	bouncers, err := dbClient.ListBouncers()
+	w := bytes.NewBuffer(nil)
+	if err != nil {
+		return nil, fmt.Errorf("unable to list bouncers: %s", err)
+	}
+	if csConfig.Cscli.Output == "human" {
+
+		table := tablewriter.NewWriter(w)
+		table.SetCenterSeparator("")
+		table.SetColumnSeparator("")
+
+		table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+		table.SetAlignment(tablewriter.ALIGN_LEFT)
+		table.SetHeader([]string{"Name", "IP Address", "Valid", "Last API pull", "Type", "Version", "Auth Type"})
+		for _, b := range bouncers {
+			var revoked string
+			if !b.Revoked {
+				revoked = emoji.CheckMark.String()
+			} else {
+				revoked = emoji.Prohibited.String()
+			}
+			table.Append([]string{b.Name, b.IPAddress, revoked, b.LastPull.Format(time.RFC3339), b.Type, b.Version, b.AuthType})
+		}
+		table.Render()
+	} else if csConfig.Cscli.Output == "json" {
+		x, err := json.MarshalIndent(bouncers, "", " ")
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to unmarshal")
+		}
+		return x, nil
+	} else if csConfig.Cscli.Output == "raw" {
+		csvwriter := csv.NewWriter(w)
+		err := csvwriter.Write([]string{"name", "ip", "revoked", "last_pull", "type", "version", "auth_type"})
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to write raw header")
+		}
+		for _, b := range bouncers {
+			var revoked string
+			if !b.Revoked {
+				revoked = "validated"
+			} else {
+				revoked = "pending"
+			}
+			err := csvwriter.Write([]string{b.Name, b.IPAddress, revoked, b.LastPull.Format(time.RFC3339), b.Type, b.Version, b.AuthType})
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to write raw")
+			}
+		}
+		csvwriter.Flush()
+	}
+	return w.Bytes(), nil
+}
 
 func NewBouncersCmd() *cobra.Command {
 	/* ---- DECISIONS COMMAND */
@@ -54,55 +109,11 @@ Note: This command requires database direct access, so is intended to be run on 
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, arg []string) {
-			blockers, err := dbClient.ListBouncers()
+			bouncers, err := getBouncers(dbClient)
 			if err != nil {
-				log.Errorf("unable to list blockers: %s", err)
+				log.Fatalf("unable to list bouncers: %s", err)
 			}
-			if csConfig.Cscli.Output == "human" {
-
-				table := tablewriter.NewWriter(os.Stdout)
-				table.SetCenterSeparator("")
-				table.SetColumnSeparator("")
-
-				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-				table.SetAlignment(tablewriter.ALIGN_LEFT)
-				table.SetHeader([]string{"Name", "IP Address", "Valid", "Last API pull", "Type", "Version", "Auth Type"})
-				for _, b := range blockers {
-					var revoked string
-					if !b.Revoked {
-						revoked = emoji.CheckMark.String()
-					} else {
-						revoked = emoji.Prohibited.String()
-					}
-					table.Append([]string{b.Name, b.IPAddress, revoked, b.LastPull.Format(time.RFC3339), b.Type, b.Version, b.AuthType})
-				}
-				table.Render()
-			} else if csConfig.Cscli.Output == "json" {
-				x, err := json.MarshalIndent(blockers, "", " ")
-				if err != nil {
-					log.Fatalf("failed to unmarshal")
-				}
-				fmt.Printf("%s", string(x))
-			} else if csConfig.Cscli.Output == "raw" {
-				csvwriter := csv.NewWriter(os.Stdout)
-				err := csvwriter.Write([]string{"name", "ip", "revoked", "last_pull", "type", "version", "auth_type"})
-				if err != nil {
-					log.Fatalf("failed to write raw header: %s", err)
-				}
-				for _, b := range blockers {
-					var revoked string
-					if !b.Revoked {
-						revoked = "validated"
-					} else {
-						revoked = "pending"
-					}
-					err := csvwriter.Write([]string{b.Name, b.IPAddress, revoked, b.LastPull.Format(time.RFC3339), b.Type, b.Version, b.AuthType})
-					if err != nil {
-						log.Fatalf("failed to write raw: %s", err)
-					}
-				}
-				csvwriter.Flush()
-			}
+			fmt.Printf("%s", bouncers)
 		},
 	}
 	cmdBouncers.AddCommand(cmdBouncersList)
@@ -164,7 +175,7 @@ cscli bouncers add MyBouncerName -k %s`, generatePassword(32)),
 			for _, bouncerID := range args {
 				err := dbClient.DeleteBouncer(bouncerID)
 				if err != nil {
-					log.Fatalf("unable to delete bouncer: %s", err)
+					log.Fatalf("unable to delete bouncer '%s': %s", bouncerID, err)
 				}
 				log.Infof("bouncer '%s' deleted successfully", bouncerID)
 			}

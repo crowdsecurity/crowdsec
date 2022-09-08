@@ -4,8 +4,8 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"net"
+	"os"
 	"strings"
 	"time"
 
@@ -45,7 +45,7 @@ type LocalApiClientCfg struct {
 
 func (o *OnlineApiClientCfg) Load() error {
 	o.Credentials = new(ApiCredentialsCfg)
-	fcontent, err := ioutil.ReadFile(o.CredentialsFilePath)
+	fcontent, err := os.ReadFile(o.CredentialsFilePath)
 	if err != nil {
 		return errors.Wrapf(err, "failed to read api server credentials configuration file '%s'", o.CredentialsFilePath)
 	}
@@ -96,7 +96,7 @@ func (l *LocalApiClientCfg) Load() error {
 			return errors.Wrapf(err, "failed to load api client certificate")
 		}
 
-		caCert, err := ioutil.ReadFile(l.Credentials.CACertPath)
+		caCert, err := os.ReadFile(l.Credentials.CACertPath)
 		if err != nil {
 			return errors.Wrapf(err, "failed to load cacert")
 		}

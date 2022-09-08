@@ -17,7 +17,7 @@ func (h *HeartBeatService) Ping(ctx context.Context) (bool, *Response, error) {
 
 	u := fmt.Sprintf("%s/heartbeat", h.client.URLPrefix)
 
-	req, err := h.client.NewRequest("GET", u, nil)
+	req, err := h.client.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
 		return false, nil, err
 	}

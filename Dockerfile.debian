@@ -1,4 +1,4 @@
-ARG GOVERSION=1.17
+ARG GOVERSION=1.19
 
 FROM golang:${GOVERSION}-bullseye AS build
 

@@ -1,0 +1,36 @@
+# vim: set ft=yaml.ansible:
+---
+- name: "set package_file from package_dir"
+  ansible.builtin.set_fact:
+    package_file: "{{ package_dir }}/{{ releasever }}/RPMS/{{ ansible_facts.architecture }}/crowdsec-*.{{ releasever }}.{{ ansible_facts.architecture }}.rpm"
+  when:
+    - (package_dir is defined) and (package_dir | length > 0)
+
+- name: "install crowdsec from package_file"
+  become: true
+  block:
+    - name: "look for file matching package_file"
+      ansible.builtin.set_fact:
+        found_file: "{{ item }}"
+      with_fileglob:
+        - "{{ package_file }}"
+
+    - name: "check found_file"
+      ansible.builtin.fail:
+        msg: "No file found matching {{ package_file }}"
+      when:
+        - found_file is not defined
+
+    - name: "copy {{ found_file }}"
+      ansible.builtin.copy:
+        src: "{{ found_file }}"
+        dest: "/root/crowdsec.rpm"
+        mode: 0o644
+
+    - name: "install crowdsec"
+      ansible.builtin.yum:
+        name: "/root/crowdsec.rpm"
+        disable_gpg_check: true
+        allow_downgrade: true
+  when:
+    - (package_file is defined) and (package_file | length > 0)

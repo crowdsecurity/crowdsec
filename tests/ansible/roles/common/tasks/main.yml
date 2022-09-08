@@ -1,0 +1,32 @@
+# vim: set ft=yaml.ansible:
+---
+- name: "update package cache (Debian)"
+  become: true
+  ansible.builtin.apt:
+    upgrade: false
+    update_cache: true
+  when:
+    - ansible_facts.os_family == "Debian"
+
+- name: "install gcc, git"
+  become: true
+  ansible.builtin.package:
+    name:
+      - gcc
+      - git
+
+- name: "install make (Linux)"
+  become: true
+  ansible.builtin.package:
+    name:
+      - make
+  when:
+    - ansible_facts.system == "Linux"
+
+- name: "install gmake (bsd)"
+  become: true
+  ansible.builtin.package:
+    name:
+      - gmake
+  when:
+    - ansible_facts.system in ['FreeBSD', 'OpenBSD']

@@ -1,0 +1,29 @@
+# vim: set ft=yaml.ansible:
+---
+- name: "install crowdsec from the package repository"
+  become: true
+  block:
+    - name: "stable rpm repo script"
+      ansible.builtin.get_url:
+        url: https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.rpm.sh
+        dest: "/root/rpm.sh"
+        mode: 0o775
+    - name: "stable rpm repo"
+      ansible.builtin.command:
+        cmd: "/root/rpm.sh"
+      changed_when: true
+
+    - name: "testing rpm repo script"
+      ansible.builtin.get_url:
+        url: https://packagecloud.io/install/repositories/crowdsec/crowdsec-testing/script.rpm.sh
+        dest: "/root/rpm-testing.sh"
+        mode: 0o775
+    - name: "testing rpm repo"
+      ansible.builtin.command:
+        cmd: "/root/rpm-testing.sh"
+      changed_when: true
+
+    - name: "install crowdsec"
+      ansible.builtin.package:
+        name:
+          - crowdsec-{{ package_version_rpm }}.{{ releasever.replace('amzn2', 'el7').replace('ol7', 'el7').replace('ol8', 'el8') }}

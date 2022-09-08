@@ -1,0 +1,43 @@
+# vim: set ft=yaml.ansible:
+---
+- name: "check if we need to build bash"
+  become: false
+  block:
+    - name: "look up bash version"
+      ansible.builtin.package_facts:
+    - name: "bash version found"
+      ansible.builtin.debug:
+        var: ansible_facts.packages['bash'][0].version
+    - name: "check if bash is too old (<4.4)"
+      ansible.builtin.set_fact:
+        build_bash: "{{ ansible_facts.packages['bash'][0].version is version('4.4', '<') }}"
+
+- name: "build bash"
+  block:
+    - name: "build bash: download"
+      become: false
+      ansible.builtin.unarchive:
+        src: http://ftp.gnu.org/gnu/bash/bash-{{ bash_version }}.tar.gz
+        dest: "{{ ansible_env.HOME }}"
+        remote_src: true
+        creates: "{{ ansible_env.HOME }}/bash-{{ bash_version }}"
+    - name: "build bash: configure"
+      become: false
+      ansible.builtin.command:
+        cmd: "./configure --prefix=/opt/bash"
+        creates: ./Makefile
+        chdir: "{{ ansible_env.HOME }}/bash-{{ bash_version }}"
+    - name: "build bash: create /opt/bash"
+      become: true
+      ansible.builtin.file:
+        path: /opt/bash
+        state: directory
+        mode: 0o755
+    - name: "build bash: make install"
+      become: true
+      ansible.builtin.command:
+        cmd: "make install"
+        creates: /opt/bash/bin/bash
+        chdir: "{{ ansible_env.HOME }}/bash-{{ bash_version }}"
+  when:
+    - build_bash

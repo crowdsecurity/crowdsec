@@ -1,0 +1,104 @@
+# vim: set ft=yaml.ansible:
+---
+- name: "tweak systemd configuration for tests"
+  become: true
+  block:
+    - name: "create /lib/systemd/system/crowdsec.service.d"
+      ansible.builtin.file:
+        owner: root
+        group: root
+        mode: 0o755
+        path: /lib/systemd/system/crowdsec.service.d
+        state: directory
+    - name: "override StartLimitBurst"
+      ansible.builtin.ini_file:
+        dest: /lib/systemd/system/crowdsec.service.d/startlimitburst.conf
+        owner: root
+        group: root
+        mode: 0o644
+        section: Service
+        option: StartLimitBurst
+        value: 100
+    - name: "systemctl daemon-reload"
+      ansible.builtin.systemd:
+        daemon_reload: true
+  when:
+    - (package_testing is defined) and (package_testing not in ['', 'false', 'False'])
+    - ansible_facts.os_family in ["RedHat", "Debian"]
+
+- name: "debug - show environment.sh"
+  become: false
+  block:
+    - name: "look for .environment.sh"
+      ansible.builtin.slurp:
+        src: "{{ ansible_env.HOME }}/crowdsec/tests/.environment.sh"
+      changed_when: true
+      register: envfile
+    - name: "cat .environment.sh"
+      ansible.builtin.debug:
+        msg: "{{ envfile['content'] | b64decode }}"
+
+- name: "search for test scripts"
+  become: false
+  ansible.builtin.find:
+    paths: "{{ ansible_env.HOME }}/crowdsec/tests/bats"
+    pattern: "*.bats"
+  register: testfiles
+
+- name: "run BATS tests for source build"
+  become: false
+  block:
+    - name: "run test scripts"
+      ansible.builtin.command:
+        cmd: tests/run-tests {{ item.path }}
+        chdir: "{{ ansible_env.HOME }}/crowdsec"
+      with_items: "{{ testfiles.files | sort(attribute='path') }}"
+      loop_control:
+        label: "{{ item['path'] }}"
+      environment:
+        # daemonize -> /usr/bin or /usr/local/sbin
+        # pidof -> /usr/sbin
+        # bash -> /opt/bash/bin
+        PATH: "/opt/bash/bin:{{ ansible_env.PATH }}:/usr/sbin:/usr/local/sbin"
+      changed_when: true
+      when:
+        - (item.path | basename) not in skip_tests.split(',')
+  rescue:
+    - name: "read crowdsec.log"
+      ansible.builtin.slurp:
+        path: "{{ ansible_env.HOME }}/crowdsec/tests/local/var/log/crowdsec.log"
+      register: crowdsec_log
+    - name: "show crowdsec.log"
+      ansible.builtin.fail:
+        msg: "{{ crowdsec_log['content'] | b64decode }}"
+  when:
+    - (package_testing is not defined) or (package_testing in ['', 'false', 'False'])
+
+- name: "run BATS tests for binary package"
+  become: true
+  block:
+    - name: "run test scripts"
+      ansible.builtin.command:
+        cmd: tests/run-tests {{ item.path }}
+        chdir: "{{ ansible_env.HOME }}/crowdsec"
+      with_items: "{{ testfiles.files | sort(attribute='path') }}"
+      loop_control:
+        label: "{{ item['path'] }}"
+      environment:
+        # daemonize -> /usr/bin or /usr/local/sbin
+        # pidof -> /usr/sbin
+        # bash -> /opt/bash/bin
+        PATH: "/opt/bash/bin:{{ ansible_env.PATH }}:/usr/sbin:/usr/local/sbin"
+      changed_when: true
+      when:
+        - (item.path | basename) not in skip_tests.split(',')
+  rescue:
+    - name: "read crowdsec.log"
+      ansible.builtin.slurp:
+        path: "/var/log/crowdsec.log"
+      register: crowdsec_log
+    - name: "show crowdsec.log"
+      ansible.builtin.fail:
+        msg: "{{ crowdsec_log['content'] | b64decode }}"
+  when:
+    - (package_testing is defined) and (package_testing not in ['', 'false', 'False'])

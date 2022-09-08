@@ -1,0 +1,24 @@
+# vim: set ft=yaml.ansible:
+---
+- name: "set /etc/machine-id"
+  become: true
+  ansible.builtin.copy:
+    dest: /etc/machine-id
+    content: "{{ machine_id }}"
+    mode: 0o444
+
+- name: "see if /var/lib/dbus exists"
+  ansible.builtin.stat:
+    path: "/var/lib/dbus"
+  register: dbus
+
+# some distributions use var/lib/dbus,
+# but the directory doesn't exists on fedora
+- name: "set /var/lib/dbus/machine-id"
+  become: true
+  ansible.builtin.copy:
+    dest: /var/lib/dbus/machine-id
+    content: "{{ machine_id }}"
+    mode: 0o444
+  when:
+    - dbus.stat.exists

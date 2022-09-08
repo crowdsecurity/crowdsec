@@ -21,8 +21,6 @@ teardown() {
     ./instance-crowdsec stop
 }
 
-declare stderr
-
 #----------
 
 @test "test without -no-api flag" {
@@ -31,24 +29,24 @@ declare stderr
 }
 
 @test "crowdsec should not run without LAPI (-no-api flag)" {
-    run -1 --separate-stderr timeout 2s "${CROWDSEC}" -no-api
+    # really needs 4 secs on slow boxes
+    run -1 --separate-stderr timeout 4s "${CROWDSEC}" -no-api
 }
 
 @test "crowdsec should not run without LAPI (no api.server in configuration file)" {
     config_disable_lapi
-    run -1 --separate-stderr timeout 2s "${CROWDSEC}"
+    # really needs 4 secs on slow boxes
+    run -1 --separate-stderr timeout 4s "${CROWDSEC}"
 
-    run -0 echo "${stderr}"
-    assert_output --partial "crowdsec local API is disabled"
+    assert_stderr --partial "crowdsec local API is disabled"
 }
 
 @test "capi status shouldn't be ok without api.server" {
     config_disable_lapi
     run -1 --separate-stderr cscli capi status
 
-    run -0 echo "${stderr}"
-    assert_output --partial "crowdsec local API is disabled"
-    assert_output --partial "There is no configuration on 'api.server:'"
+    assert_stderr --partial "crowdsec local API is disabled"
+    assert_stderr --partial "There is no configuration on 'api.server:'"
 }
 
 @test "cscli config show -o human" {
@@ -68,17 +66,15 @@ declare stderr
     run -1 --separate-stderr cscli config backup "${backupdir}"
     rm -rf -- "${backupdir:?}"
 
-    run -0 echo "${stderr}"
-    assert_output --partial "Failed to backup configurations"
-    assert_output --partial "file exists"
+    assert_stderr --partial "Failed to backup configurations"
+    assert_stderr --partial "file exists"
 }
 
 @test "lapi status shouldn't be ok without api.server" {
     config_disable_lapi
     ./instance-crowdsec start || true
     run -1 --separate-stderr cscli machines list
-    run -0 echo "${stderr}"
-    assert_output --partial "Local API is disabled, please run this command on the local API machine"
+    assert_stderr --partial "Local API is disabled, please run this command on the local API machine"
 }
 
 @test "cscli metrics" {
@@ -89,7 +85,6 @@ declare stderr
     assert_output --partial "ROUTE"
     assert_output --partial "/v1/watchers/login"
 
-    run -0 echo "${stderr}"
-    assert_output --partial "crowdsec local API is disabled"
-    assert_output --partial "Local API is disabled, please run this command on the local API machine"
+    assert_stderr --partial "crowdsec local API is disabled"
+    assert_stderr --partial "Local API is disabled, please run this command on the local API machine"
 }

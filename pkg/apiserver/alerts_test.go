@@ -48,7 +48,7 @@ func SetupLAPITest(t *testing.T) LAPI {
 
 func (l *LAPI) InsertAlertFromFile(path string) *httptest.ResponseRecorder {
 	alertReader := GetAlertReaderFromFile(path)
-	return l.RecordResponse("POST", "/v1/alerts", alertReader, "password")
+	return l.RecordResponse(http.MethodPost, "/v1/alerts", alertReader, "password")
 }
 
 func (l *LAPI) RecordResponse(verb string, url string, body *strings.Reader, authType string) *httptest.ResponseRecorder {
@@ -92,7 +92,7 @@ func LoginToTestAPI(router *gin.Engine, config csconfig.Config) (models.WatcherA
 	}
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/watchers/login", strings.NewReader(body))
+	req, _ := http.NewRequest(http.MethodPost, "/v1/watchers/login", strings.NewReader(body))
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -132,14 +132,14 @@ func TestCreateAlert(t *testing.T) {
 	lapi := SetupLAPITest(t)
 	// Create Alert with invalid format
 
-	w := lapi.RecordResponse("POST", "/v1/alerts", strings.NewReader("test"), "password")
+	w := lapi.RecordResponse(http.MethodPost, "/v1/alerts", strings.NewReader("test"), "password")
 	assert.Equal(t, 400, w.Code)
 	assert.Equal(t, "{\"message\":\"invalid character 'e' in literal true (expecting 'r')\"}", w.Body.String())
 
 	// Create Alert with invalid input
 	alertContent := GetAlertReaderFromFile("./tests/invalidAlert_sample.json")
 
-	w = lapi.RecordResponse("POST", "/v1/alerts", alertContent, "password")
+	w = lapi.RecordResponse(http.MethodPost, "/v1/alerts", alertContent, "password")
 	assert.Equal(t, 500, w.Code)
 	assert.Equal(t, "{\"message\":\"validation failure list:\\n0.scenario in body is required\\n0.scenario_hash in body is required\\n0.scenario_version in body is required\\n0.simulated in body is required\\n0.source in body is required\"}", w.Body.String())
 
@@ -380,7 +380,7 @@ func TestCreateAlertErrors(t *testing.T) {
 
 	//test invalid bearer
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", alertContent)
+	req, _ := http.NewRequest(http.MethodPost, "/v1/alerts", alertContent)
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", "ratata"))
 	lapi.router.ServeHTTP(w, req)
@@ -388,7 +388,7 @@ func TestCreateAlertErrors(t *testing.T) {
 
 	//test invalid bearer
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/v1/alerts", alertContent)
+	req, _ = http.NewRequest(http.MethodPost, "/v1/alerts", alertContent)
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", lapi.loginResp.Token+"s"))
 	lapi.router.ServeHTTP(w, req)
@@ -402,7 +402,7 @@ func TestDeleteAlert(t *testing.T) {
 
 	// Fail Delete Alert
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("DELETE", "/v1/alerts", strings.NewReader(""))
+	req, _ := http.NewRequest(http.MethodDelete, "/v1/alerts", strings.NewReader(""))
 	AddAuthHeaders(req, lapi.loginResp)
 	req.RemoteAddr = "127.0.0.2:4242"
 	lapi.router.ServeHTTP(w, req)
@@ -411,7 +411,7 @@ func TestDeleteAlert(t *testing.T) {
 
 	// Delete Alert
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("DELETE", "/v1/alerts", strings.NewReader(""))
+	req, _ = http.NewRequest(http.MethodDelete, "/v1/alerts", strings.NewReader(""))
 	AddAuthHeaders(req, lapi.loginResp)
 	req.RemoteAddr = "127.0.0.1:4242"
 	lapi.router.ServeHTTP(w, req)
@@ -449,7 +449,7 @@ func TestDeleteAlertTrustedIPS(t *testing.T) {
 
 	assertAlertDeleteFailedFromIP := func(ip string) {
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("DELETE", "/v1/alerts", strings.NewReader(""))
+		req, _ := http.NewRequest(http.MethodDelete, "/v1/alerts", strings.NewReader(""))
 
 		AddAuthHeaders(req, loginResp)
 		req.RemoteAddr = ip + ":1234"
@@ -461,7 +461,7 @@ func TestDeleteAlertTrustedIPS(t *testing.T) {
 
 	assertAlertDeletedFromIP := func(ip string) {
 		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("DELETE", "/v1/alerts", strings.NewReader(""))
+		req, _ := http.NewRequest(http.MethodDelete, "/v1/alerts", strings.NewReader(""))
 		AddAuthHeaders(req, loginResp)
 		req.RemoteAddr = ip + ":1234"
 

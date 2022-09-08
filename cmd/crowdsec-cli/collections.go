@@ -59,6 +59,12 @@ func NewCollectionsCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
+				t := cwhub.GetItem(cwhub.COLLECTIONS, name)
+				if t == nil {
+					nearestItem, score := GetDistance(cwhub.COLLECTIONS, name)
+					Suggest(cwhub.COLLECTIONS, name, nearestItem.Name, score, ignoreError)
+					continue
+				}
 				if err := cwhub.InstallItem(csConfig, name, cwhub.COLLECTIONS, forceAction, downloadOnly); err != nil {
 					if !ignoreError {
 						log.Fatalf("Error while installing '%s': %s", name, err)
@@ -167,7 +173,8 @@ func NewCollectionsCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			ListItems([]string{cwhub.COLLECTIONS}, args, false, true, all)
+			items := ListItems([]string{cwhub.COLLECTIONS}, args, false, true, all)
+			fmt.Printf("%s\n", string(items))
 		},
 	}
 	cmdCollectionsList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")

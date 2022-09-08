@@ -11,14 +11,14 @@ import (
 /* All plugins must export a list of function pointers for exported symbols */
 //var ExportedFuncs = []string{"reverse_dns"}
 
-func reverse_dns(field string, p *types.Event, ctx interface{}) (map[string]string, error) {
+func reverse_dns(field string, p *types.Event, ctx interface{}, plog *log.Entry) (map[string]string, error) {
 	ret := make(map[string]string)
 	if field == "" {
 		return nil, nil
 	}
 	rets, err := net.LookupAddr(field)
 	if err != nil {
-		log.Debugf("failed to resolve '%s'", field)
+		plog.Debugf("failed to resolve '%s'", field)
 		return nil, nil
 	}
 	//When using the host C library resolver, at most one result will be returned. To bypass the host resolver, use a custom Resolver.

@@ -1,0 +1,3 @@
+
+The file 70_http_plugin.bats hangs forever when run from ansible on amzn2, but all tests pass when run from ssh.
+

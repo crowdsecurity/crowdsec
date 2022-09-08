@@ -12,7 +12,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
+var baseLogger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 	Name:       "email-plugin",
 	Level:      hclog.LevelFromString("INFO"),
 	Output:     os.Stderr,
@@ -27,8 +27,9 @@ var AuthStringToType map[string]mail.AuthType = map[string]mail.AuthType{
 }
 
 var EncryptionStringToType map[string]mail.Encryption = map[string]mail.Encryption{
-	"ssltls": mail.EncryptionSTARTTLS,
-	"none":   mail.EncryptionNone,
+	"ssltls":   mail.EncryptionSSLTLS,
+	"starttls": mail.EncryptionSTARTTLS,
+	"none":     mail.EncryptionNone,
 }
 
 type PluginConfig struct {
@@ -78,6 +79,7 @@ func (n *EmailPlugin) Configure(ctx context.Context, config *protobufs.Config) (
 	}
 
 	n.ConfigByName[d.Name] = d
+	baseLogger.Debug(fmt.Sprintf("Email plugin '%s' use SMTP host '%s:%d'", d.Name, d.SMTPHost, d.SMTPPort))
 	return &protobufs.Empty{}, nil
 }
 
@@ -87,11 +89,12 @@ func (n *EmailPlugin) Notify(ctx context.Context, notification *protobufs.Notifi
 	}
 	cfg := n.ConfigByName[notification.Name]
 
+	logger := baseLogger.Named(cfg.Name)
+
 	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
 		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
 	}
 
-	logger = logger.Named(cfg.Name)
 	logger.Debug("got notification")
 
 	server := mail.NewSMTPClient()
@@ -138,6 +141,6 @@ func main() {
 			},
 		},
 		GRPCServer: plugin.DefaultGRPCServer,
-		Logger:     logger,
+		Logger:     baseLogger,
 	})
 }

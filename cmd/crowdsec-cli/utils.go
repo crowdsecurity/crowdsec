@@ -1,10 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"net"
 	"net/http"
@@ -21,8 +21,11 @@ import (
 	"github.com/prometheus/prom2json"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/texttheater/golang-levenshtein/levenshtein"
 	"gopkg.in/yaml.v2"
 )
+
+const MaxDistance = 7
 
 func printHelp(cmd *cobra.Command) {
 	err := cmd.Help()
@@ -66,6 +69,39 @@ func LoadHub() error {
 	}
 
 	return nil
+}
+
+func Suggest(itemType string, baseItem string, suggestItem string, score int, ignoreErr bool) {
+	errMsg := ""
+	if score < MaxDistance {
+		errMsg = fmt.Sprintf("unable to find %s '%s', did you mean %s ?", itemType, baseItem, suggestItem)
+	} else {
+		errMsg = fmt.Sprintf("unable to find %s '%s'", itemType, baseItem)
+	}
+	if ignoreErr {
+		log.Error(errMsg)
+	} else {
+		log.Fatalf(errMsg)
+	}
+}
+
+func GetDistance(itemType string, itemName string) (*cwhub.Item, int) {
+	allItems := make([]string, 0)
+	nearestScore := 100
+	nearestItem := &cwhub.Item{}
+	hubItems := cwhub.GetHubStatusForItemType(itemType, "", true)
+	for _, item := range hubItems {
+		allItems = append(allItems, item.Name)
+	}
+
+	for _, s := range allItems {
+		d := levenshtein.DistanceForStrings([]rune(itemName), []rune(s), levenshtein.DefaultOptions)
+		if d < nearestScore {
+			nearestScore = d
+			nearestItem = cwhub.GetItem(itemType, s)
+		}
+	}
+	return nearestItem, nearestScore
 }
 
 func compAllItems(itemType string, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -129,7 +165,7 @@ func compInstalledItems(itemType string, args []string, toComplete string) ([]st
 	return comp, cobra.ShellCompDirectiveNoFileComp
 }
 
-func ListItems(itemTypes []string, args []string, showType bool, showHeader bool, all bool) {
+func ListItems(itemTypes []string, args []string, showType bool, showHeader bool, all bool) []byte {
 
 	var hubStatusByItemType = make(map[string][]cwhub.ItemHubStatus)
 
@@ -141,6 +177,8 @@ func ListItems(itemTypes []string, args []string, showType bool, showHeader bool
 		hubStatusByItemType[itemType] = cwhub.GetHubStatusForItemType(itemType, itemName, all)
 	}
 
+	w := bytes.NewBuffer(nil)
+
 	if csConfig.Cscli.Output == "human" {
 		for _, itemType := range itemTypes {
 			var statuses []cwhub.ItemHubStatus
@@ -149,8 +187,8 @@ func ListItems(itemTypes []string, args []string, showType bool, showHeader bool
 				log.Errorf("unknown item type: %s", itemType)
 				continue
 			}
-			fmt.Println(strings.ToUpper(itemType))
-			table := tablewriter.NewWriter(os.Stdout)
+			fmt.Fprintf(w, "%s\n", strings.ToUpper(itemType))
+			table := tablewriter.NewWriter(w)
 			table.SetCenterSeparator("")
 			table.SetColumnSeparator("")
 			table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
@@ -166,9 +204,9 @@ func ListItems(itemTypes []string, args []string, showType bool, showHeader bool
 		if err != nil {
 			log.Fatalf("failed to unmarshal")
 		}
-		fmt.Printf("%s", string(x))
+		w.Write(x)
 	} else if csConfig.Cscli.Output == "raw" {
-		csvwriter := csv.NewWriter(os.Stdout)
+		csvwriter := csv.NewWriter(w)
 		if showHeader {
 			header := []string{"name", "status", "version", "description"}
 			if showType {
@@ -208,6 +246,7 @@ func ListItems(itemTypes []string, args []string, showType bool, showHeader bool
 		}
 		csvwriter.Flush()
 	}
+	return w.Bytes()
 }
 
 func InspectItem(name string, objecitemType string) {
@@ -553,7 +592,7 @@ func RestoreHub(dirPath string) error {
 		}
 		/*restore the upstream items*/
 		upstreamListFN := fmt.Sprintf("%s/upstream-%s.json", itemDirectory, itype)
-		file, err := ioutil.ReadFile(upstreamListFN)
+		file, err := os.ReadFile(upstreamListFN)
 		if err != nil {
 			return fmt.Errorf("error while opening %s : %s", upstreamListFN, err)
 		}
@@ -574,7 +613,7 @@ func RestoreHub(dirPath string) error {
 		}
 
 		/*restore the local and tainted items*/
-		files, err := ioutil.ReadDir(itemDirectory)
+		files, err := os.ReadDir(itemDirectory)
 		if err != nil {
 			return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory, err)
 		}
@@ -595,7 +634,7 @@ func RestoreHub(dirPath string) error {
 					return fmt.Errorf("error while creating stage directory %s : %s", stagedir, err)
 				}
 				/*find items*/
-				ifiles, err := ioutil.ReadDir(itemDirectory + "/" + stage + "/")
+				ifiles, err := os.ReadDir(itemDirectory + "/" + stage + "/")
 				if err != nil {
 					return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory+"/"+stage, err)
 				}
@@ -679,7 +718,7 @@ func BackupHub(dirPath string) error {
 		if err != nil {
 			return fmt.Errorf("failed marshaling upstream parsers : %s", err)
 		}
-		err = ioutil.WriteFile(upstreamParsersFname, upstreamParsersContent, 0644)
+		err = os.WriteFile(upstreamParsersFname, upstreamParsersContent, 0644)
 		if err != nil {
 			return fmt.Errorf("unable to write to %s %s : %s", itemType, upstreamParsersFname, err)
 		}

@@ -3,7 +3,6 @@ package cwhub
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -357,7 +356,7 @@ func GetHubIdx(hub *csconfig.Hub) error {
 		return fmt.Errorf("no configuration found for hub")
 	}
 	log.Debugf("loading hub idx %s", hub.HubIndexFile)
-	bidx, err := ioutil.ReadFile(hub.HubIndexFile)
+	bidx, err := os.ReadFile(hub.HubIndexFile)
 	if err != nil {
 		return errors.Wrap(err, "unable to read index file")
 	}

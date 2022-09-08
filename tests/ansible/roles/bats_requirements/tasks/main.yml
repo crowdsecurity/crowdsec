@@ -1,0 +1,79 @@
+# vim: set ft=yaml.ansible:
+---
+- name: "install bash"
+  ansible.builtin.import_tasks: bash.yml
+  when:
+    # openbsd is not supported by the package_facts module, let's assume bash is ok
+    - ansible_facts.system != 'OpenBSD'
+
+- name: "Install daemonize"
+  ansible.builtin.import_tasks: daemonize.yml
+
+- name: "install netcat"
+  ansible.builtin.import_tasks: netcat.yml
+
+- name: "Install curl, jq, openssl, python3"
+  become: true
+  ansible.builtin.package:
+    name:
+      - curl
+      - jq
+      - openssl
+      - python3
+  when:
+    - ansible_facts.distribution != 'Gentoo'
+
+- name: "install bc (!freebsd)"
+  become: true
+  ansible.builtin.package:
+    name:
+      - bc
+  when:
+    - ansible_facts.system == 'Linux'
+
+# base64 for linux is in coreutils
+- name: "install base64 (bsd)"
+  become: true
+  ansible.builtin.package:
+    name:
+      - base64
+  when:
+    - ansible_facts.system in ['FreeBSD', 'OpenBSD']
+
+- name: "install pidof (Amazon)"
+  become: true
+  ansible.builtin.package:
+    name:
+      - procps-ng
+  when:
+    - ansible_facts.distribution == 'Amazon'
+
+- name: "install cfssl"
+  become: true
+  ansible.builtin.command:
+    cmd: "go install github.com/cloudflare/cfssl/cmd/cfssl@latest"
+    creates: /usr/bin/cfssl
+  environment:
+    GOBIN: /usr/bin
+    # make sure we use the built version of go, if there is one
+    PATH: "{{ golang_install_dir }}/bin:{{ ansible_env.PATH }}"
+
+- name: "install cfssljson"
+  become: true
+  ansible.builtin.command:
+    cmd: "go install github.com/cloudflare/cfssl/cmd/cfssljson@latest"
+    creates: /usr/bin/cfssljson
+  environment:
+    GOBIN: /usr/bin
+    # make sure we use the built version of go, if there is one
+    PATH: "{{ golang_install_dir }}/bin:{{ ansible_env.PATH }}"
+
+- name: "install yq"
+  become: true
+  ansible.builtin.command:
+    cmd: "go install github.com/mikefarah/yq/v4@latest"
+    creates: /usr/bin/yq
+  environment:
+    GOBIN: /usr/bin
+    # make sure we use the built version of go, if there is one
+    PATH: "{{ golang_install_dir }}/bin:{{ ansible_env.PATH }}"

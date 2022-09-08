@@ -4,14 +4,12 @@ is_crowdsec_running() {
     PIDS=$(pgrep -x 'crowdsec|crowdsec.test|crowdsec.cover')
 }
 
-is_crowdsec_running || exit 0
-
 # The process can be slow, especially on CI and during test coverage.
 # Give it some time, maybe it's quitting soon.
-sleep 2
-is_crowdsec_running || exit 0
-sleep 2
-is_crowdsec_running || exit 0
+for _i in {1..10}; do
+    is_crowdsec_running || exit 0
+    sleep .5
+done
 
 PIDS=$(echo "${PIDS}" | tr '\n' ' ')
 msg="CrowdSec is already running (PID ${PIDS}). Please terminate it and run the tests again."

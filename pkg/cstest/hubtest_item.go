@@ -2,7 +2,6 @@ package cstest
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -93,7 +92,7 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 
 	// read test configuration file
 	configFileData := &HubTestItemConfig{}
-	yamlFile, err := ioutil.ReadFile(configFilePath)
+	yamlFile, err := os.ReadFile(configFilePath)
 	if err != nil {
 		log.Printf("no config file found in '%s': %v", testPath, err)
 	}

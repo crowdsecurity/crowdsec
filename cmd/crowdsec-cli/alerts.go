@@ -231,6 +231,7 @@ func NewAlertsCmd() *cobra.Command {
 		Since:          new(string),
 		Until:          new(string),
 		TypeEquals:     new(string),
+		IncludeCAPI:    new(bool),
 	}
 	limit = new(int)
 	contained := new(bool)
@@ -283,6 +284,11 @@ cscli alerts list --type ban`,
 					*alertListFilter.Since = fmt.Sprintf("%d%s", days*24, "h")
 				}
 			}
+
+			if *alertListFilter.IncludeCAPI {
+				*alertListFilter.Limit = 0
+			}
+
 			if *alertListFilter.TypeEquals == "" {
 				alertListFilter.TypeEquals = nil
 			}
@@ -316,6 +322,7 @@ cscli alerts list --type ban`,
 		},
 	}
 	cmdAlertsList.Flags().SortFlags = false
+	cmdAlertsList.Flags().BoolVarP(alertListFilter.IncludeCAPI, "all", "a", false, "Include decisions from Central API")
 	cmdAlertsList.Flags().StringVar(alertListFilter.Until, "until", "", "restrict to alerts older than until (ie. 4h, 30d)")
 	cmdAlertsList.Flags().StringVar(alertListFilter.Since, "since", "", "restrict to alerts newer than since (ie. 4h, 30d)")
 	cmdAlertsList.Flags().StringVarP(alertListFilter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")

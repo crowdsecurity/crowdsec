@@ -1,0 +1,6 @@
+# vim: set ft=yaml.ansible:
+---
+- name: "install the test scripts"
+  hosts: all
+  roles:
+    - install_crowdsec_tests

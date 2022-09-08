@@ -9,8 +9,7 @@ URL:            https://crowdsec.net
 Source0:        https://github.com/crowdsecurity/%{name}/archive/v%(echo $VERSION).tar.gz
 Source1:        80-%{name}.preset
 Patch0:         crowdsec.unit.patch
-Patch1:         fix-wizard.patch
-Patch2:         user.patch
+Patch1:         user.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  git
@@ -37,7 +36,6 @@ BuildRequires:  systemd
 
 %patch0
 %patch1
-%patch2
 
 %build
 BUILD_VERSION=%{local_version} make build
@@ -158,7 +156,7 @@ if [ $1 == 1 ]; then
     if [ ! -f "/etc/crowsec/acquis.yaml" ] ; then
         set +e
         SILENT=true detect_services
-        SILENT=true genacquisition
+        SILENT=true TMP_ACQUIS_FILE_SKIP=skip genacquisition
         set +e
     fi
     if [ ! -f "%{_sysconfdir}/crowdsec/online_api_credentials.yaml" ] && [ ! -f "%{_sysconfdir}/crowdsec/local_api_credentials.yaml" ] ; then

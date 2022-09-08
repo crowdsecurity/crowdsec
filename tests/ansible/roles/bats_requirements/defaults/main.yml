@@ -1,0 +1,6 @@
+# vim: set ft=yaml.ansible:
+---
+build_bash: false
+bash_version: 5.1.16
+
+build_daemonize: (ansible_facts.distribution == "Ubuntu" and ansible_facts.distribution == '16.04') or ansible_facts.distribution == 'Amazon'

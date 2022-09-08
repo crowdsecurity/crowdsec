@@ -2,7 +2,6 @@ package csconfig
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -162,7 +161,7 @@ func TestLoadAPIServer(t *testing.T) {
 	}
 
 	config := &Config{}
-	fcontent, err := ioutil.ReadFile("./tests/config.yaml")
+	fcontent, err := os.ReadFile("./tests/config.yaml")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}

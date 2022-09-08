@@ -3,7 +3,6 @@ package leakybucket
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"time"
@@ -87,7 +86,7 @@ func DumpBucketsStateAt(deadline time.Time, outputdir string, buckets *Buckets) 
 	if outputdir == "" {
 		return "", fmt.Errorf("empty output dir for dump bucket state")
 	}
-	tmpFd, err := ioutil.TempFile(os.TempDir(), "crowdsec-buckets-dump-")
+	tmpFd, err := os.CreateTemp(os.TempDir(), "crowdsec-buckets-dump-")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file : %s", err)
 	}

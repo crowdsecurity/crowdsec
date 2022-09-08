@@ -21,10 +21,10 @@ jobs:
 
     steps:
 
-    - name: "Set up Go 1.17"
+    - name: "Set up Go 1.19"
       uses: actions/setup-go@v3
       with:
-        go-version: 1.17
+        go-version: 1.19
       id: go
 
     - name: Check out CrowdSec repository
@@ -40,7 +40,8 @@ jobs:
     - name: Run tests
       run: |
         go install github.com/kyoh86/richgo@v0.3.10
-        go test -coverprofile coverage.out -covermode=atomic ./... | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
+        go test -coverprofile coverage.out -covermode=atomic ./... > out.txt
+        cat out.txt | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
 
     - name: Upload unit coverage to Codecov
       uses: codecov/codecov-action@v2

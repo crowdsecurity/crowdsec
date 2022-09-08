@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/url"
+	"os"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -89,7 +89,7 @@ func NewCapiCmd() *cobra.Command {
 				log.Fatalf("unable to marshal api credentials: %s", err)
 			}
 			if dumpFile != "" {
-				err = ioutil.WriteFile(dumpFile, apiConfigDump, 0600)
+				err = os.WriteFile(dumpFile, apiConfigDump, 0600)
 				if err != nil {
 					log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
 				}

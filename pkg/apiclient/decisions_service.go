@@ -3,6 +3,7 @@ package apiclient
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	qs "github.com/google/go-querystring/query"
@@ -55,7 +56,7 @@ func (s *DecisionsService) List(ctx context.Context, opts DecisionsListOpts) (*m
 	}
 	u := fmt.Sprintf("%s/decisions?%s", s.client.URLPrefix, params.Encode())
 
-	req, err := s.client.NewRequest("GET", u, nil)
+	req, err := s.client.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -73,7 +74,7 @@ func (s *DecisionsService) GetStream(ctx context.Context, opts DecisionsStreamOp
 	if err != nil {
 		return nil, nil, err
 	}
-	req, err := s.client.NewRequest("GET", u, nil)
+	req, err := s.client.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -89,7 +90,7 @@ func (s *DecisionsService) GetStream(ctx context.Context, opts DecisionsStreamOp
 func (s *DecisionsService) StopStream(ctx context.Context) (*Response, error) {
 
 	u := fmt.Sprintf("%s/decisions", s.client.URLPrefix)
-	req, err := s.client.NewRequest("DELETE", u, nil)
+	req, err := s.client.NewRequest(http.MethodDelete, u, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +110,7 @@ func (s *DecisionsService) Delete(ctx context.Context, opts DecisionsDeleteOpts)
 	}
 	u := fmt.Sprintf("%s/decisions?%s", s.client.URLPrefix, params.Encode())
 
-	req, err := s.client.NewRequest("DELETE", u, nil)
+	req, err := s.client.NewRequest(http.MethodDelete, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -125,7 +126,7 @@ func (s *DecisionsService) DeleteOne(ctx context.Context, decision_id string) (*
 	var deleteDecisionResponse models.DeleteDecisionResponse
 	u := fmt.Sprintf("%s/decisions/%s", s.client.URLPrefix, decision_id)
 
-	req, err := s.client.NewRequest("DELETE", u, nil)
+	req, err := s.client.NewRequest(http.MethodDelete, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}

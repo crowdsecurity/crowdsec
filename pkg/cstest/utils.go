@@ -2,7 +2,6 @@ package cstest
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,12 +10,12 @@ import (
 )
 
 func Copy(sourceFile string, destinationFile string) error {
-	input, err := ioutil.ReadFile(sourceFile)
+	input, err := os.ReadFile(sourceFile)
 	if err != nil {
 		return err
 	}
 
-	err = ioutil.WriteFile(destinationFile, input, 0644)
+	err = os.WriteFile(destinationFile, input, 0644)
 	if err != nil {
 		return err
 	}
@@ -73,7 +72,7 @@ func CopyDir(src string, dest string) error {
 		return err
 	}
 
-	files, err := ioutil.ReadDir(src)
+	files, err := os.ReadDir(src)
 	if err != nil {
 		return err
 	}
@@ -91,13 +90,13 @@ func CopyDir(src string, dest string) error {
 
 		if !f.IsDir() {
 
-			content, err := ioutil.ReadFile(src + "/" + f.Name())
+			content, err := os.ReadFile(src + "/" + f.Name())
 			if err != nil {
 				return err
 
 			}
 
-			err = ioutil.WriteFile(dest+"/"+f.Name(), content, 0755)
+			err = os.WriteFile(dest+"/"+f.Name(), content, 0755)
 			if err != nil {
 				return err
 

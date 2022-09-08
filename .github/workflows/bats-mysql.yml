@@ -6,9 +6,6 @@ on:
       database_image:
         required: true
         type: string
-    secrets:
-      DATABASE_PASSWORD:
-        required: true
 
 env:
   PREFIX_TEST_NAMES_WITH_FILE: true
@@ -23,7 +20,7 @@ jobs:
       database:
         image: ${{ inputs.database_image }}
         env:
-          MYSQL_ROOT_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          MYSQL_ROOT_PASSWORD: "secret"
         ports:
           - 3306:3306
 
@@ -34,10 +31,10 @@ jobs:
           sudo chmod +w /etc/machine-id
           echo githubciXXXXXXXXXXXXXXXXXXXXXXXX | sudo tee /etc/machine-id
 
-    - name: "Set up Go 1.17"
+    - name: "Set up Go 1.19"
       uses: actions/setup-go@v3
       with:
-        go-version: 1.17
+        go-version: 1.19
       id: go
 
     - name: "Check out CrowdSec repository"
@@ -50,8 +47,8 @@ jobs:
       run: |
         sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential daemonize jq netcat-openbsd
         go install github.com/mikefarah/yq/v4@latest
-        go install github.com/cloudflare/cfssl/cmd/cfssl@latest
-        go install github.com/cloudflare/cfssl/cmd/cfssljson@latest
+        go install github.com/cloudflare/cfssl/cmd/cfssl@master
+        go install github.com/cloudflare/cfssl/cmd/cfssljson@master
         sudo cp -u ~/go/bin/yq ~/go/bin/cfssl ~/go/bin/cfssljson /usr/local/bin/
 
     - name: "Build crowdsec and fixture"
@@ -61,7 +58,7 @@ jobs:
         DB_BACKEND: mysql
         MYSQL_HOST: 127.0.0.1
         MYSQL_PORT: 3306
-        MYSQL_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        MYSQL_PASSWORD: "secret"
         MYSQL_USER: root
 
     - name: "Run tests"
@@ -70,7 +67,7 @@ jobs:
         DB_BACKEND: mysql
         MYSQL_HOST: 127.0.0.1
         MYSQL_PORT: 3306
-        MYSQL_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        MYSQL_PASSWORD: "secret"
         MYSQL_USER: root
 
     #
@@ -85,7 +82,7 @@ jobs:
         DB_BACKEND: mysql
         MYSQL_HOST: 127.0.0.1
         MYSQL_PORT: 3306
-        MYSQL_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        MYSQL_PASSWORD: "secret"
         MYSQL_USER: root
       if: ${{ always() }}
 
