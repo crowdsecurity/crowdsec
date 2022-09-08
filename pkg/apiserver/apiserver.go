@@ -216,14 +216,14 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		if err != nil {
 			return &APIServer{}, err
 		}
-		controller.AlertsAddChan = apiClient.AlertsAddChan
-		//controller.DecisionDeleteChan = apiClient.DecisionDeleteChan
 
 		log.Infof("Loading PAPI Client")
 		papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
 		if err != nil {
 			return &APIServer{}, err
 		}
+		controller.DecisionDeleteChan = papiClient.Channels.DeleteDecisionChannel
+		controller.AlertsAddChan = apiClient.AlertsAddChan
 	} else {
 		apiClient = nil
 		controller.AlertsAddChan = nil

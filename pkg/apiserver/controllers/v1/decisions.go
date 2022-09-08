@@ -34,6 +34,7 @@ func FormatDecisions(decisions []*ent.Decision, dedup bool) ([]*models.Decision,
 			Value:    &dbDecision.Value,
 			Type:     &dbDecision.Type,
 			Origin:   &dbDecision.Origin,
+			UUID:     dbDecision.UUID,
 		}
 		results = append(results, &decision)
 	}
@@ -114,7 +115,6 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 
 func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 	var err error
-
 	nbDeleted, deletedFromDB, err := c.DBClient.SoftDeleteDecisionsWithFilter(gctx.Request.URL.Query())
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
@@ -130,7 +130,6 @@ func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 	deleteDecisionResp := models.DeleteDecisionResponse{
 		NbDeleted: nbDeleted,
 	}
-
 	gctx.JSON(http.StatusOK, deleteDecisionResp)
 }
 

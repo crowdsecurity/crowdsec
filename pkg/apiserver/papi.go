@@ -106,16 +106,17 @@ func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.Cons
 	logger.SetLevel(logLevel)
 
 	papi := &Papi{
-		URL:          PapiURL.String(),
-		Client:       longPollClient,
-		DBClient:     dbClient,
-		Channels:     channels,
-		SyncInterval: SyncInterval,
-		mu:           sync.Mutex{},
-		pullTomb:     tomb.Tomb{},
-		syncTomb:     tomb.Tomb{},
-		apiClient:    apic.apiClient,
-		Logger:       logger.WithFields(log.Fields{"interval": SyncInterval.Seconds(), "source": "papi"}),
+		URL:           PapiURL.String(),
+		Client:        longPollClient,
+		DBClient:      dbClient,
+		Channels:      channels,
+		SyncInterval:  SyncInterval,
+		mu:            sync.Mutex{},
+		pullTomb:      tomb.Tomb{},
+		syncTomb:      tomb.Tomb{},
+		apiClient:     apic.apiClient,
+		consoleConfig: consoleConfig,
+		Logger:        logger.WithFields(log.Fields{"interval": SyncInterval.Seconds(), "source": "papi"}),
 	}
 
 	return papi, nil
@@ -203,7 +204,7 @@ func (p *Papi) Pull() error {
 func (p *Papi) SyncDecisions() error {
 	defer types.CatchPanic("lapi/syncDecisionsToCAPI")
 
-	var cache models.AddSignalsRequestItemDecisions
+	var cache models.DecisionsDeleteRequest
 	ticker := time.NewTicker(p.SyncInterval)
 	p.Logger.Infof("Start decisions sync to CrowdSec Central API (interval: %s)", PushInterval)
 
@@ -221,33 +222,18 @@ func (p *Papi) SyncDecisions() error {
 			if len(cache) > 0 {
 				p.mu.Lock()
 				cacheCopy := cache
-				cache = make([]*models.AddSignalsRequestItemDecisionsItem, 0)
+				cache = make([]models.DecisionsDeleteRequestItem, 0)
 				p.mu.Unlock()
 				p.Logger.Infof("sync decisions: %d deleted decisions to push", len(cacheCopy))
 				go p.SendDeletedDecisions(&cacheCopy)
 			}
 		case deletedDecisions := <-p.Channels.DeleteDecisionChannel:
-
-			if p.consoleConfig.ShareManualDecisions != nil && *p.consoleConfig.ShareManualDecisions {
-				var tmpDecisions []*models.AddSignalsRequestItemDecisionsItem
+			if (p.consoleConfig.ShareManualDecisions != nil && *p.consoleConfig.ShareManualDecisions) || (p.consoleConfig.ReceiveDecisions != nil && *p.consoleConfig.ReceiveDecisions) {
+				var tmpDecisions []models.DecisionsDeleteRequestItem
+				p.Logger.Debugf("%d decisions deletion to add in cache", len(deletedDecisions))
 				for _, decision := range deletedDecisions {
-
-					x := &models.AddSignalsRequestItemDecisionsItem{
-						Duration: types.StrPtr(*decision.Duration),
-						ID:       new(int64),
-						Origin:   types.StrPtr(*decision.Origin),
-						Scenario: types.StrPtr(*decision.Scenario),
-						Scope:    types.StrPtr(*decision.Scope),
-						Type:     types.StrPtr(*decision.Type),
-						Until:    decision.Until,
-						Value:    types.StrPtr(*decision.Value),
-					}
-					if decision.Simulated != nil {
-						x.Simulated = *decision.Simulated
-					}
-					tmpDecisions = append(tmpDecisions, x)
+					tmpDecisions = append(tmpDecisions, models.DecisionsDeleteRequestItem(decision.UUID))
 				}
-				p.Logger.Debugf("adding %d decisions deletions to cache", len(tmpDecisions))
 				p.mu.Lock()
 				cache = append(cache, tmpDecisions...)
 				p.mu.Unlock()
@@ -256,17 +242,15 @@ func (p *Papi) SyncDecisions() error {
 	}
 }
 
-func (p *Papi) SendDeletedDecisions(cacheOrig *models.AddSignalsRequestItemDecisions) {
+func (p *Papi) SendDeletedDecisions(cacheOrig *models.DecisionsDeleteRequest) {
 
-	var cache []*models.AddSignalsRequestItemDecisionsItem = *cacheOrig
-	var send models.AddSignalsRequestItemDecisions
+	var cache []models.DecisionsDeleteRequestItem = *cacheOrig
+	var send models.DecisionsDeleteRequest
 
 	bulkSize := 50
 	pageStart := 0
 	pageEnd := bulkSize
-
 	for {
-
 		if pageEnd >= len(cache) {
 			send = cache[pageStart:]
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

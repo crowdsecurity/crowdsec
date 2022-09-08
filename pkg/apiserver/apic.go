@@ -247,41 +247,6 @@ func shouldShareAlert(alert *models.Alert, consoleConfig *csconfig.ConsoleConfig
 	return true
 }
 
-func (a *apic) SendDeletedDecisions(cacheOrig *models.AddSignalsRequestItemDecisions) {
-
-	var cache []*models.AddSignalsRequestItemDecisionsItem = *cacheOrig
-	var send models.AddSignalsRequestItemDecisions
-
-	bulkSize := 50
-	pageStart := 0
-	pageEnd := bulkSize
-
-	for {
-
-		if pageEnd >= len(cache) {
-			send = cache[pageStart:]
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			_, _, err := a.apiClient.DecisionDelete.Add(ctx, &send)
-			if err != nil {
-				log.Errorf("Error while sending final chunk to central API : %s", err)
-				return
-			}
-			break
-		}
-		send = cache[pageStart:pageEnd]
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_, _, err := a.apiClient.DecisionDelete.Add(ctx, &send)
-		if err != nil {
-			//we log it here as well, because the return value of func might be discarded
-			log.Errorf("Error while sending chunk to central API : %s", err)
-		}
-		pageStart += bulkSize
-		pageEnd += bulkSize
-	}
-}
-
 func (a *apic) Send(cacheOrig *models.AddSignalsRequest) {
 	/*we do have a problem with this :
 	The apic.Push background routine reads from alertToPush chan.
