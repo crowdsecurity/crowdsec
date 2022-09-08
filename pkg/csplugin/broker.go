@@ -254,7 +254,7 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 			if err != nil {
 				return err
 			}
-
+			data = []byte(os.ExpandEnv(string(data)))
 			_, err = pluginClient.Configure(context.Background(), &protobufs.Config{Config: data})
 			if err != nil {
 				return errors.Wrapf(err, "while configuring %s", pc.Name)

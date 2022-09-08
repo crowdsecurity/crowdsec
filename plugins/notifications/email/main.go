@@ -79,6 +79,7 @@ func (n *EmailPlugin) Configure(ctx context.Context, config *protobufs.Config) (
 	}
 
 	n.ConfigByName[d.Name] = d
+	baseLogger.Debug(fmt.Sprintf("Email plugin '%s' use SMTP host '%s:%d'", d.Name, d.SMTPHost, d.SMTPPort))
 	return &protobufs.Empty{}, nil
 }
 
