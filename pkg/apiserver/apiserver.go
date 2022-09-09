@@ -232,7 +232,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 			controller.DecisionDeleteChan = papiClient.Channels.DeleteDecisionChannel
 			controller.AlertsAddChan = apiClient.AlertsAddChan
 		} else {
-			log.Errorf("Machine is not enrolled in the console, can't synchronize")
+			log.Errorf("Machine is not enrolled in the console, can't synchronize with the console")
 		}
 	} else {
 		apiClient = nil
