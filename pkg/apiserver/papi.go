@@ -140,7 +140,11 @@ func (p *Papi) Pull() error {
 		if err != nil {
 			return errors.Wrap(err, "failed to marshal last timestamp")
 		}
-		p.DBClient.SetConfigItem(PapiPullKey, string(binTime))
+		if err := p.DBClient.SetConfigItem(PapiPullKey, string(binTime)); err != nil {
+			p.Logger.Errorf("error setting papi pull last key: %s", err)
+		} else {
+			p.Logger.Debugf("config item '%s' set in database with value '%s'", PapiPullKey, string(binTime))
+		}
 	} else {
 		if err := lastTimestamp.UnmarshalText([]byte(*lastTimestampStr)); err != nil {
 			return errors.Wrap(err, "failed to unmarshal last timestamp")
@@ -257,7 +261,7 @@ func (p *Papi) SendDeletedDecisions(cacheOrig *models.DecisionsDeleteRequest) {
 			defer cancel()
 			_, _, err := p.apiClient.DecisionDelete.Add(ctx, &send)
 			if err != nil {
-				p.Logger.Errorf("Error while sending final chunk to central API : %s", err)
+				p.Logger.Errorf("sending deleted decisions to central API: %s", err)
 				return
 			}
 			break
@@ -268,7 +272,7 @@ func (p *Papi) SendDeletedDecisions(cacheOrig *models.DecisionsDeleteRequest) {
 		_, _, err := p.apiClient.DecisionDelete.Add(ctx, &send)
 		if err != nil {
 			//we log it here as well, because the return value of func might be discarded
-			p.Logger.Errorf("Error while sending chunk to central API : %s", err)
+			p.Logger.Errorf("sending deleted decisions to central API: %s", err)
 		}
 		pageStart += bulkSize
 		pageEnd += bulkSize

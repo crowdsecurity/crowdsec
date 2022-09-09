@@ -162,6 +162,19 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 		UpdateScenario: ret.FetchScenariosListFromDB,
 	})
 
+	scenarios, err := ret.FetchScenariosListFromDB()
+	if err != nil {
+		return ret, errors.Wrapf(err, "get scenario in db: %s", err)
+	}
+
+	if _, err = ret.apiClient.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
+		MachineID: &config.Credentials.Login,
+		Password:  &password,
+		Scenarios: scenarios,
+	}); err != nil {
+		return ret, errors.Wrapf(err, "authenticate watcher (%s)", &config.Credentials.Login)
+	}
+
 	return ret, err
 }
 
@@ -274,7 +287,7 @@ func (a *apic) Send(cacheOrig *models.AddSignalsRequest) {
 			defer cancel()
 			_, _, err := a.apiClient.Signal.Add(ctx, &send)
 			if err != nil {
-				log.Errorf("Error while sending final chunk to central API : %s", err)
+				log.Errorf("sending signal to central API: %s", err)
 				return
 			}
 			break
@@ -285,7 +298,7 @@ func (a *apic) Send(cacheOrig *models.AddSignalsRequest) {
 		_, _, err := a.apiClient.Signal.Add(ctx, &send)
 		if err != nil {
 			//we log it here as well, because the return value of func might be discarded
-			log.Errorf("Error while sending chunk to central API : %s", err)
+			log.Errorf("sending signal to central API: %s", err)
 		}
 		pageStart += bulkSize
 		pageEnd += bulkSize

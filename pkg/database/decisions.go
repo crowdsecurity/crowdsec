@@ -556,7 +556,7 @@ func (c *Client) SoftDeleteDecisionByID(decisionID int) (int, []*ent.Decision, e
 	toUpdate, err := c.Ent.Decision.Query().Where(decision.IDEQ(decisionID)).All(c.CTX)
 
 	if err != nil || len(toUpdate) == 0 {
-		c.Log.Warningf("SoftDeleteDecisionByID : %v (nb soft deleted: %d)", err, toUpdate)
+		c.Log.Warningf("SoftDeleteDecisionByID : %v (nb soft deleted: %d)", err, len(toUpdate))
 		return 0, nil, errors.Wrapf(DeleteFail, "decision with id '%d' doesn't exist", decisionID)
 	}
 

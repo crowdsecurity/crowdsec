@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -21,6 +22,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/gin-gonic/gin"
 	"github.com/go-co-op/gocron"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -44,6 +46,7 @@ type APIServer struct {
 	papi           *Papi
 	httpServerTomb tomb.Tomb
 	consoleConfig  *csconfig.ConsoleConfig
+	isEnrolled     bool
 }
 
 // RecoveryWithWriter returns a middleware for a given writer that recovers from any panics and writes a 500 if there was one.
@@ -209,21 +212,28 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	var apiClient *apic
 	var papiClient *Papi
+	var isMachineEnrolled = false
 
 	if config.OnlineClient != nil && config.OnlineClient.Credentials != nil {
-		log.Printf("Loading CAPI pusher")
+		log.Printf("Loading CAPI manager")
 		apiClient, err = NewAPIC(config.OnlineClient, dbClient, config.ConsoleConfig)
 		if err != nil {
 			return &APIServer{}, err
 		}
-
-		log.Infof("Loading PAPI Client")
-		papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
-		if err != nil {
-			return &APIServer{}, err
+		log.Infof("CAPI manager configured successfully")
+		isMachineEnrolled = isEnrolled(apiClient.apiClient)
+		isMachineEnrolled = false
+		if isMachineEnrolled {
+			log.Infof("Machine is enrolled in the console, Loading PAPI Client")
+			papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
+			if err != nil {
+				return &APIServer{}, err
+			}
+			controller.DecisionDeleteChan = papiClient.Channels.DeleteDecisionChannel
+			controller.AlertsAddChan = apiClient.AlertsAddChan
+		} else {
+			log.Errorf("Machine is not enrolled in the console, can't synchronize")
 		}
-		controller.DecisionDeleteChan = papiClient.Channels.DeleteDecisionChannel
-		controller.AlertsAddChan = apiClient.AlertsAddChan
 	} else {
 		apiClient = nil
 		controller.AlertsAddChan = nil
@@ -248,8 +258,24 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		papi:           papiClient,
 		httpServerTomb: tomb.Tomb{},
 		consoleConfig:  config.ConsoleConfig,
+		isEnrolled:     isMachineEnrolled,
 	}, nil
 
+}
+
+func isEnrolled(client *apiclient.ApiClient) bool {
+	apiHTTPClient := client.GetClient()
+	jwtTransport := apiHTTPClient.Transport.(*apiclient.JWTTransport)
+	tokenStr := jwtTransport.Token
+
+	token, _ := jwt.Parse(tokenStr, nil)
+	if token == nil {
+		return false
+	}
+	claims := token.Claims.(jwt.MapClaims)
+	_, ok := claims["organization_id"]
+
+	return ok
 }
 
 func (s *APIServer) Router() (*gin.Engine, error) {
@@ -317,14 +343,6 @@ func (s *APIServer) Run(apiReady chan bool) error {
 			return nil
 		})
 
-		s.papi.syncTomb.Go(func() error {
-			if err := s.papi.SyncDecisions(); err != nil {
-				log.Errorf("capi decisions sync: %s", err)
-				return err
-			}
-			return nil
-		})
-
 		s.apic.pullTomb.Go(func() error {
 			if err := s.apic.Pull(); err != nil {
 				log.Errorf("capi pull: %s", err)
@@ -334,16 +352,27 @@ func (s *APIServer) Run(apiReady chan bool) error {
 		})
 
 		//csConfig.API.Server.ConsoleConfig.ShareCustomScenarios
+		if s.isEnrolled {
+			if s.consoleConfig.ReceiveDecisions != nil && *s.consoleConfig.ReceiveDecisions {
+				log.Infof("Starting PAPI decision receiver")
+				s.papi.pullTomb.Go(func() error {
+					if err := s.papi.Pull(); err != nil {
+						log.Errorf("papi pull: %s", err)
+						return err
+					}
+					return nil
+				})
 
-		if s.consoleConfig.ReceiveDecisions != nil && *s.consoleConfig.ReceiveDecisions {
-			log.Infof("Starting PAPI decision receiver")
-			s.papi.pullTomb.Go(func() error {
-				if err := s.papi.Pull(); err != nil {
-					log.Errorf("papi pull: %s", err)
-					return err
-				}
-				return nil
-			})
+				s.papi.syncTomb.Go(func() error {
+					if err := s.papi.SyncDecisions(); err != nil {
+						log.Errorf("capi decisions sync: %s", err)
+						return err
+					}
+					return nil
+				})
+			} else {
+				log.Warningf("Machine is not allowed to synchronize decisions, you can enable it with `cscli console enable decisions_poll`")
+			}
 		}
 
 		s.apic.metricsTomb.Go(func() error {

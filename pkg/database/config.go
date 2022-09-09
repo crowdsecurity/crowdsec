@@ -8,7 +8,7 @@ import (
 
 func (c *Client) GetConfigItem(key string) (*string, error) {
 	result, err := c.Ent.ConfigItem.Query().Where(configitem.NameEQ(key)).First(c.CTX)
-	if err != nil && !ent.IsNotFound(err) {
+	if err != nil && ent.IsNotFound(err) {
 		return nil, nil
 	}
 	if err != nil {
@@ -20,8 +20,8 @@ func (c *Client) GetConfigItem(key string) (*string, error) {
 
 func (c *Client) SetConfigItem(key string, value string) error {
 
-	err := c.Ent.ConfigItem.Update().SetValue(value).Where(configitem.NameEQ(key)).Exec(c.CTX)
-	if err != nil && !ent.IsNotFound(err) { //not found, create
+	nbUpdated, err := c.Ent.ConfigItem.Update().SetValue(value).Where(configitem.NameEQ(key)).Save(c.CTX)
+	if (err != nil && ent.IsNotFound(err)) || nbUpdated == 0 { //not found, create
 		err := c.Ent.ConfigItem.Create().SetName(key).SetValue(value).Exec(c.CTX)
 		if err != nil {
 			return errors.Wrapf(QueryFail, "insert config item: %s", err)
