@@ -108,3 +108,5 @@
       {{ lookup('ansible.builtin.env', 'TEST_PACKAGE_FILE') }}
     package_dir: >-
       {{ lookup('ansible.builtin.env', 'TEST_PACKAGE_DIR') }}
+    binary_package_name: >-
+      crowdsec
