@@ -47,6 +47,7 @@ type Header struct {
 	Message       string    `json:"message"`
 	UUID          string    `json:"uuid"`
 	Source        *Source   `json:"source"`
+	Destination   string    `json:"destination"`
 }
 
 type Source struct {

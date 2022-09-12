@@ -777,7 +777,9 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 		case "decision_type":
 			alerts = alerts.Where(alert.HasDecisionsWith(decision.TypeEQ(value[0])))
 		case "origin":
-			alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginEQ(value[0])))
+			if value[0] != "" {
+				alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginEQ(value[0])))
+			}
 		case "include_capi": //allows to exclude one or more specific origins
 			if value[0] == "false" {
 				alerts = alerts.Where(alert.HasDecisionsWith(decision.Or(decision.OriginEQ("crowdsec"), decision.OriginEQ("cscli"), decision.OriginEQ("console"))))
