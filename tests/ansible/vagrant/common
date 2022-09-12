@@ -20,22 +20,27 @@ Vagrant.configure('2') do |config|
   # same as above, to run the steps separately
 
   # config.vm.provision 'ansible' do |provdep|
-  #   provdep.config_file = '../../ansible-common.cfg'
+  #   provdep.config_file = '../../ansible.cfg'
   #   provdep.playbook = '../../provision_dependencies.yml'
   # end
 
   # config.vm.provision 'ansible' do |provtest|
-  #   provtest.config_file = '../../ansible-common.cfg'
+  #   provtest.config_file = '../../ansible.cfg'
   #   provtest.playbook = '../../provision_test_suite.yml'
   # end
 
   # config.vm.provision 'ansible' do |preptest|
-  #   preptest.config_file = '../../ansible-common.cfg'
+  #   preptest.config_file = '../../ansible.cfg'
+  #   preptest.playbook = '../../install_binary_package.yml'
+  # end
+
+  # config.vm.provision 'ansible' do |preptest|
+  #   preptest.config_file = '../../ansible.cfg'
   #   preptest.playbook = '../../prepare_tests.yml'
   # end
 
   # config.vm.provision 'ansible' do |runtests|
-  #   runtests.config_file = '../../ansible-common.cfg'
+  #   runtests.config_file = '../../ansible.cfg'
   #   runtests.playbook = '../../run_tests.yml'
   # end
 end
