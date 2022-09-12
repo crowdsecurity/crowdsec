@@ -200,6 +200,7 @@ func TestLoadAPIServer(t *testing.T) {
 				DisableAPI: false,
 			},
 			expectedResult: &LocalApiServerCfg{
+				Enable:    types.BoolPtr(true),
 				ListenURI: "http://crowdsec.api",
 				TLS:       nil,
 				DbConfig: &DatabaseCfg{
@@ -243,6 +244,7 @@ func TestLoadAPIServer(t *testing.T) {
 				DisableAPI: false,
 			},
 			expectedResult: &LocalApiServerCfg{
+				Enable:   types.BoolPtr(true),
 				LogDir:   LogDirFullPath,
 				LogMedia: "stdout",
 			},

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -71,6 +72,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				},
 			},
 			expectedResult: &CrowdsecServiceCfg{
+				Enable:               types.BoolPtr(true),
 				AcquisitionDirPath:   "",
 				AcquisitionFilePath:  acquisFullPath,
 				ConfigDir:            configDirFullPath,
@@ -107,6 +109,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				},
 			},
 			expectedResult: &CrowdsecServiceCfg{
+				Enable:               types.BoolPtr(true),
 				AcquisitionDirPath:   acquisDirFullPath,
 				AcquisitionFilePath:  acquisFullPath,
 				ConfigDir:            configDirFullPath,
@@ -139,6 +142,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				Crowdsec: &CrowdsecServiceCfg{},
 			},
 			expectedResult: &CrowdsecServiceCfg{
+				Enable:               types.BoolPtr(true),
 				BucketsRoutinesCount: 1,
 				ParserRoutinesCount:  1,
 				OutputRoutinesCount:  1,
@@ -169,6 +173,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				},
 			},
 			expectedResult: &CrowdsecServiceCfg{
+				Enable:               types.BoolPtr(true),
 				AcquisitionFilePath:  "./tests/acquis_not_exist.yaml",
 				BucketsRoutinesCount: 0,
 				ParserRoutinesCount:  0,
