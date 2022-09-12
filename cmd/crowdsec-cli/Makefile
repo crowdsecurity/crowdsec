@@ -1,27 +1,27 @@
-ifeq ($(OS),Windows_NT)
-SHELL := pwsh.exe
-.SHELLFLAGS := -NoProfile -Command
-EXT=.exe
+ifeq ($(OS), Windows_NT)
+	SHELL := pwsh.exe
+	.SHELLFLAGS := -NoProfile -Command
+	EXT = .exe
 endif
 
-
 # Go parameters
-GOCMD=go
-GOBUILD=$(GOCMD) build
-GOCLEAN=$(GOCMD) clean
-GOTEST=$(GOCMD) test
-GOGET=$(GOCMD) get
-BINARY_NAME=cscli$(EXT)
+GOCMD = go
+GOBUILD = $(GOCMD) build
+GOCLEAN = $(GOCMD) clean
+GOTEST = $(GOCMD) test
+GOGET = $(GOCMD) get
+
+BINARY_NAME = cscli$(EXT)
 # names longer than 15 chars break 'pgrep'
-BINARY_NAME_COVER=$(BINARY_NAME).cover
-PREFIX?="/"
+BINARY_NAME_COVER = $(BINARY_NAME).cover
+PREFIX ?= "/"
 BIN_PREFIX = $(PREFIX)"/usr/local/bin/"
 
 .PHONY: all
 all: clean build
 
 build: clean
-	@$(GOBUILD) $(LD_OPTS) -o $(BINARY_NAME)
+	$(GOBUILD) $(LD_OPTS) -o $(BINARY_NAME)
 
 build-bincover: clean
 	$(GOTEST) . -tags testrunmain -coverpkg=$(go list github.com/crowdsecurity/crowdsec/... | grep -v -e 'pkg/database' -e 'plugins/notifications' -e 'pkg/protobufs' -e 'pkg/cwversions' -e 'pkg/cstest' -e 'pkg/models') -covermode=atomic $(LD_OPTS) -c -o $(BINARY_NAME_COVER)

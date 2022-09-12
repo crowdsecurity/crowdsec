@@ -1,26 +1,26 @@
-ifeq ($(OS),Windows_NT)
-SHELL := pwsh.exe
-.SHELLFLAGS := -NoProfile -Command
-EXT=.exe
+ifeq ($(OS), Windows_NT)
+	SHELL := pwsh.exe
+	.SHELLFLAGS := -NoProfile -Command
+	EXT = .exe
 endif
 
 # Go parameters
-GOCMD=go
-GOBUILD=$(GOCMD) build
-GOCLEAN=$(GOCMD) clean
-GOTEST=$(GOCMD) test
-GOGET=$(GOCMD) get
+GOCMD = go
+GOBUILD = $(GOCMD) build
+GOCLEAN = $(GOCMD) clean
+GOTEST = $(GOCMD) test
+GOGET = $(GOCMD) get
 
-CROWDSEC_BIN=crowdsec$(EXT)
+CROWDSEC_BIN = crowdsec$(EXT)
 # names longer than 15 chars break 'pgrep'
-CROWDSEC_BIN_COVER=$(CROWDSEC_BIN).cover
-PREFIX?="/"
+CROWDSEC_BIN_COVER = $(CROWDSEC_BIN).cover
+PREFIX ?= "/"
 CFG_PREFIX = $(PREFIX)"/etc/crowdsec/config/"
 BIN_PREFIX = $(PREFIX)"/usr/local/bin/"
 DATA_PREFIX = $(PREFIX)"/var/run/crowdsec/"
 PID_DIR = $(PREFIX)"/var/run/"
 
-SYSTEMD_PATH_FILE="/etc/systemd/system/crowdsec.service"
+SYSTEMD_PATH_FILE = "/etc/systemd/system/crowdsec.service"
 
 .PHONY: all
 all: clean test build

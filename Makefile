@@ -1,12 +1,13 @@
-ifeq ($(OS),Windows_NT)
-SHELL := pwsh.exe
-.SHELLFLAGS := -NoProfile -Command
-ROOT= $(shell (Get-Location).Path)
-SYSTEM=windows
-EXT=.exe
+
+ifeq ($(OS), Windows_NT)
+	SHELL := pwsh.exe
+	.SHELLFLAGS := -NoProfile -Command
+	ROOT = $(shell (Get-Location).Path)
+	SYSTEM = windows
+	EXT = .exe
 else
-ROOT?= $(shell pwd)
-SYSTEM?= $(shell uname -s | tr '[A-Z]' '[a-z]')
+	ROOT ?= $(shell pwd)
+	SYSTEM ?= $(shell uname -s | tr '[A-Z]' '[a-z]')
 endif
 
 ifneq ("$(wildcard $(CURDIR)/platform/$(SYSTEM).mk)", "")
@@ -15,7 +16,7 @@ else
 	include $(CURDIR)/platform/linux.mk
 endif
 
-ifneq ($(OS),Windows_NT)
+ifneq ($(OS), Windows_NT)
 	include $(ROOT)/platform/unix_common.mk
 endif
 
@@ -48,13 +49,13 @@ MINIMUM_SUPPORTED_GO_MINOR_VERSION = 17
 GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not supported, please use at least $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION).$(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
 
 LD_OPTS_VARS= \
--X github.com/crowdsecurity/crowdsec/cmd/crowdsec.bincoverTesting=$(BINCOVER_TESTING) \
--X github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli.bincoverTesting=$(BINCOVER_TESTING) \
--X github.com/crowdsecurity/crowdsec/pkg/cwversion.Version=$(BUILD_VERSION) \
--X github.com/crowdsecurity/crowdsec/pkg/cwversion.BuildDate=$(BUILD_TIMESTAMP) \
--X github.com/crowdsecurity/crowdsec/pkg/cwversion.Codename=$(BUILD_CODENAME) \
--X github.com/crowdsecurity/crowdsec/pkg/cwversion.Tag=$(BUILD_TAG) \
--X github.com/crowdsecurity/crowdsec/pkg/cwversion.GoVersion=$(BUILD_GOVERSION) \
+-X 'github.com/crowdsecurity/crowdsec/cmd/crowdsec.bincoverTesting=$(BINCOVER_TESTING)' \
+-X 'github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli.bincoverTesting=$(BINCOVER_TESTING)' \
+-X 'github.com/crowdsecurity/crowdsec/pkg/cwversion.Version=$(BUILD_VERSION)' \
+-X 'github.com/crowdsecurity/crowdsec/pkg/cwversion.BuildDate=$(BUILD_TIMESTAMP)' \
+-X 'github.com/crowdsecurity/crowdsec/pkg/cwversion.Codename=$(BUILD_CODENAME)' \
+-X 'github.com/crowdsecurity/crowdsec/pkg/cwversion.Tag=$(BUILD_TAG)' \
+-X 'github.com/crowdsecurity/crowdsec/pkg/cwversion.GoVersion=$(BUILD_GOVERSION)' \
 -X 'github.com/crowdsecurity/crowdsec/pkg/csconfig.defaultConfigDir=$(DEFAULT_CONFIGDIR)' \
 -X 'github.com/crowdsecurity/crowdsec/pkg/csconfig.defaultDataDir=$(DEFAULT_DATADIR)'
 
@@ -64,8 +65,8 @@ else
 	export LD_OPTS=-ldflags "-s -w $(LD_OPTS_VARS)"
 endif
 
-GOCMD=go
-GOTEST=$(GOCMD) test
+GOCMD = go
+GOTEST = $(GOCMD) test
 
 RELDIR = crowdsec-$(BUILD_VERSION)
 
@@ -78,19 +79,20 @@ all: clean test build
 .PHONY: plugins
 plugins: http-plugin slack-plugin splunk-plugin email-plugin dummy-plugin
 
+.PHONY: goversion
 goversion:
-ifneq ($(OS),Windows_NT)
+ifneq ($(OS), Windows_NT)
 	@if [ $(GO_MAJOR_VERSION) -gt $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) ]; then \
-        exit 0 ;\
-    elif [ $(GO_MAJOR_VERSION) -lt $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) ]; then \
-        echo '$(GO_VERSION_VALIDATION_ERR_MSG)';\
-        exit 1; \
-    elif [ $(GO_MINOR_VERSION) -lt $(MINIMUM_SUPPORTED_GO_MINOR_VERSION) ] ; then \
-        echo '$(GO_VERSION_VALIDATION_ERR_MSG)';\
-        exit 1; \
-    fi
+		exit 0 ;\
+	elif [ $(GO_MAJOR_VERSION) -lt $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) ]; then \
+		echo '$(GO_VERSION_VALIDATION_ERR_MSG)';\
+		exit 1; \
+	elif [ $(GO_MINOR_VERSION) -lt $(MINIMUM_SUPPORTED_GO_MINOR_VERSION) ] ; then \
+		echo '$(GO_VERSION_VALIDATION_ERR_MSG)';\
+		exit 1; \
+	fi
 else
-#This needs Set-ExecutionPolicy -Scope CurrentUser Unrestricted
+	# This needs Set-ExecutionPolicy -Scope CurrentUser Unrestricted
 	@$(ROOT)/scripts/check_go_version.ps1 $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) $(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
 endif
 
@@ -191,7 +193,7 @@ package: package-common
 
 .PHONY: check_release
 check_release:
-ifneq ($(OS),Windows_NT)
+ifneq ($(OS), Windows_NT)
 	@if [ -d $(RELDIR) ]; then echo "$(RELDIR) already exists, abort" ;  exit 1 ; fi
 else
 	@if (Test-Path -Path $(RELDIR)) { echo "$(RELDIR) already exists, abort" ;  exit 1 ; }
