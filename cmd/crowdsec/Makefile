@@ -31,14 +31,11 @@ build: clean
 build-bincover: clean
 	$(GOTEST) . -tags testrunmain -coverpkg=$(go list github.com/crowdsecurity/crowdsec/... | grep -v -e 'pkg/database' -e 'plugins/notifications' -e 'pkg/protobufs' -e 'pkg/cwversions' -e 'pkg/cstest' -e 'pkg/models') -covermode=atomic $(LD_OPTS) -c -o $(CROWDSEC_BIN_COVER)
 
-static: clean
-	$(GOBUILD) $(LD_OPTS_STATIC) -o $(CROWDSEC_BIN) -a -tags netgo
-
 test:
 	$(GOTEST) $(LD_OPTS) -v ./...
 
 clean:
-	@$(RM) $(CROWDSEC_BIN) $(CROWDSEC_BIN).test $(CROWDSEC_BIN_COVER)  $(WIN_IGNORE_ERR)
+	@$(RM) $(CROWDSEC_BIN) $(CROWDSEC_BIN).test $(CROWDSEC_BIN_COVER) $(WIN_IGNORE_ERR)
 
 .PHONY: install
 install: install-conf install-bin
