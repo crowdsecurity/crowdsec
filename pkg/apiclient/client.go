@@ -38,6 +38,10 @@ type ApiClient struct {
 	HeartBeat *HeartBeatService
 }
 
+func (a *ApiClient) GetClient() *http.Client {
+	return a.client
+}
+
 type service struct {
 	client *ApiClient
 }

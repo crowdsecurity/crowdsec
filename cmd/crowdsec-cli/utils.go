@@ -2,16 +2,24 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"math"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/go-openapi/strfmt"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -775,4 +783,48 @@ func formatNumber(num int) string {
 
 	res := math.Round(float64(num)/float64(goodUnit.value)*100) / 100
 	return fmt.Sprintf("%.2f%s", res, goodUnit.symbol)
+}
+
+func CapiAuth(capiConfig *csconfig.OnlineApiClientCfg) (*apiclient.ApiClient, error) {
+	var err error
+	var client *apiclient.ApiClient
+
+	password := strfmt.Password(csConfig.API.Server.OnlineClient.Credentials.Password)
+	apiurl, err := url.Parse(csConfig.API.Server.OnlineClient.Credentials.URL)
+	if err != nil {
+		return client, fmt.Errorf("parsing api url ('%s'): %s", csConfig.API.Server.OnlineClient.Credentials.URL, err)
+	}
+
+	if err := csConfig.LoadHub(); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
+		log.Info("Run 'sudo cscli hub update' to get the hub index")
+		return client, fmt.Errorf("Failed to load hub index : %s", err)
+	}
+	scenarios, err := cwhub.GetInstalledScenariosAsString()
+	if err != nil {
+		return client, fmt.Errorf("failed to get scenarios : %s", err)
+	}
+	if len(scenarios) == 0 {
+		return client, fmt.Errorf("no scenarios installed, abort")
+	}
+
+	client, err = apiclient.NewDefaultClient(apiurl, CAPIURLPrefix, fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()), nil)
+	if err != nil {
+		return client, fmt.Errorf("init default client: %s", err)
+	}
+	t := models.WatcherAuthRequest{
+		MachineID: &csConfig.API.Server.OnlineClient.Credentials.Login,
+		Password:  &password,
+		Scenarios: scenarios,
+	}
+
+	_, err = client.Auth.AuthenticateWatcher(context.Background(), t)
+	if err != nil {
+		return client, fmt.Errorf("Failed to authenticate to Central API (CAPI) : %s", err)
+	}
+
+	return client, nil
 }

@@ -78,7 +78,7 @@ func (t *APIKeyTransport) transport() http.RoundTripper {
 type JWTTransport struct {
 	MachineID     *string
 	Password      *strfmt.Password
-	token         string
+	Token         string
 	Expiration    time.Time
 	Scenarios     []string
 	URL           *url.URL
@@ -161,15 +161,15 @@ func (t *JWTTransport) refreshJwtToken() error {
 	if err := t.Expiration.UnmarshalText([]byte(response.Expire)); err != nil {
 		return errors.Wrap(err, "unable to parse jwt expiration")
 	}
-	t.token = response.Token
+	t.Token = response.Token
 
-	log.Debugf("token %s will expire on %s", t.token, t.Expiration.String())
+	log.Debugf("token %s will expire on %s", t.Token, t.Expiration.String())
 	return nil
 }
 
 // RoundTrip implements the RoundTripper interface.
 func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	if t.token == "" || t.Expiration.Add(-time.Minute).Before(time.Now().UTC()) {
+	if t.Token == "" || t.Expiration.Add(-time.Minute).Before(time.Now().UTC()) {
 		if err := t.refreshJwtToken(); err != nil {
 			return nil, err
 		}
@@ -179,7 +179,7 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// that we don't modify the Request we were given. This is required by the
 	// specification of http.RoundTripper.
 	req = cloneRequest(req)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", t.token))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", t.Token))
 	log.Debugf("req-jwt: %s %s", req.Method, req.URL.String())
 	if log.GetLevel() >= log.TraceLevel {
 		dump, _ := httputil.DumpRequest(req, true)
@@ -196,7 +196,7 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 	if err != nil || resp.StatusCode == 401 {
 		/*we had an error (network error for example, or 401 because token is refused), reset the token ?*/
-		t.token = ""
+		t.Token = ""
 		return resp, errors.Wrapf(err, "performing jwt auth")
 	}
 	log.Debugf("resp-jwt: %d", resp.StatusCode)

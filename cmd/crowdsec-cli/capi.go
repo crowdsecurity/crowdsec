@@ -1,16 +1,13 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"net/url"
 	"os"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
-	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -126,42 +123,12 @@ func NewCapiCmd() *cobra.Command {
 				log.Fatalf("no credentials for Central API (CAPI) in '%s'", csConfig.API.Server.OnlineClient.CredentialsFilePath)
 			}
 
-			password := strfmt.Password(csConfig.API.Server.OnlineClient.Credentials.Password)
-			apiurl, err := url.Parse(csConfig.API.Server.OnlineClient.Credentials.URL)
-			if err != nil {
-				log.Fatalf("parsing api url ('%s'): %s", csConfig.API.Server.OnlineClient.Credentials.URL, err)
-			}
-
-			if err := csConfig.LoadHub(); err != nil {
-				log.Fatal(err)
-			}
-
-			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-				log.Info("Run 'sudo cscli hub update' to get the hub index")
-				log.Fatalf("Failed to load hub index : %s", err)
-			}
-			scenarios, err := cwhub.GetInstalledScenariosAsString()
-			if err != nil {
-				log.Fatalf("failed to get scenarios : %s", err)
-			}
-			if len(scenarios) == 0 {
-				log.Fatalf("no scenarios installed, abort")
-			}
-
-			Client, err = apiclient.NewDefaultClient(apiurl, CAPIURLPrefix, fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()), nil)
-			if err != nil {
-				log.Fatalf("init default client: %s", err)
-			}
-			t := models.WatcherAuthRequest{
-				MachineID: &csConfig.API.Server.OnlineClient.Credentials.Login,
-				Password:  &password,
-				Scenarios: scenarios,
-			}
 			log.Infof("Loaded credentials from %s", csConfig.API.Server.OnlineClient.CredentialsFilePath)
-			log.Infof("Trying to authenticate with username %s on %s", csConfig.API.Server.OnlineClient.Credentials.Login, apiurl)
-			_, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
+			log.Infof("Trying to authenticate with username %s on %s", csConfig.API.Server.OnlineClient.Credentials.Login, csConfig.API.Server.OnlineClient.Credentials.URL)
+
+			_, err = CapiAuth(csConfig.API.Server.OnlineClient)
 			if err != nil {
-				log.Fatalf("Failed to authenticate to Central API (CAPI) : %s", err)
+				log.Fatalf("unable to connect to CrowdSec Central API: %s", err)
 			}
 			log.Infof("You can successfully interact with Central API (CAPI)")
 		},

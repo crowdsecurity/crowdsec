@@ -17,10 +17,26 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/enescakir/emoji"
 	"github.com/go-openapi/strfmt"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
+
+func isEnrolled(client *apiclient.ApiClient) bool {
+	apiHTTPClient := client.GetClient()
+	jwtTransport := apiHTTPClient.Transport.(*apiclient.JWTTransport)
+	tokenStr := jwtTransport.Token
+
+	token, _ := jwt.Parse(tokenStr, nil)
+	if token == nil {
+		return false
+	}
+	claims := token.Claims.(jwt.MapClaims)
+	_, ok := claims["organization_id"]
+
+	return ok
+}
 
 func NewConsoleCmd() *cobra.Command {
 	var cmdConsole = &cobra.Command{
@@ -192,6 +208,32 @@ Disable given information push to the central API.`,
 		Example:           "status tainted",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
+			var err error
+			if csConfig.API.Server == nil {
+				log.Fatalln("There is no configuration on 'api.server:'")
+			}
+			if csConfig.API.Server.OnlineClient == nil {
+				log.Fatalf("Please provide credentials for the Central API (CAPI) in '%s'", csConfig.API.Server.OnlineClient.CredentialsFilePath)
+			}
+
+			if csConfig.API.Server.OnlineClient.Credentials == nil {
+				log.Fatalf("no credentials for Central API (CAPI) in '%s'", csConfig.API.Server.OnlineClient.CredentialsFilePath)
+			}
+
+			log.Debugf("Loaded credentials from %s", csConfig.API.Server.OnlineClient.CredentialsFilePath)
+			log.Debugf("Trying to authenticate with username %s on %s", csConfig.API.Server.OnlineClient.Credentials.Login, csConfig.API.Server.OnlineClient.Credentials.URL)
+
+			client, err := CapiAuth(csConfig.API.Server.OnlineClient)
+			if err != nil {
+				log.Fatalf("unable to connect to CrowdSec Central API: %s", err)
+			}
+
+			if isEnrolled(client) {
+				fmt.Printf("Machine '%s' is enrolled in the console", csConfig.API.Server.OnlineClient.Credentials.Login)
+			} else {
+				fmt.Printf("Machine '%s' is not enrolled in the console", csConfig.API.Server.OnlineClient.Credentials.Login)
+			}
+
 			switch csConfig.Cscli.Output {
 			case "human":
 				table := tablewriter.NewWriter(os.Stdout)
