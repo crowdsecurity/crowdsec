@@ -22,6 +22,7 @@ type DatabaseCfg struct {
 	Flush        *FlushDBCfg `yaml:"flush"`
 	LogLevel     *log.Level  `yaml:"log_level"`
 	MaxOpenConns *int        `yaml:"max_open_conns,omitempty"`
+	UseWal       *bool       `yaml:"use_wal,omitempty"`
 }
 
 type AuthGCCfg struct {
