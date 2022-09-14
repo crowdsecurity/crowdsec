@@ -49,4 +49,5 @@ override_dh_auto_install:
 
 override_dh_fixperms:
 	dh_fixperms
+	chmod 600 debian/crowdsec/etc/crowdsec/notifications/*
 	chmod 600 debian/crowdsec/etc/crowdsec/config.yaml
