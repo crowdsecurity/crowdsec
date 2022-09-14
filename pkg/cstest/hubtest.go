@@ -2,7 +2,6 @@ package cstest
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -58,7 +57,7 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest,
 	}
 
 	hubIndexFile := filepath.Join(hubPath, ".index.json")
-	bidx, err := ioutil.ReadFile(hubIndexFile)
+	bidx, err := os.ReadFile(hubIndexFile)
 	if err != nil {
 		return HubTest{}, fmt.Errorf("unable to read index file: %s", err)
 	}
@@ -98,7 +97,7 @@ func (h *HubTest) LoadTestItem(name string) (*HubTestItem, error) {
 }
 
 func (h *HubTest) LoadAllTests() error {
-	testsFolder, err := ioutil.ReadDir(h.HubTestPath)
+	testsFolder, err := os.ReadDir(h.HubTestPath)
 	if err != nil {
 		return err
 	}

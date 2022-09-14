@@ -51,19 +51,14 @@ setup() {
 
 dump() {
     backup_file="${1?Missing file to backup database to}"
-    COLUMN_STATISTICS=
-    if mysqldump --column-statistics 2>&1 | grep -q -v 'unknown option'; then
-        COLUMN_STATISTICS='--column-statistics=0'
-    fi
 
-    silence_password_warning \
-        mysqldump \
-        "${COLUMN_STATISTICS}" \
-        "--host=${MYSQL_HOST}" \
-        "--port=${MYSQL_PORT}" \
-        "--user=${MYSQL_USER}" \
-        "--password=${MYSQL_PASSWORD}" \
-        --databases crowdsec_test > "${backup_file}"
+    args=(mysqldump)
+    if mysqldump --column-statistics 2>&1 | grep -q -v 'unknown option'; then
+        args+=("--column-statistics=0")
+    fi
+    args+=("--host=${MYSQL_HOST}" "--port=${MYSQL_PORT}" "--user=${MYSQL_USER}" "--password=${MYSQL_PASSWORD}" --databases crowdsec_test)
+
+    silence_password_warning "${args[@]}" > "${backup_file}"
 }
 
 restore() {

@@ -5,12 +5,14 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
 /*Configurations needed for crowdsec to load parser/scenarios/... + acquisition*/
 type CrowdsecServiceCfg struct {
+	Enable              *bool  `yaml:"enable"`
 	AcquisitionFilePath string `yaml:"acquisition_path,omitempty"`
 	AcquisitionDirPath  string `yaml:"acquisition_dir,omitempty"`
 
@@ -43,6 +45,18 @@ func (c *Config) LoadCrowdsec() error {
 		c.DisableAgent = true
 		return nil
 	}
+
+	if c.Crowdsec.Enable == nil {
+		// if the option is not present, it is enabled by default
+		c.Crowdsec.Enable = types.BoolPtr(true)
+	}
+
+	if !*c.Crowdsec.Enable {
+		log.Warning("crowdsec agent is disabled")
+		c.DisableAgent = true
+		return nil
+	}
+
 	if c.Crowdsec.AcquisitionFilePath != "" {
 		log.Debugf("non-empty acquisition file path %s", c.Crowdsec.AcquisitionFilePath)
 		if _, err := os.Stat(c.Crowdsec.AcquisitionFilePath); err != nil {

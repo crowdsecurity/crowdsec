@@ -32,6 +32,11 @@ func TestBadConfiguration(t *testing.T) {
 			config:      `filename: "[asd-.log"`,
 			expectedErr: "Glob failure: syntax error in pattern",
 		},
+		{
+			config: `filenames: ["asd.log"]
+exclude_regexps: ["as[a-$d"]`,
+			expectedErr: "Could not compile regexp as",
+		},
 	}
 
 	subLogger := log.WithFields(log.Fields{
@@ -439,4 +444,26 @@ force_inotify: true`, testPattern),
 
 		tomb.Kill(nil)
 	}
+}
+
+func TestExclusion(t *testing.T) {
+
+	config := `filenames: ["test_files/*.log*"]
+exclude_regexps: ["\\.gz$"]`
+	logger, hook := test.NewNullLogger()
+	//logger.SetLevel(ts.logLevel)
+	subLogger := logger.WithFields(log.Fields{
+		"type": "file",
+	})
+	f := FileSource{}
+	err := f.Configure([]byte(config), subLogger)
+	if err != nil {
+		subLogger.Fatalf("unexpected error: %s", err)
+	}
+	expectedLogOutput := "Skipping file test_files/test.log.gz as it matches exclude pattern"
+	if hook.LastEntry() == nil {
+		t.Fatalf("expected output %s, but got nothing", expectedLogOutput)
+	}
+	assert.Contains(t, hook.LastEntry().Message, expectedLogOutput)
+	hook.Reset()
 }

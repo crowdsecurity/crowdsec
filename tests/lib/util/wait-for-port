@@ -25,9 +25,10 @@ fi
 
 port_number=$1
 
+# 4 seconds may seem long, but the tests must work on embedded, slow arm boxes too
 for _ in $(seq 40); do
     nc -z localhost "${port_number}" >/dev/null 2>&1 && exit 0
-    sleep .03
+    sleep .1
 done
 
 # send to &3 if open

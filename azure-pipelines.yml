@@ -2,6 +2,8 @@ trigger:
   tags:
     include:
       - "v*"
+    exclude:
+      - "v*freebsd"
   branches:
     exclude:
       - "*"
@@ -23,9 +25,9 @@ stages:
               custom: 'tool'
               arguments: 'install --global SignClient --version 1.3.155'
           - task: GoTool@0
-            displayName: "Install Go 1.17"
+            displayName: "Install Go 1.19"
             inputs:
-                version: '1.17.9'
+                version: '1.19'
 
           - pwsh: |
               choco install -y jq

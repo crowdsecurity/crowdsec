@@ -144,10 +144,6 @@ LOOP:
 				buckets.Bucket_map.Delete(event.Overflow.Mapkey)
 				break
 			}
-			if event.Overflow.Reprocess {
-				log.Debugf("Overflow being reprocessed.")
-				input <- event
-			}
 			/* process post overflow parser nodes */
 			event, err := parser.Parse(postOverflowCTX, event, postOverflowNodes)
 			if err != nil {
@@ -157,6 +153,10 @@ LOOP:
 			if event.Overflow.Whitelisted {
 				log.Printf("[%s] is whitelisted, skip.", *event.Overflow.Alert.Message)
 				continue
+			}
+			if event.Overflow.Reprocess {
+				log.Debugf("Overflow being reprocessed.")
+				input <- event
 			}
 			if dumpStates {
 				continue

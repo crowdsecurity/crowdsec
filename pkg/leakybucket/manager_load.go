@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -355,7 +354,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 
 func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFactory) error {
 	var state map[string]Leaky
-	body, err := ioutil.ReadFile(file)
+	body, err := os.ReadFile(file)
 	if err != nil {
 		return fmt.Errorf("can't state file %s : %s", file, err)
 	}

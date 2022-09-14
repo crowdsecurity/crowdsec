@@ -304,10 +304,10 @@ func Serve(cConfig *csconfig.Config, apiReady chan bool, agentReady chan bool) e
 		select {
 		case <-apiTomb.Dead():
 			log.Infof("api shutdown")
-			os.Exit(0)
+			return nil
 		case <-crowdsecTomb.Dead():
 			log.Infof("crowdsec shutdown")
-			os.Exit(0)
+			return nil
 		}
 	}
 }

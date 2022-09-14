@@ -1,0 +1,18 @@
+# vim: set ft=yaml.ansible:
+---
+
+roles:
+  - src: geerlingguy.mysql
+  - src: https://github.com/crowdsecurity/ansible-role-postgresql
+    version: crowdsec
+    name: geerlingguy.postgresql
+
+collections:
+  - name: https://github.com/crowdsecurity/ansible-collection-crowdsecurity.testing.git
+    type: git
+    version: main
+
+#  - name: crowdsecurity.testing
+#    source: ../../../crowdsecurity.testing
+#    type: dir
+

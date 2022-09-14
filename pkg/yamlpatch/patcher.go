@@ -60,7 +60,7 @@ func (p *Patcher) MergedPatchContent() ([]byte, error) {
 		return nil, err
 	}
 	if err == nil {
-		log.Debugf("Patching yaml: '%s' with '%s'", p.BaseFilePath, p.PatchFilePath)
+		log.Infof("Patching yaml: '%s' with '%s'", p.BaseFilePath, p.PatchFilePath)
 	}
 
 	var patched *bytes.Buffer
@@ -138,6 +138,7 @@ func (p *Patcher) PrependedPatchContent() ([]byte, error) {
 		if err = decodeDocuments(patchFile, &result, true); err != nil {
 			return nil, err
 		}
+		log.Infof("Prepending yaml: '%s' with '%s'", p.BaseFilePath, p.PatchFilePath)
 	}
 
 	baseFile, err = os.Open(p.BaseFilePath)

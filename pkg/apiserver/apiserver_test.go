@@ -260,7 +260,7 @@ func CreateTestMachine(router *gin.Engine) (string, error) {
 	body := string(b)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/watchers", strings.NewReader(body))
+	req, _ := http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
 	req.Header.Set("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 	return body, nil
@@ -309,7 +309,7 @@ func TestUnknownPath(t *testing.T) {
 	}
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/test", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -369,7 +369,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	}
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/test42", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/test42", nil)
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
 	assert.Equal(t, 404, w.Code)
@@ -426,7 +426,7 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	}
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/test42", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/test42", nil)
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
 	assert.Equal(t, 404, w.Code)

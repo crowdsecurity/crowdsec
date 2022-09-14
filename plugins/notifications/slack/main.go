@@ -57,6 +57,7 @@ func (n *Notify) Configure(ctx context.Context, config *protobufs.Config) (*prot
 		return nil, err
 	}
 	n.ConfigByName[d.Name] = d
+	logger.Debug(fmt.Sprintf("Slack plugin '%s' use URL '%s'", d.Name, d.Webhook))
 	return &protobufs.Empty{}, nil
 }
 

@@ -2,7 +2,6 @@ package csconfig
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -37,7 +36,7 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 		return nil
 	}
 
-	yamlFile, err := ioutil.ReadFile(c.ConsoleConfigPath)
+	yamlFile, err := os.ReadFile(c.ConsoleConfigPath)
 	if err != nil {
 		return fmt.Errorf("reading console config file '%s': %s", c.ConsoleConfigPath, err)
 	}

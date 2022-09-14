@@ -20,13 +20,7 @@ teardown() {
     ./instance-crowdsec stop
 }
 
-declare stderr
-
 #----------
-
-config_disable_agent() {
-    config_set 'del(.crowdsec_service)'
-}
 
 @test "with agent: test without -no-cs flag" {
     run -124 timeout 2s "${CROWDSEC}"
@@ -41,17 +35,7 @@ config_disable_agent() {
     config_disable_agent
     run -124 --separate-stderr timeout 2s "${CROWDSEC}"
 
-    run -0 echo "${stderr}"
-    assert_output --partial "crowdsec agent is disabled"
-}
-
-@test "no agent: capi status should be ok" {
-    config_disable_agent
-    ./instance-crowdsec start
-    run -0 --separate-stderr cscli capi status
-
-    run -0 echo "${stderr}"
-    assert_output --partial "You can successfully interact with Central API (CAPI)"
+    assert_stderr --partial "crowdsec agent is disabled"
 }
 
 @test "no agent: cscli config show" {
@@ -71,9 +55,8 @@ config_disable_agent() {
     assert_output --partial "Starting configuration backup"
     run -1 --separate-stderr cscli config backup "${backupdir}"
 
-    run -0 echo "${stderr}"
-    assert_output --partial "Failed to backup configurations"
-    assert_output --partial "file exists"
+    assert_stderr --partial "Failed to backup configurations"
+    assert_stderr --partial "file exists"
     rm -rf -- "${backupdir:?}"
 }
 
@@ -81,9 +64,7 @@ config_disable_agent() {
     config_disable_agent
     ./instance-crowdsec start
     run -0 --separate-stderr cscli lapi status
-
-    run -0 echo "${stderr}"
-    assert_output --partial "You can successfully interact with Local API (LAPI)"
+    assert_stderr --partial "You can successfully interact with Local API (LAPI)"
 }
 
 @test "cscli metrics" {

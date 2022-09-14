@@ -20,7 +20,7 @@ import (
 )
 
 /*
-Due to the complexity of file permission modification with go on windows, we only test the basic behaviour the broker,
+Due to the complexity of file permission modification with go on windows, we only test the basic behavior the broker,
 not if it will actually reject plugins with invalid permissions
 */
 

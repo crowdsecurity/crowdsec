@@ -3,13 +3,8 @@
 
 set -u
 
-config_disable_agent() {
-    config_set 'del(.crowdsec_service)'
-}
-
 setup_file() {
     load "../lib/setup_file.sh"
-    [[ "${PACKAGE_TESTING}" == "true" ]] && return
     ./instance-data load
 
     tmpdir="${BATS_FILE_TMPDIR}"
@@ -37,6 +32,8 @@ setup_file() {
     echo "ibase=16; ${serial}" | bc >"${tmpdir}/serials.txt"
     cfssl gencrl "${tmpdir}/serials.txt" "${tmpdir}/ca.pem" "${tmpdir}/ca-key.pem" | base64 -d | openssl crl -inform DER -out "${tmpdir}/crl.pem"
 
+    cat "${tmpdir}/ca.pem" "${tmpdir}/inter.pem" > "${tmpdir}/bundle.pem"
+
     config_set '
         .api.server.tls.cert_file=strenv(tmpdir) + "/server.pem" |
         .api.server.tls.key_file=strenv(tmpdir) + "/server-key.pem" |
@@ -53,7 +50,6 @@ teardown_file() {
 }
 
 setup() {
-    [[ "${PACKAGE_TESTING}" == "true" ]] && skip
     load "../lib/setup.sh"
     ./instance-crowdsec start
 }
@@ -70,7 +66,7 @@ teardown() {
 }
 
 @test "simulate one bouncer request with a valid cert" {
-    run -0 curl -s --cert "${tmpdir}/bouncer.pem" --key "${tmpdir}/bouncer-key.pem" --cacert "${tmpdir}/inter.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
+    run -0 curl -s --cert "${tmpdir}/bouncer.pem" --key "${tmpdir}/bouncer-key.pem" --cacert "${tmpdir}/bundle.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
     assert_output "null"
     run -0 cscli bouncers list -o json
     run -0 jq '. | length' <(output)
@@ -88,13 +84,13 @@ teardown() {
 }
 
 @test "simulate one bouncer request with an invalid OU" {
-    run curl -s --cert "${tmpdir}/bouncer_bad_ou.pem" --key "${tmpdir}/bouncer_bad_ou-key.pem" --cacert "${tmpdir}/inter.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
+    run curl -s --cert "${tmpdir}/bouncer_bad_ou.pem" --key "${tmpdir}/bouncer_bad_ou-key.pem" --cacert "${tmpdir}/bundle.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
     run -0 cscli bouncers list -o json
     assert_output "[]"
 }
 
 @test "simulate one bouncer request with a revoked certificate" {
-    run -0 curl -i -s --cert "${tmpdir}/bouncer_revoked.pem" --key "${tmpdir}/bouncer_revoked-key.pem" --cacert "${tmpdir}/inter.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
+    run -0 curl -i -s --cert "${tmpdir}/bouncer_revoked.pem" --key "${tmpdir}/bouncer_revoked-key.pem" --cacert "${tmpdir}/bundle.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
     assert_output --partial "access forbidden"
     run -0 cscli bouncers list -o json
     assert_output "[]"

@@ -105,9 +105,8 @@ func TestDecisionsStream(t *testing.T) {
 	mux.HandleFunc("/decisions/stream", func(w http.ResponseWriter, r *http.Request) {
 
 		assert.Equal(t, r.Header.Get("X-Api-Key"), "ixu")
-		testMethod(t, r, "GET")
-		if r.Method == "GET" {
-
+		testMethod(t, r, http.MethodGet)
+		if r.Method == http.MethodGet {
 			if r.URL.RawQuery == "startup=true" {
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(`{"deleted":null,"new":[{"duration":"3h59m55.756182786s","id":4,"origin":"cscli","scenario":"manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'","scope":"Ip","type":"ban","value":"1.2.3.4"}]}`))
@@ -119,8 +118,8 @@ func TestDecisionsStream(t *testing.T) {
 	})
 	mux.HandleFunc("/decisions", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, r.Header.Get("X-Api-Key"), "ixu")
-		testMethod(t, r, "DELETE")
-		if r.Method == "DELETE" {
+		testMethod(t, r, http.MethodDelete)
+		if r.Method == http.MethodDelete {
 			w.WriteHeader(http.StatusOK)
 		}
 	})

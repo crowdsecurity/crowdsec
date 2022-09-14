@@ -3,7 +3,7 @@ package cstest
 import (
 	"bufio"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"regexp"
 	"sort"
@@ -237,7 +237,7 @@ func LoadBucketPourDump(filepath string) (*BucketPourInfo, error) {
 	}
 	defer dumpData.Close()
 
-	results, err := ioutil.ReadAll(dumpData)
+	results, err := io.ReadAll(dumpData)
 	if err != nil {
 		return nil, err
 	}
@@ -258,7 +258,7 @@ func LoadScenarioDump(filepath string) (*BucketResults, error) {
 	}
 	defer dumpData.Close()
 
-	results, err := ioutil.ReadAll(dumpData)
+	results, err := io.ReadAll(dumpData)
 	if err != nil {
 		return nil, err
 	}

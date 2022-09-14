@@ -1,0 +1,41 @@
+# vim: set ft=yaml.ansible:
+---
+
+- name: "Install required packages"
+  hosts: all
+  vars_files:
+    - vars/go.yml
+  roles:
+    - crowdsecurity.testing.apt_update
+    - crowdsecurity.testing.go
+    - crowdsecurity.testing.machine_id
+    - crowdsecurity.testing.epel
+    - crowdsecurity.testing.git
+    - crowdsecurity.testing.gcc
+    - crowdsecurity.testing.gnu_make
+    - crowdsecurity.testing.bats_requirements
+
+- name: "Install Postgres"
+  hosts: all
+  become: true
+  vars_files:
+    - vars/postgres.yml
+  tasks:
+    - ansible.builtin.include_role:
+        name: geerlingguy.postgresql
+      ## enable this for debugging
+      # vars:
+      #  postgres_users_no_log: false
+      when:
+        - lookup('ansible.builtin.env', 'DB_BACKEND') in ['pgx', 'postgres']
+
+- name: "Install MySQL"
+  hosts: all
+  become: true
+  vars_files:
+    - vars/mysql.yml
+  tasks:
+    - ansible.builtin.include_role:
+        name: geerlingguy.mysql
+      when:
+        - lookup('ansible.builtin.env', 'DB_BACKEND') == 'mysql'

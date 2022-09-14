@@ -39,7 +39,14 @@ export DATA_DIR
 CONFIG_DIR="${LOCAL_DIR}/${REL_CONFIG_DIR}"
 export CONFIG_DIR
 
+if [[ $(uname) == "OpenBSD" ]]; then
+    TAR=gtar
+else
+    TAR=tar
+fi
+
 remove_init_data() {
+    ./assert-crowdsec-not-running
     rm -rf -- "${LOCAL_DIR:?}/${REL_CONFIG_DIR}"/* "${LOCAL_DIR:?}/${REL_DATA_DIR:?}"/*
 }
 
@@ -81,48 +88,35 @@ config_generate() {
     ' ../config/config.yaml >"${CONFIG_DIR}/config.yaml"
 }
 
-make_init_data() {
-    remove_init_data
 
+make_init_data() {
+    ./assert-crowdsec-not-running
+
+    remove_init_data
     mkdir -p "${DATA_DIR}"
     mkdir -p "${CONFIG_DIR}/notifications"
     mkdir -p "${CONFIG_DIR}/hub"
     mkdir -p "${CONFIG_DIR}/patterns"
-    cp -ax "../config/patterns" "${CONFIG_DIR}/"
+    cp -a "../config/patterns" "${CONFIG_DIR}/"
     config_generate
     # XXX errors from instance-db should be reported...
     ./instance-db config-yaml
     ./instance-db setup
 
     "${CSCLI}" machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto
-    "${CSCLI}" capi register --schmilblick githubciXXXXXXXXXXXXXXXXXXXXXXXX
     "${CSCLI}" hub update
     "${CSCLI}" collections install crowdsecurity/linux
-
-    "${TEST_DIR}/instance-crowdsec" start
-    [[ "${DB_BACKEND}" =~ ^postgres|pgx$ ]] && sleep 4
-    "${CSCLI}" lapi status
-
-    # a restart is required to receive community pull
-    "${TEST_DIR}/instance-crowdsec" stop
-    sleep 2
-    "${TEST_DIR}/instance-crowdsec" start
-
-    loop_max=15
-    for ((i = 0; i <= loop_max; i++)); do
-        sleep 2
-        [[ $("${CSCLI}" alerts list -o json) != "null" ]] && break
-    done
-    [[ $("${CSCLI}" alerts list -o json) != "null" ]] || die "could not get community data"
-
-    "${TEST_DIR}/instance-crowdsec" stop
 
     mkdir -p "${LOCAL_INIT_DIR}"
 
     ./instance-db dump "${LOCAL_INIT_DIR}/database"
+
     echo "${DB_BACKEND}" > "${LOCAL_INIT_DIR}/.backend"
 
-    tar -C "${LOCAL_DIR}" --create \
+    # disable CAPI by default
+    yq e 'del(.api.server.online_client)' -i "${CONFIG_DIR}/config.yaml"
+
+    "${TAR}" -C "${LOCAL_DIR}" --create \
         --exclude "${REL_DATA_DIR}"/crowdsec.db \
         --file "${LOCAL_INIT_DIR}/init-config-data.tar" "${REL_CONFIG_DIR}" "${REL_DATA_DIR}"
 
@@ -130,6 +124,8 @@ make_init_data() {
 }
 
 load_init_data() {
+    ./assert-crowdsec-not-running
+
     if [[ ! -f "${LOCAL_INIT_DIR}/init-config-data.tar" ]]; then
         die "Initial data not found; did you run '${script_name} make' ?"
     fi
@@ -141,7 +137,8 @@ load_init_data() {
 
     remove_init_data
 
-    tar -C "${LOCAL_DIR}" --extract --file "${LOCAL_INIT_DIR}/init-config-data.tar"
+    "${TAR}" -C "${LOCAL_DIR}" --extract --file "${LOCAL_INIT_DIR}/init-config-data.tar"
+
     ./instance-db restore "${LOCAL_INIT_DIR}/database"
 }
 
@@ -152,15 +149,12 @@ load_init_data() {
 
 case "$1" in
     make)
-        ./assert-crowdsec-not-running
         make_init_data
         ;;
     load)
-        ./assert-crowdsec-not-running
         load_init_data
         ;;
     clean)
-        ./assert-crowdsec-not-running
         remove_init_data
         ;;
     *)

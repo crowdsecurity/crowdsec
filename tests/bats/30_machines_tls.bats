@@ -3,13 +3,8 @@
 
 set -u
 
-config_disable_agent() {
-    config_set 'del(.crowdsec_service)'
-}
-
 setup_file() {
     load "../lib/setup_file.sh"
-    [[ "${PACKAGE_TESTING}" == "true" ]] && return
     ./instance-data load
 
     CONFIG_DIR=$(dirname "${CONFIG_YAML}")
@@ -40,6 +35,8 @@ setup_file() {
     echo "ibase=16; ${serial}" | bc >"${tmpdir}/serials.txt"
     cfssl gencrl "${tmpdir}/serials.txt" "${tmpdir}/ca.pem" "${tmpdir}/ca-key.pem" | base64 -d | openssl crl -inform DER -out "${tmpdir}/crl.pem"
 
+    cat "${tmpdir}/ca.pem" "${tmpdir}/inter.pem" > "${tmpdir}/bundle.pem"
+
     config_set '
         .api.server.tls.cert_file=strenv(tmpdir) + "/server.pem" |
         .api.server.tls.key_file=strenv(tmpdir) + "/server-key.pem" |
@@ -48,7 +45,14 @@ setup_file() {
         .api.server.tls.agents_allowed_ou=["agent-ou"]
     '
 
-    run -0 cscli machines delete githubciXXXXXXXXXXXXXXXXXXXXXXXX
+    # remove all machines
+
+    run -0 cscli machines list -o json
+    run -0 jq -r '.[].machineId' <(output)
+    for machine in $(output); do
+        run -0 cscli machines delete "${machine}"
+    done
+
     config_disable_agent
 }
 
@@ -57,7 +61,6 @@ teardown_file() {
 }
 
 setup() {
-    [[ "${PACKAGE_TESTING}" == "true" ]] && skip
     load "../lib/setup.sh"
 }
 
@@ -69,7 +72,7 @@ teardown() {
 
 @test "invalid OU for agent" {
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" '
-        .ca_cert_path=strenv(tmpdir) + "/inter.pem" |
+        .ca_cert_path=strenv(tmpdir) + "/bundle.pem" |
         .key_path=strenv(tmpdir) + "/agent_bad_ou-key.pem" |
         .cert_path=strenv(tmpdir) + "/agent_bad_ou.pem" |
         .url="https://127.0.0.1:8080"
@@ -83,7 +86,7 @@ teardown() {
 
 @test "we have exactly one machine registered with TLS" {
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" '
-        .ca_cert_path=strenv(tmpdir) + "/inter.pem" |
+        .ca_cert_path=strenv(tmpdir) + "/bundle.pem" |
         .key_path=strenv(tmpdir) + "/agent-key.pem" |
         .cert_path=strenv(tmpdir) + "/agent.pem" |
         .url="https://127.0.0.1:8080"
@@ -101,7 +104,7 @@ teardown() {
 
 @test "invalid cert for agent" {
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" '
-        .ca_cert_path=strenv(tmpdir) + "/inter.pem" |
+        .ca_cert_path=strenv(tmpdir) + "/bundle.pem" |
         .key_path=strenv(tmpdir) + "/agent_invalid-key.pem" |
         .cert_path=strenv(tmpdir) + "/agent_invalid.pem" |
         .url="https://127.0.0.1:8080"
@@ -114,7 +117,7 @@ teardown() {
 
 @test "revoked cert for agent" {
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" '
-         .ca_cert_path=strenv(tmpdir) + "/inter.pem" |
+         .ca_cert_path=strenv(tmpdir) + "/bundle.pem" |
         .key_path=strenv(tmpdir) + "/agent_revoked-key.pem" |
         .cert_path=strenv(tmpdir) + "/agent_revoked.pem" |
         .url="https://127.0.0.1:8080"

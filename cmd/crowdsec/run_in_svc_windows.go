@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
@@ -10,7 +9,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/writer"
 	"golang.org/x/sys/windows/svc"
 )
 
@@ -59,14 +57,6 @@ func WindowsRun() error {
 		cConfig *csconfig.Config
 		err     error
 	)
-
-	log.AddHook(&writer.Hook{ // Send logs with level higher than warning to stderr
-		Writer: os.Stderr,
-		LogLevels: []log.Level{
-			log.PanicLevel,
-			log.FatalLevel,
-		},
-	})
 
 	cConfig, err = csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
 	if err != nil {

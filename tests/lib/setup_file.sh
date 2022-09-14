@@ -4,10 +4,6 @@
 # https://github.com/bats-core/bats-core/blob/master/docs/source/warnings/BW02.rst
 bats_require_minimum_version 1.5.0
 
-# this should have effect globally, for all tests
-# https://github.com/bats-core/bats-core/blob/master/docs/source/warnings/BW02.rst
-bats_require_minimum_version 1.5.0
-
 debug() {
     echo 'exec 1<&-; exec 2<&-; exec 1>&3; exec 2>&1'
 }
@@ -70,6 +66,27 @@ config_set() {
 }
 export -f config_set
 
+config_disable_agent() {
+    config_set 'del(.crowdsec_service)'
+}
+export -f config_disable_agent
+
+config_disable_lapi() {
+    config_set 'del(.api.server)'
+}
+export -f config_disable_lapi
+
+config_disable_capi() {
+    config_set 'del(.api.server.online_client)'
+}
+export -f config_disable_capi
+
+config_enable_capi() {
+    online_api_credentials="$(dirname "${CONFIG_YAML}")/online_api_credentials.yaml" \
+        config_set '.api.server.online_client.credentials_path=strenv(online_api_credentials)'
+}
+export -f config_enable_capi
+
 # We use these functions like this:
 #    somecommand <(stderr)
 # to provide a standard input to "somecommand".
@@ -104,4 +121,54 @@ is_db_sqlite() {
     [[ "${DB_BACKEND}" == "sqlite" ]]
 }
 export -f is_db_sqlite
+
+# compare ignoring the key order, and allow "expected" without quoted identifiers
+assert_json() {
+    # validate actual, sort
+    run -0 jq -Sen "${output}"
+    local actual="${output}"
+
+    # handle stdin, quote identifiers, sort
+    local expected="$1"
+    if [[ "${expected}" == "-" ]]; then
+        expected="$(cat)"
+    fi
+    run -0 jq -Sn "${expected}"
+    expected="${output}"
+
+    #shellcheck disable=SC2016
+    run jq -ne --argjson a "${actual}" --argjson b "${expected}" '$a == $b'
+    #shellcheck disable=SC2154
+    if [[ "${status}" -ne 0 ]]; then
+        echo "expect: $(jq -c <<<"${expected}")"
+        echo "actual: $(jq -c <<<"${actual}")"
+        diff <(echo "${actual}") <(echo "${expected}")
+        fail "json does not match"
+    fi
+}
+export -f assert_json
+
+assert_stderr() {
+    oldout="${output}"
+    run -0 echo "${stderr}"
+    assert_output "$@"
+    output="${oldout}"
+}
+export -f assert_stderr
+
+refute_stderr() {
+    oldout="${output}"
+    run -0 echo "${stderr}"
+    refute_output "$@"
+    output="${oldout}"
+}
+export -f refute_stderr
+
+assert_stderr_line() {
+    oldout="${output}"
+    run -0 echo "${stderr}"
+    assert_line "$@"
+    output="${oldout}"
+}
+export -f assert_stderr_line
 
