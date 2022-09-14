@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 
@@ -37,6 +38,9 @@ func Init(c map[string]interface{}) (*UnixParserCtx, error) {
 	}
 	r.DataFolder = c["data"].(string)
 	for _, f := range files {
+		if strings.Contains(f.Name(), ".") {
+			continue
+		}
 		if err := r.Grok.AddFromFile(path.Join(c["patterns"].(string), f.Name())); err != nil {
 			log.Errorf("failed to load pattern %s : %v", f.Name(), err)
 			return nil, err
