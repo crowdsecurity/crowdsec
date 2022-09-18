@@ -104,10 +104,10 @@ var BucketsUnderflow = prometheus.NewCounterVec(
 	[]string{"name"},
 )
 
-var BucketsInstanciation = prometheus.NewCounterVec(
+var BucketsInstantiation = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_bucket_created_total",
-		Help: "Total buckets were instanciated.",
+		Help: "Total buckets were instantiated.",
 	},
 	[]string{"name"},
 )
@@ -151,7 +151,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 	} else {
 		limiter = rate.NewLimiter(rate.Every(bucketFactory.leakspeed), bucketFactory.Capacity)
 	}
-	BucketsInstanciation.With(prometheus.Labels{"name": bucketFactory.Name}).Inc()
+	BucketsInstantiation.With(prometheus.Labels{"name": bucketFactory.Name}).Inc()
 
 	//create the leaky bucket per se
 	l := &Leaky{

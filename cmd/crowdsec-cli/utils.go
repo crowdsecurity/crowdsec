@@ -432,7 +432,7 @@ func GetParserMetric(url string, itemName string) map[string]map[string]int {
 func GetScenarioMetric(url string, itemName string) map[string]int {
 	stats := make(map[string]int)
 
-	stats["instanciation"] = 0
+	stats["instantiation"] = 0
 	stats["curr_count"] = 0
 	stats["overflow"] = 0
 	stats["pour"] = 0
@@ -467,7 +467,7 @@ func GetScenarioMetric(url string, itemName string) map[string]int {
 
 			switch fam.Name {
 			case "cs_bucket_created_total":
-				stats["instanciation"] += ival
+				stats["instantiation"] += ival
 			case "cs_buckets":
 				stats["curr_count"] += ival
 			case "cs_bucket_overflowed_total":
@@ -544,12 +544,12 @@ func GetPrometheusMetric(url string) []*prom2json.Family {
 }
 
 func ShowScenarioMetric(itemName string, metrics map[string]int) {
-	if metrics["instanciation"] == 0 {
+	if metrics["instantiation"] == 0 {
 		return
 	}
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Current Count", "Overflows", "Instanciated", "Poured", "Expired"})
-	table.Append([]string{fmt.Sprintf("%d", metrics["curr_count"]), fmt.Sprintf("%d", metrics["overflow"]), fmt.Sprintf("%d", metrics["instanciation"]), fmt.Sprintf("%d", metrics["pour"]), fmt.Sprintf("%d", metrics["underflow"])})
+	table.SetHeader([]string{"Current Count", "Overflows", "Instantiated", "Poured", "Expired"})
+	table.Append([]string{fmt.Sprintf("%d", metrics["curr_count"]), fmt.Sprintf("%d", metrics["overflow"]), fmt.Sprintf("%d", metrics["instantiation"]), fmt.Sprintf("%d", metrics["pour"]), fmt.Sprintf("%d", metrics["underflow"])})
 
 	fmt.Printf(" - (Scenario) %s: \n", itemName)
 	table.Render()
