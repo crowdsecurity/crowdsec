@@ -36,7 +36,7 @@ start() {
         -e "${LOG_DIR}/crowdsec.err" \
         -o "${LOG_DIR}/crowdsec.out" \
         "${CROWDSEC}"
-    ./lib/util/wait-for-port 6060
+    ./bin/wait-for-port 6060
 }
 
 stop() {

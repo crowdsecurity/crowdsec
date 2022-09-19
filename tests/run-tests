@@ -12,7 +12,7 @@ TEST_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # shellcheck source=./.environment.sh
 . "${TEST_DIR}/.environment.sh"
 
-"${TEST_DIR}/check-requirements"
+"${TEST_DIR}/bin/check-requirements"
 
 echo "Running tests..."
 echo "DB_BACKEND: ${DB_BACKEND}"
@@ -23,7 +23,6 @@ else
     rm -f "${LOCAL_DIR}/var/lib/coverage/*"
     mkdir -p "${LOCAL_DIR}/var/lib/coverage"
 fi
-
 
 dump_backend="$(cat "${LOCAL_INIT_DIR}/.backend")"
 if [[ "${DB_BACKEND}" != "${dump_backend}" ]]; then
