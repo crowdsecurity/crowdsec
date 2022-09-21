@@ -1,4 +1,4 @@
-module github.com/crowdsecurity/email-plugin
+module github.com/crowdsecurity/dummy-plugin
 
 go 1.19
 
@@ -6,20 +6,17 @@ require (
 	github.com/crowdsecurity/crowdsec v1.4.1
 	github.com/hashicorp/go-hclog v1.3.1
 	github.com/hashicorp/go-plugin v1.4.5
-	github.com/xhit/go-simple-mail/v2 v2.11.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
 	github.com/fatih/color v1.13.0 // indirect
-	github.com/go-test/deep v1.0.8 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mitchellh/go-testing-interface v1.0.0 // indirect
 	github.com/oklog/run v1.0.0 // indirect
-	github.com/toorop/go-dkim v0.0.0-20201103131630-e1cd1a0a5208 // indirect
 	golang.org/x/net v0.0.0-20220418201149-a630d4f3e7a2 // indirect
 	golang.org/x/sys v0.0.0-20220513210249-45d2b4557a2a // indirect
 	golang.org/x/text v0.3.7 // indirect
