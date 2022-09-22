@@ -15,8 +15,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/enescakir/emoji"
-	"github.com/olekukonko/tablewriter"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prom2json"
 	log "github.com/sirupsen/logrus"
@@ -188,16 +186,7 @@ func ListItems(itemTypes []string, args []string, showType bool, showHeader bool
 				continue
 			}
 			fmt.Fprintf(w, "%s\n", strings.ToUpper(itemType))
-			table := tablewriter.NewWriter(w)
-			table.SetCenterSeparator("")
-			table.SetColumnSeparator("")
-			table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-			table.SetAlignment(tablewriter.ALIGN_LEFT)
-			table.SetHeader([]string{"Name", fmt.Sprintf("%v Status", emoji.Package), "Version", "Local Path"})
-			for _, status := range statuses {
-				table.Append([]string{status.Name, status.UTF8_Status, status.LocalVersion, status.LocalPath})
-			}
-			table.Render()
+			listHubItemTable(w, statuses)
 		}
 	} else if csConfig.Cscli.Output == "json" {
 		x, err := json.MarshalIndent(hubStatusByItemType, "", " ")
@@ -322,18 +311,18 @@ func ShowMetrics(hubItem *cwhub.Item) {
 	switch hubItem.Type {
 	case cwhub.PARSERS:
 		metrics := GetParserMetric(prometheusURL, hubItem.Name)
-		ShowParserMetric(hubItem.Name, metrics)
+		parserMetricsTable(os.Stdout, hubItem.Name, metrics)
 	case cwhub.SCENARIOS:
 		metrics := GetScenarioMetric(prometheusURL, hubItem.Name)
-		ShowScenarioMetric(hubItem.Name, metrics)
+		scenarioMetricsTable(os.Stdout, hubItem.Name, metrics)
 	case cwhub.COLLECTIONS:
 		for _, item := range hubItem.Parsers {
 			metrics := GetParserMetric(prometheusURL, item)
-			ShowParserMetric(item, metrics)
+			parserMetricsTable(os.Stdout, item, metrics)
 		}
 		for _, item := range hubItem.Scenarios {
 			metrics := GetScenarioMetric(prometheusURL, item)
-			ShowScenarioMetric(item, metrics)
+			scenarioMetricsTable(os.Stdout, item, metrics)
 		}
 		for _, item := range hubItem.Collections {
 			hubItem = cwhub.GetItem(cwhub.COLLECTIONS, item)
@@ -347,7 +336,7 @@ func ShowMetrics(hubItem *cwhub.Item) {
 	}
 }
 
-/*This is a complete rip from prom2json*/
+// GetParserMetric is a complete rip from prom2json
 func GetParserMetric(url string, itemName string) map[string]map[string]int {
 	stats := make(map[string]map[string]int)
 
@@ -541,37 +530,6 @@ func GetPrometheusMetric(url string) []*prom2json.Family {
 	log.Debugf("Finished reading prometheus output, %d entries", len(result))
 
 	return result
-}
-
-func ShowScenarioMetric(itemName string, metrics map[string]int) {
-	if metrics["instanciation"] == 0 {
-		return
-	}
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Current Count", "Overflows", "Instanciated", "Poured", "Expired"})
-	table.Append([]string{fmt.Sprintf("%d", metrics["curr_count"]), fmt.Sprintf("%d", metrics["overflow"]), fmt.Sprintf("%d", metrics["instanciation"]), fmt.Sprintf("%d", metrics["pour"]), fmt.Sprintf("%d", metrics["underflow"])})
-
-	fmt.Printf(" - (Scenario) %s: \n", itemName)
-	table.Render()
-	fmt.Println()
-}
-
-func ShowParserMetric(itemName string, metrics map[string]map[string]int) {
-	skip := true
-
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Parsers", "Hits", "Parsed", "Unparsed"})
-	for source, stats := range metrics {
-		if stats["hits"] > 0 {
-			table.Append([]string{source, fmt.Sprintf("%d", stats["hits"]), fmt.Sprintf("%d", stats["parsed"]), fmt.Sprintf("%d", stats["unparsed"])})
-			skip = false
-		}
-	}
-	if !skip {
-		fmt.Printf(" - (Parser) %s: \n", itemName)
-		table.Render()
-		fmt.Println()
-	}
 }
 
 func RestoreHub(dirPath string) error {
