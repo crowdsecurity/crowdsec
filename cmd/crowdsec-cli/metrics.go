@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -15,81 +14,12 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
-	"github.com/olekukonko/tablewriter"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prom2json"
 	"github.com/spf13/cobra"
 )
 
-func lapiMetricsToTable(table *tablewriter.Table, stats map[string]map[string]map[string]int) error {
-
-	//stats : machine -> route -> method -> count
-	/*we want consistent display order*/
-	machineKeys := []string{}
-	for k := range stats {
-		machineKeys = append(machineKeys, k)
-	}
-	sort.Strings(machineKeys)
-
-	for _, machine := range machineKeys {
-		//oneRow : route -> method -> count
-		machineRow := stats[machine]
-		for routeName, route := range machineRow {
-			for methodName, count := range route {
-				row := []string{}
-				row = append(row, machine)
-				row = append(row, routeName)
-				row = append(row, methodName)
-				if count != 0 {
-					row = append(row, fmt.Sprintf("%d", count))
-				} else {
-					row = append(row, "-")
-				}
-				table.Append(row)
-			}
-		}
-	}
-	return nil
-}
-
-func metricsToTable(table *tablewriter.Table, stats map[string]map[string]int, keys []string) error {
-
-	var sortedKeys []string
-
-	if table == nil {
-		return fmt.Errorf("nil table")
-	}
-	//sort keys to keep consistent order when printing
-	sortedKeys = []string{}
-	for akey := range stats {
-		sortedKeys = append(sortedKeys, akey)
-	}
-	sort.Strings(sortedKeys)
-	//
-	for _, alabel := range sortedKeys {
-		astats, ok := stats[alabel]
-		if !ok {
-			continue
-		}
-		row := []string{}
-		row = append(row, alabel) //name
-		for _, sl := range keys {
-			if v, ok := astats[sl]; ok && v != 0 {
-				numberToShow := fmt.Sprintf("%d", v)
-				if !noUnit {
-					numberToShow = formatNumber(v)
-				}
-				row = append(row, numberToShow)
-			} else {
-				row = append(row, "-")
-			}
-		}
-		table.Append(row)
-	}
-	return nil
-}
-
-/*This is a complete rip from prom2json*/
+// FormatPrometheusMetric is a complete rip from prom2json
 func FormatPrometheusMetric(url string, formatType string) ([]byte, error) {
 	mfChan := make(chan *dto.MetricFamily, 1024)
 
@@ -287,147 +217,15 @@ func FormatPrometheusMetric(url string, formatType string) ([]byte, error) {
 	ret := bytes.NewBuffer(nil)
 
 	if formatType == "human" {
-
-		acquisTable := tablewriter.NewWriter(ret)
-		acquisTable.SetHeader([]string{"Source", "Lines read", "Lines parsed", "Lines unparsed", "Lines poured to bucket"})
-		keys := []string{"reads", "parsed", "unparsed", "pour"}
-		if err := metricsToTable(acquisTable, acquis_stats, keys); err != nil {
-			log.Warningf("while collecting acquis stats : %s", err)
-		}
-		bucketsTable := tablewriter.NewWriter(ret)
-		bucketsTable.SetHeader([]string{"Bucket", "Current Count", "Overflows", "Instantiated", "Poured", "Expired"})
-		keys = []string{"curr_count", "overflow", "instanciation", "pour", "underflow"}
-		if err := metricsToTable(bucketsTable, buckets_stats, keys); err != nil {
-			log.Warningf("while collecting acquis stats : %s", err)
-		}
-
-		parsersTable := tablewriter.NewWriter(ret)
-		parsersTable.SetHeader([]string{"Parsers", "Hits", "Parsed", "Unparsed"})
-		keys = []string{"hits", "parsed", "unparsed"}
-		if err := metricsToTable(parsersTable, parsers_stats, keys); err != nil {
-			log.Warningf("while collecting acquis stats : %s", err)
-		}
-
-		lapiMachinesTable := tablewriter.NewWriter(ret)
-		lapiMachinesTable.SetHeader([]string{"Machine", "Route", "Method", "Hits"})
-		if err := lapiMetricsToTable(lapiMachinesTable, lapi_machine_stats); err != nil {
-			log.Warningf("while collecting machine lapi stats : %s", err)
-		}
-
-		//lapiMetricsToTable
-		lapiBouncersTable := tablewriter.NewWriter(ret)
-		lapiBouncersTable.SetHeader([]string{"Bouncer", "Route", "Method", "Hits"})
-		if err := lapiMetricsToTable(lapiBouncersTable, lapi_bouncer_stats); err != nil {
-			log.Warningf("while collecting bouncer lapi stats : %s", err)
-		}
-
-		lapiDecisionsTable := tablewriter.NewWriter(ret)
-		lapiDecisionsTable.SetHeader([]string{"Bouncer", "Empty answers", "Non-empty answers"})
-		for bouncer, hits := range lapi_decisions_stats {
-			row := []string{}
-			row = append(row, bouncer)
-			row = append(row, fmt.Sprintf("%d", hits.Empty))
-			row = append(row, fmt.Sprintf("%d", hits.NonEmpty))
-			lapiDecisionsTable.Append(row)
-		}
-
-		/*unfortunately, we can't reuse metricsToTable as the structure is too different :/*/
-		lapiTable := tablewriter.NewWriter(ret)
-		lapiTable.SetHeader([]string{"Route", "Method", "Hits"})
-		sortedKeys := []string{}
-		for akey := range lapi_stats {
-			sortedKeys = append(sortedKeys, akey)
-		}
-		sort.Strings(sortedKeys)
-		for _, alabel := range sortedKeys {
-			astats := lapi_stats[alabel]
-			subKeys := []string{}
-			for skey := range astats {
-				subKeys = append(subKeys, skey)
-			}
-			sort.Strings(subKeys)
-			for _, sl := range subKeys {
-				row := []string{}
-				row = append(row, alabel)
-				row = append(row, sl)
-				row = append(row, fmt.Sprintf("%d", astats[sl]))
-				lapiTable.Append(row)
-			}
-		}
-
-		decisionsTable := tablewriter.NewWriter(ret)
-		decisionsTable.SetHeader([]string{"Reason", "Origin", "Action", "Count"})
-		for reason, origins := range decisions_stats {
-			for origin, actions := range origins {
-				for action, hits := range actions {
-					row := []string{}
-					row = append(row, reason)
-					row = append(row, origin)
-					row = append(row, action)
-					row = append(row, fmt.Sprintf("%d", hits))
-					decisionsTable.Append(row)
-				}
-			}
-		}
-
-		alertsTable := tablewriter.NewWriter(ret)
-		alertsTable.SetHeader([]string{"Reason", "Count"})
-		for scenario, hits := range alerts_stats {
-			row := []string{}
-			row = append(row, scenario)
-			row = append(row, fmt.Sprintf("%d", hits))
-			alertsTable.Append(row)
-		}
-
-		if bucketsTable.NumLines() > 0 {
-			fmt.Fprintf(ret, "Buckets Metrics:\n")
-			bucketsTable.SetAlignment(tablewriter.ALIGN_LEFT)
-			bucketsTable.Render()
-		}
-		if acquisTable.NumLines() > 0 {
-			fmt.Fprintf(ret, "Acquisition Metrics:\n")
-			acquisTable.SetAlignment(tablewriter.ALIGN_LEFT)
-			acquisTable.Render()
-		}
-		if parsersTable.NumLines() > 0 {
-			fmt.Fprintf(ret, "Parser Metrics:\n")
-			parsersTable.SetAlignment(tablewriter.ALIGN_LEFT)
-			parsersTable.Render()
-		}
-		if lapiTable.NumLines() > 0 {
-			fmt.Fprintf(ret, "Local Api Metrics:\n")
-			lapiTable.SetAlignment(tablewriter.ALIGN_LEFT)
-			lapiTable.Render()
-		}
-		if lapiMachinesTable.NumLines() > 0 {
-			fmt.Fprintf(ret, "Local Api Machines Metrics:\n")
-			lapiMachinesTable.SetAlignment(tablewriter.ALIGN_LEFT)
-			lapiMachinesTable.Render()
-		}
-		if lapiBouncersTable.NumLines() > 0 {
-			fmt.Fprintf(ret, "Local Api Bouncers Metrics:\n")
-			lapiBouncersTable.SetAlignment(tablewriter.ALIGN_LEFT)
-			lapiBouncersTable.Render()
-		}
-
-		if lapiDecisionsTable.NumLines() > 0 {
-			fmt.Fprintf(ret, "Local Api Bouncers Decisions:\n")
-			lapiDecisionsTable.SetAlignment(tablewriter.ALIGN_LEFT)
-			lapiDecisionsTable.Render()
-		}
-
-		if decisionsTable.NumLines() > 0 {
-			fmt.Fprintf(ret, "Local Api Decisions:\n")
-			decisionsTable.SetAlignment(tablewriter.ALIGN_LEFT)
-			decisionsTable.Render()
-		}
-
-		if alertsTable.NumLines() > 0 {
-			fmt.Fprintf(ret, "Local Api Alerts:\n")
-			alertsTable.SetAlignment(tablewriter.ALIGN_LEFT)
-			alertsTable.Render()
-		}
-
+		acquisStatsTable(ret, acquis_stats)
+		bucketStatsTable(ret, buckets_stats)
+		parserStatsTable(ret, parsers_stats)
+		lapiStatsTable(ret, lapi_stats)
+		lapiMachineStatsTable(ret, lapi_machine_stats)
+		lapiBouncerStatsTable(ret, lapi_bouncer_stats)
+		lapiDecisionStatsTable(ret, lapi_decisions_stats)
+		decisionStatsTable(ret, decisions_stats)
+		alertStatsTable(ret, alerts_stats)
 	} else if formatType == "json" {
 		for _, val := range []interface{}{acquis_stats, parsers_stats, buckets_stats, lapi_stats, lapi_bouncer_stats, lapi_machine_stats, lapi_decisions_stats, decisions_stats, alerts_stats} {
 			x, err := json.MarshalIndent(val, "", " ")
