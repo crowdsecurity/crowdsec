@@ -20,7 +20,6 @@ import (
 	"github.com/enescakir/emoji"
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
-	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -116,23 +115,7 @@ func getAgents(dbClient *database.Client) ([]byte, error) {
 		return nil, fmt.Errorf("unable to list machines: %s", err)
 	}
 	if csConfig.Cscli.Output == "human" {
-		table := tablewriter.NewWriter(w)
-		table.SetCenterSeparator("")
-		table.SetColumnSeparator("")
-
-		table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-		table.SetAlignment(tablewriter.ALIGN_LEFT)
-		table.SetHeader([]string{"Name", "IP Address", "Last Update", "Status", "Version", "Auth Type", "Last Heartbeat"})
-		for _, w := range machines {
-			var validated string
-			if w.IsValidated {
-				validated = emoji.CheckMark.String()
-			} else {
-				validated = emoji.Prohibited.String()
-			}
-			table.Append([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version, w.AuthType, displayLastHeartBeat(w, true)})
-		}
-		table.Render()
+		getAgentsTable(os.Stdout, machines)
 	} else if csConfig.Cscli.Output == "json" {
 		x, err := json.MarshalIndent(machines, "", " ")
 		if err != nil {

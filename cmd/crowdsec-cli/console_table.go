@@ -1,14 +1,15 @@
 package main
 
 import (
-	"os"
-	"github.com/olekukonko/tablewriter"
+	"io"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/enescakir/emoji"
+	"github.com/olekukonko/tablewriter"
 )
 
-func consoleStatusTable(csConfig csconfig.Config) {
-	table := tablewriter.NewWriter(os.Stdout)
+func consoleStatusTable(out io.Writer, csConfig csconfig.Config) {
+	table := tablewriter.NewWriter(out)
 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeader([]string{"Option Name", "Activated", "Description"})
