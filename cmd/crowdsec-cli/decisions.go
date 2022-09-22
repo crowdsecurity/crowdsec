@@ -18,7 +18,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/go-openapi/strfmt"
 	"github.com/jszwec/csvutil"
-	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -92,44 +91,11 @@ func DecisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error
 		x, _ := json.MarshalIndent(alerts, "", " ")
 		fmt.Printf("%s", string(x))
 	} else if csConfig.Cscli.Output == "human" {
-		table := tablewriter.NewWriter(os.Stdout)
-		header := []string{"ID", "Source", "Scope:Value", "Reason", "Action", "Country", "AS", "Events", "expiration", "Alert ID"}
-		if printMachine {
-			header = append(header, "Machine")
-		}
-		table.SetHeader(header)
-
 		if len(*alerts) == 0 {
 			fmt.Println("No active decisions")
 			return nil
 		}
-
-		for _, alertItem := range *alerts {
-			for _, decisionItem := range alertItem.Decisions {
-				if *alertItem.Simulated {
-					*decisionItem.Type = fmt.Sprintf("(simul)%s", *decisionItem.Type)
-				}
-				raw := []string{
-					strconv.Itoa(int(decisionItem.ID)),
-					*decisionItem.Origin,
-					*decisionItem.Scope + ":" + *decisionItem.Value,
-					*decisionItem.Scenario,
-					*decisionItem.Type,
-					alertItem.Source.Cn,
-					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
-					strconv.Itoa(int(*alertItem.EventsCount)),
-					*decisionItem.Duration,
-					strconv.Itoa(int(alertItem.ID)),
-				}
-
-				if printMachine {
-					raw = append(raw, alertItem.MachineID)
-				}
-
-				table.Append(raw)
-			}
-		}
-		table.Render() // Send output
+		decisionsTable(os.Stdout, alerts, printMachine)
 		if skipped > 0 {
 			fmt.Printf("%d duplicated entries skipped\n", skipped)
 		}
