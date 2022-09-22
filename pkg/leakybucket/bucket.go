@@ -24,7 +24,7 @@ const (
 	TIMEMACHINE
 )
 
-//Leaky represents one instance of a bucket
+// Leaky represents one instance of a bucket
 type Leaky struct {
 	Name string
 	Mode int //LIVE or TIMEMACHINE

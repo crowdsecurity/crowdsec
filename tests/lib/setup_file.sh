@@ -148,6 +148,7 @@ assert_json() {
 }
 export -f assert_json
 
+# like assert_output, but for stderr
 assert_stderr() {
     oldout="${output}"
     run -0 echo "${stderr}"
@@ -156,6 +157,7 @@ assert_stderr() {
 }
 export -f assert_stderr
 
+# like refute_output, but for stderr
 refute_stderr() {
     oldout="${output}"
     run -0 echo "${stderr}"
@@ -164,6 +166,7 @@ refute_stderr() {
 }
 export -f refute_stderr
 
+# like assert_output, but for stderr
 assert_stderr_line() {
     oldout="${output}"
     run -0 echo "${stderr}"
@@ -172,3 +175,8 @@ assert_stderr_line() {
 }
 export -f assert_stderr_line
 
+# remove color and style sequences from stdin
+plaintext() {
+    sed -E 's/\x1B\[[0-9;]*[JKmsu]//g'
+}
+export -f plaintext

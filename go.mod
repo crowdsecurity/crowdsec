@@ -6,7 +6,6 @@ require (
 	entgo.io/ent v0.11.3
 	github.com/AlecAivazis/survey/v2 v2.2.7
 	github.com/Microsoft/go-winio v0.5.2 // indirect
-	github.com/crowdsecurity/dlog v0.0.0-20170105205344-4fb5f8204f26
 	github.com/alexliesenfeld/health v0.5.1
 	github.com/antonmedv/expr v1.9.0
 	github.com/appleboy/gin-jwt/v2 v2.8.0
@@ -15,6 +14,7 @@ require (
 	github.com/c-robinson/iplib v1.0.3
 	github.com/confluentinc/bincover v0.2.0
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
+	github.com/crowdsecurity/dlog v0.0.0-20170105205344-4fb5f8204f26
 	github.com/crowdsecurity/grokky v0.1.0
 	github.com/crowdsecurity/machineid v1.0.2
 	github.com/davecgh/go-spew v1.1.1
@@ -83,8 +83,8 @@ require (
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
-	github.com/crowdsecurity/dlog v0.0.0-20170105205344-4fb5f8204f26 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
+	github.com/aquasecurity/table v1.8.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
@@ -165,7 +165,7 @@ require (
 	go.mongodb.org/mongo-driver v1.9.0 // indirect
 	golang.org/x/net v0.0.0-20220706163947-c90051bbdb60 // indirect
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
-	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
+	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20220414192740-2d67ff6cf2b4 // indirect
