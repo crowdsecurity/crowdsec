@@ -115,7 +115,7 @@ func getAgents(dbClient *database.Client) ([]byte, error) {
 		return nil, fmt.Errorf("unable to list machines: %s", err)
 	}
 	if csConfig.Cscli.Output == "human" {
-		getAgentsTable(os.Stdout, machines)
+		getAgentsTable(w, machines)
 	} else if csConfig.Cscli.Output == "json" {
 		x, err := json.MarshalIndent(machines, "", " ")
 		if err != nil {
@@ -128,14 +128,14 @@ func getAgents(dbClient *database.Client) ([]byte, error) {
 		if err != nil {
 			log.Fatalf("failed to write header: %s", err)
 		}
-		for _, w := range machines {
+		for _, m := range machines {
 			var validated string
-			if w.IsValidated {
+			if m.IsValidated {
 				validated = "true"
 			} else {
 				validated = "false"
 			}
-			err := csvwriter.Write([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version, w.AuthType, displayLastHeartBeat(w, false)})
+			err := csvwriter.Write([]string{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, displayLastHeartBeat(m, false)})
 			if err != nil {
 				log.Fatalf("failed to write raw output : %s", err)
 			}

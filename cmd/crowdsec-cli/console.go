@@ -192,7 +192,7 @@ Disable given information push to the central API.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			switch csConfig.Cscli.Output {
 			case "human":
-				consoleStatusTable(os.Stdout, *csConfig)
+				cmdConsoleStatusTable(os.Stdout, *csConfig)
 			case "json":
 				data, err := json.MarshalIndent(csConfig.API.Server.ConsoleConfig, "", "  ")
 				if err != nil {

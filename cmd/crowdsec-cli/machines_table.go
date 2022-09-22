@@ -17,14 +17,15 @@ func getAgentsTable(out io.Writer, machines []*ent.Machine) {
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 	table.SetHeader([]string{"Name", "IP Address", "Last Update", "Status", "Version", "Auth Type", "Last Heartbeat"})
 
-	for _, w := range machines {
+	for _, m := range machines {
 		var validated string
-		if w.IsValidated {
+		if m.IsValidated {
 			validated = emoji.CheckMark.String()
 		} else {
 			validated = emoji.Prohibited.String()
 		}
-		table.Append([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version, w.AuthType, displayLastHeartBeat(w, true)})
+
+		table.Append([]string{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, displayLastHeartBeat(m, true)})
 	}
 
 	table.Render()

@@ -8,7 +8,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 )
 
-func consoleStatusTable(out io.Writer, csConfig csconfig.Config) {
+func cmdConsoleStatusTable(out io.Writer, csConfig csconfig.Config) {
 	table := tablewriter.NewWriter(out)
 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
