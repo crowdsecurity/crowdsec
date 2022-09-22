@@ -19,7 +19,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/go-openapi/strfmt"
-	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -67,22 +66,7 @@ func NewNotificationsCmd() *cobra.Command {
 			}
 
 			if csConfig.Cscli.Output == "human" {
-				table := tablewriter.NewWriter(os.Stdout)
-				table.SetCenterSeparator("")
-				table.SetColumnSeparator("")
-
-				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-				table.SetAlignment(tablewriter.ALIGN_LEFT)
-				table.SetHeader([]string{"Name", "Type", "Profile name"})
-				for _, b := range ncfgs {
-					profilesList := []string{}
-					for _, p := range b.Profiles {
-						profilesList = append(profilesList, p.Name)
-					}
-					table.Append([]string{b.Config.Name, b.Config.Type, strings.Join(profilesList, ", ")})
-				}
-				table.Render()
-
+				notificationListTable(os.Stdout, ncfgs)
 			} else if csConfig.Cscli.Output == "json" {
 				x, err := json.MarshalIndent(ncfgs, "", " ")
 				if err != nil {
