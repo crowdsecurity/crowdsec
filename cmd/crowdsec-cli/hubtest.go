@@ -11,7 +11,6 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/enescakir/emoji"
-	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -272,22 +271,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				}
 			}
 			if csConfig.Cscli.Output == "human" {
-				table := tablewriter.NewWriter(os.Stdout)
-				table.SetCenterSeparator("")
-				table.SetColumnSeparator("")
-
-				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-				table.SetAlignment(tablewriter.ALIGN_LEFT)
-
-				table.SetHeader([]string{"Test", "Result"})
-				for testName, success := range testResult {
-					status := emoji.CheckMarkButton.String()
-					if !success {
-						status = emoji.CrossMark.String()
-					}
-					table.Append([]string{testName, status})
-				}
-				table.Render()
+				hubTestResultTable(os.Stdout, testResult)
 			} else if csConfig.Cscli.Output == "json" {
 				jsonResult := make(map[string][]string, 0)
 				jsonResult["success"] = make([]string, 0)
@@ -367,18 +351,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				log.Fatalf("unable to load all tests: %+v", err)
 			}
 
-			table := tablewriter.NewWriter(os.Stdout)
-			table.SetCenterSeparator("")
-			table.SetColumnSeparator("")
-
-			table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-			table.SetAlignment(tablewriter.ALIGN_LEFT)
-			table.SetHeader([]string{"Name", "Path"})
-			for _, test := range HubTest.Tests {
-				table.Append([]string{test.Name, test.Path})
-			}
-			table.Render()
-
+			hubTestListTable(os.Stdout, HubTest.Tests)
 		},
 	}
 	cmdHubTest.AddCommand(cmdHubTestList)
@@ -399,11 +372,9 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 			parserCoverage := []cstest.ParserCoverage{}
 			scenarioCoveragePercent := 0
 			parserCoveragePercent := 0
-			showAll := false
 
-			if !showScenarioCov && !showParserCov { // if both are false (flag by default), show both
-				showAll = true
-			}
+			// if both are false (flag by default), show both
+			showAll := !showScenarioCov && !showParserCov
 
 			if showParserCov || showAll {
 				parserCoverage, err = HubTest.GetParsersCoverage()
@@ -446,43 +417,11 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 
 			if csConfig.Cscli.Output == "human" {
 				if showParserCov || showAll {
-					table := tablewriter.NewWriter(os.Stdout)
-					table.SetCenterSeparator("")
-					table.SetColumnSeparator("")
-
-					table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-					table.SetAlignment(tablewriter.ALIGN_LEFT)
-
-					table.SetHeader([]string{"Parser", "Status", "Number of tests"})
-					parserTested := 0
-					for _, test := range parserCoverage {
-						status := emoji.RedCircle.String()
-						if test.TestsCount > 0 {
-							status = emoji.GreenCircle.String()
-							parserTested += 1
-						}
-						table.Append([]string{test.Parser, status, fmt.Sprintf("%d times (across %d tests)", test.TestsCount, len(test.PresentIn))})
-					}
-					table.Render()
+					hubTestParserCoverageTable(os.Stdout, parserCoverage)
 				}
 
 				if showScenarioCov || showAll {
-					table := tablewriter.NewWriter(os.Stdout)
-					table.SetCenterSeparator("")
-					table.SetColumnSeparator("")
-
-					table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-					table.SetAlignment(tablewriter.ALIGN_LEFT)
-
-					table.SetHeader([]string{"Scenario", "Status", "Number of tests"})
-					for _, test := range scenarioCoverage {
-						status := emoji.RedCircle.String()
-						if test.TestsCount > 0 {
-							status = emoji.GreenCircle.String()
-						}
-						table.Append([]string{test.Scenario, status, fmt.Sprintf("%d times (across %d tests)", test.TestsCount, len(test.PresentIn))})
-					}
-					table.Render()
+					hubTestScenarioCoverageTable(os.Stdout, scenarioCoverage)
 				}
 				fmt.Println()
 				if showParserCov || showAll {
