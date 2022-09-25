@@ -13,8 +13,10 @@ import (
 	journalctlacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/journalctl"
 	kafkaacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kafka"
 	kinesisacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kinesis"
+	k8sauditacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kubernetesaudit"
 	syslogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog"
 	wineventlogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/wineventlog"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
@@ -74,6 +76,10 @@ var AcquisitionSources = []struct {
 	{
 		name:  "kafka",
 		iface: func() DataSource { return &kafkaacquisition.KafkaSource{} },
+	},
+	{
+		name:  "k8s_audit",
+		iface: func() DataSource { return &k8sauditacquisition.KubernetesAuditSource{} },
 	},
 }
 
