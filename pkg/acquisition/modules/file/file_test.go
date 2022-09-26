@@ -245,13 +245,12 @@ filename: test_files/test_delete.log`,
 			actualLines := 0
 			if ts.expectedLines != 0 {
 				go func() {
-				READLOOP:
 					for {
 						select {
 						case <-out:
 							actualLines++
-						case <-time.After(1 * time.Second):
-							break READLOOP
+						case <-time.After(2 * time.Second):
+							return
 						}
 					}
 				}()
@@ -422,7 +421,7 @@ force_inotify: true`, testPattern),
 
 			err := f.Configure([]byte(ts.config), subLogger)
 			if err != nil {
-				t.Fatalf("Unexpected error : %s", err)
+				t.Fatalf("Unexpected error: %s", err)
 			}
 
 			if ts.afterConfigure != nil {
@@ -432,13 +431,12 @@ force_inotify: true`, testPattern),
 			actualLines := 0
 			if ts.expectedLines != 0 {
 				go func() {
-				READLOOP:
 					for {
 						select {
 						case <-out:
 							actualLines++
 						case <-time.After(2 * time.Second):
-							break READLOOP
+							return
 						}
 					}
 				}()
