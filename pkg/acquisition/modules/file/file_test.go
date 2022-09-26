@@ -47,6 +47,7 @@ exclude_regexps: ["as[a-$d"]`,
 	subLogger := log.WithFields(log.Fields{
 		"type": "file",
 	})
+
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			f := FileSource{}
@@ -57,12 +58,12 @@ exclude_regexps: ["as[a-$d"]`,
 }
 
 func TestConfigureDSN(t *testing.T) {
-	var file string
-	if runtime.GOOS != "windows" {
-		file = "/etc/passwd"
-	} else {
-		file = "C:\\Windows\\System32\\drivers\\etc\\hosts"
+	file := "/etc/passwd"
+
+	if runtime.GOOS == "windows" {
+		file = `C:\Windows\System32\drivers\etc\hosts`
 	}
+
 	tests := []struct {
 		dsn         string
 		expectedErr string
@@ -84,9 +85,11 @@ func TestConfigureDSN(t *testing.T) {
 			expectedErr: "unknown level foobar: not a valid logrus Level:",
 		},
 	}
+
 	subLogger := log.WithFields(log.Fields{
 		"type": "file",
 	})
+
 	for _, test := range tests {
 		t.Run(test.dsn, func(t *testing.T) {
 			f := FileSource{}
@@ -97,17 +100,16 @@ func TestConfigureDSN(t *testing.T) {
 }
 
 func TestOneShot(t *testing.T) {
-	var permDeniedFile string
-	var permDeniedError string
-	if runtime.GOOS != "windows" {
-		permDeniedFile = "/etc/shadow"
-		permDeniedError = "failed opening /etc/shadow: open /etc/shadow: permission denied"
-	} else {
-		//Technically, this is not a permission denied error, but we just want to test what happens
-		//if we do not have access to the file
-		permDeniedFile = "C:\\Windows\\System32\\config\\SAM"
-		permDeniedError = "failed opening C:\\Windows\\System32\\config\\SAM: open C:\\Windows\\System32\\config\\SAM: The process cannot access the file because it is being used by another process."
+	permDeniedFile := "/etc/shadow"
+	permDeniedError := "failed opening /etc/shadow: open /etc/shadow: permission denied"
+
+	if runtime.GOOS == "windows" {
+		// Technically, this is not a permission denied error, but we just want to test what happens
+		// if we do not have access to the file
+		permDeniedFile = `C:\Windows\System32\config\SAM`
+		permDeniedError = `failed opening C:\Windows\System32\config\SAM: open C:\Windows\System32\config\SAM: The process cannot access the file because it is being used by another process.`
 	}
+
 	tests := []struct {
 		name              string
 		config            string
@@ -217,15 +219,19 @@ filename: test_files/test_delete.log`,
 		t.Run(ts.name, func(t *testing.T) {
 			logger, hook := test.NewNullLogger()
 			logger.SetLevel(ts.logLevel)
+
 			subLogger := logger.WithFields(log.Fields{
 				"type": "file",
 			})
+
 			tomb := tomb.Tomb{}
 			out := make(chan types.Event)
 			f := FileSource{}
+
 			if ts.setup != nil {
 				ts.setup()
 			}
+
 			err := f.Configure([]byte(ts.config), subLogger)
 			cstest.AssertErrorContains(t, err, ts.expectedConfigErr)
 			if err != nil {
@@ -235,20 +241,22 @@ filename: test_files/test_delete.log`,
 			if ts.afterConfigure != nil {
 				ts.afterConfigure()
 			}
+
 			actualLines := 0
 			if ts.expectedLines != 0 {
 				go func() {
-					READLOOP:
+				READLOOP:
 					for {
 						select {
 						case <-out:
-						actualLines++
+							actualLines++
 						case <-time.After(1 * time.Second):
-						break READLOOP
+							break READLOOP
 						}
 					}
 				}()
 			}
+
 			err = f.OneShotAcquisition(out, &tomb)
 			cstest.AssertErrorContains(t, err, ts.expectedErr)
 
@@ -256,9 +264,11 @@ filename: test_files/test_delete.log`,
 				assert.Contains(t, hook.LastEntry().Message, ts.expectedOutput)
 				hook.Reset()
 			}
+
 			if ts.expectedLines != 0 {
 				assert.Equal(t, ts.expectedLines, actualLines)
 			}
+
 			if ts.teardown != nil {
 				ts.teardown()
 			}
@@ -267,20 +277,18 @@ filename: test_files/test_delete.log`,
 }
 
 func TestLiveAcquisition(t *testing.T) {
-	var permDeniedFile string
-	var permDeniedError string
-	var testPattern string
-	if runtime.GOOS != "windows" {
-		permDeniedFile = "/etc/shadow"
-		permDeniedError = "unable to read /etc/shadow : open /etc/shadow: permission denied"
-		testPattern = "test_files/*.log"
-	} else {
-		//Technically, this is not a permission denied error, but we just want to test what happens
-		//if we do not have access to the file
-		permDeniedFile = "C:\\Windows\\System32\\config\\SAM"
-		permDeniedError = "unable to read C:\\Windows\\System32\\config\\SAM : open C:\\Windows\\System32\\config\\SAM: The process cannot access the file because it is being used by another process"
-		testPattern = "test_files\\\\*.log" // the \ must be escaped twice: once for the string, once for the yaml config
+	permDeniedFile := "/etc/shadow"
+	permDeniedError := "unable to read /etc/shadow : open /etc/shadow: permission denied"
+	testPattern := "test_files/*.log"
+
+	if runtime.GOOS == "windows" {
+		// Technically, this is not a permission denied error, but we just want to test what happens
+		// if we do not have access to the file
+		permDeniedFile = `C:\Windows\System32\config\SAM`
+		permDeniedError = `unable to read C:\Windows\System32\config\SAM : open C:\Windows\System32\config\SAM: The process cannot access the file because it is being used by another process`
+		testPattern = `test_files\\*.log` // the \ must be escaped for the yaml config
 	}
+
 	tests := []struct {
 		name           string
 		config         string
@@ -367,10 +375,10 @@ force_inotify: true`, testPattern),
 				f, _ := os.Create("test_files/a.log")
 				f.Close()
 				time.Sleep(1 * time.Second)
-				os.Chmod("test_files/a.log", 0000)
+				os.Chmod("test_files/a.log", 0o000)
 			},
 			teardown: func() {
-				os.Chmod("test_files/a.log", 0644)
+				os.Chmod("test_files/a.log", 0o644)
 				os.Remove("test_files/a.log")
 			},
 		},
@@ -386,7 +394,7 @@ force_inotify: true`, testPattern),
 			logLevel:       log.DebugLevel,
 			name:           "InotifyMkDir",
 			afterConfigure: func() {
-				os.Mkdir("test_files/pouet/", 0700)
+				os.Mkdir("test_files/pouet/", 0o700)
 			},
 			teardown: func() {
 				os.Remove("test_files/pouet/")
@@ -398,36 +406,44 @@ force_inotify: true`, testPattern),
 		t.Run(ts.name, func(t *testing.T) {
 			logger, hook := test.NewNullLogger()
 			logger.SetLevel(ts.logLevel)
+
 			subLogger := logger.WithFields(log.Fields{
 				"type": "file",
 			})
+
 			tomb := tomb.Tomb{}
 			out := make(chan types.Event)
+
 			f := FileSource{}
+
 			if ts.setup != nil {
 				ts.setup()
 			}
+
 			err := f.Configure([]byte(ts.config), subLogger)
 			if err != nil {
 				t.Fatalf("Unexpected error : %s", err)
 			}
+
 			if ts.afterConfigure != nil {
 				ts.afterConfigure()
 			}
+
 			actualLines := 0
 			if ts.expectedLines != 0 {
 				go func() {
-					READLOOP:
+				READLOOP:
 					for {
 						select {
 						case <-out:
-						actualLines++
+							actualLines++
 						case <-time.After(2 * time.Second):
-						break READLOOP
+							break READLOOP
 						}
 					}
 				}()
 			}
+
 			err = f.StreamingAcquisition(out, &tomb)
 			cstest.AssertErrorContains(t, err, ts.expectedErr)
 
@@ -436,15 +452,17 @@ force_inotify: true`, testPattern),
 				if err != nil {
 					t.Fatalf("could not create test file : %s", err)
 				}
+
 				for i := 0; i < 5; i++ {
-					_, err = fd.WriteString(fmt.Sprintf("%d\n", i))
+					_, err = fmt.Fprintf(fd, "%d\n", i)
 					if err != nil {
 						t.Fatalf("could not write test file : %s", err)
 						os.Remove("test_files/stream.log")
 					}
 				}
+
 				fd.Close()
-				//we sleep to make sure we detect the new file
+				// we sleep to make sure we detect the new file
 				time.Sleep(1 * time.Second)
 				os.Remove("test_files/stream.log")
 				assert.Equal(t, ts.expectedLines, actualLines)
@@ -454,6 +472,7 @@ force_inotify: true`, testPattern),
 				if hook.LastEntry() == nil {
 					t.Fatalf("expected output %s, but got nothing", ts.expectedOutput)
 				}
+
 				assert.Contains(t, hook.LastEntry().Message, ts.expectedOutput)
 				hook.Reset()
 			}
@@ -471,19 +490,22 @@ func TestExclusion(t *testing.T) {
 	config := `filenames: ["test_files/*.log*"]
 exclude_regexps: ["\\.gz$"]`
 	logger, hook := test.NewNullLogger()
-	//logger.SetLevel(ts.logLevel)
+	// logger.SetLevel(ts.logLevel)
 	subLogger := logger.WithFields(log.Fields{
 		"type": "file",
 	})
+
 	f := FileSource{}
-	err := f.Configure([]byte(config), subLogger)
-	if err != nil {
+	if err := f.Configure([]byte(config), subLogger); err != nil {
 		subLogger.Fatalf("unexpected error: %s", err)
 	}
+
 	expectedLogOutput := "Skipping file test_files/test.log.gz as it matches exclude pattern"
+
 	if hook.LastEntry() == nil {
 		t.Fatalf("expected output %s, but got nothing", expectedLogOutput)
 	}
+
 	assert.Contains(t, hook.LastEntry().Message, expectedLogOutput)
 	hook.Reset()
 }
