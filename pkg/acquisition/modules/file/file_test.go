@@ -17,22 +17,27 @@ import (
 
 func TestBadConfiguration(t *testing.T) {
 	tests := []struct {
+		name        string
 		config      string
 		expectedErr string
 	}{
 		{
-			config:      `foobar: asd.log`,
+			name:        "extra configuration key",
+			config:      "foobar: asd.log",
 			expectedErr: "line 1: field foobar not found in type fileacquisition.FileConfiguration",
 		},
 		{
-			config:      `mode: tail`,
+			name:        "missing filenames",
+			config:      "mode: tail",
 			expectedErr: "no filename or filenames configuration provided",
 		},
 		{
+			name:        "glob syntax error",
 			config:      `filename: "[asd-.log"`,
 			expectedErr: "Glob failure: syntax error in pattern",
 		},
 		{
+			name: "bad exclude regexp",
 			config: `filenames: ["asd.log"]
 exclude_regexps: ["as[a-$d"]`,
 			expectedErr: "Could not compile regexp as",
@@ -43,9 +48,11 @@ exclude_regexps: ["as[a-$d"]`,
 		"type": "file",
 	})
 	for _, test := range tests {
-		f := FileSource{}
-		err := f.Configure([]byte(test.config), subLogger)
-		assert.Contains(t, err.Error(), test.expectedErr)
+		t.Run(test.name, func(t *testing.T) {
+			f := FileSource{}
+			err := f.Configure([]byte(test.config), subLogger)
+			cstest.AssertErrorContains(t, err, test.expectedErr)
+		})
 	}
 }
 
@@ -81,9 +88,11 @@ func TestConfigureDSN(t *testing.T) {
 		"type": "file",
 	})
 	for _, test := range tests {
-		f := FileSource{}
-		err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger)
-		cstest.AssertErrorContains(t, err, test.expectedErr)
+		t.Run(test.dsn, func(t *testing.T) {
+			f := FileSource{}
+			err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger)
+			cstest.AssertErrorContains(t, err, test.expectedErr)
+		})
 	}
 }
 
@@ -100,6 +109,7 @@ func TestOneShot(t *testing.T) {
 		permDeniedError = "failed opening C:\\Windows\\System32\\config\\SAM: open C:\\Windows\\System32\\config\\SAM: The process cannot access the file because it is being used by another process."
 	}
 	tests := []struct {
+		name              string
 		config            string
 		expectedConfigErr string
 		expectedErr       string
@@ -111,6 +121,7 @@ func TestOneShot(t *testing.T) {
 		teardown          func()
 	}{
 		{
+			name: "permission denied",
 			config: fmt.Sprintf(`
 mode: cat
 filename: %s`, permDeniedFile),
@@ -121,6 +132,7 @@ filename: %s`, permDeniedFile),
 			expectedLines:     0,
 		},
 		{
+			name: "ignored directory",
 			config: `
 mode: cat
 filename: /`,
@@ -131,6 +143,7 @@ filename: /`,
 			expectedLines:     0,
 		},
 		{
+			name: "glob syntax error",
 			config: `
 mode: cat
 filename: "[*-.log"`,
@@ -141,6 +154,7 @@ filename: "[*-.log"`,
 			expectedLines:     0,
 		},
 		{
+			name: "no matching files",
 			config: `
 mode: cat
 filename: /do/not/exist`,
@@ -151,6 +165,7 @@ filename: /do/not/exist`,
 			expectedLines:     0,
 		},
 		{
+			name: "test.log",
 			config: `
 mode: cat
 filename: test_files/test.log`,
@@ -161,6 +176,7 @@ filename: test_files/test.log`,
 			logLevel:          log.WarnLevel,
 		},
 		{
+			name: "test.log.gz",
 			config: `
 mode: cat
 filename: test_files/test.log.gz`,
@@ -171,6 +187,7 @@ filename: test_files/test.log.gz`,
 			logLevel:          log.WarnLevel,
 		},
 		{
+			name: "unexpected end of gzip stream",
 			config: `
 mode: cat
 filename: test_files/bad.gz`,
@@ -181,6 +198,7 @@ filename: test_files/bad.gz`,
 			logLevel:          log.WarnLevel,
 		},
 		{
+			name: "deleted file",
 			config: `
 mode: cat
 filename: test_files/test_delete.log`,
@@ -196,53 +214,55 @@ filename: test_files/test_delete.log`,
 	}
 
 	for _, ts := range tests {
-		logger, hook := test.NewNullLogger()
-		logger.SetLevel(ts.logLevel)
-		subLogger := logger.WithFields(log.Fields{
-			"type": "file",
-		})
-		tomb := tomb.Tomb{}
-		out := make(chan types.Event)
-		f := FileSource{}
-		if ts.setup != nil {
-			ts.setup()
-		}
-		err := f.Configure([]byte(ts.config), subLogger)
-		cstest.AssertErrorContains(t, err, ts.expectedConfigErr)
-		if err != nil {
-			continue
-		}
+		t.Run(ts.name, func(t *testing.T) {
+			logger, hook := test.NewNullLogger()
+			logger.SetLevel(ts.logLevel)
+			subLogger := logger.WithFields(log.Fields{
+				"type": "file",
+			})
+			tomb := tomb.Tomb{}
+			out := make(chan types.Event)
+			f := FileSource{}
+			if ts.setup != nil {
+				ts.setup()
+			}
+			err := f.Configure([]byte(ts.config), subLogger)
+			cstest.AssertErrorContains(t, err, ts.expectedConfigErr)
+			if err != nil {
+				return
+			}
 
-		if ts.afterConfigure != nil {
-			ts.afterConfigure()
-		}
-		actualLines := 0
-		if ts.expectedLines != 0 {
-			go func() {
-			READLOOP:
-				for {
-					select {
-					case <-out:
+			if ts.afterConfigure != nil {
+				ts.afterConfigure()
+			}
+			actualLines := 0
+			if ts.expectedLines != 0 {
+				go func() {
+					READLOOP:
+					for {
+						select {
+						case <-out:
 						actualLines++
-					case <-time.After(1 * time.Second):
+						case <-time.After(1 * time.Second):
 						break READLOOP
+						}
 					}
-				}
-			}()
-		}
-		err = f.OneShotAcquisition(out, &tomb)
-		cstest.AssertErrorContains(t, err, ts.expectedErr)
+				}()
+			}
+			err = f.OneShotAcquisition(out, &tomb)
+			cstest.AssertErrorContains(t, err, ts.expectedErr)
 
-		if ts.expectedLines != 0 {
-			assert.Equal(t, actualLines, ts.expectedLines)
-		}
-		if ts.expectedOutput != "" {
-			assert.Contains(t, hook.LastEntry().Message, ts.expectedOutput)
-			hook.Reset()
-		}
-		if ts.teardown != nil {
-			ts.teardown()
-		}
+			if ts.expectedOutput != "" {
+				assert.Contains(t, hook.LastEntry().Message, ts.expectedOutput)
+				hook.Reset()
+			}
+			if ts.expectedLines != 0 {
+				assert.Equal(t, actualLines, ts.expectedLines)
+			}
+			if ts.teardown != nil {
+				ts.teardown()
+			}
+		})
 	}
 }
 
@@ -262,10 +282,10 @@ func TestLiveAcquisition(t *testing.T) {
 		testPattern = "test_files\\\\*.log" // the \ must be escaped twice: once for the string, once for the yaml config
 	}
 	tests := []struct {
+		name           string
 		config         string
 		expectedErr    string
 		expectedOutput string
-		name           string
 		expectedLines  int
 		logLevel       log.Level
 		setup          func()
@@ -375,79 +395,79 @@ force_inotify: true`, testPattern),
 	}
 
 	for _, ts := range tests {
-		t.Logf("test: %s", ts.name)
-		logger, hook := test.NewNullLogger()
-		logger.SetLevel(ts.logLevel)
-		subLogger := logger.WithFields(log.Fields{
-			"type": "file",
-		})
-		tomb := tomb.Tomb{}
-		out := make(chan types.Event)
-		f := FileSource{}
-		if ts.setup != nil {
-			ts.setup()
-		}
-		err := f.Configure([]byte(ts.config), subLogger)
-		if err != nil {
-			t.Fatalf("Unexpected error : %s", err)
-		}
-		if ts.afterConfigure != nil {
-			ts.afterConfigure()
-		}
-		actualLines := 0
-		if ts.expectedLines != 0 {
-			go func() {
-			READLOOP:
-				for {
-					select {
-					case <-out:
+		t.Run(ts.name, func(t *testing.T) {
+			logger, hook := test.NewNullLogger()
+			logger.SetLevel(ts.logLevel)
+			subLogger := logger.WithFields(log.Fields{
+				"type": "file",
+			})
+			tomb := tomb.Tomb{}
+			out := make(chan types.Event)
+			f := FileSource{}
+			if ts.setup != nil {
+				ts.setup()
+			}
+			err := f.Configure([]byte(ts.config), subLogger)
+			if err != nil {
+				t.Fatalf("Unexpected error : %s", err)
+			}
+			if ts.afterConfigure != nil {
+				ts.afterConfigure()
+			}
+			actualLines := 0
+			if ts.expectedLines != 0 {
+				go func() {
+					READLOOP:
+					for {
+						select {
+						case <-out:
 						actualLines++
-					case <-time.After(2 * time.Second):
+						case <-time.After(2 * time.Second):
 						break READLOOP
+						}
+					}
+				}()
+			}
+			err = f.StreamingAcquisition(out, &tomb)
+			cstest.AssertErrorContains(t, err, ts.expectedErr)
+
+			if ts.expectedLines != 0 {
+				fd, err := os.Create("test_files/stream.log")
+				if err != nil {
+					t.Fatalf("could not create test file : %s", err)
+				}
+				for i := 0; i < 5; i++ {
+					_, err = fd.WriteString(fmt.Sprintf("%d\n", i))
+					if err != nil {
+						t.Fatalf("could not write test file : %s", err)
+						os.Remove("test_files/stream.log")
 					}
 				}
-			}()
-		}
-		err = f.StreamingAcquisition(out, &tomb)
-		cstest.AssertErrorContains(t, err, ts.expectedErr)
-
-		if ts.expectedLines != 0 {
-			fd, err := os.Create("test_files/stream.log")
-			if err != nil {
-				t.Fatalf("could not create test file : %s", err)
+				fd.Close()
+				//we sleep to make sure we detect the new file
+				time.Sleep(1 * time.Second)
+				os.Remove("test_files/stream.log")
+				assert.Equal(t, ts.expectedLines, actualLines)
 			}
-			for i := 0; i < 5; i++ {
-				_, err = fd.WriteString(fmt.Sprintf("%d\n", i))
-				if err != nil {
-					t.Fatalf("could not write test file : %s", err)
-					os.Remove("test_files/stream.log")
+
+			if ts.expectedOutput != "" {
+				if hook.LastEntry() == nil {
+					t.Fatalf("expected output %s, but got nothing", ts.expectedOutput)
 				}
+				assert.Contains(t, hook.LastEntry().Message, ts.expectedOutput)
+				hook.Reset()
 			}
-			fd.Close()
-			//we sleep to make sure we detect the new file
-			time.Sleep(1 * time.Second)
-			os.Remove("test_files/stream.log")
-			assert.Equal(t, ts.expectedLines, actualLines)
-		}
 
-		if ts.expectedOutput != "" {
-			if hook.LastEntry() == nil {
-				t.Fatalf("expected output %s, but got nothing", ts.expectedOutput)
+			if ts.teardown != nil {
+				ts.teardown()
 			}
-			assert.Contains(t, hook.LastEntry().Message, ts.expectedOutput)
-			hook.Reset()
-		}
 
-		if ts.teardown != nil {
-			ts.teardown()
-		}
-
-		tomb.Kill(nil)
+			tomb.Kill(nil)
+		})
 	}
 }
 
 func TestExclusion(t *testing.T) {
-
 	config := `filenames: ["test_files/*.log*"]
 exclude_regexps: ["\\.gz$"]`
 	logger, hook := test.NewNullLogger()
