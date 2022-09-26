@@ -70,15 +70,19 @@ func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry) err
 	ka.config = k8sConfig
 
 	if ka.config.ListenAddr == "" {
-		ka.config.ListenAddr = "127.0.0.1"
+		return fmt.Errorf("listen_addr cannot be empty")
 	}
 
 	if ka.config.ListenPort == 0 {
-		ka.config.ListenPort = 9042
+		return fmt.Errorf("listen_port cannot be empty")
 	}
 
 	if ka.config.WebhookPath == "" {
-		ka.config.WebhookPath = "/"
+		return fmt.Errorf("webhook_path cannot be empty")
+	}
+
+	if ka.config.WebhookPath[0] != '/' {
+		ka.config.WebhookPath = "/" + ka.config.WebhookPath
 	}
 
 	if ka.config.Mode == "" {
@@ -120,7 +124,11 @@ func (ka *KubernetesAuditSource) StreamingAcquisition(out chan types.Event, t *t
 		defer types.CatchPanic("crowdsec/acquis/k8s-audit/live")
 		ka.logger.Infof("Starting k8s-audit server on %s:%d%s", ka.config.ListenAddr, ka.config.ListenPort, ka.config.WebhookPath)
 		t.Go(func() error {
-			return ka.server.ListenAndServe()
+			err := ka.server.ListenAndServe()
+			if err != nil && err != http.ErrServerClosed {
+				return errors.Wrap(err, "k8s-audit server failed")
+			}
+			return nil
 		})
 		<-t.Dying()
 		ka.logger.Infof("Stopping k8s-audit server on %s:%d%s", ka.config.ListenAddr, ka.config.ListenPort, ka.config.WebhookPath)
@@ -153,10 +161,11 @@ func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.R
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	ka.logger.Tracef("webhookHandler: %s", string(jsonBody))
+	ka.logger.Tracef("webhookHandler receveid: %s", string(jsonBody))
 	err = json.Unmarshal(jsonBody, &auditEvents)
 	if err != nil {
 		ka.logger.Errorf("Error decoding audit events: %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	for _, auditEvent := range auditEvents.Items {
@@ -164,7 +173,7 @@ func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.R
 		bytesEvent, err := json.Marshal(auditEvent)
 		if err != nil {
 			ka.logger.Errorf("Error marshaling audit event: %s", err)
-			return
+			continue
 		}
 		ka.logger.Tracef("Got audit event: %s", string(bytesEvent))
 		l := types.Line{
