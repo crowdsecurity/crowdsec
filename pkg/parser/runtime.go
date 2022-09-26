@@ -138,6 +138,8 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 				clog.Warnf("Expression returned a map, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string")
 			case []interface{}:
 				clog.Warnf("Expression returned a map, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string")
+			case nil:
+				clog.Debugf("Expression returned nil, skipping")
 			default:
 				clog.Errorf("unexpected return type for RunTimeValue : %T", output)
 				return errors.New("unexpected return type for RunTimeValue")
