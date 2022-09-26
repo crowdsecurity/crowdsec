@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
@@ -118,18 +118,14 @@ func (ka *KubernetesAuditSource) StreamingAcquisition(out chan types.Event, t *t
 	ka.outChan = out
 	t.Go(func() error {
 		defer types.CatchPanic("crowdsec/acquis/k8s-audit/live")
+		ka.logger.Infof("Starting k8s-audit server on %s:%d%s", ka.config.ListenAddr, ka.config.ListenPort, ka.config.WebhookPath)
 		t.Go(func() error {
 			return ka.server.ListenAndServe()
 		})
-		ka.logger.Infof("Starting k8s-audit server on %s:%d%s", ka.config.ListenAddr, ka.config.ListenPort, ka.config.WebhookPath)
-		for {
-			select {
-			case <-t.Dying():
-				ka.logger.Infof("Stopping k8s-audit server on %s:%d%s", ka.config.ListenAddr, ka.config.ListenPort, ka.config.WebhookPath)
-				ka.server.Shutdown(context.TODO())
-				return nil
-			}
-		}
+		<-t.Dying()
+		ka.logger.Infof("Stopping k8s-audit server on %s:%d%s", ka.config.ListenAddr, ka.config.ListenPort, ka.config.WebhookPath)
+		ka.server.Shutdown(context.TODO())
+		return nil
 	})
 	return nil
 }
@@ -151,7 +147,7 @@ func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.R
 	ka.logger.Tracef("webhookHandler called")
 	var auditEvents audit.EventList
 
-	jsonBody, err := ioutil.ReadAll(r.Body)
+	jsonBody, err := io.ReadAll(r.Body)
 	if err != nil {
 		ka.logger.Errorf("Error reading request body: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -167,7 +163,7 @@ func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.R
 		eventCount.WithLabelValues(ka.addr).Inc()
 		bytesEvent, err := json.Marshal(auditEvent)
 		if err != nil {
-			ka.logger.Errorf("Error marshalling audit event: %s", err)
+			ka.logger.Errorf("Error marshaling audit event: %s", err)
 			return
 		}
 		ka.logger.Tracef("Got audit event: %s", string(bytesEvent))
