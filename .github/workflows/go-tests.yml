@@ -130,6 +130,10 @@ jobs:
           | sed 's/ *coverage:.*of statements in.*//' \
           | richgo testfilter
 
+    - name: Clean test cache
+      run: |
+        go clean --testcache
+
     - name: Build and run tests (static)
       run: |
         make clean build test BUILD_STATIC=yes
