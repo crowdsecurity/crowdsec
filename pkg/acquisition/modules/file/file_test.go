@@ -257,7 +257,7 @@ filename: test_files/test_delete.log`,
 				hook.Reset()
 			}
 			if ts.expectedLines != 0 {
-				assert.Equal(t, actualLines, ts.expectedLines)
+				assert.Equal(t, ts.expectedLines, actualLines)
 			}
 			if ts.teardown != nil {
 				ts.teardown()
