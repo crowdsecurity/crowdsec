@@ -410,7 +410,7 @@ func getHandshake() (plugin.HandshakeConfig, error) {
 }
 
 func formatAlerts(format string, alerts []*models.Alert) (string, error) {
-	template, err := template.New("").Funcs(sprig.TxtFuncMap()).Parse(format)
+	template, err := template.New("").Funcs(sprig.TxtFuncMap()).Funcs(funcMap()).Parse(format)
 	if err != nil {
 		return "", err
 	}
