@@ -46,6 +46,7 @@ type PluginConfig struct {
 	EmailSubject   string   `yaml:"email_subject"`
 	EncryptionType string   `yaml:"encryption_type"`
 	AuthType       string   `yaml:"auth_type"`
+	HeloHost       string   `yaml:"helo_host"`
 }
 
 type EmailPlugin struct {
@@ -104,6 +105,7 @@ func (n *EmailPlugin) Notify(ctx context.Context, notification *protobufs.Notifi
 	server.Password = cfg.SMTPPassword
 	server.Encryption = EncryptionStringToType[cfg.EncryptionType]
 	server.Authentication = AuthStringToType[cfg.AuthType]
+	server.Helo = cfg.HeloHost
 
 	logger.Debug("making smtp connection")
 	smtpClient, err := server.Connect()
