@@ -173,7 +173,7 @@ func FormatPrometheusMetric(url string, formatType string) ([]byte, error) {
 				if _, ok := buckets_stats[name]; !ok {
 					buckets_stats[name] = make(map[string]int)
 				}
-				buckets_stats[name]["instanciation"] += ival
+				buckets_stats[name]["instantiation"] += ival
 			case "cs_buckets":
 				if _, ok := buckets_stats[name]; !ok {
 					buckets_stats[name] = make(map[string]int)
@@ -296,7 +296,7 @@ func FormatPrometheusMetric(url string, formatType string) ([]byte, error) {
 		}
 		bucketsTable := tablewriter.NewWriter(ret)
 		bucketsTable.SetHeader([]string{"Bucket", "Current Count", "Overflows", "Instantiated", "Poured", "Expired"})
-		keys = []string{"curr_count", "overflow", "instanciation", "pour", "underflow"}
+		keys = []string{"curr_count", "overflow", "instantiation", "pour", "underflow"}
 		if err := metricsToTable(bucketsTable, buckets_stats, keys); err != nil {
 			log.Warningf("while collecting acquis stats : %s", err)
 		}

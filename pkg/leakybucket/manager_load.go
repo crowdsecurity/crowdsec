@@ -67,7 +67,7 @@ type BucketFactory struct {
 	output          bool                      //??
 	ScenarioVersion string                    `yaml:"version,omitempty"`
 	hash            string                    `yaml:"-"`
-	Simulated       bool                      `yaml:"simulated"` //Set to true if the scenario instanciating the bucket was in the exclusion list
+	Simulated       bool                      `yaml:"simulated"` //Set to true if the scenario instantiating the bucket was in the exclusion list
 	tomb            *tomb.Tomb                `yaml:"-"`
 	wgPour          *sync.WaitGroup           `yaml:"-"`
 	wgDumpState     *sync.WaitGroup           `yaml:"-"`
