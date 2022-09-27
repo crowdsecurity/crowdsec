@@ -267,7 +267,7 @@ func TestOneShot(t *testing.T) {
 	}{
 		{
 			dsn:            "docker://non_exist_docker",
-			expectedErr:    "no docker found, can't run one shot acquisition",
+			expectedErr:    "no container found named: non_exist_docker, can't run one shot acquisition",
 			expectedOutput: "",
 			expectedLines:  0,
 			logType:        "test",
