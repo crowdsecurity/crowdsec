@@ -72,7 +72,7 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 				return &Client{}, errors.Wrapf(err, "failed to create SQLite database file %q", config.DbPath)
 			}
 		} else { /*ensure file perms*/
-			if err := os.Chmod(config.DbPath, 0660); err != nil {
+			if err := os.Chmod(config.DbPath, 0600); err != nil {
 				return &Client{}, fmt.Errorf("unable to set perms on %s: %v", config.DbPath, err)
 			}
 		}
