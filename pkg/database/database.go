@@ -61,7 +61,6 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 	entOpt := ent.Log(entLogger.Debug)
 	switch config.Type {
 	case "sqlite":
-
 		/*if it's the first startup, we want to touch and chmod file*/
 		if _, err := os.Stat(config.DbPath); os.IsNotExist(err) {
 			f, err := os.OpenFile(config.DbPath, os.O_CREATE|os.O_RDWR, 0600)
@@ -71,10 +70,10 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 			if err := f.Close(); err != nil {
 				return &Client{}, errors.Wrapf(err, "failed to create SQLite database file %q", config.DbPath)
 			}
-		} else { /*ensure file perms*/
-			if err := os.Chmod(config.DbPath, 0600); err != nil {
-				return &Client{}, fmt.Errorf("unable to set perms on %s: %v", config.DbPath, err)
-			}
+		}
+		//Always try to set permissions to simplify a bit the code for windows (as the permissions set by OpenFile will be garbage)
+		if err := setFilePerm(config.DbPath, 0600); err != nil {
+			return &Client{}, fmt.Errorf("unable to set perms on %s: %v", config.DbPath, err)
 		}
 		if config.UseWal == nil {
 			entLogger.Warn("you are using sqlite without WAL, this can have an impact of performance. If you do not store the database in a network share, set db_config.use_wal to true. Set explicitly to false to disable this warning.")
