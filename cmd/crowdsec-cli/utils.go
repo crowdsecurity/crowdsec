@@ -112,12 +112,8 @@ func compAllItems(itemType string, args []string, toComplete string) ([]string, 
 	comp := make([]string, 0)
 	hubItems := cwhub.GetHubStatusForItemType(itemType, "", true)
 	for _, item := range hubItems {
-		if toComplete == "" {
+		if !inSlice(item.Name, args) && strings.Contains(item.Name, toComplete) {
 			comp = append(comp, item.Name)
-		} else {
-			if strings.Contains(item.Name, toComplete) {
-				comp = append(comp, item.Name)
-			}
 		}
 	}
 	cobra.CompDebugln(fmt.Sprintf("%s: %+v", itemType, comp), true)
