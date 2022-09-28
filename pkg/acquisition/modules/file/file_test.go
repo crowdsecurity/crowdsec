@@ -460,7 +460,12 @@ exclude_regexps: ["\\.gz$"]`
 	if err != nil {
 		subLogger.Fatalf("unexpected error: %s", err)
 	}
-	expectedLogOutput := "Skipping file test_files/test.log.gz as it matches exclude pattern"
+	var expectedLogOutput string
+	if runtime.GOOS == "windows" {
+		expectedLogOutput = "Skipping file test_files\\test.log.gz as it matches exclude pattern \\.gz"
+	} else {
+		expectedLogOutput = "Skipping file test_files/test.log.gz as it matches exclude pattern"
+	}
 	if hook.LastEntry() == nil {
 		t.Fatalf("expected output %s, but got nothing", expectedLogOutput)
 	}
