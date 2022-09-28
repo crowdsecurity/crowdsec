@@ -1,9 +1,9 @@
 package database
 
 import (
+	"fmt"
 	"io/fs"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/windows"
 )
@@ -13,13 +13,13 @@ func setFilePerm(path string, mode fs.FileMode) error {
 
 	sd, err := windows.GetNamedSecurityInfo(path, windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION)
 	if err != nil {
-		return errors.Wrap(err, "while getting security info")
+		return fmt.Errorf("while getting security info: %w", err)
 	}
 
 	currentOwner, defaulted, err := sd.Owner()
 
 	if err != nil {
-		return errors.Wrap(err, "while getting owner")
+		return fmt.Errorf("while getting owner: %w", err)
 	}
 
 	log.Debugf("current owner is %s (%v) (defaulted: %v)", currentOwner.String(), currentOwner, defaulted)
@@ -27,14 +27,14 @@ func setFilePerm(path string, mode fs.FileMode) error {
 	currentGroup, defaulted, err := sd.Group()
 
 	if err != nil {
-		return errors.Wrap(err, "while getting group")
+		return fmt.Errorf("while getting group: %w", err)
 	}
 
 	if currentGroup == nil {
 		log.Debugf("current group is nil (defaulted: %v), using builtin admin instead", defaulted)
 		currentGroup, err = windows.CreateWellKnownSid(windows.WinBuiltinAdministratorsSid)
 		if err != nil {
-			return errors.Wrap(err, "while creating admin SID")
+			return fmt.Errorf("while creating admin SID: %w", err)
 		}
 	}
 
@@ -67,13 +67,13 @@ func setFilePerm(path string, mode fs.FileMode) error {
 		}, nil)
 
 	if err != nil {
-		return errors.Wrap(err, "while creating ACL")
+		return fmt.Errorf("while creating ACL: %w", err)
 	}
 
 	err = windows.SetNamedSecurityInfo(path, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION|windows.PROTECTED_DACL_SECURITY_INFORMATION, nil, nil, dacl, nil)
 
 	if err != nil {
-		return errors.Wrap(err, "while setting security info")
+		return fmt.Errorf("while setting security info: %w", err)
 	}
 	return nil
 }
