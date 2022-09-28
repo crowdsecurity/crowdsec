@@ -41,7 +41,7 @@ jobs:
       run: |
         go install github.com/kyoh86/richgo@v0.3.10
         go test -coverprofile coverage.out -covermode=atomic ./... > out.txt
-        if(!$?) { cat out.txt; Exit 1 }
+        if(!$?) { cat out.txt | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter; Exit 1 }
         cat out.txt | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
 
     - name: Upload unit coverage to Codecov
