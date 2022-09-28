@@ -13,7 +13,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/jcuga/golongpoll/client"
+	"github.com/crowdsecurity/golongpoll/client"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
@@ -161,15 +161,9 @@ func (p *Papi) Pull() error {
 			return errors.Wrap(err, "failed to marshal last timestamp")
 		}
 		p.Logger.Debugf("message received: %+v", event.Data)
-		data, err := json.Marshal(event.Data)
-		if err != nil {
-			p.Logger.Errorf("marshal message error: %s", err)
-			continue
-		}
-
 		message := &Message{}
-		if err := json.Unmarshal(data, message); err != nil {
-			p.Logger.Errorf("polling papi message format is not compatible: %+v", event.Data)
+		if err := json.Unmarshal([]byte(event.Data), message); err != nil {
+			p.Logger.Errorf("polling papi message format is not compatible: %+v: %s", event.Data, err)
 			// do we want to continue or exit ?
 			continue
 		}
