@@ -61,6 +61,13 @@ func getAPIC(t *testing.T) *apic {
 	}
 }
 
+func absDiff(a int, b int) (c int) {
+	if c = a - b; c < 0 {
+		return -1 * c
+	}
+	return c
+}
+
 func assertTotalDecisionCount(t *testing.T, dbClient *database.Client, count int) {
 	d := dbClient.Ent.Decision.Query().AllX(context.Background())
 	assert.Len(t, d, count)
@@ -117,7 +124,6 @@ func TestAPICCAPIPullIsOld(t *testing.T) {
 }
 
 func TestAPICFetchScenariosListFromDB(t *testing.T) {
-	api := getAPIC(t)
 	tests := []struct {
 		name                    string
 		machineIDsWithScenarios map[string]string
@@ -143,6 +149,7 @@ func TestAPICFetchScenariosListFromDB(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			api := getAPIC(t)
 			for machineID, scenarios := range tc.machineIDsWithScenarios {
 				api.dbClient.Ent.Machine.Create().
 					SetMachineId(machineID).
@@ -252,8 +259,7 @@ func TestAPICHandleDeletedDecisions(t *testing.T) {
 }
 
 func TestAPICGetMetrics(t *testing.T) {
-	api := getAPIC(t)
-	cleanUp := func() {
+	cleanUp := func(api *apic) {
 		api.dbClient.Ent.Bouncer.Delete().ExecX(context.Background())
 		api.dbClient.Ent.Machine.Delete().ExecX(context.Background())
 	}
@@ -304,9 +310,10 @@ func TestAPICGetMetrics(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			cleanUp()
+			apiClient := getAPIC(t)
+			cleanUp(apiClient)
 			for i, machineID := range tc.machineIDs {
-				api.dbClient.Ent.Machine.Create().
+				apiClient.dbClient.Ent.Machine.Create().
 					SetMachineId(machineID).
 					SetPassword(testPassword.String()).
 					SetIpAddress(fmt.Sprintf("1.2.3.%d", i)).
@@ -317,7 +324,7 @@ func TestAPICGetMetrics(t *testing.T) {
 			}
 
 			for i, bouncerName := range tc.bouncers {
-				api.dbClient.Ent.Bouncer.Create().
+				apiClient.dbClient.Ent.Bouncer.Create().
 					SetIPAddress(fmt.Sprintf("1.2.3.%d", i)).
 					SetName(bouncerName).
 					SetAPIKey("foobar").
@@ -326,7 +333,7 @@ func TestAPICGetMetrics(t *testing.T) {
 					ExecX(context.Background())
 			}
 
-			foundMetrics, err := api.GetMetrics()
+			foundMetrics, err := apiClient.GetMetrics()
 			require.NoError(t, err)
 
 			assert.Equal(t, tc.expectedMetric.Bouncers, foundMetrics.Bouncers)
@@ -610,7 +617,6 @@ func TestAPICPullTop(t *testing.T) {
 }
 
 func TestAPICPush(t *testing.T) {
-
 	tests := []struct {
 		name          string
 		alerts        []*models.Alert
@@ -691,12 +697,11 @@ func TestAPICPush(t *testing.T) {
 }
 
 func TestAPICSendMetrics(t *testing.T) {
-	api := getAPIC(t)
 	tests := []struct {
 		name            string
 		duration        time.Duration
 		expectedCalls   int
-		setUp           func()
+		setUp           func(*apic)
 		metricsInterval time.Duration
 	}{
 		{
@@ -704,14 +709,15 @@ func TestAPICSendMetrics(t *testing.T) {
 			duration:        time.Millisecond * 30,
 			metricsInterval: time.Millisecond * 5,
 			expectedCalls:   5,
-			setUp:           func() {},
+			setUp:           func(api *apic) {},
 		},
 		{
 			name:            "with some metrics",
 			duration:        time.Millisecond * 30,
 			metricsInterval: time.Millisecond * 5,
 			expectedCalls:   5,
-			setUp: func() {
+			setUp: func(api *apic) {
+				api.dbClient.Ent.Machine.Delete().ExecX(context.Background())
 				api.dbClient.Ent.Machine.Create().
 					SetMachineId("1234").
 					SetPassword(testPassword.String()).
@@ -721,6 +727,7 @@ func TestAPICSendMetrics(t *testing.T) {
 					SetUpdatedAt(time.Time{}).
 					ExecX(context.Background())
 
+				api.dbClient.Ent.Bouncer.Delete().ExecX(context.Background())
 				api.dbClient.Ent.Bouncer.Create().
 					SetIPAddress("1.2.3.6").
 					SetName("someBouncer").
@@ -732,34 +739,41 @@ func TestAPICSendMetrics(t *testing.T) {
 		},
 	}
 
+	httpmock.RegisterResponder("POST", "http://api.crowdsec.net/api/metrics/", httpmock.NewBytesResponder(200, []byte{}))
+	httpmock.Activate()
+	defer httpmock.Deactivate()
+
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			api = getAPIC(t)
-			api.pushInterval = time.Millisecond
 			url, err := url.ParseRequestURI("http://api.crowdsec.net/")
 			require.NoError(t, err)
-			httpmock.Activate()
-			defer httpmock.DeactivateAndReset()
-			apic, err := apiclient.NewDefaultClient(
+
+			apiClient, err := apiclient.NewDefaultClient(
 				url,
 				"/api",
 				fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 				nil,
 			)
 			require.NoError(t, err)
-			api.apiClient = apic
-			api.metricsInterval = tc.metricsInterval
-			httpmock.RegisterNoResponder(httpmock.NewBytesResponder(200, []byte{}))
-			tc.setUp()
 
-			go func() {
-				if err := api.SendMetrics(); err != nil {
-					panic(err)
-				}
-			}()
+			api := getAPIC(t)
+			api.pushInterval = time.Millisecond
+			api.apiClient = apiClient
+			api.metricsInterval = tc.metricsInterval
+			tc.setUp(api)
+
+			stop := make(chan bool)
+			httpmock.ZeroCallCounters()
+			go api.SendMetrics(stop)
 			time.Sleep(tc.duration)
-			assert.GreaterOrEqual(t, httpmock.GetTotalCallCount(), tc.expectedCalls)
+			stop <- true
+
+			info := httpmock.GetCallCountInfo()
+			noResponderCalls := info["NO_RESPONDER"]
+			responderCalls := info["POST http://api.crowdsec.net/api/metrics/"]
+			assert.LessOrEqual(t, absDiff(tc.expectedCalls, responderCalls), 2)
+			assert.Zero(t, noResponderCalls)
 		})
 	}
 }

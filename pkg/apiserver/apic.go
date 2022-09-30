@@ -400,7 +400,7 @@ func fillAlertsWithDecisions(alerts []*models.Alert, decisions []*models.Decisio
 	return alerts
 }
 
-//we receive only one list of decisions, that we need to break-up :
+// we receive only one list of decisions, that we need to break-up :
 // one alert for "community blocklist"
 // one alert per list we're subscribed to
 func (a *apic) PullTop() error {
@@ -432,7 +432,7 @@ func (a *apic) PullTop() error {
 		return nil
 	}
 
-	//we receive only one list of decisions, that we need to break-up :
+	// we receive only one list of decisions, that we need to break-up :
 	// one alert for "community blocklist"
 	// one alert per list we're subscribed to
 	alertsFromCapi := createAlertsForDecisions(data.New)
@@ -541,37 +541,32 @@ func (a *apic) GetMetrics() (*models.Metrics, error) {
 	return metric, nil
 }
 
-func (a *apic) SendMetrics() error {
+func (a *apic) SendMetrics(stop chan (bool)) {
 	defer types.CatchPanic("lapi/metricsToAPIC")
 
-	metrics, err := a.GetMetrics()
-	if err != nil {
-		log.Errorf("unable to get metrics (%s), will retry", err)
-	}
-	_, _, err = a.apiClient.Metrics.Add(context.Background(), metrics)
-	if err != nil {
-		log.Errorf("unable to send metrics (%s), will retry", err)
-	}
-	log.Infof("capi metrics: metrics sent successfully")
-	log.Infof("Start send metrics to CrowdSec Central API (interval: %s)", MetricsInterval)
+	log.Infof("Start send metrics to CrowdSec Central API (interval: %s)", a.metricsInterval)
 	ticker := time.NewTicker(a.metricsInterval)
 	for {
+		metrics, err := a.GetMetrics()
+		if err != nil {
+			log.Errorf("unable to get metrics (%s), will retry", err)
+		}
+		_, _, err = a.apiClient.Metrics.Add(context.Background(), metrics)
+		if err != nil {
+			log.Errorf("capi metrics: failed: %s", err)
+		} else {
+			log.Infof("capi metrics: metrics sent successfully")
+		}
+
 		select {
+		case <-stop:
+			return
 		case <-ticker.C:
-			metrics, err := a.GetMetrics()
-			if err != nil {
-				log.Errorf("unable to get metrics (%s), will retry", err)
-			}
-			_, _, err = a.apiClient.Metrics.Add(context.Background(), metrics)
-			if err != nil {
-				log.Errorf("capi metrics: failed: %s", err)
-			} else {
-				log.Infof("capi metrics: metrics sent successfully")
-			}
+			continue
 		case <-a.metricsTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.pullTomb.Kill(nil)
 			a.pushTomb.Kill(nil)
-			return nil
+			return
 		}
 	}
 }
