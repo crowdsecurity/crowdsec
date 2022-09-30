@@ -64,6 +64,7 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"XMLGetNodeValue":        XMLGetNodeValue,
 		"IpToRange":              IpToRange,
 		"IsIPV6":                 IsIPV6,
+		"LookupHost":             net.LookupHost,
 		"GetDecisionsCount":      GetDecisionsCount,
 		"GetDecisionsSinceCount": GetDecisionsSinceCount,
 		"Sprintf":                fmt.Sprintf,
