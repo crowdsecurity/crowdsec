@@ -10,5 +10,4 @@ However, if you want to experiment and contribute:
 
 We do the above in the build pipeline, so you'll have to do it manually before running:
 
-* dpkg-buildpackage -uc -us -b
-
+* `dpkg-buildpackage -uc -us -b`
