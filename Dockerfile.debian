@@ -17,16 +17,9 @@ RUN GO111MODULE=on go get github.com/mikefarah/yq/v4
 FROM debian:bullseye-slim
 
 RUN apt update
-RUN apt install -y -q --install-recommends --no-install-suggests \
-    procps \
-    systemd \
-    iproute2 \
-    ca-certificates \
-    bash \
-    jq \
-    tzdata && \
-    mkdir -p /staging/etc/crowdsec && \
-    mkdir -p /staging/var/lib/crowdsec
+RUN apt install -y -q --install-recommends --no-install-suggests procps systemd iproute2 ca-certificates bash jq tzdata
+RUN mkdir -p /staging/etc/crowdsec
+RUN mkdir -p /staging/var/lib/crowdsec
 
 COPY --from=build /go/bin/yq /usr/local/bin/yq
 COPY --from=build /etc/crowdsec /staging/etc/crowdsec
@@ -35,9 +28,9 @@ COPY --from=build /usr/local/bin/crowdsec /usr/local/bin/crowdsec
 COPY --from=build /usr/local/bin/cscli /usr/local/bin/cscli
 COPY --from=build /go/src/crowdsec/docker/docker_start.sh /
 COPY --from=build /go/src/crowdsec/docker/config.yaml /staging/etc/crowdsec/config.yaml
+
 RUN yq eval -i ".plugin_config.group = \"nogroup\"" /staging/etc/crowdsec/config.yaml
-#Due to the wizard using cp -n, we have to copy the config files directly from the source as -n does not exist in busybox cp
-#The files are here for reference, as users will need to mount a new version to be actually able to use notifications
+
 COPY --from=build /go/src/crowdsec/plugins/notifications/email/email.yaml /staging/etc/crowdsec/notifications/email.yaml
 COPY --from=build /go/src/crowdsec/plugins/notifications/http/http.yaml /staging/etc/crowdsec/notifications/http.yaml
 COPY --from=build /go/src/crowdsec/plugins/notifications/slack/slack.yaml /staging/etc/crowdsec/notifications/slack.yaml
