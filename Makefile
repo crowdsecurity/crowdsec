@@ -1,4 +1,3 @@
-
 ifeq ($(OS), Windows_NT)
 	SHELL := pwsh.exe
 	.SHELLFLAGS := -NoProfile -Command
