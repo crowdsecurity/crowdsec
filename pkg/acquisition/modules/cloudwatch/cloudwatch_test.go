@@ -617,12 +617,11 @@ func TestConfigureByDSN(t *testing.T) {
 		},
 	}
 
-	for idx, tc := range tests {
+	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			dbgLogger := log.New().WithField("test", tc.name)
 			dbgLogger.Logger.SetLevel(log.DebugLevel)
-			log.Printf("%d/%d", idx, len(tests))
 			cw := CloudwatchSource{}
 			err := cw.ConfigureByDSN(tc.dsn, tc.labels, dbgLogger)
 			cstest.RequireErrorContains(t, err, tc.expectedCfgErr)
@@ -634,7 +633,6 @@ func TestOneShotAcquisition(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
-	var err error
 	log.SetLevel(log.DebugLevel)
 	tests := []struct {
 		dsn                 string
@@ -654,24 +652,22 @@ func TestOneShotAcquisition(t *testing.T) {
 			// expectedStartErr: "The specified log group does not exist",
 			setup: func(t *testing.T, cw *CloudwatchSource) {
 				deleteAllLogGroups(t, cw)
-				if _, err := cw.cwClient.CreateLogGroup(&cloudwatchlogs.CreateLogGroupInput{
+				_, err := cw.cwClient.CreateLogGroup(&cloudwatchlogs.CreateLogGroupInput{
 					LogGroupName: aws.String("test_log_group1"),
-				}); err != nil {
-					t.Fatalf("error while CreateLogGroup: %v", err)
-				}
-				if _, err := cw.cwClient.CreateLogStream(&cloudwatchlogs.CreateLogStreamInput{
+				})
+				require.NoError(t, err)
+
+				_, err = cw.cwClient.CreateLogStream(&cloudwatchlogs.CreateLogStreamInput{
 					LogGroupName:  aws.String("test_log_group1"),
 					LogStreamName: aws.String("test_stream"),
-				}); err != nil {
-					t.Fatalf("error while CreateLogStream")
-				}
+				})
+				require.NoError(t, err)
 			},
 			teardown: func(t *testing.T, cw *CloudwatchSource) {
-				if _, err := cw.cwClient.DeleteLogGroup(&cloudwatchlogs.DeleteLogGroupInput{
+				_, err := cw.cwClient.DeleteLogGroup(&cloudwatchlogs.DeleteLogGroupInput{
 					LogGroupName: aws.String("test_log_group1"),
-				}); err != nil {
-					t.Fatalf("failed to delete")
-				}
+				})
+				require.NoError(t, err)
 			},
 			expectedResLen: 0,
 		},
@@ -682,19 +678,19 @@ func TestOneShotAcquisition(t *testing.T) {
 			// expectedStartErr: "The specified log group does not exist",
 			setup: func(t *testing.T, cw *CloudwatchSource) {
 				deleteAllLogGroups(t, cw)
-				if _, err := cw.cwClient.CreateLogGroup(&cloudwatchlogs.CreateLogGroupInput{
+				_, err := cw.cwClient.CreateLogGroup(&cloudwatchlogs.CreateLogGroupInput{
 					LogGroupName: aws.String("test_log_group1"),
-				}); err != nil {
-					t.Fatalf("error while CreateLogGroup: %v", err)
-				}
-				if _, err := cw.cwClient.CreateLogStream(&cloudwatchlogs.CreateLogStreamInput{
+				})
+				require.NoError(t, err)
+
+				_, err = cw.cwClient.CreateLogStream(&cloudwatchlogs.CreateLogStreamInput{
 					LogGroupName:  aws.String("test_log_group1"),
 					LogStreamName: aws.String("test_stream"),
-				}); err != nil {
-					t.Fatalf("error while CreateLogStream")
-				}
+				})
+				require.NoError(t, err)
+
 				// this one is too much in the back
-				if _, err := cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
+				_, err = cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
 					LogGroupName:  aws.String("test_log_group1"),
 					LogStreamName: aws.String("test_stream"),
 					LogEvents: []*cloudwatchlogs.InputLogEvent{
@@ -703,12 +699,11 @@ func TestOneShotAcquisition(t *testing.T) {
 							Timestamp: aws.Int64(time.Now().UTC().Add(-(2 * time.Hour)).UTC().Unix() * 1000),
 						},
 					},
-				}); err != nil {
-					log.Fatalf("failed to put logs")
-				}
+				})
+				require.NoError(t, err)
 
 				// this one can be read
-				if _, err := cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
+				_, err = cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
 					LogGroupName:  aws.String("test_log_group1"),
 					LogStreamName: aws.String("test_stream"),
 					LogEvents: []*cloudwatchlogs.InputLogEvent{
@@ -717,12 +712,11 @@ func TestOneShotAcquisition(t *testing.T) {
 							Timestamp: aws.Int64(time.Now().UTC().Unix() * 1000),
 						},
 					},
-				}); err != nil {
-					log.Fatalf("failed to put logs")
-				}
+				})
+				require.NoError(t, err)
 
 				// this one is in the past
-				if _, err := cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
+				_, err = cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
 					LogGroupName:  aws.String("test_log_group1"),
 					LogStreamName: aws.String("test_stream"),
 					LogEvents: []*cloudwatchlogs.InputLogEvent{
@@ -731,16 +725,14 @@ func TestOneShotAcquisition(t *testing.T) {
 							Timestamp: aws.Int64(time.Now().UTC().Add(-(3 * time.Hour)).UTC().Unix() * 1000),
 						},
 					},
-				}); err != nil {
-					log.Fatalf("failed to put logs")
-				}
+				})
+				require.NoError(t, err)
 			},
 			teardown: func(t *testing.T, cw *CloudwatchSource) {
-				if _, err := cw.cwClient.DeleteLogGroup(&cloudwatchlogs.DeleteLogGroupInput{
+				_, err := cw.cwClient.DeleteLogGroup(&cloudwatchlogs.DeleteLogGroupInput{
 					LogGroupName: aws.String("test_log_group1"),
-				}); err != nil {
-					t.Fatalf("failed to delete")
-				}
+				})
+				require.NoError(t, err)
 			},
 			expectedResLen:      1,
 			expectedResMessages: []string{"test_message_2"},
@@ -754,20 +746,12 @@ func TestOneShotAcquisition(t *testing.T) {
 			dbgLogger.Logger.SetLevel(log.DebugLevel)
 			dbgLogger.Infof("starting test")
 			cw := CloudwatchSource{}
-			err = cw.ConfigureByDSN(tc.dsn, map[string]string{"type": "test"}, dbgLogger)
-			if err != nil && tc.expectedCfgErr != "" {
-				if !strings.Contains(err.Error(), tc.expectedCfgErr) {
-					t.Fatalf("%s expected error '%s' got error '%s'", tc.name, tc.expectedCfgErr, err)
-				}
-				log.Debugf("got expected error : %s", err)
-				return
-			} else if err != nil && tc.expectedCfgErr == "" {
-				t.Fatalf("%s unexpected error : %s", tc.name, err)
-				return
-			} else if tc.expectedCfgErr != "" && err == nil {
-				t.Fatalf("%s expected error '%s', got none", tc.name, tc.expectedCfgErr)
+			err := cw.ConfigureByDSN(tc.dsn, map[string]string{"type": "test"}, dbgLogger)
+			cstest.RequireErrorContains(t, err, tc.expectedCfgErr)
+			if tc.expectedCfgErr != "" {
 				return
 			}
+
 			dbgLogger.Infof("config done test")
 			// run pre-routine : tests use it to set group & streams etc.
 			if tc.setup != nil {
@@ -782,14 +766,7 @@ func TestOneShotAcquisition(t *testing.T) {
 			actmb.Go(func() error {
 				err := cw.OneShotAcquisition(out, &actmb)
 				dbgLogger.Infof("acquis done")
-
-				if err != nil && tc.expectedStartErr != "" && !strings.Contains(err.Error(), tc.expectedStartErr) {
-					t.Fatalf("%s expected error '%s' got '%s'", tc.name, tc.expectedStartErr, err)
-				} else if err != nil && tc.expectedStartErr == "" {
-					t.Fatalf("%s unexpected error '%s'", tc.name, err)
-				} else if err == nil && tc.expectedStartErr != "" {
-					t.Fatalf("%s expected error '%s' got none", tc.name, err)
-				}
+				cstest.RequireErrorContains(t, err, tc.expectedStartErr)
 				return nil
 			})
 
