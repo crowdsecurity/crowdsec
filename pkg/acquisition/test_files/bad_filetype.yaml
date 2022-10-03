@@ -1,4 +1,0 @@
-type: file
-filenames: /tmp/tltlt.log
-labels:
-  type: syslog
