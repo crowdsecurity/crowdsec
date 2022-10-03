@@ -692,18 +692,24 @@ func TestOneShotAcquisition(t *testing.T) {
 			dsn:  "cloudwatch://test_log_group1:test_stream?backlog=1h",
 			//expectedStartErr: "The specified log group does not exist",
 			pre: func(cw *CloudwatchSource) {
-				cw.cwClient.CreateLogGroup(&cloudwatchlogs.CreateLogGroupInput{
+				if _, err := cw.cwClient.CreateLogGroup(&cloudwatchlogs.CreateLogGroupInput{
 					LogGroupName: aws.String("test_log_group1"),
-				})
-				cw.cwClient.CreateLogStream(&cloudwatchlogs.CreateLogStreamInput{
+				}); err != nil {
+					t.Fatalf("error while CreateLogGroup")
+				}
+				if _, err := cw.cwClient.CreateLogStream(&cloudwatchlogs.CreateLogStreamInput{
 					LogGroupName:  aws.String("test_log_group1"),
 					LogStreamName: aws.String("test_stream"),
-				})
+				}); err != nil {
+					t.Fatalf("error while CreateLogStream")
+				}
 			},
 			post: func(cw *CloudwatchSource) {
-				cw.cwClient.DeleteLogGroup(&cloudwatchlogs.DeleteLogGroupInput{
+				if _, err := cw.cwClient.DeleteLogGroup(&cloudwatchlogs.DeleteLogGroupInput{
 					LogGroupName: aws.String("test_log_group1"),
-				})
+				}); err != nil {
+					t.Fatalf("failed to delete")
+				}
 			},
 			expectedResLen: 0,
 		},
@@ -723,7 +729,6 @@ func TestOneShotAcquisition(t *testing.T) {
 					LogStreamName: aws.String("test_stream"),
 				}); err != nil {
 					t.Fatalf("error while CreateLogStream")
-
 				}
 				//this one is too much in the back
 				if _, err := cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
