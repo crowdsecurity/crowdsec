@@ -40,3 +40,6 @@ msi
 *.msi
 *.nukpg
 *.tgz
+
+# Other
+pkg/acquisition/test_files/*.yaml
