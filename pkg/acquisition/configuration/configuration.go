@@ -16,4 +16,4 @@ type DataSourceCommonCfg struct {
 
 var TAIL_MODE = "tail"
 var CAT_MODE = "cat"
-var SERVER_MODE = "server" // No difference with tail, just a bit more verbose
+var SERVER_MODE = "server" // "Server" equals "prod". Other options: "dev", "staging"
