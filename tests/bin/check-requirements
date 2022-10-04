@@ -8,14 +8,13 @@ die() {
 }
 
 # shellcheck disable=SC1007
-TEST_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-# shellcheck source=./.environment.sh
-. "${TEST_DIR}/.environment.sh"
-
+THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck source=../.environment.sh
+. "${THIS_DIR}/../.environment.sh"
 
 check_bats_core() {
     if ! "${TEST_DIR}/lib/bats-core/bin/bats" --version >/dev/null 2>&1; then
-        die "ERROR: bats-core submodule is required. Please run 'git submodule init; git submodule update' and retry."
+        die "ERROR: the bats-* submodules are required. Please run 'git submodule init; git submodule update' and retry."
     fi
 }
 

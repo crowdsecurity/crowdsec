@@ -32,7 +32,7 @@ fi
 
 start() {
     systemctl start crowdsec
-    ./lib/util/wait-for-port 6060
+    ./bin/wait-for-port 6060
 }
 
 stop() {

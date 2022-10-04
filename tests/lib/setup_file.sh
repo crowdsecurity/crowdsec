@@ -22,7 +22,7 @@ eval "$(debug)"
 cd "${TEST_DIR}"
 
 # complain if there's a crowdsec running system-wide or leftover from a previous test
-./assert-crowdsec-not-running
+./bin/assert-crowdsec-not-running
 
 # we can prepend the filename to the test descriptions (useful to feed a TAP consumer)
 if [[ "${PREFIX_TEST_NAMES_WITH_FILE:-false}" == "true" ]]; then
