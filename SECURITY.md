@@ -5,7 +5,7 @@
 This security policy applies to :
  - Crowdsec agent
  - Crowdsec Local API
- - Crowdsec bouncers **developped and maintained** by Crowdsec's team [1]
+ - Crowdsec bouncers **developed and maintained** by the Crowdsec team [1]
 
 Reports regarding developements of community members that are not part of the crowdsecurity organization will be thoroughly investigated nonetheless.
 
@@ -24,7 +24,8 @@ You may encrypt your email to this list using the GPG key of the [Security team]
  - You think you discovered a potential security vulnerability in Crowdsec
  - You are unsure how a vulnerability affects Crowdsec
  - You think you discovered a vulnerability in another project that Crowdsec depends on
-   - For projects with their own vulnerability reporting and disclosure process, please report it directly there
+
+For projects with their own vulnerability reporting and disclosure process, please report it directly there.
 
 
 <!-- Very heavily inspired from https://kubernetes.io/docs/reference/issues-security/security/ -->
