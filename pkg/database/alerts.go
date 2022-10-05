@@ -832,37 +832,53 @@ func (c *Client) DeleteAlertGraphBatch(alertItems []*ent.Alert) (int, error) {
 		idList = append(idList, alert.ID)
 	}
 
-	_, err := c.Ent.Event.Delete().
-		Where(event.HasOwnerWith(alert.IDIn(idList...))).Exec(c.CTX)
-	if err != nil {
-		c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
-		return 0, errors.Wrapf(DeleteFail, "alert graph delete batch events")
+	var batches [][]int
+	batchSize := 999
+
+	for i := 0; i < len(idList); i += batchSize {
+		end := i + batchSize
+		if end > len(idList) {
+			end = len(idList)
+		}
+		batches = append(batches, idList[i:end])
 	}
 
-	_, err = c.Ent.Meta.Delete().
-		Where(meta.HasOwnerWith(alert.IDIn(idList...))).Exec(c.CTX)
-	if err != nil {
-		c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
-		return 0, errors.Wrapf(DeleteFail, "alert graph delete batch meta")
-	}
+	deletedTotal := 0
 
-	_, err = c.Ent.Decision.Delete().
-		Where(decision.HasOwnerWith(alert.IDIn(idList...))).Exec(c.CTX)
-	if err != nil {
-		c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
-		return 0, errors.Wrapf(DeleteFail, "alert graph delete batch decisions")
-	}
+	for _, batch := range batches {
+		_, err := c.Ent.Event.Delete().
+			Where(event.HasOwnerWith(alert.IDIn(batch...))).Exec(c.CTX)
+		if err != nil {
+			c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
+			return 0, errors.Wrapf(DeleteFail, "alert graph delete batch events")
+		}
 
-	deleted, err := c.Ent.Alert.Delete().
-		Where(alert.IDIn(idList...)).Exec(c.CTX)
-	if err != nil {
-		c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
-		return deleted, errors.Wrapf(DeleteFail, "alert graph delete batch")
+		_, err = c.Ent.Meta.Delete().
+			Where(meta.HasOwnerWith(alert.IDIn(batch...))).Exec(c.CTX)
+		if err != nil {
+			c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
+			return 0, errors.Wrapf(DeleteFail, "alert graph delete batch meta")
+		}
+
+		_, err = c.Ent.Decision.Delete().
+			Where(decision.HasOwnerWith(alert.IDIn(batch...))).Exec(c.CTX)
+		if err != nil {
+			c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
+			return 0, errors.Wrapf(DeleteFail, "alert graph delete batch decisions")
+		}
+
+		deleted, err := c.Ent.Alert.Delete().
+			Where(alert.IDIn(batch...)).Exec(c.CTX)
+		if err != nil {
+			c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
+			return deleted, errors.Wrapf(DeleteFail, "alert graph delete batch")
+		}
+		deletedTotal += deleted
 	}
 
 	c.Log.Debug("Done batch delete alerts")
 
-	return deleted, nil
+	return deletedTotal, nil
 }
 
 func (c *Client) DeleteAlertGraph(alertItem *ent.Alert) error {
