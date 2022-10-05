@@ -319,7 +319,6 @@ cscli decisions add --scope username --value foobar
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
-			var ipRange string
 			alerts := models.AddAlertsRequest{}
 			origin := "cscli"
 			capacity := int32(0)
@@ -373,10 +372,8 @@ cscli decisions add --scope username --value foobar
 					AsName:   empty,
 					AsNumber: empty,
 					Cn:       empty,
-					IP:       addValue,
-					Range:    ipRange,
-					Scope:    &addScope,
-					Value:    &addValue,
+					Scope:    new(string),
+					Value:    new(string),
 				},
 				StartAt:   &startAt,
 				StopAt:    &stopAt,
@@ -603,7 +600,7 @@ decisions.json :
 				Message:   types.StrPtr(""),
 				Events:    []*models.Event{},
 				Source: &models.Source{
-					Scope: types.StrPtr("cscli/manual-import"),
+					Scope: types.StrPtr(""),
 					Value: types.StrPtr(""),
 				},
 				StartAt:         types.StrPtr(time.Now().UTC().Format(time.RFC3339)),

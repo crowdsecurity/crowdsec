@@ -47,6 +47,49 @@ func DecisionsFromAlert(alert *models.Alert) string {
 	return ret
 }
 
+func DateFromAlert(alert *models.Alert) string {
+	ts, err := time.Parse(time.RFC3339, alert.CreatedAt)
+	if err != nil {
+		log.Infof("oops : %s while parsing %s with %s", err, alert.CreatedAt, time.RFC3339)
+		return alert.CreatedAt
+	}
+	return ts.Format(time.RFC822)
+}
+
+func SourceFromAlert(alert *models.Alert) string {
+
+	//more than one item, just number and scope
+	if len(alert.Decisions) > 1 {
+		return fmt.Sprintf("%d %ss (%s)", len(alert.Decisions), *alert.Decisions[0].Scope, *alert.Decisions[0].Origin)
+	}
+	//try to compose a human friendly version
+	if *alert.Source.Value != "" && *alert.Source.Scope != "" {
+		scope := ""
+		scope = fmt.Sprintf("%s:%s", *alert.Source.Scope, *alert.Source.Value)
+		extra := ""
+		if alert.Source.Cn != "" {
+			extra = alert.Source.Cn
+		}
+		if alert.Source.AsNumber != "" {
+			extra += fmt.Sprintf("/%s", alert.Source.AsNumber)
+		}
+		if alert.Source.AsName != "" {
+			extra += fmt.Sprintf("/%s", alert.Source.AsName)
+		}
+
+		if extra != "" {
+			scope += " (" + extra + ")"
+		}
+		return scope
+	}
+	//fallback on single decision information
+	if len(alert.Decisions) == 1 {
+		return fmt.Sprintf("%s:%s", *alert.Decisions[0].Scope, *alert.Decisions[0].Value)
+	}
+
+	return ""
+}
+
 func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 
 	if csConfig.Cscli.Output == "raw" {
@@ -85,7 +128,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 	} else if csConfig.Cscli.Output == "human" {
 
 		table := tablewriter.NewWriter(os.Stdout)
-		header := []string{"ID", "value", "reason", "country", "as", "decisions", "created_at"}
+		header := []string{"ID", "value", "reason", "created_at"}
 		if printMachine {
 			header = append(header, "machine")
 		}
@@ -97,18 +140,11 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 		}
 		for _, alertItem := range *alerts {
 
-			displayVal := *alertItem.Source.Scope
-			if *alertItem.Source.Value != "" {
-				displayVal += ":" + *alertItem.Source.Value
-			}
 			row := []string{
 				strconv.Itoa(int(alertItem.ID)),
-				displayVal,
+				SourceFromAlert(alertItem),
 				*alertItem.Scenario,
-				alertItem.Source.Cn,
-				alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
-				DecisionsFromAlert(alertItem),
-				*alertItem.StartAt,
+				DateFromAlert(alertItem),
 			}
 			if printMachine {
 				row = append(row, alertItem.MachineID)
