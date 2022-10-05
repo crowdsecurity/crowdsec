@@ -463,11 +463,13 @@ stream_name: test_stream`),
 					}
 				}
 			})
+
 			if tc.run != nil {
 				tc.run(t, &cw)
 			} else {
 				dbgLogger.Warning("no code to run")
 			}
+
 			time.Sleep(5 * time.Second)
 			dbgLogger.Infof("killing collector")
 			tmb.Kill(nil)
@@ -475,13 +477,6 @@ stream_name: test_stream`),
 			dbgLogger.Infof("killing datasource")
 			actmb.Kill(nil)
 			<-actmb.Dead()
-
-			if tc.run != nil {
-				tc.run(t, &cw)
-			} else {
-				dbgLogger.Warning("no code to run")
-			}
-
 			// dbgLogger.Infof("collected events : %d -> %+v", len(rcvd_evts), rcvd_evts)
 			// check results
 			if tc.expectedResLen != -1 {
