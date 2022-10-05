@@ -213,7 +213,7 @@ filename: test_files/test_delete.log`,
 			})
 
 			tomb := tomb.Tomb{}
-			out := make(chan types.Event)
+			out := make(chan types.Event, 100)
 			f := fileacquisition.FileSource{}
 
 			if tc.setup != nil {
@@ -229,22 +229,8 @@ filename: test_files/test_delete.log`,
 			if tc.afterConfigure != nil {
 				tc.afterConfigure()
 			}
-
-			actualLines := 0
-			if tc.expectedLines != 0 {
-				go func() {
-					for {
-						select {
-						case <-out:
-							actualLines++
-						case <-time.After(2 * time.Second):
-							return
-						}
-					}
-				}()
-			}
-
 			err = f.OneShotAcquisition(out, &tomb)
+			actualLines := len(out)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
 			if tc.expectedLines != 0 {
