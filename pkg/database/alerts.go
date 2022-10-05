@@ -832,10 +832,31 @@ func (c *Client) DeleteAlertGraphBatch(alertItems []*ent.Alert) (int, error) {
 		idList = append(idList, alert.ID)
 	}
 
+	_, err := c.Ent.Event.Delete().
+		Where(event.HasOwnerWith(alert.IDIn(idList...))).Exec(c.CTX)
+	if err != nil {
+		c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
+		return 0, errors.Wrapf(DeleteFail, "alert graph delete batch events")
+	}
+
+	_, err = c.Ent.Meta.Delete().
+		Where(meta.HasOwnerWith(alert.IDIn(idList...))).Exec(c.CTX)
+	if err != nil {
+		c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
+		return 0, errors.Wrapf(DeleteFail, "alert graph delete batch meta")
+	}
+
+	_, err = c.Ent.Decision.Delete().
+		Where(decision.HasOwnerWith(alert.IDIn(idList...))).Exec(c.CTX)
+	if err != nil {
+		c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
+		return 0, errors.Wrapf(DeleteFail, "alert graph delete batch decisions")
+	}
+
 	deleted, err := c.Ent.Alert.Delete().
 		Where(alert.IDIn(idList...)).Exec(c.CTX)
 	if err != nil {
-		c.Log.Warningf("DeleteAlertGraph : %s", err)
+		c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
 		return deleted, errors.Wrapf(DeleteFail, "alert graph delete batch")
 	}
 
@@ -888,14 +909,12 @@ func (c *Client) DeleteAlertWithFilter(filter map[string][]string) (int, error) 
 		return 0, errors.Wrap(DeleteFail, "alert query failed")
 	}
 
-	for _, alertItem := range alertsToDelete {
-		err = c.DeleteAlertGraph(alertItem)
-		if err != nil {
-			c.Log.Warningf("DeleteAlertWithFilter : %s", err)
-			return 0, errors.Wrapf(DeleteFail, "event with alert ID '%d'", alertItem.ID)
-		}
+	deleted, err := c.DeleteAlertGraphBatch(alertsToDelete)
+	if err != nil {
+		c.Log.Warningf("DeleteAlertWithFilter : %s", err)
+		return 0, errors.Wrapf(DeleteFail, "%d alert(s)", len(alertsToDelete))
 	}
-	return len(alertsToDelete), nil
+	return deleted, nil
 }
 
 func (c *Client) FlushOrphans() {
