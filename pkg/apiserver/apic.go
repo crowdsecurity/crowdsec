@@ -592,9 +592,9 @@ func makeAddAndDeleteCounters() (map[string]map[string]int, map[string]map[strin
 func updateCounterForDecision(counter map[string]map[string]int, decision *models.Decision, totalDecisions int) {
 	if *decision.Origin == SCOPE_CAPI {
 		counter[*decision.Origin]["all"] += totalDecisions
-		return
 	} else if *decision.Origin == SCOPE_LISTS {
 		counter[*decision.Origin][*decision.Scenario] += totalDecisions
+	} else {
+		log.Warningf("Unknown origin %s", *decision.Origin)
 	}
-	log.Warningf("Unknown origin %s", *decision.Origin)
 }
