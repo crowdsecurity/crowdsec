@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ahmetb/dlog"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/dlog"
 	dockerTypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 
