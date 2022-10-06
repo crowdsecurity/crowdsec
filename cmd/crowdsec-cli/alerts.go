@@ -397,6 +397,8 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 				if contained != nil && *contained {
 					alertDeleteFilter.Contains = new(bool)
 				}
+				limit := 0
+				alertDeleteFilter.Limit = &limit
 			} else {
 				limit := 0
 				alertDeleteFilter = apiclient.AlertsDeleteOpts{Limit: &limit}
