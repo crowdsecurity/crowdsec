@@ -129,6 +129,26 @@ teardown() {
     # XXX TODO: delete by scope, id, value, scenario, range..
 }
 
+@test "cscli alerts delete (with cascade to decisions)" {
+    run -0 cscli decisions add -i 1.2.3.4
+    run -0 cscli decisions list -o json
+    run -0 jq '. | length' <(output)
+    assert_output 1
+
+    run -0 --separate-stderr cscli alerts delete -i 1.2.3.4
+    assert_stderr --partial 'alert(s) deleted'
+    run -0 cscli decisions list -o json
+    assert_output null
+}
+
+@test "cscli alerts delete (must ignore the query limit)" {
+    for i in $(seq 1 200); do
+        run -0 cscli decisions add -i 1.2.3.4
+    done
+    run -0 --separate-stderr cscli alerts delete -i 1.2.3.4
+    assert_stderr --partial '200 alert(s) deleted'
+}
+
 @test "bad duration" {
     skip 'TODO'
     run -0 cscli decisions add -i 10.20.30.40 -t ban
