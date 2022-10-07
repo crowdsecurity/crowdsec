@@ -45,7 +45,7 @@ cscli() {
 export -f cscli
 
 config_get() {
-    cfg="${CONFIG_YAML}"
+    local cfg="${CONFIG_YAML}"
     if [[ $# -ge 2 ]]; then
         cfg="$1"
         shift
@@ -56,7 +56,7 @@ config_get() {
 export -f config_get
 
 config_set() {
-    cfg="${CONFIG_YAML}"
+    local cfg="${CONFIG_YAML}"
     if [[ $# -ge 2 ]]; then
         cfg="$1"
         shift
@@ -122,8 +122,10 @@ is_db_sqlite() {
 }
 export -f is_db_sqlite
 
-# compare ignoring the key order, and allow "expected" without quoted identifiers
+# Compare ignoring the key order, and allow "expected" without quoted identifiers.
+# Preserve the output variable in case the following commands require it.
 assert_json() {
+    local oldout="${output}"
     # validate actual, sort
     run -0 jq -Sen "${output}"
     local actual="${output}"
@@ -145,12 +147,32 @@ assert_json() {
         diff <(echo "${actual}") <(echo "${expected}")
         fail "json does not match"
     fi
+    output="${oldout}"
 }
 export -f assert_json
 
-# like assert_output, but for stderr
+# Check if there's something on stdin by consuming it. Only use this as a way
+# to check if something was passed by mistake, since if you read it, it will be
+# incomplete.
+is_stdin_empty() {
+    if read -t 0.1; then
+        return 1
+    fi
+    return 0
+}
+export -f is_stdin_empty
+
 assert_stderr() {
-    oldout="${output}"
+    # it is never useful to call this without arguments
+    if [[ "$#" -eq 0 ]]; then
+        # maybe the caller forgot to use '-' with an heredoc
+        if ! is_stdin_empty; then
+            fail "${FUNCNAME[0]}: called with stdin and no arguments (heredoc?)"
+        fi
+        fail "${FUNCNAME[0]}: called with no arguments"
+    fi
+
+    local oldout="${output}"
     run -0 echo "${stderr}"
     assert_output "$@"
     output="${oldout}"
@@ -159,7 +181,12 @@ export -f assert_stderr
 
 # like refute_output, but for stderr
 refute_stderr() {
-    oldout="${output}"
+    # calling this without arguments is ok, as long as stdin in empty
+    if ! is_stdin_empty; then
+        fail "${FUNCNAME[0]}: called with stdin (heredoc?)"
+    fi
+
+    local oldout="${output}"
     run -0 echo "${stderr}"
     refute_output "$@"
     output="${oldout}"
@@ -168,7 +195,11 @@ export -f refute_stderr
 
 # like assert_output, but for stderr
 assert_stderr_line() {
-    oldout="${output}"
+    if [[ "$#" -eq 0 ]]; then
+        fail "${FUNCNAME[0]}: called with no arguments"
+    fi
+
+    local oldout="${output}"
     run -0 echo "${stderr}"
     assert_line "$@"
     output="${oldout}"

@@ -46,7 +46,7 @@ else
 fi
 
 remove_init_data() {
-    ./bin/assert-crowdsec-not-running
+    ./bin/assert-crowdsec-not-running || die "Cannot remove fixture data."
     rm -rf -- "${LOCAL_DIR:?}/${REL_CONFIG_DIR}"/* "${LOCAL_DIR:?}/${REL_DATA_DIR:?}"/*
 }
 
@@ -91,7 +91,7 @@ config_generate() {
 
 
 make_init_data() {
-    ./bin/assert-crowdsec-not-running
+    ./bin/assert-crowdsec-not-running || die "Cannot create fixture data."
 
     remove_init_data
     mkdir -p "${DATA_DIR}"
@@ -125,7 +125,7 @@ make_init_data() {
 }
 
 load_init_data() {
-    ./bin/assert-crowdsec-not-running
+    ./bin/assert-crowdsec-not-running || die "Cannot load fixture data."
 
     if [[ ! -f "${LOCAL_INIT_DIR}/init-config-data.tar" ]]; then
         die "Initial data not found; did you run '${script_name} make' ?"
