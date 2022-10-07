@@ -183,7 +183,7 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 		if *alertItem.Decisions[0].Origin == CapiMachineID || *alertItem.Decisions[0].Origin == CapiListsMachineID {
 			DecOrigin = *alertItem.Decisions[0].Origin
 		} else {
-			log.Warningf("unexpected origin %s", alertItem.Decisions[0].Origin)
+			log.Warningf("unexpected origin %s", *alertItem.Decisions[0].Origin)
 		}
 		for i, decisionItem := range alertItem.Decisions {
 			var start_ip, start_sfx, end_ip, end_sfx int64
