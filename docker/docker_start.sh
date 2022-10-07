@@ -90,7 +90,7 @@ if [ "$GID" != "" ]; then
     fi
 fi
 
-if [ "$USE_TLS" != "" ]; then
+if [ "${USE_TLS,,}" == "true" ]; then
     yq -i eval ".api.server.tls.cert_file = \"$CERT_FILE\"" "$CS_CONFIG_FILE"
     yq -i eval ".api.server.tls.key_file = \"$KEY_FILE\"" "$CS_CONFIG_FILE"
     yq -i eval '... comments=""' "$CS_CONFIG_FILE"
