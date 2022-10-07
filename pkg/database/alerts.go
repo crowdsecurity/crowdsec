@@ -179,6 +179,12 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 	if len(alertItem.Decisions) > 0 {
 		decisionBulk := make([]*ent.DecisionCreate, 0, decisionBulkSize)
 		valueList := make([]string, 0, decisionBulkSize)
+		DecOrigin := CapiMachineID
+		if *alertItem.Decisions[0].Origin == CapiMachineID || *alertItem.Decisions[0].Origin == CapiListsMachineID {
+			DecOrigin = *alertItem.Decisions[0].Origin
+		} else {
+			log.Warningf("unexpected origin %s", alertItem.Decisions[0].Origin)
+		}
 		for i, decisionItem := range alertItem.Decisions {
 			var start_ip, start_sfx, end_ip, end_sfx int64
 			var sz int
@@ -234,7 +240,7 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 				/*Deleting older decisions from capi*/
 				deletedDecisions, err := c.Ent.Decision.Delete().
 					Where(decision.And(
-						decision.OriginEQ(CapiMachineID),
+						decision.OriginEQ(DecOrigin),
 						decision.Not(decision.HasOwnerWith(alert.IDEQ(alertRef.ID))),
 						decision.ValueIn(valueList...),
 					)).Exec(c.CTX)
@@ -258,6 +264,7 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 			}
 
 		}
+		log.Infof("deleted %d decisions for %s vs %s", deleted, CapiMachineID, *alertItem.Decisions[0].Origin)
 		insertedDecisions, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
 		if err != nil {
 			return 0, 0, 0, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
