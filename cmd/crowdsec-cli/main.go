@@ -8,14 +8,14 @@ import (
 	"strings"
 
 	"github.com/confluentinc/bincover"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"github.com/spf13/cobra/doc"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
-
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"github.com/spf13/cobra/doc"
 )
 
 var bincoverTesting = ""
@@ -27,6 +27,7 @@ var csConfig *csconfig.Config
 var dbClient *database.Client
 
 var OutputFormat string
+var OutputColor string
 
 var downloadOnly bool
 var forceAction bool
@@ -88,6 +89,12 @@ func initConfig() {
 		log.SetLevel(log.ErrorLevel)
 	}
 
+	if OutputColor != "" {
+		csConfig.Cscli.Color = OutputColor
+		if OutputColor != "yes" && OutputColor != "no" && OutputColor != "auto" {
+			log.Fatalf("output color %s unknown", OutputColor)
+		}
+	}
 }
 
 var validArgs = []string{
@@ -159,7 +166,8 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(cmdVersion)
 
 	rootCmd.PersistentFlags().StringVarP(&ConfigFilePath, "config", "c", csconfig.DefaultConfigPath("config.yaml"), "path to crowdsec config file")
-	rootCmd.PersistentFlags().StringVarP(&OutputFormat, "output", "o", "", "Output format : human, json, raw.")
+	rootCmd.PersistentFlags().StringVarP(&OutputFormat, "output", "o", "", "Output format: human, json, raw.")
+	rootCmd.PersistentFlags().StringVarP(&OutputColor, "color", "", csconfig.ColorDefault(), "Output color: yes, no, auto.")
 	rootCmd.PersistentFlags().BoolVar(&dbg_lvl, "debug", false, "Set logging to debug.")
 	rootCmd.PersistentFlags().BoolVar(&nfo_lvl, "info", false, "Set logging to info.")
 	rootCmd.PersistentFlags().BoolVar(&wrn_lvl, "warning", false, "Set logging to warning.")

@@ -3,11 +3,12 @@ package main
 import (
 	"fmt"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	colorable "github.com/mattn/go-colorable"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-
 	"github.com/spf13/cobra"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 func NewScenariosCmd() *cobra.Command {
@@ -166,8 +167,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 cscli scenarios list crowdsecurity/xxx`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			items := ListItems([]string{cwhub.SCENARIOS}, args, false, true, all)
-			fmt.Printf("%s\n", items)
+			ListItems(colorable.NewColorableStdout(), []string{cwhub.SCENARIOS}, args, false, true, all)
 		},
 	}
 	cmdScenariosList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")

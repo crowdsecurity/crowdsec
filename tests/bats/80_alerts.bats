@@ -28,27 +28,28 @@ teardown() {
     run -0 cscli decisions add -i 10.20.30.40 -t ban
 
     run -0 cscli alerts list
-    refute_output --partial 'MACHINE'
+    refute_output --partial 'machine'
     # machine name appears quoted in the "REASON" column
-    assert_output --regexp "\| 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?' \|"
-    refute_output --regexp "\| githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})? \|"
+    assert_output --regexp " 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?' "
+    refute_output --regexp " githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})? "
 
     run -0 cscli alerts list -m
-    assert_output --partial 'MACHINE'
-    assert_output --regexp "\| 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?' \|"
-    assert_output --regexp "\| githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})? \|"
+    assert_output --partial 'machine'
+    assert_output --regexp " 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?' "
+    assert_output --regexp " githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})? "
 
     run -0 cscli alerts list --machine
-    assert_output --partial 'MACHINE'
-    assert_output --regexp "\| 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?' \|"
-    assert_output --regexp "\| githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})? \|"
+    assert_output --partial 'machine'
+    assert_output --regexp " 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?' "
+    assert_output --regexp " githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})? "
 }
 
 @test "cscli alerts list, human/json/raw" {
     run -0 cscli decisions add -i 10.20.30.40 -t ban
 
     run -0 cscli alerts list -o human
-    assert_output --regexp ".* ID .* VALUE .* REASON .* COUNTRY .* AS .* DECISIONS .* CREATED AT .*"
+    run -0 plaintext < <(output)
+    assert_output --regexp ".* ID .* value .* reason .* country .* as .* decisions .* created_at .*"
     assert_output --regexp ".*Ip:10.20.30.40.*manual 'ban' from.*ban:1.*"
 
     run -0 cscli alerts list -o json
@@ -72,6 +73,7 @@ teardown() {
     ALERT_ID="${output}"
 
     run -0 cscli alerts inspect "${ALERT_ID}" -o human
+    run -0 plaintext < <(output)
     assert_line --regexp '^#+$'
     assert_line --regexp "^ - ID *: ${ALERT_ID}$"
     assert_line --regexp "^ - Date *: .*$"
@@ -85,7 +87,7 @@ teardown() {
     assert_line --regexp "^ - Begin *: .*$"
     assert_line --regexp "^ - End *: .*$"
     assert_line --regexp "^ - Active Decisions *:$"
-    assert_line --regexp "^.* ID .* SCOPE:VALUE .* ACTION .* EXPIRATION .* CREATED AT .*$"
+    assert_line --regexp "^.* ID .* scope:value .* action .* expiration .* created_at .*$"
     assert_line --regexp "^.* Ip:10.20.30.40 .* ban .*$"
 
     run -0 cscli alerts inspect "${ALERT_ID}" -o human --details

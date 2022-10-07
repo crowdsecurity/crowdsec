@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-
+	colorable "github.com/mattn/go-colorable"
 	log "github.com/sirupsen/logrus"
-
 	"github.com/spf13/cobra"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 func NewParsersCmd() *cobra.Command {
@@ -164,8 +164,7 @@ cscli parsers remove crowdsecurity/sshd-logs
 cscli parser list crowdsecurity/xxx`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			items := ListItems([]string{cwhub.PARSERS}, args, false, true, all)
-			fmt.Printf("%s\n", items)
+			ListItems(colorable.NewColorableStdout(), []string{cwhub.PARSERS}, args, false, true, all)
 		},
 	}
 	cmdParsersList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
