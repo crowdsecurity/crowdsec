@@ -264,7 +264,7 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 			}
 
 		}
-		log.Debugf("deleted %d decisions for %s vs %s", deleted, CapiMachineID, *alertItem.Decisions[0].Origin)
+		log.Debugf("deleted %d decisions for %s vs %s", deleted, DecOrigin, *alertItem.Decisions[0].Origin)
 		insertedDecisions, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
 		if err != nil {
 			return 0, 0, 0, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
@@ -274,7 +274,7 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 		if len(valueList) > 0 {
 			deletedDecisions, err := c.Ent.Decision.Delete().
 				Where(decision.And(
-					decision.OriginEQ(CapiMachineID),
+					decision.OriginEQ(DecOrigin),
 					decision.Not(decision.HasOwnerWith(alert.IDEQ(alertRef.ID))),
 					decision.ValueIn(valueList...),
 				)).Exec(c.CTX)
