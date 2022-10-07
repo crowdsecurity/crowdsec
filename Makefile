@@ -150,7 +150,7 @@ testclean: bats-clean
 test: export AWS_ENDPOINT_FORCE=http://localhost:4566
 test: goversion
 	@echo 'NOTE: You need Docker, docker-compose and run "make localstack" in a separate shell ("make localstack-stop" to terminate it)'
-	$(GOTEST) $(LD_OPTS) ./...
+	$(GOTEST) -race $(LD_OPTS) ./...
 
 .PHONY: localstack
 localstack:
