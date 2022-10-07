@@ -242,6 +242,11 @@ paths:
           required: false
           type: string
           description: range to search for (shorthand for scope=range&value=)
+        - name: scenario
+          in: query
+          required: false
+          type: string
+          description: scenario to search
       responses:
         '200':
           description: successful operation
