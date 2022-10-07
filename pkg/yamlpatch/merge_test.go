@@ -125,6 +125,7 @@ func TestEmpty(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.desc, func(t *testing.T) {
 			merged, err := YAML(tt.sources, true /* strict */)
 			require.NoError(t, err, "merge failed")
@@ -193,6 +194,7 @@ func TestMismatchedTypes(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.desc+" strict", func(t *testing.T) {
 			fails(t, true, tt.left, tt.right)
 		})
@@ -219,6 +221,7 @@ func TestBooleans(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.in, func(t *testing.T) {
 			succeeds(t, true, "", tt.in, tt.out)
 			succeeds(t, false, "", tt.in, tt.out)
