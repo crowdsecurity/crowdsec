@@ -13,6 +13,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/go-openapi/strfmt"
@@ -23,7 +25,7 @@ import (
 )
 
 var (
-	PullInterval    = time.Minute * 1
+	PullInterval    = time.Hour * 2
 	PushInterval    = time.Second * 30
 	MetricsInterval = time.Minute * 30
 )
@@ -252,17 +254,17 @@ func (a *apic) Send(cacheOrig *models.AddSignalsRequest) {
 
 func (a *apic) CAPIPullIsOld() (bool, error) {
 	/*only pull community blocklist if it's older than 1h30 */
-	// alerts := a.dbClient.Ent.Alert.Query()
-	// alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginEQ(database.CapiMachineID)))
-	// alerts = alerts.Where(alert.CreatedAtGTE(time.Now().UTC().Add(-time.Duration(1*time.Hour + 30*time.Minute)))) //nolint:unconvert
-	// count, err := alerts.Count(a.dbClient.CTX)
-	// if err != nil {
-	// 	return false, errors.Wrap(err, "while looking for CAPI alert")
-	// }
-	// if count > 0 {
-	// 	log.Printf("last CAPI pull is newer than 1h30, skip.")
-	// 	return false, nil
-	// }
+	alerts := a.dbClient.Ent.Alert.Query()
+	alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginEQ(database.CapiMachineID)))
+	alerts = alerts.Where(alert.CreatedAtGTE(time.Now().UTC().Add(-time.Duration(1*time.Hour + 30*time.Minute)))) //nolint:unconvert
+	count, err := alerts.Count(a.dbClient.CTX)
+	if err != nil {
+		return false, errors.Wrap(err, "while looking for CAPI alert")
+	}
+	if count > 0 {
+		log.Printf("last CAPI pull is newer than 1h30, skip.")
+		return false, nil
+	}
 	return true, nil
 }
 

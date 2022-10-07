@@ -264,7 +264,7 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 			}
 
 		}
-		log.Infof("deleted %d decisions for %s vs %s", deleted, CapiMachineID, *alertItem.Decisions[0].Origin)
+		log.Debugf("deleted %d decisions for %s vs %s", deleted, CapiMachineID, *alertItem.Decisions[0].Origin)
 		insertedDecisions, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
 		if err != nil {
 			return 0, 0, 0, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
