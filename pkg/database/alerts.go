@@ -909,6 +909,15 @@ func (c *Client) DeleteAlertGraph(alertItem *ent.Alert) error {
 	return nil
 }
 
+func (c *Client) DeleteAlertByID(id int) error {
+	alertItem, err := c.Ent.Alert.Query().Where(alert.IDEQ(id)).Only(c.CTX)
+	if err != nil {
+		return err
+	}
+
+	return c.DeleteAlertGraph(alertItem)
+}
+
 func (c *Client) DeleteAlertWithFilter(filter map[string][]string) (int, error) {
 	preds, err := AlertPredicatesFromFilter(filter)
 	if err != nil {

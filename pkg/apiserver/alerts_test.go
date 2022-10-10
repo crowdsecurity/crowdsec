@@ -419,6 +419,29 @@ func TestDeleteAlert(t *testing.T) {
 	assert.Equal(t, `{"nbDeleted":"1"}`, w.Body.String())
 }
 
+func TestDeleteAlertByID(t *testing.T) {
+	lapi := SetupLAPITest(t)
+	lapi.InsertAlertFromFile("./tests/alert_sample.json")
+
+	// Fail Delete Alert
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodDelete, "/v1/alerts/1", strings.NewReader(""))
+	AddAuthHeaders(req, lapi.loginResp)
+	req.RemoteAddr = "127.0.0.2:4242"
+	lapi.router.ServeHTTP(w, req)
+	assert.Equal(t, 403, w.Code)
+	assert.Equal(t, `{"message":"access forbidden from this IP (127.0.0.2)"}`, w.Body.String())
+
+	// Delete Alert
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest(http.MethodDelete, "/v1/alerts/1", strings.NewReader(""))
+	AddAuthHeaders(req, lapi.loginResp)
+	req.RemoteAddr = "127.0.0.1:4242"
+	lapi.router.ServeHTTP(w, req)
+	assert.Equal(t, 200, w.Code)
+	assert.Equal(t, `{"nbDeleted":"1"}`, w.Body.String())
+}
+
 func TestDeleteAlertTrustedIPS(t *testing.T) {
 	cfg := LoadTestConfig()
 	// IPv6 mocking doesn't seem to work.
