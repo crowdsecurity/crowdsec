@@ -44,7 +44,8 @@ func TestDateParse(t *testing.T) {
 	logger := log.WithFields(log.Fields{
 		"test": "test",
 	})
-	for idx, tt := range tests {
+	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			strTime, err := ParseDate(tt.evt.StrTime, &tt.evt, nil, logger)
 			if tt.expected_err != nil {
@@ -58,7 +59,7 @@ func TestDateParse(t *testing.T) {
 				return
 			}
 			if tt.expected_strTime != nil && strTime["MarshaledTime"] != *tt.expected_strTime {
-				t.Errorf("%d: expected strTime %s, got %s", idx, *tt.expected_strTime, strTime["MarshaledTime"])
+				t.Errorf("expected strTime %s, got %s", *tt.expected_strTime, strTime["MarshaledTime"])
 			}
 		})
 	}
