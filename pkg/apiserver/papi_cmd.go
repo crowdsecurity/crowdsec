@@ -11,8 +11,8 @@ import (
 )
 
 type deleteDecisions struct {
-	UUID      string              `json:"uuid"`
-	Decisions []map[string]string `json:"decisions"`
+	UUID      string   `json:"uuid"`
+	Decisions []string `json:"decisions"`
 }
 
 func DecisionCmd(message *Message, p *Papi) error {
@@ -25,14 +25,14 @@ func DecisionCmd(message *Message, p *Papi) error {
 		}
 		UUIDs := make([]string, 0)
 		deleteDecisionMsg := deleteDecisions{
-			Decisions: make([]map[string]string, 0),
+			Decisions: make([]string, 0),
 		}
 		if err := json.Unmarshal(data, deleteDecisionMsg); err != nil {
 			return fmt.Errorf("message for '%s' contains bad data format", message.Header.OperationType)
 		}
 
-		for _, decision := range deleteDecisionMsg.Decisions {
-			UUIDs = append(UUIDs, decision["uuid"])
+		for _, decisionUUID := range deleteDecisionMsg.Decisions {
+			UUIDs = append(UUIDs, decisionUUID)
 		}
 
 		filter := make(map[string][]string)
