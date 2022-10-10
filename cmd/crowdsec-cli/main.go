@@ -11,6 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
+	cc "github.com/ivanpirog/coloredcobra"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -140,6 +141,16 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 		SilenceUsage:      true,
 		/*TBD examples*/
 	}
+
+	cc.Init(&cc.Config{
+		RootCmd:       rootCmd,
+		Headings:      cc.Yellow,
+		Commands:      cc.Green + cc.Bold,
+		Example:       cc.Italic,
+		ExecName:      cc.Bold,
+		Flags:         cc.Green,
+	})
+
 	var cmdDocGen = &cobra.Command{
 		Use:               "doc",
 		Short:             "Generate the documentation in `./doc/`. Directory must exist.",
