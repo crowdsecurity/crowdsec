@@ -27,7 +27,7 @@ func DecisionCmd(message *Message, p *Papi) error {
 		deleteDecisionMsg := deleteDecisions{
 			Decisions: make([]string, 0),
 		}
-		if err := json.Unmarshal(data, deleteDecisionMsg); err != nil {
+		if err := json.Unmarshal(data, &deleteDecisionMsg); err != nil {
 			return fmt.Errorf("message for '%s' contains bad data format: %s", message.Header.OperationType, err)
 		}
 
