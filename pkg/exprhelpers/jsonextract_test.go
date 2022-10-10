@@ -136,6 +136,7 @@ func TestJsonExtractSlice(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.name, func(t *testing.T) {
 			result := JsonExtractSlice(test.jsonBlob, test.targetField)
 			assert.Equal(t, test.expectResult, result)
@@ -180,6 +181,7 @@ func TestJsonExtractObject(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.name, func(t *testing.T) {
 			result := JsonExtractObject(test.jsonBlob, test.targetField)
 			assert.Equal(t, test.expectResult, result)
@@ -240,6 +242,7 @@ func TestToJson(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.name, func(t *testing.T) {
 			result := ToJson(test.obj)
 			assert.Equal(t, test.expectResult, result)

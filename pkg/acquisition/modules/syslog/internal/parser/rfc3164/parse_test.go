@@ -21,6 +21,7 @@ func TestPri(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.input, func(t *testing.T) {
 			r := &RFC3164{}
 			r.buf = []byte(test.input)
@@ -63,6 +64,7 @@ func TestTimestamp(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.input, func(t *testing.T) {
 			opts := []RFC3164Option{}
 			if test.currentYear {
@@ -118,6 +120,7 @@ func TestHostname(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.input, func(t *testing.T) {
 			opts := []RFC3164Option{}
 			if test.strictHostname {
@@ -164,6 +167,7 @@ func TestTag(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.input, func(t *testing.T) {
 			r := &RFC3164{}
 			r.buf = []byte(test.input)
@@ -207,6 +211,7 @@ func TestMessage(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.input, func(t *testing.T) {
 			r := &RFC3164{}
 			r.buf = []byte(test.input)
@@ -330,6 +335,7 @@ func TestParse(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.input, func(t *testing.T) {
 			r := NewRFC3164Parser(test.opts...)
 			err := r.Parse([]byte(test.input))

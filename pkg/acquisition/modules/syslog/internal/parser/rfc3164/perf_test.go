@@ -51,6 +51,7 @@ func BenchmarkParse(b *testing.B) {
 	}
 	var err error
 	for _, test := range tests {
+		test := test
 		b.Run(string(test.input), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				r := NewRFC3164Parser(test.opts...)
