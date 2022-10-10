@@ -10,17 +10,29 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type deleteDecisions struct {
+	UUID      string              `json:"uuid"`
+	Decisions []map[string]string `json:"decisions"`
+}
+
 func DecisionCmd(message *Message, p *Papi) error {
 	switch message.Header.OperationCmd {
 	case "delete":
+
 		data, err := json.Marshal(message.Data)
 		if err != nil {
 			return err
 		}
 		UUIDs := make([]string, 0)
-
-		if err := json.Unmarshal(data, UUIDs); err != nil {
+		deleteDecisionMsg := deleteDecisions{
+			Decisions: make([]map[string]string, 0),
+		}
+		if err := json.Unmarshal(data, deleteDecisionMsg); err != nil {
 			return fmt.Errorf("message for '%s' contains bad data format", message.Header.OperationType)
+		}
+
+		for _, decision := range deleteDecisionMsg.Decisions {
+			UUIDs = append(UUIDs, decision["uuid"])
 		}
 
 		filter := make(map[string][]string)
