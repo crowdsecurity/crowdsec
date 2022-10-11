@@ -10,8 +10,8 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
-	colorable "github.com/mattn/go-colorable"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -194,7 +194,7 @@ Disable given information push to the central API.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			switch csConfig.Cscli.Output {
 			case "human":
-				cmdConsoleStatusTable(colorable.NewColorableStdout(), *csConfig)
+				cmdConsoleStatusTable(color.Output, *csConfig)
 			case "json":
 				data, err := json.MarshalIndent(csConfig.API.Server.ConsoleConfig, "", "  ")
 				if err != nil {

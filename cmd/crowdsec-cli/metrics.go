@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	colorable "github.com/mattn/go-colorable"
+	"github.com/fatih/color"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prom2json"
 	log "github.com/sirupsen/logrus"
@@ -276,7 +276,7 @@ func NewMetricsCmd() *cobra.Command {
 				os.Exit(1)
 			}
 
-			err := FormatPrometheusMetrics(colorable.NewColorableStdout(), prometheusURL+"/metrics", csConfig.Cscli.Output)
+			err := FormatPrometheusMetrics(color.Output, prometheusURL+"/metrics", csConfig.Cscli.Output)
 			if err != nil {
 				log.Fatalf("could not fetch prometheus metrics: %s", err)
 			}

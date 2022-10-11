@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	colorable "github.com/mattn/go-colorable"
+	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -162,7 +162,7 @@ func NewPostOverflowsCmd() *cobra.Command {
 cscli postoverflows list crowdsecurity/xxx`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			ListItems(colorable.NewColorableStdout(), []string{cwhub.PARSERS_OVFLW}, args, false, true, all)
+			ListItems(color.Output, []string{cwhub.PARSERS_OVFLW}, args, false, true, all)
 		},
 	}
 	cmdPostOverflowsList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")

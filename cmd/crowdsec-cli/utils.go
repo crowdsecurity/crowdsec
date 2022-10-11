@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	colorable "github.com/mattn/go-colorable"
+	"github.com/fatih/color"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prom2json"
 	log "github.com/sirupsen/logrus"
@@ -304,18 +304,18 @@ func ShowMetrics(hubItem *cwhub.Item) {
 	switch hubItem.Type {
 	case cwhub.PARSERS:
 		metrics := GetParserMetric(prometheusURL, hubItem.Name)
-		parserMetricsTable(colorable.NewColorableStdout(), hubItem.Name, metrics)
+		parserMetricsTable(color.Output, hubItem.Name, metrics)
 	case cwhub.SCENARIOS:
 		metrics := GetScenarioMetric(prometheusURL, hubItem.Name)
-		scenarioMetricsTable(colorable.NewColorableStdout(), hubItem.Name, metrics)
+		scenarioMetricsTable(color.Output, hubItem.Name, metrics)
 	case cwhub.COLLECTIONS:
 		for _, item := range hubItem.Parsers {
 			metrics := GetParserMetric(prometheusURL, item)
-			parserMetricsTable(colorable.NewColorableStdout(), item, metrics)
+			parserMetricsTable(color.Output, item, metrics)
 		}
 		for _, item := range hubItem.Scenarios {
 			metrics := GetScenarioMetric(prometheusURL, item)
-			scenarioMetricsTable(colorable.NewColorableStdout(), item, metrics)
+			scenarioMetricsTable(color.Output, item, metrics)
 		}
 		for _, item := range hubItem.Collections {
 			hubItem = cwhub.GetItem(cwhub.COLLECTIONS, item)

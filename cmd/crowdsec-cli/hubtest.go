@@ -10,7 +10,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/enescakir/emoji"
-	colorable "github.com/mattn/go-colorable"
+	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -273,7 +273,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				}
 			}
 			if csConfig.Cscli.Output == "human" {
-				hubTestResultTable(colorable.NewColorableStdout(), testResult)
+				hubTestResultTable(color.Output, testResult)
 			} else if csConfig.Cscli.Output == "json" {
 				jsonResult := make(map[string][]string, 0)
 				jsonResult["success"] = make([]string, 0)
@@ -355,7 +355,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 
 			switch csConfig.Cscli.Output {
 			case "human":
-				hubTestListTable(colorable.NewColorableStdout(), HubTest.Tests)
+				hubTestListTable(color.Output, HubTest.Tests)
 			case "json":
 				j, err := json.MarshalIndent(HubTest.Tests, " ", "  ")
 				if err != nil {
@@ -430,11 +430,11 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 
 			if csConfig.Cscli.Output == "human" {
 				if showParserCov || showAll {
-					hubTestParserCoverageTable(colorable.NewColorableStdout(), parserCoverage)
+					hubTestParserCoverageTable(color.Output, parserCoverage)
 				}
 
 				if showScenarioCov || showAll {
-					hubTestScenarioCoverageTable(colorable.NewColorableStdout(), scenarioCoverage)
+					hubTestScenarioCoverageTable(color.Output, scenarioCoverage)
 				}
 				fmt.Println()
 				if showParserCov || showAll {

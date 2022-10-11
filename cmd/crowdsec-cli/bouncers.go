@@ -7,7 +7,7 @@ import (
 	"io"
 	"time"
 
-	colorable "github.com/mattn/go-colorable"
+	"github.com/fatih/color"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -92,7 +92,7 @@ Note: This command requires database direct access, so is intended to be run on 
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, arg []string) {
-			err := getBouncers(colorable.NewColorableStdout(), dbClient)
+			err := getBouncers(color.Output, dbClient)
 			if err != nil {
 				log.Fatalf("unable to list bouncers: %s", err)
 			}
