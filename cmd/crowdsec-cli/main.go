@@ -144,12 +144,16 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	}
 
 	cc.Init(&cc.Config{
-		RootCmd:  rootCmd,
+		RootCmd: rootCmd,
 		Headings: cc.Yellow,
 		Commands: cc.Green + cc.Bold,
-		Example:  cc.Italic,
+		CmdShortDescr: cc.Cyan,
+		Example: cc.Italic,
 		ExecName: cc.Bold,
-		Flags:    cc.Green,
+		Aliases: cc.Bold + cc.Italic,
+		FlagsDataType: cc.White,
+		Flags: cc.Green,
+		FlagsDescr: cc.Cyan,
 	})
 	rootCmd.SetOut(color.Output)
 
