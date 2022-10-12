@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://github.com/OAI/OpenAPI-Specification/blob/main/schemas/v3.0/schema.yaml
 swagger: '2.0'
 info:
   version: 1.0.0
@@ -748,8 +749,8 @@ definitions:
       meta:
         $ref: '#/definitions/Meta'
       labels:
-        type: array
-        items:
+        type: object
+        additionalProperties:
           type: string
     required:
       - scenario
