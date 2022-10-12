@@ -77,7 +77,7 @@ func (l *LocalApiClientCfg) Load() error {
 
 	if l.Credentials != nil && l.Credentials.URL != "" {
 		if !strings.HasSuffix(l.Credentials.URL, "/") {
-			l.Credentials.URL = l.Credentials.URL + "/"
+			l.Credentials.URL += "/"
 		}
 	}
 

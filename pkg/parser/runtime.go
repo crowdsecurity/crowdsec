@@ -71,7 +71,7 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 				tmp = reflect.Indirect(tmp)
 			}
 			iter = tmp
-			// nolint: gosimple
+			//nolint: gosimple
 			break
 		case reflect.Ptr:
 			tmp := iter.Elem()

@@ -1,3 +1,4 @@
+//nolint:nilerr
 package parser
 
 import (

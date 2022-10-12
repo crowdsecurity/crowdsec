@@ -17,7 +17,7 @@ import (
 /*the walk/parser_visit function can't receive extra args*/
 var hubdir, installdir string
 
-func parser_visit(path string, f os.FileInfo, err error) error {
+func parser_visit(path string, f os.FileInfo, err error) error { //nolint:all
 
 	var target Item
 	var local bool
@@ -28,7 +28,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 	var fauthor string
 	var stage string
 
-	path, err = filepath.Abs(path)
+	path, err = filepath.Abs(path) //nolint:all
 	if err != nil {
 		return err
 	}
@@ -163,12 +163,10 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 				log.Tracef("marking %s as downloaded", v.Name)
 				v.Downloaded = true
 			}
-		} else {
+		} else if CheckSuffix(hubpath, v.RemotePath) {
 			// wrong file
 			// <type>/<stage>/<author>/<name>.yaml
-			if CheckSuffix(hubpath, v.RemotePath) {
-				continue
-			}
+			continue
 		}
 		sha, err := getSHA256(path)
 		if err != nil {

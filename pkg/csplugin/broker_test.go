@@ -497,7 +497,7 @@ func TestBrokerRunTimeThreshold(t *testing.T) {
 	})
 	// set groupwait
 	raw, cfg := readconfig(t, "tests/notifications/dummy.yaml")
-	cfg.GroupWait = time.Duration(1 * time.Second) // nolint:unconvert
+	cfg.GroupWait = time.Duration(1 * time.Second) //nolint:unconvert
 	writeconfig(t, cfg, "tests/notifications/dummy.yaml")
 	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
 		PluginDir:       testPath,

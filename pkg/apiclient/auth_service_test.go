@@ -42,7 +42,7 @@ func TestWatcherAuth(t *testing.T) {
 	log.Printf("URL is %s", urlx)
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
+		t.Fatalf("parsing api url: %s", apiURL)
 	}
 
 	// ok auth
@@ -57,7 +57,7 @@ func TestWatcherAuth(t *testing.T) {
 	client, err := NewClient(mycfg)
 
 	if err != nil {
-		log.Fatalf("new api client: %s", err)
+		t.Fatalf("new api client: %s", err)
 	}
 
 	_, err = client.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
@@ -81,7 +81,7 @@ func TestWatcherAuth(t *testing.T) {
 	client, err = NewClient(mycfg)
 
 	if err != nil {
-		log.Fatalf("new api client: %s", err)
+		t.Fatalf("new api client: %s", err)
 	}
 
 	_, err = client.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
@@ -112,7 +112,7 @@ func TestWatcherRegister(t *testing.T) {
 	log.Printf("URL is %s", urlx)
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
+		t.Fatalf("parsing api url: %s", apiURL)
 	}
 	client, err := RegisterClient(&Config{
 		MachineID:     "test_login",
@@ -158,7 +158,7 @@ func TestWatcherUnregister(t *testing.T) {
 	log.Printf("URL is %s", urlx)
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
+		t.Fatalf("parsing api url: %s", apiURL)
 	}
 	mycfg := &Config{
 		MachineID:     "test_login",
@@ -171,7 +171,7 @@ func TestWatcherUnregister(t *testing.T) {
 	client, err := NewClient(mycfg)
 
 	if err != nil {
-		log.Fatalf("new api client: %s", err)
+		t.Fatalf("new api client: %s", err)
 	}
 	_, err = client.Auth.UnregisterWatcher(context.Background())
 	if err != nil {
@@ -211,7 +211,7 @@ func TestWatcherEnroll(t *testing.T) {
 	log.Printf("URL is %s", urlx)
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
+		t.Fatalf("parsing api url: %s", apiURL)
 	}
 
 	mycfg := &Config{
@@ -225,7 +225,7 @@ func TestWatcherEnroll(t *testing.T) {
 	client, err := NewClient(mycfg)
 
 	if err != nil {
-		log.Fatalf("new api client: %s", err)
+		t.Fatalf("new api client: %s", err)
 	}
 
 	_, err = client.Auth.EnrollWatcher(context.Background(), "goodkey", "", []string{}, false)

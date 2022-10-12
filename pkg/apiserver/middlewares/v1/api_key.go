@@ -115,17 +115,15 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 				c.Abort()
 				return
-			} else {
+			} else if bouncer.AuthType != types.TlsAuthType {
 				// bouncer was found in DB
-				if bouncer.AuthType != types.TlsAuthType {
-					log.WithFields(log.Fields{
-						"ip": c.ClientIP(),
-						"cn": extractedCN,
-					}).Errorf("bouncer isn't allowed to auth by TLS")
-					c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
-					c.Abort()
-					return
-				}
+				log.WithFields(log.Fields{
+					"ip": c.ClientIP(),
+					"cn": extractedCN,
+				}).Errorf("bouncer isn't allowed to auth by TLS")
+				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+				c.Abort()
+				return
 			}
 		} else {
 			// API Key Authentication

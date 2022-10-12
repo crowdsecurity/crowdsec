@@ -54,7 +54,8 @@ func readLine(scanner *bufio.Scanner, out chan string, errChan chan error) error
 	if errChan != nil && scanner.Err() != nil {
 		errChan <- scanner.Err()
 		close(errChan)
-		return nil // error is already consumed by runJournalCtl
+		// error is already consumed by runJournalCtl
+		return nil //nolint:nilerr
 	}
 	if errChan != nil {
 		close(errChan)

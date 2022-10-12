@@ -111,7 +111,7 @@ title: %s
 `
 	name := filepath.Base(filename)
 	base := strings.TrimSuffix(name, path.Ext(name))
-	return fmt.Sprintf(header, base, strings.Replace(base, "_", " ", -1))
+	return fmt.Sprintf(header, base, strings.ReplaceAll(base, "_", " "))
 }
 
 func linkHandler(name string) string {

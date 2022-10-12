@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
-	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,7 +18,7 @@ func TestNewRequestInvalid(t *testing.T) {
 	// missing slash in uri
 	apiURL, err := url.Parse(urlx)
 	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
+		t.Fatalf("parsing api url: %s", apiURL)
 	}
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
@@ -52,7 +51,7 @@ func TestNewRequestTimeout(t *testing.T) {
 	// missing slash in uri
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
+		t.Fatalf("parsing api url: %s", apiURL)
 	}
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
