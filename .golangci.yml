@@ -48,6 +48,7 @@ linters:
     - scopelint         # Scopelint checks for unpinned variables in go programs
     - structcheck       # The owner seems to have abandoned the linter.  Replaced by unused.
     - varcheck          # The owner seems to have abandoned the linter.  Replaced by unused.
+    - forcetypeassert   # Disable for now. The changes are too much to fix this with unknown effects.
 
     #
     # Enabled
