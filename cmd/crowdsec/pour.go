@@ -16,7 +16,7 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 		count int
 	)
 	for {
-		//bucket is now ready
+		// bucket is now ready
 		select {
 		case <-bucketsTomb.Dying():
 			log.Infof("Bucket routine exiting")
@@ -26,7 +26,7 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 			count++
 			if count%5000 == 0 {
 				log.Infof("%d existing buckets", leaky.LeakyRoutineCount)
-				//when in forensics mode, garbage collect buckets
+				// when in forensics mode, garbage collect buckets
 				if cConfig.Crowdsec.BucketsGCEnabled {
 					if parsed.MarshaledTime != "" {
 						var z *time.Time = &time.Time{}
@@ -41,7 +41,7 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 					}
 				}
 			}
-			//here we can bucketify with parsed
+			// here we can bucketify with parsed
 			poured, err := leaky.PourItemToHolders(parsed, holders, buckets)
 			if err != nil {
 				log.Errorf("bucketify failed for: %v", parsed)

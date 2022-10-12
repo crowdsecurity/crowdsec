@@ -32,7 +32,7 @@ func TestParser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to load env : %s", err)
 	}
-	//Init the enricher
+	// Init the enricher
 	if envSetting != "" {
 		if err := testOneParser(pctx, ectx, envSetting, nil); err != nil {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
@@ -120,8 +120,8 @@ func testOneParser(pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing
 		return fmt.Errorf("unable to load parser config : %s", err)
 	}
 
-	//TBD: Load post overflows
-	//func testFile(t *testing.T, file string, pctx UnixParserCtx, nodes []Node) bool {
+	// TBD: Load post overflows
+	// func testFile(t *testing.T, file string, pctx UnixParserCtx, nodes []Node) bool {
 	parser_test_file := fmt.Sprintf("%s/test.yaml", dir)
 	tests := loadTestFile(parser_test_file)
 	count := 1
@@ -137,7 +137,7 @@ func testOneParser(pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing
 	return nil
 }
 
-//prepTests is going to do the initialisation of parser : it's going to load enrichment plugins and load the patterns. This is done here so that we don't redo it for each test
+// prepTests is going to do the initialisation of parser : it's going to load enrichment plugins and load the patterns. This is done here so that we don't redo it for each test
 func prepTests() (*UnixParserCtx, EnricherCtx, error) {
 	var (
 		err  error
@@ -150,7 +150,7 @@ func prepTests() (*UnixParserCtx, EnricherCtx, error) {
 		log.Fatalf("exprhelpers init failed: %s", err)
 	}
 
-	//Load enrichment
+	// Load enrichment
 	datadir := "./test_data/"
 	ectx, err = Loadplugin(datadir)
 	if err != nil {
@@ -158,7 +158,7 @@ func prepTests() (*UnixParserCtx, EnricherCtx, error) {
 	}
 	log.Printf("Loaded -> %+v", ectx)
 
-	//Load the parser patterns
+	// Load the parser patterns
 	cfgdir := "../../config/"
 
 	/* this should be refactored to 2 lines :p */
@@ -200,7 +200,7 @@ func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bo
 	outMaps := []map[string]string{out.Parsed, out.Meta, out.Enriched}
 	outLabels := []string{"Parsed", "Meta", "Enriched"}
 
-	//allow to check as well for stage and processed flags
+	// allow to check as well for stage and processed flags
 	if expected.Stage != "" {
 		if expected.Stage != out.Stage {
 			if debug {
@@ -242,18 +242,18 @@ func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bo
 	for mapIdx := 0; mapIdx < len(expectMaps); mapIdx++ {
 		for expKey, expVal := range expectMaps[mapIdx] {
 			if outVal, ok := outMaps[mapIdx][expKey]; ok {
-				if outVal == expVal { //ok entry
+				if outVal == expVal { // ok entry
 					if debug {
 						retInfo = append(retInfo, fmt.Sprintf("ok %s[%s] %s == %s", outLabels[mapIdx], expKey, expVal, outVal))
 					}
 					valid = true
-				} else { //mismatch entry
+				} else { // mismatch entry
 					if debug {
 						retInfo = append(retInfo, fmt.Sprintf("mismatch %s[%s] %s != %s", outLabels[mapIdx], expKey, expVal, outVal))
 					}
 					goto checkFinished
 				}
-			} else { //missing entry
+			} else { // missing entry
 				if debug {
 					retInfo = append(retInfo, fmt.Sprintf("missing entry %s[%s]", outLabels[mapIdx], expKey))
 				}
@@ -283,7 +283,7 @@ func testSubSet(testSet TestFile, pctx UnixParserCtx, nodes []Node) (bool, error
 		if err != nil {
 			log.Errorf("Failed to process %s : %v", spew.Sdump(in), err)
 		}
-		//log.Infof("Parser output : %s", spew.Sdump(out))
+		// log.Infof("Parser output : %s", spew.Sdump(out))
 		results = append(results, out)
 	}
 	log.Infof("parsed %d lines", len(testSet.Lines))
@@ -308,7 +308,7 @@ reCheck:
 				if len(explain) > 0 {
 					log.Printf("-> %s", explain[len(explain)-1])
 				}
-				//don't do this at home : delete current element from list and redo
+				// don't do this at home : delete current element from list and redo
 				results[len(results)-1], results[ridx] = results[ridx], results[len(results)-1]
 				results = results[:len(results)-1]
 
@@ -335,7 +335,7 @@ reCheck:
 func testFile(testSet []TestFile, pctx UnixParserCtx, nodes []Node) bool {
 	log.Warning("Going to process one test set")
 	for _, tf := range testSet {
-		//func testSubSet(testSet TestFile, pctx UnixParserCtx, nodes []Node) (bool, error) {
+		// func testSubSet(testSet TestFile, pctx UnixParserCtx, nodes []Node) (bool, error) {
 		testOk, err := testSubSet(tf, pctx, nodes)
 		if err != nil {
 			log.Fatalf("test failed : %s", err)

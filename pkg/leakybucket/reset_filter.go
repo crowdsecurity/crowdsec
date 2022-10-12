@@ -39,7 +39,7 @@ func (u *CancelOnFilter) OnBucketPour(bucketFactory *BucketFactory) func(types.E
 				leaky.logger.Warningf("cancel_on error : %s", err)
 				return &msg
 			}
-			//only run debugger expression if condition is false
+			// only run debugger expression if condition is false
 			if u.CancelOnFilterDebug != nil {
 				u.CancelOnFilterDebug.Run(leaky.logger, condition, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &msg}))
 			}
@@ -50,7 +50,7 @@ func (u *CancelOnFilter) OnBucketPour(bucketFactory *BucketFactory) func(types.E
 			if condition {
 				leaky.logger.Debugf("reset_filter matched, kill bucket")
 				leaky.Suicide <- true
-				return nil //counter intuitively, we need to keep the message so that it doesn't trigger an endless loop
+				return nil // counter intuitively, we need to keep the message so that it doesn't trigger an endless loop
 			}
 			leaky.logger.Debugf("reset_filter didn't match")
 		}
@@ -86,7 +86,7 @@ func (u *CancelOnFilter) OnBucketInit(bucketFactory *BucketFactory) error {
 		return nil
 	} else {
 		cancelExprCacheLock.Unlock()
-		//release the lock during compile
+		// release the lock during compile
 		compiledExpr.CancelOnFilter, err = expr.Compile(bucketFactory.CancelOnFilter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 		if err != nil {
 			bucketFactory.logger.Errorf("reset_filter compile error : %s", err)

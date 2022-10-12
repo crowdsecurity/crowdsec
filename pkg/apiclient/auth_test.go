@@ -34,7 +34,7 @@ func TestApiAuth(t *testing.T) {
 
 	defer teardown()
 
-	//ok no answer
+	// ok no answer
 	auth := &APIKeyTransport{
 		APIKey: "ixu",
 	}
@@ -53,7 +53,7 @@ func TestApiAuth(t *testing.T) {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
 	}
 
-	//ko bad token
+	// ko bad token
 	auth = &APIKeyTransport{
 		APIKey: "bad",
 	}
@@ -70,7 +70,7 @@ func TestApiAuth(t *testing.T) {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
 	}
 	assert.Contains(t, err.Error(), "API error: access forbidden")
-	//ko empty token
+	// ko empty token
 	auth = &APIKeyTransport{}
 	newcli, err = NewDefaultClient(apiURL, "v1", "toto", auth.Client())
 	if err != nil {

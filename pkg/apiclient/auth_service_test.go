@@ -20,7 +20,7 @@ func TestWatcherAuth(t *testing.T) {
 
 	mux, urlx, teardown := setup()
 	defer teardown()
-	//body: models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password}
+	// body: models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password}
 
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
@@ -45,7 +45,7 @@ func TestWatcherAuth(t *testing.T) {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
 
-	//ok auth
+	// ok auth
 	mycfg := &Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
@@ -69,7 +69,7 @@ func TestWatcherAuth(t *testing.T) {
 		t.Fatalf("unexpect auth err 0: %s", err)
 	}
 
-	//bad auth
+	// bad auth
 	mycfg = &Config{
 		MachineID:     "BADtest_login",
 		Password:      "BADtest_password",
@@ -98,7 +98,7 @@ func TestWatcherRegister(t *testing.T) {
 
 	mux, urlx, teardown := setup()
 	defer teardown()
-	//body: models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password}
+	// body: models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password}
 
 	mux.HandleFunc("/watchers", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
@@ -133,7 +133,7 @@ func TestWatcherUnregister(t *testing.T) {
 
 	mux, urlx, teardown := setup()
 	defer teardown()
-	//body: models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password}
+	// body: models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password}
 
 	mux.HandleFunc("/watchers", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "DELETE")

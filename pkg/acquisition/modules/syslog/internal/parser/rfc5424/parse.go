@@ -21,8 +21,8 @@ type RFC5424 struct {
 	len            int
 	position       int
 	buf            []byte
-	useCurrentYear bool //If no year is specified in the timestamp, use the current year
-	strictHostname bool //If the hostname contains invalid characters or is not an IP, return an error
+	useCurrentYear bool // If no year is specified in the timestamp, use the current year
+	strictHostname bool // If the hostname contains invalid characters or is not an IP, return an error
 }
 
 const PRI_MAX_LEN = 3

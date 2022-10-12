@@ -11,15 +11,15 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-//Profile structure(s) are used by the local API to "decide" what kind of decision should be applied when a scenario with an active remediation has been triggered
+// Profile structure(s) are used by the local API to "decide" what kind of decision should be applied when a scenario with an active remediation has been triggered
 type ProfileCfg struct {
 	Name          string            `yaml:"name,omitempty"`
 	Debug         *bool             `yaml:"debug,omitempty"`
-	Filters       []string          `yaml:"filters,omitempty"` //A list of OR'ed expressions. the models.Alert object
+	Filters       []string          `yaml:"filters,omitempty"` // A list of OR'ed expressions. the models.Alert object
 	Decisions     []models.Decision `yaml:"decisions,omitempty"`
 	DurationExpr  string            `yaml:"duration_expr,omitempty"`
-	OnSuccess     string            `yaml:"on_success,omitempty"` //continue or break
-	OnFailure     string            `yaml:"on_failure,omitempty"` //continue or break
+	OnSuccess     string            `yaml:"on_success,omitempty"` // continue or break
+	OnFailure     string            `yaml:"on_failure,omitempty"` // continue or break
 	Notifications []string          `yaml:"notifications,omitempty"`
 }
 
@@ -35,7 +35,7 @@ func (c *LocalApiServerCfg) LoadProfiles() error {
 	}
 	reader := bytes.NewReader(fcontent)
 
-	//process the yaml
+	// process the yaml
 	dec := yaml.NewDecoder(reader)
 	dec.SetStrict(true)
 	for {

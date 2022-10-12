@@ -10,7 +10,7 @@ import (
 func parseDateWithFormat(date, format string) (string, time.Time) {
 	t, err := time.Parse(format, date)
 	if err == nil && !t.IsZero() {
-		//if the year isn't set, set it to current date :)
+		// if the year isn't set, set it to current date :)
 		if t.Year() == 0 {
 			t = t.AddDate(time.Now().UTC().Year(), 0, 0)
 		}

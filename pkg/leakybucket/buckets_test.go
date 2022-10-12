@@ -63,8 +63,8 @@ func TestBucket(t *testing.T) {
 	}
 }
 
-//during tests, we're likely to have only one scenario, and thus only one holder.
-//we want to avoid the death of the tomb because all existing buckets have been destroyed.
+// during tests, we're likely to have only one scenario, and thus only one holder.
+// we want to avoid the death of the tomb because all existing buckets have been destroyed.
 func watchTomb(tomb *tomb.Tomb) {
 	for {
 		if tomb.Alive() == false {
@@ -133,7 +133,7 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 	var results []types.Event
 	var dump bool
 
-	//should we restore
+	// should we restore
 	if _, err := os.Stat(bs); err == nil {
 		dump = true
 		if err := LoadBucketsState(bs, buckets, holders); err != nil {
@@ -142,14 +142,14 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 	}
 
 	/* now we can load the test files */
-	//process the yaml
+	// process the yaml
 	yamlFile, err := os.Open(file)
 	if err != nil {
 		t.Errorf("yamlFile.Get err   #%v ", err)
 	}
 	dec := json.NewDecoder(yamlFile)
 	dec.DisallowUnknownFields()
-	//dec.SetStrict(true)
+	// dec.SetStrict(true)
 	tf := TestFile{}
 	err = dec.Decode(&tf)
 	if err != nil {
@@ -161,7 +161,7 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 	}
 	var latest_ts time.Time
 	for _, in := range tf.Lines {
-		//just to avoid any race during ingestion of funny scenarios
+		// just to avoid any race during ingestion of funny scenarios
 		time.Sleep(50 * time.Millisecond)
 		var ts time.Time
 		if err := ts.UnmarshalText([]byte(in.MarshaledTime)); err != nil {
@@ -187,7 +187,7 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 
 	time.Sleep(1 * time.Second)
 
-	//Read results from chan
+	// Read results from chan
 POLL_AGAIN:
 	fails := 0
 	for fails < 2 {
@@ -248,37 +248,37 @@ POLL_AGAIN:
 
 				log.Tracef("Checking next expected result.")
 
-				//empty overflow
+				// empty overflow
 				if out.Overflow.Alert == nil && expected.Overflow.Alert == nil {
-					//match stuff
+					// match stuff
 				} else {
 					if out.Overflow.Alert == nil || expected.Overflow.Alert == nil {
 						log.Printf("Here ?")
 						continue
 					}
 
-					//Scenario
+					// Scenario
 					if *out.Overflow.Alert.Scenario != *expected.Overflow.Alert.Scenario {
 						log.Errorf("(scenario) %v != %v", *out.Overflow.Alert.Scenario, *expected.Overflow.Alert.Scenario)
 						continue
 					}
 					log.Infof("(scenario) %v == %v", *out.Overflow.Alert.Scenario, *expected.Overflow.Alert.Scenario)
 
-					//EventsCount
+					// EventsCount
 					if *out.Overflow.Alert.EventsCount != *expected.Overflow.Alert.EventsCount {
 						log.Errorf("(EventsCount) %d != %d", *out.Overflow.Alert.EventsCount, *expected.Overflow.Alert.EventsCount)
 						continue
 					}
 					log.Infof("(EventsCount) %d == %d", *out.Overflow.Alert.EventsCount, *expected.Overflow.Alert.EventsCount)
 
-					//Sources
+					// Sources
 					if !reflect.DeepEqual(out.Overflow.Sources, expected.Overflow.Sources) {
 						log.Errorf("(Sources %s != %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
 						continue
 					}
 					log.Infof("(Sources: %s == %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
 				}
-				//Events
+				// Events
 				// if !reflect.DeepEqual(out.Overflow.Alert.Events, expected.Overflow.Alert.Events) {
 				// 	log.Errorf("(Events %s != %s)", spew.Sdump(out.Overflow.Alert.Events), spew.Sdump(expected.Overflow.Alert.Events))
 				// 	valid = false
@@ -287,10 +287,10 @@ POLL_AGAIN:
 				// 	log.Infof("(Events: %s == %s)", spew.Sdump(out.Overflow.Alert.Events), spew.Sdump(expected.Overflow.Alert.Events))
 				// }
 
-				//CheckFailed:
+				// CheckFailed:
 
 				log.Warningf("The test is valid, remove entry %d from expects, and %d from t.Results", eidx, ridx)
-				//don't do this at home : delete current element from list and redo
+				// don't do this at home : delete current element from list and redo
 				results[eidx] = results[len(results)-1]
 				results = results[:len(results)-1]
 				tf.Results[ridx] = tf.Results[len(tf.Results)-1]

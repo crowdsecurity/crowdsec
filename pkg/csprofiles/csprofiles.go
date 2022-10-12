@@ -153,7 +153,7 @@ func (Profile *Runtime) GenerateDecisionFromProfile(Alert *models.Alert) ([]*mod
 	return decisions, nil
 }
 
-//EvaluateProfile is going to evaluate an Alert against a profile to generate Decisions
+// EvaluateProfile is going to evaluate an Alert against a profile to generate Decisions
 func (Profile *Runtime) EvaluateProfile(Alert *models.Alert) ([]*models.Decision, bool, error) {
 	var decisions []*models.Decision
 

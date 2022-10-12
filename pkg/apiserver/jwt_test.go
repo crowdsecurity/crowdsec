@@ -57,7 +57,7 @@ func TestLogin(t *testing.T) {
 	assert.Equal(t, 401, w.Code)
 	assert.Equal(t, "{\"code\":401,\"message\":\"input format error\"}", w.Body.String())
 
-	//Validate machine
+	// Validate machine
 	err = ValidateMachine("test", config.API.Server.DbConfig)
 	if err != nil {
 		log.Fatalln(err.Error())

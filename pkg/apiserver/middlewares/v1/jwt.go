@@ -78,9 +78,9 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 			Where(machine.MachineId(machineID)).
 			First(j.DbClient.CTX)
 		if ent.IsNotFound(err) {
-			//Machine was not found, let's create it
+			// Machine was not found, let's create it
 			log.Printf("machine %s not found, create it", machineID)
-			//let's use an apikey as the password, doesn't matter in this case (generatePassword is only available in cscli)
+			// let's use an apikey as the password, doesn't matter in this case (generatePassword is only available in cscli)
 			pwd, err := GenerateAPIKey(64)
 			if err != nil {
 				log.WithFields(log.Fields{
@@ -114,7 +114,7 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 		}
 
 	} else {
-		//normal auth
+		// normal auth
 
 		if err := c.ShouldBindJSON(&loginInput); err != nil {
 			return "", errors.Wrap(err, "missing")
@@ -151,7 +151,7 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 			return nil, jwt.ErrFailedAuthentication
 		}
 
-		//end of normal auth
+		// end of normal auth
 	}
 
 	if len(scenariosInput) > 0 {

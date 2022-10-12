@@ -98,7 +98,7 @@ func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*e
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilGT(time.Now().UTC()),
 	)
-	//Allow a bouncer to ask for non-deduplicated results
+	// Allow a bouncer to ask for non-deduplicated results
 	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
 		query = query.Where(longestDecisionForScopeTypeValue)
 	}
@@ -122,7 +122,7 @@ func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) (
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilLT(time.Now().UTC()),
 	)
-	//Allow a bouncer to ask for non-deduplicated results
+	// Allow a bouncer to ask for non-deduplicated results
 	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
 		query = query.Where(longestDecisionForScopeTypeValue)
 	}
@@ -228,7 +228,7 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters 
 		decision.UntilLT(time.Now().UTC()),
 		decision.UntilGT(since),
 	)
-	//Allow a bouncer to ask for non-deduplicated results
+	// Allow a bouncer to ask for non-deduplicated results
 	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
 		query = query.Where(longestDecisionForScopeTypeValue)
 	}
@@ -252,7 +252,7 @@ func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[
 		decision.CreatedAtGT(since),
 		decision.UntilGT(time.Now().UTC()),
 	)
-	//Allow a bouncer to ask for non-deduplicated results
+	// Allow a bouncer to ask for non-deduplicated results
 	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
 		query = query.Where(longestDecisionForScopeTypeValue)
 	}
@@ -327,48 +327,48 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 	} else if ip_sz == 16 {
 		if contains { /*decision contains {start_ip,end_ip}*/
 			decisions = decisions.Where(decision.And(
-				//matching addr size
+				// matching addr size
 				decision.IPSizeEQ(int64(ip_sz)),
 				decision.Or(
-					//decision.start_ip < query.start_ip
+					// decision.start_ip < query.start_ip
 					decision.StartIPLT(start_ip),
 					decision.And(
-						//decision.start_ip == query.start_ip
+						// decision.start_ip == query.start_ip
 						decision.StartIPEQ(start_ip),
-						//decision.start_suffix <= query.start_suffix
+						// decision.start_suffix <= query.start_suffix
 						decision.StartSuffixLTE(start_sfx),
 					)),
 				decision.Or(
-					//decision.end_ip > query.end_ip
+					// decision.end_ip > query.end_ip
 					decision.EndIPGT(end_ip),
 					decision.And(
-						//decision.end_ip == query.end_ip
+						// decision.end_ip == query.end_ip
 						decision.EndIPEQ(end_ip),
-						//decision.end_suffix >= query.end_suffix
+						// decision.end_suffix >= query.end_suffix
 						decision.EndSuffixGTE(end_sfx),
 					),
 				),
 			))
 		} else {
 			decisions = decisions.Where(decision.And(
-				//matching addr size
+				// matching addr size
 				decision.IPSizeEQ(int64(ip_sz)),
 				decision.Or(
-					//decision.start_ip > query.start_ip
+					// decision.start_ip > query.start_ip
 					decision.StartIPGT(start_ip),
 					decision.And(
-						//decision.start_ip == query.start_ip
+						// decision.start_ip == query.start_ip
 						decision.StartIPEQ(start_ip),
-						//decision.start_suffix >= query.start_suffix
+						// decision.start_suffix >= query.start_suffix
 						decision.StartSuffixGTE(start_sfx),
 					)),
 				decision.Or(
-					//decision.end_ip < query.end_ip
+					// decision.end_ip < query.end_ip
 					decision.EndIPLT(end_ip),
 					decision.And(
-						//decision.end_ip == query.end_ip
+						// decision.end_ip == query.end_ip
 						decision.EndIPEQ(end_ip),
-						//decision.end_suffix <= query.end_suffix
+						// decision.end_suffix <= query.end_suffix
 						decision.EndSuffixLTE(end_sfx),
 					),
 				),
@@ -439,24 +439,24 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 		/*decision contains {start_ip,end_ip}*/
 		if contains {
 			decisions = decisions.Where(decision.And(
-				//matching addr size
+				// matching addr size
 				decision.IPSizeEQ(int64(ip_sz)),
 				decision.Or(
-					//decision.start_ip < query.start_ip
+					// decision.start_ip < query.start_ip
 					decision.StartIPLT(start_ip),
 					decision.And(
-						//decision.start_ip == query.start_ip
+						// decision.start_ip == query.start_ip
 						decision.StartIPEQ(start_ip),
-						//decision.start_suffix <= query.start_suffix
+						// decision.start_suffix <= query.start_suffix
 						decision.StartSuffixLTE(start_sfx),
 					)),
 				decision.Or(
-					//decision.end_ip > query.end_ip
+					// decision.end_ip > query.end_ip
 					decision.EndIPGT(end_ip),
 					decision.And(
-						//decision.end_ip == query.end_ip
+						// decision.end_ip == query.end_ip
 						decision.EndIPEQ(end_ip),
-						//decision.end_suffix >= query.end_suffix
+						// decision.end_suffix >= query.end_suffix
 						decision.EndSuffixGTE(end_sfx),
 					),
 				),
@@ -464,24 +464,24 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 		} else {
 			/*decision is contained within {start_ip,end_ip}*/
 			decisions = decisions.Where(decision.And(
-				//matching addr size
+				// matching addr size
 				decision.IPSizeEQ(int64(ip_sz)),
 				decision.Or(
-					//decision.start_ip > query.start_ip
+					// decision.start_ip > query.start_ip
 					decision.StartIPGT(start_ip),
 					decision.And(
-						//decision.start_ip == query.start_ip
+						// decision.start_ip == query.start_ip
 						decision.StartIPEQ(start_ip),
-						//decision.start_suffix >= query.start_suffix
+						// decision.start_suffix >= query.start_suffix
 						decision.StartSuffixGTE(start_sfx),
 					)),
 				decision.Or(
-					//decision.end_ip < query.end_ip
+					// decision.end_ip < query.end_ip
 					decision.EndIPLT(end_ip),
 					decision.And(
-						//decision.end_ip == query.end_ip
+						// decision.end_ip == query.end_ip
 						decision.EndIPEQ(end_ip),
-						//decision.end_suffix <= query.end_suffix
+						// decision.end_suffix <= query.end_suffix
 						decision.EndSuffixLTE(end_sfx),
 					),
 				),
@@ -498,7 +498,7 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 	return strconv.Itoa(nbDeleted), nil
 }
 
-//SoftDeleteDecisionByID set the expiration of a decision to now()
+// SoftDeleteDecisionByID set the expiration of a decision to now()
 func (c *Client) SoftDeleteDecisionByID(decisionID int) (int, error) {
 	nbUpdated, err := c.Ent.Decision.Update().Where(decision.IDEQ(decisionID)).SetUntil(time.Now().UTC()).Save(c.CTX)
 	if err != nil || nbUpdated == 0 {
@@ -584,24 +584,24 @@ func applyStartIpEndIpFilter(decisions *ent.DecisionQuery, contains bool, ip_sz 
 		/*decision contains {start_ip,end_ip}*/
 		if contains {
 			decisions = decisions.Where(decision.And(
-				//matching addr size
+				// matching addr size
 				decision.IPSizeEQ(int64(ip_sz)),
 				decision.Or(
-					//decision.start_ip < query.start_ip
+					// decision.start_ip < query.start_ip
 					decision.StartIPLT(start_ip),
 					decision.And(
-						//decision.start_ip == query.start_ip
+						// decision.start_ip == query.start_ip
 						decision.StartIPEQ(start_ip),
-						//decision.start_suffix <= query.start_suffix
+						// decision.start_suffix <= query.start_suffix
 						decision.StartSuffixLTE(start_sfx),
 					)),
 				decision.Or(
-					//decision.end_ip > query.end_ip
+					// decision.end_ip > query.end_ip
 					decision.EndIPGT(end_ip),
 					decision.And(
-						//decision.end_ip == query.end_ip
+						// decision.end_ip == query.end_ip
 						decision.EndIPEQ(end_ip),
-						//decision.end_suffix >= query.end_suffix
+						// decision.end_suffix >= query.end_suffix
 						decision.EndSuffixGTE(end_sfx),
 					),
 				),
@@ -609,24 +609,24 @@ func applyStartIpEndIpFilter(decisions *ent.DecisionQuery, contains bool, ip_sz 
 		} else {
 			/*decision is contained within {start_ip,end_ip}*/
 			decisions = decisions.Where(decision.And(
-				//matching addr size
+				// matching addr size
 				decision.IPSizeEQ(int64(ip_sz)),
 				decision.Or(
-					//decision.start_ip > query.start_ip
+					// decision.start_ip > query.start_ip
 					decision.StartIPGT(start_ip),
 					decision.And(
-						//decision.start_ip == query.start_ip
+						// decision.start_ip == query.start_ip
 						decision.StartIPEQ(start_ip),
-						//decision.start_suffix >= query.start_suffix
+						// decision.start_suffix >= query.start_suffix
 						decision.StartSuffixGTE(start_sfx),
 					)),
 				decision.Or(
-					//decision.end_ip < query.end_ip
+					// decision.end_ip < query.end_ip
 					decision.EndIPLT(end_ip),
 					decision.And(
-						//decision.end_ip == query.end_ip
+						// decision.end_ip == query.end_ip
 						decision.EndIPEQ(end_ip),
-						//decision.end_suffix <= query.end_suffix
+						// decision.end_suffix <= query.end_suffix
 						decision.EndSuffixLTE(end_sfx),
 					),
 				),

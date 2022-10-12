@@ -90,19 +90,19 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 	interval := pw.PluginConfigByName[pluginName].GroupWait
 	threshold := pw.PluginConfigByName[pluginName].GroupThreshold
 
-	//only size is set
+	// only size is set
 	if threshold > 0 && interval == 0 {
 		watchCount = threshold
 		watchTime = DefaultEmptyTicker
 	} else if interval != 0 && threshold == 0 {
-		//only time is set
+		// only time is set
 		watchTime = interval
 	} else if interval != 0 && threshold != 0 {
-		//both are set
+		// both are set
 		watchTime = DefaultEmptyTicker
 		watchCount = threshold
 	} else {
-		//none are set, we sent every event we receive
+		// none are set, we sent every event we receive
 		watchTime = DefaultEmptyTicker
 		watchCount = 1
 	}
@@ -113,19 +113,19 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 		select {
 		case <-ticker.C:
 			send := false
-			//if count threshold was set, honor no matter what
+			// if count threshold was set, honor no matter what
 			if pc, _ := pw.AlertCountByPluginName.Get(pluginName); watchCount > 0 && pc >= watchCount {
 				log.Tracef("[%s] %d alerts received, sending\n", pluginName, pc)
 				send = true
 				pw.AlertCountByPluginName.Set(pluginName, 0)
 			}
-			//if time threshold only was set
+			// if time threshold only was set
 			if watchTime > 0 && watchTime == interval {
 				log.Tracef("sending alerts to %s, duration %s elapsed", pluginName, interval)
 				send = true
 			}
 
-			//if we hit timer because it was set low to honor count, check if we should trigger
+			// if we hit timer because it was set low to honor count, check if we should trigger
 			if watchTime == DefaultEmptyTicker && watchTime != interval && interval != 0 {
 				if lastSend.Add(interval).Before(time.Now()) {
 					log.Tracef("sending alerts to %s, duration %s elapsed", pluginName, interval)
@@ -151,7 +151,7 @@ func (pw *PluginWatcher) watchPluginAlertCounts() {
 	for {
 		select {
 		case pluginName := <-pw.Inserts:
-			//we only "count" pending alerts, and watchPluginTicker is actually going to send it
+			// we only "count" pending alerts, and watchPluginTicker is actually going to send it
 			if _, ok := pw.PluginConfigByName[pluginName]; ok {
 				curr, _ := pw.AlertCountByPluginName.Get(pluginName)
 				pw.AlertCountByPluginName.Set(pluginName, curr+1)

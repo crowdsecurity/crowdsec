@@ -45,7 +45,7 @@ var (
 	/*the state of the buckets*/
 	holders         []leaky.BucketFactory
 	buckets         *leaky.Buckets
-	outputEventChan chan types.Event //the buckets init returns its own chan that is used for multiplexing
+	outputEventChan chan types.Event // the buckets init returns its own chan that is used for multiplexing
 	/*settings*/
 	lastProcessedItem time.Time /*keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.*/
 	pluginBroker      csplugin.PluginBroker

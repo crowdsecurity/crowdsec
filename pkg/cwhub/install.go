@@ -10,7 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-//DisableItem to disable an item managed by the hub, removes the symlink if purge is true
+// DisableItem to disable an item managed by the hub, removes the symlink if purge is true
 func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, error) {
 	var tdir = hub.ConfigDir
 	var hdir = hub.HubDir
@@ -60,11 +60,11 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 
 	stat, err := os.Lstat(syml)
 	if os.IsNotExist(err) {
-		if !purge && !force { //we only accept to "delete" non existing items if it's a purge
+		if !purge && !force { // we only accept to "delete" non existing items if it's a purge
 			return target, fmt.Errorf("can't delete %s : %s doesn't exist", target.Name, syml)
 		}
 	} else {
-		//if it's managed by hub, it's a symlink to csconfig.GConfig.hub.HubDir / ...
+		// if it's managed by hub, it's a symlink to csconfig.GConfig.hub.HubDir / ...
 		if stat.Mode()&os.ModeSymlink == 0 {
 			log.Warningf("%s (%s) isn't a symlink, can't disable", target.Name, syml)
 			return target, fmt.Errorf("%s isn't managed by hub", target.Name)
@@ -82,7 +82,7 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 			return target, fmt.Errorf("%s isn't managed by hub", target.Name)
 		}
 
-		//remove the symlink
+		// remove the symlink
 		if err = os.Remove(syml); err != nil {
 			return target, errors.Wrap(err, "while removing symlink")
 		}
@@ -92,7 +92,7 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 
 	if purge {
 		hubpath := hdir + "/" + target.RemotePath
-		//if purge, disable hub file
+		// if purge, disable hub file
 		if err = os.Remove(hubpath); err != nil {
 			return target, errors.Wrap(err, "while removing file")
 		}
@@ -156,7 +156,7 @@ func EnableItem(hub *csconfig.Hub, target Item) (Item, error) {
 		return target, nil
 	}
 
-	//tdir+target.RemotePath
+	// tdir+target.RemotePath
 	srcPath, err := filepath.Abs(hdir + "/" + target.RemotePath)
 	if err != nil {
 		return target, errors.Wrap(err, "while getting source path")

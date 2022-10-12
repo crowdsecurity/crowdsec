@@ -86,7 +86,7 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 					}
 				}
 				f.Close()
-				//this is the file that was going to be read by crowdsec anyway
+				// this is the file that was going to be read by crowdsec anyway
 				logFile = tmpFile
 			}
 

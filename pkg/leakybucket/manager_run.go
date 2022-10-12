@@ -22,9 +22,11 @@ var serialized map[string]Leaky
 var BucketPourCache map[string][]types.Event
 var BucketPourTrack bool
 
-/*The leaky routines lifecycle are based on "real" time.
+/*
+The leaky routines lifecycle are based on "real" time.
 But when we are running in time-machine mode, the reference time is in logs and not "real" time.
-Thus we need to garbage collect them to avoid a skyrocketing memory usage.*/
+Thus we need to garbage collect them to avoid a skyrocketing memory usage.
+*/
 func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 	buckets.wgPour.Wait()
 	buckets.wgDumpState.Add(1)
@@ -37,7 +39,7 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 		key := rkey.(string)
 		val := rvalue.(*Leaky)
 		total += 1
-		//bucket already overflowed, we can kill it
+		// bucket already overflowed, we can kill it
 		if !val.Ovflw_ts.IsZero() {
 			discard += 1
 			val.logger.Debugf("overflowed at %s.", val.Ovflw_ts)
@@ -51,7 +53,7 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 		tokcapa := float64(val.Capacity)
 		tokat = math.Round(tokat*100) / 100
 		tokcapa = math.Round(tokcapa*100) / 100
-		//bucket actually underflowed based on log time, but no in real time
+		// bucket actually underflowed based on log time, but no in real time
 		if tokat >= tokcapa {
 			BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
 			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.First_ts, tokat, tokcapa)
@@ -78,7 +80,7 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 
 func DumpBucketsStateAt(deadline time.Time, outputdir string, buckets *Buckets) (string, error) {
 
-	//synchronize with PourItemtoHolders
+	// synchronize with PourItemtoHolders
 	buckets.wgPour.Wait()
 	buckets.wgDumpState.Add(1)
 	defer buckets.wgDumpState.Done()
@@ -175,7 +177,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 		select {
 		case _, ok := <-bucket.Signal:
 			if !ok {
-				//the bucket was found and dead, get a new one and continue
+				// the bucket was found and dead, get a new one and continue
 				bucket.logger.Tracef("Bucket %s found dead, cleanup the body", buckey)
 				buckets.Bucket_map.Delete(buckey)
 				sigclosed += 1
@@ -185,10 +187,10 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 				}
 				continue
 			}
-			//holder.logger.Tracef("Signal exists, try to pour :)")
+			// holder.logger.Tracef("Signal exists, try to pour :)")
 		default:
 			/*nothing to read, but not closed, try to pour */
-			//holder.logger.Tracef("Signal exists but empty, try to pour :)")
+			// holder.logger.Tracef("Signal exists but empty, try to pour :)")
 		}
 
 		/*let's see if this time-bucket should have expired */
@@ -207,7 +209,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 				if d.After(lastTs.Add(bucket.Duration)) {
 					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, lastTs.Add(bucket.Duration))
 					buckets.Bucket_map.Delete(buckey)
-					//not sure about this, should we create a new one ?
+					// not sure about this, should we create a new one ?
 					sigclosed += 1
 					bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
 					if err != nil {
@@ -220,7 +222,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 		/*the bucket seems to be up & running*/
 		select {
 		case bucket.In <- parsed:
-			//holder.logger.Tracef("Successfully sent !")
+			// holder.logger.Tracef("Successfully sent !")
 			if BucketPourTrack {
 				if _, ok := BucketPourCache[bucket.Name]; !ok {
 					BucketPourCache[bucket.Name] = make([]types.Event, 0)
@@ -232,7 +234,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 			continue
 		default:
 			failed_sent += 1
-			//holder.logger.Tracef("Failed to send, try again")
+			// holder.logger.Tracef("Failed to send, try again")
 			continue
 
 		}
@@ -268,7 +270,7 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 				return LeakRoutine(fresh_bucket)
 			})
 			biface = fresh_bucket
-			//once the created goroutine is ready to process event, we can return it
+			// once the created goroutine is ready to process event, we can return it
 			<-fresh_bucket.Signal
 		} else {
 			holder.logger.Debugf("Unexpectedly found exisint bucket for %s", partitionKey)
@@ -297,11 +299,11 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 
 	cachedExprEnv := exprhelpers.GetExprEnv(map[string]interface{}{"evt": &parsed})
 
-	//find the relevant holders (scenarios)
+	// find the relevant holders (scenarios)
 	for idx := 0; idx < len(holders); idx++ {
-		//for idx, holder := range holders {
+		// for idx, holder := range holders {
 
-		//evaluate bucket's condition
+		// evaluate bucket's condition
 		if holders[idx].RunTimeFilter != nil {
 			holders[idx].logger.Tracef("event against holder %d/%d", idx, len(holders))
 			output, err := expr.Run(holders[idx].RunTimeFilter, cachedExprEnv)
@@ -324,7 +326,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			}
 		}
 
-		//groupby determines the partition key for the specific bucket
+		// groupby determines the partition key for the specific bucket
 		var groupby string
 		if holders[idx].RunTimeGroupBy != nil {
 			tmpGroupBy, err := expr.Run(holders[idx].RunTimeGroupBy, cachedExprEnv)
@@ -340,12 +342,12 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		}
 		buckey := GetKey(holders[idx], groupby)
 
-		//we need to either find the existing bucket, or create a new one (if it's the first event to hit it for this partition key)
+		// we need to either find the existing bucket, or create a new one (if it's the first event to hit it for this partition key)
 		bucket, err := LoadOrStoreBucketFromHolder(buckey, buckets, holders[idx], parsed.ExpectMode)
 		if err != nil {
 			return false, errors.Wrap(err, "failed to load or store bucket")
 		}
-		//finally, pour the even into the bucket
+		// finally, pour the even into the bucket
 		ok, err := PourItemToBucket(bucket, holders[idx], buckets, &parsed)
 		if err != nil {
 			return false, errors.Wrap(err, "failed to pour bucket")

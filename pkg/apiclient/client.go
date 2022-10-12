@@ -125,9 +125,9 @@ func RegisterClient(config *Config, client *http.Client) (*ApiClient, error) {
 
 type Response struct {
 	Response *http.Response
-	//add our pagination stuff
-	//NextPage int
-	//...
+	// add our pagination stuff
+	// NextPage int
+	// ...
 }
 
 type ErrorResponse struct {
@@ -166,14 +166,14 @@ func CheckResponse(r *http.Response) error {
 }
 
 type ListOpts struct {
-	//Page    int
-	//PerPage int
+	// Page    int
+	// PerPage int
 }
 
 type DeleteOpts struct {
-	//??
+	// ??
 }
 
 type AddOpts struct {
-	//??
+	// ??
 }

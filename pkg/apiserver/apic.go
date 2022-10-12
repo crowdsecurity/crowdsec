@@ -31,7 +31,7 @@ var (
 )
 
 var SCOPE_CAPI string = "CAPI"
-var SCOPE_CAPI_ALIAS string = "crowdsecurity/community-blocklist" //we don't use "CAPI" directly, to make it less confusing for the user
+var SCOPE_CAPI_ALIAS string = "crowdsecurity/community-blocklist" // we don't use "CAPI" directly, to make it less confusing for the user
 var SCOPE_LISTS string = "lists"
 
 type apic struct {
@@ -57,7 +57,7 @@ func (a *apic) FetchScenariosListFromDB() ([]string, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "while listing machines")
 	}
-	//merge all scenarios together
+	// merge all scenarios together
 	for _, v := range machines {
 		machineScenarios := strings.Split(v.Scenarios, ",")
 		log.Debugf("%d scenarios for machine %d", len(machineScenarios), v.ID)
@@ -244,7 +244,7 @@ func (a *apic) Send(cacheOrig *models.AddSignalsRequest) {
 		defer cancel()
 		_, _, err := a.apiClient.Signal.Add(ctx, &send)
 		if err != nil {
-			//we log it here as well, because the return value of func might be discarded
+			// we log it here as well, because the return value of func might be discarded
 			log.Errorf("Error while sending chunk to central API : %s", err)
 		}
 		pageStart += bulkSize
@@ -256,7 +256,7 @@ func (a *apic) CAPIPullIsOld() (bool, error) {
 	/*only pull community blocklist if it's older than 1h30 */
 	alerts := a.dbClient.Ent.Alert.Query()
 	alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginEQ(database.CapiMachineID)))
-	alerts = alerts.Where(alert.CreatedAtGTE(time.Now().UTC().Add(-time.Duration(1*time.Hour + 30*time.Minute)))) //nolint:unconvert
+	alerts = alerts.Where(alert.CreatedAtGTE(time.Now().UTC().Add(-time.Duration(1*time.Hour + 30*time.Minute)))) // nolint:unconvert
 	count, err := alerts.Count(a.dbClient.CTX)
 	if err != nil {
 		return false, errors.Wrap(err, "while looking for CAPI alert")
@@ -338,7 +338,7 @@ func createAlertForDecision(decision *models.Decision) *models.Alert {
 	newAlert := &models.Alert{}
 	newAlert.Source = &models.Source{}
 	newAlert.Source.Scope = types.StrPtr("")
-	if *decision.Origin == SCOPE_CAPI { //to make things more user friendly, we replace CAPI with community-blocklist
+	if *decision.Origin == SCOPE_CAPI { // to make things more user friendly, we replace CAPI with community-blocklist
 		newAlert.Scenario = types.StrPtr(SCOPE_CAPI)
 		newAlert.Source.Scope = types.StrPtr(SCOPE_CAPI)
 	} else if *decision.Origin == SCOPE_LISTS {
@@ -364,7 +364,7 @@ func createAlertForDecision(decision *models.Decision) *models.Alert {
 // This function takes in list of parent alerts and decisions and then pairs them up.
 func fillAlertsWithDecisions(alerts []*models.Alert, decisions []*models.Decision, add_counters map[string]map[string]int) []*models.Alert {
 	for _, decision := range decisions {
-		//count and create separate alerts for each list
+		// count and create separate alerts for each list
 		updateCounterForDecision(add_counters, decision, 1)
 
 		/*CAPI might send lower case scopes, unify it.*/
@@ -375,7 +375,7 @@ func fillAlertsWithDecisions(alerts []*models.Alert, decisions []*models.Decisio
 			*decision.Scope = types.Range
 		}
 		found := false
-		//add the individual decisions to the right list
+		// add the individual decisions to the right list
 		for idx, alert := range alerts {
 			if *decision.Origin == SCOPE_CAPI {
 				if *alert.Source.Scope == SCOPE_CAPI {

@@ -21,50 +21,50 @@ import (
 
 type Node struct {
 	FormatVersion string `yaml:"format"`
-	//Enable config + runtime debug of node via config o/
+	// Enable config + runtime debug of node via config o/
 	Debug bool `yaml:"debug,omitempty"`
-	//If enabled, the node (and its child) will report their own statistics
+	// If enabled, the node (and its child) will report their own statistics
 	Profiling bool `yaml:"profiling,omitempty"`
-	//Name, author, description and reference(s) for parser pattern
+	// Name, author, description and reference(s) for parser pattern
 	Name        string   `yaml:"name,omitempty"`
 	Author      string   `yaml:"author,omitempty"`
 	Description string   `yaml:"description,omitempty"`
 	References  []string `yaml:"references,omitempty"`
-	//if debug is present in the node, keep its specific Logger in runtime structure
+	// if debug is present in the node, keep its specific Logger in runtime structure
 	Logger *log.Entry `yaml:"-"`
-	//This is mostly a hack to make writing less repetitive.
-	//relying on stage, we know which field to parse, and we
-	//can also promote log to next stage on success
+	// This is mostly a hack to make writing less repetitive.
+	// relying on stage, we know which field to parse, and we
+	// can also promote log to next stage on success
 	Stage string `yaml:"stage,omitempty"`
-	//OnSuccess allows to tag a node to be able to move log to next stage on success
+	// OnSuccess allows to tag a node to be able to move log to next stage on success
 	OnSuccess string `yaml:"onsuccess,omitempty"`
-	rn        string //this is only for us in debug, a random generated name for each node
-	//Filter is executed at runtime (with current log line as context)
-	//and must succeed or node is exited
+	rn        string // this is only for us in debug, a random generated name for each node
+	// Filter is executed at runtime (with current log line as context)
+	// and must succeed or node is exited
 	Filter        string                    `yaml:"filter,omitempty"`
-	RunTimeFilter *vm.Program               `yaml:"-" json:"-"` //the actual compiled filter
-	ExprDebugger  *exprhelpers.ExprDebugger `yaml:"-" json:"-"` //used to debug expression by printing the content of each variable of the expression
-	//If node has leafs, execute all of them until one asks for a 'break'
+	RunTimeFilter *vm.Program               `yaml:"-" json:"-"` // the actual compiled filter
+	ExprDebugger  *exprhelpers.ExprDebugger `yaml:"-" json:"-"` // used to debug expression by printing the content of each variable of the expression
+	// If node has leafs, execute all of them until one asks for a 'break'
 	LeavesNodes []Node `yaml:"nodes,omitempty"`
-	//Flag used to describe when to 'break' or return an 'error'
+	// Flag used to describe when to 'break' or return an 'error'
 	EnrichFunctions EnricherCtx
 
 	/* If the node is actually a leaf, it can have : grok, enrich, statics */
-	//pattern_syntax are named grok patterns that are re-utilized over several grok patterns
+	// pattern_syntax are named grok patterns that are re-utilized over several grok patterns
 	SubGroks yaml.MapSlice `yaml:"pattern_syntax,omitempty"`
 
-	//Holds a grok pattern
+	// Holds a grok pattern
 	Grok types.GrokPattern `yaml:"grok,omitempty"`
-	//Statics can be present in any type of node and is executed last
+	// Statics can be present in any type of node and is executed last
 	Statics []types.ExtraField `yaml:"statics,omitempty"`
-	//Whitelists
+	// Whitelists
 	Whitelist Whitelist           `yaml:"whitelist,omitempty"`
 	Data      []*types.DataSource `yaml:"data,omitempty"`
 }
 
 func (n *Node) validate(pctx *UnixParserCtx, ectx EnricherCtx) error {
 
-	//stage is being set automagically
+	// stage is being set automagically
 	if n.Stage == "" {
 		return fmt.Errorf("stage needs to be an existing stage")
 	}
@@ -115,7 +115,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 
 	clog.Tracef("Event entering node")
 	if n.RunTimeFilter != nil {
-		//Evaluate node's filter
+		// Evaluate node's filter
 		output, err := expr.Run(n.RunTimeFilter, cachedExprEnv)
 		if err != nil {
 			clog.Warningf("failed to run filter : %v", err)
@@ -224,13 +224,13 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		}
 	}
 
-	//Process grok if present, should be exclusive with nodes :)
+	// Process grok if present, should be exclusive with nodes :)
 	gstr := ""
 	if n.Grok.RunTimeRegexp != nil {
 		clog.Tracef("Processing grok pattern : %s : %p", n.Grok.RegexpName, n.Grok.RunTimeRegexp)
-		//for unparsed, parsed etc. set sensible defaults to reduce user hassle
+		// for unparsed, parsed etc. set sensible defaults to reduce user hassle
 		if n.Grok.TargetField != "" {
-			//it's a hack to avoid using real reflect
+			// it's a hack to avoid using real reflect
 			if n.Grok.TargetField == "Line.Raw" {
 				gstr = p.Line.Raw
 			} else if val, ok := p.Parsed[n.Grok.TargetField]; ok {
@@ -264,7 +264,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 			/*tag explicitly that the *current* node had a successful grok pattern. it's important to know success state*/
 			NodeHasOKGrok = true
 			clog.Debugf("+ Grok '%s' returned %d entries to merge in Parsed", groklabel, len(grok))
-			//We managed to grok stuff, merged into parse
+			// We managed to grok stuff, merged into parse
 			for k, v := range grok {
 				clog.Debugf("\t.Parsed['%s'] = '%s'", k, v)
 				p.Parsed[k] = v
@@ -276,7 +276,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 				return false, err
 			}
 		} else {
-			//grok failed, node failed
+			// grok failed, node failed
 			clog.Debugf("+ Grok '%s' didn't return data on '%s'", groklabel, gstr)
 			NodeState = false
 		}
@@ -285,7 +285,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		clog.Tracef("! No grok pattern : %p", n.Grok.RunTimeRegexp)
 	}
 
-	//Iterate on leafs
+	// Iterate on leafs
 	if len(n.LeavesNodes) > 0 {
 		for _, leaf := range n.LeavesNodes {
 			ret, err := leaf.process(p, ctx, cachedExprEnv)
@@ -318,7 +318,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 
 	clog.Tracef("State after nodes : %v", NodeState)
 
-	//grok or leafs failed, don't process statics
+	// grok or leafs failed, don't process statics
 	if !NodeState {
 		if n.Name != "" {
 			NodesHitsKo.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name}).Inc()
@@ -350,7 +350,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		log.Tracef("node is successful, check strategy")
 		if n.OnSuccess == "next_stage" {
 			idx := stageidx(p.Stage, ctx.Stages)
-			//we're at the last stage
+			// we're at the last stage
 			if idx+1 == len(ctx.Stages) {
 				clog.Debugf("node reached the last stage : %s", p.Stage)
 			} else {
@@ -402,7 +402,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 
 	n.Logger.Tracef("Compiling : %s", dumpr.Sdump(n))
 
-	//compile filter if present
+	// compile filter if present
 	if n.Filter != "" {
 		n.RunTimeFilter, err = expr.Compile(n.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 		if err != nil {
@@ -470,7 +470,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 
 	/* load grok statics */
 	if len(n.Grok.Statics) > 0 {
-		//compile expr statics if present
+		// compile expr statics if present
 		for idx := range n.Grok.Statics {
 			if n.Grok.Statics[idx].ExpValue != "" {
 				n.Grok.Statics[idx].RunTimeValue, err = expr.Compile(n.Grok.Statics[idx].ExpValue,

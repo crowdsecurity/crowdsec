@@ -6,17 +6,17 @@ import (
 	"sync/atomic"
 	"time"
 
-	//"log"
+	// "log"
 	"github.com/crowdsecurity/crowdsec/pkg/time/rate"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"gopkg.in/tomb.v2"
 
-	//rate "time/rate"
+	// rate "time/rate"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	//"golang.org/x/time/rate"
+	// "golang.org/x/time/rate"
 )
 
 const (
@@ -27,23 +27,23 @@ const (
 // Leaky represents one instance of a bucket
 type Leaky struct {
 	Name string
-	Mode int //LIVE or TIMEMACHINE
-	//the limiter is what holds the proper "leaky aspect", it determines when/if we can pour objects
+	Mode int // LIVE or TIMEMACHINE
+ // the limiter is what holds the proper "leaky aspect", it determines when/if we can pour objects
 	Limiter         rate.RateLimiter `json:"-"`
 	SerializedState rate.Lstate
-	//Queue is used to held the cache of objects in the bucket, it is used to know 'how many' objects we have in buffer.
+ // Queue is used to held the cache of objects in the bucket, it is used to know 'how many' objects we have in buffer.
 	Queue *Queue
-	//Leaky buckets are receiving message through a chan
+ // Leaky buckets are receiving message through a chan
 	In chan *types.Event `json:"-"`
-	//Leaky buckets are pushing their overflows through a chan
+ // Leaky buckets are pushing their overflows through a chan
 	Out chan *Queue `json:"-"`
 	// shared for all buckets (the idea is to kill this afterwards)
 	AllOut chan types.Event `json:"-"`
-	//max capacity (for burst)
+ // max capacity (for burst)
 	Capacity int
-	//CacheRatio is the number of elements that should be kept in memory (compared to capacity)
+ // CacheRatio is the number of elements that should be kept in memory (compared to capacity)
 	CacheSize int
-	//the unique identifier of the bucket (a hash)
+ // the unique identifier of the bucket (a hash)
 	Mapkey string
 	// chan for signaling
 	Signal       chan bool `json:"-"`
@@ -59,7 +59,7 @@ type Leaky struct {
 	BucketConfig *BucketFactory
 	Duration     time.Duration
 	Pour         func(*Leaky, types.Event) `json:"-"`
-	//Profiling when set to true enables profiling of bucket
+ // Profiling when set to true enables profiling of bucket
 	Profiling       bool
 	timedOverflow   bool
 	logger          *log.Entry
@@ -69,7 +69,7 @@ type Leaky struct {
 	tomb            *tomb.Tomb
 	wgPour          *sync.WaitGroup
 	wgDumpState     *sync.WaitGroup
-	mutex           *sync.Mutex //used only for TIMEMACHINE mode to allow garbage collection without races
+	mutex           *sync.Mutex // used only for TIMEMACHINE mode to allow garbage collection without races
 }
 
 var BucketsPour = prometheus.NewCounterVec(
@@ -133,27 +133,27 @@ func NewLeaky(bucketFactory BucketFactory) *Leaky {
 
 func FromFactory(bucketFactory BucketFactory) *Leaky {
 	var limiter rate.RateLimiter
-	//golang rate limiter. It's mainly intended for http rate limiter
+ // golang rate limiter. It's mainly intended for http rate limiter
 	Qsize := bucketFactory.Capacity
 	if bucketFactory.CacheSize > 0 {
-		//cache is smaller than actual capacity
+	 // cache is smaller than actual capacity
 		if bucketFactory.CacheSize <= bucketFactory.Capacity {
 			Qsize = bucketFactory.CacheSize
-			//bucket might be counter (infinite size), allow cache limitation
+		 // bucket might be counter (infinite size), allow cache limitation
 		} else if bucketFactory.Capacity == -1 {
 			Qsize = bucketFactory.CacheSize
 		}
 	}
 	if bucketFactory.Capacity == -1 {
-		//In this case we allow all events to pass.
-		//maybe in the future we could avoid using a limiter
+	 // In this case we allow all events to pass.
+	 // maybe in the future we could avoid using a limiter
 		limiter = &rate.AlwaysFull{}
 	} else {
 		limiter = rate.NewLimiter(rate.Every(bucketFactory.leakspeed), bucketFactory.Capacity)
 	}
 	BucketsInstantiation.With(prometheus.Labels{"name": bucketFactory.Name}).Inc()
 
-	//create the leaky bucket per se
+ // create the leaky bucket per se
 	l := &Leaky{
 		Name:            bucketFactory.Name,
 		Limiter:         limiter,
@@ -191,7 +191,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 }
 
 /* for now mimic a leak routine */
-//LeakRoutine us the life of a bucket. It dies when the bucket underflows or overflows
+// LeakRoutine us the life of a bucket. It dies when the bucket underflows or overflows
 func LeakRoutine(leaky *Leaky) error {
 
 	var (
@@ -239,7 +239,7 @@ func LeakRoutine(leaky *Leaky) error {
 			BucketsPour.With(prometheus.Labels{"name": leaky.Name, "source": msg.Line.Src, "type": msg.Line.Module}).Inc()
 
 			leaky.Pour(leaky, *msg) // glue for now
-			//Clear cache on behalf of pour
+		 // Clear cache on behalf of pour
 			if underflowTicker != nil {
 				underflowTicker.Stop()
 			}

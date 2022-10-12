@@ -336,7 +336,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			c.Log.Info(disp)
 		}
 
-		//let's track when we strip or drop data, notify outside of loop to avoid spam
+		// let's track when we strip or drop data, notify outside of loop to avoid spam
 		stripped := false
 		dropped := false
 
@@ -353,7 +353,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 					return []string{}, errors.Wrapf(MarshalFail, "event meta '%v' : %s", eventItem.Meta, err)
 				}
 
-				//the serialized field is too big, let's try to progressively strip it
+				// the serialized field is too big, let's try to progressively strip it
 				if event.SerializedValidator(string(marshallMetas)) != nil {
 					stripped = true
 
@@ -376,7 +376,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 						stripSize /= 2
 					}
 
-					//nothing worked, drop it
+					// nothing worked, drop it
 					if !valid {
 						dropped = true
 						stripped = false
@@ -625,7 +625,7 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 			predicates = append(predicates, alert.HasDecisionsWith(decision.TypeEQ(value[0])))
 		case "origin":
 			predicates = append(predicates, alert.HasDecisionsWith(decision.OriginEQ(value[0])))
-		case "include_capi": //allows to exclude one or more specific origins
+		case "include_capi": // allows to exclude one or more specific origins
 			if value[0] == "false" {
 				predicates = append(predicates, alert.HasDecisionsWith(decision.Or(decision.OriginEQ("crowdsec"), decision.OriginEQ("cscli"))))
 			} else if value[0] != "true" {
@@ -669,48 +669,48 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 
 		if contains { /*decision contains {start_ip,end_ip}*/
 			predicates = append(predicates, alert.And(
-				//matching addr size
+				// matching addr size
 				alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
 				alert.Or(
-					//decision.start_ip < query.start_ip
+					// decision.start_ip < query.start_ip
 					alert.HasDecisionsWith(decision.StartIPLT(start_ip)),
 					alert.And(
-						//decision.start_ip == query.start_ip
+						// decision.start_ip == query.start_ip
 						alert.HasDecisionsWith(decision.StartIPEQ(start_ip)),
-						//decision.start_suffix <= query.start_suffix
+						// decision.start_suffix <= query.start_suffix
 						alert.HasDecisionsWith(decision.StartSuffixLTE(start_sfx)),
 					)),
 				alert.Or(
-					//decision.end_ip > query.end_ip
+					// decision.end_ip > query.end_ip
 					alert.HasDecisionsWith(decision.EndIPGT(end_ip)),
 					alert.And(
-						//decision.end_ip == query.end_ip
+						// decision.end_ip == query.end_ip
 						alert.HasDecisionsWith(decision.EndIPEQ(end_ip)),
-						//decision.end_suffix >= query.end_suffix
+						// decision.end_suffix >= query.end_suffix
 						alert.HasDecisionsWith(decision.EndSuffixGTE(end_sfx)),
 					),
 				),
 			))
 		} else { /*decision is contained within {start_ip,end_ip}*/
 			predicates = append(predicates, alert.And(
-				//matching addr size
+				// matching addr size
 				alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
 				alert.Or(
-					//decision.start_ip > query.start_ip
+					// decision.start_ip > query.start_ip
 					alert.HasDecisionsWith(decision.StartIPGT(start_ip)),
 					alert.And(
-						//decision.start_ip == query.start_ip
+						// decision.start_ip == query.start_ip
 						alert.HasDecisionsWith(decision.StartIPEQ(start_ip)),
-						//decision.start_suffix >= query.start_suffix
+						// decision.start_suffix >= query.start_suffix
 						alert.HasDecisionsWith(decision.StartSuffixGTE(start_sfx)),
 					)),
 				alert.Or(
-					//decision.end_ip < query.end_ip
+					// decision.end_ip < query.end_ip
 					alert.HasDecisionsWith(decision.EndIPLT(end_ip)),
 					alert.And(
-						//decision.end_ip == query.end_ip
+						// decision.end_ip == query.end_ip
 						alert.HasDecisionsWith(decision.EndIPEQ(end_ip)),
-						//decision.end_suffix <= query.end_suffix
+						// decision.end_suffix <= query.end_suffix
 						alert.HasDecisionsWith(decision.EndSuffixLTE(end_sfx)),
 					),
 				),
@@ -1046,11 +1046,11 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 		deletedByAge = nbDeleted
 	}
 	if MaxItems > 0 {
-		//We get the highest id for the alerts
-		//We subtract MaxItems to avoid deleting alerts that are not old enough
-		//This gives us the oldest alert that we want to keep
-		//We then delete all the alerts with an id lower than this one
-		//We can do this because the id is auto-increment, and the database won't reuse the same id twice
+		// We get the highest id for the alerts
+		// We subtract MaxItems to avoid deleting alerts that are not old enough
+		// This gives us the oldest alert that we want to keep
+		// We then delete all the alerts with an id lower than this one
+		// We can do this because the id is auto-increment, and the database won't reuse the same id twice
 		lastAlert, err := c.QueryAlertWithFilter(map[string][]string{
 			"sort":  {"DESC"},
 			"limit": {"1"},
@@ -1067,7 +1067,7 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 			c.Log.Debugf("FlushAlerts (max id): %d", maxid)
 
 			if maxid > 0 {
-				//This may lead to orphan alerts (at least on MySQL), but the next time the flush job will run, they will be deleted
+				// This may lead to orphan alerts (at least on MySQL), but the next time the flush job will run, they will be deleted
 				deletedByNbItem, err = c.Ent.Alert.Delete().Where(alert.IDLT(maxid)).Exec(c.CTX)
 
 				if err != nil {

@@ -15,7 +15,7 @@ func TestDownladFile(t *testing.T) {
 
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
-	//OK
+	// OK
 	httpmock.RegisterResponder(
 		"GET",
 		"https://example.com/xx",
@@ -31,13 +31,13 @@ func TestDownladFile(t *testing.T) {
 	content, err := os.ReadFile(examplePath)
 	assert.Equal(t, "example content oneoneone", string(content))
 	assert.NoError(t, err)
-	//bad uri
+	// bad uri
 	err = downloadFile("https://zz.com", examplePath)
 	assert.Error(t, err)
-	//404
+	// 404
 	err = downloadFile("https://example.com/x", examplePath)
 	assert.Error(t, err)
-	//bad target
+	// bad target
 	err = downloadFile("https://example.com/xx", "")
 	assert.Error(t, err)
 }

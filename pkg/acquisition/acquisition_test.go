@@ -382,7 +382,7 @@ func (f *MockTail) ConfigureByDSN(string, map[string]string, *log.Entry) error {
 	return fmt.Errorf("not supported")
 }
 
-//func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
+// func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
 
 func TestStartAcquisitionCat(t *testing.T) {
 	sources := []DataSource{
@@ -485,7 +485,7 @@ READLOOP:
 	if count != 10 {
 		t.Fatalf("expected 10 results, got %d", count)
 	}
-	//acquisTomb.Kill(nil)
+	// acquisTomb.Kill(nil)
 	time.Sleep(1 * time.Second)
 	if acquisTomb.Err().Error() != "got error (tomb)" {
 		t.Fatalf("didn't got expected error, got '%s'", acquisTomb.Err().Error())
@@ -495,7 +495,7 @@ READLOOP:
 type MockSourceByDSN struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 	Toto                              string     `yaml:"toto"`
-	logger                            *log.Entry //nolint: unused
+	logger                            *log.Entry // nolint: unused
 }
 
 func (f *MockSourceByDSN) Configure(cfg []byte, logger *log.Entry) error           { return nil }

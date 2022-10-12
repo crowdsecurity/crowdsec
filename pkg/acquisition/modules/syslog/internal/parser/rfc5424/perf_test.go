@@ -6,7 +6,7 @@ var e error
 
 const BOM = "\xEF\xBB\xBF"
 
-//Test case are from https://github.com/influxdata/go-syslog (the parser we used previously)
+// Test case are from https://github.com/influxdata/go-syslog (the parser we used previously)
 
 func BenchmarkParse(b *testing.B) {
 	tests := []struct {

@@ -453,7 +453,7 @@ func TestAtof(t *testing.T) {
 
 	log.Printf("test 'Atof()' : OK")
 
-	//bad float
+	// bad float
 	testFloat = "1aaa.5"
 	expectedFloat = 0.0
 

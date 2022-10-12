@@ -11,7 +11,7 @@ import (
 
 func TestDownloadHubIdx(t *testing.T) {
 	back := RawFileURLTemplate
-	//bad url template
+	// bad url template
 	fmt.Println("Test 'bad URL'")
 	RawFileURLTemplate = "x"
 	ret, err := DownloadHubIdx(&csconfig.Hub{})
@@ -20,7 +20,7 @@ func TestDownloadHubIdx(t *testing.T) {
 	}
 	fmt.Printf("->%+v", ret)
 
-	//bad domain
+	// bad domain
 	fmt.Println("Test 'bad domain'")
 	RawFileURLTemplate = "https://baddomain/%s/%s"
 	ret, err = DownloadHubIdx(&csconfig.Hub{})
@@ -29,7 +29,7 @@ func TestDownloadHubIdx(t *testing.T) {
 	}
 	fmt.Printf("->%+v", ret)
 
-	//bad target path
+	// bad target path
 	fmt.Println("Test 'bad target path'")
 	RawFileURLTemplate = back
 	ret, err = DownloadHubIdx(&csconfig.Hub{HubIndexFile: "/does/not/exist/index.json"})

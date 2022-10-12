@@ -43,7 +43,7 @@ var linesRead = prometheus.NewCounterVec(
 	[]string{"group", "stream"},
 )
 
-//CloudwatchSource is the runtime instance keeping track of N streams within 1 cloudwatch group
+// CloudwatchSource is the runtime instance keeping track of N streams within 1 cloudwatch group
 type CloudwatchSource struct {
 	Config CloudwatchSourceConfiguration
 	/*runtime stuff*/
@@ -54,19 +54,19 @@ type CloudwatchSource struct {
 	streamIndexes    map[string]string
 }
 
-//CloudwatchSourceConfiguration allows user to define one or more streams to monitor within a cloudwatch log group
+// CloudwatchSourceConfiguration allows user to define one or more streams to monitor within a cloudwatch log group
 type CloudwatchSourceConfiguration struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
-	GroupName                         string         `yaml:"group_name"`              //the group name to be monitored
-	StreamRegexp                      *string        `yaml:"stream_regexp,omitempty"` //allow to filter specific streams
+	GroupName                         string         `yaml:"group_name"`              // the group name to be monitored
+	StreamRegexp                      *string        `yaml:"stream_regexp,omitempty"` // allow to filter specific streams
 	StreamName                        *string        `yaml:"stream_name,omitempty"`
 	StartTime, EndTime                *time.Time     `yaml:"-"`
-	DescribeLogStreamsLimit           *int64         `yaml:"describelogstreams_limit,omitempty"` //batch size for DescribeLogStreamsPagesWithContext
+	DescribeLogStreamsLimit           *int64         `yaml:"describelogstreams_limit,omitempty"` // batch size for DescribeLogStreamsPagesWithContext
 	GetLogEventsPagesLimit            *int64         `yaml:"getlogeventspages_limit,omitempty"`
-	PollNewStreamInterval             *time.Duration `yaml:"poll_new_stream_interval,omitempty"` //frequency at which we poll for new streams within the log group
-	MaxStreamAge                      *time.Duration `yaml:"max_stream_age,omitempty"`           //monitor only streams that have been updated within $duration
-	PollStreamInterval                *time.Duration `yaml:"poll_stream_interval,omitempty"`     //frequency at which we poll each stream
-	StreamReadTimeout                 *time.Duration `yaml:"stream_read_timeout,omitempty"`      //stop monitoring streams that haven't been updated within $duration, might be reopened later tho
+	PollNewStreamInterval             *time.Duration `yaml:"poll_new_stream_interval,omitempty"` // frequency at which we poll for new streams within the log group
+	MaxStreamAge                      *time.Duration `yaml:"max_stream_age,omitempty"`           // monitor only streams that have been updated within $duration
+	PollStreamInterval                *time.Duration `yaml:"poll_stream_interval,omitempty"`     // frequency at which we poll each stream
+	StreamReadTimeout                 *time.Duration `yaml:"stream_read_timeout,omitempty"`      // stop monitoring streams that haven't been updated within $duration, might be reopened later tho
 	AwsApiCallTimeout                 *time.Duration `yaml:"aws_api_timeout,omitempty"`
 	AwsProfile                        *string        `yaml:"aws_profile,omitempty"`
 	PrependCloudwatchTimestamp        *bool          `yaml:"prepend_cloudwatch_timestamp,omitempty"`
@@ -74,7 +74,7 @@ type CloudwatchSourceConfiguration struct {
 	AwsRegion                         *string        `yaml:"aws_region,omitempty"`
 }
 
-//LogStreamTailConfig is the configuration for one given stream within one group
+// LogStreamTailConfig is the configuration for one given stream within one group
 type LogStreamTailConfig struct {
 	GroupName                  string
 	StreamName                 string
@@ -86,7 +86,7 @@ type LogStreamTailConfig struct {
 	logger                     *log.Entry
 	ExpectMode                 int
 	t                          tomb.Tomb
-	StartTime, EndTime         time.Time //only used for CatMode
+	StartTime, EndTime         time.Time // only used for CatMode
 }
 
 var (
@@ -159,7 +159,7 @@ func (cw *CloudwatchSource) Configure(cfg []byte, logger *log.Entry) error {
 			return fmt.Errorf("can't read aws_config_dir %s got err %s ", *cw.Config.AwsConfigDir, err)
 		}
 		os.Setenv("AWS_SDK_LOAD_CONFIG", "1")
-		//as aws sdk relies on $HOME, let's allow the user to override it :)
+		// as aws sdk relies on $HOME, let's allow the user to override it :)
 		os.Setenv("AWS_CONFIG_FILE", fmt.Sprintf("%s/config", *cw.Config.AwsConfigDir))
 		os.Setenv("AWS_SHARED_CREDENTIALS_FILE", fmt.Sprintf("%s/credentials", *cw.Config.AwsConfigDir))
 	} else {
@@ -266,7 +266,7 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 				cw.logger.Tracef("doing the call to DescribeLogStreamsPagesWithContext")
 
 				ctx := context.Background()
-				//there can be a lot of streams in a group, and we're only interested in those recently written to, so we sort by LastEventTime
+				// there can be a lot of streams in a group, and we're only interested in those recently written to, so we sort by LastEventTime
 				err := cw.cwClient.DescribeLogStreamsPagesWithContext(
 					ctx,
 					&cloudwatchlogs.DescribeLogStreamsInput{
@@ -280,11 +280,11 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 						cw.logger.Tracef("in helper of of DescribeLogStreamsPagesWithContext")
 						for _, event := range page.LogStreams {
 							startFrom = page.NextToken
-							//we check if the stream has been written to recently enough to be monitored
+							// we check if the stream has been written to recently enough to be monitored
 							if event.LastIngestionTime != nil {
-								//aws uses millisecond since the epoch
+								// aws uses millisecond since the epoch
 								oldest := time.Now().UTC().Add(-*cw.Config.MaxStreamAge)
-								//TBD : verify that this is correct : Unix 2nd arg expects Nanoseconds, and have a code that is more explicit.
+								// TBD : verify that this is correct : Unix 2nd arg expects Nanoseconds, and have a code that is more explicit.
 								LastIngestionTime := time.Unix(0, *event.LastIngestionTime*int64(time.Millisecond))
 								if LastIngestionTime.Before(oldest) {
 									cw.logger.Tracef("stop iteration, %s reached oldest age, stop (%s < %s)", *event.LogStreamName, LastIngestionTime, time.Now().UTC().Add(-*cw.Config.MaxStreamAge))
@@ -292,7 +292,7 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 									return false
 								}
 								cw.logger.Tracef("stream %s is elligible for monitoring", *event.LogStreamName)
-								//the stream has been update recently, check if we should monitor it
+								// the stream has been update recently, check if we should monitor it
 								var expectMode int
 								if !cw.Config.UseTimeMachine {
 									expectMode = leaky.LIVE
@@ -329,7 +329,7 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 	}
 }
 
-//LogStreamManager receives the potential streams to monitor, and start a go routine when needed
+// LogStreamManager receives the potential streams to monitor, and start a go routine when needed
 func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outChan chan types.Event) error {
 
 	cw.logger.Debugf("starting to monitor streams for %s", cw.Config.GroupName)
@@ -337,7 +337,7 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 
 	for {
 		select {
-		case newStream := <-in: //nolint:govet // copylocks won't matter if the tomb is not initialized
+		case newStream := <-in: // nolint:govet // copylocks won't matter if the tomb is not initialized
 			shouldCreate := true
 			cw.logger.Tracef("received new streams to monitor : %s/%s", newStream.GroupName, newStream.StreamName)
 
@@ -360,7 +360,7 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 
 			for idx, stream := range cw.monitoredStreams {
 				if newStream.GroupName == stream.GroupName && newStream.StreamName == stream.StreamName {
-					//stream exists, but is dead, remove it from list
+					// stream exists, but is dead, remove it from list
 					if !stream.t.Alive() {
 						cw.logger.Debugf("stream %s already exists, but is dead", newStream.StreamName)
 						cw.monitoredStreams = append(cw.monitoredStreams[:idx], cw.monitoredStreams[idx+1:]...)
@@ -372,7 +372,7 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 				}
 			}
 
-			//let's start watching this stream
+			// let's start watching this stream
 			if shouldCreate {
 				openedStreams.With(prometheus.Labels{"group": newStream.GroupName}).Inc()
 				newStream.t = tomb.Tomb{}
@@ -416,7 +416,7 @@ func (cw *CloudwatchSource) TailLogStream(cfg *LogStreamTailConfig, outChan chan
 	var startFrom *string
 	var lastReadMessage time.Time = time.Now().UTC()
 	ticker := time.NewTicker(cfg.PollStreamInterval)
-	//resume at existing index if we already had
+	// resume at existing index if we already had
 	streamIndexMutex.Lock()
 	v := cw.streamIndexes[cfg.GroupName+"+"+cfg.StreamName]
 	streamIndexMutex.Unlock()
@@ -533,7 +533,7 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, labels map[string]string,
 			if len(v) != 1 {
 				return fmt.Errorf("expected zero or one argument for 'start_date'")
 			}
-			//let's reuse our parser helper so that a ton of date formats are supported
+			// let's reuse our parser helper so that a ton of date formats are supported
 			strdate, startDate := parser.GenDateParse(v[0])
 			cw.logger.Debugf("parsed '%s' as '%s'", v[0], strdate)
 			cw.Config.StartTime = &startDate
@@ -541,7 +541,7 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, labels map[string]string,
 			if len(v) != 1 {
 				return fmt.Errorf("expected zero or one argument for 'end_date'")
 			}
-			//let's reuse our parser helper so that a ton of date formats are supported
+			// let's reuse our parser helper so that a ton of date formats are supported
 			strdate, endDate := parser.GenDateParse(v[0])
 			cw.logger.Debugf("parsed '%s' as '%s'", v[0], strdate)
 			cw.Config.EndTime = &endDate
@@ -549,7 +549,7 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, labels map[string]string,
 			if len(v) != 1 {
 				return fmt.Errorf("expected zero or one argument for 'backlog'")
 			}
-			//let's reuse our parser helper so that a ton of date formats are supported
+			// let's reuse our parser helper so that a ton of date formats are supported
 			duration, err := time.ParseDuration(v[0])
 			if err != nil {
 				return errors.Wrapf(err, "unable to parse '%s' as duration", v[0])
@@ -585,7 +585,7 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, labels map[string]string,
 }
 
 func (cw *CloudwatchSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
-	//StreamName string, Start time.Time, End time.Time
+	// StreamName string, Start time.Time, End time.Time
 	config := LogStreamTailConfig{
 		GroupName:              cw.Config.GroupName,
 		StreamName:             *cw.Config.StreamName,

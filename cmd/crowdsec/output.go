@@ -32,7 +32,7 @@ func dedupAlerts(alerts []types.RuntimeAlert) ([]*models.Alert, error) {
 			continue
 		}
 		for k, src := range alert.Sources {
-			refsrc := *alert.Alert //copy
+			refsrc := *alert.Alert // copy
 			log.Tracef("source[%s]", k)
 			refsrc.Source = &src
 			dedupCache = append(dedupCache, &refsrc)
@@ -100,7 +100,7 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	}); err != nil {
 		return errors.Wrapf(err, "authenticate watcher (%s)", apiConfig.Login)
 	}
-	//start the heartbeat service
+	// start the heartbeat service
 	log.Debugf("Starting HeartBeat service")
 	Client.HeartBeat.StartHeartBeat(context.Background(), &outputsTomb)
 LOOP:
@@ -115,7 +115,7 @@ LOOP:
 				cacheMutex.Unlock()
 				if err := PushAlerts(cachecopy, Client); err != nil {
 					log.Errorf("while pushing to api : %s", err)
-					//just push back the events to the queue
+					// just push back the events to the queue
 					cacheMutex.Lock()
 					cache = append(cache, cachecopy...)
 					cacheMutex.Unlock()
@@ -132,7 +132,7 @@ LOOP:
 			}
 			break LOOP
 		case event := <-overflow:
-			//if the Alert is nil, it's to signal bucket is ready for GC, don't track this
+			// if the Alert is nil, it's to signal bucket is ready for GC, don't track this
 			if dumpStates && event.Overflow.Alert != nil {
 				if bucketOverflows == nil {
 					bucketOverflows = make([]types.Event, 0)

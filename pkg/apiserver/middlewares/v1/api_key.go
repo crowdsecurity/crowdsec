@@ -78,10 +78,10 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 			}
 			bouncerName := fmt.Sprintf("%s@%s", extractedCN, c.ClientIP())
 			bouncer, err = a.DbClient.SelectBouncerByName(bouncerName)
-			//This is likely not the proper way, but isNotFound does not seem to work
+			// This is likely not the proper way, but isNotFound does not seem to work
 			if err != nil && strings.Contains(err.Error(), "bouncer not found") {
-				//Because we have a valid cert, automatically create the bouncer in the database if it does not exist
-				//Set a random API key, but it will never be used
+				// Because we have a valid cert, automatically create the bouncer in the database if it does not exist
+				// Set a random API key, but it will never be used
 				apiKey, err := GenerateAPIKey(64)
 				if err != nil {
 					log.WithFields(log.Fields{
@@ -107,7 +107,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 					return
 				}
 			} else if err != nil {
-				//error while selecting bouncer
+				// error while selecting bouncer
 				log.WithFields(log.Fields{
 					"ip": c.ClientIP(),
 					"cn": extractedCN,
@@ -116,7 +116,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 				c.Abort()
 				return
 			} else {
-				//bouncer was found in DB
+				// bouncer was found in DB
 				if bouncer.AuthType != types.TlsAuthType {
 					log.WithFields(log.Fields{
 						"ip": c.ClientIP(),
@@ -128,7 +128,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 				}
 			}
 		} else {
-			//API Key Authentication
+			// API Key Authentication
 			val, ok := c.Request.Header[APIKeyHeader]
 			if !ok {
 				log.WithFields(log.Fields{
@@ -167,8 +167,8 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 			return
 		}
 
-		//maybe we want to store the whole bouncer object in the context instead, this would avoid another db query
-		//in StreamDecision
+		// maybe we want to store the whole bouncer object in the context instead, this would avoid another db query
+		// in StreamDecision
 		c.Set("BOUNCER_NAME", bouncer.Name)
 		c.Set("BOUNCER_HASHED_KEY", bouncer.APIKey)
 

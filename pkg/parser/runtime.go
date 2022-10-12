@@ -31,7 +31,7 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 		return false
 	}
 
-	//it's a hack, we do it for the user
+	// it's a hack, we do it for the user
 	target = strings.TrimPrefix(target, "evt.")
 
 	log.Debugf("setting target %s to %s", target, value)
@@ -45,7 +45,7 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 	iter := reflect.ValueOf(evt).Elem()
 	if (iter == reflect.Value{}) || iter.IsZero() {
 		log.Tracef("event is nill")
-		//event is nill
+		// event is nill
 		return false
 	}
 	for _, f := range strings.Split(target, ".") {
@@ -71,7 +71,7 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 				tmp = reflect.Indirect(tmp)
 			}
 			iter = tmp
-			//nolint: gosimple
+			// nolint: gosimple
 			break
 		case reflect.Ptr:
 			tmp := iter.Elem()
@@ -81,7 +81,7 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 			return false
 		}
 	}
-	//now we should have the final member :)
+	// now we should have the final member :)
 	if !iter.CanSet() {
 		log.Errorf("'%s' can't be set", target)
 		return false
@@ -112,8 +112,8 @@ func printStaticTarget(static types.ExtraField) string {
 }
 
 func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) error {
-	//we have a few cases :
-	//(meta||key) + (static||reference||expr)
+	// we have a few cases :
+	// (meta||key) + (static||reference||expr)
 	var value string
 	clog := n.Logger
 
@@ -145,7 +145,7 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 		}
 
 		if value == "" {
-			//allow ParseDate to have empty input
+			// allow ParseDate to have empty input
 			if static.Method != "ParseDate" {
 				clog.Debugf("Empty value for %s, skip.", printStaticTarget(static))
 				continue
@@ -300,7 +300,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 
 		isStageOK := false
 		for idx, node := range nodes {
-			//Only process current stage's nodes
+			// Only process current stage's nodes
 			if event.Stage != node.Stage {
 				continue
 			}
@@ -333,7 +333,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 				clog.Debugf("node successful, stop end stage %s", stage)
 				break
 			}
-			//the parsed object moved onto the next phase
+			// the parsed object moved onto the next phase
 			if event.Stage != stage {
 				clog.Tracef("node moved stage, break and redo")
 				break

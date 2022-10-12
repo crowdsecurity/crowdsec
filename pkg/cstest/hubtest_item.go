@@ -23,7 +23,7 @@ type HubTestItemConfig struct {
 	LogType         string             `yaml:"log_type"`
 	Labels          map[string]string  `yaml:"labels"`
 	IgnoreParsers   bool               `yaml:"ignore_parsers"`   // if we test a scenario, we don't want to assert on Parser
-	OverrideStatics []types.ExtraField `yaml:"override_statics"` //Allow to override statics. Executed before s00
+	OverrideStatics []types.ExtraField `yaml:"override_statics"` // Allow to override statics. Executed before s00
 }
 
 type HubIndex struct {
@@ -189,7 +189,7 @@ func (t *HubTestItem) InstallHub() error {
 				customParserPath := filepath.Join(customPath, parser)
 				if _, err := os.Stat(customParserPath); os.IsNotExist(err) {
 					continue
-					//return fmt.Errorf("parser '%s' doesn't exist in the hub and doesn't appear to be a custom one.", parser)
+					// return fmt.Errorf("parser '%s' doesn't exist in the hub and doesn't appear to be a custom one.", parser)
 				}
 
 				customParserPathSplit, customParserName := filepath.Split(customParserPath)
@@ -202,20 +202,20 @@ func (t *HubTestItem) InstallHub() error {
 
 				if _, err := os.Stat(hubStagePath); os.IsNotExist(err) {
 					continue
-					//return fmt.Errorf("stage '%s' extracted from '%s' doesn't exist in the hub", customParserStage, hubStagePath)
+					// return fmt.Errorf("stage '%s' extracted from '%s' doesn't exist in the hub", customParserStage, hubStagePath)
 				}
 
 				parserDirDest = fmt.Sprintf("%s/parsers/%s/", t.RuntimePath, customParserStage)
 				if err := os.MkdirAll(parserDirDest, os.ModePerm); err != nil {
 					continue
-					//return fmt.Errorf("unable to create folder '%s': %s", parserDirDest, err)
+					// return fmt.Errorf("unable to create folder '%s': %s", parserDirDest, err)
 				}
 
 				customParserDest := filepath.Join(parserDirDest, customParserName)
 				// if path to parser exist, copy it
 				if err := Copy(customParserPath, customParserDest); err != nil {
 					continue
-					//return fmt.Errorf("unable to copy custom parser '%s' to '%s': %s", customParserPath, customParserDest, err)
+					// return fmt.Errorf("unable to copy custom parser '%s' to '%s': %s", customParserPath, customParserDest, err)
 				}
 
 				customParserExist = true
@@ -273,7 +273,7 @@ func (t *HubTestItem) InstallHub() error {
 				customScenarioPath := filepath.Join(customPath, scenario)
 				if _, err := os.Stat(customScenarioPath); os.IsNotExist(err) {
 					continue
-					//return fmt.Errorf("scenarios '%s' doesn't exist in the hub and doesn't appear to be a custom one.", scenario)
+					// return fmt.Errorf("scenarios '%s' doesn't exist in the hub and doesn't appear to be a custom one.", scenario)
 				}
 
 				scenarioDirDest = fmt.Sprintf("%s/scenarios/", t.RuntimePath)
@@ -285,7 +285,7 @@ func (t *HubTestItem) InstallHub() error {
 				scenarioFileDest := filepath.Join(scenarioDirDest, scenarioFileName)
 				if err := Copy(customScenarioPath, scenarioFileDest); err != nil {
 					continue
-					//return fmt.Errorf("unable to copy scenario from '%s' to '%s': %s", customScenarioPath, scenarioFileDest, err)
+					// return fmt.Errorf("unable to copy scenario from '%s' to '%s': %s", customScenarioPath, scenarioFileDest, err)
 				}
 				customScenarioExist = true
 				break
@@ -342,7 +342,7 @@ func (t *HubTestItem) InstallHub() error {
 				customPostOverflowPath := filepath.Join(customPath, postoverflow)
 				if _, err := os.Stat(customPostOverflowPath); os.IsNotExist(err) {
 					continue
-					//return fmt.Errorf("postoverflow '%s' doesn't exist in the hub and doesn't appear to be a custom one.", postoverflow)
+					// return fmt.Errorf("postoverflow '%s' doesn't exist in the hub and doesn't appear to be a custom one.", postoverflow)
 				}
 
 				customPostOverflowPathSplit := strings.Split(customPostOverflowPath, "/")
@@ -355,20 +355,20 @@ func (t *HubTestItem) InstallHub() error {
 
 				if _, err := os.Stat(hubStagePath); os.IsNotExist(err) {
 					continue
-					//return fmt.Errorf("stage '%s' from extracted '%s' doesn't exist in the hub", customPostoverflowStage, hubStagePath)
+					// return fmt.Errorf("stage '%s' from extracted '%s' doesn't exist in the hub", customPostoverflowStage, hubStagePath)
 				}
 
 				postoverflowDirDest = fmt.Sprintf("%s/postoverflows/%s/", t.RuntimePath, customPostoverflowStage)
 				if err := os.MkdirAll(postoverflowDirDest, os.ModePerm); err != nil {
 					continue
-					//return fmt.Errorf("unable to create folder '%s': %s", postoverflowDirDest, err)
+					// return fmt.Errorf("unable to create folder '%s': %s", postoverflowDirDest, err)
 				}
 
 				customPostoverflowDest := filepath.Join(postoverflowDirDest, customPostoverflowName)
 				// if path to postoverflow exist, copy it
 				if err := Copy(customPostOverflowPath, customPostoverflowDest); err != nil {
 					continue
-					//return fmt.Errorf("unable to copy custom parser '%s' to '%s': %s", customPostOverflowPath, customPostoverflowDest, err)
+					// return fmt.Errorf("unable to copy custom parser '%s' to '%s': %s", customPostOverflowPath, customPostoverflowDest, err)
 				}
 				customPostoverflowExist = true
 				break

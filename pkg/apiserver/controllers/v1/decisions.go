@@ -11,7 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-//Format decisions for the bouncers, and deduplicate them by keeping only the longest one
+// Format decisions for the bouncers, and deduplicate them by keeping only the longest one
 func FormatDecisions(decisions []*ent.Decision, dedup bool) ([]*models.Decision, error) {
 	var results []*models.Decision
 
@@ -154,7 +154,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
 			}
-			//data = KeepLongestDecision(data)
+			// data = KeepLongestDecision(data)
 			ret["new"], err = FormatDecisions(data, dedup)
 			if err != nil {
 				log.Errorf("unable to format expired decision for '%s' : %v", bouncerInfo.Name, err)
@@ -197,7 +197,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
-	//data = KeepLongestDecision(data)
+	// data = KeepLongestDecision(data)
 	ret["new"], err = FormatDecisions(data, dedup)
 	if err != nil {
 		log.Errorf("unable to format new decision for '%s' : %v", bouncerInfo.Name, err)

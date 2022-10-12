@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
-	//"errors"
+	// "errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,7 +16,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	//"google.golang.org/appengine/log"
+	// "google.golang.org/appengine/log"
 )
 
 type APIKeyTransport struct {
@@ -109,7 +109,7 @@ func (t *JWTTransport) refreshJwtToken() error {
 	var response models.WatcherAuthResponse
 
 	/*
-		we don't use the main client, so let's build the body
+	   we don't use the main client, so let's build the body
 	*/
 	var buf io.ReadWriter = &bytes.Buffer{}
 	enc := json.NewEncoder(buf)

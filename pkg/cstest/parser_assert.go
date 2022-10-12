@@ -102,7 +102,7 @@ func (p *ParserAssert) AssertFile(testFile string) error {
 		p.NbAssert += 1
 		if !ok {
 			log.Debugf("%s is FALSE", scanner.Text())
-			//fmt.SPrintf(" %s '%s'\n", emoji.RedSquare, scanner.Text())
+			// fmt.SPrintf(" %s '%s'\n", emoji.RedSquare, scanner.Text())
 			failedAssert := &AssertFail{
 				File:       p.File,
 				Line:       nbLine,
@@ -124,7 +124,7 @@ func (p *ParserAssert) AssertFile(testFile string) error {
 			p.Fails = append(p.Fails, *failedAssert)
 			continue
 		}
-		//fmt.Printf(" %s '%s'\n", emoji.GreenSquare, scanner.Text())
+		// fmt.Printf(" %s '%s'\n", emoji.GreenSquare, scanner.Text())
 
 	}
 	file.Close()
@@ -145,8 +145,8 @@ func (p *ParserAssert) AssertFile(testFile string) error {
 
 func (p *ParserAssert) RunExpression(expression string) (interface{}, error) {
 	var err error
-	//debug doesn't make much sense with the ability to evaluate "on the fly"
-	//var debugFilter *exprhelpers.ExprDebugger
+	// debug doesn't make much sense with the ability to evaluate "on the fly"
+	// var debugFilter *exprhelpers.ExprDebugger
 	var runtimeFilter *vm.Program
 	var output interface{}
 
@@ -156,7 +156,7 @@ func (p *ParserAssert) RunExpression(expression string) (interface{}, error) {
 		return output, err
 	}
 
-	//dump opcode in trace level
+	// dump opcode in trace level
 	log.Tracef("%s", runtimeFilter.Disassemble())
 
 	output, err = expr.Run(runtimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"results": *p.TestData}))
@@ -200,10 +200,10 @@ func Escape(val string) string {
 }
 
 func (p *ParserAssert) AutoGenParserAssert() string {
-	//attempt to autogen parser asserts
+	// attempt to autogen parser asserts
 	var ret string
 
-	//sort map keys for consistent ordre
+	// sort map keys for consistent ordre
 	var stages []string
 	for stage := range *p.TestData {
 		stages = append(stages, stage)
@@ -212,7 +212,7 @@ func (p *ParserAssert) AutoGenParserAssert() string {
 	ret += fmt.Sprintf("len(results) == %d\n", len(*p.TestData))
 	for _, stage := range stages {
 		parsers := (*p.TestData)[stage]
-		//sort map keys for consistent ordre
+		// sort map keys for consistent ordre
 		var pnames []string
 		for pname := range parsers {
 			pnames = append(pnames, pname)
@@ -277,7 +277,7 @@ type DumpOpts struct {
 }
 
 func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts DumpOpts) {
-	//note : we can use line -> time as the unique identifier (of acquisition)
+	// note : we can use line -> time as the unique identifier (of acquisition)
 
 	state := make(map[time.Time]map[string]map[string]ParserResult)
 	assoc := make(map[time.Time]string, 0)
@@ -304,13 +304,13 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 			if evt.Line.Raw == "" {
 				continue
 			}
-			//it might be bucket overflow being reprocessed, skip this
+			// it might be bucket overflow being reprocessed, skip this
 			if _, ok := state[evt.Line.Time]; !ok {
 				state[evt.Line.Time] = make(map[string]map[string]ParserResult)
 				assoc[evt.Line.Time] = evt.Line.Raw
 			}
-			//there is a trick : to know if an event successfully exit the parsers, we check if it reached the pour() phase
-			//we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
+			// there is a trick : to know if an event successfully exit the parsers, we check if it reached the pour() phase
+			// we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
 			if _, ok := state[evt.Line.Time]["buckets"]; !ok {
 				state[evt.Line.Time]["buckets"] = make(map[string]ParserResult)
 			}
@@ -320,7 +320,7 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 	yellow := color.New(color.FgYellow).SprintFunc()
 	red := color.New(color.FgRed).SprintFunc()
 	green := color.New(color.FgGreen).SprintFunc()
-	//get each line
+	// get each line
 	for tstamp, rawstr := range assoc {
 		if opts.SkipOk {
 			if _, ok := state[tstamp]["buckets"]["OK"]; ok {
@@ -330,15 +330,15 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 		fmt.Printf("line: %s\n", rawstr)
 		skeys := make([]string, 0, len(state[tstamp]))
 		for k := range state[tstamp] {
-			//there is a trick : to know if an event successfully exit the parsers, we check if it reached the pour() phase
-			//we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
+			// there is a trick : to know if an event successfully exit the parsers, we check if it reached the pour() phase
+			// we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
 			if k == "buckets" {
 				continue
 			}
 			skeys = append(skeys, k)
 		}
 		sort.Strings(skeys)
-		//iterate stage
+		// iterate stage
 		var prev_item types.Event
 
 		for _, stage := range skeys {
@@ -432,20 +432,20 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 		if len(state[tstamp]["buckets"]) > 0 {
 			sep = "├"
 		}
-		//did the event enter the bucket pour phase ?
+		// did the event enter the bucket pour phase ?
 		if _, ok := state[tstamp]["buckets"]["OK"]; ok {
 			fmt.Printf("\t%s-------- parser success %s\n", sep, emoji.GreenCircle)
 		} else {
 			fmt.Printf("\t%s-------- parser failure %s\n", sep, emoji.RedCircle)
 		}
-		//now print bucket info
+		// now print bucket info
 		if len(state[tstamp]["buckets"]) > 0 {
 			fmt.Printf("\t├ Scenarios\n")
 		}
 		bnames := make([]string, 0, len(state[tstamp]["buckets"]))
 		for k := range state[tstamp]["buckets"] {
-			//there is a trick : to know if an event successfully exit the parsers, we check if it reached the pour() phase
-			//we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
+			// there is a trick : to know if an event successfully exit the parsers, we check if it reached the pour() phase
+			// we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
 			if k == "OK" {
 				continue
 			}

@@ -131,7 +131,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 					Scenario: &tscenario,
 
 					Scope:     &tscope,
-					Simulated: new(bool), //false,
+					Simulated: new(bool), // false,
 					Type:      &ttype,
 					Value:     &tvalue,
 				},
@@ -173,7 +173,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 			Scenario:        &tscenario,
 			ScenarioHash:    &tscenariohash,
 			ScenarioVersion: &tscenarioversion,
-			Simulated:       new(bool), //(false),
+			Simulated:       new(bool), // (false),
 			Source: &models.Source{
 				AsName:    "Cloudflare Inc",
 				AsNumber:  "",
@@ -190,10 +190,10 @@ func TestAlertsListAsMachine(t *testing.T) {
 		},
 	}
 
-	//log.Debugf("data : -> %s", spew.Sdump(alerts))
-	//log.Debugf("resp : -> %s", spew.Sdump(resp))
-	//log.Debugf("expected : -> %s", spew.Sdump(expected))
-	//first one returns data
+	// log.Debugf("data : -> %s", spew.Sdump(alerts))
+	// log.Debugf("resp : -> %s", spew.Sdump(resp))
+	// log.Debugf("expected : -> %s", spew.Sdump(expected))
+	// first one returns data
 	alerts, resp, err := client.Alerts.List(context.Background(), AlertsListOpts{})
 	if err != nil {
 		log.Errorf("test Unable to list alerts : %+v", err)
@@ -205,7 +205,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 	if !reflect.DeepEqual(*alerts, expected) {
 		t.Errorf("client.Alerts.List returned %+v, want %+v", resp, expected)
 	}
-	//this one doesn't
+	// this one doesn't
 	filter := AlertsListOpts{IPEquals: new(string)}
 	*filter.IPEquals = "1.2.3.4"
 	alerts, resp, err = client.Alerts.List(context.Background(), filter)
@@ -330,7 +330,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 				Scenario: &tscenario,
 
 				Scope:     &tscope,
-				Simulated: new(bool), //false,
+				Simulated: new(bool), // false,
 				Type:      &ttype,
 				Value:     &tvalue,
 			},
@@ -372,7 +372,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 		Scenario:        &tscenario,
 		ScenarioHash:    &tscenariohash,
 		ScenarioVersion: &tscenarioversion,
-		Simulated:       new(bool), //(false),
+		Simulated:       new(bool), // (false),
 		Source: &models.Source{
 			AsName:    "Cloudflare Inc",
 			AsNumber:  "",
@@ -398,7 +398,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 		t.Errorf("client.Alerts.List returned %+v, want %+v", resp, expected)
 	}
 
-	//fail
+	// fail
 	_, resp, err = client.Alerts.GetByID(context.Background(), 2)
 	assert.Contains(t, fmt.Sprintf("%s", err), "API error: object not found")
 

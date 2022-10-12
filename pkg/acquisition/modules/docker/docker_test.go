@@ -237,7 +237,7 @@ func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, o
 	ret := ""
 	for _, line := range data {
 		startLineByte := make([]byte, 8)
-		binary.LittleEndian.PutUint32(startLineByte, 1) //stdout stream
+		binary.LittleEndian.PutUint32(startLineByte, 1) // stdout stream
 		binary.BigEndian.PutUint32(startLineByte[4:], uint32(len(line)))
 		ret += fmt.Sprintf("%s%s", startLineByte, line)
 	}

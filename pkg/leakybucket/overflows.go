@@ -17,7 +17,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
 
-//SourceFromEvent extracts and formats a valid models.Source object from an Event
+// SourceFromEvent extracts and formats a valid models.Source object from an Event
 func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, error) {
 	srcs := make(map[string]models.Source)
 	/*if it's already an overflow, we have properly formatted sources.
@@ -160,7 +160,7 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 	return srcs, nil
 }
 
-//EventsFromQueue iterates the queue to collect & prepare meta-datas from alert
+// EventsFromQueue iterates the queue to collect & prepare meta-datas from alert
 func EventsFromQueue(queue *Queue) []*models.Event {
 
 	events := []*models.Event{}
@@ -170,7 +170,7 @@ func EventsFromQueue(queue *Queue) []*models.Event {
 			continue
 		}
 		meta := models.Meta{}
-		//we want consistence
+		// we want consistence
 		skeys := make([]string, 0, len(evt.Meta))
 		for k := range evt.Meta {
 			skeys = append(skeys, k)
@@ -186,11 +186,11 @@ func EventsFromQueue(queue *Queue) []*models.Event {
 		ovflwEvent := models.Event{
 			Meta: meta,
 		}
-		//either MarshaledTime is present and is extracted from log
+		// either MarshaledTime is present and is extracted from log
 		if evt.MarshaledTime != "" {
 			tmpTimeStamp := evt.MarshaledTime
 			ovflwEvent.Timestamp = &tmpTimeStamp
-		} else if !evt.Time.IsZero() { //or .Time has been set during parse as time.Now().UTC()
+		} else if !evt.Time.IsZero() { // or .Time has been set during parse as time.Now().UTC()
 			ovflwEvent.Timestamp = new(string)
 			raw, err := evt.Time.MarshalText()
 			if err != nil {
@@ -207,7 +207,7 @@ func EventsFromQueue(queue *Queue) []*models.Event {
 	return events
 }
 
-//alertFormatSource iterates over the queue to collect sources
+// alertFormatSource iterates over the queue to collect sources
 func alertFormatSource(leaky *Leaky, queue *Queue) (map[string]models.Source, string, error) {
 	var sources map[string]models.Source = make(map[string]models.Source)
 	var source_type string
@@ -233,7 +233,7 @@ func alertFormatSource(leaky *Leaky, queue *Queue) (map[string]models.Source, st
 	return sources, source_type, nil
 }
 
-//NewAlert will generate a RuntimeAlert and its APIAlert(s) from a bucket that overflowed
+// NewAlert will generate a RuntimeAlert and its APIAlert(s) from a bucket that overflowed
 func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 	var runtimeAlert types.RuntimeAlert
 
@@ -270,16 +270,16 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 		return runtimeAlert, fmt.Errorf("leaky.BucketConfig is nil")
 	}
 
-	//give information about the bucket
+	// give information about the bucket
 	runtimeAlert.Mapkey = leaky.Mapkey
 
-	//Get the sources from Leaky/Queue
+	// Get the sources from Leaky/Queue
 	sources, source_scope, err := alertFormatSource(leaky, queue)
 	if err != nil {
 		return runtimeAlert, errors.Wrap(err, "unable to collect sources from bucket")
 	}
 	runtimeAlert.Sources = sources
-	//Include source info in format string
+	// Include source info in format string
 	sourceStr := "UNKNOWN"
 	if len(sources) > 1 {
 		sourceStr = fmt.Sprintf("%d sources", len(sources))
@@ -291,10 +291,10 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 	}
 
 	*apiAlert.Message = fmt.Sprintf("%s %s performed '%s' (%d events over %s) at %s", source_scope, sourceStr, leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Last_ts)
-	//Get the events from Leaky/Queue
+	// Get the events from Leaky/Queue
 	apiAlert.Events = EventsFromQueue(queue)
 
-	//Loop over the Sources and generate appropriate number of ApiAlerts
+	// Loop over the Sources and generate appropriate number of ApiAlerts
 	for _, srcValue := range sources {
 		newApiAlert := apiAlert
 		srcCopy := srcValue

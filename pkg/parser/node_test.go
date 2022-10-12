@@ -19,30 +19,30 @@ func TestParserConfigs(t *testing.T) {
 		Compiles bool
 		Valid    bool
 	}{
-		//valid node with grok pattern
+		// valid node with grok pattern
 		{&Node{Debug: true, Stage: "s00", Grok: types.GrokPattern{RegexpValue: "^x%{DATA:extr}$", TargetField: "t"}}, true, true},
-		//bad filter
+		// bad filter
 		{&Node{Debug: true, Stage: "s00", Filter: "ratata"}, false, false},
-		//empty node
+		// empty node
 		{&Node{Debug: true, Stage: "s00", Filter: "true"}, false, false},
-		//bad subgrok
+		// bad subgrok
 		{&Node{Debug: true, Stage: "s00", SubGroks: yaml.MapSlice{{Key: string("FOOBAR"), Value: string("[a-$")}}}, false, true},
-		//valid node with grok pattern
+		// valid node with grok pattern
 		{&Node{Debug: true, Stage: "s00", SubGroks: yaml.MapSlice{{Key: string("FOOBAR"), Value: string("[a-z]")}}, Grok: types.GrokPattern{RegexpValue: "^x%{FOOBAR:extr}$", TargetField: "t"}}, true, true},
-		//bad node success
+		// bad node success
 		{&Node{Debug: true, Stage: "s00", OnSuccess: "ratat", Grok: types.GrokPattern{RegexpValue: "^x%{DATA:extr}$", TargetField: "t"}}, false, false},
-		//ok node success
+		// ok node success
 		{&Node{Debug: true, Stage: "s00", OnSuccess: "continue", Grok: types.GrokPattern{RegexpValue: "^x%{DATA:extr}$", TargetField: "t"}}, true, true},
-		//valid node with grok sub-pattern used by name
+		// valid node with grok sub-pattern used by name
 		{&Node{Debug: true, Stage: "s00", SubGroks: yaml.MapSlice{{Key: string("FOOBARx"), Value: string("[a-z] %{DATA:lol}$")}}, Grok: types.GrokPattern{RegexpName: "FOOBARx", TargetField: "t"}}, true, true},
-		//node with unexisting grok pattern
+		// node with unexisting grok pattern
 		{&Node{Debug: true, Stage: "s00", Grok: types.GrokPattern{RegexpName: "RATATA", TargetField: "t"}}, false, true},
-		//node with grok pattern dependencies
+		// node with grok pattern dependencies
 		{&Node{Debug: true, Stage: "s00", SubGroks: yaml.MapSlice{
 			{Key: string("SUBGROK"), Value: string("[a-z]")},
 			{Key: string("MYGROK"), Value: string("[a-z]%{SUBGROK}")},
 		}, Grok: types.GrokPattern{RegexpValue: "^x%{MYGROK:extr}$", TargetField: "t"}}, true, true},
-		//node with broken grok pattern dependencies
+		// node with broken grok pattern dependencies
 		{&Node{Debug: true, Stage: "s00", SubGroks: yaml.MapSlice{
 			{Key: string("SUBGROKBIS"), Value: string("[a-z]%{MYGROKBIS}")},
 			{Key: string("MYGROKBIS"), Value: string("[a-z]")},

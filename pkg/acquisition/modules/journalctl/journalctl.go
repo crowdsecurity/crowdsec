@@ -54,7 +54,7 @@ func readLine(scanner *bufio.Scanner, out chan string, errChan chan error) error
 	if errChan != nil && scanner.Err() != nil {
 		errChan <- scanner.Err()
 		close(errChan)
-		return nil //error is already consumed by runJournalCtl
+		return nil // error is already consumed by runJournalCtl
 	}
 	if errChan != nil {
 		close(errChan)
@@ -110,7 +110,7 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 		return readLine(stdoutscanner, stdoutChan, errChan)
 	})
 	t.Go(func() error {
-		//looks like journalctl closes stderr quite early, so ignore its status (but not its output)
+		// looks like journalctl closes stderr quite early, so ignore its status (but not its output)
 		return readLine(stderrScanner, stderrChan, nil)
 	})
 
@@ -119,7 +119,7 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 		case <-t.Dying():
 			logger.Infof("journalctl datasource %s stopping", j.src)
 			cancel()
-			cmd.Wait() //avoid zombie process
+			cmd.Wait() // avoid zombie process
 			return nil
 		case stdoutLine := <-stdoutChan:
 			l := types.Line{}
@@ -193,7 +193,7 @@ func (j *JournalCtlSource) ConfigureByDSN(dsn string, labels map[string]string, 
 	j.config.Mode = configuration.CAT_MODE
 	j.config.Labels = labels
 
-	//format for the DSN is : journalctl://filters=FILTER1&filters=FILTER2
+	// format for the DSN is : journalctl://filters=FILTER1&filters=FILTER2
 	if !strings.HasPrefix(dsn, "journalctl://") {
 		return fmt.Errorf("invalid DSN %s for journalctl source, must start with journalctl://", dsn)
 	}
@@ -254,7 +254,7 @@ func (j *JournalCtlSource) StreamingAcquisition(out chan types.Event, t *tomb.To
 	return nil
 }
 func (j *JournalCtlSource) CanRun() error {
-	//TODO: add a more precise check on version or something ?
+	// TODO: add a more precise check on version or something ?
 	_, err := exec.LookPath(journalctlCmd)
 	return err
 }

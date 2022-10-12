@@ -20,13 +20,13 @@ type RFC3164 struct {
 	len            int
 	position       int
 	buf            []byte
-	useCurrentYear bool //If no year is specified in the timestamp, use the current year
-	strictHostname bool //If the hostname contains invalid characters or is not an IP, return an error
+	useCurrentYear bool // If no year is specified in the timestamp, use the current year
+	strictHostname bool // If the hostname contains invalid characters or is not an IP, return an error
 }
 
 const PRI_MAX_LEN = 3
 
-//Order is important: format with the most information must be first because we will stop on the first match
+// Order is important: format with the most information must be first because we will stop on the first match
 var VALID_TIMESTAMPS = []string{
 	time.RFC3339,
 	"Jan 02 15:04:05 2006",
@@ -132,7 +132,7 @@ func (r *RFC3164) parseHostname() error {
 	return nil
 }
 
-//We do not enforce tag len as quite a lot of syslog client send tags with more than 32 chars
+// We do not enforce tag len as quite a lot of syslog client send tags with more than 32 chars
 func (r *RFC3164) parseTag() error {
 	tag := []byte{}
 	tmpPid := []byte{}

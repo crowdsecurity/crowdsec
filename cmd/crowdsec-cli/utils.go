@@ -286,7 +286,7 @@ func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *
 		}
 	}
 
-	//avoid confusion on scope (ip vs Ip and range vs Range)
+	// avoid confusion on scope (ip vs Ip and range vs Range)
 	switch strings.ToLower(*scope) {
 	case "ip":
 		*scope = types.Ip
@@ -569,12 +569,12 @@ func RestoreHub(dirPath string) error {
 			return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory, err)
 		}
 		for _, file := range files {
-			//this was the upstream data
+			// this was the upstream data
 			if file.Name() == fmt.Sprintf("upstream-%s.json", itype) {
 				continue
 			}
 			if itype == cwhub.PARSERS || itype == cwhub.PARSERS_OVFLW {
-				//we expect a stage here
+				// we expect a stage here
 				if !file.IsDir() {
 					continue
 				}
@@ -589,7 +589,7 @@ func RestoreHub(dirPath string) error {
 				if err != nil {
 					return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory+"/"+stage, err)
 				}
-				//finally copy item
+				// finally copy item
 				for _, tfile := range ifiles {
 					log.Infof("Going to restore local/tainted [%s]", tfile.Name())
 					sourceFile := fmt.Sprintf("%s/%s/%s", itemDirectory, stage, tfile.Name())
@@ -637,14 +637,14 @@ func BackupHub(dirPath string) error {
 			clog = clog.WithFields(log.Fields{
 				"file": v.Name,
 			})
-			if !v.Installed { //only backup installed ones
+			if !v.Installed { // only backup installed ones
 				clog.Debugf("[%s] : not installed", k)
 				continue
 			}
 
-			//for the local/tainted ones, we backup the full file
+			// for the local/tainted ones, we backup the full file
 			if v.Tainted || v.Local || !v.UpToDate {
-				//we need to backup stages for parsers
+				// we need to backup stages for parsers
 				if itemType == cwhub.PARSERS || itemType == cwhub.PARSERS_OVFLW {
 					fstagedir := fmt.Sprintf("%s%s", itemDirectory, v.Stage)
 					if err := os.MkdirAll(fstagedir, os.ModePerm); err != nil {
@@ -663,7 +663,7 @@ func BackupHub(dirPath string) error {
 			clog.Infof("saving, version:%s, up-to-date:%t", v.Version, v.UpToDate)
 			upstreamParsers = append(upstreamParsers, v.Name)
 		}
-		//write the upstream items
+		// write the upstream items
 		upstreamParsersFname := fmt.Sprintf("%s/upstream-%s.json", itemDirectory, itemType)
 		upstreamParsersContent, err := json.MarshalIndent(upstreamParsers, "", " ")
 		if err != nil {

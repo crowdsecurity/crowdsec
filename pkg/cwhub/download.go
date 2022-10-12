@@ -70,7 +70,7 @@ func DownloadHubIdx(hub *csconfig.Hub) ([]byte, error) {
 	return body, nil
 }
 
-//DownloadLatest will download the latest version of Item to the tdir directory
+// DownloadLatest will download the latest version of Item to the tdir directory
 func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool, updateOnly bool) (Item, error) {
 	var err error
 
@@ -99,7 +99,7 @@ func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool, updateOnly b
 			}
 
 			log.Debugf("Download %s sub-item : %s %s (%t -> %t)", target.Name, ptrtype, p, target.Installed, updateOnly)
-			//recurse as it's a collection
+			// recurse as it's a collection
 			if ptrtype == COLLECTIONS {
 				log.Tracef("collection, recurse")
 				hubIdx[ptrtype][p], err = DownloadLatest(hub, val, overwrite, updateOnly)
@@ -169,8 +169,8 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 		log.Debugf("got %s, expected %s", meow, target.Versions[target.Version].Digest)
 		return target, fmt.Errorf("invalid download hash for %s", target.Name)
 	}
-	//all good, install
-	//check if parent dir exists
+	// all good, install
+	// check if parent dir exists
 	tmpdirs := strings.Split(tdir+"/"+target.RemotePath, "/")
 	parent_dir := strings.Join(tmpdirs[:len(tmpdirs)-1], "/")
 

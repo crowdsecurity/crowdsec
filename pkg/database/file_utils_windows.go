@@ -9,7 +9,7 @@ import (
 )
 
 func setFilePerm(path string, mode fs.FileMode) error {
-	//On windows, we don't care about the mode, just make sure the file is only readable/writable by the owner and group
+	// On windows, we don't care about the mode, just make sure the file is only readable/writable by the owner and group
 
 	sd, err := windows.GetNamedSecurityInfo(path, windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION)
 	if err != nil {

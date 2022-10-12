@@ -17,7 +17,7 @@ func TestIP2Int(t *testing.T) {
 }
 func TestRange2Int(t *testing.T) {
 	tEmpty := net.IPNet{}
-	//empty item
+	// empty item
 	_, _, _, _, _, err := Range2Ints(tEmpty)
 	if !strings.Contains(err.Error(), "converting first ip in range") {
 		t.Fatalf("unexpected: %s", err)
@@ -194,7 +194,7 @@ func TestAdd2Int(t *testing.T) {
 			if !strings.Contains(err.Error(), test.exp_error) {
 				t.Fatalf("%d unmatched error : %s != %s", idx, err, test.exp_error)
 			}
-			continue //we can skip this one
+			continue // we can skip this one
 		}
 		if sz != test.exp_sz {
 			t.Fatalf("%d unexpected size %d != %d", idx, sz, test.exp_sz)

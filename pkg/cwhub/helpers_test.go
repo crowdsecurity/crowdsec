@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//Download index, install collection. Add scenario to collection (hub-side), update index, upgrade collection
+// Download index, install collection. Add scenario to collection (hub-side), update index, upgrade collection
 // We expect the new scenario to be installed
 func TestUpgradeConfigNewScenarioInCollection(t *testing.T) {
 	cfg := test_prepenv()

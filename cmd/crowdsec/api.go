@@ -19,7 +19,7 @@ func initAPIServer(cConfig *csconfig.Config) (*apiserver.APIServer, error) {
 
 	if hasPlugins(cConfig.API.Server.Profiles) {
 		log.Info("initiating plugin broker")
-		//On windows, the plugins are always run as medium-integrity processes, so we don't care about plugin_config
+		// On windows, the plugins are always run as medium-integrity processes, so we don't care about plugin_config
 		if cConfig.PluginConfig == nil && runtime.GOOS != "windows" {
 			return nil, errors.New("plugins are enabled, but the plugin_config section is missing in the configuration")
 		}

@@ -24,7 +24,8 @@ type OldAPICfg struct {
 	Password  string `json:"password"`
 }
 
-/* Backup crowdsec configurations to directory <dirPath> :
+/*
+	Backup crowdsec configurations to directory <dirPath> :
 
 - Main config (config.yaml)
 - Profiles config (profiles.yaml)
@@ -127,7 +128,8 @@ func backupConfigToDirectory(dirPath string) error {
 	return nil
 }
 
-/* Restore crowdsec configurations to directory <dirPath> :
+/*
+	Restore crowdsec configurations to directory <dirPath> :
 
 - Main config (config.yaml)
 - Profiles config (profiles.yaml)
@@ -223,7 +225,7 @@ func restoreConfigFromDirectory(dirPath string) error {
 
 	}
 
-	//if there was a single one
+	// if there was a single one
 	backupAcquisition := fmt.Sprintf("%s/acquis.yaml", dirPath)
 	if _, err = os.Stat(backupAcquisition); err == nil {
 		log.Debugf("restoring backup'ed %s", backupAcquisition)
@@ -232,7 +234,7 @@ func restoreConfigFromDirectory(dirPath string) error {
 		}
 	}
 
-	//if there is files in the acquis backup dir, restore them
+	// if there is files in the acquis backup dir, restore them
 	acquisBackupDir := filepath.Join(dirPath, "acquis", "*.yaml")
 	if acquisFiles, err := filepath.Glob(acquisBackupDir); err == nil {
 		for _, acquisFile := range acquisFiles {

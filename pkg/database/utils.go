@@ -23,7 +23,7 @@ func IsIpv4(host string) bool {
 	return net.ParseIP(host) != nil
 }
 
-//Stolen from : https://github.com/llimllib/ipaddress/
+// Stolen from : https://github.com/llimllib/ipaddress/
 // Return the final address of a net range. Convert to IPv4 if possible,
 // otherwise return an ipv6
 func LastAddress(n *net.IPNet) net.IP {

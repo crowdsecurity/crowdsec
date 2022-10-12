@@ -107,8 +107,8 @@ func TestCreateMachineWithForwardedForNoConfig(t *testing.T) {
 	if err != nil {
 		log.Fatalf("Could not get machine IP : %s", err)
 	}
-	//For some reason, the IP is empty when running tests
-	//if no forwarded-for headers are present
+	// For some reason, the IP is empty when running tests
+	// if no forwarded-for headers are present
 	assert.Equal(t, "", ip)
 }
 
@@ -137,8 +137,8 @@ func TestCreateMachineWithoutForwardedFor(t *testing.T) {
 	if err != nil {
 		log.Fatalf("Could not get machine IP : %s", err)
 	}
-	//For some reason, the IP is empty when running tests
-	//if no forwarded-for headers are present
+	// For some reason, the IP is empty when running tests
+	// if no forwarded-for headers are present
 	assert.Equal(t, "", ip)
 }
 

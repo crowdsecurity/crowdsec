@@ -119,7 +119,7 @@ func (s *ScenarioAssert) AssertFile(testFile string) error {
 			s.Fails = append(s.Fails, *failedAssert)
 			continue
 		}
-		//fmt.Printf(" %s '%s'\n", emoji.GreenSquare, scanner.Text())
+		// fmt.Printf(" %s '%s'\n", emoji.GreenSquare, scanner.Text())
 
 	}
 	file.Close()
@@ -141,8 +141,8 @@ func (s *ScenarioAssert) AssertFile(testFile string) error {
 
 func (s *ScenarioAssert) RunExpression(expression string) (interface{}, error) {
 	var err error
-	//debug doesn't make much sense with the ability to evaluate "on the fly"
-	//var debugFilter *exprhelpers.ExprDebugger
+	// debug doesn't make much sense with the ability to evaluate "on the fly"
+	// var debugFilter *exprhelpers.ExprDebugger
 	var runtimeFilter *vm.Program
 	var output interface{}
 
@@ -155,7 +155,7 @@ func (s *ScenarioAssert) RunExpression(expression string) (interface{}, error) {
 	// 	log.Warningf("Failed building debugher for %s : %s", assert, err)
 	// }
 
-	//dump opcode in trace level
+	// dump opcode in trace level
 	log.Tracef("%s", runtimeFilter.Disassemble())
 
 	output, err = expr.Run(runtimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"results": *s.TestData}))
@@ -193,7 +193,7 @@ func (s *ScenarioAssert) Run(assert string) (bool, error) {
 }
 
 func (s *ScenarioAssert) AutoGenScenarioAssert() string {
-	//attempt to autogen parser asserts
+	// attempt to autogen parser asserts
 	var ret string
 	ret += fmt.Sprintf(`len(results) == %d`+"\n", len(*s.TestData))
 	for eventIndex, event := range *s.TestData {

@@ -99,7 +99,7 @@ func (s *SyslogSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		return errors.Wrap(err, "Cannot parse syslog configuration")
 	}
 	if syslogConfig.Addr == "" {
-		syslogConfig.Addr = "127.0.0.1" //do we want a usable or secure default ?
+		syslogConfig.Addr = "127.0.0.1" // do we want a usable or secure default ?
 	}
 	if syslogConfig.Port == 0 {
 		syslogConfig.Port = 514

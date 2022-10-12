@@ -28,7 +28,7 @@ func TestItemStatus(t *testing.T) {
 	cfg := test_prepenv()
 
 	err := UpdateHubIdx(cfg.Hub)
-	//DownloadHubIdx()
+	// DownloadHubIdx()
 	if err != nil {
 		t.Fatalf("failed to download index : %s", err)
 	}
@@ -36,13 +36,13 @@ func TestItemStatus(t *testing.T) {
 		t.Fatalf("failed to load hub index : %s", err)
 	}
 
-	//get existing map
+	// get existing map
 	x := GetItemMap(COLLECTIONS)
 	if len(x) == 0 {
 		t.Fatalf("expected non empty result")
 	}
 
-	//Get item : good and bad
+	// Get item : good and bad
 	for k := range x {
 		item := GetItem(COLLECTIONS, k)
 		if item == nil {
@@ -75,7 +75,7 @@ func TestGetters(t *testing.T) {
 	cfg := test_prepenv()
 
 	err := UpdateHubIdx(cfg.Hub)
-	//DownloadHubIdx()
+	// DownloadHubIdx()
 	if err != nil {
 		t.Fatalf("failed to download index : %s", err)
 	}
@@ -83,18 +83,18 @@ func TestGetters(t *testing.T) {
 		t.Fatalf("failed to load hub index : %s", err)
 	}
 
-	//get non existing map
+	// get non existing map
 	empty := GetItemMap("ratata")
 	if empty != nil {
 		t.Fatalf("expected nil result")
 	}
-	//get existing map
+	// get existing map
 	x := GetItemMap(COLLECTIONS)
 	if len(x) == 0 {
 		t.Fatalf("expected non empty result")
 	}
 
-	//Get item : good and bad
+	// Get item : good and bad
 	for k := range x {
 		empty := GetItem(COLLECTIONS, k+"nope")
 		if empty != nil {
@@ -106,7 +106,7 @@ func TestGetters(t *testing.T) {
 			t.Fatalf("expected non empty item")
 		}
 
-		//Add item and get it
+		// Add item and get it
 		item.Name += "nope"
 		if err := AddItem(COLLECTIONS, *item); err != nil {
 			t.Fatalf("didn't expect error : %s", err)
@@ -117,7 +117,7 @@ func TestGetters(t *testing.T) {
 			t.Fatalf("expected non empty item")
 		}
 
-		//Add bad item
+		// Add bad item
 		if err := AddItem("ratata", *item); err != nil {
 			if fmt.Sprintf("%s", err) != "ItemType ratata is unknown" {
 				t.Fatalf("unexpected error")
@@ -135,7 +135,7 @@ func TestIndexDownload(t *testing.T) {
 	cfg := test_prepenv()
 
 	err := UpdateHubIdx(cfg.Hub)
-	//DownloadHubIdx()
+	// DownloadHubIdx()
 	if err != nil {
 		t.Fatalf("failed to download index : %s", err)
 	}
@@ -156,7 +156,7 @@ func test_prepenv() *csconfig.Config {
 	resetResponseByPath()
 	log.SetLevel(log.DebugLevel)
 	cfg := getTestCfg()
-	//Mock the http client
+	// Mock the http client
 	http.DefaultClient.Transport = newMockTransport()
 
 	if err := os.RemoveAll(cfg.Hub.ConfigDir); err != nil {
@@ -190,7 +190,7 @@ func test_prepenv() *csconfig.Config {
 
 func testInstallItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 
-	//Install the parser
+	// Install the parser
 	item, err := DownloadLatest(cfg, item, false, false)
 	if err != nil {
 		t.Fatalf("error while downloading %s : %v", item.Name, err)
@@ -233,7 +233,7 @@ func testTaintItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	if _, err = f.WriteString("tainted"); err != nil {
 		t.Fatalf("tainting %s : %s", item.Name, err)
 	}
-	//Local sync and check status
+	// Local sync and check status
 	if err, _ := LocalSync(cfg); err != nil {
 		t.Fatalf("taint: failed to run localSync : %s", err)
 	}
@@ -247,12 +247,12 @@ func testUpdateItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	if hubIdx[item.Type][item.Name].UpToDate {
 		t.Fatalf("update: %s should NOT be up-to-date", item.Name)
 	}
-	//Update it + check status
+	// Update it + check status
 	item, err := DownloadLatest(cfg, item, true, true)
 	if err != nil {
 		t.Fatalf("failed to update %s : %s", item.Name, err)
 	}
-	//Local sync and check status
+	// Local sync and check status
 	if err, _ := LocalSync(cfg); err != nil {
 		t.Fatalf("failed to run localSync : %s", err)
 	}
@@ -268,12 +268,12 @@ func testDisableItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	if !item.Installed {
 		t.Fatalf("disable: %s should be installed", item.Name)
 	}
-	//Remove
+	// Remove
 	item, err := DisableItem(cfg, item, false, false)
 	if err != nil {
 		t.Fatalf("failed to disable item : %v", err)
 	}
-	//Local sync and check status
+	// Local sync and check status
 	if err, warns := LocalSync(cfg); err != nil || len(warns) > 0 {
 		t.Fatalf("failed to run localSync : %s (%+v)", err, warns)
 	}
@@ -286,12 +286,12 @@ func testDisableItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	if !hubIdx[item.Type][item.Name].Downloaded {
 		t.Fatalf("disable: %s should still be downloaded", item.Name)
 	}
-	//Purge
+	// Purge
 	item, err = DisableItem(cfg, item, true, false)
 	if err != nil {
 		t.Fatalf("failed to purge item : %v", err)
 	}
-	//Local sync and check status
+	// Local sync and check status
 	if err, warns := LocalSync(cfg); err != nil || len(warns) > 0 {
 		t.Fatalf("failed to run localSync : %s (%+v)", err, warns)
 	}
@@ -317,7 +317,7 @@ func TestInstallParser(t *testing.T) {
 	cfg := test_prepenv()
 
 	getHubIdxOrFail(t)
-	//map iteration is random by itself
+	// map iteration is random by itself
 	for _, it := range hubIdx[PARSERS] {
 		testInstallItem(cfg.Hub, t, it)
 		it = hubIdx[PARSERS][it.Name]
@@ -348,7 +348,7 @@ func TestInstallCollection(t *testing.T) {
 	cfg := test_prepenv()
 
 	getHubIdxOrFail(t)
-	//map iteration is random by itself
+	// map iteration is random by itself
 	for _, it := range hubIdx[COLLECTIONS] {
 		testInstallItem(cfg.Hub, t, it)
 		it = hubIdx[COLLECTIONS][it.Name]

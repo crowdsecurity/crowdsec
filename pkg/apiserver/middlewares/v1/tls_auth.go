@@ -176,8 +176,8 @@ func (ta *TLSAuth) isInvalid(cert *x509.Certificate, issuer *x509.Certificate) (
 	}
 	revoked, err := ta.isRevoked(cert, issuer)
 	if err != nil {
-		//Fail securely, if we can't check the revokation status, let's consider the cert invalid
-		//We may change this in the future based on users feedback, but this seems the most sensible thing to do
+		// Fail securely, if we can't check the revokation status, let's consider the cert invalid
+		// We may change this in the future based on users feedback, but this seems the most sensible thing to do
 		return true, errors.Wrap(err, "could not check for client certification revokation status")
 	}
 
@@ -186,11 +186,11 @@ func (ta *TLSAuth) isInvalid(cert *x509.Certificate, issuer *x509.Certificate) (
 
 func (ta *TLSAuth) SetAllowedOu(allowedOus []string) error {
 	for _, ou := range allowedOus {
-		//disallow empty ou
+		// disallow empty ou
 		if ou == "" {
 			return fmt.Errorf("empty ou isn't allowed")
 		}
-		//drop & warn on duplicate ou
+		// drop & warn on duplicate ou
 		ok := true
 		for _, validOu := range ta.AllowedOUs {
 			if validOu == ou {
@@ -206,10 +206,10 @@ func (ta *TLSAuth) SetAllowedOu(allowedOus []string) error {
 }
 
 func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
-	//Checks cert validity, Returns true + CN if client cert matches requested OU
+	// Checks cert validity, Returns true + CN if client cert matches requested OU
 	var clientCert *x509.Certificate
 	if c.Request.TLS == nil || len(c.Request.TLS.PeerCertificates) == 0 {
-		//do not error if it's not TLS or there are no peer certs
+		// do not error if it's not TLS or there are no peer certs
 		return false, "", nil
 	}
 

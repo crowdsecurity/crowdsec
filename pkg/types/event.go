@@ -14,14 +14,14 @@ const (
 	OVFLW
 )
 
-//Event is the structure representing a runtime event (log or overflow)
+// Event is the structure representing a runtime event (log or overflow)
 type Event struct {
 	/* is it a log or an overflow */
-	Type            int    `yaml:"Type,omitempty" json:"Type,omitempty"`             //Can be types.LOG (0) or types.OVFLOW (1)
-	ExpectMode      int    `yaml:"ExpectMode,omitempty" json:"ExpectMode,omitempty"` //how to buckets should handle event : leaky.TIMEMACHINE or leaky.LIVE
+	Type            int    `yaml:"Type,omitempty" json:"Type,omitempty"`             // Can be types.LOG (0) or types.OVFLOW (1)
+	ExpectMode      int    `yaml:"ExpectMode,omitempty" json:"ExpectMode,omitempty"` // how to buckets should handle event : leaky.TIMEMACHINE or leaky.LIVE
 	Whitelisted     bool   `yaml:"Whitelisted,omitempty" json:"Whitelisted,omitempty"`
 	WhitelistReason string `yaml:"WhitelistReason,omitempty" json:"whitelist_reason,omitempty"`
-	//should add whitelist reason ?
+	// should add whitelist reason ?
 	/* the current stage of the line being parsed */
 	Stage string `yaml:"Stage,omitempty" json:"Stage,omitempty"`
 	/* original line (produced by acquisition) */
@@ -32,11 +32,11 @@ type Event struct {
 	Enriched map[string]string `yaml:"Enriched,omitempty" json:"Enriched,omitempty"`
 	/* Overflow */
 	Overflow      RuntimeAlert `yaml:"Overflow,omitempty" json:"Alert,omitempty"`
-	Time          time.Time    `yaml:"Time,omitempty" json:"Time,omitempty"` //parsed time `json:"-"` ``
+	Time          time.Time    `yaml:"Time,omitempty" json:"Time,omitempty"` // parsed time `json:"-"` ``
 	StrTime       string       `yaml:"StrTime,omitempty" json:"StrTime,omitempty"`
 	StrTimeFormat string       `yaml:"StrTimeFormat,omitempty" json:"StrTimeFormat,omitempty"`
 	MarshaledTime string       `yaml:"MarshaledTime,omitempty" json:"MarshaledTime,omitempty"`
-	Process       bool         `yaml:"Process,omitempty" json:"Process,omitempty"` //can be set to false to avoid processing line
+	Process       bool         `yaml:"Process,omitempty" json:"Process,omitempty"` // can be set to false to avoid processing line
 	/* Meta is the only part that will make it to the API - it should be normalized */
 	Meta map[string]string `yaml:"Meta,omitempty" json:"Meta,omitempty"`
 }
@@ -71,7 +71,7 @@ func (e *Event) GetMeta(key string) string {
 	return ""
 }
 
-//Move in leakybuckets
+// Move in leakybuckets
 const (
 	Undefined = ""
 	Ip        = "Ip"
@@ -81,7 +81,7 @@ const (
 	AS        = "AS"
 )
 
-//Move in leakybuckets
+// Move in leakybuckets
 type ScopeType struct {
 	Scope         string `yaml:"type"`
 	Filter        string `yaml:"expression"`
@@ -94,8 +94,8 @@ type RuntimeAlert struct {
 	Whitelisted bool                     `yaml:"Whitelisted,omitempty" json:"Whitelisted,omitempty"`
 	Reprocess   bool                     `yaml:"Reprocess,omitempty" json:"Reprocess,omitempty"`
 	Sources     map[string]models.Source `yaml:"Sources,omitempty" json:"Sources,omitempty"`
-	Alert       *models.Alert            `yaml:"Alert,omitempty" json:"Alert,omitempty"` //this one is a pointer to APIAlerts[0] for convenience.
-	//APIAlerts will be populated at the end when there is more than one source
+	Alert       *models.Alert            `yaml:"Alert,omitempty" json:"Alert,omitempty"` // this one is a pointer to APIAlerts[0] for convenience.
+	// APIAlerts will be populated at the end when there is more than one source
 	APIAlerts []models.Alert `yaml:"APIAlerts,omitempty" json:"APIAlerts,omitempty"`
 }
 

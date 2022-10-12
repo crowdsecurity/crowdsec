@@ -47,7 +47,7 @@ type DecisionsDeleteOpts struct {
 	ListOpts
 }
 
-//to demo query arguments
+// to demo query arguments
 func (s *DecisionsService) List(ctx context.Context, opts DecisionsListOpts) (*models.GetDecisionsResponse, *Response, error) {
 	var decisions models.GetDecisionsResponse
 	params, err := qs.Values(opts)

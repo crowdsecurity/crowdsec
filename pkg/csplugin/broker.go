@@ -59,7 +59,7 @@ type PluginConfig struct {
 
 	Format string `yaml:"format,omitempty"` // specific to notification plugins
 
-	Config map[string]interface{} `yaml:",inline"` //to keep the plugin-specific config
+	Config map[string]interface{} `yaml:",inline"` // to keep the plugin-specific config
 
 }
 
@@ -97,7 +97,7 @@ func (pb *PluginBroker) Kill() {
 }
 
 func (pb *PluginBroker) Run(pluginTomb *tomb.Tomb) {
-	//we get signaled via the channel when notifications need to be delivered to plugin (via the watcher)
+	// we get signaled via the channel when notifications need to be delivered to plugin (via the watcher)
 	pb.watcher.Start(&tomb.Tomb{})
 loop:
 	for {

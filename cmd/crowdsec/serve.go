@@ -16,18 +16,18 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
-	//"github.com/sevlyar/go-daemon"
+	// "github.com/sevlyar/go-daemon"
 )
 
-//nolint: deadcode,unused // debugHandler is kept as a dev convenience : it shuts down and serialize internal state
+// nolint: deadcode,unused // debugHandler is kept as a dev convenience : it shuts down and serialize internal state
 func debugHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	var tmpFile string
 	var err error
-	//stop go routines
+	// stop go routines
 	if err := ShutdownCrowdsecRoutines(); err != nil {
 		log.Warningf("Failed to shut down routines: %s", err)
 	}
-	//todo : properly stop acquis with the tail readers
+	// todo : properly stop acquis with the tail readers
 	if tmpFile, err = leaky.DumpBucketsStateAt(time.Now().UTC(), cConfig.Crowdsec.BucketStateDumpDir, buckets); err != nil {
 		log.Warningf("Failed dumping bucket state : %s", err)
 	}
@@ -85,12 +85,12 @@ func reloadHandler(sig os.Signal, cConfig *csconfig.Config) error {
 		if err != nil {
 			return errors.Wrap(err, "unable to init crowdsec")
 		}
-		//restore bucket state
+		// restore bucket state
 		if tmpFile != "" {
 			log.Warningf("we are now using %s as a state file", tmpFile)
 			cConfig.Crowdsec.BucketStateFile = tmpFile
 		}
-		//reload the simulation state
+		// reload the simulation state
 		if err := cConfig.LoadSimulation(); err != nil {
 			log.Errorf("reload error (simulation) : %s", err)
 		}
@@ -99,7 +99,7 @@ func reloadHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	}
 
 	log.Printf("Reload is finished")
-	//delete the tmp file, it's safe now :)
+	// delete the tmp file, it's safe now :)
 	if tmpFile != "" {
 		if err := os.Remove(tmpFile); err != nil {
 			log.Warningf("Failed to delete temp file (%s) : %s", tmpFile, err)
@@ -127,14 +127,14 @@ func ShutdownCrowdsecRoutines() error {
 		reterr = err
 	}
 	log.Debugf("parsers is done")
-	time.Sleep(1 * time.Second) //ugly workaround for now to ensure PourItemtoholders are finished
+	time.Sleep(1 * time.Second) // ugly workaround for now to ensure PourItemtoholders are finished
 	bucketsTomb.Kill(nil)
 	if err := bucketsTomb.Wait(); err != nil {
 		log.Warningf("Buckets returned error : %s", err)
 		reterr = err
 	}
 	log.Debugf("buckets is done")
-	time.Sleep(1 * time.Second) //ugly workaround for now
+	time.Sleep(1 * time.Second) // ugly workaround for now
 	outputsTomb.Kill(nil)
 	if err := outputsTomb.Wait(); err != nil {
 		log.Warningf("Ouputs returned error : %s", err)
@@ -142,7 +142,7 @@ func ShutdownCrowdsecRoutines() error {
 
 	}
 	log.Debugf("outputs are done")
-	//everything is dead johny
+	// everything is dead johny
 	crowdsecTomb.Kill(nil)
 
 	return reterr
@@ -184,7 +184,7 @@ func shutdown(sig os.Signal, cConfig *csconfig.Config) error {
 
 func HandleSignals(cConfig *csconfig.Config) error {
 	signalChan := make(chan os.Signal, 1)
-	//We add os.Interrupt mostly to ease windows dev, it allows to simulate a clean shutdown when running in the console
+	// We add os.Interrupt mostly to ease windows dev, it allows to simulate a clean shutdown when running in the console
 	signal.Notify(signalChan,
 		syscall.SIGHUP,
 		syscall.SIGTERM,

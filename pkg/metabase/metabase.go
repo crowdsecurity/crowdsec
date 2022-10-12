@@ -71,7 +71,7 @@ func (m *Metabase) Init(containerName string) error {
 	switch m.Config.Database.Type {
 	case "mysql":
 		return fmt.Errorf("'mysql' is not supported yet for cscli dashboard")
-		//DBConnectionURI = fmt.Sprintf("MB_DB_CONNECTION_URI=mysql://%s:%d/%s?user=%s&password=%s&allowPublicKeyRetrieval=true", remoteDBAddr, m.Config.Database.Port, m.Config.Database.DbName, m.Config.Database.User, m.Config.Database.Password)
+		// DBConnectionURI = fmt.Sprintf("MB_DB_CONNECTION_URI=mysql://%s:%d/%s?user=%s&password=%s&allowPublicKeyRetrieval=true", remoteDBAddr, m.Config.Database.Port, m.Config.Database.DbName, m.Config.Database.User, m.Config.Database.Password)
 	case "sqlite":
 		m.InternalDBURL = metabaseSQLiteDBURL
 	case "postgresql", "postgres", "pgsql":
@@ -322,8 +322,8 @@ func (m *Metabase) DownloadDatabase(force bool) error {
 	if err != nil {
 		return fmt.Errorf("failed to build request to fetch metabase db : %s", err)
 	}
-	//This needs to be removed once we move the zip out of github
-	//req.Header.Add("Accept", `application/vnd.github.v3.raw`)
+	// This needs to be removed once we move the zip out of github
+	// req.Header.Add("Accept", `application/vnd.github.v3.raw`)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed request to fetch metabase db : %s", err)

@@ -7,7 +7,7 @@ package parser
 */
 
 import (
-	//"fmt"
+	// "fmt"
 
 	"fmt"
 	"io"
@@ -59,13 +59,13 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx EnricherCtx) (
 		if err != nil {
 			return nil, fmt.Errorf("can't access parsing configuration file %s : %s", stageFile.Filename, err)
 		}
-		//process the yaml
+		// process the yaml
 		dec := yaml.NewDecoder(yamlFile)
 		dec.SetStrict(true)
 		nodesCount := 0
 		for {
 			node := Node{}
-			node.OnSuccess = "continue" //default behavior is to continue
+			node.OnSuccess = "continue" // default behavior is to continue
 			err = dec.Decode(&node)
 			if err != nil {
 				if err == io.EOF {
@@ -75,12 +75,12 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx EnricherCtx) (
 				log.Fatalf("Error decoding parsing configuration file '%s': %v", stageFile.Filename, err)
 			}
 
-			//check for empty bucket
+			// check for empty bucket
 			if node.Name == "" && node.Description == "" && node.Author == "" {
 				log.Infof("Node in %s has no name,author or description. Skipping.", stageFile.Filename)
 				continue
 			}
-			//check compat
+			// check compat
 			if node.FormatVersion == "" {
 				log.Tracef("no version in %s, assuming '1.0'", node.Name)
 				node.FormatVersion = "1.0"
@@ -98,7 +98,7 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx EnricherCtx) (
 			if _, ok := tmpstages[stageFile.Stage]; !ok {
 				tmpstages[stageFile.Stage] = true
 			}
-			//compile the node : grok pattern and expression
+			// compile the node : grok pattern and expression
 			err = node.compile(pctx, ectx)
 			if err != nil {
 				if node.Name != "" {

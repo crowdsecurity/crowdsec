@@ -844,7 +844,7 @@ func TestAPICPull(t *testing.T) {
 					panic(err)
 				}
 			}()
-			//Slightly long because the CI runner for windows are slow, and this can lead to random failure
+			// Slightly long because the CI runner for windows are slow, and this can lead to random failure
 			time.Sleep(time.Millisecond * 500)
 			logrus.SetOutput(os.Stderr)
 			assert.Contains(t, buf.String(), tc.logContains)

@@ -10,8 +10,8 @@ func IsAlphaNumeric(c byte) bool {
 	return 'a' <= c && c <= 'z' || 'A' <= c && c <= 'Z' || '0' <= c && c <= '9'
 }
 
-//This function is lifted from go source
-//See https://github.com/golang/go/blob/master/src/net/dnsclient.go#L75
+// This function is lifted from go source
+// See https://github.com/golang/go/blob/master/src/net/dnsclient.go#L75
 func isValidHostname(s string) bool {
 	// The root domain name is valid. See golang.org/issue/45715.
 	if s == "." {

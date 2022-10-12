@@ -373,10 +373,10 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
 	assert.Equal(t, 404, w.Code)
-	//wait for the request to happen
+	// wait for the request to happen
 	time.Sleep(500 * time.Millisecond)
 
-	//check file content
+	// check file content
 	data, err := os.ReadFile(expectedFile)
 	if err != nil {
 		t.Fatalf("failed to read file : %s", err)
@@ -430,10 +430,10 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
 	assert.Equal(t, 404, w.Code)
-	//wait for the request to happen
+	// wait for the request to happen
 	time.Sleep(500 * time.Millisecond)
 
-	//check file content
+	// check file content
 	x, err := os.ReadFile(expectedFile)
 	if err == nil && len(x) > 0 {
 		t.Fatalf("file should be empty, got '%s'", x)

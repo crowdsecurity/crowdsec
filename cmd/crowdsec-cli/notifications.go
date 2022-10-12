@@ -166,7 +166,7 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 				return errors.New("Wrong number of argument: there should be one argument")
 			}
 
-			//first: get the alert
+			// first: get the alert
 			id, err := strconv.Atoi(args[0])
 			if err != nil {
 				return errors.New(fmt.Sprintf("bad alert id %s", args[0]))
@@ -219,7 +219,7 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 				return nil
 			})
 
-			//third: get the profile(s), and process the whole stuff
+			// third: get the profile(s), and process the whole stuff
 
 			profiles, err := csprofiles.NewProfile(csConfig.API.Server.Profiles)
 			if err != nil {
@@ -274,7 +274,7 @@ func getNotificationsConfiguration() (map[string]NotificationsCfg, error) {
 		if info == nil {
 			return errors.Wrapf(err, "error while traversing directory %s", path)
 		}
-		name := filepath.Join(csConfig.ConfigPaths.NotificationDir, info.Name()) //Avoid calling info.Name() twice
+		name := filepath.Join(csConfig.ConfigPaths.NotificationDir, info.Name()) // Avoid calling info.Name() twice
 		if (strings.HasSuffix(name, "yaml") || strings.HasSuffix(name, "yml")) && !(info.IsDir()) {
 			ts, err := csplugin.ParsePluginConfigFile(name)
 			if err != nil {

@@ -31,7 +31,7 @@ func TestDecisionsList(t *testing.T) {
 		} else {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(`null`))
-			//no results
+			// no results
 		}
 	})
 	apiURL, err := url.Parse(urlx + "/")
@@ -39,7 +39,7 @@ func TestDecisionsList(t *testing.T) {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
 
-	//ok answer
+	// ok answer
 	auth := &APIKeyTransport{
 		APIKey: "ixu",
 	}
@@ -67,7 +67,7 @@ func TestDecisionsList(t *testing.T) {
 		},
 	}
 
-	//OK decisions
+	// OK decisions
 	decisionsFilter := DecisionsListOpts{IPEquals: new(string)}
 	*decisionsFilter.IPEquals = "1.2.3.4"
 	decisions, resp, err := newcli.Decisions.List(context.Background(), decisionsFilter)
@@ -83,7 +83,7 @@ func TestDecisionsList(t *testing.T) {
 		t.Fatalf("returned %+v, want %+v", resp, expected)
 	}
 
-	//Empty return
+	// Empty return
 	decisionsFilter = DecisionsListOpts{IPEquals: new(string)}
 	*decisionsFilter.IPEquals = "1.2.3.5"
 	decisions, resp, err = newcli.Decisions.List(context.Background(), decisionsFilter)
@@ -129,7 +129,7 @@ func TestDecisionsStream(t *testing.T) {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
 
-	//ok answer
+	// ok answer
 	auth := &APIKeyTransport{
 		APIKey: "ixu",
 	}
@@ -173,7 +173,7 @@ func TestDecisionsStream(t *testing.T) {
 		t.Fatalf("returned %+v, want %+v", resp, expected)
 	}
 
-	//and second call, we get empty lists
+	// and second call, we get empty lists
 	decisions, resp, err = newcli.Decisions.GetStream(context.Background(), DecisionsStreamOpts{Startup: false})
 	require.NoError(t, err)
 
@@ -183,7 +183,7 @@ func TestDecisionsStream(t *testing.T) {
 	assert.Equal(t, 0, len(decisions.New))
 	assert.Equal(t, 0, len(decisions.Deleted))
 
-	//delete stream
+	// delete stream
 	resp, err = newcli.Decisions.StopStream(context.Background())
 	require.NoError(t, err)
 
@@ -203,7 +203,7 @@ func TestDeleteDecisions(t *testing.T) {
 		assert.Equal(t, r.URL.RawQuery, "ip=1.2.3.4")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"nbDeleted":"1"}`))
-		//w.Write([]byte(`{"message":"0 deleted alerts"}`))
+		// w.Write([]byte(`{"message":"0 deleted alerts"}`))
 	})
 	log.Printf("URL is %s", urlx)
 	apiURL, err := url.Parse(urlx + "/")

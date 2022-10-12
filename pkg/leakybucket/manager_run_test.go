@@ -30,7 +30,7 @@ func TestGCandDump(t *testing.T) {
 	)
 
 	var Holders = []BucketFactory{
-		//one overflowing soon + bh
+		// one overflowing soon + bh
 		BucketFactory{
 			Name:        "test_counter_fast",
 			Description: "test_counter_fast",
@@ -43,7 +43,7 @@ func TestGCandDump(t *testing.T) {
 			wgDumpState: buckets.wgDumpState,
 			wgPour:      buckets.wgPour,
 		},
-		//one long counter
+		// one long counter
 		BucketFactory{
 			Name:        "test_counter_slow",
 			Description: "test_counter_slow",
@@ -55,7 +55,7 @@ func TestGCandDump(t *testing.T) {
 			wgDumpState: buckets.wgDumpState,
 			wgPour:      buckets.wgPour,
 		},
-		//slow leaky
+		// slow leaky
 		BucketFactory{
 			Name:        "test_leaky_slow",
 			Description: "test_leaky_slow",
@@ -81,7 +81,7 @@ func TestGCandDump(t *testing.T) {
 	log.Printf("Pouring to bucket")
 
 	var in = types.Event{Parsed: map[string]string{"something": "something"}}
-	//pour an item that will go to leaky + counter
+	// pour an item that will go to leaky + counter
 	ok, err := PourItemToHolders(in, Holders, buckets)
 	if err != nil {
 		t.Fatalf("while pouring item : %s", err)
@@ -97,7 +97,7 @@ func TestGCandDump(t *testing.T) {
 	}
 	log.Printf("Bucket GC")
 
-	//call garbage collector
+	// call garbage collector
 	if err := GarbageCollectBuckets(time.Now().UTC(), buckets); err != nil {
 		t.Fatalf("failed to garbage collect buckets : %s", err)
 	}
@@ -107,7 +107,7 @@ func TestGCandDump(t *testing.T) {
 	}
 
 	log.Printf("Dumping buckets state")
-	//dump remaining buckets
+	// dump remaining buckets
 	if _, err := DumpBucketsStateAt(time.Now().UTC(), ".", buckets); err != nil {
 		t.Fatalf("failed to dump buckets : %s", err)
 	}
@@ -117,7 +117,7 @@ func TestShutdownBuckets(t *testing.T) {
 	var (
 		buckets *Buckets = NewBuckets()
 		Holders          = []BucketFactory{
-			//one long counter
+			// one long counter
 			BucketFactory{
 				Name:        "test_counter_slow",
 				Description: "test_counter_slow",
@@ -129,7 +129,7 @@ func TestShutdownBuckets(t *testing.T) {
 				wgDumpState: buckets.wgDumpState,
 				wgPour:      buckets.wgPour,
 			},
-			//slow leaky
+			// slow leaky
 			BucketFactory{
 				Name:        "test_leaky_slow",
 				Description: "test_leaky_slow",
@@ -157,7 +157,7 @@ func TestShutdownBuckets(t *testing.T) {
 	log.Printf("Pouring to bucket")
 
 	var in = types.Event{Parsed: map[string]string{"something": "something"}}
-	//pour an item that will go to leaky + counter
+	// pour an item that will go to leaky + counter
 	ok, err := PourItemToHolders(in, Holders, buckets)
 	if err != nil {
 		t.Fatalf("while pouring item : %s", err)

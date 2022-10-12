@@ -16,7 +16,7 @@ import (
 type ParserCoverage struct {
 	Parser     string
 	TestsCount int
-	PresentIn  map[string]bool //poorman's set
+	PresentIn  map[string]bool // poorman's set
 }
 
 type ScenarioCoverage struct {
@@ -30,7 +30,7 @@ func (h *HubTest) GetParsersCoverage() ([]ParserCoverage, error) {
 	if _, ok := h.HubIndex.Data[cwhub.PARSERS]; !ok {
 		return coverage, fmt.Errorf("no parsers in hub index")
 	}
-	//populate from hub, iterate in alphabetical order
+	// populate from hub, iterate in alphabetical order
 	var pkeys []string
 	for pname := range h.HubIndex.Data[cwhub.PARSERS] {
 		pkeys = append(pkeys, pname)
@@ -44,7 +44,7 @@ func (h *HubTest) GetParsersCoverage() ([]ParserCoverage, error) {
 		})
 	}
 
-	//parser the expressions a-la-oneagain
+	// parser the expressions a-la-oneagain
 	passerts, err := filepath.Glob(".tests/*/parser.assert")
 	if err != nil {
 		return coverage, fmt.Errorf("while find parser asserts : %s", err)
@@ -103,7 +103,7 @@ func (h *HubTest) GetScenariosCoverage() ([]ScenarioCoverage, error) {
 	if _, ok := h.HubIndex.Data[cwhub.SCENARIOS]; !ok {
 		return coverage, fmt.Errorf("no scenarios in hub index")
 	}
-	//populate from hub, iterate in alphabetical order
+	// populate from hub, iterate in alphabetical order
 	var pkeys []string
 	for scenarioName := range h.HubIndex.Data[cwhub.SCENARIOS] {
 		pkeys = append(pkeys, scenarioName)
@@ -117,7 +117,7 @@ func (h *HubTest) GetScenariosCoverage() ([]ScenarioCoverage, error) {
 		})
 	}
 
-	//parser the expressions a-la-oneagain
+	// parser the expressions a-la-oneagain
 	passerts, err := filepath.Glob(".tests/*/scenario.assert")
 	if err != nil {
 		return coverage, fmt.Errorf("while find scenario asserts : %s", err)

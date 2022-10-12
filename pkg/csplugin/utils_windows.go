@@ -172,7 +172,7 @@ func getProcessAtr() (*syscall.SysProcAttr, error) {
 		return nil, errors.Wrapf(err, "while duplicating token")
 	}
 
-	//Remove all privileges from the token
+	// Remove all privileges from the token
 
 	err = windows.AdjustTokenPrivileges(token, true, nil, 0, nil, nil)
 
@@ -180,8 +180,8 @@ func getProcessAtr() (*syscall.SysProcAttr, error) {
 		return nil, errors.Wrapf(err, "while adjusting token privileges")
 	}
 
-	//Run the plugin as a medium integrity level process
-	//For some reasons, low level integrity don't work, the plugin and crowdsec cannot communicate over the TCP socket
+	// Run the plugin as a medium integrity level process
+	// For some reasons, low level integrity don't work, the plugin and crowdsec cannot communicate over the TCP socket
 	sid, err := windows.CreateWellKnownSid(windows.WELL_KNOWN_SID_TYPE(windows.WinMediumLabelSid))
 	if err != nil {
 		return nil, err

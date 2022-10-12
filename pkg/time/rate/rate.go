@@ -233,13 +233,15 @@ func (lim *Limiter) Reserve() *Reservation {
 // The Limiter takes this Reservation into account when allowing future events.
 // ReserveN returns false if n exceeds the Limiter's burst size.
 // Usage example:
-//   r := lim.ReserveN(time.Now(), 1)
-//   if !r.OK() {
-//     // Not allowed to act! Did you remember to set lim.burst to be > 0 ?
-//     return
-//   }
-//   time.Sleep(r.Delay())
-//   Act()
+//
+//	r := lim.ReserveN(time.Now(), 1)
+//	if !r.OK() {
+//	  // Not allowed to act! Did you remember to set lim.burst to be > 0 ?
+//	  return
+//	}
+//	time.Sleep(r.Delay())
+//	Act()
+//
 // Use this method if you wish to wait and slow down in accordance with the rate limit without dropping events.
 // If you need to respect a deadline or cancel the delay, use Wait instead.
 // To drop or skip events exceeding rate limit, use Allow instead.
@@ -434,20 +436,20 @@ func (limit Limit) tokensFromDuration(d time.Duration) float64 {
 	return sec + nsec/1e9
 }
 
-//return the number of token available in the bucket
+// return the number of token available in the bucket
 func (lim *Limiter) GetTokensCount() float64 {
 	_, _, tokens := lim.advance(time.Now())
 	return tokens
 }
 
-//return the number of token available in the bucket
+// return the number of token available in the bucket
 func (lim *Limiter) GetTokensCountAt(t time.Time) float64 {
 	_, _, tokens := lim.advance(t)
 	return tokens
 }
 
-//A rate limiter that doesn't limit anything
-//this is compliant to the earlier interface
+// A rate limiter that doesn't limit anything
+// this is compliant to the earlier interface
 type AlwaysFull struct {
 }
 

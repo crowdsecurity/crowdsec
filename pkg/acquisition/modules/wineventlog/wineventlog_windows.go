@@ -72,7 +72,7 @@ func logLevelToInt(logLevel string) ([]string, error) {
 	}
 }
 
-//This is lifted from winops/winlog, but we only want to render the basic XML string, we don't need the extra fluff
+// This is lifted from winops/winlog, but we only want to render the basic XML string, we don't need the extra fluff
 func (w *WinEventLogSource) getXMLEvents(config *winlog.SubscribeConfig, publisherCache map[string]windows.Handle, resultSet windows.Handle, maxEvents int) ([]string, error) {
 	var events = make([]windows.Handle, maxEvents)
 	var returned uint32

@@ -63,7 +63,7 @@ func CustomRecoveryWithWriter() gin.HandlerFunc {
 				// because of https://github.com/golang/net/blob/39120d07d75e76f0079fe5d27480bcb965a21e4c/http2/server.go
 				// and because it seems gin doesn't handle those neither, we need to "hand define" some errors to properly catch them
 				if strErr, ok := err.(error); ok {
-					//stolen from http2/server.go in x/net
+					// stolen from http2/server.go in x/net
 					var (
 						errClientDisconnected = errors.New("client disconnected")
 						errClosedBody         = errors.New("body closed by handler")
@@ -166,10 +166,10 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		}
 		LogOutput := &lumberjack.Logger{
 			Filename:   logFile,
-			MaxSize:    _maxsize, //megabytes
+			MaxSize:    _maxsize, // megabytes
 			MaxBackups: _maxfiles,
-			MaxAge:     _maxage,   //days
-			Compress:   _compress, //disabled by default
+			MaxAge:     _maxage,   // days
+			Compress:   _compress, // disabled by default
 		}
 		clog.SetOutput(LogOutput)
 	}
@@ -254,7 +254,7 @@ func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
 	}
 
 	if s.TLS.ClientVerification == "" {
-		//sounds like a sane default : verify client cert if given, but don't make it mandatory
+		// sounds like a sane default : verify client cert if given, but don't make it mandatory
 		clientAuthType = tls.VerifyClientCertIfGiven
 	} else {
 		clientAuthType, err = getTLSAuthType(s.TLS.ClientVerification)
@@ -276,7 +276,7 @@ func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
 	}
 
 	return &tls.Config{
-		ServerName: s.TLS.ServerName, //should it be removed ?
+		ServerName: s.TLS.ServerName, // should it be removed ?
 		ClientAuth: clientAuthType,
 		ClientCAs:  caCertPool,
 		MinVersion: tls.VersionTLS12, // TLS versions below 1.2 are considered insecure - see https://www.rfc-editor.org/rfc/rfc7525.txt for details
@@ -353,7 +353,7 @@ func (s *APIServer) Shutdown() error {
 		return err
 	}
 
-	//close io.writer logger given to gin
+	// close io.writer logger given to gin
 	if pipe, ok := gin.DefaultErrorWriter.(*io.PipeWriter); ok {
 		pipe.Close()
 	}

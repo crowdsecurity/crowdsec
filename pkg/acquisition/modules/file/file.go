@@ -108,7 +108,7 @@ func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
 		}
 		for _, file := range files {
 
-			//check if file is excluded
+			// check if file is excluded
 			excluded := false
 			for _, pattern := range f.exclude_regexps {
 				if pattern.MatchString(file) {
@@ -120,7 +120,7 @@ func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
 			if excluded {
 				continue
 			}
-			if files[0] != pattern && f.config.Mode == configuration.TAIL_MODE { //we have a glob pattern
+			if files[0] != pattern && f.config.Mode == configuration.TAIL_MODE { // we have a glob pattern
 				directory := filepath.Dir(file)
 				f.logger.Debugf("Will add watch to directory: %s", directory)
 				if !f.watchedDirectories[directory] {
@@ -206,12 +206,12 @@ func (f *FileSource) GetMode() string {
 	return f.config.Mode
 }
 
-//SupportedModes returns the supported modes by the acquisition module
+// SupportedModes returns the supported modes by the acquisition module
 func (f *FileSource) SupportedModes() []string {
 	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
 }
 
-//OneShotAcquisition reads a set of file and returns when done
+// OneShotAcquisition reads a set of file and returns when done
 func (f *FileSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	f.logger.Debug("In oneshot")
 	for _, file := range f.files {
@@ -255,7 +255,7 @@ func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 		return f.monitorNewFiles(out, t)
 	})
 	for _, file := range f.files {
-		//before opening the file, check if we need to specifically avoid it. (XXX)
+		// before opening the file, check if we need to specifically avoid it. (XXX)
 		skip := false
 		for _, pattern := range f.exclude_regexps {
 			if pattern.MatchString(file) {
@@ -268,8 +268,8 @@ func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 			continue
 		}
 
-		//cf. https://github.com/crowdsecurity/crowdsec/issues/1168
-		//do not rely on stat, reclose file immediately as it's opened by Tail
+		// cf. https://github.com/crowdsecurity/crowdsec/issues/1168
+		// do not rely on stat, reclose file immediately as it's opened by Tail
 		fd, err := os.Open(file)
 		if err != nil {
 			f.logger.Errorf("unable to read %s : %s", file, err)
@@ -342,7 +342,7 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 					continue
 				}
 
-				//before opening the file, check if we need to specifically avoid it. (XXX)
+				// before opening the file, check if we need to specifically avoid it. (XXX)
 				skip := false
 				for _, pattern := range f.exclude_regexps {
 					if pattern.MatchString(event.Name) {
@@ -356,12 +356,12 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 				}
 
 				if f.tails[event.Name] {
-					//we already have a tail on it, do not start a new one
+					// we already have a tail on it, do not start a new one
 					logger.Debugf("Already tailing file %s, not creating a new tail", event.Name)
 					break
 				}
-				//cf. https://github.com/crowdsecurity/crowdsec/issues/1168
-				//do not rely on stat, reclose file immediately as it's opened by Tail
+				// cf. https://github.com/crowdsecurity/crowdsec/issues/1168
+				// do not rely on stat, reclose file immediately as it's opened by Tail
 				fd, err := os.Open(event.Name)
 				if err != nil {
 					f.logger.Errorf("unable to read %s : %s", event.Name, err)
@@ -371,7 +371,7 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 					f.logger.Errorf("unable to close %s : %s", event.Name, err)
 					continue
 				}
-				//Slightly different parameters for Location, as we want to read the first lines of the newly created file
+				// Slightly different parameters for Location, as we want to read the first lines of the newly created file
 				tail, err := tail.TailFile(event.Name, tail.Config{ReOpen: true, Follow: true, Poll: true, Location: &tail.SeekInfo{Offset: 0, Whence: io.SeekStart}})
 				if err != nil {
 					logger.Errorf("Could not start tailing file %s : %s", event.Name, err)
@@ -410,7 +410,7 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 				return err
 			}
 			return nil
-		case <-tail.Tomb.Dying(): //our tailer is dying
+		case <-tail.Tomb.Dying(): // our tailer is dying
 			logger.Warningf("File reader of %s died", tail.Filename)
 			t.Kill(fmt.Errorf("dead reader for %s", tail.Filename))
 			return fmt.Errorf("reader for %s is dead", tail.Filename)
@@ -423,7 +423,7 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 				logger.Warningf("fetch error : %v", line.Err)
 				return line.Err
 			}
-			if line.Text == "" { //skip empty lines
+			if line.Text == "" { // skip empty lines
 				continue
 			}
 			linesRead.With(prometheus.Labels{"source": tail.Filename}).Inc()
@@ -435,7 +435,7 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 				Process: true,
 				Module:  f.GetName(),
 			}
-			//we're tailing, it must be real time logs
+			// we're tailing, it must be real time logs
 			logger.Debugf("pushing %+v", l)
 
 			expectMode := leaky.LIVE
@@ -485,7 +485,7 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 		logger.Debugf("line %s", l.Raw)
 		linesRead.With(prometheus.Labels{"source": filename}).Inc()
 
-		//we're reading logs at once, it must be time-machine buckets
+		// we're reading logs at once, it must be time-machine buckets
 		out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.TIMEMACHINE}
 	}
 	t.Kill(nil)

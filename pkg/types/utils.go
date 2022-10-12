@@ -21,7 +21,7 @@ import (
 )
 
 var logFormatter log.Formatter
-var LogOutput *lumberjack.Logger //io.Writer
+var LogOutput *lumberjack.Logger // io.Writer
 var logLevel log.Level
 
 func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, compress *bool, forceColors bool) error {
@@ -123,7 +123,7 @@ func WriteStackTrace(iErr interface{}) string {
 	return tmpfile.Name()
 }
 
-//CatchPanic is a util func that we should call from all go-routines to ensure proper stacktrace handling
+// CatchPanic is a util func that we should call from all go-routines to ensure proper stacktrace handling
 func CatchPanic(component string) {
 	if r := recover(); r != nil {
 		log.Errorf("crowdsec - goroutine %s crashed : %s", component, r)

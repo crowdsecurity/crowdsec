@@ -57,8 +57,8 @@ func GenSubObject(i int) []byte {
 	gz := gzip.NewWriter(&b)
 	gz.Write(body)
 	gz.Close()
-	//AWS actually base64 encodes the data, but it looks like kinesis automatically decodes it at some point
-	//localstack does not do it, so let's just write a raw gzipped stream
+	// AWS actually base64 encodes the data, but it looks like kinesis automatically decodes it at some point
+	// localstack does not do it, so let's just write a raw gzipped stream
 	return b.Bytes()
 }
 
@@ -96,10 +96,10 @@ func TestMain(m *testing.M) {
 	os.Setenv("AWS_ACCESS_KEY_ID", "foobar")
 	os.Setenv("AWS_SECRET_ACCESS_KEY", "foobar")
 
-	//delete_streams()
-	//create_streams()
+	// delete_streams()
+	// create_streams()
 	code := m.Run()
-	//delete_streams()
+	// delete_streams()
 	os.Exit(code)
 }
 
@@ -181,7 +181,7 @@ stream_name: stream-1-shard`,
 		if err != nil {
 			t.Fatalf("Error starting source: %s", err)
 		}
-		//Allow the datasource to start listening to the stream
+		// Allow the datasource to start listening to the stream
 		time.Sleep(4 * time.Second)
 		WriteToStream(f.Config.StreamName, test.count, test.shards, false)
 		for i := 0; i < test.count; i++ {
@@ -227,7 +227,7 @@ stream_name: stream-2-shards`,
 		if err != nil {
 			t.Fatalf("Error starting source: %s", err)
 		}
-		//Allow the datasource to start listening to the stream
+		// Allow the datasource to start listening to the stream
 		time.Sleep(4 * time.Second)
 		WriteToStream(f.Config.StreamName, test.count, test.shards, false)
 		c := 0
@@ -276,7 +276,7 @@ from_subscription: true`,
 		if err != nil {
 			t.Fatalf("Error starting source: %s", err)
 		}
-		//Allow the datasource to start listening to the stream
+		// Allow the datasource to start listening to the stream
 		time.Sleep(4 * time.Second)
 		WriteToStream(f.Config.StreamName, test.count, test.shards, true)
 		for i := 0; i < test.count; i++ {
@@ -322,7 +322,7 @@ use_enhanced_fanout: true`,
 		if err != nil {
 			t.Fatalf("Error starting source: %s", err)
 		}
-		//Allow the datasource to start listening to the stream
+	 // Allow the datasource to start listening to the stream
 		time.Sleep(10 * time.Second)
 		WriteToStream("stream-1-shard", test.count, test.shards)
 		for i := 0; i < test.count; i++ {

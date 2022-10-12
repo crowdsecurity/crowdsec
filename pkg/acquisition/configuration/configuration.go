@@ -11,7 +11,7 @@ type DataSourceCommonCfg struct {
 	Source         string                 `yaml:"source,omitempty"`
 	Name           string                 `yaml:"name,omitempty"`
 	UseTimeMachine bool                   `yaml:"use_time_machine,omitempty"`
-	Config         map[string]interface{} `yaml:",inline"` //to keep the datasource-specific configuration directives
+	Config         map[string]interface{} `yaml:",inline"` // to keep the datasource-specific configuration directives
 }
 
 var TAIL_MODE = "tail"

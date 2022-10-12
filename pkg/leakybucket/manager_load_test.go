@@ -36,13 +36,13 @@ func runTest(tests []cfgTest) error {
 
 func TestBadBucketsConfig(t *testing.T) {
 	var CfgTests = []cfgTest{
-		//empty
+		// empty
 		{BucketFactory{}, false, false},
-		//missing description
+		// missing description
 		{BucketFactory{Name: "test"}, false, false},
-		//missing type
+		// missing type
 		{BucketFactory{Name: "test", Description: "test1"}, false, false},
-		//bad type
+		// bad type
 		{BucketFactory{Name: "test", Description: "test1", Type: "ratata"}, false, false},
 	}
 	if err := runTest(CfgTests); err != nil {
@@ -52,21 +52,21 @@ func TestBadBucketsConfig(t *testing.T) {
 
 func TestLeakyBucketsConfig(t *testing.T) {
 	var CfgTests = []cfgTest{
-		//leaky with bad capacity
+		// leaky with bad capacity
 		{BucketFactory{Name: "test", Description: "test1", Type: "leaky", Capacity: 0}, false, false},
-		//leaky with empty leakspeed
+		// leaky with empty leakspeed
 		{BucketFactory{Name: "test", Description: "test1", Type: "leaky", Capacity: 1}, false, false},
-		//leaky with missing filter
+		// leaky with missing filter
 		{BucketFactory{Name: "test", Description: "test1", Type: "leaky", Capacity: 1, LeakSpeed: "1s"}, false, true},
-		//leaky with invalid leakspeed
+		// leaky with invalid leakspeed
 		{BucketFactory{Name: "test", Description: "test1", Type: "leaky", Capacity: 1, LeakSpeed: "abs", Filter: "true"}, false, false},
-		//leaky with valid filter
+		// leaky with valid filter
 		{BucketFactory{Name: "test", Description: "test1", Type: "leaky", Capacity: 1, LeakSpeed: "1s", Filter: "true"}, true, true},
-		//leaky with invalid filter
+		// leaky with invalid filter
 		{BucketFactory{Name: "test", Description: "test1", Type: "leaky", Capacity: 1, LeakSpeed: "1s", Filter: "xu"}, false, true},
-		//leaky with valid filter
+		// leaky with valid filter
 		{BucketFactory{Name: "test", Description: "test1", Type: "leaky", Capacity: 1, LeakSpeed: "1s", Filter: "true"}, true, true},
-		//leaky with bad overflow filter
+		// leaky with bad overflow filter
 		{BucketFactory{Name: "test", Description: "test1", Type: "leaky", Capacity: 1, LeakSpeed: "1s", Filter: "true", OverflowFilter: "xu"}, false, true},
 	}
 
@@ -78,9 +78,9 @@ func TestLeakyBucketsConfig(t *testing.T) {
 
 func TestBlackholeConfig(t *testing.T) {
 	var CfgTests = []cfgTest{
-		//basic bh
+		// basic bh
 		{BucketFactory{Name: "test", Description: "test1", Type: "trigger", Filter: "true", Blackhole: "15s"}, true, true},
-		//bad bh
+		// bad bh
 		{BucketFactory{Name: "test", Description: "test1", Type: "trigger", Filter: "true", Blackhole: "abc"}, false, true},
 	}
 
@@ -92,7 +92,7 @@ func TestBlackholeConfig(t *testing.T) {
 
 func TestTriggerBucketsConfig(t *testing.T) {
 	var CfgTests = []cfgTest{
-		//basic valid counter
+		// basic valid counter
 		{BucketFactory{Name: "test", Description: "test1", Type: "trigger", Filter: "true"}, true, true},
 	}
 
@@ -105,13 +105,13 @@ func TestTriggerBucketsConfig(t *testing.T) {
 func TestCounterBucketsConfig(t *testing.T) {
 	var CfgTests = []cfgTest{
 
-		//basic valid counter
+		// basic valid counter
 		{BucketFactory{Name: "test", Description: "test1", Type: "counter", Capacity: -1, Duration: "5s", Filter: "true"}, true, true},
-		//missing duration
+		// missing duration
 		{BucketFactory{Name: "test", Description: "test1", Type: "counter", Capacity: -1, Filter: "true"}, false, false},
-		//bad duration
+		// bad duration
 		{BucketFactory{Name: "test", Description: "test1", Type: "counter", Capacity: -1, Duration: "abc", Filter: "true"}, false, false},
-		//capacity must be -1
+		// capacity must be -1
 		{BucketFactory{Name: "test", Description: "test1", Type: "counter", Capacity: 0, Duration: "5s", Filter: "true"}, false, false},
 	}
 	if err := runTest(CfgTests); err != nil {

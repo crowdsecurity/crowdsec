@@ -153,7 +153,7 @@ func (k *KafkaSource) RunReader(out chan types.Event, t *tomb.Tomb) error {
 	t.Go(func() error {
 		return k.ReadMessage(out)
 	})
-	//nolint //fp
+	// nolint // fp
 	for {
 		select {
 		case <-t.Dying():
