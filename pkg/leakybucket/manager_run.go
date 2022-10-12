@@ -133,7 +133,7 @@ func DumpBucketsStateAt(deadline time.Time, outputdir string, buckets *Buckets) 
 	})
 	bbuckets, err := json.MarshalIndent(serialized, "", " ")
 	if err != nil {
-		log.Fatalf("Failed to unmarshal buckets : %s", err)
+		return "", fmt.Errorf("Failed to unmarshal buckets : %s", err)
 	}
 	size, err := tmpFd.Write(bbuckets)
 	if err != nil {
