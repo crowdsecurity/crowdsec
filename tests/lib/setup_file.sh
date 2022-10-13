@@ -155,7 +155,7 @@ export -f assert_json
 # to check if something was passed by mistake, since if you read it, it will be
 # incomplete.
 is_stdin_empty() {
-    if read -t 0.1; then
+    if read -r -t 0.1; then
         return 1
     fi
     return 0
