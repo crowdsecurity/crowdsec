@@ -440,7 +440,7 @@ func (a *apic) PullTop() error {
 
 	for idx, alert := range alertsFromCapi {
 		alertsFromCapi[idx] = setAlertScenario(add_counters, delete_counters, alert)
-		log.Infof("%s has %d decisions", *alertsFromCapi[idx].Source.Scope, len(alertsFromCapi[idx].Decisions))
+		log.Debugf("%s has %d decisions", *alertsFromCapi[idx].Source.Scope, len(alertsFromCapi[idx].Decisions))
 		alertID, inserted, deleted, err := a.dbClient.UpdateCommunityBlocklist(alertsFromCapi[idx])
 		if err != nil {
 			return errors.Wrapf(err, "while saving alert from %s", *alertsFromCapi[idx].Source.Scope)
