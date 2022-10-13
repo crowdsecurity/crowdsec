@@ -36,7 +36,7 @@ func TestDecisionsList(t *testing.T) {
 	})
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
+		t.Fatalf("parsing api url: %s", apiURL)
 	}
 
 	//ok answer
@@ -46,7 +46,7 @@ func TestDecisionsList(t *testing.T) {
 
 	newcli, err := NewDefaultClient(apiURL, "v1", "toto", auth.Client())
 	if err != nil {
-		log.Fatalf("new api client: %s", err)
+		t.Fatalf("new api client: %s", err)
 	}
 
 	tduration := "3h59m55.756182786s"
@@ -77,7 +77,7 @@ func TestDecisionsList(t *testing.T) {
 	}
 
 	if err != nil {
-		log.Fatalf("new api client: %s", err)
+		t.Fatalf("new api client: %s", err)
 	}
 	if !reflect.DeepEqual(*decisions, *expected) {
 		t.Fatalf("returned %+v, want %+v", resp, expected)
@@ -126,7 +126,7 @@ func TestDecisionsStream(t *testing.T) {
 
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
+		t.Fatalf("parsing api url: %s", apiURL)
 	}
 
 	//ok answer
@@ -136,7 +136,7 @@ func TestDecisionsStream(t *testing.T) {
 
 	newcli, err := NewDefaultClient(apiURL, "v1", "toto", auth.Client())
 	if err != nil {
-		log.Fatalf("new api client: %s", err)
+		t.Fatalf("new api client: %s", err)
 	}
 
 	tduration := "3h59m55.756182786s"
@@ -167,7 +167,7 @@ func TestDecisionsStream(t *testing.T) {
 	}
 
 	if err != nil {
-		log.Fatalf("new api client: %s", err)
+		t.Fatalf("new api client: %s", err)
 	}
 	if !reflect.DeepEqual(*decisions, *expected) {
 		t.Fatalf("returned %+v, want %+v", resp, expected)
@@ -208,7 +208,7 @@ func TestDeleteDecisions(t *testing.T) {
 	log.Printf("URL is %s", urlx)
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
+		t.Fatalf("parsing api url: %s", apiURL)
 	}
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
@@ -219,7 +219,7 @@ func TestDeleteDecisions(t *testing.T) {
 	})
 
 	if err != nil {
-		log.Fatalf("new api client: %s", err)
+		t.Fatalf("new api client: %s", err)
 	}
 
 	filters := DecisionsDeleteOpts{IPEquals: new(string)}
@@ -315,7 +315,7 @@ func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 // 	log.Printf("URL is %s", urlx)
 // 	apiURL, err := url.Parse(urlx + "/")
 // 	if err != nil {
-// 		log.Fatalf("parsing api url: %s", apiURL)
+// 		t.Fatalf("parsing api url: %s", apiURL)
 // 	}
 // 	client, err := NewClient(&Config{
 // 		MachineID:     "test_login",
@@ -326,7 +326,7 @@ func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 // 	})
 
 // 	if err != nil {
-// 		log.Fatalf("new api client: %s", err.Error())
+// 		t.Fatalf("new api client: %s", err.Error())
 // 	}
 
 // 	filters := DecisionsDeleteOpts{IPEquals: new(string)}
