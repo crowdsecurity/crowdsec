@@ -13,6 +13,7 @@ teardown_file() {
 
 setup() {
     load "../lib/setup.sh"
+    load "../lib/bats-file/load.bash"
     ./instance-data load
 }
 
@@ -58,4 +59,40 @@ teardown() {
 @test "CS_LAPI_SECRET not strong enough" {
     CS_LAPI_SECRET=foo run -1 --separate-stderr timeout 2s "${CROWDSEC}"
     assert_stderr --partial "api server init: unable to run local API: controller init: CS_LAPI_SECRET not strong enough"
+}
+
+@test "crowdsec - reload (change of logfile, disabled agent)" {
+    logdir1=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp -u)
+    log_old="${logdir1}/crowdsec.log"
+    config_set ".common.log_dir=\"${logdir1}\""
+
+    run -0 ./instance-crowdsec start
+    PID="$output"
+    assert_file_exist "$log_old"
+    assert_file_contains "$log_old" "Starting processing data"
+    truncate -s0 "$log_old"
+
+    logdir2=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp -u)
+    log_new="${logdir2}/crowdsec.log"
+    config_set ".common.log_dir=\"${logdir2}\""
+
+    # config_disable_agent
+
+    run -0 kill -1 "$PID"
+    sleep 3
+    assert_file_contains "$log_old" "SIGHUP received, reloading"
+    assert_file_contains "$log_old" "Crowdsec engine shutting down"
+    assert_file_contains "$log_old" "Killing parser routines"
+    assert_file_contains "$log_old" "Bucket routine exiting"
+    assert_file_contains "$log_old" "serve: shutting down api server"
+    assert_file_contains "$log_old" "plugingTomb dying"
+    assert_file_contains "$log_old" "killing all plugins"
+
+    assert_file_exist "$log_new"
+    assert_file_contains "$log_new" "CrowdSec Local API listening on 127.0.0.1:8080"
+    assert_file_contains "$log_new" "Loading grok library /home/marco/src/crowdsec/tests/local/etc/crowdsec/patterns"
+    assert_file_contains "$log_new" "Reload is finished"
+    assert_file_contains "$log_new" "Starting processing data"
+
+    run -0 ./instance-crowdsec stop
 }
