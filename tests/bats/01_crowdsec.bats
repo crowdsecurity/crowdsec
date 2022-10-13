@@ -79,7 +79,12 @@ teardown() {
     config_disable_agent
 
     run -0 kill -1 "$PID"
-    sleep 3
+
+    for ((i=0; i<20; i++)); do
+        sleep 1
+        grep -q "killing all plugins" <"$log_old" && break
+    done
+
     assert_file_contains "$log_old" "SIGHUP received, reloading"
     assert_file_contains "$log_old" "Crowdsec engine shutting down"
     assert_file_contains "$log_old" "Killing parser routines"
@@ -89,8 +94,19 @@ teardown() {
     assert_file_contains "$log_old" "killing all plugins"
 
     assert_file_exist "$log_new"
+
+    for ((i=0; i<20; i++)); do
+        sleep 1
+        grep -q "Reload is finished" <"$log_old" && break
+    done
+
     assert_file_contains "$log_new" "CrowdSec Local API listening on 127.0.0.1:8080"
     assert_file_contains "$log_new" "Reload is finished"
 
     run -0 ./instance-crowdsec stop
 }
+
+
+
+
+
