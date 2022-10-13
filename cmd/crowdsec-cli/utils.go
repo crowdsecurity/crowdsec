@@ -256,18 +256,23 @@ func InspectItem(name string, objecitemType string) {
 		return
 	}
 
-	if csConfig.Prometheus.Enabled {
-		if csConfig.Prometheus.ListenAddr == "" || csConfig.Prometheus.ListenPort == 0 {
-			log.Warningf("No prometheus address or port specified in '%s', can't show metrics", *csConfig.FilePath)
-			return
+	if prometheusURL == "" {
+		//This is technically wrong to do this, as the prometheus section contains a listen address, not an URL to query prometheus
+		//But for ease of use, we will use the listen address as the prometheus URL because it will be 127.0.0.1 in the default case
+		listenAddr := csConfig.Prometheus.ListenAddr
+		if listenAddr == "" {
+			listenAddr = "127.0.0.1"
 		}
-		if prometheusURL == "" {
-			log.Debugf("No prometheus URL provided using: %s:%d", csConfig.Prometheus.ListenAddr, csConfig.Prometheus.ListenPort)
-			prometheusURL = fmt.Sprintf("http://%s:%d/metrics", csConfig.Prometheus.ListenAddr, csConfig.Prometheus.ListenPort)
+		listenPort := csConfig.Prometheus.ListenPort
+		if listenPort == 0 {
+			listenPort = 6060
 		}
-		fmt.Printf("\nCurrent metrics : \n")
-		ShowMetrics(hubItem)
+		prometheusURL = fmt.Sprintf("http://%s:%d/metrics", listenAddr, listenPort)
+		log.Debugf("No prometheus URL provided using: %s", prometheusURL)
 	}
+
+	fmt.Printf("\nCurrent metrics : \n")
+	ShowMetrics(hubItem)
 }
 
 func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *string) error {
