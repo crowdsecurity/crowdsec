@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
-	colorable "github.com/mattn/go-colorable"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -68,7 +68,7 @@ func NewNotificationsCmd() *cobra.Command {
 			}
 
 			if csConfig.Cscli.Output == "human" {
-				notificationListTable(colorable.NewColorableStdout(), ncfgs)
+				notificationListTable(color.Output, ncfgs)
 			} else if csConfig.Cscli.Output == "json" {
 				x, err := json.MarshalIndent(ncfgs, "", " ")
 				if err != nil {

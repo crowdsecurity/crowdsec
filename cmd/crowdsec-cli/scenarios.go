@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	colorable "github.com/mattn/go-colorable"
+	"github.com/fatih/color"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -167,7 +167,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 cscli scenarios list crowdsecurity/xxx`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			ListItems(colorable.NewColorableStdout(), []string{cwhub.SCENARIOS}, args, false, true, all)
+			ListItems(color.Output, []string{cwhub.SCENARIOS}, args, false, true, all)
 		},
 	}
 	cmdScenariosList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")

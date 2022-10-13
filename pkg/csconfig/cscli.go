@@ -1,9 +1,5 @@
 package csconfig
 
-import (
-	"runtime"
-)
-
 /*cscli specific config, such as hub directory*/
 type CscliCfg struct {
 	Output             string            `yaml:"output,omitempty"`
@@ -17,13 +13,6 @@ type CscliCfg struct {
 	HubIndexFile       string            `yaml:"-"`
 	SimulationFilePath string            `yaml:"-"`
 	PrometheusUrl      string            `yaml:"prometheus_uri"`
-}
-
-func ColorDefault() string {
-	if runtime.GOOS == "windows" {
-		return "no"
-	}
-	return "auto"
 }
 
 func (c *Config) LoadCSCLI() error {

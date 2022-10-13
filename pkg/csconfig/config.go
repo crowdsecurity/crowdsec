@@ -95,7 +95,7 @@ func NewDefaultConfig() *Config {
 
 	cscliCfg := CscliCfg{
 		Output: "human",
-		Color:  ColorDefault(),
+		Color:  "auto",
 	}
 
 	apiCfg := APICfg{

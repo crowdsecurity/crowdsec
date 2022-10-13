@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	colorable "github.com/mattn/go-colorable"
+	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -173,7 +173,7 @@ func NewCollectionsCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			ListItems(colorable.NewColorableStdout(), []string{cwhub.COLLECTIONS}, args, false, true, all)
+			ListItems(color.Output, []string{cwhub.COLLECTIONS}, args, false, true, all)
 		},
 	}
 	cmdCollectionsList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")

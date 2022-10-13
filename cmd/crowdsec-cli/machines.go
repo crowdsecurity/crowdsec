@@ -13,9 +13,9 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/enescakir/emoji"
+	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
-	colorable "github.com/mattn/go-colorable"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -189,7 +189,7 @@ Note: This command requires database direct access, so is intended to be run on 
 			}
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			err := getAgents(colorable.NewColorableStdout(), dbClient)
+			err := getAgents(color.Output, dbClient)
 			if err != nil {
 				log.Fatalf("unable to list machines: %s", err)
 			}
