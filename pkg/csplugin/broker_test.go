@@ -78,6 +78,7 @@ func TestGetPluginNameAndTypeFromPath(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			got, got1, err := getPluginTypeAndSubtypeFromPath(tt.args.path)
 			if (err != nil) != tt.wantErr {
@@ -125,6 +126,7 @@ func TestListFilesAtPath(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := listFilesAtPath(tt.args.path)
 			if (err != nil) != tt.wantErr {
@@ -235,6 +237,7 @@ func TestBrokerInit(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.name, func(t *testing.T) {
 			defer tearDown()
 			buildDummyPlugin()

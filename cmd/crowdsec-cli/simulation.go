@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 func addToExclusion(name string) error {
