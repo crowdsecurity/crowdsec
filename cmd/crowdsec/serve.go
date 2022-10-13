@@ -8,15 +8,14 @@ import (
 
 	"github.com/coreos/go-systemd/daemon"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
-	//"github.com/sevlyar/go-daemon"
 )
 
 //nolint: deadcode,unused // debugHandler is kept as a dev convenience : it shuts down and serialize internal state
@@ -38,9 +37,8 @@ func debugHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	return nil
 }
 
-func reloadHandler(sig os.Signal, cConfig *csconfig.Config) error {
+func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 	var tmpFile string
-	var err error
 	/*
 	 re-init tombs
 	*/
@@ -52,18 +50,18 @@ func reloadHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	crowdsecTomb = tomb.Tomb{}
 	pluginTomb = tomb.Tomb{}
 
-	cConfig, err = csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
+	cConfig, err := csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err := LoadConfig(cConfig); err != nil {
-		return err
+		return nil, err
 	}
 	// Configure logging
 	if err = types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, *cConfig.Common.LogLevel,
 		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles, cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs, cConfig.Common.ForceColorLogs); err != nil {
-		return err
+		return nil, err
 	}
 
 	if !cConfig.DisableAPI {
@@ -73,17 +71,19 @@ func reloadHandler(sig os.Signal, cConfig *csconfig.Config) error {
 		}
 		apiServer, err := initAPIServer(cConfig)
 		if err != nil {
-			return errors.Wrap(err, "unable to init api server")
+			return nil, errors.Wrap(err, "unable to init api server")
 		}
 
 		apiReady := make(chan bool, 1)
+		log.Warning("Calling serveAPIServer")
 		serveAPIServer(apiServer, apiReady)
+		log.Warning("and back!")
 	}
 
 	if !cConfig.DisableAgent {
 		csParsers, err := initCrowdsec(cConfig)
 		if err != nil {
-			return errors.Wrap(err, "unable to init crowdsec")
+			return nil, errors.Wrap(err, "unable to init crowdsec")
 		}
 		//restore bucket state
 		if tmpFile != "" {
@@ -105,7 +105,7 @@ func reloadHandler(sig os.Signal, cConfig *csconfig.Config) error {
 			log.Warningf("Failed to delete temp file (%s) : %s", tmpFile, err)
 		}
 	}
-	return nil
+	return cConfig, nil
 }
 
 func ShutdownCrowdsecRoutines() error {
@@ -183,6 +183,11 @@ func shutdown(sig os.Signal, cConfig *csconfig.Config) error {
 }
 
 func HandleSignals(cConfig *csconfig.Config) error {
+	var (
+		newConfig *csconfig.Config
+		err       error
+	)
+
 	signalChan := make(chan os.Signal, 1)
 	//We add os.Interrupt mostly to ease windows dev, it allows to simulate a clean shutdown when running in the console
 	signal.Notify(signalChan,
@@ -204,9 +209,12 @@ func HandleSignals(cConfig *csconfig.Config) error {
 					exitChan <- errors.Wrap(err, "failed shutdown")
 					break Loop
 				}
-				if err := reloadHandler(s, cConfig); err != nil {
+				if newConfig, err = reloadHandler(s); err != nil {
 					exitChan <- errors.Wrap(err, "reload handler failure")
 					break Loop
+				}
+				if newConfig != nil {
+					cConfig = newConfig
 				}
 			// ctrl+C, kill -SIGINT XXXX, kill -SIGTERM XXXX
 			case os.Interrupt, syscall.SIGTERM:
@@ -220,7 +228,7 @@ func HandleSignals(cConfig *csconfig.Config) error {
 		}
 	}()
 
-	err := <-exitChan
+	err = <-exitChan
 	if err == nil {
 		log.Warning("Crowdsec service shutting down")
 	}

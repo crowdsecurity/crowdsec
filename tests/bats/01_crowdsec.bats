@@ -76,7 +76,7 @@ teardown() {
     log_new="${logdir2}/crowdsec.log"
     config_set ".common.log_dir=\"${logdir2}\""
 
-    # config_disable_agent
+    config_disable_agent
 
     run -0 kill -1 "$PID"
     sleep 3
@@ -90,9 +90,7 @@ teardown() {
 
     assert_file_exist "$log_new"
     assert_file_contains "$log_new" "CrowdSec Local API listening on 127.0.0.1:8080"
-    assert_file_contains "$log_new" "Loading grok library /home/marco/src/crowdsec/tests/local/etc/crowdsec/patterns"
     assert_file_contains "$log_new" "Reload is finished"
-    assert_file_contains "$log_new" "Starting processing data"
 
     run -0 ./instance-crowdsec stop
 }

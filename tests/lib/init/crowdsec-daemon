@@ -50,13 +50,6 @@ stop() {
            kill -- "-${PGID}"
        fi
 
-       # try harder
-       PGID="$(ps -o pgid= -p "$(cat "${DAEMON_PID}")" | tr -d ' ')"
-       if [[ -n "${PGID}" ]]; then
-           echo "** SIGKILL: hung crowdsec process?? **" >&2
-           kill -9 -- "-${PGID}"
-       fi
-
        rm -f -- "${DAEMON_PID}"
     fi
 }
