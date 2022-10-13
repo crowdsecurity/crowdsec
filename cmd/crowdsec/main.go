@@ -3,29 +3,26 @@ package main
 import (
 	"flag"
 	"fmt"
+	_ "net/http/pprof"
 	"os"
 	"runtime"
 	"sort"
 	"strings"
-
-	_ "net/http/pprof"
 	"time"
 
 	"github.com/confluentinc/bincover"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/tomb.v2"
+
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
-	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/pkg/errors"
-
-	log "github.com/sirupsen/logrus"
-
-	"gopkg.in/tomb.v2"
 )
 
 var (
@@ -43,8 +40,8 @@ var (
 	/*the state of acquisition*/
 	dataSources []acquisition.DataSource
 	/*the state of the buckets*/
-	holders         []leaky.BucketFactory
-	buckets         *leaky.Buckets
+	holders         []leakybucket.BucketFactory
+	buckets         *leakybucket.Buckets
 	outputEventChan chan types.Event //the buckets init returns its own chan that is used for multiplexing
 	/*settings*/
 	lastProcessedItem time.Time /*keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.*/
@@ -122,13 +119,13 @@ func LoadBuckets(cConfig *csconfig.Config) error {
 			files = append(files, hubScenarioItem.LocalPath)
 		}
 	}
-	buckets = leaky.NewBuckets()
+	buckets = leakybucket.NewBuckets()
 
 	log.Infof("Loading %d scenario files", len(files))
-	holders, outputEventChan, err = leaky.LoadBuckets(cConfig.Crowdsec, files, &bucketsTomb, buckets)
+	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, files, &bucketsTomb, buckets)
 
 	if err != nil {
-		return fmt.Errorf("Scenario loading failed : %v", err)
+		return fmt.Errorf("scenario loading failed: %v", err)
 	}
 
 	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
