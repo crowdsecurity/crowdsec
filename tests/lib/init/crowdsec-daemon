@@ -37,6 +37,7 @@ start() {
         -o "${LOG_DIR}/crowdsec.out" \
         "${CROWDSEC}"
     ./bin/wait-for-port 6060
+    cat "$DAEMON_PID"
 }
 
 stop() {
@@ -48,6 +49,7 @@ stop() {
        if [[ -n "${PGID}" ]]; then
            kill -- "-${PGID}"
        fi
+
        rm -f -- "${DAEMON_PID}"
     fi
 }
