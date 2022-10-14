@@ -77,7 +77,7 @@ func TestApiAuth(t *testing.T) {
 		t.Fatalf("new api client: %s", err)
 	}
 
-	_, resp, err = newcli.Decisions.List(context.Background(), alert)
+	_, _, err = newcli.Decisions.List(context.Background(), alert)
 	require.Error(t, err)
 
 	log.Infof("--> %s", err)

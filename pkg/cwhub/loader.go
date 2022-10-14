@@ -17,7 +17,7 @@ import (
 /*the walk/parser_visit function can't receive extra args*/
 var hubdir, installdir string
 
-func parser_visit(path string, f os.FileInfo, err error) error {
+func parser_visit(path string, f os.DirEntry, err error) error {
 
 	var target Item
 	var local bool
@@ -27,6 +27,12 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 	var ftype string
 	var fauthor string
 	var stage string
+
+	if err != nil {
+		log.Warningf("error while syncing hub dir: %v", err)
+		// there is a path error, we ignore the file
+		return nil
+	}
 
 	path, err = filepath.Abs(path)
 	if err != nil {
@@ -96,7 +102,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		when the collection is installed, both files are created
 	*/
 	//non symlinks are local user files or hub files
-	if f.Mode()&os.ModeSymlink == 0 {
+	if f.Type() & os.ModeSymlink == 0 {
 		local = true
 		log.Tracef("%s isn't a symlink", path)
 	} else {
@@ -309,7 +315,7 @@ func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
 		if err != nil {
 			log.Errorf("failed %s : %s", cpath, err)
 		}
-		err = filepath.Walk(cpath, parser_visit)
+		err = filepath.WalkDir(cpath, parser_visit)
 		if err != nil {
 			return err, warnings
 		}
