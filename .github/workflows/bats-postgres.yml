@@ -14,7 +14,7 @@ jobs:
     timeout-minutes: 20
     services:
       database:
-        image: postgres:latest
+        image: postgres:14
         env:
           POSTGRES_PASSWORD: "secret"
         ports:
