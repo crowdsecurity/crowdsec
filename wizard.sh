@@ -552,6 +552,15 @@ uninstall_crowdsec() {
     log_info "crowdsec successfully uninstalled"
 }
 
+install_cronjob() {
+    log_info Installing Hub Cronjob
+    if [[ -d /etc/cron.daily/ ]] && [[ ! -f /etc/cron.daily/crowdsec.hub.cron ]]
+        echo "/usr/bin/cscli hub update" >> /etc/cron.daily/crowdsec.hub.cron
+        echo "/usr/bin/cscli hub upgrade" >> /etc/cron.daily/crowdsec.hub.cron
+        chmod 700 /etc/cron.daily/crowdsec.hub.cron
+    fi
+}
+
 
 function show_link {
     echo ""
@@ -618,6 +627,7 @@ main() {
         ${CSCLI_BIN_INSTALLED} hub update
         install_collection
         genacquisition
+        install_cronjob
         if ! skip_tmp_acquis; then
             mv "${TMP_ACQUIS_FILE}" "${ACQUIS_TARGET}"
         fi
@@ -692,7 +702,8 @@ main() {
         mkdir -p "${PATTERNS_PATH}"
         cp "./${PATTERNS_FOLDER}/"* "${PATTERNS_PATH}/"
 
-
+        # install hub cronjob
+        install_cronjob
         # api register
         ${CSCLI_BIN_INSTALLED} machines add --force "$(cat /etc/machine-id)" -a -f "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}" || log_fatal "unable to add machine to the local API"
         log_dbg "Crowdsec LAPI registered" 
