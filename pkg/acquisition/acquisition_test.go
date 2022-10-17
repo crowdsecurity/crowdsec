@@ -6,16 +6,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cstest"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	tomb "gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 	"gotest.tools/v3/assert"
+
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type MockSource struct {
@@ -226,7 +227,7 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 			Config: csconfig.CrowdsecServiceCfg{
 				AcquisitionFiles: []string{"does_not_exist"},
 			},
-			ExpectedError: "can't open does_not_exist",
+			ExpectedError: cstest.FileNotFoundMessage,
 			ExpectedLen:   0,
 		},
 		{
@@ -282,18 +283,8 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 	}
 	for _, test := range tests {
 		dss, err := LoadAcquisitionFromFile(&test.Config)
-		if test.ExpectedError != "" {
-			if err == nil {
-				t.Fatalf("expected error %s, got none", test.ExpectedError)
-			}
-			if !strings.Contains(err.Error(), test.ExpectedError) {
-				t.Fatalf("%s : expected error '%s' in '%s'", test.TestName, test.ExpectedError, err)
-			}
-			continue
-		}
-		if err != nil {
-			t.Fatalf("%s : unexpected error '%s'", test.TestName, err)
-		}
+		cstest.RequireErrorContains(t, err, test.ExpectedError)
+
 		if len(dss) != test.ExpectedLen {
 			t.Fatalf("%s : expected %d datasources got %d", test.TestName, test.ExpectedLen, len(dss))
 		}
