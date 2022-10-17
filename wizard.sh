@@ -554,7 +554,7 @@ uninstall_crowdsec() {
 }
 
 install_cronjob() {
-    log_info Installing Hub Cronjob
+    log_info "Installing Hub Cronjob"
     if [[ -d /etc/cron.daily/ ]] && [[ ! -f $CRON_NAME ]]; then
         echo "/usr/bin/cscli hub update" >> $CRON_NAME
         echo "/usr/bin/cscli hub upgrade" >> $CRON_NAME
@@ -564,7 +564,7 @@ install_cronjob() {
 
 uninstall_cronjob() {
     if [[ -d /etc/cron.daily/ ]] && [[ -f $CRON_NAME ]]; then
-        log_info Uninstall Hub Cronjob
+        log_info "Uninstall Hub Cronjob"
         rm $CRON_NAME
     fi
 }
