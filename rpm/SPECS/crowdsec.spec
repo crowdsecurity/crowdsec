@@ -175,6 +175,7 @@ if [ $1 == 1 ]; then
     fi
 
     cscli hub update
+    install_cronjob
     CSCLI_BIN_INSTALLED="/usr/bin/cscli" SILENT=true install_collection
 
 #upgrade
