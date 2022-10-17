@@ -129,3 +129,51 @@ teardown() {
     run -0 ./instance-crowdsec stop
 }
 
+@test "crowdsec (error if the acquisition_path file is defined but missing)" {
+    ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
+    rm -f "$ACQUIS_YAML"
+
+    run -1 --separate-stderr timeout 2s "${CROWDSEC}"
+    assert_stderr_line --partial "acquis.yaml: no such file or directory"
+}
+
+@test "crowdsec (error if acquisition_path is not defined and acquisition_dir is empty)" {
+    ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
+    rm -f "$ACQUIS_YAML"
+    config_set '.crowdsec_service.acquisition_path=""'
+
+    ACQUIS_DIR=$(config_get '.crowdsec_service.acquisition_dir')
+    rm -f "$ACQUIS_DIR"
+
+    config_set '.common.log_media="stdout"'
+    run -124 --separate-stderr timeout 2s "${CROWDSEC}"
+    # check warning
+    assert_stderr_line --partial "no acquisition file found"
+}
+
+@test "crowdsec (error if acquisition_path and acquisition_dir are not defined)" {
+    ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
+    rm -f "$ACQUIS_YAML"
+    config_set '.crowdsec_service.acquisition_path=""'
+
+    ACQUIS_DIR=$(config_get '.crowdsec_service.acquisition_dir')
+    rm -f "$ACQUIS_DIR"
+    config_set '.crowdsec_service.acquisition_dir=""'
+
+    config_set '.common.log_media="stdout"'
+    run -124 --separate-stderr timeout 2s "${CROWDSEC}"
+    # check warning
+    assert_stderr_line --partial "no acquisition_path or acquisition_dir specified"
+}
+
+@test "crowdsec (no error if acquisition_path is empty string but acquisition_dir is not empty)" {
+    ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
+    rm -f "$ACQUIS_YAML"
+    config_set '.crowdsec_service.acquisition_path=""'
+
+    ACQUIS_DIR=$(config_get '.crowdsec_service.acquisition_dir')
+    mkdir -p "$ACQUIS_DIR"
+    touch "$ACQUIS_DIR"/foo.yaml
+
+    run -124 --separate-stderr timeout 2s "${CROWDSEC}"
+}

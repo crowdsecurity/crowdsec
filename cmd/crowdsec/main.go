@@ -153,7 +153,7 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 	} else {
 		dataSources, err = acquisition.LoadAcquisitionFromFile(cConfig.Crowdsec)
 		if err != nil {
-			return errors.Wrap(err, "while loading acquisition configuration")
+			return err
 		}
 	}
 
