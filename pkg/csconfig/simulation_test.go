@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 )
 
 func TestSimulationLoading(t *testing.T) {
@@ -74,41 +76,22 @@ func TestSimulationLoading(t *testing.T) {
 		},
 	}
 
-	if runtime.GOOS == "windows" {
-		tests = append(tests, struct {
-			name           string
-			Input          *Config
-			expectedResult *SimulationConfig
-			err            string
-		}{
-			name: "basic bad file name",
-			Input: &Config{
-				ConfigPaths: &ConfigurationPaths{
-					SimulationFilePath: "./tests/xxx.yaml",
-					DataDir:            "./data",
-				},
-				Crowdsec: &CrowdsecServiceCfg{},
+	tests = append(tests, struct {
+		name           string
+		Input          *Config
+		expectedResult *SimulationConfig
+		err            string
+	}{
+		name: "basic bad file name",
+		Input: &Config{
+			ConfigPaths: &ConfigurationPaths{
+				SimulationFilePath: "./tests/xxx.yaml",
+				DataDir:            "./data",
 			},
-			err: fmt.Sprintf("while reading yaml file: open %s: The system cannot find the file specified.", testXXFullPath),
-		})
-	} else {
-		tests = append(tests, struct {
-			name           string
-			Input          *Config
-			expectedResult *SimulationConfig
-			err            string
-		}{
-			name: "basic bad file name",
-			Input: &Config{
-				ConfigPaths: &ConfigurationPaths{
-					SimulationFilePath: "./tests/xxx.yaml",
-					DataDir:            "./data",
-				},
-				Crowdsec: &CrowdsecServiceCfg{},
-			},
-			err: fmt.Sprintf("while reading yaml file: open %s: no such file or directory", testXXFullPath),
-		})
-	}
+			Crowdsec: &CrowdsecServiceCfg{},
+		},
+		err: fmt.Sprintf("while reading yaml file: open %s: %s", testXXFullPath, cstest.FileNotFoundMessage),
+	})
 
 	for idx, test := range tests {
 		err := test.Input.LoadSimulation()

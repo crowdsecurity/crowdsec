@@ -13,14 +13,15 @@ import (
 	"testing"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 var testPath string
@@ -172,7 +173,7 @@ func TestBrokerInit(t *testing.T) {
 		{
 			name:        "no plugin dir",
 			wantErr:     true,
-			errContains: "no such file or directory",
+			errContains: cstest.FileNotFoundMessage,
 			action:      tearDown,
 		},
 		{

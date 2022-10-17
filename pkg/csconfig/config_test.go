@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 )
 
 func TestNormalLoad(t *testing.T) {
@@ -17,11 +19,7 @@ func TestNormalLoad(t *testing.T) {
 	}
 
 	_, err = NewConfig("./tests/xxx.yaml", false, false)
-	if runtime.GOOS != "windows" {
-		assert.EqualError(t, err, "while reading yaml file: open ./tests/xxx.yaml: no such file or directory")
-	} else {
-		assert.EqualError(t, err, "while reading yaml file: open ./tests/xxx.yaml: The system cannot find the file specified.")
-	}
+	assert.EqualError(t, err, "while reading yaml file: open ./tests/xxx.yaml: "+cstest.FileNotFoundMessage)
 
 	_, err = NewConfig("./tests/simulation.yaml", false, false)
 	assert.EqualError(t, err, "./tests/simulation.yaml: yaml: unmarshal errors:\n  line 1: field simulation not found in type csconfig.Config")
