@@ -68,6 +68,7 @@ telnet
 smb
 '
 
+CRON_NAME=/etc/cron.daily/crowdsec-hub
 
 HTTP_PLUGIN_BINARY="./plugins/notifications/http/notification-http"
 SLACK_PLUGIN_BINARY="./plugins/notifications/slack/notification-slack"
@@ -554,10 +555,17 @@ uninstall_crowdsec() {
 
 install_cronjob() {
     log_info Installing Hub Cronjob
-    if [[ -d /etc/cron.daily/ ]] && [[ ! -f /etc/cron.daily/crowdsec.hub.cron ]]
-        echo "/usr/bin/cscli hub update" >> /etc/cron.daily/crowdsec.hub.cron
-        echo "/usr/bin/cscli hub upgrade" >> /etc/cron.daily/crowdsec.hub.cron
-        chmod 700 /etc/cron.daily/crowdsec.hub.cron
+    if [[ -d /etc/cron.daily/ ]] && [[ ! -f $CRON_NAME ]]; then
+        echo "/usr/bin/cscli hub update" >> $CRON_NAME
+        echo "/usr/bin/cscli hub upgrade" >> $CRON_NAME
+        chmod 755 $CRON_NAME
+    fi
+}
+
+uninstall_cronjob() {
+    if [[ -d /etc/cron.daily/ ]] && [[ -f $CRON_NAME ]]; then
+        log_info Uninstall Hub Cronjob
+        rm $CRON_NAME
     fi
 }
 
@@ -648,6 +656,7 @@ main() {
         fi
         check_running_bouncers
         uninstall_crowdsec
+        uninstall_cronjob
         return
     fi
 
