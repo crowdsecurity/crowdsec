@@ -228,7 +228,7 @@ if [ $1 == 0 ]; then
     rm -rf /etc/crowdsec/hub
 fi
 
-if [[ -d /etc/cron.daily/ ]] && [[ -f /etc/cron.daily/crowdsec-hub ]]; then
+if [ -d "/etc/cron.daily/" ] && [ -f "/etc/cron.daily/crowdsec-hub" ]; then
     rm /etc/cron.daily/crowdsec-hub
 fi
 
