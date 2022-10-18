@@ -52,7 +52,6 @@ mkdir -p %{buildroot}%{_sharedstatedir}/%{name}/plugins
 mkdir -p %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 mkdir -p %{buildroot}%{_libdir}/%{name}/plugins/
 
-mkdir -p %{buildroot}%{_sysconfdir}/cron.daily
 
 install -m 755 -D cmd/crowdsec/crowdsec %{buildroot}%{_bindir}/%{name}
 install -m 755 -D cmd/crowdsec-cli/cscli %{buildroot}%{_bindir}/cscli
