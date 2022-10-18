@@ -29,7 +29,7 @@ func parser_visit(path string, f os.DirEntry, err error) error {
 	var stage string
 
 	if err != nil {
-		log.Warningf("error while syncing hub dir: %v", err)
+		log.Debugf("while syncing hub dir: %s", err)
 		// there is a path error, we ignore the file
 		return nil
 	}
