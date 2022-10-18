@@ -51,8 +51,12 @@ type PluginWatcher struct {
 	Inserts                chan string
 	tomb                   *tomb.Tomb
 }
+type MutexTicker struct {
+	sync.Mutex
+	ticker time.Duration
+}
 
-var DefaultEmptyTicker = time.Second * 1
+var DefaultEmptyTicker = MutexTicker{ticker: time.Second}
 
 func (pw *PluginWatcher) Init(configs map[string]PluginConfig, alertsByPluginName map[string][]*models.Alert) {
 	pw.PluginConfigByName = configs
@@ -90,23 +94,24 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 	interval := pw.PluginConfigByName[pluginName].GroupWait
 	threshold := pw.PluginConfigByName[pluginName].GroupThreshold
 
+	DefaultEmptyTicker.Lock()
+	watchTime = DefaultEmptyTicker.ticker
+	watchTimeIsDefault := true
 	//only size is set
 	if threshold > 0 && interval == 0 {
 		watchCount = threshold
-		watchTime = DefaultEmptyTicker
 	} else if interval != 0 && threshold == 0 {
 		//only time is set
 		watchTime = interval
+		watchTimeIsDefault = false
 	} else if interval != 0 && threshold != 0 {
 		//both are set
-		watchTime = DefaultEmptyTicker
 		watchCount = threshold
 	} else {
 		//none are set, we sent every event we receive
-		watchTime = DefaultEmptyTicker
 		watchCount = 1
 	}
-
+	DefaultEmptyTicker.Unlock()
 	ticker := time.NewTicker(watchTime)
 	var lastSend time.Time = time.Now()
 	for {
@@ -126,7 +131,7 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 			}
 
 			//if we hit timer because it was set low to honor count, check if we should trigger
-			if watchTime == DefaultEmptyTicker && watchTime != interval && interval != 0 {
+			if watchTimeIsDefault && watchTime != interval && interval != 0 {
 				if lastSend.Add(interval).Before(time.Now()) {
 					log.Tracef("sending alerts to %s, duration %s elapsed", pluginName, interval)
 					send = true
