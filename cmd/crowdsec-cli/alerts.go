@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
-	colorable "github.com/mattn/go-colorable"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -86,7 +86,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 			fmt.Println("No active alerts")
 			return nil
 		}
-		alertsTable(colorable.NewColorableStdout(), alerts, printMachine)
+		alertsTable(color.Output, alerts, printMachine)
 	}
 	return nil
 }
@@ -110,12 +110,12 @@ func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 		fmt.Printf(" - Begin      : %s\n", *alert.StartAt)
 		fmt.Printf(" - End        : %s\n\n", *alert.StopAt)
 
-		alertDecisionsTable(colorable.NewColorableStdout(), alert)
+		alertDecisionsTable(color.Output, alert)
 
 		if withDetail {
 			fmt.Printf("\n - Events  :\n")
 			for _, event := range alert.Events {
-				alertEventTable(colorable.NewColorableStdout(), event)
+				alertEventTable(color.Output, event)
 			}
 		}
 	}

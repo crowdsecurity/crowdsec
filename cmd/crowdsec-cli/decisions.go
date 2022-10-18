@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
 	"github.com/jszwec/csvutil"
-	colorable "github.com/mattn/go-colorable"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -97,7 +97,7 @@ func DecisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error
 			fmt.Println("No active decisions")
 			return nil
 		}
-		decisionsTable(colorable.NewColorableStdout(), alerts, printMachine)
+		decisionsTable(color.Output, alerts, printMachine)
 		if skipped > 0 {
 			fmt.Printf("%d duplicated entries skipped\n", skipped)
 		}

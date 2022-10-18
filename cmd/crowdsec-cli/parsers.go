@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	colorable "github.com/mattn/go-colorable"
+	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -164,7 +164,7 @@ cscli parsers remove crowdsecurity/sshd-logs
 cscli parser list crowdsecurity/xxx`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			ListItems(colorable.NewColorableStdout(), []string{cwhub.PARSERS}, args, false, true, all)
+			ListItems(color.Output, []string{cwhub.PARSERS}, args, false, true, all)
 		},
 	}
 	cmdParsersList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")

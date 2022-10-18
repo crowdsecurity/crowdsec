@@ -175,6 +175,7 @@ if [ $1 == 1 ]; then
     fi
 
     cscli hub update
+    install_cronjob
     CSCLI_BIN_INSTALLED="/usr/bin/cscli" SILENT=true install_collection
 
 #upgrade
@@ -225,6 +226,10 @@ fi
 
 if [ $1 == 0 ]; then
     rm -rf /etc/crowdsec/hub
+fi
+
+if [ -d "/etc/cron.daily/" ] && [ -f "/etc/cron.daily/crowdsec-hub" ]; then
+    rm /etc/cron.daily/crowdsec-hub
 fi
 
 #systemctl stop crowdsec || echo "crowdsec was not started"

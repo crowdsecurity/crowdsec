@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	colorable "github.com/mattn/go-colorable"
+	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -57,7 +57,7 @@ cscli hub update # Download list of available configurations from the hub
 				log.Info(v)
 			}
 			cwhub.DisplaySummary()
-			ListItems(colorable.NewColorableStdout(), []string{
+			ListItems(color.Output, []string{
 				cwhub.COLLECTIONS, cwhub.PARSERS, cwhub.SCENARIOS, cwhub.PARSERS_OVFLW,
 			}, args, true, false, all)
 		},

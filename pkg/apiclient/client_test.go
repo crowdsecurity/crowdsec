@@ -46,7 +46,7 @@ func TestNewClientOk(t *testing.T) {
 	defer teardown()
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
+		t.Fatalf("parsing api url: %s", apiURL)
 	}
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
@@ -83,7 +83,7 @@ func TestNewClientKo(t *testing.T) {
 	defer teardown()
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
+		t.Fatalf("parsing api url: %s", apiURL)
 	}
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
@@ -116,7 +116,7 @@ func TestNewDefaultClient(t *testing.T) {
 	defer teardown()
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
+		t.Fatalf("parsing api url: %s", apiURL)
 	}
 	client, err := NewDefaultClient(apiURL, "/v1", "", nil)
 	if err != nil {

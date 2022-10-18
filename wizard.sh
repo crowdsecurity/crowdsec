@@ -68,6 +68,7 @@ telnet
 smb
 '
 
+CRON_NAME=/etc/cron.daily/crowdsec-hub
 
 HTTP_PLUGIN_BINARY="./plugins/notifications/http/notification-http"
 SLACK_PLUGIN_BINARY="./plugins/notifications/slack/notification-slack"
@@ -552,6 +553,22 @@ uninstall_crowdsec() {
     log_info "crowdsec successfully uninstalled"
 }
 
+install_cronjob() {
+    log_info "Installing Hub Cronjob"
+    if [[ -d /etc/cron.daily/ ]] && [[ ! -f $CRON_NAME ]]; then
+        echo "/usr/bin/cscli hub update" >> $CRON_NAME
+        echo "/usr/bin/cscli hub upgrade" >> $CRON_NAME
+        chmod 755 $CRON_NAME
+    fi
+}
+
+uninstall_cronjob() {
+    if [[ -d /etc/cron.daily/ ]] && [[ -f $CRON_NAME ]]; then
+        log_info "Uninstall Hub Cronjob"
+        rm $CRON_NAME
+    fi
+}
+
 
 function show_link {
     echo ""
@@ -618,6 +635,7 @@ main() {
         ${CSCLI_BIN_INSTALLED} hub update
         install_collection
         genacquisition
+        install_cronjob
         if ! skip_tmp_acquis; then
             mv "${TMP_ACQUIS_FILE}" "${ACQUIS_TARGET}"
         fi
@@ -638,6 +656,7 @@ main() {
         fi
         check_running_bouncers
         uninstall_crowdsec
+        uninstall_cronjob
         return
     fi
 
@@ -692,7 +711,8 @@ main() {
         mkdir -p "${PATTERNS_PATH}"
         cp "./${PATTERNS_FOLDER}/"* "${PATTERNS_PATH}/"
 
-
+        # install hub cronjob
+        install_cronjob
         # api register
         ${CSCLI_BIN_INSTALLED} machines add --force "$(cat /etc/machine-id)" -a -f "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}" || log_fatal "unable to add machine to the local API"
         log_dbg "Crowdsec LAPI registered" 

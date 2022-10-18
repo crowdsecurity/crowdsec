@@ -47,7 +47,6 @@ func metricsToTable(t *table.Table, stats map[string]map[string]int, keys []stri
 	if t == nil {
 		return 0, fmt.Errorf("nil table")
 	}
-
 	// sort keys to keep consistent order when printing
 	sortedKeys := []string{}
 	for k := range stats {
@@ -77,6 +76,7 @@ func metricsToTable(t *table.Table, stats map[string]map[string]int, keys []stri
 			}
 		}
 		t.AddRow(row...)
+		numRows++
 	}
 	return numRows, nil
 }

@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/confluentinc/bincover"
+	"github.com/fatih/color"
+	cc "github.com/ivanpirog/coloredcobra"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
@@ -140,6 +142,21 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 		SilenceUsage:      true,
 		/*TBD examples*/
 	}
+
+	cc.Init(&cc.Config{
+		RootCmd: rootCmd,
+		Headings: cc.Yellow,
+		Commands: cc.Green + cc.Bold,
+		CmdShortDescr: cc.Cyan,
+		Example: cc.Italic,
+		ExecName: cc.Bold,
+		Aliases: cc.Bold + cc.Italic,
+		FlagsDataType: cc.White,
+		Flags: cc.Green,
+		FlagsDescr: cc.Cyan,
+	})
+	rootCmd.SetOut(color.Output)
+
 	var cmdDocGen = &cobra.Command{
 		Use:               "doc",
 		Short:             "Generate the documentation in `./doc/`. Directory must exist.",
@@ -167,7 +184,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 
 	rootCmd.PersistentFlags().StringVarP(&ConfigFilePath, "config", "c", csconfig.DefaultConfigPath("config.yaml"), "path to crowdsec config file")
 	rootCmd.PersistentFlags().StringVarP(&OutputFormat, "output", "o", "", "Output format: human, json, raw.")
-	rootCmd.PersistentFlags().StringVarP(&OutputColor, "color", "", csconfig.ColorDefault(), "Output color: yes, no, auto.")
+	rootCmd.PersistentFlags().StringVarP(&OutputColor, "color", "", "auto", "Output color: yes, no, auto.")
 	rootCmd.PersistentFlags().BoolVar(&dbg_lvl, "debug", false, "Set logging to debug.")
 	rootCmd.PersistentFlags().BoolVar(&nfo_lvl, "info", false, "Set logging to info.")
 	rootCmd.PersistentFlags().BoolVar(&wrn_lvl, "warning", false, "Set logging to warning.")
