@@ -1,6 +1,4 @@
 #!/bin/sh
-/usr/bin/cscli --error hub update && /usr/bin/cscli --error hub upgrade
-if [ $(/usr/bin/systemctl is-enabled crowdsec.service) = "enabled" ]; then
-    /usr/bin/systemctl reload crowdsec.service
-fi
+cscli --error hub update && cscli --error hub upgrade
+systemctl reload crowdsec
 exit 0
