@@ -97,7 +97,6 @@ func (lim *Limiter) Load(st Lstate) {
 	lim.tokens = st.Tokens
 	lim.last = st.Last
 	lim.lastEvent = st.LastEvent
-	return
 }
 
 // Limit returns the maximum overall event rate.

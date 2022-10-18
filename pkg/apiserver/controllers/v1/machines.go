@@ -10,7 +10,6 @@ import (
 )
 
 func (c *Controller) CreateMachine(gctx *gin.Context) {
-	defer types.CatchPanic("crowdsec/controllersV1/CreateMachine")
 	var err error
 	var input models.WatcherRegistrationRequest
 	if err = gctx.ShouldBindJSON(&input); err != nil {
@@ -22,12 +21,11 @@ func (c *Controller) CreateMachine(gctx *gin.Context) {
 		return
 	}
 
-	_, err = c.DBClient.CreateMachine(input.MachineID, input.Password, gctx.ClientIP(), false, false)
+	_, err = c.DBClient.CreateMachine(input.MachineID, input.Password, gctx.ClientIP(), false, false, types.PasswordAuthType)
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
 	}
 
 	gctx.Status(http.StatusCreated)
-	return
 }

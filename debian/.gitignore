@@ -1,0 +1,7 @@
+# Generated during the build
+/crowdsec
+/files
+/*.substvars
+/*.log
+/*.debhelper
+/*-stamp

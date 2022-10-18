@@ -1,0 +1,8 @@
+Source: crowdsec
+Maintainer: Crowdsec Team <debian@crowdsec.net>
+Build-Depends: debhelper, jq, bash, git
+
+Package: crowdsec
+Architecture: any
+Description: Crowdsec - An open-source, lightweight agent to detect and respond to bad behaviours. It also automatically benefits from our global community-wide IP reputation database
+Depends: coreutils

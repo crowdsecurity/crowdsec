@@ -1,0 +1,13 @@
+--- config/crowdsec.service-orig	2022-03-24 09:46:16.581681532 +0000
++++ config/crowdsec.service	2022-03-24 09:46:28.761681532 +0000
+@@ -5,8 +5,8 @@
+ [Service]
+ Type=notify
+ Environment=LC_ALL=C LANG=C
+-ExecStartPre=/usr/local/bin/crowdsec -c /etc/crowdsec/config.yaml -t
+-ExecStart=/usr/local/bin/crowdsec -c /etc/crowdsec/config.yaml
++ExecStartPre=/usr/bin/crowdsec -c /etc/crowdsec/config.yaml -t
++ExecStart=/usr/bin/crowdsec -c /etc/crowdsec/config.yaml
+ #ExecStartPost=/bin/sleep 0.1
+ ExecReload=/bin/kill -HUP $MAINPID
+ 

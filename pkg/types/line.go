@@ -8,4 +8,5 @@ type Line struct {
 	Time    time.Time         //acquis time
 	Labels  map[string]string `yaml:"Labels,omitempty"`
 	Process bool
+	Module  string `yaml:"Module,omitempty"`
 }

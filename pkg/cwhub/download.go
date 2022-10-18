@@ -3,28 +3,24 @@ package cwhub
 import (
 	"bytes"
 	"crypto/sha256"
-	"path/filepath"
-
-	//"errors"
-	"github.com/pkg/errors"
-
-	//"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
+	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
 
-func UpdateHubIdx(cscli *csconfig.CscliCfg) error {
+func UpdateHubIdx(hub *csconfig.Hub) error {
 
-	bidx, err := DownloadHubIdx(cscli)
+	bidx, err := DownloadHubIdx(hub)
 	if err != nil {
 		return errors.Wrap(err, "failed to download index")
 	}
@@ -35,15 +31,15 @@ func UpdateHubIdx(cscli *csconfig.CscliCfg) error {
 		}
 	}
 	hubIdx = ret
-	if err := LocalSync(cscli); err != nil {
+	if err, _ := LocalSync(hub); err != nil {
 		return errors.Wrap(err, "failed to sync")
 	}
 	return nil
 }
 
-func DownloadHubIdx(cscli *csconfig.CscliCfg) ([]byte, error) {
+func DownloadHubIdx(hub *csconfig.Hub) ([]byte, error) {
 	log.Debugf("fetching index from branch %s (%s)", HubBranch, fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile))
-	req, err := http.NewRequest("GET", fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile), nil)
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile), nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build request for hub index")
 	}
@@ -51,15 +47,15 @@ func DownloadHubIdx(cscli *csconfig.CscliCfg) ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed http request for hub index")
 	}
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("bad http code %d while requesting %s", resp.StatusCode, req.URL.String())
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read request answer for hub index")
 	}
-	file, err := os.OpenFile(cscli.HubIndexFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	file, err := os.OpenFile(hub.HubIndexFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "while opening hub index file")
@@ -68,64 +64,74 @@ func DownloadHubIdx(cscli *csconfig.CscliCfg) ([]byte, error) {
 
 	wsize, err := file.WriteString(string(body))
 	if err != nil {
-		return nil, errors.Wrap(err, "while writting hub index file")
+		return nil, errors.Wrap(err, "while writing hub index file")
 	}
-	log.Infof("Wrote new %d bytes index to %s", wsize, cscli.HubIndexFile)
+	log.Infof("Wrote new %d bytes index to %s", wsize, hub.HubIndexFile)
 	return body, nil
 }
 
 //DownloadLatest will download the latest version of Item to the tdir directory
-func DownloadLatest(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item, error) {
+func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool, updateOnly bool) (Item, error) {
 	var err error
 
 	log.Debugf("Downloading %s %s", target.Type, target.Name)
-	if target.Type == COLLECTIONS {
-		var tmp = [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections}
-		for idx, ptr := range tmp {
-			ptrtype := ItemTypes[idx]
-			for _, p := range ptr {
-				if val, ok := hubIdx[ptrtype][p]; ok {
-					log.Debugf("Download %s sub-item : %s %s", target.Name, ptrtype, p)
-					//recurse as it's a collection
-					if ptrtype == COLLECTIONS {
-						log.Tracef("collection, recurse")
-						hubIdx[ptrtype][p], err = DownloadLatest(cscli, val, overwrite)
-						if err != nil {
-							return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
-						}
-					}
-					item, err := DownloadItem(cscli, val, overwrite)
-					if err != nil {
-						return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
-					}
+	if target.Type != COLLECTIONS {
+		if !target.Installed && updateOnly && target.Downloaded {
+			log.Debugf("skipping upgrade of %s : not installed", target.Name)
+			return target, nil
+		}
+		return DownloadItem(hub, target, overwrite)
+	}
 
-					// We need to enable an item when it has been added to a collection since latest release of the collection.
-					// We check if val.Downloaded is false because maybe the item has been disabled by the user.
-					if !item.Installed && !val.Downloaded {
-						if item, err = EnableItem(cscli, item); err != nil {
-							return target, errors.Wrapf(err, "enabling '%s'", item.Name)
-						}
-					}
-					hubIdx[ptrtype][p] = item
-				} else {
-					return target, fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
+	// collection
+	var tmp = [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections}
+	for idx, ptr := range tmp {
+		ptrtype := ItemTypes[idx]
+		for _, p := range ptr {
+			val, ok := hubIdx[ptrtype][p]
+			if !ok {
+				return target, fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
+			}
+
+			if !val.Installed && updateOnly && val.Downloaded {
+				log.Debugf("skipping upgrade of %s : not installed", target.Name)
+				continue
+			}
+
+			log.Debugf("Download %s sub-item : %s %s (%t -> %t)", target.Name, ptrtype, p, target.Installed, updateOnly)
+			//recurse as it's a collection
+			if ptrtype == COLLECTIONS {
+				log.Tracef("collection, recurse")
+				hubIdx[ptrtype][p], err = DownloadLatest(hub, val, overwrite, updateOnly)
+				if err != nil {
+					return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
 				}
 			}
+			item, err := DownloadItem(hub, val, overwrite)
+			if err != nil {
+				return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
+			}
+
+			// We need to enable an item when it has been added to a collection since latest release of the collection.
+			// We check if val.Downloaded is false because maybe the item has been disabled by the user.
+			if !item.Installed && !val.Downloaded {
+				if item, err = EnableItem(hub, item); err != nil {
+					return target, errors.Wrapf(err, "enabling '%s'", item.Name)
+				}
+			}
+			hubIdx[ptrtype][p] = item
 		}
-		target, err = DownloadItem(cscli, target, overwrite)
-		if err != nil {
-			return target, fmt.Errorf("failed to download item : %s", err)
-		}
-	} else {
-		return DownloadItem(cscli, target, overwrite)
+	}
+	target, err = DownloadItem(hub, target, overwrite)
+	if err != nil {
+		return target, fmt.Errorf("failed to download item : %s", err)
 	}
 	return target, nil
 }
 
-func DownloadItem(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item, error) {
-
-	var tdir = cscli.HubDir
-	var dataFolder = cscli.DataDir
+func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) {
+	var tdir = hub.HubDir
+	var dataFolder = hub.DataDir
 	/*if user didn't --force, don't overwrite local, tainted, up-to-date files*/
 	if !overwrite {
 		if target.Tainted {
@@ -134,10 +140,10 @@ func DownloadItem(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item, 
 		}
 		if target.UpToDate {
 			log.Debugf("%s : up-to-date, not updated", target.Name)
-			return target, nil
+			//  We still have to check if data files are present
 		}
 	}
-	req, err := http.NewRequest("GET", fmt.Sprintf(RawFileURLTemplate, HubBranch, target.RemotePath), nil)
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf(RawFileURLTemplate, HubBranch, target.RemotePath), nil)
 	if err != nil {
 		return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", req.URL.String()))
 	}
@@ -145,16 +151,16 @@ func DownloadItem(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item, 
 	if err != nil {
 		return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", req.URL.String()))
 	}
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return target, fmt.Errorf("bad http code %d for %s", resp.StatusCode, req.URL.String())
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return target, errors.Wrap(err, fmt.Sprintf("while reading %s", req.URL.String()))
 	}
 	h := sha256.New()
-	if _, err := h.Write([]byte(body)); err != nil {
+	if _, err := h.Write(body); err != nil {
 		return target, errors.Wrap(err, fmt.Sprintf("while hashing %s", target.Name))
 	}
 	meow := fmt.Sprintf("%x", h.Sum(nil))
@@ -198,28 +204,63 @@ func DownloadItem(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item, 
 	defer f.Close()
 	_, err = f.WriteString(string(body))
 	if err != nil {
-		return target, errors.Wrap(err, "while writting file")
+		return target, errors.Wrap(err, "while writing file")
 	}
 	target.Downloaded = true
 	target.Tainted = false
 	target.UpToDate = true
 
-	dec := yaml.NewDecoder(bytes.NewReader(body))
+	if err = downloadData(dataFolder, overwrite, bytes.NewReader(body)); err != nil {
+		return target, errors.Wrapf(err, "while downloading data for %s", target.FileName)
+	}
+
+	hubIdx[target.Type][target.Name] = target
+	return target, nil
+}
+
+func DownloadDataIfNeeded(hub *csconfig.Hub, target Item, force bool) error {
+	var (
+		dataFolder = hub.DataDir
+		itemFile   *os.File
+		err        error
+	)
+	itemFilePath := fmt.Sprintf("%s/%s/%s/%s", hub.ConfigDir, target.Type, target.Stage, target.FileName)
+	if itemFile, err = os.Open(itemFilePath); err != nil {
+		return errors.Wrapf(err, "while opening %s", itemFilePath)
+	}
+	defer itemFile.Close()
+	if err = downloadData(dataFolder, force, itemFile); err != nil {
+		return errors.Wrapf(err, "while downloading data for %s", itemFilePath)
+	}
+	return nil
+}
+
+func downloadData(dataFolder string, force bool, reader io.Reader) error {
+	var err error
+	dec := yaml.NewDecoder(reader)
+
 	for {
 		data := &types.DataSet{}
 		err = dec.Decode(data)
 		if err != nil {
-			if err == io.EOF {
-				break
-			} else {
-				return target, errors.Wrap(err, "while reading file")
+			if err != io.EOF {
+				return errors.Wrap(err, "while reading file")
+			}
+			break
+		}
+
+		download := false
+		for _, dataS := range data.Data {
+			if _, err := os.Stat(path.Join(dataFolder, dataS.DestPath)); os.IsNotExist(err) {
+				download = true
 			}
 		}
-		err = types.GetData(data.Data, dataFolder)
-		if err != nil {
-			return target, errors.Wrap(err, "while getting data")
+		if download || force {
+			err = types.GetData(data.Data, dataFolder)
+			if err != nil {
+				return errors.Wrap(err, "while getting data")
+			}
 		}
 	}
-	hubIdx[target.Type][target.Name] = target
-	return target, nil
+	return nil
 }

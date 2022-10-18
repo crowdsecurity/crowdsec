@@ -1,19 +1,23 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/crowdsecurity/crowdsec/pkg/metabase"
-
+	"github.com/pbnjay/memory"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+
+	"github.com/crowdsecurity/crowdsec/pkg/metabase"
 )
 
 var (
@@ -23,16 +27,14 @@ var (
 	metabaseConfigPath   string
 	metabaseConfigFolder = "metabase/"
 	metabaseConfigFile   = "metabase.yaml"
-	metabaseImage        = "metabase/metabase"
 	/**/
 	metabaseListenAddress = "127.0.0.1"
 	metabaseListenPort    = "3000"
-	metabaseContainerID   = "/crowdsec-metabase"
+	metabaseContainerID   = "crowdsec-metabase"
 	crowdsecGroup         = "crowdsec"
 
 	forceYes bool
 
-	dockerGatewayIPAddr = "172.17.0.1"
 	/*informations needed to setup a random password on user's behalf*/
 )
 
@@ -40,9 +42,12 @@ func NewDashboardCmd() *cobra.Command {
 	/* ---- UPDATE COMMAND */
 	var cmdDashboard = &cobra.Command{
 		Use:   "dashboard [command]",
-		Short: "Manage your metabase dashboard container",
-		Long:  `Install/Start/Stop/Remove a metabase container exposing dashboard and metrics.`,
-		Args:  cobra.ExactArgs(1),
+		Short: "Manage your metabase dashboard container [requires local API]",
+		Long: `Install/Start/Stop/Remove a metabase container exposing dashboard and metrics.
+Note: This command requires database direct access, so is intended to be run on Local API/master.
+		`,
+		Args:              cobra.ExactArgs(1),
+		DisableAutoGenTag: true,
 		Example: `
 cscli dashboard setup
 cscli dashboard start
@@ -50,20 +55,45 @@ cscli dashboard stop
 cscli dashboard remove
 `,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			if err := metabase.TestAvailability(); err != nil {
+				log.Fatalf("%s", err)
+			}
+
+			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
+				log.Fatal("Local API is disabled, please run this command on the local API machine")
+			}
+
 			metabaseConfigFolderPath := filepath.Join(csConfig.ConfigPaths.ConfigDir, metabaseConfigFolder)
 			metabaseConfigPath = filepath.Join(metabaseConfigFolderPath, metabaseConfigFile)
 			if err := os.MkdirAll(metabaseConfigFolderPath, os.ModePerm); err != nil {
 				log.Fatalf(err.Error())
+			}
+			if err := csConfig.LoadDBConfig(); err != nil {
+				log.Errorf("This command requires direct database access (must be run on the local API machine)")
+				log.Fatalf(err.Error())
+			}
+
+			/*
+				Old container name was "/crowdsec-metabase" but podman doesn't
+				allow '/' in container name. We do this check to not break
+				existing dashboard setup.
+			*/
+			if !metabase.IsContainerExist(metabaseContainerID) {
+				oldContainerID := fmt.Sprintf("/%s", metabaseContainerID)
+				if metabase.IsContainerExist(oldContainerID) {
+					metabaseContainerID = oldContainerID
+				}
 			}
 		},
 	}
 
 	var force bool
 	var cmdDashSetup = &cobra.Command{
-		Use:   "setup",
-		Short: "Setup a metabase container.",
-		Long:  `Perform a metabase docker setup, download standard dashboards, create a fresh user and start the container`,
-		Args:  cobra.ExactArgs(0),
+		Use:               "setup",
+		Short:             "Setup a metabase container.",
+		Long:              `Perform a metabase docker setup, download standard dashboards, create a fresh user and start the container`,
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
 		Example: `
 cscli dashboard setup
 cscli dashboard setup --listen 0.0.0.0
@@ -75,9 +105,29 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			}
 
 			if metabasePassword == "" {
-				metabasePassword = generatePassword(16)
+				isValid := passwordIsValid(metabasePassword)
+				for !isValid {
+					metabasePassword = generatePassword(16)
+					isValid = passwordIsValid(metabasePassword)
+				}
 			}
 			var answer bool
+			if valid, err := checkSystemMemory(); err == nil && !valid {
+				if !forceYes {
+					prompt := &survey.Confirm{
+						Message: "Metabase requires 1-2GB of RAM, your system is below this requirement continue ?",
+						Default: true,
+					}
+					if err := survey.AskOne(prompt, &answer); err != nil {
+						log.Warnf("unable to ask about RAM check: %s", err)
+					}
+					if !answer {
+						log.Fatal("Unable to continue due to RAM requirement")
+					}
+				} else {
+					log.Warnf("Metabase requires 1-2GB of RAM, your system is below this requirement")
+				}
+			}
 			groupExist := false
 			dockerGroup, err := user.LookupGroup(crowdsecGroup)
 			if err == nil {
@@ -118,7 +168,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 				log.Fatalf("unable to chown sqlite db file '%s': %s", csConfig.DbConfig.DbPath, err)
 			}
 
-			mb, err := metabase.SetupMetabase(csConfig.API.Server.DbConfig, metabaseListenAddress, metabaseListenPort, metabaseUser, metabasePassword, metabaseDbPath, dockerGroup.Gid)
+			mb, err := metabase.SetupMetabase(csConfig.API.Server.DbConfig, metabaseListenAddress, metabaseListenPort, metabaseUser, metabasePassword, metabaseDbPath, dockerGroup.Gid, metabaseContainerID)
 			if err != nil {
 				log.Fatalf(err.Error())
 			}
@@ -145,12 +195,13 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 	cmdDashboard.AddCommand(cmdDashSetup)
 
 	var cmdDashStart = &cobra.Command{
-		Use:   "start",
-		Short: "Start the metabase container.",
-		Long:  `Stats the metabase container using docker.`,
-		Args:  cobra.ExactArgs(0),
+		Use:               "start",
+		Short:             "Start the metabase container.",
+		Long:              `Stats the metabase container using docker.`,
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			mb, err := metabase.NewMetabase(metabaseConfigPath)
+			mb, err := metabase.NewMetabase(metabaseConfigPath, metabaseContainerID)
 			if err != nil {
 				log.Fatalf(err.Error())
 			}
@@ -164,10 +215,11 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 	cmdDashboard.AddCommand(cmdDashStart)
 
 	var cmdDashStop = &cobra.Command{
-		Use:   "stop",
-		Short: "Stops the metabase container.",
-		Long:  `Stops the metabase container using docker.`,
-		Args:  cobra.ExactArgs(0),
+		Use:               "stop",
+		Short:             "Stops the metabase container.",
+		Long:              `Stops the metabase container using docker.`,
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := metabase.StopContainer(metabaseContainerID); err != nil {
 				log.Fatalf("unable to stop container '%s': %s", metabaseContainerID, err)
@@ -176,11 +228,26 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 	}
 	cmdDashboard.AddCommand(cmdDashStop)
 
+	var cmdDashShowPassword = &cobra.Command{Use: "show-password",
+		Short:             "displays password of metabase.",
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			m := metabase.Metabase{}
+			if err := m.LoadConfig(metabaseConfigPath); err != nil {
+				log.Fatal(err)
+			}
+			log.Printf("'%s'", m.Config.Password)
+		},
+	}
+	cmdDashboard.AddCommand(cmdDashShowPassword)
+
 	var cmdDashRemove = &cobra.Command{
-		Use:   "remove",
-		Short: "removes the metabase container.",
-		Long:  `removes the metabase container using docker.`,
-		Args:  cobra.ExactArgs(0),
+		Use:               "remove",
+		Short:             "removes the metabase container.",
+		Long:              `removes the metabase container using docker.`,
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
 		Example: `
 cscli dashboard remove
 cscli dashboard remove --force
@@ -239,4 +306,31 @@ cscli dashboard remove --force
 	cmdDashboard.AddCommand(cmdDashRemove)
 
 	return cmdDashboard
+}
+
+func passwordIsValid(password string) bool {
+	hasDigit := false
+	for _, j := range password {
+		if unicode.IsDigit(j) {
+			hasDigit = true
+			break
+		}
+	}
+
+	if !hasDigit || len(password) < 6 {
+		return false
+	}
+	return true
+
+}
+
+func checkSystemMemory() (bool, error) {
+	totMem := memory.TotalMemory()
+	if totMem == 0 {
+		return true, errors.New("Unable to get system total memory")
+	}
+	if uint64(math.Pow(2, 30)) >= totMem {
+		return false, nil
+	}
+	return true, nil
 }

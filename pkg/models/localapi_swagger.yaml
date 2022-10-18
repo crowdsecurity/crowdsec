@@ -40,6 +40,26 @@ paths:
           required: false
           type: boolean
           description: 'If true, means that the bouncers is starting and a full list must be provided'
+        - name: scopes
+          in: query
+          required: false
+          type: string
+          description: 'Comma separated scopes of decisions to fetch'
+        - name: origins
+          in: query
+          required: false
+          type: string
+          description: 'Comma separated name of origins. If provided, then only the decisions originating from provided origins would be returned.'
+        - name: scenarios_containing
+          in: query
+          required: false
+          type: string
+          description: 'Comma separated words. If provided, only the decisions created by scenarios containing any of the provided word would be returned.'
+        - name: scenarios_not_containing
+          in: query
+          required: false
+          type: string
+          description: 'Comma separated words. If provided, only the decisions created by scenarios, not containing any of the provided word would be returned.'
       responses:
         '200':
           description: successful operation
@@ -116,6 +136,21 @@ paths:
           required: false
           type: boolean
           description: indicate if you're looking for a decision that contains the value, or that is contained within the value
+        - name: origins
+          in: query
+          required: false
+          type: string
+          description: 'Comma separated name of origins. If provided, then only the decisions originating from provided origins would be returned.'
+        - name: scenarios_containing
+          in: query
+          required: false
+          type: string
+          description: 'Comma separated words. If provided, only the decisions created by scenarios containing any of the provided word would be returned.'
+        - name: scenarios_not_containing
+          in: query
+          required: false
+          type: string
+          description: 'Comma separated words. If provided, only the decisions created by scenarios, not containing any of the provided word would be returned.'
       responses:
         '200':
           description: "successful operation"
@@ -400,6 +435,11 @@ paths:
           required: false
           type: number
           description: 'number of alerts to return' 
+        - name: origin
+          in: query
+          required: false
+          type: string
+          description: 'restrict results to this origin (ie. lists,CAPI,cscli)'
       responses:
         '200':
           description: successful operation
@@ -479,6 +519,11 @@ paths:
           required: false
           type: number
           description: 'number of alerts to return' 
+        - name: origin
+          in: query
+          required: false
+          type: string
+          description: 'restrict results to this origin (ie. lists,CAPI,cscli)'
       responses:
         '200':
           description: successful operation
@@ -762,17 +807,34 @@ definitions:
       bouncers:
         type: array
         items:
-            $ref: '#/definitions/MetricsSoftInfo'
+            $ref: '#/definitions/MetricsBouncerInfo'
       machines:
         type: array
         items:
-            $ref: '#/definitions/MetricsSoftInfo'
+            $ref: '#/definitions/MetricsAgentInfo'
     required:
       - apil_version
       - bouncers
       - machines
-  MetricsSoftInfo:
-    title: MetricsSoftInfo
+  MetricsBouncerInfo:
+    title: MetricsBouncerInfo
+    description: Software version info (so we can warn users about out-of-date software). The software name and the version are "guessed" from the user-agent
+    type: object
+    properties:
+      custom_name:
+        type: string
+        description: name of the component
+      name:
+        type: string
+        description: bouncer type (firewall, php ...)
+      version:
+        type: string
+        description: software version
+      last_pull:
+        type: string
+        description: last bouncer pull date
+  MetricsAgentInfo:
+    title: MetricsAgentInfo
     description: Software version info (so we can warn users about out-of-date software). The software name and the version are "guessed" from the user-agent
     type: object
     properties:
@@ -782,6 +844,12 @@ definitions:
       version:
         type: string
         description: software version
+      last_update:
+        type: string
+        description: last agent update date
+      last_push:
+        type: string
+        description: last agent push date
   Decision:
     title: Decision
     type: object
@@ -803,7 +871,11 @@ definitions:
         description: 'the value of the decision scope : an IP, a range, a username, etc'
         type: string
       duration:
+        description: 'the duration of the decisions'
         type: string
+      until:
+        type: string
+        description: 'the date until the decisions must be active'
       scenario:
         type: string
       simulated:
@@ -911,6 +983,7 @@ definitions:
     - "source"
     - "start_at"
     - "stop_at"
+    - "scenario_trust"
     properties:
       scenario_hash:
         type: "string"
@@ -923,6 +996,8 @@ definitions:
       source:
         $ref: "#/definitions/Source"
       scenario_version:
+        type: "string"
+      scenario_trust:
         type: "string"
       message:
         type: "string"

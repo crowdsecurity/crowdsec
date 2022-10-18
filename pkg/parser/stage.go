@@ -37,13 +37,13 @@ type Stagefile struct {
 	Stage    string `yaml:"stage"`
 }
 
-func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx []EnricherCtx) ([]Node, error) {
+func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx EnricherCtx) ([]Node, error) {
 	var nodes []Node
 	tmpstages := make(map[string]bool)
 	pctx.Stages = []string{}
 
 	for _, stageFile := range stageFiles {
-		if !strings.HasSuffix(stageFile.Filename, ".yaml") {
+		if !strings.HasSuffix(stageFile.Filename, ".yaml") && !strings.HasSuffix(stageFile.Filename, ".yml") {
 			log.Warningf("skip non yaml : %s", stageFile.Filename)
 			continue
 		}
@@ -65,7 +65,7 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx []EnricherCtx)
 		nodesCount := 0
 		for {
 			node := Node{}
-			node.OnSuccess = "continue" //default behaviour is to continue
+			node.OnSuccess = "continue" //default behavior is to continue
 			err = dec.Decode(&node)
 			if err != nil {
 				if err == io.EOF {
@@ -90,7 +90,7 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx []EnricherCtx)
 				log.Fatalf("Failed to check version : %s", err)
 			}
 			if !ok {
-				log.Errorf("%s doesn't satisfy parser format %s, skip", node.FormatVersion, cwversion.Constraint_parser)
+				log.Errorf("%s : %s doesn't satisfy parser format %s, skip", node.Name, node.FormatVersion, cwversion.Constraint_parser)
 				continue
 			}
 
@@ -102,9 +102,9 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx []EnricherCtx)
 			err = node.compile(pctx, ectx)
 			if err != nil {
 				if node.Name != "" {
-					return nil, fmt.Errorf("failed to compile node '%s' in '%s' : %s", node.Name, stageFile.Filename, err.Error())
+					return nil, fmt.Errorf("failed to compile node '%s' in '%s' : %s", node.Name, stageFile.Filename, err)
 				}
-				return nil, fmt.Errorf("failed to compile node in '%s' : %s", stageFile.Filename, err.Error())
+				return nil, fmt.Errorf("failed to compile node in '%s' : %s", stageFile.Filename, err)
 			}
 			/* if the stage is empty, the node is empty, it's a trailing entry in users yaml file */
 			if node.Stage == "" {
@@ -122,14 +122,14 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx []EnricherCtx)
 			nodes = append(nodes, node)
 			nodesCount++
 		}
-		log.WithFields(log.Fields{"file": stageFile.Filename}).Infof("Loaded %d parser nodes", nodesCount)
+		log.WithFields(log.Fields{"file": stageFile.Filename, "stage": stageFile.Stage}).Infof("Loaded %d parser nodes", nodesCount)
 	}
 
 	for k := range tmpstages {
 		pctx.Stages = append(pctx.Stages, k)
 	}
 	sort.Strings(pctx.Stages)
-	log.Infof("Loaded %d nodes, %d stages", len(nodes), len(pctx.Stages))
+	log.Infof("Loaded %d nodes from %d stages", len(nodes), len(pctx.Stages))
 
 	return nodes, nil
 }

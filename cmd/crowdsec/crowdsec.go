@@ -2,26 +2,28 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"sync"
+	"time"
+
+	"path/filepath"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
-func initCrowdsec(cConfig *csconfig.GlobalConfig) (*parser.Parsers, error) {
-	err := exprhelpers.Init()
-	if err != nil {
-		return &parser.Parsers{}, fmt.Errorf("Failed to init expr helpers : %s", err)
-	}
+func initCrowdsec(cConfig *csconfig.Config) (*parser.Parsers, error) {
+	var err error
 
 	// Populate cwhub package tools
-	if err := cwhub.GetHubIdx(cConfig.Cscli); err != nil {
+	if err := cwhub.GetHubIdx(cConfig.Hub); err != nil {
 		return &parser.Parsers{}, fmt.Errorf("Failed to load hub index : %s", err)
 	}
 
@@ -41,11 +43,11 @@ func initCrowdsec(cConfig *csconfig.GlobalConfig) (*parser.Parsers, error) {
 	return csParsers, nil
 }
 
-func runCrowdsec(cConfig *csconfig.GlobalConfig, parsers *parser.Parsers) error {
+func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers) error {
 	inputLineChan := make(chan types.Event)
 	inputEventChan := make(chan types.Event)
 
-	//start go-routines for parsing, buckets pour and ouputs.
+	//start go-routines for parsing, buckets pour and outputs.
 	parserWg := &sync.WaitGroup{}
 	parsersTomb.Go(func() error {
 		parserWg.Add(1)
@@ -67,7 +69,7 @@ func runCrowdsec(cConfig *csconfig.GlobalConfig, parsers *parser.Parsers) error 
 	bucketWg := &sync.WaitGroup{}
 	bucketsTomb.Go(func() error {
 		bucketWg.Add(1)
-		/*restore as well previous state if present*/
+		/*restore previous state as well if present*/
 		if cConfig.Crowdsec.BucketStateFile != "" {
 			log.Warningf("Restoring buckets state from %s", cConfig.Crowdsec.BucketStateFile)
 			if err := leaky.LoadBucketsState(cConfig.Crowdsec.BucketStateFile, buckets, holders); err != nil {
@@ -107,7 +109,18 @@ func runCrowdsec(cConfig *csconfig.GlobalConfig, parsers *parser.Parsers) error 
 		return nil
 	})
 	outputWg.Wait()
-	log.Warningf("Starting processing data")
+
+	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
+		aggregated := false
+		if cConfig.Prometheus.Level == "aggregated" {
+			aggregated = true
+		}
+		if err := acquisition.GetMetrics(dataSources, aggregated); err != nil {
+			return errors.Wrap(err, "while fetching prometheus metrics for datasources.")
+		}
+
+	}
+	log.Info("Starting processing data")
 
 	if err := acquisition.StartAcquisition(dataSources, inputLineChan, &acquisTomb); err != nil {
 		log.Fatalf("starting acquisition error : %s", err)
@@ -117,11 +130,14 @@ func runCrowdsec(cConfig *csconfig.GlobalConfig, parsers *parser.Parsers) error 
 	return nil
 }
 
-func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.GlobalConfig) {
+func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config, agentReady chan bool) {
 	crowdsecTomb.Go(func() error {
 		defer types.CatchPanic("crowdsec/serveCrowdsec")
 		go func() {
 			defer types.CatchPanic("crowdsec/runCrowdsec")
+			// this logs every time, even at config reload
+			log.Debugf("running agent after %s ms", time.Since(crowdsecT0))
+			agentReady <- true
 			if err := runCrowdsec(cConfig, parsers); err != nil {
 				log.Fatalf("unable to start crowdsec routines: %s", err)
 			}
@@ -137,8 +153,73 @@ func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.GlobalConfig) {
 			log.Fatalf("unable to shutdown crowdsec routines: %s", err)
 		}
 		log.Debugf("everything is dead, return crowdsecTomb")
+		if dumpStates {
+			dumpParserState()
+			dumpOverflowState()
+			dumpBucketsPour()
+			os.Exit(0)
+		}
 		return nil
 	})
+}
+
+func dumpBucketsPour() {
+	fd, err := os.OpenFile(filepath.Join(parser.DumpFolder, "bucketpour-dump.yaml"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	if err != nil {
+		log.Fatalf("open: %s", err)
+	}
+	out, err := yaml.Marshal(leaky.BucketPourCache)
+	if err != nil {
+		log.Fatalf("marshal: %s", err)
+	}
+	b, err := fd.Write(out)
+	if err != nil {
+		log.Fatalf("write: %s", err)
+	}
+	log.Tracef("wrote %d bytes", b)
+	if err := fd.Close(); err != nil {
+		log.Fatalf(" close: %s", err)
+	}
+}
+
+func dumpParserState() {
+
+	fd, err := os.OpenFile(filepath.Join(parser.DumpFolder, "parser-dump.yaml"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	if err != nil {
+		log.Fatalf("open: %s", err)
+	}
+	out, err := yaml.Marshal(parser.StageParseCache)
+	if err != nil {
+		log.Fatalf("marshal: %s", err)
+	}
+	b, err := fd.Write(out)
+	if err != nil {
+		log.Fatalf("write: %s", err)
+	}
+	log.Tracef("wrote %d bytes", b)
+	if err := fd.Close(); err != nil {
+		log.Fatalf(" close: %s", err)
+	}
+}
+
+func dumpOverflowState() {
+
+	fd, err := os.OpenFile(filepath.Join(parser.DumpFolder, "bucket-dump.yaml"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	if err != nil {
+		log.Fatalf("open: %s", err)
+	}
+	out, err := yaml.Marshal(bucketOverflows)
+	if err != nil {
+		log.Fatalf("marshal: %s", err)
+	}
+	b, err := fd.Write(out)
+	if err != nil {
+		log.Fatalf("write: %s", err)
+	}
+	log.Tracef("wrote %d bytes", b)
+	if err := fd.Close(); err != nil {
+		log.Fatalf(" close: %s", err)
+	}
 }
 
 func waitOnTomb() {
@@ -147,18 +228,19 @@ func waitOnTomb() {
 		case <-acquisTomb.Dead():
 			/*if it's acquisition dying it means that we were in "cat" mode.
 			while shutting down, we need to give time for all buckets to process in flight data*/
-			log.Warningf("Acquisition is finished, shutting down")
+			log.Warning("Acquisition is finished, shutting down")
 			/*
 				While it might make sense to want to shut-down parser/buckets/etc. as soon as acquisition is finished,
-				we might have some pending buckets : buckets that overflowed, but which LeakRoutine are still alive because they
-				are waiting to be able to "commit" (push to api). This can happens specifically in a context where a lot of logs
+				we might have some pending buckets: buckets that overflowed, but whose LeakRoutine are still alive because they
+				are waiting to be able to "commit" (push to api). This can happen specifically in a context where a lot of logs
 				are going to trigger overflow (ie. trigger buckets with ~100% of the logs triggering an overflow).
 
 				To avoid this (which would mean that we would "lose" some overflows), let's monitor the number of live buckets.
-				However, because of the blackhole mechanism, you can't really wait for the number of LeakRoutine to go to zero (we might have to wait $blackhole_duration).
+				However, because of the blackhole mechanism, we can't really wait for the number of LeakRoutine to go to zero
+				(we might have to wait $blackhole_duration).
 
-				So : we are waiting for the number of buckets to stop decreasing before returning. "how long" we should wait is a bit of the trick question,
-				as some operations (ie. reverse dns or such in post-overflow) can take some time :)
+				So: we are waiting for the number of buckets to stop decreasing before returning. "how long" we should wait
+				is a bit of the trick question, as some operations (ie. reverse dns or such in post-overflow) can take some time :)
 			*/
 
 			return

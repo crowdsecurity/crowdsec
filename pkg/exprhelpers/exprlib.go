@@ -4,18 +4,24 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"path"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/c-robinson/iplib"
+
+	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 )
 
 var dataFile map[string][]string
 var dataFileRegex map[string][]*regexp.Regexp
+var dbClient *database.Client
 
 func Atof(x string) float64 {
 	log.Debugf("debug atof %s", x)
@@ -30,15 +36,37 @@ func Upper(s string) string {
 	return strings.ToUpper(s)
 }
 
+func Lower(s string) string {
+	return strings.ToLower(s)
+}
+
 func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 	var ExprLib = map[string]interface{}{
-		"Atof":           Atof,
-		"JsonExtract":    JsonExtract,
-		"JsonExtractLib": JsonExtractLib,
-		"File":           File,
-		"RegexpInFile":   RegexpInFile,
-		"Upper":          Upper,
-		"IpInRange":      IpInRange,
+		"Atof":                   Atof,
+		"JsonExtract":            JsonExtract,
+		"JsonExtractUnescape":    JsonExtractUnescape,
+		"JsonExtractLib":         JsonExtractLib,
+		"JsonExtractSlice":       JsonExtractSlice,
+		"JsonExtractObject":      JsonExtractObject,
+		"ToJsonString":           ToJson,
+		"File":                   File,
+		"RegexpInFile":           RegexpInFile,
+		"Upper":                  Upper,
+		"Lower":                  Lower,
+		"IpInRange":              IpInRange,
+		"TimeNow":                TimeNow,
+		"ParseUri":               ParseUri,
+		"PathUnescape":           PathUnescape,
+		"QueryUnescape":          QueryUnescape,
+		"PathEscape":             PathEscape,
+		"QueryEscape":            QueryEscape,
+		"XMLGetAttributeValue":   XMLGetAttributeValue,
+		"XMLGetNodeValue":        XMLGetNodeValue,
+		"IpToRange":              IpToRange,
+		"IsIPV6":                 IsIPV6,
+		"GetDecisionsCount":      GetDecisionsCount,
+		"GetDecisionsSinceCount": GetDecisionsSinceCount,
+		"Sprintf":                fmt.Sprintf,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
@@ -46,9 +74,10 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 	return ExprLib
 }
 
-func Init() error {
+func Init(databaseClient *database.Client) error {
 	dataFile = make(map[string][]string)
 	dataFileRegex = make(map[string][]*regexp.Regexp)
+	dbClient = databaseClient
 	return nil
 }
 
@@ -92,6 +121,32 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 	return nil
 }
 
+func QueryEscape(s string) string {
+	return url.QueryEscape(s)
+}
+
+func PathEscape(s string) string {
+	return url.PathEscape(s)
+}
+
+func PathUnescape(s string) string {
+	ret, err := url.PathUnescape(s)
+	if err != nil {
+		log.Debugf("unable to PathUnescape '%s': %+v", s, err)
+		return s
+	}
+	return ret
+}
+
+func QueryUnescape(s string) string {
+	ret, err := url.QueryUnescape(s)
+	if err != nil {
+		log.Debugf("unable to QueryUnescape '%s': %+v", s, err)
+		return s
+	}
+	return ret
+}
+
 func File(filename string) []string {
 	if _, ok := dataFile[filename]; ok {
 		return dataFile[filename]
@@ -133,4 +188,95 @@ func IpInRange(ip string, ipRange string) bool {
 		return true
 	}
 	return false
+}
+
+func IsIPV6(ip string) bool {
+	ipParsed := net.ParseIP(ip)
+	if ipParsed == nil {
+		log.Debugf("'%s' is not a valid IP", ip)
+		return false
+	}
+
+	// If it's a valid IP and can't be converted to IPv4 then it is an IPv6
+	return ipParsed.To4() == nil
+}
+
+func IpToRange(ip string, cidr string) string {
+	cidr = strings.TrimPrefix(cidr, "/")
+	mask, err := strconv.Atoi(cidr)
+	if err != nil {
+		log.Errorf("bad cidr '%s': %s", cidr, err)
+		return ""
+	}
+
+	ipAddr := net.ParseIP(ip)
+	if ipAddr == nil {
+		log.Errorf("can't parse IP address '%s'", ip)
+		return ""
+	}
+	ipRange := iplib.NewNet(ipAddr, mask)
+	if ipRange.IP() == nil {
+		log.Errorf("can't get cidr '%s' of '%s'", cidr, ip)
+		return ""
+	}
+	return ipRange.String()
+}
+
+func TimeNow() string {
+	return time.Now().UTC().Format(time.RFC3339)
+}
+
+func ParseUri(uri string) map[string][]string {
+	ret := make(map[string][]string)
+	u, err := url.Parse(uri)
+	if err != nil {
+		log.Errorf("Could not parse URI: %s", err)
+		return ret
+	}
+	parsed, err := url.ParseQuery(u.RawQuery)
+	if err != nil {
+		log.Errorf("Could not parse query uri : %s", err)
+		return ret
+	}
+	for k, v := range parsed {
+		ret[k] = v
+	}
+	return ret
+}
+
+func KeyExists(key string, dict map[string]interface{}) bool {
+	_, ok := dict[key]
+	return ok
+}
+
+func GetDecisionsCount(value string) int {
+	if dbClient == nil {
+		log.Error("No database config to call GetDecisionsCount()")
+		return 0
+	}
+	count, err := dbClient.CountDecisionsByValue(value)
+	if err != nil {
+		log.Errorf("Failed to get decisions count from value '%s'", value)
+		return 0
+	}
+	return count
+}
+
+func GetDecisionsSinceCount(value string, since string) int {
+	if dbClient == nil {
+		log.Error("No database config to call GetDecisionsCount()")
+		return 0
+	}
+	sinceDuration, err := time.ParseDuration(since)
+	if err != nil {
+		log.Errorf("Failed to parse since parameter '%s' : %s", since, err)
+		return 0
+	}
+	sinceTime := time.Now().UTC().Add(-sinceDuration)
+	count, err := dbClient.CountDecisionsSinceByValue(value, sinceTime)
+	if err != nil {
+		log.Errorf("Failed to get decisions count from value '%s'", value)
+		return 0
+	}
+	return count
 }

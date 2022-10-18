@@ -1,0 +1,13 @@
+fun:
+- lamborghini
+- porsche
+occupants:
+  honda:
+    backseat:
+    - nora
+    driver: jane
+    passenger: arthur
+practical:
+  honda: civic
+  nissan: altima
+  toyota: camry

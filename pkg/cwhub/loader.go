@@ -2,27 +2,22 @@ package cwhub
 
 import (
 	"encoding/json"
-	//"errors"
 	"fmt"
-	"io/ioutil"
-	"sort"
-
-	"github.com/pkg/errors"
-
-	//"log"
-
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/mod/semver"
 )
 
 /*the walk/parser_visit function can't receive extra args*/
-var hubdir, installdir, indexpath string
+var hubdir, installdir string
 
-func parser_visit(path string, f os.FileInfo, err error) error {
+func parser_visit(path string, f os.DirEntry, err error) error {
 
 	var target Item
 	var local bool
@@ -32,6 +27,12 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 	var ftype string
 	var fauthor string
 	var stage string
+
+	if err != nil {
+		log.Warningf("error while syncing hub dir: %v", err)
+		// there is a path error, we ignore the file
+		return nil
+	}
 
 	path, err = filepath.Abs(path)
 	if err != nil {
@@ -46,10 +47,11 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		return nil
 	}
 
-	subs := strings.Split(path, "/")
+	subs := strings.Split(path, string(os.PathSeparator))
 
 	log.Tracef("path:%s, hubdir:%s, installdir:%s", path, hubdir, installdir)
-	/*we're in hub (~/.cscli/hub/)*/
+	log.Tracef("subs:%v", subs)
+	/*we're in hub (~/.hub/hub/)*/
 	if strings.HasPrefix(path, hubdir) {
 		log.Tracef("in hub dir")
 		inhub = true
@@ -77,9 +79,10 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		ftype = subs[len(subs)-3]
 		fauthor = ""
 	} else {
-		return fmt.Errorf("File '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubdir, installdir)
+		return fmt.Errorf("file '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubdir, installdir)
 	}
 
+	log.Tracef("stage:%s ftype:%s", stage, ftype)
 	//log.Printf("%s -> name:%s stage:%s", path, fname, stage)
 	if stage == SCENARIOS {
 		ftype = SCENARIOS
@@ -95,20 +98,19 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 
 	/*
 		we can encounter 'collections' in the form of a symlink :
-		/etc/crowdsec/.../collections/linux.yaml -> ~/.cscli/hub/collections/.../linux.yaml
+		/etc/crowdsec/.../collections/linux.yaml -> ~/.hub/hub/collections/.../linux.yaml
 		when the collection is installed, both files are created
 	*/
 	//non symlinks are local user files or hub files
-	if f.Mode()&os.ModeSymlink == 0 {
+	if f.Type() & os.ModeSymlink == 0 {
 		local = true
-		skippedLocal++
 		log.Tracef("%s isn't a symlink", path)
 	} else {
 		hubpath, err = os.Readlink(path)
 		if err != nil {
 			return fmt.Errorf("unable to read symlink of %s", path)
 		}
-		//the symlink target doesn't exist, user might have remove ~/.cscli/hub/...yaml without deleting /etc/crowdsec/....yaml
+		//the symlink target doesn't exist, user might have removed ~/.hub/hub/...yaml without deleting /etc/crowdsec/....yaml
 		_, err := os.Lstat(hubpath)
 		if os.IsNotExist(err) {
 			log.Infof("%s is a symlink to %s that doesn't exist, deleting symlink", path, hubpath)
@@ -133,8 +135,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		target.Local = true
 		target.LocalPath = path
 		target.UpToDate = true
-		x := strings.Split(path, "/")
-		target.FileName = x[len(x)-1]
+		_, target.FileName = filepath.Split(path)
 
 		hubIdx[ftype][fname] = target
 		return nil
@@ -160,9 +161,10 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 				continue
 			}
 			//wrong file
-			if v.Name+".yaml" != fauthor+"/"+fname {
+			if CheckName(v.Name, fauthor, fname) {
 				continue
 			}
+
 			if path == hubdir+"/"+v.RemotePath {
 				log.Tracef("marking %s as downloaded", v.Name)
 				v.Downloaded = true
@@ -170,9 +172,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		} else {
 			//wrong file
 			//<type>/<stage>/<author>/<name>.yaml
-			if !strings.HasSuffix(hubpath, v.RemotePath) {
-				//log.Printf("wrong file %s %s", hubpath, spew.Sdump(v))
-
+			if CheckSuffix(hubpath, v.RemotePath) {
 				continue
 			}
 		}
@@ -192,27 +192,28 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 			if sha != val.Digest {
 				//log.Printf("matching filenames, wrong hash %s != %s -- %s", sha, val.Digest, spew.Sdump(v))
 				continue
-			} else {
-				/*we got an exact match, update struct*/
-				if !inhub {
-					log.Tracef("found exact match for %s, version is %s, latest is %s", v.Name, version, v.Version)
-					v.LocalPath = path
-					v.LocalVersion = version
-					v.Tainted = false
-					v.Downloaded = true
-					/*if we're walking the hub, present file doesn't means installed file*/
-					v.Installed = true
-					v.LocalHash = sha
-					x := strings.Split(path, "/")
-					target.FileName = x[len(x)-1]
-				}
-				if version == v.Version {
-					log.Tracef("%s is up-to-date", v.Name)
-					v.UpToDate = true
-				}
-				match = true
-				break
 			}
+			/*we got an exact match, update struct*/
+			if !inhub {
+				log.Tracef("found exact match for %s, version is %s, latest is %s", v.Name, version, v.Version)
+				v.LocalPath = path
+				v.LocalVersion = version
+				v.Tainted = false
+				v.Downloaded = true
+				/*if we're walking the hub, present file doesn't means installed file*/
+				v.Installed = true
+				v.LocalHash = sha
+				_, target.FileName = filepath.Split(path)
+			} else {
+				v.Downloaded = true
+				v.LocalHash = sha
+			}
+			if version == v.Version {
+				log.Tracef("%s is up-to-date", v.Name)
+				v.UpToDate = true
+			}
+			match = true
+			break
 		}
 		if !match {
 			log.Tracef("got tainted match for %s : %s", v.Name, path)
@@ -226,16 +227,17 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 			v.LocalVersion = "?"
 			v.Tainted = true
 			v.LocalHash = sha
-			x := strings.Split(path, "/")
-			target.FileName = x[len(x)-1]
+			_, target.FileName = filepath.Split(path)
 
 		}
 		//update the entry if appropriate
-		if _, ok := hubIdx[ftype][k]; !ok {
-			hubIdx[ftype][k] = v
-		} else if !inhub {
-			hubIdx[ftype][k] = v
-		}
+		// if _, ok := hubIdx[ftype][k]; !ok || !inhub || v.D {
+		// 	fmt.Printf("Updating %s", k)
+		// 	hubIdx[ftype][k] = v
+		// } else if !inhub {
+
+		// } else if
+		hubIdx[ftype][k] = v
 		return nil
 	}
 	log.Infof("Ignoring file %s of type %s", path, ftype)
@@ -243,6 +245,12 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 }
 
 func CollecDepsCheck(v *Item) error {
+
+	if GetVersionStatus(v) != 0 { //not up-to-date
+		log.Debugf("%s dependencies not checked : not up-to-date", v.Name)
+		return nil
+	}
+
 	/*if it's a collection, ensure all the items are installed, or tag it as tainted*/
 	if v.Type == COLLECTIONS {
 		log.Tracef("checking submembers of %s installed:%t", v.Name, v.Installed)
@@ -250,54 +258,56 @@ func CollecDepsCheck(v *Item) error {
 		for idx, ptr := range tmp {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
-				if val, ok := hubIdx[ptrtype][p]; ok {
-					log.Tracef("check %s installed:%t", val.Name, val.Installed)
-					if !v.Installed {
-						continue
-					}
-					if val.Type == COLLECTIONS {
-						log.Tracef("collec, recurse.")
-						if err := CollecDepsCheck(&val); err != nil {
-							return fmt.Errorf("sub collection %s is broken : %s", val.Name, err)
-						}
-						hubIdx[ptrtype][p] = val
-					}
-
-					//propagate the state of sub-items to set
-					if val.Tainted {
-						v.Tainted = true
-						return fmt.Errorf("tainted %s %s, tainted.", ptrtype, p)
-					} else if !val.Installed && v.Installed {
-						v.Tainted = true
-						return fmt.Errorf("missing %s %s, tainted.", ptrtype, p)
-					} else if !val.UpToDate {
-						v.UpToDate = false
-						return fmt.Errorf("outdated %s %s", ptrtype, p)
-					}
-					skip := false
-					for idx := range val.BelongsToCollections {
-						if val.BelongsToCollections[idx] == v.Name {
-							skip = true
-						}
-					}
-					if !skip {
-						val.BelongsToCollections = append(val.BelongsToCollections, v.Name)
-					}
-					hubIdx[ptrtype][p] = val
-					log.Tracef("checking for %s - tainted:%t uptodate:%t", p, v.Tainted, v.UpToDate)
-				} else {
+				val, ok := hubIdx[ptrtype][p]
+				if !ok {
 					log.Fatalf("Referred %s %s in collection %s doesn't exist.", ptrtype, p, v.Name)
 				}
+				log.Tracef("check %s installed:%t", val.Name, val.Installed)
+				if !v.Installed {
+					continue
+				}
+				if val.Type == COLLECTIONS {
+					log.Tracef("collec, recurse.")
+					if err := CollecDepsCheck(&val); err != nil {
+						return fmt.Errorf("sub collection %s is broken : %s", val.Name, err)
+					}
+					hubIdx[ptrtype][p] = val
+				}
+
+				//propagate the state of sub-items to set
+				if val.Tainted {
+					v.Tainted = true
+					return fmt.Errorf("tainted %s %s, tainted.", ptrtype, p)
+				}
+				if !val.Installed && v.Installed {
+					v.Tainted = true
+					return fmt.Errorf("missing %s %s, tainted.", ptrtype, p)
+				}
+				if !val.UpToDate {
+					v.UpToDate = false
+					return fmt.Errorf("outdated %s %s", ptrtype, p)
+				}
+				skip := false
+				for idx := range val.BelongsToCollections {
+					if val.BelongsToCollections[idx] == v.Name {
+						skip = true
+					}
+				}
+				if !skip {
+					val.BelongsToCollections = append(val.BelongsToCollections, v.Name)
+				}
+				hubIdx[ptrtype][p] = val
+				log.Tracef("checking for %s - tainted:%t uptodate:%t", p, v.Tainted, v.UpToDate)
 			}
 		}
 	}
 	return nil
 }
 
-func SyncDir(cscli *csconfig.CscliCfg, dir string) error {
-	hubdir = cscli.HubDir
-	installdir = cscli.ConfigDir
-	indexpath = cscli.HubIndexFile
+func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
+	hubdir = hub.HubDir
+	installdir = hub.ConfigDir
+	warnings := []string{}
 
 	/*For each, scan PARSERS, PARSERS_OVFLW, SCENARIOS and COLLECTIONS last*/
 	for _, scan := range ItemTypes {
@@ -305,43 +315,54 @@ func SyncDir(cscli *csconfig.CscliCfg, dir string) error {
 		if err != nil {
 			log.Errorf("failed %s : %s", cpath, err)
 		}
-		err = filepath.Walk(cpath, parser_visit)
+		err = filepath.WalkDir(cpath, parser_visit)
 		if err != nil {
-			return err
+			return err, warnings
 		}
 
 	}
 
 	for k, v := range hubIdx[COLLECTIONS] {
-		if err := CollecDepsCheck(&v); err != nil {
-			log.Infof("dependency issue %s : %s", v.Name, err)
+		if v.Installed {
+			versStat := GetVersionStatus(&v)
+			if versStat == 0 { //latest
+				if err := CollecDepsCheck(&v); err != nil {
+					warnings = append(warnings, fmt.Sprintf("dependency of %s : %s", v.Name, err))
+					hubIdx[COLLECTIONS][k] = v
+				}
+			} else if versStat == 1 { //not up-to-date
+				warnings = append(warnings, fmt.Sprintf("update for collection %s available (currently:%s, latest:%s)", v.Name, v.LocalVersion, v.Version))
+			} else { //version is higher than the highest available from hub?
+				warnings = append(warnings, fmt.Sprintf("collection %s is in the future (currently:%s, latest:%s)", v.Name, v.LocalVersion, v.Version))
+			}
+			log.Debugf("installed (%s) - status:%d | installed:%s | latest : %s | full : %+v", v.Name, semver.Compare("v"+v.Version, "v"+v.LocalVersion), v.LocalVersion, v.Version, v.Versions)
 		}
-		hubIdx[COLLECTIONS][k] = v
 	}
-	return nil
+	return nil, warnings
 }
 
 /* Updates the infos from HubInit() with the local state */
-func LocalSync(cscli *csconfig.CscliCfg) error {
+func LocalSync(hub *csconfig.Hub) (error, []string) {
 	skippedLocal = 0
 	skippedTainted = 0
 
-	for _, dir := range []string{cscli.ConfigDir, cscli.HubDir} {
-		log.Debugf("scanning %s", dir)
-		if err := SyncDir(cscli, dir); err != nil {
-			return fmt.Errorf("failed to scan %s : %s", dir, err)
-		}
+	err, warnings := SyncDir(hub, hub.ConfigDir)
+	if err != nil {
+		return fmt.Errorf("failed to scan %s : %s", hub.ConfigDir, err), warnings
 	}
-
-	return nil
+	err, _ = SyncDir(hub, hub.HubDir)
+	if err != nil {
+		return fmt.Errorf("failed to scan %s : %s", hub.HubDir, err), warnings
+	}
+	return nil, warnings
 }
 
-func GetHubIdx(cscli *csconfig.CscliCfg) error {
-	if cscli == nil {
-		return fmt.Errorf("no configuration found for cscli")
+func GetHubIdx(hub *csconfig.Hub) error {
+	if hub == nil {
+		return fmt.Errorf("no configuration found for hub")
 	}
-	log.Debugf("loading hub idx %s", cscli.HubIndexFile)
-	bidx, err := ioutil.ReadFile(cscli.HubIndexFile)
+	log.Debugf("loading hub idx %s", hub.HubIndexFile)
+	bidx, err := os.ReadFile(hub.HubIndexFile)
 	if err != nil {
 		return errors.Wrap(err, "unable to read index file")
 	}
@@ -353,7 +374,8 @@ func GetHubIdx(cscli *csconfig.CscliCfg) error {
 		return err
 	}
 	hubIdx = ret
-	if err := LocalSync(cscli); err != nil {
+	err, _ = LocalSync(hub)
+	if err != nil {
 		log.Fatalf("Failed to sync Hub index with local deployment : %v", err)
 	}
 	return nil

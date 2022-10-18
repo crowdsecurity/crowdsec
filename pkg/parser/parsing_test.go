@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
@@ -39,7 +38,7 @@ func TestParser(t *testing.T) {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
 		}
 	} else {
-		fds, err := ioutil.ReadDir("./tests/")
+		fds, err := os.ReadDir("./tests/")
 		if err != nil {
 			t.Fatalf("Unable to read test directory : %s", err)
 		}
@@ -72,7 +71,7 @@ func BenchmarkParser(t *testing.B) {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
 		}
 	} else {
-		fds, err := ioutil.ReadDir("./tests/")
+		fds, err := os.ReadDir("./tests/")
 		if err != nil {
 			t.Fatalf("Unable to read test directory : %s", err)
 		}
@@ -89,7 +88,7 @@ func BenchmarkParser(t *testing.B) {
 	}
 }
 
-func testOneParser(pctx *UnixParserCtx, ectx []EnricherCtx, dir string, b *testing.B) error {
+func testOneParser(pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing.B) error {
 
 	var (
 		err    error
@@ -99,7 +98,7 @@ func testOneParser(pctx *UnixParserCtx, ectx []EnricherCtx, dir string, b *testi
 	)
 	log.Warningf("testing %s", dir)
 	parser_cfg_file := fmt.Sprintf("%s/parsers.yaml", dir)
-	cfg, err := ioutil.ReadFile(parser_cfg_file)
+	cfg, err := os.ReadFile(parser_cfg_file)
 	if err != nil {
 		return fmt.Errorf("failed opening %s : %s", parser_cfg_file, err)
 	}
@@ -139,14 +138,14 @@ func testOneParser(pctx *UnixParserCtx, ectx []EnricherCtx, dir string, b *testi
 }
 
 //prepTests is going to do the initialisation of parser : it's going to load enrichment plugins and load the patterns. This is done here so that we don't redo it for each test
-func prepTests() (*UnixParserCtx, []EnricherCtx, error) {
+func prepTests() (*UnixParserCtx, EnricherCtx, error) {
 	var (
 		err  error
 		pctx *UnixParserCtx
-		ectx []EnricherCtx
+		ectx EnricherCtx
 	)
 
-	err = exprhelpers.Init()
+	err = exprhelpers.Init(nil)
 	if err != nil {
 		log.Fatalf("exprhelpers init failed: %s", err)
 	}
@@ -166,7 +165,7 @@ func prepTests() (*UnixParserCtx, []EnricherCtx, error) {
 	// Init the parser
 	pctx, err = Init(map[string]interface{}{"patterns": cfgdir + string("/patterns/"), "data": "./tests/"})
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to initialize parser : %v", err)
+		return nil, ectx, fmt.Errorf("failed to initialize parser : %v", err)
 	}
 	return pctx, ectx, nil
 }
@@ -295,7 +294,7 @@ func testSubSet(testSet TestFile, pctx UnixParserCtx, nodes []Node) (bool, error
 		only the keys of the expected part are checked against result
 	*/
 	if len(testSet.Results) == 0 && len(results) == 0 {
-		log.Fatalf("No results, no tests, abort.")
+		log.Fatal("No results, no tests, abort.")
 		return false, fmt.Errorf("no tests, no results")
 	}
 
@@ -334,7 +333,7 @@ reCheck:
 }
 
 func testFile(testSet []TestFile, pctx UnixParserCtx, nodes []Node) bool {
-	log.Warningf("Going to process one test set")
+	log.Warning("Going to process one test set")
 	for _, tf := range testSet {
 		//func testSubSet(testSet TestFile, pctx UnixParserCtx, nodes []Node) (bool, error) {
 		testOk, err := testSubSet(tf, pctx, nodes)

@@ -1,8 +1,17 @@
 package exprhelpers
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"time"
 
+	"github.com/pkg/errors"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 
 	"testing"
@@ -16,8 +25,25 @@ var (
 	TestFolder = "tests"
 )
 
+func getDBClient(t *testing.T) *database.Client {
+	t.Helper()
+	dbPath, err := os.CreateTemp("", "*sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	testDbClient, err := database.NewClient(&csconfig.DatabaseCfg{
+		Type:   "sqlite",
+		DbName: "crowdsec",
+		DbPath: dbPath.Name(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return testDbClient
+}
+
 func TestVisitor(t *testing.T) {
-	if err := Init(); err != nil {
+	if err := Init(nil); err != nil {
 		log.Fatalf(err.Error())
 	}
 
@@ -80,17 +106,17 @@ func TestVisitor(t *testing.T) {
 	for _, test := range tests {
 		compiledFilter, err := expr.Compile(test.filter, expr.Env(GetExprEnv(test.env)))
 		if err != nil && test.err == nil {
-			log.Fatalf("compile: %s", err.Error())
+			log.Fatalf("compile: %s", err)
 		}
 		debugFilter, err := NewDebugger(test.filter, expr.Env(GetExprEnv(test.env)))
 		if err != nil && test.err == nil {
-			log.Fatalf("debug: %s", err.Error())
+			log.Fatalf("debug: %s", err)
 		}
 
 		if compiledFilter != nil {
 			result, err := expr.Run(compiledFilter, GetExprEnv(test.env))
 			if err != nil && test.err == nil {
-				log.Fatalf("run : %s", err.Error())
+				log.Fatalf("run : %s", err)
 			}
 			if isOk := assert.Equal(t, test.result, result); !isOk {
 				t.Fatalf("test '%s' : NOK", test.filter)
@@ -104,7 +130,7 @@ func TestVisitor(t *testing.T) {
 }
 
 func TestRegexpInFile(t *testing.T) {
-	if err := Init(); err != nil {
+	if err := Init(nil); err != nil {
 		log.Fatalf(err.Error())
 	}
 
@@ -161,7 +187,7 @@ func TestRegexpInFile(t *testing.T) {
 }
 
 func TestFileInit(t *testing.T) {
-	if err := Init(); err != nil {
+	if err := Init(nil); err != nil {
 		log.Fatalf(err.Error())
 	}
 
@@ -229,7 +255,7 @@ func TestFileInit(t *testing.T) {
 }
 
 func TestFile(t *testing.T) {
-	if err := Init(); err != nil {
+	if err := Init(nil); err != nil {
 		log.Fatalf(err.Error())
 	}
 
@@ -341,6 +367,82 @@ func TestIpInRange(t *testing.T) {
 
 }
 
+func TestIpToRange(t *testing.T) {
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result string
+		err    string
+	}{
+		{
+			name: "IpToRange() test: IPv4",
+			env: map[string]interface{}{
+				"ip":        "192.168.1.1",
+				"netmask":   "16",
+				"IpToRange": IpToRange,
+			},
+			code:   "IpToRange(ip, netmask)",
+			result: "192.168.0.0/16",
+			err:    "",
+		},
+		{
+			name: "IpToRange() test: IPv6",
+			env: map[string]interface{}{
+				"ip":        "2001:db8::1",
+				"netmask":   "/64",
+				"IpToRange": IpToRange,
+			},
+			code:   "IpToRange(ip, netmask)",
+			result: "2001:db8::/64",
+			err:    "",
+		},
+		{
+			name: "IpToRange() test: malformed netmask",
+			env: map[string]interface{}{
+				"ip":        "192.168.0.1",
+				"netmask":   "test",
+				"IpToRange": IpToRange,
+			},
+			code:   "IpToRange(ip, netmask)",
+			result: "",
+			err:    "",
+		},
+		{
+			name: "IpToRange() test: malformed IP",
+			env: map[string]interface{}{
+				"ip":        "a.b.c.d",
+				"netmask":   "24",
+				"IpToRange": IpToRange,
+			},
+			code:   "IpToRange(ip, netmask)",
+			result: "",
+			err:    "",
+		},
+		{
+			name: "IpToRange() test: too high netmask",
+			env: map[string]interface{}{
+				"ip":        "192.168.1.1",
+				"netmask":   "35",
+				"IpToRange": IpToRange,
+			},
+			code:   "IpToRange(ip, netmask)",
+			result: "",
+			err:    "",
+		},
+	}
+
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, expr.Env(test.env))
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+
+}
+
 func TestAtof(t *testing.T) {
 	testFloat := "1.5"
 	expectedFloat := 1.5
@@ -367,8 +469,505 @@ func TestUpper(t *testing.T) {
 	expectedStr := "TEST"
 
 	if Upper(testStr) != expectedStr {
-		t.Fatalf("Upper() should returned 1.5 as a float")
+		t.Fatalf("Upper() should returned test in upper case")
 	}
 
 	log.Printf("test 'Upper()' : OK")
+}
+
+func TestTimeNow(t *testing.T) {
+	ti, err := time.Parse(time.RFC3339, TimeNow())
+	if err != nil {
+		t.Fatalf("Error parsing the return value of TimeNow: %s", err)
+	}
+
+	if -1*time.Until(ti) > time.Second {
+		t.Fatalf("TimeNow func should return time.Now().UTC()")
+	}
+	log.Printf("test 'TimeNow()' : OK")
+}
+
+func TestParseUri(t *testing.T) {
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result map[string][]string
+		err    string
+	}{
+		{
+			name: "ParseUri() test: basic test",
+			env: map[string]interface{}{
+				"uri":      "/foo?a=1&b=2",
+				"ParseUri": ParseUri,
+			},
+			code:   "ParseUri(uri)",
+			result: map[string][]string{"a": []string{"1"}, "b": []string{"2"}},
+			err:    "",
+		},
+		{
+			name: "ParseUri() test: no param",
+			env: map[string]interface{}{
+				"uri":      "/foo",
+				"ParseUri": ParseUri,
+			},
+			code:   "ParseUri(uri)",
+			result: map[string][]string{},
+			err:    "",
+		},
+		{
+			name: "ParseUri() test: extra question mark",
+			env: map[string]interface{}{
+				"uri":      "/foo?a=1&b=2?",
+				"ParseUri": ParseUri,
+			},
+			code:   "ParseUri(uri)",
+			result: map[string][]string{"a": []string{"1"}, "b": []string{"2?"}},
+			err:    "",
+		},
+		{
+			name: "ParseUri() test: weird params",
+			env: map[string]interface{}{
+				"uri":      "/foo?&?&&&&?=123",
+				"ParseUri": ParseUri,
+			},
+			code:   "ParseUri(uri)",
+			result: map[string][]string{"?": []string{"", "123"}},
+			err:    "",
+		},
+		{
+			name: "ParseUri() test: bad encoding",
+			env: map[string]interface{}{
+				"uri":      "/foo?a=%%F",
+				"ParseUri": ParseUri,
+			},
+			code:   "ParseUri(uri)",
+			result: map[string][]string{},
+			err:    "",
+		},
+	}
+
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, expr.Env(test.env))
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+}
+
+func TestQueryEscape(t *testing.T) {
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result string
+		err    string
+	}{
+		{
+			name: "QueryEscape() test: basic test",
+			env: map[string]interface{}{
+				"uri":         "/foo?a=1&b=2",
+				"QueryEscape": QueryEscape,
+			},
+			code:   "QueryEscape(uri)",
+			result: "%2Ffoo%3Fa%3D1%26b%3D2",
+			err:    "",
+		},
+		{
+			name: "QueryEscape() test: basic test",
+			env: map[string]interface{}{
+				"uri":         "/foo?a=1&&b=<>'\"",
+				"QueryEscape": QueryEscape,
+			},
+			code:   "QueryEscape(uri)",
+			result: "%2Ffoo%3Fa%3D1%26%26b%3D%3C%3E%27%22",
+			err:    "",
+		},
+	}
+
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, expr.Env(test.env))
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+}
+
+func TestPathEscape(t *testing.T) {
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result string
+		err    string
+	}{
+		{
+			name: "PathEscape() test: basic test",
+			env: map[string]interface{}{
+				"uri":        "/foo?a=1&b=2",
+				"PathEscape": PathEscape,
+			},
+			code:   "PathEscape(uri)",
+			result: "%2Ffoo%3Fa=1&b=2",
+			err:    "",
+		},
+		{
+			name: "PathEscape() test: basic test with more special chars",
+			env: map[string]interface{}{
+				"uri":        "/foo?a=1&&b=<>'\"",
+				"PathEscape": PathEscape,
+			},
+			code:   "PathEscape(uri)",
+			result: "%2Ffoo%3Fa=1&&b=%3C%3E%27%22",
+			err:    "",
+		},
+	}
+
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, expr.Env(test.env))
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+}
+
+func TestPathUnescape(t *testing.T) {
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result string
+		err    string
+	}{
+		{
+			name: "PathUnescape() test: basic test",
+			env: map[string]interface{}{
+				"uri":          "%2Ffoo%3Fa=1&b=%3C%3E%27%22",
+				"PathUnescape": PathUnescape,
+			},
+			code:   "PathUnescape(uri)",
+			result: "/foo?a=1&b=<>'\"",
+			err:    "",
+		},
+		{
+			name: "PathUnescape() test: basic test with more special chars",
+			env: map[string]interface{}{
+				"uri":          "/$%7Bjndi",
+				"PathUnescape": PathUnescape,
+			},
+			code:   "PathUnescape(uri)",
+			result: "/${jndi",
+			err:    "",
+		},
+	}
+
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, expr.Env(test.env))
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+}
+
+func TestQueryUnescape(t *testing.T) {
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result string
+		err    string
+	}{
+		{
+			name: "QueryUnescape() test: basic test",
+			env: map[string]interface{}{
+				"uri":           "%2Ffoo%3Fa=1&b=%3C%3E%27%22",
+				"QueryUnescape": QueryUnescape,
+			},
+			code:   "QueryUnescape(uri)",
+			result: "/foo?a=1&b=<>'\"",
+			err:    "",
+		},
+		{
+			name: "QueryUnescape() test: basic test with more special chars",
+			env: map[string]interface{}{
+				"uri":           "/$%7Bjndi",
+				"QueryUnescape": QueryUnescape,
+			},
+			code:   "QueryUnescape(uri)",
+			result: "/${jndi",
+			err:    "",
+		},
+	}
+
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, expr.Env(test.env))
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+}
+
+func TestLower(t *testing.T) {
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result string
+		err    string
+	}{
+		{
+			name: "Lower() test: basic test",
+			env: map[string]interface{}{
+				"name":  "ABCDEFG",
+				"Lower": Lower,
+			},
+			code:   "Lower(name)",
+			result: "abcdefg",
+			err:    "",
+		},
+		{
+			name: "Lower() test: basic test with more special chars",
+			env: map[string]interface{}{
+				"name":  "AbcDefG!#",
+				"Lower": Lower,
+			},
+			code:   "Lower(name)",
+			result: "abcdefg!#",
+			err:    "",
+		},
+	}
+
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, expr.Env(test.env))
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+}
+
+func TestGetDecisionsCount(t *testing.T) {
+	var err error
+	var start_ip, start_sfx, end_ip, end_sfx int64
+	var ip_sz int
+	existingIP := "1.2.3.4"
+	unknownIP := "1.2.3.5"
+	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(existingIP)
+	if err != nil {
+		t.Errorf("unable to convert '%s' to int: %s", existingIP, err)
+	}
+	// Add sample data to DB
+	dbClient = getDBClient(t)
+
+	decision := dbClient.Ent.Decision.Create().
+		SetUntil(time.Now().Add(time.Hour)).
+		SetScenario("crowdsec/test").
+		SetStartIP(start_ip).
+		SetStartSuffix(start_sfx).
+		SetEndIP(end_ip).
+		SetEndSuffix(end_sfx).
+		SetIPSize(int64(ip_sz)).
+		SetType("ban").
+		SetScope("IP").
+		SetValue(existingIP).
+		SetOrigin("CAPI").
+		SaveX(context.Background())
+
+	if decision == nil {
+		assert.Error(t, errors.Errorf("Failed to create sample decision"))
+	}
+
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result string
+		err    string
+	}{
+		{
+			name: "GetDecisionsCount() test: existing IP count",
+			env: map[string]interface{}{
+				"Alert": &models.Alert{
+					Source: &models.Source{
+						Value: &existingIP,
+					},
+					Decisions: []*models.Decision{
+						{
+							Value: &existingIP,
+						},
+					},
+				},
+				"GetDecisionsCount": GetDecisionsCount,
+				"sprintf":           fmt.Sprintf,
+			},
+			code:   "sprintf('%d', GetDecisionsCount(Alert.GetValue()))",
+			result: "1",
+			err:    "",
+		},
+		{
+			name: "GetDecisionsCount() test: unknown IP count",
+			env: map[string]interface{}{
+				"Alert": &models.Alert{
+					Source: &models.Source{
+						Value: &unknownIP,
+					},
+					Decisions: []*models.Decision{
+						{
+							Value: &unknownIP,
+						},
+					},
+				},
+				"GetDecisionsCount": GetDecisionsCount,
+				"sprintf":           fmt.Sprintf,
+			},
+			code:   "sprintf('%d', GetDecisionsCount(Alert.GetValue()))",
+			result: "0",
+			err:    "",
+		},
+	}
+
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, expr.Env(GetExprEnv(test.env)))
+		require.NoError(t, err)
+		output, err := expr.Run(program, GetExprEnv(test.env))
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+}
+func TestGetDecisionsSinceCount(t *testing.T) {
+	var err error
+	var start_ip, start_sfx, end_ip, end_sfx int64
+	var ip_sz int
+	existingIP := "1.2.3.4"
+	unknownIP := "1.2.3.5"
+	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(existingIP)
+	if err != nil {
+		t.Errorf("unable to convert '%s' to int: %s", existingIP, err)
+	}
+	// Add sample data to DB
+	dbClient = getDBClient(t)
+
+	decision := dbClient.Ent.Decision.Create().
+		SetUntil(time.Now().Add(time.Hour)).
+		SetScenario("crowdsec/test").
+		SetStartIP(start_ip).
+		SetStartSuffix(start_sfx).
+		SetEndIP(end_ip).
+		SetEndSuffix(end_sfx).
+		SetIPSize(int64(ip_sz)).
+		SetType("ban").
+		SetScope("IP").
+		SetValue(existingIP).
+		SetOrigin("CAPI").
+		SaveX(context.Background())
+	if decision == nil {
+		assert.Error(t, errors.Errorf("Failed to create sample decision"))
+	}
+	decision2 := dbClient.Ent.Decision.Create().
+		SetCreatedAt(time.Now().AddDate(0, 0, -1)).
+		SetUntil(time.Now().AddDate(0, 0, -1)).
+		SetScenario("crowdsec/test").
+		SetStartIP(start_ip).
+		SetStartSuffix(start_sfx).
+		SetEndIP(end_ip).
+		SetEndSuffix(end_sfx).
+		SetIPSize(int64(ip_sz)).
+		SetType("ban").
+		SetScope("IP").
+		SetValue(existingIP).
+		SetOrigin("CAPI").
+		SaveX(context.Background())
+	if decision2 == nil {
+		assert.Error(t, errors.Errorf("Failed to create sample decision"))
+	}
+
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result string
+		err    string
+	}{
+		{
+			name: "GetDecisionsSinceCount() test: existing IP count since more than 1 day",
+			env: map[string]interface{}{
+				"Alert": &models.Alert{
+					Source: &models.Source{
+						Value: &existingIP,
+					},
+					Decisions: []*models.Decision{
+						{
+							Value: &existingIP,
+						},
+					},
+				},
+				"GetDecisionsSinceCount": GetDecisionsSinceCount,
+				"sprintf":                fmt.Sprintf,
+			},
+			code:   "sprintf('%d', GetDecisionsSinceCount(Alert.GetValue(), '25h'))",
+			result: "2",
+			err:    "",
+		},
+		{
+			name: "GetDecisionsSinceCount() test: existing IP count since more than 1 hour",
+			env: map[string]interface{}{
+				"Alert": &models.Alert{
+					Source: &models.Source{
+						Value: &existingIP,
+					},
+					Decisions: []*models.Decision{
+						{
+							Value: &existingIP,
+						},
+					},
+				},
+				"GetDecisionsSinceCount": GetDecisionsSinceCount,
+				"sprintf":                fmt.Sprintf,
+			},
+			code:   "sprintf('%d', GetDecisionsSinceCount(Alert.GetValue(), '1h'))",
+			result: "1",
+			err:    "",
+		},
+		{
+			name: "GetDecisionsSinceCount() test: unknown IP count",
+			env: map[string]interface{}{
+				"Alert": &models.Alert{
+					Source: &models.Source{
+						Value: &unknownIP,
+					},
+					Decisions: []*models.Decision{
+						{
+							Value: &unknownIP,
+						},
+					},
+				},
+				"GetDecisionsSinceCount": GetDecisionsSinceCount,
+				"sprintf":                fmt.Sprintf,
+			},
+			code:   "sprintf('%d', GetDecisionsSinceCount(Alert.GetValue(), '1h'))",
+			result: "0",
+			err:    "",
+		},
+	}
+
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, expr.Env(GetExprEnv(test.env)))
+		require.NoError(t, err)
+		output, err := expr.Run(program, GetExprEnv(test.env))
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
 }

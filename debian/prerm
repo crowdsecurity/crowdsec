@@ -1,0 +1,9 @@
+if [ "$1" = "remove" ]; then
+   cscli dashboard remove -f -y || true
+   systemctl stop crowdsec
+   systemctl disable crowdsec
+fi
+
+if [ "$1" = "upgrade" ]; then
+   systemctl stop crowdsec
+fi

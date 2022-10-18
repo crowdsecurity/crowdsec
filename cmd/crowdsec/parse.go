@@ -1,7 +1,7 @@
 package main
 
 import (
-	"errors"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -22,20 +22,26 @@ LOOP:
 			if !event.Process {
 				continue
 			}
-			globalParserHits.With(prometheus.Labels{"source": event.Line.Src}).Inc()
-
-			/* parse the log using magic */
-			parsed, error := parser.Parse(parserCTX, event, nodes)
-			if error != nil {
-				log.Errorf("failed parsing : %v\n", error)
-				return errors.New("parsing failed :/")
+			if event.Line.Module == "" {
+				log.Errorf("empty event.Line.Module field, the acquisition module must set it ! : %+v", event.Line)
+				continue
 			}
+			globalParserHits.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Inc()
+
+			startParsing := time.Now()
+			/* parse the log using magic */
+			parsed, err := parser.Parse(parserCTX, event, nodes)
+			if err != nil {
+				log.Errorf("failed parsing : %v\n", err)
+			}
+			elapsed := time.Since(startParsing)
+			globalParsingHistogram.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Observe(elapsed.Seconds())
 			if !parsed.Process {
-				globalParserHitsKo.With(prometheus.Labels{"source": event.Line.Src}).Inc()
+				globalParserHitsKo.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Inc()
 				log.Debugf("Discarding line %+v", parsed)
 				continue
 			}
-			globalParserHitsOk.With(prometheus.Labels{"source": event.Line.Src}).Inc()
+			globalParserHitsOk.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Inc()
 			if parsed.Whitelisted {
 				log.Debugf("event whitelisted, discard")
 				continue

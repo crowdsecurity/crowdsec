@@ -1,5 +1,13 @@
 package csconfig
 
+import (
+	"fmt"
+	"path/filepath"
+
+	"github.com/crowdsecurity/crowdsec/pkg/yamlpatch"
+	"gopkg.in/yaml.v2"
+)
+
 type SimulationConfig struct {
 	Simulation *bool    `yaml:"simulation"`
 	Exclusions []string `yaml:"exclusions,omitempty"`
@@ -18,4 +26,35 @@ func (s *SimulationConfig) IsSimulated(scenario string) bool {
 		}
 	}
 	return simulated
+}
+
+func (c *Config) LoadSimulation() error {
+
+	if err := c.LoadConfigurationPaths(); err != nil {
+		return err
+	}
+
+	simCfg := SimulationConfig{}
+	if c.ConfigPaths.SimulationFilePath == "" {
+		c.ConfigPaths.SimulationFilePath = filepath.Clean(c.ConfigPaths.ConfigDir + "/simulation.yaml")
+	}
+
+	patcher := yamlpatch.NewPatcher(c.ConfigPaths.SimulationFilePath, ".local")
+	rcfg, err := patcher.MergedPatchContent()
+	if err != nil {
+		return err
+	}
+	if err := yaml.UnmarshalStrict(rcfg, &simCfg); err != nil {
+		return fmt.Errorf("while unmarshaling simulation file '%s' : %s", c.ConfigPaths.SimulationFilePath, err)
+	}
+	if simCfg.Simulation == nil {
+		simCfg.Simulation = new(bool)
+	}
+	if c.Crowdsec != nil {
+		c.Crowdsec.SimulationConfig = &simCfg
+	}
+	if c.Cscli != nil {
+		c.Cscli.SimulationConfig = &simCfg
+	}
+	return nil
 }

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -60,6 +59,7 @@ type BucketFactory struct {
 	RunTimeGroupBy  *vm.Program               `json:"-"`
 	Data            []*types.DataSource       `yaml:"data,omitempty"`
 	DataDir         string                    `yaml:"-"`
+	CancelOnFilter  string                    `yaml:"cancel_on,omitempty"` //a filter that, if matched, kills the bucket
 	leakspeed       time.Duration             //internal representation of `Leakspeed`
 	duration        time.Duration             //internal representation of `Duration`
 	ret             chan types.Event          //the bucket-specific output chan for overflows
@@ -67,11 +67,14 @@ type BucketFactory struct {
 	output          bool                      //??
 	ScenarioVersion string                    `yaml:"version,omitempty"`
 	hash            string                    `yaml:"-"`
-	Simulated       bool                      `yaml:"simulated"` //Set to true if the scenario instanciating the bucket was in the exclusion list
+	Simulated       bool                      `yaml:"simulated"` //Set to true if the scenario instantiating the bucket was in the exclusion list
 	tomb            *tomb.Tomb                `yaml:"-"`
 	wgPour          *sync.WaitGroup           `yaml:"-"`
 	wgDumpState     *sync.WaitGroup           `yaml:"-"`
 }
+
+//we use one NameGenerator for all the future buckets
+var seed namegenerator.Generator = namegenerator.NewNameGenerator(time.Now().UTC().UnixNano())
 
 func ValidateFactory(bucketFactory *BucketFactory) error {
 	if bucketFactory.Name == "" {
@@ -113,16 +116,29 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 		bucketFactory.ScopeType.Scope = types.Ip
 	case types.Ip:
 	case types.Range:
+		var (
+			runTimeFilter *vm.Program
+			err           error
+		)
+		if bucketFactory.ScopeType.Filter != "" {
+			if runTimeFilter, err = expr.Compile(bucketFactory.ScopeType.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}}))); err != nil {
+				return fmt.Errorf("Error compiling the scope filter: %s", err)
+			}
+			bucketFactory.ScopeType.RunTimeFilter = runTimeFilter
+		}
+
 	default:
 		//Compile the scope filter
 		var (
 			runTimeFilter *vm.Program
 			err           error
 		)
-		if runTimeFilter, err = expr.Compile(bucketFactory.ScopeType.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}}))); err != nil {
-			return fmt.Errorf("Error compiling the scope filter: %s", err)
+		if bucketFactory.ScopeType.Filter != "" {
+			if runTimeFilter, err = expr.Compile(bucketFactory.ScopeType.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}}))); err != nil {
+				return fmt.Errorf("Error compiling the scope filter: %s", err)
+			}
+			bucketFactory.ScopeType.RunTimeFilter = runTimeFilter
 		}
-		bucketFactory.ScopeType.RunTimeFilter = runTimeFilter
 	}
 	return nil
 }
@@ -133,12 +149,10 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 		response chan types.Event
 	)
 
-	var seed namegenerator.Generator = namegenerator.NewNameGenerator(time.Now().UTC().UnixNano())
-
 	response = make(chan types.Event, 1)
 	for _, f := range files {
 		log.Debugf("Loading '%s'", f)
-		if !strings.HasSuffix(f, ".yaml") {
+		if !strings.HasSuffix(f, ".yaml") && !strings.HasSuffix(f, ".yml") {
 			log.Debugf("Skipping %s : not a yaml file", f)
 			continue
 		}
@@ -155,13 +169,12 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 			bucketFactory := BucketFactory{}
 			err = dec.Decode(&bucketFactory)
 			if err != nil {
-				if err == io.EOF {
-					log.Tracef("End of yaml file")
-					break
-				} else {
+				if err != io.EOF {
 					log.Errorf("Bad yaml in %s : %v", f, err)
 					return nil, nil, fmt.Errorf("bad yaml in %s : %v", f, err)
 				}
+				log.Tracef("End of yaml file")
+				break
 			}
 			bucketFactory.DataDir = cscfg.DataDir
 			//check empty
@@ -252,7 +265,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	}
 
 	if bucketFactory.Filter == "" {
-		bucketFactory.logger.Warningf("Bucket without filter, abort.")
+		bucketFactory.logger.Warning("Bucket without filter, abort.")
 		return fmt.Errorf("bucket without filter directive")
 	}
 	bucketFactory.RunTimeFilter, err = expr.Compile(bucketFactory.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
@@ -274,7 +287,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	}
 
 	bucketFactory.logger.Infof("Adding %s bucket", bucketFactory.Type)
-	//return the Holder correponding to the type of bucket
+	//return the Holder corresponding to the type of bucket
 	bucketFactory.processors = []Processor{}
 	switch bucketFactory.Type {
 	case "leaky":
@@ -290,6 +303,11 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	if bucketFactory.Distinct != "" {
 		bucketFactory.logger.Tracef("Adding a non duplicate filter on %s.", bucketFactory.Name)
 		bucketFactory.processors = append(bucketFactory.processors, &Uniq{})
+	}
+
+	if bucketFactory.CancelOnFilter != "" {
+		bucketFactory.logger.Tracef("Adding a cancel_on filter on %s.", bucketFactory.Name)
+		bucketFactory.processors = append(bucketFactory.processors, &CancelOnFilter{})
 	}
 
 	if bucketFactory.OverflowFilter != "" {
@@ -320,7 +338,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 			}
 			err = exprhelpers.FileInit(bucketFactory.DataDir, data.DestPath, data.Type)
 			if err != nil {
-				bucketFactory.logger.Errorf("unable to init data for file '%s': %s", data.DestPath, err.Error())
+				bucketFactory.logger.Errorf("unable to init data for file '%s': %s", data.DestPath, err)
 			}
 		}
 	}
@@ -336,7 +354,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 
 func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFactory) error {
 	var state map[string]Leaky
-	body, err := ioutil.ReadFile(file)
+	body, err := os.ReadFile(file)
 	if err != nil {
 		return fmt.Errorf("can't state file %s : %s", file, err)
 	}
@@ -367,7 +385,7 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 				tbucket.Queue = v.Queue
 				/*Trying to set the limiter to the saved values*/
 				tbucket.Limiter.Load(v.SerializedState)
-				tbucket.In = make(chan types.Event)
+				tbucket.In = make(chan *types.Event)
 				tbucket.Mapkey = k
 				tbucket.Signal = make(chan bool, 1)
 				tbucket.First_ts = v.First_ts

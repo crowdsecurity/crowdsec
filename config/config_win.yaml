@@ -1,0 +1,49 @@
+common:
+  daemonize: false
+  log_media: file
+  log_level: info
+  log_dir:  C:\ProgramData\CrowdSec\log\
+  working_dir: .
+config_paths:
+  config_dir:  C:\ProgramData\CrowdSec\config\
+  data_dir:  C:\ProgramData\CrowdSec\data\
+  simulation_path:   C:\ProgramData\CrowdSec\config\simulation.yaml
+  hub_dir:  C:\ProgramData\CrowdSec\hub\
+  index_path:  C:\ProgramData\CrowdSec\hub\.index.json
+  plugin_dir: C:\ProgramData\CrowdSec\plugins\
+  notification_dir:  C:\ProgramData\CrowdSec\config\notifications\
+crowdsec_service:
+  acquisition_path:  C:\ProgramData\CrowdSec\config\acquis.yaml
+  parser_routines: 1
+cscli:
+  output: human
+db_config:
+  log_level: info
+  type: sqlite
+  db_path:  C:\ProgramData\CrowdSec\data\crowdsec.db
+  #user: 
+  #password:
+  #db_name:
+  #host:
+  #port:
+  flush:
+    max_items: 5000
+    max_age: 7d
+api:
+  client:
+    insecure_skip_verify: false
+    credentials_path:  C:\ProgramData\CrowdSec\config\local_api_credentials.yaml
+  server:
+    log_level: info
+    listen_uri: 127.0.0.1:8080
+    profiles_path: C:\ProgramData\Crowdsec\config\profiles.yaml
+    online_client: # Crowdsec API credentials (to push signals and receive bad IPs)
+      credentials_path:  C:\ProgramData\CrowdSec\config\online_api_credentials.yaml
+#    tls:
+#      cert_file: /etc/crowdsec/ssl/cert.pem
+#      key_file: /etc/crowdsec/ssl/key.pem
+prometheus:
+  enabled: true
+  level: full
+  listen_addr: 127.0.0.1
+  listen_port: 6060

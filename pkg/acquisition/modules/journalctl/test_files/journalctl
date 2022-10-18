@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+
+import argparse
+import time
+import sys
+
+class CustomParser(argparse.ArgumentParser):
+    #small hack to make argparse errors the same as journalctl
+    def error(self, message):
+        if 'unrecognized arguments:' in message:
+            sys.stderr.write("journalctl: invalid option -- '_'\n")
+            sys.stderr.flush()
+            exit(1)
+        else:
+            sys.stderr.write(message)
+            sys.stderr.flush()
+            exit(1)
+
+LOGS = """-- Logs begin at Fri 2019-07-26 17:13:13 CEST, end at Mon 2020-11-23 09:17:34 CET. --
+Nov 22 11:22:19 zeroed sshd[1480]: Invalid user wqeqwe from 127.0.0.1 port 55818
+Nov 22 11:22:23 zeroed sshd[1480]: Failed password for invalid user wqeqwe from 127.0.0.1 port 55818 ssh2
+Nov 22 11:23:22 zeroed sshd[1769]: Invalid user wqeqwe1 from 127.0.0.1 port 55824
+Nov 22 11:23:24 zeroed sshd[1769]: Disconnecting invalid user wqeqwe1 127.0.0.1 port 55824: Too many authentication failures [preauth]
+Nov 22 11:23:24 zeroed sshd[1777]: Invalid user wqeqwe2 from 127.0.0.1 port 55826
+Nov 22 11:23:25 zeroed sshd[1777]: Disconnecting invalid user wqeqwe2 127.0.0.1 port 55826: Too many authentication failures [preauth]
+Nov 22 11:23:25 zeroed sshd[1780]: Invalid user wqeqwe3 from 127.0.0.1 port 55828
+Nov 22 11:23:26 zeroed sshd[1780]: Disconnecting invalid user wqeqwe3 127.0.0.1 port 55828: Too many authentication failures [preauth]
+Nov 22 11:23:26 zeroed sshd[1786]: Invalid user wqeqwe4 from 127.0.0.1 port 55830
+Nov 22 11:23:27 zeroed sshd[1786]: Failed password for invalid user wqeqwe4 from 127.0.0.1 port 55830 ssh2
+Nov 22 11:23:27 zeroed sshd[1786]: Disconnecting invalid user wqeqwe4 127.0.0.1 port 55830: Too many authentication failures [preauth]
+Nov 22 11:23:27 zeroed sshd[1791]: Invalid user wqeqwe5 from 127.0.0.1 port 55834
+Nov 22 11:23:27 zeroed sshd[1791]: Failed password for invalid user wqeqwe5 from 127.0.0.1 port 55834 ssh2"""
+
+parser = CustomParser()
+parser.add_argument('filter', metavar='FILTER', type=str, nargs='?')
+parser.add_argument('-n', dest='n', type=int)
+parser.add_argument('--follow', dest='follow', action='store_true', default=False)
+
+args = parser.parse_args()
+
+for line in LOGS.split('\n'):
+    print(line)
+
+if args.follow:
+    time.sleep(9999)

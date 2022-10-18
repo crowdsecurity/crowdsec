@@ -11,14 +11,15 @@ import (
 )
 
 //DisableItem to disable an item managed by the hub, removes the symlink if purge is true
-func DisableItem(cscli *csconfig.CscliCfg, target Item, purge bool, force bool) (Item, error) {
-	var tdir = cscli.ConfigDir
-	var hdir = cscli.HubDir
+func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, error) {
+	var tdir = hub.ConfigDir
+	var hdir = hub.HubDir
 
 	syml, err := filepath.Abs(tdir + "/" + target.Type + "/" + target.Stage + "/" + target.FileName)
 	if err != nil {
 		return Item{}, err
 	}
+
 	if target.Local {
 		return target, fmt.Errorf("%s isn't managed by hub. Please delete manually", target.Name)
 	}
@@ -34,9 +35,21 @@ func DisableItem(cscli *csconfig.CscliCfg, target Item, purge bool, force bool) 
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
 				if val, ok := hubIdx[ptrtype][p]; ok {
-					hubIdx[ptrtype][p], err = DisableItem(cscli, val, purge, force)
-					if err != nil {
-						return target, errors.Wrap(err, fmt.Sprintf("while disabling %s", p))
+					// check if the item doesn't belong to another collection before removing it
+					toRemove := true
+					for _, collection := range val.BelongsToCollections {
+						if collection != target.Name {
+							toRemove = false
+							break
+						}
+					}
+					if toRemove {
+						hubIdx[ptrtype][p], err = DisableItem(hub, val, purge, force)
+						if err != nil {
+							return target, errors.Wrap(err, fmt.Sprintf("while disabling %s", p))
+						}
+					} else {
+						log.Infof("%s was not removed because it belongs to another collection", val.Name)
 					}
 				} else {
 					log.Errorf("Referred %s %s in collection %s doesn't exist.", ptrtype, p, target.Name)
@@ -51,7 +64,7 @@ func DisableItem(cscli *csconfig.CscliCfg, target Item, purge bool, force bool) 
 			return target, fmt.Errorf("can't delete %s : %s doesn't exist", target.Name, syml)
 		}
 	} else {
-		//if it's managed by hub, it's a symlink to csconfig.GConfig.Cscli.HubDir / ...
+		//if it's managed by hub, it's a symlink to csconfig.GConfig.hub.HubDir / ...
 		if stat.Mode()&os.ModeSymlink == 0 {
 			log.Warningf("%s (%s) isn't a symlink, can't disable", target.Name, syml)
 			return target, fmt.Errorf("%s isn't managed by hub", target.Name)
@@ -90,9 +103,11 @@ func DisableItem(cscli *csconfig.CscliCfg, target Item, purge bool, force bool) 
 	return target, nil
 }
 
-func EnableItem(cscli *csconfig.CscliCfg, target Item) (Item, error) {
-	var tdir = cscli.ConfigDir
-	var hdir = cscli.HubDir
+// creates symlink between actual config file at hub.HubDir and hub.ConfigDir
+// Handles collections recursively
+func EnableItem(hub *csconfig.Hub, target Item) (Item, error) {
+	var tdir = hub.ConfigDir
+	var hdir = hub.HubDir
 	var err error
 	parent_dir := filepath.Clean(tdir + "/" + target.Type + "/" + target.Stage + "/")
 	/*create directories if needed*/
@@ -122,37 +137,41 @@ func EnableItem(cscli *csconfig.CscliCfg, target Item) (Item, error) {
 		for idx, ptr := range tmp {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
-				if val, ok := hubIdx[ptrtype][p]; ok {
-					hubIdx[ptrtype][p], err = EnableItem(cscli, val)
-					if err != nil {
-						return target, errors.Wrap(err, fmt.Sprintf("while installing %s", p))
-					}
-				} else {
+				val, ok := hubIdx[ptrtype][p]
+				if !ok {
 					return target, fmt.Errorf("required %s %s of %s doesn't exist, abort.", ptrtype, p, target.Name)
+				}
+
+				hubIdx[ptrtype][p], err = EnableItem(hub, val)
+				if err != nil {
+					return target, errors.Wrap(err, fmt.Sprintf("while installing %s", p))
 				}
 			}
 		}
 	}
 
-	if _, err := os.Lstat(parent_dir + "/" + target.FileName); os.IsNotExist(err) {
-		//tdir+target.RemotePath
-		srcPath, err := filepath.Abs(hdir + "/" + target.RemotePath)
-		if err != nil {
-			return target, errors.Wrap(err, "while getting source path")
-		}
-		dstPath, err := filepath.Abs(parent_dir + "/" + target.FileName)
-		if err != nil {
-			return target, errors.Wrap(err, "while getting destination path")
-		}
-		err = os.Symlink(srcPath, dstPath)
-		if err != nil {
-			return target, errors.Wrap(err, fmt.Sprintf("while creating symlink from %s to %s", srcPath, dstPath))
-		}
-		log.Printf("Enabled %s : %s", target.Type, target.Name)
-	} else {
+	// check if file already exists where it should in configdir (eg /etc/crowdsec/collections/)
+	if _, err := os.Lstat(parent_dir + "/" + target.FileName); !os.IsNotExist(err) {
 		log.Printf("%s already exists.", parent_dir+"/"+target.FileName)
 		return target, nil
 	}
+
+	//tdir+target.RemotePath
+	srcPath, err := filepath.Abs(hdir + "/" + target.RemotePath)
+	if err != nil {
+		return target, errors.Wrap(err, "while getting source path")
+	}
+
+	dstPath, err := filepath.Abs(parent_dir + "/" + target.FileName)
+	if err != nil {
+		return target, errors.Wrap(err, "while getting destination path")
+	}
+
+	if err = os.Symlink(srcPath, dstPath); err != nil {
+		return target, errors.Wrap(err, fmt.Sprintf("while creating symlink from %s to %s", srcPath, dstPath))
+	}
+
+	log.Printf("Enabled %s : %s", target.Type, target.Name)
 	target.Installed = true
 	hubIdx[target.Type][target.Name] = target
 	return target, nil

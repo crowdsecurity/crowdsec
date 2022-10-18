@@ -111,15 +111,14 @@ func (t *JWTTransport) refreshJwtToken() error {
 	/*
 		we don't use the main client, so let's build the body
 	*/
-	var buf io.ReadWriter
-	buf = &bytes.Buffer{}
+	var buf io.ReadWriter = &bytes.Buffer{}
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(false)
 	err = enc.Encode(auth)
 	if err != nil {
 		return errors.Wrap(err, "could not encode jwt auth body")
 	}
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s%s/watchers/login", t.URL, t.VersionPrefix), buf)
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s%s/watchers/login", t.URL, t.VersionPrefix), buf)
 	if err != nil {
 		return errors.Wrap(err, "could not create request")
 	}
@@ -149,7 +148,11 @@ func (t *JWTTransport) refreshJwtToken() error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("received response status %q when fetching %v", resp.Status, req.URL)
+		log.Debugf("received response status %q when fetching %v", resp.Status, req.URL)
+		err = CheckResponse(resp)
+		if err != nil {
+			return err
+		}
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
@@ -166,7 +169,7 @@ func (t *JWTTransport) refreshJwtToken() error {
 
 // RoundTrip implements the RoundTripper interface.
 func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	if t.token == "" || t.Expiration.Add(-time.Minute).Before(time.Now()) {
+	if t.token == "" || t.Expiration.Add(-time.Minute).Before(time.Now().UTC()) {
 		if err := t.refreshJwtToken(); err != nil {
 			return nil, err
 		}

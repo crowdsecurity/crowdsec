@@ -1,11 +1,12 @@
 package schema
 
 import (
-	"time"
-
-	"github.com/facebook/ent"
-	"github.com/facebook/ent/schema/edge"
-	"github.com/facebook/ent/schema/field"
+	"entgo.io/ent"
+	"entgo.io/ent/dialect"
+	"entgo.io/ent/schema/edge"
+	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 // Decision holds the schema definition for the Decision entity.
@@ -17,10 +18,14 @@ type Decision struct {
 func (Decision) Fields() []ent.Field {
 	return []ent.Field{
 		field.Time("created_at").
-			Default(time.Now),
+			Default(types.UtcNow).
+			UpdateDefault(types.UtcNow).Nillable().Optional(),
 		field.Time("updated_at").
-			Default(time.Now),
-		field.Time("until"),
+			Default(types.UtcNow).
+			UpdateDefault(types.UtcNow).Nillable().Optional(),
+		field.Time("until").Nillable().Optional().SchemaType(map[string]string{
+			dialect.MySQL: "datetime",
+		}),
 		field.String("scenario"),
 		field.String("type"),
 		field.Int64("start_ip").Optional(),
@@ -41,5 +46,13 @@ func (Decision) Edges() []ent.Edge {
 		edge.From("owner", Alert.Type).
 			Ref("decisions").
 			Unique(),
+	}
+}
+
+func (Decision) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("start_ip", "end_ip"),
+		index.Fields("value"),
+		index.Fields("until"),
 	}
 }

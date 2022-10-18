@@ -6,6 +6,8 @@ package models
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -53,6 +55,8 @@ func (m *Event) validateMeta(formats strfmt.Registry) error {
 	if err := m.Meta.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("meta")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("meta")
 		}
 		return err
 	}
@@ -63,6 +67,34 @@ func (m *Event) validateMeta(formats strfmt.Registry) error {
 func (m *Event) validateTimestamp(formats strfmt.Registry) error {
 
 	if err := validate.Required("timestamp", "body", m.Timestamp); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this event based on the context it is used
+func (m *Event) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateMeta(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *Event) contextValidateMeta(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Meta.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("meta")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("meta")
+		}
 		return err
 	}
 

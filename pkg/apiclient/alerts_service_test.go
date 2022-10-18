@@ -12,6 +12,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAlertsListAsMachine(t *testing.T) {
@@ -36,7 +37,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 	})
 
 	if err != nil {
-		log.Fatalf("new api client: %s", err.Error())
+		log.Fatalf("new api client: %s", err)
 	}
 
 	defer teardown()
@@ -239,7 +240,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 	})
 
 	if err != nil {
-		log.Fatalf("new api client: %s", err.Error())
+		log.Fatalf("new api client: %s", err)
 	}
 
 	defer teardown()
@@ -388,7 +389,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 	}
 
 	alerts, resp, err := client.Alerts.GetByID(context.Background(), 1)
-
+	require.NoError(t, err)
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
 	}
@@ -398,7 +399,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 	}
 
 	//fail
-	alerts, resp, err = client.Alerts.GetByID(context.Background(), 2)
+	_, _, err = client.Alerts.GetByID(context.Background(), 2)
 	assert.Contains(t, fmt.Sprintf("%s", err), "API error: object not found")
 
 }
@@ -430,12 +431,13 @@ func TestAlertsCreateAsMachine(t *testing.T) {
 	})
 
 	if err != nil {
-		log.Fatalf("new api client: %s", err.Error())
+		log.Fatalf("new api client: %s", err)
 	}
 
 	defer teardown()
 	alert := models.AddAlertsRequest{}
 	alerts, resp, err := client.Alerts.Add(context.Background(), alert)
+	require.NoError(t, err)
 	expected := &models.AddAlertsResponse{"3"}
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
@@ -473,14 +475,16 @@ func TestAlertsDeleteAsMachine(t *testing.T) {
 	})
 
 	if err != nil {
-		log.Fatalf("new api client: %s", err.Error())
+		log.Fatalf("new api client: %s", err)
 	}
 
 	defer teardown()
 	alert := AlertsDeleteOpts{IPEquals: new(string)}
 	*alert.IPEquals = "1.2.3.4"
 	alerts, resp, err := client.Alerts.Delete(context.Background(), alert)
-	expected := &models.DeleteAlertsResponse{""}
+	require.NoError(t, err)
+
+	expected := &models.DeleteAlertsResponse{NbDeleted: ""}
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
 	}

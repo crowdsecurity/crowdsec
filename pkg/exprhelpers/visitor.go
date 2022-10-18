@@ -124,7 +124,7 @@ func (e *ExprDebugger) Run(logger *logrus.Entry, filterResult bool, exprEnv map[
 		if err != nil {
 			logger.Errorf("unable to print debug expression for '%s': %s", expression.Str, err)
 		}
-		logger.Debugf("       %s = '%s'", expression.Str, debug)
+		logger.Debugf("       %s = '%v'", expression.Str, debug)
 	}
 }
 

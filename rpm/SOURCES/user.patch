@@ -1,0 +1,11 @@
+--- config/config.yaml-orig	2021-09-08 12:04:29.758785098 +0200
++++ config/config.yaml	2021-09-08 12:04:39.866856057 +0200
+@@ -32,7 +32,7 @@
+     max_age: 7d
+ plugin_config:
+   user: nobody # plugin process would be ran on behalf of this user
+-  group: nogroup # plugin process would be ran on behalf of this group
++  group: nobody # plugin process would be ran on behalf of this group
+ api:
+   client:
+     insecure_skip_verify: false

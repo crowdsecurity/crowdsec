@@ -3,14 +3,16 @@ package main
 import (
 	"fmt"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-
+	"github.com/fatih/color"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-
 	"github.com/spf13/cobra"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 func NewScenariosCmd() *cobra.Command {
+
 	var cmdScenarios = &cobra.Command{
 		Use:   "scenarios [action] [config]",
 		Short: "Install/Remove/Upgrade/Inspect scenario(s) from hub",
@@ -20,43 +22,68 @@ cscli scenarios inspect crowdsecurity/ssh-bf
 cscli scenarios upgrade crowdsecurity/ssh-bf
 cscli scenarios remove crowdsecurity/ssh-bf
 `,
-		Args: cobra.MinimumNArgs(1),
+		Args:              cobra.MinimumNArgs(1),
+		Aliases:           []string{"scenario"},
+		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if csConfig.Cscli == nil {
+			if err := csConfig.LoadHub(); err != nil {
+				log.Fatal(err)
+			}
+			if csConfig.Hub == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 
-			if err := setHubBranch(); err != nil {
-				return fmt.Errorf("error while setting hub branch: %s", err)
+			if err := cwhub.SetHubBranch(); err != nil {
+				return errors.Wrap(err, "while setting hub branch")
 			}
+
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
+				log.Info("Run 'sudo cscli hub update' to get the hub index")
+				log.Fatalf("Failed to get Hub index : %v", err)
+			}
+
 			return nil
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			if cmd.Name() == "inspect" || cmd.Name() == "list" {
 				return
 			}
-			log.Infof("Run 'sudo systemctl reload crowdsec' for the new configuration to be effective.")
+			log.Infof(ReloadMessage())
 		},
 	}
 
+	var ignoreError bool
 	var cmdScenariosInstall = &cobra.Command{
 		Use:     "install [config]",
 		Short:   "Install given scenario(s)",
 		Long:    `Fetch and install given scenario(s) from hub`,
 		Example: `cscli scenarios install crowdsec/xxx crowdsec/xyz`,
 		Args:    cobra.MinimumNArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return compAllItems(cwhub.SCENARIOS, args, toComplete)
+		},
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
-				log.Fatalf("Failed to get Hub index : %v", err)
-				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
-			}
 			for _, name := range args {
-				InstallItem(name, cwhub.SCENARIOS, forceAction)
+				t := cwhub.GetItem(cwhub.SCENARIOS, name)
+				if t == nil {
+					nearestItem, score := GetDistance(cwhub.SCENARIOS, name)
+					Suggest(cwhub.SCENARIOS, name, nearestItem.Name, score, ignoreError)
+					continue
+				}
+				if err := cwhub.InstallItem(csConfig, name, cwhub.SCENARIOS, forceAction, downloadOnly); err != nil {
+					if ignoreError {
+						log.Errorf("Error while installing '%s': %s", name, err)
+					} else {
+						log.Fatalf("Error while installing '%s': %s", name, err)
+					}
+				}
 			}
 		},
 	}
 	cmdScenariosInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
 	cmdScenariosInstall.PersistentFlags().BoolVar(&forceAction, "force", false, "Force install : Overwrite tainted and outdated files")
+	cmdScenariosInstall.PersistentFlags().BoolVar(&ignoreError, "ignore", false, "Ignore errors when installing multiple scenarios")
 	cmdScenarios.AddCommand(cmdScenariosInstall)
 
 	var cmdScenariosRemove = &cobra.Command{
@@ -64,19 +91,23 @@ cscli scenarios remove crowdsecurity/ssh-bf
 		Short:   "Remove given scenario(s)",
 		Long:    `remove given scenario(s)`,
 		Example: `cscli scenarios remove crowdsec/xxx crowdsec/xyz`,
-		Args:    cobra.MinimumNArgs(1),
+		Aliases: []string{"delete"},
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return compInstalledItems(cwhub.SCENARIOS, args, toComplete)
+		},
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
-				log.Fatalf("Failed to get Hub index : %v", err)
-				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
+			if all {
+				cwhub.RemoveMany(csConfig, cwhub.SCENARIOS, "", all, purge, forceAction)
+				return
 			}
 
-			if all {
-				RemoveMany(cwhub.SCENARIOS, "")
-			} else {
-				for _, name := range args {
-					RemoveMany(cwhub.SCENARIOS, name)
-				}
+			if len(args) == 0 {
+				log.Fatalf("Specify at least one scenario to remove or '--all' flag.")
+			}
+
+			for _, name := range args {
+				cwhub.RemoveMany(csConfig, cwhub.SCENARIOS, name, all, purge, forceAction)
 			}
 		},
 	}
@@ -90,16 +121,19 @@ cscli scenarios remove crowdsecurity/ssh-bf
 		Short:   "Upgrade given scenario(s)",
 		Long:    `Fetch and Upgrade given scenario(s) from hub`,
 		Example: `cscli scenarios upgrade crowdsec/xxx crowdsec/xyz`,
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return compInstalledItems(cwhub.SCENARIOS, args, toComplete)
+		},
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
-				log.Fatalf("Failed to get Hub index : %v", err)
-				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
-			}
 			if all {
-				UpgradeConfig(cwhub.SCENARIOS, "", forceAction)
+				cwhub.UpgradeConfig(csConfig, cwhub.SCENARIOS, "", forceAction)
 			} else {
+				if len(args) == 0 {
+					log.Fatalf("no target scenario to upgrade")
+				}
 				for _, name := range args {
-					UpgradeConfig(cwhub.SCENARIOS, name, forceAction)
+					cwhub.UpgradeConfig(csConfig, cwhub.SCENARIOS, name, forceAction)
 				}
 			}
 		},
@@ -114,11 +148,11 @@ cscli scenarios remove crowdsecurity/ssh-bf
 		Long:    `Inspect given scenario`,
 		Example: `cscli scenarios inspect crowdsec/xxx`,
 		Args:    cobra.MinimumNArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return compInstalledItems(cwhub.SCENARIOS, args, toComplete)
+		},
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
-				log.Fatalf("Failed to get Hub index : %v", err)
-				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
-			}
 			InspectItem(args[0], cwhub.SCENARIOS)
 		},
 	}
@@ -131,15 +165,12 @@ cscli scenarios remove crowdsecurity/ssh-bf
 		Long:  `List all scenario(s) or given one`,
 		Example: `cscli scenarios list
 cscli scenarios list crowdsecurity/xxx`,
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
-				log.Fatalf("Failed to get Hub index : %v", err)
-				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
-			}
-			ListItem(cwhub.SCENARIOS, args)
+			ListItems(color.Output, []string{cwhub.SCENARIOS}, args, false, true, all)
 		},
 	}
-	cmdScenariosList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List as well disabled items")
+	cmdScenariosList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
 	cmdScenarios.AddCommand(cmdScenariosList)
 
 	return cmdScenarios

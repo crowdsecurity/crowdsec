@@ -2,7 +2,7 @@ package types
 
 import (
 	"github.com/antonmedv/expr/vm"
-	"github.com/logrusorgru/grokky"
+	"github.com/crowdsecurity/grokky"
 )
 
 //Used mostly for statics
@@ -33,6 +33,9 @@ type GrokPattern struct {
 	RegexpValue string `yaml:"pattern,omitempty"`
 	//the runtime form of regexpname / regexpvalue
 	RunTimeRegexp *grokky.Pattern `json:"-"` //the actual regexp
-	//a grok can contain statics that apply if pattern is successfull
+	//the output of the expression is going to be the source for regexp
+	ExpValue     string      `yaml:"expression,omitempty"`
+	RunTimeValue *vm.Program `json:"-"` //the actual compiled filter
+	//a grok can contain statics that apply if pattern is successful
 	Statics []ExtraField `yaml:"statics,omitempty"`
 }

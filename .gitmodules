@@ -1,0 +1,16 @@
+[submodule "tests/lib/bats-core"]
+	path = tests/lib/bats-core
+	url = https://github.com/crowdsecurity/bats-core.git
+        branch = v1.7.0
+[submodule "tests/lib/bats-file"]
+	path = tests/lib/bats-file
+	url = https://github.com/crowdsecurity/bats-file.git
+[submodule "tests/lib/bats-assert"]
+	path = tests/lib/bats-assert
+	url = https://github.com/crowdsecurity/bats-assert.git
+[submodule "tests/lib/bats-support"]
+	path = tests/lib/bats-support
+	url = https://github.com/crowdsecurity/bats-support.git
+[submodule "tests/lib/bats-mock"]
+	path = tests/lib/bats-mock
+	url = https://github.com/crowdsecurity/bats-mock.git

@@ -2,10 +2,13 @@ package controllers
 
 import (
 	"context"
+	"net"
 	"net/http"
 
+	"github.com/alexliesenfeld/health"
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
@@ -13,12 +16,16 @@ import (
 )
 
 type Controller struct {
-	Ectx     context.Context
-	DBClient *database.Client
-	Router   *gin.Engine
-	Profiles []*csconfig.ProfileCfg
-	CAPIChan chan []*models.Alert
-	Log      *log.Logger
+	Ectx          context.Context
+	DBClient      *database.Client
+	Router        *gin.Engine
+	Profiles      []*csconfig.ProfileCfg
+	CAPIChan      chan []*models.Alert
+	PluginChannel chan csplugin.ProfileAlert
+	Log           *log.Logger
+	ConsoleConfig *csconfig.ConsoleConfig
+	TrustedIPs    []net.IPNet
+	HandlerV1     *v1.Controller
 }
 
 func (c *Controller) Init() error {
@@ -37,12 +44,35 @@ func (c *Controller) Init() error {
 	return nil
 }
 
+// endpoint for health checking
+func serveHealth() http.HandlerFunc {
+	checker := health.NewChecker(
+		// just simple up/down status is enough
+		health.WithDisabledDetails(),
+		// no caching required
+		health.WithDisabledCache(),
+	)
+	return health.NewHandler(checker)
+}
+
 func (c *Controller) NewV1() error {
-	handlerV1, err := v1.New(c.DBClient, c.Ectx, c.Profiles, c.CAPIChan)
+	var err error
+
+	v1Config := v1.ControllerV1Config{
+		DbClient:      c.DBClient,
+		Ctx:           c.Ectx,
+		ProfilesCfg:   c.Profiles,
+		CapiChan:      c.CAPIChan,
+		PluginChannel: c.PluginChannel,
+		ConsoleConfig: *c.ConsoleConfig,
+		TrustedIPs:    c.TrustedIPs,
+	}
+
+	c.HandlerV1, err = v1.New(&v1Config)
 	if err != nil {
 		return err
 	}
-
+	c.Router.GET("/health", gin.WrapF(serveHealth()))
 	c.Router.Use(v1.PrometheusMiddleware())
 	c.Router.HandleMethodNotAllowed = true
 	c.Router.NoRoute(func(ctx *gin.Context) {
@@ -53,30 +83,32 @@ func (c *Controller) NewV1() error {
 	})
 
 	groupV1 := c.Router.Group("/v1")
-	groupV1.POST("/watchers", handlerV1.CreateMachine)
-	groupV1.POST("/watchers/login", handlerV1.Middlewares.JWT.Middleware.LoginHandler)
+	groupV1.POST("/watchers", c.HandlerV1.CreateMachine)
+	groupV1.POST("/watchers/login", c.HandlerV1.Middlewares.JWT.Middleware.LoginHandler)
 
 	jwtAuth := groupV1.Group("")
-	jwtAuth.GET("/refresh_token", handlerV1.Middlewares.JWT.Middleware.RefreshHandler)
-	jwtAuth.Use(handlerV1.Middlewares.JWT.Middleware.MiddlewareFunc(), v1.PrometheusMachinesMiddleware())
+	jwtAuth.GET("/refresh_token", c.HandlerV1.Middlewares.JWT.Middleware.RefreshHandler)
+	jwtAuth.Use(c.HandlerV1.Middlewares.JWT.Middleware.MiddlewareFunc(), v1.PrometheusMachinesMiddleware())
 	{
-		jwtAuth.POST("/alerts", handlerV1.CreateAlert)
-		jwtAuth.GET("/alerts", handlerV1.FindAlerts)
-		jwtAuth.HEAD("/alerts", handlerV1.FindAlerts)
-		jwtAuth.GET("/alerts/:alert_id", handlerV1.FindAlertByID)
-		jwtAuth.HEAD("/alerts/:alert_id", handlerV1.FindAlertByID)
-		jwtAuth.DELETE("/alerts", handlerV1.DeleteAlerts)
-		jwtAuth.DELETE("/decisions", handlerV1.DeleteDecisions)
-		jwtAuth.DELETE("/decisions/:decision_id", handlerV1.DeleteDecisionById)
+		jwtAuth.POST("/alerts", c.HandlerV1.CreateAlert)
+		jwtAuth.GET("/alerts", c.HandlerV1.FindAlerts)
+		jwtAuth.HEAD("/alerts", c.HandlerV1.FindAlerts)
+		jwtAuth.GET("/alerts/:alert_id", c.HandlerV1.FindAlertByID)
+		jwtAuth.HEAD("/alerts/:alert_id", c.HandlerV1.FindAlertByID)
+		jwtAuth.DELETE("/alerts", c.HandlerV1.DeleteAlerts)
+		jwtAuth.DELETE("/decisions", c.HandlerV1.DeleteDecisions)
+		jwtAuth.DELETE("/decisions/:decision_id", c.HandlerV1.DeleteDecisionById)
+		jwtAuth.GET("/heartbeat", c.HandlerV1.HeartBeat)
+
 	}
 
 	apiKeyAuth := groupV1.Group("")
-	apiKeyAuth.Use(handlerV1.Middlewares.APIKey.MiddlewareFunc(), v1.PrometheusBouncersMiddleware())
+	apiKeyAuth.Use(c.HandlerV1.Middlewares.APIKey.MiddlewareFunc(), v1.PrometheusBouncersMiddleware())
 	{
-		apiKeyAuth.GET("/decisions", handlerV1.GetDecision)
-		apiKeyAuth.HEAD("/decisions", handlerV1.GetDecision)
-		apiKeyAuth.GET("/decisions/stream", handlerV1.StreamDecision)
-		apiKeyAuth.HEAD("/decisions/stream", handlerV1.StreamDecision)
+		apiKeyAuth.GET("/decisions", c.HandlerV1.GetDecision)
+		apiKeyAuth.HEAD("/decisions", c.HandlerV1.GetDecision)
+		apiKeyAuth.GET("/decisions/stream", c.HandlerV1.StreamDecision)
+		apiKeyAuth.HEAD("/decisions/stream", c.HandlerV1.StreamDecision)
 	}
 
 	return nil

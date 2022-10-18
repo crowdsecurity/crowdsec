@@ -1,0 +1,26 @@
+name: Update Docker Hub README
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'docker/README.md'
+
+jobs:
+  update-docker-hub-readme:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Check out the repo
+        uses: actions/checkout@v3
+        if: ${{ github.repository_owner == 'crowdsecurity' }}
+      -
+        name: Update docker hub README
+        uses: ms-jpq/sync-dockerhub-readme@v1
+        if: ${{ github.repository_owner == 'crowdsecurity' }}
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          repository: crowdsecurity/crowdsec
+          readme: "./docker/README.md"

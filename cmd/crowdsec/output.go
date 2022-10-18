@@ -58,6 +58,8 @@ func PushAlerts(alerts []types.RuntimeAlert, client *apiclient.ApiClient) error 
 	return nil
 }
 
+var bucketOverflows []types.Event
+
 func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky.Buckets,
 	postOverflowCTX parser.UnixParserCtx, postOverflowNodes []parser.Node, apiConfig csconfig.ApiCredentialsCfg) error {
 
@@ -67,7 +69,7 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	var cache []types.RuntimeAlert
 	var cacheMutex sync.Mutex
 
-	scenarios, err := cwhub.GetUpstreamInstalledScenariosAsString()
+	scenarios, err := cwhub.GetInstalledScenariosAsString()
 	if err != nil {
 		return errors.Wrapf(err, "loading list of installed hub scenarios: %s", err)
 	}
@@ -86,7 +88,7 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 		UserAgent:      fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 		URL:            apiURL,
 		VersionPrefix:  "v1",
-		UpdateScenario: cwhub.GetUpstreamInstalledScenariosAsString,
+		UpdateScenario: cwhub.GetInstalledScenariosAsString,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "new client api: %s", err)
@@ -98,6 +100,9 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	}); err != nil {
 		return errors.Wrapf(err, "authenticate watcher (%s)", apiConfig.Login)
 	}
+	//start the heartbeat service
+	log.Debugf("Starting HeartBeat service")
+	Client.HeartBeat.StartHeartBeat(context.Background(), &outputsTomb)
 LOOP:
 	for {
 		select {
@@ -120,8 +125,6 @@ LOOP:
 			if len(cache) > 0 {
 				cacheMutex.Lock()
 				cachecopy := cache
-				newcache := make([]types.RuntimeAlert, 0)
-				cache = newcache
 				cacheMutex.Unlock()
 				if err := PushAlerts(cachecopy, Client); err != nil {
 					log.Errorf("while pushing leftovers to api : %s", err)
@@ -129,15 +132,17 @@ LOOP:
 			}
 			break LOOP
 		case event := <-overflow:
-
+			//if the Alert is nil, it's to signal bucket is ready for GC, don't track this
+			if dumpStates && event.Overflow.Alert != nil {
+				if bucketOverflows == nil {
+					bucketOverflows = make([]types.Event, 0)
+				}
+				bucketOverflows = append(bucketOverflows, event)
+			}
 			/*if alert is empty and mapKey is present, the overflow is just to cleanup bucket*/
 			if event.Overflow.Alert == nil && event.Overflow.Mapkey != "" {
 				buckets.Bucket_map.Delete(event.Overflow.Mapkey)
 				break
-			}
-			if event.Overflow.Reprocess {
-				log.Debugf("Overflow being reprocessed.")
-				input <- event
 			}
 			/* process post overflow parser nodes */
 			event, err := parser.Parse(postOverflowCTX, event, postOverflowNodes)
@@ -149,10 +154,17 @@ LOOP:
 				log.Printf("[%s] is whitelisted, skip.", *event.Overflow.Alert.Message)
 				continue
 			}
+			if event.Overflow.Reprocess {
+				log.Debugf("Overflow being reprocessed.")
+				input <- event
+			}
+			if dumpStates {
+				continue
+			}
+
 			cacheMutex.Lock()
 			cache = append(cache, event.Overflow)
 			cacheMutex.Unlock()
-
 		}
 	}
 

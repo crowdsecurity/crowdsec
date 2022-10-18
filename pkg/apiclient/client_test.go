@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -45,7 +46,7 @@ func TestNewClientOk(t *testing.T) {
 	defer teardown()
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
+		t.Fatalf("parsing api url: %s", apiURL)
 	}
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
@@ -55,7 +56,7 @@ func TestNewClientOk(t *testing.T) {
 		VersionPrefix: "v1",
 	})
 	if err != nil {
-		t.Fatalf("new api client: %s", err.Error())
+		t.Fatalf("new api client: %s", err)
 	}
 	/*mock login*/
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
@@ -82,7 +83,7 @@ func TestNewClientKo(t *testing.T) {
 	defer teardown()
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
+		t.Fatalf("parsing api url: %s", apiURL)
 	}
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
@@ -92,7 +93,7 @@ func TestNewClientKo(t *testing.T) {
 		VersionPrefix: "v1",
 	})
 	if err != nil {
-		t.Fatalf("new api client: %s", err.Error())
+		t.Fatalf("new api client: %s", err)
 	}
 	/*mock login*/
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
@@ -106,7 +107,7 @@ func TestNewClientKo(t *testing.T) {
 	})
 
 	_, _, err = client.Alerts.List(context.Background(), AlertsListOpts{})
-	assert.Contains(t, err.Error(), `received response status "401 Unauthorized"`)
+	assert.Contains(t, err.Error(), `API error: bad login/password`)
 	log.Printf("err-> %s", err)
 }
 
@@ -115,11 +116,11 @@ func TestNewDefaultClient(t *testing.T) {
 	defer teardown()
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
+		t.Fatalf("parsing api url: %s", apiURL)
 	}
 	client, err := NewDefaultClient(apiURL, "/v1", "", nil)
 	if err != nil {
-		t.Fatalf("new api client: %s", err.Error())
+		t.Fatalf("new api client: %s", err)
 	}
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -142,7 +143,11 @@ func TestNewClientRegisterKO(t *testing.T) {
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	}, &http.Client{})
-	assert.Contains(t, fmt.Sprintf("%s", err), "dial tcp 127.0.0.1:4242: connect: connection refused")
+	if runtime.GOOS != "windows" {
+		assert.Contains(t, fmt.Sprintf("%s", err), "dial tcp 127.0.0.1:4242: connect: connection refused")
+	} else {
+		assert.Contains(t, fmt.Sprintf("%s", err), " No connection could be made because the target machine actively refused it.")
+	}
 }
 
 func TestNewClientRegisterOK(t *testing.T) {

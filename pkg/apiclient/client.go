@@ -3,9 +3,10 @@ package apiclient
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -15,6 +16,8 @@ import (
 
 var (
 	InsecureSkipVerify = false
+	Cert               *tls.Certificate
+	CaCertPool         *x509.CertPool
 )
 
 type ApiClient struct {
@@ -32,6 +35,7 @@ type ApiClient struct {
 	Auth      *AuthService
 	Metrics   *MetricsService
 	Signal    *SignalService
+	HeartBeat *HeartBeatService
 }
 
 type service struct {
@@ -48,7 +52,12 @@ func NewClient(config *Config) (*ApiClient, error) {
 		VersionPrefix:  config.VersionPrefix,
 		UpdateScenario: config.UpdateScenario,
 	}
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: InsecureSkipVerify}
+	tlsconfig := tls.Config{InsecureSkipVerify: InsecureSkipVerify}
+	if Cert != nil {
+		tlsconfig.RootCAs = CaCertPool
+		tlsconfig.Certificates = []tls.Certificate{*Cert}
+	}
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tlsconfig
 	c := &ApiClient{client: t.Client(), BaseURL: config.URL, UserAgent: config.UserAgent, URLPrefix: config.VersionPrefix}
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)
@@ -56,6 +65,7 @@ func NewClient(config *Config) (*ApiClient, error) {
 	c.Auth = (*AuthService)(&c.common)
 	c.Metrics = (*MetricsService)(&c.common)
 	c.Signal = (*SignalService)(&c.common)
+	c.HeartBeat = (*HeartBeatService)(&c.common)
 
 	return c, nil
 }
@@ -63,8 +73,16 @@ func NewClient(config *Config) (*ApiClient, error) {
 func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *http.Client) (*ApiClient, error) {
 	if client == nil {
 		client = &http.Client{}
+		if ht, ok := http.DefaultTransport.(*http.Transport); ok {
+			tlsconfig := tls.Config{InsecureSkipVerify: InsecureSkipVerify}
+			if Cert != nil {
+				tlsconfig.RootCAs = CaCertPool
+				tlsconfig.Certificates = []tls.Certificate{*Cert}
+			}
+			ht.TLSClientConfig = &tlsconfig
+			client.Transport = ht
+		}
 	}
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: InsecureSkipVerify}
 	c := &ApiClient{client: client, BaseURL: URL, UserAgent: userAgent, URLPrefix: prefix}
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)
@@ -72,6 +90,8 @@ func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *htt
 	c.Auth = (*AuthService)(&c.common)
 	c.Metrics = (*MetricsService)(&c.common)
 	c.Signal = (*SignalService)(&c.common)
+	c.HeartBeat = (*HeartBeatService)(&c.common)
+
 	return c, nil
 }
 
@@ -79,7 +99,12 @@ func RegisterClient(config *Config, client *http.Client) (*ApiClient, error) {
 	if client == nil {
 		client = &http.Client{}
 	}
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: InsecureSkipVerify}
+	tlsconfig := tls.Config{InsecureSkipVerify: InsecureSkipVerify}
+	if Cert != nil {
+		tlsconfig.RootCAs = CaCertPool
+		tlsconfig.Certificates = []tls.Certificate{*Cert}
+	}
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tlsconfig
 	c := &ApiClient{client: client, BaseURL: config.URL, UserAgent: config.UserAgent, URLPrefix: config.VersionPrefix}
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)
@@ -119,7 +144,6 @@ func (e *ErrorResponse) Error() string {
 
 func newResponse(r *http.Response) *Response {
 	response := &Response{Response: r}
-	//response.populatePageValues()
 	return response
 }
 
@@ -128,7 +152,7 @@ func CheckResponse(r *http.Response) error {
 		return nil
 	}
 	errorResponse := &ErrorResponse{}
-	data, err := ioutil.ReadAll(r.Body)
+	data, err := io.ReadAll(r.Body)
 	if err == nil && data != nil {
 		err := json.Unmarshal(data, errorResponse)
 		if err != nil {

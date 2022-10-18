@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
+	"math"
 	"net"
 	"net/http"
 	"os"
@@ -11,17 +13,26 @@ import (
 	"strings"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/enescakir/emoji"
-	"github.com/olekukonko/tablewriter"
+	"github.com/fatih/color"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prom2json"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/mod/semver"
+	"github.com/spf13/cobra"
+	"github.com/texttheater/golang-levenshtein/levenshtein"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
+
+const MaxDistance = 7
+
+func printHelp(cmd *cobra.Command) {
+	err := cmd.Help()
+	if err != nil {
+		log.Fatalf("unable to print help(): %s", err)
+	}
+}
 
 func inSlice(s string, slice []string) bool {
 	for _, str := range slice {
@@ -39,6 +50,229 @@ func indexOf(s string, slice []string) int {
 		}
 	}
 	return -1
+}
+
+func LoadHub() error {
+	if err := csConfig.LoadHub(); err != nil {
+		log.Fatal(err)
+	}
+	if csConfig.Hub == nil {
+		return fmt.Errorf("unable to load hub")
+	}
+
+	if err := cwhub.SetHubBranch(); err != nil {
+		log.Warningf("unable to set hub branch (%s), default to master", err)
+	}
+
+	if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
+		return fmt.Errorf("Failed to get Hub index : '%w'. Run 'sudo cscli hub update' to get the hub index", err)
+	}
+
+	return nil
+}
+
+func Suggest(itemType string, baseItem string, suggestItem string, score int, ignoreErr bool) {
+	errMsg := ""
+	if score < MaxDistance {
+		errMsg = fmt.Sprintf("unable to find %s '%s', did you mean %s ?", itemType, baseItem, suggestItem)
+	} else {
+		errMsg = fmt.Sprintf("unable to find %s '%s'", itemType, baseItem)
+	}
+	if ignoreErr {
+		log.Error(errMsg)
+	} else {
+		log.Fatalf(errMsg)
+	}
+}
+
+func GetDistance(itemType string, itemName string) (*cwhub.Item, int) {
+	allItems := make([]string, 0)
+	nearestScore := 100
+	nearestItem := &cwhub.Item{}
+	hubItems := cwhub.GetHubStatusForItemType(itemType, "", true)
+	for _, item := range hubItems {
+		allItems = append(allItems, item.Name)
+	}
+
+	for _, s := range allItems {
+		d := levenshtein.DistanceForStrings([]rune(itemName), []rune(s), levenshtein.DefaultOptions)
+		if d < nearestScore {
+			nearestScore = d
+			nearestItem = cwhub.GetItem(itemType, s)
+		}
+	}
+	return nearestItem, nearestScore
+}
+
+func compAllItems(itemType string, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if err := LoadHub(); err != nil {
+		return nil, cobra.ShellCompDirectiveDefault
+	}
+
+	comp := make([]string, 0)
+	hubItems := cwhub.GetHubStatusForItemType(itemType, "", true)
+	for _, item := range hubItems {
+		if !inSlice(item.Name, args) && strings.Contains(item.Name, toComplete) {
+			comp = append(comp, item.Name)
+		}
+	}
+	cobra.CompDebugln(fmt.Sprintf("%s: %+v", itemType, comp), true)
+	return comp, cobra.ShellCompDirectiveNoFileComp
+}
+
+func compInstalledItems(itemType string, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if err := LoadHub(); err != nil {
+		return nil, cobra.ShellCompDirectiveDefault
+	}
+
+	var items []string
+	var err error
+	switch itemType {
+	case cwhub.PARSERS:
+		items, err = cwhub.GetInstalledParsersAsString()
+	case cwhub.SCENARIOS:
+		items, err = cwhub.GetInstalledScenariosAsString()
+	case cwhub.PARSERS_OVFLW:
+		items, err = cwhub.GetInstalledPostOverflowsAsString()
+	case cwhub.COLLECTIONS:
+		items, err = cwhub.GetInstalledCollectionsAsString()
+	default:
+		return nil, cobra.ShellCompDirectiveDefault
+	}
+
+	if err != nil {
+		cobra.CompDebugln(fmt.Sprintf("list installed %s err: %s", itemType, err), true)
+		return nil, cobra.ShellCompDirectiveDefault
+	}
+	comp := make([]string, 0)
+
+	if toComplete != "" {
+		for _, item := range items {
+			if strings.Contains(item, toComplete) {
+				comp = append(comp, item)
+			}
+		}
+	} else {
+		comp = items
+	}
+
+	cobra.CompDebugln(fmt.Sprintf("%s: %+v", itemType, comp), true)
+
+	return comp, cobra.ShellCompDirectiveNoFileComp
+}
+
+func ListItems(out io.Writer, itemTypes []string, args []string, showType bool, showHeader bool, all bool) {
+	var hubStatusByItemType = make(map[string][]cwhub.ItemHubStatus)
+
+	for _, itemType := range itemTypes {
+		itemName := ""
+		if len(args) == 1 {
+			itemName = args[0]
+		}
+		hubStatusByItemType[itemType] = cwhub.GetHubStatusForItemType(itemType, itemName, all)
+	}
+
+	if csConfig.Cscli.Output == "human" {
+		for _, itemType := range itemTypes {
+			var statuses []cwhub.ItemHubStatus
+			var ok bool
+			if statuses, ok = hubStatusByItemType[itemType]; !ok {
+				log.Errorf("unknown item type: %s", itemType)
+				continue
+			}
+			listHubItemTable(out, "\n"+strings.ToUpper(itemType), statuses)
+		}
+	} else if csConfig.Cscli.Output == "json" {
+		x, err := json.MarshalIndent(hubStatusByItemType, "", " ")
+		if err != nil {
+			log.Fatalf("failed to unmarshal")
+		}
+		out.Write(x)
+	} else if csConfig.Cscli.Output == "raw" {
+		csvwriter := csv.NewWriter(out)
+		if showHeader {
+			header := []string{"name", "status", "version", "description"}
+			if showType {
+				header = append(header, "type")
+			}
+			err := csvwriter.Write(header)
+			if err != nil {
+				log.Fatalf("failed to write header: %s", err)
+			}
+
+		}
+		for _, itemType := range itemTypes {
+			var statuses []cwhub.ItemHubStatus
+			var ok bool
+			if statuses, ok = hubStatusByItemType[itemType]; !ok {
+				log.Errorf("unknown item type: %s", itemType)
+				continue
+			}
+			for _, status := range statuses {
+				if status.LocalVersion == "" {
+					status.LocalVersion = "n/a"
+				}
+				row := []string{
+					status.Name,
+					status.Status,
+					status.LocalVersion,
+					status.Description,
+				}
+				if showType {
+					row = append(row, itemType)
+				}
+				err := csvwriter.Write(row)
+				if err != nil {
+					log.Fatalf("failed to write raw output : %s", err)
+				}
+			}
+		}
+		csvwriter.Flush()
+	}
+}
+
+func InspectItem(name string, objecitemType string) {
+
+	hubItem := cwhub.GetItem(objecitemType, name)
+	if hubItem == nil {
+		log.Fatalf("unable to retrieve item.")
+	}
+	var b []byte
+	var err error
+	switch csConfig.Cscli.Output {
+	case "human", "raw":
+		b, err = yaml.Marshal(*hubItem)
+		if err != nil {
+			log.Fatalf("unable to marshal item : %s", err)
+		}
+	case "json":
+		b, err = json.MarshalIndent(*hubItem, "", " ")
+		if err != nil {
+			log.Fatalf("unable to marshal item : %s", err)
+		}
+	}
+	fmt.Printf("%s", string(b))
+	if csConfig.Cscli.Output == "json" || csConfig.Cscli.Output == "raw" {
+		return
+	}
+
+	if prometheusURL == "" {
+		//This is technically wrong to do this, as the prometheus section contains a listen address, not an URL to query prometheus
+		//But for ease of use, we will use the listen address as the prometheus URL because it will be 127.0.0.1 in the default case
+		listenAddr := csConfig.Prometheus.ListenAddr
+		if listenAddr == "" {
+			listenAddr = "127.0.0.1"
+		}
+		listenPort := csConfig.Prometheus.ListenPort
+		if listenPort == 0 {
+			listenPort = 6060
+		}
+		prometheusURL = fmt.Sprintf("http://%s:%d/metrics", listenAddr, listenPort)
+		log.Debugf("No prometheus URL provided using: %s", prometheusURL)
+	}
+
+	fmt.Printf("\nCurrent metrics : \n")
+	ShowMetrics(hubItem)
 }
 
 func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *string) error {
@@ -63,239 +297,33 @@ func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *
 		*scope = types.Ip
 	case "range":
 		*scope = types.Range
+	case "country":
+		*scope = types.Country
+	case "as":
+		*scope = types.AS
 	}
 	return nil
-}
-
-func setHubBranch() error {
-	/*
-		if no branch has been specified in flags for the hub, then use the one corresponding to crowdsec version
-	*/
-
-	if cwhub.HubBranch == "" {
-		latest, err := cwversion.Latest()
-		if err != nil {
-			cwhub.HubBranch = "master"
-			return err
-		}
-
-		if cwversion.Version == latest {
-			cwhub.HubBranch = "master"
-		} else if semver.Compare(cwversion.Version, latest) == 1 { // if current version is greater than the latest we are in pre-release
-			log.Debugf("Your current crowdsec version seems to be a pre-release (%s)", cwversion.Version)
-			cwhub.HubBranch = "master"
-		} else {
-			log.Warnf("Crowdsec is not the latest version. Current version is '%s' and latest version is '%s'. Please update it!", cwversion.Version, latest)
-			log.Warnf("As a result, you will not be able to use parsers/scenarios/collections added to Crowdsec Hub after CrowdSec %s", latest)
-			cwhub.HubBranch = cwversion.Version
-		}
-		log.Debugf("Using branch '%s' for the hub", cwhub.HubBranch)
-	}
-	return nil
-}
-
-func ListItem(itemType string, args []string) {
-
-	var hubStatus []map[string]string
-
-	if len(args) == 1 {
-		hubStatus = cwhub.HubStatus(itemType, args[0], all)
-	} else {
-		hubStatus = cwhub.HubStatus(itemType, "", all)
-	}
-
-	if csConfig.Cscli.Output == "human" {
-
-		table := tablewriter.NewWriter(os.Stdout)
-		table.SetCenterSeparator("")
-		table.SetColumnSeparator("")
-
-		table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-		table.SetAlignment(tablewriter.ALIGN_LEFT)
-		table.SetHeader([]string{"Name", fmt.Sprintf("%v Status", emoji.Package), "Version", "Local Path"})
-		for _, v := range hubStatus {
-			table.Append([]string{v["name"], v["utf8_status"], v["local_version"], v["local_path"]})
-		}
-		table.Render()
-	} else if csConfig.Cscli.Output == "json" {
-		x, err := json.MarshalIndent(hubStatus, "", " ")
-		if err != nil {
-			log.Fatalf("failed to unmarshal")
-		}
-		fmt.Printf("%s", string(x))
-	} else if csConfig.Cscli.Output == "raw" {
-		for _, v := range hubStatus {
-			fmt.Printf("%s %s\n", v["name"], v["description"])
-		}
-	}
-}
-
-func InstallItem(name string, obtype string, force bool) {
-	it := cwhub.GetItem(obtype, name)
-	if it == nil {
-		log.Fatalf("unable to retrive item : %s", name)
-	}
-	item := *it
-	if downloadOnly && item.Downloaded && item.UpToDate {
-		log.Warningf("%s is already downloaded and up-to-date", item.Name)
-		if !force {
-			return
-		}
-	}
-	item, err := cwhub.DownloadLatest(csConfig.Cscli, item, force)
-	if err != nil {
-		log.Fatalf("error while downloading %s : %v", item.Name, err)
-	}
-	cwhub.AddItem(obtype, item)
-	if downloadOnly {
-		log.Infof("Downloaded %s to %s", item.Name, csConfig.Cscli.HubDir+"/"+item.RemotePath)
-		return
-	}
-	item, err = cwhub.EnableItem(csConfig.Cscli, item)
-	if err != nil {
-		log.Fatalf("error while enabled %s : %v.", item.Name, err)
-	}
-	cwhub.AddItem(obtype, item)
-	log.Infof("Enabled %s", item.Name)
-	return
-}
-
-func RemoveMany(itemType string, name string) {
-	var err error
-	var disabled int
-	if name != "" {
-		it := cwhub.GetItem(itemType, name)
-		if it == nil {
-			log.Fatalf("unable to retrieve: %s", name)
-		}
-		item := *it
-		item, err = cwhub.DisableItem(csConfig.Cscli, item, purge, forceAction)
-		if err != nil {
-			log.Fatalf("unable to disable %s : %v", item.Name, err)
-		}
-		cwhub.AddItem(itemType, item)
-		return
-	} else if name == "" && all {
-		for _, v := range cwhub.GetItemMap(itemType) {
-			v, err = cwhub.DisableItem(csConfig.Cscli, v, purge, forceAction)
-			if err != nil {
-				log.Fatalf("unable to disable %s : %v", v.Name, err)
-			}
-			cwhub.AddItem(itemType, v)
-			disabled++
-		}
-	}
-	if name != "" && !all {
-		log.Errorf("%s not found", name)
-		return
-	}
-	log.Infof("Disabled %d items", disabled)
-}
-
-func UpgradeConfig(itemType string, name string, force bool) {
-	var err error
-	var updated int
-	var found bool
-
-	for _, v := range cwhub.GetItemMap(itemType) {
-		if name != "" && name != v.Name {
-			continue
-		}
-		if !v.Installed {
-			log.Tracef("skip %s, not installed", v.Name)
-			if !force {
-				continue
-			}
-		}
-		if !v.Downloaded {
-			log.Warningf("%s : not downloaded, please install.", v.Name)
-			if !force {
-				continue
-			}
-		}
-		found = true
-		if v.UpToDate {
-			log.Infof("%s : up-to-date", v.Name)
-			if !force {
-				continue
-			}
-		}
-		v, err = cwhub.DownloadLatest(csConfig.Cscli, v, force)
-		if err != nil {
-			log.Fatalf("%s : download failed : %v", v.Name, err)
-		}
-		if !v.UpToDate {
-			if v.Tainted {
-				log.Infof("%v %s is tainted, --force to overwrite", emoji.Warning, v.Name)
-			} else if v.Local {
-				log.Infof("%v %s is local", emoji.Prohibited, v.Name)
-			}
-		} else {
-			log.Infof("%v %s : updated", emoji.Package, v.Name)
-			updated++
-		}
-		cwhub.AddItem(itemType, v)
-	}
-	if !found && name == "" {
-		log.Infof("No %s installed, nothing to upgrade", itemType)
-	} else if !found {
-		log.Errorf("Item '%s' not found in hub", name)
-	} else if updated == 0 && found {
-		if name == "" {
-			log.Infof("All %s are already up-to-date", itemType)
-		} else {
-			log.Infof("Item '%s' is up-to-date", name)
-		}
-	} else if updated != 0 {
-		log.Infof("Upgraded %d items", updated)
-	}
-
-}
-
-func InspectItem(name string, objecitemType string) {
-
-	hubItem := cwhub.GetItem(objecitemType, name)
-	if hubItem == nil {
-		log.Fatalf("unable to retrieve item.")
-	}
-	buff, err := yaml.Marshal(*hubItem)
-	if err != nil {
-		log.Fatalf("unable to marshal item : %s", err)
-	}
-	fmt.Printf("%s", string(buff))
-	if csConfig.Prometheus.Enabled {
-		if csConfig.Prometheus.ListenAddr == "" || csConfig.Prometheus.ListenPort == 0 {
-			log.Warningf("No prometheus address or port specified in '%s', can't show metrics", *csConfig.Self)
-			return
-		}
-		if prometheusURL == "" {
-			log.Debugf("No prometheus URL provided using: %s:%d", csConfig.Prometheus.ListenAddr, csConfig.Prometheus.ListenPort)
-			prometheusURL = fmt.Sprintf("http://%s:%d/metrics", csConfig.Prometheus.ListenAddr, csConfig.Prometheus.ListenPort)
-		}
-		fmt.Printf("\nCurrent metrics : \n\n")
-		ShowMetrics(hubItem)
-	}
 }
 
 func ShowMetrics(hubItem *cwhub.Item) {
 	switch hubItem.Type {
 	case cwhub.PARSERS:
 		metrics := GetParserMetric(prometheusURL, hubItem.Name)
-		ShowParserMetric(hubItem.Name, metrics)
+		parserMetricsTable(color.Output, hubItem.Name, metrics)
 	case cwhub.SCENARIOS:
 		metrics := GetScenarioMetric(prometheusURL, hubItem.Name)
-		ShowScenarioMetric(hubItem.Name, metrics)
+		scenarioMetricsTable(color.Output, hubItem.Name, metrics)
 	case cwhub.COLLECTIONS:
 		for _, item := range hubItem.Parsers {
 			metrics := GetParserMetric(prometheusURL, item)
-			ShowParserMetric(item, metrics)
+			parserMetricsTable(color.Output, item, metrics)
 		}
 		for _, item := range hubItem.Scenarios {
 			metrics := GetScenarioMetric(prometheusURL, item)
-			ShowScenarioMetric(item, metrics)
+			scenarioMetricsTable(color.Output, item, metrics)
 		}
 		for _, item := range hubItem.Collections {
-			hubItem := cwhub.GetItem(cwhub.COLLECTIONS, item)
+			hubItem = cwhub.GetItem(cwhub.COLLECTIONS, item)
 			if hubItem == nil {
 				log.Fatalf("unable to retrieve item '%s' from collection '%s'", item, hubItem.Name)
 			}
@@ -306,7 +334,7 @@ func ShowMetrics(hubItem *cwhub.Item) {
 	}
 }
 
-/*This is a complete rip from prom2json*/
+// GetParserMetric is a complete rip from prom2json
 func GetParserMetric(url string, itemName string) map[string]map[string]int {
 	stats := make(map[string]map[string]int)
 
@@ -317,7 +345,11 @@ func GetParserMetric(url string, itemName string) map[string]map[string]int {
 		}
 		log.Tracef("round %d", idx)
 		for _, m := range fam.Metrics {
-			metric := m.(prom2json.Metric)
+			metric, ok := m.(prom2json.Metric)
+			if !ok {
+				log.Debugf("failed to convert metric to prom2json.Metric")
+				continue
+			}
 			name, ok := metric.Labels["name"]
 			if !ok {
 				log.Debugf("no name in Metric %v", metric.Labels)
@@ -328,6 +360,10 @@ func GetParserMetric(url string, itemName string) map[string]map[string]int {
 			source, ok := metric.Labels["source"]
 			if !ok {
 				log.Debugf("no source in Metric %v", metric.Labels)
+			} else {
+				if srctype, ok := metric.Labels["type"]; ok {
+					source = srctype + ":" + source
+				}
 			}
 			value := m.(prom2json.Metric).Value
 			fval, err := strconv.ParseFloat(value, 32)
@@ -383,7 +419,7 @@ func GetParserMetric(url string, itemName string) map[string]map[string]int {
 func GetScenarioMetric(url string, itemName string) map[string]int {
 	stats := make(map[string]int)
 
-	stats["instanciation"] = 0
+	stats["instantiation"] = 0
 	stats["curr_count"] = 0
 	stats["overflow"] = 0
 	stats["pour"] = 0
@@ -396,7 +432,11 @@ func GetScenarioMetric(url string, itemName string) map[string]int {
 		}
 		log.Tracef("round %d", idx)
 		for _, m := range fam.Metrics {
-			metric := m.(prom2json.Metric)
+			metric, ok := m.(prom2json.Metric)
+			if !ok {
+				log.Debugf("failed to convert metric to prom2json.Metric")
+				continue
+			}
 			name, ok := metric.Labels["name"]
 			if !ok {
 				log.Debugf("no name in Metric %v", metric.Labels)
@@ -414,7 +454,7 @@ func GetScenarioMetric(url string, itemName string) map[string]int {
 
 			switch fam.Name {
 			case "cs_bucket_created_total":
-				stats["instanciation"] += ival
+				stats["instantiation"] += ival
 			case "cs_buckets":
 				stats["curr_count"] += ival
 			case "cs_bucket_overflowed_total":
@@ -429,6 +469,37 @@ func GetScenarioMetric(url string, itemName string) map[string]int {
 		}
 	}
 	return stats
+}
+
+// it's a rip of the cli version, but in silent-mode
+func silenceInstallItem(name string, obtype string) (string, error) {
+	var item = cwhub.GetItem(obtype, name)
+	if item == nil {
+		return "", fmt.Errorf("error retrieving item")
+	}
+	it := *item
+	if downloadOnly && it.Downloaded && it.UpToDate {
+		return fmt.Sprintf("%s is already downloaded and up-to-date", it.Name), nil
+	}
+	it, err := cwhub.DownloadLatest(csConfig.Hub, it, forceAction, false)
+	if err != nil {
+		return "", fmt.Errorf("error while downloading %s : %v", it.Name, err)
+	}
+	if err := cwhub.AddItem(obtype, it); err != nil {
+		return "", err
+	}
+
+	if downloadOnly {
+		return fmt.Sprintf("Downloaded %s to %s", it.Name, csConfig.Cscli.HubDir+"/"+it.RemotePath), nil
+	}
+	it, err = cwhub.EnableItem(csConfig.Hub, it)
+	if err != nil {
+		return "", fmt.Errorf("error while enabling %s : %v", it.Name, err)
+	}
+	if err := cwhub.AddItem(obtype, it); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("Enabled %s", it.Name), nil
 }
 
 func GetPrometheusMetric(url string) []*prom2json.Family {
@@ -459,71 +530,15 @@ func GetPrometheusMetric(url string) []*prom2json.Family {
 	return result
 }
 
-func ShowScenarioMetric(itemName string, metrics map[string]int) {
-	if metrics["instanciation"] == 0 {
-		return
-	}
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Current Count", "Overflows", "Instanciated", "Poured", "Expired"})
-	table.Append([]string{fmt.Sprintf("%d", metrics["curr_count"]), fmt.Sprintf("%d", metrics["overflow"]), fmt.Sprintf("%d", metrics["instanciation"]), fmt.Sprintf("%d", metrics["pour"]), fmt.Sprintf("%d", metrics["underflow"])})
-
-	fmt.Printf(" - (Scenario) %s: \n", itemName)
-	table.Render()
-	fmt.Println()
-}
-
-func ShowParserMetric(itemName string, metrics map[string]map[string]int) {
-	skip := true
-
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Parsers", "Hits", "Parsed", "Unparsed"})
-	for source, stats := range metrics {
-		if stats["hits"] > 0 {
-			table.Append([]string{source, fmt.Sprintf("%d", stats["hits"]), fmt.Sprintf("%d", stats["parsed"]), fmt.Sprintf("%d", stats["unparsed"])})
-			skip = false
-		}
-	}
-	if !skip {
-		fmt.Printf(" - (Parser) %s: \n", itemName)
-		table.Render()
-		fmt.Println()
-	}
-}
-
-//it's a rip of the cli version, but in silent-mode
-func silenceInstallItem(name string, obtype string) (string, error) {
-	var item *cwhub.Item
-	item = cwhub.GetItem(obtype, name)
-	if item == nil {
-		return "", fmt.Errorf("error retrieving item")
-	}
-	it := *item
-	if downloadOnly && it.Downloaded && it.UpToDate {
-		return fmt.Sprintf("%s is already downloaded and up-to-date", it.Name), nil
-	}
-	it, err := cwhub.DownloadLatest(csConfig.Cscli, it, forceAction)
-	if err != nil {
-		return "", fmt.Errorf("error while downloading %s : %v", it.Name, err)
-	}
-	if err := cwhub.AddItem(obtype, it); err != nil {
-		return "", err
-	}
-
-	if downloadOnly {
-		return fmt.Sprintf("Downloaded %s to %s", it.Name, csConfig.Cscli.HubDir+"/"+it.RemotePath), nil
-	}
-	it, err = cwhub.EnableItem(csConfig.Cscli, it)
-	if err != nil {
-		return "", fmt.Errorf("error while enabled %s : %v", it.Name, err)
-	}
-	if err := cwhub.AddItem(obtype, it); err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("Enabled %s", it.Name), nil
-}
-
 func RestoreHub(dirPath string) error {
 	var err error
+
+	if err := csConfig.LoadHub(); err != nil {
+		return err
+	}
+	if err := cwhub.SetHubBranch(); err != nil {
+		return fmt.Errorf("error while setting hub branch: %s", err)
+	}
 
 	for _, itype := range cwhub.ItemTypes {
 		itemDirectory := fmt.Sprintf("%s/%s/", dirPath, itype)
@@ -533,12 +548,12 @@ func RestoreHub(dirPath string) error {
 		}
 		/*restore the upstream items*/
 		upstreamListFN := fmt.Sprintf("%s/upstream-%s.json", itemDirectory, itype)
-		file, err := ioutil.ReadFile(upstreamListFN)
+		file, err := os.ReadFile(upstreamListFN)
 		if err != nil {
 			return fmt.Errorf("error while opening %s : %s", upstreamListFN, err)
 		}
 		var upstreamList []string
-		err = json.Unmarshal([]byte(file), &upstreamList)
+		err = json.Unmarshal(file, &upstreamList)
 		if err != nil {
 			return fmt.Errorf("error unmarshaling %s : %s", upstreamListFN, err)
 		}
@@ -554,7 +569,7 @@ func RestoreHub(dirPath string) error {
 		}
 
 		/*restore the local and tainted items*/
-		files, err := ioutil.ReadDir(itemDirectory)
+		files, err := os.ReadDir(itemDirectory)
 		if err != nil {
 			return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory, err)
 		}
@@ -575,11 +590,11 @@ func RestoreHub(dirPath string) error {
 					return fmt.Errorf("error while creating stage directory %s : %s", stagedir, err)
 				}
 				/*find items*/
-				ifiles, err := ioutil.ReadDir(itemDirectory + "/" + stage + "/")
+				ifiles, err := os.ReadDir(itemDirectory + "/" + stage + "/")
 				if err != nil {
 					return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory+"/"+stage, err)
 				}
-				//finaly copy item
+				//finally copy item
 				for _, tfile := range ifiles {
 					log.Infof("Going to restore local/tainted [%s]", tfile.Name())
 					sourceFile := fmt.Sprintf("%s/%s/%s", itemDirectory, stage, tfile.Name())
@@ -614,58 +629,106 @@ func BackupHub(dirPath string) error {
 			"type": itemType,
 		})
 		itemMap := cwhub.GetItemMap(itemType)
-		if itemMap != nil {
-			itemDirectory = fmt.Sprintf("%s/%s/", dirPath, itemType)
-			if err := os.MkdirAll(itemDirectory, os.ModePerm); err != nil {
-				return fmt.Errorf("error while creating %s : %s", itemDirectory, err)
-			}
-			upstreamParsers = []string{}
-			for k, v := range itemMap {
-				clog = clog.WithFields(log.Fields{
-					"file": v.Name,
-				})
-				if !v.Installed { //only backup installed ones
-					clog.Debugf("[%s] : not installed", k)
-					continue
-				}
-
-				//for the local/tainted ones, we backup the full file
-				if v.Tainted || v.Local || !v.UpToDate {
-					//we need to backup stages for parsers
-					if itemType == cwhub.PARSERS || itemType == cwhub.PARSERS_OVFLW {
-						fstagedir := fmt.Sprintf("%s%s", itemDirectory, v.Stage)
-						if err := os.MkdirAll(fstagedir, os.ModePerm); err != nil {
-							return fmt.Errorf("error while creating stage dir %s : %s", fstagedir, err)
-						}
-					}
-					clog.Debugf("[%s] : backuping file (tainted:%t local:%t up-to-date:%t)", k, v.Tainted, v.Local, v.UpToDate)
-					tfile := fmt.Sprintf("%s%s/%s", itemDirectory, v.Stage, v.FileName)
-					if err = types.CopyFile(v.LocalPath, tfile); err != nil {
-						return fmt.Errorf("failed copy %s %s to %s : %s", itemType, v.LocalPath, tfile, err)
-					}
-					clog.Infof("local/tainted saved %s to %s", v.LocalPath, tfile)
-					continue
-				}
-				clog.Debugf("[%s] : from hub, just backup name (up-to-date:%t)", k, v.UpToDate)
-				clog.Infof("saving, version:%s, up-to-date:%t", v.Version, v.UpToDate)
-				upstreamParsers = append(upstreamParsers, v.Name)
-			}
-			//write the upstream items
-			upstreamParsersFname := fmt.Sprintf("%s/upstream-%s.json", itemDirectory, itemType)
-			upstreamParsersContent, err := json.MarshalIndent(upstreamParsers, "", " ")
-			if err != nil {
-				return fmt.Errorf("failed marshaling upstream parsers : %s", err)
-			}
-			err = ioutil.WriteFile(upstreamParsersFname, upstreamParsersContent, 0644)
-			if err != nil {
-				return fmt.Errorf("unable to write to %s %s : %s", itemType, upstreamParsersFname, err)
-			}
-			clog.Infof("Wrote %d entries for %s to %s", len(upstreamParsers), itemType, upstreamParsersFname)
-
-		} else {
+		if itemMap == nil {
 			clog.Infof("No %s to backup.", itemType)
+			continue
 		}
+		itemDirectory = fmt.Sprintf("%s/%s/", dirPath, itemType)
+		if err := os.MkdirAll(itemDirectory, os.ModePerm); err != nil {
+			return fmt.Errorf("error while creating %s : %s", itemDirectory, err)
+		}
+		upstreamParsers = []string{}
+		for k, v := range itemMap {
+			clog = clog.WithFields(log.Fields{
+				"file": v.Name,
+			})
+			if !v.Installed { //only backup installed ones
+				clog.Debugf("[%s] : not installed", k)
+				continue
+			}
+
+			//for the local/tainted ones, we backup the full file
+			if v.Tainted || v.Local || !v.UpToDate {
+				//we need to backup stages for parsers
+				if itemType == cwhub.PARSERS || itemType == cwhub.PARSERS_OVFLW {
+					fstagedir := fmt.Sprintf("%s%s", itemDirectory, v.Stage)
+					if err := os.MkdirAll(fstagedir, os.ModePerm); err != nil {
+						return fmt.Errorf("error while creating stage dir %s : %s", fstagedir, err)
+					}
+				}
+				clog.Debugf("[%s] : backuping file (tainted:%t local:%t up-to-date:%t)", k, v.Tainted, v.Local, v.UpToDate)
+				tfile := fmt.Sprintf("%s%s/%s", itemDirectory, v.Stage, v.FileName)
+				if err = types.CopyFile(v.LocalPath, tfile); err != nil {
+					return fmt.Errorf("failed copy %s %s to %s : %s", itemType, v.LocalPath, tfile, err)
+				}
+				clog.Infof("local/tainted saved %s to %s", v.LocalPath, tfile)
+				continue
+			}
+			clog.Debugf("[%s] : from hub, just backup name (up-to-date:%t)", k, v.UpToDate)
+			clog.Infof("saving, version:%s, up-to-date:%t", v.Version, v.UpToDate)
+			upstreamParsers = append(upstreamParsers, v.Name)
+		}
+		//write the upstream items
+		upstreamParsersFname := fmt.Sprintf("%s/upstream-%s.json", itemDirectory, itemType)
+		upstreamParsersContent, err := json.MarshalIndent(upstreamParsers, "", " ")
+		if err != nil {
+			return fmt.Errorf("failed marshaling upstream parsers : %s", err)
+		}
+		err = os.WriteFile(upstreamParsersFname, upstreamParsersContent, 0644)
+		if err != nil {
+			return fmt.Errorf("unable to write to %s %s : %s", itemType, upstreamParsersFname, err)
+		}
+		clog.Infof("Wrote %d entries for %s to %s", len(upstreamParsers), itemType, upstreamParsersFname)
 	}
 
 	return nil
+}
+
+type unit struct {
+	value  int64
+	symbol string
+}
+
+var ranges = []unit{
+	{
+		value:  1e18,
+		symbol: "E",
+	},
+	{
+		value:  1e15,
+		symbol: "P",
+	},
+	{
+		value:  1e12,
+		symbol: "T",
+	},
+	{
+		value:  1e6,
+		symbol: "M",
+	},
+	{
+		value:  1e3,
+		symbol: "k",
+	},
+	{
+		value:  1,
+		symbol: "",
+	},
+}
+
+func formatNumber(num int) string {
+	goodUnit := unit{}
+	for _, u := range ranges {
+		if int64(num) >= u.value {
+			goodUnit = u
+			break
+		}
+	}
+
+	if goodUnit.value == 1 {
+		return fmt.Sprintf("%d%s", num, goodUnit.symbol)
+	}
+
+	res := math.Round(float64(num)/float64(goodUnit.value)*100) / 100
+	return fmt.Sprintf("%.2f%s", res, goodUnit.symbol)
 }

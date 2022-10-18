@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"os"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -32,7 +32,7 @@ func TestBucket(t *testing.T) {
 		envSetting            = os.Getenv("TEST_ONLY")
 		tomb       *tomb.Tomb = &tomb.Tomb{}
 	)
-	err := exprhelpers.Init()
+	err := exprhelpers.Init(nil)
 	if err != nil {
 		log.Fatalf("exprhelpers init failed: %s", err)
 	}
@@ -42,7 +42,8 @@ func TestBucket(t *testing.T) {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
 		}
 	} else {
-		fds, err := ioutil.ReadDir("./tests/")
+		wg := new(sync.WaitGroup)
+		fds, err := os.ReadDir("./tests/")
 		if err != nil {
 			t.Fatalf("Unable to read test directory : %s", err)
 		}
@@ -50,12 +51,27 @@ func TestBucket(t *testing.T) {
 			fname := "./tests/" + fd.Name()
 			log.Infof("Running test on %s", fname)
 			tomb.Go(func() error {
+				wg.Add(1)
+				defer wg.Done()
 				if err := testOneBucket(t, fname, tomb); err != nil {
 					t.Fatalf("Test '%s' failed : %s", fname, err)
 				}
 				return nil
 			})
 		}
+		wg.Wait()
+	}
+}
+
+//during tests, we're likely to have only one scenario, and thus only one holder.
+//we want to avoid the death of the tomb because all existing buckets have been destroyed.
+func watchTomb(tomb *tomb.Tomb) {
+	for {
+		if tomb.Alive() == false {
+			log.Warning("Tomb is dead")
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
@@ -74,7 +90,7 @@ func testOneBucket(t *testing.T, dir string, tomb *tomb.Tomb) error {
 
 	/*load the scenarios*/
 	stagecfg = dir + "/scenarios.yaml"
-	if stagefiles, err = ioutil.ReadFile(stagecfg); err != nil {
+	if stagefiles, err = os.ReadFile(stagecfg); err != nil {
 		t.Fatalf("Failed to load stage file %s : %s", stagecfg, err)
 	}
 
@@ -102,6 +118,10 @@ func testOneBucket(t *testing.T, dir string, tomb *tomb.Tomb) error {
 	if err != nil {
 		t.Fatalf("failed loading bucket : %s", err)
 	}
+	tomb.Go(func() error {
+		watchTomb(tomb)
+		return nil
+	})
 	if !testFile(t, dir+"/test.json", dir+"/in-buckets_state.json", holders, response, buckets) {
 		return fmt.Errorf("tests from %s failed", dir)
 	}
@@ -133,12 +153,11 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 	tf := TestFile{}
 	err = dec.Decode(&tf)
 	if err != nil {
-		if err == io.EOF {
-			log.Warningf("end of test file")
-		} else {
+		if err != io.EOF {
 			t.Errorf("Failed to load testfile '%s' yaml error : %v", file, err)
 			return false
 		}
+		log.Warning("end of test file")
 	}
 	var latest_ts time.Time
 	for _, in := range tf.Lines {
@@ -161,10 +180,10 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 			t.Fatalf("Failed to pour : %s", err)
 		}
 		if !ok {
-			log.Warningf("Event wasn't poured")
+			log.Warning("Event wasn't poured")
 		}
 	}
-	log.Warningf("Done pouring !")
+	log.Warning("Done pouring !")
 
 	time.Sleep(1 * time.Second)
 
@@ -174,7 +193,7 @@ POLL_AGAIN:
 	for fails < 2 {
 		select {
 		case ret := <-response:
-			log.Warningf("got one result")
+			log.Warning("got one result")
 			results = append(results, ret)
 			if ret.Overflow.Reprocess {
 				log.Errorf("Overflow being reprocessed.")
@@ -183,13 +202,13 @@ POLL_AGAIN:
 					t.Fatalf("Failed to pour : %s", err)
 				}
 				if !ok {
-					log.Warningf("Event wasn't poured")
+					log.Warning("Event wasn't poured")
 				}
 				goto POLL_AGAIN
 			}
 			fails = 0
 		default:
-			log.Warningf("no more results")
+			log.Warning("no more results")
 			time.Sleep(1 * time.Second)
 			fails += 1
 		}
@@ -203,27 +222,25 @@ POLL_AGAIN:
 
 	for {
 		if len(tf.Results) == 0 && len(results) == 0 {
-			log.Warningf("Test is successfull")
+			log.Warning("Test is successful")
 			if dump {
 				if tmpFile, err = DumpBucketsStateAt(latest_ts, ".", buckets); err != nil {
-					t.Fatalf("Failed dumping bucket state : %s", err)
+					t.Fatalf("Failed to dump bucket state: %s", err)
 				}
 				log.Infof("dumped bucket to %s", tmpFile)
 			}
 			return true
-		} else {
-			log.Warningf("%d results to check against %d expected results", len(results), len(tf.Results))
-			if len(tf.Results) != len(results) {
-				if dump {
-					if tmpFile, err = DumpBucketsStateAt(latest_ts, ".", buckets); err != nil {
-						t.Fatalf("Failed dumping bucket state : %s", err)
-					}
-					log.Infof("dumped bucket to %s", tmpFile)
-
+		}
+		log.Warningf("%d results to check against %d expected results", len(results), len(tf.Results))
+		if len(tf.Results) != len(results) {
+			if dump {
+				if tmpFile, err = DumpBucketsStateAt(latest_ts, ".", buckets); err != nil {
+					t.Fatalf("Failed to dump bucket state: %s", err)
 				}
-				log.Errorf("results / expected count doesn't match results = %d / expected = %d", len(results), len(tf.Results))
-				return false
+				log.Infof("dumped bucket to %s", tmpFile)
 			}
+			log.Errorf("results / expected count doesn't match results = %d / expected = %d", len(results), len(tf.Results))
+			return false
 		}
 	checkresultsloop:
 		for eidx, out := range results {
@@ -239,29 +256,27 @@ POLL_AGAIN:
 						log.Printf("Here ?")
 						continue
 					}
-					//Scenario
 
+					//Scenario
 					if *out.Overflow.Alert.Scenario != *expected.Overflow.Alert.Scenario {
 						log.Errorf("(scenario) %v != %v", *out.Overflow.Alert.Scenario, *expected.Overflow.Alert.Scenario)
 						continue
-					} else {
-						log.Infof("(scenario) %v == %v", *out.Overflow.Alert.Scenario, *expected.Overflow.Alert.Scenario)
 					}
+					log.Infof("(scenario) %v == %v", *out.Overflow.Alert.Scenario, *expected.Overflow.Alert.Scenario)
+
 					//EventsCount
 					if *out.Overflow.Alert.EventsCount != *expected.Overflow.Alert.EventsCount {
 						log.Errorf("(EventsCount) %d != %d", *out.Overflow.Alert.EventsCount, *expected.Overflow.Alert.EventsCount)
 						continue
-					} else {
-						log.Infof("(EventsCount) %d == %d", *out.Overflow.Alert.EventsCount, *expected.Overflow.Alert.EventsCount)
 					}
+					log.Infof("(EventsCount) %d == %d", *out.Overflow.Alert.EventsCount, *expected.Overflow.Alert.EventsCount)
+
 					//Sources
 					if !reflect.DeepEqual(out.Overflow.Sources, expected.Overflow.Sources) {
 						log.Errorf("(Sources %s != %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
 						continue
-					} else {
-						log.Infof("(Sources: %s == %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
 					}
-
+					log.Infof("(Sources: %s == %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
 				}
 				//Events
 				// if !reflect.DeepEqual(out.Overflow.Alert.Events, expected.Overflow.Alert.Events) {
@@ -288,9 +303,7 @@ POLL_AGAIN:
 			log.Errorf("we got: %s", spew.Sdump(results))
 			log.Errorf("we expected: %s", spew.Sdump(tf.Results))
 			return false
-		} else {
-			log.Warningf("entry valid at end of loop")
 		}
+		log.Warning("entry valid at end of loop")
 	}
-	return false
 }

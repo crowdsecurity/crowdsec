@@ -1,0 +1,47 @@
+{
+    "lines": [
+      {
+        "Line": {
+          "Labels": {
+            "type": "testlog"
+          },
+          "Raw": "xxheader VALUE1 trailing stuff"
+        },
+        "MarshaledTime": "2020-01-01T10:00:00+00:00",
+        "Meta": {
+          "source_ip": "192.168.1.1"
+        }
+      },
+      {
+        "Line": {
+          "Labels": {
+            "type": "testlog"
+          },
+          "Raw": "xxheader VALUE2 trailing stuff"
+        },
+        "MarshaledTime": "2020-01-01T10:00:05+00:00",
+        "Meta": {
+          "source_ip": "192.168.1.1"
+        }
+      }
+    ],
+    "results": [
+      {
+        "Alert": {
+          "sources": {
+            "192.168.0.0/16": {
+                "scope": "Range",
+                "value": "192.168.0.0/16",
+              "ip": "192.168.1.1"
+            }
+          },
+          "Alert" : {
+          "scenario": "test/leaky-scope-range-expression",
+          "events_count": 2
+          }
+        }
+      }
+    ]
+  }
+  
+  

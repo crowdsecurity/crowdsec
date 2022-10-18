@@ -3,6 +3,10 @@
 set -o pipefail
 #set -x
 
+skip_tmp_acquis() {
+    [[ "${TMP_ACQUIS_FILE_SKIP}" == "skip" ]]
+}
+
 
 RED='\033[0;31m'
 BLUE='\033[0;34m'
@@ -22,12 +26,16 @@ CROWDSEC_DB_PATH="${CROWDSEC_DATA_DIR}/crowdsec.db"
 CROWDSEC_PATH="/etc/crowdsec"
 CROWDSEC_CONFIG_PATH="${CROWDSEC_PATH}"
 CROWDSEC_LOG_FILE="/var/log/crowdsec.log"
+LAPI_LOG_FILE="/var/log/crowdsec_api.log"
+CROWDSEC_PLUGIN_DIR="${CROWDSEC_USR_DIR}/plugins"
 
 CROWDSEC_BIN="./cmd/crowdsec/crowdsec"
 CSCLI_BIN="./cmd/crowdsec-cli/cscli"
 
 CLIENT_SECRETS="local_api_credentials.yaml"
 LAPI_SECRETS="online_api_credentials.yaml"
+
+CONSOLE_FILE="console.yaml"
 
 BIN_INSTALL_PATH="/usr/local/bin"
 CROWDSEC_BIN_INSTALLED="${BIN_INSTALL_PATH}/crowdsec"
@@ -39,10 +47,8 @@ else
 fi
 
 ACQUIS_PATH="${CROWDSEC_CONFIG_PATH}"
-TMP_ACQUIS_FILE="tmp-acquis.yaml"
 ACQUIS_TARGET="${ACQUIS_PATH}/acquis.yaml"
 
-PID_DIR="${CROWDSEC_RUN_DIR}"
 SYSTEMD_PATH_FILE="/etc/systemd/system/crowdsec.service"
 
 PATTERNS_FOLDER="config/patterns"
@@ -62,8 +68,20 @@ telnet
 smb
 '
 
+CRON_NAME=/etc/cron.daily/crowdsec-hub
+
+HTTP_PLUGIN_BINARY="./plugins/notifications/http/notification-http"
+SLACK_PLUGIN_BINARY="./plugins/notifications/slack/notification-slack"
+SPLUNK_PLUGIN_BINARY="./plugins/notifications/splunk/notification-splunk"
+EMAIL_PLUGIN_BINARY="./plugins/notifications/email/notification-email"
+
+HTTP_PLUGIN_CONFIG="./plugins/notifications/http/http.yaml"
+SLACK_PLUGIN_CONFIG="./plugins/notifications/slack/slack.yaml"
+SPLUNK_PLUGIN_CONFIG="./plugins/notifications/splunk/splunk.yaml"
+EMAIL_PLUGIN_CONFIG="./plugins/notifications/email/email.yaml"
+
 BACKUP_DIR=$(mktemp -d)
-rm -rf $BACKUP_DIR
+rm -rf -- "$BACKUP_DIR"
 
 log_info() {
     msg=$1
@@ -121,7 +139,7 @@ detect_services () {
             fi;
         done;
     done;
-    if [[ ${OSTYPE} == "linux-gnu" ]]; then
+    if [[ ${OSTYPE} == "linux-gnu" ]] || [[ ${OSTYPE} == "linux-gnueabihf" ]]; then
         DETECTED_SERVICES+=("linux")
         HMENU+=("linux" "on")
     else 
@@ -153,7 +171,7 @@ log_input_tags[linux]="type: syslog"
 
 declare -A log_locations
 log_locations[apache2]='/var/log/apache2/*.log,/var/log/*httpd*.log,/var/log/httpd/*log'
-log_locations[nginx]='/var/log/nginx/*.log'
+log_locations[nginx]='/var/log/nginx/*.log,/usr/local/openresty/nginx/logs/*.log'
 log_locations[sshd]='/var/log/auth.log,/var/log/sshd.log,/var/log/secure'
 log_locations[rsyslog]='/var/log/syslog'
 log_locations[telnet]='/var/log/telnetd*.log'
@@ -204,7 +222,7 @@ in_array() {
     shift
     array=("$@")
     for element in "${array[@]}"; do
-        if [[ ${str} == *${element}* ]]; then
+        if [[ ${str} == crowdsecurity/${element} ]]; then
             return 0
         fi
     done
@@ -215,9 +233,9 @@ install_collection() {
     HMENU=()
     readarray -t AVAILABLE_COLLECTION < <(${CSCLI_BIN_INSTALLED} collections list -o raw -a)
     COLLECTION_TO_INSTALL=()
-    for collect_info in "${AVAILABLE_COLLECTION[@]}"; do
-        collection="$(echo ${collect_info} | cut -d " " -f1)"
-        description="$(echo ${collect_info} | cut -d " " -f2-)"
+    for collect_info in "${AVAILABLE_COLLECTION[@]:1}"; do
+        collection="$(echo ${collect_info} | cut -d "," -f1)"
+        description="$(echo ${collect_info} | cut -d "," -f4)"
         in_array $collection "${DETECTED_SERVICES[@]}"
         if [[ $? == 0 ]]; then
             HMENU+=("${collection}" "${description}" "ON")
@@ -249,7 +267,7 @@ install_collection() {
 
     ${CSCLI_BIN_INSTALLED} parsers install "crowdsecurity/whitelists" > /dev/null 2>&1 || log_err "fail to install collection crowdsec/whitelists"
     if [[ ${SILENT} == "false" ]]; then
-        whiptail --msgbox "Out of safety, I installed a parser called 'crowdsecurity/whitelists'. This one will prevent private IP adresses from being banned, feel free to remove it any time." 20 50
+        whiptail --msgbox "Out of safety, I installed a parser called 'crowdsecurity/whitelists'. This one will prevent private IP addresses from being banned, feel free to remove it any time." 20 50
     fi
 
     if [[ ${SILENT} == "false" ]]; then
@@ -258,7 +276,7 @@ install_collection() {
 }
 
 #$1 is the service name, $... is the list of candidate logs (from find_logs_for)
-genyaml() {
+genyamllog() {
     local service="${1}"
     shift
     local files=("${@}")
@@ -272,16 +290,41 @@ genyaml() {
     echo "labels:"  >> ${TMP_ACQUIS_FILE}
     echo "  "${log_input_tags[${service}]}  >> ${TMP_ACQUIS_FILE}
     echo "---"  >> ${TMP_ACQUIS_FILE}
-    log_dbg "tmp acquisition file generated to: ${TMP_ACQUIS_FILE}"
+    log_dbg "${ACQUIS_FILE_MSG}"
+}
+
+genyamljournal() {
+    local service="${1}"
+    shift
+    
+    echo "#Generated acquisition file - wizard.sh (service: ${service}) / files : ${files[@]}" >> ${TMP_ACQUIS_FILE}
+    
+    echo "journalctl_filter:"  >> ${TMP_ACQUIS_FILE}
+    echo " - _SYSTEMD_UNIT="${service}".service"  >> ${TMP_ACQUIS_FILE}
+    echo "labels:"  >> ${TMP_ACQUIS_FILE}
+    echo "  "${log_input_tags[${service}]}  >> ${TMP_ACQUIS_FILE}
+    echo "---"  >> ${TMP_ACQUIS_FILE}
+    log_dbg "${ACQUIS_FILE_MSG}"
 }
 
 genacquisition() {
+    if skip_tmp_acquis; then 
+        TMP_ACQUIS_FILE="${ACQUIS_TARGET}"
+        ACQUIS_FILE_MSG="acquisition file generated to: ${TMP_ACQUIS_FILE}"
+    else
+        TMP_ACQUIS_FILE="tmp-acquis.yaml"
+        ACQUIS_FILE_MSG="tmp acquisition file generated to: ${TMP_ACQUIS_FILE}"
+    fi
+
     log_dbg "Found following services : "${DETECTED_SERVICES[@]}
     for PSVG in ${DETECTED_SERVICES[@]} ; do
         find_logs_for ${PSVG}
         if [[ ${#DETECTED_LOGFILES[@]} -gt 0 ]] ; then
             log_info "service '${PSVG}': ${DETECTED_LOGFILES[*]}"
-            genyaml ${PSVG} ${DETECTED_LOGFILES[@]}
+            genyamllog ${PSVG} ${DETECTED_LOGFILES[@]}
+	elif [[ ${PSVG} != "linux" ]] ; then
+	    log_info "using journald for '${PSVG}'"
+	    genyamljournal ${PSVG}
         fi;
     done 
 }
@@ -290,7 +333,7 @@ detect_cs_install () {
     if [[ -f "$CROWDSEC_BIN_INSTALLED" ]]; then
         log_warn "Crowdsec is already installed !"
         echo ""
-        echo "We recommand to upgrade : sudo ./wizard.sh --upgrade "
+        echo "We recommend to upgrade : sudo ./wizard.sh --upgrade "
         echo "If you want to install it anyway, please use '--force'."
         echo ""
         echo "Run : sudo ./wizard.sh -i --force"
@@ -312,9 +355,8 @@ check_cs_version () {
 
     if [[ $NEW_MAJOR_VERSION -gt $CURRENT_MAJOR_VERSION ]]; then
         if [[ ${FORCE_MODE} == "false" ]]; then
-            log_warn "new version ($NEW_CS_VERSION) is a major, you need to follow documentation to upgrade !"
+            log_warn "new version ($NEW_CS_VERSION) is a major, you should follow documentation to upgrade !"
             echo ""
-            echo "Please follow : https://docs.crowdsec.net/Crowdsec/v1/migration/"
             exit 1
         fi
     elif [[ $NEW_MINOR_VERSION -gt $CURRENT_MINOR_VERSION ]] ; then
@@ -322,7 +364,7 @@ check_cs_version () {
         if [[ $ACTION != "upgrade" ]] ; then 
             if [[ ${FORCE_MODE} == "false" ]]; then
                 echo ""
-                echo "We recommand to upgrade with : sudo ./wizard.sh --upgrade "
+                echo "We recommend to upgrade with : sudo ./wizard.sh --upgrade "
                 echo "If you want to $ACTION anyway, please use '--force'."
                 echo ""
                 echo "Run : sudo ./wizard.sh --$ACTION --force"
@@ -334,7 +376,7 @@ check_cs_version () {
         if [[ $ACTION != "binupgrade" ]] ; then 
             if [[ ${FORCE_MODE} == "false" ]]; then
                 echo ""
-                echo "We recommand to upgrade binaries only : sudo ./wizard.sh --binupgrade "
+                echo "We recommend to upgrade binaries only : sudo ./wizard.sh --binupgrade "
                 echo "If you want to $ACTION anyway, please use '--force'."
                 echo ""
                 echo "Run : sudo ./wizard.sh --$ACTION --force"
@@ -345,7 +387,7 @@ check_cs_version () {
         log_warn "new version ($NEW_CS_VERSION) is same as current version ($CURRENT_CS_VERSION) !"
         if [[ ${FORCE_MODE} == "false" ]]; then
             echo ""
-            echo "We recommand to $ACTION only if it's an higher version. "
+            echo "We recommend to $ACTION only if it's an higher version. "
             echo "If it's an RC version (vX.X.X-rc) you can upgrade it using '--force'."
             echo ""
             echo "Run : sudo ./wizard.sh --$ACTION --force"
@@ -371,17 +413,17 @@ install_crowdsec() {
 
     ## end tmp
 
-    install -v -m 644 -D ./config/config.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
+    install -v -m 600 -D ./config/config.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
     install -v -m 644 -D ./config/dev.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
     install -v -m 644 -D ./config/user.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
     install -v -m 644 -D ./config/acquis.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
     install -v -m 644 -D ./config/profiles.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
     install -v -m 644 -D ./config/simulation.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
+    install -v -m 644 -D ./config/"${CONSOLE_FILE}" "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
 
-    mkdir -p ${PID_DIR} || exit
-    PID=${PID_DIR} DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $PID $DATA' < ./config/user.yaml > ${CROWDSEC_CONFIG_PATH}"/user.yaml" || log_fatal "unable to generate user configuration file"
+    DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $DATA' < ./config/user.yaml > ${CROWDSEC_CONFIG_PATH}"/user.yaml" || log_fatal "unable to generate user configuration file"
     if [[ ${DOCKER_MODE} == "false" ]]; then
-        CFG=${CROWDSEC_CONFIG_PATH} PID=${PID_DIR} BIN=${CROWDSEC_BIN_INSTALLED} envsubst '$CFG $PID $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}" || log_fatal "unable to crowdsec systemd file"
+        CFG=${CROWDSEC_CONFIG_PATH} BIN=${CROWDSEC_BIN_INSTALLED} envsubst '$CFG $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}" || log_fatal "unable to crowdsec systemd file"
     fi
     install_bins
 
@@ -432,6 +474,11 @@ install_bins() {
     log_dbg "Installing crowdsec binaries"
     install -v -m 755 -D "${CROWDSEC_BIN}" "${CROWDSEC_BIN_INSTALLED}" 1> /dev/null || exit
     install -v -m 755 -D "${CSCLI_BIN}" "${CSCLI_BIN_INSTALLED}" 1> /dev/null || exit
+    which systemctl && systemctl is-active --quiet crowdsec
+    if [ $? -eq 0 ]; then
+        systemctl stop crowdsec 
+    fi
+    install_plugins
     symlink_bins
 }
 
@@ -450,9 +497,30 @@ delete_bins() {
     rm -f ${CSCLI_BIN_INSTALLED}   
 }
 
+delete_plugins() {
+    rm -rf ${CROWDSEC_PLUGIN_DIR}
+}
+
+install_plugins(){
+    mkdir -p ${CROWDSEC_PLUGIN_DIR}
+    mkdir -p /etc/crowdsec/notifications
+
+    cp ${SLACK_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
+    cp ${SPLUNK_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
+    cp ${HTTP_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
+    cp ${EMAIL_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
+
+    if [[ ${DOCKER_MODE} == "false" ]]; then
+        cp -n ${SLACK_PLUGIN_CONFIG} /etc/crowdsec/notifications/
+        cp -n ${SPLUNK_PLUGIN_CONFIG} /etc/crowdsec/notifications/
+        cp -n ${HTTP_PLUGIN_CONFIG} /etc/crowdsec/notifications/
+        cp -n ${EMAIL_PLUGIN_CONFIG} /etc/crowdsec/notifications/
+    fi
+}
+
 check_running_bouncers() {
     #when uninstalling, check if user still has bouncers
-    BOUNCERS_COUNT=$(${CSCLI_BIN} bouncers list -o=json | jq '. | length')
+    BOUNCERS_COUNT=$(${CSCLI_BIN} bouncers list -o=raw | tail -n +2 | wc -l)
     if [[ ${BOUNCERS_COUNT} -gt 0 ]] ; then
         if [[ ${FORCE_MODE} == "false" ]]; then
             echo "WARNING : You have at least one bouncer registered (cscli bouncers list)."
@@ -477,6 +545,7 @@ uninstall_crowdsec() {
 
     find /etc/crowdsec -maxdepth 1 -mindepth 1 | grep -v "bouncer" | xargs rm -rf || echo ""
     rm -f ${CROWDSEC_LOG_FILE} || echo ""
+    rm -f ${LAPI_LOG_FILE} || echo ""
     rm -f ${CROWDSEC_DB_PATH} || echo ""
     rm -rf ${CROWDSEC_LIB_DIR} || echo ""
     rm -rf ${CROWDSEC_USR_DIR} || echo ""
@@ -484,26 +553,44 @@ uninstall_crowdsec() {
     log_info "crowdsec successfully uninstalled"
 }
 
+install_cronjob() {
+    log_info "Installing Hub Cronjob"
+    if [[ -d /etc/cron.daily/ ]] && [[ ! -f $CRON_NAME ]]; then
+        echo "/usr/bin/cscli hub update" >> $CRON_NAME
+        echo "/usr/bin/cscli hub upgrade" >> $CRON_NAME
+        chmod 755 $CRON_NAME
+    fi
+}
+
+uninstall_cronjob() {
+    if [[ -d /etc/cron.daily/ ]] && [[ -f $CRON_NAME ]]; then
+        log_info "Uninstall Hub Cronjob"
+        rm $CRON_NAME
+    fi
+}
+
 
 function show_link {
     echo ""
     echo "Useful links to start with Crowdsec:"
     echo ""
-    echo "  - Documentation : https://docs.crowdsec.net/Crowdsec/v1/getting_started/crowdsec-tour/"
+    echo "  - Documentation : https://doc.crowdsec.net/docs/getting_started/crowdsec_tour"
     echo "  - Crowdsec Hub  : https://hub.crowdsec.net/ "
     echo "  - Open issues   : https://github.com/crowdsecurity/crowdsec/issues"
     echo ""
     echo "Useful commands to start with Crowdsec:"
     echo ""
-    echo "  - sudo cscli metrics             : https://docs.crowdsec.net/Crowdsec/v1/cscli/cscli_metrics/"
-    echo "  - sudo cscli decisions list      : https://docs.crowdsec.net/Crowdsec/v1/cscli/cscli_decisions_list/"
-    echo "  - sudo cscli alerts list         : https://docs.crowdsec.net/Crowdsec/v1/cscli/cscli_alerts_list/"
-    echo "  - sudo cscli hub list            : https://docs.crowdsec.net/Crowdsec/v1/cscli/cscli_hub_list/"
+    echo "  - sudo cscli metrics             : https://doc.crowdsec.net/docs/observability/cscli"
+    echo "  - sudo cscli decisions list      : https://doc.crowdsec.net/docs/user_guides/decisions_mgmt"
+    echo "  - sudo cscli hub list            : https://doc.crowdsec.net/docs/user_guides/hub_mgmt"
+    echo ""
+    echo "Next step:  visualize all your alerts and explore our community CTI : https://app.crowdsec.net"
     echo ""
 }
 
 main() {
-    if [ "$1" == "install" ] || [ "$1" == "configure" ]; then
+
+    if [ "$1" == "install" ] || [ "$1" == "configure" ] || [ "$1" == "detect" ]; then
         if [ "${SILENT}" == "false" ]; then
             which whiptail > /dev/null
             if [ $? -ne 0 ]; then
@@ -548,7 +635,10 @@ main() {
         ${CSCLI_BIN_INSTALLED} hub update
         install_collection
         genacquisition
-        mv "${TMP_ACQUIS_FILE}" "${ACQUIS_TARGET}"
+        install_cronjob
+        if ! skip_tmp_acquis; then
+            mv "${TMP_ACQUIS_FILE}" "${ACQUIS_TARGET}"
+        fi
 
         return
     fi
@@ -566,6 +656,7 @@ main() {
         fi
         check_running_bouncers
         uninstall_crowdsec
+        uninstall_cronjob
         return
     fi
 
@@ -607,7 +698,9 @@ main() {
 
         # Generate acquisition file and move it to the right folder
         genacquisition
-        mv "${TMP_ACQUIS_FILE}" "${ACQUIS_TARGET}"
+        if ! skip_tmp_acquis; then
+            mv "${TMP_ACQUIS_FILE}" "${ACQUIS_TARGET}"
+        fi
         log_info "acquisition file path: ${ACQUIS_TARGET}"
         # Install collections according to detected services
         log_dbg "Installing needed collections ..."
@@ -618,9 +711,10 @@ main() {
         mkdir -p "${PATTERNS_PATH}"
         cp "./${PATTERNS_FOLDER}/"* "${PATTERNS_PATH}/"
 
-
+        # install hub cronjob
+        install_cronjob
         # api register
-        ${CSCLI_BIN_INSTALLED} machines add --force "$(cat /etc/machine-id)" --password "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)" -f "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}" || log_fatal "unable to add machine to the local API"
+        ${CSCLI_BIN_INSTALLED} machines add --force "$(cat /etc/machine-id)" -a -f "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}" || log_fatal "unable to add machine to the local API"
         log_dbg "Crowdsec LAPI registered" 
         
         ${CSCLI_BIN_INSTALLED} capi register || log_fatal "unable to register to the Central API"
@@ -635,7 +729,9 @@ main() {
 
     if [[ "$1" == "detect" ]];
     then
-        rm -f "${TMP_ACQUIS_FILE}"
+        if ! skip_tmp_acquis; then
+            rm -f "${TMP_ACQUIS_FILE}"
+        fi
         detect_services
         if [[ ${DETECTED_SERVICES} == "" ]] ; then 
             log_err "No detected or selected services, stopping."
@@ -644,7 +740,9 @@ main() {
         log_info "Found ${#DETECTED_SERVICES[@]} supported services running:"
         genacquisition
         cat "${TMP_ACQUIS_FILE}"
-        rm "${TMP_ACQUIS_FILE}"
+        if ! skip_tmp_acquis; then
+            rm "${TMP_ACQUIS_FILE}"
+        fi
         return
     fi
 

@@ -1,7 +1,7 @@
 # .github/workflows/build-docker-image.yml
 name: build
 
-on: 
+on:
   release:
     types: prereleased
 
@@ -10,18 +10,39 @@ jobs:
     name: Build and upload binary package
     runs-on: ubuntu-latest
     steps:
-    - name: Set up Go 1.13
-      uses: actions/setup-go@v1
+    - name: Set up Go 1.19
+      uses: actions/setup-go@v3
       with:
-        go-version: 1.13
+        go-version: 1.19
       id: go
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Build the binaries
       run: make release
     - name: Upload to release
       uses: JasonEtco/upload-to-release@master
       with:
         args: crowdsec-release.tgz application/x-gzip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  build_static:
+    name: Build and upload binary package
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up Go 1.19
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.19
+      id: go
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v3
+    - name: Build the binaries
+      run: |
+        make release BUILD_STATIC=yes
+        mv crowdsec-release.tgz crowdsec-release.static.tgz
+    - name: Upload to release
+      uses: JasonEtco/upload-to-release@master
+      with:
+        args: crowdsec-release-static.tgz application/x-gzip
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

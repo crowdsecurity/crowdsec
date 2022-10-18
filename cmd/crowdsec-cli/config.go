@@ -3,18 +3,19 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 
+	"github.com/antonmedv/expr"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 )
 
 type OldAPICfg struct {
@@ -44,14 +45,14 @@ func backupConfigToDirectory(dirPath string) error {
 		return errors.Wrapf(err, "while checking parent directory %s existence", parentDir)
 	}
 
-	if err = os.Mkdir(dirPath, 0600); err != nil {
-		return fmt.Errorf("error while creating %s : %s", dirPath, err)
+	if err = os.Mkdir(dirPath, 0700); err != nil {
+		return errors.Wrapf(err, "while creating %s", dirPath)
 	}
 
 	if csConfig.ConfigPaths.SimulationFilePath != "" {
-		backupSimulation := fmt.Sprintf("%s/simulation.yaml", dirPath)
+		backupSimulation := filepath.Join(dirPath, "simulation.yaml")
 		if err = types.CopyFile(csConfig.ConfigPaths.SimulationFilePath, backupSimulation); err != nil {
-			return fmt.Errorf("failed copy %s to %s : %s", csConfig.ConfigPaths.SimulationFilePath, backupSimulation, err)
+			return errors.Wrapf(err, "failed copy %s to %s", csConfig.ConfigPaths.SimulationFilePath, backupSimulation)
 		}
 		log.Infof("Saved simulation to %s", backupSimulation)
 	}
@@ -61,14 +62,14 @@ func backupConfigToDirectory(dirPath string) error {
 	   - backup the other files of acquisition directory
 	*/
 	if csConfig.Crowdsec != nil && csConfig.Crowdsec.AcquisitionFilePath != "" {
-		backupAcquisition := fmt.Sprintf("%s/acquis.yaml", dirPath)
+		backupAcquisition := filepath.Join(dirPath, "acquis.yaml")
 		if err = types.CopyFile(csConfig.Crowdsec.AcquisitionFilePath, backupAcquisition); err != nil {
 			return fmt.Errorf("failed copy %s to %s : %s", csConfig.Crowdsec.AcquisitionFilePath, backupAcquisition, err)
 		}
 	}
 
-	acquisBackupDir := dirPath + "/acquis/"
-	if err = os.Mkdir(acquisBackupDir, 0600); err != nil {
+	acquisBackupDir := filepath.Join(dirPath, "acquis")
+	if err = os.Mkdir(acquisBackupDir, 0700); err != nil {
 		return fmt.Errorf("error while creating %s : %s", acquisBackupDir, err)
 	}
 
@@ -78,7 +79,7 @@ func backupConfigToDirectory(dirPath string) error {
 			if csConfig.Crowdsec.AcquisitionFilePath == acquisFile {
 				continue
 			}
-			targetFname, err := filepath.Abs(acquisBackupDir + filepath.Base(acquisFile))
+			targetFname, err := filepath.Abs(filepath.Join(acquisBackupDir, filepath.Base(acquisFile)))
 			if err != nil {
 				return errors.Wrapf(err, "while saving %s to %s", acquisFile, acquisBackupDir)
 			}
@@ -179,7 +180,7 @@ func restoreConfigFromDirectory(dirPath string) error {
 		if err != nil {
 			log.Warningf("failed to open %s : %s", backupOldAPICfg, err)
 		} else {
-			byteValue, _ := ioutil.ReadAll(jsonFile)
+			byteValue, _ := io.ReadAll(jsonFile)
 			err = json.Unmarshal(byteValue, &oldAPICfg)
 			if err != nil {
 				return fmt.Errorf("failed to load json file %s : %s", backupOldAPICfg, err)
@@ -198,7 +199,7 @@ func restoreConfigFromDirectory(dirPath string) error {
 			if csConfig.API.Server.OnlineClient != nil && csConfig.API.Server.OnlineClient.CredentialsFilePath != "" {
 				apiConfigDumpFile = csConfig.API.Server.OnlineClient.CredentialsFilePath
 			}
-			err = ioutil.WriteFile(apiConfigDumpFile, apiConfigDump, 0644)
+			err = os.WriteFile(apiConfigDumpFile, apiConfigDump, 0644)
 			if err != nil {
 				return fmt.Errorf("write api credentials in '%s' failed: %s", apiConfigDumpFile, err)
 			}
@@ -215,7 +216,7 @@ func restoreConfigFromDirectory(dirPath string) error {
 
 	/*if there is a acquisition dir, restore its content*/
 	if csConfig.Crowdsec.AcquisitionDirPath != "" {
-		if err = os.Mkdir(csConfig.Crowdsec.AcquisitionDirPath, 0600); err != nil {
+		if err = os.Mkdir(csConfig.Crowdsec.AcquisitionDirPath, 0700); err != nil {
 			return fmt.Errorf("error while creating %s : %s", csConfig.Crowdsec.AcquisitionDirPath, err)
 		}
 
@@ -231,7 +232,7 @@ func restoreConfigFromDirectory(dirPath string) error {
 	}
 
 	//if there is files in the acquis backup dir, restore them
-	acquisBackupDir := dirPath + "/acquis/*.yaml"
+	acquisBackupDir := filepath.Join(dirPath, "acquis", "*.yaml")
 	if acquisFiles, err := filepath.Glob(acquisBackupDir); err == nil {
 		for _, acquisFile := range acquisFiles {
 			targetFname, err := filepath.Abs(csConfig.Crowdsec.AcquisitionDirPath + "/" + filepath.Base(acquisFile))
@@ -253,7 +254,7 @@ func restoreConfigFromDirectory(dirPath string) error {
 				log.Infof("skip this one")
 				continue
 			}
-			targetFname, err := filepath.Abs(acquisBackupDir + filepath.Base(acquisFile))
+			targetFname, err := filepath.Abs(filepath.Join(acquisBackupDir, filepath.Base(acquisFile)))
 			if err != nil {
 				return errors.Wrapf(err, "while saving %s to %s", acquisFile, acquisBackupDir)
 			}
@@ -274,72 +275,155 @@ func restoreConfigFromDirectory(dirPath string) error {
 func NewConfigCmd() *cobra.Command {
 
 	var cmdConfig = &cobra.Command{
-		Use:   "config [command]",
-		Short: "Allows to view current config",
-		Args:  cobra.ExactArgs(0),
+		Use:               "config [command]",
+		Short:             "Allows to view current config",
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
+	}
+	var key string
+	type Env struct {
+		Config *csconfig.Config
 	}
 	var cmdConfigShow = &cobra.Command{
-		Use:   "show",
-		Short: "Displays current config",
-		Long:  `Displays the current cli configuration.`,
-		Args:  cobra.ExactArgs(0),
+		Use:               "show",
+		Short:             "Displays current config",
+		Long:              `Displays the current cli configuration.`,
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
+
+			if key != "" {
+				program, err := expr.Compile(key, expr.Env(Env{}))
+				if err != nil {
+					log.Fatal(err)
+				}
+				output, err := expr.Run(program, Env{Config: csConfig})
+				if err != nil {
+					log.Fatal(err)
+				}
+				switch csConfig.Cscli.Output {
+				case "human", "raw":
+					switch output.(type) {
+					case string:
+						fmt.Printf("%s\n", output)
+					case int:
+						fmt.Printf("%d\n", output)
+					default:
+						fmt.Printf("%v\n", output)
+					}
+				case "json":
+					data, err := json.MarshalIndent(output, "", "  ")
+					if err != nil {
+						log.Fatalf("failed to marshal configuration: %s", err)
+					}
+					fmt.Printf("%s\n", string(data))
+				}
+				return
+			}
+
 			switch csConfig.Cscli.Output {
 			case "human":
 				fmt.Printf("Global:\n")
-				fmt.Printf("   - Configuration Folder   : %s\n", csConfig.ConfigPaths.ConfigDir)
-				fmt.Printf("   - Data Folder            : %s\n", csConfig.ConfigPaths.DataDir)
-				fmt.Printf("   - Log Folder             : %s\n", csConfig.Common.LogDir)
-				fmt.Printf("   - Hub Folder             : %s\n", csConfig.ConfigPaths.HubDir)
-				fmt.Printf("   - Simulation File        : %s\n", csConfig.ConfigPaths.SimulationFilePath)
-				fmt.Printf("   - Log level              : %s\n", csConfig.Common.LogLevel)
-				fmt.Printf("   - Log Media              : %s\n", csConfig.Common.LogMedia)
-				fmt.Printf("Crowdsec:\n")
-				fmt.Printf("  - Acquisition File        : %s\n", csConfig.Crowdsec.AcquisitionFilePath)
-				fmt.Printf("  - Parsers routines        : %d\n", csConfig.Crowdsec.ParserRoutinesCount)
-				fmt.Printf("cscli:\n")
-				fmt.Printf("  - Output                  : %s\n", csConfig.Cscli.Output)
-				fmt.Printf("  - Hub Branch              : %s\n", csConfig.Cscli.HubBranch)
-				fmt.Printf("  - Hub Folder              : %s\n", csConfig.Cscli.HubDir)
-				fmt.Printf("API Client:\n")
-				fmt.Printf("  - URL                     : %s\n", csConfig.API.Client.Credentials.URL)
-				fmt.Printf("  - Login                   : %s\n", csConfig.API.Client.Credentials.Login)
-				fmt.Printf("  - Credentials File        : %s\n", csConfig.API.Client.CredentialsFilePath)
-				fmt.Printf("Local API Server:\n")
-				fmt.Printf("  - Listen URL              : %s\n", csConfig.API.Server.ListenURI)
-				fmt.Printf("  - Profile File            : %s\n", csConfig.API.Server.ProfilesPath)
-				if csConfig.API.Server.TLS != nil {
-					if csConfig.API.Server.TLS.CertFilePath != "" {
-						fmt.Printf("  - Cert File : %s\n", csConfig.API.Server.TLS.CertFilePath)
-					}
-					if csConfig.API.Server.TLS.KeyFilePath != "" {
-						fmt.Printf("  - Key File  : %s\n", csConfig.API.Server.TLS.KeyFilePath)
+				if csConfig.ConfigPaths != nil {
+					fmt.Printf("   - Configuration Folder   : %s\n", csConfig.ConfigPaths.ConfigDir)
+					fmt.Printf("   - Data Folder            : %s\n", csConfig.ConfigPaths.DataDir)
+					fmt.Printf("   - Hub Folder             : %s\n", csConfig.ConfigPaths.HubDir)
+					fmt.Printf("   - Simulation File        : %s\n", csConfig.ConfigPaths.SimulationFilePath)
+				}
+				if csConfig.Common != nil {
+					fmt.Printf("   - Log Folder             : %s\n", csConfig.Common.LogDir)
+					fmt.Printf("   - Log level              : %s\n", csConfig.Common.LogLevel)
+					fmt.Printf("   - Log Media              : %s\n", csConfig.Common.LogMedia)
+				}
+				if csConfig.Crowdsec != nil {
+					fmt.Printf("Crowdsec:\n")
+					fmt.Printf("  - Acquisition File        : %s\n", csConfig.Crowdsec.AcquisitionFilePath)
+					fmt.Printf("  - Parsers routines        : %d\n", csConfig.Crowdsec.ParserRoutinesCount)
+					if csConfig.Crowdsec.AcquisitionDirPath != "" {
+						fmt.Printf("  - Acquisition Folder      : %s\n", csConfig.Crowdsec.AcquisitionDirPath)
 					}
 				}
-				fmt.Printf("  - Database:\n")
-				fmt.Printf("      - Type                : %s\n", csConfig.DbConfig.Type)
-				switch csConfig.DbConfig.Type {
-				case "sqlite":
-					fmt.Printf("      - Path                : %s\n", csConfig.DbConfig.DbPath)
-				case "mysql", "postgresql", "postgres":
-					fmt.Printf("      - Host                : %s\n", csConfig.DbConfig.Host)
-					fmt.Printf("      - Port                : %d\n", csConfig.DbConfig.Port)
-					fmt.Printf("      - User                : %s\n", csConfig.DbConfig.User)
-					fmt.Printf("      - DB Name             : %s\n", csConfig.DbConfig.DbName)
+				if csConfig.Cscli != nil {
+					fmt.Printf("cscli:\n")
+					fmt.Printf("  - Output                  : %s\n", csConfig.Cscli.Output)
+					fmt.Printf("  - Hub Branch              : %s\n", csConfig.Cscli.HubBranch)
+					fmt.Printf("  - Hub Folder              : %s\n", csConfig.Cscli.HubDir)
 				}
-				if csConfig.DbConfig.Flush != nil {
-					if *csConfig.DbConfig.Flush.MaxAge != "" {
-						fmt.Printf("      - Flush age           : %s\n", *csConfig.DbConfig.Flush.MaxAge)
+				if csConfig.API != nil {
+					if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil {
+						fmt.Printf("API Client:\n")
+						fmt.Printf("  - URL                     : %s\n", csConfig.API.Client.Credentials.URL)
+						fmt.Printf("  - Login                   : %s\n", csConfig.API.Client.Credentials.Login)
+						fmt.Printf("  - Credentials File        : %s\n", csConfig.API.Client.CredentialsFilePath)
 					}
-					if *csConfig.DbConfig.Flush.MaxItems != 0 {
-						fmt.Printf("      - Flush size          : %d\n", *csConfig.DbConfig.Flush.MaxItems)
-					}
-				}
+					if csConfig.API.Server != nil {
+						fmt.Printf("Local API Server:\n")
+						fmt.Printf("  - Listen URL              : %s\n", csConfig.API.Server.ListenURI)
+						fmt.Printf("  - Profile File            : %s\n", csConfig.API.Server.ProfilesPath)
+						if csConfig.API.Server.TLS != nil {
+							if csConfig.API.Server.TLS.CertFilePath != "" {
+								fmt.Printf("  - Cert File : %s\n", csConfig.API.Server.TLS.CertFilePath)
+							}
+							if csConfig.API.Server.TLS.KeyFilePath != "" {
+								fmt.Printf("  - Key File  : %s\n", csConfig.API.Server.TLS.KeyFilePath)
+							}
+							if csConfig.API.Server.TLS.CACertPath != "" {
+								fmt.Printf("  - CA Cert   : %s\n", csConfig.API.Server.TLS.CACertPath)
+							}
+							if csConfig.API.Server.TLS.CRLPath != "" {
+								fmt.Printf("  - CRL       : %s\n", csConfig.API.Server.TLS.CRLPath)
+							}
+							if csConfig.API.Server.TLS.CacheExpiration != nil {
+								fmt.Printf("  - Cache Expiration : %s\n", csConfig.API.Server.TLS.CacheExpiration)
+							}
+							if csConfig.API.Server.TLS.ClientVerification != "" {
+								fmt.Printf("  - Client Verification : %s\n", csConfig.API.Server.TLS.ClientVerification)
+							}
+							if csConfig.API.Server.TLS.AllowedAgentsOU != nil {
+								for _, ou := range csConfig.API.Server.TLS.AllowedAgentsOU {
+									fmt.Printf("      - Allowed Agents OU       : %s\n", ou)
+								}
+							}
+							if csConfig.API.Server.TLS.AllowedBouncersOU != nil {
+								for _, ou := range csConfig.API.Server.TLS.AllowedBouncersOU {
+									fmt.Printf("      - Allowed Bouncers OU       : %s\n", ou)
+								}
+							}
 
-				fmt.Printf("Central API:\n")
-				fmt.Printf("  - URL                     : %s\n", csConfig.API.Server.OnlineClient.Credentials.URL)
-				fmt.Printf("  - Login                   : %s\n", csConfig.API.Server.OnlineClient.Credentials.Login)
-				fmt.Printf("  - Credentials File        : %s\n", csConfig.API.Server.OnlineClient.CredentialsFilePath)
+						}
+						fmt.Printf("  - Trusted IPs: \n")
+						for _, ip := range csConfig.API.Server.TrustedIPs {
+							fmt.Printf("      - %s\n", ip)
+						}
+						if csConfig.API.Server.OnlineClient != nil && csConfig.API.Server.OnlineClient.Credentials != nil {
+							fmt.Printf("Central API:\n")
+							fmt.Printf("  - URL                     : %s\n", csConfig.API.Server.OnlineClient.Credentials.URL)
+							fmt.Printf("  - Login                   : %s\n", csConfig.API.Server.OnlineClient.Credentials.Login)
+							fmt.Printf("  - Credentials File        : %s\n", csConfig.API.Server.OnlineClient.CredentialsFilePath)
+						}
+					}
+				}
+				if csConfig.DbConfig != nil {
+					fmt.Printf("  - Database:\n")
+					fmt.Printf("      - Type                : %s\n", csConfig.DbConfig.Type)
+					switch csConfig.DbConfig.Type {
+					case "sqlite":
+						fmt.Printf("      - Path                : %s\n", csConfig.DbConfig.DbPath)
+					case "mysql", "postgresql", "postgres":
+						fmt.Printf("      - Host                : %s\n", csConfig.DbConfig.Host)
+						fmt.Printf("      - Port                : %d\n", csConfig.DbConfig.Port)
+						fmt.Printf("      - User                : %s\n", csConfig.DbConfig.User)
+						fmt.Printf("      - DB Name             : %s\n", csConfig.DbConfig.DbName)
+					}
+					if csConfig.DbConfig.Flush != nil {
+						if *csConfig.DbConfig.Flush.MaxAge != "" {
+							fmt.Printf("      - Flush age           : %s\n", *csConfig.DbConfig.Flush.MaxAge)
+						}
+						if *csConfig.DbConfig.Flush.MaxItems != 0 {
+							fmt.Printf("      - Flush size          : %d\n", *csConfig.DbConfig.Flush.MaxItems)
+						}
+					}
+				}
 			case "json":
 				data, err := json.MarshalIndent(csConfig, "", "  ")
 				if err != nil {
@@ -355,10 +439,11 @@ func NewConfigCmd() *cobra.Command {
 			}
 		},
 	}
+	cmdConfigShow.Flags().StringVar(&key, "key", "", "Display only this value (Config.API.Server.ListenURI)")
 	cmdConfig.AddCommand(cmdConfigShow)
 
 	var cmdConfigBackup = &cobra.Command{
-		Use:   "backup <directory>",
+		Use:   `backup "directory"`,
 		Short: "Backup current config",
 		Long: `Backup the current crowdsec configuration including :
 
@@ -368,13 +453,17 @@ func NewConfigCmd() *cobra.Command {
 - List of scenarios, parsers, postoverflows and collections that are up-to-date
 - Tainted/local/out-of-date scenarios, parsers, postoverflows and collections
 - Backup of API credentials (local API and online API)`,
-		Example: `cscli config backup ./my-backup`,
-		Args:    cobra.ExactArgs(1),
+		Example:           `cscli config backup ./my-backup`,
+		Args:              cobra.ExactArgs(1),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
-			if err = cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+			if err := csConfig.LoadHub(); err != nil {
+				log.Fatal(err)
+			}
+			if err = cwhub.GetHubIdx(csConfig.Hub); err != nil {
+				log.Info("Run 'sudo cscli hub update' to get the hub index")
 				log.Fatalf("Failed to get Hub index : %v", err)
-				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 			if err = backupConfigToDirectory(args[0]); err != nil {
 				log.Fatalf("Failed to backup configurations: %s", err)
@@ -384,9 +473,9 @@ func NewConfigCmd() *cobra.Command {
 	cmdConfig.AddCommand(cmdConfigBackup)
 
 	var cmdConfigRestore = &cobra.Command{
-		Use:   "restore <directory>",
-		Short: "Restore config in backup <directory>",
-		Long: `Restore the crowdsec configuration from specified backup <directory> including:
+		Use:   `restore "directory"`,
+		Short: `Restore config in backup "directory"`,
+		Long: `Restore the crowdsec configuration from specified backup "directory" including:
 
 - Main config (config.yaml)
 - Simulation config (simulation.yaml)
@@ -394,12 +483,16 @@ func NewConfigCmd() *cobra.Command {
 - List of scenarios, parsers, postoverflows and collections that are up-to-date
 - Tainted/local/out-of-date scenarios, parsers, postoverflows and collections
 - Backup of API credentials (local API and online API)`,
-		Args: cobra.ExactArgs(1),
+		Args:              cobra.ExactArgs(1),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
-			if err = cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+			if err := csConfig.LoadHub(); err != nil {
+				log.Fatal(err)
+			}
+			if err = cwhub.GetHubIdx(csConfig.Hub); err != nil {
+				log.Info("Run 'sudo cscli hub update' to get the hub index")
 				log.Fatalf("Failed to get Hub index : %v", err)
-				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 			if err := restoreConfigFromDirectory(args[0]); err != nil {
 				log.Fatalf("failed restoring configurations from %s : %s", args[0], err)

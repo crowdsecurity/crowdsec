@@ -1,39 +1,66 @@
 package types
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/gob"
 	"fmt"
 	"io"
-	"io/ioutil"
-	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime/debug"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 )
 
 var logFormatter log.Formatter
 var LogOutput *lumberjack.Logger //io.Writer
 var logLevel log.Level
 
-func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level) error {
+func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, compress *bool, forceColors bool) error {
 
 	/*Configure logs*/
 	if cfgMode == "file" {
+		_maxsize := 500
+		if maxSize != 0 {
+			_maxsize = maxSize
+		}
+		_maxfiles := 3
+		if maxFiles != 0 {
+			_maxfiles = maxFiles
+		}
+		_maxage := 28
+		if maxAge != 0 {
+			_maxage = maxAge
+		}
+		_compress := true
+		if compress != nil {
+			_compress = *compress
+		}
+		/*cf. https://github.com/natefinch/lumberjack/issues/82
+		let's create the file beforehand w/ the right perms */
+		fname := cfgFolder + "/crowdsec.log"
+		// check if file exists
+		_, err := os.Stat(fname)
+		// create file if not exists, purposefully ignore errors
+		if os.IsNotExist(err) {
+			file, _ := os.OpenFile(fname, os.O_RDWR|os.O_CREATE, 0600)
+			file.Close()
+		}
+
 		LogOutput = &lumberjack.Logger{
-			Filename:   cfgFolder + "/crowdsec.log",
-			MaxSize:    500, //megabytes
-			MaxBackups: 3,
-			MaxAge:     28,   //days
-			Compress:   true, //disabled by default
+			Filename:   fname,
+			MaxSize:    _maxsize,
+			MaxBackups: _maxfiles,
+			MaxAge:     _maxage,
+			Compress:   _compress,
 		}
 		log.SetOutput(LogOutput)
 	} else if cfgMode != "stdout" {
@@ -41,9 +68,8 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 	}
 	logLevel = cfgLevel
 	log.SetLevel(logLevel)
-	logFormatter = &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true}
+	logFormatter = &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true, ForceColors: forceColors}
 	log.SetFormatter(logFormatter)
-
 	return nil
 }
 
@@ -74,46 +100,37 @@ func Clone(a, b interface{}) error {
 	return nil
 }
 
+func WriteStackTrace(iErr interface{}) string {
+	tmpfile, err := os.CreateTemp("", "crowdsec-crash.*.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	if _, err := tmpfile.Write([]byte(fmt.Sprintf("error : %+v\n", iErr))); err != nil {
+		tmpfile.Close()
+		log.Fatal(err)
+	}
+	if _, err := tmpfile.Write([]byte(cwversion.ShowStr())); err != nil {
+		tmpfile.Close()
+		log.Fatal(err)
+	}
+	if _, err := tmpfile.Write(debug.Stack()); err != nil {
+		tmpfile.Close()
+		log.Fatal(err)
+	}
+	if err := tmpfile.Close(); err != nil {
+		log.Fatal(err)
+	}
+	return tmpfile.Name()
+}
+
 //CatchPanic is a util func that we should call from all go-routines to ensure proper stacktrace handling
 func CatchPanic(component string) {
-
 	if r := recover(); r != nil {
-
-		/*mimic gin's behaviour on broken pipe*/
-		var brokenPipe bool
-		if ne, ok := r.(*net.OpError); ok {
-			if se, ok := ne.Err.(*os.SyscallError); ok {
-				if se.Err == syscall.EPIPE || se.Err == syscall.ECONNRESET {
-					brokenPipe = true
-				}
-			}
-		}
-
-		tmpfile, err := ioutil.TempFile("/tmp/", "crowdsec-crash.*.txt")
-		if err != nil {
-			log.Fatal(err)
-		}
-		if _, err := tmpfile.Write([]byte(cwversion.ShowStr())); err != nil {
-			tmpfile.Close()
-			log.Fatal(err)
-		}
-		if _, err := tmpfile.Write(debug.Stack()); err != nil {
-			tmpfile.Close()
-			log.Fatal(err)
-		}
-		if err := tmpfile.Close(); err != nil {
-			log.Fatal(err)
-		}
-
 		log.Errorf("crowdsec - goroutine %s crashed : %s", component, r)
 		log.Errorf("please report this error to https://github.com/crowdsecurity/crowdsec/")
-		log.Errorf("stacktrace/report is written to %s : please join it to your issue", tmpfile.Name())
-
-		/*if it's not a broken pipe error, we don't want to fatal. it can happen from Local API pov*/
-		if !brokenPipe {
-			log.Fatalf("crowdsec stopped")
-		}
-
+		filename := WriteStackTrace(r)
+		log.Errorf("stacktrace/report is written to %s : please join it to your issue", filename)
+		log.Fatalf("crowdsec stopped")
 	}
 }
 
@@ -198,4 +215,55 @@ func CopyFile(sourceSymLink, destinationFile string) (err error) {
 	}
 	err = copyFileContents(sourceFile, destinationFile)
 	return
+}
+
+func StrPtr(s string) *string {
+	return &s
+}
+
+func IntPtr(i int) *int {
+	return &i
+}
+
+func Int32Ptr(i int32) *int32 {
+	return &i
+}
+
+func BoolPtr(b bool) *bool {
+	return &b
+}
+
+func InSlice(str string, slice []string) bool {
+	for _, item := range slice {
+		if str == item {
+			return true
+		}
+	}
+	return false
+}
+
+func UtcNow() time.Time {
+	return time.Now().UTC()
+}
+
+func GetLineCountForFile(filepath string) int {
+	f, err := os.Open(filepath)
+	if err != nil {
+		log.Fatalf("unable to open log file %s : %s", filepath, err)
+	}
+	defer f.Close()
+	lc := 0
+	fs := bufio.NewScanner(f)
+	for fs.Scan() {
+		lc++
+	}
+	return lc
+}
+
+// from https://github.com/acarl005/stripansi
+var reStripAnsi = regexp.MustCompile("[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))")
+
+func StripAnsiString(str string) string {
+	// the byte version doesn't strip correctly
+	return reStripAnsi.ReplaceAllString(str, "")
 }

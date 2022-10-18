@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+
+set -eu
+script_name=$0
+
+die() {
+    echo >&2 "$@"
+    exit 1
+}
+
+about() {
+    die "usage: ${script_name} [ start | stop ]"
+}
+
+#shellcheck disable=SC1007
+THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+cd "${THIS_DIR}"/../../
+#shellcheck disable=SC1091
+. ./.environment.sh
+
+# you have not removed set -u above, have you?
+
+[[ -z "${CROWDSEC-}" ]] && die "\$CROWDSEC must be defined."
+[[ -z "${CSCLI-}" ]] && die "\$CSCLI must be defined."
+[[ -z "${LOG_DIR-}" ]] && die "\$LOG_DIR must be defined."
+[[ -z "${PID_DIR-}" ]] && die "\$PID_DIR must be defined."
+
+
+if [[ ! -f "${CROWDSEC}" ]]; then
+    die "${CROWDSEC} is missing. Please build (with 'make bats-build') or install it."
+fi
+
+start() {
+    systemctl start crowdsec
+    ./bin/wait-for-port 6060
+    pidof /usr/bin/crowdsec
+}
+
+stop() {
+    systemctl stop crowdsec # systemd doesn't throw error when stopping already stopped stuff
+    while pidof /usr/bin/crowdsec ; do sleep 0.1; done
+}
+
+
+# ---------------------------
+
+[[ $# -lt 1 ]] && about
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    *)
+        about
+        ;;
+esac;
+

@@ -1,0 +1,4 @@
+contact_links:
+  - name: Support Request
+    url: https://discourse.crowdsec.net
+    about: Support request or question relating to Crowdsec

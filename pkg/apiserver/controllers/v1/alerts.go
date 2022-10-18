@@ -3,16 +3,16 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
+	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
@@ -20,12 +20,11 @@ import (
 
 func FormatOneAlert(alert *ent.Alert) *models.Alert {
 	var outputAlert models.Alert
-	var machineID string
 	startAt := alert.StartedAt.String()
 	StopAt := alert.StoppedAt.String()
-	if alert.Edges.Owner == nil {
-		machineID = "N/A"
-	} else {
+
+	machineID := "N/A"
+	if alert.Edges.Owner != nil {
 		machineID = alert.Edges.Owner.MachineId
 	}
 
@@ -73,7 +72,7 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 		})
 	}
 	for _, decisionItem := range alert.Edges.Decisions {
-		duration := decisionItem.Until.Sub(time.Now()).String()
+		duration := decisionItem.Until.Sub(time.Now().UTC()).String()
 		outputAlert.Decisions = append(outputAlert.Decisions, &models.Decision{
 			Duration:  &duration, // transform into time.Time ?
 			Scenario:  &decisionItem.Scenario,
@@ -97,14 +96,29 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 	return data
 }
 
-// CreateAlert : write received alerts in body to the database
+func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uint) {
+	if c.PluginChannel != nil {
+	RETRY:
+		for try := 0; try < 3; try++ {
+			select {
+			case c.PluginChannel <- csplugin.ProfileAlert{ProfileID: profileID, Alert: alert}:
+				log.Debugf("alert sent to Plugin channel")
+				break RETRY
+			default:
+				log.Warningf("Cannot send alert to Plugin channel (try: %d)", try)
+				time.Sleep(time.Millisecond * 50)
+			}
+		}
+	}
+}
+
+// CreateAlert writes the alerts received in the body to the database
 func (c *Controller) CreateAlert(gctx *gin.Context) {
-	defer types.CatchPanic("crowdsec/controllersV1/CreateAlert")
 
 	var input models.AddAlertsRequest
 
 	claims := jwt.ExtractClaims(gctx)
-	/*TBD : use defines rather than hardcoded key to find back owner*/
+	// TBD: use defined rather than hardcoded key to find back owner
 	machineID := claims["id"].(string)
 
 	if err := gctx.ShouldBindJSON(&input); err != nil {
@@ -115,59 +129,96 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		c.HandleDBErrors(gctx, err)
 		return
 	}
-
+	stopFlush := false
 	for _, alert := range input {
-		if len(alert.Decisions) == 0 {
-			decisions, err := csprofiles.EvaluateProfiles(c.Profiles, alert)
+		alert.MachineID = machineID
+		if len(alert.Decisions) != 0 {
+			for pIdx, profile := range c.Profiles {
+				_, matched, err := profile.EvaluateProfile(alert)
+				if err != nil {
+					gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+					return
+				}
+				if !matched {
+					continue
+				}
+				c.sendAlertToPluginChannel(alert, uint(pIdx))
+				if profile.Cfg.OnSuccess == "break" {
+					break
+				}
+			}
+			decision := alert.Decisions[0]
+			if decision.Origin != nil && *decision.Origin == "cscli-import" {
+				stopFlush = true
+			}
+			continue
+		}
+
+		for pIdx, profile := range c.Profiles {
+			profileDecisions, matched, err := profile.EvaluateProfile(alert)
 			if err != nil {
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
 			}
-			alert.Decisions = decisions
+
+			if !matched {
+				continue
+			}
+
+			if len(alert.Decisions) == 0 { // non manual decision
+				alert.Decisions = append(alert.Decisions, profileDecisions...)
+			}
+			profileAlert := *alert
+			c.sendAlertToPluginChannel(&profileAlert, uint(pIdx))
+			if profile.Cfg.OnSuccess == "break" {
+				break
+			}
 		}
 	}
 
+	if stopFlush {
+		c.DBClient.CanFlush = false
+	}
+
 	alerts, err := c.DBClient.CreateAlert(machineID, input)
+	c.DBClient.CanFlush = true
+
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
 	}
-	for _, alert := range input {
-		alert.MachineID = machineID
-	}
-	select {
-	case c.CAPIChan <- input:
-		log.Debugf("alert send to CAPI channel")
-	default:
-		log.Warningf("Cannot send alert to Central API channel")
+
+	if c.CAPIChan != nil {
+		select {
+		case c.CAPIChan <- input:
+			log.Debug("alert sent to CAPI channel")
+		default:
+			log.Warning("Cannot send alert to Central API channel")
+		}
 	}
 
 	gctx.JSON(http.StatusCreated, alerts)
-	return
 }
 
-// FindAlerts : return alerts from database based on the specified filter
+// FindAlerts: returns alerts from the database based on the specified filter
 func (c *Controller) FindAlerts(gctx *gin.Context) {
-	defer types.CatchPanic("crowdsec/controllersV1/FindAlerts")
 	result, err := c.DBClient.QueryAlertWithFilter(gctx.Request.URL.Query())
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
 	}
+
 	data := FormatAlerts(result)
 
-	if gctx.Request.Method == "HEAD" {
+	if gctx.Request.Method == http.MethodHead {
 		gctx.String(http.StatusOK, "")
 		return
 	}
 	gctx.JSON(http.StatusOK, data)
-	return
 }
 
-// FindAlertByID return the alert assiocated to the ID
+// FindAlertByID returns the alert associated with the ID
 func (c *Controller) FindAlertByID(gctx *gin.Context) {
-	defer types.CatchPanic("crowdsec/controllersV1/FindAlertByID")
-
 	alertIDStr := gctx.Param("alert_id")
 	alertID, err := strconv.Atoi(alertIDStr)
 	if err != nil {
@@ -181,32 +232,38 @@ func (c *Controller) FindAlertByID(gctx *gin.Context) {
 	}
 	data := FormatOneAlert(result)
 
-	if gctx.Request.Method == "HEAD" {
+	if gctx.Request.Method == http.MethodHead {
 		gctx.String(http.StatusOK, "")
 		return
 	}
 	gctx.JSON(http.StatusOK, data)
-	return
 }
 
-// DeleteAlerts : delete alerts from database based on the specified filter
+// DeleteAlerts deletes alerts from the database based on the specified filter
 func (c *Controller) DeleteAlerts(gctx *gin.Context) {
-	defer types.CatchPanic("crowdsec/controllersV1/DeleteAlerts")
-
-	if gctx.ClientIP() != "127.0.0.1" && gctx.ClientIP() != "::1" {
-		gctx.JSON(http.StatusForbidden, gin.H{"message": fmt.Sprintf("access forbidden from this IP (%s)", gctx.ClientIP())})
+	incomingIP := gctx.ClientIP()
+	if incomingIP != "127.0.0.1" && incomingIP != "::1" && !networksContainIP(c.TrustedIPs, incomingIP) {
+		gctx.JSON(http.StatusForbidden, gin.H{"message": fmt.Sprintf("access forbidden from this IP (%s)", incomingIP)})
 		return
 	}
 	var err error
 	nbDeleted, err := c.DBClient.DeleteAlertWithFilter(gctx.Request.URL.Query())
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
+		return
 	}
-
 	deleteAlertsResp := models.DeleteAlertsResponse{
 		NbDeleted: strconv.Itoa(nbDeleted),
 	}
-
 	gctx.JSON(http.StatusOK, deleteAlertsResp)
-	return
+}
+
+func networksContainIP(networks []net.IPNet, ip string) bool {
+	parsedIP := net.ParseIP(ip)
+	for _, network := range networks {
+		if network.Contains(parsedIP) {
+			return true
+		}
+	}
+	return false
 }

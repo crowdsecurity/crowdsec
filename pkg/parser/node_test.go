@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	yaml "gopkg.in/yaml.v2"
 )
 
 func TestParserConfigs(t *testing.T) {
@@ -25,31 +26,38 @@ func TestParserConfigs(t *testing.T) {
 		//empty node
 		{&Node{Debug: true, Stage: "s00", Filter: "true"}, false, false},
 		//bad subgrok
-		{&Node{Debug: true, Stage: "s00", SubGroks: map[string]string{"FOOBAR": "[a-$"}}, false, true},
+		{&Node{Debug: true, Stage: "s00", SubGroks: yaml.MapSlice{{Key: string("FOOBAR"), Value: string("[a-$")}}}, false, true},
 		//valid node with grok pattern
-		{&Node{Debug: true, Stage: "s00", SubGroks: map[string]string{"FOOBAR": "[a-z]"}, Grok: types.GrokPattern{RegexpValue: "^x%{FOOBAR:extr}$", TargetField: "t"}}, true, true},
+		{&Node{Debug: true, Stage: "s00", SubGroks: yaml.MapSlice{{Key: string("FOOBAR"), Value: string("[a-z]")}}, Grok: types.GrokPattern{RegexpValue: "^x%{FOOBAR:extr}$", TargetField: "t"}}, true, true},
 		//bad node success
 		{&Node{Debug: true, Stage: "s00", OnSuccess: "ratat", Grok: types.GrokPattern{RegexpValue: "^x%{DATA:extr}$", TargetField: "t"}}, false, false},
 		//ok node success
 		{&Node{Debug: true, Stage: "s00", OnSuccess: "continue", Grok: types.GrokPattern{RegexpValue: "^x%{DATA:extr}$", TargetField: "t"}}, true, true},
 		//valid node with grok sub-pattern used by name
-		{&Node{Debug: true, Stage: "s00", SubGroks: map[string]string{"FOOBARx": "[a-z] %{DATA:lol}$"}, Grok: types.GrokPattern{RegexpName: "FOOBARx", TargetField: "t"}}, true, true},
+		{&Node{Debug: true, Stage: "s00", SubGroks: yaml.MapSlice{{Key: string("FOOBARx"), Value: string("[a-z] %{DATA:lol}$")}}, Grok: types.GrokPattern{RegexpName: "FOOBARx", TargetField: "t"}}, true, true},
 		//node with unexisting grok pattern
 		{&Node{Debug: true, Stage: "s00", Grok: types.GrokPattern{RegexpName: "RATATA", TargetField: "t"}}, false, true},
-
-		//bad grok pattern
-		//{&Node{Debug: true, Grok: []GrokPattern{ GrokPattern{}, }}, false},
+		//node with grok pattern dependencies
+		{&Node{Debug: true, Stage: "s00", SubGroks: yaml.MapSlice{
+			{Key: string("SUBGROK"), Value: string("[a-z]")},
+			{Key: string("MYGROK"), Value: string("[a-z]%{SUBGROK}")},
+		}, Grok: types.GrokPattern{RegexpValue: "^x%{MYGROK:extr}$", TargetField: "t"}}, true, true},
+		//node with broken grok pattern dependencies
+		{&Node{Debug: true, Stage: "s00", SubGroks: yaml.MapSlice{
+			{Key: string("SUBGROKBIS"), Value: string("[a-z]%{MYGROKBIS}")},
+			{Key: string("MYGROKBIS"), Value: string("[a-z]")},
+		}, Grok: types.GrokPattern{RegexpValue: "^x%{MYGROKBIS:extr}$", TargetField: "t"}}, false, true},
 	}
 	for idx := range CfgTests {
-		err := CfgTests[idx].NodeCfg.compile(pctx, []EnricherCtx{})
+		err := CfgTests[idx].NodeCfg.compile(pctx, EnricherCtx{})
 		if CfgTests[idx].Compiles == true && err != nil {
 			t.Fatalf("Compile: (%d/%d) expected valid, got : %s", idx+1, len(CfgTests), err)
 		}
 		if CfgTests[idx].Compiles == false && err == nil {
-			t.Fatalf("Compile: (%d/%d) expected errror", idx+1, len(CfgTests))
+			t.Fatalf("Compile: (%d/%d) expected error", idx+1, len(CfgTests))
 		}
 
-		err = CfgTests[idx].NodeCfg.validate(pctx, []EnricherCtx{})
+		err = CfgTests[idx].NodeCfg.validate(pctx, EnricherCtx{})
 		if CfgTests[idx].Valid == true && err != nil {
 			t.Fatalf("Valid: (%d/%d) expected valid, got : %s", idx+1, len(CfgTests), err)
 		}

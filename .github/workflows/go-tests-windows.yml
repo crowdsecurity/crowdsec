@@ -1,0 +1,51 @@
+name: Go tests (windows)
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - 'README.md'
+  pull_request:
+    branches: [master]
+    paths-ignore:
+      - 'README.md'
+
+env:
+  RICHGO_FORCE_COLOR: 1
+
+jobs:
+
+  build:
+    name: "Build + tests"
+    runs-on: windows-2022
+
+    steps:
+
+    - name: "Set up Go 1.19"
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.19
+      id: go
+
+    - name: Check out CrowdSec repository
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        submodules: false
+
+    - name: Build
+      run: |
+        make build
+
+    - name: Run tests
+      run: |
+        go install github.com/kyoh86/richgo@v0.3.10
+        go test -coverprofile coverage.out -covermode=atomic ./... > out.txt
+        if(!$?) { cat out.txt | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter; Exit 1 }
+        cat out.txt | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
+
+    - name: Upload unit coverage to Codecov
+      uses: codecov/codecov-action@v2
+      with:
+        files: coverage.out
+        flags: unit-windows

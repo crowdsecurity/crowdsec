@@ -25,7 +25,7 @@ template: |
 
   This product includes GeoLite2 data created by MaxMind, available from <a href="https://www.maxmind.com">https://www.maxmind.com</a>.
   
-  ## Upgrading installation
+  ## Installation
 
-  Take a look at the [upgrade instructions](https://doc.crowdsec.net/Crowdsec/v1/getting_started/upgrades/) or [installation instructions](https://doc.crowdsec.net/Crowdsec/v1/getting_started/installation/).
+  Take a look at the [installation instructions](https://doc.crowdsec.net/docs/getting_started/install_crowdsec).
   

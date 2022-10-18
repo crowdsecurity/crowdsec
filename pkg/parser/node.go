@@ -6,6 +6,9 @@ import (
 	"strings"
 
 	"github.com/antonmedv/expr"
+	"github.com/crowdsecurity/grokky"
+	"github.com/pkg/errors"
+	yaml "gopkg.in/yaml.v2"
 
 	"github.com/antonmedv/expr/vm"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -26,12 +29,12 @@ type Node struct {
 	Name        string   `yaml:"name,omitempty"`
 	Author      string   `yaml:"author,omitempty"`
 	Description string   `yaml:"description,omitempty"`
-	Rerferences []string `yaml:"references,omitempty"`
+	References  []string `yaml:"references,omitempty"`
 	//if debug is present in the node, keep its specific Logger in runtime structure
 	Logger *log.Entry `yaml:"-"`
-	//This is mostly a hack to make writting less repetive.
+	//This is mostly a hack to make writing less repetitive.
 	//relying on stage, we know which field to parse, and we
-	//can as well promote log to next stage on success
+	//can also promote log to next stage on success
 	Stage string `yaml:"stage,omitempty"`
 	//OnSuccess allows to tag a node to be able to move log to next stage on success
 	OnSuccess string `yaml:"onsuccess,omitempty"`
@@ -44,21 +47,22 @@ type Node struct {
 	//If node has leafs, execute all of them until one asks for a 'break'
 	LeavesNodes []Node `yaml:"nodes,omitempty"`
 	//Flag used to describe when to 'break' or return an 'error'
-	EnrichFunctions []EnricherCtx
+	EnrichFunctions EnricherCtx
 
 	/* If the node is actually a leaf, it can have : grok, enrich, statics */
-	//pattern_syntax are named grok patterns that are re-utilised over several grok patterns
-	SubGroks map[string]string `yaml:"pattern_syntax,omitempty"`
+	//pattern_syntax are named grok patterns that are re-utilized over several grok patterns
+	SubGroks yaml.MapSlice `yaml:"pattern_syntax,omitempty"`
+
 	//Holds a grok pattern
 	Grok types.GrokPattern `yaml:"grok,omitempty"`
 	//Statics can be present in any type of node and is executed last
 	Statics []types.ExtraField `yaml:"statics,omitempty"`
 	//Whitelists
-	Whitelist types.Whitelist     `yaml:"whitelist,omitempty"`
+	Whitelist Whitelist           `yaml:"whitelist,omitempty"`
 	Data      []*types.DataSource `yaml:"data,omitempty"`
 }
 
-func (n *Node) validate(pctx *UnixParserCtx, ectx []EnricherCtx) error {
+func (n *Node) validate(pctx *UnixParserCtx, ectx EnricherCtx) error {
 
 	//stage is being set automagically
 	if n.Stage == "" {
@@ -74,8 +78,8 @@ func (n *Node) validate(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 	}
 
 	if n.Grok.RunTimeRegexp != nil || n.Grok.TargetField != "" {
-		if n.Grok.TargetField == "" {
-			return fmt.Errorf("grok's apply_on can't be empty")
+		if n.Grok.TargetField == "" && n.Grok.ExpValue == "" {
+			return fmt.Errorf("grok requires 'expression' or 'apply_on'")
 		}
 		if n.Grok.RegexpName == "" && n.Grok.RegexpValue == "" {
 			return fmt.Errorf("grok needs 'pattern' or 'name'")
@@ -87,15 +91,8 @@ func (n *Node) validate(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 			if static.ExpValue == "" {
 				return fmt.Errorf("static %d : when method is set, expression must be present", idx)
 			}
-			method_found := false
-			for _, enricherCtx := range ectx {
-				if _, ok := enricherCtx.Funcs[static.Method]; ok && enricherCtx.initiated {
-					method_found = true
-					break
-				}
-			}
-			if !method_found {
-				return fmt.Errorf("the method '%s' doesn't exist or the plugin has not been initialized", static.Method)
+			if _, ok := ectx.Registered[static.Method]; !ok {
+				log.Warningf("the method '%s' doesn't exist or the plugin has not been initialized", static.Method)
 			}
 		} else {
 			if static.Meta == "" && static.Parsed == "" && static.TargetByName == "" {
@@ -109,14 +106,17 @@ func (n *Node) validate(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 	return nil
 }
 
-func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
+func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[string]interface{}) (bool, error) {
 	var NodeState bool
+	var NodeHasOKGrok bool
 	clog := n.Logger
+
+	cachedExprEnv := expressionEnv
 
 	clog.Tracef("Event entering node")
 	if n.RunTimeFilter != nil {
 		//Evaluate node's filter
-		output, err := expr.Run(n.RunTimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
+		output, err := expr.Run(n.RunTimeFilter, cachedExprEnv)
 		if err != nil {
 			clog.Warningf("failed to run filter : %v", err)
 			clog.Debugf("Event leaving node : ko")
@@ -126,7 +126,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		switch out := output.(type) {
 		case bool:
 			if n.Debug {
-				n.ExprDebugger.Run(clog, out, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
+				n.ExprDebugger.Run(clog, out, cachedExprEnv)
 			}
 			if !out {
 				clog.Debugf("Event leaving node : ko (failed filter)")
@@ -144,7 +144,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	}
 
 	if n.Name != "" {
-		NodesHits.With(prometheus.Labels{"source": p.Line.Src, "name": n.Name}).Inc()
+		NodesHits.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name}).Inc()
 	}
 	isWhitelisted := false
 	hasWhitelist := false
@@ -157,7 +157,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 			srcs = append(srcs, net.ParseIP(p.Meta["source_ip"]))
 		}
 	} else if p.Type == types.OVFLW {
-		for k, _ := range p.Overflow.Sources {
+		for k := range p.Overflow.Sources {
 			srcs = append(srcs, net.ParseIP(k))
 		}
 	}
@@ -167,7 +167,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		}
 		for _, v := range n.Whitelist.B_Ips {
 			if v.Equal(src) {
-				clog.Debugf("Event from [%s] is whitelisted by Ips !", src)
+				clog.Debugf("Event from [%s] is whitelisted by IP (%s), reason [%s]", src, v, n.Whitelist.Reason)
 				isWhitelisted = true
 			} else {
 				clog.Tracef("whitelist: %s is not eq [%s]", src, v)
@@ -176,7 +176,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		}
 		for _, v := range n.Whitelist.B_Cidrs {
 			if v.Contains(src) {
-				clog.Debugf("Event from [%s] is whitelisted by Cidrs !", src)
+				clog.Debugf("Event from [%s] is whitelisted by CIDR (%s), reason [%s]", src, v, n.Whitelist.Reason)
 				isWhitelisted = true
 			} else {
 				clog.Tracef("whitelist: %s not in [%s]", src, v)
@@ -190,19 +190,19 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	}
 	/* run whitelist expression tests anyway */
 	for eidx, e := range n.Whitelist.B_Exprs {
-		output, err := expr.Run(e.Filter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
+		output, err := expr.Run(e.Filter, cachedExprEnv)
 		if err != nil {
 			clog.Warningf("failed to run whitelist expr : %v", err)
-			clog.Debugf("Event leaving node : ko")
+			clog.Debug("Event leaving node : ko")
 			return false, nil
 		}
 		switch out := output.(type) {
 		case bool:
 			if n.Debug {
-				e.ExprDebugger.Run(clog, out, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
+				e.ExprDebugger.Run(clog, out, cachedExprEnv)
 			}
 			if out {
-				clog.Infof("Event is whitelisted by Expr !")
+				clog.Debugf("Event is whitelisted by expr, reason [%s]", n.Whitelist.Reason)
 				p.Whitelisted = true
 				isWhitelisted = true
 			}
@@ -212,7 +212,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		}
 	}
 	if isWhitelisted {
-		p.WhiteListReason = n.Whitelist.Reason
+		p.WhitelistReason = n.Whitelist.Reason
 		/*huglily wipe the ban order if the event is whitelisted and it's an overflow */
 		if p.Type == types.OVFLW { /*don't do this at home kids */
 			ips := []string{}
@@ -229,10 +229,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	if n.Grok.RunTimeRegexp != nil {
 		clog.Tracef("Processing grok pattern : %s : %p", n.Grok.RegexpName, n.Grok.RunTimeRegexp)
 		//for unparsed, parsed etc. set sensible defaults to reduce user hassle
-		if n.Grok.TargetField == "" {
-			clog.Fatalf("not default field and no specified on stage '%s'", n.Stage)
-
-		} else {
+		if n.Grok.TargetField != "" {
 			//it's a hack to avoid using real reflect
 			if n.Grok.TargetField == "Line.Raw" {
 				gstr = p.Line.Raw
@@ -241,9 +238,21 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 			} else {
 				clog.Debugf("(%s) target field '%s' doesn't exist in %v", n.rn, n.Grok.TargetField, p.Parsed)
 				NodeState = false
-				//return false, nil
+			}
+		} else if n.Grok.RunTimeValue != nil {
+			output, err := expr.Run(n.Grok.RunTimeValue, cachedExprEnv)
+			if err != nil {
+				clog.Warningf("failed to run RunTimeValue : %v", err)
+				NodeState = false
+			}
+			switch out := output.(type) {
+			case string:
+				gstr = out
+			default:
+				clog.Errorf("unexpected return type for RunTimeValue : %T", output)
 			}
 		}
+
 		var groklabel string
 		if n.Grok.RegexpName == "" {
 			groklabel = fmt.Sprintf("%5.5s...", n.Grok.RegexpValue)
@@ -252,6 +261,8 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		}
 		grok := n.Grok.RunTimeRegexp.Parse(gstr)
 		if len(grok) > 0 {
+			/*tag explicitly that the *current* node had a successful grok pattern. it's important to know success state*/
+			NodeHasOKGrok = true
 			clog.Debugf("+ Grok '%s' returned %d entries to merge in Parsed", groklabel, len(grok))
 			//We managed to grok stuff, merged into parse
 			for k, v := range grok {
@@ -261,12 +272,12 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 			// if the grok succeed, process associated statics
 			err := n.ProcessStatics(n.Grok.Statics, p)
 			if err != nil {
-				clog.Fatalf("(%s) Failed to process statics : %v", n.rn, err)
+				clog.Errorf("(%s) Failed to process statics : %v", n.rn, err)
+				return false, err
 			}
 		} else {
 			//grok failed, node failed
 			clog.Debugf("+ Grok '%s' didn't return data on '%s'", groklabel, gstr)
-			//clog.Tracef("on '%s'", gstr)
 			NodeState = false
 		}
 
@@ -277,8 +288,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	//Iterate on leafs
 	if len(n.LeavesNodes) > 0 {
 		for _, leaf := range n.LeavesNodes {
-			//clog.Debugf("Processing sub-node %d/%d : %s", idx, len(n.SuccessNodes), leaf.rn)
-			ret, err := leaf.process(p, ctx)
+			ret, err := leaf.process(p, ctx, cachedExprEnv)
 			if err != nil {
 				clog.Tracef("\tNode (%s) failed : %v", leaf.rn, err)
 				clog.Debugf("Event leaving node : ko")
@@ -293,26 +303,32 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 					break
 				}
 			} else {
-				NodeState = false
+				/*
+					If the parent node has a successful grok pattern, it's state will stay successful even if one or more chil fails.
+					If the parent node is a skeleton node (no grok pattern), then at least one child must be successful for it to be a success.
+				*/
+				if !NodeHasOKGrok {
+					NodeState = false
+				}
 			}
 		}
 	}
 	/*todo : check if a node made the state change ?*/
-	/* should the childs inherit the on_success behaviour */
+	/* should the childs inherit the on_success behavior */
 
 	clog.Tracef("State after nodes : %v", NodeState)
 
 	//grok or leafs failed, don't process statics
 	if !NodeState {
 		if n.Name != "" {
-			NodesHitsKo.With(prometheus.Labels{"source": p.Line.Src, "name": n.Name}).Inc()
+			NodesHitsKo.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name}).Inc()
 		}
 		clog.Debugf("Event leaving node : ko")
 		return NodeState, nil
 	}
 
 	if n.Name != "" {
-		NodesHitsOk.With(prometheus.Labels{"source": p.Line.Src, "name": n.Name}).Inc()
+		NodesHitsOk.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name}).Inc()
 	}
 	/*
 		Please kill me. this is to apply statics when the node *has* whitelists that successfully matched the node.
@@ -322,7 +338,8 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		// if all else is good in whitelist, process node's statics
 		err := n.ProcessStatics(n.Statics, p)
 		if err != nil {
-			clog.Fatalf("Failed to process statics : %v", err)
+			clog.Errorf("Failed to process statics : %v", err)
+			return false, err
 		}
 	} else {
 		clog.Tracef("! No node statics")
@@ -350,7 +367,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	return NodeState, nil
 }
 
-func (n *Node) compile(pctx *UnixParserCtx, ectx []EnricherCtx) error {
+func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	var err error
 	var valid bool
 
@@ -402,13 +419,18 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 	}
 
 	/* handle pattern_syntax and groks */
-	for node, pattern := range n.SubGroks {
-		n.Logger.Tracef("Adding subpattern '%s' : '%s'", node, pattern)
-		if err := pctx.Grok.Add(node, pattern); err != nil {
-			n.Logger.Errorf("Unable to compile subpattern %s : %v", node, err)
+	for _, pattern := range n.SubGroks {
+		n.Logger.Tracef("Adding subpattern '%s' : '%s'", pattern.Key, pattern.Value)
+		if err := pctx.Grok.Add(pattern.Key.(string), pattern.Value.(string)); err != nil {
+			if err == grokky.ErrAlreadyExist {
+				n.Logger.Warningf("grok '%s' already registred", pattern.Key)
+				continue
+			}
+			n.Logger.Errorf("Unable to compile subpattern %s : %v", pattern.Key, err)
 			return err
 		}
 	}
+
 	/* load grok by name or compile in-place */
 	if n.Grok.RegexpName != "" {
 		n.Logger.Tracef("+ Regexp Compilation '%s'", n.Grok.RegexpName)
@@ -436,6 +458,16 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 		n.Logger.Tracef("%s regexp : %s", n.Grok.RegexpValue, n.Grok.RunTimeRegexp.Regexp.String())
 		valid = true
 	}
+
+	/*if grok source is an expression*/
+	if n.Grok.ExpValue != "" {
+		n.Grok.RunTimeValue, err = expr.Compile(n.Grok.ExpValue,
+			expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+		if err != nil {
+			return errors.Wrap(err, "while compiling grok's expression")
+		}
+	}
+
 	/* load grok statics */
 	if len(n.Grok.Statics) > 0 {
 		//compile expr statics if present
@@ -499,7 +531,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 		valid = true
 	}
 	for _, filter := range n.Whitelist.Exprs {
-		expression := &types.ExprWhitelist{}
+		expression := &ExprWhitelist{}
 		expression.Filter, err = expr.Compile(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 		if err != nil {
 			n.Logger.Fatalf("Unable to compile whitelist expression '%s' : %v.", filter, err)
@@ -515,12 +547,13 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 
 	if !valid {
 		/* node is empty, error force return */
-		n.Logger.Infof("Node is empty: %s", spew.Sdump(n))
+		n.Logger.Error("Node is empty or invalid, abort")
 		n.Stage = ""
+		return fmt.Errorf("Node is empty")
 	}
+
 	if err := n.validate(pctx, ectx); err != nil {
 		return err
-		//n.logger.Fatalf("Node is invalid : %s", err)
 	}
 	return nil
 }

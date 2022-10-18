@@ -3,15 +3,17 @@ package metabase
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
+	"runtime"
 	"strings"
 	"time"
 
+	"github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -41,14 +43,27 @@ type Config struct {
 var (
 	metabaseDefaultUser     = "crowdsec@crowdsec.net"
 	metabaseDefaultPassword = "!!Cr0wdS3c_M3t4b4s3??"
-	containerName           = "/crowdsec-metabase"
-	metabaseImage           = "metabase/metabase:v0.37.0.2"
+	metabaseImage           = "metabase/metabase:v0.41.5"
 	containerSharedFolder   = "/metabase-data"
-
-	metabaseSQLiteDBURL = "https://crowdsec-statics-assets.s3-eu-west-1.amazonaws.com/metabase_sqlite.zip"
+	metabaseSQLiteDBURL     = "https://crowdsec-statics-assets.s3-eu-west-1.amazonaws.com/metabase_sqlite.zip"
 )
 
-func (m *Metabase) Init() error {
+func TestAvailability() error {
+	if runtime.GOARCH != "amd64" {
+		return fmt.Errorf("cscli dashboard is only available on amd64, but you are running %s", runtime.GOARCH)
+	}
+
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return fmt.Errorf("failed to create docker client : %s", err)
+	}
+
+	_, err = cli.Ping(context.TODO())
+	return err
+
+}
+
+func (m *Metabase) Init(containerName string) error {
 	var err error
 	var DBConnectionURI string
 	var remoteDBAddr string
@@ -70,7 +85,9 @@ func (m *Metabase) Init() error {
 		return err
 	}
 	m.Database, err = NewDatabase(m.Config.Database, m.Client, remoteDBAddr)
-
+	if err != nil {
+		return err
+	}
 	m.Container, err = NewContainer(m.Config.ListenAddr, m.Config.ListenPort, m.Config.DBPath, containerName, metabaseImage, DBConnectionURI, m.Config.DockerGroupID)
 	if err != nil {
 		return errors.Wrap(err, "container init")
@@ -79,19 +96,19 @@ func (m *Metabase) Init() error {
 	return nil
 }
 
-func NewMetabase(configPath string) (*Metabase, error) {
+func NewMetabase(configPath string, containerName string) (*Metabase, error) {
 	m := &Metabase{}
 	if err := m.LoadConfig(configPath); err != nil {
 		return m, err
 	}
-	if err := m.Init(); err != nil {
+	if err := m.Init(containerName); err != nil {
 		return m, err
 	}
 	return m, nil
 }
 
 func (m *Metabase) LoadConfig(configPath string) error {
-	yamlFile, err := ioutil.ReadFile(configPath)
+	yamlFile, err := os.ReadFile(configPath)
 	if err != nil {
 		return err
 	}
@@ -116,15 +133,11 @@ func (m *Metabase) LoadConfig(configPath string) error {
 
 	m.Config = config
 
-	if err := m.Init(); err != nil {
-		return err
-	}
-
 	return nil
 
 }
 
-func SetupMetabase(dbConfig *csconfig.DatabaseCfg, listenAddr string, listenPort string, username string, password string, mbDBPath string, dockerGroupID string) (*Metabase, error) {
+func SetupMetabase(dbConfig *csconfig.DatabaseCfg, listenAddr string, listenPort string, username string, password string, mbDBPath string, dockerGroupID string, containerName string) (*Metabase, error) {
 	metabase := &Metabase{
 		Config: &Config{
 			Database:      dbConfig,
@@ -137,7 +150,7 @@ func SetupMetabase(dbConfig *csconfig.DatabaseCfg, listenAddr string, listenPort
 			DockerGroupID: dockerGroupID,
 		},
 	}
-	if err := metabase.Init(); err != nil {
+	if err := metabase.Init(containerName); err != nil {
 		return nil, errors.Wrap(err, "metabase setup init")
 	}
 
@@ -208,7 +221,7 @@ func (m *Metabase) Login(username string, password string) error {
 	if !ok {
 		return fmt.Errorf("login: bad response type: %+v", successmsg)
 	}
-	if _, ok := resp["id"]; !ok {
+	if _, ok = resp["id"]; !ok {
 		return fmt.Errorf("login: can't update session id, no id in response: %v", successmsg)
 	}
 	id, ok := resp["id"].(string)
@@ -231,10 +244,10 @@ func (m *Metabase) Scan() error {
 	return nil
 }
 
-func (m *Metabase) ResetPassword(current string, new string) error {
+func (m *Metabase) ResetPassword(current string, newPassword string) error {
 	body := map[string]string{
 		"id":           "1",
-		"password":     new,
+		"password":     newPassword,
 		"old_password": current,
 	}
 	_, errormsg, err := m.Client.Do("PUT", routes[resetPasswordEndpoint], body)
@@ -289,7 +302,7 @@ func (m *Metabase) DumpConfig(path string) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(path, data, 0600)
+	return os.WriteFile(path, data, 0600)
 }
 
 func (m *Metabase) DownloadDatabase(force bool) error {
@@ -305,7 +318,7 @@ func (m *Metabase) DownloadDatabase(force bool) error {
 		return fmt.Errorf("failed to create %s : %s", metabaseDBSubpath, err)
 	}
 
-	req, err := http.NewRequest("GET", m.InternalDBURL, nil)
+	req, err := http.NewRequest(http.MethodGet, m.InternalDBURL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to build request to fetch metabase db : %s", err)
 	}
@@ -315,11 +328,11 @@ func (m *Metabase) DownloadDatabase(force bool) error {
 	if err != nil {
 		return fmt.Errorf("failed request to fetch metabase db : %s", err)
 	}
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("got http %d while requesting metabase db %s, stop", resp.StatusCode, m.InternalDBURL)
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed request read while fetching metabase db : %s", err)
 	}

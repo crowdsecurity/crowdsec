@@ -1,0 +1,53 @@
+#!/usr/bin/make -f
+
+export DEB_VERSION=$(shell dpkg-parsechangelog | egrep '^Version:' | cut -f 2 -d ' ')
+export BUILD_VERSION=v${DEB_VERSION}-debian-pragmatic
+export GO111MODULE=on
+
+# LD_OPTS=-ldflags "-s -w -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Version=$(BUILD_VERSION) \
+# -X github.com/crowdsecurity/crowdsec/pkg/cwversion.BuildDate=$(BUILD_TIMESTAMP) \
+# -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Codename=$(BUILD_CODENAME)  \
+# -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Tag=$(BUILD_TAG) \
+# -X github.com/crowdsecurity/crowdsec/pkg/cwversion.GoVersion=$(BUILD_GOVERSION)"
+
+%:
+	dh $@
+
+override_dh_auto_clean:
+override_dh_auto_test:
+override_dh_auto_build:
+override_dh_auto_install:
+# mkdir /tmp/go
+# echo $(go version)
+# echo $($GOCMD version)
+# cd cmd/crowdsec && GOROOT=/tmp/go GO111MODULE=on $(GOBUILD) $(LD_OPTS) -o $(CROWDSEC_BIN) -v && cd ..
+# cd cmd/crowdsec-cli  && GOROOT=/tmp/go GO111MODULE=on $(GOBUILD) $(LD_OPTS) -o cscli -v && cd ..
+	make build
+	mkdir -p debian/crowdsec/usr/bin
+	mkdir -p debian/crowdsec/etc/crowdsec
+	mkdir -p debian/crowdsec/usr/share/crowdsec
+	mkdir -p debian/crowdsec/etc/crowdsec/hub/
+	mkdir -p debian/crowdsec/usr/share/crowdsec/config
+
+
+	mkdir -p debian/crowdsec/usr/lib/crowdsec/plugins/
+	mkdir -p debian/crowdsec/etc/crowdsec/notifications/
+
+	install -m 551 plugins/notifications/slack/notification-slack debian/crowdsec/usr/lib/crowdsec/plugins/
+	install -m 551 plugins/notifications/http/notification-http debian/crowdsec/usr/lib/crowdsec/plugins/
+	install -m 551 plugins/notifications/splunk/notification-splunk debian/crowdsec/usr/lib/crowdsec/plugins/
+	install -m 551 plugins/notifications/email/notification-email debian/crowdsec/usr/lib/crowdsec/plugins/
+
+	cp cmd/crowdsec/crowdsec debian/crowdsec/usr/bin
+	cp cmd/crowdsec-cli/cscli debian/crowdsec/usr/bin
+	cp wizard.sh debian/crowdsec/usr/share/crowdsec
+	install -m 600 config/config.yaml debian/crowdsec/etc/crowdsec/config.yaml
+	cp config/simulation.yaml debian/crowdsec/etc/crowdsec/simulation.yaml
+	cp config/profiles.yaml debian/crowdsec/etc/crowdsec/profiles.yaml
+	cp config/console.yaml debian/crowdsec/etc/crowdsec/console.yaml
+	cp -a config/patterns debian/crowdsec/etc/crowdsec
+
+override_dh_fixperms:
+	dh_fixperms
+	chmod 600 debian/crowdsec/etc/crowdsec/notifications/*
+	chmod 600 debian/crowdsec/etc/crowdsec/config.yaml

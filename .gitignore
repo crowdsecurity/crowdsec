@@ -4,17 +4,39 @@
 *.dll
 *.so
 *.dylib
+*~
+.pc
 
-# Test binary, built with `go test -c`
+# Test binaries, built with `go test -c`
 *.test
+*.cover
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
+# Development artifacts, backups, etc
+*.swp
+*.swo
+
 # Dependency directories (remove the comment below to include it)
 # vendor/
-
 
 # crowdsec binaries
 cmd/crowdsec-cli/cscli
 cmd/crowdsec/crowdsec
+plugins/notifications/http/notification-http
+plugins/notifications/slack/notification-slack
+plugins/notifications/splunk/notification-splunk
+plugins/notifications/email/notification-email
+plugins/notifications/dummy/notification-dummy
+
+#test binaries
+pkg/csplugin/tests/cs_plugin_test*
+
+#release stuff
+crowdsec-v*
+pkg/cwhub/hubdir/.index.json
+msi
+*.msi
+*.nukpg
+*.tgz

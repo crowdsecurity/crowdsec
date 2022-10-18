@@ -1,0 +1,28 @@
+type: splunk          # Don't change
+name: splunk_default  # Must match the registered plugin in the profile
+
+# One of "trace", "debug", "info", "warn", "error", "off"
+log_level: info
+
+# group_wait:         # Time to wait collecting alerts before relaying a message to this plugin, eg "30s"
+# group_threshold:    # Amount of alerts that triggers a message before <group_wait> has expired, eg "10"
+# max_retry:          # Number of attempts to relay messages to plugins in case of error
+# timeout:            # Time to wait for response from the plugin before considering the attempt a failure, eg "10s"
+
+#-------------------------
+# plugin-specific options
+
+# The following template receives a list of models.Alert objects
+# The output goes in the splunk notification
+format: |
+  {{.|toJson}}
+
+url: <SPLUNK_HTTP_URL>
+token: <SPLUNK_TOKEN>
+
+---
+
+# type: splunk
+# name: splunk_second_notification
+# ...
+

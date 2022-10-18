@@ -98,7 +98,7 @@ func TestGCandDump(t *testing.T) {
 	log.Printf("Bucket GC")
 
 	//call garbage collector
-	if err := GarbageCollectBuckets(time.Now(), buckets); err != nil {
+	if err := GarbageCollectBuckets(time.Now().UTC(), buckets); err != nil {
 		t.Fatalf("failed to garbage collect buckets : %s", err)
 	}
 
@@ -108,7 +108,7 @@ func TestGCandDump(t *testing.T) {
 
 	log.Printf("Dumping buckets state")
 	//dump remaining buckets
-	if _, err := DumpBucketsStateAt(time.Now(), ".", buckets); err != nil {
+	if _, err := DumpBucketsStateAt(time.Now().UTC(), ".", buckets); err != nil {
 		t.Fatalf("failed to dump buckets : %s", err)
 	}
 }
@@ -172,7 +172,7 @@ func TestShutdownBuckets(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := ShutdownAllBuckets(buckets); err != nil {
-		t.Fatalf("while shuting down buckets : %s", err)
+		t.Fatalf("while shutting down buckets : %s", err)
 	}
 	time.Sleep(2 * time.Second)
 	if err := expectBucketCount(buckets, 2); err != nil {

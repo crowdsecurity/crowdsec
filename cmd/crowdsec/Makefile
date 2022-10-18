@@ -1,32 +1,41 @@
-# Go parameters
-GOCMD=go
-GOBUILD=$(GOCMD) build
-GOCLEAN=$(GOCMD) clean
-GOTEST=$(GOCMD) test
-GOGET=$(GOCMD) get
+ifeq ($(OS), Windows_NT)
+	SHELL := pwsh.exe
+	.SHELLFLAGS := -NoProfile -Command
+	EXT = .exe
+endif
 
-CROWDSEC_BIN=crowdsec
-PREFIX?="/"
+# Go parameters
+GOCMD = go
+GOBUILD = $(GOCMD) build
+GOCLEAN = $(GOCMD) clean
+GOTEST = $(GOCMD) test
+GOGET = $(GOCMD) get
+
+CROWDSEC_BIN = crowdsec$(EXT)
+# names longer than 15 chars break 'pgrep'
+CROWDSEC_BIN_COVER = $(CROWDSEC_BIN).cover
+PREFIX ?= "/"
 CFG_PREFIX = $(PREFIX)"/etc/crowdsec/config/"
 BIN_PREFIX = $(PREFIX)"/usr/local/bin/"
 DATA_PREFIX = $(PREFIX)"/var/run/crowdsec/"
 PID_DIR = $(PREFIX)"/var/run/"
 
-SYSTEMD_PATH_FILE="/etc/systemd/system/crowdsec.service"
+SYSTEMD_PATH_FILE = "/etc/systemd/system/crowdsec.service"
 
+.PHONY: all
 all: clean test build
 
 build: clean
-	$(GOBUILD) $(LD_OPTS) -o $(CROWDSEC_BIN) -v
+	$(GOBUILD) $(LD_OPTS) $(BUILD_VENDOR_FLAGS) -o $(CROWDSEC_BIN)
 
-static: clean
-	$(GOBUILD) -o $(CROWDSEC_BIN) -v -a -tags netgo -ldflags '-w -extldflags "-static"'
+build-bincover: clean
+	$(GOTEST) . -tags testrunmain -coverpkg=$(go list github.com/crowdsecurity/crowdsec/... | grep -v -e 'pkg/database' -e 'plugins/notifications' -e 'pkg/protobufs' -e 'pkg/cwversions' -e 'pkg/cstest' -e 'pkg/models') -covermode=atomic $(LD_OPTS) -c -o $(CROWDSEC_BIN_COVER)
 
 test:
-	$(GOTEST) -v ./...
+	$(GOTEST) $(LD_OPTS) -v ./...
 
 clean:
-	rm -f $(CROWDSEC_BIN)
+	@$(RM) $(CROWDSEC_BIN) $(CROWDSEC_BIN).test $(CROWDSEC_BIN_COVER) $(WIN_IGNORE_ERR)
 
 .PHONY: install
 install: install-conf install-bin
@@ -61,7 +70,7 @@ systemd: install
 
 .PHONY: uninstall
 uninstall:
-	rm -rf $(CFG_PREFIX)
-	rm -rf $(DATA_PREFIX)
-	rm -f "$(BIN_PREFIX)/$(CROWDSEC_BIN)"
-	rm -f "$(SYSTEMD_PATH_FILE)"
+	$(RM) $(CFG_PREFIX) $(WIN_IGNORE_ERR)
+	$(RM) $(DATA_PREFIX) $(WIN_IGNORE_ERR) 
+	$(RM) "$(BIN_PREFIX)/$(CROWDSEC_BIN)" $(WIN_IGNORE_ERR)
+	$(RM) "$(SYSTEMD_PATH_FILE)" $(WIN_IGNORE_ERR)

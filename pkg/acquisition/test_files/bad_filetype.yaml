@@ -1,0 +1,5 @@
+type: file
+filenames: /tmp/tltlt.log #it should be an array
+labels:
+  type: syslog
+  

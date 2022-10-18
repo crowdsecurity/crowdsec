@@ -3,20 +3,21 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
-	"net/http/httputil"
 	"net/url"
+	"os"
 	"strings"
+
+	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/go-openapi/strfmt"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 )
 
 var LAPIURLPrefix string = "v1"
@@ -24,15 +25,13 @@ var lapiUser string
 
 func NewLapiCmd() *cobra.Command {
 	var cmdLapi = &cobra.Command{
-		Use:   "lapi [action]",
-		Short: "Manage interaction with Local API (LAPI)",
-		Args:  cobra.MinimumNArgs(1),
+		Use:               "lapi [action]",
+		Short:             "Manage interaction with Local API (LAPI)",
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if csConfig.API.Client == nil {
-				log.Fatalln("There is no API->client configuration")
-			}
-			if csConfig.API.Client.Credentials == nil {
-				log.Fatalf("no configuration for crowdsec API in '%s'", *csConfig.Self)
+			if err := csConfig.LoadAPIClient(); err != nil {
+				return errors.Wrap(err, "loading api client")
 			}
 			return nil
 		},
@@ -43,11 +42,12 @@ func NewLapiCmd() *cobra.Command {
 		Short: "Register a machine to Local API (LAPI)",
 		Long: `Register you machine to the Local API (LAPI).
 Keep in mind the machine needs to be validated by an administrator on LAPI side to be effective.`,
-		Args: cobra.MinimumNArgs(0),
+		Args:              cobra.MinimumNArgs(0),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			if lapiUser == "" {
-				lapiUser, err = generateID()
+				lapiUser, err = generateID("")
 				if err != nil {
 					log.Fatalf("unable to generate machine id: %s", err)
 				}
@@ -104,7 +104,7 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 				log.Fatalf("unable to marshal api credentials: %s", err)
 			}
 			if dumpFile != "" {
-				err = ioutil.WriteFile(dumpFile, apiConfigDump, 0644)
+				err = os.WriteFile(dumpFile, apiConfigDump, 0644)
 				if err != nil {
 					log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
 				}
@@ -112,7 +112,7 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 			} else {
 				fmt.Printf("%s\n", string(apiConfigDump))
 			}
-			log.Warningf("Run 'sudo systemctl reload crowdsec' for the new configuration to be effective")
+			log.Warning(ReloadMessage())
 		},
 	}
 	cmdLapiRegister.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API (ie. http://127.0.0.1)")
@@ -121,9 +121,10 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 	cmdLapi.AddCommand(cmdLapiRegister)
 
 	var cmdLapiStatus = &cobra.Command{
-		Use:   "status",
-		Short: "Check authentication to Local API (LAPI)",
-		Args:  cobra.MinimumNArgs(0),
+		Use:               "status",
+		Short:             "Check authentication to Local API (LAPI)",
+		Args:              cobra.MinimumNArgs(0),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 
@@ -133,13 +134,17 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 			if err != nil {
 				log.Fatalf("parsing api url ('%s'): %s", apiurl, err)
 			}
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
-				log.Fatalf("Failed to load hub index : %s", err)
-				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
+			if err := csConfig.LoadHub(); err != nil {
+				log.Fatal(err)
 			}
-			scenarios, err := cwhub.GetUpstreamInstalledScenariosAsString()
+
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
+				log.Info("Run 'sudo cscli hub update' to get the hub index")
+				log.Fatalf("Failed to load hub index : %s", err)
+			}
+			scenarios, err := cwhub.GetInstalledScenariosAsString()
 			if err != nil {
-				log.Fatalf("failed to get scenarios : %s", err.Error())
+				log.Fatalf("failed to get scenarios : %s", err)
 			}
 
 			Client, err = apiclient.NewDefaultClient(apiurl,
@@ -156,17 +161,12 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 			}
 			log.Infof("Loaded credentials from %s", csConfig.API.Client.CredentialsFilePath)
 			log.Infof("Trying to authenticate with username %s on %s", login, apiurl)
-			resp, err := Client.Auth.AuthenticateWatcher(context.Background(), t)
+			_, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
 			if err != nil {
 				log.Fatalf("Failed to authenticate to Local API (LAPI) : %s", err)
 			} else {
 				log.Infof("You can successfully interact with Local API (LAPI)")
 			}
-			for k, v := range resp.Response.Header {
-				log.Debugf("[headers] %s : %s", k, v)
-			}
-			dump, _ := httputil.DumpResponse(resp.Response, true)
-			log.Debugf("Response: %s", string(dump))
 		},
 	}
 	cmdLapi.AddCommand(cmdLapiStatus)

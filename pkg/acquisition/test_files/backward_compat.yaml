@@ -1,0 +1,15 @@
+filename: /tmp/test.log
+labels:
+  type: syslog
+---
+filenames:
+ - /tmp/test*.log
+labels:
+  type: syslog
+---
+# to be uncommented when we reimplement back journalctl
+# journalctl_filter:
+#  - "_SYSTEMD_UNIT=ssh.service"
+# labels:
+#   type: syslog
+---

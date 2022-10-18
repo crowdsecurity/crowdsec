@@ -29,3 +29,13 @@ decisions:
  - type: ratatatata
    duration: 1h
 on_success: break
+---
+name: duration_expression
+#debug: true
+filters:
+ - Alert.Remediation == true && Alert.GetScope() == "Ip"
+decisions:
+ - type: ban
+   duration: 1h
+duration_expr: sprintf('%dh', 4*4)
+on_success: break

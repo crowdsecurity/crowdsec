@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+
+# This loops over all the available boxes, running the test suite on each one.
+# The results are collected in a file. If the file already exists, tests are not run again.
+
+env=$1
+
+if [[ -z "${env}" ]]; then
+  echo "Usage: $0 <env> [vagrant-dir]..."
+  exit 1
+fi
+
+shift
+
+vagrant_dirs=("$@")
+if [[ $# -eq 0 ]]; then
+    # find all targets, with possibly weird names, don't go into subfolders (like 'experimental/')
+    readarray -d '' vagrant_dirs < <(find vagrant -mindepth 1 -maxdepth 1 -type d -print0 | sort -z | grep -z -v .vagrant)
+fi
+
+#shellcheck disable=SC1090
+. "${env}"
+
+VAGRANT_FORCE_COLOR=true
+export VAGRANT_FORCE_COLOR
+
+for vm in "${vagrant_dirs[@]}"; do
+    outfile="$(basename "${env}").out"
+    pushd "${vm}" >/dev/null || exit
+    if [[ ! -f "Vagrantfile" ]]; then
+            popd >/dev/null || exit
+            continue
+    fi
+    echo "Prepare and run tests on ${vm}..."
+    if [[ -x "skip" ]]; then
+        if ! ./skip; then
+            popd >/dev/null || exit
+            continue
+        fi
+    fi
+    if [[ ! -f "${outfile}" ]]; then
+        vagrant up --no-provision
+        vagrant provision 2>&1 | tee "${outfile}"
+        vagrant destroy -f
+    else
+        echo "skipping: ${vm}, file ${outfile} already exists." >&2
+    fi
+    popd >/dev/null || exit
+done

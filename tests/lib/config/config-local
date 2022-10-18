@@ -1,0 +1,174 @@
+#!/usr/bin/env bash
+
+set -eu
+script_name=$0
+
+die() {
+    echo >&2 "$@"
+    exit 1
+}
+
+about() {
+    die "usage: ${script_name} [make | load | clean]"
+}
+
+#shellcheck disable=SC1007
+THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+cd "${THIS_DIR}"/../../
+#shellcheck disable=SC1091
+. ./.environment.sh
+
+# you have not removed set -u above, have you?
+
+[[ -z "${TEST_DIR-}" ]] && die "\$TEST_DIR must be defined."
+[[ -z "${LOCAL_DIR-}" ]] && die "\$LOCAL_DIR must be defined."
+[[ -z "${CSCLI-}" ]] && die "\$CSCLI must be defined."
+[[ -z "${LOCAL_INIT_DIR-}" ]] && die "\$LOCAL_INIT_DIR must be defined."
+[[ -z "${PLUGIN_DIR-}" ]] && die "\$PLUGIN_DIR must be defined."
+[[ -z "${DB_BACKEND-}" ]] && die "\$DB_BACKEND must be defined."
+
+if [[ ! -f "${CSCLI}" ]]; then
+    die "${CSCLI} is missing. Please build (with 'make bats-build') or install it."
+fi
+
+REL_CONFIG_DIR="etc/crowdsec"
+REL_DATA_DIR="var/lib/crowdsec/data"
+
+DATA_DIR="${LOCAL_DIR}/${REL_DATA_DIR}"
+export DATA_DIR
+CONFIG_DIR="${LOCAL_DIR}/${REL_CONFIG_DIR}"
+export CONFIG_DIR
+HUB_DIR="${CONFIG_DIR}/hub"
+export HUB_DIR
+
+if [[ $(uname) == "OpenBSD" ]]; then
+    TAR=gtar
+else
+    TAR=tar
+fi
+
+remove_init_data() {
+    ./bin/assert-crowdsec-not-running || die "Cannot remove fixture data."
+    rm -rf -- "${LOCAL_DIR:?}/${REL_CONFIG_DIR}"/* "${LOCAL_DIR:?}/${REL_DATA_DIR:?}"/*
+}
+
+config_generate() {
+    mkdir -p "${CONFIG_DIR}"
+
+    cp ../config/profiles.yaml \
+       ../config/simulation.yaml \
+       ../config/local_api_credentials.yaml \
+       ../config/online_api_credentials.yaml \
+       "${CONFIG_DIR}/"
+
+    # the default acquis file contains files that are not readable by everyone
+    touch "$LOG_DIR/empty.log"
+    cat <<-EOT >"$CONFIG_DIR/acquis.yaml"
+	source: file
+	filenames:
+	    - $LOG_DIR/empty.log
+	labels:
+	    type: syslog
+	EOT
+
+    cp ../plugins/notifications/*/{http,email,slack,splunk,dummy}.yaml \
+       "${CONFIG_DIR}/notifications/"
+
+    yq e '
+    .common.daemonize=true |
+    del(.common.pid_dir) |
+    .common.log_level="info" |
+    .common.force_color_logs=true |
+    .common.log_dir=strenv(LOG_DIR) |
+    .config_paths.config_dir=strenv(CONFIG_DIR) |
+    .config_paths.data_dir=strenv(DATA_DIR) |
+    .config_paths.simulation_path=strenv(CONFIG_DIR)+"/simulation.yaml" |
+    .config_paths.hub_dir=strenv(HUB_DIR) |
+    .config_paths.index_path=strenv(HUB_DIR)+"/.index.json" |
+    .config_paths.notification_dir=strenv(CONFIG_DIR)+"/notifications" |
+    .config_paths.plugin_dir=strenv(PLUGIN_DIR) |
+    .crowdsec_service.acquisition_path=strenv(CONFIG_DIR)+"/acquis.yaml" |
+    .crowdsec_service.acquisition_dir=strenv(CONFIG_DIR)+"/acquis.d" |
+    .db_config.db_path=strenv(DATA_DIR)+"/crowdsec.db" |
+    .db_config.use_wal=true |
+    .api.client.credentials_path=strenv(CONFIG_DIR)+"/local_api_credentials.yaml" |
+    .api.server.profiles_path=strenv(CONFIG_DIR)+"/profiles.yaml" |
+    .api.server.console_path=strenv(CONFIG_DIR)+"/console.yaml" |
+    .api.server.online_client.credentials_path=strenv(CONFIG_DIR)+"/online_api_credentials.yaml"
+    ' ../config/config.yaml >"${CONFIG_DIR}/config.yaml"
+}
+
+
+make_init_data() {
+    ./bin/assert-crowdsec-not-running || die "Cannot create fixture data."
+
+    remove_init_data
+    mkdir -p "${DATA_DIR}"
+    mkdir -p "${CONFIG_DIR}/notifications"
+    mkdir -p "${CONFIG_DIR}/hub"
+    mkdir -p "${CONFIG_DIR}/patterns"
+    cp -a "../config/patterns" "${CONFIG_DIR}/"
+    config_generate
+    # XXX errors from instance-db should be reported...
+    ./instance-db config-yaml
+    ./instance-db setup
+
+    "${CSCLI}" machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto
+    "${CSCLI}" hub update
+    "${CSCLI}" collections install crowdsecurity/linux
+
+    mkdir -p "${LOCAL_INIT_DIR}"
+
+    ./instance-db dump "${LOCAL_INIT_DIR}/database"
+
+    echo "${DB_BACKEND}" > "${LOCAL_INIT_DIR}/.backend"
+
+    # disable CAPI by default
+    yq e 'del(.api.server.online_client)' -i "${CONFIG_DIR}/config.yaml"
+
+    "${TAR}" -C "${LOCAL_DIR}" --create \
+        --exclude "${REL_DATA_DIR}"/crowdsec.db \
+        --file "${LOCAL_INIT_DIR}/init-config-data.tar" "${REL_CONFIG_DIR}" "${REL_DATA_DIR}"
+
+    remove_init_data
+}
+
+load_init_data() {
+    ./bin/assert-crowdsec-not-running || die "Cannot load fixture data."
+
+    if [[ ! -f "${LOCAL_INIT_DIR}/init-config-data.tar" ]]; then
+        die "Initial data not found; did you run '${script_name} make' ?"
+    fi
+
+    dump_backend="$(cat "${LOCAL_INIT_DIR}/.backend")"
+    if [[ "${DB_BACKEND}" != "${dump_backend}" ]]; then
+        die "Can't run with backend '${DB_BACKEND}' because the test data was built with '${dump_backend}'"
+    fi
+
+    remove_init_data
+
+    "${TAR}" -C "${LOCAL_DIR}" --extract --file "${LOCAL_INIT_DIR}/init-config-data.tar"
+
+    ./instance-db restore "${LOCAL_INIT_DIR}/database"
+}
+
+
+# ---------------------------
+
+[[ $# -lt 1 ]] && about
+
+case "$1" in
+    make)
+        make_init_data
+        ;;
+    load)
+        load_init_data
+        ;;
+    clean)
+        remove_init_data
+        ;;
+    *)
+        about
+        ;;
+esac;
+

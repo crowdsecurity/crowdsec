@@ -12,14 +12,14 @@ import (
 )
 
 func TestCreateMachine(t *testing.T) {
-	router, err := NewAPITest()
+	router, _, err := NewAPITest()
 	if err != nil {
 		log.Fatalf("unable to run local API: %s", err)
 	}
 
 	// Create machine with invalid format
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/watchers", strings.NewReader("test"))
+	req, _ := http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader("test"))
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -28,7 +28,7 @@ func TestCreateMachine(t *testing.T) {
 
 	// Create machine with invalid input
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/v1/watchers", strings.NewReader("{\"test\": \"test\"}"))
+	req, _ = http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader("{\"test\": \"test\"}"))
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -38,12 +38,12 @@ func TestCreateMachine(t *testing.T) {
 	// Create machine
 	b, err := json.Marshal(MachineTest)
 	if err != nil {
-		log.Fatalf("unable to marshal MachineTest")
+		log.Fatal("unable to marshal MachineTest")
 	}
 	body := string(b)
 
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/v1/watchers", strings.NewReader(body))
+	req, _ = http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -53,28 +53,28 @@ func TestCreateMachine(t *testing.T) {
 }
 
 func TestCreateMachineWithForwardedFor(t *testing.T) {
-	router, err := NewAPITestForwardedFor()
+	router, config, err := NewAPITestForwardedFor()
 	if err != nil {
 		log.Fatalf("unable to run local API: %s", err)
 	}
-
+	router.TrustedPlatform = "X-Real-IP"
 	// Create machine
 	b, err := json.Marshal(MachineTest)
 	if err != nil {
-		log.Fatalf("unable to marshal MachineTest")
+		log.Fatal("unable to marshal MachineTest")
 	}
 	body := string(b)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/watchers", strings.NewReader(body))
+	req, _ := http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
 	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("X-Real-IP", "1.1.1.1")
+	req.Header.Add("X-Real-Ip", "1.1.1.1")
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 201, w.Code)
 	assert.Equal(t, "", w.Body.String())
 
-	ip, err := GetMachineIP(*MachineTest.MachineID)
+	ip, err := GetMachineIP(*MachineTest.MachineID, config.API.Server.DbConfig)
 	if err != nil {
 		log.Fatalf("Could not get machine IP : %s", err)
 	}
@@ -82,7 +82,7 @@ func TestCreateMachineWithForwardedFor(t *testing.T) {
 }
 
 func TestCreateMachineWithForwardedForNoConfig(t *testing.T) {
-	router, err := NewAPITest()
+	router, config, err := NewAPITest()
 	if err != nil {
 		log.Fatalf("unable to run local API: %s", err)
 	}
@@ -90,12 +90,12 @@ func TestCreateMachineWithForwardedForNoConfig(t *testing.T) {
 	// Create machine
 	b, err := json.Marshal(MachineTest)
 	if err != nil {
-		log.Fatalf("unable to marshal MachineTest")
+		log.Fatal("unable to marshal MachineTest")
 	}
 	body := string(b)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/watchers", strings.NewReader(body))
+	req, _ := http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("X-Real-IP", "1.1.1.1")
 	router.ServeHTTP(w, req)
@@ -103,7 +103,7 @@ func TestCreateMachineWithForwardedForNoConfig(t *testing.T) {
 	assert.Equal(t, 201, w.Code)
 	assert.Equal(t, "", w.Body.String())
 
-	ip, err := GetMachineIP(*MachineTest.MachineID)
+	ip, err := GetMachineIP(*MachineTest.MachineID, config.API.Server.DbConfig)
 	if err != nil {
 		log.Fatalf("Could not get machine IP : %s", err)
 	}
@@ -113,7 +113,7 @@ func TestCreateMachineWithForwardedForNoConfig(t *testing.T) {
 }
 
 func TestCreateMachineWithoutForwardedFor(t *testing.T) {
-	router, err := NewAPITestForwardedFor()
+	router, config, err := NewAPITestForwardedFor()
 	if err != nil {
 		log.Fatalf("unable to run local API: %s", err)
 	}
@@ -121,19 +121,19 @@ func TestCreateMachineWithoutForwardedFor(t *testing.T) {
 	// Create machine
 	b, err := json.Marshal(MachineTest)
 	if err != nil {
-		log.Fatalf("unable to marshal MachineTest")
+		log.Fatal("unable to marshal MachineTest")
 	}
 	body := string(b)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/watchers", strings.NewReader(body))
+	req, _ := http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 201, w.Code)
 	assert.Equal(t, "", w.Body.String())
 
-	ip, err := GetMachineIP(*MachineTest.MachineID)
+	ip, err := GetMachineIP(*MachineTest.MachineID, config.API.Server.DbConfig)
 	if err != nil {
 		log.Fatalf("Could not get machine IP : %s", err)
 	}
@@ -143,7 +143,7 @@ func TestCreateMachineWithoutForwardedFor(t *testing.T) {
 }
 
 func TestCreateMachineAlreadyExist(t *testing.T) {
-	router, err := NewAPITest()
+	router, _, err := NewAPITest()
 	if err != nil {
 		log.Fatalf("unable to run local API: %s", err)
 	}
@@ -154,12 +154,12 @@ func TestCreateMachineAlreadyExist(t *testing.T) {
 	}
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/watchers", strings.NewReader(body))
+	req, _ := http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/v1/watchers", strings.NewReader(body))
+	req, _ = http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 

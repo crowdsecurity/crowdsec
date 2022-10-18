@@ -31,24 +31,26 @@ func LastAddress(n net.IPNet) net.IP {
 }
 
 /*returns a range for any ip or range*/
-func Addr2Ints(any string) (int, int64, int64, int64, int64, error) {
-	if strings.Contains(any, "/") {
-		_, net, err := net.ParseCIDR(any)
+func Addr2Ints(anyIP string) (int, int64, int64, int64, int64, error) {
+	if strings.Contains(anyIP, "/") {
+		_, net, err := net.ParseCIDR(anyIP)
 		if err != nil {
-			return -1, 0, 0, 0, 0, errors.Wrapf(err, "while parsing range %s", any)
+			return -1, 0, 0, 0, 0, errors.Wrapf(err, "while parsing range %s", anyIP)
 		}
 		return Range2Ints(*net)
-	} else {
-		ip := net.ParseIP(any)
-		if ip == nil {
-			return -1, 0, 0, 0, 0, fmt.Errorf("invalid address")
-		}
-		sz, start, end, err := IP2Ints(ip)
-		if err != nil {
-			return -1, 0, 0, 0, 0, errors.Wrapf(err, "while parsing ip %s", any)
-		}
-		return sz, start, end, start, end, nil
 	}
+
+	ip := net.ParseIP(anyIP)
+	if ip == nil {
+		return -1, 0, 0, 0, 0, fmt.Errorf("invalid address")
+	}
+
+	sz, start, end, err := IP2Ints(ip)
+	if err != nil {
+		return -1, 0, 0, 0, 0, errors.Wrapf(err, "while parsing ip %s", anyIP)
+	}
+
+	return sz, start, end, start, end, nil
 }
 
 /*size (16|4), nw_start, suffix_start, nw_end, suffix_end, error*/

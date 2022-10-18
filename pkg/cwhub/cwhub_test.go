@@ -2,7 +2,7 @@ package cwhub
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -22,17 +22,17 @@ import (
   - Upgrade collection
 */
 
-var testDataFolder = "."
+var responseByPath map[string]string
 
 func TestItemStatus(t *testing.T) {
 	cfg := test_prepenv()
 
-	err := UpdateHubIdx(cfg.Cscli)
+	err := UpdateHubIdx(cfg.Hub)
 	//DownloadHubIdx()
 	if err != nil {
 		t.Fatalf("failed to download index : %s", err)
 	}
-	if err := GetHubIdx(cfg.Cscli); err != nil {
+	if err := GetHubIdx(cfg.Hub); err != nil {
 		t.Fatalf("failed to load hub index : %s", err)
 	}
 
@@ -43,7 +43,7 @@ func TestItemStatus(t *testing.T) {
 	}
 
 	//Get item : good and bad
-	for k, _ := range x {
+	for k := range x {
 		item := GetItem(COLLECTIONS, k)
 		if item == nil {
 			t.Fatalf("expected item")
@@ -74,12 +74,12 @@ func TestItemStatus(t *testing.T) {
 func TestGetters(t *testing.T) {
 	cfg := test_prepenv()
 
-	err := UpdateHubIdx(cfg.Cscli)
+	err := UpdateHubIdx(cfg.Hub)
 	//DownloadHubIdx()
 	if err != nil {
 		t.Fatalf("failed to download index : %s", err)
 	}
-	if err := GetHubIdx(cfg.Cscli); err != nil {
+	if err := GetHubIdx(cfg.Hub); err != nil {
 		t.Fatalf("failed to load hub index : %s", err)
 	}
 
@@ -95,7 +95,7 @@ func TestGetters(t *testing.T) {
 	}
 
 	//Get item : good and bad
-	for k, _ := range x {
+	for k := range x {
 		empty := GetItem(COLLECTIONS, k+"nope")
 		if empty != nil {
 			t.Fatalf("expected empty item")
@@ -132,75 +132,77 @@ func TestGetters(t *testing.T) {
 }
 
 func TestIndexDownload(t *testing.T) {
-
 	cfg := test_prepenv()
 
-	err := UpdateHubIdx(cfg.Cscli)
+	err := UpdateHubIdx(cfg.Hub)
 	//DownloadHubIdx()
 	if err != nil {
 		t.Fatalf("failed to download index : %s", err)
 	}
-	if err := GetHubIdx(cfg.Cscli); err != nil {
+	if err := GetHubIdx(cfg.Hub); err != nil {
 		t.Fatalf("failed to load hub index : %s", err)
 	}
 }
 
-func test_prepenv() *csconfig.GlobalConfig {
+func getTestCfg() (cfg *csconfig.Config) {
+	cfg = &csconfig.Config{Hub: &csconfig.Hub{}}
+	cfg.Hub.ConfigDir, _ = filepath.Abs("./install")
+	cfg.Hub.HubDir, _ = filepath.Abs("./hubdir")
+	cfg.Hub.HubIndexFile = filepath.Clean("./hubdir/.index.json")
+	return
+}
+
+func test_prepenv() *csconfig.Config {
+	resetResponseByPath()
 	log.SetLevel(log.DebugLevel)
-
-	var cfg = csconfig.NewConfig()
-	cfg.Cscli = &csconfig.CscliCfg{}
-	cfg.Cscli.ConfigDir, _ = filepath.Abs("./install")
-	cfg.Cscli.HubDir, _ = filepath.Abs("./hubdir")
-	cfg.Cscli.HubIndexFile = filepath.Clean("./hubdir/.index.json")
-
+	cfg := getTestCfg()
 	//Mock the http client
 	http.DefaultClient.Transport = newMockTransport()
 
-	if err := os.RemoveAll(cfg.Cscli.ConfigDir); err != nil {
-		log.Fatalf("failed to remove %s : %s", cfg.Cscli.ConfigDir, err)
+	if err := os.RemoveAll(cfg.Hub.ConfigDir); err != nil {
+		log.Fatalf("failed to remove %s : %s", cfg.Hub.ConfigDir, err)
 	}
 
-	if err := os.MkdirAll(cfg.Cscli.ConfigDir, 0700); err != nil {
+	if err := os.MkdirAll(cfg.Hub.ConfigDir, 0700); err != nil {
 		log.Fatalf("mkdir : %s", err)
 	}
 
-	if err := os.RemoveAll(cfg.Cscli.HubDir); err != nil {
-		log.Fatalf("failed to remove %s : %s", cfg.Cscli.HubDir, err)
+	if err := os.RemoveAll(cfg.Hub.HubDir); err != nil {
+		log.Fatalf("failed to remove %s : %s", cfg.Hub.HubDir, err)
 	}
-	if err := os.MkdirAll(cfg.Cscli.HubDir, 0700); err != nil {
-		log.Fatalf("failed to mkdir %s : %s", cfg.Cscli.HubDir, err)
+	if err := os.MkdirAll(cfg.Hub.HubDir, 0700); err != nil {
+		log.Fatalf("failed to mkdir %s : %s", cfg.Hub.HubDir, err)
 	}
 
-	if err := UpdateHubIdx(cfg.Cscli); err != nil {
+	if err := UpdateHubIdx(cfg.Hub); err != nil {
 		log.Fatalf("failed to download index : %s", err)
 	}
 
-	// if err := os.RemoveAll(cfg.Cscli.InstallDir); err != nil {
-	// 	log.Fatalf("failed to remove %s : %s", cfg.Cscli.InstallDir, err)
+	// if err := os.RemoveAll(cfg.Hub.InstallDir); err != nil {
+	// 	log.Fatalf("failed to remove %s : %s", cfg.Hub.InstallDir, err)
 	// }
-	// if err := os.MkdirAll(cfg.Cscli.InstallDir, 0700); err != nil {
-	// 	log.Fatalf("failed to mkdir %s : %s", cfg.Cscli.InstallDir, err)
+	// if err := os.MkdirAll(cfg.Hub.InstallDir, 0700); err != nil {
+	// 	log.Fatalf("failed to mkdir %s : %s", cfg.Hub.InstallDir, err)
 	// }
 	return cfg
 
 }
 
-func testInstallItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
+func testInstallItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 
 	//Install the parser
-	item, err := DownloadLatest(cfg, item, false)
+	item, err := DownloadLatest(cfg, item, false, false)
 	if err != nil {
 		t.Fatalf("error while downloading %s : %v", item.Name, err)
 	}
-	if err := LocalSync(cfg); err != nil {
+	if err, _ := LocalSync(cfg); err != nil {
 		t.Fatalf("taint: failed to run localSync : %s", err)
 	}
 	if !hubIdx[item.Type][item.Name].UpToDate {
 		t.Fatalf("download: %s should be up-to-date", item.Name)
 	}
 	if hubIdx[item.Type][item.Name].Installed {
-		t.Fatalf("download: %s should not be install", item.Name)
+		t.Fatalf("download: %s should not be installed", item.Name)
 	}
 	if hubIdx[item.Type][item.Name].Tainted {
 		t.Fatalf("download: %s should not be tainted", item.Name)
@@ -208,17 +210,17 @@ func testInstallItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 
 	item, err = EnableItem(cfg, item)
 	if err != nil {
-		t.Fatalf("error while enabled %s : %v.", item.Name, err)
+		t.Fatalf("error while enabling %s : %v.", item.Name, err)
 	}
-	if err := LocalSync(cfg); err != nil {
+	if err, _ := LocalSync(cfg); err != nil {
 		t.Fatalf("taint: failed to run localSync : %s", err)
 	}
 	if !hubIdx[item.Type][item.Name].Installed {
-		t.Fatalf("install: %s should be install", item.Name)
+		t.Fatalf("install: %s should be installed", item.Name)
 	}
 }
 
-func testTaintItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
+func testTaintItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	if hubIdx[item.Type][item.Name].Tainted {
 		t.Fatalf("pre-taint: %s should not be tainted", item.Name)
 	}
@@ -226,13 +228,13 @@ func testTaintItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 	if err != nil {
 		t.Fatalf("(taint) opening %s (%s) : %s", item.LocalPath, item.Name, err)
 	}
+	defer f.Close()
 
 	if _, err = f.WriteString("tainted"); err != nil {
 		t.Fatalf("tainting %s : %s", item.Name, err)
 	}
-	f.Close()
 	//Local sync and check status
-	if err := LocalSync(cfg); err != nil {
+	if err, _ := LocalSync(cfg); err != nil {
 		t.Fatalf("taint: failed to run localSync : %s", err)
 	}
 	if !hubIdx[item.Type][item.Name].Tainted {
@@ -240,18 +242,18 @@ func testTaintItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 	}
 }
 
-func testUpdateItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
+func testUpdateItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 
 	if hubIdx[item.Type][item.Name].UpToDate {
 		t.Fatalf("update: %s should NOT be up-to-date", item.Name)
 	}
 	//Update it + check status
-	item, err := DownloadLatest(cfg, item, true)
+	item, err := DownloadLatest(cfg, item, true, true)
 	if err != nil {
 		t.Fatalf("failed to update %s : %s", item.Name, err)
 	}
 	//Local sync and check status
-	if err := LocalSync(cfg); err != nil {
+	if err, _ := LocalSync(cfg); err != nil {
 		t.Fatalf("failed to run localSync : %s", err)
 	}
 	if !hubIdx[item.Type][item.Name].UpToDate {
@@ -262,7 +264,7 @@ func testUpdateItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 	}
 }
 
-func testDisableItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
+func testDisableItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	if !item.Installed {
 		t.Fatalf("disable: %s should be installed", item.Name)
 	}
@@ -272,8 +274,8 @@ func testDisableItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 		t.Fatalf("failed to disable item : %v", err)
 	}
 	//Local sync and check status
-	if err := LocalSync(cfg); err != nil {
-		t.Fatalf("failed to run localSync : %s", err)
+	if err, warns := LocalSync(cfg); err != nil || len(warns) > 0 {
+		t.Fatalf("failed to run localSync : %s (%+v)", err, warns)
 	}
 	if hubIdx[item.Type][item.Name].Tainted {
 		t.Fatalf("disable: %s should not be tainted anymore", item.Name)
@@ -290,8 +292,8 @@ func testDisableItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 		t.Fatalf("failed to purge item : %v", err)
 	}
 	//Local sync and check status
-	if err := LocalSync(cfg); err != nil {
-		t.Fatalf("failed to run localSync : %s", err)
+	if err, warns := LocalSync(cfg); err != nil || len(warns) > 0 {
+		t.Fatalf("failed to run localSync : %s (%+v)", err, warns)
 	}
 	if hubIdx[item.Type][item.Name].Installed {
 		t.Fatalf("disable: %s should not be installed anymore", item.Name)
@@ -314,20 +316,18 @@ func TestInstallParser(t *testing.T) {
 	*/
 	cfg := test_prepenv()
 
-	if err := GetHubIdx(cfg.Cscli); err != nil {
-		t.Fatalf("failed to load hub index")
-	}
+	getHubIdxOrFail(t)
 	//map iteration is random by itself
 	for _, it := range hubIdx[PARSERS] {
-		testInstallItem(cfg.Cscli, t, it)
+		testInstallItem(cfg.Hub, t, it)
 		it = hubIdx[PARSERS][it.Name]
-		_ = HubStatus(PARSERS, it.Name, false)
-		testTaintItem(cfg.Cscli, t, it)
+		_ = GetHubStatusForItemType(PARSERS, it.Name, false)
+		testTaintItem(cfg.Hub, t, it)
 		it = hubIdx[PARSERS][it.Name]
-		_ = HubStatus(PARSERS, it.Name, false)
-		testUpdateItem(cfg.Cscli, t, it)
+		_ = GetHubStatusForItemType(PARSERS, it.Name, false)
+		testUpdateItem(cfg.Hub, t, it)
 		it = hubIdx[PARSERS][it.Name]
-		testDisableItem(cfg.Cscli, t, it)
+		testDisableItem(cfg.Hub, t, it)
 		it = hubIdx[PARSERS][it.Name]
 
 		break
@@ -347,21 +347,19 @@ func TestInstallCollection(t *testing.T) {
 	*/
 	cfg := test_prepenv()
 
-	if err := GetHubIdx(cfg.Cscli); err != nil {
-		t.Fatalf("failed to load hub index")
-	}
+	getHubIdxOrFail(t)
 	//map iteration is random by itself
 	for _, it := range hubIdx[COLLECTIONS] {
-		testInstallItem(cfg.Cscli, t, it)
+		testInstallItem(cfg.Hub, t, it)
 		it = hubIdx[COLLECTIONS][it.Name]
-		testTaintItem(cfg.Cscli, t, it)
+		testTaintItem(cfg.Hub, t, it)
 		it = hubIdx[COLLECTIONS][it.Name]
-		testUpdateItem(cfg.Cscli, t, it)
+		testUpdateItem(cfg.Hub, t, it)
 		it = hubIdx[COLLECTIONS][it.Name]
-		testDisableItem(cfg.Cscli, t, it)
+		testDisableItem(cfg.Hub, t, it)
 
 		it = hubIdx[COLLECTIONS][it.Name]
-		x := HubStatus(COLLECTIONS, it.Name, false)
+		x := GetHubStatusForItemType(COLLECTIONS, it.Name, false)
 		log.Printf("%+v", x)
 		break
 	}
@@ -386,150 +384,44 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	log.Printf("---> %s", req.URL.Path)
 
 	/*FAKE PARSER*/
-	if req.URL.Path == "/crowdsecurity/hub/master/parsers/s01-parse/crowdsecurity/foobar_parser.yaml" {
-		responseBody = `onsuccess: next_stage
-filter: evt.Parsed.program == 'foobar_parser'
-name: crowdsecurity/foobar_parser
-#debug: true
-description: A parser for foobar_parser WAF
-grok:
-  name: foobar_parser
-  apply_on: message
-`
-
-	} else if req.URL.Path == "/crowdsecurity/hub/master/parsers/s01-parse/crowdsecurity/foobar_subparser.yaml" {
-		responseBody = `onsuccess: next_stage
-filter: evt.Parsed.program == 'foobar_parser'
-name: crowdsecurity/foobar_parser
-#debug: true
-description: A parser for foobar_parser WAF
-grok:
-  name: foobar_parser
-  apply_on: message
-`
-		/*FAKE SCENARIO*/
-
-	} else if req.URL.Path == "/crowdsecurity/hub/master/scenarios/crowdsecurity/foobar_scenario.yaml" {
-		responseBody = `filter: true
-name: crowdsecurity/foobar_scenario`
-		/*FAKE COLLECTIONS*/
-	} else if req.URL.Path == "/crowdsecurity/hub/master/collections/crowdsecurity/foobar.yaml" {
-		responseBody = `
-blah: blalala
-qwe: jejwejejw`
-	} else if req.URL.Path == "/crowdsecurity/hub/master/collections/crowdsecurity/foobar_subcollection.yaml" {
-		responseBody = `
-blah: blalala
-qwe: jejwejejw`
-	} else if req.URL.Path == "/crowdsecurity/hub/master/.index.json" {
-		responseBody =
-			`{
-				"collections": {
-				 "crowdsecurity/foobar": {
-				  "path": "collections/crowdsecurity/foobar.yaml",
-				  "version": "0.1",
-				  "versions": {
-				   "0.1": {
-					"digest": "786c9490e4dd234453e53aa9bb7d28c60668e31c3c0c71a7dd6d0abbfa60261a",
-					"deprecated": false
-				   }
-				  },
-				  "long_description": "bG9uZyBkZXNjcmlwdGlvbgo=",
-				  "content": "bG9uZyBkZXNjcmlwdGlvbgo=",
-				  "description": "foobar collection : foobar",
-				  "author": "crowdsecurity",
-				  "labels": null,
-				  "collections" : ["crowdsecurity/foobar_subcollection"],
-				  "parsers": [
-				   "crowdsecurity/foobar_parser"
-				  ],
-				  "scenarios": [
-				   "crowdsecurity/foobar_scenario"
-				  ]
-				 },
-				 "crowdsecurity/foobar_subcollection": {
-					"path": "collections/crowdsecurity/foobar_subcollection.yaml",
-					"version": "0.1",
-					"versions": {
-					 "0.1": {
-					  "digest": "786c9490e4dd234453e53aa9bb7d28c60668e31c3c0c71a7dd6d0abbfa60261a",
-					  "deprecated": false
-					 }
-					},
-					"long_description": "bG9uZyBkZXNjcmlwdGlvbgo=",
-					"content": "bG9uZyBkZXNjcmlwdGlvbgo=",
-					"description": "foobar collection : foobar",
-					"author": "crowdsecurity",
-					"labels": null,
-					"parsers": [
-					 "crowdsecurity/foobar_subparser"
-					]
-				   }
-				},
-				"parsers": {
-				 "crowdsecurity/foobar_parser": {
-				  "path": "parsers/s01-parse/crowdsecurity/foobar_parser.yaml",
-				  "stage": "s01-parse",
-				  "version": "0.1",
-				  "versions": {
-				   "0.1": {
-					"digest": "7d72765baa7227095d8e83803d81f2a8f383e5808f1a4d72deb425352afd59ae",
-					"deprecated": false
-				   }
-				  },
-				  "long_description": "bG9uZyBkZXNjcmlwdGlvbgo=",
-				  "content": "bG9uZyBkZXNjcmlwdGlvbgo=",
-				  "description": "A foobar parser",
-				  "author": "crowdsecurity",
-				  "labels": null
-				 },
-				 "crowdsecurity/foobar_subparser": {
-					"path": "parsers/s01-parse/crowdsecurity/foobar_subparser.yaml",
-					"stage": "s01-parse",
-					"version": "0.1",
-					"versions": {
-					 "0.1": {
-					  "digest": "7d72765baa7227095d8e83803d81f2a8f383e5808f1a4d72deb425352afd59ae",
-					  "deprecated": false
-					 }
-					},
-					"long_description": "bG9uZyBkZXNjcmlwdGlvbgo=",
-					"content": "bG9uZyBkZXNjcmlwdGlvbgo=",
-					"description": "A foobar parser",
-					"author": "crowdsecurity",
-					"labels": null
-				   }
-				},
-				"postoverflows": {
-				},
-				"scenarios": {
-					"crowdsecurity/foobar_scenario": {
-						"path": "scenarios/crowdsecurity/foobar_scenario.yaml",
-						"version": "0.1",
-						"versions": {
-						 "0.1": {
-						  "digest": "a76b389db944ca7a9e5a3f3ae61ee2d4ee98167164ec9b971174b1d44f5a01c6",
-						  "deprecated": false
-						 }
-						},
-						"long_description": "bG9uZyBkZXNjcmlwdGlvbgo=",
-						"content": "bG9uZyBkZXNjcmlwdGlvbgo=",
-						"description": "a foobar scenario",
-						"author": "crowdsecurity",
-						"labels": {
-						 "remediation": "true",
-						 "scope": "ip",
-						 "service": "http",
-						 "type": "web_attack"
-						}
-					   }
-				}
-			   }
-			   `
+	if resp, ok := responseByPath[req.URL.Path]; ok {
+		responseBody = resp
 	} else {
-		log.Fatalf("unexpected url :/")
+		log.Fatalf("unexpected url :/ %s", req.URL.Path)
 	}
 
-	response.Body = ioutil.NopCloser(strings.NewReader(responseBody))
+	response.Body = io.NopCloser(strings.NewReader(responseBody))
 	return response, nil
+}
+
+func fileToStringX(path string) string {
+	if f, err := os.Open(path); err == nil {
+		defer f.Close()
+		if data, err := io.ReadAll(f); err == nil {
+			return strings.ReplaceAll(string(data), "\r\n", "\n")
+		} else {
+			panic(err)
+		}
+	} else {
+		panic(err)
+	}
+}
+
+func resetResponseByPath() {
+	responseByPath = map[string]string{
+		"/master/parsers/s01-parse/crowdsecurity/foobar_parser.yaml":    fileToStringX("./tests/foobar_parser.yaml"),
+		"/master/parsers/s01-parse/crowdsecurity/foobar_subparser.yaml": fileToStringX("./tests/foobar_parser.yaml"),
+		"/master/collections/crowdsecurity/test_collection.yaml":        fileToStringX("./tests/collection_v1.yaml"),
+		"/master/.index.json": fileToStringX("./tests/index1.json"),
+		"/master/scenarios/crowdsecurity/foobar_scenario.yaml": `filter: true
+name: crowdsecurity/foobar_scenario`,
+		"/master/scenarios/crowdsecurity/barfoo_scenario.yaml": `filter: true
+name: crowdsecurity/foobar_scenario`,
+		"/master/collections/crowdsecurity/foobar_subcollection.yaml": `
+blah: blalala
+qwe: jejwejejw`,
+		"/master/collections/crowdsecurity/foobar.yaml": `
+blah: blalala
+qwe: jejwejejw`,
+	}
 }

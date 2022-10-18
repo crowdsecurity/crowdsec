@@ -1,0 +1,108 @@
+#!/bin/bash
+
+COLLECTIONS=false
+set -e
+
+# Source debconf library.
+. /usr/share/debconf/confmodule
+
+if [ "$1" = configure ]; then
+    if [[ ! -d /var/lib/crowdsec/data ]]; then
+        mkdir -p /var/lib/crowdsec/data
+    fi
+
+    if [[ -d /var/lib/crowdsec/backup ]]; then
+        cscli config restore /var/lib/crowdsec/backup/backup.config
+        rm -rf /var/lib/crowdsec/backup
+        /usr/bin/cscli hub update
+        /usr/bin/cscli hub upgrade
+        systemctl start crowdsec
+    fi
+
+    . /usr/share/crowdsec/wizard.sh -n
+    if ! [[ -f /etc/crowdsec/acquis.yaml ]]; then
+        echo Creating /etc/crowdsec/acquis.yaml
+        set +e
+        SILENT=true detect_services
+        SILENT=true TMP_ACQUIS_FILE_SKIP=skip genacquisition
+        set -e
+        COLLECTIONS=true
+    fi
+
+    if [[ -f /etc/crowdsec/local_api_credentials.yaml ]] ; then
+        chmod 600 /etc/crowdsec/local_api_credentials.yaml
+    fi
+
+    if [[ -f /etc/crowdsec/online_api_credentials.yaml ]]; then
+        chmod 600 /etc/crowdsec/online_api_credentials.yaml
+    fi
+
+    if [[ ! -f /etc/crowdsec/local_api_credentials.yaml ]] || [[ ! -f /etc/crowdsec/online_api_credentials.yaml ]]; then
+        if [[ ! -f /etc/crowdsec/local_api_credentials.yaml ]] ; then
+            install -m 600 /dev/null  /etc/crowdsec/local_api_credentials.yaml
+        fi
+        if [[ ! -f /etc/crowdsec/online_api_credentials.yaml ]] ; then
+            install -m 600 /dev/null  /etc/crowdsec/online_api_credentials.yaml
+        fi
+
+        db_input medium crowdsec/lapi || true
+        db_go || true
+
+        db_get crowdsec/lapi
+        LAPI=$RET
+
+        if  [ "$LAPI" = true ]; then
+            db_input medium crowdsec/capi || true
+            db_go || true
+
+            db_get crowdsec/capi
+            CAPI=$RET
+
+            cscli machines add -a
+
+            if [ "$CAPI" = true ]; then
+                cscli capi register
+            fi
+
+        else
+            db_input medium crowdsec/lapi_host || true
+            db_go || true
+
+            db_get crowdsec/lapi_host
+            LAPI_HOST=$RET
+            sed -i "s/127.0.0.1:8080/$LAPI_HOST/g" /etc/crowdsec/config.yaml
+        fi
+    fi
+
+    echo Updating hub
+    /usr/bin/cscli hub update
+    if [ "$COLLECTIONS" = true ]; then
+        set +e
+        CSCLI_BIN_INSTALLED="/usr/bin/cscli" SILENT=true install_collection
+        set -e
+    fi
+
+    install_cronjob
+
+    if [[ -f /var/lib/crowdsec/data/crowdsec.db.backup ]]; then
+        cp /var/lib/crowdsec/data/crowdsec.db.backup /var/lib/crowdsec/data/crowdsec.db
+        rm -f /var/lib/crowdsec/data/crowdsec.db.backup
+    fi
+
+    systemctl --quiet is-enabled crowdsec || systemctl unmask crowdsec && systemctl enable crowdsec
+
+    API=$(cscli config show --key "Config.API.Server")
+    if [ "$API" = "<nil>" ] ; then
+        LAPI=false
+    else
+        PORT=$(cscli config show --key "Config.API.Server.ListenURI"|cut -d ":" -f2)
+    fi
+    if [ "$LAPI" = false ] || [ -z "$(ss -nlt "sport = ${PORT}" | grep -v ^State)" ]  ; then
+        systemctl start crowdsec
+    else
+        echo "Not attempting to start crowdsec, port ${PORT} is already used or lapi was disabled"
+        echo "This port is configured through /etc/crowdsec/config.yaml and /etc/crowdsec/local_api_credentials.yaml"
+    fi
+fi
+
+echo "You can always run the configuration again interactively by using '/usr/share/crowdsec/wizard.sh -c"

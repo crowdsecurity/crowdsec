@@ -1,0 +1,50 @@
+---
+# This workflow is actually running
+# only functional tests, but the
+# name is used for the badge in README.md
+
+name: Tests
+
+# Main workflow for functional tests, it calls all the others through parallel jobs.
+#
+# https://docs.github.com/en/actions/using-workflows/reusing-workflows
+#
+# There is no need to merge coverage output because codecov.io should take care of that.
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - 'README.md'
+  pull_request:
+    branches: [master]
+    paths-ignore:
+      - 'README.md'
+
+jobs:
+
+  sqlite:
+    uses: ./.github/workflows/bats-sqlite-coverage.yml
+
+  # Jobs for Postgres (and sometimes MySQL) can have failing tests on GitHub
+  # CI, but they pass when run on devs' machines or in the release checks. We
+  # disable them here by default. Remove the if..false to enable them.
+
+  mariadb:
+    uses: ./.github/workflows/bats-mysql.yml
+    with:
+      database_image: mariadb:latest
+
+  mysql:
+    uses: ./.github/workflows/bats-mysql.yml
+    with:
+      database_image: mysql:latest
+
+  postgres:
+    uses: ./.github/workflows/bats-postgres.yml
+
+  hub:
+    uses: ./.github/workflows/bats-hub.yml
+    secrets:
+      GIST_BADGES_ID: ${{ secrets.GIST_BADGES_ID }}
+      GIST_BADGES_SECRET: ${{ secrets.GIST_BADGES_SECRET }}
