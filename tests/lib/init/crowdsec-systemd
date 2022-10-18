@@ -33,6 +33,10 @@ fi
 start() {
     systemctl start crowdsec
     ./bin/wait-for-port 6060
+}
+
+start_pid() {
+    start
     pidof /usr/bin/crowdsec
 }
 
@@ -49,6 +53,9 @@ stop() {
 case "$1" in
     start)
         start
+        ;;
+    start-pid)
+        start_pid
         ;;
     stop)
         stop
