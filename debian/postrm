@@ -1,7 +1,7 @@
 if [ "$1" = "purge" ]; then
    find /etc/crowdsec -maxdepth 1 -mindepth 1 | grep -v "bouncer" | xargs rm -rf || echo ""
    rm -rf /var/lib/crowdsec
-   if [ -d "/etc/cron.daily/" ] && [ -f "/etc/cron.daily/crowdsec-hub" ]; then
-      rm /etc/cron.daily/crowdsec-hub
+   if [ -f "/etc/cron.daily/crowdsec" ]; then
+      rm /etc/cron.daily/crowdsec
    fi
 fi
