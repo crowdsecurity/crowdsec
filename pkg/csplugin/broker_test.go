@@ -51,10 +51,10 @@ func TestGetPluginNameAndTypeFromPath(t *testing.T) {
 		path string
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    string
-		want1   string
+		name        string
+		args        args
+		want        string
+		want1       string
 		expectedErr string
 	}{
 		{
@@ -62,8 +62,8 @@ func TestGetPluginNameAndTypeFromPath(t *testing.T) {
 			args: args{
 				path: path.Join(testPath, "notification-gitter"),
 			},
-			want:    "notification",
-			want1:   "gitter",
+			want:  "notification",
+			want1: "gitter",
 		},
 		{
 			name: "invalid plugin name",
@@ -77,8 +77,8 @@ func TestGetPluginNameAndTypeFromPath(t *testing.T) {
 			args: args{
 				path: "./tests/notification-instant-slack",
 			},
-			want:    "notification-instant",
-			want1:   "slack",
+			want:  "notification-instant",
+			want1: "slack",
 		},
 	}
 	for _, tc := range tests {
@@ -100,9 +100,9 @@ func TestListFilesAtPath(t *testing.T) {
 		path string
 	}
 	tests := []struct {
-		name    string
-		args    args
-		want    []string
+		name        string
+		args        args
+		want        []string
 		expectedErr string
 	}{
 		{
@@ -245,20 +245,20 @@ func TestBrokerInit(t *testing.T) {
 func readconfig(t *testing.T, path string) ([]byte, PluginConfig) {
 	var config PluginConfig
 	orig, err := os.ReadFile("tests/notifications/dummy.yaml")
-	require.NoError(t, err,"unable to read config file %s", path)
+	require.NoError(t, err, "unable to read config file %s", path)
 
 	err = yaml.Unmarshal(orig, &config)
-	require.NoError(t, err,"unable to unmarshal config file")
-	
+	require.NoError(t, err, "unable to unmarshal config file")
+
 	return orig, config
 }
 
 func writeconfig(t *testing.T, config PluginConfig, path string) {
 	data, err := yaml.Marshal(&config)
-	require.NoError(t, err,"unable to marshal config file")
+	require.NoError(t, err, "unable to marshal config file")
 
 	err = os.WriteFile(path, data, 0644)
-	require.NoError(t, err,"unable to write config file %s", path)
+	require.NoError(t, err, "unable to write config file %s", path)
 }
 
 func TestBrokerNoThreshold(t *testing.T) {
@@ -366,7 +366,7 @@ func TestBrokerRunGroupAndTimeThreshold_TimeFirst(t *testing.T) {
 
 	// restore config
 	err = os.WriteFile("tests/notifications/dummy.yaml", raw, 0644)
-	require.NoError(t, err,"unable to write config file")
+	require.NoError(t, err, "unable to write config file")
 }
 
 func TestBrokerRunGroupAndTimeThreshold_CountFirst(t *testing.T) {
@@ -418,7 +418,7 @@ func TestBrokerRunGroupAndTimeThreshold_CountFirst(t *testing.T) {
 
 	// restore config
 	err = os.WriteFile("tests/notifications/dummy.yaml", raw, 0644)
-	require.NoError(t, err,"unable to write config file")
+	require.NoError(t, err, "unable to write config file")
 }
 
 func TestBrokerRunGroupThreshold(t *testing.T) {
