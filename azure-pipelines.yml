@@ -69,6 +69,15 @@ stages:
             name: BuildMSI
 
           - pwsh: |
+              $build_version=(git describe --tags (git rev-list --tags --max-count=1)).Substring(1)
+              if ($build_version.Contains("-")) 
+              {
+                $build_version = $build_version.Substring(0, $build_version.IndexOf("-"))
+              }
+              .\make_chocolatey.ps1 -version $build_version
+            displayName: "Build Chocolatey nupkg"
+
+          - pwsh: |
               SignClient.exe Sign --name "crowdsec-msi" `
               --input "*.msi" --config (Join-Path -Path $(Agent.TempDirectory) -ChildPath "appsettings.json") `
               --user $(CodeSigningUser) --secret '$(CodeSigningPassword)'
@@ -80,6 +89,13 @@ stages:
               ArtifactName: 'crowdsec.msi'
               publishLocation: 'Container'
             displayName: "Upload MSI artifact"
+          
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: '$(Build.Repository.LocalPath)\\windows\\Chocolatey\\crowdsec\\crowdsec.$(BuildMSI.BuildVersion).nupkg'
+              ArtifactName: 'crowdsec.nupkg'
+              publishLocation: 'Container'
+            displayName: "Upload nupkg artifact"
   - stage: Publish
     dependsOn: Build
     jobs:
@@ -106,4 +122,5 @@ stages:
                     #the .. is an ugly hack, but I can't find the var that gives D:\a\1 ...
                     assets: |
                       $(Build.ArtifactStagingDirectory)\..\crowdsec.msi/*.msi
+                      $(Build.ArtifactStagingDirectory)\..\crowdsec.nupkg/*.nupkg
                   condition: ne(variables['GetLatestPrelease.LatestPreRelease'], '')
