@@ -15,6 +15,10 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 	var tdir = hub.ConfigDir
 	var hdir = hub.HubDir
 
+	if !target.Installed {
+		return target, nil
+	}
+
 	syml, err := filepath.Abs(tdir + "/" + target.Type + "/" + target.Stage + "/" + target.FileName)
 	if err != nil {
 		return Item{}, err
