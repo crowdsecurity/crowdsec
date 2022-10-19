@@ -5,17 +5,40 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
+
+func purgeItem(hub *csconfig.Hub, target Item) (Item, error) {
+	var hdir = hub.HubDir
+	hubpath := hdir + "/" + target.RemotePath
+
+	// disable hub file
+	if err := os.Remove(hubpath); err != nil {
+		return target, errors.Wrap(err, "while removing file")
+	}
+
+	target.Downloaded = false
+	log.Infof("Removed source file [%s] : %s", target.Name, hubpath)
+	hubIdx[target.Type][target.Name] = target
+	return target, nil
+}
 
 //DisableItem to disable an item managed by the hub, removes the symlink if purge is true
 func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, error) {
 	var tdir = hub.ConfigDir
 	var hdir = hub.HubDir
+	var err error
 
 	if !target.Installed {
+		if purge {
+			target, err = purgeItem(hub, target)
+			if err != nil {
+				return target, err
+			}
+		}
 		return target, nil
 	}
 
@@ -95,13 +118,10 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 	target.Installed = false
 
 	if purge {
-		hubpath := hdir + "/" + target.RemotePath
-		//if purge, disable hub file
-		if err = os.Remove(hubpath); err != nil {
-			return target, errors.Wrap(err, "while removing file")
+		target, err = purgeItem(hub, target)
+		if err != nil {
+			return target, err
 		}
-		target.Downloaded = false
-		log.Infof("Removed source file [%s] : %s", target.Name, hubpath)
 	}
 	hubIdx[target.Type][target.Name] = target
 	return target, nil
