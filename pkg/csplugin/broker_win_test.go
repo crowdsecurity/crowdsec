@@ -12,11 +12,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/tomb.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 /*
@@ -145,7 +147,7 @@ func TestBrokerInit(t *testing.T) {
 		{
 			name:        "no plugin dir",
 			wantErr:     true,
-			errContains: "The system cannot find the file specified.",
+			errContains: cstest.FileNotFoundMessage,
 			action:      tearDown,
 		},
 		{

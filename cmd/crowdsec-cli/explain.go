@@ -11,7 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cstest"
+	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -21,7 +21,7 @@ func NewExplainCmd() *cobra.Command {
 	var dsn string
 	var logLine string
 	var logType string
-	var opts cstest.DumpOpts
+	var opts hubtest.DumpOpts
 	var err error
 
 	var cmdExplain = &cobra.Command{
@@ -122,20 +122,20 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 					log.Fatalf("unable to remove tmp log file '%s': %+v", tmpFile, err)
 				}
 			}
-			parserDumpFile := filepath.Join(dir, cstest.ParserResultFileName)
-			bucketStateDumpFile := filepath.Join(dir, cstest.BucketPourResultFileName)
+			parserDumpFile := filepath.Join(dir, hubtest.ParserResultFileName)
+			bucketStateDumpFile := filepath.Join(dir, hubtest.BucketPourResultFileName)
 
-			parserDump, err := cstest.LoadParserDump(parserDumpFile)
+			parserDump, err := hubtest.LoadParserDump(parserDumpFile)
 			if err != nil {
 				log.Fatalf("unable to load parser dump result: %s", err)
 			}
 
-			bucketStateDump, err := cstest.LoadBucketPourDump(bucketStateDumpFile)
+			bucketStateDump, err := hubtest.LoadBucketPourDump(bucketStateDumpFile)
 			if err != nil {
 				log.Fatalf("unable to load bucket dump result: %s", err)
 			}
 
-			cstest.DumpTree(*parserDump, *bucketStateDump, opts)
+			hubtest.DumpTree(*parserDump, *bucketStateDump, opts)
 		},
 	}
 	cmdExplain.PersistentFlags().StringVarP(&logFile, "file", "f", "", "Log file to test")

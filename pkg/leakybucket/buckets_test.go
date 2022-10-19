@@ -225,7 +225,7 @@ POLL_AGAIN:
 			log.Warning("Test is successful")
 			if dump {
 				if tmpFile, err = DumpBucketsStateAt(latest_ts, ".", buckets); err != nil {
-					t.Fatalf("Failed dumping bucket state : %s", err)
+					t.Fatalf("Failed to dump bucket state: %s", err)
 				}
 				log.Infof("dumped bucket to %s", tmpFile)
 			}
@@ -235,7 +235,7 @@ POLL_AGAIN:
 		if len(tf.Results) != len(results) {
 			if dump {
 				if tmpFile, err = DumpBucketsStateAt(latest_ts, ".", buckets); err != nil {
-					t.Fatalf("Failed dumping bucket state : %s", err)
+					t.Fatalf("Failed to dump bucket state: %s", err)
 				}
 				log.Infof("dumped bucket to %s", tmpFile)
 			}

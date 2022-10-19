@@ -7,7 +7,7 @@ import (
 	"github.com/aquasecurity/table"
 	"github.com/enescakir/emoji"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cstest"
+	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
 func hubTestResultTable(out io.Writer, testResult map[string]bool) {
@@ -28,7 +28,7 @@ func hubTestResultTable(out io.Writer, testResult map[string]bool) {
 	t.Render()
 }
 
-func hubTestListTable(out io.Writer, tests []*cstest.HubTestItem) {
+func hubTestListTable(out io.Writer, tests []*hubtest.HubTestItem) {
 	t := newLightTable(out)
 	t.SetHeaders("Name", "Path")
 	t.SetHeaderAlignment(table.AlignLeft, table.AlignLeft)
@@ -41,7 +41,7 @@ func hubTestListTable(out io.Writer, tests []*cstest.HubTestItem) {
 	t.Render()
 }
 
-func hubTestParserCoverageTable(out io.Writer, coverage []cstest.ParserCoverage) {
+func hubTestParserCoverageTable(out io.Writer, coverage []hubtest.ParserCoverage) {
 	t := newLightTable(out)
 	t.SetHeaders("Parser", "Status", "Number of tests")
 	t.SetHeaderAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
@@ -60,7 +60,7 @@ func hubTestParserCoverageTable(out io.Writer, coverage []cstest.ParserCoverage)
 	t.Render()
 }
 
-func hubTestScenarioCoverageTable(out io.Writer, coverage []cstest.ScenarioCoverage) {
+func hubTestScenarioCoverageTable(out io.Writer, coverage []hubtest.ScenarioCoverage) {
 	t := newLightTable(out)
 	t.SetHeaders("Scenario", "Status", "Number of tests")
 	t.SetHeaderAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)

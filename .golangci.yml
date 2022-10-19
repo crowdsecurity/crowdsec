@@ -5,6 +5,7 @@ run:
     - pkg/time/rate
   skip-files:
     - pkg/database/ent/generate.go
+    - pkg/yamlpatch/merge_test.go
 
 linters-settings:
   gocyclo:
@@ -97,7 +98,6 @@ linters:
     - errchkjson            # Checks types passed to the json encoding functions. Reports unsupported types and optionally reports occations, where the check for the returned error can be omitted.
     - errorlint             # errorlint is a linter for that can be used to find code that will cause problems with the error wrapping scheme introduced in Go 1.13.
     - exhaustive            # check exhaustiveness of enum switch statements
-    - forcetypeassert       # finds forced type assertions
     - gci                   # Gci control golang package import order and make it always deterministic.
     - gocritic              # Provides diagnostics that check for bugs, performance and style issues.
     - godot                 # Check if comments end in a period
@@ -143,6 +143,7 @@ linters:
     #
     - cyclop                # checks function and package cyclomatic complexity
     - dupl                  # Tool for code clone detection
+    - forcetypeassert       # finds forced type assertions
     - gocognit              # Computes and checks the cognitive complexity of functions
     - gocyclo               # Computes and checks the cyclomatic complexity of functions
     - godox                 # Tool for detection of FIXME, TODO and other comment keywords
@@ -189,20 +190,3 @@ issues:
     - linters:
         - errcheck
       text: "Error return value of `.*` is not checked"
-
-    #
-    # staticcheck
-    #
-
-    - linters:
-        - staticcheck
-      text: "SA4009: argument .* is overwritten before first use"
-    - linters:
-        - staticcheck
-      text: "SA4009.related information.: assignment to .*"
-    - linters:
-        - staticcheck
-      text: "SA4006: this value of .* is never used"
-    - linters:
-        - staticcheck
-      text: "SA1006: printf-style function with dynamic format string and no further arguments should use print-style function instead"

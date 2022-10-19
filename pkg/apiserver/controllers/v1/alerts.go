@@ -112,13 +112,13 @@ func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uin
 	}
 }
 
-// CreateAlert : write received alerts in body to the database
+// CreateAlert writes the alerts received in the body to the database
 func (c *Controller) CreateAlert(gctx *gin.Context) {
 
 	var input models.AddAlertsRequest
 
 	claims := jwt.ExtractClaims(gctx)
-	/*TBD : use defines rather than hardcoded key to find back owner*/
+	// TBD: use defined rather than hardcoded key to find back owner
 	machineID := claims["id"].(string)
 
 	if err := gctx.ShouldBindJSON(&input); err != nil {
@@ -200,7 +200,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	gctx.JSON(http.StatusCreated, alerts)
 }
 
-// FindAlerts : return alerts from database based on the specified filter
+// FindAlerts: returns alerts from the database based on the specified filter
 func (c *Controller) FindAlerts(gctx *gin.Context) {
 	result, err := c.DBClient.QueryAlertWithFilter(gctx.Request.URL.Query())
 	if err != nil {
@@ -217,7 +217,7 @@ func (c *Controller) FindAlerts(gctx *gin.Context) {
 	gctx.JSON(http.StatusOK, data)
 }
 
-// FindAlertByID return the alert associated to the ID
+// FindAlertByID returns the alert associated with the ID
 func (c *Controller) FindAlertByID(gctx *gin.Context) {
 	alertIDStr := gctx.Param("alert_id")
 	alertID, err := strconv.Atoi(alertIDStr)
@@ -239,7 +239,7 @@ func (c *Controller) FindAlertByID(gctx *gin.Context) {
 	gctx.JSON(http.StatusOK, data)
 }
 
-// DeleteAlerts : delete alerts from database based on the specified filter
+// DeleteAlerts deletes alerts from the database based on the specified filter
 func (c *Controller) DeleteAlerts(gctx *gin.Context) {
 	incomingIP := gctx.ClientIP()
 	if incomingIP != "127.0.0.1" && incomingIP != "::1" && !networksContainIP(c.TrustedIPs, incomingIP) {

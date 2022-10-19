@@ -35,6 +35,11 @@ start() {
     ./bin/wait-for-port 6060
 }
 
+start_pid() {
+    start
+    pidof /usr/bin/crowdsec
+}
+
 stop() {
     systemctl stop crowdsec # systemd doesn't throw error when stopping already stopped stuff
     while pidof /usr/bin/crowdsec ; do sleep 0.1; done
@@ -48,6 +53,9 @@ stop() {
 case "$1" in
     start)
         start
+        ;;
+    start-pid)
+        start_pid
         ;;
     stop)
         stop

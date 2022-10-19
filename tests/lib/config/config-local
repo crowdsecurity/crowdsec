@@ -38,6 +38,8 @@ DATA_DIR="${LOCAL_DIR}/${REL_DATA_DIR}"
 export DATA_DIR
 CONFIG_DIR="${LOCAL_DIR}/${REL_CONFIG_DIR}"
 export CONFIG_DIR
+HUB_DIR="${CONFIG_DIR}/hub"
+export HUB_DIR
 
 if [[ $(uname) == "OpenBSD" ]]; then
     TAR=gtar
@@ -60,8 +62,14 @@ config_generate() {
        "${CONFIG_DIR}/"
 
     # the default acquis file contains files that are not readable by everyone
-    # We use a noop configuration that forces nevertheless crowdsec to keep watching
-    echo '{"filenames":["/tmp/should-not-exist.log"],"labels":{"type":"syslog"},"force_inotify":true}' > "${CONFIG_DIR}/acquis.yaml"
+    touch "$LOG_DIR/empty.log"
+    cat <<-EOT >"$CONFIG_DIR/acquis.yaml"
+	source: file
+	filenames:
+	    - $LOG_DIR/empty.log
+	labels:
+	    type: syslog
+	EOT
 
     cp ../plugins/notifications/*/{http,email,slack,splunk,dummy}.yaml \
        "${CONFIG_DIR}/notifications/"
@@ -75,11 +83,12 @@ config_generate() {
     .config_paths.config_dir=strenv(CONFIG_DIR) |
     .config_paths.data_dir=strenv(DATA_DIR) |
     .config_paths.simulation_path=strenv(CONFIG_DIR)+"/simulation.yaml" |
-    .config_paths.hub_dir=strenv(CONFIG_DIR)+"/hub/" |
-    .config_paths.index_path=strenv(CONFIG_DIR)+"/hub/.index.json" |
-    .config_paths.notification_dir=strenv(CONFIG_DIR)+"/notifications/" |
+    .config_paths.hub_dir=strenv(HUB_DIR) |
+    .config_paths.index_path=strenv(HUB_DIR)+"/.index.json" |
+    .config_paths.notification_dir=strenv(CONFIG_DIR)+"/notifications" |
     .config_paths.plugin_dir=strenv(PLUGIN_DIR) |
     .crowdsec_service.acquisition_path=strenv(CONFIG_DIR)+"/acquis.yaml" |
+    .crowdsec_service.acquisition_dir=strenv(CONFIG_DIR)+"/acquis.d" |
     .db_config.db_path=strenv(DATA_DIR)+"/crowdsec.db" |
     .db_config.use_wal=true |
     .api.client.credentials_path=strenv(CONFIG_DIR)+"/local_api_credentials.yaml" |

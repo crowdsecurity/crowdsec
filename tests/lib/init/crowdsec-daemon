@@ -39,6 +39,11 @@ start() {
     ./bin/wait-for-port 6060
 }
 
+start_pid() {
+    start
+    cat "$DAEMON_PID"
+}
+
 stop() {
     if [[ -f "${DAEMON_PID}" ]]; then
        # terminate quickly with extreme prejudice, all the application data will be
@@ -48,6 +53,7 @@ stop() {
        if [[ -n "${PGID}" ]]; then
            kill -- "-${PGID}"
        fi
+
        rm -f -- "${DAEMON_PID}"
     fi
 }
@@ -60,6 +66,9 @@ stop() {
 case "$1" in
     start)
         start
+        ;;
+    start-pid)
+        start_pid
         ;;
     stop)
         stop
