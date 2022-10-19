@@ -38,5 +38,5 @@ crowdsec-v*
 pkg/cwhub/hubdir/.index.json
 msi
 *.msi
-**/*.nukpg
+**/*.nupkg
 *.tgz
