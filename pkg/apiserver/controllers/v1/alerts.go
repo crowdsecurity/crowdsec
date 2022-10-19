@@ -239,6 +239,36 @@ func (c *Controller) FindAlertByID(gctx *gin.Context) {
 	gctx.JSON(http.StatusOK, data)
 }
 
+// DeleteAlertByID delete the alert associated to the ID
+func (c *Controller) DeleteAlertByID(gctx *gin.Context) {
+	var err error
+
+	incomingIP := gctx.ClientIP()
+	if incomingIP != "127.0.0.1" && incomingIP != "::1" && !networksContainIP(c.TrustedIPs, incomingIP) {
+		gctx.JSON(http.StatusForbidden, gin.H{"message": fmt.Sprintf("access forbidden from this IP (%s)", incomingIP)})
+		return
+	}
+
+	decisionIDStr := gctx.Param("alert_id")
+	decisionID, err := strconv.Atoi(decisionIDStr)
+	if err != nil {
+		gctx.JSON(http.StatusBadRequest, gin.H{"message": "alert_id must be valid integer"})
+		return
+	}
+	err = c.DBClient.DeleteAlertByID(decisionID)
+	if err != nil {
+		c.HandleDBErrors(gctx, err)
+		return
+	}
+
+	deleteAlertResp := models.DeleteAlertsResponse{
+		NbDeleted: "1",
+	}
+
+	gctx.JSON(http.StatusOK, deleteAlertResp)
+}
+
+
 // DeleteAlerts deletes alerts from the database based on the specified filter
 func (c *Controller) DeleteAlerts(gctx *gin.Context) {
 	incomingIP := gctx.ClientIP()

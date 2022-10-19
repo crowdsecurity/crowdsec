@@ -65,7 +65,7 @@ func (s *AlertsService) Add(ctx context.Context, alerts models.AddAlertsRequest)
 	return &added_ids, resp, nil
 }
 
-//to demo query arguments
+// to demo query arguments
 func (s *AlertsService) List(ctx context.Context, opts AlertsListOpts) (*models.GetAlertsResponse, *Response, error) {
 	var alerts models.GetAlertsResponse
 	var URI string
@@ -92,7 +92,7 @@ func (s *AlertsService) List(ctx context.Context, opts AlertsListOpts) (*models.
 	return &alerts, resp, nil
 }
 
-//to demo query arguments
+// to demo query arguments
 func (s *AlertsService) Delete(ctx context.Context, opts AlertsDeleteOpts) (*models.DeleteAlertsResponse, *Response, error) {
 	var alerts models.DeleteAlertsResponse
 	params, err := qs.Values(opts)
@@ -100,6 +100,22 @@ func (s *AlertsService) Delete(ctx context.Context, opts AlertsDeleteOpts) (*mod
 		return nil, nil, err
 	}
 	u := fmt.Sprintf("%s/alerts?%s", s.client.URLPrefix, params.Encode())
+
+	req, err := s.client.NewRequest(http.MethodDelete, u, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	resp, err := s.client.Do(ctx, req, &alerts)
+	if err != nil {
+		return nil, resp, err
+	}
+	return &alerts, resp, nil
+}
+
+func (s *AlertsService) DeleteOne(ctx context.Context, alert_id string) (*models.DeleteAlertsResponse, *Response, error) {
+	var alerts models.DeleteAlertsResponse
+	u := fmt.Sprintf("%s/alerts/%s", s.client.URLPrefix, alert_id)
 
 	req, err := s.client.NewRequest(http.MethodDelete, u, nil)
 	if err != nil {
