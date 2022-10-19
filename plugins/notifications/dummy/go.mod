@@ -1,11 +1,11 @@
-module github.com/crowdsecurity/http-plugin
+module github.com/crowdsecurity/dummy-plugin
 
 go 1.19
 
 require (
 	github.com/crowdsecurity/crowdsec v1.4.1
-	github.com/hashicorp/go-hclog v1.0.0
-	github.com/hashicorp/go-plugin v1.4.2
+	github.com/hashicorp/go-hclog v1.3.1
+	github.com/hashicorp/go-plugin v1.4.5
 	gopkg.in/yaml.v2 v2.4.0
 )
 

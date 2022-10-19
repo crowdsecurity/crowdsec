@@ -175,3 +175,4 @@ require (
 )
 
 replace golang.org/x/time/rate => github.com/crowdsecurity/crowdsec/pkg/time/rate v0.0.0
+replace github.com/golang/protobuf => pkg/golang-protobuf
