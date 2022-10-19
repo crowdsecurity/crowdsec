@@ -58,11 +58,17 @@ teardown() {
     refute_line "crowdsecurity/mysql"
 }
 
-@test "cannot remove a collection that belongs to another" {
+@test "must use --force to remove a collection that belongs to another, which becomes tainted" {
     # we expect no error since we may have multiple collections, some removed and some not
     run -0 --separate-stderr cscli collections remove crowdsecurity/sshd
     assert_stderr --partial "crowdsecurity/sshd belongs to other collections"
     assert_stderr --partial "[crowdsecurity/linux]"
+
+    run -0 --separate-stderr cscli collections remove crowdsecurity/sshd --force
+    assert_stderr --partial "Removed symlink [crowdsecurity/sshd]"
+    run -0 cscli collections inspect crowdsecurity/linux -o json
+    run -0 jq -r '.tainted' <(output)
+    assert_output "true"
 }
 
 @test "can remove a collection" {
