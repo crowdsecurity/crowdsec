@@ -6,6 +6,12 @@ import (
 	"os"
 	"strings"
 
+	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
+	tomb "gopkg.in/tomb.v2"
+	"gopkg.in/yaml.v2"
+
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	cloudwatchacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/cloudwatch"
 	dockeracquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/docker"
@@ -17,12 +23,6 @@ import (
 	wineventlogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/wineventlog"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
-
-	tomb "gopkg.in/tomb.v2"
 )
 
 // The interface each datasource must implement
@@ -39,51 +39,23 @@ type DataSource interface {
 	Dump() interface{}
 }
 
-var AcquisitionSources = []struct {
-	name  string
-	iface func() DataSource
-}{
-	{
-		name:  "file",
-		iface: func() DataSource { return &fileacquisition.FileSource{} },
-	},
-	{
-		name:  "journalctl",
-		iface: func() DataSource { return &journalctlacquisition.JournalCtlSource{} },
-	},
-	{
-		name:  "cloudwatch",
-		iface: func() DataSource { return &cloudwatchacquisition.CloudwatchSource{} },
-	},
-	{
-		name:  "syslog",
-		iface: func() DataSource { return &syslogacquisition.SyslogSource{} },
-	},
-	{
-		name:  "docker",
-		iface: func() DataSource { return &dockeracquisition.DockerSource{} },
-	},
-	{
-		name:  "kinesis",
-		iface: func() DataSource { return &kinesisacquisition.KinesisSource{} },
-	},
-	{
-		name:  "wineventlog",
-		iface: func() DataSource { return &wineventlogacquisition.WinEventLogSource{} },
-	},
-	{
-		name:  "kafka",
-		iface: func() DataSource { return &kafkaacquisition.KafkaSource{} },
-	},
+var AcquisitionSources = map[string]func() DataSource{
+	"file":        func() DataSource { return &fileacquisition.FileSource{} },
+	"journalctl":  func() DataSource { return &journalctlacquisition.JournalCtlSource{} },
+	"cloudwatch":  func() DataSource { return &cloudwatchacquisition.CloudwatchSource{} },
+	"syslog":      func() DataSource { return &syslogacquisition.SyslogSource{} },
+	"docker":      func() DataSource { return &dockeracquisition.DockerSource{} },
+	"kinesis":     func() DataSource { return &kinesisacquisition.KinesisSource{} },
+	"wineventlog": func() DataSource { return &wineventlogacquisition.WinEventLogSource{} },
+	"kafka":       func() DataSource { return &kafkaacquisition.KafkaSource{} },
 }
 
 func GetDataSourceIface(dataSourceType string) DataSource {
-	for _, source := range AcquisitionSources {
-		if source.name == dataSourceType {
-			return source.iface()
-		}
+	source := AcquisitionSources[dataSourceType]
+	if source == nil {
+		return nil
 	}
-	return nil
+	return source()
 }
 
 func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg) (*DataSource, error) {

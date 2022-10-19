@@ -65,24 +65,10 @@ func (f *MockSourceCantRun) GetName() string { return "mock_cant_run" }
 // appendMockSource is only used to add mock source for tests
 func appendMockSource() {
 	if GetDataSourceIface("mock") == nil {
-		mock := struct {
-			name  string
-			iface func() DataSource
-		}{
-			name:  "mock",
-			iface: func() DataSource { return &MockSource{} },
-		}
-		AcquisitionSources = append(AcquisitionSources, mock)
+		AcquisitionSources["mock"] = func() DataSource { return &MockSource{} }
 	}
 	if GetDataSourceIface("mock_cant_run") == nil {
-		mock := struct {
-			name  string
-			iface func() DataSource
-		}{
-			name:  "mock_cant_run",
-			iface: func() DataSource { return &MockSourceCantRun{} },
-		}
-		AcquisitionSources = append(AcquisitionSources, mock)
+		AcquisitionSources["mock_cant_run"] = func() DataSource { return &MockSourceCantRun{} }
 	}
 }
 
@@ -524,14 +510,7 @@ func TestConfigureByDSN(t *testing.T) {
 	}
 
 	if GetDataSourceIface("mockdsn") == nil {
-		mock := struct {
-			name  string
-			iface func() DataSource
-		}{
-			name:  "mockdsn",
-			iface: func() DataSource { return &MockSourceByDSN{} },
-		}
-		AcquisitionSources = append(AcquisitionSources, mock)
+		AcquisitionSources["mockdsn"] = func() DataSource { return &MockSourceByDSN{} }
 	}
 
 	for _, tc := range tests {
