@@ -14,11 +14,12 @@
     <authors>CrowdSecurity</authors>
     <projectUrl>https://crowdsec.net/</projectUrl>
     <copyright>CrowdSec, 2022</copyright>
-    <licenseUrl>https://github.com/crowdsecurity/crowdsec/blob/main/LICENSE</licenseUrl>
+    <licenseUrl>https://github.com/crowdsecurity/crowdsec/blob/master/LICENSE</licenseUrl>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
     <projectSourceUrl>https://github.com/crowdsecurity/crowdsec</projectSourceUrl>
     <docsUrl>https://docs.crowdsec.net</docsUrl>
     <bugTrackerUrl>https://github.com/crowdsecurity/crowdsec/issues</bugTrackerUrl>
+    <iconUrl>https://cdn.jsdelivr.net/gh/crowdsecurity/crowdsec-docs@c7b90095cca0007652f22c5c6d945c3416df4693/crowdsec-docs/static/img/crowdsec_no_txt.png</iconUrl>
     <tags>crowdsec crowdsecurity security ips ids</tags>
     <summary>CrowdSec IDS</summary>
     <description>
