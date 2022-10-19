@@ -47,7 +47,7 @@ stages:
               SecretsFilter: 'CodeSigningUser,CodeSigningPassword'
               RunAsPreJob: false
 
-          - task: DownloadSEcureFile@1
+          - task: DownloadSecureFile@1
             inputs:
               secureFile: appsettings.json
 
