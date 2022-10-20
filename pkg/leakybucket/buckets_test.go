@@ -9,7 +9,6 @@ import (
 	"io"
 	"os"
 	"reflect"
-	"sync"
 	"testing"
 	"time"
 
@@ -30,8 +29,7 @@ type TestFile struct {
 
 func TestBucket(t *testing.T) {
 	var (
-		envSetting            = os.Getenv("TEST_ONLY")
-		tomb       *tomb.Tomb = &tomb.Tomb{}
+		envSetting = os.Getenv("TEST_ONLY")
 	)
 	err := exprhelpers.Init(nil)
 	if err != nil {
@@ -39,33 +37,29 @@ func TestBucket(t *testing.T) {
 	}
 
 	if envSetting != "" {
-		if err := testOneBucket(t, envSetting, tomb); err != nil {
+		if err := testOneBucket(t, envSetting, &tomb.Tomb{}); err != nil {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
 		}
 	} else {
-		wg := new(sync.WaitGroup)
 		fds, err := os.ReadDir("./tests/")
 		if err != nil {
 			t.Fatalf("Unable to read test directory : %s", err)
 		}
+		tmb := tomb.Tomb{}
 		for _, fd := range fds {
 			fname := "./tests/" + fd.Name()
 			log.Infof("Running test on %s", fname)
-			tomb.Go(func() error {
-				wg.Add(1)
-				defer wg.Done()
-				if err := testOneBucket(t, fname, tomb); err != nil {
-					t.Fatalf("Test '%s' failed : %s", fname, err)
-				}
-				return nil
-			})
+
+			if err := testOneBucket(t, fname, &tmb); err != nil {
+				t.Fatalf("Test '%s' failed : %s", fname, err)
+			}
+
 		}
-		wg.Wait()
 	}
 }
 
-//during tests, we're likely to have only one scenario, and thus only one holder.
-//we want to avoid the death of the tomb because all existing buckets have been destroyed.
+// during tests, we're likely to have only one scenario, and thus only one holder.
+// we want to avoid the death of the tomb because all existing buckets have been destroyed.
 func watchTomb(tomb *tomb.Tomb) {
 	for {
 		if tomb.Alive() == false {
