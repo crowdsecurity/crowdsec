@@ -230,9 +230,7 @@ if [ $1 == 0 ]; then
     rm -rf /etc/crowdsec/hub
 fi
 
-if [ -f "/etc/cron.daily/crowdsec-hub" ]; then
-    rm /etc/cron.daily/crowdsec
-fi
+rm -f /etc/cron.daily/crowdsec
 
 #systemctl stop crowdsec || echo "crowdsec was not started"
 
