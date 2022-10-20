@@ -1,4 +1,4 @@
-# see https://github.com/golangci/golangci-lint/blob/master/.golangci.example.yml
+# https://github.com/golangci/golangci-lint/blob/master/.golangci.reference.yml
 
 run:
   skip-dirs:
@@ -23,15 +23,21 @@ linters-settings:
 
   govet:
     check-shadowing: true
+
   lll:
     line-length: 140
+
   misspell:
     locale: US
+
   nolintlint:
     allow-leading-space: true # don't require machine-readable nolint directives (i.e. with no leading space)
     allow-unused: false # report any unused nolint directives
     require-explanation: false # don't require an explanation for nolint directives
     require-specific: false # don't require nolint directives to be specific about which linter is being skipped
+
+  interfacebloat:
+    max: 12
 
 linters:
   enable-all: true
@@ -59,6 +65,7 @@ linters:
     # - bidichk             # Checks for dangerous unicode character sequences
     # - decorder            # check declaration order and count of types, constants, variables and functions
     # - depguard            # Go linter that checks if package imports are in a list of acceptable packages
+    # - dupword             # checks for duplicate words in the source code
     # - durationcheck       # check for two durations multiplied together
     # - errcheck            # Errcheck is a program for checking for unchecked errors in go programs. These unchecked errors can be critical bugs in some cases
     # - exportloopref       # checks for pointers to enclosing loop variables
@@ -83,6 +90,7 @@ linters:
     # - rowserrcheck        # checks whether Err of rows is checked successfully
     # - sqlclosecheck       # Checks that sql.Rows and sql.Stmt are closed.
     # - staticcheck         # (megacheck): Staticcheck is a go vet on steroids, applying a ton of static analysis checks
+    # - testableexamples    # linter checks if examples are testable (have an expected output)
     # - tenv                # tenv is analyzer that detects using os.Setenv instead of t.Setenv since Go1.17
     # - tparallel           # tparallel detects inappropriate usage of t.Parallel() method in your Go test codes
     # - typecheck           # Like the front-end of a Go compiler, parses and type-checks Go code
@@ -170,6 +178,7 @@ linters:
     #
 
     - prealloc              # Finds slice declarations that could potentially be preallocated
+
 
 issues:
   max-issues-per-linter: 0
