@@ -1,4 +1,5 @@
 #!/bin/sh
-cscli --error hub update && cscli --error hub upgrade
+test -x /usr/bin/cscli || exit 0
+/usr/bin/cscli --error hub update && /usr/bin/cscli --error hub upgrade
 systemctl reload crowdsec
 exit 0
