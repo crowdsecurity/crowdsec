@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	dockerTypes "github.com/docker/docker/api/types"
@@ -24,6 +25,8 @@ import (
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
+
+var runningContainerStateLock = sync.RWMutex{}
 
 var linesRead = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
@@ -271,12 +274,12 @@ func (d *DockerSource) GetMode() string {
 	return d.Config.Mode
 }
 
-//SupportedModes returns the supported modes by the acquisition module
+// SupportedModes returns the supported modes by the acquisition module
 func (d *DockerSource) SupportedModes() []string {
 	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
 }
 
-//OneShotAcquisition reads a set of file and returns when done
+// OneShotAcquisition reads a set of file and returns when done
 func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	d.logger.Debug("In oneshot")
 	runningContainer, err := d.Client.ContainerList(context.Background(), dockerTypes.ContainerListOptions{})
@@ -285,7 +288,10 @@ func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) er
 	}
 	foundOne := false
 	for _, container := range runningContainer {
-		if _, ok := d.runningContainerState[container.ID]; ok {
+		runningContainerStateLock.RLock()
+		_, ok := d.runningContainerState[container.ID]
+		runningContainerStateLock.RUnlock()
+		if ok {
 			d.logger.Debugf("container with id %s is already being read from", container.ID)
 			continue
 		}
@@ -327,7 +333,9 @@ func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) er
 			if err != nil {
 				d.logger.Errorf("Got error from docker read: %s", err)
 			}
+			runningContainerStateLock.Lock()
 			d.runningContainerState[container.ID] = containerConfig
+			runningContainerStateLock.Unlock()
 		}
 	}
 
@@ -415,6 +423,7 @@ func (d *DockerSource) WatchContainer(monitChan chan *ContainerConfig, deleteCha
 			runningContainer, err := d.Client.ContainerList(context.Background(), dockerTypes.ContainerListOptions{})
 			if err != nil {
 				if strings.Contains(strings.ToLower(err.Error()), "cannot connect to the docker daemon at") {
+					runningContainerStateLock.Lock()
 					for idx, container := range d.runningContainerState {
 						if d.runningContainerState[idx].t.Alive() {
 							d.logger.Infof("killing tail for container %s", container.Name)
@@ -425,6 +434,7 @@ func (d *DockerSource) WatchContainer(monitChan chan *ContainerConfig, deleteCha
 						}
 						delete(d.runningContainerState, idx)
 					}
+					runningContainerStateLock.Unlock()
 				} else {
 					log.Errorf("container list err: %s", err)
 				}
@@ -435,20 +445,24 @@ func (d *DockerSource) WatchContainer(monitChan chan *ContainerConfig, deleteCha
 				runningContainersID[container.ID] = true
 
 				// don't need to re eval an already monitored container
-				if _, ok := d.runningContainerState[container.ID]; ok {
+				runningContainerStateLock.RLock()
+				_, ok := d.runningContainerState[container.ID]
+				runningContainerStateLock.RUnlock()
+				if ok {
 					continue
 				}
 				if containerConfig, ok := d.EvalContainer(container); ok {
 					monitChan <- containerConfig
 				}
 			}
-
+			runningContainerStateLock.RLock()
 			for containerStateID, containerConfig := range d.runningContainerState {
 				if _, ok := runningContainersID[containerStateID]; !ok {
 					deleteChan <- containerConfig
 				}
 			}
 			d.logger.Tracef("Reading logs from %d containers", len(d.runningContainerState))
+			runningContainerStateLock.RUnlock()
 
 			ticker.Reset(d.CheckIntervalDuration)
 		}
@@ -543,6 +557,7 @@ func (d *DockerSource) DockerManager(in chan *ContainerConfig, deleteChan chan *
 	for {
 		select {
 		case newContainer := <-in:
+			runningContainerStateLock.Lock()
 			if _, ok := d.runningContainerState[newContainer.ID]; !ok {
 				newContainer.t = &tomb.Tomb{}
 				newContainer.logger = d.logger.WithFields(log.Fields{"container_name": newContainer.Name})
@@ -551,13 +566,17 @@ func (d *DockerSource) DockerManager(in chan *ContainerConfig, deleteChan chan *
 				})
 				d.runningContainerState[newContainer.ID] = newContainer
 			}
+			runningContainerStateLock.Unlock()
 		case containerToDelete := <-deleteChan:
+			runningContainerStateLock.Lock()
 			if containerConfig, ok := d.runningContainerState[containerToDelete.ID]; ok {
 				log.Infof("container acquisition stopped for container '%s'", containerConfig.Name)
 				containerConfig.t.Kill(nil)
 				delete(d.runningContainerState, containerToDelete.ID)
 			}
+			runningContainerStateLock.Unlock()
 		case <-d.t.Dying():
+			runningContainerStateLock.Lock()
 			for idx, container := range d.runningContainerState {
 				if d.runningContainerState[idx].t.Alive() {
 					d.logger.Infof("killing tail for container %s", container.Name)
@@ -568,6 +587,7 @@ func (d *DockerSource) DockerManager(in chan *ContainerConfig, deleteChan chan *
 				}
 			}
 			d.runningContainerState = nil
+			runningContainerStateLock.Unlock()
 			d.logger.Debugf("routine cleanup done, return")
 			return nil
 		}

@@ -8,6 +8,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -24,7 +25,7 @@ import (
 
 const testContainerName = "docker_test"
 
-var readLogs = false
+var readLogs atomic.Bool
 
 func TestConfigure(t *testing.T) {
 	log.Infof("Test 'TestConfigure'")
@@ -168,7 +169,7 @@ container_name_regexp:
 			})
 		}
 
-		readLogs = false
+		readLogs.Store(false)
 		dockerTomb := tomb.Tomb{}
 		out := make(chan types.Event)
 		dockerSource := DockerSource{}
@@ -215,7 +216,7 @@ container_name_regexp:
 }
 
 func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerTypes.ContainerListOptions) ([]dockerTypes.Container, error) {
-	if readLogs == true {
+	if readLogs.Load() {
 		return []dockerTypes.Container{}, nil
 	}
 	containers := make([]dockerTypes.Container, 0)
@@ -229,10 +230,10 @@ func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerTypes
 }
 
 func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, options dockerTypes.ContainerLogsOptions) (io.ReadCloser, error) {
-	if readLogs == true {
+	if readLogs.Load() {
 		return io.NopCloser(strings.NewReader("")), nil
 	}
-	readLogs = true
+	readLogs.Store(true)
 	data := []string{"docker\n", "test\n", "1234\n"}
 	ret := ""
 	for _, line := range data {
@@ -298,7 +299,7 @@ func TestOneShot(t *testing.T) {
 			})
 		}
 
-		readLogs = false
+		readLogs.Store(false)
 		dockerClient := &DockerSource{}
 		labels := make(map[string]string)
 		labels["type"] = ts.logType
