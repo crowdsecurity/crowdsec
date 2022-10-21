@@ -21,6 +21,7 @@ func TestPri(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.input, func(t *testing.T) {
 			r := &RFC5424{}
 			r.buf = []byte(test.input)
@@ -72,6 +73,7 @@ func TestHostname(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.input, func(t *testing.T) {
 			opts := []RFC5424Option{}
 			if test.strictHostname {
@@ -226,6 +228,7 @@ func TestParse(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.name, func(t *testing.T) {
 			r := NewRFC5424Parser(test.opts...)
 			err := r.Parse([]byte(test.input))

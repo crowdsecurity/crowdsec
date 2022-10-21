@@ -21,7 +21,7 @@ BIN_PREFIX = $(PREFIX)"/usr/local/bin/"
 all: clean build
 
 build: clean
-	$(GOBUILD) $(LD_OPTS) -o $(BINARY_NAME)
+	$(GOBUILD) $(LD_OPTS) $(BUILD_VENDOR_FLAGS) -o $(BINARY_NAME)
 
 build-bincover: clean
 	$(GOTEST) . -tags testrunmain -coverpkg=$(go list github.com/crowdsecurity/crowdsec/... | grep -v -e 'pkg/database' -e 'plugins/notifications' -e 'pkg/protobufs' -e 'pkg/cwversions' -e 'pkg/cstest' -e 'pkg/models') -covermode=atomic $(LD_OPTS) -c -o $(BINARY_NAME_COVER)

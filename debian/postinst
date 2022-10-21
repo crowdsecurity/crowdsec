@@ -82,6 +82,7 @@ if [ "$1" = configure ]; then
         set -e
     fi
 
+
     if [[ -f /var/lib/crowdsec/data/crowdsec.db.backup ]]; then
         cp /var/lib/crowdsec/data/crowdsec.db.backup /var/lib/crowdsec/data/crowdsec.db
         rm -f /var/lib/crowdsec/data/crowdsec.db.backup

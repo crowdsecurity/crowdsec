@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# shellcheck disable=SC1007
+THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck disable=SC1091
+. "${THIS_DIR}/.environment.sh"
+
+yq e 'del(.api.server.online_client)' -i "${CONFIG_YAML}"

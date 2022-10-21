@@ -311,10 +311,7 @@ func (s *APIServer) Run(apiReady chan bool) error {
 			return nil
 		})
 		s.apic.metricsTomb.Go(func() error {
-			if err := s.apic.SendMetrics(); err != nil {
-				log.Errorf("capi metrics: %s", err)
-				return err
-			}
+			s.apic.SendMetrics(make(chan bool))
 			return nil
 		})
 	}

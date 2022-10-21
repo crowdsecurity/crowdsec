@@ -2,4 +2,6 @@
 unset IFS
 set -euf
 
-sudo apk add python3 go tar procps netcat-openbsd
+# coreutils -> for timeout (busybox is not enough)
+sudo apk add python3 go tar procps netcat-openbsd coreutils
+

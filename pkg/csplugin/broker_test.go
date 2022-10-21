@@ -14,31 +14,32 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 var testPath string
 
-func setPluginPermTo744() {
-	setPluginPermTo("744")
+func setPluginPermTo744(t *testing.T) {
+	setPluginPermTo(t, "744")
 }
 
-func setPluginPermTo722() {
-	setPluginPermTo("722")
+func setPluginPermTo722(t *testing.T) {
+	setPluginPermTo(t, "722")
 }
 
-func setPluginPermTo724() {
-	setPluginPermTo("724")
+func setPluginPermTo724(t *testing.T) {
+	setPluginPermTo(t, "724")
 }
 func TestGetPluginNameAndTypeFromPath(t *testing.T) {
-	setUp()
-	defer tearDown()
+	setUp(t)
+	defer tearDown(t)
 	type args struct {
 		path string
 	}
@@ -47,7 +48,7 @@ func TestGetPluginNameAndTypeFromPath(t *testing.T) {
 		args    args
 		want    string
 		want1   string
-		wantErr bool
+		expectedErr string
 	}{
 		{
 			name: "valid plugin name, single dash",
@@ -56,16 +57,13 @@ func TestGetPluginNameAndTypeFromPath(t *testing.T) {
 			},
 			want:    "notification",
 			want1:   "gitter",
-			wantErr: false,
 		},
 		{
 			name: "invalid plugin name",
 			args: args{
 				path: "./tests/gitter",
 			},
-			want:    "",
-			want1:   "",
-			wantErr: true,
+			expectedErr: "plugin name ./tests/gitter is invalid. Name should be like {type-name}",
 		},
 		{
 			name: "valid plugin name, multiple dash",
@@ -74,29 +72,23 @@ func TestGetPluginNameAndTypeFromPath(t *testing.T) {
 			},
 			want:    "notification-instant",
 			want1:   "slack",
-			wantErr: false,
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1, err := getPluginTypeAndSubtypeFromPath(tt.args.path)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("getPluginNameAndTypeFromPath() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("getPluginNameAndTypeFromPath() got = %v, want %v", got, tt.want)
-			}
-			if got1 != tt.want1 {
-				t.Errorf("getPluginNameAndTypeFromPath() got1 = %v, want %v", got1, tt.want1)
-			}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			got, got1, err := getPluginTypeAndSubtypeFromPath(tc.args.path)
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
+
+			assert.Equal(t, tc.want, got)
+			assert.Equal(t, tc.want1, got1)
 		})
 	}
 }
 
 func TestListFilesAtPath(t *testing.T) {
-	setUp()
-	defer tearDown()
+	setUp(t)
+	defer tearDown(t)
 	type args struct {
 		path string
 	}
@@ -104,7 +96,7 @@ func TestListFilesAtPath(t *testing.T) {
 		name    string
 		args    args
 		want    []string
-		wantErr bool
+		expectedErr string
 	}{
 		{
 			name: "valid directory",
@@ -121,18 +113,17 @@ func TestListFilesAtPath(t *testing.T) {
 			args: args{
 				path: "./foo/bar/",
 			},
-			wantErr: true,
+			expectedErr: "open ./foo/bar/: " + cstest.FileNotFoundMessage,
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := listFilesAtPath(tt.args.path)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("listFilesAtPath() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("listFilesAtPath() = %v, want %v", got, tt.want)
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := listFilesAtPath(tc.args.path)
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
+
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("listFilesAtPath() = %v, want %v", got, tc.want)
 			}
 		})
 	}
@@ -145,49 +136,40 @@ func TestBrokerInit(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		action      func()
-		errContains string
-		wantErr     bool
+		action      func(*testing.T)
 		procCfg     csconfig.PluginCfg
+		expectedErr string
 	}{
 		{
-			name:    "valid config",
-			action:  setPluginPermTo744,
-			wantErr: false,
+			name:   "valid config",
+			action: setPluginPermTo744,
 		},
 		{
 			name:        "group writable binary",
-			wantErr:     true,
-			errContains: "notification-dummy is world writable",
+			expectedErr: "notification-dummy is world writable",
 			action:      setPluginPermTo722,
 		},
 		{
 			name:        "group writable binary",
-			wantErr:     true,
-			errContains: "notification-dummy is group writable",
+			expectedErr: "notification-dummy is group writable",
 			action:      setPluginPermTo724,
 		},
 		{
 			name:        "no plugin dir",
-			wantErr:     true,
-			errContains: "no such file or directory",
+			expectedErr: cstest.FileNotFoundMessage,
 			action:      tearDown,
 		},
 		{
 			name:        "no plugin binary",
-			wantErr:     true,
-			errContains: "binary for plugin dummy_default not found",
-			action: func() {
+			expectedErr: "binary for plugin dummy_default not found",
+			action: func(t *testing.T) {
 				err := os.Remove(path.Join(testPath, "notification-dummy"))
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 			},
 		},
 		{
 			name:        "only specify user",
-			wantErr:     true,
-			errContains: "both plugin user and group must be set",
+			expectedErr: "both plugin user and group must be set",
 			procCfg: csconfig.PluginCfg{
 				User: "123445555551122toto",
 			},
@@ -195,8 +177,7 @@ func TestBrokerInit(t *testing.T) {
 		},
 		{
 			name:        "only specify group",
-			wantErr:     true,
-			errContains: "both plugin user and group must be set",
+			expectedErr: "both plugin user and group must be set",
 			procCfg: csconfig.PluginCfg{
 				Group: "123445555551122toto",
 			},
@@ -204,8 +185,7 @@ func TestBrokerInit(t *testing.T) {
 		},
 		{
 			name:        "Fails to run as root",
-			wantErr:     true,
-			errContains: "operation not permitted",
+			expectedErr: "operation not permitted",
 			procCfg: csconfig.PluginCfg{
 				User:  "root",
 				Group: "root",
@@ -214,8 +194,7 @@ func TestBrokerInit(t *testing.T) {
 		},
 		{
 			name:        "Invalid user and group",
-			wantErr:     true,
-			errContains: "unknown user toto1234",
+			expectedErr: "unknown user toto1234",
 			procCfg: csconfig.PluginCfg{
 				User:  "toto1234",
 				Group: "toto1234",
@@ -224,8 +203,7 @@ func TestBrokerInit(t *testing.T) {
 		},
 		{
 			name:        "Valid user and invalid group",
-			wantErr:     true,
-			errContains: "unknown group toto1234",
+			expectedErr: "unknown group toto1234",
 			procCfg: csconfig.PluginCfg{
 				User:  "nobody",
 				Group: "toto1234",
@@ -234,29 +212,25 @@ func TestBrokerInit(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			defer tearDown()
-			buildDummyPlugin()
-			if test.action != nil {
-				test.action()
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			defer tearDown(t)
+			buildDummyPlugin(t)
+			if tc.action != nil {
+				tc.action(t)
 			}
 			pb := PluginBroker{}
 			profiles := csconfig.NewDefaultConfig().API.Server.Profiles
 			profiles = append(profiles, &csconfig.ProfileCfg{
 				Notifications: []string{"dummy_default"},
 			})
-			err := pb.Init(&test.procCfg, profiles, &csconfig.ConfigurationPaths{
+			err := pb.Init(&tc.procCfg, profiles, &csconfig.ConfigurationPaths{
 				PluginDir:       testPath,
 				NotificationDir: "./tests/notifications",
 			})
 			defer pb.Kill()
-			if test.wantErr {
-				assert.ErrorContains(t, err, test.errContains)
-			} else {
-				assert.NoError(t, err)
-			}
-
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
 }
@@ -264,91 +238,95 @@ func TestBrokerInit(t *testing.T) {
 func readconfig(t *testing.T, path string) ([]byte, PluginConfig) {
 	var config PluginConfig
 	orig, err := os.ReadFile("tests/notifications/dummy.yaml")
-	if err != nil {
-		t.Fatalf("unable to read config file %s : %s", path, err)
-	}
-	if err := yaml.Unmarshal(orig, &config); err != nil {
-		t.Fatalf("unable to unmarshal config file : %s", err)
-	}
+	require.NoError(t, err,"unable to read config file %s", path)
+
+	err = yaml.Unmarshal(orig, &config)
+	require.NoError(t, err,"unable to unmarshal config file")
+	
 	return orig, config
 }
 
 func writeconfig(t *testing.T, config PluginConfig, path string) {
 	data, err := yaml.Marshal(&config)
-	if err != nil {
-		t.Fatalf("unable to marshal config file : %s", err)
-	}
-	if err := os.WriteFile(path, data, 0644); err != nil {
-		t.Fatalf("unable to write config file %s : %s", path, err)
-	}
+	require.NoError(t, err,"unable to marshal config file")
+
+	err = os.WriteFile(path, data, 0644)
+	require.NoError(t, err,"unable to write config file %s", path)
 }
 
 func TestBrokerNoThreshold(t *testing.T) {
 	var alerts []models.Alert
 	DefaultEmptyTicker = 50 * time.Millisecond
 
-	buildDummyPlugin()
-	setPluginPermTo744()
-	defer tearDown()
-	//init
+	buildDummyPlugin(t)
+	setPluginPermTo744(t)
+	defer tearDown(t)
+
+	// init
 	pluginCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
 	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
 	profiles = append(profiles, &csconfig.ProfileCfg{
 		Notifications: []string{"dummy_default"},
 	})
-	//default config
+
+	// default config
 	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
 		PluginDir:       testPath,
 		NotificationDir: "./tests/notifications",
 	})
+
 	assert.NoError(t, err)
 	tomb := tomb.Tomb{}
+
 	go pb.Run(&tomb)
 	defer pb.Kill()
-	//send one item, it should be processed right now
+
+	// send one item, it should be processed right now
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	time.Sleep(200 * time.Millisecond)
-	//we expect one now
+
+	// we expect one now
 	content, err := os.ReadFile("./out")
-	if err != nil {
-		log.Errorf("Error reading file: %s", err)
-	}
+	require.NoError(t, err, "Error reading file")
+
 	err = json.Unmarshal(content, &alerts)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(alerts))
-	//remove it
+	assert.Len(t, alerts, 1)
+
+	// remove it
 	os.Remove("./out")
-	//and another one
+
+	// and another one
 	log.Printf("second send")
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	time.Sleep(200 * time.Millisecond)
-	//we expect one again, as we cleaned the file
+
+	// we expect one again, as we cleaned the file
 	content, err = os.ReadFile("./out")
-	if err != nil {
-		log.Errorf("Error reading file: %s", err)
-	}
+	require.NoError(t, err, "Error reading file")
+
 	err = json.Unmarshal(content, &alerts)
 	log.Printf("content-> %s", content)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(alerts))
+	assert.Len(t, alerts, 1)
 }
 
 func TestBrokerRunGroupAndTimeThreshold_TimeFirst(t *testing.T) {
-	//test grouping by "time"
+	// test grouping by "time"
 	DefaultEmptyTicker = 50 * time.Millisecond
-	buildDummyPlugin()
-	setPluginPermTo744()
-	defer tearDown()
+	buildDummyPlugin(t)
+	setPluginPermTo744(t)
+	defer tearDown(t)
 
-	//init
+	// init
 	pluginCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
 	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
 	profiles = append(profiles, &csconfig.ProfileCfg{
 		Notifications: []string{"dummy_default"},
 	})
-	//set groupwait and groupthreshold, should honor whichever comes first
+	// set groupwait and groupthreshold, should honor whichever comes first
 	raw, cfg := readconfig(t, "tests/notifications/dummy.yaml")
 	cfg.GroupThreshold = 4
 	cfg.GroupWait = 1 * time.Second
@@ -359,42 +337,46 @@ func TestBrokerRunGroupAndTimeThreshold_TimeFirst(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	tomb := tomb.Tomb{}
+
 	go pb.Run(&tomb)
 	defer pb.Kill()
-	//send data
+	// send data
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	time.Sleep(500 * time.Millisecond)
-	//because of group threshold, we shouldn't have data yet
+	// because of group threshold, we shouldn't have data yet
 	assert.NoFileExists(t, "./out")
 	time.Sleep(1 * time.Second)
-	//after 1 seconds, we should have data
+	// after 1 seconds, we should have data
 	content, err := os.ReadFile("./out")
 	assert.NoError(t, err)
+
 	var alerts []models.Alert
 	err = json.Unmarshal(content, &alerts)
 	assert.NoError(t, err)
-	assert.Equal(t, 3, len(alerts))
-	//restore config
-	if err := os.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
-		t.Fatalf("unable to write config file %s", err)
-	}
+	assert.Len(t, alerts, 3)
+
+	// restore config
+	err = os.WriteFile("tests/notifications/dummy.yaml", raw, 0644)
+	require.NoError(t, err,"unable to write config file")
 }
 
 func TestBrokerRunGroupAndTimeThreshold_CountFirst(t *testing.T) {
 	DefaultEmptyTicker = 50 * time.Millisecond
-	buildDummyPlugin()
-	setPluginPermTo744()
-	defer tearDown()
-	//init
+	buildDummyPlugin(t)
+	setPluginPermTo(t, "744")
+	defer tearDown(t)
+
+	// init
 	pluginCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
 	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
 	profiles = append(profiles, &csconfig.ProfileCfg{
 		Notifications: []string{"dummy_default"},
 	})
-	//set groupwait and groupthreshold, should honor whichever comes first
+
+	// set groupwait and groupthreshold, should honor whichever comes first
 	raw, cfg := readconfig(t, "tests/notifications/dummy.yaml")
 	cfg.GroupThreshold = 4
 	cfg.GroupWait = 4 * time.Second
@@ -405,46 +387,51 @@ func TestBrokerRunGroupAndTimeThreshold_CountFirst(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	tomb := tomb.Tomb{}
+
 	go pb.Run(&tomb)
 	defer pb.Kill()
-	//send data
+
+	// send data
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	time.Sleep(100 * time.Millisecond)
-	//because of group threshold, we shouldn't have data yet
+
+	// because of group threshold, we shouldn't have data yet
 	assert.NoFileExists(t, "./out")
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	time.Sleep(100 * time.Millisecond)
-	//and now we should
+
+	// and now we should
 	content, err := os.ReadFile("./out")
-	if err != nil {
-		log.Errorf("Error reading file: %s", err)
-	}
+	require.NoError(t, err, "Error reading file")
+
 	var alerts []models.Alert
 	err = json.Unmarshal(content, &alerts)
 	assert.NoError(t, err)
-	assert.Equal(t, 4, len(alerts))
-	//restore config
-	if err := os.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
-		t.Fatalf("unable to write config file %s", err)
-	}
+	assert.Len(t, alerts, 4)
+
+	// restore config
+	err = os.WriteFile("tests/notifications/dummy.yaml", raw, 0644)
+	require.NoError(t, err,"unable to write config file")
 }
 
 func TestBrokerRunGroupThreshold(t *testing.T) {
-	//test grouping by "size"
+	// test grouping by "size"
 	DefaultEmptyTicker = 50 * time.Millisecond
-	buildDummyPlugin()
-	setPluginPermTo744()
-	defer tearDown()
-	//init
+	buildDummyPlugin(t)
+	setPluginPermTo(t, "744")
+	defer tearDown(t)
+
+	// init
 	pluginCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
 	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
 	profiles = append(profiles, &csconfig.ProfileCfg{
 		Notifications: []string{"dummy_default"},
 	})
-	//set groupwait
+
+	// set groupwait
 	raw, cfg := readconfig(t, "tests/notifications/dummy.yaml")
 	cfg.GroupThreshold = 4
 	writeconfig(t, cfg, "tests/notifications/dummy.yaml")
@@ -452,49 +439,55 @@ func TestBrokerRunGroupThreshold(t *testing.T) {
 		PluginDir:       testPath,
 		NotificationDir: "./tests/notifications",
 	})
+
 	assert.NoError(t, err)
 	tomb := tomb.Tomb{}
+
 	go pb.Run(&tomb)
 	defer pb.Kill()
-	//send data
+
+	// send data
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	time.Sleep(100 * time.Millisecond)
-	//because of group threshold, we shouldn't have data yet
+
+	// because of group threshold, we shouldn't have data yet
 	assert.NoFileExists(t, "./out")
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	time.Sleep(100 * time.Millisecond)
-	//and now we should
+
+	// and now we should
 	content, err := os.ReadFile("./out")
-	if err != nil {
-		log.Errorf("Error reading file: %s", err)
-	}
+	require.NoError(t, err, "Error reading file")
+
 	var alerts []models.Alert
 	err = json.Unmarshal(content, &alerts)
 	assert.NoError(t, err)
-	assert.Equal(t, 4, len(alerts))
-	//restore config
-	if err := os.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
-		t.Fatalf("unable to write config file %s", err)
-	}
+	assert.Len(t, alerts, 4)
+
+	// restore config
+	err = os.WriteFile("tests/notifications/dummy.yaml", raw, 0644)
+	require.NoError(t, err, "unable to write config file")
 }
 
 func TestBrokerRunTimeThreshold(t *testing.T) {
 	DefaultEmptyTicker = 50 * time.Millisecond
-	buildDummyPlugin()
-	setPluginPermTo744()
-	defer tearDown()
-	//init
+	buildDummyPlugin(t)
+	setPluginPermTo(t, "744")
+	defer tearDown(t)
+
+	// init
 	pluginCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
 	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
 	profiles = append(profiles, &csconfig.ProfileCfg{
 		Notifications: []string{"dummy_default"},
 	})
-	//set groupwait
+
+	// set groupwait
 	raw, cfg := readconfig(t, "tests/notifications/dummy.yaml")
-	cfg.GroupWait = time.Duration(1 * time.Second) //nolint:unconvert
+	cfg.GroupWait = 1 * time.Second
 	writeconfig(t, cfg, "tests/notifications/dummy.yaml")
 	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
 		PluginDir:       testPath,
@@ -502,34 +495,37 @@ func TestBrokerRunTimeThreshold(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	tomb := tomb.Tomb{}
+
 	go pb.Run(&tomb)
 	defer pb.Kill()
-	//send data
+
+	// send data
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	time.Sleep(200 * time.Millisecond)
-	//we shouldn't have data yet
+
+	// we shouldn't have data yet
 	assert.NoFileExists(t, "./out")
 	time.Sleep(1 * time.Second)
-	//and now we should
+
+	// and now we should
 	content, err := os.ReadFile("./out")
-	if err != nil {
-		log.Errorf("Error reading file: %s", err)
-	}
+	require.NoError(t, err, "Error reading file")
+
 	var alerts []models.Alert
 	err = json.Unmarshal(content, &alerts)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, len(alerts))
-	//restore config
-	if err := os.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
-		t.Fatalf("unable to write config file %s", err)
-	}
+	assert.Len(t, alerts, 1)
+
+	// restore config
+	err = os.WriteFile("tests/notifications/dummy.yaml", raw, 0644)
+	require.NoError(t, err, "unable to write config file %s", err)
 }
 
 func TestBrokerRunSimple(t *testing.T) {
 	DefaultEmptyTicker = 50 * time.Millisecond
-	buildDummyPlugin()
-	setPluginPermTo744()
-	defer tearDown()
+	buildDummyPlugin(t)
+	setPluginPermTo(t, "744")
+	defer tearDown(t)
 	pluginCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
 	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
@@ -542,10 +538,12 @@ func TestBrokerRunSimple(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	tomb := tomb.Tomb{}
+
 	go pb.Run(&tomb)
 	defer pb.Kill()
 
 	assert.NoFileExists(t, "./out")
+
 	defer os.Remove("./out")
 
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
@@ -553,62 +551,54 @@ func TestBrokerRunSimple(t *testing.T) {
 	time.Sleep(time.Millisecond * 200)
 
 	content, err := os.ReadFile("./out")
-	if err != nil {
-		log.Errorf("Error reading file: %s", err)
-	}
+	require.NoError(t, err, "Error reading file")
+
 	var alerts []models.Alert
 	err = json.Unmarshal(content, &alerts)
 	assert.NoError(t, err)
-	assert.Equal(t, 2, len(alerts))
+	assert.Len(t, alerts, 2)
 }
 
-func buildDummyPlugin() {
+func buildDummyPlugin(t *testing.T) {
 	dir, err := os.MkdirTemp("./tests", "cs_plugin_test")
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	cmd := exec.Command("go", "build", "-o", path.Join(dir, "notification-dummy"), "../../plugins/notifications/dummy/")
-	if err := cmd.Run(); err != nil {
-		log.Fatal(err)
-	}
+	err = cmd.Run()
+	require.NoError(t, err, "while building dummy plugin")
+
 	testPath = dir
 	os.Remove("./out")
 }
 
-func setPluginPermTo(perm string) {
+func setPluginPermTo(t *testing.T, perm string) {
 	if runtime.GOOS != "windows" {
-		if err := exec.Command("chmod", perm, path.Join(testPath, "notification-dummy")).Run(); err != nil {
-			log.Fatal(errors.Wrapf(err, "chmod 744 %s", path.Join(testPath, "notification-dummy")))
-		}
+		err := exec.Command("chmod", perm, path.Join(testPath, "notification-dummy")).Run()
+		require.NoError(t, err, "chmod 744 %s", path.Join(testPath, "notification-dummy"))
 	}
 }
 
-func setUp() {
+func setUp(t *testing.T) {
 	dir, err := os.MkdirTemp("./", "cs_plugin_test")
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	f, err := os.Create(path.Join(dir, "slack"))
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	f.Close()
 	f, err = os.Create(path.Join(dir, "notification-gitter"))
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	f.Close()
 	err = os.Mkdir(path.Join(dir, "dummy_dir"), 0666)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	testPath = dir
 }
 
-func tearDown() {
+func tearDown(t *testing.T) {
 	err := os.RemoveAll(testPath)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	os.Remove("./out")
 }

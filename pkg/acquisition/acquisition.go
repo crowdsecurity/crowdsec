@@ -181,7 +181,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 		log.Infof("loading acquisition file : %s", acquisFile)
 		yamlFile, err := os.Open(acquisFile)
 		if err != nil {
-			return nil, errors.Wrapf(err, "can't open %s", acquisFile)
+			return nil, err
 		}
 		dec := yaml.NewDecoder(yamlFile)
 		dec.SetStrict(true)
