@@ -7,3 +7,7 @@ require (
 	github.com/google/go-cmp v0.5.5
 	google.golang.org/protobuf v1.26.0
 )
+
+replace github.com/golang/protobuf => ../
+
+replace github.com/golang/protobuf/protoc-gen-go/descriptor => ../protoc-gen-go/descriptor
