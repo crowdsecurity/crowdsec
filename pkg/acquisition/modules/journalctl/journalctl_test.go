@@ -216,25 +216,11 @@ journalctl_filter:
 			})
 		}
 		tomb := tomb.Tomb{}
-		out := make(chan types.Event)
+		out := make(chan types.Event, 100)
 		j := JournalCtlSource{}
 		err := j.Configure([]byte(ts.config), subLogger)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
-		}
-		actualLines := 0
-		if ts.expectedLines != 0 {
-			go func() {
-			READLOOP:
-				for {
-					select {
-					case <-out:
-						actualLines++
-					case <-time.After(1 * time.Second):
-						break READLOOP
-					}
-				}
-			}()
 		}
 
 		err = j.StreamingAcquisition(out, &tomb)
@@ -245,7 +231,7 @@ journalctl_filter:
 
 		if ts.expectedLines != 0 {
 			time.Sleep(1 * time.Second)
-			assert.Equal(t, ts.expectedLines, actualLines)
+			assert.Equal(t, ts.expectedLines, len(out))
 		}
 		tomb.Kill(nil)
 		tomb.Wait()
