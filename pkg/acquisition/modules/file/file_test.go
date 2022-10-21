@@ -375,7 +375,7 @@ force_inotify: true`, testPattern),
 			})
 
 			tomb := tomb.Tomb{}
-			out := make(chan types.Event)
+			out := make(chan types.Event, 100)
 
 			f := fileacquisition.FileSource{}
 
@@ -388,20 +388,6 @@ force_inotify: true`, testPattern),
 
 			if tc.afterConfigure != nil {
 				tc.afterConfigure()
-			}
-
-			actualLines := 0
-			if tc.expectedLines != 0 {
-				go func() {
-					for {
-						select {
-						case <-out:
-							actualLines++
-						case <-time.After(2 * time.Second):
-							return
-						}
-					}
-				}()
 			}
 
 			err = f.StreamingAcquisition(out, &tomb)
@@ -425,7 +411,7 @@ force_inotify: true`, testPattern),
 				// we sleep to make sure we detect the new file
 				time.Sleep(1 * time.Second)
 				os.Remove("test_files/stream.log")
-				assert.Equal(t, tc.expectedLines, actualLines)
+				assert.Equal(t, tc.expectedLines, len(out))
 			}
 
 			if tc.expectedOutput != "" {

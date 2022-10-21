@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
@@ -32,6 +33,8 @@ var linesRead = prometheus.NewCounterVec(
 		Help: "Total lines that were read.",
 	},
 	[]string{"source"})
+
+var tailsLock = sync.RWMutex{}
 
 type FileConfiguration struct {
 	Filenames                         []string
@@ -228,12 +231,12 @@ func (f *FileSource) GetMode() string {
 	return f.config.Mode
 }
 
-//SupportedModes returns the supported modes by the acquisition module
+// SupportedModes returns the supported modes by the acquisition module
 func (f *FileSource) SupportedModes() []string {
 	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
 }
 
-//OneShotAcquisition reads a set of file and returns when done
+// OneShotAcquisition reads a set of file and returns when done
 func (f *FileSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	f.logger.Debug("In oneshot")
 	for _, file := range f.files {
@@ -316,7 +319,9 @@ func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 			f.logger.Errorf("Could not start tailing file %s : %s", file, err)
 			continue
 		}
+		tailsLock.Lock()
 		f.tails[file] = true
+		tailsLock.Unlock()
 		t.Go(func() error {
 			defer types.CatchPanic("crowdsec/acquis/file/live/fsnotify")
 			return f.tailFile(out, t, tail)
@@ -376,8 +381,10 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 				if skip {
 					continue
 				}
-
-				if f.tails[event.Name] {
+				tailsLock.RLock()
+				v := f.tails[event.Name]
+				tailsLock.RUnlock()
+				if v {
 					//we already have a tail on it, do not start a new one
 					logger.Debugf("Already tailing file %s, not creating a new tail", event.Name)
 					break
@@ -399,7 +406,9 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 					logger.Errorf("Could not start tailing file %s : %s", event.Name, err)
 					break
 				}
+				tailsLock.Lock()
 				f.tails[event.Name] = true
+				tailsLock.Unlock()
 				t.Go(func() error {
 					defer types.CatchPanic("crowdsec/acquis/tailfile")
 					return f.tailFile(out, t, tail)
