@@ -84,6 +84,7 @@ func NewCapiCmd() *cobra.Command {
 				Login:    capiUser,
 				Password: password.String(),
 				URL:      types.CAPIBaseURL,
+				PapiURL:  types.PAPIBaseURL,
 			}
 			apiConfigDump, err := yaml.Marshal(apiCfg)
 			if err != nil {

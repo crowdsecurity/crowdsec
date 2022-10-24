@@ -147,6 +147,10 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 	if err != nil {
 		return nil, errors.Wrapf(err, "while parsing '%s'", config.Credentials.URL)
 	}
+	papiURL, err := url.Parse(config.Credentials.PapiURL)
+	if err != nil {
+		return nil, errors.Wrapf(err, "while parsing '%s'", config.Credentials.PapiURL)
+	}
 
 	ret.scenarioList, err = ret.FetchScenariosListFromDB()
 	if err != nil {
@@ -157,6 +161,7 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 		Password:       password,
 		UserAgent:      fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 		URL:            apiURL,
+		PapiURL:        papiURL,
 		VersionPrefix:  "v2",
 		Scenarios:      ret.scenarioList,
 		UpdateScenario: ret.FetchScenariosListFromDB,
@@ -453,7 +458,7 @@ func fillAlertsWithDecisions(alerts []*models.Alert, decisions []*models.Decisio
 	return alerts
 }
 
-//we receive only one list of decisions, that we need to break-up :
+// we receive only one list of decisions, that we need to break-up :
 // one alert for "community blocklist"
 // one alert per list we're subscribed to
 func (a *apic) PullTop() error {

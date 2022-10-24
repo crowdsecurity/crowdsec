@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"sync"
 	"time"
 
@@ -79,13 +78,8 @@ type Papi struct {
 }
 
 func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig, logLevel log.Level) (*Papi, error) {
-	PapiURL, err := url.Parse(types.PAPIBaseURL)
-	if err != nil {
-		return nil, errors.Wrapf(err, "while parsing '%s'", types.PAPIBaseURL)
-	}
-
 	longPollClient, err := client.NewClient(client.ClientOptions{
-		SubscribeUrl:   *PapiURL,
+		SubscribeUrl:   *apic.apiClient.PapiURL,
 		Category:       "some-category", //what should we do with this one ?
 		HttpClient:     apic.apiClient.GetClient(),
 		OnFailure:      PapiError,
@@ -107,7 +101,7 @@ func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.Cons
 	logger.SetLevel(logLevel)
 
 	papi := &Papi{
-		URL:           PapiURL.String(),
+		URL:           apic.apiClient.PapiURL.String(),
 		Client:        longPollClient,
 		DBClient:      dbClient,
 		Channels:      channels,
@@ -123,7 +117,7 @@ func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.Cons
 	return papi, nil
 }
 
-//PullPAPI is the long polling client for real-time decisions from PAPI
+// PullPAPI is the long polling client for real-time decisions from PAPI
 func (p *Papi) Pull() error {
 
 	defer types.CatchPanic("lapi/PullPAPI")

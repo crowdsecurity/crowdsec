@@ -78,9 +78,9 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	if err != nil {
 		return errors.Wrapf(err, "parsing api url ('%s'): %s", apiConfig.URL, err)
 	}
-	papiURL, err := url.Parse(types.PAPIBaseURL)
+	papiURL, err := url.Parse(apiConfig.PapiURL)
 	if err != nil {
-		return errors.Wrapf(err, "parsing polling api url ('%s'): %s", types.PAPIBaseURL, err)
+		return errors.Wrapf(err, "parsing polling api url ('%s'): %s", apiConfig.PapiURL, err)
 	}
 	password := strfmt.Password(apiConfig.Password)
 
