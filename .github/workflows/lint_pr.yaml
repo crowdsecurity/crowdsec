@@ -1,0 +1,75 @@
+name: "Lint PR"
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - edited
+      - synchronize
+
+jobs:
+  main:
+    name: Validate PR title
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Configure which types are allowed (newline delimited).
+          # Default: https://github.com/commitizen/conventional-commit-types
+          types: |
+            feat
+            fix
+            ci
+            docs
+            test
+            chore
+          # Configure which scopes are allowed (newline delimited).
+          scopes: |
+            core
+            cscli
+            agent
+            lapi
+            hub
+            db
+          # Configure that a scope must always be provided.
+          requireScope: false
+          # Configure which scopes (newline delimited) are disallowed in PR
+          # titles. For instance by setting the value below, `chore(release):
+          # ...` and `ci(e2e,release): ...` will be rejected.
+          # disallowScopes: |
+          #   release
+          # Configure additional validation for the subject based on a regex.
+          # This example ensures the subject doesn't start with an uppercase character.
+          subjectPattern: ^(?![A-Z]).+$
+          # If `subjectPattern` is configured, you can use this property to override
+          # the default error message that is shown when the pattern doesn't match.
+          # The variables `subject` and `title` can be used within the message.
+          subjectPatternError: |
+            The subject "{subject}" found in the pull request title "{title}"
+            didn't match the configured pattern. Please ensure that the subject
+            doesn't start with an uppercase character.
+          # If you use GitHub Enterprise, you can set this to the URL of your server
+          # githubBaseUrl: https://github.myorg.com/api/v3
+          # If the PR contains one of these labels (newline delimited), the
+          # validation is skipped.
+          # If you want to rerun the validation when labels change, you might want
+          # to use the `labeled` and `unlabeled` event triggers in your workflow.
+          ignoreLabels: |
+            bot
+            ignore-semantic-pull-request
+          # If you're using a format for the PR title that differs from the traditional Conventional
+          # Commits spec, you can use these options to customize the parsing of the type, scope and
+          # subject. The `headerPattern` should contain a regex where the capturing groups in parentheses
+          # correspond to the parts listed in `headerPatternCorrespondence`.
+          # See: https://github.com/conventional-changelog/conventional-changelog/tree/master/packages/conventional-commits-parser#headerpattern
+          headerPattern: '^(\w*)(?:\(([\w$.\-*/ ]*)\))?: (.*)$'
+          headerPatternCorrespondence: type, scope, subject
+          # For work-in-progress PRs you can typically use draft pull requests
+          # from GitHub. However, private repositories on the free plan don't have
+          # this option and therefore this action allows you to opt-in to using the
+          # special "[WIP]" prefix to indicate this state. This will avoid the
+          # validation of the PR title and the pull request checks remain pending.
+          # Note that a second check will be reported if this is enabled.
+          wip: true
