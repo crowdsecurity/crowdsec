@@ -21,7 +21,7 @@ var defaultDataDir = "/var/lib/crowdsec/data/"
 
 // Config contains top-level defaults -> overridden by configuration file -> overridden by CLI flags
 type Config struct {
-	//just a path to ourself :p
+	// just a path to ourselves :p
 	FilePath     *string             `yaml:"-"`
 	Self         []byte              `yaml:"-"`
 	Common       *CommonCfg          `yaml:"common,omitempty"`
@@ -73,7 +73,7 @@ func NewDefaultConfig() *Config {
 		Daemonize: false,
 		PidDir:    "/tmp/",
 		LogMedia:  "stdout",
-		//LogDir unneeded
+		// LogDir unneeded
 		LogLevel:   &logLevel,
 		WorkingDir: ".",
 	}
@@ -95,7 +95,7 @@ func NewDefaultConfig() *Config {
 
 	cscliCfg := CscliCfg{
 		Output: "human",
-		Color:  "auto",
+		Color:  ColorDefault(),
 	}
 
 	apiCfg := APICfg{
