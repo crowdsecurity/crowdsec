@@ -419,6 +419,9 @@ func (a *apic) PullTop() error {
 	a.startup = false
 	/*to count additions/deletions across lists*/
 
+	log.Debugf("Received %d new decisions", len(data.New))
+	log.Debugf("Received %d deleted decisions", len(data.Deleted))
+
 	add_counters, delete_counters := makeAddAndDeleteCounters()
 	// process deleted decisions
 	if nbDeleted, err := a.HandleDeletedDecisions(data.Deleted, delete_counters); err != nil {
@@ -441,6 +444,9 @@ func (a *apic) PullTop() error {
 	for idx, alert := range alertsFromCapi {
 		alertsFromCapi[idx] = setAlertScenario(add_counters, delete_counters, alert)
 		log.Debugf("%s has %d decisions", *alertsFromCapi[idx].Source.Scope, len(alertsFromCapi[idx].Decisions))
+		if a.dbClient.Type == "sqlite" && (a.dbClient.WalMode == nil || !*a.dbClient.WalMode) {
+			log.Warningf("sqlite is not using WAL mode, community blocklist insertion might be very slow")
+		}
 		alertID, inserted, deleted, err := a.dbClient.UpdateCommunityBlocklist(alertsFromCapi[idx])
 		if err != nil {
 			return errors.Wrapf(err, "while saving alert from %s", *alertsFromCapi[idx].Source.Scope)
