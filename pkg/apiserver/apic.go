@@ -445,7 +445,7 @@ func (a *apic) PullTop() error {
 		alertsFromCapi[idx] = setAlertScenario(add_counters, delete_counters, alert)
 		log.Debugf("%s has %d decisions", *alertsFromCapi[idx].Source.Scope, len(alertsFromCapi[idx].Decisions))
 		if a.dbClient.Type == "sqlite" && (a.dbClient.WalMode == nil || !*a.dbClient.WalMode) {
-			log.Warningf("sqlite is not using WAL mode, community blocklist insertion might be very slow")
+			log.Warningf("sqlite is not using WAL mode, LAPI might become unresponsive when inserting the community blocklist")
 		}
 		alertID, inserted, deleted, err := a.dbClient.UpdateCommunityBlocklist(alertsFromCapi[idx])
 		if err != nil {
