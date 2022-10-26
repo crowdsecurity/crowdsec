@@ -137,7 +137,7 @@ func DefaultConfigPath(elem ...string) string {
 	return filepath.Join(elem...)
 }
 
-// DefaultDataPath returns the the default path for a data resource.
+// DefaultDataPath returns the default path for a data resource.
 // "elem" parameters are path components relative to the default data directory.
 func DefaultDataPath(elem ...string) string {
 	elem = append([]string{defaultDataDir}, elem...)
