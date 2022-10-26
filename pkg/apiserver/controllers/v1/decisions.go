@@ -104,7 +104,10 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 	if err != nil {
 		log.Warningf("failed to format decisions: %v", err)
 	}
-	c.DecisionDeleteChan <- deletedDecisions
+
+	if c.DecisionDeleteChan != nil {
+		c.DecisionDeleteChan <- deletedDecisions
+	}
 
 	deleteDecisionResp := models.DeleteDecisionResponse{
 		NbDeleted: strconv.Itoa(nbDeleted),
@@ -125,7 +128,10 @@ func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 	if err != nil {
 		log.Warningf("failed to format decisions: %v", err)
 	}
-	c.DecisionDeleteChan <- deletedDecisions
+
+	if c.DecisionDeleteChan != nil {
+		c.DecisionDeleteChan <- deletedDecisions
+	}
 
 	deleteDecisionResp := models.DeleteDecisionResponse{
 		NbDeleted: nbDeleted,

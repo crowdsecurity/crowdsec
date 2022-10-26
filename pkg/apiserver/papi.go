@@ -204,7 +204,6 @@ func (p *Papi) SyncDecisions() error {
 	for {
 		select {
 		case <-p.syncTomb.Dying(): // if one apic routine is dying, do we kill the others?
-			p.pullTomb.Kill(nil)
 			p.Logger.Infof("sync decisions tomb is dying, sending cache (%d elements) before exiting", len(cache))
 			if len(cache) == 0 {
 				return nil
