@@ -65,11 +65,12 @@ pull_request:
   labels:
     - prefix: kind
       multiple: false
-      list: [ 'feature', 'fix', 'chore', 'dependencies']
+      list: [ 'feature', 'enhancement', 'fix', 'chore', 'dependencies']
       needs:
         comment: |
           @$AUTHOR: There are no 'kind' label on this PR. You need a 'kind' label to generate the release automatically.
           * `/kind feature`
+          * `/kind enhancement`
           * `/kind fix`
           * `/kind chore`
           * `/kind dependencies`
