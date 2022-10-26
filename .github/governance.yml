@@ -1,0 +1,99 @@
+version: v1
+
+issue:
+  captures:
+    - regex: 'version: v*(.+)-[rc*]?'
+      github_release: true
+      ignore_case: true
+      label: 'version/$CAPTURED'
+
+    - regex: 'Platform: *(windows?|ms|wins?|microsoft).*'
+      label: 'os/win'
+      ignore_case: true
+    
+    - regex: 'Platform: *(freebsd|bsd).*'
+      label: 'os/freebsd'
+      ignore_case: true
+
+    - regex: 'Platform: *(linux|linus|lin).*'
+      label: 'os/linux'
+      ignore_case: true
+
+    - regex: 'Platform: *(macos|mac|apple|macintosh|macbook).*'
+      label: 'os/mac'
+      ignore_case: true
+
+  labels:
+    - prefix: triage
+      list: ['accepted']
+      multiple: false
+      author_association:
+        collaborator: true
+        member: true
+        owner: true
+      needs:
+        comment: |
+          @$AUTHOR: Thanks for opening an issue, it is currently awaiting triage.
+
+          In the meantime, you can:
+
+          1. Check [Crowdsec Documentation](https://docs.crowdsec.net/) to see if your issue can be self resolved.
+          2. You can also join our [Discord](https://discord.gg/crowdsec).
+          3. Check [Releases](https://github.com/crowdsecurity/crowdsec/releases/latest) to make sure your agent is on the latest version.
+
+    - prefix: kind
+      list: ['feature', 'bug', 'packaging', 'enhancement']
+      multiple: false
+      author_association:
+        author: true
+        collaborator: true
+        member: true
+        owner: true
+      needs:
+        comment: |
+          @$AUTHOR: There are no 'kind' label on this issue. You need a 'kind' label to generate the release note automatically.
+          * `/kind feature`
+          * `/kind enhancement`
+          * `/kind bug`
+          * `/kind packaging`
+
+    - prefix: area
+      list: [ 'agent', 'local-api', 'cscli', 'security', 'configuration']
+      multiple: true
+      needs:
+        comment: |
+          @$AUTHOR: There are no area labels on this issue. Adding an appropriate label will greatly expedite the process for us. You can add as many area as you see fit. **If you are unsure what to do you can ignore this!**
+          * `/area agent`
+          * `/area local-api`
+          * `/area cscli`
+          * `/area security`
+          * `/area configuration`
+
+    - prefix: os
+      list: ['mac', 'win', 'linux', 'freebsd']
+      multiple: true
+
+pull_request:
+  labels:
+    - prefix: kind
+      multiple: false
+      list: [ 'feature', 'fix', 'chore', 'dependencies']
+      needs:
+        comment: |
+          @$AUTHOR: There are no 'kind' label on this PR. You need a 'kind' label to generate the release automatically.
+          * `/kind feature`
+          * `/kind fix`
+          * `/kind chore`
+          * `/kind dependencies`
+        status:
+          context: 'Kind Label'
+          description:
+            success: Ready for review & merge.
+            failure: Missing kind label to generate release automatically.
+
+    - prefix: priority
+      multiple: false
+      list: [ 'urgent', 'important' ]
+      author_association:
+        member: true
+        owner: true
