@@ -396,6 +396,11 @@ A mysql-client package is required as well.
 
 ## troubleshooting
 
+ - CAPI is disabled, why?
+Most tests don't need it. Helper scripts are provided in `tests/enable-capi`
+and `tests/disable-capi` for interactive use, and two library functions
+`config_enable_capi` and `config_disable_capi` to call inside the tests.
+You still need to call `cscli capi register` after enabling it.
 
  - My tests are hanging forever, why?
 See if you have a jq/yq or similar process waiting for standard input. Hint:

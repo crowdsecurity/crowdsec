@@ -400,7 +400,7 @@ func fillAlertsWithDecisions(alerts []*models.Alert, decisions []*models.Decisio
 	return alerts
 }
 
-//we receive only one list of decisions, that we need to break-up :
+// we receive only one list of decisions, that we need to break-up :
 // one alert for "community blocklist"
 // one alert per list we're subscribed to
 func (a *apic) PullTop() error {
@@ -419,6 +419,9 @@ func (a *apic) PullTop() error {
 	a.startup = false
 	/*to count additions/deletions across lists*/
 
+	log.Debugf("Received %d new decisions", len(data.New))
+	log.Debugf("Received %d deleted decisions", len(data.Deleted))
+
 	add_counters, delete_counters := makeAddAndDeleteCounters()
 	// process deleted decisions
 	if nbDeleted, err := a.HandleDeletedDecisions(data.Deleted, delete_counters); err != nil {
@@ -432,7 +435,7 @@ func (a *apic) PullTop() error {
 		return nil
 	}
 
-	//we receive only one list of decisions, that we need to break-up :
+	// we receive only one list of decisions, that we need to break-up :
 	// one alert for "community blocklist"
 	// one alert per list we're subscribed to
 	alertsFromCapi := createAlertsForDecisions(data.New)
@@ -441,6 +444,9 @@ func (a *apic) PullTop() error {
 	for idx, alert := range alertsFromCapi {
 		alertsFromCapi[idx] = setAlertScenario(add_counters, delete_counters, alert)
 		log.Debugf("%s has %d decisions", *alertsFromCapi[idx].Source.Scope, len(alertsFromCapi[idx].Decisions))
+		if a.dbClient.Type == "sqlite" && (a.dbClient.WalMode == nil || !*a.dbClient.WalMode) {
+			log.Warningf("sqlite is not using WAL mode, LAPI might become unresponsive when inserting the community blocklist")
+		}
 		alertID, inserted, deleted, err := a.dbClient.UpdateCommunityBlocklist(alertsFromCapi[idx])
 		if err != nil {
 			return errors.Wrapf(err, "while saving alert from %s", *alertsFromCapi[idx].Source.Scope)
@@ -541,37 +547,32 @@ func (a *apic) GetMetrics() (*models.Metrics, error) {
 	return metric, nil
 }
 
-func (a *apic) SendMetrics() error {
+func (a *apic) SendMetrics(stop chan (bool)) {
 	defer types.CatchPanic("lapi/metricsToAPIC")
 
-	metrics, err := a.GetMetrics()
-	if err != nil {
-		log.Errorf("unable to get metrics (%s), will retry", err)
-	}
-	_, _, err = a.apiClient.Metrics.Add(context.Background(), metrics)
-	if err != nil {
-		log.Errorf("unable to send metrics (%s), will retry", err)
-	}
-	log.Infof("capi metrics: metrics sent successfully")
-	log.Infof("Start send metrics to CrowdSec Central API (interval: %s)", MetricsInterval)
+	log.Infof("Start send metrics to CrowdSec Central API (interval: %s)", a.metricsInterval)
 	ticker := time.NewTicker(a.metricsInterval)
 	for {
+		metrics, err := a.GetMetrics()
+		if err != nil {
+			log.Errorf("unable to get metrics (%s), will retry", err)
+		}
+		_, _, err = a.apiClient.Metrics.Add(context.Background(), metrics)
+		if err != nil {
+			log.Errorf("capi metrics: failed: %s", err)
+		} else {
+			log.Infof("capi metrics: metrics sent successfully")
+		}
+
 		select {
+		case <-stop:
+			return
 		case <-ticker.C:
-			metrics, err := a.GetMetrics()
-			if err != nil {
-				log.Errorf("unable to get metrics (%s), will retry", err)
-			}
-			_, _, err = a.apiClient.Metrics.Add(context.Background(), metrics)
-			if err != nil {
-				log.Errorf("capi metrics: failed: %s", err)
-			} else {
-				log.Infof("capi metrics: metrics sent successfully")
-			}
+			continue
 		case <-a.metricsTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.pullTomb.Kill(nil)
 			a.pushTomb.Kill(nil)
-			return nil
+			return
 		}
 	}
 }
@@ -597,9 +598,9 @@ func makeAddAndDeleteCounters() (map[string]map[string]int, map[string]map[strin
 func updateCounterForDecision(counter map[string]map[string]int, decision *models.Decision, totalDecisions int) {
 	if *decision.Origin == SCOPE_CAPI {
 		counter[*decision.Origin]["all"] += totalDecisions
-		return
 	} else if *decision.Origin == SCOPE_LISTS {
 		counter[*decision.Origin][*decision.Scenario] += totalDecisions
+	} else {
+		log.Warningf("Unknown origin %s", *decision.Origin)
 	}
-	log.Warningf("Unknown origin %s", *decision.Origin)
 }

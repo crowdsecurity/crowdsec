@@ -152,8 +152,8 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 		config.ListenPort = 6060
 	}
 
-	/*Registering prometheus*/
-	/*If in aggregated mode, do not register events associated to a source, keeps cardinality low*/
+	// Registering prometheus
+	// If in aggregated mode, do not register events associated with a source, to keep the cardinality low
 	if config.Level == "aggregated" {
 		log.Infof("Loading aggregated prometheus collectors")
 		prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,

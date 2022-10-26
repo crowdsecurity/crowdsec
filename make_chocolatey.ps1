@@ -15,4 +15,4 @@ if ($version.Contains("-"))
 Set-Location .\windows\Chocolatey\crowdsec
 Copy-Item ..\..\..\crowdsec_$version.msi tools\crowdsec.msi
 
-choco pack
+choco pack --version $version

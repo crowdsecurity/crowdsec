@@ -3,9 +3,9 @@
 set -eu
 
 # shellcheck disable=SC1007
-TEST_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-# shellcheck source=./.environment.sh
-. "${TEST_DIR}/.environment.sh"
+THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck disable=SC1091
+. "${THIS_DIR}/../.environment.sh"
 
 cscli() {
     "${CSCLI}" "$@"
@@ -22,11 +22,11 @@ cat << EOT > "${HUBTESTS_BATS}"
 set -u
 
 setup_file() {
-    load "../lib/setup_file.sh" >&3 2>&1
+    load "../lib/setup_file.sh"
 }
 
 teardown_file() {
-    load "../lib/teardown_file.sh" >&3 2>&1
+    load "../lib/teardown_file.sh"
 }
 
 setup() {
@@ -37,7 +37,7 @@ EOT
 
 echo "Generating hub tests..."
 
-for testname in $("${CSCLI}" --crowdsec "${CROWDSEC}" --cscli "${CSCLI}" hubtest --hub "${hubdir}" list -o json | grep -v NAME | grep -v -- '-------' | awk '{print $1}'); do
+for testname in $("${CSCLI}" --crowdsec "${CROWDSEC}" --cscli "${CSCLI}" hubtest --hub "${hubdir}" list -o json | jq -r '.[] | .Name'); do
     cat << EOT >> "${HUBTESTS_BATS}"
 
 @test "${testname}" {

@@ -150,6 +150,7 @@ func TestStreamingAcquisition(t *testing.T) {
 	}
 
 	for _, ts := range tests {
+		ts := ts
 		t.Run(ts.name, func(t *testing.T) {
 			k := KafkaSource{}
 			err := k.Configure([]byte(`
@@ -219,6 +220,7 @@ func TestStreamingAcquisitionWithSSL(t *testing.T) {
 	}
 
 	for _, ts := range tests {
+		ts := ts
 		t.Run(ts.name, func(t *testing.T) {
 			k := KafkaSource{}
 			err := k.Configure([]byte(`

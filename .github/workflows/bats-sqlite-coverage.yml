@@ -68,13 +68,13 @@ jobs:
       if: ${{ always() }}
 
     - name: Upload crowdsec coverage to codecov
-      uses: codecov/codecov-action@v2
+      uses: codecov/codecov-action@v3
       with:
         files: ./tests/local/var/lib/coverage/coverage-crowdsec.out
         flags: func-crowdsec
 
     - name: Upload cscli coverage to codecov
-      uses: codecov/codecov-action@v2
+      uses: codecov/codecov-action@v3
       with:
         files: ./tests/local/var/lib/coverage/coverage-cscli.out
         flags: func-cscli

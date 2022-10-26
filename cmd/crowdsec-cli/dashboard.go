@@ -13,11 +13,11 @@ import (
 	"unicode"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/crowdsecurity/crowdsec/pkg/metabase"
-
 	"github.com/pbnjay/memory"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+
+	"github.com/crowdsecurity/crowdsec/pkg/metabase"
 )
 
 var (

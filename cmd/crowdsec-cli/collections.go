@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-
+	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
-
 	"github.com/spf13/cobra"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 func NewCollectionsCmd() *cobra.Command {
@@ -173,8 +173,7 @@ func NewCollectionsCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			items := ListItems([]string{cwhub.COLLECTIONS}, args, false, true, all)
-			fmt.Printf("%s\n", string(items))
+			ListItems(color.Output, []string{cwhub.COLLECTIONS}, args, false, true, all)
 		},
 	}
 	cmdCollectionsList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")

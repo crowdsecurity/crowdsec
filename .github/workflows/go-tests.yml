@@ -132,10 +132,12 @@ jobs:
 
     - name: Build and run tests (static)
       run: |
-        make clean build test BUILD_STATIC=yes
+        make clean build BUILD_STATIC=yes
+        make test \
+          | richgo testfilter
 
     - name: Upload unit coverage to Codecov
-      uses: codecov/codecov-action@v2
+      uses: codecov/codecov-action@v3
       with:
         files: coverage.out
         flags: unit-linux
