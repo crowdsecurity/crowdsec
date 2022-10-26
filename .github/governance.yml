@@ -51,7 +51,7 @@ issue:
         owner: true
       needs:
         comment: |
-          @$AUTHOR: There are no 'kind' label on this issue. You need a 'kind' label to generate the release note automatically.
+          @$AUTHOR: There are no 'kind' label on this issue. You need a 'kind' label to start the triage process.
           * `/kind feature`
           * `/kind enhancement`
           * `/kind bug`
@@ -95,5 +95,6 @@ pull_request:
       multiple: false
       list: [ 'urgent', 'important' ]
       author_association:
+        collaborator: true
         member: true
         owner: true
