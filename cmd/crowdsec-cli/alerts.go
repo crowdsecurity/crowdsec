@@ -337,7 +337,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 			}
 
 			var alerts *models.DeleteAlertsResponse
-			if delAlertByID != "" {
+			if delAlertByID == "" {
 				alerts, _, err = Client.Alerts.Delete(context.Background(), alertDeleteFilter)
 				if err != nil {
 					log.Fatalf("Unable to delete alerts : %v", err)
