@@ -14,6 +14,10 @@ import (
 
 type WinEventLogSource struct{}
 
+func (w *WinEventLogSource) UnmarshalConfig(yamlConfig []byte) error {
+	return nil
+}
+
 func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	return nil
 }

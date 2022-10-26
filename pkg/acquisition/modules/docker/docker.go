@@ -67,24 +67,22 @@ type ContainerConfig struct {
 	Tty    bool
 }
 
-func (d *DockerSource) Configure(Config []byte, logger *log.Entry) error {
-	var err error
-
+func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 	d.Config = DockerConfiguration{
 		FollowStdout:  true, // default
 		FollowStdErr:  true, // default
 		CheckInterval: "1s", // default
 	}
-	d.logger = logger
 
-	d.runningContainerState = make(map[string]*ContainerConfig)
-
-	err = yaml.UnmarshalStrict(Config, &d.Config)
+	err := yaml.UnmarshalStrict(yamlConfig, &d.Config)
 	if err != nil {
 		return errors.Wrap(err, "Cannot parse DockerAcquisition configuration")
 	}
 
-	d.logger.Tracef("DockerAcquisition configuration: %+v", d.Config)
+	if d.logger != nil {
+		d.logger.Tracef("DockerAcquisition configuration: %+v", d.Config)
+	}
+
 	if len(d.Config.ContainerName) == 0 && len(d.Config.ContainerID) == 0 && len(d.Config.ContainerIDRegexp) == 0 && len(d.Config.ContainerNameRegexp) == 0 {
 		return fmt.Errorf("no containers names or containers ID configuration provided")
 	}
@@ -100,7 +98,6 @@ func (d *DockerSource) Configure(Config []byte, logger *log.Entry) error {
 	if d.Config.Mode != configuration.CAT_MODE && d.Config.Mode != configuration.TAIL_MODE {
 		return fmt.Errorf("unsupported mode %s for docker datasource", d.Config.Mode)
 	}
-	d.logger.Tracef("Actual DockerAcquisition configuration %+v", d.Config)
 
 	for _, cont := range d.Config.ContainerNameRegexp {
 		d.compiledContainerName = append(d.compiledContainerName, regexp.MustCompile(cont))
@@ -108,11 +105,6 @@ func (d *DockerSource) Configure(Config []byte, logger *log.Entry) error {
 
 	for _, cont := range d.Config.ContainerIDRegexp {
 		d.compiledContainerID = append(d.compiledContainerID, regexp.MustCompile(cont))
-	}
-
-	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		return err
 	}
 
 	if d.Config.Since == "" {
@@ -130,17 +122,37 @@ func (d *DockerSource) Configure(Config []byte, logger *log.Entry) error {
 		d.containerLogsOptions.Until = d.Config.Until
 	}
 
+	return nil
+}
+
+func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry) error {
+	d.logger = logger
+
+	err := d.UnmarshalConfig(yamlConfig)
+	if err !=  nil {
+		return err
+	}
+
+	d.runningContainerState = make(map[string]*ContainerConfig)
+
+	d.logger.Tracef("Actual DockerAcquisition configuration %+v", d.Config)
+
+	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return err
+	}
+
 	if d.Config.DockerHost != "" {
-		if err := client.WithHost(d.Config.DockerHost)(dockerClient); err != nil {
+		err = client.WithHost(d.Config.DockerHost)(dockerClient)
+		if err != nil {
 			return err
 		}
 	}
 	d.Client = dockerClient
 
 	_, err = d.Client.Info(context.Background())
-
 	if err != nil {
-		return errors.Wrapf(err, "failed to configure docker datasource %s", d.Config.DockerHost)
+		return fmt.Errorf("failed to configure docker datasource %s: %w", d.Config.DockerHost, err)
 	}
 
 	return nil

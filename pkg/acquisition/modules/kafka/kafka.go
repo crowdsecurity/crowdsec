@@ -54,35 +54,53 @@ type KafkaSource struct {
 	Reader *kafka.Reader
 }
 
-func (k *KafkaSource) Configure(Config []byte, logger *log.Entry) error {
-	var err error
-
+func (k* KafkaSource) UnmarshalConfig(yamlConfig []byte) error {
 	k.Config = KafkaConfiguration{}
-	k.logger = logger
-	err = yaml.UnmarshalStrict(Config, &k.Config)
+
+	err := yaml.UnmarshalStrict(yamlConfig, &k.Config)
 	if err != nil {
-		return errors.Wrapf(err, "cannot parse %s datasource configuration", dataSourceName)
+		return fmt.Errorf("cannot parse %s datasource configuration: %w", dataSourceName, err)
 	}
+
 	if len(k.Config.Brokers) == 0 {
 		return fmt.Errorf("cannot create a %s reader with an empty list of broker addresses", dataSourceName)
 	}
+
 	if k.Config.Topic == "" {
 		return fmt.Errorf("cannot create a %s reader with am empty topic", dataSourceName)
 	}
+
 	if k.Config.Mode == "" {
 		k.Config.Mode = configuration.TAIL_MODE
 	}
+
+	return err
+}
+
+
+
+func (k *KafkaSource) Configure(yamlConfig []byte, logger *log.Entry) error {
+	k.logger = logger
+
+	err := k.UnmarshalConfig(yamlConfig)
+	if err != nil {
+		return err
+	}
+
 	dialer, err := k.Config.NewDialer()
 	if err != nil {
 		return errors.Wrapf(err, "cannot create %s dialer", dataSourceName)
 	}
+
 	k.Reader, err = k.Config.NewReader(dialer)
 	if err != nil {
 		return errors.Wrapf(err, "cannote create %s reader", dataSourceName)
 	}
+
 	if k.Reader == nil {
 		return fmt.Errorf("cannot create %s reader", dataSourceName)
 	}
+
 	return nil
 }
 

@@ -113,17 +113,18 @@ func (k *KinesisSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{linesRead, linesReadShards}
 }
 
-func (k *KinesisSource) Configure(yamlConfig []byte, logger *log.Entry) error {
-	config := KinesisConfiguration{}
-	k.logger = logger
-	err := yaml.UnmarshalStrict(yamlConfig, &config)
+func (k *KinesisSource) UnmarshalConfig(yamlConfig []byte) error {
+	k.Config = KinesisConfiguration{}
+
+	err := yaml.UnmarshalStrict(yamlConfig, &k.Config)
 	if err != nil {
 		return errors.Wrap(err, "Cannot parse kinesis datasource configuration")
 	}
-	if config.Mode == "" {
-		config.Mode = configuration.TAIL_MODE
+
+	if k.Config.Mode == "" {
+		k.Config.Mode = configuration.TAIL_MODE
 	}
-	k.Config = config
+
 	if k.Config.StreamName == "" && !k.Config.UseEnhancedFanOut {
 		return fmt.Errorf("stream_name is mandatory when use_enhanced_fanout is false")
 	}
@@ -139,10 +140,23 @@ func (k *KinesisSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	if k.Config.MaxRetries <= 0 {
 		k.Config.MaxRetries = 10
 	}
+
+	return nil
+}
+
+func (k *KinesisSource) Configure(yamlConfig []byte, logger *log.Entry) error {
+	k.logger = logger
+
+	err := k.UnmarshalConfig(yamlConfig)
+	if err != nil {
+		return err
+	}
+
 	err = k.newClient()
 	if err != nil {
-		return errors.Wrap(err, "Cannot create kinesis client")
+		return fmt.Errorf("cannot create kinesis client: %w", err)
 	}
+
 	k.shardReaderTomb = &tomb.Tomb{}
 	return nil
 }

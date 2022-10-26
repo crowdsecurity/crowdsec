@@ -89,31 +89,44 @@ func validateAddr(addr string) bool {
 	return net.ParseIP(addr) != nil
 }
 
-func (s *SyslogSource) Configure(yamlConfig []byte, logger *log.Entry) error {
-	s.logger = logger
-	s.logger.Infof("Starting syslog datasource configuration")
-	syslogConfig := SyslogConfiguration{}
-	syslogConfig.Mode = configuration.TAIL_MODE
-	err := yaml.UnmarshalStrict(yamlConfig, &syslogConfig)
+func (s *SyslogSource) UnmarshalConfig(yamlConfig []byte) error {
+	s.config = SyslogConfiguration{}
+	s.config.Mode = configuration.TAIL_MODE
+
+	err := yaml.UnmarshalStrict(yamlConfig, &s.config)
 	if err != nil {
 		return errors.Wrap(err, "Cannot parse syslog configuration")
 	}
-	if syslogConfig.Addr == "" {
-		syslogConfig.Addr = "127.0.0.1" //do we want a usable or secure default ?
+
+	if s.config.Addr == "" {
+		s.config.Addr = "127.0.0.1" //do we want a usable or secure default ?
 	}
-	if syslogConfig.Port == 0 {
-		syslogConfig.Port = 514
+	if s.config.Port == 0 {
+		s.config.Port = 514
 	}
-	if syslogConfig.MaxMessageLen == 0 {
-		syslogConfig.MaxMessageLen = 2048
+	if s.config.MaxMessageLen == 0 {
+		s.config.MaxMessageLen = 2048
 	}
-	if !validatePort(syslogConfig.Port) {
-		return fmt.Errorf("invalid port %d", syslogConfig.Port)
+	if !validatePort(s.config.Port) {
+		return fmt.Errorf("invalid port %d", s.config.Port)
 	}
-	if !validateAddr(syslogConfig.Addr) {
-		return fmt.Errorf("invalid listen IP %s", syslogConfig.Addr)
+	if !validateAddr(s.config.Addr) {
+		return fmt.Errorf("invalid listen IP %s", s.config.Addr)
 	}
-	s.config = syslogConfig
+
+	return nil
+}
+
+
+func (s *SyslogSource) Configure(yamlConfig []byte, logger *log.Entry) error {
+	s.logger = logger
+	s.logger.Infof("Starting syslog datasource configuration")
+
+	err := s.UnmarshalConfig(yamlConfig)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

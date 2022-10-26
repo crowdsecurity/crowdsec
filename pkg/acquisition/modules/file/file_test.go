@@ -42,7 +42,7 @@ func TestBadConfiguration(t *testing.T) {
 			name: "bad exclude regexp",
 			config: `filenames: ["asd.log"]
 exclude_regexps: ["as[a-$d"]`,
-			expectedErr: "Could not compile regexp as",
+			expectedErr: "could not compile regexp as",
 		},
 	}
 

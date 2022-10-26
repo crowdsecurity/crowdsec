@@ -101,61 +101,85 @@ var (
 	def_AwsConfigDir            = ""
 )
 
-func (cw *CloudwatchSource) Configure(cfg []byte, logger *log.Entry) error {
-	cwConfig := CloudwatchSourceConfiguration{}
-	targetStream := "*"
-	if err := yaml.UnmarshalStrict(cfg, &cwConfig); err != nil {
-		return errors.Wrap(err, "Cannot parse CloudwatchSource configuration")
+func (cw *CloudwatchSource) UnmarshalConfig(yamlConfig []byte) error {
+	cw.Config = CloudwatchSourceConfiguration{}
+	if err := yaml.UnmarshalStrict(yamlConfig, &cw.Config); err != nil {
+		return fmt.Errorf("cannot parse CloudwatchSource configuration: %w", err)
 	}
-	cw.Config = cwConfig
+
 	if len(cw.Config.GroupName) == 0 {
 		return fmt.Errorf("group_name is mandatory for CloudwatchSource")
 	}
-	cw.logger = logger.WithField("group", cw.Config.GroupName)
+
 	if cw.Config.Mode == "" {
 		cw.Config.Mode = configuration.TAIL_MODE
 	}
-	logger.Debugf("Starting configuration for Cloudwatch group %s", cw.Config.GroupName)
 
 	if cw.Config.DescribeLogStreamsLimit == nil {
 		cw.Config.DescribeLogStreamsLimit = &def_DescribeLogStreamsLimit
 	}
-	logger.Tracef("describelogstreams_limit set to %d", *cw.Config.DescribeLogStreamsLimit)
+
 	if cw.Config.PollNewStreamInterval == nil {
 		cw.Config.PollNewStreamInterval = &def_PollNewStreamInterval
 	}
-	logger.Tracef("poll_new_stream_interval set to %v", *cw.Config.PollNewStreamInterval)
+
 	if cw.Config.MaxStreamAge == nil {
 		cw.Config.MaxStreamAge = &def_MaxStreamAge
 	}
-	logger.Tracef("max_stream_age set to %v", *cw.Config.MaxStreamAge)
+
 	if cw.Config.PollStreamInterval == nil {
 		cw.Config.PollStreamInterval = &def_PollStreamInterval
 	}
-	logger.Tracef("poll_stream_interval set to %v", *cw.Config.PollStreamInterval)
+
 	if cw.Config.StreamReadTimeout == nil {
 		cw.Config.StreamReadTimeout = &def_StreamReadTimeout
 	}
-	logger.Tracef("stream_read_timeout set to %v", *cw.Config.StreamReadTimeout)
+
 	if cw.Config.GetLogEventsPagesLimit == nil {
 		cw.Config.GetLogEventsPagesLimit = &def_GetLogEventsPagesLimit
 	}
-	logger.Tracef("getlogeventspages_limit set to %v", *cw.Config.GetLogEventsPagesLimit)
+
 	if cw.Config.AwsApiCallTimeout == nil {
 		cw.Config.AwsApiCallTimeout = &def_AwsApiCallTimeout
 	}
-	logger.Tracef("aws_api_timeout set to %v", *cw.Config.AwsApiCallTimeout)
-	if *cw.Config.MaxStreamAge > *cw.Config.StreamReadTimeout {
-		logger.Warningf("max_stream_age > stream_read_timeout, stream might keep being opened/closed")
-	}
+
 	if cw.Config.AwsConfigDir == nil {
 		cw.Config.AwsConfigDir = &def_AwsConfigDir
 	}
-	logger.Tracef("aws_config_dir set to %s", *cw.Config.AwsConfigDir)
+
+	return nil
+}
+
+
+
+
+func (cw *CloudwatchSource) Configure(yamlConfig []byte, logger *log.Entry) error {
+	err := cw.UnmarshalConfig(yamlConfig)
+	if err != nil {
+		return err
+	}
+
+	cw.logger = logger.WithField("group", cw.Config.GroupName)
+
+	// XXX the following must be logger or cw.logger?
+	cw.logger.Debugf("Starting configuration for Cloudwatch group %s", cw.Config.GroupName)
+	cw.logger.Tracef("describelogstreams_limit set to %d", *cw.Config.DescribeLogStreamsLimit)
+	cw.logger.Tracef("poll_new_stream_interval set to %v", *cw.Config.PollNewStreamInterval)
+	cw.logger.Tracef("max_stream_age set to %v", *cw.Config.MaxStreamAge)
+	cw.logger.Tracef("poll_stream_interval set to %v", *cw.Config.PollStreamInterval)
+	cw.logger.Tracef("stream_read_timeout set to %v", *cw.Config.StreamReadTimeout)
+	cw.logger.Tracef("getlogeventspages_limit set to %v", *cw.Config.GetLogEventsPagesLimit)
+	cw.logger.Tracef("aws_api_timeout set to %v", *cw.Config.AwsApiCallTimeout)
+
+	if *cw.Config.MaxStreamAge > *cw.Config.StreamReadTimeout {
+		cw.logger.Warningf("max_stream_age > stream_read_timeout, stream might keep being opened/closed")
+	}
+	cw.logger.Tracef("aws_config_dir set to %s", *cw.Config.AwsConfigDir)
+
 	if *cw.Config.AwsConfigDir != "" {
 		_, err := os.Stat(*cw.Config.AwsConfigDir)
 		if err != nil {
-			logger.Errorf("can't read aws_config_dir '%s' got err %s", *cw.Config.AwsConfigDir, err)
+			cw.logger.Errorf("can't read aws_config_dir '%s' got err %s", *cw.Config.AwsConfigDir, err)
 			return fmt.Errorf("can't read aws_config_dir %s got err %s ", *cw.Config.AwsConfigDir, err)
 		}
 		os.Setenv("AWS_SDK_LOAD_CONFIG", "1")
@@ -164,7 +188,7 @@ func (cw *CloudwatchSource) Configure(cfg []byte, logger *log.Entry) error {
 		os.Setenv("AWS_SHARED_CREDENTIALS_FILE", fmt.Sprintf("%s/credentials", *cw.Config.AwsConfigDir))
 	} else {
 		if cw.Config.AwsRegion == nil {
-			logger.Errorf("aws_region is not specified, specify it or aws_config_dir")
+			cw.logger.Errorf("aws_region is not specified, specify it or aws_config_dir")
 			return fmt.Errorf("aws_region is not specified, specify it or aws_config_dir")
 		}
 		os.Setenv("AWS_REGION", *cw.Config.AwsRegion)
@@ -174,6 +198,8 @@ func (cw *CloudwatchSource) Configure(cfg []byte, logger *log.Entry) error {
 		return err
 	}
 	cw.streamIndexes = make(map[string]string)
+
+	targetStream := "*"
 	if cw.Config.StreamRegexp != nil {
 		if _, err := regexp.Compile(*cw.Config.StreamRegexp); err != nil {
 			return errors.Wrapf(err, "error while compiling regexp '%s'", *cw.Config.StreamRegexp)
@@ -183,7 +209,7 @@ func (cw *CloudwatchSource) Configure(cfg []byte, logger *log.Entry) error {
 		targetStream = *cw.Config.StreamName
 	}
 
-	logger.Infof("Adding cloudwatch group '%s' (stream:%s) to datasources", cw.Config.GroupName, targetStream)
+	cw.logger.Infof("Adding cloudwatch group '%s' (stream:%s) to datasources", cw.Config.GroupName, targetStream)
 	return nil
 }
 
