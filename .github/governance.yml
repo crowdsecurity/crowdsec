@@ -57,18 +57,6 @@ issue:
           * `/kind bug`
           * `/kind packaging`
 
-    - prefix: area
-      list: [ 'agent', 'local-api', 'cscli', 'security', 'configuration']
-      multiple: true
-      needs:
-        comment: |
-          @$AUTHOR: There are no area labels on this issue. Adding an appropriate label will greatly expedite the process for us. You can add as many area as you see fit. **If you are unsure what to do you can ignore this!**
-          * `/area agent`
-          * `/area local-api`
-          * `/area cscli`
-          * `/area security`
-          * `/area configuration`
-
     - prefix: os
       list: ['mac', 'win', 'linux', 'freebsd']
       multiple: true
