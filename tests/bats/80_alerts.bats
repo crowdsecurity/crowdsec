@@ -122,11 +122,29 @@ teardown() {
     assert_output "id,scope,value,reason,country,as,decisions,created_at,machine"
 }
 
-@test "cscli alerts delete" {
-    run -0 --separate-stderr cscli alerts delete --all
-    assert_stderr --partial 'alert(s) deleted'
+@test "cscli alerts delete (by id)" {
+    run -0 cscli decisions add -i 127.0.0.1 -d 1h -R crowdsecurity/test
+    run -0 --separate-stderr cscli alerts delete --id 1
+    refute_output
+    assert_stderr --partial "1 alert(s) deleted"
 
-    # XXX TODO: delete by scope, id, value, scenario, range..
+    run -1 --separate-stderr cscli alerts delete --id 1
+    refute_output
+    assert_stderr --partial "Unable to delete alert"
+    assert_stderr --partial "API error: ent: alert not found"
+}
+
+@test "cscli alerts delete (all)" {
+    run -0 --separate-stderr cscli alerts delete --all
+    assert_stderr --partial '0 alert(s) deleted'
+
+    run -0 cscli decisions add -i 1.2.3.4 -d 1h -R crowdsecurity/test
+    run -0 cscli decisions add -i 1.2.3.5 -d 1h -R crowdsecurity/test
+
+    run -0 --separate-stderr cscli alerts delete --all
+    assert_stderr --partial '2 alert(s) deleted'
+
+    # XXX TODO: delete by scope, value, scenario, range..
 }
 
 @test "cscli alerts delete (with cascade to decisions)" {
