@@ -197,6 +197,7 @@ func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, forc
 				log.Infof("%v %s is local", emoji.Prohibited, v.Name)
 			}
 		} else {
+			fmt.Printf("updated %s\n", v.Name)
 			log.Infof("%v %s : updated", emoji.Package, v.Name)
 			updated++
 		}
