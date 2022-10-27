@@ -29,9 +29,9 @@ var (
 	pullIntervalDefault    = time.Hour * 2
 	pullIntervalDelta      = 5 * time.Minute
 	pushIntervalDefault    = time.Second * 30
-	pushIntervalDelta      = time.Second * 30
+	pushIntervalDelta      = time.Second * 15
 	metricsIntervalDefault = time.Minute * 30
-	metricsIntervalDelta   = time.Minute * 30
+	metricsIntervalDelta   = time.Minute * 15
 )
 
 var SCOPE_CAPI string = "CAPI"
@@ -60,9 +60,9 @@ type apic struct {
 	consoleConfig        *csconfig.ConsoleConfig
 }
 
-// randomDuration returns a duration value between d-(1/2*delta) and d+(1/2*delta)
+// randomDuration returns a duration value between d-delta and d+delta
 func randomDuration(d time.Duration, delta time.Duration) time.Duration {
-	return time.Duration(float64(d) + float64(delta)*(-0.5+1.0*rand.Float64()))
+	return time.Duration(float64(d) + float64(delta)*(-1.0+2.0*rand.Float64()))
 }
 
 func (a *apic) FetchScenariosListFromDB() ([]string, error) {
