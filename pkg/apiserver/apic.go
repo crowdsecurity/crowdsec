@@ -412,6 +412,8 @@ func (a *apic) PullTop() error {
 		return nil
 	}
 
+	log.Printf("Starting community-blocklist update")
+
 	data, _, err := a.apiClient.Decisions.GetStream(context.Background(), apiclient.DecisionsStreamOpts{Startup: a.startup})
 	if err != nil {
 		return errors.Wrap(err, "get stream")
