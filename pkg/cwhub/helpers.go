@@ -197,6 +197,8 @@ func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, forc
 				log.Infof("%v %s is local", emoji.Prohibited, v.Name)
 			}
 		} else {
+			// this is used while scripting to know if the hub has been upgraded
+			// and a configuration reload is required
 			fmt.Printf("updated %s\n", v.Name)
 			log.Infof("%v %s : updated", emoji.Package, v.Name)
 			updated++
