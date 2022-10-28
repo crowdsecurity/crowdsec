@@ -133,6 +133,9 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 
 	// remove all
 	for _, v := range GetItemMap(itemType) {
+		if !v.Installed {
+			continue
+		}
 		v, err = DisableItem(csConfig.Hub, v, purge, forceAction)
 		if err != nil {
 			log.Fatalf("unable to disable %s : %v", v.Name, err)

@@ -178,8 +178,18 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 	}
 
 	if len(alertItem.Decisions) > 0 {
+		txClient, err := c.Ent.Tx(c.CTX)
+		if err != nil {
+			return 0, 0, 0, errors.Wrapf(BulkError, "error creating transaction : %s", err)
+		}
 		decisionBulk := make([]*ent.DecisionCreate, 0, decisionBulkSize)
 		valueList := make([]string, 0, decisionBulkSize)
+		DecOrigin := CapiMachineID
+		if *alertItem.Decisions[0].Origin == CapiMachineID || *alertItem.Decisions[0].Origin == CapiListsMachineID {
+			DecOrigin = *alertItem.Decisions[0].Origin
+		} else {
+			log.Warningf("unexpected origin %s", *alertItem.Decisions[0].Origin)
+		}
 		for i, decisionItem := range alertItem.Decisions {
 			var start_ip, start_sfx, end_ip, end_sfx int64
 			var sz int
@@ -189,6 +199,10 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 			}
 			duration, err := time.ParseDuration(*decisionItem.Duration)
 			if err != nil {
+				rollbackErr := txClient.Rollback()
+				if rollbackErr != nil {
+					log.Errorf("rollback error: %s", rollbackErr)
+				}
 				return 0, 0, 0, errors.Wrapf(ParseDurationFail, "decision duration '%+v' : %s", *decisionItem.Duration, err)
 			}
 			if decisionItem.Scope == nil {
@@ -199,6 +213,10 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 			if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
 				sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decisionItem.Value)
 				if err != nil {
+					rollbackErr := txClient.Rollback()
+					if rollbackErr != nil {
+						log.Errorf("rollback error: %s", rollbackErr)
+					}
 					return 0, 0, 0, errors.Wrapf(ParseDurationFail, "invalid addr/range %s : %s", *decisionItem.Value, err)
 				}
 			}
@@ -226,20 +244,29 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 			valueList = append(valueList, *decisionItem.Value)
 
 			if len(decisionBulk) == decisionBulkSize {
-				insertedDecisions, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
+
+				insertedDecisions, err := txClient.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
 				if err != nil {
+					rollbackErr := txClient.Rollback()
+					if rollbackErr != nil {
+						log.Errorf("rollback error: %s", rollbackErr)
+					}
 					return 0, 0, 0, errors.Wrapf(BulkError, "bulk creating decisions : %s", err)
 				}
 				inserted += len(insertedDecisions)
 
 				/*Deleting older decisions from capi*/
-				deletedDecisions, err := c.Ent.Decision.Delete().
+				deletedDecisions, err := txClient.Decision.Delete().
 					Where(decision.And(
-						decision.OriginEQ(CapiMachineID),
+						decision.OriginEQ(DecOrigin),
 						decision.Not(decision.HasOwnerWith(alert.IDEQ(alertRef.ID))),
 						decision.ValueIn(valueList...),
 					)).Exec(c.CTX)
 				if err != nil {
+					rollbackErr := txClient.Rollback()
+					if rollbackErr != nil {
+						log.Errorf("rollback error: %s", rollbackErr)
+					}
 					return 0, 0, 0, errors.Wrap(err, "while deleting older community blocklist decisions")
 				}
 				deleted += deletedDecisions
@@ -251,33 +278,40 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 					decisionBulk = make([]*ent.DecisionCreate, 0, decisionBulkSize)
 					valueList = make([]string, 0, decisionBulkSize)
 				}
-
-				// The 90's called, they want their concurrency back.
-				// This is needed for sqlite, which does not support concurrent access while writing.
-				// If we pull a large number of IPs from CAPI, and we have a slow disk, LAPI won't respond until all IPs are inserted (which can take up to a few seconds).
-				time.Sleep(100 * time.Millisecond)
 			}
 
 		}
-		insertedDecisions, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
+		log.Debugf("deleted %d decisions for %s vs %s", deleted, DecOrigin, *alertItem.Decisions[0].Origin)
+		insertedDecisions, err := txClient.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
 		if err != nil {
 			return 0, 0, 0, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
 		}
 		inserted += len(insertedDecisions)
 		/*Deleting older decisions from capi*/
 		if len(valueList) > 0 {
-			deletedDecisions, err := c.Ent.Decision.Delete().
+			deletedDecisions, err := txClient.Decision.Delete().
 				Where(decision.And(
-					decision.OriginEQ(CapiMachineID),
+					decision.OriginEQ(DecOrigin),
 					decision.Not(decision.HasOwnerWith(alert.IDEQ(alertRef.ID))),
 					decision.ValueIn(valueList...),
 				)).Exec(c.CTX)
 			if err != nil {
+				rollbackErr := txClient.Rollback()
+				if rollbackErr != nil {
+					log.Errorf("rollback error: %s", rollbackErr)
+				}
 				return 0, 0, 0, errors.Wrap(err, "while deleting older community blocklist decisions")
 			}
 			deleted += deletedDecisions
 		}
-
+		err = txClient.Commit()
+		if err != nil {
+			rollbackErr := txClient.Rollback()
+			if rollbackErr != nil {
+				log.Errorf("rollback error: %s", rollbackErr)
+			}
+			return 0, 0, 0, errors.Wrapf(BulkError, "error committing transaction : %s", err)
+		}
 	}
 
 	return alertRef.ID, inserted, deleted, nil
@@ -907,6 +941,15 @@ func (c *Client) DeleteAlertGraph(alertItem *ent.Alert) error {
 	}
 
 	return nil
+}
+
+func (c *Client) DeleteAlertByID(id int) error {
+	alertItem, err := c.Ent.Alert.Query().Where(alert.IDEQ(id)).Only(c.CTX)
+	if err != nil {
+		return err
+	}
+
+	return c.DeleteAlertGraph(alertItem)
 }
 
 func (c *Client) DeleteAlertWithFilter(filter map[string][]string) (int, error) {

@@ -416,8 +416,8 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 			return fmt.Errorf("reader for %s is dead", tail.Filename)
 		case line := <-tail.Lines:
 			if line == nil {
-				logger.Debugf("Nil line")
-				return fmt.Errorf("tail for %s is empty", tail.Filename)
+				logger.Warningf("tail for %s is empty", tail.Filename)
+				continue
 			}
 			if line.Err != nil {
 				logger.Warningf("fetch error : %v", line.Err)
