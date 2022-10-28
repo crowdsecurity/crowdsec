@@ -26,3 +26,5 @@ require (
 )
 
 replace github.com/golang/protobuf => ../../../pkg/golang-protobuf
+
+replace github.com/golang/protobuf/jsonpb => ../../../pkg/golang-protobuf/jsonpb

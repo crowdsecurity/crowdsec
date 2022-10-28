@@ -11,3 +11,7 @@ require (
 replace github.com/golang/protobuf => ../
 
 replace github.com/golang/protobuf/protoc-gen-go/descriptor => ../protoc-gen-go/descriptor
+
+replace github.com/golang/protobuf/proto ../proto
+
+replace github.com/golang/protobuf/jsonpb ../jsonpb
