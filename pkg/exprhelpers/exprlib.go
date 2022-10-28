@@ -14,6 +14,7 @@ import (
 
 	"github.com/c-robinson/iplib"
 
+	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
@@ -68,6 +69,7 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"GetDecisionsCount":      GetDecisionsCount,
 		"GetDecisionsSinceCount": GetDecisionsSinceCount,
 		"Sprintf":                fmt.Sprintf,
+		"IpCTI":                  cticlient.IpCTI,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
@@ -254,6 +256,7 @@ func GetDecisionsCount(value string) int {
 	if dbClient == nil {
 		log.Error("No database config to call GetDecisionsCount()")
 		return 0
+
 	}
 	count, err := dbClient.CountDecisionsByValue(value)
 	if err != nil {
