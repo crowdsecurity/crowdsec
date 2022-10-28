@@ -40,6 +40,9 @@ teardown() {
     run -0 cscli bouncers add ciTestBouncer
     run -1 --separate-stderr cscli bouncers add ciTestBouncer -o json
 
+    echo "STDERR: ${stderr}"
+    echo "CONFIG_YAML:"
+    cat "$CONFIG_YAML"
     run -0 jq -r '.level' <(stderr)
     assert_output 'fatal'
     run -0 jq -r '.msg' <(stderr)
