@@ -85,7 +85,7 @@ teardown() {
     run killall -HUP "$BIN_DIR/crowdsec.cover"
     run killall -HUP "$BIN_DIR/crowdsec"
 
-    for ((i=0; i<20; i++)); do
+    for ((i=0; i<30; i++)); do
         sleep 1
         grep -q "killing all plugins" <"$log_old" && break
     done
@@ -110,7 +110,7 @@ teardown() {
 
     assert_file_exist "$log_new"
 
-    for ((i=0; i<20; i++)); do
+    for ((i=0; i<30; i++)); do
         sleep 1
         grep -q "Reload is finished" <"$log_old" && break
     done
