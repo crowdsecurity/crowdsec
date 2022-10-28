@@ -12,6 +12,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jarcoal/httpmock"
+	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/tomb.v2"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cstest"
@@ -21,11 +27,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/jarcoal/httpmock"
-	"github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"gopkg.in/tomb.v2"
 )
 
 func getDBClient(t *testing.T) *database.Client {
@@ -669,6 +670,7 @@ func TestAPICPush(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			api := getAPIC(t)
 			api.pushInterval = time.Millisecond
+			api.pushIntervalFirst = time.Millisecond
 			url, err := url.ParseRequestURI("http://api.crowdsec.net/")
 			require.NoError(t, err)
 
@@ -759,8 +761,10 @@ func TestAPICSendMetrics(t *testing.T) {
 
 			api := getAPIC(t)
 			api.pushInterval = time.Millisecond
+			api.pushIntervalFirst = time.Millisecond
 			api.apiClient = apiClient
 			api.metricsInterval = tc.metricsInterval
+			api.metricsIntervalFirst = tc.metricsInterval
 			tc.setUp(api)
 
 			stop := make(chan bool)
@@ -810,6 +814,7 @@ func TestAPICPull(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			api = getAPIC(t)
 			api.pullInterval = time.Millisecond
+			api.pullIntervalFirst = time.Millisecond
 			url, err := url.ParseRequestURI("http://api.crowdsec.net/")
 			require.NoError(t, err)
 			httpmock.Activate()
