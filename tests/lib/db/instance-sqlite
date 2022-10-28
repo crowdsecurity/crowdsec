@@ -56,7 +56,8 @@ fi
 config_yaml() {
     yq e '
         .db_config.type=strenv(DB_BACKEND) |
-            .db_config.db_path=strenv(DB_FILE)
+            .db_config.db_path=strenv(DB_FILE) |
+            .db_config.use_wal=true
     ' -i "${CONFIG_YAML}"
 }
 

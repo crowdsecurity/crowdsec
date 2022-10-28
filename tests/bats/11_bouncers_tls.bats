@@ -68,7 +68,7 @@ teardown() {
 @test "simulate one bouncer request with a valid cert" {
     run -0 curl -s --cert "${tmpdir}/bouncer.pem" --key "${tmpdir}/bouncer-key.pem" --cacert "${tmpdir}/bundle.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
     assert_output "null"
-    run -0 cscli bouncers list -o json
+    run -0 --separate-stderr cscli bouncers list -o json
     run -0 jq '. | length' <(output)
     assert_output '1'
     run -0 cscli bouncers list -o json

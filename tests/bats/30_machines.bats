@@ -28,7 +28,7 @@ teardown() {
 }
 
 @test "we have exactly one machine" {
-    run -0 cscli machines list -o json
+    run -0 --separate-stderr cscli machines list -o json
     run -0 jq -c '[. | length, .[0].machineId[0:32], .[0].isValidated]' <(output)
     assert_output '[1,"githubciXXXXXXXXXXXXXXXXXXXXXXXX",true]'
 }
@@ -39,7 +39,7 @@ teardown() {
     assert_output --partial "API credentials dumped to '/dev/null'"
 
     # we now have two machines
-    run -0 cscli machines list -o json
+    run -0 --separate-stderr cscli machines list -o json
     run -0 jq -c '[. | length, .[-1].machineId, .[0].isValidated]' <(output)
     assert_output '[2,"CiTestMachine",true]'
 
@@ -58,12 +58,12 @@ teardown() {
     assert_output --partial "Successfully registered to Local API (LAPI)"
     assert_output --partial "Local API credentials dumped to '/dev/null'"
 
-    # "the machine is not validated yet" {
-    run -0 cscli machines list -o json
+    # the machine is not validated yet
+    run -0 --separate-stderr cscli machines list -o json
     run -0 jq '.[-1].isValidated' <(output)
     assert_output 'null'
 
-    # "validate the machine" {
+    # validate the machine
     run -0 cscli machines validate CiTestMachineRegister -o human
     assert_output --partial "machine 'CiTestMachineRegister' validated successfully"
 
