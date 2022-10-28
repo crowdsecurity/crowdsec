@@ -65,6 +65,7 @@ config_yaml() {
 
 case "$1" in
     config-yaml)
+        config_yaml
         ;;
     setup)
         ;;
