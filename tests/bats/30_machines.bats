@@ -48,7 +48,7 @@ teardown() {
     assert_output --partial "machine 'CiTestMachine' deleted successfully"
 
     # we now have one machine again
-    run -0 cscli machines list -o json
+    run -0 --separate-stderr cscli machines list -o json
     run -0 jq '. | length' <(output)
     assert_output 1
 }
@@ -68,7 +68,7 @@ teardown() {
     assert_output --partial "machine 'CiTestMachineRegister' validated successfully"
 
     # the machine is now validated
-    run -0 cscli machines list -o json
+    run -0 --separate-stderr cscli machines list -o json
     run -0 jq '.[-1].isValidated' <(output)
     assert_output 'true'
 
@@ -77,7 +77,7 @@ teardown() {
     assert_output --partial "machine 'CiTestMachineRegister' deleted successfully"
 
     # we now have one machine, again
-    run -0 cscli machines list -o json
+    run -0 --separate-stderr cscli machines list -o json
     run -0 jq '. | length' <(output)
     assert_output 1
 }
