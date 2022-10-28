@@ -12,13 +12,14 @@ import (
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-//nolint: deadcode,unused // debugHandler is kept as a dev convenience: it shuts down and serialize internal state
+// nolint: deadcode,unused // debugHandler is kept as a dev convenience: it shuts down and serialize internal state
 func debugHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	var (
 		tmpFile string
@@ -290,6 +291,12 @@ func Serve(cConfig *csconfig.Config, apiReady chan bool, agentReady chan bool) e
 		}
 
 		log.Warningln("Exprhelpers loaded without database client.")
+	}
+
+	log.Printf("CTI init ? %p // Enabled : %t", cConfig.API, cConfig.API.CTI.Enabled)
+	if cConfig.API.CTI != nil && cConfig.API.CTI.Enabled {
+		log.Printf("CTI enabled !")
+		cticlient.InitCTI(*cConfig.API.CTI.Key)
 	}
 
 	if !cConfig.DisableAPI {
