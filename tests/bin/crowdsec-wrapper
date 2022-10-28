@@ -17,8 +17,8 @@ mkdir -p "${LOCAL_DIR}/var/lib/coverage"
 
 # this would be nice but doesn't work, since the binary is not running in background
 #_hup() {
-#    echo "killall -1 crowdsec.cover"
-#    killall -HUP crowdsec.cover
+#    echo "pkill -1 crowdsec.cover"
+#    pkill -HUP crowdsec.cover
 #}
 #
 ## relay the "configuration reload" signal
