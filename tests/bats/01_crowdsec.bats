@@ -103,7 +103,6 @@ teardown() {
     assert_file_contains "$log_old" "Killing parser routines"
     assert_file_contains "$log_old" "Bucket routine exiting"
     assert_file_contains "$log_old" "serve: shutting down api server"
-    assert_file_contains "$log_old" "pluginTomb dying"
     assert_file_contains "$log_old" "killing all plugins"
 
     sleep 5
