@@ -14,8 +14,9 @@ import (
 var CTIUrl = "https://cti.api.crowdsec.net/v2/smoke/"
 var CTIApiKey = ""
 
-func InitCTI(Key string) {
+func InitCTI(Key string, TTL time.Duration, Size int) {
 	CTIApiKey = Key
+	CTIInitCache(Size, TTL)
 }
 
 // This will skip a lot of map[string]interface{} and make it easier to use
