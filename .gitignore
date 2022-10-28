@@ -6,6 +6,7 @@
 *.dylib
 *~
 .pc
+.vscode
 
 # Test binaries, built with `go test -c`
 *.test
