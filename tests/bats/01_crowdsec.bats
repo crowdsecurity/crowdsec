@@ -87,7 +87,7 @@ teardown() {
 
     for ((i=0; i<30; i++)); do
         sleep 1
-        grep -q "killing all plugins" <"$log_old" && break
+        grep -q "serve: shutting down api server" <"$log_old" && break
     done
 
     echo "waited $i seconds"
@@ -103,7 +103,6 @@ teardown() {
     assert_file_contains "$log_old" "Killing parser routines"
     assert_file_contains "$log_old" "Bucket routine exiting"
     assert_file_contains "$log_old" "serve: shutting down api server"
-    assert_file_contains "$log_old" "killing all plugins"
 
     sleep 5
 
