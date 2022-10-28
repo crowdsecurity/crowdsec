@@ -20,6 +20,7 @@ import (
 type APICfg struct {
 	Client *LocalApiClientCfg `yaml:"client"`
 	Server *LocalApiServerCfg `yaml:"server"`
+	CTI    *CTICfg            `yaml:"cti"`
 }
 
 type ApiCredentialsCfg struct {
@@ -42,6 +43,33 @@ type LocalApiClientCfg struct {
 	CredentialsFilePath string             `yaml:"credentials_path,omitempty"` //credz will be edited by software, store in diff file
 	Credentials         *ApiCredentialsCfg `yaml:"-"`
 	InsecureSkipVerify  *bool              `yaml:"insecure_skip_verify"` // check if api certificate is bad or not
+}
+
+type CTICfg struct {
+	Key          *string        `yaml:"key,omitempty"`
+	CacheTimeout *time.Duration `yaml:"cache_timeout,omitempty"`
+	CacheSize    *int           `yaml:"cache_size,omitempty"`
+	Enabled      bool           `yaml:"-"`
+}
+
+func (a *CTICfg) Load() error { //XX
+	log.Warningf("CTICfg init, key = %p", a.Key)
+	if a.Key == nil {
+		a.Enabled = false
+	}
+	if a.Key != nil && *a.Key == "" {
+		return fmt.Errorf("empty cti key")
+	}
+	if a.CacheTimeout == nil {
+		a.CacheTimeout = new(time.Duration)
+		*a.CacheTimeout = 10 * time.Minute
+	}
+	if a.CacheSize == nil {
+		a.CacheSize = new(int)
+		*a.CacheSize = 100
+	}
+	a.Enabled = true
+	return nil
 }
 
 func (o *OnlineApiClientCfg) Load() error {
@@ -230,6 +258,14 @@ func (c *Config) LoadAPIServer() error {
 	if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
 		log.Printf("push and pull to Central API disabled")
 	}
+
+	log.Printf("Config load, c.API.CTI : %p", c.API.CTI)
+	if c.API.CTI != nil {
+		if err := c.API.CTI.Load(); err != nil {
+			return errors.Wrap(err, "loading CTI configuration")
+		}
+	}
+
 	if err := c.LoadDBConfig(); err != nil {
 		return err
 	}
