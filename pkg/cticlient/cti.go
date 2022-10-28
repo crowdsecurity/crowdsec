@@ -2,6 +2,7 @@ package cticlient
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -11,30 +12,46 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var CTIUrl = "https://cti.api.crowdsec.net/v2/smoke/"
+var CTIUrl = "https://cti.api.crowdsec.net"
+var CTIUrlSuffix = "/v2/smoke/"
 var CTIApiKey = ""
 
-func InitCTI(Key string, TTL time.Duration, Size int) {
-	CTIApiKey = Key
-	CTIInitCache(Size, TTL)
+func InitCTI(Key *string, TTL *time.Duration, Size *int) error {
+	if Key != nil {
+		CTIApiKey = *Key
+	} else {
+		return fmt.Errorf("CTI API key not set, CTI will not be available")
+	}
+	if Size == nil {
+		Size = new(int)
+		*Size = 1000
+	}
+	if TTL == nil {
+		TTL = new(time.Duration)
+		*TTL = 5 * time.Minute
+	}
+
+	CTIInitCache(*Size, *TTL)
+	return nil
 }
 
 // This will skip a lot of map[string]interface{} and make it easier to use
 type CTIResponse struct {
-	IpRangeScore         *int                `json:"ip_range_score"`
-	Ip                   *string             `json:"ip"`
+	IpRangeScore         int                 `json:"ip_range_score"`
+	Ip                   string              `json:"ip"`
 	IpRange              *string             `json:"ip_range"`
 	AsName               *string             `json:"as_name"`
 	AsNum                *int                `json:"as_num"`
-	Location             *CTILocationInfo    `json:"location"`
+	Location             CTILocationInfo     `json:"location"`
 	ReverseDNS           *string             `json:"reverse_dns"`
 	Behaviours           []*CTIBehaviour     `json:"behaviours"`
-	History              *CTIHistory         `json:"history"`
-	Classifications      *CTIClassifications `json:"classification"`
+	History              CTIHistory          `json:"history"`
+	Classifications      CTIClassifications  `json:"classification"`
 	AttackDetails        []*CTIAttackDetails `json:"attack_details"`
-	TargetCountries      *map[string]int     `json:"target_countries"`
+	TargetCountries      map[string]int      `json:"target_countries"`
 	BackgroundNoiseScore *int                `json:"background_noise_score"`
-	Scores               *CTIScores          `json:"scores"`
+	Scores               CTIScores           `json:"scores"`
+	References           []string            `json:"references"`
 }
 
 type CTIScores struct {
@@ -70,10 +87,10 @@ type CTIClassification struct {
 	Description string `json:"description"`
 }
 type CTIHistory struct {
-	FirstSeen string `json:"first_seen"`
-	LastSeen  string `json:"last_seen"`
-	FullAge   int    `json:"full_age"`
-	DaysAge   int    `json:"days_age"`
+	FirstSeen *string `json:"first_seen"`
+	LastSeen  *string `json:"last_seen"`
+	FullAge   int     `json:"full_age"`
+	DaysAge   int     `json:"days_age"`
 }
 
 type CTIBehaviour struct {
@@ -82,10 +99,10 @@ type CTIBehaviour struct {
 	Description string `json:"description"`
 }
 type CTILocationInfo struct {
-	Country   string  `json:"country"`
-	City      string  `json:"city"`
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
+	Country   *string  `json:"country"`
+	City      *string  `json:"city"`
+	Latitude  *float64 `json:"latitude"`
+	Longitude *float64 `json:"longitude"`
 }
 
 func (c CTIResponse) GetBehaviours() []string {
@@ -105,15 +122,14 @@ func (c CTIResponse) IsMalicious() bool {
 }
 
 func (c CTIResponse) IsPartOfCommunityBlocklist() bool {
-	if c.Classifications != nil {
-		if c.Classifications.Classifications != nil {
-			for _, v := range c.Classifications.Classifications {
-				if v.Name == "community-blocklist" {
-					return true
-				}
+	if c.Classifications.Classifications != nil {
+		for _, v := range c.Classifications.Classifications {
+			if v.Name == "community-blocklist" {
+				return true
 			}
 		}
 	}
+
 	return false
 }
 
@@ -125,13 +141,12 @@ func (c CTIResponse) GetBackgroundNoiseScore() int {
 }
 
 func (c CTIResponse) IsFalsePositive() bool {
-	if c.Classifications != nil {
-		if c.Classifications.FalsePositives != nil {
-			if len(c.Classifications.FalsePositives) > 0 {
-				return true
-			}
+	if c.Classifications.FalsePositives != nil {
+		if len(c.Classifications.FalsePositives) > 0 {
+			return true
 		}
 	}
+
 	return false
 }
 
@@ -159,7 +174,11 @@ func IpCTI(ip string) CTIResponse {
 	}
 
 	client := &http.Client{}
-	req, _ := http.NewRequest("GET", CTIUrl+ip, nil)
+	req, err := http.NewRequest("GET", CTIUrl+CTIUrlSuffix+ip, nil)
+	if err != nil {
+		log.Warningf("IpCTI : error while creating request : %s", err)
+		return ctiResponse
+	}
 	req.Header.Set("x-api-key", CTIApiKey)
 	res, err := client.Do(req)
 	if err != nil {
