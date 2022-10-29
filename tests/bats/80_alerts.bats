@@ -123,6 +123,11 @@ teardown() {
 }
 
 @test "cscli alerts delete (by id)" {
+    run -0 cscli alerts delete --help
+    if [[ ! "$output" =~ "--id string" ]]; then
+        skip "cscli alerts delete --id not supported"
+    fi
+
     # make sure there is at least one alert
     run -0 cscli decisions add -i 127.0.0.1 -d 1h -R crowdsecurity/test
     # when testing with global config, alert id is not guaranteed to be 1.
