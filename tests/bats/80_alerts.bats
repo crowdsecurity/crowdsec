@@ -128,11 +128,8 @@ teardown() {
     # when testing with global config, alert id is not guaranteed to be 1.
     # we'll just remove the first alert we find
     run -0 --separate-stderr cscli alerts list -o json
-    echo "OUTPUT: ${output}"
     run -0 jq -c '.[0].id' <(output)
     ALERT_ID="$output"
-    echo "ALERT_ID: $ALERT_ID"
-    cscli alerts list
 
     run -0 --separate-stderr cscli alerts delete --id "$ALERT_ID"
     refute_output

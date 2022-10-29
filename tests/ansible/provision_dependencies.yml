@@ -6,7 +6,6 @@
   vars_files:
     - vars/go.yml
   roles:
-    - crowdsecurity.testing.kitty
     - crowdsecurity.testing.apt_update
     - crowdsecurity.testing.go
     - crowdsecurity.testing.machine_id
