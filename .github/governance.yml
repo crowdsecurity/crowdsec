@@ -80,6 +80,18 @@ pull_request:
             success: Ready for review & merge.
             failure: Missing kind label to generate release automatically.
 
+    - prefix: area
+      list: [ "agent", "local-api", "cscli", "security", "configuration"]
+      multiple: true
+      needs:
+        comment: |
+          @$AUTHOR: There are no area labels on this PR. You can add as many areas as you see fit.
+          * `/area agent`
+          * `/area local-api`
+          * `/area cscli`
+          * `/area security`
+          * `/area configuration`
+
     - prefix: priority
       multiple: false
       list: [ 'urgent', 'important' ]

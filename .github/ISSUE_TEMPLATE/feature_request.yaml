@@ -7,6 +7,15 @@ body:
       label: What would you like to be added?
       description: |
         Significant feature requests are unlikely to make progress as issues. Please consider engaging on discord (discord.gg/crowdsec) and forums (https://discourse.crowdsec.net), instead.
+      value: |
+        For feature request please pick a kind label by removing `<!-- -->` that wrap the example lines below
+
+
+        <!-- /kind feature -->
+        <!-- Completely new feature not currently available  -->
+
+        <!-- /kind enhancement -->
+        <!-- Feature is available but this extends or adds extra functionality -->
     validations:
       required: true
 
