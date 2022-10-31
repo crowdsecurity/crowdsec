@@ -2,13 +2,13 @@ package cticlient
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
 
 	"github.com/bluele/gcache"
-	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -16,10 +16,18 @@ var CTIUrl = "https://cti.api.crowdsec.net"
 var CTIUrlSuffix = "/v2/smoke/"
 var CTIApiKey = ""
 
+// this is set for non-recoverable errors, such as 403 when querying API or empty API key
+var CTIApiEnabled = true
+
+var (
+	ErrorAuth = errors.New("unexpected http code : 403 Forbidden")
+)
+
 func InitCTI(Key *string, TTL *time.Duration, Size *int) error {
 	if Key != nil {
 		CTIApiKey = *Key
 	} else {
+		CTIApiEnabled = false
 		return fmt.Errorf("CTI API key not set, CTI will not be available")
 	}
 	if Size == nil {
@@ -33,6 +41,14 @@ func InitCTI(Key *string, TTL *time.Duration, Size *int) error {
 
 	CTIInitCache(*Size, *TTL)
 	return nil
+}
+
+func ShutdownCTI() {
+	if CTICache != nil {
+		CTICache.Purge()
+	}
+	CTIApiKey = ""
+	CTIApiEnabled = true
 }
 
 // This will skip a lot of map[string]interface{} and make it easier to use
@@ -105,6 +121,17 @@ type CTILocationInfo struct {
 	Longitude *float64 `json:"longitude"`
 }
 
+func (c CTIResponse) GetAttackDetails() []string {
+	var ret []string
+
+	if c.AttackDetails != nil {
+		for _, b := range c.AttackDetails {
+			ret = append(ret, b.Name)
+		}
+	}
+	return ret
+}
+
 func (c CTIResponse) GetBehaviours() []string {
 	var ret []string
 
@@ -116,9 +143,15 @@ func (c CTIResponse) GetBehaviours() []string {
 	return ret
 }
 
-// placeholder for now, but provide helpers to the user to make his life easier
-func (c CTIResponse) IsMalicious() bool {
-	return true
+// Provide the likelyhood of the IP being bad, based on BG noise and other factors
+func (c CTIResponse) GetMaliciousnessScore() float32 {
+	if c.IsPartOfCommunityBlocklist() {
+		return 1.0
+	}
+	if c.BackgroundNoiseScore != nil {
+		return float32(*c.BackgroundNoiseScore) / 10.0
+	}
+	return 0.0
 }
 
 func (c CTIResponse) IsPartOfCommunityBlocklist() bool {
@@ -159,48 +192,79 @@ func CTIInitCache(size int, ttl time.Duration) {
 	CacheExpiration = ttl
 }
 
-func IpCTI(ip string) CTIResponse {
+func APIQuery(ip string) (*CTIResponse, error) {
 	var ctiResponse CTIResponse
 
 	if CTIApiKey == "" {
-		log.Warningf("IpCTI : no key provided, skipping")
-		return ctiResponse
+		CTIApiEnabled = false
+		return nil, fmt.Errorf("no API key")
 	}
 
 	//already had result in cache
-	if val, err := CTICache.Get(ip); err == nil {
-		log.Debugf("IpCTI : cache hit for %s", ip)
-		return val.(CTIResponse)
+	if val, err := CTICache.Get(ip); err == nil && val != nil {
+		log.Printf("data is in cache :)")
+		//dirty cast, should be improved
+		ret := val.(CTIResponse)
+		return &ret, nil
 	}
 
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", CTIUrl+CTIUrlSuffix+ip, nil)
 	if err != nil {
-		log.Warningf("IpCTI : error while creating request : %s", err)
-		return ctiResponse
+		return nil, fmt.Errorf("error while creating request : %w", err)
 	}
 	req.Header.Set("x-api-key", CTIApiKey)
 	res, err := client.Do(req)
 	if err != nil {
-		log.Errorf("CTI query error : %s", err)
-		return ctiResponse
+		return nil, fmt.Errorf("error while querying CTI : %w", err)
 	}
 	defer res.Body.Close()
-
+	if res.StatusCode != 200 {
+		if res.StatusCode == 403 {
+			return nil, ErrorAuth
+		}
+		return nil, fmt.Errorf("unexpected http code : %s", res.Status)
+	}
 	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		log.Errorf("error reading CTI resp : %s", err)
-		return ctiResponse
+		return nil, fmt.Errorf("error reading CTI resp : %w", err)
 	}
 
 	if err := json.Unmarshal(body, &ctiResponse); err != nil {
-		log.Warningf("While querying CTI for %s : %s", ip, err)
+		return nil, err
 	}
 	//store result in cache
 	if err := CTICache.SetWithExpire(ip, ctiResponse, CacheExpiration); err != nil {
-		log.Errorf("CTI : error while caching : %s", err)
+		return &ctiResponse, fmt.Errorf("error while storing result in cache : %w", err)
 	}
 
-	log.Printf("-> %+v", spew.Sdump(ctiResponse))
+	//log.Printf("-> %+v", spew.Sdump(ctiResponse))
+	return &ctiResponse, nil
+}
+
+func IpCTI(ip string) CTIResponse {
+	var ctiResponse CTIResponse
+
+	if CTIApiEnabled == false {
+		log.Warningf("CTI API is disabled, please check your configuration")
+		return ctiResponse
+	}
+
+	if CTIApiKey == "" {
+		log.Warningf("IpCTI : no key provided, skipping")
+		return ctiResponse
+	}
+	//not very  elegant
+	val, err := APIQuery(ip)
+	if err != nil {
+		if err == ErrorAuth {
+			CTIApiEnabled = false
+			log.Errorf("Invalid API key provided, disabling CTI API")
+		}
+		log.Warningf("Error while querying CTI : %s", err)
+	}
+	if val != nil {
+		return *val
+	}
 	return ctiResponse
 }
