@@ -119,7 +119,7 @@ loop:
 			}()
 
 		case <-pluginTomb.Dying():
-			log.Infof("plugingTomb dying")
+			log.Infof("pluginTomb dying")
 			pb.watcher.tomb.Kill(errors.New("Terminating"))
 			for {
 				select {
