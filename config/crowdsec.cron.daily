@@ -6,6 +6,8 @@ test -x /usr/bin/cscli || exit 0
 
 upgraded=$(/usr/bin/cscli --error hub upgrade)
 if [ -n "$upgraded" ]; then
+    # splay initial metrics push
+    sleep $(seq 1 90 | shuf -n 1)
     systemctl reload crowdsec
 fi
 
