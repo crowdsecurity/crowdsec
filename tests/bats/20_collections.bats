@@ -100,6 +100,8 @@ teardown() {
 }
 
 @test "can remove all collections" {
+    # we may have this too, from package installs
+    run cscli parsers delete crowdsecurity/whitelists
     run -0 cscli collections remove --all
     assert_output --partial "Removed symlink [crowdsecurity/sshd]"
     assert_output --partial "Removed symlink [crowdsecurity/linux]"
