@@ -51,7 +51,7 @@ func GeoIpASN(field string, p *types.Event, ctx interface{}, plog *log.Entry) (m
 	record, err := ctx.(*geoip2.Reader).ASN(ip)
 	if err != nil {
 		plog.Errorf("Unable to enrich ip '%s'", field)
-		return nil, nil
+		return nil, nil //nolint:nilerr
 	}
 	ret["ASNNumber"] = fmt.Sprintf("%d", record.AutonomousSystemNumber)
 	ret["ASNumber"] = fmt.Sprintf("%d", record.AutonomousSystemNumber)
@@ -75,7 +75,7 @@ func GeoIpCity(field string, p *types.Event, ctx interface{}, plog *log.Entry) (
 	record, err := ctx.(*geoip2.Reader).City(ip)
 	if err != nil {
 		plog.Debugf("Unable to enrich ip '%s'", ip)
-		return nil, nil
+		return nil, nil //nolint:nilerr
 	}
 	if record.Country.IsoCode != "" {
 		ret["IsoCode"] = record.Country.IsoCode
