@@ -296,7 +296,7 @@ func Serve(cConfig *csconfig.Config, apiReady chan bool, agentReady chan bool) e
 	log.Printf("CTI init ? %p // Enabled : %t", cConfig.API, cConfig.API.CTI.Enabled)
 	if cConfig.API.CTI != nil && cConfig.API.CTI.Enabled {
 		log.Printf("CTI enabled !")
-		cticlient.InitCTI(*cConfig.API.CTI.Key)
+		cticlient.InitCTI(cConfig.API.CTI.Key, cConfig.API.CTI.CacheTimeout, cConfig.API.CTI.CacheSize)
 	}
 
 	if !cConfig.DisableAPI {
