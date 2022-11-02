@@ -82,12 +82,16 @@ teardown() {
     # this won't work as crowdsec-wrapper does not relay the signal
     # run -0 kill -HUP "$PID"
 
-    run killall -HUP "$BIN_DIR/crowdsec.cover"
-    run killall -HUP "$BIN_DIR/crowdsec"
+    # During functional tests, crowdsec is often run from a wrapper script,
+    # which captures its output (for coverage reports) and cannot relay signals
+    # at the same time. So instead of sending a SIGHUP to the wrapper, we send
+    # it to the crowdsec process by name - with or without coverage.
+    run pkill -HUP -f "$BIN_DIR/crowdsec.cover"
+    run pkill -HUP -f "$BIN_DIR/crowdsec"
 
-    for ((i=0; i<20; i++)); do
+    for ((i=0; i<10; i++)); do
         sleep 1
-        grep -q "killing all plugins" <"$log_old" && break
+        grep -q "serve: shutting down api server" <"$log_old" && break
     done
 
     echo "waited $i seconds"
@@ -103,14 +107,12 @@ teardown() {
     assert_file_contains "$log_old" "Killing parser routines"
     assert_file_contains "$log_old" "Bucket routine exiting"
     assert_file_contains "$log_old" "serve: shutting down api server"
-    assert_file_contains "$log_old" "plugingTomb dying"
-    assert_file_contains "$log_old" "killing all plugins"
 
     sleep 5
 
     assert_file_exist "$log_new"
 
-    for ((i=0; i<20; i++)); do
+    for ((i=0; i<10; i++)); do
         sleep 1
         grep -q "Reload is finished" <"$log_old" && break
     done
