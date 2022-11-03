@@ -133,7 +133,7 @@ if [ "$DISABLE_POSTOVERFLOWS" != "" ]; then
 fi
 
 function register_bouncer {
-  if ! cscli -c "$CS_CONFIG_FILE" bouncers list -o json | jq -r .[].name | grep -q "${NAME}"; then
+  if ! cscli -c "$CS_CONFIG_FILE" bouncers list -o raw | cut -d "," -f1 | tail -1 | grep -q "${NAME}"; then
       if cscli -c "$CS_CONFIG_FILE" bouncers add "${NAME}" -k "${KEY}" > /dev/null; then
           echo "Registered bouncer for ${NAME}"
       else
