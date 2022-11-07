@@ -5,18 +5,20 @@ FROM golang:${GOVERSION}-alpine AS build
 
 WORKDIR /go/src/crowdsec
 
-# wizard.sh requires GNU coreutils
-RUN apk add --no-cache git gcc libc-dev make bash gettext binutils-gold coreutils
-
 COPY . .
 
-RUN SYSTEM="docker" make release
-RUN cd crowdsec-v* && ./wizard.sh --docker-mode && cd -
-RUN cscli hub update
-RUN cscli collections install crowdsecurity/linux
-RUN cscli parsers install crowdsecurity/whitelists
+# wizard.sh requires GNU coreutils
+RUN apk add --no-cache git gcc libc-dev make bash gettext binutils-gold coreutils && \
+    SYSTEM="docker" make release && \
+    cd crowdsec-v* && \
+    ./wizard.sh --docker-mode && \
+    cd - && \
+    cscli hub update && \
+    cscli collections install crowdsecurity/linux && \
+    cscli parsers install crowdsecurity/whitelists
 
 FROM alpine:latest as build-slim
+
 RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community tzdata yq bash && \
     mkdir -p /staging/etc/crowdsec && \
     mkdir -p /staging/var/lib/crowdsec && \
@@ -26,6 +28,8 @@ COPY --from=build /usr/local/bin/crowdsec /usr/local/bin/crowdsec
 COPY --from=build /usr/local/bin/cscli /usr/local/bin/cscli
 COPY --from=build /go/src/crowdsec/docker/docker_start.sh /
 COPY --from=build /go/src/crowdsec/docker/config.yaml /staging/etc/crowdsec/config.yaml
+
+ENTRYPOINT /bin/bash docker_start.sh
 
 FROM build-slim as build-plugins
 # Due to the wizard using cp -n, we have to copy the config files directly from the source as -n does not exist in busybox cp
@@ -45,5 +49,3 @@ FROM build-plugins as build-full
 COPY --from=build /var/lib/crowdsec /staging/var/lib/crowdsec
 
 FROM build-${BUILD_ENV}
-
-ENTRYPOINT /bin/bash docker_start.sh
