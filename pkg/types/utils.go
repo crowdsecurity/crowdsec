@@ -210,10 +210,9 @@ func CopyFile(sourceSymLink, destinationFile string) (err error) {
 			return
 		}
 	}
-	if err = os.Link(sourceFile, destinationFile); err == nil {
-		return
+	if err = os.Link(sourceFile, destinationFile); err != nil {
+		err = copyFileContents(sourceFile, destinationFile)
 	}
-	err = copyFileContents(sourceFile, destinationFile)
 	return
 }
 

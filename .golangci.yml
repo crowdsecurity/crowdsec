@@ -71,6 +71,7 @@ linters:
     # - exportloopref       # checks for pointers to enclosing loop variables
     # - funlen              # Tool for detection of long functions
     # - gochecknoinits      # Checks that no init functions are present in Go code
+    # - gocritic            # Provides diagnostics that check for bugs, performance and style issues.
     # - goheader            # Checks is file header matches to pattern
     # - gomoddirectives     # Manage the use of 'replace', 'retract', and 'excludes' directives in go.mod.
     # - gomodguard          # Allow and block list linter for direct Go module dependencies. This is different from depguard where there are different block types for example version constraints and module recommendations.
@@ -84,6 +85,7 @@ linters:
     # - logrlint            # Check logr arguments.
     # - makezero            # Finds slice declarations with non-zero initial length
     # - misspell            # Finds commonly misspelled English words in comments
+    # - nilerr              # Finds the code that returns nil even if it checks that the error is not nil.
     # - nolintlint          # Reports ill-formed or insufficient nolint directives
     # - predeclared         # find code that shadows one of Go's predeclared identifiers
     # - reassign            # Checks that package variables are not reassigned
@@ -107,14 +109,12 @@ linters:
     - errorlint             # errorlint is a linter for that can be used to find code that will cause problems with the error wrapping scheme introduced in Go 1.13.
     - exhaustive            # check exhaustiveness of enum switch statements
     - gci                   # Gci control golang package import order and make it always deterministic.
-    - gocritic              # Provides diagnostics that check for bugs, performance and style issues.
     - godot                 # Check if comments end in a period
     - gofmt                 # Gofmt checks whether code was gofmt-ed. By default this tool runs with -s option to check for code simplification
     - goimports             # In addition to fixing imports, goimports also formats your code in the same style as gofmt.
     - gosec                 # (gas): Inspects source code for security problems
     - lll                   # Reports long lines
     - nakedret              # Finds naked returns in functions greater than a specified function length
-    - nilerr                # Finds the code that returns nil even if it checks that the error is not nil.
     - nonamedreturns        # Reports all named returns
     - nosprintfhostport     # Checks for misuse of Sprintf to construct a host with port in a URL.
     - promlinter            # Check Prometheus metrics naming via promlint
@@ -199,3 +199,23 @@ issues:
     - linters:
         - errcheck
       text: "Error return value of `.*` is not checked"
+
+    #
+    # gocritic
+    #
+
+    - linters:
+        - gocritic
+      text: "ifElseChain: rewrite if-else to switch statement"
+
+    - linters:
+        - gocritic
+      text: "captLocal: `.*' should not be capitalized"
+
+    - linters:
+        - gocritic
+      text: "appendAssign: append result not assigned to the same slice"
+
+    - linters:
+        - gocritic
+      text: "commentFormatting: put a space between `//` and comment text"
