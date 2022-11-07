@@ -13,11 +13,17 @@ KEY_FILE="${KEY_FILE:-/etc/ssl/key.pem}"
 # Plugins directory default
 PLUGIN_DIR="${PLUGIN_DIR:-/usr/local/lib/crowdsec/plugins/}"
 
-#Check & prestage databases
-if [ ! -e "/var/lib/crowdsec/data/GeoLite2-ASN.mmdb" ] && [ ! -e "/var/lib/crowdsec/data/GeoLite2-City.mmdb" ]; then
-    mkdir -p /var/lib/crowdsec/data
-    cp /staging/var/lib/crowdsec/data/*.mmdb /var/lib/crowdsec/data/
-fi
+# Check & prestage databases
+for geodb in GeoLite2-ASN.mmdb GeoLite2-City.mmdb; do
+    # We keep the pre-populated geoib databases in /staging instead of /var,
+    # because if the data directory is bind-mounted from the host, it will be
+    # empty and the files will be out of reach, requiring a runtime download.
+    # We link to them to save about 80Mb compared to cp/mv.
+    if [ ! -e "/var/lib/crowdsec/data/$geodb" ] && [ -e "/staging/var/lib/crowdsec/data/$geodb" ]; then
+        mkdir -p /var/lib/crowdsec/data
+        ln -s "/staging/var/lib/crowdsec/data/$geodb" /var/lib/crowdsec/data/
+    fi
+done
 
 #Check & prestage /etc/crowdsec
 if [ ! -e "/etc/crowdsec/local_api_credentials.yaml" ] && [ ! -e "/etc/crowdsec/config.yaml" ]; then
@@ -72,6 +78,7 @@ if [ "${DISABLE_ONLINE_API,,}" != "true" ] && [ "$ENROLL_KEY" != "" ] ; then
         enroll_args="--name $ENROLL_INSTANCE_NAME"
     fi
     if [ "$ENROLL_TAGS"  != "" ] ; then
+        #shellcheck disable=SC2086
         for tag in ${ENROLL_TAGS}
         do
             enroll_args="$enroll_args --tags $tag"
