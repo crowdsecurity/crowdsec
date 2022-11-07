@@ -44,6 +44,8 @@ func getEntDriver(dbtype string, dbdialect string, dsn string, config *csconfig.
 	return drv, nil
 }
 
+var WarnedAboutWalMode = false
+
 func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 	var client *ent.Client
 	var err error
@@ -77,8 +79,9 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 		if err := setFilePerm(config.DbPath, 0600); err != nil {
 			return &Client{}, fmt.Errorf("unable to set perms on %s: %v", config.DbPath, err)
 		}
-		if config.UseWal == nil {
-			entLogger.Warn("you are using sqlite without WAL, this can have an impact of performance. If you do not store the database in a network share, set db_config.use_wal to true. Set explicitly to false to disable this warning.")
+		if config.UseWal == nil && !WarnedAboutWalMode {
+			entLogger.Warn("You are using sqlite without WAL, this can have an impact of performance. If you do not store the database in a network share, set db_config.use_wal to true. Set explicitly to false to disable this warning.")
+			WarnedAboutWalMode = true
 		}
 		var sqliteConnectionStringParameters string
 		if config.UseWal != nil && *config.UseWal {
