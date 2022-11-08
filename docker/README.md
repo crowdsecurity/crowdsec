@@ -29,7 +29,7 @@ since v1.4.2:
  - crowdsecurity/crowdsec:slim
 
 Reduced size by 60%, does not include notifier plugins nor the GeoIP database.
-If you need these details on decisions, running "cscli hub upgrade" inside the
+If you need these details on decisions, running `cscli hub upgrade` inside the
 container downloads the GeoIP database at runtime.
 
 
