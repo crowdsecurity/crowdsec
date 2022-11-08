@@ -13,11 +13,17 @@ KEY_FILE="${KEY_FILE:-/etc/ssl/key.pem}"
 # Plugins directory default
 PLUGIN_DIR="${PLUGIN_DIR:-/usr/local/lib/crowdsec/plugins/}"
 
-#Check & prestage databases
-if [ ! -e "/var/lib/crowdsec/data/GeoLite2-ASN.mmdb" ] && [ ! -e "/var/lib/crowdsec/data/GeoLite2-City.mmdb" ]; then
-    mkdir -p /var/lib/crowdsec/data
-    cp /staging/var/lib/crowdsec/data/*.mmdb /var/lib/crowdsec/data/
-fi
+# Check & prestage databases
+for geodb in GeoLite2-ASN.mmdb GeoLite2-City.mmdb; do
+    # We keep the pre-populated geoib databases in /staging instead of /var,
+    # because if the data directory is bind-mounted from the host, it will be
+    # empty and the files will be out of reach, requiring a runtime download.
+    # We link to them to save about 80Mb compared to cp/mv.
+    if [ ! -e "/var/lib/crowdsec/data/$geodb" ] && [ -e "/staging/var/lib/crowdsec/data/$geodb" ]; then
+        mkdir -p /var/lib/crowdsec/data
+        ln -s "/staging/var/lib/crowdsec/data/$geodb" /var/lib/crowdsec/data/
+    fi
+done
 
 #Check & prestage /etc/crowdsec
 if [ ! -e "/etc/crowdsec/local_api_credentials.yaml" ] && [ ! -e "/etc/crowdsec/config.yaml" ]; then
@@ -28,18 +34,18 @@ fi
 # regenerate local agent credentials (ignore if agent is disabled)
 if [ "$DISABLE_AGENT" == "" ] ; then
     echo "Regenerate local agent credentials"
-    cscli -c "$CS_CONFIG_FILE" machines delete ${CUSTOM_HOSTNAME:-localhost}
+    cscli -c "$CS_CONFIG_FILE" machines delete "${CUSTOM_HOSTNAME:-localhost}"
     if [ "$LOCAL_API_URL" != "" ] ; then
-        cscli -c "$CS_CONFIG_FILE" machines add ${CUSTOM_HOSTNAME:-localhost} --auto --url $LOCAL_API_URL
+        cscli -c "$CS_CONFIG_FILE" machines add "${CUSTOM_HOSTNAME:-localhost}" --auto --url "$LOCAL_API_URL"
     else
-        cscli -c "$CS_CONFIG_FILE" machines add ${CUSTOM_HOSTNAME:-localhost} --auto
+        cscli -c "$CS_CONFIG_FILE" machines add "${CUSTOM_HOSTNAME:-localhost}" --auto
     fi
     if [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] && [ "$LOCAL_API_URL" != "" ] ; then
         echo "set up lapi credentials for agent"
         CONFIG_PATH=$(yq eval '.api.client.credentials_path' "$CS_CONFIG_FILE" )
-        echo "url: $LOCAL_API_URL" > $CONFIG_PATH
-        echo "login: $AGENT_USERNAME" >> $CONFIG_PATH
-        echo "password: $AGENT_PASSWORD" >> $CONFIG_PATH
+        echo "url: $LOCAL_API_URL" > "$CONFIG_PATH"
+        echo "login: $AGENT_USERNAME" >> "$CONFIG_PATH"
+        echo "password: $AGENT_PASSWORD" >> "$CONFIG_PATH"
     fi
 fi
 
@@ -47,9 +53,9 @@ fi
 echo "Check if lapi need to register automatically an agent"
 if [ "$DISABLE_LOCAL_API" == "" ] && [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] ; then
     if [ "$LOCAL_API_URL" != "" ] ; then
-        cscli -c "$CS_CONFIG_FILE" machines add $AGENT_USERNAME --password $AGENT_PASSWORD --url $LOCAL_API_URL
+        cscli -c "$CS_CONFIG_FILE" machines add "$AGENT_USERNAME" --password "$AGENT_PASSWORD" --url "$LOCAL_API_URL"
     else
-        cscli -c "$CS_CONFIG_FILE" machines add $AGENT_USERNAME --password $AGENT_PASSWORD
+        cscli -c "$CS_CONFIG_FILE" machines add "$AGENT_USERNAME" --password "$AGENT_PASSWORD"
     fi
     echo "Agent registered to lapi"
 fi
@@ -72,12 +78,14 @@ if [ "${DISABLE_ONLINE_API,,}" != "true" ] && [ "$ENROLL_KEY" != "" ] ; then
         enroll_args="--name $ENROLL_INSTANCE_NAME"
     fi
     if [ "$ENROLL_TAGS"  != "" ] ; then
+        #shellcheck disable=SC2086
         for tag in ${ENROLL_TAGS}
         do
             enroll_args="$enroll_args --tags $tag"
         done
     fi
-    cscli console enroll $enroll_args $ENROLL_KEY
+    #shellcheck disable=SC2086
+    cscli console enroll $enroll_args "$ENROLL_KEY"
 fi
 
 # crowdsec sqlite database permissions
@@ -85,7 +93,7 @@ if [ "$GID" != "" ]; then
     IS_SQLITE=$(yq eval '.db_config.type == "sqlite"' "$CS_CONFIG_FILE")
     DB_PATH=$(yq eval '.db_config.db_path' "$CS_CONFIG_FILE")
     if [ "$IS_SQLITE" == "true" ]; then
-        chown :$GID $DB_PATH
+        chown ":$GID" "$DB_PATH"
         echo "sqlite database permissions updated"
     fi
 fi
@@ -106,29 +114,37 @@ cscli -c "$CS_CONFIG_FILE" collections upgrade crowdsecurity/linux || true
 cscli -c "$CS_CONFIG_FILE" parsers upgrade crowdsecurity/whitelists || true
 cscli -c "$CS_CONFIG_FILE" parsers install crowdsecurity/docker-logs || true
 if [ "$COLLECTIONS" != "" ]; then
+    #shellcheck disable=SC2086
     cscli -c "$CS_CONFIG_FILE" collections install $COLLECTIONS
 fi
 if [ "$PARSERS" != "" ]; then
+    #shellcheck disable=SC2086
     cscli -c "$CS_CONFIG_FILE" parsers install $PARSERS
 fi
 if [ "$SCENARIOS" != "" ]; then
+    #shellcheck disable=SC2086
     cscli -c "$CS_CONFIG_FILE" scenarios install $SCENARIOS
 fi
 if [ "$POSTOVERFLOWS" != "" ]; then
+    #shellcheck disable=SC2086
     cscli -c "$CS_CONFIG_FILE" postoverflows install $POSTOVERFLOWS
 fi
 
 ## Remove collections, parsers, scenarios & postoverflows
 if [ "$DISABLE_COLLECTIONS" != "" ]; then
+    #shellcheck disable=SC2086
     cscli -c "$CS_CONFIG_FILE" collections remove $DISABLE_COLLECTIONS
 fi
 if [ "$DISABLE_PARSERS" != "" ]; then
+    #shellcheck disable=SC2086
     cscli -c "$CS_CONFIG_FILE" parsers remove $DISABLE_PARSERS
 fi
 if [ "$DISABLE_SCENARIOS" != "" ]; then
+    #shellcheck disable=SC2086
     cscli -c "$CS_CONFIG_FILE" scenarios remove $DISABLE_SCENARIOS
 fi
 if [ "$DISABLE_POSTOVERFLOWS" != "" ]; then
+    #shellcheck disable=SC2086
     cscli -c "$CS_CONFIG_FILE" postoverflows remove $DISABLE_POSTOVERFLOWS
 fi
 
@@ -192,4 +208,5 @@ if [ "${LEVEL_INFO,,}" == "true" ]; then
     ARGS="$ARGS -info"
 fi
 
+#shellcheck disable=SC2086
 exec crowdsec $ARGS
