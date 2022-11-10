@@ -38,10 +38,8 @@ func TestPri(t *testing.T) {
 			} else {
 				if test.expectedErr != "" {
 					t.Errorf("expected error %s, got no error", test.expectedErr)
-				} else {
-					if r.PRI != test.expected {
-						t.Errorf("expected %d, got %d", test.expected, r.PRI)
-					}
+				} else if r.PRI != test.expected {
+					t.Errorf("expected %d, got %d", test.expected, r.PRI)
 				}
 			}
 		})
@@ -94,10 +92,8 @@ func TestHostname(t *testing.T) {
 			} else {
 				if test.expectedErr != "" {
 					t.Errorf("expected error %s, got no error", test.expectedErr)
-				} else {
-					if r.Hostname != test.expected {
-						t.Errorf("expected %s, got %s", test.expected, r.Hostname)
-					}
+				} else if r.Hostname != test.expected {
+					t.Errorf("expected %s, got %s", test.expected, r.Hostname)
 				}
 			}
 		})

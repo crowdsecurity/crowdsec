@@ -375,7 +375,7 @@ func TestGeneratePatternsDoc(t *testing.T) {
 	i := 0
 	for key, val := range pctx.Grok {
 		p[i] = Pair{key, val}
-		p[i].Value = strings.Replace(p[i].Value, "{%{", "\\{\\%\\{", -1)
+		p[i].Value = strings.ReplaceAll(p[i].Value, "{%{", "\\{\\%\\{")
 		i++
 	}
 	sort.Sort(p)
