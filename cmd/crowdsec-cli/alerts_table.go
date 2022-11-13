@@ -32,7 +32,7 @@ func alertsTable(out io.Writer, alerts *models.GetAlertsResponse, printMachine b
 			displayVal,
 			*alertItem.Scenario,
 			alertItem.Source.Cn,
-			alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
+			alertItem.Source.GetAsNumberName(),
 			DecisionsFromAlert(alertItem),
 			*alertItem.StartAt,
 		}

@@ -65,7 +65,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 				*alertItem.Source.Value,
 				*alertItem.Scenario,
 				alertItem.Source.Cn,
-				alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
+				alertItem.Source.GetAsNumberName(),
 				DecisionsFromAlert(alertItem),
 				*alertItem.StartAt,
 			}

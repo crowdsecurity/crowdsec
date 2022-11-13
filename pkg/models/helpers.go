@@ -63,3 +63,14 @@ func (s Source) GetScope() string {
 	}
 	return *s.Scope
 }
+
+func (s Source) GetAsNumberName() string {
+	ret := ""
+	if s.AsNumber != "0" {
+		ret += s.AsNumber
+	}
+	if s.AsName != "" {
+		ret += " " + s.AsName
+	}
+	return ret
+}

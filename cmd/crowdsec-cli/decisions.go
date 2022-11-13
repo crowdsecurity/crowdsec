@@ -72,7 +72,7 @@ func DecisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error
 					*decisionItem.Scenario,
 					*decisionItem.Type,
 					alertItem.Source.Cn,
-					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
+					alertItem.Source.GetAsNumberName(),
 					fmt.Sprintf("%d", *alertItem.EventsCount),
 					*decisionItem.Duration,
 					fmt.Sprintf("%t", *decisionItem.Simulated),

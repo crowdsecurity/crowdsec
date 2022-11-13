@@ -29,7 +29,7 @@ func decisionsTable(out io.Writer, alerts *models.GetAlertsResponse, printMachin
 				*decisionItem.Scenario,
 				*decisionItem.Type,
 				alertItem.Source.Cn,
-				alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
+				alertItem.Source.GetAsNumberName(),
 				strconv.Itoa(int(*alertItem.EventsCount)),
 				*decisionItem.Duration,
 				strconv.Itoa(int(alertItem.ID)),
