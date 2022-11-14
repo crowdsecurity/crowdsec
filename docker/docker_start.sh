@@ -3,6 +3,7 @@
 echo "CONFIG_FILE: $CONFIG_FILE"
 echo "DISABLE_ONLINE_API: $DISABLE_ONLINE_API"
 echo "USE_TLS: $USE_TLS"
+echo "CA_CERT_PATH: $CA_CERT_PATH"
 echo "CERT_FILE: $CERT_FILE"
 echo "KEY_FILE: $KEY_FILE"
 
@@ -95,9 +96,12 @@ if [ "$GID" != "" ]; then
 fi
 
 if [ "${USE_TLS,,}" == "true" ]; then
-    yq -i eval ".api.server.tls.cert_file = \"$CERT_FILE\"" "$CONFIG_FILE"
-    yq -i eval ".api.server.tls.key_file = \"$KEY_FILE\"" "$CONFIG_FILE"
-    yq -i eval '... comments=""' "$CONFIG_FILE"
+    yq -i eval '
+        .api.server.tls.ca_cert_path = strenv(CA_CERT_PATH) |
+        .api.server.tls.cert_file = strenv(CERT_FILE) |
+        .api.server.tls.key_file = strenv(KEY_FILE) |
+        ... comments=""
+        ' "$CONFIG_FILE"
 fi
 
 if [ "$PLUGIN_DIR" != "/usr/local/lib/crowdsec/plugins/" ]; then
