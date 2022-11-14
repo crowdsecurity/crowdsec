@@ -32,6 +32,7 @@ COPY --from=build /go/src/crowdsec/docker/config.yaml /staging/etc/crowdsec/conf
 ENV CONFIG_FILE=/etc/crowdsec/config.yaml
 ENV DISABLE_ONLINE_API=false
 ENV USE_TLS=false
+ENV CA_CERT_PATH=
 ENV CERT_FILE=/etc/ssl/cert.pem
 ENV KEY_FILE=/etc/ssl/key.pem
 
