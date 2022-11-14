@@ -29,6 +29,7 @@ COPY --from=build /usr/local/bin/cscli /usr/local/bin/cscli
 COPY --from=build /go/src/crowdsec/docker/docker_start.sh /
 COPY --from=build /go/src/crowdsec/docker/config.yaml /staging/etc/crowdsec/config.yaml
 
+ENV DEBUG=false
 ENV CONFIG_FILE=/etc/crowdsec/config.yaml
 ENV DISABLE_ONLINE_API=false
 ENV USE_TLS=false

@@ -1,11 +1,24 @@
 #!/bin/bash
 
-echo "CONFIG_FILE: $CONFIG_FILE"
-echo "DISABLE_ONLINE_API: $DISABLE_ONLINE_API"
-echo "USE_TLS: $USE_TLS"
-echo "CA_CERT_PATH: $CA_CERT_PATH"
-echo "CERT_FILE: $CERT_FILE"
-echo "KEY_FILE: $KEY_FILE"
+#shellcheck disable=SC2292
+
+istrue() {
+  case "$(echo "$1" | tr '[:upper:]' '[:lower:]')" in
+    true) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+if istrue "$DEBUG"; then
+  echo "CONFIG_FILE: $CONFIG_FILE"
+  echo "DISABLE_ONLINE_API: $DISABLE_ONLINE_API"
+  echo "USE_TLS: $USE_TLS"
+  echo "CA_CERT_PATH: $CA_CERT_PATH"
+  echo "CERT_FILE: $CERT_FILE"
+  echo "KEY_FILE: $KEY_FILE"
+
+  set -x
+fi
 
 # Plugins directory default
 PLUGIN_DIR="${PLUGIN_DIR:-/usr/local/lib/crowdsec/plugins/}"
@@ -29,20 +42,34 @@ if [ ! -e "/etc/crowdsec/local_api_credentials.yaml" ] && [ ! -e "/etc/crowdsec/
 fi
 
 # regenerate local agent credentials (ignore if agent is disabled)
-if [ "$DISABLE_AGENT" == "" ] ; then
+if ! istrue "$DISABLE_AGENT"; then
     echo "Regenerate local agent credentials"
+
     cscli -c "$CONFIG_FILE" machines delete "${CUSTOM_HOSTNAME:-localhost}"
     if [ "$LOCAL_API_URL" != "" ] ; then
         cscli -c "$CONFIG_FILE" machines add "${CUSTOM_HOSTNAME:-localhost}" --auto --url "$LOCAL_API_URL"
     else
         cscli -c "$CONFIG_FILE" machines add "${CUSTOM_HOSTNAME:-localhost}" --auto
     fi
-    if [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] && [ "$LOCAL_API_URL" != "" ] ; then
-        echo "set up lapi credentials for agent"
-        CONFIG_PATH=$(yq eval '.api.client.credentials_path' "$CONFIG_FILE" )
-        echo "url: $LOCAL_API_URL" > "$CONFIG_PATH"
-        echo "login: $AGENT_USERNAME" >> "$CONFIG_PATH"
-        echo "password: $AGENT_PASSWORD" >> "$CONFIG_PATH"
+
+    echo "set up lapi credentials for agent"
+    LAPI_CREDENTIALS_PATH=$(yq eval '.api.client.credentials_path' "$CONFIG_FILE" )
+
+    if istrue "$USE_TLS"; then
+        install -m 0600 /dev/null "$LAPI_CREDENTIALS_PATH"
+        yq eval -i '
+            .url = strenv(LOCAL_API_URL) |
+            .ca_cert_path = strenv(CA_CERT_PATH) |
+            .key_path = strenv(KEY_FILE) |
+            .cert_path = strenv(CERT_FILE)
+        ' "$LAPI_CREDENTIALS_PATH"
+    elif [ "$AGENT_USERNAME" != "" ]; then
+        install -m 0600 /dev/null "$LAPI_CREDENTIALS_PATH"
+        yq eval -i '
+            .url = strenv(LOCAL_API_URL) |
+            .login = strenv(AGENT_USERNAME) |
+            .password = strenv(AGENT_PASSWORD)
+        ' "$LAPI_CREDENTIALS_PATH"
     fi
 fi
 
@@ -61,8 +88,7 @@ fi
 if [ "${DISABLE_ONLINE_API,,}" != "true" ] && [ "$CONFIG_FILE" == "/etc/crowdsec/config.yaml" ] ; then
     CONFIG_EXIST=$(yq eval '.api.server.online_client | has("credentials_path")' "$CONFIG_FILE")
     if [ "$CONFIG_EXIST" != "true" ]; then
-        yq eval '.api.server.online_client = {"credentials_path": "/etc/crowdsec/online_api_credentials.yaml"}' "$CONFIG_FILE" > /etc/crowdsec/config2.yaml
-        mv /etc/crowdsec/config2.yaml "$CONFIG_FILE"
+        yq -i eval '.api.server.online_client = {"credentials_path": "/etc/crowdsec/online_api_credentials.yaml"}' "$CONFIG_FILE"
         cscli -c "$CONFIG_FILE" capi register > /etc/crowdsec/online_api_credentials.yaml
         echo "registration to online API done"
     fi
