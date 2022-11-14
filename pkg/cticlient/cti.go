@@ -12,15 +12,20 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var CTIUrl = "https://cti.api.crowdsec.net"
+var CTIUrl = "https://cti.api.dev.crowdsec.net"
 var CTIUrlSuffix = "/v2/smoke/"
 var CTIApiKey = ""
 
 // this is set for non-recoverable errors, such as 403 when querying API or empty API key
 var CTIApiEnabled = true
 
+// when hitting quotas or auth errors, we temporarily disable the API
+var CTIBackOffUntil time.Time
+var CTIBackOffDuration time.Duration = 5 * time.Minute
+
 var (
-	ErrorAuth = errors.New("unexpected http code : 403 Forbidden")
+	ErrorAuth  = errors.New("unexpected http code : 403 Forbidden")
+	ErrorLimit = errors.New("limit exceeded")
 )
 
 func InitCTI(Key *string, TTL *time.Duration, Size *int) error {
@@ -40,6 +45,7 @@ func InitCTI(Key *string, TTL *time.Duration, Size *int) error {
 	}
 
 	CTIInitCache(*Size, *TTL)
+	log.Warningf("heree wee gooooo")
 	return nil
 }
 
@@ -143,13 +149,13 @@ func (c CTIResponse) GetBehaviours() []string {
 	return ret
 }
 
-// Provide the likelyhood of the IP being bad, based on BG noise and other factors
+// Provide the likelyhood of the IP being bad
 func (c CTIResponse) GetMaliciousnessScore() float32 {
 	if c.IsPartOfCommunityBlocklist() {
 		return 1.0
 	}
-	if c.BackgroundNoiseScore != nil {
-		return float32(*c.BackgroundNoiseScore) / 10.0
+	if c.Scores.LastDay.Total > 0 {
+		return float32(c.Scores.LastDay.Total) / 10.0
 	}
 	return 0.0
 }
@@ -208,6 +214,12 @@ func APIQuery(ip string) (*CTIResponse, error) {
 		return &ret, nil
 	}
 
+	//we're told to back off
+	if !CTIBackOffUntil.IsZero() && time.Now().Before(CTIBackOffUntil) {
+		log.Warningf("CTI API is in backoff mode, will try again in %s", time.Now().Sub(CTIBackOffUntil))
+		return &ctiResponse, nil
+	}
+
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", CTIUrl+CTIUrlSuffix+ip, nil)
 	if err != nil {
@@ -220,8 +232,15 @@ func APIQuery(ip string) (*CTIResponse, error) {
 	}
 	defer res.Body.Close()
 	if res.StatusCode != 200 {
+		//auth error
 		if res.StatusCode == 403 {
 			return nil, ErrorAuth
+		}
+		//limit exceeded
+		if res.StatusCode == 429 {
+			CTIBackOffUntil = time.Now().Add(CTIBackOffDuration)
+			return nil, ErrorLimit
+
 		}
 		return nil, fmt.Errorf("unexpected http code : %s", res.Status)
 	}
@@ -245,6 +264,8 @@ func APIQuery(ip string) (*CTIResponse, error) {
 func IpCTI(ip string) CTIResponse {
 	var ctiResponse CTIResponse
 
+	log.Warningf("lalalallaal")
+
 	if CTIApiEnabled == false {
 		log.Warningf("CTI API is disabled, please check your configuration")
 		return ctiResponse
@@ -263,6 +284,7 @@ func IpCTI(ip string) CTIResponse {
 		}
 		log.Warningf("Error while querying CTI : %s", err)
 	}
+	log.Printf("-> %+v", val)
 	if val != nil {
 		return *val
 	}
