@@ -29,9 +29,16 @@ COPY --from=build /usr/local/bin/cscli /usr/local/bin/cscli
 COPY --from=build /go/src/crowdsec/docker/docker_start.sh /
 COPY --from=build /go/src/crowdsec/docker/config.yaml /staging/etc/crowdsec/config.yaml
 
+ENV CONFIG_FILE=/etc/crowdsec/config.yaml
+ENV DISABLE_ONLINE_API=false
+ENV USE_TLS=false
+ENV CERT_FILE=/etc/ssl/cert.pem
+ENV KEY_FILE=/etc/ssl/key.pem
+
 ENTRYPOINT /bin/bash docker_start.sh
 
 FROM build-slim as build-plugins
+
 # Due to the wizard using cp -n, we have to copy the config files directly from the source as -n does not exist in busybox cp
 # The files are here for reference, as users will need to mount a new version to be actually able to use notifications
 COPY --from=build /go/src/crowdsec/plugins/notifications/email/email.yaml /staging/etc/crowdsec/notifications/email.yaml

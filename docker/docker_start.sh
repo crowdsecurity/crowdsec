@@ -1,14 +1,10 @@
 #!/bin/bash
 
-# Set the crowdsec config file
-CS_CONFIG_FILE="/etc/crowdsec/config.yaml"
-if [ "$CONFIG_FILE" != "" ]; then
-    CS_CONFIG_FILE="$CONFIG_FILE"
-fi
-
-# TLS defaults
-CERT_FILE="${CERT_FILE:-/etc/ssl/cert.pem}"
-KEY_FILE="${KEY_FILE:-/etc/ssl/key.pem}"
+echo "CONFIG_FILE: $CONFIG_FILE"
+echo "DISABLE_ONLINE_API: $DISABLE_ONLINE_API"
+echo "USE_TLS: $USE_TLS"
+echo "CERT_FILE: $CERT_FILE"
+echo "KEY_FILE: $KEY_FILE"
 
 # Plugins directory default
 PLUGIN_DIR="${PLUGIN_DIR:-/usr/local/lib/crowdsec/plugins/}"
@@ -34,15 +30,15 @@ fi
 # regenerate local agent credentials (ignore if agent is disabled)
 if [ "$DISABLE_AGENT" == "" ] ; then
     echo "Regenerate local agent credentials"
-    cscli -c "$CS_CONFIG_FILE" machines delete "${CUSTOM_HOSTNAME:-localhost}"
+    cscli -c "$CONFIG_FILE" machines delete "${CUSTOM_HOSTNAME:-localhost}"
     if [ "$LOCAL_API_URL" != "" ] ; then
-        cscli -c "$CS_CONFIG_FILE" machines add "${CUSTOM_HOSTNAME:-localhost}" --auto --url "$LOCAL_API_URL"
+        cscli -c "$CONFIG_FILE" machines add "${CUSTOM_HOSTNAME:-localhost}" --auto --url "$LOCAL_API_URL"
     else
-        cscli -c "$CS_CONFIG_FILE" machines add "${CUSTOM_HOSTNAME:-localhost}" --auto
+        cscli -c "$CONFIG_FILE" machines add "${CUSTOM_HOSTNAME:-localhost}" --auto
     fi
     if [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] && [ "$LOCAL_API_URL" != "" ] ; then
         echo "set up lapi credentials for agent"
-        CONFIG_PATH=$(yq eval '.api.client.credentials_path' "$CS_CONFIG_FILE" )
+        CONFIG_PATH=$(yq eval '.api.client.credentials_path' "$CONFIG_FILE" )
         echo "url: $LOCAL_API_URL" > "$CONFIG_PATH"
         echo "login: $AGENT_USERNAME" >> "$CONFIG_PATH"
         echo "password: $AGENT_PASSWORD" >> "$CONFIG_PATH"
@@ -53,20 +49,20 @@ fi
 echo "Check if lapi need to register automatically an agent"
 if [ "$DISABLE_LOCAL_API" == "" ] && [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] ; then
     if [ "$LOCAL_API_URL" != "" ] ; then
-        cscli -c "$CS_CONFIG_FILE" machines add "$AGENT_USERNAME" --password "$AGENT_PASSWORD" --url "$LOCAL_API_URL"
+        cscli -c "$CONFIG_FILE" machines add "$AGENT_USERNAME" --password "$AGENT_PASSWORD" --url "$LOCAL_API_URL"
     else
-        cscli -c "$CS_CONFIG_FILE" machines add "$AGENT_USERNAME" --password "$AGENT_PASSWORD"
+        cscli -c "$CONFIG_FILE" machines add "$AGENT_USERNAME" --password "$AGENT_PASSWORD"
     fi
     echo "Agent registered to lapi"
 fi
 
 # registration to online API for signal push
-if [ "${DISABLE_ONLINE_API,,}" != "true" ] && [ "$CONFIG_FILE" == "" ] ; then
-    CONFIG_EXIST=$(yq eval '.api.server.online_client | has("credentials_path")' "$CS_CONFIG_FILE")
+if [ "${DISABLE_ONLINE_API,,}" != "true" ] && [ "$CONFIG_FILE" == "/etc/crowdsec/config.yaml" ] ; then
+    CONFIG_EXIST=$(yq eval '.api.server.online_client | has("credentials_path")' "$CONFIG_FILE")
     if [ "$CONFIG_EXIST" != "true" ]; then
-        yq eval '.api.server.online_client = {"credentials_path": "/etc/crowdsec/online_api_credentials.yaml"}' "$CS_CONFIG_FILE" > /etc/crowdsec/config2.yaml
-        mv /etc/crowdsec/config2.yaml "$CS_CONFIG_FILE"
-        cscli -c "$CS_CONFIG_FILE" capi register > /etc/crowdsec/online_api_credentials.yaml
+        yq eval '.api.server.online_client = {"credentials_path": "/etc/crowdsec/online_api_credentials.yaml"}' "$CONFIG_FILE" > /etc/crowdsec/config2.yaml
+        mv /etc/crowdsec/config2.yaml "$CONFIG_FILE"
+        cscli -c "$CONFIG_FILE" capi register > /etc/crowdsec/online_api_credentials.yaml
         echo "registration to online API done"
     fi
 fi
@@ -90,8 +86,8 @@ fi
 
 # crowdsec sqlite database permissions
 if [ "$GID" != "" ]; then
-    IS_SQLITE=$(yq eval '.db_config.type == "sqlite"' "$CS_CONFIG_FILE")
-    DB_PATH=$(yq eval '.db_config.db_path' "$CS_CONFIG_FILE")
+    IS_SQLITE=$(yq eval '.db_config.type == "sqlite"' "$CONFIG_FILE")
+    DB_PATH=$(yq eval '.db_config.db_path' "$CONFIG_FILE")
     if [ "$IS_SQLITE" == "true" ]; then
         chown ":$GID" "$DB_PATH"
         echo "sqlite database permissions updated"
@@ -99,58 +95,65 @@ if [ "$GID" != "" ]; then
 fi
 
 if [ "${USE_TLS,,}" == "true" ]; then
-    yq -i eval ".api.server.tls.cert_file = \"$CERT_FILE\"" "$CS_CONFIG_FILE"
-    yq -i eval ".api.server.tls.key_file = \"$KEY_FILE\"" "$CS_CONFIG_FILE"
-    yq -i eval '... comments=""' "$CS_CONFIG_FILE"
+    yq -i eval ".api.server.tls.cert_file = \"$CERT_FILE\"" "$CONFIG_FILE"
+    yq -i eval ".api.server.tls.key_file = \"$KEY_FILE\"" "$CONFIG_FILE"
+    yq -i eval '... comments=""' "$CONFIG_FILE"
 fi
 
 if [ "$PLUGIN_DIR" != "/usr/local/lib/crowdsec/plugins/" ]; then
-    yq -i eval ".config_paths.plugin_dir = \"$PLUGIN_DIR\"" "$CS_CONFIG_FILE"
+    yq -i eval ".config_paths.plugin_dir = \"$PLUGIN_DIR\"" "$CONFIG_FILE"
 fi
 
 ## Install collections, parsers, scenarios & postoverflows
-cscli -c "$CS_CONFIG_FILE" hub update
-cscli -c "$CS_CONFIG_FILE" collections upgrade crowdsecurity/linux || true
-cscli -c "$CS_CONFIG_FILE" parsers upgrade crowdsecurity/whitelists || true
-cscli -c "$CS_CONFIG_FILE" parsers install crowdsecurity/docker-logs || true
+cscli -c "$CONFIG_FILE" hub update
+cscli -c "$CONFIG_FILE" collections upgrade crowdsecurity/linux || true
+cscli -c "$CONFIG_FILE" parsers upgrade crowdsecurity/whitelists || true
+cscli -c "$CONFIG_FILE" parsers install crowdsecurity/docker-logs || true
+
 if [ "$COLLECTIONS" != "" ]; then
     #shellcheck disable=SC2086
-    cscli -c "$CS_CONFIG_FILE" collections install $COLLECTIONS
+    cscli -c "$CONFIG_FILE" collections install $COLLECTIONS
 fi
+
 if [ "$PARSERS" != "" ]; then
     #shellcheck disable=SC2086
-    cscli -c "$CS_CONFIG_FILE" parsers install $PARSERS
+    cscli -c "$CONFIG_FILE" parsers install $PARSERS
 fi
+
 if [ "$SCENARIOS" != "" ]; then
     #shellcheck disable=SC2086
-    cscli -c "$CS_CONFIG_FILE" scenarios install $SCENARIOS
+    cscli -c "$CONFIG_FILE" scenarios install $SCENARIOS
 fi
+
 if [ "$POSTOVERFLOWS" != "" ]; then
     #shellcheck disable=SC2086
-    cscli -c "$CS_CONFIG_FILE" postoverflows install $POSTOVERFLOWS
+    cscli -c "$CONFIG_FILE" postoverflows install $POSTOVERFLOWS
 fi
 
 ## Remove collections, parsers, scenarios & postoverflows
 if [ "$DISABLE_COLLECTIONS" != "" ]; then
     #shellcheck disable=SC2086
-    cscli -c "$CS_CONFIG_FILE" collections remove $DISABLE_COLLECTIONS
+    cscli -c "$CONFIG_FILE" collections remove $DISABLE_COLLECTIONS
 fi
+
 if [ "$DISABLE_PARSERS" != "" ]; then
     #shellcheck disable=SC2086
-    cscli -c "$CS_CONFIG_FILE" parsers remove $DISABLE_PARSERS
+    cscli -c "$CONFIG_FILE" parsers remove $DISABLE_PARSERS
 fi
+
 if [ "$DISABLE_SCENARIOS" != "" ]; then
     #shellcheck disable=SC2086
-    cscli -c "$CS_CONFIG_FILE" scenarios remove $DISABLE_SCENARIOS
+    cscli -c "$CONFIG_FILE" scenarios remove $DISABLE_SCENARIOS
 fi
+
 if [ "$DISABLE_POSTOVERFLOWS" != "" ]; then
     #shellcheck disable=SC2086
-    cscli -c "$CS_CONFIG_FILE" postoverflows remove $DISABLE_POSTOVERFLOWS
+    cscli -c "$CONFIG_FILE" postoverflows remove $DISABLE_POSTOVERFLOWS
 fi
 
 function register_bouncer {
-  if ! cscli -c "$CS_CONFIG_FILE" bouncers list -o json | sed '/^ *"name"/!d;s/^ *"name": "\(.*\)",/\1/' | grep -q "^${NAME}$"; then
-      if cscli -c "$CS_CONFIG_FILE" bouncers add "${NAME}" -k "${KEY}" > /dev/null; then
+  if ! cscli -c "$CONFIG_FILE" bouncers list -o json | sed '/^ *"name"/!d;s/^ *"name": "\(.*\)",/\1/' | grep -q "^${NAME}$"; then
+      if cscli -c "$CONFIG_FILE" bouncers add "${NAME}" -k "${KEY}" > /dev/null; then
           echo "Registered bouncer for ${NAME}"
       else
           echo "Failed to register bouncer for ${NAME}"
