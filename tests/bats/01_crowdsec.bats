@@ -86,8 +86,8 @@ teardown() {
     # which captures its output (for coverage reports) and cannot relay signals
     # at the same time. So instead of sending a SIGHUP to the wrapper, we send
     # it to the crowdsec process by name - with or without coverage.
-    run pkill -HUP -f "$BIN_DIR/crowdsec.cover"
-    run pkill -HUP -f "$BIN_DIR/crowdsec"
+    run pkill --ns $$ -HUP -f "$BIN_DIR/crowdsec.cover"
+    run pkill --ns $$ -HUP -f "$BIN_DIR/crowdsec"
 
     for ((i=0; i<10; i++)); do
         sleep 1
