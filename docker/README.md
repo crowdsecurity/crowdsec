@@ -12,7 +12,8 @@ Crowdsec - An open-source, lightweight agent to detect and respond to bad behavi
 
 ## Docker image versions
 
-All the following versions are available on Docker Hub for 386, amd64, arm/v6, arm/v7, arm64.
+All the following versions are available on Docker Hub for the architectures
+386, amd64, arm/v6, arm/v7, arm64.
 
 ### Alpine
 
@@ -93,7 +94,8 @@ labels:
 ## Recommended configuration
 ### Volumes
 
-We strongly suggest to mount **named volumes** for Crowdsec configuration and database to avoid credentials and decisions loss in case of container's destruction and recreation, version update, etc.
+We strongly suggest to mount **named volumes** for Crowdsec configuration and database to avoid credentials and decisions loss in case of container destruction and recreation, version update, etc.
+
 * Credentials and configuration: `/etc/crowdsec`
 * Database when using default SQLite: `/var/lib/crowdsec/data`
 
@@ -130,7 +132,7 @@ docker exec -it crowdsec_lapi_container_name cscli machines add agent_user_name 
 ```
 
 ## Run an agent connected to LAPI
-Add the following environment variables to your docker run command:
+Add the following environment variables to the docker run command:
 * `DISABLE_LOCAL_API=true`
 * `AGENT_USERNAME="agent_user_name"` - agent_user_name previously registered with LAPI
 * `AGENT_PASSWORD="agent_password"` - agent_password previously registered with LAPI
