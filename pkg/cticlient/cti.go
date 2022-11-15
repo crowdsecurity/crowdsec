@@ -74,6 +74,7 @@ type CTIResponse struct {
 	BackgroundNoiseScore *int                `json:"background_noise_score"`
 	Scores               CTIScores           `json:"scores"`
 	References           []string            `json:"references"`
+	IsOk                 bool                `json:"-"`
 }
 
 type CTIScores struct {
@@ -158,6 +159,10 @@ func (c CTIResponse) GetMaliciousnessScore() float32 {
 		return float32(c.Scores.LastDay.Total) / 10.0
 	}
 	return 0.0
+}
+
+func (c CTIResponse) Ok() bool {
+	return c.IsOk
 }
 
 func (c CTIResponse) IsPartOfCommunityBlocklist() bool {
@@ -262,7 +267,7 @@ func APIQuery(ip string) (*CTIResponse, error) {
 }
 
 func IpCTI(ip string) CTIResponse {
-	var ctiResponse CTIResponse
+	var ctiResponse CTIResponse = CTIResponse{IsOk: false}
 
 	log.Warningf("lalalallaal")
 
@@ -281,10 +286,13 @@ func IpCTI(ip string) CTIResponse {
 		if err == ErrorAuth {
 			CTIApiEnabled = false
 			log.Errorf("Invalid API key provided, disabling CTI API")
+		} else if err == ErrorLimit {
+			log.Errorf("CTI API limit exceeded, limiting CTI API")
+		} else {
+			log.Warningf("Error while querying CTI : %s", err)
 		}
-		log.Warningf("Error while querying CTI : %s", err)
+		return ctiResponse
 	}
-	log.Printf("-> %+v", val)
 	if val != nil {
 		return *val
 	}

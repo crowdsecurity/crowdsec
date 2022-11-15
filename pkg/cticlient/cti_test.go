@@ -141,10 +141,12 @@ func TestCTIAuthKO(t *testing.T) {
 	}
 
 	ret := IpCTI("1.2.3.4")
+	assert.Equal(t, false, ret.Ok(), "should be ko")
 	assert.Equal(t, CTIResponse{}, ret, "auth failed, empty answer")
 	assert.Equal(t, CTIApiEnabled, false, "auth failed, api disabled")
 	//auth is disabled, we should always receive empty object
 	ret = IpCTI("1.2.3.4")
+	assert.Equal(t, false, ret.Ok(), "should be ko")
 	assert.Equal(t, CTIResponse{}, ret, "auth failed, empty answer")
 }
 
@@ -163,6 +165,7 @@ func TestCTINoKey(t *testing.T) {
 	err = InitCTI(nil, nil, nil)
 	assert.NotEqual(t, err, nil, "InitCTI should fail")
 	ret := IpCTI("1.2.3.4")
+	assert.Equal(t, false, ret.Ok(), "should be ko")
 	assert.Equal(t, CTIResponse{}, ret, "auth failed, empty answer")
 	assert.Equal(t, CTIApiEnabled, false, "auth failed, api disabled")
 }
@@ -185,6 +188,7 @@ func TestCTIAuthOK(t *testing.T) {
 	}
 
 	ret := IpCTI("1.2.3.4")
+	assert.Equal(t, true, ret.Ok(), "should be ok")
 	assert.Equal(t, "1.2.3.4", ret.Ip, "auth failed, empty answer")
 	assert.Equal(t, CTIApiEnabled, true, "auth failed, api disabled")
 }
@@ -205,6 +209,7 @@ func TestCTIKnownFP(t *testing.T) {
 	}
 
 	ret := IpCTI("1.2.3.4")
+	assert.Equal(t, true, ret.Ok(), "should be ok")
 	assert.Equal(t, "1.2.3.4", ret.Ip, "auth failed, empty answer")
 	assert.Equal(t, ret.IsFalsePositive(), true, "1.2.3.4 is a known false positive")
 }
@@ -226,6 +231,7 @@ func TestCTIBelongsToFire(t *testing.T) {
 	}
 
 	ret := IpCTI("1.2.3.5")
+	assert.Equal(t, true, ret.Ok(), "should be ok")
 	assert.Equal(t, "1.2.3.5", ret.Ip, "auth failed, empty answer")
 	assert.Equal(t, ret.IsPartOfCommunityBlocklist(), true, "1.2.3.5 is a known false positive")
 }
@@ -247,6 +253,7 @@ func TestCTIBehaviours(t *testing.T) {
 	}
 
 	ret := IpCTI("1.2.3.6")
+	assert.Equal(t, true, ret.Ok(), "should be ok")
 	assert.Equal(t, ret.Ip, "1.2.3.6", "auth failed, empty answer")
 	//ssh:bruteforce
 	assert.Equal(t, []string{"ssh:bruteforce"}, ret.GetBehaviours(), "error matching behaviours")
@@ -272,11 +279,13 @@ func TestCacheFetch(t *testing.T) {
 	}
 
 	ret := IpCTI("1.2.3.6")
+	assert.Equal(t, true, ret.Ok(), "should be ok")
 	assert.Equal(t, "1.2.3.6", ret.Ip, "initial fetch : bad item")
 	assert.Equal(t, 1, CTICache.Len(true), "initial fetch : bad cache size")
 	assert.Equal(t, "1.2.3.6", CTICache.Keys(true)[0].(string), "initial fetch : bad cache keys")
 	//get it a second time before it expires
 	ret = IpCTI("1.2.3.6")
+	assert.Equal(t, true, ret.Ok(), "should be ok")
 	assert.Equal(t, "1.2.3.6", ret.Ip, "initial fetch : bad item")
 	assert.Equal(t, 1, CTICache.Len(true), "initial fetch : bad cache size")
 	assert.Equal(t, "1.2.3.6", CTICache.Keys(true)[0].(string), "initial fetch : bad cache keys")
@@ -285,6 +294,7 @@ func TestCacheFetch(t *testing.T) {
 	assert.Equal(t, 0, CTICache.Len(true), "after ttl : bad cache size")
 	//fetch again
 	ret = IpCTI("1.2.3.6")
+	assert.Equal(t, true, ret.Ok(), "should be ok")
 	assert.Equal(t, "1.2.3.6", ret.Ip, "second fetch : bad item")
 	assert.Equal(t, 1, CTICache.Len(true), "second fetch : bad cache size")
 	assert.Equal(t, "1.2.3.6", CTICache.Keys(true)[0].(string), "initial fetch : bad cache keys")
