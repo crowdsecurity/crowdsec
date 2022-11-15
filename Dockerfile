@@ -23,19 +23,65 @@ RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/co
     mkdir -p /staging/etc/crowdsec && \
     mkdir -p /staging/var/lib/crowdsec && \
     mkdir -p /var/lib/crowdsec/data
+
 COPY --from=build /etc/crowdsec /staging/etc/crowdsec
 COPY --from=build /usr/local/bin/crowdsec /usr/local/bin/crowdsec
 COPY --from=build /usr/local/bin/cscli /usr/local/bin/cscli
 COPY --from=build /go/src/crowdsec/docker/docker_start.sh /
 COPY --from=build /go/src/crowdsec/docker/config.yaml /staging/etc/crowdsec/config.yaml
 
-ENV DEBUG=false
 ENV CONFIG_FILE=/etc/crowdsec/config.yaml
+ENV LOCAL_API_URL=
+ENV CUSTOM_HOSTNAME=localhost
+ENV PLUGIN_DIR=/usr/local/lib/crowdsec/plugins/
+ENV DISABLE_AGENT=false
+ENV DISABLE_LOCAL_API=false
 ENV DISABLE_ONLINE_API=false
+ENV DSN=
+ENV TYPE=
+ENV TEST_MODE=false
+
+# register to app.crowdsec.net
+
+ENV ENROLL_INSTANCE_NAME=
+ENV ENROLL_KEY=
+ENV ENROLL_TAGS=
+
+# log verbosity
+
+ENV LEVEL_TRACE=false
+ENV LEVEL_DEBUG=false
+ENV LEVEL_INFO=true
+
+# TLS setup ----------------------------------- #
+
+ENV AGENT_USERNAME=
+ENV AGENT_PASSWORD=
+
+# TLS setup ----------------------------------- #
+
 ENV USE_TLS=false
 ENV CA_CERT_PATH=
 ENV CERT_FILE=/etc/ssl/cert.pem
 ENV KEY_FILE=/etc/ssl/key.pem
+# comma-separated list of allowed OU values for TLS bouncer certificates
+ENV BOUNCERS_ALLOWED_OU=bouncer-ou
+# comma-separated list of allowed OU values for TLS agent certificates
+ENV AGENTS_ALLOWED_OU=agent-ou
+
+# Install the following hub items --------------#
+
+ENV COLLECTIONS=
+ENV PARSERS=
+ENV SCENARIOS=
+ENV POSTOVERFLOWS=
+
+# Uninstall the following hub items ------------#
+
+ENV DISABLE_COLLECTIONS=
+ENV DISABLE_PARSERS=
+ENV DISABLE_SCENARIOS=
+ENV DISABLE_POSTOVERFLOWS=
 
 ENTRYPOINT /bin/bash docker_start.sh
 
