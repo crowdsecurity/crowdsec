@@ -31,7 +31,7 @@ COPY --from=build /go/src/crowdsec/docker/docker_start.sh /
 COPY --from=build /go/src/crowdsec/docker/config.yaml /staging/etc/crowdsec/config.yaml
 
 ENV CONFIG_FILE=/etc/crowdsec/config.yaml
-ENV LOCAL_API_URL=
+ENV LOCAL_API_URL=http://0.0.0.0:8080/
 ENV CUSTOM_HOSTNAME=localhost
 ENV PLUGIN_DIR=/usr/local/lib/crowdsec/plugins/
 ENV DISABLE_AGENT=false

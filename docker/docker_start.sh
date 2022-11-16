@@ -69,18 +69,13 @@ if [ ! -e "/etc/crowdsec/local_api_credentials.yaml" ] && [ ! -e "/etc/crowdsec/
     cp -r /staging/etc/* /etc/
 fi
 
-local_api_args=""
-if [ "$LOCAL_API_URL" != "" ]; then
-    local_api_args=--url="$LOCAL_API_URL"
-fi
-
 # regenerate local agent credentials (ignore if agent is disabled)
 if isfalse "$DISABLE_AGENT"; then
     echo "Regenerate local agent credentials"
 
     cscli machines delete "$CUSTOM_HOSTNAME"
     # shellcheck disable=SC2086
-    cscli machines add "$CUSTOM_HOSTNAME" --auto $local_api_args
+    cscli machines add "$CUSTOM_HOSTNAME" --auto --url "$LOCAL_API_URL"
 
     echo "set up lapi credentials for agent"
     lapi_credentials_path=$(conf_get '.api.client.credentials_path')
@@ -108,12 +103,12 @@ echo "Check if lapi needs to automatically register an agent"
 if isfalse "$DISABLE_LOCAL_API"; then
     if [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] ; then
         # shellcheck disable=SC2086
-        cscli machines add "$AGENT_USERNAME" --password "$AGENT_PASSWORD" $local_api_args
+        cscli machines add "$AGENT_USERNAME" --password "$AGENT_PASSWORD" --url "$LOCAL_API_URL"
     fi
 
     if istrue "$USE_TLS"; then
         # shellcheck disable=SC2086
-        cscli machines add "$AGENT_USERNAME" $local_api_args
+        cscli machines add "$AGENT_USERNAME" --url "$LOCAL_API_URL"
     fi
 
     echo "Agent registered to lapi"
