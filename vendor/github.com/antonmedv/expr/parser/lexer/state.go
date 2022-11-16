@@ -24,6 +24,11 @@ func root(l *lexer) stateFn {
 	case '0' <= r && r <= '9':
 		l.backup()
 		return number
+	case r == '?':
+		if l.peek() == '.' {
+			return nilsafe
+		}
+		l.emit(Operator)
 	case strings.ContainsRune("([{", r):
 		l.emit(Bracket)
 	case strings.ContainsRune(")]}", r):
@@ -102,6 +107,13 @@ func dot(l *lexer) stateFn {
 	return root
 }
 
+func nilsafe(l *lexer) stateFn {
+	l.next()
+	l.accept("?.")
+	l.emit(Operator)
+	return root
+}
+
 func identifier(l *lexer) stateFn {
 loop:
 	for {
@@ -125,10 +137,12 @@ loop:
 }
 
 func not(l *lexer) stateFn {
-	if l.acceptWord(" in") {
-		l.emit(Operator)
-	} else {
-		l.emit(Operator)
+	switch l.acceptWord("in") {
+	case true:
+		l.emitValue(Operator, "not in")
+	case false:
+		l.emitValue(Operator, "not")
 	}
+
 	return root
 }

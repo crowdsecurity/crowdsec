@@ -149,20 +149,14 @@ Also expr provides powerful tool [exe](cmd/exe) for debugging. It has interactiv
 
 ## Who is using Expr?
 
-<table>
-	<tr>
-		<td>
-			<p align="center"><a href="https://aviasales.ru"><img alt="Aviasales Logo" height="100" src="https://cdn.worldvectorlogo.com/logos/aviasales-4.svg"></a></p>
-			<p><a href="https://aviasales.ru">Aviasales</a> are actively using Expr for different parts of the search engine.</p>
-		</td>
-		<td>
-			<p align="center"><a href="https://www.mysteryminds.com/en/"><img alt="Mystery Minds Logo" height="100" src="https://www.mysteryminds.com/wp-content/uploads/2018/07/MM_logo_colours.png"></a></p>
-			<p><a href="https://www.mysteryminds.com/en/">Mystery Minds</a> uses Expr to allow easy yet powerful customization of its matching algorithm.</p>
-		</td>
-	</tr>
-</table>
+* <a href="https://aviasales.ru"><img alt="Aviasales" height="18" src="https://cdn.worldvectorlogo.com/logos/aviasales-4.svg"></a> [Aviasales](https://aviasales.ru) are actively using Expr for different parts of the search engine.
+* <a href="https://argoproj.github.io/argo-rollouts/"><img alt="Argo" height="18" src="https://argoproj.github.io/argo-rollouts/assets/logo.png"></a> [Argo Rollouts](https://argoproj.github.io/argo-rollouts/) - Progressive Delivery for Kubernetes.
+* <a href="https://argoproj.github.io/argo/"><img alt="Argo" height="18" src="https://argoproj.github.io/argo/assets/logo.png"></a> [Argo Workflows](https://argoproj.github.io/argo/) - The workflow engine for KubernetesOverview.
+* <a href="https://crowdsec.net"><img alt="CrowdSec" height="18" src="https://crowdsec.net/wp-content/uploads/thegem-logos/logo_8b2bcaf21851f390f18ea9600e6a9fa3_1x.png"></a> [Crowdsec](https://crowdsec.net/) - A security automation tool.
+* [Mystery Minds](https://www.mysteryminds.com/en/) uses Expr to allow easy yet powerful customization of its matching algorithm.
+* <a href="https://www.qiniu.com/"><img height="18" src="https://www.qiniu.com/assets/img-horizontal-white-en-572b4c91fddcae4c9cf38ba89c9477397a2e1ffb74ec1c8f43e73cdfb860bbc6.png"></a> [qiniu](https://www.qiniu.com/) qiniu cloud use Expr in trade systems.
 
-[Add you company too](https://github.com/antonmedv/expr/edit/master/README.md)
+[Add your company too](https://github.com/antonmedv/expr/edit/master/README.md)
 
 ## License
 

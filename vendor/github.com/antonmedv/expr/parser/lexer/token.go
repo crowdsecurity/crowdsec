@@ -10,11 +10,11 @@ type Kind string
 
 const (
 	Identifier Kind = "Identifier"
-	Number          = "Number"
-	String          = "String"
-	Operator        = "Operator"
-	Bracket         = "Bracket"
-	EOF             = "EOF"
+	Number     Kind = "Number"
+	String     Kind = "String"
+	Operator   Kind = "Operator"
+	Bracket    Kind = "Bracket"
+	EOF        Kind = "EOF"
 )
 
 type Token struct {

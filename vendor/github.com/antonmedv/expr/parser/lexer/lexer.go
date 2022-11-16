@@ -14,7 +14,7 @@ func Lex(source *file.Source) ([]Token, error) {
 		tokens: make([]Token, 0),
 	}
 
-	l.loc = file.Location{1, 0}
+	l.loc = file.Location{Line: 1, Column: 0}
 	l.prev = l.loc
 	l.startLoc = l.loc
 
@@ -31,10 +31,9 @@ func Lex(source *file.Source) ([]Token, error) {
 
 type lexer struct {
 	input      string
-	state      stateFn
 	tokens     []Token
 	start, end int           // current position in input
-	width      int           // last rune with
+	width      int           // last rune width
 	startLoc   file.Location // start location
 	prev, loc  file.Location // prev location of end location, end location
 	err        *file.Error
@@ -120,17 +119,25 @@ func (l *lexer) acceptRun(valid string) {
 }
 
 func (l *lexer) acceptWord(word string) bool {
-	pos := l.end
-	loc := l.loc
-	prev := l.prev
+	pos, loc, prev := l.end, l.loc, l.prev
+
+	// Skip spaces (U+0020) if any
+	r := l.peek()
+	for ; r == ' '; r = l.peek() {
+		l.next()
+	}
+
 	for _, ch := range word {
 		if l.next() != ch {
-			l.end = pos
-			l.loc = loc
-			l.prev = prev
+			l.end, l.loc, l.prev = pos, loc, prev
 			return false
 		}
 	}
+	if r = l.peek(); r != ' ' && r != eof {
+		l.end, l.loc, l.prev = pos, loc, prev
+		return false
+	}
+
 	return true
 }
 

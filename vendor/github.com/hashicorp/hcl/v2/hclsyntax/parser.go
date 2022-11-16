@@ -167,8 +167,6 @@ func (p *parser) ParseBodyItem() (Node, hcl.Diagnostics) {
 			},
 		}
 	}
-
-	return nil, nil
 }
 
 // parseSingleAttrBody is a weird variant of ParseBody that deals with the

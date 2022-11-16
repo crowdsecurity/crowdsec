@@ -87,9 +87,9 @@ type (
 
 // Schema returns the first schema that matched the given name.
 func (r *Realm) Schema(name string) (*Schema, bool) {
-	for _, t := range r.Schemas {
-		if t.Name == name {
-			return t, true
+	for _, s := range r.Schemas {
+		if s.Name == name {
+			return s, true
 		}
 	}
 	return nil, false
@@ -189,12 +189,13 @@ type (
 	EnumType struct {
 		T      string   // Optional type.
 		Values []string // Enum values.
+		Schema *Schema  // Optional schema.
 	}
 
 	// BinaryType represents a type that stores a binary data.
 	BinaryType struct {
 		T    string
-		Size int
+		Size *int
 	}
 
 	// StringType represents a string type.
@@ -233,7 +234,7 @@ type (
 	// TimeType represents a date/time type.
 	TimeType struct {
 		T         string
-		Precision int
+		Precision *int
 	}
 
 	// JSONType represents a JSON type.
@@ -282,7 +283,7 @@ type (
 		Text string
 	}
 
-	// Charset describes a column or a table character set setting.
+	// Charset describes a column or a table character-set setting.
 	Charset struct {
 		V string
 	}
@@ -297,6 +298,13 @@ type (
 		Name  string // Optional constraint name.
 		Expr  string // Actual CHECK.
 		Attrs []Attr // Additional attributes (e.g. ENFORCED).
+	}
+
+	// GeneratedExpr describes the expression used for generating
+	// the value of a generated/virtual column.
+	GeneratedExpr struct {
+		Expr string
+		Type string // Optional type. e.g. STORED or VIRTUAL.
 	}
 )
 
@@ -318,7 +326,8 @@ func (*DecimalType) typ()     {}
 func (*UnsupportedType) typ() {}
 
 // attributes.
-func (*Check) attr()     {}
-func (*Comment) attr()   {}
-func (*Charset) attr()   {}
-func (*Collation) attr() {}
+func (*Check) attr()         {}
+func (*Comment) attr()       {}
+func (*Charset) attr()       {}
+func (*Collation) attr()     {}
+func (*GeneratedExpr) attr() {}

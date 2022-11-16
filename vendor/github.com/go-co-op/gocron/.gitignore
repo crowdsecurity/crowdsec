@@ -7,6 +7,7 @@
 
 # Test binary, built with `go test -c`
 *.test
+local_testing
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out

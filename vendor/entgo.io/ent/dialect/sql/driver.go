@@ -20,18 +20,23 @@ type Driver struct {
 	dialect string
 }
 
+// NewDriver creates a new Driver with the given Conn and dialect.
+func NewDriver(dialect string, c Conn) *Driver {
+	return &Driver{dialect: dialect, Conn: c}
+}
+
 // Open wraps the database/sql.Open method and returns a dialect.Driver that implements the an ent/dialect.Driver interface.
-func Open(driver, source string) (*Driver, error) {
-	db, err := sql.Open(driver, source)
+func Open(dialect, source string) (*Driver, error) {
+	db, err := sql.Open(dialect, source)
 	if err != nil {
 		return nil, err
 	}
-	return &Driver{Conn{db}, driver}, nil
+	return NewDriver(dialect, Conn{db}), nil
 }
 
 // OpenDB wraps the given database/sql.DB method with a Driver.
-func OpenDB(driver string, db *sql.DB) *Driver {
-	return &Driver{Conn{db}, driver}
+func OpenDB(dialect string, db *sql.DB) *Driver {
+	return NewDriver(dialect, Conn{db})
 }
 
 // DB returns the underlying *sql.DB instance.
@@ -41,7 +46,7 @@ func (d Driver) DB() *sql.DB {
 
 // Dialect implements the dialect.Dialect method.
 func (d Driver) Dialect() string {
-	// If the underlying driver is wrapped with opencensus driver.
+	// If the underlying driver is wrapped with a telemetry driver.
 	for _, name := range []string{dialect.MySQL, dialect.SQLite, dialect.Postgres} {
 		if strings.HasPrefix(d.dialect, name) {
 			return name
@@ -62,8 +67,8 @@ func (d *Driver) BeginTx(ctx context.Context, opts *TxOptions) (dialect.Tx, erro
 		return nil, err
 	}
 	return &Tx{
-		ExecQuerier: Conn{tx},
-		Tx:          tx,
+		Conn: Conn{tx},
+		Tx:   tx,
 	}, nil
 }
 
@@ -72,14 +77,14 @@ func (d *Driver) Close() error { return d.DB().Close() }
 
 // Tx implements dialect.Tx interface.
 type Tx struct {
-	dialect.ExecQuerier
+	Conn
 	driver.Tx
 }
 
 // ExecQuerier wraps the standard Exec and Query methods.
 type ExecQuerier interface {
-	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
-	QueryContext(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error)
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 
 // Conn implements dialect.ExecQuerier given ExecQuerier.
@@ -88,10 +93,10 @@ type Conn struct {
 }
 
 // Exec implements the dialect.Exec method.
-func (c Conn) Exec(ctx context.Context, query string, args, v interface{}) error {
-	argv, ok := args.([]interface{})
+func (c Conn) Exec(ctx context.Context, query string, args, v any) error {
+	argv, ok := args.([]any)
 	if !ok {
-		return fmt.Errorf("dialect/sql: invalid type %T. expect []interface{} for args", v)
+		return fmt.Errorf("dialect/sql: invalid type %T. expect []any for args", v)
 	}
 	switch v := v.(type) {
 	case nil:
@@ -111,14 +116,14 @@ func (c Conn) Exec(ctx context.Context, query string, args, v interface{}) error
 }
 
 // Query implements the dialect.Query method.
-func (c Conn) Query(ctx context.Context, query string, args, v interface{}) error {
+func (c Conn) Query(ctx context.Context, query string, args, v any) error {
 	vr, ok := v.(*Rows)
 	if !ok {
 		return fmt.Errorf("dialect/sql: invalid type %T. expect *sql.Rows", v)
 	}
-	argv, ok := args.([]interface{})
+	argv, ok := args.([]any)
 	if !ok {
-		return fmt.Errorf("dialect/sql: invalid type %T. expect []interface{} for args", args)
+		return fmt.Errorf("dialect/sql: invalid type %T. expect []any for args", args)
 	}
 	rows, err := c.QueryContext(ctx, query, argv...)
 	if err != nil {
@@ -158,7 +163,7 @@ type NullScanner struct {
 }
 
 // Scan implements the Scanner interface.
-func (n *NullScanner) Scan(value interface{}) error {
+func (n *NullScanner) Scan(value any) error {
 	n.Valid = value != nil
 	if n.Valid {
 		return n.S.Scan(value)
@@ -175,5 +180,5 @@ type ColumnScanner interface {
 	Err() error
 	Next() bool
 	NextResultSet() bool
-	Scan(dest ...interface{}) error
+	Scan(dest ...any) error
 }

@@ -7,13 +7,15 @@ package mysql
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
+	"time"
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/migrate"
+	"ariga.io/atlas/sql/mysql/internal/mysqlversion"
 	"ariga.io/atlas/sql/schema"
-
-	"golang.org/x/mod/semver"
+	"ariga.io/atlas/sql/sqlclient"
 )
 
 type (
@@ -30,33 +32,46 @@ type (
 	conn struct {
 		schema.ExecQuerier
 		// System variables that are set on `Open`.
-		version string
+		mysqlversion.V
 		collate string
 		charset string
 	}
 )
 
+// DriverName holds the name used for registration.
+const DriverName = "mysql"
+
+func init() {
+	sqlclient.Register(
+		DriverName,
+		sqlclient.DriverOpener(Open),
+		sqlclient.RegisterCodec(MarshalHCL, EvalHCL),
+		sqlclient.RegisterFlavours("maria", "mariadb"),
+		sqlclient.RegisterURLParser(parser{}),
+	)
+}
+
 // Open opens a new MySQL driver.
-func Open(db schema.ExecQuerier) (*Driver, error) {
+func Open(db schema.ExecQuerier) (migrate.Driver, error) {
 	c := conn{ExecQuerier: db}
 	rows, err := db.QueryContext(context.Background(), variablesQuery)
 	if err != nil {
 		return nil, fmt.Errorf("mysql: query system variables: %w", err)
 	}
-	if err := sqlx.ScanOne(rows, &c.version, &c.collate, &c.charset); err != nil {
+	if err := sqlx.ScanOne(rows, &c.V, &c.collate, &c.charset); err != nil {
 		return nil, fmt.Errorf("mysql: scan system variables: %w", err)
 	}
-	if c.tidb() {
+	if c.TiDB() {
 		return &Driver{
 			conn:        c,
-			Differ:      &sqlx.Diff{DiffDriver: &tdiff{diff{c}}},
+			Differ:      &sqlx.Diff{DiffDriver: &tdiff{diff{conn: c}}},
 			Inspector:   &tinspect{inspect{c}},
 			PlanApplier: &tplanApply{planApply{c}},
 		}, nil
 	}
 	return &Driver{
 		conn:        c,
-		Differ:      &sqlx.Diff{DiffDriver: &diff{c}},
+		Differ:      &sqlx.Diff{DiffDriver: &diff{conn: c}},
 		Inspector:   &inspect{c},
 		PlanApplier: &planApply{c},
 	}, nil
@@ -76,71 +91,122 @@ func (d *Driver) NormalizeSchema(ctx context.Context, s *schema.Schema) (*schema
 	return d.dev().NormalizeSchema(ctx, s)
 }
 
-// supportsCheck reports if the connected database supports
-// the CHECK clause, and return the querying for getting them.
-func (d *conn) supportsCheck() (string, bool) {
-	v, q := "8.0.16", myChecksQuery
-	if d.mariadb() {
-		v, q = "10.2.1", marChecksQuery
+// Lock implements the schema.Locker interface.
+func (d *Driver) Lock(ctx context.Context, name string, timeout time.Duration) (schema.UnlockFunc, error) {
+	conn, err := sqlx.SingleConn(ctx, d.ExecQuerier)
+	if err != nil {
+		return nil, err
 	}
-	return q, d.gteV(v)
-}
-
-// supportsIndexExpr reports if the connected database supports
-// index expressions (functional key part).
-func (d *conn) supportsIndexExpr() bool {
-	return !d.mariadb() && d.gteV("8.0.13")
-}
-
-// supportsDisplayWidth reports if the connected database supports
-// getting the display width information from the information schema.
-func (d *conn) supportsDisplayWidth() bool {
-	// MySQL v8.0.19 dropped the display width
-	// information from the information schema
-	return d.mariadb() || d.ltV("8.0.19")
-}
-
-// supportsExprDefault reports if the connected database supports
-// expressions in the DEFAULT clause on column definition.
-func (d *conn) supportsExprDefault() bool {
-	v := "8.0.13"
-	if d.mariadb() {
-		v = "10.2.1"
+	if err := acquire(ctx, conn, name, timeout); err != nil {
+		conn.Close()
+		return nil, err
 	}
-	return d.gteV(v)
+	return func() error {
+		defer conn.Close()
+		rows, err := conn.QueryContext(ctx, "SELECT RELEASE_LOCK(?)", name)
+		if err != nil {
+			return err
+		}
+		switch released, err := sqlx.ScanNullBool(rows); {
+		case err != nil:
+			return err
+		case !released.Valid || !released.Bool:
+			return fmt.Errorf("sql/mysql: failed releasing a named lock %q", name)
+		}
+		return nil
+	}, nil
 }
 
-// supportsEnforceCheck reports if the connected database supports
-// the ENFORCED option in CHECK constraint syntax.
-func (d *conn) supportsEnforceCheck() bool {
-	return !d.mariadb() && d.gteV("8.0.16")
-}
-
-// mariadb reports if the Driver is connected to a MariaDB database.
-func (d *conn) mariadb() bool {
-	return strings.Index(d.version, "MariaDB") > 0
-}
-
-// tidb reports if the Driver is connected to a TiDB database.
-func (d *conn) tidb() bool {
-	return strings.Index(d.version, "TiDB") > 0
-}
-
-// compareV returns an integer comparing two versions according to
-// semantic version precedence.
-func (d *conn) compareV(w string) int {
-	v := d.version
-	if d.mariadb() {
-		v = v[:strings.Index(v, "MariaDB")-1]
+// Snapshot implements migrate.Snapshoter.
+func (d *Driver) Snapshot(ctx context.Context) (migrate.RestoreFunc, error) {
+	// If the connection is bound to a schema, we can restore the state if the schema has no tables.
+	s, err := d.InspectSchema(ctx, "", nil)
+	if err != nil && !schema.IsNotExistError(err) {
+		return nil, err
 	}
-	return semver.Compare("v"+v, "v"+w)
+	// If a schema was found, it has to have no tables attached to be considered clean.
+	if s != nil {
+		if len(s.Tables) > 0 {
+			return nil, migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in schema %q", s.Tables[0].Name, s.Name)}
+		}
+		return func(ctx context.Context) error {
+			current, err := d.InspectSchema(ctx, s.Name, nil)
+			if err != nil {
+				return err
+			}
+			changes, err := d.SchemaDiff(current, s)
+			if err != nil {
+				return err
+			}
+			return d.ApplyChanges(ctx, changes)
+		}, nil
+	}
+	// Otherwise, the database can not have any schema.
+	realm, err := d.InspectRealm(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	if len(realm.Schemas) > 0 {
+		return nil, migrate.NotCleanError{Reason: fmt.Sprintf("found schema %q", realm.Schemas[0].Name)}
+	}
+	return func(ctx context.Context) error {
+		current, err := d.InspectRealm(ctx, nil)
+		if err != nil {
+			return err
+		}
+		changes, err := d.RealmDiff(current, realm)
+		if err != nil {
+			return err
+		}
+		return d.ApplyChanges(ctx, changes)
+	}, nil
 }
 
-// gteV reports if the connection version is >= w.
-func (d *conn) gteV(w string) bool { return d.compareV(w) >= 0 }
+// CheckClean implements migrate.CleanChecker.
+func (d *Driver) CheckClean(ctx context.Context, revT *migrate.TableIdent) error {
+	s, err := d.InspectSchema(ctx, "", nil)
+	if err != nil && !schema.IsNotExistError(err) {
+		return err
+	}
+	if s != nil {
+		if len(s.Tables) == 0 || (revT != nil && (revT.Schema == "" || s.Name == revT.Schema) && len(s.Tables) == 1 && s.Tables[0].Name == revT.Name) {
+			return nil
+		}
+		return &migrate.NotCleanError{Reason: fmt.Sprintf("found table %q in schema %q", s.Tables[0].Name, s.Name)}
+	}
+	r, err := d.InspectRealm(ctx, nil)
+	if err != nil {
+		return err
+	}
+	switch n := len(r.Schemas); {
+	case n > 1:
+		return migrate.NotCleanError{Reason: fmt.Sprintf("found multiple schemas: %d", len(r.Schemas))}
+	case n == 1 && r.Schemas[0].Name != revT.Schema:
+		return migrate.NotCleanError{Reason: fmt.Sprintf("found schema %q", r.Schemas[0].Name)}
+	case n == 1 && len(r.Schemas[0].Tables) > 1:
+		return migrate.NotCleanError{Reason: fmt.Sprintf("found multiple tables: %d", len(r.Schemas[0].Tables))}
+	case n == 1 && len(r.Schemas[0].Tables) == 1 && r.Schemas[0].Tables[0].Name != revT.Name:
+		return migrate.NotCleanError{Reason: fmt.Sprintf("found table %q", r.Schemas[0].Tables[0].Name)}
+	}
+	return nil
+}
 
-// ltV reports if the connection version is < w.
-func (d *conn) ltV(w string) bool { return d.compareV(w) == -1 }
+func acquire(ctx context.Context, conn schema.ExecQuerier, name string, timeout time.Duration) error {
+	rows, err := conn.QueryContext(ctx, "SELECT GET_LOCK(?, ?)", name, int(timeout.Seconds()))
+	if err != nil {
+		return err
+	}
+	switch acquired, err := sqlx.ScanNullBool(rows); {
+	case err != nil:
+		return err
+	case !acquired.Valid:
+		// NULL is returned in case of an unexpected internal error.
+		return fmt.Errorf("sql/mysql: unexpected internal error on Lock(%q, %s)", name, timeout)
+	case !acquired.Bool:
+		return schema.ErrLocked
+	}
+	return nil
+}
 
 // unescape strings with backslashes returned
 // for SQL expressions from information schema.
@@ -154,6 +220,52 @@ func unescape(s string) string {
 			b.WriteByte(s[i+1])
 			i++
 		}
+	}
+	return b.String()
+}
+
+type parser struct{}
+
+// ParseURL implements the sqlclient.URLParser interface.
+func (parser) ParseURL(u *url.URL) *sqlclient.URL {
+	v := u.Query()
+	v.Set("parseTime", "true")
+	u.RawQuery = v.Encode()
+	return &sqlclient.URL{URL: u, DSN: dsn(u), Schema: strings.TrimPrefix(u.Path, "/")}
+}
+
+// ChangeSchema implements the sqlclient.SchemaChanger interface.
+func (parser) ChangeSchema(u *url.URL, s string) *url.URL {
+	nu := *u
+	nu.Path = "/" + s
+	return &nu
+}
+
+// dsn returns the MySQL standard DSN for opening
+// the sql.DB from the user provided URL.
+func dsn(u *url.URL) string {
+	var b strings.Builder
+	b.WriteString(u.User.Username())
+	if p, ok := u.User.Password(); ok {
+		b.WriteByte(':')
+		b.WriteString(p)
+	}
+	if b.Len() > 0 {
+		b.WriteByte('@')
+	}
+	if u.Host != "" {
+		b.WriteString("tcp(")
+		b.WriteString(u.Host)
+		b.WriteByte(')')
+	}
+	if u.Path != "" {
+		b.WriteString(u.Path)
+	} else {
+		b.WriteByte('/')
+	}
+	if u.RawQuery != "" {
+		b.WriteByte('?')
+		b.WriteString(u.RawQuery)
 	}
 	return b.String()
 }
@@ -227,4 +339,8 @@ const (
 	currentTS     = "current_timestamp"
 	defaultGen    = "default_generated"
 	autoIncrement = "auto_increment"
+
+	virtual    = "VIRTUAL"
+	stored     = "STORED"
+	persistent = "PERSISTENT"
 )

@@ -49,15 +49,6 @@ func FormatType(t schema.Type) (string, error) {
 	return f, nil
 }
 
-// mustFormat calls to FormatType and panics in case of error.
-func mustFormat(t schema.Type) string {
-	s, err := FormatType(t)
-	if err != nil {
-		panic(err)
-	}
-	return s
-}
-
 // ParseType returns the schema.Type value represented by the given raw type.
 // It is expected to be one of the types in https://www.sqlite.org/datatypes.html,
 // or some of the common types used by ORMs like Ent.

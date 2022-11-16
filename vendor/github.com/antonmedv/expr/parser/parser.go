@@ -283,7 +283,7 @@ func (p *parser) parsePrimaryExpression() Node {
 			node.SetLocation(token.Location)
 			return node
 		default:
-			node = p.parseIdentifierExpression(token)
+			node = p.parseIdentifierExpression(token, p.current)
 		}
 
 	case Number:
@@ -334,7 +334,7 @@ func (p *parser) parsePrimaryExpression() Node {
 	return p.parsePostfixExpression(node)
 }
 
-func (p *parser) parseIdentifierExpression(token Token) Node {
+func (p *parser) parseIdentifierExpression(token, next Token) Node {
 	var node Node
 	if p.current.Is(Bracket, "(") {
 		var arguments []Node
@@ -367,7 +367,11 @@ func (p *parser) parseIdentifierExpression(token Token) Node {
 			node.SetLocation(token.Location)
 		}
 	} else {
-		node = &IdentifierNode{Value: token.Value}
+		var nilsafe bool
+		if next.Value == "?." {
+			nilsafe = true
+		}
+		node = &IdentifierNode{Value: token.Value, NilSafe: nilsafe}
 		node.SetLocation(token.Location)
 	}
 	return node
@@ -460,8 +464,12 @@ end:
 
 func (p *parser) parsePostfixExpression(node Node) Node {
 	token := p.current
+	var nilsafe bool
 	for (token.Is(Operator) || token.Is(Bracket)) && p.err == nil {
-		if token.Value == "." {
+		if token.Value == "." || token.Value == "?." {
+			if token.Value == "?." {
+				nilsafe = true
+			}
 			p.next()
 
 			token = p.current
@@ -479,12 +487,14 @@ func (p *parser) parsePostfixExpression(node Node) Node {
 					Node:      node,
 					Method:    token.Value,
 					Arguments: arguments,
+					NilSafe:   nilsafe,
 				}
 				node.SetLocation(token.Location)
 			} else {
 				node = &PropertyNode{
 					Node:     node,
 					Property: token.Value,
+					NilSafe:  nilsafe,
 				}
 				node.SetLocation(token.Location)
 			}
@@ -537,7 +547,6 @@ func (p *parser) parsePostfixExpression(node Node) Node {
 					p.expect(Bracket, "]")
 				}
 			}
-
 		} else {
 			break
 		}

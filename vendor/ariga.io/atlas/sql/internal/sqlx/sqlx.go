@@ -6,8 +6,11 @@ package sqlx
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
+	"io"
 	"reflect"
 	"strconv"
 	"strings"
@@ -15,13 +18,48 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
+type (
+	// ExecQueryCloser is the interface that groups
+	// Close with the schema.ExecQuerier methods.
+	ExecQueryCloser interface {
+		schema.ExecQuerier
+		io.Closer
+	}
+	nopCloser struct {
+		schema.ExecQuerier
+	}
+)
+
+// Close implements the io.Closer interface.
+func (nopCloser) Close() error { return nil }
+
+// SingleConn returns a closable single connection from the given ExecQuerier.
+// If the ExecQuerier is already bound to a single connection (e.g. Tx, Conn),
+// the connection will return as-is with a NopCloser.
+func SingleConn(ctx context.Context, conn schema.ExecQuerier) (ExecQueryCloser, error) {
+	// A standard sql.DB or a wrapper of it.
+	if opener, ok := conn.(interface {
+		Conn(context.Context) (*sql.Conn, error)
+	}); ok {
+		return opener.Conn(ctx)
+	}
+	// Tx and Conn are bounded to a single connection.
+	// We use sql/driver.Tx to cover also custom Tx structs.
+	_, ok1 := conn.(driver.Tx)
+	_, ok2 := conn.(*sql.Conn)
+	if ok1 || ok2 {
+		return nopCloser{ExecQuerier: conn}, nil
+	}
+	return nil, fmt.Errorf("cannot obtain a single connection from %T", conn)
+}
+
 // ValidString reports if the given string is not null and valid.
 func ValidString(s sql.NullString) bool {
 	return s.Valid && s.String != "" && strings.ToLower(s.String) != "null"
 }
 
 // ScanOne scans one record and closes the rows at the end.
-func ScanOne(rows *sql.Rows, dest ...interface{}) error {
+func ScanOne(rows *sql.Rows, dest ...any) error {
 	defer rows.Close()
 	if !rows.Next() {
 		return sql.ErrNoRows
@@ -30,6 +68,26 @@ func ScanOne(rows *sql.Rows, dest ...interface{}) error {
 		return err
 	}
 	return rows.Close()
+}
+
+// ScanNullBool scans one sql.NullBool record and closes the rows at the end.
+func ScanNullBool(rows *sql.Rows) (sql.NullBool, error) {
+	var b sql.NullBool
+	return b, ScanOne(rows, &b)
+}
+
+// ScanStrings scans sql.Rows into a slice of strings and closes it at the end.
+func ScanStrings(rows *sql.Rows) ([]string, error) {
+	defer rows.Close()
+	var vs []string
+	for rows.Next() {
+		var v string
+		if err := rows.Scan(&v); err != nil {
+			return nil, err
+		}
+		vs = append(vs, v)
+	}
+	return vs, nil
 }
 
 // SchemaFKs scans the rows and adds the foreign-key to the schema table.
@@ -124,20 +182,6 @@ func LinkSchemaTables(schemas []*schema.Schema) {
 	}
 }
 
-// ScanStrings scans sql.Rows into a slice of strings and closes it at the end.
-func ScanStrings(rows *sql.Rows) ([]string, error) {
-	defer rows.Close()
-	var vs []string
-	for rows.Next() {
-		var v string
-		if err := rows.Scan(&v); err != nil {
-			return nil, err
-		}
-		vs = append(vs, v)
-	}
-	return vs, nil
-}
-
 // ValuesEqual checks if the 2 string slices are equal (including their order).
 func ValuesEqual(v1, v2 []string) bool {
 	if len(v1) != len(v2) {
@@ -151,30 +195,27 @@ func ValuesEqual(v1, v2 []string) bool {
 	return true
 }
 
-// VersionPermutations returns permutations of the dialect version sorted
-// from coarse to fine grained. For example:
-//
-//   VersionPermutations("mysql", "1.2.3") => ["mysql", "mysql 1", "mysql 1.2", "mysql 1.2.3"]
-//
-// VersionPermutations will split the version number by ".", " ", "-" or "_", and rejoin them
-// with ".". The output slice can be used by drivers to generate a list of permutations
-// for searching for relevant overrides in schema element specs.
-func VersionPermutations(dialect, version string) []string {
-	parts := strings.FieldsFunc(version, func(r rune) bool {
-		return r == '.' || r == ' ' || r == '-' || r == '_'
-	})
-	names := []string{dialect}
-	for i := range parts {
-		version := strings.Join(parts[0:i+1], ".")
-		names = append(names, dialect+" "+version)
+// ModeInspectSchema returns the InspectMode or its default.
+func ModeInspectSchema(o *schema.InspectOptions) schema.InspectMode {
+	if o == nil || o.Mode == 0 {
+		return schema.InspectSchemas | schema.InspectTables
 	}
-	return names
+	return o.Mode
+}
+
+// ModeInspectRealm returns the InspectMode or its default.
+func ModeInspectRealm(o *schema.InspectRealmOption) schema.InspectMode {
+	if o == nil || o.Mode == 0 {
+		return schema.InspectSchemas | schema.InspectTables
+	}
+	return o.Mode
 }
 
 // A Builder provides a syntactic sugar API for writing SQL statements.
 type Builder struct {
 	bytes.Buffer
-	QuoteChar byte
+	QuoteChar byte    // quoting identifiers
+	Schema    *string // schema qualifier
 }
 
 // P writes a list of phrases to the builder separated and
@@ -209,7 +250,16 @@ func (b *Builder) Ident(s string) *Builder {
 // Table writes the table identifier to the builder, prefixed
 // with the schema name if exists.
 func (b *Builder) Table(t *schema.Table) *Builder {
-	if t.Schema != nil {
+	switch {
+	// Custom qualifier.
+	case b.Schema != nil:
+		// Empty means skip prefix.
+		if *b.Schema != "" {
+			b.Ident(*b.Schema)
+			b.rewriteLastByte('.')
+		}
+	// Default schema qualifier.
+	case t.Schema != nil && t.Schema.Name != "":
 		b.Ident(t.Schema.Name)
 		b.rewriteLastByte('.')
 	}
@@ -233,7 +283,7 @@ func (b *Builder) Comma() *Builder {
 
 // MapComma maps the slice x using the function f and joins the result with
 // a comma separating between the written elements.
-func (b *Builder) MapComma(x interface{}, f func(i int, b *Builder)) *Builder {
+func (b *Builder) MapComma(x any, f func(i int, b *Builder)) *Builder {
 	s := reflect.ValueOf(x)
 	for i := 0; i < s.Len(); i++ {
 		if i > 0 {
@@ -245,7 +295,7 @@ func (b *Builder) MapComma(x interface{}, f func(i int, b *Builder)) *Builder {
 }
 
 // MapCommaErr is like MapComma, but returns an error if f returns an error.
-func (b *Builder) MapCommaErr(x interface{}, f func(i int, b *Builder) error) error {
+func (b *Builder) MapCommaErr(x any, f func(i int, b *Builder) error) error {
 	s := reflect.ValueOf(x)
 	for i := 0; i < s.Len(); i++ {
 		if i > 0 {
@@ -274,7 +324,7 @@ func (b *Builder) Wrap(f func(b *Builder)) *Builder {
 func (b *Builder) Clone() *Builder {
 	return &Builder{
 		QuoteChar: b.QuoteChar,
-		Buffer:    *bytes.NewBufferString(b.String()),
+		Buffer:    *bytes.NewBufferString(b.Buffer.String()),
 	}
 }
 
@@ -299,7 +349,7 @@ func (b *Builder) rewriteLastByte(c byte) {
 	buf[len(buf)-1] = c
 }
 
-// IsQuoted reports if the given string is quoted with one of the given quotes (e.g. '\'', '"', '`').
+// IsQuoted reports if the given string is quoted with one of the given quotes (e.g. ', ", `).
 func IsQuoted(s string, q ...byte) bool {
 	for i := range q {
 		if l, r := strings.IndexByte(s, q[i]), strings.LastIndexByte(s, q[i]); l < r && l == 0 && r == len(s)-1 {
@@ -340,4 +390,74 @@ func DefaultValue(c *schema.Column) (string, bool) {
 	default:
 		panic(fmt.Sprintf("unexpected default value type: %T", x))
 	}
+}
+
+// MayWrap ensures the given string is wrapped with parentheses.
+// Used by the different drivers to turn strings valid expressions.
+func MayWrap(s string) string {
+	n := len(s) - 1
+	if len(s) < 2 || s[0] != '(' || s[n] != ')' || !balanced(s[1:n]) {
+		return "(" + s + ")"
+	}
+	return s
+}
+
+func balanced(expr string) bool {
+	return ExprLastIndex(expr) == len(expr)-1
+}
+
+// ExprLastIndex scans the first expression in the given string until
+// its end and returns its last index.
+func ExprLastIndex(expr string) int {
+	var l, r int
+	for i := 0; i < len(expr); i++ {
+	Top:
+		switch expr[i] {
+		case '(':
+			l++
+		case ')':
+			r++
+		// String or identifier.
+		case '\'', '"', '`':
+			for j := i + 1; j < len(expr); j++ {
+				switch expr[j] {
+				case '\\':
+					j++
+				case expr[i]:
+					i = j
+					break Top
+				}
+			}
+			// Unexpected EOS.
+			return -1
+		}
+		// Balanced parens and we reached EOS or a terminator.
+		if l == r && (i == len(expr)-1 || expr[i+1] == ',') {
+			return i
+		} else if r > l {
+			return -1
+		}
+	}
+	return -1
+}
+
+// ReverseChanges reverses the order of the changes.
+func ReverseChanges(c []schema.Change) {
+	for i, n := 0, len(c); i < n/2; i++ {
+		c[i], c[n-i-1] = c[n-i-1], c[i]
+	}
+}
+
+// P returns a pointer to v.
+func P[T any](v T) *T {
+	return &v
+}
+
+// V returns the value p is pointing to.
+// If p is nil, the zero value is returned.
+func V[T any](p *T) (v T) {
+	if p != nil {
+		v = *p
+	}
+	return
 }

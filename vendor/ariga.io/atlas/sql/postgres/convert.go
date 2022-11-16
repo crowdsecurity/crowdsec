@@ -23,12 +23,16 @@ func FormatType(t schema.Type) (string, error) {
 		f = strings.ToLower(t.T)
 	case *BitType:
 		f = strings.ToLower(t.T)
-		// BIT without a length is equivalent to BIT(1).
-		if f == TypeBit && t.Len == 0 {
-			f = fmt.Sprintf("%s(1)", f)
+		// BIT without a length is equivalent to BIT(1),
+		// BIT VARYING has unlimited length.
+		if f == TypeBit && t.Len > 1 || f == TypeBitVar && t.Len > 0 {
+			f = fmt.Sprintf("%s(%d)", f, t.Len)
 		}
 	case *schema.BoolType:
-		f = strings.ToLower(t.T)
+		// BOOLEAN can be abbreviated as BOOL.
+		if f = strings.ToLower(t.T); f == TypeBool {
+			f = TypeBoolean
+		}
 	case *schema.BinaryType:
 		f = strings.ToLower(t.T)
 	case *CurrencyType:
@@ -47,6 +51,14 @@ func FormatType(t schema.Type) (string, error) {
 			f = TypeInteger
 		case TypeInt8:
 			f = TypeBigInt
+		}
+	case *IntervalType:
+		f = strings.ToLower(t.T)
+		if t.F != "" {
+			f += " " + strings.ToLower(t.F)
+		}
+		if t.Precision != nil && *t.Precision != defaultTimePrecision {
+			f += fmt.Sprintf("(%d)", *t.Precision)
 		}
 	case *schema.StringType:
 		switch f = strings.ToLower(t.T); f {
@@ -70,20 +82,9 @@ func FormatType(t schema.Type) (string, error) {
 			return "", fmt.Errorf("postgres: unexpected string type: %q", t.T)
 		}
 	case *schema.TimeType:
-		switch f = strings.ToLower(t.T); f {
-		// TIMESTAMPTZ is accepted as an abbreviation for TIMESTAMP WITH TIME ZONE.
-		case TypeTimestampTZ:
-			f = TypeTimestampWTZ
-		// TIME be equivalent to TIME WITHOUT TIME ZONE.
-		case TypeTime:
-			f = TypeTimeWOTZ
-		// TIMESTAMP be equivalent to TIMESTAMP WITHOUT TIME ZONE.
-		case TypeTimestamp:
-			f = TypeTimestampWOTZ
-		}
-		if t.Precision != defaultTimePrecision && strings.HasPrefix(f, "time") {
-			p := strings.Split(f, " ")
-			f = fmt.Sprintf("%s(%d)%s", p[0], t.Precision, strings.Join(p[1:], " "))
+		f = timeAlias(t.T)
+		if p := t.Precision; p != nil && *p != defaultTimePrecision && strings.HasPrefix(f, "time") {
+			f += fmt.Sprintf("(%d)", *p)
 		}
 	case *schema.FloatType:
 		switch f = strings.ToLower(t.T); f {
@@ -91,6 +92,15 @@ func FormatType(t schema.Type) (string, error) {
 			f = TypeReal
 		case TypeFloat8:
 			f = TypeDouble
+		case TypeFloat:
+			switch {
+			case t.Precision > 0 && t.Precision <= 24:
+				f = TypeReal
+			case t.Precision == 0 || (t.Precision > 24 && t.Precision <= 53):
+				f = TypeDouble
+			default:
+				return "", fmt.Errorf("postgres: precision for type float must be between 1 and 53: %d", t.Precision)
+			}
 		}
 	case *schema.DecimalType:
 		switch f = strings.ToLower(t.T); f {
@@ -134,6 +144,8 @@ func FormatType(t schema.Type) (string, error) {
 		f = strings.ToLower(t.T)
 	case *UserDefinedType:
 		f = strings.ToLower(t.T)
+	case *XMLType:
+		f = strings.ToLower(t.T)
 	case *schema.UnsupportedType:
 		return "", fmt.Errorf("postgres: unsupported type: %q", t.T)
 	default:
@@ -142,30 +154,26 @@ func FormatType(t schema.Type) (string, error) {
 	return f, nil
 }
 
-// mustFormat calls to FormatType and panics in case of error.
-func mustFormat(t schema.Type) string {
-	s, err := FormatType(t)
-	if err != nil {
-		panic(err)
-	}
-	return s
-}
-
 // ParseType returns the schema.Type value represented by the given raw type.
 // The raw value is expected to follow the format in PostgreSQL information schema
 // or as an input for the CREATE TABLE statement.
 func ParseType(typ string) (schema.Type, error) {
-	d, err := parseColumn(typ)
-	if err != nil {
-		return nil, err
-	}
+	var (
+		err error
+		d   *columnDesc
+	)
 	// Normalize PostgreSQL array data types from "CREATE TABLE" format to
 	// "INFORMATION_SCHEMA" format (i.e. as it is inspected from the database).
 	if t, ok := arrayType(typ); ok {
-		d = &columnDesc{typ: TypeArray, udt: t}
+		d = &columnDesc{typ: TypeArray, fmtype: t + "[]"}
+	} else if d, err = parseColumn(typ); err != nil {
+		return nil, err
 	}
-	t := columnType(d)
-	// If the type is unknown (to us), we fallback to user-defined but expect
+	t, err := columnType(d)
+	if err != nil {
+		return nil, err
+	}
+	// If the type is unknown (to us), we fall back to user-defined but expect
 	// to improve this in future versions by ensuring this against the database.
 	if ut, ok := t.(*schema.UnsupportedType); ok {
 		t = &UserDefinedType{T: ut.T}
@@ -173,14 +181,112 @@ func ParseType(typ string) (schema.Type, error) {
 	return t, nil
 }
 
+func columnType(c *columnDesc) (schema.Type, error) {
+	var typ schema.Type
+	switch t := c.typ; strings.ToLower(t) {
+	case TypeBigInt, TypeInt8, TypeInt, TypeInteger, TypeInt4, TypeSmallInt, TypeInt2, TypeInt64:
+		typ = &schema.IntegerType{T: t}
+	case TypeBit, TypeBitVar:
+		typ = &BitType{T: t, Len: c.size}
+	case TypeBool, TypeBoolean:
+		typ = &schema.BoolType{T: t}
+	case TypeBytea:
+		typ = &schema.BinaryType{T: t}
+	case TypeCharacter, TypeChar, TypeCharVar, TypeVarChar, TypeText:
+		// A `character` column without length specifier is equivalent to `character(1)`,
+		// but `varchar` without length accepts strings of any size (same as `text`).
+		typ = &schema.StringType{T: t, Size: int(c.size)}
+	case TypeCIDR, TypeInet, TypeMACAddr, TypeMACAddr8:
+		typ = &NetworkType{T: t}
+	case TypeCircle, TypeLine, TypeLseg, TypeBox, TypePath, TypePolygon, TypePoint, TypeGeometry:
+		typ = &schema.SpatialType{T: t}
+	case TypeDate:
+		typ = &schema.TimeType{T: t}
+	case TypeTime, TypeTimeWOTZ, TypeTimeTZ, TypeTimeWTZ, TypeTimestamp,
+		TypeTimestampTZ, TypeTimestampWTZ, TypeTimestampWOTZ:
+		p := defaultTimePrecision
+		if c.timePrecision != nil {
+			p = int(*c.timePrecision)
+		}
+		typ = &schema.TimeType{T: t, Precision: &p}
+	case TypeInterval:
+		p := defaultTimePrecision
+		if c.timePrecision != nil {
+			p = int(*c.timePrecision)
+		}
+		typ = &IntervalType{T: t, Precision: &p}
+		if c.interval != "" {
+			f, ok := intervalField(c.interval)
+			if !ok {
+				return &schema.UnsupportedType{T: c.interval}, nil
+			}
+			typ.(*IntervalType).F = f
+		}
+	case TypeReal, TypeDouble, TypeFloat, TypeFloat4, TypeFloat8:
+		typ = &schema.FloatType{T: t, Precision: int(c.precision)}
+	case TypeJSON, TypeJSONB:
+		typ = &schema.JSONType{T: t}
+	case TypeMoney:
+		typ = &CurrencyType{T: t}
+	case TypeDecimal, TypeNumeric:
+		typ = &schema.DecimalType{T: t, Precision: int(c.precision), Scale: int(c.scale)}
+	case TypeSmallSerial, TypeSerial, TypeBigSerial, TypeSerial2, TypeSerial4, TypeSerial8:
+		typ = &SerialType{T: t, Precision: int(c.precision)}
+	case TypeUUID:
+		typ = &UUIDType{T: t}
+	case TypeXML:
+		typ = &XMLType{T: t}
+	case TypeArray:
+		// Ignore multi-dimensions or size constraints
+		// as they are ignored by the database.
+		typ = &ArrayType{T: c.fmtype}
+		if t, ok := arrayType(c.fmtype); ok {
+			tt, err := ParseType(t)
+			if err != nil {
+				return nil, err
+			}
+			if c.elemtyp == "e" {
+				// Override the element type in
+				// case it is an enum.
+				tt = newEnumType(t, c.typelem)
+			}
+			typ.(*ArrayType).Type = tt
+		}
+	case TypeUserDefined:
+		typ = &UserDefinedType{T: c.fmtype}
+		// The `typtype` column is set to 'e' for enum types, and the
+		// values are filled in batch after the rows above is closed.
+		// https://postgresql.org/docs/current/catalog-pg-type.html
+		if c.typtype == "e" {
+			typ = newEnumType(c.fmtype, c.typid)
+		}
+	default:
+		typ = &schema.UnsupportedType{T: t}
+	}
+	return typ, nil
+}
+
 // reArray parses array declaration. See: https://postgresql.org/docs/current/arrays.html.
-var reArray = regexp.MustCompile(`(?i)(\w+)\s*(?:(?:\[\d*])+|\s+ARRAY\s*(?:\[\d*])*)`)
+var reArray = regexp.MustCompile(`(?i)(.+?)(( +ARRAY( *\[[ \d]*] *)*)+|( *\[[ \d]*] *)+)$`)
 
 // arrayType reports if the given string is an array type (e.g. int[], text[2]),
 // and returns its "udt_name" as it was inspected from the database.
 func arrayType(t string) (string, bool) {
 	matches := reArray.FindStringSubmatch(t)
-	if len(matches) != 2 {
+	if len(matches) < 2 {
+		return "", false
+	}
+	return strings.TrimSpace(matches[1]), true
+}
+
+// reInterval parses declaration of interval fields. See: https://www.postgresql.org/docs/current/datatype-datetime.html.
+var reInterval = regexp.MustCompile(`(?i)(?:INTERVAL\s*)?(YEAR|MONTH|DAY|HOUR|MINUTE|SECOND|YEAR TO MONTH|DAY TO HOUR|DAY TO MINUTE|DAY TO SECOND|HOUR TO MINUTE|HOUR TO SECOND|MINUTE TO SECOND)?\s*(?:\(([0-6])\))?$`)
+
+// intervalField reports if the given string is an interval
+// field type and returns its value (e.g. SECOND, MINUTE TO SECOND).
+func intervalField(t string) (string, bool) {
+	matches := reInterval.FindStringSubmatch(t)
+	if len(matches) != 3 || matches[1] == "" {
 		return "", false
 	}
 	return matches[1], true
@@ -188,15 +294,18 @@ func arrayType(t string) (string, bool) {
 
 // columnDesc represents a column descriptor.
 type columnDesc struct {
-	typ           string
-	size          int64
-	udt           string
+	typ           string // data_type
+	fmtype        string // pg_catalog.format_type
+	size          int64  // character_maximum_length
+	typtype       string // pg_type.typtype
+	typelem       int64  // pg_type.typelem
+	elemtyp       string // pg_type.typtype of the array element type above.
+	typid         int64  // pg_type.oid
 	precision     int64
-	timePrecision int64
+	timePrecision *int64
 	scale         int64
-	typtype       string
-	typid         int64
 	parts         []string
+	interval      string
 }
 
 var reDigits = regexp.MustCompile(`\d`)
@@ -217,7 +326,7 @@ func parseColumn(s string) (*columnDesc, error) {
 		if err := parseCharParts(c.parts, c); err != nil {
 			return nil, err
 		}
-	case TypeDecimal, TypeNumeric:
+	case TypeDecimal, TypeNumeric, TypeFloat:
 		if len(parts) > 1 {
 			c.precision, err = strconv.ParseInt(parts[1], 10, 64)
 			if err != nil {
@@ -238,20 +347,30 @@ func parseColumn(s string) (*columnDesc, error) {
 		c.precision = 53
 	case TypeReal, TypeFloat4:
 		c.precision = 24
-	case TypeTime, TypeTimestamp, TypeTimestampTZ:
+	case TypeTime, TypeTimeTZ, TypeTimestamp, TypeTimestampTZ:
+		t, p := s, int64(defaultTimePrecision)
 		// If the second part is only one digit it is the precision argument.
-		// For cases like "timestamp(4) with time zone" make sure to not drop the rest of the type definition.
-		offset := 1
+		// For cases like "timestamp(4) with time zone" make sure to not drop
+		// the rest of the type definition.
 		if len(parts) > 1 && reDigits.MatchString(parts[1]) {
-			offset = 2
-			c.timePrecision, err = strconv.ParseInt(parts[1], 10, 64)
+			i, err := strconv.ParseInt(parts[1], 10, 64)
 			if err != nil {
 				return nil, fmt.Errorf("postgres: parse time precision %q: %w", parts[1], err)
 			}
+			p = i
+			t = strings.Join(append(c.parts[:1], c.parts[2:]...), " ")
 		}
-		// Append time zone part (if present).
-		if len(parts) > offset {
-			c.typ = fmt.Sprintf("%s %s", c.typ, strings.Join(parts[offset:], " "))
+		c.typ = timeAlias(t)
+		c.timePrecision = &p
+	case TypeInterval:
+		matches := reInterval.FindStringSubmatch(s)
+		c.interval = matches[1]
+		if matches[2] != "" {
+			i, err := strconv.ParseInt(matches[2], 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("postgres: parse interval precision %q: %w", parts[1], err)
+			}
+			c.timePrecision = &i
 		}
 	default:
 		c.typ = s
@@ -276,7 +395,7 @@ func parseCharParts(parts []string, c *columnDesc) error {
 	}
 	size, err := strconv.ParseInt(parts[0], 10, 64)
 	if err != nil {
-		return fmt.Errorf("postgres: parse size %q: %w", parts[1], err)
+		return fmt.Errorf("postgres: parse size %q: %w", parts[0], err)
 	}
 	c.size = size
 	return nil
@@ -301,4 +420,23 @@ func parseBitParts(parts []string, c *columnDesc) error {
 	}
 	c.size = size
 	return nil
+}
+
+// timeAlias returns the abbreviation for the given time type.
+func timeAlias(t string) string {
+	switch t = strings.ToLower(t); t {
+	// TIMESTAMPTZ be equivalent to TIMESTAMP WITH TIME ZONE.
+	case TypeTimestampWTZ:
+		t = TypeTimestampTZ
+	// TIMESTAMP be equivalent to TIMESTAMP WITHOUT TIME ZONE.
+	case TypeTimestampWOTZ:
+		t = TypeTimestamp
+	// TIME be equivalent to TIME WITHOUT TIME ZONE.
+	case TypeTimeWOTZ:
+		t = TypeTime
+	// TIMETZ be equivalent to TIME WITH TIME ZONE.
+	case TypeTimeWTZ:
+		t = TypeTimeTZ
+	}
+	return t
 }

@@ -24,11 +24,9 @@
 // expression is assigned, or of any type accepted by gocty, in which case
 // gocty will be used to assign the value to a native Go type.
 //
-// "block" fields may be of type *hcl.Block or hcl.Body, in which case the
-// corresponding raw value is assigned, or may be a struct that recursively
-// uses the same tags. Block fields may also be slices of any of these types,
-// in which case multiple blocks of the corresponding type are decoded into
-// the slice.
+// "block" fields may be a struct that recursively uses the same tags, or a
+// slice of such structs, in which case multiple blocks of the corresponding
+// type are decoded into the slice.
 //
 // "body" can be placed on a single field of type hcl.Body to capture
 // the full hcl.Body that was decoded for a block. This does not allow leftover

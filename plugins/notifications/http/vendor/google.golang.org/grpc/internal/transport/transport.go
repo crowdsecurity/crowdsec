@@ -30,6 +30,7 @@ import (
 	"net"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -518,7 +519,8 @@ const (
 // ServerConfig consists of all the configurations to establish a server transport.
 type ServerConfig struct {
 	MaxStreams            uint32
-	AuthInfo              credentials.AuthInfo
+	ConnectionTimeout     time.Duration
+	Credentials           credentials.TransportCredentials
 	InTapHandle           tap.ServerInHandle
 	StatsHandler          stats.Handler
 	KeepaliveParams       keepalive.ServerParameters
@@ -736,6 +738,12 @@ func (e ConnectionError) Origin() error {
 	if e.err == nil {
 		return e
 	}
+	return e.err
+}
+
+// Unwrap returns the original error of this connection error or nil when the
+// origin is nil.
+func (e ConnectionError) Unwrap() error {
 	return e.err
 }
 

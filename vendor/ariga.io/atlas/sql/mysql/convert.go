@@ -20,6 +20,11 @@ func FormatType(t schema.Type) (string, error) {
 	switch t := t.(type) {
 	case *BitType:
 		f = strings.ToLower(t.T)
+		if t.Size > 1 {
+			// The default size is 1. Thus, both
+			// BIT and BIT(1) are formatted as bit.
+			f += fmt.Sprintf("(%d)", t.Size)
+		}
 	case *schema.BoolType:
 		// Map all flavors to a single form.
 		switch f = strings.ToLower(t.T); f {
@@ -28,9 +33,9 @@ func FormatType(t schema.Type) (string, error) {
 		}
 	case *schema.BinaryType:
 		f = strings.ToLower(t.T)
-		if f == TypeVarBinary {
-			// Zero is also a valid length.
-			f = fmt.Sprintf("%s(%d)", f, t.Size)
+		// Accept 0 as a valid size, and avoid appending the default size of type BINARY.
+		if f == TypeVarBinary && t.Size != nil || f == TypeBinary && t.Size != nil && *t.Size != 1 {
+			f = fmt.Sprintf("%s(%d)", f, *t.Size)
 		}
 	case *schema.DecimalType:
 		if f = strings.ToLower(t.T); f != TypeDecimal && f != TypeNumeric {
@@ -74,7 +79,7 @@ func FormatType(t schema.Type) (string, error) {
 	case *schema.JSONType:
 		f = strings.ToLower(t.T)
 	case *SetType:
-		f = fmt.Sprintf("enum(%s)", formatValues(t.Values))
+		f = fmt.Sprintf("set(%s)", formatValues(t.Values))
 	case *schema.StringType:
 		f = strings.ToLower(t.T)
 		switch f {
@@ -91,8 +96,8 @@ func FormatType(t schema.Type) (string, error) {
 		f = strings.ToLower(t.T)
 	case *schema.TimeType:
 		f = strings.ToLower(t.T)
-		if t.Precision > 0 {
-			f = fmt.Sprintf("%s(%d)", f, t.Precision)
+		if p := t.Precision; p != nil && *p > 0 {
+			f = fmt.Sprintf("%s(%d)", f, *p)
 		}
 	case *schema.UnsupportedType:
 		// Do not accept unsupported types as we should cover all cases.
@@ -113,7 +118,8 @@ func ParseType(raw string) (schema.Type, error) {
 	switch t := parts[0]; t {
 	case TypeBit:
 		return &BitType{
-			T: t,
+			T:    t,
+			Size: int(size),
 		}, nil
 	// bool and booleans are synonyms for
 	// tinyint with display-width set to 1.
@@ -138,7 +144,7 @@ func ParseType(raw string) (schema.Type, error) {
 		if attr := parts[len(parts)-1]; attr == "zerofill" && size != 0 {
 			ft.Attrs = []schema.Attr{
 				&DisplayWidth{
-					N: int(size),
+					N: size,
 				},
 				&ZeroFill{
 					A: attr,
@@ -152,18 +158,14 @@ func ParseType(raw string) (schema.Type, error) {
 			Unsigned: unsigned,
 		}
 		if len(parts) > 1 && parts[1] != "unsigned" {
-			p, err := strconv.ParseInt(parts[1], 10, 64)
-			if err != nil {
+			if dt.Precision, err = strconv.Atoi(parts[1]); err != nil {
 				return nil, fmt.Errorf("parse precision %q", parts[1])
 			}
-			dt.Precision = int(p)
 		}
 		if len(parts) > 2 && parts[2] != "unsigned" {
-			s, err := strconv.ParseInt(parts[2], 10, 64)
-			if err != nil {
+			if dt.Scale, err = strconv.Atoi(parts[2]); err != nil {
 				return nil, fmt.Errorf("parse scale %q", parts[1])
 			}
-			dt.Scale = int(s)
 		}
 		return dt, nil
 	case TypeFloat, TypeDouble, TypeReal:
@@ -172,18 +174,17 @@ func ParseType(raw string) (schema.Type, error) {
 			Unsigned: unsigned,
 		}
 		if len(parts) > 1 && parts[1] != "unsigned" {
-			p, err := strconv.ParseInt(parts[1], 10, 64)
-			if err != nil {
+			if ft.Precision, err = strconv.Atoi(parts[1]); err != nil {
 				return nil, fmt.Errorf("parse precision %q", parts[1])
 			}
-			ft.Precision = int(p)
 		}
 		return ft, nil
 	case TypeBinary, TypeVarBinary:
-		return &schema.BinaryType{
-			T:    t,
-			Size: int(size),
-		}, nil
+		bt := &schema.BinaryType{T: t}
+		if len(parts) > 1 {
+			bt.Size = &size
+		}
+		return bt, nil
 	case TypeTinyBlob, TypeMediumBlob, TypeBlob, TypeLongBlob:
 		return &schema.BinaryType{
 			T: t,
@@ -191,7 +192,7 @@ func ParseType(raw string) (schema.Type, error) {
 	case TypeChar, TypeVarchar:
 		return &schema.StringType{
 			T:    t,
-			Size: int(size),
+			Size: size,
 		}, nil
 	case TypeTinyText, TypeMediumText, TypeText, TypeLongText:
 		return &schema.StringType{
@@ -222,11 +223,11 @@ func ParseType(raw string) (schema.Type, error) {
 			T: t,
 		}
 		if len(parts) > 1 {
-			p, err := strconv.ParseInt(parts[1], 10, 64)
+			p, err := strconv.Atoi(parts[1])
 			if err != nil {
 				return nil, fmt.Errorf("parse precision %q", parts[1])
 			}
-			tt.Precision = int(p)
+			tt.Precision = &p
 		}
 		return tt, nil
 	case TypeJSON:
@@ -242,15 +243,6 @@ func ParseType(raw string) (schema.Type, error) {
 			T: t,
 		}, nil
 	}
-}
-
-// mustFormat calls to FormatType and panics in case of error.
-func mustFormat(t schema.Type) string {
-	s, err := FormatType(t)
-	if err != nil {
-		panic(err)
-	}
-	return s
 }
 
 // formatValues formats ENUM and SET values.

@@ -10,13 +10,23 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 
 	"ariga.io/atlas/sql/internal/sqlx"
 	"ariga.io/atlas/sql/schema"
 )
 
 // A diff provides a MySQL implementation for sqlx.DiffDriver.
-type diff struct{ conn }
+type diff struct {
+	conn
+	// charset to collation mapping.
+	// See, internal directory.
+	ch2co, co2ch struct {
+		sync.Once
+		v   map[string]string
+		err error
+	}
+}
 
 // SchemaAttrDiff returns a changeset for migrating schema attributes from one state to the other.
 func (d *diff) SchemaAttrDiff(from, to *schema.Schema) []schema.Change {
@@ -53,8 +63,8 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 	if change := d.collationChange(from.Attrs, from.Schema.Attrs, to.Attrs); change != noChange {
 		changes = append(changes, change)
 	}
-	if _, ok := d.supportsCheck(); !ok && sqlx.Has(to.Attrs, &schema.Check{}) {
-		return nil, fmt.Errorf("version %q does not support CHECK constraints", d.version)
+	if !d.SupportsCheck() && sqlx.Has(to.Attrs, &schema.Check{}) {
+		return nil, fmt.Errorf("version %q does not support CHECK constraints", d.V)
 	}
 	// For MariaDB, we skip JSON CHECK constraints that were created by the databases,
 	// or by Atlas for older versions. These CHECK constraints (inlined on the columns)
@@ -79,7 +89,7 @@ func (d *diff) TableAttrDiff(from, to *schema.Table) ([]schema.Change, error) {
 }
 
 // ColumnChange returns the schema changes (if any) for migrating one column to the other.
-func (d *diff) ColumnChange(from, to *schema.Column) (schema.ChangeKind, error) {
+func (d *diff) ColumnChange(fromT *schema.Table, from, to *schema.Column) (schema.ChangeKind, error) {
 	change := sqlx.CommentChange(from.Attrs, to.Attrs)
 	if from.Type.Null != to.Type.Null {
 		change |= schema.ChangeNull
@@ -91,12 +101,29 @@ func (d *diff) ColumnChange(from, to *schema.Column) (schema.ChangeKind, error) 
 	if changed {
 		change |= schema.ChangeType
 	}
-	changed, err = d.defaultChanged(from, to)
-	if err != nil {
+	if changed, err = d.defaultChanged(from, to); err != nil {
 		return schema.NoChange, err
 	}
 	if changed {
 		change |= schema.ChangeDefault
+	}
+	if changed, err = d.generatedChanged(from, to); err != nil {
+		return schema.NoChange, err
+	}
+	if changed {
+		change |= schema.ChangeGenerated
+	}
+	if changed, err = d.columnCharsetChanged(fromT, from, to); err != nil {
+		return schema.NoChange, err
+	}
+	if changed {
+		change |= schema.ChangeCharset
+	}
+	if changed, err = d.columnCollateChanged(fromT, from, to); err != nil {
+		return schema.NoChange, err
+	}
+	if changed {
+		change |= schema.ChangeCollate
 	}
 	return change, nil
 }
@@ -107,9 +134,9 @@ func (d *diff) IsGeneratedIndexName(_ *schema.Table, idx *schema.Index) bool {
 	// mysql-server/sql/sql_table.cc#add_functional_index_to_create_list
 	const f = "functional_index"
 	switch {
-	case d.supportsIndexExpr() && idx.Name == f:
+	case d.SupportsIndexExpr() && idx.Name == f:
 		return true
-	case d.supportsIndexExpr() && strings.HasPrefix(idx.Name+"_", f):
+	case d.SupportsIndexExpr() && strings.HasPrefix(idx.Name+"_", f):
 		i, err := strconv.ParseInt(strings.TrimLeft(idx.Name, idx.Name+"_"), 10, 64)
 		return err == nil && i > 1
 	case len(idx.Parts) == 0 || idx.Parts[0].C == nil:
@@ -156,24 +183,31 @@ func (*diff) ReferenceChanged(from, to schema.ReferenceOption) bool {
 }
 
 // Normalize implements the sqlx.Normalizer interface.
-func (*diff) Normalize(from, to *schema.Table) {
+func (d *diff) Normalize(from, to *schema.Table) error {
 	indexes := make([]*schema.Index, 0, len(from.Indexes))
 	for _, idx := range from.Indexes {
 		// MySQL requires that foreign key columns be indexed; Therefore, if the child
 		// table is defined on non-indexed columns, an index is automatically created
 		// to satisfy the constraint.
 		// Therefore, if no such key was defined on the desired state, the diff will
-		// recommend to drop it on migration. Therefore, we fix it by dropping it from
+		// recommend dropping it on migration. Therefore, we fix it by dropping it from
 		// the current state manually.
 		if _, ok := to.Index(idx.Name); ok || !keySupportsFK(from, idx) {
 			indexes = append(indexes, idx)
 		}
 	}
 	from.Indexes = indexes
+
+	// Avoid proposing changes to the table COLLATE or CHARSET
+	// in case only one of these properties is defined.
+	if err := d.defaultCollate(&to.Attrs); err != nil {
+		return err
+	}
+	return d.defaultCharset(&to.Attrs)
 }
 
 // collationChange returns the schema change for migrating the collation if
-// it was changed and its not the default attribute inherited from its parent.
+// it was changed, and it is not the default attribute inherited from its parent.
 func (*diff) collationChange(from, top, to []schema.Attr) schema.Change {
 	var fromC, topC, toC schema.Collation
 	switch fromHas, topHas, toHas := sqlx.Has(from, &fromC), sqlx.Has(top, &topC), sqlx.Has(to, &toC); {
@@ -183,7 +217,7 @@ func (*diff) collationChange(from, top, to []schema.Attr) schema.Change {
 			A: &toC,
 		}
 	case !toHas:
-		// There is no way to DROP a COLLATE that was configured on the table
+		// There is no way to DROP a COLLATE that was configured on the table,
 		// and it is not the default. Therefore, we use ModifyAttr and give it
 		// the inherited (and default) collation from schema or server.
 		if topHas && fromC.V != topC.V {
@@ -202,7 +236,7 @@ func (*diff) collationChange(from, top, to []schema.Attr) schema.Change {
 }
 
 // charsetChange returns the schema change for migrating the collation if
-// it was changed and its not the default attribute inherited from its parent.
+// it was changed, and it is not the default attribute inherited from its parent.
 func (*diff) charsetChange(from, top, to []schema.Attr) schema.Change {
 	var fromC, topC, toC schema.Charset
 	switch fromHas, topHas, toHas := sqlx.Has(from, &fromC), sqlx.Has(top, &topC), sqlx.Has(to, &toC); {
@@ -212,7 +246,7 @@ func (*diff) charsetChange(from, top, to []schema.Attr) schema.Change {
 			A: &toC,
 		}
 	case !toHas:
-		// There is no way to DROP a CHARSET that was configured on the table
+		// There is no way to DROP a CHARSET that was configured on the table,
 		// and it is not the default. Therefore, we use ModifyAttr and give it
 		// the inherited (and default) collation from schema or server.
 		if topHas && fromC.V != topC.V {
@@ -230,6 +264,46 @@ func (*diff) charsetChange(from, top, to []schema.Attr) schema.Change {
 	return noChange
 }
 
+// columnCharsetChange indicates if there is a change to the column charset.
+func (d *diff) columnCharsetChanged(fromT *schema.Table, from, to *schema.Column) (bool, error) {
+	if err := d.defaultCharset(&to.Attrs); err != nil {
+		return false, err
+	}
+	var (
+		fromC, topC, toC       schema.Charset
+		fromHas, topHas, toHas = sqlx.Has(from.Attrs, &fromC), sqlx.Has(fromT.Attrs, &topC), sqlx.Has(to.Attrs, &toC)
+	)
+	// Column was updated with custom CHARSET that was dropped.
+	// Hence, we should revert to the one defined on the table.
+	return fromHas && !toHas && topHas && fromC.V != topC.V ||
+		// Custom CHARSET was added to the column. Hence,
+		// Does not match the one defined in the table.
+		!fromHas && toHas && topHas && toC.V != topC.V ||
+		// CHARSET was explicitly changed.
+		fromHas && toHas && fromC.V != toC.V, nil
+
+}
+
+// columnCollateChanged indicates if there is a change to the column charset.
+func (d *diff) columnCollateChanged(fromT *schema.Table, from, to *schema.Column) (bool, error) {
+	if err := d.defaultCollate(&to.Attrs); err != nil {
+		return false, err
+	}
+	var (
+		fromC, topC, toC       schema.Collation
+		fromHas, topHas, toHas = sqlx.Has(from.Attrs, &fromC), sqlx.Has(fromT.Attrs, &topC), sqlx.Has(to.Attrs, &toC)
+	)
+	// Column was updated with custom COLLATE that was dropped.
+	// Hence, we should revert to the one defined on the table.
+	return fromHas && !toHas && topHas && fromC.V != topC.V ||
+		// Custom COLLATE was added to the column. Hence,
+		// Does not match the one defined in the table.
+		!fromHas && toHas && topHas && toC.V != topC.V ||
+		// COLLATE was explicitly changed.
+		fromHas && toHas && fromC.V != toC.V, nil
+
+}
+
 // autoIncChange returns the schema change for changing the AUTO_INCREMENT
 // attribute in case it is not the default.
 func (*diff) autoIncChange(from, to []schema.Attr) schema.Change {
@@ -237,7 +311,7 @@ func (*diff) autoIncChange(from, to []schema.Attr) schema.Change {
 	switch fromHas, toHas := sqlx.Has(from, &fromA), sqlx.Has(to, &toA); {
 	// Ignore if the AUTO_INCREMENT attribute was dropped from the desired schema.
 	case fromHas && !toHas:
-	// The AUTO_INCREMENT exists in the desired schema, and may not exists in the inspected one.
+	// The AUTO_INCREMENT exists in the desired schema, and may not exist in the inspected one.
 	// This can happen because older versions of MySQL (< 8.0) stored the AUTO_INCREMENT counter
 	// in main memory (not persistent), and the value is reset on process restart for empty tables.
 	case toA.V > 1 && toA.V > fromA.V:
@@ -284,8 +358,17 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	}
 	var changed bool
 	switch fromT := fromT.(type) {
-	case *schema.BinaryType, *schema.BoolType, *schema.DecimalType, *schema.FloatType:
-		changed = mustFormat(fromT) != mustFormat(toT)
+	case *BitType, *schema.BinaryType, *schema.BoolType, *schema.DecimalType, *schema.FloatType,
+		*schema.JSONType, *schema.StringType, *schema.SpatialType, *schema.TimeType:
+		ft, err := FormatType(fromT)
+		if err != nil {
+			return false, err
+		}
+		tt, err := FormatType(toT)
+		if err != nil {
+			return false, err
+		}
+		changed = ft != tt
 	case *schema.EnumType:
 		toT := toT.(*schema.EnumType)
 		changed = !sqlx.ValuesEqual(fromT.Values, toT.Values)
@@ -293,7 +376,7 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 		toT := toT.(*schema.IntegerType)
 		// MySQL v8.0.19 dropped both display-width
 		// and zerofill from the information schema.
-		if d.supportsDisplayWidth() {
+		if d.SupportsDisplayWidth() {
 			ft, _, _, err := parseColumn(fromT.T)
 			if err != nil {
 				return false, err
@@ -305,20 +388,6 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 			fromT.T, toT.T = ft[0], tt[0]
 		}
 		changed = fromT.T != toT.T || fromT.Unsigned != toT.Unsigned
-	case *schema.JSONType:
-		toT := toT.(*schema.JSONType)
-		changed = fromT.T != toT.T
-	case *schema.StringType:
-		changed = mustFormat(fromT) != mustFormat(toT)
-	case *schema.SpatialType:
-		toT := toT.(*schema.SpatialType)
-		changed = fromT.T != toT.T
-	case *schema.TimeType:
-		toT := toT.(*schema.TimeType)
-		changed = fromT.T != toT.T
-	case *BitType:
-		toT := toT.(*BitType)
-		changed = fromT.T != toT.T
 	case *SetType:
 		toT := toT.(*SetType)
 		changed = !sqlx.ValuesEqual(fromT.Values, toT.Values)
@@ -328,8 +397,7 @@ func (d *diff) typeChanged(from, to *schema.Column) (bool, error) {
 	return changed, nil
 }
 
-// defaultChanged reports if the a default value of a column
-// type was changed.
+// defaultChanged reports if the default value of a column was changed.
 func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
 	d1, ok1 := sqlx.DefaultValue(from)
 	d2, ok2 := sqlx.DefaultValue(to)
@@ -369,6 +437,18 @@ func (d *diff) defaultChanged(from, to *schema.Column) (bool, error) {
 		x2 := strings.Trim(d2, "'")
 		return x1 != x2, nil
 	}
+}
+
+// generatedChanged reports if the generated expression of a column was changed.
+func (*diff) generatedChanged(from, to *schema.Column) (bool, error) {
+	var (
+		fromX, toX     schema.GeneratedExpr
+		fromHas, toHas = sqlx.Has(from.Attrs, &fromX), sqlx.Has(to.Attrs, &toX)
+	)
+	if !fromHas && !toHas || fromHas && toHas && sqlx.MayWrap(fromX.Expr) == sqlx.MayWrap(toX.Expr) && storedOrVirtual(fromX.Type) == storedOrVirtual(toX.Type) {
+		return false, nil
+	}
+	return true, checkChangeGenerated(from, to)
 }
 
 // equalIntValues report if the 2 int default values are ~equal.
@@ -470,4 +550,46 @@ search:
 		return true
 	}
 	return false
+}
+
+// defaultCollate appends the default COLLATE to the attributes in case a
+// custom character-set was defined for the element and the COLLATE was not.
+func (d *diff) defaultCollate(attrs *[]schema.Attr) error {
+	var charset schema.Charset
+	if !sqlx.Has(*attrs, &charset) || sqlx.Has(*attrs, &schema.Collation{}) {
+		return nil
+	}
+	d.ch2co.Do(func() {
+		d.ch2co.v, d.ch2co.err = d.CharsetToCollate()
+	})
+	if d.ch2co.err != nil {
+		return d.ch2co.err
+	}
+	v, ok := d.ch2co.v[charset.V]
+	if !ok {
+		return fmt.Errorf("mysql: unknown character set: %q", charset.V)
+	}
+	schema.ReplaceOrAppend(attrs, &schema.Collation{V: v})
+	return nil
+}
+
+// defaultCharset appends the default CHARSET to the attributes in case a
+// custom collation was defined for the element and the CHARSET was not.
+func (d *diff) defaultCharset(attrs *[]schema.Attr) error {
+	var collate schema.Collation
+	if !sqlx.Has(*attrs, &collate) || sqlx.Has(*attrs, &schema.Charset{}) {
+		return nil
+	}
+	d.co2ch.Do(func() {
+		d.co2ch.v, d.co2ch.err = d.CollateToCharset()
+	})
+	if d.co2ch.err != nil {
+		return d.co2ch.err
+	}
+	v, ok := d.co2ch.v[collate.V]
+	if !ok {
+		return fmt.Errorf("mysql: unknown collation: %q", collate.V)
+	}
+	schema.ReplaceOrAppend(attrs, &schema.Charset{V: v})
+	return nil
 }

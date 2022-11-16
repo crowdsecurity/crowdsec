@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"ariga.io/atlas/sql/internal/sqlx"
@@ -40,12 +41,14 @@ func priority(change schema.Change) int {
 	case *schema.ModifySchema:
 		// each modifyTable should have a single change since we apply `flat` before we sort.
 		return priority(c.Changes[0])
-	case *schema.DropIndex, *schema.DropForeignKey, *schema.DropAttr, *schema.DropCheck:
+	case *schema.AddColumn:
 		return 1
-	case *schema.ModifyIndex, *schema.ModifyForeignKey:
+	case *schema.DropIndex, *schema.DropForeignKey, *schema.DropAttr, *schema.DropCheck:
 		return 2
-	default:
+	case *schema.ModifyIndex, *schema.ModifyForeignKey:
 		return 3
+	default:
+		return 4
 	}
 }
 
@@ -78,7 +81,7 @@ func flat(changes []schema.Change) []schema.Change {
 }
 
 // PlanChanges returns a migration plan for the given schema changes.
-func (p *tplanApply) PlanChanges(ctx context.Context, name string, changes []schema.Change) (*migrate.Plan, error) {
+func (p *tplanApply) PlanChanges(ctx context.Context, name string, changes []schema.Change, opts ...migrate.PlanOption) (*migrate.Plan, error) {
 	fc := flat(changes)
 	sort.SliceStable(fc, func(i, j int) bool {
 		return priority(fc[i]) < priority(fc[j])
@@ -94,8 +97,8 @@ func (p *tplanApply) PlanChanges(ctx context.Context, name string, changes []sch
 		},
 	}
 	for _, c := range fc {
-		// Use the planner of MySQL with each "atomic" chanage.
-		plan, err := p.planApply.PlanChanges(ctx, name, []schema.Change{c})
+		// Use the planner of MySQL with each "atomic" change.
+		plan, err := p.planApply.PlanChanges(ctx, name, []schema.Change{c}, opts...)
 		if err != nil {
 			return nil, err
 		}
@@ -107,20 +110,8 @@ func (p *tplanApply) PlanChanges(ctx context.Context, name string, changes []sch
 	return &s.Plan, nil
 }
 
-func (p *tplanApply) ApplyChanges(ctx context.Context, changes []schema.Change) error {
-	plan, err := p.PlanChanges(ctx, "apply", changes)
-	if err != nil {
-		return err
-	}
-	for _, c := range plan.Changes {
-		if _, err := p.ExecContext(ctx, c.Cmd, c.Args...); err != nil {
-			if c.Comment != "" {
-				err = fmt.Errorf("%s: %w", c.Comment, err)
-			}
-			return err
-		}
-	}
-	return nil
+func (p *tplanApply) ApplyChanges(ctx context.Context, changes []schema.Change, opts ...migrate.PlanOption) error {
+	return sqlx.ApplyChanges(ctx, changes, p, opts...)
 }
 
 func (i *tinspect) InspectSchema(ctx context.Context, name string, opts *schema.InspectOptions) (*schema.Schema, error) {
@@ -158,6 +149,9 @@ func (i *tinspect) patchSchema(ctx context.Context, s *schema.Schema) (*schema.S
 		if err := i.setFKs(s, t); err != nil {
 			return nil, err
 		}
+		if err := i.setAutoIncrement(t); err != nil {
+			return nil, err
+		}
 		for _, c := range t.Columns {
 			i.patchColumn(ctx, c)
 		}
@@ -165,13 +159,13 @@ func (i *tinspect) patchSchema(ctx context.Context, s *schema.Schema) (*schema.S
 	return s, nil
 }
 
-func (i *tinspect) patchColumn(ctx context.Context, c *schema.Column) {
+func (i *tinspect) patchColumn(_ context.Context, c *schema.Column) {
 	_, ok := c.Type.Type.(*BitType)
 	if !ok {
 		return
 	}
 	// TiDB has a bug where it does not format bit default value correctly.
-	if lit, ok := c.Default.(*schema.Literal); ok {
+	if lit, ok := c.Default.(*schema.Literal); ok && !strings.HasPrefix(lit.V, "b'") {
 		lit.V = bytesToBitLiteral([]byte(lit.V))
 	}
 }
@@ -231,7 +225,7 @@ func (i *tinspect) setFKs(s *schema.Schema, t *schema.Table) error {
 			fk.Columns = append(fk.Columns, column)
 		}
 		for _, c := range columns(s, refClmns) {
-			column, ok := t.Column(c)
+			column, ok := refTable.Column(c)
 			if !ok {
 				return fmt.Errorf("ref column %q was not found for fk %q", c, ctName)
 			}
@@ -258,13 +252,37 @@ var reColl = regexp.MustCompile(`(?i)CHARSET\s*=\s*(\w+)\s*COLLATE\s*=\s*(\w+)`)
 func (i *tinspect) setCollate(t *schema.Table) error {
 	var c CreateStmt
 	if !sqlx.Has(t.Attrs, &c) {
-		return fmt.Errorf("missing CREATE TABLE statment in attribuets for %q", t.Name)
+		return fmt.Errorf("missing CREATE TABLE statement in attributes for %q", t.Name)
 	}
 	matches := reColl.FindStringSubmatch(c.S)
 	if len(matches) != 3 {
-		return fmt.Errorf("missing COLLATE and/or CHARSET information on CREATE TABLE statment for %q", t.Name)
+		return fmt.Errorf("missing COLLATE and/or CHARSET information on CREATE TABLE statement for %q", t.Name)
 	}
 	t.SetCharset(matches[1])
 	t.SetCollation(matches[2])
+	return nil
+}
+
+// setCollate extracts the updated Collation from CREATE TABLE statement.
+func (i *tinspect) setAutoIncrement(t *schema.Table) error {
+	// patch only it is set (set falsely to '1' due to this bug:https://github.com/pingcap/tidb/issues/24702).
+	ai := &AutoIncrement{}
+	if !sqlx.Has(t.Attrs, ai) {
+		return nil
+	}
+	var c CreateStmt
+	if !sqlx.Has(t.Attrs, &c) {
+		return fmt.Errorf("missing CREATE TABLE statement in attributes for %q", t.Name)
+	}
+	matches := reAutoinc.FindStringSubmatch(c.S)
+	if len(matches) != 2 {
+		return nil
+	}
+	v, err := strconv.ParseInt(matches[1], 10, 64)
+	if err != nil {
+		return err
+	}
+	ai.V = v
+	schema.ReplaceOrAppend(&t.Attrs, ai)
 	return nil
 }

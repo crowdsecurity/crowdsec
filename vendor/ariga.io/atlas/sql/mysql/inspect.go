@@ -27,15 +27,18 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 	if err != nil {
 		return nil, err
 	}
+	if opts == nil {
+		opts = &schema.InspectRealmOption{}
+	}
 	r := schema.NewRealm(schemas...).SetCharset(i.charset).SetCollation(i.collate)
-	if len(schemas) == 0 {
+	if len(schemas) == 0 || !sqlx.ModeInspectRealm(opts).Is(schema.InspectTables) {
 		return r, nil
 	}
 	if err := i.inspectTables(ctx, r, nil); err != nil {
 		return nil, err
 	}
 	sqlx.LinkSchemaTables(schemas)
-	return r, nil
+	return sqlx.ExcludeRealm(r, opts.Exclude)
 }
 
 // InspectSchema returns schema descriptions of the tables in the given schema.
@@ -51,12 +54,17 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 	case n > 1:
 		return nil, fmt.Errorf("mysql: %d schemas were found for %q", n, name)
 	}
-	r := schema.NewRealm(schemas...).SetCharset(i.charset).SetCollation(i.collate)
-	if err := i.inspectTables(ctx, r, opts); err != nil {
-		return nil, err
+	if opts == nil {
+		opts = &schema.InspectOptions{}
 	}
-	sqlx.LinkSchemaTables(schemas)
-	return r.Schemas[0], nil
+	r := schema.NewRealm(schemas...).SetCharset(i.charset).SetCollation(i.collate)
+	if sqlx.ModeInspectSchema(opts).Is(schema.InspectTables) {
+		if err := i.inspectTables(ctx, r, opts); err != nil {
+			return nil, err
+		}
+		sqlx.LinkSchemaTables(schemas)
+	}
+	return sqlx.ExcludeSchema(r.Schemas[0], opts.Exclude)
 }
 
 func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *schema.InspectOptions) error {
@@ -89,7 +97,7 @@ func (i *inspect) inspectTables(ctx context.Context, r *schema.Realm, opts *sche
 // schemas returns the list of the schemas in the database.
 func (i *inspect) schemas(ctx context.Context, opts *schema.InspectRealmOption) ([]*schema.Schema, error) {
 	var (
-		args  []interface{}
+		args  []any
 		query = schemasQuery
 	)
 	if opts != nil {
@@ -134,7 +142,7 @@ func (i *inspect) schemas(ctx context.Context, opts *schema.InspectRealmOption) 
 
 func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.InspectOptions) error {
 	var (
-		args  []interface{}
+		args  []any
 		query = fmt.Sprintf(tablesQuery, nArgs(len(realm.Schemas)))
 	)
 	for _, s := range realm.Schemas {
@@ -199,7 +207,11 @@ func (i *inspect) tables(ctx context.Context, realm *schema.Realm, opts *schema.
 
 // columns queries and appends the columns of the given table.
 func (i *inspect) columns(ctx context.Context, s *schema.Schema) error {
-	rows, err := i.querySchema(ctx, columnsQuery, s)
+	query := columnsQuery
+	if i.SupportsGeneratedColumns() {
+		query = columnsExprQuery
+	}
+	rows, err := i.querySchema(ctx, query, s)
 	if err != nil {
 		return fmt.Errorf("mysql: query schema %q columns: %w", s.Name, err)
 	}
@@ -214,8 +226,8 @@ func (i *inspect) columns(ctx context.Context, s *schema.Schema) error {
 
 // addColumn scans the current row and adds a new column from it to the table.
 func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
-	var table, name, typ, comment, nullable, key, defaults, extra, charset, collation sql.NullString
-	if err := rows.Scan(&table, &name, &typ, &comment, &nullable, &key, &defaults, &extra, &charset, &collation); err != nil {
+	var table, name, typ, comment, nullable, key, defaults, extra, charset, collation, expr sql.NullString
+	if err := rows.Scan(&table, &name, &typ, &comment, &nullable, &key, &defaults, &extra, &charset, &collation, &expr); err != nil {
 		return err
 	}
 	t, ok := s.Table(table.String)
@@ -234,32 +246,46 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 		return err
 	}
 	c.Type.Type = ct
-	if err := i.extraAttr(t, c, extra.String); err != nil {
+	attr, err := parseExtra(extra.String)
+	if err != nil {
 		return err
 	}
-	if sqlx.ValidString(defaults) {
-		if i.mariadb() {
+	if attr.autoinc {
+		a := &AutoIncrement{}
+		if !sqlx.Has(t.Attrs, a) {
+			// A table can have only one AUTO_INCREMENT column. If it was returned as NULL
+			// from INFORMATION_SCHEMA, it is due to information_schema_stats_expiry, and
+			// we need to extract it from the 'CREATE TABLE' command.
+			putShow(t).auto = a
+		}
+		c.Attrs = append(c.Attrs, a)
+	}
+	if attr.onUpdate != "" {
+		c.Attrs = append(c.Attrs, &OnUpdate{A: attr.onUpdate})
+	}
+	if x := expr.String; x != "" {
+		if !i.Maria() {
+			x = unescape(x)
+		}
+		c.SetGeneratedExpr(&schema.GeneratedExpr{Expr: x, Type: attr.generatedType})
+	}
+	if defaults.Valid {
+		if i.Maria() {
 			c.Default = i.marDefaultExpr(c, defaults.String)
 		} else {
-			c.Default = i.myDefaultExpr(c, defaults.String, extra.String)
+			c.Default = i.myDefaultExpr(c, defaults.String, attr)
 		}
 	}
 	if sqlx.ValidString(comment) {
-		c.Attrs = append(c.Attrs, &schema.Comment{
-			Text: comment.String,
-		})
+		c.SetComment(comment.String)
 	}
 	if sqlx.ValidString(charset) {
-		c.Attrs = append(c.Attrs, &schema.Charset{
-			V: charset.String,
-		})
+		c.SetCharset(charset.String)
 	}
 	if sqlx.ValidString(collation) {
-		c.Attrs = append(c.Attrs, &schema.Collation{
-			V: collation.String,
-		})
+		c.SetCollation(collation.String)
 	}
-	t.Columns = append(t.Columns, c)
+	t.AddColumns(c)
 	// From MySQL doc: A UNIQUE index may be displayed as "PRI" if it is NOT NULL
 	// and there is no PRIMARY KEY in the table. We detect this in `addIndexes`.
 	if key.String == "PRI" {
@@ -276,10 +302,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 
 // indexes queries and appends the indexes of the given table.
 func (i *inspect) indexes(ctx context.Context, s *schema.Schema) error {
-	query := indexesQuery
-	if i.supportsIndexExpr() {
-		query = indexesExprQuery
-	}
+	query := i.indexQuery()
 	rows, err := i.querySchema(ctx, query, s)
 	if err != nil {
 		return fmt.Errorf("mysql: query schema %q indexes: %w", s.Name, err)
@@ -401,7 +424,7 @@ func (i *inspect) checks(ctx context.Context, s *schema.Schema) error {
 			Name: name.String,
 			Expr: unescape(clause.String),
 		}
-		if i.mariadb() {
+		if i.Maria() {
 			check.Expr = clause.String
 			// In MariaDB, JSON is an alias to LONGTEXT. For versions >= 10.4.3, the CHARSET and COLLATE set to utf8mb4
 			// and a CHECK constraint is automatically created for the column as well (i.e. JSON_VALID(`<C>`)). However,
@@ -425,32 +448,61 @@ func (i *inspect) checks(ctx context.Context, s *schema.Schema) error {
 	return rows.Err()
 }
 
-var reTimeOnUpdate = regexp.MustCompile(`(?i)^(?:default_generated )?on update (current_timestamp(?:\(\d?\))?)$`)
+// supportsCheck reports if the connected database supports
+// the CHECK clause, and return the querying for getting them.
+func (i *inspect) supportsCheck() (string, bool) {
+	q := myChecksQuery
+	if i.Maria() {
+		q = marChecksQuery
+	}
+	return q, i.SupportsCheck()
+}
 
-// extraAttr parses the EXTRA column from the INFORMATION_SCHEMA.COLUMNS table
-// and appends its parsed representation to the column.
-func (i *inspect) extraAttr(t *schema.Table, c *schema.Column, extra string) error {
-	el := strings.ToLower(extra)
-	switch {
-	case el == "", el == "null": // ignore.
+// indexQuery returns the query to retrieve the indexes of the given table.
+func (i *inspect) indexQuery() string {
+	query := indexesNoCommentQuery
+	if i.SupportsIndexComment() {
+		query = indexesQuery
+	}
+	if i.SupportsIndexExpr() {
+		query = indexesExprQuery
+	}
+	return query
+}
+
+// extraAttr is a parsed version of the information_schema EXTRA column.
+type extraAttr struct {
+	autoinc          bool
+	onUpdate         string
+	generatedType    string
+	defaultGenerated bool
+}
+
+var (
+	reGenerateType = regexp.MustCompile(`(?i)^(stored|persistent|virtual) generated$`)
+	reTimeOnUpdate = regexp.MustCompile(`(?i)^(?:default_generated )?on update (current_timestamp(?:\(\d?\))?)$`)
+)
+
+// parseExtra returns a parsed version of the EXTRA column
+// from the INFORMATION_SCHEMA.COLUMNS table.
+func parseExtra(extra string) (*extraAttr, error) {
+	attr := &extraAttr{}
+	switch el := strings.ToLower(extra); {
+	case el == "", el == "null":
 	case el == defaultGen:
-		// The column has an expression default value
+		attr.defaultGenerated = true
+		// The column has an expression default value,
 		// and it is handled in Driver.addColumn.
 	case el == autoIncrement:
-		a := &AutoIncrement{}
-		if !sqlx.Has(t.Attrs, a) {
-			// A table can have only one AUTO_INCREMENT column. If it was returned as NULL
-			// from INFORMATION_SCHEMA, it is due to information_schema_stats_expiry and we
-			// need to extract it from the 'CREATE TABLE' command.
-			putShow(t).auto = a
-		}
-		c.Attrs = append(c.Attrs, a)
+		attr.autoinc = true
 	case reTimeOnUpdate.MatchString(extra):
-		c.Attrs = append(c.Attrs, &OnUpdate{A: reTimeOnUpdate.FindStringSubmatch(extra)[1]})
+		attr.onUpdate = reTimeOnUpdate.FindStringSubmatch(extra)[1]
+	case reGenerateType.MatchString(extra):
+		attr.generatedType = reGenerateType.FindStringSubmatch(extra)[1]
 	default:
-		return fmt.Errorf("unknown attribute %q", extra)
+		return nil, fmt.Errorf("unknown extra column attribute %q", extra)
 	}
-	return nil
+	return attr, nil
 }
 
 // showCreate sets and fixes schema elements that require information from
@@ -471,7 +523,7 @@ func (i *inspect) showCreate(ctx context.Context, s *schema.Schema) error {
 	return nil
 }
 
-var reAutoinc = regexp.MustCompile(`(?i)\s+AUTO_INCREMENT\s*=\s*(\d+)\s+`)
+var reAutoinc = regexp.MustCompile(`(?i)\s*AUTO_INCREMENT\s*=\s*(\d+)\s*`)
 
 // setAutoInc extracts the updated AUTO_INCREMENT from CREATE TABLE.
 func (i *inspect) setAutoInc(s *showTable, t *schema.Table) error {
@@ -480,7 +532,7 @@ func (i *inspect) setAutoInc(s *showTable, t *schema.Table) error {
 	}
 	var c CreateStmt
 	if !sqlx.Has(t.Attrs, &c) {
-		return fmt.Errorf("missing CREATE TABLE statment in attribuets for %q", t.Name)
+		return fmt.Errorf("missing CREATE TABLE statement in attributes for %q", t.Name)
 	}
 	if sqlx.Has(t.Attrs, &AutoIncrement{}) {
 		return fmt.Errorf("unexpected AUTO_INCREMENT attributes for table: %q", t.Name)
@@ -501,7 +553,8 @@ func (i *inspect) setAutoInc(s *showTable, t *schema.Table) error {
 // createStmt loads the CREATE TABLE statement for the table.
 func (i *inspect) createStmt(ctx context.Context, t *schema.Table) error {
 	c := &CreateStmt{}
-	rows, err := i.QueryContext(ctx, Build("SHOW CREATE TABLE").Table(t).String())
+	b := &sqlx.Builder{QuoteChar: '`'}
+	rows, err := i.QueryContext(ctx, b.P("SHOW CREATE TABLE").Table(t).String())
 	if err != nil {
 		return fmt.Errorf("query CREATE TABLE %q: %w", t.Name, err)
 	}
@@ -515,10 +568,14 @@ func (i *inspect) createStmt(ctx context.Context, t *schema.Table) error {
 var reCurrTimestamp = regexp.MustCompile(`(?i)^current_timestamp(?:\(\d?\))?$`)
 
 // myDefaultExpr returns the correct schema.Expr based on the column attributes for MySQL.
-func (i *inspect) myDefaultExpr(c *schema.Column, x, extra string) schema.Expr {
+func (i *inspect) myDefaultExpr(c *schema.Column, x string, attr *extraAttr) schema.Expr {
 	// In MySQL, the DEFAULT_GENERATED indicates the column has an expression default value.
-	if i.supportsExprDefault() && strings.Contains(strings.ToLower(extra), defaultGen) {
-		return &schema.RawExpr{X: x}
+	if i.SupportsExprDefault() && attr.defaultGenerated {
+		// Skip CURRENT_TIMESTAMP, because wrapping it with parens will translate it to now().
+		if _, ok := c.Type.Type.(*schema.TimeType); ok && reCurrTimestamp.MatchString(x) {
+			return &schema.RawExpr{X: x}
+		}
+		return &schema.RawExpr{X: sqlx.MayWrap(unescape(x))}
 	}
 	switch c.Type.Type.(type) {
 	case *schema.BinaryType:
@@ -539,7 +596,7 @@ func (i *inspect) myDefaultExpr(c *schema.Column, x, extra string) schema.Expr {
 }
 
 // parseColumn returns column parts, size and signed-info from a MySQL type.
-func parseColumn(typ string) (parts []string, size int64, unsigned bool, err error) {
+func parseColumn(typ string) (parts []string, size int, unsigned bool, err error) {
 	switch parts = strings.FieldsFunc(typ, func(r rune) bool {
 		return r == '(' || r == ')' || r == ' ' || r == ','
 	}); parts[0] {
@@ -549,10 +606,12 @@ func parseColumn(typ string) (parts []string, size int64, unsigned bool, err err
 			unsigned = true
 		}
 		if len(parts) > 2 || len(parts) == 2 && !unsigned {
-			size, err = strconv.ParseInt(parts[1], 10, 64)
+			size, err = strconv.Atoi(parts[1])
 		}
-	case TypeBinary, TypeVarBinary, TypeChar, TypeVarchar:
-		size, err = strconv.ParseInt(parts[1], 10, 64)
+	case TypeBit, TypeBinary, TypeVarBinary, TypeChar, TypeVarchar:
+		if len(parts) > 1 {
+			size, err = strconv.Atoi(parts[1])
+		}
 	}
 	if err != nil {
 		return nil, 0, false, fmt.Errorf("parse %q to int: %w", parts[1], err)
@@ -573,8 +632,12 @@ func isHex(x string) bool { return len(x) > 2 && strings.ToLower(x[:2]) == "0x" 
 
 // marDefaultExpr returns the correct schema.Expr based on the column attributes for MariaDB.
 func (i *inspect) marDefaultExpr(c *schema.Column, x string) schema.Expr {
+	// Unlike MySQL, NULL means default to NULL or no default.
+	if x == "NULL" {
+		return nil
+	}
 	// From MariaDB 10.2.7, string-based literals are quoted to distinguish them from expressions.
-	if i.gteV("10.2.7") && sqlx.IsQuoted(x, '\'') {
+	if i.GTE("10.2.7") && sqlx.IsQuoted(x, '\'') {
 		return &schema.Literal{V: x}
 	}
 	// In this case, we need to manually check if the expression is literal, or fallback to raw expression.
@@ -595,14 +658,14 @@ func (i *inspect) marDefaultExpr(c *schema.Column, x string) schema.Expr {
 			return &schema.RawExpr{X: x}
 		}
 	}
-	if !i.supportsExprDefault() {
+	if !i.SupportsExprDefault() {
 		return &schema.Literal{V: quote(x)}
 	}
-	return &schema.RawExpr{X: x}
+	return &schema.RawExpr{X: sqlx.MayWrap(x)}
 }
 
 func (i *inspect) querySchema(ctx context.Context, query string, s *schema.Schema) (*sql.Rows, error) {
-	args := []interface{}{s.Name}
+	args := []any{s.Name}
 	for _, t := range s.Tables {
 		args = append(args, t.Name)
 	}
@@ -622,11 +685,13 @@ const (
 	schemasQueryArgs = "SELECT `SCHEMA_NAME`, `DEFAULT_CHARACTER_SET_NAME`, `DEFAULT_COLLATION_NAME` from `INFORMATION_SCHEMA`.`SCHEMATA` WHERE `SCHEMA_NAME` %s ORDER BY `SCHEMA_NAME`"
 
 	// Query to list table columns.
-	columnsQuery = "SELECT `TABLE_NAME`, `COLUMN_NAME`, `COLUMN_TYPE`, `COLUMN_COMMENT`, `IS_NULLABLE`, `COLUMN_KEY`, `COLUMN_DEFAULT`, `EXTRA`, `CHARACTER_SET_NAME`, `COLLATION_NAME` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` IN (%s) ORDER BY `ORDINAL_POSITION`"
+	columnsQuery     = "SELECT `TABLE_NAME`, `COLUMN_NAME`, `COLUMN_TYPE`, `COLUMN_COMMENT`, `IS_NULLABLE`, `COLUMN_KEY`, `COLUMN_DEFAULT`, `EXTRA`, `CHARACTER_SET_NAME`, `COLLATION_NAME`, NULL AS `GENERATION_EXPRESSION` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` IN (%s) ORDER BY `ORDINAL_POSITION`"
+	columnsExprQuery = "SELECT `TABLE_NAME`, `COLUMN_NAME`, `COLUMN_TYPE`, `COLUMN_COMMENT`, `IS_NULLABLE`, `COLUMN_KEY`, `COLUMN_DEFAULT`, `EXTRA`, `CHARACTER_SET_NAME`, `COLLATION_NAME`, `GENERATION_EXPRESSION` FROM `INFORMATION_SCHEMA`.`COLUMNS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` IN (%s) ORDER BY `ORDINAL_POSITION`"
 
 	// Query to list table indexes.
-	indexesQuery     = "SELECT `TABLE_NAME`, `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `INDEX_TYPE`, UPPER(`COLLATION`) = 'D' AS `DESC`, `INDEX_COMMENT`, `SUB_PART`, NULL AS `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` IN (%s) ORDER BY `index_name`, `seq_in_index`"
-	indexesExprQuery = "SELECT `TABLE_NAME`, `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `INDEX_TYPE`, UPPER(`COLLATION`) = 'D' AS `DESC`, `INDEX_COMMENT`, `SUB_PART`, `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` IN (%s) ORDER BY `index_name`, `seq_in_index`"
+	indexesQuery          = "SELECT `TABLE_NAME`, `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `INDEX_TYPE`, UPPER(`COLLATION`) = 'D' AS `DESC`, `INDEX_COMMENT`, `SUB_PART`, NULL AS `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` IN (%s) ORDER BY `index_name`, `seq_in_index`"
+	indexesExprQuery      = "SELECT `TABLE_NAME`, `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `INDEX_TYPE`, UPPER(`COLLATION`) = 'D' AS `DESC`, `INDEX_COMMENT`, `SUB_PART`, `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` IN (%s) ORDER BY `index_name`, `seq_in_index`"
+	indexesNoCommentQuery = "SELECT `TABLE_NAME`, `INDEX_NAME`, `COLUMN_NAME`, `NON_UNIQUE`, `SEQ_IN_INDEX`, `INDEX_TYPE`, UPPER(`COLLATION`) = 'D' AS `DESC`, NULL AS `INDEX_COMMENT`, `SUB_PART`, NULL AS `EXPRESSION` FROM `INFORMATION_SCHEMA`.`STATISTICS` WHERE `TABLE_SCHEMA` = ? AND `TABLE_NAME` IN (%s) ORDER BY `index_name`, `seq_in_index`"
 
 	tablesQuery = `
 SELECT
@@ -772,7 +837,8 @@ type (
 	// BitType represents a bit type.
 	BitType struct {
 		schema.Type
-		T string
+		T    string
+		Size int
 	}
 
 	// SetType represents a set type.

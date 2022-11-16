@@ -6,6 +6,7 @@ package mysql
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -19,7 +20,7 @@ import (
 type planApply struct{ conn }
 
 // PlanChanges returns a migration plan for the given schema changes.
-func (p *planApply) PlanChanges(_ context.Context, name string, changes []schema.Change) (*migrate.Plan, error) {
+func (p *planApply) PlanChanges(_ context.Context, name string, changes []schema.Change, opts ...migrate.PlanOption) (*migrate.Plan, error) {
 	s := &state{
 		conn: p.conn,
 		Plan: migrate.Plan{
@@ -31,6 +32,9 @@ func (p *planApply) PlanChanges(_ context.Context, name string, changes []schema
 			// https://dev.mysql.com/doc/refman/8.0/en/implicit-commit.html
 			Transactional: false,
 		},
+	}
+	for _, o := range opts {
+		o(&s.PlanOptions)
 	}
 	if err := s.plan(changes); err != nil {
 		return nil, err
@@ -47,8 +51,8 @@ func (p *planApply) PlanChanges(_ context.Context, name string, changes []schema
 // ApplyChanges applies the changes on the database. An error is returned
 // if the driver is unable to produce a plan to it, or one of the statements
 // is failed or unsupported.
-func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change) error {
-	return sqlx.ApplyChanges(ctx, changes, p)
+func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change, opts ...migrate.PlanOption) error {
+	return sqlx.ApplyChanges(ctx, changes, p, opts...)
 }
 
 // state represents the state of a planning. It is not part of
@@ -57,11 +61,17 @@ func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change) e
 type state struct {
 	conn
 	migrate.Plan
+	migrate.PlanOptions
 }
 
 // plan builds the migration plan for applying the
 // given changes on the attached connection.
 func (s *state) plan(changes []schema.Change) error {
+	if s.SchemaQualifier != nil {
+		if err := sqlx.CheckChangesScope(changes); err != nil {
+			return err
+		}
+	}
 	planned, err := s.topLevel(changes)
 	if err != nil {
 		return err
@@ -73,17 +83,18 @@ func (s *state) plan(changes []schema.Change) error {
 	for _, c := range planned {
 		switch c := c.(type) {
 		case *schema.AddTable:
-			if err := s.addTable(c); err != nil {
-				return err
-			}
+			err = s.addTable(c)
 		case *schema.DropTable:
 			s.dropTable(c)
 		case *schema.ModifyTable:
-			if err := s.modifyTable(c); err != nil {
-				return err
-			}
+			err = s.modifyTable(c)
+		case *schema.RenameTable:
+			s.renameTable(c)
 		default:
-			return fmt.Errorf("unsupported change %T", c)
+			err = fmt.Errorf("unsupported change %T", c)
+		}
+		if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -95,7 +106,7 @@ func (s *state) topLevel(changes []schema.Change) ([]schema.Change, error) {
 	for _, c := range changes {
 		switch c := c.(type) {
 		case *schema.AddSchema:
-			b := Build("CREATE DATABASE")
+			b := s.Build("CREATE DATABASE")
 			if sqlx.Has(c.Extra, &schema.IfNotExists{}) {
 				b.P("IF NOT EXISTS")
 			}
@@ -111,11 +122,11 @@ func (s *state) topLevel(changes []schema.Change) ([]schema.Change, error) {
 			s.append(&migrate.Change{
 				Cmd:     b.String(),
 				Source:  c,
-				Reverse: Build("DROP DATABASE").Ident(c.S.Name).String(),
+				Reverse: s.Build("DROP DATABASE").Ident(c.S.Name).String(),
 				Comment: fmt.Sprintf("add new schema named %q", c.S.Name),
 			})
 		case *schema.DropSchema:
-			b := Build("DROP DATABASE")
+			b := s.Build("DROP DATABASE")
 			if sqlx.Has(c.Extra, &schema.IfExists{}) {
 				b.P("IF EXISTS")
 			}
@@ -139,7 +150,7 @@ func (s *state) topLevel(changes []schema.Change) ([]schema.Change, error) {
 // modifySchema builds and appends the migrate.Changes for bringing
 // the schema into its modified state.
 func (s *state) modifySchema(modify *schema.ModifySchema) error {
-	b, r := Build(""), Build("")
+	b, r := s.Build(), s.Build()
 	for _, change := range modify.Changes {
 		switch change := change.(type) {
 		// Add schema attributes to an existing schema only if
@@ -183,7 +194,7 @@ func (s *state) modifySchema(modify *schema.ModifySchema) error {
 		}
 	}
 	if b.Len() > 0 {
-		bs := Build("ALTER DATABASE").Ident(modify.S.Name)
+		bs := s.Build("ALTER DATABASE").Ident(modify.S.Name)
 		rs := bs.Clone()
 		bs.WriteString(b.String())
 		rs.WriteString(r.String())
@@ -197,21 +208,24 @@ func (s *state) modifySchema(modify *schema.ModifySchema) error {
 	return nil
 }
 
-// addTable builds and appends the migrate.Change
+// addTable builds and appends a migration change
 // for creating a table in a schema.
 func (s *state) addTable(add *schema.AddTable) error {
 	var (
-		errors []string
-		b      = Build("CREATE TABLE")
+		errs []string
+		b    = s.Build("CREATE TABLE")
 	)
 	if sqlx.Has(add.Extra, &schema.IfNotExists{}) {
 		b.P("IF NOT EXISTS")
 	}
 	b.Table(add.T)
+	if len(add.T.Columns) == 0 {
+		return fmt.Errorf("table %q has no columns", add.T.Name)
+	}
 	b.Wrap(func(b *sqlx.Builder) {
 		b.MapComma(add.T.Columns, func(i int, b *sqlx.Builder) {
 			if err := s.column(b, add.T, add.T.Columns[i]); err != nil {
-				errors = append(errors, err.Error())
+				errs = append(errs, err.Error())
 			}
 		})
 		if pk := add.T.PrimaryKey; pk != nil {
@@ -228,7 +242,7 @@ func (s *state) addTable(add *schema.AddTable) error {
 		if len(add.T.ForeignKeys) > 0 {
 			b.Comma()
 			if err := s.fks(b, add.T.ForeignKeys...); err != nil {
-				errors = append(errors, err.Error())
+				errs = append(errs, err.Error())
 			}
 		}
 		for _, attr := range add.T.Attrs {
@@ -238,14 +252,14 @@ func (s *state) addTable(add *schema.AddTable) error {
 			}
 		}
 	})
-	if len(errors) > 0 {
-		return fmt.Errorf("create table %q: %s", add.T.Name, strings.Join(errors, ", "))
+	if len(errs) > 0 {
+		return fmt.Errorf("create table %q: %s", add.T.Name, strings.Join(errs, ", "))
 	}
 	s.tableAttr(b, add, add.T.Attrs...)
 	s.append(&migrate.Change{
 		Cmd:     b.String(),
 		Source:  add,
-		Reverse: Build("DROP TABLE").Table(add.T).String(),
+		Reverse: s.Build("DROP TABLE").Table(add.T).String(),
 		Comment: fmt.Sprintf("create %q table", add.T.Name),
 	})
 	return nil
@@ -254,7 +268,7 @@ func (s *state) addTable(add *schema.AddTable) error {
 // dropTable builds and appends the migrate.Change
 // for dropping a table from a schema.
 func (s *state) dropTable(drop *schema.DropTable) {
-	b := Build("DROP TABLE")
+	b := s.Build("DROP TABLE")
 	if sqlx.Has(drop.Extra, &schema.IfExists{}) {
 		b.P("IF EXISTS")
 	}
@@ -266,20 +280,20 @@ func (s *state) dropTable(drop *schema.DropTable) {
 	})
 }
 
-// modifyTable builds and appends the migrate.Changes for bringing
-// the table into its modified state.
+// modifyTable builds and appends the migration changes for
+// bringing the table into its modified state.
 func (s *state) modifyTable(modify *schema.ModifyTable) error {
 	var changes [2][]schema.Change
+	if len(modify.T.Columns) == 0 {
+		return fmt.Errorf("table %q has no columns; drop the table instead", modify.T.Name)
+	}
 	for _, change := range skipAutoChanges(modify.Changes) {
 		switch change := change.(type) {
-		// Constraints should be dropped before dropping columns, because if a column
-		// is a part of multi-column constraints (like, unique index), ALTER TABLE
-		// might fail if the intermediate state violates the constraints.
-		case *schema.DropIndex:
-			changes[0] = append(changes[0], change)
+		// Foreign-key modification is translated into 2 steps.
+		// Dropping the current foreign key and creating a new one.
 		case *schema.ModifyForeignKey:
-			// Foreign-key modification is translated into 2 steps.
-			// Dropping the current foreign key and creating a new one.
+			// DROP and ADD of the same constraint cannot be mixed
+			// on the ALTER TABLE command.
 			changes[0] = append(changes[0], &schema.DropForeignKey{
 				F: change.From,
 			})
@@ -323,99 +337,121 @@ func (s *state) modifyTable(modify *schema.ModifyTable) error {
 // changes in one SQL statement.
 func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 	var (
-		errors     []string
-		b          = Build("ALTER TABLE").Table(t)
-		reverse    = Build("")
+		reverse    []schema.Change
 		reversible = true
 	)
-	b.MapComma(changes, func(i int, b *sqlx.Builder) {
-		switch change := changes[i].(type) {
-		case *schema.AddColumn:
-			b.P("ADD COLUMN")
-			if err := s.column(b, t, change.C); err != nil {
-				errors = append(errors, err.Error())
+	build := func(changes []schema.Change) (string, error) {
+		b := s.Build("ALTER TABLE").Table(t)
+		err := b.MapCommaErr(changes, func(i int, b *sqlx.Builder) error {
+			switch change := changes[i].(type) {
+			case *schema.AddColumn:
+				b.P("ADD COLUMN")
+				if err := s.column(b, t, change.C); err != nil {
+					return err
+				}
+				reverse = append(reverse, &schema.DropColumn{C: change.C})
+			case *schema.ModifyColumn:
+				if err := checkChangeGenerated(change.From, change.To); err != nil {
+					return err
+				}
+				b.P("MODIFY COLUMN")
+				if err := s.column(b, t, change.To); err != nil {
+					return err
+				}
+				reverse = append(reverse, &schema.ModifyColumn{
+					From:   change.To,
+					To:     change.From,
+					Change: change.Change,
+				})
+			case *schema.RenameColumn:
+				if s.SupportsRenameColumn() {
+					b.P("RENAME COLUMN").Ident(change.From.Name).P("TO").Ident(change.To.Name)
+				} else {
+					b.P("CHANGE COLUMN").Ident(change.From.Name)
+					if err := s.column(b, t, change.To); err != nil {
+						return err
+					}
+				}
+				reverse = append(reverse, &schema.RenameColumn{From: change.To, To: change.From})
+			case *schema.DropColumn:
+				b.P("DROP COLUMN").Ident(change.C.Name)
+				reverse = append(reverse, &schema.AddColumn{C: change.C})
+			case *schema.AddIndex:
+				b.P("ADD")
+				index(b, change.I)
+				reverse = append(reverse, &schema.DropIndex{I: change.I})
+			case *schema.RenameIndex:
+				b.P("RENAME INDEX").Ident(change.From.Name).P("TO").Ident(change.To.Name)
+				reverse = append(reverse, &schema.RenameIndex{From: change.To, To: change.From})
+			case *schema.DropIndex:
+				b.P("DROP INDEX").Ident(change.I.Name)
+				reverse = append(reverse, &schema.AddIndex{I: change.I})
+			case *schema.AddForeignKey:
+				b.P("ADD")
+				if err := s.fks(b, change.F); err != nil {
+					return err
+				}
+				reverse = append(reverse, &schema.DropForeignKey{F: change.F})
+			case *schema.DropForeignKey:
+				b.P("DROP FOREIGN KEY").Ident(change.F.Symbol)
+				reverse = append(reverse, &schema.AddForeignKey{F: change.F})
+			case *schema.AddAttr:
+				s.tableAttr(b, change, change.A)
+				// Unsupported reverse operation.
+				reversible = false
+			case *schema.ModifyAttr:
+				s.tableAttr(b, change, change.To)
+				reverse = append(reverse, &schema.ModifyAttr{
+					From: change.To,
+					To:   change.From,
+				})
+			case *schema.AddCheck:
+				s.check(b.P("ADD"), change.C)
+				// Reverse operation is supported if
+				// the constraint name is not generated.
+				if reversible = reversible && change.C.Name != ""; reversible {
+					reverse = append(reverse, &schema.DropCheck{C: change.C})
+				}
+			case *schema.DropCheck:
+				b.P("DROP CONSTRAINT").Ident(change.C.Name)
+				reverse = append(reverse, &schema.AddCheck{C: change.C})
+			case *schema.ModifyCheck:
+				switch {
+				case change.From.Name == "":
+					return errors.New("cannot modify unnamed check constraint")
+				case change.From.Name != change.To.Name:
+					return fmt.Errorf("mismatch check constraint names: %q != %q", change.From.Name, change.To.Name)
+				// Enforcement added.
+				case s.SupportsEnforceCheck() && sqlx.Has(change.From.Attrs, &Enforced{}) && !sqlx.Has(change.To.Attrs, &Enforced{}):
+					b.P("ALTER CHECK").Ident(change.From.Name).P("ENFORCED")
+				// Enforcement dropped.
+				case s.SupportsEnforceCheck() && !sqlx.Has(change.From.Attrs, &Enforced{}) && sqlx.Has(change.To.Attrs, &Enforced{}):
+					b.P("ALTER CHECK").Ident(change.From.Name).P("NOT ENFORCED")
+				// Expr was changed.
+				case change.From.Expr != change.To.Expr:
+					b.P("DROP CHECK").Ident(change.From.Name).Comma().P("ADD")
+					s.check(b, change.To)
+				default:
+					return errors.New("unknown check constraint change")
+				}
+				reverse = append(reverse, &schema.ModifyCheck{
+					From: change.To,
+					To:   change.From,
+				})
 			}
-			reverse.Comma().P("DROP COLUMN").Ident(change.C.Name)
-		case *schema.ModifyColumn:
-			b.P("MODIFY COLUMN")
-			if err := s.column(b, t, change.To); err != nil {
-				errors = append(errors, err.Error())
-			}
-			reverse.Comma().P("MODIFY COLUMN")
-			if err := s.column(reverse, t, change.From); err != nil {
-				errors = append(errors, err.Error())
-			}
-		case *schema.DropColumn:
-			b.P("DROP COLUMN").Ident(change.C.Name)
-			reversible = false
-		case *schema.AddIndex:
-			b.P("ADD")
-			index(b, change.I)
-			reverse.Comma().P("DROP INDEX").Ident(change.I.Name)
-		case *schema.DropIndex:
-			b.P("DROP INDEX").Ident(change.I.Name)
-			reverse.Comma().P("ADD")
-			index(reverse, change.I)
-			reversible = true
-		case *schema.AddForeignKey:
-			b.P("ADD")
-			if err := s.fks(b, change.F); err != nil {
-				errors = append(errors, err.Error())
-			}
-			reverse.Comma().P("DROP FOREIGN KEY").Ident(change.F.Symbol)
-		case *schema.DropForeignKey:
-			b.P("DROP FOREIGN KEY").Ident(change.F.Symbol)
-			reverse.Comma().P("ADD")
-			if err := s.fks(reverse, change.F); err != nil {
-				errors = append(errors, err.Error())
-			}
-		case *schema.AddAttr:
-			s.tableAttr(b, change, change.A)
-			// Unsupported reverse operation.
-			reversible = false
-		case *schema.ModifyAttr:
-			s.tableAttr(b, change, change.To)
-			s.tableAttr(reverse.Comma(), change, change.From)
-		case *schema.AddCheck:
-			s.check(b.P("ADD"), change.C)
-			// Reverse operation is supported if
-			// the constraint name is not generated.
-			if reversible = change.C.Name != ""; reversible {
-				reverse.Comma().P("DROP CONSTRAINT").Ident(change.C.Name)
-			}
-		case *schema.DropCheck:
-			b.P("DROP CONSTRAINT").Ident(change.C.Name)
-			s.check(reverse.Comma().P("ADD"), change.C)
-		case *schema.ModifyCheck:
-			switch {
-			case change.From.Name == "":
-				errors = append(errors, "cannot modify unnamed check constraint")
-			case change.From.Name != change.To.Name:
-				errors = append(errors, fmt.Sprintf("mismatch check constraint names: %q != %q", change.From.Name, change.To.Name))
-			// Enforcement added.
-			case s.supportsEnforceCheck() && sqlx.Has(change.From.Attrs, &Enforced{}) && !sqlx.Has(change.To.Attrs, &Enforced{}):
-				b.P("ALTER CHECK").Ident(change.From.Name).P("ENFORCED")
-				reverse.Comma().P("ALTER CHECK").Ident(change.From.Name).P("NOT ENFORCED")
-			// Enforcement dropped.
-			case s.supportsEnforceCheck() && !sqlx.Has(change.From.Attrs, &Enforced{}) && sqlx.Has(change.To.Attrs, &Enforced{}):
-				b.P("ALTER CHECK").Ident(change.From.Name).P("NOT ENFORCED")
-				reverse.Comma().P("ALTER CHECK").Ident(change.From.Name).P("ENFORCED")
-			// Expr was changed.
-			case change.From.Expr != change.To.Expr:
-				b.P("DROP CHECK").Ident(change.From.Name).Comma().P("ADD")
-				s.check(b, change.To)
-				reverse.Comma().P("DROP CHECK").Ident(change.To.Name).Comma().P("ADD")
-				s.check(reverse, change.From)
-			default:
-				errors = append(errors, "unknown check constraints change")
-			}
+			return nil
+		})
+		if err != nil {
+			return "", err
 		}
-	})
-	if len(errors) > 0 {
-		return fmt.Errorf("alter table %q: %s", t.Name, strings.Join(errors, ", "))
+		return b.String(), nil
+	}
+	cmd, err := build(changes)
+	if err != nil {
+		return fmt.Errorf("alter table %q: %v", t.Name, err)
 	}
 	change := &migrate.Change{
-		Cmd: b.String(),
+		Cmd: cmd,
 		Source: &schema.ModifyTable{
 			T:       t,
 			Changes: changes,
@@ -423,14 +459,24 @@ func (s *state) alterTable(t *schema.Table, changes []schema.Change) error {
 		Comment: fmt.Sprintf("modify %q table", t.Name),
 	}
 	if reversible {
-		b := Build("ALTER TABLE").Table(t)
-		if _, err := b.ReadFrom(reverse); err != nil {
-			return fmt.Errorf("unexpected buffer read: %w", err)
+		// Changes should be reverted in
+		// a reversed order they were created.
+		sqlx.ReverseChanges(reverse)
+		if change.Reverse, err = build(reverse); err != nil {
+			return fmt.Errorf("reversd alter table %q: %v", t.Name, err)
 		}
-		change.Reverse = b.String()
 	}
 	s.append(change)
 	return nil
+}
+
+func (s *state) renameTable(c *schema.RenameTable) {
+	s.append(&migrate.Change{
+		Source:  c,
+		Comment: fmt.Sprintf("rename a table from %q to %q", c.From.Name, c.To.Name),
+		Cmd:     s.Build("RENAME TABLE").Table(c.From).P("TO").Table(c.To).String(),
+		Reverse: s.Build("RENAME TABLE").Table(c.To).P("TO").Table(c.From).String(),
+	})
 }
 
 func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error {
@@ -439,14 +485,35 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error
 		return fmt.Errorf("format type for column %q: %w", c.Name, err)
 	}
 	b.Ident(c.Name).P(typ)
-	if !c.Type.Null {
-		b.P("NOT")
+	if cs := (schema.Charset{}); sqlx.Has(c.Attrs, &cs) {
+		if !supportsCharset(c.Type.Type) {
+			return fmt.Errorf("column %q of type %T does not support the CHARSET attribute", c.Name, c.Type.Type)
+		}
+		// Define the charset explicitly
+		// in case it is not the default.
+		if s.character(t) != cs.V {
+			b.P("CHARSET", cs.V)
+		}
 	}
-	b.P("NULL")
+	var (
+		x   schema.GeneratedExpr
+		asX = sqlx.Has(c.Attrs, &x)
+	)
+	if asX {
+		b.P("AS", sqlx.MayWrap(x.Expr), x.Type)
+	}
+	// MariaDB does not accept [NOT NULL | NULL]
+	// as part of the generated columns' syntax.
+	if !asX || !s.Maria() {
+		if !c.Type.Null {
+			b.P("NOT")
+		}
+		b.P("NULL")
+	}
 	s.columnDefault(b, c)
 	// Add manually the JSON_VALID constraint for older
 	// versions < 10.4.3. See Driver.checks for full info.
-	if _, ok := c.Type.Type.(*schema.JSONType); ok && s.mariadb() && s.ltV("10.4.3") && !sqlx.Has(c.Attrs, &schema.Check{}) {
+	if _, ok := c.Type.Type.(*schema.JSONType); ok && s.Maria() && s.LT("10.4.3") && !sqlx.Has(c.Attrs, &schema.Check{}) {
 		b.P("CHECK").Wrap(func(b *sqlx.Builder) {
 			b.WriteString(fmt.Sprintf("json_valid(`%s`)", c.Name))
 		})
@@ -454,14 +521,7 @@ func (s *state) column(b *sqlx.Builder, t *schema.Table, c *schema.Column) error
 	for _, a := range c.Attrs {
 		switch a := a.(type) {
 		case *schema.Charset:
-			if !supportsCharset(c.Type.Type) {
-				return fmt.Errorf("column %q of type %T does not support the CHARSE attribute", c.Name, c.Type.Type)
-			}
-			// Define the charset explicitly
-			// in case it is not the default.
-			if s.character(t) != a.V {
-				b.P("CHARSET", a.V)
-			}
+			// CHARSET is handled above in the "data_type" stage.
 		case *schema.Collation:
 			if !supportsCharset(c.Type.Type) {
 				return fmt.Errorf("column %q of type %T does not support the COLLATE attribute", c.Name, c.Type.Type)
@@ -515,7 +575,7 @@ func indexParts(b *sqlx.Builder, parts []*schema.IndexPart) {
 			case part.C != nil:
 				b.Ident(part.C.Name)
 			case part.X != nil:
-				b.WriteString(withParens(part.X.(*schema.RawExpr).X))
+				b.WriteString(sqlx.MayWrap(part.X.(*schema.RawExpr).X))
 			}
 			if s := (&SubPart{}); sqlx.Has(parts[i].Attrs, s) {
 				b.WriteString(fmt.Sprintf("(%d)", s.Len))
@@ -648,9 +708,9 @@ func (s *state) columnDefault(b *sqlx.Builder, c *schema.Column) {
 }
 
 // Build instantiates a new builder and writes the given phrase to it.
-func Build(phrase string) *sqlx.Builder {
-	b := &sqlx.Builder{QuoteChar: '`'}
-	return b.P(phrase)
+func (s *state) Build(phrases ...string) *sqlx.Builder {
+	b := &sqlx.Builder{QuoteChar: '`', Schema: s.SchemaQualifier}
+	return b.P(phrases...)
 }
 
 // skipAutoChanges filters unnecessary changes that are automatically
@@ -688,8 +748,8 @@ func (s *state) check(b *sqlx.Builder, c *schema.Check) {
 	if c.Name != "" {
 		b.P("CONSTRAINT").Ident(c.Name)
 	}
-	b.P("CHECK", withParens(c.Expr))
-	if s.supportsEnforceCheck() && sqlx.Has(c.Attrs, &Enforced{}) {
+	b.P("CHECK", sqlx.MayWrap(c.Expr))
+	if s.SupportsEnforceCheck() && sqlx.Has(c.Attrs, &Enforced{}) {
 		b.P("ENFORCED")
 	}
 }
@@ -705,17 +765,23 @@ func supportsCharset(t schema.Type) bool {
 	}
 }
 
+// checkChangeGenerated checks if the change of a generated column is valid.
+func checkChangeGenerated(from, to *schema.Column) error {
+	var fromX, toX schema.GeneratedExpr
+	switch fromHas, toHas := sqlx.Has(from.Attrs, &fromX), sqlx.Has(to.Attrs, &toX); {
+	case !fromHas && toHas && storedOrVirtual(toX.Type) == virtual:
+		return fmt.Errorf("changing column %q to VIRTUAL generated column is not supported (drop and add is required)", from.Name)
+	case fromHas && !toHas && storedOrVirtual(fromX.Type) == virtual:
+		return fmt.Errorf("changing VIRTUAL generated column %q to non-generated column is not supported (drop and add is required)", from.Name)
+	case fromHas && toHas && storedOrVirtual(fromX.Type) != storedOrVirtual(toX.Type):
+		return fmt.Errorf("changing the store type of generated column %q from %q to %q is not supported", from.Name, storedOrVirtual(fromX.Type), storedOrVirtual(toX.Type))
+	}
+	return nil
+}
+
 func quote(s string) string {
 	if sqlx.IsQuoted(s, '"', '\'') {
 		return s
 	}
 	return strconv.Quote(s)
-}
-
-// withParens ensures expressions wrapped with parens.
-func withParens(x string) string {
-	if t := strings.TrimSpace(x); !strings.HasPrefix(t, "(") || !strings.HasSuffix(t, ")") {
-		x = "(" + t + ")"
-	}
-	return x
 }

@@ -10,6 +10,8 @@ import (
 	"github.com/antonmedv/expr/parser"
 )
 
+var errorType = reflect.TypeOf((*error)(nil)).Elem()
+
 func Check(tree *parser.Tree, config *conf.Config) (reflect.Type, error) {
 	v := &visitor{
 		collections: make([]reflect.Type, 0),
@@ -69,6 +71,8 @@ func (v *visitor) visit(node ast.Node) reflect.Type {
 		t = v.BoolNode(n)
 	case *ast.StringNode:
 		t = v.StringNode(n)
+	case *ast.ConstantNode:
+		t = v.ConstantNode(n)
 	case *ast.UnaryNode:
 		t = v.UnaryNode(n)
 	case *ast.BinaryNode:
@@ -136,7 +140,10 @@ func (v *visitor) IdentifierNode(node *ast.IdentifierNode) reflect.Type {
 		}
 		return interfaceType
 	}
-	return v.error(node, "unknown name %v", node.Value)
+	if !node.NilSafe {
+		return v.error(node, "unknown name %v", node.Value)
+	}
+	return nilType
 }
 
 func (v *visitor) IntegerNode(*ast.IntegerNode) reflect.Type {
@@ -153,6 +160,10 @@ func (v *visitor) BoolNode(*ast.BoolNode) reflect.Type {
 
 func (v *visitor) StringNode(*ast.StringNode) reflect.Type {
 	return stringType
+}
+
+func (v *visitor) ConstantNode(node *ast.ConstantNode) reflect.Type {
+	return reflect.TypeOf(node.Value)
 }
 
 func (v *visitor) UnaryNode(node *ast.UnaryNode) reflect.Type {
@@ -276,12 +287,13 @@ func (v *visitor) MatchesNode(node *ast.MatchesNode) reflect.Type {
 
 func (v *visitor) PropertyNode(node *ast.PropertyNode) reflect.Type {
 	t := v.visit(node.Node)
-
 	if t, ok := fieldType(t, node.Property); ok {
 		return t
 	}
-
-	return v.error(node, "type %v has no field %v", t, node.Property)
+	if !node.NilSafe {
+		return v.error(node, "type %v has no field %v", t, node.Property)
+	}
+	return nil
 }
 
 func (v *visitor) IndexNode(node *ast.IndexNode) reflect.Type {
@@ -334,8 +346,11 @@ func (v *visitor) FunctionNode(node *ast.FunctionNode) reflect.Type {
 			if !isInterface(fn) &&
 				fn.IsVariadic() &&
 				fn.NumIn() == inputParamsCount &&
-				fn.NumOut() == 1 &&
-				fn.Out(0).Kind() == reflect.Interface {
+				((fn.NumOut() == 1 && // Function with one return value
+					fn.Out(0).Kind() == reflect.Interface) ||
+				(fn.NumOut() == 2 && // Function with one return value and an error
+					fn.Out(0).Kind() == reflect.Interface &&
+					fn.Out(1) == errorType)) {
 				rest := fn.In(fn.NumIn() - 1) // function has only one param for functions and two for methods
 				if rest.Kind() == reflect.Slice && rest.Elem().Kind() == reflect.Interface {
 					node.Fast = true
@@ -361,7 +376,10 @@ func (v *visitor) MethodNode(node *ast.MethodNode) reflect.Type {
 			return v.checkFunc(fn, method, node, node.Method, node.Arguments)
 		}
 	}
-	return v.error(node, "type %v has no method %v", t, node.Method)
+	if !node.NilSafe {
+		return v.error(node, "type %v has no method %v", t, node.Method)
+	}
+	return nil
 }
 
 // checkFunc checks func arguments and returns "return type" of func or method.
@@ -373,8 +391,8 @@ func (v *visitor) checkFunc(fn reflect.Type, method bool, node ast.Node, name st
 	if fn.NumOut() == 0 {
 		return v.error(node, "func %v doesn't return value", name)
 	}
-	if fn.NumOut() != 1 {
-		return v.error(node, "func %v returns more then one value", name)
+	if numOut := fn.NumOut(); numOut > 2 {
+		return v.error(node, "func %v returns more then two values", name)
 	}
 
 	numIn := fn.NumIn()

@@ -36,7 +36,7 @@ type (
 		TableAttrDiff(from, to *schema.Table) ([]schema.Change, error)
 
 		// ColumnChange returns the schema changes (if any) for migrating one column to the other.
-		ColumnChange(from, to *schema.Column) (schema.ChangeKind, error)
+		ColumnChange(fromT *schema.Table, from, to *schema.Column) (schema.ChangeKind, error)
 
 		// IndexAttrChanged reports if the index attributes were changed.
 		// For example, an index type or predicate (for partial indexes).
@@ -64,7 +64,7 @@ type (
 	// If the DiffDriver implements the Normalizer interface, TableDiff normalizes its table
 	// inputs before starting the diff process.
 	Normalizer interface {
-		Normalize(from, to *schema.Table)
+		Normalize(from, to *schema.Table) error
 	}
 )
 
@@ -148,7 +148,9 @@ func (d *Diff) TableDiff(from, to *schema.Table) ([]schema.Change, error) {
 	}
 	// Normalizing tables before starting the diff process.
 	if n, ok := d.DiffDriver.(Normalizer); ok {
-		n.Normalize(from, to)
+		if err := n.Normalize(from, to); err != nil {
+			return nil, err
+		}
 	}
 	var changes []schema.Change
 	if from.Name != to.Name {
@@ -173,7 +175,7 @@ func (d *Diff) TableDiff(from, to *schema.Table) ([]schema.Change, error) {
 			changes = append(changes, &schema.DropColumn{C: c1})
 			continue
 		}
-		change, err := d.ColumnChange(c1, c2)
+		change, err := d.ColumnChange(from, c1, c2)
 		if err != nil {
 			return nil, err
 		}
@@ -298,7 +300,8 @@ func (d *Diff) partsChange(from, to []*schema.IndexPart) schema.ChangeKind {
 				return schema.ChangeParts
 			}
 		case from[i].X != nil && to[i].X != nil:
-			if from[i].X.(*schema.RawExpr).X != to[i].X.(*schema.RawExpr).X {
+			x1, x2 := from[i].X.(*schema.RawExpr).X, to[i].X.(*schema.RawExpr).X
+			if x1 != x2 && x1 != MayWrap(x2) {
 				return schema.ChangeParts
 			}
 		default: // (C1 != nil) != (C2 != nil) || (X1 != nil) != (X2 != nil).
@@ -373,7 +376,7 @@ var (
 // Has finds the first element in the elements list that
 // matches target, and if so, sets target to that attribute
 // value and returns true.
-func Has(elements, target interface{}) bool {
+func Has(elements, target any) bool {
 	ev := reflect.ValueOf(elements)
 	if t := ev.Type(); t != attrsType && t != clausesType && t != exprsType {
 		panic(fmt.Sprintf("unexpected elements type: %T", elements))

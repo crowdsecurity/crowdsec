@@ -2,9 +2,11 @@ package gocron
 
 import "time"
 
-var _ timeWrapper = (*trueTime)(nil)
+var _ TimeWrapper = (*trueTime)(nil)
 
-type timeWrapper interface {
+// TimeWrapper is an interface that wraps the Now, Sleep, and Unix methods of the time package.
+// This allows the library and users to mock the time package for testing.
+type TimeWrapper interface {
 	Now(*time.Location) time.Time
 	Unix(int64, int64) time.Time
 	Sleep(time.Duration)
@@ -22,4 +24,10 @@ func (t *trueTime) Unix(sec int64, nsec int64) time.Time {
 
 func (t *trueTime) Sleep(d time.Duration) {
 	time.Sleep(d)
+}
+
+// afterFunc proxies the time.AfterFunc function.
+// This allows it to be mocked for testing.
+func afterFunc(d time.Duration, f func()) *time.Timer {
+	return time.AfterFunc(d, f)
 }

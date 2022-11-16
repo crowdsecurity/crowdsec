@@ -17,7 +17,7 @@ import (
 	"ariga.io/atlas/sql/schema"
 )
 
-// A diff provides a PostgreSQL implementation for schema.Inspector.
+// A diff provides an SQLite implementation for schema.Inspector.
 type inspect struct{ conn }
 
 var _ schema.Inspector = (*inspect)(nil)
@@ -31,24 +31,27 @@ func (i *inspect) InspectRealm(ctx context.Context, opts *schema.InspectRealmOpt
 	if len(schemas) > 1 {
 		return nil, fmt.Errorf("sqlite: multiple database files are not supported by the driver. got: %d", len(schemas))
 	}
-	realm := &schema.Realm{Schemas: schemas}
+	if opts == nil {
+		opts = &schema.InspectRealmOption{}
+	}
+	r := schema.NewRealm(schemas...)
+	if !sqlx.ModeInspectRealm(opts).Is(schema.InspectTables) {
+		return sqlx.ExcludeRealm(r, opts.Exclude)
+	}
 	for _, s := range schemas {
 		tables, err := i.tables(ctx, nil)
 		if err != nil {
 			return nil, err
 		}
+		s.AddTables(tables...)
 		for _, t := range tables {
-			t.Schema = s
-			t, err := i.inspectTable(ctx, t)
-			if err != nil {
+			if err := i.inspectTable(ctx, t); err != nil {
 				return nil, err
 			}
-			s.Tables = append(s.Tables, t)
 		}
-		s.Realm = realm
 	}
-	sqlx.LinkSchemaTables(realm.Schemas)
-	return realm, nil
+	sqlx.LinkSchemaTables(r.Schemas)
+	return sqlx.ExcludeRealm(r, opts.Exclude)
 }
 
 // InspectSchema returns schema descriptions of the tables in the given schema.
@@ -68,38 +71,41 @@ func (i *inspect) InspectSchema(ctx context.Context, name string, opts *schema.I
 			Err: fmt.Errorf("sqlite: schema %q was not found", name),
 		}
 	}
+	if opts == nil {
+		opts = &schema.InspectOptions{}
+	}
+	r := schema.NewRealm(schemas...)
+	if !sqlx.ModeInspectSchema(opts).Is(schema.InspectTables) {
+		return sqlx.ExcludeSchema(r.Schemas[0], opts.Exclude)
+	}
 	tables, err := i.tables(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	s := schemas[0]
+	r.Schemas[0].AddTables(tables...)
 	for _, t := range tables {
-		t.Schema = s
-		t, err := i.inspectTable(ctx, t)
-		if err != nil {
+		if err := i.inspectTable(ctx, t); err != nil {
 			return nil, err
 		}
-		s.Tables = append(s.Tables, t)
 	}
 	sqlx.LinkSchemaTables(schemas)
-	s.Realm = &schema.Realm{Schemas: schemas}
-	return s, nil
+	return sqlx.ExcludeSchema(r.Schemas[0], opts.Exclude)
 }
 
-func (i *inspect) inspectTable(ctx context.Context, t *schema.Table) (*schema.Table, error) {
+func (i *inspect) inspectTable(ctx context.Context, t *schema.Table) error {
 	if err := i.columns(ctx, t); err != nil {
-		return nil, err
+		return err
 	}
 	if err := i.indexes(ctx, t); err != nil {
-		return nil, err
+		return err
 	}
 	if err := i.fks(ctx, t); err != nil {
-		return nil, err
+		return err
 	}
 	if err := fillChecks(t); err != nil {
-		return nil, err
+		return err
 	}
-	return t, nil
+	return nil
 }
 
 // columns queries and appends the columns of the given table.
@@ -121,10 +127,11 @@ func (i *inspect) columns(ctx context.Context, t *schema.Table) error {
 func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 	var (
 		nullable, primary   bool
+		hidden              sql.NullInt64
 		name, typ, defaults sql.NullString
 		err                 error
 	)
-	if err = rows.Scan(&name, &typ, &nullable, &defaults, &primary); err != nil {
+	if err = rows.Scan(&name, &typ, &nullable, &defaults, &primary, &hidden); err != nil {
 		return err
 	}
 	c := &schema.Column{
@@ -138,10 +145,16 @@ func (i *inspect) addColumn(t *schema.Table, rows *sql.Rows) error {
 	if err != nil {
 		return err
 	}
-	if sqlx.ValidString(defaults) {
+	if defaults.Valid {
 		c.Default = defaultExpr(defaults.String)
 	}
-	// TODO(a8m): extract collation from 'CREATE TABLE' statement.
+	// The hidden flag is set to 2 for VIRTUAL columns, and to
+	// 3 for STORED columns. See: sqlite/pragma.c#sqlite3Pragma.
+	if hidden.Int64 >= 2 {
+		if err := setGenExpr(t, c, hidden.Int64); err != nil {
+			return err
+		}
+	}
 	t.Columns = append(t.Columns, c)
 	if primary {
 		if t.PrimaryKey == nil {
@@ -214,8 +227,14 @@ func (i *inspect) addIndexes(t *schema.Table, rows *sql.Rows) error {
 	return nil
 }
 
+// A regexp to extract index parts.
+var reIdxParts = regexp.MustCompile("(?i)ON\\s+[\"`]*(?:\\w+)[\"`]*\\s*\\((.+)\\)")
+
 func (i *inspect) indexInfo(ctx context.Context, t *schema.Table, idx *schema.Index) error {
-	rows, err := i.QueryContext(ctx, fmt.Sprintf(indexColumnsQuery, idx.Name))
+	var (
+		hasExpr   bool
+		rows, err = i.QueryContext(ctx, fmt.Sprintf(indexColumnsQuery, idx.Name))
+	)
 	if err != nil {
 		return fmt.Errorf("sqlite: querying %q indexes: %w", t.Name, err)
 	}
@@ -238,11 +257,29 @@ func (i *inspect) indexInfo(ctx context.Context, t *schema.Table, idx *schema.In
 		// NULL name indicates that the index-part is an expression and we
 		// should extract it from the `CREATE INDEX` statement (not supported atm).
 		case !sqlx.ValidString(name):
+			hasExpr = true
 			part.X = &schema.RawExpr{X: "<unsupported>"}
 		default:
 			return fmt.Errorf("sqlite: column %q was not found for index %q", name.String, idx.Name)
 		}
 		idx.Parts = append(idx.Parts, part)
+	}
+	if !hasExpr {
+		return nil
+	}
+	var c CreateStmt
+	if !sqlx.Has(idx.Attrs, &c) || !reIdxParts.MatchString(c.S) {
+		return nil
+	}
+	parts := strings.Split(reIdxParts.FindStringSubmatch(c.S)[1], ",")
+	// Unable to parse index parts correctly.
+	if len(parts) != len(idx.Parts) {
+		return nil
+	}
+	for i, p := range idx.Parts {
+		if p.X != nil {
+			p.X.(*schema.RawExpr).X = strings.TrimSpace(parts[i])
+		}
 	}
 	return nil
 }
@@ -314,7 +351,7 @@ func (i *inspect) addFKs(t *schema.Table, rows *sql.Rows) error {
 // tableNames returns a list of all tables exist in the schema.
 func (i *inspect) tables(ctx context.Context, opts *schema.InspectOptions) ([]*schema.Table, error) {
 	var (
-		args  []interface{}
+		args  []any
 		query = tablesQuery
 	)
 	if opts != nil && len(opts.Tables) > 0 {
@@ -352,11 +389,11 @@ func (i *inspect) tables(ctx context.Context, opts *schema.InspectOptions) ([]*s
 // schemas returns the list of the schemas in the database.
 func (i *inspect) databases(ctx context.Context, opts *schema.InspectRealmOption) ([]*schema.Schema, error) {
 	var (
-		args  []interface{}
+		args  []any
 		query = databasesQuery
 	)
 	if opts != nil && len(opts.Schemas) > 0 {
-		query += " WHERE name IN (" + strings.Repeat("?, ", len(opts.Schemas)-1) + "?)"
+		query = fmt.Sprintf(databasesQueryArgs, strings.Repeat("?, ", len(opts.Schemas)-1)+"?")
 		for _, s := range opts.Schemas {
 			args = append(args, s)
 		}
@@ -516,6 +553,33 @@ func autoinc(t *schema.Table) error {
 	return nil
 }
 
+// setGenExpr extracts the generated expression from the CREATE statement
+// and appends it to the column.
+func setGenExpr(t *schema.Table, c *schema.Column, f int64) error {
+	var s CreateStmt
+	if !sqlx.Has(t.Attrs, &s) {
+		return fmt.Errorf("missing CREATE statement for table: %q", t.Name)
+	}
+	re, err := regexp.Compile(fmt.Sprintf("(?:[(,]\\s*)[\"`]*(%s)[\"`]*[^,]*(?i:GENERATED\\s+ALWAYS)*\\s*(?i:AS){1}\\s*\\(", c.Name))
+	if err != nil {
+		return err
+	}
+	idx := re.FindAllStringIndex(s.S, 1)
+	if len(idx) != 1 || len(idx[0]) != 2 {
+		return fmt.Errorf("sqlite: generation expression for column %q was not found in create statement", c.Name)
+	}
+	expr := scanExpr(s.S[idx[0][1]-1:])
+	if expr == "" {
+		return fmt.Errorf("sqlite: unexpected empty generation expression for column %q", c.Name)
+	}
+	typ := virtual
+	if f == 3 {
+		typ = stored
+	}
+	c.SetGeneratedExpr(&schema.GeneratedExpr{Expr: expr, Type: typ})
+	return nil
+}
+
 // The following regexes extract named FKs and CHECK constraints defined in table-constraints or inlined
 // as column-constraints. Note, we assume the SQL statements are valid as they are returned by SQLite.
 var (
@@ -601,48 +665,51 @@ func fillChecks(t *schema.Table) error {
 		if len(idx) != 4 {
 			break
 		}
-		var (
-			r, l int
-			expr = c.S[idx[1]-1:]
-		)
-		for i := 0; i < len(expr); i++ {
-			switch expr[i] {
-			case '(':
-				r++
-			case ')':
-				l++
-			case '\'', '"':
-				// Skip unescaped strings.
-				if j := strings.IndexByte(expr[i+1:], expr[i]); j != -1 {
-					i += j + 1
-				}
-			}
-			// Balanced parens.
-			if r == l {
-				check := &schema.Check{Expr: expr[:i+1]}
-				// Matching group for constraint name.
-				if idx[2] != -1 && idx[3] != -1 {
-					check.Name = c.S[idx[2]:idx[3]]
-				}
-				t.Attrs = append(t.Attrs, check)
-				idx[1] = idx[1] + i
-				break
-			}
+		check := &schema.Check{Expr: scanExpr(c.S[idx[1]-1:])}
+		// Matching group for constraint name.
+		if idx[2] != -1 && idx[3] != -1 {
+			check.Name = c.S[idx[2]:idx[3]]
 		}
-		c.S = c.S[idx[1]:]
+		t.Attrs = append(t.Attrs, check)
+		c.S = c.S[idx[1]+len(check.Expr)-1:]
 	}
 	return nil
+}
+
+// scanExpr scans the expression string (wrapped with parens)
+// until its end in the given string. e.g. "(a+1), c int ...".
+func scanExpr(expr string) string {
+	var r, l int
+	for i := 0; i < len(expr); i++ {
+		switch expr[i] {
+		case '(':
+			r++
+		case ')':
+			l++
+		case '\'', '"':
+			// Skip unescaped strings.
+			if j := strings.IndexByte(expr[i+1:], expr[i]); j != -1 {
+				i += j + 1
+			}
+		}
+		// Balanced parens.
+		if r == l {
+			return expr[:i+1]
+		}
+	}
+	return ""
 }
 
 const (
 	// Name of main database file.
 	mainFile = "main"
 	// Query to list attached database files.
-	databasesQuery = "SELECT `name`, `file` FROM pragma_database_list()"
+	databasesQuery     = "SELECT `name`, `file` FROM pragma_database_list() WHERE `name` <> 'temp'"
+	databasesQueryArgs = "SELECT `name`, `file` FROM pragma_database_list() WHERE `name` IN (%s)"
 	// Query to list database tables.
 	tablesQuery = "SELECT `name`, `sql` FROM sqlite_master WHERE `type` = 'table' AND `name` NOT LIKE 'sqlite_%'"
 	// Query to list table information.
-	columnsQuery = "SELECT `name`, `type`, (not `notnull`) AS `nullable`, `dflt_value`, (`pk` <> 0) AS `pk`  FROM pragma_table_info('%s') ORDER BY `pk`, `cid`"
+	columnsQuery = "SELECT `name`, `type`, (not `notnull`) AS `nullable`, `dflt_value`, (`pk` <> 0) AS `pk`, `hidden` FROM pragma_table_xinfo('%s') ORDER BY `pk`, `cid`"
 	// Query to list table indexes.
 	indexesQuery = "SELECT `il`.`name`, `il`.`unique`, `il`.`origin`, `il`.`partial`, `m`.`sql` FROM pragma_index_list('%s') AS il JOIN sqlite_master AS m ON il.name = m.name"
 	// Query to list index columns.

@@ -18,7 +18,7 @@ import (
 type planApply struct{ conn }
 
 // PlanChanges returns a migration plan for the given schema changes.
-func (p *planApply) PlanChanges(ctx context.Context, name string, changes []schema.Change) (*migrate.Plan, error) {
+func (p *planApply) PlanChanges(ctx context.Context, name string, changes []schema.Change, opts ...migrate.PlanOption) (*migrate.Plan, error) {
 	s := &state{
 		conn: p.conn,
 		Plan: migrate.Plan{
@@ -26,6 +26,14 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 			Reversible:    true,
 			Transactional: true,
 		},
+		PlanOptions: migrate.PlanOptions{
+			// Currently, the driver does not support attached
+			// schemas and assumed the connected schema is "main".
+			SchemaQualifier: new(string),
+		},
+	}
+	for _, o := range opts {
+		o(&s.PlanOptions)
 	}
 	if err := s.plan(ctx, changes); err != nil {
 		return nil, err
@@ -41,8 +49,8 @@ func (p *planApply) PlanChanges(ctx context.Context, name string, changes []sche
 // ApplyChanges applies the changes on the database. An error is returned
 // if the driver is unable to produce a plan to it, or one of the statements
 // is failed or unsupported.
-func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change) error {
-	return sqlx.ApplyChanges(ctx, changes, p)
+func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change, opts ...migrate.PlanOption) error {
+	return sqlx.ApplyChanges(ctx, changes, p, opts...)
 }
 
 // state represents the state of a planning. It's not part of
@@ -51,6 +59,7 @@ func (p *planApply) ApplyChanges(ctx context.Context, changes []schema.Change) e
 type state struct {
 	conn
 	migrate.Plan
+	migrate.PlanOptions
 	skipFKs bool
 }
 
@@ -65,6 +74,8 @@ func (s *state) plan(ctx context.Context, changes []schema.Change) (err error) {
 			err = s.dropTable(c)
 		case *schema.ModifyTable:
 			err = s.modifyTable(ctx, c)
+		case *schema.RenameTable:
+			s.renameTable(c)
 		default:
 			err = fmt.Errorf("unsupported change %T", c)
 		}
@@ -74,9 +85,9 @@ func (s *state) plan(ctx context.Context, changes []schema.Change) (err error) {
 	}
 	// Disable foreign-keys enforcement if it is required
 	// by one of the changes in the plan.
-	if s.skipFKs && s.conn.fkEnabled {
+	if s.skipFKs {
 		// Callers should note that these 2 pragmas are no-op in transactions,
-		// and therefore, should not call BEGIN manually. https://sqlite.org/pragma.html#pragma_foreign_keys
+		// See: https://sqlite.org/pragma.html#pragma_foreign_keys.
 		s.Changes = append([]*migrate.Change{{Cmd: "PRAGMA foreign_keys = off", Comment: "disable the enforcement of foreign-keys constraints"}}, s.Changes...)
 		s.append(&migrate.Change{Cmd: "PRAGMA foreign_keys = on", Comment: "enable back the enforcement of foreign-keys constraints"})
 	}
@@ -87,7 +98,7 @@ func (s *state) plan(ctx context.Context, changes []schema.Change) (err error) {
 func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 	var (
 		errs []string
-		b    = Build("CREATE TABLE").Ident(add.T.Name)
+		b    = s.Build("CREATE TABLE").Table(add.T)
 	)
 	if sqlx.Has(add.Extra, &schema.IfNotExists{}) {
 		b.P("IF NOT EXISTS")
@@ -123,7 +134,7 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 	s.append(&migrate.Change{
 		Cmd:     b.String(),
 		Source:  add,
-		Reverse: Build("DROP TABLE").Table(add.T).String(),
+		Reverse: s.Build("DROP TABLE").Table(add.T).String(),
 		Comment: fmt.Sprintf("create %q table", add.T.Name),
 	})
 	if err := s.tableSeq(ctx, add); err != nil {
@@ -135,7 +146,7 @@ func (s *state) addTable(ctx context.Context, add *schema.AddTable) error {
 // dropTable builds and executes the query for dropping a table from a schema.
 func (s *state) dropTable(drop *schema.DropTable) error {
 	s.skipFKs = true
-	b := Build("DROP TABLE").Ident(drop.T.Name)
+	b := s.Build("DROP TABLE").Ident(drop.T.Name)
 	if sqlx.Has(drop.Extra, &schema.IfExists{}) {
 		b.P("IF EXISTS")
 	}
@@ -164,25 +175,44 @@ func (s *state) modifyTable(ctx context.Context, modify *schema.ModifyTable) err
 	if err := s.addTable(ctx, &schema.AddTable{T: &newT}); err != nil {
 		return err
 	}
-	if err := s.copyRows(modify.T, &newT, modify.Changes); err != nil {
+	copied, err := s.copyRows(modify.T, &newT, modify.Changes)
+	if err != nil {
 		return err
 	}
 	// Drop the current table, and rename the new one to its real name.
 	s.append(&migrate.Change{
-		Cmd:     Build("DROP TABLE").Ident(modify.T.Name).String(),
-		Source:  modify,
-		Comment: fmt.Sprintf("drop %q table after copying rows", modify.T.Name),
+		Cmd:    s.Build("DROP TABLE").Ident(modify.T.Name).String(),
+		Source: modify,
+		Comment: fmt.Sprintf("drop %q table %s", modify.T.Name, func() string {
+			if copied {
+				return "after copying rows"
+			}
+			return "without copying rows (no columns)"
+		}()),
 	})
 	s.append(&migrate.Change{
-		Cmd:     Build("ALTER TABLE").Ident(newT.Name).P("RENAME TO").Ident(modify.T.Name).String(),
+		Cmd:     s.Build("ALTER TABLE").Ident(newT.Name).P("RENAME TO").Ident(modify.T.Name).String(),
 		Source:  modify,
 		Comment: fmt.Sprintf("rename temporary table %q to %q", newT.Name, modify.T.Name),
 	})
 	return s.addIndexes(modify.T, indexes...)
 }
 
+func (s *state) renameTable(c *schema.RenameTable) {
+	s.append(&migrate.Change{
+		Source:  c,
+		Comment: fmt.Sprintf("rename a table from %q to %q", c.From.Name, c.To.Name),
+		Cmd:     s.Build("ALTER TABLE").Table(c.From).P("RENAME TO").Table(c.To).String(),
+		Reverse: s.Build("ALTER TABLE").Table(c.To).P("RENAME TO").Table(c.From).String(),
+	})
+}
+
 func (s *state) column(b *sqlx.Builder, c *schema.Column) error {
-	b.Ident(c.Name).P(mustFormat(c.Type.Type))
+	t, err := FormatType(c.Type.Type)
+	if err != nil {
+		return err
+	}
+	b.Ident(c.Name).P(t)
 	if !c.Type.Null {
 		b.P("NOT")
 	}
@@ -194,8 +224,30 @@ func (s *state) column(b *sqlx.Builder, c *schema.Column) error {
 		}
 		b.P("DEFAULT", x)
 	}
-	if sqlx.Has(c.Attrs, &AutoIncrement{}) {
+	switch hasA, hasX := sqlx.Has(c.Attrs, &AutoIncrement{}), sqlx.Has(c.Attrs, &schema.GeneratedExpr{}); {
+	case hasA && hasX:
+		return fmt.Errorf("both autoincrement and generation expression specified for column %q", c.Name)
+	case hasA:
 		b.P("PRIMARY KEY AUTOINCREMENT")
+	case hasX:
+		x := &schema.GeneratedExpr{}
+		sqlx.Has(c.Attrs, x)
+		b.P("AS", sqlx.MayWrap(x.Expr), x.Type)
+	}
+	return nil
+}
+
+func (s *state) dropIndexes(t *schema.Table, indexes ...*schema.Index) error {
+	rs := &state{conn: s.conn}
+	if err := rs.addIndexes(t, indexes...); err != nil {
+		return err
+	}
+	for i := range rs.Changes {
+		s.append(&migrate.Change{
+			Cmd:     rs.Changes[i].Reverse,
+			Reverse: rs.Changes[i].Cmd,
+			Comment: fmt.Sprintf("drop index %q from table: %q", indexes[i].Name, t.Name),
+		})
 	}
 	return nil
 }
@@ -222,7 +274,7 @@ func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) error {
 			}
 			idx.Name = strings.Join(names, "_")
 		}
-		b := Build("CREATE")
+		b := s.Build("CREATE")
 		if idx.Unique {
 			b.P("UNIQUE")
 		}
@@ -238,7 +290,7 @@ func (s *state) addIndexes(t *schema.Table, indexes ...*schema.Index) error {
 		s.append(&migrate.Change{
 			Cmd:     b.String(),
 			Source:  &schema.AddIndex{I: idx},
-			Reverse: Build("DROP INDEX").Ident(idx.Name).String(),
+			Reverse: s.Build("DROP INDEX").Ident(idx.Name).String(),
 			Comment: fmt.Sprintf("create index %q to table: %q", idx.Name, t.Name),
 		})
 	}
@@ -252,7 +304,7 @@ func (s *state) indexParts(b *sqlx.Builder, parts []*schema.IndexPart) {
 			case part.C != nil:
 				b.Ident(part.C.Name)
 			case part.X != nil:
-				b.WriteString(part.X.(*schema.RawExpr).X)
+				b.WriteString(sqlx.MayWrap(part.X.(*schema.RawExpr).X))
 			}
 			if parts[i].Desc {
 				b.P("DESC")
@@ -288,12 +340,13 @@ func (s *state) fks(b *sqlx.Builder, fks ...*schema.ForeignKey) {
 	})
 }
 
-func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.Change) error {
-	var (
-		args       []interface{}
-		fromC, toC []string
-	)
+func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.Change) (bool, error) {
+	var fromC, toC []string
 	for _, column := range to.Columns {
+		// Skip generated columns in INSERT as they are computed.
+		if sqlx.Has(column.Attrs, &schema.GeneratedExpr{}) {
+			continue
+		}
 		// Find a change that associated with this column, if exists.
 		var change schema.Change
 		for i := range changes {
@@ -303,7 +356,7 @@ func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.
 					break
 				}
 				if change != nil {
-					return fmt.Errorf("duplicate changes for column: %q: %T, %T", column.Name, change, c)
+					return false, fmt.Errorf("duplicate changes for column: %q: %T, %T", column.Name, change, c)
 				}
 				change = changes[i]
 			case *schema.ModifyColumn:
@@ -311,46 +364,49 @@ func (s *state) copyRows(from *schema.Table, to *schema.Table, changes []schema.
 					break
 				}
 				if change != nil {
-					return fmt.Errorf("duplicate changes for column: %q: %T, %T", column.Name, change, c)
+					return false, fmt.Errorf("duplicate changes for column: %q: %T, %T", column.Name, change, c)
 				}
 				change = changes[i]
 			case *schema.DropColumn:
 				if c.C.Name == column.Name {
-					return fmt.Errorf("unexpected drop column: %q", column.Name)
+					return false, fmt.Errorf("unexpected drop column: %q", column.Name)
 				}
 			}
 		}
 		switch change := change.(type) {
-		// We expect that new columns are added with DEFAULT values,
-		// or defined as nullable if the table is not empty.
+		// We expect that new columns are added with DEFAULT/GENERATED
+		// values or defined as nullable if the table is not empty.
 		case *schema.AddColumn:
 		// Column modification requires special handling if it was
 		// converted from nullable to non-nullable with default value.
 		case *schema.ModifyColumn:
 			toC = append(toC, column.Name)
 			if !column.Type.Null && column.Default != nil && change.Change.Is(schema.ChangeNull|schema.ChangeDefault) {
-				fromC = append(fromC, fmt.Sprintf("IFNULL(`%[1]s`, ?) AS `%[1]s`", column.Name))
 				x, err := defaultValue(column)
 				if err != nil {
-					return err
+					return false, err
 				}
-				args = append(args, x)
+				fromC = append(fromC, fmt.Sprintf("IFNULL(`%[1]s`, %s) AS `%[1]s`", column.Name, x))
 			} else {
 				fromC = append(fromC, column.Name)
 			}
-		// Columns without changes, should transfer as-is.
+		// Columns without changes should be transferred as-is.
 		case nil:
 			toC = append(toC, column.Name)
 			fromC = append(fromC, column.Name)
 		}
 	}
-	stmt := fmt.Sprintf("INSERT INTO `%s` (%s) SELECT %s FROM `%s`", to.Name, identComma(toC), identComma(fromC), from.Name)
-	s.append(&migrate.Change{
-		Cmd:     stmt,
-		Args:    args,
-		Comment: fmt.Sprintf("copy rows from old table %q to new temporary table %q", from.Name, to.Name),
-	})
-	return nil
+	insert := len(toC) > 0
+	if insert {
+		s.append(&migrate.Change{
+			Cmd: fmt.Sprintf(
+				"INSERT INTO `%s` (%s) SELECT %s FROM `%s`",
+				to.Name, identComma(toC), identComma(fromC), from.Name,
+			),
+			Comment: fmt.Sprintf("copy rows from old table %q to new temporary table %q", from.Name, to.Name),
+		})
+	}
+	return insert, nil
 }
 
 // alterTable alters the table with the given changes. Assuming the changes are "alterable".
@@ -362,22 +418,36 @@ func (s *state) alterTable(modify *schema.ModifyTable) error {
 				return err
 			}
 		case *schema.DropIndex:
-			b := Build("DROP INDEX").Ident(change.I.Name)
-			s.append(&migrate.Change{
-				Cmd:     b.String(),
-				Source:  change,
-				Comment: fmt.Sprintf("drop index %q to table: %q", change.I.Name, modify.T.Name),
-			})
-		case *schema.AddColumn:
-			b := Build("ALTER TABLE").Ident(modify.T.Name).P("ADD COLUMN")
-			if err := s.column(b, change.C); err != nil {
+			if err := s.dropIndexes(modify.T, change.I); err != nil {
 				return err
 			}
-			// Unsupported reverse operation (DROP COLUMN).
+		case *schema.RenameIndex:
+			if err := s.addIndexes(modify.T, change.To); err != nil {
+				return err
+			}
+			if err := s.dropIndexes(modify.T, change.From); err != nil {
+				return err
+			}
+		case *schema.AddColumn:
+			b := s.Build("ALTER TABLE").Ident(modify.T.Name)
+			r := b.Clone()
+			if err := s.column(b.P("ADD COLUMN"), change.C); err != nil {
+				return err
+			}
 			s.append(&migrate.Change{
-				Cmd:     b.String(),
 				Source:  change,
+				Cmd:     b.String(),
+				Reverse: r.P("DROP COLUMN").Ident(change.C.Name).String(),
 				Comment: fmt.Sprintf("add column %q to table: %q", change.C.Name, modify.T.Name),
+			})
+		case *schema.RenameColumn:
+			b := s.Build("ALTER TABLE").Ident(modify.T.Name).P("RENAME COLUMN")
+			r := b.Clone()
+			s.append(&migrate.Change{
+				Source:  change,
+				Cmd:     b.Ident(change.From.Name).P("TO").Ident(change.To.Name).String(),
+				Reverse: r.Ident(change.To.Name).P("TO").Ident(change.From.Name).String(),
+				Comment: fmt.Sprintf("rename a column from %q to %q", change.From.Name, change.To.Name),
 			})
 		default:
 			return fmt.Errorf("unexpected change in alter table: %T", change)
@@ -401,7 +471,7 @@ func (s *state) tableSeq(ctx context.Context, add *schema.AddTable) error {
 	// SQLite tracks the AUTOINCREMENT in the "sqlite_sequence" table that is created and initialized automatically
 	// whenever the first "PRIMARY KEY AUTOINCREMENT" is created. However, rows in this table are populated after the
 	// first insertion to the associated table (name, seq). Therefore, we check if the sequence table and the row exist,
-	// and in case they are not, we insert a new non zero sequence to it.
+	// and in case they are not, we insert a new non-zero sequence to it.
 	rows, err := s.QueryContext(ctx, "SELECT seq FROM sqlite_sequence WHERE name = ?", add.T.Name)
 	if err != nil || !rows.Next() {
 		s.append(&migrate.Change{
@@ -412,9 +482,9 @@ func (s *state) tableSeq(ctx context.Context, add *schema.AddTable) error {
 		})
 	}
 	if rows != nil {
-		err = rows.Close()
+		return rows.Close()
 	}
-	return err
+	return nil
 }
 
 func (s *state) append(c *migrate.Change) {
@@ -424,9 +494,13 @@ func (s *state) append(c *migrate.Change) {
 func alterable(modify *schema.ModifyTable) bool {
 	for _, change := range modify.Changes {
 		switch change := change.(type) {
-		case *schema.DropIndex, *schema.AddIndex:
+		case *schema.RenameColumn, *schema.RenameIndex, *schema.DropIndex, *schema.AddIndex:
 		case *schema.AddColumn:
 			if len(change.C.Indexes) > 0 || len(change.C.ForeignKeys) > 0 || change.C.Default != nil {
+				return false
+			}
+			// Only VIRTUAL generated columns can be added using ALTER TABLE.
+			if x := (schema.GeneratedExpr{}); sqlx.Has(change.C.Attrs, &x) && storedOrVirtual(x.Type) == stored {
 				return false
 			}
 		default:
@@ -455,15 +529,20 @@ func autoincPK(pk *schema.Index) bool {
 }
 
 // Build instantiates a new builder and writes the given phrase to it.
-func Build(phrase string) *sqlx.Builder {
-	b := &sqlx.Builder{QuoteChar: '`'}
-	return b.P(phrase)
+func (s *state) Build(phrases ...string) *sqlx.Builder {
+	b := &sqlx.Builder{QuoteChar: '`', Schema: s.SchemaQualifier}
+	return b.P(phrases...)
 }
 
 func defaultValue(c *schema.Column) (string, error) {
 	switch x := c.Default.(type) {
 	case *schema.Literal:
-		return sqlx.SingleQuote(x.V)
+		switch c.Type.Type.(type) {
+		case *schema.BoolType, *schema.DecimalType, *schema.IntegerType, *schema.FloatType:
+			return x.V, nil
+		default:
+			return sqlx.SingleQuote(x.V)
+		}
 	case *schema.RawExpr:
 		return x.X, nil
 	default:

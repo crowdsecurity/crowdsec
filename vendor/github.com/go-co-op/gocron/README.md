@@ -2,11 +2,11 @@
 
 [![CI State](https://github.com/go-co-op/gocron/workflows/Go%20Test/badge.svg)](https://github.com/go-co-op/gocron/actions?query=workflow%3A"lint") ![Go Report Card](https://goreportcard.com/badge/github.com/go-co-op/gocron) [![Go Doc](https://godoc.org/github.com/go-co-op/gocron?status.svg)](https://pkg.go.dev/github.com/go-co-op/gocron)
 
-gocron is a Golang job scheduling package which lets you run Go functions periodically at pre-determined interval using a simple, human-friendly syntax.
+gocron is a job scheduling package which lets you run Go functions at pre-determined intervals using a simple, human-friendly syntax.
 
-gocron is a Golang implementation of the Ruby module [clockwork](https://github.com/tomykaira/clockwork) and the Python job scheduling package [schedule](https://github.com/dbader/schedule).
+gocron is a Golang scheduler implementation similar to the Ruby module [clockwork](https://github.com/tomykaira/clockwork) and the Python job scheduling package [schedule](https://github.com/dbader/schedule).
 
-See also these two great articles:
+See also these two great articles that were used for design input:
 
 - [Rethinking Cron](http://adam.herokuapp.com/past/2010/4/13/rethinking_cron/)
 - [Replace Cron with Clockwork](http://adam.herokuapp.com/past/2010/6/30/replace_cron_with_clockwork/)
@@ -32,6 +32,20 @@ s.Every("5m").Do(func(){ ... })
 s.Every(5).Days().Do(func(){ ... })
 
 s.Every(1).Month(1, 2, 3).Do(func(){ ... })
+
+// set time
+s.Every(1).Day().At("10:30").Do(func(){ ... })
+
+// set multiple times
+s.Every(1).Day().At("10:30;08:00").Do(func(){ ... })
+
+s.Every(1).Day().At("10:30").At("08:00").Do(func(){ ... })
+
+// Schedule each last day of the month
+s.Every(1).MonthLastDay().Do(func(){ ... })
+
+// Or each last day of every other month
+s.Every(2).MonthLastDay().Do(func(){ ... })
 
 // cron expressions supported
 s.Cron("*/1 * * * *").Do(task) // every minute
@@ -91,10 +105,10 @@ s.RunByTag("tag")
 ## FAQ
 
 - Q: I'm running multiple pods on a distributed environment. How can I make a job not run once per pod causing duplication?
-- A: We recommend using your own lock solution within the jobs themselves (you could use [Redis](https://redis.io/topics/distlock), for example)
+  - A: We recommend using your own lock solution within the jobs themselves (you could use [Redis](https://redis.io/topics/distlock), for example)
 
 - Q: I've removed my job from the scheduler, but how can I stop a long-running job that has already been triggered?
-- A: We recommend using a means of canceling your job, e.g. a `context.WithCancel()`.
+  - A: We recommend using a means of canceling your job, e.g. a `context.WithCancel()`.
 
 ---
 

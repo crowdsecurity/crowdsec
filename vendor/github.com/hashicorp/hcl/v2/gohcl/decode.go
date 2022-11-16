@@ -258,32 +258,14 @@ func decodeBodyToMap(body hcl.Body, ctx *hcl.EvalContext, v reflect.Value) hcl.D
 }
 
 func decodeBlockToValue(block *hcl.Block, ctx *hcl.EvalContext, v reflect.Value) hcl.Diagnostics {
-	var diags hcl.Diagnostics
+	diags := decodeBodyToValue(block.Body, ctx, v)
 
-	ty := v.Type()
-
-	switch {
-	case blockType.AssignableTo(ty):
-		v.Elem().Set(reflect.ValueOf(block))
-	case bodyType.AssignableTo(ty):
-		v.Elem().Set(reflect.ValueOf(block.Body))
-	case attrsType.AssignableTo(ty):
-		attrs, attrsDiags := block.Body.JustAttributes()
-		if len(attrsDiags) > 0 {
-			diags = append(diags, attrsDiags...)
+	if len(block.Labels) > 0 {
+		blockTags := getFieldTags(v.Type())
+		for li, lv := range block.Labels {
+			lfieldIdx := blockTags.Labels[li].FieldIndex
+			v.Field(lfieldIdx).Set(reflect.ValueOf(lv))
 		}
-		v.Elem().Set(reflect.ValueOf(attrs))
-	default:
-		diags = append(diags, decodeBodyToValue(block.Body, ctx, v)...)
-
-		if len(block.Labels) > 0 {
-			blockTags := getFieldTags(ty)
-			for li, lv := range block.Labels {
-				lfieldIdx := blockTags.Labels[li].FieldIndex
-				v.Field(lfieldIdx).Set(reflect.ValueOf(lv))
-			}
-		}
-
 	}
 
 	return diags
