@@ -39,9 +39,9 @@ func setPluginPermTo724(t *testing.T) {
 }
 
 func setTickerTo50ms() {
-	DefaultEmptyTicker.Lock()
-	defer DefaultEmptyTicker.Unlock()
-	DefaultEmptyTicker.ticker = time.Millisecond * 50
+	// DefaultEmptyTicker.Lock()
+	// defer DefaultEmptyTicker.Unlock()
+	// DefaultEmptyTicker.ticker = time.Millisecond * 50
 }
 
 func TestGetPluginNameAndTypeFromPath(t *testing.T) {
@@ -263,7 +263,6 @@ func writeconfig(t *testing.T, config PluginConfig, path string) {
 
 func TestBrokerNoThreshold(t *testing.T) {
 	var alerts []models.Alert
-	setTickerTo50ms()
 
 	buildDummyPlugin(t)
 	setPluginPermTo744(t)
@@ -282,6 +281,7 @@ func TestBrokerNoThreshold(t *testing.T) {
 		PluginDir:       testPath,
 		NotificationDir: "./tests/notifications",
 	})
+	pb.watcher.emptyTickerDuration = time.Millisecond * 50
 
 	assert.NoError(t, err)
 	tomb := tomb.Tomb{}
@@ -319,12 +319,11 @@ func TestBrokerNoThreshold(t *testing.T) {
 	assert.Len(t, alerts, 1)
 }
 
-func TestBrokerRunGroupAndTimeThreshold_TimeFirst(t *testing.T) {
+func TestBrokerRunGroupAndTimeThreshold_TimumeFirst(t *testing.T) {
 	// test grouping by "time"
 	buildDummyPlugin(t)
 	setPluginPermTo744(t)
 	defer tearDown(t)
-	setTickerTo50ms()
 
 	// init
 	pluginCfg := csconfig.PluginCfg{}
@@ -343,6 +342,7 @@ func TestBrokerRunGroupAndTimeThreshold_TimeFirst(t *testing.T) {
 		NotificationDir: "./tests/notifications",
 	})
 	assert.NoError(t, err)
+	pb.watcher.emptyTickerDuration = time.Millisecond * 50
 	tomb := tomb.Tomb{}
 
 	go pb.Run(&tomb)
@@ -373,7 +373,6 @@ func TestBrokerRunGroupAndTimeThreshold_CountFirst(t *testing.T) {
 	buildDummyPlugin(t)
 	setPluginPermTo(t, "744")
 	defer tearDown(t)
-	setTickerTo50ms()
 	pluginCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
 	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
@@ -391,6 +390,7 @@ func TestBrokerRunGroupAndTimeThreshold_CountFirst(t *testing.T) {
 		NotificationDir: "./tests/notifications",
 	})
 	assert.NoError(t, err)
+	pb.watcher.emptyTickerDuration = time.Millisecond * 50
 	tomb := tomb.Tomb{}
 
 	go pb.Run(&tomb)
@@ -426,7 +426,6 @@ func TestBrokerRunGroupThreshold(t *testing.T) {
 	buildDummyPlugin(t)
 	setPluginPermTo(t, "744")
 	defer tearDown(t)
-	setTickerTo50ms()
 	//init
 	pluginCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
@@ -443,8 +442,8 @@ func TestBrokerRunGroupThreshold(t *testing.T) {
 		PluginDir:       testPath,
 		NotificationDir: "./tests/notifications",
 	})
-
 	assert.NoError(t, err)
+	pb.watcher.emptyTickerDuration = time.Millisecond * 50
 	tomb := tomb.Tomb{}
 
 	go pb.Run(&tomb)
@@ -496,6 +495,7 @@ func TestBrokerRunTimeThreshold(t *testing.T) {
 		NotificationDir: "./tests/notifications",
 	})
 	assert.NoError(t, err)
+	pb.watcher.emptyTickerDuration = time.Millisecond * 50
 	tomb := tomb.Tomb{}
 
 	go pb.Run(&tomb)
@@ -527,7 +527,6 @@ func TestBrokerRunSimple(t *testing.T) {
 	buildDummyPlugin(t)
 	setPluginPermTo(t, "744")
 	defer tearDown(t)
-	setTickerTo50ms()
 	pluginCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
 	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
@@ -540,6 +539,7 @@ func TestBrokerRunSimple(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	tomb := tomb.Tomb{}
+	pb.watcher.emptyTickerDuration = time.Millisecond * 50
 
 	go pb.Run(&tomb)
 	defer pb.Kill()

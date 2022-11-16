@@ -50,19 +50,15 @@ type PluginWatcher struct {
 	PluginEvents           chan string
 	Inserts                chan string
 	tomb                   *tomb.Tomb
+	emptyTickerDuration    time.Duration
 }
-type MutexTicker struct {
-	sync.Mutex
-	ticker time.Duration
-}
-
-var DefaultEmptyTicker = MutexTicker{ticker: time.Second}
 
 func (pw *PluginWatcher) Init(configs map[string]PluginConfig, alertsByPluginName map[string][]*models.Alert) {
 	pw.PluginConfigByName = configs
 	pw.PluginEvents = make(chan string)
 	pw.AlertCountByPluginName = newAlertCounterByPluginName()
 	pw.Inserts = make(chan string)
+	pw.emptyTickerDuration = time.Second
 	for name := range alertsByPluginName {
 		pw.AlertCountByPluginName.Set(name, 0)
 	}
@@ -94,8 +90,7 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 	interval := pw.PluginConfigByName[pluginName].GroupWait
 	threshold := pw.PluginConfigByName[pluginName].GroupThreshold
 
-	DefaultEmptyTicker.Lock()
-	watchTime = DefaultEmptyTicker.ticker
+	watchTime = pw.emptyTickerDuration
 	watchTimeIsDefault := true
 	//only size is set
 	if threshold > 0 && interval == 0 {
@@ -111,7 +106,6 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 		//none are set, we sent every event we receive
 		watchCount = 1
 	}
-	DefaultEmptyTicker.Unlock()
 	ticker := time.NewTicker(watchTime)
 	var lastSend time.Time = time.Now()
 	for {
