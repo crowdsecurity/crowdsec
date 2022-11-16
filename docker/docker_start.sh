@@ -280,5 +280,7 @@ if istrue "$LEVEL_INFO"; then
     ARGS="$ARGS -info"
 fi
 
+conf_set '.prometheus.listen_port=env(METRICS_PORT)'
+
 # shellcheck disable=SC2086
 exec crowdsec $ARGS
