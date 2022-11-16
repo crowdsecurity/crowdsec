@@ -71,13 +71,14 @@ fi
 
 # regenerate local agent credentials (ignore if agent is disabled)
 if isfalse "$DISABLE_AGENT"; then
-    echo "Regenerate local agent credentials"
+    if isfalse "$DISABLE_LOCAL_API"; then
+        echo "Regenerate local agent credentials"
+        cscli machines delete "$CUSTOM_HOSTNAME"
+        # shellcheck disable=SC2086
+        cscli machines add "$CUSTOM_HOSTNAME" --auto --url "$LOCAL_API_URL"
+        echo "set up lapi credentials for agent"
+    fi
 
-    cscli machines delete "$CUSTOM_HOSTNAME"
-    # shellcheck disable=SC2086
-    cscli machines add "$CUSTOM_HOSTNAME" --auto --url "$LOCAL_API_URL"
-
-    echo "set up lapi credentials for agent"
     lapi_credentials_path=$(conf_get '.api.client.credentials_path')
 
     if istrue "$USE_TLS"; then
