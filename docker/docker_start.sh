@@ -98,17 +98,13 @@ if isfalse "$DISABLE_AGENT"; then
     fi
 fi
 
-echo "Check if lapi needs to automatically register an agent"
-
 if isfalse "$DISABLE_LOCAL_API"; then
-    if [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] ; then
+    echo "Check if lapi needs to automatically register an agent"
+
+    # pre-registration is not needed with TLS
+    if isfalse "$USE_TLS" && [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] ; then
         # shellcheck disable=SC2086
         cscli machines add "$AGENT_USERNAME" --password "$AGENT_PASSWORD" --url "$LOCAL_API_URL"
-    fi
-
-    if istrue "$USE_TLS"; then
-        # shellcheck disable=SC2086
-        cscli machines add "$AGENT_USERNAME" --url "$LOCAL_API_URL"
     fi
 
     echo "Agent registered to lapi"
