@@ -66,7 +66,15 @@ done
 
 # Check and prestage /etc/crowdsec
 if [ ! -e "/etc/crowdsec/local_api_credentials.yaml" ] && [ ! -e "/etc/crowdsec/config.yaml" ]; then
-    cp -r /staging/etc/* /etc/
+    echo "Populating configuration directory..."
+    # don't overwrite existing configuration files, which may come
+    # from bind-mount or even be read-only (configmaps)
+    if [ -e /staging/etc/crowdsec ]; then
+        mkdir -p /etc/crowdsec/
+        # if you change this, check that it still works
+        # under alpine and k8s, with and without tls
+        cp -an /staging/etc/crowdsec/* /etc/crowdsec/
+    fi
 fi
 
 # regenerate local agent credentials (ignore if agent is disabled)
@@ -76,7 +84,6 @@ if isfalse "$DISABLE_AGENT"; then
         cscli machines delete "$CUSTOM_HOSTNAME"
         # shellcheck disable=SC2086
         cscli machines add "$CUSTOM_HOSTNAME" --auto --url "$LOCAL_API_URL"
-        echo "set up lapi credentials for agent"
     fi
 
     lapi_credentials_path=$(conf_get '.api.client.credentials_path')
@@ -106,9 +113,8 @@ if isfalse "$DISABLE_LOCAL_API"; then
     if isfalse "$USE_TLS" && [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] ; then
         # shellcheck disable=SC2086
         cscli machines add "$AGENT_USERNAME" --password "$AGENT_PASSWORD" --url "$LOCAL_API_URL"
+        echo "Agent registered to lapi"
     fi
-
-    echo "Agent registered to lapi"
 fi
 
 # registration to online API for signal push
@@ -117,7 +123,7 @@ if isfalse "$DISABLE_ONLINE_API" && [ "$CONFIG_FILE" == "/etc/crowdsec/config.ya
     if isfalse "$config_exists"; then
         conf_set '.api.server.online_client = {"credentials_path": "/etc/crowdsec/online_api_credentials.yaml"}'
         cscli capi register > /etc/crowdsec/online_api_credentials.yaml
-        echo "registration to online API done"
+        echo "Registration to online API done"
     fi
 fi
 
