@@ -61,6 +61,25 @@ func TestDeleteDecisionFilter(t *testing.T) {
 	assert.Equal(t, `{"nbDeleted":"1"}`, w.Body.String())
 }
 
+func TestDeleteDecisionFilterByScenario(t *testing.T) {
+	lapi := SetupLAPITest(t)
+
+	// Create Valid Alert
+	lapi.InsertAlertFromFile("./tests/alert_minibulk.json")
+
+	// delete by wrong scenario
+
+	w := lapi.RecordResponse("DELETE", "/v1/decisions?scenario=crowdsecurity/ssh-bff", emptyBody, PASSWORD)
+	assert.Equal(t, 200, w.Code)
+	assert.Equal(t, `{"nbDeleted":"0"}`, w.Body.String())
+
+	// delete by scenario good
+
+	w = lapi.RecordResponse("DELETE", "/v1/decisions?scenario=crowdsecurity/ssh-bf", emptyBody, PASSWORD)
+	assert.Equal(t, 200, w.Code)
+	assert.Equal(t, `{"nbDeleted":"2"}`, w.Body.String())
+}
+
 func TestGetDecisionFilters(t *testing.T) {
 	lapi := SetupLAPITest(t)
 

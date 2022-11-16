@@ -34,6 +34,7 @@ type Event struct {
 	Overflow      RuntimeAlert `yaml:"Overflow,omitempty" json:"Alert,omitempty"`
 	Time          time.Time    `yaml:"Time,omitempty" json:"Time,omitempty"` //parsed time `json:"-"` ``
 	StrTime       string       `yaml:"StrTime,omitempty" json:"StrTime,omitempty"`
+	StrTimeFormat string       `yaml:"StrTimeFormat,omitempty" json:"StrTimeFormat,omitempty"`
 	MarshaledTime string       `yaml:"MarshaledTime,omitempty" json:"MarshaledTime,omitempty"`
 	Process       bool         `yaml:"Process,omitempty" json:"Process,omitempty"` //can be set to false to avoid processing line
 	/* Meta is the only part that will make it to the API - it should be normalized */
@@ -49,6 +50,25 @@ func (e *Event) GetType() string {
 		log.Warningf("unknown event type for %+v", e)
 		return "unknown"
 	}
+}
+
+func (e *Event) GetMeta(key string) string {
+	if e.Type == OVFLW {
+		for _, alert := range e.Overflow.APIAlerts {
+			for _, event := range alert.Events {
+				if event.GetMeta(key) != "" {
+					return event.GetMeta(key)
+				}
+			}
+		}
+	} else if e.Type == LOG {
+		for k, v := range e.Meta {
+			if k == key {
+				return v
+			}
+		}
+	}
+	return ""
 }
 
 //Move in leakybuckets

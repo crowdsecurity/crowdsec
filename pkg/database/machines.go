@@ -13,6 +13,7 @@ import (
 )
 
 const CapiMachineID = "CAPI"
+const CapiListsMachineID = "lists"
 
 func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipAddress string, isValidated bool, force bool, authType string) (*ent.Machine, error) {
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
@@ -105,13 +106,18 @@ func (c *Client) QueryPendingMachine() ([]*ent.Machine, error) {
 }
 
 func (c *Client) DeleteWatcher(name string) error {
-	_, err := c.Ent.Machine.
+	nbDeleted, err := c.Ent.Machine.
 		Delete().
 		Where(machine.MachineIdEQ(name)).
 		Exec(c.CTX)
 	if err != nil {
-		return fmt.Errorf("unable to save api key in database: %s", err)
+		return err
 	}
+
+	if nbDeleted == 0 {
+		return fmt.Errorf("machine doesn't exist")
+	}
+
 	return nil
 }
 
@@ -147,7 +153,7 @@ func (c *Client) UpdateMachineIP(ipAddr string, ID int) error {
 		SetIpAddress(ipAddr).
 		Save(c.CTX)
 	if err != nil {
-		return fmt.Errorf("unable to update machine in database: %s", err)
+		return fmt.Errorf("unable to update machine IP in database: %s", err)
 	}
 	return nil
 }
@@ -157,7 +163,7 @@ func (c *Client) UpdateMachineVersion(ipAddr string, ID int) error {
 		SetVersion(ipAddr).
 		Save(c.CTX)
 	if err != nil {
-		return fmt.Errorf("unable to update machine in database: %s", err)
+		return fmt.Errorf("unable to update machine version in database: %s", err)
 	}
 	return nil
 }

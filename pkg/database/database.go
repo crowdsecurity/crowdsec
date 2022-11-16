@@ -26,6 +26,8 @@ type Client struct {
 	CTX      context.Context
 	Log      *log.Logger
 	CanFlush bool
+	Type     string
+	WalMode  *bool
 }
 
 func getEntDriver(dbtype string, dbdialect string, dsn string, config *csconfig.DatabaseCfg) (*entsql.Driver, error) {
@@ -61,7 +63,6 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 	entOpt := ent.Log(entLogger.Debug)
 	switch config.Type {
 	case "sqlite":
-
 		/*if it's the first startup, we want to touch and chmod file*/
 		if _, err := os.Stat(config.DbPath); os.IsNotExist(err) {
 			f, err := os.OpenFile(config.DbPath, os.O_CREATE|os.O_RDWR, 0600)
@@ -71,12 +72,18 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 			if err := f.Close(); err != nil {
 				return &Client{}, errors.Wrapf(err, "failed to create SQLite database file %q", config.DbPath)
 			}
-		} else { /*ensure file perms*/
-			if err := os.Chmod(config.DbPath, 0660); err != nil {
-				return &Client{}, fmt.Errorf("unable to set perms on %s: %v", config.DbPath, err)
-			}
 		}
-		drv, err := getEntDriver("sqlite3", dialect.SQLite, fmt.Sprintf("file:%s?_busy_timeout=100000&_fk=1", config.DbPath), config)
+		//Always try to set permissions to simplify a bit the code for windows (as the permissions set by OpenFile will be garbage)
+		if err := setFilePerm(config.DbPath, 0600); err != nil {
+			return &Client{}, fmt.Errorf("unable to set perms on %s: %v", config.DbPath, err)
+		}
+		var sqliteConnectionStringParameters string
+		if config.UseWal != nil && *config.UseWal {
+			sqliteConnectionStringParameters = "_busy_timeout=100000&_fk=1&_journal_mode=WAL"
+		} else {
+			sqliteConnectionStringParameters = "_busy_timeout=100000&_fk=1"
+		}
+		drv, err := getEntDriver("sqlite3", dialect.SQLite, fmt.Sprintf("file:%s?%s", config.DbPath, sqliteConnectionStringParameters), config)
 		if err != nil {
 			return &Client{}, errors.Wrapf(err, "failed opening connection to sqlite: %v", config.DbPath)
 		}
@@ -110,7 +117,7 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 	if err = client.Schema.Create(context.Background()); err != nil {
 		return nil, fmt.Errorf("failed creating schema resources: %v", err)
 	}
-	return &Client{Ent: client, CTX: context.Background(), Log: clog, CanFlush: true}, nil
+	return &Client{Ent: client, CTX: context.Background(), Log: clog, CanFlush: true, Type: config.Type, WalMode: config.UseWal}, nil
 }
 
 func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Scheduler, error) {

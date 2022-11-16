@@ -97,8 +97,12 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilGT(time.Now().UTC()),
-		longestDecisionForScopeTypeValue,
 	)
+	//Allow a bouncer to ask for non-deduplicated results
+	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
+		query = query.Where(longestDecisionForScopeTypeValue)
+	}
+
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 
 	if err != nil {
@@ -117,8 +121,12 @@ func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*e
 func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilLT(time.Now().UTC()),
-		longestDecisionForScopeTypeValue,
 	)
+	//Allow a bouncer to ask for non-deduplicated results
+	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
+		query = query.Where(longestDecisionForScopeTypeValue)
+	}
+
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 
 	if err != nil {
@@ -219,8 +227,11 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters 
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilLT(time.Now().UTC()),
 		decision.UntilGT(since),
-		longestDecisionForScopeTypeValue,
 	)
+	//Allow a bouncer to ask for non-deduplicated results
+	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
+		query = query.Where(longestDecisionForScopeTypeValue)
+	}
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
@@ -240,8 +251,11 @@ func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[
 	query := c.Ent.Decision.Query().Where(
 		decision.CreatedAtGT(since),
 		decision.UntilGT(time.Now().UTC()),
-		longestDecisionForScopeTypeValue,
 	)
+	//Allow a bouncer to ask for non-deduplicated results
+	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
+		query = query.Where(longestDecisionForScopeTypeValue)
+	}
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
@@ -291,6 +305,8 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 			if err != nil {
 				return "0", errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", value[0], err)
 			}
+		case "scenario":
+			decisions = decisions.Where(decision.ScenarioEQ(value[0]))
 		default:
 			return "0", errors.Wrap(InvalidFilter, fmt.Sprintf("'%s' doesn't exist", param))
 		}
@@ -401,6 +417,8 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 			if err != nil {
 				return "0", errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", value[0], err)
 			}
+		case "scenario":
+			decisions = decisions.Where(decision.ScenarioEQ(value[0]))
 		default:
 			return "0", errors.Wrapf(InvalidFilter, "'%s' doesn't exist", param)
 		}
@@ -484,7 +502,7 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 	return strconv.Itoa(nbDeleted), nil
 }
 
-//SoftDeleteDecisionByID set the expiration of a decision to now()
+// SoftDeleteDecisionByID set the expiration of a decision to now()
 func (c *Client) SoftDeleteDecisionByID(decisionID int) (int, error) {
 	nbUpdated, err := c.Ent.Decision.Update().Where(decision.IDEQ(decisionID)).SetUntil(time.Now().UTC()).Save(c.CTX)
 	if err != nil || nbUpdated == 0 {

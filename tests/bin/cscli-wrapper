@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+set -eu
+
+#
+# Delegate operations to an instrumented binary and collects coverage data.
+#
+
+#shellcheck disable=SC1007
+THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# no need to change directory, and doing it here would break hub tests
+# shellcheck disable=SC1091
+. "${THIS_DIR}/../.environment.sh"
+
+set -o pipefail  # don't let sed hide the statuscode
+mkdir -p "${LOCAL_DIR}/var/lib/coverage"
+
+# we collect rc and output by hand, because setting -o pipefail would trigger a
+# SIGPIPE.
+set +e
+
+# Arguments to cscli are passed through a temporary, newline-delimited
+# file courtesy of github.com/confluentinc/bincover. Coverage data will be
+# merged at the end of the test run.
+# The '=' between flags and values is required.
+output=$("${BIN_DIR}/cscli.cover" \
+    -test.run="^TestBincoverRunMain$" \
+    -test.coverprofile="${LOCAL_DIR}/var/lib/coverage/cscli-$(date +'%s')-$$-${RANDOM}.out" \
+    -args-file=<(for i; do echo "${i}"; done))
+rc=$?
+
+# If there is bincover metadata, we take the status code from there. Otherwise,
+# we keep the status from the above command.
+if [[ ${output} =~ (.*)(START_BINCOVER_METADATA[[:space:]]*)(.*)([[:space:]]END_BINCOVER_METADATA) ]]; then
+    echo -n "${BASH_REMATCH[1]}"
+    exit "$(jq '.exit_code' <<< "${BASH_REMATCH[3]}")"
+fi
+
+echo -n "${output}"
+exit "${rc}"

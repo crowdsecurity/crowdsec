@@ -39,14 +39,21 @@ export DATA_DIR
 CONFIG_DIR="${LOCAL_DIR}/${REL_CONFIG_DIR}"
 export CONFIG_DIR
 
+if [[ $(uname) == "OpenBSD" ]]; then
+    TAR=gtar
+else
+    TAR=tar
+fi
+
 remove_init_data() {
+    ./bin/assert-crowdsec-not-running || die "Cannot remove fixture data."
     rm -rf -- "${LOCAL_DIR:?}/${REL_CONFIG_DIR}"/* "${LOCAL_DIR:?}/${REL_DATA_DIR:?}"/*
 }
 
-#we need a separate function for initializing config when testing package
-#because we want to test the configuration as well
+# we need a separate function for initializing config when testing package
+# because we want to test the configuration as well
 make_init_data() {
-    "${TEST_DIR}/instance-crowdsec" stop
+    ./bin/assert-crowdsec-not-running || die "Cannot create fixture data."
 
     ./instance-db config-yaml
     ./instance-db setup
@@ -55,19 +62,6 @@ make_init_data() {
     # local credz for sqlite
 
     [[ "${DB_BACKEND}" == "sqlite" ]] || ${CSCLI} machines add --auto
-
-    "${TEST_DIR}/instance-crowdsec" start
-
-    "${CSCLI}" decisions delete --all
-
-    loop_max=15
-    for ((i = 0; i <= loop_max; i++)); do
-        sleep 2
-        [[ $("${CSCLI}" alerts list -o json) != "null" ]] && break
-    done
-    [[ $("${CSCLI}" alerts list -o json) != "null" ]] || die "could not get community data"
-
-    "${TEST_DIR}/instance-crowdsec" stop
 
     mkdir -p "${LOCAL_INIT_DIR}"
 
@@ -78,14 +72,14 @@ make_init_data() {
     # disable CAPI by default
     yq e 'del(.api.server.online_client)' -i "${CONFIG_DIR}/config.yaml"
 
-    tar -C "${LOCAL_DIR}" --create \
+    "${TAR}" -C "${LOCAL_DIR}" --create \
         --exclude "${REL_DATA_DIR}"/crowdsec.db \
         --file "${LOCAL_INIT_DIR}/init-config-data.tar" "${REL_CONFIG_DIR}" "${REL_DATA_DIR}"
-
-    ./instance-db setup
 }
 
 load_init_data() {
+    ./bin/assert-crowdsec-not-running || die "Cannot load fixture data."
+
     if [[ ! -f "${LOCAL_INIT_DIR}/init-config-data.tar" ]]; then
         die "Initial data not found; did you run '${script_name} make' ?"
     fi
@@ -97,7 +91,7 @@ load_init_data() {
 
     remove_init_data
 
-    tar -C "${LOCAL_DIR}" --extract --file "${LOCAL_INIT_DIR}/init-config-data.tar"
+    "${TAR}" -C "${LOCAL_DIR}" --extract --file "${LOCAL_INIT_DIR}/init-config-data.tar"
 
     ./instance-db restore "${LOCAL_INIT_DIR}/database"
 }
@@ -109,14 +103,13 @@ load_init_data() {
 
 case "$1" in
     make)
+        "${TEST_DIR}/instance-crowdsec" stop
         make_init_data
         ;;
     load)
-        ./assert-crowdsec-not-running
         load_init_data
         ;;
     clean)
-        ./assert-crowdsec-not-running
         remove_init_data
         ;;
     *)

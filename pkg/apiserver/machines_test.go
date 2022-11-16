@@ -19,7 +19,7 @@ func TestCreateMachine(t *testing.T) {
 
 	// Create machine with invalid format
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/watchers", strings.NewReader("test"))
+	req, _ := http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader("test"))
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -28,7 +28,7 @@ func TestCreateMachine(t *testing.T) {
 
 	// Create machine with invalid input
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/v1/watchers", strings.NewReader("{\"test\": \"test\"}"))
+	req, _ = http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader("{\"test\": \"test\"}"))
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -43,7 +43,7 @@ func TestCreateMachine(t *testing.T) {
 	body := string(b)
 
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/v1/watchers", strings.NewReader(body))
+	req, _ = http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -66,7 +66,7 @@ func TestCreateMachineWithForwardedFor(t *testing.T) {
 	body := string(b)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/watchers", strings.NewReader(body))
+	req, _ := http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("X-Real-Ip", "1.1.1.1")
 	router.ServeHTTP(w, req)
@@ -95,7 +95,7 @@ func TestCreateMachineWithForwardedForNoConfig(t *testing.T) {
 	body := string(b)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/watchers", strings.NewReader(body))
+	req, _ := http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("X-Real-IP", "1.1.1.1")
 	router.ServeHTTP(w, req)
@@ -126,7 +126,7 @@ func TestCreateMachineWithoutForwardedFor(t *testing.T) {
 	body := string(b)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/watchers", strings.NewReader(body))
+	req, _ := http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -154,12 +154,12 @@ func TestCreateMachineAlreadyExist(t *testing.T) {
 	}
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/watchers", strings.NewReader(body))
+	req, _ := http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/v1/watchers", strings.NewReader(body))
+	req, _ = http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 

@@ -24,7 +24,7 @@ const (
 	TIMEMACHINE
 )
 
-//Leaky represents one instance of a bucket
+// Leaky represents one instance of a bucket
 type Leaky struct {
 	Name string
 	Mode int //LIVE or TIMEMACHINE
@@ -104,10 +104,10 @@ var BucketsUnderflow = prometheus.NewCounterVec(
 	[]string{"name"},
 )
 
-var BucketsInstanciation = prometheus.NewCounterVec(
+var BucketsInstantiation = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_bucket_created_total",
-		Help: "Total buckets were instanciated.",
+		Help: "Total buckets were instantiated.",
 	},
 	[]string{"name"},
 )
@@ -151,7 +151,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 	} else {
 		limiter = rate.NewLimiter(rate.Every(bucketFactory.leakspeed), bucketFactory.Capacity)
 	}
-	BucketsInstanciation.With(prometheus.Labels{"name": bucketFactory.Name}).Inc()
+	BucketsInstantiation.With(prometheus.Labels{"name": bucketFactory.Name}).Inc()
 
 	//create the leaky bucket per se
 	l := &Leaky{
@@ -195,8 +195,9 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 func LeakRoutine(leaky *Leaky) error {
 
 	var (
-		durationTicker  <-chan time.Time = make(<-chan time.Time)
-		underflowTicker *time.Ticker
+		durationTickerChan <-chan time.Time = make(<-chan time.Time)
+		durationTicker     *time.Ticker
+		firstEvent         bool = true
 	)
 
 	defer types.CatchPanic(fmt.Sprintf("crowdsec/LeakRoutine/%s", leaky.Name))
@@ -240,12 +241,20 @@ func LeakRoutine(leaky *Leaky) error {
 
 			leaky.Pour(leaky, *msg) // glue for now
 			//Clear cache on behalf of pour
-			if underflowTicker != nil {
-				underflowTicker.Stop()
+
+			// if durationTicker isn't initialized, then we're pouring our first event
+
+			// reinitialize the durationTicker when it's not a counter bucket
+			if !leaky.timedOverflow || firstEvent {
+				if firstEvent {
+					durationTicker = time.NewTicker(leaky.Duration)
+					durationTickerChan = durationTicker.C
+					defer durationTicker.Stop()
+				} else {
+					durationTicker.Reset(leaky.Duration)
+				}
 			}
-			underflowTicker = time.NewTicker(leaky.Duration)
-			durationTicker = underflowTicker.C
-			defer underflowTicker.Stop()
+			firstEvent = false
 		/*we overflowed*/
 		case ofw := <-leaky.Out:
 			leaky.overflow(ofw)
@@ -259,7 +268,7 @@ func LeakRoutine(leaky *Leaky) error {
 			leaky.logger.Tracef("Returning from leaky routine.")
 			return nil
 		/*we underflow or reach bucket deadline (timers)*/
-		case <-durationTicker:
+		case <-durationTickerChan:
 			var (
 				alert types.RuntimeAlert
 				err   error

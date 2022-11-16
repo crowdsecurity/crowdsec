@@ -6,7 +6,7 @@ import (
 )
 
 /* should be part of a packaged shared with enrich/geoip.go */
-type EnrichFunc func(string, *types.Event, interface{}) (map[string]string, error)
+type EnrichFunc func(string, *types.Event, interface{}, *log.Entry) (map[string]string, error)
 type InitFunc func(map[string]string) (interface{}, error)
 
 type EnricherCtx struct {

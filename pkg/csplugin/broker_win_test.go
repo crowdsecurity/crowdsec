@@ -12,15 +12,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/tomb.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 /*
-Due to the complexity of file permission modification with go on windows, we only test the basic behaviour the broker,
+Due to the complexity of file permission modification with go on windows, we only test the basic behavior the broker,
 not if it will actually reject plugins with invalid permissions
 */
 
@@ -68,6 +70,7 @@ func TestGetPluginNameAndTypeFromPath(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			got, got1, err := getPluginTypeAndSubtypeFromPath(tt.args.path)
 			if (err != nil) != tt.wantErr {
@@ -115,6 +118,7 @@ func TestListFilesAtPath(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := listFilesAtPath(tt.args.path)
 			if (err != nil) != tt.wantErr {
@@ -143,7 +147,7 @@ func TestBrokerInit(t *testing.T) {
 		{
 			name:        "no plugin dir",
 			wantErr:     true,
-			errContains: "The system cannot find the file specified.",
+			errContains: cstest.FileNotFoundMessage,
 			action:      tearDown,
 		},
 		{
@@ -160,6 +164,7 @@ func TestBrokerInit(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.name, func(t *testing.T) {
 			defer tearDown()
 			buildDummyPlugin()

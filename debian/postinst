@@ -24,7 +24,7 @@ if [ "$1" = configure ]; then
         echo Creating /etc/crowdsec/acquis.yaml
         set +e
         SILENT=true detect_services
-        SILENT=true genacquisition
+        SILENT=true TMP_ACQUIS_FILE_SKIP=skip genacquisition
         set -e
         COLLECTIONS=true
     fi
@@ -81,6 +81,7 @@ if [ "$1" = configure ]; then
         CSCLI_BIN_INSTALLED="/usr/bin/cscli" SILENT=true install_collection
         set -e
     fi
+
 
     if [[ -f /var/lib/crowdsec/data/crowdsec.db.backup ]]; then
         cp /var/lib/crowdsec/data/crowdsec.db.backup /var/lib/crowdsec/data/crowdsec.db

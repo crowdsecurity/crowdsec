@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
@@ -39,7 +38,7 @@ func TestParser(t *testing.T) {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
 		}
 	} else {
-		fds, err := ioutil.ReadDir("./tests/")
+		fds, err := os.ReadDir("./tests/")
 		if err != nil {
 			t.Fatalf("Unable to read test directory : %s", err)
 		}
@@ -72,7 +71,7 @@ func BenchmarkParser(t *testing.B) {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
 		}
 	} else {
-		fds, err := ioutil.ReadDir("./tests/")
+		fds, err := os.ReadDir("./tests/")
 		if err != nil {
 			t.Fatalf("Unable to read test directory : %s", err)
 		}
@@ -99,7 +98,7 @@ func testOneParser(pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing
 	)
 	log.Warningf("testing %s", dir)
 	parser_cfg_file := fmt.Sprintf("%s/parsers.yaml", dir)
-	cfg, err := ioutil.ReadFile(parser_cfg_file)
+	cfg, err := os.ReadFile(parser_cfg_file)
 	if err != nil {
 		return fmt.Errorf("failed opening %s : %s", parser_cfg_file, err)
 	}
@@ -376,7 +375,7 @@ func TestGeneratePatternsDoc(t *testing.T) {
 	i := 0
 	for key, val := range pctx.Grok {
 		p[i] = Pair{key, val}
-		p[i].Value = strings.Replace(p[i].Value, "{%{", "\\{\\%\\{", -1)
+		p[i].Value = strings.ReplaceAll(p[i].Value, "{%{", "\\{\\%\\{")
 		i++
 	}
 	sort.Sort(p)

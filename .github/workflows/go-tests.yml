@@ -55,13 +55,63 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=3
+      zoo1:
+        image: confluentinc/cp-zookeeper:7.1.1
+        ports:
+          - "2181:2181"
+        env:
+          ZOOKEEPER_CLIENT_PORT: 2181
+          ZOOKEEPER_SERVER_ID: 1
+          ZOOKEEPER_SERVERS: zoo1:2888:3888
+        options: >-
+          --name=zoo1
+          --health-cmd "jps -l | grep zookeeper"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      kafka1:
+        image: crowdsecurity/kafka-ssl
+        ports:
+          - "9093:9093"
+          - "9092:9092"
+          - "9999:9999"
+        env:
+          KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://127.0.0.1:19092,LISTENER_DOCKER_EXTERNAL://127.0.0.1:9092,LISTENER_DOCKER_EXTERNAL_SSL://127.0.0.1:9093
+          KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL_SSL:SSL
+          KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
+          KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181"
+          KAFKA_BROKER_ID: 1
+          KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+          KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+          KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+          KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+          KAFKA_JMX_PORT: 9999
+          KAFKA_JMX_HOSTNAME: "127.0.0.1"
+          KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
+          KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+          KAFKA_SSL_KEYSTORE_FILENAME: kafka.kafka1.keystore.jks
+          KAFKA_SSL_KEYSTORE_CREDENTIALS: kafka1_keystore_creds
+          KAFKA_SSL_KEY_CREDENTIALS: kafka1_sslkey_creds
+          KAFKA_SSL_TRUSTSTORE_FILENAME: kafka.kafka1.truststore.jks
+          KAFKA_SSL_TRUSTSTORE_CREDENTIALS: kafka1_truststore_creds
+          KAFKA_SSL_ENABLED_PROTOCOLS: TLSv1.2
+          KAFKA_SSL_PROTOCOL: TLSv1.2
+          KAFKA_SSL_CLIENT_AUTH: none
+          KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+        options: >-
+          --name=kafka1
+          --health-cmd "kafka-broker-api-versions --version"
+          --health-interval 10s
+          --health-timeout 10s
+          --health-retries 5
 
     steps:
 
-    - name: "Set up Go 1.17"
+    - name: "Set up Go 1.19"
       uses: actions/setup-go@v3
       with:
-        go-version: 1.17
+        go-version: 1.19
       id: go
 
     - name: Check out CrowdSec repository
@@ -70,21 +120,24 @@ jobs:
         fetch-depth: 0
         submodules: false
 
-    - name: Build
+    - name: Build and run tests
       run: |
-        make build
-
-    - name: Run tests
-      run: |
-        set -o pipefail
         go install github.com/ory/go-acc@v0.2.8
         go install github.com/kyoh86/richgo@v0.3.10
+        set -o pipefail
+        make build
         go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models \
           | sed 's/ *coverage:.*of statements in.*//' \
           | richgo testfilter
 
+    - name: Build and run tests (static)
+      run: |
+        make clean build BUILD_STATIC=yes
+        make test \
+          | richgo testfilter
+
     - name: Upload unit coverage to Codecov
-      uses: codecov/codecov-action@v2
+      uses: codecov/codecov-action@v3
       with:
         files: coverage.out
         flags: unit-linux

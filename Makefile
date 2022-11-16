@@ -1,12 +1,13 @@
-ifeq ($(OS),Windows_NT)
-SHELL := pwsh.exe
-.SHELLFLAGS := -NoProfile -Command
-ROOT= $(shell (Get-Location).Path)
-SYSTEM=windows
-EXT=.exe
+
+ifeq ($(OS), Windows_NT)
+	SHELL := pwsh.exe
+	.SHELLFLAGS := -NoProfile -Command
+	CS_ROOT = $(shell (Get-Location).Path)
+	SYSTEM = windows
+	EXT = .exe
 else
-ROOT?= $(shell pwd)
-SYSTEM?= $(shell uname -s | tr '[A-Z]' '[a-z]')
+	CS_ROOT ?= $(shell pwd)
+	SYSTEM ?= $(shell uname -s | tr '[A-Z]' '[a-z]')
 endif
 
 ifneq ("$(wildcard $(CURDIR)/platform/$(SYSTEM).mk)", "")
@@ -15,8 +16,8 @@ else
 	include $(CURDIR)/platform/linux.mk
 endif
 
-ifneq ($(OS),Windows_NT)
-	include $(ROOT)/platform/unix_common.mk
+ifneq ($(OS), Windows_NT)
+	include $(CS_ROOT)/platform/unix_common.mk
 endif
 
 CROWDSEC_FOLDER = ./cmd/crowdsec
@@ -48,21 +49,24 @@ MINIMUM_SUPPORTED_GO_MINOR_VERSION = 17
 GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not supported, please use at least $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION).$(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
 
 LD_OPTS_VARS= \
--X github.com/crowdsecurity/crowdsec/cmd/crowdsec.bincoverTesting=$(BINCOVER_TESTING) \
--X github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli.bincoverTesting=$(BINCOVER_TESTING) \
--X github.com/crowdsecurity/crowdsec/pkg/cwversion.Version=$(BUILD_VERSION) \
--X github.com/crowdsecurity/crowdsec/pkg/cwversion.BuildDate=$(BUILD_TIMESTAMP) \
--X github.com/crowdsecurity/crowdsec/pkg/cwversion.Codename=$(BUILD_CODENAME) \
--X github.com/crowdsecurity/crowdsec/pkg/cwversion.Tag=$(BUILD_TAG) \
--X github.com/crowdsecurity/crowdsec/pkg/cwversion.GoVersion=$(BUILD_GOVERSION) \
+-X 'github.com/crowdsecurity/crowdsec/cmd/crowdsec.bincoverTesting=$(BINCOVER_TESTING)' \
+-X 'github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli.bincoverTesting=$(BINCOVER_TESTING)' \
+-X 'github.com/crowdsecurity/crowdsec/pkg/cwversion.Version=$(BUILD_VERSION)' \
+-X 'github.com/crowdsecurity/crowdsec/pkg/cwversion.BuildDate=$(BUILD_TIMESTAMP)' \
+-X 'github.com/crowdsecurity/crowdsec/pkg/cwversion.Codename=$(BUILD_CODENAME)' \
+-X 'github.com/crowdsecurity/crowdsec/pkg/cwversion.Tag=$(BUILD_TAG)' \
+-X 'github.com/crowdsecurity/crowdsec/pkg/cwversion.GoVersion=$(BUILD_GOVERSION)' \
 -X 'github.com/crowdsecurity/crowdsec/pkg/csconfig.defaultConfigDir=$(DEFAULT_CONFIGDIR)' \
 -X 'github.com/crowdsecurity/crowdsec/pkg/csconfig.defaultDataDir=$(DEFAULT_DATADIR)'
 
-export LD_OPTS=-ldflags "-s -w $(LD_OPTS_VARS)"
-export LD_OPTS_STATIC=-ldflags "-s -w $(LD_OPTS_VARS) -extldflags '-static'"
+ifdef BUILD_STATIC
+	export LD_OPTS=-ldflags "-s -w $(LD_OPTS_VARS) -extldflags '-static'" -tags netgo,osusergo,sqlite_omit_load_extension
+else
+	export LD_OPTS=-ldflags "-s -w $(LD_OPTS_VARS)"
+endif
 
-GOCMD=go
-GOTEST=$(GOCMD) test
+GOCMD = go
+GOTEST = $(GOCMD) test
 
 RELDIR = crowdsec-$(BUILD_VERSION)
 
@@ -72,28 +76,24 @@ build: goversion crowdsec cscli plugins
 .PHONY: all
 all: clean test build
 
-.PHONY: static
-static: crowdsec_static cscli_static plugins_static
-
 .PHONY: plugins
 plugins: http-plugin slack-plugin splunk-plugin email-plugin dummy-plugin
 
-plugins_static: http-plugin_static slack-plugin_static splunk-plugin_static email-plugin_static dummy-plugin_static
-
+.PHONY: goversion
 goversion:
-ifneq ($(OS),Windows_NT)
+ifneq ($(OS), Windows_NT)
 	@if [ $(GO_MAJOR_VERSION) -gt $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) ]; then \
-        exit 0 ;\
-    elif [ $(GO_MAJOR_VERSION) -lt $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) ]; then \
-        echo '$(GO_VERSION_VALIDATION_ERR_MSG)';\
-        exit 1; \
-    elif [ $(GO_MINOR_VERSION) -lt $(MINIMUM_SUPPORTED_GO_MINOR_VERSION) ] ; then \
-        echo '$(GO_VERSION_VALIDATION_ERR_MSG)';\
-        exit 1; \
-    fi
+		exit 0 ;\
+	elif [ $(GO_MAJOR_VERSION) -lt $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) ]; then \
+		echo '$(GO_VERSION_VALIDATION_ERR_MSG)';\
+		exit 1; \
+	elif [ $(GO_MINOR_VERSION) -lt $(MINIMUM_SUPPORTED_GO_MINOR_VERSION) ] ; then \
+		echo '$(GO_VERSION_VALIDATION_ERR_MSG)';\
+		exit 1; \
+	fi
 else
-#This needs Set-ExecutionPolicy -Scope CurrentUser Unrestricted
-	@$(ROOT)/scripts/check_go_version.ps1 $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) $(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
+	# This needs Set-ExecutionPolicy -Scope CurrentUser Unrestricted
+	@$(CS_ROOT)/scripts/check_go_version.ps1 $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) $(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
 endif
 
 .PHONY: clean
@@ -138,27 +138,6 @@ email-plugin: goversion
 
 dummy-plugin: goversion
 	$(MAKE) -C $(DUMMY_PLUGIN_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
-
-cscli_static: goversion
-	@$(MAKE) -C $(CSCLI_FOLDER) static --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
-
-crowdsec_static: goversion
-	@$(MAKE) -C $(CROWDSEC_FOLDER) static --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
-
-http-plugin_static: goversion
-	@$(MAKE) -C $(HTTP_PLUGIN_FOLDER) static --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
-
-slack-plugin_static: goversion
-	@$(MAKE) -C $(SLACK_PLUGIN_FOLDER) static --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
-
-splunk-plugin_static:goversion
-	@$(MAKE) -C $(SPLUNK_PLUGIN_FOLDER) static --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
-
-email-plugin_static:goversion
-	@$(MAKE) -C $(EMAIL_PLUGIN_FOLDER) static --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
-
-dummy-plugin_static:goversion
-	$(MAKE) -C $(DUMMY_PLUGIN_FOLDER) static --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 
 .PHONY: testclean
 testclean: bats-clean
@@ -212,12 +191,9 @@ package-common:
 package: package-common
 	@tar cvzf crowdsec-release.tgz $(RELDIR)
 
-package_static: package-common
-	@tar cvzf crowdsec-release-static.tgz $(RELDIR)
-
 .PHONY: check_release
 check_release:
-ifneq ($(OS),Windows_NT)
+ifneq ($(OS), Windows_NT)
 	@if [ -d $(RELDIR) ]; then echo "$(RELDIR) already exists, abort" ;  exit 1 ; fi
 else
 	@if (Test-Path -Path $(RELDIR)) { echo "$(RELDIR) already exists, abort" ;  exit 1 ; }
@@ -225,9 +201,6 @@ endif
 
 .PHONY: release
 release: check_release build package
-
-.PHONY: release_static
-release_static: check_release static package_static
 
 .PHONY: windows_installer
 windows_installer: build

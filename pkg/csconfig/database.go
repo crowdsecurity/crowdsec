@@ -22,6 +22,7 @@ type DatabaseCfg struct {
 	Flush        *FlushDBCfg `yaml:"flush"`
 	LogLevel     *log.Level  `yaml:"log_level"`
 	MaxOpenConns *int        `yaml:"max_open_conns,omitempty"`
+	UseWal       *bool       `yaml:"use_wal,omitempty"`
 }
 
 type AuthGCCfg struct {
@@ -56,5 +57,13 @@ func (c *Config) LoadDBConfig() error {
 	if c.DbConfig.MaxOpenConns == nil {
 		c.DbConfig.MaxOpenConns = types.IntPtr(DEFAULT_MAX_OPEN_CONNS)
 	}
+
+	if c.DbConfig.Type == "sqlite" {
+		if c.DbConfig.UseWal == nil {
+			log.Warning("You are using sqlite without WAL, this can have an impact of performance. If you do not store the database in a network share, set db_config.use_wal to true. Set explicitly to false to disable this warning.")
+		}
+
+	}
+
 	return nil
 }

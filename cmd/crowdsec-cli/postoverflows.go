@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-
+	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
-
 	"github.com/spf13/cobra"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 func NewPostOverflowsCmd() *cobra.Command {
@@ -61,6 +61,12 @@ func NewPostOverflowsCmd() *cobra.Command {
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
+				t := cwhub.GetItem(cwhub.PARSERS_OVFLW, name)
+				if t == nil {
+					nearestItem, score := GetDistance(cwhub.PARSERS_OVFLW, name)
+					Suggest(cwhub.PARSERS_OVFLW, name, nearestItem.Name, score, ignoreError)
+					continue
+				}
 				if err := cwhub.InstallItem(csConfig, name, cwhub.PARSERS_OVFLW, forceAction, downloadOnly); err != nil {
 					if ignoreError {
 						log.Errorf("Error while installing '%s': %s", name, err)
@@ -156,7 +162,7 @@ func NewPostOverflowsCmd() *cobra.Command {
 cscli postoverflows list crowdsecurity/xxx`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			ListItems([]string{cwhub.PARSERS_OVFLW}, args, false, true, all)
+			ListItems(color.Output, []string{cwhub.PARSERS_OVFLW}, args, false, true, all)
 		},
 	}
 	cmdPostOverflowsList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
