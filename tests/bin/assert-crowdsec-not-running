@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 is_crowdsec_running() {
-    PIDS=$(pgrep --ns $$ -x 'crowdsec|crowdsec.test|crowdsec.cover')
+    PIDS=$(pgrep -x 'crowdsec|crowdsec.test|crowdsec.cover')
 }
 
 # The process can be slow, especially on CI and during test coverage.
