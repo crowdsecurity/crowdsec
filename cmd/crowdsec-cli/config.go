@@ -409,7 +409,7 @@ func NewConfigCmd() *cobra.Command {
 					switch csConfig.DbConfig.Type {
 					case "sqlite":
 						fmt.Printf("      - Path                : %s\n", csConfig.DbConfig.DbPath)
-					case "mysql", "postgresql", "postgres":
+					default:
 						fmt.Printf("      - Host                : %s\n", csConfig.DbConfig.Host)
 						fmt.Printf("      - Port                : %d\n", csConfig.DbConfig.Port)
 						fmt.Printf("      - User                : %s\n", csConfig.DbConfig.User)
