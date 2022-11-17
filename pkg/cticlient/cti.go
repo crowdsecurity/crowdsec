@@ -257,6 +257,8 @@ func APIQuery(ip string) (*CTIResponse, error) {
 	if err := json.Unmarshal(body, &ctiResponse); err != nil {
 		return nil, err
 	}
+	//we're good
+	ctiResponse.IsOk = true
 	//store result in cache
 	if err := CTICache.SetWithExpire(ip, ctiResponse, CacheExpiration); err != nil {
 		return &ctiResponse, fmt.Errorf("error while storing result in cache : %w", err)
@@ -266,19 +268,19 @@ func APIQuery(ip string) (*CTIResponse, error) {
 	return &ctiResponse, nil
 }
 
-func IpCTI(ip string) CTIResponse {
+func IpCTI(ip string) (CTIResponse, error) {
 	var ctiResponse CTIResponse = CTIResponse{IsOk: false}
 
 	log.Warningf("lalalallaal")
 
 	if CTIApiEnabled == false {
 		log.Warningf("CTI API is disabled, please check your configuration")
-		return ctiResponse
+		return ctiResponse, fmt.Errorf("CTI API is disabled, please check your configuration")
 	}
 
 	if CTIApiKey == "" {
 		log.Warningf("IpCTI : no key provided, skipping")
-		return ctiResponse
+		return ctiResponse, fmt.Errorf("no key provided, skipping")
 	}
 	//not very  elegant
 	val, err := APIQuery(ip)
@@ -291,10 +293,12 @@ func IpCTI(ip string) CTIResponse {
 		} else {
 			log.Warningf("Error while querying CTI : %s", err)
 		}
-		return ctiResponse
+		return ctiResponse, err
 	}
 	if val != nil {
-		return *val
+		log.Printf("no response ?")
+		return *val, nil
 	}
-	return ctiResponse
+	log.Printf("no response ?")
+	return ctiResponse, fmt.Errorf("no result")
 }
