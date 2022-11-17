@@ -183,80 +183,53 @@ Using binds rather than named volumes ([complete explanation here](https://docs.
 # Reference
 ## Environment Variables
 
-* `CONFIG_FILE` (default "/etc/crowdsec/config.yaml")  
-Configuration file location: `-e CONFIG_FILE="<config_path>"`
-
-* `DSN`  
-Process a single source in time-machine: `-e DSN="file:///var/log/toto.log"` or `-e DSN="cloudwatch:///your/group/path:stream_name?profile=dev&backlog=16h"` or `-e DSN="journalctl://filters=_SYSTEMD_UNIT=ssh.service"`
-
-* `TYPE`  
-[`Labels.type`](https://docs.crowdsec.net/Crowdsec/v1/references/acquisition/) for file in time-machine: `-e TYPE="<type>"`
-
-* `TEST_MODE` (default "false")  
-Don't run the service, only test the configuration (default: false): `-e TEST_MODE="<true|false>"`
-
-* `TZ`  
-Set the [timezone](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) to ensure the logs have a local timestamp.
-
-* `AGENT_USERNAME`  
-Agent username (to register if is LAPI or to use if it's an agent): `-e AGENT_USERNAME="machine_id"`
-
-* `AGENT_PASSWORD`  
-Agent password (to register if is LAPI or to use if it's an agent): `-e AGENT_PASSWORD="machine_password"`
-
-* `LOCAL_API_URL` (default "http://0.0.0.0:8080")  
-The LAPI URL, you need to change this when `DISABLE_LOCAL_API` is true: `-e LOCAL_API_URL="http://lapi-address:8080"`
-
-* `DISABLE_AGENT` (default "false")  
-Disable the agent, run a LAPI-only container: `-e DISABLE_AGENT="<true|false>"`
-
-* `DISABLE_LOCAL_API` (default "false")  
-Disable LAPI, run an agent-only container: `-e DISABLE_LOCAL_API="<true|false>"`
-
-* `DISABLE_ONLINE_API` (default "false")  
-Disable Online API registration for signal sharing: `-e DISABLE_ONLINE_API="<true|false>"`
-
-* `CUSTOM_HOSTNAME` (default "localhost")  
-Custom hostname for LAPI registration: `-e CUSTOM_HOSTNAME="<hostname>"`
-
-* `PLUGIN_DIR` (default "/usr/local/lib/crowdsec/plugins/")  
-Directory for plugins: `-e PLUGIN_DIR="<path>"`
-
-* `BOUNCER_KEY_<name>`  
-Register a bouncer with the name `<name>` and a key equal to the value of the environment variable.
-
-* `ENROLL_KEY`  
-Enroll key retrieved from [the console](https://app.crowdsec.net/) to enroll the instance.
-
-* `ENROLL_INSTANCE_NAME`  
-To set an instance name and see it on [the console](https://app.crowdsec.net/).
-
-* `ENROLL_TAGS`  
-To set tags when enrolling an instance and use them for search and filtering on [the console](https://app.crowdsec.net/)
-
-[Hub](https://hub.crowdsec.net/browse/) management:
-
-* `COLLECTIONS`             - Collections to install, separated by space: `-e COLLECTIONS="crowdsecurity/linux crowdsecurity/apache2"`
-* `SCENARIOS`               - Scenarios to install, separated by space: `-e SCENARIOS="crowdsecurity/http-bad-user-agent crowdsecurity/http-xss-probing"`
-* `PARSERS`                 - Parsers to install, separated by space: `-e PARSERS="crowdsecurity/http-logs crowdsecurity/modsecurity"`
-* `POSTOVERFLOWS`           - Postoverflows to install, separated by space: `-e POSTOVERFLOWS="crowdsecurity/cdn-whitelist"`
-* `DISABLE_COLLECTIONS`     - Collections to remove, separated by space: `-e DISABLE_COLLECTIONS="crowdsecurity/linux crowdsecurity/nginx"`
-* `DISABLE_PARSERS`         - Parsers to remove, separated by space: `-e DISABLE_PARSERS="crowdsecurity/apache2-logs crowdsecurity/nginx-logs"`
-* `DISABLE_SCENARIOS`       - Scenarios to remove, separated by space: `-e DISABLE_SCENARIOS="crowdsecurity/http-bad-user-agent crowdsecurity/http-xss-probing"`
-* `DISABLE_POSTOVERFLOWS`   - Postoverflows to remove, separated by space: `-e DISABLE_POSTOVERFLOWS="crowdsecurity/cdn-whitelist crowdsecurity/seo-bots-whitelist"`
-
-* `USE_TLS`                 - Enable TLS on the API Server (default `false`): `-e USE_TLS="<true|false>"`
-* `CERT_FILE`               - TLS Certificate file (default `/etc/ssl/cert.pem`): `-e CERT_FILE="<file_path>"`
-* `KEY_FILE`                - TLS Key file (default `/etc/ssl/key.pem`): `-e KEY_FILE="<file_path>"`
-* `CA_CERT_PATH`            - CA file (default "")
-* `AGENTS_ALLOWED_OU`       - List of OU values allowed for agents, separated by comma (default "agent-ou").
-* `BOUNCERS_ALLOWED_OU`     - List of OU values allowed for bouncers, separated by comma (default "bouncer-ou").
-
-* `LEVEL_INFO`              - Info-level on stdout (default `false`): `-e LEVEL_INFO="<true|false>"`
-* `LEVEL_DEBUG`             - Debug-level on stdout (default: false): `-e LEVEL_DEBUG="<true|false>"`
-* `LEVEL_TRACE`             - Trace-level (VERY verbose) on stdout (default: false): `-e LEVEL_TRACE="<true|false>"`
-
-* `METRICS_PORT`            - Port to expose Prometheus metrics (dfeault: 6060)
+| Variable                | Default                   | Description |
+| ----------------------- | ------------------------- | ----------- |
+| `CONFIG_FILE`           | `/etc/crowdsec/config.yaml` | Configuration file location |
+| `DSN`                   | | Process a single source in time-machine: `-e DSN="file:///var/log/toto.log"` or `-e DSN="cloudwatch:///your/group/path:stream_name?profile=dev&backlog=16h"` or `-e DSN="journalctl://filters=_SYSTEMD_UNIT=ssh.service"` |
+| `TYPE`                  | | [`Labels.type`](https://docs.crowdsec.net/Crowdsec/v1/references/acquisition/) for file in time-machine: `-e TYPE="<type>"` |
+| `TEST_MODE`             | false | Don't run the service, only test the configuration: `-e TEST_MODE=true` |
+| `TZ`                    | | Set the [timezone](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) to ensure the logs have a local timestamp. |
+| `LOCAL_API_URL`         | `http://0.0.0.0:8080` | The LAPI URL, you need to change this when `DISABLE_LOCAL_API` is true: `-e LOCAL_API_URL="http://lapi-address:8080"` |
+| `DISABLE_AGENT`         | false | Disable the agent, run a LAPI-only container |
+| `DISABLE_LOCAL_API`     | false | Disable LAPI, run an agent-only container |
+| `DISABLE_ONLINE_API`    | false | Disable online API registration for signal sharing |
+| `CUSTOM_HOSTNAME`       | localhost | Custom hostname for LAPI registration (with agent and LAPI on the same container) |
+| `PLUGIN_DIR`            | `/usr/local/lib/crowdsec/plugins/` | Directory for plugins: `-e PLUGIN_DIR="<path>"` |
+| `BOUNCER_KEY_<name>`    | | Register a bouncer with the name `<name>` and a key equal to the value of the environment variable. |
+| `METRICS_PORT`          | 6060 | Port to expose Prometheus metrics |
+|                         | | |
+| __Console__             | | |
+| `ENROLL_KEY`            | | Enroll key retrieved from [the console](https://app.crowdsec.net/) to enroll the instance. |
+| `ENROLL_INSTANCE_NAME`  | | To set an instance name and see it on [the console](https://app.crowdsec.net/) |
+| `ENROLL_TAGS`           | | Tags of the enrolled instance, for search and filter |
+|                         | | |
+| __Password Auth__       | | |
+| `AGENT_USERNAME`        | | Agent username (to register if is LAPI or to use if it's an agent): `-e AGENT_USERNAME="machine_id"` |
+| `AGENT_PASSWORD`        | | Agent password (to register if is LAPI or to use if it's an agent): `-e AGENT_PASSWORD="machine_password"` |
+|                         | | |
+| __TLS Auth/encryption   | | |
+| `USE_TLS`               | false | Enable TLS on the LAPI |
+| `CERT_FILE`             | /etc/ssl/cert.pem | TLS Certificate path |
+| `KEY_FILE`              | /etc/ssl/key.pem | TLS Key path |
+| `CA_CERT_PATH`          | | CA file |
+| `AGENTS_ALLOWED_OU`     | agent-ou | OU values allowed for agents, separated by comma |
+| `BOUNCERS_ALLOWED_OU`   | bouncer-ou | OU values allowed for bouncers, separated by comma |
+|                         | | |
+| __Hub management__      | | |
+| `COLLECTIONS`           | | Collections to install, separated by space: `-e COLLECTIONS="crowdsecurity/linux crowdsecurity/apache2"` |
+| `SCENARIOS`             | | Scenarios to install, separated by space |
+| `PARSERS`               | | Parsers to install, separated by space |
+| `POSTOVERFLOWS`         | | Postoverflows to install, separated by space |
+| `DISABLE_COLLECTIONS`   | | Collections to remove, separated by space: `-e DISABLE_COLLECTIONS="crowdsecurity/linux crowdsecurity/nginx"` |
+| `DISABLE_PARSERS`       | | Parsers to remove, separated by space |
+| `DISABLE_SCENARIOS`     | | Scenarios to remove, separated by space |
+| `DISABLE_POSTOVERFLOWS` | | Postoverflows to remove, separated by space |
+|                         | | |
+| __Log verbosity__       | | |
+| `LEVEL_INFO`            | false | Force INFO level for the container log |
+| `LEVEL_DEBUG`           | false | Force DEBUG level for the container log |
+| `LEVEL_TRACE`           | false | Force TRACE level (VERY verbose) for the container log |
 
 ## Volumes
 
