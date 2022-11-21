@@ -115,7 +115,7 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx EnricherCtx) (
 				for _, data := range node.Data {
 					err = exprhelpers.FileInit(pctx.DataFolder, data.DestPath, data.Type)
 					if err != nil {
-						log.Errorf(err.Error())
+						log.Error(err)
 					}
 				}
 			}

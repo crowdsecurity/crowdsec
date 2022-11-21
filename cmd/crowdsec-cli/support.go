@@ -160,11 +160,11 @@ func collectAPIStatus(login string, password string, endpoint string, prefix str
 	apiurl, err := url.Parse(endpoint)
 
 	if err != nil {
-		return []byte(fmt.Sprintf("cannot parse API URL: %s", err.Error()))
+		return []byte(fmt.Sprintf("cannot parse API URL: %s", err))
 	}
 	scenarios, err := cwhub.GetInstalledScenariosAsString()
 	if err != nil {
-		return []byte(fmt.Sprintf("could not collect scenarios: %s", err.Error()))
+		return []byte(fmt.Sprintf("could not collect scenarios: %s", err))
 	}
 
 	Client, err = apiclient.NewDefaultClient(apiurl,
@@ -172,7 +172,7 @@ func collectAPIStatus(login string, password string, endpoint string, prefix str
 		fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 		nil)
 	if err != nil {
-		return []byte(fmt.Sprintf("could not init client: %s", err.Error()))
+		return []byte(fmt.Sprintf("could not init client: %s", err))
 	}
 	t := models.WatcherAuthRequest{
 		MachineID: &login,
