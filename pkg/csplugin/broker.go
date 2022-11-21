@@ -13,6 +13,7 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -410,7 +411,7 @@ func getHandshake() (plugin.HandshakeConfig, error) {
 }
 
 func formatAlerts(format string, alerts []*models.Alert) (string, error) {
-	template, err := template.New("").Funcs(sprig.TxtFuncMap()).Parse(format)
+	template, err := template.New("").Funcs(sprig.TxtFuncMap()).Funcs(map[string]interface{}{"IpCTI": cticlient.IpCTI}).Parse(format)
 	if err != nil {
 		return "", err
 	}

@@ -156,9 +156,20 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 
 		for pIdx, profile := range c.Profiles {
 			profileDecisions, matched, err := profile.EvaluateProfile(alert)
+			forceBreak := false
 			if err != nil {
-				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
-				return
+				switch profile.Cfg.OnError {
+				case "apply":
+					profile.Logger.Warningf("applying profile %s despite error: %s", profile.Cfg.Name, err)
+					matched = true
+				case "continue":
+					profile.Logger.Warningf("skipping %s profile due to error: %s", profile.Cfg.Name, err)
+				case "break":
+					forceBreak = true
+				default:
+					gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+					return
+				}
 			}
 
 			if !matched {
@@ -170,7 +181,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 			}
 			profileAlert := *alert
 			c.sendAlertToPluginChannel(&profileAlert, uint(pIdx))
-			if profile.Cfg.OnSuccess == "break" {
+			if profile.Cfg.OnSuccess == "break" || forceBreak {
 				break
 			}
 		}
@@ -267,7 +278,6 @@ func (c *Controller) DeleteAlertByID(gctx *gin.Context) {
 
 	gctx.JSON(http.StatusOK, deleteAlertResp)
 }
-
 
 // DeleteAlerts deletes alerts from the database based on the specified filter
 func (c *Controller) DeleteAlerts(gctx *gin.Context) {

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/bluele/gcache"
+	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -66,9 +67,9 @@ type CTIResponse struct {
 	AsNum                *int                `json:"as_num"`
 	Location             CTILocationInfo     `json:"location"`
 	ReverseDNS           *string             `json:"reverse_dns"`
-	Behaviours           []*CTIBehaviour     `json:"behaviours"`
+	Behaviours           []*CTIBehaviour     `json:"behaviors"`
 	History              CTIHistory          `json:"history"`
-	Classifications      CTIClassifications  `json:"classification"`
+	Classifications      CTIClassifications  `json:"classifications"`
 	AttackDetails        []*CTIAttackDetails `json:"attack_details"`
 	TargetCountries      map[string]int      `json:"target_countries"`
 	BackgroundNoiseScore *int                `json:"background_noise_score"`
@@ -165,6 +166,10 @@ func (c CTIResponse) Ok() bool {
 	return c.IsOk
 }
 
+func (c CTIResponse) Error() bool {
+	return !c.IsOk
+}
+
 func (c CTIResponse) IsPartOfCommunityBlocklist() bool {
 	if c.Classifications.Classifications != nil {
 		for _, v := range c.Classifications.Classifications {
@@ -184,7 +189,21 @@ func (c CTIResponse) GetBackgroundNoiseScore() int {
 	return 0
 }
 
+func (c CTIResponse) GetFalsePositives() []string {
+	var ret []string
+
+	if c.Classifications.FalsePositives != nil {
+		for _, b := range c.Classifications.FalsePositives {
+			ret = append(ret, b.Name)
+		}
+	}
+	return ret
+}
+
 func (c CTIResponse) IsFalsePositive() bool {
+	log.Printf("fp -> %p", c.Classifications.FalsePositives)
+	log.Printf("fp ? %s", spew.Sdump(c.Classifications))
+
 	if c.Classifications.FalsePositives != nil {
 		if len(c.Classifications.FalsePositives) > 0 {
 			return true
@@ -222,7 +241,7 @@ func APIQuery(ip string) (*CTIResponse, error) {
 	//we're told to back off
 	if !CTIBackOffUntil.IsZero() && time.Now().Before(CTIBackOffUntil) {
 		log.Warningf("CTI API is in backoff mode, will try again in %s", time.Now().Sub(CTIBackOffUntil))
-		return &ctiResponse, nil
+		return &ctiResponse, fmt.Errorf("CTI throttled")
 	}
 
 	client := &http.Client{}
@@ -264,15 +283,13 @@ func APIQuery(ip string) (*CTIResponse, error) {
 		return &ctiResponse, fmt.Errorf("error while storing result in cache : %w", err)
 	}
 
-	//log.Printf("-> %+v", spew.Sdump(ctiResponse))
+	log.Printf("**-> %+v", spew.Sdump(ctiResponse))
 	return &ctiResponse, nil
 }
 
 func IpCTI(ip string) (CTIResponse, error) {
 	var ctiResponse CTIResponse = CTIResponse{IsOk: false}
-
-	log.Warningf("lalalallaal")
-
+	log.Warningf("cti call for %s", ip)
 	if CTIApiEnabled == false {
 		log.Warningf("CTI API is disabled, please check your configuration")
 		return ctiResponse, fmt.Errorf("CTI API is disabled, please check your configuration")
