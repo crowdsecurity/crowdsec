@@ -2,6 +2,7 @@ package exprhelpers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -17,7 +18,7 @@ func JsonExtractLib(jsblob string, target ...string) string {
 	)
 
 	if err != nil {
-		if err == jsonparser.KeyPathNotFoundError {
+		if errors.Is(err, jsonparser.KeyPathNotFoundError) {
 			log.Debugf("%+v doesn't exist", target)
 			return ""
 		}
@@ -39,7 +40,7 @@ func JsonExtractUnescape(jsblob string, target ...string) string {
 	)
 
 	if err != nil {
-		if err == jsonparser.KeyPathNotFoundError {
+		if errors.Is(err, jsonparser.KeyPathNotFoundError) {
 			log.Debugf("%+v doesn't exist", target)
 			return ""
 		}
@@ -74,7 +75,7 @@ func jsonExtractType(jsblob string, target string, t jsonparser.ValueType) ([]by
 	)
 
 	if err != nil {
-		if err == jsonparser.KeyPathNotFoundError {
+		if errors.Is(err, jsonparser.KeyPathNotFoundError) {
 			log.Debugf("Key %+v doesn't exist", target)
 			return nil, fmt.Errorf("key %s does not exist", target)
 		}
