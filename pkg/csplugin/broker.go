@@ -119,7 +119,7 @@ loop:
 			}()
 
 		case <-pluginTomb.Dying():
-			log.Infof("plugingTomb dying")
+			log.Infof("pluginTomb dying")
 			pb.watcher.tomb.Kill(errors.New("Terminating"))
 			for {
 				select {
@@ -329,7 +329,7 @@ func (pb *PluginBroker) pushNotificationsToPlugin(pluginName string, alerts []*m
 			},
 		)
 		if err == nil {
-			return err
+			return nil
 		}
 		log.WithField("plugin", pluginName).Errorf("%s error, retry num %d", err, i)
 		time.Sleep(backoffDuration)

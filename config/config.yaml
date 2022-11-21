@@ -22,6 +22,7 @@ crowdsec_service:
   parser_routines: 1
 cscli:
   output: human
+  color: auto
 db_config:
   log_level: info
   type: sqlite
