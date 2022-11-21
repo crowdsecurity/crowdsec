@@ -161,7 +161,6 @@ func (cw *CloudwatchSource) Configure(yamlConfig []byte, logger *log.Entry) erro
 
 	cw.logger = logger.WithField("group", cw.Config.GroupName)
 
-	// XXX the following must be logger or cw.logger?
 	cw.logger.Debugf("Starting configuration for Cloudwatch group %s", cw.Config.GroupName)
 	cw.logger.Tracef("describelogstreams_limit set to %d", *cw.Config.DescribeLogStreamsLimit)
 	cw.logger.Tracef("poll_new_stream_interval set to %v", *cw.Config.PollNewStreamInterval)
