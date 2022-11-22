@@ -1,4 +1,4 @@
-//go:build unix
+//go:build unix || linux || freebsd || netbsd || openbsd || solaris
 
 package cstest
 
