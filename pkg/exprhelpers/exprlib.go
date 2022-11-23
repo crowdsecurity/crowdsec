@@ -14,7 +14,6 @@ import (
 
 	"github.com/c-robinson/iplib"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
@@ -69,7 +68,7 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"GetDecisionsCount":      GetDecisionsCount,
 		"GetDecisionsSinceCount": GetDecisionsSinceCount,
 		"Sprintf":                fmt.Sprintf,
-		"IpCTI":                  cticlient.IpCTI,
+		"CrowdsecCTI":            CrowdsecCTI,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
@@ -286,10 +285,10 @@ func GetDecisionsSinceCount(value string, since string) int {
 }
 
 func LookupHost(value string) []string {
-	addresses , err := net.LookupHost(value)
+	addresses, err := net.LookupHost(value)
 	if err != nil {
 		log.Errorf("Failed to lookup host '%s' : %s", value, err)
-		return []string{} 
+		return []string{}
 	}
 	return addresses
 }

@@ -12,7 +12,6 @@ import (
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
@@ -293,10 +292,10 @@ func Serve(cConfig *csconfig.Config, apiReady chan bool, agentReady chan bool) e
 		log.Warningln("Exprhelpers loaded without database client.")
 	}
 
-	log.Printf("CTI init ? %p // Enabled : %t", cConfig.API, cConfig.API.CTI.Enabled)
+	//log.Printf("CTI init ? %p // Enabled : %t", cConfig.API, cConfig.API.CTI.Enabled)
 	if cConfig.API.CTI != nil && cConfig.API.CTI.Enabled {
 		log.Printf("CTI enabled !")
-		cticlient.InitCTI(cConfig.API.CTI.Key, cConfig.API.CTI.CacheTimeout, cConfig.API.CTI.CacheSize)
+		exprhelpers.InitCrowdsecCTI(cConfig.API.CTI.Key, cConfig.API.CTI.CacheTimeout, cConfig.API.CTI.CacheSize)
 	}
 
 	if !cConfig.DisableAPI {
