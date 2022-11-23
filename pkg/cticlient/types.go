@@ -53,6 +53,12 @@ type CTILocationInfo struct {
 	Longitude *float64 `json:"longitude"`
 }
 
+type CTIReferences struct {
+	Name        string `json:"name"`
+	Label       string `json:"label"`
+	Description string `json:"description"`
+}
+
 type SmokeItem struct {
 	IpRangeScore         int                 `json:"ip_range_score"`
 	Ip                   string              `json:"ip"`
@@ -68,7 +74,7 @@ type SmokeItem struct {
 	TargetCountries      map[string]int      `json:"target_countries"`
 	BackgroundNoiseScore *int                `json:"background_noise_score"`
 	Scores               CTIScores           `json:"scores"`
-	References           []string            `json:"references"`
+	References           []CTIReferences     `json:"references"`
 	IsOk                 bool                `json:"-"`
 }
 
@@ -76,6 +82,24 @@ type SearchIPResponse struct {
 	Total    int         `json:"total"`
 	NotFound int         `json:"not_found"`
 	Items    []SmokeItem `json:"items"`
+}
+
+type CustomTime struct {
+	time.Time
+}
+
+func (ct *CustomTime) UnmarshalJSON(b []byte) error {
+	if string(b) == "null" {
+		return nil
+	}
+
+	t, err := time.Parse(`"2006-01-02T15:04:05.999999999"`, string(b))
+	if err != nil {
+		return err
+	}
+
+	ct.Time = t
+	return nil
 }
 
 type FireItem struct {
@@ -93,23 +117,30 @@ type FireItem struct {
 	TargetCountries      map[string]int      `json:"target_countries"`
 	BackgroundNoiseScore *int                `json:"background_noise_score"`
 	Scores               CTIScores           `json:"scores"`
-	References           []string            `json:"references"`
+	References           []CTIReferences     `json:"references"`
 	Status               string              `json:"status"`
-	Expiration           time.Time           `json:"expiration"`
+	Expiration           CustomTime          `json:"expiration"`
 }
 
 type FireParams struct {
 	Since *string `json:"since"`
 	Page  *int    `json:"page"`
+	Limit *int    `json:"limit"`
+}
+
+type Href struct {
+	Href string `json:"href"`
+}
+
+type Links struct {
+	First *Href `json:"first"`
+	Self  *Href `json:"self"`
+	Prev  *Href `json:"prev"`
+	Next  *Href `json:"next"`
 }
 
 type FireResponse struct {
-	Links struct {
-		Self  string `json:"self"`
-		Prev  string `json:"prev"`
-		Next  string `json:"next"`
-		First string `json:"first"`
-	} `json:"_links"`
+	Links Links      `json:"_links"`
 	Items []FireItem `json:"items"`
 }
 

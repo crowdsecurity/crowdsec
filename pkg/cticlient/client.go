@@ -16,9 +16,9 @@ const (
 )
 
 var (
-	ErrUnauthorized = errors.New("unexpected http code : 403 Forbidden")
-	ErrLimit        = errors.New("limit exceeded")
-	ErrNotFound     = errors.New("IP not found")
+	ErrUnauthorized = errors.New("unauthorized")
+	ErrLimit        = errors.New("request quota exceeded, please reduce your request rate")
+	ErrNotFound     = errors.New("ip not found")
 )
 
 type CrowdsecCTIClient struct {
@@ -102,6 +102,10 @@ func (c *CrowdsecCTIClient) Fire(params FireParams) (*FireResponse, error) {
 	if params.Since != nil {
 		paramsMap["since"] = *params.Since
 	}
+	if params.Limit != nil {
+		paramsMap["limit"] = fmt.Sprintf("%d", *params.Limit)
+	}
+
 	body, err := c.doRequest(http.MethodGet, fireEndpoint, paramsMap)
 	if err != nil {
 		return nil, err

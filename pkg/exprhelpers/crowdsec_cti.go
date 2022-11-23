@@ -64,29 +64,33 @@ func CrowdsecCTIInitCache(size int, ttl time.Duration) {
 func CrowdsecCTI(ip string) *cticlient.SmokeItem {
 	log.Warningf("cti call for %s", ip)
 	if !CTIApiEnabled {
-		log.Warningf("CTI API is disabled, please check your configuration")
-		return nil
+		log.Warningf("Crowdsec CTI API is disabled, please check your configuration")
+		return &cticlient.SmokeItem{}
 	}
 
 	if CTIApiKey == "" {
-		log.Warningf("IpCTI : no key provided, skipping")
-		return nil
+		log.Warningf("CrowdsecCTI : no key provided, skipping")
+		return &cticlient.SmokeItem{}
 	}
 
 	if ctiClient == nil {
-		log.Warningf("IpCTI : no client, skipping")
-		return nil
+		log.Warningf("CrowdsecCTI: no client, skipping")
+		return &cticlient.SmokeItem{}
 	}
 
 	if val, err := CTICache.Get(ip); err == nil && val != nil {
-		//dirty cast, should be improved
-		ret := val.(*cticlient.SmokeItem)
-		return ret
+		ret, ok := val.(*cticlient.SmokeItem)
+		if !ok {
+			log.Warningf("CrowdsecCTI: invalid type in cache, removing")
+			CTICache.Remove(ip)
+		} else {
+			return ret
+		}
 	}
 
 	if !CTIBackOffUntil.IsZero() && time.Now().Before(CTIBackOffUntil) {
-		log.Warningf("CTI API is in backoff mode, will try again in %s", time.Until(CTIBackOffUntil))
-		return nil
+		log.Warningf("Crowdsec CTI client is in backoff mode, ending in %s", time.Until(CTIBackOffUntil))
+		return &cticlient.SmokeItem{}
 	}
 
 	ctiResp, err := ctiClient.GetIPInfo(ip)
@@ -100,12 +104,12 @@ func CrowdsecCTI(ip string) *cticlient.SmokeItem {
 		} else {
 			log.Warnf("CTI API error : %s", err)
 		}
-		return nil
+		return &cticlient.SmokeItem{}
 	}
 
 	if err := CTICache.SetWithExpire(ip, ctiResp, CacheExpiration); err != nil {
 		log.Warningf("IpCTI : error while caching CTI : %s", err)
-		return nil
+		return &cticlient.SmokeItem{}
 	}
 
 	log.Infof("CTI response : %v", *ctiResp)
