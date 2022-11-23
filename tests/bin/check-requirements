@@ -48,6 +48,12 @@ check_base64() {
     fi
 }
 
+check_pkill() {
+    if ! command -v pkill >/dev/null; then
+        die "missing required program 'pkill'"
+    fi
+}
+
 check_yq() {
     # shellcheck disable=SC2016
     howto_install='You can install it with your favorite package manager (including snap) or with "go install github.com/mikefarah/yq/v4@latest" and add ~/go/bin to $PATH.'
@@ -97,6 +103,7 @@ check_nc
 check_base64
 check_python3
 check_yq
+check_pkill
 if [[ -n "${TEST_COVERAGE}" ]]; then
     check_gocovmerge
 fi

@@ -3,11 +3,17 @@ package apiserver
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"net/url"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -17,17 +23,15 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/go-openapi/strfmt"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
-
-	"gopkg.in/tomb.v2"
 )
 
 var (
-	PullInterval    = time.Hour * 2
-	PushInterval    = time.Second * 30
-	MetricsInterval = time.Minute * 30
+	pullIntervalDefault    = time.Hour * 2
+	pullIntervalDelta      = 5 * time.Minute
+	pushIntervalDefault    = time.Second * 30
+	pushIntervalDelta      = time.Second * 15
+	metricsIntervalDefault = time.Minute * 30
+	metricsIntervalDelta   = time.Minute * 15
 )
 
 var SCOPE_CAPI string = "CAPI"
@@ -35,20 +39,30 @@ var SCOPE_CAPI_ALIAS string = "crowdsecurity/community-blocklist" //we don't use
 var SCOPE_LISTS string = "lists"
 
 type apic struct {
-	pullInterval    time.Duration
-	pushInterval    time.Duration
-	metricsInterval time.Duration
-	dbClient        *database.Client
-	apiClient       *apiclient.ApiClient
-	alertToPush     chan []*models.Alert
-	mu              sync.Mutex
-	pushTomb        tomb.Tomb
-	pullTomb        tomb.Tomb
-	metricsTomb     tomb.Tomb
-	startup         bool
-	credentials     *csconfig.ApiCredentialsCfg
-	scenarioList    []string
-	consoleConfig   *csconfig.ConsoleConfig
+	// when changing the intervals in tests, always set *First too
+	// or they can be negative
+	pullInterval         time.Duration
+	pullIntervalFirst    time.Duration
+	pushInterval         time.Duration
+	pushIntervalFirst    time.Duration
+	metricsInterval      time.Duration
+	metricsIntervalFirst time.Duration
+	dbClient             *database.Client
+	apiClient            *apiclient.ApiClient
+	alertToPush          chan []*models.Alert
+	mu                   sync.Mutex
+	pushTomb             tomb.Tomb
+	pullTomb             tomb.Tomb
+	metricsTomb          tomb.Tomb
+	startup              bool
+	credentials          *csconfig.ApiCredentialsCfg
+	scenarioList         []string
+	consoleConfig        *csconfig.ConsoleConfig
+}
+
+// randomDuration returns a duration value between d-delta and d+delta
+func randomDuration(d time.Duration, delta time.Duration) time.Duration {
+	return time.Duration(float64(d) + float64(delta)*(-1.0+2.0*rand.Float64()))
 }
 
 func (a *apic) FetchScenariosListFromDB() ([]string, error) {
@@ -89,19 +103,22 @@ func alertToSignal(alert *models.Alert, scenarioTrust string) *models.AddSignals
 func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig) (*apic, error) {
 	var err error
 	ret := &apic{
-		alertToPush:     make(chan []*models.Alert),
-		dbClient:        dbClient,
-		mu:              sync.Mutex{},
-		startup:         true,
-		credentials:     config.Credentials,
-		pullTomb:        tomb.Tomb{},
-		pushTomb:        tomb.Tomb{},
-		metricsTomb:     tomb.Tomb{},
-		scenarioList:    make([]string, 0),
-		consoleConfig:   consoleConfig,
-		pullInterval:    PullInterval,
-		pushInterval:    PushInterval,
-		metricsInterval: MetricsInterval,
+		alertToPush:          make(chan []*models.Alert),
+		dbClient:             dbClient,
+		mu:                   sync.Mutex{},
+		startup:              true,
+		credentials:          config.Credentials,
+		pullTomb:             tomb.Tomb{},
+		pushTomb:             tomb.Tomb{},
+		metricsTomb:          tomb.Tomb{},
+		scenarioList:         make([]string, 0),
+		consoleConfig:        consoleConfig,
+		pullInterval:         pullIntervalDefault,
+		pullIntervalFirst:    randomDuration(pullIntervalDefault, pullIntervalDelta),
+		pushInterval:         pushIntervalDefault,
+		pushIntervalFirst:    randomDuration(pushIntervalDefault, pushIntervalDelta),
+		metricsInterval:      metricsIntervalDefault,
+		metricsIntervalFirst: randomDuration(metricsIntervalDefault, metricsIntervalDelta),
 	}
 
 	password := strfmt.Password(config.Credentials.Password)
@@ -130,8 +147,9 @@ func (a *apic) Push() error {
 	defer types.CatchPanic("lapi/pushToAPIC")
 
 	var cache models.AddSignalsRequest
-	ticker := time.NewTicker(a.pushInterval)
-	log.Infof("Start push to CrowdSec Central API (interval: %s)", PushInterval)
+	ticker := time.NewTicker(a.pushIntervalFirst)
+
+	log.Infof("Start push to CrowdSec Central API (interval: %s once, then %s)", a.pushIntervalFirst.Round(time.Second), a.pushInterval)
 
 	for {
 		select {
@@ -145,6 +163,7 @@ func (a *apic) Push() error {
 			go a.Send(&cache)
 			return nil
 		case <-ticker.C:
+			ticker.Reset(a.pushInterval)
 			if len(cache) > 0 {
 				a.mu.Lock()
 				cacheCopy := cache
@@ -412,6 +431,8 @@ func (a *apic) PullTop() error {
 		return nil
 	}
 
+	log.Infof("Starting community-blocklist update")
+
 	data, _, err := a.apiClient.Decisions.GetStream(context.Background(), apiclient.DecisionsStreamOpts{Startup: a.startup})
 	if err != nil {
 		return errors.Wrap(err, "get stream")
@@ -469,7 +490,6 @@ func setAlertScenario(add_counters map[string]map[string]int, delete_counters ma
 
 func (a *apic) Pull() error {
 	defer types.CatchPanic("lapi/pullFromAPIC")
-	log.Infof("Start pull from CrowdSec Central API (interval: %s)", PullInterval)
 
 	toldOnce := false
 	for {
@@ -489,10 +509,14 @@ func (a *apic) Pull() error {
 	if err := a.PullTop(); err != nil {
 		log.Errorf("capi pull top: %s", err)
 	}
-	ticker := time.NewTicker(a.pullInterval)
+
+	log.Infof("Start pull from CrowdSec Central API (interval: %s once, then %s)", a.pullIntervalFirst.Round(time.Second), a.pullInterval)
+	ticker := time.NewTicker(a.pullIntervalFirst)
+
 	for {
 		select {
 		case <-ticker.C:
+			ticker.Reset(a.pullInterval)
 			if err := a.PullTop(); err != nil {
 				log.Errorf("capi pull top: %s", err)
 				continue
@@ -550,8 +574,10 @@ func (a *apic) GetMetrics() (*models.Metrics, error) {
 func (a *apic) SendMetrics(stop chan (bool)) {
 	defer types.CatchPanic("lapi/metricsToAPIC")
 
-	log.Infof("Start send metrics to CrowdSec Central API (interval: %s)", a.metricsInterval)
-	ticker := time.NewTicker(a.metricsInterval)
+	ticker := time.NewTicker(a.metricsIntervalFirst)
+
+	log.Infof("Start send metrics to CrowdSec Central API (interval: %s once, then %s)", a.metricsIntervalFirst.Round(time.Second), a.metricsInterval)
+
 	for {
 		metrics, err := a.GetMetrics()
 		if err != nil {
@@ -568,7 +594,7 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 		case <-stop:
 			return
 		case <-ticker.C:
-			continue
+			ticker.Reset(a.metricsInterval)
 		case <-a.metricsTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.pullTomb.Kill(nil)
 			a.pushTomb.Kill(nil)

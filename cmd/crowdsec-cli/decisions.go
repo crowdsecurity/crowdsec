@@ -72,7 +72,7 @@ func DecisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error
 					*decisionItem.Scenario,
 					*decisionItem.Type,
 					alertItem.Source.Cn,
-					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
+					alertItem.Source.GetAsNumberName(),
 					fmt.Sprintf("%d", *alertItem.EventsCount),
 					*decisionItem.Duration,
 					fmt.Sprintf("%t", *decisionItem.Simulated),
@@ -179,31 +179,28 @@ cscli decisions list -t ban
 			/* nullify the empty entries to avoid bad filter */
 			if *filter.Until == "" {
 				filter.Until = nil
-			} else {
+			} else if strings.HasSuffix(*filter.Until, "d") {
 				/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
-				if strings.HasSuffix(*filter.Until, "d") {
-					realDuration := strings.TrimSuffix(*filter.Until, "d")
-					days, err := strconv.Atoi(realDuration)
-					if err != nil {
-						printHelp(cmd)
-						log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
-					}
-					*filter.Until = fmt.Sprintf("%d%s", days*24, "h")
+				realDuration := strings.TrimSuffix(*filter.Until, "d")
+				days, err := strconv.Atoi(realDuration)
+				if err != nil {
+					printHelp(cmd)
+					log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
 				}
+				*filter.Until = fmt.Sprintf("%d%s", days*24, "h")
 			}
+
 			if *filter.Since == "" {
 				filter.Since = nil
-			} else {
+			} else if strings.HasSuffix(*filter.Since, "d") {
 				/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
-				if strings.HasSuffix(*filter.Since, "d") {
-					realDuration := strings.TrimSuffix(*filter.Since, "d")
-					days, err := strconv.Atoi(realDuration)
-					if err != nil {
-						printHelp(cmd)
-						log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
-					}
-					*filter.Since = fmt.Sprintf("%d%s", days*24, "h")
+				realDuration := strings.TrimSuffix(*filter.Since, "d")
+				days, err := strconv.Atoi(realDuration)
+				if err != nil {
+					printHelp(cmd)
+					log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
 				}
+				*filter.Since = fmt.Sprintf("%d%s", days*24, "h")
 			}
 			if *filter.IncludeCAPI {
 				*filter.Limit = 0

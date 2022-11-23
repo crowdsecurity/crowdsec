@@ -10,13 +10,53 @@ Crowdsec - An open-source, lightweight agent to detect and respond to bad behavi
 
 # How to use this image
 
-## Docker images available
-crowdsec will use Alpine as default container. A debian container is also available with systemd for journalctl support. Simply add `-debian` to your tag to use this. Please be aware that debian containers are not available on all version, since the feature was implemented after the release of version 1.3.0
+## Docker image versions
+
+All the following versions are available on Docker Hub for 386, amd64, arm/v6, arm/v7, arm64.
+
+### Alpine
+
+ - crowdsecurity/crowdsec:{version}
+
+Recommended for production usage. Also available on GitHub (ghrc.io).
+
+ - crowdsecurity/crowdsec:latest
+
+For development and testing.
+
+since v1.4.2:
+
+ - crowdsecurity/crowdsec:slim
+
+Reduced size by 60%, does not include notifier plugins nor the GeoIP database.
+If you need these details on decisions, running `cscli hub upgrade` inside the
+container downloads the GeoIP database at runtime.
+
+
+### Debian (since v1.3.3)
+
+ - crowdsecurity/crowdsec:{version}-debian
+ - crowdsecurity/crowdsec:latest-debian
+
+The debian version includes support for systemd and journalctl.
+
+### Custom
+
+You can build your own images with Dockerfile and Dockerfile-debian.
+
+For example, if you want a Debian version without plugin notifiers:
+
+```console
+$ docker build -f Dockerfile.debian --build-arg=BUILD_ENV=slim
+```
+
+supported values for BUILD_ENV are: full, with-geoip, with-plugins, slim.
+
 
 ## Required configuration
 
 ### Journalctl (only for debian image)
-To use journalctl (only for debian image) as log stream, eventually from the `DSN` environment variable, it's important that you mount the journal log from the host to the container it self.
+To use journalctl (only with the debian image) as a log stream, eventually from the `DSN` environment variable, it's important to mount the journal log from the host to the container itself.
 This can be done by adding the following volume mount to your docker command:
 
 ```
@@ -77,12 +117,12 @@ docker run -d \
 Check this full stack example using docker-compose: https://github.com/crowdsecurity/example-docker-compose
 # How to extend this image
 ## Full configuration
-The container is built with specific docker [configuration](https://github.com/crowdsecurity/crowdsec/blob/master/docker/config.yaml). If you need to change it, bind `/etc/crowdsec/config.yaml` to your local configuration file
+The container is built with a specific docker [configuration](https://github.com/crowdsecurity/crowdsec/blob/master/docker/config.yaml). If you need to change it, bind `/etc/crowdsec/config.yaml` to your local configuration file
 ## Notifications
 If you wish to use the [notification system](https://docs.crowdsec.net/docs/notification_plugins/intro), you will need to mount at least a custom `profiles.yaml` and a notification configuration to `/etc/crowdsec/notifications`
 
 # Deployment use cases
-Crowdsec is composed of an `agent` that parse logs and creates `alerts` that `local API` or `LAPI` transform into decisions. Both can run in the same process but also on separated containers as it makes sense in complex configurations to have agents on the same machines as the protected component and a LAPI that gather all signals from agents and communicate with the `central api`.
+Crowdsec is composed of an `agent` that parses logs and creates `alerts` that `local API` or `LAPI` transform into decisions. Both can run in the same process but also on separated containers as it makes sense in complex configurations to have agents on the same machines as the protected component and a LAPI that gather all signals from agents and communicate with the `central api`.
 
 ## Register a new agent with LAPI
 ```shell
@@ -90,7 +130,7 @@ docker exec -it crowdsec_lapi_container_name cscli machines add agent_user_name 
 ```
 
 ## Run an agent connected to LAPI
-Add following environment variables to your docker run command:
+Add the following environment variables to your docker run command:
 * `DISABLE_LOCAL_API=true`
 * `AGENT_USERNAME="agent_user_name"` - agent_user_name previously registered with LAPI
 * `AGENT_PASSWORD="agent_password"` - agent_password previously registered with LAPI
@@ -98,7 +138,7 @@ Add following environment variables to your docker run command:
 
 # Next steps
 ## Bouncers
-Crowdsec being a detection component, remediation is implemented using `bouncers`. Each bouncer protect a specific component. Find out more:
+Crowdsec being a detection component, remediation is implemented using `bouncers`. Each bouncer protects a specific component. Find out more:
 
 https://hub.crowdsec.net/browse/#bouncers
 
@@ -110,17 +150,17 @@ You can automatically register bouncers with the crowdsec container on startup u
 
 To use environment variables, they should be in the format `BOUNCER_KEY_<name>=<key>`. e.g. `BOUNCER_KEY_nginx=mysecretkey12345`.
 
-To use Docker secrets, the secret should be named `bouncer_key_<name>` with a content of `<key>`. e.g. `bouncer_key_nginx` with a content of `mysecretkey12345`.
+To use Docker secrets, the secret should be named `bouncer_key_<name>` with a content of `<key>`. e.g. `bouncer_key_nginx` with content `mysecretkey12345`.
 
 A bouncer key can be any string but we recommend an alphanumeric value to keep consistent with crowdsec-generated keys and avoid problems with escaping special characters.
 
 ## Console
-We provide a web based interface to get more from Crowdsec: https://docs.crowdsec.net/docs/console
+We provide a web-based interface to get more from Crowdsec: https://docs.crowdsec.net/docs/console
 
 Subscribe here: https://app.crowdsec.net
 
 # Caveats
-Using binds rather than named volumes ([more explanation here](https://docs.docker.com/storage/volumes/)) results in more complexity as you'll have to bind relevant files one by one where with named volumes you can mount full configuration and data folders. On the other hand, named volumes are less straightforward to navigate.
+Using binds rather than named volumes ([more explanation here](https://docs.docker.com/storage/volumes/)) results in more complexity as you'll have to bind relevant files one by one whereas with named volumes you can mount full configuration and data folders. On the other hand, named volumes are less straightforward to navigate.
 
 # Reference
 ## Environment Variables

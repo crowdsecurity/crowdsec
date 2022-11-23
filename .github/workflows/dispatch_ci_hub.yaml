@@ -13,6 +13,7 @@ jobs:
     steps:
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v1
+        if: ${{ github.repository_owner == 'crowdsecurity' }}
         with:
           token: ${{ secrets.DISPATCH_TOKEN }}
           event-type: trigger_ci_hub

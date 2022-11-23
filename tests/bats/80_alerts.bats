@@ -58,11 +58,11 @@ teardown() {
 
     run -0 cscli alerts list -o raw
     assert_line "id,scope,value,reason,country,as,decisions,created_at"
-    assert_line --regexp ".*,Ip,10.20.30.40,manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?',,\" \",ban:1,.*"
+    assert_line --regexp ".*,Ip,10.20.30.40,manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?',,,ban:1,.*"
 
     run -0 cscli alerts list -o raw --machine
     assert_line "id,scope,value,reason,country,as,decisions,created_at,machine"
-    assert_line --regexp "^[0-9]+,Ip,10.20.30.40,manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?',,\" \",ban:1,.*,githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?$"
+    assert_line --regexp "^[0-9]+,Ip,10.20.30.40,manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?',,,ban:1,.*,githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?$"
 }
 
 @test "cscli alerts inspect" {
@@ -122,22 +122,53 @@ teardown() {
     assert_output "id,scope,value,reason,country,as,decisions,created_at,machine"
 }
 
-@test "cscli alerts delete" {
-    run -0 --separate-stderr cscli alerts delete --all
-    assert_stderr --partial 'alert(s) deleted'
+@test "cscli alerts delete (by id)" {
+    run -0 cscli alerts delete --help
+    if [[ ! "$output" =~ "--id string" ]]; then
+        skip "cscli alerts delete --id not supported"
+    fi
 
-    # XXX TODO: delete by scope, id, value, scenario, range..
+    # make sure there is at least one alert
+    run -0 cscli decisions add -i 127.0.0.1 -d 1h -R crowdsecurity/test
+    # when testing with global config, alert id is not guaranteed to be 1.
+    # we'll just remove the first alert we find
+    run -0 --separate-stderr cscli alerts list -o json
+    run -0 jq -c '.[0].id' <(output)
+    ALERT_ID="$output"
+
+    run -0 --separate-stderr cscli alerts delete --id "$ALERT_ID"
+    refute_output
+    assert_stderr --partial "1 alert(s) deleted"
+
+    # can't delete twice
+    run -1 --separate-stderr cscli alerts delete --id "$ALERT_ID"
+    refute_output
+    assert_stderr --partial "Unable to delete alert"
+    assert_stderr --partial "API error: ent: alert not found"
+}
+
+@test "cscli alerts delete (all)" {
+    run -0 --separate-stderr cscli alerts delete --all
+    assert_stderr --partial '0 alert(s) deleted'
+
+    run -0 cscli decisions add -i 1.2.3.4 -d 1h -R crowdsecurity/test
+    run -0 cscli decisions add -i 1.2.3.5 -d 1h -R crowdsecurity/test
+
+    run -0 --separate-stderr cscli alerts delete --all
+    assert_stderr --partial '2 alert(s) deleted'
+
+    # XXX TODO: delete by scope, value, scenario, range..
 }
 
 @test "cscli alerts delete (with cascade to decisions)" {
     run -0 cscli decisions add -i 1.2.3.4
-    run -0 cscli decisions list -o json
+    run -0 --separate-stderr cscli decisions list -o json
     run -0 jq '. | length' <(output)
     assert_output 1
 
     run -0 --separate-stderr cscli alerts delete -i 1.2.3.4
     assert_stderr --partial 'alert(s) deleted'
-    run -0 cscli decisions list -o json
+    run -0 --separate-stderr cscli decisions list -o json
     assert_output null
 }
 
@@ -152,7 +183,7 @@ teardown() {
 @test "bad duration" {
     skip 'TODO'
     run -0 cscli decisions add -i 10.20.30.40 -t ban
-    run -9 cscli decisions list --ip 10.20.30.40 -o json
+    run -9 --separate-stderr cscli decisions list --ip 10.20.30.40 -o json
     run -9 jq -r '.[].decisions[].id' <(output)
     DECISION_ID="${output}"
 

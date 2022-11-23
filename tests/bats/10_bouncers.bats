@@ -24,7 +24,7 @@ teardown() {
 #----------
 
 @test "there are 0 bouncers" {
-    run -0 cscli bouncers list -o json
+    run -0 --separate-stderr cscli bouncers list -o json
     assert_output "[]"
 }
 
@@ -32,7 +32,7 @@ teardown() {
     run -0 cscli bouncers add ciTestBouncer
     assert_output --partial "Api key for 'ciTestBouncer':"
     run -0 cscli bouncers delete ciTestBouncer
-    run -0 cscli bouncers list -o json
+    run -0 --separate-stderr cscli bouncers list -o json
     assert_output '[]'
 }
 

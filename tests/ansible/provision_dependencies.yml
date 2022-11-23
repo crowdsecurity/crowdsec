@@ -21,7 +21,8 @@
   vars_files:
     - vars/postgres.yml
   tasks:
-    - ansible.builtin.include_role:
+    - name: role "geerlingguy.postgresql"
+      ansible.builtin.include_role:
         name: geerlingguy.postgresql
       ## enable this for debugging
       # vars:
@@ -35,7 +36,8 @@
   vars_files:
     - vars/mysql.yml
   tasks:
-    - ansible.builtin.include_role:
+    - name: role "geerlingguy.mysql"
+      ansible.builtin.include_role:
         name: geerlingguy.mysql
       when:
         - lookup('ansible.builtin.env', 'DB_BACKEND') == 'mysql'

@@ -65,7 +65,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 				*alertItem.Source.Value,
 				*alertItem.Scenario,
 				alertItem.Source.Cn,
-				alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
+				alertItem.Source.GetAsNumberName(),
 				DecisionsFromAlert(alertItem),
 				*alertItem.StartAt,
 			}
@@ -189,31 +189,27 @@ cscli alerts list --type ban`,
 
 			if *alertListFilter.Until == "" {
 				alertListFilter.Until = nil
-			} else {
+			} else if strings.HasSuffix(*alertListFilter.Until, "d") {
 				/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
-				if strings.HasSuffix(*alertListFilter.Until, "d") {
-					realDuration := strings.TrimSuffix(*alertListFilter.Until, "d")
-					days, err := strconv.Atoi(realDuration)
-					if err != nil {
-						printHelp(cmd)
-						log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Until)
-					}
-					*alertListFilter.Until = fmt.Sprintf("%d%s", days*24, "h")
+				realDuration := strings.TrimSuffix(*alertListFilter.Until, "d")
+				days, err := strconv.Atoi(realDuration)
+				if err != nil {
+					printHelp(cmd)
+					log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Until)
 				}
+				*alertListFilter.Until = fmt.Sprintf("%d%s", days*24, "h")
 			}
 			if *alertListFilter.Since == "" {
 				alertListFilter.Since = nil
-			} else {
+			} else if strings.HasSuffix(*alertListFilter.Since, "d") {
 				/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
-				if strings.HasSuffix(*alertListFilter.Since, "d") {
-					realDuration := strings.TrimSuffix(*alertListFilter.Since, "d")
-					days, err := strconv.Atoi(realDuration)
-					if err != nil {
-						printHelp(cmd)
-						log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Since)
-					}
-					*alertListFilter.Since = fmt.Sprintf("%d%s", days*24, "h")
+				realDuration := strings.TrimSuffix(*alertListFilter.Since, "d")
+				days, err := strconv.Atoi(realDuration)
+				if err != nil {
+					printHelp(cmd)
+					log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Since)
 				}
+				*alertListFilter.Since = fmt.Sprintf("%d%s", days*24, "h")
 			}
 
 			if *alertListFilter.IncludeCAPI {
@@ -269,6 +265,7 @@ cscli alerts list --type ban`,
 
 	var ActiveDecision *bool
 	var AlertDeleteAll bool
+	var delAlertByID string
 	var alertDeleteFilter = apiclient.AlertsDeleteOpts{
 		ScopeEquals:    new(string),
 		ValueEquals:    new(string),
@@ -292,7 +289,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 			}
 			if *alertDeleteFilter.ScopeEquals == "" && *alertDeleteFilter.ValueEquals == "" &&
 				*alertDeleteFilter.ScenarioEquals == "" && *alertDeleteFilter.IPEquals == "" &&
-				*alertDeleteFilter.RangeEquals == "" {
+				*alertDeleteFilter.RangeEquals == "" && delAlertByID == "" {
 				_ = cmd.Usage()
 				log.Fatalln("At least one filter or --all must be specified")
 			}
@@ -334,12 +331,20 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 				limit := 0
 				alertDeleteFilter = apiclient.AlertsDeleteOpts{Limit: &limit}
 			}
-			alerts, _, err := Client.Alerts.Delete(context.Background(), alertDeleteFilter)
-			if err != nil {
-				log.Fatalf("Unable to delete alerts : %v", err)
+
+			var alerts *models.DeleteAlertsResponse
+			if delAlertByID == "" {
+				alerts, _, err = Client.Alerts.Delete(context.Background(), alertDeleteFilter)
+				if err != nil {
+					log.Fatalf("Unable to delete alerts : %v", err)
+				}
+			} else {
+				alerts, _, err = Client.Alerts.DeleteOne(context.Background(), delAlertByID)
+				if err != nil {
+					log.Fatalf("Unable to delete alert :  %v", err)
+				}
 			}
 			log.Infof("%s alert(s) deleted", alerts.NbDeleted)
-
 		},
 	}
 	cmdAlertsDelete.Flags().SortFlags = false
@@ -348,6 +353,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 	cmdAlertsDelete.Flags().StringVarP(alertDeleteFilter.ScenarioEquals, "scenario", "s", "", "the scenario (ie. crowdsecurity/ssh-bf)")
 	cmdAlertsDelete.Flags().StringVarP(alertDeleteFilter.IPEquals, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
 	cmdAlertsDelete.Flags().StringVarP(alertDeleteFilter.RangeEquals, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
+	cmdAlertsDelete.Flags().StringVar(&delAlertByID, "id", "", "alert ID")
 	cmdAlertsDelete.Flags().BoolVarP(&AlertDeleteAll, "all", "a", false, "delete all alerts")
 	cmdAlertsDelete.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
 
