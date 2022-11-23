@@ -212,7 +212,7 @@ Using binds rather than named volumes ([complete explanation here](https://docs.
 | `USE_TLS`               | false | Enable TLS on the LAPI |
 | `CERT_FILE`             | /etc/ssl/cert.pem | TLS Certificate path |
 | `KEY_FILE`              | /etc/ssl/key.pem | TLS Key path |
-| `CA_CERT_PATH`          | | CA file |
+| `CACERT_FILE`           | | CA certificate |
 | `AGENTS_ALLOWED_OU`     | agent-ou | OU values allowed for agents, separated by comma |
 | `BOUNCERS_ALLOWED_OU`   | bouncer-ou | OU values allowed for bouncers, separated by comma |
 |                         | | |
