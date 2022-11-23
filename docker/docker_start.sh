@@ -92,7 +92,7 @@ if isfalse "$DISABLE_AGENT"; then
         install -m 0600 /dev/null "$lapi_credentials_path"
         conf_set '
             .url = strenv(LOCAL_API_URL) |
-            .ca_cert_path = strenv(CA_CERT_PATH) |
+            .ca_cert_path = strenv(CACERT_FILE) |
             .key_path = strenv(KEY_FILE) |
             .cert_path = strenv(CERT_FILE)
         ' "$lapi_credentials_path"
@@ -155,7 +155,7 @@ if istrue "$USE_TLS"; then
     agents_allowed_yaml=$(csv2yaml "$AGENTS_ALLOWED_OU") \
     bouncers_allowed_yaml=$(csv2yaml "$BOUNCERS_ALLOWED_OU") \
     conf_set '
-        .api.server.tls.ca_cert_path = strenv(CA_CERT_PATH) |
+        .api.server.tls.ca_cert_path = strenv(CACERT_FILE) |
         .api.server.tls.cert_file = strenv(CERT_FILE) |
         .api.server.tls.key_file = strenv(KEY_FILE) |
         .api.server.tls.bouncers_allowed_ou = env(bouncers_allowed_yaml) |
