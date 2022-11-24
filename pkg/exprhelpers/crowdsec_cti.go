@@ -40,7 +40,7 @@ func InitCrowdsecCTI(Key *string, TTL *time.Duration, Size *int) error {
 
 	CrowdsecCTIInitCache(*Size, *TTL)
 	log.Warningf("heree wee gooooo")
-	ctiClient = cticlient.NewCrowdsecCTIClient(CTIApiKey)
+	ctiClient = cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey(CTIApiKey))
 	return nil
 }
 
@@ -115,24 +115,4 @@ func CrowdsecCTI(ip string) *cticlient.SmokeItem {
 	log.Infof("CTI response : %v", *ctiResp)
 
 	return ctiResp
-
-	//not very  elegant
-	/*val, err := APIQuery(ip)
-	if err != nil {
-		if err == ErrorAuth {
-			CTIApiEnabled = false
-			log.Errorf("Invalid API key provided, disabling CTI API")
-		} else if err == ErrorLimit {
-			log.Errorf("CTI API limit exceeded, limiting CTI API")
-		} else {
-			log.Warningf("Error while querying CTI : %s", err)
-		}
-		return ctiResponse, err
-	}
-	if val != nil {
-		log.Printf("no response ?")
-		return *val, nil
-	}
-	log.Printf("no response ?")*/
-	//return ctiResponse, fmt.Errorf("no result")
 }

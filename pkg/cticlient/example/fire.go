@@ -12,7 +12,7 @@ func intPtr(i int) *int {
 }
 
 func main() {
-	client := cticlient.NewCrowdsecCTIClient(os.Getenv("CTI_API_KEY"))
+	client := cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey(os.Getenv("CTI_API_KEY")))
 	paginator := cticlient.NewFirePaginator(client, cticlient.FireParams{
 		Limit: intPtr(1),
 	})

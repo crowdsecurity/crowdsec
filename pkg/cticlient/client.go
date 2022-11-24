@@ -44,14 +44,14 @@ func (c *CrowdsecCTIClient) doRequest(method string, endpoint string, params map
 		return nil, err
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		if resp.StatusCode == 403 {
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusForbidden {
 			return nil, ErrUnauthorized
 		}
-		if resp.StatusCode == 429 {
+		if resp.StatusCode == http.StatusTooManyRequests {
 			return nil, ErrLimit
 		}
-		if resp.StatusCode == 404 {
+		if resp.StatusCode == http.StatusNotFound {
 			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("unexpected http code : %s", resp.Status)
@@ -118,9 +118,25 @@ func (c *CrowdsecCTIClient) Fire(params FireParams) (*FireResponse, error) {
 	return &fireResponse, nil
 }
 
-func NewCrowdsecCTIClient(apiKey string) *CrowdsecCTIClient {
-	return &CrowdsecCTIClient{
-		apiKey:     apiKey,
-		httpClient: &http.Client{},
+func NewCrowdsecCTIClient(options ...func(*CrowdsecCTIClient)) *CrowdsecCTIClient {
+	client := &CrowdsecCTIClient{}
+	for _, option := range options {
+		option(client)
+	}
+	if client.httpClient == nil {
+		client.httpClient = &http.Client{}
+	}
+	return client
+}
+
+func WithHTTPClient(httpClient *http.Client) func(*CrowdsecCTIClient) {
+	return func(c *CrowdsecCTIClient) {
+		c.httpClient = httpClient
+	}
+}
+
+func WithAPIKey(apiKey string) func(*CrowdsecCTIClient) {
+	return func(c *CrowdsecCTIClient) {
+		c.apiKey = apiKey
 	}
 }
