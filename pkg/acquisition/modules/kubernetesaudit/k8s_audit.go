@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
@@ -168,6 +169,8 @@ func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.R
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	remoteIP := strings.Split(r.RemoteAddr, ":")[0]
 	for _, auditEvent := range auditEvents.Items {
 		eventCount.WithLabelValues(ka.addr).Inc()
 		bytesEvent, err := json.Marshal(auditEvent)
@@ -180,7 +183,7 @@ func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.R
 			Raw:     string(bytesEvent),
 			Labels:  ka.config.Labels,
 			Time:    auditEvent.StageTimestamp.Time,
-			Src:     fmt.Sprintf("%s:%d", ka.config.ListenAddr, ka.config.ListenPort),
+			Src:     remoteIP,
 			Process: true,
 			Module:  ka.GetName(),
 		}
