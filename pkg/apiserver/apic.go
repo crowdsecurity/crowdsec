@@ -178,6 +178,9 @@ func (a *apic) Push() error {
 				if ok := shouldShareAlert(alert, a.consoleConfig); ok {
 					signals = append(signals, alertToSignal(alert, getScenarioTrustOfAlert(alert)))
 				}
+				if !*a.consoleConfig.ShareContext {
+					alert.Meta = models.Meta{}
+				}
 			}
 			a.mu.Lock()
 			cache = append(cache, signals...)

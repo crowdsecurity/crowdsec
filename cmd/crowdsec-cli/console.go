@@ -9,16 +9,21 @@ import (
 	"io/fs"
 	"net/url"
 	"os"
+	"sort"
+	"strings"
 
 	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -39,6 +44,12 @@ func NewConsoleCmd() *cobra.Command {
 				}
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
 			}
+
+			if err := csConfig.LoadCrowdsec(); err != nil {
+				log.Fatalf("Unable to load CrowdSec Agent: %s", err)
+			}
+
+			// TODO: maybe remove this check because the agent will now use this command also
 			if csConfig.DisableAPI {
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
 			}
@@ -212,6 +223,7 @@ Disable given information push to the central API.`,
 					{"share_manual_decisions", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareManualDecisions)},
 					{"share_custom", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios)},
 					{"share_tainted", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios)},
+					{"share_context", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareContext)},
 				}
 				for _, row := range rows {
 					err = csvwriter.Write(row)
@@ -225,6 +237,193 @@ Disable given information push to the central API.`,
 	}
 
 	cmdConsole.AddCommand(cmdConsoleStatus)
+
+	cmdContext := &cobra.Command{
+		Use:               "context [feature-flag]",
+		Short:             "Manage context to send with alerts",
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			printHelp(cmd)
+		},
+	}
+
+	var keyToAdd string
+	var valuesToAdd []string
+	cmdContextAdd := &cobra.Command{
+		Use:               "add",
+		Short:             "Add context to send with alerts",
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			if _, ok := csConfig.Crowdsec.ContextToSend[keyToAdd]; !ok {
+				csConfig.Crowdsec.ContextToSend[keyToAdd] = make([]string, 0)
+				log.Infof("key '%s' added", keyToAdd)
+			}
+			data := csConfig.Crowdsec.ContextToSend[keyToAdd]
+			for _, val := range valuesToAdd {
+				if !inSlice(val, data) {
+					log.Infof("value '%s' added to key '%s'", val, keyToAdd)
+					data = append(data, val)
+				}
+				csConfig.Crowdsec.ContextToSend[keyToAdd] = data
+			}
+			if err := csConfig.Crowdsec.DumpContextConfigFile(); err != nil {
+				log.Fatalf(err.Error())
+			}
+		},
+	}
+	cmdContextAdd.Flags().StringVarP(&keyToAdd, "key", "k", "", "The key of the different values to send")
+	cmdContextAdd.Flags().StringSliceVar(&valuesToAdd, "value", []string{}, "The expr fields to associate with the key")
+	cmdContextAdd.MarkFlagRequired("key")
+	cmdContextAdd.MarkFlagRequired("value")
+	cmdContext.AddCommand(cmdContextAdd)
+
+	cmdContextStatus := &cobra.Command{
+		Use:               "status",
+		Short:             "List context to send with alerts",
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			dump, err := yaml.Marshal(csConfig.Crowdsec.ContextToSend)
+			if err != nil {
+				log.Fatalf("unable to show context status: %s", err)
+			}
+			fmt.Println(string(dump))
+
+		},
+	}
+	cmdContext.AddCommand(cmdContextStatus)
+
+	var detectAll bool
+	cmdContextDetect := &cobra.Command{
+		Use:               "detect",
+		Short:             "Detect available fields from the installed parsers",
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			var err error
+
+			if !detectAll && len(args) == 0 {
+				log.Infof("Please provide parsers to detect or --all flag.")
+				printHelp(cmd)
+			}
+
+			// to avoid all the log.Info from the loaders functions
+			log.SetLevel(log.ErrorLevel)
+
+			err = exprhelpers.Init(nil)
+			if err != nil {
+				log.Fatalf("Failed to init expr helpers : %s", err)
+			}
+
+			// Populate cwhub package tools
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
+				log.Fatalf("Failed to load hub index : %s", err)
+			}
+
+			csParsers := parser.NewParsers()
+			if csParsers, err = parser.LoadParsers(csConfig, csParsers); err != nil {
+				log.Fatalf("unable to load parsers: %s", err)
+			}
+
+			fieldByParsers := make(map[string][]string)
+			for _, node := range csParsers.Nodes {
+				if !detectAll && !inSlice(node.Name, args) {
+					continue
+				}
+				if !detectAll {
+					args = removeFromSlice(node.Name, args)
+				}
+				fieldByParsers[node.Name] = make([]string, 0)
+				fieldByParsers[node.Name] = detectNode(node, *csParsers.Ctx)
+
+				subNodeFields := detectSubNode(node, *csParsers.Ctx)
+				for _, field := range subNodeFields {
+					if !inSlice(field, fieldByParsers[node.Name]) {
+						fieldByParsers[node.Name] = append(fieldByParsers[node.Name], field)
+					}
+				}
+
+			}
+
+			fmt.Printf("Acquisition :\n\n")
+			fmt.Printf("  - evt.Line.Module\n")
+			fmt.Printf("  - evt.Line.Raw\n")
+			fmt.Printf("  - evt.Line.Src\n")
+			fmt.Println()
+
+			parsersKey := make([]string, 0)
+			for k := range fieldByParsers {
+				parsersKey = append(parsersKey, k)
+			}
+			sort.Strings(parsersKey)
+
+			for _, k := range parsersKey {
+				fmt.Printf("%s :\n\n", k)
+				values := fieldByParsers[k]
+				sort.Strings(values)
+				for _, value := range values {
+					fmt.Printf("  - %s\n", value)
+				}
+				fmt.Println()
+			}
+
+			if len(args) > 0 {
+				for _, parserNotFound := range args {
+					log.Errorf("parser '%s' not found, can't detect fields", parserNotFound)
+				}
+			}
+		},
+	}
+	cmdContextDetect.Flags().BoolVarP(&detectAll, "all", "a", false, "Detect evt field for all installed parser")
+	cmdContext.AddCommand(cmdContextDetect)
+
+	var keysToDelete []string
+	var valuesToDelete []string
+	cmdContextDelete := &cobra.Command{
+		Use:               "delete",
+		Short:             "Delete context to send with alerts",
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			if len(keysToDelete) == 0 && len(valuesToDelete) == 0 {
+				log.Fatalf("please provide at least a key or a value to delete")
+			}
+
+			for _, key := range keysToDelete {
+				if _, ok := csConfig.Crowdsec.ContextToSend[key]; ok {
+					delete(csConfig.Crowdsec.ContextToSend, key)
+					log.Infof("key '%s' has been removed", key)
+				} else {
+					log.Warningf("key '%s' doesn't exist", key)
+				}
+			}
+
+			for _, value := range valuesToDelete {
+				valueFound := false
+				for key, context := range csConfig.Crowdsec.ContextToSend {
+					if inSlice(value, context) {
+						valueFound = true
+						csConfig.Crowdsec.ContextToSend[key] = removeFromSlice(value, context)
+						log.Infof("value '%s' has been removed from key '%s'", value, key)
+					}
+					if len(csConfig.Crowdsec.ContextToSend[key]) == 0 {
+						delete(csConfig.Crowdsec.ContextToSend, key)
+					}
+				}
+				if !valueFound {
+					log.Warningf("value '%s' not found", value)
+				}
+			}
+
+			if err := csConfig.Crowdsec.DumpContextConfigFile(); err != nil {
+				log.Fatalf(err.Error())
+			}
+
+		},
+	}
+	cmdContextDelete.Flags().StringSliceVarP(&keysToDelete, "key", "k", []string{}, "The keys to delete")
+	cmdContextDelete.Flags().StringSliceVar(&valuesToDelete, "value", []string{}, "The expr fields to delete")
+	cmdContext.AddCommand(cmdContextDelete)
+
+	cmdConsole.AddCommand(cmdContext)
+
 	return cmdConsole
 }
 
@@ -270,9 +469,143 @@ func SetConsoleOpts(args []string, wanted bool) {
 				log.Infof("%s set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
 				csConfig.API.Server.ConsoleConfig.ShareManualDecisions = types.BoolPtr(wanted)
 			}
+		case csconfig.SEND_CONTEXT:
+			/*for each flag check if it's already set before setting it*/
+			if csConfig.API.Server.ConsoleConfig.ShareContext != nil {
+				if *csConfig.API.Server.ConsoleConfig.ShareContext == wanted {
+					log.Infof("%s already set to %t", csconfig.SEND_CONTEXT, wanted)
+				} else {
+					log.Infof("%s set to %t", csconfig.SEND_CONTEXT, wanted)
+					*csConfig.API.Server.ConsoleConfig.ShareContext = wanted
+				}
+			} else {
+				log.Infof("%s set to %t", csconfig.SEND_CONTEXT, wanted)
+				csConfig.API.Server.ConsoleConfig.ShareContext = types.BoolPtr(wanted)
+			}
 		default:
 			log.Fatalf("unknown flag %s", arg)
 		}
 	}
 
+}
+
+func detectStaticField(GrokStatics []types.ExtraField) []string {
+	ret := make([]string, 0)
+	for _, static := range GrokStatics {
+		if static.Parsed != "" {
+			fieldName := fmt.Sprintf("evt.Parsed.%s", static.Parsed)
+			if !inSlice(fieldName, ret) {
+				ret = append(ret, fieldName)
+			}
+		}
+		if static.Meta != "" {
+			fieldName := fmt.Sprintf("evt.Meta.%s", static.Meta)
+			if !inSlice(fieldName, ret) {
+				ret = append(ret, fieldName)
+			}
+		}
+		if static.TargetByName != "" {
+			fieldName := static.TargetByName
+			if !strings.HasPrefix(fieldName, "evt.") {
+				fieldName = "evt." + fieldName
+			}
+			if !inSlice(static.TargetByName, ret) {
+				ret = append(ret, static.TargetByName)
+			}
+		}
+	}
+
+	return ret
+}
+
+func detectNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
+	var ret = make([]string, 0)
+	if node.Grok.RunTimeRegexp != nil {
+		for _, capturedField := range node.Grok.RunTimeRegexp.Names() {
+			fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
+			if !inSlice(fieldName, ret) {
+				ret = append(ret, fieldName)
+			}
+		}
+	}
+
+	if node.Grok.RegexpName != "" {
+		grokCompiled, err := parserCTX.Grok.Get(node.Grok.RegexpName)
+		if err != nil {
+			log.Warningf("Can't get subgrok: %s", err)
+		}
+		for _, capturedField := range grokCompiled.Names() {
+			fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
+			if !inSlice(fieldName, ret) {
+				ret = append(ret, fieldName)
+			}
+		}
+	}
+
+	if len(node.Grok.Statics) > 0 {
+		staticsField := detectStaticField(node.Grok.Statics)
+		for _, staticField := range staticsField {
+			if !inSlice(staticField, ret) {
+				ret = append(ret, staticField)
+			}
+		}
+	}
+
+	if len(node.Statics) > 0 {
+		staticsField := detectStaticField(node.Statics)
+		for _, staticField := range staticsField {
+			if !inSlice(staticField, ret) {
+				ret = append(ret, staticField)
+			}
+		}
+	}
+
+	return ret
+}
+
+func detectSubNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
+	var ret = make([]string, 0)
+
+	for _, subnode := range node.LeavesNodes {
+		if subnode.Grok.RunTimeRegexp != nil {
+			for _, capturedField := range subnode.Grok.RunTimeRegexp.Names() {
+				fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
+				if !inSlice(fieldName, ret) {
+					ret = append(ret, fieldName)
+				}
+			}
+		}
+		if subnode.Grok.RegexpName != "" {
+			grokCompiled, err := parserCTX.Grok.Get(subnode.Grok.RegexpName)
+			if err != nil {
+				log.Warningf("Can't get subgrok: %s", err)
+			}
+			for _, capturedField := range grokCompiled.Names() {
+				fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
+				if !inSlice(fieldName, ret) {
+					ret = append(ret, fieldName)
+				}
+			}
+		}
+
+		if len(subnode.Grok.Statics) > 0 {
+			staticsField := detectStaticField(subnode.Grok.Statics)
+			for _, staticField := range staticsField {
+				if !inSlice(staticField, ret) {
+					ret = append(ret, staticField)
+				}
+			}
+		}
+
+		if len(subnode.Statics) > 0 {
+			staticsField := detectStaticField(subnode.Statics)
+			for _, staticField := range staticsField {
+				if !inSlice(staticField, ret) {
+					ret = append(ret, staticField)
+				}
+			}
+		}
+	}
+
+	return ret
 }

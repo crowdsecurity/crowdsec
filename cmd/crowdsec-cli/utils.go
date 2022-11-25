@@ -732,3 +732,21 @@ func formatNumber(num int) string {
 	res := math.Round(float64(num)/float64(goodUnit.value)*100) / 100
 	return fmt.Sprintf("%.2f%s", res, goodUnit.symbol)
 }
+
+func removeFromSlice(val string, slice []string) []string {
+	var i int
+	var value string
+
+	// get the index
+	for i, value = range slice {
+		if value == val {
+			break
+		}
+	}
+	slice[i] = slice[len(slice)-1]
+	slice[len(slice)-1] = ""
+	slice = slice[:len(slice)-1]
+
+	return slice
+
+}
