@@ -33,6 +33,9 @@ func TestLoadCrowdsec(t *testing.T) {
 	hubIndexFileFullPath, err := filepath.Abs("./hub/.index.json")
 	require.NoError(t, err)
 
+	contextFileFullPath, err := filepath.Abs("./tests/context.yaml")
+	require.NoError(t, err)
+
 	tests := []struct {
 		name           string
 		input          *Config
@@ -55,11 +58,13 @@ func TestLoadCrowdsec(t *testing.T) {
 				Crowdsec: &CrowdsecServiceCfg{
 					AcquisitionFilePath: "./tests/acquis.yaml",
 					SimulationFilePath:  "./tests/simulation.yaml",
+					ConsoleContextPath:  "./tests/context.yaml",
 				},
 			},
 			expectedResult: &CrowdsecServiceCfg{
 				Enable:               types.BoolPtr(true),
 				AcquisitionDirPath:   "",
+				ConsoleContextPath:   contextFileFullPath,
 				AcquisitionFilePath:  acquisFullPath,
 				ConfigDir:            configDirFullPath,
 				DataDir:              dataFullPath,
@@ -70,6 +75,9 @@ func TestLoadCrowdsec(t *testing.T) {
 				OutputRoutinesCount:  1,
 				AcquisitionFiles:     []string{acquisFullPath},
 				SimulationFilePath:   "./tests/simulation.yaml",
+				ContextToSend: map[string][]string{
+					"source_ip": {"evt.Parsed.source_ip"},
+				},
 				SimulationConfig: &SimulationConfig{
 					Simulation: &falseBoolPtr,
 				},
@@ -92,12 +100,14 @@ func TestLoadCrowdsec(t *testing.T) {
 					AcquisitionFilePath: "./tests/acquis.yaml",
 					AcquisitionDirPath:  "./tests/acquis/",
 					SimulationFilePath:  "./tests/simulation.yaml",
+					ConsoleContextPath:  "./tests/context.yaml",
 				},
 			},
 			expectedResult: &CrowdsecServiceCfg{
 				Enable:               types.BoolPtr(true),
 				AcquisitionDirPath:   acquisDirFullPath,
 				AcquisitionFilePath:  acquisFullPath,
+				ConsoleContextPath:   contextFileFullPath,
 				ConfigDir:            configDirFullPath,
 				HubIndexFile:         hubIndexFileFullPath,
 				DataDir:              dataFullPath,
@@ -106,7 +116,10 @@ func TestLoadCrowdsec(t *testing.T) {
 				ParserRoutinesCount:  1,
 				OutputRoutinesCount:  1,
 				AcquisitionFiles:     []string{acquisFullPath, acquisInDirFullPath},
-				SimulationFilePath:   "./tests/simulation.yaml",
+				ContextToSend: map[string][]string{
+					"source_ip": {"evt.Parsed.source_ip"},
+				},
+				SimulationFilePath: "./tests/simulation.yaml",
 				SimulationConfig: &SimulationConfig{
 					Simulation: &falseBoolPtr,
 				},
@@ -135,6 +148,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				HubIndexFile:         hubIndexFileFullPath,
 				DataDir:              dataFullPath,
 				HubDir:               hubFullPath,
+				ConsoleContextPath:   DefaultContextConfigFilePath,
 				BucketsRoutinesCount: 1,
 				ParserRoutinesCount:  1,
 				OutputRoutinesCount:  1,
@@ -159,6 +173,7 @@ func TestLoadCrowdsec(t *testing.T) {
 					},
 				},
 				Crowdsec: &CrowdsecServiceCfg{
+					ConsoleContextPath:  "",
 					AcquisitionFilePath: "./tests/acquis_not_exist.yaml",
 				},
 			},

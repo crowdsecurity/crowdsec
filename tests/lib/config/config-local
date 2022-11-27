@@ -61,6 +61,8 @@ config_generate() {
        ../config/online_api_credentials.yaml \
        "${CONFIG_DIR}/"
 
+    cp ../config/context.yaml "${CONFIG_DIR}/console/"
+
     # the default acquis file contains files that are not readable by everyone
     touch "$LOG_DIR/empty.log"
     cat <<-EOT >"$CONFIG_DIR/acquis.yaml"
@@ -94,6 +96,7 @@ config_generate() {
     .api.client.credentials_path=strenv(CONFIG_DIR)+"/local_api_credentials.yaml" |
     .api.server.profiles_path=strenv(CONFIG_DIR)+"/profiles.yaml" |
     .api.server.console_path=strenv(CONFIG_DIR)+"/console.yaml" |
+    .crowdsec_service.console_context_path=strenv(CONFIG_DIR) + "/console/context.yaml" |
     .api.server.online_client.credentials_path=strenv(CONFIG_DIR)+"/online_api_credentials.yaml"
     ' ../config/config.yaml >"${CONFIG_DIR}/config.yaml"
 }
@@ -107,6 +110,7 @@ make_init_data() {
     mkdir -p "${CONFIG_DIR}/notifications"
     mkdir -p "${CONFIG_DIR}/hub"
     mkdir -p "${CONFIG_DIR}/patterns"
+    mkdir -p "${CONFIG_DIR}/console"
     cp -a "../config/patterns" "${CONFIG_DIR}/"
     config_generate
     # XXX errors from instance-db should be reported...
