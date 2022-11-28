@@ -349,8 +349,10 @@ func (s *APIServer) Close() {
 
 func (s *APIServer) Shutdown() error {
 	s.Close()
-	if err := s.httpServer.Shutdown(context.TODO()); err != nil {
-		return err
+	if s.httpServer != nil {
+		if err := s.httpServer.Shutdown(context.TODO()); err != nil {
+			return err
+		}
 	}
 
 	//close io.writer logger given to gin
