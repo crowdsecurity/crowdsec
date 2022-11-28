@@ -13,8 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/enescakir/emoji"
-	"github.com/olekukonko/tablewriter"
 	"github.com/fatih/color"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prom2json"
@@ -24,8 +22,8 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 const MaxDistance = 7
