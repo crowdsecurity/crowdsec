@@ -6,8 +6,8 @@
 </br>
 </br>
 <p align="center">
-<img src="https://github.com/crowdsecurity/crowdsec/workflows/tests/badge.svg">
-<img src="https://github.com/crowdsecurity/crowdsec/workflows/build/badge.svg">
+<img src="https://github.com/crowdsecurity/crowdsec/actions/workflows/go-tests.yml/badge.svg">
+<img src="https://github.com/crowdsecurity/crowdsec/actions/workflows/bats.yml/badge.svg">
 <a href="https://codecov.io/gh/crowdsecurity/crowdsec">
   <img src="https://codecov.io/gh/crowdsecurity/crowdsec/branch/master/graph/badge.svg?token=CQGSPNY3PT"/>
 </a>
@@ -15,6 +15,12 @@
 <img src="https://img.shields.io/github/license/crowdsecurity/crowdsec">
 <img src="https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/AlteredCoder/ed74e50c43e3b17bdfc4d93149f23d37/raw/crowdsec_parsers_badge.json">
 <img src="https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/AlteredCoder/ed74e50c43e3b17bdfc4d93149f23d37/raw/crowdsec_scenarios_badge.json">
+<a href="https://hub.docker.com/r/crowdsecurity/crowdsec">
+  <img src="https://img.shields.io/docker/pulls/crowdsecurity/crowdsec?logo=docker">
+</a>
+<a href="https://discord.com/invite/crowdsec">
+  <img src="https://img.shields.io/discord/921520481163673640?label=Discord&logo=discord">
+</a>
 </p>
 
 <p align="center">
@@ -22,7 +28,7 @@
 :books: <a href="https://doc.crowdsec.net">Documentation</a>
 :diamond_shape_with_a_dot_inside: <a href="https://hub.crowdsec.net">Configuration Hub</a>
 :speech_balloon: <a href="https://discourse.crowdsec.net">Discourse (Forum)</a>
-:speech_balloon: <a href="https://discord.gg/wGN7ShmEE8">Discord (Live Chat)</a>
+:speech_balloon: <a href="https://discord.gg/crowdsec">Discord (Live Chat)</a>
 </p>
 
 

@@ -1,0 +1,3 @@
+# vim: set ft=yaml.ansible:
+---
+package_testing: "{{ lookup('ansible.builtin.env', 'PACKAGE_TESTING') }}"

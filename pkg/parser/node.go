@@ -50,7 +50,7 @@ type Node struct {
 	EnrichFunctions EnricherCtx
 
 	/* If the node is actually a leaf, it can have : grok, enrich, statics */
-	//pattern_syntax are named grok patterns that are re-utilised over several grok patterns
+	//pattern_syntax are named grok patterns that are re-utilized over several grok patterns
 	SubGroks yaml.MapSlice `yaml:"pattern_syntax,omitempty"`
 
 	//Holds a grok pattern
@@ -58,7 +58,7 @@ type Node struct {
 	//Statics can be present in any type of node and is executed last
 	Statics []types.ExtraField `yaml:"statics,omitempty"`
 	//Whitelists
-	Whitelist types.Whitelist     `yaml:"whitelist,omitempty"`
+	Whitelist Whitelist           `yaml:"whitelist,omitempty"`
 	Data      []*types.DataSource `yaml:"data,omitempty"`
 }
 
@@ -193,7 +193,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		output, err := expr.Run(e.Filter, cachedExprEnv)
 		if err != nil {
 			clog.Warningf("failed to run whitelist expr : %v", err)
-			clog.Debugf("Event leaving node : ko")
+			clog.Debug("Event leaving node : ko")
 			return false, nil
 		}
 		switch out := output.(type) {
@@ -272,7 +272,8 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 			// if the grok succeed, process associated statics
 			err := n.ProcessStatics(n.Grok.Statics, p)
 			if err != nil {
-				clog.Fatalf("(%s) Failed to process statics : %v", n.rn, err)
+				clog.Errorf("(%s) Failed to process statics : %v", n.rn, err)
+				return false, err
 			}
 		} else {
 			//grok failed, node failed
@@ -301,19 +302,17 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 					clog.Debugf("child is success, OnSuccess=next_stage, skip")
 					break
 				}
-			} else {
+			} else if !NodeHasOKGrok {
 				/*
 					If the parent node has a successful grok pattern, it's state will stay successful even if one or more chil fails.
 					If the parent node is a skeleton node (no grok pattern), then at least one child must be successful for it to be a success.
 				*/
-				if !NodeHasOKGrok {
-					NodeState = false
-				}
+				NodeState = false
 			}
 		}
 	}
 	/*todo : check if a node made the state change ?*/
-	/* should the childs inherit the on_success behaviour */
+	/* should the childs inherit the on_success behavior */
 
 	clog.Tracef("State after nodes : %v", NodeState)
 
@@ -337,7 +336,8 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		// if all else is good in whitelist, process node's statics
 		err := n.ProcessStatics(n.Statics, p)
 		if err != nil {
-			clog.Fatalf("Failed to process statics : %v", err)
+			clog.Errorf("Failed to process statics : %v", err)
+			return false, err
 		}
 	} else {
 		clog.Tracef("! No node statics")
@@ -529,7 +529,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		valid = true
 	}
 	for _, filter := range n.Whitelist.Exprs {
-		expression := &types.ExprWhitelist{}
+		expression := &ExprWhitelist{}
 		expression.Filter, err = expr.Compile(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 		if err != nil {
 			n.Logger.Fatalf("Unable to compile whitelist expression '%s' : %v.", filter, err)

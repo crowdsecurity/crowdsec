@@ -1,12 +1,16 @@
 package csconfig
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"net"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/yamlpatch"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -19,9 +23,12 @@ type APICfg struct {
 }
 
 type ApiCredentialsCfg struct {
-	URL      string `yaml:"url,omitempty" json:"url,omitempty"`
-	Login    string `yaml:"login,omitempty" json:"login,omitempty"`
-	Password string `yaml:"password,omitempty" json:"-"`
+	URL        string `yaml:"url,omitempty" json:"url,omitempty"`
+	Login      string `yaml:"login,omitempty" json:"login,omitempty"`
+	Password   string `yaml:"password,omitempty" json:"-"`
+	CACertPath string `yaml:"ca_cert_path,omitempty"`
+	KeyPath    string `yaml:"key_path,omitempty"`
+	CertPath   string `yaml:"cert_path,omitempty"`
 }
 
 /*global api config (for lapi->oapi)*/
@@ -39,7 +46,7 @@ type LocalApiClientCfg struct {
 
 func (o *OnlineApiClientCfg) Load() error {
 	o.Credentials = new(ApiCredentialsCfg)
-	fcontent, err := ioutil.ReadFile(o.CredentialsFilePath)
+	fcontent, err := os.ReadFile(o.CredentialsFilePath)
 	if err != nil {
 		return errors.Wrapf(err, "failed to read api server credentials configuration file '%s'", o.CredentialsFilePath)
 	}
@@ -70,13 +77,36 @@ func (l *LocalApiClientCfg) Load() error {
 
 	if l.Credentials != nil && l.Credentials.URL != "" {
 		if !strings.HasSuffix(l.Credentials.URL, "/") {
-			l.Credentials.URL = l.Credentials.URL + "/"
+			l.Credentials.URL += "/"
 		}
 	}
+
+	if l.Credentials.Login != "" && (l.Credentials.CACertPath != "" || l.Credentials.CertPath != "" || l.Credentials.KeyPath != "") {
+		return fmt.Errorf("user/password authentication and TLS authentication are mutually exclusive")
+	}
+
 	if l.InsecureSkipVerify == nil {
 		apiclient.InsecureSkipVerify = false
 	} else {
 		apiclient.InsecureSkipVerify = *l.InsecureSkipVerify
+	}
+
+	if l.Credentials.CACertPath != "" && l.Credentials.CertPath != "" && l.Credentials.KeyPath != "" {
+		cert, err := tls.LoadX509KeyPair(l.Credentials.CertPath, l.Credentials.KeyPath)
+		if err != nil {
+			return errors.Wrapf(err, "failed to load api client certificate")
+		}
+
+		caCert, err := os.ReadFile(l.Credentials.CACertPath)
+		if err != nil {
+			return errors.Wrapf(err, "failed to load cacert")
+		}
+
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+
+		apiclient.Cert = &cert
+		apiclient.CaCertPool = caCertPool
 	}
 	return nil
 }
@@ -107,6 +137,7 @@ func toValidCIDR(ip string) string {
 
 /*local api service configuration*/
 type LocalApiServerCfg struct {
+	Enable                 *bool               `yaml:"enable"`
 	ListenURI              string              `yaml:"listen_uri,omitempty"` //127.0.0.1:8080
 	TLS                    *TLSCfg             `yaml:"tls"`
 	DbConfig               *DatabaseCfg        `yaml:"-"`
@@ -128,51 +159,79 @@ type LocalApiServerCfg struct {
 }
 
 type TLSCfg struct {
-	CertFilePath string `yaml:"cert_file"`
-	KeyFilePath  string `yaml:"key_file"`
+	CertFilePath       string         `yaml:"cert_file"`
+	KeyFilePath        string         `yaml:"key_file"`
+	ClientVerification string         `yaml:"client_verification,omitempty"`
+	ServerName         string         `yaml:"server_name"`
+	CACertPath         string         `yaml:"ca_cert_path"`
+	AllowedAgentsOU    []string       `yaml:"agents_allowed_ou"`
+	AllowedBouncersOU  []string       `yaml:"bouncers_allowed_ou"`
+	CRLPath            string         `yaml:"crl_path"`
+	CacheExpiration    *time.Duration `yaml:"cache_expiration,omitempty"`
 }
 
 func (c *Config) LoadAPIServer() error {
-	if c.API.Server != nil && !c.DisableAPI {
-		if err := c.LoadCommon(); err != nil {
-			return fmt.Errorf("loading common configuration: %s", err.Error())
-		}
-		c.API.Server.LogDir = c.Common.LogDir
-		c.API.Server.LogMedia = c.Common.LogMedia
-		c.API.Server.CompressLogs = c.Common.CompressLogs
-		c.API.Server.LogMaxSize = c.Common.LogMaxSize
-		c.API.Server.LogMaxAge = c.Common.LogMaxAge
-		c.API.Server.LogMaxFiles = c.Common.LogMaxFiles
-		if c.API.Server.UseForwardedForHeaders && c.API.Server.TrustedProxies == nil {
-			c.API.Server.TrustedProxies = &[]string{"0.0.0.0/0"}
-		}
-		if c.API.Server.TrustedProxies != nil {
-			c.API.Server.UseForwardedForHeaders = true
-		}
-		if err := c.API.Server.LoadProfiles(); err != nil {
-			return errors.Wrap(err, "while loading profiles for LAPI")
-		}
-		if c.API.Server.ConsoleConfigPath == "" {
-			c.API.Server.ConsoleConfigPath = DefaultConsoleConfigFilePath
-		}
-		if err := c.API.Server.LoadConsoleConfig(); err != nil {
-			return errors.Wrap(err, "while loading console options")
-		}
 
-		if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
-			if err := c.API.Server.OnlineClient.Load(); err != nil {
-				return errors.Wrap(err, "loading online client credentials")
-			}
-		}
-		if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
-			log.Printf("push and pull to Central API disabled")
-		}
-		if err := c.LoadDBConfig(); err != nil {
-			return err
-		}
-	} else {
-		log.Warningf("crowdsec local API is disabled")
+	if c.DisableAPI {
+		log.Warning("crowdsec local API is disabled from flag")
+	}
+
+	if c.API.Server == nil {
+		log.Warning("crowdsec local API is disabled because its configuration is not present")
 		c.DisableAPI = true
+		return nil
+	}
+
+	if c.API.Server.Enable == nil {
+		// if the option is not present, it is enabled by default
+		c.API.Server.Enable = types.BoolPtr(true)
+	}
+
+	if !*c.API.Server.Enable {
+		log.Warning("crowdsec local API is disabled because 'enable' is set to false")
+		c.DisableAPI = true
+		return nil
+	}
+
+	if c.DisableAPI {
+		return nil
+	}
+
+	if err := c.LoadCommon(); err != nil {
+		return fmt.Errorf("loading common configuration: %s", err)
+	}
+	c.API.Server.LogDir = c.Common.LogDir
+	c.API.Server.LogMedia = c.Common.LogMedia
+	c.API.Server.CompressLogs = c.Common.CompressLogs
+	c.API.Server.LogMaxSize = c.Common.LogMaxSize
+	c.API.Server.LogMaxAge = c.Common.LogMaxAge
+	c.API.Server.LogMaxFiles = c.Common.LogMaxFiles
+	if c.API.Server.UseForwardedForHeaders && c.API.Server.TrustedProxies == nil {
+		c.API.Server.TrustedProxies = &[]string{"0.0.0.0/0"}
+	}
+	if c.API.Server.TrustedProxies != nil {
+		c.API.Server.UseForwardedForHeaders = true
+	}
+	if err := c.API.Server.LoadProfiles(); err != nil {
+		return errors.Wrap(err, "while loading profiles for LAPI")
+	}
+	if c.API.Server.ConsoleConfigPath == "" {
+		c.API.Server.ConsoleConfigPath = DefaultConsoleConfigFilePath
+	}
+	if err := c.API.Server.LoadConsoleConfig(); err != nil {
+		return errors.Wrap(err, "while loading console options")
+	}
+
+	if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
+		if err := c.API.Server.OnlineClient.Load(); err != nil {
+			return errors.Wrap(err, "loading online client credentials")
+		}
+	}
+	if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
+		log.Printf("push and pull to Central API disabled")
+	}
+	if err := c.LoadDBConfig(); err != nil {
+		return err
 	}
 
 	return nil

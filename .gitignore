@@ -6,6 +6,7 @@
 *.dylib
 *~
 .pc
+.vscode
 
 # Test binaries, built with `go test -c`
 *.test
@@ -33,10 +34,13 @@ plugins/notifications/dummy/notification-dummy
 #test binaries
 pkg/csplugin/tests/cs_plugin_test*
 
+#test cache (downloaded files)
+.cache
+
 #release stuff
 crowdsec-v*
 pkg/cwhub/hubdir/.index.json
 msi
 *.msi
-*.nukpg
+**/*.nupkg
 *.tgz

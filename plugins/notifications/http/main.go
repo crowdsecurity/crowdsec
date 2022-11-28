@@ -5,7 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 
@@ -71,9 +71,9 @@ func (s *HTTPPlugin) Notify(ctx context.Context, notification *protobufs.Notific
 	}
 	defer resp.Body.Close()
 
-	respData, err := ioutil.ReadAll(resp.Body)
+	respData, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body got error %s", string(err.Error()))
+		return nil, fmt.Errorf("failed to read response body got error %s", err)
 	}
 
 	logger.Debug(fmt.Sprintf("got response %s", string(respData)))
@@ -90,6 +90,7 @@ func (s *HTTPPlugin) Configure(ctx context.Context, config *protobufs.Config) (*
 	d := PluginConfig{}
 	err := yaml.Unmarshal(config.Config, &d)
 	s.PluginConfigByName[d.Name] = d
+	logger.Debug(fmt.Sprintf("HTTP plugin '%s' use URL '%s'", d.Name, d.URL))
 	return &protobufs.Empty{}, err
 }
 

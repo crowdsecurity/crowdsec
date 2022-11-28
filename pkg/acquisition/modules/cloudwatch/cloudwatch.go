@@ -277,7 +277,7 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 						Limit:        cw.Config.DescribeLogStreamsLimit,
 					},
 					func(page *cloudwatchlogs.DescribeLogStreamsOutput, lastPage bool) bool {
-						cw.logger.Tracef("in helper of of DescribeLogStreamsPagesWithContext")
+						cw.logger.Tracef("in helper of DescribeLogStreamsPagesWithContext")
 						for _, event := range page.LogStreams {
 							startFrom = page.NextToken
 							//we check if the stream has been written to recently enough to be monitored
@@ -292,7 +292,7 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 									return false
 								}
 								cw.logger.Tracef("stream %s is elligible for monitoring", *event.LogStreamName)
-								//the stream has been update recently, check if we should monitor it
+								//the stream has been updated recently, check if we should monitor it
 								var expectMode int
 								if !cw.Config.UseTimeMachine {
 									expectMode = leaky.LIVE
@@ -329,7 +329,7 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 	}
 }
 
-//LogStreamManager receives the potential streams to monitor, and start a go routine when needed
+//LogStreamManager receives the potential streams to monitor, and starts a go routine when needed
 func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outChan chan types.Event) error {
 
 	cw.logger.Debugf("starting to monitor streams for %s", cw.Config.GroupName)
@@ -337,7 +337,7 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 
 	for {
 		select {
-		case newStream := <-in:
+		case newStream := <-in: //nolint:govet // copylocks won't matter if the tomb is not initialized
 			shouldCreate := true
 			cw.logger.Tracef("received new streams to monitor : %s/%s", newStream.GroupName, newStream.StreamName)
 
@@ -350,11 +350,9 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 				match, err := regexp.Match(*cw.Config.StreamRegexp, []byte(newStream.StreamName))
 				if err != nil {
 					cw.logger.Warningf("invalid regexp : %s", err)
-				} else {
-					if !match {
-						cw.logger.Tracef("stream %s doesn't match %s", newStream.StreamName, *cw.Config.StreamRegexp)
-						continue
-					}
+				} else if !match {
+					cw.logger.Tracef("stream %s doesn't match %s", newStream.StreamName, *cw.Config.StreamRegexp)
+					continue
 				}
 			}
 
@@ -414,7 +412,7 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 
 func (cw *CloudwatchSource) TailLogStream(cfg *LogStreamTailConfig, outChan chan types.Event) error {
 	var startFrom *string
-	var lastReadMessage time.Time = time.Now().UTC()
+	lastReadMessage := time.Now().UTC()
 	ticker := time.NewTicker(cfg.PollStreamInterval)
 	//resume at existing index if we already had
 	streamIndexMutex.Lock()

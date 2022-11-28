@@ -1,17 +1,22 @@
 package database
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/davecgh/go-spew/spew"
@@ -173,27 +178,45 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 	}
 
 	if len(alertItem.Decisions) > 0 {
+		txClient, err := c.Ent.Tx(c.CTX)
+		if err != nil {
+			return 0, 0, 0, errors.Wrapf(BulkError, "error creating transaction : %s", err)
+		}
 		decisionBulk := make([]*ent.DecisionCreate, 0, decisionBulkSize)
 		valueList := make([]string, 0, decisionBulkSize)
+		DecOrigin := CapiMachineID
+		if *alertItem.Decisions[0].Origin == CapiMachineID || *alertItem.Decisions[0].Origin == CapiListsMachineID {
+			DecOrigin = *alertItem.Decisions[0].Origin
+		} else {
+			log.Warningf("unexpected origin %s", *alertItem.Decisions[0].Origin)
+		}
 		for i, decisionItem := range alertItem.Decisions {
 			var start_ip, start_sfx, end_ip, end_sfx int64
 			var sz int
 			if decisionItem.Duration == nil {
-				log.Warningf("nil duration in community decision")
+				log.Warning("nil duration in community decision")
 				continue
 			}
 			duration, err := time.ParseDuration(*decisionItem.Duration)
 			if err != nil {
-				return 0, 0, 0, errors.Wrapf(ParseDurationFail, "decision duration '%v' : %s", decisionItem.Duration, err)
+				rollbackErr := txClient.Rollback()
+				if rollbackErr != nil {
+					log.Errorf("rollback error: %s", rollbackErr)
+				}
+				return 0, 0, 0, errors.Wrapf(ParseDurationFail, "decision duration '%+v' : %s", *decisionItem.Duration, err)
 			}
 			if decisionItem.Scope == nil {
-				log.Warningf("nil scope in community decision")
+				log.Warning("nil scope in community decision")
 				continue
 			}
 			/*if the scope is IP or Range, convert the value to integers */
 			if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
 				sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decisionItem.Value)
 				if err != nil {
+					rollbackErr := txClient.Rollback()
+					if rollbackErr != nil {
+						log.Errorf("rollback error: %s", rollbackErr)
+					}
 					return 0, 0, 0, errors.Wrapf(ParseDurationFail, "invalid addr/range %s : %s", *decisionItem.Value, err)
 				}
 			}
@@ -215,26 +238,35 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 
 			/*for bulk delete of duplicate decisions*/
 			if decisionItem.Value == nil {
-				log.Warningf("nil value in community decision")
+				log.Warning("nil value in community decision")
 				continue
 			}
 			valueList = append(valueList, *decisionItem.Value)
 
 			if len(decisionBulk) == decisionBulkSize {
-				insertedDecisions, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
+
+				insertedDecisions, err := txClient.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
 				if err != nil {
+					rollbackErr := txClient.Rollback()
+					if rollbackErr != nil {
+						log.Errorf("rollback error: %s", rollbackErr)
+					}
 					return 0, 0, 0, errors.Wrapf(BulkError, "bulk creating decisions : %s", err)
 				}
 				inserted += len(insertedDecisions)
 
 				/*Deleting older decisions from capi*/
-				deletedDecisions, err := c.Ent.Decision.Delete().
+				deletedDecisions, err := txClient.Decision.Delete().
 					Where(decision.And(
-						decision.OriginEQ(CapiMachineID),
+						decision.OriginEQ(DecOrigin),
 						decision.Not(decision.HasOwnerWith(alert.IDEQ(alertRef.ID))),
 						decision.ValueIn(valueList...),
 					)).Exec(c.CTX)
 				if err != nil {
+					rollbackErr := txClient.Rollback()
+					if rollbackErr != nil {
+						log.Errorf("rollback error: %s", rollbackErr)
+					}
 					return 0, 0, 0, errors.Wrap(err, "while deleting older community blocklist decisions")
 				}
 				deleted += deletedDecisions
@@ -246,33 +278,40 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 					decisionBulk = make([]*ent.DecisionCreate, 0, decisionBulkSize)
 					valueList = make([]string, 0, decisionBulkSize)
 				}
-
-				// The 90's called, they want their concurrency back.
-				// This is needed for sqlite, which does not support concurrent access while writing.
-				// If we pull a large number of IPs from CAPI, and we have a slow disk, LAPI won't respond until all IPs are inserted (which can take up to a few seconds).
-				time.Sleep(100 * time.Millisecond)
 			}
 
 		}
-		insertedDecisions, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
+		log.Debugf("deleted %d decisions for %s vs %s", deleted, DecOrigin, *alertItem.Decisions[0].Origin)
+		insertedDecisions, err := txClient.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
 		if err != nil {
 			return 0, 0, 0, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
 		}
 		inserted += len(insertedDecisions)
 		/*Deleting older decisions from capi*/
 		if len(valueList) > 0 {
-			deletedDecisions, err := c.Ent.Decision.Delete().
+			deletedDecisions, err := txClient.Decision.Delete().
 				Where(decision.And(
-					decision.OriginEQ(CapiMachineID),
+					decision.OriginEQ(DecOrigin),
 					decision.Not(decision.HasOwnerWith(alert.IDEQ(alertRef.ID))),
 					decision.ValueIn(valueList...),
 				)).Exec(c.CTX)
 			if err != nil {
+				rollbackErr := txClient.Rollback()
+				if rollbackErr != nil {
+					log.Errorf("rollback error: %s", rollbackErr)
+				}
 				return 0, 0, 0, errors.Wrap(err, "while deleting older community blocklist decisions")
 			}
 			deleted += deletedDecisions
 		}
-
+		err = txClient.Commit()
+		if err != nil {
+			rollbackErr := txClient.Rollback()
+			if rollbackErr != nil {
+				log.Errorf("rollback error: %s", rollbackErr)
+			}
+			return 0, 0, 0, errors.Wrapf(BulkError, "error committing transaction : %s", err)
+		}
 	}
 
 	return alertRef.ID, inserted, deleted, nil
@@ -317,12 +356,14 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		}
 		startAtTime, err := time.Parse(time.RFC3339, *alertItem.StartAt)
 		if err != nil {
-			return []string{}, errors.Wrapf(ParseTimeFail, "start_at field time '%s': %s", *alertItem.StartAt, err)
+			c.Log.Errorf("CreateAlertBulk: Failed to parse startAtTime '%s', defaulting to now: %s", *alertItem.StartAt, err)
+			startAtTime = time.Now().UTC()
 		}
 
 		stopAtTime, err := time.Parse(time.RFC3339, *alertItem.StopAt)
 		if err != nil {
-			return []string{}, errors.Wrapf(ParseTimeFail, "stop_at field time '%s': %s", *alertItem.StopAt, err)
+			c.Log.Errorf("CreateAlertBulk: Failed to parse stopAtTime '%s', defaulting to now: %s", *alertItem.StopAt, err)
+			stopAtTime = time.Now().UTC()
 		}
 		/*display proper alert in logs*/
 		for _, disp := range formatAlertAsString(machineId, alertItem) {
@@ -338,7 +379,8 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			for i, eventItem := range alertItem.Events {
 				ts, err := time.Parse(time.RFC3339, *eventItem.Timestamp)
 				if err != nil {
-					return []string{}, errors.Wrapf(ParseTimeFail, "event timestamp '%s' : %s", *eventItem.Timestamp, err)
+					c.Log.Errorf("CreateAlertBulk: Failed to parse event timestamp '%s', defaulting to now: %s", *eventItem.Timestamp, err)
+					ts = time.Now().UTC()
 				}
 				marshallMetas, err := json.Marshal(eventItem.Meta)
 				if err != nil {
@@ -406,12 +448,6 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			}
 		}
 
-		ts, err := time.Parse(time.RFC3339, *alertItem.StopAt)
-		if err != nil {
-			c.Log.Errorf("While parsing StartAt of item %s : %s", *alertItem.StopAt, err)
-			ts = time.Now().UTC()
-		}
-
 		decisions = make([]*ent.Decision, 0)
 		if len(alertItem.Decisions) > 0 {
 			decisionBulk := make([]*ent.DecisionCreate, 0, decisionBulkSize)
@@ -421,7 +457,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 
 				duration, err := time.ParseDuration(*decisionItem.Duration)
 				if err != nil {
-					return []string{}, errors.Wrapf(ParseDurationFail, "decision duration '%v' : %s", decisionItem.Duration, err)
+					return []string{}, errors.Wrapf(ParseDurationFail, "decision duration '%+v' : %s", *decisionItem.Duration, err)
 				}
 
 				/*if the scope is IP or Range, convert the value to integers */
@@ -433,7 +469,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 				}
 
 				decisionCreate := c.Ent.Decision.Create().
-					SetUntil(ts.Add(duration)).
+					SetUntil(stopAtTime.Add(duration)).
 					SetScenario(*decisionItem.Scenario).
 					SetType(*decisionItem.Type).
 					SetStartIP(start_ip).
@@ -510,7 +546,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 				for _, d2 := range decisionsChunk {
 					_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
 					if err != nil {
-						return []string{}, fmt.Errorf("error while updating decisions: %s", err.Error())
+						return []string{}, fmt.Errorf("error while updating decisions: %s", err)
 					}
 				}
 			}
@@ -536,7 +572,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		for _, d2 := range decisionsChunk {
 			_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
 			if err != nil {
-				return []string{}, fmt.Errorf("error while updating decisions: %s", err.Error())
+				return []string{}, fmt.Errorf("error while updating decisions: %s", err)
 			}
 		}
 	}
@@ -544,7 +580,8 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 	return ret, nil
 }
 
-func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]string) (*ent.AlertQuery, error) {
+func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, error) {
+	predicates := make([]predicate.Alert, 0)
 	var err error
 	var start_ip, start_sfx, end_ip, end_sfx int64
 	var hasActiveDecision bool
@@ -556,7 +593,7 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 	/*the simulated filter is a bit different : if it's not present *or* set to false, specifically exclude records with simulated to true */
 	if v, ok := filter["simulated"]; ok {
 		if v[0] == "false" {
-			alerts = alerts.Where(alert.SimulatedEQ(false))
+			predicates = append(predicates, alert.SimulatedEQ(false))
 		}
 	}
 
@@ -578,11 +615,11 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 			} else if strings.ToLower(scope) == "range" {
 				scope = types.Range
 			}
-			alerts = alerts.Where(alert.SourceScopeEQ(scope))
+			predicates = append(predicates, alert.SourceScopeEQ(scope))
 		case "value":
-			alerts = alerts.Where(alert.SourceValueEQ(value[0]))
+			predicates = append(predicates, alert.SourceValueEQ(value[0]))
 		case "scenario":
-			alerts = alerts.Where(alert.HasDecisionsWith(decision.ScenarioEQ(value[0])))
+			predicates = append(predicates, alert.HasDecisionsWith(decision.ScenarioEQ(value[0])))
 		case "ip", "range":
 			ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(value[0])
 			if err != nil {
@@ -597,7 +634,7 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 			if since.IsZero() {
 				return nil, fmt.Errorf("Empty time now() - %s", since.String())
 			}
-			alerts = alerts.Where(alert.StartedAtGTE(since))
+			predicates = append(predicates, alert.StartedAtGTE(since))
 		case "created_before":
 			duration, err := types.ParseDuration(value[0])
 			if err != nil {
@@ -607,7 +644,7 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 			if since.IsZero() {
 				return nil, fmt.Errorf("Empty time now() - %s", since.String())
 			}
-			alerts = alerts.Where(alert.CreatedAtLTE(since))
+			predicates = append(predicates, alert.CreatedAtLTE(since))
 		case "until":
 			duration, err := types.ParseDuration(value[0])
 			if err != nil {
@@ -617,14 +654,14 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 			if until.IsZero() {
 				return nil, fmt.Errorf("Empty time now() - %s", until.String())
 			}
-			alerts = alerts.Where(alert.StartedAtLTE(until))
+			predicates = append(predicates, alert.StartedAtLTE(until))
 		case "decision_type":
-			alerts = alerts.Where(alert.HasDecisionsWith(decision.TypeEQ(value[0])))
+			predicates = append(predicates, alert.HasDecisionsWith(decision.TypeEQ(value[0])))
 		case "origin":
-			alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginEQ(value[0])))
+			predicates = append(predicates, alert.HasDecisionsWith(decision.OriginEQ(value[0])))
 		case "include_capi": //allows to exclude one or more specific origins
 			if value[0] == "false" {
-				alerts = alerts.Where(alert.HasDecisionsWith(decision.Or(decision.OriginEQ("crowdsec"), decision.OriginEQ("cscli"))))
+				predicates = append(predicates, alert.HasDecisionsWith(decision.Or(decision.OriginEQ("crowdsec"), decision.OriginEQ("cscli"))))
 			} else if value[0] != "true" {
 				log.Errorf("Invalid bool '%s' for include_capi", value[0])
 			}
@@ -633,9 +670,9 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 				return nil, errors.Wrapf(ParseType, "'%s' is not a boolean: %s", value[0], err)
 			}
 			if hasActiveDecision {
-				alerts = alerts.Where(alert.HasDecisionsWith(decision.UntilGTE(time.Now().UTC())))
+				predicates = append(predicates, alert.HasDecisionsWith(decision.UntilGTE(time.Now().UTC())))
 			} else {
-				alerts = alerts.Where(alert.Not(alert.HasDecisions()))
+				predicates = append(predicates, alert.Not(alert.HasDecisions()))
 			}
 		case "limit":
 			continue
@@ -650,13 +687,13 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 
 	if ip_sz == 4 {
 		if contains { /*decision contains {start_ip,end_ip}*/
-			alerts = alerts.Where(alert.And(
+			predicates = append(predicates, alert.And(
 				alert.HasDecisionsWith(decision.StartIPLTE(start_ip)),
 				alert.HasDecisionsWith(decision.EndIPGTE(end_ip)),
 				alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
 			))
 		} else { /*decision is contained within {start_ip,end_ip}*/
-			alerts = alerts.Where(alert.And(
+			predicates = append(predicates, alert.And(
 				alert.HasDecisionsWith(decision.StartIPGTE(start_ip)),
 				alert.HasDecisionsWith(decision.EndIPLTE(end_ip)),
 				alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
@@ -665,7 +702,7 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 	} else if ip_sz == 16 {
 
 		if contains { /*decision contains {start_ip,end_ip}*/
-			alerts = alerts.Where(alert.And(
+			predicates = append(predicates, alert.And(
 				//matching addr size
 				alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
 				alert.Or(
@@ -689,7 +726,7 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 				),
 			))
 		} else { /*decision is contained within {start_ip,end_ip}*/
-			alerts = alerts.Where(alert.And(
+			predicates = append(predicates, alert.And(
 				//matching addr size
 				alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
 				alert.Or(
@@ -716,7 +753,46 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 	} else if ip_sz != 0 {
 		return nil, errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
 	}
-	return alerts, nil
+	return predicates, nil
+}
+func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]string) (*ent.AlertQuery, error) {
+	preds, err := AlertPredicatesFromFilter(filter)
+	if err != nil {
+		return nil, err
+	}
+	return alerts.Where(preds...), nil
+}
+
+func (c *Client) AlertsCountPerScenario(filters map[string][]string) (map[string]int, error) {
+
+	var res []struct {
+		Scenario string
+		Count    int
+	}
+
+	ctx := context.Background()
+
+	query := c.Ent.Alert.Query()
+
+	query, err := BuildAlertRequestFromFilter(query, filters)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build alert request")
+	}
+
+	err = query.GroupBy(alert.FieldScenario).Aggregate(ent.Count()).Scan(ctx, &res)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to count alerts per scenario")
+	}
+
+	counts := make(map[string]int)
+
+	for _, r := range res {
+		counts[r.Scenario] = r.Count
+	}
+
+	return counts, nil
 }
 
 func (c *Client) TotalAlerts() (int, error) {
@@ -796,13 +872,34 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 func (c *Client) DeleteAlertGraphBatch(alertItems []*ent.Alert) (int, error) {
 	idList := make([]int, 0)
 	for _, alert := range alertItems {
-		idList = append(idList, int(alert.ID))
+		idList = append(idList, alert.ID)
+	}
+
+	_, err := c.Ent.Event.Delete().
+		Where(event.HasOwnerWith(alert.IDIn(idList...))).Exec(c.CTX)
+	if err != nil {
+		c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
+		return 0, errors.Wrapf(DeleteFail, "alert graph delete batch events")
+	}
+
+	_, err = c.Ent.Meta.Delete().
+		Where(meta.HasOwnerWith(alert.IDIn(idList...))).Exec(c.CTX)
+	if err != nil {
+		c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
+		return 0, errors.Wrapf(DeleteFail, "alert graph delete batch meta")
+	}
+
+	_, err = c.Ent.Decision.Delete().
+		Where(decision.HasOwnerWith(alert.IDIn(idList...))).Exec(c.CTX)
+	if err != nil {
+		c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
+		return 0, errors.Wrapf(DeleteFail, "alert graph delete batch decisions")
 	}
 
 	deleted, err := c.Ent.Alert.Delete().
 		Where(alert.IDIn(idList...)).Exec(c.CTX)
 	if err != nil {
-		c.Log.Warningf("DeleteAlertGraph : %s", err)
+		c.Log.Warningf("DeleteAlertGraphBatch : %s", err)
 		return deleted, errors.Wrapf(DeleteFail, "alert graph delete batch")
 	}
 
@@ -846,23 +943,21 @@ func (c *Client) DeleteAlertGraph(alertItem *ent.Alert) error {
 	return nil
 }
 
-func (c *Client) DeleteAlertWithFilter(filter map[string][]string) (int, error) {
-	var err error
-
-	// Get all the alerts that match the filter
-	alertsToDelete, err := c.QueryAlertWithFilter(filter)
+func (c *Client) DeleteAlertByID(id int) error {
+	alertItem, err := c.Ent.Alert.Query().Where(alert.IDEQ(id)).Only(c.CTX)
 	if err != nil {
-		return 0, errors.Wrap(DeleteFail, "alert query failed")
+		return err
 	}
 
-	for _, alertItem := range alertsToDelete {
-		err = c.DeleteAlertGraph(alertItem)
-		if err != nil {
-			c.Log.Warningf("DeleteAlertWithFilter : %s", err)
-			return 0, errors.Wrapf(DeleteFail, "event with alert ID '%d'", alertItem.ID)
-		}
+	return c.DeleteAlertGraph(alertItem)
+}
+
+func (c *Client) DeleteAlertWithFilter(filter map[string][]string) (int, error) {
+	preds, err := AlertPredicatesFromFilter(filter)
+	if err != nil {
+		return 0, err
 	}
-	return len(alertsToDelete), nil
+	return c.Ent.Alert.Delete().Where(preds...).Exec(c.CTX)
 }
 
 func (c *Client) FlushOrphans() {
@@ -888,6 +983,77 @@ func (c *Client) FlushOrphans() {
 	if events_count > 0 {
 		c.Log.Infof("%d deleted orphan decisions", events_count)
 	}
+}
+
+func (c *Client) FlushAgentsAndBouncers(agentsCfg *csconfig.AuthGCCfg, bouncersCfg *csconfig.AuthGCCfg) error {
+	log.Debug("starting FlushAgentsAndBouncers")
+	if bouncersCfg != nil {
+		if bouncersCfg.ApiDuration != nil {
+			log.Debug("trying to delete old bouncers from api")
+			deletionCount, err := c.Ent.Bouncer.Delete().Where(
+				bouncer.LastPullLTE(time.Now().UTC().Add(-*bouncersCfg.ApiDuration)),
+			).Where(
+				bouncer.AuthTypeEQ(types.ApiKeyAuthType),
+			).Exec(c.CTX)
+			if err != nil {
+				c.Log.Errorf("while auto-deleting expired bouncers (api key) : %s", err)
+			} else if deletionCount > 0 {
+				c.Log.Infof("deleted %d expired bouncers (api auth)", deletionCount)
+			}
+		}
+		if bouncersCfg.CertDuration != nil {
+			log.Debug("trying to delete old bouncers from cert")
+
+			deletionCount, err := c.Ent.Bouncer.Delete().Where(
+				bouncer.LastPullLTE(time.Now().UTC().Add(-*bouncersCfg.CertDuration)),
+			).Where(
+				bouncer.AuthTypeEQ(types.TlsAuthType),
+			).Exec(c.CTX)
+			if err != nil {
+				c.Log.Errorf("while auto-deleting expired bouncers (api key) : %s", err)
+			} else if deletionCount > 0 {
+				c.Log.Infof("deleted %d expired bouncers (api auth)", deletionCount)
+			}
+		}
+	}
+
+	if agentsCfg != nil {
+		if agentsCfg.CertDuration != nil {
+			log.Debug("trying to delete old agents from cert")
+
+			deletionCount, err := c.Ent.Machine.Delete().Where(
+				machine.LastHeartbeatLTE(time.Now().UTC().Add(-*agentsCfg.CertDuration)),
+			).Where(
+				machine.Not(machine.HasAlerts()),
+			).Where(
+				machine.AuthTypeEQ(types.TlsAuthType),
+			).Exec(c.CTX)
+			log.Debugf("deleted %d entries", deletionCount)
+			if err != nil {
+				c.Log.Errorf("while auto-deleting expired machine (cert) : %s", err)
+			} else if deletionCount > 0 {
+				c.Log.Infof("deleted %d expired machine (cert auth)", deletionCount)
+			}
+		}
+		if agentsCfg.LoginPasswordDuration != nil {
+			log.Debug("trying to delete old agents from password")
+
+			deletionCount, err := c.Ent.Machine.Delete().Where(
+				machine.LastHeartbeatLTE(time.Now().UTC().Add(-*agentsCfg.LoginPasswordDuration)),
+			).Where(
+				machine.Not(machine.HasAlerts()),
+			).Where(
+				machine.AuthTypeEQ(types.PasswordAuthType),
+			).Exec(c.CTX)
+			log.Debugf("deleted %d entries", deletionCount)
+			if err != nil {
+				c.Log.Errorf("while auto-deleting expired machine (password) : %s", err)
+			} else if deletionCount > 0 {
+				c.Log.Infof("deleted %d expired machine (password auth)", deletionCount)
+			}
+		}
+	}
+	return nil
 }
 
 func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {

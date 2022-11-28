@@ -12,7 +12,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
+var baseLogger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 	Name:       "email-plugin",
 	Level:      hclog.LevelFromString("INFO"),
 	Output:     os.Stderr,
@@ -27,8 +27,9 @@ var AuthStringToType map[string]mail.AuthType = map[string]mail.AuthType{
 }
 
 var EncryptionStringToType map[string]mail.Encryption = map[string]mail.Encryption{
-	"ssltls": mail.EncryptionSTARTTLS,
-	"none":   mail.EncryptionNone,
+	"ssltls":   mail.EncryptionSSLTLS,
+	"starttls": mail.EncryptionSTARTTLS,
+	"none":     mail.EncryptionNone,
 }
 
 type PluginConfig struct {
@@ -45,6 +46,7 @@ type PluginConfig struct {
 	EmailSubject   string   `yaml:"email_subject"`
 	EncryptionType string   `yaml:"encryption_type"`
 	AuthType       string   `yaml:"auth_type"`
+	HeloHost       string   `yaml:"helo_host"`
 }
 
 type EmailPlugin struct {
@@ -59,6 +61,7 @@ func (n *EmailPlugin) Configure(ctx context.Context, config *protobufs.Config) (
 		EncryptionType: "ssltls",
 		AuthType:       "login",
 		SenderEmail:    "crowdsec@crowdsec.local",
+		HeloHost:	"localhost",
 	}
 
 	if err := yaml.Unmarshal(config.Config, &d); err != nil {
@@ -78,6 +81,7 @@ func (n *EmailPlugin) Configure(ctx context.Context, config *protobufs.Config) (
 	}
 
 	n.ConfigByName[d.Name] = d
+	baseLogger.Debug(fmt.Sprintf("Email plugin '%s' use SMTP host '%s:%d'", d.Name, d.SMTPHost, d.SMTPPort))
 	return &protobufs.Empty{}, nil
 }
 
@@ -87,11 +91,12 @@ func (n *EmailPlugin) Notify(ctx context.Context, notification *protobufs.Notifi
 	}
 	cfg := n.ConfigByName[notification.Name]
 
+	logger := baseLogger.Named(cfg.Name)
+
 	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
 		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
 	}
 
-	logger = logger.Named(cfg.Name)
 	logger.Debug("got notification")
 
 	server := mail.NewSMTPClient()
@@ -101,6 +106,7 @@ func (n *EmailPlugin) Notify(ctx context.Context, notification *protobufs.Notifi
 	server.Password = cfg.SMTPPassword
 	server.Encryption = EncryptionStringToType[cfg.EncryptionType]
 	server.Authentication = AuthStringToType[cfg.AuthType]
+	server.Helo = cfg.HeloHost
 
 	logger.Debug("making smtp connection")
 	smtpClient, err := server.Connect()
@@ -138,6 +144,6 @@ func main() {
 			},
 		},
 		GRPCServer: plugin.DefaultGRPCServer,
-		Logger:     logger,
+		Logger:     baseLogger,
 	})
 }

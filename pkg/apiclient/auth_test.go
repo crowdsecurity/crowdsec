@@ -29,7 +29,7 @@ func TestApiAuth(t *testing.T) {
 	log.Printf("URL is %s", urlx)
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
+		t.Fatalf("parsing api url: %s", apiURL)
 	}
 
 	defer teardown()
@@ -41,7 +41,7 @@ func TestApiAuth(t *testing.T) {
 
 	newcli, err := NewDefaultClient(apiURL, "v1", "toto", auth.Client())
 	if err != nil {
-		log.Fatalf("new api client: %s", err)
+		t.Fatalf("new api client: %s", err)
 	}
 
 	alert := DecisionsListOpts{IPEquals: new(string)}
@@ -60,7 +60,7 @@ func TestApiAuth(t *testing.T) {
 
 	newcli, err = NewDefaultClient(apiURL, "v1", "toto", auth.Client())
 	if err != nil {
-		log.Fatalf("new api client: %s", err.Error())
+		t.Fatalf("new api client: %s", err)
 	}
 
 	_, resp, err = newcli.Decisions.List(context.Background(), alert)
@@ -74,10 +74,10 @@ func TestApiAuth(t *testing.T) {
 	auth = &APIKeyTransport{}
 	newcli, err = NewDefaultClient(apiURL, "v1", "toto", auth.Client())
 	if err != nil {
-		log.Fatalf("new api client: %s", err.Error())
+		t.Fatalf("new api client: %s", err)
 	}
 
-	_, resp, err = newcli.Decisions.List(context.Background(), alert)
+	_, _, err = newcli.Decisions.List(context.Background(), alert)
 	require.Error(t, err)
 
 	log.Infof("--> %s", err)

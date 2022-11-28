@@ -14,12 +14,14 @@ import (
 
 	"github.com/c-robinson/iplib"
 
+	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 )
 
 var dataFile map[string][]string
 var dataFileRegex map[string][]*regexp.Regexp
+var dbClient *database.Client
 
 func Atof(x string) float64 {
 	log.Debugf("debug atof %s", x)
@@ -40,25 +42,32 @@ func Lower(s string) string {
 
 func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 	var ExprLib = map[string]interface{}{
-		"Atof":                 Atof,
-		"JsonExtract":          JsonExtract,
-		"JsonExtractUnescape":  JsonExtractUnescape,
-		"JsonExtractLib":       JsonExtractLib,
-		"File":                 File,
-		"RegexpInFile":         RegexpInFile,
-		"Upper":                Upper,
-		"Lower":                Lower,
-		"IpInRange":            IpInRange,
-		"TimeNow":              TimeNow,
-		"ParseUri":             ParseUri,
-		"PathUnescape":         PathUnescape,
-		"QueryUnescape":        QueryUnescape,
-		"PathEscape":           PathEscape,
-		"QueryEscape":          QueryEscape,
-		"XMLGetAttributeValue": XMLGetAttributeValue,
-		"XMLGetNodeValue":      XMLGetNodeValue,
-		"IpToRange":            IpToRange,
-		"IsIPV6":               IsIPV6,
+		"Atof":                   Atof,
+		"JsonExtract":            JsonExtract,
+		"JsonExtractUnescape":    JsonExtractUnescape,
+		"JsonExtractLib":         JsonExtractLib,
+		"JsonExtractSlice":       JsonExtractSlice,
+		"JsonExtractObject":      JsonExtractObject,
+		"ToJsonString":           ToJson,
+		"File":                   File,
+		"RegexpInFile":           RegexpInFile,
+		"Upper":                  Upper,
+		"Lower":                  Lower,
+		"IpInRange":              IpInRange,
+		"TimeNow":                TimeNow,
+		"ParseUri":               ParseUri,
+		"PathUnescape":           PathUnescape,
+		"QueryUnescape":          QueryUnescape,
+		"PathEscape":             PathEscape,
+		"QueryEscape":            QueryEscape,
+		"XMLGetAttributeValue":   XMLGetAttributeValue,
+		"XMLGetNodeValue":        XMLGetNodeValue,
+		"IpToRange":              IpToRange,
+		"IsIPV6":                 IsIPV6,
+		"LookupHost":             LookupHost,
+		"GetDecisionsCount":      GetDecisionsCount,
+		"GetDecisionsSinceCount": GetDecisionsSinceCount,
+		"Sprintf":                fmt.Sprintf,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
@@ -66,9 +75,10 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 	return ExprLib
 }
 
-func Init() error {
+func Init(databaseClient *database.Client) error {
 	dataFile = make(map[string][]string)
 	dataFileRegex = make(map[string][]*regexp.Regexp)
+	dbClient = databaseClient
 	return nil
 }
 
@@ -238,4 +248,45 @@ func ParseUri(uri string) map[string][]string {
 func KeyExists(key string, dict map[string]interface{}) bool {
 	_, ok := dict[key]
 	return ok
+}
+
+func GetDecisionsCount(value string) int {
+	if dbClient == nil {
+		log.Error("No database config to call GetDecisionsCount()")
+		return 0
+	}
+	count, err := dbClient.CountDecisionsByValue(value)
+	if err != nil {
+		log.Errorf("Failed to get decisions count from value '%s'", value)
+		return 0
+	}
+	return count
+}
+
+func GetDecisionsSinceCount(value string, since string) int {
+	if dbClient == nil {
+		log.Error("No database config to call GetDecisionsCount()")
+		return 0
+	}
+	sinceDuration, err := time.ParseDuration(since)
+	if err != nil {
+		log.Errorf("Failed to parse since parameter '%s' : %s", since, err)
+		return 0
+	}
+	sinceTime := time.Now().UTC().Add(-sinceDuration)
+	count, err := dbClient.CountDecisionsSinceByValue(value, sinceTime)
+	if err != nil {
+		log.Errorf("Failed to get decisions count from value '%s'", value)
+		return 0
+	}
+	return count
+}
+
+func LookupHost(value string) []string {
+	addresses , err := net.LookupHost(value)
+	if err != nil {
+		log.Errorf("Failed to lookup host '%s' : %s", value, err)
+		return []string{} 
+	}
+	return addresses
 }

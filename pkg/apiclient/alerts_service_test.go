@@ -399,7 +399,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 	}
 
 	//fail
-	_, resp, err = client.Alerts.GetByID(context.Background(), 2)
+	_, _, err = client.Alerts.GetByID(context.Background(), 2)
 	assert.Contains(t, fmt.Sprintf("%s", err), "API error: object not found")
 
 }
@@ -484,7 +484,7 @@ func TestAlertsDeleteAsMachine(t *testing.T) {
 	alerts, resp, err := client.Alerts.Delete(context.Background(), alert)
 	require.NoError(t, err)
 
-	expected := &models.DeleteAlertsResponse{""}
+	expected := &models.DeleteAlertsResponse{NbDeleted: ""}
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
 	}

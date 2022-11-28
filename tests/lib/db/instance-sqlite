@@ -2,7 +2,7 @@
 
 set -eu
 script_name=$0
-DB_BACKEND=$(echo $script_name | cut -d- -f2)
+DB_BACKEND=$(echo "${script_name}" | cut -d- -f2)
 export DB_BACKEND
 
 die() {
@@ -11,7 +11,7 @@ die() {
 }
 
 about() {
-    die "usage: $script_name [ config-yaml | setup | dump <backup_file> | restore <backup_file> ]"
+    die "usage: ${script_name} [ config-yaml | setup | dump <backup_file> | restore <backup_file> ]"
 }
 
 #shellcheck disable=SC1007
@@ -21,7 +21,6 @@ cd "${THIS_DIR}"/../../
 . ./.environment.sh
 
 exec_sql() {
-    cmd="${1?Missing required sql command}"
     sqlite3 "${DB_FILE}" "$@"
 }
 
@@ -32,38 +31,41 @@ setup() {
 dump() {
     backup_file="${1?Missing file to backup database to}"
     # dirty fast cp. nothing should be accessing it right now, anyway.
-    [ -f "${DB_FILE}" ] || die "missing file ${DB_FILE}"
-    cp "${DB_FILE}" "$backup_file"
+    [[ -f "${DB_FILE}" ]] || die "missing file ${DB_FILE}"
+    cp "${DB_FILE}" "${backup_file}"
 }
 
 restore() {
     backup_file="${1?missing file to restore database from}"
-    [ -f "$backup_file" ] || die "Backup file $backup_file doesn't exist"
-    cp "$backup_file" "${DB_FILE}"
+    [[ -f "${backup_file}" ]] || die "Backup file ${backup_file} doesn't exist"
+    cp "${backup_file}" "${DB_FILE}"
 }
 
 # you have not removed set -u above, have you?
 
-[ -z "${CONFIG_YAML-}" ] && die "\$CONFIG_YAML must be defined."
+[[ -z "${CONFIG_YAML-}" ]] && die "\$CONFIG_YAML must be defined."
 
 # ---------------------------
 # In most cases this is called with setup argument, and it shouldn't fail for missing config file.
-if [ -f "${CONFIG_YAML}" ] ; then
-    DATA_DIR=$(yq e '.config_paths.data_dir' - <"${CONFIG_YAML}")
+if [[ -f "${CONFIG_YAML}" ]]; then
+    DATA_DIR=$(yq e '.config_paths.data_dir' "${CONFIG_YAML}")
     DB_FILE="${DATA_DIR}/crowdsec.db"
+    export DB_FILE
 fi
 
 config_yaml() {
     yq e '
         .db_config.type=strenv(DB_BACKEND) |
-        .db_config.db_path="${DB_FILE}"
+            .db_config.db_path=strenv(DB_FILE) |
+            .db_config.use_wal=true
     ' -i "${CONFIG_YAML}"
 }
 
-[ $# -lt 1 ] && about
+[[ $# -lt 1 ]] && about
 
 case "$1" in
     config-yaml)
+        config_yaml
         ;;
     setup)
         ;;

@@ -10,16 +10,16 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/fatih/color"
+	"github.com/go-openapi/strfmt"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/enescakir/emoji"
-	"github.com/go-openapi/strfmt"
-	"github.com/olekukonko/tablewriter"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
 )
 
 func NewConsoleCmd() *cobra.Command {
@@ -88,7 +88,7 @@ After running this command your will need to validate the enrollment in the weba
 
 			scenarios, err := cwhub.GetInstalledScenariosAsString()
 			if err != nil {
-				log.Fatalf("failed to get scenarios : %s", err.Error())
+				log.Fatalf("failed to get scenarios : %s", err)
 			}
 
 			if len(scenarios) == 0 {
@@ -108,7 +108,7 @@ After running this command your will need to validate the enrollment in the weba
 				log.Fatalf("Could not enroll instance: %s", err)
 			}
 			if resp.Response.StatusCode == 200 && !overwrite {
-				log.Warningf("Instance already enrolled. You can use '--overwrite' to force enroll")
+				log.Warning("Instance already enrolled. You can use '--overwrite' to force enroll")
 				return
 			}
 
@@ -194,34 +194,7 @@ Disable given information push to the central API.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			switch csConfig.Cscli.Output {
 			case "human":
-				table := tablewriter.NewWriter(os.Stdout)
-
-				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-				table.SetAlignment(tablewriter.ALIGN_LEFT)
-				table.SetHeader([]string{"Option Name", "Activated", "Description"})
-				for _, option := range csconfig.CONSOLE_CONFIGS {
-					switch option {
-					case csconfig.SEND_CUSTOM_SCENARIOS:
-						activated := string(emoji.CrossMark)
-						if *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios {
-							activated = string(emoji.CheckMarkButton)
-						}
-						table.Append([]string{option, activated, "Send alerts from custom scenarios to the console"})
-					case csconfig.SEND_MANUAL_SCENARIOS:
-						activated := string(emoji.CrossMark)
-						if *csConfig.API.Server.ConsoleConfig.ShareManualDecisions {
-							activated = string(emoji.CheckMarkButton)
-						}
-						table.Append([]string{option, activated, "Send manual decisions to the console"})
-					case csconfig.SEND_TAINTED_SCENARIOS:
-						activated := string(emoji.CrossMark)
-						if *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios {
-							activated = string(emoji.CheckMarkButton)
-						}
-						table.Append([]string{option, activated, "Send alerts from tainted scenarios to the console"})
-					}
-				}
-				table.Render()
+				cmdConsoleStatusTable(color.Output, *csConfig)
 			case "json":
 				data, err := json.MarshalIndent(csConfig.API.Server.ConsoleConfig, "", "  ")
 				if err != nil {

@@ -1,6 +1,7 @@
 [submodule "tests/lib/bats-core"]
 	path = tests/lib/bats-core
 	url = https://github.com/crowdsecurity/bats-core.git
+        branch = v1.7.0
 [submodule "tests/lib/bats-file"]
 	path = tests/lib/bats-file
 	url = https://github.com/crowdsecurity/bats-file.git

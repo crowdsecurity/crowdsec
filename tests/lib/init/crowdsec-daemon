@@ -9,7 +9,7 @@ die() {
 }
 
 about() {
-    die "usage: $script_name [ start | stop ]"
+    die "usage: ${script_name} [ start | stop ]"
 }
 
 #shellcheck disable=SC1007
@@ -20,32 +20,40 @@ cd "${THIS_DIR}"/../../
 
 # you have not removed set -u above, have you?
 
-[ -z "${CROWDSEC-}" ] && die "\$CROWDSEC must be defined."
-[ -z "${LOG_DIR-}" ] && die "\$LOG_DIR must be defined."
-[ -z "${PID_DIR-}" ] && die "\$PID_DIR must be defined."
+[[ -z "${CROWDSEC-}" ]] && die "\$CROWDSEC must be defined."
+[[ -z "${LOG_DIR-}" ]] && die "\$LOG_DIR must be defined."
+[[ -z "${PID_DIR-}" ]] && die "\$PID_DIR must be defined."
 
-if [ ! -f "${CROWDSEC}" ]; then
+if [[ ! -f "${CROWDSEC}" ]]; then
     die "${CROWDSEC} is missing. Please build (with 'make bats-build') or install it."
 fi
 
 DAEMON_PID=${PID_DIR}/crowdsec.pid
 
 start() {
-    OUT_FILE="${LOG_DIR}/crowdsec.out" \
-            DAEMON_PID="${DAEMON_PID}" \
-            "${TEST_DIR}/run-as-daemon" "${CROWDSEC}"
-    ./lib/util/wait-for-port 6060
+    daemonize \
+        -p "${DAEMON_PID}" \
+        -e "${LOG_DIR}/crowdsec.err" \
+        -o "${LOG_DIR}/crowdsec.out" \
+        "${CROWDSEC}"
+    ./bin/wait-for-port 6060
+}
+
+start_pid() {
+    start
+    cat "$DAEMON_PID"
 }
 
 stop() {
-    if [ -f "${DAEMON_PID}" ]; then
+    if [[ -f "${DAEMON_PID}" ]]; then
        # terminate quickly with extreme prejudice, all the application data will be
        # thrown away anyway. also terminate the child processes (notification plugin).
        PGID="$(ps -o pgid= -p "$(cat "${DAEMON_PID}")" | tr -d ' ')"
        # ps above should work on linux, freebsd, busybox..
-       if [ -n "${PGID}" ]; then
+       if [[ -n "${PGID}" ]]; then
            kill -- "-${PGID}"
        fi
+
        rm -f -- "${DAEMON_PID}"
     fi
 }
@@ -53,11 +61,14 @@ stop() {
 
 # ---------------------------
 
-[ $# -lt 1 ] && about
+[[ $# -lt 1 ]] && about
 
 case "$1" in
     start)
         start
+        ;;
+    start-pid)
+        start_pid
         ;;
     stop)
         stop

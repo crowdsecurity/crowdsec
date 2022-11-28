@@ -9,7 +9,6 @@ import (
 	//"log"
 	"github.com/crowdsecurity/crowdsec/pkg/time/rate"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/goombaio/namegenerator"
 	"gopkg.in/tomb.v2"
 
 	//rate "time/rate"
@@ -25,7 +24,7 @@ const (
 	TIMEMACHINE
 )
 
-//Leaky represents one instance of a bucket
+// Leaky represents one instance of a bucket
 type Leaky struct {
 	Name string
 	Mode int //LIVE or TIMEMACHINE
@@ -35,7 +34,7 @@ type Leaky struct {
 	//Queue is used to held the cache of objects in the bucket, it is used to know 'how many' objects we have in buffer.
 	Queue *Queue
 	//Leaky buckets are receiving message through a chan
-	In chan types.Event `json:"-"`
+	In chan *types.Event `json:"-"`
 	//Leaky buckets are pushing their overflows through a chan
 	Out chan *Queue `json:"-"`
 	// shared for all buckets (the idea is to kill this afterwards)
@@ -105,10 +104,10 @@ var BucketsUnderflow = prometheus.NewCounterVec(
 	[]string{"name"},
 )
 
-var BucketsInstanciation = prometheus.NewCounterVec(
+var BucketsInstantiation = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_bucket_created_total",
-		Help: "Total buckets were instanciated.",
+		Help: "Total buckets were instantiated.",
 	},
 	[]string{"name"},
 )
@@ -152,13 +151,13 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 	} else {
 		limiter = rate.NewLimiter(rate.Every(bucketFactory.leakspeed), bucketFactory.Capacity)
 	}
-	BucketsInstanciation.With(prometheus.Labels{"name": bucketFactory.Name}).Inc()
+	BucketsInstantiation.With(prometheus.Labels{"name": bucketFactory.Name}).Inc()
 
 	//create the leaky bucket per se
 	l := &Leaky{
 		Name:            bucketFactory.Name,
 		Limiter:         limiter,
-		Uuid:            namegenerator.NewNameGenerator(time.Now().UTC().UnixNano()).Generate(),
+		Uuid:            seed.Generate(),
 		Queue:           NewQueue(Qsize),
 		CacheSize:       bucketFactory.CacheSize,
 		Out:             make(chan *Queue, 1),
@@ -196,7 +195,9 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 func LeakRoutine(leaky *Leaky) error {
 
 	var (
-		durationTicker <-chan time.Time = make(<-chan time.Time)
+		durationTickerChan <-chan time.Time = make(<-chan time.Time)
+		durationTicker     *time.Ticker
+		firstEvent         bool = true
 	)
 
 	defer types.CatchPanic(fmt.Sprintf("crowdsec/LeakRoutine/%s", leaky.Name))
@@ -227,7 +228,7 @@ func LeakRoutine(leaky *Leaky) error {
 		case msg := <-leaky.In:
 			/*the msg var use is confusing and is redeclared in a different type :/*/
 			for _, processor := range leaky.BucketConfig.processors {
-				msg := processor.OnBucketPour(leaky.BucketConfig)(msg, leaky)
+				msg = processor.OnBucketPour(leaky.BucketConfig)(*msg, leaky)
 				// if &msg == nil we stop processing
 				if msg == nil {
 					goto End
@@ -238,11 +239,22 @@ func LeakRoutine(leaky *Leaky) error {
 			}
 			BucketsPour.With(prometheus.Labels{"name": leaky.Name, "source": msg.Line.Src, "type": msg.Line.Module}).Inc()
 
-			leaky.Pour(leaky, msg) // glue for now
+			leaky.Pour(leaky, *msg) // glue for now
 			//Clear cache on behalf of pour
-			tmp := time.NewTicker(leaky.Duration)
-			durationTicker = tmp.C
-			defer tmp.Stop()
+
+			// if durationTicker isn't initialized, then we're pouring our first event
+
+			// reinitialize the durationTicker when it's not a counter bucket
+			if !leaky.timedOverflow || firstEvent {
+				if firstEvent {
+					durationTicker = time.NewTicker(leaky.Duration)
+					durationTickerChan = durationTicker.C
+					defer durationTicker.Stop()
+				} else {
+					durationTicker.Reset(leaky.Duration)
+				}
+			}
+			firstEvent = false
 		/*we overflowed*/
 		case ofw := <-leaky.Out:
 			leaky.overflow(ofw)
@@ -256,7 +268,7 @@ func LeakRoutine(leaky *Leaky) error {
 			leaky.logger.Tracef("Returning from leaky routine.")
 			return nil
 		/*we underflow or reach bucket deadline (timers)*/
-		case <-durationTicker:
+		case <-durationTickerChan:
 			var (
 				alert types.RuntimeAlert
 				err   error
@@ -343,7 +355,7 @@ func (leaky *Leaky) overflow(ofw *Queue) {
 		}
 	}
 	if leaky.logger.Level >= log.TraceLevel {
-		leaky.logger.Tracef("Overflow event: %s", spew.Sdump(types.RuntimeAlert(alert)))
+		leaky.logger.Tracef("Overflow event: %s", spew.Sdump(alert))
 	}
 	mt, _ := leaky.Ovflw_ts.MarshalText()
 	leaky.logger.Tracef("overflow time : %s", mt)

@@ -1,6 +1,8 @@
 package leakybucket
 
 import (
+	"sync"
+
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
 
@@ -11,12 +13,18 @@ import (
 // ResetFilter allows to kill the bucket (without overflowing), if a particular condition is met.
 // An example would be a scenario to detect aggressive crawlers that *do not* fetch any static resources :
 // type : leaky
-// filter: filter: "evt.Meta.log_type == 'http_access-log'
+// filter: "evt.Meta.log_type == 'http_access-log'
 // reset_filter: evt.Parsed.request endswith '.css'
 // ....
 // Thus, if the bucket receives a request that matches fetching a static resource (here css), it cancels itself
 
 type CancelOnFilter struct {
+	CancelOnFilter      *vm.Program
+	CancelOnFilterDebug *exprhelpers.ExprDebugger
+}
+
+var cancelExprCacheLock sync.Mutex
+var cancelExprCache map[string]struct {
 	CancelOnFilter      *vm.Program
 	CancelOnFilterDebug *exprhelpers.ExprDebugger
 }
@@ -58,18 +66,44 @@ func (u *CancelOnFilter) OnBucketOverflow(bucketFactory *BucketFactory) func(*Le
 
 func (u *CancelOnFilter) OnBucketInit(bucketFactory *BucketFactory) error {
 	var err error
-
-	u.CancelOnFilter, err = expr.Compile(bucketFactory.CancelOnFilter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
-	if err != nil {
-		bucketFactory.logger.Errorf("reset_filter compile error : %s", err)
-		return err
+	var compiledExpr struct {
+		CancelOnFilter      *vm.Program
+		CancelOnFilterDebug *exprhelpers.ExprDebugger
 	}
-	if bucketFactory.Debug {
-		u.CancelOnFilterDebug, err = exprhelpers.NewDebugger(bucketFactory.CancelOnFilter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+
+	if cancelExprCache == nil {
+		cancelExprCache = make(map[string]struct {
+			CancelOnFilter      *vm.Program
+			CancelOnFilterDebug *exprhelpers.ExprDebugger
+		})
+	}
+
+	cancelExprCacheLock.Lock()
+	if compiled, ok := cancelExprCache[bucketFactory.CancelOnFilter]; ok {
+		cancelExprCacheLock.Unlock()
+		u.CancelOnFilter = compiled.CancelOnFilter
+		u.CancelOnFilterDebug = compiled.CancelOnFilterDebug
+		return nil
+	} else {
+		cancelExprCacheLock.Unlock()
+		//release the lock during compile
+		compiledExpr.CancelOnFilter, err = expr.Compile(bucketFactory.CancelOnFilter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 		if err != nil {
-			bucketFactory.logger.Errorf("reset_filter debug error : %s", err)
+			bucketFactory.logger.Errorf("reset_filter compile error : %s", err)
 			return err
 		}
+		u.CancelOnFilter = compiledExpr.CancelOnFilter
+		if bucketFactory.Debug {
+			compiledExpr.CancelOnFilterDebug, err = exprhelpers.NewDebugger(bucketFactory.CancelOnFilter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+			if err != nil {
+				bucketFactory.logger.Errorf("reset_filter debug error : %s", err)
+				return err
+			}
+			u.CancelOnFilterDebug = compiledExpr.CancelOnFilterDebug
+		}
+		cancelExprCacheLock.Lock()
+		cancelExprCache[bucketFactory.CancelOnFilter] = compiledExpr
+		cancelExprCacheLock.Unlock()
 	}
 	return err
 }

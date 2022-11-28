@@ -11,7 +11,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/Masterminds/sprig"
+	"github.com/Masterminds/sprig/v3"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
@@ -31,9 +31,9 @@ const (
 	CrowdsecPluginKey     string = "CROWDSEC_PLUGIN_KEY"
 )
 
-//The broker is responsible for running the plugins and dispatching events
-//It receives all the events from the main process and stacks them up
-//It is as well notified by the watcher when it needs to deliver events to plugins (based on time or count threshold)
+// The broker is responsible for running the plugins and dispatching events
+// It receives all the events from the main process and stacks them up
+// It is as well notified by the watcher when it needs to deliver events to plugins (based on time or count threshold)
 type PluginBroker struct {
 	PluginChannel                   chan ProfileAlert
 	alertsByPluginName              map[string][]*models.Alert
@@ -96,9 +96,10 @@ func (pb *PluginBroker) Kill() {
 	}
 }
 
-func (pb *PluginBroker) Run(tomb *tomb.Tomb) {
+func (pb *PluginBroker) Run(pluginTomb *tomb.Tomb) {
 	//we get signaled via the channel when notifications need to be delivered to plugin (via the watcher)
-	pb.watcher.Start(tomb)
+	pb.watcher.Start(&tomb.Tomb{})
+loop:
 	for {
 		select {
 		case profileAlert := <-pb.PluginChannel:
@@ -117,13 +118,32 @@ func (pb *PluginBroker) Run(tomb *tomb.Tomb) {
 				}
 			}()
 
-		case <-tomb.Dying():
-			log.Info("killing all plugins")
-			pb.Kill()
-			return
+		case <-pluginTomb.Dying():
+			log.Infof("pluginTomb dying")
+			pb.watcher.tomb.Kill(errors.New("Terminating"))
+			for {
+				select {
+				case <-pb.watcher.tomb.Dead():
+					log.Info("killing all plugins")
+					pb.Kill()
+					break loop
+				case pluginName := <-pb.watcher.PluginEvents:
+					// this can be ran in goroutine, but then locks will be needed
+					pluginMutex.Lock()
+					log.Tracef("going to deliver %d alerts to plugin %s", len(pb.alertsByPluginName[pluginName]), pluginName)
+					tmpAlerts := pb.alertsByPluginName[pluginName]
+					pb.alertsByPluginName[pluginName] = make([]*models.Alert, 0)
+					pluginMutex.Unlock()
+
+					if err := pb.pushNotificationsToPlugin(pluginName, tmpAlerts); err != nil {
+						log.WithField("plugin:", pluginName).Error(err)
+					}
+				}
+			}
 		}
 	}
 }
+
 func (pb *PluginBroker) addProfileAlert(profileAlert ProfileAlert) {
 	for _, pluginName := range pb.profileConfigs[profileAlert.ProfileID].Notifications {
 		if _, ok := pb.pluginConfigByName[pluginName]; !ok {
@@ -234,7 +254,7 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 			if err != nil {
 				return err
 			}
-
+			data = []byte(os.ExpandEnv(string(data)))
 			_, err = pluginClient.Configure(context.Background(), &protobufs.Config{Config: data})
 			if err != nil {
 				return errors.Wrapf(err, "while configuring %s", pc.Name)
@@ -309,9 +329,9 @@ func (pb *PluginBroker) pushNotificationsToPlugin(pluginName string, alerts []*m
 			},
 		)
 		if err == nil {
-			return err
+			return nil
 		}
-		log.WithField("plugin", pluginName).Errorf("%s error, retry num %d", err.Error(), i)
+		log.WithField("plugin", pluginName).Errorf("%s error, retry num %d", err, i)
 		time.Sleep(backoffDuration)
 		backoffDuration *= 2
 	}
@@ -334,7 +354,7 @@ func ParsePluginConfigFile(path string) ([]PluginConfig, error) {
 			if err == io.EOF {
 				break
 			}
-			return []PluginConfig{}, fmt.Errorf("while decoding %s got error %s", path, err.Error())
+			return []PluginConfig{}, fmt.Errorf("while decoding %s got error %s", path, err)
 		}
 		parsedConfigs = append(parsedConfigs, pc)
 	}

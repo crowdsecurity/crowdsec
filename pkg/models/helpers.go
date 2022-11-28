@@ -11,6 +11,13 @@ func (a *Alert) GetScope() string {
 	return *a.Source.Scope
 }
 
+func (a *Alert) GetValue() string {
+	if a.Source.Value == nil {
+		return ""
+	}
+	return *a.Source.Value
+}
+
 func (a *Alert) GetScenario() string {
 	if a.Scenario == nil {
 		return ""
@@ -34,6 +41,15 @@ func (e *Event) GetMeta(key string) string {
 	return ""
 }
 
+func (a *Alert) GetMeta(key string) string {
+	for _, meta := range a.Meta {
+		if meta.Key == key {
+			return meta.Value
+		}
+	}
+	return ""
+}
+
 func (s Source) GetValue() string {
 	if s.Value == nil {
 		return ""
@@ -46,4 +62,15 @@ func (s Source) GetScope() string {
 		return ""
 	}
 	return *s.Scope
+}
+
+func (s Source) GetAsNumberName() string {
+	ret := ""
+	if s.AsNumber != "0" {
+		ret += s.AsNumber
+	}
+	if s.AsName != "" {
+		ret += " " + s.AsName
+	}
+	return ret
 }

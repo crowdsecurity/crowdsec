@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ahmetb/dlog"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/dlog"
 	dockerTypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 
@@ -321,7 +321,7 @@ func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) er
 	t.Kill(nil)
 
 	if !foundOne {
-		return fmt.Errorf("no docker found, can't run one shot acquisition")
+		return fmt.Errorf("no container found named: %s, can't run one shot acquisition", d.Config.ContainerName[0])
 	}
 
 	return nil
@@ -413,7 +413,7 @@ func (d *DockerSource) WatchContainer(monitChan chan *ContainerConfig, deleteCha
 						delete(d.runningContainerState, idx)
 					}
 				} else {
-					log.Errorf("container list err: %s", err.Error())
+					log.Errorf("container list err: %s", err)
 				}
 				continue
 			}

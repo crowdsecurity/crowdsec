@@ -46,7 +46,7 @@ func TestNewClientOk(t *testing.T) {
 	defer teardown()
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
+		t.Fatalf("parsing api url: %s", apiURL)
 	}
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
@@ -56,7 +56,7 @@ func TestNewClientOk(t *testing.T) {
 		VersionPrefix: "v1",
 	})
 	if err != nil {
-		t.Fatalf("new api client: %s", err.Error())
+		t.Fatalf("new api client: %s", err)
 	}
 	/*mock login*/
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
@@ -83,7 +83,7 @@ func TestNewClientKo(t *testing.T) {
 	defer teardown()
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
+		t.Fatalf("parsing api url: %s", apiURL)
 	}
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
@@ -93,7 +93,7 @@ func TestNewClientKo(t *testing.T) {
 		VersionPrefix: "v1",
 	})
 	if err != nil {
-		t.Fatalf("new api client: %s", err.Error())
+		t.Fatalf("new api client: %s", err)
 	}
 	/*mock login*/
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
@@ -116,11 +116,11 @@ func TestNewDefaultClient(t *testing.T) {
 	defer teardown()
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
+		t.Fatalf("parsing api url: %s", apiURL)
 	}
 	client, err := NewDefaultClient(apiURL, "/v1", "", nil)
 	if err != nil {
-		t.Fatalf("new api client: %s", err.Error())
+		t.Fatalf("new api client: %s", err)
 	}
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)

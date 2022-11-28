@@ -1,7 +1,6 @@
 package types
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -29,7 +28,7 @@ func TestDownladFile(t *testing.T) {
 	)
 	err := downloadFile("https://example.com/xx", examplePath)
 	assert.NoError(t, err)
-	content, err := ioutil.ReadFile(examplePath)
+	content, err := os.ReadFile(examplePath)
 	assert.Equal(t, "example content oneoneone", string(content))
 	assert.NoError(t, err)
 	//bad uri

@@ -1,0 +1,12 @@
+#!/bin/sh
+
+die() {
+    echo "$@" >&2
+    exit 1
+}
+
+[ "${PACKAGE_TESTING}" = "true" ] && die "no package available for this distribution"
+[ "${DB_BACKEND}" = "postgres" ] && die "postgres role does not support this distribution"
+[ "${DB_BACKEND}" = "pgx" ] && die "postgres role does not support this distribution"
+[ "${DB_BACKEND}" = "mysql" ] && die "mysql role does not support this distribution"
+exit 0

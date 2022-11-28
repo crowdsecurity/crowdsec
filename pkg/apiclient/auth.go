@@ -118,7 +118,7 @@ func (t *JWTTransport) refreshJwtToken() error {
 	if err != nil {
 		return errors.Wrap(err, "could not encode jwt auth body")
 	}
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s%s/watchers/login", t.URL, t.VersionPrefix), buf)
+	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s%s/watchers/login", t.URL, t.VersionPrefix), buf)
 	if err != nil {
 		return errors.Wrap(err, "could not create request")
 	}
@@ -194,7 +194,7 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		dump, _ := httputil.DumpResponse(resp, true)
 		log.Tracef("resp-jwt: %s (err:%v)", string(dump), err)
 	}
-	if err != nil || resp.StatusCode == 401 {
+	if err != nil || resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusUnauthorized {
 		/*we had an error (network error for example, or 401 because token is refused), reset the token ?*/
 		t.token = ""
 		return resp, errors.Wrapf(err, "performing jwt auth")

@@ -8,13 +8,16 @@
 package main
 
 import (
+	"syscall"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/svc"
+	"golang.org/x/sys/windows/svc/eventlog"
 )
 
 type crowdsec_winservice struct {
@@ -22,47 +25,79 @@ type crowdsec_winservice struct {
 }
 
 func (m *crowdsec_winservice) Execute(args []string, r <-chan svc.ChangeRequest, changes chan<- svc.Status) (ssec bool, errno uint32) {
-	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown | svc.AcceptPauseAndContinue
+	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown
 	changes <- svc.Status{State: svc.StartPending}
-	fasttick := time.Tick(500 * time.Millisecond)
-	slowtick := time.Tick(2 * time.Second)
-	tick := fasttick
+	tick := time.Tick(500 * time.Millisecond)
 	changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
-	go WindowsRun()
 
-loop:
-	for {
-		select {
-		case <-tick:
+	go func() {
+	loop:
+		for {
+			select {
+			case <-tick:
 
-		case c := <-r:
-			switch c.Cmd {
-			case svc.Interrogate:
-				changes <- c.CurrentStatus
-			case svc.Stop, svc.Shutdown:
-				changes <- svc.Status{State: svc.StopPending}
-				err := shutdown(nil, m.config)
-				if err != nil {
-					log.Errorf("Error while shutting down: %s", err)
-					//don't return, we still want to notify windows that we are stopped ?
+			case c := <-r:
+				switch c.Cmd {
+				case svc.Interrogate:
+					changes <- c.CurrentStatus
+				case svc.Stop, svc.Shutdown:
+					changes <- svc.Status{State: svc.StopPending}
+					err := shutdown(nil, m.config)
+					if err != nil {
+						log.Errorf("Error while shutting down: %s", err)
+						//don't return, we still want to notify windows that we are stopped ?
+					}
+					break loop
+				default:
+					log.Errorf("unexpected control request #%d", c)
 				}
-				break loop
-			case svc.Pause:
-				changes <- svc.Status{State: svc.Paused, Accepts: cmdsAccepted}
-				tick = slowtick
-			case svc.Continue:
-				changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
-				tick = fasttick
-			default:
-				log.Errorf("unexpected control request #%d", c)
 			}
 		}
-	}
+	}()
+
+	err := WindowsRun()
 	changes <- svc.Status{State: svc.Stopped}
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
 	return
 }
 
 func runService(name string) error {
+
+	//All the calls to logging before the logger is configured are pretty much useless, but we keep them for clarity
+	err := eventlog.InstallAsEventCreate("CrowdSec", eventlog.Error|eventlog.Warning|eventlog.Info)
+	if err != nil {
+		if errno, ok := err.(syscall.Errno); ok {
+			if errno == windows.ERROR_ACCESS_DENIED {
+				log.Warnf("Access denied when installing event source, running as non-admin ?")
+			} else {
+				log.Warnf("Failed to install event log: %s (%d)", err, errno)
+			}
+		} else {
+			log.Warnf("Failed to install event log: %s", err)
+		}
+	}
+
+	//Let's use our source even if we could not install it:
+	// - It could have been created earlier
+	// - No permission to create it (e.g. running as non-admin when working on crowdsec)
+	//It will still work, windows will just display some additional errors in the event log
+	evtlog, err := eventlog.Open("CrowdSec")
+
+	if err == nil {
+		//Send panic and fatal to event log, as they can happen before the logger is configured.
+		log.AddHook(&EventLogHook{
+			LogLevels: []log.Level{
+				log.PanicLevel,
+				log.FatalLevel,
+			},
+			evtlog: evtlog,
+		})
+	} else {
+		log.Warnf("Failed to open event log: %s", err)
+	}
+
 	cConfig, err := csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
 	if err != nil {
 		return err
@@ -74,7 +109,7 @@ func runService(name string) error {
 
 	// Configure logging
 	if err := types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, *cConfig.Common.LogLevel,
-		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles, cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs); err != nil {
+		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles, cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs, cConfig.Common.ForceColorLogs); err != nil {
 		return err
 	}
 

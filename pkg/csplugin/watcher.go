@@ -11,7 +11,7 @@ import (
 
 /*
  PluginWatcher is here to allow grouping and threshold features for notification plugins :
- by frequency : it will signal the plugin to deliver notifications at this frequence (watchPluginTicker)
+ by frequency : it will signal the plugin to deliver notifications at this frequency (watchPluginTicker)
  by threshold : it will signal the plugin to deliver notifications when the number of alerts for this plugin reaches this threshold (watchPluginAlertCounts)
 */
 
@@ -139,6 +139,9 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 			}
 		case <-pw.tomb.Dying():
 			ticker.Stop()
+			// emptying
+			// no lock here because we have the broker still listening even in dying state before killing us
+			pw.PluginEvents <- pluginName
 			return
 		}
 	}

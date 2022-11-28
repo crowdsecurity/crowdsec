@@ -5,10 +5,9 @@ This directory contains scripts for functional testing. The tests are run with
 the [bats-core](https://github.com/bats-core/bats-core) framework, which is an
 active fork of the older BATS (Bash Automated Testing System).
 
-The goal is to be cross-platform but not explicitly test the packaging system
-or service management. Those parts are specific to each distribution and are
-tested separately (triggered by crowdsec releases, but they run in other
-repositories).
+With the addition of [the ansible playbooks](ansible/README.md) it is possible
+to use VMs to test the binary packages, service management and other CPU
+architectures.
 
 ### cscli
 
@@ -52,14 +51,23 @@ repositories).
 | stream mode        | `99_lapi-stream-mode |          |
 
 
-
 # How to use it
 
 ## pre-requisites
 
  - `git submodule init; git submodule update`
- - `daemonize (linux) or daemon (freebsd), bash, python3, openbsd-netcat`
- - `yq` from https://github.com/mikefarah/yq
+ - `go install github.com/cloudflare/cfssl/cmd/cfssl@latest`
+ - `go install github.com/cloudflare/cfssl/cmd/cfssljson@latest`
+ - `go install github.com/mikefarah/yq/v4@latest`
+ - `base64`
+ - `bash>=4.4`
+ - `curl`
+ - `daemonize`
+ - `jq`
+ - `nc`
+ - `openssl`
+ - `openbsd-netcat`
+ - `python3`
 
 ## Running all tests
 
@@ -67,11 +75,12 @@ Run `make clean bats-all` to perform a test build + run.
 To repeat test runs without rebuilding crowdsec, use `make bats-test`.
 
 
-## Troubleshooting tests
+## Debugging tests
 
 See `./tests/run-tests --help` to run/debug specific tests.
 
-Example: `./tests/run-tests tests/bats/02_nolapi.bats -f "cscli config backup"` (the string is a regexp)
+Example: `./tests/run-tests tests/bats/02_nolapi.bats -f "cscli config backup"` (the string is a regexp).
+You need to provide a path for a test file or directory (even if it's the full 'tests/bats') to use the `-f` option.
 
 
 # How does it work?
@@ -385,9 +394,33 @@ $ sudo docker run --cap-add=sys_nice --detach --name=mariadb -p 3306:3306  --env
 
 A mysql-client package is required as well.
 
+## troubleshooting
+
+ - CAPI is disabled, why?
+Most tests don't need it. Helper scripts are provided in `tests/enable-capi`
+and `tests/disable-capi` for interactive use, and two library functions
+`config_enable_capi` and `config_disable_capi` to call inside the tests.
+You still need to call `cscli capi register` after enabling it.
+
+ - My tests are hanging forever, why?
+See if you have a jq/yq or similar process waiting for standard input. Hint:
+you can pass a file from the result of the previous `run` command with
+`<(output)`. This substitutes the expression with a file name, but if you
+really want it in standard input, you have to use `< <(output)`. Bash is
+awesome but the syntax is often weird.
+
+ - I can't do X with jq.
+If you prefer you can use yq. It can parse and generate json, and it has a
+different syntax.
+
+ - I get "while parsing /tmp/....: yaml: line 5: mapping values are not allowed in this context"
+Check the heredocs (the <<EOT blocks). Each line must start with a hard TAB
+followed by spaces. You are probably missing some tabs.
+
 ## gotchas
 
  - Testing with Postgres or MySQL/MariaDB leads to (unpredictably) failing
    tests in the GitHub workflows, so we had to disable them by default. We do
-   run these in a separate environment before doing releases.
+   run these in a separate environment before doing releases. They should always
+   pass if you run them in a development machine.
 

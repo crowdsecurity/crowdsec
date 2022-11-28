@@ -8,14 +8,16 @@ import (
 	"strings"
 
 	"github.com/confluentinc/bincover"
+	"github.com/fatih/color"
+	cc "github.com/ivanpirog/coloredcobra"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"github.com/spf13/cobra/doc"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
-
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"github.com/spf13/cobra/doc"
 )
 
 var bincoverTesting = ""
@@ -27,6 +29,7 @@ var csConfig *csconfig.Config
 var dbClient *database.Client
 
 var OutputFormat string
+var OutputColor string
 
 var downloadOnly bool
 var forceAction bool
@@ -51,13 +54,18 @@ func initConfig() {
 	}
 	logFormatter := &log.TextFormatter{TimestampFormat: "02-01-2006 03:04:05 PM", FullTimestamp: true}
 	log.SetFormatter(logFormatter)
-	csConfig, err = csconfig.NewConfig(ConfigFilePath, false, false)
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-	log.Debugf("Using %s as configuration file", ConfigFilePath)
-	if err := csConfig.LoadCSCLI(); err != nil {
-		log.Fatalf(err.Error())
+
+	if !inSlice(os.Args[1], NoNeedConfig) {
+		csConfig, err = csconfig.NewConfig(ConfigFilePath, false, false)
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
+		log.Debugf("Using %s as configuration file", ConfigFilePath)
+		if err := csConfig.LoadCSCLI(); err != nil {
+			log.Fatalf(err.Error())
+		}
+	} else {
+		csConfig = csconfig.NewDefaultConfig()
 	}
 
 	if csConfig.Cscli == nil {
@@ -76,7 +84,6 @@ func initConfig() {
 	if csConfig.Cscli.Output == "" {
 		csConfig.Cscli.Output = "human"
 	}
-
 	if csConfig.Cscli.Output == "json" {
 		log.SetFormatter(&log.JSONFormatter{})
 		log.SetLevel(log.ErrorLevel)
@@ -84,12 +91,18 @@ func initConfig() {
 		log.SetLevel(log.ErrorLevel)
 	}
 
+	if OutputColor != "" {
+		csConfig.Cscli.Color = OutputColor
+		if OutputColor != "yes" && OutputColor != "no" && OutputColor != "auto" {
+			log.Fatalf("output color %s unknown", OutputColor)
+		}
+	}
 }
 
 var validArgs = []string{
 	"scenarios", "parsers", "collections", "capi", "lapi", "postoverflows", "machines",
 	"metrics", "bouncers", "alerts", "decisions", "simulation", "hub", "dashboard",
-	"config", "completion", "version", "console", "notifications",
+	"config", "completion", "version", "console", "notifications", "support",
 }
 
 func prepender(filename string) string {
@@ -100,12 +113,21 @@ title: %s
 `
 	name := filepath.Base(filename)
 	base := strings.TrimSuffix(name, path.Ext(name))
-	return fmt.Sprintf(header, base, strings.Replace(base, "_", " ", -1))
+	return fmt.Sprintf(header, base, strings.ReplaceAll(base, "_", " "))
 }
 
 func linkHandler(name string) string {
 	return fmt.Sprintf("/cscli/%s", name)
 }
+
+var (
+	NoNeedConfig = []string{
+		"help",
+		"completion",
+		"version",
+		"hubtest",
+	}
+)
 
 func main() {
 
@@ -120,6 +142,21 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 		SilenceUsage:      true,
 		/*TBD examples*/
 	}
+
+	cc.Init(&cc.Config{
+		RootCmd: rootCmd,
+		Headings: cc.Yellow,
+		Commands: cc.Green + cc.Bold,
+		CmdShortDescr: cc.Cyan,
+		Example: cc.Italic,
+		ExecName: cc.Bold,
+		Aliases: cc.Bold + cc.Italic,
+		FlagsDataType: cc.White,
+		Flags: cc.Green,
+		FlagsDescr: cc.Cyan,
+	})
+	rootCmd.SetOut(color.Output)
+
 	var cmdDocGen = &cobra.Command{
 		Use:               "doc",
 		Short:             "Generate the documentation in `./doc/`. Directory must exist.",
@@ -128,7 +165,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := doc.GenMarkdownTreeCustom(rootCmd, "./doc/", prepender, linkHandler); err != nil {
-				log.Fatalf("Failed to generate cobra doc: %s", err.Error())
+				log.Fatalf("Failed to generate cobra doc: %s", err)
 			}
 		},
 	}
@@ -146,7 +183,8 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(cmdVersion)
 
 	rootCmd.PersistentFlags().StringVarP(&ConfigFilePath, "config", "c", csconfig.DefaultConfigPath("config.yaml"), "path to crowdsec config file")
-	rootCmd.PersistentFlags().StringVarP(&OutputFormat, "output", "o", "", "Output format : human, json, raw.")
+	rootCmd.PersistentFlags().StringVarP(&OutputFormat, "output", "o", "", "Output format: human, json, raw.")
+	rootCmd.PersistentFlags().StringVarP(&OutputColor, "color", "", "auto", "Output color: yes, no, auto.")
 	rootCmd.PersistentFlags().BoolVar(&dbg_lvl, "debug", false, "Set logging to debug.")
 	rootCmd.PersistentFlags().BoolVar(&nfo_lvl, "info", false, "Set logging to info.")
 	rootCmd.PersistentFlags().BoolVar(&wrn_lvl, "warning", false, "Set logging to warning.")
@@ -158,7 +196,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 		log.Fatalf("failed to hide flag: %s", err)
 	}
 
-	if len(os.Args) > 1 && os.Args[1] != "completion" && os.Args[1] != "version" && os.Args[1] != "help" {
+	if len(os.Args) > 1 {
 		cobra.OnInitialize(initConfig)
 	}
 
@@ -187,6 +225,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewExplainCmd())
 	rootCmd.AddCommand(NewHubTestCmd())
 	rootCmd.AddCommand(NewNotificationsCmd())
+	rootCmd.AddCommand(NewSupportCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		if bincoverTesting != "" {

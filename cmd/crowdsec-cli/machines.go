@@ -5,23 +5,28 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/big"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/database"
-	"github.com/crowdsecurity/machineid"
 	"github.com/enescakir/emoji"
+	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
-	"github.com/olekukonko/tablewriter"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/machineid"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var machineID string
@@ -39,12 +44,7 @@ var (
 	digits         = "0123456789"
 )
 
-const (
-	uuid = "/proc/sys/kernel/random/uuid"
-)
-
 func generatePassword(length int) string {
-
 	charset := upper + lower + digits
 	charsetLength := len(charset)
 
@@ -70,9 +70,9 @@ func generateIDPrefix() (string, error) {
 	}
 	log.Debugf("failed to get machine-id with usual files: %s", err)
 
-	bID, err := ioutil.ReadFile(uuid)
+	bId, err := uuid.NewRandom()
 	if err == nil {
-		return string(bID), nil
+		return bId.String(), nil
 	}
 	return "", errors.Wrap(err, "generating machine id")
 }
@@ -90,6 +90,63 @@ func generateID(prefix string) (string, error) {
 	prefix = strings.ReplaceAll(prefix, "-", "")[:32]
 	suffix := generatePassword(16)
 	return prefix + suffix, nil
+}
+
+func displayLastHeartBeat(m *ent.Machine, fancy bool) string {
+	var hbDisplay string
+
+	if m.LastHeartbeat != nil {
+		lastHeartBeat := time.Now().UTC().Sub(*m.LastHeartbeat)
+		hbDisplay = lastHeartBeat.Truncate(time.Second).String()
+		if fancy && lastHeartBeat > 2*time.Minute {
+			hbDisplay = fmt.Sprintf("%s %s", emoji.Warning.String(), lastHeartBeat.Truncate(time.Second).String())
+		}
+	} else {
+		hbDisplay = "-"
+		if fancy {
+			hbDisplay = emoji.Warning.String() + " -"
+		}
+	}
+	return hbDisplay
+}
+
+func getAgents(out io.Writer, dbClient *database.Client) error {
+	machines, err := dbClient.ListMachines()
+	if err != nil {
+		return fmt.Errorf("unable to list machines: %s", err)
+	}
+	if csConfig.Cscli.Output == "human" {
+		getAgentsTable(out, machines)
+	} else if csConfig.Cscli.Output == "json" {
+		enc := json.NewEncoder(out)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(machines); err != nil {
+			log.Fatalf("failed to unmarshal")
+		}
+		return nil
+	} else if csConfig.Cscli.Output == "raw" {
+		csvwriter := csv.NewWriter(out)
+		err := csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version", "auth_type", "last_heartbeat"})
+		if err != nil {
+			log.Fatalf("failed to write header: %s", err)
+		}
+		for _, m := range machines {
+			var validated string
+			if m.IsValidated {
+				validated = "true"
+			} else {
+				validated = "false"
+			}
+			err := csvwriter.Write([]string{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, displayLastHeartBeat(m, false)})
+			if err != nil {
+				log.Fatalf("failed to write raw output : %s", err)
+			}
+		}
+		csvwriter.Flush()
+	} else {
+		log.Errorf("unknown output '%s'", csConfig.Cscli.Output)
+	}
+	return nil
 }
 
 func NewMachinesCmd() *cobra.Command {
@@ -132,60 +189,9 @@ Note: This command requires database direct access, so is intended to be run on 
 			}
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			machines, err := dbClient.ListMachines()
+			err := getAgents(color.Output, dbClient)
 			if err != nil {
-				log.Errorf("unable to list machines: %s", err)
-			}
-			if csConfig.Cscli.Output == "human" {
-				table := tablewriter.NewWriter(os.Stdout)
-				table.SetCenterSeparator("")
-				table.SetColumnSeparator("")
-
-				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-				table.SetAlignment(tablewriter.ALIGN_LEFT)
-				table.SetHeader([]string{"Name", "IP Address", "Last Update", "Status", "Version", "Last Heartbeat"})
-				for _, w := range machines {
-					var validated string
-					if w.IsValidated {
-						validated = emoji.CheckMark.String()
-					} else {
-						validated = emoji.Prohibited.String()
-					}
-					lastHeartBeat := time.Now().UTC().Sub(*w.LastHeartbeat)
-					hbDisplay := lastHeartBeat.Truncate(time.Second).String()
-					if lastHeartBeat > 2*time.Minute {
-						hbDisplay = fmt.Sprintf("%s %s", emoji.Warning.String(), lastHeartBeat.Truncate(time.Second).String())
-					}
-					table.Append([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version, hbDisplay})
-				}
-				table.Render()
-			} else if csConfig.Cscli.Output == "json" {
-				x, err := json.MarshalIndent(machines, "", " ")
-				if err != nil {
-					log.Fatalf("failed to unmarshal")
-				}
-				fmt.Printf("%s", string(x))
-			} else if csConfig.Cscli.Output == "raw" {
-				csvwriter := csv.NewWriter(os.Stdout)
-				err := csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version", "last_heartbeat"})
-				if err != nil {
-					log.Fatalf("failed to write header: %s", err)
-				}
-				for _, w := range machines {
-					var validated string
-					if w.IsValidated {
-						validated = "true"
-					} else {
-						validated = "false"
-					}
-					err := csvwriter.Write([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version, time.Now().UTC().Sub(*w.LastHeartbeat).Truncate(time.Second).String()})
-					if err != nil {
-						log.Fatalf("failed to write raw output : %s", err)
-					}
-				}
-				csvwriter.Flush()
-			} else {
-				log.Errorf("unknown output '%s'", csConfig.Cscli.Output)
+				log.Fatalf("unable to list machines: %s", err)
 			}
 		},
 	}
@@ -247,7 +253,7 @@ cscli machines add MyTestMachine --password MyPassword
 				survey.AskOne(qs, &machinePassword)
 			}
 			password := strfmt.Password(machinePassword)
-			_, err = dbClient.CreateMachine(&machineID, &password, "", true, forceAdd)
+			_, err = dbClient.CreateMachine(&machineID, &password, "", true, forceAdd, types.PasswordAuthType)
 			if err != nil {
 				log.Fatalf("unable to create machine: %s", err)
 			}
@@ -272,7 +278,7 @@ cscli machines add MyTestMachine --password MyPassword
 				log.Fatalf("unable to marshal api credentials: %s", err)
 			}
 			if dumpFile != "" && dumpFile != "-" {
-				err = ioutil.WriteFile(dumpFile, apiConfigDump, 0644)
+				err = os.WriteFile(dumpFile, apiConfigDump, 0644)
 				if err != nil {
 					log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
 				}
@@ -310,7 +316,7 @@ cscli machines add MyTestMachine --password MyPassword
 			for _, machineID := range args {
 				err := dbClient.DeleteWatcher(machineID)
 				if err != nil {
-					log.Errorf("unable to delete machine: %s", err)
+					log.Errorf("unable to delete machine '%s': %s", machineID, err)
 					return
 				}
 				log.Infof("machine '%s' deleted successfully", machineID)

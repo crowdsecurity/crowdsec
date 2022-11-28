@@ -9,7 +9,7 @@ die() {
 }
 
 about() {
-    die "usage: $script_name [make | load | clean]"
+    die "usage: ${script_name} [make | load | clean]"
 }
 
 #shellcheck disable=SC1007
@@ -20,14 +20,14 @@ cd "${THIS_DIR}"/../../
 
 # you have not removed set -u above, have you?
 
-[ -z "${TEST_DIR-}" ] && die "\$TEST_DIR must be defined."
-[ -z "${LOCAL_DIR-}" ] && die "\$LOCAL_DIR must be defined."
-[ -z "${CSCLI-}" ] && die "\$CSCLI must be defined."
-[ -z "${LOCAL_INIT_DIR-}" ] && die "\$LOCAL_INIT_DIR must be defined."
-[ -z "${PLUGIN_DIR-}" ] && die "\$PLUGIN_DIR must be defined."
-[ -z "${DB_BACKEND-}" ] && die "\$DB_BACKEND must be defined."
+[[ -z "${TEST_DIR-}" ]] && die "\$TEST_DIR must be defined."
+[[ -z "${LOCAL_DIR-}" ]] && die "\$LOCAL_DIR must be defined."
+[[ -z "${CSCLI-}" ]] && die "\$CSCLI must be defined."
+[[ -z "${LOCAL_INIT_DIR-}" ]] && die "\$LOCAL_INIT_DIR must be defined."
+[[ -z "${PLUGIN_DIR-}" ]] && die "\$PLUGIN_DIR must be defined."
+[[ -z "${DB_BACKEND-}" ]] && die "\$DB_BACKEND must be defined."
 
-if [ ! -f "${CSCLI}" ]; then
+if [[ ! -f "${CSCLI}" ]]; then
     die "${CSCLI} is missing. Please build (with 'make bats-build') or install it."
 fi
 
@@ -39,77 +39,77 @@ export DATA_DIR
 CONFIG_DIR="${LOCAL_DIR}/${REL_CONFIG_DIR}"
 export CONFIG_DIR
 
+if [[ $(uname) == "OpenBSD" ]]; then
+    TAR=gtar
+else
+    TAR=tar
+fi
+
 remove_init_data() {
+    ./bin/assert-crowdsec-not-running || die "Cannot remove fixture data."
     rm -rf -- "${LOCAL_DIR:?}/${REL_CONFIG_DIR}"/* "${LOCAL_DIR:?}/${REL_DATA_DIR:?}"/*
 }
 
-#we need a separate function for initializing config when testing package
-#because we want to test the configuration as well
+# we need a separate function for initializing config when testing package
+# because we want to test the configuration as well
 make_init_data() {
-    "${TEST_DIR}/instance-crowdsec" stop
+    ./bin/assert-crowdsec-not-running || die "Cannot create fixture data."
 
     ./instance-db config-yaml
     ./instance-db setup
 
     # when installed packages are always using sqlite, so no need to regenerate
     # local credz for sqlite
-   
-    [ "${DB_BACKEND}" == "sqlite" ] || ${CSCLI} machines add --auto
 
-    "${TEST_DIR}/instance-crowdsec" start
-    "${CSCLI}" lapi status
-    [ -z "{PACKAGE_TESTING}" ] && "${CSCLI}" decisions delete --all
-    "${TEST_DIR}/instance-crowdsec" stop
-    
+    [[ "${DB_BACKEND}" == "sqlite" ]] || ${CSCLI} machines add --auto
 
     mkdir -p "${LOCAL_INIT_DIR}"
 
     ./instance-db dump "${LOCAL_INIT_DIR}/database"
 
     echo "${DB_BACKEND}" > "${LOCAL_INIT_DIR}/.backend"
-    tar -C "${LOCAL_DIR}" --create \
-        --exclude "$REL_DATA_DIR"/crowdsec.db \
-        --file "${LOCAL_INIT_DIR}/init-config-data.tar" "$REL_CONFIG_DIR" "$REL_DATA_DIR"
 
-    ./instance-db setup
-    remove_init_data
+    # disable CAPI by default
+    yq e 'del(.api.server.online_client)' -i "${CONFIG_DIR}/config.yaml"
+
+    "${TAR}" -C "${LOCAL_DIR}" --create \
+        --exclude "${REL_DATA_DIR}"/crowdsec.db \
+        --file "${LOCAL_INIT_DIR}/init-config-data.tar" "${REL_CONFIG_DIR}" "${REL_DATA_DIR}"
 }
 
-
 load_init_data() {
-    if [ ! -f "${LOCAL_INIT_DIR}/init-config-data.tar" ]; then
-        die "Initial data not found; did you run '$script_name make' ?"
+    ./bin/assert-crowdsec-not-running || die "Cannot load fixture data."
+
+    if [[ ! -f "${LOCAL_INIT_DIR}/init-config-data.tar" ]]; then
+        die "Initial data not found; did you run '${script_name} make' ?"
     fi
 
     dump_backend="$(cat "${LOCAL_INIT_DIR}/.backend")"
-    if [ "$DB_BACKEND" != "$dump_backend" ]; then
-        die "Can't run with backend '$DB_BACKEND' because the test data was build with '$dump_backend'"
+    if [[ "${DB_BACKEND}" != "${dump_backend}" ]]; then
+        die "Can't run with backend '${DB_BACKEND}' because the test data was built with '${dump_backend}'"
     fi
 
     remove_init_data
 
-    tar -C "${LOCAL_DIR}" --extract --file "${LOCAL_INIT_DIR}/init-config-data.tar"
+    "${TAR}" -C "${LOCAL_DIR}" --extract --file "${LOCAL_INIT_DIR}/init-config-data.tar"
 
-    ./instance-db setup
     ./instance-db restore "${LOCAL_INIT_DIR}/database"
 }
 
 
 # ---------------------------
 
-[ $# -lt 1 ] && about
-
+[[ $# -lt 1 ]] && about
 
 case "$1" in
     make)
+        "${TEST_DIR}/instance-crowdsec" stop
         make_init_data
         ;;
     load)
-        ./assert-crowdsec-not-running
         load_init_data
         ;;
     clean)
-        ./assert-crowdsec-not-running
         remove_init_data
         ;;
     *)

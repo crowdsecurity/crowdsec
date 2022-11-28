@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -71,15 +71,15 @@ func (s *Splunk) Notify(ctx context.Context, notification *protobufs.Notificatio
 	}
 
 	if resp.StatusCode != 200 {
-		content, err := ioutil.ReadAll(resp.Body)
+		content, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return &protobufs.Empty{}, fmt.Errorf("got non 200 response and failed to read error %s", string(err.Error()))
+			return &protobufs.Empty{}, fmt.Errorf("got non 200 response and failed to read error %s", err)
 		}
 		return &protobufs.Empty{}, fmt.Errorf("got non 200 response %s", string(content))
 	}
-	respData, err := ioutil.ReadAll(resp.Body)
+	respData, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return &protobufs.Empty{}, fmt.Errorf("failed to read response body got error %s", string(err.Error()))
+		return &protobufs.Empty{}, fmt.Errorf("failed to read response body got error %s", err)
 	}
 	logger.Debug(fmt.Sprintf("got response %s", string(respData)))
 	return &protobufs.Empty{}, nil
@@ -89,6 +89,7 @@ func (s *Splunk) Configure(ctx context.Context, config *protobufs.Config) (*prot
 	d := PluginConfig{}
 	err := yaml.Unmarshal(config.Config, &d)
 	s.PluginConfigByName[d.Name] = d
+	logger.Debug(fmt.Sprintf("Splunk plugin '%s' use URL '%s'", d.Name, d.URL))
 	return &protobufs.Empty{}, err
 }
 

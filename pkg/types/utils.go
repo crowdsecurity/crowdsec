@@ -6,24 +6,25 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 )
 
 var logFormatter log.Formatter
 var LogOutput *lumberjack.Logger //io.Writer
 var logLevel log.Level
 
-func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, compress *bool) error {
+func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, compress *bool, forceColors bool) error {
 
 	/*Configure logs*/
 	if cfgMode == "file" {
@@ -67,7 +68,7 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 	}
 	logLevel = cfgLevel
 	log.SetLevel(logLevel)
-	logFormatter = &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true}
+	logFormatter = &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true, ForceColors: forceColors}
 	log.SetFormatter(logFormatter)
 	return nil
 }
@@ -100,7 +101,7 @@ func Clone(a, b interface{}) error {
 }
 
 func WriteStackTrace(iErr interface{}) string {
-	tmpfile, err := ioutil.TempFile("", "crowdsec-crash.*.txt")
+	tmpfile, err := os.CreateTemp("", "crowdsec-crash.*.txt")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -209,10 +210,9 @@ func CopyFile(sourceSymLink, destinationFile string) (err error) {
 			return
 		}
 	}
-	if err = os.Link(sourceFile, destinationFile); err == nil {
-		return
+	if err = os.Link(sourceFile, destinationFile); err != nil {
+		err = copyFileContents(sourceFile, destinationFile)
 	}
-	err = copyFileContents(sourceFile, destinationFile)
 	return
 }
 
@@ -257,4 +257,12 @@ func GetLineCountForFile(filepath string) int {
 		lc++
 	}
 	return lc
+}
+
+// from https://github.com/acarl005/stripansi
+var reStripAnsi = regexp.MustCompile("[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))")
+
+func StripAnsiString(str string) string {
+	// the byte version doesn't strip correctly
+	return reStripAnsi.ReplaceAllString(str, "")
 }

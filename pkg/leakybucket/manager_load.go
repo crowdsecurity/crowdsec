@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -68,11 +67,14 @@ type BucketFactory struct {
 	output          bool                      //??
 	ScenarioVersion string                    `yaml:"version,omitempty"`
 	hash            string                    `yaml:"-"`
-	Simulated       bool                      `yaml:"simulated"` //Set to true if the scenario instanciating the bucket was in the exclusion list
+	Simulated       bool                      `yaml:"simulated"` //Set to true if the scenario instantiating the bucket was in the exclusion list
 	tomb            *tomb.Tomb                `yaml:"-"`
 	wgPour          *sync.WaitGroup           `yaml:"-"`
 	wgDumpState     *sync.WaitGroup           `yaml:"-"`
 }
+
+//we use one NameGenerator for all the future buckets
+var seed namegenerator.Generator = namegenerator.NewNameGenerator(time.Now().UTC().UnixNano())
 
 func ValidateFactory(bucketFactory *BucketFactory) error {
 	if bucketFactory.Name == "" {
@@ -147,12 +149,10 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 		response chan types.Event
 	)
 
-	var seed namegenerator.Generator = namegenerator.NewNameGenerator(time.Now().UTC().UnixNano())
-
 	response = make(chan types.Event, 1)
 	for _, f := range files {
 		log.Debugf("Loading '%s'", f)
-		if !strings.HasSuffix(f, ".yaml") {
+		if !strings.HasSuffix(f, ".yaml") && !strings.HasSuffix(f, ".yml") {
 			log.Debugf("Skipping %s : not a yaml file", f)
 			continue
 		}
@@ -265,7 +265,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	}
 
 	if bucketFactory.Filter == "" {
-		bucketFactory.logger.Warningf("Bucket without filter, abort.")
+		bucketFactory.logger.Warning("Bucket without filter, abort.")
 		return fmt.Errorf("bucket without filter directive")
 	}
 	bucketFactory.RunTimeFilter, err = expr.Compile(bucketFactory.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
@@ -338,7 +338,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 			}
 			err = exprhelpers.FileInit(bucketFactory.DataDir, data.DestPath, data.Type)
 			if err != nil {
-				bucketFactory.logger.Errorf("unable to init data for file '%s': %s", data.DestPath, err.Error())
+				bucketFactory.logger.Errorf("unable to init data for file '%s': %s", data.DestPath, err)
 			}
 		}
 	}
@@ -354,7 +354,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 
 func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFactory) error {
 	var state map[string]Leaky
-	body, err := ioutil.ReadFile(file)
+	body, err := os.ReadFile(file)
 	if err != nil {
 		return fmt.Errorf("can't state file %s : %s", file, err)
 	}
@@ -385,7 +385,7 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 				tbucket.Queue = v.Queue
 				/*Trying to set the limiter to the saved values*/
 				tbucket.Limiter.Load(v.SerializedState)
-				tbucket.In = make(chan types.Event)
+				tbucket.In = make(chan *types.Event)
 				tbucket.Mapkey = k
 				tbucket.Signal = make(chan bool, 1)
 				tbucket.First_ts = v.First_ts

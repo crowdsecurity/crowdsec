@@ -26,6 +26,8 @@ type Client struct {
 	CTX      context.Context
 	Log      *log.Logger
 	CanFlush bool
+	Type     string
+	WalMode  *bool
 }
 
 func getEntDriver(dbtype string, dbdialect string, dsn string, config *csconfig.DatabaseCfg) (*entsql.Driver, error) {
@@ -61,7 +63,6 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 	entOpt := ent.Log(entLogger.Debug)
 	switch config.Type {
 	case "sqlite":
-
 		/*if it's the first startup, we want to touch and chmod file*/
 		if _, err := os.Stat(config.DbPath); os.IsNotExist(err) {
 			f, err := os.OpenFile(config.DbPath, os.O_CREATE|os.O_RDWR, 0600)
@@ -71,12 +72,18 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 			if err := f.Close(); err != nil {
 				return &Client{}, errors.Wrapf(err, "failed to create SQLite database file %q", config.DbPath)
 			}
-		} else { /*ensure file perms*/
-			if err := os.Chmod(config.DbPath, 0660); err != nil {
-				return &Client{}, fmt.Errorf("unable to set perms on %s: %v", config.DbPath, err)
-			}
 		}
-		drv, err := getEntDriver("sqlite3", dialect.SQLite, fmt.Sprintf("file:%s?_busy_timeout=100000&_fk=1", config.DbPath), config)
+		//Always try to set permissions to simplify a bit the code for windows (as the permissions set by OpenFile will be garbage)
+		if err := setFilePerm(config.DbPath, 0640); err != nil {
+			return &Client{}, fmt.Errorf("unable to set perms on %s: %v", config.DbPath, err)
+		}
+		var sqliteConnectionStringParameters string
+		if config.UseWal != nil && *config.UseWal {
+			sqliteConnectionStringParameters = "_busy_timeout=100000&_fk=1&_journal_mode=WAL"
+		} else {
+			sqliteConnectionStringParameters = "_busy_timeout=100000&_fk=1"
+		}
+		drv, err := getEntDriver("sqlite3", dialect.SQLite, fmt.Sprintf("file:%s?%s", config.DbPath, sqliteConnectionStringParameters), config)
 		if err != nil {
 			return &Client{}, errors.Wrapf(err, "failed opening connection to sqlite: %v", config.DbPath)
 		}
@@ -110,7 +117,7 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 	if err = client.Schema.Create(context.Background()); err != nil {
 		return nil, fmt.Errorf("failed creating schema resources: %v", err)
 	}
-	return &Client{Ent: client, CTX: context.Background(), Log: clog, CanFlush: true}, nil
+	return &Client{Ent: client, CTX: context.Background(), Log: clog, CanFlush: true, Type: config.Type, WalMode: config.UseWal}, nil
 }
 
 func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Scheduler, error) {
@@ -122,14 +129,61 @@ func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Sched
 	if config.MaxItems != nil {
 		maxItems = *config.MaxItems
 	}
-
 	if config.MaxAge != nil && *config.MaxAge != "" {
 		maxAge = *config.MaxAge
 	}
-	// Init & Start cronjob every minute
+
+	// Init & Start cronjob every minute for alerts
 	scheduler := gocron.NewScheduler(time.UTC)
-	job, _ := scheduler.Every(1).Minute().Do(c.FlushAlerts, maxAge, maxItems)
+	job, err := scheduler.Every(1).Minute().Do(c.FlushAlerts, maxAge, maxItems)
+	if err != nil {
+		return nil, errors.Wrap(err, "while starting FlushAlerts scheduler")
+	}
 	job.SingletonMode()
+	// Init & Start cronjob every hour for bouncers/agents
+	if config.AgentsGC != nil {
+		if config.AgentsGC.Cert != nil {
+			duration, err := types.ParseDuration(*config.AgentsGC.Cert)
+			if err != nil {
+				return nil, errors.Wrap(err, "while parsing agents cert auto-delete duration")
+			}
+			config.AgentsGC.CertDuration = &duration
+		}
+		if config.AgentsGC.LoginPassword != nil {
+			duration, err := types.ParseDuration(*config.AgentsGC.LoginPassword)
+			if err != nil {
+				return nil, errors.Wrap(err, "while parsing agents login/password auto-delete duration")
+			}
+			config.AgentsGC.LoginPasswordDuration = &duration
+		}
+		if config.AgentsGC.Api != nil {
+			log.Warning("agents auto-delete for API auth is not supported (use cert or login_password)")
+		}
+	}
+	if config.BouncersGC != nil {
+		if config.BouncersGC.Cert != nil {
+			duration, err := types.ParseDuration(*config.BouncersGC.Cert)
+			if err != nil {
+				return nil, errors.Wrap(err, "while parsing bouncers cert auto-delete duration")
+			}
+			config.BouncersGC.CertDuration = &duration
+		}
+		if config.BouncersGC.Api != nil {
+			duration, err := types.ParseDuration(*config.BouncersGC.Api)
+			if err != nil {
+				return nil, errors.Wrap(err, "while parsing bouncers api auto-delete duration")
+			}
+			config.BouncersGC.ApiDuration = &duration
+		}
+		if config.BouncersGC.LoginPassword != nil {
+			log.Warning("bouncers auto-delete for login/password auth is not supported (use cert or api)")
+		}
+	}
+	baJob, err := scheduler.Every(1).Minute().Do(c.FlushAgentsAndBouncers, config.AgentsGC, config.BouncersGC)
+	if err != nil {
+		return nil, errors.Wrap(err, "while starting FlushAgentsAndBouncers scheduler")
+	}
+	baJob.SingletonMode()
 	scheduler.StartAsync()
 
 	return scheduler, nil

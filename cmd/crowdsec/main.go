@@ -3,28 +3,26 @@ package main
 import (
 	"flag"
 	"fmt"
+	_ "net/http/pprof"
 	"os"
+	"runtime"
 	"sort"
 	"strings"
-
-	_ "net/http/pprof"
 	"time"
 
 	"github.com/confluentinc/bincover"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/tomb.v2"
+
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
-	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/pkg/errors"
-
-	log "github.com/sirupsen/logrus"
-
-	"gopkg.in/tomb.v2"
 )
 
 var (
@@ -42,8 +40,8 @@ var (
 	/*the state of acquisition*/
 	dataSources []acquisition.DataSource
 	/*the state of the buckets*/
-	holders         []leaky.BucketFactory
-	buckets         *leaky.Buckets
+	holders         []leakybucket.BucketFactory
+	buckets         *leakybucket.Buckets
 	outputEventChan chan types.Event //the buckets init returns its own chan that is used for multiplexing
 	/*settings*/
 	lastProcessedItem time.Time /*keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.*/
@@ -57,6 +55,7 @@ type Flags struct {
 	TraceLevel     bool
 	DebugLevel     bool
 	InfoLevel      bool
+	WarnLevel      bool
 	PrintVersion   bool
 	SingleFileType string
 	Labels         map[string]string
@@ -65,6 +64,7 @@ type Flags struct {
 	DisableAgent   bool
 	DisableAPI     bool
 	WinSvc         string
+	DisableCAPI    bool
 }
 
 type labelsMap map[string]string
@@ -119,13 +119,13 @@ func LoadBuckets(cConfig *csconfig.Config) error {
 			files = append(files, hubScenarioItem.LocalPath)
 		}
 	}
-	buckets = leaky.NewBuckets()
+	buckets = leakybucket.NewBuckets()
 
 	log.Infof("Loading %d scenario files", len(files))
-	holders, outputEventChan, err = leaky.LoadBuckets(cConfig.Crowdsec, files, &bucketsTomb, buckets)
+	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, files, &bucketsTomb, buckets)
 
 	if err != nil {
-		return fmt.Errorf("Scenario loading failed : %v", err)
+		return fmt.Errorf("scenario loading failed: %v", err)
 	}
 
 	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
@@ -153,7 +153,7 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 	} else {
 		dataSources, err = acquisition.LoadAcquisitionFromFile(cConfig.Crowdsec)
 		if err != nil {
-			return errors.Wrap(err, "while loading acquisition configuration")
+			return err
 		}
 	}
 
@@ -181,8 +181,9 @@ func (f *Flags) Parse() {
 
 	flag.StringVar(&f.ConfigFile, "c", csconfig.DefaultConfigPath("config.yaml"), "configuration file")
 	flag.BoolVar(&f.TraceLevel, "trace", false, "VERY verbose")
-	flag.BoolVar(&f.DebugLevel, "debug", false, "print debug-level on stdout")
-	flag.BoolVar(&f.InfoLevel, "info", false, "print info-level on stdout")
+	flag.BoolVar(&f.DebugLevel, "debug", false, "print debug-level on stderr")
+	flag.BoolVar(&f.InfoLevel, "info", false, "print info-level on stderr")
+	flag.BoolVar(&f.WarnLevel, "warning", false, "print warning-level on stderr")
 	flag.BoolVar(&f.PrintVersion, "version", false, "display version")
 	flag.StringVar(&f.OneShotDSN, "dsn", "", "Process a single data source in time-machine")
 	flag.StringVar(&f.SingleFileType, "type", "", "Labels.type for file in time-machine")
@@ -190,6 +191,7 @@ func (f *Flags) Parse() {
 	flag.BoolVar(&f.TestMode, "t", false, "only test configs")
 	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
 	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
+	flag.BoolVar(&f.DisableCAPI, "no-capi", false, "disable communication with Central API")
 	flag.StringVar(&f.WinSvc, "winsvc", "", "Windows service Action : Install, Remove etc..")
 	flag.StringVar(&dumpFolder, "dump-data", "", "dump parsers/buckets raw outputs")
 	flag.Parse()
@@ -224,12 +226,16 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		return errors.New("You must run at least the API Server or crowdsec")
 	}
 
-	if flags.DebugLevel {
-		logLevel := log.DebugLevel
+	if flags.WarnLevel {
+		logLevel := log.WarnLevel
 		cConfig.Common.LogLevel = &logLevel
 	}
 	if flags.InfoLevel || cConfig.Common.LogLevel == nil {
 		logLevel := log.InfoLevel
+		cConfig.Common.LogLevel = &logLevel
+	}
+	if flags.DebugLevel {
+		logLevel := log.DebugLevel
 		cConfig.Common.LogLevel = &logLevel
 	}
 	if flags.TraceLevel {
@@ -257,11 +263,16 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		log.Warn("Deprecation warning: the pid_dir config can be safely removed and is not required")
 	}
 
+	if cConfig.Common.Daemonize && runtime.GOOS == "windows" {
+		log.Debug("Daemonization is not supported on Windows, disabling")
+		cConfig.Common.Daemonize = false
+	}
+
 	return nil
 }
 
-// This must be called right before the program termination, to allow
-// measuring functional test coverage in case of abnormal exit.
+// exitWithCode must be called right before the program termination,
+// to allow measuring functional test coverage in case of abnormal exit.
 //
 // without bincover: log error and exit with code
 // with bincover: log error and tell bincover the exit code, then return
@@ -279,7 +290,13 @@ func exitWithCode(exitCode int, err error) {
 	bincover.ExitCode = exitCode
 }
 
+// crowdsecT0 can be used to measure start time of services,
+// or uptime of the application
+var crowdsecT0 time.Time
+
 func main() {
+	crowdsecT0 = time.Now()
+
 	defer types.CatchPanic("crowdsec/main")
 
 	log.Debugf("os.Args: %v", os.Args)

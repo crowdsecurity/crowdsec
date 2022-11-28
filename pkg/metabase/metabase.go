@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
@@ -109,7 +108,7 @@ func NewMetabase(configPath string, containerName string) (*Metabase, error) {
 }
 
 func (m *Metabase) LoadConfig(configPath string) error {
-	yamlFile, err := ioutil.ReadFile(configPath)
+	yamlFile, err := os.ReadFile(configPath)
 	if err != nil {
 		return err
 	}
@@ -222,7 +221,7 @@ func (m *Metabase) Login(username string, password string) error {
 	if !ok {
 		return fmt.Errorf("login: bad response type: %+v", successmsg)
 	}
-	if _, ok := resp["id"]; !ok {
+	if _, ok = resp["id"]; !ok {
 		return fmt.Errorf("login: can't update session id, no id in response: %v", successmsg)
 	}
 	id, ok := resp["id"].(string)
@@ -245,10 +244,10 @@ func (m *Metabase) Scan() error {
 	return nil
 }
 
-func (m *Metabase) ResetPassword(current string, new string) error {
+func (m *Metabase) ResetPassword(current string, newPassword string) error {
 	body := map[string]string{
 		"id":           "1",
-		"password":     new,
+		"password":     newPassword,
 		"old_password": current,
 	}
 	_, errormsg, err := m.Client.Do("PUT", routes[resetPasswordEndpoint], body)
@@ -303,7 +302,7 @@ func (m *Metabase) DumpConfig(path string) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(path, data, 0600)
+	return os.WriteFile(path, data, 0600)
 }
 
 func (m *Metabase) DownloadDatabase(force bool) error {
@@ -319,7 +318,7 @@ func (m *Metabase) DownloadDatabase(force bool) error {
 		return fmt.Errorf("failed to create %s : %s", metabaseDBSubpath, err)
 	}
 
-	req, err := http.NewRequest("GET", m.InternalDBURL, nil)
+	req, err := http.NewRequest(http.MethodGet, m.InternalDBURL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to build request to fetch metabase db : %s", err)
 	}
@@ -329,11 +328,11 @@ func (m *Metabase) DownloadDatabase(force bool) error {
 	if err != nil {
 		return fmt.Errorf("failed request to fetch metabase db : %s", err)
 	}
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("got http %d while requesting metabase db %s, stop", resp.StatusCode, m.InternalDBURL)
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed request read while fetching metabase db : %s", err)
 	}

@@ -25,45 +25,43 @@ declare stderr
 
 #----------
 
-@test "$FILE 'decisions add' requires parameters" {
+@test "'decisions add' requires parameters" {
     run -1 --separate-stderr cscli decisions add
     assert_line "Usage:"
-    run echo "$stderr"
-    assert_output --partial "Missing arguments, a value is required (--ip, --range or --scope and --value)"
+    assert_stderr --partial "Missing arguments, a value is required (--ip, --range or --scope and --value)"
 
     run -1 --separate-stderr cscli decisions add -o json
-    run echo "$stderr"
+    run echo "${stderr}"
     run -0 jq -c '[ .level, .msg]' <(output)
     assert_output '["fatal","Missing arguments, a value is required (--ip, --range or --scope and --value)"]'
 }
 
-@test "$FILE cscli decisions list, with and without --machine" {
+@test "cscli decisions list, with and without --machine" {
     is_db_postgres && skip
     run -0 cscli decisions add -i 10.20.30.40 -t ban
 
     run -0 cscli decisions list
-    refute_output --partial 'MACHINE'
+    refute_output --partial 'Machine'
     # machine name appears quoted in the "REASON" column
-    assert_output --regexp "\| 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?' \|"
-    refute_output --regexp "\| githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})? \|"
+    assert_output --regexp " 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?' "
+    refute_output --regexp " githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})? "
 
     run -0 cscli decisions list -m
-    assert_output --partial 'MACHINE'
-    assert_output --regexp "\| 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?' \|"
-    assert_output --regexp "\| githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})? \|"
+    assert_output --partial 'Machine'
+    assert_output --regexp " 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?' "
+    assert_output --regexp " githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})? "
 
     run -0 cscli decisions list --machine
-    assert_output --partial 'MACHINE'
-    assert_output --regexp "\| 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?' \|"
-    assert_output --regexp "\| githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})? \|"
+    assert_output --partial 'Machine'
+    assert_output --regexp " 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?' "
+    assert_output --regexp " githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})? "
 }
 
-@test "$FILE cscli decisions list, incorrect parameters" {
+@test "cscli decisions list, incorrect parameters" {
     run -1 --separate-stderr cscli decisions list --until toto
-    run echo "$stderr"
-    assert_output --partial 'Unable to list decisions : performing request: API error: while parsing duration: time: invalid duration \"toto\"'
+    assert_stderr --partial 'Unable to list decisions : performing request: API error: while parsing duration: time: invalid duration \"toto\"'
     run -1 --separate-stderr cscli decisions list --until toto -o json
-    run echo "$stderr"
+    run echo "${stderr}"
     run -0 jq -c '[.level, .msg]' <(output)
     assert_output '["fatal","Unable to list decisions : performing request: API error: while parsing duration: time: invalid duration \"toto\""]'
 }

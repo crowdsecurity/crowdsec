@@ -2,7 +2,6 @@ package csconfig
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -162,7 +161,7 @@ func TestLoadAPIServer(t *testing.T) {
 	}
 
 	config := &Config{}
-	fcontent, err := ioutil.ReadFile("./tests/config.yaml")
+	fcontent, err := os.ReadFile("./tests/config.yaml")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -201,6 +200,7 @@ func TestLoadAPIServer(t *testing.T) {
 				DisableAPI: false,
 			},
 			expectedResult: &LocalApiServerCfg{
+				Enable:    types.BoolPtr(true),
 				ListenURI: "http://crowdsec.api",
 				TLS:       nil,
 				DbConfig: &DatabaseCfg{
@@ -231,7 +231,7 @@ func TestLoadAPIServer(t *testing.T) {
 			err: "",
 		},
 		{
-			name: "basic valid configuration",
+			name: "basic invalid configuration",
 			Input: &Config{
 				Self: []byte(configData),
 				API: &APICfg{
@@ -244,6 +244,7 @@ func TestLoadAPIServer(t *testing.T) {
 				DisableAPI: false,
 			},
 			expectedResult: &LocalApiServerCfg{
+				Enable:   types.BoolPtr(true),
 				LogDir:   LogDirFullPath,
 				LogMedia: "stdout",
 			},

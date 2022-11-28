@@ -71,6 +71,7 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 				tmp = reflect.Indirect(tmp)
 			}
 			iter = tmp
+			//nolint: gosimple
 			break
 		case reflect.Ptr:
 			tmp := iter.Elem()
@@ -133,8 +134,12 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 				value = out
 			case int:
 				value = strconv.Itoa(out)
+			case map[string]interface{}:
+				clog.Warnf("Expression returned a map, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string")
+			case []interface{}:
+				clog.Warnf("Expression returned a map, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string")
 			default:
-				clog.Fatalf("unexpected return type for RunTimeValue : %T", output)
+				clog.Errorf("unexpected return type for RunTimeValue : %T", output)
 				return errors.New("unexpected return type for RunTimeValue")
 			}
 		}
@@ -152,7 +157,7 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 			/*still way too hackish, but : inject all the results in enriched, and */
 			if enricherPlugin, ok := n.EnrichFunctions.Registered[static.Method]; ok {
 				clog.Tracef("Found method '%s'", static.Method)
-				ret, err := enricherPlugin.EnrichFunc(value, event, enricherPlugin.Ctx)
+				ret, err := enricherPlugin.EnrichFunc(value, event, enricherPlugin.Ctx, n.Logger)
 				if err != nil {
 					clog.Errorf("method '%s' returned an error : %v", static.Method, err)
 				}
@@ -309,7 +314,8 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			}
 			ret, err := node.process(&event, ctx, cachedExprEnv)
 			if err != nil {
-				clog.Fatalf("Error while processing node : %v", err)
+				clog.Errorf("Error while processing node : %v", err)
+				return event, err
 			}
 			clog.Tracef("node (%s) ret : %v", node.rn, ret)
 			if ParseDump {

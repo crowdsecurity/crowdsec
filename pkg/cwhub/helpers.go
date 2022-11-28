@@ -31,7 +31,7 @@ func chooseHubBranch() (string, error) {
 	}
 
 	if csVersion == "" {
-		log.Warningf("Crowdsec version is not set, using master branch for the hub")
+		log.Warning("Crowdsec version is not set, using master branch for the hub")
 		return "master", nil
 	}
 
@@ -133,6 +133,9 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 
 	// remove all
 	for _, v := range GetItemMap(itemType) {
+		if !v.Installed {
+			continue
+		}
 		v, err = DisableItem(csConfig.Hub, v, purge, forceAction)
 		if err != nil {
 			log.Fatalf("unable to disable %s : %v", v.Name, err)
@@ -194,6 +197,9 @@ func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, forc
 				log.Infof("%v %s is local", emoji.Prohibited, v.Name)
 			}
 		} else {
+			// this is used while scripting to know if the hub has been upgraded
+			// and a configuration reload is required
+			fmt.Printf("updated %s\n", v.Name)
 			log.Infof("%v %s : updated", emoji.Package, v.Name)
 			updated++
 		}

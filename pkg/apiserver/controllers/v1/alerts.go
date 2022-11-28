@@ -11,7 +11,6 @@ import (
 	jwt "github.com/appleboy/gin-jwt/v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
-	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
@@ -102,7 +101,7 @@ func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uin
 	RETRY:
 		for try := 0; try < 3; try++ {
 			select {
-			case c.PluginChannel <- csplugin.ProfileAlert{ProfileID: uint(profileID), Alert: alert}:
+			case c.PluginChannel <- csplugin.ProfileAlert{ProfileID: profileID, Alert: alert}:
 				log.Debugf("alert sent to Plugin channel")
 				break RETRY
 			default:
@@ -113,13 +112,13 @@ func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uin
 	}
 }
 
-// CreateAlert : write received alerts in body to the database
+// CreateAlert writes the alerts received in the body to the database
 func (c *Controller) CreateAlert(gctx *gin.Context) {
 
 	var input models.AddAlertsRequest
 
 	claims := jwt.ExtractClaims(gctx)
-	/*TBD : use defines rather than hardcoded key to find back owner*/
+	// TBD: use defined rather than hardcoded key to find back owner
 	machineID := claims["id"].(string)
 
 	if err := gctx.ShouldBindJSON(&input); err != nil {
@@ -135,7 +134,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		alert.MachineID = machineID
 		if len(alert.Decisions) != 0 {
 			for pIdx, profile := range c.Profiles {
-				_, matched, err := csprofiles.EvaluateProfile(profile, alert)
+				_, matched, err := profile.EvaluateProfile(alert)
 				if err != nil {
 					gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 					return
@@ -144,7 +143,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 					continue
 				}
 				c.sendAlertToPluginChannel(alert, uint(pIdx))
-				if profile.OnSuccess == "break" {
+				if profile.Cfg.OnSuccess == "break" {
 					break
 				}
 			}
@@ -156,7 +155,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		}
 
 		for pIdx, profile := range c.Profiles {
-			profileDecisions, matched, err := csprofiles.EvaluateProfile(profile, alert)
+			profileDecisions, matched, err := profile.EvaluateProfile(alert)
 			if err != nil {
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
@@ -171,7 +170,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 			}
 			profileAlert := *alert
 			c.sendAlertToPluginChannel(&profileAlert, uint(pIdx))
-			if profile.OnSuccess == "break" {
+			if profile.Cfg.OnSuccess == "break" {
 				break
 			}
 		}
@@ -201,7 +200,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	gctx.JSON(http.StatusCreated, alerts)
 }
 
-// FindAlerts : return alerts from database based on the specified filter
+// FindAlerts: returns alerts from the database based on the specified filter
 func (c *Controller) FindAlerts(gctx *gin.Context) {
 	result, err := c.DBClient.QueryAlertWithFilter(gctx.Request.URL.Query())
 	if err != nil {
@@ -211,14 +210,14 @@ func (c *Controller) FindAlerts(gctx *gin.Context) {
 
 	data := FormatAlerts(result)
 
-	if gctx.Request.Method == "HEAD" {
+	if gctx.Request.Method == http.MethodHead {
 		gctx.String(http.StatusOK, "")
 		return
 	}
 	gctx.JSON(http.StatusOK, data)
 }
 
-// FindAlertByID return the alert associated to the ID
+// FindAlertByID returns the alert associated with the ID
 func (c *Controller) FindAlertByID(gctx *gin.Context) {
 	alertIDStr := gctx.Param("alert_id")
 	alertID, err := strconv.Atoi(alertIDStr)
@@ -233,14 +232,44 @@ func (c *Controller) FindAlertByID(gctx *gin.Context) {
 	}
 	data := FormatOneAlert(result)
 
-	if gctx.Request.Method == "HEAD" {
+	if gctx.Request.Method == http.MethodHead {
 		gctx.String(http.StatusOK, "")
 		return
 	}
 	gctx.JSON(http.StatusOK, data)
 }
 
-// DeleteAlerts : delete alerts from database based on the specified filter
+// DeleteAlertByID delete the alert associated to the ID
+func (c *Controller) DeleteAlertByID(gctx *gin.Context) {
+	var err error
+
+	incomingIP := gctx.ClientIP()
+	if incomingIP != "127.0.0.1" && incomingIP != "::1" && !networksContainIP(c.TrustedIPs, incomingIP) {
+		gctx.JSON(http.StatusForbidden, gin.H{"message": fmt.Sprintf("access forbidden from this IP (%s)", incomingIP)})
+		return
+	}
+
+	decisionIDStr := gctx.Param("alert_id")
+	decisionID, err := strconv.Atoi(decisionIDStr)
+	if err != nil {
+		gctx.JSON(http.StatusBadRequest, gin.H{"message": "alert_id must be valid integer"})
+		return
+	}
+	err = c.DBClient.DeleteAlertByID(decisionID)
+	if err != nil {
+		c.HandleDBErrors(gctx, err)
+		return
+	}
+
+	deleteAlertResp := models.DeleteAlertsResponse{
+		NbDeleted: "1",
+	}
+
+	gctx.JSON(http.StatusOK, deleteAlertResp)
+}
+
+
+// DeleteAlerts deletes alerts from the database based on the specified filter
 func (c *Controller) DeleteAlerts(gctx *gin.Context) {
 	incomingIP := gctx.ClientIP()
 	if incomingIP != "127.0.0.1" && incomingIP != "::1" && !networksContainIP(c.TrustedIPs, incomingIP) {

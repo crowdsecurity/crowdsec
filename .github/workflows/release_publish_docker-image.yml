@@ -1,9 +1,11 @@
 name: Publish Docker image
+
 on:
   release:
     types:
       - released
       - prereleased
+
 jobs:
   push_to_registry:
     name: Push Docker image to Docker Hub
@@ -27,11 +29,14 @@ jobs:
             VERSION=pr-${{ github.event.number }}
           fi
           TAGS="${DOCKER_IMAGE}:${VERSION},${GHCR_IMAGE}:${VERSION}"
+          TAGS_SLIM="${DOCKER_IMAGE}:${VERSION}-slim"
           if [[ ${{ github.event.action }} == released ]]; then
             TAGS=$TAGS,${DOCKER_IMAGE}:latest,${GHCR_IMAGE}:latest
+            TAGS_SLIM=$TAGS,${DOCKER_IMAGE}:slim
           fi
           echo ::set-output name=version::${VERSION}
           echo ::set-output name=tags::${TAGS}
+          echo ::set-output name=tags_slim::${TAGS_SLIM}
           echo ::set-output name=created::$(date -u +'%Y-%m-%dT%H:%M:%SZ')
       -
         name: Set up QEMU
@@ -52,8 +57,25 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
       -
-        name: Build and push
+        name: Build and push slim image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.prep.outputs.tags_slim }}
+          build-args: |
+            BUILD_ENV=slim
+          platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6,linux/386
+          labels: |
+            org.opencontainers.image.source=${{ github.event.repository.html_url }}
+            org.opencontainers.image.created=${{ steps.prep.outputs.created }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      -
+        name: Build and push full image
         uses: docker/build-push-action@v2
         with:
           context: .

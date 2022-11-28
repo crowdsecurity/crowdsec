@@ -260,7 +260,7 @@ func CreateTestMachine(router *gin.Engine) (string, error) {
 	body := string(b)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/watchers", strings.NewReader(body))
+	req, _ := http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
 	req.Header.Set("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 	return body, nil
@@ -275,7 +275,7 @@ func CreateTestBouncer(config *csconfig.DatabaseCfg) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("unable to generate api key: %s", err)
 	}
-	err = dbClient.CreateBouncer("test", "127.0.0.1", middlewares.HashSHA512(apiKey))
+	_, err = dbClient.CreateBouncer("test", "127.0.0.1", middlewares.HashSHA512(apiKey), types.ApiKeyAuthType)
 	if err != nil {
 		return "", fmt.Errorf("unable to create blocker: %s", err)
 	}
@@ -309,7 +309,7 @@ func TestUnknownPath(t *testing.T) {
 	}
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/test", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
 	req.Header.Set("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -357,7 +357,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	cfg.LogLevel = &lvl
 
 	// Configure logging
-	if err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs); err != nil {
+	if err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs, false); err != nil {
 		t.Fatal(err.Error())
 	}
 	api, err := NewServer(&cfg)
@@ -369,7 +369,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	}
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/test42", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/test42", nil)
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
 	assert.Equal(t, 404, w.Code)
@@ -414,7 +414,7 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	cfg.LogLevel = &lvl
 
 	// Configure logging
-	if err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs); err != nil {
+	if err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs, false); err != nil {
 		t.Fatal(err.Error())
 	}
 	api, err := NewServer(&cfg)
@@ -426,7 +426,7 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	}
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/test42", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/test42", nil)
 	req.Header.Set("User-Agent", UserAgent)
 	api.router.ServeHTTP(w, req)
 	assert.Equal(t, 404, w.Code)

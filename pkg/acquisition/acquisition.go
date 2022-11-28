@@ -11,6 +11,7 @@ import (
 	dockeracquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/docker"
 	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
 	journalctlacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/journalctl"
+	kafkaacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kafka"
 	kinesisacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kinesis"
 	lokiacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki"
 	syslogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog"
@@ -72,6 +73,10 @@ var AcquisitionSources = []struct {
 		iface: func() DataSource { return &wineventlogacquisition.WinEventLogSource{} },
 	},
 	{
+		name:  "kafka",
+		iface: func() DataSource { return &kafkaacquisition.KafkaSource{} },
+	},
+	{
 		name:  "loki",
 		iface: func() DataSource { return &lokiacquisition.LokiSource{} },
 	},
@@ -124,7 +129,7 @@ func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg) (*DataS
 	return nil, fmt.Errorf("cannot find source %s", commonConfig.Source)
 }
 
-//detectBackwardCompatAcquis : try to magically detect the type for backward compat (type was not mandatory then)
+// detectBackwardCompatAcquis : try to magically detect the type for backward compat (type was not mandatory then)
 func detectBackwardCompatAcquis(sub configuration.DataSourceCommonCfg) string {
 
 	if _, ok := sub.Config["filename"]; ok {
@@ -175,7 +180,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 		log.Infof("loading acquisition file : %s", acquisFile)
 		yamlFile, err := os.Open(acquisFile)
 		if err != nil {
-			return nil, errors.Wrapf(err, "can't open %s", acquisFile)
+			return nil, err
 		}
 		dec := yaml.NewDecoder(yamlFile)
 		dec.SetStrict(true)

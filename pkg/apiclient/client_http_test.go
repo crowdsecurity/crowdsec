@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
-	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,7 +18,7 @@ func TestNewRequestInvalid(t *testing.T) {
 	//missing slash in uri
 	apiURL, err := url.Parse(urlx)
 	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
+		t.Fatalf("parsing api url: %s", apiURL)
 	}
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
@@ -29,7 +28,7 @@ func TestNewRequestInvalid(t *testing.T) {
 		VersionPrefix: "v1",
 	})
 	if err != nil {
-		t.Fatalf("new api client: %s", err.Error())
+		t.Fatalf("new api client: %s", err)
 	}
 	/*mock login*/
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
@@ -52,7 +51,7 @@ func TestNewRequestTimeout(t *testing.T) {
 	//missing slash in uri
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
-		log.Fatalf("parsing api url: %s", apiURL)
+		t.Fatalf("parsing api url: %s", apiURL)
 	}
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
@@ -62,7 +61,7 @@ func TestNewRequestTimeout(t *testing.T) {
 		VersionPrefix: "v1",
 	})
 	if err != nil {
-		t.Fatalf("new api client: %s", err.Error())
+		t.Fatalf("new api client: %s", err)
 	}
 	/*mock login*/
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {

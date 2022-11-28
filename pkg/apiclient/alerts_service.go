@@ -3,6 +3,7 @@ package apiclient
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	qs "github.com/google/go-querystring/query"
@@ -52,7 +53,7 @@ func (s *AlertsService) Add(ctx context.Context, alerts models.AddAlertsRequest)
 	var added_ids models.AddAlertsResponse
 
 	u := fmt.Sprintf("%s/alerts", s.client.URLPrefix)
-	req, err := s.client.NewRequest("POST", u, &alerts)
+	req, err := s.client.NewRequest(http.MethodPost, u, &alerts)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -64,7 +65,7 @@ func (s *AlertsService) Add(ctx context.Context, alerts models.AddAlertsRequest)
 	return &added_ids, resp, nil
 }
 
-//to demo query arguments
+// to demo query arguments
 func (s *AlertsService) List(ctx context.Context, opts AlertsListOpts) (*models.GetAlertsResponse, *Response, error) {
 	var alerts models.GetAlertsResponse
 	var URI string
@@ -79,7 +80,7 @@ func (s *AlertsService) List(ctx context.Context, opts AlertsListOpts) (*models.
 		URI = u
 	}
 
-	req, err := s.client.NewRequest("GET", URI, nil)
+	req, err := s.client.NewRequest(http.MethodGet, URI, nil)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "building request")
 	}
@@ -91,7 +92,7 @@ func (s *AlertsService) List(ctx context.Context, opts AlertsListOpts) (*models.
 	return &alerts, resp, nil
 }
 
-//to demo query arguments
+// to demo query arguments
 func (s *AlertsService) Delete(ctx context.Context, opts AlertsDeleteOpts) (*models.DeleteAlertsResponse, *Response, error) {
 	var alerts models.DeleteAlertsResponse
 	params, err := qs.Values(opts)
@@ -100,7 +101,23 @@ func (s *AlertsService) Delete(ctx context.Context, opts AlertsDeleteOpts) (*mod
 	}
 	u := fmt.Sprintf("%s/alerts?%s", s.client.URLPrefix, params.Encode())
 
-	req, err := s.client.NewRequest("DELETE", u, nil)
+	req, err := s.client.NewRequest(http.MethodDelete, u, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	resp, err := s.client.Do(ctx, req, &alerts)
+	if err != nil {
+		return nil, resp, err
+	}
+	return &alerts, resp, nil
+}
+
+func (s *AlertsService) DeleteOne(ctx context.Context, alert_id string) (*models.DeleteAlertsResponse, *Response, error) {
+	var alerts models.DeleteAlertsResponse
+	u := fmt.Sprintf("%s/alerts/%s", s.client.URLPrefix, alert_id)
+
+	req, err := s.client.NewRequest(http.MethodDelete, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -116,7 +133,7 @@ func (s *AlertsService) GetByID(ctx context.Context, alertID int) (*models.Alert
 	var alert models.Alert
 	u := fmt.Sprintf("%s/alerts/%d", s.client.URLPrefix, alertID)
 
-	req, err := s.client.NewRequest("GET", u, nil)
+	req, err := s.client.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}

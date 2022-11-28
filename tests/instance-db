@@ -2,17 +2,17 @@
 
 #shellcheck disable=SC1007
 THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-cd "${THIS_DIR}"
-#shellcheck disable=SC1090
+cd "${THIS_DIR}" || exit 1
+# shellcheck disable=SC1091
 . ./.environment.sh
 
-./assert-crowdsec-not-running
+./bin/assert-crowdsec-not-running
 
 backend_script="./lib/db/instance-${DB_BACKEND}"
 
-if [ ! -x "$backend_script" ]; then
-    echo "unknown database '$DB_BACKEND'" >&2
+if [[ ! -x "${backend_script}" ]]; then
+    echo "unknown database '${DB_BACKEND}'" >&2
     exit 1
 fi
 
-exec "$backend_script" "$@"
+exec "${backend_script}" "$@"
