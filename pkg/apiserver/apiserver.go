@@ -319,6 +319,7 @@ func (s *APIServer) Run(apiReady chan bool) error {
 	s.httpServerTomb.Go(func() error {
 		go func() {
 			apiReady <- true
+			log.Infof("CrowdSec Local API listening on %s", s.URL)
 			if s.TLS != nil && s.TLS.CertFilePath != "" && s.TLS.KeyFilePath != "" {
 				if err := s.httpServer.ListenAndServeTLS(s.TLS.CertFilePath, s.TLS.KeyFilePath); err != nil {
 					log.Fatalf("while serving local API: %v", err)
@@ -328,7 +329,6 @@ func (s *APIServer) Run(apiReady chan bool) error {
 					log.Fatalf("while serving local API: %v", err)
 				}
 			}
-			log.Infof("CrowdSec Local API listening on %s", s.URL)
 		}()
 		<-s.httpServerTomb.Dying()
 		return nil
