@@ -92,7 +92,7 @@ func (l *LokiSource) Configure(config []byte, logger *log.Entry) error {
 	}
 
 	if !strings.HasSuffix(l.Config.Prefix, "/") {
-		l.Config.Prefix = l.Config.Prefix + "/"
+		l.Config.Prefix += "/"
 	}
 
 	if l.Config.Limit == 0 {

@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -83,8 +83,8 @@ func (lc *LokiClient) queryRange(uri string, ctx context.Context, c chan *LokiQu
 			if err != nil {
 				return errors.Wrapf(err, "error querying range")
 			}
-			if resp.StatusCode != 200 {
-				body, _ := ioutil.ReadAll(resp.Body)
+			if resp.StatusCode != http.StatusOK {
+				body, _ := io.ReadAll(resp.Body)
 				resp.Body.Close()
 				return errors.Wrapf(err, "bad HTTP response code: %d: %s", resp.StatusCode, string(body))
 			}
@@ -166,7 +166,7 @@ func (lc *LokiClient) Ready(ctx context.Context) error {
 				continue
 			}
 			_ = resp.Body.Close()
-			if resp.StatusCode != 200 {
+			if resp.StatusCode != http.StatusOK {
 				lc.Logger.Debugf("Loki is not ready, status code: %d", resp.StatusCode)
 				continue
 			}
@@ -204,7 +204,7 @@ func (lc *LokiClient) Tail(ctx context.Context) (chan *LokiResponse, error) {
 	defer resp.Body.Close()
 	if err != nil {
 		if resp != nil {
-			buf, err2 := ioutil.ReadAll(resp.Body)
+			buf, err2 := io.ReadAll(resp.Body)
 			if err2 != nil {
 				return nil, fmt.Errorf("error reading response body while handling WS error: %s (%s)", err, err2)
 			}
