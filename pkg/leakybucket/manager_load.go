@@ -358,7 +358,8 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 		for _, value := range values {
 			valueCompiled, err := expr.Compile(value, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 			if err != nil {
-				return fmt.Errorf("compilation of '%s' failed: %v", value, err)
+				log.Errorf("compilation of '%s' context value failed: %v", value, err)
+				continue
 			}
 			bucketFactory.LabelsToSendCompiled[key] = append(bucketFactory.LabelsToSendCompiled[key], valueCompiled)
 		}

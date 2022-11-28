@@ -34,30 +34,35 @@ func NewConsoleCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
-				var fdErr *fs.PathError
-				if errors.As(err, &fdErr) {
-					log.Fatalf("Unable to load Local API : %s", fdErr)
-				}
-				if err != nil {
-					log.Fatalf("Unable to load required Local API Configuration : %s", err)
-				}
-				log.Fatal("Local API is disabled, please run this command on the local API machine")
-			}
+			parentCmd := cmd.Parent()
 
-			if err := csConfig.LoadCrowdsec(); err != nil {
-				log.Fatalf("Unable to load CrowdSec Agent: %s", err)
-			}
-
-			// TODO: maybe remove this check because the agent will now use this command also
-			if csConfig.DisableAPI {
-				log.Fatal("Local API is disabled, please run this command on the local API machine")
-			}
-			if csConfig.API.Server.OnlineClient == nil {
-				log.Fatalf("No configuration for Central API (CAPI) in '%s'", *csConfig.FilePath)
-			}
-			if csConfig.API.Server.OnlineClient.Credentials == nil {
-				log.Fatal("You must configure Central API (CAPI) with `cscli capi register` before enrolling your instance")
+			// if the command is "cscli console context", only the agent need to be loaded
+			switch parentCmd.Name() {
+			case "context":
+				if err := csConfig.LoadCrowdsec(); err != nil {
+					log.Fatalf("Unable to load CrowdSec Agent: %s", err)
+				}
+			// for all the other `cscli console` command, only the LAPI is needed
+			default:
+				if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
+					var fdErr *fs.PathError
+					if errors.As(err, &fdErr) {
+						log.Fatalf("Unable to load Local API : %s", fdErr)
+					}
+					if err != nil {
+						log.Fatalf("Unable to load required Local API Configuration : %s", err)
+					}
+					log.Fatal("Local API is disabled, please run this command on the local API machine")
+				}
+				if csConfig.DisableAPI {
+					log.Fatal("Local API is disabled, please run this command on the local API machine")
+				}
+				if csConfig.API.Server.OnlineClient == nil {
+					log.Fatalf("No configuration for Central API (CAPI) in '%s'", *csConfig.FilePath)
+				}
+				if csConfig.API.Server.OnlineClient.Credentials == nil {
+					log.Fatal("You must configure Central API (CAPI) with `cscli capi register` before accessing console features.")
+				}
 			}
 			return nil
 		},
