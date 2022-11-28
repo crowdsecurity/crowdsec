@@ -148,7 +148,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				HubIndexFile:         hubIndexFileFullPath,
 				DataDir:              dataFullPath,
 				HubDir:               hubFullPath,
-				ConsoleContextPath:   DefaultContextConfigFilePath,
+				ConsoleContextPath:   contextFileFullPath,
 				BucketsRoutinesCount: 1,
 				ParserRoutinesCount:  1,
 				OutputRoutinesCount:  1,

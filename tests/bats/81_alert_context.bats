@@ -33,10 +33,10 @@ teardown() {
     tmpfile=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp)
     touch "${tmpfile}"
     ACQUIS_YAML=$(config_yq '.crowdsec_service.acquisition_path')
-    echo -e "---\nfilename: $tmpfile\nlabels:\n  type: syslog\n" >>"${ACQUIS_YAML}"
+    printf "---\nfilename: $tmpfile\nlabels:\n  type: syslog\n" >>"${ACQUIS_YAML}"
 
     CONTEXT_YAML=$(config_yq '.crowdsec_service.console_context_path')
-    echo -e "---\ntarget_user:\n- evt.Parsed.sshd_invalid_user\nsource_ip:\n- evt.Parsed.sshd_client_ip\nsource_host:\n- evt.Meta.machine\n" >>"${CONTEXT_YAML}"
+    printf "---\ntarget_user:\n- evt.Parsed.sshd_invalid_user\nsource_ip:\n- evt.Parsed.sshd_client_ip\nsource_host:\n- evt.Meta.machine\n" >>"${CONTEXT_YAML}"
 
     ./instance-crowdsec start
     sleep 2
@@ -47,6 +47,5 @@ teardown() {
     run -0 cscli alerts inspect 2 -o json
     run -0 jq -c '.meta | sort_by(.key) | map([.key,.value])' <(output)
 
-    assert_output '[["source_host","[\"sd-126005\"]"],["source_ip","[\"1.1.1.172\"]"],["target_user","[\"netflix\"]"]]'
-
+    assert_json '[["source_host","[\"sd-126005\"]"],["source_ip","[\"1.1.1.172\"]"],["target_user","[\"netflix\"]"]]'
 }
