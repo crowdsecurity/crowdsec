@@ -6,9 +6,6 @@ on:
       database_image:
         required: true
         type: string
-    secrets:
-      DATABASE_PASSWORD:
-        required: true
 
 env:
   PREFIX_TEST_NAMES_WITH_FILE: true
@@ -23,7 +20,7 @@ jobs:
       database:
         image: ${{ inputs.database_image }}
         env:
-          MYSQL_ROOT_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          MYSQL_ROOT_PASSWORD: "secret"
         ports:
           - 3306:3306
 
@@ -61,7 +58,7 @@ jobs:
         DB_BACKEND: mysql
         MYSQL_HOST: 127.0.0.1
         MYSQL_PORT: 3306
-        MYSQL_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        MYSQL_PASSWORD: "secret"
         MYSQL_USER: root
 
     - name: "Run tests"
@@ -70,7 +67,7 @@ jobs:
         DB_BACKEND: mysql
         MYSQL_HOST: 127.0.0.1
         MYSQL_PORT: 3306
-        MYSQL_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        MYSQL_PASSWORD: "secret"
         MYSQL_USER: root
 
     #
@@ -85,13 +82,16 @@ jobs:
         DB_BACKEND: mysql
         MYSQL_HOST: 127.0.0.1
         MYSQL_PORT: 3306
-        MYSQL_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        MYSQL_PASSWORD: "secret"
         MYSQL_USER: root
       if: ${{ always() }}
 
+    - name: "Show stack traces"
+      run: for file in $(find /tmp/crowdsec-crash.*.txt); do echo ">>>>> $file"; cat $file; echo; done
+      if: ${{ always() }}
+
     - name: "Show crowdsec logs"
-      run:
-        for file in $(find ./tests/local/var/log -type f); do echo ">>>>> $file"; cat $file; echo; done
+      run: for file in $(find ./tests/local/var/log -type f); do echo ">>>>> $file"; cat $file; echo; done
       if: ${{ always() }}
 
     - name: "Show database logs"

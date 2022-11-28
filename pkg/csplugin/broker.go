@@ -11,7 +11,7 @@ import (
 	"text/template"
 	"time"
 
-	"github.com/Masterminds/sprig"
+	"github.com/Masterminds/sprig/v3"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
@@ -31,9 +31,9 @@ const (
 	CrowdsecPluginKey     string = "CROWDSEC_PLUGIN_KEY"
 )
 
-//The broker is responsible for running the plugins and dispatching events
-//It receives all the events from the main process and stacks them up
-//It is as well notified by the watcher when it needs to deliver events to plugins (based on time or count threshold)
+// The broker is responsible for running the plugins and dispatching events
+// It receives all the events from the main process and stacks them up
+// It is as well notified by the watcher when it needs to deliver events to plugins (based on time or count threshold)
 type PluginBroker struct {
 	PluginChannel                   chan ProfileAlert
 	alertsByPluginName              map[string][]*models.Alert
@@ -119,7 +119,7 @@ loop:
 			}()
 
 		case <-pluginTomb.Dying():
-			log.Infof("plugingTomb dying")
+			log.Infof("pluginTomb dying")
 			pb.watcher.tomb.Kill(errors.New("Terminating"))
 			for {
 				select {
@@ -254,7 +254,7 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 			if err != nil {
 				return err
 			}
-
+			data = []byte(os.ExpandEnv(string(data)))
 			_, err = pluginClient.Configure(context.Background(), &protobufs.Config{Config: data})
 			if err != nil {
 				return errors.Wrapf(err, "while configuring %s", pc.Name)
@@ -329,7 +329,7 @@ func (pb *PluginBroker) pushNotificationsToPlugin(pluginName string, alerts []*m
 			},
 		)
 		if err == nil {
-			return err
+			return nil
 		}
 		log.WithField("plugin", pluginName).Errorf("%s error, retry num %d", err, i)
 		time.Sleep(backoffDuration)

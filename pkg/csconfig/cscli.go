@@ -3,6 +3,7 @@ package csconfig
 /*cscli specific config, such as hub directory*/
 type CscliCfg struct {
 	Output             string            `yaml:"output,omitempty"`
+	Color              string            `yaml:"color,omitempty"`
 	HubBranch          string            `yaml:"hub_branch"`
 	SimulationConfig   *SimulationConfig `yaml:"-"`
 	DbConfig           *DatabaseCfg      `yaml:"-"`

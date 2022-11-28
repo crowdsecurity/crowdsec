@@ -13,16 +13,19 @@ name: Tests
 
 on:
   push:
-    branches: [master]
+    branches:
+      - master
+      - releases/**
     paths-ignore:
-      - 'README.md'
+      - "README.md"
   pull_request:
-    branches: [master]
+    branches:
+      - master
+      - releases/**
     paths-ignore:
-      - 'README.md'
+      - "README.md"
 
 jobs:
-
   sqlite:
     uses: ./.github/workflows/bats-sqlite-coverage.yml
 
@@ -34,20 +37,14 @@ jobs:
     uses: ./.github/workflows/bats-mysql.yml
     with:
       database_image: mariadb:latest
-    secrets:
-      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD}}
 
   mysql:
     uses: ./.github/workflows/bats-mysql.yml
     with:
       database_image: mysql:latest
-    secrets:
-      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD}}
 
   postgres:
     uses: ./.github/workflows/bats-postgres.yml
-    secrets:
-      DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD}}
 
   hub:
     uses: ./.github/workflows/bats-hub.yml

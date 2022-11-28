@@ -2,9 +2,6 @@ name: Functional tests (Postgres)
 
 on:
   workflow_call:
-    secrets:
-      DATABASE_PASSWORD:
-        required: true
 
 env:
   PREFIX_TEST_NAMES_WITH_FILE: true
@@ -17,9 +14,9 @@ jobs:
     timeout-minutes: 20
     services:
       database:
-        image: postgres:latest
+        image: postgres:14
         env:
-          POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          POSTGRES_PASSWORD: "secret"
         ports:
           - 5432:5432
         options: >-
@@ -62,7 +59,7 @@ jobs:
         DB_BACKEND: pgx
         PGHOST: 127.0.0.1
         PGPORT: 5432
-        PGPASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        PGPASSWORD: "secret"
         PGUSER: postgres
 
     - name: "Run tests (DB_BACKEND: pgx)"
@@ -71,30 +68,33 @@ jobs:
         DB_BACKEND: pgx
         PGHOST: 127.0.0.1
         PGPORT: 5432
-        PGPASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        PGPASSWORD: "secret"
         PGUSER: postgres
 
-    - name: "Build crowdsec and fixture (DB_BACKEND: postgres)"
-      run: make clean bats-build bats-fixture
-      env:
-        DB_BACKEND: postgres
-        PGHOST: 127.0.0.1
-        PGPORT: 5432
-        PGPASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-        PGUSER: postgres
+#    - name: "Build crowdsec and fixture (DB_BACKEND: postgres)"
+#      run: make clean bats-build bats-fixture
+#      env:
+#        DB_BACKEND: postgres
+#        PGHOST: 127.0.0.1
+#        PGPORT: 5432
+#        PGPASSWORD: "secret"
+#        PGUSER: postgres
+#
+#    - name: "Run tests (DB_BACKEND: postgres)"
+#      run: make bats-test
+#      env:
+#        DB_BACKEND: postgres
+#        PGHOST: 127.0.0.1
+#        PGPORT: 5432
+#        PGPASSWORD: "secret"
+#        PGUSER: postgres
 
-    - name: "Run tests (DB_BACKEND: postgres)"
-      run: make bats-test
-      env:
-        DB_BACKEND: postgres
-        PGHOST: 127.0.0.1
-        PGPORT: 5432
-        PGPASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-        PGUSER: postgres
+    - name: "Show stack traces"
+      run: for file in $(find /tmp/crowdsec-crash.*.txt); do echo ">>>>> $file"; cat $file; echo; done
+      if: ${{ always() }}
 
     - name: "Show crowdsec logs"
-      run:
-        for file in $(find ./tests/local/var/log -type f); do echo ">>>>> $file"; cat $file; echo; done
+      run: for file in $(find ./tests/local/var/log -type f); do echo ">>>>> $file"; cat $file; echo; done
       if: ${{ always() }}
 
     - name: "Show database logs"

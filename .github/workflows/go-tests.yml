@@ -7,11 +7,15 @@ name: Build
 
 on:
   push:
-    branches: [master]
+    branches:
+      - master
+      - releases/**
     paths-ignore:
       - 'README.md'
   pull_request:
-    branches: [master]
+    branches:
+      - master
+      - releases/**
     paths-ignore:
       - 'README.md'
 
@@ -31,6 +35,10 @@ env:
 jobs:
 
   build:
+    strategy:
+      matrix:
+        go-version: [1.18, 1.x]
+
     name: "Build + tests"
     runs-on: ubuntu-latest
     services:
@@ -108,10 +116,10 @@ jobs:
 
     steps:
 
-    - name: "Set up Go 1.19"
+    - name: "Set up Go ${{ matrix.go-version }}"
       uses: actions/setup-go@v3
       with:
-        go-version: 1.19
+        go-version: ${{ matrix.go-version }}
       id: go
 
     - name: Check out CrowdSec repository
@@ -120,21 +128,24 @@ jobs:
         fetch-depth: 0
         submodules: false
 
-    - name: Build
+    - name: Build and run tests
       run: |
-        make build
-
-    - name: Run tests
-      run: |
-        set -o pipefail
         go install github.com/ory/go-acc@v0.2.8
         go install github.com/kyoh86/richgo@v0.3.10
+        set -o pipefail
+        make build
         go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models \
           | sed 's/ *coverage:.*of statements in.*//' \
           | richgo testfilter
 
+    - name: Build and run tests (static)
+      run: |
+        make clean build BUILD_STATIC=yes
+        make test \
+          | richgo testfilter
+
     - name: Upload unit coverage to Codecov
-      uses: codecov/codecov-action@v2
+      uses: codecov/codecov-action@v3
       with:
         files: coverage.out
         flags: unit-linux

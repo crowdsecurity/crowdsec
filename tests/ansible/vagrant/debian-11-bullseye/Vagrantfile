@@ -1,6 +1,8 @@
-Vagrant.configure("2") do |config|
-  config.vm.box = "debian/bullseye64"
+# frozen_string_literal: true
+
+Vagrant.configure('2') do |config|
+  config.vm.box = 'debian/bullseye64'
 end
 
-common = '../Vagrantfile.common'
-load common if File.exists?(common)
+common = '../common'
+load common if File.exist?(common)

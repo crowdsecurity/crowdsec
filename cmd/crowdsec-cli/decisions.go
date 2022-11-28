@@ -12,16 +12,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
+	"github.com/go-openapi/strfmt"
+	"github.com/jszwec/csvutil"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/go-openapi/strfmt"
-	"github.com/jszwec/csvutil"
-	"github.com/olekukonko/tablewriter"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
 )
 
 var Client *apiclient.ApiClient
@@ -71,7 +72,7 @@ func DecisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error
 					*decisionItem.Scenario,
 					*decisionItem.Type,
 					alertItem.Source.Cn,
-					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
+					alertItem.Source.GetAsNumberName(),
 					fmt.Sprintf("%d", *alertItem.EventsCount),
 					*decisionItem.Duration,
 					fmt.Sprintf("%t", *decisionItem.Simulated),
@@ -92,44 +93,11 @@ func DecisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error
 		x, _ := json.MarshalIndent(alerts, "", " ")
 		fmt.Printf("%s", string(x))
 	} else if csConfig.Cscli.Output == "human" {
-		table := tablewriter.NewWriter(os.Stdout)
-		header := []string{"ID", "Source", "Scope:Value", "Reason", "Action", "Country", "AS", "Events", "expiration", "Alert ID"}
-		if printMachine {
-			header = append(header, "Machine")
-		}
-		table.SetHeader(header)
-
 		if len(*alerts) == 0 {
 			fmt.Println("No active decisions")
 			return nil
 		}
-
-		for _, alertItem := range *alerts {
-			for _, decisionItem := range alertItem.Decisions {
-				if *alertItem.Simulated {
-					*decisionItem.Type = fmt.Sprintf("(simul)%s", *decisionItem.Type)
-				}
-				raw := []string{
-					strconv.Itoa(int(decisionItem.ID)),
-					*decisionItem.Origin,
-					*decisionItem.Scope + ":" + *decisionItem.Value,
-					*decisionItem.Scenario,
-					*decisionItem.Type,
-					alertItem.Source.Cn,
-					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
-					strconv.Itoa(int(*alertItem.EventsCount)),
-					*decisionItem.Duration,
-					strconv.Itoa(int(alertItem.ID)),
-				}
-
-				if printMachine {
-					raw = append(raw, alertItem.MachineID)
-				}
-
-				table.Append(raw)
-			}
-		}
-		table.Render() // Send output
+		decisionsTable(color.Output, alerts, printMachine)
 		if skipped > 0 {
 			fmt.Printf("%d duplicated entries skipped\n", skipped)
 		}
@@ -211,31 +179,28 @@ cscli decisions list -t ban
 			/* nullify the empty entries to avoid bad filter */
 			if *filter.Until == "" {
 				filter.Until = nil
-			} else {
+			} else if strings.HasSuffix(*filter.Until, "d") {
 				/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
-				if strings.HasSuffix(*filter.Until, "d") {
-					realDuration := strings.TrimSuffix(*filter.Until, "d")
-					days, err := strconv.Atoi(realDuration)
-					if err != nil {
-						printHelp(cmd)
-						log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
-					}
-					*filter.Until = fmt.Sprintf("%d%s", days*24, "h")
+				realDuration := strings.TrimSuffix(*filter.Until, "d")
+				days, err := strconv.Atoi(realDuration)
+				if err != nil {
+					printHelp(cmd)
+					log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
 				}
+				*filter.Until = fmt.Sprintf("%d%s", days*24, "h")
 			}
+
 			if *filter.Since == "" {
 				filter.Since = nil
-			} else {
+			} else if strings.HasSuffix(*filter.Since, "d") {
 				/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
-				if strings.HasSuffix(*filter.Since, "d") {
-					realDuration := strings.TrimSuffix(*filter.Since, "d")
-					days, err := strconv.Atoi(realDuration)
-					if err != nil {
-						printHelp(cmd)
-						log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
-					}
-					*filter.Since = fmt.Sprintf("%d%s", days*24, "h")
+				realDuration := strings.TrimSuffix(*filter.Since, "d")
+				days, err := strconv.Atoi(realDuration)
+				if err != nil {
+					printHelp(cmd)
+					log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
 				}
+				*filter.Since = fmt.Sprintf("%d%s", days*24, "h")
 			}
 			if *filter.IncludeCAPI {
 				*filter.Limit = 0
@@ -404,11 +369,12 @@ cscli decisions add --scope username --value foobar
 	cmdDecisions.AddCommand(cmdDecisionsAdd)
 
 	var delFilter = apiclient.DecisionsDeleteOpts{
-		ScopeEquals: new(string),
-		ValueEquals: new(string),
-		TypeEquals:  new(string),
-		IPEquals:    new(string),
-		RangeEquals: new(string),
+		ScopeEquals:    new(string),
+		ValueEquals:    new(string),
+		TypeEquals:     new(string),
+		IPEquals:       new(string),
+		RangeEquals:    new(string),
+		ScenarioEquals: new(string),
 	}
 	var delDecisionId string
 	var delDecisionAll bool
@@ -429,7 +395,7 @@ cscli decisions delete --type captcha
 			}
 			if *delFilter.ScopeEquals == "" && *delFilter.ValueEquals == "" &&
 				*delFilter.TypeEquals == "" && *delFilter.IPEquals == "" &&
-				*delFilter.RangeEquals == "" && delDecisionId == "" {
+				*delFilter.RangeEquals == "" && *delFilter.ScenarioEquals == "" && delDecisionId == "" {
 				cmd.Usage()
 				log.Fatalln("At least one filter or --all must be specified")
 			}
@@ -447,6 +413,9 @@ cscli decisions delete --type captcha
 			}
 			if *delFilter.ValueEquals == "" {
 				delFilter.ValueEquals = nil
+			}
+			if *delFilter.ScenarioEquals == "" {
+				delFilter.ScenarioEquals = nil
 			}
 
 			if *delFilter.TypeEquals == "" {
@@ -485,9 +454,10 @@ cscli decisions delete --type captcha
 	cmdDecisionsDelete.Flags().SortFlags = false
 	cmdDecisionsDelete.Flags().StringVarP(delFilter.IPEquals, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
 	cmdDecisionsDelete.Flags().StringVarP(delFilter.RangeEquals, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
-	cmdDecisionsDelete.Flags().StringVar(&delDecisionId, "id", "", "decision id")
 	cmdDecisionsDelete.Flags().StringVarP(delFilter.TypeEquals, "type", "t", "", "the decision type (ie. ban,captcha)")
 	cmdDecisionsDelete.Flags().StringVarP(delFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
+	cmdDecisionsDelete.Flags().StringVarP(delFilter.ScenarioEquals, "scenario", "s", "", "the scenario name (ie. crowdsecurity/ssh-bf)")
+	cmdDecisionsDelete.Flags().StringVar(&delDecisionId, "id", "", "decision id")
 	cmdDecisionsDelete.Flags().BoolVar(&delDecisionAll, "all", false, "delete all decisions")
 	cmdDecisionsDelete.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
 

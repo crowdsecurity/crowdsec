@@ -18,7 +18,7 @@ format: |
   {{range . -}}
     {{$alert := . -}}
     {{range .Decisions -}}
-      <html><body><p><a href=https://www.whois.com/whois/{{.Value}}>{{.Value}}</a> will get <b>{{.Type}}</b> for next <b>{{.Duration}}</b> for triggering <b>{{.Scenario}}</b> on machine <b>{{$alert.MachineID}}</b>.</p> <p><a href=https://www.shodan.io/host/{{.Value}}>Shodan</a></p></body></html>
+      <html><body><p><a href=https://www.whois.com/whois/{{.Value}}>{{.Value}}</a> will get <b>{{.Type}}</b> for next <b>{{.Duration}}</b> for triggering <b>{{.Scenario}}</b> on machine <b>{{$alert.MachineID}}</b>.</p> <p><a href=https://app.crowdsec.net/cti/{{.Value}}>CrowdSec CTI</a></p></body></html>
     {{end -}}
   {{end -}}
 

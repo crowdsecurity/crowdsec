@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -68,7 +67,7 @@ type BucketFactory struct {
 	output          bool                      //??
 	ScenarioVersion string                    `yaml:"version,omitempty"`
 	hash            string                    `yaml:"-"`
-	Simulated       bool                      `yaml:"simulated"` //Set to true if the scenario instanciating the bucket was in the exclusion list
+	Simulated       bool                      `yaml:"simulated"` //Set to true if the scenario instantiating the bucket was in the exclusion list
 	tomb            *tomb.Tomb                `yaml:"-"`
 	wgPour          *sync.WaitGroup           `yaml:"-"`
 	wgDumpState     *sync.WaitGroup           `yaml:"-"`
@@ -355,7 +354,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 
 func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFactory) error {
 	var state map[string]Leaky
-	body, err := ioutil.ReadFile(file)
+	body, err := os.ReadFile(file)
 	if err != nil {
 		return fmt.Errorf("can't state file %s : %s", file, err)
 	}

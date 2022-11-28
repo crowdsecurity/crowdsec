@@ -1,11 +1,10 @@
 package main
 
 import (
-	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math"
 	"net"
 	"net/http"
@@ -14,17 +13,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/database"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/enescakir/emoji"
 	"github.com/olekukonko/tablewriter"
+	"github.com/fatih/color"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prom2json"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/texttheater/golang-levenshtein/levenshtein"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
 )
 
 const MaxDistance = 7
@@ -114,12 +115,8 @@ func compAllItems(itemType string, args []string, toComplete string) ([]string, 
 	comp := make([]string, 0)
 	hubItems := cwhub.GetHubStatusForItemType(itemType, "", true)
 	for _, item := range hubItems {
-		if toComplete == "" {
+		if !inSlice(item.Name, args) && strings.Contains(item.Name, toComplete) {
 			comp = append(comp, item.Name)
-		} else {
-			if strings.Contains(item.Name, toComplete) {
-				comp = append(comp, item.Name)
-			}
 		}
 	}
 	cobra.CompDebugln(fmt.Sprintf("%s: %+v", itemType, comp), true)
@@ -167,8 +164,7 @@ func compInstalledItems(itemType string, args []string, toComplete string) ([]st
 	return comp, cobra.ShellCompDirectiveNoFileComp
 }
 
-func ListItems(itemTypes []string, args []string, showType bool, showHeader bool, all bool) []byte {
-
+func ListItems(out io.Writer, itemTypes []string, args []string, showType bool, showHeader bool, all bool) {
 	var hubStatusByItemType = make(map[string][]cwhub.ItemHubStatus)
 
 	for _, itemType := range itemTypes {
@@ -179,8 +175,6 @@ func ListItems(itemTypes []string, args []string, showType bool, showHeader bool
 		hubStatusByItemType[itemType] = cwhub.GetHubStatusForItemType(itemType, itemName, all)
 	}
 
-	w := bytes.NewBuffer(nil)
-
 	if csConfig.Cscli.Output == "human" {
 		for _, itemType := range itemTypes {
 			var statuses []cwhub.ItemHubStatus
@@ -189,26 +183,16 @@ func ListItems(itemTypes []string, args []string, showType bool, showHeader bool
 				log.Errorf("unknown item type: %s", itemType)
 				continue
 			}
-			fmt.Fprintf(w, "%s\n", strings.ToUpper(itemType))
-			table := tablewriter.NewWriter(w)
-			table.SetCenterSeparator("")
-			table.SetColumnSeparator("")
-			table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-			table.SetAlignment(tablewriter.ALIGN_LEFT)
-			table.SetHeader([]string{"Name", fmt.Sprintf("%v Status", emoji.Package), "Version", "Local Path"})
-			for _, status := range statuses {
-				table.Append([]string{status.Name, status.UTF8_Status, status.LocalVersion, status.LocalPath})
-			}
-			table.Render()
+			listHubItemTable(out, "\n"+strings.ToUpper(itemType), statuses)
 		}
 	} else if csConfig.Cscli.Output == "json" {
 		x, err := json.MarshalIndent(hubStatusByItemType, "", " ")
 		if err != nil {
 			log.Fatalf("failed to unmarshal")
 		}
-		w.Write(x)
+		out.Write(x)
 	} else if csConfig.Cscli.Output == "raw" {
-		csvwriter := csv.NewWriter(w)
+		csvwriter := csv.NewWriter(out)
 		if showHeader {
 			header := []string{"name", "status", "version", "description"}
 			if showType {
@@ -248,7 +232,6 @@ func ListItems(itemTypes []string, args []string, showType bool, showHeader bool
 		}
 		csvwriter.Flush()
 	}
-	return w.Bytes()
 }
 
 func InspectItem(name string, objecitemType string) {
@@ -276,18 +259,23 @@ func InspectItem(name string, objecitemType string) {
 		return
 	}
 
-	if csConfig.Prometheus.Enabled {
-		if csConfig.Prometheus.ListenAddr == "" || csConfig.Prometheus.ListenPort == 0 {
-			log.Warningf("No prometheus address or port specified in '%s', can't show metrics", *csConfig.FilePath)
-			return
+	if prometheusURL == "" {
+		//This is technically wrong to do this, as the prometheus section contains a listen address, not an URL to query prometheus
+		//But for ease of use, we will use the listen address as the prometheus URL because it will be 127.0.0.1 in the default case
+		listenAddr := csConfig.Prometheus.ListenAddr
+		if listenAddr == "" {
+			listenAddr = "127.0.0.1"
 		}
-		if prometheusURL == "" {
-			log.Debugf("No prometheus URL provided using: %s:%d", csConfig.Prometheus.ListenAddr, csConfig.Prometheus.ListenPort)
-			prometheusURL = fmt.Sprintf("http://%s:%d/metrics", csConfig.Prometheus.ListenAddr, csConfig.Prometheus.ListenPort)
+		listenPort := csConfig.Prometheus.ListenPort
+		if listenPort == 0 {
+			listenPort = 6060
 		}
-		fmt.Printf("\nCurrent metrics : \n\n")
-		ShowMetrics(hubItem)
+		prometheusURL = fmt.Sprintf("http://%s:%d/metrics", listenAddr, listenPort)
+		log.Debugf("No prometheus URL provided using: %s", prometheusURL)
 	}
+
+	fmt.Printf("\nCurrent metrics : \n")
+	ShowMetrics(hubItem)
 }
 
 func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *string) error {
@@ -324,18 +312,18 @@ func ShowMetrics(hubItem *cwhub.Item) {
 	switch hubItem.Type {
 	case cwhub.PARSERS:
 		metrics := GetParserMetric(prometheusURL, hubItem.Name)
-		ShowParserMetric(hubItem.Name, metrics)
+		parserMetricsTable(color.Output, hubItem.Name, metrics)
 	case cwhub.SCENARIOS:
 		metrics := GetScenarioMetric(prometheusURL, hubItem.Name)
-		ShowScenarioMetric(hubItem.Name, metrics)
+		scenarioMetricsTable(color.Output, hubItem.Name, metrics)
 	case cwhub.COLLECTIONS:
 		for _, item := range hubItem.Parsers {
 			metrics := GetParserMetric(prometheusURL, item)
-			ShowParserMetric(item, metrics)
+			parserMetricsTable(color.Output, item, metrics)
 		}
 		for _, item := range hubItem.Scenarios {
 			metrics := GetScenarioMetric(prometheusURL, item)
-			ShowScenarioMetric(item, metrics)
+			scenarioMetricsTable(color.Output, item, metrics)
 		}
 		for _, item := range hubItem.Collections {
 			hubItem = cwhub.GetItem(cwhub.COLLECTIONS, item)
@@ -349,7 +337,7 @@ func ShowMetrics(hubItem *cwhub.Item) {
 	}
 }
 
-/*This is a complete rip from prom2json*/
+// GetParserMetric is a complete rip from prom2json
 func GetParserMetric(url string, itemName string) map[string]map[string]int {
 	stats := make(map[string]map[string]int)
 
@@ -434,7 +422,7 @@ func GetParserMetric(url string, itemName string) map[string]map[string]int {
 func GetScenarioMetric(url string, itemName string) map[string]int {
 	stats := make(map[string]int)
 
-	stats["instanciation"] = 0
+	stats["instantiation"] = 0
 	stats["curr_count"] = 0
 	stats["overflow"] = 0
 	stats["pour"] = 0
@@ -469,7 +457,7 @@ func GetScenarioMetric(url string, itemName string) map[string]int {
 
 			switch fam.Name {
 			case "cs_bucket_created_total":
-				stats["instanciation"] += ival
+				stats["instantiation"] += ival
 			case "cs_buckets":
 				stats["curr_count"] += ival
 			case "cs_bucket_overflowed_total":
@@ -545,37 +533,6 @@ func GetPrometheusMetric(url string) []*prom2json.Family {
 	return result
 }
 
-func ShowScenarioMetric(itemName string, metrics map[string]int) {
-	if metrics["instanciation"] == 0 {
-		return
-	}
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Current Count", "Overflows", "Instanciated", "Poured", "Expired"})
-	table.Append([]string{fmt.Sprintf("%d", metrics["curr_count"]), fmt.Sprintf("%d", metrics["overflow"]), fmt.Sprintf("%d", metrics["instanciation"]), fmt.Sprintf("%d", metrics["pour"]), fmt.Sprintf("%d", metrics["underflow"])})
-
-	fmt.Printf(" - (Scenario) %s: \n", itemName)
-	table.Render()
-	fmt.Println()
-}
-
-func ShowParserMetric(itemName string, metrics map[string]map[string]int) {
-	skip := true
-
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Parsers", "Hits", "Parsed", "Unparsed"})
-	for source, stats := range metrics {
-		if stats["hits"] > 0 {
-			table.Append([]string{source, fmt.Sprintf("%d", stats["hits"]), fmt.Sprintf("%d", stats["parsed"]), fmt.Sprintf("%d", stats["unparsed"])})
-			skip = false
-		}
-	}
-	if !skip {
-		fmt.Printf(" - (Parser) %s: \n", itemName)
-		table.Render()
-		fmt.Println()
-	}
-}
-
 func RestoreHub(dirPath string) error {
 	var err error
 
@@ -594,7 +551,7 @@ func RestoreHub(dirPath string) error {
 		}
 		/*restore the upstream items*/
 		upstreamListFN := fmt.Sprintf("%s/upstream-%s.json", itemDirectory, itype)
-		file, err := ioutil.ReadFile(upstreamListFN)
+		file, err := os.ReadFile(upstreamListFN)
 		if err != nil {
 			return fmt.Errorf("error while opening %s : %s", upstreamListFN, err)
 		}
@@ -615,7 +572,7 @@ func RestoreHub(dirPath string) error {
 		}
 
 		/*restore the local and tainted items*/
-		files, err := ioutil.ReadDir(itemDirectory)
+		files, err := os.ReadDir(itemDirectory)
 		if err != nil {
 			return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory, err)
 		}
@@ -636,7 +593,7 @@ func RestoreHub(dirPath string) error {
 					return fmt.Errorf("error while creating stage directory %s : %s", stagedir, err)
 				}
 				/*find items*/
-				ifiles, err := ioutil.ReadDir(itemDirectory + "/" + stage + "/")
+				ifiles, err := os.ReadDir(itemDirectory + "/" + stage + "/")
 				if err != nil {
 					return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory+"/"+stage, err)
 				}
@@ -720,7 +677,7 @@ func BackupHub(dirPath string) error {
 		if err != nil {
 			return fmt.Errorf("failed marshaling upstream parsers : %s", err)
 		}
-		err = ioutil.WriteFile(upstreamParsersFname, upstreamParsersContent, 0644)
+		err = os.WriteFile(upstreamParsersFname, upstreamParsersContent, 0644)
 		if err != nil {
 			return fmt.Errorf("unable to write to %s %s : %s", itemType, upstreamParsersFname, err)
 		}

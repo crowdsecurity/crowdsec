@@ -2,8 +2,9 @@ package parser
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path"
+	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 
@@ -31,12 +32,15 @@ type Parsers struct {
 func Init(c map[string]interface{}) (*UnixParserCtx, error) {
 	r := UnixParserCtx{}
 	r.Grok = grokky.NewBase()
-	files, err := ioutil.ReadDir(c["patterns"].(string))
+	files, err := os.ReadDir(c["patterns"].(string))
 	if err != nil {
 		return nil, err
 	}
 	r.DataFolder = c["data"].(string)
 	for _, f := range files {
+		if strings.Contains(f.Name(), ".") {
+			continue
+		}
 		if err := r.Grok.AddFromFile(path.Join(c["patterns"].(string), f.Name())); err != nil {
 			log.Errorf("failed to load pattern %s : %v", f.Name(), err)
 			return nil, err

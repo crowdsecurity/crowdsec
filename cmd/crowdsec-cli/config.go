@@ -3,20 +3,19 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 
 	"github.com/antonmedv/expr"
-
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 )
 
 type OldAPICfg struct {
@@ -181,7 +180,7 @@ func restoreConfigFromDirectory(dirPath string) error {
 		if err != nil {
 			log.Warningf("failed to open %s : %s", backupOldAPICfg, err)
 		} else {
-			byteValue, _ := ioutil.ReadAll(jsonFile)
+			byteValue, _ := io.ReadAll(jsonFile)
 			err = json.Unmarshal(byteValue, &oldAPICfg)
 			if err != nil {
 				return fmt.Errorf("failed to load json file %s : %s", backupOldAPICfg, err)
@@ -200,7 +199,7 @@ func restoreConfigFromDirectory(dirPath string) error {
 			if csConfig.API.Server.OnlineClient != nil && csConfig.API.Server.OnlineClient.CredentialsFilePath != "" {
 				apiConfigDumpFile = csConfig.API.Server.OnlineClient.CredentialsFilePath
 			}
-			err = ioutil.WriteFile(apiConfigDumpFile, apiConfigDump, 0644)
+			err = os.WriteFile(apiConfigDumpFile, apiConfigDump, 0644)
 			if err != nil {
 				return fmt.Errorf("write api credentials in '%s' failed: %s", apiConfigDumpFile, err)
 			}
@@ -410,7 +409,7 @@ func NewConfigCmd() *cobra.Command {
 					switch csConfig.DbConfig.Type {
 					case "sqlite":
 						fmt.Printf("      - Path                : %s\n", csConfig.DbConfig.DbPath)
-					case "mysql", "postgresql", "postgres":
+					default:
 						fmt.Printf("      - Host                : %s\n", csConfig.DbConfig.Host)
 						fmt.Printf("      - Port                : %d\n", csConfig.DbConfig.Port)
 						fmt.Printf("      - User                : %s\n", csConfig.DbConfig.User)

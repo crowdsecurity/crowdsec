@@ -10,7 +10,7 @@ import (
 func (c *Controller) HeartBeat(gctx *gin.Context) {
 
 	claims := jwt.ExtractClaims(gctx)
-	/*TBD : use defines rather than hardcoded key to find back owner*/
+	// TBD: use defined rather than hardcoded key to find back owner
 	machineID := claims["id"].(string)
 
 	if err := c.DBClient.UpdateMachineLastHeartBeat(machineID); err != nil {

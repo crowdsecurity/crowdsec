@@ -95,6 +95,7 @@ func (c *Controller) NewV1() error {
 		jwtAuth.HEAD("/alerts", c.HandlerV1.FindAlerts)
 		jwtAuth.GET("/alerts/:alert_id", c.HandlerV1.FindAlertByID)
 		jwtAuth.HEAD("/alerts/:alert_id", c.HandlerV1.FindAlertByID)
+		jwtAuth.DELETE("/alerts/:alert_id", c.HandlerV1.DeleteAlertByID)
 		jwtAuth.DELETE("/alerts", c.HandlerV1.DeleteAlerts)
 		jwtAuth.DELETE("/decisions", c.HandlerV1.DeleteDecisions)
 		jwtAuth.DELETE("/decisions/:decision_id", c.HandlerV1.DeleteDecisionById)

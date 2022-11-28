@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -267,7 +266,7 @@ func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
 	if s.TLS.CACertPath != "" {
 		if clientAuthType > tls.RequestClientCert {
 			log.Infof("(tls) Client Auth Type set to %s", clientAuthType.String())
-			caCert, err = ioutil.ReadFile(s.TLS.CACertPath)
+			caCert, err = os.ReadFile(s.TLS.CACertPath)
 			if err != nil {
 				return nil, errors.Wrap(err, "Error opening cert file")
 			}
@@ -312,10 +311,7 @@ func (s *APIServer) Run(apiReady chan bool) error {
 			return nil
 		})
 		s.apic.metricsTomb.Go(func() error {
-			if err := s.apic.SendMetrics(); err != nil {
-				log.Errorf("capi metrics: %s", err)
-				return err
-			}
+			s.apic.SendMetrics(make(chan bool))
 			return nil
 		})
 	}
@@ -326,11 +322,11 @@ func (s *APIServer) Run(apiReady chan bool) error {
 			log.Infof("CrowdSec Local API listening on %s", s.URL)
 			if s.TLS != nil && s.TLS.CertFilePath != "" && s.TLS.KeyFilePath != "" {
 				if err := s.httpServer.ListenAndServeTLS(s.TLS.CertFilePath, s.TLS.KeyFilePath); err != nil {
-					log.Fatal(err)
+					log.Fatalf("while serving local API: %v", err)
 				}
 			} else {
 				if err := s.httpServer.ListenAndServe(); err != http.ErrServerClosed {
-					log.Fatal(err)
+					log.Fatalf("while serving local API: %v", err)
 				}
 			}
 		}()
@@ -353,8 +349,10 @@ func (s *APIServer) Close() {
 
 func (s *APIServer) Shutdown() error {
 	s.Close()
-	if err := s.httpServer.Shutdown(context.TODO()); err != nil {
-		return err
+	if s.httpServer != nil {
+		if err := s.httpServer.Shutdown(context.TODO()); err != nil {
+			return err
+		}
 	}
 
 	//close io.writer logger given to gin

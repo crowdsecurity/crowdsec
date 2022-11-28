@@ -9,16 +9,17 @@ import (
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/enescakir/emoji"
-	"github.com/olekukonko/tablewriter"
+	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
 var (
-	HubTest cstest.HubTest
+	HubTest hubtest.HubTest
 )
 
 func NewHubTestCmd() *cobra.Command {
@@ -36,7 +37,7 @@ func NewHubTestCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
-			HubTest, err = cstest.NewHubTest(hubPath, crowdsecPath, cscliPath)
+			HubTest, err = hubtest.NewHubTest(hubPath, crowdsecPath, cscliPath)
 			if err != nil {
 				log.Fatalf("unable to load hubtest: %+v", err)
 			}
@@ -85,7 +86,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 			logFile.Close()
 
 			// create empty parser assertion file
-			parserAssertFilePath := filepath.Join(testPath, cstest.ParserAssertFileName)
+			parserAssertFilePath := filepath.Join(testPath, hubtest.ParserAssertFileName)
 			parserAssertFile, err := os.Create(parserAssertFilePath)
 			if err != nil {
 				log.Fatal(err)
@@ -93,7 +94,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 			parserAssertFile.Close()
 
 			// create empty scenario assertion file
-			scenarioAssertFilePath := filepath.Join(testPath, cstest.ScenarioAssertFileName)
+			scenarioAssertFilePath := filepath.Join(testPath, hubtest.ScenarioAssertFileName)
 			scenarioAssertFile, err := os.Create(scenarioAssertFilePath)
 			if err != nil {
 				log.Fatal(err)
@@ -111,7 +112,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				postoverflows = append(postoverflows, "")
 			}
 
-			configFileData := &cstest.HubTestItemConfig{
+			configFileData := &hubtest.HubTestItemConfig{
 				Parsers:       parsers,
 				Scenarios:     scenarios,
 				PostOVerflows: postoverflows,
@@ -272,22 +273,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				}
 			}
 			if csConfig.Cscli.Output == "human" {
-				table := tablewriter.NewWriter(os.Stdout)
-				table.SetCenterSeparator("")
-				table.SetColumnSeparator("")
-
-				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-				table.SetAlignment(tablewriter.ALIGN_LEFT)
-
-				table.SetHeader([]string{"Test", "Result"})
-				for testName, success := range testResult {
-					status := emoji.CheckMarkButton.String()
-					if !success {
-						status = emoji.CrossMark.String()
-					}
-					table.Append([]string{testName, status})
-				}
-				table.Render()
+				hubTestResultTable(color.Output, testResult)
 			} else if csConfig.Cscli.Output == "json" {
 				jsonResult := make(map[string][]string, 0)
 				jsonResult["success"] = make([]string, 0)
@@ -350,8 +336,8 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				fmt.Printf("  Test name                   :  %s\n", test.Name)
 				fmt.Printf("  Test path                   :  %s\n", test.Path)
 				fmt.Printf("  Log file                    :  %s\n", filepath.Join(test.Path, test.Config.LogFile))
-				fmt.Printf("  Parser assertion file       :  %s\n", filepath.Join(test.Path, cstest.ParserAssertFileName))
-				fmt.Printf("  Scenario assertion file     :  %s\n", filepath.Join(test.Path, cstest.ScenarioAssertFileName))
+				fmt.Printf("  Parser assertion file       :  %s\n", filepath.Join(test.Path, hubtest.ParserAssertFileName))
+				fmt.Printf("  Scenario assertion file     :  %s\n", filepath.Join(test.Path, hubtest.ScenarioAssertFileName))
 				fmt.Printf("  Configuration File          :  %s\n", filepath.Join(test.Path, "config.yaml"))
 			}
 		},
@@ -367,18 +353,18 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				log.Fatalf("unable to load all tests: %+v", err)
 			}
 
-			table := tablewriter.NewWriter(os.Stdout)
-			table.SetCenterSeparator("")
-			table.SetColumnSeparator("")
-
-			table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-			table.SetAlignment(tablewriter.ALIGN_LEFT)
-			table.SetHeader([]string{"Name", "Path"})
-			for _, test := range HubTest.Tests {
-				table.Append([]string{test.Name, test.Path})
+			switch csConfig.Cscli.Output {
+			case "human":
+				hubTestListTable(color.Output, HubTest.Tests)
+			case "json":
+				j, err := json.MarshalIndent(HubTest.Tests, " ", "  ")
+				if err != nil {
+					log.Fatal(err)
+				}
+				fmt.Println(string(j))
+			default:
+				log.Fatalf("only human/json output modes are supported")
 			}
-			table.Render()
-
 		},
 	}
 	cmdHubTest.AddCommand(cmdHubTestList)
@@ -395,15 +381,13 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				log.Fatalf("unable to load all tests: %+v", err)
 			}
 			var err error
-			scenarioCoverage := []cstest.ScenarioCoverage{}
-			parserCoverage := []cstest.ParserCoverage{}
+			scenarioCoverage := []hubtest.ScenarioCoverage{}
+			parserCoverage := []hubtest.ParserCoverage{}
 			scenarioCoveragePercent := 0
 			parserCoveragePercent := 0
-			showAll := false
 
-			if !showScenarioCov && !showParserCov { // if both are false (flag by default), show both
-				showAll = true
-			}
+			// if both are false (flag by default), show both
+			showAll := !showScenarioCov && !showParserCov
 
 			if showParserCov || showAll {
 				parserCoverage, err = HubTest.GetParsersCoverage()
@@ -446,43 +430,11 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 
 			if csConfig.Cscli.Output == "human" {
 				if showParserCov || showAll {
-					table := tablewriter.NewWriter(os.Stdout)
-					table.SetCenterSeparator("")
-					table.SetColumnSeparator("")
-
-					table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-					table.SetAlignment(tablewriter.ALIGN_LEFT)
-
-					table.SetHeader([]string{"Parser", "Status", "Number of tests"})
-					parserTested := 0
-					for _, test := range parserCoverage {
-						status := emoji.RedCircle.String()
-						if test.TestsCount > 0 {
-							status = emoji.GreenCircle.String()
-							parserTested += 1
-						}
-						table.Append([]string{test.Parser, status, fmt.Sprintf("%d times (across %d tests)", test.TestsCount, len(test.PresentIn))})
-					}
-					table.Render()
+					hubTestParserCoverageTable(color.Output, parserCoverage)
 				}
 
 				if showScenarioCov || showAll {
-					table := tablewriter.NewWriter(os.Stdout)
-					table.SetCenterSeparator("")
-					table.SetColumnSeparator("")
-
-					table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-					table.SetAlignment(tablewriter.ALIGN_LEFT)
-
-					table.SetHeader([]string{"Scenario", "Status", "Number of tests"})
-					for _, test := range scenarioCoverage {
-						status := emoji.RedCircle.String()
-						if test.TestsCount > 0 {
-							status = emoji.GreenCircle.String()
-						}
-						table.Append([]string{test.Scenario, status, fmt.Sprintf("%d times (across %d tests)", test.TestsCount, len(test.PresentIn))})
-					}
-					table.Render()
+					hubTestScenarioCoverageTable(color.Output, scenarioCoverage)
 				}
 				fmt.Println()
 				if showParserCov || showAll {
@@ -574,8 +526,8 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 						log.Fatalf("unable to load scenario result after run: %s", err)
 					}
 				}
-				opts := cstest.DumpOpts{}
-				cstest.DumpTree(*test.ParserAssert.TestData, *test.ScenarioAssert.PourData, opts)
+				opts := hubtest.DumpOpts{}
+				hubtest.DumpTree(*test.ParserAssert.TestData, *test.ScenarioAssert.PourData, opts)
 			}
 		},
 	}
