@@ -6,7 +6,7 @@
 
 # What is Crowdsec
 
-Crowdsec - An open-source, lightweight agent to detect and respond to bad behaviours. It also automatically benefits from our global community-wide IP reputation database.
+Crowdsec - An open-source, lightweight agent to detect and respond to bad behaviors. It also automatically benefits from our global community-wide IP reputation database.
 
 # How to use this image
 
@@ -124,7 +124,7 @@ Check this full-stack example using docker-compose: https://github.com/crowdsecu
 The container is built with a specific docker
 [configuration](https://github.com/crowdsecurity/crowdsec/blob/master/docker/config.yaml).
 If you need to change it and the docker variables (see below) are not enough,
-you can bind `/etc/crowdsec/config.yaml` to your a configuration file.
+you can bind `/etc/crowdsec/config.yaml` to your configuration file.
 
 ## Notifications
 If you wish to use the [notification system](https://docs.crowdsec.net/docs/notification_plugins/intro), you will need to mount at least a custom `profiles.yaml` and a notification configuration to `/etc/crowdsec/notifications`
