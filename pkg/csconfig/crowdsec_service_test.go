@@ -138,7 +138,9 @@ func TestLoadCrowdsec(t *testing.T) {
 						CredentialsFilePath: "./tests/lapi-secrets.yaml",
 					},
 				},
-				Crowdsec: &CrowdsecServiceCfg{},
+				Crowdsec: &CrowdsecServiceCfg{
+					ConsoleContextPath: contextFileFullPath,
+				},
 			},
 			expectedResult: &CrowdsecServiceCfg{
 				Enable:               types.BoolPtr(true),
