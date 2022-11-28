@@ -30,6 +30,7 @@ db_config:
   #db_name:
   #host:
   #port:
+  use_wal: true
   flush:
     max_items: 5000
     max_age: 7d
