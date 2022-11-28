@@ -156,6 +156,9 @@ func TestLoadCrowdsec(t *testing.T) {
 				OutputRoutinesCount:  1,
 				AcquisitionFiles:     []string{},
 				SimulationFilePath:   "",
+				ContextToSend: map[string][]string{
+					"source_ip": {"evt.Parsed.source_ip"},
+				},
 				SimulationConfig: &SimulationConfig{
 					Simulation: &falseBoolPtr,
 				},
