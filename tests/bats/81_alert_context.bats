@@ -11,8 +11,6 @@ fake_log() {
 
 setup_file() {
     load "../lib/setup_file.sh"
-    # we reset config and data, but run the daemon only in the tests that need it
-    ./instance-data load
 }
 
 teardown_file() {
@@ -21,6 +19,8 @@ teardown_file() {
 
 setup() {
     load "../lib/setup.sh"
+    ./instance-data load
+    ./instance-crowdsec start
 }
 
 teardown() {
