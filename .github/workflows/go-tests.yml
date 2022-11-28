@@ -7,11 +7,15 @@ name: Build
 
 on:
   push:
-    branches: [master]
+    branches:
+      - master
+      - releases/**
     paths-ignore:
       - 'README.md'
   pull_request:
-    branches: [master]
+    branches:
+      - master
+      - releases/**
     paths-ignore:
       - 'README.md'
 
