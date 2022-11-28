@@ -282,6 +282,10 @@ func (l *LokiSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 		for {
 			select {
 			case resp := <-respChan:
+				if resp == nil {
+					ll.Warnf("got nil response from loki tail")
+					continue
+				}
 				if len(resp.DroppedEntries) > 0 {
 					ll.Warnf("%d entries dropped from loki response", len(resp.DroppedEntries))
 				}
@@ -299,14 +303,14 @@ func (l *LokiSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 }
 
 func (l *LokiSource) CanRun() error {
-	return nil // it's ok, even BSD can use Loki
+	return nil
 }
 
 func (l *LokiSource) Dump() interface{} {
 	return l
 }
 
-//SupportedModes returns the supported modes by the acquisition module
+// SupportedModes returns the supported modes by the acquisition module
 func (l *LokiSource) SupportedModes() []string {
 	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
 }
