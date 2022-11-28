@@ -2,7 +2,6 @@ package csconfig
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -163,7 +162,7 @@ func (c *Config) LoadCrowdsec() error {
 		return errors.Wrap(err, "while loading hub")
 	}
 
-	yamlFile, err := ioutil.ReadFile(c.Crowdsec.ConsoleContextPath)
+	yamlFile, err := os.ReadFile(c.Crowdsec.ConsoleContextPath)
 	if err != nil {
 		return fmt.Errorf("reading console context file '%s': %s", c.Crowdsec.ConsoleContextPath, err)
 	}

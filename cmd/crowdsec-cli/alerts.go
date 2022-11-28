@@ -123,7 +123,7 @@ func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 		for _, meta := range alert.Meta {
 			var valSlice []string
 			if err := json.Unmarshal([]byte(meta.Value), &valSlice); err != nil {
-				log.Fatalf("unknown context value type '%s' : %s", meta.Value, err)
+				return fmt.Errorf("unknown context value type '%s' : %s", meta.Value, err)
 			}
 			for _, value := range valSlice {
 				table.AddRow(

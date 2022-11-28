@@ -514,8 +514,8 @@ func detectStaticField(GrokStatics []types.ExtraField) []string {
 			if !strings.HasPrefix(fieldName, "evt.") {
 				fieldName = "evt." + fieldName
 			}
-			if !inSlice(static.TargetByName, ret) {
-				ret = append(ret, static.TargetByName)
+			if !inSlice(fieldName, ret) {
+				ret = append(ret, fieldName)
 			}
 		}
 	}
