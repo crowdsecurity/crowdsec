@@ -32,10 +32,10 @@ teardown() {
 @test "$FILE 1.1.1.172 has context" {
     tmpfile=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp)
     touch "${tmpfile}"
-    ACQUIS_YAML=$(config_yq '.crowdsec_service.acquisition_path')
+    ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
     printf "---\nfilename: $tmpfile\nlabels:\n  type: syslog\n" >>"${ACQUIS_YAML}"
 
-    CONTEXT_YAML=$(config_yq '.crowdsec_service.console_context_path')
+    CONTEXT_YAML=$(config_get '.crowdsec_service.console_context_path')
     printf "---\ntarget_user:\n- evt.Parsed.sshd_invalid_user\nsource_ip:\n- evt.Parsed.sshd_client_ip\nsource_host:\n- evt.Meta.machine\n" >>"${CONTEXT_YAML}"
 
     ./instance-crowdsec start
