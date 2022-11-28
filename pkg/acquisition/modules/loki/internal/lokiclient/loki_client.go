@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"path/filepath"
 	"strconv"
 	"time"
 
@@ -107,7 +106,7 @@ func (lc *LokiClient) queryRange(uri string, ctx context.Context, c chan *LokiQu
 			//Can we assume we will always have only one stream?
 			lastTs := lq.Data.Result[0].Entries[len(lq.Data.Result[0].Entries)-1].Timestamp
 
-			lc.Logger.Infof("Got %d results, last timestamp: %s (converted: %d)", len(lq.Data.Result[0].Entries), lastTs, strconv.Itoa(lastTs.Nanosecond()))
+			lc.Logger.Infof("Got %d results, last timestamp: %s (converted: %s)", len(lq.Data.Result[0].Entries), lastTs, strconv.Itoa(lastTs.Nanosecond()))
 			u, err := url.Parse(uri) //we can ignore the error, we know it's valid
 			if err != nil {
 				return errors.Wrapf(err, "error parsing URL")
@@ -131,7 +130,11 @@ func (lc *LokiClient) getURLFor(endpoint string, params map[string]string) strin
 	}
 	u.RawQuery = queryParams.Encode()
 
-	u.Path = filepath.Join(lc.config.LokiPrefix, u.Path, endpoint)
+	u.Path, err = url.JoinPath(lc.config.LokiPrefix, u.Path, endpoint)
+
+	if err != nil {
+		return ""
+	}
 
 	switch endpoint {
 	case "loki/api/v1/tail":
