@@ -7,11 +7,15 @@ name: Build
 
 on:
   push:
-    branches: [master]
+    branches:
+      - master
+      - releases/**
     paths-ignore:
       - 'README.md'
   pull_request:
-    branches: [master]
+    branches:
+      - master
+      - releases/**
     paths-ignore:
       - 'README.md'
 
@@ -31,6 +35,10 @@ env:
 jobs:
 
   build:
+    strategy:
+      matrix:
+        go-version: [1.18, 1.x]
+
     name: "Build + tests"
     runs-on: ubuntu-latest
     services:
@@ -108,10 +116,10 @@ jobs:
 
     steps:
 
-    - name: "Set up Go 1.19"
+    - name: "Set up Go ${{ matrix.go-version }}"
       uses: actions/setup-go@v3
       with:
-        go-version: 1.19
+        go-version: ${{ matrix.go-version }}
       id: go
 
     - name: Check out CrowdSec repository

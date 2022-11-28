@@ -322,11 +322,11 @@ func (s *APIServer) Run(apiReady chan bool) error {
 			log.Infof("CrowdSec Local API listening on %s", s.URL)
 			if s.TLS != nil && s.TLS.CertFilePath != "" && s.TLS.KeyFilePath != "" {
 				if err := s.httpServer.ListenAndServeTLS(s.TLS.CertFilePath, s.TLS.KeyFilePath); err != nil {
-					log.Fatal(err)
+					log.Fatalf("while serving local API: %v", err)
 				}
 			} else {
 				if err := s.httpServer.ListenAndServe(); err != http.ErrServerClosed {
-					log.Fatal(err)
+					log.Fatalf("while serving local API: %v", err)
 				}
 			}
 		}()
@@ -349,8 +349,10 @@ func (s *APIServer) Close() {
 
 func (s *APIServer) Shutdown() error {
 	s.Close()
-	if err := s.httpServer.Shutdown(context.TODO()); err != nil {
-		return err
+	if s.httpServer != nil {
+		if err := s.httpServer.Shutdown(context.TODO()); err != nil {
+			return err
+		}
 	}
 
 	//close io.writer logger given to gin

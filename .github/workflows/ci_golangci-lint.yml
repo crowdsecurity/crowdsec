@@ -6,6 +6,7 @@ on:
       - v*
     branches:
       - master
+      - releases/**
     paths-ignore:
       - 'docs/**'
       - 'mkdocs.yml'
