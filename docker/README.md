@@ -198,6 +198,7 @@ Using binds rather than named volumes ([complete explanation here](https://docs.
 | `PLUGIN_DIR`            | `/usr/local/lib/crowdsec/plugins/` | Directory for plugins: `-e PLUGIN_DIR="<path>"` |
 | `BOUNCER_KEY_<name>`    | | Register a bouncer with the name `<name>` and a key equal to the value of the environment variable. |
 | `METRICS_PORT`          | 6060 | Port to expose Prometheus metrics |
+| `USE_WAL`               | false | Enable Write-Ahead Logging with SQLite |
 |                         | | |
 | __Console__             | | |
 | `ENROLL_KEY`            | | Enroll key retrieved from [the console](https://app.crowdsec.net/) to enroll the instance. |

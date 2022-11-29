@@ -280,6 +280,12 @@ if istrue "$LEVEL_INFO"; then
     ARGS="$ARGS -info"
 fi
 
+if istrue "$USE_WAL"; then
+    conf_set '.db_config.use_wal = true'
+elif [ -n "$USE_WAL" ] && isfalse "$USE_WAL"; then
+    conf_set '.db_config.use_wal = false'
+fi
+
 conf_set '.prometheus.listen_port=env(METRICS_PORT)'
 
 # shellcheck disable=SC2086
