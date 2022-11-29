@@ -210,7 +210,7 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		return resp, errors.Wrapf(err, "performing jwt auth")
 	}
 
-	if resp.StatusCode == http.StatusUnauthorized {
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 		t.Token = ""
 		t.NbRetry++
 		return t.RoundTrip(clonedReq)
