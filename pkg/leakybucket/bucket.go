@@ -71,7 +71,8 @@ type Leaky struct {
 	wgPour          *sync.WaitGroup
 	wgDumpState     *sync.WaitGroup
 	mutex           *sync.Mutex //used only for TIMEMACHINE mode to allow garbage collection without races
-	LabelsToSend    map[string][]*vm.Program
+	ContextToSend   map[string][]*vm.Program
+	ContextValueLen int
 }
 
 var BucketsPour = prometheus.NewCounterVec(
@@ -180,7 +181,8 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		wgPour:          bucketFactory.wgPour,
 		wgDumpState:     bucketFactory.wgDumpState,
 		mutex:           &sync.Mutex{},
-		LabelsToSend:    bucketFactory.LabelsToSendCompiled,
+		ContextToSend:   bucketFactory.ContextToSendCompiled,
+		ContextValueLen: bucketFactory.ContextValueLength,
 	}
 	if l.BucketConfig.Capacity > 0 && l.BucketConfig.leakspeed != time.Duration(0) {
 		l.Duration = time.Duration(l.BucketConfig.Capacity+1) * l.BucketConfig.leakspeed

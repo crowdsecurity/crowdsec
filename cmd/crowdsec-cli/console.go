@@ -36,7 +36,7 @@ func NewConsoleCmd() *cobra.Command {
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			parentCmd := cmd.Parent()
 
-			// if the command is "cscli console context", only the agent need to be loaded
+			// if the command is "cscli console context", only the agent needs to be loaded
 			switch parentCmd.Name() {
 			case "context":
 				if err := csConfig.LoadCrowdsec(); err != nil {
@@ -255,8 +255,11 @@ Disable given information push to the central API.`,
 	var keyToAdd string
 	var valuesToAdd []string
 	cmdContextAdd := &cobra.Command{
-		Use:               "add",
-		Short:             "Add context to send with alerts",
+		Use:   "add",
+		Short: "Add context to send with alerts. You must specify the output key with the expr value you want",
+		Example: `cscli console context add --key source_ip --value evt.Meta.source_ip
+		cscli console context add --key file_source --value evt.Line.Src
+		`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if _, ok := csConfig.Crowdsec.ContextToSend[keyToAdd]; !ok {

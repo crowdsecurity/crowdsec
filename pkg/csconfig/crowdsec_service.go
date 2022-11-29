@@ -12,22 +12,26 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+const (
+	maxContextValueLen = 4000
+)
+
 // CrowdsecServiceCfg contains the location of parsers/scenarios/... and acquisition files
 type CrowdsecServiceCfg struct {
-	Enable              *bool  `yaml:"enable"`
-	AcquisitionFilePath string `yaml:"acquisition_path,omitempty"`
-	AcquisitionDirPath  string `yaml:"acquisition_dir,omitempty"`
-	ConsoleContextPath  string `yaml:"console_context_path"`
-
-	AcquisitionFiles     []string          `yaml:"-"`
-	ParserRoutinesCount  int               `yaml:"parser_routines"`
-	BucketsRoutinesCount int               `yaml:"buckets_routines"`
-	OutputRoutinesCount  int               `yaml:"output_routines"`
-	SimulationConfig     *SimulationConfig `yaml:"-"`
-	LintOnly             bool              `yaml:"-"`                          // if set to true, exit after loading configs
-	BucketStateFile      string            `yaml:"state_input_file,omitempty"` // if we need to unserialize buckets at start
-	BucketStateDumpDir   string            `yaml:"state_output_dir,omitempty"` // if we need to unserialize buckets on shutdown
-	BucketsGCEnabled     bool              `yaml:"-"`                          // we need to garbage collect buckets when in forensic mode
+	Enable                    *bool             `yaml:"enable"`
+	AcquisitionFilePath       string            `yaml:"acquisition_path,omitempty"`
+	AcquisitionDirPath        string            `yaml:"acquisition_dir,omitempty"`
+	ConsoleContextPath        string            `yaml:"console_context_path"`
+	ConsoleContextValueLength int               `yaml:"console_context_value_length"`
+	AcquisitionFiles          []string          `yaml:"-"`
+	ParserRoutinesCount       int               `yaml:"parser_routines"`
+	BucketsRoutinesCount      int               `yaml:"buckets_routines"`
+	OutputRoutinesCount       int               `yaml:"output_routines"`
+	SimulationConfig          *SimulationConfig `yaml:"-"`
+	LintOnly                  bool              `yaml:"-"`                          // if set to true, exit after loading configs
+	BucketStateFile           string            `yaml:"state_input_file,omitempty"` // if we need to unserialize buckets at start
+	BucketStateDumpDir        string            `yaml:"state_output_dir,omitempty"` // if we need to unserialize buckets on shutdown
+	BucketsGCEnabled          bool              `yaml:"-"`                          // we need to garbage collect buckets when in forensic mode
 
 	HubDir             string              `yaml:"-"`
 	DataDir            string              `yaml:"-"`
@@ -170,6 +174,15 @@ func (c *Config) LoadCrowdsec() error {
 	err = yaml.Unmarshal(yamlFile, c.Crowdsec.ContextToSend)
 	if err != nil {
 		return fmt.Errorf("unmarshaling labels console config file '%s': %s", DefaultContextConfigFilePath, err)
+	}
+
+	if c.Crowdsec.ConsoleContextValueLength == 0 {
+		log.Debugf("No console context value length provided, using default: %d", maxContextValueLen)
+		c.Crowdsec.ConsoleContextValueLength = maxContextValueLen
+	}
+	if c.Crowdsec.ConsoleContextValueLength > maxContextValueLen {
+		log.Debugf("Provided console context value length (%d) is higher than the maximum, using default: %d", c.Crowdsec.ConsoleContextValueLength, maxContextValueLen)
+		c.Crowdsec.ConsoleContextValueLength = maxContextValueLen
 	}
 
 	return nil

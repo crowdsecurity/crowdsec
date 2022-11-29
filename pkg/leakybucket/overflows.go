@@ -19,11 +19,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
 
-const (
-	maxContextValueLen = 4000
-)
-
-func truncate(values []string) (string, error) {
+func truncate(values []string, contextValueLen int) (string, error) {
 	var ret string
 	valueByte, err := json.Marshal(values)
 	if err != nil {
@@ -31,20 +27,33 @@ func truncate(values []string) (string, error) {
 	}
 	ret = string(valueByte)
 	for {
-		if len(ret) <= maxContextValueLen {
+		if len(ret) <= contextValueLen {
 			break
 		}
-		values = values[:len(values)-1]
+		log.Infof("NEED TO STRIP : len(ret) = %d", len(ret))
+		// if there is only 1 value left and that the size is too big, truncate it
+		if len(values) == 1 {
+			valueToTruncate := values[0]
+			half := len(valueToTruncate) / 2
+			lastValueTruncated := valueToTruncate[:half] + "..."
+			values = values[:len(values)-1]
+			values = append(values, lastValueTruncated)
+		} else {
+			// if there is multiple value inside, just remove the last one
+			values = values[:len(values)-1]
+		}
+		log.Infof("NEW VALUES: %+v", values)
 		valueByte, err = json.Marshal(values)
 		if err != nil {
 			return "", fmt.Errorf("unable to dump metas: %s", err)
 		}
 		ret = string(valueByte)
+		log.Infof("NEW RET: %+v (%d)", ret, len(ret))
 	}
 	return ret, nil
 }
 
-func EventToContext(labels map[string][]*vm.Program, queue *Queue) models.Meta {
+func EventToContext(labels map[string][]*vm.Program, queue *Queue, contextValueLen int) models.Meta {
 	metas := make([]*models.MetaItems0, 0)
 	tmpContext := make(map[string][]string)
 	for _, evt := range queue.Queue {
@@ -78,7 +87,7 @@ func EventToContext(labels map[string][]*vm.Program, queue *Queue) models.Meta {
 		if len(values) == 0 {
 			continue
 		}
-		valueStr, err := truncate(values)
+		valueStr, err := truncate(values, contextValueLen)
 		if err != nil {
 			log.Warningf(err.Error())
 		}
@@ -370,7 +379,7 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 	*apiAlert.Message = fmt.Sprintf("%s %s performed '%s' (%d events over %s) at %s", source_scope, sourceStr, leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Last_ts)
 	//Get the events from Leaky/Queue
 	apiAlert.Events = EventsFromQueue(queue)
-	apiAlert.Meta = EventToContext(leaky.LabelsToSend, leaky.Queue)
+	apiAlert.Meta = EventToContext(leaky.ContextToSend, leaky.Queue, leaky.ContextValueLen)
 	//Loop over the Sources and generate appropriate number of ApiAlerts
 	for _, srcValue := range sources {
 		newApiAlert := apiAlert
