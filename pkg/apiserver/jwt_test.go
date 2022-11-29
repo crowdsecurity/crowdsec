@@ -18,7 +18,7 @@ func TestLogin(t *testing.T) {
 
 	body, err := CreateTestMachine(router)
 	if err != nil {
-		log.Fatalln(err.Error())
+		log.Fatalln(err)
 	}
 
 	// Login with machine not validated yet
@@ -60,7 +60,7 @@ func TestLogin(t *testing.T) {
 	//Validate machine
 	err = ValidateMachine("test", config.API.Server.DbConfig)
 	if err != nil {
-		log.Fatalln(err.Error())
+		log.Fatalln(err)
 	}
 
 	// Login with invalid password

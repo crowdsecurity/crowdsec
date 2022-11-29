@@ -260,7 +260,7 @@ func NewMetricsCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := csConfig.LoadPrometheus(); err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 			if !csConfig.Prometheus.Enabled {
 				log.Warning("Prometheus is not enabled, can't show metrics")

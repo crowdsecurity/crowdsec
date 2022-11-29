@@ -76,7 +76,7 @@ func InitMachineTest() (*gin.Engine, models.WatcherAuthResponse, csconfig.Config
 
 	loginResp, err := LoginToTestAPI(router, config)
 	if err != nil {
-		return nil, models.WatcherAuthResponse{}, config, fmt.Errorf("%s", err)
+		return nil, models.WatcherAuthResponse{}, config, err
 	}
 	return router, loginResp, config, nil
 }
@@ -84,7 +84,7 @@ func InitMachineTest() (*gin.Engine, models.WatcherAuthResponse, csconfig.Config
 func LoginToTestAPI(router *gin.Engine, config csconfig.Config) (models.WatcherAuthResponse, error) {
 	body, err := CreateTestMachine(router)
 	if err != nil {
-		return models.WatcherAuthResponse{}, fmt.Errorf("%s", err)
+		return models.WatcherAuthResponse{}, err
 	}
 	err = ValidateMachine("test", config.API.Server.DbConfig)
 	if err != nil {
@@ -99,7 +99,7 @@ func LoginToTestAPI(router *gin.Engine, config csconfig.Config) (models.WatcherA
 	loginResp := models.WatcherAuthResponse{}
 	err = json.NewDecoder(w.Body).Decode(&loginResp)
 	if err != nil {
-		return models.WatcherAuthResponse{}, fmt.Errorf("%s", err)
+		return models.WatcherAuthResponse{}, err
 	}
 
 	return loginResp, nil

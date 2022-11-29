@@ -254,10 +254,10 @@ func downloadData(dataFolder string, force bool, reader io.Reader) error {
 		data := &types.DataSet{}
 		err = dec.Decode(data)
 		if err != nil {
-			if err != io.EOF {
-				return errors.Wrap(err, "while reading file")
+			if errors.Is(err, io.EOF) {
+				break
 			}
-			break
+			return errors.Wrap(err, "while reading file")
 		}
 
 		download := false
