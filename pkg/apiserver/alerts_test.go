@@ -76,7 +76,7 @@ func InitMachineTest() (*gin.Engine, models.WatcherAuthResponse, csconfig.Config
 
 	loginResp, err := LoginToTestAPI(router, config)
 	if err != nil {
-		return nil, models.WatcherAuthResponse{}, config, fmt.Errorf("%s", err)
+		return nil, models.WatcherAuthResponse{}, config, err
 	}
 	return router, loginResp, config, nil
 }
@@ -84,7 +84,7 @@ func InitMachineTest() (*gin.Engine, models.WatcherAuthResponse, csconfig.Config
 func LoginToTestAPI(router *gin.Engine, config csconfig.Config) (models.WatcherAuthResponse, error) {
 	body, err := CreateTestMachine(router)
 	if err != nil {
-		return models.WatcherAuthResponse{}, fmt.Errorf("%s", err)
+		return models.WatcherAuthResponse{}, err
 	}
 	err = ValidateMachine("test", config.API.Server.DbConfig)
 	if err != nil {
@@ -99,7 +99,7 @@ func LoginToTestAPI(router *gin.Engine, config csconfig.Config) (models.WatcherA
 	loginResp := models.WatcherAuthResponse{}
 	err = json.NewDecoder(w.Body).Decode(&loginResp)
 	if err != nil {
-		return models.WatcherAuthResponse{}, fmt.Errorf("%s", err)
+		return models.WatcherAuthResponse{}, err
 	}
 
 	return loginResp, nil
@@ -412,6 +412,29 @@ func TestDeleteAlert(t *testing.T) {
 	// Delete Alert
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest(http.MethodDelete, "/v1/alerts", strings.NewReader(""))
+	AddAuthHeaders(req, lapi.loginResp)
+	req.RemoteAddr = "127.0.0.1:4242"
+	lapi.router.ServeHTTP(w, req)
+	assert.Equal(t, 200, w.Code)
+	assert.Equal(t, `{"nbDeleted":"1"}`, w.Body.String())
+}
+
+func TestDeleteAlertByID(t *testing.T) {
+	lapi := SetupLAPITest(t)
+	lapi.InsertAlertFromFile("./tests/alert_sample.json")
+
+	// Fail Delete Alert
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodDelete, "/v1/alerts/1", strings.NewReader(""))
+	AddAuthHeaders(req, lapi.loginResp)
+	req.RemoteAddr = "127.0.0.2:4242"
+	lapi.router.ServeHTTP(w, req)
+	assert.Equal(t, 403, w.Code)
+	assert.Equal(t, `{"message":"access forbidden from this IP (127.0.0.2)"}`, w.Body.String())
+
+	// Delete Alert
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest(http.MethodDelete, "/v1/alerts/1", strings.NewReader(""))
 	AddAuthHeaders(req, lapi.loginResp)
 	req.RemoteAddr = "127.0.0.1:4242"
 	lapi.router.ServeHTTP(w, req)

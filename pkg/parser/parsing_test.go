@@ -2,6 +2,7 @@ package parser
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -182,7 +183,7 @@ func loadTestFile(file string) []TestFile {
 		tf := TestFile{}
 		err := dec.Decode(&tf)
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			log.Fatalf("Failed to load testfile '%s' yaml error : %v", file, err)
@@ -375,7 +376,7 @@ func TestGeneratePatternsDoc(t *testing.T) {
 	i := 0
 	for key, val := range pctx.Grok {
 		p[i] = Pair{key, val}
-		p[i].Value = strings.Replace(p[i].Value, "{%{", "\\{\\%\\{", -1)
+		p[i].Value = strings.ReplaceAll(p[i].Value, "{%{", "\\{\\%\\{")
 		i++
 	}
 	sort.Sort(p)

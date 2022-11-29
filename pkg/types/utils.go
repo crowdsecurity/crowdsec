@@ -8,14 +8,16 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 )
 
 var logFormatter log.Formatter
@@ -208,10 +210,9 @@ func CopyFile(sourceSymLink, destinationFile string) (err error) {
 			return
 		}
 	}
-	if err = os.Link(sourceFile, destinationFile); err == nil {
-		return
+	if err = os.Link(sourceFile, destinationFile); err != nil {
+		err = copyFileContents(sourceFile, destinationFile)
 	}
-	err = copyFileContents(sourceFile, destinationFile)
 	return
 }
 
@@ -256,4 +257,12 @@ func GetLineCountForFile(filepath string) int {
 		lc++
 	}
 	return lc
+}
+
+// from https://github.com/acarl005/stripansi
+var reStripAnsi = regexp.MustCompile("[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))")
+
+func StripAnsiString(str string) string {
+	// the byte version doesn't strip correctly
+	return reStripAnsi.ReplaceAllString(str, "")
 }

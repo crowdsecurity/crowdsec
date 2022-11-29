@@ -305,6 +305,8 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 			if err != nil {
 				return "0", errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", value[0], err)
 			}
+		case "scenario":
+			decisions = decisions.Where(decision.ScenarioEQ(value[0]))
 		default:
 			return "0", errors.Wrap(InvalidFilter, fmt.Sprintf("'%s' doesn't exist", param))
 		}
@@ -415,6 +417,8 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 			if err != nil {
 				return "0", errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", value[0], err)
 			}
+		case "scenario":
+			decisions = decisions.Where(decision.ScenarioEQ(value[0]))
 		default:
 			return "0", errors.Wrapf(InvalidFilter, "'%s' doesn't exist", param)
 		}
@@ -498,7 +502,7 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 	return strconv.Itoa(nbDeleted), nil
 }
 
-//SoftDeleteDecisionByID set the expiration of a decision to now()
+// SoftDeleteDecisionByID set the expiration of a decision to now()
 func (c *Client) SoftDeleteDecisionByID(decisionID int) (int, error) {
 	nbUpdated, err := c.Ent.Decision.Update().Where(decision.IDEQ(decisionID)).SetUntil(time.Now().UTC()).Save(c.CTX)
 	if err != nil || nbUpdated == 0 {

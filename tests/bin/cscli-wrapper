@@ -9,8 +9,8 @@ set -eu
 #shellcheck disable=SC1007
 THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # no need to change directory, and doing it here would break hub tests
-#shellcheck disable=SC1090
-. "${THIS_DIR}/.environment.sh"
+# shellcheck disable=SC1091
+. "${THIS_DIR}/../.environment.sh"
 
 set -o pipefail  # don't let sed hide the statuscode
 mkdir -p "${LOCAL_DIR}/var/lib/coverage"
@@ -19,13 +19,13 @@ mkdir -p "${LOCAL_DIR}/var/lib/coverage"
 # SIGPIPE.
 set +e
 
-# Arguments to crowdsec are passed through a temporary, newline-delimited
+# Arguments to cscli are passed through a temporary, newline-delimited
 # file courtesy of github.com/confluentinc/bincover. Coverage data will be
 # merged at the end of the test run.
 # The '=' between flags and values is required.
-output=$("${BIN_DIR}/crowdsec.cover" \
+output=$("${BIN_DIR}/cscli.cover" \
     -test.run="^TestBincoverRunMain$" \
-    -test.coverprofile="${LOCAL_DIR}/var/lib/coverage/crowdsec-$(date +'%s')-$$-${RANDOM}.out" \
+    -test.coverprofile="${LOCAL_DIR}/var/lib/coverage/cscli-$(date +'%s')-$$-${RANDOM}.out" \
     -args-file=<(for i; do echo "${i}"; done))
 rc=$?
 

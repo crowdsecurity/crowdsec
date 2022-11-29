@@ -3,6 +3,7 @@ package kafkaacquisition
 import (
 	"context"
 	"net"
+	"runtime"
 	"strconv"
 	"testing"
 	"time"
@@ -84,18 +85,18 @@ func writeToKafka(w *kafka.Writer, logs []string) {
 func createTopic(topic string, broker string) {
 	conn, err := kafka.Dial("tcp", broker)
 	if err != nil {
-		panic(err.Error())
+		panic(err)
 	}
 	defer conn.Close()
 
 	controller, err := conn.Controller()
 	if err != nil {
-		panic(err.Error())
+		panic(err)
 	}
 	var controllerConn *kafka.Conn
 	controllerConn, err = kafka.Dial("tcp", net.JoinHostPort(controller.Host, strconv.Itoa(controller.Port)))
 	if err != nil {
-		panic(err.Error())
+		panic(err)
 	}
 	defer controllerConn.Close()
 
@@ -109,11 +110,14 @@ func createTopic(topic string, broker string) {
 
 	err = controllerConn.CreateTopics(topicConfigs...)
 	if err != nil {
-		panic(err.Error())
+		panic(err)
 	}
 }
 
 func TestStreamingAcquisition(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 	tests := []struct {
 		name          string
 		logs          []string
@@ -146,6 +150,7 @@ func TestStreamingAcquisition(t *testing.T) {
 	}
 
 	for _, ts := range tests {
+		ts := ts
 		t.Run(ts.name, func(t *testing.T) {
 			k := KafkaSource{}
 			err := k.Configure([]byte(`
@@ -181,6 +186,9 @@ topic: crowdsecplaintext`), subLogger)
 }
 
 func TestStreamingAcquisitionWithSSL(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 	tests := []struct {
 		name          string
 		logs          []string
@@ -212,6 +220,7 @@ func TestStreamingAcquisitionWithSSL(t *testing.T) {
 	}
 
 	for _, ts := range tests {
+		ts := ts
 		t.Run(ts.name, func(t *testing.T) {
 			k := KafkaSource{}
 			err := k.Configure([]byte(`

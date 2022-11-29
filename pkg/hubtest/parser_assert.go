@@ -1,4 +1,4 @@
-package cstest
+package hubtest
 
 import (
 	"bufio"

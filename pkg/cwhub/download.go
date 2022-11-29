@@ -55,6 +55,17 @@ func DownloadHubIdx(hub *csconfig.Hub) ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read request answer for hub index")
 	}
+
+	oldContent, err := os.ReadFile(hub.HubIndexFile)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			log.Warningf("failed to read hub index: %s", err)
+		}
+	} else if bytes.Equal(body, oldContent) {
+		log.Info("hub index is up to date")
+		// write it anyway, can't hurt
+	}
+
 	file, err := os.OpenFile(hub.HubIndexFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 
 	if err != nil {
@@ -243,10 +254,10 @@ func downloadData(dataFolder string, force bool, reader io.Reader) error {
 		data := &types.DataSet{}
 		err = dec.Decode(data)
 		if err != nil {
-			if err != io.EOF {
-				return errors.Wrap(err, "while reading file")
+			if errors.Is(err, io.EOF) {
+				break
 			}
-			break
+			return errors.Wrap(err, "while reading file")
 		}
 
 		download := false

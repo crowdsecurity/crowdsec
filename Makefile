@@ -2,11 +2,11 @@
 ifeq ($(OS), Windows_NT)
 	SHELL := pwsh.exe
 	.SHELLFLAGS := -NoProfile -Command
-	ROOT = $(shell (Get-Location).Path)
+	CS_ROOT = $(shell (Get-Location).Path)
 	SYSTEM = windows
 	EXT = .exe
 else
-	ROOT ?= $(shell pwd)
+	CS_ROOT ?= $(shell pwd)
 	SYSTEM ?= $(shell uname -s | tr '[A-Z]' '[a-z]')
 endif
 
@@ -17,7 +17,7 @@ else
 endif
 
 ifneq ($(OS), Windows_NT)
-	include $(ROOT)/platform/unix_common.mk
+	include $(CS_ROOT)/platform/unix_common.mk
 endif
 
 CROWDSEC_FOLDER = ./cmd/crowdsec
@@ -45,7 +45,7 @@ CSCLI_BIN = cscli$(EXT)
 BUILD_CMD = build
 
 MINIMUM_SUPPORTED_GO_MAJOR_VERSION = 1
-MINIMUM_SUPPORTED_GO_MINOR_VERSION = 17
+MINIMUM_SUPPORTED_GO_MINOR_VERSION = 18
 GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not supported, please use at least $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION).$(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
 
 LD_OPTS_VARS= \
@@ -93,7 +93,7 @@ ifneq ($(OS), Windows_NT)
 	fi
 else
 	# This needs Set-ExecutionPolicy -Scope CurrentUser Unrestricted
-	@$(ROOT)/scripts/check_go_version.ps1 $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) $(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
+	@$(CS_ROOT)/scripts/check_go_version.ps1 $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) $(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
 endif
 
 .PHONY: clean

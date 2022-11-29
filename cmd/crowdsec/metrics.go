@@ -152,13 +152,13 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 		config.ListenPort = 6060
 	}
 
-	/*Registering prometheus*/
-	/*If in aggregated mode, do not register events associated to a source, keeps cardinality low*/
+	// Registering prometheus
+	// If in aggregated mode, do not register events associated with a source, to keep the cardinality low
 	if config.Level == "aggregated" {
 		log.Infof("Loading aggregated prometheus collectors")
 		prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
 			globalCsInfo, globalParsingHistogram, globalPourHistogram,
-			leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstanciation, leaky.BucketsOverflow,
+			leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstantiation, leaky.BucketsOverflow,
 			v1.LapiRouteHits,
 			leaky.BucketsCurrentCount)
 	} else {
@@ -167,7 +167,7 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 			parser.NodesHits, parser.NodesHitsOk, parser.NodesHitsKo,
 			globalCsInfo, globalParsingHistogram, globalPourHistogram,
 			v1.LapiRouteHits, v1.LapiMachineHits, v1.LapiBouncerHits, v1.LapiNilDecisions, v1.LapiNonNilDecisions, v1.LapiResponseTime,
-			leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstanciation, leaky.BucketsOverflow, leaky.BucketsCurrentCount,
+			leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstantiation, leaky.BucketsOverflow, leaky.BucketsCurrentCount,
 			globalActiveDecisions, globalAlerts)
 
 	}

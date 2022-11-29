@@ -1,4 +1,4 @@
-package cstest
+package hubtest
 
 import (
 	"bufio"
@@ -152,8 +152,8 @@ func (h *HubTest) GetScenariosCoverage() ([]ScenarioCoverage, error) {
 					coverage[idx].PresentIn[assert] = true
 					continue
 				}
-				fixedProbingWord := strings.Replace(pcover.Scenario, "probbing", "probing", -1)
-				fixedProbingAssert := strings.Replace(scanner_name, "probbing", "probing", -1)
+				fixedProbingWord := strings.ReplaceAll(pcover.Scenario, "probbing", "probing")
+				fixedProbingAssert := strings.ReplaceAll(scanner_name, "probbing", "probing")
 				if fixedProbingWord == fixedProbingAssert {
 					coverage[idx].TestsCount++
 					coverage[idx].PresentIn[assert] = true

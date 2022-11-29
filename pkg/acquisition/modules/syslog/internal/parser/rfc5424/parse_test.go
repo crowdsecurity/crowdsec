@@ -21,6 +21,7 @@ func TestPri(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.input, func(t *testing.T) {
 			r := &RFC5424{}
 			r.buf = []byte(test.input)
@@ -37,10 +38,8 @@ func TestPri(t *testing.T) {
 			} else {
 				if test.expectedErr != "" {
 					t.Errorf("expected error %s, got no error", test.expectedErr)
-				} else {
-					if r.PRI != test.expected {
-						t.Errorf("expected %d, got %d", test.expected, r.PRI)
-					}
+				} else if r.PRI != test.expected {
+					t.Errorf("expected %d, got %d", test.expected, r.PRI)
 				}
 			}
 		})
@@ -72,6 +71,7 @@ func TestHostname(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.input, func(t *testing.T) {
 			opts := []RFC5424Option{}
 			if test.strictHostname {
@@ -92,10 +92,8 @@ func TestHostname(t *testing.T) {
 			} else {
 				if test.expectedErr != "" {
 					t.Errorf("expected error %s, got no error", test.expectedErr)
-				} else {
-					if r.Hostname != test.expected {
-						t.Errorf("expected %s, got %s", test.expected, r.Hostname)
-					}
+				} else if r.Hostname != test.expected {
+					t.Errorf("expected %s, got %s", test.expected, r.Hostname)
 				}
 			}
 		})
@@ -226,6 +224,7 @@ func TestParse(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.name, func(t *testing.T) {
 			r := NewRFC5424Parser(test.opts...)
 			err := r.Parse([]byte(test.input))

@@ -2,6 +2,7 @@ package leakybucket
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -67,7 +68,7 @@ type BucketFactory struct {
 	output          bool                      //??
 	ScenarioVersion string                    `yaml:"version,omitempty"`
 	hash            string                    `yaml:"-"`
-	Simulated       bool                      `yaml:"simulated"` //Set to true if the scenario instanciating the bucket was in the exclusion list
+	Simulated       bool                      `yaml:"simulated"` //Set to true if the scenario instantiating the bucket was in the exclusion list
 	tomb            *tomb.Tomb                `yaml:"-"`
 	wgPour          *sync.WaitGroup           `yaml:"-"`
 	wgDumpState     *sync.WaitGroup           `yaml:"-"`
@@ -169,7 +170,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 			bucketFactory := BucketFactory{}
 			err = dec.Decode(&bucketFactory)
 			if err != nil {
-				if err != io.EOF {
+				if !errors.Is(err, io.EOF) {
 					log.Errorf("Bad yaml in %s : %v", f, err)
 					return nil, nil, fmt.Errorf("bad yaml in %s : %v", f, err)
 				}

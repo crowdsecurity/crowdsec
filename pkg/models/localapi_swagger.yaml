@@ -242,6 +242,11 @@ paths:
           required: false
           type: string
           description: range to search for (shorthand for scope=range&value=)
+        - name: scenario
+          in: query
+          required: false
+          type: string
+          description: scenario to search
       responses:
         '200':
           description: successful operation
@@ -256,7 +261,7 @@ paths:
       - JWTAuthorizer: []
   '/decisions/{decision_id}':
     delete:
-      description: Delete decision for given ban ID (only from cscli)
+      description: Delete decision for given decision ID (only from cscli)
       summary: DeleteDecision
       tags:
         - watchers
@@ -650,6 +655,33 @@ paths:
           headers: {}
         '400':
           description: "400 response"
+      security:
+      - JWTAuthorizer: []
+    delete:
+      description: Delete alert for given alert ID (only from cscli)
+      summary: DeleteAlert
+      tags:
+        - watchers
+      operationId: DeleteAlert
+      deprecated: false
+      produces:
+        - application/json
+      parameters:
+        - name: alert_id
+          in: path
+          required: true
+          type: string
+          description: ''
+      responses:
+        '200':
+          description: successful operation
+          schema:
+            $ref: '#/definitions/DeleteAlertsResponse'
+          headers: {}
+        '404':
+          description: "404 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
       security:
       - JWTAuthorizer: []
 definitions:

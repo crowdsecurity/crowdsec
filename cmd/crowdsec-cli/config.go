@@ -8,15 +8,14 @@ import (
 	"path/filepath"
 
 	"github.com/antonmedv/expr"
-
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 )
 
 type OldAPICfg struct {
@@ -410,7 +409,7 @@ func NewConfigCmd() *cobra.Command {
 					switch csConfig.DbConfig.Type {
 					case "sqlite":
 						fmt.Printf("      - Path                : %s\n", csConfig.DbConfig.DbPath)
-					case "mysql", "postgresql", "postgres":
+					default:
 						fmt.Printf("      - Host                : %s\n", csConfig.DbConfig.Host)
 						fmt.Printf("      - Port                : %d\n", csConfig.DbConfig.Port)
 						fmt.Printf("      - User                : %s\n", csConfig.DbConfig.User)

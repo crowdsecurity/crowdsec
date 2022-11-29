@@ -64,6 +64,7 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"XMLGetNodeValue":        XMLGetNodeValue,
 		"IpToRange":              IpToRange,
 		"IsIPV6":                 IsIPV6,
+		"LookupHost":             LookupHost,
 		"GetDecisionsCount":      GetDecisionsCount,
 		"GetDecisionsSinceCount": GetDecisionsSinceCount,
 		"Sprintf":                fmt.Sprintf,
@@ -279,4 +280,13 @@ func GetDecisionsSinceCount(value string, since string) int {
 		return 0
 	}
 	return count
+}
+
+func LookupHost(value string) []string {
+	addresses , err := net.LookupHost(value)
+	if err != nil {
+		log.Errorf("Failed to lookup host '%s' : %s", value, err)
+		return []string{} 
+	}
+	return addresses
 }

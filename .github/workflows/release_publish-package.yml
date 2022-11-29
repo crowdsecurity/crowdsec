@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Set up Go 1.19
-      uses: actions/setup-go@v1
+      uses: actions/setup-go@v3
       with:
         go-version: 1.19
       id: go
@@ -39,7 +39,7 @@ jobs:
     - name: Build the binaries
       run: |
         make release BUILD_STATIC=yes
-        mv crowdsec-release.tgz crowdsec-release.static.tgz
+        mv crowdsec-release.tgz crowdsec-release-static.tgz
     - name: Upload to release
       uses: JasonEtco/upload-to-release@master
       with:

@@ -2,7 +2,9 @@ name: build-msi (windows)
 
 on:
   pull_request:
-    branches: [ master ]
+    branches:
+      - master
+      - releases/**
     paths-ignore:
       - 'docs/**'
       - 'mkdocs.yml'
@@ -15,7 +17,7 @@ jobs:
     runs-on: windows-2019
     steps:
     - name: Set up Go 1.19
-      uses: actions/setup-go@v1
+      uses: actions/setup-go@v3
       with:
         go-version: 1.19
       id: go

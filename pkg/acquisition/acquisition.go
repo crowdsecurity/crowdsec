@@ -175,7 +175,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 		log.Infof("loading acquisition file : %s", acquisFile)
 		yamlFile, err := os.Open(acquisFile)
 		if err != nil {
-			return nil, errors.Wrapf(err, "can't open %s", acquisFile)
+			return nil, err
 		}
 		dec := yaml.NewDecoder(yamlFile)
 		dec.SetStrict(true)
@@ -184,11 +184,11 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			var idx int
 			err = dec.Decode(&sub)
 			if err != nil {
-				if err == io.EOF {
-					log.Tracef("End of yaml file")
-					break
+				if ! errors.Is(err, io.EOF) {
+					return nil, errors.Wrapf(err, "failed to yaml decode %s", acquisFile)
 				}
-				return nil, errors.Wrapf(err, "failed to yaml decode %s", acquisFile)
+				log.Tracef("End of yaml file")
+				break
 			}
 
 			//for backward compat ('type' was not mandatory, detect it)
