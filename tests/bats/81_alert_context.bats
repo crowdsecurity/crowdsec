@@ -36,21 +36,21 @@ teardown() {
     ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
 
     cat <<-EOT >"${ACQUIS_YAML}"
-    filename: $tmpfile
-    labels:
-      type: syslog
-    EOT
+	filename: $tmpfile
+	labels:
+		type: syslog
+	EOT
 
     CONTEXT_YAML=$(config_get '.crowdsec_service.console_context_path')
 
     cat <<-EOT >"${CONTEXT_YAML}"
-    target_user:
-    - evt.Parsed.sshd_invalid_user
-    source_ip:
-    - evt.Parsed.sshd_client_ip
-    source_host:
-    - evt.Meta.machine
-    EOT
+	target_user:
+	- evt.Parsed.sshd_invalid_user
+	source_ip:
+	- evt.Parsed.sshd_client_ip
+	source_host:
+	- evt.Meta.machine
+	EOT
 
     ./instance-crowdsec start
     sleep 2
