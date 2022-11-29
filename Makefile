@@ -55,7 +55,6 @@ LD_OPTS_VARS= \
 -X 'github.com/crowdsecurity/crowdsec/pkg/cwversion.BuildDate=$(BUILD_TIMESTAMP)' \
 -X 'github.com/crowdsecurity/crowdsec/pkg/cwversion.Codename=$(BUILD_CODENAME)' \
 -X 'github.com/crowdsecurity/crowdsec/pkg/cwversion.Tag=$(BUILD_TAG)' \
--X 'github.com/crowdsecurity/crowdsec/pkg/cwversion.GoVersion=$(BUILD_GOVERSION)' \
 -X 'github.com/crowdsecurity/crowdsec/pkg/csconfig.defaultConfigDir=$(DEFAULT_CONFIGDIR)' \
 -X 'github.com/crowdsecurity/crowdsec/pkg/csconfig.defaultDataDir=$(DEFAULT_DATADIR)'
 
