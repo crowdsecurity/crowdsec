@@ -169,7 +169,7 @@ Note: This command requires database direct access, so is intended to be run on 
 			}
 			if err := csConfig.LoadDBConfig(); err != nil {
 				log.Errorf("This command requires direct database access (must be run on the local API machine)")
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 		},
 	}

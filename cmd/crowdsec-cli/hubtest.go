@@ -483,7 +483,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				}
 				output, err := test.ParserAssert.EvalExpression(evalExpression)
 				if err != nil {
-					log.Fatalf(err.Error())
+					log.Fatal(err)
 				}
 				fmt.Print(output)
 			}
