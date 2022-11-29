@@ -20,7 +20,6 @@ teardown_file() {
 setup() {
     load "../lib/setup.sh"
     ./instance-data load
-    ./instance-crowdsec start
 }
 
 teardown() {
