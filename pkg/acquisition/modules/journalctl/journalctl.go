@@ -9,15 +9,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type JournalCtlConfiguration struct {
@@ -189,7 +189,6 @@ func (j *JournalCtlSource) UnmarshalConfig(yamlConfig []byte) error {
 
 	return nil
 }
-
 
 func (j *JournalCtlSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	j.logger = logger

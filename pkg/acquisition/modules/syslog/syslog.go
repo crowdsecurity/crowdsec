@@ -6,18 +6,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/tomb.v2"
+	"gopkg.in/yaml.v2"
+
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal/parser/rfc3164"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal/parser/rfc5424"
 	syslogserver "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal/server"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
-
-	"gopkg.in/tomb.v2"
-	"gopkg.in/yaml.v2"
 )
 
 type SyslogConfiguration struct {
@@ -116,7 +116,6 @@ func (s *SyslogSource) UnmarshalConfig(yamlConfig []byte) error {
 
 	return nil
 }
-
 
 func (s *SyslogSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	s.logger = logger

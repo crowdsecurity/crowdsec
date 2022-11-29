@@ -7,14 +7,15 @@ import (
 	"testing"
 	"time"
 
-	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
-	"github.com/crowdsecurity/crowdsec/pkg/cstest"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
+
+	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func TestBadConfiguration(t *testing.T) {

@@ -10,15 +10,16 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/segmentio/kafka-go"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var (
@@ -54,7 +55,7 @@ type KafkaSource struct {
 	Reader *kafka.Reader
 }
 
-func (k* KafkaSource) UnmarshalConfig(yamlConfig []byte) error {
+func (k *KafkaSource) UnmarshalConfig(yamlConfig []byte) error {
 	k.Config = KafkaConfiguration{}
 
 	err := yaml.UnmarshalStrict(yamlConfig, &k.Config)
@@ -76,8 +77,6 @@ func (k* KafkaSource) UnmarshalConfig(yamlConfig []byte) error {
 
 	return err
 }
-
-
 
 func (k *KafkaSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	k.logger = logger

@@ -12,17 +12,17 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
-	"github.com/crowdsecurity/crowdsec/pkg/parser"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
-	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
+	"github.com/crowdsecurity/crowdsec/pkg/parser"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var openedStreams = prometheus.NewGaugeVec(
@@ -149,9 +149,6 @@ func (cw *CloudwatchSource) UnmarshalConfig(yamlConfig []byte) error {
 
 	return nil
 }
-
-
-
 
 func (cw *CloudwatchSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	err := cw.UnmarshalConfig(yamlConfig)

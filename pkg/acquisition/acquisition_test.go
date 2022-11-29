@@ -309,8 +309,8 @@ func (f *MockCat) Configure(cfg []byte, logger *log.Entry) error {
 }
 
 func (f *MockCat) UnmarshalConfig(cfg []byte) error { return nil }
-func (f *MockCat) GetName() string { return "mock_cat" }
-func (f *MockCat) GetMode() string { return "cat" }
+func (f *MockCat) GetName() string                  { return "mock_cat" }
+func (f *MockCat) GetMode() string                  { return "cat" }
 func (f *MockCat) OneShotAcquisition(out chan types.Event, tomb *tomb.Tomb) error {
 	for i := 0; i < 10; i++ {
 		evt := types.Event{}
@@ -349,8 +349,8 @@ func (f *MockTail) Configure(cfg []byte, logger *log.Entry) error {
 }
 
 func (f *MockTail) UnmarshalConfig(cfg []byte) error { return nil }
-func (f *MockTail) GetName() string { return "mock_tail" }
-func (f *MockTail) GetMode() string { return "tail" }
+func (f *MockTail) GetName() string                  { return "mock_tail" }
+func (f *MockTail) GetMode() string                  { return "tail" }
 func (f *MockTail) OneShotAcquisition(out chan types.Event, tomb *tomb.Tomb) error {
 	return fmt.Errorf("can't run in cat mode")
 }

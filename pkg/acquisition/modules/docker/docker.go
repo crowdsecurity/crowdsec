@@ -10,18 +10,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/crowdsecurity/dlog"
 	dockerTypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/dlog"
+
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var linesRead = prometheus.NewCounterVec(
@@ -129,7 +130,7 @@ func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	d.logger = logger
 
 	err := d.UnmarshalConfig(yamlConfig)
-	if err !=  nil {
+	if err != nil {
 		return err
 	}
 

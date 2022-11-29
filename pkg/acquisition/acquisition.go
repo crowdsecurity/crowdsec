@@ -155,7 +155,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			var idx int
 			err = dec.Decode(&sub)
 			if err != nil {
-				if ! errors.Is(err, io.EOF) {
+				if !errors.Is(err, io.EOF) {
 					return nil, fmt.Errorf("failed to yaml decode %s: %w", acquisFile, err)
 				}
 				log.Tracef("End of yaml file")
