@@ -8,11 +8,6 @@ PREFIX=$(shell $$env:TEMP)
 GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
 
-GO_MAJOR_VERSION ?= $(shell (go env GOVERSION).replace("go","").split(".")[0])
-GO_MINOR_VERSION ?= $(shell (go env GOVERSION).replace("go","").split(".")[1])
-MINIMUM_SUPPORTED_GO_MAJOR_VERSION = 1
-MINIMUM_SUPPORTED_GO_MINOR_VERSION = 17
-GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not supported, please use least $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION).$(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
 #Current versioning information from env
 #BUILD_VERSION?=$(shell (Invoke-WebRequest -UseBasicParsing -Uri https://api.github.com/repos/crowdsecurity/crowdsec/releases/latest).Content | jq -r '.tag_name')
 #hardcode it till i find a workaround

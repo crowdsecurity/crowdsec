@@ -46,6 +46,11 @@ BUILD_CMD = build
 
 MINIMUM_SUPPORTED_GO_MAJOR_VERSION = 1
 MINIMUM_SUPPORTED_GO_MINOR_VERSION = 18
+
+go_major_minor = $(subst ., ,$(BUILD_GOVERSION))
+GO_MAJOR_VERSION = $(word 1, $(go_major_minor))
+GO_MINOR_VERSION = $(word 2, $(go_major_minor))
+
 GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not supported, please use at least $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION).$(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
 
 LD_OPTS_VARS= \
