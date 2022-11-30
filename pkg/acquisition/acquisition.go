@@ -64,7 +64,7 @@ func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg) (*DataS
 	// once to DataSourceCommonCfg, and then later to the dedicated type of the datasource
 	yamlConfig, err := yaml.Marshal(commonConfig)
 	if err != nil {
-		return nil, fmt.Errorf("unable to marshal back interface: %v", err)
+		return nil, fmt.Errorf("unable to marshal back interface: %w", err)
 	}
 	if dataSrc := GetDataSourceIface(commonConfig.Source); dataSrc != nil {
 		/* this logger will then be used by the datasource at runtime */
@@ -96,9 +96,8 @@ func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg) (*DataS
 	return nil, fmt.Errorf("cannot find source %s", commonConfig.Source)
 }
 
-//detectBackwardCompatAcquis : try to magically detect the type for backward compat (type was not mandatory then)
+// detectBackwardCompatAcquis: try to magically detect the type for backward compat (type was not mandatory then)
 func detectBackwardCompatAcquis(sub configuration.DataSourceCommonCfg) string {
-
 	if _, ok := sub.Config["filename"]; ok {
 		return "file"
 	}
