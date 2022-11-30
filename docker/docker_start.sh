@@ -81,7 +81,7 @@ fi
 if isfalse "$DISABLE_AGENT"; then
     if isfalse "$DISABLE_LOCAL_API"; then
         echo "Regenerate local agent credentials"
-        cscli machines delete "$CUSTOM_HOSTNAME"
+        cscli machines delete "$CUSTOM_HOSTNAME" 2>/dev/null || true
         # shellcheck disable=SC2086
         cscli machines add "$CUSTOM_HOSTNAME" --auto --url "$LOCAL_API_URL"
     fi
