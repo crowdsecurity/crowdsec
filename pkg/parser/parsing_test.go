@@ -2,6 +2,7 @@ package parser
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -182,7 +183,7 @@ func loadTestFile(file string) []TestFile {
 		tf := TestFile{}
 		err := dec.Decode(&tf)
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			log.Fatalf("Failed to load testfile '%s' yaml error : %v", file, err)

@@ -42,7 +42,7 @@ func (c *LocalApiServerCfg) LoadProfiles() error {
 		t := ProfileCfg{}
 		err = dec.Decode(&t)
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return errors.Wrapf(err, "while decoding %s", c.ProfilesPath)

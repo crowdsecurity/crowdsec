@@ -70,10 +70,10 @@ func CustomRecoveryWithWriter() gin.HandlerFunc {
 						errHandlerComplete    = errors.New("http2: request body closed due to handler exiting")
 						errStreamClosed       = errors.New("http2: stream closed")
 					)
-					if strErr == errClientDisconnected ||
-						strErr == errClosedBody ||
-						strErr == errHandlerComplete ||
-						strErr == errStreamClosed {
+					if errors.Is(strErr, errClientDisconnected) ||
+						errors.Is(strErr, errClosedBody) ||
+						errors.Is(strErr, errHandlerComplete) ||
+						errors.Is(strErr, errStreamClosed) {
 						brokenPipe = true
 					}
 				}

@@ -420,7 +420,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	for _, pattern := range n.SubGroks {
 		n.Logger.Tracef("Adding subpattern '%s' : '%s'", pattern.Key, pattern.Value)
 		if err := pctx.Grok.Add(pattern.Key.(string), pattern.Value.(string)); err != nil {
-			if err == grokky.ErrAlreadyExist {
+			if errors.Is(err, grokky.ErrAlreadyExist) {
 				n.Logger.Warningf("grok '%s' already registred", pattern.Key)
 				continue
 			}

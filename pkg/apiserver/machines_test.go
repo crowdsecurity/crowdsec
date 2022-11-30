@@ -150,7 +150,7 @@ func TestCreateMachineAlreadyExist(t *testing.T) {
 
 	body, err := CreateTestMachine(router)
 	if err != nil {
-		log.Fatalln(err.Error())
+		log.Fatalln(err)
 	}
 
 	w := httptest.NewRecorder()

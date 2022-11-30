@@ -3,6 +3,7 @@ package leakybucket
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
@@ -153,7 +154,7 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 	tf := TestFile{}
 	err = dec.Decode(&tf)
 	if err != nil {
-		if err != io.EOF {
+		if errors.Is(err, io.EOF) {
 			t.Errorf("Failed to load testfile '%s' yaml error : %v", file, err)
 			return false
 		}
