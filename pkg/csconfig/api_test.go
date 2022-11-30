@@ -157,18 +157,18 @@ func TestLoadAPIServer(t *testing.T) {
 
 	LogDirFullPath, err := filepath.Abs("./tests")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 
 	config := &Config{}
 	fcontent, err := os.ReadFile("./tests/config.yaml")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 	configData := os.ExpandEnv(string(fcontent))
 	err = yaml.UnmarshalStrict([]byte(configData), &config)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 	tests := []struct {
 		name           string

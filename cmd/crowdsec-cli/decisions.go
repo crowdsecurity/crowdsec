@@ -351,7 +351,7 @@ cscli decisions add --scope username --value foobar
 
 			_, _, err = Client.Alerts.Add(context.Background(), alerts)
 			if err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 
 			log.Info("Decision successfully added")
@@ -597,7 +597,7 @@ decisions.json :
 
 			_, _, err = Client.Alerts.Add(context.Background(), alerts)
 			if err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 			log.Infof("%d decisions successfully imported", len(decisionsList))
 		},

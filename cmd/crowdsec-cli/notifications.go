@@ -46,7 +46,7 @@ func NewNotificationsCmd() *cobra.Command {
 				err error
 			)
 			if err = csConfig.API.Server.LoadProfiles(); err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 			if csConfig.ConfigPaths.NotificationDir == "" {
 				log.Fatalf("config_paths.notification_dir is not set in crowdsec config")

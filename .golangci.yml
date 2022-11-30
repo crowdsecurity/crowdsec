@@ -5,6 +5,7 @@ run:
     - pkg/time/rate
   skip-files:
     - pkg/database/ent/generate.go
+    - pkg/yamlpatch/merge.go
     - pkg/yamlpatch/merge_test.go
 
 linters-settings:

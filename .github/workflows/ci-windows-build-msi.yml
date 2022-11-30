@@ -2,7 +2,9 @@ name: build-msi (windows)
 
 on:
   pull_request:
-    branches: [ master ]
+    branches:
+      - master
+      - releases/**
     paths-ignore:
       - 'docs/**'
       - 'mkdocs.yml'

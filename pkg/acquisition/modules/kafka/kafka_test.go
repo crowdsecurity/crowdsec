@@ -85,18 +85,18 @@ func writeToKafka(w *kafka.Writer, logs []string) {
 func createTopic(topic string, broker string) {
 	conn, err := kafka.Dial("tcp", broker)
 	if err != nil {
-		panic(err.Error())
+		panic(err)
 	}
 	defer conn.Close()
 
 	controller, err := conn.Controller()
 	if err != nil {
-		panic(err.Error())
+		panic(err)
 	}
 	var controllerConn *kafka.Conn
 	controllerConn, err = kafka.Dial("tcp", net.JoinHostPort(controller.Host, strconv.Itoa(controller.Port)))
 	if err != nil {
-		panic(err.Error())
+		panic(err)
 	}
 	defer controllerConn.Close()
 
@@ -110,7 +110,7 @@ func createTopic(topic string, broker string) {
 
 	err = controllerConn.CreateTopics(topicConfigs...)
 	if err != nil {
-		panic(err.Error())
+		panic(err)
 	}
 }
 

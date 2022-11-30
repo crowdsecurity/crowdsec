@@ -52,7 +52,7 @@ func serveAPIServer(apiServer *apiserver.APIServer, apiReady chan bool) {
 			defer types.CatchPanic("crowdsec/runAPIServer")
 			log.Debugf("serving API after %s ms", time.Since(crowdsecT0))
 			if err := apiServer.Run(apiReady); err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 		}()
 
