@@ -56,6 +56,7 @@ type Flags struct {
 	DebugLevel     bool
 	InfoLevel      bool
 	WarnLevel      bool
+	ErrorLevel     bool
 	PrintVersion   bool
 	SingleFileType string
 	Labels         map[string]string
@@ -184,6 +185,7 @@ func (f *Flags) Parse() {
 	flag.BoolVar(&f.DebugLevel, "debug", false, "print debug-level on stderr")
 	flag.BoolVar(&f.InfoLevel, "info", false, "print info-level on stderr")
 	flag.BoolVar(&f.WarnLevel, "warning", false, "print warning-level on stderr")
+	flag.BoolVar(&f.ErrorLevel, "error", false, "print error-level on stderr")
 	flag.BoolVar(&f.PrintVersion, "version", false, "display version")
 	flag.StringVar(&f.OneShotDSN, "dsn", "", "Process a single data source in time-machine")
 	flag.StringVar(&f.SingleFileType, "type", "", "Labels.type for file in time-machine")
@@ -197,8 +199,43 @@ func (f *Flags) Parse() {
 	flag.Parse()
 }
 
+
+func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
+	// mother of all defaults
+	ret := log.InfoLevel
+
+	// keep if already set
+	if curLevelPtr != nil {
+		ret = *curLevelPtr
+	}
+
+	// override from flags
+	switch {
+	case f.TraceLevel:
+		ret = log.TraceLevel
+	case f.DebugLevel:
+		ret = log.DebugLevel
+	case f.InfoLevel:
+		ret = log.InfoLevel
+	case f.WarnLevel:
+		ret = log.WarnLevel
+	case f.ErrorLevel:
+		ret = log.ErrorLevel
+	default:
+	}
+
+	if ret == *curLevelPtr {
+		// avoid returning a new ptr to the same value
+		return curLevelPtr
+	}
+	return &ret
+}
+
+
 // LoadConfig returns a configuration parsed from configuration file
 func LoadConfig(cConfig *csconfig.Config) error {
+	cConfig.Common.LogLevel = newLogLevel(cConfig.Common.LogLevel, flags)
+
 	if dumpFolder != "" {
 		parser.ParseDump = true
 		parser.DumpFolder = dumpFolder
@@ -224,23 +261,6 @@ func LoadConfig(cConfig *csconfig.Config) error {
 
 	if cConfig.DisableAPI && cConfig.DisableAgent {
 		return errors.New("You must run at least the API Server or crowdsec")
-	}
-
-	if flags.WarnLevel {
-		logLevel := log.WarnLevel
-		cConfig.Common.LogLevel = &logLevel
-	}
-	if flags.InfoLevel || cConfig.Common.LogLevel == nil {
-		logLevel := log.InfoLevel
-		cConfig.Common.LogLevel = &logLevel
-	}
-	if flags.DebugLevel {
-		logLevel := log.DebugLevel
-		cConfig.Common.LogLevel = &logLevel
-	}
-	if flags.TraceLevel {
-		logLevel := log.TraceLevel
-		cConfig.Common.LogLevel = &logLevel
 	}
 
 	if flags.TestMode && !cConfig.DisableAgent {

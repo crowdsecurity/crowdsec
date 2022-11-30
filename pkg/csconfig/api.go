@@ -171,7 +171,6 @@ type TLSCfg struct {
 }
 
 func (c *Config) LoadAPIServer() error {
-
 	if c.DisableAPI {
 		log.Warning("crowdsec local API is disabled from flag")
 	}
@@ -228,7 +227,7 @@ func (c *Config) LoadAPIServer() error {
 		}
 	}
 	if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
-		log.Printf("push and pull to Central API disabled")
+		log.Info("push and pull to Central API disabled")
 	}
 	if err := c.LoadDBConfig(); err != nil {
 		return err
