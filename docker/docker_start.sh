@@ -77,6 +77,13 @@ if [ ! -e "/etc/crowdsec/local_api_credentials.yaml" ] && [ ! -e "/etc/crowdsec/
     fi
 fi
 
+# do this as soon as we have a config.yaml, to avoid useless warnings
+if istrue "$USE_WAL"; then
+    conf_set '.db_config.use_wal = true'
+elif [ -n "$USE_WAL" ] && isfalse "$USE_WAL"; then
+    conf_set '.db_config.use_wal = false'
+fi
+
 # regenerate local agent credentials (ignore if agent is disabled)
 if isfalse "$DISABLE_AGENT"; then
     if isfalse "$DISABLE_LOCAL_API"; then
