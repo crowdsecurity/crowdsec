@@ -37,14 +37,14 @@ listen_addr: 0.0.0.0`,
 		},
 	}
 
-	subLogger := log.WithFields(log.Fields{
-		"type": "k8s-audit",
-	})
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			f := KubernetesAuditSource{}
-			err := f.Configure([]byte(test.config), subLogger)
+
+			err := f.UnmarshalConfig([]byte(test.config))
+
 			assert.Contains(t, err.Error(), test.expectedErr)
+
 		})
 	}
 }
@@ -75,7 +75,12 @@ webhook_path: /k8s-audit`,
 			tb := &tomb.Tomb{}
 
 			f := KubernetesAuditSource{}
-			err := f.Configure([]byte(test.config), subLogger)
+
+			err := f.UnmarshalConfig([]byte(test.config))
+
+			assert.NoError(t, err)
+
+			err = f.Configure([]byte(test.config), subLogger)
 
 			assert.NoError(t, err)
 			f.StreamingAcquisition(out, tb)
@@ -246,7 +251,9 @@ webhook_path: /k8s-audit`,
 			})
 
 			f := KubernetesAuditSource{}
-			err := f.Configure([]byte(test.config), subLogger)
+			err := f.UnmarshalConfig([]byte(test.config))
+			assert.NoError(t, err)
+			err = f.Configure([]byte(test.config), subLogger)
 
 			assert.NoError(t, err)
 

@@ -57,20 +57,12 @@ func (ka *KubernetesAuditSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{eventCount, requestCount}
 }
 
-func (f *KubernetesAuditSource) UnmarshalConfig(yamlConfig []byte) error {
-	return nil
-}
-
-func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry) error {
-
+func (ka *KubernetesAuditSource) UnmarshalConfig(yamlConfig []byte) error {
 	k8sConfig := KubernetesAuditConfiguration{}
-	ka.logger = logger
-
-	err := yaml.UnmarshalStrict(config, &k8sConfig)
+	err := yaml.UnmarshalStrict(yamlConfig, &k8sConfig)
 	if err != nil {
 		return errors.Wrap(err, "Cannot parse k8s-audit configuration")
 	}
-	ka.logger.Tracef("K8SAudit configuration: %+v", k8sConfig)
 
 	ka.config = k8sConfig
 
@@ -93,6 +85,13 @@ func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry) err
 	if ka.config.Mode == "" {
 		ka.config.Mode = configuration.TAIL_MODE
 	}
+	return nil
+}
+
+func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry) error {
+	ka.logger = logger
+
+	ka.logger.Tracef("K8SAudit configuration: %+v", ka.config)
 
 	ka.addr = fmt.Sprintf("%s:%d", ka.config.ListenAddr, ka.config.ListenPort)
 
