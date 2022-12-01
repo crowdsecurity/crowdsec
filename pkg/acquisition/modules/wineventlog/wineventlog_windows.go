@@ -9,9 +9,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/google/winops/winlog"
 	"github.com/google/winops/winlog/wevtapi"
 	"github.com/prometheus/client_golang/prometheus"
@@ -19,6 +16,10 @@ import (
 	"golang.org/x/sys/windows"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type WinEventLogConfiguration struct {
@@ -228,29 +229,26 @@ func (w *WinEventLogSource) generateConfig(query string) (*winlog.SubscribeConfi
 	return &config, nil
 }
 
-func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry) error {
+func (w *WinEventLogSource) UnmarshalConfig(yamlConfig []byte) error {
+	w.config = WinEventLogConfiguration{}
 
-	config := WinEventLogConfiguration{}
-	w.logger = logger
-	err := yaml.UnmarshalStrict(yamlConfig, &config)
-
+	err := yaml.UnmarshalStrict(yamlConfig, &w.config)
 	if err != nil {
 		return fmt.Errorf("unable to parse configuration: %v", err)
 	}
 
-	if config.EventChannel != "" && config.XPathQuery != "" {
+	if w.config.EventChannel != "" && w.config.XPathQuery != "" {
 		return fmt.Errorf("event_channel and xpath_query are mutually exclusive")
 	}
 
-	if config.EventChannel == "" && config.XPathQuery == "" {
+	if w.config.EventChannel == "" && w.config.XPathQuery == "" {
 		return fmt.Errorf("event_channel or xpath_query must be set")
 	}
 
-	config.Mode = configuration.TAIL_MODE
-	w.config = config
+	w.config.Mode = configuration.TAIL_MODE
 
-	if config.XPathQuery != "" {
-		w.query = config.XPathQuery
+	if w.config.XPathQuery != "" {
+		w.query = w.config.XPathQuery
 	} else {
 		w.query, err = w.buildXpathQuery()
 		if err != nil {
@@ -258,15 +256,26 @@ func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry) erro
 		}
 	}
 
-	w.evtConfig, err = w.generateConfig(w.query)
+	if w.config.PrettyName != "" {
+		w.name = w.config.PrettyName
+	} else {
+		w.name = w.query
+	}
+
+	return nil
+}
+
+func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry) error {
+	w.logger = logger
+
+	err := w.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return err
 	}
 
-	if config.PrettyName != "" {
-		w.name = config.PrettyName
-	} else {
-		w.name = w.query
+	w.evtConfig, err = w.generateConfig(w.query)
+	if err != nil {
+		return err
 	}
 
 	return nil

@@ -13,12 +13,12 @@ func TestLoadCommon(t *testing.T) {
 	pidDirPath := "./tests"
 	LogDirFullPath, err := filepath.Abs("./tests/log/")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 
 	WorkingDirFullPath, err := filepath.Abs("./tests")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 
 	tests := []struct {

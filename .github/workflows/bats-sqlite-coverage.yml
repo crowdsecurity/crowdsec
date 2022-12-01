@@ -62,9 +62,12 @@ jobs:
         sqlite3 ./tests/local/var/lib/crowdsec/data/crowdsec.db '.dump'
       if: ${{ always() }}
 
+    - name: "Show stack traces"
+      run: for file in $(find /tmp/crowdsec-crash.*.txt); do echo ">>>>> $file"; cat $file; echo; done
+      if: ${{ always() }}
+
     - name: "Show crowdsec logs"
-      run:
-        for file in $(find ./tests/local/var/log -type f); do echo ">>>>> $file"; cat $file; echo; done
+      run: for file in $(find ./tests/local/var/log -type f); do echo ">>>>> $file"; cat $file; echo; done
       if: ${{ always() }}
 
     - name: Upload crowdsec coverage to codecov

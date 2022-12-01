@@ -39,7 +39,7 @@ jobs:
     - name: Build the binaries
       run: |
         make release BUILD_STATIC=yes
-        mv crowdsec-release.tgz crowdsec-release.static.tgz
+        mv crowdsec-release.tgz crowdsec-release-static.tgz
     - name: Upload to release
       uses: JasonEtco/upload-to-release@master
       with:

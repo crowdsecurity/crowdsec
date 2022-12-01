@@ -57,6 +57,10 @@ func (ka *KubernetesAuditSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{eventCount, requestCount}
 }
 
+func (f *KubernetesAuditSource) UnmarshalConfig(yamlConfig []byte) error {
+	return nil
+}
+
 func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry) error {
 
 	k8sConfig := KubernetesAuditConfiguration{}
