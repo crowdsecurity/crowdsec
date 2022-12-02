@@ -11,9 +11,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-//Format decisions for the bouncers, and deduplicate them by keeping only the longest one
+// Format decisions for the bouncers, and deduplicate them by keeping only the longest one
 func FormatDecisions(decisions []*ent.Decision, dedup bool) ([]*models.Decision, error) {
-	var results []*models.Decision
+	results := make([]*models.Decision, 0, len(decisions))
 
 	seen := make(map[string]struct{}, 0)
 
@@ -124,9 +124,10 @@ func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 func (c *Controller) StreamDecision(gctx *gin.Context) {
 	var data []*ent.Decision
 	var err error
-	ret := make(map[string][]*models.Decision, 0)
-	ret["new"] = []*models.Decision{}
-	ret["deleted"] = []*models.Decision{}
+	ret := map[string][]*models.Decision{
+		"new":     {},
+		"deleted": {},
+	}
 	streamStartTime := time.Now().UTC()
 
 	bouncerInfo, err := getBouncerFromContext(gctx)

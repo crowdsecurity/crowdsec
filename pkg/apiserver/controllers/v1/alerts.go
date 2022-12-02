@@ -89,7 +89,7 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 
 // FormatAlerts : Format results from the database to be swagger model compliant
 func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
-	var data models.AddAlertsRequest
+	data := make(models.AddAlertsRequest, 0, len(result))
 	for _, alertItem := range result {
 		data = append(data, FormatOneAlert(alertItem))
 	}
@@ -267,7 +267,6 @@ func (c *Controller) DeleteAlertByID(gctx *gin.Context) {
 
 	gctx.JSON(http.StatusOK, deleteAlertResp)
 }
-
 
 // DeleteAlerts deletes alerts from the database based on the specified filter
 func (c *Controller) DeleteAlerts(gctx *gin.Context) {
