@@ -14,7 +14,7 @@ import (
 
 func initAPIServer(cConfig *csconfig.Config) (*apiserver.APIServer, error) {
 	if cConfig.API.Server.OnlineClient == nil || cConfig.API.Server.OnlineClient.Credentials == nil {
-		log.Info("push and pull to central API disabled")
+		log.Info("push and pull to Central API disabled")
 	}
 
 	apiServer, err := apiserver.NewServer(cConfig.API.Server)
