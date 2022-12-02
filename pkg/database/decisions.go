@@ -86,6 +86,18 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 			if err != nil {
 				return nil, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", value[0], err)
 			}
+		case "limit":
+			limit, err := strconv.Atoi(value[0])
+			if err != nil {
+				return nil, errors.Wrapf(InvalidFilter, "invalid limit value : %s", err)
+			}
+			query = query.Limit(limit)
+		case "offset":
+			offset, err := strconv.Atoi(value[0])
+			if err != nil {
+				return nil, errors.Wrapf(InvalidFilter, "invalid offset value : %s", err)
+			}
+			query = query.Offset(offset)
 		}
 	}
 	query, err = applyStartIpEndIpFilter(query, contains, ip_sz, start_ip, start_sfx, end_ip, end_sfx)
