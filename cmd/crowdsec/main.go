@@ -42,7 +42,7 @@ var (
 	/*the state of the buckets*/
 	holders         []leakybucket.BucketFactory
 	buckets         *leakybucket.Buckets
-	outputEventChan chan types.Event //the buckets init returns its own chan that is used for multiplexing
+	outputEventChan chan types.Event // the buckets init returns its own chan that is used for multiplexing
 	/*settings*/
 	lastProcessedItem time.Time /*keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.*/
 	pluginBroker      csplugin.PluginBroker
@@ -110,7 +110,6 @@ func newParsers() *parser.Parsers {
 }
 
 func LoadBuckets(cConfig *csconfig.Config) error {
-
 	var (
 		err   error
 		files []string
@@ -161,9 +160,11 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 	return nil
 }
 
-var dumpFolder string
-var dumpStates bool
-var labels = make(labelsMap)
+var (
+	dumpFolder string
+	dumpStates bool
+	labels     = make(labelsMap)
+)
 
 func (l *labelsMap) String() string {
 	return "labels"
@@ -179,7 +180,6 @@ func (l labelsMap) Set(label string) error {
 }
 
 func (f *Flags) Parse() {
-
 	flag.StringVar(&f.ConfigFile, "c", csconfig.DefaultConfigPath("config.yaml"), "configuration file")
 	flag.BoolVar(&f.TraceLevel, "trace", false, "VERY verbose")
 	flag.BoolVar(&f.DebugLevel, "debug", false, "print debug-level on stderr")
@@ -198,7 +198,6 @@ func (f *Flags) Parse() {
 	flag.StringVar(&dumpFolder, "dump-data", "", "dump parsers/buckets raw outputs")
 	flag.Parse()
 }
-
 
 func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
 	// mother of all defaults
@@ -230,7 +229,6 @@ func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
 	}
 	return &ret
 }
-
 
 // LoadConfig returns a configuration parsed from configuration file
 func LoadConfig(cConfig *csconfig.Config) error {

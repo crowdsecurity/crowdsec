@@ -9,12 +9,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/crowdsecurity/crowdsec/pkg/yamlpatch"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/yamlpatch"
 )
 
 type APICfg struct {
@@ -33,13 +34,13 @@ type ApiCredentialsCfg struct {
 
 /*global api config (for lapi->oapi)*/
 type OnlineApiClientCfg struct {
-	CredentialsFilePath string             `yaml:"credentials_path,omitempty"` //credz will be edited by software, store in diff file
+	CredentialsFilePath string             `yaml:"credentials_path,omitempty"` // credz will be edited by software, store in diff file
 	Credentials         *ApiCredentialsCfg `yaml:"-"`
 }
 
 /*local api config (for crowdsec/cscli->lapi)*/
 type LocalApiClientCfg struct {
-	CredentialsFilePath string             `yaml:"credentials_path,omitempty"` //credz will be edited by software, store in diff file
+	CredentialsFilePath string             `yaml:"credentials_path,omitempty"` // credz will be edited by software, store in diff file
 	Credentials         *ApiCredentialsCfg `yaml:"-"`
 	InsecureSkipVerify  *bool              `yaml:"insecure_skip_verify"` // check if api certificate is bad or not
 }
@@ -138,7 +139,7 @@ func toValidCIDR(ip string) string {
 /*local api service configuration*/
 type LocalApiServerCfg struct {
 	Enable                 *bool               `yaml:"enable"`
-	ListenURI              string              `yaml:"listen_uri,omitempty"` //127.0.0.1:8080
+	ListenURI              string              `yaml:"listen_uri,omitempty"` // 127.0.0.1:8080
 	TLS                    *TLSCfg             `yaml:"tls"`
 	DbConfig               *DatabaseCfg        `yaml:"-"`
 	LogDir                 string              `yaml:"-"`
