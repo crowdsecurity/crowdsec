@@ -12,6 +12,10 @@ import (
 )
 
 func initAPIServer(cConfig *csconfig.Config) (*apiserver.APIServer, error) {
+	if cConfig.API.Server.OnlineClient == nil || cConfig.API.Server.OnlineClient.Credentials == nil {
+		log.Info("push and pull to central API disabled")
+	}
+
 	apiServer, err := apiserver.NewServer(cConfig.API.Server)
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to run local API")

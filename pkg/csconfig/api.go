@@ -226,9 +226,7 @@ func (c *Config) LoadAPIServer() error {
 			return errors.Wrap(err, "loading online client credentials")
 		}
 	}
-	if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
-		log.Info("push and pull to Central API disabled")
-	}
+
 	if err := c.LoadDBConfig(); err != nil {
 		return err
 	}

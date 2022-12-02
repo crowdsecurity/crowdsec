@@ -107,12 +107,6 @@ func runService(name string) error {
 		return err
 	}
 
-	// Configure logging
-	if err := types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, *cConfig.Common.LogLevel,
-		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles, cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs, cConfig.Common.ForceColorLogs); err != nil {
-		return err
-	}
-
 	log.Infof("starting %s service", name)
 	winsvc := crowdsec_winservice{config: cConfig}
 
