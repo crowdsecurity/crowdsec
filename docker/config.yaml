@@ -1,6 +1,5 @@
 common:
   daemonize: false
-  pid_dir: /var/run/
   log_media: stdout
   log_level: info
   log_dir: /var/log/
