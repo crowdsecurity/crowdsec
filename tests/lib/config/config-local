@@ -137,7 +137,7 @@ load_init_data() {
     ./bin/assert-crowdsec-not-running || die "Cannot load fixture data."
 
     if [[ ! -f "${LOCAL_INIT_DIR}/init-config-data.tar" ]]; then
-        die "Initial data not found; did you run '${script_name} make' ?"
+        die "Initial data not found; did you run 'make bats-fixture' ?"
     fi
 
     dump_backend="$(cat "${LOCAL_INIT_DIR}/.backend")"
