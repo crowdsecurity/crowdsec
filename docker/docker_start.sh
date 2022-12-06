@@ -233,7 +233,7 @@ register_bouncer() {
 ## Register bouncers via env
 for BOUNCER in $(compgen -A variable | grep -i BOUNCER_KEY); do
     KEY=$(printf '%s' "${!BOUNCER}")
-    NAME=$(printf '%s' "$BOUNCER" | cut -d_  -f2-)
+    NAME=$(printf '%s' "$BOUNCER" | cut -d_  -f3-)
     if [[ -n $KEY ]] && [[ -n $NAME ]]; then
         register_bouncer
     fi
