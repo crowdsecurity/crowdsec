@@ -53,6 +53,11 @@ func Loadplugin(path string) (EnricherCtx, error) {
 			InitFunc:   parseDateInit,
 			EnrichFunc: ParseDate,
 		},
+		{
+			Name:       "UnmarshalJSON",
+			InitFunc:   unmarshalInit,
+			EnrichFunc: unmarshalJSON,
+		},
 	}
 
 	for _, enricher := range EnrichersList {

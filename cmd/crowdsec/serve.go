@@ -62,14 +62,6 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 	if err = LoadConfig(cConfig); err != nil {
 		return nil, err
 	}
-	// Configure logging
-	if err = types.SetDefaultLoggerConfig(cConfig.Common.LogMedia,
-		cConfig.Common.LogDir, *cConfig.Common.LogLevel,
-		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles,
-		cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs,
-		cConfig.Common.ForceColorLogs); err != nil {
-		return nil, err
-	}
 
 	if !cConfig.DisableAPI {
 		if flags.DisableCAPI {

@@ -1,0 +1,30 @@
+# .github/workflow/governance.yml
+
+on:
+  pull_request_target:
+    types: [ synchronize, opened, labeled, unlabeled ]
+  issues:
+    types: [ opened, labeled, unlabeled ]
+  issue_comment:
+    types: [ created ]
+
+# You can use permissions to modify the default permissions granted to the GITHUB_TOKEN, 
+# adding or removing access as required, so that you only allow the minimum required access. 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  statuses: write
+  checks: write
+
+jobs:
+  governance:
+    name: Governance
+    runs-on: ubuntu-latest
+    steps:
+      # Semantic versioning, lock to different version: v2, v2.0 or a commit hash.
+      - uses: BirthdayResearch/oss-governance-bot@v3
+        with:
+          # You can use a PAT to post a comment/label/status so that it shows up as a user instead of github-actions
+          github-token: ${{secrets.GITHUB_TOKEN}} # optional, default to '${{ github.token }}'
+          config-path: .github/governance.yml # optional, default to '.github/governance.yml'

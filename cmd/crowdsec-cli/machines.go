@@ -311,6 +311,25 @@ cscli machines add MyTestMachine --password MyPassword
 				log.Fatalf("unable to create new database client: %s", err)
 			}
 		},
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			var err error
+			dbClient, err = getDBClient()
+			if err != nil {
+				cobra.CompError("unable to create new database client: " + err.Error())
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+			machines, err := dbClient.ListMachines()
+			if err != nil {
+				cobra.CompError("unable to list machines " + err.Error())
+			}
+			ret := make([]string, 0)
+			for _, machine := range machines {
+				if strings.Contains(machine.MachineId, toComplete) && !inSlice(machine.MachineId, args) {
+					ret = append(ret, machine.MachineId)
+				}
+			}
+			return ret, cobra.ShellCompDirectiveNoFileComp
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			machineID = args[0]
 			for _, machineID := range args {

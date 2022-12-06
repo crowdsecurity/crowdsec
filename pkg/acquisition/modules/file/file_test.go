@@ -7,14 +7,15 @@ import (
 	"testing"
 	"time"
 
-	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
-	"github.com/crowdsecurity/crowdsec/pkg/cstest"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
+
+	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func TestBadConfiguration(t *testing.T) {
@@ -42,7 +43,7 @@ func TestBadConfiguration(t *testing.T) {
 			name: "bad exclude regexp",
 			config: `filenames: ["asd.log"]
 exclude_regexps: ["as[a-$d"]`,
-			expectedErr: "Could not compile regexp as",
+			expectedErr: "could not compile regexp as",
 		},
 	}
 
