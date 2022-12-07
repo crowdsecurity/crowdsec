@@ -19,6 +19,8 @@ var (
 	ErrUnauthorized = errors.New("unauthorized")
 	ErrLimit        = errors.New("request quota exceeded, please reduce your request rate")
 	ErrNotFound     = errors.New("ip not found")
+	ErrDisabled     = errors.New("cti is disabled")
+	ErrUnknown      = errors.New("unknown error")
 )
 
 type CrowdsecCTIClient struct {
