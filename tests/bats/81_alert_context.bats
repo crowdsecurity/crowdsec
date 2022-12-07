@@ -37,7 +37,7 @@ teardown() {
     cat <<-EOT >"${ACQUIS_YAML}"
 	filename: $tmpfile
 	labels:
-		type: syslog
+	  type: syslog
 	EOT
 
     CONTEXT_YAML=$(config_get '.crowdsec_service.console_context_path')
@@ -57,7 +57,10 @@ teardown() {
     sleep 2
     rm -f -- "${tmpfile}"
 
-    run -0 cscli alerts inspect 2 -o json
+    run -0 cscli alerts list -o json
+    run -0 jq '.[0].id' <(output)
+    ALERT_ID="$output"
+    run -0 cscli alerts inspect "$ALERT_ID" -o json
     run -0 jq -c '.meta | sort_by(.key) | map([.key,.value])' <(output)
 
     assert_json '[["source_host","[\"sd-126005\"]"],["source_ip","[\"1.1.1.172\"]"],["target_user","[\"netflix\"]"]]'
