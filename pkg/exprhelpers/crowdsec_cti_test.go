@@ -118,66 +118,73 @@ func smokeHandler(req *http.Request) *http.Response {
 
 func TestInvalidAuth(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
-	InitCrowdsecCTI(types.StrPtr("asdasd"), nil, nil)
+	InitCrowdsecCTI(types.StrPtr("asdasd"), nil, nil, nil)
 	//Replace the client created by InitCrowdsecCTI with one that uses a custom transport
 	ctiClient = cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey("asdasd"), cticlient.WithHTTPClient(&http.Client{
 		Transport: RoundTripFunc(smokeHandler),
 	}))
 
-	item := CrowdsecCTI("1.2.3.4")
+	item, err := CrowdsecCTI("1.2.3.4")
 	assert.Equal(t, item, &cticlient.SmokeItem{})
 	assert.Equal(t, CTIApiEnabled, false)
+	assert.Equal(t, err, cticlient.ErrUnauthorized)
 
 	//CTI is now disabled, all requests should return empty
 	ctiClient = cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey(validApiKey), cticlient.WithHTTPClient(&http.Client{
 		Transport: RoundTripFunc(smokeHandler),
 	}))
 
-	item = CrowdsecCTI("1.2.3.4")
+	item, err = CrowdsecCTI("1.2.3.4")
 	assert.Equal(t, item, &cticlient.SmokeItem{})
 	assert.Equal(t, CTIApiEnabled, false)
+	assert.Equal(t, err, cticlient.ErrDisabled)
 }
 
 func TestNoKey(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
-	InitCrowdsecCTI(nil, nil, nil)
+	InitCrowdsecCTI(nil, nil, nil, nil)
 	//Replace the client created by InitCrowdsecCTI with one that uses a custom transport
 	ctiClient = cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey("asdasd"), cticlient.WithHTTPClient(&http.Client{
 		Transport: RoundTripFunc(smokeHandler),
 	}))
 
-	item := CrowdsecCTI("1.2.3.4")
+	item, err := CrowdsecCTI("1.2.3.4")
 	assert.Equal(t, item, &cticlient.SmokeItem{})
 	assert.Equal(t, CTIApiEnabled, false)
+	assert.Equal(t, err, cticlient.ErrDisabled)
 }
 
 func TestCache(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
 	cacheDuration := 1 * time.Second
-	InitCrowdsecCTI(types.StrPtr(validApiKey), &cacheDuration, nil)
+	InitCrowdsecCTI(types.StrPtr(validApiKey), &cacheDuration, nil, nil)
 	//Replace the client created by InitCrowdsecCTI with one that uses a custom transport
 	ctiClient = cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey(validApiKey), cticlient.WithHTTPClient(&http.Client{
 		Transport: RoundTripFunc(smokeHandler),
 	}))
 
-	item := CrowdsecCTI("1.2.3.4")
+	item, err := CrowdsecCTI("1.2.3.4")
 	assert.Equal(t, "1.2.3.4", item.Ip)
 	assert.Equal(t, CTIApiEnabled, true)
 	assert.Equal(t, CTICache.Len(true), 1)
+	assert.Equal(t, err, nil)
 
-	item = CrowdsecCTI("1.2.3.4")
+	item, err = CrowdsecCTI("1.2.3.4")
 	assert.Equal(t, "1.2.3.4", item.Ip)
 	assert.Equal(t, CTIApiEnabled, true)
 	assert.Equal(t, CTICache.Len(true), 1)
+	assert.Equal(t, err, nil)
 
 	time.Sleep(2 * time.Second)
 
 	assert.Equal(t, CTICache.Len(true), 0)
 
-	item = CrowdsecCTI("1.2.3.4")
+	item, err = CrowdsecCTI("1.2.3.4")
 	assert.Equal(t, "1.2.3.4", item.Ip)
 	assert.Equal(t, CTIApiEnabled, true)
 	assert.Equal(t, CTICache.Len(true), 1)
+	assert.Equal(t, err, nil)
+
 }
 
 // func EmptyCTIResponse(ip string) CTIResponse {
