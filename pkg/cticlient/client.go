@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -26,6 +28,7 @@ var (
 type CrowdsecCTIClient struct {
 	httpClient *http.Client
 	apiKey     string
+	Logger     *log.Entry
 }
 
 func (c *CrowdsecCTIClient) doRequest(method string, endpoint string, params map[string]string) ([]byte, error) {
@@ -129,6 +132,12 @@ func NewCrowdsecCTIClient(options ...func(*CrowdsecCTIClient)) *CrowdsecCTIClien
 		client.httpClient = &http.Client{}
 	}
 	return client
+}
+
+func WithLogger(logger *log.Entry) func(*CrowdsecCTIClient) {
+	return func(c *CrowdsecCTIClient) {
+		c.Logger = logger
+	}
 }
 
 func WithHTTPClient(httpClient *http.Client) func(*CrowdsecCTIClient) {

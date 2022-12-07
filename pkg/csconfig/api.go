@@ -50,6 +50,7 @@ type CTICfg struct {
 	CacheTimeout *time.Duration `yaml:"cache_timeout,omitempty"`
 	CacheSize    *int           `yaml:"cache_size,omitempty"`
 	Enabled      bool           `yaml:"-"`
+	LogLevel     *log.Level     `yaml:"log_level,omitempty"`
 }
 
 func (a *CTICfg) Load() error { //XX

@@ -1,6 +1,8 @@
 package cticlient
 
-import "time"
+import (
+	"time"
+)
 
 type CTIScores struct {
 	Overall   CTIScore `json:"overall"`
