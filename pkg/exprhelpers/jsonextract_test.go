@@ -9,12 +9,12 @@ import (
 
 func TestJsonExtract(t *testing.T) {
 	if err := Init(nil); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	err := FileInit(TestFolder, "test_data_re.txt", "regex")
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	tests := []struct {
@@ -55,12 +55,12 @@ func TestJsonExtract(t *testing.T) {
 }
 func TestJsonExtractUnescape(t *testing.T) {
 	if err := Init(nil); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	err := FileInit(TestFolder, "test_data_re.txt", "regex")
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	tests := []struct {
@@ -95,12 +95,12 @@ func TestJsonExtractUnescape(t *testing.T) {
 
 func TestJsonExtractSlice(t *testing.T) {
 	if err := Init(nil); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	err := FileInit(TestFolder, "test_data_re.txt", "regex")
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	tests := []struct {
@@ -146,12 +146,12 @@ func TestJsonExtractSlice(t *testing.T) {
 
 func TestJsonExtractObject(t *testing.T) {
 	if err := Init(nil); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	err := FileInit(TestFolder, "test_data_re.txt", "regex")
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	tests := []struct {

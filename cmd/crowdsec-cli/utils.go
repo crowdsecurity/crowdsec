@@ -22,6 +22,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -732,6 +733,22 @@ func formatNumber(num int) string {
 	res := math.Round(float64(num)/float64(goodUnit.value)*100) / 100
 	return fmt.Sprintf("%.2f%s", res, goodUnit.symbol)
 }
+
+func getDBClient() (*database.Client, error) {
+	var err error
+	if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
+		return nil, err
+	}
+	if err := csConfig.LoadDBConfig(); err != nil {
+		return nil, err
+	}
+	ret, err := database.NewClient(csConfig.DbConfig)
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
+}
+
 
 func removeFromSlice(val string, slice []string) []string {
 	var i int

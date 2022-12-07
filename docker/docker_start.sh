@@ -77,11 +77,18 @@ if [ ! -e "/etc/crowdsec/local_api_credentials.yaml" ] && [ ! -e "/etc/crowdsec/
     fi
 fi
 
+# do this as soon as we have a config.yaml, to avoid useless warnings
+if istrue "$USE_WAL"; then
+    conf_set '.db_config.use_wal = true'
+elif [ -n "$USE_WAL" ] && isfalse "$USE_WAL"; then
+    conf_set '.db_config.use_wal = false'
+fi
+
 # regenerate local agent credentials (ignore if agent is disabled)
 if isfalse "$DISABLE_AGENT"; then
     if isfalse "$DISABLE_LOCAL_API"; then
         echo "Regenerate local agent credentials"
-        cscli machines delete "$CUSTOM_HOSTNAME"
+        cscli machines delete "$CUSTOM_HOSTNAME" 2>/dev/null || true
         # shellcheck disable=SC2086
         cscli machines add "$CUSTOM_HOSTNAME" --auto --url "$LOCAL_API_URL"
     fi
@@ -226,7 +233,7 @@ register_bouncer() {
 ## Register bouncers via env
 for BOUNCER in $(compgen -A variable | grep -i BOUNCER_KEY); do
     KEY=$(printf '%s' "${!BOUNCER}")
-    NAME=$(printf '%s' "$BOUNCER" | cut -d_  -f2-)
+    NAME=$(printf '%s' "$BOUNCER" | cut -d_  -f3-)
     if [[ -n $KEY ]] && [[ -n $NAME ]]; then
         register_bouncer
     fi

@@ -40,6 +40,7 @@ ENV DISABLE_ONLINE_API=false
 ENV DSN=
 ENV TYPE=
 ENV TEST_MODE=false
+ENV USE_WAL=false
 
 # register to app.crowdsec.net
 

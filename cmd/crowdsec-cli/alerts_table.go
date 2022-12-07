@@ -55,7 +55,7 @@ func alertDecisionsTable(out io.Writer, alert *models.Alert) {
 	for _, decision := range alert.Decisions {
 		parsedDuration, err := time.ParseDuration(*decision.Duration)
 		if err != nil {
-			log.Errorf(err.Error())
+			log.Error(err)
 		}
 		expire := time.Now().UTC().Add(parsedDuration)
 		if time.Now().UTC().After(expire) {

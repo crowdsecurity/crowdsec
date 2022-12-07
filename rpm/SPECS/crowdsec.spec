@@ -2,7 +2,7 @@
 Name:           crowdsec
 Version:        %(echo $VERSION)
 Release:        %(echo $PACKAGE_NUMBER)%{?dist}
-Summary:        Crowdsec - An open-source, lightweight agent to detect and respond to bad behaviours. It also automatically benefits from our global community-wide IP reputation database
+Summary:        Crowdsec - An open-source, lightweight agent to detect and respond to bad behaviors. It also automatically benefits from our global community-wide IP reputation database
 
 License:        MIT
 URL:            https://crowdsec.net

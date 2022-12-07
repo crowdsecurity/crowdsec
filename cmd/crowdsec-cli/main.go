@@ -58,11 +58,11 @@ func initConfig() {
 	if !inSlice(os.Args[1], NoNeedConfig) {
 		csConfig, err = csconfig.NewConfig(ConfigFilePath, false, false)
 		if err != nil {
-			log.Fatalf(err.Error())
+			log.Fatal(err)
 		}
 		log.Debugf("Using %s as configuration file", ConfigFilePath)
 		if err := csConfig.LoadCSCLI(); err != nil {
-			log.Fatalf(err.Error())
+			log.Fatal(err)
 		}
 	} else {
 		csConfig = csconfig.NewDefaultConfig()

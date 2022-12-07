@@ -442,7 +442,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
 			}
 			if err := csConfig.LoadDBConfig(); err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 			dbClient, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {

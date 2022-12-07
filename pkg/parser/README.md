@@ -58,7 +58,7 @@ statics:
 ### OnSuccess flag
 > `onsuccess: next_stage|continue`
 
- - *mandatory* indicates the behaviour to follow if node succeeds. `next_stage` make line go to next stage, while `continue` will continue processing of current stage.
+ - *mandatory* indicates the behavior to follow if the node succeeds. `next_stage` make the line go to the next stage, while `continue` will continue processing the current stage.
 
 ### Statics
 
@@ -107,7 +107,7 @@ grok:
   pattern: "^%{GREEDYDATA:request}\\?%{GREEDYDATA:http_args}$"
   apply_on: request
 ```
-`pattern`  which is a valid pattern, optionally with a `apply_on` that indicates to which field it should be applied
+`pattern`  which is a valid pattern, optionally with an `apply_on` that indicates to which field it should be applied
 
 
 ### Patterns syntax
@@ -123,7 +123,7 @@ pattern_syntax:
 
 ### Enrichment
 
-Enrichment mechanism is exposed via statics :
+The Enrichment mechanism is exposed via statics :
 
 ```yaml
 statics:
@@ -162,7 +162,7 @@ statics: #D
     value: http
 ```
 
-The evaluation process of a node is as follow :
+The evaluation process of a node is as follows:
  - apply the `filter` (A), if it doesn't match, exit
  - iterate over the list of nodes (A') and apply the node process to each.
  - if a `grok` entry is present, process it

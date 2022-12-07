@@ -367,7 +367,7 @@ func (m *Metabase) ExtractDatabase(buf *bytes.Reader) error {
 			return fmt.Errorf("while opening zip content %s : %s", f.Name, err)
 		}
 		written, err := io.Copy(tfd, rc)
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			log.Printf("files finished ok")
 		} else if err != nil {
 			return fmt.Errorf("while copying content to %s : %s", tfname, err)

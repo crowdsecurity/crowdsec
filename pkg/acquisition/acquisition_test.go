@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -26,10 +25,19 @@ type MockSource struct {
 	logger                            *log.Entry
 }
 
+func (f *MockSource) UnmarshalConfig(cfg []byte) error {
+	err := yaml.UnmarshalStrict(cfg, &f)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (f *MockSource) Configure(cfg []byte, logger *log.Entry) error {
 	f.logger = logger
-	if err := yaml.UnmarshalStrict(cfg, &f); err != nil {
-		return errors.Wrap(err, "while unmarshaling to reader specific config")
+	if err := f.UnmarshalConfig(cfg); err != nil {
+		return err
 	}
 	if f.Mode == "" {
 		f.Mode = configuration.CAT_MODE
@@ -65,24 +73,10 @@ func (f *MockSourceCantRun) GetName() string { return "mock_cant_run" }
 // appendMockSource is only used to add mock source for tests
 func appendMockSource() {
 	if GetDataSourceIface("mock") == nil {
-		mock := struct {
-			name  string
-			iface func() DataSource
-		}{
-			name:  "mock",
-			iface: func() DataSource { return &MockSource{} },
-		}
-		AcquisitionSources = append(AcquisitionSources, mock)
+		AcquisitionSources["mock"] = func() DataSource { return &MockSource{} }
 	}
 	if GetDataSourceIface("mock_cant_run") == nil {
-		mock := struct {
-			name  string
-			iface func() DataSource
-		}{
-			name:  "mock_cant_run",
-			iface: func() DataSource { return &MockSourceCantRun{} },
-		}
-		AcquisitionSources = append(AcquisitionSources, mock)
+		AcquisitionSources["mock_cant_run"] = func() DataSource { return &MockSourceCantRun{} }
 	}
 }
 
@@ -313,8 +307,10 @@ func (f *MockCat) Configure(cfg []byte, logger *log.Entry) error {
 	}
 	return nil
 }
-func (f *MockCat) GetName() string { return "mock_cat" }
-func (f *MockCat) GetMode() string { return "cat" }
+
+func (f *MockCat) UnmarshalConfig(cfg []byte) error { return nil }
+func (f *MockCat) GetName() string                  { return "mock_cat" }
+func (f *MockCat) GetMode() string                  { return "cat" }
 func (f *MockCat) OneShotAcquisition(out chan types.Event, tomb *tomb.Tomb) error {
 	for i := 0; i < 10; i++ {
 		evt := types.Event{}
@@ -351,8 +347,10 @@ func (f *MockTail) Configure(cfg []byte, logger *log.Entry) error {
 	}
 	return nil
 }
-func (f *MockTail) GetName() string { return "mock_tail" }
-func (f *MockTail) GetMode() string { return "tail" }
+
+func (f *MockTail) UnmarshalConfig(cfg []byte) error { return nil }
+func (f *MockTail) GetName() string                  { return "mock_tail" }
+func (f *MockTail) GetMode() string                  { return "tail" }
 func (f *MockTail) OneShotAcquisition(out chan types.Event, tomb *tomb.Tomb) error {
 	return fmt.Errorf("can't run in cat mode")
 }
@@ -482,6 +480,7 @@ type MockSourceByDSN struct {
 	logger                            *log.Entry //nolint: unused
 }
 
+func (f *MockSourceByDSN) UnmarshalConfig(cfg []byte) error                        { return nil }
 func (f *MockSourceByDSN) Configure(cfg []byte, logger *log.Entry) error           { return nil }
 func (f *MockSourceByDSN) GetMode() string                                         { return f.Mode }
 func (f *MockSourceByDSN) OneShotAcquisition(chan types.Event, *tomb.Tomb) error   { return nil }
@@ -524,14 +523,7 @@ func TestConfigureByDSN(t *testing.T) {
 	}
 
 	if GetDataSourceIface("mockdsn") == nil {
-		mock := struct {
-			name  string
-			iface func() DataSource
-		}{
-			name:  "mockdsn",
-			iface: func() DataSource { return &MockSourceByDSN{} },
-		}
-		AcquisitionSources = append(AcquisitionSources, mock)
+		AcquisitionSources["mockdsn"] = func() DataSource { return &MockSourceByDSN{} }
 	}
 
 	for _, tc := range tests {
