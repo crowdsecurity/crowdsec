@@ -1,0 +1,16 @@
+#!/bin/sh
+
+DB_BACKEND=sqlite
+TEST_SUITE_GIT=https://github.com/crowdsecurity/crowdsec
+TEST_SUITE_VERSION=mm-wizard
+
+export DB_BACKEND
+export PACKAGE_TESTING
+export TEST_SUITE_GIT
+export TEST_SUITE_VERSION
+export TEST_SUITE_ZIP
+export TEST_PACKAGE_VERSION_DEB
+export TEST_PACKAGE_VERSION_RPM
+export TEST_PACKAGE_FILE
+export TEST_PACKAGE_DIR
+export TEST_SKIP
