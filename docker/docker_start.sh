@@ -165,16 +165,16 @@ if istrue "$USE_TLS"; then
     agents_allowed_yaml=$(csv2yaml "$AGENTS_ALLOWED_OU") \
     bouncers_allowed_yaml=$(csv2yaml "$BOUNCERS_ALLOWED_OU") \
     conf_set '
-        .api.server.tls.ca_cert_path = strenv(CACERT_FILE) |
-        .api.server.tls.cert_file = strenv(CERT_FILE) |
-        .api.server.tls.key_file = strenv(KEY_FILE) |
+        with(select(strenv(CACERT_FILE)!=""); .api.server.tls.ca_cert_path = strenv(CACERT_FILE)) |
+        with(select(strenv(CERT_FILE)!=""); .api.server.tls.cert_file = strenv(CERT_FILE)) |
+        with(select(strenv(KEY_FILE)!=""); .api.server.tls.key_file = strenv(KEY_FILE)) |
         .api.server.tls.bouncers_allowed_ou = env(bouncers_allowed_yaml) |
         .api.server.tls.agents_allowed_ou = env(agents_allowed_yaml) |
         ... comments=""
         '
 fi
 
-conf_set ".config_paths.plugin_dir = strenv(PLUGIN_DIR)"
+conf_set "with(select(strenv(PLUGIN_DIR)!=""); .config_paths.plugin_dir = strenv(PLUGIN_DIR))"
 
 ## Install collections, parsers, scenarios & postoverflows
 cscli hub update
@@ -290,7 +290,7 @@ if istrue "$LEVEL_INFO"; then
     ARGS="$ARGS -info"
 fi
 
-conf_set '.prometheus.listen_port=env(METRICS_PORT)'
+conf_set 'with(select(strenv(METRICS_PORT)!=""); .prometheus.listen_port=env(METRICS_PORT))'
 
 # shellcheck disable=SC2086
 exec crowdsec $ARGS

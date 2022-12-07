@@ -37,7 +37,7 @@ ENV CONFIG_FILE=/etc/crowdsec/config.yaml
 # because the configuration might be persistent / have manual edits.
 ENV LOCAL_API_URL=
 ENV CUSTOM_HOSTNAME=localhost
-ENV PLUGIN_DIR=/usr/local/lib/crowdsec/plugins/
+ENV PLUGIN_DIR=
 ENV DISABLE_AGENT=false
 ENV DISABLE_LOCAL_API=false
 ENV DISABLE_ONLINE_API=false
@@ -67,12 +67,12 @@ ENV AGENT_PASSWORD=
 
 ENV USE_TLS=false
 ENV CACERT_FILE=
-ENV CERT_FILE=/etc/ssl/cert.pem
-ENV KEY_FILE=/etc/ssl/key.pem
+ENV CERT_FILE=
+ENV KEY_FILE=
 # comma-separated list of allowed OU values for TLS bouncer certificates
-ENV BOUNCERS_ALLOWED_OU=bouncer-ou
+ENV BOUNCERS_ALLOWED_OU=
 # comma-separated list of allowed OU values for TLS agent certificates
-ENV AGENTS_ALLOWED_OU=agent-ou
+ENV AGENTS_ALLOWED_OU=
 
 # Install the following hub items --------------#
 
@@ -88,7 +88,7 @@ ENV DISABLE_PARSERS=
 ENV DISABLE_SCENARIOS=
 ENV DISABLE_POSTOVERFLOWS=
 
-ENV METRICS_PORT=6060
+ENV METRICS_PORT=
 
 ENTRYPOINT /bin/bash docker_start.sh
 
