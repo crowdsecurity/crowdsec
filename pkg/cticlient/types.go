@@ -147,7 +147,7 @@ type FireResponse struct {
 }
 
 func (c *SmokeItem) GetAttackDetails() []string {
-	var ret []string
+	var ret []string = make([]string, 0)
 
 	if c.AttackDetails != nil {
 		for _, b := range c.AttackDetails {
@@ -158,7 +158,7 @@ func (c *SmokeItem) GetAttackDetails() []string {
 }
 
 func (c *SmokeItem) GetBehaviours() []string {
-	var ret []string
+	var ret []string = make([]string, 0)
 
 	if c.Behaviours != nil {
 		for _, b := range c.Behaviours {
@@ -199,7 +199,7 @@ func (c *SmokeItem) GetBackgroundNoiseScore() int {
 }
 
 func (c *SmokeItem) GetFalsePositives() []string {
-	var ret []string
+	var ret []string = make([]string, 0)
 
 	if c.Classifications.FalsePositives != nil {
 		for _, b := range c.Classifications.FalsePositives {
@@ -221,7 +221,7 @@ func (c *SmokeItem) IsFalsePositive() bool {
 }
 
 func (c *FireItem) GetAttackDetails() []string {
-	var ret []string
+	var ret []string = make([]string, 0)
 
 	if c.AttackDetails != nil {
 		for _, b := range c.AttackDetails {
@@ -232,7 +232,7 @@ func (c *FireItem) GetAttackDetails() []string {
 }
 
 func (c *FireItem) GetBehaviours() []string {
-	var ret []string
+	var ret []string = make([]string, 0)
 
 	if c.Behaviours != nil {
 		for _, b := range c.Behaviours {
@@ -273,7 +273,7 @@ func (c *FireItem) GetBackgroundNoiseScore() int {
 }
 
 func (c *FireItem) GetFalsePositives() []string {
-	var ret []string
+	var ret []string = make([]string, 0)
 
 	if c.Classifications.FalsePositives != nil {
 		for _, b := range c.Classifications.FalsePositives {
