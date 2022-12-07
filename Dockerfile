@@ -1,3 +1,4 @@
+# vim: set ft=dockerfile:
 ARG BUILD_ENV=full
 ARG GOVERSION=1.19
 
@@ -32,9 +33,6 @@ COPY --from=build /go/src/crowdsec/docker/docker_start.sh /
 COPY --from=build /go/src/crowdsec/docker/config.yaml /staging/etc/crowdsec/config.yaml
 
 ENV CONFIG_FILE=/etc/crowdsec/config.yaml
-# if LOCAL_API_URL is defined, even with a default, it replaces the value
-# in the config file every time the container starts. we don't want that
-# because the configuration might be persistent / have manual edits.
 ENV LOCAL_API_URL=
 ENV CUSTOM_HOSTNAME=localhost
 ENV PLUGIN_DIR=
