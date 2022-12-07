@@ -10,7 +10,9 @@ COPY . .
 
 # wizard.sh requires GNU coreutils
 RUN apt-get update && \
-    apt-get install -y git gcc libc-dev make bash gettext binutils-gold coreutils tzdata && \
+    echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections && \
+    apt-get install -y -q apt-utils 2>/dev/null && \
+    apt-get install -y -q git gcc libc-dev make bash gettext binutils-gold coreutils tzdata && \
     SYSTEM="docker" make release && \
     cd crowdsec-v* && \
     ./wizard.sh --docker-mode && \
@@ -18,11 +20,12 @@ RUN apt-get update && \
     cscli hub update && \
     cscli collections install crowdsecurity/linux && \
     cscli parsers install crowdsecurity/whitelists && \
-    go install github.com/mikefarah/yq/v4@latest
+    go install github.com/mikefarah/yq/v4@v4.30.5
 
 FROM debian:bullseye-slim as build-slim
 
 RUN apt-get update && \
+    echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections && \
     apt-get install -y -q --install-recommends --no-install-suggests \
     procps \
     systemd \
@@ -32,7 +35,8 @@ RUN apt-get update && \
     tzdata && \
     mkdir -p /staging/etc/crowdsec && \
     mkdir -p /staging/var/lib/crowdsec && \
-    mkdir -p /var/lib/crowdsec/data
+    mkdir -p /var/lib/crowdsec/data \
+    yq -n '.url="http://0.0.0.0:8080"' | install -m 0600 /dev/stdin /staging/etc/crowdsec/local_api_credentials.yaml
 
 COPY --from=build /go/bin/yq /usr/local/bin/yq
 COPY --from=build /etc/crowdsec /staging/etc/crowdsec
@@ -43,7 +47,10 @@ COPY --from=build /go/src/crowdsec/docker/config.yaml /staging/etc/crowdsec/conf
 RUN yq eval -i ".plugin_config.group = \"nogroup\"" /staging/etc/crowdsec/config.yaml
 
 ENV CONFIG_FILE=/etc/crowdsec/config.yaml
-ENV LOCAL_API_URL=http://0.0.0.0:8080/
+# if LOCAL_API_URL is defined, even with a default, it replaces the value
+# in the config file every time the container starts. we don't want that
+# because the configuration might be persistent / have manual edits.
+ENV LOCAL_API_URL=
 ENV CUSTOM_HOSTNAME=localhost
 ENV PLUGIN_DIR=/usr/local/lib/crowdsec/plugins/
 ENV DISABLE_AGENT=false
@@ -74,7 +81,7 @@ ENV AGENT_PASSWORD=
 # TLS setup ----------------------------------- #
 
 ENV USE_TLS=false
-ENV CA_CERT_PATH=
+ENV CACERT_FILE=
 ENV CERT_FILE=/etc/ssl/cert.pem
 ENV KEY_FILE=/etc/ssl/key.pem
 # comma-separated list of allowed OU values for TLS bouncer certificates

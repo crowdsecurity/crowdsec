@@ -22,7 +22,8 @@ FROM alpine:latest as build-slim
 RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community tzdata yq bash && \
     mkdir -p /staging/etc/crowdsec && \
     mkdir -p /staging/var/lib/crowdsec && \
-    mkdir -p /var/lib/crowdsec/data
+    mkdir -p /var/lib/crowdsec/data \
+    yq -n '.url="http://0.0.0.0:8080"' | install -m 0600 /dev/stdin /staging/etc/crowdsec/local_api_credentials.yaml
 
 COPY --from=build /etc/crowdsec /staging/etc/crowdsec
 COPY --from=build /usr/local/bin/crowdsec /usr/local/bin/crowdsec
@@ -31,7 +32,10 @@ COPY --from=build /go/src/crowdsec/docker/docker_start.sh /
 COPY --from=build /go/src/crowdsec/docker/config.yaml /staging/etc/crowdsec/config.yaml
 
 ENV CONFIG_FILE=/etc/crowdsec/config.yaml
-ENV LOCAL_API_URL=http://0.0.0.0:8080/
+# if LOCAL_API_URL is defined, even with a default, it replaces the value
+# in the config file every time the container starts. we don't want that
+# because the configuration might be persistent / have manual edits.
+ENV LOCAL_API_URL=
 ENV CUSTOM_HOSTNAME=localhost
 ENV PLUGIN_DIR=/usr/local/lib/crowdsec/plugins/
 ENV DISABLE_AGENT=false
@@ -62,7 +66,7 @@ ENV AGENT_PASSWORD=
 # TLS setup ----------------------------------- #
 
 ENV USE_TLS=false
-ENV CA_CERT_PATH=
+ENV CACERT_FILE=
 ENV CERT_FILE=/etc/ssl/cert.pem
 ENV KEY_FILE=/etc/ssl/key.pem
 # comma-separated list of allowed OU values for TLS bouncer certificates

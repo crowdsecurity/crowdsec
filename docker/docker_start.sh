@@ -42,12 +42,17 @@ conf_get() {
     fi
 }
 
+# conf_set <yq_expression> [file_path]
+# evaluate a yq command (by default on CONFIG_FILE),
+# create the file if it doesn't exist
 conf_set() {
     if [ $# -ge 2 ]; then
-        yq e "$1" -i "$2"
+        YAML_FILE=$2
     else
-        yq e "$1" -i "$CONFIG_FILE"
+        YAML_FILE=$CONFIG_FILE
     fi
+    YAML_CONTENT=$(cat "$YAML_FILE" 2>/dev/null || true)
+    echo "$YAML_CONTENT" | yq e "$1" | install -m 0600 /dev/stdin "$YAML_FILE"
 }
 
 #-----------------------------------#
@@ -95,23 +100,21 @@ if isfalse "$DISABLE_AGENT"; then
 
     lapi_credentials_path=$(conf_get '.api.client.credentials_path')
 
-    if istrue "$USE_TLS"; then
-        install -m 0600 /dev/null "$lapi_credentials_path"
-        conf_set '
-            .url = strenv(LOCAL_API_URL) |
-            .ca_cert_path = strenv(CACERT_FILE) |
-            .key_path = strenv(KEY_FILE) |
-            .cert_path = strenv(CERT_FILE)
-        ' "$lapi_credentials_path"
-    elif [ "$AGENT_USERNAME" != "" ]; then
-        install -m 0600 /dev/null "$lapi_credentials_path"
-        conf_set '
-            .url = strenv(LOCAL_API_URL) |
-            .login = strenv(AGENT_USERNAME) |
-            .password = strenv(AGENT_PASSWORD)
+    # we only use the envvars that are actually defined
+    # in case of persistent configuration
+    conf_set '
+        with(select(strenv(LOCAL_API_URL)!=""); .url = strenv(LOCAL_API_URL)) |
+        with(select(strenv(AGENT_USERNAME)!=""); .login = strenv(AGENT_USERNAME)) |
+        with(select(strenv(AGENT_PASSWORD)!=""); .password = strenv(AGENT_PASSWORD))
         ' "$lapi_credentials_path"
     fi
-fi
+    if istrue "$USE_TLS"; then
+        conf_set '
+            with(select(strenv(CACERT_FILE)!=""); .ca_cert_path = strenv(CACERT_FILE)) |
+            with(select(strenv(KEY_FILE)!=""); .key_path = strenv(KEY_FILE)) |
+            with(select(strenv(CERT_FILE)!=""); .cert_path = strenv(CERT_FILE)) |
+        ' "$lapi_credentials_path"
+    fi
 
 if isfalse "$DISABLE_LOCAL_API"; then
     echo "Check if lapi needs to automatically register an agent"
