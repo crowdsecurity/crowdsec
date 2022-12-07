@@ -132,12 +132,13 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	stopFlush := false
 	for _, alert := range input {
 		alert.MachineID = machineID
+		//if coming from cscli, alert already has decisions
 		if len(alert.Decisions) != 0 {
 			for pIdx, profile := range c.Profiles {
 				_, matched, err := profile.EvaluateProfile(alert)
 				if err != nil {
-					gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
-					return
+					profile.Logger.Warningf("error while evaluating profile %s : %v", profile.Cfg.Name, err)
+					continue
 				}
 				if !matched {
 					continue
@@ -166,6 +167,8 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 					profile.Logger.Warningf("skipping %s profile due to error: %s", profile.Cfg.Name, err)
 				case "break":
 					forceBreak = true
+				case "ignore":
+					profile.Logger.Warningf("ignoring error: %s", err)
 				default:
 					gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 					return
