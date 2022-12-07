@@ -8,10 +8,11 @@ WORKDIR /go/src/crowdsec
 
 COPY . .
 
+ENV DEBIAN_FRONTEND=noninteractive
+ENV DEBCONF_NOWARNINGS="yes"
+
 # wizard.sh requires GNU coreutils
 RUN apt-get update && \
-    echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections && \
-    apt-get install -y -q apt-utils 2>/dev/null && \
     apt-get install -y -q git gcc libc-dev make bash gettext binutils-gold coreutils tzdata && \
     SYSTEM="docker" make release && \
     cd crowdsec-v* && \
@@ -25,7 +26,6 @@ RUN apt-get update && \
 FROM debian:bullseye-slim as build-slim
 
 RUN apt-get update && \
-    echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections && \
     apt-get install -y -q --install-recommends --no-install-suggests \
     procps \
     systemd \
