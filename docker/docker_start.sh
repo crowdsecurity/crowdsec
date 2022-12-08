@@ -59,18 +59,6 @@ conf_set() {
     echo "$YAML_CONTENT" | yq e "$1" | install -m 0600 /dev/stdin "$YAML_FILE"
 }
 
-# Call "cscli $1 $2 $3" only if the object referenced by $3 is not tainted.
-# $1 can be collections, parsers, etc.
-# $2 can be install, remove, upgrade
-# $3 is the object name (e.g. crowdsecurity/whitelists)
-cscli_if_clean() {
-    if cscli "$1" inspect "$3" -o json | jq -e '.tainted == false' >/dev/null; then
-        cscli "$1" "$2" "$3"
-    else
-        echo "Skipping \"$1 $2 $3\" because it is tainted"
-    fi
-}
-
 # register_bouncer <bouncer_name> <bouncer_key>
 register_bouncer() {
   if ! cscli bouncers list -o json | sed '/^ *"name"/!d;s/^ *"name": "\(.*\)",/\1/' | grep -q "^${1}$"; then
@@ -199,55 +187,60 @@ if istrue "$USE_TLS"; then
         .api.server.tls.agents_allowed_ou = env(agents_allowed_yaml) |
         ... comments=""
         '
+else
+    conf_set 'del(.api.server.tls)'
 fi
 
 conf_set "with(select(strenv(PLUGIN_DIR)!=""); .config_paths.plugin_dir = strenv(PLUGIN_DIR))"
 
 ## Install collections, parsers, scenarios & postoverflows
 cscli hub update
-cscli_if_clean collections upgrade crowdsecurity/linux
-cscli_if_clean parsers upgrade crowdsecurity/whitelists
-cscli_if_clean parsers install crowdsecurity/docker-logs
+
+# ignore errors because they might be tainted
+# and we don't have --ignore-tainted yet
+cscli collections upgrade crowdsecurity/linux --ignore
+cscli parsers upgrade crowdsecurity/whitelists --ignore
+cscli parsers install crowdsecurity/docker-logs --ignore
 
 if [ "$COLLECTIONS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean collections install $COLLECTIONS
+    cscli collections install $COLLECTIONS --ignore
 fi
 
 if [ "$PARSERS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean parsers install $PARSERS
+    cscli parsers install $PARSERS --ignore
 fi
 
 if [ "$SCENARIOS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean scenarios install $SCENARIOS
+    cscli scenarios install $SCENARIOS --ignore
 fi
 
 if [ "$POSTOVERFLOWS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean postoverflows install $POSTOVERFLOWS
+    cscli postoverflows install $POSTOVERFLOWS --ignore
 fi
 
 ## Remove collections, parsers, scenarios & postoverflows
 if [ "$DISABLE_COLLECTIONS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean collections remove $DISABLE_COLLECTIONS
+    cscli collections remove $DISABLE_COLLECTIONS --ignore
 fi
 
 if [ "$DISABLE_PARSERS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean parsers remove $DISABLE_PARSERS
+    cscli parsers remove $DISABLE_PARSERS --ignore
 fi
 
 if [ "$DISABLE_SCENARIOS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean scenarios remove $DISABLE_SCENARIOS
+    cscli scenarios remove $DISABLE_SCENARIOS --ignore
 fi
 
 if [ "$DISABLE_POSTOVERFLOWS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean postoverflows remove $DISABLE_POSTOVERFLOWS
+    cscli postoverflows remove $DISABLE_POSTOVERFLOWS --ignore
 fi
 
 ## Register bouncers via env
