@@ -197,7 +197,7 @@ else
     conf_set 'del(.api.server.tls)'
 fi
 
-conf_set "with(select(strenv(PLUGIN_DIR)!=""); .config_paths.plugin_dir = strenv(PLUGIN_DIR))"
+conf_set 'with(select(strenv(PLUGIN_DIR)!=""); .config_paths.plugin_dir = strenv(PLUGIN_DIR))'
 
 ## Install collections, parsers, scenarios & postoverflows
 cscli hub update
