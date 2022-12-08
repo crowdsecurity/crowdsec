@@ -101,7 +101,7 @@ func CrowdsecCTI(ip string) (*cticlient.SmokeItem, error) {
 	}
 
 	if !CTIBackOffUntil.IsZero() && time.Now().Before(CTIBackOffUntil) {
-		ctiClient.Logger.Warningf("Crowdsec CTI client is in backoff mode, ending in %s", time.Until(CTIBackOffUntil))
+		//ctiClient.Logger.Warningf("Crowdsec CTI client is in backoff mode, ending in %s", time.Until(CTIBackOffUntil))
 		return &cticlient.SmokeItem{}, cticlient.ErrLimit
 	}
 
