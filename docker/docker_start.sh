@@ -109,7 +109,6 @@ if isfalse "$DISABLE_AGENT"; then
     if isfalse "$DISABLE_LOCAL_API"; then
         echo "Regenerate local agent credentials"
         cscli machines delete "$CUSTOM_HOSTNAME" 2>/dev/null || true
-        # shellcheck disable=SC2086
         cscli machines add "$CUSTOM_HOSTNAME" --auto --url "$LOCAL_API_URL"
     fi
 
@@ -123,11 +122,18 @@ if isfalse "$DISABLE_AGENT"; then
         with(select(strenv(AGENT_PASSWORD)!=""); .password = strenv(AGENT_PASSWORD))
         ' "$lapi_credentials_path"
     fi
+
     if istrue "$USE_TLS"; then
         conf_set '
             with(select(strenv(CACERT_FILE)!=""); .ca_cert_path = strenv(CACERT_FILE)) |
             with(select(strenv(KEY_FILE)!=""); .key_path = strenv(KEY_FILE)) |
             with(select(strenv(CERT_FILE)!=""); .cert_path = strenv(CERT_FILE)) |
+        ' "$lapi_credentials_path"
+    else
+        conf_set '
+            del(.ca_cert_path) |
+            del(.key_path) |
+            del(.cert_path) |
         ' "$lapi_credentials_path"
     fi
 
