@@ -55,6 +55,18 @@ conf_set() {
     echo "$YAML_CONTENT" | yq e "$1" | install -m 0600 /dev/stdin "$YAML_FILE"
 }
 
+# Call "cscli $1 $2 $3" only if the object referenced by $3 is not tainted.
+# $1 can be collections, parsers, etc.
+# $2 can be install, remove, upgrade
+# $3 is the object name (e.g. crowdsecurity/whitelists)
+cscli_if_clean() {
+    if cscli "$1" inspect "$3" -o json | jq -e '.tainted == false' >/dev/null; then
+        cscli "$1" "$2" "$3"
+    else
+        echo "Skipping \"$1 $2 $3\" because it is tainted"
+    fi
+}
+
 #-----------------------------------#
 
 # Check and prestage databases
@@ -121,8 +133,8 @@ if isfalse "$DISABLE_LOCAL_API"; then
 
     # pre-registration is not needed with TLS
     if isfalse "$USE_TLS" && [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] ; then
-        # shellcheck disable=SC2086
-        cscli machines add "$AGENT_USERNAME" --password "$AGENT_PASSWORD" --url "$LOCAL_API_URL"
+        # re-register because pw may have been changed
+        cscli machines add "$AGENT_USERNAME" --password "$AGENT_PASSWORD" --url "$LOCAL_API_URL" --force
         echo "Agent registered to lapi"
     fi
 fi
@@ -178,49 +190,49 @@ conf_set "with(select(strenv(PLUGIN_DIR)!=""); .config_paths.plugin_dir = strenv
 
 ## Install collections, parsers, scenarios & postoverflows
 cscli hub update
-cscli collections upgrade crowdsecurity/linux || true
-cscli parsers upgrade crowdsecurity/whitelists || true
-cscli parsers install crowdsecurity/docker-logs || true
+cscli_if_clean collections upgrade crowdsecurity/linux
+cscli_if_clean parsers upgrade crowdsecurity/whitelists
+cscli_if_clean parsers install crowdsecurity/docker-logs
 
 if [ "$COLLECTIONS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli collections install $COLLECTIONS
+    cscli_if_clean collections install $COLLECTIONS
 fi
 
 if [ "$PARSERS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli parsers install $PARSERS
+    cscli_if_clean parsers install $PARSERS
 fi
 
 if [ "$SCENARIOS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli scenarios install $SCENARIOS
+    cscli_if_clean scenarios install $SCENARIOS
 fi
 
 if [ "$POSTOVERFLOWS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli postoverflows install $POSTOVERFLOWS
+    cscli_if_clean postoverflows install $POSTOVERFLOWS
 fi
 
 ## Remove collections, parsers, scenarios & postoverflows
 if [ "$DISABLE_COLLECTIONS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli collections remove $DISABLE_COLLECTIONS
+    cscli_if_clean collections remove $DISABLE_COLLECTIONS
 fi
 
 if [ "$DISABLE_PARSERS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli parsers remove $DISABLE_PARSERS
+    cscli_if_clean parsers remove $DISABLE_PARSERS
 fi
 
 if [ "$DISABLE_SCENARIOS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli scenarios remove $DISABLE_SCENARIOS
+    cscli_if_clean scenarios remove $DISABLE_SCENARIOS
 fi
 
 if [ "$DISABLE_POSTOVERFLOWS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli postoverflows remove $DISABLE_POSTOVERFLOWS
+    cscli_if_clean postoverflows remove $DISABLE_POSTOVERFLOWS
 fi
 
 register_bouncer() {
