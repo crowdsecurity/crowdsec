@@ -53,8 +53,7 @@ type CTICfg struct {
 	LogLevel     *log.Level     `yaml:"log_level,omitempty"`
 }
 
-func (a *CTICfg) Load() error { //XX
-	log.Warningf("CTICfg init, key = %p", a.Key)
+func (a *CTICfg) Load() error {
 	if a.Key == nil {
 		a.Enabled = false
 	}
@@ -260,7 +259,6 @@ func (c *Config) LoadAPIServer() error {
 		log.Printf("push and pull to Central API disabled")
 	}
 
-	log.Printf("Config load, c.API.CTI : %p", c.API.CTI)
 	if c.API.CTI != nil {
 		if err := c.API.CTI.Load(); err != nil {
 			return errors.Wrap(err, "loading CTI configuration")
