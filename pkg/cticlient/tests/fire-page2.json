@@ -1,0 +1,315 @@
+{
+  "_links": {
+    "first": {
+      "href": "https://cti.api.crowdsec.net/v2/fire"
+    },
+    "self": {
+      "href": "https://cti.api.crowdsec.net/v2/fire?page=2&limit=3"
+    },
+    "prev": {
+      "href": "https://cti.api.crowdsec.net/v2/fire?page=1&limit=3"
+    },
+    "next": {
+      "href": "https://cti.api.crowdsec.net/v2/fire?page=3&limit=3"
+    }
+  },
+  "items": [
+    {
+      "ip_range_score": 0,
+      "ip": "4.2.3.4",
+      "ip_range": "4.2.0.0/16",
+      "as_name": "Chxxoup",
+      "as_num": 4812,
+      "location": {
+        "country": "CN",
+        "city": null,
+        "latitude": 34.7732,
+        "longitude": 113.722
+      },
+      "reverse_dns": "xxxweqwwe.com.cn",
+      "behaviors": [
+        {
+          "name": "smb:bruteforce",
+          "label": "SMB Bruteforce",
+          "description": "IP has been reported for performing brute force on samba services."
+        },
+        {
+          "name": "windows:bruteforce",
+          "label": "SMB/RDP bruteforce",
+          "description": "IP has been reported for performing brute force on Windows (samba, remote desktop) services."
+        }
+      ],
+      "history": {
+        "first_seen": "2022-11-25T04:15:00+00:00",
+        "last_seen": "2022-11-25T13:30:00+00:00",
+        "full_age": 9,
+        "days_age": 1
+      },
+      "classifications": {
+        "false_positives": [],
+        "classifications": [
+          {
+            "name": "proxy:vpn",
+            "label": "VPN",
+            "description": "IP exposes a VPN service or is being flagged as one."
+          }
+        ]
+      },
+      "attack_details": [
+        {
+          "name": "crowdsecurity/smb-bf",
+          "label": "Samba Bruteforce",
+          "description": "Detect smb brute force",
+          "references": []
+        },
+        {
+          "name": "crowdsecurity/windows-bf",
+          "label": "SMB/RDP brute force",
+          "description": "Detect samba/remote-desktop user brute force",
+          "references": []
+        }
+      ],
+      "state": "validated",
+      "expiration": "2022-12-14T16:17:24.865000",
+      "target_countries": {
+        "FR": 100
+      },
+      "background_noise_score": 6,
+      "scores": {
+        "overall": {
+          "aggressiveness": 2,
+          "threat": 4,
+          "trust": 5,
+          "anomaly": 1,
+          "total": 4
+        },
+        "last_day": {
+          "aggressiveness": 0,
+          "threat": 0,
+          "trust": 0,
+          "anomaly": 1,
+          "total": 0
+        },
+        "last_week": {
+          "aggressiveness": 0,
+          "threat": 0,
+          "trust": 0,
+          "anomaly": 1,
+          "total": 0
+        },
+        "last_month": {
+          "aggressiveness": 2,
+          "threat": 4,
+          "trust": 5,
+          "anomaly": 1,
+          "total": 4
+        }
+      },
+      "references": []
+    },
+    {
+      "ip_range_score": 2,
+      "ip": "5.2.3.4",
+      "ip_range": "5.2.3.0/24",
+      "as_name": "Turxxri A.s.",
+      "as_num": 16135,
+      "location": {
+        "country": "TR",
+        "city": "Istanbul",
+        "latitude": 41.0551,
+        "longitude": 28.9347
+      },
+      "reverse_dns": null,
+      "behaviors": [
+        {
+          "name": "ssh:bruteforce",
+          "label": "SSH Bruteforce",
+          "description": "IP has been reported for performing brute force on ssh services."
+        },
+        {
+          "name": "tcp:scan",
+          "label": "TCP Scan",
+          "description": "IP has been reported for performing TCP port scanning."
+        }
+      ],
+      "history": {
+        "first_seen": "2022-08-26T02:00:00+00:00",
+        "last_seen": "2022-11-18T09:45:00+00:00",
+        "full_age": 100,
+        "days_age": 85
+      },
+      "classifications": {
+        "false_positives": [],
+        "classifications": [
+          {
+            "name": "profile:insecure_services",
+            "label": "Dangerous Services Exposed",
+            "description": "IP exposes dangerous services (vnc, telnet, rdp), possibly due to a misconfiguration or because it's a honeypot."
+          },
+          {
+            "name": "profile:many_services",
+            "label": "Many Services Exposed",
+            "description": "IP exposes many open port, possibly due to a misconfiguration or because it's a honeypot."
+          }
+        ]
+      },
+      "attack_details": [
+        {
+          "name": "crowdsecurity/ssh-slow-bf",
+          "label": "Slow SSH Bruteforce",
+          "description": "Detect slow ssh brute force",
+          "references": []
+        },
+        {
+          "name": "crowdsecurity/ssh-bf",
+          "label": "SSH Bruteforce",
+          "description": "Detect ssh brute force",
+          "references": []
+        },
+        {
+          "name": "crowdsecurity/iptables-scan-multi_ports",
+          "label": "Port Scanner",
+          "description": "Detect tcp port scan",
+          "references": []
+        }
+      ],
+      "state": "validated",
+      "expiration": "2022-12-12T15:16:33.246000",
+      "target_countries": {
+        "FR": 21,
+        "HK": 19,
+        "US": 19,
+        "DE": 11,
+        "AU": 7,
+        "GB": 4,
+        "RU": 4,
+        "BR": 4,
+        "CA": 4,
+        "VE": 2
+      },
+      "background_noise_score": 4,
+      "scores": {
+        "overall": {
+          "aggressiveness": 2,
+          "threat": 3,
+          "trust": 2,
+          "anomaly": 3,
+          "total": 3
+        },
+        "last_day": {
+          "aggressiveness": 0,
+          "threat": 0,
+          "trust": 0,
+          "anomaly": 3,
+          "total": 0
+        },
+        "last_week": {
+          "aggressiveness": 0,
+          "threat": 0,
+          "trust": 0,
+          "anomaly": 3,
+          "total": 0
+        },
+        "last_month": {
+          "aggressiveness": 1,
+          "threat": 3,
+          "trust": 1,
+          "anomaly": 3,
+          "total": 2
+        }
+      },
+      "references": []
+    },
+    {
+      "ip_range_score": 5,
+      "ip": "6.2.3.4",
+      "ip_range": "6.2.0.0/17",
+      "as_name": "SMILESERV",
+      "as_num": 38700,
+      "location": {
+        "country": "KR",
+        "city": null,
+        "latitude": 37.5112,
+        "longitude": 126.9741
+      },
+      "reverse_dns": null,
+      "behaviors": [
+        {
+          "name": "ssh:bruteforce",
+          "label": "SSH Bruteforce",
+          "description": "IP has been reported for performing brute force on ssh services."
+        }
+      ],
+      "history": {
+        "first_seen": "2022-09-20T15:30:00+00:00",
+        "last_seen": "2022-11-25T11:30:00+00:00",
+        "full_age": 74,
+        "days_age": 66
+      },
+      "classifications": {
+        "false_positives": [],
+        "classifications": []
+      },
+      "attack_details": [
+        {
+          "name": "crowdsecurity/ssh-slow-bf",
+          "label": "Slow SSH Bruteforce",
+          "description": "Detect slow ssh brute force",
+          "references": []
+        },
+        {
+          "name": "crowdsecurity/ssh-bf",
+          "label": "SSH Bruteforce",
+          "description": "Detect ssh brute force",
+          "references": []
+        }
+      ],
+      "state": "validated",
+      "expiration": "2022-12-14T16:19:30.654000",
+      "target_countries": {
+        "FR": 32,
+        "US": 21,
+        "DE": 17,
+        "NL": 5,
+        "FI": 5,
+        "RU": 3,
+        "GB": 3,
+        "SI": 2,
+        "RO": 2,
+        "HK": 2
+      },
+      "background_noise_score": 4,
+      "scores": {
+        "overall": {
+          "aggressiveness": 4,
+          "threat": 4,
+          "trust": 5,
+          "anomaly": 1,
+          "total": 4
+        },
+        "last_day": {
+          "aggressiveness": 0,
+          "threat": 0,
+          "trust": 0,
+          "anomaly": 1,
+          "total": 0
+        },
+        "last_week": {
+          "aggressiveness": 0,
+          "threat": 0,
+          "trust": 0,
+          "anomaly": 1,
+          "total": 0
+        },
+        "last_month": {
+          "aggressiveness": 3,
+          "threat": 4,
+          "trust": 1,
+          "anomaly": 1,
+          "total": 3
+        }
+      },
+      "references": []
+    }
+  ]
+}
