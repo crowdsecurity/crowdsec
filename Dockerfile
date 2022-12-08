@@ -32,6 +32,10 @@ COPY --from=build /usr/local/bin/cscli /usr/local/bin/cscli
 COPY --from=build /go/src/crowdsec/docker/docker_start.sh /
 COPY --from=build /go/src/crowdsec/docker/config.yaml /staging/etc/crowdsec/config.yaml
 
+# NOTE: setting default values here will overwrite the ones set in config.yaml
+#       every time the container is started. We set the default in docker/config.yaml
+#       and document them in docker/README.md, but keep the variables empty here.
+
 ENV CONFIG_FILE=/etc/crowdsec/config.yaml
 ENV LOCAL_API_URL=
 ENV CUSTOM_HOSTNAME=localhost
@@ -42,7 +46,7 @@ ENV DISABLE_ONLINE_API=false
 ENV DSN=
 ENV TYPE=
 ENV TEST_MODE=false
-ENV USE_WAL=false
+ENV USE_WAL=
 
 # register to app.crowdsec.net
 
@@ -52,9 +56,9 @@ ENV ENROLL_TAGS=
 
 # log verbosity
 
-ENV LEVEL_TRACE=false
-ENV LEVEL_DEBUG=false
-ENV LEVEL_INFO=true
+ENV LEVEL_TRACE=
+ENV LEVEL_DEBUG=
+ENV LEVEL_INFO=
 
 # TLS setup ----------------------------------- #
 
