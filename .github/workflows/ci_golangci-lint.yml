@@ -30,6 +30,9 @@ jobs:
           go-version: 1.19
         id: go
       - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:

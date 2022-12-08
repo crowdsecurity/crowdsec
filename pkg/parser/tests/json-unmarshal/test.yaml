@@ -1,0 +1,19 @@
+#these are the events we input into parser
+lines:
+  - Line:
+      Raw: |
+        {"foo": "bar", "pouet": 42}
+  - Line:
+      Raw: xxheader VALUE2 trailing stuff
+#these are the results we expect from the parser
+results:
+  - Unmarshaled:
+      foo: "bar"
+      pouet: 42
+    Process: true
+    Stage: s00-raw
+  - Unmarshaled: {}
+    Process: true
+    Stage: s00-raw
+
+
