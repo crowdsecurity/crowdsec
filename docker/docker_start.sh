@@ -71,6 +71,17 @@ cscli_if_clean() {
     fi
 }
 
+# register_bouncer <bouncer_name> <bouncer_key>
+register_bouncer() {
+  if ! cscli bouncers list -o json | sed '/^ *"name"/!d;s/^ *"name": "\(.*\)",/\1/' | grep -q "^${1}$"; then
+      if cscli bouncers add "$1" -k "$2" > /dev/null; then
+          echo "Registered bouncer for $1"
+      else
+          echo "Failed to register bouncer for $1"
+      fi
+  fi
+}
+
 #-----------------------------------#
 
 # Check and prestage databases
@@ -239,22 +250,12 @@ if [ "$DISABLE_POSTOVERFLOWS" != "" ]; then
     cscli_if_clean postoverflows remove $DISABLE_POSTOVERFLOWS
 fi
 
-register_bouncer() {
-  if ! cscli bouncers list -o json | sed '/^ *"name"/!d;s/^ *"name": "\(.*\)",/\1/' | grep -q "^${NAME}$"; then
-      if cscli bouncers add "${NAME}" -k "${KEY}" > /dev/null; then
-          echo "Registered bouncer for ${NAME}"
-      else
-          echo "Failed to register bouncer for ${NAME}"
-      fi
-  fi
-}
-
 ## Register bouncers via env
 for BOUNCER in $(compgen -A variable | grep -i BOUNCER_KEY); do
     KEY=$(printf '%s' "${!BOUNCER}")
     NAME=$(printf '%s' "$BOUNCER" | cut -d_  -f3-)
     if [[ -n $KEY ]] && [[ -n $NAME ]]; then
-        register_bouncer
+        register_bouncer "$NAME" "$KEY"
     fi
 done
 
@@ -264,7 +265,7 @@ for BOUNCER in /run/secrets/@(bouncer_key|BOUNCER_KEY)* ; do
     KEY=$(cat "${BOUNCER}")
     NAME=$(echo "${BOUNCER}" | awk -F "/" '{printf $NF}' | cut -d_  -f2-)
     if [[ -n $KEY ]] && [[ -n $NAME ]]; then    
-        register_bouncer
+        register_bouncer "$NAME" "$KEY"
     fi
 done
 shopt -u nullglob extglob
