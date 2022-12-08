@@ -8,6 +8,7 @@ shopt -s inherit_errexit
 
 #- HELPER FUNCTIONS ----------------#
 
+# match true, TRUE, True, tRuE, etc.
 istrue() {
   case "$(echo "$1" | tr '[:upper:]' '[:lower:]')" in
     true) return 0 ;;
@@ -23,6 +24,7 @@ isfalse() {
     fi
 }
 
+# csv2yaml <string>
 # generate a yaml list from a comma-separated string of values
 csv2yaml() {
     [ -z "$1" ] && return
@@ -34,6 +36,8 @@ cscli() {
     command cscli -c "$CONFIG_FILE" "$@"
 }
 
+# conf_get <key> [file_path]
+# retrieve a value from a file (by default $CONFIG_FILE)
 conf_get() {
     if [ $# -ge 2 ]; then
         yq e "$1" "$2"
@@ -43,13 +47,13 @@ conf_get() {
 }
 
 # conf_set <yq_expression> [file_path]
-# evaluate a yq command (by default on CONFIG_FILE),
+# evaluate a yq command (by default on $CONFIG_FILE),
 # create the file if it doesn't exist
 conf_set() {
     if [ $# -ge 2 ]; then
-        YAML_FILE=$2
+        YAML_FILE="$2"
     else
-        YAML_FILE=$CONFIG_FILE
+        YAML_FILE="$CONFIG_FILE"
     fi
     YAML_CONTENT=$(cat "$YAML_FILE" 2>/dev/null || true)
     echo "$YAML_CONTENT" | yq e "$1" | install -m 0600 /dev/stdin "$YAML_FILE"
