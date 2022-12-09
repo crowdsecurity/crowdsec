@@ -108,7 +108,7 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadSimulation(); err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 			if csConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before using simulation")

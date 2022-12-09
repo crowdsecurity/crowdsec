@@ -74,7 +74,7 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 			}
 		}
 		//Always try to set permissions to simplify a bit the code for windows (as the permissions set by OpenFile will be garbage)
-		if err := setFilePerm(config.DbPath, 0600); err != nil {
+		if err := setFilePerm(config.DbPath, 0640); err != nil {
 			return &Client{}, fmt.Errorf("unable to set perms on %s: %v", config.DbPath, err)
 		}
 		var sqliteConnectionStringParameters string
@@ -89,7 +89,13 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 		}
 		client = ent.NewClient(ent.Driver(drv), entOpt)
 	case "mysql":
-		drv, err := getEntDriver("mysql", dialect.MySQL, fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=True", config.User, config.Password, config.Host, config.Port, config.DbName), config)
+		connString := ""
+		if config.Host == "" && config.Port == 0 && config.DbPath != "" {
+			connString = fmt.Sprintf("%s:%s@unix(%s)/%s?parseTime=True", config.User, config.Password, config.DbPath, config.DbName)
+		} else {
+			connString = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=True", config.User, config.Password, config.Host, config.Port, config.DbName)
+		}
+		drv, err := getEntDriver("mysql", dialect.MySQL, connString, config)
 		if err != nil {
 			return &Client{}, fmt.Errorf("failed opening connection to mysql: %v", err)
 		}

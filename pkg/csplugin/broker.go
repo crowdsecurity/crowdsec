@@ -352,7 +352,7 @@ func ParsePluginConfigFile(path string) ([]PluginConfig, error) {
 		pc := PluginConfig{}
 		err = dec.Decode(&pc)
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				break
 			}
 			return []PluginConfig{}, fmt.Errorf("while decoding %s got error %s", path, err)

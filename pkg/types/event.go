@@ -30,6 +30,8 @@ type Event struct {
 	Parsed map[string]string `yaml:"Parsed,omitempty" json:"Parsed,omitempty"`
 	/* output of enrichment */
 	Enriched map[string]string `yaml:"Enriched,omitempty" json:"Enriched,omitempty"`
+	/* output of Unmarshal */
+	Unmarshaled map[string]interface{} `yaml:"Unmarshaled,omitempty" json:"Unmarshaled,omitempty"`
 	/* Overflow */
 	Overflow      RuntimeAlert `yaml:"Overflow,omitempty" json:"Alert,omitempty"`
 	Time          time.Time    `yaml:"Time,omitempty" json:"Time,omitempty"` //parsed time `json:"-"` ``

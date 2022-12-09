@@ -32,7 +32,7 @@ func alertsTable(out io.Writer, alerts *models.GetAlertsResponse, printMachine b
 			displayVal,
 			*alertItem.Scenario,
 			alertItem.Source.Cn,
-			alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
+			alertItem.Source.GetAsNumberName(),
 			DecisionsFromAlert(alertItem),
 			*alertItem.StartAt,
 		}
@@ -55,7 +55,7 @@ func alertDecisionsTable(out io.Writer, alert *models.Alert) {
 	for _, decision := range alert.Decisions {
 		parsedDuration, err := time.ParseDuration(*decision.Duration)
 		if err != nil {
-			log.Errorf(err.Error())
+			log.Error(err)
 		}
 		expire := time.Now().UTC().Add(parsedDuration)
 		if time.Now().UTC().After(expire) {

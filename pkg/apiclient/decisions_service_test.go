@@ -326,7 +326,7 @@ func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 // 	})
 
 // 	if err != nil {
-// 		t.Fatalf("new api client: %s", err.Error())
+// 		t.Fatalf("new api client: %s", err)
 // 	}
 
 // 	filters := DecisionsDeleteOpts{IPEquals: new(string)}

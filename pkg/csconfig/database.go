@@ -60,7 +60,7 @@ func (c *Config) LoadDBConfig() error {
 
 	if c.DbConfig.Type == "sqlite" {
 		if c.DbConfig.UseWal == nil {
-			log.Warning("You are using sqlite without WAL, this can have an impact of performance. If you do not store the database in a network share, set db_config.use_wal to true. Set explicitly to false to disable this warning.")
+			log.Warning("You are using sqlite without WAL, this can have a performance impact. If you do not store the database in a network share, set db_config.use_wal to true. Set explicitly to false to disable this warning.")
 		}
 
 	}

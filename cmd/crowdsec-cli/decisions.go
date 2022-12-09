@@ -72,7 +72,7 @@ func DecisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error
 					*decisionItem.Scenario,
 					*decisionItem.Type,
 					alertItem.Source.Cn,
-					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
+					alertItem.Source.GetAsNumberName(),
 					fmt.Sprintf("%d", *alertItem.EventsCount),
 					*decisionItem.Duration,
 					fmt.Sprintf("%t", *decisionItem.Simulated),
@@ -351,7 +351,7 @@ cscli decisions add --scope username --value foobar
 
 			_, _, err = Client.Alerts.Add(context.Background(), alerts)
 			if err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 
 			log.Info("Decision successfully added")
@@ -597,7 +597,7 @@ decisions.json :
 
 			_, _, err = Client.Alerts.Add(context.Background(), alerts)
 			if err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 			log.Infof("%d decisions successfully imported", len(decisionsList))
 		},

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/fatih/color"
@@ -75,7 +76,7 @@ Note: This command requires database direct access, so is intended to be run on 
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
 			}
 			if err := csConfig.LoadDBConfig(); err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 			dbClient, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {
@@ -153,6 +154,25 @@ cscli bouncers add MyBouncerName -k %s`, generatePassword(32)),
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"remove"},
 		DisableAutoGenTag: true,
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			var err error
+			dbClient, err = getDBClient()
+			if err != nil {
+				cobra.CompError("unable to create new database client: " + err.Error())
+				return nil, cobra.ShellCompDirectiveNoFileComp
+			}
+			bouncers, err := dbClient.ListBouncers()
+			if err != nil {
+				cobra.CompError("unable to list bouncers " + err.Error())
+			}
+			ret := make([]string, 0)
+			for _, bouncer := range bouncers {
+				if strings.Contains(bouncer.Name, toComplete) && !inSlice(bouncer.Name, args) {
+					ret = append(ret, bouncer.Name)
+				}
+			}
+			return ret, cobra.ShellCompDirectiveNoFileComp
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, bouncerID := range args {
 				err := dbClient.DeleteBouncer(bouncerID)
