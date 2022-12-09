@@ -142,7 +142,7 @@ if isfalse "$DISABLE_AGENT"; then
         conf_set '
             with(select(strenv(CACERT_FILE)!=""); .ca_cert_path = strenv(CACERT_FILE)) |
             with(select(strenv(KEY_FILE)!=""); .key_path = strenv(KEY_FILE)) |
-            with(select(strenv(CERT_FILE)!=""); .cert_path = strenv(CERT_FILE)) |
+            with(select(strenv(CERT_FILE)!=""); .cert_path = strenv(CERT_FILE))
         ' "$lapi_credentials_path"
     else
         conf_set '
