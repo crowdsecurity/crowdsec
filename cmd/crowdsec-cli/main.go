@@ -52,7 +52,7 @@ func initConfig() {
 	} else if err_lvl {
 		log.SetLevel(log.ErrorLevel)
 	}
-	logFormatter := &log.TextFormatter{TimestampFormat: "02-01-2006 03:04:05 PM", FullTimestamp: true}
+	logFormatter := &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true}
 	log.SetFormatter(logFormatter)
 
 	if !inSlice(os.Args[1], NoNeedConfig) {
