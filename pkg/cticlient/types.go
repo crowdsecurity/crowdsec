@@ -168,7 +168,7 @@ func (c *SmokeItem) GetBehaviours() []string {
 	return ret
 }
 
-// Provide the likelyhood of the IP being bad
+// Provide the likelihood of the IP being bad
 func (c *SmokeItem) GetMaliciousnessScore() float32 {
 	if c.IsPartOfCommunityBlocklist() {
 		return 1.0
@@ -242,7 +242,7 @@ func (c *FireItem) GetBehaviours() []string {
 	return ret
 }
 
-// Provide the likelyhood of the IP being bad
+// Provide the likelihood of the IP being bad
 func (c *FireItem) GetMaliciousnessScore() float32 {
 	if c.IsPartOfCommunityBlocklist() {
 		return 1.0
