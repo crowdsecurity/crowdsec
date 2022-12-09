@@ -3,6 +3,9 @@
 # shellcheck disable=SC2292      # allow [ test ] syntax
 # shellcheck disable=SC2310      # allow "if function..." syntax with -e
 
+#set -x
+#export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+
 set -e
 shopt -s inherit_errexit
 
@@ -136,7 +139,6 @@ if isfalse "$DISABLE_AGENT"; then
         with(select(strenv(AGENT_USERNAME)!=""); .login = strenv(AGENT_USERNAME)) |
         with(select(strenv(AGENT_PASSWORD)!=""); .password = strenv(AGENT_PASSWORD))
         ' "$lapi_credentials_path"
-    fi
 
     if istrue "$USE_TLS"; then
         conf_set '
@@ -151,6 +153,7 @@ if isfalse "$DISABLE_AGENT"; then
             del(.cert_path)
         ' "$lapi_credentials_path"
     fi
+fi
 
 if isfalse "$DISABLE_LOCAL_API"; then
     echo "Check if lapi needs to automatically register an agent"
@@ -204,8 +207,8 @@ if istrue "$USE_TLS"; then
         with(select(strenv(CACERT_FILE)!=""); .api.server.tls.ca_cert_path = strenv(CACERT_FILE)) |
         with(select(strenv(CERT_FILE)!=""); .api.server.tls.cert_file = strenv(CERT_FILE)) |
         with(select(strenv(KEY_FILE)!=""); .api.server.tls.key_file = strenv(KEY_FILE)) |
-        .api.server.tls.bouncers_allowed_ou = env(bouncers_allowed_yaml) |
-        .api.server.tls.agents_allowed_ou = env(agents_allowed_yaml) |
+        with(select(strenv(BOUNCERS_ALLOWED_OU)!=""); .api.server.tls.bouncers_allowed_ou = env(bouncers_allowed_yaml)) |
+        with(select(strenv(AGENTS_ALLOWED_OU)!=""); .api.server.tls.agents_allowed_ou = env(agents_allowed_yaml)) |
         ... comments=""
         '
 else
