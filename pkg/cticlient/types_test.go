@@ -26,11 +26,13 @@ func getSampleSmokeItem() SmokeItem {
 			Longitude: &long,
 		},
 		ReverseDNS: types.StrPtr("foo.bar.com"),
-		Behaviours: []*CTIBehaviour{&CTIBehaviour{
-			Name:        "ssh:bruteforce",
-			Label:       "SSH Bruteforce",
-			Description: "IP has been reported for performing brute force on ssh services.",
-		}},
+		Behaviours: []*CTIBehaviour{
+			{
+				Name:        "ssh:bruteforce",
+				Label:       "SSH Bruteforce",
+				Description: "IP has been reported for performing brute force on ssh services.",
+			},
+		},
 		History: CTIHistory{
 			FirstSeen: types.StrPtr("2022-12-05T17:45:00+00:00"),
 			LastSeen:  types.StrPtr("2022-12-06T19:15:00+00:00"),
@@ -42,7 +44,7 @@ func getSampleSmokeItem() SmokeItem {
 			Classifications: []CTIClassification{},
 		},
 		AttackDetails: []*CTIAttackDetails{
-			&CTIAttackDetails{
+			{
 				Name:        "ssh:bruteforce",
 				Label:       "SSH Bruteforce",
 				Description: "Detect ssh brute force",

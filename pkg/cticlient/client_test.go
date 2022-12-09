@@ -3,9 +3,9 @@ package cticlient
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -47,11 +47,11 @@ func fireHandler(req *http.Request) *http.Response {
 	}
 	//unmarshal data
 	if fireResponses == nil {
-		page1, err := ioutil.ReadFile("tests/fire-page1.json")
+		page1, err := os.ReadFile("tests/fire-page1.json")
 		if err != nil {
 			panic("can't read file")
 		}
-		page2, err := ioutil.ReadFile("tests/fire-page2.json")
+		page2, err := os.ReadFile("tests/fire-page2.json")
 		if err != nil {
 			panic("can't read file")
 		}
