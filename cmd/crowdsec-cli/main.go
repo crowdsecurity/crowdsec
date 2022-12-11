@@ -242,6 +242,10 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewNotificationsCmd())
 	rootCmd.AddCommand(NewSupportCmd())
 
+	if fflag.CscliSetup.IsEnabled() {
+		rootCmd.AddCommand(NewSetupCmd())
+	}
+
 	if err := rootCmd.Execute(); err != nil {
 		if bincoverTesting != "" {
 			log.Debug("coverage report is enabled")
