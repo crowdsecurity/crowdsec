@@ -131,7 +131,7 @@ After running this command your will need to validate the enrollment in the weba
 	cmdEnable := &cobra.Command{
 		Use:     "enable [feature-flag]",
 		Short:   "Enable a feature flag",
-		Example: "enable tainted",
+		Example: "sudo cscli console enable tainted",
 		Long: `
 Enable given information push to the central API. Allows to empower the console`,
 		ValidArgs:         csconfig.CONSOLE_CONFIGS,
@@ -159,7 +159,7 @@ Enable given information push to the central API. Allows to empower the console`
 	cmdDisable := &cobra.Command{
 		Use:     "disable [feature-flag]",
 		Short:   "Disable a feature flag",
-		Example: "disable tainted",
+		Example: "sudo cscli console disable tainted",
 		Long: `
 Disable given information push to the central API.`,
 		ValidArgs:         csconfig.CONSOLE_CONFIGS,
@@ -187,9 +187,17 @@ Disable given information push to the central API.`,
 	cmdConsole.AddCommand(cmdDisable)
 
 	cmdConsoleStatus := &cobra.Command{
-		Use:               "status [feature-flag]",
-		Short:             "Shows status of one or all feature flags",
-		Example:           "status tainted",
+		Use:   "status [feature-flag]",
+		Short: "Shows status of one or all feature flags",
+		Example: `sudo cscli console status
++-------------+-----------+---------------------------------------------------+
+| Option Name | Activated | Description                                       |
++-------------+-----------+---------------------------------------------------+
+| custom      | ✅        | Send alerts from custom scenarios to the console  |
+| manual      | ❌        | Send manual decisions to the console              |
+| tainted     | ✅        | Send alerts from tainted scenarios to the console |
+| context     | ✅        | Send context with alerts to the console           |
++-------------+-----------+---------------------------------------------------+`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			switch csConfig.Cscli.Output {

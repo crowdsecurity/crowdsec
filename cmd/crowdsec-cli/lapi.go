@@ -196,7 +196,7 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 		Use:   "add",
 		Short: "Add context to send with alerts. You must specify the output key with the expr value you want",
 		Example: `cscli lapi context add --key source_ip --value evt.Meta.source_ip
-		cscli lapi context add --key file_source --value evt.Line.Src
+cscli lapi context add --key file_source --value evt.Line.Src
 		`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -243,7 +243,7 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 		Use:   "detect",
 		Short: "Detect available fields from the installed parsers",
 		Example: `cscli lapi context detect --all
-		cscli lapi context detect crowdsecurity/sshd-logs
+cscli lapi context detect crowdsecurity/sshd-logs
 		`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -333,7 +333,7 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 		Use:   "delete",
 		Short: "Delete context to send with alerts",
 		Example: `cscli lapi context delete --key source_ip
-		cscli lapi context delete --value evt.Line.Src
+cscli lapi context delete --value evt.Line.Src
 		`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
