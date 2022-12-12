@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 func addToExclusion(name string) error {
@@ -107,7 +108,7 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadSimulation(); err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 			if csConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before using simulation")

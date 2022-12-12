@@ -52,11 +52,11 @@ jobs:
       run: make bats-test-hub
 
     - name: "Collect hub coverage"
-      run: ./tests/collect-hub-coverage >> $GITHUB_ENV
+      run: ./tests/bin/collect-hub-coverage >> $GITHUB_ENV
 
     - name: "Create Parsers badge"
       uses: schneegans/dynamic-badges-action@v1.1.0
-      if: ${{ github.ref == 'refs/heads/master' }}
+      if: ${{ github.ref == 'refs/heads/master' && github.repository_owner == 'crowdsecurity' }}
       with:
         auth: ${{ secrets.GIST_BADGES_SECRET }}
         gistID: ${{ secrets.GIST_BADGES_ID }}
@@ -67,7 +67,7 @@ jobs:
 
     - name: "Create Scenarios badge"
       uses: schneegans/dynamic-badges-action@v1.1.0
-      if: ${{ github.ref == 'refs/heads/master' }}
+      if: ${{ github.ref == 'refs/heads/master' && github.repository_owner == 'crowdsecurity' }}
       with:
         auth: ${{ secrets.GIST_BADGES_SECRET }}
         gistID: ${{ secrets.GIST_BADGES_ID }}

@@ -302,14 +302,12 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 					clog.Debugf("child is success, OnSuccess=next_stage, skip")
 					break
 				}
-			} else {
+			} else if !NodeHasOKGrok {
 				/*
 					If the parent node has a successful grok pattern, it's state will stay successful even if one or more chil fails.
 					If the parent node is a skeleton node (no grok pattern), then at least one child must be successful for it to be a success.
 				*/
-				if !NodeHasOKGrok {
-					NodeState = false
-				}
+				NodeState = false
 			}
 		}
 	}
@@ -422,7 +420,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	for _, pattern := range n.SubGroks {
 		n.Logger.Tracef("Adding subpattern '%s' : '%s'", pattern.Key, pattern.Value)
 		if err := pctx.Grok.Add(pattern.Key.(string), pattern.Value.(string)); err != nil {
-			if err == grokky.ErrAlreadyExist {
+			if errors.Is(err, grokky.ErrAlreadyExist) {
 				n.Logger.Warningf("grok '%s' already registred", pattern.Key)
 				continue
 			}

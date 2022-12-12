@@ -26,7 +26,7 @@ SYSTEMD_PATH_FILE = "/etc/systemd/system/crowdsec.service"
 all: clean test build
 
 build: clean
-	$(GOBUILD) $(LD_OPTS) -o $(CROWDSEC_BIN)
+	$(GOBUILD) $(LD_OPTS) $(BUILD_VENDOR_FLAGS) -o $(CROWDSEC_BIN)
 
 build-bincover: clean
 	$(GOTEST) . -tags testrunmain -coverpkg=$(go list github.com/crowdsecurity/crowdsec/... | grep -v -e 'pkg/database' -e 'plugins/notifications' -e 'pkg/protobufs' -e 'pkg/cwversions' -e 'pkg/cstest' -e 'pkg/models') -covermode=atomic $(LD_OPTS) -c -o $(CROWDSEC_BIN_COVER)

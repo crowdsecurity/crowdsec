@@ -3,29 +3,26 @@ package main
 import (
 	"flag"
 	"fmt"
+	_ "net/http/pprof"
 	"os"
 	"runtime"
 	"sort"
 	"strings"
-
-	_ "net/http/pprof"
 	"time"
 
 	"github.com/confluentinc/bincover"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/tomb.v2"
+
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
-	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/pkg/errors"
-
-	log "github.com/sirupsen/logrus"
-
-	"gopkg.in/tomb.v2"
 )
 
 var (
@@ -43,9 +40,9 @@ var (
 	/*the state of acquisition*/
 	dataSources []acquisition.DataSource
 	/*the state of the buckets*/
-	holders         []leaky.BucketFactory
-	buckets         *leaky.Buckets
-	outputEventChan chan types.Event //the buckets init returns its own chan that is used for multiplexing
+	holders         []leakybucket.BucketFactory
+	buckets         *leakybucket.Buckets
+	outputEventChan chan types.Event // the buckets init returns its own chan that is used for multiplexing
 	/*settings*/
 	lastProcessedItem time.Time /*keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.*/
 	pluginBroker      csplugin.PluginBroker
@@ -59,6 +56,7 @@ type Flags struct {
 	DebugLevel     bool
 	InfoLevel      bool
 	WarnLevel      bool
+	ErrorLevel     bool
 	PrintVersion   bool
 	SingleFileType string
 	Labels         map[string]string
@@ -112,7 +110,6 @@ func newParsers() *parser.Parsers {
 }
 
 func LoadBuckets(cConfig *csconfig.Config) error {
-
 	var (
 		err   error
 		files []string
@@ -122,13 +119,13 @@ func LoadBuckets(cConfig *csconfig.Config) error {
 			files = append(files, hubScenarioItem.LocalPath)
 		}
 	}
-	buckets = leaky.NewBuckets()
+	buckets = leakybucket.NewBuckets()
 
 	log.Infof("Loading %d scenario files", len(files))
-	holders, outputEventChan, err = leaky.LoadBuckets(cConfig.Crowdsec, files, &bucketsTomb, buckets)
+	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, files, &bucketsTomb, buckets)
 
 	if err != nil {
-		return fmt.Errorf("Scenario loading failed : %v", err)
+		return fmt.Errorf("scenario loading failed: %v", err)
 	}
 
 	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
@@ -156,16 +153,18 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 	} else {
 		dataSources, err = acquisition.LoadAcquisitionFromFile(cConfig.Crowdsec)
 		if err != nil {
-			return errors.Wrap(err, "while loading acquisition configuration")
+			return err
 		}
 	}
 
 	return nil
 }
 
-var dumpFolder string
-var dumpStates bool
-var labels = make(labelsMap)
+var (
+	dumpFolder string
+	dumpStates bool
+	labels     = make(labelsMap)
+)
 
 func (l *labelsMap) String() string {
 	return "labels"
@@ -181,12 +180,12 @@ func (l labelsMap) Set(label string) error {
 }
 
 func (f *Flags) Parse() {
-
 	flag.StringVar(&f.ConfigFile, "c", csconfig.DefaultConfigPath("config.yaml"), "configuration file")
 	flag.BoolVar(&f.TraceLevel, "trace", false, "VERY verbose")
 	flag.BoolVar(&f.DebugLevel, "debug", false, "print debug-level on stderr")
 	flag.BoolVar(&f.InfoLevel, "info", false, "print info-level on stderr")
 	flag.BoolVar(&f.WarnLevel, "warning", false, "print warning-level on stderr")
+	flag.BoolVar(&f.ErrorLevel, "error", false, "print error-level on stderr")
 	flag.BoolVar(&f.PrintVersion, "version", false, "display version")
 	flag.StringVar(&f.OneShotDSN, "dsn", "", "Process a single data source in time-machine")
 	flag.StringVar(&f.SingleFileType, "type", "", "Labels.type for file in time-machine")
@@ -200,8 +199,41 @@ func (f *Flags) Parse() {
 	flag.Parse()
 }
 
+func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
+	// mother of all defaults
+	ret := log.InfoLevel
+
+	// keep if already set
+	if curLevelPtr != nil {
+		ret = *curLevelPtr
+	}
+
+	// override from flags
+	switch {
+	case f.TraceLevel:
+		ret = log.TraceLevel
+	case f.DebugLevel:
+		ret = log.DebugLevel
+	case f.InfoLevel:
+		ret = log.InfoLevel
+	case f.WarnLevel:
+		ret = log.WarnLevel
+	case f.ErrorLevel:
+		ret = log.ErrorLevel
+	default:
+	}
+
+	if ret == *curLevelPtr {
+		// avoid returning a new ptr to the same value
+		return curLevelPtr
+	}
+	return &ret
+}
+
 // LoadConfig returns a configuration parsed from configuration file
 func LoadConfig(cConfig *csconfig.Config) error {
+	cConfig.Common.LogLevel = newLogLevel(cConfig.Common.LogLevel, flags)
+
 	if dumpFolder != "" {
 		parser.ParseDump = true
 		parser.DumpFolder = dumpFolder
@@ -229,23 +261,6 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		return errors.New("You must run at least the API Server or crowdsec")
 	}
 
-	if flags.WarnLevel {
-		logLevel := log.WarnLevel
-		cConfig.Common.LogLevel = &logLevel
-	}
-	if flags.InfoLevel || cConfig.Common.LogLevel == nil {
-		logLevel := log.InfoLevel
-		cConfig.Common.LogLevel = &logLevel
-	}
-	if flags.DebugLevel {
-		logLevel := log.DebugLevel
-		cConfig.Common.LogLevel = &logLevel
-	}
-	if flags.TraceLevel {
-		logLevel := log.TraceLevel
-		cConfig.Common.LogLevel = &logLevel
-	}
-
 	if flags.TestMode && !cConfig.DisableAgent {
 		cConfig.Crowdsec.LintOnly = true
 	}
@@ -269,6 +284,15 @@ func LoadConfig(cConfig *csconfig.Config) error {
 	if cConfig.Common.Daemonize && runtime.GOOS == "windows" {
 		log.Debug("Daemonization is not supported on Windows, disabling")
 		cConfig.Common.Daemonize = false
+	}
+
+	// Configure logging
+	if err := types.SetDefaultLoggerConfig(cConfig.Common.LogMedia,
+		cConfig.Common.LogDir, *cConfig.Common.LogLevel,
+		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles,
+		cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs,
+		cConfig.Common.ForceColorLogs); err != nil {
+		return err
 	}
 
 	return nil

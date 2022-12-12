@@ -1,10 +1,16 @@
 package acquisition
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strings"
+
+	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
+	tomb "gopkg.in/tomb.v2"
+	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	cloudwatchacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/cloudwatch"
@@ -13,23 +19,20 @@ import (
 	journalctlacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/journalctl"
 	kafkaacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kafka"
 	kinesisacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kinesis"
+	k8sauditacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kubernetesaudit"
 	syslogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog"
 	wineventlogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/wineventlog"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
-
-	tomb "gopkg.in/tomb.v2"
 )
 
 // The interface each datasource must implement
 type DataSource interface {
 	GetMetrics() []prometheus.Collector                         // Returns pointers to metrics that are managed by the module
 	GetAggregMetrics() []prometheus.Collector                   // Returns pointers to metrics that are managed by the module (aggregated mode, limits cardinality)
-	Configure([]byte, *log.Entry) error                         // Configure the datasource
+	UnmarshalConfig([]byte) error                               // Decode and pre-validate the YAML datasource - anything that can be checked before runtime
+	Configure([]byte, *log.Entry) error                         // Complete the YAML datasource configuration and perform runtime checks.
 	ConfigureByDSN(string, map[string]string, *log.Entry) error // Configure the datasource
 	GetMode() string                                            // Get the mode (TAIL, CAT or SERVER)
 	GetName() string                                            // Get the name of the module
@@ -39,66 +42,38 @@ type DataSource interface {
 	Dump() interface{}
 }
 
-var AcquisitionSources = []struct {
-	name  string
-	iface func() DataSource
-}{
-	{
-		name:  "file",
-		iface: func() DataSource { return &fileacquisition.FileSource{} },
-	},
-	{
-		name:  "journalctl",
-		iface: func() DataSource { return &journalctlacquisition.JournalCtlSource{} },
-	},
-	{
-		name:  "cloudwatch",
-		iface: func() DataSource { return &cloudwatchacquisition.CloudwatchSource{} },
-	},
-	{
-		name:  "syslog",
-		iface: func() DataSource { return &syslogacquisition.SyslogSource{} },
-	},
-	{
-		name:  "docker",
-		iface: func() DataSource { return &dockeracquisition.DockerSource{} },
-	},
-	{
-		name:  "kinesis",
-		iface: func() DataSource { return &kinesisacquisition.KinesisSource{} },
-	},
-	{
-		name:  "wineventlog",
-		iface: func() DataSource { return &wineventlogacquisition.WinEventLogSource{} },
-	},
-	{
-		name:  "kafka",
-		iface: func() DataSource { return &kafkaacquisition.KafkaSource{} },
-	},
+var AcquisitionSources = map[string]func() DataSource{
+	"file":        func() DataSource { return &fileacquisition.FileSource{} },
+	"journalctl":  func() DataSource { return &journalctlacquisition.JournalCtlSource{} },
+	"cloudwatch":  func() DataSource { return &cloudwatchacquisition.CloudwatchSource{} },
+	"syslog":      func() DataSource { return &syslogacquisition.SyslogSource{} },
+	"docker":      func() DataSource { return &dockeracquisition.DockerSource{} },
+	"kinesis":     func() DataSource { return &kinesisacquisition.KinesisSource{} },
+	"wineventlog": func() DataSource { return &wineventlogacquisition.WinEventLogSource{} },
+	"kafka":       func() DataSource { return &kafkaacquisition.KafkaSource{} },
+	"k8s_audit":   func() DataSource { return &k8sauditacquisition.KubernetesAuditSource{} },
 }
 
 func GetDataSourceIface(dataSourceType string) DataSource {
-	for _, source := range AcquisitionSources {
-		if source.name == dataSourceType {
-			return source.iface()
-		}
+	source := AcquisitionSources[dataSourceType]
+	if source == nil {
+		return nil
 	}
-	return nil
+	return source()
 }
 
 func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg) (*DataSource, error) {
-
-	//we dump it back to []byte, because we want to decode the yaml blob twice :
-	//once to DataSourceCommonCfg, and then later to the dedicated type of the datasource
+	// we dump it back to []byte, because we want to decode the yaml blob twice:
+	// once to DataSourceCommonCfg, and then later to the dedicated type of the datasource
 	yamlConfig, err := yaml.Marshal(commonConfig)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to marshal back interface")
+		return nil, fmt.Errorf("unable to marshal back interface: %w", err)
 	}
 	if dataSrc := GetDataSourceIface(commonConfig.Source); dataSrc != nil {
 		/* this logger will then be used by the datasource at runtime */
 		clog := log.New()
 		if err := types.ConfigureLogger(clog); err != nil {
-			return nil, errors.Wrap(err, "while configuring datasource logger")
+			return nil, fmt.Errorf("while configuring datasource logger: %w", err)
 		}
 		if commonConfig.LogLevel != nil {
 			clog.SetLevel(*commonConfig.LogLevel)
@@ -112,11 +87,11 @@ func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg) (*DataS
 		subLogger := clog.WithFields(customLog)
 		/* check eventual dependencies are satisfied (ie. journald will check journalctl availability) */
 		if err := dataSrc.CanRun(); err != nil {
-			return nil, errors.Wrapf(err, "datasource %s cannot be run", commonConfig.Source)
+			return nil, fmt.Errorf("datasource %s cannot be run: %w", commonConfig.Source, err)
 		}
 		/* configure the actual datasource */
 		if err := dataSrc.Configure(yamlConfig, subLogger); err != nil {
-			return nil, errors.Wrapf(err, "failed to configure datasource %s", commonConfig.Source)
+			return nil, fmt.Errorf("failed to configure datasource %s: %w", commonConfig.Source, err)
 
 		}
 		return &dataSrc, nil
@@ -124,9 +99,8 @@ func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg) (*DataS
 	return nil, fmt.Errorf("cannot find source %s", commonConfig.Source)
 }
 
-//detectBackwardCompatAcquis : try to magically detect the type for backward compat (type was not mandatory then)
+// detectBackwardCompatAcquis: try to magically detect the type for backward compat (type was not mandatory then)
 func detectBackwardCompatAcquis(sub configuration.DataSourceCommonCfg) string {
-
 	if _, ok := sub.Config["filename"]; ok {
 		return "file"
 	}
@@ -153,14 +127,14 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string) ([]DataSource,
 	/* this logger will then be used by the datasource at runtime */
 	clog := log.New()
 	if err := types.ConfigureLogger(clog); err != nil {
-		return nil, errors.Wrap(err, "while configuring datasource logger")
+		return nil, fmt.Errorf("while configuring datasource logger: %w", err)
 	}
 	subLogger := clog.WithFields(log.Fields{
 		"type": dsn,
 	})
 	err := dataSrc.ConfigureByDSN(dsn, labels, subLogger)
 	if err != nil {
-		return nil, errors.Wrapf(err, "while configuration datasource for %s", dsn)
+		return nil, fmt.Errorf("while configuration datasource for %s: %w", dsn, err)
 	}
 	sources = append(sources, dataSrc)
 	return sources, nil
@@ -168,14 +142,13 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string) ([]DataSource,
 
 // LoadAcquisitionFromFile unmarshals the configuration item and checks its availability
 func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource, error) {
-
 	var sources []DataSource
 
 	for _, acquisFile := range config.AcquisitionFiles {
 		log.Infof("loading acquisition file : %s", acquisFile)
 		yamlFile, err := os.Open(acquisFile)
 		if err != nil {
-			return nil, errors.Wrapf(err, "can't open %s", acquisFile)
+			return nil, err
 		}
 		dec := yaml.NewDecoder(yamlFile)
 		dec.SetStrict(true)
@@ -184,11 +157,11 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			var idx int
 			err = dec.Decode(&sub)
 			if err != nil {
-				if err == io.EOF {
-					log.Tracef("End of yaml file")
-					break
+				if !errors.Is(err, io.EOF) {
+					return nil, fmt.Errorf("failed to yaml decode %s: %w", acquisFile, err)
 				}
-				return nil, errors.Wrapf(err, "failed to yaml decode %s", acquisFile)
+				log.Tracef("End of yaml file")
+				break
 			}
 
 			//for backward compat ('type' was not mandatory, detect it)
@@ -212,7 +185,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			}
 			src, err := DataSourceConfigure(sub)
 			if err != nil {
-				return nil, errors.Wrapf(err, "while configuring datasource of type %s from %s (position: %d)", sub.Source, acquisFile, idx)
+				return nil, fmt.Errorf("while configuring datasource of type %s from %s (position: %d): %w", sub.Source, acquisFile, idx, err)
 			}
 			sources = append(sources, *src)
 			idx += 1
@@ -232,9 +205,9 @@ func GetMetrics(sources []DataSource, aggregated bool) error {
 		for _, metric := range metrics {
 			if err := prometheus.Register(metric); err != nil {
 				if _, ok := err.(prometheus.AlreadyRegisteredError); !ok {
-					return errors.Wrapf(err, "could not register metrics for datasource %s", sources[i].GetName())
+					return fmt.Errorf("could not register metrics for datasource %s: %w", sources[i].GetName(), err)
 				}
-				//ignore the error
+				// ignore the error
 			}
 		}
 

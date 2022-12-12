@@ -44,10 +44,12 @@ type DecisionsDeleteOpts struct {
 	IPEquals    *string `url:"ip,omitempty"`
 	RangeEquals *string `url:"range,omitempty"`
 	Contains    *bool   `url:"contains,omitempty"`
+	//
+	ScenarioEquals *string `url:"scenario,omitempty"`
 	ListOpts
 }
 
-//to demo query arguments
+// to demo query arguments
 func (s *DecisionsService) List(ctx context.Context, opts DecisionsListOpts) (*models.GetDecisionsResponse, *Response, error) {
 	var decisions models.GetDecisionsResponse
 	params, err := qs.Values(opts)

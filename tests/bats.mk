@@ -28,8 +28,8 @@ PLUGIN_DIR = $(LOCAL_DIR)/lib/crowdsec/plugins
 DB_BACKEND ?= sqlite
 
 ifdef TEST_COVERAGE
-  CROWDSEC = $(TEST_DIR)/crowdsec-wrapper
-  CSCLI = $(TEST_DIR)/cscli-wrapper
+  CROWDSEC = $(TEST_DIR)/bin/crowdsec-wrapper
+  CSCLI = $(TEST_DIR)/bin/cscli-wrapper
   BINCOVER_TESTING = true
 else
   # the wrappers should work here too - it detects TEST_COVERAGE - but we allow
@@ -71,7 +71,7 @@ bats-environment:
 
 # Verify dependencies and submodules
 bats-check-requirements:
-	@$(TEST_DIR)/check-requirements
+	@$(TEST_DIR)/bin/check-requirements
 
 # Build and installs crowdsec in a local directory. Rebuilds if already exists.
 bats-build: bats-environment bats-check-requirements
@@ -100,7 +100,7 @@ bats-test: bats-environment bats-check-requirements
 
 # Generate dynamic tests
 bats-test-hub: bats-environment bats-check-requirements
-	@$(TEST_DIR)/generate-hub-tests
+	@$(TEST_DIR)/bin/generate-hub-tests
 	$(TEST_DIR)/run-tests $(TEST_DIR)/dyn-bats
 
 # Static checks for the test scripts.

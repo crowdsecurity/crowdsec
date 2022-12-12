@@ -1,10 +1,12 @@
-# see https://github.com/golangci/golangci-lint/blob/master/.golangci.example.yml
+# https://github.com/golangci/golangci-lint/blob/master/.golangci.reference.yml
 
 run:
   skip-dirs:
     - pkg/time/rate
   skip-files:
     - pkg/database/ent/generate.go
+    - pkg/yamlpatch/merge.go
+    - pkg/yamlpatch/merge_test.go
 
 linters-settings:
   gocyclo:
@@ -22,15 +24,21 @@ linters-settings:
 
   govet:
     check-shadowing: true
+
   lll:
     line-length: 140
+
   misspell:
     locale: US
+
   nolintlint:
     allow-leading-space: true # don't require machine-readable nolint directives (i.e. with no leading space)
     allow-unused: false # report any unused nolint directives
     require-explanation: false # don't require an explanation for nolint directives
     require-specific: false # don't require nolint directives to be specific about which linter is being skipped
+
+  interfacebloat:
+    max: 12
 
 linters:
   enable-all: true
@@ -58,11 +66,13 @@ linters:
     # - bidichk             # Checks for dangerous unicode character sequences
     # - decorder            # check declaration order and count of types, constants, variables and functions
     # - depguard            # Go linter that checks if package imports are in a list of acceptable packages
+    # - dupword             # checks for duplicate words in the source code
     # - durationcheck       # check for two durations multiplied together
     # - errcheck            # Errcheck is a program for checking for unchecked errors in go programs. These unchecked errors can be critical bugs in some cases
     # - exportloopref       # checks for pointers to enclosing loop variables
     # - funlen              # Tool for detection of long functions
     # - gochecknoinits      # Checks that no init functions are present in Go code
+    # - gocritic            # Provides diagnostics that check for bugs, performance and style issues.
     # - goheader            # Checks is file header matches to pattern
     # - gomoddirectives     # Manage the use of 'replace', 'retract', and 'excludes' directives in go.mod.
     # - gomodguard          # Allow and block list linter for direct Go module dependencies. This is different from depguard where there are different block types for example version constraints and module recommendations.
@@ -76,12 +86,14 @@ linters:
     # - logrlint            # Check logr arguments.
     # - makezero            # Finds slice declarations with non-zero initial length
     # - misspell            # Finds commonly misspelled English words in comments
+    # - nilerr              # Finds the code that returns nil even if it checks that the error is not nil.
     # - nolintlint          # Reports ill-formed or insufficient nolint directives
     # - predeclared         # find code that shadows one of Go's predeclared identifiers
     # - reassign            # Checks that package variables are not reassigned
     # - rowserrcheck        # checks whether Err of rows is checked successfully
     # - sqlclosecheck       # Checks that sql.Rows and sql.Stmt are closed.
     # - staticcheck         # (megacheck): Staticcheck is a go vet on steroids, applying a ton of static analysis checks
+    # - testableexamples    # linter checks if examples are testable (have an expected output)
     # - tenv                # tenv is analyzer that detects using os.Setenv instead of t.Setenv since Go1.17
     # - tparallel           # tparallel detects inappropriate usage of t.Parallel() method in your Go test codes
     # - typecheck           # Like the front-end of a Go compiler, parses and type-checks Go code
@@ -97,16 +109,13 @@ linters:
     - errchkjson            # Checks types passed to the json encoding functions. Reports unsupported types and optionally reports occations, where the check for the returned error can be omitted.
     - errorlint             # errorlint is a linter for that can be used to find code that will cause problems with the error wrapping scheme introduced in Go 1.13.
     - exhaustive            # check exhaustiveness of enum switch statements
-    - forcetypeassert       # finds forced type assertions
     - gci                   # Gci control golang package import order and make it always deterministic.
-    - gocritic              # Provides diagnostics that check for bugs, performance and style issues.
     - godot                 # Check if comments end in a period
     - gofmt                 # Gofmt checks whether code was gofmt-ed. By default this tool runs with -s option to check for code simplification
     - goimports             # In addition to fixing imports, goimports also formats your code in the same style as gofmt.
     - gosec                 # (gas): Inspects source code for security problems
     - lll                   # Reports long lines
     - nakedret              # Finds naked returns in functions greater than a specified function length
-    - nilerr                # Finds the code that returns nil even if it checks that the error is not nil.
     - nonamedreturns        # Reports all named returns
     - nosprintfhostport     # Checks for misuse of Sprintf to construct a host with port in a URL.
     - promlinter            # Check Prometheus metrics naming via promlint
@@ -143,6 +152,7 @@ linters:
     #
     - cyclop                # checks function and package cyclomatic complexity
     - dupl                  # Tool for code clone detection
+    - forcetypeassert       # finds forced type assertions
     - gocognit              # Computes and checks the cognitive complexity of functions
     - gocyclo               # Computes and checks the cyclomatic complexity of functions
     - godox                 # Tool for detection of FIXME, TODO and other comment keywords
@@ -170,6 +180,7 @@ linters:
 
     - prealloc              # Finds slice declarations that could potentially be preallocated
 
+
 issues:
   max-issues-per-linter: 0
   max-same-issues: 10
@@ -191,18 +202,21 @@ issues:
       text: "Error return value of `.*` is not checked"
 
     #
-    # staticcheck
+    # gocritic
     #
 
     - linters:
-        - staticcheck
-      text: "SA4009: argument .* is overwritten before first use"
+        - gocritic
+      text: "ifElseChain: rewrite if-else to switch statement"
+
     - linters:
-        - staticcheck
-      text: "SA4009.related information.: assignment to .*"
+        - gocritic
+      text: "captLocal: `.*' should not be capitalized"
+
     - linters:
-        - staticcheck
-      text: "SA4006: this value of .* is never used"
+        - gocritic
+      text: "appendAssign: append result not assigned to the same slice"
+
     - linters:
-        - staticcheck
-      text: "SA1006: printf-style function with dynamic format string and no further arguments should use print-style function instead"
+        - gocritic
+      text: "commentFormatting: put a space between `//` and comment text"

@@ -1,4 +1,4 @@
-package cstest
+package hubtest
 
 import (
 	"fmt"
@@ -552,7 +552,7 @@ func (t *HubTestItem) Run() error {
 
 	// assert parsers
 	if !t.Config.IgnoreParsers {
-		assertFileStat, err := os.Stat(t.ParserAssert.File)
+		_, err := os.Stat(t.ParserAssert.File)
 		if os.IsNotExist(err) {
 			parserAssertFile, err := os.Create(t.ParserAssert.File)
 			if err != nil {
@@ -560,7 +560,7 @@ func (t *HubTestItem) Run() error {
 			}
 			parserAssertFile.Close()
 		}
-		assertFileStat, err = os.Stat(t.ParserAssert.File)
+		assertFileStat, err := os.Stat(t.ParserAssert.File)
 		if err != nil {
 			return fmt.Errorf("error while stats '%s': %s", t.ParserAssert.File, err)
 		}
@@ -588,7 +588,7 @@ func (t *HubTestItem) Run() error {
 		nbScenario += 1
 	}
 	if nbScenario > 0 {
-		assertFileStat, err := os.Stat(t.ScenarioAssert.File)
+		_, err := os.Stat(t.ScenarioAssert.File)
 		if os.IsNotExist(err) {
 			scenarioAssertFile, err := os.Create(t.ScenarioAssert.File)
 			if err != nil {
@@ -596,7 +596,7 @@ func (t *HubTestItem) Run() error {
 			}
 			scenarioAssertFile.Close()
 		}
-		assertFileStat, err = os.Stat(t.ScenarioAssert.File)
+		assertFileStat, err := os.Stat(t.ScenarioAssert.File)
 		if err != nil {
 			return fmt.Errorf("error while stats '%s': %s", t.ScenarioAssert.File, err)
 		}

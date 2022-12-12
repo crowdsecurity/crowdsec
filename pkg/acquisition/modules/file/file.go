@@ -13,9 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/fsnotify/fsnotify"
 	"github.com/nxadm/tail"
 	"github.com/pkg/errors"
@@ -23,6 +20,10 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var linesRead = prometheus.NewCounterVec(
@@ -50,41 +51,62 @@ type FileSource struct {
 	exclude_regexps    []*regexp.Regexp
 }
 
-func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
-	fileConfig := FileConfiguration{}
-	f.logger = logger
-	f.watchedDirectories = make(map[string]bool)
-	f.tails = make(map[string]bool)
-	err := yaml.UnmarshalStrict(Config, &fileConfig)
+func (f *FileSource) UnmarshalConfig(yamlConfig []byte) error {
+	f.config = FileConfiguration{}
+	err := yaml.UnmarshalStrict(yamlConfig, &f.config)
 	if err != nil {
-		return errors.Wrap(err, "Cannot parse FileAcquisition configuration")
+		return fmt.Errorf("cannot parse FileAcquisition configuration: %w", err)
 	}
-	f.logger.Tracef("FileAcquisition configuration: %+v", fileConfig)
-	if len(fileConfig.Filename) != 0 {
-		fileConfig.Filenames = append(fileConfig.Filenames, fileConfig.Filename)
+
+	if f.logger != nil {
+		f.logger.Tracef("FileAcquisition configuration: %+v", f.config)
 	}
-	if len(fileConfig.Filenames) == 0 {
+
+	if len(f.config.Filename) != 0 {
+		f.config.Filenames = append(f.config.Filenames, f.config.Filename)
+	}
+
+	if len(f.config.Filenames) == 0 {
 		return fmt.Errorf("no filename or filenames configuration provided")
 	}
-	f.config = fileConfig
+
 	if f.config.Mode == "" {
 		f.config.Mode = configuration.TAIL_MODE
 	}
+
 	if f.config.Mode != configuration.CAT_MODE && f.config.Mode != configuration.TAIL_MODE {
 		return fmt.Errorf("unsupported mode %s for file source", f.config.Mode)
 	}
+
+	for _, exclude := range f.config.ExcludeRegexps {
+		re, err := regexp.Compile(exclude)
+		if err != nil {
+			return fmt.Errorf("could not compile regexp %s: %w", exclude, err)
+		}
+		f.exclude_regexps = append(f.exclude_regexps, re)
+	}
+
+	return nil
+}
+
+func (f *FileSource) Configure(yamlConfig []byte, logger *log.Entry) error {
+	f.logger = logger
+
+	err := f.UnmarshalConfig(yamlConfig)
+	if err != nil {
+		return err
+	}
+
+	f.watchedDirectories = make(map[string]bool)
+	f.tails = make(map[string]bool)
+
 	f.watcher, err = fsnotify.NewWatcher()
 	if err != nil {
 		return errors.Wrapf(err, "Could not create fsnotify watcher")
 	}
-	for _, exclude := range f.config.ExcludeRegexps {
-		re, err := regexp.Compile(exclude)
-		if err != nil {
-			return errors.Wrapf(err, "Could not compile regexp %s", exclude)
-		}
-		f.exclude_regexps = append(f.exclude_regexps, re)
-	}
+
 	f.logger.Tracef("Actual FileAcquisition Configuration %+v", f.config)
+
 	for _, pattern := range f.config.Filenames {
 		if f.config.ForceInotify {
 			directory := filepath.Dir(pattern)
@@ -416,8 +438,8 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 			return fmt.Errorf("reader for %s is dead", tail.Filename)
 		case line := <-tail.Lines:
 			if line == nil {
-				logger.Debugf("Nil line")
-				return fmt.Errorf("tail for %s is empty", tail.Filename)
+				logger.Warningf("tail for %s is empty", tail.Filename)
+				continue
 			}
 			if line.Err != nil {
 				logger.Warningf("fetch error : %v", line.Err)

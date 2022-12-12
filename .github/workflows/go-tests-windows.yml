@@ -2,11 +2,15 @@ name: Go tests (windows)
 
 on:
   push:
-    branches: [master]
+    branches:
+      - master
+      - releases/**
     paths-ignore:
       - 'README.md'
   pull_request:
-    branches: [master]
+    branches:
+      - master
+      - releases/**
     paths-ignore:
       - 'README.md'
 
@@ -41,10 +45,11 @@ jobs:
       run: |
         go install github.com/kyoh86/richgo@v0.3.10
         go test -coverprofile coverage.out -covermode=atomic ./... > out.txt
+        if(!$?) { cat out.txt | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter; Exit 1 }
         cat out.txt | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
 
     - name: Upload unit coverage to Codecov
-      uses: codecov/codecov-action@v2
+      uses: codecov/codecov-action@v3
       with:
         files: coverage.out
         flags: unit-windows

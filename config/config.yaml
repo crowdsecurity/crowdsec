@@ -1,6 +1,5 @@
 common:
   daemonize: true
-  pid_dir: /var/run/
   log_media: file
   log_level: info
   log_dir: /var/log/
@@ -18,9 +17,11 @@ config_paths:
   plugin_dir: /usr/local/lib/crowdsec/plugins/
 crowdsec_service:
   acquisition_path: /etc/crowdsec/acquis.yaml
+  acquisition_dir: /etc/crowdsec/acquis.d
   parser_routines: 1
 cscli:
   output: human
+  color: auto
 db_config:
   log_level: info
   type: sqlite

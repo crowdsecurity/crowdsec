@@ -44,7 +44,7 @@ func getDBClient(t *testing.T) *database.Client {
 
 func TestVisitor(t *testing.T) {
 	if err := Init(nil); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	tests := []struct {
@@ -131,12 +131,12 @@ func TestVisitor(t *testing.T) {
 
 func TestRegexpInFile(t *testing.T) {
 	if err := Init(nil); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	err := FileInit(TestFolder, "test_data_re.txt", "regex")
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	tests := []struct {
@@ -174,11 +174,11 @@ func TestRegexpInFile(t *testing.T) {
 	for _, test := range tests {
 		compiledFilter, err := expr.Compile(test.filter, expr.Env(GetExprEnv(map[string]interface{}{})))
 		if err != nil {
-			log.Fatalf(err.Error())
+			log.Fatal(err)
 		}
 		result, err := expr.Run(compiledFilter, GetExprEnv(map[string]interface{}{}))
 		if err != nil {
-			log.Fatalf(err.Error())
+			log.Fatal(err)
 		}
 		if isOk := assert.Equal(t, test.result, result); !isOk {
 			t.Fatalf("test '%s' : NOK", test.name)
@@ -188,7 +188,7 @@ func TestRegexpInFile(t *testing.T) {
 
 func TestFileInit(t *testing.T) {
 	if err := Init(nil); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	tests := []struct {
@@ -226,7 +226,7 @@ func TestFileInit(t *testing.T) {
 	for _, test := range tests {
 		err := FileInit(TestFolder, test.filename, test.types)
 		if err != nil {
-			log.Fatalf(err.Error())
+			log.Fatal(err)
 		}
 		if test.types == "string" {
 			if _, ok := dataFile[test.filename]; !ok {
@@ -256,12 +256,12 @@ func TestFileInit(t *testing.T) {
 
 func TestFile(t *testing.T) {
 	if err := Init(nil); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	err := FileInit(TestFolder, "test_data.txt", "string")
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	tests := []struct {
@@ -299,11 +299,11 @@ func TestFile(t *testing.T) {
 	for _, test := range tests {
 		compiledFilter, err := expr.Compile(test.filter, expr.Env(GetExprEnv(map[string]interface{}{})))
 		if err != nil {
-			log.Fatalf(err.Error())
+			log.Fatal(err)
 		}
 		result, err := expr.Run(compiledFilter, GetExprEnv(map[string]interface{}{}))
 		if err != nil {
-			log.Fatalf(err.Error())
+			log.Fatal(err)
 		}
 		if isOk := assert.Equal(t, test.result, result); !isOk {
 			t.Fatalf("test '%s' : NOK", test.name)

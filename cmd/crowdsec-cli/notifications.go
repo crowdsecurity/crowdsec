@@ -13,17 +13,18 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
+	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"gopkg.in/tomb.v2"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
-	"github.com/go-openapi/strfmt"
-	"github.com/olekukonko/tablewriter"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"gopkg.in/tomb.v2"
 )
 
 type NotificationsCfg struct {
@@ -45,7 +46,7 @@ func NewNotificationsCmd() *cobra.Command {
 				err error
 			)
 			if err = csConfig.API.Server.LoadProfiles(); err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 			if csConfig.ConfigPaths.NotificationDir == "" {
 				log.Fatalf("config_paths.notification_dir is not set in crowdsec config")
@@ -67,22 +68,7 @@ func NewNotificationsCmd() *cobra.Command {
 			}
 
 			if csConfig.Cscli.Output == "human" {
-				table := tablewriter.NewWriter(os.Stdout)
-				table.SetCenterSeparator("")
-				table.SetColumnSeparator("")
-
-				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-				table.SetAlignment(tablewriter.ALIGN_LEFT)
-				table.SetHeader([]string{"Name", "Type", "Profile name"})
-				for _, b := range ncfgs {
-					profilesList := []string{}
-					for _, p := range b.Profiles {
-						profilesList = append(profilesList, p.Name)
-					}
-					table.Append([]string{b.Config.Name, b.Config.Type, strings.Join(profilesList, ", ")})
-				}
-				table.Render()
-
+				notificationListTable(color.Output, ncfgs)
 			} else if csConfig.Cscli.Output == "json" {
 				x, err := json.MarshalIndent(ncfgs, "", " ")
 				if err != nil {

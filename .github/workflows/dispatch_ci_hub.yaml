@@ -5,6 +5,7 @@ on:
     # branches to consider in the event; optional, defaults to all
     branches:
       - master
+      - releases/**
 
 jobs:
   dispatch:
@@ -13,6 +14,7 @@ jobs:
     steps:
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v1
+        if: ${{ github.repository_owner == 'crowdsecurity' }}
         with:
           token: ${{ secrets.DISPATCH_TOKEN }}
           event-type: trigger_ci_hub
