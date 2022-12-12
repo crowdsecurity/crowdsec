@@ -107,7 +107,7 @@ func (d *DatabaseCfg) ConnectionDialect() (string, string, error) {
 	case "pgx":
 		return "pgx", dialect.Postgres, nil
 	}
-	return "", "", fmt.Errorf("unsupported database type %s", d.Type)
+	return "", "", fmt.Errorf("unknown database type '%s'", d.Type)
 }
 
 func (d *DatabaseCfg) isSocketConfig() bool {
