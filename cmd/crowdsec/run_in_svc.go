@@ -6,12 +6,12 @@ package main
 import (
 	"os"
 
+	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/writer"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-	log "github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/writer"
 )
 
 func StartRunSvc() error {
@@ -36,11 +36,6 @@ func StartRunSvc() error {
 	}
 	if err := LoadConfig(cConfig); err != nil {
 		return err
-	}
-	// Configure logging
-	if err = types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, *cConfig.Common.LogLevel,
-		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles, cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs, cConfig.Common.ForceColorLogs); err != nil {
-		log.Fatal(err)
 	}
 
 	log.Infof("Crowdsec %s", cwversion.VersionStr())

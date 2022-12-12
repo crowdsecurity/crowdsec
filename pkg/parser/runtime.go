@@ -138,6 +138,8 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 				clog.Warnf("Expression returned a map, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string")
 			case []interface{}:
 				clog.Warnf("Expression returned a map, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string")
+			case nil:
+				clog.Debugf("Expression returned nil, skipping")
 			default:
 				clog.Errorf("unexpected return type for RunTimeValue : %T", output)
 				return errors.New("unexpected return type for RunTimeValue")
@@ -163,7 +165,8 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 				}
 				processed = true
 				clog.Debugf("+ Method %s('%s') returned %d entries to merge in .Enriched\n", static.Method, value, len(ret))
-				if len(ret) == 0 {
+				//Hackish check, but those methods do not return any data by design
+				if len(ret) == 0 && static.Method != "UnmarshalXML" && static.Method != "UnmarshalJSON" {
 					clog.Debugf("+ Method '%s' empty response on '%s'", static.Method, value)
 				}
 				for k, v := range ret {

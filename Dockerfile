@@ -1,3 +1,4 @@
+# vim: set ft=dockerfile:
 ARG BUILD_ENV=full
 ARG GOVERSION=1.19
 
@@ -22,7 +23,8 @@ FROM alpine:latest as build-slim
 RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community tzdata yq bash && \
     mkdir -p /staging/etc/crowdsec && \
     mkdir -p /staging/var/lib/crowdsec && \
-    mkdir -p /var/lib/crowdsec/data
+    mkdir -p /var/lib/crowdsec/data \
+    yq -n '.url="http://0.0.0.0:8080"' | install -m 0600 /dev/stdin /staging/etc/crowdsec/local_api_credentials.yaml
 
 COPY --from=build /etc/crowdsec /staging/etc/crowdsec
 COPY --from=build /usr/local/bin/crowdsec /usr/local/bin/crowdsec
@@ -30,17 +32,21 @@ COPY --from=build /usr/local/bin/cscli /usr/local/bin/cscli
 COPY --from=build /go/src/crowdsec/docker/docker_start.sh /
 COPY --from=build /go/src/crowdsec/docker/config.yaml /staging/etc/crowdsec/config.yaml
 
+# NOTE: setting default values here will overwrite the ones set in config.yaml
+#       every time the container is started. We set the default in docker/config.yaml
+#       and document them in docker/README.md, but keep the variables empty here.
+
 ENV CONFIG_FILE=/etc/crowdsec/config.yaml
-ENV LOCAL_API_URL=http://0.0.0.0:8080/
+ENV LOCAL_API_URL=
 ENV CUSTOM_HOSTNAME=localhost
-ENV PLUGIN_DIR=/usr/local/lib/crowdsec/plugins/
+ENV PLUGIN_DIR=
 ENV DISABLE_AGENT=false
 ENV DISABLE_LOCAL_API=false
 ENV DISABLE_ONLINE_API=false
 ENV DSN=
 ENV TYPE=
 ENV TEST_MODE=false
-ENV USE_WAL=false
+ENV USE_WAL=
 
 # register to app.crowdsec.net
 
@@ -50,9 +56,9 @@ ENV ENROLL_TAGS=
 
 # log verbosity
 
-ENV LEVEL_TRACE=false
-ENV LEVEL_DEBUG=false
-ENV LEVEL_INFO=true
+ENV LEVEL_TRACE=
+ENV LEVEL_DEBUG=
+ENV LEVEL_INFO=
 
 # TLS setup ----------------------------------- #
 
@@ -62,13 +68,13 @@ ENV AGENT_PASSWORD=
 # TLS setup ----------------------------------- #
 
 ENV USE_TLS=false
-ENV CA_CERT_PATH=
-ENV CERT_FILE=/etc/ssl/cert.pem
-ENV KEY_FILE=/etc/ssl/key.pem
+ENV CACERT_FILE=
+ENV CERT_FILE=
+ENV KEY_FILE=
 # comma-separated list of allowed OU values for TLS bouncer certificates
-ENV BOUNCERS_ALLOWED_OU=bouncer-ou
+ENV BOUNCERS_ALLOWED_OU=
 # comma-separated list of allowed OU values for TLS agent certificates
-ENV AGENTS_ALLOWED_OU=agent-ou
+ENV AGENTS_ALLOWED_OU=
 
 # Install the following hub items --------------#
 
@@ -84,7 +90,7 @@ ENV DISABLE_PARSERS=
 ENV DISABLE_SCENARIOS=
 ENV DISABLE_POSTOVERFLOWS=
 
-ENV METRICS_PORT=6060
+ENV METRICS_PORT=
 
 ENTRYPOINT /bin/bash docker_start.sh
 

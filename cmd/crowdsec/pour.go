@@ -45,7 +45,7 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 			poured, err := leaky.PourItemToHolders(parsed, holders, buckets)
 			if err != nil {
 				log.Errorf("bucketify failed for: %v", parsed)
-				return fmt.Errorf("process of event failed : %v", err)
+				continue
 			}
 			elapsed := time.Since(startTime)
 			globalPourHistogram.With(prometheus.Labels{"type": parsed.Line.Module, "source": parsed.Line.Src}).Observe(elapsed.Seconds())

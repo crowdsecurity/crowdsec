@@ -3,11 +3,15 @@
 # shellcheck disable=SC2292      # allow [ test ] syntax
 # shellcheck disable=SC2310      # allow "if function..." syntax with -e
 
+#set -x
+#export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+
 set -e
 shopt -s inherit_errexit
 
 #- HELPER FUNCTIONS ----------------#
 
+# match true, TRUE, True, tRuE, etc.
 istrue() {
   case "$(echo "$1" | tr '[:upper:]' '[:lower:]')" in
     true) return 0 ;;
@@ -23,6 +27,7 @@ isfalse() {
     fi
 }
 
+# csv2yaml <string>
 # generate a yaml list from a comma-separated string of values
 csv2yaml() {
     [ -z "$1" ] && return
@@ -34,6 +39,8 @@ cscli() {
     command cscli -c "$CONFIG_FILE" "$@"
 }
 
+# conf_get <key> [file_path]
+# retrieve a value from a file (by default $CONFIG_FILE)
 conf_get() {
     if [ $# -ge 2 ]; then
         yq e "$1" "$2"
@@ -42,12 +49,43 @@ conf_get() {
     fi
 }
 
+# conf_set <yq_expression> [file_path]
+# evaluate a yq command (by default on $CONFIG_FILE),
+# create the file if it doesn't exist
 conf_set() {
     if [ $# -ge 2 ]; then
-        yq e "$1" -i "$2"
+        YAML_FILE="$2"
     else
-        yq e "$1" -i "$CONFIG_FILE"
+        YAML_FILE="$CONFIG_FILE"
     fi
+    YAML_CONTENT=$(cat "$YAML_FILE" 2>/dev/null || true)
+    echo "$YAML_CONTENT" | yq e "$1" | install -m 0600 /dev/stdin "$YAML_FILE"
+}
+
+# register_bouncer <bouncer_name> <bouncer_key>
+register_bouncer() {
+  if ! cscli bouncers list -o json | sed '/^ *"name"/!d;s/^ *"name": "\(.*\)",/\1/' | grep -q "^${1}$"; then
+      if cscli bouncers add "$1" -k "$2" > /dev/null; then
+          echo "Registered bouncer for $1"
+      else
+          echo "Failed to register bouncer for $1"
+      fi
+  fi
+}
+
+# Call cscli to manage objects ignoring taint errors
+# $1 can be collections, parsers, etc.
+# $2 can be install, remove, upgrade
+# $3 is a list of object names separated by space
+cscli_if_clean() {
+    # loop over all objects
+    for obj in $3; do
+        if cscli "$1" inspect "$obj" -o json | yq -e '.tainted // false' >/dev/null 2>&1; then
+            echo "Object $1/$obj is tainted, skipping"
+        else
+            cscli "$1" "$2" "$obj"
+        fi
+    done
 }
 
 #-----------------------------------#
@@ -89,26 +127,30 @@ if isfalse "$DISABLE_AGENT"; then
     if isfalse "$DISABLE_LOCAL_API"; then
         echo "Regenerate local agent credentials"
         cscli machines delete "$CUSTOM_HOSTNAME" 2>/dev/null || true
-        # shellcheck disable=SC2086
         cscli machines add "$CUSTOM_HOSTNAME" --auto --url "$LOCAL_API_URL"
     fi
 
     lapi_credentials_path=$(conf_get '.api.client.credentials_path')
 
-    if istrue "$USE_TLS"; then
-        install -m 0600 /dev/null "$lapi_credentials_path"
-        conf_set '
-            .url = strenv(LOCAL_API_URL) |
-            .ca_cert_path = strenv(CACERT_FILE) |
-            .key_path = strenv(KEY_FILE) |
-            .cert_path = strenv(CERT_FILE)
+    # we only use the envvars that are actually defined
+    # in case of persistent configuration
+    conf_set '
+        with(select(strenv(LOCAL_API_URL)!=""); .url = strenv(LOCAL_API_URL)) |
+        with(select(strenv(AGENT_USERNAME)!=""); .login = strenv(AGENT_USERNAME)) |
+        with(select(strenv(AGENT_PASSWORD)!=""); .password = strenv(AGENT_PASSWORD))
         ' "$lapi_credentials_path"
-    elif [ "$AGENT_USERNAME" != "" ]; then
-        install -m 0600 /dev/null "$lapi_credentials_path"
+
+    if istrue "$USE_TLS"; then
         conf_set '
-            .url = strenv(LOCAL_API_URL) |
-            .login = strenv(AGENT_USERNAME) |
-            .password = strenv(AGENT_PASSWORD)
+            with(select(strenv(CACERT_FILE)!=""); .ca_cert_path = strenv(CACERT_FILE)) |
+            with(select(strenv(KEY_FILE)!=""); .key_path = strenv(KEY_FILE)) |
+            with(select(strenv(CERT_FILE)!=""); .cert_path = strenv(CERT_FILE))
+        ' "$lapi_credentials_path"
+    else
+        conf_set '
+            del(.ca_cert_path) |
+            del(.key_path) |
+            del(.cert_path)
         ' "$lapi_credentials_path"
     fi
 fi
@@ -118,8 +160,8 @@ if isfalse "$DISABLE_LOCAL_API"; then
 
     # pre-registration is not needed with TLS
     if isfalse "$USE_TLS" && [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] ; then
-        # shellcheck disable=SC2086
-        cscli machines add "$AGENT_USERNAME" --password "$AGENT_PASSWORD" --url "$LOCAL_API_URL"
+        # re-register because pw may have been changed
+        cscli machines add "$AGENT_USERNAME" --password "$AGENT_PASSWORD" --url "$LOCAL_API_URL" --force
         echo "Agent registered to lapi"
     fi
 fi
@@ -162,80 +204,73 @@ if istrue "$USE_TLS"; then
     agents_allowed_yaml=$(csv2yaml "$AGENTS_ALLOWED_OU") \
     bouncers_allowed_yaml=$(csv2yaml "$BOUNCERS_ALLOWED_OU") \
     conf_set '
-        .api.server.tls.ca_cert_path = strenv(CACERT_FILE) |
-        .api.server.tls.cert_file = strenv(CERT_FILE) |
-        .api.server.tls.key_file = strenv(KEY_FILE) |
-        .api.server.tls.bouncers_allowed_ou = env(bouncers_allowed_yaml) |
-        .api.server.tls.agents_allowed_ou = env(agents_allowed_yaml) |
+        with(select(strenv(CACERT_FILE)!=""); .api.server.tls.ca_cert_path = strenv(CACERT_FILE)) |
+        with(select(strenv(CERT_FILE)!=""); .api.server.tls.cert_file = strenv(CERT_FILE)) |
+        with(select(strenv(KEY_FILE)!=""); .api.server.tls.key_file = strenv(KEY_FILE)) |
+        with(select(strenv(BOUNCERS_ALLOWED_OU)!=""); .api.server.tls.bouncers_allowed_ou = env(bouncers_allowed_yaml)) |
+        with(select(strenv(AGENTS_ALLOWED_OU)!=""); .api.server.tls.agents_allowed_ou = env(agents_allowed_yaml)) |
         ... comments=""
         '
+else
+    conf_set 'del(.api.server.tls)'
 fi
 
-conf_set ".config_paths.plugin_dir = strenv(PLUGIN_DIR)"
+conf_set 'with(select(strenv(PLUGIN_DIR)!=""); .config_paths.plugin_dir = strenv(PLUGIN_DIR))'
 
 ## Install collections, parsers, scenarios & postoverflows
 cscli hub update
-cscli collections upgrade crowdsecurity/linux || true
-cscli parsers upgrade crowdsecurity/whitelists || true
-cscli parsers install crowdsecurity/docker-logs || true
+
+cscli_if_clean collections upgrade crowdsecurity/linux
+cscli_if_clean parsers upgrade crowdsecurity/whitelists
+cscli_if_clean parsers install crowdsecurity/docker-logs
 
 if [ "$COLLECTIONS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli collections install $COLLECTIONS
+    cscli_if_clean collections install $COLLECTIONS
 fi
 
 if [ "$PARSERS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli parsers install $PARSERS
+    cscli_if_clean parsers install $PARSERS
 fi
 
 if [ "$SCENARIOS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli scenarios install $SCENARIOS
+    cscli_if_clean scenarios install $SCENARIOS
 fi
 
 if [ "$POSTOVERFLOWS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli postoverflows install $POSTOVERFLOWS
+    cscli_if_clean postoverflows install $POSTOVERFLOWS
 fi
 
 ## Remove collections, parsers, scenarios & postoverflows
 if [ "$DISABLE_COLLECTIONS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli collections remove $DISABLE_COLLECTIONS
+    cscli_if_clean collections remove $DISABLE_COLLECTIONS
 fi
 
 if [ "$DISABLE_PARSERS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli parsers remove $DISABLE_PARSERS
+    cscli_if_clean parsers remove $DISABLE_PARSERS
 fi
 
 if [ "$DISABLE_SCENARIOS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli scenarios remove $DISABLE_SCENARIOS
+    cscli_if_clean scenarios remove $DISABLE_SCENARIOS
 fi
 
 if [ "$DISABLE_POSTOVERFLOWS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli postoverflows remove $DISABLE_POSTOVERFLOWS
+    cscli_if_clean postoverflows remove $DISABLE_POSTOVERFLOWS
 fi
-
-register_bouncer() {
-  if ! cscli bouncers list -o json | sed '/^ *"name"/!d;s/^ *"name": "\(.*\)",/\1/' | grep -q "^${NAME}$"; then
-      if cscli bouncers add "${NAME}" -k "${KEY}" > /dev/null; then
-          echo "Registered bouncer for ${NAME}"
-      else
-          echo "Failed to register bouncer for ${NAME}"
-      fi
-  fi
-}
 
 ## Register bouncers via env
 for BOUNCER in $(compgen -A variable | grep -i BOUNCER_KEY); do
     KEY=$(printf '%s' "${!BOUNCER}")
-    NAME=$(printf '%s' "$BOUNCER" | cut -d_  -f2-)
+    NAME=$(printf '%s' "$BOUNCER" | cut -d_  -f3-)
     if [[ -n $KEY ]] && [[ -n $NAME ]]; then
-        register_bouncer
+        register_bouncer "$NAME" "$KEY"
     fi
 done
 
@@ -245,7 +280,7 @@ for BOUNCER in /run/secrets/@(bouncer_key|BOUNCER_KEY)* ; do
     KEY=$(cat "${BOUNCER}")
     NAME=$(echo "${BOUNCER}" | awk -F "/" '{printf $NF}' | cut -d_  -f2-)
     if [[ -n $KEY ]] && [[ -n $NAME ]]; then    
-        register_bouncer
+        register_bouncer "$NAME" "$KEY"
     fi
 done
 shopt -u nullglob extglob
@@ -287,7 +322,7 @@ if istrue "$LEVEL_INFO"; then
     ARGS="$ARGS -info"
 fi
 
-conf_set '.prometheus.listen_port=env(METRICS_PORT)'
+conf_set 'with(select(strenv(METRICS_PORT)!=""); .prometheus.listen_port=env(METRICS_PORT))'
 
 # shellcheck disable=SC2086
 exec crowdsec $ARGS
