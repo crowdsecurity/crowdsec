@@ -206,6 +206,7 @@ func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPul
 func (c *Controller) StreamDecision(gctx *gin.Context) {
 	var err error
 
+	streamStartTime := time.Now().UTC()
 	bouncerInfo, err := getBouncerFromContext(gctx)
 	if err != nil {
 		gctx.JSON(http.StatusUnauthorized, gin.H{"message": "not allowed"})
