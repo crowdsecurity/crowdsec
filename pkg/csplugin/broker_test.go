@@ -38,11 +38,6 @@ func setPluginPermTo724(t *testing.T) {
 	setPluginPermTo(t, "724")
 }
 
-func setTickerTo50ms() {
-	// DefaultEmptyTicker.Lock()
-	// defer DefaultEmptyTicker.Unlock()
-	// DefaultEmptyTicker.ticker = time.Millisecond * 50
-}
 
 func TestGetPluginNameAndTypeFromPath(t *testing.T) {
 	setUp(t)
@@ -478,7 +473,6 @@ func TestBrokerRunTimeThreshold(t *testing.T) {
 	buildDummyPlugin(t)
 	setPluginPermTo(t, "744")
 	defer tearDown(t)
-	setTickerTo50ms()
 	pluginCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
 	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
