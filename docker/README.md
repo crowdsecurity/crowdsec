@@ -138,9 +138,17 @@ agents on each machine that runs the protected applications, and a LAPI that
 gathers all signals from agents and communicates with the `central API`.
 
 ## Register a new agent with LAPI
+
+Without TLS authentication:
+
 ```shell
 docker exec -it crowdsec_lapi_container_name cscli machines add agent_user_name --password agent_password
 ```
+
+With TLS authentication:
+
+Agents are automatically registered and don't need a username or password. The
+agents' names are derived from the IP address from which they connect.
 
 ## Run an agent connected to LAPI
 
@@ -163,13 +171,20 @@ https://docs.crowdsec.net/docs/user_guides/bouncers_configuration/
 
 ### Automatic Bouncer Registration
 
-You can automatically register bouncers with the crowdsec container at startup, using environment variables or Docker secrets. You cannot use this process to update an existing bouncer without first deleting it.
+Without TLS authentication:
+
+You can register bouncers with the crowdsec container at startup, using environment variables or Docker secrets. You cannot use this process to update an existing bouncer without first deleting it.
 
 To use environment variables, they should be in the format `BOUNCER_KEY_<name>=<key>`. e.g. `BOUNCER_KEY_nginx=mysecretkey12345`.
 
 To use Docker secrets, the secret should be named `bouncer_key_<name>` with a content of `<key>`. e.g. `bouncer_key_nginx` with content `mysecretkey12345`.
 
-A bouncer key can be any string but we recommend an alphanumeric value for consistency with crowdsec-generated keys and avoid problems with escaping special characters.
+A bouncer key can be any string but we recommend an alphanumeric value for consistency with the crowdsec-generated keys and to avoid problems with escaping special characters.
+
+With TLS authentication:
+
+Bouncers are automatically registered and don't need an API key. The
+bouncers' names are derived from the IP address from which they connect.
 
 ## Console
 We provide a web-based interface to get more from Crowdsec: https://docs.crowdsec.net/docs/console
@@ -213,7 +228,7 @@ Using binds rather than named volumes ([complete explanation here](https://docs.
 | `USE_TLS`               | false | Enable TLS on the LAPI |
 | `CERT_FILE`             | /etc/ssl/cert.pem | TLS Certificate path |
 | `KEY_FILE`              | /etc/ssl/key.pem | TLS Key path |
-| `CACERT_FILE`           | | CA certificate |
+| `CACERT_FILE`           | | CA certificate bundle |
 | `AGENTS_ALLOWED_OU`     | agent-ou | OU values allowed for agents, separated by comma |
 | `BOUNCERS_ALLOWED_OU`   | bouncer-ou | OU values allowed for bouncers, separated by comma |
 |                         | | |
