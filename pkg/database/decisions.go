@@ -98,6 +98,12 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 				return nil, errors.Wrapf(InvalidFilter, "invalid offset value : %s", err)
 			}
 			query = query.Offset(offset)
+		case "id_gt":
+			id, err := strconv.Atoi(value[0])
+			if err != nil {
+				return nil, errors.Wrapf(InvalidFilter, "invalid id_gt value : %s", err)
+			}
+			query = query.Where(decision.IDGT(id))
 		}
 	}
 	query, err = applyStartIpEndIpFilter(query, contains, ip_sz, start_ip, start_sfx, end_ip, end_sfx)
@@ -122,6 +128,8 @@ func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*e
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get all decisions with filters")
 	}
 
+	query = query.Order(ent.Asc(decision.FieldID))
+
 	data, err := query.All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("QueryAllDecisionsWithFilters : %s", err)
@@ -140,6 +148,8 @@ func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) (
 	}
 
 	query, err := BuildDecisionRequestWithFilter(query, filters)
+
+	query = query.Order(ent.Asc(decision.FieldID))
 
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsWithFilters : %s", err)
@@ -250,6 +260,8 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters 
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
 	}
 
+	query = query.Order(ent.Asc(decision.FieldID))
+
 	data, err := query.All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
@@ -273,6 +285,9 @@ func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[
 		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrapf(QueryFail, "new decisions since '%s'", since.String())
 	}
+
+	query = query.Order(ent.Asc(decision.FieldID))
+
 	data, err := query.All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
