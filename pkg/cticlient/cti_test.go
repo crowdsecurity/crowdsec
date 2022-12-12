@@ -42,7 +42,7 @@ package cticlient
 // 	"1.2.3.6": {
 // 		Ip:                   "1.2.3.6",
 // 		BackgroundNoiseScore: new(int),
-// 		Behaviours: []*CTIBehaviour{
+// 		Behaviors: []*CTIBehavior{
 // 			{Name: "ssh:bruteforce", Label: "SSH Bruteforce", Description: "SSH Bruteforce"},
 // 		},
 // 		AttackDetails: []*CTIAttackDetails{
@@ -99,7 +99,7 @@ package cticlient
 // 		ip := frags[3]
 
 // 		if ip == "" {
-// 			//to be fixed to stick w/ real behaviour
+// 			//to be fixed to stick w/ real behavior
 // 			panic("empty ip")
 
 // 		}
@@ -236,7 +236,7 @@ package cticlient
 // 	assert.Equal(t, ret.IsPartOfCommunityBlocklist(), true, "1.2.3.5 is a known false positive")
 // }
 
-// func TestCTIBehaviours(t *testing.T) {
+// func TestCTIBehaviors(t *testing.T) {
 // 	_, urlx, teardown := setup()
 // 	apiURL, err := url.Parse(urlx + "/")
 // 	if err != nil {
@@ -256,8 +256,8 @@ package cticlient
 // 	assert.Equal(t, true, ret.Ok(), "should be ok")
 // 	assert.Equal(t, ret.Ip, "1.2.3.6", "auth failed, empty answer")
 // 	//ssh:bruteforce
-// 	assert.Equal(t, []string{"ssh:bruteforce"}, ret.GetBehaviours(), "error matching behaviours")
-// 	assert.Equal(t, []string{"crowdsecurity/ssh-bf", "crowdsecurity/ssh-slow-bf"}, ret.GetAttackDetails(), "error matching behaviours")
+// 	assert.Equal(t, []string{"ssh:bruteforce"}, ret.GetBehaviors(), "error matching behaviors")
+// 	assert.Equal(t, []string{"crowdsecurity/ssh-bf", "crowdsecurity/ssh-slow-bf"}, ret.GetAttackDetails(), "error matching behaviors")
 // 	assert.Equal(t, 10, ret.GetBackgroundNoiseScore(), "error matching bg noise")
 // }
 

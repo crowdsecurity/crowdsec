@@ -43,7 +43,7 @@ type CTIHistory struct {
 	DaysAge   int     `json:"days_age"`
 }
 
-type CTIBehaviour struct {
+type CTIBehavior struct {
 	Name        string `json:"name"`
 	Label       string `json:"label"`
 	Description string `json:"description"`
@@ -69,7 +69,7 @@ type SmokeItem struct {
 	AsNum                *int                `json:"as_num"`
 	Location             CTILocationInfo     `json:"location"`
 	ReverseDNS           *string             `json:"reverse_dns"`
-	Behaviours           []*CTIBehaviour     `json:"behaviors"`
+	Behaviors            []*CTIBehavior      `json:"behaviors"`
 	History              CTIHistory          `json:"history"`
 	Classifications      CTIClassifications  `json:"classifications"`
 	AttackDetails        []*CTIAttackDetails `json:"attack_details"`
@@ -112,7 +112,7 @@ type FireItem struct {
 	AsNum                *int                `json:"as_num"`
 	Location             CTILocationInfo     `json:"location"`
 	ReverseDNS           *string             `json:"reverse_dns"`
-	Behaviours           []*CTIBehaviour     `json:"behaviors"`
+	Behaviors            []*CTIBehavior      `json:"behaviors"`
 	History              CTIHistory          `json:"history"`
 	Classifications      CTIClassifications  `json:"classifications"`
 	AttackDetails        []*CTIAttackDetails `json:"attack_details"`
@@ -157,11 +157,11 @@ func (c *SmokeItem) GetAttackDetails() []string {
 	return ret
 }
 
-func (c *SmokeItem) GetBehaviours() []string {
+func (c *SmokeItem) GetBehaviors() []string {
 	var ret []string = make([]string, 0)
 
-	if c.Behaviours != nil {
-		for _, b := range c.Behaviours {
+	if c.Behaviors != nil {
+		for _, b := range c.Behaviors {
 			ret = append(ret, b.Name)
 		}
 	}
@@ -231,11 +231,11 @@ func (c *FireItem) GetAttackDetails() []string {
 	return ret
 }
 
-func (c *FireItem) GetBehaviours() []string {
+func (c *FireItem) GetBehaviors() []string {
 	var ret []string = make([]string, 0)
 
-	if c.Behaviours != nil {
-		for _, b := range c.Behaviours {
+	if c.Behaviors != nil {
+		for _, b := range c.Behaviors {
 			ret = append(ret, b.Name)
 		}
 	}

@@ -26,7 +26,7 @@ func getSampleSmokeItem() SmokeItem {
 			Longitude: &long,
 		},
 		ReverseDNS: types.StrPtr("foo.bar.com"),
-		Behaviours: []*CTIBehaviour{
+		Behaviors: []*CTIBehavior{
 			{
 				Name:        "ssh:bruteforce",
 				Label:       "SSH Bruteforce",
@@ -94,7 +94,7 @@ func getSampleSmokeItem() SmokeItem {
 func TestBasicSmokeItem(t *testing.T) {
 	item := getSampleSmokeItem()
 	assert.Equal(t, item.GetAttackDetails(), []string{"ssh:bruteforce"})
-	assert.Equal(t, item.GetBehaviours(), []string{"ssh:bruteforce"})
+	assert.Equal(t, item.GetBehaviors(), []string{"ssh:bruteforce"})
 	assert.Equal(t, item.GetMaliciousnessScore(), float32(0.1))
 	assert.Equal(t, item.IsPartOfCommunityBlocklist(), false)
 	assert.Equal(t, item.GetBackgroundNoiseScore(), int(3))
@@ -105,7 +105,7 @@ func TestBasicSmokeItem(t *testing.T) {
 func TestEmptySmokeItem(t *testing.T) {
 	item := SmokeItem{}
 	assert.Equal(t, item.GetAttackDetails(), []string{})
-	assert.Equal(t, item.GetBehaviours(), []string{})
+	assert.Equal(t, item.GetBehaviors(), []string{})
 	assert.Equal(t, item.GetMaliciousnessScore(), float32(0.0))
 	assert.Equal(t, item.IsPartOfCommunityBlocklist(), false)
 	assert.Equal(t, item.GetBackgroundNoiseScore(), int(0))

@@ -40,7 +40,7 @@ func fireHandler(req *http.Request) *http.Response {
 	if apiKey != validApiKey {
 		log.Warningf("invalid api key: %s", apiKey)
 		return &http.Response{
-			StatusCode: 403,
+			StatusCode: http.StatusForbidden,
 			Body:       nil,
 			Header:     make(http.Header),
 		}
@@ -63,7 +63,7 @@ func fireHandler(req *http.Request) *http.Response {
 		page, err = strconv.Atoi(req.URL.Query().Get("page"))
 		if err != nil {
 			log.Warningf("no page ?!")
-			return &http.Response{StatusCode: 500}
+			return &http.Response{StatusCode: http.StatusInternalServerError}
 		}
 	}
 
@@ -82,12 +82,12 @@ func fireHandler(req *http.Request) *http.Response {
 			"items": []
 		  }
 		  `
-		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(emptyResponse))}
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(emptyResponse))}
 	}
 	reader := io.NopCloser(strings.NewReader(fireResponses[page-1]))
 	//we should care about limit too
 	return &http.Response{
-		StatusCode: 200,
+		StatusCode: http.StatusOK,
 		// Send response to be tested
 		Body:          reader,
 		Header:        make(http.Header),
@@ -99,7 +99,7 @@ func smokeHandler(req *http.Request) *http.Response {
 	apiKey := req.Header.Get("x-api-key")
 	if apiKey != validApiKey {
 		return &http.Response{
-			StatusCode: 403,
+			StatusCode: http.StatusForbidden,
 			Body:       nil,
 			Header:     make(http.Header),
 		}
@@ -109,7 +109,7 @@ func smokeHandler(req *http.Request) *http.Response {
 	response, ok := smokeResponses[requestedIP]
 	if !ok {
 		return &http.Response{
-			StatusCode: 404,
+			StatusCode: http.StatusForbidden,
 			Body:       nil,
 			Header:     make(http.Header),
 		}
@@ -118,7 +118,7 @@ func smokeHandler(req *http.Request) *http.Response {
 	reader := io.NopCloser(strings.NewReader(response))
 
 	return &http.Response{
-		StatusCode: 200,
+		StatusCode: http.StatusOK,
 		// Send response to be tested
 		Body:          reader,
 		Header:        make(http.Header),
@@ -130,13 +130,13 @@ func rateLimitedHandler(req *http.Request) *http.Response {
 	apiKey := req.Header.Get("x-api-key")
 	if apiKey != validApiKey {
 		return &http.Response{
-			StatusCode: 403,
+			StatusCode: http.StatusForbidden,
 			Body:       nil,
 			Header:     make(http.Header),
 		}
 	}
 	return &http.Response{
-		StatusCode: 429,
+		StatusCode: http.StatusTooManyRequests,
 		Body:       nil,
 		Header:     make(http.Header),
 	}
@@ -146,7 +146,7 @@ func searchHandler(req *http.Request) *http.Response {
 	apiKey := req.Header.Get("x-api-key")
 	if apiKey != validApiKey {
 		return &http.Response{
-			StatusCode: 403,
+			StatusCode: http.StatusForbidden,
 			Body:       nil,
 			Header:     make(http.Header),
 		}
@@ -155,7 +155,7 @@ func searchHandler(req *http.Request) *http.Response {
 	ipsParam := url.Query().Get("ips")
 	if ipsParam == "" {
 		return &http.Response{
-			StatusCode: 400,
+			StatusCode: http.StatusBadRequest,
 			Body:       nil,
 			Header:     make(http.Header),
 		}
@@ -179,7 +179,7 @@ func searchHandler(req *http.Request) *http.Response {
 	response += "]}"
 	reader := io.NopCloser(strings.NewReader(response))
 	return &http.Response{
-		StatusCode: 200,
+		StatusCode: http.StatusOK,
 		Body:       reader,
 		Header:     make(http.Header),
 	}
