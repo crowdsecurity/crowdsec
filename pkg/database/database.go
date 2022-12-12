@@ -60,9 +60,11 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 	entLogger := clog.WithField("context", "ent")
 
 	entOpt := ent.Log(entLogger.Debug)
-	typ, dia := config.ConnectionDialect()
-	switch config.Type {
-	case "sqlite":
+	typ, dia, err := config.ConnectionDialect()
+	if err != nil {
+		return &Client{}, err //unsupported database caught here
+	}
+	if config.Type == "sqlite" {
 		/*if it's the first startup, we want to touch and chmod file*/
 		if _, err := os.Stat(config.DbPath); os.IsNotExist(err) {
 			f, err := os.OpenFile(config.DbPath, os.O_CREATE|os.O_RDWR, 0600)
@@ -77,10 +79,6 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 		if err := setFilePerm(config.DbPath, 0640); err != nil {
 			return &Client{}, fmt.Errorf("unable to set perms on %s: %v", config.DbPath, err)
 		}
-	case "mysql", "postgres", "postgresql", "pgx":
-		//We dont need this case anymore but dont want to let it fall to default
-	default:
-		return &Client{}, fmt.Errorf("unknown database type '%s'", config.Type)
 	}
 	drv, err := getEntDriver(typ, dia, config.ConnectionString(), config)
 	if err != nil {

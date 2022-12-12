@@ -96,18 +96,18 @@ func (d *DatabaseCfg) ConnectionString() string {
 	return connString
 }
 
-func (d *DatabaseCfg) ConnectionDialect() (string, string) {
+func (d *DatabaseCfg) ConnectionDialect() (string, string, error) {
 	switch d.Type {
 	case "sqlite":
-		return "sqlite3", dialect.SQLite
+		return "sqlite3", dialect.SQLite, nil
 	case "mysql":
-		return "mysql", dialect.MySQL
+		return "mysql", dialect.MySQL, nil
 	case "postgres", "postgresql":
-		return "postgres", dialect.Postgres
+		return "postgres", dialect.Postgres, nil
 	case "pgx":
-		return "pgx", dialect.Postgres
+		return "pgx", dialect.Postgres, nil
 	}
-	return "", ""
+	return "", "", fmt.Errorf("unsupported database type %s", d.Type)
 }
 
 func (d *DatabaseCfg) isSocketConfig() bool {
