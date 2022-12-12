@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 )
@@ -66,4 +67,49 @@ func (c *Config) LoadDBConfig() error {
 	}
 
 	return nil
+}
+
+func (d *DatabaseCfg) ConnectionString() string {
+	connString := ""
+	switch d.Type {
+	case "sqlite":
+		var sqliteConnectionStringParameters string
+		if d.UseWal != nil && *d.UseWal {
+			sqliteConnectionStringParameters = "_busy_timeout=100000&_fk=1&_journal_mode=WAL"
+		} else {
+			sqliteConnectionStringParameters = "_busy_timeout=100000&_fk=1"
+		}
+		connString = fmt.Sprintf("file:%s?%s", d.DbPath, sqliteConnectionStringParameters)
+	case "mysql":
+		if d.isSocketConfig() {
+			connString = fmt.Sprintf("%s:%s@unix(%s)/%s?parseTime=True", d.User, d.Password, d.DbPath, d.DbName)
+		} else {
+			connString = fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=True", d.User, d.Password, d.Host, d.Port, d.DbName)
+		}
+	case "postgres", "postgresql", "pgx":
+		if d.isSocketConfig() {
+			connString = fmt.Sprintf("host=%s user=%s dbname=%s password=%s", d.DbPath, d.User, d.DbName, d.Password)
+		} else {
+			connString = fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=%s", d.Host, d.Port, d.User, d.DbName, d.Password, d.Sslmode)
+		}
+	}
+	return connString
+}
+
+func (d *DatabaseCfg) ConnectionDialect() (string, string) {
+	switch d.Type {
+	case "sqlite":
+		return "sqlite3", dialect.SQLite
+	case "mysql":
+		return "mysql", dialect.MySQL
+	case "postgres", "postgresql":
+		return "postgres", dialect.Postgres
+	case "pgx":
+		return "pgx", dialect.Postgres
+	}
+	return "", ""
+}
+
+func (d *DatabaseCfg) isSocketConfig() bool {
+	return d.Host == "" && d.Port == 0 && d.DbPath != ""
 }
