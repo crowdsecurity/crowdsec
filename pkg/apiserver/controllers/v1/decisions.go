@@ -1,7 +1,6 @@
 package v1
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -112,7 +111,7 @@ func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 }
 
 func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFunc func(map[string][]string) ([]*ent.Decision, error)) error {
-	respBuffer := bytes.NewBuffer([]byte{})
+	// respBuffer := bytes.NewBuffer([]byte{})
 	limit := 30000 //FIXME : make it configurable
 	needComma := false
 	lastId := 0
@@ -135,20 +134,22 @@ func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFun
 			for _, decision := range results {
 				decisionJSON, _ := json.Marshal(decision)
 				if needComma {
-					respBuffer.WriteString(",")
+					//respBuffer.Write([]byte(","))
+					gctx.Writer.Write([]byte(","))
 				} else {
 					needComma = true
 				}
-				respBuffer.Write(decisionJSON)
-				_, err := gctx.Writer.Write(respBuffer.Bytes())
+				//respBuffer.Write(decisionJSON)
+				//_, err := gctx.Writer.Write(respBuffer.Bytes())
+				_, err := gctx.Writer.Write(decisionJSON)
 				if err != nil {
 					gctx.Writer.Flush()
 					return err
 				}
-				respBuffer.Reset()
+				//respBuffer.Reset()
 			}
 		}
-		log.Debugf("startup: %d decisions returned (limit: %d, lastId: %d)", len(data), limit, lastId)
+		log.Debugf("startup: %d decisions returned (limit: %d, lastid: %d)", len(data), limit, lastId)
 		if len(data) < limit {
 			gctx.Writer.Flush()
 			break
@@ -158,7 +159,7 @@ func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFun
 }
 
 func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPull time.Time, dbFunc func(time.Time, map[string][]string) ([]*ent.Decision, error)) error {
-	respBuffer := bytes.NewBuffer([]byte{})
+	//respBuffer := bytes.NewBuffer([]byte{})
 	limit := 30000 //FIXME : make it configurable
 	needComma := false
 	lastId := 0
@@ -181,17 +182,19 @@ func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPul
 			for _, decision := range results {
 				decisionJSON, _ := json.Marshal(decision)
 				if needComma {
-					respBuffer.WriteString(",")
+					//respBuffer.Write([]byte(","))
+					gctx.Writer.Write([]byte(","))
 				} else {
 					needComma = true
 				}
-				respBuffer.Write(decisionJSON)
-				_, err := gctx.Writer.Write(respBuffer.Bytes())
+				//respBuffer.Write(decisionJSON)
+				//_, err := gctx.Writer.Write(respBuffer.Bytes())
+				_, err := gctx.Writer.Write(decisionJSON)
 				if err != nil {
 					gctx.Writer.Flush()
 					return err
 				}
-				respBuffer.Reset()
+				//respBuffer.Reset()
 			}
 		}
 		log.Debugf("startup: %d decisions returned (limit: %d, lastid: %d)", len(data), limit, lastId)
@@ -228,7 +231,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 	gctx.Writer.Header().Set("Content-Type", "application/json")
 	gctx.Writer.Header().Set("Transfer-Encoding", "chunked")
 	gctx.Writer.WriteHeader(http.StatusOK)
-	gctx.Writer.WriteString(`{"new": [`) //No need to check for errors, the doc says it always returns nil
+	gctx.Writer.Write([]byte(`{"new": [`)) //No need to check for errors, the doc says it always returns nil
 
 	// if the blocker just start, return all decisions
 	if val, ok := gctx.Request.URL.Query()["startup"]; ok && val[0] == "true" {
@@ -238,44 +241,44 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 
 		if err != nil {
 			log.Errorf("failed sending new decisions for startup: %v", err)
-			gctx.Writer.WriteString(`], "deleted": []}`)
+			gctx.Writer.Write([]byte(`], "deleted": []}`))
 			gctx.Writer.Flush()
 			return
 		}
 
-		gctx.Writer.WriteString(`], "deleted": [`)
+		gctx.Writer.Write([]byte(`], "deleted": [`))
 		//Expired decisions
 		err = writeStartupDecisions(gctx, filters, c.DBClient.QueryExpiredDecisionsWithFilters)
 		if err != nil {
 			log.Errorf("failed sending expired decisions for startup: %v", err)
-			gctx.Writer.WriteString(`]}`)
+			gctx.Writer.Write([]byte(`]}`))
 			gctx.Writer.Flush()
 			return
 		}
 
-		gctx.Writer.WriteString(`]}`)
+		gctx.Writer.Write([]byte(`]}`))
 		gctx.Writer.Flush()
 	} else {
 		err = writeDeltaDecisions(gctx, filters, bouncerInfo.LastPull, c.DBClient.QueryNewDecisionsSinceWithFilters)
 		if err != nil {
 			log.Errorf("failed sending new decisions for delta: %v", err)
-			gctx.Writer.WriteString(`], "deleted": []}`)
+			gctx.Writer.Write([]byte(`], "deleted": []}`))
 			gctx.Writer.Flush()
 			return
 		}
 
-		gctx.Writer.WriteString(`], "deleted": [`)
+		gctx.Writer.Write([]byte(`], "deleted": [`))
 
 		err = writeDeltaDecisions(gctx, filters, bouncerInfo.LastPull, c.DBClient.QueryExpiredDecisionsSinceWithFilters)
 
 		if err != nil {
 			log.Errorf("failed sending expired decisions for delta: %v", err)
-			gctx.Writer.WriteString(`]}`)
+			gctx.Writer.Write([]byte(`]}`))
 			gctx.Writer.Flush()
 			return
 		}
 
-		gctx.Writer.WriteString(`]}`)
+		gctx.Writer.Write([]byte(`]}`))
 		gctx.Writer.Flush()
 	}
 
