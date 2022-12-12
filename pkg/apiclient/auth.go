@@ -3,7 +3,6 @@ package apiclient
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
 	"time"
 
 	//"errors"
@@ -249,8 +248,8 @@ func cloneRequest(r *http.Request) *http.Request {
 	if r.Body != nil {
 		var b bytes.Buffer
 		b.ReadFrom(r.Body)
-		r.Body = ioutil.NopCloser(&b)
-		r2.Body = ioutil.NopCloser(bytes.NewReader(b.Bytes()))
+		r.Body = io.NopCloser(&b)
+		r2.Body = io.NopCloser(bytes.NewReader(b.Bytes()))
 	}
 	return r2
 }
