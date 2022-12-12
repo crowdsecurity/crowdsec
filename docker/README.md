@@ -139,13 +139,13 @@ gathers all signals from agents and communicates with the `central API`.
 
 ## Register a new agent with LAPI
 
-Without TLS:
+Without TLS authentication:
 
 ```shell
 docker exec -it crowdsec_lapi_container_name cscli machines add agent_user_name --password agent_password
 ```
 
-With TLS:
+With TLS authentication:
 
 Agents are automatically registered and don't need a username or password. The
 agents' names are derived from the IP address from which they connect.
@@ -171,7 +171,7 @@ https://docs.crowdsec.net/docs/user_guides/bouncers_configuration/
 
 ### Automatic Bouncer Registration
 
-Without TLS:
+Without TLS authentication:
 
 You can register bouncers with the crowdsec container at startup, using environment variables or Docker secrets. You cannot use this process to update an existing bouncer without first deleting it.
 
@@ -181,7 +181,7 @@ To use Docker secrets, the secret should be named `bouncer_key_<name>` with a co
 
 A bouncer key can be any string but we recommend an alphanumeric value for consistency with the crowdsec-generated keys and to avoid problems with escaping special characters.
 
-With TLS:
+With TLS authentication:
 
 Bouncers are automatically registered and don't need an API key. The
 bouncers' names are derived from the IP address from which they connect.
