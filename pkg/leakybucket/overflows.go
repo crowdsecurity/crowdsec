@@ -30,7 +30,6 @@ func truncate(values []string, contextValueLen int) (string, error) {
 		if len(ret) <= contextValueLen {
 			break
 		}
-		log.Infof("NEED TO STRIP : len(ret) = %d", len(ret))
 		// if there is only 1 value left and that the size is too big, truncate it
 		if len(values) == 1 {
 			valueToTruncate := values[0]
@@ -42,13 +41,11 @@ func truncate(values []string, contextValueLen int) (string, error) {
 			// if there is multiple value inside, just remove the last one
 			values = values[:len(values)-1]
 		}
-		log.Infof("NEW VALUES: %+v", values)
 		valueByte, err = json.Marshal(values)
 		if err != nil {
 			return "", fmt.Errorf("unable to dump metas: %s", err)
 		}
 		ret = string(valueByte)
-		log.Infof("NEW RET: %+v (%d)", ret, len(ret))
 	}
 	return ret, nil
 }
