@@ -158,11 +158,11 @@ test: goversion
 
 .PHONY: localstack
 localstack:
-	docker-compose -f tests/localstack/docker-compose.yml up
+	docker compose -f tests/localstack/docker-compose.yml up
 
 .PHONY: localstack-stop
 localstack-stop:
-	docker-compose -f tests/localstack/docker-compose.yml down
+	docker compose -f tests/localstack/docker-compose.yml down
 
 package-common:
 	@echo "Building Release to dir $(RELDIR)"
