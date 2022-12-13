@@ -109,8 +109,8 @@ func smokeHandler(req *http.Request) *http.Response {
 	response, ok := smokeResponses[requestedIP]
 	if !ok {
 		return &http.Response{
-			StatusCode: http.StatusForbidden,
-			Body:       nil,
+			StatusCode: http.StatusNotFound,
+			Body:       io.NopCloser(strings.NewReader(`{"message": "IP address information not found"}`)),
 			Header:     make(http.Header),
 		}
 	}
