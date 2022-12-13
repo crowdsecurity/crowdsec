@@ -20,6 +20,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -231,6 +232,7 @@ func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
 }
 
 // LoadConfig returns a configuration parsed from configuration file
+// XXX better name/description
 func LoadConfig(cConfig *csconfig.Config) error {
 	cConfig.Common.LogLevel = newLogLevel(cConfig.Common.LogLevel, flags)
 
@@ -322,6 +324,9 @@ func exitWithCode(exitCode int, err error) {
 var crowdsecT0 time.Time
 
 func main() {
+	// some features can require configuration or command-line options,
+	// so wwe need to parse them asap. we'll load from feature.yaml later.
+	fflag.CrowdsecFeatures.SetFromEnv("CROWDSEC_FEATURE_", log.New())
 	crowdsecT0 = time.Now()
 
 	defer types.CatchPanic("crowdsec/main")

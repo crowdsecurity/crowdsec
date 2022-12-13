@@ -18,6 +18,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
 
 var bincoverTesting = ""
@@ -130,6 +131,9 @@ var (
 )
 
 func main() {
+	// some features can require configuration or command-line options,
+	// so we need to parse them asap. we'll load from feature.yaml later.
+	fflag.CrowdsecFeatures.SetFromEnv("CROWDSEC_FEATURE_", log.New())
 
 	var rootCmd = &cobra.Command{
 		Use:   "cscli",
