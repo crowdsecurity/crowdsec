@@ -113,26 +113,28 @@ func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 
 		alertDecisionsTable(color.Output, alert)
 
-		fmt.Printf("\n - Context  :\n")
-		sort.Slice(alert.Meta, func(i, j int) bool {
-			return alert.Meta[i].Key < alert.Meta[j].Key
-		})
-		table := newTable(color.Output)
-		table.SetRowLines(false)
-		table.SetHeaders("Key", "Value")
-		for _, meta := range alert.Meta {
-			var valSlice []string
-			if err := json.Unmarshal([]byte(meta.Value), &valSlice); err != nil {
-				return fmt.Errorf("unknown context value type '%s' : %s", meta.Value, err)
+		if len(alert.Meta) > 0 {
+			fmt.Printf("\n - Context  :\n")
+			sort.Slice(alert.Meta, func(i, j int) bool {
+				return alert.Meta[i].Key < alert.Meta[j].Key
+			})
+			table := newTable(color.Output)
+			table.SetRowLines(false)
+			table.SetHeaders("Key", "Value")
+			for _, meta := range alert.Meta {
+				var valSlice []string
+				if err := json.Unmarshal([]byte(meta.Value), &valSlice); err != nil {
+					return fmt.Errorf("unknown context value type '%s' : %s", meta.Value, err)
+				}
+				for _, value := range valSlice {
+					table.AddRow(
+						meta.Key,
+						value,
+					)
+				}
 			}
-			for _, value := range valSlice {
-				table.AddRow(
-					meta.Key,
-					value,
-				)
-			}
+			table.Render()
 		}
-		table.Render()
 
 		if withDetail {
 			fmt.Printf("\n - Events  :\n")
