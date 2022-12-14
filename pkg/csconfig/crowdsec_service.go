@@ -166,23 +166,26 @@ func (c *Config) LoadCrowdsec() error {
 		return errors.Wrap(err, "while loading hub")
 	}
 
-	yamlFile, err := os.ReadFile(c.Crowdsec.ConsoleContextPath)
-	if err != nil {
-		return fmt.Errorf("reading console context file '%s': %s", c.Crowdsec.ConsoleContextPath, err)
-	}
 	c.Crowdsec.ContextToSend = make(map[string][]string, 0)
-	err = yaml.Unmarshal(yamlFile, c.Crowdsec.ContextToSend)
-	if err != nil {
-		return fmt.Errorf("unmarshaling labels console config file '%s': %s", DefaultContextConfigFilePath, err)
-	}
+	yamlFile, err := os.ReadFile(c.Crowdsec.ConsoleContextPath)
 
-	if c.Crowdsec.ConsoleContextValueLength == 0 {
-		log.Debugf("No console context value length provided, using default: %d", maxContextValueLen)
-		c.Crowdsec.ConsoleContextValueLength = maxContextValueLen
-	}
-	if c.Crowdsec.ConsoleContextValueLength > maxContextValueLen {
-		log.Debugf("Provided console context value length (%d) is higher than the maximum, using default: %d", c.Crowdsec.ConsoleContextValueLength, maxContextValueLen)
-		c.Crowdsec.ConsoleContextValueLength = maxContextValueLen
+	if err == nil {
+		err = yaml.Unmarshal(yamlFile, c.Crowdsec.ContextToSend)
+		if err != nil {
+			return fmt.Errorf("unmarshaling labels console config file '%s': %s", DefaultContextConfigFilePath, err)
+		}
+
+		if c.Crowdsec.ConsoleContextValueLength == 0 {
+			log.Debugf("No console context value length provided, using default: %d", maxContextValueLen)
+			c.Crowdsec.ConsoleContextValueLength = maxContextValueLen
+		}
+		if c.Crowdsec.ConsoleContextValueLength > maxContextValueLen {
+			log.Debugf("Provided console context value length (%d) is higher than the maximum, using default: %d", c.Crowdsec.ConsoleContextValueLength, maxContextValueLen)
+			c.Crowdsec.ConsoleContextValueLength = maxContextValueLen
+		}
+	} else {
+		//we avoid logging here, as the logger is not yet initialized and it might be messy
+		log.Debugf("unable to load console context file '%s': %s", DefaultContextConfigFilePath, err)
 	}
 
 	return nil
