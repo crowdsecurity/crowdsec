@@ -90,6 +90,12 @@ cscli_if_clean() {
 
 #-----------------------------------#
 
+if [ -n "$CERT_FILE" ] || [ -n "$KEY_FILE" ] || [ -n "$CACERT_FILE" ]; then
+    echo "Cannot start crowdsec container: the variables CERT_FILE, KEY_FILE and CACERT_FILE" >&2
+    echo "are not supported since 1.4.4, please replace them with the LAPI_* and CLIENT_* equivalents." >&2
+    exit 1
+fi
+
 # Check and prestage databases
 for geodb in GeoLite2-ASN.mmdb GeoLite2-City.mmdb; do
     # We keep the pre-populated geoip databases in /staging instead of /var,
@@ -122,37 +128,39 @@ elif [ -n "$USE_WAL" ] && isfalse "$USE_WAL"; then
     conf_set '.db_config.use_wal = false'
 fi
 
-# regenerate local agent credentials (ignore if agent is disabled)
-if isfalse "$DISABLE_AGENT"; then
-    if isfalse "$DISABLE_LOCAL_API"; then
-        echo "Regenerate local agent credentials"
-        cscli machines delete "$CUSTOM_HOSTNAME" 2>/dev/null || true
-        cscli machines add "$CUSTOM_HOSTNAME" --auto --url "$LOCAL_API_URL"
-    fi
+# regenerate local agent credentials (even if agent is disabled, cscli needs a
+# connection to the API)
+cscli machines delete "$CUSTOM_HOSTNAME" 2>/dev/null || true
+if isfalse "$DISABLE_LOCAL_API" && isfalse "$USE_TLS"; then
+    echo "Regenerate local agent credentials"
+    cscli machines add "$CUSTOM_HOSTNAME" --auto --url "$LOCAL_API_URL"
+fi
 
-    lapi_credentials_path=$(conf_get '.api.client.credentials_path')
+lapi_credentials_path=$(conf_get '.api.client.credentials_path')
 
-    # we only use the envvars that are actually defined
-    # in case of persistent configuration
+# we only use the envvars that are actually defined
+# in case of persistent configuration
+conf_set '
+    with(select(strenv(LOCAL_API_URL)!=""); .url = strenv(LOCAL_API_URL)) |
+    with(select(strenv(AGENT_USERNAME)!=""); .login = strenv(AGENT_USERNAME)) |
+    with(select(strenv(AGENT_PASSWORD)!=""); .password = strenv(AGENT_PASSWORD))
+    ' "$lapi_credentials_path"
+
+if istrue "$USE_TLS"; then
     conf_set '
-        with(select(strenv(LOCAL_API_URL)!=""); .url = strenv(LOCAL_API_URL)) |
-        with(select(strenv(AGENT_USERNAME)!=""); .login = strenv(AGENT_USERNAME)) |
-        with(select(strenv(AGENT_PASSWORD)!=""); .password = strenv(AGENT_PASSWORD))
-        ' "$lapi_credentials_path"
-
-    if istrue "$USE_TLS"; then
-        conf_set '
-            with(select(strenv(CACERT_FILE)!=""); .ca_cert_path = strenv(CACERT_FILE)) |
-            with(select(strenv(KEY_FILE)!=""); .key_path = strenv(KEY_FILE)) |
-            with(select(strenv(CERT_FILE)!=""); .cert_path = strenv(CERT_FILE))
-        ' "$lapi_credentials_path"
-    else
-        conf_set '
-            del(.ca_cert_path) |
-            del(.key_path) |
-            del(.cert_path)
-        ' "$lapi_credentials_path"
-    fi
+        with(select(strenv(CLIENT_CACERT_FILE)!=""); .ca_cert_path = strenv(CLIENT_CACERT_FILE)) |
+        with(select(.ca_cert_path=="" or .ca_cert_path==null); .ca_cert_path = "/etc/ssl/crowdsec-client/ca.pem") |
+        with(select(strenv(CLIENT_KEY_FILE)!=""); .key_path = strenv(CLIENT_KEY_FILE)) |
+        with(select(.key_path=="" or .key_path==null); .key_path = "/etc/ssl/crowdsec-client/key.pem") |
+        with(select(strenv(CLIENT_CERT_FILE)!=""); .cert_path = strenv(CLIENT_CERT_FILE)) |
+        with(select(.cert_path=="" or .cert_path==null); .cert_path = "/etc/ssl/crowdsec-client/cert.pem")
+    ' "$lapi_credentials_path"
+else
+    conf_set '
+        del(.ca_cert_path) |
+        del(.key_path) |
+        del(.cert_path)
+    ' "$lapi_credentials_path"
 fi
 
 if isfalse "$DISABLE_LOCAL_API"; then
@@ -204,9 +212,12 @@ if istrue "$USE_TLS"; then
     agents_allowed_yaml=$(csv2yaml "$AGENTS_ALLOWED_OU") \
     bouncers_allowed_yaml=$(csv2yaml "$BOUNCERS_ALLOWED_OU") \
     conf_set '
-        with(select(strenv(CACERT_FILE)!=""); .api.server.tls.ca_cert_path = strenv(CACERT_FILE)) |
-        with(select(strenv(CERT_FILE)!=""); .api.server.tls.cert_file = strenv(CERT_FILE)) |
-        with(select(strenv(KEY_FILE)!=""); .api.server.tls.key_file = strenv(KEY_FILE)) |
+        with(select(strenv(LAPI_CACERT_FILE)!=""); .api.server.tls.ca_cert_path = strenv(LAPI_CACERT_FILE)) |
+        with(select(.api.server.tls.ca_cert_path=="" or .api.server.tls.ca_cert_path==null); .api.server.tls.ca_cert_path = "/etc/ssl/crowdsec-lapi/ca.pem") |
+        with(select(strenv(LAPI_CERT_FILE)!=""); .api.server.tls.cert_file = strenv(LAPI_CERT_FILE)) |
+        with(select(.api.server.tls.cert_file=="" or .api.server.tls.cert_file==null); .api.server.tls.cert_file = "/etc/ssl/crowdsec-lapi/cert.pem") |
+        with(select(strenv(LAPI_KEY_FILE)!=""); .api.server.tls.key_file = strenv(LAPI_KEY_FILE)) |
+        with(select(.api.server.tls.key_file=="" or .api.server.tls.key_file==null); .api.server.tls.key_file = "/etc/ssl/crowdsec-lapi/key.pem") |
         with(select(strenv(BOUNCERS_ALLOWED_OU)!=""); .api.server.tls.bouncers_allowed_ou = env(bouncers_allowed_yaml)) |
         with(select(strenv(AGENTS_ALLOWED_OU)!=""); .api.server.tls.agents_allowed_ou = env(agents_allowed_yaml)) |
         ... comments=""
