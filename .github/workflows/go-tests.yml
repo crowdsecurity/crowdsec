@@ -23,7 +23,6 @@ on:
 env:
   RICHGO_FORCE_COLOR: 1
   AWS_HOST: localstack
-  SERVICES: cloudwatch,logs,kinesis
   # these are to mimic aws config
   AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
   AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
@@ -43,17 +42,14 @@ jobs:
     runs-on: ubuntu-latest
     services:
       localstack:
-        image: localstack/localstack:0.13.3
+        image: localstack/localstack:1.3.0
         ports:
         - 4566:4566  # Localstack exposes all services on the same port
         env:
-          SERVICES: ${{ env.SERVICES }}
           DEBUG: ""
-          DATA_DIR: ""
           LAMBDA_EXECUTOR: ""
           KINESIS_ERROR_PROBABILITY: ""
           DOCKER_HOST: unix:///var/run/docker.sock
-          HOST_TMP_FOLDER: "/tmp"
           KINESIS_INITIALIZE_STREAMS: ${{ env.KINESIS_INITIALIZE_STREAMS }}
           HOSTNAME_EXTERNAL: ${{ env.AWS_HOST }}  # Required so that resource urls are provided properly
           # e.g sqs url will get localhost if we don't set this env to map our service
@@ -64,7 +60,7 @@ jobs:
           --health-timeout=5s
           --health-retries=3
       zoo1:
-        image: confluentinc/cp-zookeeper:7.1.1
+        image: confluentinc/cp-zookeeper:7.3.0
         ports:
           - "2181:2181"
         env:
