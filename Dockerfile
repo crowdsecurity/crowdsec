@@ -32,7 +32,7 @@ COPY --from=build /usr/local/bin/cscli /usr/local/bin/cscli
 COPY --from=build /go/src/crowdsec/docker/docker_start.sh /
 COPY --from=build /go/src/crowdsec/docker/config.yaml /staging/etc/crowdsec/config.yaml
 
-# NOTE: setting default values here will overwrite the ones set in config.yaml
+# NOTE: setting default values here would overwrite the ones set in config.yaml
 #       every time the container is started. We set the default in docker/config.yaml
 #       and document them in docker/README.md, but keep the variables empty here.
 
@@ -68,11 +68,23 @@ ENV AGENT_PASSWORD=
 # TLS setup ----------------------------------- #
 
 ENV USE_TLS=false
+
+ENV LAPI_CACERT_FILE=
+ENV LAPI_CERT_FILE=
+ENV LAPI_KEY_FILE=
+
+ENV CLIENT_CACERT_FILE=
+ENV CLIENT_CERT_FILE=
+ENV CLIENT_KEY_FILE=
+
+# deprecated in favor of LAPI_*
 ENV CACERT_FILE=
 ENV CERT_FILE=
 ENV KEY_FILE=
+
 # comma-separated list of allowed OU values for TLS bouncer certificates
 ENV BOUNCERS_ALLOWED_OU=
+
 # comma-separated list of allowed OU values for TLS agent certificates
 ENV AGENTS_ALLOWED_OU=
 
