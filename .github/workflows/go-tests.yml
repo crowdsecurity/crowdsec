@@ -124,6 +124,18 @@ jobs:
         fetch-depth: 0
         submodules: false
 
+    - name: Cache Go modules
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+          ~/Library/Caches/go-build
+          %LocalAppData%\go-build
+        key: ${{ runner.os }}-${{ matrix.go-version }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.go-version }}-go-
+
     - name: Build and run tests
       run: |
         go install github.com/ory/go-acc@v0.2.8
