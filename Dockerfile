@@ -32,7 +32,7 @@ COPY --from=build /usr/local/bin/cscli /usr/local/bin/cscli
 COPY --from=build /go/src/crowdsec/docker/docker_start.sh /
 COPY --from=build /go/src/crowdsec/docker/config.yaml /staging/etc/crowdsec/config.yaml
 
-# NOTE: setting default values here will overwrite the ones set in config.yaml
+# NOTE: setting default values here would overwrite the ones set in config.yaml
 #       every time the container is started. We set the default in docker/config.yaml
 #       and document them in docker/README.md, but keep the variables empty here.
 
