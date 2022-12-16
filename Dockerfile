@@ -77,6 +77,11 @@ ENV CLIENT_CACERT_FILE=
 ENV CLIENT_CERT_FILE=
 ENV CLIENT_KEY_FILE=
 
+# deprecated in favor of LAPI_*
+ENV CACERT_FILE=
+ENV CERT_FILE=
+ENV KEY_FILE=
+
 # comma-separated list of allowed OU values for TLS bouncer certificates
 ENV BOUNCERS_ALLOWED_OU=
 

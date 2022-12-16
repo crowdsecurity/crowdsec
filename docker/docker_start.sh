@@ -91,9 +91,14 @@ cscli_if_clean() {
 #-----------------------------------#
 
 if [ -n "$CERT_FILE" ] || [ -n "$KEY_FILE" ] || [ -n "$CACERT_FILE" ]; then
-    echo "Cannot start crowdsec container: the variables CERT_FILE, KEY_FILE and CACERT_FILE" >&2
-    echo "are not supported since 1.4.4, please replace them with the LAPI_* and CLIENT_* equivalents." >&2
-    exit 1
+    printf '%b' '\033[0;33m'
+    echo "Warning: the variables CERT_FILE, KEY_FILE and CACERT_FILE have been deprecated." >&2
+    echo "Please use LAPI_CERT_FILE, LAPI_KEY_FILE and LAPI_CACERT_FILE insted." >&2
+    echo "The old variables will be removed in a future release." >&2
+    printf '%b' '\033[0m'
+    LAPI_CERT_FILE=${LAPI_CERT_FILE:-$CERT_FILE}
+    LAPI_KEY_FILE=${LAPI_KEY_FILE:-$KEY_FILE}
+    LAPI_CACERT_FILE=${LAPI_CACERT_FILE:-$CACERT_FILE}
 fi
 
 # Check and prestage databases
