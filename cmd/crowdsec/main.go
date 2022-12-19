@@ -5,6 +5,7 @@ import (
 	"fmt"
 	_ "net/http/pprof"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
@@ -297,6 +298,23 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		return err
 	}
 
+	featurePath := filepath.Join(cConfig.ConfigPaths.ConfigDir, "feature.yaml")
+	logger := log.StandardLogger()
+	if err := fflag.CrowdsecFeatures.SetFromYamlFile(featurePath, logger); err != nil {
+		return fmt.Errorf("file %s: %s", featurePath, err)
+	}
+	enabledFeatures := []string{}
+	featureStatus, err := fflag.CrowdsecFeatures.GetFeatureStatus()
+	if err != nil {
+		return fmt.Errorf("unable to get feature status: %s", err)
+	}
+	for feature, enabled := range featureStatus {
+		if enabled {
+			enabledFeatures = append(enabledFeatures, feature)
+		}
+	}
+	log.Infof("Enabled features: %s", strings.Join(enabledFeatures, ", "))
+
 	return nil
 }
 
@@ -326,7 +344,7 @@ var crowdsecT0 time.Time
 func main() {
 	// some features can require configuration or command-line options,
 	// so wwe need to parse them asap. we'll load from feature.yaml later.
-	fflag.CrowdsecFeatures.SetFromEnv("CROWDSEC_FEATURE_", log.New())
+	fflag.CrowdsecFeatures.SetFromEnv("CROWDSEC_FEATURE_", log.StandardLogger())
 	crowdsecT0 = time.Now()
 
 	defer types.CatchPanic("crowdsec/main")
