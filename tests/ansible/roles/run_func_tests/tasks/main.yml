@@ -45,7 +45,7 @@
     pattern: "*.bats"
   register: testfiles
 
-- name: "Run BATS tests for source build"
+- name: "Run BATS: functional tests for source build"
   become: false
   block:
     - name: "Run test scripts"
@@ -74,7 +74,7 @@
   when:
     - (package_testing is not defined) or (package_testing in ['', 'false', 'False'])
 
-- name: "Run BATS tests for binary package"
+- name: "Run BATS: functional tests for binary package"
   become: true
   block:
     - name: "Run test scripts"

@@ -1,0 +1,88 @@
+# TODO: windows, use_time_machine, event support (see https://hub.crowdsec.net/author/crowdsecurity/collections/iis)
+
+---
+version: 1.0
+
+detect:
+  apache2:
+    when:
+      - ProcessRunning("apache2")
+    install:
+      collections:
+        - crowdsecurity/apache2
+    datasource:
+      source: file
+      labels:
+        type: apache2
+      filenames:
+        - /var/log/apache2/*.log
+        - /var/log/*http*/*.log
+        - /var/log/httpd/*.log
+
+  apache2-systemd:
+    when:
+      - UnitFound("apache2.service")
+      - OS.ID != "centos"
+    install:
+      collections:
+        - crowdsecurity/apache2
+    datasource:
+      source: journalctl
+      journalctl_filter:
+        - "_SYSTEMD_UNIT=mock-apache2.service"
+      labels:
+        type: apache2
+
+  apache2-systemd-centos:
+    when:
+      - UnitFound("httpd.service")
+      - OS.ID == "centos"
+    install:
+      collections:
+        - crowdsecurity/apache2
+    datasource:
+      source: journalctl
+      journalctl_filter:
+        - "_SYSTEMD_UNIT=httpd.service"
+
+  ssh-systemd:
+    when:
+      - UnitFound("ssh.service") or UnitFound("ssh.socket")
+    install:
+      collections:
+        - crowdsecurity/apache2
+    datasource:
+      source: journalctl
+      journalctl_filter:
+        - "_SYSTEMD_UNIT=ssh.service"
+      labels:
+        type: syslog
+
+  linux:
+    when:
+      - OS.Family == "linux"
+    install:
+      collections:
+        - crowdsecurity/linux
+    datasource:
+      source: file
+      labels:
+        type: syslog
+      filenames:
+        - /var/log/syslog
+        - /var/log/kern.log
+        - /var/log/messages
+
+  freebsd:
+    when:
+      - OS.Family == "freebsd"
+    install:
+      collections:
+        - crowdsecurity/freebsd
+
+  windows:
+    when:
+      - OS.Family == "windows"
+    install:
+      collections:
+        - crowdsecurity/windows

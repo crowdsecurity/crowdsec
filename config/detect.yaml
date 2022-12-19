@@ -1,0 +1,480 @@
+---
+version: 1.0
+
+detect:
+
+  #
+  # crowdsecurity/apache2
+  #
+
+  # XXX some distro is using this path?
+  #      - /var/log/*http*/*.log
+
+  apache2-systemd-deb:
+    when:
+      - UnitFound("apache2.service")
+      - PathExists("/etc/debian_version")
+    install:
+      collections:
+        - crowdsecurity/apache2
+    datasource:
+      source: file
+      filenames:
+        - /var/log/apache2/*.log
+      labels:
+        type: apache2
+
+  apache2-systemd-rpm:
+    when:
+      - UnitFound("httpd.service")
+      - PathExists("/etc/redhat-release")
+    install:
+      collections:
+        - crowdsecurity/apache2
+    datasource:
+      source: file
+      filenames:
+        - /var/log/httpd/*.log
+        # XXX /var/log/*http*/*.log
+      labels:
+        type: apache2
+
+  #
+  # crowdsecurity/asterisk
+  #
+
+  asterisk-systemd:
+    when:
+      - UnitFound("asterisk.service")
+    install:
+      collections:
+        - crowdsecurity/asterisk
+    datasource:
+      source: file
+      labels:
+        type: asterisk
+      filenames:
+        - /var/log/asterisk/*.log
+
+  #
+  # crowdsecurity/caddy
+  #
+
+  caddy-systemd:
+    when:
+      - UnitFound("caddy.service")
+    install:
+      collections:
+        - crowdsecurity/caddy
+    datasource:
+      source: file
+      labels:
+        type: caddy
+      filenames:
+        - /var/log/caddy/*.log
+
+  #
+  # crowdsecurity/dovecot
+  #
+
+  dovecot-systemd:
+    when:
+      - UnitFound("dovecot.service")
+    install:
+      collections:
+        - crowdsecurity/dovecot
+    datasource:
+      source: file
+      labels:
+        type: syslog
+      filenames:
+        - /var/log/mail.log
+
+  #
+  # LePresidente/emby
+  #
+
+  emby-systemd:
+    when:
+      - UnitFound("emby-server.service")
+    install:
+      collections:
+        - LePresidente/emby
+    datasource:
+      source: file
+      labels:
+        type: emby
+      filenames:
+        - /var/log/embyserver.txt
+
+  #
+  # crowdsecurity/endlessh
+  #
+
+  endlessh-systemd:
+    when:
+      - UnitFound("endlessh.service")
+    install:
+      collections:
+        - crowdsecurity/endlessh
+    datasource:
+      source: journalctl
+      labels:
+        type: syslog
+      # XXX this? or /var/log/syslog?
+      journalctl_filter:
+        - "_SYSTEMD_UNIT=endlessh.service"
+
+  #
+  # crowdsecurity/gitea
+  #
+
+  # XXX untested
+
+  gitea-systemd:
+    when:
+      - UnitFound("gitea.service")
+    install:
+      collections:
+        - crowdsecurity/gitea
+    datasource:
+      source: file
+      labels:
+        type: gitea
+      filenames:
+        - /var/log/gitea.log
+
+  #
+  # crowdsecurity/haproxy
+  #
+
+  haproxy-systemd:
+    when:
+      - UnitFound("haproxy.service")
+    install:
+      collections:
+        - crowdsecurity/haproxy
+    datasource:
+      source: file
+      labels:
+        type: haproxy
+      filenames:
+        - /var/log/haproxy/*.log
+
+  #
+  # firewallservices/lemonldap-ng
+  #
+
+  lemonldap-ng-systemd:
+    when:
+      - UnitFound("lemonldap-ng-fastcgi-server.service")
+    install:
+      collections:
+        - firewallservices/lemonldap-ng
+    #datasource:
+    #  # XXX todo where are the logs?
+    #  labels:
+    #    type: syslog
+
+  #
+  # crowdsecurity/mariadb
+  #
+
+  mariadb-systemd:
+    when:
+      - UnitFound("mariadb.service")
+    install:
+      collections:
+        - crowdsecurity/mariadb
+    datasource:
+      source: file
+      labels:
+        type: mysql
+      filenames:
+        - /var/log/mysql/error.log
+
+  #
+  # crowdsecurity/mysql
+  #
+
+  mysql-systemd:
+    when:
+      - UnitFound("mysql.service")
+    install:
+      collections:
+        - crowdsecurity/mysql
+    datasource:
+      source: file
+      labels:
+        type: mysql
+      filenames:
+        - /var/log/mysql/error.log
+
+  #
+  # crowdsecurity/nginx
+  #
+
+  nginx-systemd:
+    when:
+      - UnitFound("nginx.service")
+    install:
+      collections:
+        - crowdsecurity/nginx
+    datasource:
+      source: file
+      labels:
+        type: nginx
+      filenames:
+        - /var/log/nginx/*.log
+
+  openresty-systemd:
+    when:
+      - UnitFound("openresty.service")
+    install:
+      collections:
+        - crowdsecurity/nginx
+    datasource:
+      source: file
+      labels:
+        type: nginx
+      filenames:
+        - /usr/local/openresty/nginx/logs/*.log
+
+  #
+  # crowdsecurity/odoo
+  #
+
+  odoo-systemd:
+    when:
+      - UnitFound("odoo.service")
+    install:
+      collections:
+        - crowdsecurity/odoo
+    datasource:
+      source: file
+      labels:
+        type: odoo
+      filenames:
+        - /var/log/odoo/*.log
+
+  #
+  # LePresidente/ombi
+  #
+
+  # This only works on deb-based systems. On other distributions, the
+  # application is run from the release tarball and the log location depends on
+  # the location it's run from.
+
+  ombi-systemd:
+    when:
+      - UnitFound("ombi.service")
+      - PathExists("/etc/debian_version")
+    install:
+      collections:
+        - LePresidente/ombi
+    datasource:
+      source: file
+      labels:
+        type: ombi
+      filenames:
+        - /var/log/ombi/log-*.txt
+
+  #
+  # crowdsecurity/pgsql
+  #
+
+  pgsql-systemd-deb:
+    when:
+      - UnitFound("postgresql.service")
+      - PathExists("/etc/debian_version")
+    install:
+      collections:
+        - crowdsecurity/pgsql
+    datasource:
+      source: file
+      labels:
+        type: postgres
+      filenames:
+        - /var/log/postgresql/*.log
+
+  pgsql-systemd-rpm:
+    when:
+      - UnitFound("postgresql.service")
+      - PathExists("/etc/redhat-release")
+    install:
+      collections:
+        - crowdsecurity/pgsql
+    datasource:
+      source: file
+      labels:
+        type: postgres
+      filenames:
+        - /var/lib/pgsql/data/log/*.log
+
+  #
+  # crowdsecurity/postfix
+  #
+
+  postfix-systemd:
+    when:
+      - UnitFound("postfix.service")
+    install:
+      collections:
+        - crowdsecurity/postfix
+    datasource:
+      source: file
+      labels:
+        type: syslog
+      filenames:
+        - /var/log/mail.log
+
+  #
+  # crowdsecurity/proftpd
+  #
+
+  proftpd-systemd:
+    when:
+      - UnitFound("proftpd.service")
+    install:
+      collections:
+        - crowdsecurity/proftpd
+    datasource:
+      source: file
+      labels:
+        type: proftpd
+      filenames:
+        - /var/log/proftpd/*.log
+
+  #
+  # fulljackz/pureftpd
+  #
+
+  pureftpd-systemd:
+    when:
+      - UnitFound("pure-ftpd.service")
+    install:
+      collections:
+        - fulljackz/pureftpd
+    # XXX ?
+    datasource:
+      source: file
+      labels:
+        type: syslog
+      filenames:
+        - /var/log/pure-ftpd/*.log
+
+  #
+  # crowdsecurity/smb
+  #
+
+  smb-systemd:
+    when:
+      # deb -> smbd.service
+      # rpm -> smb.service
+      - UnitFound("smbd.service") or UnitFound("smb.service")
+    install:
+      collections:
+        - crowdsecurity/smb
+    datasource:
+      source: file
+      labels:
+        type: smb
+      filenames:
+        - /var/log/samba*.log
+
+  #
+  # crowdsecurity/sshd
+  #
+
+  sshd-systemd:
+    when:
+      # deb -> ssh.service
+      # rpm -> sshd.service
+      - UnitFound("ssh.service") or UnitFound("sshd.service") or UnitFound("ssh.socket") or UnitFound("sshd.socket")
+    install:
+      collections:
+        - crowdsecurity/sshd
+    datasource:
+      source: file
+      labels:
+        type: syslog
+      filenames:
+        - /var/log/auth.log
+        - /var/log/sshd.log
+        - /var/log/secure
+
+  #
+  # crowdsecurity/suricata
+  #
+
+  suricata-systemd:
+    when:
+      - UnitFound("suricata.service")
+    install:
+      collections:
+        - crowdsecurity/suricata
+    datasource:
+      source: file
+      labels:
+        type: suricata-evelogs
+      filenames:
+        - /var/log/suricata/eve.json
+
+  #
+  # crowdsecurity/vsftpd
+  #
+
+  vsftpd-systemd:
+    when:
+      - UnitFound("vsftpd.service")
+    install:
+      collections:
+        - crowdsecurity/vsftpd
+    datasource:
+      source: file
+      labels:
+        type: vsftpd
+      filenames:
+        - /var/log/vsftpd/*.log
+
+  #
+  # Operating Systems
+  #
+
+  linux:
+    when:
+      - OS.Family == "linux"
+    install:
+      collections:
+        - crowdsecurity/linux
+    datasource:
+      source: file
+      labels:
+        type: syslog
+      filenames:
+        - /var/log/syslog
+        - /var/log/kern.log
+        - /var/log/messages
+
+  freebsd:
+    when:
+      - OS.Family == "freebsd"
+    install:
+      collections:
+        - crowdsecurity/freebsd
+
+  windows:
+    when:
+      - OS.Family == "windows"
+    install:
+      collections:
+        - crowdsecurity/windows
+
+  #
+  # anti-lockout
+  #
+
+  whitelists:
+    install:
+      parsers:
+        - crowdsecurity/whitelists

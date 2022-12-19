@@ -134,6 +134,7 @@ func GetItemMap(itemType string) map[string]Item {
 	var m map[string]Item
 	var ok bool
 
+	log.Tracef("hubIdx: %v", hubIdx)
 	if m, ok = hubIdx[itemType]; !ok {
 		return nil
 	}
@@ -178,6 +179,7 @@ func GetItemByPath(itemType string, itemPath string) (*Item, error) {
 }
 
 func GetItem(itemType string, itemName string) *Item {
+	log.Tracef("getting hub item %s: %s", itemType, itemName)
 	if m, ok := GetItemMap(itemType)[itemName]; ok {
 		return &m
 	}

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 COLLECTIONS=false
 set -e
@@ -7,11 +7,11 @@ set -e
 . /usr/share/debconf/confmodule
 
 if [ "$1" = configure ]; then
-    if [[ ! -d /var/lib/crowdsec/data ]]; then
+    if [ ! -d /var/lib/crowdsec/data ]; then
         mkdir -p /var/lib/crowdsec/data
     fi
 
-    if [[ -d /var/lib/crowdsec/backup ]]; then
+    if [ -d /var/lib/crowdsec/backup ]; then
         cscli config restore /var/lib/crowdsec/backup/backup.config
         rm -rf /var/lib/crowdsec/backup
         /usr/bin/cscli hub update
@@ -19,29 +19,27 @@ if [ "$1" = configure ]; then
         systemctl start crowdsec
     fi
 
-    . /usr/share/crowdsec/wizard.sh -n
-    if ! [[ -f /etc/crowdsec/acquis.yaml ]]; then
-        echo Creating /etc/crowdsec/acquis.yaml
-        set +e
-        SILENT=true detect_services
-        SILENT=true TMP_ACQUIS_FILE_SKIP=skip genacquisition
-        set -e
-        COLLECTIONS=true
+    if ! find /etc/crowdsec/acquis.d -maxdepth 1 -type f -name '*' 2>/dev/null | grep -q '.'; then
+        echo Creating /etc/crowdsec/acquis.d
+        mkdir -p /etc/crowdsec/acquis.d
+        cscli setup detect >/etc/crowdsec/.setup.yaml
+        cscli setup install-hub /etc/crowdsec/.setup.yaml
+        cscli setup datasources /etc/crowdsec/.setup.yaml --to-dir /etc/crowdsec/acquis.d
     fi
 
-    if [[ -f /etc/crowdsec/local_api_credentials.yaml ]] ; then
+    if [ -f /etc/crowdsec/local_api_credentials.yaml ] ; then
         chmod 600 /etc/crowdsec/local_api_credentials.yaml
     fi
 
-    if [[ -f /etc/crowdsec/online_api_credentials.yaml ]]; then
+    if [ -f /etc/crowdsec/online_api_credentials.yaml ]; then
         chmod 600 /etc/crowdsec/online_api_credentials.yaml
     fi
 
-    if [[ ! -f /etc/crowdsec/local_api_credentials.yaml ]] || [[ ! -f /etc/crowdsec/online_api_credentials.yaml ]]; then
-        if [[ ! -f /etc/crowdsec/local_api_credentials.yaml ]] ; then
+    if [ ! -f /etc/crowdsec/local_api_credentials.yaml ] || [ ! -f /etc/crowdsec/online_api_credentials.yaml ]; then
+        if [ ! -f /etc/crowdsec/local_api_credentials.yaml ] ; then
             install -m 600 /dev/null  /etc/crowdsec/local_api_credentials.yaml
         fi
-        if [[ ! -f /etc/crowdsec/online_api_credentials.yaml ]] ; then
+        if [ ! -f /etc/crowdsec/online_api_credentials.yaml ] ; then
             install -m 600 /dev/null  /etc/crowdsec/online_api_credentials.yaml
         fi
 
