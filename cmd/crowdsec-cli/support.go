@@ -309,7 +309,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				skipLAPI = true
 			}
 
-			if csConfig.API.Server == nil || csConfig.API.Server.OnlineClient.Credentials == nil {
+			if csConfig.API.Server == nil || csConfig.API.Server.OnlineClient == nil || csConfig.API.Server.OnlineClient.Credentials == nil {
 				log.Warn("no CAPI credentials found, skipping CAPI connectivity check")
 				skipCAPI = true
 			}
