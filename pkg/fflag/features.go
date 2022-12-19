@@ -271,19 +271,17 @@ func (fm FeatureMap) SetFromYamlFile(path string, logger *logrus.Logger) error {
 
 // testme
 // Return the list of enabled features (for cscli support dump).
-func EnabledFeatureFlags(fm FeatureMap) ([]string, error) {
-	var enabled []string
+func GetFeatureStatus(fm FeatureMap) (map[string]bool, error) {
+	var err error
+	fstatus := make(map[string]bool)
 
-	for name := range fm {
-		ok, err := fm.IsFeatureEnabled(name)
+	for k := range fm {
+		fstatus[k], err = fm.IsFeatureEnabled(k)
 		if err != nil {
 			return nil, err
 		}
-
-		if ok {
-			enabled = append(enabled, name)
-		}
 	}
 
-	return enabled, nil
+	return fstatus, nil
 }
+

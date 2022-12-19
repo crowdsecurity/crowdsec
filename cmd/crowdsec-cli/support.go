@@ -22,6 +22,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -30,6 +31,7 @@ const (
 	SUPPORT_METRICS_HUMAN_PATH           = "metrics/metrics.human"
 	SUPPORT_METRICS_PROMETHEUS_PATH      = "metrics/metrics.prometheus"
 	SUPPORT_VERSION_PATH                 = "version.txt"
+	SUPPORT_FEATURES_PATH                = "features.txt"
 	SUPPORT_OS_INFO_PATH                 = "osinfo.txt"
 	SUPPORT_PARSERS_PATH                 = "hub/parsers.txt"
 	SUPPORT_SCENARIOS_PATH               = "hub/scenarios.txt"
@@ -88,6 +90,20 @@ func collectVersion() []byte {
 	log.Info("Collecting version")
 	return []byte(cwversion.ShowStr())
 }
+
+func collectFeatures() []byte {
+	log.Info("Collecting feature flags")
+	featStatus, err := fflag.GetFeatureStatus(fflag.CrowdsecFeatures)
+	if err != nil {
+		return []byte(fmt.Sprintf("failed to get feature status: %s", err))
+	}
+	w := bytes.NewBuffer(nil)
+	for k, v := range featStatus {
+		fmt.Fprintf(w, "%s: %v", k, v)
+	}
+	return w.Bytes()
+}
+
 
 func collectOSInfo() ([]byte, error) {
 	log.Info("Collecting OS info")
@@ -264,6 +280,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			var skipHub, skipDB, skipCAPI, skipLAPI, skipAgent bool
 			infos := map[string][]byte{
 				SUPPORT_VERSION_PATH: collectVersion(),
+				SUPPORT_FEATURES_PATH: collectFeatures(),
 			}
 
 			if outFile == "" {
