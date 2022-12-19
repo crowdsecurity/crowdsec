@@ -53,10 +53,10 @@ var (
 )
 
 var (
-	ErrFeatureUnknown      = errors.New("unknown feature flag")
+	ErrFeatureUnknown      = errors.New("unknown feature")
 	ErrFeatureDeprecated   = errors.New("the flag is deprecated")
 	ErrFeatureInvalidValue = errors.New("invalid value (must be 'true' or 'false')")
-	ErrFeatureAlreadySet   = errors.New("feature is already set")
+	ErrFeatureAlreadySet   = errors.New("the feature is already set")
 )
 
 func FeatureDeprecatedError(feat Feature) error {
@@ -114,7 +114,7 @@ func NewFeatureMap(features map[string]Feature) (FeatureMap, error) {
 func (fm FeatureMap) IsFeatureEnabled(featureName string) (bool, error) {
 	feat, ok := fm[featureName]
 	if !ok {
-		return false, fmt.Errorf("Feature flag '%s': %w", featureName, ErrFeatureUnknown)
+		return false, ErrFeatureUnknown
 	}
 
 	if feat.UserEnabled != nil {
@@ -129,25 +129,25 @@ func (fm FeatureMap) SetFeature(featureName string, value bool) error {
 
 	feat, ok := fm[featureName]
 	if !ok {
-		return fmt.Errorf("Feature flag '%s': %w", featureName, ErrFeatureUnknown)
+		return ErrFeatureUnknown
 	}
 
 	// retired feature flags are ignored
 	if feat.Retired {
-		return fmt.Errorf("Feature flag '%s': %w", featureName, FeatureRetiredError(feat))
+		return FeatureRetiredError(feat)
 	}
 
 	// deprecated feature flags are still accepted, but a warning is triggered.
 	// We return an error but set the feature anyway.
 	if feat.Deprecated {
-		ret = fmt.Errorf("Feature flag '%s': %w", featureName, FeatureDeprecatedError(feat))
+		ret = FeatureDeprecatedError(feat)
 	}
 
 	// return error if the feature flag has been set with a different value
 	// (i.e. enabled by environment variable and disabled in config file, the
 	// environment variable takes precedence)
 	if feat.UserEnabled != nil && *feat.UserEnabled != value {
-		return fmt.Errorf("Feature flag '%s': %w to %t", featureName, ErrFeatureAlreadySet, *feat.UserEnabled)
+		return fmt.Errorf("%w to %t", ErrFeatureAlreadySet, *feat.UserEnabled)
 	}
 
 	feat.UserEnabled = &value
@@ -199,11 +199,7 @@ func (fm FeatureMap) SetFromEnv(prefix string, logger *logrus.Logger) error {
 			return err
 		}
 
-		if enable {
-			logger.Infof("Enabled feature '%s' with envvar '%s'", featureName, varName)
-		} else {
-			logger.Infof("Disabled feature '%s' with envvar '%s'", featureName, varName)
-		}
+		logger.Infof("Feature flag: %s=%t (from envvar)", featureName, enable)
 	}
 
 	return nil
@@ -212,8 +208,13 @@ func (fm FeatureMap) SetFromEnv(prefix string, logger *logrus.Logger) error {
 func (fm FeatureMap) SetFromYaml(r io.Reader, logger *logrus.Logger) error {
 	var cfg map[string]bool
 
+	bys, err := io.ReadAll(r)
+	if err != nil {
+		return err
+	}
+
 	// parse config file
-	if err := yaml.NewDecoder(r).Decode(&cfg); err != nil {
+	if err := yaml.Unmarshal(bys, &cfg); err != nil {
 		if !errors.Is(err, io.EOF) {
 			return fmt.Errorf("failed to parse feature flags: %w", err)
 		}
@@ -227,25 +228,21 @@ func (fm FeatureMap) SetFromYaml(r io.Reader, logger *logrus.Logger) error {
 
 		switch {
 		case errors.Is(err, ErrFeatureUnknown):
-			logger.Errorf("Ignored feature '%s': %s", k, err)
+			logger.Errorf("Ignored feature flag '%s': %s", k, err)
 			continue
 		case errors.Is(err, ErrFeatureDeprecated):
 			logger.Warningf("Feature '%s': %s", k, err)
 		case errors.Is(err, ErrFeatureRetired):
-			logger.Errorf("Ignored feature '%s': %s", k, err)
+			logger.Errorf("Ignored feature flag '%s': %s", k, err)
 			continue
 		case errors.Is(err, ErrFeatureAlreadySet):
-			logger.Warningf("Ignored feature '%s': %s", k, err)
+			logger.Warningf("Ignored feature flag %s=%t from config file: %s", k, v, err)
 			continue
 		case err != nil:
 			return err
 		}
 
-		if v {
-			logger.Infof("Enabled feature '%s' with config file", k)
-		} else {
-			logger.Infof("Disabled feature '%s' with config file", k)
-		}
+		logger.Infof("Feature flag: %s=%t (from config file)", k, v)
 	}
 
 	return nil

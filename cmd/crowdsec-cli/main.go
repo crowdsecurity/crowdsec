@@ -56,6 +56,10 @@ func initConfig() {
 	logFormatter := &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true}
 	log.SetFormatter(logFormatter)
 
+	if err = fflag.CrowdsecFeatures.SetFromEnv("CROWDSEC_FEATURE_", log.New()); err != nil {
+		log.Fatalf("failed to set features from env: %s", err)
+	}
+
 	if !inSlice(os.Args[1], NoNeedConfig) {
 		csConfig, err = csconfig.NewConfig(ConfigFilePath, false, false)
 		if err != nil {
@@ -67,6 +71,11 @@ func initConfig() {
 		}
 	} else {
 		csConfig = csconfig.NewDefaultConfig()
+	}
+
+	featurePath := filepath.Join(csConfig.ConfigPaths.ConfigDir, "feature.yaml")
+	if err = fflag.CrowdsecFeatures.SetFromYamlFile(featurePath, log.New()); err != nil {
+		log.Fatalf("File %s: %s", featurePath, err)
 	}
 
 	if csConfig.Cscli == nil {

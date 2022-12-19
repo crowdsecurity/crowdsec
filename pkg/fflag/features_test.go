@@ -132,7 +132,7 @@ func TestIsFeatureEnabled(t *testing.T) {
 		}, {
 			name:        "feature that does not exist",
 			feature:     "will_never_exist",
-			expectedErr: "Feature flag 'will_never_exist': unknown feature flag",
+			expectedErr: "unknown feature",
 		},
 	}
 
@@ -177,7 +177,7 @@ func TestSetFeature(t *testing.T) {
 			feature:        "experimental1",
 			value:          false,
 			expected:       true,
-			expectedSetErr: "Feature flag 'experimental1': feature is already set to true",
+			expectedSetErr: "the feature is already set to true",
 		}, {
 			name:     "disable an experimental feature, explicitly",
 			feature:  "experimental2",
@@ -193,51 +193,50 @@ func TestSetFeature(t *testing.T) {
 			feature:        "bad_idea",
 			value:          true,
 			expected:       true,
-			expectedSetErr: "Feature flag 'bad_idea': the flag is deprecated",
+			expectedSetErr: "the flag is deprecated",
 		}, {
 			name:           "enable a deprecated feature which defaults to true",
 			feature:        "gone_mainstream1",
 			value:          true,
 			expected:       true,
-			expectedSetErr: "Feature flag 'gone_mainstream1': the flag is deprecated",
+			expectedSetErr: "the flag is deprecated",
 		}, {
 			name:           "disable a deprecated feature which defaults to true",
 			feature:        "gone_mainstream2",
 			value:          false,
 			expected:       false,
-			expectedSetErr: "Feature flag 'gone_mainstream2': the flag is deprecated",
+			expectedSetErr: "the flag is deprecated",
 		}, {
 			name:           "enable a feature that will be retired in v2, default true",
 			feature:        "will_be_standard_in_v2",
 			value:          true,
 			expected:       true,
-			expectedSetErr: "Feature flag 'will_be_standard_in_v2': the flag is deprecated: in 2.0 we'll do that by default",
+			expectedSetErr: "the flag is deprecated: in 2.0 we'll do that by default",
 		}, {
 			name:           "enable a feature that will be retired in v2, default false",
 			feature:        "will_be_abandoned_in_v2",
 			value:          true,
 			expected:       true,
-			expectedSetErr: "Feature flag 'will_be_abandoned_in_v2': the flag is deprecated: in 2.0 we'll have a better way to do it",
+			expectedSetErr: "the flag is deprecated: in 2.0 we'll have a better way to do it",
 		}, {
 			name:     "enable a feature that was retired in v1.5, default true",
 			feature:  "was_adopted_in_v1.5",
 			value:    true,
 			expected: true,
-			expectedSetErr: "Feature flag 'was_adopted_in_v1.5': the flag is deprecated: " +
-				"the trinket was implemented in 1.5 with the --funnybunny command line option",
+			expectedSetErr: "the flag is deprecated: the trinket was implemented in 1.5 with the --funnybunny command line option",
 		}, {
 			name:     "enable a feature that was retired in v1.5, default false",
 			feature:  "was_abandoned_in_v1.5",
 			value:    true,
 			expected: false,
-			expectedSetErr: "Feature flag 'was_abandoned_in_v1.5': the flag is deprecated: " +
+			expectedSetErr: "the flag is deprecated: " +
 				"the magic button didn't work as expected and has been removed in 1.5",
 		}, {
 			name:           "enable a feature that does not exist",
 			feature:        "will_never_exist",
 			value:          true,
-			expectedSetErr: "Feature flag 'will_never_exist': unknown feature flag",
-			expectedGetErr: "Feature flag 'will_never_exist': unknown feature flag",
+			expectedSetErr: "unknown feature",
+			expectedGetErr: "unknown feature",
 		},
 	}
 
@@ -280,7 +279,7 @@ func TestSetFromEnv(t *testing.T) {
 			name:        "enable a feature flag",
 			envvar:      "FFLAG_TEST_EXPERIMENTAL1",
 			value:       "true",
-			expectedLog: []string{"Enabled feature 'experimental1' with envvar 'FFLAG_TEST_EXPERIMENTAL1'"},
+			expectedLog: []string{"Feature flag: experimental1=true (from envvar)"},
 		}, {
 			name:        "invalid value (not true or false)",
 			envvar:      "FFLAG_TEST_EXPERIMENTAL1",
@@ -290,23 +289,23 @@ func TestSetFromEnv(t *testing.T) {
 			name:        "feature flag that is unknown",
 			envvar:      "FFLAG_TEST_WILL_NEVER_EXIST",
 			value:       "true",
-			expectedLog: []string{"Ignored envvar 'FFLAG_TEST_WILL_NEVER_EXIST': Feature flag 'will_never_exist': unknown feature"},
+			expectedLog: []string{"Ignored envvar 'FFLAG_TEST_WILL_NEVER_EXIST': unknown feature"},
 		}, {
 			name:   "enable a deprecated feature",
 			envvar: "FFLAG_TEST_BAD_IDEA",
 			value:  "true",
 			expectedLog: []string{
-				"Envvar 'FFLAG_TEST_BAD_IDEA': Feature flag 'bad_idea': the flag is deprecated",
-				"Enabled feature 'bad_idea' with envvar 'FFLAG_TEST_BAD_IDEA'",
+				"Envvar 'FFLAG_TEST_BAD_IDEA': the flag is deprecated",
+				"Feature flag: bad_idea=true (from envvar)",
 			},
 		}, {
 			name:   "enable a feature that was retired (adopted) in v1.5",
 			envvar: "FFLAG_TEST_WAS_ADOPTED_IN_V1.5",
 			value:  "true",
 			expectedLog: []string{
-				"Envvar 'FFLAG_TEST_WAS_ADOPTED_IN_V1.5': Feature flag 'was_adopted_in_v1.5': " +
-					"the flag is deprecated: the trinket was implemented in 1.5 with the --funnybunny " +
-					"command line option",
+				"Envvar 'FFLAG_TEST_WAS_ADOPTED_IN_V1.5': the flag is deprecated: " +
+				"the trinket was implemented in 1.5 with the --funnybunny command line option",
+				"Feature flag: was_adopted_in_v1.5=true (from envvar)",
 			},
 		}, {
 			// this is unlikely to happen, because environment
@@ -315,7 +314,7 @@ func TestSetFromEnv(t *testing.T) {
 			envvar: "FFLAG_TEST_EXPERIMENTAL1",
 			value:  "false",
 			expectedLog: []string{
-				"Ignored envvar 'FFLAG_TEST_EXPERIMENTAL1': Feature flag 'experimental1': feature is already set to true",
+				"Ignored envvar 'FFLAG_TEST_EXPERIMENTAL1': the feature is already set to true",
 			},
 		},
 	}
@@ -355,7 +354,7 @@ func TestSetFromYaml(t *testing.T) {
 		}, {
 			name:        "invalid feature flag name",
 			yml:         "not_a_feature: true",
-			expectedLog: []string{"Ignored feature 'not_a_feature': Feature flag 'not_a_feature': unknown feature flag"},
+			expectedLog: []string{"Ignored feature flag 'not_a_feature': unknown feature"},
 		}, {
 			name:        "invalid value (not true or false)",
 			yml:         "experimental1: maybe",
@@ -363,26 +362,26 @@ func TestSetFromYaml(t *testing.T) {
 		}, {
 			name:        "enable a feature flag",
 			yml:         "experimental1: true",
-			expectedLog: []string{"Enabled feature 'experimental1' with config file"},
+			expectedLog: []string{"Feature flag: experimental1=true (from config file)"},
 		}, {
 			name: "enable a deprecated feature",
 			yml:  "bad_idea: true",
 			expectedLog: []string{
-				"Feature flag 'bad_idea': the flag is deprecated",
-				"Enabled feature 'bad_idea' with config file",
+				"Feature 'bad_idea': the flag is deprecated",
+				"Feature flag: bad_idea=true (from config file)",
 			},
 		}, {
 			name: "enable a feature that was retired (adopted) in v1.5",
 			yml:  "was_adopted_in_v1.5: true",
 			expectedLog: []string{
-				"Feature flag 'was_adopted_in_v1.5': the flag is deprecated: " +
+				"Feature 'was_adopted_in_v1.5': the flag is deprecated: " +
 					"the trinket was implemented in 1.5 with the --funnybunny command line option",
 			},
 		}, {
 			name: "enable a feature flag already set",
 			yml:  "experimental1: false",
 			expectedLog: []string{
-				"Feature flag 'experimental1': feature is already set to true",
+				"Ignored feature flag experimental1=false from config file: the feature is already set to true",
 			},
 		},
 	}
@@ -421,7 +420,7 @@ func TestSetFromYamlFile(t *testing.T) {
 	err = fm.SetFromYamlFile(tmpfile.Name(), logger)
 	require.NoError(t, err)
 
-	cstest.RequireLogContains(t, hook, "Enabled feature 'experimental1' with config file")
+	cstest.RequireLogContains(t, hook, "Feature flag: experimental1=true (from config file)")
 }
 
 func TestGetFeatureStatus(t *testing.T) {
