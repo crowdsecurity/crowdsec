@@ -226,16 +226,19 @@ Using binds rather than named volumes ([complete explanation here](https://docs.
 |                         | | |
 | __TLS Auth/encryption   | | |
 | `USE_TLS`               | false | Enable TLS on the LAPI |
-| `CERT_FILE`             | /etc/ssl/cert.pem | TLS Certificate path |
-| `KEY_FILE`              | /etc/ssl/key.pem | TLS Key path |
-| `CACERT_FILE`           | | CA certificate bundle |
+| `CLIENT_CERT_FILE`      | /etc/ssl/cert.pem | Client TLS Certificate path |
+| `CLIENT_KEY_FILE`       | /etc/ssl/key.pem | Client TLS Key path |
+| `CLIENT_CACERT_FILE`    | | Client CA certificate bundle |
+| `LAPI_CERT_FILE`        | /etc/ssl/cert.pem | LAPI TLS Certificate path |
+| `LAPI_KEY_FILE`         | /etc/ssl/key.pem | LAPI TLS Key path |
+| `LAPI_CACERT_FILE`      | | LAPI CA certificate bundle |
 | `AGENTS_ALLOWED_OU`     | agent-ou | OU values allowed for agents, separated by comma |
 | `BOUNCERS_ALLOWED_OU`   | bouncer-ou | OU values allowed for bouncers, separated by comma |
 |                         | | |
 | __Hub management__      | | |
 | `COLLECTIONS`           | | Collections to install, separated by space: `-e COLLECTIONS="crowdsecurity/linux crowdsecurity/apache2"` |
-| `SCENARIOS`             | | Scenarios to install, separated by space |
 | `PARSERS`               | | Parsers to install, separated by space |
+| `SCENARIOS`             | | Scenarios to install, separated by space |
 | `POSTOVERFLOWS`         | | Postoverflows to install, separated by space |
 | `DISABLE_COLLECTIONS`   | | Collections to remove, separated by space: `-e DISABLE_COLLECTIONS="crowdsecurity/linux crowdsecurity/nginx"` |
 | `DISABLE_PARSERS`       | | Parsers to remove, separated by space |
