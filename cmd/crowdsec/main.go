@@ -233,7 +233,6 @@ func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
 }
 
 // LoadConfig returns a configuration parsed from configuration file
-// XXX better name/description
 func LoadConfig(cConfig *csconfig.Config) error {
 	cConfig.Common.LogLevel = newLogLevel(cConfig.Common.LogLevel, flags)
 
@@ -298,25 +297,44 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		return err
 	}
 
+	err := LoadFeatureFlags(cConfig, log.StandardLogger())
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+
+// LoadFeatureFlags parses {ConfigDir}/feature.yaml to enable/disable features.
+//
+// Since CROWDSEC_FEATURE_ envvars are parsed before config.yaml,
+// when the logger is not yet initialized, we also log here a recap
+// of what has been enabled.
+func LoadFeatureFlags(cConfig *csconfig.Config, logger *log.Logger) error {
 	featurePath := filepath.Join(cConfig.ConfigPaths.ConfigDir, "feature.yaml")
-	logger := log.StandardLogger()
+
 	if err := fflag.CrowdsecFeatures.SetFromYamlFile(featurePath, logger); err != nil {
 		return fmt.Errorf("file %s: %s", featurePath, err)
 	}
+
 	enabledFeatures := []string{}
+
 	featureStatus, err := fflag.CrowdsecFeatures.GetFeatureStatus()
 	if err != nil {
 		return fmt.Errorf("unable to get feature status: %s", err)
 	}
+
 	for feature, enabled := range featureStatus {
 		if enabled {
 			enabledFeatures = append(enabledFeatures, feature)
 		}
 	}
-	log.Infof("Enabled features: %s", strings.Join(enabledFeatures, ", "))
+	logger.Infof("Enabled features: %s", strings.Join(enabledFeatures, ", "))
 
 	return nil
 }
+
 
 // exitWithCode must be called right before the program termination,
 // to allow measuring functional test coverage in case of abnormal exit.
