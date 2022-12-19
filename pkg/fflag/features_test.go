@@ -1,6 +1,7 @@
 package fflag_test
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -400,4 +401,46 @@ func TestSetFromYaml(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSetFromYamlFile(t *testing.T) {
+	tmpfile, err := os.CreateTemp("", "test")
+	require.NoError(t, err)
+
+	defer os.Remove(tmpfile.Name())
+
+	// write the config file
+	_, err = tmpfile.Write([]byte("experimental1: true"))
+	require.NoError(t, err)
+	require.NoError(t, tmpfile.Close())
+
+	fm := setUp(t)
+	logger, hook := logtest.NewNullLogger()
+	logger.SetLevel(logrus.InfoLevel)
+
+	err = fm.SetFromYamlFile(tmpfile.Name(), logger)
+	require.NoError(t, err)
+
+	cstest.RequireLogContains(t, hook, "Enabled feature 'experimental1' with config file")
+}
+
+func TestGetFeatureStatus(t *testing.T) {
+	fm := setUp(t)
+	status, err := fm.GetFeatureStatus()
+	require.NoError(t, err)
+
+	expected := map[string]bool{
+		"bad_idea":                false,
+		"experimental1":           false,
+		"experimental2":           false,
+		"gone_mainstream1":        true,
+		"gone_mainstream2":        true,
+		"may_contain_nuts":        true,
+		"was_abandoned_in_v1.5":   false,
+		"was_adopted_in_v1.5":     true,
+		"will_be_abandoned_in_v2": false,
+		"will_be_standard_in_v2":  false,
+	}
+
+	require.Equal(t, expected, status)
 }

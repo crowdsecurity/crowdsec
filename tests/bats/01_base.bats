@@ -269,3 +269,8 @@ declare stderr
     assert_line 'crowdsecurity/ssh-bf'
     assert_line 'crowdsecurity/ssh-slow-bf'
 }
+
+@test "cscli support dump (smoke test)" {
+    run -0 cscli support dump -f "$BATS_TEST_TMPDIR"/dump.zip
+    assert_file_exist "$BATS_TEST_TMPDIR"/dump.zip
+}

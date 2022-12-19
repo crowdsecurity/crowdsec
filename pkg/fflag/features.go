@@ -210,9 +210,9 @@ func (fm FeatureMap) SetFromEnv(prefix string, logger *logrus.Logger) error {
 }
 
 func (fm FeatureMap) SetFromYaml(r io.Reader, logger *logrus.Logger) error {
-	// read config file
 	var cfg map[string]bool
 
+	// parse config file
 	if err := yaml.NewDecoder(r).Decode(&cfg); err != nil {
 		if !errors.Is(err, io.EOF) {
 			return fmt.Errorf("failed to parse feature flags: %w", err)
@@ -251,12 +251,12 @@ func (fm FeatureMap) SetFromYaml(r io.Reader, logger *logrus.Logger) error {
 	return nil
 }
 
-// testme.
 func (fm FeatureMap) SetFromYamlFile(path string, logger *logrus.Logger) error {
 	f, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			logger.Debugf("Feature flags config file '%s' does not exist", path)
+
 			return nil
 		}
 
@@ -269,10 +269,10 @@ func (fm FeatureMap) SetFromYamlFile(path string, logger *logrus.Logger) error {
 	return fm.SetFromYaml(f, logger)
 }
 
-// testme
-// Return the list of enabled features (for cscli support dump).
-func GetFeatureStatus(fm FeatureMap) (map[string]bool, error) {
+// GetFeatureStatus returns the runtime status of all feature flags
+func (fm FeatureMap) GetFeatureStatus() (map[string]bool, error) {
 	var err error
+
 	fstatus := make(map[string]bool)
 
 	for k := range fm {
@@ -284,4 +284,3 @@ func GetFeatureStatus(fm FeatureMap) (map[string]bool, error) {
 
 	return fstatus, nil
 }
-

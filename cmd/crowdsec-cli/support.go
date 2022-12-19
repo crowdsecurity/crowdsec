@@ -91,17 +91,17 @@ func collectVersion() []byte {
 	return []byte(cwversion.ShowStr())
 }
 
-func collectFeatures() []byte {
+func collectFeatures() ([]byte, error) {
 	log.Info("Collecting feature flags")
-	featStatus, err := fflag.GetFeatureStatus(fflag.CrowdsecFeatures)
+	featStatus, err := fflag.CrowdsecFeatures.GetFeatureStatus()
 	if err != nil {
-		return []byte(fmt.Sprintf("failed to get feature status: %s", err))
+		return nil, err
 	}
 	w := bytes.NewBuffer(nil)
 	for k, v := range featStatus {
 		fmt.Fprintf(w, "%s: %v", k, v)
 	}
-	return w.Bytes()
+	return w.Bytes(), err
 }
 
 
@@ -280,7 +280,6 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			var skipHub, skipDB, skipCAPI, skipLAPI, skipAgent bool
 			infos := map[string][]byte{
 				SUPPORT_VERSION_PATH: collectVersion(),
-				SUPPORT_FEATURES_PATH: collectFeatures(),
 			}
 
 			if outFile == "" {
@@ -288,7 +287,6 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			}
 
 			dbClient, err = database.NewClient(csConfig.DbConfig)
-
 			if err != nil {
 				log.Warnf("Could not connect to database: %s", err)
 				skipDB = true
@@ -308,7 +306,6 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			}
 
 			err = initHub()
-
 			if err != nil {
 				log.Warn("Could not init hub, running on LAPI ? Hub related information will not be collected")
 				skipHub = true
@@ -339,10 +336,15 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			}
 
 			infos[SUPPORT_OS_INFO_PATH], err = collectOSInfo()
-
 			if err != nil {
 				log.Warnf("could not collect OS information: %s", err)
 				infos[SUPPORT_OS_INFO_PATH] = []byte(err.Error())
+			}
+
+			infos[SUPPORT_FEATURES_PATH], err = collectFeatures()
+			if err != nil {
+				log.Warnf("could not collect feature flag information: %s", err)
+				infos[SUPPORT_FEATURES_PATH] = []byte(err.Error())
 			}
 
 			infos[SUPPORT_CROWDSEC_CONFIG_PATH] = collectCrowdsecConfig()
@@ -406,14 +408,17 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				}
 				fw.Write([]byte(types.StripAnsiString(string(data))))
 			}
+
 			err = zipWriter.Close()
 			if err != nil {
 				log.Fatalf("could not finalize zip file: %s", err)
 			}
+
 			err = os.WriteFile(outFile, w.Bytes(), 0600)
 			if err != nil {
 				log.Fatalf("could not write zip file to %s: %s", outFile, err)
 			}
+
 			log.Infof("Written zip file to %s", outFile)
 		},
 	}
