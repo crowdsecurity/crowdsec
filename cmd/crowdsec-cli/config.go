@@ -38,14 +38,16 @@ func backupConfigToDirectory(dirPath string) error {
 	if dirPath == "" {
 		return fmt.Errorf("directory path can't be empty")
 	}
+
 	log.Infof("Starting configuration backup")
+
 	/*if parent directory doesn't exist, bail out. create final dir with Mkdir*/
 	parentDir := filepath.Dir(dirPath)
 	if _, err := os.Stat(parentDir); err != nil {
 		return errors.Wrapf(err, "while checking parent directory %s existence", parentDir)
 	}
 
-	if err = os.Mkdir(dirPath, 0700); err != nil {
+	if err = os.Mkdir(dirPath, 0o700); err != nil {
 		return errors.Wrapf(err, "while creating %s", dirPath)
 	}
 
@@ -54,6 +56,7 @@ func backupConfigToDirectory(dirPath string) error {
 		if err = types.CopyFile(csConfig.ConfigPaths.SimulationFilePath, backupSimulation); err != nil {
 			return errors.Wrapf(err, "failed copy %s to %s", csConfig.ConfigPaths.SimulationFilePath, backupSimulation)
 		}
+
 		log.Infof("Saved simulation to %s", backupSimulation)
 	}
 
@@ -69,7 +72,7 @@ func backupConfigToDirectory(dirPath string) error {
 	}
 
 	acquisBackupDir := filepath.Join(dirPath, "acquis")
-	if err = os.Mkdir(acquisBackupDir, 0700); err != nil {
+	if err = os.Mkdir(acquisBackupDir, 0o700); err != nil {
 		return fmt.Errorf("error while creating %s : %s", acquisBackupDir, err)
 	}
 
@@ -79,13 +82,16 @@ func backupConfigToDirectory(dirPath string) error {
 			if csConfig.Crowdsec.AcquisitionFilePath == acquisFile {
 				continue
 			}
+
 			targetFname, err := filepath.Abs(filepath.Join(acquisBackupDir, filepath.Base(acquisFile)))
 			if err != nil {
 				return errors.Wrapf(err, "while saving %s to %s", acquisFile, acquisBackupDir)
 			}
+
 			if err = types.CopyFile(acquisFile, targetFname); err != nil {
 				return fmt.Errorf("failed copy %s to %s : %s", acquisFile, targetFname, err)
 			}
+
 			log.Infof("Saved acquis %s to %s", acquisFile, targetFname)
 		}
 	}
@@ -95,27 +101,34 @@ func backupConfigToDirectory(dirPath string) error {
 		if err = types.CopyFile(ConfigFilePath, backupMain); err != nil {
 			return fmt.Errorf("failed copy %s to %s : %s", ConfigFilePath, backupMain, err)
 		}
+
 		log.Infof("Saved default yaml to %s", backupMain)
 	}
+
 	if csConfig.API != nil && csConfig.API.Server != nil && csConfig.API.Server.OnlineClient != nil && csConfig.API.Server.OnlineClient.CredentialsFilePath != "" {
 		backupCAPICreds := fmt.Sprintf("%s/online_api_credentials.yaml", dirPath)
 		if err = types.CopyFile(csConfig.API.Server.OnlineClient.CredentialsFilePath, backupCAPICreds); err != nil {
 			return fmt.Errorf("failed copy %s to %s : %s", csConfig.API.Server.OnlineClient.CredentialsFilePath, backupCAPICreds, err)
 		}
+
 		log.Infof("Saved online API credentials to %s", backupCAPICreds)
 	}
+
 	if csConfig.API != nil && csConfig.API.Client != nil && csConfig.API.Client.CredentialsFilePath != "" {
 		backupLAPICreds := fmt.Sprintf("%s/local_api_credentials.yaml", dirPath)
 		if err = types.CopyFile(csConfig.API.Client.CredentialsFilePath, backupLAPICreds); err != nil {
 			return fmt.Errorf("failed copy %s to %s : %s", csConfig.API.Client.CredentialsFilePath, backupLAPICreds, err)
 		}
+
 		log.Infof("Saved local API credentials to %s", backupLAPICreds)
 	}
+
 	if csConfig.API != nil && csConfig.API.Server != nil && csConfig.API.Server.ProfilesPath != "" {
 		backupProfiles := fmt.Sprintf("%s/profiles.yaml", dirPath)
 		if err = types.CopyFile(csConfig.API.Server.ProfilesPath, backupProfiles); err != nil {
 			return fmt.Errorf("failed copy %s to %s : %s", csConfig.API.Server.ProfilesPath, backupProfiles, err)
 		}
+
 		log.Infof("Saved profiles to %s", backupProfiles)
 	}
 
@@ -150,6 +163,7 @@ func restoreConfigFromDirectory(dirPath string) error {
 
 		// Now we have config.yaml, we should regenerate config struct to have rights paths etc
 		ConfigFilePath = fmt.Sprintf("%s/config.yaml", csConfig.ConfigPaths.ConfigDir)
+
 		initConfig()
 
 		backupCAPICreds := fmt.Sprintf("%s/online_api_credentials.yaml", dirPath)
@@ -199,7 +213,7 @@ func restoreConfigFromDirectory(dirPath string) error {
 			if csConfig.API.Server.OnlineClient != nil && csConfig.API.Server.OnlineClient.CredentialsFilePath != "" {
 				apiConfigDumpFile = csConfig.API.Server.OnlineClient.CredentialsFilePath
 			}
-			err = os.WriteFile(apiConfigDumpFile, apiConfigDump, 0644)
+			err = os.WriteFile(apiConfigDumpFile, apiConfigDump, 0o644)
 			if err != nil {
 				return fmt.Errorf("write api credentials in '%s' failed: %s", apiConfigDumpFile, err)
 			}
@@ -216,22 +230,22 @@ func restoreConfigFromDirectory(dirPath string) error {
 
 	/*if there is a acquisition dir, restore its content*/
 	if csConfig.Crowdsec.AcquisitionDirPath != "" {
-		if err = os.Mkdir(csConfig.Crowdsec.AcquisitionDirPath, 0700); err != nil {
+		if err = os.Mkdir(csConfig.Crowdsec.AcquisitionDirPath, 0o700); err != nil {
 			return fmt.Errorf("error while creating %s : %s", csConfig.Crowdsec.AcquisitionDirPath, err)
 		}
-
 	}
 
-	//if there was a single one
+	// if there was a single one
 	backupAcquisition := fmt.Sprintf("%s/acquis.yaml", dirPath)
 	if _, err = os.Stat(backupAcquisition); err == nil {
 		log.Debugf("restoring backup'ed %s", backupAcquisition)
+
 		if err = types.CopyFile(backupAcquisition, csConfig.Crowdsec.AcquisitionFilePath); err != nil {
 			return fmt.Errorf("failed copy %s to %s : %s", backupAcquisition, csConfig.Crowdsec.AcquisitionFilePath, err)
 		}
 	}
 
-	//if there is files in the acquis backup dir, restore them
+	// if there is files in the acquis backup dir, restore them
 	acquisBackupDir := filepath.Join(dirPath, "acquis", "*.yaml")
 	if acquisFiles, err := filepath.Glob(acquisBackupDir); err == nil {
 		for _, acquisFile := range acquisFiles {
@@ -239,7 +253,9 @@ func restoreConfigFromDirectory(dirPath string) error {
 			if err != nil {
 				return errors.Wrapf(err, "while saving %s to %s", acquisFile, targetFname)
 			}
+
 			log.Debugf("restoring %s to %s", acquisFile, targetFname)
+
 			if err = types.CopyFile(acquisFile, targetFname); err != nil {
 				return fmt.Errorf("failed copy %s to %s : %s", acquisFile, targetFname, err)
 			}
@@ -249,18 +265,22 @@ func restoreConfigFromDirectory(dirPath string) error {
 	if csConfig.Crowdsec != nil && len(csConfig.Crowdsec.AcquisitionFiles) > 0 {
 		for _, acquisFile := range csConfig.Crowdsec.AcquisitionFiles {
 			log.Infof("backup filepath from dir -> %s", acquisFile)
-			/*if it was the default one, it was already backup'ed*/
+
+			// if it was the default one, it has already been backed up
 			if csConfig.Crowdsec.AcquisitionFilePath == acquisFile {
 				log.Infof("skip this one")
 				continue
 			}
+
 			targetFname, err := filepath.Abs(filepath.Join(acquisBackupDir, filepath.Base(acquisFile)))
 			if err != nil {
 				return errors.Wrapf(err, "while saving %s to %s", acquisFile, acquisBackupDir)
 			}
+
 			if err = types.CopyFile(acquisFile, targetFname); err != nil {
 				return fmt.Errorf("failed copy %s to %s : %s", acquisFile, targetFname, err)
 			}
+
 			log.Infof("Saved acquis %s to %s", acquisFile, targetFname)
 		}
 	}
@@ -273,34 +293,37 @@ func restoreConfigFromDirectory(dirPath string) error {
 }
 
 func NewConfigCmd() *cobra.Command {
-
-	var cmdConfig = &cobra.Command{
+	cmdConfig := &cobra.Command{
 		Use:               "config [command]",
 		Short:             "Allows to view current config",
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 	}
+
 	var key string
+
 	type Env struct {
 		Config *csconfig.Config
 	}
-	var cmdConfigShow = &cobra.Command{
+
+	cmdConfigShow := &cobra.Command{
 		Use:               "show",
 		Short:             "Displays current config",
 		Long:              `Displays the current cli configuration.`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
-
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if key != "" {
 				program, err := expr.Compile(key, expr.Env(Env{}))
 				if err != nil {
-					log.Fatal(err)
+					return err
 				}
+
 				output, err := expr.Run(program, Env{Config: csConfig})
 				if err != nil {
-					log.Fatal(err)
+					return err
 				}
+
 				switch csConfig.Cscli.Output {
 				case "human", "raw":
 					switch output.(type) {
@@ -314,27 +337,31 @@ func NewConfigCmd() *cobra.Command {
 				case "json":
 					data, err := json.MarshalIndent(output, "", "  ")
 					if err != nil {
-						log.Fatalf("failed to marshal configuration: %s", err)
+						return fmt.Errorf("failed to marshal configuration: %w", err)
 					}
+
 					fmt.Printf("%s\n", string(data))
 				}
-				return
+				return nil
 			}
 
 			switch csConfig.Cscli.Output {
 			case "human":
 				fmt.Printf("Global:\n")
+
 				if csConfig.ConfigPaths != nil {
 					fmt.Printf("   - Configuration Folder   : %s\n", csConfig.ConfigPaths.ConfigDir)
 					fmt.Printf("   - Data Folder            : %s\n", csConfig.ConfigPaths.DataDir)
 					fmt.Printf("   - Hub Folder             : %s\n", csConfig.ConfigPaths.HubDir)
 					fmt.Printf("   - Simulation File        : %s\n", csConfig.ConfigPaths.SimulationFilePath)
 				}
+
 				if csConfig.Common != nil {
 					fmt.Printf("   - Log Folder             : %s\n", csConfig.Common.LogDir)
 					fmt.Printf("   - Log level              : %s\n", csConfig.Common.LogLevel)
 					fmt.Printf("   - Log Media              : %s\n", csConfig.Common.LogMedia)
 				}
+
 				if csConfig.Crowdsec != nil {
 					fmt.Printf("Crowdsec:\n")
 					fmt.Printf("  - Acquisition File        : %s\n", csConfig.Crowdsec.AcquisitionFilePath)
@@ -343,12 +370,14 @@ func NewConfigCmd() *cobra.Command {
 						fmt.Printf("  - Acquisition Folder      : %s\n", csConfig.Crowdsec.AcquisitionDirPath)
 					}
 				}
+
 				if csConfig.Cscli != nil {
 					fmt.Printf("cscli:\n")
 					fmt.Printf("  - Output                  : %s\n", csConfig.Cscli.Output)
 					fmt.Printf("  - Hub Branch              : %s\n", csConfig.Cscli.HubBranch)
 					fmt.Printf("  - Hub Folder              : %s\n", csConfig.Cscli.HubDir)
 				}
+
 				if csConfig.API != nil {
 					if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil {
 						fmt.Printf("API Client:\n")
@@ -356,45 +385,56 @@ func NewConfigCmd() *cobra.Command {
 						fmt.Printf("  - Login                   : %s\n", csConfig.API.Client.Credentials.Login)
 						fmt.Printf("  - Credentials File        : %s\n", csConfig.API.Client.CredentialsFilePath)
 					}
+
 					if csConfig.API.Server != nil {
 						fmt.Printf("Local API Server:\n")
 						fmt.Printf("  - Listen URL              : %s\n", csConfig.API.Server.ListenURI)
 						fmt.Printf("  - Profile File            : %s\n", csConfig.API.Server.ProfilesPath)
+
 						if csConfig.API.Server.TLS != nil {
 							if csConfig.API.Server.TLS.CertFilePath != "" {
 								fmt.Printf("  - Cert File : %s\n", csConfig.API.Server.TLS.CertFilePath)
 							}
+
 							if csConfig.API.Server.TLS.KeyFilePath != "" {
 								fmt.Printf("  - Key File  : %s\n", csConfig.API.Server.TLS.KeyFilePath)
 							}
+
 							if csConfig.API.Server.TLS.CACertPath != "" {
 								fmt.Printf("  - CA Cert   : %s\n", csConfig.API.Server.TLS.CACertPath)
 							}
+
 							if csConfig.API.Server.TLS.CRLPath != "" {
 								fmt.Printf("  - CRL       : %s\n", csConfig.API.Server.TLS.CRLPath)
 							}
+
 							if csConfig.API.Server.TLS.CacheExpiration != nil {
 								fmt.Printf("  - Cache Expiration : %s\n", csConfig.API.Server.TLS.CacheExpiration)
 							}
+
 							if csConfig.API.Server.TLS.ClientVerification != "" {
 								fmt.Printf("  - Client Verification : %s\n", csConfig.API.Server.TLS.ClientVerification)
 							}
+
 							if csConfig.API.Server.TLS.AllowedAgentsOU != nil {
 								for _, ou := range csConfig.API.Server.TLS.AllowedAgentsOU {
 									fmt.Printf("      - Allowed Agents OU       : %s\n", ou)
 								}
 							}
+
 							if csConfig.API.Server.TLS.AllowedBouncersOU != nil {
 								for _, ou := range csConfig.API.Server.TLS.AllowedBouncersOU {
 									fmt.Printf("      - Allowed Bouncers OU       : %s\n", ou)
 								}
 							}
-
 						}
+
 						fmt.Printf("  - Trusted IPs: \n")
+
 						for _, ip := range csConfig.API.Server.TrustedIPs {
 							fmt.Printf("      - %s\n", ip)
 						}
+
 						if csConfig.API.Server.OnlineClient != nil && csConfig.API.Server.OnlineClient.Credentials != nil {
 							fmt.Printf("Central API:\n")
 							fmt.Printf("  - URL                     : %s\n", csConfig.API.Server.OnlineClient.Credentials.URL)
@@ -403,9 +443,11 @@ func NewConfigCmd() *cobra.Command {
 						}
 					}
 				}
+
 				if csConfig.DbConfig != nil {
 					fmt.Printf("  - Database:\n")
 					fmt.Printf("      - Type                : %s\n", csConfig.DbConfig.Type)
+
 					switch csConfig.DbConfig.Type {
 					case "sqlite":
 						fmt.Printf("      - Path                : %s\n", csConfig.DbConfig.DbPath)
@@ -415,6 +457,7 @@ func NewConfigCmd() *cobra.Command {
 						fmt.Printf("      - User                : %s\n", csConfig.DbConfig.User)
 						fmt.Printf("      - DB Name             : %s\n", csConfig.DbConfig.DbName)
 					}
+
 					if csConfig.DbConfig.Flush != nil {
 						if *csConfig.DbConfig.Flush.MaxAge != "" {
 							fmt.Printf("      - Flush age           : %s\n", *csConfig.DbConfig.Flush.MaxAge)
@@ -427,22 +470,26 @@ func NewConfigCmd() *cobra.Command {
 			case "json":
 				data, err := json.MarshalIndent(csConfig, "", "  ")
 				if err != nil {
-					log.Fatalf("failed to marshal configuration: %s", err)
+					return fmt.Errorf("failed to marshal configuration: %w", err)
 				}
+
 				fmt.Printf("%s\n", string(data))
 			case "raw":
 				data, err := yaml.Marshal(csConfig)
 				if err != nil {
-					log.Fatalf("failed to marshal configuration: %s", err)
+					return fmt.Errorf("failed to marshal configuration: %w", err)
 				}
+
 				fmt.Printf("%s\n", string(data))
 			}
+			return nil
 		},
 	}
+
 	cmdConfigShow.Flags().StringVar(&key, "key", "", "Display only this value (Config.API.Server.ListenURI)")
 	cmdConfig.AddCommand(cmdConfigShow)
 
-	var cmdConfigBackup = &cobra.Command{
+	cmdConfigBackup := &cobra.Command{
 		Use:   `backup "directory"`,
 		Short: "Backup current config",
 		Long: `Backup the current crowdsec configuration including :
@@ -456,23 +503,25 @@ func NewConfigCmd() *cobra.Command {
 		Example:           `cscli config backup ./my-backup`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			if err := csConfig.LoadHub(); err != nil {
-				log.Fatal(err)
+				return err
 			}
 			if err = cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Info("Run 'sudo cscli hub update' to get the hub index")
-				log.Fatalf("Failed to get Hub index : %v", err)
+				return fmt.Errorf("failed to get Hub index: %w", err)
 			}
 			if err = backupConfigToDirectory(args[0]); err != nil {
-				log.Fatalf("Failed to backup configurations: %s", err)
+				return fmt.Errorf("failed to backup config: %w", err)
 			}
+			return nil
 		},
 	}
+
 	cmdConfig.AddCommand(cmdConfigBackup)
 
-	var cmdConfigRestore = &cobra.Command{
+	cmdConfigRestore := &cobra.Command{
 		Use:   `restore "directory"`,
 		Short: `Restore config in backup "directory"`,
 		Long: `Restore the crowdsec configuration from specified backup "directory" including:
@@ -485,20 +534,24 @@ func NewConfigCmd() *cobra.Command {
 - Backup of API credentials (local API and online API)`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
-			var err error
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadHub(); err != nil {
-				log.Fatal(err)
+				return err
 			}
-			if err = cwhub.GetHubIdx(csConfig.Hub); err != nil {
+
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Info("Run 'sudo cscli hub update' to get the hub index")
-				log.Fatalf("Failed to get Hub index : %v", err)
+				return fmt.Errorf("failed to get Hub index: %w", err)
 			}
+
 			if err := restoreConfigFromDirectory(args[0]); err != nil {
-				log.Fatalf("failed restoring configurations from %s : %s", args[0], err)
+				return fmt.Errorf("failed to restore config from %s: %w", args[0], err)
 			}
+
+			return nil
 		},
 	}
+
 	cmdConfigRestore.PersistentFlags().BoolVar(&restoreOldBackup, "old-backup", false, "To use when you are upgrading crowdsec v0.X to v1.X and you need to restore backup from v0.X")
 	cmdConfig.AddCommand(cmdConfigRestore)
 
