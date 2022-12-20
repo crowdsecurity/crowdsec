@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/spf13/cobra"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -30,10 +31,10 @@ type OldAPICfg struct {
 - List of scenarios, parsers, postoverflows and collections that are up-to-date
 - Tainted/local/out-of-date scenarios, parsers, postoverflows and collections
 */
-func restoreConfigFromDirectory(dirPath string) error {
+func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
 	var err error
 
-	if !restoreOldBackup {
+	if !oldBackup {
 		backupMain := fmt.Sprintf("%s/config.yaml", dirPath)
 		if _, err = os.Stat(backupMain); err == nil {
 			if csConfig.ConfigPaths != nil && csConfig.ConfigPaths.ConfigDir != "" {
@@ -172,4 +173,28 @@ func restoreConfigFromDirectory(dirPath string) error {
 	}
 
 	return nil
+}
+
+
+func NewConfigRestoreCmd() *cobra.Command {
+	cmdConfigRestore := &cobra.Command{
+		Use:   `restore "directory"`,
+		Short: `Restore config in backup "directory"`,
+		Long: `Restore the crowdsec configuration from specified backup "directory" including:
+
+- Main config (config.yaml)
+- Simulation config (simulation.yaml)
+- Profiles config (profiles.yaml)
+- List of scenarios, parsers, postoverflows and collections that are up-to-date
+- Tainted/local/out-of-date scenarios, parsers, postoverflows and collections
+- Backup of API credentials (local API and online API)`,
+		Args:              cobra.ExactArgs(1),
+		DisableAutoGenTag: true,
+		RunE: 	           runConfigRestore,
+	}
+
+	flags := cmdConfigRestore.Flags()
+	flags.BoolP("old-backup", "", false, "To use when you are upgrading crowdsec v0.X to v1.X and you need to restore backup from v0.X")
+
+	return cmdConfigRestore
 }

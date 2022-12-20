@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/spf13/cobra"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
@@ -125,4 +126,26 @@ func backupConfigToDirectory(dirPath string) error {
 	}
 
 	return nil
+}
+
+
+func NewConfigBackupCmd() *cobra.Command {
+	cmdConfigBackup := &cobra.Command{
+		Use:   `backup "directory"`,
+		Short: "Backup current config",
+		Long: `Backup the current crowdsec configuration including :
+
+- Main config (config.yaml)
+- Simulation config (simulation.yaml)
+- Profiles config (profiles.yaml)
+- List of scenarios, parsers, postoverflows and collections that are up-to-date
+- Tainted/local/out-of-date scenarios, parsers, postoverflows and collections
+- Backup of API credentials (local API and online API)`,
+		Example:           `cscli config backup ./my-backup`,
+		Args:              cobra.ExactArgs(1),
+		DisableAutoGenTag: true,
+		RunE:              runConfigBackup,
+	}
+
+	return cmdConfigBackup
 }
