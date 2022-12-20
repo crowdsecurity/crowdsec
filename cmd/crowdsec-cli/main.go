@@ -56,7 +56,7 @@ func initConfig() {
 	logFormatter := &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true}
 	log.SetFormatter(logFormatter)
 
-	if err = fflag.CrowdsecFeatures.SetFromEnv("CROWDSEC_FEATURE_", log.New()); err != nil {
+	if err = fflag.CrowdsecFeatures.SetFromEnv("CROWDSEC_FEATURE_", log.StandardLogger()); err != nil {
 		log.Fatalf("failed to set features from env: %s", err)
 	}
 
@@ -74,7 +74,7 @@ func initConfig() {
 	}
 
 	featurePath := filepath.Join(csConfig.ConfigPaths.ConfigDir, "feature.yaml")
-	if err = fflag.CrowdsecFeatures.SetFromYamlFile(featurePath, log.New()); err != nil {
+	if err = fflag.CrowdsecFeatures.SetFromYamlFile(featurePath, log.StandardLogger()); err != nil {
 		log.Fatalf("File %s: %s", featurePath, err)
 	}
 
@@ -142,7 +142,7 @@ var (
 func main() {
 	// some features can require configuration or command-line options,
 	// so we need to parse them asap. we'll load from feature.yaml later.
-	fflag.CrowdsecFeatures.SetFromEnv("CROWDSEC_FEATURE_", log.New())
+	fflag.CrowdsecFeatures.SetFromEnv("CROWDSEC_FEATURE_", log.StandardLogger())
 
 	var rootCmd = &cobra.Command{
 		Use:   "cscli",
