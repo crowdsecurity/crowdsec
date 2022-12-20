@@ -176,7 +176,7 @@ wowo: ajsajasjas
 			yaml.Unmarshal([]byte(tc.String), &common)
 			ds, err := DataSourceConfigure(common)
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
-			if tc.ExpectedError != "" {
+			if tc.ExpectedError == "" {
 				return
 			}
 
