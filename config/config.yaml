@@ -16,7 +16,7 @@ config_paths:
   notification_dir: /etc/crowdsec/notifications/
   plugin_dir: /usr/local/lib/crowdsec/plugins/
 crowdsec_service:
-  console_context_path: /etc/crowdsec/console/context.yaml
+  #console_context_path: /etc/crowdsec/console/context.yaml
   acquisition_path: /etc/crowdsec/acquis.yaml
   acquisition_dir: /etc/crowdsec/acquis.d
   parser_routines: 1
