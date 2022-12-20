@@ -71,28 +71,19 @@ func setUp(t *testing.T) fflag.FeatureMap {
 	fm, err := fflag.NewFeatureMap(map[string]fflag.Feature{
 		"experimental1":    {},
 		"experimental2":    {},
-		"may_contain_nuts": {DefaultEnabled: true},
-		"bad_idea":         {DefaultEnabled: false, Deprecated: true},
-		"gone_mainstream1": {DefaultEnabled: true, Deprecated: true},
-		"gone_mainstream2": {DefaultEnabled: true, Deprecated: true},
+		"bad_idea":         {Deprecated: true},
+		"gone_mainstream1": {Deprecated: true},
+		"gone_mainstream2": {Deprecated: true},
 		"will_be_standard_in_v2": {
-			DefaultEnabled: false,
 			Deprecated:     true,
 			DeprecationMsg: "in 2.0 we'll do that by default",
 		},
-		"will_be_abandoned_in_v2": {
-			DefaultEnabled: false,
-			Deprecated:     true,
-			DeprecationMsg: "in 2.0 we'll have a better way to do it",
-		},
 		"was_adopted_in_v1.5": {
-			DefaultEnabled: true,
 			Deprecated:     true,
 			Retired:        true,
 			DeprecationMsg: "the trinket was implemented in 1.5 with the --funnybunny command line option",
 		},
 		"was_abandoned_in_v1.5": {
-			DefaultEnabled: false,
 			Deprecated:     true,
 			Retired:        true,
 			DeprecationMsg: "the magic button didn't work as expected and has been removed in 1.5",
@@ -120,15 +111,6 @@ func TestIsFeatureEnabled(t *testing.T) {
 			feature:  "experimental1",
 			enable:   types.BoolPtr(true),
 			expected: true,
-		}, {
-			name:     "feature that is enabled by default",
-			feature:  "may_contain_nuts",
-			expected: true,
-		}, {
-			name:     "disable feature that is enabled by default",
-			feature:  "may_contain_nuts",
-			enable:   types.BoolPtr(false),
-			expected: false,
 		}, {
 			name:        "feature that does not exist",
 			feature:     "will_never_exist",
@@ -168,68 +150,29 @@ func TestSetFeature(t *testing.T) {
 			value:    true,
 			expected: true,
 		}, {
-			name:     "can set the same feature twice with the same value",
+			// not useful in practice, unlikely to happen
+			name:     "disable the feature that was enabled",
 			feature:  "experimental1",
-			value:    true,
-			expected: true,
-		}, {
-			name:           "can't set the same feature again with a different value",
-			feature:        "experimental1",
-			value:          false,
-			expected:       true,
-			expectedSetErr: "the feature is already set to true",
-		}, {
-			name:     "disable an experimental feature, explicitly",
-			feature:  "experimental2",
 			value:    false,
 			expected: false,
 		}, {
-			name:     "disable a mainstream feature that is causing problems",
-			feature:  "may_contain_nuts",
-			value:    false,
-			expected: false,
-		}, {
-			name:           "enable a deprecated feature which defaults to false",
+			name:           "enable a deprecated feature",
 			feature:        "bad_idea",
 			value:          true,
 			expected:       true,
 			expectedSetErr: "the flag is deprecated",
 		}, {
-			name:           "enable a deprecated feature which defaults to true",
-			feature:        "gone_mainstream1",
-			value:          true,
-			expected:       true,
-			expectedSetErr: "the flag is deprecated",
-		}, {
-			name:           "disable a deprecated feature which defaults to true",
-			feature:        "gone_mainstream2",
-			value:          false,
-			expected:       false,
-			expectedSetErr: "the flag is deprecated",
-		}, {
-			name:           "enable a feature that will be retired in v2, default true",
+			name:           "enable a feature that will be retired in v2",
 			feature:        "will_be_standard_in_v2",
 			value:          true,
 			expected:       true,
 			expectedSetErr: "the flag is deprecated: in 2.0 we'll do that by default",
 		}, {
-			name:           "enable a feature that will be retired in v2, default false",
-			feature:        "will_be_abandoned_in_v2",
-			value:          true,
-			expected:       true,
-			expectedSetErr: "the flag is deprecated: in 2.0 we'll have a better way to do it",
-		}, {
-			name:     "enable a feature that was retired in v1.5, default true",
-			feature:  "was_adopted_in_v1.5",
-			value:    true,
-			expected: true,
-			expectedSetErr: "the flag is deprecated: the trinket was implemented in 1.5 with the --funnybunny command line option",
-		}, {
-			name:     "enable a feature that was retired in v1.5, default false",
+			name:     "enable a feature that was retired in v1.5",
 			feature:  "was_abandoned_in_v1.5",
 			value:    true,
 			expected: false,
-			expectedSetErr: "the flag is deprecated: " +
+			expectedSetErr: "the flag is retired: " +
 				"the magic button didn't work as expected and has been removed in 1.5",
 		}, {
 			name:           "enable a feature that does not exist",
@@ -299,23 +242,20 @@ func TestSetFromEnv(t *testing.T) {
 				"Feature flag: bad_idea=true (from envvar)",
 			},
 		}, {
-			name:   "enable a feature that was retired (adopted) in v1.5",
+			name:   "enable a feature that was retired in v1.5",
 			envvar: "FFLAG_TEST_WAS_ADOPTED_IN_V1.5",
 			value:  "true",
 			expectedLog: []string{
-				"Envvar 'FFLAG_TEST_WAS_ADOPTED_IN_V1.5': the flag is deprecated: " +
+				"Ignored envvar 'FFLAG_TEST_WAS_ADOPTED_IN_V1.5': the flag is retired: " +
 				"the trinket was implemented in 1.5 with the --funnybunny command line option",
-				"Feature flag: was_adopted_in_v1.5=true (from envvar)",
 			},
 		}, {
-			// this is unlikely to happen, because environment
-			// variables are prioritized over the config file
-			name:   "enable a feature flag already set",
+			// this could happen in theory, but only if environment variables
+			// are parsed after configuration files, which is not a good idea
+			// because they are more useful asap
+			name:   "disable a feature flag already set",
 			envvar: "FFLAG_TEST_EXPERIMENTAL1",
 			value:  "false",
-			expectedLog: []string{
-				"Ignored envvar 'FFLAG_TEST_EXPERIMENTAL1': the feature is already set to true",
-			},
 		},
 	}
 
@@ -350,38 +290,32 @@ func TestSetFromYaml(t *testing.T) {
 		}, {
 			name:        "invalid yaml",
 			yml:         "bad! content, bad!",
-			expectedErr: "failed to parse feature flags: [1:1] string was used where mapping is expected\n    >  1 | bad! content, bad!\n           ^",
+			expectedErr: "failed to parse feature flags: [1:1] string was used where sequence is expected\n    >  1 | bad! content, bad!\n           ^",
 		}, {
 			name:        "invalid feature flag name",
-			yml:         "not_a_feature: true",
+			yml:         "- not_a_feature",
 			expectedLog: []string{"Ignored feature flag 'not_a_feature': unknown feature"},
 		}, {
-			name:        "invalid value (not true or false)",
-			yml:         "experimental1: maybe",
-			expectedErr: "failed to parse feature flags: [1:16] cannot unmarshal string into Go value of type bool\n    >  1 | experimental1: maybe\n                          ^",
+			name:        "invalid value (must be a list)",
+			yml:         "experimental1: true",
+			expectedErr: "failed to parse feature flags: [1:14] value was used where sequence is expected\n    >  1 | experimental1: true\n                        ^",
 		}, {
 			name:        "enable a feature flag",
-			yml:         "experimental1: true",
+			yml:         "- experimental1",
 			expectedLog: []string{"Feature flag: experimental1=true (from config file)"},
 		}, {
 			name: "enable a deprecated feature",
-			yml:  "bad_idea: true",
+			yml:  "- bad_idea",
 			expectedLog: []string{
 				"Feature 'bad_idea': the flag is deprecated",
 				"Feature flag: bad_idea=true (from config file)",
 			},
 		}, {
 			name: "enable a feature that was retired (adopted) in v1.5",
-			yml:  "was_adopted_in_v1.5: true",
+			yml:  "- was_adopted_in_v1.5",
 			expectedLog: []string{
-				"Feature 'was_adopted_in_v1.5': the flag is deprecated: " +
-					"the trinket was implemented in 1.5 with the --funnybunny command line option",
-			},
-		}, {
-			name: "enable a feature flag already set",
-			yml:  "experimental1: false",
-			expectedLog: []string{
-				"Ignored feature flag experimental1=false from config file: the feature is already set to true",
+				"Ignored feature flag 'was_adopted_in_v1.5': the flag is retired: " +
+				"the trinket was implemented in 1.5 with the --funnybunny command line option",
 			},
 		},
 	}
@@ -409,7 +343,7 @@ func TestSetFromYamlFile(t *testing.T) {
 	defer os.Remove(tmpfile.Name())
 
 	// write the config file
-	_, err = tmpfile.Write([]byte("experimental1: true"))
+	_, err = tmpfile.Write([]byte("- experimental1"))
 	require.NoError(t, err)
 	require.NoError(t, tmpfile.Close())
 
@@ -423,23 +357,19 @@ func TestSetFromYamlFile(t *testing.T) {
 	cstest.RequireLogContains(t, hook, "Feature flag: experimental1=true (from config file)")
 }
 
-func TestGetFeatureStatus(t *testing.T) {
+func TestGetEnabledFeatures(t *testing.T) {
 	fm := setUp(t)
-	status, err := fm.GetFeatureStatus()
-	require.NoError(t, err)
 
-	expected := map[string]bool{
-		"bad_idea":                false,
-		"experimental1":           false,
-		"experimental2":           false,
-		"gone_mainstream1":        true,
-		"gone_mainstream2":        true,
-		"may_contain_nuts":        true,
-		"was_abandoned_in_v1.5":   false,
-		"was_adopted_in_v1.5":     true,
-		"will_be_abandoned_in_v2": false,
-		"will_be_standard_in_v2":  false,
+	fm.SetFeature("experimental1", true)
+	fm.SetFeature("gone_mainstream1", true)
+	fm.SetFeature("bad_idea", true)
+
+
+	expected := []string{
+		"bad_idea",
+		"experimental1",
+		"gone_mainstream1",
 	}
 
-	require.Equal(t, expected, status)
+	require.Equal(t, expected, fm.GetEnabledFeatures())
 }

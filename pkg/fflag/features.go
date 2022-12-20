@@ -6,21 +6,23 @@
 // good: "foo", "foo_bar", "foo.bar"
 // bad: "Foo", "foo-bar"
 //
-// A feature flag can be enabled or disabled. It can also be deprecated or
-// retired. A deprecated feature flag is still accepted but a warning is
-// logged. A retired feature flag is ignored and an error is logged.
-//
-// Feature flags can be set from environment variables or from a config file.
+// A feature flag can be enabled by the user with an environment variable
+// or by adding it to {ConfigDir}/feature.yaml
 //
 // I.e. CROWDSEC_FEATURE_FOO_BAR=true
-// or in features.yaml:
+// or in feature.yaml:
 // ---
-// foo_bar: true
+// - foo_bar
 //
-// If a feature flag is set from both, the first one that is parsed (usually
-// environment variables) takes precedence. If the value in the second one
-// does not match the value already set, an error is logged. This is done
-// to highlight inconsistencies in the configuration.
+// If the variable is set to false, the feature can still be enabled
+// in feature.yaml. Features cannot be disabled in the file.
+//
+// A feature flag can be deprecated or retired. A deprecated feature flag is
+// still accepted but a warning is logged. A retired feature flag is ignored
+// and an error is logged.
+//
+// A specific deprecation message is used to inform the user of the behavior
+// that has been decided when the flag is/was finally retired.
 package fflag
 
 import (
@@ -29,6 +31,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/goccy/go-yaml"
@@ -36,8 +39,7 @@ import (
 )
 
 type Feature struct {
-	UserEnabled    *bool  // has the user explicitly enabled/disabled this feature?
-	DefaultEnabled bool   // Default value of the feature flag.
+	Enabled        bool   // has the user explicitly enabled this feature?
 	Deprecated     bool   // Is the feature flag deprecated?
 	Retired        bool   // Is the feature flag retired?
 	DeprecationMsg string // Why was it deprecated? What happens next? What should the user do?
@@ -52,12 +54,8 @@ var (
 	ErrFeatureNameInvalid = errors.New("invalid name (allowed a-z, 0-9, _, .)")
 )
 
-var (
-	ErrFeatureUnknown      = errors.New("unknown feature")
-	ErrFeatureDeprecated   = errors.New("the flag is deprecated")
-	ErrFeatureInvalidValue = errors.New("invalid value (must be 'true' or 'false')")
-	ErrFeatureAlreadySet   = errors.New("the feature is already set")
-)
+var ErrFeatureUnknown = errors.New("unknown feature")
+var ErrFeatureDeprecated  = errors.New("the flag is deprecated")
 
 func FeatureDeprecatedError(feat Feature) error {
 	if feat.DeprecationMsg != "" {
@@ -67,14 +65,14 @@ func FeatureDeprecatedError(feat Feature) error {
 	return ErrFeatureDeprecated
 }
 
-var ErrFeatureRetired = errors.New("the flag has been retired")
+var ErrFeatureRetired = errors.New("the flag is retired")
 
 func FeatureRetiredError(feat Feature) error {
 	if feat.DeprecationMsg != "" {
-		return fmt.Errorf("%w: %s", ErrFeatureDeprecated, feat.DeprecationMsg)
+		return fmt.Errorf("%w: %s", ErrFeatureRetired, feat.DeprecationMsg)
 	}
 
-	return ErrFeatureDeprecated
+	return ErrFeatureRetired
 }
 
 var featureNameRexp = regexp.MustCompile(`^[a-z0-9_\.]+$`)
@@ -96,7 +94,7 @@ func validateFeatureName(featureName string) error {
 }
 
 func NewFeatureMap(features map[string]Feature) (FeatureMap, error) {
-	// XXX should not actually receive a Feature (i.e. Enabled must be nil, and
+	// XXX should not actually receive a Feature (i.e. Enabled must be false, and
 	// it cannot be retired==true && deprecated==false))
 	fm := make(FeatureMap)
 
@@ -111,22 +109,20 @@ func NewFeatureMap(features map[string]Feature) (FeatureMap, error) {
 	return fm, nil
 }
 
+func (fm Feature) IsEnabled() bool {
+	return fm.Enabled
+}
+
 func (fm FeatureMap) IsFeatureEnabled(featureName string) (bool, error) {
 	feat, ok := fm[featureName]
 	if !ok {
 		return false, ErrFeatureUnknown
 	}
 
-	if feat.UserEnabled != nil {
-		return *feat.UserEnabled, nil
-	}
-
-	return feat.DefaultEnabled, nil
+	return feat.IsEnabled(), nil
 }
 
 func (fm FeatureMap) SetFeature(featureName string, value bool) error {
-	var ret error
-
 	feat, ok := fm[featureName]
 	if !ok {
 		return ErrFeatureUnknown
@@ -137,23 +133,16 @@ func (fm FeatureMap) SetFeature(featureName string, value bool) error {
 		return FeatureRetiredError(feat)
 	}
 
+	feat.Enabled = value
+	fm[featureName] = feat
+
 	// deprecated feature flags are still accepted, but a warning is triggered.
 	// We return an error but set the feature anyway.
 	if feat.Deprecated {
-		ret = FeatureDeprecatedError(feat)
+		return FeatureDeprecatedError(feat)
 	}
 
-	// return error if the feature flag has been set with a different value
-	// (i.e. enabled by environment variable and disabled in config file, the
-	// environment variable takes precedence)
-	if feat.UserEnabled != nil && *feat.UserEnabled != value {
-		return fmt.Errorf("%w to %t", ErrFeatureAlreadySet, *feat.UserEnabled)
-	}
-
-	feat.UserEnabled = &value
-	fm[featureName] = feat
-
-	return ret
+	return nil
 }
 
 func (fm FeatureMap) SetFromEnv(prefix string, logger *logrus.Logger) error {
@@ -177,7 +166,7 @@ func (fm FeatureMap) SetFromEnv(prefix string, logger *logrus.Logger) error {
 		case "false":
 			enable = false
 		default:
-			logger.Errorf("Ignored envvar %s=%s: %v", varName, value, ErrFeatureInvalidValue)
+			logger.Errorf("Ignored envvar %s=%s: invalid value (must be 'true' or 'false')", varName, value)
 			continue
 		}
 
@@ -187,14 +176,11 @@ func (fm FeatureMap) SetFromEnv(prefix string, logger *logrus.Logger) error {
 		case errors.Is(err, ErrFeatureUnknown):
 			logger.Errorf("Ignored envvar '%s': %s", varName, err)
 			continue
-		case errors.Is(err, ErrFeatureDeprecated):
-			logger.Warningf("Envvar '%s': %s", varName, err)
 		case errors.Is(err, ErrFeatureRetired):
 			logger.Errorf("Ignored envvar '%s': %s", varName, err)
 			continue
-		case errors.Is(err, ErrFeatureAlreadySet):
-			logger.Warningf("Ignored envvar '%s': %s", varName, err)
-			continue
+		case errors.Is(err, ErrFeatureDeprecated):
+			logger.Warningf("Envvar '%s': %s", varName, err)
 		case err != nil:
 			return err
 		}
@@ -206,7 +192,7 @@ func (fm FeatureMap) SetFromEnv(prefix string, logger *logrus.Logger) error {
 }
 
 func (fm FeatureMap) SetFromYaml(r io.Reader, logger *logrus.Logger) error {
-	var cfg map[string]bool
+	var cfg []string
 
 	bys, err := io.ReadAll(r)
 	if err != nil {
@@ -223,26 +209,23 @@ func (fm FeatureMap) SetFromYaml(r io.Reader, logger *logrus.Logger) error {
 	}
 
 	// set features
-	for k, v := range cfg {
-		err := fm.SetFeature(k, v)
+	for _, k := range cfg {
+		err := fm.SetFeature(k, true)
 
 		switch {
 		case errors.Is(err, ErrFeatureUnknown):
 			logger.Errorf("Ignored feature flag '%s': %s", k, err)
 			continue
-		case errors.Is(err, ErrFeatureDeprecated):
-			logger.Warningf("Feature '%s': %s", k, err)
 		case errors.Is(err, ErrFeatureRetired):
 			logger.Errorf("Ignored feature flag '%s': %s", k, err)
 			continue
-		case errors.Is(err, ErrFeatureAlreadySet):
-			logger.Warningf("Ignored feature flag %s=%t from config file: %s", k, v, err)
-			continue
+		case errors.Is(err, ErrFeatureDeprecated):
+			logger.Warningf("Feature '%s': %s", k, err)
 		case err != nil:
 			return err
 		}
 
-		logger.Infof("Feature flag: %s=%t (from config file)", k, v)
+		logger.Infof("Feature flag: %s=true (from config file)", k)
 	}
 
 	return nil
@@ -266,18 +249,18 @@ func (fm FeatureMap) SetFromYamlFile(path string, logger *logrus.Logger) error {
 	return fm.SetFromYaml(f, logger)
 }
 
-// GetFeatureStatus returns the runtime status of all feature flags
-func (fm FeatureMap) GetFeatureStatus() (map[string]bool, error) {
-	var err error
-
-	fstatus := make(map[string]bool)
+// GetEnabledFeatures returns the list of features that have been enabled by the user
+func (fm FeatureMap) GetEnabledFeatures() []string {
+	ret := make([]string, 0)
 
 	for k := range fm {
-		fstatus[k], err = fm.IsFeatureEnabled(k)
-		if err != nil {
-			return nil, err
+		feat := fm[k]
+		if feat.IsEnabled() {
+			ret = append(ret, k)
 		}
 	}
 
-	return fstatus, nil
+	sort.Strings(ret)
+
+	return ret
 }

@@ -91,17 +91,15 @@ func collectVersion() []byte {
 	return []byte(cwversion.ShowStr())
 }
 
-func collectFeatures() ([]byte, error) {
+func collectFeatures() []byte {
 	log.Info("Collecting feature flags")
-	featStatus, err := fflag.CrowdsecFeatures.GetFeatureStatus()
-	if err != nil {
-		return nil, err
-	}
+	enabledFeatures := fflag.CrowdsecFeatures.GetEnabledFeatures()
+
 	w := bytes.NewBuffer(nil)
-	for k, v := range featStatus {
-		fmt.Fprintf(w, "%s: %v", k, v)
+	for _, k := range enabledFeatures {
+		fmt.Fprintf(w, "%s\n", k)
 	}
-	return w.Bytes(), err
+	return w.Bytes()
 }
 
 
@@ -280,6 +278,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			var skipHub, skipDB, skipCAPI, skipLAPI, skipAgent bool
 			infos := map[string][]byte{
 				SUPPORT_VERSION_PATH: collectVersion(),
+				SUPPORT_FEATURES_PATH: collectFeatures(),
 			}
 
 			if outFile == "" {
@@ -339,12 +338,6 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			if err != nil {
 				log.Warnf("could not collect OS information: %s", err)
 				infos[SUPPORT_OS_INFO_PATH] = []byte(err.Error())
-			}
-
-			infos[SUPPORT_FEATURES_PATH], err = collectFeatures()
-			if err != nil {
-				log.Warnf("could not collect feature flag information: %s", err)
-				infos[SUPPORT_FEATURES_PATH] = []byte(err.Error())
 			}
 
 			infos[SUPPORT_CROWDSEC_CONFIG_PATH] = collectCrowdsecConfig()

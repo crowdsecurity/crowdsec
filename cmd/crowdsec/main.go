@@ -318,18 +318,7 @@ func LoadFeatureFlags(cConfig *csconfig.Config, logger *log.Logger) error {
 		return fmt.Errorf("file %s: %s", featurePath, err)
 	}
 
-	enabledFeatures := []string{}
-
-	featureStatus, err := fflag.CrowdsecFeatures.GetFeatureStatus()
-	if err != nil {
-		return fmt.Errorf("unable to get feature status: %s", err)
-	}
-
-	for feature, enabled := range featureStatus {
-		if enabled {
-			enabledFeatures = append(enabledFeatures, feature)
-		}
-	}
+	enabledFeatures := fflag.CrowdsecFeatures.GetEnabledFeatures()
 
 	msg := "<none>"
 	if len(enabledFeatures) > 0 {

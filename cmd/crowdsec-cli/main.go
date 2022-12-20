@@ -53,12 +53,6 @@ func initConfig() {
 	} else if err_lvl {
 		log.SetLevel(log.ErrorLevel)
 	}
-	logFormatter := &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true}
-	log.SetFormatter(logFormatter)
-
-	if err = fflag.CrowdsecFeatures.SetFromEnv("CROWDSEC_FEATURE_", log.StandardLogger()); err != nil {
-		log.Fatalf("failed to set features from env: %s", err)
-	}
 
 	if !inSlice(os.Args[1], NoNeedConfig) {
 		csConfig, err = csconfig.NewConfig(ConfigFilePath, false, false)
@@ -140,6 +134,10 @@ var (
 )
 
 func main() {
+	// set the formatter asap and worry about level later
+	logFormatter := &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true}
+	log.SetFormatter(logFormatter)
+
 	// some features can require configuration or command-line options,
 	// so we need to parse them asap. we'll load from feature.yaml later.
 	fflag.CrowdsecFeatures.SetFromEnv("CROWDSEC_FEATURE_", log.StandardLogger())
