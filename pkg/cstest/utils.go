@@ -81,9 +81,6 @@ func RequireLogContains(t *testing.T, hook *logtest.Hook, expected string) {
 	require.Fail(t, "no log entry found with message", expected)
 }
 
-
-
-
 // Interpolate fills a string template with the given values, can be map or struct.
 // example: Interpolate("{{.Name}}", map[string]string{"Name": "JohnDoe"})
 func Interpolate(s string, data interface{}) (string, error) {
