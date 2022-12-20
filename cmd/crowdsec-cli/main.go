@@ -18,6 +18,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
 
 var bincoverTesting = ""
@@ -52,8 +53,6 @@ func initConfig() {
 	} else if err_lvl {
 		log.SetLevel(log.ErrorLevel)
 	}
-	logFormatter := &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true}
-	log.SetFormatter(logFormatter)
 
 	if !inSlice(os.Args[1], NoNeedConfig) {
 		csConfig, err = csconfig.NewConfig(ConfigFilePath, false, false)
@@ -66,6 +65,11 @@ func initConfig() {
 		}
 	} else {
 		csConfig = csconfig.NewDefaultConfig()
+	}
+
+	featurePath := filepath.Join(csConfig.ConfigPaths.ConfigDir, "feature.yaml")
+	if err = fflag.CrowdsecFeatures.SetFromYamlFile(featurePath, log.StandardLogger()); err != nil {
+		log.Fatalf("File %s: %s", featurePath, err)
 	}
 
 	if csConfig.Cscli == nil {
@@ -130,6 +134,13 @@ var (
 )
 
 func main() {
+	// set the formatter asap and worry about level later
+	logFormatter := &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true}
+	log.SetFormatter(logFormatter)
+
+	// some features can require configuration or command-line options,
+	// so we need to parse them asap. we'll load from feature.yaml later.
+	fflag.CrowdsecFeatures.SetFromEnv("CROWDSEC_FEATURE_", log.StandardLogger())
 
 	var rootCmd = &cobra.Command{
 		Use:   "cscli",

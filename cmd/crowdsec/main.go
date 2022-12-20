@@ -5,6 +5,7 @@ import (
 	"fmt"
 	_ "net/http/pprof"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
@@ -20,6 +21,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -295,8 +297,38 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		return err
 	}
 
+	err := LoadFeatureFlags(cConfig, log.StandardLogger())
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
+
+
+// LoadFeatureFlags parses {ConfigDir}/feature.yaml to enable/disable features.
+//
+// Since CROWDSEC_FEATURE_ envvars are parsed before config.yaml,
+// when the logger is not yet initialized, we also log here a recap
+// of what has been enabled.
+func LoadFeatureFlags(cConfig *csconfig.Config, logger *log.Logger) error {
+	featurePath := filepath.Join(cConfig.ConfigPaths.ConfigDir, "feature.yaml")
+
+	if err := fflag.CrowdsecFeatures.SetFromYamlFile(featurePath, logger); err != nil {
+		return fmt.Errorf("file %s: %s", featurePath, err)
+	}
+
+	enabledFeatures := fflag.CrowdsecFeatures.GetEnabledFeatures()
+
+	msg := "<none>"
+	if len(enabledFeatures) > 0 {
+		msg = strings.Join(enabledFeatures, ", ")
+	}
+	logger.Infof("Enabled features: %s", msg)
+
+	return nil
+}
+
 
 // exitWithCode must be called right before the program termination,
 // to allow measuring functional test coverage in case of abnormal exit.
@@ -322,6 +354,9 @@ func exitWithCode(exitCode int, err error) {
 var crowdsecT0 time.Time
 
 func main() {
+	// some features can require configuration or command-line options,
+	// so wwe need to parse them asap. we'll load from feature.yaml later.
+	fflag.CrowdsecFeatures.SetFromEnv("CROWDSEC_FEATURE_", log.StandardLogger())
 	crowdsecT0 = time.Now()
 
 	defer types.CatchPanic("crowdsec/main")
