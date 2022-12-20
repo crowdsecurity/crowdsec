@@ -330,7 +330,12 @@ func LoadFeatureFlags(cConfig *csconfig.Config, logger *log.Logger) error {
 			enabledFeatures = append(enabledFeatures, feature)
 		}
 	}
-	logger.Infof("Enabled features: %s", strings.Join(enabledFeatures, ", "))
+
+	msg := "<none>"
+	if len(enabledFeatures) > 0 {
+		msg = strings.Join(enabledFeatures, ", ")
+	}
+	logger.Infof("Enabled features: %s", msg)
 
 	return nil
 }
