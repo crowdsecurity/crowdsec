@@ -7,20 +7,20 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/spf13/cobra"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 type OldAPICfg struct {
 	MachineID string `json:"machine_id"`
 	Password  string `json:"password"`
 }
-
 
 /* Restore crowdsec configurations to directory <dirPath> :
 
@@ -176,6 +176,31 @@ func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
 }
 
 
+func runConfigRestore(cmd *cobra.Command, args []string) error {
+	flags := cmd.Flags()
+
+	oldBackup, err := flags.GetBool("old-backup")
+	if err != nil {
+		return err
+	}
+
+	if err := csConfig.LoadHub(); err != nil {
+		return err
+	}
+
+	if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
+		log.Info("Run 'sudo cscli hub update' to get the hub index")
+		return fmt.Errorf("failed to get Hub index: %w", err)
+	}
+
+	if err := restoreConfigFromDirectory(args[0], oldBackup); err != nil {
+		return fmt.Errorf("failed to restore config from %s: %w", args[0], err)
+	}
+
+	return nil
+}
+
+
 func NewConfigRestoreCmd() *cobra.Command {
 	cmdConfigRestore := &cobra.Command{
 		Use:   `restore "directory"`,
@@ -190,7 +215,7 @@ func NewConfigRestoreCmd() *cobra.Command {
 - Backup of API credentials (local API and online API)`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE: 	           runConfigRestore,
+		RunE:              runConfigRestore,
 	}
 
 	flags := cmdConfigRestore.Flags()

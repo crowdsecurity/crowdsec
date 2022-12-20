@@ -5,11 +5,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/spf13/cobra"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 /* Backup crowdsec configurations to directory <dirPath> :
@@ -123,6 +124,24 @@ func backupConfigToDirectory(dirPath string) error {
 
 	if err = BackupHub(dirPath); err != nil {
 		return fmt.Errorf("failed to backup hub config : %s", err)
+	}
+
+	return nil
+}
+
+
+func runConfigBackup(cmd *cobra.Command, args []string) error {
+	if err := csConfig.LoadHub(); err != nil {
+		return err
+	}
+
+	if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
+		log.Info("Run 'sudo cscli hub update' to get the hub index")
+		return fmt.Errorf("failed to get Hub index: %w", err)
+	}
+
+	if err := backupConfigToDirectory(args[0]); err != nil {
+		return fmt.Errorf("failed to backup config: %w", err)
 	}
 
 	return nil
