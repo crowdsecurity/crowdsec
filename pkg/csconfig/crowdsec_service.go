@@ -130,13 +130,8 @@ func (c *Config) LoadCrowdsec() error {
 		c.Crowdsec.OutputRoutinesCount = 1
 	}
 
-	if c.Crowdsec.ConsoleContextPath == "" {
-		c.Crowdsec.ConsoleContextPath = DefaultContextConfigFilePath
-	}
-
 	var crowdsecCleanup = []*string{
 		&c.Crowdsec.AcquisitionFilePath,
-		&c.Crowdsec.ConsoleContextPath,
 	}
 
 	for _, k := range crowdsecCleanup {
@@ -167,12 +162,30 @@ func (c *Config) LoadCrowdsec() error {
 	}
 
 	c.Crowdsec.ContextToSend = make(map[string][]string, 0)
-	yamlFile, err := os.ReadFile(c.Crowdsec.ConsoleContextPath)
+	fallback := false
+	if c.Crowdsec.ConsoleContextPath == "" {
+		// fallback to default config file
+		c.Crowdsec.ConsoleContextPath = DefaultContextConfigFilePath
+		fallback = true
+	}
 
-	if err == nil {
+	f, err := filepath.Abs(c.Crowdsec.ConsoleContextPath)
+	if err != nil {
+		return fmt.Errorf("fail to get absolute path of %s: %s", c.Crowdsec.ConsoleContextPath, err)
+	}
+
+	c.Crowdsec.ConsoleContextPath = f
+	yamlFile, err := os.ReadFile(c.Crowdsec.ConsoleContextPath)
+	if err != nil {
+		if fallback {
+			log.Debugf("Default context config file doesn't exist, will not use it")
+		} else {
+			return fmt.Errorf("failed to open context file: %s", err)
+		}
+	} else {
 		err = yaml.Unmarshal(yamlFile, c.Crowdsec.ContextToSend)
 		if err != nil {
-			return fmt.Errorf("unmarshaling labels console config file '%s': %s", DefaultContextConfigFilePath, err)
+			return fmt.Errorf("unmarshaling labels console config file '%s': %s", c.Crowdsec.ConsoleContextPath, err)
 		}
 
 		if c.Crowdsec.ConsoleContextValueLength == 0 {
@@ -183,9 +196,6 @@ func (c *Config) LoadCrowdsec() error {
 			log.Debugf("Provided console context value length (%d) is higher than the maximum, using default: %d", c.Crowdsec.ConsoleContextValueLength, maxContextValueLen)
 			c.Crowdsec.ConsoleContextValueLength = maxContextValueLen
 		}
-	} else {
-		//we avoid logging here, as the logger is not yet initialized and it might be messy
-		log.Debugf("unable to load console context file '%s': %s", DefaultContextConfigFilePath, err)
 	}
 
 	return nil
@@ -196,11 +206,11 @@ func (c *CrowdsecServiceCfg) DumpContextConfigFile() error {
 	var err error
 
 	if out, err = yaml.Marshal(c.ContextToSend); err != nil {
-		return errors.Wrapf(err, "while marshaling ConsoleConfig (for %s)", DefaultContextConfigFilePath)
+		return errors.Wrapf(err, "while marshaling ConsoleConfig (for %s)", c.ConsoleContextPath)
 	}
 
 	if err := os.WriteFile(c.ConsoleContextPath, out, 0600); err != nil {
-		return errors.Wrapf(err, "while dumping console config to %s", DefaultContextConfigFilePath)
+		return errors.Wrapf(err, "while dumping console config to %s", c.ConsoleContextPath)
 	}
 
 	log.Infof("%s file saved", c.ConsoleContextPath)

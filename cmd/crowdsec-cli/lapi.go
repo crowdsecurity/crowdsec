@@ -183,6 +183,11 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 			if err := csConfig.LoadCrowdsec(); err != nil {
 				log.Fatalf("Unable to load CrowdSec Agent: %s", err)
 			}
+
+			if csConfig.DisableAgent {
+				log.Fatalf("Agent is disabled and lapi context can only be used on the agent")
+			}
+
 			return nil
 		},
 		Run: func(cmd *cobra.Command, args []string) {
