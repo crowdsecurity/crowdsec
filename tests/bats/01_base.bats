@@ -110,8 +110,8 @@ declare stderr
 @test "cscli config backup / restore" {
     # test that we need a valid path
     # disabled because in CI, the empty string is not passed as a parameter
-    run -1 --separate-stderr cscli config backup ""
-    assert_stderr --partial "failed to backup config: directory path can't be empty"
+    #run -1 --separate-stderr cscli config backup ""
+    #assert_stderr --partial "failed to backup config: directory path can't be empty"
 
     run -1 --separate-stderr cscli config backup "/dev/null/blah"
     assert_stderr --partial "failed to backup config: while creating /dev/null/blah: mkdir /dev/null/blah: not a directory"
