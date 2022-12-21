@@ -1,12 +1,12 @@
 package leakybucket
 
 import (
-	"encoding/json"
 	"fmt"
 	"net"
 	"sort"
 	"strconv"
 
+	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/davecgh/go-spew/spew"
@@ -15,90 +15,8 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/vm"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
-
-func truncate(values []string, contextValueLen int) (string, error) {
-	var ret string
-	valueByte, err := json.Marshal(values)
-	if err != nil {
-		return "", fmt.Errorf("unable to dump metas: %s", err)
-	}
-	ret = string(valueByte)
-	for {
-		if len(ret) <= contextValueLen {
-			break
-		}
-		// if there is only 1 value left and that the size is too big, truncate it
-		if len(values) == 1 {
-			valueToTruncate := values[0]
-			half := len(valueToTruncate) / 2
-			lastValueTruncated := valueToTruncate[:half] + "..."
-			values = values[:len(values)-1]
-			values = append(values, lastValueTruncated)
-		} else {
-			// if there is multiple value inside, just remove the last one
-			values = values[:len(values)-1]
-		}
-		valueByte, err = json.Marshal(values)
-		if err != nil {
-			return "", fmt.Errorf("unable to dump metas: %s", err)
-		}
-		ret = string(valueByte)
-	}
-	return ret, nil
-}
-
-func EventToContext(labels map[string][]*vm.Program, queue *Queue, contextValueLen int) models.Meta {
-	metas := make([]*models.MetaItems0, 0)
-	tmpContext := make(map[string][]string)
-	for _, evt := range queue.Queue {
-		for key, values := range labels {
-			if _, ok := tmpContext[key]; !ok {
-				tmpContext[key] = make([]string, 0)
-			}
-			for _, value := range values {
-				var val string
-				output, err := expr.Run(value, exprhelpers.GetExprEnv(map[string]interface{}{"evt": evt}))
-				if err != nil {
-					log.Warningf("failed to get value of '%v': %v", value, err)
-					continue
-				}
-				switch out := output.(type) {
-				case string:
-					val = out
-				case int:
-					val = strconv.Itoa(out)
-				default:
-					log.Warningf("unexpected return type for context to send : %T", output)
-					continue
-				}
-				if val != "" && !types.InSlice(val, tmpContext[key]) {
-					tmpContext[key] = append(tmpContext[key], val)
-				}
-			}
-		}
-	}
-	for key, values := range tmpContext {
-		if len(values) == 0 {
-			continue
-		}
-		valueStr, err := truncate(values, contextValueLen)
-		if err != nil {
-			log.Warningf(err.Error())
-		}
-		meta := models.MetaItems0{
-			Key:   key,
-			Value: valueStr,
-		}
-		metas = append(metas, &meta)
-	}
-
-	ret := models.Meta(metas)
-	return ret
-
-}
 
 //SourceFromEvent extracts and formats a valid models.Source object from an Event
 func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, error) {
@@ -376,7 +294,7 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 	*apiAlert.Message = fmt.Sprintf("%s %s performed '%s' (%d events over %s) at %s", source_scope, sourceStr, leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Last_ts)
 	//Get the events from Leaky/Queue
 	apiAlert.Events = EventsFromQueue(queue)
-	apiAlert.Meta = EventToContext(leaky.ContextToSend, leaky.Queue, leaky.ContextValueLen)
+	apiAlert.Meta = alertcontext.EventToContext(leaky.Queue.GetQueue())
 	//Loop over the Sources and generate appropriate number of ApiAlerts
 	for _, srcValue := range sources {
 		newApiAlert := apiAlert
