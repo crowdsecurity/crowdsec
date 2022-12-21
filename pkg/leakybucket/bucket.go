@@ -7,7 +7,7 @@ import (
 	"time"
 
 	//"log"
-	"github.com/antonmedv/expr/vm"
+
 	"github.com/crowdsecurity/crowdsec/pkg/time/rate"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/mohae/deepcopy"
@@ -72,8 +72,6 @@ type Leaky struct {
 	wgPour          *sync.WaitGroup
 	wgDumpState     *sync.WaitGroup
 	mutex           *sync.Mutex //used only for TIMEMACHINE mode to allow garbage collection without races
-	ContextToSend   map[string][]*vm.Program
-	ContextValueLen int
 }
 
 var BucketsPour = prometheus.NewCounterVec(
