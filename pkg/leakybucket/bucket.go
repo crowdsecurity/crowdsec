@@ -7,7 +7,6 @@ import (
 	"time"
 
 	//"log"
-
 	"github.com/crowdsecurity/crowdsec/pkg/time/rate"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/mohae/deepcopy"
