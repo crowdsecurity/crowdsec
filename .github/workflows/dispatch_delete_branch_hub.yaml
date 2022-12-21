@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - id: keydb
-        uses: cardinalby/git-get-release-action@v1
+        uses: cardinalby/git-get-release-action@cedef2faf69cb7c55b285bad07688d04430b7ada
         env:
           GITHUB_TOKEN: ${{ github.token }}
         with:

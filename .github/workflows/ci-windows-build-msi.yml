@@ -24,7 +24,7 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
     - id: get_latest_release
-      uses: cardinalby/git-get-release-action@v1
+      uses: cardinalby/git-get-release-action@cedef2faf69cb7c55b285bad07688d04430b7ada
       env:
         GITHUB_TOKEN: ${{ github.token }}
       with:
