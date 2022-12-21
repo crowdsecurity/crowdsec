@@ -2,7 +2,8 @@ name: Dispatch to hub when creating pre-release
 
 on:
   release:
-    types: prereleased
+    types:
+      - prereleased
 
 jobs:
   dispatch:
@@ -10,15 +11,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - id: keydb
-        uses: pozetroninc/github-action-get-latest-release@master
+        uses: cardinalby/git-get-release-action@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         with:
-          owner: crowdsecurity
-          repo: crowdsec
-          excludes: prerelease, draft
+          latest: true
+          draft: false
+          prerelease: false
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v1
         with:
           token: ${{ secrets.DISPATCH_TOKEN }}
           event-type: create_branch
           repository: crowdsecurity/hub
-          client-payload: '{"version": "${{ steps.keydb.outputs.release }}"}'
+          client-payload: '{"version": "${{ steps.keydb.outputs.tag_name }}"}'
