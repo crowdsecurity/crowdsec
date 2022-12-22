@@ -12,10 +12,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-const (
-	maxContextValueLen = 4000
-)
-
 // CrowdsecServiceCfg contains the location of parsers/scenarios/... and acquisition files
 type CrowdsecServiceCfg struct {
 	Enable                    *bool             `yaml:"enable"`
@@ -186,15 +182,6 @@ func (c *Config) LoadCrowdsec() error {
 		err = yaml.Unmarshal(yamlFile, c.Crowdsec.ContextToSend)
 		if err != nil {
 			return fmt.Errorf("unmarshaling labels console config file '%s': %s", c.Crowdsec.ConsoleContextPath, err)
-		}
-
-		if c.Crowdsec.ConsoleContextValueLength == 0 {
-			log.Debugf("No console context value length provided, using default: %d", maxContextValueLen)
-			c.Crowdsec.ConsoleContextValueLength = maxContextValueLen
-		}
-		if c.Crowdsec.ConsoleContextValueLength > maxContextValueLen {
-			log.Debugf("Provided console context value length (%d) is higher than the maximum, using default: %d", c.Crowdsec.ConsoleContextValueLength, maxContextValueLen)
-			c.Crowdsec.ConsoleContextValueLength = maxContextValueLen
 		}
 	}
 

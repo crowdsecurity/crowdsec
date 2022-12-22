@@ -13,6 +13,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	maxContextValueLen = 4000
+)
+
 var (
 	alertContext = Context{}
 )
@@ -28,6 +32,15 @@ func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 	var clog = log.New()
 	if err := types.ConfigureLogger(clog); err != nil {
 		return fmt.Errorf("couldn't create logger for alert context: %s", err)
+	}
+
+	if valueLength == 0 {
+		clog.Debugf("No console context value length provided, using default: %d", maxContextValueLen)
+		valueLength = maxContextValueLen
+	}
+	if valueLength > maxContextValueLen {
+		clog.Debugf("Provided console context value length (%d) is higher than the maximum, using default: %d", valueLength, maxContextValueLen)
+		valueLength = maxContextValueLen
 	}
 
 	alertContext = Context{
