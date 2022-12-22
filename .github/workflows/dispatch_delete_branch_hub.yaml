@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      tag_name: ${{ steps.get_latest_release.tag_name }}
     steps:
       - id: get_latest_release
         uses: cardinalby/git-get-release-action@cedef2faf69cb7c55b285bad07688d04430b7ada
