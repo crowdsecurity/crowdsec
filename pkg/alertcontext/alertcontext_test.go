@@ -45,7 +45,8 @@ func TestEventToContext(t *testing.T) {
 		{
 			name: "basic test",
 			contextToSend: map[string][]string{
-				"test": []string{"evt.Parsed.source_ip"},
+				"source_ip":         []string{"evt.Parsed.source_ip"},
+				"nonexistent_field": []string{"evt.Parsed.nonexist"},
 			},
 			valueLength: 100,
 			events: []types.Event{
@@ -58,7 +59,7 @@ func TestEventToContext(t *testing.T) {
 			},
 			expectedResult: []*models.MetaItems0{
 				{
-					Key:   "test",
+					Key:   "source_ip",
 					Value: "[\"1.2.3.4\"]",
 				},
 			},
