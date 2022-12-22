@@ -55,8 +55,7 @@ func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 		for _, value := range values {
 			valueCompiled, err := expr.Compile(value, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 			if err != nil {
-				alertContext.Log.Errorf("compilation of '%s' context value failed: %v", value, err)
-				continue
+				return fmt.Errorf("compilation of '%s' context value failed: %v", value, err)
 			}
 			alertContext.ContextToSendCompiled[key] = append(alertContext.ContextToSendCompiled[key], valueCompiled)
 		}
@@ -96,7 +95,9 @@ func truncate(values []string, contextValueLen int) (string, error) {
 	return ret, nil
 }
 
-func EventToContext(events []types.Event) models.Meta {
+func EventToContext(events []types.Event) (models.Meta, []error) {
+	var errors []error
+
 	metas := make([]*models.MetaItems0, 0)
 	tmpContext := make(map[string][]string)
 	for _, evt := range events {
@@ -108,7 +109,7 @@ func EventToContext(events []types.Event) models.Meta {
 				var val string
 				output, err := expr.Run(value, exprhelpers.GetExprEnv(map[string]interface{}{"evt": evt}))
 				if err != nil {
-					log.Warningf("failed to get value of '%v': %v", value, err)
+					errors = append(errors, fmt.Errorf("failed to get value for %s : %v", key, err))
 					continue
 				}
 				switch out := output.(type) {
@@ -117,7 +118,7 @@ func EventToContext(events []types.Event) models.Meta {
 				case int:
 					val = strconv.Itoa(out)
 				default:
-					log.Warningf("unexpected return type for context to send : %T", output)
+					errors = append(errors, fmt.Errorf("unexpected return type for %s : %T", key, output))
 					continue
 				}
 				if val != "" && !types.InSlice(val, tmpContext[key]) {
@@ -142,6 +143,5 @@ func EventToContext(events []types.Event) models.Meta {
 	}
 
 	ret := models.Meta(metas)
-	return ret
-
+	return ret, errors
 }

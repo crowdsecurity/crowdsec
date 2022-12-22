@@ -195,7 +195,7 @@ func TestEventToContext(t *testing.T) {
 		err := NewAlertContext(test.contextToSend, test.valueLength)
 		assert.ErrorIs(t, err, nil)
 
-		metas := EventToContext(test.events)
+		metas, _ := EventToContext(test.events)
 		assert.ElementsMatch(t, test.expectedResult, metas)
 	}
 }

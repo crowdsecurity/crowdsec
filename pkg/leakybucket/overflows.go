@@ -18,7 +18,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
 
-//SourceFromEvent extracts and formats a valid models.Source object from an Event
+// SourceFromEvent extracts and formats a valid models.Source object from an Event
 func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, error) {
 	srcs := make(map[string]models.Source)
 	/*if it's already an overflow, we have properly formatted sources.
@@ -161,7 +161,7 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 	return srcs, nil
 }
 
-//EventsFromQueue iterates the queue to collect & prepare meta-datas from alert
+// EventsFromQueue iterates the queue to collect & prepare meta-datas from alert
 func EventsFromQueue(queue *Queue) []*models.Event {
 
 	events := []*models.Event{}
@@ -208,7 +208,7 @@ func EventsFromQueue(queue *Queue) []*models.Event {
 	return events
 }
 
-//alertFormatSource iterates over the queue to collect sources
+// alertFormatSource iterates over the queue to collect sources
 func alertFormatSource(leaky *Leaky, queue *Queue) (map[string]models.Source, string, error) {
 	var sources map[string]models.Source = make(map[string]models.Source)
 	var source_type string
@@ -234,7 +234,7 @@ func alertFormatSource(leaky *Leaky, queue *Queue) (map[string]models.Source, st
 	return sources, source_type, nil
 }
 
-//NewAlert will generate a RuntimeAlert and its APIAlert(s) from a bucket that overflowed
+// NewAlert will generate a RuntimeAlert and its APIAlert(s) from a bucket that overflowed
 func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 	var runtimeAlert types.RuntimeAlert
 
@@ -294,7 +294,12 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 	*apiAlert.Message = fmt.Sprintf("%s %s performed '%s' (%d events over %s) at %s", source_scope, sourceStr, leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Last_ts)
 	//Get the events from Leaky/Queue
 	apiAlert.Events = EventsFromQueue(queue)
-	apiAlert.Meta = alertcontext.EventToContext(leaky.Queue.GetQueue())
+	var warnings []error
+	apiAlert.Meta, warnings = alertcontext.EventToContext(leaky.Queue.GetQueue())
+	for _, w := range warnings {
+		log.Warningf("while extracting context from bucket %s : %s", leaky.Name, w)
+	}
+
 	//Loop over the Sources and generate appropriate number of ApiAlerts
 	for _, srcValue := range sources {
 		newApiAlert := apiAlert
