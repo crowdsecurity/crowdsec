@@ -36,7 +36,6 @@ var downloadOnly bool
 var forceAction bool
 var purge bool
 var all bool
-var restoreOldBackup bool
 
 var prometheusURL string
 

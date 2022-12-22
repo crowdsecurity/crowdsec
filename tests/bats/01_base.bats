@@ -110,11 +110,11 @@ declare stderr
 @test "cscli config backup / restore" {
     # test that we need a valid path
     # disabled because in CI, the empty string is not passed as a parameter
-    ## run -1 --separate-stderr cscli config backup ""
-    ## assert_stderr --partial "Failed to backup configurations: directory path can't be empty"
+    #run -1 --separate-stderr cscli config backup ""
+    #assert_stderr --partial "failed to backup config: directory path can't be empty"
 
     run -1 --separate-stderr cscli config backup "/dev/null/blah"
-    assert_stderr --partial "Failed to backup configurations: while creating /dev/null/blah: mkdir /dev/null/blah: not a directory"
+    assert_stderr --partial "failed to backup config: while creating /dev/null/blah: mkdir /dev/null/blah: not a directory"
 
     # pick a dirpath
     backupdir=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp -u)
@@ -125,7 +125,7 @@ declare stderr
 
     # don't overwrite an existing backup
     run -1 --separate-stderr cscli config backup "${backupdir}"
-    assert_stderr --partial "Failed to backup configurations"
+    assert_stderr --partial "failed to backup config"
     assert_stderr --partial "file exists"
 
     SIMULATION_YAML="$(config_get '.config_paths.simulation_path')"
@@ -141,7 +141,7 @@ declare stderr
     # backup: detect missing files
     rm "${SIMULATION_YAML}"
     run -1 --separate-stderr cscli config backup "${backupdir}"
-    assert_stderr --regexp "Failed to backup configurations: failed copy .* to .*: stat .*: no such file or directory"
+    assert_stderr --regexp "failed to backup config: failed copy .* to .*: stat .*: no such file or directory"
     rm -rf -- "${backupdir:?}"
 }
 
