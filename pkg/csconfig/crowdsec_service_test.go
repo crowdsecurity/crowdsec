@@ -56,9 +56,10 @@ func TestLoadCrowdsec(t *testing.T) {
 					},
 				},
 				Crowdsec: &CrowdsecServiceCfg{
-					AcquisitionFilePath: "./tests/acquis.yaml",
-					SimulationFilePath:  "./tests/simulation.yaml",
-					ConsoleContextPath:  "./tests/context.yaml",
+					AcquisitionFilePath:       "./tests/acquis.yaml",
+					SimulationFilePath:        "./tests/simulation.yaml",
+					ConsoleContextPath:        "./tests/context.yaml",
+					ConsoleContextValueLength: 2500,
 				},
 			},
 			expectedResult: &CrowdsecServiceCfg{
@@ -73,7 +74,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				BucketsRoutinesCount:      1,
 				ParserRoutinesCount:       1,
 				OutputRoutinesCount:       1,
-				ConsoleContextValueLength: 4000,
+				ConsoleContextValueLength: 2500,
 				AcquisitionFiles:          []string{acquisFullPath},
 				SimulationFilePath:        "./tests/simulation.yaml",
 				ContextToSend: map[string][]string{
@@ -116,7 +117,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				BucketsRoutinesCount:      1,
 				ParserRoutinesCount:       1,
 				OutputRoutinesCount:       1,
-				ConsoleContextValueLength: 4000,
+				ConsoleContextValueLength: 0,
 				AcquisitionFiles:          []string{acquisFullPath, acquisInDirFullPath},
 				ContextToSend: map[string][]string{
 					"source_ip": {"evt.Parsed.source_ip"},
@@ -141,7 +142,8 @@ func TestLoadCrowdsec(t *testing.T) {
 					},
 				},
 				Crowdsec: &CrowdsecServiceCfg{
-					ConsoleContextPath: contextFileFullPath,
+					ConsoleContextPath:        contextFileFullPath,
+					ConsoleContextValueLength: 10,
 				},
 			},
 			expectedResult: &CrowdsecServiceCfg{
@@ -156,7 +158,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				BucketsRoutinesCount:      1,
 				ParserRoutinesCount:       1,
 				OutputRoutinesCount:       1,
-				ConsoleContextValueLength: 4000,
+				ConsoleContextValueLength: 10,
 				AcquisitionFiles:          []string{},
 				SimulationFilePath:        "",
 				ContextToSend: map[string][]string{
