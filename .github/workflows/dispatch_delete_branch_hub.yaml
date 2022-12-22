@@ -26,6 +26,7 @@ jobs:
   dispatch:
     name: dispatch to hub-tests
     runs-on: ubuntu-latest
+    needs: get_latest_release
     steps:
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v1
@@ -33,4 +34,4 @@ jobs:
           token: ${{ secrets.DISPATCH_TOKEN }}
           event-type: delete_branch
           repository: crowdsecurity/hub
-          client-payload: '{"version": "${{ jobs.get_latest_release.outputs.tag_name }}"}'
+          client-payload: '{"version": "${{ needs.get_latest_release.outputs.tag_name }}"}'
