@@ -298,9 +298,9 @@ cscli machines add MyTestMachine --password MyPassword
 	cmdMachines.AddCommand(cmdMachinesAdd)
 
 	var cmdMachinesDelete = &cobra.Command{
-		Use:               "delete --machine MyTestMachine",
+		Use:               "delete [machine_name]...",
 		Short:             "delete machines",
-		Example:           `cscli machines delete "machine_name"`,
+		Example:           `cscli machines delete "machine1" "machine2"`,
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"remove"},
 		DisableAutoGenTag: true,
