@@ -331,7 +331,6 @@ cscli machines add MyTestMachine --password MyPassword
 			return ret, cobra.ShellCompDirectiveNoFileComp
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			machineID = args[0]
 			for _, machineID := range args {
 				err := dbClient.DeleteWatcher(machineID)
 				if err != nil {
@@ -342,7 +341,6 @@ cscli machines add MyTestMachine --password MyPassword
 			}
 		},
 	}
-	cmdMachinesDelete.Flags().StringVarP(&machineID, "machine", "m", "", "machine to delete")
 	cmdMachines.AddCommand(cmdMachinesDelete)
 
 	var cmdMachinesValidate = &cobra.Command{
