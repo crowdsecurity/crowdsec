@@ -1,9 +1,14 @@
 package fflag
 
-var CrowdsecFeatures FeatureMap
+var Crowdsec = FeatureRegister{EnvPrefix: "CROWDSEC_FEATURE_"}
 
-func InitCrowdsecFeatures() error {
-	var err error
-	CrowdsecFeatures, err = NewFeatureMap(map[string]FeatureFlag{"cscli_setup": {}})
-	return err
+var CscliSetup = &Feature{Name: "cscli_setup"}
+
+func RegisterAllFeatures() error {
+	err := Crowdsec.RegisterFeature(CscliSetup)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

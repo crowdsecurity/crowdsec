@@ -314,15 +314,11 @@ func LoadConfig(cConfig *csconfig.Config) error {
 func LoadFeatureFlags(cConfig *csconfig.Config, logger *log.Logger) error {
 	featurePath := filepath.Join(cConfig.ConfigPaths.ConfigDir, "feature.yaml")
 
-	if err := fflag.InitCrowdsecFeatures(); err != nil {
-		log.Fatalf("failed to initialize features: %s", err)
-	}
-
-	if err := fflag.CrowdsecFeatures.SetFromYamlFile(featurePath, logger); err != nil {
+	if err := fflag.Crowdsec.SetFromYamlFile(featurePath, logger); err != nil {
 		return fmt.Errorf("file %s: %s", featurePath, err)
 	}
 
-	enabledFeatures := fflag.CrowdsecFeatures.GetEnabledFeatures()
+	enabledFeatures := fflag.Crowdsec.GetEnabledFeatures()
 
 	msg := "<none>"
 	if len(enabledFeatures) > 0 {
@@ -358,9 +354,13 @@ func exitWithCode(exitCode int, err error) {
 var crowdsecT0 time.Time
 
 func main() {
+	if err := fflag.RegisterAllFeatures(); err != nil {
+		log.Fatalf("failed to register features: %s", err)
+	}
+
 	// some features can require configuration or command-line options,
 	// so wwe need to parse them asap. we'll load from feature.yaml later.
-	if err := fflag.CrowdsecFeatures.SetFromEnv("CROWDSEC_FEATURE_", log.StandardLogger()); err != nil {
+	if err := fflag.Crowdsec.SetFromEnv(log.StandardLogger()); err != nil {
 		log.Fatalf("failed set features from environment: %s", err)
 	}
 

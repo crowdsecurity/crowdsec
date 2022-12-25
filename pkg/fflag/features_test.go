@@ -8,47 +8,41 @@ import (
 	"github.com/sirupsen/logrus"
 	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
-	
+
 	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
 
-// Test the constructor, which is not required but useful for validation.
-func TestNewFeatureMap(t *testing.T) {
+func TestRegisterFeature(t *testing.T) {
 	tests := []struct {
 		name        string
-		flags       map[string]fflag.FeatureFlag
+		feature     fflag.Feature
 		expectedErr string
 	}{
 		{
-			name: "no feature at all",
-			flags: map[string]fflag.FeatureFlag{},
-		},
-		{
-			name: "a plain feature or two",
-			flags: map[string]fflag.FeatureFlag{
-				"plain":          {},
-				"plain_version2": {},
+			name: "a plain feature",
+			feature: fflag.Feature{
+				Name: "plain",
 			},
 		},
 		{
 			name: "capitalized feature name",
-			flags: map[string]fflag.FeatureFlag{
-				"Plain": {},
+			feature: fflag.Feature{
+				Name: "Plain",
 			},
 			expectedErr: "feature flag 'Plain': name is not lowercase",
 		},
 		{
 			name: "empty feature name",
-			flags: map[string]fflag.FeatureFlag{
-				"": {},
+			feature: fflag.Feature{
+				Name: "",
 			},
 			expectedErr: "feature flag '': name is empty",
 		},
 		{
 			name: "invalid feature name",
-			flags: map[string]fflag.FeatureFlag{
-				"meh!": {},
+			feature: fflag.Feature{
+				Name: "meh!",
 			},
 			expectedErr: "feature flag 'meh!': invalid name (allowed a-z, 0-9, _, .)",
 		},
@@ -58,29 +52,44 @@ func TestNewFeatureMap(t *testing.T) {
 		tc := tc
 
 		t.Run("", func(t *testing.T) {
-			_, err := fflag.NewFeatureMap(tc.flags)
+			fr := fflag.FeatureRegister{EnvPrefix: "FFLAG_TEST_"}
+			err := fr.RegisterFeature(&tc.feature)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
 }
 
-func setUp(t *testing.T) fflag.FeatureMap {
+func setUp(t *testing.T) fflag.FeatureRegister {
 	t.Helper()
 
-	fm, err := fflag.NewFeatureMap(map[string]fflag.FeatureFlag{
-		"experimental1":    {},
-		"new_standard": {
-			State:          fflag.DeprecatedState,
-			DeprecationMsg: "in 2.0 we'll do that by default",
-		},
-		"was_adopted": {
-			State:          fflag.RetiredState,
-			DeprecationMsg: "the trinket was implemented in 1.5",
-		},
+	fr := fflag.FeatureRegister{EnvPrefix: "FFLAG_TEST_"}
+
+	err := fr.RegisterFeature(&fflag.Feature{Name: "experimental1"})
+	require.NoError(t, err)
+
+	err = fr.RegisterFeature(&fflag.Feature{
+		Name:        "some_feature",
+		Description: "A feature that does something, with a description",
 	})
 	require.NoError(t, err)
 
-	return fm
+	err = fr.RegisterFeature(&fflag.Feature{
+		Name:           "new_standard",
+		State:          fflag.DeprecatedState,
+		Description:    "This implements the new standard T34.256w",
+		DeprecationMsg: "In 2.0 we'll do T34.256w by default",
+	})
+	require.NoError(t, err)
+
+	err = fr.RegisterFeature(&fflag.Feature{
+		Name:           "was_adopted",
+		State:          fflag.RetiredState,
+		Description:    "This implements a new tricket",
+		DeprecationMsg: "The trinket was implemented in 1.5",
+	})
+	require.NoError(t, err)
+
+	return fr
 }
 
 func TestGetFeature(t *testing.T) {
@@ -99,12 +108,12 @@ func TestGetFeature(t *testing.T) {
 		},
 	}
 
-	fm := setUp(t)
+	fr := setUp(t)
 
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := fm.GetFeature(tc.feature)
+			_, err := fr.GetFeature(tc.feature)
 			cstest.RequireErrorMessage(t, err, tc.expectedErr)
 			if tc.expectedErr != "" {
 				return
@@ -113,13 +122,12 @@ func TestGetFeature(t *testing.T) {
 	}
 }
 
-
 func TestIsEnabled(t *testing.T) {
 	tests := []struct {
-		name        string
-		feature     string
-		enable      bool
-		expected    bool
+		name     string
+		feature  string
+		enable   bool
+		expected bool
 	}{
 		{
 			name:     "feature that was not enabled",
@@ -133,12 +141,12 @@ func TestIsEnabled(t *testing.T) {
 		},
 	}
 
-	fm := setUp(t)
+	fr := setUp(t)
 
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			feat, err := fm.GetFeature(tc.feature)
+			feat, err := fr.GetFeature(tc.feature)
 			require.NoError(t, err)
 
 			err = feat.Set(tc.enable)
@@ -174,13 +182,13 @@ func TestFeatureSet(t *testing.T) {
 			feature:        "new_standard",
 			value:          true,
 			expected:       true,
-			expectedSetErr: "the flag is deprecated: in 2.0 we'll do that by default",
+			expectedSetErr: "the flag is deprecated",
 		}, {
-			name:     "enable a feature that was retired in v1.5",
-			feature:  "was_adopted",
-			value:    true,
-			expected: false,
-			expectedSetErr: "the flag is retired: the trinket was implemented in 1.5",
+			name:           "enable a feature that was retired in v1.5",
+			feature:        "was_adopted",
+			value:          true,
+			expected:       false,
+			expectedSetErr: "the flag is retired",
 		}, {
 			name:           "enable a feature that does not exist",
 			feature:        "will_never_exist",
@@ -192,12 +200,12 @@ func TestFeatureSet(t *testing.T) {
 
 	// the tests are not indepedent because we don't instantiate a feature
 	// map for each one, but it simplified the code
-	fm := setUp(t)
+	fr := setUp(t)
 
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			feat, err := fm.GetFeature(tc.feature)
+			feat, err := fr.GetFeature(tc.feature)
 			cstest.RequireErrorMessage(t, err, tc.expectedGetErr)
 			if tc.expectedGetErr != "" {
 				return
@@ -240,20 +248,27 @@ func TestSetFromEnv(t *testing.T) {
 			value:       "true",
 			expectedLog: []string{"Ignored envvar 'FFLAG_TEST_WILL_NEVER_EXIST': unknown feature"},
 		}, {
+			name:   "enable a feature flag with a description",
+			envvar: "FFLAG_TEST_SOME_FEATURE",
+			value:  "true",
+			expectedLog: []string{
+				"Feature flag: some_feature=true (from envvar). A feature that does something, with a description",
+			},
+		}, {
 			name:   "enable a deprecated feature",
 			envvar: "FFLAG_TEST_NEW_STANDARD",
 			value:  "true",
 			expectedLog: []string{
-				"Envvar 'FFLAG_TEST_NEW_STANDARD': the flag is deprecated: in 2.0 we'll do that by default",
-				"Feature flag: new_standard=true (from envvar)",
+				"Envvar 'FFLAG_TEST_NEW_STANDARD': the flag is deprecated. In 2.0 we'll do T34.256w by default",
+				"Feature flag: new_standard=true (from envvar). This implements the new standard T34.256w",
 			},
 		}, {
 			name:   "enable a feature that was retired in v1.5",
 			envvar: "FFLAG_TEST_WAS_ADOPTED",
 			value:  "true",
 			expectedLog: []string{
-				"Ignored envvar 'FFLAG_TEST_WAS_ADOPTED': the flag is retired: " +
-				"the trinket was implemented in 1.5",
+				"Ignored envvar 'FFLAG_TEST_WAS_ADOPTED': the flag is retired. " +
+					"The trinket was implemented in 1.5",
 			},
 		}, {
 			// this could happen in theory, but only if environment variables
@@ -265,7 +280,7 @@ func TestSetFromEnv(t *testing.T) {
 		},
 	}
 
-	fm := setUp(t)
+	fr := setUp(t)
 
 	for _, tc := range tests {
 		tc := tc
@@ -273,7 +288,7 @@ func TestSetFromEnv(t *testing.T) {
 			logger, hook := logtest.NewNullLogger()
 			logger.SetLevel(logrus.InfoLevel)
 			t.Setenv(tc.envvar, tc.value)
-			err := fm.SetFromEnv("FFLAG_TEST_", logger)
+			err := fr.SetFromEnv(logger)
 			cstest.RequireErrorMessage(t, err, tc.expectedErr)
 			for _, expectedMessage := range tc.expectedLog {
 				cstest.RequireLogContains(t, hook, expectedMessage)
@@ -313,26 +328,26 @@ func TestSetFromYaml(t *testing.T) {
 			name: "enable a deprecated feature",
 			yml:  "- new_standard",
 			expectedLog: []string{
-				"Feature 'new_standard': the flag is deprecated: in 2.0 we'll do that by default",
-				"Feature flag: new_standard=true (from config file)",
+				"Feature 'new_standard': the flag is deprecated. In 2.0 we'll do T34.256w by default",
+				"Feature flag: new_standard=true (from config file). This implements the new standard T34.256w",
 			},
 		}, {
 			name: "enable a retired feature",
 			yml:  "- was_adopted",
 			expectedLog: []string{
-				"Ignored feature flag 'was_adopted': the flag is retired: the trinket was implemented in 1.5",
+				"Ignored feature flag 'was_adopted': the flag is retired. The trinket was implemented in 1.5",
 			},
 		},
 	}
 
-	fm := setUp(t)
+	fr := setUp(t)
 
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			logger, hook := logtest.NewNullLogger()
 			logger.SetLevel(logrus.InfoLevel)
-			err := fm.SetFromYaml(strings.NewReader(tc.yml), logger)
+			err := fr.SetFromYaml(strings.NewReader(tc.yml), logger)
 			cstest.RequireErrorMessage(t, err, tc.expectedErr)
 			for _, expectedMessage := range tc.expectedLog {
 				cstest.RequireLogContains(t, hook, expectedMessage)
@@ -352,24 +367,24 @@ func TestSetFromYamlFile(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, tmpfile.Close())
 
-	fm := setUp(t)
+	fr := setUp(t)
 	logger, hook := logtest.NewNullLogger()
 	logger.SetLevel(logrus.InfoLevel)
 
-	err = fm.SetFromYamlFile(tmpfile.Name(), logger)
+	err = fr.SetFromYamlFile(tmpfile.Name(), logger)
 	require.NoError(t, err)
 
 	cstest.RequireLogContains(t, hook, "Feature flag: experimental1=true (from config file)")
 }
 
 func TestGetEnabledFeatures(t *testing.T) {
-	fm := setUp(t)
+	fr := setUp(t)
 
-	feat1, err := fm.GetFeature("new_standard")
+	feat1, err := fr.GetFeature("new_standard")
 	require.NoError(t, err)
 	feat1.Set(true)
 
-	feat2, err := fm.GetFeature("experimental1")
+	feat2, err := fr.GetFeature("experimental1")
 	require.NoError(t, err)
 	feat2.Set(true)
 
@@ -378,5 +393,5 @@ func TestGetEnabledFeatures(t *testing.T) {
 		"new_standard",
 	}
 
-	require.Equal(t, expected, fm.GetEnabledFeatures())
+	require.Equal(t, expected, fr.GetEnabledFeatures())
 }
