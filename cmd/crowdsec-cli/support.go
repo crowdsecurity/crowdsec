@@ -93,7 +93,7 @@ func collectVersion() []byte {
 
 func collectFeatures() []byte {
 	log.Info("Collecting feature flags")
-	enabledFeatures := fflag.CrowdsecFeatures.GetEnabledFeatures()
+	enabledFeatures := fflag.Crowdsec.GetEnabledFeatures()
 
 	w := bytes.NewBuffer(nil)
 	for _, k := range enabledFeatures {

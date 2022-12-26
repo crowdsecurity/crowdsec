@@ -23,6 +23,7 @@
 //
 // A specific deprecation message is used to inform the user of the behavior
 // that has been decided when the flag is/was finally retired.
+
 package fflag
 
 import (
@@ -38,74 +39,62 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const (
-	ActiveState = iota
-	DeprecatedState
-	RetiredState
+var (
+	ErrFeatureNameEmpty   = errors.New("name is empty")
+	ErrFeatureNameCase    = errors.New("name is not lowercase")
+	ErrFeatureNameInvalid = errors.New("invalid name (allowed a-z, 0-9, _, .)")
+	ErrFeatureUnknown     = errors.New("unknown feature")
+	ErrFeatureDeprecated  = errors.New("the flag is deprecated")
+	ErrFeatureRetired     = errors.New("the flag is retired")
 )
 
-type FeatureFlag struct {
-	State          int    // active, deprecated, retired
-	DeprecationMsg string // Why was it deprecated? What happens next? What should the user do?
-}
+const (
+	ActiveState     = iota // the feature can be enabled, and its description is logged (Info)
+	DeprecatedState        // the feature can be enabled, and a deprecation message is logged (Warning)
+	RetiredState           // the feature is ignored and a deprecation message is logged (Error)
+)
 
-type feature struct {
-	name	string
-	flag    FeatureFlag
+type Feature struct {
+	Name  string
+	State int // active, deprecated, retired
+
+	// Description should be a short sentence, explaining the feature.
+	Description string
+
+	// DeprecationMessage is used to inform the user of the behavior that has
+	// been decided when the flag is/was finally retired.
+	DeprecationMsg string
+
 	enabled bool
-	fm      *FeatureMap
 }
 
-func (f *feature) IsEnabled() bool {
+func (f *Feature) IsEnabled() bool {
 	return f.enabled
 }
 
-func (f *feature) Set(value bool) error {
+// Set enables or disables a feature flag
+// It should not be called directly by the user, but by SetFromEnv or SetFromYaml
+func (f *Feature) Set(value bool) error {
 	// retired feature flags are ignored
-	if f.flag.State == RetiredState {
-		return FeatureRetiredError(*f)
+	if f.State == RetiredState {
+		return ErrFeatureRetired
 	}
 
 	f.enabled = value
-	(*f.fm)[f.name] = *f
 
 	// deprecated feature flags are still accepted, but a warning is triggered.
 	// We return an error but set the feature anyway.
-	if f.flag.State == DeprecatedState {
-		return FeatureDeprecatedError(*f)
+	if f.State == DeprecatedState {
+		return ErrFeatureDeprecated
 	}
 
 	return nil
 }
 
-type FeatureMap map[string]feature
-
-// These are returned by the constructor.
-var (
-	ErrFeatureNameEmpty   = errors.New("name is empty")
-	ErrFeatureNameCase    = errors.New("name is not lowercase")
-	ErrFeatureNameInvalid = errors.New("invalid name (allowed a-z, 0-9, _, .)")
-)
-
-var ErrFeatureUnknown = errors.New("unknown feature")
-var ErrFeatureDeprecated  = errors.New("the flag is deprecated")
-
-func FeatureDeprecatedError(feat feature) error {
-	if feat.flag.DeprecationMsg != "" {
-		return fmt.Errorf("%w: %s", ErrFeatureDeprecated, feat.flag.DeprecationMsg)
-	}
-
-	return ErrFeatureDeprecated
-}
-
-var ErrFeatureRetired = errors.New("the flag is retired")
-
-func FeatureRetiredError(feat feature) error {
-	if feat.flag.DeprecationMsg != "" {
-		return fmt.Errorf("%w: %s", ErrFeatureRetired, feat.flag.DeprecationMsg)
-	}
-
-	return ErrFeatureRetired
+// A register allows to enable features from the environment or a file
+type FeatureRegister struct {
+	EnvPrefix string
+	features  map[string]*Feature
 }
 
 var featureNameRexp = regexp.MustCompile(`^[a-z0-9_\.]+$`)
@@ -126,22 +115,22 @@ func validateFeatureName(featureName string) error {
 	return nil
 }
 
-func NewFeatureMap(flags map[string]FeatureFlag) (FeatureMap, error) {
-	fm := FeatureMap{}
-
-	for k, v := range flags {
-		if err := validateFeatureName(k); err != nil {
-			return nil, fmt.Errorf("feature flag '%s': %w", k, err)
-		}
-
-		fm[k] = feature{name: k, flag: v, enabled: false, fm: &fm}
+func (fr *FeatureRegister) RegisterFeature(feat *Feature) error {
+	if err := validateFeatureName(feat.Name); err != nil {
+		return fmt.Errorf("feature flag '%s': %w", feat.Name, err)
 	}
 
-	return fm, nil
+	if fr.features == nil {
+		fr.features = make(map[string]*Feature)
+	}
+
+	fr.features[feat.Name] = feat
+
+	return nil
 }
 
-func (fm *FeatureMap) GetFeature(featureName string) (feature, error) {
-	feat, ok := (*fm)[featureName]
+func (fr *FeatureRegister) GetFeature(featureName string) (*Feature, error) {
+	feat, ok := fr.features[featureName]
 	if !ok {
 		return feat, ErrFeatureUnknown
 	}
@@ -149,17 +138,17 @@ func (fm *FeatureMap) GetFeature(featureName string) (feature, error) {
 	return feat, nil
 }
 
-func (fm *FeatureMap) SetFromEnv(prefix string, logger *logrus.Logger) error {
+func (fr *FeatureRegister) SetFromEnv(logger *logrus.Logger) error {
 	for _, e := range os.Environ() {
 		// ignore non-feature variables
-		if !strings.HasPrefix(e, prefix) {
+		if !strings.HasPrefix(e, fr.EnvPrefix) {
 			continue
 		}
 
 		// extract feature name and value
 		pair := strings.SplitN(e, "=", 2)
 		varName := pair[0]
-		featureName := strings.ToLower(varName[len(prefix):])
+		featureName := strings.ToLower(varName[len(fr.EnvPrefix):])
 		value := pair[1]
 
 		var enable bool
@@ -174,9 +163,9 @@ func (fm *FeatureMap) SetFromEnv(prefix string, logger *logrus.Logger) error {
 			continue
 		}
 
-		feat, err := fm.GetFeature(featureName)
+		feat, err := fr.GetFeature(featureName)
 		if err != nil {
-			logger.Errorf("Ignored envvar '%s': %s", varName, err)
+			logger.Errorf("Ignored envvar '%s': %s.", varName, err)
 			continue
 		}
 
@@ -184,21 +173,21 @@ func (fm *FeatureMap) SetFromEnv(prefix string, logger *logrus.Logger) error {
 
 		switch {
 		case errors.Is(err, ErrFeatureRetired):
-			logger.Errorf("Ignored envvar '%s': %s", varName, err)
+			logger.Errorf("Ignored envvar '%s': %s. %s", varName, err, feat.DeprecationMsg)
 			continue
 		case errors.Is(err, ErrFeatureDeprecated):
-			logger.Warningf("Envvar '%s': %s", varName, err)
+			logger.Warningf("Envvar '%s': %s. %s", varName, err, feat.DeprecationMsg)
 		case err != nil:
 			return err
 		}
 
-		logger.Infof("Feature flag: %s=%t (from envvar)", featureName, enable)
+		logger.Infof("Feature flag: %s=%t (from envvar). %s", featureName, enable, feat.Description)
 	}
 
 	return nil
 }
 
-func (fm *FeatureMap) SetFromYaml(r io.Reader, logger *logrus.Logger) error {
+func (fr *FeatureRegister) SetFromYaml(r io.Reader, logger *logrus.Logger) error {
 	var cfg []string
 
 	bys, err := io.ReadAll(r)
@@ -217,7 +206,7 @@ func (fm *FeatureMap) SetFromYaml(r io.Reader, logger *logrus.Logger) error {
 
 	// set features
 	for _, k := range cfg {
-		feat, err := fm.GetFeature(k)
+		feat, err := fr.GetFeature(k)
 		if err != nil {
 			logger.Errorf("Ignored feature flag '%s': %s", k, err)
 			continue
@@ -227,21 +216,21 @@ func (fm *FeatureMap) SetFromYaml(r io.Reader, logger *logrus.Logger) error {
 
 		switch {
 		case errors.Is(err, ErrFeatureRetired):
-			logger.Errorf("Ignored feature flag '%s': %s", k, err)
+			logger.Errorf("Ignored feature flag '%s': %s. %s", k, err, feat.DeprecationMsg)
 			continue
 		case errors.Is(err, ErrFeatureDeprecated):
-			logger.Warningf("Feature '%s': %s", k, err)
+			logger.Warningf("Feature '%s': %s. %s", k, err, feat.DeprecationMsg)
 		case err != nil:
 			return err
 		}
 
-		logger.Infof("Feature flag: %s=true (from config file)", k)
+		logger.Infof("Feature flag: %s=true (from config file). %s", k, feat.Description)
 	}
 
 	return nil
 }
 
-func (fm *FeatureMap) SetFromYamlFile(path string, logger *logrus.Logger) error {
+func (fr *FeatureRegister) SetFromYamlFile(path string, logger *logrus.Logger) error {
 	f, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -256,15 +245,14 @@ func (fm *FeatureMap) SetFromYamlFile(path string, logger *logrus.Logger) error 
 
 	logger.Debugf("Reading feature flags from %s", path)
 
-	return fm.SetFromYaml(f, logger)
+	return fr.SetFromYaml(f, logger)
 }
 
 // GetEnabledFeatures returns the list of features that have been enabled by the user
-func (fm *FeatureMap) GetEnabledFeatures() []string {
+func (fr *FeatureRegister) GetEnabledFeatures() []string {
 	ret := make([]string, 0)
 
-	for k := range *fm {
-		feat := (*fm)[k]
+	for k, feat := range fr.features {
 		if feat.IsEnabled() {
 			ret = append(ret, k)
 		}

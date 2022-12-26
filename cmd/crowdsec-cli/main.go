@@ -67,7 +67,7 @@ func initConfig() {
 	}
 
 	featurePath := filepath.Join(csConfig.ConfigPaths.ConfigDir, "feature.yaml")
-	if err = fflag.CrowdsecFeatures.SetFromYamlFile(featurePath, log.StandardLogger()); err != nil {
+	if err = fflag.Crowdsec.SetFromYamlFile(featurePath, log.StandardLogger()); err != nil {
 		log.Fatalf("File %s: %s", featurePath, err)
 	}
 
@@ -137,13 +137,13 @@ func main() {
 	logFormatter := &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true}
 	log.SetFormatter(logFormatter)
 
-	if err := fflag.InitCrowdsecFeatures(); err != nil {
-		log.Fatalf("failed to initialize features: %s", err)
+	if err := fflag.RegisterAllFeatures(); err != nil {
+		log.Fatalf("failed to register features: %s", err)
 	}
 
 	// some features can require configuration or command-line options,
 	// so we need to parse them asap. we'll load from feature.yaml later.
-	if err := fflag.CrowdsecFeatures.SetFromEnv("CROWDSEC_FEATURE_", log.StandardLogger()); err != nil {
+	if err := fflag.Crowdsec.SetFromEnv(log.StandardLogger()); err != nil {
 		log.Fatalf("failed to set features from environment: %s", err)
 	}
 
