@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -176,7 +177,7 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 	cmdLapi.AddCommand(cmdLapiStatus)
 
 	cmdContext := &cobra.Command{
-		Use:               "context [feature-flag]",
+		Use:               "context [command]",
 		Short:             "Manage context to send with alerts",
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -205,6 +206,9 @@ cscli lapi context add --key file_source --value evt.Line.Src
 		`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
+			if err := alertcontext.ValidateContextExpr(keyToAdd, valuesToAdd); err != nil {
+				log.Fatalf("invalid context configuration :%s", err)
+			}
 			if _, ok := csConfig.Crowdsec.ContextToSend[keyToAdd]; !ok {
 				csConfig.Crowdsec.ContextToSend[keyToAdd] = make([]string, 0)
 				log.Infof("key '%s' added", keyToAdd)

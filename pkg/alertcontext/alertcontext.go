@@ -28,6 +28,16 @@ type Context struct {
 	Log                   *log.Logger
 }
 
+func ValidateContextExpr(key string, expressions []string) error {
+	for _, expression := range expressions {
+		_, err := expr.Compile(expression, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+		if err != nil {
+			return fmt.Errorf("compilation of '%s' failed: %v", expression, err)
+		}
+	}
+	return nil
+}
+
 func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 	var clog = log.New()
 	if err := types.ConfigureLogger(clog); err != nil {
