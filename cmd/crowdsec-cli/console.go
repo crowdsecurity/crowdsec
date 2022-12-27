@@ -129,8 +129,8 @@ After running this command your will need to validate the enrollment in the weba
 	var enableAll, disableAll bool
 
 	cmdEnable := &cobra.Command{
-		Use:     "enable [feature-flag]",
-		Short:   "Enable a feature flag",
+		Use:     "enable [option]",
+		Short:   "Enable a console option",
 		Example: "sudo cscli console enable tainted",
 		Long: `
 Enable given information push to the central API. Allows to empower the console`,
@@ -153,12 +153,12 @@ Enable given information push to the central API. Allows to empower the console`
 			log.Infof(ReloadMessage())
 		},
 	}
-	cmdEnable.Flags().BoolVarP(&enableAll, "all", "a", false, "Enable all feature flags")
+	cmdEnable.Flags().BoolVarP(&enableAll, "all", "a", false, "Enable all console options")
 	cmdConsole.AddCommand(cmdEnable)
 
 	cmdDisable := &cobra.Command{
-		Use:     "disable [feature-flag]",
-		Short:   "Disable a feature flag",
+		Use:     "disable [option]",
+		Short:   "Disable a console option",
 		Example: "sudo cscli console disable tainted",
 		Long: `
 Disable given information push to the central API.`,
@@ -183,12 +183,12 @@ Disable given information push to the central API.`,
 			log.Infof(ReloadMessage())
 		},
 	}
-	cmdDisable.Flags().BoolVarP(&disableAll, "all", "a", false, "Enable all feature flags")
+	cmdDisable.Flags().BoolVarP(&disableAll, "all", "a", false, "Disable all console options")
 	cmdConsole.AddCommand(cmdDisable)
 
 	cmdConsoleStatus := &cobra.Command{
-		Use:   "status [feature-flag]",
-		Short: "Shows status of one or all feature flags",
+		Use:   "status [option]",
+		Short: "Shows status of one or all console options",
 		Example: `sudo cscli console status
 +-------------+-----------+---------------------------------------------------+
 | Option Name | Activated | Description                                       |
