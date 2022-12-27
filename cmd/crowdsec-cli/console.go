@@ -187,17 +187,9 @@ Disable given information push to the central API.`,
 	cmdConsole.AddCommand(cmdDisable)
 
 	cmdConsoleStatus := &cobra.Command{
-		Use:   "status [option]",
-		Short: "Shows status of one or all console options",
-		Example: `sudo cscli console status
-+-------------+-----------+---------------------------------------------------+
-| Option Name | Activated | Description                                       |
-+-------------+-----------+---------------------------------------------------+
-| custom      | ✅        | Send alerts from custom scenarios to the console  |
-| manual      | ❌        | Send manual decisions to the console              |
-| tainted     | ✅        | Send alerts from tainted scenarios to the console |
-| context     | ✅        | Send context with alerts to the console           |
-+-------------+-----------+---------------------------------------------------+`,
+		Use:               "status [option]",
+		Short:             "Shows status of one or all console options",
+		Example:           `sudo cscli console status`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			switch csConfig.Cscli.Output {
