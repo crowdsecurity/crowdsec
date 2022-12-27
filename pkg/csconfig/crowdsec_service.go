@@ -37,8 +37,6 @@ type CrowdsecServiceCfg struct {
 	ContextToSend      map[string][]string `yaml:"-"`
 }
 
-var DefaultContextConfigFilePath = DefaultConfigPath("console", "context.yaml")
-
 func (c *Config) LoadCrowdsec() error {
 	var err error
 
@@ -161,7 +159,7 @@ func (c *Config) LoadCrowdsec() error {
 	fallback := false
 	if c.Crowdsec.ConsoleContextPath == "" {
 		// fallback to default config file
-		c.Crowdsec.ConsoleContextPath = DefaultContextConfigFilePath
+		c.Crowdsec.ConsoleContextPath = filepath.Join(c.Crowdsec.ConfigDir, "console", "context.yaml")
 		fallback = true
 	}
 
