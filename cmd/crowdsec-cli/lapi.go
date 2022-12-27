@@ -237,10 +237,16 @@ cscli lapi context add --key file_source --value evt.Line.Src
 		Short:             "List context to send with alerts",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
+			if len(csConfig.Crowdsec.ContextToSend) == 0 {
+				fmt.Println("No context found on this agent. You can use 'cscli lapi context add' to add context to your alerts.")
+				return
+			}
+
 			dump, err := yaml.Marshal(csConfig.Crowdsec.ContextToSend)
 			if err != nil {
 				log.Fatalf("unable to show context status: %s", err)
 			}
+
 			fmt.Println(string(dump))
 
 		},
