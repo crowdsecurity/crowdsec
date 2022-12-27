@@ -1,29 +1,11 @@
 name: build-msi (windows)
 
 on:
-  pull_request:
-    branches:
-      - master
-      - releases/**
-    paths-ignore:
-      - 'docs/**'
-      - 'mkdocs.yml'
-      - 'README.md'
+  release:
+    types:
+      - prereleased
 
 jobs:
-  get_latest_release:
-    name: get_latest_release
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-    - id: get_latest_release
-      uses: cardinalby/git-get-release-action@cedef2faf69cb7c55b285bad07688d04430b7ada
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-      with:
-        latest: true
-
   build:
     name: Build
     runs-on: windows-2019
@@ -34,9 +16,9 @@ jobs:
         go-version: 1.19
       id: go
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
-    - id: set_release_in_env
-      run: echo "BUILD_VERSION=${{ jobs.get_latest_release.outputs.tag_name }}" >> $env:GITHUB_ENV
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
     - name: Build
       run: make windows_installer
     - name: Upload MSI
