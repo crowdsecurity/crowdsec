@@ -298,9 +298,9 @@ cscli machines add MyTestMachine --password MyPassword
 	cmdMachines.AddCommand(cmdMachinesAdd)
 
 	var cmdMachinesDelete = &cobra.Command{
-		Use:               "delete --machine MyTestMachine",
+		Use:               "delete [machine_name]...",
 		Short:             "delete machines",
-		Example:           `cscli machines delete "machine_name"`,
+		Example:           `cscli machines delete "machine1" "machine2"`,
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"remove"},
 		DisableAutoGenTag: true,
@@ -331,7 +331,6 @@ cscli machines add MyTestMachine --password MyPassword
 			return ret, cobra.ShellCompDirectiveNoFileComp
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			machineID = args[0]
 			for _, machineID := range args {
 				err := dbClient.DeleteWatcher(machineID)
 				if err != nil {
@@ -342,7 +341,6 @@ cscli machines add MyTestMachine --password MyPassword
 			}
 		},
 	}
-	cmdMachinesDelete.Flags().StringVarP(&machineID, "machine", "m", "", "machine to delete")
 	cmdMachines.AddCommand(cmdMachinesDelete)
 
 	var cmdMachinesValidate = &cobra.Command{

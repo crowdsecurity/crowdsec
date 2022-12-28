@@ -234,5 +234,5 @@ func TestWatcherEnroll(t *testing.T) {
 	}
 
 	_, err = client.Auth.EnrollWatcher(context.Background(), "badkey", "", []string{}, false)
-	assert.Contains(t, err.Error(), "the attachment key provided is not valid")
+	assert.Contains(t, err.Error(), "unable to refresh JWT token multiple times", "got %s", err.Error())
 }
