@@ -68,6 +68,7 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"GetDecisionsCount":      GetDecisionsCount,
 		"GetDecisionsSinceCount": GetDecisionsSinceCount,
 		"Sprintf":                fmt.Sprintf,
+		"UnixDate":               UnixDate,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
@@ -283,10 +284,19 @@ func GetDecisionsSinceCount(value string, since string) int {
 }
 
 func LookupHost(value string) []string {
-	addresses , err := net.LookupHost(value)
+	addresses, err := net.LookupHost(value)
 	if err != nil {
 		log.Errorf("Failed to lookup host '%s' : %s", value, err)
-		return []string{} 
+		return []string{}
 	}
 	return addresses
+}
+
+func UnixDate(value string) string {
+	//Splitting string here as some unix timestamp may have milliseconds and break ParseInt
+	i, err := strconv.ParseInt(strings.Split(value, ".")[0], 10, 64)
+	if err != nil {
+		log.Errorf("Unable to parse %s as unix timestamp. Error message: %s", i, err.Error())
+	}
+	return time.Unix(i, 0).Format(time.RFC3339)
 }
