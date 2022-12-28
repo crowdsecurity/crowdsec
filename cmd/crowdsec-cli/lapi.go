@@ -182,9 +182,11 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadCrowdsec(); err != nil {
-				log.Fatalf("Unable to load CrowdSec Agent: %s", err)
+				fileNotFoundMessage := fmt.Sprintf("failed to open context file: open %s: no such file or directory", csConfig.Crowdsec.ConsoleContextPath)
+				if err.Error() != fileNotFoundMessage {
+					log.Fatalf("Unable to load CrowdSec Agent: %s", err)
+				}
 			}
-
 			if csConfig.DisableAgent {
 				log.Fatalf("Agent is disabled and lapi context can only be used on the agent")
 			}
