@@ -981,7 +981,7 @@ func TestParseUnix(t *testing.T) {
 		err    string
 	}{
 		{
-			name: "ParseUnix() test: valid syntax with milli",
+			name: "ParseUnix() test: valid value with milli",
 			env: map[string]interface{}{
 				"unix":      "1672239773.3590894",
 				"ParseUnix": ParseUnix,
@@ -991,7 +991,7 @@ func TestParseUnix(t *testing.T) {
 			err:    "",
 		},
 		{
-			name: "ParseUnix() test: valid syntax without milli",
+			name: "ParseUnix() test: valid value without milli",
 			env: map[string]interface{}{
 				"unix":      "1672239773",
 				"ParseUnix": ParseUnix,
@@ -1001,9 +1001,19 @@ func TestParseUnix(t *testing.T) {
 			err:    "",
 		},
 		{
-			name: "ParseUnix() test: invalid syntax",
+			name: "ParseUnix() test: invalid input",
 			env: map[string]interface{}{
 				"unix":      "AbcDefG!#",
+				"ParseUnix": ParseUnix,
+			},
+			code:   "ParseUnix(unix)",
+			result: "",
+			err:    "",
+		},
+		{
+			name: "ParseUnix() test: negative value",
+			env: map[string]interface{}{
+				"unix":      "-1000",
 				"ParseUnix": ParseUnix,
 			},
 			code:   "ParseUnix(unix)",
