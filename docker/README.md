@@ -226,12 +226,12 @@ Using binds rather than named volumes ([complete explanation here](https://docs.
 |                         | | |
 | __TLS Auth/encryption   | | |
 | `USE_TLS`               | false | Enable TLS on the LAPI |
-| `CLIENT_CERT_FILE`      | /etc/ssl/cert.pem | Client TLS Certificate path |
-| `CLIENT_KEY_FILE`       | /etc/ssl/key.pem | Client TLS Key path |
-| `CLIENT_CACERT_FILE`    | | Client CA certificate bundle |
-| `LAPI_CERT_FILE`        | /etc/ssl/cert.pem | LAPI TLS Certificate path |
-| `LAPI_KEY_FILE`         | /etc/ssl/key.pem | LAPI TLS Key path |
-| `LAPI_CACERT_FILE`      | | LAPI CA certificate bundle |
+| `CACERT_FILE`           | | CA certificate bundle (optional) |
+| `INSECURE_SKIP_VERIFY`  | | Skip LAPI certificate validation |
+| `CLIENT_CERT_FILE`      | | Client TLS Certificate path (enables TLS auth) |
+| `CLIENT_KEY_FILE`       | | Client TLS Key path |
+| `LAPI_CERT_FILE`        | | LAPI TLS Certificate path (required if USE_TLS) |
+| `LAPI_KEY_FILE`         | | LAPI TLS Key path (required if USE_TLS) |
 | `AGENTS_ALLOWED_OU`     | agent-ou | OU values allowed for agents, separated by comma |
 | `BOUNCERS_ALLOWED_OU`   | bouncer-ou | OU values allowed for bouncers, separated by comma |
 |                         | | |
