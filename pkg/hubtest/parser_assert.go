@@ -78,6 +78,7 @@ func (p *ParserAssert) LoadTest(filename string) error {
 }
 
 func (p *ParserAssert) AssertFile(testFile string) error {
+
 	file, err := os.Open(p.File)
 
 	if err != nil {
@@ -268,6 +269,32 @@ func LoadParserDump(filepath string) (*ParserResults, error) {
 	if err := yaml.Unmarshal(results, &pdump); err != nil {
 		return nil, err
 	}
+
+	/* we know that some variables should always be set,
+	let's check if they're present in last parser output of last stage */
+	stages := make([]string, len(pdump))
+	for k, _ := range pdump {
+		stages = append(stages, k)
+	}
+	sort.Strings(stages)
+	/*the very last one is set to 'success' which is just a bool indicating if the line was successfully parsed*/
+	lastStage := stages[len(stages)-2]
+
+	parsers := make([]string, len(pdump[lastStage]))
+	for k, _ := range pdump[lastStage] {
+		parsers = append(parsers, k)
+	}
+	sort.Strings(parsers)
+	lastParser := parsers[len(parsers)-1]
+
+	for idx, result := range pdump[lastStage][lastParser] {
+		if result.Evt.StrTime == "" {
+			log.Warningf("Line %d/%d is missing evt.StrTime. It is most likely a mistake as it will prevent your logs to be processed in time-machine/forensic mode.", idx, len(pdump[lastStage][lastParser]))
+		} else {
+			log.Debugf("Line %d/%d has evt.StrTime set to '%s'", idx, len(pdump[lastStage][lastParser]), result.Evt.StrTime)
+		}
+	}
+
 	return &pdump, nil
 }
 
