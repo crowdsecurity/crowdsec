@@ -278,7 +278,7 @@ cscli machines add MyTestMachine --password MyPassword
 				log.Fatalf("unable to marshal api credentials: %s", err)
 			}
 			if dumpFile != "" && dumpFile != "-" {
-				err = os.WriteFile(dumpFile, apiConfigDump, 0600)
+				err = os.WriteFile(dumpFile, apiConfigDump, 0644)
 				if err != nil {
 					log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
 				}
