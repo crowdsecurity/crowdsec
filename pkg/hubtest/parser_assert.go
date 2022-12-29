@@ -272,16 +272,16 @@ func LoadParserDump(filepath string) (*ParserResults, error) {
 
 	/* we know that some variables should always be set,
 	let's check if they're present in last parser output of last stage */
-	stages := make([]string, len(pdump))
-	for k, _ := range pdump {
+	stages := make([]string, 0, len(pdump))
+	for k := range pdump {
 		stages = append(stages, k)
 	}
 	sort.Strings(stages)
 	/*the very last one is set to 'success' which is just a bool indicating if the line was successfully parsed*/
 	lastStage := stages[len(stages)-2]
 
-	parsers := make([]string, len(pdump[lastStage]))
-	for k, _ := range pdump[lastStage] {
+	parsers := make([]string, 0, len(pdump[lastStage]))
+	for k := range pdump[lastStage] {
 		parsers = append(parsers, k)
 	}
 	sort.Strings(parsers)
