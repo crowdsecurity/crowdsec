@@ -90,15 +90,14 @@ cscli_if_clean() {
 
 #-----------------------------------#
 
-if [ -n "$CERT_FILE" ] || [ -n "$KEY_FILE" ] || [ -n "$CACERT_FILE" ]; then
+if [ -n "$CERT_FILE" ] || [ -n "$KEY_FILE" ] ; then
     printf '%b' '\033[0;33m'
-    echo "Warning: the variables CERT_FILE, KEY_FILE and CACERT_FILE have been deprecated." >&2
-    echo "Please use LAPI_CERT_FILE, LAPI_KEY_FILE and LAPI_CACERT_FILE insted." >&2
+    echo "Warning: the variables CERT_FILE and KEY_FILE have been deprecated." >&2
+    echo "Please use LAPI_CERT_FILE and LAPI_KEY_FILE insted." >&2
     echo "The old variables will be removed in a future release." >&2
     printf '%b' '\033[0m'
     LAPI_CERT_FILE=${LAPI_CERT_FILE:-$CERT_FILE}
     LAPI_KEY_FILE=${LAPI_KEY_FILE:-$KEY_FILE}
-    LAPI_CACERT_FILE=${LAPI_CACERT_FILE:-$CACERT_FILE}
 fi
 
 # Check and prestage databases
@@ -141,7 +140,23 @@ if isfalse "$DISABLE_LOCAL_API" && isfalse "$USE_TLS"; then
     cscli machines add "$CUSTOM_HOSTNAME" --auto --url "$LOCAL_API_URL"
 fi
 
+if isfalse "$DISABLE_LOCAL_API"; then
+    echo "Check if lapi needs to automatically register an agent"
+
+    # pre-registration is not needed with TLS authentication, but we can have TLS transport with user/pw
+    if [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] ; then
+        # re-register because pw may have been changed
+        # doing this generates local_api_credentials.yaml from scratch, removing any tls setting
+        cscli machines add "$AGENT_USERNAME" --password "$AGENT_PASSWORD" --url "$LOCAL_API_URL" --force
+        echo "Agent registered to lapi"
+    elif isfalse "$USE_TLS"; then
+        echo "TLS is disabled, the AGENT_USERNAME and AGENT_PASSWORD must be set" >&2
+    fi
+fi
+
 lapi_credentials_path=$(conf_get '.api.client.credentials_path')
+
+conf_set 'with(select(strenv(INSECURE_SKIP_VERIFY)!=""); .api.client.insecure_skip_verify = env(INSECURE_SKIP_VERIFY))'
 
 # we only use the envvars that are actually defined
 # in case of persistent configuration
@@ -153,12 +168,9 @@ conf_set '
 
 if istrue "$USE_TLS"; then
     conf_set '
-        with(select(strenv(CLIENT_CACERT_FILE)!=""); .ca_cert_path = strenv(CLIENT_CACERT_FILE)) |
-        with(select(.ca_cert_path=="" or .ca_cert_path==null); .ca_cert_path = "/etc/ssl/crowdsec-client/ca.pem") |
+        with(select(strenv(CACERT_FILE)!=""); .ca_cert_path = strenv(CACERT_FILE)) |
         with(select(strenv(CLIENT_KEY_FILE)!=""); .key_path = strenv(CLIENT_KEY_FILE)) |
-        with(select(.key_path=="" or .key_path==null); .key_path = "/etc/ssl/crowdsec-client/key.pem") |
-        with(select(strenv(CLIENT_CERT_FILE)!=""); .cert_path = strenv(CLIENT_CERT_FILE)) |
-        with(select(.cert_path=="" or .cert_path==null); .cert_path = "/etc/ssl/crowdsec-client/cert.pem")
+        with(select(strenv(CLIENT_CERT_FILE)!=""); .cert_path = strenv(CLIENT_CERT_FILE))
     ' "$lapi_credentials_path"
 else
     conf_set '
@@ -166,17 +178,6 @@ else
         del(.key_path) |
         del(.cert_path)
     ' "$lapi_credentials_path"
-fi
-
-if isfalse "$DISABLE_LOCAL_API"; then
-    echo "Check if lapi needs to automatically register an agent"
-
-    # pre-registration is not needed with TLS
-    if isfalse "$USE_TLS" && [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] ; then
-        # re-register because pw may have been changed
-        cscli machines add "$AGENT_USERNAME" --password "$AGENT_PASSWORD" --url "$LOCAL_API_URL" --force
-        echo "Agent registered to lapi"
-    fi
 fi
 
 # registration to online API for signal push
@@ -217,12 +218,9 @@ if istrue "$USE_TLS"; then
     agents_allowed_yaml=$(csv2yaml "$AGENTS_ALLOWED_OU") \
     bouncers_allowed_yaml=$(csv2yaml "$BOUNCERS_ALLOWED_OU") \
     conf_set '
-        with(select(strenv(LAPI_CACERT_FILE)!=""); .api.server.tls.ca_cert_path = strenv(LAPI_CACERT_FILE)) |
-        with(select(.api.server.tls.ca_cert_path=="" or .api.server.tls.ca_cert_path==null); .api.server.tls.ca_cert_path = "/etc/ssl/crowdsec-lapi/ca.pem") |
+        with(select(strenv(CACERT_FILE)!=""); .api.server.tls.ca_cert_path = strenv(CACERT_FILE)) |
         with(select(strenv(LAPI_CERT_FILE)!=""); .api.server.tls.cert_file = strenv(LAPI_CERT_FILE)) |
-        with(select(.api.server.tls.cert_file=="" or .api.server.tls.cert_file==null); .api.server.tls.cert_file = "/etc/ssl/crowdsec-lapi/cert.pem") |
         with(select(strenv(LAPI_KEY_FILE)!=""); .api.server.tls.key_file = strenv(LAPI_KEY_FILE)) |
-        with(select(.api.server.tls.key_file=="" or .api.server.tls.key_file==null); .api.server.tls.key_file = "/etc/ssl/crowdsec-lapi/key.pem") |
         with(select(strenv(BOUNCERS_ALLOWED_OU)!=""); .api.server.tls.bouncers_allowed_ou = env(bouncers_allowed_yaml)) |
         with(select(strenv(AGENTS_ALLOWED_OU)!=""); .api.server.tls.agents_allowed_ou = env(agents_allowed_yaml)) |
         ... comments=""

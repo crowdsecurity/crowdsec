@@ -54,8 +54,8 @@ func NewClient(config *Config) (*ApiClient, error) {
 		NbRetry:        0,
 	}
 	tlsconfig := tls.Config{InsecureSkipVerify: InsecureSkipVerify}
+	tlsconfig.RootCAs = CaCertPool
 	if Cert != nil {
-		tlsconfig.RootCAs = CaCertPool
 		tlsconfig.Certificates = []tls.Certificate{*Cert}
 	}
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tlsconfig
@@ -76,8 +76,8 @@ func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *htt
 		client = &http.Client{}
 		if ht, ok := http.DefaultTransport.(*http.Transport); ok {
 			tlsconfig := tls.Config{InsecureSkipVerify: InsecureSkipVerify}
+			tlsconfig.RootCAs = CaCertPool
 			if Cert != nil {
-				tlsconfig.RootCAs = CaCertPool
 				tlsconfig.Certificates = []tls.Certificate{*Cert}
 			}
 			ht.TLSClientConfig = &tlsconfig
