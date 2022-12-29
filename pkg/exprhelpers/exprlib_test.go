@@ -971,3 +971,53 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 		log.Printf("test '%s' : OK", test.name)
 	}
 }
+
+func TestParseUnix(t *testing.T) {
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result string
+		err    string
+	}{
+		{
+			name: "ParseUnix() test: valid syntax with milli",
+			env: map[string]interface{}{
+				"unix":      "1672239773.3590894",
+				"ParseUnix": ParseUnix,
+			},
+			code:   "ParseUnix(unix)",
+			result: "2022-12-28T15:02:53Z",
+			err:    "",
+		},
+		{
+			name: "ParseUnix() test: valid syntax without milli",
+			env: map[string]interface{}{
+				"unix":      "1672239773",
+				"ParseUnix": ParseUnix,
+			},
+			code:   "ParseUnix(unix)",
+			result: "2022-12-28T15:02:53Z",
+			err:    "",
+		},
+		{
+			name: "ParseUnix() test: invalid syntax",
+			env: map[string]interface{}{
+				"unix":      "AbcDefG!#",
+				"ParseUnix": ParseUnix,
+			},
+			code:   "ParseUnix(unix)",
+			result: "",
+			err:    "",
+		},
+	}
+
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, expr.Env(test.env))
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+}
