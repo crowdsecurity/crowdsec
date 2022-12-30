@@ -14,6 +14,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
 	"github.com/pkg/errors"
@@ -100,7 +101,7 @@ func (r retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 	backoff := 0
 	for i := 0; i < r.maxAttempts; i++ {
 		if i > 0 {
-			if r.withBackOff {
+			if r.withBackOff && !fflag.DisableHttpRetryBackoff.IsEnabled() {
 				backoff += 10 + rand.Intn(20)
 			}
 			log.Infof("retrying in %d seconds (attempt %d of %d)", backoff, i+1, r.maxAttempts)
