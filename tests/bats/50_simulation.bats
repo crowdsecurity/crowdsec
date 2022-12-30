@@ -29,7 +29,7 @@ setup() {
 @test "we have one decision" {
     run -0 cscli simulation disable --global
     fake_log | "${CROWDSEC}" -dsn file:///dev/fd/0 -type syslog -no-api
-    run -0 cscli decisions list -o json
+    run -0 --separate-stderr cscli decisions list -o json
     run -0 jq '. | length' <(output)
     assert_output 1
 }
@@ -37,7 +37,7 @@ setup() {
 @test "1.1.1.174 has been banned (exact)" {
     run -0 cscli simulation disable --global
     fake_log | "${CROWDSEC}" -dsn file:///dev/fd/0 -type syslog -no-api
-    run -0 cscli decisions list -o json
+    run -0 --separate-stderr cscli decisions list -o json
     run -0 jq -r '.[].decisions[0].value' <(output)
     assert_output '1.1.1.174'
 }
@@ -45,7 +45,7 @@ setup() {
 @test "decision has simulated == false (exact)" {
     run -0 cscli simulation disable --global
     fake_log | "${CROWDSEC}" -dsn file:///dev/fd/0 -type syslog -no-api
-    run -0 cscli decisions list -o json
+    run -0 --separate-stderr cscli decisions list -o json
     run -0 jq '.[].decisions[0].simulated' <(output)
     assert_output 'false'
 }
@@ -53,7 +53,7 @@ setup() {
 @test "simulated scenario, listing non-simulated: expect no decision" {
     run -0 cscli simulation enable crowdsecurity/ssh-bf
     fake_log | "${CROWDSEC}" -dsn file:///dev/fd/0 -type syslog -no-api
-    run -0 cscli decisions list --no-simu -o json
+    run -0 --separate-stderr cscli decisions list --no-simu -o json
     assert_output 'null'
 }
 
@@ -61,6 +61,6 @@ setup() {
     run -0 cscli simulation disable crowdsecurity/ssh-bf
     run -0 cscli simulation enable --global
     fake_log | "${CROWDSEC}" -dsn file:///dev/fd/0 -type syslog -no-api
-    run -0 cscli decisions list --no-simu -o json
+    run -0 --separate-stderr cscli decisions list --no-simu -o json
     assert_output 'null'
 }

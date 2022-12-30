@@ -103,7 +103,7 @@ declare stderr
 }
 
 @test "cscli config show --key" {
-    run -0 cscli config show --key Config.API.Server.ListenURI
+    run -0 --separate-stderr cscli config show --key Config.API.Server.ListenURI
     assert_output "127.0.0.1:8080"
 }
 
@@ -238,7 +238,7 @@ declare stderr
     # we check for the presence of some objects. There may be others when we
     # use $PACKAGE_TESTING, so the order is not important.
 
-    run -0 cscli hub list -o human
+    run -0 --separate-stderr cscli hub list -o human
     assert_line --regexp '^ crowdsecurity/linux'
     assert_line --regexp '^ crowdsecurity/sshd'
     assert_line --regexp '^ crowdsecurity/dateparse-enrich'
@@ -248,7 +248,7 @@ declare stderr
     assert_line --regexp '^ crowdsecurity/ssh-bf'
     assert_line --regexp '^ crowdsecurity/ssh-slow-bf'
 
-    run -0 cscli hub list -o raw
+    run -0 --separate-stderr cscli hub list -o raw
     assert_line --regexp '^crowdsecurity/linux,enabled,[0-9]+\.[0-9]+,core linux support : syslog\+geoip\+ssh,collections$'
     assert_line --regexp '^crowdsecurity/sshd,enabled,[0-9]+\.[0-9]+,sshd support : parser and brute-force detection,collections$'
     assert_line --regexp '^crowdsecurity/dateparse-enrich,enabled,[0-9]+\.[0-9]+,,parsers$'
@@ -258,7 +258,7 @@ declare stderr
     assert_line --regexp '^crowdsecurity/ssh-bf,enabled,[0-9]+\.[0-9]+,Detect ssh bruteforce,scenarios$'
     assert_line --regexp '^crowdsecurity/ssh-slow-bf,enabled,[0-9]+\.[0-9]+,Detect slow ssh bruteforce,scenarios$'
 
-    run -0 cscli hub list -o json
+    run -0 --separate-stderr cscli hub list -o json
     run jq -r '.collections[].name, .parsers[].name, .scenarios[].name' <(output)
     assert_line 'crowdsecurity/linux'
     assert_line 'crowdsecurity/sshd'
