@@ -80,7 +80,7 @@ teardown() {
 
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" 'del(.login,.password)'
     ./instance-crowdsec start
-    run -0 cscli machines list -o json
+    run -0 --separate-stderr cscli machines list -o json
     assert_output '[]'
 }
 
@@ -95,7 +95,7 @@ teardown() {
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" 'del(.login,.password)'
     ./instance-crowdsec start
     run -0 cscli lapi status
-    run -0 cscli machines list -o json
+    run -0 --separate-stderr cscli machines list -o json
     run -0 jq -c '[. | length, .[0].machineId[0:32], .[0].isValidated, .[0].ipAddress, .[0].auth_type]' <(output)
 
     assert_output '[1,"localhost@127.0.0.1",true,"127.0.0.1","tls"]'
@@ -111,7 +111,7 @@ teardown() {
     '
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" 'del(.login,.password)'
     ./instance-crowdsec start
-    run -0 cscli machines list -o json
+    run -0 --separate-stderr cscli machines list -o json
     assert_output '[]'
 }
 
@@ -125,6 +125,6 @@ teardown() {
 
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" 'del(.login,.password)'
     ./instance-crowdsec start
-    run -0 cscli machines list -o json
+    run -0 --separate-stderr cscli machines list -o json
     assert_output '[]'
 }

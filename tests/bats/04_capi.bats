@@ -37,7 +37,7 @@ setup() {
         [[ $(cscli alerts list -a -o json 2>/dev/null || cscli alerts list -o json) != "null" ]] && break
     done
 
-    run cscli alerts list -a -o json
+    run --separate-stderr cscli alerts list -a -o json
     if [[ "${status}" -ne 0 ]]; then
         run --separate-stderr cscli alerts list -o json
     fi
