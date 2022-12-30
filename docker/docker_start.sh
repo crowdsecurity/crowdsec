@@ -141,30 +141,31 @@ if isfalse "$DISABLE_LOCAL_API" && isfalse "$USE_TLS"; then
 fi
 
 if isfalse "$DISABLE_LOCAL_API"; then
-    echo "Check if lapi needs to automatically register an agent"
+    echo "Check if lapi needs to register an additional agent"
 
     # pre-registration is not needed with TLS authentication, but we can have TLS transport with user/pw
     if [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] ; then
         # re-register because pw may have been changed
-        # doing this generates local_api_credentials.yaml from scratch, removing any tls setting
-        cscli machines add "$AGENT_USERNAME" --password "$AGENT_PASSWORD" --url "$LOCAL_API_URL" --force
+        cscli machines add "$AGENT_USERNAME" --password "$AGENT_PASSWORD" -f /dev/null --force
         echo "Agent registered to lapi"
-    elif isfalse "$USE_TLS"; then
-        echo "TLS is disabled, the AGENT_USERNAME and AGENT_PASSWORD must be set" >&2
     fi
 fi
 
+# ----------------
+
 lapi_credentials_path=$(conf_get '.api.client.credentials_path')
 
-conf_set 'with(select(strenv(INSECURE_SKIP_VERIFY)!=""); .api.client.insecure_skip_verify = env(INSECURE_SKIP_VERIFY))'
+if istrue "$DISABLE_LOCAL_API"; then
+    # we only use the envvars that are actually defined
+    # in case of persistent configuration
+    conf_set '
+        with(select(strenv(LOCAL_API_URL)!=""); .url = strenv(LOCAL_API_URL)) |
+        with(select(strenv(AGENT_USERNAME)!=""); .login = strenv(AGENT_USERNAME)) |
+        with(select(strenv(AGENT_PASSWORD)!=""); .password = strenv(AGENT_PASSWORD))
+        ' "$lapi_credentials_path"
+fi
 
-# we only use the envvars that are actually defined
-# in case of persistent configuration
-conf_set '
-    with(select(strenv(LOCAL_API_URL)!=""); .url = strenv(LOCAL_API_URL)) |
-    with(select(strenv(AGENT_USERNAME)!=""); .login = strenv(AGENT_USERNAME)) |
-    with(select(strenv(AGENT_PASSWORD)!=""); .password = strenv(AGENT_PASSWORD))
-    ' "$lapi_credentials_path"
+conf_set 'with(select(strenv(INSECURE_SKIP_VERIFY)!=""); .api.client.insecure_skip_verify = env(INSECURE_SKIP_VERIFY))'
 
 if istrue "$USE_TLS"; then
     conf_set '
@@ -180,12 +181,17 @@ else
     ' "$lapi_credentials_path"
 fi
 
+if istrue "$DISABLE_ONLINE_API"; then
+    conf_set 'del(.api.server.online_client.credentials_path)'
+fi
+
 # registration to online API for signal push
-if isfalse "$DISABLE_ONLINE_API" && [ "$CONFIG_FILE" == "/etc/crowdsec/config.yaml" ] ; then
+if isfalse "$DISABLE_ONLINE_API" ; then
+    CONFIG_DIR=$(conf_get '.common.config_dir')
     config_exists=$(conf_get '.api.server.online_client | has("credentials_path")')
     if isfalse "$config_exists"; then
-        conf_set '.api.server.online_client = {"credentials_path": "/etc/crowdsec/online_api_credentials.yaml"}'
-        cscli capi register > /etc/crowdsec/online_api_credentials.yaml
+        conf_set '.api.server.online_client = {"credentials_path": strenv(CONFIG_DIR) + "/online_api_credentials.yaml"}'
+        cscli capi register > "$CONFIG_DIR/online_api_credentials.yaml"
         echo "Registration to online API done"
     fi
 fi
