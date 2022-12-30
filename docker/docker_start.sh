@@ -9,6 +9,9 @@
 set -e
 shopt -s inherit_errexit
 
+: "${CONFIG_FILE:=/etc/crowdsec/config.yaml}"
+: "${CUSTOM_HOSTNAME:=localhost}"
+
 #- HELPER FUNCTIONS ----------------#
 
 # match true, TRUE, True, tRuE, etc.
@@ -187,7 +190,7 @@ fi
 
 # registration to online API for signal push
 if isfalse "$DISABLE_ONLINE_API" ; then
-    CONFIG_DIR=$(conf_get '.common.config_dir')
+    CONFIG_DIR=$(conf_get '.config_paths.config_dir')
     config_exists=$(conf_get '.api.server.online_client | has("credentials_path")')
     if isfalse "$config_exists"; then
         conf_set '.api.server.online_client = {"credentials_path": strenv(CONFIG_DIR) + "/online_api_credentials.yaml"}'
