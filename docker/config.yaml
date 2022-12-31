@@ -41,7 +41,7 @@ api:
       - 127.0.0.1
       - ::1
     online_client: # Central API credentials (to push signals and receive bad IPs)
-      #credentials_path: /etc/crowdsec/online_api_credentials.yaml
+    #credentials_path: /etc/crowdsec/online_api_credentials.yaml
     tls:
       agents_allowed_ou:
         - agent-ou
