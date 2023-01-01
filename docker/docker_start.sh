@@ -145,6 +145,8 @@ if isfalse "$DISABLE_LOCAL_API" && isfalse "$USE_TLS"; then
     cscli machines add "$CUSTOM_HOSTNAME" --auto --url "$LOCAL_API_URL"
 fi
 
+## XXX how to register the machine on LAPI, when USE_TLS is true BUT we don't want TLS auth?
+
 if isfalse "$DISABLE_LOCAL_API"; then
     echo "Check if lapi needs to register an additional agent"
 
@@ -160,11 +162,14 @@ fi
 
 lapi_credentials_path=$(conf_get '.api.client.credentials_path')
 
+conf_set '
+    with(select(strenv(LOCAL_API_URL)!=""); .url = strenv(LOCAL_API_URL))
+    ' "$lapi_credentials_path"
+
 if istrue "$DISABLE_LOCAL_API"; then
     # we only use the envvars that are actually defined
     # in case of persistent configuration
     conf_set '
-        with(select(strenv(LOCAL_API_URL)!=""); .url = strenv(LOCAL_API_URL)) |
         with(select(strenv(AGENT_USERNAME)!=""); .login = strenv(AGENT_USERNAME)) |
         with(select(strenv(AGENT_PASSWORD)!=""); .password = strenv(AGENT_PASSWORD))
         ' "$lapi_credentials_path"
