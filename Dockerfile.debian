@@ -74,55 +74,60 @@ COPY --from=build /var/lib/crowdsec /staging/var/lib/crowdsec
 
 FROM build-${BUILD_ENV}
 
-# NOTE: setting default values here would overwrite the ones set in config.yaml
-#       every time the container is started. Which we don't want to do to allow
-#       (mostly) persistent configurations.
+# -------------------------------------------------------------------------- #
+
+# NOTE: setting default values here would overwrite those set in config.yaml
+#       every time the container is started. Which we don't want to do
+#       to allow (mostly) persistent configurations.
 #       We set most defaults in docker/config.yaml and document them in
 #       docker/README.md, but keep the variables empty here.
 
-# used in the entrypoint and interactive sessions (docker exec)
+# Used in the entrypoint and interactive sessions (i.e. docker exec)
 ENV CONFIG_FILE=/etc/crowdsec/config.yaml
 
-# used during functional tests
-ENV TESTING false
-
-# local agent name (only if the container has a lapi)
+# Local agent name (only if the container has a lapi)
 ENV CUSTOM_HOSTNAME=localhost
 
-# URL of the LAPI (with TLS, the hostname must match the dns name of the lapi certificate)
+# URL of the LAPI
+# With TLS, the hostname must match the dns name of the lapi certificate
 ENV LOCAL_API_URL=
+
 ENV PLUGIN_DIR=
 ENV DISABLE_AGENT=false
 ENV DISABLE_LOCAL_API=false
 ENV DISABLE_ONLINE_API=false
 ENV DSN=
 ENV TYPE=
-ENV TEST_MODE=false
 ENV USE_WAL=
 
-# register to app.crowdsec.net
+# Validate the configuration without running crowdsec
+ENV TEST_MODE=false
+
+# Register the instance to app.crowdsec.net
 
 ENV ENROLL_INSTANCE_NAME=
 ENV ENROLL_KEY=
 ENV ENROLL_TAGS=
 
-# log verbosity
+# Log verbosity (mutually exclusive, defaults to INFO)
 
 ENV LEVEL_TRACE=
 ENV LEVEL_DEBUG=
 ENV LEVEL_INFO=
 
-# TLS setup ----------------------------------- #
+# Pre-set LAPI credentials
+# - used in a lapi container to set the credentials of a remote agent
+# - used in an agent-only container to set own credentials
 
 ENV AGENT_USERNAME=
 ENV AGENT_PASSWORD=
 
-# TLS setup ----------------------------------- #
+# <TLS setup>
 
 ENV USE_TLS=false
-ENV INSECURE_SKIP_VERIFY=
 
 ENV CACERT_FILE=
+ENV INSECURE_SKIP_VERIFY=
 
 ENV LAPI_CERT_FILE=
 ENV LAPI_KEY_FILE=
@@ -140,18 +145,28 @@ ENV BOUNCERS_ALLOWED_OU=
 # comma-separated list of allowed OU values for TLS agent certificates
 ENV AGENTS_ALLOWED_OU=
 
-# Install the following hub items --------------#
+# </TLS setup>
+
+# Install the following hub items
 
 ENV COLLECTIONS=
 ENV PARSERS=
 ENV SCENARIOS=
 ENV POSTOVERFLOWS=
 
-# Uninstall the following hub items ------------#
+# Uninstall the following hub items
 
 ENV DISABLE_COLLECTIONS=
 ENV DISABLE_PARSERS=
 ENV DISABLE_SCENARIOS=
 ENV DISABLE_POSTOVERFLOWS=
 
+# Prometheus metrics
 ENV METRICS_PORT=
+
+# used during functional tests
+ENV CI_TESTING false
+
+# trace the entrypoing
+ENV DEBUG false
+

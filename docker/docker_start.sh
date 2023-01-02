@@ -27,7 +27,7 @@ if istrue "$DEBUG"; then
     export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
 fi
 
-if istrue "$TESTING"; then
+if istrue "$CI_TESTING"; then
     echo "githubciXXXXXXXXXXXXXXXXXXXXXXXX" >/etc/machine-id
 fi
 
