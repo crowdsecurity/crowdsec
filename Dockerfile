@@ -57,8 +57,3 @@ FROM build-plugins as build-full
 COPY --from=build /var/lib/crowdsec /staging/var/lib/crowdsec
 
 FROM build-${BUILD_ENV}
-
-# -------------------------------------------------------------------------- #
-
-ENV CONFIG_FILE=/etc/crowdsec/config.yaml
-

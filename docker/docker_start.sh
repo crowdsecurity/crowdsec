@@ -32,10 +32,9 @@ if istrue "$CI_TESTING"; then
 fi
 
 #- DEFAULTS -----------------------#
+
 export CONFIG_FILE="${CONFIG_FILE:=/etc/crowdsec/config.yaml}"
 export CUSTOM_HOSTNAME="${CUSTOM_HOSTNAME:=localhost}"
-export INSECURE_SKIP_VERIFY="${INSECURE_SKIP_VERIFY:=false}"
-export METRICS_PORT="${METRICS_PORT:=6060}"
 
 #- HELPER FUNCTIONS ----------------#
 
@@ -71,7 +70,18 @@ conf_set() {
         YAML_FILE="$CONFIG_FILE"
     fi
     YAML_CONTENT=$(cat "$YAML_FILE" 2>/dev/null || true)
-    echo "$YAML_CONTENT" | yq e "$1" | install -m 0600 /dev/stdin "$YAML_FILE"
+    NEW_CONTENT=$(echo "$YAML_CONTENT" | yq e "$1")
+    echo "$NEW_CONTENT" | install -m 0600 /dev/stdin "$YAML_FILE"
+}
+
+# conf_set_if(): used to update the configuration
+# only if a given variable is provided
+# conf_set_if "$VAR" <yq_expression> [file_path]
+conf_set_if() {
+    if [ "$1" != "" ]; then
+        shift
+        conf_set "$@"
+    fi
 }
 
 # register_bouncer <bouncer_name> <bouncer_key>
@@ -166,28 +176,23 @@ fi
 
 lapi_credentials_path=$(conf_get '.api.client.credentials_path')
 
-conf_set '
-    with(select(strenv(LOCAL_API_URL)!=""); .url = strenv(LOCAL_API_URL))
-    ' "$lapi_credentials_path"
+conf_set_if "$LOCAL_API_URL" '.url = strenv(LOCAL_API_URL)' "$lapi_credentials_path"
 
 if istrue "$DISABLE_LOCAL_API"; then
     # we only use the envvars that are actually defined
     # in case of persistent configuration
-    conf_set '
-        with(select(strenv(AGENT_USERNAME)!=""); .login = strenv(AGENT_USERNAME)) |
-        with(select(strenv(AGENT_PASSWORD)!=""); .password = strenv(AGENT_PASSWORD))
-        ' "$lapi_credentials_path"
+    conf_set_if "$AGENT_USERNAME" '.login = strenv(AGENT_USERNAME)' "$lapi_credentials_path"
+    conf_set_if "$AGENT_PASSWORD" '.password = strenv(AGENT_PASSWORD)' "$lapi_credentials_path"
 fi
 
-conf_set 'with(select(strenv(INSECURE_SKIP_VERIFY)!=""); .api.client.insecure_skip_verify = env(INSECURE_SKIP_VERIFY))'
+conf_set_if "$INSECURE_SKIP_VERIFY" '.api.client.insecure_skip_verify = env(INSECURE_SKIP_VERIFY)'
 
 # agent-only containers still require USE_TLS
 if istrue "$USE_TLS"; then
-    conf_set '
-        with(select(strenv(CACERT_FILE)!=""); .ca_cert_path = strenv(CACERT_FILE)) |
-        with(select(strenv(CLIENT_KEY_FILE)!=""); .key_path = strenv(CLIENT_KEY_FILE)) |
-        with(select(strenv(CLIENT_CERT_FILE)!=""); .cert_path = strenv(CLIENT_CERT_FILE))
-    ' "$lapi_credentials_path"
+    # shellcheck disable=SC2153
+    conf_set_if "$CACERT_FILE" '.ca_cert_path = strenv(CACERT_FILE)' "$lapi_credentials_path"
+    conf_set_if "$CLIENT_KEY_FILE" '.key_path = strenv(CLIENT_KEY_FILE)' "$lapi_credentials_path"
+    conf_set_if "$CLIENT_CERT_FILE" '.cert_path = strenv(CLIENT_CERT_FILE)' "$lapi_credentials_path"
 else
     conf_set '
         del(.ca_cert_path) |
@@ -240,19 +245,16 @@ fi
 if istrue "$USE_TLS"; then
     agents_allowed_yaml=$(csv2yaml "$AGENTS_ALLOWED_OU") \
     bouncers_allowed_yaml=$(csv2yaml "$BOUNCERS_ALLOWED_OU") \
-    conf_set '
-        with(select(strenv(CACERT_FILE)!=""); .api.server.tls.ca_cert_path = strenv(CACERT_FILE)) |
-        with(select(strenv(LAPI_CERT_FILE)!=""); .api.server.tls.cert_file = strenv(LAPI_CERT_FILE)) |
-        with(select(strenv(LAPI_KEY_FILE)!=""); .api.server.tls.key_file = strenv(LAPI_KEY_FILE)) |
-        with(select(strenv(BOUNCERS_ALLOWED_OU)!=""); .api.server.tls.bouncers_allowed_ou = env(bouncers_allowed_yaml)) |
-        with(select(strenv(AGENTS_ALLOWED_OU)!=""); .api.server.tls.agents_allowed_ou = env(agents_allowed_yaml)) |
-        ... comments=""
-        '
+    conf_set_if "$CACERT_FILE" '.api.server.tls.ca_cert_path = strenv(CACERT_FILE)'
+    conf_set_if "$LAPI_CERT_FILE" '.api.server.tls.cert_file = strenv(LAPI_CERT_FILE)'
+    conf_set_if "$LAPI_KEY_FILE" '.api.server.tls.key_file = strenv(LAPI_KEY_FILE)'
+    conf_set_if "$BOUNCERS_ALLOWED_OU" '.api.server.tls.bouncers_allowed_ou = env(bouncers_allowed_yaml)'
+    conf_set_if "$AGENTS_ALLOWED_OU" '.api.server.tls.agents_allowed_ou = env(agents_allowed_yaml)'
 else
     conf_set 'del(.api.server.tls)'
 fi
 
-conf_set 'with(select(strenv(PLUGIN_DIR)!=""); .config_paths.plugin_dir = strenv(PLUGIN_DIR))'
+conf_set_if "$PLUGIN_DIR" '.config_paths.plugin_dir = strenv(PLUGIN_DIR)'
 
 ## Install collections, parsers, scenarios & postoverflows
 cscli hub update
@@ -359,7 +361,7 @@ if istrue "$LEVEL_INFO"; then
     ARGS="$ARGS -info"
 fi
 
-conf_set 'with(select(strenv(METRICS_PORT)!=""); .prometheus.listen_port=env(METRICS_PORT))'
+conf_set_if "$METRICS_PORT" '.prometheus.listen_port=env(METRICS_PORT)'
 
 # shellcheck disable=SC2086
 exec crowdsec $ARGS
