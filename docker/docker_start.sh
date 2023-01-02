@@ -31,7 +31,11 @@ if istrue "$CI_TESTING"; then
     echo "githubciXXXXXXXXXXXXXXXXXXXXXXXX" >/etc/machine-id
 fi
 
-: "${CUSTOM_HOSTNAME:=localhost}"
+#- DEFAULTS -----------------------#
+export CONFIG_FILE="${CONFIG_FILE:=/etc/crowdsec/config.yaml}"
+export CUSTOM_HOSTNAME="${CUSTOM_HOSTNAME:=localhost}"
+export INSECURE_SKIP_VERIFY="${INSECURE_SKIP_VERIFY:=false}"
+export METRICS_PORT="${METRICS_PORT:=6060}"
 
 #- HELPER FUNCTIONS ----------------#
 
@@ -192,7 +196,7 @@ else
 fi
 
 if istrue "$DISABLE_ONLINE_API"; then
-    conf_set 'del(.api.server.online_client.credentials_path)'
+    conf_set 'del(.api.server.online_client)'
 fi
 
 # registration to online API for signal push
