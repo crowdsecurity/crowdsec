@@ -3,6 +3,9 @@
 # shellcheck disable=SC2292      # allow [ test ] syntax
 # shellcheck disable=SC2310      # allow "if function..." syntax with -e
 
+set -e
+shopt -s inherit_errexit
+
 # match true, TRUE, True, tRuE, etc.
 istrue() {
   case "$(echo "$1" | tr '[:upper:]' '[:lower:]')" in
@@ -27,9 +30,6 @@ fi
 if istrue "$TESTING"; then
     echo "githubciXXXXXXXXXXXXXXXXXXXXXXXX" >/etc/machine-id
 fi
-
-set -e
-shopt -s inherit_errexit
 
 #- HELPER FUNCTIONS ----------------#
 

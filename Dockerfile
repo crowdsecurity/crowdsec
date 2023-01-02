@@ -57,5 +57,85 @@ FROM build-plugins as build-full
 COPY --from=build /var/lib/crowdsec /staging/var/lib/crowdsec
 
 FROM build-${BUILD_ENV}
-ENV CONFIG_FILE /etc/crowdsec/config.yaml
-ENV CUSTOM_HOSTNAME localhost
+
+# NOTE: setting default values here would overwrite the ones set in config.yaml
+#       every time the container is started. Which we don't want to do to allow
+#       (mostly) persistent configurations.
+#       We set most defaults in docker/config.yaml and document them in
+#       docker/README.md, but keep the variables empty here.
+
+# used in the entrypoint and interactive sessions (docker exec)
+ENV CONFIG_FILE=/etc/crowdsec/config.yaml
+
+# used during functional tests
+ENV TESTING false
+
+# local agent name (only if the container has a lapi)
+ENV CUSTOM_HOSTNAME=localhost
+
+# URL of the LAPI (with TLS, the hostname must match the dns name of the lapi certificate)
+ENV LOCAL_API_URL=
+ENV PLUGIN_DIR=
+ENV DISABLE_AGENT=false
+ENV DISABLE_LOCAL_API=false
+ENV DISABLE_ONLINE_API=false
+ENV DSN=
+ENV TYPE=
+ENV TEST_MODE=false
+ENV USE_WAL=
+
+# register to app.crowdsec.net
+
+ENV ENROLL_INSTANCE_NAME=
+ENV ENROLL_KEY=
+ENV ENROLL_TAGS=
+
+# log verbosity
+
+ENV LEVEL_TRACE=
+ENV LEVEL_DEBUG=
+ENV LEVEL_INFO=
+
+# TLS setup ----------------------------------- #
+
+ENV AGENT_USERNAME=
+ENV AGENT_PASSWORD=
+
+# TLS setup ----------------------------------- #
+
+ENV USE_TLS=false
+ENV INSECURE_SKIP_VERIFY=
+
+ENV CACERT_FILE=
+
+ENV LAPI_CERT_FILE=
+ENV LAPI_KEY_FILE=
+
+ENV CLIENT_CERT_FILE=
+ENV CLIENT_KEY_FILE=
+
+# deprecated in favor of LAPI_*
+ENV CERT_FILE=
+ENV KEY_FILE=
+
+# comma-separated list of allowed OU values for TLS bouncer certificates
+ENV BOUNCERS_ALLOWED_OU=
+
+# comma-separated list of allowed OU values for TLS agent certificates
+ENV AGENTS_ALLOWED_OU=
+
+# Install the following hub items --------------#
+
+ENV COLLECTIONS=
+ENV PARSERS=
+ENV SCENARIOS=
+ENV POSTOVERFLOWS=
+
+# Uninstall the following hub items ------------#
+
+ENV DISABLE_COLLECTIONS=
+ENV DISABLE_PARSERS=
+ENV DISABLE_SCENARIOS=
+ENV DISABLE_POSTOVERFLOWS=
+
+ENV METRICS_PORT=
