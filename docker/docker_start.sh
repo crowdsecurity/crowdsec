@@ -31,6 +31,8 @@ if istrue "$CI_TESTING"; then
     echo "githubciXXXXXXXXXXXXXXXXXXXXXXXX" >/etc/machine-id
 fi
 
+: "${CUSTOM_HOSTNAME:=localhost}"
+
 #- HELPER FUNCTIONS ----------------#
 
 # csv2yaml <string>
@@ -144,7 +146,7 @@ cscli machines delete "$CUSTOM_HOSTNAME" 2>/dev/null || true
 if isfalse "$DISABLE_LOCAL_API"; then
     if isfalse "$USE_TLS" || [ "$CLIENT_CERT_FILE" = "" ]; then
         echo "Regenerate local agent credentials"
-        cscli machines add "$CUSTOM_HOSTNAME" --auto --url "$LOCAL_API_URL"
+        cscli machines add "$CUSTOM_HOSTNAME" --auto
     fi
 
     echo "Check if lapi needs to register an additional agent"
