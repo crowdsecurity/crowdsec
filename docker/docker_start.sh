@@ -140,16 +140,13 @@ fi
 # regenerate local agent credentials (even if agent is disabled, cscli needs a
 # connection to the API)
 cscli machines delete "$CUSTOM_HOSTNAME" 2>/dev/null || true
-if isfalse "$DISABLE_LOCAL_API" && isfalse "$USE_TLS"; then
-    echo "Regenerate local agent credentials"
-    cscli machines add "$CUSTOM_HOSTNAME" --auto --url "$LOCAL_API_URL"
-fi
-
-## XXX how to register the machine on LAPI, when USE_TLS is true BUT we don't want TLS auth?
-
 if isfalse "$DISABLE_LOCAL_API"; then
-    echo "Check if lapi needs to register an additional agent"
+    if isfalse "$USE_TLS" || [ "$CLIENT_CERT_FILE" = "" ]; then
+        echo "Regenerate local agent credentials"
+        cscli machines add "$CUSTOM_HOSTNAME" --auto --url "$LOCAL_API_URL"
+    fi
 
+    echo "Check if lapi needs to register an additional agent"
     # pre-registration is not needed with TLS authentication, but we can have TLS transport with user/pw
     if [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] ; then
         # re-register because pw may have been changed
