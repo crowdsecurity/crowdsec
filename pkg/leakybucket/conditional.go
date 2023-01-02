@@ -24,8 +24,8 @@ func NewConditionalOverflow(g *BucketFactory) (*ConditionalOverflow, error) {
 	c.ConditionalFilterRuntime, err = expr.Compile(c.ConditionalFilter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{
 		"queue": &Queue{}, "leaky": &Leaky{}})))
 	if err != nil {
-		g.logger.Errorf("Unable to compile conditional filter : %s", err)
-		return nil, fmt.Errorf("unable to compile conditional filter : %v", err)
+		g.logger.Errorf("Unable to compile condition expression for conditional bucket : %s", err)
+		return nil, fmt.Errorf("unable to compile condition expression for conditional bucket : %v", err)
 	}
 	return &c, nil
 }
@@ -34,17 +34,17 @@ func (c *ConditionalOverflow) AfterBucketPour(b *BucketFactory) func(types.Event
 	return func(msg types.Event, l *Leaky) *types.Event {
 		var condition, ok bool
 		if c.ConditionalFilterRuntime != nil {
-			l.logger.Debugf("Running conditional filter : %s", c.ConditionalFilter)
+			l.logger.Debugf("Running condition expression : %s", c.ConditionalFilter)
 			ret, err := expr.Run(c.ConditionalFilterRuntime, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &msg, "queue": l.Queue, "leaky": l}))
 			if err != nil {
 				l.logger.Errorf("unable to run conditional filter : %s", err)
 				return &msg
 			}
 
-			l.logger.Debugf("Conditional filter returned : %v", ret)
+			l.logger.Debugf("Conditional bucket expression returned : %v", ret)
 
 			if condition, ok = ret.(bool); !ok {
-				l.logger.Warningf("conditional_overflow, unexpected non-bool return : %T", ret)
+				l.logger.Warningf("overflow condition, unexpected non-bool return : %T", ret)
 				return &msg
 			}
 

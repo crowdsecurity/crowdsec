@@ -36,24 +36,24 @@ type BucketFactory struct {
 	Author              string                    `yaml:"author"`
 	Description         string                    `yaml:"description"`
 	References          []string                  `yaml:"references"`
-	Type                string                    `yaml:"type"`                 //Type can be : leaky, counter, trigger. It determines the main bucket characteristics
-	Name                string                    `yaml:"name"`                 //Name of the bucket, used later in log and user-messages. Should be unique
-	Capacity            int                       `yaml:"capacity"`             //Capacity is applicable to leaky buckets and determines the "burst" capacity
-	LeakSpeed           string                    `yaml:"leakspeed"`            //Leakspeed is a float representing how many events per second leak out of the bucket
-	Duration            string                    `yaml:"duration"`             //Duration allows 'counter' buckets to have a fixed life-time
-	Filter              string                    `yaml:"filter"`               //Filter is an expr that determines if an event is elligible for said bucket. Filter is evaluated against the Event struct
-	GroupBy             string                    `yaml:"groupby,omitempty"`    //groupy is an expr that allows to determine the partitions of the bucket. A common example is the source_ip
-	Distinct            string                    `yaml:"distinct"`             //Distinct, when present, adds a `Pour()` processor that will only pour uniq items (based on distinct expr result)
-	Debug               bool                      `yaml:"debug"`                //Debug, when set to true, will enable debugging for _this_ scenario specifically
-	Labels              map[string]string         `yaml:"labels"`               //Labels is K:V list aiming at providing context the overflow
-	Blackhole           string                    `yaml:"blackhole,omitempty"`  //Blackhole is a duration that, if present, will prevent same bucket partition to overflow more often than $duration
-	logger              *log.Entry                `yaml:"-"`                    //logger is bucket-specific logger (used by Debug as well)
-	Reprocess           bool                      `yaml:"reprocess"`            //Reprocess, if true, will for the bucket to be re-injected into processing chain
-	CacheSize           int                       `yaml:"cache_size"`           //CacheSize, if > 0, limits the size of in-memory cache of the bucket
-	Profiling           bool                      `yaml:"profiling"`            //Profiling, if true, will make the bucket record pours/overflows/etc.
-	OverflowFilter      string                    `yaml:"overflow_filter"`      //OverflowFilter if present, is a filter that must return true for the overflow to go through
-	ConditionalOverflow string                    `yaml:"conditional_overflow"` //ConditionalOverflow if present, is a filter that must return true for the bucket to overflow
-	ScopeType           types.ScopeType           `yaml:"scope,omitempty"`      //to enforce a different remediation than blocking an IP. Will default this to IP
+	Type                string                    `yaml:"type"`                //Type can be : leaky, counter, trigger. It determines the main bucket characteristics
+	Name                string                    `yaml:"name"`                //Name of the bucket, used later in log and user-messages. Should be unique
+	Capacity            int                       `yaml:"capacity"`            //Capacity is applicable to leaky buckets and determines the "burst" capacity
+	LeakSpeed           string                    `yaml:"leakspeed"`           //Leakspeed is a float representing how many events per second leak out of the bucket
+	Duration            string                    `yaml:"duration"`            //Duration allows 'counter' buckets to have a fixed life-time
+	Filter              string                    `yaml:"filter"`              //Filter is an expr that determines if an event is elligible for said bucket. Filter is evaluated against the Event struct
+	GroupBy             string                    `yaml:"groupby,omitempty"`   //groupy is an expr that allows to determine the partitions of the bucket. A common example is the source_ip
+	Distinct            string                    `yaml:"distinct"`            //Distinct, when present, adds a `Pour()` processor that will only pour uniq items (based on distinct expr result)
+	Debug               bool                      `yaml:"debug"`               //Debug, when set to true, will enable debugging for _this_ scenario specifically
+	Labels              map[string]string         `yaml:"labels"`              //Labels is K:V list aiming at providing context the overflow
+	Blackhole           string                    `yaml:"blackhole,omitempty"` //Blackhole is a duration that, if present, will prevent same bucket partition to overflow more often than $duration
+	logger              *log.Entry                `yaml:"-"`                   //logger is bucket-specific logger (used by Debug as well)
+	Reprocess           bool                      `yaml:"reprocess"`           //Reprocess, if true, will for the bucket to be re-injected into processing chain
+	CacheSize           int                       `yaml:"cache_size"`          //CacheSize, if > 0, limits the size of in-memory cache of the bucket
+	Profiling           bool                      `yaml:"profiling"`           //Profiling, if true, will make the bucket record pours/overflows/etc.
+	OverflowFilter      string                    `yaml:"overflow_filter"`     //OverflowFilter if present, is a filter that must return true for the overflow to go through
+	ConditionalOverflow string                    `yaml:"condition"`           //condition if present, is an expression that must return true for the bucket to overflow
+	ScopeType           types.ScopeType           `yaml:"scope,omitempty"`     //to enforce a different remediation than blocking an IP. Will default this to IP
 	BucketName          string                    `yaml:"-"`
 	Filename            string                    `yaml:"-"`
 	RunTimeFilter       *vm.Program               `json:"-"`
