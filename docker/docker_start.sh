@@ -177,6 +177,7 @@ fi
 
 conf_set 'with(select(strenv(INSECURE_SKIP_VERIFY)!=""); .api.client.insecure_skip_verify = env(INSECURE_SKIP_VERIFY))'
 
+# agent-only containers still require USE_TLS
 if istrue "$USE_TLS"; then
     conf_set '
         with(select(strenv(CACERT_FILE)!=""); .ca_cert_path = strenv(CACERT_FILE)) |
@@ -231,6 +232,7 @@ if [ "$GID" != "" ]; then
     fi
 fi
 
+# XXX only with LAPI
 if istrue "$USE_TLS"; then
     agents_allowed_yaml=$(csv2yaml "$AGENTS_ALLOWED_OU") \
     bouncers_allowed_yaml=$(csv2yaml "$BOUNCERS_ALLOWED_OU") \

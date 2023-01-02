@@ -198,22 +198,33 @@ Using binds rather than named volumes ([complete explanation here](https://docs.
 # Reference
 ## Environment Variables
 
+Note for persistent configurations (i.e. bind mount or volumes): when a
+variable is set, its value may be written to the appropriate file (usually
+config.yaml) each time the container is run.
+
+
 | Variable                | Default                   | Description |
 | ----------------------- | ------------------------- | ----------- |
 | `CONFIG_FILE`           | `/etc/crowdsec/config.yaml` | Configuration file location |
-| `DSN`                   | | Process a single source in time-machine: `-e DSN="file:///var/log/toto.log"` or `-e DSN="cloudwatch:///your/group/path:stream_name?profile=dev&backlog=16h"` or `-e DSN="journalctl://filters=_SYSTEMD_UNIT=ssh.service"` |
-| `TYPE`                  | | [`Labels.type`](https://docs.crowdsec.net/Crowdsec/v1/references/acquisition/) for file in time-machine: `-e TYPE="<type>"` |
-| `TEST_MODE`             | false | Don't run the service, only test the configuration: `-e TEST_MODE=true` |
-| `TZ`                    | | Set the [timezone](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) to ensure the logs have a local timestamp. |
-| `LOCAL_API_URL`         | `http://0.0.0.0:8080` | The LAPI URL, you need to change this when `DISABLE_LOCAL_API` is true: `-e LOCAL_API_URL="http://lapi-address:8080"` |
 | `DISABLE_AGENT`         | false | Disable the agent, run a LAPI-only container |
 | `DISABLE_LOCAL_API`     | false | Disable LAPI, run an agent-only container |
 | `DISABLE_ONLINE_API`    | false | Disable online API registration for signal sharing |
-| `CUSTOM_HOSTNAME`       | localhost | Custom hostname for LAPI registration (with agent and LAPI on the same container) |
+| `TEST_MODE`             | false | Don't run the service, only test the configuration: `-e TEST_MODE=true` |
+| `TZ`                    | | Set the [timezone](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) to ensure the logs have a local timestamp. |
+| `LOCAL_API_URL`         | `http://0.0.0.0:8080` | The LAPI URL, you need to change this when `DISABLE_LOCAL_API` is true: `-e LOCAL_API_URL="http://lapi-address:8080"` |
 | `PLUGIN_DIR`            | `/usr/local/lib/crowdsec/plugins/` | Directory for plugins: `-e PLUGIN_DIR="<path>"` |
-| `BOUNCER_KEY_<name>`    | | Register a bouncer with the name `<name>` and a key equal to the value of the environment variable. |
 | `METRICS_PORT`          | 6060 | Port to expose Prometheus metrics |
+|                         | | |
+| __LAPI__                | | (useless with DISABLE_LOCAL_API) |
 | `USE_WAL`               | false | Enable Write-Ahead Logging with SQLite |
+| `CUSTOM_HOSTNAME`       | localhost | Name for the local agent (running in the container with LAPI) |
+|                         | | |
+| __Agent__               | | (these don't work with DISABLE_AGENT) |
+| `TYPE`                  | | [`Labels.type`](https://docs.crowdsec.net/Crowdsec/v1/references/acquisition/) for file in time-machine: `-e TYPE="<type>"` |
+| `DSN`                   | | Process a single source in time-machine: `-e DSN="file:///var/log/toto.log"` or `-e DSN="cloudwatch:///your/group/path:stream_name?profile=dev&backlog=16h"` or `-e DSN="journalctl://filters=_SYSTEMD_UNIT=ssh.service"` |
+|                         | | |
+| __Bouncers__            | | |
+| `BOUNCER_KEY_<name>`    | | Register a bouncer with the name `<name>` and a key equal to the value of the environment variable. |
 |                         | | |
 | __Console__             | | |
 | `ENROLL_KEY`            | | Enroll key retrieved from [the console](https://app.crowdsec.net/) to enroll the instance. |
@@ -224,14 +235,16 @@ Using binds rather than named volumes ([complete explanation here](https://docs.
 | `AGENT_USERNAME`        | | Agent username (to register if is LAPI or to use if it's an agent): `-e AGENT_USERNAME="machine_id"` |
 | `AGENT_PASSWORD`        | | Agent password (to register if is LAPI or to use if it's an agent): `-e AGENT_PASSWORD="machine_password"` |
 |                         | | |
-| __TLS Auth/encryption   | | |
-| `USE_TLS`               | false | Enable TLS on the LAPI |
-| `CACERT_FILE`           | | CA certificate bundle (optional) |
+| __TLS Encryption__      | | |
+| `USE_TLS`               | false | Enable TLS encryption (either as a LAPI or agent) |
+| `CACERT_FILE`           | | CA certificate bundle (for self-signed certificates) |
 | `INSECURE_SKIP_VERIFY`  | | Skip LAPI certificate validation |
-| `CLIENT_CERT_FILE`      | | Client TLS Certificate path (enables TLS auth) |
+| `LAPI_CERT_FILE`        | | LAPI TLS Certificate path |
+| `LAPI_KEY_FILE`         | | LAPI TLS Key path |
+|                         | | |
+| __TLS Authentication__  | | (these require USE_TLS=true) |
+| `CLIENT_CERT_FILE`      | | Client TLS Certificate path (enable TLS authentication) |
 | `CLIENT_KEY_FILE`       | | Client TLS Key path |
-| `LAPI_CERT_FILE`        | | LAPI TLS Certificate path (required if USE_TLS) |
-| `LAPI_KEY_FILE`         | | LAPI TLS Key path (required if USE_TLS) |
 | `AGENTS_ALLOWED_OU`     | agent-ou | OU values allowed for agents, separated by comma |
 | `BOUNCERS_ALLOWED_OU`   | bouncer-ou | OU values allowed for bouncers, separated by comma |
 |                         | | |
@@ -249,6 +262,10 @@ Using binds rather than named volumes ([complete explanation here](https://docs.
 | `LEVEL_INFO`            | false | Force INFO level for the container log |
 | `LEVEL_DEBUG`           | false | Force DEBUG level for the container log |
 | `LEVEL_TRACE`           | false | Force TRACE level (VERY verbose) for the container log |
+|                         | | |
+| __Developer options__   | | |
+| `CI_TESTING`            | false | Used during functional tests |
+| `DEBUG`                 | false | Trace the entrypoint |
 
 ## Volumes
 
