@@ -23,7 +23,7 @@ FROM alpine:latest as build-slim
 RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community tzdata yq bash && \
     mkdir -p /staging/etc/crowdsec && \
     mkdir -p /staging/var/lib/crowdsec && \
-    mkdir -p /var/lib/crowdsec/data \
+    mkdir -p /var/lib/crowdsec/data && \
     yq -n '.url="http://0.0.0.0:8080"' | install -m 0600 /dev/stdin /staging/etc/crowdsec/local_api_credentials.yaml
 
 COPY --from=build /etc/crowdsec /staging/etc/crowdsec
