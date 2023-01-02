@@ -34,25 +34,22 @@ func (c *ConditionalOverflow) AfterBucketPour(b *BucketFactory) func(types.Event
 	return func(msg types.Event, l *Leaky) *types.Event {
 		var condition, ok bool
 		if c.ConditionalFilterRuntime != nil {
-			l.logger.Infof("Running conditional filter : %s", c.ConditionalFilter)
+			l.logger.Debugf("Running conditional filter : %s", c.ConditionalFilter)
 			ret, err := expr.Run(c.ConditionalFilterRuntime, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &msg, "queue": l.Queue, "leaky": l}))
 			if err != nil {
-				l.logger.Errorf("unable to run conditionnal filter : %s", err)
+				l.logger.Errorf("unable to run conditional filter : %s", err)
 				return &msg
 			}
 
 			l.logger.Debugf("Conditional filter returned : %v", ret)
 
-			//l.logger.Infof("queue:")
-			//spew.Dump(l.Queue)
-
 			if condition, ok = ret.(bool); !ok {
-				l.logger.Warningf("cancel_on, unexpected non-bool return : %T", ret)
+				l.logger.Warningf("conditional_overflow, unexpected non-bool return : %T", ret)
 				return &msg
 			}
 
 			if condition {
-				l.logger.Infof("Conditional bucket overflow")
+				l.logger.Debugf("Conditional bucket overflow")
 				l.Ovflw_ts = time.Now().UTC()
 				l.Out <- l.Queue
 				return nil
