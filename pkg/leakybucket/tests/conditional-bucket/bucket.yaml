@@ -1,0 +1,11 @@
+type: conditional
+name: test/conditional
+#debug: true
+description: "conditional bucket"
+filter: "evt.Meta.log_type == 'http_access-log'"
+groupby: evt.Meta.source_ip
+conditional_overflow: any(queue.Queue, {.Meta.http_path == "/"}) and any(queue.Queue, {.Meta.http_path == "/foo"})
+leakspeed: 1s
+capacity: -1
+labels:
+  type: overflow_1

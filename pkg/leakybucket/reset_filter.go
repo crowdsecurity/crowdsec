@@ -64,6 +64,12 @@ func (u *CancelOnFilter) OnBucketOverflow(bucketFactory *BucketFactory) func(*Le
 	}
 }
 
+func (u *CancelOnFilter) AfterBucketPour(bucketFactory *BucketFactory) func(types.Event, *Leaky) *types.Event {
+	return func(msg types.Event, leaky *Leaky) *types.Event {
+		return &msg
+	}
+}
+
 func (u *CancelOnFilter) OnBucketInit(bucketFactory *BucketFactory) error {
 	var err error
 	var compiledExpr struct {
