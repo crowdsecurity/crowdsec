@@ -4,24 +4,26 @@ ARG GOVERSION=1.19
 
 FROM golang:${GOVERSION}-bullseye AS build
 
-ENV DEBIAN_FRONTEND=noninteractive
-ENV DEBCONF_NOWARNINGS="yes"
+RUN go install github.com/mikefarah/yq/v4@v4.30.6
 
 WORKDIR /go/src/crowdsec
 
 COPY . .
 
+ENV DEBIAN_FRONTEND=noninteractive
+ENV DEBCONF_NOWARNINGS="yes"
+
 # wizard.sh requires GNU coreutils
 RUN apt-get update && \
     apt-get install -y -q git gcc libc-dev make bash gettext binutils-gold coreutils tzdata && \
-    SYSTEM="docker" make release && \
+    echo "githubciXXXXXXXXXXXXXXXXXXXXXXXX" > /etc/machine-id && \
+    SYSTEM="docker" make clean release && \
     cd crowdsec-v* && \
     ./wizard.sh --docker-mode && \
-    cd - && \
+    cd - >/dev/null && \
     cscli hub update && \
     cscli collections install crowdsecurity/linux && \
-    cscli parsers install crowdsecurity/whitelists && \
-    go install github.com/mikefarah/yq/v4@v4.30.5
+    cscli parsers install crowdsecurity/whitelists
 
 FROM debian:bullseye-slim as build-slim
 
@@ -46,8 +48,8 @@ COPY --from=build /usr/local/bin/crowdsec /usr/local/bin/crowdsec
 COPY --from=build /usr/local/bin/cscli /usr/local/bin/cscli
 COPY --from=build /go/src/crowdsec/docker/docker_start.sh /
 COPY --from=build /go/src/crowdsec/docker/config.yaml /staging/etc/crowdsec/config.yaml
-RUN yq eval -i ".plugin_config.group = \"nogroup\"" /staging/etc/crowdsec/config.yaml && \
-    yq -n '.url="http://0.0.0.0:8080"' | install -m 0600 /dev/stdin /staging/etc/crowdsec/local_api_credentials.yaml
+RUN yq -n '.url="http://0.0.0.0:8080"' | install -m 0600 /dev/stdin /staging/etc/crowdsec/local_api_credentials.yaml && \
+    yq eval -i ".plugin_config.group = \"nogroup\"" /staging/etc/crowdsec/config.yaml
 
 
 ENTRYPOINT /bin/bash docker_start.sh
@@ -71,3 +73,5 @@ FROM build-plugins as build-full
 COPY --from=build /var/lib/crowdsec /staging/var/lib/crowdsec
 
 FROM build-${BUILD_ENV}
+ENV CONFIG_FILE /etc/crowdsec/config.yaml
+ENV CUSTOM_HOSTNAME localhost

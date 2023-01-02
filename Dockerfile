@@ -4,33 +4,37 @@ ARG GOVERSION=1.19
 
 FROM golang:${GOVERSION}-alpine AS build
 
+RUN go install github.com/mikefarah/yq/v4@v4.30.6
+
 WORKDIR /go/src/crowdsec
 
 COPY . .
 
 # wizard.sh requires GNU coreutils
 RUN apk add --no-cache git gcc libc-dev make bash gettext binutils-gold coreutils && \
+    echo "githubciXXXXXXXXXXXXXXXXXXXXXXXX" > /etc/machine-id && \
     SYSTEM="docker" make clean release && \
     cd crowdsec-v* && \
     ./wizard.sh --docker-mode && \
-    cd - && \
+    cd - >/dev/null && \
     cscli hub update && \
     cscli collections install crowdsecurity/linux && \
     cscli parsers install crowdsecurity/whitelists
 
 FROM alpine:latest as build-slim
 
-RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community tzdata yq bash && \
+RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community tzdata bash && \
     mkdir -p /staging/etc/crowdsec && \
     mkdir -p /staging/var/lib/crowdsec && \
-    mkdir -p /var/lib/crowdsec/data && \
-    yq -n '.url="http://0.0.0.0:8080"' | install -m 0600 /dev/stdin /staging/etc/crowdsec/local_api_credentials.yaml
+    mkdir -p /var/lib/crowdsec/data
 
+COPY --from=build /go/bin/yq /usr/local/bin/yq
 COPY --from=build /etc/crowdsec /staging/etc/crowdsec
 COPY --from=build /usr/local/bin/crowdsec /usr/local/bin/crowdsec
 COPY --from=build /usr/local/bin/cscli /usr/local/bin/cscli
 COPY --from=build /go/src/crowdsec/docker/docker_start.sh /
 COPY --from=build /go/src/crowdsec/docker/config.yaml /staging/etc/crowdsec/config.yaml
+RUN yq -n '.url="http://0.0.0.0:8080"' | install -m 0600 /dev/stdin /staging/etc/crowdsec/local_api_credentials.yaml
 
 ENTRYPOINT /bin/bash docker_start.sh
 
@@ -53,3 +57,5 @@ FROM build-plugins as build-full
 COPY --from=build /var/lib/crowdsec /staging/var/lib/crowdsec
 
 FROM build-${BUILD_ENV}
+ENV CONFIG_FILE /etc/crowdsec/config.yaml
+ENV CUSTOM_HOSTNAME localhost

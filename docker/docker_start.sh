@@ -3,19 +3,6 @@
 # shellcheck disable=SC2292      # allow [ test ] syntax
 # shellcheck disable=SC2310      # allow "if function..." syntax with -e
 
-if istrue "$DEBUG"; then
-    set -x
-    export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-fi
-
-set -e
-shopt -s inherit_errexit
-
-: "${CONFIG_FILE:=/etc/crowdsec/config.yaml}"
-: "${CUSTOM_HOSTNAME:=localhost}"
-
-#- HELPER FUNCTIONS ----------------#
-
 # match true, TRUE, True, tRuE, etc.
 istrue() {
   case "$(echo "$1" | tr '[:upper:]' '[:lower:]')" in
@@ -31,6 +18,20 @@ isfalse() {
         return 0
     fi
 }
+
+if istrue "$DEBUG"; then
+    set -x
+    export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+fi
+
+if istrue "$TESTING"; then
+    echo "githubciXXXXXXXXXXXXXXXXXXXXXXXX" >/etc/machine-id
+fi
+
+set -e
+shopt -s inherit_errexit
+
+#- HELPER FUNCTIONS ----------------#
 
 # csv2yaml <string>
 # generate a yaml list from a comma-separated string of values
