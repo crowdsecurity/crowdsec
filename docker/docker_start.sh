@@ -193,7 +193,7 @@ else
 fi
 
 if istrue "$DISABLE_ONLINE_API"; then
-    conf_set 'del(.api.server.online_client.credentials_path)'
+    conf_set 'del(.api.server.online_client)'
 fi
 
 # registration to online API for signal push
