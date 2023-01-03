@@ -4,8 +4,6 @@ ARG GOVERSION=1.19
 
 FROM golang:${GOVERSION}-alpine AS build
 
-RUN go install github.com/mikefarah/yq/v4@v4.30.6
-
 WORKDIR /go/src/crowdsec
 
 COPY . .
@@ -19,7 +17,8 @@ RUN apk add --no-cache git gcc libc-dev make bash gettext binutils-gold coreutil
     cd - >/dev/null && \
     cscli hub update && \
     cscli collections install crowdsecurity/linux && \
-    cscli parsers install crowdsecurity/whitelists
+    cscli parsers install crowdsecurity/whitelists && \
+    go install github.com/mikefarah/yq/v4@v4.30.6
 
 FROM alpine:latest as build-slim
 
