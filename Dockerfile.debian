@@ -4,8 +4,6 @@ ARG GOVERSION=1.19
 
 FROM golang:${GOVERSION}-bullseye AS build
 
-RUN go install github.com/mikefarah/yq/v4@v4.30.6
-
 WORKDIR /go/src/crowdsec
 
 COPY . .
@@ -23,7 +21,8 @@ RUN apt-get update && \
     cd - >/dev/null && \
     cscli hub update && \
     cscli collections install crowdsecurity/linux && \
-    cscli parsers install crowdsecurity/whitelists
+    cscli parsers install crowdsecurity/whitelists && \
+    go install github.com/mikefarah/yq/v4@v4.30.6
 
 FROM debian:bullseye-slim as build-slim
 
