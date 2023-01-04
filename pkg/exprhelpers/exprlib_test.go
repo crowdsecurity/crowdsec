@@ -12,6 +12,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	log "github.com/sirupsen/logrus"
 
 	"testing"
@@ -972,62 +973,46 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 	}
 }
 
-func TestParseUnix(t *testing.T) {
+func TestParseUnixTime(t *testing.T) {
 	tests := []struct {
-		name   string
-		env    map[string]interface{}
-		code   string
-		result string
-		err    string
+		name        string
+		value       string
+		expected    time.Time
+		expectedErr string
 	}{
 		{
 			name: "ParseUnix() test: valid value with milli",
-			env: map[string]interface{}{
-				"unix":      "1672239773.3590894",
-				"ParseUnix": ParseUnix,
-			},
-			code:   "ParseUnix(unix)",
-			result: "2022-12-28T15:02:53Z",
-			err:    "",
+			value: "1672239773.3590894",
+			expected: time.Date(2022, 12, 28, 15, 02, 53, 0, time.UTC),
 		},
 		{
 			name: "ParseUnix() test: valid value without milli",
-			env: map[string]interface{}{
-				"unix":      "1672239773",
-				"ParseUnix": ParseUnix,
-			},
-			code:   "ParseUnix(unix)",
-			result: "2022-12-28T15:02:53Z",
-			err:    "",
+			value: "1672239773",
+			expected: time.Date(2022, 12, 28, 15, 02, 53, 0, time.UTC),
 		},
 		{
 			name: "ParseUnix() test: invalid input",
-			env: map[string]interface{}{
-				"unix":      "AbcDefG!#",
-				"ParseUnix": ParseUnix,
-			},
-			code:   "ParseUnix(unix)",
-			result: "",
-			err:    "",
+			value: "AbcDefG!#",
+			expected: time.Time{},
+			expectedErr: "unable to parse AbcDefG!# as unix timestamp",
 		},
 		{
 			name: "ParseUnix() test: negative value",
-			env: map[string]interface{}{
-				"unix":      "-1000",
-				"ParseUnix": ParseUnix,
-			},
-			code:   "ParseUnix(unix)",
-			result: "",
-			err:    "",
+			value: "-1000",
+			expected: time.Time{},
+			expectedErr: "unable to parse -1000 as unix timestamp",
 		},
 	}
 
-	for _, test := range tests {
-		program, err := expr.Compile(test.code, expr.Env(test.env))
-		require.NoError(t, err)
-		output, err := expr.Run(program, test.env)
-		require.NoError(t, err)
-		require.Equal(t, test.result, output)
-		log.Printf("test '%s' : OK", test.name)
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			output, err := ParseUnixTime(tc.value)
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
+			if tc.expectedErr != "" {
+				return
+			}
+			require.WithinDuration(t, tc.expected, output, time.Second)
+		})
 	}
 }
