@@ -211,3 +211,9 @@ plaintext() {
     sed -E 's/\x1B\[[0-9;]*[JKmsu]//g'
 }
 export -f plaintext
+
+# like run but defaults to separate stderr and stdout
+rune() {
+    run --separate-stderr "$@"
+}
+export -f rune

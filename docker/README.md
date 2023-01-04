@@ -139,13 +139,13 @@ gathers all signals from agents and communicates with the `central API`.
 
 ## Register a new agent with LAPI
 
-Without TLS:
+Without TLS authentication:
 
 ```shell
 docker exec -it crowdsec_lapi_container_name cscli machines add agent_user_name --password agent_password
 ```
 
-With TLS:
+With TLS authentication:
 
 Agents are automatically registered and don't need a username or password. The
 agents' names are derived from the IP address from which they connect.
@@ -171,7 +171,7 @@ https://docs.crowdsec.net/docs/user_guides/bouncers_configuration/
 
 ### Automatic Bouncer Registration
 
-Without TLS:
+Without TLS authentication:
 
 You can register bouncers with the crowdsec container at startup, using environment variables or Docker secrets. You cannot use this process to update an existing bouncer without first deleting it.
 
@@ -181,7 +181,7 @@ To use Docker secrets, the secret should be named `bouncer_key_<name>` with a co
 
 A bouncer key can be any string but we recommend an alphanumeric value for consistency with the crowdsec-generated keys and to avoid problems with escaping special characters.
 
-With TLS:
+With TLS authentication:
 
 Bouncers are automatically registered and don't need an API key. The
 bouncers' names are derived from the IP address from which they connect.
@@ -226,16 +226,19 @@ Using binds rather than named volumes ([complete explanation here](https://docs.
 |                         | | |
 | __TLS Auth/encryption   | | |
 | `USE_TLS`               | false | Enable TLS on the LAPI |
-| `CERT_FILE`             | /etc/ssl/cert.pem | TLS Certificate path |
-| `KEY_FILE`              | /etc/ssl/key.pem | TLS Key path |
-| `CACERT_FILE`           | | CA certificate bundle |
+| `CACERT_FILE`           | | CA certificate bundle (optional) |
+| `INSECURE_SKIP_VERIFY`  | | Skip LAPI certificate validation |
+| `CLIENT_CERT_FILE`      | | Client TLS Certificate path (enables TLS auth) |
+| `CLIENT_KEY_FILE`       | | Client TLS Key path |
+| `LAPI_CERT_FILE`        | | LAPI TLS Certificate path (required if USE_TLS) |
+| `LAPI_KEY_FILE`         | | LAPI TLS Key path (required if USE_TLS) |
 | `AGENTS_ALLOWED_OU`     | agent-ou | OU values allowed for agents, separated by comma |
 | `BOUNCERS_ALLOWED_OU`   | bouncer-ou | OU values allowed for bouncers, separated by comma |
 |                         | | |
 | __Hub management__      | | |
 | `COLLECTIONS`           | | Collections to install, separated by space: `-e COLLECTIONS="crowdsecurity/linux crowdsecurity/apache2"` |
-| `SCENARIOS`             | | Scenarios to install, separated by space |
 | `PARSERS`               | | Parsers to install, separated by space |
+| `SCENARIOS`             | | Scenarios to install, separated by space |
 | `POSTOVERFLOWS`         | | Postoverflows to install, separated by space |
 | `DISABLE_COLLECTIONS`   | | Collections to remove, separated by space: `-e DISABLE_COLLECTIONS="crowdsecurity/linux crowdsecurity/nginx"` |
 | `DISABLE_PARSERS`       | | Parsers to remove, separated by space |

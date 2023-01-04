@@ -3,6 +3,7 @@ package parser
 import (
 	"time"
 
+	expr "github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 )
@@ -59,20 +60,25 @@ func ParseDate(in string, p *types.Event, x interface{}, plog *log.Entry) (map[s
 	var ret map[string]string = make(map[string]string)
 	var strDate string
 	var parsedDate time.Time
-
-	if p.StrTimeFormat != "" {
-		strDate, parsedDate = parseDateWithFormat(in, p.StrTimeFormat)
+	if in != "" {
+		if p.StrTimeFormat != "" {
+			strDate, parsedDate = parseDateWithFormat(in, p.StrTimeFormat)
+			if !parsedDate.IsZero() {
+				ret["MarshaledTime"] = strDate
+				return ret, nil
+			}
+			plog.Debugf("unable to parse '%s' with layout '%s'", in, p.StrTimeFormat)
+		}
+		strDate, parsedDate = GenDateParse(in)
 		if !parsedDate.IsZero() {
 			ret["MarshaledTime"] = strDate
 			return ret, nil
-		} else {
-			plog.Debugf("unable to parse '%s' with layout '%s'", in, p.StrTimeFormat)
 		}
-	}
-	strDate, parsedDate = GenDateParse(in)
-	if !parsedDate.IsZero() {
-		ret["MarshaledTime"] = strDate
-		return ret, nil
+		strDate = expr.ParseUnix(in)
+		if strDate != "" {
+			ret["MarshaledTime"] = strDate
+			return ret, nil
+		}
 	}
 	plog.Debugf("no suitable date format found for '%s', falling back to now", in)
 	now := time.Now().UTC()

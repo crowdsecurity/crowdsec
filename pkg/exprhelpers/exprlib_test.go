@@ -971,3 +971,63 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 		log.Printf("test '%s' : OK", test.name)
 	}
 }
+
+func TestParseUnix(t *testing.T) {
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result string
+		err    string
+	}{
+		{
+			name: "ParseUnix() test: valid value with milli",
+			env: map[string]interface{}{
+				"unix":      "1672239773.3590894",
+				"ParseUnix": ParseUnix,
+			},
+			code:   "ParseUnix(unix)",
+			result: "2022-12-28T15:02:53Z",
+			err:    "",
+		},
+		{
+			name: "ParseUnix() test: valid value without milli",
+			env: map[string]interface{}{
+				"unix":      "1672239773",
+				"ParseUnix": ParseUnix,
+			},
+			code:   "ParseUnix(unix)",
+			result: "2022-12-28T15:02:53Z",
+			err:    "",
+		},
+		{
+			name: "ParseUnix() test: invalid input",
+			env: map[string]interface{}{
+				"unix":      "AbcDefG!#",
+				"ParseUnix": ParseUnix,
+			},
+			code:   "ParseUnix(unix)",
+			result: "",
+			err:    "",
+		},
+		{
+			name: "ParseUnix() test: negative value",
+			env: map[string]interface{}{
+				"unix":      "-1000",
+				"ParseUnix": ParseUnix,
+			},
+			code:   "ParseUnix(unix)",
+			result: "",
+			err:    "",
+		},
+	}
+
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, expr.Env(test.env))
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+}

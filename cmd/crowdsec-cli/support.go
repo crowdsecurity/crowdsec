@@ -22,6 +22,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -30,6 +31,7 @@ const (
 	SUPPORT_METRICS_HUMAN_PATH           = "metrics/metrics.human"
 	SUPPORT_METRICS_PROMETHEUS_PATH      = "metrics/metrics.prometheus"
 	SUPPORT_VERSION_PATH                 = "version.txt"
+	SUPPORT_FEATURES_PATH                = "features.txt"
 	SUPPORT_OS_INFO_PATH                 = "osinfo.txt"
 	SUPPORT_PARSERS_PATH                 = "hub/parsers.txt"
 	SUPPORT_SCENARIOS_PATH               = "hub/scenarios.txt"
@@ -88,6 +90,18 @@ func collectVersion() []byte {
 	log.Info("Collecting version")
 	return []byte(cwversion.ShowStr())
 }
+
+func collectFeatures() []byte {
+	log.Info("Collecting feature flags")
+	enabledFeatures := fflag.Crowdsec.GetEnabledFeatures()
+
+	w := bytes.NewBuffer(nil)
+	for _, k := range enabledFeatures {
+		fmt.Fprintf(w, "%s\n", k)
+	}
+	return w.Bytes()
+}
+
 
 func collectOSInfo() ([]byte, error) {
 	log.Info("Collecting OS info")
@@ -264,6 +278,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			var skipHub, skipDB, skipCAPI, skipLAPI, skipAgent bool
 			infos := map[string][]byte{
 				SUPPORT_VERSION_PATH: collectVersion(),
+				SUPPORT_FEATURES_PATH: collectFeatures(),
 			}
 
 			if outFile == "" {
@@ -271,7 +286,6 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			}
 
 			dbClient, err = database.NewClient(csConfig.DbConfig)
-
 			if err != nil {
 				log.Warnf("Could not connect to database: %s", err)
 				skipDB = true
@@ -291,7 +305,6 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			}
 
 			err = initHub()
-
 			if err != nil {
 				log.Warn("Could not init hub, running on LAPI ? Hub related information will not be collected")
 				skipHub = true
@@ -309,7 +322,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				skipLAPI = true
 			}
 
-			if csConfig.API.Server == nil || csConfig.API.Server.OnlineClient.Credentials == nil {
+			if csConfig.API.Server == nil || csConfig.API.Server.OnlineClient == nil || csConfig.API.Server.OnlineClient.Credentials == nil {
 				log.Warn("no CAPI credentials found, skipping CAPI connectivity check")
 				skipCAPI = true
 			}
@@ -322,7 +335,6 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			}
 
 			infos[SUPPORT_OS_INFO_PATH], err = collectOSInfo()
-
 			if err != nil {
 				log.Warnf("could not collect OS information: %s", err)
 				infos[SUPPORT_OS_INFO_PATH] = []byte(err.Error())
@@ -389,14 +401,17 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				}
 				fw.Write([]byte(types.StripAnsiString(string(data))))
 			}
+
 			err = zipWriter.Close()
 			if err != nil {
 				log.Fatalf("could not finalize zip file: %s", err)
 			}
+
 			err = os.WriteFile(outFile, w.Bytes(), 0600)
 			if err != nil {
 				log.Fatalf("could not write zip file to %s: %s", outFile, err)
 			}
+
 			log.Infof("Written zip file to %s", outFile)
 		},
 	}

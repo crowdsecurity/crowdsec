@@ -29,10 +29,10 @@ api() {
 }
 
 @test "adding decisions for multiple scopes" {
-    run -0 cscli decisions add -i '1.2.3.6'
-    assert_output --partial 'Decision successfully added'
-    run -0 cscli decisions add --scope user --value toto
-    assert_output --partial 'Decision successfully added'
+    run -0 --separate-stderr cscli decisions add -i '1.2.3.6'
+    assert_stderr --partial 'Decision successfully added'
+    run -0 --separate-stderr cscli decisions add --scope user --value toto
+    assert_stderr --partial 'Decision successfully added'
 }
 
 @test "stream start (implicit ip scope)" {

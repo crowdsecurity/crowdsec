@@ -10,8 +10,150 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
+func NewPostOverflowsInstallCmd() *cobra.Command {
+	var ignoreError bool
+
+	cmdPostOverflowsInstall := &cobra.Command{
+		Use:               "install [config]",
+		Short:             "Install given postoverflow(s)",
+		Long:              `Fetch and install given postoverflow(s) from hub`,
+		Example:           `cscli postoverflows install crowdsec/xxx crowdsec/xyz`,
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return compAllItems(cwhub.PARSERS_OVFLW, args, toComplete)
+		},
+		Run: func(cmd *cobra.Command, args []string) {
+			for _, name := range args {
+				t := cwhub.GetItem(cwhub.PARSERS_OVFLW, name)
+				if t == nil {
+					nearestItem, score := GetDistance(cwhub.PARSERS_OVFLW, name)
+					Suggest(cwhub.PARSERS_OVFLW, name, nearestItem.Name, score, ignoreError)
+					continue
+				}
+				if err := cwhub.InstallItem(csConfig, name, cwhub.PARSERS_OVFLW, forceAction, downloadOnly); err != nil {
+					if ignoreError {
+						log.Errorf("Error while installing '%s': %s", name, err)
+					} else {
+						log.Fatalf("Error while installing '%s': %s", name, err)
+					}
+				}
+			}
+		},
+	}
+
+	cmdPostOverflowsInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
+	cmdPostOverflowsInstall.PersistentFlags().BoolVar(&forceAction, "force", false, "Force install : Overwrite tainted and outdated files")
+	cmdPostOverflowsInstall.PersistentFlags().BoolVar(&ignoreError, "ignore", false, "Ignore errors when installing multiple postoverflows")
+
+	return cmdPostOverflowsInstall
+}
+
+func NewPostOverflowsRemoveCmd() *cobra.Command {
+	cmdPostOverflowsRemove := &cobra.Command{
+		Use:               "remove [config]",
+		Short:             "Remove given postoverflow(s)",
+		Long:              `remove given postoverflow(s)`,
+		Example:           `cscli postoverflows remove crowdsec/xxx crowdsec/xyz`,
+		DisableAutoGenTag: true,
+		Aliases:           []string{"delete"},
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return compInstalledItems(cwhub.PARSERS_OVFLW, args, toComplete)
+		},
+		Run: func(cmd *cobra.Command, args []string) {
+			if all {
+				cwhub.RemoveMany(csConfig, cwhub.PARSERS_OVFLW, "", all, purge, forceAction)
+				return
+			}
+
+			if len(args) == 0 {
+				log.Fatalf("Specify at least one postoverflow to remove or '--all' flag.")
+			}
+
+			for _, name := range args {
+				cwhub.RemoveMany(csConfig, cwhub.PARSERS_OVFLW, name, all, purge, forceAction)
+			}
+		},
+	}
+
+	cmdPostOverflowsRemove.PersistentFlags().BoolVar(&purge, "purge", false, "Delete source file too")
+	cmdPostOverflowsRemove.PersistentFlags().BoolVar(&forceAction, "force", false, "Force remove : Remove tainted and outdated files")
+	cmdPostOverflowsRemove.PersistentFlags().BoolVar(&all, "all", false, "Delete all the postoverflows")
+
+	return cmdPostOverflowsRemove
+}
+
+func NewPostOverflowsUpgradeCmd() *cobra.Command {
+	cmdPostOverflowsUpgrade := &cobra.Command{
+		Use:               "upgrade [config]",
+		Short:             "Upgrade given postoverflow(s)",
+		Long:              `Fetch and Upgrade given postoverflow(s) from hub`,
+		Example:           `cscli postoverflows upgrade crowdsec/xxx crowdsec/xyz`,
+		DisableAutoGenTag: true,
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return compInstalledItems(cwhub.PARSERS_OVFLW, args, toComplete)
+		},
+		Run: func(cmd *cobra.Command, args []string) {
+			if all {
+				cwhub.UpgradeConfig(csConfig, cwhub.PARSERS_OVFLW, "", forceAction)
+			} else {
+				if len(args) == 0 {
+					log.Fatalf("no target postoverflow to upgrade")
+				}
+				for _, name := range args {
+					cwhub.UpgradeConfig(csConfig, cwhub.PARSERS_OVFLW, name, forceAction)
+				}
+			}
+		},
+	}
+
+	cmdPostOverflowsUpgrade.PersistentFlags().BoolVarP(&all, "all", "a", false, "Upgrade all the postoverflows")
+	cmdPostOverflowsUpgrade.PersistentFlags().BoolVar(&forceAction, "force", false, "Force upgrade : Overwrite tainted and outdated files")
+
+	return cmdPostOverflowsUpgrade
+}
+
+func NewPostOverflowsInspectCmd() *cobra.Command {
+	cmdPostOverflowsInspect := &cobra.Command{
+		Use:               "inspect [config]",
+		Short:             "Inspect given postoverflow",
+		Long:              `Inspect given postoverflow`,
+		Example:           `cscli postoverflows inspect crowdsec/xxx crowdsec/xyz`,
+		DisableAutoGenTag: true,
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return compInstalledItems(cwhub.PARSERS_OVFLW, args, toComplete)
+		},
+		Args: cobra.MinimumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			InspectItem(args[0], cwhub.PARSERS_OVFLW)
+		},
+	}
+
+	return cmdPostOverflowsInspect
+}
+
+func NewPostOverflowsListCmd() *cobra.Command {
+	cmdPostOverflowsList := &cobra.Command{
+		Use:   "list [config]",
+		Short: "List all postoverflows or given one",
+		Long:  `List all postoverflows or given one`,
+		Example: `cscli postoverflows list
+cscli postoverflows list crowdsecurity/xxx`,
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			ListItems(color.Output, []string{cwhub.PARSERS_OVFLW}, args, false, true, all)
+		},
+	}
+
+	cmdPostOverflowsList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
+
+	return cmdPostOverflowsList
+}
+
+
+
 func NewPostOverflowsCmd() *cobra.Command {
-	var cmdPostOverflows = &cobra.Command{
+	cmdPostOverflows := &cobra.Command{
 		Use:   "postoverflows [action] [config]",
 		Short: "Install/Remove/Upgrade/Inspect postoverflow(s) from hub",
 		Example: `cscli postoverflows install crowdsecurity/cdn-whitelist
@@ -48,125 +190,11 @@ func NewPostOverflowsCmd() *cobra.Command {
 		},
 	}
 
-	var ignoreError bool
-	var cmdPostOverflowsInstall = &cobra.Command{
-		Use:               "install [config]",
-		Short:             "Install given postoverflow(s)",
-		Long:              `Fetch and install given postoverflow(s) from hub`,
-		Example:           `cscli postoverflows install crowdsec/xxx crowdsec/xyz`,
-		Args:              cobra.MinimumNArgs(1),
-		DisableAutoGenTag: true,
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compAllItems(cwhub.PARSERS_OVFLW, args, toComplete)
-		},
-		Run: func(cmd *cobra.Command, args []string) {
-			for _, name := range args {
-				t := cwhub.GetItem(cwhub.PARSERS_OVFLW, name)
-				if t == nil {
-					nearestItem, score := GetDistance(cwhub.PARSERS_OVFLW, name)
-					Suggest(cwhub.PARSERS_OVFLW, name, nearestItem.Name, score, ignoreError)
-					continue
-				}
-				if err := cwhub.InstallItem(csConfig, name, cwhub.PARSERS_OVFLW, forceAction, downloadOnly); err != nil {
-					if ignoreError {
-						log.Errorf("Error while installing '%s': %s", name, err)
-					} else {
-						log.Fatalf("Error while installing '%s': %s", name, err)
-					}
-				}
-			}
-		},
-	}
-	cmdPostOverflowsInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
-	cmdPostOverflowsInstall.PersistentFlags().BoolVar(&forceAction, "force", false, "Force install : Overwrite tainted and outdated files")
-	cmdPostOverflowsInstall.PersistentFlags().BoolVar(&ignoreError, "ignore", false, "Ignore errors when installing multiple postoverflows")
-	cmdPostOverflows.AddCommand(cmdPostOverflowsInstall)
-
-	var cmdPostOverflowsRemove = &cobra.Command{
-		Use:               "remove [config]",
-		Short:             "Remove given postoverflow(s)",
-		Long:              `remove given postoverflow(s)`,
-		Example:           `cscli postoverflows remove crowdsec/xxx crowdsec/xyz`,
-		DisableAutoGenTag: true,
-		Aliases:           []string{"delete"},
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compInstalledItems(cwhub.PARSERS_OVFLW, args, toComplete)
-		},
-		Run: func(cmd *cobra.Command, args []string) {
-			if all {
-				cwhub.RemoveMany(csConfig, cwhub.PARSERS_OVFLW, "", all, purge, forceAction)
-				return
-			}
-
-			if len(args) == 0 {
-				log.Fatalf("Specify at least one postoverflow to remove or '--all' flag.")
-			}
-
-			for _, name := range args {
-				cwhub.RemoveMany(csConfig, cwhub.PARSERS_OVFLW, name, all, purge, forceAction)
-			}
-		},
-	}
-	cmdPostOverflowsRemove.PersistentFlags().BoolVar(&purge, "purge", false, "Delete source file too")
-	cmdPostOverflowsRemove.PersistentFlags().BoolVar(&forceAction, "force", false, "Force remove : Remove tainted and outdated files")
-	cmdPostOverflowsRemove.PersistentFlags().BoolVar(&all, "all", false, "Delete all the postoverflows")
-	cmdPostOverflows.AddCommand(cmdPostOverflowsRemove)
-
-	var cmdPostOverflowsUpgrade = &cobra.Command{
-		Use:               "upgrade [config]",
-		Short:             "Upgrade given postoverflow(s)",
-		Long:              `Fetch and Upgrade given postoverflow(s) from hub`,
-		Example:           `cscli postoverflows upgrade crowdsec/xxx crowdsec/xyz`,
-		DisableAutoGenTag: true,
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compInstalledItems(cwhub.PARSERS_OVFLW, args, toComplete)
-		},
-		Run: func(cmd *cobra.Command, args []string) {
-			if all {
-				cwhub.UpgradeConfig(csConfig, cwhub.PARSERS_OVFLW, "", forceAction)
-			} else {
-				if len(args) == 0 {
-					log.Fatalf("no target postoverflow to upgrade")
-				}
-				for _, name := range args {
-					cwhub.UpgradeConfig(csConfig, cwhub.PARSERS_OVFLW, name, forceAction)
-				}
-			}
-		},
-	}
-	cmdPostOverflowsUpgrade.PersistentFlags().BoolVarP(&all, "all", "a", false, "Upgrade all the postoverflows")
-	cmdPostOverflowsUpgrade.PersistentFlags().BoolVar(&forceAction, "force", false, "Force upgrade : Overwrite tainted and outdated files")
-	cmdPostOverflows.AddCommand(cmdPostOverflowsUpgrade)
-
-	var cmdPostOverflowsInspect = &cobra.Command{
-		Use:               "inspect [config]",
-		Short:             "Inspect given postoverflow",
-		Long:              `Inspect given postoverflow`,
-		Example:           `cscli postoverflows inspect crowdsec/xxx crowdsec/xyz`,
-		DisableAutoGenTag: true,
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compInstalledItems(cwhub.PARSERS_OVFLW, args, toComplete)
-		},
-		Args: cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			InspectItem(args[0], cwhub.PARSERS_OVFLW)
-		},
-	}
-	cmdPostOverflows.AddCommand(cmdPostOverflowsInspect)
-
-	var cmdPostOverflowsList = &cobra.Command{
-		Use:   "list [config]",
-		Short: "List all postoverflows or given one",
-		Long:  `List all postoverflows or given one`,
-		Example: `cscli postoverflows list
-cscli postoverflows list crowdsecurity/xxx`,
-		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
-			ListItems(color.Output, []string{cwhub.PARSERS_OVFLW}, args, false, true, all)
-		},
-	}
-	cmdPostOverflowsList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
-	cmdPostOverflows.AddCommand(cmdPostOverflowsList)
+	cmdPostOverflows.AddCommand(NewPostOverflowsInstallCmd())
+	cmdPostOverflows.AddCommand(NewPostOverflowsRemoveCmd())
+	cmdPostOverflows.AddCommand(NewPostOverflowsUpgradeCmd())
+	cmdPostOverflows.AddCommand(NewPostOverflowsInspectCmd())
+	cmdPostOverflows.AddCommand(NewPostOverflowsListCmd())
 
 	return cmdPostOverflows
 }
