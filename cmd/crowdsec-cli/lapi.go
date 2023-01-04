@@ -26,7 +26,6 @@ import (
 )
 
 var LAPIURLPrefix string = "v1"
-var lapiUser string
 
 func runLapiStatus(cmd *cobra.Command, args []string) error {
 	var err error
