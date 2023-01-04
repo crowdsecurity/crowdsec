@@ -28,6 +28,174 @@ import (
 var LAPIURLPrefix string = "v1"
 var lapiUser string
 
+func runLapiStatus(cmd *cobra.Command, args []string) error {
+	var err error
+
+	password := strfmt.Password(csConfig.API.Client.Credentials.Password)
+	apiurl, err := url.Parse(csConfig.API.Client.Credentials.URL)
+	login := csConfig.API.Client.Credentials.Login
+	if err != nil {
+		log.Fatalf("parsing api url ('%s'): %s", apiurl, err)
+	}
+	if err := csConfig.LoadHub(); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
+		log.Info("Run 'sudo cscli hub update' to get the hub index")
+		log.Fatalf("Failed to load hub index : %s", err)
+	}
+	scenarios, err := cwhub.GetInstalledScenariosAsString()
+	if err != nil {
+		log.Fatalf("failed to get scenarios : %s", err)
+	}
+
+	Client, err = apiclient.NewDefaultClient(apiurl,
+		LAPIURLPrefix,
+		fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		nil)
+	if err != nil {
+		log.Fatalf("init default client: %s", err)
+	}
+	t := models.WatcherAuthRequest{
+		MachineID: &login,
+		Password:  &password,
+		Scenarios: scenarios,
+	}
+	log.Infof("Loaded credentials from %s", csConfig.API.Client.CredentialsFilePath)
+	log.Infof("Trying to authenticate with username %s on %s", login, apiurl)
+	_, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
+	if err != nil {
+		log.Fatalf("Failed to authenticate to Local API (LAPI) : %s", err)
+	} else {
+		log.Infof("You can successfully interact with Local API (LAPI)")
+	}
+
+	return nil
+}
+
+func runLapiRegister(cmd *cobra.Command, args []string) error {
+	var err error
+
+	flags := cmd.Flags()
+
+	apiURL, err := flags.GetString("url")
+	if err != nil {
+		return err
+	}
+
+	outputFile, err := flags.GetString("file")
+	if err != nil {
+		return err
+	}
+
+	lapiUser, err := flags.GetString("machine")
+	if err != nil {
+		return err
+	}
+
+	if lapiUser == "" {
+		lapiUser, err = generateID("")
+		if err != nil {
+			log.Fatalf("unable to generate machine id: %s", err)
+		}
+	}
+	password := strfmt.Password(generatePassword(passwordLength))
+	if apiURL == "" {
+		if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil && csConfig.API.Client.Credentials.URL != "" {
+			apiURL = csConfig.API.Client.Credentials.URL
+		} else {
+			log.Fatalf("No Local API URL. Please provide it in your configuration or with the -u parameter")
+		}
+	}
+	/*URL needs to end with /, but user doesn't care*/
+	if !strings.HasSuffix(apiURL, "/") {
+		apiURL += "/"
+	}
+	/*URL needs to start with http://, but user doesn't care*/
+	if !strings.HasPrefix(apiURL, "http://") && !strings.HasPrefix(apiURL, "https://") {
+		apiURL = "http://" + apiURL
+	}
+	apiurl, err := url.Parse(apiURL)
+	if err != nil {
+		log.Fatalf("parsing api url: %s", err)
+	}
+	_, err = apiclient.RegisterClient(&apiclient.Config{
+		MachineID:     lapiUser,
+		Password:      password,
+		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		URL:           apiurl,
+		VersionPrefix: LAPIURLPrefix,
+	}, nil)
+
+	if err != nil {
+		log.Fatalf("api client register: %s", err)
+	}
+
+	log.Printf("Successfully registered to Local API (LAPI)")
+
+	var dumpFile string
+	if outputFile != "" {
+		dumpFile = outputFile
+	} else if csConfig.API.Client.CredentialsFilePath != "" {
+		dumpFile = csConfig.API.Client.CredentialsFilePath
+	} else {
+		dumpFile = ""
+	}
+	apiCfg := csconfig.ApiCredentialsCfg{
+		Login:    lapiUser,
+		Password: password.String(),
+		URL:      apiURL,
+	}
+	apiConfigDump, err := yaml.Marshal(apiCfg)
+	if err != nil {
+		log.Fatalf("unable to marshal api credentials: %s", err)
+	}
+	if dumpFile != "" {
+		err = os.WriteFile(dumpFile, apiConfigDump, 0644)
+		if err != nil {
+			log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
+		}
+		log.Printf("Local API credentials dumped to '%s'", dumpFile)
+	} else {
+		fmt.Printf("%s\n", string(apiConfigDump))
+	}
+	log.Warning(ReloadMessage())
+
+	return nil
+}
+
+func NewLapiStatusCmd() *cobra.Command {
+	cmdLapiStatus := &cobra.Command{
+		Use:               "status",
+		Short:             "Check authentication to Local API (LAPI)",
+		Args:              cobra.MinimumNArgs(0),
+		DisableAutoGenTag: true,
+		RunE:              runLapiStatus,
+	}
+
+	return cmdLapiStatus
+}
+
+func NewLapiRegisterCmd() *cobra.Command {
+	cmdLapiRegister := &cobra.Command{
+		Use:   "register",
+		Short: "Register a machine to Local API (LAPI)",
+		Long: `Register you machine to the Local API (LAPI).
+Keep in mind the machine needs to be validated by an administrator on LAPI side to be effective.`,
+		Args:              cobra.MinimumNArgs(0),
+		DisableAutoGenTag: true,
+		RunE:              runLapiRegister,
+	}
+
+	flags := cmdLapiRegister.Flags()
+	flags.StringP("url", "u", "", "URL of the API (ie. http://127.0.0.1)")
+	flags.StringP("file", "f", "", "output file destination")
+	flags.String("machine", "", "Name of the machine to register with")
+
+	return cmdLapiRegister
+}
+
 func NewLapiCmd() *cobra.Command {
 	var cmdLapi = &cobra.Command{
 		Use:               "lapi [action]",
@@ -42,140 +210,14 @@ func NewLapiCmd() *cobra.Command {
 		},
 	}
 
-	var cmdLapiRegister = &cobra.Command{
-		Use:   "register",
-		Short: "Register a machine to Local API (LAPI)",
-		Long: `Register you machine to the Local API (LAPI).
-Keep in mind the machine needs to be validated by an administrator on LAPI side to be effective.`,
-		Args:              cobra.MinimumNArgs(0),
-		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
-			var err error
-			if lapiUser == "" {
-				lapiUser, err = generateID("")
-				if err != nil {
-					log.Fatalf("unable to generate machine id: %s", err)
-				}
-			}
-			password := strfmt.Password(generatePassword(passwordLength))
-			if apiURL == "" {
-				if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil && csConfig.API.Client.Credentials.URL != "" {
-					apiURL = csConfig.API.Client.Credentials.URL
-				} else {
-					log.Fatalf("No Local API URL. Please provide it in your configuration or with the -u parameter")
-				}
-			}
-			/*URL needs to end with /, but user doesn't care*/
-			if !strings.HasSuffix(apiURL, "/") {
-				apiURL += "/"
-			}
-			/*URL needs to start with http://, but user doesn't care*/
-			if !strings.HasPrefix(apiURL, "http://") && !strings.HasPrefix(apiURL, "https://") {
-				apiURL = "http://" + apiURL
-			}
-			apiurl, err := url.Parse(apiURL)
-			if err != nil {
-				log.Fatalf("parsing api url: %s", err)
-			}
-			_, err = apiclient.RegisterClient(&apiclient.Config{
-				MachineID:     lapiUser,
-				Password:      password,
-				UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
-				URL:           apiurl,
-				VersionPrefix: LAPIURLPrefix,
-			}, nil)
+	cmdLapi.AddCommand(NewLapiRegisterCmd())
+	cmdLapi.AddCommand(NewLapiStatusCmd())
+	cmdLapi.AddCommand(NewLapiContextCmd())
 
-			if err != nil {
-				log.Fatalf("api client register: %s", err)
-			}
+	return cmdLapi
+}
 
-			log.Printf("Successfully registered to Local API (LAPI)")
-
-			var dumpFile string
-			if outputFile != "" {
-				dumpFile = outputFile
-			} else if csConfig.API.Client.CredentialsFilePath != "" {
-				dumpFile = csConfig.API.Client.CredentialsFilePath
-			} else {
-				dumpFile = ""
-			}
-			apiCfg := csconfig.ApiCredentialsCfg{
-				Login:    lapiUser,
-				Password: password.String(),
-				URL:      apiURL,
-			}
-			apiConfigDump, err := yaml.Marshal(apiCfg)
-			if err != nil {
-				log.Fatalf("unable to marshal api credentials: %s", err)
-			}
-			if dumpFile != "" {
-				err = os.WriteFile(dumpFile, apiConfigDump, 0644)
-				if err != nil {
-					log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
-				}
-				log.Printf("Local API credentials dumped to '%s'", dumpFile)
-			} else {
-				fmt.Printf("%s\n", string(apiConfigDump))
-			}
-			log.Warning(ReloadMessage())
-		},
-	}
-	cmdLapiRegister.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API (ie. http://127.0.0.1)")
-	cmdLapiRegister.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
-	cmdLapiRegister.Flags().StringVar(&lapiUser, "machine", "", "Name of the machine to register with")
-	cmdLapi.AddCommand(cmdLapiRegister)
-
-	var cmdLapiStatus = &cobra.Command{
-		Use:               "status",
-		Short:             "Check authentication to Local API (LAPI)",
-		Args:              cobra.MinimumNArgs(0),
-		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
-			var err error
-
-			password := strfmt.Password(csConfig.API.Client.Credentials.Password)
-			apiurl, err := url.Parse(csConfig.API.Client.Credentials.URL)
-			login := csConfig.API.Client.Credentials.Login
-			if err != nil {
-				log.Fatalf("parsing api url ('%s'): %s", apiurl, err)
-			}
-			if err := csConfig.LoadHub(); err != nil {
-				log.Fatal(err)
-			}
-
-			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-				log.Info("Run 'sudo cscli hub update' to get the hub index")
-				log.Fatalf("Failed to load hub index : %s", err)
-			}
-			scenarios, err := cwhub.GetInstalledScenariosAsString()
-			if err != nil {
-				log.Fatalf("failed to get scenarios : %s", err)
-			}
-
-			Client, err = apiclient.NewDefaultClient(apiurl,
-				LAPIURLPrefix,
-				fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
-				nil)
-			if err != nil {
-				log.Fatalf("init default client: %s", err)
-			}
-			t := models.WatcherAuthRequest{
-				MachineID: &login,
-				Password:  &password,
-				Scenarios: scenarios,
-			}
-			log.Infof("Loaded credentials from %s", csConfig.API.Client.CredentialsFilePath)
-			log.Infof("Trying to authenticate with username %s on %s", login, apiurl)
-			_, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
-			if err != nil {
-				log.Fatalf("Failed to authenticate to Local API (LAPI) : %s", err)
-			} else {
-				log.Infof("You can successfully interact with Local API (LAPI)")
-			}
-		},
-	}
-	cmdLapi.AddCommand(cmdLapiStatus)
-
+func NewLapiContextCmd() *cobra.Command {
 	cmdContext := &cobra.Command{
 		Use:               "context [command]",
 		Short:             "Manage context to send with alerts",
@@ -393,9 +435,8 @@ cscli lapi context delete --value evt.Line.Src
 	cmdContextDelete.Flags().StringSliceVarP(&keysToDelete, "key", "k", []string{}, "The keys to delete")
 	cmdContextDelete.Flags().StringSliceVar(&valuesToDelete, "value", []string{}, "The expr fields to delete")
 	cmdContext.AddCommand(cmdContextDelete)
-	cmdLapi.AddCommand(cmdContext)
 
-	return cmdLapi
+	return cmdContext
 }
 
 func detectStaticField(GrokStatics []types.ExtraField) []string {
