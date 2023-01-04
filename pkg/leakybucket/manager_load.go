@@ -111,7 +111,7 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 		}
 	} else if bucketFactory.Type == "conditional" {
 		if bucketFactory.ConditionalOverflow == "" {
-			return fmt.Errorf("conditional bucket must have a conditional_overflow")
+			return fmt.Errorf("conditional bucket must have a condition")
 		}
 		if bucketFactory.Capacity != -1 {
 			return fmt.Errorf("conditional bucket must have -1 capacity")
