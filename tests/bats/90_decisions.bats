@@ -32,7 +32,7 @@ declare stderr
 
     run -1 --separate-stderr cscli decisions add -o json
     run echo "${stderr}"
-    run -0 jq -c '[ .level, .msg]' <(output)
+    run -0 jq -c '[ .level, .msg]' <(output | grep "^{")
     assert_output '["fatal","Missing arguments, a value is required (--ip, --range or --scope and --value)"]'
 }
 
@@ -62,6 +62,6 @@ declare stderr
     assert_stderr --partial 'Unable to list decisions : performing request: API error: while parsing duration: time: invalid duration \"toto\"'
     run -1 --separate-stderr cscli decisions list --until toto -o json
     run echo "${stderr}"
-    run -0 jq -c '[.level, .msg]' <(output)
+    run -0 jq -c '[.level, .msg]' <(output | grep "^{")
     assert_output '["fatal","Unable to list decisions : performing request: API error: while parsing duration: time: invalid duration \"toto\""]'
 }
