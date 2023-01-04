@@ -292,12 +292,20 @@ func LookupHost(value string) []string {
 	return addresses
 }
 
-func ParseUnix(value string) string {
+func ParseUnixTime(value string) (time.Time, error) {
 	//Splitting string here as some unix timestamp may have milliseconds and break ParseInt
 	i, err := strconv.ParseInt(strings.Split(value, ".")[0], 10, 64)
 	if err != nil || i <= 0 {
-		log.Errorf("Unable to parse %s as unix timestamp.", value)
+		return time.Time{}, fmt.Errorf("unable to parse %s as unix timestamp", value)
+	}
+	return time.Unix(i, 0), nil
+}
+
+func ParseUnix(value string) string {
+	t, err := ParseUnixTime(value)
+	if err != nil {
+		log.Error(err)
 		return ""
 	}
-	return time.Unix(i, 0).Format(time.RFC3339)
+	return t.Format(time.RFC3339)
 }
