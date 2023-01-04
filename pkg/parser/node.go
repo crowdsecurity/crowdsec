@@ -113,10 +113,10 @@ func (n *Node) validate(pctx *UnixParserCtx, ectx EnricherCtx) error {
 			return fmt.Errorf("stash %d : name must be set", idx)
 		}
 		if stash.Value == "" {
-			return fmt.Errorf("stash %s : expression must be set", stash.Name)
+			return fmt.Errorf("stash %s : value expression must be set", stash.Name)
 		}
 		if stash.Key == "" {
-			return fmt.Errorf("stash %s : expression must be set", stash.Name)
+			return fmt.Errorf("stash %s : key expression must be set", stash.Name)
 		}
 		if stash.TTL == "" {
 			return fmt.Errorf("stash %s : ttl must be set", stash.Name)
@@ -308,44 +308,48 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		clog.Tracef("! No grok pattern : %p", n.Grok.RunTimeRegexp)
 	}
 
-	//Process the stash (data collection) if present
-	for idx, stash := range n.Stash {
-		var value string
-		var key string
-		if stash.ValueExpression == nil {
-			clog.Warningf("Stash %d has no value expression, skipping", idx)
-			continue
-		}
-		if stash.KeyExpression == nil {
-			clog.Warningf("Stash %d has no key expression, skipping", idx)
-			continue
-		}
-		//collect the data
-		output, err := expr.Run(stash.ValueExpression, cachedExprEnv)
-		if err != nil {
-			clog.Warningf("Error while running stash val expression : %v", err)
-		}
-		//can we expect anything else than a string ?
-		switch output.(type) {
-		case string:
-			value = output.(string)
-		default:
-			clog.Warningf("unexpected type %t (%v) while running '%s'", output, output, stash.ValueExpression)
-		}
+	//Process the stash (data collection) if : a grok was present and succeeded, or if there is no grok
+	if NodeHasOKGrok || n.Grok.RunTimeRegexp == nil {
+		for idx, stash := range n.Stash {
+			var value string
+			var key string
+			if stash.ValueExpression == nil {
+				clog.Warningf("Stash %d has no value expression, skipping", idx)
+				continue
+			}
+			if stash.KeyExpression == nil {
+				clog.Warningf("Stash %d has no key expression, skipping", idx)
+				continue
+			}
+			//collect the data
+			output, err := expr.Run(stash.ValueExpression, cachedExprEnv)
+			if err != nil {
+				clog.Warningf("Error while running stash val expression : %v", err)
+			}
+			//can we expect anything else than a string ?
+			switch output.(type) {
+			case string:
+				value = output.(string)
+			default:
+				clog.Warningf("unexpected type %t (%v) while running '%s'", output, output, stash.ValueExpression)
+				continue
+			}
 
-		//collect the key
-		output, err = expr.Run(stash.KeyExpression, cachedExprEnv)
-		if err != nil {
-			clog.Warningf("Error while running stash key expression : %v", err)
+			//collect the key
+			output, err = expr.Run(stash.KeyExpression, cachedExprEnv)
+			if err != nil {
+				clog.Warningf("Error while running stash key expression : %v", err)
+			}
+			//can we expect anything else than a string ?
+			switch output.(type) {
+			case string:
+				key = output.(string)
+			default:
+				clog.Warningf("unexpected type %t (%v) while running '%s'", output, output, stash.KeyExpression)
+				continue
+			}
+			cache.SetKey(stash.Name, key, value, &stash.TTLVal)
 		}
-		//can we expect anything else than a string ?
-		switch output.(type) {
-		case string:
-			key = output.(string)
-		default:
-			clog.Warningf("unexpected type %t (%v) while running '%s'", output, output, stash.KeyExpression)
-		}
-		cache.SetKey(stash.Name, key, value, &stash.TTLVal)
 	}
 
 	//Iterate on leafs
