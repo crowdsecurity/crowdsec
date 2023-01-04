@@ -213,6 +213,7 @@ func TestLoadAPIServer(t *testing.T) {
 					ShareManualDecisions:  types.BoolPtr(false),
 					ShareTaintedScenarios: types.BoolPtr(true),
 					ShareCustomScenarios:  types.BoolPtr(true),
+					ShareContext:          types.BoolPtr(false),
 				},
 				LogDir:   LogDirFullPath,
 				LogMedia: "stdout",
