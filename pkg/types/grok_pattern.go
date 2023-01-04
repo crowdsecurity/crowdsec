@@ -50,5 +50,5 @@ type DataCapture struct {
 	ValueExpression *vm.Program   `yaml:"-"`
 	TTL             string        `yaml:"ttl,omitempty"`
 	TTLVal          time.Duration `yaml:"-"`
-	MaxMapSize      int           `yaml:"max_size,omitempty"`
+	MaxMapSize      int           `yaml:"size,omitempty"`
 }
