@@ -331,7 +331,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 			case string:
 				value = output.(string)
 			default:
-				clog.Warningf("unexpected type %t (%v) while running '%s'", output, output, stash.ValueExpression)
+				clog.Warningf("unexpected type %t (%v) while running '%s'", output, output, stash.Value)
 				continue
 			}
 
@@ -345,7 +345,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 			case string:
 				key = output.(string)
 			default:
-				clog.Warningf("unexpected type %t (%v) while running '%s'", output, output, stash.KeyExpression)
+				clog.Warningf("unexpected type %t (%v) while running '%s'", output, output, stash.Key)
 				continue
 			}
 			cache.SetKey(stash.Name, key, value, &stash.TTLVal)
