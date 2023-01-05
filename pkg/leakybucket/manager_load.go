@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
@@ -239,6 +241,11 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 			ret = append(ret, bucketFactory)
 		}
 	}
+
+	if err := alertcontext.NewAlertContext(cscfg.ContextToSend, cscfg.ConsoleContextValueLength); err != nil {
+		return nil, nil, fmt.Errorf("unable to load alert context: %s", err)
+	}
+
 	log.Warningf("Loaded %d scenarios", len(ret))
 	return ret, response, nil
 }
@@ -375,6 +382,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 		return fmt.Errorf("invalid bucket from %s : %v", bucketFactory.Filename, err)
 	}
 	bucketFactory.tomb = tomb
+
 	return nil
 
 }
