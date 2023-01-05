@@ -138,7 +138,7 @@ func testOneParser(pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing
 	return nil
 }
 
-//prepTests is going to do the initialisation of parser : it's going to load enrichment plugins and load the patterns. This is done here so that we don't redo it for each test
+// prepTests is going to do the initialisation of parser : it's going to load enrichment plugins and load the patterns. This is done here so that we don't redo it for each test
 func prepTests() (*UnixParserCtx, EnricherCtx, error) {
 	var (
 		err  error
@@ -252,6 +252,7 @@ func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bo
 					if debug {
 						retInfo = append(retInfo, fmt.Sprintf("mismatch %s[%s] %s != %s", outLabels[mapIdx], expKey, expVal, outVal))
 					}
+					valid = false
 					goto checkFinished
 				}
 			} else { //missing entry
@@ -266,11 +267,11 @@ func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bo
 checkFinished:
 	if valid {
 		if debug {
-			retInfo = append(retInfo, fmt.Sprintf("OK ! %s", strings.Join(retInfo, "/")))
+			retInfo = append(retInfo, fmt.Sprintf("OK ! \n\t%s", strings.Join(retInfo, "\n\t")))
 		}
 	} else {
 		if debug {
-			retInfo = append(retInfo, fmt.Sprintf("KO ! %s", strings.Join(retInfo, "/")))
+			retInfo = append(retInfo, fmt.Sprintf("KO ! \n\t%s", strings.Join(retInfo, "\n\t")))
 		}
 	}
 	return retInfo, valid
