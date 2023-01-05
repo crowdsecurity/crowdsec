@@ -1,5 +1,6 @@
 filter: "'source_ip' in evt.Meta"
 name: tests/geoip-enrich
+debug: true
 description: "Populate event with geoloc info : as, country, coords, source range."
 statics:
   - method: GeoIpCity
