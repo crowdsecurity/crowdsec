@@ -70,8 +70,8 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"GetDecisionsSinceCount": GetDecisionsSinceCount,
 		"Sprintf":                fmt.Sprintf,
 		"ParseUnix":              ParseUnix,
-		"GetFromCache":           cache.GetKey,
-		"SetInCache":             cache.SetKey,
+		"GetFromStash":           cache.GetKey,
+		"SetInStash":             cache.SetKey,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
