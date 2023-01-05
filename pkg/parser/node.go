@@ -327,9 +327,9 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 				clog.Warningf("Error while running stash val expression : %v", err)
 			}
 			//can we expect anything else than a string ?
-			switch output.(type) {
+			switch output := output.(type) {
 			case string:
-				value = output.(string)
+				value = output
 			default:
 				clog.Warningf("unexpected type %t (%v) while running '%s'", output, output, stash.Value)
 				continue
@@ -341,9 +341,9 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 				clog.Warningf("Error while running stash key expression : %v", err)
 			}
 			//can we expect anything else than a string ?
-			switch output.(type) {
+			switch output := output.(type) {
 			case string:
-				key = output.(string)
+				key = output
 			default:
 				clog.Warningf("unexpected type %t (%v) while running '%s'", output, output, stash.Key)
 				continue
