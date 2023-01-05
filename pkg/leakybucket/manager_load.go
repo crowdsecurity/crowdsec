@@ -116,7 +116,7 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 			return fmt.Errorf("conditional bucket must have a condition")
 		}
 		if bucketFactory.Capacity != -1 {
-			return fmt.Errorf("conditional bucket must have -1 capacity")
+			bucketFactory.logger.Warnf("Using a value different than -1 as capacity for conditional bucket, this may lead to unexpected overflows")
 		}
 		if bucketFactory.LeakSpeed == "" {
 			return fmt.Errorf("leakspeed can't be empty for conditional bucket")
