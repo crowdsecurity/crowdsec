@@ -61,16 +61,17 @@ type Leaky struct {
 	Duration     time.Duration
 	Pour         func(*Leaky, types.Event) `json:"-"`
 	//Profiling when set to true enables profiling of bucket
-	Profiling       bool
-	timedOverflow   bool
-	logger          *log.Entry
-	scopeType       types.ScopeType
-	hash            string
-	scenarioVersion string
-	tomb            *tomb.Tomb
-	wgPour          *sync.WaitGroup
-	wgDumpState     *sync.WaitGroup
-	mutex           *sync.Mutex //used only for TIMEMACHINE mode to allow garbage collection without races
+	Profiling           bool
+	timedOverflow       bool
+	conditionalOverflow bool
+	logger              *log.Entry
+	scopeType           types.ScopeType
+	hash                string
+	scenarioVersion     string
+	tomb                *tomb.Tomb
+	wgPour              *sync.WaitGroup
+	wgDumpState         *sync.WaitGroup
+	mutex               *sync.Mutex //used only for TIMEMACHINE mode to allow garbage collection without races
 }
 
 var BucketsPour = prometheus.NewCounterVec(
@@ -188,6 +189,10 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		l.timedOverflow = true
 	}
 
+	if l.BucketConfig.Type == "conditional" {
+		l.conditionalOverflow = true
+		l.Duration = l.BucketConfig.leakspeed
+	}
 	return l
 }
 
@@ -247,6 +252,14 @@ func LeakRoutine(leaky *Leaky) error {
 			BucketsPour.With(prometheus.Labels{"name": leaky.Name, "source": msg.Line.Src, "type": msg.Line.Module}).Inc()
 
 			leaky.Pour(leaky, *msg) // glue for now
+
+			for _, processor := range processors {
+				msg = processor.AfterBucketPour(leaky.BucketConfig)(*msg, leaky)
+				if msg == nil {
+					goto End
+				}
+			}
+
 			//Clear cache on behalf of pour
 
 			// if durationTicker isn't initialized, then we're pouring our first event
@@ -337,7 +350,8 @@ func Pour(leaky *Leaky, msg types.Event) {
 		leaky.First_ts = time.Now().UTC()
 	}
 	leaky.Last_ts = time.Now().UTC()
-	if leaky.Limiter.Allow() {
+
+	if leaky.Limiter.Allow() || leaky.conditionalOverflow {
 		leaky.Queue.Add(msg)
 	} else {
 		leaky.Ovflw_ts = time.Now().UTC()
