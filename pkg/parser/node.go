@@ -567,11 +567,13 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 			return errors.Wrap(err, "while parsing stash ttl")
 		}
 
+		logLvl := n.Logger.Logger.GetLevel()
 		//init the cache, does it make sense to create it here just to be sure everything is fine ?
 		if err := cache.CacheInit(cache.CacheCfg{
-			Size: n.Stash[i].MaxMapSize,
-			TTL:  n.Stash[i].TTLVal,
-			Name: n.Stash[i].Name,
+			Size:     n.Stash[i].MaxMapSize,
+			TTL:      n.Stash[i].TTLVal,
+			Name:     n.Stash[i].Name,
+			LogLevel: &logLvl,
 		}); err != nil {
 			return errors.Wrap(err, "while initializing cache")
 		}
