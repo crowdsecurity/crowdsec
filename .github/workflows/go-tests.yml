@@ -30,6 +30,7 @@ env:
   # and to override our endpoint in aws sdk
   AWS_ENDPOINT_FORCE: http://localhost:4566
   KINESIS_INITIALIZE_STREAMS: "stream-1-shard:1,stream-2-shards:2"
+  CROWDSEC_FEATURE_DISABLE_HTTP_RETRY_BACKOFF: true
 
 jobs:
 

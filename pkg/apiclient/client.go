@@ -51,7 +51,6 @@ func NewClient(config *Config) (*ApiClient, error) {
 		UserAgent:      config.UserAgent,
 		VersionPrefix:  config.VersionPrefix,
 		UpdateScenario: config.UpdateScenario,
-		NbRetry:        0,
 	}
 	tlsconfig := tls.Config{InsecureSkipVerify: InsecureSkipVerify}
 	tlsconfig.RootCAs = CaCertPool
