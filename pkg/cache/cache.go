@@ -5,6 +5,7 @@ import (
 
 	"github.com/bluele/gcache"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
@@ -12,6 +13,28 @@ import (
 var Caches []gcache.Cache
 var CacheNames []string
 var CacheConfig []CacheCfg
+
+var MetricsRunning bool
+
+/*prometheus*/
+var CacheMetrics = prometheus.NewGaugeVec(
+	prometheus.GaugeOpts{
+		Name: "cs_cache_size",
+		Help: "Entries per cache.",
+	},
+	[]string{"name", "type"},
+)
+
+// would it make sense to have a tomb ? seems overkill
+func UpdateCacheMetrics() {
+	tick := time.NewTicker(30 * time.Second)
+
+	for range tick.C {
+		for i, name := range CacheNames {
+			CacheMetrics.With(prometheus.Labels{"name": name, "type": CacheConfig[i].Strategy}).Set(float64(Caches[i].Len(false)))
+		}
+	}
+}
 
 type CacheCfg struct {
 	Name     string
@@ -23,6 +46,11 @@ type CacheCfg struct {
 }
 
 func CacheInit(cfg CacheCfg) error {
+	//not really thread safe, but we don't care
+	if !MetricsRunning {
+		MetricsRunning = true
+		go UpdateCacheMetrics()
+	}
 	for _, name := range CacheNames {
 		if name == cfg.Name {
 			log.Infof("Cache %s already exists", cfg.Name)
@@ -62,10 +90,6 @@ func CacheInit(cfg CacheCfg) error {
 
 	return nil
 }
-
-//TBD : Prom metrics :
-// - number of existing cache
-// - individual cache size
 
 func SetKey(cacheName string, key string, value string, expiration *time.Duration) error {
 

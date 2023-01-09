@@ -5,6 +5,7 @@ import (
 	"time"
 
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
+	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -160,7 +161,8 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 			globalCsInfo, globalParsingHistogram, globalPourHistogram,
 			leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstantiation, leaky.BucketsOverflow,
 			v1.LapiRouteHits,
-			leaky.BucketsCurrentCount)
+			leaky.BucketsCurrentCount,
+			cache.CacheMetrics)
 	} else {
 		log.Infof("Loading prometheus collectors")
 		prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
@@ -168,7 +170,8 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 			globalCsInfo, globalParsingHistogram, globalPourHistogram,
 			v1.LapiRouteHits, v1.LapiMachineHits, v1.LapiBouncerHits, v1.LapiNilDecisions, v1.LapiNonNilDecisions, v1.LapiResponseTime,
 			leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstantiation, leaky.BucketsOverflow, leaky.BucketsCurrentCount,
-			globalActiveDecisions, globalAlerts)
+			globalActiveDecisions, globalAlerts,
+			cache.CacheMetrics)
 
 	}
 }
