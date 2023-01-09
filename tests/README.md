@@ -296,6 +296,10 @@ can have separated `$output` and `$stderr` variables.
 The above is better explained in the bats-core tutorial. If you have not read it
 yet, now is a good time.
 
+For convenience, the `rune` function is an alias for `run --separate-stderr`, which
+can be used in most cases. For example, you don't want extraneous log messages in
+the way when you check the output of a command.
+
 The `$output` variable gets special treatment with the
 [bats-support](https://github.com/bats-core/bats-support) and
 [bats-assert][https://github.com/bats-core/bats-assert) plugins and can be
