@@ -69,9 +69,10 @@ conf_set() {
     else
         YAML_FILE="$CONFIG_FILE"
     fi
-    YAML_CONTENT=$(cat "$YAML_FILE" 2>/dev/null || true)
-    NEW_CONTENT=$(echo "$YAML_CONTENT" | yq e "$1")
-    echo "$NEW_CONTENT" | install -m 0600 /dev/stdin "$YAML_FILE"
+    if [ ! -f "$YAML_FILE" ]; then
+        install -m 0600 /dev/null "$YAML_FILE"
+    fi
+    yq e "$1" -i "$YAML_FILE"
 }
 
 # conf_set_if(): used to update the configuration
