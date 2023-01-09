@@ -6,6 +6,8 @@ type Processor interface {
 	OnBucketInit(Bucket *BucketFactory) error
 	OnBucketPour(Bucket *BucketFactory) func(types.Event, *Leaky) *types.Event
 	OnBucketOverflow(Bucket *BucketFactory) func(*Leaky, types.RuntimeAlert, *Queue) (types.RuntimeAlert, *Queue)
+
+	AfterBucketPour(Bucket *BucketFactory) func(types.Event, *Leaky) *types.Event
 }
 
 type DumbProcessor struct {
@@ -25,5 +27,10 @@ func (d *DumbProcessor) OnBucketOverflow(b *BucketFactory) func(*Leaky, types.Ru
 	return func(leaky *Leaky, alert types.RuntimeAlert, queue *Queue) (types.RuntimeAlert, *Queue) {
 		return alert, queue
 	}
+}
 
+func (d *DumbProcessor) AfterBucketPour(bucketFactory *BucketFactory) func(types.Event, *Leaky) *types.Event {
+	return func(msg types.Event, leaky *Leaky) *types.Event {
+		return &msg
+	}
 }
