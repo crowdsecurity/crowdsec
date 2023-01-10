@@ -407,10 +407,6 @@ Note: This command requires database direct access, so is intended to be run on 
 				}
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
 			}
-			if err := csConfig.LoadDBConfig(); err != nil {
-				log.Errorf("This command requires direct database access (must be run on the local API machine)")
-				log.Fatal(err)
-			}
 		},
 	}
 
