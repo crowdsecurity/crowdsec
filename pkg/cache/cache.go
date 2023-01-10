@@ -79,6 +79,7 @@ func CacheInit(cfg CacheCfg) error {
 	case "ARC":
 		tmpCache = tmpCache.ARC()
 	default:
+		cfg.Strategy = "LRU"
 		tmpCache = tmpCache.LRU()
 
 	}
