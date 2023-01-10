@@ -52,8 +52,19 @@ teardown() {
     # errors that cause program termination are printed to stderr, not only logs
     config_set '.db_config.type="meh"'
     run -1 --separate-stderr "${CROWDSEC}"
-    refute_output
     assert_stderr --partial "unable to create database client: unknown database type 'meh'"
+}
+
+@test "crowdsec - bad configuration (empty/missing common section)" {
+    config_set '.common={}'
+    run -1 --separate-stderr "${CROWDSEC}"
+    refute_output
+    assert_stderr --partial "unable to load configuration: common section is empty"
+
+    config_set 'del(.common)'
+    run -1 --separate-stderr "${CROWDSEC}"
+    refute_output
+    assert_stderr --partial "unable to load configuration: common section is empty"
 }
 
 @test "CS_LAPI_SECRET not strong enough" {
