@@ -50,6 +50,11 @@ func runExplain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	crowdsec, err := flags.GetString("crowdsec")
+	if err != nil {
+		return err
+	}
+
 	fileInfo, _ := os.Stdin.Stat()
 
 	if logType == "" || (logLine == "" && logFile == "" && dsn == "") {
@@ -119,7 +124,7 @@ func runExplain(cmd *cobra.Command, args []string) error {
 	}
 
 	cmdArgs := []string{"-c", ConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", "./", "-no-api"}
-	crowdsecCmd := exec.Command("crowdsec", cmdArgs...)
+	crowdsecCmd := exec.Command(crowdsec, cmdArgs...)
 	crowdsecCmd.Dir = dir
 	output, err := crowdsecCmd.CombinedOutput()
 	if err != nil {
@@ -177,6 +182,7 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 	flags.StringP("type", "t", "", "Type of the acquisition to test")
 	flags.BoolP("verbose", "v", false, "Display individual changes")
 	flags.Bool("failures", false, "Only show failed lines")
+	flags.String("crowdsec", "crowdsec", "Path to crowdsec")
 
 	return cmdExplain
 }
