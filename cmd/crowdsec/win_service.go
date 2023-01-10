@@ -97,7 +97,7 @@ func runService(name string) error {
 		log.Warnf("Failed to open event log: %s", err)
 	}
 
-	cConfig, err := csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
+	cConfig, err := csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
 	if err != nil {
 		return err
 	}
