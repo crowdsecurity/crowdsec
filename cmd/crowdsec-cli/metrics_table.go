@@ -129,6 +129,41 @@ func parserStatsTable(out io.Writer, stats map[string]map[string]int) {
 	}
 }
 
+func stashStatsTable(out io.Writer, stats map[string]struct {
+	Type  string
+	Count int
+}) {
+
+	t := newTable(out)
+	t.SetRowLines(false)
+	t.SetHeaders("Name", "Type", "Items")
+	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
+
+	// unfortunately, we can't reuse metricsToTable as the structure is too different :/
+	sortedKeys := []string{}
+	for k := range stats {
+		sortedKeys = append(sortedKeys, k)
+	}
+	sort.Strings(sortedKeys)
+
+	numRows := 0
+	for _, alabel := range sortedKeys {
+		astats := stats[alabel]
+
+		row := []string{
+			alabel,
+			astats.Type,
+			fmt.Sprintf("%d", astats.Count),
+		}
+		t.AddRow(row...)
+		numRows++
+	}
+	if numRows > 0 {
+		renderTableTitle(out, "\nParser Stash Metrics:")
+		t.Render()
+	}
+}
+
 func lapiStatsTable(out io.Writer, stats map[string]map[string]int) {
 	t := newTable(out)
 	t.SetRowLines(false)
