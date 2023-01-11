@@ -101,6 +101,10 @@ var globalPourHistogram = prometheus.NewHistogramVec(
 
 func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		//update cache metrics (stash)
+		cache.UpdateCacheMetrics()
+
+		//decision metrics are only relevant for LAPI
 		if dbClient == nil {
 			next.ServeHTTP(w, r)
 			return
@@ -135,8 +139,6 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 		for k, v := range alerts {
 			globalAlerts.With(prometheus.Labels{"reason": k}).Set(float64(v))
 		}
-		//update cache metrics (stash)
-		cache.UpdateCacheMetrics()
 
 		next.ServeHTTP(w, r)
 	})
