@@ -181,7 +181,7 @@ func (fr *FeatureRegister) SetFromEnv(logger *logrus.Logger) error {
 			return err
 		}
 
-		logger.Infof("Feature flag: %s=%t (from envvar). %s", featureName, enable, feat.Description)
+		logger.Debugf("Feature flag: %s=%t (from envvar). %s", featureName, enable, feat.Description)
 	}
 
 	return nil
@@ -224,7 +224,7 @@ func (fr *FeatureRegister) SetFromYaml(r io.Reader, logger *logrus.Logger) error
 			return err
 		}
 
-		logger.Infof("Feature flag: %s=true (from config file). %s", k, feat.Description)
+		logger.Debugf("Feature flag: %s=true (from config file). %s", k, feat.Description)
 	}
 
 	return nil
@@ -234,7 +234,7 @@ func (fr *FeatureRegister) SetFromYamlFile(path string, logger *logrus.Logger) e
 	f, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			logger.Debugf("Feature flags config file '%s' does not exist", path)
+			logger.Tracef("Feature flags config file '%s' does not exist", path)
 
 			return nil
 		}
