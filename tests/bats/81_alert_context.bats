@@ -57,11 +57,11 @@ teardown() {
     sleep 2
     rm -f -- "${tmpfile}"
 
-    run -0 cscli alerts list -o json
-    run -0 jq '.[0].id' <(output)
+    rune -0 cscli alerts list -o json
+    rune -0 jq '.[0].id' <(output)
     ALERT_ID="$output"
-    run -0 cscli alerts inspect "$ALERT_ID" -o json
-    run -0 jq -c '.meta | sort_by(.key) | map([.key,.value])' <(output)
+    rune -0 cscli alerts inspect "$ALERT_ID" -o json
+    rune -0 jq -c '.meta | sort_by(.key) | map([.key,.value])' <(output)
 
     assert_json '[["source_host","[\"sd-126005\"]"],["source_ip","[\"1.1.1.172\"]"],["target_user","[\"netflix\"]"]]'
 }

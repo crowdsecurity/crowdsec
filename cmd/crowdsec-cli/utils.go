@@ -739,9 +739,6 @@ func getDBClient() (*database.Client, error) {
 	if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
 		return nil, err
 	}
-	if err := csConfig.LoadDBConfig(); err != nil {
-		return nil, err
-	}
 	ret, err := database.NewClient(csConfig.DbConfig)
 	if err != nil {
 		return nil, err
