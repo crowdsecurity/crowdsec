@@ -27,12 +27,10 @@ var CacheMetrics = prometheus.NewGaugeVec(
 
 // would it make sense to have a tomb ? seems overkill
 func UpdateCacheMetrics() {
-	tick := time.NewTicker(30 * time.Second)
-
-	for range tick.C {
-		for i, name := range CacheNames {
-			CacheMetrics.With(prometheus.Labels{"name": name, "type": CacheConfig[i].Strategy}).Set(float64(Caches[i].Len(false)))
-		}
+	CacheMetrics.Reset()
+	for i, name := range CacheNames {
+		log.Printf("%s -> %d (true) %d (false)", name, Caches[i].Len(true), Caches[i].Len(false))
+		CacheMetrics.With(prometheus.Labels{"name": name, "type": CacheConfig[i].Strategy}).Set(float64(Caches[i].Len(false)))
 	}
 }
 

@@ -135,6 +135,8 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 		for k, v := range alerts {
 			globalAlerts.With(prometheus.Labels{"reason": k}).Set(float64(v))
 		}
+		//update cache metrics (stash)
+		cache.UpdateCacheMetrics()
 
 		next.ServeHTTP(w, r)
 	})
