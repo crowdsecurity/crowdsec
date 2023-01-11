@@ -14,8 +14,6 @@ var Caches []gcache.Cache
 var CacheNames []string
 var CacheConfig []CacheCfg
 
-var MetricsRunning bool
-
 /*prometheus*/
 var CacheMetrics = prometheus.NewGaugeVec(
 	prometheus.GaugeOpts{
@@ -25,11 +23,10 @@ var CacheMetrics = prometheus.NewGaugeVec(
 	[]string{"name", "type"},
 )
 
-// would it make sense to have a tomb ? seems overkill
+// UpdateCacheMetrics is called directly by the prom handler
 func UpdateCacheMetrics() {
 	CacheMetrics.Reset()
 	for i, name := range CacheNames {
-		log.Printf("%s -> %d (true) %d (false)", name, Caches[i].Len(true), Caches[i].Len(false))
 		CacheMetrics.With(prometheus.Labels{"name": name, "type": CacheConfig[i].Strategy}).Set(float64(Caches[i].Len(false)))
 	}
 }
@@ -44,11 +41,7 @@ type CacheCfg struct {
 }
 
 func CacheInit(cfg CacheCfg) error {
-	//not really thread safe, but we don't care
-	if !MetricsRunning {
-		MetricsRunning = true
-		go UpdateCacheMetrics()
-	}
+
 	for _, name := range CacheNames {
 		if name == cfg.Name {
 			log.Infof("Cache %s already exists", cfg.Name)
