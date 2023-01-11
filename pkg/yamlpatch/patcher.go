@@ -13,14 +13,23 @@ import (
 type Patcher struct {
 	BaseFilePath  string
 	PatchFilePath string
+	quiet bool
 }
 
 func NewPatcher(filePath string, suffix string) *Patcher {
 	return &Patcher{
 		BaseFilePath:  filePath,
 		PatchFilePath: filePath + suffix,
+		quiet: false,
 	}
 }
+
+
+// SetQuiet sets the quiet flag, which will log as DEBUG_LEVEL instead of INFO
+func (p *Patcher) SetQuiet(quiet bool) {
+	p.quiet = quiet
+}
+
 
 // read a single YAML file, check for errors (the merge package doesn't) then return the content as bytes.
 func readYAML(filePath string) ([]byte, error) {
@@ -55,13 +64,19 @@ func (p *Patcher) MergedPatchContent() ([]byte, error) {
 	var over []byte
 
 	over, err = readYAML(p.PatchFilePath)
-	// optional file, ignore if it does not exist
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
+	if errors.Is(err, os.ErrNotExist) {
+		return base, nil
+	}
+
+	if err != nil {
 		return nil, err
 	}
-	if err == nil {
-		log.Debugf("Patching yaml: '%s' with '%s'", p.BaseFilePath, p.PatchFilePath)
+
+	logf := log.Infof
+	if p.quiet {
+		logf = log.Debugf
 	}
+	logf("Patching yaml: '%s' with '%s'", p.BaseFilePath, p.PatchFilePath)
 
 	var patched *bytes.Buffer
 
@@ -138,7 +153,11 @@ func (p *Patcher) PrependedPatchContent() ([]byte, error) {
 		if err = decodeDocuments(patchFile, &result, true); err != nil {
 			return nil, err
 		}
-		log.Infof("Prepending yaml: '%s' with '%s'", p.BaseFilePath, p.PatchFilePath)
+		logf := log.Infof
+		if p.quiet {
+			logf = log.Debugf
+		}
+		logf("Prepending yaml: '%s' with '%s'", p.BaseFilePath, p.PatchFilePath)
 	}
 
 	baseFile, err = os.Open(p.BaseFilePath)

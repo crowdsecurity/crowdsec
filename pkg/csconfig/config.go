@@ -46,8 +46,9 @@ func (c *Config) Dump() error {
 	return nil
 }
 
-func NewConfig(configFile string, disableAgent bool, disableAPI bool) (*Config, error) {
+func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*Config, error) {
 	patcher := yamlpatch.NewPatcher(configFile, ".local")
+	patcher.SetQuiet(quiet)
 	fcontent, err := patcher.MergedPatchContent()
 	if err != nil {
 		return nil, err

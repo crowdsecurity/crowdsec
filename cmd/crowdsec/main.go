@@ -185,7 +185,7 @@ func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
 	default:
 	}
 
-	if ret == *curLevelPtr {
+	if curLevelPtr != nil && ret == *curLevelPtr {
 		// avoid returning a new ptr to the same value
 		return curLevelPtr
 	}
@@ -194,6 +194,10 @@ func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
 
 // LoadConfig returns a configuration parsed from configuration file
 func LoadConfig(cConfig *csconfig.Config) error {
+	if (cConfig.Common == nil || *cConfig.Common == csconfig.CommonCfg{}) {
+		return fmt.Errorf("unable to load configuration: common section is empty")
+	}
+
 	cConfig.Common.LogLevel = newLogLevel(cConfig.Common.LogLevel, flags)
 
 	if dumpFolder != "" {
