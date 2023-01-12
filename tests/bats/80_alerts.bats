@@ -52,7 +52,7 @@ teardown() {
     assert_output --regexp ".* ID .* value .* reason .* country .* as .* decisions .* created_at .*"
     assert_output --regexp ".*Ip:10.20.30.40.*manual 'ban' from.*ban:1.*"
 
-    run -0 cscli alerts list -o json
+    run -0 --separate-stderr cscli alerts list -o json
     run -0 jq -c '.[].decisions[0] | [.origin, .scenario, .scope, .simulated, .type, .value]' <(output)
     assert_line --regexp "\[\"cscli\",\"manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?'\",\"Ip\",false,\"ban\",\"10.20.30.40\"\]"
 
@@ -103,7 +103,7 @@ teardown() {
     assert_line --regexp "^ *type: ban$"
     assert_line --regexp "^ *value: 10.20.30.40$"
 
-    run -0 cscli alerts inspect "${ALERT_ID}" -o json
+    run -0 --separate-stderr cscli alerts inspect "${ALERT_ID}" -o json
     alert=${output}
     run jq -c '.decisions[] | [.origin,.scenario,.scope,.simulated,.type,.value]' <<<"${alert}"
     assert_output --regexp "\[\"cscli\",\"manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX.*'\",\"Ip\",false,\"ban\",\"10.20.30.40\"\]"
@@ -112,18 +112,18 @@ teardown() {
 }
 
 @test "no active alerts" {
-    run -0 cscli alerts list --until 200d -o human
+    run -0 --separate-stderr cscli alerts list --until 200d -o human
     assert_output "No active alerts"
-    run -0 cscli alerts list --until 200d -o json
+    run -0 --separate-stderr cscli alerts list --until 200d -o json
     assert_output "null"
-    run -0 cscli alerts list --until 200d -o raw
+    run -0 --separate-stderr cscli alerts list --until 200d -o raw
     assert_output "id,scope,value,reason,country,as,decisions,created_at"
-    run -0 cscli alerts list --until 200d -o raw --machine
+    run -0 --separate-stderr cscli alerts list --until 200d -o raw --machine
     assert_output "id,scope,value,reason,country,as,decisions,created_at,machine"
 }
 
 @test "cscli alerts delete (by id)" {
-    run -0 cscli alerts delete --help
+    run -0 --separate-stderr cscli alerts delete --help
     if [[ ! "$output" =~ "--id string" ]]; then
         skip "cscli alerts delete --id not supported"
     fi

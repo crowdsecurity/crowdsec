@@ -22,6 +22,7 @@ import (
 var CAPIURLPrefix string = "v2"
 var CAPIBaseURL string = "https://api.crowdsec.net/"
 var capiUserPrefix string
+var outputFile string
 
 func NewCapiCmd() *cobra.Command {
 	var cmdCapi = &cobra.Command{

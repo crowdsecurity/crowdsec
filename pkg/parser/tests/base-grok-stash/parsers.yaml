@@ -1,0 +1,2 @@
+ - filename: {{.TestDirectory}}/base-grok-stash.yaml
+   stage: s00-raw

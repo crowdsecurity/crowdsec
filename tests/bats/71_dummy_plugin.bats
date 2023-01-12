@@ -58,11 +58,11 @@ setup() {
 #----------
 
 @test "add two bans" {
-    run -0 cscli decisions add --ip 1.2.3.4 --duration 30s
-    assert_output --partial 'Decision successfully added'
+    run -0 --separate-stderr cscli decisions add --ip 1.2.3.4 --duration 30s
+    assert_stderr --partial 'Decision successfully added'
 
-    run -0 cscli decisions add --ip 1.2.3.5 --duration 30s
-    assert_output --partial 'Decision successfully added'
+    run -0 --separate-stderr cscli decisions add --ip 1.2.3.5 --duration 30s
+    assert_stderr --partial 'Decision successfully added'
     sleep 2
 }
 

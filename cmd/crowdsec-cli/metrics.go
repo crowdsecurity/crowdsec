@@ -57,6 +57,10 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 	lapi_bouncer_stats := map[string]map[string]map[string]int{}
 	decisions_stats := map[string]map[string]map[string]int{}
 	alerts_stats := map[string]int{}
+	stash_stats := map[string]struct {
+		Type  string
+		Count int
+	}{}
 
 	for idx, fam := range result {
 		if !strings.HasPrefix(fam.Name, "cs_") {
@@ -92,6 +96,8 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 			reason := metric.Labels["reason"]
 			origin := metric.Labels["origin"]
 			action := metric.Labels["action"]
+
+			mtype := metric.Labels["type"]
 
 			fval, err := strconv.ParseFloat(value, 32)
 			if err != nil {
@@ -208,6 +214,11 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 					alerts_stats[scenario] = make(map[string]int)
 				}*/
 				alerts_stats[reason] += ival
+			case "cs_cache_size":
+				stash_stats[name] = struct {
+					Type  string
+					Count int
+				}{Type: mtype, Count: ival}
 			default:
 				continue
 			}
@@ -225,8 +236,9 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 		lapiDecisionStatsTable(out, lapi_decisions_stats)
 		decisionStatsTable(out, decisions_stats)
 		alertStatsTable(out, alerts_stats)
+		stashStatsTable(out, stash_stats)
 	} else if formatType == "json" {
-		for _, val := range []interface{}{acquis_stats, parsers_stats, buckets_stats, lapi_stats, lapi_bouncer_stats, lapi_machine_stats, lapi_decisions_stats, decisions_stats, alerts_stats} {
+		for _, val := range []interface{}{acquis_stats, parsers_stats, buckets_stats, lapi_stats, lapi_bouncer_stats, lapi_machine_stats, lapi_decisions_stats, decisions_stats, alerts_stats, stash_stats} {
 			x, err := json.MarshalIndent(val, "", " ")
 			if err != nil {
 				return fmt.Errorf("failed to unmarshal metrics : %v", err)
@@ -236,7 +248,7 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 		return nil
 
 	} else if formatType == "raw" {
-		for _, val := range []interface{}{acquis_stats, parsers_stats, buckets_stats, lapi_stats, lapi_bouncer_stats, lapi_machine_stats, lapi_decisions_stats, decisions_stats, alerts_stats} {
+		for _, val := range []interface{}{acquis_stats, parsers_stats, buckets_stats, lapi_stats, lapi_bouncer_stats, lapi_machine_stats, lapi_decisions_stats, decisions_stats, alerts_stats, stash_stats} {
 			x, err := yaml.Marshal(val)
 			if err != nil {
 				return fmt.Errorf("failed to unmarshal metrics : %v", err)

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -111,6 +112,29 @@ func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 		fmt.Printf(" - End        : %s\n\n", *alert.StopAt)
 
 		alertDecisionsTable(color.Output, alert)
+
+		if len(alert.Meta) > 0 {
+			fmt.Printf("\n - Context  :\n")
+			sort.Slice(alert.Meta, func(i, j int) bool {
+				return alert.Meta[i].Key < alert.Meta[j].Key
+			})
+			table := newTable(color.Output)
+			table.SetRowLines(false)
+			table.SetHeaders("Key", "Value")
+			for _, meta := range alert.Meta {
+				var valSlice []string
+				if err := json.Unmarshal([]byte(meta.Value), &valSlice); err != nil {
+					return fmt.Errorf("unknown context value type '%s' : %s", meta.Value, err)
+				}
+				for _, value := range valSlice {
+					table.AddRow(
+						meta.Key,
+						value,
+					)
+				}
+			}
+			table.Render()
+		}
 
 		if withDetail {
 			fmt.Printf("\n - Events  :\n")
@@ -418,9 +442,6 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 			var err error
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
-			}
-			if err := csConfig.LoadDBConfig(); err != nil {
-				log.Fatal(err)
 			}
 			dbClient, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {
