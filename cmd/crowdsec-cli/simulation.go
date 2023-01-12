@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 func addToExclusion(name string) error {
@@ -45,7 +46,7 @@ func dumpSimulationFile() error {
 	if err != nil {
 		return fmt.Errorf("unable to marshal simulation configuration: %s", err)
 	}
-	err = ioutil.WriteFile(csConfig.ConfigPaths.SimulationFilePath, newConfigSim, 0644)
+	err = os.WriteFile(csConfig.ConfigPaths.SimulationFilePath, newConfigSim, 0644)
 	if err != nil {
 		return fmt.Errorf("write simulation config in '%s' failed: %s", csConfig.ConfigPaths.SimulationFilePath, err)
 	}
@@ -63,7 +64,7 @@ func disableGlobalSimulation() error {
 	if err != nil {
 		return fmt.Errorf("unable to marshal new simulation configuration: %s", err)
 	}
-	err = ioutil.WriteFile(csConfig.ConfigPaths.SimulationFilePath, newConfigSim, 0644)
+	err = os.WriteFile(csConfig.ConfigPaths.SimulationFilePath, newConfigSim, 0644)
 	if err != nil {
 		return fmt.Errorf("unable to write new simulation config in '%s' : %s", csConfig.ConfigPaths.SimulationFilePath, err)
 	}
@@ -107,7 +108,7 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadSimulation(); err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 			if csConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before using simulation")

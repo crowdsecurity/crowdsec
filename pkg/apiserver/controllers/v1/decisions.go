@@ -71,7 +71,7 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 		PrometheusBouncersHasEmptyDecision(gctx)
 	}
 
-	if gctx.Request.Method == "HEAD" {
+	if gctx.Request.Method == http.MethodHead {
 		gctx.String(http.StatusOK, "")
 		return
 	}
@@ -158,6 +158,11 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 		filters["scopes"] = []string{"ip,range"}
 	}
 
+	dedup := true
+	if v, ok := filters["dedup"]; ok && v[0] == "false" {
+		dedup = false
+	}
+
 	// if the blocker just start, return all decisions
 	if val, ok := gctx.Request.URL.Query()["startup"]; ok {
 		if val[0] == "true" {
@@ -168,7 +173,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 				return
 			}
 			//data = KeepLongestDecision(data)
-			ret["new"], err = FormatDecisions(data, true)
+			ret["new"], err = FormatDecisions(data, dedup)
 			if err != nil {
 				log.Errorf("unable to format expired decision for '%s' : %v", bouncerInfo.Name, err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -182,7 +187,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
 			}
-			ret["deleted"], err = FormatDecisions(data, true)
+			ret["deleted"], err = FormatDecisions(data, dedup)
 			if err != nil {
 				log.Errorf("unable to format expired decision for '%s' : %v", bouncerInfo.Name, err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -194,7 +199,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
 			}
-			if gctx.Request.Method == "HEAD" {
+			if gctx.Request.Method == http.MethodHead {
 				gctx.String(http.StatusOK, "")
 				return
 			}
@@ -211,7 +216,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 		return
 	}
 	//data = KeepLongestDecision(data)
-	ret["new"], err = FormatDecisions(data, true)
+	ret["new"], err = FormatDecisions(data, dedup)
 	if err != nil {
 		log.Errorf("unable to format new decision for '%s' : %v", bouncerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -225,7 +230,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
-	ret["deleted"], err = FormatDecisions(data, true)
+	ret["deleted"], err = FormatDecisions(data, dedup)
 	if err != nil {
 		log.Errorf("unable to format expired decision for '%s' : %v", bouncerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})

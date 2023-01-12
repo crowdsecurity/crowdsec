@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -14,7 +13,11 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 		err error
 	)
 	if msg.MarshaledTime == "" {
-		log.Warningf("Trying to time-machine event without timestamp : %s", spew.Sdump(msg))
+		log.WithFields(log.Fields{
+			"evt_type": msg.Line.Labels["type"],
+			"evt_src":  msg.Line.Src,
+			"scenario": l.Name,
+		}).Warningf("Trying to process event without evt.StrTime. Event cannot be poured to scenario")
 		return
 	}
 
@@ -46,7 +49,7 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 
 func NewTimeMachine(g BucketFactory) *Leaky {
 	l := NewLeaky(g)
-	g.logger.Tracef("Instanciating timeMachine bucket")
+	g.logger.Tracef("Instantiating timeMachine bucket")
 	l.Pour = TimeMachinePour
 	l.Mode = TIMEMACHINE
 	return l

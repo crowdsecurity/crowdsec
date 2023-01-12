@@ -28,7 +28,7 @@ override_dh_auto_install:
 	mkdir -p debian/crowdsec/usr/share/crowdsec
 	mkdir -p debian/crowdsec/etc/crowdsec/hub/
 	mkdir -p debian/crowdsec/usr/share/crowdsec/config
-
+	mkdir -p debian/crowdsec/etc/crowdsec/console/
 
 	mkdir -p debian/crowdsec/usr/lib/crowdsec/plugins/
 	mkdir -p debian/crowdsec/etc/crowdsec/notifications/
@@ -44,9 +44,11 @@ override_dh_auto_install:
 	install -m 600 config/config.yaml debian/crowdsec/etc/crowdsec/config.yaml
 	cp config/simulation.yaml debian/crowdsec/etc/crowdsec/simulation.yaml
 	cp config/profiles.yaml debian/crowdsec/etc/crowdsec/profiles.yaml
+	cp config/context.yaml debian/crowdsec/etc/crowdsec/console/context.yaml
 	cp config/console.yaml debian/crowdsec/etc/crowdsec/console.yaml
 	cp -a config/patterns debian/crowdsec/etc/crowdsec
 
 override_dh_fixperms:
 	dh_fixperms
+	chmod 600 debian/crowdsec/etc/crowdsec/notifications/*
 	chmod 600 debian/crowdsec/etc/crowdsec/config.yaml

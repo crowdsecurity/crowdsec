@@ -1,44 +1,41 @@
-ifeq ($(OS),Windows_NT)
-SHELL := pwsh.exe
-.SHELLFLAGS := -NoProfile -Command
-EXT=.exe
+ifeq ($(OS), Windows_NT)
+	SHELL := pwsh.exe
+	.SHELLFLAGS := -NoProfile -Command
+	EXT = .exe
 endif
 
 # Go parameters
-GOCMD=go
-GOBUILD=$(GOCMD) build
-GOCLEAN=$(GOCMD) clean
-GOTEST=$(GOCMD) test
-GOGET=$(GOCMD) get
+GOCMD = go
+GOBUILD = $(GOCMD) build
+GOCLEAN = $(GOCMD) clean
+GOTEST = $(GOCMD) test
+GOGET = $(GOCMD) get
 
-CROWDSEC_BIN=crowdsec$(EXT)
+CROWDSEC_BIN = crowdsec$(EXT)
 # names longer than 15 chars break 'pgrep'
-CROWDSEC_BIN_COVER=$(CROWDSEC_BIN).cover
-PREFIX?="/"
+CROWDSEC_BIN_COVER = $(CROWDSEC_BIN).cover
+PREFIX ?= "/"
 CFG_PREFIX = $(PREFIX)"/etc/crowdsec/config/"
 BIN_PREFIX = $(PREFIX)"/usr/local/bin/"
 DATA_PREFIX = $(PREFIX)"/var/run/crowdsec/"
 PID_DIR = $(PREFIX)"/var/run/"
 
-SYSTEMD_PATH_FILE="/etc/systemd/system/crowdsec.service"
+SYSTEMD_PATH_FILE = "/etc/systemd/system/crowdsec.service"
 
 .PHONY: all
 all: clean test build
 
 build: clean
-	$(GOBUILD) $(LD_OPTS) -o $(CROWDSEC_BIN)
+	$(GOBUILD) $(LD_OPTS) $(BUILD_VENDOR_FLAGS) -o $(CROWDSEC_BIN)
 
 build-bincover: clean
 	$(GOTEST) . -tags testrunmain -coverpkg=$(go list github.com/crowdsecurity/crowdsec/... | grep -v -e 'pkg/database' -e 'plugins/notifications' -e 'pkg/protobufs' -e 'pkg/cwversions' -e 'pkg/cstest' -e 'pkg/models') -covermode=atomic $(LD_OPTS) -c -o $(CROWDSEC_BIN_COVER)
-
-static: clean
-	$(GOBUILD) $(LD_OPTS_STATIC) -o $(CROWDSEC_BIN) -a -tags netgo
 
 test:
 	$(GOTEST) $(LD_OPTS) -v ./...
 
 clean:
-	@$(RM) $(CROWDSEC_BIN) $(CROWDSEC_BIN).test $(CROWDSEC_BIN_COVER)  $(WIN_IGNORE_ERR)
+	@$(RM) $(CROWDSEC_BIN) $(CROWDSEC_BIN).test $(CROWDSEC_BIN_COVER) $(WIN_IGNORE_ERR)
 
 .PHONY: install
 install: install-conf install-bin

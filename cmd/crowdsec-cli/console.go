@@ -10,16 +10,16 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/fatih/color"
+	"github.com/go-openapi/strfmt"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/enescakir/emoji"
-	"github.com/go-openapi/strfmt"
-	"github.com/olekukonko/tablewriter"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
 )
 
 func NewConsoleCmd() *cobra.Command {
@@ -46,7 +46,7 @@ func NewConsoleCmd() *cobra.Command {
 				log.Fatalf("No configuration for Central API (CAPI) in '%s'", *csConfig.FilePath)
 			}
 			if csConfig.API.Server.OnlineClient.Credentials == nil {
-				log.Fatal("You must configure Central API (CAPI) with `cscli capi register` before enrolling your instance")
+				log.Fatal("You must configure Central API (CAPI) with `cscli capi register` before accessing console features.")
 			}
 			return nil
 		},
@@ -129,9 +129,9 @@ After running this command your will need to validate the enrollment in the weba
 	var enableAll, disableAll bool
 
 	cmdEnable := &cobra.Command{
-		Use:     "enable [feature-flag]",
-		Short:   "Enable a feature flag",
-		Example: "enable tainted",
+		Use:     "enable [option]",
+		Short:   "Enable a console option",
+		Example: "sudo cscli console enable tainted",
 		Long: `
 Enable given information push to the central API. Allows to empower the console`,
 		ValidArgs:         csconfig.CONSOLE_CONFIGS,
@@ -153,13 +153,13 @@ Enable given information push to the central API. Allows to empower the console`
 			log.Infof(ReloadMessage())
 		},
 	}
-	cmdEnable.Flags().BoolVarP(&enableAll, "all", "a", false, "Enable all feature flags")
+	cmdEnable.Flags().BoolVarP(&enableAll, "all", "a", false, "Enable all console options")
 	cmdConsole.AddCommand(cmdEnable)
 
 	cmdDisable := &cobra.Command{
-		Use:     "disable [feature-flag]",
-		Short:   "Disable a feature flag",
-		Example: "disable tainted",
+		Use:     "disable [option]",
+		Short:   "Disable a console option",
+		Example: "sudo cscli console disable tainted",
 		Long: `
 Disable given information push to the central API.`,
 		ValidArgs:         csconfig.CONSOLE_CONFIGS,
@@ -183,51 +183,18 @@ Disable given information push to the central API.`,
 			log.Infof(ReloadMessage())
 		},
 	}
-	cmdDisable.Flags().BoolVarP(&disableAll, "all", "a", false, "Enable all feature flags")
+	cmdDisable.Flags().BoolVarP(&disableAll, "all", "a", false, "Disable all console options")
 	cmdConsole.AddCommand(cmdDisable)
 
 	cmdConsoleStatus := &cobra.Command{
-		Use:               "status [feature-flag]",
-		Short:             "Shows status of one or all feature flags",
-		Example:           "status tainted",
+		Use:               "status [option]",
+		Short:             "Shows status of one or all console options",
+		Example:           `sudo cscli console status`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			switch csConfig.Cscli.Output {
 			case "human":
-				table := tablewriter.NewWriter(os.Stdout)
-
-				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-				table.SetAlignment(tablewriter.ALIGN_LEFT)
-				table.SetHeader([]string{"Option Name", "Activated", "Description"})
-				for _, option := range csconfig.CONSOLE_CONFIGS {
-					switch option {
-					case csconfig.SEND_CUSTOM_SCENARIOS:
-						activated := string(emoji.CrossMark)
-						if *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios {
-							activated = string(emoji.CheckMarkButton)
-						}
-						table.Append([]string{option, activated, "Send alerts from custom scenarios to the console"})
-					case csconfig.SEND_MANUAL_SCENARIOS:
-						activated := string(emoji.CrossMark)
-						if *csConfig.API.Server.ConsoleConfig.ShareManualDecisions {
-							activated = string(emoji.CheckMarkButton)
-						}
-						table.Append([]string{option, activated, "Send manual decisions to the console"})
-					case csconfig.SEND_TAINTED_SCENARIOS:
-						activated := string(emoji.CrossMark)
-						if *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios {
-							activated = string(emoji.CheckMarkButton)
-						}
-						table.Append([]string{option, activated, "Send alerts from tainted scenarios to the console"})
-					case csconfig.RECEIVE_DECISIONS:
-						activated := string(emoji.CrossMark)
-						if *csConfig.API.Server.ConsoleConfig.ReceiveDecisions {
-							activated = string(emoji.CheckMarkButton)
-						}
-						table.Append([]string{option, activated, "Receive decisions from the console polling API"})
-					}
-				}
-				table.Render()
+				cmdConsoleStatusTable(color.Output, *csConfig)
 			case "json":
 				data, err := json.MarshalIndent(csConfig.API.Server.ConsoleConfig, "", "  ")
 				if err != nil {
@@ -245,6 +212,7 @@ Disable given information push to the central API.`,
 					{"share_manual_decisions", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareManualDecisions)},
 					{"share_custom", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios)},
 					{"share_tainted", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios)},
+					{"share_context", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareContext)},
 				}
 				for _, row := range rows {
 					err = csvwriter.Write(row)
@@ -256,8 +224,8 @@ Disable given information push to the central API.`,
 			}
 		},
 	}
-
 	cmdConsole.AddCommand(cmdConsoleStatus)
+
 	return cmdConsole
 }
 
@@ -315,6 +283,19 @@ func SetConsoleOpts(args []string, wanted bool) {
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
 				csConfig.API.Server.ConsoleConfig.ShareManualDecisions = types.BoolPtr(wanted)
+			}
+		case csconfig.SEND_CONTEXT:
+			/*for each flag check if it's already set before setting it*/
+			if csConfig.API.Server.ConsoleConfig.ShareContext != nil {
+				if *csConfig.API.Server.ConsoleConfig.ShareContext == wanted {
+					log.Infof("%s already set to %t", csconfig.SEND_CONTEXT, wanted)
+				} else {
+					log.Infof("%s set to %t", csconfig.SEND_CONTEXT, wanted)
+					*csConfig.API.Server.ConsoleConfig.ShareContext = wanted
+				}
+			} else {
+				log.Infof("%s set to %t", csconfig.SEND_CONTEXT, wanted)
+				csConfig.API.Server.ConsoleConfig.ShareContext = types.BoolPtr(wanted)
 			}
 		default:
 			log.Fatalf("unknown flag %s", arg)

@@ -13,7 +13,7 @@ import (
 // ResetFilter allows to kill the bucket (without overflowing), if a particular condition is met.
 // An example would be a scenario to detect aggressive crawlers that *do not* fetch any static resources :
 // type : leaky
-// filter: filter: "evt.Meta.log_type == 'http_access-log'
+// filter: "evt.Meta.log_type == 'http_access-log'
 // reset_filter: evt.Parsed.request endswith '.css'
 // ....
 // Thus, if the bucket receives a request that matches fetching a static resource (here css), it cancels itself
@@ -61,6 +61,12 @@ func (u *CancelOnFilter) OnBucketPour(bucketFactory *BucketFactory) func(types.E
 func (u *CancelOnFilter) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, types.RuntimeAlert, *Queue) (types.RuntimeAlert, *Queue) {
 	return func(leaky *Leaky, alert types.RuntimeAlert, queue *Queue) (types.RuntimeAlert, *Queue) {
 		return alert, queue
+	}
+}
+
+func (u *CancelOnFilter) AfterBucketPour(bucketFactory *BucketFactory) func(types.Event, *Leaky) *types.Event {
+	return func(msg types.Event, leaky *Leaky) *types.Event {
+		return &msg
 	}
 }
 

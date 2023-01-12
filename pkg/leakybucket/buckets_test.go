@@ -3,10 +3,10 @@ package leakybucket
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"sync"
@@ -44,7 +44,7 @@ func TestBucket(t *testing.T) {
 		}
 	} else {
 		wg := new(sync.WaitGroup)
-		fds, err := ioutil.ReadDir("./tests/")
+		fds, err := os.ReadDir("./tests/")
 		if err != nil {
 			t.Fatalf("Unable to read test directory : %s", err)
 		}
@@ -64,8 +64,8 @@ func TestBucket(t *testing.T) {
 	}
 }
 
-//during tests, we're likely to have only one scenario, and thus only one holder.
-//we want to avoid the death of the tomb because all existing buckets have been destroyed.
+// during tests, we're likely to have only one scenario, and thus only one holder.
+// we want to avoid the death of the tomb because all existing buckets have been destroyed.
 func watchTomb(tomb *tomb.Tomb) {
 	for {
 		if tomb.Alive() == false {
@@ -91,7 +91,7 @@ func testOneBucket(t *testing.T, dir string, tomb *tomb.Tomb) error {
 
 	/*load the scenarios*/
 	stagecfg = dir + "/scenarios.yaml"
-	if stagefiles, err = ioutil.ReadFile(stagecfg); err != nil {
+	if stagefiles, err = os.ReadFile(stagecfg); err != nil {
 		t.Fatalf("Failed to load stage file %s : %s", stagecfg, err)
 	}
 
@@ -154,7 +154,7 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 	tf := TestFile{}
 	err = dec.Decode(&tf)
 	if err != nil {
-		if err != io.EOF {
+		if errors.Is(err, io.EOF) {
 			t.Errorf("Failed to load testfile '%s' yaml error : %v", file, err)
 			return false
 		}
@@ -226,7 +226,7 @@ POLL_AGAIN:
 			log.Warning("Test is successful")
 			if dump {
 				if tmpFile, err = DumpBucketsStateAt(latest_ts, ".", buckets); err != nil {
-					t.Fatalf("Failed dumping bucket state : %s", err)
+					t.Fatalf("Failed to dump bucket state: %s", err)
 				}
 				log.Infof("dumped bucket to %s", tmpFile)
 			}
@@ -236,7 +236,7 @@ POLL_AGAIN:
 		if len(tf.Results) != len(results) {
 			if dump {
 				if tmpFile, err = DumpBucketsStateAt(latest_ts, ".", buckets); err != nil {
-					t.Fatalf("Failed dumping bucket state : %s", err)
+					t.Fatalf("Failed to dump bucket state: %s", err)
 				}
 				log.Infof("dumped bucket to %s", tmpFile)
 			}

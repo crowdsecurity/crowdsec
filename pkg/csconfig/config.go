@@ -5,11 +5,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/crowdsecurity/crowdsec/pkg/yamlpatch"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/yamlpatch"
 )
 
 // defaultConfigDir is the base path to all configuration files, to be overridden in the Makefile */
@@ -45,8 +46,9 @@ func (c *Config) Dump() error {
 	return nil
 }
 
-func NewConfig(configFile string, disableAgent bool, disableAPI bool) (*Config, error) {
+func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*Config, error) {
 	patcher := yamlpatch.NewPatcher(configFile, ".local")
+	patcher.SetQuiet(quiet)
 	fcontent, err := patcher.MergedPatchContent()
 	if err != nil {
 		return nil, err
@@ -94,6 +96,7 @@ func NewDefaultConfig() *Config {
 
 	cscliCfg := CscliCfg{
 		Output: "human",
+		Color:  "auto",
 	}
 
 	apiCfg := APICfg{
@@ -135,7 +138,7 @@ func DefaultConfigPath(elem ...string) string {
 	return filepath.Join(elem...)
 }
 
-// DefaultDataPath returns the the default path for a data resource.
+// DefaultDataPath returns the default path for a data resource.
 // "elem" parameters are path components relative to the default data directory.
 func DefaultDataPath(elem ...string) string {
 	elem = append([]string{defaultDataDir}, elem...)

@@ -9,12 +9,12 @@ import (
 
 func TestJsonExtract(t *testing.T) {
 	if err := Init(nil); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	err := FileInit(TestFolder, "test_data_re.txt", "regex")
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	tests := []struct {
@@ -55,12 +55,12 @@ func TestJsonExtract(t *testing.T) {
 }
 func TestJsonExtractUnescape(t *testing.T) {
 	if err := Init(nil); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	err := FileInit(TestFolder, "test_data_re.txt", "regex")
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	tests := []struct {
@@ -95,12 +95,12 @@ func TestJsonExtractUnescape(t *testing.T) {
 
 func TestJsonExtractSlice(t *testing.T) {
 	if err := Init(nil); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	err := FileInit(TestFolder, "test_data_re.txt", "regex")
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	tests := []struct {
@@ -136,6 +136,7 @@ func TestJsonExtractSlice(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.name, func(t *testing.T) {
 			result := JsonExtractSlice(test.jsonBlob, test.targetField)
 			assert.Equal(t, test.expectResult, result)
@@ -145,12 +146,12 @@ func TestJsonExtractSlice(t *testing.T) {
 
 func TestJsonExtractObject(t *testing.T) {
 	if err := Init(nil); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	err := FileInit(TestFolder, "test_data_re.txt", "regex")
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	tests := []struct {
@@ -180,6 +181,7 @@ func TestJsonExtractObject(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.name, func(t *testing.T) {
 			result := JsonExtractObject(test.jsonBlob, test.targetField)
 			assert.Equal(t, test.expectResult, result)
@@ -240,6 +242,7 @@ func TestToJson(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.name, func(t *testing.T) {
 			result := ToJson(test.obj)
 			assert.Equal(t, test.expectResult, result)

@@ -31,12 +31,12 @@ api() {
 @test "adding decisions for multiple ips" {
     run -0 cscli decisions add -i '1111:2222:3333:4444:5555:6666:7777:8888'
     run -0 cscli decisions add -i '1.2.3.4'
-    run -0 cscli decisions add -r '1.2.4.0/24'
-    assert_output --partial 'Decision successfully added'
+    run -0 --separate-stderr cscli decisions add -r '1.2.4.0/24'
+    assert_stderr --partial 'Decision successfully added'
 }
 
 @test "stream start" {
-    run -0 api "/v1/decisions/stream?startup=true"
+    run -0 --separate-stderr api "/v1/decisions/stream?startup=true"
     if is_db_mysql; then sleep 3; fi
     run -0 jq -r '.new' <(output)
     assert_output --partial '1111:2222:3333:4444:5555:6666:7777:8888'
@@ -47,7 +47,7 @@ api() {
 @test "stream cont (add)" {
     run -0 cscli decisions add -i '1.2.3.5'
     if is_db_mysql; then sleep 3; fi
-    run -0 api "/v1/decisions/stream"
+    run -0 --separate-stderr api "/v1/decisions/stream"
     run -0 jq -r '.new' <(output)
     assert_output --partial '1.2.3.5'
 }
@@ -55,13 +55,13 @@ api() {
 @test "stream cont (del)" {
     run -0 cscli decisions delete -i '1.2.3.4'
     if is_db_mysql; then sleep 3; fi
-    run -0 api "/v1/decisions/stream"
+    run -0 --separate-stderr api "/v1/decisions/stream"
     run -0 jq -r '.deleted' <(output)
     assert_output --partial '1.2.3.4'
 }
 
 @test "stream restart" {
-    run -0 api "/v1/decisions/stream?startup=true"
+    run -0 --separate-stderr api "/v1/decisions/stream?startup=true"
     api_out=${output}
     run -0 jq -r '.deleted' <(output)
     assert_output --partial '1.2.3.4'

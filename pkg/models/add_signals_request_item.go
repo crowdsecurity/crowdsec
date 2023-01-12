@@ -7,6 +7,7 @@ package models
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
@@ -22,7 +23,11 @@ type AddSignalsRequestItem struct {
 	// alert id
 	AlertID int64 `json:"alert_id,omitempty"`
 
-	// created at
+
+	// context
+	Context []*AddSignalsRequestItemContextItems0 `json:"context"`
+
+  // created at
 	CreatedAt string `json:"created_at,omitempty"`
 
 	// decisions
@@ -71,7 +76,7 @@ type AddSignalsRequestItem struct {
 func (m *AddSignalsRequestItem) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateDecisions(formats); err != nil {
+	if err := m.validateContext(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -109,18 +114,28 @@ func (m *AddSignalsRequestItem) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *AddSignalsRequestItem) validateDecisions(formats strfmt.Registry) error {
-	if swag.IsZero(m.Decisions) { // not required
+
+func (m *AddSignalsRequestItem) validateContext(formats strfmt.Registry) error {
+	if swag.IsZero(m.Context) { // not required
 		return nil
 	}
 
-	if err := m.Decisions.Validate(formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("decisions")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("decisions")
+	for i := 0; i < len(m.Context); i++ {
+		if swag.IsZero(m.Context[i]) { // not required
+			continue
 		}
-		return err
+
+		if m.Context[i] != nil {
+			if err := m.Context[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("context" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("context" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
 	}
 
 	return nil
@@ -204,7 +219,8 @@ func (m *AddSignalsRequestItem) validateStopAt(formats strfmt.Registry) error {
 func (m *AddSignalsRequestItem) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.contextValidateDecisions(ctx, formats); err != nil {
+
+	if err := m.contextValidateContext(ctx, formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -222,15 +238,22 @@ func (m *AddSignalsRequestItem) ContextValidate(ctx context.Context, formats str
 	return nil
 }
 
-func (m *AddSignalsRequestItem) contextValidateDecisions(ctx context.Context, formats strfmt.Registry) error {
 
-	if err := m.Decisions.ContextValidate(ctx, formats); err != nil {
-		if ve, ok := err.(*errors.Validation); ok {
-			return ve.ValidateName("decisions")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("decisions")
+func (m *AddSignalsRequestItem) contextValidateContext(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.Context); i++ {
+
+		if m.Context[i] != nil {
+			if err := m.Context[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("context" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("context" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
 		}
-		return err
+
 	}
 
 	return nil
@@ -272,6 +295,46 @@ func (m *AddSignalsRequestItem) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary interface implementation
 func (m *AddSignalsRequestItem) UnmarshalBinary(b []byte) error {
 	var res AddSignalsRequestItem
+	if err := swag.ReadJSON(b, &res); err != nil {
+		return err
+	}
+	*m = res
+	return nil
+}
+
+// AddSignalsRequestItemContextItems0 add signals request item context items0
+//
+// swagger:model AddSignalsRequestItemContextItems0
+type AddSignalsRequestItemContextItems0 struct {
+
+	// key
+	Key string `json:"key,omitempty"`
+
+	// value
+	Value string `json:"value,omitempty"`
+}
+
+// Validate validates this add signals request item context items0
+func (m *AddSignalsRequestItemContextItems0) Validate(formats strfmt.Registry) error {
+	return nil
+}
+
+// ContextValidate validates this add signals request item context items0 based on context it is used
+func (m *AddSignalsRequestItemContextItems0) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	return nil
+}
+
+// MarshalBinary interface implementation
+func (m *AddSignalsRequestItemContextItems0) MarshalBinary() ([]byte, error) {
+	if m == nil {
+		return nil, nil
+	}
+	return swag.WriteJSON(m)
+}
+
+// UnmarshalBinary interface implementation
+func (m *AddSignalsRequestItemContextItems0) UnmarshalBinary(b []byte) error {
+	var res AddSignalsRequestItemContextItems0
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

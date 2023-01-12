@@ -2,7 +2,7 @@
 Name:           crowdsec
 Version:        %(echo $VERSION)
 Release:        %(echo $PACKAGE_NUMBER)%{?dist}
-Summary:        Crowdsec - An open-source, lightweight agent to detect and respond to bad behaviours. It also automatically benefits from our global community-wide IP reputation database
+Summary:        Crowdsec - An open-source, lightweight agent to detect and respond to bad behaviors. It also automatically benefits from our global community-wide IP reputation database
 
 License:        MIT
 URL:            https://crowdsec.net
@@ -14,8 +14,8 @@ BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  git
 BuildRequires:  make
-BuildRequires:  jq
 BuildRequires:  systemd
+Requires: crontabs
 %{?fc33:BuildRequires: systemd-rpm-macros}
 %{?fc34:BuildRequires: systemd-rpm-macros}
 %{?fc35:BuildRequires: systemd-rpm-macros}
@@ -45,12 +45,14 @@ sed -i "s#/usr/local/lib/crowdsec/plugins/#%{_libdir}/%{name}/plugins/#g" config
 rm -rf %{buildroot}
 mkdir -p %{buildroot}/etc/crowdsec/hub
 mkdir -p %{buildroot}/etc/crowdsec/patterns
+mkdir -p %{buildroot}/etc/crowdsec/console/
 mkdir -p %{buildroot}%{_sharedstatedir}/%{name}/data
 mkdir -p %{buildroot}%{_presetdir}
 
 mkdir -p %{buildroot}%{_sharedstatedir}/%{name}/plugins
 mkdir -p %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 mkdir -p %{buildroot}%{_libdir}/%{name}/plugins/
+
 
 install -m 755 -D cmd/crowdsec/crowdsec %{buildroot}%{_bindir}/%{name}
 install -m 755 -D cmd/crowdsec-cli/cscli %{buildroot}%{_bindir}/cscli
@@ -61,6 +63,8 @@ install -m 600 -D config/config.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/simulation.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/profiles.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/console.yaml %{buildroot}%{_sysconfdir}/crowdsec
+install -m 644 -D config/context.yaml %{buildroot}%{_sysconfdir}/crowdsec/console/
+install -m 750 -D config/%{name}.cron.daily %{buildroot}%{_sysconfdir}/cron.daily/%{name}
 install -m 644 -D %{SOURCE1} %{buildroot}%{_presetdir}
 
 install -m 551 plugins/notifications/slack/notification-slack %{buildroot}%{_libdir}/%{name}/plugins/
@@ -68,10 +72,10 @@ install -m 551 plugins/notifications/http/notification-http %{buildroot}%{_libdi
 install -m 551 plugins/notifications/splunk/notification-splunk %{buildroot}%{_libdir}/%{name}/plugins/
 install -m 551 plugins/notifications/email/notification-email %{buildroot}%{_libdir}/%{name}/plugins/
 
-install -m 644 plugins/notifications/slack/slack.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
-install -m 644 plugins/notifications/http/http.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
-install -m 644 plugins/notifications/splunk/splunk.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
-install -m 644 plugins/notifications/email/email.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
+install -m 600 plugins/notifications/slack/slack.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
+install -m 600 plugins/notifications/http/http.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
+install -m 600 plugins/notifications/splunk/splunk.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
+install -m 600 plugins/notifications/email/email.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 
 %clean
 rm -rf %{buildroot}
@@ -113,11 +117,13 @@ rm -rf %{buildroot}
 %config(noreplace) %{_sysconfdir}/%{name}/simulation.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/profiles.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/console.yaml
+%config(noreplace) %{_sysconfdir}/%{name}/console/context.yaml
 %config(noreplace) %{_presetdir}/80-%{name}.preset
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/http.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/slack.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/splunk.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/email.yaml
+%config(noreplace) %{_sysconfdir}/cron.daily/%{name}
 
 %{_unitdir}/%{name}.service
 

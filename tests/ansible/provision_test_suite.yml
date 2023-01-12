@@ -1,5 +1,34 @@
+# vim: set ft=yaml.ansible:
 ---
-- name: "install the test scripts"
+
+- name: "Fetch the test scripts"
   hosts: all
-  roles:
-    - install_crowdsec_tests
+  tasks:
+
+    - name: "Fetch the sources from a git repository"
+      ansible.builtin.include_role:
+        name: crowdsecurity.testing.download_sources_from_git
+      when: sources_zip | length == 0
+
+    - name: "Extract the sources from a zip archive"
+      ansible.builtin.include_role:
+        name: crowdsecurity.testing.extract_sources_from_zip
+      when: sources_zip | length > 0
+
+    - name: "Create crowdsec tests/local dir"
+      become: false
+      ansible.builtin.file:
+        path: "{{ ansible_env.HOME }}/crowdsec/tests/local"
+        state: directory
+        mode: 0o755
+
+  vars:
+    sources_dest_dir: "{{ ansible_env.HOME }}/crowdsec"
+    sources_git_repo: >-
+      {{ lookup('ansible.builtin.env', 'TEST_SUITE_GIT')
+      | default('https://github.com/crowdsecurity/crowdsec', True) }}
+    sources_git_version: >-
+      {{ lookup('ansible.builtin.env', 'TEST_SUITE_VERSION')
+      | default('master', True) }}
+    sources_zip: >-
+      {{ lookup('ansible.builtin.env', 'TEST_SUITE_ZIP') }}

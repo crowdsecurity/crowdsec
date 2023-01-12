@@ -3,30 +3,26 @@ package csconfig
 import (
 	"fmt"
 	"path/filepath"
-	"runtime"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 )
 
 func TestSimulationLoading(t *testing.T) {
-
 	testXXFullPath, err := filepath.Abs("./tests/xxx.yaml")
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	badYamlFullPath, err := filepath.Abs("./tests/config.yaml")
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
 	tests := []struct {
 		name           string
 		Input          *Config
 		expectedResult *SimulationConfig
-		err            string
+		expectedErr    	string
 	}{
 		{
 			name: "basic valid simulation",
@@ -49,6 +45,18 @@ func TestSimulationLoading(t *testing.T) {
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
 			},
+			expectedErr: "simulation.yaml: "+cstest.FileNotFoundMessage,
+		},
+		{
+			name: "basic bad file name",
+			Input: &Config{
+				ConfigPaths: &ConfigurationPaths{
+					SimulationFilePath: "./tests/xxx.yaml",
+					DataDir:            "./data",
+				},
+				Crowdsec: &CrowdsecServiceCfg{},
+			},
+			expectedErr: fmt.Sprintf("while reading yaml file: open %s: %s", testXXFullPath, cstest.FileNotFoundMessage),
 		},
 		{
 			name: "basic bad file content",
@@ -59,7 +67,7 @@ func TestSimulationLoading(t *testing.T) {
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
 			},
-			err: fmt.Sprintf("while unmarshaling simulation file '%s' : yaml: unmarshal errors", badYamlFullPath),
+			expectedErr: fmt.Sprintf("while unmarshaling simulation file '%s' : yaml: unmarshal errors", badYamlFullPath),
 		},
 		{
 			name: "basic bad file content",
@@ -70,66 +78,18 @@ func TestSimulationLoading(t *testing.T) {
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
 			},
-			err: fmt.Sprintf("while unmarshaling simulation file '%s' : yaml: unmarshal errors", badYamlFullPath),
+			expectedErr: fmt.Sprintf("while unmarshaling simulation file '%s' : yaml: unmarshal errors", badYamlFullPath),
 		},
 	}
 
-	if runtime.GOOS == "windows" {
-		tests = append(tests, struct {
-			name           string
-			Input          *Config
-			expectedResult *SimulationConfig
-			err            string
-		}{
-			name: "basic bad file name",
-			Input: &Config{
-				ConfigPaths: &ConfigurationPaths{
-					SimulationFilePath: "./tests/xxx.yaml",
-					DataDir:            "./data",
-				},
-				Crowdsec: &CrowdsecServiceCfg{},
-			},
-			err: fmt.Sprintf("while reading yaml file: open %s: The system cannot find the file specified.", testXXFullPath),
-		})
-	} else {
-		tests = append(tests, struct {
-			name           string
-			Input          *Config
-			expectedResult *SimulationConfig
-			err            string
-		}{
-			name: "basic bad file name",
-			Input: &Config{
-				ConfigPaths: &ConfigurationPaths{
-					SimulationFilePath: "./tests/xxx.yaml",
-					DataDir:            "./data",
-				},
-				Crowdsec: &CrowdsecServiceCfg{},
-			},
-			err: fmt.Sprintf("while reading yaml file: open %s: no such file or directory", testXXFullPath),
-		})
-	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.Input.LoadSimulation()
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
-	for idx, test := range tests {
-		err := test.Input.LoadSimulation()
-		if err == nil && test.err != "" {
-			fmt.Printf("TEST '%s': NOK\n", test.name)
-			t.Fatalf("%d/%d expected error, didn't get it", idx, len(tests))
-		}
-		if test.err != "" {
-			if !strings.HasPrefix(fmt.Sprintf("%s", err), test.err) {
-				fmt.Printf("TEST '%s': NOK\n", test.name)
-				t.Fatalf("%d/%d expected '%s' got '%s'", idx, len(tests),
-					test.err,
-					fmt.Sprintf("%s", err))
-			}
-		}
-		isOk := assert.Equal(t, test.expectedResult, test.Input.Crowdsec.SimulationConfig)
-		if !isOk {
-			t.Fatalf("TEST '%s': NOK\n", test.name)
-		} else {
-			fmt.Printf("TEST '%s': OK\n", test.name)
-		}
+			assert.Equal(t, tc.expectedResult, tc.Input.Crowdsec.SimulationConfig)
+		})
 	}
 }
 
@@ -150,7 +110,6 @@ func TestIsSimulated(t *testing.T) {
 		SimulationConfig *SimulationConfig
 		Input            string
 		expectedResult   bool
-		err              string
 	}{
 		{
 			name:             "No simulation except (in exclusion)",
@@ -171,13 +130,11 @@ func TestIsSimulated(t *testing.T) {
 			expectedResult:   false,
 		},
 	}
-	for _, test := range tests {
-		IsSimulated := test.SimulationConfig.IsSimulated(test.Input)
-		isOk := assert.Equal(t, test.expectedResult, IsSimulated)
-		if !isOk {
-			fmt.Printf("TEST: '%v' failed", test.name)
-			t.Fatal()
-		}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			IsSimulated := tc.SimulationConfig.IsSimulated(tc.Input)
+			require.Equal(t, tc.expectedResult, IsSimulated)
+		})
 	}
-
 }

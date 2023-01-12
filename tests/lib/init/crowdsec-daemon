@@ -36,7 +36,12 @@ start() {
         -e "${LOG_DIR}/crowdsec.err" \
         -o "${LOG_DIR}/crowdsec.out" \
         "${CROWDSEC}"
-    ./lib/util/wait-for-port 6060
+    ./bin/wait-for-port 6060
+}
+
+start_pid() {
+    start
+    cat "$DAEMON_PID"
 }
 
 stop() {
@@ -48,6 +53,7 @@ stop() {
        if [[ -n "${PGID}" ]]; then
            kill -- "-${PGID}"
        fi
+
        rm -f -- "${DAEMON_PID}"
     fi
 }
@@ -60,6 +66,9 @@ stop() {
 case "$1" in
     start)
         start
+        ;;
+    start-pid)
+        start_pid
         ;;
     stop)
         stop

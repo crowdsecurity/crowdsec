@@ -2,7 +2,6 @@ package csconfig
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -158,18 +157,18 @@ func TestLoadAPIServer(t *testing.T) {
 
 	LogDirFullPath, err := filepath.Abs("./tests")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 
 	config := &Config{}
-	fcontent, err := ioutil.ReadFile("./tests/config.yaml")
+	fcontent, err := os.ReadFile("./tests/config.yaml")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 	configData := os.ExpandEnv(string(fcontent))
 	err = yaml.UnmarshalStrict([]byte(configData), &config)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 	tests := []struct {
 		name           string
@@ -201,6 +200,7 @@ func TestLoadAPIServer(t *testing.T) {
 				DisableAPI: false,
 			},
 			expectedResult: &LocalApiServerCfg{
+				Enable:    types.BoolPtr(true),
 				ListenURI: "http://crowdsec.api",
 				TLS:       nil,
 				DbConfig: &DatabaseCfg{
@@ -213,6 +213,7 @@ func TestLoadAPIServer(t *testing.T) {
 					ShareManualDecisions:  types.BoolPtr(false),
 					ShareTaintedScenarios: types.BoolPtr(true),
 					ShareCustomScenarios:  types.BoolPtr(true),
+					ShareContext:          types.BoolPtr(false),
 				},
 				LogDir:   LogDirFullPath,
 				LogMedia: "stdout",
@@ -244,6 +245,7 @@ func TestLoadAPIServer(t *testing.T) {
 				DisableAPI: false,
 			},
 			expectedResult: &LocalApiServerCfg{
+				Enable:   types.BoolPtr(true),
 				LogDir:   LogDirFullPath,
 				LogMedia: "stdout",
 			},

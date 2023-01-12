@@ -12,6 +12,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	log "github.com/sirupsen/logrus"
 
 	"testing"
@@ -44,7 +45,7 @@ func getDBClient(t *testing.T) *database.Client {
 
 func TestVisitor(t *testing.T) {
 	if err := Init(nil); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	tests := []struct {
@@ -131,12 +132,12 @@ func TestVisitor(t *testing.T) {
 
 func TestRegexpInFile(t *testing.T) {
 	if err := Init(nil); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	err := FileInit(TestFolder, "test_data_re.txt", "regex")
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	tests := []struct {
@@ -174,11 +175,11 @@ func TestRegexpInFile(t *testing.T) {
 	for _, test := range tests {
 		compiledFilter, err := expr.Compile(test.filter, expr.Env(GetExprEnv(map[string]interface{}{})))
 		if err != nil {
-			log.Fatalf(err.Error())
+			log.Fatal(err)
 		}
 		result, err := expr.Run(compiledFilter, GetExprEnv(map[string]interface{}{}))
 		if err != nil {
-			log.Fatalf(err.Error())
+			log.Fatal(err)
 		}
 		if isOk := assert.Equal(t, test.result, result); !isOk {
 			t.Fatalf("test '%s' : NOK", test.name)
@@ -188,7 +189,7 @@ func TestRegexpInFile(t *testing.T) {
 
 func TestFileInit(t *testing.T) {
 	if err := Init(nil); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	tests := []struct {
@@ -226,7 +227,7 @@ func TestFileInit(t *testing.T) {
 	for _, test := range tests {
 		err := FileInit(TestFolder, test.filename, test.types)
 		if err != nil {
-			log.Fatalf(err.Error())
+			log.Fatal(err)
 		}
 		if test.types == "string" {
 			if _, ok := dataFile[test.filename]; !ok {
@@ -256,12 +257,12 @@ func TestFileInit(t *testing.T) {
 
 func TestFile(t *testing.T) {
 	if err := Init(nil); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	err := FileInit(TestFolder, "test_data.txt", "string")
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	tests := []struct {
@@ -299,11 +300,11 @@ func TestFile(t *testing.T) {
 	for _, test := range tests {
 		compiledFilter, err := expr.Compile(test.filter, expr.Env(GetExprEnv(map[string]interface{}{})))
 		if err != nil {
-			log.Fatalf(err.Error())
+			log.Fatal(err)
 		}
 		result, err := expr.Run(compiledFilter, GetExprEnv(map[string]interface{}{}))
 		if err != nil {
-			log.Fatalf(err.Error())
+			log.Fatal(err)
 		}
 		if isOk := assert.Equal(t, test.result, result); !isOk {
 			t.Fatalf("test '%s' : NOK", test.name)
@@ -969,5 +970,49 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, test.result, output)
 		log.Printf("test '%s' : OK", test.name)
+	}
+}
+
+func TestParseUnixTime(t *testing.T) {
+	tests := []struct {
+		name        string
+		value       string
+		expected    time.Time
+		expectedErr string
+	}{
+		{
+			name: "ParseUnix() test: valid value with milli",
+			value: "1672239773.3590894",
+			expected: time.Date(2022, 12, 28, 15, 02, 53, 0, time.UTC),
+		},
+		{
+			name: "ParseUnix() test: valid value without milli",
+			value: "1672239773",
+			expected: time.Date(2022, 12, 28, 15, 02, 53, 0, time.UTC),
+		},
+		{
+			name: "ParseUnix() test: invalid input",
+			value: "AbcDefG!#",
+			expected: time.Time{},
+			expectedErr: "unable to parse AbcDefG!# as unix timestamp",
+		},
+		{
+			name: "ParseUnix() test: negative value",
+			value: "-1000",
+			expected: time.Time{},
+			expectedErr: "unable to parse -1000 as unix timestamp",
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			output, err := ParseUnixTime(tc.value)
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
+			if tc.expectedErr != "" {
+				return
+			}
+			require.WithinDuration(t, tc.expected, output, time.Second)
+		})
 	}
 }

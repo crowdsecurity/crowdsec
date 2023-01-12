@@ -5,7 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"strings"
 	"time"
 
@@ -13,14 +13,15 @@ import (
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type KinesisConfiguration struct {
@@ -113,17 +114,18 @@ func (k *KinesisSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{linesRead, linesReadShards}
 }
 
-func (k *KinesisSource) Configure(yamlConfig []byte, logger *log.Entry) error {
-	config := KinesisConfiguration{}
-	k.logger = logger
-	err := yaml.UnmarshalStrict(yamlConfig, &config)
+func (k *KinesisSource) UnmarshalConfig(yamlConfig []byte) error {
+	k.Config = KinesisConfiguration{}
+
+	err := yaml.UnmarshalStrict(yamlConfig, &k.Config)
 	if err != nil {
 		return errors.Wrap(err, "Cannot parse kinesis datasource configuration")
 	}
-	if config.Mode == "" {
-		config.Mode = configuration.TAIL_MODE
+
+	if k.Config.Mode == "" {
+		k.Config.Mode = configuration.TAIL_MODE
 	}
-	k.Config = config
+
 	if k.Config.StreamName == "" && !k.Config.UseEnhancedFanOut {
 		return fmt.Errorf("stream_name is mandatory when use_enhanced_fanout is false")
 	}
@@ -139,10 +141,23 @@ func (k *KinesisSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	if k.Config.MaxRetries <= 0 {
 		k.Config.MaxRetries = 10
 	}
+
+	return nil
+}
+
+func (k *KinesisSource) Configure(yamlConfig []byte, logger *log.Entry) error {
+	k.logger = logger
+
+	err := k.UnmarshalConfig(yamlConfig)
+	if err != nil {
+		return err
+	}
+
 	err = k.newClient()
 	if err != nil {
-		return errors.Wrap(err, "Cannot create kinesis client")
+		return fmt.Errorf("cannot create kinesis client: %w", err)
 	}
+
 	k.shardReaderTomb = &tomb.Tomb{}
 	return nil
 }
@@ -171,7 +186,7 @@ func (k *KinesisSource) decodeFromSubscription(record []byte) ([]CloudwatchSubsc
 		k.logger.Error(err)
 		return nil, err
 	}
-	decompressed, err := ioutil.ReadAll(r)
+	decompressed, err := io.ReadAll(r)
 	if err != nil {
 		k.logger.Error(err)
 		return nil, err

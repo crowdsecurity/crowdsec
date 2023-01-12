@@ -267,7 +267,7 @@ func TestOneShot(t *testing.T) {
 	}{
 		{
 			dsn:            "docker://non_exist_docker",
-			expectedErr:    "no docker found, can't run one shot acquisition",
+			expectedErr:    "no container found named: non_exist_docker, can't run one shot acquisition",
 			expectedOutput: "",
 			expectedLines:  0,
 			logType:        "test",
@@ -307,29 +307,14 @@ func TestOneShot(t *testing.T) {
 			t.Fatalf("unable to configure dsn '%s': %s", ts.dsn, err)
 		}
 		dockerClient.Client = new(mockDockerCli)
-		out := make(chan types.Event)
-		actualLines := 0
-		if ts.expectedLines != 0 {
-			go func() {
-			READLOOP:
-				for {
-					select {
-					case <-out:
-						actualLines++
-					case <-time.After(1 * time.Second):
-						break READLOOP
-					}
-				}
-			}()
-		}
+		out := make(chan types.Event, 100)
 		tomb := tomb.Tomb{}
 		err := dockerClient.OneShotAcquisition(out, &tomb)
 		cstest.AssertErrorContains(t, err, ts.expectedErr)
 
 		// else we do the check before actualLines is incremented ...
-		time.Sleep(1 * time.Second)
 		if ts.expectedLines != 0 {
-			assert.Equal(t, ts.expectedLines, actualLines)
+			assert.Equal(t, ts.expectedLines, len(out))
 		}
 	}
 

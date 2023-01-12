@@ -7,7 +7,6 @@ import (
 	"os"
 	"time"
 
-	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
@@ -26,6 +25,8 @@ type Client struct {
 	CTX      context.Context
 	Log      *log.Logger
 	CanFlush bool
+	Type     string
+	WalMode  *bool
 }
 
 func getEntDriver(dbtype string, dbdialect string, dsn string, config *csconfig.DatabaseCfg) (*entsql.Driver, error) {
@@ -59,9 +60,11 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 	entLogger := clog.WithField("context", "ent")
 
 	entOpt := ent.Log(entLogger.Debug)
-	switch config.Type {
-	case "sqlite":
-
+	typ, dia, err := config.ConnectionDialect()
+	if err != nil {
+		return &Client{}, err //unsupported database caught here
+	}
+	if config.Type == "sqlite" {
 		/*if it's the first startup, we want to touch and chmod file*/
 		if _, err := os.Stat(config.DbPath); os.IsNotExist(err) {
 			f, err := os.OpenFile(config.DbPath, os.O_CREATE|os.O_RDWR, 0600)
@@ -71,38 +74,17 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 			if err := f.Close(); err != nil {
 				return &Client{}, errors.Wrapf(err, "failed to create SQLite database file %q", config.DbPath)
 			}
-		} else { /*ensure file perms*/
-			if err := os.Chmod(config.DbPath, 0660); err != nil {
-				return &Client{}, fmt.Errorf("unable to set perms on %s: %v", config.DbPath, err)
-			}
 		}
-		drv, err := getEntDriver("sqlite3", dialect.SQLite, fmt.Sprintf("file:%s?_busy_timeout=100000&_fk=1", config.DbPath), config)
-		if err != nil {
-			return &Client{}, errors.Wrapf(err, "failed opening connection to sqlite: %v", config.DbPath)
+		//Always try to set permissions to simplify a bit the code for windows (as the permissions set by OpenFile will be garbage)
+		if err := setFilePerm(config.DbPath, 0640); err != nil {
+			return &Client{}, fmt.Errorf("unable to set perms on %s: %v", config.DbPath, err)
 		}
-		client = ent.NewClient(ent.Driver(drv), entOpt)
-	case "mysql":
-		drv, err := getEntDriver("mysql", dialect.MySQL, fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=True", config.User, config.Password, config.Host, config.Port, config.DbName), config)
-		if err != nil {
-			return &Client{}, fmt.Errorf("failed opening connection to mysql: %v", err)
-		}
-		client = ent.NewClient(ent.Driver(drv), entOpt)
-	case "postgres", "postgresql":
-		drv, err := getEntDriver("postgres", dialect.Postgres, fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=%s", config.Host, config.Port, config.User, config.DbName, config.Password, config.Sslmode), config)
-		if err != nil {
-			return &Client{}, fmt.Errorf("failed opening connection to postgresql: %v", err)
-		}
-		client = ent.NewClient(ent.Driver(drv), entOpt)
-	case "pgx":
-		drv, err := getEntDriver("pgx", dialect.Postgres, fmt.Sprintf("postgresql://%s:%s@%s:%d/%s?sslmode=%s", config.User, config.Password, config.Host, config.Port, config.DbName, config.Sslmode), config)
-		if err != nil {
-			return &Client{}, fmt.Errorf("failed opening connection to pgx: %v", err)
-		}
-		client = ent.NewClient(ent.Driver(drv), entOpt)
-	default:
-		return &Client{}, fmt.Errorf("unknown database type '%s'", config.Type)
 	}
-
+	drv, err := getEntDriver(typ, dia, config.ConnectionString(), config)
+	if err != nil {
+		return &Client{}, fmt.Errorf("failed opening connection to %s: %v", config.Type, err)
+	}
+	client = ent.NewClient(ent.Driver(drv), entOpt)
 	if config.LogLevel != nil && *config.LogLevel >= log.DebugLevel {
 		clog.Debugf("Enabling request debug")
 		client = client.Debug()
@@ -110,7 +92,7 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 	if err = client.Schema.Create(context.Background()); err != nil {
 		return nil, fmt.Errorf("failed creating schema resources: %v", err)
 	}
-	return &Client{Ent: client, CTX: context.Background(), Log: clog, CanFlush: true}, nil
+	return &Client{Ent: client, CTX: context.Background(), Log: clog, CanFlush: true, Type: config.Type, WalMode: config.UseWal}, nil
 }
 
 func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Scheduler, error) {

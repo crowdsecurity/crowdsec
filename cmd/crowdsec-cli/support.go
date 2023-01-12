@@ -5,29 +5,33 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/blackfireio/osinfo"
+	"github.com/go-openapi/strfmt"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/go-openapi/strfmt"
-	log "github.com/sirupsen/logrus"
-
-	"github.com/spf13/cobra"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 const (
 	SUPPORT_METRICS_HUMAN_PATH           = "metrics/metrics.human"
 	SUPPORT_METRICS_PROMETHEUS_PATH      = "metrics/metrics.prometheus"
 	SUPPORT_VERSION_PATH                 = "version.txt"
+	SUPPORT_FEATURES_PATH                = "features.txt"
 	SUPPORT_OS_INFO_PATH                 = "osinfo.txt"
 	SUPPORT_PARSERS_PATH                 = "hub/parsers.txt"
 	SUPPORT_SCENARIOS_PATH               = "hub/scenarios.txt"
@@ -54,7 +58,8 @@ func collectMetrics() ([]byte, []byte, error) {
 		return nil, nil, fmt.Errorf("prometheus_uri is not set")
 	}
 
-	humanMetrics, err := FormatPrometheusMetric(csConfig.Cscli.PrometheusUrl+"/metrics", "human")
+	humanMetrics := bytes.NewBuffer(nil)
+	err = FormatPrometheusMetrics(humanMetrics, csConfig.Cscli.PrometheusUrl+"/metrics", "human")
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not fetch promtheus metrics: %s", err)
@@ -73,18 +78,30 @@ func collectMetrics() ([]byte, []byte, error) {
 
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not read metrics from prometheus endpoint: %s", err)
 	}
 
-	return humanMetrics, body, nil
+	return humanMetrics.Bytes(), body, nil
 }
 
 func collectVersion() []byte {
 	log.Info("Collecting version")
 	return []byte(cwversion.ShowStr())
 }
+
+func collectFeatures() []byte {
+	log.Info("Collecting feature flags")
+	enabledFeatures := fflag.Crowdsec.GetEnabledFeatures()
+
+	w := bytes.NewBuffer(nil)
+	for _, k := range enabledFeatures {
+		fmt.Fprintf(w, "%s\n", k)
+	}
+	return w.Bytes()
+}
+
 
 func collectOSInfo() ([]byte, error) {
 	log.Info("Collecting OS info")
@@ -125,17 +142,28 @@ func initHub() error {
 }
 
 func collectHubItems(itemType string) []byte {
+	out := bytes.NewBuffer(nil)
 	log.Infof("Collecting %s list", itemType)
-	items := ListItems([]string{itemType}, []string{}, false, true, all)
-	return items
+	ListItems(out, []string{itemType}, []string{}, false, true, all)
+	return out.Bytes()
 }
 
 func collectBouncers(dbClient *database.Client) ([]byte, error) {
-	return getBouncers(dbClient)
+	out := bytes.NewBuffer(nil)
+	err := getBouncers(out, dbClient)
+	if err != nil {
+		return nil, err
+	}
+	return out.Bytes(), nil
 }
 
 func collectAgents(dbClient *database.Client) ([]byte, error) {
-	return getAgents(dbClient)
+	out := bytes.NewBuffer(nil)
+	err := getAgents(out, dbClient)
+	if err != nil {
+		return nil, err
+	}
+	return out.Bytes(), nil
 }
 
 func collectAPIStatus(login string, password string, endpoint string, prefix string) []byte {
@@ -146,11 +174,11 @@ func collectAPIStatus(login string, password string, endpoint string, prefix str
 	apiurl, err := url.Parse(endpoint)
 
 	if err != nil {
-		return []byte(fmt.Sprintf("cannot parse API URL: %s", err.Error()))
+		return []byte(fmt.Sprintf("cannot parse API URL: %s", err))
 	}
 	scenarios, err := cwhub.GetInstalledScenariosAsString()
 	if err != nil {
-		return []byte(fmt.Sprintf("could not collect scenarios: %s", err.Error()))
+		return []byte(fmt.Sprintf("could not collect scenarios: %s", err))
 	}
 
 	Client, err = apiclient.NewDefaultClient(apiurl,
@@ -158,7 +186,7 @@ func collectAPIStatus(login string, password string, endpoint string, prefix str
 		fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 		nil)
 	if err != nil {
-		return []byte(fmt.Sprintf("could not init client: %s", err.Error()))
+		return []byte(fmt.Sprintf("could not init client: %s", err))
 	}
 	t := models.WatcherAuthRequest{
 		MachineID: &login,
@@ -176,7 +204,7 @@ func collectAPIStatus(login string, password string, endpoint string, prefix str
 
 func collectCrowdsecConfig() []byte {
 	log.Info("Collecting crowdsec config")
-	config, err := ioutil.ReadFile(*csConfig.FilePath)
+	config, err := os.ReadFile(*csConfig.FilePath)
 	if err != nil {
 		return []byte(fmt.Sprintf("could not read config file: %s", err))
 	}
@@ -188,7 +216,7 @@ func collectCrowdsecConfig() []byte {
 
 func collectCrowdsecProfile() []byte {
 	log.Info("Collecting crowdsec profile")
-	config, err := ioutil.ReadFile(csConfig.API.Server.ProfilesPath)
+	config, err := os.ReadFile(csConfig.API.Server.ProfilesPath)
 	if err != nil {
 		return []byte(fmt.Sprintf("could not read profile file: %s", err))
 	}
@@ -200,7 +228,7 @@ func collectAcquisitionConfig() map[string][]byte {
 	ret := make(map[string][]byte)
 
 	for _, filename := range csConfig.Crowdsec.AcquisitionFiles {
-		fileContent, err := ioutil.ReadFile(filename)
+		fileContent, err := os.ReadFile(filename)
 		if err != nil {
 			ret[filename] = []byte(fmt.Sprintf("could not read file: %s", err))
 		} else {
@@ -250,6 +278,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			var skipHub, skipDB, skipCAPI, skipLAPI, skipAgent bool
 			infos := map[string][]byte{
 				SUPPORT_VERSION_PATH: collectVersion(),
+				SUPPORT_FEATURES_PATH: collectFeatures(),
 			}
 
 			if outFile == "" {
@@ -257,7 +286,6 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			}
 
 			dbClient, err = database.NewClient(csConfig.DbConfig)
-
 			if err != nil {
 				log.Warnf("Could not connect to database: %s", err)
 				skipDB = true
@@ -277,7 +305,6 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			}
 
 			err = initHub()
-
 			if err != nil {
 				log.Warn("Could not init hub, running on LAPI ? Hub related information will not be collected")
 				skipHub = true
@@ -295,7 +322,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				skipLAPI = true
 			}
 
-			if csConfig.API.Server == nil || csConfig.API.Server.OnlineClient.Credentials == nil {
+			if csConfig.API.Server == nil || csConfig.API.Server.OnlineClient == nil || csConfig.API.Server.OnlineClient.Credentials == nil {
 				log.Warn("no CAPI credentials found, skipping CAPI connectivity check")
 				skipCAPI = true
 			}
@@ -308,7 +335,6 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			}
 
 			infos[SUPPORT_OS_INFO_PATH], err = collectOSInfo()
-
 			if err != nil {
 				log.Warnf("could not collect OS information: %s", err)
 				infos[SUPPORT_OS_INFO_PATH] = []byte(err.Error())
@@ -373,16 +399,19 @@ cscli support dump -f /tmp/crowdsec-support.zip
 					log.Errorf("Could not add zip entry for %s: %s", filename, err)
 					continue
 				}
-				fw.Write(data)
+				fw.Write([]byte(types.StripAnsiString(string(data))))
 			}
+
 			err = zipWriter.Close()
 			if err != nil {
 				log.Fatalf("could not finalize zip file: %s", err)
 			}
-			err = ioutil.WriteFile(outFile, w.Bytes(), 0600)
+
+			err = os.WriteFile(outFile, w.Bytes(), 0600)
 			if err != nil {
 				log.Fatalf("could not write zip file to %s: %s", outFile, err)
 			}
+
 			log.Infof("Written zip file to %s", outFile)
 		},
 	}

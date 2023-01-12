@@ -10,18 +10,18 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
+
+	"github.com/fatih/color"
+	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/go-openapi/strfmt"
-	"github.com/olekukonko/tablewriter"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 )
 
 var printMachine bool
@@ -109,7 +109,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 				*alertItem.Source.Value,
 				*alertItem.Scenario,
 				alertItem.Source.Cn,
-				alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
+				alertItem.Source.GetAsNumberName(),
 				DecisionsFromAlert(alertItem),
 				*alertItem.StartAt,
 			}
@@ -126,32 +126,11 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 		x, _ := json.MarshalIndent(alerts, "", " ")
 		fmt.Printf("%s", string(x))
 	} else if csConfig.Cscli.Output == "human" {
-
-		table := tablewriter.NewWriter(os.Stdout)
-		header := []string{"ID", "value", "reason", "created_at"}
-		if printMachine {
-			header = append(header, "machine")
-		}
-		table.SetHeader(header)
-
 		if len(*alerts) == 0 {
 			fmt.Println("No active alerts")
 			return nil
 		}
-		for _, alertItem := range *alerts {
-
-			row := []string{
-				strconv.Itoa(int(alertItem.ID)),
-				SourceFromAlert(alertItem),
-				*alertItem.Scenario,
-				DateFromAlert(alertItem),
-			}
-			if printMachine {
-				row = append(row, alertItem.MachineID)
-			}
-			table.Append(row)
-		}
-		table.Render() // Send output
+		alertsTable(color.Output, alerts, printMachine)
 	}
 	return nil
 }
@@ -174,53 +153,36 @@ func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 		fmt.Printf(" - AS         : %s\n", alert.Source.AsName)
 		fmt.Printf(" - Begin      : %s\n", *alert.StartAt)
 		fmt.Printf(" - End        : %s\n\n", *alert.StopAt)
-		foundActive := false
-		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"ID", "scope:value", "action", "expiration", "created_at"})
-		for _, decision := range alert.Decisions {
-			parsedDuration, err := time.ParseDuration(*decision.Duration)
-			if err != nil {
-				log.Errorf(err.Error())
-			}
-			expire := time.Now().UTC().Add(parsedDuration)
-			if time.Now().UTC().After(expire) {
-				continue
-			}
-			foundActive = true
-			scopeAndValue := *decision.Scope
-			if *decision.Value != "" {
-				scopeAndValue += ":" + *decision.Value
-			}
-			table.Append([]string{
-				strconv.Itoa(int(decision.ID)),
-				scopeAndValue,
-				*decision.Type,
-				*decision.Duration,
-				alert.CreatedAt,
+
+		alertDecisionsTable(color.Output, alert)
+
+		if len(alert.Meta) > 0 {
+			fmt.Printf("\n - Context  :\n")
+			sort.Slice(alert.Meta, func(i, j int) bool {
+				return alert.Meta[i].Key < alert.Meta[j].Key
 			})
-		}
-		if foundActive {
-			fmt.Printf(" - Active Decisions  :\n")
-			table.Render() // Send output
+			table := newTable(color.Output)
+			table.SetRowLines(false)
+			table.SetHeaders("Key", "Value")
+			for _, meta := range alert.Meta {
+				var valSlice []string
+				if err := json.Unmarshal([]byte(meta.Value), &valSlice); err != nil {
+					return fmt.Errorf("unknown context value type '%s' : %s", meta.Value, err)
+				}
+				for _, value := range valSlice {
+					table.AddRow(
+						meta.Key,
+						value,
+					)
+				}
+			}
+			table.Render()
 		}
 
 		if withDetail {
 			fmt.Printf("\n - Events  :\n")
 			for _, event := range alert.Events {
-				fmt.Printf("\n- Date: %s\n", *event.Timestamp)
-				table = tablewriter.NewWriter(os.Stdout)
-				table.SetHeader([]string{"Key", "Value"})
-				sort.Slice(event.Meta, func(i, j int) bool {
-					return event.Meta[i].Key < event.Meta[j].Key
-				})
-				for _, meta := range event.Meta {
-					table.Append([]string{
-						meta.Key,
-						meta.Value,
-					})
-				}
-
-				table.Render() // Send output
+				alertEventTable(color.Output, event)
 			}
 		}
 	}
@@ -295,31 +257,27 @@ cscli alerts list --type ban`,
 
 			if *alertListFilter.Until == "" {
 				alertListFilter.Until = nil
-			} else {
+			} else if strings.HasSuffix(*alertListFilter.Until, "d") {
 				/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
-				if strings.HasSuffix(*alertListFilter.Until, "d") {
-					realDuration := strings.TrimSuffix(*alertListFilter.Until, "d")
-					days, err := strconv.Atoi(realDuration)
-					if err != nil {
-						printHelp(cmd)
-						log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Until)
-					}
-					*alertListFilter.Until = fmt.Sprintf("%d%s", days*24, "h")
+				realDuration := strings.TrimSuffix(*alertListFilter.Until, "d")
+				days, err := strconv.Atoi(realDuration)
+				if err != nil {
+					printHelp(cmd)
+					log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Until)
 				}
+				*alertListFilter.Until = fmt.Sprintf("%d%s", days*24, "h")
 			}
 			if *alertListFilter.Since == "" {
 				alertListFilter.Since = nil
-			} else {
+			} else if strings.HasSuffix(*alertListFilter.Since, "d") {
 				/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
-				if strings.HasSuffix(*alertListFilter.Since, "d") {
-					realDuration := strings.TrimSuffix(*alertListFilter.Since, "d")
-					days, err := strconv.Atoi(realDuration)
-					if err != nil {
-						printHelp(cmd)
-						log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Since)
-					}
-					*alertListFilter.Since = fmt.Sprintf("%d%s", days*24, "h")
+				realDuration := strings.TrimSuffix(*alertListFilter.Since, "d")
+				days, err := strconv.Atoi(realDuration)
+				if err != nil {
+					printHelp(cmd)
+					log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Since)
 				}
+				*alertListFilter.Since = fmt.Sprintf("%d%s", days*24, "h")
 			}
 
 			if *alertListFilter.IncludeCAPI {
@@ -376,6 +334,7 @@ cscli alerts list --type ban`,
 
 	var ActiveDecision *bool
 	var AlertDeleteAll bool
+	var delAlertByID string
 	var alertDeleteFilter = apiclient.AlertsDeleteOpts{
 		ScopeEquals:    new(string),
 		ValueEquals:    new(string),
@@ -399,7 +358,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 			}
 			if *alertDeleteFilter.ScopeEquals == "" && *alertDeleteFilter.ValueEquals == "" &&
 				*alertDeleteFilter.ScenarioEquals == "" && *alertDeleteFilter.IPEquals == "" &&
-				*alertDeleteFilter.RangeEquals == "" {
+				*alertDeleteFilter.RangeEquals == "" && delAlertByID == "" {
 				_ = cmd.Usage()
 				log.Fatalln("At least one filter or --all must be specified")
 			}
@@ -435,16 +394,26 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 				if contained != nil && *contained {
 					alertDeleteFilter.Contains = new(bool)
 				}
+				limit := 0
+				alertDeleteFilter.Limit = &limit
 			} else {
 				limit := 0
 				alertDeleteFilter = apiclient.AlertsDeleteOpts{Limit: &limit}
 			}
-			alerts, _, err := Client.Alerts.Delete(context.Background(), alertDeleteFilter)
-			if err != nil {
-				log.Fatalf("Unable to delete alerts : %v", err)
+
+			var alerts *models.DeleteAlertsResponse
+			if delAlertByID == "" {
+				alerts, _, err = Client.Alerts.Delete(context.Background(), alertDeleteFilter)
+				if err != nil {
+					log.Fatalf("Unable to delete alerts : %v", err)
+				}
+			} else {
+				alerts, _, err = Client.Alerts.DeleteOne(context.Background(), delAlertByID)
+				if err != nil {
+					log.Fatalf("Unable to delete alert :  %v", err)
+				}
 			}
 			log.Infof("%s alert(s) deleted", alerts.NbDeleted)
-
 		},
 	}
 	cmdAlertsDelete.Flags().SortFlags = false
@@ -453,6 +422,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 	cmdAlertsDelete.Flags().StringVarP(alertDeleteFilter.ScenarioEquals, "scenario", "s", "", "the scenario (ie. crowdsecurity/ssh-bf)")
 	cmdAlertsDelete.Flags().StringVarP(alertDeleteFilter.IPEquals, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
 	cmdAlertsDelete.Flags().StringVarP(alertDeleteFilter.RangeEquals, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
+	cmdAlertsDelete.Flags().StringVar(&delAlertByID, "id", "", "alert ID")
 	cmdAlertsDelete.Flags().BoolVarP(&AlertDeleteAll, "all", "a", false, "delete all alerts")
 	cmdAlertsDelete.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
 
@@ -517,9 +487,6 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 			var err error
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
-			}
-			if err := csConfig.LoadDBConfig(); err != nil {
-				log.Fatalf(err.Error())
 			}
 			dbClient, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {

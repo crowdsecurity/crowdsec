@@ -24,7 +24,7 @@ teardown() {
 #----------
 
 @test "there are 0 bouncers" {
-    run -0 cscli bouncers list -o json
+    run -0 --separate-stderr cscli bouncers list -o json
     assert_output "[]"
 }
 
@@ -32,7 +32,7 @@ teardown() {
     run -0 cscli bouncers add ciTestBouncer
     assert_output --partial "Api key for 'ciTestBouncer':"
     run -0 cscli bouncers delete ciTestBouncer
-    run -0 cscli bouncers list -o json
+    run -0 --separate-stderr cscli bouncers list -o json
     assert_output '[]'
 }
 
@@ -40,12 +40,14 @@ teardown() {
     run -0 cscli bouncers add ciTestBouncer
     run -1 --separate-stderr cscli bouncers add ciTestBouncer -o json
 
-    run -0 jq -r '.level' <(stderr)
+    # XXX temporary hack to filter out unwanted log lines that may appear before
+    # log configuration (= not json)
+    run -0 jq -r '.level' <(stderr | grep "^{")
     assert_output 'fatal'
-    run -0 jq -r '.msg' <(stderr)
+    run -0 jq -r '.msg' <(stderr | grep "^{")
     assert_output "unable to create bouncer: bouncer ciTestBouncer already exists"
 
-    run -0 cscli bouncers list -o json
+    run -0 --separate-stderr cscli bouncers list -o json
     run -0 jq '. | length' <(output)
     assert_output 1
 }

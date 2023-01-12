@@ -9,7 +9,7 @@ import (
 
 func TestXMLGetAttributeValue(t *testing.T) {
 	if err := Init(nil); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	tests := []struct {
@@ -68,7 +68,7 @@ func TestXMLGetAttributeValue(t *testing.T) {
 }
 func TestXMLGetNodeValue(t *testing.T) {
 	if err := Init(nil); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 
 	tests := []struct {

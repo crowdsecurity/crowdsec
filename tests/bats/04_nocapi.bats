@@ -31,6 +31,7 @@ teardown() {
 
 @test "without capi: crowdsec LAPI should still work" {
     config_disable_capi
+    config_set '.common.log_media="stdout"'
     run -124 --separate-stderr timeout 1s "${CROWDSEC}"
     # from `man timeout`: If  the  command  times  out,  and --preserve-status is not set, then exit with status 124.
     assert_stderr --partial "push and pull to Central API disabled"
@@ -58,7 +59,7 @@ teardown() {
     run -0 cscli config backup "${backupdir}"
     assert_output --partial "Starting configuration backup"
     run -1 --separate-stderr cscli config backup "${backupdir}"
-    assert_stderr --partial "Failed to backup configurations"
+    assert_stderr --partial "failed to backup config"
     assert_stderr --partial "file exists"
     rm -rf -- "${backupdir:?}"
 }
@@ -75,8 +76,7 @@ teardown() {
     ./instance-crowdsec start
     run -0 cscli lapi status
     run -0 --separate-stderr cscli metrics
-    assert_output --partial "ROUTE"
+    assert_output --partial "Route"
     assert_output --partial '/v1/watchers/login'
     assert_output --partial "Local Api Metrics:"
-
 }

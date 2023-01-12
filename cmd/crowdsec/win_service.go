@@ -11,13 +11,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/svc"
 	"golang.org/x/sys/windows/svc/eventlog"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
 type crowdsec_winservice struct {
@@ -45,7 +45,7 @@ func (m *crowdsec_winservice) Execute(args []string, r <-chan svc.ChangeRequest,
 					err := shutdown(nil, m.config)
 					if err != nil {
 						log.Errorf("Error while shutting down: %s", err)
-						//don't return, we still want to notify windows that we are stopped ?
+						// don't return, we still want to notify windows that we are stopped ?
 					}
 					break loop
 				default:
@@ -58,14 +58,13 @@ func (m *crowdsec_winservice) Execute(args []string, r <-chan svc.ChangeRequest,
 	err := WindowsRun()
 	changes <- svc.Status{State: svc.Stopped}
 	if err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 	return
 }
 
 func runService(name string) error {
-
-	//All the calls to logging before the logger is configured are pretty much useless, but we keep them for clarity
+	// All the calls to logging before the logger is configured are pretty much useless, but we keep them for clarity
 	err := eventlog.InstallAsEventCreate("CrowdSec", eventlog.Error|eventlog.Warning|eventlog.Info)
 	if err != nil {
 		if errno, ok := err.(syscall.Errno); ok {
@@ -79,14 +78,14 @@ func runService(name string) error {
 		}
 	}
 
-	//Let's use our source even if we could not install it:
+	// Let's use our source even if we could not install it:
 	// - It could have been created earlier
 	// - No permission to create it (e.g. running as non-admin when working on crowdsec)
-	//It will still work, windows will just display some additional errors in the event log
+	// It will still work, windows will just display some additional errors in the event log
 	evtlog, err := eventlog.Open("CrowdSec")
 
 	if err == nil {
-		//Send panic and fatal to event log, as they can happen before the logger is configured.
+		// Send panic and fatal to event log, as they can happen before the logger is configured.
 		log.AddHook(&EventLogHook{
 			LogLevels: []log.Level{
 				log.PanicLevel,
@@ -98,18 +97,12 @@ func runService(name string) error {
 		log.Warnf("Failed to open event log: %s", err)
 	}
 
-	cConfig, err := csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
+	cConfig, err := csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
 	if err != nil {
 		return err
 	}
 
 	if err := LoadConfig(cConfig); err != nil {
-		return err
-	}
-
-	// Configure logging
-	if err := types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, *cConfig.Common.LogLevel,
-		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles, cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs, cConfig.Common.ForceColorLogs); err != nil {
 		return err
 	}
 

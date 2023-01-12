@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/url"
+	"os"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -16,13 +16,19 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 var CAPIURLPrefix string = "v2"
 
 var capiUserPrefix string
+var outputFile string
 
 func NewCapiCmd() *cobra.Command {
 	var cmdCapi = &cobra.Command{
@@ -91,7 +97,7 @@ func NewCapiCmd() *cobra.Command {
 				log.Fatalf("unable to marshal api credentials: %s", err)
 			}
 			if dumpFile != "" {
-				err = ioutil.WriteFile(dumpFile, apiConfigDump, 0600)
+				err = os.WriteFile(dumpFile, apiConfigDump, 0600)
 				if err != nil {
 					log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
 				}

@@ -2,32 +2,41 @@ name: build-msi (windows)
 
 on:
   pull_request:
-    branches: [ master ]
+    branches:
+      - master
+      - releases/**
     paths-ignore:
       - 'docs/**'
       - 'mkdocs.yml'
       - 'README.md'
 
 jobs:
+  get_latest_release:
+    name: get_latest_release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - id: get_latest_release
+      uses: cardinalby/git-get-release-action@cedef2faf69cb7c55b285bad07688d04430b7ada
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        latest: true
 
   build:
     name: Build
     runs-on: windows-2019
     steps:
-    - name: Set up Go 1.17
-      uses: actions/setup-go@v1
+    - name: Set up Go 1.19
+      uses: actions/setup-go@v3
       with:
-        go-version: 1.17
+        go-version: 1.19
       id: go
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
-    - id: get_latest_release
-      uses: pozetroninc/github-action-get-latest-release@master
-      with:
-        repository: crowdsecurity/crowdsec
-        excludes: draft
     - id: set_release_in_env
-      run: echo "BUILD_VERSION=${{ steps.get_latest_release.outputs.release }}" >> $env:GITHUB_ENV
+      run: echo "BUILD_VERSION=${{ jobs.get_latest_release.outputs.tag_name }}" >> $env:GITHUB_ENV
     - name: Build
       run: make windows_installer
     - name: Upload MSI

@@ -21,6 +21,7 @@ func TestPri(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.input, func(t *testing.T) {
 			r := &RFC3164{}
 			r.buf = []byte(test.input)
@@ -37,10 +38,8 @@ func TestPri(t *testing.T) {
 			} else {
 				if test.expectedErr != "" {
 					t.Errorf("expected error %s, got no error", test.expectedErr)
-				} else {
-					if r.PRI != test.expected {
-						t.Errorf("expected %d, got %d", test.expected, r.PRI)
-					}
+				} else if r.PRI != test.expected {
+					t.Errorf("expected %d, got %d", test.expected, r.PRI)
 				}
 			}
 		})
@@ -55,7 +54,7 @@ func TestTimestamp(t *testing.T) {
 		currentYear bool
 	}{
 		{"May 20 09:33:54", "0000-05-20T09:33:54Z", "", false},
-		{"May 20 09:33:54", "2022-05-20T09:33:54Z", "", true},
+		{"May 20 09:33:54", "2023-05-20T09:33:54Z", "", true},
 		{"May 20 09:33:54 2022", "2022-05-20T09:33:54Z", "", false},
 		{"May  1 09:33:54 2022", "2022-05-01T09:33:54Z", "", false},
 		{"May 01 09:33:54 2021", "2021-05-01T09:33:54Z", "", true},
@@ -63,6 +62,7 @@ func TestTimestamp(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.input, func(t *testing.T) {
 			opts := []RFC3164Option{}
 			if test.currentYear {
@@ -83,10 +83,8 @@ func TestTimestamp(t *testing.T) {
 			} else {
 				if test.expectedErr != "" {
 					t.Errorf("expected error %s, got no error", test.expectedErr)
-				} else {
-					if r.Timestamp.Format(time.RFC3339) != test.expected {
-						t.Errorf("expected %s, got %s", test.expected, r.Timestamp.Format(time.RFC3339))
-					}
+				} else if r.Timestamp.Format(time.RFC3339) != test.expected {
+					t.Errorf("expected %s, got %s", test.expected, r.Timestamp.Format(time.RFC3339))
 				}
 			}
 		})
@@ -118,6 +116,7 @@ func TestHostname(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.input, func(t *testing.T) {
 			opts := []RFC3164Option{}
 			if test.strictHostname {
@@ -138,10 +137,8 @@ func TestHostname(t *testing.T) {
 			} else {
 				if test.expectedErr != "" {
 					t.Errorf("expected error %s, got no error", test.expectedErr)
-				} else {
-					if r.Hostname != test.expected {
-						t.Errorf("expected %s, got %s", test.expected, r.Hostname)
-					}
+				} else if r.Hostname != test.expected {
+					t.Errorf("expected %s, got %s", test.expected, r.Hostname)
 				}
 			}
 		})
@@ -164,6 +161,7 @@ func TestTag(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.input, func(t *testing.T) {
 			r := &RFC3164{}
 			r.buf = []byte(test.input)
@@ -207,6 +205,7 @@ func TestMessage(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.input, func(t *testing.T) {
 			r := &RFC3164{}
 			r.buf = []byte(test.input)
@@ -223,10 +222,8 @@ func TestMessage(t *testing.T) {
 			} else {
 				if test.expectedErr != "" {
 					t.Errorf("expected error %s, got no error", test.expectedErr)
-				} else {
-					if r.Message != test.expected {
-						t.Errorf("expected message %s, got %s", test.expected, r.Tag)
-					}
+				} else if r.Message != test.expected {
+					t.Errorf("expected message %s, got %s", test.expected, r.Tag)
 				}
 			}
 		})
@@ -260,7 +257,7 @@ func TestParse(t *testing.T) {
 		},
 		{
 			"<12>May 20 09:33:54 UDMPRO,a2edd0c6ae48,udm-1.10.0.3686 kernel: foo", expected{
-				Timestamp: time.Date(2022, time.May, 20, 9, 33, 54, 0, time.UTC),
+				Timestamp: time.Date(2023, time.May, 20, 9, 33, 54, 0, time.UTC),
 				Hostname:  "UDMPRO,a2edd0c6ae48,udm-1.10.0.3686",
 				Tag:       "kernel",
 				PID:       "",
@@ -330,6 +327,7 @@ func TestParse(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		test := test
 		t.Run(test.input, func(t *testing.T) {
 			r := NewRFC3164Parser(test.opts...)
 			err := r.Parse([]byte(test.input))

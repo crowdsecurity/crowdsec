@@ -50,10 +50,19 @@
                      <File Id="acquis.yaml" Source="config\acquis_win.yaml" Name="acquis.yaml" />
                   </Component>
                   <Component Id="LocalCreds" Guid="fea92471-ba4b-4067-a92a-19af0d581b60">
-                     <File Id="local_api_credentials.yaml" Source="config\local_api_credentials.yaml" />
+                     <File Id="local_api_credentials.yaml" Source="config\local_api_credentials.yaml">
+                        <PermissionEx Sddl="D:PAI(A;;FA;;;SY)(A;;FA;;;BA)"/>
+                     </File>
                   </Component>
+                  <Directory Id="ConsoleDir" Name="console">
+                     <Component Id="ConsoleContextFile" Guid="f146e12a-8f02-4129-9029-577807966e92">
+                        <File Id="context.yaml" Source="config\context.yaml" />
+                     </Component>
+                  </Directory>
                   <Component Id="OnlineCreds" Guid="a652a6cb-d464-40b1-8f50-78dce0135d20">
-                     <File Id="online_api_credentials.yaml" Source="config\online_api_credentials.yaml" />
+                     <File Id="online_api_credentials.yaml" Source="config\online_api_credentials.yaml">
+                        <PermissionEx Sddl="D:PAI(A;;FA;;;SY)(A;;FA;;;BA)"/>
+                     </File>
                   </Component>
                   <Component Id="ProfilesConfig" Guid="8d6fca04-b3be-4a52-a9df-278139d0498e">
                      <File Id="profiles.yaml" Source="config\profiles.yaml" />
@@ -78,10 +87,18 @@
                   </Component>
                   <Directory Id="NotifConfigDir" Name="notifications">
                      <Component Id="NotifConfig" Guid="4d04a852-e876-408f-95a7-a7effa7762c4">
-                        <File Id="slack.yaml" Source="plugins\notifications\slack\slack.yaml" Name="slack.yaml" />
-                        <File Id="http.yaml" Source="plugins\notifications\http\http.yaml" Name="http.yaml" />
-                        <File Id="email.yaml" Source="plugins\notifications\email\email.yaml" Name="email.yaml" />
-                        <File Id="splunk.yaml" Source="plugins\notifications\splunk\splunk.yaml" Name="splunk.yaml" />
+                        <File Id="slack.yaml" Source="plugins\notifications\slack\slack.yaml" Name="slack.yaml">
+                           <PermissionEx Sddl="D:PAI(A;;FA;;;SY)(A;;FA;;;BA)"/>
+                        </File>
+                        <File Id="http.yaml" Source="plugins\notifications\http\http.yaml" Name="http.yaml">
+                           <PermissionEx Sddl="D:PAI(A;;FA;;;SY)(A;;FA;;;BA)"/>
+                        </File>
+                        <File Id="email.yaml" Source="plugins\notifications\email\email.yaml" Name="email.yaml">
+                           <PermissionEx Sddl="D:PAI(A;;FA;;;SY)(A;;FA;;;BA)"/>
+                        </File>
+                        <File Id="splunk.yaml" Source="plugins\notifications\splunk\splunk.yaml" Name="splunk.yaml">
+                           <PermissionEx Sddl="D:PAI(A;;FA;;;SY)(A;;FA;;;BA)"/>
+                        </File>
                      </Component>
                   </Directory>
                   <Directory Id="PatternsDir" Name="patterns" />
@@ -118,6 +135,10 @@
       <CustomAction Id="HubUpdate" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="check" Impersonate="no" />
       <SetProperty Id="InstallWinCollection" Value="&quot;[INSTALLDIR]\cscli.exe&quot; collections install crowdsecurity/windows" Sequence="execute" Before="InstallWinCollection" />
       <CustomAction Id="InstallWinCollection" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="check" Impersonate="no" />
+      <SetProperty Id="FixPermissionsCreds" Value="&quot;icacls.exe&quot; C:\ProgramData\CrowdSec\config\*_api_credentials.yaml /inheritance:r /grant:r *S-1-5-32-544:(F)" Sequence="execute" Before="FixPermissionsCreds" />
+      <CustomAction Id="FixPermissionsCreds" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="check" Impersonate="no" />
+      <SetProperty Id="FixPermissionsNotif" Value="&quot;icacls.exe&quot; C:\ProgramData\CrowdSec\config\notifications\*.yaml /inheritance:r /grant:r *S-1-5-32-544:(F)" Sequence="execute" Before="FixPermissionsNotif" />
+      <CustomAction Id="FixPermissionsNotif" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="check" Impersonate="no" />
       <SetProperty Id="RegisterMachine" Value="&quot;[INSTALLDIR]\cscli.exe&quot; machines add -a" Sequence="execute" Before="RegisterMachine" />
       <CustomAction Id="RegisterMachine" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="check" Impersonate="no" />
       <SetProperty Id="RegisterCAPI" Value="&quot;[INSTALLDIR]\cscli.exe&quot; capi register" Sequence="execute" Before="RegisterMachine" />
@@ -126,7 +147,9 @@
          <WriteEnvironmentStrings />
          <Custom Action="HubUpdate" After="InstallFiles">NOT Installed AND NOT REMOVE</Custom>
          <Custom Action="InstallWinCollection" After="HubUpdate">NOT Installed AND NOT REMOVE</Custom>
-         <Custom Action="RegisterMachine" After="InstallWinCollection">NOT Installed AND NOT REMOVE AND NOT AGENT_ONLY AND NOT WIX_UPGRADE_DETECTED</Custom>
+         <Custom Action="FixPermissionsCreds" After="InstallWinCollection">NOT REMOVE</Custom>
+         <Custom Action="FixPermissionsNotif" After="FixPermissionsCreds">NOT REMOVE</Custom>
+         <Custom Action="RegisterMachine" After="FixPermissionsNotif">NOT Installed AND NOT REMOVE AND NOT AGENT_ONLY AND NOT WIX_UPGRADE_DETECTED</Custom>
          <Custom Action="RegisterCAPI" After="RegisterMachine">NOT Installed AND NOT REMOVE AND NOT AGENT_ONLY AND NOT WIX_UPGRADE_DETECTED</Custom>
       </InstallExecuteSequence>
 
@@ -145,6 +168,8 @@
          <ComponentRef Id="NotifConfig" />
          <ComponentRef Id="CreateCrowdsecPluginsDir"/>
          <ComponentRef Id="CreateCrowdsecDataDir" />
+         <ComponentRef Id="ConsoleDir"/>
+         <ComponentRef Id="ConsoleContextFile"/>
          <ComponentRef Id="Csconfig_lapi" />
          <ComponentRef Id="Csconfig_no_lapi" />
          <ComponentGroupRef Id="CrowdsecPatterns" />

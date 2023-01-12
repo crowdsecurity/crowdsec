@@ -32,11 +32,11 @@
 </p>
 
 
-:dancer: This is a community driven project, <a href="https://forms.gle/ZQBQcptG2wYGajRX8">we need your feedback</a>.
+:dancer: This is a community-driven project, <a href="https://forms.gle/ZQBQcptG2wYGajRX8">we need your feedback</a>.
 
 ## <TL;DR>
 
-CrowdSec is a free, modern & collaborative behavior detection engine, coupled with a global IP reputation network. It stacks on fail2ban's philosophy but is IPV6 compatible and 60x faster (Go vs Python), uses Grok patterns to parse logs and YAML scenario to identify behaviors. CrowdSec is engineered for modern Cloud / Containers / VM based infrastructures (by decoupling detection and remediation). Once detected you can remedy threats with various bouncers (firewall block, nginx http 403, Captchas, etc.) while the aggressive IP can be sent to CrowdSec for curation before being shared among all users to further improve everyone's security. See [FAQ](https://doc.crowdsec.net/docs/faq) or read below for more.
+CrowdSec is a free, modern & collaborative behavior detection engine, coupled with a global IP reputation network. It stacks on fail2ban's philosophy but is IPV6 compatible and 60x faster (Go vs Python), it uses Grok patterns to parse logs and YAML scenarios to identify behaviors. CrowdSec is engineered for modern Cloud / Containers / VM-based infrastructures (by decoupling detection and remediation). Once detected you can remedy threats with various bouncers (firewall block, nginx http 403, Captchas, etc.) while the aggressive IP can be sent to CrowdSec for curation before being shared among all users to further improve everyone's security. See [FAQ](https://doc.crowdsec.net/docs/faq) or read below for more.
 
 ## 2 mins install
 
@@ -75,7 +75,7 @@ cd crowdsec-v* && sudo ./wizard.sh -i
 
 ## :information_source: About the CrowdSec project
 
-Crowdsec is an open-source, lightweight software, detecting peers with aggressive behaviors to prevent them from accessing your systems. Its user friendly design and assistance offers a low technical barrier of entry and nevertheless a high security gain.
+Crowdsec is an open-source, lightweight software, detecting peers with aggressive behaviors to prevent them from accessing your systems. Its user-friendly design and assistance offer a low technical barrier of entry and nevertheless a high security gain.
 
 The architecture is as follows :
 
@@ -87,15 +87,15 @@ Once an unwanted behavior is detected, deal with it through a [bouncer](https://
 
 ## Outnumbering hackers all together
 
-By sharing the threat they faced, all users are protecting each-others (hence the name Crowd-Security). Crowdsec is designed for modern infrastructures, with its "*Detect Here, Remedy There*" approach, letting you analyse logs coming from several sources in one place and block threats at various levels (applicative, system, infrastructural) of your stack.
+By sharing the threat they faced, all users are protecting each-others (hence the name Crowd-Security). Crowdsec is designed for modern infrastructures, with its "*Detect Here, Remedy There*" approach, letting you analyze logs coming from several sources in one place and block threats at various levels (applicative, system, infrastructural) of your stack.
 
-CrowdSec ships by default with scenarios (brute force, port scan, web scan, etc.) adapted for most context, but you can easily extend it by picking more of them from the **[HUB](https://hub.crowdsec.net)**. It is also easy to adapt an existing one or create one yourself.
+CrowdSec ships by default with scenarios (brute force, port scan, web scan, etc.) adapted for most contexts, but you can easily extend it by picking more of them from the **[HUB](https://hub.crowdsec.net)**. It is also easy to adapt an existing one or create one yourself.
 
 ## :point_right: What it is not
 
 CrowdSec is not a SIEM, storing your logs (neither locally nor remotely). Your data are analyzed locally and forgotten.
 
-Signals sent to the curation platform are limited to the very strict minimum: IP, Scenario, Timestamp. They are only used to allow the system to spot new rogue IPs, rule out false positives or poisoning attempts.
+Signals sent to the curation platform are limited to the very strict minimum: IP, Scenario, Timestamp. They are only used to allow the system to spot new rogue IPs, and rule out false positives or poisoning attempts.
 
 ## :arrow_down: Install it !
 
@@ -141,7 +141,7 @@ Or look directly at [installation documentation](https://doc.crowdsec.net/docs/g
 ### Hot & Cold logs
 
 <details>
-  <summary>Process cold logs, for forensic, tests and chasing false-positives & false negatives (click to expand)</summary>
+  <summary>Process cold logs, for forensic, tests and chasing false positives & false negatives (click to expand)</summary>
   <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/forensic-mode.gif?raw=true">
 </details>
 

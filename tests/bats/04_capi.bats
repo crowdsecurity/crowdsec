@@ -37,16 +37,16 @@ setup() {
         [[ $(cscli alerts list -a -o json 2>/dev/null || cscli alerts list -o json) != "null" ]] && break
     done
 
-    run cscli alerts list -a -o json
+    run --separate-stderr cscli alerts list -a -o json
     if [[ "${status}" -ne 0 ]]; then
-        run cscli alerts list -o json
+        run --separate-stderr cscli alerts list -o json
     fi
     run -0 jq -r '. | length' <(output)
     refute_output 0
 }
 
 @test "we have exactly one machine, localhost" {
-    run -0 cscli machines list -o json
+    run -0 --separate-stderr cscli machines list -o json
     run -0 jq -c '[. | length, .[0].machineId[0:32], .[0].isValidated, .[0].ipAddress]' <(output)
     assert_output '[1,"githubciXXXXXXXXXXXXXXXXXXXXXXXX",true,"127.0.0.1"]'
 }

@@ -2,7 +2,6 @@ package csconfig
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -16,9 +15,11 @@ const (
 	SEND_TAINTED_SCENARIOS = "tainted"
 	SEND_MANUAL_SCENARIOS  = "manual"
 	RECEIVE_DECISIONS      = "decisions_poll"
+  SEND_CONTEXT           = "context"
 )
 
-var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS, RECEIVE_DECISIONS}
+
+var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS, SEND_CONTEXT, RECEIVE_DECISIONS}
 
 var DefaultConsoleConfigFilePath = DefaultConfigPath("console.yaml")
 
@@ -27,6 +28,7 @@ type ConsoleConfig struct {
 	ShareTaintedScenarios *bool `yaml:"share_tainted"`
 	ShareCustomScenarios  *bool `yaml:"share_custom"`
 	ReceiveDecisions      *bool `yaml:"receive_decisions"`
+	ShareContext          *bool `yaml:"share_context"`
 }
 
 func (c *LocalApiServerCfg) LoadConsoleConfig() error {
@@ -37,10 +39,11 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 		c.ConsoleConfig.ShareTaintedScenarios = types.BoolPtr(true)
 		c.ConsoleConfig.ShareManualDecisions = types.BoolPtr(false)
 		c.ConsoleConfig.ReceiveDecisions = types.BoolPtr(false)
+		c.ConsoleConfig.ShareContext = types.BoolPtr(false)
 		return nil
 	}
 
-	yamlFile, err := ioutil.ReadFile(c.ConsoleConfigPath)
+	yamlFile, err := os.ReadFile(c.ConsoleConfigPath)
 	if err != nil {
 		return fmt.Errorf("reading console config file '%s': %s", c.ConsoleConfigPath, err)
 	}
@@ -65,6 +68,12 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 		log.Debugf("no receive_decisions scenarios found, setting to false")
 		c.ConsoleConfig.ReceiveDecisions = types.BoolPtr(false)
 	}
+
+	if c.ConsoleConfig.ShareContext == nil {
+		log.Debugf("no 'context' found, setting to false")
+		c.ConsoleConfig.ShareContext = types.BoolPtr(false)
+	}
+
 	log.Debugf("Console configuration '%s' loaded successfully", c.ConsoleConfigPath)
 
 	return nil

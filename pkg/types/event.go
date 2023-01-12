@@ -30,6 +30,8 @@ type Event struct {
 	Parsed map[string]string `yaml:"Parsed,omitempty" json:"Parsed,omitempty"`
 	/* output of enrichment */
 	Enriched map[string]string `yaml:"Enriched,omitempty" json:"Enriched,omitempty"`
+	/* output of Unmarshal */
+	Unmarshaled map[string]interface{} `yaml:"Unmarshaled,omitempty" json:"Unmarshaled,omitempty"`
 	/* Overflow */
 	Overflow      RuntimeAlert `yaml:"Overflow,omitempty" json:"Alert,omitempty"`
 	Time          time.Time    `yaml:"Time,omitempty" json:"Time,omitempty"` //parsed time `json:"-"` ``
@@ -50,6 +52,25 @@ func (e *Event) GetType() string {
 		log.Warningf("unknown event type for %+v", e)
 		return "unknown"
 	}
+}
+
+func (e *Event) GetMeta(key string) string {
+	if e.Type == OVFLW {
+		for _, alert := range e.Overflow.APIAlerts {
+			for _, event := range alert.Events {
+				if event.GetMeta(key) != "" {
+					return event.GetMeta(key)
+				}
+			}
+		}
+	} else if e.Type == LOG {
+		for k, v := range e.Meta {
+			if k == key {
+				return v
+			}
+		}
+	}
+	return ""
 }
 
 //Move in leakybuckets

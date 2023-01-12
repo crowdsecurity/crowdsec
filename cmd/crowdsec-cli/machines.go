@@ -1,48 +1,42 @@
 package main
 
 import (
-	"bytes"
 	saferand "crypto/rand"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math/big"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/database"
-	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/crowdsecurity/machineid"
 	"github.com/enescakir/emoji"
+	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
-	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
-)
 
-var machineID string
-var machinePassword string
-var interactive bool
-var apiURL string
-var outputFile string
-var forceAdd bool
-var autoAdd bool
+	"github.com/crowdsecurity/machineid"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
+)
 
 var (
 	passwordLength = 64
-	upper          = "ABCDEFGHIJKLMNOPQRSTUVWXY"
-	lower          = "abcdefghijklmnopqrstuvwxyz"
-	digits         = "0123456789"
 )
 
 func generatePassword(length int) string {
+	upper  := "ABCDEFGHIJKLMNOPQRSTUVWXY"
+	lower  := "abcdefghijklmnopqrstuvwxyz"
+	digits := "0123456789"
 
 	charset := upper + lower + digits
 	charsetLength := len(charset)
@@ -109,50 +103,34 @@ func displayLastHeartBeat(m *ent.Machine, fancy bool) string {
 	return hbDisplay
 }
 
-func getAgents(dbClient *database.Client) ([]byte, error) {
-	w := bytes.NewBuffer(nil)
+func getAgents(out io.Writer, dbClient *database.Client) error {
 	machines, err := dbClient.ListMachines()
 	if err != nil {
-		return nil, fmt.Errorf("unable to list machines: %s", err)
+		return fmt.Errorf("unable to list machines: %s", err)
 	}
 	if csConfig.Cscli.Output == "human" {
-		table := tablewriter.NewWriter(w)
-		table.SetCenterSeparator("")
-		table.SetColumnSeparator("")
-
-		table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-		table.SetAlignment(tablewriter.ALIGN_LEFT)
-		table.SetHeader([]string{"Name", "IP Address", "Last Update", "Status", "Version", "Auth Type", "Last Heartbeat"})
-		for _, w := range machines {
-			var validated string
-			if w.IsValidated {
-				validated = emoji.CheckMark.String()
-			} else {
-				validated = emoji.Prohibited.String()
-			}
-			table.Append([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version, w.AuthType, displayLastHeartBeat(w, true)})
-		}
-		table.Render()
+		getAgentsTable(out, machines)
 	} else if csConfig.Cscli.Output == "json" {
-		x, err := json.MarshalIndent(machines, "", " ")
-		if err != nil {
+		enc := json.NewEncoder(out)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(machines); err != nil {
 			log.Fatalf("failed to unmarshal")
 		}
-		return x, nil
+		return nil
 	} else if csConfig.Cscli.Output == "raw" {
-		csvwriter := csv.NewWriter(w)
+		csvwriter := csv.NewWriter(out)
 		err := csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version", "auth_type", "last_heartbeat"})
 		if err != nil {
 			log.Fatalf("failed to write header: %s", err)
 		}
-		for _, w := range machines {
+		for _, m := range machines {
 			var validated string
-			if w.IsValidated {
+			if m.IsValidated {
 				validated = "true"
 			} else {
 				validated = "false"
 			}
-			err := csvwriter.Write([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version, w.AuthType, displayLastHeartBeat(w, false)})
+			err := csvwriter.Write([]string{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, displayLastHeartBeat(m, false)})
 			if err != nil {
 				log.Fatalf("failed to write raw output : %s", err)
 			}
@@ -161,35 +139,11 @@ func getAgents(dbClient *database.Client) ([]byte, error) {
 	} else {
 		log.Errorf("unknown output '%s'", csConfig.Cscli.Output)
 	}
-	return w.Bytes(), nil
+	return nil
 }
 
-func NewMachinesCmd() *cobra.Command {
-	/* ---- DECISIONS COMMAND */
-	var cmdMachines = &cobra.Command{
-		Use:   "machines [action]",
-		Short: "Manage local API machines [requires local API]",
-		Long: `To list/add/delete/validate machines.
-Note: This command requires database direct access, so is intended to be run on the local API machine.
-`,
-		Example:           `cscli machines [action]`,
-		DisableAutoGenTag: true,
-		Aliases:           []string{"machine"},
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
-				if err != nil {
-					log.Errorf("local api : %s", err)
-				}
-				log.Fatal("Local API is disabled, please run this command on the local API machine")
-			}
-			if err := csConfig.LoadDBConfig(); err != nil {
-				log.Errorf("This command requires direct database access (must be run on the local API machine)")
-				log.Fatalf(err.Error())
-			}
-		},
-	}
-
-	var cmdMachinesList = &cobra.Command{
+func NewMachinesListCmd() *cobra.Command {
+	cmdMachinesList := &cobra.Command{
 		Use:               "list",
 		Short:             "List machines",
 		Long:              `List `,
@@ -204,16 +158,18 @@ Note: This command requires database direct access, so is intended to be run on 
 			}
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			agents, err := getAgents(dbClient)
+			err := getAgents(color.Output, dbClient)
 			if err != nil {
 				log.Fatalf("unable to list machines: %s", err)
 			}
-			fmt.Printf("%s\n", agents)
 		},
 	}
-	cmdMachines.AddCommand(cmdMachinesList)
 
-	var cmdMachinesAdd = &cobra.Command{
+	return cmdMachinesList
+}
+
+func NewMachinesAddCmd() *cobra.Command {
+	cmdMachinesAdd := &cobra.Command{
 		Use:               "add",
 		Short:             "add machine to the database.",
 		DisableAutoGenTag: true,
@@ -230,93 +186,135 @@ cscli machines add MyTestMachine --password MyPassword
 				log.Fatalf("unable to create new database client: %s", err)
 			}
 		},
-		Run: func(cmd *cobra.Command, args []string) {
-			var dumpFile string
-			var err error
-
-			// create machineID if not specified by user
-			if len(args) == 0 {
-				if !autoAdd {
-					printHelp(cmd)
-					return
-				}
-				machineID, err = generateID("")
-				if err != nil {
-					log.Fatalf("unable to generate machine id : %s", err)
-				}
-			} else {
-				machineID = args[0]
-			}
-
-			/*check if file already exists*/
-			if outputFile != "" {
-				dumpFile = outputFile
-			} else if csConfig.API.Client != nil && csConfig.API.Client.CredentialsFilePath != "" {
-				dumpFile = csConfig.API.Client.CredentialsFilePath
-			}
-
-			// create a password if it's not specified by user
-			if machinePassword == "" && !interactive {
-				if !autoAdd {
-					printHelp(cmd)
-					return
-				}
-				machinePassword = generatePassword(passwordLength)
-			} else if machinePassword == "" && interactive {
-				qs := &survey.Password{
-					Message: "Please provide a password for the machine",
-				}
-				survey.AskOne(qs, &machinePassword)
-			}
-			password := strfmt.Password(machinePassword)
-			_, err = dbClient.CreateMachine(&machineID, &password, "", true, forceAdd, types.PasswordAuthType)
-			if err != nil {
-				log.Fatalf("unable to create machine: %s", err)
-			}
-			log.Infof("Machine '%s' successfully added to the local API", machineID)
-
-			if apiURL == "" {
-				if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil && csConfig.API.Client.Credentials.URL != "" {
-					apiURL = csConfig.API.Client.Credentials.URL
-				} else if csConfig.API.Server != nil && csConfig.API.Server.ListenURI != "" {
-					apiURL = "http://" + csConfig.API.Server.ListenURI
-				} else {
-					log.Fatalf("unable to dump an api URL. Please provide it in your configuration or with the -u parameter")
-				}
-			}
-			apiCfg := csconfig.ApiCredentialsCfg{
-				Login:    machineID,
-				Password: password.String(),
-				URL:      apiURL,
-			}
-			apiConfigDump, err := yaml.Marshal(apiCfg)
-			if err != nil {
-				log.Fatalf("unable to marshal api credentials: %s", err)
-			}
-			if dumpFile != "" && dumpFile != "-" {
-				err = ioutil.WriteFile(dumpFile, apiConfigDump, 0644)
-				if err != nil {
-					log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
-				}
-				log.Printf("API credentials dumped to '%s'", dumpFile)
-			} else {
-				fmt.Printf("%s\n", string(apiConfigDump))
-			}
-		},
+		RunE: runMachinesAdd,
 	}
-	cmdMachinesAdd.Flags().StringVarP(&machinePassword, "password", "p", "", "machine password to login to the API")
-	cmdMachinesAdd.Flags().StringVarP(&outputFile, "file", "f", "",
-		"output file destination (defaults to "+csconfig.DefaultConfigPath("local_api_credentials.yaml"))
-	cmdMachinesAdd.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the local API")
-	cmdMachinesAdd.Flags().BoolVarP(&interactive, "interactive", "i", false, "interfactive mode to enter the password")
-	cmdMachinesAdd.Flags().BoolVarP(&autoAdd, "auto", "a", false, "automatically generate password (and username if not provided)")
-	cmdMachinesAdd.Flags().BoolVar(&forceAdd, "force", false, "will force add the machine if it already exist")
-	cmdMachines.AddCommand(cmdMachinesAdd)
 
-	var cmdMachinesDelete = &cobra.Command{
-		Use:               "delete --machine MyTestMachine",
+	flags := cmdMachinesAdd.Flags()
+	flags.StringP("password", "p", "", "machine password to login to the API")
+	flags.StringP("file", "f", "", "output file destination (defaults to "+csconfig.DefaultConfigPath("local_api_credentials.yaml"))
+	flags.StringP("url", "u", "", "URL of the local API")
+	flags.BoolP("interactive", "i", false, "interfactive mode to enter the password")
+	flags.BoolP("auto", "a", false, "automatically generate password (and username if not provided)")
+	flags.Bool("force", false, "will force add the machine if it already exist")
+
+	return cmdMachinesAdd
+}
+
+func runMachinesAdd(cmd *cobra.Command, args []string) error {
+	var dumpFile string
+	var err error
+
+	flags := cmd.Flags()
+
+	machinePassword, err := flags.GetString("password")
+	if err != nil {
+		return err
+	}
+
+	outputFile, err := flags.GetString("file")
+	if err != nil {
+		return err
+	}
+
+	apiURL, err := flags.GetString("url")
+	if err != nil {
+		return err
+	}
+
+	interactive, err := flags.GetBool("interactive")
+	if err != nil {
+		return err
+	}
+
+	autoAdd, err := flags.GetBool("auto")
+	if err != nil {
+		return err
+	}
+
+	forceAdd, err := flags.GetBool("force")
+	if err != nil {
+		return err
+	}
+
+	var machineID string
+
+	// create machineID if not specified by user
+	if len(args) == 0 {
+		if !autoAdd {
+			printHelp(cmd)
+			return nil
+		}
+		machineID, err = generateID("")
+		if err != nil {
+			log.Fatalf("unable to generate machine id : %s", err)
+		}
+	} else {
+		machineID = args[0]
+	}
+
+	/*check if file already exists*/
+	if outputFile != "" {
+		dumpFile = outputFile
+	} else if csConfig.API.Client != nil && csConfig.API.Client.CredentialsFilePath != "" {
+		dumpFile = csConfig.API.Client.CredentialsFilePath
+	}
+
+	// create a password if it's not specified by user
+	if machinePassword == "" && !interactive {
+		if !autoAdd {
+			printHelp(cmd)
+			return nil
+		}
+		machinePassword = generatePassword(passwordLength)
+	} else if machinePassword == "" && interactive {
+		qs := &survey.Password{
+			Message: "Please provide a password for the machine",
+		}
+		survey.AskOne(qs, &machinePassword)
+	}
+	password := strfmt.Password(machinePassword)
+	_, err = dbClient.CreateMachine(&machineID, &password, "", true, forceAdd, types.PasswordAuthType)
+	if err != nil {
+		log.Fatalf("unable to create machine: %s", err)
+	}
+	log.Infof("Machine '%s' successfully added to the local API", machineID)
+
+	if apiURL == "" {
+		if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil && csConfig.API.Client.Credentials.URL != "" {
+			apiURL = csConfig.API.Client.Credentials.URL
+		} else if csConfig.API.Server != nil && csConfig.API.Server.ListenURI != "" {
+			apiURL = "http://" + csConfig.API.Server.ListenURI
+		} else {
+			log.Fatalf("unable to dump an api URL. Please provide it in your configuration or with the -u parameter")
+		}
+	}
+	apiCfg := csconfig.ApiCredentialsCfg{
+		Login:    machineID,
+		Password: password.String(),
+		URL:      apiURL,
+	}
+	apiConfigDump, err := yaml.Marshal(apiCfg)
+	if err != nil {
+		log.Fatalf("unable to marshal api credentials: %s", err)
+	}
+	if dumpFile != "" && dumpFile != "-" {
+		err = os.WriteFile(dumpFile, apiConfigDump, 0644)
+		if err != nil {
+			log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
+		}
+		log.Printf("API credentials dumped to '%s'", dumpFile)
+	} else {
+		fmt.Printf("%s\n", string(apiConfigDump))
+	}
+
+	return nil
+}
+
+func NewMachinesDeleteCmd() *cobra.Command {
+	cmdMachinesDelete := &cobra.Command{
+		Use:               "delete [machine_name]...",
 		Short:             "delete machines",
-		Example:           `cscli machines delete "machine_name"`,
+		Example:           `cscli machines delete "machine1" "machine2"`,
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"remove"},
 		DisableAutoGenTag: true,
@@ -327,22 +325,46 @@ cscli machines add MyTestMachine --password MyPassword
 				log.Fatalf("unable to create new database client: %s", err)
 			}
 		},
-		Run: func(cmd *cobra.Command, args []string) {
-			machineID = args[0]
-			for _, machineID := range args {
-				err := dbClient.DeleteWatcher(machineID)
-				if err != nil {
-					log.Errorf("unable to delete machine '%s': %s", machineID, err)
-					return
-				}
-				log.Infof("machine '%s' deleted successfully", machineID)
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			var err error
+			dbClient, err = getDBClient()
+			if err != nil {
+				cobra.CompError("unable to create new database client: " + err.Error())
+				return nil, cobra.ShellCompDirectiveNoFileComp
 			}
+			machines, err := dbClient.ListMachines()
+			if err != nil {
+				cobra.CompError("unable to list machines " + err.Error())
+			}
+			ret := make([]string, 0)
+			for _, machine := range machines {
+				if strings.Contains(machine.MachineId, toComplete) && !inSlice(machine.MachineId, args) {
+					ret = append(ret, machine.MachineId)
+				}
+			}
+			return ret, cobra.ShellCompDirectiveNoFileComp
 		},
+		RunE: runMachinesDelete,
 	}
-	cmdMachinesDelete.Flags().StringVarP(&machineID, "machine", "m", "", "machine to delete")
-	cmdMachines.AddCommand(cmdMachinesDelete)
 
-	var cmdMachinesValidate = &cobra.Command{
+	return cmdMachinesDelete
+}
+
+func runMachinesDelete(cmd *cobra.Command, args []string) error {
+	for _, machineID := range args {
+		err := dbClient.DeleteWatcher(machineID)
+		if err != nil {
+			log.Errorf("unable to delete machine '%s': %s", machineID, err)
+			return nil
+		}
+		log.Infof("machine '%s' deleted successfully", machineID)
+	}
+
+	return nil
+}
+
+func NewMachinesValidateCmd() *cobra.Command {
+	cmdMachinesValidate := &cobra.Command{
 		Use:               "validate",
 		Short:             "validate a machine to access the local API",
 		Long:              `validate a machine to access the local API.`,
@@ -357,14 +379,41 @@ cscli machines add MyTestMachine --password MyPassword
 			}
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			machineID = args[0]
+			machineID := args[0]
 			if err := dbClient.ValidateMachine(machineID); err != nil {
 				log.Fatalf("unable to validate machine '%s': %s", machineID, err)
 			}
 			log.Infof("machine '%s' validated successfully", machineID)
 		},
 	}
-	cmdMachines.AddCommand(cmdMachinesValidate)
+
+	return cmdMachinesValidate
+}
+
+func NewMachinesCmd() *cobra.Command {
+	var cmdMachines = &cobra.Command{
+		Use:   "machines [action]",
+		Short: "Manage local API machines [requires local API]",
+		Long: `To list/add/delete/validate machines.
+Note: This command requires database direct access, so is intended to be run on the local API machine.
+`,
+		Example:           `cscli machines [action]`,
+		DisableAutoGenTag: true,
+		Aliases:           []string{"machine"},
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
+				if err != nil {
+					log.Errorf("local api : %s", err)
+				}
+				log.Fatal("Local API is disabled, please run this command on the local API machine")
+			}
+		},
+	}
+
+	cmdMachines.AddCommand(NewMachinesListCmd())
+	cmdMachines.AddCommand(NewMachinesAddCmd())
+	cmdMachines.AddCommand(NewMachinesDeleteCmd())
+	cmdMachines.AddCommand(NewMachinesValidateCmd())
 
 	return cmdMachines
 }

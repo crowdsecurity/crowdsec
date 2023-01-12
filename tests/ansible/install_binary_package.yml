@@ -1,0 +1,112 @@
+# vim: set ft=yaml.ansible:
+---
+
+- name: "Install and set up binary crowdsec package..."
+  hosts: all
+  gather_facts: true
+  tasks:
+
+    - name: "Hardcode master branch for the hub, temporary override before install (config.yaml.local)"
+      become: true
+      block:
+        - name: "Create /etc/crowdsec"
+          ansible.builtin.file:
+            path: "/etc/crowdsec"
+            state: directory
+            mode: 0o0755
+        - name: "Create /etc/crowdsec/config.yaml.local"
+          ansible.builtin.copy:
+            dest: "/etc/crowdsec/config.yaml.local"
+            content: "{{ config_yaml_local | to_nice_yaml }}"
+            mode: 0o600
+          vars:
+            config_yaml_local:
+              cscli:
+                hub_branch: master
+      when:
+        - (package_version_deb | length > 0) or
+          (package_version_rpm | length > 0) or
+          (package_file | length > 0) or
+          (package_dir | length > 0)
+
+    - name: "Install crowdsec binaries from a binary repository"
+      ansible.builtin.include_role:
+        name: crowdsecurity.testing.install_package_from_repo
+      when: (package_version_deb | length > 0) or
+            (package_version_rpm | length > 0)
+
+    - name: "Install crowdsec binaries from a package file"
+      ansible.builtin.include_role:
+        name: crowdsecurity.testing.install_package_from_file
+      when: package_file | length > 0
+
+    - name: "Install crowdsec binaries from a package directory"
+      ansible.builtin.include_role:
+        name: crowdsecurity.testing.install_package_from_pkgdir
+      when: package_dir | length > 0
+
+    - name: "Hardcode master branch for the hub, for real this time"
+      become: true
+      block:
+        - name: "Read config.yaml"
+          ansible.builtin.slurp:
+            path: "/etc/crowdsec/config.yaml"
+          register: config_yaml
+        - name: "Create fact from config.yaml"
+          ansible.builtin.set_fact:
+            config_data: "{{ config_yaml['content'] | b64decode | from_yaml }}"
+        - name: "Patch dictionary"
+          ansible.builtin.set_fact:
+            config_data: "{{ config_data | combine(config_patch, recursive=True) }}"
+          vars:
+            config_patch:
+              cscli:
+                hub_branch: master
+        - name: "Write patched config.yaml"
+          ansible.builtin.copy:
+            content: '{{ config_data | to_nice_yaml }}'
+            dest: "/etc/crowdsec/config.yaml"
+            # preserve mode to be able to test permissions from package
+            mode: preserve
+        - name: "Remove config.yaml.local"
+          ansible.builtin.file:
+            path: "/etc/crowdsec/config.yaml.local"
+            state: absent
+      when:
+        - (package_version_deb | length > 0) or
+          (package_version_rpm | length > 0) or
+          (package_file | length > 0) or
+          (package_dir | length > 0)
+
+    # this is required to avoid fatal errors in case systemctl is not working
+    # (which happens on some aws instances)
+    - name: "Override acquis.yaml for package testing"
+      become: true
+      ansible.builtin.copy:
+        dest: "/etc/crowdsec/acquis.yaml"
+        content: "{{ acquis_yaml | to_nice_yaml }}"
+        mode: preserve
+      vars:
+        acquis_yaml:
+          filenames:
+            - /tmp/should-not-exist.log
+          labels:
+            type: syslog
+            force_inotify: true
+      when:
+        - (package_version_deb | length > 0) or
+          (package_version_rpm | length > 0) or
+          (package_file | length > 0) or
+          (package_dir | length > 0)
+
+  vars:
+    package_version_deb: >-
+      {{ lookup('ansible.builtin.env', 'TEST_PACKAGE_VERSION_DEB') }}
+    package_version_rpm: >-
+      {{ lookup('ansible.builtin.env', 'TEST_PACKAGE_VERSION_RPM') }}
+    package_file: >-
+      {{ lookup('ansible.builtin.env', 'TEST_PACKAGE_FILE') }}
+    package_dir: >-
+      {{ lookup('ansible.builtin.env', 'TEST_PACKAGE_DIR') }}
+    binary_package_name: >-
+      crowdsec

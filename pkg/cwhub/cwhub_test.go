@@ -3,7 +3,6 @@ package cwhub
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -391,7 +390,7 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		log.Fatalf("unexpected url :/ %s", req.URL.Path)
 	}
 
-	response.Body = ioutil.NopCloser(strings.NewReader(responseBody))
+	response.Body = io.NopCloser(strings.NewReader(responseBody))
 	return response, nil
 }
 

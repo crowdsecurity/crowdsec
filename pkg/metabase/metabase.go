@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
@@ -109,7 +108,7 @@ func NewMetabase(configPath string, containerName string) (*Metabase, error) {
 }
 
 func (m *Metabase) LoadConfig(configPath string) error {
-	yamlFile, err := ioutil.ReadFile(configPath)
+	yamlFile, err := os.ReadFile(configPath)
 	if err != nil {
 		return err
 	}
@@ -303,7 +302,7 @@ func (m *Metabase) DumpConfig(path string) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(path, data, 0600)
+	return os.WriteFile(path, data, 0600)
 }
 
 func (m *Metabase) DownloadDatabase(force bool) error {
@@ -329,11 +328,11 @@ func (m *Metabase) DownloadDatabase(force bool) error {
 	if err != nil {
 		return fmt.Errorf("failed request to fetch metabase db : %s", err)
 	}
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("got http %d while requesting metabase db %s, stop", resp.StatusCode, m.InternalDBURL)
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed request read while fetching metabase db : %s", err)
 	}
@@ -368,7 +367,7 @@ func (m *Metabase) ExtractDatabase(buf *bytes.Reader) error {
 			return fmt.Errorf("while opening zip content %s : %s", f.Name, err)
 		}
 		written, err := io.Copy(tfd, rc)
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			log.Printf("files finished ok")
 		} else if err != nil {
 			return fmt.Errorf("while copying content to %s : %s", tfname, err)

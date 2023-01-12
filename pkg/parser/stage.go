@@ -7,8 +7,7 @@ package parser
 */
 
 import (
-	//"fmt"
-
+	"errors"
 	"fmt"
 	"io"
 	_ "net/http/pprof"
@@ -68,7 +67,7 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx EnricherCtx) (
 			node.OnSuccess = "continue" //default behavior is to continue
 			err = dec.Decode(&node)
 			if err != nil {
-				if err == io.EOF {
+				if errors.Is(err, io.EOF) {
 					log.Tracef("End of yaml file")
 					break
 				}
@@ -115,7 +114,7 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx EnricherCtx) (
 				for _, data := range node.Data {
 					err = exprhelpers.FileInit(pctx.DataFolder, data.DestPath, data.Type)
 					if err != nil {
-						log.Errorf(err.Error())
+						log.Error(err)
 					}
 				}
 			}

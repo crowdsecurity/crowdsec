@@ -1,0 +1,6 @@
+#filter: "evt.Overflow.Labels.remediation == 'true'"
+name: tests/unmarshalJSON
+description: "unmarshal JSON"
+statics:
+  - method: UnmarshalJSON
+    expression: evt.Line.Raw
