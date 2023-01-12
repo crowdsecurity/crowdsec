@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/antonmedv/expr"
 	"github.com/crowdsecurity/grokky"
@@ -11,6 +12,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/antonmedv/expr/vm"
+	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/davecgh/go-spew/spew"
@@ -57,6 +59,8 @@ type Node struct {
 	Grok types.GrokPattern `yaml:"grok,omitempty"`
 	//Statics can be present in any type of node and is executed last
 	Statics []types.ExtraField `yaml:"statics,omitempty"`
+	//Stash allows to capture data from the log line and store it in an accessible cache
+	Stash []types.DataCapture `yaml:"stash,omitempty"`
 	//Whitelists
 	Whitelist Whitelist           `yaml:"whitelist,omitempty"`
 	Data      []*types.DataSource `yaml:"data,omitempty"`
@@ -101,6 +105,25 @@ func (n *Node) validate(pctx *UnixParserCtx, ectx EnricherCtx) error {
 			if static.Value == "" && static.RunTimeValue == nil {
 				return fmt.Errorf("static %d value or expression must be set", idx)
 			}
+		}
+	}
+
+	for idx, stash := range n.Stash {
+		if stash.Name == "" {
+			return fmt.Errorf("stash %d : name must be set", idx)
+		}
+		if stash.Value == "" {
+			return fmt.Errorf("stash %s : value expression must be set", stash.Name)
+		}
+		if stash.Key == "" {
+			return fmt.Errorf("stash %s : key expression must be set", stash.Name)
+		}
+		if stash.TTL == "" {
+			return fmt.Errorf("stash %s : ttl must be set", stash.Name)
+		}
+		//should be configurable
+		if stash.MaxMapSize == 0 {
+			stash.MaxMapSize = 100
 		}
 	}
 	return nil
@@ -285,6 +308,50 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		clog.Tracef("! No grok pattern : %p", n.Grok.RunTimeRegexp)
 	}
 
+	//Process the stash (data collection) if : a grok was present and succeeded, or if there is no grok
+	if NodeHasOKGrok || n.Grok.RunTimeRegexp == nil {
+		for idx, stash := range n.Stash {
+			var value string
+			var key string
+			if stash.ValueExpression == nil {
+				clog.Warningf("Stash %d has no value expression, skipping", idx)
+				continue
+			}
+			if stash.KeyExpression == nil {
+				clog.Warningf("Stash %d has no key expression, skipping", idx)
+				continue
+			}
+			//collect the data
+			output, err := expr.Run(stash.ValueExpression, cachedExprEnv)
+			if err != nil {
+				clog.Warningf("Error while running stash val expression : %v", err)
+			}
+			//can we expect anything else than a string ?
+			switch output := output.(type) {
+			case string:
+				value = output
+			default:
+				clog.Warningf("unexpected type %t (%v) while running '%s'", output, output, stash.Value)
+				continue
+			}
+
+			//collect the key
+			output, err = expr.Run(stash.KeyExpression, cachedExprEnv)
+			if err != nil {
+				clog.Warningf("Error while running stash key expression : %v", err)
+			}
+			//can we expect anything else than a string ?
+			switch output := output.(type) {
+			case string:
+				key = output
+			default:
+				clog.Warningf("unexpected type %t (%v) while running '%s'", output, output, stash.Key)
+				continue
+			}
+			cache.SetKey(stash.Name, key, value, &stash.TTLVal)
+		}
+	}
+
 	//Iterate on leafs
 	if len(n.LeavesNodes) > 0 {
 		for _, leaf := range n.LeavesNodes {
@@ -434,10 +501,10 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		n.Logger.Tracef("+ Regexp Compilation '%s'", n.Grok.RegexpName)
 		n.Grok.RunTimeRegexp, err = pctx.Grok.Get(n.Grok.RegexpName)
 		if err != nil {
-			return fmt.Errorf("Unable to find grok '%s' : %v", n.Grok.RegexpName, err)
+			return fmt.Errorf("unable to find grok '%s' : %v", n.Grok.RegexpName, err)
 		}
 		if n.Grok.RunTimeRegexp == nil {
-			return fmt.Errorf("Empty grok '%s'", n.Grok.RegexpName)
+			return fmt.Errorf("empty grok '%s'", n.Grok.RegexpName)
 		}
 		n.Logger.Tracef("%s regexp: %s", n.Grok.RegexpName, n.Grok.RunTimeRegexp.Regexp.String())
 		valid = true
@@ -447,11 +514,11 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		}
 		n.Grok.RunTimeRegexp, err = pctx.Grok.Compile(n.Grok.RegexpValue)
 		if err != nil {
-			return fmt.Errorf("Failed to compile grok '%s': %v\n", n.Grok.RegexpValue, err)
+			return fmt.Errorf("failed to compile grok '%s': %v", n.Grok.RegexpValue, err)
 		}
 		if n.Grok.RunTimeRegexp == nil {
 			// We shouldn't be here because compilation succeeded, so regexp shouldn't be nil
-			return fmt.Errorf("Grok compilation failure: %s", n.Grok.RegexpValue)
+			return fmt.Errorf("grok compilation failure: %s", n.Grok.RegexpValue)
 		}
 		n.Logger.Tracef("%s regexp : %s", n.Grok.RegexpValue, n.Grok.RunTimeRegexp.Regexp.String())
 		valid = true
@@ -480,6 +547,38 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		}
 		valid = true
 	}
+
+	/* load data capture (stash) */
+	for i, stash := range n.Stash {
+		n.Stash[i].ValueExpression, err = expr.Compile(stash.Value,
+			expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+		if err != nil {
+			return errors.Wrap(err, "while compiling stash value expression")
+		}
+
+		n.Stash[i].KeyExpression, err = expr.Compile(stash.Key,
+			expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+		if err != nil {
+			return errors.Wrap(err, "while compiling stash key expression")
+		}
+
+		n.Stash[i].TTLVal, err = time.ParseDuration(stash.TTL)
+		if err != nil {
+			return errors.Wrap(err, "while parsing stash ttl")
+		}
+
+		logLvl := n.Logger.Logger.GetLevel()
+		//init the cache, does it make sense to create it here just to be sure everything is fine ?
+		if err := cache.CacheInit(cache.CacheCfg{
+			Size:     n.Stash[i].MaxMapSize,
+			TTL:      n.Stash[i].TTLVal,
+			Name:     n.Stash[i].Name,
+			LogLevel: &logLvl,
+		}); err != nil {
+			return errors.Wrap(err, "while initializing cache")
+		}
+	}
+
 	/* compile leafs if present */
 	if len(n.LeavesNodes) > 0 {
 		for idx := range n.LeavesNodes {

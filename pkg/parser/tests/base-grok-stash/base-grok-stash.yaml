@@ -1,0 +1,31 @@
+filter: "evt.Line.Labels.type == 'testlog'"
+debug: true
+onsuccess: next_stage
+name: tests/base-grok-stash
+pattern_syntax:
+  TEST_START: start %{DATA:program} thing with pid %{NUMBER:pid}
+  TEST_CONTINUED: pid %{NUMBER:pid} did a forbidden thing
+nodes:
+  - #name: tests/base-grok-stash-sub-start
+    grok:
+      name: "TEST_START"
+      apply_on: Line.Raw
+      statics:
+        - meta: log_type
+          value: test_start
+    stash:
+      - name: test_program_pid_assoc
+        key: evt.Parsed.pid
+        value: evt.Parsed.program
+        ttl: 30s
+        size: 10
+  - #name: tests/base-grok-stash-sub-cont
+    grok:
+      name: "TEST_CONTINUED"
+      apply_on: Line.Raw
+      statics:
+        - meta: log_type
+          value: test_continue
+        - meta: associated_prog_name
+          expression: GetFromStash("test_program_pid_assoc", evt.Parsed.pid)
+

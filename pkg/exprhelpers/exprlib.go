@@ -14,6 +14,7 @@ import (
 
 	"github.com/c-robinson/iplib"
 
+	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
@@ -69,6 +70,8 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"GetDecisionsSinceCount": GetDecisionsSinceCount,
 		"Sprintf":                fmt.Sprintf,
 		"ParseUnix":              ParseUnix,
+		"GetFromStash":           cache.GetKey,
+		"SetInStash":             cache.SetKey,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
