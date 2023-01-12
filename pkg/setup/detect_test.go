@@ -561,6 +561,11 @@ func TestDetectForcedUnit(t *testing.T) {
 }
 
 func TestDetectForcedProcess(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping on windows")
+		// while looking for service wizard: rule 'ProcessRunning("foobar")': while looking up running processes: could not get Name: A device attached to the system is not functioning.
+	}
+
 	require := require.New(t)
 	setup.ExecCommand = fakeExecCommand
 
