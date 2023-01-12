@@ -127,7 +127,6 @@ func (p *Papi) Pull() error {
 	lastTimestampStr, err := p.DBClient.GetConfigItem(PapiPullKey)
 	if err != nil {
 		p.Logger.Warningf("failed to get last timestamp for papi pull: %s", err)
-		//return errors.Wrap(err, "failed to get last timestamp for papi pull")
 	}
 	//value doesn't exist, it's first time we're pulling
 	if lastTimestampStr == nil {

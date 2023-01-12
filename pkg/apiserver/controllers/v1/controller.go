@@ -25,8 +25,6 @@ type Controller struct {
 	AlertsAddChan      chan []*models.Alert
 	DecisionDeleteChan chan []*models.Decision
 
-	// CAPIChan      chan []*models.Alert
-	// DeleteChan    chan []*models.Decision
 	PluginChannel chan csplugin.ProfileAlert
 	ConsoleConfig csconfig.ConsoleConfig
 	TrustedIPs    []net.IPNet
@@ -40,8 +38,6 @@ type ControllerV1Config struct {
 	AlertsAddChan      chan []*models.Alert
 	DecisionDeleteChan chan []*models.Decision
 
-	// CapiChanV1       chan []*models.Alert
-	// CapiDeleteChanV1 chan []*models.Decision
 	PluginChannel chan csplugin.ProfileAlert
 	ConsoleConfig csconfig.ConsoleConfig
 	TrustedIPs    []net.IPNet

@@ -50,7 +50,7 @@ func DecisionsFromAlert(alert *models.Alert) string {
 func DateFromAlert(alert *models.Alert) string {
 	ts, err := time.Parse(time.RFC3339, alert.CreatedAt)
 	if err != nil {
-		log.Infof("oops : %s while parsing %s with %s", err, alert.CreatedAt, time.RFC3339)
+		log.Infof("while parsing %s with %s : %s", alert.CreatedAt, time.RFC3339, err)
 		return alert.CreatedAt
 	}
 	return ts.Format(time.RFC822)
