@@ -10,6 +10,7 @@ on:
       - releases/**
     paths:
       - windows/installer/*.wxs
+      - .github/workflows/ci-windows-build-msi.yml
 
 jobs:
   build:
