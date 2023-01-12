@@ -93,7 +93,7 @@ func (l *LocalApiClientCfg) Load() error {
 		apiclient.InsecureSkipVerify = *l.InsecureSkipVerify
 	}
 
-	if l.Credentials.CACertPath != ""  {
+	if l.Credentials.CACertPath != "" {
 		caCert, err := os.ReadFile(l.Credentials.CACertPath)
 		if err != nil {
 			return errors.Wrapf(err, "failed to load cacert")
@@ -181,6 +181,7 @@ func (c *Config) LoadAPIServer() error {
 		log.Warning("crowdsec local API is disabled from flag")
 	}
 
+	if c.API.Server != nil {
 		logLevel := log.InfoLevel
 		if c.API.Server.PapiLogLevel == nil {
 			c.API.Server.PapiLogLevel = &logLevel

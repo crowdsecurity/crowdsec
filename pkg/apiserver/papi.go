@@ -198,7 +198,7 @@ func (p *Papi) SyncDecisions() error {
 
 	var cache models.DecisionsDeleteRequest
 	ticker := time.NewTicker(p.SyncInterval)
-	p.Logger.Infof("Start decisions sync to CrowdSec Central API (interval: %s)", PushInterval)
+	p.Logger.Infof("Start decisions sync to CrowdSec Central API (interval: %s)", p.SyncInterval)
 
 	for {
 		select {
