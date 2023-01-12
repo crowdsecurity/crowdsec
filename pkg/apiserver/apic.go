@@ -50,16 +50,16 @@ type apic struct {
 	metricsIntervalFirst time.Duration
 	dbClient             *database.Client
 	apiClient            *apiclient.ApiClient
-  AlertsAddChan   chan []*models.Alert
+	AlertsAddChan        chan []*models.Alert
 
-	mu                   sync.Mutex
-	pushTomb             tomb.Tomb
-	pullTomb             tomb.Tomb
-	metricsTomb          tomb.Tomb
-	startup              bool
-	credentials          *csconfig.ApiCredentialsCfg
-	scenarioList         []string
-	consoleConfig        *csconfig.ConsoleConfig
+	mu            sync.Mutex
+	pushTomb      tomb.Tomb
+	pullTomb      tomb.Tomb
+	metricsTomb   tomb.Tomb
+	startup       bool
+	credentials   *csconfig.ApiCredentialsCfg
+	scenarioList  []string
+	consoleConfig *csconfig.ConsoleConfig
 }
 
 // randomDuration returns a duration value between d-delta and d+delta
@@ -111,7 +111,6 @@ func decisionsToApiDecisions(decisions []*models.Decision) models.AddSignalsRequ
 	return apiDecisions
 }
 
-
 func alertToSignal(alert *models.Alert, scenarioTrust string, shareContext bool) *models.AddSignalsRequestItem {
 	signal := &models.AddSignalsRequestItem{
 		Message:         alert.Message,
@@ -154,7 +153,7 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 	var err error
 	ret := &apic{
 
-		AlertsAddChan:   make(chan []*models.Alert),
+		AlertsAddChan:        make(chan []*models.Alert),
 		dbClient:             dbClient,
 		mu:                   sync.Mutex{},
 		startup:              true,
@@ -207,7 +206,7 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 		Password:  &password,
 		Scenarios: scenarios,
 	}); err != nil {
-		return ret, errors.Wrapf(err, "authenticate watcher (%s)", &config.Credentials.Login)
+		return ret, errors.Wrapf(err, "authenticate watcher (%s)", config.Credentials.Login)
 	}
 
 	return ret, err
