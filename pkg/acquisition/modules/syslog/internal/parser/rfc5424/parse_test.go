@@ -3,6 +3,8 @@ package rfc5424
 import (
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestPri(t *testing.T) {
@@ -169,7 +171,7 @@ func TestParse(t *testing.T) {
 		{
 			"valid msg with empty fields",
 			`<13>1 - foo - - - - blabla`, expected{
-				Timestamp: time.Now().UTC().Round(0),
+				Timestamp: time.Now().UTC(),
 				Hostname:  "foo",
 				PRI:       13,
 				Message:   "blabla",
@@ -178,7 +180,7 @@ func TestParse(t *testing.T) {
 		{
 			"valid msg with empty fields",
 			`<13>1 - - - - - - blabla`, expected{
-				Timestamp: time.Now().UTC().Round(0),
+				Timestamp: time.Now().UTC(),
 				PRI:       13,
 				Message:   "blabla",
 			}, "", []RFC5424Option{},
@@ -240,9 +242,7 @@ func TestParse(t *testing.T) {
 				if test.expectedErr != "" {
 					t.Errorf("expected error '%s', got no error", test.expectedErr)
 				} else {
-					if r.Timestamp.Round(time.Second).String() != test.expected.Timestamp.Round(time.Second).String() {
-						t.Errorf("expected timestamp '%s', got '%s'", test.expected.Timestamp, r.Timestamp)
-					}
+					require.WithinDuration(t, test.expected.Timestamp, r.Timestamp, time.Second)
 					if r.Hostname != test.expected.Hostname {
 						t.Errorf("expected hostname '%s', got '%s'", test.expected.Hostname, r.Hostname)
 					}
