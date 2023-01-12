@@ -179,12 +179,13 @@ func TestNewAPIC(t *testing.T) {
 	setConfig := func() {
 		testConfig = &csconfig.OnlineApiClientCfg{
 			Credentials: &csconfig.ApiCredentialsCfg{
-				URL:      "foobar",
+				URL:      "http://foobar/",
 				Login:    "foo",
 				Password: "bar",
 			},
 		}
 	}
+
 	type args struct {
 		dbClient      *database.Client
 		consoleConfig *csconfig.ConsoleConfig
@@ -217,6 +218,17 @@ func TestNewAPIC(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			setConfig()
+			httpmock.Activate()
+			defer httpmock.DeactivateAndReset()
+			httpmock.RegisterResponder("POST", "http://foobar/v2/watchers/login", httpmock.NewBytesResponder(
+				200, jsonMarshalX(
+					models.WatcherAuthResponse{
+						Code:   200,
+						Expire: "2023-01-12T22:51:43Z",
+						Token:  "MyToken",
+					},
+				),
+			))
 			tc.action()
 			_, err := NewAPIC(testConfig, tc.args.dbClient, tc.args.consoleConfig)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
@@ -633,6 +645,7 @@ func TestAPICPush(t *testing.T) {
 					ScenarioHash:    types.StrPtr("certified"),
 					ScenarioVersion: types.StrPtr("v1.0"),
 					Simulated:       types.BoolPtr(false),
+					Source:          &models.Source{},
 				},
 			},
 			expectedCalls: 1,
@@ -645,6 +658,7 @@ func TestAPICPush(t *testing.T) {
 					ScenarioHash:    types.StrPtr("certified"),
 					ScenarioVersion: types.StrPtr("v1.0"),
 					Simulated:       types.BoolPtr(true),
+					Source:          &models.Source{},
 				},
 			},
 			expectedCalls: 0,
@@ -660,6 +674,7 @@ func TestAPICPush(t *testing.T) {
 						ScenarioHash:    types.StrPtr("certified"),
 						ScenarioVersion: types.StrPtr("v1.0"),
 						Simulated:       types.BoolPtr(false),
+						Source:          &models.Source{},
 					}
 				}
 				return alerts

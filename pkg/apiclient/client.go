@@ -63,7 +63,9 @@ func NewClient(config *Config) (*ApiClient, error) {
 	if Cert != nil {
 		tlsconfig.Certificates = []tls.Certificate{*Cert}
 	}
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tlsconfig
+	if ht, ok := http.DefaultTransport.(*http.Transport); ok {
+		ht.TLSClientConfig = &tlsconfig
+	}
 	c := &ApiClient{client: t.Client(), BaseURL: config.URL, UserAgent: config.UserAgent, URLPrefix: config.VersionPrefix, PapiURL: config.PapiURL}
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)
