@@ -274,3 +274,8 @@ declare stderr
     run -0 cscli support dump -f "$BATS_TEST_TMPDIR"/dump.zip
     assert_file_exist "$BATS_TEST_TMPDIR"/dump.zip
 }
+
+@test "cscli explain" {
+    rune -0 cscli explain --log "Sep 19 18:33:22 scw-d95986 sshd[24347]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=1.2.3.4" --type syslog --crowdsec "$CROWDSEC"
+    assert_output - <"$BATS_TEST_DIRNAME"/testdata/explain/explain-log.txt
+}
