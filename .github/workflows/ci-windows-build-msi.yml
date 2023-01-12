@@ -4,6 +4,12 @@ on:
   release:
     types:
       - prereleased
+  push:
+    branches:
+      - master
+      - releases/**
+    paths:
+      - windows/installer/*.wxs
 
 jobs:
   build:
