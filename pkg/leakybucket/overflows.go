@@ -210,7 +210,7 @@ func EventsFromQueue(queue *Queue) []*models.Event {
 
 // alertFormatSource iterates over the queue to collect sources
 func alertFormatSource(leaky *Leaky, queue *Queue) (map[string]models.Source, string, error) {
-	var sources map[string]models.Source = make(map[string]models.Source)
+	var sources = make(map[string]models.Source)
 	var source_type string
 
 	log.Debugf("Formatting (%s) - scope Info : scope_type:%s / scope_filter:%s", leaky.Name, leaky.scopeType.Scope, leaky.scopeType.Filter)

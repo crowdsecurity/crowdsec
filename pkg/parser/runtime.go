@@ -245,7 +245,7 @@ var DumpFolder string
 var StageParseCache map[string]map[string][]ParserResult
 
 func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error) {
-	var event types.Event = xp
+	var event = xp
 
 	/* the stage is undefined, probably line is freshly acquired, set to first stage !*/
 	if event.Stage == "" && len(ctx.Stages) > 0 {

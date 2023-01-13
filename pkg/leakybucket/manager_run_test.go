@@ -25,13 +25,13 @@ func expectBucketCount(buckets *Buckets, expected int) error {
 
 func TestGCandDump(t *testing.T) {
 	var (
-		buckets *Buckets   = NewBuckets()
-		tomb    *tomb.Tomb = &tomb.Tomb{}
+		buckets = NewBuckets()
+		tomb    = &tomb.Tomb{}
 	)
 
 	var Holders = []BucketFactory{
 		//one overflowing soon + bh
-		BucketFactory{
+		{
 			Name:        "test_counter_fast",
 			Description: "test_counter_fast",
 			Debug:       true,
@@ -44,7 +44,7 @@ func TestGCandDump(t *testing.T) {
 			wgPour:      buckets.wgPour,
 		},
 		//one long counter
-		BucketFactory{
+		{
 			Name:        "test_counter_slow",
 			Description: "test_counter_slow",
 			Debug:       true,
@@ -56,7 +56,7 @@ func TestGCandDump(t *testing.T) {
 			wgPour:      buckets.wgPour,
 		},
 		//slow leaky
-		BucketFactory{
+		{
 			Name:        "test_leaky_slow",
 			Description: "test_leaky_slow",
 			Debug:       true,
@@ -115,10 +115,10 @@ func TestGCandDump(t *testing.T) {
 
 func TestShutdownBuckets(t *testing.T) {
 	var (
-		buckets *Buckets = NewBuckets()
-		Holders          = []BucketFactory{
+		buckets = NewBuckets()
+		Holders = []BucketFactory{
 			//one long counter
-			BucketFactory{
+			{
 				Name:        "test_counter_slow",
 				Description: "test_counter_slow",
 				Debug:       true,
@@ -130,7 +130,7 @@ func TestShutdownBuckets(t *testing.T) {
 				wgPour:      buckets.wgPour,
 			},
 			//slow leaky
-			BucketFactory{
+			{
 				Name:        "test_leaky_slow",
 				Description: "test_leaky_slow",
 				Debug:       true,
@@ -142,7 +142,7 @@ func TestShutdownBuckets(t *testing.T) {
 				wgPour:      buckets.wgPour,
 			},
 		}
-		tomb *tomb.Tomb = &tomb.Tomb{}
+		tomb = &tomb.Tomb{}
 	)
 
 	for idx := range Holders {
