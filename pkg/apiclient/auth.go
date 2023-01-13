@@ -116,10 +116,12 @@ func (r retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 		}
 		clonedReq := cloneRequest(req)
 		resp, err = r.next.RoundTrip(clonedReq)
-		if err == nil {
-			if !r.ShouldRetry(resp.StatusCode) {
-				return resp, nil
-			}
+		if err != nil {
+			log.Errorf("error while performing request: %s; %d retries left", err, r.maxAttempts-i-1)
+			continue
+		}
+		if !r.ShouldRetry(resp.StatusCode) {
+			return resp, nil
 		}
 	}
 	return resp, err
