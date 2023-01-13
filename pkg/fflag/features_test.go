@@ -286,7 +286,7 @@ func TestSetFromEnv(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			logger, hook := logtest.NewNullLogger()
-			logger.SetLevel(logrus.InfoLevel)
+			logger.SetLevel(logrus.DebugLevel)
 			t.Setenv(tc.envvar, tc.value)
 			err := fr.SetFromEnv(logger)
 			cstest.RequireErrorMessage(t, err, tc.expectedErr)
@@ -346,7 +346,7 @@ func TestSetFromYaml(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			logger, hook := logtest.NewNullLogger()
-			logger.SetLevel(logrus.InfoLevel)
+			logger.SetLevel(logrus.DebugLevel)
 			err := fr.SetFromYaml(strings.NewReader(tc.yml), logger)
 			cstest.RequireErrorMessage(t, err, tc.expectedErr)
 			for _, expectedMessage := range tc.expectedLog {
@@ -369,7 +369,7 @@ func TestSetFromYamlFile(t *testing.T) {
 
 	fr := setUp(t)
 	logger, hook := logtest.NewNullLogger()
-	logger.SetLevel(logrus.InfoLevel)
+	logger.SetLevel(logrus.DebugLevel)
 
 	err = fr.SetFromYamlFile(tmpfile.Name(), logger)
 	require.NoError(t, err)
