@@ -168,7 +168,6 @@
          <ComponentRef Id="NotifConfig" />
          <ComponentRef Id="CreateCrowdsecPluginsDir"/>
          <ComponentRef Id="CreateCrowdsecDataDir" />
-         <ComponentRef Id="ConsoleDir"/>
          <ComponentRef Id="ConsoleContextFile"/>
          <ComponentRef Id="Csconfig_lapi" />
          <ComponentRef Id="Csconfig_no_lapi" />
