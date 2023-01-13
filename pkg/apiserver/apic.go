@@ -195,6 +195,9 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 		Scenarios:      ret.scenarioList,
 		UpdateScenario: ret.FetchScenariosListFromDB,
 	})
+	if err != nil {
+		return nil, errors.Wrap(err, "while creating api client")
+	}
 
 	scenarios, err := ret.FetchScenariosListFromDB()
 	if err != nil {

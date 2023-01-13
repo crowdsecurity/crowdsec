@@ -31,9 +31,7 @@ func DecisionCmd(message *Message, p *Papi) error {
 			return fmt.Errorf("message for '%s' contains bad data format: %s", message.Header.OperationType, err)
 		}
 
-		for _, decisionUUID := range deleteDecisionMsg.Decisions {
-			UUIDs = append(UUIDs, decisionUUID)
-		}
+		UUIDs = append(UUIDs, deleteDecisionMsg.Decisions...)
 
 		filter := make(map[string][]string)
 		filter["uuid"] = UUIDs
