@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 )
@@ -159,7 +160,7 @@ func TestLoadAPIServer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
+	logLevel := log.InfoLevel
 	config := &Config{}
 	fcontent, err := os.ReadFile("./tests/config.yaml")
 	if err != nil {
@@ -187,6 +188,7 @@ func TestLoadAPIServer(t *testing.T) {
 							CredentialsFilePath: "./tests/online-api-secrets.yaml",
 						},
 						ProfilesPath: "./tests/profiles.yaml",
+						PapiLogLevel: &logLevel,
 					},
 				},
 				DbConfig: &DatabaseCfg{
@@ -214,6 +216,7 @@ func TestLoadAPIServer(t *testing.T) {
 					ShareTaintedScenarios: types.BoolPtr(true),
 					ShareCustomScenarios:  types.BoolPtr(true),
 					ShareContext:          types.BoolPtr(false),
+					ReceiveDecisions:      types.BoolPtr(false),
 				},
 				LogDir:   LogDirFullPath,
 				LogMedia: "stdout",
@@ -228,6 +231,7 @@ func TestLoadAPIServer(t *testing.T) {
 				Profiles:               tmpLAPI.Profiles,
 				ProfilesPath:           "./tests/profiles.yaml",
 				UseForwardedForHeaders: false,
+				PapiLogLevel:           &logLevel,
 			},
 			err: "",
 		},
@@ -245,11 +249,9 @@ func TestLoadAPIServer(t *testing.T) {
 				DisableAPI: false,
 			},
 			expectedResult: &LocalApiServerCfg{
-				Enable:   types.BoolPtr(true),
-				LogDir:   LogDirFullPath,
-				LogMedia: "stdout",
+				PapiLogLevel: &logLevel,
 			},
-			err: "while loading profiles for LAPI",
+			err: "no database configuration provided",
 		},
 	}
 
@@ -257,8 +259,9 @@ func TestLoadAPIServer(t *testing.T) {
 		err := test.Input.LoadAPIServer()
 		if err == nil && test.err != "" {
 			fmt.Printf("TEST '%s': NOK\n", test.name)
-			t.Fatalf("%d/%d expected error, didn't get it", idx, len(tests))
+			t.Fatalf("Test number %d/%d expected error, didn't get it", idx+1, len(tests))
 		} else if test.err != "" {
+			fmt.Printf("ERR: %+v\n", err)
 			if !strings.HasPrefix(fmt.Sprintf("%s", err), test.err) {
 				fmt.Printf("TEST '%s': NOK\n", test.name)
 				t.Fatalf("%d/%d expected '%s' got '%s'", idx, len(tests),

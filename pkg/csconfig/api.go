@@ -250,10 +250,6 @@ func (c *Config) LoadAPIServer() error {
 		}
 	}
 
-	if err := c.LoadDBConfig(); err != nil {
-		return err
-	}
-
 	return nil
 }
 
