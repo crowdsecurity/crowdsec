@@ -52,7 +52,7 @@ GO_MAJOR_VERSION = $(word 1, $(go_major_minor))
 GO_MINOR_VERSION = $(word 2, $(go_major_minor))
 
 GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not supported, please use at least $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION).$(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
-GO_MODULE_NAME = "github.com/crowdsecurity/crowdsec/cmd"
+GO_MODULE_NAME = "github.com/crowdsecurity/crowdsec"
 
 LD_OPTS_VARS= \
 -X '$(GO_MODULE_NAME)/cmd/crowdsec.bincoverTesting=$(BINCOVER_TESTING)' \
