@@ -265,43 +265,43 @@ cscli_if_clean parsers install crowdsecurity/docker-logs
 
 if [ "$COLLECTIONS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean collections install $COLLECTIONS
+    cscli_if_clean collections install "$COLLECTIONS"
 fi
 
 if [ "$PARSERS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean parsers install $PARSERS
+    cscli_if_clean parsers install "$PARSERS"
 fi
 
 if [ "$SCENARIOS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean scenarios install $SCENARIOS
+    cscli_if_clean scenarios install "$SCENARIOS"
 fi
 
 if [ "$POSTOVERFLOWS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean postoverflows install $POSTOVERFLOWS
+    cscli_if_clean postoverflows install "$POSTOVERFLOWS"
 fi
 
 ## Remove collections, parsers, scenarios & postoverflows
 if [ "$DISABLE_COLLECTIONS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean collections remove $DISABLE_COLLECTIONS
+    cscli_if_clean collections remove "$DISABLE_COLLECTIONS"
 fi
 
 if [ "$DISABLE_PARSERS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean parsers remove $DISABLE_PARSERS
+    cscli_if_clean parsers remove "$DISABLE_PARSERS"
 fi
 
 if [ "$DISABLE_SCENARIOS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean scenarios remove $DISABLE_SCENARIOS
+    cscli_if_clean scenarios remove "$DISABLE_SCENARIOS"
 fi
 
 if [ "$DISABLE_POSTOVERFLOWS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean postoverflows remove $DISABLE_POSTOVERFLOWS
+    cscli_if_clean postoverflows remove "$DISABLE_POSTOVERFLOWS"
 fi
 
 ## Register bouncers via env
