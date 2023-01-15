@@ -60,8 +60,7 @@ jobs:
           file: ./Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.prep.outputs.tags_slim }}
-          build-args: |
-            BUILD_ENV=slim
+          target: slim
           platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6,linux/386
           labels: |
             org.opencontainers.image.source=${{ github.event.repository.html_url }}

@@ -48,10 +48,10 @@ You can build your images with Dockerfile and Dockerfile-debian.
 For example, if you want a Debian version without plugin notifiers:
 
 ```console
-$ docker build -f Dockerfile.debian --build-arg=BUILD_ENV=slim
+$ docker build -f Dockerfile.debian --target slim
 ```
 
-supported values for BUILD_ENV are: full, with-geoip, with-plugins, slim.
+supported values for target are: full, with-geoip, with-plugins, slim.
 
 
 ## Required configuration
