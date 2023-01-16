@@ -60,6 +60,7 @@ func (o *OnlineApiClientCfg) Load() error {
 		log.Warningf("can't load CAPI credentials from '%s' (missing field)", o.CredentialsFilePath)
 		o.Credentials = nil
 	}
+
 	return nil
 }
 

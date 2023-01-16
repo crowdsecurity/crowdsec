@@ -19,6 +19,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -233,6 +234,9 @@ func SetConsoleOpts(args []string, wanted bool) {
 	for _, arg := range args {
 		switch arg {
 		case csconfig.RECEIVE_DECISIONS:
+			if !fflag.PapiClient.IsEnabled() {
+				log.Fatalf("Feature flag %s is disabled, cannot set %s", fflag.PapiClient.Name, csconfig.RECEIVE_DECISIONS)
+			}
 			/*for each flag check if it's already set before setting it*/
 			if csConfig.API.Server.ConsoleConfig.ReceiveDecisions != nil {
 				if *csConfig.API.Server.ConsoleConfig.ReceiveDecisions == wanted {

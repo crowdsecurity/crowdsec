@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -15,9 +16,8 @@ const (
 	SEND_TAINTED_SCENARIOS = "tainted"
 	SEND_MANUAL_SCENARIOS  = "manual"
 	RECEIVE_DECISIONS      = "decisions_poll"
-  SEND_CONTEXT           = "context"
+	SEND_CONTEXT           = "context"
 )
-
 
 var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS, SEND_CONTEXT, RECEIVE_DECISIONS}
 
@@ -64,9 +64,14 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 		log.Debugf("no share_manual scenarios found, setting to false")
 		c.ConsoleConfig.ShareManualDecisions = types.BoolPtr(false)
 	}
-	if c.ConsoleConfig.ReceiveDecisions == nil {
-		log.Debugf("no receive_decisions scenarios found, setting to false")
+
+	if !fflag.PapiClient.IsEnabled() {
 		c.ConsoleConfig.ReceiveDecisions = types.BoolPtr(false)
+	} else {
+		if c.ConsoleConfig.ReceiveDecisions == nil {
+			log.Debugf("no receive_decisions scenarios found, setting to false")
+			c.ConsoleConfig.ReceiveDecisions = types.BoolPtr(false)
+		}
 	}
 
 	if c.ConsoleConfig.ShareContext == nil {

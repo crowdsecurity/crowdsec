@@ -4,6 +4,7 @@ var Crowdsec = FeatureRegister{EnvPrefix: "CROWDSEC_FEATURE_"}
 
 var CscliSetup = &Feature{Name: "cscli_setup"}
 var DisableHttpRetryBackoff = &Feature{Name: "disable_http_retry_backoff", Description: "Disable http retry backoff"}
+var PapiClient = &Feature{Name: "papi_client", Description: "Enable Polling API client"}
 
 func RegisterAllFeatures() error {
 	err := Crowdsec.RegisterFeature(CscliSetup)
