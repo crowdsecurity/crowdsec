@@ -391,6 +391,10 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 		return "0", nil, errors.Wrap(DeleteFail, "decisions with provided filter")
 	}
 	count, err := c.BulkDeleteDecisions(toDelete, false)
+	if err != nil {
+		c.Log.Warningf("While deleting decisions : %s", err)
+		return "0", nil, errors.Wrap(DeleteFail, "decisions with provided filter")
+	}
 	return strconv.Itoa(count), toDelete, nil
 }
 
@@ -515,8 +519,8 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 	return strconv.Itoa(count), DecisionsToDelete, err
 }
 
-//BulkDeleteDecisions set the expiration of a bulk of decisions to now() or hard deletes them.
-//We are doing it this way so we can return impacted decisions for sync with CAPI/PAPI
+// BulkDeleteDecisions set the expiration of a bulk of decisions to now() or hard deletes them.
+// We are doing it this way so we can return impacted decisions for sync with CAPI/PAPI
 func (c *Client) BulkDeleteDecisions(DecisionsToDelete []*ent.Decision, softDelete bool) (int, error) {
 	bulkSize := 256 //scientifically proven to be the best value for bulk delete
 	idsToDelete := make([]int, 0, bulkSize)
@@ -569,7 +573,7 @@ func (c *Client) BulkDeleteDecisions(DecisionsToDelete []*ent.Decision, softDele
 	return totalUpdates, nil
 }
 
-//SoftDeleteDecisionByID set the expiration of a decision to now()
+// SoftDeleteDecisionByID set the expiration of a decision to now()
 func (c *Client) SoftDeleteDecisionByID(decisionID int) (int, []*ent.Decision, error) {
 	toUpdate, err := c.Ent.Decision.Query().Where(decision.IDEQ(decisionID)).All(c.CTX)
 

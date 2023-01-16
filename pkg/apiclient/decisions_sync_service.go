@@ -12,7 +12,7 @@ import (
 
 type DecisionDeleteService service
 
-//DecisionDeleteService purposely reuses AddSignalsRequestItemDecisions model
+// DecisionDeleteService purposely reuses AddSignalsRequestItemDecisions model
 func (d *DecisionDeleteService) Add(ctx context.Context, deletedDecisions *models.DecisionsDeleteRequest) (interface{}, *Response, error) {
 	var response interface{}
 	u := fmt.Sprintf("%s/decisions/delete", d.client.URLPrefix)
@@ -25,7 +25,7 @@ func (d *DecisionDeleteService) Add(ctx context.Context, deletedDecisions *model
 	if err != nil {
 		return nil, resp, errors.Wrap(err, "while performing request")
 	}
-	if resp.Response.StatusCode != 200 {
+	if resp.Response.StatusCode != http.StatusOK {
 		log.Warnf("Decisions delete response : http %s", resp.Response.Status)
 	} else {
 		log.Debugf("Decisions delete response : http %s", resp.Response.Status)
