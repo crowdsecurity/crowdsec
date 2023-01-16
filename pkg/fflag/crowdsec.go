@@ -15,6 +15,9 @@ func RegisterAllFeatures() error {
 	if err != nil {
 		return err
 	}
-
+	err = Crowdsec.RegisterFeature(PapiClient)
+	if err != nil {
+		return err
+	}
 	return nil
 }
