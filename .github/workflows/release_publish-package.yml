@@ -18,6 +18,8 @@ jobs:
         id: go
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       - name: Build the binaries
         run: make release
       - name: Upload to release
@@ -37,6 +39,8 @@ jobs:
         id: go
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       - name: Build the binaries
         run: |
           make release BUILD_STATIC=yes

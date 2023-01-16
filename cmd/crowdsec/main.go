@@ -5,7 +5,6 @@ import (
 	"fmt"
 	_ "net/http/pprof"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -261,34 +260,15 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		return err
 	}
 
-	err := LoadFeatureFlags(cConfig, log.StandardLogger())
-	if err != nil {
+	if err := csconfig.LoadFeatureFlagsFile(cConfig, log.StandardLogger()); err != nil {
 		return err
 	}
 
-	return nil
-}
-
-
-// LoadFeatureFlags parses {ConfigDir}/feature.yaml to enable/disable features.
-//
-// Since CROWDSEC_FEATURE_ envvars are parsed before config.yaml,
-// when the logger is not yet initialized, we also log here a recap
-// of what has been enabled.
-func LoadFeatureFlags(cConfig *csconfig.Config, logger *log.Logger) error {
-	featurePath := filepath.Join(cConfig.ConfigPaths.ConfigDir, "feature.yaml")
-
-	if err := fflag.Crowdsec.SetFromYamlFile(featurePath, logger); err != nil {
-		return fmt.Errorf("file %s: %s", featurePath, err)
+	// recap of the enabled feature flags, because logging
+	// was not enabled when we set them from envvars
+	if fflist := csconfig.ListFeatureFlags(); fflist != "" {
+		log.Infof("Enabled feature flags: %s", fflist)
 	}
-
-	enabledFeatures := fflag.Crowdsec.GetEnabledFeatures()
-
-	msg := "<none>"
-	if len(enabledFeatures) > 0 {
-		msg = strings.Join(enabledFeatures, ", ")
-	}
-	logger.Infof("Enabled features: %s", msg)
 
 	return nil
 }
@@ -324,8 +304,8 @@ func main() {
 
 	// some features can require configuration or command-line options,
 	// so wwe need to parse them asap. we'll load from feature.yaml later.
-	if err := fflag.Crowdsec.SetFromEnv(log.StandardLogger()); err != nil {
-		log.Fatalf("failed set features from environment: %s", err)
+	if err := csconfig.LoadFeatureFlagsEnv(log.StandardLogger()); err != nil {
+		log.Fatalf("failed to set feature flags from environment: %s", err)
 	}
 
 	crowdsecT0 = time.Now()
