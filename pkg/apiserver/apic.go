@@ -29,7 +29,7 @@ var (
 	pullIntervalDefault    = time.Hour * 2
 	pullIntervalDelta      = 5 * time.Minute
 	pushIntervalDefault    = time.Second * 10
-	pushIntervalDelta      = time.Second * 15
+	pushIntervalDelta      = time.Second * 7
 	metricsIntervalDefault = time.Minute * 30
 	metricsIntervalDelta   = time.Minute * 15
 )
