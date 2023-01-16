@@ -303,9 +303,15 @@ cscli alerts list --type ban`,
 			if *alertListFilter.RangeEquals == "" {
 				alertListFilter.RangeEquals = nil
 			}
+
+			if *alertListFilter.OriginEquals == "" {
+				alertListFilter.OriginEquals = nil
+			}
+
 			if contained != nil && *contained {
 				alertListFilter.Contains = new(bool)
 			}
+
 			alerts, _, err := Client.Alerts.List(context.Background(), alertListFilter)
 			if err != nil {
 				log.Fatalf("Unable to list alerts : %v", err)
