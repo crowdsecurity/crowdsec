@@ -214,6 +214,7 @@ Disable given information push to the central API.`,
 					{"share_custom", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios)},
 					{"share_tainted", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios)},
 					{"share_context", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareContext)},
+					{"receive_decisions", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ReceiveDecisions)},
 				}
 				for _, row := range rows {
 					err = csvwriter.Write(row)
