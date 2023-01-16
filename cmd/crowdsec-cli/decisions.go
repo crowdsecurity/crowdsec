@@ -333,12 +333,15 @@ cscli decisions add --scope username --value foobar
 				Scenario:        &addReason,
 				ScenarioVersion: &empty,
 				Simulated:       &simulated,
+				//setting empty scope/value broke plugins, and it didn't seem to be needed anymore w/ latest papi changes
 				Source: &models.Source{
 					AsName:   empty,
 					AsNumber: empty,
 					Cn:       empty,
-					Scope:    new(string),
-					Value:    new(string),
+					IP:       addValue,
+					Range:    "",
+					Scope:    &addScope,
+					Value:    &addValue,
 				},
 				StartAt:   &startAt,
 				StopAt:    &stopAt,
