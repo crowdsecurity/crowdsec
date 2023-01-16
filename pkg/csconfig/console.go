@@ -67,11 +67,9 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 
 	if !fflag.PapiClient.IsEnabled() {
 		c.ConsoleConfig.ReceiveDecisions = types.BoolPtr(false)
-	} else {
-		if c.ConsoleConfig.ReceiveDecisions == nil {
-			log.Debugf("no receive_decisions scenarios found, setting to false")
-			c.ConsoleConfig.ReceiveDecisions = types.BoolPtr(false)
-		}
+	} else if c.ConsoleConfig.ReceiveDecisions == nil {
+		log.Debugf("no receive_decisions scenarios found, setting to false")
+		c.ConsoleConfig.ReceiveDecisions = types.BoolPtr(false)
 	}
 
 	if c.ConsoleConfig.ShareContext == nil {
