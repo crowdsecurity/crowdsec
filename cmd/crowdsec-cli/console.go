@@ -210,11 +210,11 @@ Disable given information push to the central API.`,
 				}
 
 				rows := [][]string{
-					{"share_manual_decisions", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareManualDecisions)},
-					{"share_custom", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios)},
-					{"share_tainted", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios)},
-					{"share_context", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareContext)},
-					{"receive_decisions", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ReceiveDecisions)},
+					{csconfig.SEND_MANUAL_SCENARIOS, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareManualDecisions)},
+					{csconfig.SEND_CUSTOM_SCENARIOS, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios)},
+					{csconfig.SEND_TAINTED_SCENARIOS, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios)},
+					{csconfig.SEND_CONTEXT, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareContext)},
+					{csconfig.RECEIVE_DECISIONS, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ReceiveDecisions)},
 				}
 				for _, row := range rows {
 					err = csvwriter.Write(row)
