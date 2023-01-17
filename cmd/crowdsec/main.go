@@ -211,6 +211,19 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		return err
 	}
 
+	// Configure logging
+	if err := types.SetDefaultLoggerConfig(cConfig.Common.LogMedia,
+		cConfig.Common.LogDir, *cConfig.Common.LogLevel,
+		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles,
+		cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs,
+		cConfig.Common.ForceColorLogs); err != nil {
+		return err
+	}
+
+	if err := csconfig.LoadFeatureFlagsFile(cConfig, log.StandardLogger()); err != nil {
+		return err
+	}
+
 	if !flags.DisableAgent {
 		if err := cConfig.LoadCrowdsec(); err != nil {
 			return err
@@ -254,15 +267,6 @@ func LoadConfig(cConfig *csconfig.Config) error {
 	if cConfig.Common.Daemonize && runtime.GOOS == "windows" {
 		log.Debug("Daemonization is not supported on Windows, disabling")
 		cConfig.Common.Daemonize = false
-	}
-
-	// Configure logging
-	if err := types.SetDefaultLoggerConfig(cConfig.Common.LogMedia,
-		cConfig.Common.LogDir, *cConfig.Common.LogLevel,
-		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles,
-		cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs,
-		cConfig.Common.ForceColorLogs); err != nil {
-		return err
 	}
 
 	// recap of the enabled feature flags, because logging

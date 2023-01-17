@@ -40,10 +40,7 @@ type CrowdsecServiceCfg struct {
 func (c *Config) LoadCrowdsec() error {
 	var err error
 
-	if err = LoadFeatureFlagsFile(c, log.StandardLogger()); err != nil {
-		return err
-	}
-
+	log.Warningf("c.Crowdsec: %+v", c.Crowdsec)
 	if c.Crowdsec == nil {
 		log.Warning("crowdsec agent is disabled")
 		c.DisableAgent = true
