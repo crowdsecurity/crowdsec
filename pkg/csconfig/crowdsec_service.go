@@ -45,6 +45,10 @@ func (c *Config) LoadCrowdsec() error {
 		return err
 	}
 
+	if err = LoadFeatureFlagsFile(c, log.StandardLogger()); err != nil {
+		return err
+	}
+
 	if c.Crowdsec == nil {
 		log.Warning("crowdsec agent is disabled")
 		c.DisableAgent = true
