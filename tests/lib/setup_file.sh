@@ -71,6 +71,11 @@ config_disable_agent() {
 }
 export -f config_disable_agent
 
+config_log_stderr() {
+    config_set '.common.log_media="stdout"'
+}
+export -f config_log_stderr
+
 config_disable_lapi() {
     config_set 'del(.api.server)'
 }
