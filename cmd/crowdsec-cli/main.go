@@ -66,10 +66,6 @@ func initConfig() {
 		csConfig = csconfig.NewDefaultConfig()
 	}
 
-	if err := csconfig.LoadFeatureFlagsFile(csConfig, log.StandardLogger()); err != nil {
-		log.Fatal(err)
-	}
-
 	// recap of the enabled feature flags, because logging
 	// was not enabled when we set them from envvars
 	if fflist := csconfig.ListFeatureFlags(); fflist != "" {
