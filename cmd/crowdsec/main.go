@@ -206,6 +206,11 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		dumpStates = true
 	}
 
+	// Configuration paths are dependency to load crowdsec configuration
+	if err := cConfig.LoadConfigurationPaths(); err != nil {
+		return err
+	}
+
 	if !flags.DisableAgent {
 		if err := cConfig.LoadCrowdsec(); err != nil {
 			return err
