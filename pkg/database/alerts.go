@@ -97,9 +97,9 @@ func formatAlertAsString(machineId string, alert *models.Alert) []string {
 	return retStr
 }
 
-//CreateOrUpdateAlert is specific to PAPI : It checks if alert already exists, otherwise inserts it
-//if alert already exists, it checks it associated decisions already exists
-//if some associated decisions are missing (ie. previous insert ended up in error) it inserts them
+// CreateOrUpdateAlert is specific to PAPI : It checks if alert already exists, otherwise inserts it
+// if alert already exists, it checks it associated decisions already exists
+// if some associated decisions are missing (ie. previous insert ended up in error) it inserts them
 func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) (string, error) {
 
 	if alertItem.UUID == "" {
@@ -816,7 +816,11 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 			predicates = append(predicates, alert.HasDecisionsWith(decision.OriginEQ(value[0])))
 		case "include_capi": //allows to exclude one or more specific origins
 			if value[0] == "false" {
-				predicates = append(predicates, alert.HasDecisionsWith(decision.Or(decision.OriginEQ("crowdsec"), decision.OriginEQ("cscli"), decision.OriginEQ("console"))))
+				predicates = append(predicates, alert.HasDecisionsWith(
+					decision.Or(decision.OriginEQ("crowdsec"),
+						decision.OriginEQ("cscli"),
+						decision.OriginEQ("console"),
+						decision.OriginEQ("cscli-import"))))
 			} else if value[0] != "true" {
 				log.Errorf("Invalid bool '%s' for include_capi", value[0])
 			}
