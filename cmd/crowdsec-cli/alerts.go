@@ -63,6 +63,12 @@ func SourceFromAlert(alert *models.Alert) string {
 	if len(alert.Decisions) > 1 {
 		return fmt.Sprintf("%d %ss (%s)", len(alert.Decisions), *alert.Decisions[0].Scope, *alert.Decisions[0].Origin)
 	}
+
+	//fallback on single decision information
+	if len(alert.Decisions) == 1 {
+		return fmt.Sprintf("%s:%s", *alert.Decisions[0].Scope, *alert.Decisions[0].Value)
+	}
+
 	//try to compose a human friendly version
 	if *alert.Source.Value != "" && *alert.Source.Scope != "" {
 		scope := ""
@@ -83,11 +89,6 @@ func SourceFromAlert(alert *models.Alert) string {
 		}
 		return scope
 	}
-	//fallback on single decision information
-	if len(alert.Decisions) == 1 {
-		return fmt.Sprintf("%s:%s", *alert.Decisions[0].Scope, *alert.Decisions[0].Value)
-	}
-
 	return ""
 }
 

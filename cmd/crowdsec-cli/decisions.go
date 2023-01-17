@@ -572,7 +572,7 @@ decisions.json :
 			alerts := models.AddAlertsRequest{}
 			importAlert := models.Alert{
 				CreatedAt: time.Now().UTC().Format(time.RFC3339),
-				Scenario:  types.StrPtr(fmt.Sprintf("add: %d IPs", len(decisionsList))),
+				Scenario:  types.StrPtr(fmt.Sprintf("import %s : %d IPs", importFile, len(decisionsList))),
 				Message:   types.StrPtr(""),
 				Events:    []*models.Event{},
 				Source: &models.Source{
