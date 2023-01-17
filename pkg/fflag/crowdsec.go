@@ -2,7 +2,7 @@ package fflag
 
 var Crowdsec = FeatureRegister{EnvPrefix: "CROWDSEC_FEATURE_"}
 
-var CscliSetup = &Feature{Name: "cscli_setup"}
+var CscliSetup = &Feature{Name: "cscli_setup", Description: "Enable cscli setup command (service detection)"}
 var DisableHttpRetryBackoff = &Feature{Name: "disable_http_retry_backoff", Description: "Disable http retry backoff"}
 
 func RegisterAllFeatures() error {
