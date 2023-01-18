@@ -131,6 +131,10 @@ func NewCrowdsecCTIClient(options ...func(*CrowdsecCTIClient)) *CrowdsecCTIClien
 	if client.httpClient == nil {
 		client.httpClient = &http.Client{}
 	}
+	// we cannot return with a ni logger, so we set a default one
+	if client.Logger == nil {
+		client.Logger = log.NewEntry(log.New())
+	}
 	return client
 }
 
