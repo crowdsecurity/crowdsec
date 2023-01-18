@@ -53,6 +53,12 @@ func (u *Uniq) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, types
 	}
 }
 
+func (u *Uniq) AfterBucketPour(bucketFactory *BucketFactory) func(types.Event, *Leaky) *types.Event {
+	return func(msg types.Event, leaky *Leaky) *types.Event {
+		return &msg
+	}
+}
+
 func (u *Uniq) OnBucketInit(bucketFactory *BucketFactory) error {
 	var err error
 	var compiledExpr *vm.Program

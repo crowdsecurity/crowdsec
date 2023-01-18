@@ -33,6 +33,7 @@ teardown() {
 
 @test "no agent: crowdsec LAPI should run (no crowdsec_service in configuration file)" {
     config_disable_agent
+    config_log_stderr
     run -124 --separate-stderr timeout 2s "${CROWDSEC}"
 
     assert_stderr --partial "crowdsec agent is disabled"
@@ -55,7 +56,7 @@ teardown() {
     assert_output --partial "Starting configuration backup"
     run -1 --separate-stderr cscli config backup "${backupdir}"
 
-    assert_stderr --partial "Failed to backup configurations"
+    assert_stderr --partial "failed to backup config"
     assert_stderr --partial "file exists"
     rm -rf -- "${backupdir:?}"
 }

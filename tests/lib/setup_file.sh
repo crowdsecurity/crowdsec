@@ -71,6 +71,11 @@ config_disable_agent() {
 }
 export -f config_disable_agent
 
+config_log_stderr() {
+    config_set '.common.log_media="stdout"'
+}
+export -f config_log_stderr
+
 config_disable_lapi() {
     config_set 'del(.api.server)'
 }
@@ -211,3 +216,9 @@ plaintext() {
     sed -E 's/\x1B\[[0-9;]*[JKmsu]//g'
 }
 export -f plaintext
+
+# like run but defaults to separate stderr and stdout
+rune() {
+    run --separate-stderr "$@"
+}
+export -f rune

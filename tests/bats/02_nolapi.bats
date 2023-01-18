@@ -35,6 +35,7 @@ teardown() {
 
 @test "crowdsec should not run without LAPI (no api.server in configuration file)" {
     config_disable_lapi
+    config_log_stderr
     # really needs 4 secs on slow boxes
     run -1 --separate-stderr timeout 4s "${CROWDSEC}"
 
@@ -66,7 +67,7 @@ teardown() {
     run -1 --separate-stderr cscli config backup "${backupdir}"
     rm -rf -- "${backupdir:?}"
 
-    assert_stderr --partial "Failed to backup configurations"
+    assert_stderr --partial "failed to backup config"
     assert_stderr --partial "file exists"
 }
 

@@ -18,6 +18,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
 
 var bincoverTesting = ""
@@ -35,7 +36,6 @@ var downloadOnly bool
 var forceAction bool
 var purge bool
 var all bool
-var restoreOldBackup bool
 
 var prometheusURL string
 
@@ -52,11 +52,9 @@ func initConfig() {
 	} else if err_lvl {
 		log.SetLevel(log.ErrorLevel)
 	}
-	logFormatter := &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true}
-	log.SetFormatter(logFormatter)
 
 	if !inSlice(os.Args[1], NoNeedConfig) {
-		csConfig, err = csconfig.NewConfig(ConfigFilePath, false, false)
+		csConfig, err = csconfig.NewConfig(ConfigFilePath, false, false, true)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -66,6 +64,12 @@ func initConfig() {
 		}
 	} else {
 		csConfig = csconfig.NewDefaultConfig()
+	}
+
+	// recap of the enabled feature flags, because logging
+	// was not enabled when we set them from envvars
+	if fflist := csconfig.ListFeatureFlags(); fflist != "" {
+		log.Debugf("Enabled feature flags: %s", fflist)
 	}
 
 	if csConfig.Cscli == nil {
@@ -130,6 +134,17 @@ var (
 )
 
 func main() {
+	// set the formatter asap and worry about level later
+	logFormatter := &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true}
+	log.SetFormatter(logFormatter)
+
+	if err := fflag.RegisterAllFeatures(); err != nil {
+		log.Fatalf("failed to register features: %s", err)
+	}
+
+	if err := csconfig.LoadFeatureFlagsEnv(log.StandardLogger()); err != nil {
+		log.Fatalf("failed to set feature flags from env: %s", err)
+	}
 
 	var rootCmd = &cobra.Command{
 		Use:   "cscli",

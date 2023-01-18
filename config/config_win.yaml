@@ -13,6 +13,7 @@ config_paths:
   plugin_dir: C:\ProgramData\CrowdSec\plugins\
   notification_dir:  C:\ProgramData\CrowdSec\config\notifications\
 crowdsec_service:
+  #console_context_path: C:\ProgramData\CrowdSec\console\context.yaml
   acquisition_path:  C:\ProgramData\CrowdSec\config\acquis.yaml
   parser_routines: 1
 cscli:

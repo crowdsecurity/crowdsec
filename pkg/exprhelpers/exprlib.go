@@ -14,6 +14,7 @@ import (
 
 	"github.com/c-robinson/iplib"
 
+	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
@@ -69,6 +70,9 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"GetDecisionsSinceCount": GetDecisionsSinceCount,
 		"Sprintf":                fmt.Sprintf,
 		"CrowdsecCTI":            CrowdsecCTI,
+		"ParseUnix":              ParseUnix,
+		"GetFromStash":           cache.GetKey,
+		"SetInStash":             cache.SetKey,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
@@ -291,4 +295,22 @@ func LookupHost(value string) []string {
 		return []string{}
 	}
 	return addresses
+}
+
+func ParseUnixTime(value string) (time.Time, error) {
+	//Splitting string here as some unix timestamp may have milliseconds and break ParseInt
+	i, err := strconv.ParseInt(strings.Split(value, ".")[0], 10, 64)
+	if err != nil || i <= 0 {
+		return time.Time{}, fmt.Errorf("unable to parse %s as unix timestamp", value)
+	}
+	return time.Unix(i, 0), nil
+}
+
+func ParseUnix(value string) string {
+	t, err := ParseUnixTime(value)
+	if err != nil {
+		log.Error(err)
+		return ""
+	}
+	return t.Format(time.RFC3339)
 }

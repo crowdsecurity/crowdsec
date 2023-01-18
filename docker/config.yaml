@@ -16,8 +16,8 @@ crowdsec_service:
   acquisition_path: /etc/crowdsec/acquis.yaml
   parser_routines: 1
 plugin_config:
- user: nobody
- group: nobody
+  user: nobody
+  group: nobody
 cscli:
   output: human
 db_config:
@@ -40,10 +40,8 @@ api:
       - 127.0.0.1
       - ::1
     online_client: # Central API credentials (to push signals and receive bad IPs)
-      #credentials_path: /etc/crowdsec/online_api_credentials.yaml
+    #credentials_path: /etc/crowdsec/online_api_credentials.yaml
     tls:
-      cert_file: /etc/ssl/cert.pem
-      key_file: /etc/ssl/key.pem
       agents_allowed_ou:
         - agent-ou
       bouncers_allowed_ou:

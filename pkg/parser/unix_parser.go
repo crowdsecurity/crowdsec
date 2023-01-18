@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"sort"
 	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 
 	"github.com/crowdsecurity/grokky"
 	log "github.com/sirupsen/logrus"
@@ -48,6 +50,45 @@ func Init(c map[string]interface{}) (*UnixParserCtx, error) {
 	}
 	log.Debugf("Loaded %d pattern files", len(files))
 	return &r, nil
+}
+
+// Return new parsers
+// nodes and povfwnodes are already initialized in parser.LoadStages
+func NewParsers() *Parsers {
+	parsers := &Parsers{
+		Ctx:             &UnixParserCtx{},
+		Povfwctx:        &UnixParserCtx{},
+		StageFiles:      make([]Stagefile, 0),
+		PovfwStageFiles: make([]Stagefile, 0),
+	}
+	for _, itemType := range []string{cwhub.PARSERS, cwhub.PARSERS_OVFLW} {
+		for _, hubParserItem := range cwhub.GetItemMap(itemType) {
+			if hubParserItem.Installed {
+				stagefile := Stagefile{
+					Filename: hubParserItem.LocalPath,
+					Stage:    hubParserItem.Stage,
+				}
+				if itemType == cwhub.PARSERS {
+					parsers.StageFiles = append(parsers.StageFiles, stagefile)
+				}
+				if itemType == cwhub.PARSERS_OVFLW {
+					parsers.PovfwStageFiles = append(parsers.PovfwStageFiles, stagefile)
+				}
+			}
+		}
+	}
+	if parsers.StageFiles != nil {
+		sort.Slice(parsers.StageFiles, func(i, j int) bool {
+			return parsers.StageFiles[i].Filename < parsers.StageFiles[j].Filename
+		})
+	}
+	if parsers.PovfwStageFiles != nil {
+		sort.Slice(parsers.PovfwStageFiles, func(i, j int) bool {
+			return parsers.PovfwStageFiles[i].Filename < parsers.PovfwStageFiles[j].Filename
+		})
+	}
+
+	return parsers
 }
 
 func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {

@@ -110,7 +110,7 @@ func (l *LocalApiClientCfg) Load() error {
 		}
 	}
 
-	if l.Credentials.Login != "" && (l.Credentials.CACertPath != "" || l.Credentials.CertPath != "" || l.Credentials.KeyPath != "") {
+	if l.Credentials.Login != "" && (l.Credentials.CertPath != "" || l.Credentials.KeyPath != "") {
 		return fmt.Errorf("user/password authentication and TLS authentication are mutually exclusive")
 	}
 
@@ -120,12 +120,7 @@ func (l *LocalApiClientCfg) Load() error {
 		apiclient.InsecureSkipVerify = *l.InsecureSkipVerify
 	}
 
-	if l.Credentials.CACertPath != "" && l.Credentials.CertPath != "" && l.Credentials.KeyPath != "" {
-		cert, err := tls.LoadX509KeyPair(l.Credentials.CertPath, l.Credentials.KeyPath)
-		if err != nil {
-			return errors.Wrapf(err, "failed to load api client certificate")
-		}
-
+	if l.Credentials.CACertPath != ""  {
 		caCert, err := os.ReadFile(l.Credentials.CACertPath)
 		if err != nil {
 			return errors.Wrapf(err, "failed to load cacert")
@@ -133,10 +128,18 @@ func (l *LocalApiClientCfg) Load() error {
 
 		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM(caCert)
-
-		apiclient.Cert = &cert
 		apiclient.CaCertPool = caCertPool
 	}
+
+	if l.Credentials.CertPath != "" && l.Credentials.KeyPath != "" {
+		cert, err := tls.LoadX509KeyPair(l.Credentials.CertPath, l.Credentials.KeyPath)
+		if err != nil {
+			return errors.Wrapf(err, "failed to load api client certificate")
+		}
+
+		apiclient.Cert = &cert
+	}
+
 	return nil
 }
 

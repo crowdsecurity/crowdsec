@@ -54,6 +54,11 @@
                         <PermissionEx Sddl="D:PAI(A;;FA;;;SY)(A;;FA;;;BA)"/>
                      </File>
                   </Component>
+                  <Directory Id="ConsoleDir" Name="console">
+                     <Component Id="ConsoleContextFile" Guid="f146e12a-8f02-4129-9029-577807966e92">
+                        <File Id="context.yaml" Source="config\context.yaml" />
+                     </Component>
+                  </Directory>
                   <Component Id="OnlineCreds" Guid="a652a6cb-d464-40b1-8f50-78dce0135d20">
                      <File Id="online_api_credentials.yaml" Source="config\online_api_credentials.yaml">
                         <PermissionEx Sddl="D:PAI(A;;FA;;;SY)(A;;FA;;;BA)"/>
@@ -163,6 +168,7 @@
          <ComponentRef Id="NotifConfig" />
          <ComponentRef Id="CreateCrowdsecPluginsDir"/>
          <ComponentRef Id="CreateCrowdsecDataDir" />
+         <ComponentRef Id="ConsoleContextFile"/>
          <ComponentRef Id="Csconfig_lapi" />
          <ComponentRef Id="Csconfig_no_lapi" />
          <ComponentGroupRef Id="CrowdsecPatterns" />

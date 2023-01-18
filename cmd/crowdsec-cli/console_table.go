@@ -41,6 +41,12 @@ func cmdConsoleStatusTable(out io.Writer, csConfig csconfig.Config) {
 			}
 
 			t.AddRow(option, activated, "Send alerts from tainted scenarios to the console")
+		case csconfig.SEND_CONTEXT:
+			activated := string(emoji.CrossMark)
+			if *csConfig.API.Server.ConsoleConfig.ShareContext {
+				activated = string(emoji.CheckMarkButton)
+			}
+			t.AddRow(option, activated, "Send context with alerts to the console")
 		}
 	}
 
