@@ -191,7 +191,6 @@ func NewBouncersDeleteCmd() *cobra.Command {
 }
 
 func NewBouncersCmd() *cobra.Command {
-	/* ---- DECISIONS COMMAND */
 	var cmdBouncers = &cobra.Command{
 		Use:   "bouncers [action]",
 		Short: "Manage bouncers [requires local API]",

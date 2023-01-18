@@ -19,7 +19,7 @@ All the following images are available on Docker Hub for the architectures
 
  - `crowdsecurity/crowdsec:{version}`
 
-Recommended for production usage. Also available on GitHub (ghrc.io).
+Recommended for production usage. Also available on GitHub (ghcr.io).
 
  - `crowdsecurity/crowdsec:latest`
 

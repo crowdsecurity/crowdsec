@@ -24,8 +24,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-var printMachine bool
-var limit *int
 
 func DecisionsFromAlert(alert *models.Alert) string {
 	ret := ""
@@ -146,8 +144,8 @@ func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 	return nil
 }
 
+
 func NewAlertsCmd() *cobra.Command {
-	/* ---- ALERTS COMMAND */
 	var cmdAlerts = &cobra.Command{
 		Use:               "alerts [action]",
 		Short:             "Manage alerts",
@@ -177,6 +175,16 @@ func NewAlertsCmd() *cobra.Command {
 		},
 	}
 
+	cmdAlerts.AddCommand(NewAlertsListCmd())
+	cmdAlerts.AddCommand(NewAlertsInspectCmd())
+	cmdAlerts.AddCommand(NewAlertsFlushCmd())
+	cmdAlerts.AddCommand(NewAlertsDeleteCmd())
+
+	return cmdAlerts
+}
+
+
+func NewAlertsListCmd() *cobra.Command {
 	var alertListFilter = apiclient.AlertsListOpts{
 		ScopeEquals:    new(string),
 		ValueEquals:    new(string),
@@ -188,8 +196,9 @@ func NewAlertsCmd() *cobra.Command {
 		TypeEquals:     new(string),
 		IncludeCAPI:    new(bool),
 	}
-	limit = new(int)
+	var limit = new(int)
 	contained := new(bool)
+	var printMachine bool
 	var cmdAlertsList = &cobra.Command{
 		Use:   "list [filters]",
 		Short: "List alerts",
@@ -285,11 +294,15 @@ cscli alerts list --type ban`,
 	cmdAlertsList.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
 	cmdAlertsList.Flags().BoolVarP(&printMachine, "machine", "m", false, "print machines that sent alerts")
 	cmdAlertsList.Flags().IntVarP(limit, "limit", "l", 50, "limit size of alerts list table (0 to view all alerts)")
-	cmdAlerts.AddCommand(cmdAlertsList)
 
+	return cmdAlertsList
+}
+
+func NewAlertsDeleteCmd() *cobra.Command {
 	var ActiveDecision *bool
 	var AlertDeleteAll bool
 	var delAlertByID string
+	contained := new(bool)
 	var alertDeleteFilter = apiclient.AlertsDeleteOpts{
 		ScopeEquals:    new(string),
 		ValueEquals:    new(string),
@@ -380,9 +393,11 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 	cmdAlertsDelete.Flags().StringVar(&delAlertByID, "id", "", "alert ID")
 	cmdAlertsDelete.Flags().BoolVarP(&AlertDeleteAll, "all", "a", false, "delete all alerts")
 	cmdAlertsDelete.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
+	return cmdAlertsDelete
+}
 
-	cmdAlerts.AddCommand(cmdAlertsDelete)
 
+func NewAlertsInspectCmd() *cobra.Command {
 	var details bool
 	var cmdAlertsInspect = &cobra.Command{
 		Use:               `inspect "alert_id"`,
@@ -428,8 +443,10 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 	cmdAlertsInspect.Flags().SortFlags = false
 	cmdAlertsInspect.Flags().BoolVarP(&details, "details", "d", false, "show alerts with events")
 
-	cmdAlerts.AddCommand(cmdAlertsInspect)
+	return cmdAlertsInspect
+}
 
+func NewAlertsFlushCmd() *cobra.Command {
 	var maxItems int
 	var maxAge string
 	var cmdAlertsFlush = &cobra.Command{
@@ -460,7 +477,5 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 	cmdAlertsFlush.Flags().IntVar(&maxItems, "max-items", 5000, "Maximum number of alert items to keep in the database")
 	cmdAlertsFlush.Flags().StringVar(&maxAge, "max-age", "7d", "Maximum age of alert items to keep in the database")
 
-	cmdAlerts.AddCommand(cmdAlertsFlush)
-
-	return cmdAlerts
+	return cmdAlertsFlush
 }
