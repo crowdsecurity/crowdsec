@@ -14,6 +14,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
@@ -116,13 +117,13 @@ func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uin
 func normalizeScope(scope string) string {
 	switch strings.ToLower(scope) {
 	case "ip":
-		return "ip"
+		return types.Ip
 	case "range":
-		return "range"
+		return types.Range
 	case "as":
-		return "as"
+		return types.AS
 	case "country":
-		return "cn"
+		return types.Country
 	default:
 		return scope
 	}
