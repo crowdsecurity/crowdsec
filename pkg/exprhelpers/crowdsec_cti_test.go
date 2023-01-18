@@ -56,7 +56,7 @@ var sampledata = map[string]cticlient.SmokeItem{
 	"1.2.3.6": {
 		Ip:                   "1.2.3.6",
 		BackgroundNoiseScore: new(int),
-		Behaviours: []*cticlient.CTIBehaviour{
+		Behaviors: []*cticlient.CTIBehavior{
 			{Name: "ssh:bruteforce", Label: "SSH Bruteforce", Description: "SSH Bruteforce"},
 		},
 		AttackDetails: []*cticlient.CTIAttackDetails{
