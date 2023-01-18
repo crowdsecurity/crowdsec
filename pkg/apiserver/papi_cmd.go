@@ -32,6 +32,7 @@ func DecisionCmd(message *Message, p *Papi) error {
 		}
 
 		UUIDs = append(UUIDs, deleteDecisionMsg.Decisions...)
+		log.Infof("Decisions UUIDs to remove: %+v", UUIDs)
 
 		filter := make(map[string][]string)
 		filter["uuid"] = UUIDs
@@ -41,6 +42,7 @@ func DecisionCmd(message *Message, p *Papi) error {
 		}
 		decisions := make([]*models.Decision, 0)
 		for _, deletedDecision := range deletedDecisions {
+			log.Infof("Decision from '%s' for '%s' (%s) has been deleted", deletedDecision.Origin, deletedDecision.Value, deletedDecision.Type)
 			dec := &models.Decision{
 				UUID:     deletedDecision.UUID,
 				Origin:   &deletedDecision.Origin,
