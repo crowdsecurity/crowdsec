@@ -11,7 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var CTIUrl = "https://cti.api.dev.crowdsec.net"
+var CTIUrl = "https://cti.api.crowdsec.net"
 var CTIUrlSuffix = "/v2/smoke/"
 var CTIApiKey = ""
 

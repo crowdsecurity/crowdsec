@@ -111,7 +111,7 @@ func NewDefaultConfig() *Config {
 			},
 		},
 		CTI: &CTICfg{
-			Enabled: false,
+			Enabled: types.BoolPtr(false),
 		},
 	}
 

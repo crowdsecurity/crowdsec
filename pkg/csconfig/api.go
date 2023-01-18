@@ -50,16 +50,21 @@ type CTICfg struct {
 	Key          *string        `yaml:"key,omitempty"`
 	CacheTimeout *time.Duration `yaml:"cache_timeout,omitempty"`
 	CacheSize    *int           `yaml:"cache_size,omitempty"`
-	Enabled      bool           `yaml:"-"`
+	Enabled      *bool          `yaml:"enabled,omitempty"`
 	LogLevel     *log.Level     `yaml:"log_level,omitempty"`
 }
 
 func (a *CTICfg) Load() error {
+
 	if a.Key == nil {
-		a.Enabled = false
+		*a.Enabled = false
 	}
 	if a.Key != nil && *a.Key == "" {
 		return fmt.Errorf("empty cti key")
+	}
+	if a.Enabled == nil {
+		a.Enabled = new(bool)
+		*a.Enabled = true
 	}
 	if a.CacheTimeout == nil {
 		a.CacheTimeout = new(time.Duration)
@@ -69,7 +74,6 @@ func (a *CTICfg) Load() error {
 		a.CacheSize = new(int)
 		*a.CacheSize = 100
 	}
-	a.Enabled = true
 	return nil
 }
 
@@ -120,7 +124,7 @@ func (l *LocalApiClientCfg) Load() error {
 		apiclient.InsecureSkipVerify = *l.InsecureSkipVerify
 	}
 
-	if l.Credentials.CACertPath != ""  {
+	if l.Credentials.CACertPath != "" {
 		caCert, err := os.ReadFile(l.Credentials.CACertPath)
 		if err != nil {
 			return errors.Wrapf(err, "failed to load cacert")
