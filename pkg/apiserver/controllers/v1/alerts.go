@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
@@ -13,6 +14,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
@@ -112,6 +114,21 @@ func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uin
 	}
 }
 
+func normalizeScope(scope string) string {
+	switch strings.ToLower(scope) {
+	case "ip":
+		return types.Ip
+	case "range":
+		return types.Range
+	case "as":
+		return types.AS
+	case "country":
+		return types.Country
+	default:
+		return scope
+	}
+}
+
 // CreateAlert writes the alerts received in the body to the database
 func (c *Controller) CreateAlert(gctx *gin.Context) {
 
@@ -131,6 +148,16 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	}
 	stopFlush := false
 	for _, alert := range input {
+		//normalize scope for alert.Source and decisions
+		if alert.Source.Scope != nil {
+			*alert.Source.Scope = normalizeScope(*alert.Source.Scope)
+		}
+		for _, decision := range alert.Decisions {
+			if decision.Scope != nil {
+				*decision.Scope = normalizeScope(*decision.Scope)
+			}
+		}
+
 		alert.MachineID = machineID
 		if len(alert.Decisions) != 0 {
 			for pIdx, profile := range c.Profiles {
@@ -267,7 +294,6 @@ func (c *Controller) DeleteAlertByID(gctx *gin.Context) {
 
 	gctx.JSON(http.StatusOK, deleteAlertResp)
 }
-
 
 // DeleteAlerts deletes alerts from the database based on the specified filter
 func (c *Controller) DeleteAlerts(gctx *gin.Context) {
