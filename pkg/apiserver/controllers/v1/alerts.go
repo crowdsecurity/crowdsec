@@ -159,12 +159,13 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		}
 
 		alert.MachineID = machineID
+		//if coming from cscli, alert already has decisions
 		if len(alert.Decisions) != 0 {
 			for pIdx, profile := range c.Profiles {
 				_, matched, err := profile.EvaluateProfile(alert)
 				if err != nil {
-					gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
-					return
+					profile.Logger.Warningf("error while evaluating profile %s : %v", profile.Cfg.Name, err)
+					continue
 				}
 				if !matched {
 					continue
@@ -183,9 +184,22 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 
 		for pIdx, profile := range c.Profiles {
 			profileDecisions, matched, err := profile.EvaluateProfile(alert)
+			forceBreak := false
 			if err != nil {
-				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
-				return
+				switch profile.Cfg.OnError {
+				case "apply":
+					profile.Logger.Warningf("applying profile %s despite error: %s", profile.Cfg.Name, err)
+					matched = true
+				case "continue":
+					profile.Logger.Warningf("skipping %s profile due to error: %s", profile.Cfg.Name, err)
+				case "break":
+					forceBreak = true
+				case "ignore":
+					profile.Logger.Warningf("ignoring error: %s", err)
+				default:
+					gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+					return
+				}
 			}
 
 			if !matched {
@@ -197,7 +211,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 			}
 			profileAlert := *alert
 			c.sendAlertToPluginChannel(&profileAlert, uint(pIdx))
-			if profile.Cfg.OnSuccess == "break" {
+			if profile.Cfg.OnSuccess == "break" || forceBreak {
 				break
 			}
 		}

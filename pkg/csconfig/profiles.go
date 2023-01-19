@@ -11,7 +11,13 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-//Profile structure(s) are used by the local API to "decide" what kind of decision should be applied when a scenario with an active remediation has been triggered
+// var OnErrorDefault = OnErrorIgnore
+// var OnErrorContinue = "continue"
+// var OnErrorBreak = "break"
+// var OnErrorApply = "apply"
+// var OnErrorIgnore = "ignore"
+
+// Profile structure(s) are used by the local API to "decide" what kind of decision should be applied when a scenario with an active remediation has been triggered
 type ProfileCfg struct {
 	Name          string            `yaml:"name,omitempty"`
 	Debug         *bool             `yaml:"debug,omitempty"`
@@ -20,6 +26,7 @@ type ProfileCfg struct {
 	DurationExpr  string            `yaml:"duration_expr,omitempty"`
 	OnSuccess     string            `yaml:"on_success,omitempty"` //continue or break
 	OnFailure     string            `yaml:"on_failure,omitempty"` //continue or break
+	OnError       string            `yaml:"on_error,omitempty"`   //continue, break, error, report, apply, ignore
 	Notifications []string          `yaml:"notifications,omitempty"`
 }
 

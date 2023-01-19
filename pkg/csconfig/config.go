@@ -110,6 +110,9 @@ func NewDefaultConfig() *Config {
 				CredentialsFilePath: DefaultConfigPath("config", "online-api-secrets.yaml"),
 			},
 		},
+		CTI: &CTICfg{
+			Enabled: types.BoolPtr(false),
+		},
 	}
 
 	dbConfig := DatabaseCfg{

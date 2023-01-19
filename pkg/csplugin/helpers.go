@@ -3,6 +3,7 @@ package csplugin
 import (
 	"text/template"
 
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
@@ -18,6 +19,7 @@ var helpers = template.FuncMap{
 		}
 		return metaValues
 	},
+	"CrowdsecCTI": exprhelpers.CrowdsecCTI,
 }
 
 func funcMap() template.FuncMap {
