@@ -13,7 +13,6 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -411,7 +410,7 @@ func getHandshake() (plugin.HandshakeConfig, error) {
 }
 
 func formatAlerts(format string, alerts []*models.Alert) (string, error) {
-	template, err := template.New("").Funcs(sprig.TxtFuncMap()).Funcs(funcMap()).Funcs(map[string]interface{}{"CrowdsecCTI": exprhelpers.CrowdsecCTI}).Parse(format)
+	template, err := template.New("").Funcs(sprig.TxtFuncMap()).Funcs(funcMap()).Parse(format)
 	if err != nil {
 		return "", err
 	}
