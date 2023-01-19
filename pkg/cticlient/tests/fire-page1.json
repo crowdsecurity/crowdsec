@@ -1,0 +1,320 @@
+{
+  "_links": {
+    "first": {
+      "href": "https://cti.api.crowdsec.net/v2/fire"
+    },
+    "self": {
+      "href": "https://cti.api.crowdsec.net/v2/fire?page=1&limit=3"
+    },
+    "next": {
+      "href": "https://cti.api.crowdsec.net/v2/fire?page=2&limit=3"
+    }
+  },
+  "items": [
+    {
+      "ip_range_score": 5,
+      "ip": "1.2.3.4",
+      "ip_range": "1.2.3.0/24",
+      "as_name": "AFFINITY-FTL",
+      "as_num": 3064,
+      "location": {
+        "country": "US",
+        "city": null,
+        "latitude": 37.751,
+        "longitude": -97.822
+      },
+      "reverse_dns": "lsxx.com",
+      "behaviors": [
+        {
+          "name": "http:bruteforce",
+          "label": "HTTP Bruteforce",
+          "description": "IP has been reported for performing a HTTP brute force attack (either generic http probing or applicative related brute force)."
+        },
+        {
+          "name": "http:scan",
+          "label": "HTTP Scan",
+          "description": "IP has been reported for performing actions related to HTTP vulnerability scanning and discovery."
+        }
+      ],
+      "history": {
+        "first_seen": "2022-09-18T14:00:00+00:00",
+        "last_seen": "2022-11-26T12:00:00+00:00",
+        "full_age": 77,
+        "days_age": 69
+      },
+      "classifications": {
+        "false_positives": [],
+        "classifications": []
+      },
+      "attack_details": [
+        {
+          "name": "crowdsecurity/http-wordpress_user-enum",
+          "label": "WordPress Bruteforce",
+          "description": "Detect wordpress brute force",
+          "references": []
+        },
+        {
+          "name": "crowdsecurity/http-probing",
+          "label": "HTTP Scanner",
+          "description": "Detect site scanning/probing from a single ip",
+          "references": []
+        },
+        {
+          "name": "crowdsecurity/http-bf-wordpress_bf_xmlrpc",
+          "label": "WordPress XMLRPC Bruteforce",
+          "description": "Detect wordpress brute force on xmlrpc",
+          "references": []
+        },
+        {
+          "name": "crowdsecurity/http-bad-user-agent",
+          "label": "Known Bad User-Agent",
+          "description": "Detect bad user-agents",
+          "references": []
+        }
+      ],
+      "state": "validated",
+      "expiration": "2022-12-11T14:15:47.553000",
+      "target_countries": {
+        "US": 43,
+        "DE": 20,
+        "NL": 8,
+        "GB": 7,
+        "FR": 6,
+        "PL": 3,
+        "SG": 2,
+        "CA": 2,
+        "DK": 2,
+        "ZA": 1
+      },
+      "background_noise_score": 5,
+      "scores": {
+        "overall": {
+          "aggressiveness": 5,
+          "threat": 0,
+          "trust": 5,
+          "anomaly": 0,
+          "total": 3
+        },
+        "last_day": {
+          "aggressiveness": 0,
+          "threat": 0,
+          "trust": 0,
+          "anomaly": 0,
+          "total": 0
+        },
+        "last_week": {
+          "aggressiveness": 0,
+          "threat": 0,
+          "trust": 0,
+          "anomaly": 0,
+          "total": 0
+        },
+        "last_month": {
+          "aggressiveness": 0,
+          "threat": 0,
+          "trust": 0,
+          "anomaly": 0,
+          "total": 0
+        }
+      },
+      "references": []
+    },
+    {
+      "ip_range_score": 5,
+      "ip": "2.3.4.5",
+      "ip_range": "2.3.0./16",
+      "as_name": "Linode, LLC",
+      "as_num": 63949,
+      "location": {
+        "country": "DE",
+        "city": "Frankfurt am Main",
+        "latitude": 50.1188,
+        "longitude": 8.6843
+      },
+      "reverse_dns": "172xxent.com",
+      "behaviors": [
+        {
+          "name": "http:exploit",
+          "label": "HTTP Exploit",
+          "description": "IP has been reported for attempting to exploit a vulnerability in a web application."
+        },
+        {
+          "name": "http:scan",
+          "label": "HTTP Scan",
+          "description": "IP has been reported for performing actions related to HTTP vulnerability scanning and discovery."
+        },
+        {
+          "name": "http:crawl",
+          "label": "HTTP Crawl",
+          "description": "IP has been reported for performing aggressive crawling of web applications."
+        }
+      ],
+      "history": {
+        "first_seen": "2022-10-15T16:00:00+00:00",
+        "last_seen": "2022-11-18T18:15:00+00:00",
+        "full_age": 50,
+        "days_age": 35
+      },
+      "classifications": {
+        "false_positives": [],
+        "classifications": []
+      },
+      "attack_details": [
+        {
+          "name": "crowdsecurity/jira_cve-2021-26086",
+          "label": "Atlassian Jira CVE-2021-26086",
+          "description": "Detect Atlassian Jira CVE-2021-26086 exploitation attemps",
+          "references": []
+        },
+        {
+          "name": "crowdsecurity/http-probing",
+          "label": "HTTP Scanner",
+          "description": "Detect site scanning/probing from a single ip",
+          "references": []
+        },
+        {
+          "name": "crowdsecurity/CVE-2022-40684",
+          "label": "CVE-2022-40684",
+          "description": "Detect CVE-2022-40684 exploitation attempts (fortinet)",
+          "references": [
+            "https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2022-40684"
+          ]
+        },
+        {
+          "name": "crowdsecurity/http-crawl-non_statics",
+          "label": "HTTP Crawler",
+          "description": "Detect aggressive crawl from single ip",
+          "references": []
+        }
+      ],
+      "state": "validated",
+      "expiration": "2022-12-14T16:16:46.507000",
+      "target_countries": {
+        "US": 36,
+        "DE": 19,
+        "FR": 17,
+        "RU": 8,
+        "NL": 5,
+        "GB": 4,
+        "CA": 2,
+        "RO": 2,
+        "IT": 1,
+        "BR": 1
+      },
+      "background_noise_score": 9,
+      "scores": {
+        "overall": {
+          "aggressiveness": 5,
+          "threat": 2,
+          "trust": 5,
+          "anomaly": 0,
+          "total": 4
+        },
+        "last_day": {
+          "aggressiveness": 0,
+          "threat": 0,
+          "trust": 0,
+          "anomaly": 0,
+          "total": 0
+        },
+        "last_week": {
+          "aggressiveness": 0,
+          "threat": 0,
+          "trust": 0,
+          "anomaly": 0,
+          "total": 0
+        },
+        "last_month": {
+          "aggressiveness": 2,
+          "threat": 2,
+          "trust": 0,
+          "anomaly": 0,
+          "total": 1
+        }
+      },
+      "references": []
+    },
+    {
+      "ip_range_score": 0,
+      "ip": "3.2.3.4",
+      "ip_range": "3.2.3.0/24",
+      "as_name": "TOTxxited",
+      "as_num": 23969,
+      "location": {
+        "country": "TH",
+        "city": "Bangkok",
+        "latitude": 13.7366,
+        "longitude": 100.4995
+      },
+      "reverse_dns": "nxxxt.net",
+      "behaviors": [
+        {
+          "name": "smb:bruteforce",
+          "label": "SMB Bruteforce",
+          "description": "IP has been reported for performing brute force on samba services."
+        }
+      ],
+      "history": {
+        "first_seen": "2022-11-26T05:15:00+00:00",
+        "last_seen": "2022-11-26T12:00:00+00:00",
+        "full_age": 9,
+        "days_age": 1
+      },
+      "classifications": {
+        "false_positives": [],
+        "classifications": [
+          {
+            "name": "profile:insecure_services",
+            "label": "Dangerous Services Exposed",
+            "description": "IP exposes dangerous services (vnc, telnet, rdp), possibly due to a misconfiguration or because it's a honeypot."
+          }
+        ]
+      },
+      "attack_details": [
+        {
+          "name": "crowdsecurity/smb-bf",
+          "label": "Samba Bruteforce",
+          "description": "Detect smb brute force",
+          "references": []
+        }
+      ],
+      "state": "validated",
+      "expiration": "2022-12-14T16:18:00.671000",
+      "target_countries": {
+        "GB": 100
+      },
+      "background_noise_score": 5,
+      "scores": {
+        "overall": {
+          "aggressiveness": 2,
+          "threat": 4,
+          "trust": 5,
+          "anomaly": 1,
+          "total": 4
+        },
+        "last_day": {
+          "aggressiveness": 0,
+          "threat": 0,
+          "trust": 0,
+          "anomaly": 1,
+          "total": 0
+        },
+        "last_week": {
+          "aggressiveness": 0,
+          "threat": 0,
+          "trust": 0,
+          "anomaly": 1,
+          "total": 0
+        },
+        "last_month": {
+          "aggressiveness": 2,
+          "threat": 4,
+          "trust": 5,
+          "anomaly": 1,
+          "total": 4
+        }
+      },
+      "references": []
+    }
+  ]
+}

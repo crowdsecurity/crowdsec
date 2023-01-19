@@ -69,6 +69,7 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"GetDecisionsCount":      GetDecisionsCount,
 		"GetDecisionsSinceCount": GetDecisionsSinceCount,
 		"Sprintf":                fmt.Sprintf,
+		"CrowdsecCTI":            CrowdsecCTI,
 		"ParseUnix":              ParseUnix,
 		"GetFromStash":           cache.GetKey,
 		"SetInStash":             cache.SetKey,
@@ -258,6 +259,7 @@ func GetDecisionsCount(value string) int {
 	if dbClient == nil {
 		log.Error("No database config to call GetDecisionsCount()")
 		return 0
+
 	}
 	count, err := dbClient.CountDecisionsByValue(value)
 	if err != nil {

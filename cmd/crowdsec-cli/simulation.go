@@ -127,7 +127,16 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 	cmdSimulation.Flags().SortFlags = false
 	cmdSimulation.PersistentFlags().SortFlags = false
 
+	cmdSimulation.AddCommand(NewSimulationEnableCmd())
+	cmdSimulation.AddCommand(NewSimulationDisableCmd())
+	cmdSimulation.AddCommand(NewSimulationStatusCmd())
+
+	return cmdSimulation
+}
+
+func NewSimulationEnableCmd() *cobra.Command {
 	var forceGlobalSimulation bool
+
 	var cmdSimulationEnable = &cobra.Command{
 		Use:               "enable [scenario] [-global]",
 		Short:             "Enable the simulation, globally or on specified scenarios",
@@ -186,7 +195,12 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 		},
 	}
 	cmdSimulationEnable.Flags().BoolVarP(&forceGlobalSimulation, "global", "g", false, "Enable global simulation (reverse mode)")
-	cmdSimulation.AddCommand(cmdSimulationEnable)
+
+	return cmdSimulationEnable
+}
+
+func NewSimulationDisableCmd() *cobra.Command {
+	var forceGlobalSimulation bool
 
 	var cmdSimulationDisable = &cobra.Command{
 		Use:               "disable [scenario]",
@@ -230,8 +244,11 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 		},
 	}
 	cmdSimulationDisable.Flags().BoolVarP(&forceGlobalSimulation, "global", "g", false, "Disable global simulation (reverse mode)")
-	cmdSimulation.AddCommand(cmdSimulationDisable)
 
+	return cmdSimulationDisable
+}
+
+func NewSimulationStatusCmd() *cobra.Command {
 	var cmdSimulationStatus = &cobra.Command{
 		Use:               "status",
 		Short:             "Show simulation mode status",
@@ -245,7 +262,6 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 		},
 	}
-	cmdSimulation.AddCommand(cmdSimulationStatus)
 
-	return cmdSimulation
+	return cmdSimulationStatus
 }

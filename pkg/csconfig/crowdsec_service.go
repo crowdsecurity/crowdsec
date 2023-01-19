@@ -40,11 +40,6 @@ type CrowdsecServiceCfg struct {
 func (c *Config) LoadCrowdsec() error {
 	var err error
 
-	// Configuration paths are dependency to load crowdsec configuration
-	if err = c.LoadConfigurationPaths(); err != nil {
-		return err
-	}
-
 	if c.Crowdsec == nil {
 		log.Warning("crowdsec agent is disabled")
 		c.DisableAgent = true

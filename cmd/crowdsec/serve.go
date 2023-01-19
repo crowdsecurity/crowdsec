@@ -284,6 +284,13 @@ func Serve(cConfig *csconfig.Config, apiReady chan bool, agentReady chan bool) e
 		log.Warningln("Exprhelpers loaded without database client.")
 	}
 
+	if cConfig.API.CTI != nil && *cConfig.API.CTI.Enabled {
+		log.Infof("Crowdsec CTI helper enabled")
+		if err := exprhelpers.InitCrowdsecCTI(cConfig.API.CTI.Key, cConfig.API.CTI.CacheTimeout, cConfig.API.CTI.CacheSize, cConfig.API.CTI.LogLevel); err != nil {
+			return errors.Wrap(err, "failed to init crowdsec cti")
+		}
+	}
+
 	if !cConfig.DisableAPI {
 		if cConfig.API.Server.OnlineClient == nil || cConfig.API.Server.OnlineClient.Credentials == nil {
 			log.Warningf("Communication with CrowdSec Central API disabled from configuration file")
