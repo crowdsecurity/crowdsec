@@ -76,7 +76,7 @@ func (c *LongPollClient) doQuery() error {
 	for {
 		select {
 		case <-c.t.Dying():
-			logger.Info("dying")
+			logger.Debugf("dying")
 			close(c.c)
 			return nil
 		default:
@@ -84,12 +84,13 @@ func (c *LongPollClient) doQuery() error {
 			err = decoder.Decode(&pollResp)
 			if err != nil {
 				if err == io.EOF {
+					logger.Debugf("server closed connection")
 					return nil
 				}
 				return fmt.Errorf("error decoding poll response: %v", err)
 			}
 
-			logger.Infof("got response: %+v", pollResp)
+			logger.Tracef("got response: %+v", pollResp)
 
 			if len(pollResp.ErrorMessage) > 0 {
 				return fmt.Errorf("longpoll API error message: %s", pollResp.ErrorMessage)
@@ -116,11 +117,10 @@ func (c *LongPollClient) pollEvents() error {
 	for {
 		select {
 		case <-c.t.Dying():
-			c.logger.Info("dying")
+			c.logger.Debug("dying")
 			return nil
 		default:
 			c.logger.Info("Polling PAPI")
-			//c.doQuery()
 			err := c.doQuery()
 			if err != nil {
 				c.logger.Errorf("failed to poll: %s", err)
