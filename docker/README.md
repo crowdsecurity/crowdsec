@@ -51,7 +51,13 @@ For example, if you want a Debian version without plugin notifiers:
 $ docker build -f Dockerfile.debian --target slim
 ```
 
-supported values for target are: full, with-geoip, with-plugins, slim.
+The supported values for target are: full, with-geoip, with-plugins, slim.
+
+Note: for crowdsec versions < 1.5.0, the syntax is
+
+```console
+$ docker build -f Dockerfile.debian --build-arg=BUILD_ENV=slim
+```
 
 
 ## Required configuration
