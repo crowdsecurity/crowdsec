@@ -1,5 +1,4 @@
 # vim: set ft=dockerfile:
-ARG BUILD_ENV=full
 ARG GOVERSION=1.19
 
 FROM golang:${GOVERSION}-alpine AS build
@@ -20,7 +19,7 @@ RUN apk add --no-cache git gcc libc-dev make bash gettext binutils-gold coreutil
     cscli parsers install crowdsecurity/whitelists && \
     go install github.com/mikefarah/yq/v4@v4.30.6
 
-FROM alpine:latest as build-slim
+FROM alpine:latest as slim
 
 RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community tzdata bash && \
     mkdir -p /staging/etc/crowdsec && \
@@ -37,7 +36,7 @@ RUN yq -n '.url="http://0.0.0.0:8080"' | install -m 0600 /dev/stdin /staging/etc
 
 ENTRYPOINT /bin/bash docker_start.sh
 
-FROM build-slim as build-plugins
+FROM slim as plugins
 
 # Due to the wizard using cp -n, we have to copy the config files directly from the source as -n does not exist in busybox cp
 # The files are here for reference, as users will need to mount a new version to be actually able to use notifications
@@ -47,12 +46,10 @@ COPY --from=build /go/src/crowdsec/plugins/notifications/slack/slack.yaml /stagi
 COPY --from=build /go/src/crowdsec/plugins/notifications/splunk/splunk.yaml /staging/etc/crowdsec/notifications/splunk.yaml
 COPY --from=build /usr/local/lib/crowdsec/plugins /usr/local/lib/crowdsec/plugins
 
-FROM build-slim as build-geoip
+FROM slim as geoip
 
 COPY --from=build /var/lib/crowdsec /staging/var/lib/crowdsec
 
-FROM build-plugins as build-full
+FROM plugins as full
 
 COPY --from=build /var/lib/crowdsec /staging/var/lib/crowdsec
-
-FROM build-${BUILD_ENV}
