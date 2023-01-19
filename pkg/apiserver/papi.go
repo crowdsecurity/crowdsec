@@ -10,9 +10,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/longpollclient"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/crowdsecurity/golongpoll/client"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
@@ -33,11 +33,6 @@ var (
 		"alert":    AlertCmd,
 	}
 )
-
-func PapiError(err error) bool {
-	log.Warningf("papi: %s", err.Error())
-	return true
-}
 
 type Header struct {
 	OperationType string    `json:"operation_type"`
@@ -65,7 +60,7 @@ type OperationChannels struct {
 
 type Papi struct {
 	URL           string
-	Client        *client.Client
+	Client        *longpollclient.LongPollClient
 	DBClient      *database.Client
 	apiClient     *apiclient.ApiClient
 	Channels      *OperationChannels
@@ -78,13 +73,19 @@ type Papi struct {
 }
 
 func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig, logLevel log.Level) (*Papi, error) {
-	longPollClient, err := client.NewClient(client.ClientOptions{
-		SubscribeUrl:   *apic.apiClient.PapiURL,
-		Category:       "some-category", //what should we do with this one ?
-		HttpClient:     apic.apiClient.GetClient(),
-		OnFailure:      PapiError,
-		LoggingEnabled: true,
+
+	logger := logrus.New()
+	if err := types.ConfigureLogger(logger); err != nil {
+		return &Papi{}, fmt.Errorf("creating papi logger: %s", err)
+	}
+	logger.SetLevel(logLevel)
+
+	longPollClient, err := longpollclient.NewLongPollClient(longpollclient.LongPollClientConfig{
+		Url:        *apic.apiClient.PapiURL,
+		Logger:     logger,
+		HttpClient: apic.apiClient.GetClient(),
 	})
+
 	if err != nil {
 		return &Papi{}, errors.Wrap(err, "failed to create PAPI client")
 	}
@@ -93,12 +94,6 @@ func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.Cons
 		AddAlertChannel:       apic.AlertsAddChan,
 		DeleteDecisionChannel: make(chan []*models.Decision),
 	}
-
-	logger := logrus.New()
-	if err := types.ConfigureLogger(logger); err != nil {
-		return &Papi{}, fmt.Errorf("creating papi logger: %s", err)
-	}
-	logger.SetLevel(logLevel)
 
 	papi := &Papi{
 		URL:           apic.apiClient.PapiURL.String(),
