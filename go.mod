@@ -69,7 +69,10 @@ require (
 	github.com/aquasecurity/table v1.8.0
 	github.com/beevik/etree v1.1.0
 	github.com/blackfireio/osinfo v1.0.3
+	github.com/bluele/gcache v0.0.2
 	github.com/goccy/go-yaml v1.9.7
+	github.com/gofrs/uuid v4.0.0+incompatible
+	github.com/golang-jwt/jwt/v4 v4.2.0
 	github.com/google/winops v0.0.0-20211216095627-f0e86eb1453b
 	github.com/ivanpirog/coloredcobra v1.0.1
 	github.com/mattn/go-isatty v0.0.14
@@ -91,11 +94,9 @@ require (
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/bluele/gcache v0.0.2 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/containerd/containerd v1.6.12 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
-	github.com/crowdsecurity/golongpoll v1.3.1-0.20230104175529-f7034c6c6e70 // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
@@ -111,9 +112,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.0 // indirect
 	github.com/go-playground/validator/v10 v10.10.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
-	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang-jwt/jwt/v4 v4.2.0 // indirect
 	github.com/golang/glog v0.0.0-20210429001901-424d2337a529 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/go-cmp v0.5.8 // indirect
