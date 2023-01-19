@@ -27,11 +27,13 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 )
 
+
 type NotificationsCfg struct {
 	Config   csplugin.PluginConfig  `json:"plugin_config"`
 	Profiles []*csconfig.ProfileCfg `json:"associated_profiles"`
 	ids      []uint
 }
+
 
 func NewNotificationsCmd() *cobra.Command {
 	var cmdNotifications = &cobra.Command{
@@ -54,6 +56,80 @@ func NewNotificationsCmd() *cobra.Command {
 		},
 	}
 
+
+	cmdNotifications.AddCommand(NewNotificationsListCmd())
+	cmdNotifications.AddCommand(NewNotificationsInspectCmd())
+	cmdNotifications.AddCommand(NewNotificationsReinjectCmd())
+
+	return cmdNotifications
+}
+
+
+func getNotificationsConfiguration() (map[string]NotificationsCfg, error) {
+	pcfgs := map[string]csplugin.PluginConfig{}
+	wf := func(path string, info fs.FileInfo, err error) error {
+		if info == nil {
+			return errors.Wrapf(err, "error while traversing directory %s", path)
+		}
+		name := filepath.Join(csConfig.ConfigPaths.NotificationDir, info.Name()) //Avoid calling info.Name() twice
+		if (strings.HasSuffix(name, "yaml") || strings.HasSuffix(name, "yml")) && !(info.IsDir()) {
+			ts, err := csplugin.ParsePluginConfigFile(name)
+			if err != nil {
+				return errors.Wrapf(err, "Loading notifification plugin configuration with %s", name)
+			}
+			for _, t := range ts {
+				pcfgs[t.Name] = t
+			}
+		}
+		return nil
+	}
+
+	if err := filepath.Walk(csConfig.ConfigPaths.NotificationDir, wf); err != nil {
+		return nil, errors.Wrap(err, "Loading notifification plugin configuration")
+	}
+
+	// A bit of a tricky stuf now: reconcile profiles and notification plugins
+	ncfgs := map[string]NotificationsCfg{}
+	profiles, err := csprofiles.NewProfile(csConfig.API.Server.Profiles)
+	if err != nil {
+		return nil, errors.Wrap(err, "Cannot extract profiles from configuration")
+	}
+	for profileID, profile := range profiles {
+	loop:
+		for _, notif := range profile.Cfg.Notifications {
+			for name, pc := range pcfgs {
+				if notif == name {
+					if _, ok := ncfgs[pc.Name]; !ok {
+						ncfgs[pc.Name] = NotificationsCfg{
+							Config:   pc,
+							Profiles: []*csconfig.ProfileCfg{profile.Cfg},
+							ids:      []uint{uint(profileID)},
+						}
+						continue loop
+					}
+					tmp := ncfgs[pc.Name]
+					for _, pr := range tmp.Profiles {
+						var profiles []*csconfig.ProfileCfg
+						if pr.Name == profile.Cfg.Name {
+							continue
+						}
+						profiles = append(tmp.Profiles, profile.Cfg)
+						ids := append(tmp.ids, uint(profileID))
+						ncfgs[pc.Name] = NotificationsCfg{
+							Config:   tmp.Config,
+							Profiles: profiles,
+							ids:      ids,
+						}
+					}
+				}
+			}
+		}
+	}
+	return ncfgs, nil
+}
+
+
+func NewNotificationsListCmd() *cobra.Command {
 	var cmdNotificationsList = &cobra.Command{
 		Use:               "list",
 		Short:             "List active notifications plugins",
@@ -96,8 +172,12 @@ func NewNotificationsCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmdNotifications.AddCommand(cmdNotificationsList)
 
+	return cmdNotificationsList
+}
+
+
+func NewNotificationsInspectCmd() *cobra.Command {
 	var cmdNotificationsInspect = &cobra.Command{
 		Use:               "inspect",
 		Short:             "Inspect active notifications plugin configuration",
@@ -142,9 +222,15 @@ func NewNotificationsCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmdNotifications.AddCommand(cmdNotificationsInspect)
+
+	return cmdNotificationsInspect
+}
+
+
+func NewNotificationsReinjectCmd() *cobra.Command {
 	var remediation bool
 	var alertOverride string
+
 	var cmdNotificationsReinject = &cobra.Command{
 		Use:   "reinject",
 		Short: "reinject alert into notifications system",
@@ -264,69 +350,6 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 	}
 	cmdNotificationsReinject.Flags().BoolVarP(&remediation, "remediation", "r", false, "Set Alert.Remediation to false in the reinjected alert (see your profile filter configuration)")
 	cmdNotificationsReinject.Flags().StringVarP(&alertOverride, "alert", "a", "", "JSON string used to override alert fields in the reinjected alert (see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
-	cmdNotifications.AddCommand(cmdNotificationsReinject)
-	return cmdNotifications
-}
 
-func getNotificationsConfiguration() (map[string]NotificationsCfg, error) {
-	pcfgs := map[string]csplugin.PluginConfig{}
-	wf := func(path string, info fs.FileInfo, err error) error {
-		if info == nil {
-			return errors.Wrapf(err, "error while traversing directory %s", path)
-		}
-		name := filepath.Join(csConfig.ConfigPaths.NotificationDir, info.Name()) //Avoid calling info.Name() twice
-		if (strings.HasSuffix(name, "yaml") || strings.HasSuffix(name, "yml")) && !(info.IsDir()) {
-			ts, err := csplugin.ParsePluginConfigFile(name)
-			if err != nil {
-				return errors.Wrapf(err, "Loading notifification plugin configuration with %s", name)
-			}
-			for _, t := range ts {
-				pcfgs[t.Name] = t
-			}
-		}
-		return nil
-	}
-
-	if err := filepath.Walk(csConfig.ConfigPaths.NotificationDir, wf); err != nil {
-		return nil, errors.Wrap(err, "Loading notifification plugin configuration")
-	}
-
-	// A bit of a tricky stuf now: reconcile profiles and notification plugins
-	ncfgs := map[string]NotificationsCfg{}
-	profiles, err := csprofiles.NewProfile(csConfig.API.Server.Profiles)
-	if err != nil {
-		return nil, errors.Wrap(err, "Cannot extract profiles from configuration")
-	}
-	for profileID, profile := range profiles {
-	loop:
-		for _, notif := range profile.Cfg.Notifications {
-			for name, pc := range pcfgs {
-				if notif == name {
-					if _, ok := ncfgs[pc.Name]; !ok {
-						ncfgs[pc.Name] = NotificationsCfg{
-							Config:   pc,
-							Profiles: []*csconfig.ProfileCfg{profile.Cfg},
-							ids:      []uint{uint(profileID)},
-						}
-						continue loop
-					}
-					tmp := ncfgs[pc.Name]
-					for _, pr := range tmp.Profiles {
-						var profiles []*csconfig.ProfileCfg
-						if pr.Name == profile.Cfg.Name {
-							continue
-						}
-						profiles = append(tmp.Profiles, profile.Cfg)
-						ids := append(tmp.ids, uint(profileID))
-						ncfgs[pc.Name] = NotificationsCfg{
-							Config:   tmp.Config,
-							Profiles: profiles,
-							ids:      ids,
-						}
-					}
-				}
-			}
-		}
-	}
-	return ncfgs, nil
+	return cmdNotificationsReinject
 }
