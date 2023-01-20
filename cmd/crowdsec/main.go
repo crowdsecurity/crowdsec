@@ -100,10 +100,7 @@ func LoadBuckets(cConfig *csconfig.Config) error {
 func LoadAcquisition(cConfig *csconfig.Config) error {
 	var err error
 
-	if flags.SingleFileType != "" || flags.OneShotDSN != "" {
-		if flags.OneShotDSN == "" || flags.SingleFileType == "" {
-			return fmt.Errorf("-type requires a -dsn argument")
-		}
+	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
 		flags.Labels = labels
 		flags.Labels["type"] = flags.SingleFileType
 
@@ -246,6 +243,14 @@ func LoadConfig(cConfig *csconfig.Config) error {
 
 	if flags.TestMode && !cConfig.DisableAgent {
 		cConfig.Crowdsec.LintOnly = true
+	}
+
+	if flags.OneShotDSN != "" && flags.SingleFileType == "" {
+		return errors.New("-dsn requires a -type argument")
+	}
+
+	if flags.SingleFileType != "" && flags.OneShotDSN == "" {
+		return errors.New("-type requires a -dsn argument")
 	}
 
 	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
