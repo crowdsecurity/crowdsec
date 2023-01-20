@@ -262,3 +262,20 @@ func (fr *FeatureRegister) GetEnabledFeatures() []string {
 
 	return ret
 }
+
+// GetAllFeatures returns a slice of all the known features, ordered by name
+func (fr *FeatureRegister) GetAllFeatures() []Feature {
+	ret := make([]Feature, len(fr.features))
+
+	i := 0
+	for _, feat := range fr.features {
+		ret[i] = *feat
+		i++
+	}
+
+	sort.Slice(ret, func(i, j int) bool {
+		return ret[i].Name < ret[j].Name
+	})
+
+	return ret
+}
