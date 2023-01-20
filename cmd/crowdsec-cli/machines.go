@@ -34,8 +34,8 @@ var (
 )
 
 func generatePassword(length int) string {
-	upper  := "ABCDEFGHIJKLMNOPQRSTUVWXY"
-	lower  := "abcdefghijklmnopqrstuvwxyz"
+	upper := "ABCDEFGHIJKLMNOPQRSTUVWXY"
+	lower := "abcdefghijklmnopqrstuvwxyz"
 	digits := "0123456789"
 
 	charset := upper + lower + digits
@@ -363,6 +363,69 @@ func runMachinesDelete(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+var pruneCount int
+var parsedDuration time.Duration
+var force bool
+
+func NewMachinesPruneCmd() *cobra.Command {
+	cmdMachinesValidate := &cobra.Command{
+		Use:               "prune",
+		Short:             "prune machine list",
+		Long:              `prune all machines that are not validate OR has not made heartbeat in over 10 minutes`,
+		Example:           `cscli machines prune`,
+		DisableAutoGenTag: true,
+		PreRun: func(cmd *cobra.Command, args []string) {
+			flags := cmd.Flags()
+			dur, _ := flags.GetString("duration")
+			force, _ = flags.GetBool("force")
+			parsedDuration, _ = time.ParseDuration(fmt.Sprintf("-%s", dur))
+			var err error
+			dbClient, err = database.NewClient(csConfig.DbConfig)
+			if err != nil {
+				log.Fatalf("unable to create new database client: %s", err)
+			}
+			if !force {
+				if pending, err := dbClient.QueryPendingMachine(); err == nil {
+					pruneCount += len(pending)
+				} else {
+					log.Fatal("Error querying unvalidated machines")
+				}
+				if pending, err := dbClient.QueryLastHeartbeat(time.Now().UTC().Add(parsedDuration)); err == nil {
+					pruneCount += len(pending)
+				} else {
+					log.Fatal("Error querying unvalidated machines")
+				}
+			}
+		},
+		Run: func(cmd *cobra.Command, args []string) {
+			var nbDeleted int
+			var err error
+			var answer bool
+			if !force {
+				prompt := &survey.Confirm{
+					Message: fmt.Sprintf("You are about to delete %d machines from the database continue?", pruneCount),
+					Default: true,
+				}
+				if err := survey.AskOne(prompt, &answer); err != nil {
+					log.Warnf("unable to ask about prune check: %s", err)
+				}
+				if !answer {
+					log.Fatal("User aborted prune no changes were made")
+				}
+			}
+			if nbDeleted, err = dbClient.PruneMachines(time.Now().UTC().Add(parsedDuration)); err != nil {
+				log.Fatalf("unable to prune machines: %s", err)
+			}
+			log.Infof("sucessfully delete %d machines", nbDeleted)
+		},
+	}
+	flags := cmdMachinesValidate.Flags()
+	flags.StringP("duration", "d", "10m", "duration of time since last heartbeat EG 10m")
+	flags.Bool("force", false, "will not prompt to confirm deleteion")
+
+	return cmdMachinesValidate
+}
+
 func NewMachinesValidateCmd() *cobra.Command {
 	cmdMachinesValidate := &cobra.Command{
 		Use:               "validate",
@@ -414,6 +477,7 @@ Note: This command requires database direct access, so is intended to be run on 
 	cmdMachines.AddCommand(NewMachinesAddCmd())
 	cmdMachines.AddCommand(NewMachinesDeleteCmd())
 	cmdMachines.AddCommand(NewMachinesValidateCmd())
+	cmdMachines.AddCommand(NewMachinesPruneCmd())
 
 	return cmdMachines
 }

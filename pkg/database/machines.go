@@ -183,3 +183,26 @@ func (c *Client) IsMachineRegistered(machineID string) (bool, error) {
 	return false, nil
 
 }
+
+func (c *Client) QueryLastHeartbeat(t time.Time) ([]*ent.Machine, error) {
+	return c.Ent.Machine.Query().Where(machine.LastHeartbeatLT(t)).All(c.CTX)
+}
+
+func (c *Client) PruneMachines(t time.Time) (int, error) {
+	var total int
+	num, err := c.Ent.Machine.
+		Delete().
+		Where(machine.IsValidated(false)).Exec(c.CTX)
+	if err != nil {
+		return 0, errors.Wrap(err, "could not prune machines:")
+	}
+	total += num
+	num, err = c.Ent.Machine.
+		Delete().
+		Where(machine.LastHeartbeatLT(t)).Exec(c.CTX)
+	if err != nil {
+		return 0, errors.Wrap(err, "could not prune machines:")
+	}
+	total += num
+	return total, nil
+}
