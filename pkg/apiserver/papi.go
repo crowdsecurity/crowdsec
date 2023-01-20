@@ -118,7 +118,7 @@ func (p *Papi) Pull() error {
 	defer types.CatchPanic("lapi/PullPAPI")
 	p.Logger.Infof("Starting Polling API Pull")
 
-	lastTimestamp := time.Now().UTC()
+	lastTimestamp := time.Time{}
 	lastTimestampStr, err := p.DBClient.GetConfigItem(PapiPullKey)
 	if err != nil {
 		p.Logger.Warningf("failed to get last timestamp for papi pull: %s", err)
