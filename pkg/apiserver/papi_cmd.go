@@ -164,8 +164,14 @@ func AlertCmd(message *Message, p *Papi) error {
 		*/
 
 		/*Fix the alert with missing mandatory items*/
-		alert.StartAt = types.StrPtr(time.Now().UTC().Format(time.RFC3339))
-		alert.StopAt = types.StrPtr(time.Now().UTC().Format(time.RFC3339))
+		if alert.StartAt == nil || *alert.StartAt == "" {
+			log.Warnf("Alert %d has no StartAt, setting it to now", alert.ID)
+			alert.StartAt = types.StrPtr(time.Now().UTC().Format(time.RFC3339))
+		}
+		if alert.StopAt == nil || *alert.StopAt == "" {
+			log.Warnf("Alert %d has no StopAt, setting it to now", alert.ID)
+			alert.StopAt = types.StrPtr(time.Now().UTC().Format(time.RFC3339))
+		}
 		alert.EventsCount = types.Int32Ptr(0)
 		alert.Capacity = types.Int32Ptr(0)
 		alert.Leakspeed = types.StrPtr("")
