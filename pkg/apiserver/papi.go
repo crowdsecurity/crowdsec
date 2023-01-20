@@ -142,46 +142,47 @@ func (p *Papi) Pull() error {
 
 	p.Logger.Infof("Starting PAPI pull (since:%s)", lastTimestamp)
 	for event := range p.Client.Start(lastTimestamp) {
+		logger := p.Logger.WithField("request-id", event.RequestId)
 		//update last timestamp in database
 		newTime := time.Now().UTC()
 		binTime, err := newTime.MarshalText()
 		if err != nil {
 			return errors.Wrap(err, "failed to marshal last timestamp")
 		}
-		p.Logger.Debugf("message received: %+v", event.Data)
+		logger.Debugf("message received: %+v", event.Data)
 		message := &Message{}
 		if err := json.Unmarshal([]byte(event.Data), message); err != nil {
-			p.Logger.Errorf("polling papi message format is not compatible: %+v: %s", event.Data, err)
+			logger.Errorf("polling papi message format is not compatible: %+v: %s", event.Data, err)
 			// do we want to continue or exit ?
 			continue
 		}
 
 		if message.Header == nil {
-			p.Logger.Errorf("no header in message, skipping")
+			logger.Errorf("no header in message, skipping")
 			continue
 		}
 
 		if message.Header.Source == nil {
-			p.Logger.Errorf("no source user in header message, skipping")
+			logger.Errorf("no source user in header message, skipping")
 			continue
 		}
 
 		if operationFunc, ok := operationMap[message.Header.OperationType]; ok {
-			p.Logger.Debugf("Calling operation '%s'", message.Header.OperationType)
+			logger.Debugf("Calling operation '%s'", message.Header.OperationType)
 			err := operationFunc(message, p)
 			if err != nil {
-				p.Logger.Errorf("'%s %s failed: %s", message.Header.OperationType, message.Header.OperationCmd, err)
+				logger.Errorf("'%s %s failed: %s", message.Header.OperationType, message.Header.OperationCmd, err)
 				continue
 			}
 		} else {
-			p.Logger.Errorf("operation '%s' unknown, continue", message.Header.OperationType)
+			logger.Errorf("operation '%s' unknown, continue", message.Header.OperationType)
 			continue
 		}
 
 		if err := p.DBClient.SetConfigItem(PapiPullKey, string(binTime)); err != nil {
 			return errors.Wrap(err, "failed to update last timestamp")
 		} else {
-			p.Logger.Debugf("set last timestamp to %s", newTime)
+			logger.Debugf("set last timestamp to %s", newTime)
 		}
 
 	}

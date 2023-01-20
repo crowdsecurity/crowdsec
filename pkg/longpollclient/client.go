@@ -34,6 +34,7 @@ type Event struct {
 	Category  string    `json:"category"`
 	Data      string    `json:"data"`
 	ID        uuid.UUID `json:"id"`
+	RequestId string
 }
 
 type pollResponse struct {
@@ -66,6 +67,8 @@ func (c *LongPollClient) doQuery() error {
 		return err
 	}
 	defer resp.Body.Close()
+	requestId := resp.Header.Get("X-Amzn-Trace-Id")
+	logger = logger.WithField("request-id", requestId)
 	if resp.StatusCode != http.StatusOK {
 		c.logger.Errorf("unexpected status code: %d", resp.StatusCode)
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
@@ -99,6 +102,7 @@ func (c *LongPollClient) doQuery() error {
 			if len(pollResp.Events) > 0 {
 				c.logger.Debugf("got %d events", len(pollResp.Events))
 				for _, event := range pollResp.Events {
+					event.RequestId = requestId
 					c.c <- event
 					if event.Timestamp > c.since {
 						c.since = event.Timestamp
