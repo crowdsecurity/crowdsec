@@ -197,6 +197,7 @@ func AlertCmd(message *Message, p *Papi) error {
 			if *decision.Scenario == "" {
 				decision.Scenario = &message.Header.Message
 			}
+			log.Infof("Adding decision for '%s' with UUID: %s", *decision.Value, decision.UUID)
 		}
 
 		//use a different method : alert and/or decision might already be partially present in the database
