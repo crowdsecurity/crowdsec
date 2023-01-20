@@ -15,7 +15,7 @@ import (
 
 type LongPollClient struct {
 	t          tomb.Tomb
-	c          chan *Event
+	c          chan Event
 	url        url.URL
 	logger     *log.Entry
 	since      int64
@@ -38,7 +38,7 @@ type Event struct {
 }
 
 type pollResponse struct {
-	Events []*Event `json:"events"`
+	Events []Event `json:"events"`
 	// Set for timeout responses
 	Timestamp int64 `json:"timestamp"`
 	// API error responses could have an informative error here. Empty on success.
@@ -54,6 +54,8 @@ func (c *LongPollClient) doQuery() error {
 	query.Set("last_id", c.lastId.String())
 	query.Set("timeout", "45")
 	c.url.RawQuery = query.Encode()
+
+	logger.Infof("Query parameters: %s", c.url.RawQuery)
 
 	req, err := http.NewRequest("GET", c.url.String(), nil)
 	if err != nil {
@@ -113,6 +115,7 @@ func (c *LongPollClient) doQuery() error {
 			if pollResp.Timestamp > 0 {
 				c.since = pollResp.Timestamp
 			}
+			logger.Infof("Since is now %d", c.since)
 		}
 	}
 }
@@ -134,9 +137,9 @@ func (c *LongPollClient) pollEvents() error {
 	}
 }
 
-func (c *LongPollClient) Start(since time.Time) chan *Event {
+func (c *LongPollClient) Start(since time.Time) chan Event {
 	c.logger.Infof("starting polling client")
-	c.c = make(chan *Event)
+	c.c = make(chan Event)
 	c.since = since.Unix() * 1000
 	c.t.Go(c.pollEvents)
 	return c.c
