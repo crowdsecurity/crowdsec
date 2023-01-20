@@ -263,6 +263,7 @@ cscli hub update
 cscli_if_clean collections upgrade crowdsecurity/linux
 cscli_if_clean parsers upgrade crowdsecurity/whitelists
 cscli_if_clean parsers install crowdsecurity/docker-logs
+cscli_if_clean parsers install crowdsecurity/cri-logs
 
 if [ "$COLLECTIONS" != "" ]; then
     # shellcheck disable=SC2086

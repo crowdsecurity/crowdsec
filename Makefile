@@ -52,16 +52,17 @@ GO_MAJOR_VERSION = $(word 1, $(go_major_minor))
 GO_MINOR_VERSION = $(word 2, $(go_major_minor))
 
 GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not supported, please use at least $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION).$(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
+GO_MODULE_NAME = github.com/crowdsecurity/crowdsec
 
 LD_OPTS_VARS= \
--X 'github.com/crowdsecurity/crowdsec/cmd/crowdsec.bincoverTesting=$(BINCOVER_TESTING)' \
--X 'github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli.bincoverTesting=$(BINCOVER_TESTING)' \
--X 'github.com/crowdsecurity/crowdsec/pkg/cwversion.Version=$(BUILD_VERSION)' \
--X 'github.com/crowdsecurity/crowdsec/pkg/cwversion.BuildDate=$(BUILD_TIMESTAMP)' \
--X 'github.com/crowdsecurity/crowdsec/pkg/cwversion.Codename=$(BUILD_CODENAME)' \
--X 'github.com/crowdsecurity/crowdsec/pkg/cwversion.Tag=$(BUILD_TAG)' \
--X 'github.com/crowdsecurity/crowdsec/pkg/csconfig.defaultConfigDir=$(DEFAULT_CONFIGDIR)' \
--X 'github.com/crowdsecurity/crowdsec/pkg/csconfig.defaultDataDir=$(DEFAULT_DATADIR)'
+-X '$(GO_MODULE_NAME)/cmd/crowdsec.bincoverTesting=$(BINCOVER_TESTING)' \
+-X '$(GO_MODULE_NAME)/cmd/crowdsec-cli.bincoverTesting=$(BINCOVER_TESTING)' \
+-X '$(GO_MODULE_NAME)/pkg/cwversion.Version=$(BUILD_VERSION)' \
+-X '$(GO_MODULE_NAME)/pkg/cwversion.BuildDate=$(BUILD_TIMESTAMP)' \
+-X '$(GO_MODULE_NAME)/pkg/cwversion.Codename=$(BUILD_CODENAME)' \
+-X '$(GO_MODULE_NAME)/pkg/cwversion.Tag=$(BUILD_TAG)' \
+-X '$(GO_MODULE_NAME)/pkg/csconfig.defaultConfigDir=$(DEFAULT_CONFIGDIR)' \
+-X '$(GO_MODULE_NAME)/pkg/csconfig.defaultDataDir=$(DEFAULT_DATADIR)'
 
 ifdef BUILD_STATIC
 	export LD_OPTS=-ldflags "-s -w $(LD_OPTS_VARS) -extldflags '-static'" -tags netgo,osusergo,sqlite_omit_load_extension
