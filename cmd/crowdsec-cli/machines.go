@@ -368,7 +368,7 @@ var parsedDuration time.Duration
 var force bool
 
 func NewMachinesPruneCmd() *cobra.Command {
-	cmdMachinesValidate := &cobra.Command{
+	cmdMachinesPrune := &cobra.Command{
 		Use:               "prune",
 		Short:             "prune machine list",
 		Long:              `prune all machines that are not validate OR has not made heartbeat in over 10 minutes`,
@@ -419,11 +419,11 @@ func NewMachinesPruneCmd() *cobra.Command {
 			log.Infof("sucessfully delete %d machines", nbDeleted)
 		},
 	}
-	flags := cmdMachinesValidate.Flags()
+	flags := cmdMachinesPrune.Flags()
 	flags.StringP("duration", "d", "10m", "duration of time since last heartbeat EG 10m")
 	flags.Bool("force", false, "will not prompt to confirm deleteion")
 
-	return cmdMachinesValidate
+	return cmdMachinesPrune
 }
 
 func NewMachinesValidateCmd() *cobra.Command {
