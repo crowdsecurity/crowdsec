@@ -26,7 +26,7 @@ func getBouncerFromContext(ctx *gin.Context) (*ent.Bouncer, error) {
 	return bouncerInfo, nil
 }
 
-func (c *Controller) AbortIfRemote(option bool) gin.HandlerFunc {
+func (c *Controller) AbortRemoteIf(option bool) gin.HandlerFunc {
 	return func(gctx *gin.Context) {
 		incomingIP := gctx.ClientIP()
 		if option && incomingIP != "127.0.0.1" && incomingIP != "::1" {
