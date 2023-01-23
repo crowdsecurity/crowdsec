@@ -20,7 +20,6 @@ type LongPollClient struct {
 	logger     *log.Entry
 	since      int64
 	httpClient *http.Client
-	lastId     uuid.UUID
 }
 
 type LongPollClientConfig struct {
@@ -51,7 +50,6 @@ func (c *LongPollClient) doQuery() error {
 
 	query := c.url.Query()
 	query.Set("since_time", fmt.Sprintf("%d", c.since))
-	query.Set("last_id", c.lastId.String())
 	query.Set("timeout", "45")
 	c.url.RawQuery = query.Encode()
 
@@ -108,7 +106,6 @@ func (c *LongPollClient) doQuery() error {
 					c.c <- event
 					if event.Timestamp > c.since {
 						c.since = event.Timestamp
-						c.lastId = event.ID
 					}
 				}
 			}
