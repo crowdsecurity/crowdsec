@@ -53,7 +53,7 @@ func (c *LongPollClient) doQuery() error {
 	query.Set("timeout", "45")
 	c.url.RawQuery = query.Encode()
 
-	logger.Infof("Query parameters: %s", c.url.RawQuery)
+	logger.Debugf("Query parameters: %s", c.url.RawQuery)
 
 	req, err := http.NewRequest("GET", c.url.String(), nil)
 	if err != nil {
@@ -112,7 +112,7 @@ func (c *LongPollClient) doQuery() error {
 			if pollResp.Timestamp > 0 {
 				c.since = pollResp.Timestamp
 			}
-			logger.Infof("Since is now %d", c.since)
+			logger.Debugf("Since is now %d", c.since)
 		}
 	}
 }
