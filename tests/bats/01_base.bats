@@ -279,3 +279,21 @@ declare stderr
     rune -0 cscli explain --log "Sep 19 18:33:22 scw-d95986 sshd[24347]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=1.2.3.4" --type syslog --crowdsec "$CROWDSEC"
     assert_output - <"$BATS_TEST_DIRNAME"/testdata/explain/explain-log.txt
 }
+
+@test "Allow variable expansion and literal \$ characters in passwords' {
+    export DB_PASSWORD='P@ssw0rd'
+    # shellcheck disable=SC2016
+    config_set '.db_config.password="$DB_PASSWORD"'
+    rune -0 cscli config show --key Config.DbConfig.Password
+    assert_output 'P@ssw0rd'
+
+    # shellcheck disable=SC2016
+    config_set '.db_config.password="$3cureP@ssw0rd"'
+    rune -0 cscli config show --key Config.DbConfig.Password
+    # shellcheck disable=SC2016
+    assert_output '$3cureP@ssw0rd'
+
+    config_set '.db_config.password="P@ssw0rd$"'
+    rune -0 cscli config show --key Config.DbConfig.Password
+    assert_output 'P@ssw0rd$'
+}
