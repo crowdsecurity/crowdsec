@@ -1,13 +1,22 @@
 package apiclient
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/modelscapi"
 	qs "github.com/google/go-querystring/query"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
+
+var SCOPE_CAPI string = "CAPI"
+var DECISION_TYPE_BAN string = "ban"
+var SCOPE_LISTS string = "lists"
 
 type DecisionsService service
 
@@ -67,15 +76,139 @@ func (s *DecisionsService) List(ctx context.Context, opts DecisionsListOpts) (*m
 	if err != nil {
 		return nil, resp, err
 	}
+
 	return &decisions, resp, nil
 }
 
-func (s *DecisionsService) GetStream(ctx context.Context, opts DecisionsStreamOpts) (*models.DecisionsStreamResponse, *Response, error) {
+func (s *DecisionsService) FetchV2Decisions(ctx context.Context, url string) (*models.DecisionsStreamResponse, *Response, error) {
 	var decisions models.DecisionsStreamResponse
+
+	req, err := s.client.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	resp, err := s.client.Do(ctx, req, &decisions)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	return &decisions, resp, nil
+}
+
+func (s *DecisionsService) GetDecisionsFromGroups(decisionsGroups []*modelscapi.GetDecisionsStreamResponseNewItem) []*models.Decision {
+	var decisions []*models.Decision
+
+	for _, decisionsGroup := range decisionsGroups {
+		partialDecisions := make([]*models.Decision, len(decisionsGroup.Decisions))
+		for idx, decision := range decisionsGroup.Decisions {
+			partialDecisions[idx] = &models.Decision{
+				Scenario: decisionsGroup.Scenario,
+				Scope:    decisionsGroup.Scope,
+				Type:     &DECISION_TYPE_BAN,
+				Value:    decision.Value,
+				Duration: decision.Duration,
+				Origin:   &SCOPE_CAPI,
+			}
+		}
+		decisions = append(decisions, partialDecisions...)
+	}
+	return decisions
+}
+
+func (s *DecisionsService) FetchV3Decisions(ctx context.Context, url string) (*models.DecisionsStreamResponse, *Response, error) {
+	var decisions modelscapi.GetDecisionsStreamResponse
+	var v2Decisions models.DecisionsStreamResponse
+
+	scenarioDeleted := "deleted"
+	durationDeleted := "1h"
+
+	req, err := s.client.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	resp, err := s.client.Do(ctx, req, &decisions)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	v2Decisions.New = s.GetDecisionsFromGroups(decisions.New)
+	for _, decisionsGroup := range decisions.Deleted {
+		partialDecisions := make([]*models.Decision, len(decisionsGroup.Decisions))
+		for idx, decision := range decisionsGroup.Decisions {
+			decision := decision // fix exportloopref linter message
+			partialDecisions[idx] = &models.Decision{
+				Scenario: &scenarioDeleted,
+				Scope:    decisionsGroup.Scope,
+				Type:     &DECISION_TYPE_BAN,
+				Value:    &decision,
+				Duration: &durationDeleted,
+				Origin:   &SCOPE_CAPI,
+			}
+		}
+		v2Decisions.Deleted = append(v2Decisions.Deleted, partialDecisions...)
+	}
+
+	return &v2Decisions, resp, nil
+}
+
+func (s *DecisionsService) GetDecisionsFromBlocklist(ctx context.Context, blocklist *modelscapi.BlocklistLink) ([]*models.Decision, error) {
+	if blocklist.URL == nil {
+		return nil, errors.New("blocklist URL is nil")
+	}
+
+	log.Debugf("Fetching blocklist %s", *blocklist.URL)
+
+	req, err := s.client.NewRequest(http.MethodGet, *blocklist.URL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	pr, pw := io.Pipe()
+	go func() {
+		defer pw.Close()
+		_, err = s.client.Do(ctx, req, pw)
+		if err != nil {
+			log.Errorf("Error fetching blocklist %s: %s", *blocklist.URL, err)
+		}
+	}()
+	decisions := make([]*models.Decision, 0)
+	scanner := bufio.NewScanner(pr)
+	for scanner.Scan() {
+		decision := scanner.Text()
+		decisions = append(decisions, &models.Decision{
+			Scenario: blocklist.Name,
+			Scope:    blocklist.Scope,
+			Type:     blocklist.Remediation,
+			Value:    &decision,
+			Duration: blocklist.Duration,
+			Origin:   &SCOPE_LISTS,
+		})
+	}
+
+	return decisions, nil
+}
+
+func (s *DecisionsService) GetStream(ctx context.Context, opts DecisionsStreamOpts) (*models.DecisionsStreamResponse, *Response, error) {
 	u, err := opts.addQueryParamsToURL(s.client.URLPrefix + "/decisions/stream")
 	if err != nil {
 		return nil, nil, err
 	}
+	if s.client.URLPrefix == "v3" {
+		return s.FetchV3Decisions(ctx, u)
+	} else {
+		return s.FetchV2Decisions(ctx, u)
+	}
+}
+
+func (s *DecisionsService) GetStreamV3(ctx context.Context, opts DecisionsStreamOpts) (*modelscapi.GetDecisionsStreamResponse, *Response, error) {
+	u, err := opts.addQueryParamsToURL(s.client.URLPrefix + "/decisions/stream")
+	if err != nil {
+		return nil, nil, err
+	}
+	var decisions modelscapi.GetDecisionsStreamResponse
+
 	req, err := s.client.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
 		return nil, nil, err

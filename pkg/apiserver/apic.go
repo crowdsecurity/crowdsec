@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -22,6 +23,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/modelscapi"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -146,7 +148,7 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 		Password:       password,
 		UserAgent:      fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 		URL:            apiURL,
-		VersionPrefix:  "v2",
+		VersionPrefix:  "v3",
 		Scenarios:      ret.scenarioList,
 		UpdateScenario: ret.FetchScenariosListFromDB,
 	})
@@ -321,11 +323,41 @@ func (a *apic) HandleDeletedDecisions(deletedDecisions []*models.Decision, delet
 		if err != nil {
 			return 0, errors.Wrapf(err, "converting db ret %d", dbCliDel)
 		}
-		updateCounterForDecision(delete_counters, decision, dbCliDel)
+		updateCounterForDecision(delete_counters, decision.Origin, decision.Scenario, dbCliDel)
 		nbDeleted += dbCliDel
 	}
 	return nbDeleted, nil
+}
 
+func (a *apic) HandleDeletedDecisionsV3(deletedDecisions []*modelscapi.GetDecisionsStreamResponseDeletedItem, delete_counters map[string]map[string]int) (int, error) {
+	var filter map[string][]string
+	var nbDeleted int
+	for _, decisions := range deletedDecisions {
+		scope := decisions.Scope
+		for _, decision := range decisions.Decisions {
+			if strings.ToLower(*scope) == "ip" {
+				filter = make(map[string][]string, 1)
+				filter["value"] = []string{decision}
+			} else {
+				filter = make(map[string][]string, 2)
+				filter["value"] = []string{decision}
+				filter["scopes"] = []string{*scope}
+			}
+			filter["origin"] = []string{SCOPE_CAPI}
+
+			dbCliRet, err := a.dbClient.SoftDeleteDecisionsWithFilter(filter)
+			if err != nil {
+				return 0, errors.Wrap(err, "deleting decisions error")
+			}
+			dbCliDel, err := strconv.Atoi(dbCliRet)
+			if err != nil {
+				return 0, errors.Wrapf(err, "converting db ret %d", dbCliDel)
+			}
+			updateCounterForDecision(delete_counters, &SCOPE_CAPI, nil, dbCliDel)
+			nbDeleted += dbCliDel
+		}
+	}
+	return nbDeleted, nil
 }
 
 func createAlertsForDecisions(decisions []*models.Decision) []*models.Alert {
@@ -395,7 +427,7 @@ func createAlertForDecision(decision *models.Decision) *models.Alert {
 func fillAlertsWithDecisions(alerts []*models.Alert, decisions []*models.Decision, add_counters map[string]map[string]int) []*models.Alert {
 	for _, decision := range decisions {
 		//count and create separate alerts for each list
-		updateCounterForDecision(add_counters, decision, 1)
+		updateCounterForDecision(add_counters, decision.Origin, decision.Scenario, 1)
 
 		/*CAPI might send lower case scopes, unify it.*/
 		switch strings.ToLower(*decision.Scope) {
@@ -430,7 +462,7 @@ func fillAlertsWithDecisions(alerts []*models.Alert, decisions []*models.Decisio
 	return alerts
 }
 
-// we receive only one list of decisions, that we need to break-up :
+// we receive a list of decisions and links for blocklist and we need to create a list of alerts :
 // one alert for "community blocklist"
 // one alert per list we're subscribed to
 func (a *apic) PullTop() error {
@@ -444,7 +476,7 @@ func (a *apic) PullTop() error {
 
 	log.Infof("Starting community-blocklist update")
 
-	data, _, err := a.apiClient.Decisions.GetStream(context.Background(), apiclient.DecisionsStreamOpts{Startup: a.startup})
+	data, _, err := a.apiClient.Decisions.GetStreamV3(context.Background(), apiclient.DecisionsStreamOpts{Startup: a.startup})
 	if err != nil {
 		return errors.Wrap(err, "get stream")
 	}
@@ -453,10 +485,13 @@ func (a *apic) PullTop() error {
 
 	log.Debugf("Received %d new decisions", len(data.New))
 	log.Debugf("Received %d deleted decisions", len(data.Deleted))
+	if data.Links != nil {
+		log.Debugf("Received %d blocklists links", len(data.Links.Blocklists))
+	}
 
 	add_counters, delete_counters := makeAddAndDeleteCounters()
 	// process deleted decisions
-	if nbDeleted, err := a.HandleDeletedDecisions(data.Deleted, delete_counters); err != nil {
+	if nbDeleted, err := a.HandleDeletedDecisionsV3(data.Deleted, delete_counters); err != nil {
 		return err
 	} else {
 		log.Printf("capi/community-blocklist : %d explicit deletions", nbDeleted)
@@ -467,12 +502,25 @@ func (a *apic) PullTop() error {
 		return nil
 	}
 
-	// we receive only one list of decisions, that we need to break-up :
-	// one alert for "community blocklist"
-	// one alert per list we're subscribed to
-	alertsFromCapi := createAlertsForDecisions(data.New)
-	alertsFromCapi = fillAlertsWithDecisions(alertsFromCapi, data.New, add_counters)
+	// create one alert for community blocklist using the first decision
+	decisions := a.apiClient.Decisions.GetDecisionsFromGroups(data.New)
+	alert := createAlertForDecision(decisions[0])
+	alertsFromCapi := []*models.Alert{alert}
+	alertsFromCapi = fillAlertsWithDecisions(alertsFromCapi, decisions, add_counters)
 
+	err = a.SaveAlerts(alertsFromCapi, add_counters, delete_counters)
+	if err != nil {
+		return errors.Wrap(err, "while saving alerts")
+	}
+
+	// update blocklists
+	if err := a.UpdateBlocklists(data.Links, add_counters); err != nil {
+		return errors.Wrap(err, "while updating blocklists")
+	}
+	return nil
+}
+
+func (a *apic) SaveAlerts(alertsFromCapi []*models.Alert, add_counters map[string]map[string]int, delete_counters map[string]map[string]int) error {
 	for idx, alert := range alertsFromCapi {
 		alertsFromCapi[idx] = setAlertScenario(add_counters, delete_counters, alert)
 		log.Debugf("%s has %d decisions", *alertsFromCapi[idx].Source.Scope, len(alertsFromCapi[idx].Decisions))
@@ -484,6 +532,49 @@ func (a *apic) PullTop() error {
 			return errors.Wrapf(err, "while saving alert from %s", *alertsFromCapi[idx].Source.Scope)
 		}
 		log.Printf("%s : added %d entries, deleted %d entries (alert:%d)", *alertsFromCapi[idx].Source.Scope, inserted, deleted, alertID)
+	}
+
+	return nil
+}
+
+func (a *apic) UpdateBlocklists(links *modelscapi.GetDecisionsStreamResponseLinks, add_counters map[string]map[string]int) error {
+	if links == nil {
+		return nil
+	}
+	if links.Blocklists == nil {
+		return nil
+	}
+	// we must use a different http client than apiClient's because the transport of apiClient is jwtTransport or here we have signed apis that are incompatibles
+	// we can use the same baseUrl as the urls are absolute and the parse will take care of it
+	defaultClient, err := apiclient.NewDefaultClient(a.apiClient.BaseURL, "", "", &http.Client{})
+	if err != nil {
+		return errors.Wrap(err, "while creating default client")
+	}
+	for _, blocklist := range links.Blocklists {
+		if blocklist.Scope == nil {
+			log.Warningf("blocklist has no scope")
+			continue
+		}
+		if blocklist.Duration == nil {
+			log.Warningf("blocklist has no duration")
+			continue
+		}
+		decisions, err := defaultClient.Decisions.GetDecisionsFromBlocklist(context.Background(), blocklist)
+		if err != nil {
+			return errors.Wrapf(err, "while getting decisions from blocklist %s", *blocklist.Name)
+		}
+		if len(decisions) == 0 {
+			log.Infof("blocklist %s has no decisions", *blocklist.Name)
+			continue
+		}
+		alert := createAlertForDecision(decisions[0])
+		alertsFromCapi := []*models.Alert{alert}
+		alertsFromCapi = fillAlertsWithDecisions(alertsFromCapi, decisions, add_counters)
+
+		err = a.SaveAlerts(alertsFromCapi, add_counters, nil)
+		if err != nil {
+			return errors.Wrapf(err, "while saving alert from blocklist %s", *blocklist.Name)
+		}
 	}
 	return nil
 }
@@ -632,12 +723,12 @@ func makeAddAndDeleteCounters() (map[string]map[string]int, map[string]map[strin
 	return add_counters, delete_counters
 }
 
-func updateCounterForDecision(counter map[string]map[string]int, decision *models.Decision, totalDecisions int) {
-	if *decision.Origin == SCOPE_CAPI {
-		counter[*decision.Origin]["all"] += totalDecisions
-	} else if *decision.Origin == SCOPE_LISTS {
-		counter[*decision.Origin][*decision.Scenario] += totalDecisions
+func updateCounterForDecision(counter map[string]map[string]int, origin *string, scenario *string, totalDecisions int) {
+	if *origin == SCOPE_CAPI {
+		counter[*origin]["all"] += totalDecisions
+	} else if *origin == SCOPE_LISTS {
+		counter[*origin][*scenario] += totalDecisions
 	} else {
-		log.Warningf("Unknown origin %s", *decision.Origin)
+		log.Warningf("Unknown origin %s", *origin)
 	}
 }

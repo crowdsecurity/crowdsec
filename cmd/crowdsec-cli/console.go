@@ -101,7 +101,7 @@ After running this command your will need to validate the enrollment in the weba
 				Scenarios:     scenarios,
 				UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 				URL:           apiURL,
-				VersionPrefix: "v2",
+				VersionPrefix: "v3",
 			})
 			resp, err := c.Auth.EnrollWatcher(context.Background(), args[0], name, tags, overwrite)
 			if err != nil {
