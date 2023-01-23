@@ -35,14 +35,16 @@ func TestLoadLocalApiClientCfg(t *testing.T) {
 			input: &LocalApiClientCfg{
 				CredentialsFilePath: "./tests/bad_lapi-secrets.yaml",
 			},
-			expected: &ApiCredentialsCfg{},
+			expected:    &ApiCredentialsCfg{},
+			expectedErr: "field unknown_key not found in type csconfig.ApiCredentialsCfg",
 		},
 		{
 			name: "invalid configuration filepath",
 			input: &LocalApiClientCfg{
 				CredentialsFilePath: "./tests/nonexist_lapi-secrets.yaml",
 			},
-			expected: nil,
+			expected:    nil,
+			expectedErr: "open ./tests/nonexist_lapi-secrets.yaml: " + cstest.FileNotFoundMessage,
 		},
 		{
 			name: "valid configuration with insecure skip verify",
