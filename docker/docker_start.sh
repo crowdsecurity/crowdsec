@@ -106,9 +106,39 @@ cscli_if_clean() {
         if cscli "$1" inspect "$obj" -o json | yq -e '.tainted // false' >/dev/null 2>&1; then
             echo "Object $1/$obj is tainted, skipping"
         else
-            cscli "$1" "$2" "$obj"
+#            # Too verbose? Only show errors if not in debug mode
+#            if [ "$DEBUG" != "true" ]; then
+#                error_only=--error
+#            fi
+            error_only=""
+            echo "Running: cscli $error_only $1 $2 \"$obj\""
+            # shellcheck disable=SC2086
+            cscli $error_only "$1" "$2" "$obj"
         fi
     done
+}
+
+# Return the difference between two lists
+# of items separated by spaces
+difference() {
+  list1="$1"
+  list2="$2"
+
+  # split into words
+  # shellcheck disable=SC2086
+  set -- $list1
+  for item in "$@"; do
+    found=false
+    for i in $list2; do
+      if [ "$item" = "$i" ]; then
+        found=true
+        break
+      fi
+    done
+    if [ "$found" = false ]; then
+      echo "$item"
+    fi
+  done
 }
 
 #-----------------------------------#
@@ -267,22 +297,22 @@ cscli_if_clean parsers install crowdsecurity/cri-logs
 
 if [ "$COLLECTIONS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean collections install "$COLLECTIONS"
+    cscli_if_clean collections install "$(difference "$COLLECTIONS" "$DISABLE_COLLECTIONS")"
 fi
 
 if [ "$PARSERS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean parsers install "$PARSERS"
+    cscli_if_clean parsers install "$(difference "$PARSERS" "$DISABLE_PARSERS")"
 fi
 
 if [ "$SCENARIOS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean scenarios install "$SCENARIOS"
+    cscli_if_clean scenarios install "$(difference "$SCENARIOS" "$DISABLE_SCENARIOS")"
 fi
 
 if [ "$POSTOVERFLOWS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean postoverflows install "$POSTOVERFLOWS"
+    cscli_if_clean postoverflows install "$(difference "$POSTOVERFLOWS" "$DISABLE_POSTOVERFLOWS")"
 fi
 
 ## Remove collections, parsers, scenarios & postoverflows
