@@ -155,6 +155,7 @@ func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 		fmt.Printf(" - AS         : %s\n", alert.Source.AsName)
 		fmt.Printf(" - Begin      : %s\n", *alert.StartAt)
 		fmt.Printf(" - End        : %s\n\n", *alert.StopAt)
+		fmt.Printf(" - UUID	      : %s\n", alert.UUID)
 
 		alertDecisionsTable(color.Output, alert)
 

@@ -43,6 +43,7 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 		Capacity:        &alert.Capacity,
 		Leakspeed:       &alert.LeakSpeed,
 		Simulated:       &alert.Simulated,
+		UUID:            alert.UUID,
 		Source: &models.Source{
 			Scope:     &alert.SourceScope,
 			Value:     &alert.SourceValue,
@@ -277,7 +278,6 @@ func (c *Controller) DeleteAlertByID(gctx *gin.Context) {
 
 	gctx.JSON(http.StatusOK, deleteAlertResp)
 }
-
 
 // DeleteAlerts deletes alerts from the database based on the specified filter
 func (c *Controller) DeleteAlerts(gctx *gin.Context) {
