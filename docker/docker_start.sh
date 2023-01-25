@@ -118,7 +118,7 @@ cscli_if_clean() {
     done
 }
 
-# Return the difference between two lists
+# Output the difference between two lists
 # of items separated by spaces
 difference() {
   list1="$1"
