@@ -215,4 +215,11 @@ windows_installer: build
 chocolatey: windows_installer
 	@.\make_chocolatey.ps1 -version $(BUILD_VERSION)
 
+# Include tests/bats.mk only if it exists
+# to allow building without a test/ directory
+# (i.e. inside docker)
+ifeq (,$(wildcard tests/bats.mk))
+bats-clean:
+else
 include tests/bats.mk
+endif

@@ -14,7 +14,7 @@ ENV DEBCONF_NOWARNINGS="yes"
 RUN apt-get update && \
     apt-get install -y -q git gcc libc-dev make bash gettext binutils-gold coreutils tzdata && \
     echo "githubciXXXXXXXXXXXXXXXXXXXXXXXX" > /etc/machine-id && \
-    SYSTEM="docker" make clean release && \
+    make clean release && \
     cd crowdsec-v* && \
     ./wizard.sh --docker-mode && \
     cd - >/dev/null && \
