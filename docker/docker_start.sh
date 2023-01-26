@@ -119,8 +119,8 @@ if [ -n "$CERT_FILE" ] || [ -n "$KEY_FILE" ] ; then
     echo "Please use LAPI_CERT_FILE and LAPI_KEY_FILE insted." >&2
     echo "The old variables will be removed in a future release." >&2
     printf '%b' '\033[0m'
-    LAPI_CERT_FILE=${LAPI_CERT_FILE:-$CERT_FILE}
-    LAPI_KEY_FILE=${LAPI_KEY_FILE:-$KEY_FILE}
+    export LAPI_CERT_FILE=${LAPI_CERT_FILE:-$CERT_FILE}
+    export LAPI_KEY_FILE=${LAPI_KEY_FILE:-$KEY_FILE}
 fi
 
 # Check and prestage databases
@@ -209,9 +209,9 @@ fi
 # registration to online API for signal push
 if isfalse "$DISABLE_ONLINE_API" ; then
     CONFIG_DIR=$(conf_get '.config_paths.config_dir')
+    export CONFIG_DIR
     config_exists=$(conf_get '.api.server.online_client | has("credentials_path")')
     if isfalse "$config_exists"; then
-        export CONFIG_DIR
         conf_set '.api.server.online_client = {"credentials_path": strenv(CONFIG_DIR) + "/online_api_credentials.yaml"}'
         cscli capi register > "$CONFIG_DIR/online_api_credentials.yaml"
         echo "Registration to online API done"
@@ -315,7 +315,7 @@ for BOUNCER in $(compgen -A variable | grep -i BOUNCER_KEY); do
     fi
 done
 
-## Register bouncers via secrets
+## Register bouncers via secrets (Swarm only)
 shopt -s nullglob extglob
 for BOUNCER in /run/secrets/@(bouncer_key|BOUNCER_KEY)* ; do
     KEY=$(cat "${BOUNCER}")
