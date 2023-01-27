@@ -19,7 +19,7 @@ All the following images are available on Docker Hub for the architectures
 
  - `crowdsecurity/crowdsec:{version}`
 
-Recommended for production usage. Also available on GitHub (ghrc.io).
+Recommended for production usage. Also available on GitHub (ghcr.io).
 
  - `crowdsecurity/crowdsec:latest`
 
@@ -48,10 +48,16 @@ You can build your images with Dockerfile and Dockerfile-debian.
 For example, if you want a Debian version without plugin notifiers:
 
 ```console
-$ docker build -f Dockerfile.debian --build-arg=BUILD_ENV=slim
+$ docker build -f Dockerfile.debian --target slim
 ```
 
-supported values for BUILD_ENV are: full, with-geoip, with-plugins, slim.
+The supported values for target are: full, with-geoip, with-plugins, slim.
+
+Note: for crowdsec versions < 1.5.0, the syntax is
+
+```console
+$ docker build -f Dockerfile.debian --build-arg=BUILD_ENV=slim
+```
 
 
 ## Required configuration

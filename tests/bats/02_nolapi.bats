@@ -35,6 +35,7 @@ teardown() {
 
 @test "crowdsec should not run without LAPI (no api.server in configuration file)" {
     config_disable_lapi
+    config_log_stderr
     # really needs 4 secs on slow boxes
     run -1 --separate-stderr timeout 4s "${CROWDSEC}"
 

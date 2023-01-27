@@ -263,7 +263,6 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 var noUnit bool
 
 func NewMetricsCmd() *cobra.Command {
-	/* ---- UPDATE COMMAND */
 	var cmdMetrics = &cobra.Command{
 		Use:               "metrics",
 		Short:             "Display crowdsec prometheus metrics.",

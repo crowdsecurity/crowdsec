@@ -9,6 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csstring"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/yamlpatch"
 )
@@ -53,7 +54,7 @@ func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool
 	if err != nil {
 		return nil, err
 	}
-	configData := os.ExpandEnv(string(fcontent))
+	configData := csstring.StrictExpand(string(fcontent), os.LookupEnv)
 	cfg := Config{
 		FilePath:     &configFile,
 		DisableAgent: disableAgent,
@@ -109,6 +110,9 @@ func NewDefaultConfig() *Config {
 			OnlineClient: &OnlineApiClientCfg{
 				CredentialsFilePath: DefaultConfigPath("config", "online-api-secrets.yaml"),
 			},
+		},
+		CTI: &CTICfg{
+			Enabled: types.BoolPtr(false),
 		},
 	}
 

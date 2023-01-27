@@ -1,5 +1,9 @@
 package csconfig
 
+import (
+	log "github.com/sirupsen/logrus"
+)
+
 /*cscli specific config, such as hub directory*/
 type CscliCfg struct {
 	Output             string            `yaml:"output,omitempty"`
@@ -20,6 +24,9 @@ func (c *Config) LoadCSCLI() error {
 		c.Cscli = &CscliCfg{}
 	}
 	if err := c.LoadConfigurationPaths(); err != nil {
+		return err
+	}
+	if err := LoadFeatureFlagsFile(c, log.StandardLogger()); err != nil {
 		return err
 	}
 	c.Cscli.ConfigDir = c.ConfigPaths.ConfigDir
