@@ -67,7 +67,7 @@ func (c *LongPollClient) doQuery() error {
 	req.Header.Set("Accept", "application/json")
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		c.logger.Errorf("failed to execute request: %s", err)
+		logger.Errorf("failed to execute request: %s", err)
 		return err
 	}
 	defer resp.Body.Close()
@@ -78,10 +78,10 @@ func (c *LongPollClient) doQuery() error {
 		if resp.StatusCode == http.StatusForbidden {
 			bodyContent, err := io.ReadAll(resp.Body)
 			if err != nil {
-				c.logger.Errorf("failed to read response body: %s", err)
+				logger.Errorf("failed to read response body: %s", err)
 				return err
 			}
-			c.logger.Errorf(string(bodyContent))
+			logger.Errorf(string(bodyContent))
 			return errUnauthorized
 		}
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
@@ -117,7 +117,7 @@ func (c *LongPollClient) doQuery() error {
 			}
 
 			if len(pollResp.Events) > 0 {
-				c.logger.Debugf("got %d events", len(pollResp.Events))
+				logger.Debugf("got %d events", len(pollResp.Events))
 				for _, event := range pollResp.Events {
 					event.RequestId = requestId
 					c.c <- event
