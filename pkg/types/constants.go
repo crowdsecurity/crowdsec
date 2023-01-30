@@ -1,7 +1,5 @@
 package types
 
-import "strings"
-
 const ApiKeyAuthType = "api-key"
 const TlsAuthType = "tls"
 const PasswordAuthType = "password"
@@ -25,8 +23,4 @@ func GetOrigins() []string {
 		ListOrigin,
 		CAPIOrigin,
 	}
-}
-
-func GetOriginsString(delimiter string) string {
-	return strings.Join(GetOrigins(), delimiter)
 }
