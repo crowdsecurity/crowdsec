@@ -141,7 +141,7 @@ func (c *LongPollClient) pollEvents() error {
 			c.logger.Debug("dying")
 			return nil
 		default:
-			c.logger.Info("Polling PAPI")
+			c.logger.Debug("Polling PAPI")
 			err := c.doQuery()
 			if err != nil {
 				c.logger.Errorf("failed to poll: %s", err)
