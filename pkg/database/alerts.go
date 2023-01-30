@@ -65,9 +65,8 @@ func formatAlertAsString(machineId string, alert *models.Alert) []string {
 
 	/**/
 	reason := ""
-	if len(alert.Decisions) > 1 {
-		reason = fmt.Sprintf("%d decisions", len(alert.Decisions))
-	} else if alert.Scenario != nil && *alert.Scenario != "" {
+
+	if alert.Scenario != nil && *alert.Scenario != "" {
 		reason = fmt.Sprintf("%s by %s", *alert.Scenario, src)
 	} else if alert.Message != nil && *alert.Message != "" {
 		reason = fmt.Sprintf("%s by %s", *alert.Message, src)
@@ -76,7 +75,7 @@ func formatAlertAsString(machineId string, alert *models.Alert) []string {
 	}
 
 	if len(alert.Decisions) > 0 {
-		for _, decisionItem := range alert.Decisions {
+		for i, decisionItem := range alert.Decisions {
 			decision := ""
 			if alert.Simulated != nil && *alert.Simulated {
 				decision = "(simulated alert)"
@@ -86,6 +85,9 @@ func formatAlertAsString(machineId string, alert *models.Alert) []string {
 			if log.GetLevel() >= log.DebugLevel {
 				/*spew is expensive*/
 				log.Debugf("%s", spew.Sdump(decisionItem))
+			}
+			if len(alert.Decisions) > 1 {
+				reason = fmt.Sprintf("%d/%d decisions", i+1, len(alert.Decisions))
 			}
 			decision += fmt.Sprintf("%s %s on %s %s", *decisionItem.Duration,
 				*decisionItem.Type, *decisionItem.Scope, *decisionItem.Value)
