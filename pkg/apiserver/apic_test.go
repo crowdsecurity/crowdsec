@@ -262,7 +262,7 @@ func TestAPICHandleDeletedDecisions(t *testing.T) {
 
 	nbDeleted, err := api.HandleDeletedDecisions([]*models.Decision{{
 		Value:    types.StrPtr("1.2.3.4"),
-		Origin:   &types.CAPIOrigin,
+		Origin:   types.StrPtr(types.CAPIOrigin),
 		Type:     &decision1.Type,
 		Scenario: types.StrPtr("crowdsec/test"),
 		Scope:    types.StrPtr("IP"),
@@ -360,22 +360,22 @@ func TestAPICGetMetrics(t *testing.T) {
 
 func TestCreateAlertsForDecision(t *testing.T) {
 	httpBfDecisionList := &models.Decision{
-		Origin:   &types.ListOrigin,
+		Origin:   types.StrPtr(types.ListOrigin),
 		Scenario: types.StrPtr("crowdsecurity/http-bf"),
 	}
 
 	sshBfDecisionList := &models.Decision{
-		Origin:   &types.ListOrigin,
+		Origin:   types.StrPtr(types.ListOrigin),
 		Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
 	}
 
 	httpBfDecisionCommunity := &models.Decision{
-		Origin:   &types.CAPIOrigin,
+		Origin:   types.StrPtr(types.CAPIOrigin),
 		Scenario: types.StrPtr("crowdsecurity/http-bf"),
 	}
 
 	sshBfDecisionCommunity := &models.Decision{
-		Origin:   &types.CAPIOrigin,
+		Origin:   types.StrPtr(types.CAPIOrigin),
 		Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
 	}
 	type args struct {
@@ -439,25 +439,25 @@ func TestCreateAlertsForDecision(t *testing.T) {
 
 func TestFillAlertsWithDecisions(t *testing.T) {
 	httpBfDecisionCommunity := &models.Decision{
-		Origin:   &types.CAPIOrigin,
+		Origin:   types.StrPtr(types.CAPIOrigin),
 		Scenario: types.StrPtr("crowdsecurity/http-bf"),
 		Scope:    types.StrPtr("ip"),
 	}
 
 	sshBfDecisionCommunity := &models.Decision{
-		Origin:   &types.CAPIOrigin,
+		Origin:   types.StrPtr(types.CAPIOrigin),
 		Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
 		Scope:    types.StrPtr("ip"),
 	}
 
 	httpBfDecisionList := &models.Decision{
-		Origin:   &types.ListOrigin,
+		Origin:   types.StrPtr(types.ListOrigin),
 		Scenario: types.StrPtr("crowdsecurity/http-bf"),
 		Scope:    types.StrPtr("ip"),
 	}
 
 	sshBfDecisionList := &models.Decision{
-		Origin:   &types.ListOrigin,
+		Origin:   types.StrPtr(types.ListOrigin),
 		Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
 		Scope:    types.StrPtr("ip"),
 	}
@@ -534,7 +534,7 @@ func TestAPICPullTop(t *testing.T) {
 			models.DecisionsStreamResponse{
 				Deleted: models.GetDecisionsResponse{
 					&models.Decision{
-						Origin:   &types.ListOrigin,
+						Origin:   types.StrPtr(types.ListOrigin),
 						Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
 						Value:    types.StrPtr("9.9.9.9"),
 						Scope:    types.StrPtr("Ip"),
@@ -542,7 +542,7 @@ func TestAPICPullTop(t *testing.T) {
 						Type:     types.StrPtr("ban"),
 					}, // This is already present in DB
 					&models.Decision{
-						Origin:   &types.ListOrigin,
+						Origin:   types.StrPtr(types.ListOrigin),
 						Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
 						Value:    types.StrPtr("9.1.9.9"),
 						Scope:    types.StrPtr("Ip"),
@@ -552,7 +552,7 @@ func TestAPICPullTop(t *testing.T) {
 				},
 				New: models.GetDecisionsResponse{
 					&models.Decision{
-						Origin:   &types.CAPIOrigin,
+						Origin:   types.StrPtr(types.CAPIOrigin),
 						Scenario: types.StrPtr("crowdsecurity/test1"),
 						Value:    types.StrPtr("1.2.3.4"),
 						Scope:    types.StrPtr("Ip"),
@@ -560,7 +560,7 @@ func TestAPICPullTop(t *testing.T) {
 						Type:     types.StrPtr("ban"),
 					},
 					&models.Decision{
-						Origin:   &types.CAPIOrigin,
+						Origin:   types.StrPtr(types.CAPIOrigin),
 						Scenario: types.StrPtr("crowdsecurity/test2"),
 						Value:    types.StrPtr("1.2.3.5"),
 						Scope:    types.StrPtr("Ip"),
@@ -568,7 +568,7 @@ func TestAPICPullTop(t *testing.T) {
 						Type:     types.StrPtr("ban"),
 					}, // These two are from community list.
 					&models.Decision{
-						Origin:   &types.ListOrigin,
+						Origin:   types.StrPtr(types.ListOrigin),
 						Scenario: types.StrPtr("crowdsecurity/http-bf"),
 						Value:    types.StrPtr("1.2.3.6"),
 						Scope:    types.StrPtr("Ip"),
@@ -576,7 +576,7 @@ func TestAPICPullTop(t *testing.T) {
 						Type:     types.StrPtr("ban"),
 					},
 					&models.Decision{
-						Origin:   &types.ListOrigin,
+						Origin:   types.StrPtr(types.ListOrigin),
 						Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
 						Value:    types.StrPtr("1.2.3.7"),
 						Scope:    types.StrPtr("Ip"),
@@ -848,7 +848,7 @@ func TestAPICPull(t *testing.T) {
 				models.DecisionsStreamResponse{
 					New: models.GetDecisionsResponse{
 						&models.Decision{
-							Origin:   &types.CAPIOrigin,
+							Origin:   types.StrPtr(types.CAPIOrigin),
 							Scenario: types.StrPtr("crowdsecurity/test2"),
 							Value:    types.StrPtr("1.2.3.5"),
 							Scope:    types.StrPtr("Ip"),
