@@ -1,8 +1,10 @@
 package csconfig
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -11,7 +13,6 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cstest"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func TestLoadLocalApiClientCfg(t *testing.T) {
@@ -232,28 +233,28 @@ func TestLoadAPIServer(t *testing.T) {
 				},
 				DisableAPI: false,
 			},
-			expectedResult: &LocalApiServerCfg{
+			expected: &LocalApiServerCfg{
 				PapiLogLevel: &logLevel,
 			},
-			err: "no database configuration provided",
+			expectedErr: "no database configuration provided",
 		},
 	}
 
 	for idx, test := range tests {
-		err := test.Input.LoadAPIServer()
-		if err == nil && test.err != "" {
+		err := test.input.LoadAPIServer()
+		if err == nil && test.expectedErr != "" {
 			fmt.Printf("TEST '%s': NOK\n", test.name)
 			t.Fatalf("Test number %d/%d expected error, didn't get it", idx+1, len(tests))
-		} else if test.err != "" {
+		} else if test.expectedErr != "" {
 			fmt.Printf("ERR: %+v\n", err)
-			if !strings.HasPrefix(fmt.Sprintf("%s", err), test.err) {
+			if !strings.HasPrefix(fmt.Sprintf("%s", err), test.expectedErr) {
 				fmt.Printf("TEST '%s': NOK\n", test.name)
 				t.Fatalf("%d/%d expected '%s' got '%s'", idx, len(tests),
-					test.err,
+					test.expectedErr,
 					fmt.Sprintf("%s", err))
 			}
 
-			assert.Equal(t, tc.expected, tc.input.API.Server)
-		})
+			assert.Equal(t, test.expected, test.input.API.Server)
+		}
 	}
 }
