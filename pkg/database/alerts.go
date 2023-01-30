@@ -89,11 +89,17 @@ func formatAlertAsString(machineId string, alert *models.Alert) []string {
 			if len(alert.Decisions) > 1 {
 				reason = fmt.Sprintf("%d/%d decisions", i+1, len(alert.Decisions))
 			}
+			machineIdOrigin := ""
+			if machineId == "" {
+				machineIdOrigin = fmt.Sprintf("%s", *decisionItem.Origin)
+			} else {
+				machineIdOrigin = fmt.Sprintf("%s/%s", machineId, *decisionItem.Origin)
+			}
+
 			decision += fmt.Sprintf("%s %s on %s %s", *decisionItem.Duration,
 				*decisionItem.Type, *decisionItem.Scope, *decisionItem.Value)
 			retStr = append(retStr,
-				fmt.Sprintf("(%s/%s) %s : %s", machineId,
-					*decisionItem.Origin, reason, decision))
+				fmt.Sprintf("(%s) %s : %s", machineIdOrigin, reason, decision))
 		}
 	} else {
 		retStr = append(retStr, fmt.Sprintf("(%s) alert : %s", machineId, reason))
