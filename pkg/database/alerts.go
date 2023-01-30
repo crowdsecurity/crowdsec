@@ -65,14 +65,16 @@ func formatAlertAsString(machineId string, alert *models.Alert) []string {
 
 	/**/
 	reason := ""
-
+	msg := ""
 	if alert.Scenario != nil && *alert.Scenario != "" {
-		reason = fmt.Sprintf("%s by %s", *alert.Scenario, src)
+		msg = *alert.Scenario
 	} else if alert.Message != nil && *alert.Message != "" {
-		reason = fmt.Sprintf("%s by %s", *alert.Message, src)
+		msg = *alert.Message
 	} else {
-		reason = fmt.Sprintf("empty scenario by %s", src)
+		msg = fmt.Sprintf("empty scenario by %s", src)
 	}
+
+	reason = fmt.Sprintf("%s by %s", msg, src)
 
 	if len(alert.Decisions) > 0 {
 		for i, decisionItem := range alert.Decisions {
@@ -87,7 +89,7 @@ func formatAlertAsString(machineId string, alert *models.Alert) []string {
 				log.Debugf("%s", spew.Sdump(decisionItem))
 			}
 			if len(alert.Decisions) > 1 {
-				reason = fmt.Sprintf("%d/%d decisions", i+1, len(alert.Decisions))
+				reason = fmt.Sprintf("%s for %d/%d decisions", msg, i+1, len(alert.Decisions))
 			}
 			machineIdOrigin := ""
 			if machineId == "" {
