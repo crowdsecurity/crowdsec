@@ -330,8 +330,8 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 		}
 		decisionBulk := make([]*ent.DecisionCreate, 0, decisionBulkSize)
 		valueList := make([]string, 0, decisionBulkSize)
-		DecOrigin := types.CAPIOrigin
-		if *alertItem.Decisions[0].Origin == types.CAPIOrigin || *alertItem.Decisions[0].Origin == types.ListOrigin {
+		DecOrigin := CapiMachineID
+		if *alertItem.Decisions[0].Origin == CapiMachineID || *alertItem.Decisions[0].Origin == CapiListsMachineID {
 			DecOrigin = *alertItem.Decisions[0].Origin
 		} else {
 			log.Warningf("unexpected origin %s", *alertItem.Decisions[0].Origin)

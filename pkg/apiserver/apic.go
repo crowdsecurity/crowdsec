@@ -344,7 +344,7 @@ func (a *apic) Send(cacheOrig *models.AddSignalsRequest) {
 func (a *apic) CAPIPullIsOld() (bool, error) {
 	/*only pull community blocklist if it's older than 1h30 */
 	alerts := a.dbClient.Ent.Alert.Query()
-	alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginEQ(types.CAPIOrigin)))
+	alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginEQ(database.CapiMachineID)))
 	alerts = alerts.Where(alert.CreatedAtGTE(time.Now().UTC().Add(-time.Duration(1*time.Hour + 30*time.Minute)))) //nolint:unconvert
 	count, err := alerts.Count(a.dbClient.CTX)
 	if err != nil {
@@ -446,7 +446,7 @@ func createAlertForDecision(decision *models.Decision) *models.Alert {
 	newAlert.Leakspeed = types.StrPtr("")
 	newAlert.ScenarioHash = types.StrPtr("")
 	newAlert.ScenarioVersion = types.StrPtr("")
-	newAlert.MachineID = types.CAPIOrigin
+	newAlert.MachineID = database.CapiMachineID
 	return newAlert
 }
 
