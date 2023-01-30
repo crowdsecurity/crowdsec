@@ -65,7 +65,9 @@ func formatAlertAsString(machineId string, alert *models.Alert) []string {
 
 	/**/
 	reason := ""
-	if alert.Scenario != nil && *alert.Scenario != "" {
+	if len(alert.Decisions) > 1 {
+		reason = fmt.Sprintf("%d decisions", len(alert.Decisions))
+	} else if alert.Scenario != nil && *alert.Scenario != "" {
 		reason = fmt.Sprintf("%s by %s", *alert.Scenario, src)
 	} else if alert.Message != nil && *alert.Message != "" {
 		reason = fmt.Sprintf("%s by %s", *alert.Message, src)
