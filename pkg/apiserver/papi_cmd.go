@@ -116,7 +116,7 @@ func AlertCmd(message *Message, p *Papi) error {
 		}
 
 		//use a different method : alert and/or decision might already be partially present in the database
-		_, err = p.DBClient.CreateOrUpdateAlert("", alert)
+		_, err = p.DBClient.CreateOrUpdateAlert(message.Header.Source.User, alert)
 		if err != nil {
 			log.Errorf("Failed to create alerts in DB: %s", err)
 		} else {
