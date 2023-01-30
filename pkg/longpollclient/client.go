@@ -75,7 +75,7 @@ func (c *LongPollClient) doQuery() error {
 	logger = logger.WithField("request-id", requestId)
 	if resp.StatusCode != http.StatusOK {
 		c.logger.Errorf("unexpected status code: %d", resp.StatusCode)
-		if resp.StatusCode == http.StatusForbidden {
+		if resp.StatusCode == http.StatusPaymentRequired {
 			bodyContent, err := io.ReadAll(resp.Body)
 			if err != nil {
 				logger.Errorf("failed to read response body: %s", err)
@@ -145,6 +145,11 @@ func (c *LongPollClient) pollEvents() error {
 			err := c.doQuery()
 			if err != nil {
 				c.logger.Errorf("failed to poll: %s", err)
+				if err == errUnauthorized {
+					c.t.Kill(err)
+					close(c.c)
+					return err
+				}
 				continue
 			}
 		}
@@ -177,6 +182,7 @@ func NewLongPollClient(config LongPollClientConfig) (*LongPollClient, error) {
 			"url":       config.Url.String(),
 		})
 	}
+
 	return &LongPollClient{
 		url:        config.Url,
 		logger:     logger,
