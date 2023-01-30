@@ -25,7 +25,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-
 func DecisionsFromAlert(alert *models.Alert) string {
 	ret := ""
 	var decMap = make(map[string]int)
@@ -142,18 +141,18 @@ func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 		if *alert.Source.Value != "" {
 			scopeAndValue += ":" + *alert.Source.Value
 		}
-		fmt.Printf(" - ID         : %d\n", alert.ID)
-		fmt.Printf(" - Date       : %s\n", alert.CreatedAt)
-		fmt.Printf(" - Machine    : %s\n", alert.MachineID)
-		fmt.Printf(" - Simulation : %v\n", *alert.Simulated)
-		fmt.Printf(" - Reason     : %s\n", *alert.Scenario)
+		fmt.Printf(" - ID           : %d\n", alert.ID)
+		fmt.Printf(" - Date         : %s\n", alert.CreatedAt)
+		fmt.Printf(" - Machine      : %s\n", alert.MachineID)
+		fmt.Printf(" - Simulation   : %v\n", *alert.Simulated)
+		fmt.Printf(" - Reason       : %s\n", *alert.Scenario)
 		fmt.Printf(" - Events Count : %d\n", *alert.EventsCount)
-		fmt.Printf(" - Scope:Value: %s\n", scopeAndValue)
-		fmt.Printf(" - Country    : %s\n", alert.Source.Cn)
-		fmt.Printf(" - AS         : %s\n", alert.Source.AsName)
-		fmt.Printf(" - Begin      : %s\n", *alert.StartAt)
-		fmt.Printf(" - End        : %s\n\n", *alert.StopAt)
-		fmt.Printf(" - UUID	      : %s\n", alert.UUID)
+		fmt.Printf(" - Scope:Value  : %s\n", scopeAndValue)
+		fmt.Printf(" - Country      : %s\n", alert.Source.Cn)
+		fmt.Printf(" - AS           : %s\n", alert.Source.AsName)
+		fmt.Printf(" - Begin        : %s\n", *alert.StartAt)
+		fmt.Printf(" - End          : %s\n", *alert.StopAt)
+		fmt.Printf(" - UUID         : %s\n\n", alert.UUID)
 
 		alertDecisionsTable(color.Output, alert)
 
@@ -189,7 +188,6 @@ func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 	}
 	return nil
 }
-
 
 func NewAlertsCmd() *cobra.Command {
 	var cmdAlerts = &cobra.Command{
@@ -228,7 +226,6 @@ func NewAlertsCmd() *cobra.Command {
 
 	return cmdAlerts
 }
-
 
 func NewAlertsListCmd() *cobra.Command {
 	var alertListFilter = apiclient.AlertsListOpts{
@@ -449,7 +446,6 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 	cmdAlertsDelete.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
 	return cmdAlertsDelete
 }
-
 
 func NewAlertsInspectCmd() *cobra.Command {
 	var details bool
