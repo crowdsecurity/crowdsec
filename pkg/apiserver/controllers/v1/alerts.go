@@ -185,7 +185,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 				}
 			}
 			decision := alert.Decisions[0]
-			if decision.Origin != nil && *decision.Origin == "cscli-import" {
+			if decision.Origin != nil && *decision.Origin == types.CscliImportOrigin {
 				stopFlush = true
 			}
 			continue

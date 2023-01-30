@@ -34,10 +34,7 @@ var (
 	metricsIntervalDelta   = time.Minute * 15
 )
 
-var SCOPE_CAPI string = "CAPI"
-var SCOPE_CAPI_ALIAS string = "crowdsecurity/community-blocklist" //we don't use "CAPI" directly, to make it less confusing for the user
-var SCOPE_LISTS string = "lists"
-var SCOPE_PAPI string = "console"
+var SCOPE_CAPI_ALIAS_ALIAS string = "crowdsecurity/community-blocklist" //we don't use "CAPI" directly, to make it less confusing for the user
 
 type apic struct {
 	// when changing the intervals in tests, always set *First too
@@ -267,7 +264,7 @@ func getScenarioTrustOfAlert(alert *models.Alert) string {
 		scenarioTrust = "tainted"
 	}
 	if len(alert.Decisions) > 0 {
-		if *alert.Decisions[0].Origin == "cscli" {
+		if *alert.Decisions[0].Origin == types.CscliOrigin {
 			scenarioTrust = "manual"
 		}
 	}
@@ -347,7 +344,7 @@ func (a *apic) Send(cacheOrig *models.AddSignalsRequest) {
 func (a *apic) CAPIPullIsOld() (bool, error) {
 	/*only pull community blocklist if it's older than 1h30 */
 	alerts := a.dbClient.Ent.Alert.Query()
-	alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginEQ(database.CapiMachineID)))
+	alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginEQ(types.CAPIOrigin)))
 	alerts = alerts.Where(alert.CreatedAtGTE(time.Now().UTC().Add(-time.Duration(1*time.Hour + 30*time.Minute)))) //nolint:unconvert
 	count, err := alerts.Count(a.dbClient.CTX)
 	if err != nil {
@@ -399,12 +396,12 @@ func createAlertsForDecisions(decisions []*models.Decision) []*models.Alert {
 				log.Warningf("nil scope in %+v", sub)
 				continue
 			}
-			if *decision.Origin == SCOPE_CAPI {
-				if *sub.Source.Scope == SCOPE_CAPI {
+			if *decision.Origin == types.CAPIOrigin {
+				if *sub.Source.Scope == types.CAPIOrigin {
 					found = true
 					break
 				}
-			} else if *decision.Origin == SCOPE_LISTS {
+			} else if *decision.Origin == types.ListOrigin {
 				if *sub.Source.Scope == *decision.Origin {
 					if sub.Scenario == nil {
 						log.Warningf("nil scenario in %+v", sub)
@@ -430,12 +427,12 @@ func createAlertForDecision(decision *models.Decision) *models.Alert {
 	newAlert := &models.Alert{}
 	newAlert.Source = &models.Source{}
 	newAlert.Source.Scope = types.StrPtr("")
-	if *decision.Origin == SCOPE_CAPI { //to make things more user friendly, we replace CAPI with community-blocklist
-		newAlert.Scenario = types.StrPtr(SCOPE_CAPI)
-		newAlert.Source.Scope = types.StrPtr(SCOPE_CAPI)
-	} else if *decision.Origin == SCOPE_LISTS {
+	if *decision.Origin == types.CAPIOrigin { //to make things more user friendly, we replace CAPI with community-blocklist
+		newAlert.Scenario = types.StrPtr(types.CAPIOrigin)
+		newAlert.Source.Scope = types.StrPtr(types.CAPIOrigin)
+	} else if *decision.Origin == types.ListOrigin {
 		newAlert.Scenario = types.StrPtr(*decision.Scenario)
-		newAlert.Source.Scope = types.StrPtr(SCOPE_LISTS)
+		newAlert.Source.Scope = types.StrPtr(types.ListOrigin)
 	} else {
 		log.Warningf("unknown origin %s", *decision.Origin)
 	}
@@ -449,7 +446,7 @@ func createAlertForDecision(decision *models.Decision) *models.Alert {
 	newAlert.Leakspeed = types.StrPtr("")
 	newAlert.ScenarioHash = types.StrPtr("")
 	newAlert.ScenarioVersion = types.StrPtr("")
-	newAlert.MachineID = database.CapiMachineID
+	newAlert.MachineID = types.CAPIOrigin
 	return newAlert
 }
 
@@ -469,14 +466,14 @@ func fillAlertsWithDecisions(alerts []*models.Alert, decisions []*models.Decisio
 		found := false
 		//add the individual decisions to the right list
 		for idx, alert := range alerts {
-			if *decision.Origin == SCOPE_CAPI {
-				if *alert.Source.Scope == SCOPE_CAPI {
+			if *decision.Origin == types.CAPIOrigin {
+				if *alert.Source.Scope == types.CAPIOrigin {
 					alerts[idx].Decisions = append(alerts[idx].Decisions, decision)
 					found = true
 					break
 				}
-			} else if *decision.Origin == SCOPE_LISTS {
-				if *alert.Source.Scope == SCOPE_LISTS && *alert.Scenario == *decision.Scenario {
+			} else if *decision.Origin == types.ListOrigin {
+				if *alert.Source.Scope == types.ListOrigin && *alert.Scenario == *decision.Scenario {
 					alerts[idx].Decisions = append(alerts[idx].Decisions, decision)
 					found = true
 					break
@@ -551,12 +548,12 @@ func (a *apic) PullTop() error {
 }
 
 func setAlertScenario(add_counters map[string]map[string]int, delete_counters map[string]map[string]int, alert *models.Alert) *models.Alert {
-	if *alert.Source.Scope == SCOPE_CAPI {
-		*alert.Source.Scope = SCOPE_CAPI_ALIAS
-		alert.Scenario = types.StrPtr(fmt.Sprintf("update : +%d/-%d IPs", add_counters[SCOPE_CAPI]["all"], delete_counters[SCOPE_CAPI]["all"]))
-	} else if *alert.Source.Scope == SCOPE_LISTS {
-		*alert.Source.Scope = fmt.Sprintf("%s:%s", SCOPE_LISTS, *alert.Scenario)
-		alert.Scenario = types.StrPtr(fmt.Sprintf("update : +%d/-%d IPs", add_counters[SCOPE_LISTS][*alert.Scenario], delete_counters[SCOPE_LISTS][*alert.Scenario]))
+	if *alert.Source.Scope == types.CAPIOrigin {
+		*alert.Source.Scope = SCOPE_CAPI_ALIAS_ALIAS
+		alert.Scenario = types.StrPtr(fmt.Sprintf("update : +%d/-%d IPs", add_counters[types.CAPIOrigin]["all"], delete_counters[types.CAPIOrigin]["all"]))
+	} else if *alert.Source.Scope == types.ListOrigin {
+		*alert.Source.Scope = fmt.Sprintf("%s:%s", types.ListOrigin, *alert.Scenario)
+		alert.Scenario = types.StrPtr(fmt.Sprintf("update : +%d/-%d IPs", add_counters[types.ListOrigin][*alert.Scenario], delete_counters[types.ListOrigin][*alert.Scenario]))
 	}
 	return alert
 }
@@ -684,20 +681,20 @@ func (a *apic) Shutdown() {
 
 func makeAddAndDeleteCounters() (map[string]map[string]int, map[string]map[string]int) {
 	add_counters := make(map[string]map[string]int)
-	add_counters[SCOPE_CAPI] = make(map[string]int)
-	add_counters[SCOPE_LISTS] = make(map[string]int)
+	add_counters[types.CAPIOrigin] = make(map[string]int)
+	add_counters[types.ListOrigin] = make(map[string]int)
 
 	delete_counters := make(map[string]map[string]int)
-	delete_counters[SCOPE_CAPI] = make(map[string]int)
-	delete_counters[SCOPE_LISTS] = make(map[string]int)
+	delete_counters[types.CAPIOrigin] = make(map[string]int)
+	delete_counters[types.ListOrigin] = make(map[string]int)
 
 	return add_counters, delete_counters
 }
 
 func updateCounterForDecision(counter map[string]map[string]int, decision *models.Decision, totalDecisions int) {
-	if *decision.Origin == SCOPE_CAPI {
+	if *decision.Origin == types.CAPIOrigin {
 		counter[*decision.Origin]["all"] += totalDecisions
-	} else if *decision.Origin == SCOPE_LISTS {
+	} else if *decision.Origin == types.ListOrigin {
 		counter[*decision.Origin][*decision.Scenario] += totalDecisions
 	} else {
 		log.Warningf("Unknown origin %s", *decision.Origin)

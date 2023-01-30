@@ -97,13 +97,13 @@ func AlertCmd(message *Message, p *Papi) error {
 		alert.Scenario = types.StrPtr("")
 		alert.Source = &models.Source{}
 
-		//if we're setting Source.Scope to SCOPE_PAPI, it messes up the alert's value
+		//if we're setting Source.Scope to types.ConsoleOrigin, it messes up the alert's value
 		if len(alert.Decisions) >= 1 {
 			alert.Source.Scope = alert.Decisions[0].Scope
 			alert.Source.Value = alert.Decisions[0].Value
 		} else {
 			log.Warningf("No decision found in alert for Polling API (%s : %s)", message.Header.Source.User, message.Header.Message)
-			alert.Source.Scope = types.StrPtr(SCOPE_PAPI)
+			alert.Source.Scope = types.StrPtr(types.ConsoleOrigin)
 			alert.Source.Value = &message.Header.Source.User
 		}
 		alert.Scenario = &message.Header.Message

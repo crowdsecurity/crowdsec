@@ -330,8 +330,8 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 		}
 		decisionBulk := make([]*ent.DecisionCreate, 0, decisionBulkSize)
 		valueList := make([]string, 0, decisionBulkSize)
-		DecOrigin := CapiMachineID
-		if *alertItem.Decisions[0].Origin == CapiMachineID || *alertItem.Decisions[0].Origin == CapiListsMachineID {
+		DecOrigin := types.CAPIOrigin
+		if *alertItem.Decisions[0].Origin == types.CAPIOrigin || *alertItem.Decisions[0].Origin == types.ListOrigin {
 			DecOrigin = *alertItem.Decisions[0].Origin
 		} else {
 			log.Warningf("unexpected origin %s", *alertItem.Decisions[0].Origin)
@@ -817,10 +817,10 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 		case "include_capi": //allows to exclude one or more specific origins
 			if value[0] == "false" {
 				predicates = append(predicates, alert.HasDecisionsWith(
-					decision.Or(decision.OriginEQ("crowdsec"),
-						decision.OriginEQ("cscli"),
-						decision.OriginEQ("console"),
-						decision.OriginEQ("cscli-import"))))
+					decision.Or(decision.OriginEQ(types.CrowdSecOrigin),
+						decision.OriginEQ(types.CscliOrigin),
+						decision.OriginEQ(types.ConsoleOrigin),
+						decision.OriginEQ(types.CscliImportOrigin))))
 			} else if value[0] != "true" {
 				log.Errorf("Invalid bool '%s' for include_capi", value[0])
 			}
