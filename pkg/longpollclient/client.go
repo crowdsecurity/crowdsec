@@ -44,6 +44,10 @@ type pollResponse struct {
 	ErrorMessage string `json:"error"`
 }
 
+var errUnauthorized = fmt.Errorf("user is not authorized to use PAPI")
+
+const timeoutMessage = "no events before timeout"
+
 func (c *LongPollClient) doQuery() error {
 
 	logger := c.logger.WithField("method", "doQuery")
@@ -71,6 +75,15 @@ func (c *LongPollClient) doQuery() error {
 	logger = logger.WithField("request-id", requestId)
 	if resp.StatusCode != http.StatusOK {
 		c.logger.Errorf("unexpected status code: %d", resp.StatusCode)
+		if resp.StatusCode == http.StatusForbidden {
+			bodyContent, err := io.ReadAll(resp.Body)
+			if err != nil {
+				c.logger.Errorf("failed to read response body: %s", err)
+				return err
+			}
+			c.logger.Errorf(string(bodyContent))
+			return errUnauthorized
+		}
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
@@ -96,6 +109,10 @@ func (c *LongPollClient) doQuery() error {
 			logger.Tracef("got response: %+v", pollResp)
 
 			if len(pollResp.ErrorMessage) > 0 {
+				if pollResp.ErrorMessage == timeoutMessage {
+					logger.Debugf("got timeout message")
+					return nil
+				}
 				return fmt.Errorf("longpoll API error message: %s", pollResp.ErrorMessage)
 			}
 
