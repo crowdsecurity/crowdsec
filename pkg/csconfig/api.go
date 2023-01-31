@@ -215,7 +215,17 @@ func (c *Config) LoadAPIServer() error {
 	}
 
 	if c.API.Server != nil {
-		logLevel := log.InfoLevel
+
+		//inherit log level from common, then api->server
+		var logLevel log.Level
+		if c.API.Server.LogLevel != nil {
+			logLevel = *c.API.Server.LogLevel
+		} else if c.Common.LogLevel != nil {
+			logLevel = *c.Common.LogLevel
+		} else {
+			logLevel = log.InfoLevel
+		}
+
 		if c.API.Server.PapiLogLevel == nil {
 			c.API.Server.PapiLogLevel = &logLevel
 		}
