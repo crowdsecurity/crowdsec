@@ -32,10 +32,10 @@ jobs:
             TAGS=$TAGS,${DOCKER_IMAGE}:latest,${GHCR_IMAGE}:latest
             TAGS_SLIM=$TAGS_SLIM,${DOCKER_IMAGE}:slim
           fi
-          echo ::set-output name=version::${VERSION}
-          echo ::set-output name=tags::${TAGS}
-          echo ::set-output name=tags_slim::${TAGS_SLIM}
-          echo ::set-output name=created::$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "tags_slim=${TAGS_SLIM}" >> $GITHUB_OUTPUT
+          echo "created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
