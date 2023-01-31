@@ -7,6 +7,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -73,7 +74,7 @@ func AlertCmd(message *Message, p *Papi) error {
 		alert := &models.Alert{}
 
 		if err := json.Unmarshal(data, alert); err != nil {
-			return fmt.Errorf("message for '%s' contains bad alert format", message.Header.OperationType)
+			return errors.Wrapf(err, "message for '%s' contains bad alert format", message.Header.OperationType)
 		}
 
 		log.Infof("Received order %s from PAPI (%d decisions)", alert.UUID, len(alert.Decisions))
