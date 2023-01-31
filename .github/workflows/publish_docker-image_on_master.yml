@@ -30,8 +30,8 @@ jobs:
           GHCR_IMAGE=ghcr.io/${{ github.repository_owner }}/crowdsec
           VERSION=dev
           TAGS="${DOCKER_IMAGE}:${VERSION},${GHCR_IMAGE}:${VERSION}"
-          echo ::set-output name=tags::${TAGS}
-          echo ::set-output name=created::$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
