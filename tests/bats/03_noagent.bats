@@ -33,6 +33,7 @@ teardown() {
 
 @test "no agent: crowdsec LAPI should run (no crowdsec_service in configuration file)" {
     config_disable_agent
+    config_log_stderr
     run -124 --separate-stderr timeout 2s "${CROWDSEC}"
 
     assert_stderr --partial "crowdsec agent is disabled"

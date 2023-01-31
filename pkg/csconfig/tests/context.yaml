@@ -1,0 +1,2 @@
+source_ip:
+ - evt.Parsed.source_ip

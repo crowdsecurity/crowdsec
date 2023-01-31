@@ -21,6 +21,7 @@ import (
 type APICfg struct {
 	Client *LocalApiClientCfg `yaml:"client"`
 	Server *LocalApiServerCfg `yaml:"server"`
+	CTI    *CTICfg            `yaml:"cti"`
 }
 
 type ApiCredentialsCfg struct {
@@ -43,6 +44,37 @@ type LocalApiClientCfg struct {
 	CredentialsFilePath string             `yaml:"credentials_path,omitempty"` // credz will be edited by software, store in diff file
 	Credentials         *ApiCredentialsCfg `yaml:"-"`
 	InsecureSkipVerify  *bool              `yaml:"insecure_skip_verify"` // check if api certificate is bad or not
+}
+
+type CTICfg struct {
+	Key          *string        `yaml:"key,omitempty"`
+	CacheTimeout *time.Duration `yaml:"cache_timeout,omitempty"`
+	CacheSize    *int           `yaml:"cache_size,omitempty"`
+	Enabled      *bool          `yaml:"enabled,omitempty"`
+	LogLevel     *log.Level     `yaml:"log_level,omitempty"`
+}
+
+func (a *CTICfg) Load() error {
+
+	if a.Key == nil {
+		*a.Enabled = false
+	}
+	if a.Key != nil && *a.Key == "" {
+		return fmt.Errorf("empty cti key")
+	}
+	if a.Enabled == nil {
+		a.Enabled = new(bool)
+		*a.Enabled = true
+	}
+	if a.CacheTimeout == nil {
+		a.CacheTimeout = new(time.Duration)
+		*a.CacheTimeout = 10 * time.Minute
+	}
+	if a.CacheSize == nil {
+		a.CacheSize = new(int)
+		*a.CacheSize = 100
+	}
+	return nil
 }
 
 func (o *OnlineApiClientCfg) Load() error {
@@ -82,7 +114,7 @@ func (l *LocalApiClientCfg) Load() error {
 		}
 	}
 
-	if l.Credentials.Login != "" && (l.Credentials.CACertPath != "" || l.Credentials.CertPath != "" || l.Credentials.KeyPath != "") {
+	if l.Credentials.Login != "" && (l.Credentials.CertPath != "" || l.Credentials.KeyPath != "") {
 		return fmt.Errorf("user/password authentication and TLS authentication are mutually exclusive")
 	}
 
@@ -92,12 +124,7 @@ func (l *LocalApiClientCfg) Load() error {
 		apiclient.InsecureSkipVerify = *l.InsecureSkipVerify
 	}
 
-	if l.Credentials.CACertPath != "" && l.Credentials.CertPath != "" && l.Credentials.KeyPath != "" {
-		cert, err := tls.LoadX509KeyPair(l.Credentials.CertPath, l.Credentials.KeyPath)
-		if err != nil {
-			return errors.Wrapf(err, "failed to load api client certificate")
-		}
-
+	if l.Credentials.CACertPath != "" {
 		caCert, err := os.ReadFile(l.Credentials.CACertPath)
 		if err != nil {
 			return errors.Wrapf(err, "failed to load cacert")
@@ -105,10 +132,18 @@ func (l *LocalApiClientCfg) Load() error {
 
 		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM(caCert)
-
-		apiclient.Cert = &cert
 		apiclient.CaCertPool = caCertPool
 	}
+
+	if l.Credentials.CertPath != "" && l.Credentials.KeyPath != "" {
+		cert, err := tls.LoadX509KeyPair(l.Credentials.CertPath, l.Credentials.KeyPath)
+		if err != nil {
+			return errors.Wrapf(err, "failed to load api client certificate")
+		}
+
+		apiclient.Cert = &cert
+	}
+
 	return nil
 }
 
@@ -225,6 +260,15 @@ func (c *Config) LoadAPIServer() error {
 	if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
 		if err := c.API.Server.OnlineClient.Load(); err != nil {
 			return errors.Wrap(err, "loading online client credentials")
+		}
+	}
+	if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
+		log.Printf("push and pull to Central API disabled")
+	}
+
+	if c.API.CTI != nil {
+		if err := c.API.CTI.Load(); err != nil {
+			return errors.Wrap(err, "loading CTI configuration")
 		}
 	}
 

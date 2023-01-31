@@ -12,6 +12,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	log "github.com/sirupsen/logrus"
 
 	"testing"
@@ -969,5 +970,49 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, test.result, output)
 		log.Printf("test '%s' : OK", test.name)
+	}
+}
+
+func TestParseUnixTime(t *testing.T) {
+	tests := []struct {
+		name        string
+		value       string
+		expected    time.Time
+		expectedErr string
+	}{
+		{
+			name: "ParseUnix() test: valid value with milli",
+			value: "1672239773.3590894",
+			expected: time.Date(2022, 12, 28, 15, 02, 53, 0, time.UTC),
+		},
+		{
+			name: "ParseUnix() test: valid value without milli",
+			value: "1672239773",
+			expected: time.Date(2022, 12, 28, 15, 02, 53, 0, time.UTC),
+		},
+		{
+			name: "ParseUnix() test: invalid input",
+			value: "AbcDefG!#",
+			expected: time.Time{},
+			expectedErr: "unable to parse AbcDefG!# as unix timestamp",
+		},
+		{
+			name: "ParseUnix() test: negative value",
+			value: "-1000",
+			expected: time.Time{},
+			expectedErr: "unable to parse -1000 as unix timestamp",
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			output, err := ParseUnixTime(tc.value)
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
+			if tc.expectedErr != "" {
+				return
+			}
+			require.WithinDuration(t, tc.expected, output, time.Second)
+		})
 	}
 }

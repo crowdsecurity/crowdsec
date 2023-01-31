@@ -11,7 +11,6 @@ import (
 )
 
 func NewHubCmd() *cobra.Command {
-	/* ---- HUB COMMAND */
 	var cmdHub = &cobra.Command{
 		Use:   "hub [action]",
 		Short: "Manage Hub",
@@ -37,6 +36,14 @@ cscli hub update # Download list of available configurations from the hub
 	}
 	cmdHub.PersistentFlags().StringVarP(&cwhub.HubBranch, "branch", "b", "", "Use given branch from hub")
 
+	cmdHub.AddCommand(NewHubListCmd())
+	cmdHub.AddCommand(NewHubUpdateCmd())
+	cmdHub.AddCommand(NewHubUpgradeCmd())
+
+	return cmdHub
+}
+
+func NewHubListCmd() *cobra.Command {
 	var cmdHubList = &cobra.Command{
 		Use:               "list [-a]",
 		Short:             "List installed configs",
@@ -63,8 +70,11 @@ cscli hub update # Download list of available configurations from the hub
 		},
 	}
 	cmdHubList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
-	cmdHub.AddCommand(cmdHubList)
 
+	return cmdHubList
+}
+
+func NewHubUpdateCmd() *cobra.Command {
 	var cmdHubUpdate = &cobra.Command{
 		Use:   "update",
 		Short: "Fetch available configs from hub",
@@ -97,8 +107,11 @@ Fetches the [.index.json](https://github.com/crowdsecurity/hub/blob/master/.inde
 			}
 		},
 	}
-	cmdHub.AddCommand(cmdHubUpdate)
 
+	return cmdHubUpdate
+}
+
+func NewHubUpgradeCmd() *cobra.Command {
 	var cmdHubUpgrade = &cobra.Command{
 		Use:   "upgrade",
 		Short: "Upgrade all configs installed from hub",
@@ -137,6 +150,6 @@ Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if 
 		},
 	}
 	cmdHubUpgrade.PersistentFlags().BoolVar(&forceAction, "force", false, "Force upgrade : Overwrite tainted and outdated files")
-	cmdHub.AddCommand(cmdHubUpgrade)
-	return cmdHub
+
+	return cmdHubUpgrade
 }

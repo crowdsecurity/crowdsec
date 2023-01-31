@@ -23,9 +23,7 @@ var (
 )
 
 func NewHubTestCmd() *cobra.Command {
-	/* ---- HUB COMMAND */
 	var hubPath string
-	var logType string
 	var crowdsecPath string
 	var cscliPath string
 
@@ -47,11 +45,26 @@ func NewHubTestCmd() *cobra.Command {
 	cmdHubTest.PersistentFlags().StringVar(&crowdsecPath, "crowdsec", "crowdsec", "Path to crowdsec")
 	cmdHubTest.PersistentFlags().StringVar(&cscliPath, "cscli", "cscli", "Path to cscli")
 
+	cmdHubTest.AddCommand(NewHubTestCreateCmd())
+	cmdHubTest.AddCommand(NewHubTestRunCmd())
+	cmdHubTest.AddCommand(NewHubTestCleanCmd())
+	cmdHubTest.AddCommand(NewHubTestInfoCmd())
+	cmdHubTest.AddCommand(NewHubTestListCmd())
+	cmdHubTest.AddCommand(NewHubTestCoverageCmd())
+	cmdHubTest.AddCommand(NewHubTestEvalCmd())
+	cmdHubTest.AddCommand(NewHubTestExplainCmd())
+
+	return cmdHubTest
+}
+
+
+func NewHubTestCreateCmd() *cobra.Command {
 	parsers := []string{}
 	postoverflows := []string{}
 	scenarios := []string{}
 	var ignoreParsers bool
 	var labels map[string]string
+	var logType string
 
 	var cmdHubTestCreate = &cobra.Command{
 		Use:   "create",
@@ -153,11 +166,16 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 	cmdHubTestCreate.Flags().StringSliceVar(&postoverflows, "postoverflows", postoverflows, "Postoverflows to add to test")
 	cmdHubTestCreate.Flags().StringSliceVarP(&scenarios, "scenarios", "s", scenarios, "Scenarios to add to test")
 	cmdHubTestCreate.PersistentFlags().BoolVar(&ignoreParsers, "ignore-parsers", false, "Don't run test on parsers")
-	cmdHubTest.AddCommand(cmdHubTestCreate)
 
+	return cmdHubTestCreate
+}
+
+
+func NewHubTestRunCmd() *cobra.Command {
 	var noClean bool
 	var runAll bool
 	var forceClean bool
+
 	var cmdHubTestRun = &cobra.Command{
 		Use:               "run",
 		Short:             "run [test_name]",
@@ -300,8 +318,12 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 	cmdHubTestRun.Flags().BoolVar(&noClean, "no-clean", false, "Don't clean runtime environment if test succeed")
 	cmdHubTestRun.Flags().BoolVar(&forceClean, "clean", false, "Clean runtime environment if test fail")
 	cmdHubTestRun.Flags().BoolVar(&runAll, "all", false, "Run all tests")
-	cmdHubTest.AddCommand(cmdHubTestRun)
 
+	return cmdHubTestRun
+}
+
+
+func NewHubTestCleanCmd() *cobra.Command {
 	var cmdHubTestClean = &cobra.Command{
 		Use:               "clean",
 		Short:             "clean [test_name]",
@@ -319,8 +341,12 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 			}
 		},
 	}
-	cmdHubTest.AddCommand(cmdHubTestClean)
 
+	return cmdHubTestClean
+}
+
+
+func NewHubTestInfoCmd() *cobra.Command {
 	var cmdHubTestInfo = &cobra.Command{
 		Use:               "info",
 		Short:             "info [test_name]",
@@ -342,8 +368,12 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 			}
 		},
 	}
-	cmdHubTest.AddCommand(cmdHubTestInfo)
 
+	return cmdHubTestInfo
+}
+
+
+func NewHubTestListCmd() *cobra.Command {
 	var cmdHubTestList = &cobra.Command{
 		Use:               "list",
 		Short:             "list",
@@ -367,11 +397,16 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 			}
 		},
 	}
-	cmdHubTest.AddCommand(cmdHubTestList)
 
+	return cmdHubTestList
+}
+
+
+func NewHubTestCoverageCmd() *cobra.Command {
 	var showParserCov bool
 	var showScenarioCov bool
 	var showOnlyPercent bool
+
 	var cmdHubTestCoverage = &cobra.Command{
 		Use:               "coverage",
 		Short:             "coverage",
@@ -463,8 +498,12 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 	cmdHubTestCoverage.PersistentFlags().BoolVar(&showOnlyPercent, "percent", false, "Show only percentages of coverage")
 	cmdHubTestCoverage.PersistentFlags().BoolVar(&showParserCov, "parsers", false, "Show only parsers coverage")
 	cmdHubTestCoverage.PersistentFlags().BoolVar(&showScenarioCov, "scenarios", false, "Show only scenarios coverage")
-	cmdHubTest.AddCommand(cmdHubTestCoverage)
 
+	return cmdHubTestCoverage
+}
+
+
+func NewHubTestEvalCmd() *cobra.Command {
 	var evalExpression string
 	var cmdHubTestEval = &cobra.Command{
 		Use:               "eval",
@@ -490,8 +529,12 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 		},
 	}
 	cmdHubTestEval.PersistentFlags().StringVarP(&evalExpression, "expr", "e", "", "Expression to eval")
-	cmdHubTest.AddCommand(cmdHubTestEval)
 
+	return cmdHubTestEval
+}
+
+
+func NewHubTestExplainCmd() *cobra.Command {
 	var cmdHubTestExplain = &cobra.Command{
 		Use:               "explain",
 		Short:             "explain [test_name]",
@@ -531,7 +574,6 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 			}
 		},
 	}
-	cmdHubTest.AddCommand(cmdHubTestExplain)
 
-	return cmdHubTest
+	return cmdHubTestExplain
 }

@@ -85,8 +85,8 @@ func (a *apic) FetchScenariosListFromDB() ([]string, error) {
 	return scenarios, nil
 }
 
-func alertToSignal(alert *models.Alert, scenarioTrust string) *models.AddSignalsRequestItem {
-	return &models.AddSignalsRequestItem{
+func alertToSignal(alert *models.Alert, scenarioTrust string, shareContext bool) *models.AddSignalsRequestItem {
+	signal := &models.AddSignalsRequestItem{
 		Message:         alert.Message,
 		Scenario:        alert.Scenario,
 		ScenarioHash:    alert.ScenarioHash,
@@ -96,8 +96,19 @@ func alertToSignal(alert *models.Alert, scenarioTrust string) *models.AddSignals
 		StopAt:          alert.StopAt,
 		CreatedAt:       alert.CreatedAt,
 		MachineID:       alert.MachineID,
-		ScenarioTrust:   &scenarioTrust,
+		ScenarioTrust:   scenarioTrust,
 	}
+	if shareContext {
+		signal.Context = make([]*models.AddSignalsRequestItemContextItems0, 0)
+		for _, meta := range alert.Meta {
+			contextItem := models.AddSignalsRequestItemContextItems0{
+				Key:   meta.Key,
+				Value: meta.Value,
+			}
+			signal.Context = append(signal.Context, &contextItem)
+		}
+	}
+	return signal
 }
 
 func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig) (*apic, error) {
@@ -176,7 +187,7 @@ func (a *apic) Push() error {
 			var signals []*models.AddSignalsRequestItem
 			for _, alert := range alerts {
 				if ok := shouldShareAlert(alert, a.consoleConfig); ok {
-					signals = append(signals, alertToSignal(alert, getScenarioTrustOfAlert(alert)))
+					signals = append(signals, alertToSignal(alert, getScenarioTrustOfAlert(alert), *a.consoleConfig.ShareContext))
 				}
 			}
 			a.mu.Lock()

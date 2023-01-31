@@ -3,6 +3,9 @@ package rfc5424
 import (
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 )
 
 func TestPri(t *testing.T) {
@@ -27,21 +30,7 @@ func TestPri(t *testing.T) {
 			r.buf = []byte(test.input)
 			r.len = len(r.buf)
 			err := r.parsePRI()
-			if err != nil {
-				if test.expectedErr != "" {
-					if err.Error() != test.expectedErr {
-						t.Errorf("expected error %s, got %s", test.expectedErr, err)
-					}
-				} else {
-					t.Errorf("unexpected error: %s", err)
-				}
-			} else {
-				if test.expectedErr != "" {
-					t.Errorf("expected error %s, got no error", test.expectedErr)
-				} else if r.PRI != test.expected {
-					t.Errorf("expected %d, got %d", test.expected, r.PRI)
-				}
-			}
+			cstest.RequireErrorMessage(t, err, test.expectedErr)
 		})
 	}
 }
@@ -81,21 +70,7 @@ func TestHostname(t *testing.T) {
 			r.buf = []byte(test.input)
 			r.len = len(r.buf)
 			err := r.parseHostname()
-			if err != nil {
-				if test.expectedErr != "" {
-					if err.Error() != test.expectedErr {
-						t.Errorf("expected error %s, got %s", test.expectedErr, err)
-					}
-				} else {
-					t.Errorf("unexpected error: %s", err)
-				}
-			} else {
-				if test.expectedErr != "" {
-					t.Errorf("expected error %s, got no error", test.expectedErr)
-				} else if r.Hostname != test.expected {
-					t.Errorf("expected %s, got %s", test.expected, r.Hostname)
-				}
-			}
+			cstest.RequireErrorMessage(t, err, test.expectedErr)
 		})
 	}
 }
@@ -169,7 +144,7 @@ func TestParse(t *testing.T) {
 		{
 			"valid msg with empty fields",
 			`<13>1 - foo - - - - blabla`, expected{
-				Timestamp: time.Now().UTC().Round(0),
+				Timestamp: time.Now().UTC(),
 				Hostname:  "foo",
 				PRI:       13,
 				Message:   "blabla",
@@ -178,7 +153,7 @@ func TestParse(t *testing.T) {
 		{
 			"valid msg with empty fields",
 			`<13>1 - - - - - - blabla`, expected{
-				Timestamp: time.Now().UTC().Round(0),
+				Timestamp: time.Now().UTC(),
 				PRI:       13,
 				Message:   "blabla",
 			}, "", []RFC5424Option{},
@@ -228,40 +203,28 @@ func TestParse(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			r := NewRFC5424Parser(test.opts...)
 			err := r.Parse([]byte(test.input))
-			if err != nil {
-				if test.expectedErr != "" {
-					if err.Error() != test.expectedErr {
-						t.Errorf("expected error '%s', got '%s'", test.expectedErr, err)
-					}
-				} else {
-					t.Errorf("unexpected error: '%s'", err)
-				}
-			} else {
-				if test.expectedErr != "" {
-					t.Errorf("expected error '%s', got no error", test.expectedErr)
-				} else {
-					if r.Timestamp.Round(time.Second).String() != test.expected.Timestamp.Round(time.Second).String() {
-						t.Errorf("expected timestamp '%s', got '%s'", test.expected.Timestamp, r.Timestamp)
-					}
-					if r.Hostname != test.expected.Hostname {
-						t.Errorf("expected hostname '%s', got '%s'", test.expected.Hostname, r.Hostname)
-					}
-					if r.Tag != test.expected.Tag {
-						t.Errorf("expected tag '%s', got '%s'", test.expected.Tag, r.Tag)
-					}
-					if r.PID != test.expected.PID {
-						t.Errorf("expected pid '%s', got '%s'", test.expected.PID, r.PID)
-					}
-					if r.Message != test.expected.Message {
-						t.Errorf("expected message '%s', got '%s'", test.expected.Message, r.Message)
-					}
-					if r.PRI != test.expected.PRI {
-						t.Errorf("expected pri '%d', got '%d'", test.expected.PRI, r.PRI)
-					}
-					if r.MsgID != test.expected.MsgID {
-						t.Errorf("expected msgid '%s', got '%s'", test.expected.MsgID, r.MsgID)
-					}
-				}
+			cstest.RequireErrorMessage(t, err, test.expectedErr)
+			if test.expectedErr != "" {
+				return
+			}
+			require.WithinDuration(t, test.expected.Timestamp, r.Timestamp, time.Second)
+			if r.Hostname != test.expected.Hostname {
+				t.Errorf("expected hostname '%s', got '%s'", test.expected.Hostname, r.Hostname)
+			}
+			if r.Tag != test.expected.Tag {
+				t.Errorf("expected tag '%s', got '%s'", test.expected.Tag, r.Tag)
+			}
+			if r.PID != test.expected.PID {
+				t.Errorf("expected pid '%s', got '%s'", test.expected.PID, r.PID)
+			}
+			if r.Message != test.expected.Message {
+				t.Errorf("expected message '%s', got '%s'", test.expected.Message, r.Message)
+			}
+			if r.PRI != test.expected.PRI {
+				t.Errorf("expected pri '%d', got '%d'", test.expected.PRI, r.PRI)
+			}
+			if r.MsgID != test.expected.MsgID {
+				t.Errorf("expected msgid '%s', got '%s'", test.expected.MsgID, r.MsgID)
 			}
 		})
 	}

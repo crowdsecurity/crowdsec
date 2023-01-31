@@ -62,6 +62,14 @@ teardown_file() {
 
 setup() {
     load "../lib/setup.sh"
+    config_set '
+        .api.server.tls.cert_file=strenv(tmpdir) + "/server.pem" |
+        .api.server.tls.key_file=strenv(tmpdir) + "/server-key.pem" |
+        .api.server.tls.ca_cert_path=strenv(tmpdir) + "/inter.pem" |
+        .api.server.tls.crl_path=strenv(tmpdir) + "/crl.pem" | 
+        .api.server.tls.agents_allowed_ou=["agent-ou"]
+    '
+
 }
 
 teardown() {
@@ -69,6 +77,20 @@ teardown() {
 }
 
 #----------
+
+@test "missing key_file" {
+    config_set '.api.server.tls.key_file=""'
+
+    rune -1 timeout 2s "${CROWDSEC}"
+    assert_stderr --partial "missing TLS key file"
+}
+
+@test "missing cert_file" {
+    config_set '.api.server.tls.cert_file=""'
+
+    rune -1 timeout 2s "${CROWDSEC}"
+    assert_stderr --partial "missing TLS cert file"
+}
 
 @test "invalid OU for agent" {
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" '
@@ -80,7 +102,7 @@ teardown() {
 
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" 'del(.login,.password)'
     ./instance-crowdsec start
-    run -0 cscli machines list -o json
+    run -0 --separate-stderr cscli machines list -o json
     assert_output '[]'
 }
 
@@ -95,7 +117,7 @@ teardown() {
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" 'del(.login,.password)'
     ./instance-crowdsec start
     run -0 cscli lapi status
-    run -0 cscli machines list -o json
+    run -0 --separate-stderr cscli machines list -o json
     run -0 jq -c '[. | length, .[0].machineId[0:32], .[0].isValidated, .[0].ipAddress, .[0].auth_type]' <(output)
 
     assert_output '[1,"localhost@127.0.0.1",true,"127.0.0.1","tls"]'
@@ -111,7 +133,7 @@ teardown() {
     '
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" 'del(.login,.password)'
     ./instance-crowdsec start
-    run -0 cscli machines list -o json
+    run -0 --separate-stderr cscli machines list -o json
     assert_output '[]'
 }
 
@@ -125,6 +147,6 @@ teardown() {
 
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" 'del(.login,.password)'
     ./instance-crowdsec start
-    run -0 cscli machines list -o json
+    run -0 --separate-stderr cscli machines list -o json
     assert_output '[]'
 }

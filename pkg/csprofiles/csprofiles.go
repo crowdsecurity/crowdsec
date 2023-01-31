@@ -46,7 +46,12 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 		runtime.RuntimeFilters = make([]*vm.Program, len(profile.Filters))
 		runtime.DebugFilters = make([]*exprhelpers.ExprDebugger, len(profile.Filters))
 		runtime.Cfg = profile
-
+		if runtime.Cfg.OnSuccess != "" && runtime.Cfg.OnSuccess != "continue" && runtime.Cfg.OnSuccess != "break" {
+			return []*Runtime{}, errors.Wrapf(err, "invalid 'on_success' for '%s' : %s", profile.Name, runtime.Cfg.OnSuccess)
+		}
+		if runtime.Cfg.OnFailure != "" && runtime.Cfg.OnFailure != "continue" && runtime.Cfg.OnFailure != "break" && runtime.Cfg.OnFailure != "apply" {
+			return []*Runtime{}, errors.Wrapf(err, "invalid 'on_failure' for '%s' : %s", profile.Name, runtime.Cfg.OnFailure)
+		}
 		for fIdx, filter := range profile.Filters {
 			if runtimeFilter, err = expr.Compile(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
 				return []*Runtime{}, errors.Wrapf(err, "error compiling filter of '%s'", profile.Name)
@@ -153,7 +158,7 @@ func (Profile *Runtime) GenerateDecisionFromProfile(Alert *models.Alert) ([]*mod
 	return decisions, nil
 }
 
-//EvaluateProfile is going to evaluate an Alert against a profile to generate Decisions
+// EvaluateProfile is going to evaluate an Alert against a profile to generate Decisions
 func (Profile *Runtime) EvaluateProfile(Alert *models.Alert) ([]*models.Decision, bool, error) {
 	var decisions []*models.Decision
 
