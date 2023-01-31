@@ -22,9 +22,6 @@ type DecisionsByScenario struct {
 	Type     string
 }
 
-//TBD TKO : find proper place to put and empty this
-//var DeletedDecisionsChan = make(chan ent.Decision, 100)
-
 func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, error) {
 
 	var err error

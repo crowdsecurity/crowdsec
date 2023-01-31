@@ -118,7 +118,6 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 		return "", fmt.Errorf("alert UUID is empty")
 	}
 
-	//maybe select uuid directly so we can it in one request
 	alerts, err := c.Ent.Alert.Query().Where(alert.UUID(alertItem.UUID)).WithDecisions().All(c.CTX)
 
 	if err != nil && !ent.IsNotFound(err) {
@@ -134,7 +133,7 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 		return ret[0], nil
 	}
 
-	//worst case, should be exactly one alert
+	//this should never happen
 	if len(alerts) > 1 {
 		return "", fmt.Errorf("multiple alerts found for uuid %s", alertItem.UUID)
 	}
@@ -160,7 +159,6 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 		if len(foundUuids) < idx+1 || uuid != foundUuids[idx] {
 			log.Warningf("Decision with uuid %s not found in alert %s", uuid, foundAlert.UUID)
 			missingUuids = append(missingUuids, uuid)
-
 		}
 	}
 
