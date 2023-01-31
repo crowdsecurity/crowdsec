@@ -37,6 +37,7 @@ func (Decision) Fields() []ent.Field {
 		field.String("value"),
 		field.String("origin"),
 		field.Bool("simulated").Default(false),
+		field.String("uuid").Optional(), //this uuid is mostly here to ensure that CAPI/PAPI has a unique id for each decision
 	}
 }
 

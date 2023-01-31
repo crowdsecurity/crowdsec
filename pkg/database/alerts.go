@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -64,16 +65,19 @@ func formatAlertAsString(machineId string, alert *models.Alert) []string {
 
 	/**/
 	reason := ""
-	if *alert.Scenario != "" {
-		reason = fmt.Sprintf("%s by %s", *alert.Scenario, src)
-	} else if *alert.Message != "" {
-		reason = fmt.Sprintf("%s by %s", *alert.Scenario, src)
+	msg := ""
+	if alert.Scenario != nil && *alert.Scenario != "" {
+		msg = *alert.Scenario
+	} else if alert.Message != nil && *alert.Message != "" {
+		msg = *alert.Message
 	} else {
-		reason = fmt.Sprintf("empty scenario by %s", src)
+		msg = fmt.Sprintf("empty scenario by %s", src)
 	}
 
+	reason = fmt.Sprintf("%s by %s", msg, src)
+
 	if len(alert.Decisions) > 0 {
-		for _, decisionItem := range alert.Decisions {
+		for i, decisionItem := range alert.Decisions {
 			decision := ""
 			if alert.Simulated != nil && *alert.Simulated {
 				decision = "(simulated alert)"
@@ -84,16 +88,168 @@ func formatAlertAsString(machineId string, alert *models.Alert) []string {
 				/*spew is expensive*/
 				log.Debugf("%s", spew.Sdump(decisionItem))
 			}
+			if len(alert.Decisions) > 1 {
+				reason = fmt.Sprintf("%s for %d/%d decisions", msg, i+1, len(alert.Decisions))
+			}
+			machineIdOrigin := ""
+			if machineId == "" {
+				machineIdOrigin = *decisionItem.Origin
+			} else {
+				machineIdOrigin = fmt.Sprintf("%s/%s", machineId, *decisionItem.Origin)
+			}
+
 			decision += fmt.Sprintf("%s %s on %s %s", *decisionItem.Duration,
 				*decisionItem.Type, *decisionItem.Scope, *decisionItem.Value)
 			retStr = append(retStr,
-				fmt.Sprintf("(%s/%s) %s : %s", machineId,
-					*decisionItem.Origin, reason, decision))
+				fmt.Sprintf("(%s) %s : %s", machineIdOrigin, reason, decision))
 		}
 	} else {
 		retStr = append(retStr, fmt.Sprintf("(%s) alert : %s", machineId, reason))
 	}
 	return retStr
+}
+
+// CreateOrUpdateAlert is specific to PAPI : It checks if alert already exists, otherwise inserts it
+// if alert already exists, it checks it associated decisions already exists
+// if some associated decisions are missing (ie. previous insert ended up in error) it inserts them
+func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) (string, error) {
+
+	if alertItem.UUID == "" {
+		return "", fmt.Errorf("alert UUID is empty")
+	}
+
+	alerts, err := c.Ent.Alert.Query().Where(alert.UUID(alertItem.UUID)).WithDecisions().All(c.CTX)
+
+	if err != nil && !ent.IsNotFound(err) {
+		return "", errors.Wrap(err, "unable to query alerts for uuid %s")
+	}
+
+	//alert wasn't found, insert it (expected hotpath)
+	if ent.IsNotFound(err) || len(alerts) == 0 {
+		ret, err := c.CreateAlert(machineID, []*models.Alert{alertItem})
+		if err != nil {
+			return "", errors.Wrap(err, "unable to create alert")
+		}
+		return ret[0], nil
+	}
+
+	//this should never happen
+	if len(alerts) > 1 {
+		return "", fmt.Errorf("multiple alerts found for uuid %s", alertItem.UUID)
+	}
+
+	log.Infof("Alert %s already exists, checking associated decisions", alertItem.UUID)
+	//alert is found, check for any missing decisions
+	missingUuids := []string{}
+	newUuids := []string{}
+	for _, decItem := range alertItem.Decisions {
+		newUuids = append(newUuids, decItem.UUID)
+	}
+
+	foundAlert := alerts[0]
+	foundUuids := []string{}
+	for _, decItem := range foundAlert.Edges.Decisions {
+		foundUuids = append(foundUuids, decItem.UUID)
+	}
+
+	sort.Strings(foundUuids)
+	sort.Strings(newUuids)
+
+	for idx, uuid := range newUuids {
+		if len(foundUuids) < idx+1 || uuid != foundUuids[idx] {
+			log.Warningf("Decision with uuid %s not found in alert %s", uuid, foundAlert.UUID)
+			missingUuids = append(missingUuids, uuid)
+		}
+	}
+
+	//add any and all missing decisions based on their uuids
+	if len(missingUuids) > 0 {
+		//prepare missing decisions
+		missingDecisions := []*models.Decision{}
+		for _, uuid := range missingUuids {
+			for _, newDecision := range alertItem.Decisions {
+				if newDecision.UUID == uuid {
+					missingDecisions = append(missingDecisions, newDecision)
+				}
+			}
+		}
+
+		//add missing decisions
+		log.Debugf("Adding %d missing decisions to alert %s", len(missingDecisions), foundAlert.UUID)
+
+		decisions := make([]*ent.Decision, 0)
+		decisionBulk := make([]*ent.DecisionCreate, 0, decisionBulkSize)
+
+		for i, decisionItem := range missingDecisions {
+			var start_ip, start_sfx, end_ip, end_sfx int64
+			var sz int
+
+			/*if the scope is IP or Range, convert the value to integers */
+			if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
+				sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decisionItem.Value)
+				if err != nil {
+					return "", errors.Wrapf(ParseDurationFail, "invalid addr/range %s : %s", *decisionItem.Value, err)
+				}
+			}
+			decisionDuration, err := time.ParseDuration(*decisionItem.Duration)
+			if err != nil {
+				log.Warningf("invalid duration %s for decision %s", *decisionItem.Duration, decisionItem.UUID)
+				continue
+			}
+			//use the created_at from the alert instead
+			alertTime, err := time.Parse(time.RFC3339, alertItem.CreatedAt)
+			if err != nil {
+				log.Errorf("unable to parse alert time %s : %s", alertItem.CreatedAt, err)
+				alertTime = time.Now()
+			}
+			decisionUntil := alertTime.UTC().Add(decisionDuration)
+
+			decisionCreate := c.Ent.Decision.Create().
+				SetUntil(decisionUntil).
+				SetScenario(*decisionItem.Scenario).
+				SetType(*decisionItem.Type).
+				SetStartIP(start_ip).
+				SetStartSuffix(start_sfx).
+				SetEndIP(end_ip).
+				SetEndSuffix(end_sfx).
+				SetIPSize(int64(sz)).
+				SetValue(*decisionItem.Value).
+				SetScope(*decisionItem.Scope).
+				SetOrigin(*decisionItem.Origin).
+				SetSimulated(*alertItem.Simulated).
+				SetUUID(decisionItem.UUID)
+
+			decisionBulk = append(decisionBulk, decisionCreate)
+			if len(decisionBulk) == decisionBulkSize {
+				decisionsCreateRet, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
+				if err != nil {
+					return "", errors.Wrapf(BulkError, "creating alert decisions: %s", err)
+
+				}
+				decisions = append(decisions, decisionsCreateRet...)
+				if len(missingDecisions)-i <= decisionBulkSize {
+					decisionBulk = make([]*ent.DecisionCreate, 0, (len(missingDecisions) - i))
+				} else {
+					decisionBulk = make([]*ent.DecisionCreate, 0, decisionBulkSize)
+				}
+			}
+		}
+		decisionsCreateRet, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
+		if err != nil {
+			return "", errors.Wrapf(BulkError, "creating alert decisions: %s", err)
+		}
+		decisions = append(decisions, decisionsCreateRet...)
+		//now that we bulk created missing decisions, let's update the alert
+		err = c.Ent.Alert.Update().Where(alert.UUID(alertItem.UUID)).AddDecisions(decisions...).Exec(c.CTX)
+		if err != nil {
+			return "", errors.Wrapf(err, "updating alert %s : %s", alertItem.UUID, err)
+		}
+	} else {
+		log.Warningf("alert %s was already complete with decisions %+v", alertItem.UUID, foundUuids)
+	}
+
+	return "", nil
+
 }
 
 func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]string, error) {
@@ -337,6 +493,21 @@ func chunkDecisions(decisions []*ent.Decision, chunkSize int) [][]*ent.Decision 
 func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([]string, error) {
 	ret := []string{}
 	bulkSize := 20
+	var owner *ent.Machine
+	var err error
+
+	if machineId != "" {
+		owner, err = c.QueryMachineByID(machineId)
+		if err != nil {
+			if errors.Cause(err) != UserNotExists {
+				return []string{}, errors.Wrapf(QueryFail, "machine '%s': %s", machineId, err)
+			}
+			c.Log.Debugf("CreateAlertBulk: Machine Id %s doesn't exist", machineId)
+			owner = nil
+		}
+	} else {
+		owner = nil
+	}
 
 	c.Log.Debugf("writing %d items", len(alertList))
 	bulk := make([]*ent.AlertCreate, 0, bulkSize)
@@ -346,14 +517,6 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		var metas []*ent.Meta
 		var events []*ent.Event
 
-		owner, err := c.QueryMachineByID(machineId)
-		if err != nil {
-			if errors.Cause(err) != UserNotExists {
-				return []string{}, errors.Wrapf(QueryFail, "machine '%s': %s", alertItem.MachineID, err)
-			}
-			c.Log.Debugf("CreateAlertBulk: Machine Id %s doesn't exist", machineId)
-			owner = nil
-		}
 		startAtTime, err := time.Parse(time.RFC3339, *alertItem.StartAt)
 		if err != nil {
 			c.Log.Errorf("CreateAlertBulk: Failed to parse startAtTime '%s', defaulting to now: %s", *alertItem.StartAt, err)
@@ -480,7 +643,8 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 					SetValue(*decisionItem.Value).
 					SetScope(*decisionItem.Scope).
 					SetOrigin(*decisionItem.Origin).
-					SetSimulated(*alertItem.Simulated)
+					SetSimulated(*alertItem.Simulated).
+					SetUUID(decisionItem.UUID)
 
 				decisionBulk = append(decisionBulk, decisionCreate)
 				if len(decisionBulk) == decisionBulkSize {
@@ -525,6 +689,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			SetSimulated(*alertItem.Simulated).
 			SetScenarioVersion(*alertItem.ScenarioVersion).
 			SetScenarioHash(*alertItem.ScenarioHash).
+			SetUUID(alertItem.UUID).
 			AddEvents(events...).
 			AddMetas(metas...)
 
@@ -661,7 +826,11 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 			predicates = append(predicates, alert.HasDecisionsWith(decision.OriginEQ(value[0])))
 		case "include_capi": //allows to exclude one or more specific origins
 			if value[0] == "false" {
-				predicates = append(predicates, alert.HasDecisionsWith(decision.Or(decision.OriginEQ("crowdsec"), decision.OriginEQ("cscli"))))
+				predicates = append(predicates, alert.HasDecisionsWith(
+					decision.Or(decision.OriginEQ(types.CrowdSecOrigin),
+						decision.OriginEQ(types.CscliOrigin),
+						decision.OriginEQ(types.ConsoleOrigin),
+						decision.OriginEQ(types.CscliImportOrigin))))
 			} else if value[0] != "true" {
 				log.Errorf("Invalid bool '%s' for include_capi", value[0])
 			}

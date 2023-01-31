@@ -46,7 +46,8 @@ func getAPIC(t *testing.T) *apic {
 	t.Helper()
 	dbClient := getDBClient(t)
 	return &apic{
-		alertToPush:  make(chan []*models.Alert),
+		AlertsAddChan: make(chan []*models.Alert),
+		//DecisionDeleteChan: make(chan []*models.Decision),
 		dbClient:     dbClient,
 		mu:           sync.Mutex{},
 		startup:      true,
@@ -108,7 +109,7 @@ func TestAPICCAPIPullIsOld(t *testing.T) {
 		SetType("IP").
 		SetScope("Country").
 		SetValue("Blah").
-		SetOrigin(SCOPE_CAPI).
+		SetOrigin(types.CAPIOrigin).
 		SaveX(context.Background())
 
 	api.dbClient.Ent.Alert.Create().
@@ -178,12 +179,13 @@ func TestNewAPIC(t *testing.T) {
 	setConfig := func() {
 		testConfig = &csconfig.OnlineApiClientCfg{
 			Credentials: &csconfig.ApiCredentialsCfg{
-				URL:      "foobar",
+				URL:      "http://foobar/",
 				Login:    "foo",
 				Password: "bar",
 			},
 		}
 	}
+
 	type args struct {
 		dbClient      *database.Client
 		consoleConfig *csconfig.ConsoleConfig
@@ -216,6 +218,17 @@ func TestNewAPIC(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			setConfig()
+			httpmock.Activate()
+			defer httpmock.DeactivateAndReset()
+			httpmock.RegisterResponder("POST", "http://foobar/v2/watchers/login", httpmock.NewBytesResponder(
+				200, jsonMarshalX(
+					models.WatcherAuthResponse{
+						Code:   200,
+						Expire: "2023-01-12T22:51:43Z",
+						Token:  "MyToken",
+					},
+				),
+			))
 			tc.action()
 			_, err := NewAPIC(testConfig, tc.args.dbClient, tc.args.consoleConfig)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
@@ -233,7 +246,7 @@ func TestAPICHandleDeletedDecisions(t *testing.T) {
 		SetType("ban").
 		SetScope("IP").
 		SetValue("1.2.3.4").
-		SetOrigin(SCOPE_CAPI).
+		SetOrigin(types.CAPIOrigin).
 		SaveX(context.Background())
 
 	api.dbClient.Ent.Decision.Create().
@@ -242,14 +255,14 @@ func TestAPICHandleDeletedDecisions(t *testing.T) {
 		SetType("ban").
 		SetScope("IP").
 		SetValue("1.2.3.4").
-		SetOrigin(SCOPE_CAPI).
+		SetOrigin(types.CAPIOrigin).
 		SaveX(context.Background())
 
 	assertTotalDecisionCount(t, api.dbClient, 2)
 
 	nbDeleted, err := api.HandleDeletedDecisions([]*models.Decision{{
 		Value:    types.StrPtr("1.2.3.4"),
-		Origin:   &SCOPE_CAPI,
+		Origin:   types.StrPtr(types.CAPIOrigin),
 		Type:     &decision1.Type,
 		Scenario: types.StrPtr("crowdsec/test"),
 		Scope:    types.StrPtr("IP"),
@@ -257,7 +270,7 @@ func TestAPICHandleDeletedDecisions(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, 2, nbDeleted)
-	assert.Equal(t, 2, deleteCounters[SCOPE_CAPI]["all"])
+	assert.Equal(t, 2, deleteCounters[types.CAPIOrigin]["all"])
 }
 
 func TestAPICGetMetrics(t *testing.T) {
@@ -347,22 +360,22 @@ func TestAPICGetMetrics(t *testing.T) {
 
 func TestCreateAlertsForDecision(t *testing.T) {
 	httpBfDecisionList := &models.Decision{
-		Origin:   &SCOPE_LISTS,
+		Origin:   types.StrPtr(types.ListOrigin),
 		Scenario: types.StrPtr("crowdsecurity/http-bf"),
 	}
 
 	sshBfDecisionList := &models.Decision{
-		Origin:   &SCOPE_LISTS,
+		Origin:   types.StrPtr(types.ListOrigin),
 		Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
 	}
 
 	httpBfDecisionCommunity := &models.Decision{
-		Origin:   &SCOPE_CAPI,
+		Origin:   types.StrPtr(types.CAPIOrigin),
 		Scenario: types.StrPtr("crowdsecurity/http-bf"),
 	}
 
 	sshBfDecisionCommunity := &models.Decision{
-		Origin:   &SCOPE_CAPI,
+		Origin:   types.StrPtr(types.CAPIOrigin),
 		Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
 	}
 	type args struct {
@@ -426,25 +439,25 @@ func TestCreateAlertsForDecision(t *testing.T) {
 
 func TestFillAlertsWithDecisions(t *testing.T) {
 	httpBfDecisionCommunity := &models.Decision{
-		Origin:   &SCOPE_CAPI,
+		Origin:   types.StrPtr(types.CAPIOrigin),
 		Scenario: types.StrPtr("crowdsecurity/http-bf"),
 		Scope:    types.StrPtr("ip"),
 	}
 
 	sshBfDecisionCommunity := &models.Decision{
-		Origin:   &SCOPE_CAPI,
+		Origin:   types.StrPtr(types.CAPIOrigin),
 		Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
 		Scope:    types.StrPtr("ip"),
 	}
 
 	httpBfDecisionList := &models.Decision{
-		Origin:   &SCOPE_LISTS,
+		Origin:   types.StrPtr(types.ListOrigin),
 		Scenario: types.StrPtr("crowdsecurity/http-bf"),
 		Scope:    types.StrPtr("ip"),
 	}
 
 	sshBfDecisionList := &models.Decision{
-		Origin:   &SCOPE_LISTS,
+		Origin:   types.StrPtr(types.ListOrigin),
 		Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
 		Scope:    types.StrPtr("ip"),
 	}
@@ -505,7 +518,7 @@ func TestFillAlertsWithDecisions(t *testing.T) {
 func TestAPICPullTop(t *testing.T) {
 	api := getAPIC(t)
 	api.dbClient.Ent.Decision.Create().
-		SetOrigin(SCOPE_LISTS).
+		SetOrigin(types.ListOrigin).
 		SetType("ban").
 		SetValue("9.9.9.9").
 		SetScope("Ip").
@@ -521,7 +534,7 @@ func TestAPICPullTop(t *testing.T) {
 			models.DecisionsStreamResponse{
 				Deleted: models.GetDecisionsResponse{
 					&models.Decision{
-						Origin:   &SCOPE_LISTS,
+						Origin:   types.StrPtr(types.ListOrigin),
 						Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
 						Value:    types.StrPtr("9.9.9.9"),
 						Scope:    types.StrPtr("Ip"),
@@ -529,7 +542,7 @@ func TestAPICPullTop(t *testing.T) {
 						Type:     types.StrPtr("ban"),
 					}, // This is already present in DB
 					&models.Decision{
-						Origin:   &SCOPE_LISTS,
+						Origin:   types.StrPtr(types.ListOrigin),
 						Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
 						Value:    types.StrPtr("9.1.9.9"),
 						Scope:    types.StrPtr("Ip"),
@@ -539,7 +552,7 @@ func TestAPICPullTop(t *testing.T) {
 				},
 				New: models.GetDecisionsResponse{
 					&models.Decision{
-						Origin:   &SCOPE_CAPI,
+						Origin:   types.StrPtr(types.CAPIOrigin),
 						Scenario: types.StrPtr("crowdsecurity/test1"),
 						Value:    types.StrPtr("1.2.3.4"),
 						Scope:    types.StrPtr("Ip"),
@@ -547,7 +560,7 @@ func TestAPICPullTop(t *testing.T) {
 						Type:     types.StrPtr("ban"),
 					},
 					&models.Decision{
-						Origin:   &SCOPE_CAPI,
+						Origin:   types.StrPtr(types.CAPIOrigin),
 						Scenario: types.StrPtr("crowdsecurity/test2"),
 						Value:    types.StrPtr("1.2.3.5"),
 						Scope:    types.StrPtr("Ip"),
@@ -555,7 +568,7 @@ func TestAPICPullTop(t *testing.T) {
 						Type:     types.StrPtr("ban"),
 					}, // These two are from community list.
 					&models.Decision{
-						Origin:   &SCOPE_LISTS,
+						Origin:   types.StrPtr(types.ListOrigin),
 						Scenario: types.StrPtr("crowdsecurity/http-bf"),
 						Value:    types.StrPtr("1.2.3.6"),
 						Scope:    types.StrPtr("Ip"),
@@ -563,7 +576,7 @@ func TestAPICPullTop(t *testing.T) {
 						Type:     types.StrPtr("ban"),
 					},
 					&models.Decision{
-						Origin:   &SCOPE_LISTS,
+						Origin:   types.StrPtr(types.ListOrigin),
 						Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
 						Value:    types.StrPtr("1.2.3.7"),
 						Scope:    types.StrPtr("Ip"),
@@ -604,7 +617,7 @@ func TestAPICPullTop(t *testing.T) {
 		alertScenario[alert.SourceScope]++
 	}
 	assert.Equal(t, 3, len(alertScenario))
-	assert.Equal(t, 1, alertScenario[SCOPE_CAPI_ALIAS])
+	assert.Equal(t, 1, alertScenario[SCOPE_CAPI_ALIAS_ALIAS])
 	assert.Equal(t, 1, alertScenario["lists:crowdsecurity/ssh-bf"])
 	assert.Equal(t, 1, alertScenario["lists:crowdsecurity/http-bf"])
 
@@ -632,6 +645,7 @@ func TestAPICPush(t *testing.T) {
 					ScenarioHash:    types.StrPtr("certified"),
 					ScenarioVersion: types.StrPtr("v1.0"),
 					Simulated:       types.BoolPtr(false),
+					Source:          &models.Source{},
 				},
 			},
 			expectedCalls: 1,
@@ -644,6 +658,7 @@ func TestAPICPush(t *testing.T) {
 					ScenarioHash:    types.StrPtr("certified"),
 					ScenarioVersion: types.StrPtr("v1.0"),
 					Simulated:       types.BoolPtr(true),
+					Source:          &models.Source{},
 				},
 			},
 			expectedCalls: 0,
@@ -659,6 +674,7 @@ func TestAPICPush(t *testing.T) {
 						ScenarioHash:    types.StrPtr("certified"),
 						ScenarioVersion: types.StrPtr("v1.0"),
 						Simulated:       types.BoolPtr(false),
+						Source:          &models.Source{},
 					}
 				}
 				return alerts
@@ -688,7 +704,7 @@ func TestAPICPush(t *testing.T) {
 			api.apiClient = apic
 			httpmock.RegisterResponder("POST", "http://api.crowdsec.net/api/signals", httpmock.NewBytesResponder(200, []byte{}))
 			go func() {
-				api.alertToPush <- tc.alerts
+				api.AlertsAddChan <- tc.alerts
 				time.Sleep(time.Second)
 				api.Shutdown()
 			}()
@@ -832,7 +848,7 @@ func TestAPICPull(t *testing.T) {
 				models.DecisionsStreamResponse{
 					New: models.GetDecisionsResponse{
 						&models.Decision{
-							Origin:   &SCOPE_CAPI,
+							Origin:   types.StrPtr(types.CAPIOrigin),
 							Scenario: types.StrPtr("crowdsecurity/test2"),
 							Value:    types.StrPtr("1.2.3.5"),
 							Scope:    types.StrPtr("Ip"),
@@ -892,7 +908,7 @@ func TestShouldShareAlert(t *testing.T) {
 			},
 			alert: &models.Alert{
 				Simulated: types.BoolPtr(false),
-				Decisions: []*models.Decision{{Origin: types.StrPtr("cscli")}},
+				Decisions: []*models.Decision{{Origin: types.StrPtr(types.CscliOrigin)}},
 			},
 			expectedRet:   true,
 			expectedTrust: "manual",
@@ -904,7 +920,7 @@ func TestShouldShareAlert(t *testing.T) {
 			},
 			alert: &models.Alert{
 				Simulated: types.BoolPtr(false),
-				Decisions: []*models.Decision{{Origin: types.StrPtr("cscli")}},
+				Decisions: []*models.Decision{{Origin: types.StrPtr(types.CscliOrigin)}},
 			},
 			expectedRet:   false,
 			expectedTrust: "manual",

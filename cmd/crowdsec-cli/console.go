@@ -19,6 +19,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -209,10 +210,11 @@ Disable given information push to the central API.`,
 				}
 
 				rows := [][]string{
-					{"share_manual_decisions", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareManualDecisions)},
-					{"share_custom", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios)},
-					{"share_tainted", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios)},
-					{"share_context", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareContext)},
+					{csconfig.SEND_MANUAL_SCENARIOS, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareManualDecisions)},
+					{csconfig.SEND_CUSTOM_SCENARIOS, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios)},
+					{csconfig.SEND_TAINTED_SCENARIOS, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios)},
+					{csconfig.SEND_CONTEXT, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareContext)},
+					{csconfig.CONSOLE_MANAGEMENT, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ReceiveDecisions)},
 				}
 				for _, row := range rows {
 					err = csvwriter.Write(row)
@@ -232,6 +234,22 @@ Disable given information push to the central API.`,
 func SetConsoleOpts(args []string, wanted bool) {
 	for _, arg := range args {
 		switch arg {
+		case csconfig.CONSOLE_MANAGEMENT:
+			if !fflag.PapiClient.IsEnabled() {
+				log.Fatalf("Feature flag %s is disabled, cannot set %s", fflag.PapiClient.Name, csconfig.CONSOLE_MANAGEMENT)
+			}
+			/*for each flag check if it's already set before setting it*/
+			if csConfig.API.Server.ConsoleConfig.ReceiveDecisions != nil {
+				if *csConfig.API.Server.ConsoleConfig.ReceiveDecisions == wanted {
+					log.Infof("%s already set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
+				} else {
+					log.Infof("%s set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
+					*csConfig.API.Server.ConsoleConfig.ReceiveDecisions = wanted
+				}
+			} else {
+				log.Infof("%s set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
+				csConfig.API.Server.ConsoleConfig.ReceiveDecisions = types.BoolPtr(wanted)
+			}
 		case csconfig.SEND_CUSTOM_SCENARIOS:
 			/*for each flag check if it's already set before setting it*/
 			if csConfig.API.Server.ConsoleConfig.ShareCustomScenarios != nil {

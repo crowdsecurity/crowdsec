@@ -25,6 +25,7 @@ type APICfg struct {
 }
 
 type ApiCredentialsCfg struct {
+	PapiURL    string `yaml:"papi_url,omitempty" json:"papi_url,omitempty"`
 	URL        string `yaml:"url,omitempty" json:"url,omitempty"`
 	Login      string `yaml:"login,omitempty" json:"login,omitempty"`
 	Password   string `yaml:"password,omitempty" json:"-"`
@@ -91,6 +92,7 @@ func (o *OnlineApiClientCfg) Load() error {
 		log.Warningf("can't load CAPI credentials from '%s' (missing field)", o.CredentialsFilePath)
 		o.Credentials = nil
 	}
+
 	return nil
 }
 
@@ -192,6 +194,7 @@ type LocalApiServerCfg struct {
 	LogMaxAge              int                 `yaml:"-"`
 	LogMaxFiles            int                 `yaml:"-"`
 	TrustedIPs             []string            `yaml:"trusted_ips,omitempty"`
+	PapiLogLevel           *log.Level          `yaml:"papi_log_level"`
 }
 
 type TLSCfg struct {
@@ -211,8 +214,35 @@ func (c *Config) LoadAPIServer() error {
 		log.Warning("crowdsec local API is disabled from flag")
 	}
 
-	if c.API.Server == nil {
-		log.Warning("crowdsec local API is disabled because its configuration is not present")
+	if c.API.Server != nil {
+
+		//inherit log level from common, then api->server
+		var logLevel log.Level
+		if c.API.Server.LogLevel != nil {
+			logLevel = *c.API.Server.LogLevel
+		} else if c.Common.LogLevel != nil {
+			logLevel = *c.Common.LogLevel
+		} else {
+			logLevel = log.InfoLevel
+		}
+
+		if c.API.Server.PapiLogLevel == nil {
+			c.API.Server.PapiLogLevel = &logLevel
+		}
+
+		if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
+			if err := c.API.Server.OnlineClient.Load(); err != nil {
+				return errors.Wrap(err, "loading online client credentials")
+			}
+		}
+		if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
+			log.Printf("push and pull to Central API disabled")
+		}
+		if err := c.LoadDBConfig(); err != nil {
+			return err
+		}
+	} else {
+		log.Warning("crowdsec local API is disabled")
 		c.DisableAPI = true
 		return nil
 	}
@@ -270,10 +300,6 @@ func (c *Config) LoadAPIServer() error {
 		if err := c.API.CTI.Load(); err != nil {
 			return errors.Wrap(err, "loading CTI configuration")
 		}
-	}
-
-	if err := c.LoadDBConfig(); err != nil {
-		return err
 	}
 
 	return nil

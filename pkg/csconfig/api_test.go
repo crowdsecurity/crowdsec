@@ -1,15 +1,18 @@
 package csconfig
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/crowdsecurity/crowdsec/pkg/types"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cstest"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func TestLoadLocalApiClientCfg(t *testing.T) {
@@ -143,7 +146,7 @@ func TestLoadAPIServer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
+	logLevel := log.InfoLevel
 	config := &Config{}
 	fcontent, err := os.ReadFile("./tests/config.yaml")
 	if err != nil {
@@ -171,6 +174,7 @@ func TestLoadAPIServer(t *testing.T) {
 							CredentialsFilePath: "./tests/online-api-secrets.yaml",
 						},
 						ProfilesPath: "./tests/profiles.yaml",
+						PapiLogLevel: &logLevel,
 					},
 				},
 				DbConfig: &DatabaseCfg{
@@ -198,6 +202,7 @@ func TestLoadAPIServer(t *testing.T) {
 					ShareTaintedScenarios: types.BoolPtr(true),
 					ShareCustomScenarios:  types.BoolPtr(true),
 					ShareContext:          types.BoolPtr(false),
+					ReceiveDecisions:      types.BoolPtr(false),
 				},
 				LogDir:   LogDirFullPath,
 				LogMedia: "stdout",
@@ -212,6 +217,7 @@ func TestLoadAPIServer(t *testing.T) {
 				Profiles:               tmpLAPI.Profiles,
 				ProfilesPath:           "./tests/profiles.yaml",
 				UseForwardedForHeaders: false,
+				PapiLogLevel:           &logLevel,
 			},
 		},
 		{
@@ -228,24 +234,27 @@ func TestLoadAPIServer(t *testing.T) {
 				DisableAPI: false,
 			},
 			expected: &LocalApiServerCfg{
-				Enable:   types.BoolPtr(true),
-				LogDir:   LogDirFullPath,
-				LogMedia: "stdout",
+				PapiLogLevel: &logLevel,
 			},
-			expectedErr: "while loading profiles for LAPI",
+			expectedErr: "no database configuration provided",
 		},
 	}
 
-	for _, tc := range tests {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			err := tc.input.LoadAPIServer()
-			cstest.RequireErrorContains(t, err, tc.expectedErr)
-			if tc.expectedErr != "" {
-				return
+	for idx, test := range tests {
+		err := test.input.LoadAPIServer()
+		if err == nil && test.expectedErr != "" {
+			fmt.Printf("TEST '%s': NOK\n", test.name)
+			t.Fatalf("Test number %d/%d expected error, didn't get it", idx+1, len(tests))
+		} else if test.expectedErr != "" {
+			fmt.Printf("ERR: %+v\n", err)
+			if !strings.HasPrefix(fmt.Sprintf("%s", err), test.expectedErr) {
+				fmt.Printf("TEST '%s': NOK\n", test.name)
+				t.Fatalf("%d/%d expected '%s' got '%s'", idx, len(tests),
+					test.expectedErr,
+					fmt.Sprintf("%s", err))
 			}
 
-			assert.Equal(t, tc.expected, tc.input.API.Server)
-		})
+			assert.Equal(t, test.expected, test.input.API.Server)
+		}
 	}
 }
