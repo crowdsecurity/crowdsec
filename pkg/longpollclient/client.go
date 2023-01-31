@@ -59,7 +59,7 @@ func (c *LongPollClient) doQuery() error {
 
 	logger.Debugf("Query parameters: %s", c.url.RawQuery)
 
-	req, err := http.NewRequest("GET", c.url.String(), nil)
+	req, err := http.NewRequest(http.MethodGet, c.url.String(), nil)
 	if err != nil {
 		logger.Errorf("failed to create request: %s", err)
 		return err
