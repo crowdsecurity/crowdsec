@@ -15,11 +15,11 @@ const (
 	SEND_CUSTOM_SCENARIOS  = "custom"
 	SEND_TAINTED_SCENARIOS = "tainted"
 	SEND_MANUAL_SCENARIOS  = "manual"
-	RECEIVE_DECISIONS      = "decisions_poll"
+	CONSOLE_MANAGEMENT     = "console_management"
 	SEND_CONTEXT           = "context"
 )
 
-var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS, SEND_CONTEXT, RECEIVE_DECISIONS}
+var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS, SEND_CONTEXT, CONSOLE_MANAGEMENT}
 
 var DefaultConsoleConfigFilePath = DefaultConfigPath("console.yaml")
 
@@ -27,7 +27,7 @@ type ConsoleConfig struct {
 	ShareManualDecisions  *bool `yaml:"share_manual_decisions"`
 	ShareTaintedScenarios *bool `yaml:"share_tainted"`
 	ShareCustomScenarios  *bool `yaml:"share_custom"`
-	ReceiveDecisions      *bool `yaml:"receive_decisions"`
+	ReceiveDecisions      *bool `yaml:"console_management"`
 	ShareContext          *bool `yaml:"share_context"`
 }
 
@@ -68,7 +68,7 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 	if !fflag.PapiClient.IsEnabled() {
 		c.ConsoleConfig.ReceiveDecisions = types.BoolPtr(false)
 	} else if c.ConsoleConfig.ReceiveDecisions == nil {
-		log.Debugf("no receive_decisions scenarios found, setting to false")
+		log.Debugf("no console_management found, setting to false")
 		c.ConsoleConfig.ReceiveDecisions = types.BoolPtr(false)
 	}
 

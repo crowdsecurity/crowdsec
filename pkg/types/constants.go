@@ -4,8 +4,8 @@ const ApiKeyAuthType = "api-key"
 const TlsAuthType = "tls"
 const PasswordAuthType = "password"
 
-const PAPIBaseURL = "https://papi.dev.crowdsec.net/v1/decisions/stream/poll"
-const CAPIBaseURL = "https://api.dev.crowdsec.net/"
+const PAPIBaseURL = "https://papi.crowdsec.net/v1/decisions/stream/poll"
+const CAPIBaseURL = "https://api.crowdsec.net/"
 
 const CscliOrigin = "cscli"
 const CrowdSecOrigin = "crowdsec"

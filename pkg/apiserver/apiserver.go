@@ -371,7 +371,7 @@ func (s *APIServer) Run(apiReady chan bool) error {
 						return nil
 					})
 				} else {
-					log.Warningf("Machine is not allowed to synchronize decisions, you can enable it with `cscli console enable decisions_poll`")
+					log.Warningf("Machine is not allowed to synchronize decisions, you can enable it with `cscli console enable console_management`")
 				}
 			}
 		}

@@ -214,7 +214,7 @@ Disable given information push to the central API.`,
 					{csconfig.SEND_CUSTOM_SCENARIOS, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios)},
 					{csconfig.SEND_TAINTED_SCENARIOS, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios)},
 					{csconfig.SEND_CONTEXT, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareContext)},
-					{csconfig.RECEIVE_DECISIONS, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ReceiveDecisions)},
+					{csconfig.CONSOLE_MANAGEMENT, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ReceiveDecisions)},
 				}
 				for _, row := range rows {
 					err = csvwriter.Write(row)
@@ -234,20 +234,20 @@ Disable given information push to the central API.`,
 func SetConsoleOpts(args []string, wanted bool) {
 	for _, arg := range args {
 		switch arg {
-		case csconfig.RECEIVE_DECISIONS:
+		case csconfig.CONSOLE_MANAGEMENT:
 			if !fflag.PapiClient.IsEnabled() {
-				log.Fatalf("Feature flag %s is disabled, cannot set %s", fflag.PapiClient.Name, csconfig.RECEIVE_DECISIONS)
+				log.Fatalf("Feature flag %s is disabled, cannot set %s", fflag.PapiClient.Name, csconfig.CONSOLE_MANAGEMENT)
 			}
 			/*for each flag check if it's already set before setting it*/
 			if csConfig.API.Server.ConsoleConfig.ReceiveDecisions != nil {
 				if *csConfig.API.Server.ConsoleConfig.ReceiveDecisions == wanted {
-					log.Infof("%s already set to %t", csconfig.RECEIVE_DECISIONS, wanted)
+					log.Infof("%s already set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
 				} else {
-					log.Infof("%s set to %t", csconfig.RECEIVE_DECISIONS, wanted)
+					log.Infof("%s set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
 					*csConfig.API.Server.ConsoleConfig.ReceiveDecisions = wanted
 				}
 			} else {
-				log.Infof("%s set to %t", csconfig.RECEIVE_DECISIONS, wanted)
+				log.Infof("%s set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
 				csConfig.API.Server.ConsoleConfig.ReceiveDecisions = types.BoolPtr(wanted)
 			}
 		case csconfig.SEND_CUSTOM_SCENARIOS:
