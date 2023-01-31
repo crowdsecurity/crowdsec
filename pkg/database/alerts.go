@@ -93,7 +93,7 @@ func formatAlertAsString(machineId string, alert *models.Alert) []string {
 			}
 			machineIdOrigin := ""
 			if machineId == "" {
-				machineIdOrigin = fmt.Sprintf("%s", *decisionItem.Origin)
+				machineIdOrigin = *decisionItem.Origin
 			} else {
 				machineIdOrigin = fmt.Sprintf("%s/%s", machineId, *decisionItem.Origin)
 			}
