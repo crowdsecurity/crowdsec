@@ -45,12 +45,13 @@ jobs:
         submodules: true
 
     - name: "Install bats dependencies"
+      env:
+        GOBIN: /usr/local/bin
       run: |
         sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential daemonize jq netcat-openbsd
         go install github.com/mikefarah/yq/v4@latest
         go install github.com/cloudflare/cfssl/cmd/cfssl@master
         go install github.com/cloudflare/cfssl/cmd/cfssljson@master
-        sudo cp -u ~/go/bin/yq ~/go/bin/cfssl ~/go/bin/cfssljson /usr/local/bin/
 
     - name: "Build crowdsec and fixture (DB_BACKEND: pgx)"
       run: |
