@@ -3,6 +3,7 @@ package apiclient
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -13,6 +14,83 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
+
+func getLoginsForMockErrorCases() map[string]int {
+	loginsForMockErrorCases := map[string]int{
+		"existingLogin":   http.StatusConflict,
+		"invalidPassword": http.StatusBadRequest,
+		"crashServer":     http.StatusInternalServerError,
+	}
+
+	return loginsForMockErrorCases
+}
+
+func initMuxRegisterMock(t *testing.T, mux *http.ServeMux) {
+	type Payload struct {
+		MachineID string `json:"machine_id"`
+		Password  string `json:"password"`
+	}
+	loginsForMockErrorCases := getLoginsForMockErrorCases()
+	mux.HandleFunc("/watchers", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "POST")
+		buf := new(bytes.Buffer)
+		_, _ = buf.ReadFrom(r.Body)
+		newStr := buf.String()
+		var payload Payload
+		err := json.Unmarshal([]byte(newStr), &payload)
+		if err != nil {
+			log.Printf("Bad payload")
+			w.WriteHeader(http.StatusBadRequest)
+		}
+
+		responseCode, ok := loginsForMockErrorCases[payload.MachineID]
+		log.Printf("Buff > %s // Login : [%s] => response [%d]", newStr, payload.MachineID, responseCode)
+
+		if !ok {
+			responseCode = http.StatusOK
+		}
+
+		w.WriteHeader(responseCode)
+	})
+}
+func TestWatcherRegister(t *testing.T) {
+
+	log.SetLevel(log.DebugLevel)
+
+	mux, urlx, teardown := setup()
+	defer teardown()
+	//body: models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password}
+	initMuxRegisterMock(t, mux)
+	log.Printf("URL is %s", urlx)
+	apiURL, err := url.Parse(urlx + "/")
+	if err != nil {
+		t.Fatalf("parsing api url: %s", apiURL)
+	}
+
+	// Valid Registration : should retrieve the client and no err
+	clientconfig := Config{
+		MachineID:     "test_login",
+		Password:      "test_password",
+		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		URL:           apiURL,
+		VersionPrefix: "v1",
+	}
+	client, err := RegisterClient(&clientconfig, &http.Client{})
+	if client == nil || err != nil {
+		t.Fatalf("while registering client : %s", err)
+	}
+	log.Printf("->%T", client)
+
+	// Testing error handling on Registration : should retrieve an error
+	loginsForMockErrorCases := getLoginsForMockErrorCases()
+	for login, responseCode := range loginsForMockErrorCases {
+		clientconfig.MachineID = login
+		client, err = RegisterClient(&clientconfig, &http.Client{})
+		if client != nil || err == nil {
+			t.Fatalf("The RegisterClient function should have returned an error for the response code %d", responseCode)
+		}
+	}
+}
 
 func TestWatcherAuth(t *testing.T) {
 
@@ -90,41 +168,6 @@ func TestWatcherAuth(t *testing.T) {
 	})
 	assert.Contains(t, err.Error(), "API error: access forbidden")
 
-}
-
-func TestWatcherRegister(t *testing.T) {
-
-	log.SetLevel(log.DebugLevel)
-
-	mux, urlx, teardown := setup()
-	defer teardown()
-	//body: models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password}
-
-	mux.HandleFunc("/watchers", func(w http.ResponseWriter, r *http.Request) {
-		testMethod(t, r, "POST")
-		buf := new(bytes.Buffer)
-		_, _ = buf.ReadFrom(r.Body)
-		newStr := buf.String()
-		assert.Equal(t, newStr, `{"machine_id":"test_login","password":"test_password"}
-`)
-		w.WriteHeader(http.StatusOK)
-	})
-	log.Printf("URL is %s", urlx)
-	apiURL, err := url.Parse(urlx + "/")
-	if err != nil {
-		t.Fatalf("parsing api url: %s", apiURL)
-	}
-	client, err := RegisterClient(&Config{
-		MachineID:     "test_login",
-		Password:      "test_password",
-		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
-		URL:           apiURL,
-		VersionPrefix: "v1",
-	}, &http.Client{})
-	if err != nil {
-		t.Fatalf("while registering client : %s", err)
-	}
-	log.Printf("->%T", client)
 }
 
 func TestWatcherUnregister(t *testing.T) {
