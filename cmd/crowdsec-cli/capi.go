@@ -6,17 +6,17 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/go-openapi/strfmt"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
-
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
 const CAPIBaseURL string = "https://api.crowdsec.net/"
@@ -62,9 +62,9 @@ func NewCapiRegisterCmd() *cobra.Command {
 				log.Fatalf("unable to generate machine id: %s", err)
 			}
 			password := strfmt.Password(generatePassword(passwordLength))
-			apiurl, err := url.Parse(CAPIBaseURL)
+			apiurl, err := url.Parse(types.CAPIBaseURL)
 			if err != nil {
-				log.Fatalf("unable to parse api url %s : %s", CAPIBaseURL, err)
+				log.Fatalf("unable to parse api url %s : %s", types.CAPIBaseURL, err)
 			}
 			_, err = apiclient.RegisterClient(&apiclient.Config{
 				MachineID:     capiUser,
@@ -75,7 +75,7 @@ func NewCapiRegisterCmd() *cobra.Command {
 			}, nil)
 
 			if err != nil {
-				log.Fatalf("api client register ('%s'): %s", CAPIBaseURL, err)
+				log.Fatalf("api client register ('%s'): %s", types.CAPIBaseURL, err)
 			}
 			log.Printf("Successfully registered to Central API (CAPI)")
 
@@ -91,7 +91,8 @@ func NewCapiRegisterCmd() *cobra.Command {
 			apiCfg := csconfig.ApiCredentialsCfg{
 				Login:    capiUser,
 				Password: password.String(),
-				URL:      CAPIBaseURL,
+				URL:      types.CAPIBaseURL,
+				PapiURL:  types.PAPIBaseURL,
 			}
 			apiConfigDump, err := yaml.Marshal(apiCfg)
 			if err != nil {

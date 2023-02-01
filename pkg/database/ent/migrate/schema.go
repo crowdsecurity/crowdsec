@@ -33,6 +33,7 @@ var (
 		{Name: "scenario_version", Type: field.TypeString, Nullable: true},
 		{Name: "scenario_hash", Type: field.TypeString, Nullable: true},
 		{Name: "simulated", Type: field.TypeBool, Default: false},
+		{Name: "uuid", Type: field.TypeString, Nullable: true},
 		{Name: "machine_alerts", Type: field.TypeInt, Nullable: true},
 	}
 	// AlertsTable holds the schema information for the "alerts" table.
@@ -43,7 +44,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "alerts_machines_alerts",
-				Columns:    []*schema.Column{AlertsColumns[23]},
+				Columns:    []*schema.Column{AlertsColumns[24]},
 				RefColumns: []*schema.Column{MachinesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -77,6 +78,20 @@ var (
 		Columns:    BouncersColumns,
 		PrimaryKey: []*schema.Column{BouncersColumns[0]},
 	}
+	// ConfigItemsColumns holds the columns for the "config_items" table.
+	ConfigItemsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, Nullable: true},
+		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
+		{Name: "name", Type: field.TypeString, Unique: true},
+		{Name: "value", Type: field.TypeString},
+	}
+	// ConfigItemsTable holds the schema information for the "config_items" table.
+	ConfigItemsTable = &schema.Table{
+		Name:       "config_items",
+		Columns:    ConfigItemsColumns,
+		PrimaryKey: []*schema.Column{ConfigItemsColumns[0]},
+	}
 	// DecisionsColumns holds the columns for the "decisions" table.
 	DecisionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -94,6 +109,7 @@ var (
 		{Name: "value", Type: field.TypeString},
 		{Name: "origin", Type: field.TypeString},
 		{Name: "simulated", Type: field.TypeBool, Default: false},
+		{Name: "uuid", Type: field.TypeString, Nullable: true},
 		{Name: "alert_decisions", Type: field.TypeInt, Nullable: true},
 	}
 	// DecisionsTable holds the schema information for the "decisions" table.
@@ -104,7 +120,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "decisions_alerts_decisions",
-				Columns:    []*schema.Column{DecisionsColumns[15]},
+				Columns:    []*schema.Column{DecisionsColumns[16]},
 				RefColumns: []*schema.Column{AlertsColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
@@ -199,6 +215,7 @@ var (
 	Tables = []*schema.Table{
 		AlertsTable,
 		BouncersTable,
+		ConfigItemsTable,
 		DecisionsTable,
 		EventsTable,
 		MachinesTable,

@@ -37,7 +37,7 @@ jobs:
     - name: Build
       run: make windows_installer
     - name: Upload MSI
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         path: crowdsec*msi
         name: crowdsec.msi

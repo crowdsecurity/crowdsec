@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -14,10 +15,11 @@ const (
 	SEND_CUSTOM_SCENARIOS  = "custom"
 	SEND_TAINTED_SCENARIOS = "tainted"
 	SEND_MANUAL_SCENARIOS  = "manual"
+	CONSOLE_MANAGEMENT     = "console_management"
 	SEND_CONTEXT           = "context"
 )
 
-var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS, SEND_CONTEXT}
+var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS, SEND_CONTEXT, CONSOLE_MANAGEMENT}
 
 var DefaultConsoleConfigFilePath = DefaultConfigPath("console.yaml")
 
@@ -25,6 +27,7 @@ type ConsoleConfig struct {
 	ShareManualDecisions  *bool `yaml:"share_manual_decisions"`
 	ShareTaintedScenarios *bool `yaml:"share_tainted"`
 	ShareCustomScenarios  *bool `yaml:"share_custom"`
+	ReceiveDecisions      *bool `yaml:"console_management"`
 	ShareContext          *bool `yaml:"share_context"`
 }
 
@@ -35,6 +38,7 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 		c.ConsoleConfig.ShareCustomScenarios = types.BoolPtr(true)
 		c.ConsoleConfig.ShareTaintedScenarios = types.BoolPtr(true)
 		c.ConsoleConfig.ShareManualDecisions = types.BoolPtr(false)
+		c.ConsoleConfig.ReceiveDecisions = types.BoolPtr(false)
 		c.ConsoleConfig.ShareContext = types.BoolPtr(false)
 		return nil
 	}
@@ -59,6 +63,13 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 	if c.ConsoleConfig.ShareManualDecisions == nil {
 		log.Debugf("no share_manual scenarios found, setting to false")
 		c.ConsoleConfig.ShareManualDecisions = types.BoolPtr(false)
+	}
+
+	if !fflag.PapiClient.IsEnabled() {
+		c.ConsoleConfig.ReceiveDecisions = types.BoolPtr(false)
+	} else if c.ConsoleConfig.ReceiveDecisions == nil {
+		log.Debugf("no console_management found, setting to false")
+		c.ConsoleConfig.ReceiveDecisions = types.BoolPtr(false)
 	}
 
 	if c.ConsoleConfig.ShareContext == nil {

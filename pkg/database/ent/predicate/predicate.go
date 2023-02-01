@@ -12,6 +12,9 @@ type Alert func(*sql.Selector)
 // Bouncer is the predicate function for bouncer builders.
 type Bouncer func(*sql.Selector)
 
+// ConfigItem is the predicate function for configitem builders.
+type ConfigItem func(*sql.Selector)
+
 // Decision is the predicate function for decision builders.
 type Decision func(*sql.Selector)
 

@@ -7,6 +7,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/configitem"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
@@ -86,6 +87,20 @@ func init() {
 	bouncerDescAuthType := bouncerFields[10].Descriptor()
 	// bouncer.DefaultAuthType holds the default value on creation for the auth_type field.
 	bouncer.DefaultAuthType = bouncerDescAuthType.Default.(string)
+	configitemFields := schema.ConfigItem{}.Fields()
+	_ = configitemFields
+	// configitemDescCreatedAt is the schema descriptor for created_at field.
+	configitemDescCreatedAt := configitemFields[0].Descriptor()
+	// configitem.DefaultCreatedAt holds the default value on creation for the created_at field.
+	configitem.DefaultCreatedAt = configitemDescCreatedAt.Default.(func() time.Time)
+	// configitem.UpdateDefaultCreatedAt holds the default value on update for the created_at field.
+	configitem.UpdateDefaultCreatedAt = configitemDescCreatedAt.UpdateDefault.(func() time.Time)
+	// configitemDescUpdatedAt is the schema descriptor for updated_at field.
+	configitemDescUpdatedAt := configitemFields[1].Descriptor()
+	// configitem.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	configitem.DefaultUpdatedAt = configitemDescUpdatedAt.Default.(func() time.Time)
+	// configitem.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	configitem.UpdateDefaultUpdatedAt = configitemDescUpdatedAt.UpdateDefault.(func() time.Time)
 	decisionFields := schema.Decision{}.Fields()
 	_ = decisionFields
 	// decisionDescCreatedAt is the schema descriptor for created_at field.

@@ -55,6 +55,8 @@ const (
 	FieldScenarioHash = "scenario_hash"
 	// FieldSimulated holds the string denoting the simulated field in the database.
 	FieldSimulated = "simulated"
+	// FieldUUID holds the string denoting the uuid field in the database.
+	FieldUUID = "uuid"
 	// EdgeOwner holds the string denoting the owner edge name in mutations.
 	EdgeOwner = "owner"
 	// EdgeDecisions holds the string denoting the decisions edge name in mutations.
@@ -120,6 +122,7 @@ var Columns = []string{
 	FieldScenarioVersion,
 	FieldScenarioHash,
 	FieldSimulated,
+	FieldUUID,
 }
 
 // ForeignKeys holds the SQL foreign-keys that are owned by the "alerts"
