@@ -120,7 +120,10 @@ func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]str
 	return ret, nil
 }
 
-/*We can't bulk both the alert and the decision at the same time. With new consensus, we want to bulk a single alert with a lot of decisions.*/
+// UpdateCommunityBlocklist is called to update either the community blocklist (or other lists the user subscribed to)
+// it takes care of creating the new alert with the associated decisions, and it will as well deleted the "older" overlapping decisions:
+// 1st pull, you get decisions [1,2,3]. it inserts [1,2,3]
+// 2nd pull, you get decisions [1,2,3,4]. it inserts [1,2,3,4] and will try to delete [1,2,3,4] with a different alert ID and same origin
 func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, int, error) {
 
 	var err error
