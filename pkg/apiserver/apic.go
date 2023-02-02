@@ -402,9 +402,9 @@ func (a *apic) HandleDeletedDecisionsV3(deletedDecisions []*modelscapi.GetDecisi
 				filter["value"] = []string{decision}
 				filter["scopes"] = []string{*scope}
 			}
-			filter["origin"] = []string{SCOPE_CAPI}
+			filter["origin"] = []string{types.CAPIOrigin}
 
-			dbCliRet, err := a.dbClient.SoftDeleteDecisionsWithFilter(filter)
+			dbCliRet, _, err := a.dbClient.SoftDeleteDecisionsWithFilter(filter)
 			if err != nil {
 				return 0, errors.Wrap(err, "deleting decisions error")
 			}
@@ -412,7 +412,7 @@ func (a *apic) HandleDeletedDecisionsV3(deletedDecisions []*modelscapi.GetDecisi
 			if err != nil {
 				return 0, errors.Wrapf(err, "converting db ret %d", dbCliDel)
 			}
-			updateCounterForDecision(delete_counters, &SCOPE_CAPI, nil, dbCliDel)
+			updateCounterForDecision(delete_counters, types.StrPtr(types.CAPIOrigin), nil, dbCliDel)
 			nbDeleted += dbCliDel
 		}
 	}
@@ -782,11 +782,11 @@ func makeAddAndDeleteCounters() (map[string]map[string]int, map[string]map[strin
 	return add_counters, delete_counters
 }
 
-func updateCounterForDecision(counter map[string]map[string]int, decision *models.Decision, totalDecisions int) {
-	if *decision.Origin == types.CAPIOrigin {
-		counter[*decision.Origin]["all"] += totalDecisions
-	} else if *decision.Origin == types.ListOrigin {
-		counter[*decision.Origin][*decision.Scenario] += totalDecisions
+func updateCounterForDecision(counter map[string]map[string]int, origin *string, scenario *string, totalDecisions int) {
+	if *origin == types.CAPIOrigin {
+		counter[*origin]["all"] += totalDecisions
+	} else if *origin == types.ListOrigin {
+		counter[*origin][*scenario] += totalDecisions
 	} else {
 		log.Warningf("Unknown origin %s", *origin)
 	}

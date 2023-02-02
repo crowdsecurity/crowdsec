@@ -221,7 +221,7 @@ func TestNewAPIC(t *testing.T) {
 			setConfig()
 			httpmock.Activate()
 			defer httpmock.DeactivateAndReset()
-			httpmock.RegisterResponder("POST", "http://foobar/v2/watchers/login", httpmock.NewBytesResponder(
+			httpmock.RegisterResponder("POST", "http://foobar/v3/watchers/login", httpmock.NewBytesResponder(
 				200, jsonMarshalX(
 					models.WatcherAuthResponse{
 						Code:   200,
@@ -519,7 +519,7 @@ func TestFillAlertsWithDecisions(t *testing.T) {
 func TestAPICPullTop(t *testing.T) {
 	api := getAPIC(t)
 	api.dbClient.Ent.Decision.Create().
-		SetOrigin(SCOPE_CAPI).
+		SetOrigin(types.CAPIOrigin).
 		SetType("ban").
 		SetValue("9.9.9.9").
 		SetScope("Ip").
