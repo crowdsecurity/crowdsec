@@ -166,6 +166,7 @@ func (s *DecisionsService) GetDecisionsFromBlocklist(ctx context.Context, blockl
 	}
 
 	pr, pw := io.Pipe()
+	defer pr.Close()
 	go func() {
 		defer pw.Close()
 		_, err = s.client.Do(ctx, req, pw)
