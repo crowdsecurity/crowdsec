@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
@@ -206,27 +207,8 @@ func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPul
 	return nil
 }
 
-func (c *Controller) StreamDecision(gctx *gin.Context) {
+func (c *Controller) StreamDecisionChunked(gctx *gin.Context, bouncerInfo *ent.Bouncer, streamStartTime time.Time, filters map[string][]string) {
 	var err error
-
-	streamStartTime := time.Now().UTC()
-	bouncerInfo, err := getBouncerFromContext(gctx)
-	if err != nil {
-		gctx.JSON(http.StatusUnauthorized, gin.H{"message": "not allowed"})
-		return
-	}
-
-	if gctx.Request.Method == http.MethodHead {
-		//For HEAD, just return as the bouncer won't get a body anyway, so no need to query the db
-		//We also don't update the last pull time, as it would mess with the delta sent on the next request (if done without startup=true)
-		gctx.String(http.StatusOK, "")
-		return
-	}
-
-	filters := gctx.Request.URL.Query()
-	if _, ok := filters["scopes"]; !ok {
-		filters["scopes"] = []string{"ip,range"}
-	}
 
 	gctx.Writer.Header().Set("Content-Type", "application/json")
 	gctx.Writer.Header().Set("Transfer-Encoding", "chunked")
@@ -280,6 +262,35 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 
 		gctx.Writer.Write([]byte(`]}`))
 		gctx.Writer.Flush()
+	}
+}
+
+func (c *Controller) StreamDecision(gctx *gin.Context) {
+	var err error
+
+	streamStartTime := time.Now().UTC()
+	bouncerInfo, err := getBouncerFromContext(gctx)
+	if err != nil {
+		gctx.JSON(http.StatusUnauthorized, gin.H{"message": "not allowed"})
+		return
+	}
+
+	if gctx.Request.Method == http.MethodHead {
+		//For HEAD, just return as the bouncer won't get a body anyway, so no need to query the db
+		//We also don't update the last pull time, as it would mess with the delta sent on the next request (if done without startup=true)
+		gctx.String(http.StatusOK, "")
+		return
+	}
+
+	filters := gctx.Request.URL.Query()
+	if _, ok := filters["scopes"]; !ok {
+		filters["scopes"] = []string{"ip,range"}
+	}
+
+	if fflag.ChunkedDecisionsStream.IsEnabled() {
+		c.StreamDecisionChunked(gctx, bouncerInfo, streamStartTime, filters)
+	} else {
+		c.StreamDecisionNonChunked(gctx, bouncerInfo, streamStartTime, filters)
 	}
 
 	if err := c.DBClient.UpdateBouncerLastPull(streamStartTime, bouncerInfo.ID); err != nil {
