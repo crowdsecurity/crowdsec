@@ -24,7 +24,7 @@ import (
 var dataFile map[string][]string
 var dataFileRegex map[string][]*regexp.Regexp
 var dataFileRegexMemoized map[string]map[string]bool
-var dataFileRegexMemoizedRWLock sync.Mutex
+var dataFileRegexMemoizedLock sync.Mutex
 var dbClient *database.Client
 
 const memoizeLimit = 1000
@@ -110,7 +110,6 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		dataFile[filename] = []string{}
 	}
 	scanner := bufio.NewScanner(file)
-	z := make([]string, 0)
 	for scanner.Scan() {
 		if strings.HasPrefix(scanner.Text(), "#") { // allow comments
 			continue
@@ -120,16 +119,13 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		}
 		switch fileType {
 		case "regex", "regexp":
-			z = append(z, scanner.Text())
-			// dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
+			dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
 		case "string":
 			dataFile[filename] = append(dataFile[filename], scanner.Text())
 		default:
 			return fmt.Errorf("unknown data type '%s' for : '%s'", fileType, filename)
 		}
 	}
-	// join the regexps
-	dataFileRegex[filename] = []*regexp.Regexp{regexp.MustCompile(strings.Join(z, "|"))}
 
 	if err := scanner.Err(); err != nil {
 		return err
@@ -194,8 +190,8 @@ func RegexpInFileMemoized(data string, filename string) bool {
 		log.Errorf("expr library : %s", spew.Sdump(dataFileRegex))
 		return false
 	}
-	dataFileRegexMemoizedRWLock.Lock()
-	defer dataFileRegexMemoizedRWLock.Unlock()
+	dataFileRegexMemoizedLock.Lock()
+	defer dataFileRegexMemoizedLock.Unlock()
 	if _, ok := dataFileRegexMemoized[filename]; !ok {
 		dataFileRegexMemoized[filename] = make(map[string]bool)
 	}
