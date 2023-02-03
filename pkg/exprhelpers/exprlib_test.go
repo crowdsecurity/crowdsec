@@ -1,6 +1,7 @@
 package exprhelpers
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os"
@@ -9,10 +10,10 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	log "github.com/sirupsen/logrus"
 
 	"testing"
@@ -184,6 +185,48 @@ func TestRegexpInFile(t *testing.T) {
 		if isOk := assert.Equal(t, test.result, result); !isOk {
 			t.Fatalf("test '%s' : NOK", test.name)
 		}
+	}
+}
+
+func TestSpeedMemoized(t *testing.T) {
+	if err := Init(nil); err != nil {
+		log.Fatal(err)
+	}
+	err := FileInit(TestFolder, "bad_user_agents.txt", "regex")
+	if err != nil {
+		log.Fatal(err)
+	}
+	// read lines from tests/all_agents.txt
+	file, err := os.Open("tests/all_agents.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		RegexpInFileMemoized(scanner.Text(), "bad_user_agents.txt")
+	}
+}
+
+func TestSpeed(t *testing.T) {
+	if err := Init(nil); err != nil {
+		log.Fatal(err)
+	}
+	err := FileInit(TestFolder, "bad_user_agents.txt", "regex")
+	if err != nil {
+		log.Fatal(err)
+	}
+	// read lines from tests/all_agents.txt
+	file, err := os.Open("tests/all_agents.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		RegexpInFile(scanner.Text(), "bad_user_agents.txt")
 	}
 }
 
@@ -981,25 +1024,25 @@ func TestParseUnixTime(t *testing.T) {
 		expectedErr string
 	}{
 		{
-			name: "ParseUnix() test: valid value with milli",
-			value: "1672239773.3590894",
+			name:     "ParseUnix() test: valid value with milli",
+			value:    "1672239773.3590894",
 			expected: time.Date(2022, 12, 28, 15, 02, 53, 0, time.UTC),
 		},
 		{
-			name: "ParseUnix() test: valid value without milli",
-			value: "1672239773",
+			name:     "ParseUnix() test: valid value without milli",
+			value:    "1672239773",
 			expected: time.Date(2022, 12, 28, 15, 02, 53, 0, time.UTC),
 		},
 		{
-			name: "ParseUnix() test: invalid input",
-			value: "AbcDefG!#",
-			expected: time.Time{},
+			name:        "ParseUnix() test: invalid input",
+			value:       "AbcDefG!#",
+			expected:    time.Time{},
 			expectedErr: "unable to parse AbcDefG!# as unix timestamp",
 		},
 		{
-			name: "ParseUnix() test: negative value",
-			value: "-1000",
-			expected: time.Time{},
+			name:        "ParseUnix() test: negative value",
+			value:       "-1000",
+			expected:    time.Time{},
 			expectedErr: "unable to parse -1000 as unix timestamp",
 		},
 	}

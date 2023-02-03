@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/c-robinson/iplib"
@@ -22,7 +23,11 @@ import (
 
 var dataFile map[string][]string
 var dataFileRegex map[string][]*regexp.Regexp
+var dataFileRegexMemoized map[string]map[string]bool
+var dataFileRegexMemoizedRWLock sync.Mutex
 var dbClient *database.Client
+
+const memoizeLimit = 1000
 
 func Atof(x string) float64 {
 	log.Debugf("debug atof %s", x)
@@ -83,6 +88,7 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 func Init(databaseClient *database.Client) error {
 	dataFile = make(map[string][]string)
 	dataFileRegex = make(map[string][]*regexp.Regexp)
+	dataFileRegexMemoized = make(map[string]map[string]bool)
 	dbClient = databaseClient
 	return nil
 }
@@ -104,6 +110,7 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		dataFile[filename] = []string{}
 	}
 	scanner := bufio.NewScanner(file)
+	z := make([]string, 0)
 	for scanner.Scan() {
 		if strings.HasPrefix(scanner.Text(), "#") { // allow comments
 			continue
@@ -113,13 +120,16 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		}
 		switch fileType {
 		case "regex", "regexp":
-			dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
+			z = append(z, scanner.Text())
+			// dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
 		case "string":
 			dataFile[filename] = append(dataFile[filename], scanner.Text())
 		default:
 			return fmt.Errorf("unknown data type '%s' for : '%s'", fileType, filename)
 		}
 	}
+	// join the regexps
+	dataFileRegex[filename] = []*regexp.Regexp{regexp.MustCompile(strings.Join(z, "|"))}
 
 	if err := scanner.Err(); err != nil {
 		return err
@@ -163,9 +173,10 @@ func File(filename string) []string {
 }
 
 func RegexpInFile(data string, filename string) bool {
+	z := []byte(data)
 	if _, ok := dataFileRegex[filename]; ok {
 		for _, re := range dataFileRegex[filename] {
-			if re.Match([]byte(data)) {
+			if re.Match(z) {
 				return true
 			}
 		}
@@ -174,6 +185,32 @@ func RegexpInFile(data string, filename string) bool {
 		log.Errorf("expr library : %s", spew.Sdump(dataFileRegex))
 	}
 	return false
+}
+
+// memoized version of RegexpInFile
+func RegexpInFileMemoized(data string, filename string) bool {
+	if _, ok := dataFileRegex[filename]; !ok {
+		log.Errorf("file '%s' (type:regexp) not found in expr library", filename)
+		log.Errorf("expr library : %s", spew.Sdump(dataFileRegex))
+		return false
+	}
+	dataFileRegexMemoizedRWLock.Lock()
+	defer dataFileRegexMemoizedRWLock.Unlock()
+	if _, ok := dataFileRegexMemoized[filename]; !ok {
+		dataFileRegexMemoized[filename] = make(map[string]bool)
+	}
+	if _, ok := dataFileRegexMemoized[filename][data]; ok {
+		return dataFileRegexMemoized[filename][data]
+	}
+	if len(dataFileRegexMemoized[filename]) > memoizeLimit {
+		for k := range dataFileRegexMemoized[filename] {
+			delete(dataFileRegexMemoized[filename], k)
+			break
+		}
+	}
+	dataFileRegexMemoized[filename][data] = RegexpInFile(data, filename)
+	return dataFileRegexMemoized[filename][data]
+
 }
 
 func IpInRange(ip string, ipRange string) bool {
