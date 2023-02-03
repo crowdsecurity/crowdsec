@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"testing"
@@ -17,9 +18,9 @@ import (
 
 func getLoginsForMockErrorCases() map[string]int {
 	loginsForMockErrorCases := map[string]int{
-		"existingLogin":   http.StatusConflict,
-		"invalidPassword": http.StatusBadRequest,
-		"crashServer":     http.StatusInternalServerError,
+		"login_400": http.StatusBadRequest,
+		"login_409": http.StatusConflict,
+		"login_500": http.StatusInternalServerError,
 	}
 
 	return loginsForMockErrorCases
@@ -36,23 +37,68 @@ func initMuxRegisterMock(t *testing.T, mux *http.ServeMux) {
 		buf := new(bytes.Buffer)
 		_, _ = buf.ReadFrom(r.Body)
 		newStr := buf.String()
+
 		var payload Payload
 		err := json.Unmarshal([]byte(newStr), &payload)
-		if err != nil {
+		if err != nil || payload.MachineID == "" || payload.Password == "" {
 			log.Printf("Bad payload")
 			w.WriteHeader(http.StatusBadRequest)
 		}
 
-		responseCode, ok := loginsForMockErrorCases[payload.MachineID]
+		responseCode, hasFoundErrorMock := loginsForMockErrorCases[payload.MachineID]
 		log.Printf("Buff > %s // Login : [%s] => response [%d]", newStr, payload.MachineID, responseCode)
 
-		if !ok {
+		if !hasFoundErrorMock {
 			responseCode = http.StatusOK
 		}
 
 		w.WriteHeader(responseCode)
 	})
 }
+
+func initMuxLoginMock(t *testing.T, mux *http.ServeMux) {
+	type Payload struct {
+		MachineID string   `json:"machine_id"`
+		Password  string   `json:"password"`
+		Scenarios []string `json:"scenarios"`
+	}
+	loginsForMockErrorCases := getLoginsForMockErrorCases()
+	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "POST")
+		buf := new(bytes.Buffer)
+		_, _ = buf.ReadFrom(r.Body)
+		newStr := buf.String()
+		log.Printf("--> %s", newStr)
+
+		var payload Payload
+		err := json.Unmarshal([]byte(newStr), &payload)
+		if err != nil || payload.MachineID == "" || payload.Password == "" {
+			log.Printf("Bad payload")
+			w.WriteHeader(http.StatusBadRequest)
+		}
+
+		responseBody := ""
+		responseCode, hasFoundErrorMock := loginsForMockErrorCases[payload.MachineID]
+
+		if !hasFoundErrorMock {
+			responseCode = http.StatusOK
+			responseBody = `{"code":200,"expire":"2029-11-30T14:14:24+01:00","token":"toto"}`
+		} else {
+			responseBody = fmt.Sprintf("Error %d", responseCode)
+		}
+		log.Printf("MockServerReceived > %s // Login : [%s] => Mux response [%d]", newStr, payload.MachineID, responseCode)
+
+		w.WriteHeader(responseCode)
+		fmt.Fprintf(w, responseBody)
+	})
+}
+
+/**
+ * Test the RegisterClient function
+ * Making sure it handles the different response code potentially coming from CAPI properly
+ * 200 => OK
+ * 400, 409, 500 => Error
+ */
 func TestWatcherRegister(t *testing.T) {
 
 	log.SetLevel(log.DebugLevel)
@@ -82,12 +128,14 @@ func TestWatcherRegister(t *testing.T) {
 	log.Printf("->%T", client)
 
 	// Testing error handling on Registration : should retrieve an error
-	loginsForMockErrorCases := getLoginsForMockErrorCases()
-	for login, responseCode := range loginsForMockErrorCases {
-		clientconfig.MachineID = login
+	errorCodesToTest := [3]int{http.StatusBadRequest, http.StatusConflict, http.StatusInternalServerError}
+	for _, errorCodeToTest := range errorCodesToTest {
+		clientconfig.MachineID = fmt.Sprintf("login_%d", errorCodeToTest)
 		client, err = RegisterClient(&clientconfig, &http.Client{})
 		if client != nil || err == nil {
-			t.Fatalf("The RegisterClient function should have returned an error for the response code %d", responseCode)
+			t.Fatalf("The RegisterClient function should have returned an error for the response code %d", errorCodeToTest)
+		} else {
+			log.Printf("The RegisterClient function handled the error code %d as expected \n\r", errorCodeToTest)
 		}
 	}
 }
@@ -100,23 +148,7 @@ func TestWatcherAuth(t *testing.T) {
 	defer teardown()
 	//body: models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password}
 
-	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
-		testMethod(t, r, "POST")
-		buf := new(bytes.Buffer)
-		_, _ = buf.ReadFrom(r.Body)
-		newStr := buf.String()
-		log.Printf("--> %s", newStr)
-		if newStr == `{"machine_id":"test_login","password":"test_password","scenarios":["crowdsecurity/test"]}
-` {
-			log.Printf("ok cool")
-			w.WriteHeader(http.StatusOK)
-			fmt.Fprintf(w, `{"code":200,"expire":"2029-11-30T14:14:24+01:00","token":"toto"}`)
-		} else {
-			w.WriteHeader(http.StatusForbidden)
-			log.Printf("badbad")
-			fmt.Fprintf(w, `{"message":"access forbidden"}`)
-		}
-	})
+	initMuxLoginMock(t, mux)
 	log.Printf("URL is %s", urlx)
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
@@ -124,7 +156,7 @@ func TestWatcherAuth(t *testing.T) {
 	}
 
 	//ok auth
-	mycfg := &Config{
+	clientConfig := &Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -132,42 +164,50 @@ func TestWatcherAuth(t *testing.T) {
 		VersionPrefix: "v1",
 		Scenarios:     []string{"crowdsecurity/test"},
 	}
-	client, err := NewClient(mycfg)
+	client, err := NewClient(clientConfig)
 
 	if err != nil {
 		t.Fatalf("new api client: %s", err)
 	}
 
 	_, _, err = client.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
-		MachineID: &mycfg.MachineID,
-		Password:  &mycfg.Password,
-		Scenarios: mycfg.Scenarios,
+		MachineID: &clientConfig.MachineID,
+		Password:  &clientConfig.Password,
+		Scenarios: clientConfig.Scenarios,
 	})
 	if err != nil {
 		t.Fatalf("unexpect auth err 0: %s", err)
 	}
 
-	//bad auth
-	mycfg = &Config{
-		MachineID:     "BADtest_login",
-		Password:      "BADtest_password",
-		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
-		URL:           apiURL,
-		VersionPrefix: "v1",
-		Scenarios:     []string{"crowdsecurity/test"},
+	// Testing error handling on AuthenticateWatcher : should retrieve an error
+	errorCodesToTest := [2]int{http.StatusBadRequest, http.StatusConflict}
+	for _, errorCodeToTest := range errorCodesToTest {
+		clientConfig.MachineID = fmt.Sprintf("login_%d", errorCodeToTest)
+		client, err := NewClient(clientConfig)
+
+		if err != nil {
+			t.Fatalf("new api client: %s", err)
+		}
+
+		var resp *Response
+		_, resp, err = client.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
+			MachineID: &clientConfig.MachineID,
+			Password:  &clientConfig.Password,
+		})
+
+		if err == nil {
+			defer resp.Response.Body.Close()
+			bodyBytes, err := io.ReadAll(resp.Response.Body)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			log.Printf(string(bodyBytes))
+			t.Fatalf("The AuthenticateWatcher function should have returned an error for the response code %d", errorCodeToTest)
+		} else {
+			log.Printf("The AuthenticateWatcher function handled the error code %d as expected \n\r", errorCodeToTest)
+		}
 	}
-	client, err = NewClient(mycfg)
-
-	if err != nil {
-		t.Fatalf("new api client: %s", err)
-	}
-
-	_, _, err = client.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
-		MachineID: &mycfg.MachineID,
-		Password:  &mycfg.Password,
-	})
-	assert.Contains(t, err.Error(), "API error: access forbidden")
-
 }
 
 func TestWatcherUnregister(t *testing.T) {
