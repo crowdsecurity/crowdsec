@@ -16,6 +16,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type BasicMockPayload struct {
+	MachineID string `json:"machine_id"`
+	Password  string `json:"password"`
+}
+
 func getLoginsForMockErrorCases() map[string]int {
 	loginsForMockErrorCases := map[string]int{
 		"login_400": http.StatusBadRequest,
@@ -26,51 +31,15 @@ func getLoginsForMockErrorCases() map[string]int {
 	return loginsForMockErrorCases
 }
 
-func initMuxRegisterMock(t *testing.T, mux *http.ServeMux) {
-	type Payload struct {
-		MachineID string `json:"machine_id"`
-		Password  string `json:"password"`
-	}
+func initBasicMuxMock(t *testing.T, mux *http.ServeMux, path string) {
 	loginsForMockErrorCases := getLoginsForMockErrorCases()
-	mux.HandleFunc("/watchers", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
 		buf := new(bytes.Buffer)
 		_, _ = buf.ReadFrom(r.Body)
 		newStr := buf.String()
 
-		var payload Payload
-		err := json.Unmarshal([]byte(newStr), &payload)
-		if err != nil || payload.MachineID == "" || payload.Password == "" {
-			log.Printf("Bad payload")
-			w.WriteHeader(http.StatusBadRequest)
-		}
-
-		responseCode, hasFoundErrorMock := loginsForMockErrorCases[payload.MachineID]
-		log.Printf("Buff > %s // Login : [%s] => response [%d]", newStr, payload.MachineID, responseCode)
-
-		if !hasFoundErrorMock {
-			responseCode = http.StatusOK
-		}
-
-		w.WriteHeader(responseCode)
-	})
-}
-
-func initMuxLoginMock(t *testing.T, mux *http.ServeMux) {
-	type Payload struct {
-		MachineID string   `json:"machine_id"`
-		Password  string   `json:"password"`
-		Scenarios []string `json:"scenarios"`
-	}
-	loginsForMockErrorCases := getLoginsForMockErrorCases()
-	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
-		testMethod(t, r, "POST")
-		buf := new(bytes.Buffer)
-		_, _ = buf.ReadFrom(r.Body)
-		newStr := buf.String()
-		log.Printf("--> %s", newStr)
-
-		var payload Payload
+		var payload BasicMockPayload
 		err := json.Unmarshal([]byte(newStr), &payload)
 		if err != nil || payload.MachineID == "" || payload.Password == "" {
 			log.Printf("Bad payload")
@@ -106,7 +75,7 @@ func TestWatcherRegister(t *testing.T) {
 	mux, urlx, teardown := setup()
 	defer teardown()
 	//body: models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password}
-	initMuxRegisterMock(t, mux)
+	initBasicMuxMock(t, mux, "/watchers")
 	log.Printf("URL is %s", urlx)
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
@@ -127,7 +96,7 @@ func TestWatcherRegister(t *testing.T) {
 	}
 	log.Printf("->%T", client)
 
-	// Testing error handling on Registration : should retrieve an error
+	// Testing error handling on Registration (400, 409, 500): should retrieve an error
 	errorCodesToTest := [3]int{http.StatusBadRequest, http.StatusConflict, http.StatusInternalServerError}
 	for _, errorCodeToTest := range errorCodesToTest {
 		clientconfig.MachineID = fmt.Sprintf("login_%d", errorCodeToTest)
@@ -148,7 +117,7 @@ func TestWatcherAuth(t *testing.T) {
 	defer teardown()
 	//body: models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password}
 
-	initMuxLoginMock(t, mux)
+	initBasicMuxMock(t, mux, "/watchers/login")
 	log.Printf("URL is %s", urlx)
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
@@ -179,7 +148,8 @@ func TestWatcherAuth(t *testing.T) {
 		t.Fatalf("unexpect auth err 0: %s", err)
 	}
 
-	// Testing error handling on AuthenticateWatcher : should retrieve an error
+	// Testing error handling on AuthenticateWatcher (400, 409): should retrieve an error
+	// Not testing 500 because it loops and try to re-autehnticate. But you can test it manually by adding it in array
 	errorCodesToTest := [2]int{http.StatusBadRequest, http.StatusConflict}
 	for _, errorCodeToTest := range errorCodesToTest {
 		clientConfig.MachineID = fmt.Sprintf("login_%d", errorCodeToTest)
