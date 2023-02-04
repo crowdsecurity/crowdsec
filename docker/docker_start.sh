@@ -166,16 +166,14 @@ for geodb in GeoLite2-ASN.mmdb GeoLite2-City.mmdb; do
 done
 
 # Check and prestage /etc/crowdsec
-if [ ! -e "/etc/crowdsec/local_api_credentials.yaml" ] && [ ! -e "/etc/crowdsec/config.yaml" ]; then
-    echo "Populating configuration directory..."
-    # don't overwrite existing configuration files, which may come
-    # from bind-mount or even be read-only (configmaps)
-    if [ -e /staging/etc/crowdsec ]; then
-        mkdir -p /etc/crowdsec/
-        # if you change this, check that it still works
-        # under alpine and k8s, with and without tls
-        cp -an /staging/etc/crowdsec/* /etc/crowdsec/
-    fi
+echo "Populating configuration directory..."
+# don't overwrite existing configuration files, which may come
+# from bind-mount or even be read-only (configmaps)
+if [ -e /staging/etc/crowdsec ]; then
+    mkdir -p /etc/crowdsec/
+    # if you change this, check that it still works
+    # under alpine and k8s, with and without tls
+    cp -an /staging/etc/crowdsec/* /etc/crowdsec/
 fi
 
 # do this as soon as we have a config.yaml, to avoid useless warnings
