@@ -1,4 +1,6 @@
 
+> **_NOTE_**: The following document describes an experimental, work-in-progress feature. To enable the `cscli setup` command, set the environment variable `CROWDSEC_FEATURE_CSCLI_SETUP=true` or add the line " - cscli_setup" to `/etc/crowdsec/feature.yaml`. Any feedback is welcome.
+
 ---
 
 # cscli setup

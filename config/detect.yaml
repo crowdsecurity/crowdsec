@@ -1,6 +1,8 @@
 ---
 version: 1.0
 
+# TODO: This file must be reviewed before the `cscli setup` command becomes GA
+
 detect:
 
   #
