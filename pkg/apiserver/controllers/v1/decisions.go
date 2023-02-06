@@ -265,6 +265,10 @@ func (c *Controller) StreamDecisionChunked(gctx *gin.Context, bouncerInfo *ent.B
 	}
 }
 
+func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *ent.Bouncer, streamStartTime time.Time, filters map[string][]string) {
+
+}
+
 func (c *Controller) StreamDecision(gctx *gin.Context) {
 	var err error
 
