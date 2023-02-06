@@ -12,6 +12,9 @@
 *.test
 *.cover
 
+# Test binaries, built from *_test.go
+pkg/csplugin/tests/cs_plugin_test*
+
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
@@ -31,13 +34,10 @@ plugins/notifications/splunk/notification-splunk
 plugins/notifications/email/notification-email
 plugins/notifications/dummy/notification-dummy
 
-#test binaries
-pkg/csplugin/tests/cs_plugin_test*
-
-#test cache (downloaded files)
+# Test cache (downloaded files)
 .cache
 
-#release stuff
+# Release stuff
 crowdsec-v*
 pkg/cwhub/hubdir/.index.json
 msi

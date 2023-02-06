@@ -50,7 +50,7 @@ type Alert struct {
 	// Required: true
 	Leakspeed *string `json:"leakspeed"`
 
-	// only relevant for APIL->APIC, ignored for cscli->APIL and crowdsec->APIL
+	// only relevant for LAPI->CAPI, ignored for cscli->LAPI and crowdsec->LAPI
 	// Read Only: true
 	MachineID string `json:"machine_id,omitempty"`
 
@@ -91,6 +91,10 @@ type Alert struct {
 	// stop at
 	// Required: true
 	StopAt *string `json:"stop_at"`
+
+	// only relevant for LAPI->CAPI, ignored for cscli->LAPI and crowdsec->LAPI
+	// Read Only: true
+	UUID string `json:"uuid,omitempty"`
 }
 
 // Validate validates this alert
@@ -371,6 +375,10 @@ func (m *Alert) ContextValidate(ctx context.Context, formats strfmt.Registry) er
 		res = append(res, err)
 	}
 
+	if err := m.contextValidateUUID(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
@@ -469,6 +477,15 @@ func (m *Alert) contextValidateSource(ctx context.Context, formats strfmt.Regist
 			}
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (m *Alert) contextValidateUUID(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := validate.ReadOnly(ctx, "uuid", "body", string(m.UUID)); err != nil {
+		return err
 	}
 
 	return nil

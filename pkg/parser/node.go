@@ -121,6 +121,9 @@ func (n *Node) validate(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		if stash.TTL == "" {
 			return fmt.Errorf("stash %s : ttl must be set", stash.Name)
 		}
+		if stash.Strategy == "" {
+			stash.Strategy = "LRU"
+		}
 		//should be configurable
 		if stash.MaxMapSize == 0 {
 			stash.MaxMapSize = 100
@@ -573,6 +576,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 			Size:     n.Stash[i].MaxMapSize,
 			TTL:      n.Stash[i].TTLVal,
 			Name:     n.Stash[i].Name,
+			Strategy: n.Stash[i].Strategy,
 			LogLevel: &logLvl,
 		}); err != nil {
 			return errors.Wrap(err, "while initializing cache")

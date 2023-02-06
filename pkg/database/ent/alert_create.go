@@ -324,6 +324,20 @@ func (ac *AlertCreate) SetNillableSimulated(b *bool) *AlertCreate {
 	return ac
 }
 
+// SetUUID sets the "uuid" field.
+func (ac *AlertCreate) SetUUID(s string) *AlertCreate {
+	ac.mutation.SetUUID(s)
+	return ac
+}
+
+// SetNillableUUID sets the "uuid" field if the given value is not nil.
+func (ac *AlertCreate) SetNillableUUID(s *string) *AlertCreate {
+	if s != nil {
+		ac.SetUUID(*s)
+	}
+	return ac
+}
+
 // SetOwnerID sets the "owner" edge to the Machine entity by ID.
 func (ac *AlertCreate) SetOwnerID(id int) *AlertCreate {
 	ac.mutation.SetOwnerID(id)
@@ -709,6 +723,14 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Column: alert.FieldSimulated,
 		})
 		_node.Simulated = value
+	}
+	if value, ok := ac.mutation.UUID(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: alert.FieldUUID,
+		})
+		_node.UUID = value
 	}
 	if nodes := ac.mutation.OwnerIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

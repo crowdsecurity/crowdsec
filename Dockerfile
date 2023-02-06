@@ -10,7 +10,7 @@ COPY . .
 # wizard.sh requires GNU coreutils
 RUN apk add --no-cache git gcc libc-dev make bash gettext binutils-gold coreutils && \
     echo "githubciXXXXXXXXXXXXXXXXXXXXXXXX" > /etc/machine-id && \
-    SYSTEM="docker" make clean release && \
+    make clean release && \
     cd crowdsec-v* && \
     ./wizard.sh --docker-mode && \
     cd - >/dev/null && \

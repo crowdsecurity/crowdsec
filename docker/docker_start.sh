@@ -106,9 +106,39 @@ cscli_if_clean() {
         if cscli "$1" inspect "$obj" -o json | yq -e '.tainted // false' >/dev/null 2>&1; then
             echo "Object $1/$obj is tainted, skipping"
         else
-            cscli "$1" "$2" "$obj"
+#            # Too verbose? Only show errors if not in debug mode
+#            if [ "$DEBUG" != "true" ]; then
+#                error_only=--error
+#            fi
+            error_only=""
+            echo "Running: cscli $error_only $1 $2 \"$obj\""
+            # shellcheck disable=SC2086
+            cscli $error_only "$1" "$2" "$obj"
         fi
     done
+}
+
+# Output the difference between two lists
+# of items separated by spaces
+difference() {
+  list1="$1"
+  list2="$2"
+
+  # split into words
+  # shellcheck disable=SC2086
+  set -- $list1
+  for item in "$@"; do
+    found=false
+    for i in $list2; do
+      if [ "$item" = "$i" ]; then
+        found=true
+        break
+      fi
+    done
+    if [ "$found" = false ]; then
+      echo "$item"
+    fi
+  done
 }
 
 #-----------------------------------#
@@ -119,8 +149,8 @@ if [ -n "$CERT_FILE" ] || [ -n "$KEY_FILE" ] ; then
     echo "Please use LAPI_CERT_FILE and LAPI_KEY_FILE insted." >&2
     echo "The old variables will be removed in a future release." >&2
     printf '%b' '\033[0m'
-    LAPI_CERT_FILE=${LAPI_CERT_FILE:-$CERT_FILE}
-    LAPI_KEY_FILE=${LAPI_KEY_FILE:-$KEY_FILE}
+    export LAPI_CERT_FILE=${LAPI_CERT_FILE:-$CERT_FILE}
+    export LAPI_KEY_FILE=${LAPI_KEY_FILE:-$KEY_FILE}
 fi
 
 # Check and prestage databases
@@ -209,9 +239,9 @@ fi
 # registration to online API for signal push
 if isfalse "$DISABLE_ONLINE_API" ; then
     CONFIG_DIR=$(conf_get '.config_paths.config_dir')
+    export CONFIG_DIR
     config_exists=$(conf_get '.api.server.online_client | has("credentials_path")')
     if isfalse "$config_exists"; then
-        export CONFIG_DIR
         conf_set '.api.server.online_client = {"credentials_path": strenv(CONFIG_DIR) + "/online_api_credentials.yaml"}'
         cscli capi register > "$CONFIG_DIR/online_api_credentials.yaml"
         echo "Registration to online API done"
@@ -267,22 +297,22 @@ cscli_if_clean parsers install crowdsecurity/cri-logs
 
 if [ "$COLLECTIONS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean collections install "$COLLECTIONS"
+    cscli_if_clean collections install "$(difference "$COLLECTIONS" "$DISABLE_COLLECTIONS")"
 fi
 
 if [ "$PARSERS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean parsers install "$PARSERS"
+    cscli_if_clean parsers install "$(difference "$PARSERS" "$DISABLE_PARSERS")"
 fi
 
 if [ "$SCENARIOS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean scenarios install "$SCENARIOS"
+    cscli_if_clean scenarios install "$(difference "$SCENARIOS" "$DISABLE_SCENARIOS")"
 fi
 
 if [ "$POSTOVERFLOWS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean postoverflows install "$POSTOVERFLOWS"
+    cscli_if_clean postoverflows install "$(difference "$POSTOVERFLOWS" "$DISABLE_POSTOVERFLOWS")"
 fi
 
 ## Remove collections, parsers, scenarios & postoverflows
@@ -315,7 +345,7 @@ for BOUNCER in $(compgen -A variable | grep -i BOUNCER_KEY); do
     fi
 done
 
-## Register bouncers via secrets
+## Register bouncers via secrets (Swarm only)
 shopt -s nullglob extglob
 for BOUNCER in /run/secrets/@(bouncer_key|BOUNCER_KEY)* ; do
     KEY=$(cat "${BOUNCER}")

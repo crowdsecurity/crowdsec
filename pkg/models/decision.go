@@ -50,6 +50,10 @@ type Decision struct {
 	// the date until the decisions must be active
 	Until string `json:"until,omitempty"`
 
+	// only relevant for LAPI->CAPI, ignored for cscli->LAPI and crowdsec->LAPI
+	// Read Only: true
+	UUID string `json:"uuid,omitempty"`
+
 	// the value of the decision scope : an IP, a range, a username, etc
 	// Required: true
 	Value *string `json:"value"`
@@ -155,6 +159,10 @@ func (m *Decision) ContextValidate(ctx context.Context, formats strfmt.Registry)
 		res = append(res, err)
 	}
 
+	if err := m.contextValidateUUID(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
@@ -173,6 +181,15 @@ func (m *Decision) contextValidateID(ctx context.Context, formats strfmt.Registr
 func (m *Decision) contextValidateSimulated(ctx context.Context, formats strfmt.Registry) error {
 
 	if err := validate.ReadOnly(ctx, "simulated", "body", m.Simulated); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Decision) contextValidateUUID(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := validate.ReadOnly(ctx, "uuid", "body", string(m.UUID)); err != nil {
 		return err
 	}
 

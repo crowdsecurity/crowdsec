@@ -51,4 +51,5 @@ type DataCapture struct {
 	TTL             string        `yaml:"ttl,omitempty"`
 	TTLVal          time.Duration `yaml:"-"`
 	MaxMapSize      int           `yaml:"size,omitempty"`
+	Strategy        string        `yaml:"strategy,omitempty"`
 }

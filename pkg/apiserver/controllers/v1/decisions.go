@@ -34,6 +34,7 @@ func FormatDecisions(decisions []*ent.Decision, dedup bool) ([]*models.Decision,
 			Value:    &dbDecision.Value,
 			Type:     &dbDecision.Type,
 			Origin:   &dbDecision.Origin,
+			UUID:     dbDecision.UUID,
 		}
 		results = append(results, &decision)
 	}
@@ -93,10 +94,19 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 		gctx.JSON(http.StatusBadRequest, gin.H{"message": "decision_id must be valid integer"})
 		return
 	}
-	nbDeleted, err := c.DBClient.SoftDeleteDecisionByID(decisionID)
+	nbDeleted, deletedFromDB, err := c.DBClient.SoftDeleteDecisionByID(decisionID)
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
+	}
+	//transform deleted decisions to be sendable to capi
+	deletedDecisions, err := FormatDecisions(deletedFromDB, false)
+	if err != nil {
+		log.Warningf("failed to format decisions: %v", err)
+	}
+
+	if c.DecisionDeleteChan != nil {
+		c.DecisionDeleteChan <- deletedDecisions
 	}
 
 	deleteDecisionResp := models.DeleteDecisionResponse{
@@ -108,16 +118,24 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 
 func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 	var err error
-
-	nbDeleted, err := c.DBClient.SoftDeleteDecisionsWithFilter(gctx.Request.URL.Query())
+	nbDeleted, deletedFromDB, err := c.DBClient.SoftDeleteDecisionsWithFilter(gctx.Request.URL.Query())
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
 	}
+	//transform deleted decisions to be sendable to capi
+	deletedDecisions, err := FormatDecisions(deletedFromDB, false)
+	if err != nil {
+		log.Warningf("failed to format decisions: %v", err)
+	}
+
+	if c.DecisionDeleteChan != nil {
+		c.DecisionDeleteChan <- deletedDecisions
+	}
+
 	deleteDecisionResp := models.DeleteDecisionResponse{
 		NbDeleted: nbDeleted,
 	}
-
 	gctx.JSON(http.StatusOK, deleteDecisionResp)
 }
 

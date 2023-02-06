@@ -23,11 +23,15 @@ type AddSignalsRequestItem struct {
 	// alert id
 	AlertID int64 `json:"alert_id,omitempty"`
 
+
 	// context
 	Context []*AddSignalsRequestItemContextItems0 `json:"context"`
 
-	// created at
+  // created at
 	CreatedAt string `json:"created_at,omitempty"`
+
+	// decisions
+	Decisions AddSignalsRequestItemDecisions `json:"decisions,omitempty"`
 
 	// machine id
 	MachineID string `json:"machine_id,omitempty"`
@@ -53,7 +57,7 @@ type AddSignalsRequestItem struct {
 
 	// source
 	// Required: true
-	Source *Source `json:"source"`
+	Source *AddSignalsRequestItemSource `json:"source"`
 
 	// start at
 	// Required: true
@@ -62,6 +66,10 @@ type AddSignalsRequestItem struct {
 	// stop at
 	// Required: true
 	StopAt *string `json:"stop_at"`
+
+	// uuid
+	// Read Only: true
+	UUID string `json:"uuid,omitempty"`
 }
 
 // Validate validates this add signals request item
@@ -105,6 +113,7 @@ func (m *AddSignalsRequestItem) Validate(formats strfmt.Registry) error {
 	}
 	return nil
 }
+
 
 func (m *AddSignalsRequestItem) validateContext(formats strfmt.Registry) error {
 	if swag.IsZero(m.Context) { // not required
@@ -210,6 +219,7 @@ func (m *AddSignalsRequestItem) validateStopAt(formats strfmt.Registry) error {
 func (m *AddSignalsRequestItem) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
+
 	if err := m.contextValidateContext(ctx, formats); err != nil {
 		res = append(res, err)
 	}
@@ -218,11 +228,16 @@ func (m *AddSignalsRequestItem) ContextValidate(ctx context.Context, formats str
 		res = append(res, err)
 	}
 
+	if err := m.contextValidateUUID(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
 	return nil
 }
+
 
 func (m *AddSignalsRequestItem) contextValidateContext(ctx context.Context, formats strfmt.Registry) error {
 
@@ -255,6 +270,15 @@ func (m *AddSignalsRequestItem) contextValidateSource(ctx context.Context, forma
 			}
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (m *AddSignalsRequestItem) contextValidateUUID(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := validate.ReadOnly(ctx, "uuid", "body", string(m.UUID)); err != nil {
+		return err
 	}
 
 	return nil
