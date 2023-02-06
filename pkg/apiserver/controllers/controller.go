@@ -16,18 +16,18 @@ import (
 )
 
 type Controller struct {
-	Ectx               context.Context
-	DBClient           *database.Client
-	Router             *gin.Engine
-	Profiles           []*csconfig.ProfileCfg
-	AlertsAddChan      chan []*models.Alert
-	DecisionDeleteChan chan []*models.Decision
-	PluginChannel      chan csplugin.ProfileAlert
-	Log                *log.Logger
-	ConsoleConfig      *csconfig.ConsoleConfig
-	TrustedIPs         []net.IPNet
-	HandlerV1          *v1.Controller
-  DisableRemoteLapiRegistration bool
+	Ectx                          context.Context
+	DBClient                      *database.Client
+	Router                        *gin.Engine
+	Profiles                      []*csconfig.ProfileCfg
+	AlertsAddChan                 chan []*models.Alert
+	DecisionDeleteChan            chan []*models.Decision
+	PluginChannel                 chan csplugin.ProfileAlert
+	Log                           *log.Logger
+	ConsoleConfig                 *csconfig.ConsoleConfig
+	TrustedIPs                    []net.IPNet
+	HandlerV1                     *v1.Controller
+	DisableRemoteLapiRegistration bool
 }
 
 func (c *Controller) Init() error {
