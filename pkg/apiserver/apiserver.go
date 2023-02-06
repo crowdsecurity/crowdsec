@@ -222,7 +222,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		}
 		log.Infof("CAPI manager configured successfully")
 		isMachineEnrolled = isEnrolled(apiClient.apiClient)
-		if isMachineEnrolled {
+		if isMachineEnrolled && fflag.PapiClient.IsEnabled() {
 			log.Infof("Machine is enrolled in the console, Loading PAPI Client")
 			papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
 			if err != nil {
