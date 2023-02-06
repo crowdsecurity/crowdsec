@@ -9,14 +9,11 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/modelscapi"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	qs "github.com/google/go-querystring/query"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
-
-var SCOPE_CAPI string = "CAPI"
-var DECISION_TYPE_BAN string = "ban"
-var SCOPE_LISTS string = "lists"
 
 type DecisionsService service
 
@@ -105,10 +102,10 @@ func (s *DecisionsService) GetDecisionsFromGroups(decisionsGroups []*modelscapi.
 			partialDecisions[idx] = &models.Decision{
 				Scenario: decisionsGroup.Scenario,
 				Scope:    decisionsGroup.Scope,
-				Type:     &DECISION_TYPE_BAN,
+				Type:     types.StrPtr(types.DecisionTypeBan),
 				Value:    decision.Value,
 				Duration: decision.Duration,
-				Origin:   &SCOPE_CAPI,
+				Origin:   types.StrPtr(types.CAPIOrigin),
 			}
 		}
 		decisions = append(decisions, partialDecisions...)
@@ -141,10 +138,10 @@ func (s *DecisionsService) FetchV3Decisions(ctx context.Context, url string) (*m
 			partialDecisions[idx] = &models.Decision{
 				Scenario: &scenarioDeleted,
 				Scope:    decisionsGroup.Scope,
-				Type:     &DECISION_TYPE_BAN,
+				Type:     types.StrPtr(types.DecisionTypeBan),
 				Value:    &decision,
 				Duration: &durationDeleted,
-				Origin:   &SCOPE_CAPI,
+				Origin:   types.StrPtr(types.CAPIOrigin),
 			}
 		}
 		v2Decisions.Deleted = append(v2Decisions.Deleted, partialDecisions...)
@@ -184,7 +181,7 @@ func (s *DecisionsService) GetDecisionsFromBlocklist(ctx context.Context, blockl
 			Type:     blocklist.Remediation,
 			Value:    &decision,
 			Duration: blocklist.Duration,
-			Origin:   &SCOPE_LISTS,
+			Origin:   types.StrPtr(types.ListOrigin),
 		})
 	}
 

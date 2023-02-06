@@ -14,6 +14,8 @@ const CscliImportOrigin = "cscli-import"
 const ListOrigin = "lists"
 const CAPIOrigin = "CAPI"
 
+const DecisionTypeBan = "ban"
+
 func GetOrigins() []string {
 	return []string{
 		CscliOrigin,
