@@ -235,8 +235,8 @@ func SetConsoleOpts(args []string, wanted bool) {
 	for _, arg := range args {
 		switch arg {
 		case csconfig.CONSOLE_MANAGEMENT:
-			if wanted && !fflag.PapiClient.IsEnabled() {
-				log.Fatalf("Feature flag %s is disabled, cannot set %s", fflag.PapiClient.Name, csconfig.CONSOLE_MANAGEMENT)
+			if !fflag.PapiClient.IsEnabled() {
+				continue
 			}
 			/*for each flag check if it's already set before setting it*/
 			if csConfig.API.Server.ConsoleConfig.ReceiveDecisions != nil {
