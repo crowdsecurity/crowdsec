@@ -26,6 +26,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/modelscapi"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -220,7 +221,7 @@ func TestNewAPIC(t *testing.T) {
 			setConfig()
 			httpmock.Activate()
 			defer httpmock.DeactivateAndReset()
-			httpmock.RegisterResponder("POST", "http://foobar/v2/watchers/login", httpmock.NewBytesResponder(
+			httpmock.RegisterResponder("POST", "http://foobar/v3/watchers/login", httpmock.NewBytesResponder(
 				200, jsonMarshalX(
 					models.WatcherAuthResponse{
 						Code:   200,
@@ -518,7 +519,7 @@ func TestFillAlertsWithDecisions(t *testing.T) {
 func TestAPICPullTop(t *testing.T) {
 	api := getAPIC(t)
 	api.dbClient.Ent.Decision.Create().
-		SetOrigin(types.ListOrigin).
+		SetOrigin(types.CAPIOrigin).
 		SetType("ban").
 		SetValue("9.9.9.9").
 		SetScope("Ip").
@@ -531,61 +532,64 @@ func TestAPICPullTop(t *testing.T) {
 	defer httpmock.DeactivateAndReset()
 	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/api/decisions/stream", httpmock.NewBytesResponder(
 		200, jsonMarshalX(
-			models.DecisionsStreamResponse{
-				Deleted: models.GetDecisionsResponse{
-					&models.Decision{
-						Origin:   types.StrPtr(types.ListOrigin),
-						Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
-						Value:    types.StrPtr("9.9.9.9"),
-						Scope:    types.StrPtr("Ip"),
-						Duration: types.StrPtr("24h"),
-						Type:     types.StrPtr("ban"),
+			modelscapi.GetDecisionsStreamResponse{
+				Deleted: modelscapi.GetDecisionsStreamResponseDeleted{
+					&modelscapi.GetDecisionsStreamResponseDeletedItem{
+						Decisions: []string{
+							"9.9.9.9", // This is already present in DB
+							"9.1.9.9", // This not present in DB
+						},
+						Scope: types.StrPtr("Ip"),
 					}, // This is already present in DB
-					&models.Decision{
-						Origin:   types.StrPtr(types.ListOrigin),
-						Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
-						Value:    types.StrPtr("9.1.9.9"),
-						Scope:    types.StrPtr("Ip"),
-						Duration: types.StrPtr("24h"),
-						Type:     types.StrPtr("ban"),
-					}, // This not present in DB.
 				},
-				New: models.GetDecisionsResponse{
-					&models.Decision{
-						Origin:   types.StrPtr(types.CAPIOrigin),
+				New: modelscapi.GetDecisionsStreamResponseNew{
+					&modelscapi.GetDecisionsStreamResponseNewItem{
 						Scenario: types.StrPtr("crowdsecurity/test1"),
-						Value:    types.StrPtr("1.2.3.4"),
 						Scope:    types.StrPtr("Ip"),
-						Duration: types.StrPtr("24h"),
-						Type:     types.StrPtr("ban"),
+						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
+							{
+								Value:    types.StrPtr("1.2.3.4"),
+								Duration: types.StrPtr("24h"),
+							},
+						},
 					},
-					&models.Decision{
-						Origin:   types.StrPtr(types.CAPIOrigin),
+					&modelscapi.GetDecisionsStreamResponseNewItem{
 						Scenario: types.StrPtr("crowdsecurity/test2"),
-						Value:    types.StrPtr("1.2.3.5"),
 						Scope:    types.StrPtr("Ip"),
-						Duration: types.StrPtr("24h"),
-						Type:     types.StrPtr("ban"),
+						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
+							{
+								Value:    types.StrPtr("1.2.3.5"),
+								Duration: types.StrPtr("24h"),
+							},
+						},
 					}, // These two are from community list.
-					&models.Decision{
-						Origin:   types.StrPtr(types.ListOrigin),
-						Scenario: types.StrPtr("crowdsecurity/http-bf"),
-						Value:    types.StrPtr("1.2.3.6"),
-						Scope:    types.StrPtr("Ip"),
-						Duration: types.StrPtr("24h"),
-						Type:     types.StrPtr("ban"),
+				},
+				Links: &modelscapi.GetDecisionsStreamResponseLinks{
+					Blocklists: []*modelscapi.BlocklistLink{
+						{
+							URL:         types.StrPtr("http://api.crowdsec.net/blocklist1"),
+							Name:        types.StrPtr("crowdsecurity/http-bf"),
+							Scope:       types.StrPtr("Ip"),
+							Remediation: types.StrPtr("ban"),
+							Duration:    types.StrPtr("24h"),
+						},
+						{
+							URL:         types.StrPtr("http://api.crowdsec.net/blocklist2"),
+							Name:        types.StrPtr("crowdsecurity/ssh-bf"),
+							Scope:       types.StrPtr("Ip"),
+							Remediation: types.StrPtr("ban"),
+							Duration:    types.StrPtr("24h"),
+						},
 					},
-					&models.Decision{
-						Origin:   types.StrPtr(types.ListOrigin),
-						Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
-						Value:    types.StrPtr("1.2.3.7"),
-						Scope:    types.StrPtr("Ip"),
-						Duration: types.StrPtr("24h"),
-						Type:     types.StrPtr("ban"),
-					}, // These two are from list subscription.
 				},
 			},
 		),
+	))
+	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/blocklist1", httpmock.NewStringResponder(
+		200, "1.2.3.6",
+	))
+	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/blocklist2", httpmock.NewStringResponder(
+		200, "1.2.3.7",
 	))
 	url, err := url.ParseRequestURI("http://api.crowdsec.net/")
 	require.NoError(t, err)
@@ -845,15 +849,17 @@ func TestAPICPull(t *testing.T) {
 			require.NoError(t, err)
 			api.apiClient = apic
 			httpmock.RegisterNoResponder(httpmock.NewBytesResponder(200, jsonMarshalX(
-				models.DecisionsStreamResponse{
-					New: models.GetDecisionsResponse{
-						&models.Decision{
-							Origin:   types.StrPtr(types.CAPIOrigin),
-							Scenario: types.StrPtr("crowdsecurity/test2"),
-							Value:    types.StrPtr("1.2.3.5"),
+				modelscapi.GetDecisionsStreamResponse{
+					New: modelscapi.GetDecisionsStreamResponseNew{
+						&modelscapi.GetDecisionsStreamResponseNewItem{
+							Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
 							Scope:    types.StrPtr("Ip"),
-							Duration: types.StrPtr("24h"),
-							Type:     types.StrPtr("ban"),
+							Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
+								{
+									Value:    types.StrPtr("1.2.3.5"),
+									Duration: types.StrPtr("24h"),
+								},
+							},
 						},
 					},
 				},

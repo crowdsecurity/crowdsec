@@ -20,8 +20,7 @@ import (
 )
 
 const CAPIBaseURL string = "https://api.crowdsec.net/"
-const CAPIURLPrefix = "v2"
-
+const CAPIURLPrefix = "v3"
 
 func NewCapiCmd() *cobra.Command {
 	var cmdCapi = &cobra.Command{
@@ -46,7 +45,6 @@ func NewCapiCmd() *cobra.Command {
 
 	return cmdCapi
 }
-
 
 func NewCapiRegisterCmd() *cobra.Command {
 	var capiUserPrefix string
@@ -121,7 +119,6 @@ func NewCapiRegisterCmd() *cobra.Command {
 
 	return cmdCapiRegister
 }
-
 
 func NewCapiStatusCmd() *cobra.Command {
 	var cmdCapiStatus = &cobra.Command{
