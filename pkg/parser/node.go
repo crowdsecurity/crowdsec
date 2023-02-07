@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/antonmedv/expr"
+	"github.com/antonmedv/expr/vm"
 	"github.com/crowdsecurity/grokky"
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 
-	"github.com/antonmedv/expr/vm"
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -20,6 +20,8 @@ import (
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
+
+var nodeVM vm.VM
 
 type Node struct {
 	FormatVersion string `yaml:"format"`
@@ -142,7 +144,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	clog.Tracef("Event entering node")
 	if n.RunTimeFilter != nil {
 		//Evaluate node's filter
-		output, err := expr.Run(n.RunTimeFilter, cachedExprEnv)
+		output, err := nodeVM.Run(n.RunTimeFilter, cachedExprEnv)
 		if err != nil {
 			clog.Warningf("failed to run filter : %v", err)
 			clog.Debugf("Event leaving node : ko")
@@ -216,7 +218,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	}
 	/* run whitelist expression tests anyway */
 	for eidx, e := range n.Whitelist.B_Exprs {
-		output, err := expr.Run(e.Filter, cachedExprEnv)
+		output, err := nodeVM.Run(e.Filter, cachedExprEnv)
 		if err != nil {
 			clog.Warningf("failed to run whitelist expr : %v", err)
 			clog.Debug("Event leaving node : ko")
@@ -266,7 +268,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 				NodeState = false
 			}
 		} else if n.Grok.RunTimeValue != nil {
-			output, err := expr.Run(n.Grok.RunTimeValue, cachedExprEnv)
+			output, err := nodeVM.Run(n.Grok.RunTimeValue, cachedExprEnv)
 			if err != nil {
 				clog.Warningf("failed to run RunTimeValue : %v", err)
 				NodeState = false
@@ -325,7 +327,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 				continue
 			}
 			//collect the data
-			output, err := expr.Run(stash.ValueExpression, cachedExprEnv)
+			output, err := nodeVM.Run(stash.ValueExpression, cachedExprEnv)
 			if err != nil {
 				clog.Warningf("Error while running stash val expression : %v", err)
 			}
@@ -339,7 +341,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 			}
 
 			//collect the key
-			output, err = expr.Run(stash.KeyExpression, cachedExprEnv)
+			output, err = nodeVM.Run(stash.KeyExpression, cachedExprEnv)
 			if err != nil {
 				clog.Warningf("Error while running stash key expression : %v", err)
 			}

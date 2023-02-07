@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"runtime"
@@ -283,7 +284,6 @@ func LoadConfig(cConfig *csconfig.Config) error {
 	return nil
 }
 
-
 // exitWithCode must be called right before the program termination,
 // to allow measuring functional test coverage in case of abnormal exit.
 //
@@ -317,6 +317,10 @@ func main() {
 	if err := csconfig.LoadFeatureFlagsEnv(log.StandardLogger()); err != nil {
 		log.Fatalf("failed to set feature flags from environment: %s", err)
 	}
+
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
 
 	crowdsecT0 = time.Now()
 
