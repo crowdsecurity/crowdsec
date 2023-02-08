@@ -75,7 +75,7 @@ teardown() {
     config_disable_lapi
     ./instance-crowdsec start || true
     run -1 --separate-stderr cscli machines list
-    assert_stderr --partial "Local API is disabled, please run this command on the local API machine"
+    assert_stderr --partial "local API is disabled, please run this command on the local API machine"
 }
 
 @test "cscli metrics" {
@@ -87,5 +87,5 @@ teardown() {
     assert_output --partial "/v1/watchers/login"
 
     assert_stderr --partial "crowdsec local API is disabled"
-    assert_stderr --partial "Local API is disabled, please run this command on the local API machine"
+    assert_stderr --partial "local API is disabled, please run this command on the local API machine"
 }
