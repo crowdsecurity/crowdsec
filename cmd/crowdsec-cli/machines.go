@@ -16,7 +16,6 @@ import (
 	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -67,7 +66,7 @@ func generateIDPrefix() (string, error) {
 	if err == nil {
 		return bId.String(), nil
 	}
-	return "", errors.Wrap(err, "generating machine id")
+	return "", fmt.Errorf("generating machine id: %w", err)
 }
 
 // Generate a unique identifier, composed by a prefix and a random suffix.
