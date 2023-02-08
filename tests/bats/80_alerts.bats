@@ -66,6 +66,9 @@ teardown() {
 }
 
 @test "cscli alerts inspect" {
+    rune -1 cscli alerts inspect
+    assert_stderr --partial 'missing alert_id'
+
     run -0 cscli decisions add -i 10.20.30.40 -t ban
     run -0 cscli alerts list -o raw <(output)
     run -0 grep 10.20.30.40 <(output)
@@ -143,7 +146,7 @@ teardown() {
     # can't delete twice
     run -1 --separate-stderr cscli alerts delete --id "$ALERT_ID"
     refute_output
-    assert_stderr --partial "Unable to delete alert"
+    assert_stderr --partial "unable to delete alert"
     assert_stderr --partial "API error: ent: alert not found"
 }
 
