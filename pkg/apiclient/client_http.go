@@ -59,6 +59,9 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 		req.Header.Add("User-Agent", c.UserAgent)
 	}
 
+	if log.GetLevel() >= log.DebugLevel {
+		log.Debugf("[URL] %s %s", req.Method, req.URL)
+	}
 	resp, err := c.client.Do(req)
 	if resp != nil && resp.Body != nil {
 		defer resp.Body.Close()

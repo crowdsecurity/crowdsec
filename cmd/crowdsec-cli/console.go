@@ -236,12 +236,12 @@ func SetConsoleOpts(args []string, wanted bool) {
 		switch arg {
 		case csconfig.CONSOLE_MANAGEMENT:
 			if !fflag.PapiClient.IsEnabled() {
-				log.Fatalf("Feature flag %s is disabled, cannot set %s", fflag.PapiClient.Name, csconfig.CONSOLE_MANAGEMENT)
+				continue
 			}
 			/*for each flag check if it's already set before setting it*/
 			if csConfig.API.Server.ConsoleConfig.ReceiveDecisions != nil {
 				if *csConfig.API.Server.ConsoleConfig.ReceiveDecisions == wanted {
-					log.Infof("%s already set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
+					log.Debugf("%s already set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
 				} else {
 					log.Infof("%s set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
 					*csConfig.API.Server.ConsoleConfig.ReceiveDecisions = wanted
@@ -254,7 +254,7 @@ func SetConsoleOpts(args []string, wanted bool) {
 			/*for each flag check if it's already set before setting it*/
 			if csConfig.API.Server.ConsoleConfig.ShareCustomScenarios != nil {
 				if *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios == wanted {
-					log.Infof("%s already set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
+					log.Debugf("%s already set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
 				} else {
 					log.Infof("%s set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
 					*csConfig.API.Server.ConsoleConfig.ShareCustomScenarios = wanted
@@ -267,7 +267,7 @@ func SetConsoleOpts(args []string, wanted bool) {
 			/*for each flag check if it's already set before setting it*/
 			if csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios != nil {
 				if *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios == wanted {
-					log.Infof("%s already set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
+					log.Debugf("%s already set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
 				} else {
 					log.Infof("%s set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
 					*csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios = wanted
@@ -280,7 +280,7 @@ func SetConsoleOpts(args []string, wanted bool) {
 			/*for each flag check if it's already set before setting it*/
 			if csConfig.API.Server.ConsoleConfig.ShareManualDecisions != nil {
 				if *csConfig.API.Server.ConsoleConfig.ShareManualDecisions == wanted {
-					log.Infof("%s already set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
+					log.Debugf("%s already set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
 				} else {
 					log.Infof("%s set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
 					*csConfig.API.Server.ConsoleConfig.ShareManualDecisions = wanted
@@ -293,7 +293,7 @@ func SetConsoleOpts(args []string, wanted bool) {
 			/*for each flag check if it's already set before setting it*/
 			if csConfig.API.Server.ConsoleConfig.ShareContext != nil {
 				if *csConfig.API.Server.ConsoleConfig.ShareContext == wanted {
-					log.Infof("%s already set to %t", csconfig.SEND_CONTEXT, wanted)
+					log.Debugf("%s already set to %t", csconfig.SEND_CONTEXT, wanted)
 				} else {
 					log.Infof("%s set to %t", csconfig.SEND_CONTEXT, wanted)
 					*csConfig.API.Server.ConsoleConfig.ShareContext = wanted
