@@ -24,6 +24,13 @@ var dataFile map[string][]string
 var dataFileRegex map[string][]*regexp.Regexp
 var dbClient *database.Client
 
+func Get(arr []string, index int) string {
+	if index >= len(arr) {
+		return ""
+	}
+	return arr[index]
+}
+
 func Atof(x string) float64 {
 	log.Debugf("debug atof %s", x)
 	ret, err := strconv.ParseFloat(x, 64)
@@ -73,6 +80,26 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"ParseUnix":              ParseUnix,
 		"GetFromStash":           cache.GetKey,
 		"SetInStash":             cache.SetKey,
+		//go 1.20 "CutPrefix":              strings.CutPrefix,
+		//go 1.20 "CutSuffix": strings.CutSuffix,
+		"Cut":         strings.Cut,
+		"Fields":      strings.Fields,
+		"Index":       strings.Index,
+		"IndexAny":    strings.IndexAny,
+		"Join":        strings.Join,
+		"Split":       strings.Split,
+		"SplitAfter":  strings.SplitAfter,
+		"SplitAfterN": strings.SplitAfterN,
+		"SplitN":      strings.SplitN,
+		"Replace":     strings.Replace,
+		"ReplaceAll":  strings.ReplaceAll,
+		"Trim":        strings.Trim,
+		"TrimLeft":    strings.TrimLeft,
+		"TrimRight":   strings.TrimRight,
+		"TrimSpace":   strings.TrimSpace,
+		"TrimPrefix":  strings.TrimPrefix,
+		"TrimSuffix":  strings.TrimSuffix,
+		"Get":         Get,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
