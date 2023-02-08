@@ -82,7 +82,7 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"SetInStash":             cache.SetKey,
 		//go 1.20 "CutPrefix":              strings.CutPrefix,
 		//go 1.20 "CutSuffix": strings.CutSuffix,
-		"Cut":         strings.Cut,
+		//"Cut":         strings.Cut, -> returns more than 2 values, not supported  by expr
 		"Fields":      strings.Fields,
 		"Index":       strings.Index,
 		"IndexAny":    strings.IndexAny,
