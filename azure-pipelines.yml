@@ -58,7 +58,7 @@ stages:
             displayName: "Sign Crowdsec binaries + plugins"
 
           - pwsh: |
-              echo $Build
+              Write-Host $Build
               $build_version=$Build.SourceBranchName
               if ($build_version.Contains("-")) 
               {
