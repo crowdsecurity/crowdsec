@@ -69,7 +69,7 @@ stages:
             name: BuildMSI
 
           - pwsh: |
-              $build_version=$Build.SourceBranchName
+<              $build_version=$Build.SourceBranchName
               if ($build_version.Contains("-")) 
               {
                 $build_version = $build_version.Substring(0, $build_version.IndexOf("-"))
