@@ -58,6 +58,7 @@ stages:
             displayName: "Sign Crowdsec binaries + plugins"
           - pwsh: |
               Write-Host $Build
+              dir env:
             displayName: Debug
           - pwsh: |
               $build_version=$Build.SourceBranchName
