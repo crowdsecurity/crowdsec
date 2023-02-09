@@ -56,9 +56,10 @@ stages:
               --input "**/*.exe" --config (Join-Path -Path $(Agent.TempDirectory) -ChildPath "appsettings.json") `
               --user $(CodeSigningUser) --secret '$(CodeSigningPassword)'
             displayName: "Sign Crowdsec binaries + plugins"
-
           - pwsh: |
               Write-Host $Build
+            displayName: Debug
+          - pwsh: |
               $build_version=$Build.SourceBranchName
               if ($build_version.Contains("-")) 
               {
