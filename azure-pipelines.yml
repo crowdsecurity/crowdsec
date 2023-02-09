@@ -58,6 +58,10 @@ stages:
             displayName: "Sign Crowdsec binaries + plugins"
           - pwsh: |
               $build_version=$env:BUILD_SOURCEBRANCHNAME
+              if ($build_version.StartsWith("v"))
+              {
+                $build_version = $build_version.Substring(1)
+              }
               if ($build_version.Contains("-")) 
               {
                 $build_version = $build_version.Substring(0, $build_version.IndexOf("-"))
