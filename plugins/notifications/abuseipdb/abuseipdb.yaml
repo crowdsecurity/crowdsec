@@ -1,0 +1,24 @@
+type: abuseipdb # Don't change
+name: abuseipdb_default # Must match the registered plugin in the profile
+
+# One of "trace", "debug", "info", "warn", "error", "off"
+log_level: info
+
+#-------------------------
+# plugin-specific options
+
+# The following template receives a list of models.Alert objects
+# The output goes in the logs and to a text file, if defined
+format: |
+    {{.|toJson}}
+
+# Api key for abuseipdb (https://www.abuseipdb.com/account/api)
+api_key: changeme
+#
+# output_file:        # notifications will be appended here. optional
+
+---
+# type: abuseipdb
+# name: abuseipdb_second_notification
+# ...
+
