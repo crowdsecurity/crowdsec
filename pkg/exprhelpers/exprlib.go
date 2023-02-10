@@ -102,6 +102,7 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"TrimPrefix":  strings.TrimPrefix,
 		"TrimSuffix":  strings.TrimSuffix,
 		"Get":         Get,
+		"String":      String,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
@@ -360,4 +361,12 @@ func ParseUnix(value string) string {
 		return ""
 	}
 	return t.Format(time.RFC3339)
+}
+
+func String(value interface{}) string {
+	s, ok := value.(string)
+	if !ok {
+		return ""
+	}
+	return s
 }
