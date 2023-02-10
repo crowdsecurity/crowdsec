@@ -72,6 +72,8 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"XMLGetNodeValue":        XMLGetNodeValue,
 		"IpToRange":              IpToRange,
 		"IsIPV6":                 IsIPV6,
+		"IsIPV4":                 IsIPV4,
+		"IsIP":                   IsIP,
 		"LookupHost":             LookupHost,
 		"GetDecisionsCount":      GetDecisionsCount,
 		"GetDecisionsSinceCount": GetDecisionsSinceCount,
@@ -232,6 +234,24 @@ func IsIPV6(ip string) bool {
 
 	// If it's a valid IP and can't be converted to IPv4 then it is an IPv6
 	return ipParsed.To4() == nil
+}
+
+func IsIPV4(ip string) bool {
+	ipParsed := net.ParseIP(ip)
+	if ipParsed == nil {
+		log.Debugf("'%s' is not a valid IP", ip)
+		return false
+	}
+	return ipParsed.To4() != nil
+}
+
+func IsIP(ip string) bool {
+	ipParsed := net.ParseIP(ip)
+	if ipParsed == nil {
+		log.Debugf("'%s' is not a valid IP", ip)
+		return false
+	}
+	return true
 }
 
 func IpToRange(ip string, cidr string) string {
