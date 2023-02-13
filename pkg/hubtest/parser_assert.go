@@ -396,12 +396,7 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 				detailsDisplay := ""
 
 				if res {
-					var changelog = diff.Changelog{}
-					if prev_item.Stage == "" {
-						changelog, _ = diff.Diff(types.Event{}, parsers[parser].Evt)
-					} else {
-						changelog, _ = diff.Diff(prev_item, parsers[parser].Evt)
-					}
+					changelog, _ := diff.Diff(prev_item, parsers[parser].Evt)
 					for _, change := range changelog {
 						switch change.Type {
 						case "create":
