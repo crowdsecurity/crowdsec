@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"reflect"
@@ -568,14 +569,14 @@ func TestAPICPullTop(t *testing.T) {
 					Blocklists: []*modelscapi.BlocklistLink{
 						{
 							URL:         types.StrPtr("http://api.crowdsec.net/blocklist1"),
-							Name:        types.StrPtr("crowdsecurity/http-bf"),
+							Name:        types.StrPtr("blocklist1"),
 							Scope:       types.StrPtr("Ip"),
 							Remediation: types.StrPtr("ban"),
 							Duration:    types.StrPtr("24h"),
 						},
 						{
 							URL:         types.StrPtr("http://api.crowdsec.net/blocklist2"),
-							Name:        types.StrPtr("crowdsecurity/ssh-bf"),
+							Name:        types.StrPtr("blocklist2"),
 							Scope:       types.StrPtr("Ip"),
 							Remediation: types.StrPtr("ban"),
 							Duration:    types.StrPtr("24h"),
@@ -622,17 +623,158 @@ func TestAPICPullTop(t *testing.T) {
 	}
 	assert.Equal(t, 3, len(alertScenario))
 	assert.Equal(t, 1, alertScenario[SCOPE_CAPI_ALIAS_ALIAS])
-	assert.Equal(t, 1, alertScenario["lists:crowdsecurity/ssh-bf"])
-	assert.Equal(t, 1, alertScenario["lists:crowdsecurity/http-bf"])
+	assert.Equal(t, 1, alertScenario["lists:blocklist1"])
+	assert.Equal(t, 1, alertScenario["lists:blocklist2"])
 
 	for _, decisions := range validDecisions {
 		decisionScenarioFreq[decisions.Scenario]++
 	}
 
-	assert.Equal(t, 1, decisionScenarioFreq["crowdsecurity/http-bf"], 1)
-	assert.Equal(t, 1, decisionScenarioFreq["crowdsecurity/ssh-bf"], 1)
+	assert.Equal(t, 1, decisionScenarioFreq["blocklist1"], 1)
+	assert.Equal(t, 1, decisionScenarioFreq["blocklist2"], 1)
 	assert.Equal(t, 1, decisionScenarioFreq["crowdsecurity/test1"], 1)
 	assert.Equal(t, 1, decisionScenarioFreq["crowdsecurity/test2"], 1)
+}
+
+func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
+	// no decision in db, no last modified parameter.
+	api := getAPIC(t)
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/api/decisions/stream", httpmock.NewBytesResponder(
+		200, jsonMarshalX(
+			modelscapi.GetDecisionsStreamResponse{
+				New: modelscapi.GetDecisionsStreamResponseNew{
+					&modelscapi.GetDecisionsStreamResponseNewItem{
+						Scenario: types.StrPtr("crowdsecurity/test1"),
+						Scope:    types.StrPtr("Ip"),
+						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
+							{
+								Value:    types.StrPtr("1.2.3.4"),
+								Duration: types.StrPtr("24h"),
+							},
+						},
+					},
+				},
+				Links: &modelscapi.GetDecisionsStreamResponseLinks{
+					Blocklists: []*modelscapi.BlocklistLink{
+						{
+							URL:         types.StrPtr("http://api.crowdsec.net/blocklist1"),
+							Name:        types.StrPtr("blocklist1"),
+							Scope:       types.StrPtr("Ip"),
+							Remediation: types.StrPtr("ban"),
+							Duration:    types.StrPtr("24h"),
+						},
+					},
+				},
+			},
+		),
+	))
+	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/blocklist1", func(req *http.Request) (*http.Response, error) {
+		assert.Equal(t, "", req.Header.Get("If-Modified-Since"))
+		return httpmock.NewStringResponse(200, "1.2.3.4"), nil
+	})
+	url, err := url.ParseRequestURI("http://api.crowdsec.net/")
+	require.NoError(t, err)
+
+	apic, err := apiclient.NewDefaultClient(
+		url,
+		"/api",
+		fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		nil,
+	)
+	require.NoError(t, err)
+
+	api.apiClient = apic
+	err = api.PullTop()
+	require.NoError(t, err)
+
+	blocklistConfigItemName := fmt.Sprintf("blocklist:%s:last_pull", *types.StrPtr("blocklist1"))
+	lastPullTimestamp, err := api.dbClient.GetConfigItem(blocklistConfigItemName)
+	require.NoError(t, err)
+	assert.NotEqual(t, "", *lastPullTimestamp)
+
+	// new call should return 304 and should not change lastPullTimestamp
+	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/blocklist1", func(req *http.Request) (*http.Response, error) {
+		assert.NotEqual(t, "", req.Header.Get("If-Modified-Since"))
+		return httpmock.NewStringResponse(304, ""), nil
+	})
+	err = api.PullTop()
+	require.NoError(t, err)
+	secondLastPullTimestamp, err := api.dbClient.GetConfigItem(blocklistConfigItemName)
+	require.NoError(t, err)
+	assert.Equal(t, *lastPullTimestamp, *secondLastPullTimestamp)
+}
+
+func TestAPICPullTopBLCacheForceCall(t *testing.T) {
+	api := getAPIC(t)
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+	// create a decision about to expire. It should force fetch
+	alertInstance := api.dbClient.Ent.Alert.
+		Create().
+		SetScenario("update list").
+		SetSourceScope("list:blocklist1").
+		SetSourceValue("list:blocklist1").
+		SaveX(context.Background())
+
+	api.dbClient.Ent.Decision.Create().
+		SetOrigin(types.ListOrigin).
+		SetType("ban").
+		SetValue("9.9.9.9").
+		SetScope("Ip").
+		SetScenario("blocklist1").
+		SetUntil(time.Now().Add(time.Hour)).
+		SetOwnerID(alertInstance.ID).
+		ExecX(context.Background())
+
+	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/api/decisions/stream", httpmock.NewBytesResponder(
+		200, jsonMarshalX(
+			modelscapi.GetDecisionsStreamResponse{
+				New: modelscapi.GetDecisionsStreamResponseNew{
+					&modelscapi.GetDecisionsStreamResponseNewItem{
+						Scenario: types.StrPtr("crowdsecurity/test1"),
+						Scope:    types.StrPtr("Ip"),
+						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
+							{
+								Value:    types.StrPtr("1.2.3.4"),
+								Duration: types.StrPtr("24h"),
+							},
+						},
+					},
+				},
+				Links: &modelscapi.GetDecisionsStreamResponseLinks{
+					Blocklists: []*modelscapi.BlocklistLink{
+						{
+							URL:         types.StrPtr("http://api.crowdsec.net/blocklist1"),
+							Name:        types.StrPtr("blocklist1"),
+							Scope:       types.StrPtr("Ip"),
+							Remediation: types.StrPtr("ban"),
+							Duration:    types.StrPtr("24h"),
+						},
+					},
+				},
+			},
+		),
+	))
+	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/blocklist1", func(req *http.Request) (*http.Response, error) {
+		assert.Equal(t, "", req.Header.Get("If-Modified-Since"))
+		return httpmock.NewStringResponse(304, ""), nil
+	})
+	url, err := url.ParseRequestURI("http://api.crowdsec.net/")
+	require.NoError(t, err)
+
+	apic, err := apiclient.NewDefaultClient(
+		url,
+		"/api",
+		fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		nil,
+	)
+	require.NoError(t, err)
+
+	api.apiClient = apic
+	err = api.PullTop()
+	require.NoError(t, err)
 }
 
 func TestAPICPush(t *testing.T) {
