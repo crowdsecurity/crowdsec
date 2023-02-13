@@ -4,6 +4,8 @@
 Test basic behavior of all the image variants
 """
 
+from http import HTTPStatus
+
 import pytest
 
 from pytest_cs import wait_for_log, wait_for_http
@@ -15,7 +17,7 @@ def test_cscli_lapi(crowdsec, flavor):
     """Test if cscli can talk to lapi"""
     with crowdsec(flavor=flavor) as cont:
         wait_for_log(cont, "*Starting processing data*")
-        wait_for_http(cont, 8080, '/health')
+        wait_for_http(cont, 8080, '/health', want_status=HTTPStatus.OK)
         x = cont.exec_run('cscli lapi status')
         assert x.exit_code == 0
         stdout = x.output.decode()
@@ -26,7 +28,7 @@ def test_flavor_content(crowdsec, flavor):
     """Test flavor contents"""
     with crowdsec(flavor=flavor) as cont:
         wait_for_log(cont, "*Starting processing data*")
-        wait_for_http(cont, 8080, '/health')
+        wait_for_http(cont, 8080, '/health', want_status=HTTPStatus.OK)
         x = cont.exec_run('ls -1 /var/lib/crowdsec/data/')
         assert x.exit_code == 0
         stdout = x.output.decode()

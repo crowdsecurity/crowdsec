@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from http import HTTPStatus
 from pytest_cs import wait_for_log, wait_for_http
 
 import pytest
@@ -14,7 +15,7 @@ def test_no_agent(crowdsec, flavor):
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
         wait_for_log(cont, "*CrowdSec Local API listening on 0.0.0.0:8080*")
-        wait_for_http(cont, 8080, '/health')
+        wait_for_http(cont, 8080, '/health', want_status=HTTPStatus.OK)
         res = cont.exec_run('cscli lapi status')
         assert res.exit_code == 0
         stdout = res.output.decode()

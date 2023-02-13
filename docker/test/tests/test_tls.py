@@ -4,6 +4,7 @@
 Test agent-lapi and cscli-lapi communication via TLS, on the same container.
 """
 
+from http import HTTPStatus
 import random
 
 from pytest_cs import wait_for_log, Status, wait_for_http
@@ -73,7 +74,8 @@ def test_tls_legacy_var(crowdsec, flavor, certs_dir):
 
     with crowdsec(flavor=flavor, environment=env, volumes=volumes) as cont:
         wait_for_log(cont, "*Starting processing data*")
-        wait_for_http(cont, 8080, '/health')
+        # TODO: wait_for_https
+        wait_for_http(cont, 8080, '/health', want_status=None)
         x = cont.exec_run('cscli lapi status')
         assert x.exit_code == 0
         stdout = x.output.decode()
@@ -99,7 +101,8 @@ def test_tls_mutual_monolith(crowdsec, flavor, certs_dir):
 
     with crowdsec(flavor=flavor, environment=env, volumes=volumes) as cont:
         wait_for_log(cont, "*Starting processing data*")
-        wait_for_http(cont, 8080, '/health')
+        # TODO: wait_for_https
+        wait_for_http(cont, 8080, '/health', want_status=None)
         x = cont.exec_run('cscli lapi status')
         assert x.exit_code == 0
         stdout = x.output.decode()
@@ -123,7 +126,8 @@ def test_tls_lapi_var(crowdsec, flavor, certs_dir):
 
     with crowdsec(flavor=flavor, environment=env, volumes=volumes) as cont:
         wait_for_log(cont, "*Starting processing data*")
-        wait_for_http(cont, 8080, '/health')
+        # TODO: wait_for_https
+        wait_for_http(cont, 8080, '/health', want_status=None)
         x = cont.exec_run('cscli lapi status')
         assert x.exit_code == 0
         stdout = x.output.decode()
@@ -173,7 +177,8 @@ def test_tls_split_lapi_agent(crowdsec, flavor, certs_dir):
             "*(tls) Client Auth Type set to VerifyClientCertIfGiven*",
             "*CrowdSec Local API listening on 0.0.0.0:8080*"
         ])
-        wait_for_http(lapi, 8080, '/health')
+        # TODO: wait_for_https
+        wait_for_http(lapi, 8080, '/health', want_status=None)
         wait_for_log(agent, "*Starting processing data*")
         res = agent.exec_run('cscli lapi status')
         assert res.exit_code == 0
@@ -219,7 +224,8 @@ def test_tls_mutual_split_lapi_agent(crowdsec, flavor, certs_dir):
             "*(tls) Client Auth Type set to VerifyClientCertIfGiven*",
             "*CrowdSec Local API listening on 0.0.0.0:8080*"
         ])
-        wait_for_http(lapi, 8080, '/health')
+        # TODO: wait_for_https
+        wait_for_http(lapi, 8080, '/health', want_status=None)
         wait_for_log(agent, "*Starting processing data*")
         res = agent.exec_run('cscli lapi status')
         assert res.exit_code == 0

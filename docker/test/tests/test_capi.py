@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from http import HTTPStatus
 from pytest_cs import log_lines, wait_for_log, wait_for_http
 
 import pytest
@@ -15,7 +16,7 @@ def test_no_capi(crowdsec, flavor):
 
     with crowdsec(flavor=flavor, environment=env) as cont:
         wait_for_log(cont, "*Starting processing data*")
-        wait_for_http(cont, 8080, '/health')
+        wait_for_http(cont, 8080, '/health', want_status=HTTPStatus.OK)
         res = cont.exec_run('cscli capi status')
         assert res.exit_code == 1
         assert "You can successfully interact with Central API (CAPI)" not in res.output.decode()
@@ -34,7 +35,7 @@ def test_capi(crowdsec, flavor):
 
     with crowdsec(flavor=flavor, environment=env) as cont:
         wait_for_log(cont, "*Starting processing data*")
-        wait_for_http(cont, 8080, '/health')
+        wait_for_http(cont, 8080, '/health', want_status=HTTPStatus.OK)
         res = cont.exec_run('cscli capi status')
         assert res.exit_code == 0
         assert "You can successfully interact with Central API (CAPI)" in res.output.decode()

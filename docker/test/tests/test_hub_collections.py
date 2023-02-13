@@ -4,6 +4,7 @@
 Test collection management
 """
 
+from http import HTTPStatus
 import json
 
 from pytest_cs import wait_for_log, wait_for_http
@@ -21,19 +22,19 @@ def test_install_two_collections(crowdsec, flavor):
         'COLLECTIONS': f'{it1} {it2}'
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, "*Starting processing data*")
-        wait_for_http(cont, 8080, '/health')
+        wait_for_http(cont, 8080, '/health', want_status=HTTPStatus.OK)
         res = cont.exec_run('cscli collections list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
         items = {c['name']: c for c in j['collections']}
         assert items[it1]['status'] == 'enabled'
         assert items[it2]['status'] == 'enabled'
-        logs = cont.logs().decode().splitlines()
-        # assert any(f'collections install "{it1}"' in line for line in logs)
-        # assert any(f'collections install "{it2}"' in line for line in logs)
-        assert any(f'Enabled collections : {it1}' in line for line in logs)
-        assert any(f'Enabled collections : {it2}' in line for line in logs)
+        wait_for_log(cont, [
+            # f'*collections install "{it1}"*'
+            # f'*collections install "{it2}"*'
+            f'*Enabled collections : {it1}*',
+            f'*Enabled collections : {it2}*',
+        ])
 
 
 def test_disable_collection(crowdsec, flavor):
@@ -44,15 +45,16 @@ def test_disable_collection(crowdsec, flavor):
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
         wait_for_log(cont, "*Starting processing data*")
-        wait_for_http(cont, 8080, '/health')
+        wait_for_http(cont, 8080, '/health', want_status=HTTPStatus.OK)
         res = cont.exec_run('cscli collections list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
         items = {c['name'] for c in j['collections']}
         assert it not in items
-        logs = cont.logs().decode().splitlines()
-        # assert any(f'collections remove "{it}"' in line for line in logs)
-        assert any(f'Removed symlink [{it}]' in line for line in logs)
+        wait_for_log(cont, [
+            # f'*collections remove "{it}*",
+            f'*Removed symlink [{it}]*',
+        ])
 
 
 def test_install_and_disable_collection(crowdsec, flavor):
@@ -64,7 +66,7 @@ def test_install_and_disable_collection(crowdsec, flavor):
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
         wait_for_log(cont, "*Starting processing data*")
-        wait_for_http(cont, 8080, '/health')
+        wait_for_http(cont, 8080, '/health', want_status=HTTPStatus.OK)
         res = cont.exec_run('cscli collections list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
