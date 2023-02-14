@@ -53,7 +53,7 @@ def test_disable_collection(crowdsec, flavor):
         assert it not in items
         wait_for_log(cont, [
             # f'*collections remove "{it}*",
-            f'*Removed symlink [{it}]*',
+            f'*Removed symlink [[]{it}[]]*',
         ])
 
 
