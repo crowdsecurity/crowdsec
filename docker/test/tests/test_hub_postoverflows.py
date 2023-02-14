@@ -21,7 +21,11 @@ def test_install_two_postoverflows(crowdsec, flavor):
         'POSTOVERFLOWS': f'{it1} {it2}'
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, "*Starting processing data*")
+        wait_for_log(cont, [
+            f'*postoverflows install "{it1}"*',
+            f'*postoverflows install "{it2}"*',
+            "*Starting processing data*"
+        ])
         wait_for_http(cont, 8080, '/health', want_status=HTTPStatus.OK)
         res = cont.exec_run('cscli postoverflows list -o json')
         assert res.exit_code == 0
@@ -29,9 +33,6 @@ def test_install_two_postoverflows(crowdsec, flavor):
         items = {c['name']: c for c in j['postoverflows']}
         assert items[it1]['status'] == 'enabled'
         assert items[it2]['status'] == 'enabled'
-        logs = cont.logs().decode().splitlines()
-        assert any(f'postoverflows install "{it1}"' in line for line in logs)
-        assert any(f'postoverflows install "{it2}"' in line for line in logs)
 
 
 def test_disable_postoverflow():

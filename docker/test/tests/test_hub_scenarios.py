@@ -22,7 +22,11 @@ def test_install_two_scenarios(crowdsec, flavor):
         'SCENARIOS': f'{it1} {it2}'
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, "*Starting processing data*")
+        wait_for_log(cont, [
+            f'*scenarios install "{it1}*"',
+            f'*scenarios install "{it2}*"',
+            "*Starting processing data*"
+        ])
         wait_for_http(cont, 8080, '/health', want_status=HTTPStatus.OK)
         res = cont.exec_run('cscli scenarios list -o json')
         assert res.exit_code == 0
@@ -30,9 +34,6 @@ def test_install_two_scenarios(crowdsec, flavor):
         items = {c['name']: c for c in j['scenarios']}
         assert items[it1]['status'] == 'enabled'
         assert items[it2]['status'] == 'enabled'
-        logs = cont.logs().decode().splitlines()
-        assert any(f'scenarios install "{it1}"' in line for line in logs)
-        assert any(f'scenarios install "{it2}"' in line for line in logs)
 
 
 def test_disable_scenario(crowdsec, flavor):
@@ -42,15 +43,16 @@ def test_disable_scenario(crowdsec, flavor):
         'DISABLE_SCENARIOS': it
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, "*Starting processing data*")
+        wait_for_log(cont, [
+            f'*scenarios remove "{it}"*',
+            "*Starting processing data*"
+        ])
         wait_for_http(cont, 8080, '/health', want_status=HTTPStatus.OK)
         res = cont.exec_run('cscli scenarios list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
         items = {c['name'] for c in j['scenarios']}
         assert it not in items
-        logs = cont.logs().decode().splitlines()
-        assert any(f'scenarios remove "{it}"' in line for line in logs)
 
 
 def test_install_and_disable_scenario(crowdsec, flavor):

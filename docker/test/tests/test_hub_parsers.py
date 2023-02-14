@@ -22,7 +22,11 @@ def test_install_two_parsers(crowdsec, flavor):
         'PARSERS': f'{it1} {it2}'
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, "*Starting processing data*")
+        wait_for_log(cont, [
+            f'*parsers install "{it1}"*',
+            f'*parsers install "{it2}"*',
+            "*Starting processing data*"
+        ])
         wait_for_http(cont, 8080, '/health', want_status=HTTPStatus.OK)
         res = cont.exec_run('cscli parsers list -o json')
         assert res.exit_code == 0
@@ -30,9 +34,6 @@ def test_install_two_parsers(crowdsec, flavor):
         items = {c['name']: c for c in j['parsers']}
         assert items[it1]['status'] == 'enabled'
         assert items[it2]['status'] == 'enabled'
-        logs = cont.logs().decode().splitlines()
-        assert any(f'parsers install "{it1}"' in line for line in logs)
-        assert any(f'parsers install "{it2}"' in line for line in logs)
 
 
 # XXX check that the parser is preinstalled by default
@@ -43,15 +44,16 @@ def test_disable_parser(crowdsec, flavor):
         'DISABLE_PARSERS': it
     }
     with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, "*Starting processing data*")
+        wait_for_log(cont, [
+            f'*parsers remove "{it}"*',
+            "*Starting processing data*",
+        ])
         wait_for_http(cont, 8080, '/health', want_status=HTTPStatus.OK)
         res = cont.exec_run('cscli parsers list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
         items = {c['name'] for c in j['parsers']}
         assert it not in items
-        logs = cont.logs().decode().splitlines()
-        assert any(f'parsers remove "{it}"' in line for line in logs)
 
 
 def test_install_and_disable_parser(crowdsec, flavor):
