@@ -30,7 +30,6 @@ stages:
                 version: '1.20.0'
 
           - pwsh: |
-              choco install -y jq
               choco install -y make
             displayName: "Install builds deps"
           - task: PowerShell@2
