@@ -293,7 +293,7 @@ func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *en
 
 	if val, ok := gctx.Request.URL.Query()["startup"]; ok {
 		if val[0] == "true" {
-			data, err := c.DBClient.QueryAllDecisionsWithFilters(filters)
+			data, err = c.DBClient.QueryAllDecisionsWithFilters(filters)
 			if err != nil {
 				log.Errorf("failed querying decisions: %v", err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
