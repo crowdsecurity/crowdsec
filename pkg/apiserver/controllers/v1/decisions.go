@@ -90,7 +90,7 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 		return
 	}
 	//transform deleted decisions to be sendable to capi
-	deletedDecisions, err := FormatDecisions(deletedFromDB, false)
+	deletedDecisions := FormatDecisions(deletedFromDB)
 	if err != nil {
 		log.Warningf("failed to format decisions: %v", err)
 	}
@@ -114,7 +114,7 @@ func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 		return
 	}
 	//transform deleted decisions to be sendable to capi
-	deletedDecisions, err := FormatDecisions(deletedFromDB, false)
+	deletedDecisions := FormatDecisions(deletedFromDB)
 	if err != nil {
 		log.Warningf("failed to format decisions: %v", err)
 	}
