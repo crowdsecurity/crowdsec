@@ -9,10 +9,10 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	log "github.com/sirupsen/logrus"
 
 	"testing"
@@ -981,25 +981,25 @@ func TestParseUnixTime(t *testing.T) {
 		expectedErr string
 	}{
 		{
-			name: "ParseUnix() test: valid value with milli",
-			value: "1672239773.3590894",
+			name:     "ParseUnix() test: valid value with milli",
+			value:    "1672239773.3590894",
 			expected: time.Date(2022, 12, 28, 15, 02, 53, 0, time.UTC),
 		},
 		{
-			name: "ParseUnix() test: valid value without milli",
-			value: "1672239773",
+			name:     "ParseUnix() test: valid value without milli",
+			value:    "1672239773",
 			expected: time.Date(2022, 12, 28, 15, 02, 53, 0, time.UTC),
 		},
 		{
-			name: "ParseUnix() test: invalid input",
-			value: "AbcDefG!#",
-			expected: time.Time{},
+			name:        "ParseUnix() test: invalid input",
+			value:       "AbcDefG!#",
+			expected:    time.Time{},
 			expectedErr: "unable to parse AbcDefG!# as unix timestamp",
 		},
 		{
-			name: "ParseUnix() test: negative value",
-			value: "-1000",
-			expected: time.Time{},
+			name:        "ParseUnix() test: negative value",
+			value:       "-1000",
+			expected:    time.Time{},
 			expectedErr: "unable to parse -1000 as unix timestamp",
 		},
 	}
@@ -1013,6 +1013,77 @@ func TestParseUnixTime(t *testing.T) {
 				return
 			}
 			require.WithinDuration(t, tc.expected, output, time.Second)
+		})
+	}
+}
+
+func TestIsIp(t *testing.T) {
+	tests := []struct {
+		name     string
+		method   func(string) bool
+		value    string
+		expected bool
+	}{
+		{
+			name:     "IsIPV4() test: valid IPv4",
+			method:   IsIPV4,
+			value:    "1.2.3.4",
+			expected: true,
+		},
+		{
+			name:     "IsIPV6() test: valid IPv6",
+			method:   IsIPV6,
+			value:    "1.2.3.4",
+			expected: false,
+		},
+		{
+			name:     "IsIPV6() test: valid IPv6",
+			method:   IsIPV6,
+			value:    "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+			expected: true,
+		},
+		{
+			name:     "IsIPV4() test: valid IPv6",
+			method:   IsIPV4,
+			value:    "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+			expected: false,
+		},
+		{
+			name:     "IsIP() test: invalid IP",
+			method:   IsIP,
+			value:    "foo.bar",
+			expected: false,
+		},
+		{
+			name:     "IsIP() test: valid IPv4",
+			method:   IsIP,
+			value:    "1.2.3.4",
+			expected: true,
+		},
+		{
+			name:     "IsIP() test: valid IPv6",
+			method:   IsIP,
+			value:    "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+			expected: true,
+		},
+		{
+			name:     "IsIPV4() test: invalid IPv4",
+			method:   IsIPV4,
+			value:    "foo.bar",
+			expected: false,
+		},
+		{
+			name:     "IsIPV6() test: invalid IPv6",
+			method:   IsIPV6,
+			value:    "foo.bar",
+			expected: false,
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			output := tc.method(tc.value)
+			require.Equal(t, tc.expected, output)
 		})
 	}
 }

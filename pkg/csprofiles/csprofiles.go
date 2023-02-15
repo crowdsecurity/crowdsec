@@ -147,7 +147,7 @@ func (Profile *Runtime) GenerateDecisionFromProfile(Alert *models.Alert) ([]*mod
 		decision.Value = new(string)
 		*decision.Value = *Alert.Source.Value
 		decision.Origin = new(string)
-		*decision.Origin = "crowdsec"
+		*decision.Origin = types.CrowdSecOrigin
 		if refDecision.Origin != nil {
 			*decision.Origin = fmt.Sprintf("%s/%s", *decision.Origin, *refDecision.Origin)
 		}

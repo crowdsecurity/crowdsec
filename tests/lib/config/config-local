@@ -63,6 +63,9 @@ config_generate() {
 
     cp ../config/context.yaml "${CONFIG_DIR}/console/"
 
+    cp ../config/detect.yaml \
+       "${HUB_DIR}"
+
     # the default acquis file contains files that are not readable by everyone
     touch "$LOG_DIR/empty.log"
     cat <<-EOT >"$CONFIG_DIR/acquis.yaml"

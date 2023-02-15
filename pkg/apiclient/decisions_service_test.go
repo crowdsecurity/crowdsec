@@ -10,6 +10,8 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/modelscapi"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -190,6 +192,286 @@ func TestDecisionsStream(t *testing.T) {
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
 	}
+}
+
+func TestDecisionsStreamV3Compatibility(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
+
+	mux, urlx, teardown := setupWithPrefix("v3")
+	defer teardown()
+
+	mux.HandleFunc("/decisions/stream", func(w http.ResponseWriter, r *http.Request) {
+
+		assert.Equal(t, r.Header.Get("X-Api-Key"), "ixu")
+		testMethod(t, r, http.MethodGet)
+		if r.Method == http.MethodGet {
+			if r.URL.RawQuery == "startup=true" {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`{"deleted":[{"scope":"ip","decisions":["1.2.3.5"]}],"new":[{"scope":"ip", "scenario": "manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'", "decisions":[{"duration":"3h59m55.756182786s","value":"1.2.3.4"}]}]}`))
+			} else {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte(`{"deleted":null,"new":null}`))
+			}
+		}
+	})
+
+	apiURL, err := url.Parse(urlx + "/")
+	if err != nil {
+		t.Fatalf("parsing api url: %s", apiURL)
+	}
+
+	//ok answer
+	auth := &APIKeyTransport{
+		APIKey: "ixu",
+	}
+
+	newcli, err := NewDefaultClient(apiURL, "v3", "toto", auth.Client())
+	if err != nil {
+		t.Fatalf("new api client: %s", err)
+	}
+
+	tduration := "3h59m55.756182786s"
+	torigin := "CAPI"
+	tscenario := "manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'"
+	tscope := "ip"
+	ttype := "ban"
+	tvalue := "1.2.3.4"
+	tvalue1 := "1.2.3.5"
+	tscenarioDeleted := "deleted"
+	tdurationDeleted := "1h"
+	expected := &models.DecisionsStreamResponse{
+		New: models.GetDecisionsResponse{
+			&models.Decision{
+				Duration: &tduration,
+				Origin:   &torigin,
+				Scenario: &tscenario,
+				Scope:    &tscope,
+				Type:     &ttype,
+				Value:    &tvalue,
+			},
+		},
+		Deleted: models.GetDecisionsResponse{
+			&models.Decision{
+				Duration: &tdurationDeleted,
+				Origin:   &torigin,
+				Scenario: &tscenarioDeleted,
+				Scope:    &tscope,
+				Type:     &ttype,
+				Value:    &tvalue1,
+			},
+		},
+	}
+
+	// GetStream is supposed to consume v3 payload and return v2 response
+	decisions, resp, err := newcli.Decisions.GetStream(context.Background(), DecisionsStreamOpts{Startup: true})
+	require.NoError(t, err)
+
+	if resp.Response.StatusCode != http.StatusOK {
+		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
+	}
+
+	if err != nil {
+		t.Fatalf("new api client: %s", err)
+	}
+	if !reflect.DeepEqual(*decisions, *expected) {
+		t.Fatalf("returned %+v, want %+v", resp, expected)
+	}
+}
+
+func TestDecisionsStreamV3(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
+
+	mux, urlx, teardown := setupWithPrefix("v3")
+	defer teardown()
+
+	mux.HandleFunc("/decisions/stream", func(w http.ResponseWriter, r *http.Request) {
+
+		assert.Equal(t, r.Header.Get("X-Api-Key"), "ixu")
+		testMethod(t, r, http.MethodGet)
+		if r.Method == http.MethodGet {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{"deleted":[{"scope":"ip","decisions":["1.2.3.5"]}],
+			"new":[{"scope":"ip", "scenario": "manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'", "decisions":[{"duration":"3h59m55.756182786s","value":"1.2.3.4"}]}],
+			"links": {"blocklists":[{"name":"blocklist1","url":"/v3/blocklist","scope":"ip","remediation":"ban","duration":"24h"}]}}`))
+		}
+	})
+
+	apiURL, err := url.Parse(urlx + "/")
+	if err != nil {
+		t.Fatalf("parsing api url: %s", apiURL)
+	}
+
+	//ok answer
+	auth := &APIKeyTransport{
+		APIKey: "ixu",
+	}
+
+	newcli, err := NewDefaultClient(apiURL, "v3", "toto", auth.Client())
+	if err != nil {
+		t.Fatalf("new api client: %s", err)
+	}
+
+	tduration := "3h59m55.756182786s"
+	tscenario := "manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'"
+	tscope := "ip"
+	tvalue := "1.2.3.4"
+	tvalue1 := "1.2.3.5"
+	tdurationBlocklist := "24h"
+	tnameBlocklist := "blocklist1"
+	tremediationBlocklist := "ban"
+	tscopeBlocklist := "ip"
+	turlBlocklist := "/v3/blocklist"
+	expected := &modelscapi.GetDecisionsStreamResponse{
+		New: modelscapi.GetDecisionsStreamResponseNew{
+			&modelscapi.GetDecisionsStreamResponseNewItem{
+				Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
+					{
+						Duration: &tduration,
+						Value:    &tvalue,
+					},
+				},
+				Scenario: &tscenario,
+				Scope:    &tscope,
+			},
+		},
+		Deleted: modelscapi.GetDecisionsStreamResponseDeleted{
+			&modelscapi.GetDecisionsStreamResponseDeletedItem{
+				Scope: &tscope,
+				Decisions: []string{
+					tvalue1,
+				},
+			},
+		},
+		Links: &modelscapi.GetDecisionsStreamResponseLinks{
+			Blocklists: []*modelscapi.BlocklistLink{
+				{
+					Duration:    &tdurationBlocklist,
+					Name:        &tnameBlocklist,
+					Remediation: &tremediationBlocklist,
+					Scope:       &tscopeBlocklist,
+					URL:         &turlBlocklist,
+				},
+			},
+		},
+	}
+
+	// GetStream is supposed to consume v3 payload and return v2 response
+	decisions, resp, err := newcli.Decisions.GetStreamV3(context.Background(), DecisionsStreamOpts{Startup: true})
+	require.NoError(t, err)
+
+	if resp.Response.StatusCode != http.StatusOK {
+		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
+	}
+
+	if err != nil {
+		t.Fatalf("new api client: %s", err)
+	}
+	if !reflect.DeepEqual(*decisions, *expected) {
+		t.Fatalf("returned %+v, want %+v", resp, expected)
+	}
+}
+
+func TestDecisionsFromBlocklist(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
+
+	mux, urlx, teardown := setupWithPrefix("v3")
+	defer teardown()
+
+	mux.HandleFunc("/blocklist", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, http.MethodGet)
+		if r.Header.Get("If-Modified-Since") == "Sun, 01 Jan 2023 01:01:01 GMT" {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
+		if r.Method == http.MethodGet {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("1.2.3.4\r\n1.2.3.5"))
+		}
+	})
+
+	apiURL, err := url.Parse(urlx + "/")
+	if err != nil {
+		t.Fatalf("parsing api url: %s", apiURL)
+	}
+
+	//ok answer
+	auth := &APIKeyTransport{
+		APIKey: "ixu",
+	}
+
+	newcli, err := NewDefaultClient(apiURL, "v3", "toto", auth.Client())
+	if err != nil {
+		t.Fatalf("new api client: %s", err)
+	}
+
+	tvalue1 := "1.2.3.4"
+	tvalue2 := "1.2.3.5"
+	tdurationBlocklist := "24h"
+	tnameBlocklist := "blocklist1"
+	tremediationBlocklist := "ban"
+	tscopeBlocklist := "ip"
+	turlBlocklist := urlx + "/v3/blocklist"
+	torigin := "lists"
+	expected := []*models.Decision{
+		{
+			Duration: &tdurationBlocklist,
+			Value:    &tvalue1,
+			Scenario: &tnameBlocklist,
+			Scope:    &tscopeBlocklist,
+			Type:     &tremediationBlocklist,
+			Origin:   &torigin,
+		},
+		{
+			Duration: &tdurationBlocklist,
+			Value:    &tvalue2,
+			Scenario: &tnameBlocklist,
+			Scope:    &tscopeBlocklist,
+			Type:     &tremediationBlocklist,
+			Origin:   &torigin,
+		},
+	}
+	decisions, isModified, err := newcli.Decisions.GetDecisionsFromBlocklist(context.Background(), &modelscapi.BlocklistLink{
+		URL:         &turlBlocklist,
+		Scope:       &tscopeBlocklist,
+		Remediation: &tremediationBlocklist,
+		Name:        &tnameBlocklist,
+		Duration:    &tdurationBlocklist,
+	}, nil)
+	require.NoError(t, err)
+	assert.True(t, isModified)
+
+	log.Infof("decision1: %+v", decisions[0])
+	log.Infof("expected1: %+v", expected[0])
+	log.Infof("decisions: %s, %s, %s, %s, %s, %s", *decisions[0].Value, *decisions[0].Duration, *decisions[0].Scenario, *decisions[0].Scope, *decisions[0].Type, *decisions[0].Origin)
+	log.Infof("expected : %s, %s, %s, %s, %s", *expected[0].Value, *expected[0].Duration, *expected[0].Scenario, *expected[0].Scope, *expected[0].Type)
+	log.Infof("decisions: %s, %s, %s, %s, %s", *decisions[1].Value, *decisions[1].Duration, *decisions[1].Scenario, *decisions[1].Scope, *decisions[1].Type)
+
+	if err != nil {
+		t.Fatalf("new api client: %s", err)
+	}
+	if !reflect.DeepEqual(decisions, expected) {
+		t.Fatalf("returned %+v, want %+v", decisions, expected)
+	}
+
+	// test cache control
+	_, isModified, err = newcli.Decisions.GetDecisionsFromBlocklist(context.Background(), &modelscapi.BlocklistLink{
+		URL:         &turlBlocklist,
+		Scope:       &tscopeBlocklist,
+		Remediation: &tremediationBlocklist,
+		Name:        &tnameBlocklist,
+		Duration:    &tdurationBlocklist,
+	}, types.StrPtr("Sun, 01 Jan 2023 01:01:01 GMT"))
+	require.NoError(t, err)
+	assert.False(t, isModified)
+	_, isModified, err = newcli.Decisions.GetDecisionsFromBlocklist(context.Background(), &modelscapi.BlocklistLink{
+		URL:         &turlBlocklist,
+		Scope:       &tscopeBlocklist,
+		Remediation: &tremediationBlocklist,
+		Name:        &tnameBlocklist,
+		Duration:    &tdurationBlocklist,
+	}, types.StrPtr("Mon, 02 Jan 2023 01:01:01 GMT"))
+	require.NoError(t, err)
+	assert.True(t, isModified)
 }
 
 func TestDeleteDecisions(t *testing.T) {

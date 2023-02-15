@@ -24,6 +24,13 @@ var dataFile map[string][]string
 var dataFileRegex map[string][]*regexp.Regexp
 var dbClient *database.Client
 
+func Get(arr []string, index int) string {
+	if index >= len(arr) {
+		return ""
+	}
+	return arr[index]
+}
+
 func Atof(x string) float64 {
 	log.Debugf("debug atof %s", x)
 	ret, err := strconv.ParseFloat(x, 64)
@@ -65,6 +72,8 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"XMLGetNodeValue":        XMLGetNodeValue,
 		"IpToRange":              IpToRange,
 		"IsIPV6":                 IsIPV6,
+		"IsIPV4":                 IsIPV4,
+		"IsIP":                   IsIP,
 		"LookupHost":             LookupHost,
 		"GetDecisionsCount":      GetDecisionsCount,
 		"GetDecisionsSinceCount": GetDecisionsSinceCount,
@@ -73,6 +82,26 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"ParseUnix":              ParseUnix,
 		"GetFromStash":           cache.GetKey,
 		"SetInStash":             cache.SetKey,
+		//go 1.20 "CutPrefix":              strings.CutPrefix,
+		//go 1.20 "CutSuffix": strings.CutSuffix,
+		//"Cut":         strings.Cut, -> returns more than 2 values, not supported  by expr
+		"Fields":      strings.Fields,
+		"Index":       strings.Index,
+		"IndexAny":    strings.IndexAny,
+		"Join":        strings.Join,
+		"Split":       strings.Split,
+		"SplitAfter":  strings.SplitAfter,
+		"SplitAfterN": strings.SplitAfterN,
+		"SplitN":      strings.SplitN,
+		"Replace":     strings.Replace,
+		"ReplaceAll":  strings.ReplaceAll,
+		"Trim":        strings.Trim,
+		"TrimLeft":    strings.TrimLeft,
+		"TrimRight":   strings.TrimRight,
+		"TrimSpace":   strings.TrimSpace,
+		"TrimPrefix":  strings.TrimPrefix,
+		"TrimSuffix":  strings.TrimSuffix,
+		"Get":         Get,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
@@ -205,6 +234,24 @@ func IsIPV6(ip string) bool {
 
 	// If it's a valid IP and can't be converted to IPv4 then it is an IPv6
 	return ipParsed.To4() == nil
+}
+
+func IsIPV4(ip string) bool {
+	ipParsed := net.ParseIP(ip)
+	if ipParsed == nil {
+		log.Debugf("'%s' is not a valid IP", ip)
+		return false
+	}
+	return ipParsed.To4() != nil
+}
+
+func IsIP(ip string) bool {
+	ipParsed := net.ParseIP(ip)
+	if ipParsed == nil {
+		log.Debugf("'%s' is not a valid IP", ip)
+		return false
+	}
+	return true
 }
 
 func IpToRange(ip string, cidr string) string {

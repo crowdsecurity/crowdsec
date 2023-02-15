@@ -1,0 +1,5 @@
+#!/bin/sh
+unset IFS
+set -euf
+
+sudo apt install -y aptitude

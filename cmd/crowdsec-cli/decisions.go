@@ -139,7 +139,6 @@ func NewDecisionsCmd() *cobra.Command {
 	return cmdDecisions
 }
 
-
 func NewDecisionsListCmd() *cobra.Command {
 	var filter = apiclient.AlertsListOpts{
 		ValueEquals:    new(string),
@@ -252,7 +251,7 @@ cscli decisions list -t ban
 	cmdDecisionsList.Flags().StringVar(filter.Until, "until", "", "restrict to alerts older than until (ie. 4h, 30d)")
 	cmdDecisionsList.Flags().StringVarP(filter.TypeEquals, "type", "t", "", "restrict to this decision type (ie. ban,captcha)")
 	cmdDecisionsList.Flags().StringVar(filter.ScopeEquals, "scope", "", "restrict to this scope (ie. ip,range,session)")
-	cmdDecisionsList.Flags().StringVar(filter.OriginEquals, "origin", "", "restrict to this origin (ie. lists,CAPI,cscli,cscli-import,crowdsec)")
+	cmdDecisionsList.Flags().StringVar(filter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
 	cmdDecisionsList.Flags().StringVarP(filter.ValueEquals, "value", "v", "", "restrict to this value (ie. 1.2.3.4,userName)")
 	cmdDecisionsList.Flags().StringVarP(filter.ScenarioEquals, "scenario", "s", "", "restrict to this scenario (ie. crowdsecurity/ssh-bf)")
 	cmdDecisionsList.Flags().StringVarP(filter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
@@ -264,7 +263,6 @@ cscli decisions list -t ban
 
 	return cmdDecisionsList
 }
-
 
 func NewDecisionsAddCmd() *cobra.Command {
 	var (
@@ -290,9 +288,8 @@ cscli decisions add --scope username --value foobar
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
-			var ipRange string
 			alerts := models.AddAlertsRequest{}
-			origin := "cscli"
+			origin := types.CscliOrigin
 			capacity := int32(0)
 			leakSpeed := "0"
 			eventsCount := int32(1)
@@ -340,12 +337,13 @@ cscli decisions add --scope username --value foobar
 				Scenario:        &addReason,
 				ScenarioVersion: &empty,
 				Simulated:       &simulated,
+				//setting empty scope/value broke plugins, and it didn't seem to be needed anymore w/ latest papi changes
 				Source: &models.Source{
 					AsName:   empty,
 					AsNumber: empty,
 					Cn:       empty,
 					IP:       addValue,
-					Range:    ipRange,
+					Range:    "",
 					Scope:    &addScope,
 					Value:    &addValue,
 				},
@@ -375,7 +373,6 @@ cscli decisions add --scope username --value foobar
 
 	return cmdDecisionsAdd
 }
-
 
 func NewDecisionsDeleteCmd() *cobra.Command {
 	var delFilter = apiclient.DecisionsDeleteOpts{
@@ -476,18 +473,17 @@ cscli decisions delete --type captcha
 	return cmdDecisionsDelete
 }
 
-
 func NewDecisionsImportCmd() *cobra.Command {
 	var (
 		defaultDuration = "4h"
 		defaultScope    = "ip"
 		defaultType     = "ban"
 		defaultReason   = "manual"
-		importDuration string
-		importScope    string
-		importReason   string
-		importType     string
-		importFile     string
+		importDuration  string
+		importScope     string
+		importReason    string
+		importType      string
+		importFile      string
 	)
 
 	var cmdDecisionImport = &cobra.Command{
@@ -551,7 +547,7 @@ decisions.json :
 					decisionLine.Duration = importDuration
 					log.Debugf("'duration' line %d, using supplied value: '%s'", line, importDuration)
 				}
-				decisionLine.Origin = "cscli-import"
+				decisionLine.Origin = types.CscliImportOrigin
 
 				if decisionLine.Scenario == "" {
 					decisionLine.Scenario = defaultReason
@@ -591,11 +587,11 @@ decisions.json :
 			alerts := models.AddAlertsRequest{}
 			importAlert := models.Alert{
 				CreatedAt: time.Now().UTC().Format(time.RFC3339),
-				Scenario:  types.StrPtr(fmt.Sprintf("add: %d IPs", len(decisionsList))),
+				Scenario:  types.StrPtr(fmt.Sprintf("import %s : %d IPs", importFile, len(decisionsList))),
 				Message:   types.StrPtr(""),
 				Events:    []*models.Event{},
 				Source: &models.Source{
-					Scope: types.StrPtr("cscli/manual-import"),
+					Scope: types.StrPtr(""),
 					Value: types.StrPtr(""),
 				},
 				StartAt:         types.StrPtr(time.Now().UTC().Format(time.RFC3339)),

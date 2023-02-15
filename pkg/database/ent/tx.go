@@ -16,6 +16,8 @@ type Tx struct {
 	Alert *AlertClient
 	// Bouncer is the client for interacting with the Bouncer builders.
 	Bouncer *BouncerClient
+	// ConfigItem is the client for interacting with the ConfigItem builders.
+	ConfigItem *ConfigItemClient
 	// Decision is the client for interacting with the Decision builders.
 	Decision *DecisionClient
 	// Event is the client for interacting with the Event builders.
@@ -161,6 +163,7 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.Alert = NewAlertClient(tx.config)
 	tx.Bouncer = NewBouncerClient(tx.config)
+	tx.ConfigItem = NewConfigItemClient(tx.config)
 	tx.Decision = NewDecisionClient(tx.config)
 	tx.Event = NewEventClient(tx.config)
 	tx.Machine = NewMachineClient(tx.config)
