@@ -16,6 +16,7 @@ on:
 
 env:
   RICHGO_FORCE_COLOR: 1
+  CROWDSEC_FEATURE_DISABLE_HTTP_RETRY_BACKOFF: true
 
 jobs:
 
@@ -25,10 +26,10 @@ jobs:
 
     steps:
 
-    - name: "Set up Go 1.19"
+    - name: "Set up Go 1.20"
       uses: actions/setup-go@v3
       with:
-        go-version: 1.19
+        go-version: 1.20.1
       id: go
 
     - name: Check out CrowdSec repository

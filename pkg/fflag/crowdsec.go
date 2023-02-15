@@ -1,9 +1,23 @@
 package fflag
 
-var CrowdsecFeatures FeatureMap
+var Crowdsec = FeatureRegister{EnvPrefix: "CROWDSEC_FEATURE_"}
 
-func InitCrowdsecFeatures() error {
-	var err error
-	CrowdsecFeatures, err = NewFeatureMap(map[string]FeatureFlag{"cscli_setup": {}})
-	return err
+var CscliSetup = &Feature{Name: "cscli_setup", Description: "Enable cscli setup command (service detection)"}
+var DisableHttpRetryBackoff = &Feature{Name: "disable_http_retry_backoff", Description: "Disable http retry backoff"}
+var PapiClient = &Feature{Name: "papi_client", Description: "Enable Polling API client"}
+
+func RegisterAllFeatures() error {
+	err := Crowdsec.RegisterFeature(CscliSetup)
+	if err != nil {
+		return err
+	}
+	err = Crowdsec.RegisterFeature(DisableHttpRetryBackoff)
+	if err != nil {
+		return err
+	}
+	err = Crowdsec.RegisterFeature(PapiClient)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -252,6 +252,26 @@ func (du *DecisionUpdate) SetNillableSimulated(b *bool) *DecisionUpdate {
 	return du
 }
 
+// SetUUID sets the "uuid" field.
+func (du *DecisionUpdate) SetUUID(s string) *DecisionUpdate {
+	du.mutation.SetUUID(s)
+	return du
+}
+
+// SetNillableUUID sets the "uuid" field if the given value is not nil.
+func (du *DecisionUpdate) SetNillableUUID(s *string) *DecisionUpdate {
+	if s != nil {
+		du.SetUUID(*s)
+	}
+	return du
+}
+
+// ClearUUID clears the value of the "uuid" field.
+func (du *DecisionUpdate) ClearUUID() *DecisionUpdate {
+	du.mutation.ClearUUID()
+	return du
+}
+
 // SetOwnerID sets the "owner" edge to the Alert entity by ID.
 func (du *DecisionUpdate) SetOwnerID(id int) *DecisionUpdate {
 	du.mutation.SetOwnerID(id)
@@ -548,6 +568,19 @@ func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: decision.FieldSimulated,
 		})
 	}
+	if value, ok := du.mutation.UUID(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: decision.FieldUUID,
+		})
+	}
+	if du.mutation.UUIDCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Column: decision.FieldUUID,
+		})
+	}
 	if du.mutation.OwnerCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -822,6 +855,26 @@ func (duo *DecisionUpdateOne) SetNillableSimulated(b *bool) *DecisionUpdateOne {
 	if b != nil {
 		duo.SetSimulated(*b)
 	}
+	return duo
+}
+
+// SetUUID sets the "uuid" field.
+func (duo *DecisionUpdateOne) SetUUID(s string) *DecisionUpdateOne {
+	duo.mutation.SetUUID(s)
+	return duo
+}
+
+// SetNillableUUID sets the "uuid" field if the given value is not nil.
+func (duo *DecisionUpdateOne) SetNillableUUID(s *string) *DecisionUpdateOne {
+	if s != nil {
+		duo.SetUUID(*s)
+	}
+	return duo
+}
+
+// ClearUUID clears the value of the "uuid" field.
+func (duo *DecisionUpdateOne) ClearUUID() *DecisionUpdateOne {
+	duo.mutation.ClearUUID()
 	return duo
 }
 
@@ -1149,6 +1202,19 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err
 			Type:   field.TypeBool,
 			Value:  value,
 			Column: decision.FieldSimulated,
+		})
+	}
+	if value, ok := duo.mutation.UUID(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: decision.FieldUUID,
+		})
+	}
+	if duo.mutation.UUIDCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Column: decision.FieldUUID,
 		})
 	}
 	if duo.mutation.OwnerCleared() {

@@ -21,9 +21,13 @@ import (
 */
 
 func setup() (mux *http.ServeMux, serverURL string, teardown func()) {
+	return setupWithPrefix("v1")
+}
+
+func setupWithPrefix(urlPrefix string) (mux *http.ServeMux, serverURL string, teardown func()) {
 	// mux is the HTTP request multiplexer used with the test server.
 	mux = http.NewServeMux()
-	baseURLPath := "/v1"
+	baseURLPath := "/" + urlPrefix
 
 	apiHandler := http.NewServeMux()
 	apiHandler.Handle(baseURLPath+"/", http.StripPrefix(baseURLPath, mux))

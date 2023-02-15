@@ -5,9 +5,7 @@ import (
 	"fmt"
 	_ "net/http/pprof"
 	"os"
-	"path/filepath"
 	"runtime"
-	"sort"
 	"strings"
 	"time"
 
@@ -72,45 +70,6 @@ type Flags struct {
 
 type labelsMap map[string]string
 
-// Return new parsers
-// nodes and povfwnodes are already initialized in parser.LoadStages
-func newParsers() *parser.Parsers {
-	parsers := &parser.Parsers{
-		Ctx:             &parser.UnixParserCtx{},
-		Povfwctx:        &parser.UnixParserCtx{},
-		StageFiles:      make([]parser.Stagefile, 0),
-		PovfwStageFiles: make([]parser.Stagefile, 0),
-	}
-	for _, itemType := range []string{cwhub.PARSERS, cwhub.PARSERS_OVFLW} {
-		for _, hubParserItem := range cwhub.GetItemMap(itemType) {
-			if hubParserItem.Installed {
-				stagefile := parser.Stagefile{
-					Filename: hubParserItem.LocalPath,
-					Stage:    hubParserItem.Stage,
-				}
-				if itemType == cwhub.PARSERS {
-					parsers.StageFiles = append(parsers.StageFiles, stagefile)
-				}
-				if itemType == cwhub.PARSERS_OVFLW {
-					parsers.PovfwStageFiles = append(parsers.PovfwStageFiles, stagefile)
-				}
-			}
-		}
-	}
-	if parsers.StageFiles != nil {
-		sort.Slice(parsers.StageFiles, func(i, j int) bool {
-			return parsers.StageFiles[i].Filename < parsers.StageFiles[j].Filename
-		})
-	}
-	if parsers.PovfwStageFiles != nil {
-		sort.Slice(parsers.PovfwStageFiles, func(i, j int) bool {
-			return parsers.PovfwStageFiles[i].Filename < parsers.PovfwStageFiles[j].Filename
-		})
-	}
-
-	return parsers
-}
-
 func LoadBuckets(cConfig *csconfig.Config) error {
 	var (
 		err   error
@@ -141,10 +100,7 @@ func LoadBuckets(cConfig *csconfig.Config) error {
 func LoadAcquisition(cConfig *csconfig.Config) error {
 	var err error
 
-	if flags.SingleFileType != "" || flags.OneShotDSN != "" {
-		if flags.OneShotDSN == "" || flags.SingleFileType == "" {
-			return fmt.Errorf("-type requires a -dsn argument")
-		}
+	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
 		flags.Labels = labels
 		flags.Labels["type"] = flags.SingleFileType
 
@@ -225,7 +181,7 @@ func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
 	default:
 	}
 
-	if ret == *curLevelPtr {
+	if curLevelPtr != nil && ret == *curLevelPtr {
 		// avoid returning a new ptr to the same value
 		return curLevelPtr
 	}
@@ -234,6 +190,10 @@ func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
 
 // LoadConfig returns a configuration parsed from configuration file
 func LoadConfig(cConfig *csconfig.Config) error {
+	if (cConfig.Common == nil || *cConfig.Common == csconfig.CommonCfg{}) {
+		return fmt.Errorf("unable to load configuration: common section is empty")
+	}
+
 	cConfig.Common.LogLevel = newLogLevel(cConfig.Common.LogLevel, flags)
 
 	if dumpFolder != "" {
@@ -241,6 +201,24 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		parser.DumpFolder = dumpFolder
 		leakybucket.BucketPourTrack = true
 		dumpStates = true
+	}
+
+	// Configuration paths are dependency to load crowdsec configuration
+	if err := cConfig.LoadConfigurationPaths(); err != nil {
+		return err
+	}
+
+	// Configure logging
+	if err := types.SetDefaultLoggerConfig(cConfig.Common.LogMedia,
+		cConfig.Common.LogDir, *cConfig.Common.LogLevel,
+		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles,
+		cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs,
+		cConfig.Common.ForceColorLogs); err != nil {
+		return err
+	}
+
+	if err := csconfig.LoadFeatureFlagsFile(cConfig, log.StandardLogger()); err != nil {
+		return err
 	}
 
 	if !flags.DisableAgent {
@@ -267,6 +245,14 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		cConfig.Crowdsec.LintOnly = true
 	}
 
+	if flags.OneShotDSN != "" && flags.SingleFileType == "" {
+		return errors.New("-dsn requires a -type argument")
+	}
+
+	if flags.SingleFileType != "" && flags.OneShotDSN == "" {
+		return errors.New("-type requires a -dsn argument")
+	}
+
 	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
 		if cConfig.API != nil && cConfig.API.Server != nil {
 			cConfig.API.Server.OnlineClient = nil
@@ -288,47 +274,11 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		cConfig.Common.Daemonize = false
 	}
 
-	// Configure logging
-	if err := types.SetDefaultLoggerConfig(cConfig.Common.LogMedia,
-		cConfig.Common.LogDir, *cConfig.Common.LogLevel,
-		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles,
-		cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs,
-		cConfig.Common.ForceColorLogs); err != nil {
-		return err
+	// recap of the enabled feature flags, because logging
+	// was not enabled when we set them from envvars
+	if fflist := csconfig.ListFeatureFlags(); fflist != "" {
+		log.Infof("Enabled feature flags: %s", fflist)
 	}
-
-	err := LoadFeatureFlags(cConfig, log.StandardLogger())
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-
-// LoadFeatureFlags parses {ConfigDir}/feature.yaml to enable/disable features.
-//
-// Since CROWDSEC_FEATURE_ envvars are parsed before config.yaml,
-// when the logger is not yet initialized, we also log here a recap
-// of what has been enabled.
-func LoadFeatureFlags(cConfig *csconfig.Config, logger *log.Logger) error {
-	featurePath := filepath.Join(cConfig.ConfigPaths.ConfigDir, "feature.yaml")
-
-	if err := fflag.InitCrowdsecFeatures(); err != nil {
-		log.Fatalf("failed to initialize features: %s", err)
-	}
-
-	if err := fflag.CrowdsecFeatures.SetFromYamlFile(featurePath, logger); err != nil {
-		return fmt.Errorf("file %s: %s", featurePath, err)
-	}
-
-	enabledFeatures := fflag.CrowdsecFeatures.GetEnabledFeatures()
-
-	msg := "<none>"
-	if len(enabledFeatures) > 0 {
-		msg = strings.Join(enabledFeatures, ", ")
-	}
-	logger.Infof("Enabled features: %s", msg)
 
 	return nil
 }
@@ -358,10 +308,14 @@ func exitWithCode(exitCode int, err error) {
 var crowdsecT0 time.Time
 
 func main() {
+	if err := fflag.RegisterAllFeatures(); err != nil {
+		log.Fatalf("failed to register features: %s", err)
+	}
+
 	// some features can require configuration or command-line options,
 	// so wwe need to parse them asap. we'll load from feature.yaml later.
-	if err := fflag.CrowdsecFeatures.SetFromEnv("CROWDSEC_FEATURE_", log.StandardLogger()); err != nil {
-		log.Fatalf("failed set features from environment: %s", err)
+	if err := csconfig.LoadFeatureFlagsEnv(log.StandardLogger()); err != nil {
+		log.Fatalf("failed to set feature flags from environment: %s", err)
 	}
 
 	crowdsecT0 = time.Now()

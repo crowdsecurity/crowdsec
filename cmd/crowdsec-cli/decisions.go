@@ -27,13 +27,6 @@ import (
 
 var Client *apiclient.ApiClient
 
-var (
-	defaultDuration = "4h"
-	defaultScope    = "ip"
-	defaultType     = "ban"
-	defaultReason   = "manual"
-)
-
 func DecisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 	/*here we cheat a bit : to make it more readable for the user, we dedup some entries*/
 	var spamLimit map[string]bool = make(map[string]bool)
@@ -106,7 +99,6 @@ func DecisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error
 }
 
 func NewDecisionsCmd() *cobra.Command {
-	/* ---- DECISIONS COMMAND */
 	var cmdDecisions = &cobra.Command{
 		Use:     "decisions [action]",
 		Short:   "Manage decisions",
@@ -139,6 +131,15 @@ func NewDecisionsCmd() *cobra.Command {
 		},
 	}
 
+	cmdDecisions.AddCommand(NewDecisionsListCmd())
+	cmdDecisions.AddCommand(NewDecisionsAddCmd())
+	cmdDecisions.AddCommand(NewDecisionsDeleteCmd())
+	cmdDecisions.AddCommand(NewDecisionsImportCmd())
+
+	return cmdDecisions
+}
+
+func NewDecisionsListCmd() *cobra.Command {
 	var filter = apiclient.AlertsListOpts{
 		ValueEquals:    new(string),
 		ScopeEquals:    new(string),
@@ -155,6 +156,7 @@ func NewDecisionsCmd() *cobra.Command {
 	NoSimu := new(bool)
 	contained := new(bool)
 	var printMachine bool
+
 	var cmdDecisionsList = &cobra.Command{
 		Use:   "list [options]",
 		Short: "List decisions from LAPI",
@@ -249,7 +251,7 @@ cscli decisions list -t ban
 	cmdDecisionsList.Flags().StringVar(filter.Until, "until", "", "restrict to alerts older than until (ie. 4h, 30d)")
 	cmdDecisionsList.Flags().StringVarP(filter.TypeEquals, "type", "t", "", "restrict to this decision type (ie. ban,captcha)")
 	cmdDecisionsList.Flags().StringVar(filter.ScopeEquals, "scope", "", "restrict to this scope (ie. ip,range,session)")
-	cmdDecisionsList.Flags().StringVar(filter.OriginEquals, "origin", "", "restrict to this origin (ie. lists,CAPI,cscli,cscli-import,crowdsec)")
+	cmdDecisionsList.Flags().StringVar(filter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
 	cmdDecisionsList.Flags().StringVarP(filter.ValueEquals, "value", "v", "", "restrict to this value (ie. 1.2.3.4,userName)")
 	cmdDecisionsList.Flags().StringVarP(filter.ScenarioEquals, "scenario", "s", "", "restrict to this scenario (ie. crowdsecurity/ssh-bf)")
 	cmdDecisionsList.Flags().StringVarP(filter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
@@ -259,8 +261,10 @@ cscli decisions list -t ban
 	cmdDecisionsList.Flags().BoolVarP(&printMachine, "machine", "m", false, "print machines that triggered decisions")
 	cmdDecisionsList.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
 
-	cmdDecisions.AddCommand(cmdDecisionsList)
+	return cmdDecisionsList
+}
 
+func NewDecisionsAddCmd() *cobra.Command {
 	var (
 		addIP       string
 		addRange    string
@@ -284,9 +288,8 @@ cscli decisions add --scope username --value foobar
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
-			var ipRange string
 			alerts := models.AddAlertsRequest{}
-			origin := "cscli"
+			origin := types.CscliOrigin
 			capacity := int32(0)
 			leakSpeed := "0"
 			eventsCount := int32(1)
@@ -334,12 +337,13 @@ cscli decisions add --scope username --value foobar
 				Scenario:        &addReason,
 				ScenarioVersion: &empty,
 				Simulated:       &simulated,
+				//setting empty scope/value broke plugins, and it didn't seem to be needed anymore w/ latest papi changes
 				Source: &models.Source{
 					AsName:   empty,
 					AsNumber: empty,
 					Cn:       empty,
 					IP:       addValue,
-					Range:    ipRange,
+					Range:    "",
 					Scope:    &addScope,
 					Value:    &addValue,
 				},
@@ -366,8 +370,11 @@ cscli decisions add --scope username --value foobar
 	cmdDecisionsAdd.Flags().StringVar(&addScope, "scope", types.Ip, "Decision scope (ie. ip,range,username)")
 	cmdDecisionsAdd.Flags().StringVarP(&addReason, "reason", "R", "", "Decision reason (ie. scenario-name)")
 	cmdDecisionsAdd.Flags().StringVarP(&addType, "type", "t", "ban", "Decision type (ie. ban,captcha,throttle)")
-	cmdDecisions.AddCommand(cmdDecisionsAdd)
 
+	return cmdDecisionsAdd
+}
+
+func NewDecisionsDeleteCmd() *cobra.Command {
 	var delFilter = apiclient.DecisionsDeleteOpts{
 		ScopeEquals:    new(string),
 		ValueEquals:    new(string),
@@ -378,6 +385,8 @@ cscli decisions add --scope username --value foobar
 	}
 	var delDecisionId string
 	var delDecisionAll bool
+	contained := new(bool)
+
 	var cmdDecisionsDelete = &cobra.Command{
 		Use:               "delete [options]",
 		Short:             "Delete decisions",
@@ -461,14 +470,20 @@ cscli decisions delete --type captcha
 	cmdDecisionsDelete.Flags().BoolVar(&delDecisionAll, "all", false, "delete all decisions")
 	cmdDecisionsDelete.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
 
-	cmdDecisions.AddCommand(cmdDecisionsDelete)
+	return cmdDecisionsDelete
+}
 
+func NewDecisionsImportCmd() *cobra.Command {
 	var (
-		importDuration string
-		importScope    string
-		importReason   string
-		importType     string
-		importFile     string
+		defaultDuration = "4h"
+		defaultScope    = "ip"
+		defaultType     = "ban"
+		defaultReason   = "manual"
+		importDuration  string
+		importScope     string
+		importReason    string
+		importType      string
+		importFile      string
 	)
 
 	var cmdDecisionImport = &cobra.Command{
@@ -532,7 +547,7 @@ decisions.json :
 					decisionLine.Duration = importDuration
 					log.Debugf("'duration' line %d, using supplied value: '%s'", line, importDuration)
 				}
-				decisionLine.Origin = "cscli-import"
+				decisionLine.Origin = types.CscliImportOrigin
 
 				if decisionLine.Scenario == "" {
 					decisionLine.Scenario = defaultReason
@@ -572,11 +587,11 @@ decisions.json :
 			alerts := models.AddAlertsRequest{}
 			importAlert := models.Alert{
 				CreatedAt: time.Now().UTC().Format(time.RFC3339),
-				Scenario:  types.StrPtr(fmt.Sprintf("add: %d IPs", len(decisionsList))),
+				Scenario:  types.StrPtr(fmt.Sprintf("import %s : %d IPs", importFile, len(decisionsList))),
 				Message:   types.StrPtr(""),
 				Events:    []*models.Event{},
 				Source: &models.Source{
-					Scope: types.StrPtr("cscli/manual-import"),
+					Scope: types.StrPtr(""),
 					Value: types.StrPtr(""),
 				},
 				StartAt:         types.StrPtr(time.Now().UTC().Format(time.RFC3339)),
@@ -609,7 +624,6 @@ decisions.json :
 	cmdDecisionImport.Flags().StringVar(&importScope, "scope", types.Ip, "Decision scope (ie. ip,range,username)")
 	cmdDecisionImport.Flags().StringVarP(&importReason, "reason", "R", "", "Decision reason (ie. scenario-name)")
 	cmdDecisionImport.Flags().StringVarP(&importType, "type", "t", "", "Decision type (ie. ban,captcha,throttle)")
-	cmdDecisions.AddCommand(cmdDecisionImport)
 
-	return cmdDecisions
+	return cmdDecisionImport
 }

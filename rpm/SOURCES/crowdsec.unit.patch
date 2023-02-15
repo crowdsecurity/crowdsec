@@ -10,4 +10,4 @@
 +ExecStart=/usr/bin/crowdsec -c /etc/crowdsec/config.yaml
  #ExecStartPost=/bin/sleep 0.1
  ExecReload=/bin/kill -HUP $MAINPID
- 
+ Restart=always

@@ -45,6 +45,8 @@ type Decision struct {
 	Origin string `json:"origin,omitempty"`
 	// Simulated holds the value of the "simulated" field.
 	Simulated bool `json:"simulated,omitempty"`
+	// UUID holds the value of the "uuid" field.
+	UUID string `json:"uuid,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the DecisionQuery when eager-loading is set.
 	Edges           DecisionEdges `json:"edges"`
@@ -82,7 +84,7 @@ func (*Decision) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case decision.FieldID, decision.FieldStartIP, decision.FieldEndIP, decision.FieldStartSuffix, decision.FieldEndSuffix, decision.FieldIPSize:
 			values[i] = new(sql.NullInt64)
-		case decision.FieldScenario, decision.FieldType, decision.FieldScope, decision.FieldValue, decision.FieldOrigin:
+		case decision.FieldScenario, decision.FieldType, decision.FieldScope, decision.FieldValue, decision.FieldOrigin, decision.FieldUUID:
 			values[i] = new(sql.NullString)
 		case decision.FieldCreatedAt, decision.FieldUpdatedAt, decision.FieldUntil:
 			values[i] = new(sql.NullTime)
@@ -196,6 +198,12 @@ func (d *Decision) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				d.Simulated = value.Bool
 			}
+		case decision.FieldUUID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field uuid", values[i])
+			} else if value.Valid {
+				d.UUID = value.String
+			}
 		case decision.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for edge-field alert_decisions", value)
@@ -283,6 +291,8 @@ func (d *Decision) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("simulated=")
 	builder.WriteString(fmt.Sprintf("%v", d.Simulated))
+	builder.WriteString(", uuid=")
+	builder.WriteString(d.UUID)
 	builder.WriteByte(')')
 	return builder.String()
 }

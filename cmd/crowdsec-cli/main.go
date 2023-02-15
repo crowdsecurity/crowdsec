@@ -54,7 +54,7 @@ func initConfig() {
 	}
 
 	if !inSlice(os.Args[1], NoNeedConfig) {
-		csConfig, err = csconfig.NewConfig(ConfigFilePath, false, false)
+		csConfig, err = csconfig.NewConfig(ConfigFilePath, false, false, true)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -66,9 +66,10 @@ func initConfig() {
 		csConfig = csconfig.NewDefaultConfig()
 	}
 
-	featurePath := filepath.Join(csConfig.ConfigPaths.ConfigDir, "feature.yaml")
-	if err = fflag.CrowdsecFeatures.SetFromYamlFile(featurePath, log.StandardLogger()); err != nil {
-		log.Fatalf("File %s: %s", featurePath, err)
+	// recap of the enabled feature flags, because logging
+	// was not enabled when we set them from envvars
+	if fflist := csconfig.ListFeatureFlags(); fflist != "" {
+		log.Debugf("Enabled feature flags: %s", fflist)
 	}
 
 	if csConfig.Cscli == nil {
@@ -137,14 +138,12 @@ func main() {
 	logFormatter := &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true}
 	log.SetFormatter(logFormatter)
 
-	if err := fflag.InitCrowdsecFeatures(); err != nil {
-		log.Fatalf("failed to initialize features: %s", err)
+	if err := fflag.RegisterAllFeatures(); err != nil {
+		log.Fatalf("failed to register features: %s", err)
 	}
 
-	// some features can require configuration or command-line options,
-	// so we need to parse them asap. we'll load from feature.yaml later.
-	if err := fflag.CrowdsecFeatures.SetFromEnv("CROWDSEC_FEATURE_", log.StandardLogger()); err != nil {
-		log.Fatalf("failed to set features from environment: %s", err)
+	if err := csconfig.LoadFeatureFlagsEnv(log.StandardLogger()); err != nil {
+		log.Fatalf("failed to set feature flags from env: %s", err)
 	}
 
 	var rootCmd = &cobra.Command{
@@ -242,6 +241,10 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewHubTestCmd())
 	rootCmd.AddCommand(NewNotificationsCmd())
 	rootCmd.AddCommand(NewSupportCmd())
+
+	if fflag.CscliSetup.IsEnabled() {
+		rootCmd.AddCommand(NewSetupCmd())
+	}
 
 	if err := rootCmd.Execute(); err != nil {
 		if bincoverTesting != "" {

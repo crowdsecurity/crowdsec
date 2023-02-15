@@ -2,7 +2,7 @@
 lines:
   - Meta:
       test: test1
-      source_ip: 8.8.8.8
+      source_ip: 1.0.0.1
   - Meta:
       test: test2
       source_ip: 192.168.0.1
@@ -10,11 +10,10 @@ lines:
 results:
   - Process: true
     Enriched:
-      IsoCode: US
       IsInEU: false
-      ASNOrg: Google LLC
+      ASNOrg: "Google Inc."
     Meta:
-      source_ip: 8.8.8.8
+      source_ip: 1.0.0.1
   - Process: true
     Enriched:
       IsInEU: false

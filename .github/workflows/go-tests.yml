@@ -30,13 +30,13 @@ env:
   # and to override our endpoint in aws sdk
   AWS_ENDPOINT_FORCE: http://localhost:4566
   KINESIS_INITIALIZE_STREAMS: "stream-1-shard:1,stream-2-shards:2"
+  CROWDSEC_FEATURE_DISABLE_HTTP_RETRY_BACKOFF: true
 
 jobs:
-
   build:
     strategy:
       matrix:
-        go-version: ["1.19", "1.20.0-rc.1"]
+        go-version: ["1.20.1"]
 
     name: "Build + tests"
     runs-on: ubuntu-latest
@@ -73,7 +73,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-      
+
       kafka1:
         image: crowdsecurity/kafka-ssl
         ports:
@@ -125,7 +125,7 @@ jobs:
         submodules: false
 
     - name: Cache Go modules
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: |
           ~/go/pkg/mod

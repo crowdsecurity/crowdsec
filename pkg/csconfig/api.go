@@ -21,9 +21,11 @@ import (
 type APICfg struct {
 	Client *LocalApiClientCfg `yaml:"client"`
 	Server *LocalApiServerCfg `yaml:"server"`
+	CTI    *CTICfg            `yaml:"cti"`
 }
 
 type ApiCredentialsCfg struct {
+	PapiURL    string `yaml:"papi_url,omitempty" json:"papi_url,omitempty"`
 	URL        string `yaml:"url,omitempty" json:"url,omitempty"`
 	Login      string `yaml:"login,omitempty" json:"login,omitempty"`
 	Password   string `yaml:"password,omitempty" json:"-"`
@@ -45,6 +47,37 @@ type LocalApiClientCfg struct {
 	InsecureSkipVerify  *bool              `yaml:"insecure_skip_verify"` // check if api certificate is bad or not
 }
 
+type CTICfg struct {
+	Key          *string        `yaml:"key,omitempty"`
+	CacheTimeout *time.Duration `yaml:"cache_timeout,omitempty"`
+	CacheSize    *int           `yaml:"cache_size,omitempty"`
+	Enabled      *bool          `yaml:"enabled,omitempty"`
+	LogLevel     *log.Level     `yaml:"log_level,omitempty"`
+}
+
+func (a *CTICfg) Load() error {
+
+	if a.Key == nil {
+		*a.Enabled = false
+	}
+	if a.Key != nil && *a.Key == "" {
+		return fmt.Errorf("empty cti key")
+	}
+	if a.Enabled == nil {
+		a.Enabled = new(bool)
+		*a.Enabled = true
+	}
+	if a.CacheTimeout == nil {
+		a.CacheTimeout = new(time.Duration)
+		*a.CacheTimeout = 10 * time.Minute
+	}
+	if a.CacheSize == nil {
+		a.CacheSize = new(int)
+		*a.CacheSize = 100
+	}
+	return nil
+}
+
 func (o *OnlineApiClientCfg) Load() error {
 	o.Credentials = new(ApiCredentialsCfg)
 	fcontent, err := os.ReadFile(o.CredentialsFilePath)
@@ -59,6 +92,7 @@ func (o *OnlineApiClientCfg) Load() error {
 		log.Warningf("can't load CAPI credentials from '%s' (missing field)", o.CredentialsFilePath)
 		o.Credentials = nil
 	}
+
 	return nil
 }
 
@@ -82,7 +116,7 @@ func (l *LocalApiClientCfg) Load() error {
 		}
 	}
 
-	if l.Credentials.Login != "" && (l.Credentials.CACertPath != "" || l.Credentials.CertPath != "" || l.Credentials.KeyPath != "") {
+	if l.Credentials.Login != "" && (l.Credentials.CertPath != "" || l.Credentials.KeyPath != "") {
 		return fmt.Errorf("user/password authentication and TLS authentication are mutually exclusive")
 	}
 
@@ -92,12 +126,7 @@ func (l *LocalApiClientCfg) Load() error {
 		apiclient.InsecureSkipVerify = *l.InsecureSkipVerify
 	}
 
-	if l.Credentials.CACertPath != "" && l.Credentials.CertPath != "" && l.Credentials.KeyPath != "" {
-		cert, err := tls.LoadX509KeyPair(l.Credentials.CertPath, l.Credentials.KeyPath)
-		if err != nil {
-			return errors.Wrapf(err, "failed to load api client certificate")
-		}
-
+	if l.Credentials.CACertPath != "" {
 		caCert, err := os.ReadFile(l.Credentials.CACertPath)
 		if err != nil {
 			return errors.Wrapf(err, "failed to load cacert")
@@ -105,10 +134,18 @@ func (l *LocalApiClientCfg) Load() error {
 
 		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM(caCert)
-
-		apiclient.Cert = &cert
 		apiclient.CaCertPool = caCertPool
 	}
+
+	if l.Credentials.CertPath != "" && l.Credentials.KeyPath != "" {
+		cert, err := tls.LoadX509KeyPair(l.Credentials.CertPath, l.Credentials.KeyPath)
+		if err != nil {
+			return errors.Wrapf(err, "failed to load api client certificate")
+		}
+
+		apiclient.Cert = &cert
+	}
+
 	return nil
 }
 
@@ -157,6 +194,7 @@ type LocalApiServerCfg struct {
 	LogMaxAge              int                 `yaml:"-"`
 	LogMaxFiles            int                 `yaml:"-"`
 	TrustedIPs             []string            `yaml:"trusted_ips,omitempty"`
+	PapiLogLevel           *log.Level          `yaml:"papi_log_level"`
 }
 
 type TLSCfg struct {
@@ -176,8 +214,35 @@ func (c *Config) LoadAPIServer() error {
 		log.Warning("crowdsec local API is disabled from flag")
 	}
 
-	if c.API.Server == nil {
-		log.Warning("crowdsec local API is disabled because its configuration is not present")
+	if c.API.Server != nil {
+
+		//inherit log level from common, then api->server
+		var logLevel log.Level
+		if c.API.Server.LogLevel != nil {
+			logLevel = *c.API.Server.LogLevel
+		} else if c.Common.LogLevel != nil {
+			logLevel = *c.Common.LogLevel
+		} else {
+			logLevel = log.InfoLevel
+		}
+
+		if c.API.Server.PapiLogLevel == nil {
+			c.API.Server.PapiLogLevel = &logLevel
+		}
+
+		if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
+			if err := c.API.Server.OnlineClient.Load(); err != nil {
+				return errors.Wrap(err, "loading online client credentials")
+			}
+		}
+		if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
+			log.Printf("push and pull to Central API disabled")
+		}
+		if err := c.LoadDBConfig(); err != nil {
+			return err
+		}
+	} else {
+		log.Warning("crowdsec local API is disabled")
 		c.DisableAPI = true
 		return nil
 	}
@@ -227,9 +292,14 @@ func (c *Config) LoadAPIServer() error {
 			return errors.Wrap(err, "loading online client credentials")
 		}
 	}
+	if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
+		log.Printf("push and pull to Central API disabled")
+	}
 
-	if err := c.LoadDBConfig(); err != nil {
-		return err
+	if c.API.CTI != nil {
+		if err := c.API.CTI.Load(); err != nil {
+			return errors.Wrap(err, "loading CTI configuration")
+		}
 	}
 
 	return nil

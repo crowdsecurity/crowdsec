@@ -14,6 +14,7 @@ import (
 
 	"github.com/c-robinson/iplib"
 
+	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
@@ -22,6 +23,13 @@ import (
 var dataFile map[string][]string
 var dataFileRegex map[string][]*regexp.Regexp
 var dbClient *database.Client
+
+func Get(arr []string, index int) string {
+	if index >= len(arr) {
+		return ""
+	}
+	return arr[index]
+}
 
 func Atof(x string) float64 {
 	log.Debugf("debug atof %s", x)
@@ -64,10 +72,36 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"XMLGetNodeValue":        XMLGetNodeValue,
 		"IpToRange":              IpToRange,
 		"IsIPV6":                 IsIPV6,
+		"IsIPV4":                 IsIPV4,
+		"IsIP":                   IsIP,
 		"LookupHost":             LookupHost,
 		"GetDecisionsCount":      GetDecisionsCount,
 		"GetDecisionsSinceCount": GetDecisionsSinceCount,
 		"Sprintf":                fmt.Sprintf,
+		"CrowdsecCTI":            CrowdsecCTI,
+		"ParseUnix":              ParseUnix,
+		"GetFromStash":           cache.GetKey,
+		"SetInStash":             cache.SetKey,
+		//go 1.20 "CutPrefix":              strings.CutPrefix,
+		//go 1.20 "CutSuffix": strings.CutSuffix,
+		//"Cut":         strings.Cut, -> returns more than 2 values, not supported  by expr
+		"Fields":      strings.Fields,
+		"Index":       strings.Index,
+		"IndexAny":    strings.IndexAny,
+		"Join":        strings.Join,
+		"Split":       strings.Split,
+		"SplitAfter":  strings.SplitAfter,
+		"SplitAfterN": strings.SplitAfterN,
+		"SplitN":      strings.SplitN,
+		"Replace":     strings.Replace,
+		"ReplaceAll":  strings.ReplaceAll,
+		"Trim":        strings.Trim,
+		"TrimLeft":    strings.TrimLeft,
+		"TrimRight":   strings.TrimRight,
+		"TrimSpace":   strings.TrimSpace,
+		"TrimPrefix":  strings.TrimPrefix,
+		"TrimSuffix":  strings.TrimSuffix,
+		"Get":         Get,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
@@ -202,6 +236,24 @@ func IsIPV6(ip string) bool {
 	return ipParsed.To4() == nil
 }
 
+func IsIPV4(ip string) bool {
+	ipParsed := net.ParseIP(ip)
+	if ipParsed == nil {
+		log.Debugf("'%s' is not a valid IP", ip)
+		return false
+	}
+	return ipParsed.To4() != nil
+}
+
+func IsIP(ip string) bool {
+	ipParsed := net.ParseIP(ip)
+	if ipParsed == nil {
+		log.Debugf("'%s' is not a valid IP", ip)
+		return false
+	}
+	return true
+}
+
 func IpToRange(ip string, cidr string) string {
 	cidr = strings.TrimPrefix(cidr, "/")
 	mask, err := strconv.Atoi(cidr)
@@ -254,6 +306,7 @@ func GetDecisionsCount(value string) int {
 	if dbClient == nil {
 		log.Error("No database config to call GetDecisionsCount()")
 		return 0
+
 	}
 	count, err := dbClient.CountDecisionsByValue(value)
 	if err != nil {
@@ -283,10 +336,28 @@ func GetDecisionsSinceCount(value string, since string) int {
 }
 
 func LookupHost(value string) []string {
-	addresses , err := net.LookupHost(value)
+	addresses, err := net.LookupHost(value)
 	if err != nil {
 		log.Errorf("Failed to lookup host '%s' : %s", value, err)
-		return []string{} 
+		return []string{}
 	}
 	return addresses
+}
+
+func ParseUnixTime(value string) (time.Time, error) {
+	//Splitting string here as some unix timestamp may have milliseconds and break ParseInt
+	i, err := strconv.ParseInt(strings.Split(value, ".")[0], 10, 64)
+	if err != nil || i <= 0 {
+		return time.Time{}, fmt.Errorf("unable to parse %s as unix timestamp", value)
+	}
+	return time.Unix(i, 0), nil
+}
+
+func ParseUnix(value string) string {
+	t, err := ParseUnixTime(value)
+	if err != nil {
+		log.Error(err)
+		return ""
+	}
+	return t.Format(time.RFC3339)
 }

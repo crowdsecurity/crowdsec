@@ -28,23 +28,23 @@ teardown() {
 }
 
 @test "there are 2 collections (linux and sshd)" {
-    run -0 cscli collections list -o json
+    run -0 --separate-stderr cscli collections list -o json
     run -0 jq '.collections | length' <(output)
     assert_output 2
 }
 
 @test "can install a collection (as a regular user) and remove it" {
     # collection is not installed
-    run -0 cscli collections list -o json
+    run -0 --separate-stderr cscli collections list -o json
     run -0 jq -r '.collections[].name' <(output)
     refute_line "crowdsecurity/mysql"
 
     # we install it
-    run -0 cscli collections install crowdsecurity/mysql -o human
-    assert_output --partial "Enabled crowdsecurity/mysql"
+    run -0 --separate-stderr cscli collections install crowdsecurity/mysql -o human
+    assert_stderr --partial "Enabled crowdsecurity/mysql"
 
     # it has been installed
-    run -0 cscli collections list -o json
+    run -0 --separate-stderr cscli collections list -o json
     run -0 jq -r '.collections[].name' <(output)
     assert_line "crowdsecurity/mysql"
 
@@ -53,7 +53,7 @@ teardown() {
     assert_output --partial "Removed symlink [crowdsecurity/mysql]"
 
     # it has been removed
-    run -0 cscli collections list -o json
+    run -0 --separate-stderr cscli collections list -o json
     run -0 jq -r '.collections[].name' <(output)
     refute_line "crowdsecurity/mysql"
 }
@@ -66,7 +66,7 @@ teardown() {
 
     run -0 --separate-stderr cscli collections remove crowdsecurity/sshd --force
     assert_stderr --partial "Removed symlink [crowdsecurity/sshd]"
-    run -0 cscli collections inspect crowdsecurity/linux -o json
+    run -0 --separate-stderr cscli collections inspect crowdsecurity/linux -o json
     run -0 jq -r '.tainted' <(output)
     assert_output "true"
 }
@@ -105,7 +105,7 @@ teardown() {
     run -0 cscli collections remove --all
     assert_output --partial "Removed symlink [crowdsecurity/sshd]"
     assert_output --partial "Removed symlink [crowdsecurity/linux]"
-    run -0 cscli hub list -o json
+    run -0 --separate-stderr cscli hub list -o json
     assert_json '{collections:[],parsers:[],postoverflows:[],scenarios:[]}'
     run -0 cscli collections remove --all
     assert_output --partial 'Disabled 0 items'

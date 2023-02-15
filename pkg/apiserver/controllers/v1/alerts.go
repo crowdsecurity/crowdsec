@@ -6,13 +6,16 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
+	"github.com/google/uuid"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
@@ -42,6 +45,7 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 		Capacity:        &alert.Capacity,
 		Leakspeed:       &alert.LeakSpeed,
 		Simulated:       &alert.Simulated,
+		UUID:            alert.UUID,
 		Source: &models.Source{
 			Scope:     &alert.SourceScope,
 			Value:     &alert.SourceValue,
@@ -112,6 +116,21 @@ func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uin
 	}
 }
 
+func normalizeScope(scope string) string {
+	switch strings.ToLower(scope) {
+	case "ip":
+		return types.Ip
+	case "range":
+		return types.Range
+	case "as":
+		return types.AS
+	case "country":
+		return types.Country
+	default:
+		return scope
+	}
+}
+
 // CreateAlert writes the alerts received in the body to the database
 func (c *Controller) CreateAlert(gctx *gin.Context) {
 
@@ -131,13 +150,31 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	}
 	stopFlush := false
 	for _, alert := range input {
+		//normalize scope for alert.Source and decisions
+		if alert.Source.Scope != nil {
+			*alert.Source.Scope = normalizeScope(*alert.Source.Scope)
+		}
+		for _, decision := range alert.Decisions {
+			if decision.Scope != nil {
+				*decision.Scope = normalizeScope(*decision.Scope)
+			}
+		}
+
 		alert.MachineID = machineID
+		//generate uuid here for alert
+		alert.UUID = uuid.NewString()
+
+		//if coming from cscli, alert already has decisions
 		if len(alert.Decisions) != 0 {
+			//alert already has a decision (cscli decisions add etc.), generate uuid here
+			for _, decision := range alert.Decisions {
+				decision.UUID = uuid.NewString()
+			}
 			for pIdx, profile := range c.Profiles {
 				_, matched, err := profile.EvaluateProfile(alert)
 				if err != nil {
-					gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
-					return
+					profile.Logger.Warningf("error while evaluating profile %s : %v", profile.Cfg.Name, err)
+					continue
 				}
 				if !matched {
 					continue
@@ -148,7 +185,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 				}
 			}
 			decision := alert.Decisions[0]
-			if decision.Origin != nil && *decision.Origin == "cscli-import" {
+			if decision.Origin != nil && *decision.Origin == types.CscliImportOrigin {
 				stopFlush = true
 			}
 			continue
@@ -156,21 +193,36 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 
 		for pIdx, profile := range c.Profiles {
 			profileDecisions, matched, err := profile.EvaluateProfile(alert)
+			forceBreak := false
 			if err != nil {
-				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
-				return
+				switch profile.Cfg.OnError {
+				case "apply":
+					profile.Logger.Warningf("applying profile %s despite error: %s", profile.Cfg.Name, err)
+					matched = true
+				case "continue":
+					profile.Logger.Warningf("skipping %s profile due to error: %s", profile.Cfg.Name, err)
+				case "break":
+					forceBreak = true
+				case "ignore":
+					profile.Logger.Warningf("ignoring error: %s", err)
+				default:
+					gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+					return
+				}
 			}
-
 			if !matched {
 				continue
 			}
-
+			for _, decision := range profileDecisions {
+				decision.UUID = uuid.NewString()
+			}
+			//generate uuid here for alert
 			if len(alert.Decisions) == 0 { // non manual decision
 				alert.Decisions = append(alert.Decisions, profileDecisions...)
 			}
 			profileAlert := *alert
 			c.sendAlertToPluginChannel(&profileAlert, uint(pIdx))
-			if profile.Cfg.OnSuccess == "break" {
+			if profile.Cfg.OnSuccess == "break" || forceBreak {
 				break
 			}
 		}
@@ -188,9 +240,9 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		return
 	}
 
-	if c.CAPIChan != nil {
+	if c.AlertsAddChan != nil {
 		select {
-		case c.CAPIChan <- input:
+		case c.AlertsAddChan <- input:
 			log.Debug("alert sent to CAPI channel")
 		default:
 			log.Warning("Cannot send alert to Central API channel")
@@ -267,7 +319,6 @@ func (c *Controller) DeleteAlertByID(gctx *gin.Context) {
 
 	gctx.JSON(http.StatusOK, deleteAlertResp)
 }
-
 
 // DeleteAlerts deletes alerts from the database based on the specified filter
 func (c *Controller) DeleteAlerts(gctx *gin.Context) {

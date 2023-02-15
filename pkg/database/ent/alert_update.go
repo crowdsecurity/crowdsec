@@ -464,6 +464,26 @@ func (au *AlertUpdate) SetNillableSimulated(b *bool) *AlertUpdate {
 	return au
 }
 
+// SetUUID sets the "uuid" field.
+func (au *AlertUpdate) SetUUID(s string) *AlertUpdate {
+	au.mutation.SetUUID(s)
+	return au
+}
+
+// SetNillableUUID sets the "uuid" field if the given value is not nil.
+func (au *AlertUpdate) SetNillableUUID(s *string) *AlertUpdate {
+	if s != nil {
+		au.SetUUID(*s)
+	}
+	return au
+}
+
+// ClearUUID clears the value of the "uuid" field.
+func (au *AlertUpdate) ClearUUID() *AlertUpdate {
+	au.mutation.ClearUUID()
+	return au
+}
+
 // SetOwnerID sets the "owner" edge to the Machine entity by ID.
 func (au *AlertUpdate) SetOwnerID(id int) *AlertUpdate {
 	au.mutation.SetOwnerID(id)
@@ -987,6 +1007,19 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Type:   field.TypeBool,
 			Value:  value,
 			Column: alert.FieldSimulated,
+		})
+	}
+	if value, ok := au.mutation.UUID(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: alert.FieldUUID,
+		})
+	}
+	if au.mutation.UUIDCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Column: alert.FieldUUID,
 		})
 	}
 	if au.mutation.OwnerCleared() {
@@ -1637,6 +1670,26 @@ func (auo *AlertUpdateOne) SetNillableSimulated(b *bool) *AlertUpdateOne {
 	return auo
 }
 
+// SetUUID sets the "uuid" field.
+func (auo *AlertUpdateOne) SetUUID(s string) *AlertUpdateOne {
+	auo.mutation.SetUUID(s)
+	return auo
+}
+
+// SetNillableUUID sets the "uuid" field if the given value is not nil.
+func (auo *AlertUpdateOne) SetNillableUUID(s *string) *AlertUpdateOne {
+	if s != nil {
+		auo.SetUUID(*s)
+	}
+	return auo
+}
+
+// ClearUUID clears the value of the "uuid" field.
+func (auo *AlertUpdateOne) ClearUUID() *AlertUpdateOne {
+	auo.mutation.ClearUUID()
+	return auo
+}
+
 // SetOwnerID sets the "owner" edge to the Machine entity by ID.
 func (auo *AlertUpdateOne) SetOwnerID(id int) *AlertUpdateOne {
 	auo.mutation.SetOwnerID(id)
@@ -2190,6 +2243,19 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 			Type:   field.TypeBool,
 			Value:  value,
 			Column: alert.FieldSimulated,
+		})
+	}
+	if value, ok := auo.mutation.UUID(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: alert.FieldUUID,
+		})
+	}
+	if auo.mutation.UUIDCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Column: alert.FieldUUID,
 		})
 	}
 	if auo.mutation.OwnerCleared() {

@@ -11,7 +11,6 @@ env:
   PREFIX_TEST_NAMES_WITH_FILE: true
 
 jobs:
-
   build:
     name: "Build + tests"
     runs-on: ubuntu-latest
@@ -31,10 +30,10 @@ jobs:
           sudo chmod +w /etc/machine-id
           echo githubciXXXXXXXXXXXXXXXXXXXXXXXX | sudo tee /etc/machine-id
 
-    - name: "Set up Go 1.19"
+    - name: "Set up Go 1.20"
       uses: actions/setup-go@v3
       with:
-        go-version: 1.19
+        go-version: 1.20.1
       id: go
 
     - name: "Check out CrowdSec repository"
@@ -44,12 +43,13 @@ jobs:
         submodules: true
 
     - name: "Install bats dependencies"
+      env:
+        GOBIN: /usr/local/bin
       run: |
         sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential daemonize jq netcat-openbsd
         go install github.com/mikefarah/yq/v4@latest
         go install github.com/cloudflare/cfssl/cmd/cfssl@master
         go install github.com/cloudflare/cfssl/cmd/cfssljson@master
-        sudo cp -u ~/go/bin/yq ~/go/bin/cfssl ~/go/bin/cfssljson /usr/local/bin/
 
     - name: "Build crowdsec and fixture"
       run: |

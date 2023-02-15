@@ -12,6 +12,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/configitem"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
@@ -31,6 +32,8 @@ type Client struct {
 	Alert *AlertClient
 	// Bouncer is the client for interacting with the Bouncer builders.
 	Bouncer *BouncerClient
+	// ConfigItem is the client for interacting with the ConfigItem builders.
+	ConfigItem *ConfigItemClient
 	// Decision is the client for interacting with the Decision builders.
 	Decision *DecisionClient
 	// Event is the client for interacting with the Event builders.
@@ -54,6 +57,7 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Alert = NewAlertClient(c.config)
 	c.Bouncer = NewBouncerClient(c.config)
+	c.ConfigItem = NewConfigItemClient(c.config)
 	c.Decision = NewDecisionClient(c.config)
 	c.Event = NewEventClient(c.config)
 	c.Machine = NewMachineClient(c.config)
@@ -89,14 +93,15 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:      ctx,
-		config:   cfg,
-		Alert:    NewAlertClient(cfg),
-		Bouncer:  NewBouncerClient(cfg),
-		Decision: NewDecisionClient(cfg),
-		Event:    NewEventClient(cfg),
-		Machine:  NewMachineClient(cfg),
-		Meta:     NewMetaClient(cfg),
+		ctx:        ctx,
+		config:     cfg,
+		Alert:      NewAlertClient(cfg),
+		Bouncer:    NewBouncerClient(cfg),
+		ConfigItem: NewConfigItemClient(cfg),
+		Decision:   NewDecisionClient(cfg),
+		Event:      NewEventClient(cfg),
+		Machine:    NewMachineClient(cfg),
+		Meta:       NewMetaClient(cfg),
 	}, nil
 }
 
@@ -114,14 +119,15 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:      ctx,
-		config:   cfg,
-		Alert:    NewAlertClient(cfg),
-		Bouncer:  NewBouncerClient(cfg),
-		Decision: NewDecisionClient(cfg),
-		Event:    NewEventClient(cfg),
-		Machine:  NewMachineClient(cfg),
-		Meta:     NewMetaClient(cfg),
+		ctx:        ctx,
+		config:     cfg,
+		Alert:      NewAlertClient(cfg),
+		Bouncer:    NewBouncerClient(cfg),
+		ConfigItem: NewConfigItemClient(cfg),
+		Decision:   NewDecisionClient(cfg),
+		Event:      NewEventClient(cfg),
+		Machine:    NewMachineClient(cfg),
+		Meta:       NewMetaClient(cfg),
 	}, nil
 }
 
@@ -152,6 +158,7 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	c.Alert.Use(hooks...)
 	c.Bouncer.Use(hooks...)
+	c.ConfigItem.Use(hooks...)
 	c.Decision.Use(hooks...)
 	c.Event.Use(hooks...)
 	c.Machine.Use(hooks...)
@@ -400,6 +407,96 @@ func (c *BouncerClient) GetX(ctx context.Context, id int) *Bouncer {
 // Hooks returns the client hooks.
 func (c *BouncerClient) Hooks() []Hook {
 	return c.hooks.Bouncer
+}
+
+// ConfigItemClient is a client for the ConfigItem schema.
+type ConfigItemClient struct {
+	config
+}
+
+// NewConfigItemClient returns a client for the ConfigItem from the given config.
+func NewConfigItemClient(c config) *ConfigItemClient {
+	return &ConfigItemClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `configitem.Hooks(f(g(h())))`.
+func (c *ConfigItemClient) Use(hooks ...Hook) {
+	c.hooks.ConfigItem = append(c.hooks.ConfigItem, hooks...)
+}
+
+// Create returns a create builder for ConfigItem.
+func (c *ConfigItemClient) Create() *ConfigItemCreate {
+	mutation := newConfigItemMutation(c.config, OpCreate)
+	return &ConfigItemCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ConfigItem entities.
+func (c *ConfigItemClient) CreateBulk(builders ...*ConfigItemCreate) *ConfigItemCreateBulk {
+	return &ConfigItemCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ConfigItem.
+func (c *ConfigItemClient) Update() *ConfigItemUpdate {
+	mutation := newConfigItemMutation(c.config, OpUpdate)
+	return &ConfigItemUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ConfigItemClient) UpdateOne(ci *ConfigItem) *ConfigItemUpdateOne {
+	mutation := newConfigItemMutation(c.config, OpUpdateOne, withConfigItem(ci))
+	return &ConfigItemUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ConfigItemClient) UpdateOneID(id int) *ConfigItemUpdateOne {
+	mutation := newConfigItemMutation(c.config, OpUpdateOne, withConfigItemID(id))
+	return &ConfigItemUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ConfigItem.
+func (c *ConfigItemClient) Delete() *ConfigItemDelete {
+	mutation := newConfigItemMutation(c.config, OpDelete)
+	return &ConfigItemDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a delete builder for the given entity.
+func (c *ConfigItemClient) DeleteOne(ci *ConfigItem) *ConfigItemDeleteOne {
+	return c.DeleteOneID(ci.ID)
+}
+
+// DeleteOneID returns a delete builder for the given id.
+func (c *ConfigItemClient) DeleteOneID(id int) *ConfigItemDeleteOne {
+	builder := c.Delete().Where(configitem.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ConfigItemDeleteOne{builder}
+}
+
+// Query returns a query builder for ConfigItem.
+func (c *ConfigItemClient) Query() *ConfigItemQuery {
+	return &ConfigItemQuery{
+		config: c.config,
+	}
+}
+
+// Get returns a ConfigItem entity by its id.
+func (c *ConfigItemClient) Get(ctx context.Context, id int) (*ConfigItem, error) {
+	return c.Query().Where(configitem.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ConfigItemClient) GetX(ctx context.Context, id int) *ConfigItem {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *ConfigItemClient) Hooks() []Hook {
+	return c.hooks.ConfigItem
 }
 
 // DecisionClient is a client for the Decision schema.

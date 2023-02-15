@@ -8,12 +8,13 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/bcrypt"
 )
 
-const CapiMachineID = "CAPI"
-const CapiListsMachineID = "lists"
+const CapiMachineID = types.CAPIOrigin
+const CapiListsMachineID = types.ListOrigin
 
 func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipAddress string, isValidated bool, force bool, authType string) (*ent.Machine, error) {
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)

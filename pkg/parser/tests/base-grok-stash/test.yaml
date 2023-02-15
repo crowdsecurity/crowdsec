@@ -1,0 +1,63 @@
+#these are the events we input into parser
+lines:
+  - Line:
+      Labels:
+        type: testlog
+      Raw: start foobar thing with pid 12
+  - Line:
+      Labels:
+        type: testlog
+      Raw: start toto thing with pid 42
+  - Line:
+      Labels:
+        type: testlog
+      Raw: pid 12 did a forbidden thing
+  - Line:
+      Labels:
+        type: testlog
+      Raw: pid 42 did a forbidden thing
+  - Line:
+      Labels:
+        type: testlog
+      Raw: pid 45 did a forbidden thing
+#these are the results we expect from the parser
+results:
+
+  - Meta:
+      log_type: test_start
+    Parsed:
+      program: foobar
+      pid: "12"
+    Process: true
+    Stage: s00-raw
+
+  - Meta:
+      log_type: test_start
+    Parsed:
+      program: toto
+      pid: "42"
+    Process: true
+    Stage: s00-raw
+
+  - Meta:
+      log_type: test_continue
+      associated_prog_name: foobar
+    Parsed:
+      pid: "12"
+    Process: true
+    Stage: s00-raw
+
+  - Meta:
+      log_type: test_continue
+      associated_prog_name: toto
+    Parsed:
+      pid: "42"
+    Process: true
+    Stage: s00-raw
+
+  - Meta:
+      log_type: test_continue
+    Parsed:
+      pid: "45"
+    Process: true
+    Stage: s00-raw

@@ -1,0 +1,15 @@
+# vim: set ft=yaml.ansible:
+---
+
+- name: "Run setup/wizard tests"
+  hosts: all
+  tasks:
+#    - name: "Build release package"
+#      become: false
+#      ansible.builtin.command:
+#        cmd: "make clean release"
+    - name: "Run BATS: service detection tests"
+      become: true
+      ansible.builtin.command:
+        chdir: "/home/{{ ansible_user }}"
+        cmd: "./crowdsec/tests/run-tests crowdsec/tests/bats-detect"
