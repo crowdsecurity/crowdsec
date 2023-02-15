@@ -207,7 +207,7 @@ func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPul
 	return nil
 }
 
-func (c *Controller) StreamDecisionChunked(gctx *gin.Context, bouncerInfo *ent.Bouncer, streamStartTime time.Time, filters map[string][]string) {
+func (c *Controller) StreamDecisionChunked(gctx *gin.Context, bouncerInfo *ent.Bouncer, streamStartTime time.Time, filters map[string][]string) error {
 	var err error
 
 	gctx.Writer.Header().Set("Content-Type", "application/json")
@@ -225,7 +225,7 @@ func (c *Controller) StreamDecisionChunked(gctx *gin.Context, bouncerInfo *ent.B
 			log.Errorf("failed sending new decisions for startup: %v", err)
 			gctx.Writer.Write([]byte(`], "deleted": []}`))
 			gctx.Writer.Flush()
-			return
+			return err
 		}
 
 		gctx.Writer.Write([]byte(`], "deleted": [`))
@@ -235,7 +235,7 @@ func (c *Controller) StreamDecisionChunked(gctx *gin.Context, bouncerInfo *ent.B
 			log.Errorf("failed sending expired decisions for startup: %v", err)
 			gctx.Writer.Write([]byte(`]}`))
 			gctx.Writer.Flush()
-			return
+			return err
 		}
 
 		gctx.Writer.Write([]byte(`]}`))
@@ -246,7 +246,7 @@ func (c *Controller) StreamDecisionChunked(gctx *gin.Context, bouncerInfo *ent.B
 			log.Errorf("failed sending new decisions for delta: %v", err)
 			gctx.Writer.Write([]byte(`], "deleted": []}`))
 			gctx.Writer.Flush()
-			return
+			return err
 		}
 
 		gctx.Writer.Write([]byte(`], "deleted": [`))
@@ -257,16 +257,67 @@ func (c *Controller) StreamDecisionChunked(gctx *gin.Context, bouncerInfo *ent.B
 			log.Errorf("failed sending expired decisions for delta: %v", err)
 			gctx.Writer.Write([]byte(`]}`))
 			gctx.Writer.Flush()
-			return
+			return err
 		}
 
 		gctx.Writer.Write([]byte(`]}`))
 		gctx.Writer.Flush()
 	}
+	return nil
 }
 
-func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *ent.Bouncer, streamStartTime time.Time, filters map[string][]string) {
+func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *ent.Bouncer, streamStartTime time.Time, filters map[string][]string) error {
+	var data []*ent.Decision
+	var err error
+	ret := make(map[string][]*models.Decision, 0)
+	ret["new"] = []*models.Decision{}
+	ret["deleted"] = []*models.Decision{}
 
+	if val, ok := gctx.Request.URL.Query()["startup"]; ok {
+		if val[0] == "true" {
+			data, err := c.DBClient.QueryAllDecisionsWithFilters(filters)
+			if err != nil {
+				log.Errorf("failed querying decisions: %v", err)
+				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return err
+			}
+			//data = KeepLongestDecision(data)
+			ret["new"] = FormatDecisions(data)
+
+			// getting expired decisions
+			data, err = c.DBClient.QueryExpiredDecisionsWithFilters(filters)
+			if err != nil {
+				log.Errorf("unable to query expired decision for '%s' : %v", bouncerInfo.Name, err)
+				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return err
+			}
+			ret["deleted"] = FormatDecisions(data)
+
+			gctx.JSON(http.StatusOK, ret)
+			return nil
+		}
+	}
+
+	// getting new decisions
+	data, err = c.DBClient.QueryNewDecisionsSinceWithFilters(bouncerInfo.LastPull, filters)
+	if err != nil {
+		log.Errorf("unable to query new decision for '%s' : %v", bouncerInfo.Name, err)
+		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return err
+	}
+	//data = KeepLongestDecision(data)
+	ret["new"] = FormatDecisions(data)
+
+	// getting expired decisions
+	data, err = c.DBClient.QueryExpiredDecisionsSinceWithFilters(bouncerInfo.LastPull.Add((-2 * time.Second)), filters) // do we want to give exactly lastPull time ?
+	if err != nil {
+		log.Errorf("unable to query expired decision for '%s' : %v", bouncerInfo.Name, err)
+		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return err
+	}
+	ret["deleted"] = FormatDecisions(data)
+	gctx.JSON(http.StatusOK, ret)
+	return nil
 }
 
 func (c *Controller) StreamDecision(gctx *gin.Context) {
@@ -292,12 +343,15 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 	}
 
 	if fflag.ChunkedDecisionsStream.IsEnabled() {
-		c.StreamDecisionChunked(gctx, bouncerInfo, streamStartTime, filters)
+		err = c.StreamDecisionChunked(gctx, bouncerInfo, streamStartTime, filters)
 	} else {
-		c.StreamDecisionNonChunked(gctx, bouncerInfo, streamStartTime, filters)
+		err = c.StreamDecisionNonChunked(gctx, bouncerInfo, streamStartTime, filters)
 	}
 
-	if err := c.DBClient.UpdateBouncerLastPull(streamStartTime, bouncerInfo.ID); err != nil {
-		log.Errorf("unable to update bouncer '%s' pull: %v", bouncerInfo.Name, err)
+	if err == nil {
+		//Only update the last pull time if no error occurred when sending the decisions to avoid missing decisions
+		if err := c.DBClient.UpdateBouncerLastPull(streamStartTime, bouncerInfo.ID); err != nil {
+			log.Errorf("unable to update bouncer '%s' pull: %v", bouncerInfo.Name, err)
+		}
 	}
 }
