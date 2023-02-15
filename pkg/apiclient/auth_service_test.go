@@ -58,7 +58,7 @@ func initBasicMuxMock(t *testing.T, mux *http.ServeMux, path string) {
 		log.Printf("MockServerReceived > %s // Login : [%s] => Mux response [%d]", newStr, payload.MachineID, responseCode)
 
 		w.WriteHeader(responseCode)
-		fmt.Fprintf(w, responseBody)
+		fmt.Fprintf(w, `%s`, responseBody)
 	})
 }
 
@@ -166,7 +166,7 @@ func TestWatcherAuth(t *testing.T) {
 		})
 
 		if err == nil {
-			defer resp.Response.Body.Close()
+			resp.Response.Body.Close()
 			bodyBytes, err := io.ReadAll(resp.Response.Body)
 			if err != nil {
 				log.Fatal(err)
