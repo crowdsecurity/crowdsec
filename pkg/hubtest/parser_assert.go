@@ -396,25 +396,21 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 				detailsDisplay := ""
 
 				if res {
-					if prev_item.Stage == "" {
-						changeStr = "first_parser"
-					} else {
-						changelog, _ := diff.Diff(prev_item, parsers[parser].Evt)
-						for _, change := range changelog {
-							switch change.Type {
-							case "create":
-								created++
-								detailsDisplay += fmt.Sprintf("\t%s\t\t%s %s evt.%s : %s\n", presep, sep, change.Type, strings.Join(change.Path, "."), green(change.To))
-							case "update":
-								detailsDisplay += fmt.Sprintf("\t%s\t\t%s %s evt.%s : %s -> %s\n", presep, sep, change.Type, strings.Join(change.Path, "."), change.From, yellow(change.To))
-								if change.Path[0] == "Whitelisted" && change.To == true {
-									whitelisted = true
-								}
-								updated++
-							case "delete":
-								deleted++
-								detailsDisplay += fmt.Sprintf("\t%s\t\t%s %s evt.%s\n", presep, sep, change.Type, red(strings.Join(change.Path, ".")))
+					changelog, _ := diff.Diff(prev_item, parsers[parser].Evt)
+					for _, change := range changelog {
+						switch change.Type {
+						case "create":
+							created++
+							detailsDisplay += fmt.Sprintf("\t%s\t\t%s %s evt.%s : %s\n", presep, sep, change.Type, strings.Join(change.Path, "."), green(change.To))
+						case "update":
+							detailsDisplay += fmt.Sprintf("\t%s\t\t%s %s evt.%s : %s -> %s\n", presep, sep, change.Type, strings.Join(change.Path, "."), change.From, yellow(change.To))
+							if change.Path[0] == "Whitelisted" && change.To == true {
+								whitelisted = true
 							}
+							updated++
+						case "delete":
+							deleted++
+							detailsDisplay += fmt.Sprintf("\t%s\t\t%s %s evt.%s\n", presep, sep, change.Type, red(strings.Join(change.Path, ".")))
 						}
 					}
 					prev_item = parsers[parser].Evt

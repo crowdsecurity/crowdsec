@@ -223,16 +223,18 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		}
 		log.Infof("CAPI manager configured successfully")
 		isMachineEnrolled = isEnrolled(apiClient.apiClient)
-		if isMachineEnrolled {
-			log.Infof("Machine is enrolled in the console, Loading PAPI Client")
-			papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
-			if err != nil {
-				return &APIServer{}, err
+		controller.AlertsAddChan = apiClient.AlertsAddChan
+		if fflag.PapiClient.IsEnabled() {
+			if isMachineEnrolled {
+				log.Infof("Machine is enrolled in the console, Loading PAPI Client")
+				papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
+				if err != nil {
+					return &APIServer{}, err
+				}
+				controller.DecisionDeleteChan = papiClient.Channels.DeleteDecisionChannel
+			} else {
+				log.Errorf("Machine is not enrolled in the console, can't synchronize with the console")
 			}
-			controller.DecisionDeleteChan = papiClient.Channels.DeleteDecisionChannel
-			controller.AlertsAddChan = apiClient.AlertsAddChan
-		} else {
-			log.Errorf("Machine is not enrolled in the console, can't synchronize with the console")
 		}
 	} else {
 		apiClient = nil

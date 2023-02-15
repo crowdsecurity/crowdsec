@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -150,29 +149,58 @@ func (s *DecisionsService) FetchV3Decisions(ctx context.Context, url string) (*m
 	return &v2Decisions, resp, nil
 }
 
-func (s *DecisionsService) GetDecisionsFromBlocklist(ctx context.Context, blocklist *modelscapi.BlocklistLink) ([]*models.Decision, error) {
+func (s *DecisionsService) GetDecisionsFromBlocklist(ctx context.Context, blocklist *modelscapi.BlocklistLink, lastPullTimestamp *string) ([]*models.Decision, bool, error) {
 	if blocklist.URL == nil {
-		return nil, errors.New("blocklist URL is nil")
+		return nil, false, errors.New("blocklist URL is nil")
 	}
 
 	log.Debugf("Fetching blocklist %s", *blocklist.URL)
 
-	req, err := s.client.NewRequest(http.MethodGet, *blocklist.URL, nil)
+	client := http.Client{}
+	req, err := http.NewRequest(http.MethodGet, *blocklist.URL, nil)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
-	pr, pw := io.Pipe()
-	defer pr.Close()
-	go func() {
-		defer pw.Close()
-		_, err = s.client.Do(ctx, req, pw)
-		if err != nil {
-			log.Errorf("Error fetching blocklist %s: %s", *blocklist.URL, err)
+	if lastPullTimestamp != nil {
+		req.Header.Set("If-Modified-Since", *lastPullTimestamp)
+	}
+	req = req.WithContext(ctx)
+	log.Debugf("[URL] %s %s", req.Method, req.URL)
+	// we dont use client_http Do method because we need the reader and is not provided. We would be forced to use Pipe and goroutine, etc
+	resp, err := client.Do(req)
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
+	}
+
+	if err != nil {
+		// If we got an error, and the context has been canceled,
+		// the context's error is probably more useful.
+		select {
+		case <-ctx.Done():
+			return nil, false, ctx.Err()
+		default:
 		}
-	}()
+
+		// If the error type is *url.Error, sanitize its URL before returning.
+		log.Errorf("Error fetching blocklist %s: %s", *blocklist.URL, err)
+		return nil, false, err
+	}
+
+	if resp.StatusCode == http.StatusNotModified {
+		if lastPullTimestamp != nil {
+			log.Debugf("Blocklist %s has not been modified since %s", *blocklist.URL, *lastPullTimestamp)
+		} else {
+			log.Debugf("Blocklist %s has not been modified (decisions about to expire)", *blocklist.URL)
+		}
+		return nil, false, nil
+	}
+	if resp.StatusCode != http.StatusOK {
+		log.Debugf("Received nok status code %d for blocklist %s", resp.StatusCode, *blocklist.URL)
+		return nil, false, nil
+	}
 	decisions := make([]*models.Decision, 0)
-	scanner := bufio.NewScanner(pr)
+	scanner := bufio.NewScanner(resp.Body)
 	for scanner.Scan() {
 		decision := scanner.Text()
 		decisions = append(decisions, &models.Decision{
@@ -185,7 +213,9 @@ func (s *DecisionsService) GetDecisionsFromBlocklist(ctx context.Context, blockl
 		})
 	}
 
-	return decisions, nil
+	// here the upper go routine is finished because scanner.Scan() is blocking until pw.Close() is called
+	// so it's safe to use the isModified variable here
+	return decisions, true, nil
 }
 
 func (s *DecisionsService) GetStream(ctx context.Context, opts DecisionsStreamOpts) (*models.DecisionsStreamResponse, *Response, error) {

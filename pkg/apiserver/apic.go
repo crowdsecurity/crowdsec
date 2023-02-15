@@ -20,6 +20,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -198,18 +199,20 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 		return nil, errors.Wrap(err, "while creating api client")
 	}
 
-	scenarios, err := ret.FetchScenariosListFromDB()
-	if err != nil {
-		return ret, errors.Wrapf(err, "get scenario in db: %s", err)
-	}
+	// The watcher will be authenticated by the RoundTripper the first time it will call CAPI
+	// Explicit authentication will provoke an useless supplementary call to CAPI
+	// scenarios, err := ret.FetchScenariosListFromDB()
+	// if err != nil {
+	// 	return ret, errors.Wrapf(err, "get scenario in db: %s", err)
+	// }
 
-	if _, err = ret.apiClient.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
-		MachineID: &config.Credentials.Login,
-		Password:  &password,
-		Scenarios: scenarios,
-	}); err != nil {
-		return ret, errors.Wrapf(err, "authenticate watcher (%s)", config.Credentials.Login)
-	}
+	// if _, err = ret.apiClient.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
+	// 	MachineID: &config.Credentials.Login,
+	// 	Password:  &password,
+	// 	Scenarios: scenarios,
+	// }); err != nil {
+	// 	return ret, errors.Wrapf(err, "authenticate watcher (%s)", config.Credentials.Login)
+	// }
 
 	return ret, err
 }
@@ -596,6 +599,36 @@ func (a *apic) SaveAlerts(alertsFromCapi []*models.Alert, add_counters map[strin
 	return nil
 }
 
+func (a *apic) ShouldForcePullBlocklist(blocklist *modelscapi.BlocklistLink) (bool, error) {
+	// we should force pull if the blocklist decisions are about to expire or there's no decision in the db
+	alertQuery := a.dbClient.Ent.Alert.Query()
+	alertQuery.Where(alert.SourceScopeEQ(fmt.Sprintf("%s:%s", types.ListOrigin, *blocklist.Name)))
+	alertQuery.Order(ent.Desc(alert.FieldCreatedAt))
+	alertInstance, err := alertQuery.First(context.Background())
+	if err != nil {
+		if ent.IsNotFound(err) {
+			log.Debugf("no alert found for %s, force refresh", *blocklist.Name)
+			return true, nil
+		}
+		return false, errors.Wrap(err, "while getting alert")
+	}
+	decisionQuery := a.dbClient.Ent.Decision.Query()
+	decisionQuery.Where(decision.HasOwnerWith(alert.IDEQ(alertInstance.ID)))
+	firstDecision, err := decisionQuery.First(context.Background())
+	if err != nil {
+		if ent.IsNotFound(err) {
+			log.Debugf("no decision found for %s, force refresh", *blocklist.Name)
+			return true, nil
+		}
+		return false, errors.Wrap(err, "while getting decision")
+	}
+	if firstDecision == nil || firstDecision.Until == nil || firstDecision.Until.Sub(time.Now().UTC()) < (a.pullInterval+15*time.Minute) {
+		log.Debugf("at least one decision found for %s, expire soon, force refresh", *blocklist.Name)
+		return true, nil
+	}
+	return false, nil
+}
+
 func (a *apic) UpdateBlocklists(links *modelscapi.GetDecisionsStreamResponseLinks, add_counters map[string]map[string]int) error {
 	if links == nil {
 		return nil
@@ -605,7 +638,7 @@ func (a *apic) UpdateBlocklists(links *modelscapi.GetDecisionsStreamResponseLink
 	}
 	// we must use a different http client than apiClient's because the transport of apiClient is jwtTransport or here we have signed apis that are incompatibles
 	// we can use the same baseUrl as the urls are absolute and the parse will take care of it
-	defaultClient, err := apiclient.NewDefaultClient(a.apiClient.BaseURL, "", "", &http.Client{})
+	defaultClient, err := apiclient.NewDefaultClient(a.apiClient.BaseURL, "", "", nil)
 	if err != nil {
 		return errors.Wrap(err, "while creating default client")
 	}
@@ -618,9 +651,33 @@ func (a *apic) UpdateBlocklists(links *modelscapi.GetDecisionsStreamResponseLink
 			log.Warningf("blocklist has no duration")
 			continue
 		}
-		decisions, err := defaultClient.Decisions.GetDecisionsFromBlocklist(context.Background(), blocklist)
+		forcePull, err := a.ShouldForcePullBlocklist(blocklist)
+		if err != nil {
+			return errors.Wrapf(err, "while checking if we should force pull blocklist %s", *blocklist.Name)
+		}
+		blocklistConfigItemName := fmt.Sprintf("blocklist:%s:last_pull", *blocklist.Name)
+		var lastPullTimestamp *string
+		if !forcePull {
+			lastPullTimestamp, err = a.dbClient.GetConfigItem(blocklistConfigItemName)
+			if err != nil {
+				return errors.Wrapf(err, "while getting last pull timestamp for blocklist %s", *blocklist.Name)
+			}
+		}
+		decisions, has_changed, err := defaultClient.Decisions.GetDecisionsFromBlocklist(context.Background(), blocklist, lastPullTimestamp)
 		if err != nil {
 			return errors.Wrapf(err, "while getting decisions from blocklist %s", *blocklist.Name)
+		}
+		if !has_changed {
+			if lastPullTimestamp == nil {
+				log.Infof("blocklist %s hasn't been modified or there was an error reading it, skipping", *blocklist.Name)
+			} else {
+				log.Infof("blocklist %s hasn't been modified since %s, skipping", *blocklist.Name, *lastPullTimestamp)
+			}
+			continue
+		}
+		err = a.dbClient.SetConfigItem(blocklistConfigItemName, time.Now().UTC().Format(http.TimeFormat))
+		if err != nil {
+			return errors.Wrapf(err, "while setting last pull timestamp for blocklist %s", *blocklist.Name)
 		}
 		if len(decisions) == 0 {
 			log.Infof("blocklist %s has no decisions", *blocklist.Name)
