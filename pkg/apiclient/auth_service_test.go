@@ -169,7 +169,7 @@ func TestWatcherAuth(t *testing.T) {
 			resp.Response.Body.Close()
 			bodyBytes, err := io.ReadAll(resp.Response.Body)
 			if err != nil {
-				log.Fatal(err)
+				t.Fatalf("error while reading body: %s", err.Error())
 			}
 
 			log.Printf(string(bodyBytes))
