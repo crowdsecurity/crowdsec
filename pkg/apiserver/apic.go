@@ -201,18 +201,25 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 
 	// The watcher will be authenticated by the RoundTripper the first time it will call CAPI
 	// Explicit authentication will provoke an useless supplementary call to CAPI
-	// scenarios, err := ret.FetchScenariosListFromDB()
-	// if err != nil {
-	// 	return ret, errors.Wrapf(err, "get scenario in db: %s", err)
-	// }
+	scenarios, err := ret.FetchScenariosListFromDB()
+	if err != nil {
+		return ret, errors.Wrapf(err, "get scenario in db: %s", err)
+	}
 
-	// if _, err = ret.apiClient.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
-	// 	MachineID: &config.Credentials.Login,
-	// 	Password:  &password,
-	// 	Scenarios: scenarios,
-	// }); err != nil {
-	// 	return ret, errors.Wrapf(err, "authenticate watcher (%s)", config.Credentials.Login)
-	// }
+	authResp, _, err := ret.apiClient.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
+		MachineID: &config.Credentials.Login,
+		Password:  &password,
+		Scenarios: scenarios,
+	})
+	if err != nil {
+		return ret, errors.Wrapf(err, "authenticate watcher (%s)", config.Credentials.Login)
+	}
+
+	if err := ret.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Expiration.UnmarshalText([]byte(authResp.Expire)); err != nil {
+		return ret, errors.Wrap(err, "unable to parse jwt expiration")
+	}
+
+	ret.apiClient.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
 
 	return ret, err
 }

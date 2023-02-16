@@ -63,7 +63,7 @@ func runLapiStatus(cmd *cobra.Command, args []string) error {
 	}
 	log.Infof("Loaded credentials from %s", csConfig.API.Client.CredentialsFilePath)
 	log.Infof("Trying to authenticate with username %s on %s", login, apiurl)
-	_, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
+	_, _, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
 	if err != nil {
 		log.Fatalf("Failed to authenticate to Local API (LAPI) : %s", err)
 	} else {

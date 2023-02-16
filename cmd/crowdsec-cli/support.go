@@ -102,7 +102,6 @@ func collectFeatures() []byte {
 	return w.Bytes()
 }
 
-
 func collectOSInfo() ([]byte, error) {
 	log.Info("Collecting OS info")
 	info, err := osinfo.GetOSInfo()
@@ -194,7 +193,7 @@ func collectAPIStatus(login string, password string, endpoint string, prefix str
 		Scenarios: scenarios,
 	}
 
-	_, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
+	_, _, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
 	if err != nil {
 		return []byte(fmt.Sprintf("Could not authenticate to API: %s", err))
 	} else {
@@ -277,7 +276,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			var err error
 			var skipHub, skipDB, skipCAPI, skipLAPI, skipAgent bool
 			infos := map[string][]byte{
-				SUPPORT_VERSION_PATH: collectVersion(),
+				SUPPORT_VERSION_PATH:  collectVersion(),
 				SUPPORT_FEATURES_PATH: collectFeatures(),
 			}
 

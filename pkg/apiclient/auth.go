@@ -232,8 +232,9 @@ func (t *JWTTransport) refreshJwtToken() error {
 func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// in a few occasions several goroutines will execute refreshJwtToken concurrently which is useless and will cause overload on CAPI
 	// we use a mutex to avoid this
+	//We also bypass the refresh if we are requesting the login endpoint, as it does not require a token, and it leads to do 2 requests instead of one (refresh + actual login request)
 	t.refreshTokenMutex.Lock()
-	if t.Token == "" || t.Expiration.Add(-time.Minute).Before(time.Now().UTC()) {
+	if req.URL.Path != "/"+t.VersionPrefix+"/watchers/login" && (t.Token == "" || t.Expiration.Add(-time.Minute).Before(time.Now().UTC())) {
 		if err := t.refreshJwtToken(); err != nil {
 			t.refreshTokenMutex.Unlock()
 			return nil, err
