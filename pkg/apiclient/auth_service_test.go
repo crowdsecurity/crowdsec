@@ -60,7 +60,7 @@ func TestWatcherAuth(t *testing.T) {
 		t.Fatalf("new api client: %s", err)
 	}
 
-	_, err = client.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
+	_, _, err = client.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
 		MachineID: &mycfg.MachineID,
 		Password:  &mycfg.Password,
 		Scenarios: mycfg.Scenarios,
@@ -84,7 +84,7 @@ func TestWatcherAuth(t *testing.T) {
 		t.Fatalf("new api client: %s", err)
 	}
 
-	_, err = client.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
+	_, _, err = client.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
 		MachineID: &mycfg.MachineID,
 		Password:  &mycfg.Password,
 	})
