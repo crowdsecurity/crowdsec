@@ -1,17 +1,11 @@
 name: build-msi (windows)
 
 on:
-  pull_request:
-    branches:
-      - master
-      - releases/**
-    paths-ignore:
-      - 'docs/**'
-      - 'mkdocs.yml'
-      - 'README.md'
+  release:
+    types:
+      - prereleased
 
 jobs:
-
   build:
     name: Build
     runs-on: windows-2019
@@ -22,14 +16,9 @@ jobs:
         go-version: 1.19
       id: go
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
-    - id: get_latest_release
-      uses: pozetroninc/github-action-get-latest-release@master
+      uses: actions/checkout@v3
       with:
-        repository: crowdsecurity/crowdsec
-        excludes: draft
-    - id: set_release_in_env
-      run: echo "BUILD_VERSION=${{ steps.get_latest_release.outputs.release }}" >> $env:GITHUB_ENV
+        fetch-depth: 0
     - name: Build
       run: make windows_installer
     - name: Upload MSI

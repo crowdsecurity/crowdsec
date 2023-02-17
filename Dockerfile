@@ -1,3 +1,4 @@
+# vim: set ft=dockerfile:
 ARG BUILD_ENV=full
 ARG GOVERSION=1.19
 
@@ -9,82 +10,30 @@ COPY . .
 
 # wizard.sh requires GNU coreutils
 RUN apk add --no-cache git gcc libc-dev make bash gettext binutils-gold coreutils && \
+    echo "githubciXXXXXXXXXXXXXXXXXXXXXXXX" > /etc/machine-id && \
     SYSTEM="docker" make clean release && \
     cd crowdsec-v* && \
     ./wizard.sh --docker-mode && \
-    cd - && \
+    cd - >/dev/null && \
     cscli hub update && \
     cscli collections install crowdsecurity/linux && \
-    cscli parsers install crowdsecurity/whitelists
+    cscli parsers install crowdsecurity/whitelists && \
+    go install github.com/mikefarah/yq/v4@v4.30.6
 
 FROM alpine:latest as build-slim
 
-RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community tzdata yq bash && \
+RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community tzdata bash && \
     mkdir -p /staging/etc/crowdsec && \
     mkdir -p /staging/var/lib/crowdsec && \
     mkdir -p /var/lib/crowdsec/data
 
+COPY --from=build /go/bin/yq /usr/local/bin/yq
 COPY --from=build /etc/crowdsec /staging/etc/crowdsec
 COPY --from=build /usr/local/bin/crowdsec /usr/local/bin/crowdsec
 COPY --from=build /usr/local/bin/cscli /usr/local/bin/cscli
 COPY --from=build /go/src/crowdsec/docker/docker_start.sh /
 COPY --from=build /go/src/crowdsec/docker/config.yaml /staging/etc/crowdsec/config.yaml
-
-ENV CONFIG_FILE=/etc/crowdsec/config.yaml
-ENV LOCAL_API_URL=http://0.0.0.0:8080/
-ENV CUSTOM_HOSTNAME=localhost
-ENV PLUGIN_DIR=/usr/local/lib/crowdsec/plugins/
-ENV DISABLE_AGENT=false
-ENV DISABLE_LOCAL_API=false
-ENV DISABLE_ONLINE_API=false
-ENV DSN=
-ENV TYPE=
-ENV TEST_MODE=false
-ENV USE_WAL=false
-
-# register to app.crowdsec.net
-
-ENV ENROLL_INSTANCE_NAME=
-ENV ENROLL_KEY=
-ENV ENROLL_TAGS=
-
-# log verbosity
-
-ENV LEVEL_TRACE=false
-ENV LEVEL_DEBUG=false
-ENV LEVEL_INFO=true
-
-# TLS setup ----------------------------------- #
-
-ENV AGENT_USERNAME=
-ENV AGENT_PASSWORD=
-
-# TLS setup ----------------------------------- #
-
-ENV USE_TLS=false
-ENV CA_CERT_PATH=
-ENV CERT_FILE=/etc/ssl/cert.pem
-ENV KEY_FILE=/etc/ssl/key.pem
-# comma-separated list of allowed OU values for TLS bouncer certificates
-ENV BOUNCERS_ALLOWED_OU=bouncer-ou
-# comma-separated list of allowed OU values for TLS agent certificates
-ENV AGENTS_ALLOWED_OU=agent-ou
-
-# Install the following hub items --------------#
-
-ENV COLLECTIONS=
-ENV PARSERS=
-ENV SCENARIOS=
-ENV POSTOVERFLOWS=
-
-# Uninstall the following hub items ------------#
-
-ENV DISABLE_COLLECTIONS=
-ENV DISABLE_PARSERS=
-ENV DISABLE_SCENARIOS=
-ENV DISABLE_POSTOVERFLOWS=
-
-ENV METRICS_PORT=6060
+RUN yq -n '.url="http://0.0.0.0:8080"' | install -m 0600 /dev/stdin /staging/etc/crowdsec/local_api_credentials.yaml
 
 ENTRYPOINT /bin/bash docker_start.sh
 
