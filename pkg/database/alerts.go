@@ -162,90 +162,91 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 		}
 	}
 
-	//add any and all missing decisions based on their uuids
-	if len(missingUuids) > 0 {
-		//prepare missing decisions
-		missingDecisions := []*models.Decision{}
-		for _, uuid := range missingUuids {
-			for _, newDecision := range alertItem.Decisions {
-				if newDecision.UUID == uuid {
-					missingDecisions = append(missingDecisions, newDecision)
-				}
-			}
-		}
-
-		//add missing decisions
-		log.Debugf("Adding %d missing decisions to alert %s", len(missingDecisions), foundAlert.UUID)
-
-		decisions := make([]*ent.Decision, 0)
-		decisionBulk := make([]*ent.DecisionCreate, 0, decisionBulkSize)
-
-		for i, decisionItem := range missingDecisions {
-			var start_ip, start_sfx, end_ip, end_sfx int64
-			var sz int
-
-			/*if the scope is IP or Range, convert the value to integers */
-			if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
-				sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decisionItem.Value)
-				if err != nil {
-					return "", errors.Wrapf(ParseDurationFail, "invalid addr/range %s : %s", *decisionItem.Value, err)
-				}
-			}
-			decisionDuration, err := time.ParseDuration(*decisionItem.Duration)
-			if err != nil {
-				log.Warningf("invalid duration %s for decision %s", *decisionItem.Duration, decisionItem.UUID)
-				continue
-			}
-			//use the created_at from the alert instead
-			alertTime, err := time.Parse(time.RFC3339, alertItem.CreatedAt)
-			if err != nil {
-				log.Errorf("unable to parse alert time %s : %s", alertItem.CreatedAt, err)
-				alertTime = time.Now()
-			}
-			decisionUntil := alertTime.UTC().Add(decisionDuration)
-
-			decisionCreate := c.Ent.Decision.Create().
-				SetUntil(decisionUntil).
-				SetScenario(*decisionItem.Scenario).
-				SetType(*decisionItem.Type).
-				SetStartIP(start_ip).
-				SetStartSuffix(start_sfx).
-				SetEndIP(end_ip).
-				SetEndSuffix(end_sfx).
-				SetIPSize(int64(sz)).
-				SetValue(*decisionItem.Value).
-				SetScope(*decisionItem.Scope).
-				SetOrigin(*decisionItem.Origin).
-				SetSimulated(*alertItem.Simulated).
-				SetUUID(decisionItem.UUID)
-
-			decisionBulk = append(decisionBulk, decisionCreate)
-			if len(decisionBulk) == decisionBulkSize {
-				decisionsCreateRet, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
-				if err != nil {
-					return "", errors.Wrapf(BulkError, "creating alert decisions: %s", err)
-
-				}
-				decisions = append(decisions, decisionsCreateRet...)
-				if len(missingDecisions)-i <= decisionBulkSize {
-					decisionBulk = make([]*ent.DecisionCreate, 0, (len(missingDecisions) - i))
-				} else {
-					decisionBulk = make([]*ent.DecisionCreate, 0, decisionBulkSize)
-				}
-			}
-		}
-		decisionsCreateRet, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
-		if err != nil {
-			return "", errors.Wrapf(BulkError, "creating alert decisions: %s", err)
-		}
-		decisions = append(decisions, decisionsCreateRet...)
-		//now that we bulk created missing decisions, let's update the alert
-		err = c.Ent.Alert.Update().Where(alert.UUID(alertItem.UUID)).AddDecisions(decisions...).Exec(c.CTX)
-		if err != nil {
-			return "", errors.Wrapf(err, "updating alert %s : %s", alertItem.UUID, err)
-		}
-	} else {
+	if len(missingUuids) == 0 {
 		log.Warningf("alert %s was already complete with decisions %+v", alertItem.UUID, foundUuids)
+		return "", nil
+	}
+
+	//add any and all missing decisions based on their uuids
+	//prepare missing decisions
+	missingDecisions := []*models.Decision{}
+	for _, uuid := range missingUuids {
+		for _, newDecision := range alertItem.Decisions {
+			if newDecision.UUID == uuid {
+				missingDecisions = append(missingDecisions, newDecision)
+			}
+		}
+	}
+
+	//add missing decisions
+	log.Debugf("Adding %d missing decisions to alert %s", len(missingDecisions), foundAlert.UUID)
+
+	decisions := make([]*ent.Decision, 0)
+	decisionBulk := make([]*ent.DecisionCreate, 0, decisionBulkSize)
+
+	for i, decisionItem := range missingDecisions {
+		var start_ip, start_sfx, end_ip, end_sfx int64
+		var sz int
+
+		/*if the scope is IP or Range, convert the value to integers */
+		if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
+			sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decisionItem.Value)
+			if err != nil {
+				return "", errors.Wrapf(ParseDurationFail, "invalid addr/range %s : %s", *decisionItem.Value, err)
+			}
+		}
+		decisionDuration, err := time.ParseDuration(*decisionItem.Duration)
+		if err != nil {
+			log.Warningf("invalid duration %s for decision %s", *decisionItem.Duration, decisionItem.UUID)
+			continue
+		}
+		//use the created_at from the alert instead
+		alertTime, err := time.Parse(time.RFC3339, alertItem.CreatedAt)
+		if err != nil {
+			log.Errorf("unable to parse alert time %s : %s", alertItem.CreatedAt, err)
+			alertTime = time.Now()
+		}
+		decisionUntil := alertTime.UTC().Add(decisionDuration)
+
+		decisionCreate := c.Ent.Decision.Create().
+			SetUntil(decisionUntil).
+			SetScenario(*decisionItem.Scenario).
+			SetType(*decisionItem.Type).
+			SetStartIP(start_ip).
+			SetStartSuffix(start_sfx).
+			SetEndIP(end_ip).
+			SetEndSuffix(end_sfx).
+			SetIPSize(int64(sz)).
+			SetValue(*decisionItem.Value).
+			SetScope(*decisionItem.Scope).
+			SetOrigin(*decisionItem.Origin).
+			SetSimulated(*alertItem.Simulated).
+			SetUUID(decisionItem.UUID)
+
+		decisionBulk = append(decisionBulk, decisionCreate)
+		if len(decisionBulk) == decisionBulkSize {
+			decisionsCreateRet, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
+			if err != nil {
+				return "", errors.Wrapf(BulkError, "creating alert decisions: %s", err)
+
+			}
+			decisions = append(decisions, decisionsCreateRet...)
+			if len(missingDecisions)-i <= decisionBulkSize {
+				decisionBulk = make([]*ent.DecisionCreate, 0, (len(missingDecisions) - i))
+			} else {
+				decisionBulk = make([]*ent.DecisionCreate, 0, decisionBulkSize)
+			}
+		}
+	}
+	decisionsCreateRet, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
+	if err != nil {
+		return "", errors.Wrapf(BulkError, "creating alert decisions: %s", err)
+	}
+	decisions = append(decisions, decisionsCreateRet...)
+	//now that we bulk created missing decisions, let's update the alert
+	err = c.Ent.Alert.Update().Where(alert.UUID(alertItem.UUID)).AddDecisions(decisions...).Exec(c.CTX)
+	if err != nil {
+		return "", errors.Wrapf(err, "updating alert %s : %s", alertItem.UUID, err)
 	}
 
 	return "", nil
