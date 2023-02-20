@@ -50,7 +50,8 @@ func runExplain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	opts.SkipNotOkParsers, err = flags.GetBool("only-successful-parsers")
+	opts.ShowNotOkParsers, err = flags.GetBool("only-successful-parsers")
+	opts.ShowNotOkParsers = !opts.ShowNotOkParsers
 	if err != nil {
 		return err
 	}
