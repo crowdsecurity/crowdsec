@@ -33,8 +33,6 @@ const (
 )
 
 func formatAlertAsString(machineId string, alert *models.Alert) []string {
-	var retStr []string
-
 	/**/
 	src := ""
 	if alert.Source != nil {
@@ -76,35 +74,37 @@ func formatAlertAsString(machineId string, alert *models.Alert) []string {
 
 	reason = fmt.Sprintf("%s by %s", msg, src)
 
-	if len(alert.Decisions) > 0 {
-		for i, decisionItem := range alert.Decisions {
-			decision := ""
-			if alert.Simulated != nil && *alert.Simulated {
-				decision = "(simulated alert)"
-			} else if decisionItem.Simulated != nil && *decisionItem.Simulated {
-				decision = "(simulated decision)"
-			}
-			if log.GetLevel() >= log.DebugLevel {
-				/*spew is expensive*/
-				log.Debugf("%s", spew.Sdump(decisionItem))
-			}
-			if len(alert.Decisions) > 1 {
-				reason = fmt.Sprintf("%s for %d/%d decisions", msg, i+1, len(alert.Decisions))
-			}
-			machineIdOrigin := ""
-			if machineId == "" {
-				machineIdOrigin = *decisionItem.Origin
-			} else {
-				machineIdOrigin = fmt.Sprintf("%s/%s", machineId, *decisionItem.Origin)
-			}
+	if len(alert.Decisions) == 0 {
+		return []string{fmt.Sprintf("(%s) alert : %s", machineId, reason)}
+	}
 
-			decision += fmt.Sprintf("%s %s on %s %s", *decisionItem.Duration,
-				*decisionItem.Type, *decisionItem.Scope, *decisionItem.Value)
-			retStr = append(retStr,
-				fmt.Sprintf("(%s) %s : %s", machineIdOrigin, reason, decision))
+	var retStr []string
+
+	for i, decisionItem := range alert.Decisions {
+		decision := ""
+		if alert.Simulated != nil && *alert.Simulated {
+			decision = "(simulated alert)"
+		} else if decisionItem.Simulated != nil && *decisionItem.Simulated {
+			decision = "(simulated decision)"
 		}
-	} else {
-		retStr = append(retStr, fmt.Sprintf("(%s) alert : %s", machineId, reason))
+		if log.GetLevel() >= log.DebugLevel {
+			/*spew is expensive*/
+			log.Debugf("%s", spew.Sdump(decisionItem))
+		}
+		if len(alert.Decisions) > 1 {
+			reason = fmt.Sprintf("%s for %d/%d decisions", msg, i+1, len(alert.Decisions))
+		}
+		machineIdOrigin := ""
+		if machineId == "" {
+			machineIdOrigin = *decisionItem.Origin
+		} else {
+			machineIdOrigin = fmt.Sprintf("%s/%s", machineId, *decisionItem.Origin)
+		}
+
+		decision += fmt.Sprintf("%s %s on %s %s", *decisionItem.Duration,
+			*decisionItem.Type, *decisionItem.Scope, *decisionItem.Value)
+		retStr = append(retStr,
+			fmt.Sprintf("(%s) %s : %s", machineIdOrigin, reason, decision))
 	}
 	return retStr
 }
