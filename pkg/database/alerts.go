@@ -32,34 +32,44 @@ const (
 	decisionBulkSize = 50
 )
 
-func formatAlertAsString(machineId string, alert *models.Alert) []string {
-	/**/
-	src := ""
-	if alert.Source != nil {
-		if *alert.Source.Scope == types.Ip {
-			src = fmt.Sprintf("ip %s", *alert.Source.Value)
-			if alert.Source.Cn != "" {
-				src += " (" + alert.Source.Cn
-				if alert.Source.AsNumber != "" {
-					src += "/" + alert.Source.AsNumber
-				}
-				src += ")"
-			}
-		} else if *alert.Source.Scope == types.Range {
-			src = fmt.Sprintf("range %s", *alert.Source.Value)
-			if alert.Source.Cn != "" {
-				src += " (" + alert.Source.Cn
-				if alert.Source.AsNumber != "" {
-					src += "/" + alert.Source.AsNumber
-				}
-				src += ")"
-			}
-		} else {
-			src = fmt.Sprintf("%s %s", *alert.Source.Scope, *alert.Source.Value)
-		}
-	} else {
-		src = "empty source"
+func formatAlertCN(source models.Source) string {
+	cn := source.Cn
+
+	if source.AsNumber != "" {
+		cn += "/" + source.AsNumber
 	}
+
+	return cn
+}
+
+func formatAlertSource(alert *models.Alert) string {
+	if alert.Source == nil {
+		return "empty source"
+	}
+
+	if *alert.Source.Scope == types.Ip {
+		ret := "ip " + *alert.Source.Value
+		cn := formatAlertCN(*alert.Source)
+		if cn != "" {
+			ret += " (" + cn + ")"
+		}
+		return ret
+	}
+
+	if *alert.Source.Scope == types.Range {
+		ret := "range " + *alert.Source.Value
+		cn := formatAlertCN(*alert.Source)
+		if cn != "" {
+			ret += " (" + cn + ")"
+		}
+		return ret
+	}
+
+	return *alert.Source.Scope + " " + *alert.Source.Value
+}
+
+func formatAlertAsString(machineId string, alert *models.Alert) []string {
+	src := formatAlertSource(alert)
 
 	/**/
 	reason := ""
