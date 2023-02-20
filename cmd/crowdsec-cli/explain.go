@@ -50,6 +50,11 @@ func runExplain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	opts.SkipNotOkParsers, err = flags.GetBool("only-successful-parsers")
+	if err != nil {
+		return err
+	}
+
 	crowdsec, err := flags.GetString("crowdsec")
 	if err != nil {
 		return err
@@ -182,6 +187,7 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 	flags.StringP("type", "t", "", "Type of the acquisition to test")
 	flags.BoolP("verbose", "v", false, "Display individual changes")
 	flags.Bool("failures", false, "Only show failed lines")
+	flags.Bool("only-successful-parsers", false, "Only show successful parsers")
 	flags.String("crowdsec", "crowdsec", "Path to crowdsec")
 
 	return cmdExplain

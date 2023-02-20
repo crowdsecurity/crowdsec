@@ -299,8 +299,9 @@ func LoadParserDump(filepath string) (*ParserResults, error) {
 }
 
 type DumpOpts struct {
-	Details bool
-	SkipOk  bool
+	Details          bool
+	SkipOk           bool
+	SkipNotOkParsers bool
 }
 
 func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts DumpOpts) {
@@ -445,7 +446,7 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 					if opts.Details {
 						fmt.Print(detailsDisplay)
 					}
-				} else {
+				} else if !opts.SkipNotOkParsers {
 					fmt.Printf("\t%s\t%s %s %s\n", presep, sep, emoji.RedCircle, parser)
 
 				}
