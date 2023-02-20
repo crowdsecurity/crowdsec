@@ -25,12 +25,11 @@ stages:
               custom: 'tool'
               arguments: 'install --global SignClient --version 1.3.155'
           - task: GoTool@0
-            displayName: "Install Go 1.19"
+            displayName: "Install Go 1.20"
             inputs:
-                version: '1.19'
+                version: '1.20.1'
 
           - pwsh: |
-              choco install -y jq
               choco install -y make
             displayName: "Install builds deps"
           - task: PowerShell@2
