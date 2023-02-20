@@ -4,6 +4,7 @@ var Crowdsec = FeatureRegister{EnvPrefix: "CROWDSEC_FEATURE_"}
 
 var CscliSetup = &Feature{Name: "cscli_setup", Description: "Enable cscli setup command (service detection)"}
 var DisableHttpRetryBackoff = &Feature{Name: "disable_http_retry_backoff", Description: "Disable http retry backoff"}
+var ChunkedDecisionsStream = &Feature{Name: "chunked_decisions_stream", Description: "Enable chunked decisions stream"}
 var PapiClient = &Feature{Name: "papi_client", Description: "Enable Polling API client"}
 
 func RegisterAllFeatures() error {
@@ -12,6 +13,10 @@ func RegisterAllFeatures() error {
 		return err
 	}
 	err = Crowdsec.RegisterFeature(DisableHttpRetryBackoff)
+	if err != nil {
+		return err
+	}
+	err = Crowdsec.RegisterFeature(ChunkedDecisionsStream)
 	if err != nil {
 		return err
 	}
