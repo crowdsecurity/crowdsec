@@ -71,6 +71,7 @@ linters:
     # - errcheck            # Errcheck is a program for checking for unchecked errors in go programs. These unchecked errors can be critical bugs in some cases
     # - exportloopref       # checks for pointers to enclosing loop variables
     # - funlen              # Tool for detection of long functions
+    # - ginkgolinter        # enforces standards of using ginkgo and gomega
     # - gochecknoinits      # Checks that no init functions are present in Go code
     # - gocritic            # Provides diagnostics that check for bugs, performance and style issues.
     # - goheader            # Checks is file header matches to pattern
@@ -115,6 +116,7 @@ linters:
     - goimports             # In addition to fixing imports, goimports also formats your code in the same style as gofmt.
     - gosec                 # (gas): Inspects source code for security problems
     - lll                   # Reports long lines
+    - musttag               # enforce field tags in (un)marshaled structs
     - nakedret              # Finds naked returns in functions greater than a specified function length
     - nonamedreturns        # Reports all named returns
     - nosprintfhostport     # Checks for misuse of Sprintf to construct a host with port in a URL.
@@ -182,6 +184,9 @@ linters:
 
 
 issues:
+  # “Look, that’s why there’s rules, understand? So that you think before you
+  # break ‘em.” ― Terry Pratchett
+
   max-issues-per-linter: 0
   max-same-issues: 10
   exclude-rules:
@@ -220,3 +225,7 @@ issues:
     - linters:
         - gocritic
       text: "commentFormatting: put a space between `//` and comment text"
+
+    - linters:
+        - staticcheck
+      text: "x509.ParseCRL has been deprecated since Go 1.19: Use ParseRevocationList instead"

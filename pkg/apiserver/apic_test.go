@@ -287,6 +287,16 @@ func TestAPICGetMetrics(t *testing.T) {
 		expectedMetric *models.Metrics
 	}{
 		{
+			name:       "no bouncers nor machines should still have bouncers/machines keys in output",
+			machineIDs: []string{},
+			bouncers:   []string{},
+			expectedMetric: &models.Metrics{
+				ApilVersion: types.StrPtr(cwversion.VersionStr()),
+				Bouncers:    []*models.MetricsBouncerInfo{},
+				Machines:    []*models.MetricsAgentInfo{},
+			},
+		},
+		{
 			name:       "simple",
 			machineIDs: []string{"a", "b", "c"},
 			bouncers:   []string{"1", "2", "3"},
