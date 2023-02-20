@@ -178,10 +178,11 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 		Args:              cobra.ExactArgs(0),
 		Hidden:            true,
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := doc.GenMarkdownTreeCustom(rootCmd, "./doc/", prepender, linkHandler); err != nil {
-				log.Fatalf("Failed to generate cobra doc: %s", err)
+				return fmt.Errorf("Failed to generate cobra doc: %s", err)
 			}
+			return nil
 		},
 	}
 	rootCmd.AddCommand(cmdDocGen)

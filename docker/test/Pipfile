@@ -1,0 +1,11 @@
+[packages]
+pytest-dotenv = "*"
+pytest-xdist = "*"
+gnureadline = "*"
+ipdb = "*"
+pytest-cs = {ref = "main", git = "https://github.com/crowdsecurity/pytest-cs.git"}
+
+[dev-packages]
+
+[requires]
+python_version = "3.10"

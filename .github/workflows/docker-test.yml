@@ -1,0 +1,65 @@
+name: Test Docker images
+
+on:
+  push:
+    branches:
+      - master
+      - releases/**
+    paths-ignore:
+      - 'README.md'
+  pull_request:
+    branches:
+      - master
+      - releases/**
+    paths-ignore:
+      - 'README.md'
+
+jobs:
+  test_docker_image:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Check out the repo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Build flavors
+        id: prep
+        run: |
+          DOCKER_IMAGE=crowdsecurity/crowdsec
+          docker build --target full -t "$DOCKER_IMAGE:test" -f Dockerfile .
+          docker build --target slim -t "$DOCKER_IMAGE:test-slim" -f Dockerfile .
+          docker build --target full -t "$DOCKER_IMAGE:test-debian" -f Dockerfile.debian .
+
+      - name: "Setup Python"
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+
+      - name: "Install pipenv"
+        run: |
+          cd docker/test
+          python -m pip install --upgrade pipenv wheel
+
+#      - id: cache-pipenv
+#        uses: actions/cache@v3
+#        with:
+#          path: ~/.local/share/virtualenvs
+#          key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
+
+      - name: "Install dependencies"
+        if: steps.cache-pipenv.outputs.cache-hit != 'true'
+        run: |
+          cd docker/test
+          pipenv install --deploy --dev
+          docker network create net-test
+
+      - name: "Run tests"
+        env:
+          CROWDSEC_TEST_VERSION: test
+          CROWDSEC_TEST_FLAVORS: full,slim,debian
+          CROWDSEC_TEST_NETWORK: net-test
+        run: |
+          cd docker/test
+          pipenv run pytest --durations=0 --color=yes

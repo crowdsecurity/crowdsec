@@ -253,13 +253,13 @@ cscli alerts list --range 1.2.3.0/24
 cscli alerts list -s crowdsecurity/ssh-bf
 cscli alerts list --type ban`,
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 
 			if err := manageCliDecisionAlerts(alertListFilter.IPEquals, alertListFilter.RangeEquals,
 				alertListFilter.ScopeEquals, alertListFilter.ValueEquals); err != nil {
 				printHelp(cmd)
-				log.Fatalf("%s", err)
+				return err
 			}
 			if limit != nil {
 				alertListFilter.Limit = limit
@@ -273,7 +273,7 @@ cscli alerts list --type ban`,
 				days, err := strconv.Atoi(realDuration)
 				if err != nil {
 					printHelp(cmd)
-					log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Until)
+					return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Until)
 				}
 				*alertListFilter.Until = fmt.Sprintf("%d%s", days*24, "h")
 			}
@@ -285,7 +285,7 @@ cscli alerts list --type ban`,
 				days, err := strconv.Atoi(realDuration)
 				if err != nil {
 					printHelp(cmd)
-					log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Since)
+					return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Since)
 				}
 				*alertListFilter.Since = fmt.Sprintf("%d%s", days*24, "h")
 			}
@@ -323,13 +323,15 @@ cscli alerts list --type ban`,
 
 			alerts, _, err := Client.Alerts.List(context.Background(), alertListFilter)
 			if err != nil {
-				log.Fatalf("Unable to list alerts : %v", err)
+				return fmt.Errorf("unable to list alerts: %v", err)
 			}
 
 			err = AlertsToTable(alerts, printMachine)
 			if err != nil {
-				log.Fatalf("unable to list alerts : %v", err)
+				return fmt.Errorf("unable to list alerts: %v", err)
 			}
+
+			return nil
 		},
 	}
 	cmdAlertsList.Flags().SortFlags = false
@@ -372,25 +374,27 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 		DisableAutoGenTag: true,
 		Aliases:           []string{"remove"},
 		Args:              cobra.ExactArgs(0),
-		PreRun: func(cmd *cobra.Command, args []string) {
+		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if AlertDeleteAll {
-				return
+				return nil
 			}
 			if *alertDeleteFilter.ScopeEquals == "" && *alertDeleteFilter.ValueEquals == "" &&
 				*alertDeleteFilter.ScenarioEquals == "" && *alertDeleteFilter.IPEquals == "" &&
 				*alertDeleteFilter.RangeEquals == "" && delAlertByID == "" {
 				_ = cmd.Usage()
-				log.Fatalln("At least one filter or --all must be specified")
+				return fmt.Errorf("at least one filter or --all must be specified")
 			}
+
+			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 
 			if !AlertDeleteAll {
 				if err := manageCliDecisionAlerts(alertDeleteFilter.IPEquals, alertDeleteFilter.RangeEquals,
 					alertDeleteFilter.ScopeEquals, alertDeleteFilter.ValueEquals); err != nil {
 					printHelp(cmd)
-					log.Fatalf("%s", err)
+					return err
 				}
 				if ActiveDecision != nil {
 					alertDeleteFilter.ActiveDecisionEquals = ActiveDecision
@@ -425,15 +429,17 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 			if delAlertByID == "" {
 				alerts, _, err = Client.Alerts.Delete(context.Background(), alertDeleteFilter)
 				if err != nil {
-					log.Fatalf("Unable to delete alerts : %v", err)
+					return fmt.Errorf("unable to delete alerts : %v", err)
 				}
 			} else {
 				alerts, _, err = Client.Alerts.DeleteOne(context.Background(), delAlertByID)
 				if err != nil {
-					log.Fatalf("Unable to delete alert :  %v", err)
+					return fmt.Errorf("unable to delete alert: %v", err)
 				}
 			}
 			log.Infof("%s alert(s) deleted", alerts.NbDeleted)
+
+			return nil
 		},
 	}
 	cmdAlertsDelete.Flags().SortFlags = false
@@ -455,20 +461,19 @@ func NewAlertsInspectCmd() *cobra.Command {
 		Short:             `Show info about an alert`,
 		Example:           `cscli alerts inspect 123`,
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				printHelp(cmd)
-				return
+				return fmt.Errorf("missing alert_id")
 			}
 			for _, alertID := range args {
 				id, err := strconv.Atoi(alertID)
 				if err != nil {
-					log.Fatalf("bad alert id %s", alertID)
-					continue
+					return fmt.Errorf("bad alert id %s", alertID)
 				}
 				alert, _, err := Client.Alerts.GetByID(context.Background(), id)
 				if err != nil {
-					log.Fatalf("can't find alert with id %s: %s", alertID, err)
+					return fmt.Errorf("can't find alert with id %s: %s", alertID, err)
 				}
 				switch csConfig.Cscli.Output {
 				case "human":
@@ -478,17 +483,19 @@ func NewAlertsInspectCmd() *cobra.Command {
 				case "json":
 					data, err := json.MarshalIndent(alert, "", "  ")
 					if err != nil {
-						log.Fatalf("unable to marshal alert with id %s: %s", alertID, err)
+						return fmt.Errorf("unable to marshal alert with id %s: %s", alertID, err)
 					}
 					fmt.Printf("%s\n", string(data))
 				case "raw":
 					data, err := yaml.Marshal(alert)
 					if err != nil {
-						log.Fatalf("unable to marshal alert with id %s: %s", alertID, err)
+						return fmt.Errorf("unable to marshal alert with id %s: %s", alertID, err)
 					}
 					fmt.Printf("%s\n", string(data))
 				}
 			}
+
+			return nil
 		},
 	}
 	cmdAlertsInspect.Flags().SortFlags = false
@@ -506,21 +513,23 @@ func NewAlertsFlushCmd() *cobra.Command {
 /!\ This command can be used only on the same machine than the local API`,
 		Example:           `cscli alerts flush --max-items 1000 --max-age 7d`,
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
-				log.Fatal("Local API is disabled, please run this command on the local API machine")
+				return fmt.Errorf("local API is disabled, please run this command on the local API machine")
 			}
 			dbClient, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {
-				log.Fatalf("unable to create new database client: %s", err)
+				return fmt.Errorf("unable to create new database client: %s", err)
 			}
 			log.Info("Flushing alerts. !! This may take a long time !!")
 			err = dbClient.FlushAlerts(maxAge, maxItems)
 			if err != nil {
-				log.Fatalf("unable to flush alerts: %s", err)
+				return fmt.Errorf("unable to flush alerts: %s", err)
 			}
 			log.Info("Alerts flushed")
+
+			return nil
 		},
 	}
 

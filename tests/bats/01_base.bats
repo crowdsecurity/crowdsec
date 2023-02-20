@@ -19,6 +19,7 @@ setup() {
 }
 
 teardown() {
+    cd "$TEST_DIR" || exit 1
     ./instance-crowdsec stop
 }
 
@@ -296,4 +297,26 @@ declare stderr
     config_set '.db_config.password="P@ssw0rd$"'
     rune -0 cscli config show --key Config.DbConfig.Password
     assert_output 'P@ssw0rd$'
+}
+
+@test "cscli doc" {
+    # generating documentation requires a directory named "doc"
+
+    cd "$BATS_TEST_TMPDIR"
+    rune -1 cscli doc
+    refute_output
+    assert_stderr --regexp 'Failed to generate cobra doc: open doc/.*: no such file or directory'
+
+    mkdir -p doc
+    rune -0 cscli doc
+    refute_output
+    refute_stderr
+    assert_file_exist "doc/cscli.md"
+    assert_file_not_exist "doc/cscli_setup.md"
+
+    # commands guarded by feature flags are not documented unless the feature flag is set
+
+    export CROWDSEC_FEATURE_CSCLI_SETUP="true"
+    rune -0 cscli doc
+    assert_file_exist "doc/cscli_setup.md"
 }
