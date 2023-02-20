@@ -282,9 +282,7 @@ func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]str
 // 1st pull, you get decisions [1,2,3]. it inserts [1,2,3]
 // 2nd pull, you get decisions [1,2,3,4]. it inserts [1,2,3,4] and will try to delete [1,2,3,4] with a different alert ID and same origin
 func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, int, error) {
-
 	var err error
-	var deleted, inserted int
 
 	if alertItem == nil {
 		return 0, 0, 0, fmt.Errorf("nil alert")
@@ -337,118 +335,92 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 		return 0, 0, 0, errors.Wrapf(BulkError, "error creating alert : %s", err)
 	}
 
-	if len(alertItem.Decisions) > 0 {
-		txClient, err := c.Ent.Tx(c.CTX)
+	if len(alertItem.Decisions) == 0 {
+		return alertRef.ID, 0, 0, nil
+	}
+
+	txClient, err := c.Ent.Tx(c.CTX)
+	if err != nil {
+		return 0, 0, 0, errors.Wrapf(BulkError, "error creating transaction : %s", err)
+	}
+	decisionBulk := make([]*ent.DecisionCreate, 0, decisionBulkSize)
+	valueList := make([]string, 0, decisionBulkSize)
+	DecOrigin := CapiMachineID
+	if *alertItem.Decisions[0].Origin == CapiMachineID || *alertItem.Decisions[0].Origin == CapiListsMachineID {
+		DecOrigin = *alertItem.Decisions[0].Origin
+	} else {
+		log.Warningf("unexpected origin %s", *alertItem.Decisions[0].Origin)
+	}
+
+	deleted := 0
+	inserted := 0
+
+	for i, decisionItem := range alertItem.Decisions {
+		var start_ip, start_sfx, end_ip, end_sfx int64
+		var sz int
+		if decisionItem.Duration == nil {
+			log.Warning("nil duration in community decision")
+			continue
+		}
+		duration, err := time.ParseDuration(*decisionItem.Duration)
 		if err != nil {
-			return 0, 0, 0, errors.Wrapf(BulkError, "error creating transaction : %s", err)
-		}
-		decisionBulk := make([]*ent.DecisionCreate, 0, decisionBulkSize)
-		valueList := make([]string, 0, decisionBulkSize)
-		DecOrigin := CapiMachineID
-		if *alertItem.Decisions[0].Origin == CapiMachineID || *alertItem.Decisions[0].Origin == CapiListsMachineID {
-			DecOrigin = *alertItem.Decisions[0].Origin
-		} else {
-			log.Warningf("unexpected origin %s", *alertItem.Decisions[0].Origin)
-		}
-		for i, decisionItem := range alertItem.Decisions {
-			var start_ip, start_sfx, end_ip, end_sfx int64
-			var sz int
-			if decisionItem.Duration == nil {
-				log.Warning("nil duration in community decision")
-				continue
+			rollbackErr := txClient.Rollback()
+			if rollbackErr != nil {
+				log.Errorf("rollback error: %s", rollbackErr)
 			}
-			duration, err := time.ParseDuration(*decisionItem.Duration)
+			return 0, 0, 0, errors.Wrapf(ParseDurationFail, "decision duration '%+v' : %s", *decisionItem.Duration, err)
+		}
+		if decisionItem.Scope == nil {
+			log.Warning("nil scope in community decision")
+			continue
+		}
+		/*if the scope is IP or Range, convert the value to integers */
+		if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
+			sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decisionItem.Value)
 			if err != nil {
 				rollbackErr := txClient.Rollback()
 				if rollbackErr != nil {
 					log.Errorf("rollback error: %s", rollbackErr)
 				}
-				return 0, 0, 0, errors.Wrapf(ParseDurationFail, "decision duration '%+v' : %s", *decisionItem.Duration, err)
+				return 0, 0, 0, errors.Wrapf(ParseDurationFail, "invalid addr/range %s : %s", *decisionItem.Value, err)
 			}
-			if decisionItem.Scope == nil {
-				log.Warning("nil scope in community decision")
-				continue
-			}
-			/*if the scope is IP or Range, convert the value to integers */
-			if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
-				sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decisionItem.Value)
-				if err != nil {
-					rollbackErr := txClient.Rollback()
-					if rollbackErr != nil {
-						log.Errorf("rollback error: %s", rollbackErr)
-					}
-					return 0, 0, 0, errors.Wrapf(ParseDurationFail, "invalid addr/range %s : %s", *decisionItem.Value, err)
-				}
-			}
-			/*bulk insert some new decisions*/
-			decisionBulk = append(decisionBulk, c.Ent.Decision.Create().
-				SetUntil(ts.Add(duration)).
-				SetScenario(*decisionItem.Scenario).
-				SetType(*decisionItem.Type).
-				SetStartIP(start_ip).
-				SetStartSuffix(start_sfx).
-				SetEndIP(end_ip).
-				SetEndSuffix(end_sfx).
-				SetIPSize(int64(sz)).
-				SetValue(*decisionItem.Value).
-				SetScope(*decisionItem.Scope).
-				SetOrigin(*decisionItem.Origin).
-				SetSimulated(*alertItem.Simulated).
-				SetOwner(alertRef))
-
-			/*for bulk delete of duplicate decisions*/
-			if decisionItem.Value == nil {
-				log.Warning("nil value in community decision")
-				continue
-			}
-			valueList = append(valueList, *decisionItem.Value)
-
-			if len(decisionBulk) == decisionBulkSize {
-
-				insertedDecisions, err := txClient.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
-				if err != nil {
-					rollbackErr := txClient.Rollback()
-					if rollbackErr != nil {
-						log.Errorf("rollback error: %s", rollbackErr)
-					}
-					return 0, 0, 0, errors.Wrapf(BulkError, "bulk creating decisions : %s", err)
-				}
-				inserted += len(insertedDecisions)
-
-				/*Deleting older decisions from capi*/
-				deletedDecisions, err := txClient.Decision.Delete().
-					Where(decision.And(
-						decision.OriginEQ(DecOrigin),
-						decision.Not(decision.HasOwnerWith(alert.IDEQ(alertRef.ID))),
-						decision.ValueIn(valueList...),
-					)).Exec(c.CTX)
-				if err != nil {
-					rollbackErr := txClient.Rollback()
-					if rollbackErr != nil {
-						log.Errorf("rollback error: %s", rollbackErr)
-					}
-					return 0, 0, 0, errors.Wrap(err, "while deleting older community blocklist decisions")
-				}
-				deleted += deletedDecisions
-
-				if len(alertItem.Decisions)-i <= decisionBulkSize {
-					decisionBulk = make([]*ent.DecisionCreate, 0, (len(alertItem.Decisions) - i))
-					valueList = make([]string, 0, (len(alertItem.Decisions) - i))
-				} else {
-					decisionBulk = make([]*ent.DecisionCreate, 0, decisionBulkSize)
-					valueList = make([]string, 0, decisionBulkSize)
-				}
-			}
-
 		}
-		log.Debugf("deleted %d decisions for %s vs %s", deleted, DecOrigin, *alertItem.Decisions[0].Origin)
-		insertedDecisions, err := txClient.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
-		if err != nil {
-			return 0, 0, 0, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
+		/*bulk insert some new decisions*/
+		decisionBulk = append(decisionBulk, c.Ent.Decision.Create().
+			SetUntil(ts.Add(duration)).
+			SetScenario(*decisionItem.Scenario).
+			SetType(*decisionItem.Type).
+			SetStartIP(start_ip).
+			SetStartSuffix(start_sfx).
+			SetEndIP(end_ip).
+			SetEndSuffix(end_sfx).
+			SetIPSize(int64(sz)).
+			SetValue(*decisionItem.Value).
+			SetScope(*decisionItem.Scope).
+			SetOrigin(*decisionItem.Origin).
+			SetSimulated(*alertItem.Simulated).
+			SetOwner(alertRef))
+
+		/*for bulk delete of duplicate decisions*/
+		if decisionItem.Value == nil {
+			log.Warning("nil value in community decision")
+			continue
 		}
-		inserted += len(insertedDecisions)
-		/*Deleting older decisions from capi*/
-		if len(valueList) > 0 {
+		valueList = append(valueList, *decisionItem.Value)
+
+		if len(decisionBulk) == decisionBulkSize {
+
+			insertedDecisions, err := txClient.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
+			if err != nil {
+				rollbackErr := txClient.Rollback()
+				if rollbackErr != nil {
+					log.Errorf("rollback error: %s", rollbackErr)
+				}
+				return 0, 0, 0, errors.Wrapf(BulkError, "bulk creating decisions : %s", err)
+			}
+			inserted += len(insertedDecisions)
+
+			/*Deleting older decisions from capi*/
 			deletedDecisions, err := txClient.Decision.Delete().
 				Where(decision.And(
 					decision.OriginEQ(DecOrigin),
@@ -463,15 +435,47 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 				return 0, 0, 0, errors.Wrap(err, "while deleting older community blocklist decisions")
 			}
 			deleted += deletedDecisions
+
+			if len(alertItem.Decisions)-i <= decisionBulkSize {
+				decisionBulk = make([]*ent.DecisionCreate, 0, (len(alertItem.Decisions) - i))
+				valueList = make([]string, 0, (len(alertItem.Decisions) - i))
+			} else {
+				decisionBulk = make([]*ent.DecisionCreate, 0, decisionBulkSize)
+				valueList = make([]string, 0, decisionBulkSize)
+			}
 		}
-		err = txClient.Commit()
+
+	}
+	log.Debugf("deleted %d decisions for %s vs %s", deleted, DecOrigin, *alertItem.Decisions[0].Origin)
+	insertedDecisions, err := txClient.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
+	if err != nil {
+		return 0, 0, 0, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
+	}
+	inserted += len(insertedDecisions)
+	/*Deleting older decisions from capi*/
+	if len(valueList) > 0 {
+		deletedDecisions, err := txClient.Decision.Delete().
+			Where(decision.And(
+				decision.OriginEQ(DecOrigin),
+				decision.Not(decision.HasOwnerWith(alert.IDEQ(alertRef.ID))),
+				decision.ValueIn(valueList...),
+			)).Exec(c.CTX)
 		if err != nil {
 			rollbackErr := txClient.Rollback()
 			if rollbackErr != nil {
 				log.Errorf("rollback error: %s", rollbackErr)
 			}
-			return 0, 0, 0, errors.Wrapf(BulkError, "error committing transaction : %s", err)
+			return 0, 0, 0, errors.Wrap(err, "while deleting older community blocklist decisions")
 		}
+		deleted += deletedDecisions
+	}
+	err = txClient.Commit()
+	if err != nil {
+		rollbackErr := txClient.Rollback()
+		if rollbackErr != nil {
+			log.Errorf("rollback error: %s", rollbackErr)
+		}
+		return 0, 0, 0, errors.Wrapf(BulkError, "error committing transaction : %s", err)
 	}
 
 	return alertRef.ID, inserted, deleted, nil
