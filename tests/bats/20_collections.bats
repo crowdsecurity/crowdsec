@@ -111,4 +111,35 @@ teardown() {
     assert_output --partial 'Disabled 0 items'
 }
 
+@test "a taint bubbles up to the top collection" {
+    coll=crowdsecurity/nginx
+    subcoll=crowdsecurity/base-http-scenarios
+    scenario=crowdsecurity/http-crawl-non_statics
+
+    # install a collection with dependencies
+    rune -0 cscli collections install "$coll"
+
+    # the collection, subcollection and scenario are installed and not tainted
+    # we have to default to false because tainted is (as of 1.4.6) returned
+    # only when true
+    rune -0 cscli collections inspect "$coll" -o json
+    rune -0 jq -e '(.installed,.tainted|false)==(true,false)' <(output)
+    rune -0 cscli collections inspect "$subcoll" -o json
+    rune -0 jq -e '(.installed,.tainted|false)==(true,false)' <(output)
+    rune -0 cscli scenarios inspect "$scenario" -o json
+    rune -0 jq -e '(.installed,.tainted|false)==(true,false)' <(output)
+
+    # we taint the scenario
+    HUB_DIR=$(config_get '.config_paths.hub_dir')
+    yq e '.description="I am tainted"' -i "$HUB_DIR/scenarios/$scenario.yaml"
+
+    # the collection, subcollection and scenario are now tainted
+    rune -0 cscli scenarios inspect "$scenario" -o json
+    rune -0 jq -e '(.installed,.tainted)==(true,true)' <(output)
+    rune -0 cscli collections inspect "$subcoll" -o json
+    rune -0 jq -e '(.installed,.tainted)==(true,true)' <(output)
+    rune -0 cscli collections inspect "$coll" -o json
+    rune -0 jq -e '(.installed,.tainted)==(true,true)' <(output)
+}
+
 # TODO test download-only
