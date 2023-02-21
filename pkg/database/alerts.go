@@ -64,17 +64,16 @@ func formatAlertAsString(machineId string, alert *models.Alert) []string {
 	}
 
 	/**/
-	reason := ""
 	msg := ""
 	if alert.Scenario != nil && *alert.Scenario != "" {
 		msg = *alert.Scenario
 	} else if alert.Message != nil && *alert.Message != "" {
 		msg = *alert.Message
 	} else {
-		msg = fmt.Sprintf("empty scenario by %s", src)
+		msg = "empty scenario"
 	}
 
-	reason = fmt.Sprintf("%s by %s", msg, src)
+	reason := fmt.Sprintf("%s by %s", msg, src)
 
 	if len(alert.Decisions) > 0 {
 		for i, decisionItem := range alert.Decisions {
