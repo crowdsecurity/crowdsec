@@ -34,7 +34,7 @@ receiver_emails:
 # - email1@gmail.com
 # - email2@gmail.com
 
-# One of "ssltls", "none"
+# One of "ssltls", "starttls", "none"
 encryption_type: ssltls
 
 ---
