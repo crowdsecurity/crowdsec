@@ -115,7 +115,17 @@ func ShutdownCrowdsecRoutines() error {
 	if len(dataSources) > 0 {
 		acquisTomb.Kill(nil)
 		log.Debugf("waiting for acquisition to finish")
-
+	acquisloop:
+		for {
+			select {
+			case _, ok := <-inputLineChan:
+				if !ok { //closed
+					break acquisloop
+				}
+			default:
+				break acquisloop
+			}
+		}
 		if err := acquisTomb.Wait(); err != nil {
 			log.Warningf("Acquisition returned error : %s", err)
 			reterr = err

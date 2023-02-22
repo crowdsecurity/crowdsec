@@ -40,8 +40,10 @@ var (
 	/*the state of acquisition*/
 	dataSources []acquisition.DataSource
 	/*the state of the buckets*/
-	holders         []leakybucket.BucketFactory
-	buckets         *leakybucket.Buckets
+	holders []leakybucket.BucketFactory
+	buckets *leakybucket.Buckets
+
+	inputLineChan   chan types.Event
 	outputEventChan chan types.Event // the buckets init returns its own chan that is used for multiplexing
 	/*settings*/
 	lastProcessedItem time.Time /*keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.*/
@@ -282,7 +284,6 @@ func LoadConfig(cConfig *csconfig.Config) error {
 
 	return nil
 }
-
 
 // exitWithCode must be called right before the program termination,
 // to allow measuring functional test coverage in case of abnormal exit.
