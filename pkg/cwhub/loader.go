@@ -267,6 +267,9 @@ func CollecDepsCheck(v *Item) error {
 				if val.Type == COLLECTIONS {
 					log.Tracef("collec, recurse.")
 					if err := CollecDepsCheck(&val); err != nil {
+						if val.Tainted {
+							v.Tainted = true
+						}
 						return fmt.Errorf("sub collection %s is broken : %s", val.Name, err)
 					}
 					hubIdx[ptrtype][p] = val
