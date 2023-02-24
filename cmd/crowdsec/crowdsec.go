@@ -44,8 +44,7 @@ func initCrowdsec(cConfig *csconfig.Config) (*parser.Parsers, error) {
 }
 
 func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers) error {
-	inputEventChan := make(chan types.Event)
-
+	inputEventChan = make(chan types.Event)
 	inputLineChan = make(chan types.Event)
 
 	//start go-routines for parsing, buckets pour and outputs.

@@ -124,6 +124,7 @@ func ShutdownCrowdsecRoutines() error {
 
 	log.Debugf("acquisition is finished, wait for parser/bucket/ouputs.")
 	parsersTomb.Kill(nil)
+	drainChan(inputEventChan)
 	if err := parsersTomb.Wait(); err != nil {
 		log.Warningf("Parsers returned error : %s", err)
 		reterr = err
