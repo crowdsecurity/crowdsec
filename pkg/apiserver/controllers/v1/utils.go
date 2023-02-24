@@ -2,6 +2,7 @@ package v1
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/gin-gonic/gin"
@@ -23,4 +24,14 @@ func getBouncerFromContext(ctx *gin.Context) (*ent.Bouncer, error) {
 	}
 
 	return bouncerInfo, nil
+}
+
+func (c *Controller) AbortRemoteIf(option bool) gin.HandlerFunc {
+	return func(gctx *gin.Context) {
+		incomingIP := gctx.ClientIP()
+		if option && incomingIP != "127.0.0.1" && incomingIP != "::1" {
+			gctx.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+			gctx.Abort()
+		}
+	}
 }

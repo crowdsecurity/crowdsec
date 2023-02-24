@@ -202,12 +202,13 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	router.Use(CustomRecoveryWithWriter())
 
 	controller := &controllers.Controller{
-		DBClient:      dbClient,
-		Ectx:          context.Background(),
-		Router:        router,
-		Profiles:      config.Profiles,
-		Log:           clog,
-		ConsoleConfig: config.ConsoleConfig,
+		DBClient:                      dbClient,
+		Ectx:                          context.Background(),
+		Router:                        router,
+		Profiles:                      config.Profiles,
+		Log:                           clog,
+		ConsoleConfig:                 config.ConsoleConfig,
+		DisableRemoteLapiRegistration: config.DisableRemoteLapiRegistration,
 	}
 
 	var apiClient *apic
