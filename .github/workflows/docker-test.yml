@@ -54,7 +54,9 @@ jobs:
         run: |
           cd docker/test
           pipenv install --deploy
-          docker network create net-test
+
+      - name: "Create Docker network"
+        run: docker network create net-test
 
       - name: "Run tests"
         env:
