@@ -63,7 +63,12 @@ func VersionStr() string {
 }
 
 func VersionStrip() string {
-	version := strings.Split(Version, "~")
+	if strings.Contains(Version, "~") {
+		//This is a RC
+		version := strings.Split(Version, "~")
+		return version[0]
+	}
+	version := strings.Split(Version, "-")
 	return version[0]
 }
 
