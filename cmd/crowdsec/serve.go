@@ -196,6 +196,7 @@ func shutdown(sig os.Signal, cConfig *csconfig.Config) error {
 }
 
 func drainChan(c chan types.Event) {
+	time.Sleep(500 * time.Millisecond)
 	for {
 		select {
 		case _, ok := <-c:
