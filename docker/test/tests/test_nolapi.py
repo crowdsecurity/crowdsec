@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from pytest_cs import wait_for_log, Status
+from pytest_cs import Status
 
 import pytest
 
@@ -15,5 +15,5 @@ def test_no_agent(crowdsec, flavor):
 
     # if an alternative lapi url is not defined, the container should exit
 
-    with crowdsec(flavor=flavor, environment=env, wait_status=Status.EXITED) as cont:
-        wait_for_log(cont, "*dial tcp 0.0.0.0:8080: connect: connection refused*")
+    with crowdsec(flavor=flavor, environment=env, wait_status=Status.EXITED) as cs:
+        cs.wait_for_log("*dial tcp 0.0.0.0:8080: connect: connection refused*")
