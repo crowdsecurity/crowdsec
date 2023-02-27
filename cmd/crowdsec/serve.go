@@ -115,7 +115,7 @@ func ShutdownCrowdsecRoutines() error {
 	if len(dataSources) > 0 {
 		acquisTomb.Kill(nil)
 		log.Debugf("waiting for acquisition to finish")
-
+		drainChan(inputLineChan)
 		if err := acquisTomb.Wait(); err != nil {
 			log.Warningf("Acquisition returned error : %s", err)
 			reterr = err
@@ -124,6 +124,7 @@ func ShutdownCrowdsecRoutines() error {
 
 	log.Debugf("acquisition is finished, wait for parser/bucket/ouputs.")
 	parsersTomb.Kill(nil)
+	drainChan(inputEventChan)
 	if err := parsersTomb.Wait(); err != nil {
 		log.Warningf("Parsers returned error : %s", err)
 		reterr = err
@@ -192,6 +193,19 @@ func shutdown(sig os.Signal, cConfig *csconfig.Config) error {
 	}
 
 	return nil
+}
+
+func drainChan(c chan types.Event) {
+	for {
+		select {
+		case _, ok := <-c:
+			if !ok { //closed
+				return
+			}
+		default:
+			return
+		}
+	}
 }
 
 func HandleSignals(cConfig *csconfig.Config) error {
