@@ -2,7 +2,7 @@
 
 import datetime
 
-from pytest_cs import wait_for_log, Status
+from pytest_cs import Status
 
 import pytest
 
@@ -29,13 +29,13 @@ def test_cold_logs(crowdsec, tmp_path_factory, flavor):
 
     # missing type
 
-    with crowdsec(flavor=flavor, environment=env, volumes=volumes, wait_status=Status.EXITED) as cont:
-        wait_for_log(cont, "*-dsn requires a -type argument*")
+    with crowdsec(flavor=flavor, environment=env, volumes=volumes, wait_status=Status.EXITED) as cs:
+        cs.wait_for_log("*-dsn requires a -type argument*")
 
     env['TYPE'] = 'syslog'
 
-    with crowdsec(flavor=flavor, environment=env, volumes=volumes) as cont:
-        wait_for_log(cont, [
+    with crowdsec(flavor=flavor, environment=env, volumes=volumes) as cs:
+        cs.wait_for_log([
             "*Adding file /var/log/toto.log to filelist*",
             "*reading /var/log/toto.log at once*",
             "*Ip 1.1.1.172 performed 'crowdsecurity/ssh-bf' (6 events over 5s)*",
@@ -48,5 +48,5 @@ def test_cold_logs_missing_dsn(crowdsec, flavor):
         'TYPE': 'syslog',
     }
 
-    with crowdsec(flavor=flavor, environment=env, wait_status=Status.EXITED) as cont:
-        wait_for_log(cont, "*-type requires a -dsn argument*")
+    with crowdsec(flavor=flavor, environment=env, wait_status=Status.EXITED) as cs:
+        cs.wait_for_log("*-type requires a -dsn argument*")

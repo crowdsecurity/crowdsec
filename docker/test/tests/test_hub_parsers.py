@@ -7,8 +7,6 @@ Test parser management
 from http import HTTPStatus
 import json
 
-from pytest_cs import wait_for_log, wait_for_http
-
 import pytest
 
 pytestmark = pytest.mark.docker
@@ -21,14 +19,14 @@ def test_install_two_parsers(crowdsec, flavor):
     env = {
         'PARSERS': f'{it1} {it2}'
     }
-    with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, [
+    with crowdsec(flavor=flavor, environment=env) as cs:
+        cs.wait_for_log([
             f'*parsers install "{it1}"*',
             f'*parsers install "{it2}"*',
             "*Starting processing data*"
         ])
-        wait_for_http(cont, 8080, '/health', want_status=HTTPStatus.OK)
-        res = cont.exec_run('cscli parsers list -o json')
+        cs.wait_for_http(8080, '/health', want_status=HTTPStatus.OK)
+        res = cs.cont.exec_run('cscli parsers list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
         items = {c['name']: c for c in j['parsers']}
@@ -43,13 +41,13 @@ def test_disable_parser(crowdsec, flavor):
     env = {
         'DISABLE_PARSERS': it
     }
-    with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, [
+    with crowdsec(flavor=flavor, environment=env) as cs:
+        cs.wait_for_log([
             f'*parsers remove "{it}"*',
             "*Starting processing data*",
         ])
-        wait_for_http(cont, 8080, '/health', want_status=HTTPStatus.OK)
-        res = cont.exec_run('cscli parsers list -o json')
+        cs.wait_for_http(8080, '/health', want_status=HTTPStatus.OK)
+        res = cs.cont.exec_run('cscli parsers list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
         items = {c['name'] for c in j['parsers']}
@@ -63,14 +61,14 @@ def test_install_and_disable_parser(crowdsec, flavor):
         'PARSERS': it,
         'DISABLE_PARSERS': it,
     }
-    with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, "*Starting processing data*")
-        wait_for_http(cont, 8080, '/health', want_status=HTTPStatus.OK)
-        res = cont.exec_run('cscli parsers list -o json')
+    with crowdsec(flavor=flavor, environment=env) as cs:
+        cs.wait_for_log("*Starting processing data*")
+        cs.wait_for_http(8080, '/health', want_status=HTTPStatus.OK)
+        res = cs.cont.exec_run('cscli parsers list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
         items = {c['name'] for c in j['parsers']}
         assert it not in items
-        logs = cont.logs().decode().splitlines()
+        logs = cs.log_lines()
         # check that there was no attempt to install
         assert not any(f'parsers install "{it}"' in line for line in logs)
