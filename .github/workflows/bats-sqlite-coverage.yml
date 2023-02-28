@@ -8,8 +8,11 @@ env:
   TEST_COVERAGE: true
 
 jobs:
-
   build:
+    strategy:
+      matrix:
+        go-version: ["1.20.1"]
+
     name: "Build + tests"
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -21,10 +24,10 @@ jobs:
           sudo chmod +w /etc/machine-id
           echo githubciXXXXXXXXXXXXXXXXXXXXXXXX | sudo tee /etc/machine-id
 
-    - name: "Set up Go 1.20"
+    - name: "Set up Go ${{ matrix.go-version }}"
       uses: actions/setup-go@v3
       with:
-        go-version: 1.20.1
+        go-version: ${{ matrix.go-version }}
       id: go
 
     - name: "Check out CrowdSec repository"
@@ -32,6 +35,18 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+          ~/Library/Caches/go-build
+          %LocalAppData%\go-build
+        key: ${{ runner.os }}-${{ matrix.go-version }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.go-version }}-go-
 
     - name: "Install bats dependencies"
       env:
