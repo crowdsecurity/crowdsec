@@ -159,16 +159,16 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	}
 
 	cc.Init(&cc.Config{
-		RootCmd: rootCmd,
-		Headings: cc.Yellow,
-		Commands: cc.Green + cc.Bold,
+		RootCmd:       rootCmd,
+		Headings:      cc.Yellow,
+		Commands:      cc.Green + cc.Bold,
 		CmdShortDescr: cc.Cyan,
-		Example: cc.Italic,
-		ExecName: cc.Bold,
-		Aliases: cc.Bold + cc.Italic,
+		Example:       cc.Italic,
+		ExecName:      cc.Bold,
+		Aliases:       cc.Bold + cc.Italic,
 		FlagsDataType: cc.White,
-		Flags: cc.Green,
-		FlagsDescr: cc.Cyan,
+		Flags:         cc.Green,
+		FlagsDescr:    cc.Cyan,
 	})
 	rootCmd.SetOut(color.Output)
 
@@ -245,6 +245,10 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 
 	if fflag.CscliSetup.IsEnabled() {
 		rootCmd.AddCommand(NewSetupCmd())
+	}
+
+	if fflag.PapiClient.IsEnabled() {
+		rootCmd.AddCommand(NewPapiCmd())
 	}
 
 	if err := rootCmd.Execute(); err != nil {
