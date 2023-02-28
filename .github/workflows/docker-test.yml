@@ -37,7 +37,7 @@ jobs:
           platforms: linux/amd64
           load: true
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=min
 
       - name: "Build flavor: slim"
         uses: docker/build-push-action@v4
@@ -49,7 +49,7 @@ jobs:
           platforms: linux/amd64
           load: true
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=min
 
       - name: "Build flavor: full (debian)"
         uses: docker/build-push-action@v4
@@ -61,7 +61,7 @@ jobs:
           platforms: linux/amd64
           load: true
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: type=gha,mode=min
 
       - name: "Setup Python"
         uses: actions/setup-python@v4
