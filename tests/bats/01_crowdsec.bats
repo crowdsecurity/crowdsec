@@ -24,51 +24,51 @@ teardown() {
 #----------
 
 @test "crowdsec (usage)" {
-    run -0 --separate-stderr timeout 2s "${CROWDSEC}" -h
+    rune -0 timeout 2s "${CROWDSEC}" -h
     assert_stderr_line --regexp "Usage of .*:"
 
-    run -0 --separate-stderr timeout 2s "${CROWDSEC}" --help
+    rune -0 timeout 2s "${CROWDSEC}" --help
     assert_stderr_line --regexp "Usage of .*:"
 }
 
 @test "crowdsec (unknown flag)" {
-    run -2 --separate-stderr timeout 2s "${CROWDSEC}" --foobar
+    rune -2 timeout 2s "${CROWDSEC}" --foobar
     assert_stderr_line "flag provided but not defined: -foobar"
     assert_stderr_line --regexp "Usage of .*"
 }
 
 @test "crowdsec (unknown argument)" {
-    run -2 --separate-stderr timeout 2s "${CROWDSEC}" trololo
+    rune -2 timeout 2s "${CROWDSEC}" trololo
     assert_stderr_line "argument provided but not defined: trololo"
     assert_stderr_line --regexp "Usage of .*"
 }
 
 @test "crowdsec (no api and no agent)" {
-    run -1 --separate-stderr timeout 2s "${CROWDSEC}" -no-api -no-cs
+    rune -1 timeout 2s "${CROWDSEC}" -no-api -no-cs
     assert_stderr_line --partial "You must run at least the API Server or crowdsec"
 }
 
 @test "crowdsec - print error on exit" {
     # errors that cause program termination are printed to stderr, not only logs
     config_set '.db_config.type="meh"'
-    run -1 --separate-stderr "${CROWDSEC}"
+    rune -1 "${CROWDSEC}"
     assert_stderr --partial "unable to create database client: unknown database type 'meh'"
 }
 
 @test "crowdsec - bad configuration (empty/missing common section)" {
     config_set '.common={}'
-    run -1 --separate-stderr "${CROWDSEC}"
+    rune -1 "${CROWDSEC}"
     refute_output
     assert_stderr --partial "unable to load configuration: common section is empty"
 
     config_set 'del(.common)'
-    run -1 --separate-stderr "${CROWDSEC}"
+    rune -1 "${CROWDSEC}"
     refute_output
     assert_stderr --partial "unable to load configuration: common section is empty"
 }
 
 @test "CS_LAPI_SECRET not strong enough" {
-    CS_LAPI_SECRET=foo run -1 --separate-stderr timeout 2s "${CROWDSEC}"
+    CS_LAPI_SECRET=foo rune -1 timeout 2s "${CROWDSEC}"
     assert_stderr --partial "api server init: unable to run local API: controller init: CS_LAPI_SECRET not strong enough"
 }
 
@@ -77,7 +77,7 @@ teardown() {
     log_old="${logdir1}/crowdsec.log"
     config_set ".common.log_dir=\"${logdir1}\""
 
-    run -0 ./instance-crowdsec start
+    rune -0 ./instance-crowdsec start
     # PID="$output"
     assert_file_exist "$log_old"
     assert_file_contains "$log_old" "Starting processing data"
@@ -91,14 +91,14 @@ teardown() {
     sleep 5
 
     # this won't work as crowdsec-wrapper does not relay the signal
-    # run -0 kill -HUP "$PID"
+    # rune -0 kill -HUP "$PID"
 
     # During functional tests, crowdsec is often run from a wrapper script,
     # which captures its output (for coverage reports) and cannot relay signals
     # at the same time. So instead of sending a SIGHUP to the wrapper, we send
     # it to the crowdsec process by name - with or without coverage.
-    run pkill -HUP -f "$BIN_DIR/crowdsec.cover"
-    run pkill -HUP -f "$BIN_DIR/crowdsec"
+    rune pkill -HUP -f "$BIN_DIR/crowdsec.cover"
+    rune pkill -HUP -f "$BIN_DIR/crowdsec"
 
     for ((i=0; i<10; i++)); do
         sleep 1
@@ -139,14 +139,14 @@ teardown() {
     assert_file_contains "$log_new" "CrowdSec Local API listening on 127.0.0.1:8080"
     assert_file_contains "$log_new" "Reload is finished"
 
-    run -0 ./instance-crowdsec stop
+    rune -0 ./instance-crowdsec stop
 }
 
 @test "crowdsec (error if the acquisition_path file is defined but missing)" {
     ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
     rm -f "$ACQUIS_YAML"
 
-    run -1 --separate-stderr timeout 2s "${CROWDSEC}"
+    rune -1 timeout 2s "${CROWDSEC}"
     assert_stderr_line --partial "acquis.yaml: no such file or directory"
 }
 
@@ -159,7 +159,7 @@ teardown() {
     rm -f "$ACQUIS_DIR"
 
     config_set '.common.log_media="stdout"'
-    run -124 --separate-stderr timeout 2s "${CROWDSEC}"
+    rune -124 timeout 2s "${CROWDSEC}"
     # check warning
     assert_stderr_line --partial "no acquisition file found"
 }
@@ -174,7 +174,7 @@ teardown() {
     config_set '.crowdsec_service.acquisition_dir=""'
 
     config_set '.common.log_media="stdout"'
-    run -124 --separate-stderr timeout 2s "${CROWDSEC}"
+    rune -124 timeout 2s "${CROWDSEC}"
     # check warning
     assert_stderr_line --partial "no acquisition_path or acquisition_dir specified"
 }
@@ -188,5 +188,5 @@ teardown() {
     mkdir -p "$ACQUIS_DIR"
     touch "$ACQUIS_DIR"/foo.yaml
 
-    run -124 --separate-stderr timeout 2s "${CROWDSEC}"
+    rune -124 timeout 2s "${CROWDSEC}"
 }
