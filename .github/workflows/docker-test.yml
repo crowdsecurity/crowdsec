@@ -96,4 +96,4 @@ jobs:
           CROWDSEC_TEST_NETWORK: net-test
         run: |
           cd docker/test
-          pipenv run pytest --durations=0 --color=yes
+          pipenv run pytest -n 2 --durations=0 --color=yes
