@@ -26,6 +26,8 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
+        with:
+          config: .github/buildkit.toml
 
       - name: "Build flavor: full"
         uses: docker/build-push-action@v4
