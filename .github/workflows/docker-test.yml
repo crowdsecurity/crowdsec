@@ -24,13 +24,46 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Build flavors
-        id: prep
-        run: |
-          DOCKER_IMAGE=crowdsecurity/crowdsec
-          docker build --target full -t "$DOCKER_IMAGE:test" -f Dockerfile .
-          docker build --target slim -t "$DOCKER_IMAGE:test-slim" -f Dockerfile .
-          docker build --target full -t "$DOCKER_IMAGE:test-debian" -f Dockerfile.debian .
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          config: .github/buildkit.toml
+
+      - name: "Build flavor: full"
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          tags: crowdsecurity/crowdsec:test
+          target: full
+          platforms: linux/amd64
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=min
+
+      - name: "Build flavor: slim"
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          tags: crowdsecurity/crowdsec:test-slim
+          target: slim
+          platforms: linux/amd64
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=min
+
+      - name: "Build flavor: full (debian)"
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile.debian
+          tags: crowdsecurity/crowdsec:test-debian
+          target: full
+          platforms: linux/amd64
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=min
 
       - name: "Setup Python"
         uses: actions/setup-python@v4
@@ -65,4 +98,4 @@ jobs:
           CROWDSEC_TEST_NETWORK: net-test
         run: |
           cd docker/test
-          pipenv run pytest --durations=0 --color=yes
+          pipenv run pytest -n 2 --durations=0 --color=yes

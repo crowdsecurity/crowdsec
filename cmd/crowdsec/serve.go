@@ -196,6 +196,10 @@ func shutdown(sig os.Signal, cConfig *csconfig.Config) error {
 }
 
 func drainChan(c chan types.Event) {
+	time.Sleep(500 * time.Millisecond)
+	// delay to avoid draining chan before the acquisition/parser
+	// get a chance to push its event
+	// We should close the chan on the writer side rather than this
 	for {
 		select {
 		case _, ok := <-c:

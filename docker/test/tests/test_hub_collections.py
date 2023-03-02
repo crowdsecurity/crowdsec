@@ -8,9 +8,6 @@ from http import HTTPStatus
 import json
 import os
 import pwd
-import time
-
-from pytest_cs import wait_for_log, wait_for_http
 
 import pytest
 import yaml
@@ -25,15 +22,15 @@ def test_install_two_collections(crowdsec, flavor):
     env = {
         'COLLECTIONS': f'{it1} {it2}'
     }
-    with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_http(cont, 8080, '/health', want_status=HTTPStatus.OK)
-        res = cont.exec_run('cscli collections list -o json')
+    with crowdsec(flavor=flavor, environment=env) as cs:
+        cs.wait_for_http(8080, '/health', want_status=HTTPStatus.OK)
+        res = cs.cont.exec_run('cscli collections list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
         items = {c['name']: c for c in j['collections']}
         assert items[it1]['status'] == 'enabled'
         assert items[it2]['status'] == 'enabled'
-        wait_for_log(cont, [
+        cs.wait_for_log([
             # f'*collections install "{it1}"*'
             # f'*collections install "{it2}"*'
             f'*Enabled collections : {it1}*',
@@ -47,15 +44,15 @@ def test_disable_collection(crowdsec, flavor):
     env = {
         'DISABLE_COLLECTIONS': it
     }
-    with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, "*Starting processing data*")
-        wait_for_http(cont, 8080, '/health', want_status=HTTPStatus.OK)
-        res = cont.exec_run('cscli collections list -o json')
+    with crowdsec(flavor=flavor, environment=env) as cs:
+        cs.wait_for_log("*Starting processing data*")
+        cs.wait_for_http(8080, '/health', want_status=HTTPStatus.OK)
+        res = cs.cont.exec_run('cscli collections list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
         items = {c['name'] for c in j['collections']}
         assert it not in items
-        wait_for_log(cont, [
+        cs.wait_for_log([
             # f'*collections remove "{it}*",
             f'*Removed symlink [[]{it}[]]*',
         ])
@@ -68,15 +65,15 @@ def test_install_and_disable_collection(crowdsec, flavor):
         'COLLECTIONS': it,
         'DISABLE_COLLECTIONS': it,
     }
-    with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, "*Starting processing data*")
-        wait_for_http(cont, 8080, '/health', want_status=HTTPStatus.OK)
-        res = cont.exec_run('cscli collections list -o json')
+    with crowdsec(flavor=flavor, environment=env) as cs:
+        cs.wait_for_log("*Starting processing data*")
+        cs.wait_for_http(8080, '/health', want_status=HTTPStatus.OK)
+        res = cs.cont.exec_run('cscli collections list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
         items = {c['name'] for c in j['collections']}
         assert it not in items
-        logs = cont.logs().decode().splitlines()
+        logs = cs.log_lines()
         # check that there was no attempt to install
         assert not any(f'Enabled collections : {it}' in line for line in logs)
 
@@ -93,21 +90,21 @@ def test_taint_bubble_up(crowdsec, tmp_path_factory, flavor):
         hub: {'bind': '/etc/crowdsec/hub', 'mode': 'rw'}
     }
 
-    with crowdsec(flavor=flavor, environment=env, volumes=volumes) as cont:
-        wait_for_http(cont, 8080, '/health', want_status=HTTPStatus.OK)
-        res = cont.exec_run('cscli collections list -o json')
+    with crowdsec(flavor=flavor, environment=env, volumes=volumes) as cs:
+        cs.wait_for_http(8080, '/health', want_status=HTTPStatus.OK)
+        res = cs.cont.exec_run('cscli collections list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
         items = {c['name']: c for c in j['collections']}
         # implicit check for tainted=False
         assert items[coll]['status'] == 'enabled'
-        wait_for_log(cont, [
+        cs.wait_for_log([
             f'*Enabled collections : {coll}*',
         ])
 
         # change file permissions to allow edit
         current_uid = pwd.getpwuid(os.getuid()).pw_uid
-        res = cont.exec_run(f'chown -R {current_uid} /etc/crowdsec/hub')
+        res = cs.cont.exec_run(f'chown -R {current_uid} /etc/crowdsec/hub')
         assert res.exit_code == 0
 
     scenario = 'crowdsecurity/http-crawl-non_statics'
@@ -122,14 +119,14 @@ def test_taint_bubble_up(crowdsec, tmp_path_factory, flavor):
     with open(scenario_file, 'w') as f:
         yaml.dump(yml, f)
 
-    with crowdsec(flavor=flavor, environment=env, volumes=volumes) as cont:
-        wait_for_http(cont, 8080, '/health', want_status=HTTPStatus.OK)
-        res = cont.exec_run(f'cscli scenarios inspect {scenario} -o json')
+    with crowdsec(flavor=flavor, environment=env, volumes=volumes) as cs:
+        cs.wait_for_http(8080, '/health', want_status=HTTPStatus.OK)
+        res = cs.cont.exec_run(f'cscli scenarios inspect {scenario} -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
         assert j['tainted'] is True
 
-        res = cont.exec_run('cscli collections list -o json')
+        res = cs.cont.exec_run('cscli collections list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
         items = {c['name']: c for c in j['collections']}

@@ -10,8 +10,6 @@ import json
 
 import pytest
 
-from pytest_cs import wait_for_log, wait_for_http
-
 pytestmark = pytest.mark.docker
 
 
@@ -28,10 +26,10 @@ def test_register_bouncer_env(crowdsec, flavor):
         'BOUNCER_KEY_bouncer2name': 'bouncer2key'
     }
 
-    with crowdsec(flavor=flavor, environment=env) as cont:
-        wait_for_log(cont, "*Starting processing data*")
-        wait_for_http(cont, 8080, '/health', want_status=HTTPStatus.OK)
-        res = cont.exec_run('cscli bouncers list -o json')
+    with crowdsec(flavor=flavor, environment=env) as cs:
+        cs.wait_for_log("*Starting processing data*")
+        cs.wait_for_http(8080, '/health', want_status=HTTPStatus.OK)
+        res = cs.cont.exec_run('cscli bouncers list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
         assert len(j) == 2
@@ -42,9 +40,9 @@ def test_register_bouncer_env(crowdsec, flavor):
         assert bouncer2['api_key'] == hex512('bouncer2key')
 
         # add a second bouncer at runtime
-        res = cont.exec_run('cscli bouncers add bouncer3name -k bouncer3key')
+        res = cs.cont.exec_run('cscli bouncers add bouncer3name -k bouncer3key')
         assert res.exit_code == 0
-        res = cont.exec_run('cscli bouncers list -o json')
+        res = cs.cont.exec_run('cscli bouncers list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
         assert len(j) == 3
@@ -53,9 +51,9 @@ def test_register_bouncer_env(crowdsec, flavor):
         assert bouncer3['api_key'] == hex512('bouncer3key')
 
         # remove all bouncers
-        res = cont.exec_run('cscli bouncers delete bouncer1name bouncer2name bouncer3name')
+        res = cs.cont.exec_run('cscli bouncers delete bouncer1name bouncer2name bouncer3name')
         assert res.exit_code == 0
-        res = cont.exec_run('cscli bouncers list -o json')
+        res = cs.cont.exec_run('cscli bouncers list -o json')
         assert res.exit_code == 0
         j = json.loads(res.output)
         assert len(j) == 0
