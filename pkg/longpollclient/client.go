@@ -19,6 +19,7 @@ type LongPollClient struct {
 	url        url.URL
 	logger     *log.Entry
 	since      int64
+	timeout    string
 	httpClient *http.Client
 }
 
@@ -48,13 +49,11 @@ var errUnauthorized = fmt.Errorf("user is not authorized to use PAPI")
 
 const timeoutMessage = "no events before timeout"
 
-func (c *LongPollClient) doQuery() error {
-
+func (c *LongPollClient) doQuery() (*http.Response, error) {
 	logger := c.logger.WithField("method", "doQuery")
-
 	query := c.url.Query()
 	query.Set("since_time", fmt.Sprintf("%d", c.since))
-	query.Set("timeout", "45")
+	query.Set("timeout", c.timeout)
 	c.url.RawQuery = query.Encode()
 
 	logger.Debugf("Query parameters: %s", c.url.RawQuery)
@@ -62,15 +61,29 @@ func (c *LongPollClient) doQuery() error {
 	req, err := http.NewRequest(http.MethodGet, c.url.String(), nil)
 	if err != nil {
 		logger.Errorf("failed to create request: %s", err)
-		return err
+		return nil, err
 	}
 	req.Header.Set("Accept", "application/json")
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		logger.Errorf("failed to execute request: %s", err)
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (c *LongPollClient) poll() error {
+
+	logger := c.logger.WithField("method", "poll")
+
+	resp, err := c.doQuery()
+
+	if err != nil {
 		return err
 	}
+
 	defer resp.Body.Close()
+
 	requestId := resp.Header.Get("X-Amzn-Trace-Id")
 	logger = logger.WithField("request-id", requestId)
 	if resp.StatusCode != http.StatusOK {
@@ -142,7 +155,7 @@ func (c *LongPollClient) pollEvents() error {
 			return nil
 		default:
 			c.logger.Debug("Polling PAPI")
-			err := c.doQuery()
+			err := c.poll()
 			if err != nil {
 				c.logger.Errorf("failed to poll: %s", err)
 				if err == errUnauthorized {
@@ -160,6 +173,7 @@ func (c *LongPollClient) Start(since time.Time) chan Event {
 	c.logger.Infof("starting polling client")
 	c.c = make(chan Event)
 	c.since = since.Unix() * 1000
+	c.timeout = "45"
 	c.t.Go(c.pollEvents)
 	return c.c
 }
@@ -167,6 +181,38 @@ func (c *LongPollClient) Start(since time.Time) chan Event {
 func (c *LongPollClient) Stop() error {
 	c.t.Kill(nil)
 	return nil
+}
+
+func (c *LongPollClient) PullOnce(since time.Time) ([]Event, error) {
+	c.logger.Debug("Pulling PAPI once")
+	c.since = since.Unix() * 1000
+	c.timeout = "1"
+	resp, err := c.doQuery()
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	decoder := json.NewDecoder(resp.Body)
+	var pollResp pollResponse
+	err = decoder.Decode(&pollResp)
+	if err != nil {
+		if err == io.EOF {
+			c.logger.Debugf("server closed connection")
+			return nil, nil
+		}
+		return nil, fmt.Errorf("error decoding poll response: %v", err)
+	}
+
+	c.logger.Tracef("got response: %+v", pollResp)
+
+	if len(pollResp.ErrorMessage) > 0 {
+		if pollResp.ErrorMessage == timeoutMessage {
+			c.logger.Debugf("got timeout message")
+			return nil, nil
+		}
+		return nil, fmt.Errorf("longpoll API error message: %s", pollResp.ErrorMessage)
+	}
+	return pollResp.Events, nil
 }
 
 func NewLongPollClient(config LongPollClientConfig) (*LongPollClient, error) {

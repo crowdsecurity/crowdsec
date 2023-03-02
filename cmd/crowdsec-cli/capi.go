@@ -10,6 +10,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/go-openapi/strfmt"
@@ -92,7 +93,9 @@ func NewCapiRegisterCmd() *cobra.Command {
 				Login:    capiUser,
 				Password: password.String(),
 				URL:      types.CAPIBaseURL,
-				PapiURL:  types.PAPIBaseURL,
+			}
+			if fflag.PapiClient.IsEnabled() {
+				apiCfg.PapiURL = types.PAPIBaseURL
 			}
 			apiConfigDump, err := yaml.Marshal(apiCfg)
 			if err != nil {
