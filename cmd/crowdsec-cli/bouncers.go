@@ -128,9 +128,9 @@ func NewBouncersAddCmd() *cobra.Command {
 		Use:   "add MyBouncerName [--length 16]",
 		Short: "add bouncer",
 		Long:  `add bouncer`,
-		Example: fmt.Sprintf(`cscli bouncers add MyBouncerName
+		Example: `cscli bouncers add MyBouncerName
 cscli bouncers add MyBouncerName -l 24
-cscli bouncers add MyBouncerName -k %s`, generatePassword(32)),
+cscli bouncers add MyBouncerName -k <random-key>`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: runBouncersAdd,
