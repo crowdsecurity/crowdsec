@@ -44,7 +44,8 @@ func NewPapiStatusCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			dbClient, err := database.NewClient(csConfig.DbConfig)
+			var err error
+			dbClient, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {
 				log.Fatalf("unable to initialize database client : %s", err)
 			}
@@ -83,12 +84,13 @@ func NewPapiStatusCmd() *cobra.Command {
 func NewPapiSyncCmd() *cobra.Command {
 	cmdCapiSync := &cobra.Command{
 		Use:               "sync",
-		Short:             "Sync with the Polling API",
+		Short:             "Sync with the Polling API, pulling all non-expired orders for the instance",
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
+			var err error
 			t := tomb.Tomb{}
-			dbClient, err := database.NewClient(csConfig.DbConfig)
+			dbClient, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {
 				log.Fatalf("unable to initialize database client : %s", err)
 			}

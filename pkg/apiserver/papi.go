@@ -154,7 +154,7 @@ func (p *Papi) handleEvent(event longpollclient.Event) error {
 func (p *Papi) GetPermissions() (PapiPermCheckSuccess, error) {
 	httpClient := p.apiClient.GetClient()
 	papiCheckUrl := fmt.Sprintf("%s%s%s", p.URL, types.PAPIVersion, types.PAPIPermissionsUrl)
-	req, err := http.NewRequest("GET", papiCheckUrl, nil)
+	req, err := http.NewRequest(http.MethodGet, papiCheckUrl, nil)
 	if err != nil {
 		return PapiPermCheckSuccess{}, fmt.Errorf("failed to create request : %s", err)
 	}
@@ -164,7 +164,7 @@ func (p *Papi) GetPermissions() (PapiPermCheckSuccess, error) {
 	}
 
 	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		errResp := PapiPermCheckError{}
 		err = json.NewDecoder(resp.Body).Decode(&errResp)
 		if err != nil {
@@ -198,12 +198,12 @@ func (p *Papi) PullOnce(since time.Time) error {
 		return err
 	}
 
-	reversedEvents := reverse(events)
+	reversedEvents := reverse(events) //PAPI sends events in the reverse order, which is not an issue when pulling them in real time, but here we need the correct order
 	eventsCount := len(events)
 	p.Logger.Infof("received %d events", eventsCount)
 	for i, event := range reversedEvents {
 		if err := p.handleEvent(event); err != nil {
-			p.Logger.Errorf("failed to handle event: %s", err)
+			p.Logger.WithField("request-id", event.RequestId).Errorf("failed to handle event: %s", err)
 		}
 		p.Logger.Debugf("handled event %d/%d", i, eventsCount)
 	}
