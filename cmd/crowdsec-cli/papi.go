@@ -75,7 +75,7 @@ func NewPapiStatusCmd() *cobra.Command {
 			}
 			log.Infof("You can successfully interact with Polling API (PAPI)")
 			log.Infof("Console plan: %s", perms.Plan)
-			log.Infof("Last pull: %s", *lastTimestampStr)
+			log.Infof("Last order received: %s", *lastTimestampStr)
 
 			log.Infof("PAPI subscriptions:")
 			for _, sub := range perms.Categories {
