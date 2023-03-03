@@ -5,6 +5,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -67,9 +68,14 @@ func NewPapiStatusCmd() *cobra.Command {
 			if err != nil {
 				log.Fatalf("unable to get PAPI permissions: %s", err)
 			}
-
+			var lastTimestampStr *string
+			lastTimestampStr, err = dbClient.GetConfigItem(apiserver.PapiPullKey)
+			if err != nil {
+				lastTimestampStr = types.StrPtr("never")
+			}
 			log.Infof("You can successfully interact with Polling API (PAPI)")
 			log.Infof("Console plan: %s", perms.Plan)
+			log.Infof("Last pull: %s", *lastTimestampStr)
 
 			log.Infof("PAPI subscriptions:")
 			for _, sub := range perms.Categories {
