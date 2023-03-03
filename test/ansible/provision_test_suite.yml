@@ -15,10 +15,10 @@
         name: crowdsecurity.testing.extract_sources_from_zip
       when: sources_zip | length > 0
 
-    - name: "Create crowdsec tests/local dir"
+    - name: "Create crowdsec test/local dir"
       become: false
       ansible.builtin.file:
-        path: "{{ ansible_env.HOME }}/crowdsec/tests/local"
+        path: "{{ ansible_env.HOME }}/crowdsec/test/local"
         state: directory
         mode: 0o755
 

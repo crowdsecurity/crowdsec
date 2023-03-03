@@ -67,7 +67,7 @@ jobs:
       run: make bats-test-hub
 
     - name: "Collect hub coverage"
-      run: ./tests/bin/collect-hub-coverage >> $GITHUB_ENV
+      run: ./test/bin/collect-hub-coverage >> $GITHUB_ENV
 
     - name: "Create Parsers badge"
       uses: schneegans/dynamic-badges-action@v1.6.0

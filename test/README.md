@@ -77,10 +77,10 @@ To repeat test runs without rebuilding crowdsec, use `make bats-test`.
 
 ## Debugging tests
 
-See `./tests/run-tests --help` to run/debug specific tests.
+See `./test/run-tests --help` to run/debug specific tests.
 
-Example: `./tests/run-tests tests/bats/02_nolapi.bats -f "cscli config backup"` (the string is a regexp).
-You need to provide a path for a test file or directory (even if it's the full 'tests/bats') to use the `-f` option.
+Example: `./test/run-tests test/bats/02_nolapi.bats -f "cscli config backup"` (the string is a regexp).
+You need to provide a path for a test file or directory (even if it's the full 'test/bats') to use the `-f` option.
 
 
 # How does it work?
@@ -218,7 +218,7 @@ This doesn't mean you can't do that, just that you're on your own if the is an e
 
 For the purpose of functional tests, crowdsec and its companions (cscli, plugin
 notifiers, bouncers) are installed in a local environment, which means tests
-should not install or touch anything outside a `./tests/local` directory. This
+should not install or touch anything outside a `./test/local` directory. This
 includes binaries, configuration files, databases, data downloaded from
 internet, logs... The use of `/tmp` is tolerated, but BATS also provides [three
 useful
@@ -401,8 +401,8 @@ A mysql-client package is required as well.
 ## troubleshooting
 
  - CAPI is disabled, why?
-Most tests don't need it. Helper scripts are provided in `tests/enable-capi`
-and `tests/disable-capi` for interactive use, and two library functions
+Most tests don't need it. Helper scripts are provided in `test/enable-capi`
+and `test/disable-capi` for interactive use, and two library functions
 `config_enable_capi` and `config_disable_capi` to call inside the tests.
 You still need to call `cscli capi register` after enabling it.
 

@@ -12,4 +12,4 @@
       become: true
       ansible.builtin.command:
         chdir: "/home/{{ ansible_user }}"
-        cmd: "./crowdsec/tests/run-tests crowdsec/tests/bats-detect"
+        cmd: "./crowdsec/test/run-tests crowdsec/test/bats-detect"
