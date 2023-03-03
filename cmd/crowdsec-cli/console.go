@@ -14,6 +14,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -249,6 +250,27 @@ func SetConsoleOpts(args []string, wanted bool) {
 			} else {
 				log.Infof("%s set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
 				csConfig.API.Server.ConsoleConfig.ReceiveDecisions = types.BoolPtr(wanted)
+			}
+			if csConfig.API.Server.OnlineClient.Credentials != nil {
+				changed := false
+				if wanted && csConfig.API.Server.OnlineClient.Credentials.PapiURL == "" {
+					changed = true
+					csConfig.API.Server.OnlineClient.Credentials.PapiURL = types.PAPIBaseURL
+				} else if !wanted && csConfig.API.Server.OnlineClient.Credentials.PapiURL != "" {
+					changed = true
+					csConfig.API.Server.OnlineClient.Credentials.PapiURL = ""
+				}
+				if changed {
+					fileContent, err := yaml.Marshal(csConfig.API.Server.OnlineClient.Credentials)
+					if err != nil {
+						log.Fatalf("Cannot marshal credentials: %s", err)
+					}
+					log.Infof("Updating credentials file: %s", csConfig.API.Server.OnlineClient.CredentialsFilePath)
+					err = os.WriteFile(csConfig.API.Server.OnlineClient.CredentialsFilePath, fileContent, 0600)
+					if err != nil {
+						log.Fatalf("Cannot write credentials file: %s", err)
+					}
+				}
 			}
 		case csconfig.SEND_CUSTOM_SCENARIOS:
 			/*for each flag check if it's already set before setting it*/
