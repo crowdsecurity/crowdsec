@@ -1,6 +1,6 @@
 
 # contains scripts, bats submodules, local instances and functional test suite
-TEST_DIR = $(CURDIR)/tests
+TEST_DIR = $(CURDIR)/test
 
 ifdef PACKAGE_TESTING
   # define PACKAGE_TESTING to test the executables already installed with
@@ -92,7 +92,7 @@ bats-clean:
 	@$(RM) $(TEST_DIR)/local $(WIN_IGNORE_ERR)
 	@$(RM) $(LOCAL_INIT_DIR) $(WIN_IGNORE_ERR)
 	@$(RM) $(TEST_DIR)/dyn-bats/*.bats $(WIN_IGNORE_ERR)
-	@$(RM) tests/.environment.sh $(WIN_IGNORE_ERR)
+	@$(RM) test/.environment.sh $(WIN_IGNORE_ERR)
 
 # Run the test suite
 bats-test: bats-environment bats-check-requirements
