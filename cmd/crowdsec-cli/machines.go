@@ -196,7 +196,7 @@ cscli machines add MyTestMachine --password MyPassword
 
 	flags := cmdMachinesAdd.Flags()
 	flags.StringP("password", "p", "", "machine password to login to the API")
-	flags.StringP("file", "f", "", "output file destination (defaults to "+csconfig.DefaultConfigPath("local_api_credentials.yaml"))
+	flags.StringP("file", "f", "", "output file destination (defaults to "+csconfig.DefaultConfigPath("local_api_credentials.yaml")+")")
 	flags.StringP("url", "u", "", "URL of the local API")
 	flags.BoolP("interactive", "i", false, "interfactive mode to enter the password")
 	flags.BoolP("auto", "a", false, "automatically generate password (and username if not provided)")

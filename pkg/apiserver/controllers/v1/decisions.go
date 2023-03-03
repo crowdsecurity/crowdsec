@@ -233,7 +233,7 @@ func (c *Controller) StreamDecisionChunked(gctx *gin.Context, bouncerInfo *ent.B
 	gctx.Writer.WriteHeader(http.StatusOK)
 	gctx.Writer.Write([]byte(`{"new": [`)) //No need to check for errors, the doc says it always returns nil
 
-	// if the blocker just start, return all decisions
+	// if the blocker just started, return all decisions
 	if val, ok := gctx.Request.URL.Query()["startup"]; ok && val[0] == "true" {
 		//Active decisions
 

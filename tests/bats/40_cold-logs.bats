@@ -15,7 +15,6 @@ setup_file() {
     # we reset config and data, and only run the daemon once for all the tests in this file
     ./instance-data load
     ./instance-crowdsec start
-    fake_log | "${CROWDSEC}" -dsn file:///dev/fd/0 -type syslog -no-api 2>/dev/null
 }
 
 teardown_file() {
@@ -33,6 +32,18 @@ setup() {
     assert_stderr --partial "-type requires a -dsn argument"
     rune -1 "${CROWDSEC}" -no-api -dsn file:///dev/fd/0
     assert_stderr --partial "-dsn requires a -type argument"
+}
+
+@test "the one-shot mode works" {
+    rune -0 "${CROWDSEC}" -dsn file://<(fake_log) -type syslog -no-api
+    refute_output
+    assert_stderr --partial "single file mode : log_media=stdout daemonize=false"
+    assert_stderr --regexp "Adding file .* to filelist"
+    assert_stderr --regexp "reading .* at once"
+    assert_stderr --regexp "Acquisition is finished, shutting down"
+    assert_stderr --regexp "Killing parser routines"
+    assert_stderr --regexp "Bucket routine exiting"
+    assert_stderr --regexp "crowdsec shutdown"
 }
 
 @test "we have one decision" {
