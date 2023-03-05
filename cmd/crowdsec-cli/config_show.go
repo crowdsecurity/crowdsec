@@ -9,6 +9,7 @@ import (
 	"github.com/antonmedv/expr"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
@@ -174,6 +175,11 @@ Central API:
 
 func runConfigShow(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
+
+	if err := csConfig.LoadAPIClient(); err != nil {
+		log.Errorf("failed to load API client configuration: %s", err)
+		// don't return, we can still show the configuration
+	}
 
 	key, err := flags.GetString("key")
 	if err != nil {
