@@ -27,7 +27,7 @@ type ConsoleConfig struct {
 	ShareManualDecisions  *bool `yaml:"share_manual_decisions"`
 	ShareTaintedScenarios *bool `yaml:"share_tainted"`
 	ShareCustomScenarios  *bool `yaml:"share_custom"`
-	ReceiveDecisions      *bool `yaml:"console_management"`
+	ConsoleManagement     *bool `yaml:"console_management"`
 	ShareContext          *bool `yaml:"share_context"`
 }
 
@@ -38,7 +38,7 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 		c.ConsoleConfig.ShareCustomScenarios = types.BoolPtr(true)
 		c.ConsoleConfig.ShareTaintedScenarios = types.BoolPtr(true)
 		c.ConsoleConfig.ShareManualDecisions = types.BoolPtr(false)
-		c.ConsoleConfig.ReceiveDecisions = types.BoolPtr(false)
+		c.ConsoleConfig.ConsoleManagement = types.BoolPtr(false)
 		c.ConsoleConfig.ShareContext = types.BoolPtr(false)
 		return nil
 	}
@@ -66,10 +66,10 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 	}
 
 	if !fflag.PapiClient.IsEnabled() {
-		c.ConsoleConfig.ReceiveDecisions = types.BoolPtr(false)
-	} else if c.ConsoleConfig.ReceiveDecisions == nil {
+		c.ConsoleConfig.ConsoleManagement = types.BoolPtr(false)
+	} else if c.ConsoleConfig.ConsoleManagement == nil {
 		log.Debugf("no console_management found, setting to false")
-		c.ConsoleConfig.ReceiveDecisions = types.BoolPtr(false)
+		c.ConsoleConfig.ConsoleManagement = types.BoolPtr(false)
 	}
 
 	if c.ConsoleConfig.ShareContext == nil {

@@ -215,7 +215,7 @@ Disable given information push to the central API.`,
 					{csconfig.SEND_CUSTOM_SCENARIOS, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios)},
 					{csconfig.SEND_TAINTED_SCENARIOS, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios)},
 					{csconfig.SEND_CONTEXT, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareContext)},
-					{csconfig.CONSOLE_MANAGEMENT, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ReceiveDecisions)},
+					{csconfig.CONSOLE_MANAGEMENT, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ConsoleManagement)},
 				}
 				for _, row := range rows {
 					err = csvwriter.Write(row)
@@ -240,16 +240,16 @@ func SetConsoleOpts(args []string, wanted bool) {
 				continue
 			}
 			/*for each flag check if it's already set before setting it*/
-			if csConfig.API.Server.ConsoleConfig.ReceiveDecisions != nil {
-				if *csConfig.API.Server.ConsoleConfig.ReceiveDecisions == wanted {
+			if csConfig.API.Server.ConsoleConfig.ConsoleManagement != nil {
+				if *csConfig.API.Server.ConsoleConfig.ConsoleManagement == wanted {
 					log.Debugf("%s already set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
 				} else {
 					log.Infof("%s set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
-					*csConfig.API.Server.ConsoleConfig.ReceiveDecisions = wanted
+					*csConfig.API.Server.ConsoleConfig.ConsoleManagement = wanted
 				}
 			} else {
 				log.Infof("%s set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
-				csConfig.API.Server.ConsoleConfig.ReceiveDecisions = types.BoolPtr(wanted)
+				csConfig.API.Server.ConsoleConfig.ConsoleManagement = types.BoolPtr(wanted)
 			}
 			if csConfig.API.Server.OnlineClient.Credentials != nil {
 				changed := false
