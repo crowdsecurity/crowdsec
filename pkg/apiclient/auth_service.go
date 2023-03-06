@@ -51,18 +51,20 @@ func (s *AuthService) RegisterWatcher(ctx context.Context, registration models.W
 	return resp, nil
 }
 
-func (s *AuthService) AuthenticateWatcher(ctx context.Context, auth models.WatcherAuthRequest) (*Response, error) {
+func (s *AuthService) AuthenticateWatcher(ctx context.Context, auth models.WatcherAuthRequest) (models.WatcherAuthResponse, *Response, error) {
+	var authResp models.WatcherAuthResponse
+
 	u := fmt.Sprintf("%s/watchers/login", s.client.URLPrefix)
 	req, err := s.client.NewRequest(http.MethodPost, u, &auth)
 	if err != nil {
-		return nil, err
+		return authResp, nil, err
 	}
 
-	resp, err := s.client.Do(ctx, req, nil)
+	resp, err := s.client.Do(ctx, req, &authResp)
 	if err != nil {
-		return resp, err
+		return authResp, resp, err
 	}
-	return resp, nil
+	return authResp, resp, nil
 }
 
 func (s *AuthService) EnrollWatcher(ctx context.Context, enrollKey string, name string, tags []string, overwrite bool) (*Response, error) {

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -29,14 +28,14 @@ func getBouncers(out io.Writer, dbClient *database.Client) error {
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
 		if err := enc.Encode(bouncers); err != nil {
-			return errors.Wrap(err, "failed to unmarshal")
+			return fmt.Errorf("failed to unmarshal: %w", err)
 		}
 		return nil
 	} else if csConfig.Cscli.Output == "raw" {
 		csvwriter := csv.NewWriter(out)
 		err := csvwriter.Write([]string{"name", "ip", "revoked", "last_pull", "type", "version", "auth_type"})
 		if err != nil {
-			return errors.Wrap(err, "failed to write raw header")
+			return fmt.Errorf("failed to write raw header: %w", err)
 		}
 		for _, b := range bouncers {
 			var revoked string
@@ -47,7 +46,7 @@ func getBouncers(out io.Writer, dbClient *database.Client) error {
 			}
 			err := csvwriter.Write([]string{b.Name, b.IPAddress, revoked, b.LastPull.Format(time.RFC3339), b.Type, b.Version, b.AuthType})
 			if err != nil {
-				return errors.Wrap(err, "failed to write raw")
+				return fmt.Errorf("failed to write raw: %w", err)
 			}
 		}
 		csvwriter.Flush()
@@ -63,11 +62,12 @@ func NewBouncersListCmd() *cobra.Command {
 		Example:           `cscli bouncers list`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, arg []string) {
+		RunE: func(cmd *cobra.Command, arg []string) error {
 			err := getBouncers(color.Output, dbClient)
 			if err != nil {
-				log.Fatalf("unable to list bouncers: %s", err)
+				return fmt.Errorf("unable to list bouncers: %s", err)
 			}
+			return nil
 		},
 	}
 
@@ -91,18 +91,18 @@ func runBouncersAdd(cmd *cobra.Command, args []string) error {
 	var apiKey string
 
 	if keyName == "" {
-		log.Fatalf("Please provide a name for the api key")
+		return fmt.Errorf("please provide a name for the api key")
 	}
 	apiKey = key
 	if key == "" {
 		apiKey, err = middlewares.GenerateAPIKey(keyLength)
 	}
 	if err != nil {
-		log.Fatalf("unable to generate api key: %s", err)
+		return fmt.Errorf("unable to generate api key: %s", err)
 	}
 	_, err = dbClient.CreateBouncer(keyName, "", middlewares.HashSHA512(apiKey), types.ApiKeyAuthType)
 	if err != nil {
-		log.Fatalf("unable to create bouncer: %s", err)
+		return fmt.Errorf("unable to create bouncer: %s", err)
 	}
 
 	if csConfig.Cscli.Output == "human" {
@@ -114,7 +114,7 @@ func runBouncersAdd(cmd *cobra.Command, args []string) error {
 	} else if csConfig.Cscli.Output == "json" {
 		j, err := json.Marshal(apiKey)
 		if err != nil {
-			log.Fatalf("unable to marshal api key")
+			return fmt.Errorf("unable to marshal api key")
 		}
 		fmt.Printf("%s", string(j))
 	}
@@ -128,9 +128,9 @@ func NewBouncersAddCmd() *cobra.Command {
 		Use:   "add MyBouncerName [--length 16]",
 		Short: "add bouncer",
 		Long:  `add bouncer`,
-		Example: fmt.Sprintf(`cscli bouncers add MyBouncerName
+		Example: `cscli bouncers add MyBouncerName
 cscli bouncers add MyBouncerName -l 24
-cscli bouncers add MyBouncerName -k %s`, generatePassword(32)),
+cscli bouncers add MyBouncerName -k <random-key>`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: runBouncersAdd,
@@ -149,7 +149,7 @@ func runBouncersDelete(cmd *cobra.Command, args []string) error {
 	for _, bouncerID := range args {
 		err := dbClient.DeleteBouncer(bouncerID)
 		if err != nil {
-			log.Fatalf("unable to delete bouncer '%s': %s", bouncerID, err)
+			return fmt.Errorf("unable to delete bouncer '%s': %s", bouncerID, err)
 		}
 		log.Infof("bouncer '%s' deleted successfully", bouncerID)
 	}
@@ -200,15 +200,16 @@ Note: This command requires database direct access, so is intended to be run on 
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"bouncer"},
 		DisableAutoGenTag: true,
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
-				log.Fatal("Local API is disabled, please run this command on the local API machine")
+				return fmt.Errorf("local API is disabled, please run this command on the local API machine")
 			}
 			dbClient, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {
-				log.Fatalf("unable to create new database client: %s", err)
+				return fmt.Errorf("unable to create new database client: %s", err)
 			}
+			return nil
 		},
 	}
 

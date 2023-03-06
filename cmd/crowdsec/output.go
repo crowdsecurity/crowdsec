@@ -97,13 +97,21 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	if err != nil {
 		return errors.Wrapf(err, "new client api: %s", err)
 	}
-	if _, err = Client.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
+	authResp, _, err := Client.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
 		MachineID: &apiConfig.Login,
 		Password:  &password,
 		Scenarios: scenarios,
-	}); err != nil {
+	})
+	if err != nil {
 		return errors.Wrapf(err, "authenticate watcher (%s)", apiConfig.Login)
 	}
+
+	if err := Client.GetClient().Transport.(*apiclient.JWTTransport).Expiration.UnmarshalText([]byte(authResp.Expire)); err != nil {
+		return errors.Wrap(err, "unable to parse jwt expiration")
+	}
+
+	Client.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
+
 	//start the heartbeat service
 	log.Debugf("Starting HeartBeat service")
 	Client.HeartBeat.StartHeartBeat(context.Background(), &outputsTomb)

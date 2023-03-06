@@ -44,3 +44,8 @@ msi
 *.msi
 **/*.nupkg
 *.tgz
+
+# Python
+__pycache__
+*.py[cod]
+*.egg-info

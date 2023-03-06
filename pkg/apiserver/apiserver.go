@@ -202,12 +202,13 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	router.Use(CustomRecoveryWithWriter())
 
 	controller := &controllers.Controller{
-		DBClient:      dbClient,
-		Ectx:          context.Background(),
-		Router:        router,
-		Profiles:      config.Profiles,
-		Log:           clog,
-		ConsoleConfig: config.ConsoleConfig,
+		DBClient:                      dbClient,
+		Ectx:                          context.Background(),
+		Router:                        router,
+		Profiles:                      config.Profiles,
+		Log:                           clog,
+		ConsoleConfig:                 config.ConsoleConfig,
+		DisableRemoteLapiRegistration: config.DisableRemoteLapiRegistration,
 	}
 
 	var apiClient *apic
@@ -355,23 +356,27 @@ func (s *APIServer) Run(apiReady chan bool) error {
 		//csConfig.API.Server.ConsoleConfig.ShareCustomScenarios
 		if s.isEnrolled {
 			if fflag.PapiClient.IsEnabled() {
-				if s.consoleConfig.ReceiveDecisions != nil && *s.consoleConfig.ReceiveDecisions {
-					log.Infof("Starting PAPI decision receiver")
-					s.papi.pullTomb.Go(func() error {
-						if err := s.papi.Pull(); err != nil {
-							log.Errorf("papi pull: %s", err)
-							return err
-						}
-						return nil
-					})
+				if s.consoleConfig.ConsoleManagement != nil && *s.consoleConfig.ConsoleManagement {
+					if s.papi.URL != "" {
+						log.Infof("Starting PAPI decision receiver")
+						s.papi.pullTomb.Go(func() error {
+							if err := s.papi.Pull(); err != nil {
+								log.Errorf("papi pull: %s", err)
+								return err
+							}
+							return nil
+						})
 
-					s.papi.syncTomb.Go(func() error {
-						if err := s.papi.SyncDecisions(); err != nil {
-							log.Errorf("capi decisions sync: %s", err)
-							return err
-						}
-						return nil
-					})
+						s.papi.syncTomb.Go(func() error {
+							if err := s.papi.SyncDecisions(); err != nil {
+								log.Errorf("capi decisions sync: %s", err)
+								return err
+							}
+							return nil
+						})
+					} else {
+						log.Warnf("papi_url is not set in online_api_credentials.yaml, can't synchronize with the console. Run cscli console enable console_management to add it.")
+					}
 				} else {
 					log.Warningf("Machine is not allowed to synchronize decisions, you can enable it with `cscli console enable console_management`")
 				}

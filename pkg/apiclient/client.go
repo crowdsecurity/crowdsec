@@ -158,7 +158,7 @@ func newResponse(r *http.Response) *Response {
 }
 
 func CheckResponse(r *http.Response) error {
-	if c := r.StatusCode; 200 <= c && c <= 299 {
+	if c := r.StatusCode; 200 <= c && c <= 299 || c == 304 {
 		return nil
 	}
 	errorResponse := &ErrorResponse{}

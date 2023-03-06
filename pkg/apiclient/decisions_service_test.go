@@ -11,6 +11,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/modelscapi"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -377,9 +378,11 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 	defer teardown()
 
 	mux.HandleFunc("/blocklist", func(w http.ResponseWriter, r *http.Request) {
-
-		assert.Equal(t, r.Header.Get("X-Api-Key"), "ixu")
 		testMethod(t, r, http.MethodGet)
+		if r.Header.Get("If-Modified-Since") == "Sun, 01 Jan 2023 01:01:01 GMT" {
+			w.WriteHeader(http.StatusNotModified)
+			return
+		}
 		if r.Method == http.MethodGet {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("1.2.3.4\r\n1.2.3.5"))
@@ -407,7 +410,7 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 	tnameBlocklist := "blocklist1"
 	tremediationBlocklist := "ban"
 	tscopeBlocklist := "ip"
-	turlBlocklist := "/v3/blocklist"
+	turlBlocklist := urlx + "/v3/blocklist"
 	torigin := "lists"
 	expected := []*models.Decision{
 		{
@@ -427,14 +430,15 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 			Origin:   &torigin,
 		},
 	}
-	decisions, err := newcli.Decisions.GetDecisionsFromBlocklist(context.Background(), &modelscapi.BlocklistLink{
+	decisions, isModified, err := newcli.Decisions.GetDecisionsFromBlocklist(context.Background(), &modelscapi.BlocklistLink{
 		URL:         &turlBlocklist,
 		Scope:       &tscopeBlocklist,
 		Remediation: &tremediationBlocklist,
 		Name:        &tnameBlocklist,
 		Duration:    &tdurationBlocklist,
-	})
+	}, nil)
 	require.NoError(t, err)
+	assert.True(t, isModified)
 
 	log.Infof("decision1: %+v", decisions[0])
 	log.Infof("expected1: %+v", expected[0])
@@ -448,6 +452,26 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 	if !reflect.DeepEqual(decisions, expected) {
 		t.Fatalf("returned %+v, want %+v", decisions, expected)
 	}
+
+	// test cache control
+	_, isModified, err = newcli.Decisions.GetDecisionsFromBlocklist(context.Background(), &modelscapi.BlocklistLink{
+		URL:         &turlBlocklist,
+		Scope:       &tscopeBlocklist,
+		Remediation: &tremediationBlocklist,
+		Name:        &tnameBlocklist,
+		Duration:    &tdurationBlocklist,
+	}, types.StrPtr("Sun, 01 Jan 2023 01:01:01 GMT"))
+	require.NoError(t, err)
+	assert.False(t, isModified)
+	_, isModified, err = newcli.Decisions.GetDecisionsFromBlocklist(context.Background(), &modelscapi.BlocklistLink{
+		URL:         &turlBlocklist,
+		Scope:       &tscopeBlocklist,
+		Remediation: &tremediationBlocklist,
+		Name:        &tnameBlocklist,
+		Duration:    &tdurationBlocklist,
+	}, types.StrPtr("Mon, 02 Jan 2023 01:01:01 GMT"))
+	require.NoError(t, err)
+	assert.True(t, isModified)
 }
 
 func TestDeleteDecisions(t *testing.T) {

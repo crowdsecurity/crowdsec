@@ -45,7 +45,7 @@ CSCLI_BIN = cscli$(EXT)
 BUILD_CMD = build
 
 MINIMUM_SUPPORTED_GO_MAJOR_VERSION = 1
-MINIMUM_SUPPORTED_GO_MINOR_VERSION = 19
+MINIMUM_SUPPORTED_GO_MINOR_VERSION = 20
 
 go_major_minor = $(subst ., ,$(BUILD_GOVERSION))
 GO_MAJOR_VERSION = $(word 1, $(go_major_minor))
@@ -159,11 +159,11 @@ test: goversion
 
 .PHONY: localstack
 localstack:
-	docker-compose -f tests/localstack/docker-compose.yml up
+	docker-compose -f test/localstack/docker-compose.yml up
 
 .PHONY: localstack-stop
 localstack-stop:
-	docker-compose -f tests/localstack/docker-compose.yml down
+	docker-compose -f test/localstack/docker-compose.yml down
 
 package-common:
 	@echo "Building Release to dir $(RELDIR)"
@@ -215,11 +215,11 @@ windows_installer: build
 chocolatey: windows_installer
 	@.\make_chocolatey.ps1 -version $(BUILD_VERSION)
 
-# Include tests/bats.mk only if it exists
+# Include test/bats.mk only if it exists
 # to allow building without a test/ directory
 # (i.e. inside docker)
-ifeq (,$(wildcard tests/bats.mk))
+ifeq (,$(wildcard test/bats.mk))
 bats-clean:
 else
-include tests/bats.mk
+include test/bats.mk
 endif
