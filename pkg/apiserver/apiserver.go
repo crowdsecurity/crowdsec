@@ -357,22 +357,26 @@ func (s *APIServer) Run(apiReady chan bool) error {
 		if s.isEnrolled {
 			if fflag.PapiClient.IsEnabled() {
 				if s.consoleConfig.ReceiveDecisions != nil && *s.consoleConfig.ReceiveDecisions {
-					log.Infof("Starting PAPI decision receiver")
-					s.papi.pullTomb.Go(func() error {
-						if err := s.papi.Pull(); err != nil {
-							log.Errorf("papi pull: %s", err)
-							return err
-						}
-						return nil
-					})
+					if s.papi.URL != "" {
+						log.Infof("Starting PAPI decision receiver")
+						s.papi.pullTomb.Go(func() error {
+							if err := s.papi.Pull(); err != nil {
+								log.Errorf("papi pull: %s", err)
+								return err
+							}
+							return nil
+						})
 
-					s.papi.syncTomb.Go(func() error {
-						if err := s.papi.SyncDecisions(); err != nil {
-							log.Errorf("capi decisions sync: %s", err)
-							return err
-						}
-						return nil
-					})
+						s.papi.syncTomb.Go(func() error {
+							if err := s.papi.SyncDecisions(); err != nil {
+								log.Errorf("capi decisions sync: %s", err)
+								return err
+							}
+							return nil
+						})
+					} else {
+						log.Warnf("papi_url is not set in configuration, can't synchronize decisions with the console")
+					}
 				} else {
 					log.Warningf("Machine is not allowed to synchronize decisions, you can enable it with `cscli console enable console_management`")
 				}
