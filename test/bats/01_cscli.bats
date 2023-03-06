@@ -97,6 +97,17 @@ teardown() {
 
     rune -0 cscli config show --key Config.API.Server.ListenURI
     assert_output "127.0.0.1:8080"
+
+    # check that LAPI configuration is loaded (human and json, not shows in raw)
+
+    rune -0 cscli config show -o human
+    assert_line --regexp ".*- URL\s+: http://127.0.0.1:8080/"
+    assert_line --regexp ".*- Login\s+: githubciXXXXXXXXXXXXXXXXXXXXXXXX"
+    assert_line --regexp ".*- Credentials File\s+: .*/local_api_credentials.yaml"
+
+    rune -0 cscli config show -o json
+    rune -0 jq -c '.API.Client.Credentials | [.url,.login]' <(output)
+    assert_output '["http://127.0.0.1:8080/","githubciXXXXXXXXXXXXXXXXXXXXXXXX"]'
 }
 
 @test "cscli config backup / restore" {
