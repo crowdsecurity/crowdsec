@@ -356,7 +356,7 @@ func (s *APIServer) Run(apiReady chan bool) error {
 		//csConfig.API.Server.ConsoleConfig.ShareCustomScenarios
 		if s.isEnrolled {
 			if fflag.PapiClient.IsEnabled() {
-				if s.consoleConfig.ReceiveDecisions != nil && *s.consoleConfig.ReceiveDecisions {
+				if s.consoleConfig.ConsoleManagement != nil && *s.consoleConfig.ConsoleManagement {
 					if s.papi.URL != "" {
 						log.Infof("Starting PAPI decision receiver")
 						s.papi.pullTomb.Go(func() error {

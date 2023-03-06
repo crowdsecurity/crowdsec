@@ -293,7 +293,7 @@ func (p *Papi) SyncDecisions() error {
 				go p.SendDeletedDecisions(&cacheCopy)
 			}
 		case deletedDecisions := <-p.Channels.DeleteDecisionChannel:
-			if (p.consoleConfig.ShareManualDecisions != nil && *p.consoleConfig.ShareManualDecisions) || (p.consoleConfig.ReceiveDecisions != nil && *p.consoleConfig.ReceiveDecisions) {
+			if (p.consoleConfig.ShareManualDecisions != nil && *p.consoleConfig.ShareManualDecisions) || (p.consoleConfig.ConsoleManagement != nil && *p.consoleConfig.ConsoleManagement) {
 				var tmpDecisions []models.DecisionsDeleteRequestItem
 				p.Logger.Debugf("%d decisions deletion to add in cache", len(deletedDecisions))
 				for _, decision := range deletedDecisions {
