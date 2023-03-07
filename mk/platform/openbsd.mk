@@ -1,5 +1,4 @@
 # OpenBSD specific
-#
 
 Make=gmake
 
