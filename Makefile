@@ -10,16 +10,6 @@ else
 	SYSTEM ?= $(shell uname -s | tr '[A-Z]' '[a-z]')
 endif
 
-ifneq ("$(wildcard $(CURDIR)/mk/platform/$(SYSTEM).mk)", "")
-	include $(CURDIR)/mk/platform/$(SYSTEM).mk
-else
-	include $(CURDIR)/mk/platform/linux.mk
-endif
-
-ifneq ($(OS), Windows_NT)
-	include $(CS_ROOT)/mk/platform/unix_common.mk
-endif
-
 CROWDSEC_FOLDER = ./cmd/crowdsec
 CSCLI_FOLDER = ./cmd/crowdsec-cli/
 
@@ -44,14 +34,6 @@ CROWDSEC_BIN = crowdsec$(EXT)
 CSCLI_BIN = cscli$(EXT)
 BUILD_CMD = build
 
-MINIMUM_SUPPORTED_GO_MAJOR_VERSION = 1
-MINIMUM_SUPPORTED_GO_MINOR_VERSION = 20
-
-go_major_minor = $(subst ., ,$(BUILD_GOVERSION))
-GO_MAJOR_VERSION = $(word 1, $(go_major_minor))
-GO_MINOR_VERSION = $(word 2, $(go_major_minor))
-
-GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not supported, please use at least $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION).$(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
 GO_MODULE_NAME = github.com/crowdsecurity/crowdsec
 
 LD_OPTS_VARS= \
@@ -208,4 +190,3 @@ include test/bats.mk
 endif
 
 include mk/goversion.mk
-
