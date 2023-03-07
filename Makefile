@@ -1,3 +1,4 @@
+include mk/platform.mk
 
 ifeq ($(OS), Windows_NT)
 	SHELL := pwsh.exe

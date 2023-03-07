@@ -1,5 +1,5 @@
 # FreeBSD specific
 
-Make=gmake
+MAKE=gmake
 
 $(info building for FreeBSD)
