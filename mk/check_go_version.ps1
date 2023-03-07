@@ -15,5 +15,5 @@ elseif ($goversion_major -lt $min_major) {
 }
 elseif ($goversion_minor -lt $min_minor) {
     Write-Output $(GO_VERSION_VALIDATION_ERR_MSG);
-    exit 1; 
+    exit 1;
 }

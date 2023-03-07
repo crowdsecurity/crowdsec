@@ -8,8 +8,6 @@ MKDIR=mkdir -p
 GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
 
-BUILD_GOVERSION=$(shell go env GOVERSION | sed s/go//)
-
 #Current versioning information from env
 BUILD_VERSION?=$(shell git describe --tags)
 BUILD_CODENAME="alphaga"

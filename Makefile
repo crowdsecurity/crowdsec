@@ -10,14 +10,14 @@ else
 	SYSTEM ?= $(shell uname -s | tr '[A-Z]' '[a-z]')
 endif
 
-ifneq ("$(wildcard $(CURDIR)/platform/$(SYSTEM).mk)", "")
-	include $(CURDIR)/platform/$(SYSTEM).mk
+ifneq ("$(wildcard $(CURDIR)/mk/platform/$(SYSTEM).mk)", "")
+	include $(CURDIR)/mk/platform/$(SYSTEM).mk
 else
-	include $(CURDIR)/platform/linux.mk
+	include $(CURDIR)/mk/platform/linux.mk
 endif
 
 ifneq ($(OS), Windows_NT)
-	include $(CS_ROOT)/platform/unix_common.mk
+	include $(CS_ROOT)/mk/platform/unix_common.mk
 endif
 
 CROWDSEC_FOLDER = ./cmd/crowdsec
@@ -83,23 +83,6 @@ all: clean test build
 
 .PHONY: plugins
 plugins: http-plugin slack-plugin splunk-plugin email-plugin dummy-plugin
-
-.PHONY: goversion
-goversion:
-ifneq ($(OS), Windows_NT)
-	@if [ $(GO_MAJOR_VERSION) -gt $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) ]; then \
-		exit 0 ;\
-	elif [ $(GO_MAJOR_VERSION) -lt $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) ]; then \
-		echo '$(GO_VERSION_VALIDATION_ERR_MSG)';\
-		exit 1; \
-	elif [ $(GO_MINOR_VERSION) -lt $(MINIMUM_SUPPORTED_GO_MINOR_VERSION) ] ; then \
-		echo '$(GO_VERSION_VALIDATION_ERR_MSG)';\
-		exit 1; \
-	fi
-else
-	# This needs Set-ExecutionPolicy -Scope CurrentUser Unrestricted
-	@$(CS_ROOT)/scripts/check_go_version.ps1 $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) $(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
-endif
 
 .PHONY: clean
 clean: testclean
@@ -223,3 +206,6 @@ bats-clean:
 else
 include test/bats.mk
 endif
+
+include mk/goversion.mk
+
