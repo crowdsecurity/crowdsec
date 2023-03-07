@@ -480,7 +480,7 @@ func TestAtof(t *testing.T) {
 	expectedFloat := 1.5
 
 	if Atof(testFloat) != expectedFloat {
-		t.Fatalf("Atof should returned 1.5 as a float")
+		t.Fatalf("Atof should return 1.5 as a float")
 	}
 
 	log.Printf("test 'Atof()' : OK")
@@ -490,7 +490,7 @@ func TestAtof(t *testing.T) {
 	expectedFloat = 0.0
 
 	if Atof(testFloat) != expectedFloat {
-		t.Fatalf("Atof should returned a negative value (error) as a float got")
+		t.Fatalf("Atof should return a negative value (error) as a float got")
 	}
 
 	log.Printf("test 'Atof()' : OK")
@@ -501,7 +501,7 @@ func TestUpper(t *testing.T) {
 	expectedStr := "TEST"
 
 	if Upper(testStr) != expectedStr {
-		t.Fatalf("Upper() should returned test in upper case")
+		t.Fatalf("Upper() should return test in upper case")
 	}
 
 	log.Printf("test 'Upper()' : OK")
