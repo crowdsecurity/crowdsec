@@ -3,6 +3,7 @@ package s3acquisition
 import (
 	"bufio"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -44,6 +45,8 @@ type S3Source struct {
 	readerChan chan S3Object
 	t          *tomb.Tomb
 	out        chan types.Event
+	ctx        aws.Context
+	cancel     context.CancelFunc
 }
 
 type S3Object struct {
@@ -167,6 +170,7 @@ func (s *S3Source) readManager() {
 		select {
 		case <-s.t.Dying():
 			logger.Infof("Shutting down S3 read manager")
+			s.cancel()
 			return
 		case s3Object := <-s.readerChan:
 			logger.Debugf("Reading file %s/%s", s3Object.Bucker, s3Object.Key)
@@ -184,13 +188,14 @@ func (s *S3Source) sqsPoll() error {
 		select {
 		case <-s.t.Dying():
 			logger.Infof("Shutting down SQS poller")
+			s.cancel()
 			return nil
 		default:
 			logger.Tracef("Polling SQS queue %s", s.Config.SQSARN)
-			out, err := s.sqsClient.ReceiveMessage(&sqs.ReceiveMessageInput{
+			out, err := s.sqsClient.ReceiveMessageWithContext(s.ctx, &sqs.ReceiveMessageInput{
 				QueueUrl:            aws.String(s.Config.SQSARN),
 				MaxNumberOfMessages: aws.Int64(10),
-				WaitTimeSeconds:     aws.Int64(5), //Keep it short, as it will block the shutdown
+				WaitTimeSeconds:     aws.Int64(20), //Probably no need to make it configurable ?
 			})
 			if err != nil {
 				logger.Errorf("Error while polling SQS: %s", err)
@@ -253,7 +258,7 @@ func (s *S3Source) readFile(bucket string, key string) error {
 		l.Time = time.Now().UTC()
 		l.Process = true
 		l.Module = s.GetName()
-		l.Src = "s3://" + bucket
+		l.Src = bucket
 		var evt types.Event
 		if !s.Config.UseTimeMachine {
 			evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leakybucket.LIVE}
@@ -416,6 +421,7 @@ func (s *S3Source) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) erro
 	s.t = t
 	s.out = out
 	s.readerChan = make(chan S3Object, 100) //FIXME: does this needs to be buffered?
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.logger.Infof("starting acquisition of %s/%s", s.Config.BucketName, s.Config.Prefix)
 	t.Go(func() error {
 		s.readManager()
