@@ -15,7 +15,6 @@ import (
 	"github.com/antonmedv/expr/vm"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/goombaio/namegenerator"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	yaml "gopkg.in/yaml.v2"
@@ -251,7 +250,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	var err error
 	if bucketFactory.Debug {
-		var clog = logrus.New()
+		var clog = log.New()
 		if err := types.ConfigureLogger(clog); err != nil {
 			log.Fatalf("While creating bucket-specific logger : %s", err)
 		}
