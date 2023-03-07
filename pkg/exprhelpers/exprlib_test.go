@@ -27,24 +27,21 @@ var (
 func getDBClient(t *testing.T) *database.Client {
 	t.Helper()
 	dbPath, err := os.CreateTemp("", "*sqlite")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	testDbClient, err := database.NewClient(&csconfig.DatabaseCfg{
 		Type:   "sqlite",
 		DbName: "crowdsec",
 		DbPath: dbPath.Name(),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	return testDbClient
 }
 
 func TestVisitor(t *testing.T) {
-	if err := Init(nil); err != nil {
-		log.Fatal(err)
-	}
+	err := Init(nil)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name   string
@@ -129,36 +126,36 @@ func TestVisitor(t *testing.T) {
 }
 
 func TestRegexpCacheBehavior(t *testing.T) {
-	if err := Init(nil); err != nil {
-		log.Fatal(err)
-	}
+	err := Init(nil)
+	require.NoError(t, err)
+
 	filename := "test_data_re.txt"
-	err := FileInit(TestFolder, filename, "regex")
-	if err != nil {
-		log.Fatal(err)
-	}
+	err = FileInit(TestFolder, filename, "regex")
+	require.NoError(t, err)
+
 	//cache with no TTL
-	if err := RegexpCacheInit(filename, types.DataSource{Type: "regex", Size: types.IntPtr(1)}); err != nil {
-		log.Fatal(err)
-	}
+	err = RegexpCacheInit(filename, types.DataSource{Type: "regex", Size: types.IntPtr(1)})
+	require.NoError(t, err)
+
 	ret := RegexpInFile("crowdsec", filename)
-	assert.Equal(t, false, ret)
+	assert.False(t, ret)
 	assert.Equal(t, 1, dataFileRegexCache[filename].Len(false))
+
 	ret = RegexpInFile("Crowdsec", filename)
-	assert.Equal(t, true, ret)
+	assert.True(t, ret)
 	assert.Equal(t, 1, dataFileRegexCache[filename].Len(false))
 
 	//cache with TTL
 	ttl := 500 * time.Millisecond
-	if err := RegexpCacheInit(filename, types.DataSource{Type: "regex", Size: types.IntPtr(2), TTL: &ttl}); err != nil {
-		log.Fatal(err)
-	}
+	err = RegexpCacheInit(filename, types.DataSource{Type: "regex", Size: types.IntPtr(2), TTL: &ttl})
+	require.NoError(t, err)
+
 	ret = RegexpInFile("crowdsec", filename)
-	assert.Equal(t, false, ret)
+	assert.False(t, ret)
 	assert.Equal(t, 1, dataFileRegexCache[filename].Len(true))
+
 	time.Sleep(1 * time.Second)
 	assert.Equal(t, 0, dataFileRegexCache[filename].Len(true))
-
 }
 
 func TestRegexpInFile(t *testing.T) {
