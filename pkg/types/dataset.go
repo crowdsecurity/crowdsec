@@ -18,7 +18,7 @@ type DataSource struct {
 	//Control cache strategy on expensive regexps
 	Cache    *bool          `yaml:"cache"`
 	Strategy *string        `yaml:"strategy"`
-	Size     *int           `yaml:"max_items"`
+	Size     *int           `yaml:"size"`
 	TTL      *time.Duration `yaml:"ttl"`
 }
 
