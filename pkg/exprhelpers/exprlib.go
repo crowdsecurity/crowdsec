@@ -163,6 +163,8 @@ func RegexpCacheInit(filename string, CacheCfg types.DataSource) error {
 		gc = gc.LFU()
 	case "ARC":
 		gc = gc.ARC()
+	default:
+		return fmt.Errorf("unknown cache strategy '%s'", *CacheCfg.Strategy)
 	}
 
 	if CacheCfg.TTL != nil {
@@ -177,7 +179,7 @@ func RegexpCacheInit(filename string, CacheCfg types.DataSource) error {
 func UpdateRegexpCacheMetrics() {
 	RegexpCacheMetrics.Reset()
 	for name := range dataFileRegexCache {
-		RegexpCacheMetrics.With(prometheus.Labels{"name": name}).Set(float64(dataFileRegexCache[name].Len(false)))
+		RegexpCacheMetrics.With(prometheus.Labels{"name": name}).Set(float64(dataFileRegexCache[name].Len(true)))
 	}
 }
 
