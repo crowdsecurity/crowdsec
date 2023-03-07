@@ -2,11 +2,9 @@
 ifeq ($(OS), Windows_NT)
 	SHELL := pwsh.exe
 	.SHELLFLAGS := -NoProfile -Command
-	CS_ROOT = $(shell (Get-Location).Path)
 	SYSTEM = windows
 	EXT = .exe
 else
-	CS_ROOT ?= $(shell pwd)
 	SYSTEM ?= $(shell uname -s | tr '[A-Z]' '[a-z]')
 endif
 

@@ -5,5 +5,5 @@ else
 endif
 
 ifneq ($(OS), Windows_NT)
-	include $(CS_ROOT)/mk/platform/unix_common.mk
+	include $(CURDIR)/mk/platform/unix_common.mk
 endif

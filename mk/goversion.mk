@@ -24,5 +24,5 @@ ifneq ($(OS), Windows_NT)
 	fi
 else
 	# This needs Set-ExecutionPolicy -Scope CurrentUser Unrestricted
-	@$(CS_ROOT)/mk/check_go_version.ps1 $(MINIMUM_MAJOR) $(MINIMUM_MINOR)
+	@$(CURDIR)/mk/check_go_version.ps1 $(MINIMUM_MAJOR) $(MINIMUM_MINOR)
 endif
