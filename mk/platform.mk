@@ -1,9 +1,15 @@
-ifneq ("$(wildcard $(CURDIR)/mk/platform/$(SYSTEM).mk)", "")
-	include $(CURDIR)/mk/platform/$(SYSTEM).mk
+ifeq ($(OS), Windows_NT)
+	SHELL := pwsh.exe
+	.SHELLFLAGS := -NoProfile -Command
+	SYSTEM = windows
+	EXT = .exe
 else
-	include $(CURDIR)/mk/platform/linux.mk
+	SYSTEM ?= $(shell uname -s | tr '[A-Z]' '[a-z]')
+	include mk/platform/unix_common.mk
 endif
 
-ifneq ($(OS), Windows_NT)
-	include $(CURDIR)/mk/platform/unix_common.mk
+ifneq ("$(wildcard mk/platform/$(SYSTEM).mk)", "")
+	include mk/platform/$(SYSTEM).mk
+else
+	include mk/platform/linux.mk
 endif

@@ -1,14 +1,5 @@
 include mk/platform.mk
 
-ifeq ($(OS), Windows_NT)
-	SHELL := pwsh.exe
-	.SHELLFLAGS := -NoProfile -Command
-	SYSTEM = windows
-	EXT = .exe
-else
-	SYSTEM ?= $(shell uname -s | tr '[A-Z]' '[a-z]')
-endif
-
 CROWDSEC_FOLDER = ./cmd/crowdsec
 CSCLI_FOLDER = ./cmd/crowdsec-cli/
 
