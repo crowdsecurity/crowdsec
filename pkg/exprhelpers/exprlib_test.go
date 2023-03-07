@@ -534,7 +534,7 @@ func TestParseUri(t *testing.T) {
 				"ParseUri": ParseUri,
 			},
 			code:   "ParseUri(uri)",
-			result: map[string][]string{"a": []string{"1"}, "b": []string{"2"}},
+			result: map[string][]string{"a": {"1"}, "b": {"2"}},
 			err:    "",
 		},
 		{
@@ -554,7 +554,7 @@ func TestParseUri(t *testing.T) {
 				"ParseUri": ParseUri,
 			},
 			code:   "ParseUri(uri)",
-			result: map[string][]string{"a": []string{"1"}, "b": []string{"2?"}},
+			result: map[string][]string{"a": {"1"}, "b": {"2?"}},
 			err:    "",
 		},
 		{
@@ -564,7 +564,7 @@ func TestParseUri(t *testing.T) {
 				"ParseUri": ParseUri,
 			},
 			code:   "ParseUri(uri)",
-			result: map[string][]string{"?": []string{"", "123"}},
+			result: map[string][]string{"?": {"", "123"}},
 			err:    "",
 		},
 		{
