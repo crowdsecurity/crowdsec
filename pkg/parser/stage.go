@@ -16,13 +16,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/goombaio/namegenerator"
+	log "github.com/sirupsen/logrus"
+	yaml "gopkg.in/yaml.v2"
+
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-
-	log "github.com/sirupsen/logrus"
-
-	"github.com/goombaio/namegenerator"
-	yaml "gopkg.in/yaml.v2"
 )
 
 var seed namegenerator.Generator = namegenerator.NewNameGenerator(time.Now().UTC().UnixNano())

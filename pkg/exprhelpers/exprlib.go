@@ -14,14 +14,14 @@ import (
 
 	"github.com/bluele/gcache"
 	"github.com/c-robinson/iplib"
-	"github.com/prometheus/client_golang/prometheus"
-
 	"github.com/cespare/xxhash"
+	"github.com/davecgh/go-spew/spew"
+	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/davecgh/go-spew/spew"
-	log "github.com/sirupsen/logrus"
 )
 
 var dataFile map[string][]string

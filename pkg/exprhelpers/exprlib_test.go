@@ -4,22 +4,20 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"testing"
 	"time"
 
+	"github.com/antonmedv/expr"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	log "github.com/sirupsen/logrus"
-
-	"testing"
-
-	"github.com/antonmedv/expr"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 var (
