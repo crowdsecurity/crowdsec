@@ -149,7 +149,7 @@ func TestRegexpCacheBehavior(t *testing.T) {
 	assert.Equal(t, 1, dataFileRegexCache[filename].Len(false))
 
 	//cache with TTL
-	ttl := time.Duration(500 * time.Millisecond)
+	ttl := 500 * time.Millisecond
 	if err := RegexpCacheInit(filename, types.DataSource{Type: "regex", Size: types.IntPtr(2), TTL: &ttl}); err != nil {
 		log.Fatal(err)
 	}
