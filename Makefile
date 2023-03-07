@@ -1,24 +1,4 @@
-
-ifeq ($(OS), Windows_NT)
-	SHELL := pwsh.exe
-	.SHELLFLAGS := -NoProfile -Command
-	CS_ROOT = $(shell (Get-Location).Path)
-	SYSTEM = windows
-	EXT = .exe
-else
-	CS_ROOT ?= $(shell pwd)
-	SYSTEM ?= $(shell uname -s | tr '[A-Z]' '[a-z]')
-endif
-
-ifneq ("$(wildcard $(CURDIR)/platform/$(SYSTEM).mk)", "")
-	include $(CURDIR)/platform/$(SYSTEM).mk
-else
-	include $(CURDIR)/platform/linux.mk
-endif
-
-ifneq ($(OS), Windows_NT)
-	include $(CS_ROOT)/platform/unix_common.mk
-endif
+include mk/platform.mk
 
 CROWDSEC_FOLDER = ./cmd/crowdsec
 CSCLI_FOLDER = ./cmd/crowdsec-cli/
@@ -44,14 +24,6 @@ CROWDSEC_BIN = crowdsec$(EXT)
 CSCLI_BIN = cscli$(EXT)
 BUILD_CMD = build
 
-MINIMUM_SUPPORTED_GO_MAJOR_VERSION = 1
-MINIMUM_SUPPORTED_GO_MINOR_VERSION = 20
-
-go_major_minor = $(subst ., ,$(BUILD_GOVERSION))
-GO_MAJOR_VERSION = $(word 1, $(go_major_minor))
-GO_MINOR_VERSION = $(word 2, $(go_major_minor))
-
-GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not supported, please use at least $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION).$(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
 GO_MODULE_NAME = github.com/crowdsecurity/crowdsec
 
 LD_OPTS_VARS= \
@@ -83,23 +55,6 @@ all: clean test build
 
 .PHONY: plugins
 plugins: http-plugin slack-plugin splunk-plugin email-plugin dummy-plugin
-
-.PHONY: goversion
-goversion:
-ifneq ($(OS), Windows_NT)
-	@if [ $(GO_MAJOR_VERSION) -gt $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) ]; then \
-		exit 0 ;\
-	elif [ $(GO_MAJOR_VERSION) -lt $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) ]; then \
-		echo '$(GO_VERSION_VALIDATION_ERR_MSG)';\
-		exit 1; \
-	elif [ $(GO_MINOR_VERSION) -lt $(MINIMUM_SUPPORTED_GO_MINOR_VERSION) ] ; then \
-		echo '$(GO_VERSION_VALIDATION_ERR_MSG)';\
-		exit 1; \
-	fi
-else
-	# This needs Set-ExecutionPolicy -Scope CurrentUser Unrestricted
-	@$(CS_ROOT)/scripts/check_go_version.ps1 $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) $(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
-endif
 
 .PHONY: clean
 clean: testclean
@@ -223,3 +178,5 @@ bats-clean:
 else
 include test/bats.mk
 endif
+
+include mk/goversion.mk
