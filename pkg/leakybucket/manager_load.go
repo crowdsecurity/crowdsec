@@ -374,6 +374,9 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 			if err != nil {
 				bucketFactory.logger.Errorf("unable to init data for file '%s': %s", data.DestPath, err)
 			}
+			if data.Type == "regexp" { //cache only makes sense for regexp
+				exprhelpers.RegexpCacheInit(data.DestPath, *data)
+			}
 		}
 	}
 

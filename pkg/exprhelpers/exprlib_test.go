@@ -130,6 +130,39 @@ func TestVisitor(t *testing.T) {
 	}
 }
 
+func TestRegexpCacheBehavior(t *testing.T) {
+	if err := Init(nil); err != nil {
+		log.Fatal(err)
+	}
+	filename := "test_data_re.txt"
+	err := FileInit(TestFolder, filename, "regex")
+	if err != nil {
+		log.Fatal(err)
+	}
+	//cache with no TTL
+	if err := RegexpCacheInit(filename, types.DataSource{Type: "regex", Size: types.IntPtr(1)}); err != nil {
+		log.Fatal(err)
+	}
+	ret := RegexpInFile("crowdsec", filename)
+	assert.Equal(t, false, ret)
+	assert.Equal(t, 1, dataFileRegexCache[filename].Len(false))
+	ret = RegexpInFile("Crowdsec", filename)
+	assert.Equal(t, true, ret)
+	assert.Equal(t, 1, dataFileRegexCache[filename].Len(false))
+
+	//cache with TTL
+	ttl := time.Duration(500 * time.Millisecond)
+	if err := RegexpCacheInit(filename, types.DataSource{Type: "regex", Size: types.IntPtr(2), TTL: &ttl}); err != nil {
+		log.Fatal(err)
+	}
+	ret = RegexpInFile("crowdsec", filename)
+	assert.Equal(t, false, ret)
+	assert.Equal(t, 1, dataFileRegexCache[filename].Len(true))
+	time.Sleep(1 * time.Second)
+	assert.Equal(t, 0, dataFileRegexCache[filename].Len(true))
+
+}
+
 func TestRegexpInFile(t *testing.T) {
 	if err := Init(nil); err != nil {
 		log.Fatal(err)

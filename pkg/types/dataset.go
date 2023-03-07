@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -14,6 +15,11 @@ type DataSource struct {
 	SourceURL string `yaml:"source_url"`
 	DestPath  string `yaml:"dest_file"`
 	Type      string `yaml:"type"`
+	//Control cache strategy on expensive regexps
+	Cache    *bool          `yaml:"cache"`
+	Strategy *string        `yaml:"strategy"`
+	Size     *int           `yaml:"max_items"`
+	TTL      *time.Duration `yaml:"ttl"`
 }
 
 type DataSet struct {
