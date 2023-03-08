@@ -26,16 +26,11 @@ type visitor struct {
 }
 
 /*
-Enter should be present for the interface but is never used
-*/
-func (v *visitor) Enter(node *ast.Node) {}
-
-/*
 Exit is called when running ast.Walk(node, visitor), each time a node exit.
 So we have the node information and we can get the identifier (first level of the struct)
 and its properties to reconstruct the complete variable.
 */
-func (v *visitor) Exit(node *ast.Node) {
+func (v *visitor) Visit(node *ast.Node) {
 	if n, ok := (*node).(*ast.IdentifierNode); ok {
 		if !v.newVar {
 			v.newVar = true
@@ -46,9 +41,10 @@ func (v *visitor) Exit(node *ast.Node) {
 			v.properties = []string{}
 			v.currentID = n.Value
 		}
-	} else if n, ok := (*node).(*ast.PropertyNode); ok {
-		v.properties = append(v.properties, n.Property)
-	}
+	} /* else if n, ok := (*node).(*ast.StringNode); ok {
+		log.Infof("string node : %s", n.Value)
+		v.properties = append(v.properties, n.Value)
+	}*/
 }
 
 /*
