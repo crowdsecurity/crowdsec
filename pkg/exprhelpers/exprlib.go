@@ -3,6 +3,7 @@ package exprhelpers
 import (
 	"bufio"
 	"fmt"
+	"math"
 	"net"
 	"net/url"
 	"os"
@@ -102,11 +103,54 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"TrimPrefix":  strings.TrimPrefix,
 		"TrimSuffix":  strings.TrimSuffix,
 		"Get":         Get,
+		"Distance":    Distance,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
 	}
 	return ExprLib
+}
+
+func floatDistance(lat1 float64, lng1 float64, lat2 float64, lng2 float64) float64 {
+	radlat1 := float64(math.Pi * lat1 / 180)
+	radlat2 := float64(math.Pi * lat2 / 180)
+
+	theta := float64(lng1 - lng2)
+	radtheta := float64(math.Pi * theta / 180)
+
+	dist := math.Sin(radlat1)*math.Sin(radlat2) + math.Cos(radlat1)*math.Cos(radlat2)*math.Cos(radtheta)
+	if dist > 1 {
+		dist = 1
+	}
+
+	dist = math.Acos(dist)
+	dist = dist * 180 / math.Pi
+	dist = dist * 60 * 1.1515
+
+	//Kilometers
+	dist = dist * 1.609344
+
+	return dist
+}
+
+func Distance(lat1 string, long1 string, lat2 string, long2 string) (float64, error) {
+	lat1f, err := strconv.ParseFloat(lat1, 64)
+	if err != nil {
+		return 0, fmt.Errorf("lat1 is not a float : %v", err)
+	}
+	long1f, err := strconv.ParseFloat(long1, 64)
+	if err != nil {
+		return 0, fmt.Errorf("long1 is not a float : %v", err)
+	}
+	lat2f, err := strconv.ParseFloat(lat2, 64)
+	if err != nil {
+		return 0, fmt.Errorf("lat2 is not a float : %v", err)
+	}
+	long2f, err := strconv.ParseFloat(long2, 64)
+	if err != nil {
+		return 0, fmt.Errorf("long2 is not a float : %v", err)
+	}
+	return floatDistance(lat1f, long1f, lat2f, long2f), nil
 }
 
 func Init(databaseClient *database.Client) error {
