@@ -12,16 +12,35 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bluele/gcache"
 	"github.com/c-robinson/iplib"
+	"github.com/cespare/xxhash/v2"
+	"github.com/davecgh/go-spew/spew"
+	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
+
+	"github.com/umahmood/haversine"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
-	"github.com/davecgh/go-spew/spew"
-	log "github.com/sirupsen/logrus"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var dataFile map[string][]string
 var dataFileRegex map[string][]*regexp.Regexp
+
+// This is used to (optionally) cache regexp results for RegexpInFile operations
+var dataFileRegexCache map[string]gcache.Cache = make(map[string]gcache.Cache)
+
+/*prometheus*/
+var RegexpCacheMetrics = prometheus.NewGaugeVec(
+	prometheus.GaugeOpts{
+		Name: "cs_regexp_cache_size",
+		Help: "Entries per regexp cache.",
+	},
+	[]string{"name"},
+)
+
 var dbClient *database.Client
 
 func Get(arr []string, index int) string {
@@ -102,6 +121,7 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"TrimPrefix":  strings.TrimPrefix,
 		"TrimSuffix":  strings.TrimSuffix,
 		"Get":         Get,
+		"Distance":    Distance,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
@@ -109,11 +129,96 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 	return ExprLib
 }
 
+func Distance(lat1 string, long1 string, lat2 string, long2 string) (float64, error) {
+	lat1f, err := strconv.ParseFloat(lat1, 64)
+	if err != nil {
+		log.Warningf("lat1 is not a float : %v", err)
+		return 0, fmt.Errorf("lat1 is not a float : %v", err)
+	}
+	long1f, err := strconv.ParseFloat(long1, 64)
+	if err != nil {
+		log.Warningf("long1 is not a float : %v", err)
+		return 0, fmt.Errorf("long1 is not a float : %v", err)
+	}
+	lat2f, err := strconv.ParseFloat(lat2, 64)
+	if err != nil {
+		log.Warningf("lat2 is not a float : %v", err)
+
+		return 0, fmt.Errorf("lat2 is not a float : %v", err)
+	}
+	long2f, err := strconv.ParseFloat(long2, 64)
+	if err != nil {
+		log.Warningf("long2 is not a float : %v", err)
+
+		return 0, fmt.Errorf("long2 is not a float : %v", err)
+	}
+
+	//either set of coordinates is 0,0, return 0 to avoid FPs
+	if (lat1f == 0.0 && long1f == 0.0) || (lat2f == 0.0 && long2f == 0.0) {
+		log.Warningf("one of the coordinates is 0,0, returning 0")
+		return 0, nil
+	}
+
+	first := haversine.Coord{Lat: lat1f, Lon: long1f}
+	second := haversine.Coord{Lat: lat2f, Lon: long2f}
+
+	_, km := haversine.Distance(first, second)
+	return km, nil
+}
+
 func Init(databaseClient *database.Client) error {
 	dataFile = make(map[string][]string)
 	dataFileRegex = make(map[string][]*regexp.Regexp)
 	dbClient = databaseClient
 	return nil
+}
+
+func RegexpCacheInit(filename string, CacheCfg types.DataSource) error {
+
+	//cache is explicitly disabled
+	if CacheCfg.Cache != nil && !*CacheCfg.Cache {
+		return nil
+	}
+	//cache is implicitly disabled if no cache config is provided
+	if CacheCfg.Strategy == nil && CacheCfg.TTL == nil && CacheCfg.Size == nil {
+		return nil
+	}
+	//cache is enabled
+
+	if CacheCfg.Size == nil {
+		CacheCfg.Size = types.IntPtr(50)
+	}
+
+	gc := gcache.New(*CacheCfg.Size)
+
+	if CacheCfg.Strategy == nil {
+		CacheCfg.Strategy = types.StrPtr("LRU")
+	}
+	switch *CacheCfg.Strategy {
+	case "LRU":
+		gc = gc.LRU()
+	case "LFU":
+		gc = gc.LFU()
+	case "ARC":
+		gc = gc.ARC()
+	default:
+		return fmt.Errorf("unknown cache strategy '%s'", *CacheCfg.Strategy)
+	}
+
+	if CacheCfg.TTL != nil {
+		gc.Expiration(*CacheCfg.TTL)
+	}
+	cache := gc.Build()
+	dataFileRegexCache[filename] = cache
+	return nil
+}
+
+// UpdateCacheMetrics is called directly by the prom handler
+func UpdateRegexpCacheMetrics() {
+	RegexpCacheMetrics.Reset()
+	for name := range dataFileRegexCache {
+		RegexpCacheMetrics.With(prometheus.Labels{"name": name}).Set(float64(dataFileRegexCache[name].Len(true)))
+	}
 }
 
 func FileInit(fileFolder string, filename string, fileType string) error {
@@ -192,15 +297,33 @@ func File(filename string) []string {
 }
 
 func RegexpInFile(data string, filename string) bool {
+
+	var hash uint64
+	hasCache := false
+
+	if _, ok := dataFileRegexCache[filename]; ok {
+		hasCache = true
+		hash = xxhash.Sum64String(data)
+		if val, err := dataFileRegexCache[filename].Get(hash); err == nil {
+			return val.(bool)
+		}
+	}
+
 	if _, ok := dataFileRegex[filename]; ok {
 		for _, re := range dataFileRegex[filename] {
 			if re.Match([]byte(data)) {
+				if hasCache {
+					dataFileRegexCache[filename].Set(hash, true)
+				}
 				return true
 			}
 		}
 	} else {
 		log.Errorf("file '%s' (type:regexp) not found in expr library", filename)
 		log.Errorf("expr library : %s", spew.Sdump(dataFileRegex))
+	}
+	if hasCache {
+		dataFileRegexCache[filename].Set(hash, false)
 	}
 	return false
 }

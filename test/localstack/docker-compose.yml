@@ -22,7 +22,6 @@ services:
       AWS_ACCESS_KEY_ID: "AKIAIOSFODNN7EXAMPLE"
       AWS_SECRET_ACCESS_KEY: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
       AWS_REGION: "us-east-1"
-      AWS_ENDPOINT_FORCE: "http://localhost:4566"
 
     volumes:
       - "${TMPDIR:-/tmp}/localstack:/var/lib/localstack"

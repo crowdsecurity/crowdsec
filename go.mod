@@ -71,6 +71,7 @@ require (
 	github.com/beevik/etree v1.1.0
 	github.com/blackfireio/osinfo v1.0.3
 	github.com/bluele/gcache v0.0.2
+	github.com/cespare/xxhash/v2 v2.1.2
 	github.com/goccy/go-yaml v1.9.7
 	github.com/gofrs/uuid v4.0.0+incompatible
 	github.com/golang-jwt/jwt/v4 v4.2.0
@@ -98,7 +99,6 @@ require (
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/containerd/containerd v1.6.18 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/docker/distribution v2.8.0+incompatible // indirect
@@ -173,6 +173,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
 	github.com/ugorji/go/codec v1.2.6 // indirect
+	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26 // indirect
 	github.com/vjeantet/grok v1.0.1 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
