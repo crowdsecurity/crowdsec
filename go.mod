@@ -173,6 +173,7 @@ require (
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
 	github.com/ugorji/go/codec v1.2.6 // indirect
+	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26 // indirect
 	github.com/vjeantet/grok v1.0.1 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
