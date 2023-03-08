@@ -3,7 +3,6 @@ package exprhelpers
 import (
 	"bufio"
 	"fmt"
-	"math"
 	"net"
 	"net/url"
 	"os"
@@ -19,6 +18,8 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/umahmood/haversine"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -128,28 +129,6 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 	return ExprLib
 }
 
-func floatDistance(lat1 float64, lng1 float64, lat2 float64, lng2 float64) float64 {
-	radlat1 := float64(math.Pi * lat1 / 180)
-	radlat2 := float64(math.Pi * lat2 / 180)
-
-	theta := float64(lng1 - lng2)
-	radtheta := float64(math.Pi * theta / 180)
-
-	dist := math.Sin(radlat1)*math.Sin(radlat2) + math.Cos(radlat1)*math.Cos(radlat2)*math.Cos(radtheta)
-	if dist > 1 {
-		dist = 1
-	}
-
-	dist = math.Acos(dist)
-	dist = dist * 180 / math.Pi
-	dist = dist * 60 * 1.1515
-
-	//Kilometers
-	dist = dist * 1.609344
-
-	return dist
-}
-
 func Distance(lat1 string, long1 string, lat2 string, long2 string) (float64, error) {
 	lat1f, err := strconv.ParseFloat(lat1, 64)
 	if err != nil {
@@ -180,8 +159,11 @@ func Distance(lat1 string, long1 string, lat2 string, long2 string) (float64, er
 		return 0, nil
 	}
 
-	dist := floatDistance(lat1f, long1f, lat2f, long2f)
-	return dist, nil
+	first := haversine.Coord{Lat: lat1f, Lon: long1f}
+	second := haversine.Coord{Lat: lat2f, Lon: long2f}
+
+	mi, km := haversine.Distance(first, second)
+	return km, nil
 }
 
 func Init(databaseClient *database.Client) error {
