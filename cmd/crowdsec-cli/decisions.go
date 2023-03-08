@@ -382,6 +382,7 @@ func NewDecisionsDeleteCmd() *cobra.Command {
 		IPEquals:       new(string),
 		RangeEquals:    new(string),
 		ScenarioEquals: new(string),
+		OriginEquals:   new(string),
 	}
 	var delDecisionId string
 	var delDecisionAll bool
@@ -404,7 +405,8 @@ cscli decisions delete --type captcha
 			}
 			if *delFilter.ScopeEquals == "" && *delFilter.ValueEquals == "" &&
 				*delFilter.TypeEquals == "" && *delFilter.IPEquals == "" &&
-				*delFilter.RangeEquals == "" && *delFilter.ScenarioEquals == "" && delDecisionId == "" {
+				*delFilter.RangeEquals == "" && *delFilter.ScenarioEquals == "" &&
+				*delFilter.OriginEquals == "" && delDecisionId == "" {
 				cmd.Usage()
 				log.Fatalln("At least one filter or --all must be specified")
 			}
@@ -420,21 +422,21 @@ cscli decisions delete --type captcha
 			if *delFilter.ScopeEquals == "" {
 				delFilter.ScopeEquals = nil
 			}
+			if *delFilter.OriginEquals == "" {
+				delFilter.OriginEquals = nil
+			}
 			if *delFilter.ValueEquals == "" {
 				delFilter.ValueEquals = nil
 			}
 			if *delFilter.ScenarioEquals == "" {
 				delFilter.ScenarioEquals = nil
 			}
-
 			if *delFilter.TypeEquals == "" {
 				delFilter.TypeEquals = nil
 			}
-
 			if *delFilter.IPEquals == "" {
 				delFilter.IPEquals = nil
 			}
-
 			if *delFilter.RangeEquals == "" {
 				delFilter.RangeEquals = nil
 			}
@@ -466,6 +468,8 @@ cscli decisions delete --type captcha
 	cmdDecisionsDelete.Flags().StringVarP(delFilter.TypeEquals, "type", "t", "", "the decision type (ie. ban,captcha)")
 	cmdDecisionsDelete.Flags().StringVarP(delFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
 	cmdDecisionsDelete.Flags().StringVarP(delFilter.ScenarioEquals, "scenario", "s", "", "the scenario name (ie. crowdsecurity/ssh-bf)")
+	cmdDecisionsDelete.Flags().StringVar(delFilter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
+
 	cmdDecisionsDelete.Flags().StringVar(&delDecisionId, "id", "", "decision id")
 	cmdDecisionsDelete.Flags().BoolVar(&delDecisionAll, "all", false, "delete all decisions")
 	cmdDecisionsDelete.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
