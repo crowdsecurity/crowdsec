@@ -106,11 +106,21 @@ testclean: bats-clean
 	@$(RM) pkg/cwhub/install $(WIN_IGNORE_ERR)
 	@$(RM) pkg/types/example.txt $(WIN_IGNORE_ERR)
 
-.PHONY: test
-test: export AWS_ENDPOINT_FORCE=http://localhost:4566
-test: goversion
+export AWS_ENDPOINT_FORCE=http://localhost:4566
+export AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+export AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+
+testenv:
 	@echo 'NOTE: You need Docker, docker-compose and run "make localstack" in a separate shell ("make localstack-stop" to terminate it)'
+
+.PHONY: test
+test: testenv goversion
 	$(GOTEST) $(LD_OPTS) ./...
+
+.PHONY: go-acc
+go-acc: testenv goversion
+	go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models -- $(LD_OPTS) | \
+		sed 's/ *coverage:.*of statements in.*//'
 
 .PHONY: localstack
 localstack:
