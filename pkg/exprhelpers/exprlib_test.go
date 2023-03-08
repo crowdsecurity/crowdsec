@@ -125,6 +125,22 @@ func TestVisitor(t *testing.T) {
 	}
 }
 
+func TestDistanceHelper(t *testing.T) {
+
+	//one set of coord is empty
+	ret, err := Distance("0.0", "0.0", "12.1", "12.1")
+	assert.NoError(t, err)
+	assert.Equal(t, 0.0, ret)
+	//those aren't even coords
+	ret, err = Distance("lol", "42.1", "12.1", "12.1")
+	assert.NotNil(t, err)
+	assert.Equal(t, 0.0, ret)
+	//real ones
+	ret, err = Distance("51.45", "1.15", "41.54", "12.27")
+	assert.NoError(t, err)
+	assert.Equal(t, 1389.1793118293067, ret)
+}
+
 func TestRegexpCacheBehavior(t *testing.T) {
 	err := Init(nil)
 	require.NoError(t, err)

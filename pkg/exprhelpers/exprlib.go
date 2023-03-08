@@ -19,6 +19,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/umahmood/haversine"
+
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -119,11 +121,49 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"TrimPrefix":  strings.TrimPrefix,
 		"TrimSuffix":  strings.TrimSuffix,
 		"Get":         Get,
+		"Distance":    Distance,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
 	}
 	return ExprLib
+}
+
+func Distance(lat1 string, long1 string, lat2 string, long2 string) (float64, error) {
+	lat1f, err := strconv.ParseFloat(lat1, 64)
+	if err != nil {
+		log.Warningf("lat1 is not a float : %v", err)
+		return 0, fmt.Errorf("lat1 is not a float : %v", err)
+	}
+	long1f, err := strconv.ParseFloat(long1, 64)
+	if err != nil {
+		log.Warningf("long1 is not a float : %v", err)
+		return 0, fmt.Errorf("long1 is not a float : %v", err)
+	}
+	lat2f, err := strconv.ParseFloat(lat2, 64)
+	if err != nil {
+		log.Warningf("lat2 is not a float : %v", err)
+
+		return 0, fmt.Errorf("lat2 is not a float : %v", err)
+	}
+	long2f, err := strconv.ParseFloat(long2, 64)
+	if err != nil {
+		log.Warningf("long2 is not a float : %v", err)
+
+		return 0, fmt.Errorf("long2 is not a float : %v", err)
+	}
+
+	//either set of coordinates is 0,0, return 0 to avoid FPs
+	if (lat1f == 0.0 && long1f == 0.0) || (lat2f == 0.0 && long2f == 0.0) {
+		log.Warningf("one of the coordinates is 0,0, returning 0")
+		return 0, nil
+	}
+
+	first := haversine.Coord{Lat: lat1f, Lon: long1f}
+	second := haversine.Coord{Lat: lat2f, Lon: long2f}
+
+	_, km := haversine.Distance(first, second)
+	return km, nil
 }
 
 func Init(databaseClient *database.Client) error {
