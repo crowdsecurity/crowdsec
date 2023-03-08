@@ -25,11 +25,6 @@ type visitor struct {
 	vars       []string
 }
 
-/*
-Exit is called when running ast.Walk(node, visitor), each time a node exit.
-So we have the node information and we can get the identifier (first level of the struct)
-and its properties to reconstruct the complete variable.
-*/
 func (v *visitor) Visit(node *ast.Node) {
 	if n, ok := (*node).(*ast.IdentifierNode); ok {
 		if !v.newVar {
@@ -41,10 +36,11 @@ func (v *visitor) Visit(node *ast.Node) {
 			v.properties = []string{}
 			v.currentID = n.Value
 		}
-	} /* else if n, ok := (*node).(*ast.StringNode); ok {
-		log.Infof("string node : %s", n.Value)
-		v.properties = append(v.properties, n.Value)
-	}*/
+	} else if n2, ok := (*node).(*ast.MemberNode); ok {
+		if ns, ok := (n2.Property).(*ast.StringNode); ok {
+			v.properties = append(v.properties, ns.Value)
+		}
+	}
 }
 
 /*
@@ -76,6 +72,7 @@ func (v *visitor) Build(filter string, exprEnv expr.Option) (*ExprDebugger, erro
 	}
 	v.properties = []string{}
 	v.currentID = ""
+
 	for _, variable := range v.vars {
 		debugFilter, err := expr.Compile(variable, exprEnv)
 		if err != nil {
