@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"sort"
 	"strings"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -178,6 +180,46 @@ func (s *S3Source) readManager() {
 			if err != nil {
 				logger.Errorf("Error while reading file: %s", err)
 			}
+		}
+	}
+}
+
+func (s *S3Source) listPoll() error {
+	logger := s.logger.WithField("method", "listPoll")
+	ticker := time.NewTicker(time.Duration(s.Config.PollingInterval) * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-s.t.Dying():
+			logger.Infof("Shutting down list poller")
+			s.cancel()
+			return nil
+		case <-ticker.C:
+			bucketObjects := make([]*s3.Object, 0)
+			var continuationToken *string = nil
+			logger.Debugf("Polling S3 bucket %s", s.Config.BucketName)
+			for {
+				out, err := s.s3Client.ListObjectsV2WithContext(s.ctx, &s3.ListObjectsV2Input{
+					Bucket:            aws.String(s.Config.BucketName),
+					MaxKeys:           aws.Int64(1000),
+					Prefix:            aws.String(s.Config.Prefix),
+					ContinuationToken: continuationToken,
+				})
+				if err != nil {
+					logger.Errorf("Error while polling S3: %s", err)
+					break
+				}
+				bucketObjects = append(bucketObjects, out.Contents...)
+				if out.ContinuationToken != nil {
+					continuationToken = out.ContinuationToken
+				} else {
+					break
+				}
+			}
+			sort.Slice(bucketObjects, func(i, j int) bool {
+				return bucketObjects[i].LastModified.Before(*bucketObjects[j].LastModified)
+			})
+			spew.Dump(bucketObjects)
 		}
 	}
 }
@@ -430,6 +472,14 @@ func (s *S3Source) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) erro
 	if s.Config.PollingMethod == PollMethodSQS {
 		t.Go(func() error {
 			err := s.sqsPoll()
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+	} else {
+		t.Go(func() error {
+			err := s.listPoll()
 			if err != nil {
 				return err
 			}
