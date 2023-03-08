@@ -162,7 +162,7 @@ func Distance(lat1 string, long1 string, lat2 string, long2 string) (float64, er
 	first := haversine.Coord{Lat: lat1f, Lon: long1f}
 	second := haversine.Coord{Lat: lat2f, Lon: long2f}
 
-	mi, km := haversine.Distance(first, second)
+	_, km := haversine.Distance(first, second)
 	return km, nil
 }
 
