@@ -157,8 +157,13 @@ func Distance(lat1 string, long1 string, lat2 string, long2 string) (float64, er
 		return 0, fmt.Errorf("long2 is not a float : %v", err)
 	}
 
+	//either set of coordinates is 0,0, return 0 to avoid FPs
+	if (lat1f == 0.0 && long1f == 0.0) || (lat2f == 0.0 && long2f == 0.0) {
+		log.Warningf("one of the coordinates is 0,0, returning 0")
+		return 0, nil
+	}
+
 	dist := floatDistance(lat1f, long1f, lat2f, long2f)
-	log.Warningf("distance between [%f,%f] and [%f,%f] is %f", lat1f, long1f, lat2f, long2f, dist)
 	return dist, nil
 }
 
