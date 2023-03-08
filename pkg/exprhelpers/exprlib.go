@@ -136,21 +136,30 @@ func floatDistance(lat1 float64, lng1 float64, lat2 float64, lng2 float64) float
 func Distance(lat1 string, long1 string, lat2 string, long2 string) (float64, error) {
 	lat1f, err := strconv.ParseFloat(lat1, 64)
 	if err != nil {
+		log.Warningf("lat1 is not a float : %v", err)
 		return 0, fmt.Errorf("lat1 is not a float : %v", err)
 	}
 	long1f, err := strconv.ParseFloat(long1, 64)
 	if err != nil {
+		log.Warningf("long1 is not a float : %v", err)
 		return 0, fmt.Errorf("long1 is not a float : %v", err)
 	}
 	lat2f, err := strconv.ParseFloat(lat2, 64)
 	if err != nil {
+		log.Warningf("lat2 is not a float : %v", err)
+
 		return 0, fmt.Errorf("lat2 is not a float : %v", err)
 	}
 	long2f, err := strconv.ParseFloat(long2, 64)
 	if err != nil {
+		log.Warningf("long2 is not a float : %v", err)
+
 		return 0, fmt.Errorf("long2 is not a float : %v", err)
 	}
-	return floatDistance(lat1f, long1f, lat2f, long2f), nil
+
+	dist := floatDistance(lat1f, long1f, lat2f, long2f)
+	log.Warningf("distance between [%f,%f] and [%f,%f] is %f", lat1f, long1f, lat2f, long2f, dist)
+	return dist, nil
 }
 
 func Init(databaseClient *database.Client) error {
