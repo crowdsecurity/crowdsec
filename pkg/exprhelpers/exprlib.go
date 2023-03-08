@@ -14,7 +14,7 @@ import (
 
 	"github.com/bluele/gcache"
 	"github.com/c-robinson/iplib"
-	"github.com/cespare/xxhash"
+	"github.com/cespare/xxhash/v2"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
