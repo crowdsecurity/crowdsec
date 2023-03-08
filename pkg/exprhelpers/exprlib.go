@@ -28,7 +28,7 @@ var dataFile map[string][]string
 var dataFileRegex map[string][]*regexp.Regexp
 
 // This is used to (optionally) cache regexp results for RegexpInFile operations
-var dataFileRegexCache map[string]gcache.Cache
+var dataFileRegexCache map[string]gcache.Cache = make(map[string]gcache.Cache)
 
 /*prometheus*/
 var RegexpCacheMetrics = prometheus.NewGaugeVec(
@@ -134,9 +134,7 @@ func Init(databaseClient *database.Client) error {
 }
 
 func RegexpCacheInit(filename string, CacheCfg types.DataSource) error {
-	if dataFileRegexCache == nil {
-		dataFileRegexCache = make(map[string]gcache.Cache)
-	}
+
 	//cache is explicitly disabled
 	if CacheCfg.Cache != nil && !*CacheCfg.Cache {
 		return nil
