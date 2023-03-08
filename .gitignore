@@ -15,7 +15,7 @@
 # Test binaries, built from *_test.go
 pkg/csplugin/tests/cs_plugin_test*
 
-# Output of the go coverage tool, specifically when used with LiteIDE
+# Output of go-acc
 *.out
 
 # Development artifacts, backups, etc
