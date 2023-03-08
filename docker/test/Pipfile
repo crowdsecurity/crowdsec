@@ -1,7 +1,7 @@
 [packages]
 pytest-dotenv = "*"
 pytest-xdist = "*"
-pytest-cs = {ref = "0.2.0", git = "https://github.com/crowdsecurity/pytest-cs.git"}
+pytest-cs = {ref = "0.4.0", git = "https://github.com/crowdsecurity/pytest-cs.git"}
 
 [dev-packages]
 gnureadline = "*"
