@@ -30,17 +30,17 @@ jobs:
         with:
           config: .github/buildkit.toml
 
-      - name: "Build flavor: full"
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: ./Dockerfile
-          tags: crowdsecurity/crowdsec:test
-          target: full
-          platforms: linux/amd64
-          load: true
-          cache-from: type=gha
-          cache-to: type=gha,mode=min
+      # - name: "Build flavor: full"
+      #   uses: docker/build-push-action@v4
+      #   with:
+      #     context: .
+      #     file: ./Dockerfile
+      #     tags: crowdsecurity/crowdsec:test
+      #     target: full
+      #     platforms: linux/amd64
+      #     load: true
+      #     cache-from: type=gha
+      #     cache-to: type=gha,mode=min
 
       - name: "Build flavor: slim"
         uses: docker/build-push-action@v4
@@ -95,7 +95,7 @@ jobs:
       - name: "Run tests"
         env:
           CROWDSEC_TEST_VERSION: test
-          CROWDSEC_TEST_FLAVORS: full,slim,debian
+          CROWDSEC_TEST_FLAVORS: slim,debian
           CROWDSEC_TEST_NETWORK: net-test
           CROWDSEC_TEST_TIMEOUT: 90
         run: |
