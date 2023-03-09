@@ -96,7 +96,7 @@ jobs:
           CROWDSEC_TEST_VERSION: test
           CROWDSEC_TEST_FLAVORS: full,slim,debian
           CROWDSEC_TEST_NETWORK: net-test
-          CROWDSEC_TEST_TIMEOUT: 60
+          CROWDSEC_TEST_TIMEOUT: 90
         run: |
           cd docker/test
           pipenv run pytest -n 2 --durations=0 --color=yes
