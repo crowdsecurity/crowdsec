@@ -139,7 +139,7 @@ func StopContainer(name string) error {
 		return fmt.Errorf("failed to create docker client : %s", err)
 	}
 	ctx := context.Background()
-	var to time.Duration = 20 * time.Second
+	to := 20 * time.Second
 	if err := cli.ContainerStop(ctx, name, &to); err != nil {
 		return fmt.Errorf("failed while stopping %s : %s", name, err)
 	}

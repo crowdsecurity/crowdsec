@@ -19,7 +19,7 @@ func TestNewAlertContext(t *testing.T) {
 		{
 			name: "basic config test",
 			contextToSend: map[string][]string{
-				"test": []string{"evt.Parsed.source_ip"},
+				"test": {"evt.Parsed.source_ip"},
 			},
 			valueLength: 100,
 			expectedErr: nil,
@@ -45,8 +45,8 @@ func TestEventToContext(t *testing.T) {
 		{
 			name: "basic test",
 			contextToSend: map[string][]string{
-				"source_ip":         []string{"evt.Parsed.source_ip"},
-				"nonexistent_field": []string{"evt.Parsed.nonexist"},
+				"source_ip":         {"evt.Parsed.source_ip"},
+				"nonexistent_field": {"evt.Parsed.nonexist"},
 			},
 			valueLength: 100,
 			events: []types.Event{
@@ -67,9 +67,9 @@ func TestEventToContext(t *testing.T) {
 		{
 			name: "test many events",
 			contextToSend: map[string][]string{
-				"source_ip":      []string{"evt.Parsed.source_ip"},
-				"source_machine": []string{"evt.Parsed.source_machine"},
-				"cve":            []string{"evt.Parsed.cve"},
+				"source_ip":      {"evt.Parsed.source_ip"},
+				"source_machine": {"evt.Parsed.source_machine"},
+				"cve":            {"evt.Parsed.cve"},
 			},
 			valueLength: 100,
 			events: []types.Event{
@@ -113,9 +113,9 @@ func TestEventToContext(t *testing.T) {
 		{
 			name: "test many events with result above max length (need truncate, keep only 2 on 3 elements)",
 			contextToSend: map[string][]string{
-				"source_ip":      []string{"evt.Parsed.source_ip"},
-				"source_machine": []string{"evt.Parsed.source_machine"},
-				"uri":            []string{"evt.Parsed.uri"},
+				"source_ip":      {"evt.Parsed.source_ip"},
+				"source_machine": {"evt.Parsed.source_machine"},
+				"uri":            {"evt.Parsed.uri"},
 			},
 			valueLength: 100,
 			events: []types.Event{
@@ -159,9 +159,9 @@ func TestEventToContext(t *testing.T) {
 		{
 			name: "test one events with result above max length (need truncate on one element)",
 			contextToSend: map[string][]string{
-				"source_ip":      []string{"evt.Parsed.source_ip"},
-				"source_machine": []string{"evt.Parsed.source_machine"},
-				"uri":            []string{"evt.Parsed.uri"},
+				"source_ip":      {"evt.Parsed.source_ip"},
+				"source_machine": {"evt.Parsed.source_machine"},
+				"uri":            {"evt.Parsed.uri"},
 			},
 			valueLength: 100,
 			events: []types.Event{

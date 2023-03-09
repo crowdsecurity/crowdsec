@@ -432,7 +432,7 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 				return err
 			}
 			return nil
-		case <-tail.Tomb.Dying(): //our tailer is dying
+		case <-tail.Dying(): //our tailer is dying
 			logger.Warningf("File reader of %s died", tail.Filename)
 			t.Kill(fmt.Errorf("dead reader for %s", tail.Filename))
 			return fmt.Errorf("reader for %s is dead", tail.Filename)

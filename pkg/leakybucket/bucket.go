@@ -201,9 +201,9 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 func LeakRoutine(leaky *Leaky) error {
 
 	var (
-		durationTickerChan <-chan time.Time = make(<-chan time.Time)
+		durationTickerChan = make(<-chan time.Time)
 		durationTicker     *time.Ticker
-		firstEvent         bool = true
+		firstEvent         = true
 	)
 
 	defer types.CatchPanic(fmt.Sprintf("crowdsec/LeakRoutine/%s", leaky.Name))

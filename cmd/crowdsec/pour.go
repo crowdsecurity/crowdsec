@@ -29,7 +29,7 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 				//when in forensics mode, garbage collect buckets
 				if cConfig.Crowdsec.BucketsGCEnabled {
 					if parsed.MarshaledTime != "" {
-						var z *time.Time = &time.Time{}
+						z := &time.Time{}
 						if err := z.UnmarshalText([]byte(parsed.MarshaledTime)); err != nil {
 							log.Warningf("Failed to unmarshal time from event '%s' : %s", parsed.MarshaledTime, err)
 						} else {
