@@ -318,7 +318,7 @@ func TestApplyRules(t *testing.T) {
 			"unknown expression",
 			[]string{"false", "doesnotexist()"},
 			false,
-			"rule 'doesnotexist()': cannot get \"doesnotexist\" from",
+			"rule 'doesnotexist()': cannot fetch doesnotexist from",
 		},
 	}
 
@@ -497,7 +497,7 @@ detect:
 						DetectedService: "wizard",
 						DataSource: setup.DataSourceItem{
 							// XXX this should not be DataSourceItem ??
-							"source":           "journalctl",
+							"source":            "journalctl",
 							"labels":            setup.DataSourceItem{"type": "syslog"},
 							"journalctl_filter": []interface{}{"_MY_CUSTOM_FILTER=something"},
 						},
@@ -859,7 +859,7 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				    datasource:
 				      labels:
 				        type: something`,
-			expected: setup.Setup{Setup:[]setup.ServiceSetup{}},
+			expected:    setup.Setup{Setup: []setup.ServiceSetup{}},
 			expectedErr: "invalid datasource for wizard: source is empty",
 		}, {
 			name: "source is unknown",
@@ -869,7 +869,7 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				  foobar:
 				    datasource:
 				      source: wombat`,
-			expected: setup.Setup{Setup:[]setup.ServiceSetup{}},
+			expected:    setup.Setup{Setup: []setup.ServiceSetup{}},
 			expectedErr: "invalid datasource for foobar: unknown source 'wombat'",
 		}, {
 			name: "source is misplaced",
@@ -879,7 +879,7 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				  foobar:
 				    datasource:
 				    source: file`,
-			expected: setup.Setup{Setup:[]setup.ServiceSetup{}},
+			expected:    setup.Setup{Setup: []setup.ServiceSetup{}},
 			expectedErr: "while parsing {{.DetectYaml}}: yaml: unmarshal errors:\n  line 6: field source not found in type setup.Service",
 		}, {
 			name: "source is mismatched",
@@ -890,7 +890,7 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				    datasource:
 				      source: journalctl
 				      filename: /path/to/file.log`,
-			expected: setup.Setup{Setup:[]setup.ServiceSetup{}},
+			expected:    setup.Setup{Setup: []setup.ServiceSetup{}},
 			expectedErr: "invalid datasource for foobar: cannot parse JournalCtlSource configuration: yaml: unmarshal errors:\n  line 1: field filename not found in type journalctlacquisition.JournalCtlConfiguration",
 		}, {
 			name: "source file: required fields",
@@ -900,7 +900,7 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				  foobar:
 				    datasource:
 				      source: file`,
-			expected: setup.Setup{Setup:[]setup.ServiceSetup{}},
+			expected:    setup.Setup{Setup: []setup.ServiceSetup{}},
 			expectedErr: "invalid datasource for foobar: no filename or filenames configuration provided",
 		}, {
 			name: "source journalctl: required fields",
@@ -910,7 +910,7 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				  foobar:
 				    datasource:
 				      source: journalctl`,
-			expected: setup.Setup{Setup:[]setup.ServiceSetup{}},
+			expected:    setup.Setup{Setup: []setup.ServiceSetup{}},
 			expectedErr: "invalid datasource for foobar: journalctl_filter is required",
 		}, {
 			name: "source cloudwatch: required fields",
@@ -920,7 +920,7 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				  foobar:
 				    datasource:
 				      source: cloudwatch`,
-			expected: setup.Setup{Setup:[]setup.ServiceSetup{}},
+			expected:    setup.Setup{Setup: []setup.ServiceSetup{}},
 			expectedErr: "invalid datasource for foobar: group_name is mandatory for CloudwatchSource",
 		}, {
 			name: "source syslog: all fields are optional",
@@ -933,8 +933,8 @@ func TestDetectDatasourceValidation(t *testing.T) {
 			expected: setup.Setup{
 				Setup: []setup.ServiceSetup{
 					{
-					DetectedService:"foobar",
-					DataSource: setup.DataSourceItem{"source":"syslog"},
+						DetectedService: "foobar",
+						DataSource:      setup.DataSourceItem{"source": "syslog"},
 					},
 				},
 			},
@@ -946,7 +946,7 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				  foobar:
 				    datasource:
 				      source: docker`,
-			expected: setup.Setup{Setup:[]setup.ServiceSetup{}},
+			expected:    setup.Setup{Setup: []setup.ServiceSetup{}},
 			expectedErr: "invalid datasource for foobar: no containers names or containers ID configuration provided",
 		}, {
 			name: "source kinesis: required fields (enhanced fanout=false)",
@@ -956,7 +956,7 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				  foobar:
 				    datasource:
 				      source: kinesis`,
-			expected: setup.Setup{Setup:[]setup.ServiceSetup{}},
+			expected:    setup.Setup{Setup: []setup.ServiceSetup{}},
 			expectedErr: "invalid datasource for foobar: stream_name is mandatory when use_enhanced_fanout is false",
 		}, {
 			name: "source kinesis: required fields (enhanced fanout=true)",
@@ -967,7 +967,7 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				    datasource:
 				      source: kinesis
 				      use_enhanced_fanout: true`,
-			expected: setup.Setup{Setup:[]setup.ServiceSetup{}},
+			expected:    setup.Setup{Setup: []setup.ServiceSetup{}},
 			expectedErr: "invalid datasource for foobar: stream_arn is mandatory when use_enhanced_fanout is true",
 		}, {
 			name: "source kafka: required fields",
@@ -977,7 +977,7 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				  foobar:
 				    datasource:
 				      source: kafka`,
-			expected: setup.Setup{Setup:[]setup.ServiceSetup{}},
+			expected:    setup.Setup{Setup: []setup.ServiceSetup{}},
 			expectedErr: "invalid datasource for foobar: cannot create a kafka reader with an empty list of broker addresses",
 		},
 	}
@@ -991,7 +991,7 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				  foobar:
 				    datasource:
 				      source: wineventlog`,
-			expected: setup.Setup{Setup:[]setup.ServiceSetup{}},
+			expected:    setup.Setup{Setup: []setup.ServiceSetup{}},
 			expectedErr: "invalid datasource for foobar: event_channel or xpath_query must be set",
 		})
 	}
