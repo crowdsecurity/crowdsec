@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -78,7 +77,7 @@ func runExplain(cmd *cobra.Command, args []string) error {
 	var f *os.File
 
 	// using empty string fallback to /tmp
-	dir, err := ioutil.TempDir("", "cscli_explain")
+	dir, err := os.MkdirTemp("", "cscli_explain")
 	if err != nil {
 		log.Fatalf("couldn't create a temporary directory to store cscli explain result: %s", err)
 	}
