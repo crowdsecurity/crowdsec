@@ -129,7 +129,7 @@ func runExplain(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no acquisition (--file or --dsn) provided, can't run cscli test")
 	}
 
-	cmdArgs := []string{"-c", ConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", "./", "-no-api"}
+	cmdArgs := []string{"-c", ConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", dir, "-no-api"}
 	crowdsecCmd := exec.Command(crowdsec, cmdArgs...)
 	crowdsecCmd.Dir = dir
 	output, err := crowdsecCmd.CombinedOutput()
