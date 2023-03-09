@@ -103,6 +103,14 @@ var objectsRead = prometheus.NewCounterVec(
 	[]string{"bucket"},
 )
 
+var sqsMessagesReceived = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_s3_sqs_messages_total",
+		Help: "Number of SQS messages received per queue.",
+	},
+	[]string{"queue"},
+)
+
 func (s *S3Source) newS3Client() error {
 	var sess *session.Session
 
@@ -269,6 +277,7 @@ func (s *S3Source) sqsPoll() error {
 			logger.Tracef("SQS output: %v", out)
 			logger.Debugf("Received %d messages from SQS", len(out.Messages))
 			for _, message := range out.Messages {
+				sqsMessagesReceived.WithLabelValues(s.Config.SQSName).Inc()
 				eventBody := S3Event{}
 				err := json.Unmarshal([]byte(*message.Body), &eventBody)
 				if err != nil {
@@ -340,10 +349,10 @@ func (s *S3Source) readFile(bucket string, key string) error {
 }
 
 func (s *S3Source) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead, objectsRead}
+	return []prometheus.Collector{linesRead, objectsRead, sqsMessagesReceived}
 }
 func (s *S3Source) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead, objectsRead}
+	return []prometheus.Collector{linesRead, objectsRead, sqsMessagesReceived}
 }
 
 func (s *S3Source) UnmarshalConfig(yamlConfig []byte) error {
