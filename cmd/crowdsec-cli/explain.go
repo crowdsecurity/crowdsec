@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -75,8 +76,10 @@ func runExplain(cmd *cobra.Command, args []string) error {
 	}
 
 	var f *os.File
-	dir := os.TempDir()
-
+	dir, err := ioutil.TempDir("", "cscli_explain")
+	if err != nil {
+		log.Fatalf("couldn't create a temporary directory to store cscli explain result: %s", err)
+	}
 	tmpFile := ""
 	// we create a  temporary log file if a log line/stdin has been provided
 	if logLine != "" || logFile == "-" {
@@ -157,6 +160,10 @@ func runExplain(cmd *cobra.Command, args []string) error {
 	}
 
 	hubtest.DumpTree(*parserDump, *bucketStateDump, opts)
+
+	if err := os.RemoveAll(dir); err != nil {
+		return fmt.Errorf("unable to delete temporary directory '%s': %s", dir, err)
+	}
 
 	return nil
 }
