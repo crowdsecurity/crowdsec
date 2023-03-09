@@ -158,7 +158,7 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 
 func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.Tomb, buckets *Buckets) ([]BucketFactory, chan types.Event, error) {
 	var (
-		ret      []BucketFactory = []BucketFactory{}
+		ret = []BucketFactory{}
 		response chan types.Event
 	)
 

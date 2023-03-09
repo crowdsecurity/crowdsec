@@ -6,8 +6,8 @@ pytestmark = pytest.mark.docker
 
 
 # XXX this is redundant, already tested in pytest_cs
-def test_crowdsec(crowdsec):
-    with crowdsec() as cs:
+def test_crowdsec(crowdsec, flavor):
+    with crowdsec(flavor=flavor) as cs:
         for waiter in cs.log_waiters():
             with waiter as matcher:
                 matcher.fnmatch_lines(["*Starting processing data*"])

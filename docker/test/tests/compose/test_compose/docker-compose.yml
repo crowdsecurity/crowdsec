@@ -1,8 +1,0 @@
-version: "3"
-
-services:
-  server:
-    image: python:alpine
-    command: python -m http.server 8000
-    ports:
-      - 8000

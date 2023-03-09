@@ -29,8 +29,8 @@ var Client *apiclient.ApiClient
 
 func DecisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 	/*here we cheat a bit : to make it more readable for the user, we dedup some entries*/
-	var spamLimit map[string]bool = make(map[string]bool)
-	var skipped = 0
+	spamLimit := make(map[string]bool)
+	skipped := 0
 
 	for aIdx := 0; aIdx < len(*alerts); aIdx++ {
 		alertItem := (*alerts)[aIdx]

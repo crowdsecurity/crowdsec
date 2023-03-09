@@ -33,7 +33,7 @@ func NewBlackhole(bucketFactory *BucketFactory) (*Blackhole, error) {
 
 func (bl *Blackhole) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, types.RuntimeAlert, *Queue) (types.RuntimeAlert, *Queue) {
 	return func(leaky *Leaky, alert types.RuntimeAlert, queue *Queue) (types.RuntimeAlert, *Queue) {
-		var blackholed bool = false
+		var blackholed = false
 		var tmp []HiddenKey
 		// search if we are blackholed and refresh the slice
 		for _, element := range bl.hiddenKeys {

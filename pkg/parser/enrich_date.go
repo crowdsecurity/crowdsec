@@ -57,7 +57,7 @@ func GenDateParse(date string) (string, time.Time) {
 
 func ParseDate(in string, p *types.Event, x interface{}, plog *log.Entry) (map[string]string, error) {
 
-	var ret map[string]string = make(map[string]string)
+	var ret = make(map[string]string)
 	var strDate string
 	var parsedDate time.Time
 	if in != "" {
