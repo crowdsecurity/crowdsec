@@ -76,6 +76,8 @@ func runExplain(cmd *cobra.Command, args []string) error {
 	}
 
 	var f *os.File
+
+	// using empty string fallback to /tmp
 	dir, err := ioutil.TempDir("", "cscli_explain")
 	if err != nil {
 		log.Fatalf("couldn't create a temporary directory to store cscli explain result: %s", err)
