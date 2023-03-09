@@ -17,6 +17,7 @@ on:
 jobs:
   test_docker_image:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
 
       - name: Check out the repo
