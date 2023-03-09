@@ -18,7 +18,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -184,10 +183,39 @@ func (s *S3Source) readManager() {
 	}
 }
 
+func (s *S3Source) getBucketContent() []*s3.Object {
+	logger := s.logger.WithField("method", "getBucketContent")
+	logger.Debugf("Getting bucket content for %s", s.Config.BucketName)
+	bucketObjects := make([]*s3.Object, 0)
+	var continuationToken *string = nil
+	for {
+		out, err := s.s3Client.ListObjectsV2WithContext(s.ctx, &s3.ListObjectsV2Input{
+			Bucket:            aws.String(s.Config.BucketName),
+			Prefix:            aws.String(s.Config.Prefix),
+			ContinuationToken: continuationToken,
+		})
+		if err != nil {
+			logger.Errorf("Error while listing bucket content: %s", err)
+			return nil
+		}
+		bucketObjects = append(bucketObjects, out.Contents...)
+		if out.NextContinuationToken == nil {
+			break
+		}
+		continuationToken = out.NextContinuationToken
+	}
+	sort.Slice(bucketObjects, func(i, j int) bool {
+		return bucketObjects[i].LastModified.Before(*bucketObjects[j].LastModified)
+	})
+	return bucketObjects
+}
+
 func (s *S3Source) listPoll() error {
 	logger := s.logger.WithField("method", "listPoll")
 	ticker := time.NewTicker(time.Duration(s.Config.PollingInterval) * time.Second)
+	lastObjectDate := time.Now()
 	defer ticker.Stop()
+
 	for {
 		select {
 		case <-s.t.Dying():
@@ -195,31 +223,26 @@ func (s *S3Source) listPoll() error {
 			s.cancel()
 			return nil
 		case <-ticker.C:
-			bucketObjects := make([]*s3.Object, 0)
-			var continuationToken *string = nil
-			logger.Debugf("Polling S3 bucket %s", s.Config.BucketName)
-			for {
-				out, err := s.s3Client.ListObjectsV2WithContext(s.ctx, &s3.ListObjectsV2Input{
-					Bucket:            aws.String(s.Config.BucketName),
-					MaxKeys:           aws.Int64(1000),
-					Prefix:            aws.String(s.Config.Prefix),
-					ContinuationToken: continuationToken,
-				})
-				if err != nil {
-					logger.Errorf("Error while polling S3: %s", err)
-					break
-				}
-				bucketObjects = append(bucketObjects, out.Contents...)
-				if out.ContinuationToken != nil {
-					continuationToken = out.ContinuationToken
+			newObject := false
+			bucketObjects := s.getBucketContent()
+			if bucketObjects == nil {
+				continue
+			}
+			for i := len(bucketObjects) - 1; i >= 0; i-- {
+				if bucketObjects[i].LastModified.After(lastObjectDate) {
+					newObject = true
+					logger.Debugf("Found new object %s", *bucketObjects[i].Key)
+					s.readerChan <- S3Object{
+						Bucker: s.Config.BucketName,
+						Key:    *bucketObjects[i].Key,
+					}
 				} else {
 					break
 				}
 			}
-			sort.Slice(bucketObjects, func(i, j int) bool {
-				return bucketObjects[i].LastModified.Before(*bucketObjects[j].LastModified)
-			})
-			spew.Dump(bucketObjects)
+			if newObject {
+				lastObjectDate = *bucketObjects[len(bucketObjects)-1].LastModified
+			}
 		}
 	}
 }
@@ -356,11 +379,20 @@ func (s *S3Source) UnmarshalConfig(yamlConfig []byte) error {
 }
 
 func (s *S3Source) Configure(yamlConfig []byte, logger *log.Entry) error {
-	s.logger = logger
 	err := s.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return err
 	}
+
+	s.logger = logger.WithFields(log.Fields{
+		"bucket": s.Config.BucketName,
+		"prefix": s.Config.Prefix,
+	})
+
+	if !s.Config.UseTimeMachine {
+		s.logger.Warning("use_time_machine is not set to true in the datasource configuration. This will likely lead to false positives as S3 logs are not processed in real time.")
+	}
+
 	err = s.newS3Client()
 	if err != nil {
 		return err
@@ -381,7 +413,10 @@ func (s *S3Source) ConfigureByDSN(dsn string, labels map[string]string, logger *
 		return fmt.Errorf("invalid DSN %s for S3 source, must start with s3://", dsn)
 	}
 
-	s.logger = logger
+	s.logger = logger.WithFields(log.Fields{
+		"bucket": s.Config.BucketName,
+		"prefix": s.Config.Prefix,
+	})
 
 	dsn = strings.TrimPrefix(dsn, "s3://")
 	args := strings.Split(dsn, "?")
