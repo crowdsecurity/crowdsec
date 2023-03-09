@@ -35,7 +35,7 @@ type S3Configuration struct {
 	Key                               string  `yaml:"-"` //Only for DSN acquisition
 	PollingMethod                     string  `yaml:"polling_method"`
 	PollingInterval                   int     `yaml:"polling_interval"`
-	SQSARN                            string  `yaml:"sqs_arn"`
+	SQSName                           string  `yaml:"sqs_name"`
 }
 
 type S3Source struct {
@@ -256,9 +256,9 @@ func (s *S3Source) sqsPoll() error {
 			s.cancel()
 			return nil
 		default:
-			logger.Tracef("Polling SQS queue %s", s.Config.SQSARN)
+			logger.Tracef("Polling SQS queue %s", s.Config.SQSName)
 			out, err := s.sqsClient.ReceiveMessageWithContext(s.ctx, &sqs.ReceiveMessageInput{
-				QueueUrl:            aws.String(s.Config.SQSARN),
+				QueueUrl:            aws.String(s.Config.SQSName),
 				MaxNumberOfMessages: aws.Int64(10),
 				WaitTimeSeconds:     aws.Int64(20), //Probably no need to make it configurable ?
 			})
@@ -279,7 +279,7 @@ func (s *S3Source) sqsPoll() error {
 				logger.Debugf("Received SQS message for object %s/%s", eventBody.Detail.Bucket.Name, eventBody.Detail.Object.Key)
 				s.readerChan <- S3Object{Key: eventBody.Detail.Object.Key, Bucker: eventBody.Detail.Bucket.Name}
 				_, err = s.sqsClient.DeleteMessage(&sqs.DeleteMessageInput{
-					QueueUrl:      aws.String(s.Config.SQSARN),
+					QueueUrl:      aws.String(s.Config.SQSName),
 					ReceiptHandle: message.ReceiptHandle,
 				})
 				if err != nil {
@@ -367,8 +367,8 @@ func (s *S3Source) UnmarshalConfig(yamlConfig []byte) error {
 		return fmt.Errorf("invalid polling method %s", s.Config.PollingMethod)
 	}
 
-	if s.Config.PollingMethod == PollMethodSQS && s.Config.SQSARN == "" {
-		return fmt.Errorf("sqs_arn is required when using sqs polling method")
+	if s.Config.PollingMethod == PollMethodSQS && s.Config.SQSName == "" {
+		return fmt.Errorf("sqs_name is required when using sqs polling method")
 	}
 
 	if s.Config.BucketName == "" && s.Config.PollingMethod == PollMethodList {
