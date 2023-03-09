@@ -79,7 +79,7 @@ func runExplain(cmd *cobra.Command, args []string) error {
 	// using empty string fallback to /tmp
 	dir, err := os.MkdirTemp("", "cscli_explain")
 	if err != nil {
-		log.Fatalf("couldn't create a temporary directory to store cscli explain result: %s", err)
+		return fmt.Errorf("couldn't create a temporary directory to store cscli explain result: %s", err)
 	}
 	tmpFile := ""
 	// we create a  temporary log file if a log line/stdin has been provided
