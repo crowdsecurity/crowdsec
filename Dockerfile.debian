@@ -21,7 +21,7 @@ RUN apt-get update && \
     cscli hub update && \
     cscli collections install crowdsecurity/linux && \
     cscli parsers install crowdsecurity/whitelists && \
-    go install github.com/mikefarah/yq/v4@v4.30.6
+    go install github.com/mikefarah/yq/v4@v4.31.2
 
 FROM debian:bullseye-slim as slim
 
@@ -37,6 +37,7 @@ RUN apt-get update && \
     bash \
     tzdata && \
     mkdir -p /staging/etc/crowdsec && \
+    mkdir -p /staging/etc/crowdsec/acquis.d && \
     mkdir -p /staging/var/lib/crowdsec && \
     mkdir -p /var/lib/crowdsec/data
 
