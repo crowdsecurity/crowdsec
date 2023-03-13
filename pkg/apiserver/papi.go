@@ -32,6 +32,7 @@ var (
 	operationMap = map[string]func(*Message, *Papi) error{
 		"decision": DecisionCmd,
 		"alert":    AlertCmd,
+		"reauth":   ReauthCmd,
 	}
 )
 

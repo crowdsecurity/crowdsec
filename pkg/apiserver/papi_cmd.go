@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
@@ -128,5 +129,10 @@ func AlertCmd(message *Message, p *Papi) error {
 		return fmt.Errorf("unknown command '%s' for operation type '%s'", message.Header.OperationCmd, message.Header.OperationType)
 	}
 
+	return nil
+}
+
+func ReauthCmd(message *Message, p *Papi) error {
+	p.apiClient.GetClient().Transport.(*apiclient.JWTTransport).ResetToken()
 	return nil
 }
