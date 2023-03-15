@@ -20,7 +20,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const CAPIBaseURL string = "https://api.dev.crowdsec.net/"
+const CAPIBaseURL string = "https://api.crowdsec.net/"
 const CAPIURLPrefix = "v3"
 
 func NewCapiCmd() *cobra.Command {

@@ -3,6 +3,7 @@ package apiserver
 import (
 	"encoding/json"
 	"fmt"
+	"syscall"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -17,7 +18,7 @@ type deleteDecisions struct {
 	Decisions []string `json:"decisions"`
 }
 
-func DecisionCmd(message *Message, p *Papi) error {
+func DecisionCmd(message *Message, p *Papi, sync bool) error {
 	switch message.Header.OperationCmd {
 	case "delete":
 
@@ -65,7 +66,7 @@ func DecisionCmd(message *Message, p *Papi) error {
 	return nil
 }
 
-func AlertCmd(message *Message, p *Papi) error {
+func AlertCmd(message *Message, p *Papi, sync bool) error {
 	switch message.Header.OperationCmd {
 	case "add":
 		data, err := json.Marshal(message.Data)
@@ -132,7 +133,27 @@ func AlertCmd(message *Message, p *Papi) error {
 	return nil
 }
 
-func ReauthCmd(message *Message, p *Papi) error {
-	p.apiClient.GetClient().Transport.(*apiclient.JWTTransport).ResetToken()
+func ManagementCmd(message *Message, p *Papi, sync bool) error {
+	if sync {
+		log.Infof("Ignoring management command from PAPI in sync mode")
+		return nil
+	}
+	switch message.Header.OperationCmd {
+	case "reauth":
+		log.Infof("Received reauth command from PAPI, resetting token")
+		p.apiClient.GetClient().Transport.(*apiclient.JWTTransport).ResetToken()
+	case "reload":
+		log.Infof("Received reload command from PAPI, reloading configuration")
+		//We cannot send ourselves a SIGHUP to reload, as this is not supported on Windows, so we manually write to the signal chan :(
+		types.SignalChan <- syscall.SIGHUP
+	case "force_pull":
+		log.Infof("Received force_pull command from PAPI, pulling community and 3rd-party blocklists")
+		err := p.apic.PullTop(true)
+		if err != nil {
+			return fmt.Errorf("failed to force pull operation: %s", err)
+		}
+	default:
+		return fmt.Errorf("unknown command '%s' for operation type '%s'", message.Header.OperationCmd, message.Header.OperationType)
+	}
 	return nil
 }

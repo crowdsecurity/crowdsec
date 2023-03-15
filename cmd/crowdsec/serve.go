@@ -18,7 +18,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-//nolint: deadcode,unused // debugHandler is kept as a dev convenience: it shuts down and serialize internal state
+// nolint: deadcode,unused // debugHandler is kept as a dev convenience: it shuts down and serialize internal state
 func debugHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	var (
 		tmpFile string
@@ -218,11 +218,9 @@ func HandleSignals(cConfig *csconfig.Config) error {
 		err       error
 	)
 
-	signalChan := make(chan os.Signal, 1)
-
 	// We add os.Interrupt mostly to ease windows development,
 	// it allows to simulate a clean shutdown when running in the console
-	signal.Notify(signalChan,
+	signal.Notify(types.SignalChan,
 		syscall.SIGHUP,
 		syscall.SIGTERM,
 		os.Interrupt)
@@ -233,7 +231,7 @@ func HandleSignals(cConfig *csconfig.Config) error {
 		defer types.CatchPanic("crowdsec/HandleSignals")
 	Loop:
 		for {
-			s := <-signalChan
+			s := <-types.SignalChan
 			switch s {
 			// kill -SIGHUP XXXX
 			case syscall.SIGHUP:
@@ -356,7 +354,7 @@ func Serve(cConfig *csconfig.Config, apiReady chan bool, agentReady chan bool) e
 		if !sent || err != nil {
 			log.Errorf("Failed to notify(sent: %v): %v", sent, err)
 		}
-
+		types.SignalChan = make(chan os.Signal, 1)
 		// wait for signals
 		return HandleSignals(cConfig)
 	}

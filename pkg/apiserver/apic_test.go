@@ -63,6 +63,7 @@ func getAPIC(t *testing.T) *apic {
 			ShareCustomScenarios:  types.BoolPtr(false),
 			ShareContext:          types.BoolPtr(false),
 		},
+		isPulling: make(chan bool, 1),
 	}
 }
 
@@ -614,7 +615,7 @@ func TestAPICPullTop(t *testing.T) {
 	require.NoError(t, err)
 
 	api.apiClient = apic
-	err = api.PullTop()
+	err = api.PullTop(false)
 	require.NoError(t, err)
 
 	assertTotalDecisionCount(t, api.dbClient, 5)
@@ -696,7 +697,7 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 	require.NoError(t, err)
 
 	api.apiClient = apic
-	err = api.PullTop()
+	err = api.PullTop(false)
 	require.NoError(t, err)
 
 	blocklistConfigItemName := fmt.Sprintf("blocklist:%s:last_pull", *types.StrPtr("blocklist1"))
@@ -709,7 +710,7 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 		assert.NotEqual(t, "", req.Header.Get("If-Modified-Since"))
 		return httpmock.NewStringResponse(304, ""), nil
 	})
-	err = api.PullTop()
+	err = api.PullTop(false)
 	require.NoError(t, err)
 	secondLastPullTimestamp, err := api.dbClient.GetConfigItem(blocklistConfigItemName)
 	require.NoError(t, err)
@@ -783,7 +784,7 @@ func TestAPICPullTopBLCacheForceCall(t *testing.T) {
 	require.NoError(t, err)
 
 	api.apiClient = apic
-	err = api.PullTop()
+	err = api.PullTop(false)
 	require.NoError(t, err)
 }
 

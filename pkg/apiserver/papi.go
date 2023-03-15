@@ -15,7 +15,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 )
@@ -29,10 +28,10 @@ const (
 )
 
 var (
-	operationMap = map[string]func(*Message, *Papi) error{
-		"decision": DecisionCmd,
-		"alert":    AlertCmd,
-		"reauth":   ReauthCmd,
+	operationMap = map[string]func(*Message, *Papi, bool) error{
+		"decision":   DecisionCmd,
+		"alert":      AlertCmd,
+		"management": ManagementCmd,
 	}
 )
 
@@ -72,6 +71,7 @@ type Papi struct {
 	SyncInterval  time.Duration
 	consoleConfig *csconfig.ConsoleConfig
 	Logger        *log.Entry
+	apic          *apic
 }
 
 type PapiPermCheckError struct {
@@ -86,7 +86,7 @@ type PapiPermCheckSuccess struct {
 
 func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig, logLevel log.Level) (*Papi, error) {
 
-	logger := logrus.New()
+	logger := log.New()
 	if err := types.ConfigureLogger(logger); err != nil {
 		return &Papi{}, fmt.Errorf("creating papi logger: %s", err)
 	}
@@ -119,6 +119,7 @@ func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.Cons
 		pullTomb:      tomb.Tomb{},
 		syncTomb:      tomb.Tomb{},
 		apiClient:     apic.apiClient,
+		apic:          apic,
 		consoleConfig: consoleConfig,
 		Logger:        logger.WithFields(log.Fields{"interval": SyncInterval.Seconds(), "source": "papi"}),
 	}
@@ -126,7 +127,7 @@ func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.Cons
 	return papi, nil
 }
 
-func (p *Papi) handleEvent(event longpollclient.Event) error {
+func (p *Papi) handleEvent(event longpollclient.Event, sync bool) error {
 	logger := p.Logger.WithField("request-id", event.RequestId)
 	logger.Debugf("message received: %+v", event.Data)
 	message := &Message{}
@@ -142,7 +143,7 @@ func (p *Papi) handleEvent(event longpollclient.Event) error {
 
 	if operationFunc, ok := operationMap[message.Header.OperationType]; ok {
 		logger.Debugf("Calling operation '%s'", message.Header.OperationType)
-		err := operationFunc(message, p)
+		err := operationFunc(message, p, sync)
 		if err != nil {
 			return fmt.Errorf("'%s %s failed: %s", message.Header.OperationType, message.Header.OperationCmd, err)
 		}
@@ -193,7 +194,7 @@ func reverse(s []longpollclient.Event) []longpollclient.Event {
 	return a
 }
 
-func (p *Papi) PullOnce(since time.Time) error {
+func (p *Papi) PullOnce(since time.Time, sync bool) error {
 	events, err := p.Client.PullOnce(since)
 	if err != nil {
 		return err
@@ -203,7 +204,7 @@ func (p *Papi) PullOnce(since time.Time) error {
 	eventsCount := len(events)
 	p.Logger.Infof("received %d events", eventsCount)
 	for i, event := range reversedEvents {
-		if err := p.handleEvent(event); err != nil {
+		if err := p.handleEvent(event, sync); err != nil {
 			p.Logger.WithField("request-id", event.RequestId).Errorf("failed to handle event: %s", err)
 		}
 		p.Logger.Debugf("handled event %d/%d", i, eventsCount)
@@ -252,7 +253,7 @@ func (p *Papi) Pull() error {
 			return errors.Wrap(err, "failed to marshal last timestamp")
 		}
 
-		err = p.handleEvent(event)
+		err = p.handleEvent(event, false)
 		if err != nil {
 			logger.Errorf("failed to handle event: %s", err)
 			continue
