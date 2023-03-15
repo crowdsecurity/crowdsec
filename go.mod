@@ -7,7 +7,7 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.2.7
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/alexliesenfeld/health v0.5.1
-	github.com/antonmedv/expr v1.9.0
+	github.com/antonmedv/expr v1.12.2
 	github.com/appleboy/gin-jwt/v2 v2.8.0
 	github.com/aws/aws-sdk-go v1.42.25
 	github.com/buger/jsonparser v1.1.1
@@ -83,6 +83,7 @@ require (
 	github.com/segmentio/kafka-go v0.4.34
 	github.com/shirou/gopsutil/v3 v3.22.12
 	github.com/texttheater/golang-levenshtein/levenshtein v0.0.0-20200805054039-cae8b0eaed6c
+	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	golang.org/x/sys v0.5.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apiserver v0.22.5
@@ -173,7 +174,6 @@ require (
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
 	github.com/ugorji/go/codec v1.2.6 // indirect
-	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26 // indirect
 	github.com/vjeantet/grok v1.0.1 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect

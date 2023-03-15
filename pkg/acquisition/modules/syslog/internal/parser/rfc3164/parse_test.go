@@ -1,6 +1,7 @@
 package rfc3164
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -47,6 +48,7 @@ func TestPri(t *testing.T) {
 }
 
 func TestTimestamp(t *testing.T) {
+
 	tests := []struct {
 		input       string
 		expected    string
@@ -54,7 +56,7 @@ func TestTimestamp(t *testing.T) {
 		currentYear bool
 	}{
 		{"May 20 09:33:54", "0000-05-20T09:33:54Z", "", false},
-		{"May 20 09:33:54", "2023-05-20T09:33:54Z", "", true},
+		{"May 20 09:33:54", fmt.Sprintf("%d-05-20T09:33:54Z", time.Now().Year()), "", true},
 		{"May 20 09:33:54 2022", "2022-05-20T09:33:54Z", "", false},
 		{"May  1 09:33:54 2022", "2022-05-01T09:33:54Z", "", false},
 		{"May 01 09:33:54 2021", "2021-05-01T09:33:54Z", "", true},
@@ -257,7 +259,7 @@ func TestParse(t *testing.T) {
 		},
 		{
 			"<12>May 20 09:33:54 UDMPRO,a2edd0c6ae48,udm-1.10.0.3686 kernel: foo", expected{
-				Timestamp: time.Date(2023, time.May, 20, 9, 33, 54, 0, time.UTC),
+				Timestamp: time.Date(time.Now().Year(), time.May, 20, 9, 33, 54, 0, time.UTC),
 				Hostname:  "UDMPRO,a2edd0c6ae48,udm-1.10.0.3686",
 				Tag:       "kernel",
 				PID:       "",
