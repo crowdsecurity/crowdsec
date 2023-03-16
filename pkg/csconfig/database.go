@@ -102,9 +102,10 @@ func (d *DatabaseCfg) ConnectionDialect() (string, string, error) {
 		return "sqlite3", dialect.SQLite, nil
 	case "mysql":
 		return "mysql", dialect.MySQL, nil
-	case "postgres", "postgresql":
-		return "postgres", dialect.Postgres, nil
-	case "pgx":
+	case "pgx", "postgresql", "postgres":
+		if d.Type != "pgx" {
+			log.Debugf("database type '%s' is deprecated, switching to 'pgx' instead", d.Type)
+		}
 		return "pgx", dialect.Postgres, nil
 	}
 	return "", "", fmt.Errorf("unknown database type '%s'", d.Type)
