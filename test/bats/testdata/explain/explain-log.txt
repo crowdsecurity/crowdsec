@@ -4,7 +4,7 @@ line: Sep 19 18:33:22 scw-d95986 sshd[24347]: pam_unix(sshd:auth): authenticatio
 	├ s01-parse
 	|	└ 🟢 crowdsecurity/sshd-logs (+8 ~1)
 	├ s02-enrich
-	|	├ 🟢 crowdsecurity/dateparse-enrich (+2 ~1)
+	|	├ 🟢 crowdsecurity/dateparse-enrich (+2 ~2)
 	|	└ 🟢 crowdsecurity/geoip-enrich (+10)
 	├-------- parser success 🟢
 	├ Scenarios
@@ -12,3 +12,4 @@ line: Sep 19 18:33:22 scw-d95986 sshd[24347]: pam_unix(sshd:auth): authenticatio
 		├ 🟢 crowdsecurity/ssh-bf_user-enum
 		├ 🟢 crowdsecurity/ssh-slow-bf
 		└ 🟢 crowdsecurity/ssh-slow-bf_user-enum
+
