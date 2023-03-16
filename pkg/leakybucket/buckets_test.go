@@ -30,8 +30,8 @@ type TestFile struct {
 
 func TestBucket(t *testing.T) {
 	var (
-		envSetting            = os.Getenv("TEST_ONLY")
-		tomb       *tomb.Tomb = &tomb.Tomb{}
+		envSetting = os.Getenv("TEST_ONLY")
+		tomb       = &tomb.Tomb{}
 	)
 	err := exprhelpers.Init(nil)
 	if err != nil {

@@ -1,9 +1,11 @@
 module github.com/crowdsecurity/splunk-plugin
 
-go 1.19
+go 1.20
+
+replace github.com/crowdsecurity/crowdsec => ../../../
 
 require (
-	github.com/crowdsecurity/crowdsec v1.4.1
+	github.com/crowdsecurity/crowdsec v1.5.0
 	github.com/hashicorp/go-hclog v1.0.0
 	github.com/hashicorp/go-plugin v1.4.2
 	gopkg.in/yaml.v2 v2.4.0
@@ -20,7 +22,7 @@ require (
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
-	google.golang.org/genproto v0.0.0-20220414192740-2d67ff6cf2b4 // indirect
-	google.golang.org/grpc v1.45.0 // indirect
-	google.golang.org/protobuf v1.28.0 // indirect
+	google.golang.org/genproto v0.0.0-20220502173005-c8bf987b8c21 // indirect
+	google.golang.org/grpc v1.47.0 // indirect
+	google.golang.org/protobuf v1.28.1 // indirect
 )

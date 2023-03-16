@@ -4,22 +4,20 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"testing"
 	"time"
 
+	"github.com/antonmedv/expr"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	log "github.com/sirupsen/logrus"
-
-	"testing"
-
-	"github.com/antonmedv/expr"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -29,24 +27,21 @@ var (
 func getDBClient(t *testing.T) *database.Client {
 	t.Helper()
 	dbPath, err := os.CreateTemp("", "*sqlite")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	testDbClient, err := database.NewClient(&csconfig.DatabaseCfg{
 		Type:   "sqlite",
 		DbName: "crowdsec",
 		DbPath: dbPath.Name(),
 	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	return testDbClient
 }
 
 func TestVisitor(t *testing.T) {
-	if err := Init(nil); err != nil {
-		log.Fatal(err)
-	}
+	err := Init(nil)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name   string
@@ -128,6 +123,55 @@ func TestVisitor(t *testing.T) {
 			debugFilter.Run(clog, test.result, GetExprEnv(test.env))
 		}
 	}
+}
+
+func TestDistanceHelper(t *testing.T) {
+
+	//one set of coord is empty
+	ret, err := Distance("0.0", "0.0", "12.1", "12.1")
+	assert.NoError(t, err)
+	assert.Equal(t, 0.0, ret)
+	//those aren't even coords
+	ret, err = Distance("lol", "42.1", "12.1", "12.1")
+	assert.NotNil(t, err)
+	assert.Equal(t, 0.0, ret)
+	//real ones
+	ret, err = Distance("51.45", "1.15", "41.54", "12.27")
+	assert.NoError(t, err)
+	assert.Equal(t, 1389.1793118293067, ret)
+}
+
+func TestRegexpCacheBehavior(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+
+	filename := "test_data_re.txt"
+	err = FileInit(TestFolder, filename, "regex")
+	require.NoError(t, err)
+
+	//cache with no TTL
+	err = RegexpCacheInit(filename, types.DataSource{Type: "regex", Size: types.IntPtr(1)})
+	require.NoError(t, err)
+
+	ret := RegexpInFile("crowdsec", filename)
+	assert.False(t, ret)
+	assert.Equal(t, 1, dataFileRegexCache[filename].Len(false))
+
+	ret = RegexpInFile("Crowdsec", filename)
+	assert.True(t, ret)
+	assert.Equal(t, 1, dataFileRegexCache[filename].Len(false))
+
+	//cache with TTL
+	ttl := 500 * time.Millisecond
+	err = RegexpCacheInit(filename, types.DataSource{Type: "regex", Size: types.IntPtr(2), TTL: &ttl})
+	require.NoError(t, err)
+
+	ret = RegexpInFile("crowdsec", filename)
+	assert.False(t, ret)
+	assert.Equal(t, 1, dataFileRegexCache[filename].Len(true))
+
+	time.Sleep(1 * time.Second)
+	assert.Equal(t, 0, dataFileRegexCache[filename].Len(true))
 }
 
 func TestRegexpInFile(t *testing.T) {
@@ -449,7 +493,7 @@ func TestAtof(t *testing.T) {
 	expectedFloat := 1.5
 
 	if Atof(testFloat) != expectedFloat {
-		t.Fatalf("Atof should returned 1.5 as a float")
+		t.Fatalf("Atof should return 1.5 as a float")
 	}
 
 	log.Printf("test 'Atof()' : OK")
@@ -459,7 +503,7 @@ func TestAtof(t *testing.T) {
 	expectedFloat = 0.0
 
 	if Atof(testFloat) != expectedFloat {
-		t.Fatalf("Atof should returned a negative value (error) as a float got")
+		t.Fatalf("Atof should return a negative value (error) as a float got")
 	}
 
 	log.Printf("test 'Atof()' : OK")
@@ -470,7 +514,7 @@ func TestUpper(t *testing.T) {
 	expectedStr := "TEST"
 
 	if Upper(testStr) != expectedStr {
-		t.Fatalf("Upper() should returned test in upper case")
+		t.Fatalf("Upper() should return test in upper case")
 	}
 
 	log.Printf("test 'Upper()' : OK")
@@ -503,7 +547,7 @@ func TestParseUri(t *testing.T) {
 				"ParseUri": ParseUri,
 			},
 			code:   "ParseUri(uri)",
-			result: map[string][]string{"a": []string{"1"}, "b": []string{"2"}},
+			result: map[string][]string{"a": {"1"}, "b": {"2"}},
 			err:    "",
 		},
 		{
@@ -523,7 +567,7 @@ func TestParseUri(t *testing.T) {
 				"ParseUri": ParseUri,
 			},
 			code:   "ParseUri(uri)",
-			result: map[string][]string{"a": []string{"1"}, "b": []string{"2?"}},
+			result: map[string][]string{"a": {"1"}, "b": {"2?"}},
 			err:    "",
 		},
 		{
@@ -533,7 +577,7 @@ func TestParseUri(t *testing.T) {
 				"ParseUri": ParseUri,
 			},
 			code:   "ParseUri(uri)",
-			result: map[string][]string{"?": []string{"", "123"}},
+			result: map[string][]string{"?": {"", "123"}},
 			err:    "",
 		},
 		{

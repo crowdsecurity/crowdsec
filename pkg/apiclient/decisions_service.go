@@ -43,12 +43,13 @@ func (o *DecisionsStreamOpts) addQueryParamsToURL(url string) (string, error) {
 }
 
 type DecisionsDeleteOpts struct {
-	ScopeEquals *string `url:"scope,omitempty"`
-	ValueEquals *string `url:"value,omitempty"`
-	TypeEquals  *string `url:"type,omitempty"`
-	IPEquals    *string `url:"ip,omitempty"`
-	RangeEquals *string `url:"range,omitempty"`
-	Contains    *bool   `url:"contains,omitempty"`
+	ScopeEquals  *string `url:"scope,omitempty"`
+	ValueEquals  *string `url:"value,omitempty"`
+	TypeEquals   *string `url:"type,omitempty"`
+	IPEquals     *string `url:"ip,omitempty"`
+	RangeEquals  *string `url:"range,omitempty"`
+	Contains     *bool   `url:"contains,omitempty"`
+	OriginEquals *string `url:"origin,omitempty"`
 	//
 	ScenarioEquals *string `url:"scenario,omitempty"`
 	ListOpts

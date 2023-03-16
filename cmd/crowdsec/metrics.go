@@ -2,22 +2,22 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	log "github.com/sirupsen/logrus"
 
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-
-	"net/http"
-
-	log "github.com/sirupsen/logrus"
 )
 
 /*prometheus*/
@@ -103,6 +103,8 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		//update cache metrics (stash)
 		cache.UpdateCacheMetrics()
+		//update cache metrics (regexp)
+		exprhelpers.UpdateRegexpCacheMetrics()
 
 		//decision metrics are only relevant for LAPI
 		if dbClient == nil {
@@ -166,7 +168,7 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 			leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstantiation, leaky.BucketsOverflow,
 			v1.LapiRouteHits,
 			leaky.BucketsCurrentCount,
-			cache.CacheMetrics)
+			cache.CacheMetrics, exprhelpers.RegexpCacheMetrics)
 	} else {
 		log.Infof("Loading prometheus collectors")
 		prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
@@ -175,7 +177,7 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 			v1.LapiRouteHits, v1.LapiMachineHits, v1.LapiBouncerHits, v1.LapiNilDecisions, v1.LapiNonNilDecisions, v1.LapiResponseTime,
 			leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstantiation, leaky.BucketsOverflow, leaky.BucketsCurrentCount,
 			globalActiveDecisions, globalAlerts,
-			cache.CacheMetrics)
+			cache.CacheMetrics, exprhelpers.RegexpCacheMetrics)
 
 	}
 }

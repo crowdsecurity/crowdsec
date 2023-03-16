@@ -4,10 +4,10 @@ import (
 	"time"
 
 	"github.com/bluele/gcache"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var Caches []gcache.Cache
@@ -52,7 +52,7 @@ func CacheInit(cfg CacheCfg) error {
 		cfg.LogLevel = new(log.Level)
 		*cfg.LogLevel = log.InfoLevel
 	}
-	var clog = logrus.New()
+	var clog = log.New()
 	if err := types.ConfigureLogger(clog); err != nil {
 		log.Fatalf("While creating cache logger : %s", err)
 	}

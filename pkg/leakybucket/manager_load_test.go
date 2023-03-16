@@ -14,7 +14,7 @@ type cfgTest struct {
 }
 
 func runTest(tests []cfgTest) error {
-	var tomb *tomb.Tomb = &tomb.Tomb{}
+	var tomb = &tomb.Tomb{}
 	for idx, cfg := range tests {
 		err := LoadBucket(&cfg.cfg, tomb)
 		if cfg.loadable && err != nil {
