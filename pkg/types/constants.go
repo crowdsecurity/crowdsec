@@ -30,3 +30,9 @@ func GetOrigins() []string {
 		CAPIOrigin,
 	}
 }
+
+// Leakybucket can be in mode LIVE or TIMEMACHINE
+const (
+	LIVE = iota
+	TIMEMACHINE
+)
