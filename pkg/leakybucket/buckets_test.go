@@ -174,7 +174,7 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 			latest_ts = ts
 		}
 
-		in.ExpectMode = TIMEMACHINE
+		in.ExpectMode = types.TIMEMACHINE
 		log.Infof("Buckets input : %s", spew.Sdump(in))
 		ok, err := PourItemToHolders(in, holders, buckets)
 		if err != nil {

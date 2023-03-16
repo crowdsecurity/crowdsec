@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -194,7 +193,7 @@ func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.R
 			Line:       l,
 			Process:    true,
 			Type:       types.LOG,
-			ExpectMode: leakybucket.LIVE,
+			ExpectMode: types.LIVE,
 		}
 	}
 }

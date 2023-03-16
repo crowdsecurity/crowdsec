@@ -20,7 +20,6 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -43,7 +42,7 @@ var linesRead = prometheus.NewCounterVec(
 	[]string{"group", "stream"},
 )
 
-//CloudwatchSource is the runtime instance keeping track of N streams within 1 cloudwatch group
+// CloudwatchSource is the runtime instance keeping track of N streams within 1 cloudwatch group
 type CloudwatchSource struct {
 	Config CloudwatchSourceConfiguration
 	/*runtime stuff*/
@@ -54,7 +53,7 @@ type CloudwatchSource struct {
 	streamIndexes    map[string]string
 }
 
-//CloudwatchSourceConfiguration allows user to define one or more streams to monitor within a cloudwatch log group
+// CloudwatchSourceConfiguration allows user to define one or more streams to monitor within a cloudwatch log group
 type CloudwatchSourceConfiguration struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 	GroupName                         string         `yaml:"group_name"`              //the group name to be monitored
@@ -74,7 +73,7 @@ type CloudwatchSourceConfiguration struct {
 	AwsRegion                         *string        `yaml:"aws_region,omitempty"`
 }
 
-//LogStreamTailConfig is the configuration for one given stream within one group
+// LogStreamTailConfig is the configuration for one given stream within one group
 type LogStreamTailConfig struct {
 	GroupName                  string
 	StreamName                 string
@@ -317,9 +316,9 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 								//the stream has been updated recently, check if we should monitor it
 								var expectMode int
 								if !cw.Config.UseTimeMachine {
-									expectMode = leaky.LIVE
+									expectMode = types.LIVE
 								} else {
-									expectMode = leaky.TIMEMACHINE
+									expectMode = types.TIMEMACHINE
 								}
 								monitorStream := LogStreamTailConfig{
 									GroupName:                  cw.Config.GroupName,
@@ -351,7 +350,7 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 	}
 }
 
-//LogStreamManager receives the potential streams to monitor, and starts a go routine when needed
+// LogStreamManager receives the potential streams to monitor, and starts a go routine when needed
 func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outChan chan types.Event) error {
 
 	cw.logger.Debugf("starting to monitor streams for %s", cw.Config.GroupName)
@@ -617,7 +616,7 @@ func (cw *CloudwatchSource) OneShotAcquisition(out chan types.Event, t *tomb.Tom
 			"stream": *cw.Config.StreamName,
 		}),
 		Labels:     cw.Config.Labels,
-		ExpectMode: leaky.TIMEMACHINE,
+		ExpectMode: types.TIMEMACHINE,
 	}
 	return cw.CatLogStream(&config, out)
 }

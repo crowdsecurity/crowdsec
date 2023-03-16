@@ -51,6 +51,6 @@ func NewTimeMachine(g BucketFactory) *Leaky {
 	l := NewLeaky(g)
 	g.logger.Tracef("Instantiating timeMachine bucket")
 	l.Pour = TimeMachinePour
-	l.Mode = TIMEMACHINE
+	l.Mode = types.TIMEMACHINE
 	return l
 }
