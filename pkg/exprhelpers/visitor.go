@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/antonmedv/expr/parser"
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 
@@ -19,27 +20,61 @@ Visitor is used to reconstruct variables with its property called in an expr fil
 Thus, we can debug expr filter by displaying all variables contents present in the filter
 */
 type visitor struct {
-	newVar     bool
-	currentID  string
-	properties []string
-	vars       []string
+	newVar    bool
+	currentId string
+	vars      map[string][]string
+	logger    *log.Entry
 }
 
 func (v *visitor) Visit(node *ast.Node) {
-	if n, ok := (*node).(*ast.IdentifierNode); ok {
-		if !v.newVar {
-			v.newVar = true
-			v.currentID = n.Value
-		} else {
-			fullVar := fmt.Sprintf("%s.%s", v.currentID, strings.Join(v.properties, "."))
-			v.vars = append(v.vars, fullVar)
-			v.properties = []string{}
-			v.currentID = n.Value
+	switch n := (*node).(type) {
+	case *ast.IdentifierNode:
+		v.newVar = true
+		uid, _ := uuid.NewUUID()
+		v.currentId = uid.String()
+		v.vars[v.currentId] = []string{n.Value}
+	case *ast.MemberNode:
+		if n2, ok := n.Property.(*ast.StringNode); ok {
+			v.vars[v.currentId] = append(v.vars[v.currentId], n2.Value)
 		}
-	} else if n2, ok := (*node).(*ast.MemberNode); ok {
-		if ns, ok := (n2.Property).(*ast.StringNode); ok {
-			v.properties = append(v.properties, ns.Value)
-		}
+	case *ast.StringNode: //Don't reset here, as any attribute of a member node is a string node (in evt.X, evt is member node, X is string node)
+	default:
+		v.newVar = false
+		v.currentId = ""
+		/*case *ast.IntegerNode:
+			v.logger.Infof("integer node found: %+v", n)
+		case *ast.FloatNode:
+			v.logger.Infof("float node found: %+v", n)
+		case *ast.BoolNode:
+			v.logger.Infof("boolean node found: %+v", n)
+		case *ast.ArrayNode:
+			v.logger.Infof("array node found: %+v", n)
+		case *ast.ConstantNode:
+			v.logger.Infof("constant node found: %+v", n)
+		case *ast.UnaryNode:
+			v.logger.Infof("unary node found: %+v", n)
+		case *ast.BinaryNode:
+			v.logger.Infof("binary node found: %+v", n)
+		case *ast.CallNode:
+			v.logger.Infof("call node found: %+v", n)
+		case *ast.BuiltinNode:
+			v.logger.Infof("builtin node found: %+v", n)
+		case *ast.ConditionalNode:
+			v.logger.Infof("conditional node found: %+v", n)
+		case *ast.ChainNode:
+			v.logger.Infof("chain node found: %+v", n)
+		case *ast.PairNode:
+			v.logger.Infof("pair node found: %+v", n)
+		case *ast.MapNode:
+			v.logger.Infof("map node found: %+v", n)
+		case *ast.SliceNode:
+			v.logger.Infof("slice node found: %+v", n)
+		case *ast.ClosureNode:
+			v.logger.Infof("closure node found: %+v", n)
+		case *ast.PointerNode:
+			v.logger.Infof("pointer node found: %+v", n)
+		default:
+			v.logger.Infof("unknown node found: %+v | type: %T", n, n)*/
 	}
 }
 
@@ -52,34 +87,30 @@ func (v *visitor) Build(filter string, exprEnv expr.Option) (*ExprDebugger, erro
 		filter: filter,
 	}
 	if filter == "" {
-		log.Debugf("unable to create expr debugger with empty filter")
+		v.logger.Debugf("unable to create expr debugger with empty filter")
 		return &ExprDebugger{}, nil
 	}
 	v.newVar = false
+	v.vars = make(map[string][]string)
 	tree, err := parser.Parse(filter)
 	if err != nil {
 		return nil, err
 	}
 	ast.Walk(&tree.Node, v)
-	if v.currentID != "" && len(v.properties) > 0 { // if its a variable with property (eg. evt.Line.Labels)
-		fullVar := fmt.Sprintf("%s.%s", v.currentID, strings.Join(v.properties, "."))
-		v.vars = append(v.vars, fullVar)
-	} else if v.currentID != "" && len(v.properties) == 0 { // if it's a variable without property
-		fullVar := v.currentID
-		v.vars = append(v.vars, fullVar)
-	} else {
-		log.Debugf("no variable in filter : '%s'", filter)
-	}
-	v.properties = []string{}
-	v.currentID = ""
+	log.Debugf("vars: %+v", v.vars)
 
 	for _, variable := range v.vars {
-		debugFilter, err := expr.Compile(variable, exprEnv)
+		if variable[0] != "evt" {
+			continue
+		}
+		toBuild := strings.Join(variable, ".")
+		v.logger.Debugf("compiling expression '%s'", toBuild)
+		debugFilter, err := expr.Compile(toBuild, exprEnv)
 		if err != nil {
-			return ret, fmt.Errorf("compilation of variable '%s' failed: %v", variable, err)
+			return ret, fmt.Errorf("compilation of variable '%s' failed: %v", toBuild, err)
 		}
 		tmpExpression := &expression{
-			variable,
+			toBuild,
 			debugFilter,
 		}
 		expressions = append(expressions, tmpExpression)
@@ -123,7 +154,8 @@ func (e *ExprDebugger) Run(logger *logrus.Entry, filterResult bool, exprEnv map[
 
 // NewDebugger is the exported function that build the debuggers expressions
 func NewDebugger(filter string, exprEnv expr.Option) (*ExprDebugger, error) {
-	visitor := &visitor{}
+	logger := log.WithField("component", "expr-debugger")
+	visitor := &visitor{logger: logger}
 	exprDebugger, err := visitor.Build(filter, exprEnv)
 	return exprDebugger, err
 }
