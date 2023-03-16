@@ -15,7 +15,7 @@ func (t *Trigger) OnBucketPour(b *BucketFactory) func(types.Event, *Leaky) *type
 	// Pour makes the bucket overflow all the time
 	// TriggerPour unconditionally overflows
 	return func(msg types.Event, l *Leaky) *types.Event {
-		if l.Mode == TIMEMACHINE {
+		if l.Mode == types.TIMEMACHINE {
 			var d time.Time
 			err := d.UnmarshalText([]byte(msg.MarshaledTime))
 			if err != nil {

@@ -22,9 +22,11 @@ var serialized map[string]Leaky
 var BucketPourCache map[string][]types.Event
 var BucketPourTrack bool
 
-/*The leaky routines lifecycle are based on "real" time.
+/*
+The leaky routines lifecycle are based on "real" time.
 But when we are running in time-machine mode, the reference time is in logs and not "real" time.
-Thus we need to garbage collect them to avoid a skyrocketing memory usage.*/
+Thus we need to garbage collect them to avoid a skyrocketing memory usage.
+*/
 func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 	buckets.wgPour.Wait()
 	buckets.wgDumpState.Add(1)
@@ -192,7 +194,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 		}
 
 		/*let's see if this time-bucket should have expired */
-		if bucket.Mode == TIMEMACHINE {
+		if bucket.Mode == types.TIMEMACHINE {
 			bucket.mutex.Lock()
 			firstTs := bucket.First_ts
 			lastTs := bucket.Last_ts
@@ -250,10 +252,10 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 		var fresh_bucket *Leaky
 
 		switch expectMode {
-		case TIMEMACHINE:
+		case types.TIMEMACHINE:
 			fresh_bucket = NewTimeMachine(holder)
 			holder.logger.Debugf("Creating TimeMachine bucket")
-		case LIVE:
+		case types.LIVE:
 			fresh_bucket = NewLeaky(holder)
 			holder.logger.Debugf("Creating Live bucket")
 		default:
