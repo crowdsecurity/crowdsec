@@ -508,8 +508,7 @@ func Match(pattern, name string) bool {
 	}
 	if pattern[0] == '*' {
 		for i := 0; i <= len(name); i++ {
-			matched = Match(pattern[1:], name[i:])
-			if matched {
+			if matched = Match(pattern[1:], name[i:]); matched {
 				return matched
 			}
 		}
