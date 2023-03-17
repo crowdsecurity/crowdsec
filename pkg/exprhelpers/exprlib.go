@@ -123,6 +123,7 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"Get":         Get,
 		"String":      ToString,
 		"Distance":    Distance,
+		"Match":       Match,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
@@ -492,4 +493,30 @@ func ToString(value interface{}) string {
 		return ""
 	}
 	return s
+}
+
+func Match(pattern, name string) bool {
+	var matched bool
+	if pattern == "" {
+		return name == ""
+	}
+	if name == "" {
+		if pattern == "*" || pattern == "" {
+			return true
+		}
+		return false
+	}
+	if pattern[0] == '*' {
+		for i := 0; i <= len(name); i++ {
+			matched = Match(pattern[1:], name[i:])
+			if matched {
+				return matched
+			}
+		}
+		return matched
+	}
+	if pattern[0] == '?' || pattern[0] == name[0] {
+		return Match(pattern[1:], name[1:])
+	}
+	return matched
 }
