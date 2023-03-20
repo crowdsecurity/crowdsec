@@ -148,7 +148,7 @@ func (s *ScenarioAssert) RunExpression(expression string) (interface{}, error) {
 
 	env := map[string]interface{}{"results": *s.TestData}
 
-	if runtimeFilter, err = expr.Compile(expression, expr.Env(exprhelpers.GetExprEnv(env))); err != nil {
+	if runtimeFilter, err = expr.Compile(expression, exprhelpers.GetExprOptions(env)...); err != nil {
 		return output, err
 	}
 	// if debugFilter, err = exprhelpers.NewDebugger(assert, expr.Env(exprhelpers.GetExprEnv(env))); err != nil {

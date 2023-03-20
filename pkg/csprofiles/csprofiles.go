@@ -59,7 +59,6 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 			}
 			runtime.RuntimeFilters[fIdx] = runtimeFilter
 			if profile.Debug != nil && *profile.Debug {
-
 				if debugFilter, err = exprhelpers.NewDebugger(filter, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
 					log.Debugf("Error compiling debug filter of %s : %s", profile.Name, err)
 					// Don't fail if we can't compile the filter - for now

@@ -184,7 +184,7 @@ func TestJsonExtractObject(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			result, _ := JsonExtractObject(test.jsonBlob, test.targetField)
-			assert.EqualValues(t, test.expectResult, result)
+			assert.Equal(t, test.expectResult, result)
 		})
 	}
 }
