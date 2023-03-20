@@ -1131,3 +1131,40 @@ func TestIsIp(t *testing.T) {
 		})
 	}
 }
+
+func TestToString(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    interface{}
+		expected string
+	}{
+		{
+			name:     "ToString() test: valid string",
+			value:    "foo",
+			expected: "foo",
+		},
+		{
+			name:     "ToString() test: valid string",
+			value:    interface{}("foo"),
+			expected: "foo",
+		},
+		{
+			name:     "ToString() test: invalid type",
+			value:    1,
+			expected: "",
+		},
+		{
+			name:     "ToString() test: invalid type 2",
+			value:    interface{}(nil),
+			expected: "",
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			output := ToString(tc.value)
+			require.Equal(t, tc.expected, output)
+		})
+	}
+
+}

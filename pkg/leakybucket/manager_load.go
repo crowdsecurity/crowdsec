@@ -158,7 +158,7 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 
 func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.Tomb, buckets *Buckets) ([]BucketFactory, chan types.Event, error) {
 	var (
-		ret = []BucketFactory{}
+		ret      = []BucketFactory{}
 		response chan types.Event
 	)
 
@@ -408,9 +408,9 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 			if h.Name == v.Name {
 				log.Debugf("found factory %s/%s -> %s", h.Author, h.Name, h.Description)
 				//check in which mode the bucket was
-				if v.Mode == TIMEMACHINE {
+				if v.Mode == types.TIMEMACHINE {
 					tbucket = NewTimeMachine(h)
-				} else if v.Mode == LIVE {
+				} else if v.Mode == types.LIVE {
 					tbucket = NewLeaky(h)
 				} else {
 					log.Errorf("Unknown bucket type : %d", v.Mode)

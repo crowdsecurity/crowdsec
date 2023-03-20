@@ -6,24 +6,20 @@ import (
 	"sync/atomic"
 	"time"
 
-	//"log"
 	"github.com/crowdsecurity/crowdsec/pkg/time/rate"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/mohae/deepcopy"
-	"gopkg.in/tomb.v2"
-
-	//rate "time/rate"
-
 	"github.com/davecgh/go-spew/spew"
+	"github.com/mohae/deepcopy"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	//"golang.org/x/time/rate"
+	"gopkg.in/tomb.v2"
 )
 
-const (
-	LIVE = iota
-	TIMEMACHINE
-)
+// those constants are now defined in types/constants
+// const (
+// 	LIVE = iota
+// 	TIMEMACHINE
+// )
 
 // Leaky represents one instance of a bucket
 type Leaky struct {
@@ -171,7 +167,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		Pour:            Pour,
 		Reprocess:       bucketFactory.Reprocess,
 		Profiling:       bucketFactory.Profiling,
-		Mode:            LIVE,
+		Mode:            types.LIVE,
 		scopeType:       bucketFactory.ScopeType,
 		scenarioVersion: bucketFactory.ScenarioVersion,
 		hash:            bucketFactory.hash,
