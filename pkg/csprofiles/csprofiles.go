@@ -53,12 +53,14 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 			return []*Runtime{}, errors.Wrapf(err, "invalid 'on_failure' for '%s' : %s", profile.Name, runtime.Cfg.OnFailure)
 		}
 		for fIdx, filter := range profile.Filters {
-			if runtimeFilter, err = expr.Compile(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
+
+			if runtimeFilter, err = expr.Compile(filter, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
 				return []*Runtime{}, errors.Wrapf(err, "error compiling filter of '%s'", profile.Name)
 			}
 			runtime.RuntimeFilters[fIdx] = runtimeFilter
 			if profile.Debug != nil && *profile.Debug {
-				if debugFilter, err = exprhelpers.NewDebugger(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
+
+				if debugFilter, err = exprhelpers.NewDebugger(filter, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
 					log.Debugf("Error compiling debug filter of %s : %s", profile.Name, err)
 					// Don't fail if we can't compile the filter - for now
 					//	return errors.Wrapf(err, "Error compiling debug filter of %s", profile.Name)
@@ -69,13 +71,13 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 		}
 
 		if profile.DurationExpr != "" {
-			if runtimeDurationExpr, err = expr.Compile(profile.DurationExpr, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
+			if runtimeDurationExpr, err = expr.Compile(profile.DurationExpr, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
 				return []*Runtime{}, errors.Wrapf(err, "error compiling duration_expr of %s", profile.Name)
 			}
 
 			runtime.RuntimeDurationExpr = runtimeDurationExpr
 			if profile.Debug != nil && *profile.Debug {
-				if debugDurationExpr, err = exprhelpers.NewDebugger(profile.DurationExpr, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
+				if debugDurationExpr, err = exprhelpers.NewDebugger(profile.DurationExpr, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
 					log.Debugf("Error compiling debug duration_expr of %s : %s", profile.Name, err)
 				}
 				runtime.DebugDurationExpr = debugDurationExpr

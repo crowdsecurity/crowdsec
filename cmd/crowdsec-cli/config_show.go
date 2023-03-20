@@ -7,11 +7,12 @@ import (
 	"text/template"
 
 	"github.com/antonmedv/expr"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
 
 func showConfigKey(key string) error {
@@ -19,7 +20,10 @@ func showConfigKey(key string) error {
 		Config *csconfig.Config
 	}
 
-	program, err := expr.Compile(key, expr.Env(Env{}))
+	opts := []expr.Option{}
+	opts = append(opts, exprhelpers.GetExprOptions(map[string]interface{}{})...)
+	opts = append(opts, expr.Env(Env{}))
+	program, err := expr.Compile(key, opts...)
 	if err != nil {
 		return err
 	}
@@ -49,7 +53,6 @@ func showConfigKey(key string) error {
 	}
 	return nil
 }
-
 
 var configShowTemplate = `Global:
 
@@ -172,7 +175,6 @@ Central API:
 {{- end }}
 `
 
-
 func runConfigShow(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
@@ -217,7 +219,6 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	}
 	return nil
 }
-
 
 func NewConfigShowCmd() *cobra.Command {
 	cmdConfigShow := &cobra.Command{

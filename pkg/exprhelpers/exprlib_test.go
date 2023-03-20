@@ -100,11 +100,11 @@ func TestVisitor(t *testing.T) {
 	})
 
 	for _, test := range tests {
-		compiledFilter, err := expr.Compile(test.filter, expr.Env(GetExprEnv(test.env)))
+		compiledFilter, err := expr.Compile(test.filter, GetExprOptions(test.env)...)
 		if err != nil && test.err == nil {
 			log.Fatalf("compile: %s", err)
 		}
-		debugFilter, err := NewDebugger(test.filter, expr.Env(GetExprEnv(test.env)))
+		debugFilter, err := NewDebugger(test.filter, GetExprOptions(test.env)...)
 		if err != nil && test.err == nil {
 			log.Fatalf("debug: %s", err)
 		}
@@ -153,12 +153,12 @@ func TestRegexpCacheBehavior(t *testing.T) {
 	err = RegexpCacheInit(filename, types.DataSource{Type: "regex", Size: types.IntPtr(1)})
 	require.NoError(t, err)
 
-	ret := RegexpInFile("crowdsec", filename)
-	assert.False(t, ret)
+	ret, _ := RegexpInFile("crowdsec", filename)
+	assert.False(t, ret.(bool))
 	assert.Equal(t, 1, dataFileRegexCache[filename].Len(false))
 
-	ret = RegexpInFile("Crowdsec", filename)
-	assert.True(t, ret)
+	ret, _ = RegexpInFile("Crowdsec", filename)
+	assert.True(t, ret.(bool))
 	assert.Equal(t, 1, dataFileRegexCache[filename].Len(false))
 
 	//cache with TTL
@@ -166,8 +166,8 @@ func TestRegexpCacheBehavior(t *testing.T) {
 	err = RegexpCacheInit(filename, types.DataSource{Type: "regex", Size: types.IntPtr(2), TTL: &ttl})
 	require.NoError(t, err)
 
-	ret = RegexpInFile("crowdsec", filename)
-	assert.False(t, ret)
+	ret, _ = RegexpInFile("crowdsec", filename)
+	assert.False(t, ret.(bool))
 	assert.Equal(t, 1, dataFileRegexCache[filename].Len(true))
 
 	time.Sleep(1 * time.Second)
@@ -217,7 +217,7 @@ func TestRegexpInFile(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		compiledFilter, err := expr.Compile(test.filter, expr.Env(GetExprEnv(map[string]interface{}{})))
+		compiledFilter, err := expr.Compile(test.filter, GetExprOptions(map[string]interface{}{})...)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -342,7 +342,7 @@ func TestFile(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		compiledFilter, err := expr.Compile(test.filter, expr.Env(GetExprEnv(map[string]interface{}{})))
+		compiledFilter, err := expr.Compile(test.filter, GetExprOptions(map[string]interface{}{})...)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -402,7 +402,7 @@ func TestIpInRange(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		program, err := expr.Compile(test.code, expr.Env(test.env))
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 		require.NoError(t, err)
 		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
@@ -478,7 +478,7 @@ func TestIpToRange(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		program, err := expr.Compile(test.code, expr.Env(test.env))
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 		require.NoError(t, err)
 		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
@@ -492,7 +492,8 @@ func TestAtof(t *testing.T) {
 	testFloat := "1.5"
 	expectedFloat := 1.5
 
-	if Atof(testFloat) != expectedFloat {
+	v, _ := Atof(testFloat)
+	if v != expectedFloat {
 		t.Fatalf("Atof should return 1.5 as a float")
 	}
 
@@ -502,7 +503,9 @@ func TestAtof(t *testing.T) {
 	testFloat = "1aaa.5"
 	expectedFloat = 0.0
 
-	if Atof(testFloat) != expectedFloat {
+	v, _ = Atof(testFloat)
+
+	if v != expectedFloat {
 		t.Fatalf("Atof should return a negative value (error) as a float got")
 	}
 
@@ -513,7 +516,9 @@ func TestUpper(t *testing.T) {
 	testStr := "test"
 	expectedStr := "TEST"
 
-	if Upper(testStr) != expectedStr {
+	v, _ := Upper(testStr)
+
+	if v != expectedStr {
 		t.Fatalf("Upper() should return test in upper case")
 	}
 
@@ -521,7 +526,8 @@ func TestUpper(t *testing.T) {
 }
 
 func TestTimeNow(t *testing.T) {
-	ti, err := time.Parse(time.RFC3339, TimeNow())
+	now, _ := TimeNow()
+	ti, err := time.Parse(time.RFC3339, now.(string))
 	if err != nil {
 		t.Fatalf("Error parsing the return value of TimeNow: %s", err)
 	}
@@ -593,7 +599,7 @@ func TestParseUri(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		program, err := expr.Compile(test.code, expr.Env(test.env))
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 		require.NoError(t, err)
 		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
@@ -633,7 +639,7 @@ func TestQueryEscape(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		program, err := expr.Compile(test.code, expr.Env(test.env))
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 		require.NoError(t, err)
 		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
@@ -673,7 +679,7 @@ func TestPathEscape(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		program, err := expr.Compile(test.code, expr.Env(test.env))
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 		require.NoError(t, err)
 		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
@@ -713,7 +719,7 @@ func TestPathUnescape(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		program, err := expr.Compile(test.code, expr.Env(test.env))
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 		require.NoError(t, err)
 		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
@@ -753,7 +759,7 @@ func TestQueryUnescape(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		program, err := expr.Compile(test.code, expr.Env(test.env))
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 		require.NoError(t, err)
 		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
@@ -793,7 +799,7 @@ func TestLower(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		program, err := expr.Compile(test.code, expr.Env(test.env))
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 		require.NoError(t, err)
 		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
@@ -883,7 +889,7 @@ func TestGetDecisionsCount(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		program, err := expr.Compile(test.code, expr.Env(GetExprEnv(test.env)))
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 		require.NoError(t, err)
 		output, err := expr.Run(program, GetExprEnv(test.env))
 		require.NoError(t, err)
@@ -1008,7 +1014,7 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		program, err := expr.Compile(test.code, expr.Env(GetExprEnv(test.env)))
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 		require.NoError(t, err)
 		output, err := expr.Run(program, GetExprEnv(test.env))
 		require.NoError(t, err)
@@ -1056,7 +1062,7 @@ func TestParseUnixTime(t *testing.T) {
 			if tc.expectedErr != "" {
 				return
 			}
-			require.WithinDuration(t, tc.expected, output, time.Second)
+			require.WithinDuration(t, tc.expected, output.(time.Time), time.Second)
 		})
 	}
 }
@@ -1064,7 +1070,7 @@ func TestParseUnixTime(t *testing.T) {
 func TestIsIp(t *testing.T) {
 	tests := []struct {
 		name     string
-		method   func(string) bool
+		method   func(...any) (any, error)
 		value    string
 		expected bool
 	}{
@@ -1126,7 +1132,7 @@ func TestIsIp(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			output := tc.method(tc.value)
+			output, _ := tc.method(tc.value)
 			require.Equal(t, tc.expected, output)
 		})
 	}
@@ -1162,7 +1168,7 @@ func TestToString(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			output := ToString(tc.value)
+			output, _ := ToString(tc.value)
 			require.Equal(t, tc.expected, output)
 		})
 	}

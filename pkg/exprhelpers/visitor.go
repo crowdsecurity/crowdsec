@@ -81,7 +81,7 @@ func (v *visitor) Visit(node *ast.Node) {
 /*
 Build reconstruct all the variables used in a filter (to display their content later).
 */
-func (v *visitor) Build(filter string, exprEnv expr.Option) (*ExprDebugger, error) {
+func (v *visitor) Build(filter string, exprEnv ...expr.Option) (*ExprDebugger, error) {
 	var expressions []*expression
 	ret := &ExprDebugger{
 		filter: filter,
@@ -105,7 +105,7 @@ func (v *visitor) Build(filter string, exprEnv expr.Option) (*ExprDebugger, erro
 		}
 		toBuild := strings.Join(variable, ".")
 		v.logger.Debugf("compiling expression '%s'", toBuild)
-		debugFilter, err := expr.Compile(toBuild, exprEnv)
+		debugFilter, err := expr.Compile(toBuild, exprEnv...)
 		if err != nil {
 			return ret, fmt.Errorf("compilation of variable '%s' failed: %v", toBuild, err)
 		}
@@ -153,9 +153,9 @@ func (e *ExprDebugger) Run(logger *logrus.Entry, filterResult bool, exprEnv map[
 }
 
 // NewDebugger is the exported function that build the debuggers expressions
-func NewDebugger(filter string, exprEnv expr.Option) (*ExprDebugger, error) {
+func NewDebugger(filter string, exprEnv ...expr.Option) (*ExprDebugger, error) {
 	logger := log.WithField("component", "expr-debugger")
 	visitor := &visitor{logger: logger}
-	exprDebugger, err := visitor.Build(filter, exprEnv)
+	exprDebugger, err := visitor.Build(filter, exprEnv...)
 	return exprDebugger, err
 }

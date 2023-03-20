@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/antonmedv/expr"
 	"github.com/bluele/gcache"
 	"github.com/c-robinson/iplib"
 	"github.com/cespare/xxhash/v2"
@@ -32,6 +33,63 @@ var dataFileRegex map[string][]*regexp.Regexp
 // This is used to (optionally) cache regexp results for RegexpInFile operations
 var dataFileRegexCache map[string]gcache.Cache = make(map[string]gcache.Cache)
 
+var exprFuncs = map[string]func(params ...any) (any, error){
+	"CrowdsecCTI":            CrowdsecCTI,
+	"Distance":               Distance,
+	"GetFromStash":           GetFromStash,
+	"Atof":                   Atof,
+	"JsonExtract":            JsonExtract,
+	"JsonExtractUnescape":    JsonExtractUnescape,
+	"JsonExtractLib":         JsonExtractLib,
+	"JsonExtractSlice":       JsonExtractSlice,
+	"JsonExtractObject":      JsonExtractObject,
+	"ToJsonString":           ToJson,
+	"File":                   File,
+	"RegexpInFile":           RegexpInFile,
+	"Upper":                  Upper,
+	"Lower":                  Lower,
+	"IpInRange":              IpInRange,
+	"TimeNow":                TimeNow,
+	"ParseUri":               ParseUri,
+	"PathUnescape":           PathUnescape,
+	"QueryUnescape":          QueryUnescape,
+	"PathEscape":             PathEscape,
+	"QueryEscape":            QueryEscape,
+	"XMLGetAttributeValue":   XMLGetAttributeValue,
+	"XMLGetNodeValue":        XMLGetNodeValue,
+	"IpToRange":              IpToRange,
+	"IsIPV6":                 IsIPV6,
+	"IsIPV4":                 IsIPV4,
+	"IsIP":                   IsIP,
+	"LookupHost":             LookupHost,
+	"GetDecisionsCount":      GetDecisionsCount,
+	"GetDecisionsSinceCount": GetDecisionsSinceCount,
+	"Sprintf":                Sprintf,
+	"ParseUnix":              ParseUnix,
+	"SetInStash":             SetInStash,
+	//go 1.20 "CutPrefix":              strings.CutPrefix,
+	//go 1.20 "CutSuffix": strings.CutSuffix,
+	//"Cut":         strings.Cut, -> returns more than 2 values, not supported  by expr
+	"Fields":      Fields,
+	"Index":       Index,
+	"IndexAny":    IndexAny,
+	"Join":        Join,
+	"Split":       Split,
+	"SplitAfter":  SplitAfter,
+	"SplitAfterN": SplitAfterN,
+	"SplitN":      SplitN,
+	"Replace":     Replace,
+	"ReplaceAll":  ReplaceAll,
+	"Trim":        Trim,
+	"TrimLeft":    TrimLeft,
+	"TrimRight":   TrimRight,
+	"TrimSpace":   TrimSpace,
+	"TrimPrefix":  TrimPrefix,
+	"TrimSuffix":  TrimSuffix,
+	"Get":         Get,
+	"String":      ToString,
+}
+
 /*prometheus*/
 var RegexpCacheMetrics = prometheus.NewGaugeVec(
 	prometheus.GaugeOpts{
@@ -43,134 +101,37 @@ var RegexpCacheMetrics = prometheus.NewGaugeVec(
 
 var dbClient *database.Client
 
-func Get(arr []string, index int) string {
-	if index >= len(arr) {
-		return ""
-	}
-	return arr[index]
-}
-
-func Atof(x string) float64 {
-	log.Debugf("debug atof %s", x)
-	ret, err := strconv.ParseFloat(x, 64)
-	if err != nil {
-		log.Warningf("Atof : can't convert float '%s' : %v", x, err)
-	}
-	return ret
-}
-
-func Upper(s string) string {
-	return strings.ToUpper(s)
-}
-
-func Lower(s string) string {
-	return strings.ToLower(s)
-}
+var exprFunctionOptions []expr.Option
 
 func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
-	var ExprLib = map[string]interface{}{
-		"Atof":                   Atof,
-		"JsonExtract":            JsonExtract,
-		"JsonExtractUnescape":    JsonExtractUnescape,
-		"JsonExtractLib":         JsonExtractLib,
-		"JsonExtractSlice":       JsonExtractSlice,
-		"JsonExtractObject":      JsonExtractObject,
-		"ToJsonString":           ToJson,
-		"File":                   File,
-		"RegexpInFile":           RegexpInFile,
-		"Upper":                  Upper,
-		"Lower":                  Lower,
-		"IpInRange":              IpInRange,
-		"TimeNow":                TimeNow,
-		"ParseUri":               ParseUri,
-		"PathUnescape":           PathUnescape,
-		"QueryUnescape":          QueryUnescape,
-		"PathEscape":             PathEscape,
-		"QueryEscape":            QueryEscape,
-		"XMLGetAttributeValue":   XMLGetAttributeValue,
-		"XMLGetNodeValue":        XMLGetNodeValue,
-		"IpToRange":              IpToRange,
-		"IsIPV6":                 IsIPV6,
-		"IsIPV4":                 IsIPV4,
-		"IsIP":                   IsIP,
-		"LookupHost":             LookupHost,
-		"GetDecisionsCount":      GetDecisionsCount,
-		"GetDecisionsSinceCount": GetDecisionsSinceCount,
-		"Sprintf":                fmt.Sprintf,
-		"CrowdsecCTI":            CrowdsecCTI,
-		"ParseUnix":              ParseUnix,
-		"GetFromStash":           cache.GetKey,
-		"SetInStash":             cache.SetKey,
-		//go 1.20 "CutPrefix":              strings.CutPrefix,
-		//go 1.20 "CutSuffix": strings.CutSuffix,
-		//"Cut":         strings.Cut, -> returns more than 2 values, not supported  by expr
-		"Fields":      strings.Fields,
-		"Index":       strings.Index,
-		"IndexAny":    strings.IndexAny,
-		"Join":        strings.Join,
-		"Split":       strings.Split,
-		"SplitAfter":  strings.SplitAfter,
-		"SplitAfterN": strings.SplitAfterN,
-		"SplitN":      strings.SplitN,
-		"Replace":     strings.Replace,
-		"ReplaceAll":  strings.ReplaceAll,
-		"Trim":        strings.Trim,
-		"TrimLeft":    strings.TrimLeft,
-		"TrimRight":   strings.TrimRight,
-		"TrimSpace":   strings.TrimSpace,
-		"TrimPrefix":  strings.TrimPrefix,
-		"TrimSuffix":  strings.TrimSuffix,
-		"Get":         Get,
-		"String":      ToString,
-		"Distance":    Distance,
-	}
+	//TODO: remove this as the functions are now available "natively" in expr
+	ExprLib := make(map[string]interface{})
 	for k, v := range ctx {
 		ExprLib[k] = v
 	}
 	return ExprLib
 }
 
-func Distance(lat1 string, long1 string, lat2 string, long2 string) (float64, error) {
-	lat1f, err := strconv.ParseFloat(lat1, 64)
-	if err != nil {
-		log.Warningf("lat1 is not a float : %v", err)
-		return 0, fmt.Errorf("lat1 is not a float : %v", err)
-	}
-	long1f, err := strconv.ParseFloat(long1, 64)
-	if err != nil {
-		log.Warningf("long1 is not a float : %v", err)
-		return 0, fmt.Errorf("long1 is not a float : %v", err)
-	}
-	lat2f, err := strconv.ParseFloat(lat2, 64)
-	if err != nil {
-		log.Warningf("lat2 is not a float : %v", err)
-
-		return 0, fmt.Errorf("lat2 is not a float : %v", err)
-	}
-	long2f, err := strconv.ParseFloat(long2, 64)
-	if err != nil {
-		log.Warningf("long2 is not a float : %v", err)
-
-		return 0, fmt.Errorf("long2 is not a float : %v", err)
-	}
-
-	//either set of coordinates is 0,0, return 0 to avoid FPs
-	if (lat1f == 0.0 && long1f == 0.0) || (lat2f == 0.0 && long2f == 0.0) {
-		log.Warningf("one of the coordinates is 0,0, returning 0")
-		return 0, nil
-	}
-
-	first := haversine.Coord{Lat: lat1f, Lon: long1f}
-	second := haversine.Coord{Lat: lat2f, Lon: long2f}
-
-	_, km := haversine.Distance(first, second)
-	return km, nil
+func GetExprOptions(ctx map[string]interface{}) []expr.Option {
+	ret := []expr.Option{}
+	ret = append(ret, exprFunctionOptions...)
+	ret = append(ret, expr.Env(GetExprEnv(ctx)))
+	return ret
 }
 
 func Init(databaseClient *database.Client) error {
 	dataFile = make(map[string][]string)
 	dataFileRegex = make(map[string][]*regexp.Regexp)
 	dbClient = databaseClient
+
+	exprFunctionOptions = []expr.Option{}
+	for funcName, function := range exprFuncs {
+		exprFunctionOptions = append(exprFunctionOptions,
+			expr.Function(funcName,
+				function,
+			))
+	}
+
 	return nil
 }
 
@@ -262,43 +223,132 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 	return nil
 }
 
-func QueryEscape(s string) string {
-	return url.QueryEscape(s)
+//Expr helpers
+
+// func Get(arr []string, index int) string {
+func Get(params ...any) (any, error) {
+	arr := params[0].([]string)
+	index := params[1].(int)
+	if index >= len(arr) {
+		return "", nil
+	}
+	return arr[index], nil
 }
 
-func PathEscape(s string) string {
-	return url.PathEscape(s)
+// func Atof(x string) float64 {
+func Atof(params ...any) (any, error) {
+	x := params[0].(string)
+	log.Debugf("debug atof %s", x)
+	ret, err := strconv.ParseFloat(x, 64)
+	if err != nil {
+		log.Warningf("Atof : can't convert float '%s' : %v", x, err)
+	}
+	return ret, nil
 }
 
-func PathUnescape(s string) string {
+// func Upper(s string) string {
+func Upper(params ...any) (any, error) {
+	s := params[0].(string)
+	return strings.ToUpper(s), nil
+}
+
+// func Lower(s string) string {
+func Lower(params ...any) (any, error) {
+	s := params[0].(string)
+	return strings.ToLower(s), nil
+}
+
+// func Distance(lat1 string, long1 string, lat2 string, long2 string) (float64, error) {
+func Distance(params ...any) (any, error) {
+	lat1 := params[0].(string)
+	long1 := params[1].(string)
+	lat2 := params[2].(string)
+	long2 := params[3].(string)
+	lat1f, err := strconv.ParseFloat(lat1, 64)
+	if err != nil {
+		log.Warningf("lat1 is not a float : %v", err)
+		return 0.0, fmt.Errorf("lat1 is not a float : %v", err)
+	}
+	long1f, err := strconv.ParseFloat(long1, 64)
+	if err != nil {
+		log.Warningf("long1 is not a float : %v", err)
+		return 0.0, fmt.Errorf("long1 is not a float : %v", err)
+	}
+	lat2f, err := strconv.ParseFloat(lat2, 64)
+	if err != nil {
+		log.Warningf("lat2 is not a float : %v", err)
+
+		return 0.0, fmt.Errorf("lat2 is not a float : %v", err)
+	}
+	long2f, err := strconv.ParseFloat(long2, 64)
+	if err != nil {
+		log.Warningf("long2 is not a float : %v", err)
+
+		return 0.0, fmt.Errorf("long2 is not a float : %v", err)
+	}
+
+	//either set of coordinates is 0,0, return 0 to avoid FPs
+	if (lat1f == 0.0 && long1f == 0.0) || (lat2f == 0.0 && long2f == 0.0) {
+		log.Warningf("one of the coordinates is 0,0, returning 0")
+		return 0.0, nil
+	}
+
+	first := haversine.Coord{Lat: lat1f, Lon: long1f}
+	second := haversine.Coord{Lat: lat2f, Lon: long2f}
+
+	_, km := haversine.Distance(first, second)
+	return km, nil
+}
+
+// func QueryEscape(s string) string {
+func QueryEscape(params ...any) (any, error) {
+	s := params[0].(string)
+	return url.QueryEscape(s), nil
+}
+
+// func PathEscape(s string) string {
+func PathEscape(params ...any) (any, error) {
+	s := params[0].(string)
+	return url.PathEscape(s), nil
+}
+
+// func PathUnescape(s string) string {
+func PathUnescape(params ...any) (any, error) {
+	s := params[0].(string)
 	ret, err := url.PathUnescape(s)
 	if err != nil {
 		log.Debugf("unable to PathUnescape '%s': %+v", s, err)
-		return s
+		return s, nil
 	}
-	return ret
+	return ret, nil
 }
 
-func QueryUnescape(s string) string {
+// func QueryUnescape(s string) string {
+func QueryUnescape(params ...any) (any, error) {
+	s := params[0].(string)
 	ret, err := url.QueryUnescape(s)
 	if err != nil {
 		log.Debugf("unable to QueryUnescape '%s': %+v", s, err)
-		return s
+		return s, nil
 	}
-	return ret
+	return ret, nil
 }
 
-func File(filename string) []string {
+// func File(filename string) []string {
+func File(params ...any) (any, error) {
+	filename := params[0].(string)
 	if _, ok := dataFile[filename]; ok {
-		return dataFile[filename]
+		return dataFile[filename], nil
 	}
 	log.Errorf("file '%s' (type:string) not found in expr library", filename)
 	log.Errorf("expr library : %s", spew.Sdump(dataFile))
-	return []string{}
+	return []string{}, nil
 }
 
-func RegexpInFile(data string, filename string) bool {
-
+// func RegexpInFile(data string, filename string) bool {
+func RegexpInFile(params ...any) (any, error) {
+	data := params[0].(string)
+	filename := params[1].(string)
 	var hash uint64
 	hasCache := false
 
@@ -306,7 +356,7 @@ func RegexpInFile(data string, filename string) bool {
 		hasCache = true
 		hash = xxhash.Sum64String(data)
 		if val, err := dataFileRegexCache[filename].Get(hash); err == nil {
-			return val.(bool)
+			return val.(bool), nil
 		}
 	}
 
@@ -316,7 +366,7 @@ func RegexpInFile(data string, filename string) bool {
 				if hasCache {
 					dataFileRegexCache[filename].Set(hash, true)
 				}
-				return true
+				return true, nil
 			}
 		}
 	} else {
@@ -326,149 +376,177 @@ func RegexpInFile(data string, filename string) bool {
 	if hasCache {
 		dataFileRegexCache[filename].Set(hash, false)
 	}
-	return false
+	return false, nil
 }
 
-func IpInRange(ip string, ipRange string) bool {
+// func IpInRange(ip string, ipRange string) bool {
+func IpInRange(params ...any) (any, error) {
 	var err error
 	var ipParsed net.IP
 	var ipRangeParsed *net.IPNet
 
+	ip := params[0].(string)
+	ipRange := params[1].(string)
+
 	ipParsed = net.ParseIP(ip)
 	if ipParsed == nil {
 		log.Debugf("'%s' is not a valid IP", ip)
-		return false
+		return false, nil
 	}
 	if _, ipRangeParsed, err = net.ParseCIDR(ipRange); err != nil {
 		log.Debugf("'%s' is not a valid IP Range", ipRange)
-		return false
+		return false, nil
 	}
 	if ipRangeParsed.Contains(ipParsed) {
-		return true
+		return true, nil
 	}
-	return false
+	return false, nil
 }
 
-func IsIPV6(ip string) bool {
+// func IsIPV6(ip string) bool {
+func IsIPV6(params ...any) (any, error) {
+	ip := params[0].(string)
 	ipParsed := net.ParseIP(ip)
 	if ipParsed == nil {
 		log.Debugf("'%s' is not a valid IP", ip)
-		return false
+		return false, nil
 	}
 
 	// If it's a valid IP and can't be converted to IPv4 then it is an IPv6
-	return ipParsed.To4() == nil
+	return ipParsed.To4() == nil, nil
 }
 
-func IsIPV4(ip string) bool {
+// func IsIPV4(ip string) bool {
+func IsIPV4(params ...any) (any, error) {
+	ip := params[0].(string)
 	ipParsed := net.ParseIP(ip)
 	if ipParsed == nil {
 		log.Debugf("'%s' is not a valid IP", ip)
-		return false
+		return false, nil
 	}
-	return ipParsed.To4() != nil
+	return ipParsed.To4() != nil, nil
 }
 
-func IsIP(ip string) bool {
+// func IsIP(ip string) bool {
+func IsIP(params ...any) (any, error) {
+	ip := params[0].(string)
 	ipParsed := net.ParseIP(ip)
 	if ipParsed == nil {
 		log.Debugf("'%s' is not a valid IP", ip)
-		return false
+		return false, nil
 	}
-	return true
+	return true, nil
 }
 
-func IpToRange(ip string, cidr string) string {
+// func IpToRange(ip string, cidr string) string {
+func IpToRange(params ...any) (any, error) {
+	ip := params[0].(string)
+	cidr := params[1].(string)
 	cidr = strings.TrimPrefix(cidr, "/")
 	mask, err := strconv.Atoi(cidr)
 	if err != nil {
 		log.Errorf("bad cidr '%s': %s", cidr, err)
-		return ""
+		return "", nil
 	}
 
 	ipAddr := net.ParseIP(ip)
 	if ipAddr == nil {
 		log.Errorf("can't parse IP address '%s'", ip)
-		return ""
+		return "", nil
 	}
 	ipRange := iplib.NewNet(ipAddr, mask)
 	if ipRange.IP() == nil {
 		log.Errorf("can't get cidr '%s' of '%s'", cidr, ip)
-		return ""
+		return "", nil
 	}
-	return ipRange.String()
+	return ipRange.String(), nil
 }
 
-func TimeNow() string {
-	return time.Now().UTC().Format(time.RFC3339)
+// func TimeNow() string {
+func TimeNow(params ...any) (any, error) {
+	return time.Now().UTC().Format(time.RFC3339), nil
 }
 
-func ParseUri(uri string) map[string][]string {
+// func ParseUri(uri string) map[string][]string {
+func ParseUri(params ...any) (any, error) {
+	uri := params[0].(string)
 	ret := make(map[string][]string)
 	u, err := url.Parse(uri)
 	if err != nil {
 		log.Errorf("Could not parse URI: %s", err)
-		return ret
+		return ret, nil
 	}
 	parsed, err := url.ParseQuery(u.RawQuery)
 	if err != nil {
 		log.Errorf("Could not parse query uri : %s", err)
-		return ret
+		return ret, nil
 	}
 	for k, v := range parsed {
 		ret[k] = v
 	}
-	return ret
+	return ret, nil
 }
 
-func KeyExists(key string, dict map[string]interface{}) bool {
+// func KeyExists(key string, dict map[string]interface{}) bool {
+func KeyExists(params ...any) (any, error) {
+	key := params[0].(string)
+	dict := params[1].(map[string]interface{})
 	_, ok := dict[key]
-	return ok
+	return ok, nil
 }
 
-func GetDecisionsCount(value string) int {
+// func GetDecisionsCount(value string) int {
+func GetDecisionsCount(params ...any) (any, error) {
+	value := params[0].(string)
 	if dbClient == nil {
 		log.Error("No database config to call GetDecisionsCount()")
-		return 0
+		return 0, nil
 
 	}
 	count, err := dbClient.CountDecisionsByValue(value)
 	if err != nil {
 		log.Errorf("Failed to get decisions count from value '%s'", value)
-		return 0
+		return 0, nil
 	}
-	return count
+	return count, nil
 }
 
-func GetDecisionsSinceCount(value string, since string) int {
+// func GetDecisionsSinceCount(value string, since string) int {
+func GetDecisionsSinceCount(params ...any) (any, error) {
+	value := params[0].(string)
+	since := params[1].(string)
 	if dbClient == nil {
 		log.Error("No database config to call GetDecisionsCount()")
-		return 0
+		return 0, nil
 	}
 	sinceDuration, err := time.ParseDuration(since)
 	if err != nil {
 		log.Errorf("Failed to parse since parameter '%s' : %s", since, err)
-		return 0
+		return 0, nil
 	}
 	sinceTime := time.Now().UTC().Add(-sinceDuration)
 	count, err := dbClient.CountDecisionsSinceByValue(value, sinceTime)
 	if err != nil {
 		log.Errorf("Failed to get decisions count from value '%s'", value)
-		return 0
+		return 0, nil
 	}
-	return count
+	return count, nil
 }
 
-func LookupHost(value string) []string {
+// func LookupHost(value string) []string {
+func LookupHost(params ...any) (any, error) {
+	value := params[0].(string)
 	addresses, err := net.LookupHost(value)
 	if err != nil {
 		log.Errorf("Failed to lookup host '%s' : %s", value, err)
-		return []string{}
+		return []string{}, nil
 	}
-	return addresses
+	return addresses, nil
 }
 
-func ParseUnixTime(value string) (time.Time, error) {
+// func ParseUnixTime(value string) (time.Time, error) {
+func ParseUnixTime(params ...any) (any, error) {
+	value := params[0].(string)
 	//Splitting string here as some unix timestamp may have milliseconds and break ParseInt
 	i, err := strconv.ParseInt(strings.Split(value, ".")[0], 10, 64)
 	if err != nil || i <= 0 {
@@ -477,19 +555,44 @@ func ParseUnixTime(value string) (time.Time, error) {
 	return time.Unix(i, 0), nil
 }
 
-func ParseUnix(value string) string {
+// func ParseUnix(value string) string {
+func ParseUnix(params ...any) (any, error) {
+	value := params[0].(string)
 	t, err := ParseUnixTime(value)
 	if err != nil {
 		log.Error(err)
-		return ""
+		return "", nil
 	}
-	return t.Format(time.RFC3339)
+	return t.(time.Time).Format(time.RFC3339), nil
 }
 
-func ToString(value interface{}) string {
+// func ToString(value interface{}) string {
+func ToString(params ...any) (any, error) {
+	value := params[0]
 	s, ok := value.(string)
 	if !ok {
-		return ""
+		return "", nil
 	}
-	return s
+	return s, nil
+}
+
+// func GetFromStash(cacheName string, key string) (string, error) {
+func GetFromStash(params ...any) (any, error) {
+	cacheName := params[0].(string)
+	key := params[1].(string)
+	return cache.GetKey(cacheName, key)
+}
+
+// func SetInStash(cacheName string, key string, value string, expiration *time.Duration) any {
+func SetInStash(params ...any) (any, error) {
+	cacheName := params[0].(string)
+	key := params[1].(string)
+	value := params[2].(string)
+	expiration := params[3].(*time.Duration)
+	return cache.SetKey(cacheName, key, value, expiration), nil
+}
+
+func Sprintf(params ...any) (any, error) {
+	format := params[0].(string)
+	return fmt.Sprintf(format, params[1:]...), nil
 }

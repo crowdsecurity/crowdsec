@@ -80,10 +80,10 @@ func ParseDate(in string, p *types.Event, x interface{}, plog *log.Entry) (map[s
 		}
 		timeobj, err := expr.ParseUnixTime(in)
 		if err == nil {
-			ret["MarshaledTime"] = timeobj.Format(time.RFC3339)
+			ret["MarshaledTime"] = timeobj.(time.Time).Format(time.RFC3339)
 			//In time machine, we take the time parsed from the event. In live mode, we keep the timestamp collected at acquisition
 			if p.ExpectMode == types.TIMEMACHINE {
-				p.Time = timeobj
+				p.Time = timeobj.(time.Time)
 			}
 			return ret, nil
 		}

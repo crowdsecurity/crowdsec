@@ -27,8 +27,8 @@ func NewOverflowFilter(g *BucketFactory) (*OverflowFilter, error) {
 
 	u := OverflowFilter{}
 	u.Filter = g.OverflowFilter
-	u.FilterRuntime, err = expr.Compile(u.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{
-		"queue": &Queue{}, "signal": &types.RuntimeAlert{}, "leaky": &Leaky{}})))
+
+	u.FilterRuntime, err = expr.Compile(u.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &Queue{}, "signal": &types.RuntimeAlert{}, "leaky": &Leaky{}})...)
 	if err != nil {
 		g.logger.Errorf("Unable to compile filter : %v", err)
 		return nil, fmt.Errorf("unable to compile filter : %v", err)

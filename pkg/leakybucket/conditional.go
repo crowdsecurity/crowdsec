@@ -21,8 +21,7 @@ func NewConditionalOverflow(g *BucketFactory) (*ConditionalOverflow, error) {
 
 	c := ConditionalOverflow{}
 	c.ConditionalFilter = g.ConditionalOverflow
-	c.ConditionalFilterRuntime, err = expr.Compile(c.ConditionalFilter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{
-		"queue": &Queue{}, "leaky": &Leaky{}})))
+	c.ConditionalFilterRuntime, err = expr.Compile(c.ConditionalFilter, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &Queue{}, "leaky": &Leaky{}})...)
 	if err != nil {
 		g.logger.Errorf("Unable to compile condition expression for conditional bucket : %s", err)
 		return nil, fmt.Errorf("unable to compile condition expression for conditional bucket : %v", err)

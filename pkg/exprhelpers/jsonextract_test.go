@@ -44,7 +44,7 @@ func TestJsonExtract(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		result := JsonExtract(test.jsonBlob, test.targetField)
+		result, _ := JsonExtract(test.jsonBlob, test.targetField)
 		isOk := assert.Equal(t, test.expectResult, result)
 		if !isOk {
 			t.Fatalf("test '%s' failed", test.name)
@@ -84,7 +84,7 @@ func TestJsonExtractUnescape(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		result := JsonExtractUnescape(test.jsonBlob, test.targetField)
+		result, _ := JsonExtractUnescape(test.jsonBlob, test.targetField)
 		isOk := assert.Equal(t, test.expectResult, result)
 		if !isOk {
 			t.Fatalf("test '%s' failed", test.name)
@@ -138,8 +138,8 @@ func TestJsonExtractSlice(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			result := JsonExtractSlice(test.jsonBlob, test.targetField)
-			assert.Equal(t, test.expectResult, result)
+			result, _ := JsonExtractSlice(test.jsonBlob, test.targetField)
+			assert.EqualValues(t, test.expectResult, result)
 		})
 	}
 }
@@ -183,8 +183,8 @@ func TestJsonExtractObject(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			result := JsonExtractObject(test.jsonBlob, test.targetField)
-			assert.Equal(t, test.expectResult, result)
+			result, _ := JsonExtractObject(test.jsonBlob, test.targetField)
+			assert.EqualValues(t, test.expectResult, result)
 		})
 	}
 }
@@ -244,7 +244,7 @@ func TestToJson(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			result := ToJson(test.obj)
+			result, _ := ToJson(test.obj)
 			assert.Equal(t, test.expectResult, result)
 		})
 	}

@@ -93,14 +93,16 @@ func (u *CancelOnFilter) OnBucketInit(bucketFactory *BucketFactory) error {
 	} else {
 		cancelExprCacheLock.Unlock()
 		//release the lock during compile
-		compiledExpr.CancelOnFilter, err = expr.Compile(bucketFactory.CancelOnFilter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+
+		compiledExpr.CancelOnFilter, err = expr.Compile(bucketFactory.CancelOnFilter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 		if err != nil {
 			bucketFactory.logger.Errorf("reset_filter compile error : %s", err)
 			return err
 		}
 		u.CancelOnFilter = compiledExpr.CancelOnFilter
 		if bucketFactory.Debug {
-			compiledExpr.CancelOnFilterDebug, err = exprhelpers.NewDebugger(bucketFactory.CancelOnFilter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+			compiledExpr.CancelOnFilterDebug, err = exprhelpers.NewDebugger(bucketFactory.CancelOnFilter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...,
+			)
 			if err != nil {
 				bucketFactory.logger.Errorf("reset_filter debug error : %s", err)
 				return err
