@@ -173,6 +173,11 @@ func toValidCIDR(ip string) string {
 	return ip + "/32"
 }
 
+type CapiWhitelist struct {
+	Ips   []net.IP     `yaml:"ips,omitempty"`
+	Cidrs []*net.IPNet `yaml:"cidrs,omitempty"`
+}
+
 /*local api service configuration*/
 type LocalApiServerCfg struct {
 	Enable                        *bool               `yaml:"enable"`
@@ -196,6 +201,8 @@ type LocalApiServerCfg struct {
 	TrustedIPs                    []string            `yaml:"trusted_ips,omitempty"`
 	PapiLogLevel                  *log.Level          `yaml:"papi_log_level"`
 	DisableRemoteLapiRegistration bool                `yaml:"disable_remote_lapi_registration,omitempty"`
+	CapiWhitelistsPath            string              `yaml:"capi_whitelists_path,omitempty"`
+	CapiWhitelists                *CapiWhitelist      `yaml:"-"`
 }
 
 type TLSCfg struct {
@@ -242,6 +249,11 @@ func (c *Config) LoadAPIServer() error {
 		if err := c.LoadDBConfig(); err != nil {
 			return err
 		}
+
+		if err := c.API.Server.LoadCapiWhitelists(); err != nil {
+			return err
+		}
+
 	} else {
 		log.Warning("crowdsec local API is disabled")
 		c.DisableAPI = true
@@ -303,6 +315,60 @@ func (c *Config) LoadAPIServer() error {
 		}
 	}
 
+	return nil
+}
+
+// we cannot unmarshal to type net.IPNet, so we need to do it manually
+type capiWhitelists struct {
+	Ips   []string `yaml:"ips"`
+	Cidrs []string `yaml:"cidrs"`
+}
+
+func (s *LocalApiServerCfg) LoadCapiWhitelists() error {
+	if s.CapiWhitelistsPath == "" {
+		return nil
+	}
+	if _, err := os.Stat(s.CapiWhitelistsPath); os.IsNotExist(err) {
+		return fmt.Errorf("capi whitelist file '%s' does not exist", s.CapiWhitelistsPath)
+	}
+	fd, err := os.Open(s.CapiWhitelistsPath)
+	if err != nil {
+		return fmt.Errorf("unable to open capi whitelist file '%s': %s", s.CapiWhitelistsPath, err)
+	}
+
+	var fromCfg capiWhitelists
+	s.CapiWhitelists = &CapiWhitelist{}
+
+	defer fd.Close()
+	decoder := yaml.NewDecoder(fd)
+	if err := decoder.Decode(&fromCfg); err != nil {
+		return fmt.Errorf("while parsing capi whitelist file '%s': %s", s.CapiWhitelistsPath, err)
+	}
+	for _, v := range fromCfg.Ips {
+		ip := net.ParseIP(v)
+		if ip == nil {
+			return fmt.Errorf("unable to parse ip whitelist '%s'", v)
+		}
+		s.CapiWhitelists.Ips = append(s.CapiWhitelists.Ips, ip)
+	}
+	for _, v := range fromCfg.Cidrs {
+		_, tnet, err := net.ParseCIDR(v)
+		if err != nil {
+			return fmt.Errorf("unable to parse cidr whitelist '%s' : %v.", v, err)
+		}
+		s.CapiWhitelists.Cidrs = append(s.CapiWhitelists.Cidrs, tnet)
+	}
+	/*
+			for _, v := range n.Whitelist.Cidrs {
+			_, tnet, err := net.ParseCIDR(v)
+			if err != nil {
+				n.Logger.Fatalf("Unable to parse cidr whitelist '%s' : %v.", v, err)
+			}
+			n.Whitelist.B_Cidrs = append(n.Whitelist.B_Cidrs, tnet)
+			n.Logger.Debugf("adding cidr %s to whitelists", tnet)
+			valid = true
+		}
+	*/
 	return nil
 }
 

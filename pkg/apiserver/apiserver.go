@@ -217,7 +217,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	if config.OnlineClient != nil && config.OnlineClient.Credentials != nil {
 		log.Printf("Loading CAPI manager")
-		apiClient, err = NewAPIC(config.OnlineClient, dbClient, config.ConsoleConfig)
+		apiClient, err = NewAPIC(config.OnlineClient, dbClient, config.ConsoleConfig, config.CapiWhitelists)
 		if err != nil {
 			return &APIServer{}, err
 		}
