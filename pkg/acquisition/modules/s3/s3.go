@@ -14,7 +14,9 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -41,8 +43,8 @@ type S3Configuration struct {
 type S3Source struct {
 	Config     S3Configuration
 	logger     *log.Entry
-	s3Client   *s3.S3
-	sqsClient  *sqs.SQS
+	s3Client   s3iface.S3API
+	sqsClient  sqsiface.SQSAPI
 	readerChan chan S3Object
 	t          *tomb.Tomb
 	out        chan types.Event
@@ -191,7 +193,7 @@ func (s *S3Source) readManager() {
 	}
 }
 
-func (s *S3Source) getBucketContent() []*s3.Object {
+func (s *S3Source) getBucketContent() ([]*s3.Object, error) {
 	logger := s.logger.WithField("method", "getBucketContent")
 	logger.Debugf("Getting bucket content for %s", s.Config.BucketName)
 	bucketObjects := make([]*s3.Object, 0)
@@ -204,7 +206,7 @@ func (s *S3Source) getBucketContent() []*s3.Object {
 		})
 		if err != nil {
 			logger.Errorf("Error while listing bucket content: %s", err)
-			return nil
+			return nil, err
 		}
 		bucketObjects = append(bucketObjects, out.Contents...)
 		if out.NextContinuationToken == nil {
@@ -215,7 +217,7 @@ func (s *S3Source) getBucketContent() []*s3.Object {
 	sort.Slice(bucketObjects, func(i, j int) bool {
 		return bucketObjects[i].LastModified.Before(*bucketObjects[j].LastModified)
 	})
-	return bucketObjects
+	return bucketObjects, nil
 }
 
 func (s *S3Source) listPoll() error {
@@ -232,7 +234,11 @@ func (s *S3Source) listPoll() error {
 			return nil
 		case <-ticker.C:
 			newObject := false
-			bucketObjects := s.getBucketContent()
+			bucketObjects, err := s.getBucketContent()
+			if err != nil {
+				logger.Errorf("Error while getting bucket content: %s", err)
+				continue
+			}
 			if bucketObjects == nil {
 				continue
 			}
@@ -304,7 +310,7 @@ func (s *S3Source) sqsPoll() error {
 func (s *S3Source) readFile(bucket string, key string) error {
 	//TODO: Handle SSE
 	var scanner *bufio.Scanner
-	output, err := s.s3Client.GetObject(&s3.GetObjectInput{
+	output, err := s.s3Client.GetObjectWithContext(s.ctx, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
@@ -402,6 +408,10 @@ func (s *S3Source) Configure(yamlConfig []byte, logger *log.Entry) error {
 		s.logger.Warning("use_time_machine is not set to true in the datasource configuration. This will likely lead to false positives as S3 logs are not processed in real time.")
 	}
 
+	if s.Config.PollingMethod == PollMethodList {
+		s.logger.Warning("Polling method is set to list. This is not recommended as it will not scale well. Consider using SQS instead.")
+	}
+
 	err = s.newS3Client()
 	if err != nil {
 		return err
@@ -461,15 +471,19 @@ func (s *S3Source) ConfigureByDSN(dsn string, labels map[string]string, logger *
 	s.logger.Debugf("pathParts: %v", pathParts)
 
 	//FIXME: handle s3://bucket/
-	if len(pathParts) < 2 {
+	if len(pathParts) == 1 {
+		s.Config.BucketName = pathParts[0]
+		s.Config.Prefix = ""
 		return fmt.Errorf("invalid DSN %s for S3 source, must be s3://bucket/key", dsn)
-	}
-
-	s.Config.BucketName = pathParts[0]
-	if args[0][len(args[0])-1] == '/' {
-		s.Config.Prefix = strings.Join(pathParts[1:], "/")
+	} else if len(pathParts) > 1 {
+		s.Config.BucketName = pathParts[0]
+		if args[0][len(args[0])-1] == '/' {
+			s.Config.Prefix = strings.Join(pathParts[1:], "/")
+		} else {
+			s.Config.Key = strings.Join(pathParts[1:], "/")
+		}
 	} else {
-		s.Config.Key = strings.Join(pathParts[1:], "/")
+		return fmt.Errorf("invalid DSN %s for S3 source", dsn)
 	}
 
 	err := s.newS3Client()
@@ -489,16 +503,26 @@ func (s *S3Source) GetName() string {
 }
 
 func (s *S3Source) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
-	s.logger.Infof("starting acquisition of %s/%s", s.Config.BucketName, s.Config.Key)
+	s.logger.Infof("starting acquisition of %s/%s/%s", s.Config.BucketName, s.Config.Prefix, s.Config.Key)
 	s.out = out
-	//TODO: handle being passed a prefix, and iterate over all keys
+	s.ctx, s.cancel = context.WithCancel(context.Background())
 	if s.Config.Key != "" {
 		err := s.readFile(s.Config.BucketName, s.Config.Key)
 		if err != nil {
 			return err
 		}
 	} else {
-		return fmt.Errorf("key is required")
+		//No key, get everything in the bucket based on the prefix
+		objects, err := s.getBucketContent()
+		if err != nil {
+			return err
+		}
+		for _, object := range objects {
+			err := s.readFile(s.Config.BucketName, *object.Key)
+			if err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
