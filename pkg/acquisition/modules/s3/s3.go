@@ -261,7 +261,7 @@ func (s *S3Source) listPoll() error {
 }
 
 func (s *S3Source) sqsPoll() error {
-	logger := s.logger.WithField("method", "sqsPoll")
+	logger := s.logger.WithField("method", "sqsPoll").WithField("queue", s.Config.SQSName)
 	for {
 		select {
 		case <-s.t.Dying():
@@ -269,7 +269,7 @@ func (s *S3Source) sqsPoll() error {
 			s.cancel()
 			return nil
 		default:
-			logger.Tracef("Polling SQS queue %s", s.Config.SQSName)
+			logger.Trace("Polling SQS queue")
 			out, err := s.sqsClient.ReceiveMessageWithContext(s.ctx, &sqs.ReceiveMessageInput{
 				QueueUrl:            aws.String(s.Config.SQSName),
 				MaxNumberOfMessages: aws.Int64(10),
