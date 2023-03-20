@@ -445,11 +445,11 @@ func (s *S3Source) ConfigureByDSN(dsn string, labels map[string]string, logger *
 	if len(args) == 2 && len(args[1]) != 0 {
 		params, err := url.ParseQuery(args[1])
 		if err != nil {
-			return errors.Wrap(err, "could not parse file args")
+			return errors.Wrap(err, "could not parse s3 args")
 		}
 		for key, value := range params {
 			if key != "log_level" {
-				return fmt.Errorf("unsupported key %s in file DSN", key)
+				return fmt.Errorf("unsupported key %s in s3 DSN", key)
 			}
 			if len(value) != 1 {
 				return errors.New("expected zero or one value for 'log_level'")
@@ -473,7 +473,6 @@ func (s *S3Source) ConfigureByDSN(dsn string, labels map[string]string, logger *
 	if len(pathParts) == 1 {
 		s.Config.BucketName = pathParts[0]
 		s.Config.Prefix = ""
-		return fmt.Errorf("invalid DSN %s for S3 source, must be s3://bucket/key", dsn)
 	} else if len(pathParts) > 1 {
 		s.Config.BucketName = pathParts[0]
 		if args[0][len(args[0])-1] == '/' {
