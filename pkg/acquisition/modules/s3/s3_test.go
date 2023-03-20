@@ -111,14 +111,30 @@ type mockS3Client struct {
 	s3iface.S3API
 }
 
-func (m mockS3Client) ListObjectsV2WithContext(ctx context.Context, input *s3.ListObjectsV2Input, options ...request.Option) (*s3.ListObjectsV2Output, error) {
-	return &s3.ListObjectsV2Output{
-		Contents: []*s3.Object{
-			{
-				Key:          aws.String("foo.log"),
-				LastModified: aws.Time(time.Now()),
-			},
+// We add one hour to trick the listing goroutine into thinking the files are new
+var mockListOutput map[string][]*s3.Object = map[string][]*s3.Object{
+	"bucket_no_prefix": {
+		{
+			Key:          aws.String("foo.log"),
+			LastModified: aws.Time(time.Now().Add(time.Hour)),
 		},
+	},
+	"bucket_with_prefix": {
+		{
+			Key:          aws.String("prefix/foo.log"),
+			LastModified: aws.Time(time.Now().Add(time.Hour)),
+		},
+		{
+			Key:          aws.String("prefix/bar.log"),
+			LastModified: aws.Time(time.Now().Add(time.Hour)),
+		},
+	},
+}
+
+func (m mockS3Client) ListObjectsV2WithContext(ctx context.Context, input *s3.ListObjectsV2Input, options ...request.Option) (*s3.ListObjectsV2Output, error) {
+	log.Infof("returning mock list output for %s, %v", *input.Bucket, mockListOutput[*input.Bucket])
+	return &s3.ListObjectsV2Output{
+		Contents: mockListOutput[*input.Bucket],
 	}, nil
 }
 
@@ -129,29 +145,97 @@ func (m mockS3Client) GetObjectWithContext(ctx context.Context, input *s3.GetObj
 	}, nil
 }
 
+func TestDSNAcquis(t *testing.T) {
+	tests := []struct {
+		name               string
+		dsn                string
+		expectedBucketName string
+		expectedPrefix     string
+		expectedCount      int
+	}{
+		{
+			name:               "basic",
+			dsn:                "s3://bucket_no_prefix/foo.log",
+			expectedBucketName: "bucket_no_prefix",
+			expectedPrefix:     "",
+			expectedCount:      2,
+		},
+		{
+			name:               "with prefix",
+			dsn:                "s3://bucket_with_prefix/prefix/",
+			expectedBucketName: "bucket_with_prefix",
+			expectedPrefix:     "prefix/",
+			expectedCount:      4,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			linesRead := 0
+			f := S3Source{}
+			logger := log.NewEntry(log.New())
+			err := f.ConfigureByDSN(test.dsn, map[string]string{"foo": "bar"}, logger)
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err.Error())
+			}
+			assert.Equal(t, test.expectedBucketName, f.Config.BucketName)
+			assert.Equal(t, test.expectedPrefix, f.Config.Prefix)
+			out := make(chan types.Event)
+
+			done := make(chan bool)
+
+			go func() {
+				for {
+					select {
+					case s := <-out:
+						fmt.Printf("got line %s\n", s.Line.Raw)
+						linesRead++
+					case <-done:
+						return
+					}
+				}
+			}()
+
+			f.s3Client = mockS3Client{}
+			err = f.OneShotAcquisition(out, nil)
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err.Error())
+			}
+			time.Sleep(2 * time.Second)
+			done <- true
+			assert.Equal(t, test.expectedCount, linesRead)
+
+		})
+	}
+
+}
+
 func TestListPolling(t *testing.T) {
 	tests := []struct {
-		name   string
-		config string
+		name          string
+		config        string
+		expectedCount int
 	}{
 		{
 			name: "basic",
 			config: `
 source: s3
-bucket_name: foobar
+bucket_name: bucket_no_prefix
 polling_method: list
 polling_interval: 1
 `,
+			expectedCount: 2,
 		},
 		{
 			name: "with prefix",
 			config: `
 source: s3
-bucket_name: foobar
+bucket_name: bucket_with_prefix
 polling_method: list
 polling_interval: 1
 prefix: foo/
 `,
+			expectedCount: 4,
 		},
 	}
 
@@ -198,8 +282,7 @@ prefix: foo/
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err.Error())
 			}
-			assert.Equal(t, 2, linesRead)
+			assert.Equal(t, test.expectedCount, linesRead)
 		})
 	}
-
 }
