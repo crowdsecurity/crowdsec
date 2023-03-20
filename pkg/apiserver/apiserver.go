@@ -336,30 +336,6 @@ func (s *APIServer) Run(apiReady chan bool) error {
 		TLSConfig: tlsCfg,
 	}
 
-	s.httpServerTomb.Go(func() error {
-		go func() {
-			apiReady <- true
-			log.Infof("CrowdSec Local API listening on %s", s.URL)
-			if s.TLS != nil && (s.TLS.CertFilePath != "" || s.TLS.KeyFilePath != "") {
-				if s.TLS.KeyFilePath == "" {
-					log.Fatalf("while serving local API: %v", errors.New("missing TLS key file"))
-				} else if s.TLS.CertFilePath == "" {
-					log.Fatalf("while serving local API: %v", errors.New("missing TLS cert file"))
-				}
-
-				if err := s.httpServer.ListenAndServeTLS(s.TLS.CertFilePath, s.TLS.KeyFilePath); err != nil {
-					log.Fatalf("while serving local API: %v", err)
-				}
-			} else {
-				if err := s.httpServer.ListenAndServe(); err != http.ErrServerClosed {
-					log.Fatalf("while serving local API: %v", err)
-				}
-			}
-		}()
-		<-s.httpServerTomb.Dying()
-		return nil
-	})
-
 	if s.apic != nil {
 		s.apic.pushTomb.Go(func() error {
 			if err := s.apic.Push(); err != nil {
@@ -412,6 +388,30 @@ func (s *APIServer) Run(apiReady chan bool) error {
 			return nil
 		})
 	}
+
+	s.httpServerTomb.Go(func() error {
+		go func() {
+			apiReady <- true
+			log.Infof("CrowdSec Local API listening on %s", s.URL)
+			if s.TLS != nil && (s.TLS.CertFilePath != "" || s.TLS.KeyFilePath != "") {
+				if s.TLS.KeyFilePath == "" {
+					log.Fatalf("while serving local API: %v", errors.New("missing TLS key file"))
+				} else if s.TLS.CertFilePath == "" {
+					log.Fatalf("while serving local API: %v", errors.New("missing TLS cert file"))
+				}
+
+				if err := s.httpServer.ListenAndServeTLS(s.TLS.CertFilePath, s.TLS.KeyFilePath); err != nil {
+					log.Fatalf("while serving local API: %v", err)
+				}
+			} else {
+				if err := s.httpServer.ListenAndServe(); err != http.ErrServerClosed {
+					log.Fatalf("while serving local API: %v", err)
+				}
+			}
+		}()
+		<-s.httpServerTomb.Dying()
+		return nil
+	})
 
 	return nil
 }
