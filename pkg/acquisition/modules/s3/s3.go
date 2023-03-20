@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -53,11 +54,11 @@ type S3Source struct {
 
 type S3Object struct {
 	Key    string
-	Bucker string
+	Bucket string
 }
 
 // For some reason, the aws sdk doesn't have a struct for this
-// aws-lamdbda-go/events has a similar one, but looks like it's only intended for use with lambda (format is different)
+// The one aws-lamdbda-go/events is only intented when using S3 Notification without event bridge
 type S3Event struct {
 	Version    string   `json:"version"`
 	Id         string   `json:"id"`
@@ -183,8 +184,8 @@ func (s *S3Source) readManager() {
 			s.cancel()
 			return
 		case s3Object := <-s.readerChan:
-			logger.Debugf("Reading file %s/%s", s3Object.Bucker, s3Object.Key)
-			err := s.readFile(s3Object.Bucker, s3Object.Key)
+			logger.Debugf("Reading file %s/%s", s3Object.Bucket, s3Object.Key)
+			err := s.readFile(s3Object.Bucket, s3Object.Key)
 			if err != nil {
 				logger.Errorf("Error while reading file: %s", err)
 			}
@@ -246,7 +247,7 @@ func (s *S3Source) listPoll() error {
 					newObject = true
 					logger.Debugf("Found new object %s", *bucketObjects[i].Key)
 					s.readerChan <- S3Object{
-						Bucker: s.Config.BucketName,
+						Bucket: s.Config.BucketName,
 						Key:    *bucketObjects[i].Key,
 					}
 				} else {
@@ -258,6 +259,30 @@ func (s *S3Source) listPoll() error {
 			}
 		}
 	}
+}
+
+func (s *S3Source) extractBucketAndPrefix(message *string) (string, string, error) {
+	eventBody := S3Event{}
+	err := json.Unmarshal([]byte(*message), &eventBody)
+	if err != nil {
+		return "", "", err
+	}
+	if eventBody.Detail.Bucket.Name != "" {
+		return eventBody.Detail.Bucket.Name, eventBody.Detail.Object.Key, nil
+	}
+
+	s3notifBody := events.S3Event{}
+	err = json.Unmarshal([]byte(*message), &s3notifBody)
+	if err != nil {
+		return "", "", err
+	}
+	if len(s3notifBody.Records) == 0 {
+		return "", "", fmt.Errorf("no records found in S3 notification")
+	}
+	if !strings.HasPrefix(s3notifBody.Records[0].EventName, "ObjectCreated:") {
+		return "", "", fmt.Errorf("event %s is not supported", s3notifBody.Records[0].EventName)
+	}
+	return s3notifBody.Records[0].S3.Bucket.Name, s3notifBody.Records[0].S3.Object.Key, nil
 }
 
 func (s *S3Source) sqsPoll() error {
@@ -283,15 +308,21 @@ func (s *S3Source) sqsPoll() error {
 			logger.Debugf("Received %d messages from SQS", len(out.Messages))
 			for _, message := range out.Messages {
 				sqsMessagesReceived.WithLabelValues(s.Config.SQSName).Inc()
-				eventBody := S3Event{}
-				err := json.Unmarshal([]byte(*message.Body), &eventBody)
+				bucket, key, err := s.extractBucketAndPrefix(message.Body)
 				if err != nil {
 					logger.Errorf("Error while parsing SQS message: %s", err)
+					//Always delete the message to avoid infinite loop
+					_, err = s.sqsClient.DeleteMessage(&sqs.DeleteMessageInput{
+						QueueUrl:      aws.String(s.Config.SQSName),
+						ReceiptHandle: message.ReceiptHandle,
+					})
+					if err != nil {
+						logger.Errorf("Error while deleting SQS message: %s", err)
+					}
 					continue
 				}
-				logger.Tracef("S3 event body: %v", eventBody)
-				logger.Debugf("Received SQS message for object %s/%s", eventBody.Detail.Bucket.Name, eventBody.Detail.Object.Key)
-				s.readerChan <- S3Object{Key: eventBody.Detail.Object.Key, Bucker: eventBody.Detail.Bucket.Name}
+				logger.Debugf("Received SQS message for object %s/%s", bucket, key)
+				s.readerChan <- S3Object{Key: key, Bucket: bucket}
 				_, err = s.sqsClient.DeleteMessage(&sqs.DeleteMessageInput{
 					QueueUrl:      aws.String(s.Config.SQSName),
 					ReceiptHandle: message.ReceiptHandle,
@@ -299,7 +330,7 @@ func (s *S3Source) sqsPoll() error {
 				if err != nil {
 					logger.Errorf("Error while deleting SQS message: %s", err)
 				}
-				logger.Debugf("Deleted SQS message for object %s/%s", eventBody.Detail.Bucket.Name, eventBody.Detail.Object.Key)
+				logger.Debugf("Deleted SQS message for object %s/%s", bucket, key)
 			}
 		}
 	}

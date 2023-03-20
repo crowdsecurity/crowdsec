@@ -172,6 +172,30 @@ func (msqs mockSQSClient) DeleteMessage(input *sqs.DeleteMessageInput) (*sqs.Del
 	return &sqs.DeleteMessageOutput{}, nil
 }
 
+type mockSQSClientNotif struct {
+	sqsiface.SQSAPI
+	counter *int32
+}
+
+func (msqs mockSQSClientNotif) ReceiveMessageWithContext(ctx context.Context, input *sqs.ReceiveMessageInput, options ...request.Option) (*sqs.ReceiveMessageOutput, error) {
+	if atomic.LoadInt32(msqs.counter) == 1 {
+		return &sqs.ReceiveMessageOutput{}, nil
+	}
+	atomic.AddInt32(msqs.counter, 1)
+	return &sqs.ReceiveMessageOutput{
+		Messages: []*sqs.Message{
+			{
+				Body: aws.String(`
+				{"Records":[{"eventVersion":"2.1","eventSource":"aws:s3","awsRegion":"eu-west-1","eventTime":"2023-03-20T19:30:02.536Z","eventName":"ObjectCreated:Put","userIdentity":{"principalId":"AWS:XXXXX"},"requestParameters":{"sourceIPAddress":"42.42.42.42"},"responseElements":{"x-amz-request-id":"FM0TAV2WE5AXXW42","x-amz-id-2":"LCfQt1aSBtD1G5wdXjB5ANdPxLEXJxA89Ev+/rRAsCGFNJGI/1+HMlKI59S92lqvzfViWh7B74leGKWB8/nNbsbKbK7WXKz2"},"s3":{"s3SchemaVersion":"1.0","configurationId":"test-acquis","bucket":{"name":"my_bucket","ownerIdentity":{"principalId":"A1F2PSER1FB8MY"},"arn":"arn:aws:s3:::my_bucket"},"object":{"key":"foo.log","size":3097,"eTag":"ab6889744611c77991cbc6ca12d1ddc7","sequencer":"006418B43A76BC0257"}}}]}`),
+			},
+		},
+	}, nil
+}
+
+func (msqs mockSQSClientNotif) DeleteMessage(input *sqs.DeleteMessageInput) (*sqs.DeleteMessageOutput, error) {
+	return &sqs.DeleteMessageOutput{}, nil
+}
+
 func TestDSNAcquis(t *testing.T) {
 	tests := []struct {
 		name               string
@@ -318,10 +342,11 @@ func TestSQSPoll(t *testing.T) {
 	tests := []struct {
 		name          string
 		config        string
+		notifType     string
 		expectedCount int
 	}{
 		{
-			name: "basic",
+			name: "eventbridge",
 			config: `
 source: s3
 bucket_name: bucket_no_prefix
@@ -329,6 +354,18 @@ polling_method: sqs
 sqs_name: test
 `,
 			expectedCount: 2,
+			notifType:     "eventbridge",
+		},
+		{
+			name: "notification",
+			config: `
+source: s3
+bucket_name: bucket_no_prefix
+polling_method: sqs
+sqs_name: test
+`,
+			expectedCount: 2,
+			notifType:     "notification",
 		},
 	}
 	for _, test := range tests {
@@ -346,7 +383,11 @@ sqs_name: test
 
 			counter := int32(0)
 			f.s3Client = mockS3Client{}
-			f.sqsClient = mockSQSClient{counter: &counter}
+			if test.notifType == "eventbridge" {
+				f.sqsClient = mockSQSClient{counter: &counter}
+			} else {
+				f.sqsClient = mockSQSClientNotif{counter: &counter}
+			}
 
 			out := make(chan types.Event)
 			tb := tomb.Tomb{}
