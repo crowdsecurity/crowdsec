@@ -301,13 +301,12 @@ func (s *S3Source) sqsPoll() error {
 				}
 				logger.Debugf("Deleted SQS message for object %s/%s", eventBody.Detail.Bucket.Name, eventBody.Detail.Object.Key)
 			}
-			//time.Sleep(time.Duration(s.Config.PollingInterval) * time.Second)
 		}
 	}
 }
 
 func (s *S3Source) readFile(bucket string, key string) error {
-	//TODO: Handle SSE
+	//TODO: Handle SSE-C
 	var scanner *bufio.Scanner
 	output, err := s.s3Client.GetObjectWithContext(s.ctx, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),

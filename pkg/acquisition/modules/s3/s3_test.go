@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -11,6 +12,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
+	"github.com/aws/aws-sdk-go/service/sqs"
+	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -145,6 +148,30 @@ func (m mockS3Client) GetObjectWithContext(ctx context.Context, input *s3.GetObj
 	}, nil
 }
 
+type mockSQSClient struct {
+	sqsiface.SQSAPI
+	counter *int32
+}
+
+func (msqs mockSQSClient) ReceiveMessageWithContext(ctx context.Context, input *sqs.ReceiveMessageInput, options ...request.Option) (*sqs.ReceiveMessageOutput, error) {
+	if atomic.LoadInt32(msqs.counter) == 1 {
+		return &sqs.ReceiveMessageOutput{}, nil
+	}
+	atomic.AddInt32(msqs.counter, 1)
+	return &sqs.ReceiveMessageOutput{
+		Messages: []*sqs.Message{
+			{
+				Body: aws.String(`
+{"version":"0","id":"af1ce7ea-bdb4-5bb7-3af2-c6cb32f9aac9","detail-type":"Object Created","source":"aws.s3","account":"1234","time":"2023-03-17T07:45:04Z","region":"eu-west-1","resources":["arn:aws:s3:::my_bucket"],"detail":{"version":"0","bucket":{"name":"my_bucket"},"object":{"key":"foo.log","size":663,"etag":"f2d5268a0776d6cdd6e14fcfba96d1cd","sequencer":"0064141A8022966874"},"request-id":"MBWX2P6FWA3S1YH5","requester":"156460612806","source-ip-address":"42.42.42.42","reason":"PutObject"}}`),
+			},
+		},
+	}, nil
+}
+
+func (msqs mockSQSClient) DeleteMessage(input *sqs.DeleteMessageInput) (*sqs.DeleteMessageOutput, error) {
+	return &sqs.DeleteMessageOutput{}, nil
+}
+
 func TestDSNAcquis(t *testing.T) {
 	tests := []struct {
 		name               string
@@ -254,6 +281,72 @@ prefix: foo/
 			}
 
 			f.s3Client = mockS3Client{}
+
+			out := make(chan types.Event)
+			tb := tomb.Tomb{}
+
+			go func() {
+				for {
+					select {
+					case s := <-out:
+						fmt.Printf("got line %s\n", s.Line.Raw)
+						linesRead++
+					case <-tb.Dying():
+						return
+					}
+				}
+			}()
+
+			err = f.StreamingAcquisition(out, &tb)
+
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err.Error())
+			}
+
+			time.Sleep(2 * time.Second)
+			tb.Kill(nil)
+			err = tb.Wait()
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err.Error())
+			}
+			assert.Equal(t, test.expectedCount, linesRead)
+		})
+	}
+}
+
+func TestSQSPoll(t *testing.T) {
+	tests := []struct {
+		name          string
+		config        string
+		expectedCount int
+	}{
+		{
+			name: "basic",
+			config: `
+source: s3
+bucket_name: bucket_no_prefix
+polling_method: sqs
+sqs_name: test
+`,
+			expectedCount: 2,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			linesRead := 0
+			f := S3Source{}
+			logger := log.NewEntry(log.New())
+			err := f.Configure([]byte(test.config), logger)
+			if err != nil {
+				t.Fatalf("unexpected error: %s", err.Error())
+			}
+			if f.Config.PollingMethod != PollMethodSQS {
+				t.Fatalf("expected sqs polling, got %s", f.Config.PollingMethod)
+			}
+
+			counter := int32(0)
+			f.s3Client = mockS3Client{}
+			f.sqsClient = mockSQSClient{counter: &counter}
 
 			out := make(chan types.Event)
 			tb := tomb.Tomb{}
