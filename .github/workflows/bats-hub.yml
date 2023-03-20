@@ -31,7 +31,6 @@ jobs:
       uses: actions/setup-go@v3
       with:
         go-version: ${{ matrix.go-version }}
-      id: go
 
     - name: "Check out CrowdSec repository"
       uses: actions/checkout@v3
@@ -67,7 +66,7 @@ jobs:
       run: make bats-test-hub
 
     - name: "Collect hub coverage"
-      run: ./tests/bin/collect-hub-coverage >> $GITHUB_ENV
+      run: ./test/bin/collect-hub-coverage >> $GITHUB_ENV
 
     - name: "Create Parsers badge"
       uses: schneegans/dynamic-badges-action@v1.6.0

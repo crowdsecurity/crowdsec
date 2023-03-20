@@ -211,6 +211,11 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		return err
 	}
 
+	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
+		// if we're in time-machine mode, we don't want to log to file
+		cConfig.Common.LogMedia = "stdout"
+	}
+
 	// Configure logging
 	if err := types.SetDefaultLoggerConfig(cConfig.Common.LogMedia,
 		cConfig.Common.LogDir, *cConfig.Common.LogLevel,
@@ -264,7 +269,6 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		if flags.DisableAPI {
 			cConfig.Common.Daemonize = false
 		}
-		cConfig.Common.LogMedia = "stdout"
 		log.Infof("single file mode : log_media=%s daemonize=%t", cConfig.Common.LogMedia, cConfig.Common.Daemonize)
 	}
 

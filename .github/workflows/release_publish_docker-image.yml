@@ -42,6 +42,9 @@ jobs:
         uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
+        with:
+          config: .github/buildkit.toml
+
       - name: Login to DockerHub
         uses: docker/login-action@v2
         with:

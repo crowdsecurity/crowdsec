@@ -53,7 +53,7 @@ var sampledata = map[string]cticlient.SmokeItem{
 		},
 	},
 	//1.2.3.7 is a ok guy, but part of a bad range
-	"1.2.3.7": cticlient.SmokeItem{},
+	"1.2.3.7": {},
 }
 
 const validApiKey = "my-api-key"

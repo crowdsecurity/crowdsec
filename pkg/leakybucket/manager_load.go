@@ -11,24 +11,20 @@ import (
 	"sync"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
-
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-
-	"github.com/davecgh/go-spew/spew"
-	"github.com/sirupsen/logrus"
-	log "github.com/sirupsen/logrus"
-
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/goombaio/namegenerator"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	yaml "gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 // BucketFactory struct holds all fields for any bucket configuration. This is to have a
@@ -162,7 +158,7 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 
 func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.Tomb, buckets *Buckets) ([]BucketFactory, chan types.Event, error) {
 	var (
-		ret      []BucketFactory = []BucketFactory{}
+		ret      = []BucketFactory{}
 		response chan types.Event
 	)
 
@@ -254,7 +250,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	var err error
 	if bucketFactory.Debug {
-		var clog = logrus.New()
+		var clog = log.New()
 		if err := types.ConfigureLogger(clog); err != nil {
 			log.Fatalf("While creating bucket-specific logger : %s", err)
 		}
@@ -374,6 +370,9 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 			if err != nil {
 				bucketFactory.logger.Errorf("unable to init data for file '%s': %s", data.DestPath, err)
 			}
+			if data.Type == "regexp" { //cache only makes sense for regexp
+				exprhelpers.RegexpCacheInit(data.DestPath, *data)
+			}
 		}
 	}
 
@@ -409,9 +408,9 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 			if h.Name == v.Name {
 				log.Debugf("found factory %s/%s -> %s", h.Author, h.Name, h.Description)
 				//check in which mode the bucket was
-				if v.Mode == TIMEMACHINE {
+				if v.Mode == types.TIMEMACHINE {
 					tbucket = NewTimeMachine(h)
-				} else if v.Mode == LIVE {
+				} else if v.Mode == types.LIVE {
 					tbucket = NewLeaky(h)
 				} else {
 					log.Errorf("Unknown bucket type : %d", v.Mode)

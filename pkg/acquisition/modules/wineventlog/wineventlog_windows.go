@@ -18,7 +18,6 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -73,7 +72,7 @@ func logLevelToInt(logLevel string) ([]string, error) {
 	}
 }
 
-//This is lifted from winops/winlog, but we only want to render the basic XML string, we don't need the extra fluff
+// This is lifted from winops/winlog, but we only want to render the basic XML string, we don't need the extra fluff
 func (w *WinEventLogSource) getXMLEvents(config *winlog.SubscribeConfig, publisherCache map[string]windows.Handle, resultSet windows.Handle, maxEvents int) ([]string, error) {
 	var events = make([]windows.Handle, maxEvents)
 	var returned uint32
@@ -196,9 +195,9 @@ func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error 
 					l.Src = w.name
 					l.Process = true
 					if !w.config.UseTimeMachine {
-						out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
+						out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE}
 					} else {
-						out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.TIMEMACHINE}
+						out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
 					}
 				}
 			}

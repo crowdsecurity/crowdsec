@@ -75,8 +75,12 @@ func runExplain(cmd *cobra.Command, args []string) error {
 	}
 
 	var f *os.File
-	dir := os.TempDir()
 
+	// using empty string fallback to /tmp
+	dir, err := os.MkdirTemp("", "cscli_explain")
+	if err != nil {
+		return fmt.Errorf("couldn't create a temporary directory to store cscli explain result: %s", err)
+	}
 	tmpFile := ""
 	// we create a  temporary log file if a log line/stdin has been provided
 	if logLine != "" || logFile == "-" {
@@ -129,9 +133,8 @@ func runExplain(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no acquisition (--file or --dsn) provided, can't run cscli test")
 	}
 
-	cmdArgs := []string{"-c", ConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", "./", "-no-api"}
+	cmdArgs := []string{"-c", ConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", dir, "-no-api"}
 	crowdsecCmd := exec.Command(crowdsec, cmdArgs...)
-	crowdsecCmd.Dir = dir
 	output, err := crowdsecCmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(string(output))
@@ -158,6 +161,10 @@ func runExplain(cmd *cobra.Command, args []string) error {
 	}
 
 	hubtest.DumpTree(*parserDump, *bucketStateDump, opts)
+
+	if err := os.RemoveAll(dir); err != nil {
+		return fmt.Errorf("unable to delete temporary directory '%s': %s", dir, err)
+	}
 
 	return nil
 }

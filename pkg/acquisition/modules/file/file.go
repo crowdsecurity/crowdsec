@@ -22,7 +22,6 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -228,12 +227,12 @@ func (f *FileSource) GetMode() string {
 	return f.config.Mode
 }
 
-//SupportedModes returns the supported modes by the acquisition module
+// SupportedModes returns the supported modes by the acquisition module
 func (f *FileSource) SupportedModes() []string {
 	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
 }
 
-//OneShotAcquisition reads a set of file and returns when done
+// OneShotAcquisition reads a set of file and returns when done
 func (f *FileSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	f.logger.Debug("In oneshot")
 	for _, file := range f.files {
@@ -432,7 +431,7 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 				return err
 			}
 			return nil
-		case <-tail.Tomb.Dying(): //our tailer is dying
+		case <-tail.Dying(): //our tailer is dying
 			logger.Warningf("File reader of %s died", tail.Filename)
 			t.Kill(fmt.Errorf("dead reader for %s", tail.Filename))
 			return fmt.Errorf("reader for %s is dead", tail.Filename)
@@ -460,9 +459,9 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 			//we're tailing, it must be real time logs
 			logger.Debugf("pushing %+v", l)
 
-			expectMode := leaky.LIVE
+			expectMode := types.LIVE
 			if f.config.UseTimeMachine {
-				expectMode = leaky.TIMEMACHINE
+				expectMode = types.TIMEMACHINE
 			}
 			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: expectMode}
 		}
@@ -508,7 +507,7 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 		linesRead.With(prometheus.Labels{"source": filename}).Inc()
 
 		//we're reading logs at once, it must be time-machine buckets
-		out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.TIMEMACHINE}
+		out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
 	}
 	t.Kill(nil)
 	return nil

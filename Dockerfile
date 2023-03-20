@@ -17,12 +17,13 @@ RUN apk add --no-cache git gcc libc-dev make bash gettext binutils-gold coreutil
     cscli hub update && \
     cscli collections install crowdsecurity/linux && \
     cscli parsers install crowdsecurity/whitelists && \
-    go install github.com/mikefarah/yq/v4@v4.30.6
+    go install github.com/mikefarah/yq/v4@v4.31.2
 
 FROM alpine:latest as slim
 
 RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community tzdata bash && \
     mkdir -p /staging/etc/crowdsec && \
+    mkdir -p /staging/etc/crowdsec/acquis.d && \
     mkdir -p /staging/var/lib/crowdsec && \
     mkdir -p /var/lib/crowdsec/data
 

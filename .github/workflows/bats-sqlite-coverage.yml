@@ -8,8 +8,11 @@ env:
   TEST_COVERAGE: true
 
 jobs:
-
   build:
+    strategy:
+      matrix:
+        go-version: ["1.20.1"]
+
     name: "Build + tests"
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -21,17 +24,28 @@ jobs:
           sudo chmod +w /etc/machine-id
           echo githubciXXXXXXXXXXXXXXXXXXXXXXXX | sudo tee /etc/machine-id
 
-    - name: "Set up Go 1.20"
+    - name: "Set up Go ${{ matrix.go-version }}"
       uses: actions/setup-go@v3
       with:
-        go-version: 1.20.1
-      id: go
+        go-version: ${{ matrix.go-version }}
 
     - name: "Check out CrowdSec repository"
       uses: actions/checkout@v3
       with:
         fetch-depth: 0
         submodules: true
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+          ~/Library/Caches/go-build
+          %LocalAppData%\go-build
+        key: ${{ runner.os }}-${{ matrix.go-version }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.go-version }}-go-
 
     - name: "Install bats dependencies"
       env:
@@ -54,12 +68,12 @@ jobs:
     # In case you need to inspect the database status after the failure of a given test
     #
     # - name: "Run specified tests"
-    #   run: ./tests/run-tests tests/bats/<filename>.bats -f "<test name>"
+    #   run: ./test/run-tests test/bats/<filename>.bats -f "<test name>"
 
     - name: "Show database dump"
       run: |
-        ./tests/instance-crowdsec stop
-        sqlite3 ./tests/local/var/lib/crowdsec/data/crowdsec.db '.dump'
+        ./test/instance-crowdsec stop
+        sqlite3 ./test/local/var/lib/crowdsec/data/crowdsec.db '.dump'
       if: ${{ always() }}
 
     - name: "Show stack traces"
@@ -67,17 +81,17 @@ jobs:
       if: ${{ always() }}
 
     - name: "Show crowdsec logs"
-      run: for file in $(find ./tests/local/var/log -type f); do echo ">>>>> $file"; cat $file; echo; done
+      run: for file in $(find ./test/local/var/log -type f); do echo ">>>>> $file"; cat $file; echo; done
       if: ${{ always() }}
 
     - name: Upload crowdsec coverage to codecov
       uses: codecov/codecov-action@v3
       with:
-        files: ./tests/local/var/lib/coverage/coverage-crowdsec.out
+        files: ./test/local/var/lib/coverage/coverage-crowdsec.out
         flags: func-crowdsec
 
     - name: Upload cscli coverage to codecov
       uses: codecov/codecov-action@v3
       with:
-        files: ./tests/local/var/lib/coverage/coverage-cscli.out
+        files: ./test/local/var/lib/coverage/coverage-cscli.out
         flags: func-cscli

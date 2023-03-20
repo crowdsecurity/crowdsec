@@ -27,8 +27,6 @@ env:
   AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
   AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
   AWS_REGION: us-east-1
-  # and to override our endpoint in aws sdk
-  AWS_ENDPOINT_FORCE: http://localhost:4566
   KINESIS_INITIALIZE_STREAMS: "stream-1-shard:1,stream-2-shards:2"
   CROWDSEC_FEATURE_DISABLE_HTTP_RETRY_BACKOFF: true
 
@@ -116,7 +114,6 @@ jobs:
       uses: actions/setup-go@v3
       with:
         go-version: ${{ matrix.go-version }}
-      id: go
 
     - name: Check out CrowdSec repository
       uses: actions/checkout@v3
@@ -142,9 +139,7 @@ jobs:
         go install github.com/kyoh86/richgo@v0.3.10
         set -o pipefail
         make build
-        go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models \
-          | sed 's/ *coverage:.*of statements in.*//' \
-          | richgo testfilter
+        make go-acc | richgo testfilter
 
     - name: Build and run tests (static)
       run: |
@@ -157,3 +152,14 @@ jobs:
       with:
         files: coverage.out
         flags: unit-linux
+
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v3
+      with:
+        version: v1.51
+        args: --issues-exit-code=1 --timeout 10m
+        only-new-issues: false
+        # the cache is already managed above, enabling it here
+        # gives errors when extracting
+        skip-pkg-cache: true
+        skip-build-cache: true

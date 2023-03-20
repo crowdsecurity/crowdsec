@@ -124,7 +124,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 			Capacity:  &tcapacity,
 			CreatedAt: "2020-11-28T10:20:47+01:00",
 			Decisions: []*models.Decision{
-				&models.Decision{
+				{
 					Duration: &tduration,
 					ID:       1,
 					Origin:   &torigin,
@@ -137,7 +137,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 				},
 			},
 			Events: []*models.Event{
-				&models.Event{
+				{
 					Meta: models.Meta{
 						&models.MetaItems0{
 							Key:   "target_user",
@@ -149,8 +149,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 						},
 					},
 					Timestamp: &ttimestamp,
-				},
-				&models.Event{
+				}, {
 					Meta: models.Meta{
 						&models.MetaItems0{
 							Key:   "target_user",
@@ -323,7 +322,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 		Capacity:  &tcapacity,
 		CreatedAt: "2020-11-28T10:20:47+01:00",
 		Decisions: []*models.Decision{
-			&models.Decision{
+			{
 				Duration: &tduration,
 				ID:       1,
 				Origin:   &torigin,
@@ -336,7 +335,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 			},
 		},
 		Events: []*models.Event{
-			&models.Event{
+			{
 				Meta: models.Meta{
 					&models.MetaItems0{
 						Key:   "target_user",
@@ -348,8 +347,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 					},
 				},
 				Timestamp: &ttimestamp,
-			},
-			&models.Event{
+			}, {
 				Meta: models.Meta{
 					&models.MetaItems0{
 						Key:   "target_user",

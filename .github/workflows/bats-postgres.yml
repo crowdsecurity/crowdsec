@@ -39,7 +39,6 @@ jobs:
       uses: actions/setup-go@v3
       with:
         go-version: ${{ matrix.go-version }}
-      id: go
 
     - name: "Check out CrowdSec repository"
       uses: actions/checkout@v3
@@ -110,7 +109,7 @@ jobs:
       if: ${{ always() }}
 
     - name: "Show crowdsec logs"
-      run: for file in $(find ./tests/local/var/log -type f); do echo ">>>>> $file"; cat $file; echo; done
+      run: for file in $(find ./test/local/var/log -type f); do echo ">>>>> $file"; cat $file; echo; done
       if: ${{ always() }}
 
     - name: "Show database logs"

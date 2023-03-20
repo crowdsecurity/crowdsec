@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -243,9 +244,10 @@ type ParserResult struct {
 var ParseDump bool
 var DumpFolder string
 var StageParseCache map[string]map[string][]ParserResult
+var StageParseMutex sync.Mutex
 
 func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error) {
-	var event types.Event = xp
+	var event = xp
 
 	/* the stage is undefined, probably line is freshly acquired, set to first stage !*/
 	if event.Stage == "" && len(ctx.Stages) > 0 {
@@ -274,17 +276,21 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 
 	if ParseDump {
 		if StageParseCache == nil {
+			StageParseMutex.Lock()
 			StageParseCache = make(map[string]map[string][]ParserResult)
 			StageParseCache["success"] = make(map[string][]ParserResult)
 			StageParseCache["success"][""] = make([]ParserResult, 0)
+			StageParseMutex.Unlock()
 		}
 	}
 
 	for _, stage := range ctx.Stages {
 		if ParseDump {
+			StageParseMutex.Lock()
 			if _, ok := StageParseCache[stage]; !ok {
 				StageParseCache[stage] = make(map[string][]ParserResult)
 			}
+			StageParseMutex.Unlock()
 		}
 		/* if the node is forward in stages, seek to this stage */
 		/* this is for example used by testing system to inject logs in post-syslog-parsing phase*/
@@ -323,11 +329,15 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			clog.Tracef("node (%s) ret : %v", node.rn, ret)
 			if ParseDump {
 				if len(StageParseCache[stage][node.Name]) == 0 {
+					StageParseMutex.Lock()
 					StageParseCache[stage][node.Name] = make([]ParserResult, 0)
+					StageParseMutex.Unlock()
 				}
 				evtcopy := deepcopy.Copy(event)
 				parserInfo := ParserResult{Evt: evtcopy.(types.Event), Success: ret}
+				StageParseMutex.Lock()
 				StageParseCache[stage][node.Name] = append(StageParseCache[stage][node.Name], parserInfo)
+				StageParseMutex.Unlock()
 			}
 			if ret {
 				isStageOK = true

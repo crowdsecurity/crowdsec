@@ -24,7 +24,7 @@ func alertsTable(out io.Writer, alerts *models.GetAlertsResponse, printMachine b
 	for _, alertItem := range *alerts {
 		displayVal := *alertItem.Source.Scope
 		if len(alertItem.Decisions) > 1 {
-			displayVal = fmt.Sprintf("%d %ss", len(alertItem.Decisions), *alertItem.Decisions[0].Scope)
+			displayVal = fmt.Sprintf("%s (%d %ss)", *alertItem.Source.Scope, len(alertItem.Decisions), *alertItem.Decisions[0].Scope)
 		} else if *alertItem.Source.Value != "" {
 			displayVal += ":" + *alertItem.Source.Value
 		}

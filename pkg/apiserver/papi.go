@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"sync"
 	"time"
 
@@ -72,6 +73,16 @@ type Papi struct {
 	Logger        *log.Entry
 }
 
+type PapiPermCheckError struct {
+	Error string `json:"error"`
+}
+
+type PapiPermCheckSuccess struct {
+	Status     string   `json:"status"`
+	Plan       string   `json:"plan"`
+	Categories []string `json:"categories"`
+}
+
 func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig, logLevel log.Level) (*Papi, error) {
 
 	logger := logrus.New()
@@ -80,8 +91,10 @@ func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.Cons
 	}
 	logger.SetLevel(logLevel)
 
+	papiUrl := *apic.apiClient.PapiURL
+	papiUrl.Path = fmt.Sprintf("%s%s", types.PAPIVersion, types.PAPIPollUrl)
 	longPollClient, err := longpollclient.NewLongPollClient(longpollclient.LongPollClientConfig{
-		Url:        *apic.apiClient.PapiURL,
+		Url:        papiUrl,
 		Logger:     logger,
 		HttpClient: apic.apiClient.GetClient(),
 	})
@@ -110,6 +123,94 @@ func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.Cons
 	}
 
 	return papi, nil
+}
+
+func (p *Papi) handleEvent(event longpollclient.Event) error {
+	logger := p.Logger.WithField("request-id", event.RequestId)
+	logger.Debugf("message received: %+v", event.Data)
+	message := &Message{}
+	if err := json.Unmarshal([]byte(event.Data), message); err != nil {
+		return fmt.Errorf("polling papi message format is not compatible: %+v: %s", event.Data, err)
+	}
+	if message.Header == nil {
+		return fmt.Errorf("no header in message, skipping")
+	}
+	if message.Header.Source == nil {
+		return fmt.Errorf("no source user in header message, skipping")
+	}
+
+	if operationFunc, ok := operationMap[message.Header.OperationType]; ok {
+		logger.Debugf("Calling operation '%s'", message.Header.OperationType)
+		err := operationFunc(message, p)
+		if err != nil {
+			return fmt.Errorf("'%s %s failed: %s", message.Header.OperationType, message.Header.OperationCmd, err)
+		}
+	} else {
+		return fmt.Errorf("operation '%s' unknown, continue", message.Header.OperationType)
+	}
+	return nil
+}
+
+func (p *Papi) GetPermissions() (PapiPermCheckSuccess, error) {
+	httpClient := p.apiClient.GetClient()
+	papiCheckUrl := fmt.Sprintf("%s%s%s", p.URL, types.PAPIVersion, types.PAPIPermissionsUrl)
+	req, err := http.NewRequest(http.MethodGet, papiCheckUrl, nil)
+	if err != nil {
+		return PapiPermCheckSuccess{}, fmt.Errorf("failed to create request : %s", err)
+	}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		log.Fatalf("failed to get response : %s", err)
+	}
+
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		errResp := PapiPermCheckError{}
+		err = json.NewDecoder(resp.Body).Decode(&errResp)
+		if err != nil {
+			return PapiPermCheckSuccess{}, fmt.Errorf("failed to decode response : %s", err)
+		}
+		return PapiPermCheckSuccess{}, fmt.Errorf("unable to query PAPI : %s (%d)", errResp.Error, resp.StatusCode)
+	}
+	respBody := PapiPermCheckSuccess{}
+	err = json.NewDecoder(resp.Body).Decode(&respBody)
+	if err != nil {
+		return PapiPermCheckSuccess{}, fmt.Errorf("failed to decode response : %s", err)
+	}
+	return respBody, nil
+}
+
+func reverse(s []longpollclient.Event) []longpollclient.Event {
+	a := make([]longpollclient.Event, len(s))
+	copy(a, s)
+
+	for i := len(a)/2 - 1; i >= 0; i-- {
+		opp := len(a) - 1 - i
+		a[i], a[opp] = a[opp], a[i]
+	}
+
+	return a
+}
+
+func (p *Papi) PullOnce(since time.Time) error {
+	events, err := p.Client.PullOnce(since)
+	if err != nil {
+		return err
+	}
+
+	reversedEvents := reverse(events) //PAPI sends events in the reverse order, which is not an issue when pulling them in real time, but here we need the correct order
+	eventsCount := len(events)
+	p.Logger.Infof("received %d events", eventsCount)
+	for i, event := range reversedEvents {
+		if err := p.handleEvent(event); err != nil {
+			p.Logger.WithField("request-id", event.RequestId).Errorf("failed to handle event: %s", err)
+		}
+		p.Logger.Debugf("handled event %d/%d", i, eventsCount)
+	}
+	p.Logger.Debugf("finished handling events")
+	//Don't update the timestamp in DB, as a "real" LAPI might be running
+	//Worst case, crowdsec will receive a few duplicated events and will discard them
+	return nil
 }
 
 // PullPAPI is the long polling client for real-time decisions from PAPI
@@ -149,33 +250,10 @@ func (p *Papi) Pull() error {
 		if err != nil {
 			return errors.Wrap(err, "failed to marshal last timestamp")
 		}
-		logger.Debugf("message received: %+v", event.Data)
-		message := &Message{}
-		if err := json.Unmarshal([]byte(event.Data), message); err != nil {
-			logger.Errorf("polling papi message format is not compatible: %+v: %s", event.Data, err)
-			// do we want to continue or exit ?
-			continue
-		}
 
-		if message.Header == nil {
-			logger.Errorf("no header in message, skipping")
-			continue
-		}
-
-		if message.Header.Source == nil {
-			logger.Errorf("no source user in header message, skipping")
-			continue
-		}
-
-		if operationFunc, ok := operationMap[message.Header.OperationType]; ok {
-			logger.Debugf("Calling operation '%s'", message.Header.OperationType)
-			err := operationFunc(message, p)
-			if err != nil {
-				logger.Errorf("'%s %s failed: %s", message.Header.OperationType, message.Header.OperationCmd, err)
-				continue
-			}
-		} else {
-			logger.Errorf("operation '%s' unknown, continue", message.Header.OperationType)
+		err = p.handleEvent(event)
+		if err != nil {
+			logger.Errorf("failed to handle event: %s", err)
 			continue
 		}
 
@@ -215,7 +293,7 @@ func (p *Papi) SyncDecisions() error {
 				go p.SendDeletedDecisions(&cacheCopy)
 			}
 		case deletedDecisions := <-p.Channels.DeleteDecisionChannel:
-			if (p.consoleConfig.ShareManualDecisions != nil && *p.consoleConfig.ShareManualDecisions) || (p.consoleConfig.ReceiveDecisions != nil && *p.consoleConfig.ReceiveDecisions) {
+			if (p.consoleConfig.ShareManualDecisions != nil && *p.consoleConfig.ShareManualDecisions) || (p.consoleConfig.ConsoleManagement != nil && *p.consoleConfig.ConsoleManagement) {
 				var tmpDecisions []models.DecisionsDeleteRequestItem
 				p.Logger.Debugf("%d decisions deletion to add in cache", len(deletedDecisions))
 				for _, decision := range deletedDecisions {
@@ -260,4 +338,10 @@ func (p *Papi) SendDeletedDecisions(cacheOrig *models.DecisionsDeleteRequest) {
 		pageStart += bulkSize
 		pageEnd += bulkSize
 	}
+}
+
+func (p *Papi) Shutdown() {
+	p.Logger.Infof("Shutting down PAPI")
+	p.syncTomb.Kill(nil)
+	p.Client.Stop()
 }

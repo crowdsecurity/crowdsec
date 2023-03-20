@@ -57,7 +57,7 @@ func GenDateParse(date string) (string, time.Time) {
 
 func ParseDate(in string, p *types.Event, x interface{}, plog *log.Entry) (map[string]string, error) {
 
-	var ret map[string]string = make(map[string]string)
+	var ret = make(map[string]string)
 	var strDate string
 	var parsedDate time.Time
 	if in != "" {
@@ -72,13 +72,22 @@ func ParseDate(in string, p *types.Event, x interface{}, plog *log.Entry) (map[s
 		strDate, parsedDate = GenDateParse(in)
 		if !parsedDate.IsZero() {
 			ret["MarshaledTime"] = strDate
+			//In time machine, we take the time parsed from the event. In live mode, we keep the timestamp collected at acquisition
+			if p.ExpectMode == types.TIMEMACHINE {
+				p.Time = parsedDate
+			}
 			return ret, nil
 		}
-		strDate = expr.ParseUnix(in)
-		if strDate != "" {
-			ret["MarshaledTime"] = strDate
+		timeobj, err := expr.ParseUnixTime(in)
+		if err == nil {
+			ret["MarshaledTime"] = timeobj.Format(time.RFC3339)
+			//In time machine, we take the time parsed from the event. In live mode, we keep the timestamp collected at acquisition
+			if p.ExpectMode == types.TIMEMACHINE {
+				p.Time = timeobj
+			}
 			return ret, nil
 		}
+
 	}
 	plog.Debugf("no suitable date format found for '%s', falling back to now", in)
 	now := time.Now().UTC()

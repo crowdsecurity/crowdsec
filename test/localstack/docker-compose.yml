@@ -1,0 +1,79 @@
+version: "3.8"
+
+services:
+  localstack:
+    container_name: localstack_main
+    image: localstack/localstack:1.3.0
+    network_mode: bridge
+    ports:
+      - "127.0.0.1:53:53"                # only required for Pro (DNS)
+      - "127.0.0.1:53:53/udp"            # only required for Pro (DNS)
+      - "127.0.0.1:443:443"              # only required for Pro (LocalStack HTTPS Edge Proxy)
+      - "127.0.0.1:4510-4559:4510-4559"  # external service port range
+      - "127.0.0.1:4566:4566"            # LocalStack Edge Proxy
+    environment:
+      AWS_HOST: localstack
+      DEBUG: ""
+      LAMBDA_EXECUTOR: ""
+      KINESYS_ERROR_PROBABILITY: ""
+      DOCKER_HOST: "unix://var/run/docker.sock"
+      KINESIS_INITIALIZE_STREAMS: "stream-1-shard:1,stream-2-shards:2"
+      HOSTNAME_EXTERNAL: "localstack"
+      AWS_ACCESS_KEY_ID: "AKIAIOSFODNN7EXAMPLE"
+      AWS_SECRET_ACCESS_KEY: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+      AWS_REGION: "us-east-1"
+
+    volumes:
+      - "${TMPDIR:-/tmp}/localstack:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+
+  zoo1:
+    image: confluentinc/cp-zookeeper:7.3.0
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_SERVERS: zoo1:2888:3888
+
+    healthcheck:
+      test: jps -l | grep zookeeper
+      interval: 10s
+      retries: 5
+      timeout: 5s
+
+  kafka1:
+    image: crowdsecurity/kafka-ssl
+    ports:
+      - "9093:9093"
+      - "9092:9092"
+      - "9999:9999"
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://127.0.0.1:19092,LISTENER_DOCKER_EXTERNAL://127.0.0.1:9092,LISTENER_DOCKER_EXTERNAL_SSL://127.0.0.1:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL_SSL:SSL
+      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
+      KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181"
+      KAFKA_BROKER_ID: 1
+      KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_JMX_PORT: 9999
+      KAFKA_JMX_HOSTNAME: "127.0.0.1"
+      KAFKA_AUTHORIZER_CLASS_NAME: kafka.security.authorizer.AclAuthorizer
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+      KAFKA_SSL_KEYSTORE_FILENAME: kafka.kafka1.keystore.jks
+      KAFKA_SSL_KEYSTORE_CREDENTIALS: kafka1_keystore_creds
+      KAFKA_SSL_KEY_CREDENTIALS: kafka1_sslkey_creds
+      KAFKA_SSL_TRUSTSTORE_FILENAME: kafka.kafka1.truststore.jks
+      KAFKA_SSL_TRUSTSTORE_CREDENTIALS: kafka1_truststore_creds
+      KAFKA_SSL_ENABLED_PROTOCOLS: TLSv1.2
+      KAFKA_SSL_PROTOCOL: TLSv1.2
+      KAFKA_SSL_CLIENT_AUTH: none
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+    healthcheck:
+      test: kafka-broker-api-versions --version
+      interval: 10s
+      retries: 5
+      timeout: 10s

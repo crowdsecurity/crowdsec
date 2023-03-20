@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/fatih/color"
@@ -135,25 +136,35 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 	return nil
 }
 
+var alertTemplate = `
+################################################################################################
+
+ - ID           : {{.ID}}
+ - Date         : {{.CreatedAt}}
+ - Machine      : {{.MachineID}}
+ - Simulation   : {{.Simulated}}
+ - Reason       : {{.Scenario}}
+ - Events Count : {{.EventsCount}}
+ - Scope:Value  : {{.Source.Scope}}{{if .Source.Value}}:{{.Source.Value}}{{end}}
+ - Country      : {{.Source.Cn}}
+ - AS           : {{.Source.AsName}}
+ - Begin        : {{.StartAt}}
+ - End          : {{.StopAt}}
+ - UUID         : {{.UUID}}
+
+`
+
+
 func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 	if csConfig.Cscli.Output == "human" {
-		fmt.Printf("\n################################################################################################\n\n")
-		scopeAndValue := *alert.Source.Scope
-		if *alert.Source.Value != "" {
-			scopeAndValue += ":" + *alert.Source.Value
+		tmpl, err := template.New("alert").Parse(alertTemplate)
+		if err != nil {
+			return err
 		}
-		fmt.Printf(" - ID           : %d\n", alert.ID)
-		fmt.Printf(" - Date         : %s\n", alert.CreatedAt)
-		fmt.Printf(" - Machine      : %s\n", alert.MachineID)
-		fmt.Printf(" - Simulation   : %v\n", *alert.Simulated)
-		fmt.Printf(" - Reason       : %s\n", *alert.Scenario)
-		fmt.Printf(" - Events Count : %d\n", *alert.EventsCount)
-		fmt.Printf(" - Scope:Value  : %s\n", scopeAndValue)
-		fmt.Printf(" - Country      : %s\n", alert.Source.Cn)
-		fmt.Printf(" - AS           : %s\n", alert.Source.AsName)
-		fmt.Printf(" - Begin        : %s\n", *alert.StartAt)
-		fmt.Printf(" - End          : %s\n", *alert.StopAt)
-		fmt.Printf(" - UUID         : %s\n\n", alert.UUID)
+		err = tmpl.Execute(os.Stdout, alert)
+		if err != nil {
+			return err
+		}
 
 		alertDecisionsTable(color.Output, alert)
 
