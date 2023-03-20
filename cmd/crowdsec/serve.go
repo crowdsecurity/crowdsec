@@ -218,9 +218,11 @@ func HandleSignals(cConfig *csconfig.Config) error {
 		err       error
 	)
 
+	signalChan := make(chan os.Signal, 1)
+
 	// We add os.Interrupt mostly to ease windows development,
 	// it allows to simulate a clean shutdown when running in the console
-	signal.Notify(types.SignalChan,
+	signal.Notify(signalChan,
 		syscall.SIGHUP,
 		syscall.SIGTERM,
 		os.Interrupt)
@@ -231,7 +233,7 @@ func HandleSignals(cConfig *csconfig.Config) error {
 		defer types.CatchPanic("crowdsec/HandleSignals")
 	Loop:
 		for {
-			s := <-types.SignalChan
+			s := <-signalChan
 			switch s {
 			// kill -SIGHUP XXXX
 			case syscall.SIGHUP:
@@ -354,7 +356,6 @@ func Serve(cConfig *csconfig.Config, apiReady chan bool, agentReady chan bool) e
 		if !sent || err != nil {
 			log.Errorf("Failed to notify(sent: %v): %v", sent, err)
 		}
-		types.SignalChan = make(chan os.Signal, 1)
 		// wait for signals
 		return HandleSignals(cConfig)
 	}

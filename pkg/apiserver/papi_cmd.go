@@ -3,7 +3,6 @@ package apiserver
 import (
 	"encoding/json"
 	"fmt"
-	"syscall"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -142,10 +141,6 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 	case "reauth":
 		log.Infof("Received reauth command from PAPI, resetting token")
 		p.apiClient.GetClient().Transport.(*apiclient.JWTTransport).ResetToken()
-	case "reload":
-		log.Infof("Received reload command from PAPI, reloading configuration")
-		//We cannot send ourselves a SIGHUP to reload, as this is not supported on Windows, so we manually write to the signal chan :(
-		types.SignalChan <- syscall.SIGHUP
 	case "force_pull":
 		log.Infof("Received force_pull command from PAPI, pulling community and 3rd-party blocklists")
 		err := p.apic.PullTop(true)
