@@ -602,32 +602,34 @@ func (a *apic) ApplyApicWhitelists(decisions []*models.Decision) []*models.Decis
 	//deal with CAPI whitelists for fire. We want to avoid having a second list, so we shrink in place
 	outIdx := 0
 	for _, decision := range decisions {
-		if decision.Value != nil {
-			skip := false
-			ipval := net.ParseIP(*decision.Value)
-			for _, cidr := range a.whitelists.Cidrs {
-				if skip {
-					break
-				}
-				if cidr.Contains(ipval) {
-					log.Infof("%s from %s is whitelisted by %s", *decision.Value, *decision.Scenario, cidr.String())
-					skip = true
-				}
+		if decision.Value == nil {
+			continue
+		}
+		skip := false
+		ipval := net.ParseIP(*decision.Value)
+		for _, cidr := range a.whitelists.Cidrs {
+			if skip {
+				break
 			}
-			for _, ip := range a.whitelists.Ips {
-				if skip {
-					break
-				}
-				if ip != nil && ip.Equal(ipval) {
-					log.Infof("%s from %s is whitelisted by %s", *decision.Value, *decision.Scenario, ip.String())
-					skip = true
-				}
-			}
-			if !skip {
-				decisions[outIdx] = decision
-				outIdx++
+			if cidr.Contains(ipval) {
+				log.Infof("%s from %s is whitelisted by %s", *decision.Value, *decision.Scenario, cidr.String())
+				skip = true
 			}
 		}
+		for _, ip := range a.whitelists.Ips {
+			if skip {
+				break
+			}
+			if ip != nil && ip.Equal(ipval) {
+				log.Infof("%s from %s is whitelisted by %s", *decision.Value, *decision.Scenario, ip.String())
+				skip = true
+			}
+		}
+		if !skip {
+			decisions[outIdx] = decision
+			outIdx++
+		}
+
 	}
 	//shrink the list, those are deleted items
 	decisions = decisions[:outIdx]
