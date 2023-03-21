@@ -1100,72 +1100,105 @@ func TestParseUnixTime(t *testing.T) {
 }
 
 func TestIsIp(t *testing.T) {
+	if err := Init(nil); err != nil {
+		log.Fatal(err)
+	}
 	tests := []struct {
-		name     string
-		method   func(...any) (any, error)
-		value    string
-		expected bool
+		name             string
+		expr             string
+		value            string
+		expected         bool
+		expectedBuildErr bool
 	}{
 		{
 			name:     "IsIPV4() test: valid IPv4",
-			method:   IsIPV4,
+			expr:     `IsIPV4(value)`,
 			value:    "1.2.3.4",
 			expected: true,
 		},
 		{
 			name:     "IsIPV6() test: valid IPv6",
-			method:   IsIPV6,
+			expr:     `IsIPV6(value)`,
 			value:    "1.2.3.4",
 			expected: false,
 		},
 		{
 			name:     "IsIPV6() test: valid IPv6",
-			method:   IsIPV6,
+			expr:     `IsIPV6(value)`,
 			value:    "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
 			expected: true,
 		},
 		{
 			name:     "IsIPV4() test: valid IPv6",
-			method:   IsIPV4,
+			expr:     `IsIPV4(value)`,
 			value:    "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
 			expected: false,
 		},
 		{
 			name:     "IsIP() test: invalid IP",
-			method:   IsIP,
+			expr:     `IsIP(value)`,
 			value:    "foo.bar",
 			expected: false,
 		},
 		{
 			name:     "IsIP() test: valid IPv4",
-			method:   IsIP,
+			expr:     `IsIP(value)`,
 			value:    "1.2.3.4",
 			expected: true,
 		},
 		{
 			name:     "IsIP() test: valid IPv6",
-			method:   IsIP,
+			expr:     `IsIP(value)`,
 			value:    "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
 			expected: true,
 		},
 		{
 			name:     "IsIPV4() test: invalid IPv4",
-			method:   IsIPV4,
+			expr:     `IsIPV4(value)`,
 			value:    "foo.bar",
 			expected: false,
 		},
 		{
 			name:     "IsIPV6() test: invalid IPv6",
-			method:   IsIPV6,
+			expr:     `IsIPV6(value)`,
 			value:    "foo.bar",
 			expected: false,
+		},
+		{
+			name:             "IsIPV4() test: invalid type",
+			expr:             `IsIPV4(42)`,
+			value:            "",
+			expected:         false,
+			expectedBuildErr: true,
+		},
+		{
+			name:             "IsIP() test: invalid type",
+			expr:             `IsIP(42)`,
+			value:            "",
+			expected:         false,
+			expectedBuildErr: true,
+		},
+		{
+			name:             "IsIPV6() test: invalid type",
+			expr:             `IsIPV6(42)`,
+			value:            "",
+			expected:         false,
+			expectedBuildErr: true,
 		},
 	}
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			output, _ := tc.method(tc.value)
-			require.Equal(t, tc.expected, output)
+			vm, err := expr.Compile(tc.expr, GetExprOptions(map[string]interface{}{"value": tc.value})...)
+			if tc.expectedBuildErr {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			output, err := expr.Run(vm, GetExprEnv(map[string]interface{}{"value": tc.value}))
+			assert.NoError(t, err)
+			assert.IsType(t, tc.expected, output)
+			assert.Equal(t, tc.expected, output.(bool))
 		})
 	}
 }
