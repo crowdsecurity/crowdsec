@@ -716,7 +716,7 @@ func IpInRange(params ...any) (any, error) {
 	}
 	if _, ipRangeParsed, err = net.ParseCIDR(ipRange); err != nil {
 		log.Debugf("'%s' is not a valid IP Range", ipRange)
-		return false, nil
+		return false, nil //nolint:nilerr //This helper did not return an error before the move to expr.Function, we keep this behavior for backward compatibility
 	}
 	if ipRangeParsed.Contains(ipParsed) {
 		return true, nil
@@ -767,7 +767,7 @@ func IpToRange(params ...any) (any, error) {
 	mask, err := strconv.Atoi(cidr)
 	if err != nil {
 		log.Errorf("bad cidr '%s': %s", cidr, err)
-		return "", nil
+		return "", nil //nolint:nilerr //This helper did not return an error before the move to expr.Function, we keep this behavior for backward compatibility
 	}
 
 	ipAddr := net.ParseIP(ip)
@@ -827,7 +827,7 @@ func GetDecisionsCount(params ...any) (any, error) {
 	count, err := dbClient.CountDecisionsByValue(value)
 	if err != nil {
 		log.Errorf("Failed to get decisions count from value '%s'", value)
-		return 0, nil
+		return 0, nil //nolint:nilerr //This helper did not return an error before the move to expr.Function, we keep this behavior for backward compatibility
 	}
 	return count, nil
 }
@@ -843,13 +843,13 @@ func GetDecisionsSinceCount(params ...any) (any, error) {
 	sinceDuration, err := time.ParseDuration(since)
 	if err != nil {
 		log.Errorf("Failed to parse since parameter '%s' : %s", since, err)
-		return 0, nil
+		return 0, nil //nolint:nilerr //This helper did not return an error before the move to expr.Function, we keep this behavior for backward compatibility
 	}
 	sinceTime := time.Now().UTC().Add(-sinceDuration)
 	count, err := dbClient.CountDecisionsSinceByValue(value, sinceTime)
 	if err != nil {
 		log.Errorf("Failed to get decisions count from value '%s'", value)
-		return 0, nil
+		return 0, nil //nolint:nilerr //This helper did not return an error before the move to expr.Function, we keep this behavior for backward compatibility
 	}
 	return count, nil
 }
