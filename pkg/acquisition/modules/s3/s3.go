@@ -416,6 +416,10 @@ func (s *S3Source) UnmarshalConfig(yamlConfig []byte) error {
 		return fmt.Errorf("invalid polling method %s", s.Config.PollingMethod)
 	}
 
+	if s.Config.BucketName != "" && s.Config.SQSName != "" {
+		return fmt.Errorf("bucket_name and sqs_name are mutually exclusive")
+	}
+
 	if s.Config.PollingMethod == PollMethodSQS && s.Config.SQSName == "" {
 		return fmt.Errorf("sqs_name is required when using sqs polling method")
 	}
