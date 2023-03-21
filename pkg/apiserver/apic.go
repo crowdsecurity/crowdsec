@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -60,6 +61,7 @@ type apic struct {
 	credentials   *csconfig.ApiCredentialsCfg
 	scenarioList  []string
 	consoleConfig *csconfig.ConsoleConfig
+	whitelists    *csconfig.CapiWhitelist
 }
 
 // randomDuration returns a duration value between d-delta and d+delta
@@ -149,7 +151,7 @@ func alertToSignal(alert *models.Alert, scenarioTrust string, shareContext bool)
 	return signal
 }
 
-func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig) (*apic, error) {
+func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig, apicWhitelist *csconfig.CapiWhitelist) (*apic, error) {
 	var err error
 	ret := &apic{
 
@@ -169,6 +171,7 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 		pushIntervalFirst:    randomDuration(pushIntervalDefault, pushIntervalDelta),
 		metricsInterval:      metricsIntervalDefault,
 		metricsIntervalFirst: randomDuration(metricsIntervalDefault, metricsIntervalDelta),
+		whitelists:           apicWhitelist,
 	}
 
 	password := strfmt.Password(config.Credentials.Password)
@@ -573,6 +576,9 @@ func (a *apic) PullTop() error {
 
 	// create one alert for community blocklist using the first decision
 	decisions := a.apiClient.Decisions.GetDecisionsFromGroups(data.New)
+	//apply APIC specific whitelists
+	decisions = a.ApplyApicWhitelists(decisions)
+
 	alert := createAlertForDecision(decisions[0])
 	alertsFromCapi := []*models.Alert{alert}
 	alertsFromCapi = fillAlertsWithDecisions(alertsFromCapi, decisions, add_counters)
@@ -587,6 +593,47 @@ func (a *apic) PullTop() error {
 		return errors.Wrap(err, "while updating blocklists")
 	}
 	return nil
+}
+
+func (a *apic) ApplyApicWhitelists(decisions []*models.Decision) []*models.Decision {
+	if a.whitelists == nil {
+		return decisions
+	}
+	//deal with CAPI whitelists for fire. We want to avoid having a second list, so we shrink in place
+	outIdx := 0
+	for _, decision := range decisions {
+		if decision.Value == nil {
+			continue
+		}
+		skip := false
+		ipval := net.ParseIP(*decision.Value)
+		for _, cidr := range a.whitelists.Cidrs {
+			if skip {
+				break
+			}
+			if cidr.Contains(ipval) {
+				log.Infof("%s from %s is whitelisted by %s", *decision.Value, *decision.Scenario, cidr.String())
+				skip = true
+			}
+		}
+		for _, ip := range a.whitelists.Ips {
+			if skip {
+				break
+			}
+			if ip != nil && ip.Equal(ipval) {
+				log.Infof("%s from %s is whitelisted by %s", *decision.Value, *decision.Scenario, ip.String())
+				skip = true
+			}
+		}
+		if !skip {
+			decisions[outIdx] = decision
+			outIdx++
+		}
+
+	}
+	//shrink the list, those are deleted items
+	decisions = decisions[:outIdx]
+	return decisions
 }
 
 func (a *apic) SaveAlerts(alertsFromCapi []*models.Alert, add_counters map[string]map[string]int, delete_counters map[string]map[string]int) error {
@@ -690,6 +737,8 @@ func (a *apic) UpdateBlocklists(links *modelscapi.GetDecisionsStreamResponseLink
 			log.Infof("blocklist %s has no decisions", *blocklist.Name)
 			continue
 		}
+		//apply APIC specific whitelists
+		decisions = a.ApplyApicWhitelists(decisions)
 		alert := createAlertForDecision(decisions[0])
 		alertsFromCapi := []*models.Alert{alert}
 		alertsFromCapi = fillAlertsWithDecisions(alertsFromCapi, decisions, add_counters)

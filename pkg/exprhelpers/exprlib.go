@@ -398,6 +398,13 @@ var exprFuncs = []exprCustomFunc{
 			new(func(interface{}) string),
 		},
 	},
+	{
+		name:     "Match",
+		function: Match,
+		signature: []interface{}{
+			new(func(string, string) bool),
+		},
+	},
 }
 
 //go 1.20 "CutPrefix":              strings.CutPrefix,
@@ -909,4 +916,35 @@ func SetInStash(params ...any) (any, error) {
 func Sprintf(params ...any) (any, error) {
 	format := params[0].(string)
 	return fmt.Sprintf(format, params[1:]...), nil
+}
+
+// func Match(pattern, name string) bool {
+func Match(params ...any) (any, error) {
+	var matched bool
+
+	pattern := params[0].(string)
+	name := params[1].(string)
+
+	if pattern == "" {
+		return name == "", nil
+	}
+	if name == "" {
+		if pattern == "*" || pattern == "" {
+			return true, nil
+		}
+		return false, nil
+	}
+	if pattern[0] == '*' {
+		for i := 0; i <= len(name); i++ {
+			matched, _ := Match(pattern[1:], name[i:])
+			if matched.(bool) {
+				return matched, nil
+			}
+		}
+		return matched, nil
+	}
+	if pattern[0] == '?' || pattern[0] == name[0] {
+		return Match(pattern[1:], name[1:])
+	}
+	return matched, nil
 }

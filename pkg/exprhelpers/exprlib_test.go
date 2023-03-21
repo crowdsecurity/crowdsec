@@ -125,6 +125,38 @@ func TestVisitor(t *testing.T) {
 	}
 }
 
+func TestMatch(t *testing.T) {
+	tests := []struct {
+		glob string
+		val  string
+		ret  bool
+	}{
+		{"foo", "foo", true},
+		{"foo", "bar", false},
+		{"foo*", "foo", true},
+		{"foo*", "foobar", true},
+		{"foo*", "barfoo", false},
+		{"foo*", "bar", false},
+		{"*foo", "foo", true},
+		{"*foo", "barfoo", true},
+		{"foo*r", "foobar", true},
+		{"foo*r", "foobazr", true},
+		{"foo?ar", "foobar", true},
+		{"foo?ar", "foobazr", false},
+		{"foo?ar", "foobaz", false},
+		{"*foo?ar?", "foobar", false},
+		{"*foo?ar?", "foobare", true},
+		{"*foo?ar?", "rafoobar", false},
+		{"*foo?ar?", "rafoobare", true},
+	}
+	for _, test := range tests {
+		ret, _ := Match(test.glob, test.val)
+		if isOk := assert.Equal(t, test.ret, ret); !isOk {
+			t.Fatalf("pattern:%s val:%s NOK %t !=  %t", test.glob, test.val, ret, test.ret)
+		}
+	}
+}
+
 func TestDistanceHelper(t *testing.T) {
 
 	//one set of coord is empty
