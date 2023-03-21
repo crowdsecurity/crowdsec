@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -525,6 +526,188 @@ func TestFillAlertsWithDecisions(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAPICWhitelists(t *testing.T) {
+	api := getAPIC(t)
+	//one whitelist on IP, one on CIDR
+	api.whitelists = &csconfig.CapiWhitelist{}
+	ipwl1 := "9.2.3.4"
+	ip := net.ParseIP(ipwl1)
+	api.whitelists.Ips = append(api.whitelists.Ips, ip)
+	ipwl1 = "7.2.3.4"
+	ip = net.ParseIP(ipwl1)
+	api.whitelists.Ips = append(api.whitelists.Ips, ip)
+	cidrwl1 := "13.2.3.0/24"
+	_, tnet, err := net.ParseCIDR(cidrwl1)
+	if err != nil {
+		t.Fatalf("unable to parse cidr : %s", err)
+	}
+	api.whitelists.Cidrs = append(api.whitelists.Cidrs, tnet)
+	cidrwl1 = "11.2.3.0/24"
+	_, tnet, err = net.ParseCIDR(cidrwl1)
+	if err != nil {
+		t.Fatalf("unable to parse cidr : %s", err)
+	}
+	api.whitelists.Cidrs = append(api.whitelists.Cidrs, tnet)
+	api.dbClient.Ent.Decision.Create().
+		SetOrigin(types.CAPIOrigin).
+		SetType("ban").
+		SetValue("9.9.9.9").
+		SetScope("Ip").
+		SetScenario("crowdsecurity/ssh-bf").
+		SetUntil(time.Now().Add(time.Hour)).
+		ExecX(context.Background())
+	assertTotalDecisionCount(t, api.dbClient, 1)
+	assertTotalValidDecisionCount(t, api.dbClient, 1)
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/api/decisions/stream", httpmock.NewBytesResponder(
+		200, jsonMarshalX(
+			modelscapi.GetDecisionsStreamResponse{
+				Deleted: modelscapi.GetDecisionsStreamResponseDeleted{
+					&modelscapi.GetDecisionsStreamResponseDeletedItem{
+						Decisions: []string{
+							"9.9.9.9", // This is already present in DB
+							"9.1.9.9", // This not present in DB
+						},
+						Scope: types.StrPtr("Ip"),
+					}, // This is already present in DB
+				},
+				New: modelscapi.GetDecisionsStreamResponseNew{
+					&modelscapi.GetDecisionsStreamResponseNewItem{
+						Scenario: types.StrPtr("crowdsecurity/test1"),
+						Scope:    types.StrPtr("Ip"),
+						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
+							{
+								Value:    types.StrPtr("13.2.3.4"), //wl by cidr
+								Duration: types.StrPtr("24h"),
+							},
+						},
+					},
+
+					&modelscapi.GetDecisionsStreamResponseNewItem{
+						Scenario: types.StrPtr("crowdsecurity/test1"),
+						Scope:    types.StrPtr("Ip"),
+						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
+							{
+								Value:    types.StrPtr("2.2.3.4"),
+								Duration: types.StrPtr("24h"),
+							},
+						},
+					},
+					&modelscapi.GetDecisionsStreamResponseNewItem{
+						Scenario: types.StrPtr("crowdsecurity/test2"),
+						Scope:    types.StrPtr("Ip"),
+						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
+							{
+								Value:    types.StrPtr("13.2.3.5"), //wl by cidr
+								Duration: types.StrPtr("24h"),
+							},
+						},
+					}, // These two are from community list.
+					&modelscapi.GetDecisionsStreamResponseNewItem{
+						Scenario: types.StrPtr("crowdsecurity/test1"),
+						Scope:    types.StrPtr("Ip"),
+						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
+							{
+								Value:    types.StrPtr("6.2.3.4"),
+								Duration: types.StrPtr("24h"),
+							},
+						},
+					},
+					&modelscapi.GetDecisionsStreamResponseNewItem{
+						Scenario: types.StrPtr("crowdsecurity/test1"),
+						Scope:    types.StrPtr("Ip"),
+						Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
+							{
+								Value:    types.StrPtr("9.2.3.4"), //wl by ip
+								Duration: types.StrPtr("24h"),
+							},
+						},
+					},
+				},
+				Links: &modelscapi.GetDecisionsStreamResponseLinks{
+					Blocklists: []*modelscapi.BlocklistLink{
+						{
+							URL:         types.StrPtr("http://api.crowdsec.net/blocklist1"),
+							Name:        types.StrPtr("blocklist1"),
+							Scope:       types.StrPtr("Ip"),
+							Remediation: types.StrPtr("ban"),
+							Duration:    types.StrPtr("24h"),
+						},
+						{
+							URL:         types.StrPtr("http://api.crowdsec.net/blocklist2"),
+							Name:        types.StrPtr("blocklist2"),
+							Scope:       types.StrPtr("Ip"),
+							Remediation: types.StrPtr("ban"),
+							Duration:    types.StrPtr("24h"),
+						},
+					},
+				},
+			},
+		),
+	))
+	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/blocklist1", httpmock.NewStringResponder(
+		200, "1.2.3.6",
+	))
+	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/blocklist2", httpmock.NewStringResponder(
+		200, "1.2.3.7",
+	))
+	url, err := url.ParseRequestURI("http://api.crowdsec.net/")
+	require.NoError(t, err)
+
+	apic, err := apiclient.NewDefaultClient(
+		url,
+		"/api",
+		fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		nil,
+	)
+	require.NoError(t, err)
+
+	api.apiClient = apic
+	err = api.PullTop()
+	require.NoError(t, err)
+
+	assertTotalDecisionCount(t, api.dbClient, 5) //2 from FIRE + 2 from bl + 1 existing
+	assertTotalValidDecisionCount(t, api.dbClient, 4)
+	assertTotalAlertCount(t, api.dbClient, 3) // 2 for list sub , 1 for community list.
+	alerts := api.dbClient.Ent.Alert.Query().AllX(context.Background())
+	validDecisions := api.dbClient.Ent.Decision.Query().Where(
+		decision.UntilGT(time.Now())).
+		AllX(context.Background())
+
+	decisionScenarioFreq := make(map[string]int)
+	decisionIp := make(map[string]int)
+
+	alertScenario := make(map[string]int)
+
+	for _, alert := range alerts {
+		alertScenario[alert.SourceScope]++
+	}
+	assert.Equal(t, 3, len(alertScenario))
+	assert.Equal(t, 1, alertScenario[SCOPE_CAPI_ALIAS_ALIAS])
+	assert.Equal(t, 1, alertScenario["lists:blocklist1"])
+	assert.Equal(t, 1, alertScenario["lists:blocklist2"])
+
+	for _, decisions := range validDecisions {
+		decisionScenarioFreq[decisions.Scenario]++
+		decisionIp[decisions.Value]++
+	}
+	assert.Equal(t, 1, decisionIp["2.2.3.4"], 1)
+	assert.Equal(t, 1, decisionIp["6.2.3.4"], 1)
+	if _, ok := decisionIp["13.2.3.4"]; ok {
+		t.Errorf("13.2.3.4 is whitelisted")
+	}
+	if _, ok := decisionIp["13.2.3.5"]; ok {
+		t.Errorf("13.2.3.5 is whitelisted")
+	}
+	if _, ok := decisionIp["9.2.3.4"]; ok {
+		t.Errorf("9.2.3.4 is whitelisted")
+	}
+	assert.Equal(t, 1, decisionScenarioFreq["blocklist1"], 1)
+	assert.Equal(t, 1, decisionScenarioFreq["blocklist2"], 1)
+	assert.Equal(t, 2, decisionScenarioFreq["crowdsecurity/test1"], 2)
 }
 
 func TestAPICPullTop(t *testing.T) {
