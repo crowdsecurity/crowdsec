@@ -22,6 +22,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
@@ -119,8 +120,6 @@ func (s *S3Source) newS3Client() error {
 	}
 	if s.Config.AwsProfile != nil {
 		options.Profile = *s.Config.AwsProfile
-	} else {
-
 	}
 
 	sess, err := session.NewSessionWithOptions(options)
@@ -285,7 +284,7 @@ func (s *S3Source) extractBucketAndPrefix(message *string) (string, string, erro
 }
 
 func (s *S3Source) sqsPoll() error {
-	logger := s.logger.WithField("method", "sqsPoll").WithField("queue", s.Config.SQSName)
+	logger := s.logger.WithField("method", "sqsPoll")
 	for {
 		select {
 		case <-s.t.Dying():
@@ -338,6 +337,13 @@ func (s *S3Source) sqsPoll() error {
 func (s *S3Source) readFile(bucket string, key string) error {
 	//TODO: Handle SSE-C
 	var scanner *bufio.Scanner
+
+	logger := s.logger.WithFields(logrus.Fields{
+		"method": "readFile",
+		"bucket": bucket,
+		"key":    key,
+	})
+
 	output, err := s.s3Client.GetObjectWithContext(s.ctx, &s3.GetObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
@@ -427,10 +433,16 @@ func (s *S3Source) Configure(yamlConfig []byte, logger *log.Entry) error {
 		return err
 	}
 
-	s.logger = logger.WithFields(log.Fields{
-		"bucket": s.Config.BucketName,
-		"prefix": s.Config.Prefix,
-	})
+	if s.Config.SQSName != "" {
+		s.logger = logger.WithFields(log.Fields{
+			"queue": s.Config.SQSName,
+		})
+	} else {
+		s.logger = logger.WithFields(log.Fields{
+			"bucket": s.Config.BucketName,
+			"prefix": s.Config.Prefix,
+		})
+	}
 
 	if !s.Config.UseTimeMachine {
 		s.logger.Warning("use_time_machine is not set to true in the datasource configuration. This will likely lead to false positives as S3 logs are not processed in real time.")
