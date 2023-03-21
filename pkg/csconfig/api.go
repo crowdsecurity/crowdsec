@@ -358,17 +358,6 @@ func (s *LocalApiServerCfg) LoadCapiWhitelists() error {
 		}
 		s.CapiWhitelists.Cidrs = append(s.CapiWhitelists.Cidrs, tnet)
 	}
-	/*
-			for _, v := range n.Whitelist.Cidrs {
-			_, tnet, err := net.ParseCIDR(v)
-			if err != nil {
-				n.Logger.Fatalf("Unable to parse cidr whitelist '%s' : %v.", v, err)
-			}
-			n.Whitelist.B_Cidrs = append(n.Whitelist.B_Cidrs, tnet)
-			n.Logger.Debugf("adding cidr %s to whitelists", tnet)
-			valid = true
-		}
-	*/
 	return nil
 }
 
