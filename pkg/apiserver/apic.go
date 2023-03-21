@@ -61,6 +61,7 @@ type apic struct {
 	credentials   *csconfig.ApiCredentialsCfg
 	scenarioList  []string
 	consoleConfig *csconfig.ConsoleConfig
+	isPulling     chan bool
 	whitelists    *csconfig.CapiWhitelist
 }
 
@@ -171,6 +172,7 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 		pushIntervalFirst:    randomDuration(pushIntervalDefault, pushIntervalDelta),
 		metricsInterval:      metricsIntervalDefault,
 		metricsIntervalFirst: randomDuration(metricsIntervalDefault, metricsIntervalDelta),
+		isPulling:            make(chan bool, 1),
 		whitelists:           apicWhitelist,
 	}
 
@@ -537,13 +539,26 @@ func fillAlertsWithDecisions(alerts []*models.Alert, decisions []*models.Decisio
 // we receive a list of decisions and links for blocklist and we need to create a list of alerts :
 // one alert for "community blocklist"
 // one alert per list we're subscribed to
-func (a *apic) PullTop() error {
+func (a *apic) PullTop(forcePull bool) error {
 	var err error
 
-	if lastPullIsOld, err := a.CAPIPullIsOld(); err != nil {
-		return err
-	} else if !lastPullIsOld {
-		return nil
+	//A mutex with TryLock would be a bit simpler
+	//But go does not guarantee that TryLock will be able to acquire the lock even if it is available
+	select {
+	case a.isPulling <- true:
+		defer func() {
+			<-a.isPulling
+		}()
+	default:
+		return errors.New("pull already in progress")
+	}
+
+	if !forcePull {
+		if lastPullIsOld, err := a.CAPIPullIsOld(); err != nil {
+			return err
+		} else if !lastPullIsOld {
+			return nil
+		}
 	}
 
 	log.Infof("Starting community-blocklist update")
@@ -780,7 +795,7 @@ func (a *apic) Pull() error {
 		}
 		time.Sleep(1 * time.Second)
 	}
-	if err := a.PullTop(); err != nil {
+	if err := a.PullTop(false); err != nil {
 		log.Errorf("capi pull top: %s", err)
 	}
 
@@ -791,7 +806,7 @@ func (a *apic) Pull() error {
 		select {
 		case <-ticker.C:
 			ticker.Reset(a.pullInterval)
-			if err := a.PullTop(); err != nil {
+			if err := a.PullTop(false); err != nil {
 				log.Errorf("capi pull top: %s", err)
 				continue
 			}

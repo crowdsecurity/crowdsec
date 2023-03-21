@@ -18,7 +18,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-//nolint: deadcode,unused // debugHandler is kept as a dev convenience: it shuts down and serialize internal state
+//nolint:deadcode,unused // debugHandler is kept as a dev convenience: it shuts down and serialize internal state
 func debugHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	var (
 		tmpFile string
@@ -356,7 +356,6 @@ func Serve(cConfig *csconfig.Config, apiReady chan bool, agentReady chan bool) e
 		if !sent || err != nil {
 			log.Errorf("Failed to notify(sent: %v): %v", sent, err)
 		}
-
 		// wait for signals
 		return HandleSignals(cConfig)
 	}
