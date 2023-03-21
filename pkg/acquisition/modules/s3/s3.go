@@ -114,22 +114,21 @@ var sqsMessagesReceived = prometheus.NewCounterVec(
 )
 
 func (s *S3Source) newS3Client() error {
-	var sess *session.Session
-
+	options := session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}
 	if s.Config.AwsProfile != nil {
-		sess = session.Must(session.NewSessionWithOptions(session.Options{
-			SharedConfigState: session.SharedConfigEnable,
-			Profile:           *s.Config.AwsProfile,
-		}))
+		options.Profile = *s.Config.AwsProfile
 	} else {
-		sess = session.Must(session.NewSessionWithOptions(session.Options{
-			SharedConfigState: session.SharedConfigEnable,
-		}))
+
 	}
 
-	if sess == nil {
-		return fmt.Errorf("failed to create aws session")
+	sess, err := session.NewSessionWithOptions(options)
+
+	if err != nil {
+		return fmt.Errorf("failed to create aws session: %w", err)
 	}
+
 	config := aws.NewConfig()
 	if s.Config.AwsRegion != "" {
 		config = config.WithRegion(s.Config.AwsRegion)
