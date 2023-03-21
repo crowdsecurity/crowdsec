@@ -51,6 +51,16 @@ polling_method: sqs
 `,
 			expectedErr: "sqs_name is required when using sqs polling method",
 		},
+		{
+			name: "both bucket and sqs",
+			config: `
+source: s3
+bucket_name: foobar
+polling_method: sqs
+sqs_name: foobar
+`,
+			expectedErr: "bucket_name and sqs_name are mutually exclusive",
+		},
 	}
 
 	for _, test := range tests {
@@ -83,7 +93,6 @@ bucket_name: foobar
 			name: "polling method",
 			config: `
 source: s3
-bucket_name: foobar
 polling_method: sqs
 sqs_name: foobar
 `,
@@ -349,7 +358,6 @@ func TestSQSPoll(t *testing.T) {
 			name: "eventbridge",
 			config: `
 source: s3
-bucket_name: bucket_no_prefix
 polling_method: sqs
 sqs_name: test
 `,
@@ -360,7 +368,6 @@ sqs_name: test
 			name: "notification",
 			config: `
 source: s3
-bucket_name: bucket_no_prefix
 polling_method: sqs
 sqs_name: test
 `,
