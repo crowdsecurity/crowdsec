@@ -41,15 +41,15 @@ func JsonExtractUnescape(params ...any) (any, error) {
 	var value string
 	var err error
 	jsblob := params[0].(string)
-	switch params[1].(type) {
+	switch v := params[1].(type) {
 	case string:
-		target := params[1].(string)
+		target := v
 		value, err = jsonparser.GetString(
 			jsonparser.StringToBytes(jsblob),
 			target,
 		)
 	case []string:
-		target := params[1].([]string)
+		target := v
 		value, err = jsonparser.GetString(
 			jsonparser.StringToBytes(jsblob),
 			target...,
