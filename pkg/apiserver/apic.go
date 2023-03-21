@@ -606,20 +606,23 @@ func (a *apic) ApplyApicWhitelists(decisions []*models.Decision) []*models.Decis
 			skip := false
 			ipval := net.ParseIP(*decision.Value)
 			for _, cidr := range a.whitelists.Cidrs {
+				if skip {
+					break
+				}
 				if cidr.Contains(ipval) {
 					log.Infof("%s from %s is whitelisted by %s", *decision.Value, *decision.Scenario, cidr.String())
 					skip = true
-					goto VERDICT
 				}
 			}
 			for _, ip := range a.whitelists.Ips {
+				if skip {
+					break
+				}
 				if ip != nil && ip.Equal(ipval) {
 					log.Infof("%s from %s is whitelisted by %s", *decision.Value, *decision.Scenario, ip.String())
 					skip = true
-					goto VERDICT
 				}
 			}
-		VERDICT:
 			if !skip {
 				decisions[outIdx] = decision
 				outIdx++
