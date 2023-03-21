@@ -364,7 +364,7 @@ func (s *S3Source) readFile(bucket string, key string) error {
 	}
 	for scanner.Scan() {
 		text := scanner.Text()
-		s.logger.Tracef("Read line %s", text)
+		logger.Tracef("Read line %s", text)
 		linesRead.WithLabelValues(bucket).Inc()
 		l := types.Line{}
 		l.Raw = text
