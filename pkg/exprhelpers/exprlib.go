@@ -418,12 +418,11 @@ var dbClient *database.Client
 var exprFunctionOptions []expr.Option
 
 func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
-	//TODO: remove this as the functions are now available "natively" in expr
-	ExprLib := make(map[string]interface{})
+	env := make(map[string]interface{})
 	for k, v := range ctx {
-		ExprLib[k] = v
+		env[k] = v
 	}
-	return ExprLib
+	return env
 }
 
 func GetExprOptions(ctx map[string]interface{}) []expr.Option {
