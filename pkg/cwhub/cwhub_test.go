@@ -55,7 +55,7 @@ func TestItemStatus(t *testing.T) {
 		item.Tainted = false
 		txt, _, _, _ := ItemStatus(*item)
 		if txt != "enabled,update-available" {
-			log.Fatalf("got '%s'", txt)
+			t.Fatalf("got '%s'", txt)
 		}
 
 		item.Installed = false
@@ -64,7 +64,7 @@ func TestItemStatus(t *testing.T) {
 		item.Tainted = false
 		txt, _, _, _ = ItemStatus(*item)
 		if txt != "disabled,local" {
-			log.Fatalf("got '%s'", txt)
+			t.Fatalf("got '%s'", txt)
 		}
 
 		break
