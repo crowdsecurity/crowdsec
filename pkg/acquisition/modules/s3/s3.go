@@ -39,6 +39,7 @@ type S3Configuration struct {
 	PollingMethod                     string  `yaml:"polling_method"`
 	PollingInterval                   int     `yaml:"polling_interval"`
 	SQSName                           string  `yaml:"sqs_name"`
+	SQSFormat                         string  `yaml:"sqs_format"`
 }
 
 type S3Source struct {
@@ -89,6 +90,8 @@ type S3Event struct {
 
 const PollMethodList = "list"
 const PollMethodSQS = "sqs"
+const SQSFormatEventBridge = "eventbridge"
+const SQSFormatS3Notification = "s3notification"
 
 var linesRead = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
@@ -259,7 +262,7 @@ func (s *S3Source) listPoll() error {
 	}
 }
 
-func (s *S3Source) extractBucketAndPrefix(message *string) (string, string, error) {
+func extractBucketAndPrefixFromEventBridge(message *string) (string, string, error) {
 	eventBody := S3Event{}
 	err := json.Unmarshal([]byte(*message), &eventBody)
 	if err != nil {
@@ -268,9 +271,12 @@ func (s *S3Source) extractBucketAndPrefix(message *string) (string, string, erro
 	if eventBody.Detail.Bucket.Name != "" {
 		return eventBody.Detail.Bucket.Name, eventBody.Detail.Object.Key, nil
 	}
+	return "", "", fmt.Errorf("invalid event body for event bridge format")
+}
 
+func extractBucketAndPrefixFromS3Notif(message *string) (string, string, error) {
 	s3notifBody := events.S3Event{}
-	err = json.Unmarshal([]byte(*message), &s3notifBody)
+	err := json.Unmarshal([]byte(*message), &s3notifBody)
 	if err != nil {
 		return "", "", err
 	}
@@ -281,6 +287,34 @@ func (s *S3Source) extractBucketAndPrefix(message *string) (string, string, erro
 		return "", "", fmt.Errorf("event %s is not supported", s3notifBody.Records[0].EventName)
 	}
 	return s3notifBody.Records[0].S3.Bucket.Name, s3notifBody.Records[0].S3.Object.Key, nil
+}
+
+func (s *S3Source) extractBucketAndPrefix(message *string) (string, string, error) {
+	if s.Config.SQSFormat == SQSFormatEventBridge {
+		bucket, key, err := extractBucketAndPrefixFromEventBridge(message)
+		if err != nil {
+			return "", "", err
+		}
+		return bucket, key, nil
+	} else if s.Config.SQSFormat == SQSFormatS3Notification {
+		bucket, key, err := extractBucketAndPrefixFromS3Notif(message)
+		if err != nil {
+			return "", "", err
+		}
+		return bucket, key, nil
+	} else {
+		bucket, key, err := extractBucketAndPrefixFromEventBridge(message)
+		if err == nil {
+			s.Config.SQSFormat = SQSFormatEventBridge
+			return bucket, key, nil
+		}
+		bucket, key, err = extractBucketAndPrefixFromS3Notif(message)
+		if err == nil {
+			s.Config.SQSFormat = SQSFormatS3Notification
+			return bucket, key, nil
+		}
+		return "", "", fmt.Errorf("SQS message format not supported")
+	}
 }
 
 func (s *S3Source) sqsPoll() error {
@@ -426,6 +460,10 @@ func (s *S3Source) UnmarshalConfig(yamlConfig []byte) error {
 
 	if s.Config.BucketName == "" && s.Config.PollingMethod == PollMethodList {
 		return fmt.Errorf("bucket_name is required")
+	}
+
+	if s.Config.SQSFormat != "" && s.Config.SQSFormat != SQSFormatEventBridge && s.Config.SQSFormat != SQSFormatS3Notification {
+		return fmt.Errorf("invalid sqs_format %s, must be empty, %s or %s", s.Config.SQSFormat, SQSFormatEventBridge, SQSFormatS3Notification)
 	}
 
 	return nil
