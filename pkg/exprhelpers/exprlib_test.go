@@ -429,6 +429,8 @@ func TestFile(t *testing.T) {
 }
 
 func TestIpInRange(t *testing.T) {
+	err := Init(nil)
+	assert.NoError(t, err)
 	tests := []struct {
 		name   string
 		env    map[string]interface{}
@@ -439,9 +441,8 @@ func TestIpInRange(t *testing.T) {
 		{
 			name: "IpInRange() test: basic test",
 			env: map[string]interface{}{
-				"ip":        "192.168.0.1",
-				"ipRange":   "192.168.0.0/24",
-				"IpInRange": IpInRange,
+				"ip":      "192.168.0.1",
+				"ipRange": "192.168.0.0/24",
 			},
 			code:   "IpInRange(ip, ipRange)",
 			result: true,
@@ -450,9 +451,8 @@ func TestIpInRange(t *testing.T) {
 		{
 			name: "IpInRange() test: malformed IP",
 			env: map[string]interface{}{
-				"ip":        "192.168.0",
-				"ipRange":   "192.168.0.0/24",
-				"IpInRange": IpInRange,
+				"ip":      "192.168.0",
+				"ipRange": "192.168.0.0/24",
 			},
 			code:   "IpInRange(ip, ipRange)",
 			result: false,
@@ -461,9 +461,8 @@ func TestIpInRange(t *testing.T) {
 		{
 			name: "IpInRange() test: malformed IP range",
 			env: map[string]interface{}{
-				"ip":        "192.168.0.0/255",
-				"ipRange":   "192.168.0.0/24",
-				"IpInRange": IpInRange,
+				"ip":      "192.168.0.0/255",
+				"ipRange": "192.168.0.0/24",
 			},
 			code:   "IpInRange(ip, ipRange)",
 			result: false,
@@ -483,6 +482,8 @@ func TestIpInRange(t *testing.T) {
 }
 
 func TestIpToRange(t *testing.T) {
+	err := Init(nil)
+	assert.NoError(t, err)
 	tests := []struct {
 		name   string
 		env    map[string]interface{}
@@ -493,9 +494,8 @@ func TestIpToRange(t *testing.T) {
 		{
 			name: "IpToRange() test: IPv4",
 			env: map[string]interface{}{
-				"ip":        "192.168.1.1",
-				"netmask":   "16",
-				"IpToRange": IpToRange,
+				"ip":      "192.168.1.1",
+				"netmask": "16",
 			},
 			code:   "IpToRange(ip, netmask)",
 			result: "192.168.0.0/16",
@@ -504,9 +504,8 @@ func TestIpToRange(t *testing.T) {
 		{
 			name: "IpToRange() test: IPv6",
 			env: map[string]interface{}{
-				"ip":        "2001:db8::1",
-				"netmask":   "/64",
-				"IpToRange": IpToRange,
+				"ip":      "2001:db8::1",
+				"netmask": "/64",
 			},
 			code:   "IpToRange(ip, netmask)",
 			result: "2001:db8::/64",
@@ -515,9 +514,8 @@ func TestIpToRange(t *testing.T) {
 		{
 			name: "IpToRange() test: malformed netmask",
 			env: map[string]interface{}{
-				"ip":        "192.168.0.1",
-				"netmask":   "test",
-				"IpToRange": IpToRange,
+				"ip":      "192.168.0.1",
+				"netmask": "test",
 			},
 			code:   "IpToRange(ip, netmask)",
 			result: "",
@@ -526,9 +524,8 @@ func TestIpToRange(t *testing.T) {
 		{
 			name: "IpToRange() test: malformed IP",
 			env: map[string]interface{}{
-				"ip":        "a.b.c.d",
-				"netmask":   "24",
-				"IpToRange": IpToRange,
+				"ip":      "a.b.c.d",
+				"netmask": "24",
 			},
 			code:   "IpToRange(ip, netmask)",
 			result: "",
@@ -537,9 +534,8 @@ func TestIpToRange(t *testing.T) {
 		{
 			name: "IpToRange() test: too high netmask",
 			env: map[string]interface{}{
-				"ip":        "192.168.1.1",
-				"netmask":   "35",
-				"IpToRange": IpToRange,
+				"ip":      "192.168.1.1",
+				"netmask": "35",
 			},
 			code:   "IpToRange(ip, netmask)",
 			result: "",
