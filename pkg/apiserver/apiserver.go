@@ -420,6 +420,9 @@ func (s *APIServer) Close() {
 	if s.apic != nil {
 		s.apic.Shutdown() // stop apic first since it use dbClient
 	}
+	if s.papi != nil {
+		s.papi.Shutdown() // papi also uses the dbClient
+	}
 	s.dbClient.Ent.Close()
 	if s.flushScheduler != nil {
 		s.flushScheduler.Stop()

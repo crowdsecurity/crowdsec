@@ -116,7 +116,7 @@ func NewPapiSyncCmd() *cobra.Command {
 			}
 			t.Go(papi.SyncDecisions)
 
-			err = papi.PullOnce(time.Time{})
+			err = papi.PullOnce(time.Time{}, true)
 
 			if err != nil {
 				log.Fatalf("unable to sync decisions: %s", err)

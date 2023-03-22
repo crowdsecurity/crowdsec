@@ -65,6 +65,10 @@ func ParseDate(in string, p *types.Event, x interface{}, plog *log.Entry) (map[s
 			strDate, parsedDate = parseDateWithFormat(in, p.StrTimeFormat)
 			if !parsedDate.IsZero() {
 				ret["MarshaledTime"] = strDate
+				//In time machine, we take the time parsed from the event. In live mode, we keep the timestamp collected at acquisition
+				if p.ExpectMode == types.TIMEMACHINE {
+					p.Time = parsedDate
+				}
 				return ret, nil
 			}
 			plog.Debugf("unable to parse '%s' with layout '%s'", in, p.StrTimeFormat)
