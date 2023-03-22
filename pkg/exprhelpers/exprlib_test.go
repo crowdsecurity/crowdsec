@@ -170,19 +170,45 @@ func TestMatch(t *testing.T) {
 }
 
 func TestDistanceHelper(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
 
-	//one set of coord is empty
-	ret, err := Distance("0.0", "0.0", "12.1", "12.1")
-	assert.NoError(t, err)
-	assert.Equal(t, 0.0, ret)
-	//those aren't even coords
-	ret, err = Distance("lol", "42.1", "12.1", "12.1")
-	assert.NotNil(t, err)
-	assert.Equal(t, 0.0, ret)
-	//real ones
-	ret, err = Distance("51.45", "1.15", "41.54", "12.27")
-	assert.NoError(t, err)
-	assert.Equal(t, 1389.1793118293067, ret)
+	tests := []struct {
+		lat1  string
+		lon1  string
+		lat2  string
+		lon2  string
+		dist  float64
+		valid bool
+		expr  string
+		name  string
+	}{
+		{"51.45", "1.15", "41.54", "12.27", 1389.1793118293067, true, `Distance(lat1, lon1, lat2, lon2)`, "valid"},
+		{"lol", "1.15", "41.54", "12.27", 0.0, false, `Distance(lat1, lon1, lat2, lon2)`, "invalid lat1"},
+		{"0.0", "0.0", "12.1", "12.1", 0.0, true, `Distance(lat1, lon1, lat2, lon2)`, "empty coord"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			env := map[string]interface{}{
+				"lat1": test.lat1,
+				"lon1": test.lon1,
+				"lat2": test.lat2,
+				"lon2": test.lon2,
+			}
+			vm, err := expr.Compile(test.expr, GetExprOptions(env)...)
+			if err != nil {
+				t.Fatalf("pattern:%s val:%s NOK %s", test.lat1, test.lon1, err)
+			}
+			ret, err := expr.Run(vm, env)
+			if test.valid {
+				assert.NoError(t, err)
+				assert.Equal(t, test.dist, ret)
+			} else {
+				assert.NotNil(t, err)
+			}
+		})
+	}
 }
 
 func TestRegexpCacheBehavior(t *testing.T) {
