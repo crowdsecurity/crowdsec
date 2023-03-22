@@ -110,7 +110,7 @@ func TestVisitor(t *testing.T) {
 		}
 
 		if compiledFilter != nil {
-			result, err := expr.Run(compiledFilter, GetExprEnv(test.env))
+			result, err := expr.Run(compiledFilter, test.env)
 			if err != nil && test.err == nil {
 				log.Fatalf("run : %s", err)
 			}
@@ -120,7 +120,7 @@ func TestVisitor(t *testing.T) {
 		}
 
 		if debugFilter != nil {
-			debugFilter.Run(clog, test.result, GetExprEnv(test.env))
+			debugFilter.Run(clog, test.result, test.env)
 		}
 	}
 }
@@ -291,7 +291,7 @@ func TestRegexpInFile(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		result, err := expr.Run(compiledFilter, GetExprEnv(map[string]interface{}{}))
+		result, err := expr.Run(compiledFilter, map[string]interface{}{})
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -416,7 +416,7 @@ func TestFile(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		result, err := expr.Run(compiledFilter, GetExprEnv(map[string]interface{}{}))
+		result, err := expr.Run(compiledFilter, map[string]interface{}{})
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -983,7 +983,7 @@ func TestGetDecisionsCount(t *testing.T) {
 	for _, test := range tests {
 		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 		require.NoError(t, err)
-		output, err := expr.Run(program, GetExprEnv(test.env))
+		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
 		require.Equal(t, test.result, output)
 		log.Printf("test '%s' : OK", test.name)
@@ -1105,7 +1105,7 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 	for _, test := range tests {
 		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 		require.NoError(t, err)
-		output, err := expr.Run(program, GetExprEnv(test.env))
+		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
 		require.Equal(t, test.result, output)
 		log.Printf("test '%s' : OK", test.name)
@@ -1252,7 +1252,7 @@ func TestIsIp(t *testing.T) {
 				return
 			}
 			assert.NoError(t, err)
-			output, err := expr.Run(vm, GetExprEnv(map[string]interface{}{"value": tc.value}))
+			output, err := expr.Run(vm, map[string]interface{}{"value": tc.value})
 			assert.NoError(t, err)
 			assert.IsType(t, tc.expected, output)
 			assert.Equal(t, tc.expected, output.(bool))
@@ -1299,7 +1299,7 @@ func TestToString(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			vm, err := expr.Compile(tc.expr, GetExprOptions(map[string]interface{}{"value": tc.value})...)
 			assert.NoError(t, err)
-			output, err := expr.Run(vm, GetExprEnv(map[string]interface{}{"value": tc.value}))
+			output, err := expr.Run(vm, map[string]interface{}{"value": tc.value})
 			assert.NoError(t, err)
 			require.Equal(t, tc.expected, output)
 		})

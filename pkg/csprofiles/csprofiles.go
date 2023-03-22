@@ -121,7 +121,7 @@ func (Profile *Runtime) GenerateDecisionFromProfile(Alert *models.Alert) ([]*mod
 		/*some fields are populated from the reference object : duration, scope, type*/
 		decision.Duration = new(string)
 		if Profile.Cfg.DurationExpr != "" && Profile.RuntimeDurationExpr != nil {
-			duration, err := expr.Run(Profile.RuntimeDurationExpr, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
+			duration, err := expr.Run(Profile.RuntimeDurationExpr, map[string]interface{}{"Alert": Alert})
 			if err != nil {
 				Profile.Logger.Warningf("Failed to run duration_expr : %v", err)
 				*decision.Duration = *refDecision.Duration
@@ -165,7 +165,7 @@ func (Profile *Runtime) EvaluateProfile(Alert *models.Alert) ([]*models.Decision
 
 	matched := false
 	for eIdx, expression := range Profile.RuntimeFilters {
-		output, err := expr.Run(expression, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
+		output, err := expr.Run(expression, map[string]interface{}{"Alert": Alert})
 		if err != nil {
 			Profile.Logger.Warningf("failed to run whitelist expr : %v", err)
 			return nil, matched, errors.Wrapf(err, "while running expression %s", Profile.Cfg.Filters[eIdx])
@@ -173,7 +173,7 @@ func (Profile *Runtime) EvaluateProfile(Alert *models.Alert) ([]*models.Decision
 		switch out := output.(type) {
 		case bool:
 			if Profile.Cfg.Debug != nil && *Profile.Cfg.Debug {
-				Profile.DebugFilters[eIdx].Run(Profile.Logger, out, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
+				Profile.DebugFilters[eIdx].Run(Profile.Logger, out, map[string]interface{}{"Alert": Alert})
 			}
 			if out {
 				matched = true

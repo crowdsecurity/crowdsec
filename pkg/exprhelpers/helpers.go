@@ -46,18 +46,10 @@ var dbClient *database.Client
 
 var exprFunctionOptions []expr.Option
 
-func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
-	env := make(map[string]interface{})
-	for k, v := range ctx {
-		env[k] = v
-	}
-	return env
-}
-
 func GetExprOptions(ctx map[string]interface{}) []expr.Option {
 	ret := []expr.Option{}
 	ret = append(ret, exprFunctionOptions...)
-	ret = append(ret, expr.Env(GetExprEnv(ctx)))
+	ret = append(ret, expr.Env(ctx))
 	return ret
 }
 
