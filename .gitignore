@@ -40,7 +40,6 @@ plugins/notifications/dummy/notification-dummy
 
 # Release stuff
 crowdsec-v*
-pkg/cwhub/hubdir/.index.json
 msi
 *.msi
 **/*.nupkg
