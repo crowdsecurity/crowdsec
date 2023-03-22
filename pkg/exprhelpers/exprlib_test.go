@@ -126,31 +126,43 @@ func TestVisitor(t *testing.T) {
 }
 
 func TestMatch(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
 	tests := []struct {
 		glob string
 		val  string
 		ret  bool
+		expr string
 	}{
-		{"foo", "foo", true},
-		{"foo", "bar", false},
-		{"foo*", "foo", true},
-		{"foo*", "foobar", true},
-		{"foo*", "barfoo", false},
-		{"foo*", "bar", false},
-		{"*foo", "foo", true},
-		{"*foo", "barfoo", true},
-		{"foo*r", "foobar", true},
-		{"foo*r", "foobazr", true},
-		{"foo?ar", "foobar", true},
-		{"foo?ar", "foobazr", false},
-		{"foo?ar", "foobaz", false},
-		{"*foo?ar?", "foobar", false},
-		{"*foo?ar?", "foobare", true},
-		{"*foo?ar?", "rafoobar", false},
-		{"*foo?ar?", "rafoobare", true},
+		{"foo", "foo", true, `Match(pattern, name)`},
+		{"foo", "bar", false, `Match(pattern, name)`},
+		{"foo*", "foo", true, `Match(pattern, name)`},
+		{"foo*", "foobar", true, `Match(pattern, name)`},
+		{"foo*", "barfoo", false, `Match(pattern, name)`},
+		{"foo*", "bar", false, `Match(pattern, name)`},
+		{"*foo", "foo", true, `Match(pattern, name)`},
+		{"*foo", "barfoo", true, `Match(pattern, name)`},
+		{"foo*r", "foobar", true, `Match(pattern, name)`},
+		{"foo*r", "foobazr", true, `Match(pattern, name)`},
+		{"foo?ar", "foobar", true, `Match(pattern, name)`},
+		{"foo?ar", "foobazr", false, `Match(pattern, name)`},
+		{"foo?ar", "foobaz", false, `Match(pattern, name)`},
+		{"*foo?ar?", "foobar", false, `Match(pattern, name)`},
+		{"*foo?ar?", "foobare", true, `Match(pattern, name)`},
+		{"*foo?ar?", "rafoobar", false, `Match(pattern, name)`},
+		{"*foo?ar?", "rafoobare", true, `Match(pattern, name)`},
 	}
 	for _, test := range tests {
-		ret, _ := Match(test.glob, test.val)
+		env := map[string]interface{}{
+			"pattern": test.glob,
+			"name":    test.val,
+		}
+		vm, err := expr.Compile(test.expr, GetExprOptions(env)...)
+		if err != nil {
+			t.Fatalf("pattern:%s val:%s NOK %s", test.glob, test.val, err)
+		}
+		ret, err := expr.Run(vm, env)
+		assert.NoError(t, err)
 		if isOk := assert.Equal(t, test.ret, ret); !isOk {
 			t.Fatalf("pattern:%s val:%s NOK %t !=  %t", test.glob, test.val, ret, test.ret)
 		}
