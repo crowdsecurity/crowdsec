@@ -555,40 +555,67 @@ func TestIpToRange(t *testing.T) {
 }
 
 func TestAtof(t *testing.T) {
-	testFloat := "1.5"
-	expectedFloat := 1.5
 
-	v, _ := Atof(testFloat)
-	if v != expectedFloat {
-		t.Fatalf("Atof should return 1.5 as a float")
+	err := Init(nil)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result float64
+	}{
+		{
+			name: "Atof() test: basic test",
+			env: map[string]interface{}{
+				"testFloat": "1.5",
+			},
+			code:   "Atof(testFloat)",
+			result: 1.5,
+		},
+		{
+			name: "Atof() test: bad float",
+			env: map[string]interface{}{
+				"testFloat": "1aaa.5",
+			},
+			code:   "Atof(testFloat)",
+			result: 0.0,
+		},
 	}
 
-	log.Printf("test 'Atof()' : OK")
-
-	//bad float
-	testFloat = "1aaa.5"
-	expectedFloat = 0.0
-
-	v, _ = Atof(testFloat)
-
-	if v != expectedFloat {
-		t.Fatalf("Atof should return a negative value (error) as a float got")
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
 	}
-
-	log.Printf("test 'Atof()' : OK")
 }
 
 func TestUpper(t *testing.T) {
 	testStr := "test"
 	expectedStr := "TEST"
 
-	v, _ := Upper(testStr)
+	env := map[string]interface{}{
+		"testStr": testStr,
+	}
+
+	err := Init(nil)
+	assert.NoError(t, err)
+	vm, err := expr.Compile("Upper(testStr)", GetExprOptions(env)...)
+	assert.NoError(t, err)
+
+	out, err := expr.Run(vm, env)
+
+	assert.NoError(t, err)
+	v, ok := out.(string)
+	if !ok {
+		t.Fatalf("Upper() should return a string")
+	}
 
 	if v != expectedStr {
 		t.Fatalf("Upper() should return test in upper case")
 	}
-
-	log.Printf("test 'Upper()' : OK")
 }
 
 func TestTimeNow(t *testing.T) {
