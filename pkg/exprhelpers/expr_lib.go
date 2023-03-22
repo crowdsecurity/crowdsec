@@ -364,7 +364,7 @@ var exprFuncs = []exprCustomFunc{
 		},
 	},
 	{
-		name:     "String",
+		name:     "ToString",
 		function: ToString,
 		signature: []interface{}{
 			new(func(interface{}) string),

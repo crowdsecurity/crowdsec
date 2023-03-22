@@ -932,6 +932,9 @@ func TestGetDecisionsCount(t *testing.T) {
 		assert.Error(t, errors.Errorf("Failed to create sample decision"))
 	}
 
+	err = Init(dbClient)
+	assert.NoError(t, err)
+
 	tests := []struct {
 		name   string
 		env    map[string]interface{}
@@ -952,10 +955,8 @@ func TestGetDecisionsCount(t *testing.T) {
 						},
 					},
 				},
-				"GetDecisionsCount": GetDecisionsCount,
-				"sprintf":           fmt.Sprintf,
 			},
-			code:   "sprintf('%d', GetDecisionsCount(Alert.GetValue()))",
+			code:   "Sprintf('%d', GetDecisionsCount(Alert.GetValue()))",
 			result: "1",
 			err:    "",
 		},
@@ -972,10 +973,8 @@ func TestGetDecisionsCount(t *testing.T) {
 						},
 					},
 				},
-				"GetDecisionsCount": GetDecisionsCount,
-				"sprintf":           fmt.Sprintf,
 			},
-			code:   "sprintf('%d', GetDecisionsCount(Alert.GetValue()))",
+			code:   "Sprintf('%d', GetDecisionsCount(Alert.GetValue()))",
 			result: "0",
 			err:    "",
 		},
@@ -1037,6 +1036,9 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 		assert.Error(t, errors.Errorf("Failed to create sample decision"))
 	}
 
+	err = Init(dbClient)
+	assert.NoError(t, err)
+
 	tests := []struct {
 		name   string
 		env    map[string]interface{}
@@ -1057,10 +1059,8 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 						},
 					},
 				},
-				"GetDecisionsSinceCount": GetDecisionsSinceCount,
-				"sprintf":                fmt.Sprintf,
 			},
-			code:   "sprintf('%d', GetDecisionsSinceCount(Alert.GetValue(), '25h'))",
+			code:   "Sprintf('%d', GetDecisionsSinceCount(Alert.GetValue(), '25h'))",
 			result: "2",
 			err:    "",
 		},
@@ -1077,10 +1077,8 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 						},
 					},
 				},
-				"GetDecisionsSinceCount": GetDecisionsSinceCount,
-				"sprintf":                fmt.Sprintf,
 			},
-			code:   "sprintf('%d', GetDecisionsSinceCount(Alert.GetValue(), '1h'))",
+			code:   "Sprintf('%d', GetDecisionsSinceCount(Alert.GetValue(), '1h'))",
 			result: "1",
 			err:    "",
 		},
@@ -1097,10 +1095,8 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 						},
 					},
 				},
-				"GetDecisionsSinceCount": GetDecisionsSinceCount,
-				"sprintf":                fmt.Sprintf,
 			},
-			code:   "sprintf('%d', GetDecisionsSinceCount(Alert.GetValue(), '1h'))",
+			code:   "Sprintf('%d', GetDecisionsSinceCount(Alert.GetValue(), '1h'))",
 			result: "0",
 			err:    "",
 		},
@@ -1265,36 +1261,46 @@ func TestIsIp(t *testing.T) {
 }
 
 func TestToString(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
 	tests := []struct {
 		name     string
 		value    interface{}
 		expected string
+		expr     string
 	}{
 		{
 			name:     "ToString() test: valid string",
 			value:    "foo",
 			expected: "foo",
+			expr:     `ToString(value)`,
 		},
 		{
 			name:     "ToString() test: valid string",
 			value:    interface{}("foo"),
 			expected: "foo",
+			expr:     `ToString(value)`,
 		},
 		{
 			name:     "ToString() test: invalid type",
 			value:    1,
 			expected: "",
+			expr:     `ToString(value)`,
 		},
 		{
 			name:     "ToString() test: invalid type 2",
 			value:    interface{}(nil),
 			expected: "",
+			expr:     `ToString(value)`,
 		},
 	}
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			output, _ := ToString(tc.value)
+			vm, err := expr.Compile(tc.expr, GetExprOptions(map[string]interface{}{"value": tc.value})...)
+			assert.NoError(t, err)
+			output, err := expr.Run(vm, GetExprEnv(map[string]interface{}{"value": tc.value}))
+			assert.NoError(t, err)
 			require.Equal(t, tc.expected, output)
 		})
 	}
