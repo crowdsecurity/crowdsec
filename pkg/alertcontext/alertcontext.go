@@ -117,7 +117,7 @@ func EventToContext(events []types.Event) (models.Meta, []error) {
 			}
 			for _, value := range values {
 				var val string
-				output, err := expr.Run(value, exprhelpers.GetExprEnv(map[string]interface{}{"evt": evt}))
+				output, err := expr.Run(value, map[string]interface{}{"evt": evt})
 				if err != nil {
 					errors = append(errors, fmt.Errorf("failed to get value for %s : %v", key, err))
 					continue
