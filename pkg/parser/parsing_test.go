@@ -372,10 +372,10 @@ func TestGeneratePatternsDoc(t *testing.T) {
 	}
 	log.Infof("-> %s", spew.Sdump(pctx))
 	/*don't judge me, we do it for the users*/
-	p := make(PairList, len(pctx.Grok))
+	p := make(PairList, len(pctx.Grok.Patterns))
 
 	i := 0
-	for key, val := range pctx.Grok {
+	for key, val := range pctx.Grok.Patterns {
 		p[i] = Pair{key, val}
 		p[i].Value = strings.ReplaceAll(p[i].Value, "{%{", "\\{\\%\\{")
 		i++

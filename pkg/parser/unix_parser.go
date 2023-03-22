@@ -9,6 +9,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 
 	"github.com/crowdsecurity/grokky"
 	log "github.com/sirupsen/logrus"
@@ -34,6 +35,7 @@ type Parsers struct {
 func Init(c map[string]interface{}) (*UnixParserCtx, error) {
 	r := UnixParserCtx{}
 	r.Grok = grokky.NewBase()
+	r.Grok.UseRe2 = fflag.Re2Support.IsEnabled()
 	files, err := os.ReadDir(c["patterns"].(string))
 	if err != nil {
 		return nil, err

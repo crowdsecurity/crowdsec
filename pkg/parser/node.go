@@ -509,7 +509,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		if n.Grok.RunTimeRegexp == nil {
 			return fmt.Errorf("empty grok '%s'", n.Grok.RegexpName)
 		}
-		n.Logger.Tracef("%s regexp: %s", n.Grok.RegexpName, n.Grok.RunTimeRegexp.Regexp.String())
+		n.Logger.Tracef("%s regexp: %s", n.Grok.RegexpName, n.Grok.RunTimeRegexp.String())
 		valid = true
 	} else if n.Grok.RegexpValue != "" {
 		if strings.HasSuffix(n.Grok.RegexpValue, "\n") {
@@ -523,7 +523,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 			// We shouldn't be here because compilation succeeded, so regexp shouldn't be nil
 			return fmt.Errorf("grok compilation failure: %s", n.Grok.RegexpValue)
 		}
-		n.Logger.Tracef("%s regexp : %s", n.Grok.RegexpValue, n.Grok.RunTimeRegexp.Regexp.String())
+		n.Logger.Tracef("%s regexp : %s", n.Grok.RegexpValue, n.Grok.RunTimeRegexp.String())
 		valid = true
 	}
 
