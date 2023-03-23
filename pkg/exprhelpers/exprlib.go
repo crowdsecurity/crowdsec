@@ -254,7 +254,7 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		}
 		switch fileType {
 		case "regex", "regexp":
-			if fflag.Re2ExprHelperSupport.IsEnabled() {
+			if fflag.Re2RegexpInfileSupport.IsEnabled() {
 				dataFileRe2[filename] = append(dataFileRe2[filename], re2.MustCompile(scanner.Text()))
 			} else {
 				dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
@@ -321,7 +321,7 @@ func RegexpInFile(data string, filename string) bool {
 	}
 
 	if _, ok := dataFileRegex[filename]; ok {
-		switch fflag.Re2ExprHelperSupport.IsEnabled() {
+		switch fflag.Re2RegexpInfileSupport.IsEnabled() {
 		case true:
 			for _, re := range dataFileRe2[filename] {
 				if re.MatchString(data) {
