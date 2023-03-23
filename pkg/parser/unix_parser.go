@@ -35,7 +35,7 @@ type Parsers struct {
 func Init(c map[string]interface{}) (*UnixParserCtx, error) {
 	r := UnixParserCtx{}
 	r.Grok = grokky.NewBase()
-	r.Grok.UseRe2 = fflag.Re2Support.IsEnabled()
+	r.Grok.UseRe2 = fflag.Re2GrokSupport.IsEnabled()
 	files, err := os.ReadDir(c["patterns"].(string))
 	if err != nil {
 		return nil, err
