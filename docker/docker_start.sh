@@ -274,8 +274,10 @@ fi
 
 # XXX only with LAPI
 if istrue "$USE_TLS"; then
-    agents_allowed_yaml=$(csv2yaml "$AGENTS_ALLOWED_OU") \
-    bouncers_allowed_yaml=$(csv2yaml "$BOUNCERS_ALLOWED_OU") \
+    agents_allowed_yaml=$(csv2yaml "$AGENTS_ALLOWED_OU")
+    export agents_allowed_yaml
+    bouncers_allowed_yaml=$(csv2yaml "$BOUNCERS_ALLOWED_OU")
+    export bouncers_allowed_yaml
     conf_set_if "$CACERT_FILE" '.api.server.tls.ca_cert_path = strenv(CACERT_FILE)'
     conf_set_if "$LAPI_CERT_FILE" '.api.server.tls.cert_file = strenv(LAPI_CERT_FILE)'
     conf_set_if "$LAPI_KEY_FILE" '.api.server.tls.key_file = strenv(LAPI_KEY_FILE)'
