@@ -23,6 +23,9 @@ RUN apt-get update && \
     cscli parsers install crowdsecurity/whitelists && \
     go install github.com/mikefarah/yq/v4@v4.31.2
 
+    # In case we need to remove agents here..
+    # cscli machines list -o json | yq '.[].machineId' | xargs -r cscli machines delete
+
 FROM debian:bullseye-slim as slim
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -49,7 +52,6 @@ COPY --from=build /go/src/crowdsec/docker/docker_start.sh /
 COPY --from=build /go/src/crowdsec/docker/config.yaml /staging/etc/crowdsec/config.yaml
 RUN yq -n '.url="http://0.0.0.0:8080"' | install -m 0600 /dev/stdin /staging/etc/crowdsec/local_api_credentials.yaml && \
     yq eval -i ".plugin_config.group = \"nogroup\"" /staging/etc/crowdsec/config.yaml
-
 
 ENTRYPOINT /bin/bash docker_start.sh
 
