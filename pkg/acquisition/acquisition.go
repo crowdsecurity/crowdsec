@@ -231,7 +231,7 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 			} else {
 				start := time.Now()
 				err = subsrc.OneShotAcquisition(output, AcquisTomb)
-				log.Infof("acquisition of %s took %s", subsrc.GetName(), time.Since(start))
+				log.Debugf("acquisition of %s took %s", subsrc.GetName(), time.Since(start))
 			}
 			if err != nil {
 				//if one of the acqusition returns an error, we kill the others to properly shutdown
