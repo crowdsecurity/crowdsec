@@ -311,6 +311,7 @@ func RegexpInFile(data string, filename string) bool {
 
 	var hash uint64
 	hasCache := false
+	matched := false
 
 	if _, ok := dataFileRegexCache[filename]; ok {
 		hasCache = true
@@ -320,35 +321,36 @@ func RegexpInFile(data string, filename string) bool {
 		}
 	}
 
-	if _, ok := dataFileRegex[filename]; ok {
-		switch fflag.Re2RegexpInfileSupport.IsEnabled() {
-		case true:
+	switch fflag.Re2RegexpInfileSupport.IsEnabled() {
+	case true:
+		if _, ok := dataFileRe2[filename]; ok {
 			for _, re := range dataFileRe2[filename] {
 				if re.MatchString(data) {
-					if hasCache {
-						dataFileRegexCache[filename].Set(hash, true)
-					}
-					return true
+					matched = true
+					break
 				}
 			}
-		case false:
-			for _, re := range dataFileRegex[filename] {
-				if re.Match([]byte(data)) {
-					if hasCache {
-						dataFileRegexCache[filename].Set(hash, true)
-					}
-					return true
-				}
-			}
+		} else {
+			log.Errorf("file '%s' (type:regexp) not found in expr library", filename)
+			log.Errorf("expr library : %s", spew.Sdump(dataFileRegex))
 		}
-	} else {
-		log.Errorf("file '%s' (type:regexp) not found in expr library", filename)
-		log.Errorf("expr library : %s", spew.Sdump(dataFileRegex))
+	case false:
+		if _, ok := dataFileRegex[filename]; ok {
+			for _, re := range dataFileRegex[filename] {
+				if re.MatchString(data) {
+					matched = true
+					break
+				}
+			}
+		} else {
+			log.Errorf("file '%s' (type:regexp) not found in expr library", filename)
+			log.Errorf("expr library : %s", spew.Sdump(dataFileRegex))
+		}
 	}
 	if hasCache {
-		dataFileRegexCache[filename].Set(hash, false)
+		dataFileRegexCache[filename].Set(hash, matched)
 	}
-	return false
+	return matched
 }
 
 func IpInRange(ip string, ipRange string) bool {
