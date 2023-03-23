@@ -7,6 +7,7 @@ var DisableHttpRetryBackoff = &Feature{Name: "disable_http_retry_backoff", Descr
 var ChunkedDecisionsStream = &Feature{Name: "chunked_decisions_stream", Description: "Enable chunked decisions stream"}
 var PapiClient = &Feature{Name: "papi_client", Description: "Enable Polling API client"}
 var Re2GrokSupport = &Feature{Name: "re2_grok_support", Description: "Enable RE2 support for GROK patterns"}
+var Re2ExprHelperSupport = &Feature{Name: "re2_expr_helper_support", Description: "Enable RE2 support for expr helpers"}
 
 func RegisterAllFeatures() error {
 	err := Crowdsec.RegisterFeature(CscliSetup)
@@ -26,6 +27,10 @@ func RegisterAllFeatures() error {
 		return err
 	}
 	err = Crowdsec.RegisterFeature(Re2GrokSupport)
+	if err != nil {
+		return err
+	}
+	err = Crowdsec.RegisterFeature(Re2ExprHelperSupport)
 	if err != nil {
 		return err
 	}

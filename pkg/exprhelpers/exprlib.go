@@ -23,11 +23,15 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+
+	"github.com/wasilibs/go-re2"
 )
 
 var dataFile map[string][]string
 var dataFileRegex map[string][]*regexp.Regexp
+var dataFileRe2 map[string][]*re2.Regexp
 
 // This is used to (optionally) cache regexp results for RegexpInFile operations
 var dataFileRegexCache map[string]gcache.Cache = make(map[string]gcache.Cache)
@@ -171,6 +175,7 @@ func Distance(lat1 string, long1 string, lat2 string, long2 string) (float64, er
 func Init(databaseClient *database.Client) error {
 	dataFile = make(map[string][]string)
 	dataFileRegex = make(map[string][]*regexp.Regexp)
+	dataFileRe2 = make(map[string][]*re2.Regexp)
 	dbClient = databaseClient
 	return nil
 }
@@ -249,7 +254,11 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		}
 		switch fileType {
 		case "regex", "regexp":
-			dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
+			if fflag.Re2ExprHelperSupport.IsEnabled() {
+				dataFileRe2[filename] = append(dataFileRe2[filename], re2.MustCompile(scanner.Text()))
+			} else {
+				dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
+			}
 		case "string":
 			dataFile[filename] = append(dataFile[filename], scanner.Text())
 		default:
@@ -312,12 +321,24 @@ func RegexpInFile(data string, filename string) bool {
 	}
 
 	if _, ok := dataFileRegex[filename]; ok {
-		for _, re := range dataFileRegex[filename] {
-			if re.Match([]byte(data)) {
-				if hasCache {
-					dataFileRegexCache[filename].Set(hash, true)
+		switch fflag.Re2ExprHelperSupport.IsEnabled() {
+		case true:
+			for _, re := range dataFileRe2[filename] {
+				if re.MatchString(data) {
+					if hasCache {
+						dataFileRegexCache[filename].Set(hash, true)
+					}
+					return true
 				}
-				return true
+			}
+		case false:
+			for _, re := range dataFileRegex[filename] {
+				if re.Match([]byte(data)) {
+					if hasCache {
+						dataFileRegexCache[filename].Set(hash, true)
+					}
+					return true
+				}
 			}
 		}
 	} else {
