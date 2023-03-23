@@ -135,9 +135,6 @@ def test_tls_lapi_var(crowdsec, flavor, certs_dir):
 # TODO: bad lapi hostname
 # the cert is valid, but has a CN that doesn't match the hostname
 # we must set insecure_skip_verify to true to use it
-# TODO: bad client OU, auth failure
-# the client cert is valid, but the organization unit doesn't match the allowed
-# value and will be rejected by the lapi unless we set agents_allow_ou
 
 
 def test_tls_split_lapi_agent(crowdsec, flavor, certs_dir):
@@ -219,6 +216,60 @@ def test_tls_mutual_split_lapi_agent(crowdsec, flavor, certs_dir):
     }
 
     with crowdsec(flavor=flavor, name=lapiname, environment=lapi_env, volumes=volumes) as lapi, crowdsec(flavor=flavor, name=agentname, environment=agent_env, volumes=volumes) as agent:
+        lapi.wait_for_log([
+            "*(tls) Client Auth Type set to VerifyClientCertIfGiven*",
+            "*CrowdSec Local API listening on 0.0.0.0:8080*"
+        ])
+        # TODO: wait_for_https
+        lapi.wait_for_http(8080, '/health', want_status=None)
+        agent.wait_for_log("*Starting processing data*")
+        res = agent.cont.exec_run('cscli lapi status')
+        assert res.exit_code == 0
+        stdout = res.output.decode()
+        assert "You can successfully interact with Local API (LAPI)" in stdout
+        res = lapi.cont.exec_run('cscli lapi status')
+        assert res.exit_code == 0
+        stdout = res.output.decode()
+        assert "You can successfully interact with Local API (LAPI)" in stdout
+
+
+def test_tls_client_ou(crowdsec, certs_dir):
+    """Check behavior of client certificate vs AGENTS_ALLOWED_OU"""
+
+    rand = random.randint(0, 10000)
+    lapiname = 'lapi-' + str(rand)
+    agentname = 'agent-' + str(rand)
+
+    lapi_env = {
+        'USE_TLS': 'true',
+        'CACERT_FILE': '/etc/ssl/crowdsec/ca.crt',
+        'LAPI_CERT_FILE': '/etc/ssl/crowdsec/lapi.crt',
+        'LAPI_KEY_FILE': '/etc/ssl/crowdsec/lapi.key',
+        'LOCAL_API_URL': 'https://localhost:8080',
+    }
+
+    agent_env = {
+        'USE_TLS': 'true',
+        'CACERT_FILE': '/etc/ssl/crowdsec/ca.crt',
+        'CLIENT_CERT_FILE': '/etc/ssl/crowdsec/agent.crt',
+        'CLIENT_KEY_FILE': '/etc/ssl/crowdsec/agent.key',
+        'LOCAL_API_URL': f'https://{lapiname}:8080',
+        'DISABLE_LOCAL_API': 'true',
+        'CROWDSEC_FEATURE_DISABLE_HTTP_RETRY_BACKOFF': 'false',
+    }
+
+    volumes = {
+        certs_dir(lapi_hostname=lapiname, agent_ou='custom-client-ou'): {'bind': '/etc/ssl/crowdsec', 'mode': 'ro'},
+    }
+
+    with crowdsec(name=lapiname, environment=lapi_env, volumes=volumes) as lapi, crowdsec(name=agentname, environment=agent_env, volumes=volumes) as agent:
+        lapi.wait_for_log([
+            "*client certificate OU (?custom-client-ou?) doesn't match expected OU (?agent-ou?)*",
+        ])
+
+    lapi_env['AGENTS_ALLOWED_OU'] = 'custom-client-ou'
+
+    with crowdsec(name=lapiname, environment=lapi_env, volumes=volumes) as lapi, crowdsec(name=agentname, environment=agent_env, volumes=volumes) as agent:
         lapi.wait_for_log([
             "*(tls) Client Auth Type set to VerifyClientCertIfGiven*",
             "*CrowdSec Local API listening on 0.0.0.0:8080*"
