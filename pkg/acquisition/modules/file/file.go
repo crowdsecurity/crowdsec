@@ -50,6 +50,10 @@ type FileSource struct {
 	exclude_regexps    []*regexp.Regexp
 }
 
+func (f *FileSource) GetUuid() string {
+	return f.config.UniqueId
+}
+
 func (f *FileSource) UnmarshalConfig(yamlConfig []byte) error {
 	f.config = FileConfiguration{}
 	err := yaml.UnmarshalStrict(yamlConfig, &f.config)

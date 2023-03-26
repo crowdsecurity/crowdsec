@@ -74,6 +74,10 @@ var linesReadShards = prometheus.NewCounterVec(
 	[]string{"stream", "shard"},
 )
 
+func (k *KinesisSource) GetUuid() string {
+	return k.Config.UniqueId
+}
+
 func (k *KinesisSource) newClient() error {
 	var sess *session.Session
 

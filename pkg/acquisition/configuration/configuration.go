@@ -11,6 +11,8 @@ type DataSourceCommonCfg struct {
 	Source         string                 `yaml:"source,omitempty"`
 	Name           string                 `yaml:"name,omitempty"`
 	UseTimeMachine bool                   `yaml:"use_time_machine,omitempty"`
+	UniqueId       string                 `yaml:"unique_id,omitempty"`
+	TransformExpr  string                 `yaml:"transform,omitempty"`
 	Config         map[string]interface{} `yaml:",inline"` //to keep the datasource-specific configuration directives
 }
 

@@ -61,6 +61,7 @@ func (f *MockSource) GetName() string                                         { 
 func (f *MockSource) ConfigureByDSN(string, map[string]string, *log.Entry) error {
 	return fmt.Errorf("not supported")
 }
+func (f *MockSource) GetUuid() string { return "" }
 
 // copy the mocksource, but this one can't run
 type MockSourceCantRun struct {
@@ -329,6 +330,7 @@ func (f *MockCat) Dump() interface{}                        { return f }
 func (f *MockCat) ConfigureByDSN(string, map[string]string, *log.Entry) error {
 	return fmt.Errorf("not supported")
 }
+func (f *MockCat) GetUuid() string { return "" }
 
 //----
 
@@ -370,6 +372,7 @@ func (f *MockTail) Dump() interface{}                        { return f }
 func (f *MockTail) ConfigureByDSN(string, map[string]string, *log.Entry) error {
 	return fmt.Errorf("not supported")
 }
+func (f *MockTail) GetUuid() string { return "" }
 
 //func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
 
@@ -497,6 +500,7 @@ func (f *MockSourceByDSN) ConfigureByDSN(dsn string, labels map[string]string, l
 	}
 	return nil
 }
+func (f *MockSourceByDSN) GetUuid() string { return "" }
 
 func TestConfigureByDSN(t *testing.T) {
 	tests := []struct {

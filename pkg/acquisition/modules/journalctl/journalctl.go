@@ -154,6 +154,10 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 	}
 }
 
+func (j *JournalCtlSource) GetUuid() string {
+	return j.config.UniqueId
+}
+
 func (j *JournalCtlSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{linesRead}
 }

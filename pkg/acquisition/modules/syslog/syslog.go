@@ -48,6 +48,10 @@ var linesParsed = prometheus.NewCounterVec(
 	},
 	[]string{"source", "type"})
 
+func (s *SyslogSource) GetUuid() string {
+	return s.config.UniqueId
+}
+
 func (s *SyslogSource) GetName() string {
 	return "syslog"
 }

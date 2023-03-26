@@ -15,6 +15,10 @@ import (
 
 type WinEventLogSource struct{}
 
+func (w *WinEventLogSource) GetUuid() string {
+	return ""
+}
+
 func (w *WinEventLogSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }

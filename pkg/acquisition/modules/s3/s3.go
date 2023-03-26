@@ -422,6 +422,10 @@ func (s *S3Source) readFile(bucket string, key string) error {
 	return nil
 }
 
+func (s *S3Source) GetUuid() string {
+	return s.Config.UniqueId
+}
+
 func (s *S3Source) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{linesRead, objectsRead, sqsMessagesReceived}
 }

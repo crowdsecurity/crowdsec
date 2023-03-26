@@ -48,6 +48,10 @@ var requestCount = prometheus.NewCounterVec(
 	},
 	[]string{"source"})
 
+func (ka *KubernetesAuditSource) GetUuid() string {
+	return ka.config.UniqueId
+}
+
 func (ka *KubernetesAuditSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{eventCount, requestCount}
 }

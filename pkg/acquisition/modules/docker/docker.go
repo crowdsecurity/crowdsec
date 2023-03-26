@@ -67,6 +67,10 @@ type ContainerConfig struct {
 	Tty    bool
 }
 
+func (d *DockerSource) GetUuid() string {
+	return d.Config.UniqueId
+}
+
 func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 	d.Config = DockerConfiguration{
 		FollowStdout:  true, // default

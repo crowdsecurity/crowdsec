@@ -100,6 +100,10 @@ var (
 	def_AwsConfigDir            = ""
 )
 
+func (cw *CloudwatchSource) GetUuid() string {
+	return cw.Config.UniqueId
+}
+
 func (cw *CloudwatchSource) UnmarshalConfig(yamlConfig []byte) error {
 	cw.Config = CloudwatchSourceConfiguration{}
 	if err := yaml.UnmarshalStrict(yamlConfig, &cw.Config); err != nil {

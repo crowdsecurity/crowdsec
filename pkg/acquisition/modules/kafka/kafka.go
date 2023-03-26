@@ -54,6 +54,10 @@ type KafkaSource struct {
 	Reader *kafka.Reader
 }
 
+func (k *KafkaSource) GetUuid() string {
+	return k.Config.UniqueId
+}
+
 func (k *KafkaSource) UnmarshalConfig(yamlConfig []byte) error {
 	k.Config = KafkaConfiguration{}
 
