@@ -623,7 +623,7 @@ func TestConfigureByDSN(t *testing.T) {
 			dbgLogger := log.New().WithField("test", tc.name)
 			dbgLogger.Logger.SetLevel(log.DebugLevel)
 			cw := CloudwatchSource{}
-			err := cw.ConfigureByDSN(tc.dsn, tc.labels, dbgLogger)
+			err := cw.ConfigureByDSN(tc.dsn, tc.labels, dbgLogger, "")
 			cstest.RequireErrorContains(t, err, tc.expectedCfgErr)
 		})
 	}
@@ -746,7 +746,7 @@ func TestOneShotAcquisition(t *testing.T) {
 			dbgLogger.Logger.SetLevel(log.DebugLevel)
 			dbgLogger.Infof("starting test")
 			cw := CloudwatchSource{}
-			err := cw.ConfigureByDSN(tc.dsn, map[string]string{"type": "test"}, dbgLogger)
+			err := cw.ConfigureByDSN(tc.dsn, map[string]string{"type": "test"}, dbgLogger, "")
 			cstest.RequireErrorContains(t, err, tc.expectedCfgErr)
 			if tc.expectedCfgErr != "" {
 				return

@@ -167,7 +167,7 @@ func (f *FileSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	return nil
 }
 
-func (f *FileSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
+func (f *FileSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	if !strings.HasPrefix(dsn, "file://") {
 		return fmt.Errorf("invalid DSN %s for file source, must start with file://", dsn)
 	}
@@ -205,6 +205,7 @@ func (f *FileSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 	f.config = FileConfiguration{}
 	f.config.Labels = labels
 	f.config.Mode = configuration.CAT_MODE
+	f.config.UniqueId = uuid
 
 	f.logger.Debugf("Will try pattern %s", args[0])
 	files, err := filepath.Glob(args[0])

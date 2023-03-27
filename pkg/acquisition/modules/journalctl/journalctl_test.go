@@ -96,7 +96,7 @@ func TestConfigureDSN(t *testing.T) {
 	})
 	for _, test := range tests {
 		f := JournalCtlSource{}
-		err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger)
+		err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
 		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
 }

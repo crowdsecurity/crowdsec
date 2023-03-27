@@ -76,7 +76,7 @@ func (s *SyslogSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{linesReceived, linesParsed}
 }
 
-func (s *SyslogSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
+func (s *SyslogSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	return fmt.Errorf("syslog datasource does not support one shot acquisition")
 }
 

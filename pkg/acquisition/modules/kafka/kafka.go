@@ -106,7 +106,7 @@ func (k *KafkaSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	return nil
 }
 
-func (k *KafkaSource) ConfigureByDSN(string, map[string]string, *log.Entry) error {
+func (k *KafkaSource) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
 	return fmt.Errorf("%s datasource does not support command-line acquisition", dataSourceName)
 }
 

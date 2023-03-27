@@ -165,7 +165,7 @@ func (k *KinesisSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	return nil
 }
 
-func (k *KinesisSource) ConfigureByDSN(string, map[string]string, *log.Entry) error {
+func (k *KinesisSource) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
 	return fmt.Errorf("kinesis datasource does not support command-line acquisition")
 }
 

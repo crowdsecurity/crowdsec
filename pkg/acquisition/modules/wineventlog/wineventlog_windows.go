@@ -284,7 +284,7 @@ func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry) erro
 	return nil
 }
 
-func (w *WinEventLogSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
+func (w *WinEventLogSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	return nil
 }
 

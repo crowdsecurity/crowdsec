@@ -513,7 +513,7 @@ func (s *S3Source) Configure(yamlConfig []byte, logger *log.Entry) error {
 	return nil
 }
 
-func (s *S3Source) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
+func (s *S3Source) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	if !strings.HasPrefix(dsn, "s3://") {
 		return fmt.Errorf("invalid DSN %s for S3 source, must start with s3://", dsn)
 	}
@@ -552,6 +552,7 @@ func (s *S3Source) ConfigureByDSN(dsn string, labels map[string]string, logger *
 	s.Config = S3Configuration{}
 	s.Config.Labels = labels
 	s.Config.Mode = configuration.CAT_MODE
+	s.Config.UniqueId = uuid
 
 	pathParts := strings.Split(args[0], "/")
 	s.logger.Debugf("pathParts: %v", pathParts)

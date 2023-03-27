@@ -34,17 +34,17 @@ import (
 
 // The interface each datasource must implement
 type DataSource interface {
-	GetMetrics() []prometheus.Collector                         // Returns pointers to metrics that are managed by the module
-	GetAggregMetrics() []prometheus.Collector                   // Returns pointers to metrics that are managed by the module (aggregated mode, limits cardinality)
-	UnmarshalConfig([]byte) error                               // Decode and pre-validate the YAML datasource - anything that can be checked before runtime
-	Configure([]byte, *log.Entry) error                         // Complete the YAML datasource configuration and perform runtime checks.
-	ConfigureByDSN(string, map[string]string, *log.Entry) error // Configure the datasource
-	GetMode() string                                            // Get the mode (TAIL, CAT or SERVER)
-	GetName() string                                            // Get the name of the module
-	OneShotAcquisition(chan types.Event, *tomb.Tomb) error      // Start one shot acquisition(eg, cat a file)
-	StreamingAcquisition(chan types.Event, *tomb.Tomb) error    // Start live acquisition (eg, tail a file)
-	CanRun() error                                              // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
-	GetUuid() string                                            // Get the unique identifier of the datasource
+	GetMetrics() []prometheus.Collector                                 // Returns pointers to metrics that are managed by the module
+	GetAggregMetrics() []prometheus.Collector                           // Returns pointers to metrics that are managed by the module (aggregated mode, limits cardinality)
+	UnmarshalConfig([]byte) error                                       // Decode and pre-validate the YAML datasource - anything that can be checked before runtime
+	Configure([]byte, *log.Entry) error                                 // Complete the YAML datasource configuration and perform runtime checks.
+	ConfigureByDSN(string, map[string]string, *log.Entry, string) error // Configure the datasource
+	GetMode() string                                                    // Get the mode (TAIL, CAT or SERVER)
+	GetName() string                                                    // Get the name of the module
+	OneShotAcquisition(chan types.Event, *tomb.Tomb) error              // Start one shot acquisition(eg, cat a file)
+	StreamingAcquisition(chan types.Event, *tomb.Tomb) error            // Start live acquisition (eg, tail a file)
+	CanRun() error                                                      // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
+	GetUuid() string                                                    // Get the unique identifier of the datasource
 	Dump() interface{}
 }
 
@@ -122,7 +122,7 @@ func detectBackwardCompatAcquis(sub configuration.DataSourceCommonCfg) string {
 	return ""
 }
 
-func LoadAcquisitionFromDSN(dsn string, labels map[string]string) ([]DataSource, error) {
+func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr string) ([]DataSource, error) {
 	var sources []DataSource
 
 	frags := strings.Split(dsn, ":")
@@ -141,7 +141,15 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string) ([]DataSource,
 	subLogger := clog.WithFields(log.Fields{
 		"type": dsn,
 	})
-	err := dataSrc.ConfigureByDSN(dsn, labels, subLogger)
+	uniqueId := uuid.NewString()
+	if transformExpr != "" {
+		vm, err := expr.Compile(transformExpr, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+		if err != nil {
+			return nil, fmt.Errorf("while compiling transform expression '%s': %w", transformExpr, err)
+		}
+		transformRuntimes[uniqueId] = vm
+	}
+	err := dataSrc.ConfigureByDSN(dsn, labels, subLogger, uniqueId)
 	if err != nil {
 		return nil, fmt.Errorf("while configuration datasource for %s: %w", dsn, err)
 	}
@@ -234,14 +242,15 @@ func GetMetrics(sources []DataSource, aggregated bool) error {
 
 func transform(transformChan chan types.Event, output chan types.Event, AcquisTomb *tomb.Tomb, transformRuntime *vm.Program) {
 	defer types.CatchPanic("crowdsec/acquis")
+	log.Infof("transformer started")
 	for {
 		select {
 		case <-AcquisTomb.Dying():
 			log.Debugf("transformer is dying")
 			return
 		case evt := <-transformChan:
-			log.Tracef("Received event %s", evt.Line.Raw)
-			out, err := expr.Run(transformRuntime, map[string]interface{}{"evt": &evt})
+			log.Infof("Received event %s", evt.Line.Raw)
+			out, err := expr.Run(transformRuntime, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &evt}))
 			if err != nil {
 				log.Errorf("while running transform expression: %s", err)
 				continue
@@ -281,6 +290,7 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 			outChan := output
 			log.Infof("datasource UUID: %s", subsrc.GetUuid())
 			if transformRuntime, ok := transformRuntimes[subsrc.GetUuid()]; ok {
+				log.Infof("transform expression found for datasource %s", subsrc.GetName())
 				transformChan := make(chan types.Event)
 				outChan = transformChan
 				AcquisTomb.Go(func() error {

@@ -204,11 +204,12 @@ func (j *JournalCtlSource) Configure(yamlConfig []byte, logger *log.Entry) error
 	return nil
 }
 
-func (j *JournalCtlSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
+func (j *JournalCtlSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	j.logger = logger
 	j.config = JournalCtlConfiguration{}
 	j.config.Mode = configuration.CAT_MODE
 	j.config.Labels = labels
+	j.config.UniqueId = uuid
 
 	//format for the DSN is : journalctl://filters=FILTER1&filters=FILTER2
 	if !strings.HasPrefix(dsn, "journalctl://") {

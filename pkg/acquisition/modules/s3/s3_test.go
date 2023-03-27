@@ -234,7 +234,7 @@ func TestDSNAcquis(t *testing.T) {
 			linesRead := 0
 			f := S3Source{}
 			logger := log.NewEntry(log.New())
-			err := f.ConfigureByDSN(test.dsn, map[string]string{"foo": "bar"}, logger)
+			err := f.ConfigureByDSN(test.dsn, map[string]string{"foo": "bar"}, logger, "")
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err.Error())
 			}
