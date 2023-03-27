@@ -2,6 +2,7 @@ package leakybucket
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/antonmedv/expr"
@@ -10,24 +11,40 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+var conditionalExprCache map[string]vm.Program
+var conditionalExprCacheLock sync.Mutex
+
 type ConditionalOverflow struct {
 	ConditionalFilter        string
 	ConditionalFilterRuntime *vm.Program
 	DumbProcessor
 }
 
-func NewConditionalOverflow(g *BucketFactory) (*ConditionalOverflow, error) {
+func (c *ConditionalOverflow) OnBucketInit(g *BucketFactory) error {
 	var err error
+	var compiledExpr *vm.Program
 
-	c := ConditionalOverflow{}
-	c.ConditionalFilter = g.ConditionalOverflow
-	c.ConditionalFilterRuntime, err = expr.Compile(c.ConditionalFilter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{
-		"queue": &Queue{}, "leaky": &Leaky{}})))
-	if err != nil {
-		g.logger.Errorf("Unable to compile condition expression for conditional bucket : %s", err)
-		return nil, fmt.Errorf("unable to compile condition expression for conditional bucket : %v", err)
+	if conditionalExprCache == nil {
+		conditionalExprCache = make(map[string]vm.Program)
 	}
-	return &c, nil
+	conditionalExprCacheLock.Lock()
+	if compiled, ok := conditionalExprCache[g.ConditionalOverflow]; ok {
+		conditionalExprCacheLock.Unlock()
+		c.ConditionalFilterRuntime = &compiled
+	} else {
+		conditionalExprCacheLock.Unlock()
+		//release the lock during compile
+		compiledExpr, err = expr.Compile(g.ConditionalOverflow, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{
+			"queue": &Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})))
+		if err != nil {
+			return fmt.Errorf("conditional compile error : %w", err)
+		}
+		c.ConditionalFilterRuntime = compiledExpr
+		conditionalExprCacheLock.Lock()
+		conditionalExprCache[g.ConditionalOverflow] = *compiledExpr
+		conditionalExprCacheLock.Unlock()
+	}
+	return err
 }
 
 func (c *ConditionalOverflow) AfterBucketPour(b *BucketFactory) func(types.Event, *Leaky) *types.Event {
