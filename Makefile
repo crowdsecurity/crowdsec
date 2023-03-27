@@ -36,6 +36,10 @@ LD_OPTS_VARS= \
 -X '$(GO_MODULE_NAME)/pkg/csconfig.defaultConfigDir=$(DEFAULT_CONFIGDIR)' \
 -X '$(GO_MODULE_NAME)/pkg/csconfig.defaultDataDir=$(DEFAULT_DATADIR)'
 
+ifneq (,$(DOCKER_BUILD))
+LD_OPTS_VARS += -X '$(GO_MODULE_NAME)/pkg/cwversion.System=docker'
+endif
+
 ifdef BUILD_STATIC
 	export LD_OPTS=-ldflags "-s -w $(LD_OPTS_VARS) -extldflags '-static'" -tags netgo,osusergo,sqlite_omit_load_extension
 else

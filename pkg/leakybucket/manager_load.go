@@ -321,12 +321,12 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	}
 
 	if bucketFactory.Distinct != "" {
-		bucketFactory.logger.Tracef("Adding a non duplicate filter on %s.", bucketFactory.Name)
+		bucketFactory.logger.Tracef("Adding a non duplicate filter")
 		bucketFactory.processors = append(bucketFactory.processors, &Uniq{})
 	}
 
 	if bucketFactory.CancelOnFilter != "" {
-		bucketFactory.logger.Tracef("Adding a cancel_on filter on %s.", bucketFactory.Name)
+		bucketFactory.logger.Tracef("Adding a cancel_on filter")
 		bucketFactory.processors = append(bucketFactory.processors, &CancelOnFilter{})
 	}
 
@@ -351,13 +351,8 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	}
 
 	if bucketFactory.ConditionalOverflow != "" {
-		bucketFactory.logger.Tracef("Adding conditional overflow.")
-		condovflw, err := NewConditionalOverflow(bucketFactory)
-		if err != nil {
-			bucketFactory.logger.Errorf("Error creating conditional overflow : %s", err)
-			return fmt.Errorf("error creating conditional overflow : %s", err)
-		}
-		bucketFactory.processors = append(bucketFactory.processors, condovflw)
+		bucketFactory.logger.Tracef("Adding conditional overflow")
+		bucketFactory.processors = append(bucketFactory.processors, &ConditionalOverflow{})
 	}
 
 	if len(bucketFactory.Data) > 0 {

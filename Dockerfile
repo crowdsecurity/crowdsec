@@ -10,7 +10,7 @@ COPY . .
 # wizard.sh requires GNU coreutils
 RUN apk add --no-cache git gcc libc-dev make bash gettext binutils-gold coreutils && \
     echo "githubciXXXXXXXXXXXXXXXXXXXXXXXX" > /etc/machine-id && \
-    make clean release && \
+    make clean release DOCKER_BUILD=1 && \
     cd crowdsec-v* && \
     ./wizard.sh --docker-mode && \
     cd - >/dev/null && \
@@ -18,6 +18,9 @@ RUN apk add --no-cache git gcc libc-dev make bash gettext binutils-gold coreutil
     cscli collections install crowdsecurity/linux && \
     cscli parsers install crowdsecurity/whitelists && \
     go install github.com/mikefarah/yq/v4@v4.31.2
+
+    # In case we need to remove agents here..
+    # cscli machines list -o json | yq '.[].machineId' | xargs -r cscli machines delete
 
 FROM alpine:latest as slim
 
