@@ -134,7 +134,7 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 			err           error
 		)
 		if bucketFactory.ScopeType.Filter != "" {
-			if runTimeFilter, err = expr.Compile(bucketFactory.ScopeType.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}}))); err != nil {
+			if runTimeFilter, err = expr.Compile(bucketFactory.ScopeType.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...); err != nil {
 				return fmt.Errorf("Error compiling the scope filter: %s", err)
 			}
 			bucketFactory.ScopeType.RunTimeFilter = runTimeFilter
@@ -147,7 +147,7 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 			err           error
 		)
 		if bucketFactory.ScopeType.Filter != "" {
-			if runTimeFilter, err = expr.Compile(bucketFactory.ScopeType.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}}))); err != nil {
+			if runTimeFilter, err = expr.Compile(bucketFactory.ScopeType.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...); err != nil {
 				return fmt.Errorf("Error compiling the scope filter: %s", err)
 			}
 			bucketFactory.ScopeType.RunTimeFilter = runTimeFilter
@@ -286,19 +286,19 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 		bucketFactory.logger.Warning("Bucket without filter, abort.")
 		return fmt.Errorf("bucket without filter directive")
 	}
-	bucketFactory.RunTimeFilter, err = expr.Compile(bucketFactory.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+	bucketFactory.RunTimeFilter, err = expr.Compile(bucketFactory.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 	if err != nil {
 		return fmt.Errorf("invalid filter '%s' in %s : %v", bucketFactory.Filter, bucketFactory.Filename, err)
 	}
 	if bucketFactory.Debug {
-		bucketFactory.ExprDebugger, err = exprhelpers.NewDebugger(bucketFactory.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+		bucketFactory.ExprDebugger, err = exprhelpers.NewDebugger(bucketFactory.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 		if err != nil {
 			log.Errorf("unable to build debug filter for '%s' : %s", bucketFactory.Filter, err)
 		}
 	}
 
 	if bucketFactory.GroupBy != "" {
-		bucketFactory.RunTimeGroupBy, err = expr.Compile(bucketFactory.GroupBy, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+		bucketFactory.RunTimeGroupBy, err = expr.Compile(bucketFactory.GroupBy, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 		if err != nil {
 			return fmt.Errorf("invalid groupby '%s' in %s : %v", bucketFactory.GroupBy, bucketFactory.Filename, err)
 		}
@@ -321,12 +321,12 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	}
 
 	if bucketFactory.Distinct != "" {
-		bucketFactory.logger.Tracef("Adding a non duplicate filter on %s.", bucketFactory.Name)
+		bucketFactory.logger.Tracef("Adding a non duplicate filter")
 		bucketFactory.processors = append(bucketFactory.processors, &Uniq{})
 	}
 
 	if bucketFactory.CancelOnFilter != "" {
-		bucketFactory.logger.Tracef("Adding a cancel_on filter on %s.", bucketFactory.Name)
+		bucketFactory.logger.Tracef("Adding a cancel_on filter")
 		bucketFactory.processors = append(bucketFactory.processors, &CancelOnFilter{})
 	}
 
@@ -351,13 +351,8 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	}
 
 	if bucketFactory.ConditionalOverflow != "" {
-		bucketFactory.logger.Tracef("Adding conditional overflow.")
-		condovflw, err := NewConditionalOverflow(bucketFactory)
-		if err != nil {
-			bucketFactory.logger.Errorf("Error creating conditional overflow : %s", err)
-			return fmt.Errorf("error creating conditional overflow : %s", err)
-		}
-		bucketFactory.processors = append(bucketFactory.processors, condovflw)
+		bucketFactory.logger.Tracef("Adding conditional overflow")
+		bucketFactory.processors = append(bucketFactory.processors, &ConditionalOverflow{})
 	}
 
 	if len(bucketFactory.Data) > 0 {

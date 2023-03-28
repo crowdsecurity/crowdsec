@@ -100,17 +100,17 @@ func TestVisitor(t *testing.T) {
 	})
 
 	for _, test := range tests {
-		compiledFilter, err := expr.Compile(test.filter, expr.Env(GetExprEnv(test.env)))
+		compiledFilter, err := expr.Compile(test.filter, GetExprOptions(test.env)...)
 		if err != nil && test.err == nil {
 			log.Fatalf("compile: %s", err)
 		}
-		debugFilter, err := NewDebugger(test.filter, expr.Env(GetExprEnv(test.env)))
+		debugFilter, err := NewDebugger(test.filter, GetExprOptions(test.env)...)
 		if err != nil && test.err == nil {
 			log.Fatalf("debug: %s", err)
 		}
 
 		if compiledFilter != nil {
-			result, err := expr.Run(compiledFilter, GetExprEnv(test.env))
+			result, err := expr.Run(compiledFilter, test.env)
 			if err != nil && test.err == nil {
 				log.Fatalf("run : %s", err)
 			}
@@ -120,37 +120,49 @@ func TestVisitor(t *testing.T) {
 		}
 
 		if debugFilter != nil {
-			debugFilter.Run(clog, test.result, GetExprEnv(test.env))
+			debugFilter.Run(clog, test.result, test.env)
 		}
 	}
 }
 
 func TestMatch(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
 	tests := []struct {
 		glob string
 		val  string
 		ret  bool
+		expr string
 	}{
-		{"foo", "foo", true},
-		{"foo", "bar", false},
-		{"foo*", "foo", true},
-		{"foo*", "foobar", true},
-		{"foo*", "barfoo", false},
-		{"foo*", "bar", false},
-		{"*foo", "foo", true},
-		{"*foo", "barfoo", true},
-		{"foo*r", "foobar", true},
-		{"foo*r", "foobazr", true},
-		{"foo?ar", "foobar", true},
-		{"foo?ar", "foobazr", false},
-		{"foo?ar", "foobaz", false},
-		{"*foo?ar?", "foobar", false},
-		{"*foo?ar?", "foobare", true},
-		{"*foo?ar?", "rafoobar", false},
-		{"*foo?ar?", "rafoobare", true},
+		{"foo", "foo", true, `Match(pattern, name)`},
+		{"foo", "bar", false, `Match(pattern, name)`},
+		{"foo*", "foo", true, `Match(pattern, name)`},
+		{"foo*", "foobar", true, `Match(pattern, name)`},
+		{"foo*", "barfoo", false, `Match(pattern, name)`},
+		{"foo*", "bar", false, `Match(pattern, name)`},
+		{"*foo", "foo", true, `Match(pattern, name)`},
+		{"*foo", "barfoo", true, `Match(pattern, name)`},
+		{"foo*r", "foobar", true, `Match(pattern, name)`},
+		{"foo*r", "foobazr", true, `Match(pattern, name)`},
+		{"foo?ar", "foobar", true, `Match(pattern, name)`},
+		{"foo?ar", "foobazr", false, `Match(pattern, name)`},
+		{"foo?ar", "foobaz", false, `Match(pattern, name)`},
+		{"*foo?ar?", "foobar", false, `Match(pattern, name)`},
+		{"*foo?ar?", "foobare", true, `Match(pattern, name)`},
+		{"*foo?ar?", "rafoobar", false, `Match(pattern, name)`},
+		{"*foo?ar?", "rafoobare", true, `Match(pattern, name)`},
 	}
 	for _, test := range tests {
-		ret := Match(test.glob, test.val)
+		env := map[string]interface{}{
+			"pattern": test.glob,
+			"name":    test.val,
+		}
+		vm, err := expr.Compile(test.expr, GetExprOptions(env)...)
+		if err != nil {
+			t.Fatalf("pattern:%s val:%s NOK %s", test.glob, test.val, err)
+		}
+		ret, err := expr.Run(vm, env)
+		assert.NoError(t, err)
 		if isOk := assert.Equal(t, test.ret, ret); !isOk {
 			t.Fatalf("pattern:%s val:%s NOK %t !=  %t", test.glob, test.val, ret, test.ret)
 		}
@@ -158,19 +170,45 @@ func TestMatch(t *testing.T) {
 }
 
 func TestDistanceHelper(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
 
-	//one set of coord is empty
-	ret, err := Distance("0.0", "0.0", "12.1", "12.1")
-	assert.NoError(t, err)
-	assert.Equal(t, 0.0, ret)
-	//those aren't even coords
-	ret, err = Distance("lol", "42.1", "12.1", "12.1")
-	assert.NotNil(t, err)
-	assert.Equal(t, 0.0, ret)
-	//real ones
-	ret, err = Distance("51.45", "1.15", "41.54", "12.27")
-	assert.NoError(t, err)
-	assert.Equal(t, 1389.1793118293067, ret)
+	tests := []struct {
+		lat1  string
+		lon1  string
+		lat2  string
+		lon2  string
+		dist  float64
+		valid bool
+		expr  string
+		name  string
+	}{
+		{"51.45", "1.15", "41.54", "12.27", 1389.1793118293067, true, `Distance(lat1, lon1, lat2, lon2)`, "valid"},
+		{"lol", "1.15", "41.54", "12.27", 0.0, false, `Distance(lat1, lon1, lat2, lon2)`, "invalid lat1"},
+		{"0.0", "0.0", "12.1", "12.1", 0.0, true, `Distance(lat1, lon1, lat2, lon2)`, "empty coord"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			env := map[string]interface{}{
+				"lat1": test.lat1,
+				"lon1": test.lon1,
+				"lat2": test.lat2,
+				"lon2": test.lon2,
+			}
+			vm, err := expr.Compile(test.expr, GetExprOptions(env)...)
+			if err != nil {
+				t.Fatalf("pattern:%s val:%s NOK %s", test.lat1, test.lon1, err)
+			}
+			ret, err := expr.Run(vm, env)
+			if test.valid {
+				assert.NoError(t, err)
+				assert.Equal(t, test.dist, ret)
+			} else {
+				assert.NotNil(t, err)
+			}
+		})
+	}
 }
 
 func TestRegexpCacheBehavior(t *testing.T) {
@@ -185,12 +223,12 @@ func TestRegexpCacheBehavior(t *testing.T) {
 	err = RegexpCacheInit(filename, types.DataSource{Type: "regex", Size: types.IntPtr(1)})
 	require.NoError(t, err)
 
-	ret := RegexpInFile("crowdsec", filename)
-	assert.False(t, ret)
+	ret, _ := RegexpInFile("crowdsec", filename)
+	assert.False(t, ret.(bool))
 	assert.Equal(t, 1, dataFileRegexCache[filename].Len(false))
 
-	ret = RegexpInFile("Crowdsec", filename)
-	assert.True(t, ret)
+	ret, _ = RegexpInFile("Crowdsec", filename)
+	assert.True(t, ret.(bool))
 	assert.Equal(t, 1, dataFileRegexCache[filename].Len(false))
 
 	//cache with TTL
@@ -198,8 +236,8 @@ func TestRegexpCacheBehavior(t *testing.T) {
 	err = RegexpCacheInit(filename, types.DataSource{Type: "regex", Size: types.IntPtr(2), TTL: &ttl})
 	require.NoError(t, err)
 
-	ret = RegexpInFile("crowdsec", filename)
-	assert.False(t, ret)
+	ret, _ = RegexpInFile("crowdsec", filename)
+	assert.False(t, ret.(bool))
 	assert.Equal(t, 1, dataFileRegexCache[filename].Len(true))
 
 	time.Sleep(1 * time.Second)
@@ -249,11 +287,11 @@ func TestRegexpInFile(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		compiledFilter, err := expr.Compile(test.filter, expr.Env(GetExprEnv(map[string]interface{}{})))
+		compiledFilter, err := expr.Compile(test.filter, GetExprOptions(map[string]interface{}{})...)
 		if err != nil {
 			log.Fatal(err)
 		}
-		result, err := expr.Run(compiledFilter, GetExprEnv(map[string]interface{}{}))
+		result, err := expr.Run(compiledFilter, map[string]interface{}{})
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -374,11 +412,11 @@ func TestFile(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		compiledFilter, err := expr.Compile(test.filter, expr.Env(GetExprEnv(map[string]interface{}{})))
+		compiledFilter, err := expr.Compile(test.filter, GetExprOptions(map[string]interface{}{})...)
 		if err != nil {
 			log.Fatal(err)
 		}
-		result, err := expr.Run(compiledFilter, GetExprEnv(map[string]interface{}{}))
+		result, err := expr.Run(compiledFilter, map[string]interface{}{})
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -391,6 +429,8 @@ func TestFile(t *testing.T) {
 }
 
 func TestIpInRange(t *testing.T) {
+	err := Init(nil)
+	assert.NoError(t, err)
 	tests := []struct {
 		name   string
 		env    map[string]interface{}
@@ -401,9 +441,8 @@ func TestIpInRange(t *testing.T) {
 		{
 			name: "IpInRange() test: basic test",
 			env: map[string]interface{}{
-				"ip":        "192.168.0.1",
-				"ipRange":   "192.168.0.0/24",
-				"IpInRange": IpInRange,
+				"ip":      "192.168.0.1",
+				"ipRange": "192.168.0.0/24",
 			},
 			code:   "IpInRange(ip, ipRange)",
 			result: true,
@@ -412,9 +451,8 @@ func TestIpInRange(t *testing.T) {
 		{
 			name: "IpInRange() test: malformed IP",
 			env: map[string]interface{}{
-				"ip":        "192.168.0",
-				"ipRange":   "192.168.0.0/24",
-				"IpInRange": IpInRange,
+				"ip":      "192.168.0",
+				"ipRange": "192.168.0.0/24",
 			},
 			code:   "IpInRange(ip, ipRange)",
 			result: false,
@@ -423,9 +461,8 @@ func TestIpInRange(t *testing.T) {
 		{
 			name: "IpInRange() test: malformed IP range",
 			env: map[string]interface{}{
-				"ip":        "192.168.0.0/255",
-				"ipRange":   "192.168.0.0/24",
-				"IpInRange": IpInRange,
+				"ip":      "192.168.0.0/255",
+				"ipRange": "192.168.0.0/24",
 			},
 			code:   "IpInRange(ip, ipRange)",
 			result: false,
@@ -434,7 +471,7 @@ func TestIpInRange(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		program, err := expr.Compile(test.code, expr.Env(test.env))
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 		require.NoError(t, err)
 		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
@@ -445,6 +482,8 @@ func TestIpInRange(t *testing.T) {
 }
 
 func TestIpToRange(t *testing.T) {
+	err := Init(nil)
+	assert.NoError(t, err)
 	tests := []struct {
 		name   string
 		env    map[string]interface{}
@@ -455,9 +494,8 @@ func TestIpToRange(t *testing.T) {
 		{
 			name: "IpToRange() test: IPv4",
 			env: map[string]interface{}{
-				"ip":        "192.168.1.1",
-				"netmask":   "16",
-				"IpToRange": IpToRange,
+				"ip":      "192.168.1.1",
+				"netmask": "16",
 			},
 			code:   "IpToRange(ip, netmask)",
 			result: "192.168.0.0/16",
@@ -466,9 +504,8 @@ func TestIpToRange(t *testing.T) {
 		{
 			name: "IpToRange() test: IPv6",
 			env: map[string]interface{}{
-				"ip":        "2001:db8::1",
-				"netmask":   "/64",
-				"IpToRange": IpToRange,
+				"ip":      "2001:db8::1",
+				"netmask": "/64",
 			},
 			code:   "IpToRange(ip, netmask)",
 			result: "2001:db8::/64",
@@ -477,9 +514,8 @@ func TestIpToRange(t *testing.T) {
 		{
 			name: "IpToRange() test: malformed netmask",
 			env: map[string]interface{}{
-				"ip":        "192.168.0.1",
-				"netmask":   "test",
-				"IpToRange": IpToRange,
+				"ip":      "192.168.0.1",
+				"netmask": "test",
 			},
 			code:   "IpToRange(ip, netmask)",
 			result: "",
@@ -488,9 +524,8 @@ func TestIpToRange(t *testing.T) {
 		{
 			name: "IpToRange() test: malformed IP",
 			env: map[string]interface{}{
-				"ip":        "a.b.c.d",
-				"netmask":   "24",
-				"IpToRange": IpToRange,
+				"ip":      "a.b.c.d",
+				"netmask": "24",
 			},
 			code:   "IpToRange(ip, netmask)",
 			result: "",
@@ -499,9 +534,8 @@ func TestIpToRange(t *testing.T) {
 		{
 			name: "IpToRange() test: too high netmask",
 			env: map[string]interface{}{
-				"ip":        "192.168.1.1",
-				"netmask":   "35",
-				"IpToRange": IpToRange,
+				"ip":      "192.168.1.1",
+				"netmask": "35",
 			},
 			code:   "IpToRange(ip, netmask)",
 			result: "",
@@ -510,7 +544,7 @@ func TestIpToRange(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		program, err := expr.Compile(test.code, expr.Env(test.env))
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 		require.NoError(t, err)
 		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
@@ -521,39 +555,72 @@ func TestIpToRange(t *testing.T) {
 }
 
 func TestAtof(t *testing.T) {
-	testFloat := "1.5"
-	expectedFloat := 1.5
 
-	if Atof(testFloat) != expectedFloat {
-		t.Fatalf("Atof should return 1.5 as a float")
+	err := Init(nil)
+	assert.NoError(t, err)
+
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result float64
+	}{
+		{
+			name: "Atof() test: basic test",
+			env: map[string]interface{}{
+				"testFloat": "1.5",
+			},
+			code:   "Atof(testFloat)",
+			result: 1.5,
+		},
+		{
+			name: "Atof() test: bad float",
+			env: map[string]interface{}{
+				"testFloat": "1aaa.5",
+			},
+			code:   "Atof(testFloat)",
+			result: 0.0,
+		},
 	}
 
-	log.Printf("test 'Atof()' : OK")
-
-	//bad float
-	testFloat = "1aaa.5"
-	expectedFloat = 0.0
-
-	if Atof(testFloat) != expectedFloat {
-		t.Fatalf("Atof should return a negative value (error) as a float got")
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
 	}
-
-	log.Printf("test 'Atof()' : OK")
 }
 
 func TestUpper(t *testing.T) {
 	testStr := "test"
 	expectedStr := "TEST"
 
-	if Upper(testStr) != expectedStr {
-		t.Fatalf("Upper() should return test in upper case")
+	env := map[string]interface{}{
+		"testStr": testStr,
 	}
 
-	log.Printf("test 'Upper()' : OK")
+	err := Init(nil)
+	assert.NoError(t, err)
+	vm, err := expr.Compile("Upper(testStr)", GetExprOptions(env)...)
+	assert.NoError(t, err)
+
+	out, err := expr.Run(vm, env)
+
+	assert.NoError(t, err)
+	v, ok := out.(string)
+	if !ok {
+		t.Fatalf("Upper() should return a string")
+	}
+
+	if v != expectedStr {
+		t.Fatalf("Upper() should return test in upper case")
+	}
 }
 
 func TestTimeNow(t *testing.T) {
-	ti, err := time.Parse(time.RFC3339, TimeNow())
+	now, _ := TimeNow()
+	ti, err := time.Parse(time.RFC3339, now.(string))
 	if err != nil {
 		t.Fatalf("Error parsing the return value of TimeNow: %s", err)
 	}
@@ -625,7 +692,7 @@ func TestParseUri(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		program, err := expr.Compile(test.code, expr.Env(test.env))
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 		require.NoError(t, err)
 		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
@@ -665,7 +732,7 @@ func TestQueryEscape(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		program, err := expr.Compile(test.code, expr.Env(test.env))
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 		require.NoError(t, err)
 		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
@@ -705,7 +772,7 @@ func TestPathEscape(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		program, err := expr.Compile(test.code, expr.Env(test.env))
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 		require.NoError(t, err)
 		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
@@ -745,7 +812,7 @@ func TestPathUnescape(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		program, err := expr.Compile(test.code, expr.Env(test.env))
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 		require.NoError(t, err)
 		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
@@ -785,7 +852,7 @@ func TestQueryUnescape(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		program, err := expr.Compile(test.code, expr.Env(test.env))
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 		require.NoError(t, err)
 		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
@@ -825,7 +892,7 @@ func TestLower(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		program, err := expr.Compile(test.code, expr.Env(test.env))
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 		require.NoError(t, err)
 		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
@@ -865,6 +932,9 @@ func TestGetDecisionsCount(t *testing.T) {
 		assert.Error(t, errors.Errorf("Failed to create sample decision"))
 	}
 
+	err = Init(dbClient)
+	assert.NoError(t, err)
+
 	tests := []struct {
 		name   string
 		env    map[string]interface{}
@@ -885,10 +955,8 @@ func TestGetDecisionsCount(t *testing.T) {
 						},
 					},
 				},
-				"GetDecisionsCount": GetDecisionsCount,
-				"sprintf":           fmt.Sprintf,
 			},
-			code:   "sprintf('%d', GetDecisionsCount(Alert.GetValue()))",
+			code:   "Sprintf('%d', GetDecisionsCount(Alert.GetValue()))",
 			result: "1",
 			err:    "",
 		},
@@ -905,19 +973,17 @@ func TestGetDecisionsCount(t *testing.T) {
 						},
 					},
 				},
-				"GetDecisionsCount": GetDecisionsCount,
-				"sprintf":           fmt.Sprintf,
 			},
-			code:   "sprintf('%d', GetDecisionsCount(Alert.GetValue()))",
+			code:   "Sprintf('%d', GetDecisionsCount(Alert.GetValue()))",
 			result: "0",
 			err:    "",
 		},
 	}
 
 	for _, test := range tests {
-		program, err := expr.Compile(test.code, expr.Env(GetExprEnv(test.env)))
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 		require.NoError(t, err)
-		output, err := expr.Run(program, GetExprEnv(test.env))
+		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
 		require.Equal(t, test.result, output)
 		log.Printf("test '%s' : OK", test.name)
@@ -970,6 +1036,9 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 		assert.Error(t, errors.Errorf("Failed to create sample decision"))
 	}
 
+	err = Init(dbClient)
+	assert.NoError(t, err)
+
 	tests := []struct {
 		name   string
 		env    map[string]interface{}
@@ -990,10 +1059,8 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 						},
 					},
 				},
-				"GetDecisionsSinceCount": GetDecisionsSinceCount,
-				"sprintf":                fmt.Sprintf,
 			},
-			code:   "sprintf('%d', GetDecisionsSinceCount(Alert.GetValue(), '25h'))",
+			code:   "Sprintf('%d', GetDecisionsSinceCount(Alert.GetValue(), '25h'))",
 			result: "2",
 			err:    "",
 		},
@@ -1010,10 +1077,8 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 						},
 					},
 				},
-				"GetDecisionsSinceCount": GetDecisionsSinceCount,
-				"sprintf":                fmt.Sprintf,
 			},
-			code:   "sprintf('%d', GetDecisionsSinceCount(Alert.GetValue(), '1h'))",
+			code:   "Sprintf('%d', GetDecisionsSinceCount(Alert.GetValue(), '1h'))",
 			result: "1",
 			err:    "",
 		},
@@ -1030,19 +1095,17 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 						},
 					},
 				},
-				"GetDecisionsSinceCount": GetDecisionsSinceCount,
-				"sprintf":                fmt.Sprintf,
 			},
-			code:   "sprintf('%d', GetDecisionsSinceCount(Alert.GetValue(), '1h'))",
+			code:   "Sprintf('%d', GetDecisionsSinceCount(Alert.GetValue(), '1h'))",
 			result: "0",
 			err:    "",
 		},
 	}
 
 	for _, test := range tests {
-		program, err := expr.Compile(test.code, expr.Env(GetExprEnv(test.env)))
+		program, err := expr.Compile(test.code, GetExprOptions(test.env)...)
 		require.NoError(t, err)
-		output, err := expr.Run(program, GetExprEnv(test.env))
+		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
 		require.Equal(t, test.result, output)
 		log.Printf("test '%s' : OK", test.name)
@@ -1088,113 +1151,156 @@ func TestParseUnixTime(t *testing.T) {
 			if tc.expectedErr != "" {
 				return
 			}
-			require.WithinDuration(t, tc.expected, output, time.Second)
+			require.WithinDuration(t, tc.expected, output.(time.Time), time.Second)
 		})
 	}
 }
 
 func TestIsIp(t *testing.T) {
+	if err := Init(nil); err != nil {
+		log.Fatal(err)
+	}
 	tests := []struct {
-		name     string
-		method   func(string) bool
-		value    string
-		expected bool
+		name             string
+		expr             string
+		value            string
+		expected         bool
+		expectedBuildErr bool
 	}{
 		{
 			name:     "IsIPV4() test: valid IPv4",
-			method:   IsIPV4,
+			expr:     `IsIPV4(value)`,
 			value:    "1.2.3.4",
 			expected: true,
 		},
 		{
 			name:     "IsIPV6() test: valid IPv6",
-			method:   IsIPV6,
+			expr:     `IsIPV6(value)`,
 			value:    "1.2.3.4",
 			expected: false,
 		},
 		{
 			name:     "IsIPV6() test: valid IPv6",
-			method:   IsIPV6,
+			expr:     `IsIPV6(value)`,
 			value:    "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
 			expected: true,
 		},
 		{
 			name:     "IsIPV4() test: valid IPv6",
-			method:   IsIPV4,
+			expr:     `IsIPV4(value)`,
 			value:    "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
 			expected: false,
 		},
 		{
 			name:     "IsIP() test: invalid IP",
-			method:   IsIP,
+			expr:     `IsIP(value)`,
 			value:    "foo.bar",
 			expected: false,
 		},
 		{
 			name:     "IsIP() test: valid IPv4",
-			method:   IsIP,
+			expr:     `IsIP(value)`,
 			value:    "1.2.3.4",
 			expected: true,
 		},
 		{
 			name:     "IsIP() test: valid IPv6",
-			method:   IsIP,
+			expr:     `IsIP(value)`,
 			value:    "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
 			expected: true,
 		},
 		{
 			name:     "IsIPV4() test: invalid IPv4",
-			method:   IsIPV4,
+			expr:     `IsIPV4(value)`,
 			value:    "foo.bar",
 			expected: false,
 		},
 		{
 			name:     "IsIPV6() test: invalid IPv6",
-			method:   IsIPV6,
+			expr:     `IsIPV6(value)`,
 			value:    "foo.bar",
 			expected: false,
+		},
+		{
+			name:             "IsIPV4() test: invalid type",
+			expr:             `IsIPV4(42)`,
+			value:            "",
+			expected:         false,
+			expectedBuildErr: true,
+		},
+		{
+			name:             "IsIP() test: invalid type",
+			expr:             `IsIP(42)`,
+			value:            "",
+			expected:         false,
+			expectedBuildErr: true,
+		},
+		{
+			name:             "IsIPV6() test: invalid type",
+			expr:             `IsIPV6(42)`,
+			value:            "",
+			expected:         false,
+			expectedBuildErr: true,
 		},
 	}
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			output := tc.method(tc.value)
-			require.Equal(t, tc.expected, output)
+			vm, err := expr.Compile(tc.expr, GetExprOptions(map[string]interface{}{"value": tc.value})...)
+			if tc.expectedBuildErr {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			output, err := expr.Run(vm, map[string]interface{}{"value": tc.value})
+			assert.NoError(t, err)
+			assert.IsType(t, tc.expected, output)
+			assert.Equal(t, tc.expected, output.(bool))
 		})
 	}
 }
 
 func TestToString(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
 	tests := []struct {
 		name     string
 		value    interface{}
 		expected string
+		expr     string
 	}{
 		{
 			name:     "ToString() test: valid string",
 			value:    "foo",
 			expected: "foo",
+			expr:     `ToString(value)`,
 		},
 		{
 			name:     "ToString() test: valid string",
 			value:    interface{}("foo"),
 			expected: "foo",
+			expr:     `ToString(value)`,
 		},
 		{
 			name:     "ToString() test: invalid type",
 			value:    1,
 			expected: "",
+			expr:     `ToString(value)`,
 		},
 		{
 			name:     "ToString() test: invalid type 2",
 			value:    interface{}(nil),
 			expected: "",
+			expr:     `ToString(value)`,
 		},
 	}
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			output := ToString(tc.value)
+			vm, err := expr.Compile(tc.expr, GetExprOptions(map[string]interface{}{"value": tc.value})...)
+			assert.NoError(t, err)
+			output, err := expr.Run(vm, map[string]interface{}{"value": tc.value})
+			assert.NoError(t, err)
 			require.Equal(t, tc.expected, output)
 		})
 	}

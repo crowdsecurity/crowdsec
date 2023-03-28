@@ -7,7 +7,7 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.2.7
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/alexliesenfeld/health v0.5.1
-	github.com/antonmedv/expr v1.12.2
+	github.com/antonmedv/expr v1.12.5
 	github.com/appleboy/gin-jwt/v2 v2.8.0
 	github.com/aws/aws-sdk-go v1.42.25
 	github.com/buger/jsonparser v1.1.1

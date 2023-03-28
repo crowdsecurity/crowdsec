@@ -54,6 +54,18 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=min
 
+      - name: "Build flavor: full"
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          tags: crowdsecurity/crowdsec:test
+          target: full
+          platforms: linux/amd64
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=min
+
       - name: "Build flavor: full (debian)"
         uses: docker/build-push-action@v4
         with:
