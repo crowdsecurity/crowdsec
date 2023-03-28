@@ -24,11 +24,15 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+
+	"github.com/wasilibs/go-re2"
 )
 
 var dataFile map[string][]string
 var dataFileRegex map[string][]*regexp.Regexp
+var dataFileRe2 map[string][]*re2.Regexp
 
 // This is used to (optionally) cache regexp results for RegexpInFile operations
 var dataFileRegexCache map[string]gcache.Cache = make(map[string]gcache.Cache)
@@ -56,6 +60,7 @@ func GetExprOptions(ctx map[string]interface{}) []expr.Option {
 func Init(databaseClient *database.Client) error {
 	dataFile = make(map[string][]string)
 	dataFileRegex = make(map[string][]*regexp.Regexp)
+	dataFileRe2 = make(map[string][]*re2.Regexp)
 	dbClient = databaseClient
 
 	exprFunctionOptions = []expr.Option{}
@@ -144,7 +149,11 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		}
 		switch fileType {
 		case "regex", "regexp":
-			dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
+			if fflag.Re2RegexpInfileSupport.IsEnabled() {
+				dataFileRe2[filename] = append(dataFileRe2[filename], re2.MustCompile(scanner.Text()))
+			} else {
+				dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
+			}
 		case "string":
 			dataFile[filename] = append(dataFile[filename], scanner.Text())
 		default:
@@ -286,6 +295,7 @@ func RegexpInFile(params ...any) (any, error) {
 	filename := params[1].(string)
 	var hash uint64
 	hasCache := false
+	matched := false
 
 	if _, ok := dataFileRegexCache[filename]; ok {
 		hasCache = true
@@ -295,23 +305,36 @@ func RegexpInFile(params ...any) (any, error) {
 		}
 	}
 
-	if _, ok := dataFileRegex[filename]; ok {
-		for _, re := range dataFileRegex[filename] {
-			if re.Match([]byte(data)) {
-				if hasCache {
-					dataFileRegexCache[filename].Set(hash, true)
+	switch fflag.Re2RegexpInfileSupport.IsEnabled() {
+	case true:
+		if _, ok := dataFileRe2[filename]; ok {
+			for _, re := range dataFileRe2[filename] {
+				if re.MatchString(data) {
+					matched = true
+					break
 				}
-				return true, nil
 			}
+		} else {
+			log.Errorf("file '%s' (type:regexp) not found in expr library", filename)
+			log.Errorf("expr library : %s", spew.Sdump(dataFileRe2))
 		}
-	} else {
-		log.Errorf("file '%s' (type:regexp) not found in expr library", filename)
-		log.Errorf("expr library : %s", spew.Sdump(dataFileRegex))
+	case false:
+		if _, ok := dataFileRegex[filename]; ok {
+			for _, re := range dataFileRegex[filename] {
+				if re.MatchString(data) {
+					matched = true
+					break
+				}
+			}
+		} else {
+			log.Errorf("file '%s' (type:regexp) not found in expr library", filename)
+			log.Errorf("expr library : %s", spew.Sdump(dataFileRegex))
+		}
 	}
 	if hasCache {
-		dataFileRegexCache[filename].Set(hash, false)
+		dataFileRegexCache[filename].Set(hash, matched)
 	}
-	return false, nil
+	return matched, nil
 }
 
 // func IpInRange(ip string, ipRange string) bool {
