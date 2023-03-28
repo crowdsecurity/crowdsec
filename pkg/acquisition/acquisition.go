@@ -143,7 +143,7 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 	})
 	uniqueId := uuid.NewString()
 	if transformExpr != "" {
-		vm, err := expr.Compile(transformExpr, expr.Env(exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})))
+		vm, err := expr.Compile(transformExpr, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 		if err != nil {
 			return nil, fmt.Errorf("while compiling transform expression '%s': %w", transformExpr, err)
 		}
@@ -207,7 +207,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 				return nil, fmt.Errorf("while configuring datasource of type %s from %s (position: %d): %w", sub.Source, acquisFile, idx, err)
 			}
 			if sub.TransformExpr != "" {
-				vm, err := expr.Compile(sub.TransformExpr, expr.Env(exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})))
+				vm, err := expr.Compile(sub.TransformExpr, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 				if err != nil {
 					return nil, fmt.Errorf("while compiling transform expression '%s' for datasource %s in %s (position: %d): %w", sub.TransformExpr, sub.Source, acquisFile, idx, err)
 				}
@@ -240,40 +240,54 @@ func GetMetrics(sources []DataSource, aggregated bool) error {
 	return nil
 }
 
-func transform(transformChan chan types.Event, output chan types.Event, AcquisTomb *tomb.Tomb, transformRuntime *vm.Program) {
+func transformEvent(output chan types.Event, evt types.Event, transformRuntime *vm.Program, logger *log.Entry) {
+	out, err := expr.Run(transformRuntime, map[string]interface{}{"evt": &evt})
+	if err != nil {
+		logger.Errorf("while running transform expression: %s, sending event as-is", err)
+		output <- evt
+	}
+	if out == nil {
+		logger.Errorf("transform expression returned nil, sending event as-is")
+		output <- evt
+	}
+	switch v := out.(type) {
+	case string:
+		logger.Tracef("transform expression returned %s", v)
+		evt.Line.Raw = v
+		output <- evt
+	case []string:
+		logger.Tracef("transform expression returned %v", v)
+		for _, line := range v {
+			evt.Line.Raw = line
+			output <- evt
+		}
+	default:
+		logger.Errorf("transform expression returned an invalid type %T, sending event as-is", out)
+		output <- evt
+	}
+}
+
+func transform(transformChan chan types.Event, output chan types.Event, AcquisTomb *tomb.Tomb, transformRuntime *vm.Program, logger *log.Entry) {
 	defer types.CatchPanic("crowdsec/acquis")
-	log.Infof("transformer started")
+	logger.Infof("transformer started")
 	for {
 		select {
 		case <-AcquisTomb.Dying():
-			log.Debugf("transformer is dying")
-			return
-		case evt := <-transformChan:
-			log.Infof("Received event %s", evt.Line.Raw)
-			out, err := expr.Run(transformRuntime, map[string]interface{}{"evt": &evt})
-			if err != nil {
-				log.Errorf("while running transform expression: %s", err)
-				continue
-			}
-			if out == nil {
-				log.Debugf("transform expression returned nil, skipping")
-				continue
-			}
-			switch v := out.(type) {
-			case string:
-				log.Tracef("transform expression returned %s", v)
-				evt.Line.Raw = v
-				output <- evt
-			case []string:
-				log.Tracef("transform expression returned %v", v)
-				for _, line := range v {
-					evt.Line.Raw = line
-					output <- evt
+			logger.Debugf("transformer is dying")
+			//check if we have some events in the channel
+			for {
+				select {
+				case evt := <-transformChan:
+					logger.Tracef("Received event %s", evt.Line.Raw)
+					transformEvent(output, evt, transformRuntime, logger)
+				default:
+					logger.Debugf("No more events in the channel")
+					return
 				}
-			default:
-				log.Errorf("transform expression returned an invalid type %T, skipping", out)
-				continue
 			}
+		case evt := <-transformChan:
+			logger.Tracef("Received event %s", evt.Line.Raw)
+			transformEvent(output, evt, transformRuntime, logger)
 		}
 	}
 }
@@ -293,8 +307,12 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 				log.Infof("transform expression found for datasource %s", subsrc.GetName())
 				transformChan := make(chan types.Event)
 				outChan = transformChan
+				transformLogger := log.WithFields(log.Fields{
+					"component":  "transform",
+					"datasource": subsrc.GetName(),
+				})
 				AcquisTomb.Go(func() error {
-					transform(outChan, output, AcquisTomb, transformRuntime)
+					transform(outChan, output, AcquisTomb, transformRuntime, transformLogger)
 					return nil
 				})
 			}
