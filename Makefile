@@ -41,10 +41,10 @@ LD_OPTS_VARS += -X '$(GO_MODULE_NAME)/pkg/cwversion.System=docker'
 endif
 
 ifdef BUILD_STATIC
-	export LD_OPTS=-ldflags "-s -w $(LD_OPTS_VARS) -extldflags '-static'" -tags netgo,osusergo,sqlite_omit_load_extension
-else
-	export LD_OPTS=-ldflags "-s -w $(LD_OPTS_VARS)"
+$(warning WARNING: The BUILD_STATIC variable is deprecated and has no effect. Builds are static by default since v1.5.0.)
 endif
+
+export LD_OPTS=-ldflags "-s -w $(LD_OPTS_VARS) -extldflags '-static'" -tags netgo,osusergo,sqlite_omit_load_extension
 
 GOCMD = go
 GOTEST = $(GOCMD) test
@@ -68,7 +68,6 @@ clean: testclean
 	@$(RM) $(CSCLI_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) *.log $(WIN_IGNORE_ERR)
 	@$(RM) crowdsec-release.tgz $(WIN_IGNORE_ERR)
-	@$(RM) crowdsec-release-static.tgz $(WIN_IGNORE_ERR)
 	@$(RM) $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN) $(WIN_IGNORE_ERR)

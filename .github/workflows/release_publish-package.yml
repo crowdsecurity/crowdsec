@@ -41,53 +41,10 @@ jobs:
 
       - name: Build the binaries
         run: make release
+
       - name: Upload to release
         uses: JasonEtco/upload-to-release@master
         with:
           args: crowdsec-release.tgz application/x-gzip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  build_static:
-    strategy:
-      matrix:
-        go-version: ["1.20.1"]
-
-    name: Build and upload binary package
-    runs-on: ubuntu-latest
-    steps:
-      - name: "Set up Go ${{ matrix.go-version }}"
-        uses: actions/setup-go@v3
-        with:
-          go-version: ${{ matrix.go-version }}
-        id: go
-
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-          submodules: false
-
-      - name: Cache Go modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/go/pkg/mod
-            ~/.cache/go-build
-            ~/Library/Caches/go-build
-            %LocalAppData%\go-build
-          key: ${{ runner.os }}-${{ matrix.go-version }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.go-version }}-go-
-
-      - name: Build the binaries
-        run: |
-          make release BUILD_STATIC=yes
-          mv crowdsec-release.tgz crowdsec-release-static.tgz
-
-      - name: Upload to release
-        uses: JasonEtco/upload-to-release@master
-        with:
-          args: crowdsec-release-static.tgz application/x-gzip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
