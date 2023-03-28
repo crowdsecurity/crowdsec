@@ -143,7 +143,7 @@ func LoadAcquisitionFromDSN(dsn string, labels map[string]string, transformExpr 
 	})
 	uniqueId := uuid.NewString()
 	if transformExpr != "" {
-		vm, err := expr.Compile(transformExpr, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+		vm, err := expr.Compile(transformExpr, expr.Env(exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})))
 		if err != nil {
 			return nil, fmt.Errorf("while compiling transform expression '%s': %w", transformExpr, err)
 		}
@@ -207,7 +207,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 				return nil, fmt.Errorf("while configuring datasource of type %s from %s (position: %d): %w", sub.Source, acquisFile, idx, err)
 			}
 			if sub.TransformExpr != "" {
-				vm, err := expr.Compile(sub.TransformExpr, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+				vm, err := expr.Compile(sub.TransformExpr, expr.Env(exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})))
 				if err != nil {
 					return nil, fmt.Errorf("while compiling transform expression '%s' for datasource %s in %s (position: %d): %w", sub.TransformExpr, sub.Source, acquisFile, idx, err)
 				}
@@ -250,7 +250,7 @@ func transform(transformChan chan types.Event, output chan types.Event, AcquisTo
 			return
 		case evt := <-transformChan:
 			log.Infof("Received event %s", evt.Line.Raw)
-			out, err := expr.Run(transformRuntime, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &evt}))
+			out, err := expr.Run(transformRuntime, map[string]interface{}{"evt": &evt})
 			if err != nil {
 				log.Errorf("while running transform expression: %s", err)
 				continue
