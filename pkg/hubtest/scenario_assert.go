@@ -148,17 +148,17 @@ func (s *ScenarioAssert) RunExpression(expression string) (interface{}, error) {
 
 	env := map[string]interface{}{"results": *s.TestData}
 
-	if runtimeFilter, err = expr.Compile(expression, expr.Env(exprhelpers.GetExprEnv(env))); err != nil {
+	if runtimeFilter, err = expr.Compile(expression, exprhelpers.GetExprOptions(env)...); err != nil {
 		return output, err
 	}
-	// if debugFilter, err = exprhelpers.NewDebugger(assert, expr.Env(exprhelpers.GetExprEnv(env))); err != nil {
+	// if debugFilter, err = exprhelpers.NewDebugger(assert, expr.Env(env)); err != nil {
 	// 	log.Warningf("Failed building debugher for %s : %s", assert, err)
 	// }
 
 	//dump opcode in trace level
 	log.Tracef("%s", runtimeFilter.Disassemble())
 
-	output, err = expr.Run(runtimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"results": *s.TestData}))
+	output, err = expr.Run(runtimeFilter, map[string]interface{}{"results": *s.TestData})
 	if err != nil {
 		log.Warningf("running : %s", expression)
 		log.Warningf("runtime error : %s", err)

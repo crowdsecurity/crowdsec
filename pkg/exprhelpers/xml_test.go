@@ -57,7 +57,7 @@ func TestXMLGetAttributeValue(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		result := XMLGetAttributeValue(test.xmlString, test.path, test.attribute)
+		result, _ := XMLGetAttributeValue(test.xmlString, test.path, test.attribute)
 		isOk := assert.Equal(t, test.expectResult, result)
 		if !isOk {
 			t.Fatalf("test '%s' failed", test.name)
@@ -104,7 +104,7 @@ func TestXMLGetNodeValue(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		result := XMLGetNodeValue(test.xmlString, test.path)
+		result, _ := XMLGetNodeValue(test.xmlString, test.path)
 		isOk := assert.Equal(t, test.expectResult, result)
 		if !isOk {
 			t.Fatalf("test '%s' failed", test.name)

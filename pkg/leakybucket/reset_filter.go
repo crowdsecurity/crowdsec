@@ -34,14 +34,14 @@ func (u *CancelOnFilter) OnBucketPour(bucketFactory *BucketFactory) func(types.E
 		var condition, ok bool
 		if u.CancelOnFilter != nil {
 			leaky.logger.Tracef("running cancel_on filter")
-			output, err := expr.Run(u.CancelOnFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &msg}))
+			output, err := expr.Run(u.CancelOnFilter, map[string]interface{}{"evt": &msg})
 			if err != nil {
 				leaky.logger.Warningf("cancel_on error : %s", err)
 				return &msg
 			}
 			//only run debugger expression if condition is false
 			if u.CancelOnFilterDebug != nil {
-				u.CancelOnFilterDebug.Run(leaky.logger, condition, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &msg}))
+				u.CancelOnFilterDebug.Run(leaky.logger, condition, map[string]interface{}{"evt": &msg})
 			}
 			if condition, ok = output.(bool); !ok {
 				leaky.logger.Warningf("cancel_on, unexpected non-bool return : %T", output)
@@ -93,14 +93,16 @@ func (u *CancelOnFilter) OnBucketInit(bucketFactory *BucketFactory) error {
 	} else {
 		cancelExprCacheLock.Unlock()
 		//release the lock during compile
-		compiledExpr.CancelOnFilter, err = expr.Compile(bucketFactory.CancelOnFilter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+
+		compiledExpr.CancelOnFilter, err = expr.Compile(bucketFactory.CancelOnFilter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 		if err != nil {
 			bucketFactory.logger.Errorf("reset_filter compile error : %s", err)
 			return err
 		}
 		u.CancelOnFilter = compiledExpr.CancelOnFilter
 		if bucketFactory.Debug {
-			compiledExpr.CancelOnFilterDebug, err = exprhelpers.NewDebugger(bucketFactory.CancelOnFilter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+			compiledExpr.CancelOnFilterDebug, err = exprhelpers.NewDebugger(bucketFactory.CancelOnFilter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...,
+			)
 			if err != nil {
 				bucketFactory.logger.Errorf("reset_filter debug error : %s", err)
 				return err

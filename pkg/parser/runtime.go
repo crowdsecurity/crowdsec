@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 
 	"strconv"
@@ -118,14 +117,12 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 	var value string
 	clog := n.Logger
 
-	cachedExprEnv := exprhelpers.GetExprEnv(map[string]interface{}{"evt": event})
-
 	for _, static := range statics {
 		value = ""
 		if static.Value != "" {
 			value = static.Value
 		} else if static.RunTimeValue != nil {
-			output, err := expr.Run(static.RunTimeValue, cachedExprEnv)
+			output, err := expr.Run(static.RunTimeValue, map[string]interface{}{"evt": event})
 			if err != nil {
 				clog.Warningf("failed to run RunTimeValue : %v", err)
 				continue
@@ -272,8 +269,6 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 		log.Tracef("INPUT '%s'", event.Line.Raw)
 	}
 
-	cachedExprEnv := exprhelpers.GetExprEnv(map[string]interface{}{"evt": &event})
-
 	if ParseDump {
 		if StageParseCache == nil {
 			StageParseMutex.Lock()
@@ -321,7 +316,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			if ctx.Profiling {
 				node.Profiling = true
 			}
-			ret, err := node.process(&event, ctx, cachedExprEnv)
+			ret, err := node.process(&event, ctx, map[string]interface{}{"evt": &event})
 			if err != nil {
 				clog.Errorf("Error while processing node : %v", err)
 				return event, err

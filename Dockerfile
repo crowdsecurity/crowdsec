@@ -19,6 +19,9 @@ RUN apk add --no-cache git gcc libc-dev make bash gettext binutils-gold coreutil
     cscli parsers install crowdsecurity/whitelists && \
     go install github.com/mikefarah/yq/v4@v4.31.2
 
+    # In case we need to remove agents here..
+    # cscli machines list -o json | yq '.[].machineId' | xargs -r cscli machines delete
+
 FROM alpine:latest as slim
 
 RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community tzdata bash && \

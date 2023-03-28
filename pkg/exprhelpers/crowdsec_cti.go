@@ -73,7 +73,9 @@ func CrowdsecCTIInitCache(size int, ttl time.Duration) {
 	CacheExpiration = ttl
 }
 
-func CrowdsecCTI(ip string) (*cticlient.SmokeItem, error) {
+// func CrowdsecCTI(ip string) (*cticlient.SmokeItem, error) {
+func CrowdsecCTI(params ...any) (any, error) {
+	ip := params[0].(string)
 	if !CTIApiEnabled {
 		ctiClient.Logger.Warningf("Crowdsec CTI API is disabled, please check your configuration")
 		return &cticlient.SmokeItem{}, cticlient.ErrDisabled

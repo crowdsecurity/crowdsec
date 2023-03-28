@@ -185,13 +185,22 @@ elif [ -n "$USE_WAL" ] && isfalse "$USE_WAL"; then
     conf_set '.db_config.use_wal = false'
 fi
 
-# regenerate local agent credentials (even if agent is disabled, cscli needs a
-# connection to the API)
-cscli machines delete "$CUSTOM_HOSTNAME" 2>/dev/null || true
+lapi_credentials_path=$(conf_get '.api.client.credentials_path')
+
+
 if isfalse "$DISABLE_LOCAL_API"; then
-    if isfalse "$USE_TLS" || [ "$CLIENT_CERT_FILE" = "" ]; then
-        echo "Regenerate local agent credentials"
-        cscli machines add "$CUSTOM_HOSTNAME" --auto
+    # generate local agent credentials (even if agent is disabled, cscli needs a
+    # connection to the API)
+    if ( isfalse "$USE_TLS" || [ "$CLIENT_CERT_FILE" = "" ] ); then
+        if yq -e '.login==strenv(CUSTOM_HOSTNAME)' "$lapi_credentials_path" && ( cscli machines list -o json | yq -e 'any_c(.machineId==strenv(CUSTOM_HOSTNAME))' >/dev/null ); then
+            echo "Local agent already registered"
+        else
+            echo "Generate local agent credentials"
+            # if the db is persistent but the credentials are not, we need to
+            # delete the old machine to generate new credentials
+            cscli machines delete "$CUSTOM_HOSTNAME" >/dev/null 2>&1 || true
+            cscli machines add "$CUSTOM_HOSTNAME" --auto
+        fi
     fi
 
     echo "Check if lapi needs to register an additional agent"
@@ -204,8 +213,6 @@ if isfalse "$DISABLE_LOCAL_API"; then
 fi
 
 # ----------------
-
-lapi_credentials_path=$(conf_get '.api.client.credentials_path')
 
 conf_set_if "$LOCAL_API_URL" '.url = strenv(LOCAL_API_URL)' "$lapi_credentials_path"
 
