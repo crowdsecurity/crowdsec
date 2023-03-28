@@ -316,7 +316,7 @@ func RegexpInFile(params ...any) (any, error) {
 			}
 		} else {
 			log.Errorf("file '%s' (type:regexp) not found in expr library", filename)
-			log.Errorf("expr library : %s", spew.Sdump(dataFileRegex))
+			log.Errorf("expr library : %s", spew.Sdump(dataFileRe2))
 		}
 	case false:
 		if _, ok := dataFileRegex[filename]; ok {

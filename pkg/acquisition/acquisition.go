@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -229,9 +228,7 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 			if subsrc.GetMode() == configuration.TAIL_MODE {
 				err = subsrc.StreamingAcquisition(output, AcquisTomb)
 			} else {
-				start := time.Now()
 				err = subsrc.OneShotAcquisition(output, AcquisTomb)
-				log.Debugf("acquisition of %s took %s", subsrc.GetName(), time.Since(start))
 			}
 			if err != nil {
 				//if one of the acqusition returns an error, we kill the others to properly shutdown
