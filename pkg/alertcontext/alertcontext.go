@@ -30,7 +30,7 @@ type Context struct {
 
 func ValidateContextExpr(key string, expressions []string) error {
 	for _, expression := range expressions {
-		_, err := expr.Compile(expression, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+		_, err := expr.Compile(expression, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 		if err != nil {
 			return fmt.Errorf("compilation of '%s' failed: %v", expression, err)
 		}
@@ -63,7 +63,7 @@ func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 	for key, values := range contextToSend {
 		alertContext.ContextToSendCompiled[key] = make([]*vm.Program, 0)
 		for _, value := range values {
-			valueCompiled, err := expr.Compile(value, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+			valueCompiled, err := expr.Compile(value, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 			if err != nil {
 				return fmt.Errorf("compilation of '%s' context value failed: %v", value, err)
 			}
@@ -117,7 +117,7 @@ func EventToContext(events []types.Event) (models.Meta, []error) {
 			}
 			for _, value := range values {
 				var val string
-				output, err := expr.Run(value, exprhelpers.GetExprEnv(map[string]interface{}{"evt": evt}))
+				output, err := expr.Run(value, map[string]interface{}{"evt": evt})
 				if err != nil {
 					errors = append(errors, fmt.Errorf("failed to get value for %s : %v", key, err))
 					continue

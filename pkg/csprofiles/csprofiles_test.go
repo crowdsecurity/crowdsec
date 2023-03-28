@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"gotest.tools/v3/assert"
 )
@@ -104,6 +105,9 @@ func TestEvaluateProfile(t *testing.T) {
 		profileCfg *csconfig.ProfileCfg
 		Alert      *models.Alert
 	}
+
+	exprhelpers.Init(nil)
+
 	tests := []struct {
 		name                  string
 		args                  args

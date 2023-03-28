@@ -13,7 +13,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/antonmedv/expr"
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -297,8 +296,6 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		BucketPourCache["OK"] = append(BucketPourCache["OK"], evt.(types.Event))
 	}
 
-	cachedExprEnv := exprhelpers.GetExprEnv(map[string]interface{}{"evt": &parsed})
-
 	//find the relevant holders (scenarios)
 	for idx := 0; idx < len(holders); idx++ {
 		//for idx, holder := range holders {
@@ -306,7 +303,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		//evaluate bucket's condition
 		if holders[idx].RunTimeFilter != nil {
 			holders[idx].logger.Tracef("event against holder %d/%d", idx, len(holders))
-			output, err := expr.Run(holders[idx].RunTimeFilter, cachedExprEnv)
+			output, err := expr.Run(holders[idx].RunTimeFilter, map[string]interface{}{"evt": &parsed})
 			if err != nil {
 				holders[idx].logger.Errorf("failed parsing : %v", err)
 				return false, fmt.Errorf("leaky failed : %s", err)
@@ -318,7 +315,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			}
 
 			if holders[idx].Debug {
-				holders[idx].ExprDebugger.Run(holders[idx].logger, condition, cachedExprEnv)
+				holders[idx].ExprDebugger.Run(holders[idx].logger, condition, map[string]interface{}{"evt": &parsed})
 			}
 			if !condition {
 				holders[idx].logger.Debugf("Event leaving node : ko (filter mismatch)")
@@ -329,7 +326,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		//groupby determines the partition key for the specific bucket
 		var groupby string
 		if holders[idx].RunTimeGroupBy != nil {
-			tmpGroupBy, err := expr.Run(holders[idx].RunTimeGroupBy, cachedExprEnv)
+			tmpGroupBy, err := expr.Run(holders[idx].RunTimeGroupBy, map[string]interface{}{"evt": &parsed})
 			if err != nil {
 				holders[idx].logger.Errorf("failed groupby : %v", err)
 				return false, errors.New("leaky failed :/")

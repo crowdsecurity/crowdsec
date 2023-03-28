@@ -15,7 +15,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/antonmedv/expr"
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
 
 // SourceFromEvent extracts and formats a valid models.Source object from an Event
@@ -52,7 +51,7 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 						*src.Value = v.Range
 					}
 					if leaky.scopeType.RunTimeFilter != nil {
-						retValue, err := expr.Run(leaky.scopeType.RunTimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &evt}))
+						retValue, err := expr.Run(leaky.scopeType.RunTimeFilter, map[string]interface{}{"evt": &evt})
 						if err != nil {
 							return srcs, errors.Wrapf(err, "while running scope filter")
 						}
@@ -127,7 +126,7 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 		} else if leaky.scopeType.Scope == types.Range {
 			src.Value = &src.Range
 			if leaky.scopeType.RunTimeFilter != nil {
-				retValue, err := expr.Run(leaky.scopeType.RunTimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &evt}))
+				retValue, err := expr.Run(leaky.scopeType.RunTimeFilter, map[string]interface{}{"evt": &evt})
 				if err != nil {
 					return srcs, errors.Wrapf(err, "while running scope filter")
 				}
@@ -144,7 +143,7 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 		if leaky.scopeType.RunTimeFilter == nil {
 			return srcs, fmt.Errorf("empty scope information")
 		}
-		retValue, err := expr.Run(leaky.scopeType.RunTimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &evt}))
+		retValue, err := expr.Run(leaky.scopeType.RunTimeFilter, map[string]interface{}{"evt": &evt})
 		if err != nil {
 			return srcs, errors.Wrapf(err, "while running scope filter")
 		}

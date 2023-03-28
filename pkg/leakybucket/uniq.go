@@ -74,7 +74,7 @@ func (u *Uniq) OnBucketInit(bucketFactory *BucketFactory) error {
 	} else {
 		uniqExprCacheLock.Unlock()
 		//release the lock during compile
-		compiledExpr, err = expr.Compile(bucketFactory.Distinct, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+		compiledExpr, err = expr.Compile(bucketFactory.Distinct, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 		u.DistinctCompiled = compiledExpr
 		uniqExprCacheLock.Lock()
 		uniqExprCache[bucketFactory.Distinct] = *compiledExpr
@@ -86,7 +86,7 @@ func (u *Uniq) OnBucketInit(bucketFactory *BucketFactory) error {
 
 // getElement computes a string from an event and a filter
 func getElement(msg types.Event, cFilter *vm.Program) (string, error) {
-	el, err := expr.Run(cFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &msg}))
+	el, err := expr.Run(cFilter, map[string]interface{}{"evt": &msg})
 	if err != nil {
 		return "", err
 	}

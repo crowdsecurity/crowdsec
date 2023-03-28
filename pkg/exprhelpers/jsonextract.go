@@ -11,7 +11,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func JsonExtractLib(jsblob string, target ...string) string {
+// func JsonExtractLib(jsblob string, target ...string) string {
+func JsonExtractLib(params ...any) (any, error) {
+	jsblob := params[0].(string)
+	target := params[1].([]string)
 	value, dataType, _, err := jsonparser.Get(
 		jsonparser.StringToBytes(jsblob),
 		target...,
@@ -20,45 +23,62 @@ func JsonExtractLib(jsblob string, target ...string) string {
 	if err != nil {
 		if errors.Is(err, jsonparser.KeyPathNotFoundError) {
 			log.Debugf("%+v doesn't exist", target)
-			return ""
+			return "", nil
 		}
 		log.Errorf("jsonExtractLib : %+v : %s", target, err)
-		return ""
+		return "", nil
 	}
 	if dataType == jsonparser.NotExist {
 		log.Debugf("%+v doesn't exist", target)
-		return ""
+		return "", nil
 	}
 	strvalue := string(value)
-	return strvalue
+	return strvalue, nil
 }
 
-func JsonExtractUnescape(jsblob string, target ...string) string {
-	value, err := jsonparser.GetString(
-		jsonparser.StringToBytes(jsblob),
-		target...,
-	)
+// func JsonExtractUnescape(jsblob string, target ...string) string {
+func JsonExtractUnescape(params ...any) (any, error) {
+	var value string
+	var err error
+	jsblob := params[0].(string)
+	switch v := params[1].(type) {
+	case string:
+		target := v
+		value, err = jsonparser.GetString(
+			jsonparser.StringToBytes(jsblob),
+			target,
+		)
+	case []string:
+		target := v
+		value, err = jsonparser.GetString(
+			jsonparser.StringToBytes(jsblob),
+			target...,
+		)
+	}
 
 	if err != nil {
 		if errors.Is(err, jsonparser.KeyPathNotFoundError) {
-			log.Debugf("%+v doesn't exist", target)
-			return ""
+			log.Debugf("%+v doesn't exist", params[1])
+			return "", nil
 		}
-		log.Errorf("JsonExtractUnescape : %+v : %s", target, err)
-		return ""
+		log.Errorf("JsonExtractUnescape : %+v : %s", params[1], err)
+		return "", nil
 	}
-	log.Tracef("extract path %+v", target)
-	return value
+	log.Tracef("extract path %+v", params[1])
+	return value, nil
 }
 
-func JsonExtract(jsblob string, target string) string {
+// func JsonExtract(jsblob string, target string) string {
+func JsonExtract(params ...any) (any, error) {
+	jsblob := params[0].(string)
+	target := params[1].(string)
 	if !strings.HasPrefix(target, "[") {
 		target = strings.ReplaceAll(target, "[", ".[")
 	}
 	fullpath := strings.Split(target, ".")
 
 	log.Tracef("extract path %+v", fullpath)
-	return JsonExtractLib(jsblob, fullpath...)
+	return JsonExtractLib(jsblob, fullpath)
 }
 
 func jsonExtractType(jsblob string, target string, t jsonparser.ValueType) ([]byte, error) {
@@ -91,13 +111,15 @@ func jsonExtractType(jsblob string, target string, t jsonparser.ValueType) ([]by
 	return value, nil
 }
 
-func JsonExtractSlice(jsblob string, target string) []interface{} {
-
+// func JsonExtractSlice(jsblob string, target string) []interface{} {
+func JsonExtractSlice(params ...any) (any, error) {
+	jsblob := params[0].(string)
+	target := params[1].(string)
 	value, err := jsonExtractType(jsblob, target, jsonparser.Array)
 
 	if err != nil {
 		log.Errorf("JsonExtractSlice : %s", err)
-		return nil
+		return []interface{}(nil), nil
 	}
 
 	s := make([]interface{}, 0)
@@ -105,18 +127,20 @@ func JsonExtractSlice(jsblob string, target string) []interface{} {
 	err = json.Unmarshal(value, &s)
 	if err != nil {
 		log.Errorf("JsonExtractSlice: could not convert '%s' to slice: %s", value, err)
-		return nil
+		return []interface{}(nil), nil
 	}
-	return s
+	return s, nil
 }
 
-func JsonExtractObject(jsblob string, target string) map[string]interface{} {
-
+// func JsonExtractObject(jsblob string, target string) map[string]interface{} {
+func JsonExtractObject(params ...any) (any, error) {
+	jsblob := params[0].(string)
+	target := params[1].(string)
 	value, err := jsonExtractType(jsblob, target, jsonparser.Object)
 
 	if err != nil {
 		log.Errorf("JsonExtractObject: %s", err)
-		return nil
+		return map[string]interface{}(nil), nil
 	}
 
 	s := make(map[string]interface{})
@@ -124,16 +148,18 @@ func JsonExtractObject(jsblob string, target string) map[string]interface{} {
 	err = json.Unmarshal(value, &s)
 	if err != nil {
 		log.Errorf("JsonExtractObject: could not convert '%s' to map[string]interface{}: %s", value, err)
-		return nil
+		return map[string]interface{}(nil), nil
 	}
-	return s
+	return s, nil
 }
 
-func ToJson(obj interface{}) string {
+// func ToJson(obj interface{}) string {
+func ToJson(params ...any) (any, error) {
+	obj := params[0]
 	b, err := json.Marshal(obj)
 	if err != nil {
 		log.Errorf("ToJson : %s", err)
-		return ""
+		return "", nil
 	}
-	return string(b)
+	return string(b), nil
 }

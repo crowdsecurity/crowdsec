@@ -53,12 +53,13 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 			return []*Runtime{}, errors.Wrapf(err, "invalid 'on_failure' for '%s' : %s", profile.Name, runtime.Cfg.OnFailure)
 		}
 		for fIdx, filter := range profile.Filters {
-			if runtimeFilter, err = expr.Compile(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
+
+			if runtimeFilter, err = expr.Compile(filter, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
 				return []*Runtime{}, errors.Wrapf(err, "error compiling filter of '%s'", profile.Name)
 			}
 			runtime.RuntimeFilters[fIdx] = runtimeFilter
 			if profile.Debug != nil && *profile.Debug {
-				if debugFilter, err = exprhelpers.NewDebugger(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
+				if debugFilter, err = exprhelpers.NewDebugger(filter, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
 					log.Debugf("Error compiling debug filter of %s : %s", profile.Name, err)
 					// Don't fail if we can't compile the filter - for now
 					//	return errors.Wrapf(err, "Error compiling debug filter of %s", profile.Name)
@@ -69,13 +70,13 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 		}
 
 		if profile.DurationExpr != "" {
-			if runtimeDurationExpr, err = expr.Compile(profile.DurationExpr, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
+			if runtimeDurationExpr, err = expr.Compile(profile.DurationExpr, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
 				return []*Runtime{}, errors.Wrapf(err, "error compiling duration_expr of %s", profile.Name)
 			}
 
 			runtime.RuntimeDurationExpr = runtimeDurationExpr
 			if profile.Debug != nil && *profile.Debug {
-				if debugDurationExpr, err = exprhelpers.NewDebugger(profile.DurationExpr, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
+				if debugDurationExpr, err = exprhelpers.NewDebugger(profile.DurationExpr, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
 					log.Debugf("Error compiling debug duration_expr of %s : %s", profile.Name, err)
 				}
 				runtime.DebugDurationExpr = debugDurationExpr
@@ -120,7 +121,7 @@ func (Profile *Runtime) GenerateDecisionFromProfile(Alert *models.Alert) ([]*mod
 		/*some fields are populated from the reference object : duration, scope, type*/
 		decision.Duration = new(string)
 		if Profile.Cfg.DurationExpr != "" && Profile.RuntimeDurationExpr != nil {
-			duration, err := expr.Run(Profile.RuntimeDurationExpr, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
+			duration, err := expr.Run(Profile.RuntimeDurationExpr, map[string]interface{}{"Alert": Alert})
 			if err != nil {
 				Profile.Logger.Warningf("Failed to run duration_expr : %v", err)
 				*decision.Duration = *refDecision.Duration
@@ -164,7 +165,7 @@ func (Profile *Runtime) EvaluateProfile(Alert *models.Alert) ([]*models.Decision
 
 	matched := false
 	for eIdx, expression := range Profile.RuntimeFilters {
-		output, err := expr.Run(expression, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
+		output, err := expr.Run(expression, map[string]interface{}{"Alert": Alert})
 		if err != nil {
 			Profile.Logger.Warningf("failed to run whitelist expr : %v", err)
 			return nil, matched, errors.Wrapf(err, "while running expression %s", Profile.Cfg.Filters[eIdx])
@@ -172,7 +173,7 @@ func (Profile *Runtime) EvaluateProfile(Alert *models.Alert) ([]*models.Decision
 		switch out := output.(type) {
 		case bool:
 			if Profile.Cfg.Debug != nil && *Profile.Cfg.Debug {
-				Profile.DebugFilters[eIdx].Run(Profile.Logger, out, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
+				Profile.DebugFilters[eIdx].Run(Profile.Logger, out, map[string]interface{}{"Alert": Alert})
 			}
 			if out {
 				matched = true
