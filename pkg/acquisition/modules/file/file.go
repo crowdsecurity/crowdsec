@@ -175,6 +175,7 @@ func (f *FileSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 	}
 
 	f.logger = logger
+	f.config = FileConfiguration{}
 
 	dsn = strings.TrimPrefix(dsn, "file://")
 
@@ -215,7 +216,6 @@ func (f *FileSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 		}
 	}
 
-	f.config = FileConfiguration{}
 	f.config.Labels = labels
 	f.config.Mode = configuration.CAT_MODE
 	f.config.UniqueId = uuid
