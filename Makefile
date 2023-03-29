@@ -42,7 +42,8 @@ ifdef BUILD_STATIC
 $(warning WARNING: The BUILD_STATIC variable is deprecated and has no effect. Builds are static by default since v1.5.0.)
 endif
 
-export LD_OPTS=-ldflags "-s -w $(LD_OPTS_VARS) -extldflags '-static'" -tags netgo,osusergo,sqlite_omit_load_extension
+export LD_OPTS=-ldflags "-s -w -extldflags '-static' $(LD_OPTS_VARS)" \
+	-trimpath -tags netgo,osusergo,sqlite_omit_load_extension
 
 ifneq (,$(TEST_COVERAGE))
 LD_OPTS += -cover

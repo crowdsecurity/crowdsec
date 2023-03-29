@@ -65,7 +65,17 @@ jobs:
 
     - name: "Collect coverage data"
       run: |
-        go tool covdata textfmt -i test/coverage -o coverage-bats.out
+        go tool covdata textfmt -i test/coverage -o coverage-bats-raw.out
+        # filter out unwanted packages, should match the argument to "go-acc --ignore"
+        grep -v \
+          -e '/pkg/database' \
+          -e '/plugins/notifications' \
+          -e '/pkg/protobufs' \
+          -e '/pkg/cwversions' \
+          -e '/pkg/cstest' \
+          -e '/pkg/models' \
+          < coverage-bats-raw.out \
+          > coverage-bats.out
 
     #
     # In case you need to inspect the database status after the failure of a given test
