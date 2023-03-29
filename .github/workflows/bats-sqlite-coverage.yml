@@ -90,5 +90,5 @@ jobs:
     - name: Upload crowdsec coverage to codecov
       uses: codecov/codecov-action@v3
       with:
-        files: ./test/coverage/coverage-bats.out
+        files: ./coverage-bats.out
         flags: bats
