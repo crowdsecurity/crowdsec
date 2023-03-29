@@ -293,21 +293,6 @@ func LoadConfig(cConfig *csconfig.Config) error {
 	return nil
 }
 
-// exitWithCode must be called right before the program termination,
-// to allow measuring functional test coverage in case of abnormal exit.
-// To be tested with 1.20 if it's still required to have a single point
-// of exit, but it can be a good idea for readability and wrt deferred calls.
-func exitWithCode(exitCode int, err error) {
-	if err != nil {
-		// this method of logging a fatal error does not
-		// trigger a program exit (as stated by the authors, it
-		// is not going to change in logrus to keep backward
-		// compatibility), and allows us to report coverage.
-		log.NewEntry(log.StandardLogger()).Log(log.FatalLevel, err)
-	}
-	os.Exit(exitCode)
-}
-
 // crowdsecT0 can be used to measure start time of services,
 // or uptime of the application
 var crowdsecT0 time.Time
@@ -337,20 +322,17 @@ func main() {
 		fmt.Fprintf(os.Stderr, "argument provided but not defined: %s\n", flag.Args()[0])
 		flag.Usage()
 		// the flag package exits with 2 in case of unknown flag
-		exitWithCode(2, nil)
-		return
+		os.Exit(2)
 	}
 
 	if flags.PrintVersion {
 		cwversion.Show()
-		exitWithCode(0, nil)
-		return
+		os.Exit(0)
 	}
 
-	exitCode := 0
 	err := StartRunSvc()
 	if err != nil {
-		exitCode = 1
+		log.Fatal(err)
 	}
-	exitWithCode(exitCode, err)
+	os.Exit(0)
 }
