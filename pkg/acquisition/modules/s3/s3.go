@@ -647,6 +647,7 @@ func (s *S3Source) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error 
 			}
 		}
 	}
+	t.Kill(nil)
 	return nil
 }
 
