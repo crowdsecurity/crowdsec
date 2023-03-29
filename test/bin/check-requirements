@@ -87,12 +87,6 @@ check_cfssljson() {
     fi
 }
 
-check_gocovmerge() {
-    if ! command -v gocovmerge >/dev/null; then
-        die "missing required program 'gocovmerge'. You can install it with \"go install github.com/wadey/gocovmerge@latest\""
-    fi
-}
-
 check_bats_core
 check_curl
 check_daemonizer
@@ -104,7 +98,3 @@ check_base64
 check_python3
 check_yq
 check_pkill
-if [[ -n "${TEST_COVERAGE}" ]]; then
-    check_gocovmerge
-fi
-

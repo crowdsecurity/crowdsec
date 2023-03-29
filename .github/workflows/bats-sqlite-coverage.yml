@@ -55,7 +55,6 @@ jobs:
         go install github.com/mikefarah/yq/v4@latest
         go install github.com/cloudflare/cfssl/cmd/cfssl@master
         go install github.com/cloudflare/cfssl/cmd/cfssljson@master
-        go install github.com/wadey/gocovmerge@latest
 
     - name: "Build crowdsec and fixture"
       run: |
@@ -63,6 +62,10 @@ jobs:
 
     - name: "Run tests"
       run: make bats-test
+
+    - name: "Collect coverage data"
+      run: |
+        go tool covdata textfmt -i test/coverage -o coverage-bats.out
 
     #
     # In case you need to inspect the database status after the failure of a given test
@@ -87,11 +90,5 @@ jobs:
     - name: Upload crowdsec coverage to codecov
       uses: codecov/codecov-action@v3
       with:
-        files: ./test/local/var/lib/coverage/coverage-crowdsec.out
-        flags: func-crowdsec
-
-    - name: Upload cscli coverage to codecov
-      uses: codecov/codecov-action@v3
-      with:
-        files: ./test/local/var/lib/coverage/coverage-cscli.out
-        flags: func-cscli
+        files: ./test/coverage/coverage-bats.out
+        flags: bats

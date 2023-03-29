@@ -120,11 +120,11 @@ make_init_data() {
     ./instance-db config-yaml
     ./instance-db setup
 
-    "${CSCLI}" machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto
-    "${CSCLI}" hub update
-    "${CSCLI}" collections install crowdsecurity/linux
+    "$CSCLI" machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto
+    "$CSCLI" hub update
+    "$CSCLI" collections install crowdsecurity/linux
 
-    mkdir -p "${LOCAL_INIT_DIR}"
+    mkdir -p "$LOCAL_INIT_DIR"
 
     ./instance-db dump "${LOCAL_INIT_DIR}/database"
 

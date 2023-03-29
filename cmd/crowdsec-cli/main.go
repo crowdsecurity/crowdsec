@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/confluentinc/bincover"
 	"github.com/fatih/color"
 	cc "github.com/ivanpirog/coloredcobra"
 	log "github.com/sirupsen/logrus"
@@ -20,8 +19,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
-
-var bincoverTesting = ""
 
 var trace_lvl, dbg_lvl, nfo_lvl, wrn_lvl, err_lvl bool
 
@@ -252,15 +249,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	}
 
 	if err := rootCmd.Execute(); err != nil {
-		if bincoverTesting != "" {
-			log.Debug("coverage report is enabled")
-		}
-
-		exitCode := 1
 		log.NewEntry(log.StandardLogger()).Log(log.FatalLevel, err)
-		if bincoverTesting == "" {
-			os.Exit(exitCode)
-		}
-		bincover.ExitCode = exitCode
+		os.Exit(1)
 	}
 }

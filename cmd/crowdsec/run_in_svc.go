@@ -40,10 +40,6 @@ func StartRunSvc() error {
 
 	log.Infof("Crowdsec %s", cwversion.VersionStr())
 
-	if bincoverTesting != "" {
-		log.Debug("coverage report is enabled")
-	}
-
 	apiReady := make(chan bool, 1)
 	agentReady := make(chan bool, 1)
 

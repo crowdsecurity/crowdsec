@@ -12,7 +12,6 @@ require (
 	github.com/aws/aws-sdk-go v1.42.25
 	github.com/buger/jsonparser v1.1.1
 	github.com/c-robinson/iplib v1.0.3
-	github.com/confluentinc/bincover v0.2.0
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
 	github.com/crowdsecurity/dlog v0.0.0-20170105205344-4fb5f8204f26
 	github.com/crowdsecurity/grokky v0.2.1
@@ -84,6 +83,7 @@ require (
 	github.com/shirou/gopsutil/v3 v3.22.12
 	github.com/texttheater/golang-levenshtein/levenshtein v0.0.0-20200805054039-cae8b0eaed6c
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
+	github.com/wasilibs/go-re2 v0.2.1
 	golang.org/x/sys v0.5.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apiserver v0.22.5
@@ -177,7 +177,6 @@ require (
 	github.com/tklauser/numcpus v0.6.0 // indirect
 	github.com/ugorji/go/codec v1.2.6 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
-	github.com/wasilibs/go-re2 v0.2.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	github.com/zclconf/go-cty v1.8.0 // indirect
 	go.mongodb.org/mongo-driver v1.9.0 // indirect

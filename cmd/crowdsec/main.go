@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/confluentinc/bincover"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
@@ -50,8 +49,6 @@ var (
 	lastProcessedItem time.Time /*keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.*/
 	pluginBroker      csplugin.PluginBroker
 )
-
-var bincoverTesting = ""
 
 type Flags struct {
 	ConfigFile     string
@@ -298,9 +295,8 @@ func LoadConfig(cConfig *csconfig.Config) error {
 
 // exitWithCode must be called right before the program termination,
 // to allow measuring functional test coverage in case of abnormal exit.
-//
-// without bincover: log error and exit with code
-// with bincover: log error and tell bincover the exit code, then return
+// To be tested with 1.20 if it's still required to have a single point
+// of exit, but it can be a good idea for readability and wrt deferred calls.
 func exitWithCode(exitCode int, err error) {
 	if err != nil {
 		// this method of logging a fatal error does not
@@ -309,10 +305,7 @@ func exitWithCode(exitCode int, err error) {
 		// compatibility), and allows us to report coverage.
 		log.NewEntry(log.StandardLogger()).Log(log.FatalLevel, err)
 	}
-	if bincoverTesting == "" {
-		os.Exit(exitCode)
-	}
-	bincover.ExitCode = exitCode
+	os.Exit(exitCode)
 }
 
 // crowdsecT0 can be used to measure start time of services,
