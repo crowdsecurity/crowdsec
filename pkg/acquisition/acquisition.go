@@ -265,7 +265,7 @@ func transform(transformChan chan types.Event, output chan types.Event, AcquisTo
 				evt.Line.Raw = v
 				output <- evt
 			case []interface{}:
-				logger.Tracef("transform expression returned %v", v)
+				logger.Tracef("transform expression returned %v", v) //nolint:asasalint // We actually want to log the slice content
 				for _, line := range v {
 					l, ok := line.(string)
 					if !ok {
