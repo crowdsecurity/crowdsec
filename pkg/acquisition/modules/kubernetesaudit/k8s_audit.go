@@ -48,6 +48,10 @@ var requestCount = prometheus.NewCounterVec(
 	},
 	[]string{"source"})
 
+func (ka *KubernetesAuditSource) GetUuid() string {
+	return ka.config.UniqueId
+}
+
 func (ka *KubernetesAuditSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{eventCount, requestCount}
 }
@@ -105,7 +109,7 @@ func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry) err
 	return nil
 }
 
-func (ka *KubernetesAuditSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
+func (ka *KubernetesAuditSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	return fmt.Errorf("k8s-audit datasource does not support command-line acquisition")
 }
 

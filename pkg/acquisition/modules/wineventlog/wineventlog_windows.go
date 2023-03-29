@@ -228,6 +228,10 @@ func (w *WinEventLogSource) generateConfig(query string) (*winlog.SubscribeConfi
 	return &config, nil
 }
 
+func (w *WinEventLogSource) GetUuid() string {
+	return w.config.UniqueId
+}
+
 func (w *WinEventLogSource) UnmarshalConfig(yamlConfig []byte) error {
 	w.config = WinEventLogConfiguration{}
 
@@ -280,7 +284,7 @@ func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry) erro
 	return nil
 }
 
-func (w *WinEventLogSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
+func (w *WinEventLogSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	return nil
 }
 

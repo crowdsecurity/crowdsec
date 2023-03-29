@@ -74,6 +74,10 @@ var linesReadShards = prometheus.NewCounterVec(
 	[]string{"stream", "shard"},
 )
 
+func (k *KinesisSource) GetUuid() string {
+	return k.Config.UniqueId
+}
+
 func (k *KinesisSource) newClient() error {
 	var sess *session.Session
 
@@ -161,7 +165,7 @@ func (k *KinesisSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	return nil
 }
 
-func (k *KinesisSource) ConfigureByDSN(string, map[string]string, *log.Entry) error {
+func (k *KinesisSource) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
 	return fmt.Errorf("kinesis datasource does not support command-line acquisition")
 }
 

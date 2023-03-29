@@ -67,6 +67,10 @@ type ContainerConfig struct {
 	Tty    bool
 }
 
+func (d *DockerSource) GetUuid() string {
+	return d.Config.UniqueId
+}
+
 func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 	d.Config = DockerConfiguration{
 		FollowStdout:  true, // default
@@ -158,7 +162,7 @@ func (d *DockerSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	return nil
 }
 
-func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
+func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	var err error
 
 	if !strings.HasPrefix(dsn, d.GetName()+"://") {
@@ -170,6 +174,7 @@ func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 		FollowStdErr:  true,
 		CheckInterval: "1s",
 	}
+	d.Config.UniqueId = uuid
 	d.Config.ContainerName = make([]string, 0)
 	d.Config.ContainerID = make([]string, 0)
 	d.runningContainerState = make(map[string]*ContainerConfig)

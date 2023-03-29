@@ -69,6 +69,7 @@ type Flags struct {
 	DisableAPI     bool
 	WinSvc         string
 	DisableCAPI    bool
+	Transform      string
 }
 
 type labelsMap map[string]string
@@ -107,7 +108,7 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 		flags.Labels = labels
 		flags.Labels["type"] = flags.SingleFileType
 
-		dataSources, err = acquisition.LoadAcquisitionFromDSN(flags.OneShotDSN, flags.Labels)
+		dataSources, err = acquisition.LoadAcquisitionFromDSN(flags.OneShotDSN, flags.Labels, flags.Transform)
 		if err != nil {
 			return errors.Wrapf(err, "failed to configure datasource for %s", flags.OneShotDSN)
 		}
@@ -149,6 +150,7 @@ func (f *Flags) Parse() {
 	flag.BoolVar(&f.ErrorLevel, "error", false, "print error-level on stderr")
 	flag.BoolVar(&f.PrintVersion, "version", false, "display version")
 	flag.StringVar(&f.OneShotDSN, "dsn", "", "Process a single data source in time-machine")
+	flag.StringVar(&f.Transform, "transform", "", "expr to apply on the event after acquisition")
 	flag.StringVar(&f.SingleFileType, "type", "", "Labels.type for file in time-machine")
 	flag.Var(&labels, "label", "Additional Labels for file in time-machine")
 	flag.BoolVar(&f.TestMode, "t", false, "only test configs")
@@ -255,6 +257,10 @@ func LoadConfig(cConfig *csconfig.Config) error {
 
 	if flags.OneShotDSN != "" && flags.SingleFileType == "" {
 		return errors.New("-dsn requires a -type argument")
+	}
+
+	if flags.Transform != "" && flags.OneShotDSN == "" {
+		return errors.New("-transform requires a -dsn argument")
 	}
 
 	if flags.SingleFileType != "" && flags.OneShotDSN == "" {

@@ -54,6 +54,10 @@ type KafkaSource struct {
 	Reader *kafka.Reader
 }
 
+func (k *KafkaSource) GetUuid() string {
+	return k.Config.UniqueId
+}
+
 func (k *KafkaSource) UnmarshalConfig(yamlConfig []byte) error {
 	k.Config = KafkaConfiguration{}
 
@@ -102,7 +106,7 @@ func (k *KafkaSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	return nil
 }
 
-func (k *KafkaSource) ConfigureByDSN(string, map[string]string, *log.Entry) error {
+func (k *KafkaSource) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
 	return fmt.Errorf("%s datasource does not support command-line acquisition", dataSourceName)
 }
 

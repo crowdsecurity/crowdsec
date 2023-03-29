@@ -97,7 +97,7 @@ func TestConfigureDSN(t *testing.T) {
 		tc := tc
 		t.Run(tc.dsn, func(t *testing.T) {
 			f := fileacquisition.FileSource{}
-			err := f.ConfigureByDSN(tc.dsn, map[string]string{"type": "testtype"}, subLogger)
+			err := f.ConfigureByDSN(tc.dsn, map[string]string{"type": "testtype"}, subLogger, "")
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}

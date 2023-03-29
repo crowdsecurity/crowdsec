@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -37,6 +38,7 @@ type FileConfiguration struct {
 	ExcludeRegexps                    []string `yaml:"exclude_regexps"`
 	Filename                          string
 	ForceInotify                      bool `yaml:"force_inotify"`
+	MaxBufferSize                     int  `yaml:"max_buffer_size"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -48,6 +50,10 @@ type FileSource struct {
 	logger             *log.Entry
 	files              []string
 	exclude_regexps    []*regexp.Regexp
+}
+
+func (f *FileSource) GetUuid() string {
+	return f.config.UniqueId
 }
 
 func (f *FileSource) UnmarshalConfig(yamlConfig []byte) error {
@@ -163,12 +169,13 @@ func (f *FileSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	return nil
 }
 
-func (f *FileSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
+func (f *FileSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	if !strings.HasPrefix(dsn, "file://") {
 		return fmt.Errorf("invalid DSN %s for file source, must start with file://", dsn)
 	}
 
 	f.logger = logger
+	f.config = FileConfiguration{}
 
 	dsn = strings.TrimPrefix(dsn, "file://")
 
@@ -184,23 +191,34 @@ func (f *FileSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 			return errors.Wrap(err, "could not parse file args")
 		}
 		for key, value := range params {
-			if key != "log_level" {
-				return fmt.Errorf("unsupported key %s in file DSN", key)
+			switch key {
+			case "log_level":
+				if len(value) != 1 {
+					return errors.New("expected zero or one value for 'log_level'")
+				}
+				lvl, err := log.ParseLevel(value[0])
+				if err != nil {
+					return errors.Wrapf(err, "unknown level %s", value[0])
+				}
+				f.logger.Logger.SetLevel(lvl)
+			case "max_buffer_size":
+				if len(value) != 1 {
+					return errors.New("expected zero or one value for 'max_buffer_size'")
+				}
+				maxBufferSize, err := strconv.Atoi(value[0])
+				if err != nil {
+					return errors.Wrapf(err, "could not parse max_buffer_size %s", value[0])
+				}
+				f.config.MaxBufferSize = maxBufferSize
+			default:
+				return fmt.Errorf("unknown parameter %s", key)
 			}
-			if len(value) != 1 {
-				return errors.New("expected zero or one value for 'log_level'")
-			}
-			lvl, err := log.ParseLevel(value[0])
-			if err != nil {
-				return errors.Wrapf(err, "unknown level %s", value[0])
-			}
-			f.logger.Logger.SetLevel(lvl)
 		}
 	}
 
-	f.config = FileConfiguration{}
 	f.config.Labels = labels
 	f.config.Mode = configuration.CAT_MODE
+	f.config.UniqueId = uuid
 
 	f.logger.Debugf("Will try pattern %s", args[0])
 	files, err := filepath.Glob(args[0])
@@ -491,6 +509,10 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 		scanner = bufio.NewScanner(fd)
 	}
 	scanner.Split(bufio.ScanLines)
+	if f.config.MaxBufferSize > 0 {
+		buf := make([]byte, 0, 64*1024)
+		scanner.Buffer(buf, f.config.MaxBufferSize)
+	}
 	for scanner.Scan() {
 		if scanner.Text() == "" {
 			continue
@@ -508,6 +530,11 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 
 		//we're reading logs at once, it must be time-machine buckets
 		out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
+	}
+	if err := scanner.Err(); err != nil {
+		logger.Errorf("Error while reading file: %s", err)
+		t.Kill(err)
+		return err
 	}
 	t.Kill(nil)
 	return nil

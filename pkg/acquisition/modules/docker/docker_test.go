@@ -107,7 +107,7 @@ func TestConfigureDSN(t *testing.T) {
 	})
 	for _, test := range tests {
 		f := DockerSource{}
-		err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger)
+		err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
 		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
 }
@@ -303,7 +303,7 @@ func TestOneShot(t *testing.T) {
 		labels := make(map[string]string)
 		labels["type"] = ts.logType
 
-		if err := dockerClient.ConfigureByDSN(ts.dsn, labels, subLogger); err != nil {
+		if err := dockerClient.ConfigureByDSN(ts.dsn, labels, subLogger, ""); err != nil {
 			t.Fatalf("unable to configure dsn '%s': %s", ts.dsn, err)
 		}
 		dockerClient.Client = new(mockDockerCli)
