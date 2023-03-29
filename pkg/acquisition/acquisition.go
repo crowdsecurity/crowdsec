@@ -240,33 +240,6 @@ func GetMetrics(sources []DataSource, aggregated bool) error {
 	return nil
 }
 
-func transformEvent(output chan types.Event, evt types.Event, transformRuntime *vm.Program, logger *log.Entry) {
-	out, err := expr.Run(transformRuntime, map[string]interface{}{"evt": &evt})
-	if err != nil {
-		logger.Errorf("while running transform expression: %s, sending event as-is", err)
-		output <- evt
-	}
-	if out == nil {
-		logger.Errorf("transform expression returned nil, sending event as-is")
-		output <- evt
-	}
-	switch v := out.(type) {
-	case string:
-		logger.Tracef("transform expression returned %s", v)
-		evt.Line.Raw = v
-		output <- evt
-	case []string:
-		logger.Tracef("transform expression returned %v", v)
-		for _, line := range v {
-			evt.Line.Raw = line
-			output <- evt
-		}
-	default:
-		logger.Errorf("transform expression returned an invalid type %T, sending event as-is", out)
-		output <- evt
-	}
-}
-
 func transform(transformChan chan types.Event, output chan types.Event, AcquisTomb *tomb.Tomb, transformRuntime *vm.Program, logger *log.Entry) {
 	defer types.CatchPanic("crowdsec/acquis")
 	logger.Infof("transformer started")
@@ -274,20 +247,45 @@ func transform(transformChan chan types.Event, output chan types.Event, AcquisTo
 		select {
 		case <-AcquisTomb.Dying():
 			logger.Debugf("transformer is dying")
-			//check if we have some events in the channel
-			for {
-				select {
-				case evt := <-transformChan:
-					logger.Tracef("Received event %s", evt.Line.Raw)
-					transformEvent(output, evt, transformRuntime, logger)
-				default:
-					logger.Debugf("No more events in the channel")
-					return
-				}
-			}
+			return
 		case evt := <-transformChan:
 			logger.Tracef("Received event %s", evt.Line.Raw)
-			transformEvent(output, evt, transformRuntime, logger)
+			out, err := expr.Run(transformRuntime, map[string]interface{}{"evt": &evt})
+			if err != nil {
+				logger.Errorf("while running transform expression: %s, sending event as-is", err)
+				output <- evt
+			}
+			if out == nil {
+				logger.Errorf("transform expression returned nil, sending event as-is")
+				output <- evt
+			}
+			switch v := out.(type) {
+			case string:
+				logger.Tracef("transform expression returned %s", v)
+				evt.Line.Raw = v
+				output <- evt
+			case []interface{}:
+				logger.Tracef("transform expression returned %v", v)
+				for _, line := range v {
+					l, ok := line.(string)
+					if !ok {
+						logger.Errorf("transform expression returned []interface{}, but cannot assert an element to string")
+						output <- evt
+						continue
+					}
+					evt.Line.Raw = l
+					output <- evt
+				}
+			case []string:
+				logger.Tracef("transform expression returned %v", v)
+				for _, line := range v {
+					evt.Line.Raw = line
+					output <- evt
+				}
+			default:
+				logger.Errorf("transform expression returned an invalid type %T, sending event as-is", out)
+				output <- evt
+			}
 		}
 	}
 }
