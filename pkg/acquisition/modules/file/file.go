@@ -531,6 +531,11 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 		//we're reading logs at once, it must be time-machine buckets
 		out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
 	}
+	if err := scanner.Err(); err != nil {
+		logger.Errorf("Error while reading file: %s", err)
+		t.Kill(err)
+		return err
+	}
 	t.Kill(nil)
 	return nil
 }
