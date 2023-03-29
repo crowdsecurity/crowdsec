@@ -77,8 +77,8 @@ teardown() {
     log_old="${logdir1}/crowdsec.log"
     config_set ".common.log_dir=\"${logdir1}\""
 
-    rune -0 ./instance-crowdsec start
-    # PID="$output"
+    rune -0 ./instance-crowdsec start-pid
+    PID="$output"
     assert_file_exist "$log_old"
     assert_file_contains "$log_old" "Starting processing data"
 
@@ -90,15 +90,7 @@ teardown() {
 
     sleep 5
 
-    # this won't work as crowdsec-wrapper does not relay the signal
-    # rune -0 kill -HUP "$PID"
-
-    # During functional tests, crowdsec is often run from a wrapper script,
-    # which captures its output (for coverage reports) and cannot relay signals
-    # at the same time. So instead of sending a SIGHUP to the wrapper, we send
-    # it to the crowdsec process by name - with or without coverage.
-    rune pkill -HUP -f "$BIN_DIR/crowdsec.cover"
-    rune pkill -HUP -f "$BIN_DIR/crowdsec"
+    rune -0 kill -HUP "$PID"
 
     for ((i=0; i<10; i++)); do
         sleep 1

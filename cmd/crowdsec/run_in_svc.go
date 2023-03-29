@@ -4,6 +4,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	log "github.com/sirupsen/logrus"
@@ -12,6 +13,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func StartRunSvc() error {
@@ -19,6 +21,8 @@ func StartRunSvc() error {
 		cConfig *csconfig.Config
 		err     error
 	)
+
+	defer types.CatchPanic("crowdsec/StartRunSvc")
 
 	// Set a default logger with level=fatal on stderr,
 	// in addition to the one we configure afterwards
@@ -52,7 +56,7 @@ func StartRunSvc() error {
 			dbClient, err = database.NewClient(cConfig.DbConfig)
 
 			if err != nil {
-				log.Fatalf("unable to create database client: %s", err)
+				return fmt.Errorf("unable to create database client: %s", err)
 			}
 		}
 		registerPrometheus(cConfig.Prometheus)

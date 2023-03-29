@@ -310,8 +310,6 @@ func main() {
 
 	crowdsecT0 = time.Now()
 
-	defer types.CatchPanic("crowdsec/main")
-
 	log.Debugf("os.Args: %v", os.Args)
 
 	// Handle command line arguments
