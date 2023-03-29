@@ -257,7 +257,8 @@ func TestDSNAcquis(t *testing.T) {
 			}()
 
 			f.s3Client = mockS3Client{}
-			err = f.OneShotAcquisition(out, nil)
+			tmb := tomb.Tomb{}
+			err = f.OneShotAcquisition(out, &tmb)
 			if err != nil {
 				t.Fatalf("unexpected error: %s", err.Error())
 			}
