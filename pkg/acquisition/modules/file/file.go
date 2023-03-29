@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -37,6 +38,7 @@ type FileConfiguration struct {
 	ExcludeRegexps                    []string `yaml:"exclude_regexps"`
 	Filename                          string
 	ForceInotify                      bool `yaml:"force_inotify"`
+	MaxBufferSize                     int  `yaml:"max_buffer_size"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -188,17 +190,28 @@ func (f *FileSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 			return errors.Wrap(err, "could not parse file args")
 		}
 		for key, value := range params {
-			if key != "log_level" {
-				return fmt.Errorf("unsupported key %s in file DSN", key)
+			switch key {
+			case "log_level":
+				if len(value) != 1 {
+					return errors.New("expected zero or one value for 'log_level'")
+				}
+				lvl, err := log.ParseLevel(value[0])
+				if err != nil {
+					return errors.Wrapf(err, "unknown level %s", value[0])
+				}
+				f.logger.Logger.SetLevel(lvl)
+			case "max_buffer_size":
+				if len(value) != 1 {
+					return errors.New("expected zero or one value for 'max_buffer_size'")
+				}
+				maxBufferSize, err := strconv.Atoi(value[0])
+				if err != nil {
+					return errors.Wrapf(err, "could not parse max_buffer_size %s", value[0])
+				}
+				f.config.MaxBufferSize = maxBufferSize
+			default:
+				return fmt.Errorf("unknown parameter %s", key)
 			}
-			if len(value) != 1 {
-				return errors.New("expected zero or one value for 'log_level'")
-			}
-			lvl, err := log.ParseLevel(value[0])
-			if err != nil {
-				return errors.Wrapf(err, "unknown level %s", value[0])
-			}
-			f.logger.Logger.SetLevel(lvl)
 		}
 	}
 
@@ -496,6 +509,10 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 		scanner = bufio.NewScanner(fd)
 	}
 	scanner.Split(bufio.ScanLines)
+	if f.config.MaxBufferSize > 0 {
+		buf := make([]byte, 0, 64*1024)
+		scanner.Buffer(buf, f.config.MaxBufferSize)
+	}
 	for scanner.Scan() {
 		if scanner.Text() == "" {
 			continue
