@@ -2,12 +2,15 @@ package s3acquisition
 
 import (
 	"bufio"
+	"bytes"
 	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,7 +25,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
@@ -40,6 +42,7 @@ type S3Configuration struct {
 	PollingInterval                   int     `yaml:"polling_interval"`
 	SQSName                           string  `yaml:"sqs_name"`
 	SQSFormat                         string  `yaml:"sqs_format"`
+	MaxBufferSize                     int     `yaml:"max_buffer_size"`
 }
 
 type S3Source struct {
@@ -138,10 +141,12 @@ func (s *S3Source) newS3Client() error {
 	if s.Config.AwsEndpoint != "" {
 		config = config.WithEndpoint(s.Config.AwsEndpoint)
 	}
+
 	s.s3Client = s3.New(sess, config)
 	if s.s3Client == nil {
 		return fmt.Errorf("failed to create S3 client")
 	}
+
 	return nil
 }
 
@@ -372,7 +377,7 @@ func (s *S3Source) readFile(bucket string, key string) error {
 	//TODO: Handle SSE-C
 	var scanner *bufio.Scanner
 
-	logger := s.logger.WithFields(logrus.Fields{
+	logger := s.logger.WithFields(log.Fields{
 		"method": "readFile",
 		"bucket": bucket,
 		"key":    key,
@@ -382,19 +387,35 @@ func (s *S3Source) readFile(bucket string, key string) error {
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),
 	})
+
 	if err != nil {
 		return fmt.Errorf("failed to get object %s/%s: %w", bucket, key, err)
 	}
 	defer output.Body.Close()
+
 	if strings.HasSuffix(key, ".gz") {
-		gzReader, err := gzip.NewReader(output.Body)
+		//This *might* be a gzipped file, but sometimes the SDK will decompress the data for us (it's not clear when it happens, only had the issue with cloudtrail logs)
+		header := make([]byte, 2)
+		_, err := output.Body.Read(header)
 		if err != nil {
-			return fmt.Errorf("failed to read gzip object %s/%s: %w", bucket, key, err)
+			return fmt.Errorf("failed to read header of object %s/%s: %w", bucket, key, err)
 		}
-		defer gzReader.Close()
-		scanner = bufio.NewScanner(gzReader)
+		if header[0] == 0x1f && header[1] == 0x8b {
+			gz, err := gzip.NewReader(io.MultiReader(bytes.NewReader(header), output.Body))
+			if err != nil {
+				return fmt.Errorf("failed to create gzip reader for object %s/%s: %w", bucket, key, err)
+			}
+			scanner = bufio.NewScanner(gz)
+		} else {
+			scanner = bufio.NewScanner(io.MultiReader(bytes.NewReader(header), output.Body))
+		}
 	} else {
 		scanner = bufio.NewScanner(output.Body)
+	}
+	if s.Config.MaxBufferSize > 0 {
+		s.logger.Infof("Setting max buffer size to %d", s.Config.MaxBufferSize)
+		buf := make([]byte, 0, bufio.MaxScanTokenSize)
+		scanner.Buffer(buf, s.Config.MaxBufferSize)
 	}
 	for scanner.Scan() {
 		text := scanner.Text()
@@ -448,6 +469,10 @@ func (s *S3Source) UnmarshalConfig(yamlConfig []byte) error {
 
 	if s.Config.PollingInterval == 0 {
 		s.Config.PollingInterval = 60
+	}
+
+	if s.Config.MaxBufferSize == 0 {
+		s.Config.MaxBufferSize = bufio.MaxScanTokenSize
 	}
 
 	if s.Config.PollingMethod != PollMethodList && s.Config.PollingMethod != PollMethodSQS {
@@ -518,11 +543,11 @@ func (s *S3Source) ConfigureByDSN(dsn string, labels map[string]string, logger *
 		return fmt.Errorf("invalid DSN %s for S3 source, must start with s3://", dsn)
 	}
 
+	s.Config = S3Configuration{}
 	s.logger = logger.WithFields(log.Fields{
 		"bucket": s.Config.BucketName,
 		"prefix": s.Config.Prefix,
 	})
-
 	dsn = strings.TrimPrefix(dsn, "s3://")
 	args := strings.Split(dsn, "?")
 	if len(args[0]) == 0 {
@@ -535,21 +560,32 @@ func (s *S3Source) ConfigureByDSN(dsn string, labels map[string]string, logger *
 			return errors.Wrap(err, "could not parse s3 args")
 		}
 		for key, value := range params {
-			if key != "log_level" {
-				return fmt.Errorf("unsupported key %s in s3 DSN", key)
+			switch key {
+			case "log_level":
+				if len(value) != 1 {
+					return errors.New("expected zero or one value for 'log_level'")
+				}
+				lvl, err := log.ParseLevel(value[0])
+				if err != nil {
+					return errors.Wrapf(err, "unknown level %s", value[0])
+				}
+				s.logger.Logger.SetLevel(lvl)
+			case "max_buffer_size":
+				if len(value) != 1 {
+					return errors.New("expected zero or one value for 'max_buffer_size'")
+				}
+				maxBufferSize, err := strconv.Atoi(value[0])
+				if err != nil {
+					return errors.Wrapf(err, "invalid value for 'max_buffer_size'")
+				}
+				s.logger.Debugf("Setting max buffer size to %d", maxBufferSize)
+				s.Config.MaxBufferSize = maxBufferSize
+			default:
+				return fmt.Errorf("unknown parameter %s", key)
 			}
-			if len(value) != 1 {
-				return errors.New("expected zero or one value for 'log_level'")
-			}
-			lvl, err := log.ParseLevel(value[0])
-			if err != nil {
-				return errors.Wrapf(err, "unknown level %s", value[0])
-			}
-			s.logger.Logger.SetLevel(lvl)
 		}
 	}
 
-	s.Config = S3Configuration{}
 	s.Config.Labels = labels
 	s.Config.Mode = configuration.CAT_MODE
 	s.Config.UniqueId = uuid
@@ -592,6 +628,7 @@ func (s *S3Source) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error 
 	s.logger.Infof("starting acquisition of %s/%s/%s", s.Config.BucketName, s.Config.Prefix, s.Config.Key)
 	s.out = out
 	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.Config.UseTimeMachine = true
 	if s.Config.Key != "" {
 		err := s.readFile(s.Config.BucketName, s.Config.Key)
 		if err != nil {
