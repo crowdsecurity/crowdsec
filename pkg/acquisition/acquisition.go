@@ -300,7 +300,7 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 			var err error
 
 			outChan := output
-			log.Infof("datasource UUID: %s", subsrc.GetUuid())
+			log.Debugf("datasource %s UUID: %s", subsrc.GetName(), subsrc.GetUuid())
 			if transformRuntime, ok := transformRuntimes[subsrc.GetUuid()]; ok {
 				log.Infof("transform expression found for datasource %s", subsrc.GetName())
 				transformChan := make(chan types.Event)
