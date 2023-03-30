@@ -311,21 +311,26 @@ func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) er
 				scanner = bufio.NewScanner(reader)
 			}
 			for scanner.Scan() {
-				line := scanner.Text()
-				if line == "" {
-					continue
+				select {
+				case <-t.Dying():
+					d.logger.Infof("Shutting down reader for container %s", containerConfig.Name)
+				default:
+					line := scanner.Text()
+					if line == "" {
+						continue
+					}
+					l := types.Line{}
+					l.Raw = line
+					l.Labels = d.Config.Labels
+					l.Time = time.Now().UTC()
+					l.Src = containerConfig.Name
+					l.Process = true
+					l.Module = d.GetName()
+					linesRead.With(prometheus.Labels{"source": containerConfig.Name}).Inc()
+					evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
+					out <- evt
+					d.logger.Debugf("Sent line to parsing: %+v", evt.Line.Raw)
 				}
-				l := types.Line{}
-				l.Raw = line
-				l.Labels = d.Config.Labels
-				l.Time = time.Now().UTC()
-				l.Src = containerConfig.Name
-				l.Process = true
-				l.Module = d.GetName()
-				linesRead.With(prometheus.Labels{"source": containerConfig.Name}).Inc()
-				evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
-				out <- evt
-				d.logger.Debugf("Sent line to parsing: %+v", evt.Line.Raw)
 			}
 			err = scanner.Err()
 			if err != nil {
