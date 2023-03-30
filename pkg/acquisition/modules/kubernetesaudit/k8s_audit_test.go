@@ -20,18 +20,18 @@ func TestBadConfiguration(t *testing.T) {
 	}{
 		{
 			name: "unknown field",
-			config: `source: k8s_audit
+			config: `source: k8s-audit
 foobar: asd.log`,
 			expectedErr: "line 2: field foobar not found in type kubernetesauditacquisition.KubernetesAuditConfiguration",
 		},
 		{
 			name:        "missing listen_addr",
-			config:      `source: k8s_audit`,
+			config:      `source: k8s-audit`,
 			expectedErr: "listen_addr cannot be empty",
 		},
 		{
 			name: "missing listen_port",
-			config: `source: k8s_audit
+			config: `source: k8s-audit
 listen_addr: 0.0.0.0`,
 			expectedErr: "listen_port cannot be empty",
 		},
@@ -57,7 +57,7 @@ func TestInvalidConfig(t *testing.T) {
 	}{
 		{
 			name: "invalid_port",
-			config: `source: k8s_audit
+			config: `source: k8s-audit
 listen_addr: 127.0.0.1
 listen_port: 9999999
 webhook_path: /k8s-audit`,
@@ -109,7 +109,7 @@ func TestHandler(t *testing.T) {
 	}{
 		{
 			name: "valid_json",
-			config: `source: k8s_audit
+			config: `source: k8s-audit
 listen_addr: 127.0.0.1
 listen_port: 49234
 webhook_path: /k8s-audit`,
@@ -208,7 +208,7 @@ webhook_path: /k8s-audit`,
 		},
 		{
 			name: "invalid_json",
-			config: `source: k8s_audit
+			config: `source: k8s-audit
 listen_addr: 127.0.0.1
 listen_port: 49234
 webhook_path: /k8s-audit`,
@@ -219,7 +219,7 @@ webhook_path: /k8s-audit`,
 		},
 		{
 			name: "invalid_method",
-			config: `source: k8s_audit
+			config: `source: k8s-audit
 listen_addr: 127.0.0.1
 listen_port: 49234
 webhook_path: /k8s-audit`,
