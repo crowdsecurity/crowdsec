@@ -20,8 +20,6 @@ if [[ -z "${TEST_COVERAGE}" ]]; then
     echo "Coverage report: no"
 else
     echo "Coverage report: yes"
-    rm -f "${LOCAL_DIR}/var/lib/coverage/*"
-    mkdir -p "${LOCAL_DIR}/var/lib/coverage"
 fi
 
 dump_backend="$(cat "${LOCAL_INIT_DIR}/.backend")"
@@ -43,12 +41,4 @@ else
         --timing \
         --print-output-on-failure \
         "${TEST_DIR}/bats" "${TEST_DIR}/dyn-bats"
-fi
-
-if [[ -n "${TEST_COVERAGE}" ]]; then
-    # empty files just to avoid merge errors
-    touch "${LOCAL_DIR}"/var/lib/coverage/crowdsec-
-    touch "${LOCAL_DIR}"/var/lib/coverage/cscli-
-    gocovmerge "${LOCAL_DIR}"/var/lib/coverage/crowdsec-* > "${LOCAL_DIR}/var/lib/coverage/coverage-crowdsec.out"
-    gocovmerge "${LOCAL_DIR}"/var/lib/coverage/cscli-* > "${LOCAL_DIR}/var/lib/coverage/coverage-cscli.out"
 fi

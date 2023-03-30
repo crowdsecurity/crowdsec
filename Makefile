@@ -27,8 +27,6 @@ BUILD_CMD = build
 GO_MODULE_NAME = github.com/crowdsecurity/crowdsec
 
 LD_OPTS_VARS= \
--X '$(GO_MODULE_NAME)/cmd/crowdsec.bincoverTesting=$(BINCOVER_TESTING)' \
--X '$(GO_MODULE_NAME)/cmd/crowdsec-cli.bincoverTesting=$(BINCOVER_TESTING)' \
 -X '$(GO_MODULE_NAME)/pkg/cwversion.Version=$(BUILD_VERSION)' \
 -X '$(GO_MODULE_NAME)/pkg/cwversion.BuildDate=$(BUILD_TIMESTAMP)' \
 -X '$(GO_MODULE_NAME)/pkg/cwversion.Codename=$(BUILD_CODENAME)' \
@@ -41,9 +39,14 @@ LD_OPTS_VARS += -X '$(GO_MODULE_NAME)/pkg/cwversion.System=docker'
 endif
 
 ifdef BUILD_STATIC
-	export LD_OPTS=-ldflags "-s -w $(LD_OPTS_VARS) -extldflags '-static'" -tags netgo,osusergo,sqlite_omit_load_extension
-else
-	export LD_OPTS=-ldflags "-s -w $(LD_OPTS_VARS)"
+$(warning WARNING: The BUILD_STATIC variable is deprecated and has no effect. Builds are static by default since v1.5.0.)
+endif
+
+export LD_OPTS=-ldflags "-s -w -extldflags '-static' $(LD_OPTS_VARS)" \
+	-trimpath -tags netgo,osusergo,sqlite_omit_load_extension
+
+ifneq (,$(TEST_COVERAGE))
+LD_OPTS += -cover
 endif
 
 GOCMD = go
@@ -68,7 +71,6 @@ clean: testclean
 	@$(RM) $(CSCLI_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) *.log $(WIN_IGNORE_ERR)
 	@$(RM) crowdsec-release.tgz $(WIN_IGNORE_ERR)
-	@$(RM) crowdsec-release-static.tgz $(WIN_IGNORE_ERR)
 	@$(RM) $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN) $(WIN_IGNORE_ERR)
@@ -79,14 +81,8 @@ clean: testclean
 cscli: goversion
 	@$(MAKE) -C $(CSCLI_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 
-cscli-bincover: goversion
-	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(CSCLI_FOLDER) build-bincover --no-print-directory
-
 crowdsec: goversion
 	@$(MAKE) -C $(CROWDSEC_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
-
-crowdsec-bincover: goversion
-	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(CROWDSEC_FOLDER) build-bincover --no-print-directory
 
 http-plugin: goversion
 	@$(MAKE) -C $(HTTP_PLUGIN_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"

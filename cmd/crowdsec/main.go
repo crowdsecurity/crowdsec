@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/confluentinc/bincover"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
@@ -50,8 +49,6 @@ var (
 	lastProcessedItem time.Time /*keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.*/
 	pluginBroker      csplugin.PluginBroker
 )
-
-var bincoverTesting = ""
 
 type Flags struct {
 	ConfigFile     string
@@ -296,25 +293,6 @@ func LoadConfig(cConfig *csconfig.Config) error {
 	return nil
 }
 
-// exitWithCode must be called right before the program termination,
-// to allow measuring functional test coverage in case of abnormal exit.
-//
-// without bincover: log error and exit with code
-// with bincover: log error and tell bincover the exit code, then return
-func exitWithCode(exitCode int, err error) {
-	if err != nil {
-		// this method of logging a fatal error does not
-		// trigger a program exit (as stated by the authors, it
-		// is not going to change in logrus to keep backward
-		// compatibility), and allows us to report coverage.
-		log.NewEntry(log.StandardLogger()).Log(log.FatalLevel, err)
-	}
-	if bincoverTesting == "" {
-		os.Exit(exitCode)
-	}
-	bincover.ExitCode = exitCode
-}
-
 // crowdsecT0 can be used to measure start time of services,
 // or uptime of the application
 var crowdsecT0 time.Time
@@ -332,8 +310,6 @@ func main() {
 
 	crowdsecT0 = time.Now()
 
-	defer types.CatchPanic("crowdsec/main")
-
 	log.Debugf("os.Args: %v", os.Args)
 
 	// Handle command line arguments
@@ -344,20 +320,17 @@ func main() {
 		fmt.Fprintf(os.Stderr, "argument provided but not defined: %s\n", flag.Args()[0])
 		flag.Usage()
 		// the flag package exits with 2 in case of unknown flag
-		exitWithCode(2, nil)
-		return
+		os.Exit(2)
 	}
 
 	if flags.PrintVersion {
 		cwversion.Show()
-		exitWithCode(0, nil)
-		return
+		os.Exit(0)
 	}
 
-	exitCode := 0
 	err := StartRunSvc()
 	if err != nil {
-		exitCode = 1
+		log.Fatal(err)
 	}
-	exitWithCode(exitCode, err)
+	os.Exit(0)
 }

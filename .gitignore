@@ -15,8 +15,9 @@
 # Test binaries, built from *_test.go
 pkg/csplugin/tests/cs_plugin_test*
 
-# Output of go-acc
+# Output of go-acc, go -cover
 *.out
+test/coverage/*
 
 # Development artifacts, backups, etc
 *.swp

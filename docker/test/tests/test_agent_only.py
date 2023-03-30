@@ -28,11 +28,12 @@ def test_split_lapi_agent(crowdsec, flavor):
     cs_lapi = crowdsec(name=lapiname, environment=lapi_env, flavor=flavor)
     cs_agent = crowdsec(name=agentname, environment=agent_env, flavor=flavor)
 
-    with cs_lapi as lapi, cs_agent as agent:
+    with cs_lapi as lapi:
         lapi.wait_for_log("*CrowdSec Local API listening on 0.0.0.0:8080*")
-        agent.wait_for_log("*Starting processing data*")
         lapi.wait_for_http(8080, '/health', want_status=HTTPStatus.OK)
-        res = agent.cont.exec_run('cscli lapi status')
-        assert res.exit_code == 0
-        stdout = res.output.decode()
-        assert "You can successfully interact with Local API (LAPI)" in stdout
+        with cs_agent as agent:
+            agent.wait_for_log("*Starting processing data*")
+            res = agent.cont.exec_run('cscli lapi status')
+            assert res.exit_code == 0
+            stdout = res.output.decode()
+            assert "You can successfully interact with Local API (LAPI)" in stdout

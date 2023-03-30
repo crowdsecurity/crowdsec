@@ -27,18 +27,8 @@ PID_DIR = $(LOCAL_DIR)/var/run
 PLUGIN_DIR = $(LOCAL_DIR)/lib/crowdsec/plugins
 DB_BACKEND ?= sqlite
 
-ifdef TEST_COVERAGE
-  CROWDSEC = $(TEST_DIR)/bin/crowdsec-wrapper
-  CSCLI = $(TEST_DIR)/bin/cscli-wrapper
-  BINCOVER_TESTING = true
-else
-  # the wrappers should work here too - it detects TEST_COVERAGE - but we allow
-  # overriding the path to the binaries
-  CROWDSEC ?= $(BIN_DIR)/crowdsec
-  CSCLI ?= $(BIN_DIR)/cscli
-  # any value is considered true
-  BINCOVER_TESTING =
-endif
+CROWDSEC ?= $(BIN_DIR)/crowdsec
+CSCLI ?= $(BIN_DIR)/cscli
 
 # If you change the name of the crowdsec executable, make sure the pgrep
 # parameters are correct in $(TEST_DIR)/assert-crowdsec-not-running
@@ -59,6 +49,7 @@ export INIT_BACKEND="$(INIT_BACKEND)"
 export CONFIG_BACKEND="$(CONFIG_BACKEND)"
 export PACKAGE_TESTING="$(PACKAGE_TESTING)"
 export TEST_COVERAGE="$(TEST_COVERAGE)"
+export GOCOVERDIR="$(TEST_DIR)/coverage"
 endef
 
 bats-all: bats-clean bats-build bats-fixture bats-test bats-test-hub
@@ -76,11 +67,9 @@ bats-check-requirements:
 # Build and installs crowdsec in a local directory. Rebuilds if already exists.
 bats-build: bats-environment bats-check-requirements
 	@mkdir -p $(BIN_DIR) $(LOG_DIR) $(PID_DIR) $(PLUGIN_DIR)
-	@BINCOVER_TESTING=$(BINCOVER_TESTING) DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR) $(MAKE) goversion crowdsec cscli plugins
+	@TEST_COVERAGE=$(TEST_COVERAGE) DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR) $(MAKE) goversion crowdsec cscli plugins
 	@install -m 0755 cmd/crowdsec/crowdsec cmd/crowdsec-cli/cscli $(BIN_DIR)/
 	@install -m 0755 plugins/notifications/*/notification-* $(PLUGIN_DIR)/
-	@BINCOVER_TESTING=$(BINCOVER_TESTING) DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR) $(MAKE) goversion crowdsec-bincover cscli-bincover
-	@install -m 0755 cmd/crowdsec/crowdsec.cover cmd/crowdsec-cli/cscli.cover $(BIN_DIR)/
 
 # Create a reusable package with initial configuration + data
 bats-fixture:

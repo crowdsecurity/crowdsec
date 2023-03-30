@@ -10,11 +10,14 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func StartRunSvc() error {
 	const svcName = "CrowdSec"
 	const svcDescription = "Crowdsec IPS/IDS"
+
+	defer types.CatchPanic("crowdsec/StartRunSvc")
 
 	isRunninginService, err := svc.IsWindowsService()
 	if err != nil {
@@ -68,10 +71,6 @@ func WindowsRun() error {
 	// Configure logging
 	log.Infof("Crowdsec %s", cwversion.VersionStr())
 
-	if bincoverTesting != "" {
-		log.Debug("coverage report is enabled")
-	}
-
 	apiReady := make(chan bool, 1)
 	agentReady := make(chan bool, 1)
 
@@ -84,7 +83,7 @@ func WindowsRun() error {
 			dbClient, err = database.NewClient(cConfig.DbConfig)
 
 			if err != nil {
-				log.Fatalf("unable to create database client: %s", err)
+				return fmt.Errorf("unable to create database client: %s", err)
 			}
 		}
 		registerPrometheus(cConfig.Prometheus)

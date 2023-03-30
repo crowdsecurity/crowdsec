@@ -168,22 +168,26 @@ def test_tls_split_lapi_agent(crowdsec, flavor, certs_dir):
         certs_dir(lapi_hostname=lapiname): {'bind': '/etc/ssl/crowdsec', 'mode': 'ro'},
     }
 
-    with crowdsec(flavor=flavor, name=lapiname, environment=lapi_env, volumes=volumes) as lapi, crowdsec(flavor=flavor, name=agentname, environment=agent_env, volumes=volumes) as agent:
+    cs_lapi = crowdsec(flavor=flavor, name=lapiname, environment=lapi_env, volumes=volumes)
+    cs_agent = crowdsec(flavor=flavor, name=agentname, environment=agent_env, volumes=volumes)
+
+    with cs_lapi as lapi:
         lapi.wait_for_log([
             "*(tls) Client Auth Type set to VerifyClientCertIfGiven*",
             "*CrowdSec Local API listening on 0.0.0.0:8080*"
         ])
         # TODO: wait_for_https
         lapi.wait_for_http(8080, '/health', want_status=None)
-        agent.wait_for_log("*Starting processing data*")
-        res = agent.cont.exec_run('cscli lapi status')
-        assert res.exit_code == 0
-        stdout = res.output.decode()
-        assert "You can successfully interact with Local API (LAPI)" in stdout
-        res = lapi.cont.exec_run('cscli lapi status')
-        assert res.exit_code == 0
-        stdout = res.output.decode()
-        assert "You can successfully interact with Local API (LAPI)" in stdout
+        with cs_agent as agent:
+            agent.wait_for_log("*Starting processing data*")
+            res = agent.cont.exec_run('cscli lapi status')
+            assert res.exit_code == 0
+            stdout = res.output.decode()
+            assert "You can successfully interact with Local API (LAPI)" in stdout
+            res = lapi.cont.exec_run('cscli lapi status')
+            assert res.exit_code == 0
+            stdout = res.output.decode()
+            assert "You can successfully interact with Local API (LAPI)" in stdout
 
 
 def test_tls_mutual_split_lapi_agent(crowdsec, flavor, certs_dir):
@@ -215,22 +219,26 @@ def test_tls_mutual_split_lapi_agent(crowdsec, flavor, certs_dir):
         certs_dir(lapi_hostname=lapiname): {'bind': '/etc/ssl/crowdsec', 'mode': 'ro'},
     }
 
-    with crowdsec(flavor=flavor, name=lapiname, environment=lapi_env, volumes=volumes) as lapi, crowdsec(flavor=flavor, name=agentname, environment=agent_env, volumes=volumes) as agent:
+    cs_lapi = crowdsec(flavor=flavor, name=lapiname, environment=lapi_env, volumes=volumes)
+    cs_agent = crowdsec(flavor=flavor, name=agentname, environment=agent_env, volumes=volumes)
+
+    with cs_lapi as lapi:
         lapi.wait_for_log([
             "*(tls) Client Auth Type set to VerifyClientCertIfGiven*",
             "*CrowdSec Local API listening on 0.0.0.0:8080*"
         ])
         # TODO: wait_for_https
         lapi.wait_for_http(8080, '/health', want_status=None)
-        agent.wait_for_log("*Starting processing data*")
-        res = agent.cont.exec_run('cscli lapi status')
-        assert res.exit_code == 0
-        stdout = res.output.decode()
-        assert "You can successfully interact with Local API (LAPI)" in stdout
-        res = lapi.cont.exec_run('cscli lapi status')
-        assert res.exit_code == 0
-        stdout = res.output.decode()
-        assert "You can successfully interact with Local API (LAPI)" in stdout
+        with cs_agent as agent:
+            agent.wait_for_log("*Starting processing data*")
+            res = agent.cont.exec_run('cscli lapi status')
+            assert res.exit_code == 0
+            stdout = res.output.decode()
+            assert "You can successfully interact with Local API (LAPI)" in stdout
+            res = lapi.cont.exec_run('cscli lapi status')
+            assert res.exit_code == 0
+            stdout = res.output.decode()
+            assert "You can successfully interact with Local API (LAPI)" in stdout
 
 
 def test_tls_client_ou(crowdsec, certs_dir):
@@ -262,26 +270,40 @@ def test_tls_client_ou(crowdsec, certs_dir):
         certs_dir(lapi_hostname=lapiname, agent_ou='custom-client-ou'): {'bind': '/etc/ssl/crowdsec', 'mode': 'ro'},
     }
 
-    with crowdsec(name=lapiname, environment=lapi_env, volumes=volumes) as lapi, crowdsec(name=agentname, environment=agent_env, volumes=volumes) as agent:
-        lapi.wait_for_log([
-            "*client certificate OU (?custom-client-ou?) doesn't match expected OU (?agent-ou?)*",
-        ])
+    cs_lapi = crowdsec(name=lapiname, environment=lapi_env, volumes=volumes)
+    cs_agent = crowdsec(name=agentname, environment=agent_env, volumes=volumes)
 
-    lapi_env['AGENTS_ALLOWED_OU'] = 'custom-client-ou'
-
-    with crowdsec(name=lapiname, environment=lapi_env, volumes=volumes) as lapi, crowdsec(name=agentname, environment=agent_env, volumes=volumes) as agent:
+    with cs_lapi as lapi:
         lapi.wait_for_log([
             "*(tls) Client Auth Type set to VerifyClientCertIfGiven*",
             "*CrowdSec Local API listening on 0.0.0.0:8080*"
         ])
         # TODO: wait_for_https
         lapi.wait_for_http(8080, '/health', want_status=None)
-        agent.wait_for_log("*Starting processing data*")
-        res = agent.cont.exec_run('cscli lapi status')
-        assert res.exit_code == 0
-        stdout = res.output.decode()
-        assert "You can successfully interact with Local API (LAPI)" in stdout
-        res = lapi.cont.exec_run('cscli lapi status')
-        assert res.exit_code == 0
-        stdout = res.output.decode()
-        assert "You can successfully interact with Local API (LAPI)" in stdout
+        with cs_agent as agent:
+            lapi.wait_for_log([
+                "*client certificate OU (?custom-client-ou?) doesn't match expected OU (?agent-ou?)*",
+            ])
+
+    lapi_env['AGENTS_ALLOWED_OU'] = 'custom-client-ou'
+
+    cs_lapi = crowdsec(name=lapiname, environment=lapi_env, volumes=volumes)
+    cs_agent = crowdsec(name=agentname, environment=agent_env, volumes=volumes)
+
+    with cs_lapi as lapi:
+        lapi.wait_for_log([
+            "*(tls) Client Auth Type set to VerifyClientCertIfGiven*",
+            "*CrowdSec Local API listening on 0.0.0.0:8080*"
+        ])
+        # TODO: wait_for_https
+        lapi.wait_for_http(8080, '/health', want_status=None)
+        with cs_agent as agent:
+            agent.wait_for_log("*Starting processing data*")
+            res = agent.cont.exec_run('cscli lapi status')
+            assert res.exit_code == 0
+            stdout = res.output.decode()
+            assert "You can successfully interact with Local API (LAPI)" in stdout
+            res = lapi.cont.exec_run('cscli lapi status')
+            assert res.exit_code == 0
+            stdout = res.output.decode()
+            assert "You can successfully interact with Local API (LAPI)" in stdout
