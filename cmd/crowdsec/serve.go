@@ -370,10 +370,7 @@ func Serve(cConfig *csconfig.Config, apiReady chan bool, agentReady chan bool) e
 	}
 
 	for _, ch := range waitChans {
-		select {
-		case <-ch:
-			continue
-		}
+		<-ch
 	}
 	return nil
 }
