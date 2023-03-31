@@ -34,11 +34,7 @@ func StartRunSvc() error {
 		},
 	})
 
-	cConfig, err = csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
-	if err != nil {
-		return err
-	}
-	if err := LoadConfig(cConfig); err != nil {
+	if cConfig, err = LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false); err != nil {
 		return err
 	}
 
