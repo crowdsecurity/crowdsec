@@ -57,7 +57,7 @@ var AcquisitionSources = map[string]func() DataSource{
 	"kinesis":     func() DataSource { return &kinesisacquisition.KinesisSource{} },
 	"wineventlog": func() DataSource { return &wineventlogacquisition.WinEventLogSource{} },
 	"kafka":       func() DataSource { return &kafkaacquisition.KafkaSource{} },
-	"k8s_audit":   func() DataSource { return &k8sauditacquisition.KubernetesAuditSource{} },
+	"k8s-audit":   func() DataSource { return &k8sauditacquisition.KubernetesAuditSource{} },
 	"s3":          func() DataSource { return &s3acquisition.S3Source{} },
 }
 
