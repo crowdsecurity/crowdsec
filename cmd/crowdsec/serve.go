@@ -363,19 +363,19 @@ func Serve(cConfig *csconfig.Config, apiReady chan bool, agentReady chan bool) e
 	waitChans := make([]<-chan struct{}, 0)
 
 	if !cConfig.DisableAgent {
-		waitChans = append(waitChans, crowdsecTomb.Dying())
+		waitChans = append(waitChans, crowdsecTomb.Dead())
 	}
 
 	if !cConfig.DisableAPI {
-		waitChans = append(waitChans, apiTomb.Dying())
+		waitChans = append(waitChans, apiTomb.Dead())
 	}
 
 	for _, ch := range waitChans {
 		<-ch
 		switch ch {
-		case apiTomb.Dying():
+		case apiTomb.Dead():
 			log.Infof("api shutdown")
-		case crowdsecTomb.Dying():
+		case crowdsecTomb.Dead():
 			log.Infof("crowdsec shutdown")
 		}
 	}
