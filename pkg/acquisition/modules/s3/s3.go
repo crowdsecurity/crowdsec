@@ -418,23 +418,29 @@ func (s *S3Source) readFile(bucket string, key string) error {
 		scanner.Buffer(buf, s.Config.MaxBufferSize)
 	}
 	for scanner.Scan() {
-		text := scanner.Text()
-		logger.Tracef("Read line %s", text)
-		linesRead.WithLabelValues(bucket).Inc()
-		l := types.Line{}
-		l.Raw = text
-		l.Labels = s.Config.Labels
-		l.Time = time.Now().UTC()
-		l.Process = true
-		l.Module = s.GetName()
-		l.Src = bucket
-		var evt types.Event
-		if !s.Config.UseTimeMachine {
-			evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE}
-		} else {
-			evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
+		select {
+		case <-s.t.Dying():
+			s.logger.Infof("Shutting down reader for %s/%s", bucket, key)
+			return nil
+		default:
+			text := scanner.Text()
+			logger.Tracef("Read line %s", text)
+			linesRead.WithLabelValues(bucket).Inc()
+			l := types.Line{}
+			l.Raw = text
+			l.Labels = s.Config.Labels
+			l.Time = time.Now().UTC()
+			l.Process = true
+			l.Module = s.GetName()
+			l.Src = bucket
+			var evt types.Event
+			if !s.Config.UseTimeMachine {
+				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE}
+			} else {
+				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
+			}
+			s.out <- evt
 		}
-		s.out <- evt
 	}
 	if err := scanner.Err(); err != nil {
 		return fmt.Errorf("failed to read object %s/%s: %s", bucket, key, err)
@@ -629,6 +635,7 @@ func (s *S3Source) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error 
 	s.out = out
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.Config.UseTimeMachine = true
+	s.t = t
 	if s.Config.Key != "" {
 		err := s.readFile(s.Config.BucketName, s.Config.Key)
 		if err != nil {
