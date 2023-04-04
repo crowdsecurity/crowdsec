@@ -282,7 +282,7 @@ teardown() {
     assert_output - <"$BATS_TEST_DIRNAME"/testdata/explain/explain-log.txt
 }
 
-@test "Allow variable expansion and literal \$ characters in passwords' {
+@test 'Allow variable expansion and literal $ characters in passwords' {
     export DB_PASSWORD='P@ssw0rd'
     # shellcheck disable=SC2016
     config_set '.db_config.password="$DB_PASSWORD"'
@@ -320,4 +320,15 @@ teardown() {
     export CROWDSEC_FEATURE_CSCLI_SETUP="true"
     rune -0 cscli doc
     assert_file_exist "doc/cscli_setup.md"
+}
+
+@test "feature.yaml for subcommands" {
+    # it is possible to enable subcommands with feature flags defined in feature.yaml
+
+    rune -1 cscli setup
+    assert_stderr --partial 'unknown command \"setup\" for \"cscli\"'
+    CONFIG_DIR=$(dirname "$CONFIG_YAML")
+    echo ' - cscli_setup' >> "$CONFIG_DIR"/feature.yaml
+    rune -0 cscli setup
+    assert_output --partial 'cscli setup [command]'
 }

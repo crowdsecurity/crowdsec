@@ -209,6 +209,21 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 		log.Fatalf("failed to hide flag: %s", err)
 	}
 
+	// Look for "-c /path/to/config.yaml"
+	// This duplicates the logic in cobra, but we need to do it before
+	// because feature flags can change which subcommands are available.
+	for i, arg := range os.Args {
+		if arg == "-c" || arg == "--config" {
+			if len(os.Args) > i+1 {
+				ConfigFilePath = os.Args[i+1]
+			}
+		}
+	}
+
+	if err := csconfig.LoadFeatureFlagsFile(ConfigFilePath, log.StandardLogger()); err != nil {
+		log.Fatal(err)
+	}
+
 	if len(os.Args) > 1 {
 		cobra.OnInitialize(initConfig)
 	}
@@ -249,7 +264,6 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	}
 
 	if err := rootCmd.Execute(); err != nil {
-		log.NewEntry(log.StandardLogger()).Log(log.FatalLevel, err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 }

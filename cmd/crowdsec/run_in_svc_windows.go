@@ -61,11 +61,8 @@ func WindowsRun() error {
 		err     error
 	)
 
-	cConfig, err = csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
+	cConfig, err = LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
 	if err != nil {
-		return err
-	}
-	if err := LoadConfig(cConfig); err != nil {
 		return err
 	}
 	// Configure logging

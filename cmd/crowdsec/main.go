@@ -191,9 +191,14 @@ func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
 }
 
 // LoadConfig returns a configuration parsed from configuration file
-func LoadConfig(cConfig *csconfig.Config) error {
+func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*csconfig.Config, error) {
+	cConfig, err := csconfig.NewConfig(configFile, disableAgent, disableAPI, quiet)
+	if err != nil {
+		return nil, err
+	}
+
 	if (cConfig.Common == nil || *cConfig.Common == csconfig.CommonCfg{}) {
-		return fmt.Errorf("unable to load configuration: common section is empty")
+		return nil, fmt.Errorf("unable to load configuration: common section is empty")
 	}
 
 	cConfig.Common.LogLevel = newLogLevel(cConfig.Common.LogLevel, flags)
@@ -207,7 +212,7 @@ func LoadConfig(cConfig *csconfig.Config) error {
 
 	// Configuration paths are dependency to load crowdsec configuration
 	if err := cConfig.LoadConfigurationPaths(); err != nil {
-		return err
+		return nil, err
 	}
 
 	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
@@ -221,31 +226,31 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles,
 		cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs,
 		cConfig.Common.ForceColorLogs); err != nil {
-		return err
+		return nil, err
 	}
 
-	if err := csconfig.LoadFeatureFlagsFile(cConfig, log.StandardLogger()); err != nil {
-		return err
+	if err := csconfig.LoadFeatureFlagsFile(configFile, log.StandardLogger()); err != nil {
+		return nil, err
 	}
 
 	if !flags.DisableAgent {
 		if err := cConfig.LoadCrowdsec(); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	if !flags.DisableAPI {
 		if err := cConfig.LoadAPIServer(); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	if !cConfig.DisableAgent && (cConfig.API == nil || cConfig.API.Client == nil || cConfig.API.Client.Credentials == nil) {
-		return errors.New("missing local API credentials for crowdsec agent, abort")
+		return nil, errors.New("missing local API credentials for crowdsec agent, abort")
 	}
 
 	if cConfig.DisableAPI && cConfig.DisableAgent {
-		return errors.New("You must run at least the API Server or crowdsec")
+		return nil, errors.New("You must run at least the API Server or crowdsec")
 	}
 
 	if flags.TestMode && !cConfig.DisableAgent {
@@ -253,15 +258,15 @@ func LoadConfig(cConfig *csconfig.Config) error {
 	}
 
 	if flags.OneShotDSN != "" && flags.SingleFileType == "" {
-		return errors.New("-dsn requires a -type argument")
+		return nil, errors.New("-dsn requires a -type argument")
 	}
 
 	if flags.Transform != "" && flags.OneShotDSN == "" {
-		return errors.New("-transform requires a -dsn argument")
+		return nil, errors.New("-transform requires a -dsn argument")
 	}
 
 	if flags.SingleFileType != "" && flags.OneShotDSN == "" {
-		return errors.New("-type requires a -dsn argument")
+		return nil, errors.New("-type requires a -dsn argument")
 	}
 
 	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
@@ -290,7 +295,7 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		log.Infof("Enabled feature flags: %s", fflist)
 	}
 
-	return nil
+	return cConfig, nil
 }
 
 // crowdsecT0 can be used to measure start time of services,
