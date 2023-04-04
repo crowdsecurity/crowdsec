@@ -514,22 +514,28 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 		scanner.Buffer(buf, f.config.MaxBufferSize)
 	}
 	for scanner.Scan() {
-		if scanner.Text() == "" {
-			continue
-		}
-		l := types.Line{
-			Raw:     scanner.Text(),
-			Time:    time.Now().UTC(),
-			Src:     filename,
-			Labels:  f.config.Labels,
-			Process: true,
-			Module:  f.GetName(),
-		}
-		logger.Debugf("line %s", l.Raw)
-		linesRead.With(prometheus.Labels{"source": filename}).Inc()
+		select {
+		case <-t.Dying():
+			logger.Infof("File datasource %s stopping", filename)
+			return nil
+		default:
+			if scanner.Text() == "" {
+				continue
+			}
+			l := types.Line{
+				Raw:     scanner.Text(),
+				Time:    time.Now().UTC(),
+				Src:     filename,
+				Labels:  f.config.Labels,
+				Process: true,
+				Module:  f.GetName(),
+			}
+			logger.Debugf("line %s", l.Raw)
+			linesRead.With(prometheus.Labels{"source": filename}).Inc()
 
-		//we're reading logs at once, it must be time-machine buckets
-		out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
+			//we're reading logs at once, it must be time-machine buckets
+			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
+		}
 	}
 	if err := scanner.Err(); err != nil {
 		logger.Errorf("Error while reading file: %s", err)
