@@ -635,6 +635,7 @@ func (s *S3Source) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error 
 	s.out = out
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.Config.UseTimeMachine = true
+	s.t = t
 	if s.Config.Key != "" {
 		err := s.readFile(s.Config.BucketName, s.Config.Key)
 		if err != nil {
