@@ -20,7 +20,8 @@ var PARSERS = "parsers"
 var PARSERS_OVFLW = "postoverflows"
 var SCENARIOS = "scenarios"
 var COLLECTIONS = "collections"
-var ItemTypes = []string{PARSERS, PARSERS_OVFLW, SCENARIOS, COLLECTIONS}
+var WAF_RULES = "waf-rules"
+var ItemTypes = []string{PARSERS, PARSERS_OVFLW, SCENARIOS, COLLECTIONS, WAF_RULES}
 
 var hubIdx map[string]map[string]Item
 
@@ -42,7 +43,7 @@ type ItemHubStatus struct {
 	Status       string `json:"status"`
 }
 
-//Item can be : parsed, scenario, collection
+// Item can be : parsed, scenario, collection
 type Item struct {
 	/*descriptive info*/
 	Type                 string   `yaml:"type,omitempty" json:"type,omitempty"`                                     //parser|postoverflows|scenario|collection(|enrich)
@@ -77,6 +78,7 @@ type Item struct {
 	PostOverflows []string `yaml:"postoverflows,omitempty" json:"postoverflows,omitempty"`
 	Scenarios     []string `yaml:"scenarios,omitempty" json:"scenarios,omitempty"`
 	Collections   []string `yaml:"collections,omitempty" json:"collections,omitempty"`
+	WafRules      []string `yaml:"waf_rules,omitempty" json:"waf_rules,omitempty"`
 }
 
 func (i *Item) toHubStatus() ItemHubStatus {
@@ -107,7 +109,7 @@ var skippedTainted = 0
 var ReferenceMissingError = errors.New("Reference(s) missing in collection")
 var MissingHubIndex = errors.New("hub index can't be found")
 
-//GetVersionStatus : semver requires 'v' prefix
+// GetVersionStatus : semver requires 'v' prefix
 func GetVersionStatus(v *Item) int {
 	return semver.Compare("v"+v.Version, "v"+v.LocalVersion)
 }
@@ -140,7 +142,7 @@ func GetItemMap(itemType string) map[string]Item {
 	return m
 }
 
-//GetItemByPath retrieves the item from hubIdx based on the path. To achieve this it will resolve symlink to find associated hub item.
+// GetItemByPath retrieves the item from hubIdx based on the path. To achieve this it will resolve symlink to find associated hub item.
 func GetItemByPath(itemType string, itemPath string) (*Item, error) {
 	/*try to resolve symlink*/
 	finalName := ""
@@ -206,7 +208,7 @@ func DisplaySummary() {
 	}
 }
 
-//returns: human-text, Enabled, Warning, Unmanaged
+// returns: human-text, Enabled, Warning, Unmanaged
 func ItemStatus(v Item) (string, bool, bool, bool) {
 	strret := "disabled"
 	Ok := false
@@ -341,7 +343,7 @@ func GetInstalledCollections() ([]Item, error) {
 	return retItems, nil
 }
 
-//Returns a list of entries for packages : name, status, local_path, local_version, utf8_status (fancy)
+// Returns a list of entries for packages : name, status, local_path, local_version, utf8_status (fancy)
 func GetHubStatusForItemType(itemType string, name string, all bool) []ItemHubStatus {
 	if _, ok := hubIdx[itemType]; !ok {
 		log.Errorf("type %s doesn't exist", itemType)
