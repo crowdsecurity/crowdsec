@@ -7,7 +7,6 @@ import (
 
 	"github.com/antonmedv/expr/parser"
 	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/antonmedv/expr"
@@ -136,7 +135,7 @@ type expression struct {
 Run display the content of each variable of a filter by evaluating them with expr,
 again the expr environment given in parameter
 */
-func (e *ExprDebugger) Run(logger *logrus.Entry, filterResult bool, exprEnv map[string]interface{}) {
+func (e *ExprDebugger) Run(logger *log.Entry, filterResult bool, exprEnv map[string]interface{}) {
 	if len(e.expression) == 0 {
 		logger.Tracef("no variable to eval for filter '%s'", e.filter)
 		return
