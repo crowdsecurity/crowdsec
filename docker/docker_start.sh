@@ -192,7 +192,7 @@ if isfalse "$DISABLE_LOCAL_API"; then
     # generate local agent credentials (even if agent is disabled, cscli needs a
     # connection to the API)
     if ( isfalse "$USE_TLS" || [ "$CLIENT_CERT_FILE" = "" ] ); then
-        if yq -e '.login==strenv(CUSTOM_HOSTNAME)' "$lapi_credentials_path" && ( cscli machines list -o json | yq -e 'any_c(.machineId==strenv(CUSTOM_HOSTNAME))' >/dev/null ); then
+        if yq -e '.login==strenv(CUSTOM_HOSTNAME)' "$lapi_credentials_path" >/dev/null && ( cscli machines list -o json | yq -e 'any_c(.machineId==strenv(CUSTOM_HOSTNAME))' >/dev/null ); then
             echo "Local agent already registered"
         else
             echo "Generate local agent credentials"
