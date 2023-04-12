@@ -102,7 +102,7 @@ func parser_visit(path string, f os.DirEntry, err error) error {
 		when the collection is installed, both files are created
 	*/
 	//non symlinks are local user files or hub files
-	if f.Type() & os.ModeSymlink == 0 {
+	if f.Type()&os.ModeSymlink == 0 {
 		local = true
 		log.Tracef("%s isn't a symlink", path)
 	} else {
@@ -406,7 +406,7 @@ func LoadPkgIndex(buff []byte) (map[string]map[string]Item, error) {
 			/*if it's a collection, check its sub-items are present*/
 			//XX should be done later
 			if itemType == COLLECTIONS {
-				var tmp = [][]string{item.Parsers, item.PostOverflows, item.Scenarios, item.Collections}
+				var tmp = [][]string{item.Parsers, item.PostOverflows, item.Scenarios, item.Collections, item.WafRules}
 				for idx, ptr := range tmp {
 					ptrtype := ItemTypes[idx]
 					for _, p := range ptr {

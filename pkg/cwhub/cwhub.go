@@ -201,8 +201,8 @@ func AddItem(itemType string, item Item) error {
 }
 
 func DisplaySummary() {
-	log.Printf("Loaded %d collecs, %d parsers, %d scenarios, %d post-overflow parsers", len(hubIdx[COLLECTIONS]),
-		len(hubIdx[PARSERS]), len(hubIdx[SCENARIOS]), len(hubIdx[PARSERS_OVFLW]))
+	log.Printf("Loaded %d collecs, %d parsers, %d scenarios, %d post-overflow parsers, %d waf rules", len(hubIdx[COLLECTIONS]),
+		len(hubIdx[PARSERS]), len(hubIdx[SCENARIOS]), len(hubIdx[PARSERS_OVFLW]), len(hubIdx[WAF_RULES]))
 	if skippedLocal > 0 || skippedTainted > 0 {
 		log.Printf("unmanaged items : %d local, %d tainted", skippedLocal, skippedTainted)
 	}
@@ -341,6 +341,33 @@ func GetInstalledCollections() ([]Item, error) {
 		}
 	}
 	return retItems, nil
+}
+
+func GetInstalledWafRules() ([]Item, error) {
+	var retItems []Item
+
+	if _, ok := hubIdx[WAF_RULES]; !ok {
+		return nil, fmt.Errorf("no waf rules in hubIdx")
+	}
+	for _, item := range hubIdx[WAF_RULES] {
+		if item.Installed {
+			retItems = append(retItems, item)
+		}
+	}
+	return retItems, nil
+}
+
+func GetInstalledWafRulesAsString() ([]string, error) {
+	var retStr []string
+
+	items, err := GetInstalledWafRules()
+	if err != nil {
+		return nil, errors.Wrap(err, "while fetching waf rules")
+	}
+	for _, it := range items {
+		retStr = append(retStr, it.Name)
+	}
+	return retStr, nil
 }
 
 // Returns a list of entries for packages : name, status, local_path, local_version, utf8_status (fancy)

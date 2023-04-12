@@ -137,6 +137,8 @@ func compInstalledItems(itemType string, args []string, toComplete string) ([]st
 		items, err = cwhub.GetInstalledPostOverflowsAsString()
 	case cwhub.COLLECTIONS:
 		items, err = cwhub.GetInstalledCollectionsAsString()
+	case cwhub.WAF_RULES:
+		items, err = cwhub.GetInstalledWafRulesAsString()
 	default:
 		return nil, cobra.ShellCompDirectiveDefault
 	}
@@ -745,7 +747,6 @@ func getDBClient() (*database.Client, error) {
 	}
 	return ret, nil
 }
-
 
 func removeFromSlice(val string, slice []string) []string {
 	var i int
