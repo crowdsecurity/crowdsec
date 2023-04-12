@@ -348,6 +348,7 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 	yellow := color.New(color.FgYellow).SprintFunc()
 	red := color.New(color.FgRed).SprintFunc()
 	green := color.New(color.FgGreen).SprintFunc()
+	whitelistFlag := false
 	//get each line
 	for tstamp, rawstr := range assoc {
 		if opts.SkipOk {
@@ -436,6 +437,9 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 					if len(changeStr) > 0 {
 						changeStr += " "
 					}
+					if !whitelistFlag {
+						whitelistFlag = true
+					}
 					changeStr += red("[whitelisted]")
 				}
 				if changeStr == "" {
@@ -459,6 +463,8 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 		//did the event enter the bucket pour phase ?
 		if _, ok := state[tstamp]["buckets"]["OK"]; ok {
 			fmt.Printf("\t%s-------- parser success %s\n", sep, emoji.GreenCircle)
+		} else if whitelistFlag {
+			fmt.Printf("\t%s-------- parser success %s %s\n", sep, red("[whitelisted]"), emoji.GreenCircle)
 		} else {
 			fmt.Printf("\t%s-------- parser failure %s\n", sep, emoji.RedCircle)
 		}
