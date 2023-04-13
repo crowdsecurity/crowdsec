@@ -986,6 +986,7 @@ func (c *Client) TotalAlerts() (int, error) {
 }
 
 func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert, error) {
+
 	sort := "DESC" // we sort by desc by default
 	if val, ok := filter["sort"]; ok {
 		if val[0] != "ASC" && val[0] != "DESC" {
@@ -1011,8 +1012,15 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 		if err != nil {
 			return []*ent.Alert{}, err
 		}
+
+		//only if with_decisions is present and set to false, we exclude this
+		if val, ok := filter["with_decisions"]; ok && val[0] == "false" {
+			c.Log.Debugf("skipping decisions")
+		} else {
+			alerts = alerts.
+				WithDecisions()
+		}
 		alerts = alerts.
-			WithDecisions().
 			WithEvents().
 			WithMetas().
 			WithOwner()
@@ -1283,6 +1291,8 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 		lastAlert, err := c.QueryAlertWithFilter(map[string][]string{
 			"sort":  {"DESC"},
 			"limit": {"1"},
+			//we do not care about fetching the edges, we just want the id
+			"with_decisions": {"false"},
 		})
 		c.Log.Debugf("FlushAlerts (last alert): %+v", lastAlert)
 		if err != nil {
