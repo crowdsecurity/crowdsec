@@ -115,8 +115,19 @@ loop:
 			pb.alertsByPluginName[pluginName] = make([]*models.Alert, 0)
 			pluginMutex.Unlock()
 			go func() {
-				if err := pb.pushNotificationsToPlugin(pluginName, tmpAlerts); err != nil {
-					log.WithField("plugin:", pluginName).Error(err)
+				//Chunk alerts to respect group_threshold
+				threshold := pb.pluginConfigByName[pluginName].GroupThreshold
+				if threshold == 0 {
+					threshold = 1
+				}
+				for i := 0; i < len(tmpAlerts); i += threshold {
+					end := i + threshold
+					if end > len(tmpAlerts) {
+						end = len(tmpAlerts)
+					}
+					if err := pb.pushNotificationsToPlugin(pluginName, tmpAlerts[i:end]); err != nil {
+						log.WithField("plugin:", pluginName).Error(err)
+					}
 				}
 			}()
 
