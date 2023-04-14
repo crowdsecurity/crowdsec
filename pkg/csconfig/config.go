@@ -108,7 +108,7 @@ func NewDefaultConfig() *Config {
 			ListenURI:              "127.0.0.1:8080",
 			UseForwardedForHeaders: false,
 			OnlineClient: &OnlineApiClientCfg{
-				CredentialsFilePath: DefaultConfigPath("config", "online-api-secrets.yaml"),
+				CredentialsFilePath: DefaultConfigPath("online_api_credentials.yaml"),
 			},
 		},
 		CTI: &CTICfg{
