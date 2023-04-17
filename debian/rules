@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 
-export DEB_VERSION=$(shell dpkg-parsechangelog | egrep '^Version:' | cut -f 2 -d ' ')
+export DEB_VERSION=$(shell dpkg-parsechangelog | grep -E '^Version:' | cut -f 2 -d ' ')
 export BUILD_VERSION=v${DEB_VERSION}-debian-pragmatic
 export GO111MODULE=on
 
