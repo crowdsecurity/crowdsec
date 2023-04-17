@@ -4,10 +4,6 @@ import datetime
 
 from pytest_cs import Status
 
-import pytest
-
-pytestmark = pytest.mark.docker
-
 
 def test_cold_logs(crowdsec, tmp_path_factory, flavor):
     env = {

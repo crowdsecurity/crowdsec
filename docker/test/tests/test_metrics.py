@@ -4,8 +4,6 @@ from http import HTTPStatus
 
 import pytest
 
-pytestmark = pytest.mark.docker
-
 
 def test_metrics_port_default(crowdsec, flavor):
     """Test metrics"""

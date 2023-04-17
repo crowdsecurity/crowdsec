@@ -7,10 +7,6 @@ Test parser management
 from http import HTTPStatus
 import json
 
-import pytest
-
-pytestmark = pytest.mark.docker
-
 
 def test_install_two_parsers(crowdsec, flavor):
     """Test installing parsers at startup"""

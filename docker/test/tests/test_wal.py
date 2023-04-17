@@ -2,10 +2,6 @@
 
 from http import HTTPStatus
 
-import pytest
-
-pytestmark = pytest.mark.docker
-
 
 def test_use_wal_default(crowdsec, flavor):
     """Test USE_WAL default"""

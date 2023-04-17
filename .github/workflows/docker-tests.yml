@@ -112,4 +112,4 @@ jobs:
           CROWDSEC_TEST_TIMEOUT: 90
         run: |
           cd docker/test
-          pipenv run pytest -n 2 --durations=0 --color=yes
+          pipenv run pytest -n 1 --durations=0 --color=yes

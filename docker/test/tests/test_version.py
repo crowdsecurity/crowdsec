@@ -1,9 +1,5 @@
 #!/usr/bin/env python
 
-import pytest
-
-pytestmark = pytest.mark.docker
-
 
 def test_version_docker_platform(crowdsec, flavor):
     with crowdsec(flavor=flavor) as cs:

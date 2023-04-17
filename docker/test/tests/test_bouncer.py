@@ -8,10 +8,6 @@ import hashlib
 from http import HTTPStatus
 import json
 
-import pytest
-
-pytestmark = pytest.mark.docker
-
 
 def hex512(s):
     """Return the sha512 hash of a string as a hex string"""

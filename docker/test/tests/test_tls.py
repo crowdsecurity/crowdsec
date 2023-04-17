@@ -8,10 +8,6 @@ import random
 
 from pytest_cs import Status
 
-import pytest
-
-pytestmark = pytest.mark.docker
-
 
 def test_missing_key_file(crowdsec, flavor):
     """Test that cscli and agent can communicate to LAPI with TLS"""

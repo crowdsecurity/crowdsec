@@ -63,9 +63,14 @@ all: clean test build
 .PHONY: plugins
 plugins: http-plugin slack-plugin splunk-plugin email-plugin dummy-plugin
 
+# same as "$(MAKE) -f debian/rules clean" but without the dependency on debhelper
 .PHONY: clean-debian
 clean-debian:
-	$(MAKE) -f debian/rules clean
+	@$(RM) -r debian/crowdsec
+	@$(RM) -r debian/files
+	@$(RM) -r debian/.debhelper
+	@$(RM) -r debian/*.substvars
+	@$(RM) -r debian/*-stamp
 
 .PHONY: clean
 clean: clean-test

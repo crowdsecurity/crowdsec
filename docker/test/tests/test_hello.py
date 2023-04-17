@@ -6,10 +6,6 @@ Smoke tests in case docker is not set up correctly or has connection issues.
 
 import subprocess
 
-import pytest
-
-pytestmark = pytest.mark.docker
-
 
 def test_docker_cli_run():
     """Test if docker run works from the command line. Capture stdout too"""

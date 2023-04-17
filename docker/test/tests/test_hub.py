@@ -7,10 +7,6 @@ Test pre-installed hub items.
 from http import HTTPStatus
 import json
 
-import pytest
-
-pytestmark = pytest.mark.docker
-
 
 def test_preinstalled_hub(crowdsec, flavor):
     """Test hub objects installed in the entrypoint"""

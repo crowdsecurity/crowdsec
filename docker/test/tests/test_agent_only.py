@@ -3,10 +3,6 @@
 from http import HTTPStatus
 import random
 
-import pytest
-
-pytestmark = pytest.mark.docker
-
 
 def test_split_lapi_agent(crowdsec, flavor):
     rand = str(random.randint(0, 10000))
