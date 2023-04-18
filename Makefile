@@ -133,7 +133,7 @@ go-acc: testenv goversion
 
 .PHONY: localstack
 localstack:
-	docker-compose -f test/localstack/docker-compose.yml up
+	docker-compose -f testdata/localstack/docker-compose.yml up
 
 .PHONY: localstack-stop
 localstack-stop:

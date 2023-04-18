@@ -85,7 +85,6 @@ jobs:
 
       - name: "Install pipenv"
         run: |
-          cd docker/test
           python -m pip install --upgrade pipenv wheel
 
       - name: "Cache virtualenvs"
@@ -98,7 +97,6 @@ jobs:
       - name: "Install dependencies"
         if: steps.cache-pipenv.outputs.cache-hit != 'true'
         run: |
-          cd docker/test
           pipenv install --deploy
 
       - name: "Create Docker network"
@@ -110,6 +108,6 @@ jobs:
           CROWDSEC_TEST_FLAVORS: slim,debian
           CROWDSEC_TEST_NETWORK: net-test
           CROWDSEC_TEST_TIMEOUT: 90
+          PYTEST_ADDOPTS: --durations=0 -vv --color=yes
         run: |
-          cd docker/test
-          pipenv run pytest -n 1 --durations=0 --color=yes
+          pipenv run pytest -n 1
