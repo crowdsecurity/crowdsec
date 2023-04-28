@@ -16,6 +16,7 @@ import (
 func chooseHubBranch() (string, error) {
 	latest, err := cwversion.Latest()
 	if err != nil {
+		//lint:ignore nilerr reason
 		return "master", nil // ignore
 	}
 
