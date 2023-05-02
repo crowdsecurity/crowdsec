@@ -3,7 +3,6 @@ package leakybucket
 import (
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
@@ -66,7 +65,7 @@ func (c *ConditionalOverflow) AfterBucketPour(b *BucketFactory) func(types.Event
 
 			if condition {
 				l.logger.Debugf("Conditional bucket overflow")
-				l.Ovflw_ts = time.Now().UTC()
+				l.Ovflw_ts = l.Last_ts
 				l.Out <- l.Queue
 				return nil
 			}

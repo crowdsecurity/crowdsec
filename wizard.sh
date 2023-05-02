@@ -60,14 +60,21 @@ ACTION=""
 DEBUG_MODE="false"
 FORCE_MODE="false"
 
-SUPPORTED_SERVICES='apache2
+# the ssh service has different names on deb vs rpm-based distros
+if [[ -f "/etc/debian_version" ]]; then
+    SSH_NAME="ssh"
+else
+    SSH_NAME="sshd"
+fi
+
+SUPPORTED_SERVICES="apache2
 httpd
 nginx
-sshd
+$SSH_NAME
 mysql
 telnet
 smb
-'
+"
 
 
 HTTP_PLUGIN_BINARY="./plugins/notifications/http/notification-http"
@@ -162,7 +169,7 @@ detect_services () {
 declare -A log_input_tags
 log_input_tags[apache2]='type: apache2'
 log_input_tags[nginx]='type: nginx'
-log_input_tags[sshd]='type: syslog'
+log_input_tags[$SSH_NAME]='type: syslog'
 log_input_tags[rsyslog]='type: syslog'
 log_input_tags[telnet]='type: telnet'
 log_input_tags[mysql]='type: mysql'
@@ -172,7 +179,7 @@ log_input_tags[linux]="type: syslog"
 declare -A log_locations
 log_locations[apache2]='/var/log/apache2/*.log,/var/log/*httpd*.log,/var/log/httpd/*log'
 log_locations[nginx]='/var/log/nginx/*.log,/usr/local/openresty/nginx/logs/*.log'
-log_locations[sshd]='/var/log/auth.log,/var/log/sshd.log,/var/log/secure'
+log_locations[$SSH_NAME]='/var/log/auth.log,/var/log/sshd.log,/var/log/secure'
 log_locations[rsyslog]='/var/log/syslog'
 log_locations[telnet]='/var/log/telnetd*.log'
 log_locations[mysql]='/var/log/mysql/error.log'
