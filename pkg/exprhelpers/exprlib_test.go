@@ -1304,5 +1304,45 @@ func TestToString(t *testing.T) {
 			require.Equal(t, tc.expected, output)
 		})
 	}
+}
 
+func TestB64Decode(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name     string
+		value    interface{}
+		expected string
+		expr     string
+	}{
+		{
+			name:     "B64Decode() test: valid string",
+			value:    "Zm9v",
+			expected: "foo",
+			expr:     `B64Decode(value)`,
+		},
+		{
+			name:     "B64Decode() test: invalid string",
+			value:    "foo",
+			expected: "",
+			expr:     `B64Decode(value)`,
+		},
+		{
+			name:     "B64Decode() test: invalid type",
+			value:    1,
+			expected: "",
+			expr:     `B64Decode(value)`,
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			vm, err := expr.Compile(tc.expr, GetExprOptions(map[string]interface{}{"value": tc.value})...)
+			assert.NoError(t, err)
+			output, err := expr.Run(vm, map[string]interface{}{"value": tc.value})
+			assert.NoError(t, err)
+			require.Equal(t, tc.expected, output)
+		})
+	}
 }
