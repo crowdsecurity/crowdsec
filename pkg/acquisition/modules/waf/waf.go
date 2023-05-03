@@ -3,6 +3,8 @@ package wafacquisition
 import (
 	"context"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/corazawaf/coraza/v3"
@@ -177,6 +179,76 @@ func (w *WafSource) wafHandler(rw http.ResponseWriter, r *http.Request) {
 		//Not enabled, just return
 		rw.WriteHeader(http.StatusOK)
 		return
+	}
+
+	defer func() {
+		tx.ProcessLogging()
+		tx.Close()
+	}()
+
+	tx.ProcessConnection(r.RemoteAddr, 0, "", 0)
+
+	tx.ProcessURI(r.URL.String(), r.Method, r.Proto) //FIXME: get it from the headers
+
+	for k, vr := range r.Header {
+		for _, v := range vr {
+			tx.AddRequestHeader(k, v)
+		}
+	}
+
+	if r.Host != "" {
+		tx.AddRequestHeader("Host", r.Host)
+		// This connector relies on the host header (now host field) to populate ServerName
+		tx.SetServerName(r.Host)
+	}
+
+	if r.TransferEncoding != nil {
+		tx.AddRequestHeader("Transfer-Encoding", r.TransferEncoding[0])
+	}
+
+	in := tx.ProcessRequestHeaders()
+	if in != nil {
+		w.logger.Warnf("WAF blocked request: %+v", in)
+		rw.WriteHeader(http.StatusForbidden)
+		return
+	}
+
+	in = tx.ProcessRequestHeaders()
+
+	if in != nil {
+		w.logger.Warnf("WAF blocked request: %+v", in)
+		rw.WriteHeader(http.StatusForbidden)
+		return
+	}
+
+	if tx.IsRequestBodyAccessible() {
+		if r.Body != nil && r.Body != http.NoBody {
+			_, _, err := tx.ReadRequestBodyFrom(r.Body)
+			if err != nil {
+				w.logger.Errorf("Cannot read request body: %s", err)
+				rw.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			bodyReader, err := tx.RequestBodyReader()
+			if err != nil {
+				w.logger.Errorf("Cannot read request body: %s", err)
+				rw.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			body := io.MultiReader(bodyReader, r.Body)
+			r.Body = ioutil.NopCloser(body)
+			in, err = tx.ProcessRequestBody()
+			if err != nil {
+				w.logger.Errorf("Cannot process request body: %s", err)
+				rw.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			if in != nil {
+				w.logger.Warnf("WAF blocked request: %+v", in)
+				rw.WriteHeader(http.StatusForbidden)
+				return
+			}
+		}
 	}
 
 	rw.WriteHeader(http.StatusOK)
