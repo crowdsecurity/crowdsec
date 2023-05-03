@@ -377,6 +377,13 @@ var exprFuncs = []exprCustomFunc{
 			new(func(string, string) bool),
 		},
 	},
+	{
+		name:     "LogInfo",
+		function: LogInfo,
+		signature: []interface{}{
+			new(func(string, ...interface{}) bool),
+		},
+	},
 }
 
 //go 1.20 "CutPrefix":              strings.CutPrefix,
