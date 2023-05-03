@@ -377,6 +377,13 @@ var exprFuncs = []exprCustomFunc{
 			new(func(string, string) bool),
 		},
 	},
+	{
+		name:     "KeyExists",
+		function: KeyExists,
+		signature: []interface{}{
+			new(func(string, map[string]any) bool),
+		},
+	},
 }
 
 //go 1.20 "CutPrefix":              strings.CutPrefix,
