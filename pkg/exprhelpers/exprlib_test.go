@@ -1311,36 +1311,50 @@ func TestB64Decode(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name     string
-		value    interface{}
-		expected string
-		expr     string
+		name               string
+		value              interface{}
+		expected           string
+		expr               string
+		expectedBuildErr   bool
+		expectedRuntimeErr bool
 	}{
 		{
-			name:     "B64Decode() test: valid string",
-			value:    "Zm9v",
-			expected: "foo",
-			expr:     `B64Decode(value)`,
+			name:             "B64Decode() test: valid string",
+			value:            "Zm9v",
+			expected:         "foo",
+			expr:             `B64Decode(value)`,
+			expectedBuildErr: false,
 		},
 		{
-			name:     "B64Decode() test: invalid string",
-			value:    "foo",
-			expected: "",
-			expr:     `B64Decode(value)`,
+			name:               "B64Decode() test: invalid string",
+			value:              "foo",
+			expected:           "",
+			expr:               `B64Decode(value)`,
+			expectedBuildErr:   false,
+			expectedRuntimeErr: true,
 		},
 		{
-			name:     "B64Decode() test: invalid type",
-			value:    1,
-			expected: "",
-			expr:     `B64Decode(value)`,
+			name:             "B64Decode() test: invalid type",
+			value:            1,
+			expected:         "",
+			expr:             `B64Decode(value)`,
+			expectedBuildErr: true,
 		},
 	}
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			vm, err := expr.Compile(tc.expr, GetExprOptions(map[string]interface{}{"value": tc.value})...)
+			if tc.expectedBuildErr {
+				assert.Error(t, err)
+				return
+			}
 			assert.NoError(t, err)
 			output, err := expr.Run(vm, map[string]interface{}{"value": tc.value})
+			if tc.expectedRuntimeErr {
+				assert.Error(t, err)
+				return
+			}
 			assert.NoError(t, err)
 			require.Equal(t, tc.expected, output)
 		})
