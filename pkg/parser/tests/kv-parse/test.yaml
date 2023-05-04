@@ -2,19 +2,20 @@
 lines:
   - Line:
       Raw: |
-        {"foo": "bar", "pouet": 42}
+        foo=bar fizz="buzz" both="fizzbuzz foobar"
   - Line:
       Raw: xxheader VALUE2 trailing stuff
 #these are the results we expect from the parser
 results:
   - Unmarshaled:
-      JSON:
+      KV:
         foo: "bar"
-        pouet: 42
+        fizz: "buzz"
+        both: "fizzbuzz foobar"
     Process: true
     Stage: s00-raw
   - Unmarshaled:
-      JSON: {}
+      KV: {}
     Process: true
     Stage: s00-raw
 

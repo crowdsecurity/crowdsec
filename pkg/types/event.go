@@ -16,8 +16,8 @@ const (
 
 type UnmarshaledStruct struct {
 	// Adding sub keys it best we define a struct
-	KV   map[string]interface{}
-	JSON map[string]interface{}
+	KV   map[string]interface{} `yaml:"KV,omitempty" json:"KV,omitempty"`
+	JSON map[string]interface{} `yaml:"JSON,omitempty" json:"JSON,omitempty"`
 }
 
 // Event is the structure representing a runtime event (log or overflow)
