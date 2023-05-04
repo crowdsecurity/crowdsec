@@ -202,3 +202,5 @@ require (
 )
 
 replace golang.org/x/time/rate => github.com/crowdsecurity/crowdsec/pkg/time/rate v0.0.0
+
+replace github.com/corazawaf/coraza/v3 => github.com/buixor/coraza/v3 v3.0.1-0.20230504085753-fc713bf319a7

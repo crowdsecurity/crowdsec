@@ -206,6 +206,10 @@ func processReqWithEngine(waf coraza.WAF, r *http.Request) (*corazatypes.Interru
 		tx.Close()
 	}()
 
+	//this method is not exported by coraza, so we have to do it ourselves.
+	//ideally, this would be dealt with by expr code, and we provide helpers to manipulate the transaction object?
+	tx.RemoveRuleByID(1)
+
 	tx.ProcessConnection(r.RemoteAddr, 0, "", 0)
 
 	tx.ProcessURI(r.URL.String(), r.Method, r.Proto) //FIXME: get it from the headers
