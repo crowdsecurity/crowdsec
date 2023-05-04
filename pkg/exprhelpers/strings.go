@@ -1,6 +1,10 @@
 package exprhelpers
 
-import "strings"
+import (
+	"strings"
+
+	log "github.com/sirupsen/logrus"
+)
 
 //Wrappers for stdlib strings function exposed in expr
 
@@ -66,4 +70,9 @@ func TrimSpace(params ...any) (any, error) {
 
 func TrimSuffix(params ...any) (any, error) {
 	return strings.TrimSuffix(params[0].(string), params[1].(string)), nil
+}
+
+func LogInfo(params ...any) (any, error) {
+	log.Infof(params[0].(string), params[1:]...)
+	return true, nil
 }

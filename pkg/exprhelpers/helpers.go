@@ -2,6 +2,7 @@ package exprhelpers
 
 import (
 	"bufio"
+	"encoding/base64"
 	"fmt"
 	"net"
 	"net/url"
@@ -584,4 +585,13 @@ func Match(params ...any) (any, error) {
 		return Match(pattern[1:], name[1:])
 	}
 	return matched, nil
+}
+
+func B64Decode(params ...any) (any, error) {
+	encoded := params[0].(string)
+	decoded, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return "", err
+	}
+	return string(decoded), nil
 }
