@@ -378,6 +378,13 @@ var exprFuncs = []exprCustomFunc{
 		},
 	},
 	{
+		name:     "KeyExists",
+		function: KeyExists,
+		signature: []interface{}{
+			new(func(string, map[string]any) bool),
+		},
+	},
+	{
 		name:     "LogInfo",
 		function: LogInfo,
 		signature: []interface{}{
