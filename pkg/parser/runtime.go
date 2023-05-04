@@ -164,7 +164,7 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 				processed = true
 				clog.Debugf("+ Method %s('%s') returned %d entries to merge in .Enriched\n", static.Method, value, len(ret))
 				//Hackish check, but those methods do not return any data by design
-				if len(ret) == 0 && static.Method != "UnmarshalXML" && static.Method != "UnmarshalJSON" {
+				if len(ret) == 0 && static.Method != "UnmarshalXML" && static.Method != "UnmarshalJSON" && static.Method != "ParseKV" {
 					clog.Debugf("+ Method '%s' empty response on '%s'", static.Method, value)
 				}
 				for k, v := range ret {
