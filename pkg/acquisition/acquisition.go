@@ -25,6 +25,7 @@ import (
 	k8sauditacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kubernetesaudit"
 	s3acquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/s3"
 	syslogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog"
+	wafacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/waf"
 	wineventlogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/wineventlog"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 
@@ -59,6 +60,7 @@ var AcquisitionSources = map[string]func() DataSource{
 	"kafka":       func() DataSource { return &kafkaacquisition.KafkaSource{} },
 	"k8s-audit":   func() DataSource { return &k8sauditacquisition.KubernetesAuditSource{} },
 	"s3":          func() DataSource { return &s3acquisition.S3Source{} },
+	"waf":         func() DataSource { return &wafacquisition.WafSource{} },
 }
 
 var transformRuntimes = map[string]*vm.Program{}
