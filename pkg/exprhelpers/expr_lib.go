@@ -378,10 +378,24 @@ var exprFuncs = []exprCustomFunc{
 		},
 	},
 	{
+		name:     "KeyExists",
+		function: KeyExists,
+		signature: []interface{}{
+			new(func(string, map[string]any) bool),
+		},
+	},
+	{
 		name:     "LogInfo",
 		function: LogInfo,
 		signature: []interface{}{
 			new(func(string, ...interface{}) bool),
+		},
+	},
+	{
+		name:     "B64Decode",
+		function: B64Decode,
+		signature: []interface{}{
+			new(func(string) string),
 		},
 	},
 }
