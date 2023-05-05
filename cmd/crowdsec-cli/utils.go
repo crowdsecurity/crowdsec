@@ -332,6 +332,8 @@ func ShowMetrics(hubItem *cwhub.Item) {
 			}
 			ShowMetrics(hubItem)
 		}
+	case cwhub.WAF_RULES:
+		log.Fatalf("FIXME: not implemented yet")
 	default:
 		log.Errorf("item of type '%s' is unknown", hubItem.Type)
 	}

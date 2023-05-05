@@ -90,8 +90,11 @@ func parser_visit(path string, f os.DirEntry, err error) error {
 	} else if stage == COLLECTIONS {
 		ftype = COLLECTIONS
 		stage = ""
+	} else if stage == WAF_RULES {
+		ftype = WAF_RULES
+		stage = ""
 	} else if ftype != PARSERS && ftype != PARSERS_OVFLW /*its a PARSER / PARSER_OVFLW with a stage */ {
-		return fmt.Errorf("unknown configuration type for file '%s'", path)
+		return fmt.Errorf("unknown configuration type %s for file '%s'", ftype, path)
 	}
 
 	log.Tracef("CORRECTED [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
