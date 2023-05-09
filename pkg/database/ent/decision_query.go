@@ -25,7 +25,6 @@ type DecisionQuery struct {
 	fields     []string
 	predicates []predicate.Decision
 	withOwner  *AlertQuery
-	withFKs    bool
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -351,18 +350,11 @@ func (dq *DecisionQuery) prepareQuery(ctx context.Context) error {
 func (dq *DecisionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Decision, error) {
 	var (
 		nodes       = []*Decision{}
-		withFKs     = dq.withFKs
 		_spec       = dq.querySpec()
 		loadedTypes = [1]bool{
 			dq.withOwner != nil,
 		}
 	)
-	if dq.withOwner != nil {
-		withFKs = true
-	}
-	if withFKs {
-		_spec.Node.Columns = append(_spec.Node.Columns, decision.ForeignKeys...)
-	}
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*Decision).scanValues(nil, columns)
 	}
@@ -394,10 +386,7 @@ func (dq *DecisionQuery) loadOwner(ctx context.Context, query *AlertQuery, nodes
 	ids := make([]int, 0, len(nodes))
 	nodeids := make(map[int][]*Decision)
 	for i := range nodes {
-		if nodes[i].alert_decisions == nil {
-			continue
-		}
-		fk := *nodes[i].alert_decisions
+		fk := nodes[i].AlertDecisions
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}
