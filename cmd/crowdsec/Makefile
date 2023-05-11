@@ -31,7 +31,7 @@ test:
 	$(GOTEST) $(LD_OPTS) -v ./...
 
 clean:
-	@$(RM) $(CROWDSEC_BIN) $(CROWDSEC_BIN).test $(WIN_IGNORE_ERR)
+	@$(RM) $(CROWDSEC_BIN) $(WIN_IGNORE_ERR)
 
 .PHONY: install
 install: install-conf install-bin
