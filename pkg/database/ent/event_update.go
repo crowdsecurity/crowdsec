@@ -65,6 +65,26 @@ func (eu *EventUpdate) SetSerialized(s string) *EventUpdate {
 	return eu
 }
 
+// SetAlertEvents sets the "alert_events" field.
+func (eu *EventUpdate) SetAlertEvents(i int) *EventUpdate {
+	eu.mutation.SetAlertEvents(i)
+	return eu
+}
+
+// SetNillableAlertEvents sets the "alert_events" field if the given value is not nil.
+func (eu *EventUpdate) SetNillableAlertEvents(i *int) *EventUpdate {
+	if i != nil {
+		eu.SetAlertEvents(*i)
+	}
+	return eu
+}
+
+// ClearAlertEvents clears the value of the "alert_events" field.
+func (eu *EventUpdate) ClearAlertEvents() *EventUpdate {
+	eu.mutation.ClearAlertEvents()
+	return eu
+}
+
 // SetOwnerID sets the "owner" edge to the Alert entity by ID.
 func (eu *EventUpdate) SetOwnerID(id int) *EventUpdate {
 	eu.mutation.SetOwnerID(id)
@@ -323,6 +343,26 @@ func (euo *EventUpdateOne) SetTime(t time.Time) *EventUpdateOne {
 // SetSerialized sets the "serialized" field.
 func (euo *EventUpdateOne) SetSerialized(s string) *EventUpdateOne {
 	euo.mutation.SetSerialized(s)
+	return euo
+}
+
+// SetAlertEvents sets the "alert_events" field.
+func (euo *EventUpdateOne) SetAlertEvents(i int) *EventUpdateOne {
+	euo.mutation.SetAlertEvents(i)
+	return euo
+}
+
+// SetNillableAlertEvents sets the "alert_events" field if the given value is not nil.
+func (euo *EventUpdateOne) SetNillableAlertEvents(i *int) *EventUpdateOne {
+	if i != nil {
+		euo.SetAlertEvents(*i)
+	}
+	return euo
+}
+
+// ClearAlertEvents clears the value of the "alert_events" field.
+func (euo *EventUpdateOne) ClearAlertEvents() *EventUpdateOne {
+	euo.mutation.ClearAlertEvents()
 	return euo
 }
 

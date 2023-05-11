@@ -65,6 +65,26 @@ func (mu *MetaUpdate) SetValue(s string) *MetaUpdate {
 	return mu
 }
 
+// SetAlertMetas sets the "alert_metas" field.
+func (mu *MetaUpdate) SetAlertMetas(i int) *MetaUpdate {
+	mu.mutation.SetAlertMetas(i)
+	return mu
+}
+
+// SetNillableAlertMetas sets the "alert_metas" field if the given value is not nil.
+func (mu *MetaUpdate) SetNillableAlertMetas(i *int) *MetaUpdate {
+	if i != nil {
+		mu.SetAlertMetas(*i)
+	}
+	return mu
+}
+
+// ClearAlertMetas clears the value of the "alert_metas" field.
+func (mu *MetaUpdate) ClearAlertMetas() *MetaUpdate {
+	mu.mutation.ClearAlertMetas()
+	return mu
+}
+
 // SetOwnerID sets the "owner" edge to the Alert entity by ID.
 func (mu *MetaUpdate) SetOwnerID(id int) *MetaUpdate {
 	mu.mutation.SetOwnerID(id)
@@ -323,6 +343,26 @@ func (muo *MetaUpdateOne) SetKey(s string) *MetaUpdateOne {
 // SetValue sets the "value" field.
 func (muo *MetaUpdateOne) SetValue(s string) *MetaUpdateOne {
 	muo.mutation.SetValue(s)
+	return muo
+}
+
+// SetAlertMetas sets the "alert_metas" field.
+func (muo *MetaUpdateOne) SetAlertMetas(i int) *MetaUpdateOne {
+	muo.mutation.SetAlertMetas(i)
+	return muo
+}
+
+// SetNillableAlertMetas sets the "alert_metas" field if the given value is not nil.
+func (muo *MetaUpdateOne) SetNillableAlertMetas(i *int) *MetaUpdateOne {
+	if i != nil {
+		muo.SetAlertMetas(*i)
+	}
+	return muo
+}
+
+// ClearAlertMetas clears the value of the "alert_metas" field.
+func (muo *MetaUpdateOne) ClearAlertMetas() *MetaUpdateOne {
+	muo.mutation.ClearAlertMetas()
 	return muo
 }
 

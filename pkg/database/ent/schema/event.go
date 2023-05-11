@@ -4,6 +4,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -23,6 +24,7 @@ func (Event) Fields() []ent.Field {
 			UpdateDefault(types.UtcNow).Nillable().Optional(),
 		field.Time("time"),
 		field.String("serialized").MaxLen(8191),
+		field.Int("alert_events").Optional(),
 	}
 }
 
@@ -31,6 +33,13 @@ func (Event) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("owner", Alert.Type).
 			Ref("events").
+			Field("alert_events").
 			Unique(),
+	}
+}
+
+func (Event) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("alert_events"),
 	}
 }

@@ -635,3 +635,11 @@ func ParseKV(params ...any) (any, error) {
 	log.Tracef("unmarshaled KV: %+v", target[prefix])
 	return nil, nil
 }
+
+func Hostname(params ...any) (any, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return "", err
+	}
+	return hostname, nil
+}
