@@ -1367,7 +1367,7 @@ func TestParseKv(t *testing.T) {
 
 	tests := []struct {
 		name               string
-		value              interface{}
+		value              string
 		expected           map[string]string
 		expr               string
 		expectedBuildErr   bool
