@@ -86,24 +86,6 @@ jobs:
         PGPASSWORD: "secret"
         PGUSER: postgres
 
-#    - name: "Build crowdsec and fixture (DB_BACKEND: postgres)"
-#      run: make clean bats-build bats-fixture
-#      env:
-#        DB_BACKEND: postgres
-#        PGHOST: 127.0.0.1
-#        PGPORT: 5432
-#        PGPASSWORD: "secret"
-#        PGUSER: postgres
-#
-#    - name: "Run tests (DB_BACKEND: postgres)"
-#      run: make bats-test
-#      env:
-#        DB_BACKEND: postgres
-#        PGHOST: 127.0.0.1
-#        PGPORT: 5432
-#        PGPASSWORD: "secret"
-#        PGUSER: postgres
-
     - name: "Show stack traces"
       run: for file in $(find /tmp/crowdsec-crash.*.txt); do echo ">>>>> $file"; cat $file; echo; done
       if: ${{ always() }}
