@@ -1,6 +1,0 @@
-#filter: "evt.Overflow.Labels.remediation == 'true'"
-name: tests/parseKV
-description: "parse KV"
-statics:
-  - method: ParseKV
-    expression: evt.Line.Raw

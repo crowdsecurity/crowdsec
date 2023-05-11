@@ -1,2 +1,0 @@
- - filename: {{.TestDirectory}}/base-parser.yaml
-   stage: s00-raw

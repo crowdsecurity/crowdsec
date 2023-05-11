@@ -58,11 +58,6 @@ func Loadplugin(path string) (EnricherCtx, error) {
 			InitFunc:   unmarshalInit,
 			EnrichFunc: unmarshalJSON,
 		},
-		{
-			Name:       "ParseKV",
-			InitFunc:   parseKVInit,
-			EnrichFunc: parseKV,
-		},
 	}
 
 	for _, enricher := range EnrichersList {
