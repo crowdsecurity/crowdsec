@@ -595,3 +595,11 @@ func B64Decode(params ...any) (any, error) {
 	}
 	return string(decoded), nil
 }
+
+func Hostname(params ...any) (any, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return "", err
+	}
+	return hostname, nil
+}
