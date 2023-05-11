@@ -141,6 +141,11 @@ var (
 				Unique:  false,
 				Columns: []*schema.Column{DecisionsColumns[3]},
 			},
+			{
+				Name:    "decision_alert_decisions",
+				Unique:  false,
+				Columns: []*schema.Column{DecisionsColumns[16]},
+			},
 		},
 	}
 	// EventsColumns holds the columns for the "events" table.
@@ -163,6 +168,13 @@ var (
 				Columns:    []*schema.Column{EventsColumns[5]},
 				RefColumns: []*schema.Column{AlertsColumns[0]},
 				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "event_alert_events",
+				Unique:  false,
+				Columns: []*schema.Column{EventsColumns[5]},
 			},
 		},
 	}
@@ -208,6 +220,13 @@ var (
 				Columns:    []*schema.Column{MetaColumns[5]},
 				RefColumns: []*schema.Column{AlertsColumns[0]},
 				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "meta_alert_metas",
+				Unique:  false,
+				Columns: []*schema.Column{MetaColumns[5]},
 			},
 		},
 	}

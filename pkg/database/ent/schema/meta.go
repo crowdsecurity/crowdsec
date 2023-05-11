@@ -4,6 +4,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -23,6 +24,7 @@ func (Meta) Fields() []ent.Field {
 			UpdateDefault(types.UtcNow).Nillable().Optional(),
 		field.String("key"),
 		field.String("value").MaxLen(4095),
+		field.Int("alert_metas").Optional(),
 	}
 }
 
@@ -31,6 +33,13 @@ func (Meta) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("owner", Alert.Type).
 			Ref("metas").
+			Field("alert_metas").
 			Unique(),
+	}
+}
+
+func (Meta) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("alert_metas"),
 	}
 }

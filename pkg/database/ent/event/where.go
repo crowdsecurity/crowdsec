@@ -109,6 +109,13 @@ func Serialized(v string) predicate.Event {
 	})
 }
 
+// AlertEvents applies equality check predicate on the "alert_events" field. It's identical to AlertEventsEQ.
+func AlertEvents(v int) predicate.Event {
+	return predicate.Event(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldAlertEvents), v))
+	})
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Event {
 	return predicate.Event(func(s *sql.Selector) {
@@ -425,6 +432,56 @@ func SerializedEqualFold(v string) predicate.Event {
 func SerializedContainsFold(v string) predicate.Event {
 	return predicate.Event(func(s *sql.Selector) {
 		s.Where(sql.ContainsFold(s.C(FieldSerialized), v))
+	})
+}
+
+// AlertEventsEQ applies the EQ predicate on the "alert_events" field.
+func AlertEventsEQ(v int) predicate.Event {
+	return predicate.Event(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldAlertEvents), v))
+	})
+}
+
+// AlertEventsNEQ applies the NEQ predicate on the "alert_events" field.
+func AlertEventsNEQ(v int) predicate.Event {
+	return predicate.Event(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldAlertEvents), v))
+	})
+}
+
+// AlertEventsIn applies the In predicate on the "alert_events" field.
+func AlertEventsIn(vs ...int) predicate.Event {
+	v := make([]any, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Event(func(s *sql.Selector) {
+		s.Where(sql.In(s.C(FieldAlertEvents), v...))
+	})
+}
+
+// AlertEventsNotIn applies the NotIn predicate on the "alert_events" field.
+func AlertEventsNotIn(vs ...int) predicate.Event {
+	v := make([]any, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Event(func(s *sql.Selector) {
+		s.Where(sql.NotIn(s.C(FieldAlertEvents), v...))
+	})
+}
+
+// AlertEventsIsNil applies the IsNil predicate on the "alert_events" field.
+func AlertEventsIsNil() predicate.Event {
+	return predicate.Event(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldAlertEvents)))
+	})
+}
+
+// AlertEventsNotNil applies the NotNil predicate on the "alert_events" field.
+func AlertEventsNotNil() predicate.Event {
+	return predicate.Event(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldAlertEvents)))
 	})
 }
 
