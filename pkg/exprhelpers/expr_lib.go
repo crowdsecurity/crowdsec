@@ -398,6 +398,13 @@ var exprFuncs = []exprCustomFunc{
 			new(func(string) string),
 		},
 	},
+	{
+		name:     "Hostname",
+		function: Hostname,
+		signature: []interface{}{
+			new(func() (string, error)),
+		},
+	},
 }
 
 //go 1.20 "CutPrefix":              strings.CutPrefix,
