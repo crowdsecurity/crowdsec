@@ -51,6 +51,8 @@ var dbClient *database.Client
 
 var exprFunctionOptions []expr.Option
 
+var keyValuePattern = regexp.MustCompile(`\s*(?P<key>[^=\s]+)\s*=\s*(?:"(?P<quoted_value>[^"\\]*(?:\\.[^"\\]*)*)"|(?P<value>[^=\s]+))`)
+
 func GetExprOptions(ctx map[string]interface{}) []expr.Option {
 	ret := []expr.Option{}
 	ret = append(ret, exprFunctionOptions...)
@@ -594,4 +596,42 @@ func B64Decode(params ...any) (any, error) {
 		return "", err
 	}
 	return string(decoded), nil
+}
+
+func ParseKV(params ...any) (any, error) {
+
+	blob := params[0].(string)
+	target := params[1].(map[string]interface{})
+	prefix := params[2].(string)
+
+	matches := keyValuePattern.FindAllStringSubmatch(blob, -1)
+	if matches == nil {
+		log.Errorf("could not find any key/value pair in line")
+		return nil, fmt.Errorf("invalid input format")
+	}
+	if _, ok := target[prefix]; !ok {
+		target[prefix] = make(map[string]string)
+	} else {
+		_, ok := target[prefix].(map[string]string)
+		if !ok {
+			log.Errorf("ParseKV: target is not a map[string]string")
+			return nil, fmt.Errorf("target is not a map[string]string")
+		}
+	}
+	for _, match := range matches {
+		key := ""
+		value := ""
+		for i, name := range keyValuePattern.SubexpNames() {
+			if name == "key" {
+				key = match[i]
+			} else if name == "quoted_value" && match[i] != "" {
+				value = match[i]
+			} else if name == "value" && match[i] != "" {
+				value = match[i]
+			}
+		}
+		target[prefix].(map[string]string)[key] = value
+	}
+	log.Tracef("unmarshaled KV: %+v", target[prefix])
+	return nil, nil
 }

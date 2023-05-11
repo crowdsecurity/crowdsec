@@ -14,12 +14,6 @@ const (
 	OVFLW
 )
 
-type UnmarshaledStruct struct {
-	// Adding sub keys it best we define a struct
-	KV   map[string]interface{} `yaml:"KV,omitempty" json:"KV,omitempty"`
-	JSON map[string]interface{} `yaml:"JSON,omitempty" json:"JSON,omitempty"`
-}
-
 // Event is the structure representing a runtime event (log or overflow)
 type Event struct {
 	/* is it a log or an overflow */
@@ -37,7 +31,7 @@ type Event struct {
 	/* output of enrichment */
 	Enriched map[string]string `yaml:"Enriched,omitempty" json:"Enriched,omitempty"`
 	/* output of Unmarshal */
-	Unmarshaled UnmarshaledStruct `yaml:"Unmarshaled,omitempty" json:"Unmarshaled,omitempty"`
+	Unmarshaled map[string]interface{} `yaml:"Unmarshaled,omitempty" json:"Unmarshaled,omitempty"`
 	/* Overflow */
 	Overflow      RuntimeAlert `yaml:"Overflow,omitempty" json:"Alert,omitempty"`
 	Time          time.Time    `yaml:"Time,omitempty" json:"Time,omitempty"` //parsed time `json:"-"` ``

@@ -405,6 +405,13 @@ var exprFuncs = []exprCustomFunc{
 			new(func(string, map[string]interface{}, string) error),
 		},
 	},
+	{
+		name:     "ParseKV",
+		function: ParseKV,
+		signature: []interface{}{
+			new(func(string, map[string]interface{}, string) error),
+		},
+	},
 }
 
 //go 1.20 "CutPrefix":              strings.CutPrefix,

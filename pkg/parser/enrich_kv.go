@@ -16,9 +16,6 @@ func parseKV(field string, p *types.Event, ctx interface{}, plog *log.Entry) (ma
 		plog.Errorf("could not find any key/value pair in line")
 		return nil, errors.New("invalid input format")
 	}
-	if p.Unmarshaled.KV == nil {
-		p.Unmarshaled.KV = make(map[string]interface{})
-	}
 	for _, match := range matches {
 		key := ""
 		value := ""
@@ -31,9 +28,9 @@ func parseKV(field string, p *types.Event, ctx interface{}, plog *log.Entry) (ma
 				value = match[i]
 			}
 		}
-		p.Unmarshaled.KV[key] = value
+		p.Unmarshaled[key] = value
 	}
-	plog.Tracef("unmarshaled KV: %+v", p.Unmarshaled.KV)
+	plog.Tracef("unmarshaled KV: %+v", p.Unmarshaled)
 	return nil, nil
 }
 

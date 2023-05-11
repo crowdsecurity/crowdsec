@@ -360,12 +360,10 @@ func TestUnmarshalJSON(t *testing.T) {
 				"json": test.json,
 				"out":  outMap,
 			}
-			log.Infof("outmap: %p", outMap)
 			vm, err := expr.Compile(test.expr, GetExprOptions(env)...)
 			assert.NoError(t, err)
 			_, err = expr.Run(vm, env)
 			assert.NoError(t, err)
-			log.Infof("outmap[a]: %p", outMap["a"])
 			assert.Equal(t, test.expectResult, outMap["a"])
 		})
 	}

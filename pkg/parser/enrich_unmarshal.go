@@ -8,10 +8,7 @@ import (
 )
 
 func unmarshalJSON(field string, p *types.Event, ctx interface{}, plog *log.Entry) (map[string]string, error) {
-	if p.Unmarshaled.JSON == nil {
-		p.Unmarshaled.JSON = make(map[string]interface{})
-	}
-	err := json.Unmarshal([]byte(p.Line.Raw), &p.Unmarshaled.JSON)
+	err := json.Unmarshal([]byte(p.Line.Raw), &p.Unmarshaled)
 	if err != nil {
 		plog.Errorf("could not unmarshal JSON: %s", err)
 		return nil, err
