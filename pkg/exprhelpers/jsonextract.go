@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/buger/jsonparser"
+	"github.com/davecgh/go-spew/spew"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -162,4 +163,27 @@ func ToJson(params ...any) (any, error) {
 		return "", nil
 	}
 	return string(b), nil
+}
+
+// Func UnmarshalJSON(jsonBlob []byte, target interface{}) error {
+func UnmarshalJSON(params ...any) (any, error) {
+	jsonBlob := params[0].(string)
+	target := params[1].(map[string]interface{})
+	key := params[2].(string)
+
+	log.Infof("Outmap in unmarshal: %p | params[1]: %p | after cast: %p", target, params[1], params[1].(map[string]interface{}))
+
+	if _, ok := target[key]; !ok {
+		target[key] = map[string]interface{}{}
+	}
+
+	log.Infof("target[key]: %p", target[key])
+
+	err := json.Unmarshal([]byte(jsonBlob), target[key])
+	if err != nil {
+		log.Errorf("UnmarshalJSON : %s", err)
+		return "", nil
+	}
+	log.Infof("%s", spew.Sdump(target))
+	return target, nil
 }

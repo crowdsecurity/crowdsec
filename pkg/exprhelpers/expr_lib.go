@@ -398,6 +398,13 @@ var exprFuncs = []exprCustomFunc{
 			new(func(string) string),
 		},
 	},
+	{
+		name:     "UnmarshalJSON",
+		function: UnmarshalJSON,
+		signature: []interface{}{
+			new(func(string, map[string]interface{}, string) error),
+		},
+	},
 }
 
 //go 1.20 "CutPrefix":              strings.CutPrefix,

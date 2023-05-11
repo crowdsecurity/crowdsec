@@ -1,8 +1,9 @@
 package exprhelpers
 
 import (
-	"log"
 	"testing"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/antonmedv/expr"
 	"github.com/stretchr/testify/assert"
@@ -303,4 +304,70 @@ func TestToJson(t *testing.T) {
 			assert.Equal(t, test.expectResult, out)
 		})
 	}
+}
+
+func TestUnmarshalJSON(t *testing.T) {
+	err := Init(nil)
+	assert.NoError(t, err)
+	tests := []struct {
+		name         string
+		json         string
+		expectResult interface{}
+		expr         string
+	}{
+		{
+			name:         "convert int",
+			json:         "42",
+			expectResult: float64(42),
+			expr:         "UnmarshalJSON(json, out, 'a')",
+		},
+		{
+			name:         "convert slice",
+			json:         `["foo","bar"]`,
+			expectResult: []interface{}{"foo", "bar"},
+			expr:         "UnmarshalJSON(json, out, 'a')",
+		},
+		{
+			name:         "convert map",
+			json:         `{"foo":"bar"}`,
+			expectResult: map[string]interface{}{"foo": "bar"},
+			expr:         "UnmarshalJSON(json, out, 'a')",
+		},
+		{
+			name:         "convert struct",
+			json:         `{"Foo":"bar"}`,
+			expectResult: map[string]interface{}{"Foo": "bar"},
+			expr:         "UnmarshalJSON(json, out, 'a')",
+		},
+		{
+			name: "convert complex struct",
+			json: `{"Foo":"bar","Bar":{"Baz":"baz"},"Bla":["foo","bar"]}`,
+			expectResult: map[string]interface{}{
+				"Foo": "bar",
+				"Bar": map[string]interface{}{
+					"Baz": "baz",
+				},
+				"Bla": []interface{}{"foo", "bar"},
+			},
+			expr: "UnmarshalJSON(json, out, 'a')",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			outMap := make(map[string]interface{})
+			env := map[string]interface{}{
+				"json": test.json,
+				"out":  outMap,
+			}
+			log.Infof("outmap: %p", outMap)
+			vm, err := expr.Compile(test.expr, GetExprOptions(env)...)
+			assert.NoError(t, err)
+			_, err = expr.Run(vm, env)
+			assert.NoError(t, err)
+			log.Infof("outmap[a]: %p", outMap["a"])
+			assert.Equal(t, test.expectResult, outMap["a"])
+		})
+	}
+
 }
