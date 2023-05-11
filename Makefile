@@ -63,8 +63,17 @@ all: clean test build
 .PHONY: plugins
 plugins: http-plugin slack-plugin splunk-plugin email-plugin dummy-plugin
 
+# same as "$(MAKE) -f debian/rules clean" but without the dependency on debhelper
+.PHONY: clean-debian
+clean-debian:
+	@$(RM) -r debian/crowdsec
+	@$(RM) -r debian/files
+	@$(RM) -r debian/.debhelper
+	@$(RM) -r debian/*.substvars
+	@$(RM) -r debian/*-stamp
+
 .PHONY: clean
-clean: testclean
+clean: clean-test
 	@$(MAKE) -C $(CROWDSEC_FOLDER) clean --no-print-directory RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 	@$(MAKE) -C $(CSCLI_FOLDER) clean --no-print-directory RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 	@$(RM) $(CROWDSEC_BIN) $(WIN_IGNORE_ERR)
@@ -99,8 +108,8 @@ email-plugin: goversion
 dummy-plugin: goversion
 	$(MAKE) -C $(DUMMY_PLUGIN_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 
-.PHONY: testclean
-testclean: bats-clean
+.PHONY: clean-test
+clean-test: bats-clean
 	@$(RM) pkg/apiserver/ent $(WIN_IGNORE_ERR)
 	@$(RM) pkg/cwhub/hubdir $(WIN_IGNORE_ERR)
 	@$(RM) pkg/cwhub/install $(WIN_IGNORE_ERR)
@@ -124,7 +133,7 @@ go-acc: testenv goversion
 
 .PHONY: localstack
 localstack:
-	docker-compose -f test/localstack/docker-compose.yml up
+	docker-compose -f testdata/localstack/docker-compose.yml up
 
 .PHONY: localstack-stop
 localstack-stop:

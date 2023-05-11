@@ -1,0 +1,52 @@
+name: Test .deb packaging
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: "Test .deb packages"
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: 1.20.3
+
+    - name: Cache virtualenvs
+      id: cache-pipenv
+      uses: actions/cache@v3
+      with:
+        path: ~/.local/share/virtualenvs
+        key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
+
+    - name: Install functional test dependencies
+      run: |
+        sudo apt install -y build-essential debhelper devscripts fakeroot lintian
+        docker network create net-test
+        python3 -m pip install --upgrade pipenv wheel
+        cd docker/test
+        pipenv install --deploy
+
+    - name: Run functional tests
+      env:
+        CROWDSEC_TEST_VERSION: dev
+        CROWDSEC_TEST_FLAVORS: full
+        CROWDSEC_TEST_NETWORK: net-test
+        CROWDSEC_TEST_TIMEOUT: 60
+        PYTEST_ADDOPTS: --durations=0 -vv --color=yes
+      run: |
+        pipenv run pytest -m deb

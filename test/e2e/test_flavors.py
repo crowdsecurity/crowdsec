@@ -6,10 +6,6 @@ Test basic behavior of all the image variants
 
 from http import HTTPStatus
 
-import pytest
-
-pytestmark = pytest.mark.docker
-
 
 def test_cscli_lapi(crowdsec, flavor):
     """Test if cscli can talk to lapi"""

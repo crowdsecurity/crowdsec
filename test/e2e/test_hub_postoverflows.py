@@ -8,8 +8,6 @@ from http import HTTPStatus
 import json
 import pytest
 
-pytestmark = pytest.mark.docker
-
 
 def test_install_two_postoverflows(crowdsec, flavor):
     """Test installing postoverflows at startup"""

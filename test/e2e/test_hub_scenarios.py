@@ -7,10 +7,6 @@ Test scenario management
 from http import HTTPStatus
 import json
 
-import pytest
-
-pytestmark = pytest.mark.docker
-
 
 def test_install_two_scenarios(crowdsec, flavor):
     """Test installing scenarios at startup"""

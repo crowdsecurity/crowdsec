@@ -2,10 +2,6 @@
 
 from http import HTTPStatus
 
-import pytest
-
-pytestmark = pytest.mark.docker
-
 
 def test_no_agent(crowdsec, flavor):
     """Test DISABLE_AGENT=true"""

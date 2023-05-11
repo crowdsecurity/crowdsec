@@ -9,10 +9,7 @@ import json
 import os
 import pwd
 
-import pytest
 import yaml
-
-pytestmark = pytest.mark.docker
 
 
 def test_install_two_collections(crowdsec, flavor):

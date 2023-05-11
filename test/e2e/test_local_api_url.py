@@ -4,8 +4,6 @@ from http import HTTPStatus
 
 import pytest
 
-pytestmark = pytest.mark.docker
-
 
 def test_local_api_url_default(crowdsec, flavor):
     """Test LOCAL_API_URL (default)"""

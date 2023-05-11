@@ -1,9 +1,5 @@
 #!/usr/bin/env python
 
-import pytest
-
-pytestmark = pytest.mark.docker
-
 
 # XXX this is redundant, already tested in pytest_cs
 def test_crowdsec(crowdsec, flavor):

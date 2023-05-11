@@ -2,9 +2,6 @@
 
 from http import HTTPStatus
 
-import pytest
-pytestmark = pytest.mark.docker
-
 
 def test_no_capi(crowdsec, flavor):
     """Test no CAPI (disabled by default in tests)"""
