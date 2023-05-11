@@ -36,6 +36,8 @@ var all bool
 
 var prometheusURL string
 
+var mergedConfig string
+
 func initConfig() {
 	var err error
 	if trace_lvl {
@@ -51,7 +53,7 @@ func initConfig() {
 	}
 
 	if !inSlice(os.Args[1], NoNeedConfig) {
-		csConfig, err = csconfig.NewConfig(ConfigFilePath, false, false, true)
+		csConfig, mergedConfig, err = csconfig.NewConfig(ConfigFilePath, false, false, true)
 		if err != nil {
 			log.Fatal(err)
 		}

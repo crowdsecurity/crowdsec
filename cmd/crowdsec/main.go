@@ -192,7 +192,7 @@ func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
 
 // LoadConfig returns a configuration parsed from configuration file
 func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*csconfig.Config, error) {
-	cConfig, err := csconfig.NewConfig(configFile, disableAgent, disableAPI, quiet)
+	cConfig, _, err := csconfig.NewConfig(configFile, disableAgent, disableAPI, quiet)
 	if err != nil {
 		return nil, err
 	}

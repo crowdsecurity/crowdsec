@@ -47,12 +47,12 @@ func (c *Config) Dump() error {
 	return nil
 }
 
-func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*Config, error) {
+func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*Config, string, error) {
 	patcher := yamlpatch.NewPatcher(configFile, ".local")
 	patcher.SetQuiet(quiet)
 	fcontent, err := patcher.MergedPatchContent()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	configData := csstring.StrictExpand(string(fcontent), os.LookupEnv)
 	cfg := Config{
@@ -64,9 +64,9 @@ func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool
 	err = yaml.UnmarshalStrict([]byte(configData), &cfg)
 	if err != nil {
 		// this is actually the "merged" yaml
-		return nil, errors.Wrap(err, configFile)
+		return nil, "", errors.Wrap(err, configFile)
 	}
-	return &cfg, nil
+	return &cfg, configData, nil
 }
 
 func NewDefaultConfig() *Config {

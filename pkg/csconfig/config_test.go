@@ -10,13 +10,13 @@ import (
 )
 
 func TestNormalLoad(t *testing.T) {
-	_, err := NewConfig("./tests/config.yaml", false, false, false)
+	_, _, err := NewConfig("./tests/config.yaml", false, false, false)
 	require.NoError(t, err)
 
-	_, err = NewConfig("./tests/xxx.yaml", false, false, false)
+	_, _, err = NewConfig("./tests/xxx.yaml", false, false, false)
 	assert.EqualError(t, err, "while reading yaml file: open ./tests/xxx.yaml: "+cstest.FileNotFoundMessage)
 
-	_, err = NewConfig("./tests/simulation.yaml", false, false, false)
+	_, _, err = NewConfig("./tests/simulation.yaml", false, false, false)
 	assert.EqualError(t, err, "./tests/simulation.yaml: yaml: unmarshal errors:\n  line 1: field simulation not found in type csconfig.Config")
 }
 
