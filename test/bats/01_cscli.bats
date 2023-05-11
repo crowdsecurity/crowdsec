@@ -111,7 +111,6 @@ teardown() {
 }
 
 @test "cscli config show-yaml" {
-    # show full configuration, but don't validate
     rune -0 cscli config show-yaml
     rune -0 yq .common.log_level <(output)
     assert_output "info"
