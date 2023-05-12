@@ -163,3 +163,20 @@ func ToJson(params ...any) (any, error) {
 	}
 	return string(b), nil
 }
+
+// Func UnmarshalJSON(jsonBlob []byte, target interface{}) error {
+func UnmarshalJSON(params ...any) (any, error) {
+	jsonBlob := params[0].(string)
+	target := params[1].(map[string]interface{})
+	key := params[2].(string)
+
+	var out interface{}
+
+	err := json.Unmarshal([]byte(jsonBlob), &out)
+	if err != nil {
+		log.Errorf("UnmarshalJSON : %s", err)
+		return "", nil
+	}
+	target[key] = out
+	return target, nil
+}

@@ -1360,3 +1360,58 @@ func TestB64Decode(t *testing.T) {
 		})
 	}
 }
+
+func TestParseKv(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name               string
+		value              string
+		expected           map[string]string
+		expr               string
+		expectedBuildErr   bool
+		expectedRuntimeErr bool
+	}{
+		{
+			name:     "ParseKv() test: valid string",
+			value:    "foo=bar",
+			expected: map[string]string{"foo": "bar"},
+			expr:     `ParseKV(value, out, "a")`,
+		},
+		{
+			name:     "ParseKv() test: valid string",
+			value:    "foo=bar bar=foo",
+			expected: map[string]string{"foo": "bar", "bar": "foo"},
+			expr:     `ParseKV(value, out, "a")`,
+		},
+		{
+			name:     "ParseKv() test: valid string",
+			value:    "foo=bar bar=foo foo=foo",
+			expected: map[string]string{"foo": "foo", "bar": "foo"},
+			expr:     `ParseKV(value, out, "a")`,
+		},
+		{
+			name:     "ParseKV() test: quoted string",
+			value:    `foo="bar=toto"`,
+			expected: map[string]string{"foo": "bar=toto"},
+			expr:     `ParseKV(value, out, "a")`,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			outMap := make(map[string]interface{})
+			env := map[string]interface{}{
+				"value": tc.value,
+				"out":   outMap,
+			}
+			vm, err := expr.Compile(tc.expr, GetExprOptions(env)...)
+			assert.NoError(t, err)
+			_, err = expr.Run(vm, env)
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expected, outMap["a"])
+		})
+	}
+}

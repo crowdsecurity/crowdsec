@@ -399,6 +399,20 @@ var exprFuncs = []exprCustomFunc{
 		},
 	},
 	{
+		name:     "UnmarshalJSON",
+		function: UnmarshalJSON,
+		signature: []interface{}{
+			new(func(string, map[string]interface{}, string) error),
+		},
+	},
+	{
+		name:     "ParseKV",
+		function: ParseKV,
+		signature: []interface{}{
+			new(func(string, map[string]interface{}, string) error),
+		},
+	},
+	{
 		name:     "Hostname",
 		function: Hostname,
 		signature: []interface{}{
