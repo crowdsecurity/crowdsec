@@ -1,3 +1,4 @@
+##RDP
 source: wineventlog
 event_channel: Security
 event_ids:
@@ -6,3 +7,25 @@ event_ids:
 event_level: information
 labels:
  type: eventlog
+---
+##Firewall
+filenames:
+  - C:\Windows\System32\LogFiles\Firewall\pfirewall.log
+labels:
+  type: windows-firewall
+---
+##SQL Server
+source: wineventlog
+event_channel: Application
+event_ids:
+ - 18456
+event_level: information
+labels:
+ type: eventlog
+---
+##IIS
+use_time_machine: true
+filenames:
+  - C:\inetpub\logs\LogFiles\*\*.log
+labels:
+  type: iis
