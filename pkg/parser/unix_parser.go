@@ -10,6 +10,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/crowdsecurity/grokky"
 	log "github.com/sirupsen/logrus"
@@ -41,14 +42,32 @@ func Init(c map[string]interface{}) (*UnixParserCtx, error) {
 		return nil, err
 	}
 	r.DataFolder = c["data"].(string)
+	filesList := make([]string, 0)
 	for _, f := range files {
 		if strings.Contains(f.Name(), ".") {
 			continue
 		}
-		if err := r.Grok.AddFromFile(path.Join(c["patterns"].(string), f.Name())); err != nil {
-			log.Errorf("failed to load pattern %s : %v", f.Name(), err)
-			return nil, err
+		filesList = append(filesList, path.Join(c["patterns"].(string), f.Name()))
+	}
+	g := new(errgroup.Group)
+	for i := 0; i < len(filesList); i += 10 {
+		start := i
+		end := start + 10
+		if end > len(filesList) {
+			end = len(filesList)
 		}
+		g.Go(func() error {
+			for _, f := range filesList[start:end] {
+				if err := r.Grok.AddFromFile(f); err != nil {
+					log.Errorf("failed to load pattern %s : %v", f, err)
+					return err
+				}
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
 	log.Debugf("Loaded %d pattern files", len(files))
 	return &r, nil
