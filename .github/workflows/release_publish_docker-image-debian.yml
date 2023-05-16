@@ -29,7 +29,7 @@ jobs:
             VERSION=pr-${{ github.event.number }}
           fi
           TAGS="${DOCKER_IMAGE}:${VERSION}-debian"
-          if [[ ${{ github.event.action }} == released ]]; then
+          if [[ "${{ github.event.action }}" == "released" ]]; then
             TAGS=$TAGS,${DOCKER_IMAGE}:latest-debian
           fi
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
