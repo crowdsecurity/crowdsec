@@ -133,11 +133,11 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 			case int:
 				value = strconv.Itoa(out)
 			case map[string]interface{}:
-				clog.Warnf("Expression returned a map, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string")
+				clog.Warnf("Expression '%s' returned a map, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string", static.ExpValue)
 			case []interface{}:
-				clog.Warnf("Expression returned a map, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string")
+				clog.Warnf("Expression '%s' returned an array, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string", static.ExpValue)
 			case nil:
-				clog.Debugf("Expression returned nil, skipping")
+				clog.Debugf("Expression '%s' returned nil, skipping", static.ExpValue)
 			default:
 				clog.Errorf("unexpected return type for RunTimeValue : %T", output)
 				return errors.New("unexpected return type for RunTimeValue")
@@ -264,6 +264,9 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 	}
 	if event.Meta == nil {
 		event.Meta = make(map[string]string)
+	}
+	if event.Unmarshaled == nil {
+		event.Unmarshaled = make(map[string]interface{})
 	}
 	if event.Type == types.LOG {
 		log.Tracef("INPUT '%s'", event.Line.Raw)
