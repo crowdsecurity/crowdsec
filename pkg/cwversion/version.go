@@ -64,6 +64,7 @@ func VersionStr() string {
 
 func VersionStrip() string {
 	version := strings.Split(Version, "~")
+	version = strings.Split(version[0], "-")
 	return version[0]
 }
 
