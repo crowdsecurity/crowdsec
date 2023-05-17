@@ -1,0 +1,13 @@
+linters:
+  enable:
+    - gofumpt
+    - goimports
+issues:
+  exclude-rules:
+    - path: magefiles
+      linters:
+        - deadcode
+    - path: _test.go
+      linters:
+        # We have tests for deprecated methods
+        - staticcheck
