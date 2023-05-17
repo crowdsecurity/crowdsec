@@ -8,6 +8,9 @@
 .pc
 .vscode
 
+# If vendor is included, allow prebuilt (wasm?) libraries.
+!vendor/**/*.so
+
 # Test binaries, built with `go test -c`
 *.test
 *.cover
