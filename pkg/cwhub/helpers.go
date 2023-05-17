@@ -16,12 +16,14 @@ import (
 func chooseHubBranch() (string, error) {
 	latest, err := cwversion.Latest()
 	if err != nil {
+		log.Warningf("Unable to retrieve latest crowdsec version: %s, defaulting to master", err)
 		//lint:ignore nilerr reason
 		return "master", nil // ignore
 	}
 
 	csVersion := cwversion.VersionStrip()
 	if csVersion == latest {
+		log.Debugf("current version is equal to latest (%s)", csVersion)
 		return "master", nil
 	}
 

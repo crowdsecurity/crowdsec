@@ -18,6 +18,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+var ErrIndexNotFound = fmt.Errorf("index not found")
+
 func UpdateHubIdx(hub *csconfig.Hub) error {
 
 	bidx, err := DownloadHubIdx(hub)
@@ -47,10 +49,13 @@ func DownloadHubIdx(hub *csconfig.Hub) ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed http request for hub index")
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, ErrIndexNotFound
+		}
 		return nil, fmt.Errorf("bad http code %d while requesting %s", resp.StatusCode, req.URL.String())
 	}
-	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read request answer for hub index")
@@ -81,7 +86,7 @@ func DownloadHubIdx(hub *csconfig.Hub) ([]byte, error) {
 	return body, nil
 }
 
-//DownloadLatest will download the latest version of Item to the tdir directory
+// DownloadLatest will download the latest version of Item to the tdir directory
 func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool, updateOnly bool) (Item, error) {
 	var err error
 
