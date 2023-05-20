@@ -39,6 +39,7 @@ var (
 
 type APIServer struct {
 	URL            string
+	isUnixSocket   bool
 	TLS            *csconfig.TLSCfg
 	dbClient       *database.Client
 	logFile        string
@@ -246,6 +247,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	return &APIServer{
 		URL:            config.ListenURI,
+		isUnixSocket:   config.IsUnixSocket(),
 		TLS:            config.TLS,
 		logFile:        logFile,
 		dbClient:       dbClient,
@@ -395,19 +397,30 @@ func (s *APIServer) Run(apiReady chan bool) error {
 		go func() {
 			apiReady <- true
 			log.Infof("CrowdSec Local API listening on %s", s.URL)
-			if s.TLS != nil && (s.TLS.CertFilePath != "" || s.TLS.KeyFilePath != "") {
-				if s.TLS.KeyFilePath == "" {
-					log.Fatalf("while serving local API: %v", errors.New("missing TLS key file"))
-				} else if s.TLS.CertFilePath == "" {
-					log.Fatalf("while serving local API: %v", errors.New("missing TLS cert file"))
+			if s.isUnixSocket {
+				_ = os.RemoveAll(s.URL)
+				listener, err := net.Listen("unix", s.URL)
+				if err != nil {
+					log.Fatalf("while creating unix listener: %v", err)
 				}
-
-				if err := s.httpServer.ListenAndServeTLS(s.TLS.CertFilePath, s.TLS.KeyFilePath); err != nil {
-					log.Fatalf("while serving local API: %v", err)
+				if err = s.httpServer.Serve(listener); err != http.ErrServerClosed {
+					log.Fatalf("while serving local API (unix socket): %v", err)
 				}
 			} else {
-				if err := s.httpServer.ListenAndServe(); err != http.ErrServerClosed {
-					log.Fatalf("while serving local API: %v", err)
+				if s.TLS != nil && (s.TLS.CertFilePath != "" || s.TLS.KeyFilePath != "") {
+					if s.TLS.KeyFilePath == "" {
+						log.Fatalf("while serving local API: %v", errors.New("missing TLS key file"))
+					} else if s.TLS.CertFilePath == "" {
+						log.Fatalf("while serving local API: %v", errors.New("missing TLS cert file"))
+					}
+
+					if err := s.httpServer.ListenAndServeTLS(s.TLS.CertFilePath, s.TLS.KeyFilePath); err != nil {
+						log.Fatalf("while serving local API (tcp tls): %v", err)
+					}
+				} else {
+					if err = s.httpServer.ListenAndServe(); err != http.ErrServerClosed {
+						log.Fatalf("while serving local API (tcp): %v", err)
+					}
 				}
 			}
 		}()

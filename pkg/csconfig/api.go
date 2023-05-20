@@ -110,10 +110,8 @@ func (l *LocalApiClientCfg) Load() error {
 		return fmt.Errorf("no credentials or URL found in api client configuration '%s'", l.CredentialsFilePath)
 	}
 
-	if l.Credentials != nil && l.Credentials.URL != "" {
-		if !strings.HasSuffix(l.Credentials.URL, "/") {
-			l.Credentials.URL += "/"
-		}
+	if !strings.HasSuffix(l.Credentials.URL, "/") {
+		l.Credentials.URL += "/"
 	}
 
 	if l.Credentials.Login != "" && (l.Credentials.CertPath != "" || l.Credentials.KeyPath != "") {
@@ -155,9 +153,9 @@ func (l *LocalApiClientCfg) Load() error {
 	return nil
 }
 
-func (lapiCfg *LocalApiServerCfg) GetTrustedIPs() ([]net.IPNet, error) {
+func (c *LocalApiServerCfg) GetTrustedIPs() ([]net.IPNet, error) {
 	trustedIPs := make([]net.IPNet, 0)
-	for _, ip := range lapiCfg.TrustedIPs {
+	for _, ip := range c.TrustedIPs {
 		cidr := toValidCIDR(ip)
 		_, ipNet, err := net.ParseCIDR(cidr)
 		if err != nil {
@@ -209,6 +207,16 @@ type LocalApiServerCfg struct {
 	DisableRemoteLapiRegistration bool                `yaml:"disable_remote_lapi_registration,omitempty"`
 	CapiWhitelistsPath            string              `yaml:"capi_whitelists_path,omitempty"`
 	CapiWhitelists                *CapiWhitelist      `yaml:"-"`
+}
+
+func (c *LocalApiServerCfg) IsUnixSocket() bool {
+	return strings.HasPrefix(c.ListenURI, "/")
+}
+func (c *LocalApiServerCfg) ClientUrl() string {
+	if c.IsUnixSocket() {
+		return c.ListenURI
+	}
+	return fmt.Sprintf("http://%s", c.ListenURI)
 }
 
 type TLSCfg struct {
@@ -332,39 +340,39 @@ type capiWhitelists struct {
 	Cidrs []string `yaml:"cidrs"`
 }
 
-func (s *LocalApiServerCfg) LoadCapiWhitelists() error {
-	if s.CapiWhitelistsPath == "" {
+func (c *LocalApiServerCfg) LoadCapiWhitelists() error {
+	if c.CapiWhitelistsPath == "" {
 		return nil
 	}
-	if _, err := os.Stat(s.CapiWhitelistsPath); os.IsNotExist(err) {
-		return fmt.Errorf("capi whitelist file '%s' does not exist", s.CapiWhitelistsPath)
+	if _, err := os.Stat(c.CapiWhitelistsPath); os.IsNotExist(err) {
+		return fmt.Errorf("capi whitelist file '%s' does not exist", c.CapiWhitelistsPath)
 	}
-	fd, err := os.Open(s.CapiWhitelistsPath)
+	fd, err := os.Open(c.CapiWhitelistsPath)
 	if err != nil {
-		return fmt.Errorf("unable to open capi whitelist file '%s': %s", s.CapiWhitelistsPath, err)
+		return fmt.Errorf("unable to open capi whitelist file '%s': %s", c.CapiWhitelistsPath, err)
 	}
 
 	var fromCfg capiWhitelists
-	s.CapiWhitelists = &CapiWhitelist{}
+	c.CapiWhitelists = &CapiWhitelist{}
 
 	defer fd.Close()
 	decoder := yaml.NewDecoder(fd)
 	if err := decoder.Decode(&fromCfg); err != nil {
-		return fmt.Errorf("while parsing capi whitelist file '%s': %s", s.CapiWhitelistsPath, err)
+		return fmt.Errorf("while parsing capi whitelist file '%s': %s", c.CapiWhitelistsPath, err)
 	}
 	for _, v := range fromCfg.Ips {
 		ip := net.ParseIP(v)
 		if ip == nil {
 			return fmt.Errorf("unable to parse ip whitelist '%s'", v)
 		}
-		s.CapiWhitelists.Ips = append(s.CapiWhitelists.Ips, ip)
+		c.CapiWhitelists.Ips = append(c.CapiWhitelists.Ips, ip)
 	}
 	for _, v := range fromCfg.Cidrs {
 		_, tnet, err := net.ParseCIDR(v)
 		if err != nil {
 			return fmt.Errorf("unable to parse cidr whitelist '%s' : %v", v, err)
 		}
-		s.CapiWhitelists.Cidrs = append(s.CapiWhitelists.Cidrs, tnet)
+		c.CapiWhitelists.Cidrs = append(c.CapiWhitelists.Cidrs, tnet)
 	}
 	return nil
 }

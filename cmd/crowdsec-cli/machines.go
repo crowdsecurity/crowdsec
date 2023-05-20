@@ -288,7 +288,7 @@ func runMachinesAdd(cmd *cobra.Command, args []string) error {
 		if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil && csConfig.API.Client.Credentials.URL != "" {
 			apiURL = csConfig.API.Client.Credentials.URL
 		} else if csConfig.API.Server != nil && csConfig.API.Server.ListenURI != "" {
-			apiURL = "http://" + csConfig.API.Server.ListenURI
+			apiURL = csConfig.API.Server.ClientUrl()
 		} else {
 			return fmt.Errorf("unable to dump an api URL. Please provide it in your configuration or with the -u parameter")
 		}

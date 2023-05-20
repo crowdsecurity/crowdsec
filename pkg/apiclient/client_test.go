@@ -3,9 +3,11 @@ package apiclient
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"path"
 	"runtime"
 	"testing"
 
@@ -32,10 +34,24 @@ func setupWithPrefix(urlPrefix string) (mux *http.ServeMux, serverURL string, te
 	apiHandler := http.NewServeMux()
 	apiHandler.Handle(baseURLPath+"/", http.StripPrefix(baseURLPath, mux))
 
-	// server is a test HTTP server used to provide mock API responses.
 	server := httptest.NewServer(apiHandler)
 
 	return mux, server.URL, server.Close
+}
+
+func setupUnixSocketWithPrefix(socket string, urlPrefix string) (mux *http.ServeMux, serverURL string, teardown func()) {
+	mux = http.NewServeMux()
+	baseURLPath := "/" + urlPrefix
+
+	apiHandler := http.NewServeMux()
+	apiHandler.Handle(baseURLPath+"/", http.StripPrefix(baseURLPath, mux))
+
+	server := httptest.NewUnstartedServer(apiHandler)
+	l, _ := net.Listen("unix", socket)
+	_ = server.Listener.Close()
+	server.Listener = l
+	server.Start()
+	return mux, socket, server.Close
 }
 
 func testMethod(t *testing.T, r *http.Request, want string) {
@@ -56,6 +72,49 @@ func TestNewClientOk(t *testing.T) {
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
+		URL:           apiURL,
+		VersionPrefix: "v1",
+	})
+	if err != nil {
+		t.Fatalf("new api client: %s", err)
+	}
+	/*mock login*/
+	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+	})
+
+	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		w.WriteHeader(http.StatusOK)
+	})
+
+	_, resp, err := client.Alerts.List(context.Background(), AlertsListOpts{})
+	if err != nil {
+		t.Fatalf("test Unable to list alerts : %+v", err)
+	}
+	if resp.Response.StatusCode != http.StatusOK {
+		t.Fatalf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusCreated)
+	}
+}
+
+func TestNewClientOk_UnixSocket(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping on windows")
+	}
+	tmpDir := t.TempDir()
+	socket := path.Join(tmpDir, "socket")
+
+	mux, urlx, teardown := setupUnixSocketWithPrefix(socket, "v1")
+	defer teardown()
+	apiURL, err := url.Parse(urlx)
+	if err != nil {
+		t.Fatalf("parsing api url: %s", apiURL)
+	}
+	client, err := NewClient(&Config{
+		MachineID:     "test_login",
+		Password:      "test_password",
+		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
@@ -135,6 +194,31 @@ func TestNewDefaultClient(t *testing.T) {
 	log.Printf("err-> %s", err)
 }
 
+func TestNewDefaultClient_UnixSocket(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping on windows")
+	}
+	tmpDir := t.TempDir()
+	socket := path.Join(tmpDir, "socket")
+	mux, urlx, teardown := setupUnixSocketWithPrefix(socket, "v1")
+	defer teardown()
+	apiURL, err := url.Parse(urlx)
+	if err != nil {
+		t.Fatalf("parsing api url: %s", apiURL)
+	}
+	client, err := NewDefaultClient(apiURL, "/v1", "", nil)
+	if err != nil {
+		t.Fatalf("new api client: %s", err)
+	}
+	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(`{"code": 401, "message" : "brr"}`))
+	})
+	_, _, err = client.Alerts.List(context.Background(), AlertsListOpts{})
+	assert.Contains(t, err.Error(), `performing request: API error: brr`)
+	log.Printf("err-> %s", err)
+}
+
 func TestNewClientRegisterKO(t *testing.T) {
 	apiURL, err := url.Parse("http://127.0.0.1:4242/")
 	if err != nil {
@@ -174,6 +258,40 @@ func TestNewClientRegisterOK(t *testing.T) {
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
+		URL:           apiURL,
+		VersionPrefix: "v1",
+	}, &http.Client{})
+	if err != nil {
+		t.Fatalf("while registering client : %s", err)
+	}
+	log.Printf("->%T", client)
+}
+
+func TestNewClientRegisterOK_UnixSocket(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping on windows")
+	}
+	log.SetLevel(log.TraceLevel)
+	tmpDir := t.TempDir()
+	socket := path.Join(tmpDir, "socket")
+	mux, urlx, teardown := setupUnixSocketWithPrefix(socket, "v1")
+	defer teardown()
+
+	/*mock login*/
+	mux.HandleFunc("/watchers", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "POST")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+	})
+
+	apiURL, err := url.Parse(urlx)
+	if err != nil {
+		t.Fatalf("parsing api url: %s", apiURL)
+	}
+	client, err := RegisterClient(&Config{
+		MachineID:     "test_login",
+		Password:      "test_password",
+		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	}, &http.Client{})
