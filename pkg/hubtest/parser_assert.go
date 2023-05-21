@@ -254,7 +254,6 @@ func (p *ParserAssert) AutoGenParserAssert() string {
 					for _, line := range p.buildUnmarshaledAssert("", eval) {
 						ret += base + line
 					}
-					//ret += p.buildUnmarshaledAssert(base, ekey, eval)
 				}
 			}
 		}
