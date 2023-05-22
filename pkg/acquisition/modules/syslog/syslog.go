@@ -12,6 +12,8 @@ import (
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal/parser/rfc3164"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal/parser/rfc5424"
@@ -142,7 +144,7 @@ func (s *SyslogSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) 
 	}
 	s.serverTomb = s.server.StartServer()
 	t.Go(func() error {
-		defer types.CatchPanic("crowdsec/acquis/syslog/live")
+		defer trace.CatchPanic("crowdsec/acquis/syslog/live")
 		return s.handleSyslogMsg(out, t, c)
 	})
 	return nil

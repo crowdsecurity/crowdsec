@@ -17,6 +17,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
@@ -231,7 +233,7 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 
 // keep track of all alerts in cache and push it to CAPI every PushInterval.
 func (a *apic) Push() error {
-	defer types.CatchPanic("lapi/pushToAPIC")
+	defer trace.CatchPanic("lapi/pushToAPIC")
 
 	var cache models.AddSignalsRequest
 	ticker := time.NewTicker(a.pushIntervalFirst)
@@ -778,7 +780,7 @@ func setAlertScenario(add_counters map[string]map[string]int, delete_counters ma
 }
 
 func (a *apic) Pull() error {
-	defer types.CatchPanic("lapi/pullFromAPIC")
+	defer trace.CatchPanic("lapi/pullFromAPIC")
 
 	toldOnce := false
 	for {
@@ -861,7 +863,7 @@ func (a *apic) GetMetrics() (*models.Metrics, error) {
 }
 
 func (a *apic) SendMetrics(stop chan (bool)) {
-	defer types.CatchPanic("lapi/metricsToAPIC")
+	defer trace.CatchPanic("lapi/metricsToAPIC")
 
 	ticker := time.NewTicker(a.metricsIntervalFirst)
 

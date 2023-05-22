@@ -7,9 +7,10 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func initAPIServer(cConfig *csconfig.Config) (*apiserver.APIServer, error) {
@@ -52,9 +53,9 @@ func initAPIServer(cConfig *csconfig.Config) (*apiserver.APIServer, error) {
 
 func serveAPIServer(apiServer *apiserver.APIServer, apiReady chan bool) {
 	apiTomb.Go(func() error {
-		defer types.CatchPanic("crowdsec/serveAPIServer")
+		defer trace.CatchPanic("crowdsec/serveAPIServer")
 		go func() {
-			defer types.CatchPanic("crowdsec/runAPIServer")
+			defer trace.CatchPanic("crowdsec/runAPIServer")
 			log.Debugf("serving API after %s ms", time.Since(crowdsecT0))
 			if err := apiServer.Run(apiReady); err != nil {
 				log.Fatal(err)

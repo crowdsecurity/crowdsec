@@ -15,6 +15,8 @@ import (
 	tomb "gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	cloudwatchacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/cloudwatch"
 	dockeracquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/docker"
@@ -241,7 +243,7 @@ func GetMetrics(sources []DataSource, aggregated bool) error {
 }
 
 func transform(transformChan chan types.Event, output chan types.Event, AcquisTomb *tomb.Tomb, transformRuntime *vm.Program, logger *log.Entry) {
-	defer types.CatchPanic("crowdsec/acquis")
+	defer trace.CatchPanic("crowdsec/acquis")
 	logger.Infof("transformer started")
 	for {
 		select {
@@ -296,7 +298,7 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 		log.Debugf("starting one source %d/%d ->> %T", i, len(sources), subsrc)
 
 		AcquisTomb.Go(func() error {
-			defer types.CatchPanic("crowdsec/acquis")
+			defer trace.CatchPanic("crowdsec/acquis")
 			var err error
 
 			outChan := output
