@@ -8,9 +8,9 @@ import (
 	"golang.org/x/sys/windows/svc"
 
 	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -68,7 +68,7 @@ func WindowsRun() error {
 		return err
 	}
 	// Configure logging
-	log.Infof("Crowdsec %s", cwversion.VersionStr())
+	log.Infof("Crowdsec %s", version.String())
 
 	apiReady := make(chan bool, 1)
 	agentReady := make(chan bool, 1)

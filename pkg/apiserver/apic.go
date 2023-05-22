@@ -18,10 +18,10 @@ import (
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
@@ -195,7 +195,7 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 	ret.apiClient, err = apiclient.NewClient(&apiclient.Config{
 		MachineID:      config.Credentials.Login,
 		Password:       password,
-		UserAgent:      fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		UserAgent:      fmt.Sprintf("crowdsec/%s", version.String()),
 		URL:            apiURL,
 		PapiURL:        papiURL,
 		VersionPrefix:  "v3",
@@ -822,7 +822,7 @@ func (a *apic) Pull() error {
 
 func (a *apic) GetMetrics() (*models.Metrics, error) {
 	metric := &models.Metrics{
-		ApilVersion: types.StrPtr(cwversion.VersionStr()),
+		ApilVersion: types.StrPtr(version.String()),
 		Machines:    make([]*models.MetricsAgentInfo, 0),
 		Bouncers:    make([]*models.MetricsBouncerInfo, 0),
 	}

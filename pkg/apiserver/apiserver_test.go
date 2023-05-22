@@ -11,8 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/go-openapi/strfmt"
@@ -33,7 +34,7 @@ var MachineTest = models.WatcherAuthRequest{
 	Password:  &testPassword,
 }
 
-var UserAgent = fmt.Sprintf("crowdsec-test/%s", cwversion.Version)
+var UserAgent = fmt.Sprintf("crowdsec-test/%s", version.Version)
 var emptyBody = strings.NewReader("")
 
 func LoadTestConfig() csconfig.Config {
