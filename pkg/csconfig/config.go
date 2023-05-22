@@ -10,8 +10,8 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/pkg/yamlpatch"
+	"github.com/crowdsecurity/go-cs-lib/pkg/csstring"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csstring"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
