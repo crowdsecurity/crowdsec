@@ -21,6 +21,8 @@ import (
 	"github.com/texttheater/golang-levenshtein/levenshtein"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -515,7 +517,7 @@ func GetPrometheusMetric(url string) []*prom2json.Family {
 	transport.ResponseHeaderTimeout = time.Minute
 
 	go func() {
-		defer types.CatchPanic("crowdsec/GetPrometheusMetric")
+		defer trace.CatchPanic("crowdsec/GetPrometheusMetric")
 		err := prom2json.FetchMetricFamilies(url, mfChan, transport)
 		if err != nil {
 			log.Fatalf("failed to fetch prometheus metrics : %v", err)

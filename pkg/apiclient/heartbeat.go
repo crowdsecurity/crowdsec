@@ -6,9 +6,10 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	tomb "gopkg.in/tomb.v2"
+
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
 )
 
 type HeartBeatService service
@@ -32,7 +33,7 @@ func (h *HeartBeatService) Ping(ctx context.Context) (bool, *Response, error) {
 
 func (h *HeartBeatService) StartHeartBeat(ctx context.Context, t *tomb.Tomb) {
 	t.Go(func() error {
-		defer types.CatchPanic("crowdsec/apiClient/heartbeat")
+		defer trace.CatchPanic("crowdsec/apiClient/heartbeat")
 		hbTimer := time.NewTicker(1 * time.Minute)
 		for {
 			select {

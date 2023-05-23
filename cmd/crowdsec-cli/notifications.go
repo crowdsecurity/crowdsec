@@ -20,11 +20,12 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/tomb.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 )
 
 
@@ -273,7 +274,7 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 			client, err := apiclient.NewClient(&apiclient.Config{
 				MachineID:     csConfig.API.Client.Credentials.Login,
 				Password:      strfmt.Password(csConfig.API.Client.Credentials.Password),
-				UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+				UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
 				URL:           apiURL,
 				VersionPrefix: "v1",
 			})

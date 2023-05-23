@@ -17,9 +17,11 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
@@ -193,7 +195,7 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 	ret.apiClient, err = apiclient.NewClient(&apiclient.Config{
 		MachineID:      config.Credentials.Login,
 		Password:       password,
-		UserAgent:      fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		UserAgent:      fmt.Sprintf("crowdsec/%s", version.String()),
 		URL:            apiURL,
 		PapiURL:        papiURL,
 		VersionPrefix:  "v3",
@@ -231,7 +233,7 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 
 // keep track of all alerts in cache and push it to CAPI every PushInterval.
 func (a *apic) Push() error {
-	defer types.CatchPanic("lapi/pushToAPIC")
+	defer trace.CatchPanic("lapi/pushToAPIC")
 
 	var cache models.AddSignalsRequest
 	ticker := time.NewTicker(a.pushIntervalFirst)
@@ -778,7 +780,7 @@ func setAlertScenario(add_counters map[string]map[string]int, delete_counters ma
 }
 
 func (a *apic) Pull() error {
-	defer types.CatchPanic("lapi/pullFromAPIC")
+	defer trace.CatchPanic("lapi/pullFromAPIC")
 
 	toldOnce := false
 	for {
@@ -820,7 +822,7 @@ func (a *apic) Pull() error {
 
 func (a *apic) GetMetrics() (*models.Metrics, error) {
 	metric := &models.Metrics{
-		ApilVersion: types.StrPtr(cwversion.VersionStr()),
+		ApilVersion: types.StrPtr(version.String()),
 		Machines:    make([]*models.MetricsAgentInfo, 0),
 		Bouncers:    make([]*models.MetricsBouncerInfo, 0),
 	}
@@ -861,7 +863,7 @@ func (a *apic) GetMetrics() (*models.Metrics, error) {
 }
 
 func (a *apic) SendMetrics(stop chan (bool)) {
-	defer types.CatchPanic("lapi/metricsToAPIC")
+	defer trace.CatchPanic("lapi/metricsToAPIC")
 
 	ticker := time.NewTicker(a.metricsIntervalFirst)
 

@@ -17,6 +17,8 @@ import (
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -321,7 +323,7 @@ func (w *WinEventLogSource) CanRun() error {
 
 func (w *WinEventLogSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	t.Go(func() error {
-		defer types.CatchPanic("crowdsec/acquis/wineventlog/streaming")
+		defer trace.CatchPanic("crowdsec/acquis/wineventlog/streaming")
 		return w.getEvents(out, t)
 	})
 	return nil
