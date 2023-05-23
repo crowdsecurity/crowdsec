@@ -1,5 +1,7 @@
 include mk/platform.mk
 
+BUILD_CODENAME ?= alphaga
+
 CROWDSEC_FOLDER = ./cmd/crowdsec
 CSCLI_FOLDER = ./cmd/crowdsec-cli/
 
@@ -13,7 +15,7 @@ HTTP_PLUGIN_BIN = notification-http$(EXT)
 SLACK_PLUGIN_BIN = notification-slack$(EXT)
 SPLUNK_PLUGIN_BIN = notification-splunk$(EXT)
 EMAIL_PLUGIN_BIN = notification-email$(EXT)
-DUMMY_PLUGIN_BIN= notification-dummy$(EXT)
+DUMMY_PLUGIN_BIN = notification-dummy$(EXT)
 
 HTTP_PLUGIN_CONFIG = http.yaml
 SLACK_PLUGIN_CONFIG = slack.yaml
@@ -54,6 +56,9 @@ GOTEST = $(GOCMD) test
 
 RELDIR = crowdsec-$(BUILD_VERSION)
 
+# flags for sub-makefiles
+MAKE_FLAGS = --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
+
 .PHONY: build
 build: goversion crowdsec cscli plugins
 
@@ -65,8 +70,8 @@ plugins: http-plugin slack-plugin splunk-plugin email-plugin dummy-plugin
 
 .PHONY: clean
 clean: testclean
-	@$(MAKE) -C $(CROWDSEC_FOLDER) clean --no-print-directory RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
-	@$(MAKE) -C $(CSCLI_FOLDER) clean --no-print-directory RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
+	@$(MAKE) -C $(CROWDSEC_FOLDER) clean $(MAKE_FLAGS)
+	@$(MAKE) -C $(CSCLI_FOLDER) clean $(MAKE_FLAGS)
 	@$(RM) $(CROWDSEC_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) $(CSCLI_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) *.log $(WIN_IGNORE_ERR)
@@ -79,25 +84,25 @@ clean: testclean
 
 
 cscli: goversion
-	@$(MAKE) -C $(CSCLI_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
+	@$(MAKE) -C $(CSCLI_FOLDER) build $(MAKE_FLAGS)
 
 crowdsec: goversion
-	@$(MAKE) -C $(CROWDSEC_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
+	@$(MAKE) -C $(CROWDSEC_FOLDER) build $(MAKE_FLAGS)
 
 http-plugin: goversion
-	@$(MAKE) -C $(HTTP_PLUGIN_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
+	@$(MAKE) -C $(HTTP_PLUGIN_FOLDER) build $(MAKE_FLAGS)
 
 slack-plugin: goversion
-	@$(MAKE) -C $(SLACK_PLUGIN_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
+	@$(MAKE) -C $(SLACK_PLUGIN_FOLDER) build $(MAKE_FLAGS)
 
 splunk-plugin: goversion
-	@$(MAKE) -C $(SPLUNK_PLUGIN_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
+	@$(MAKE) -C $(SPLUNK_PLUGIN_FOLDER) build $(MAKE_FLAGS)
 
 email-plugin: goversion
-	@$(MAKE) -C $(EMAIL_PLUGIN_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
+	@$(MAKE) -C $(EMAIL_PLUGIN_FOLDER) build $(MAKE_FLAGS)
 
 dummy-plugin: goversion
-	$(MAKE) -C $(DUMMY_PLUGIN_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
+	$(MAKE) -C $(DUMMY_PLUGIN_FOLDER) build $(MAKE_FLAGS)
 
 .PHONY: testclean
 testclean: bats-clean
