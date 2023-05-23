@@ -252,6 +252,8 @@ func (c *Config) LoadAPIServer() error {
 
 		if err := c.API.Server.LoadCapiWhitelists(); err != nil {
 			return err
+		} else if c.API.Server.CapiWhitelistsPath != "" {
+			log.Infof("loaded %d capi whitelists from %s", len(c.API.Server.CapiWhitelists.Ips)+len(c.API.Server.CapiWhitelists.Cidrs), c.API.Server.CapiWhitelistsPath)
 		}
 
 	} else {
