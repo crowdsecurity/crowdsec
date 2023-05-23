@@ -20,10 +20,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cstest"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
@@ -293,7 +294,7 @@ func TestAPICGetMetrics(t *testing.T) {
 			machineIDs: []string{},
 			bouncers:   []string{},
 			expectedMetric: &models.Metrics{
-				ApilVersion: types.StrPtr(cwversion.VersionStr()),
+				ApilVersion: types.StrPtr(version.String()),
 				Bouncers:    []*models.MetricsBouncerInfo{},
 				Machines:    []*models.MetricsAgentInfo{},
 			},
@@ -303,7 +304,7 @@ func TestAPICGetMetrics(t *testing.T) {
 			machineIDs: []string{"a", "b", "c"},
 			bouncers:   []string{"1", "2", "3"},
 			expectedMetric: &models.Metrics{
-				ApilVersion: types.StrPtr(cwversion.VersionStr()),
+				ApilVersion: types.StrPtr(version.String()),
 				Bouncers: []*models.MetricsBouncerInfo{
 					{
 						CustomName: "1",
@@ -661,7 +662,7 @@ func TestAPICWhitelists(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		fmt.Sprintf("crowdsec/%s", version.String()),
 		nil,
 	)
 	require.NoError(t, err)
@@ -792,7 +793,7 @@ func TestAPICPullTop(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		fmt.Sprintf("crowdsec/%s", version.String()),
 		nil,
 	)
 	require.NoError(t, err)
@@ -874,7 +875,7 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		fmt.Sprintf("crowdsec/%s", version.String()),
 		nil,
 	)
 	require.NoError(t, err)
@@ -961,7 +962,7 @@ func TestAPICPullTopBLCacheForceCall(t *testing.T) {
 	apic, err := apiclient.NewDefaultClient(
 		url,
 		"/api",
-		fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		fmt.Sprintf("crowdsec/%s", version.String()),
 		nil,
 	)
 	require.NoError(t, err)
@@ -1036,7 +1037,7 @@ func TestAPICPush(t *testing.T) {
 			apic, err := apiclient.NewDefaultClient(
 				url,
 				"/api",
-				fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+				fmt.Sprintf("crowdsec/%s", version.String()),
 				nil,
 			)
 			require.NoError(t, err)
@@ -1111,7 +1112,7 @@ func TestAPICSendMetrics(t *testing.T) {
 			apiClient, err := apiclient.NewDefaultClient(
 				url,
 				"/api",
-				fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+				fmt.Sprintf("crowdsec/%s", version.String()),
 				nil,
 			)
 			require.NoError(t, err)
@@ -1179,7 +1180,7 @@ func TestAPICPull(t *testing.T) {
 			apic, err := apiclient.NewDefaultClient(
 				url,
 				"/api",
-				fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+				fmt.Sprintf("crowdsec/%s", version.String()),
 				nil,
 			)
 			require.NoError(t, err)

@@ -9,15 +9,12 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
-
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 )
 
 var logFormatter log.Formatter
@@ -25,7 +22,6 @@ var LogOutput *lumberjack.Logger //io.Writer
 var logLevel log.Level
 
 func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, compress *bool, forceColors bool) error {
-
 	/*Configure logs*/
 	if cfgMode == "file" {
 		_maxsize := 500
@@ -87,7 +83,6 @@ func ConfigureLogger(clog *log.Logger) error {
 }
 
 func Clone(a, b interface{}) error {
-
 	buff := new(bytes.Buffer)
 	enc := gob.NewEncoder(buff)
 	dec := gob.NewDecoder(buff)
@@ -98,40 +93,6 @@ func Clone(a, b interface{}) error {
 		return fmt.Errorf("failed cloning %T", b)
 	}
 	return nil
-}
-
-func WriteStackTrace(iErr interface{}) string {
-	tmpfile, err := os.CreateTemp("", "crowdsec-crash.*.txt")
-	if err != nil {
-		log.Fatal(err)
-	}
-	if _, err := tmpfile.Write([]byte(fmt.Sprintf("error : %+v\n", iErr))); err != nil {
-		tmpfile.Close()
-		log.Fatal(err)
-	}
-	if _, err := tmpfile.Write([]byte(cwversion.ShowStr())); err != nil {
-		tmpfile.Close()
-		log.Fatal(err)
-	}
-	if _, err := tmpfile.Write(debug.Stack()); err != nil {
-		tmpfile.Close()
-		log.Fatal(err)
-	}
-	if err := tmpfile.Close(); err != nil {
-		log.Fatal(err)
-	}
-	return tmpfile.Name()
-}
-
-//CatchPanic is a util func that we should call from all go-routines to ensure proper stacktrace handling
-func CatchPanic(component string) {
-	if r := recover(); r != nil {
-		log.Errorf("crowdsec - goroutine %s crashed : %s", component, r)
-		log.Errorf("please report this error to https://github.com/crowdsecurity/crowdsec/")
-		filename := WriteStackTrace(r)
-		log.Errorf("stacktrace/report is written to %s : please join it to your issue", filename)
-		log.Fatalf("crowdsec stopped")
-	}
 }
 
 func ParseDuration(d string) (time.Duration, error) {
@@ -181,7 +142,6 @@ func copyFileContents(src, dst string) (err error) {
 
 /*copy the file, ioutile doesn't offer the feature*/
 func CopyFile(sourceSymLink, destinationFile string) (err error) {
-
 	sourceFile, err := filepath.EvalSymlinks(sourceSymLink)
 	if err != nil {
 		log.Infof("Not a symlink : %s", err)

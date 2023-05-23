@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+
 	"github.com/fsnotify/fsnotify"
 	"github.com/nxadm/tail"
 	"github.com/pkg/errors"
@@ -336,7 +338,7 @@ func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 		}
 		f.tails[file] = true
 		t.Go(func() error {
-			defer types.CatchPanic("crowdsec/acquis/file/live/fsnotify")
+			defer trace.CatchPanic("crowdsec/acquis/file/live/fsnotify")
 			return f.tailFile(out, t, tail)
 		})
 	}
@@ -419,7 +421,7 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 				}
 				f.tails[event.Name] = true
 				t.Go(func() error {
-					defer types.CatchPanic("crowdsec/acquis/tailfile")
+					defer trace.CatchPanic("crowdsec/acquis/tailfile")
 					return f.tailFile(out, t, tail)
 				})
 			}

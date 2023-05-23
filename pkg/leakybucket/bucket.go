@@ -6,6 +6,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+
 	"github.com/crowdsecurity/crowdsec/pkg/time/rate"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/davecgh/go-spew/spew"
@@ -202,7 +204,7 @@ func LeakRoutine(leaky *Leaky) error {
 		firstEvent         = true
 	)
 
-	defer types.CatchPanic(fmt.Sprintf("crowdsec/LeakRoutine/%s", leaky.Name))
+	defer trace.CatchPanic(fmt.Sprintf("crowdsec/LeakRoutine/%s", leaky.Name))
 
 	BucketsCurrentCount.With(prometheus.Labels{"name": leaky.Name}).Inc()
 	defer BucketsCurrentCount.With(prometheus.Labels{"name": leaky.Name}).Dec()
