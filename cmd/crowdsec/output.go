@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"sort"
 	"sync"
 	"time"
 
@@ -124,6 +125,13 @@ LOOP:
 				cachecopy := cache
 				newcache := make([]types.RuntimeAlert, 0)
 				cache = newcache
+				sort.Slice(
+					cachecopy,
+					func(i, j int) bool {
+						//string comparis faster than time comparison
+						return *cachecopy[i].Alert.StopAt < *cachecopy[j].Alert.StopAt
+					},
+				)
 				cacheMutex.Unlock()
 				if err := PushAlerts(cachecopy, Client); err != nil {
 					log.Errorf("while pushing to api : %s", err)
