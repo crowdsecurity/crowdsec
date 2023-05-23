@@ -39,7 +39,7 @@ $(warning WARNING: The BUILD_STATIC variable is deprecated and has no effect. Bu
 endif
 
 export LD_OPTS=-ldflags "-s -w -extldflags '-static' $(LD_OPTS_VARS)" \
-	-trimpath -tags netgo,osusergo,sqlite_omit_load_extension
+	-trimpath -tags netgo,osusergo,sqlite_omit_load_extension$(RE2_TAG)
 
 ifneq (,$(TEST_COVERAGE))
 LD_OPTS += -cover
@@ -76,6 +76,13 @@ clean: testclean
 	@$(RM) ./$(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) ./$(DUMMY_PLUGIN_FOLDER)/$(DUMMY_PLUGIN_BIN) $(WIN_IGNORE_ERR)
 
+RE2_TAG := $(shell echo "int main() { return 0; }" | $(CC) -x c - -o /dev/null -lre2 >/dev/null 2>&1 && echo ,re2_cgo)
+
+ifneq (,$(RE2_TAG))
+$(info Using C++ regexp library)
+else
+$(info Using WebAssembly regexp library)
+endif
 
 cscli: goversion
 	@$(MAKE) -C $(CSCLI_FOLDER) build $(MAKE_FLAGS)
