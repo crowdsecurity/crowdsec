@@ -253,7 +253,7 @@ func (c *Config) LoadAPIServer() error {
 		if err := c.API.Server.LoadCapiWhitelists(); err != nil {
 			return err
 		} else if c.API.Server.CapiWhitelistsPath != "" {
-			log.Infof("loaded capi whitelist from %s: %d IP's, %d CIDR's", c.API.Server.CapiWhitelistsPath, len(c.API.Server.CapiWhitelists.Ips), len(c.API.Server.CapiWhitelists.Cidrs))
+			log.Infof("loaded capi whitelist from %s: %d IPs, %d CIDRs", c.API.Server.CapiWhitelistsPath, len(c.API.Server.CapiWhitelists.Ips), len(c.API.Server.CapiWhitelists.Cidrs))
 		}
 
 	} else {
