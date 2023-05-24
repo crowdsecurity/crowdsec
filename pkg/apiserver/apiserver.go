@@ -313,7 +313,13 @@ func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
 			if err != nil {
 				return nil, errors.Wrap(err, "Error opening cert file")
 			}
-			caCertPool = x509.NewCertPool()
+			caCertPool, err = x509.SystemCertPool()
+			if err != nil {
+				log.Warnf("Error loading system cert pool: %s", err)
+			}
+			if caCertPool == nil {
+				caCertPool = x509.NewCertPool()
+			}
 			caCertPool.AppendCertsFromPEM(caCert)
 		}
 	}
