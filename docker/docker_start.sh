@@ -364,6 +364,11 @@ for BOUNCER in /run/secrets/@(bouncer_key|BOUNCER_KEY)* ; do
 done
 shopt -u nullglob extglob
 
+# set all options before validating the configuration
+
+conf_set_if "$CAPI_WHITELISTS_PATH" '.api.server.capi_whitelists_path = strenv(CAPI_WHITELISTS_PATH)'
+conf_set_if "$METRICS_PORT" '.prometheus.listen_port=env(METRICS_PORT)'
+
 ARGS=""
 if [ "$CONFIG_FILE" != "" ]; then
     ARGS="-c $CONFIG_FILE"
@@ -400,9 +405,6 @@ fi
 if istrue "$LEVEL_INFO"; then
     ARGS="$ARGS -info"
 fi
-
-conf_set_if "$CAPI_WHITELISTS_PATH" '.api.server.capi_whitelists_path = strenv(CAPI_WHITELISTS_PATH)'
-conf_set_if "$METRICS_PORT" '.prometheus.listen_port=env(METRICS_PORT)'
 
 # shellcheck disable=SC2086
 exec crowdsec $ARGS
