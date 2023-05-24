@@ -273,7 +273,7 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters 
 
 func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[string][]string) ([]*ent.Decision, error) {
 	query := c.Ent.Decision.Query().Where(
-		// decision.CreatedAtGT(since),
+                decision.CreatedAtGT(since),
 		decision.UntilGT(time.Now().UTC()),
 	)
 	//Allow a bouncer to ask for non-deduplicated results
