@@ -19,7 +19,7 @@ jobs:
       - name: Prepare
         id: prep
         run: |
-          DOCKER_IMAGE=crowdsecurity/crowdsec
+          DOCKER_IMAGE=pendekar/crowdsec
           VERSION=bullseye
           if [[ $GITHUB_REF == refs/tags/* ]]; then
             VERSION=${GITHUB_REF#refs/tags/}

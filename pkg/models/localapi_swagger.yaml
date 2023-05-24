@@ -784,8 +784,8 @@ definitions:
       meta:
         $ref: '#/definitions/Meta'
       labels:
-        type: array
-        items:
+        type: object
+        additionalProperties:
           type: string
     required:
       - scenario

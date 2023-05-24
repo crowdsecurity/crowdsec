@@ -47,7 +47,7 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          tags: crowdsecurity/crowdsec:test-slim
+          tags: pendekar/crowdsec:test-slim
           target: slim
           platforms: linux/amd64
           load: true
@@ -59,7 +59,7 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          tags: crowdsecurity/crowdsec:test
+          tags: pendekar/crowdsec:test
           target: full
           platforms: linux/amd64
           load: true
@@ -71,7 +71,7 @@ jobs:
         with:
           context: .
           file: ./Dockerfile.debian
-          tags: crowdsecurity/crowdsec:test-debian
+          tags: pendekar/crowdsec:test-debian
           target: full
           platforms: linux/amd64
           load: true

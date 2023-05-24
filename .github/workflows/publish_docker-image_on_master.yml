@@ -29,7 +29,7 @@ jobs:
       - name: Prepare
         id: prep
         run: |
-          DOCKER_IMAGE=crowdsecurity/crowdsec
+          DOCKER_IMAGE=pendekar/crowdsec
           GHCR_IMAGE=ghcr.io/${{ github.repository_owner }}/crowdsec
           VERSION=dev
           TAGS="${DOCKER_IMAGE}:${VERSION},${GHCR_IMAGE}:${VERSION}"
