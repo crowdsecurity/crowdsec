@@ -19,6 +19,8 @@ import (
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -490,7 +492,7 @@ func (k *KinesisSource) ReadFromStream(out chan types.Event, t *tomb.Tomb) error
 		for _, shard := range shards.Shards {
 			shardId := *shard.ShardId
 			k.shardReaderTomb.Go(func() error {
-				defer types.CatchPanic("crowdsec/acquis/kinesis/streaming/shard")
+				defer trace.CatchPanic("crowdsec/acquis/kinesis/streaming/shard")
 				return k.ReadFromShard(out, shardId)
 			})
 		}
@@ -514,7 +516,7 @@ func (k *KinesisSource) ReadFromStream(out chan types.Event, t *tomb.Tomb) error
 
 func (k *KinesisSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	t.Go(func() error {
-		defer types.CatchPanic("crowdsec/acquis/kinesis/streaming")
+		defer trace.CatchPanic("crowdsec/acquis/kinesis/streaming")
 		if k.Config.UseEnhancedFanOut {
 			return k.EnhancedRead(out, t)
 		} else {

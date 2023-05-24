@@ -17,7 +17,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
 )
 
 // FormatPrometheusMetrics is a complete rip from prom2json
@@ -32,7 +32,7 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 	// Timeout early if the server doesn't even return the headers.
 	transport.ResponseHeaderTimeout = time.Minute
 	go func() {
-		defer types.CatchPanic("crowdsec/ShowPrometheus")
+		defer trace.CatchPanic("crowdsec/ShowPrometheus")
 		err := prom2json.FetchMetricFamilies(url, mfChan, transport)
 		if err != nil {
 			log.Fatalf("failed to fetch prometheus metrics : %v", err)

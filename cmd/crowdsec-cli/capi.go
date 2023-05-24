@@ -6,10 +6,11 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -70,7 +71,7 @@ func NewCapiRegisterCmd() *cobra.Command {
 			_, err = apiclient.RegisterClient(&apiclient.Config{
 				MachineID:     capiUser,
 				Password:      password,
-				UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+				UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
 				URL:           apiurl,
 				VersionPrefix: CAPIURLPrefix,
 			}, nil)
@@ -164,7 +165,7 @@ func NewCapiStatusCmd() *cobra.Command {
 				log.Fatalf("no scenarios installed, abort")
 			}
 
-			Client, err = apiclient.NewDefaultClient(apiurl, CAPIURLPrefix, fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()), nil)
+			Client, err = apiclient.NewDefaultClient(apiurl, CAPIURLPrefix, fmt.Sprintf("crowdsec/%s", version.String()), nil)
 			if err != nil {
 				log.Fatalf("init default client: %s", err)
 			}

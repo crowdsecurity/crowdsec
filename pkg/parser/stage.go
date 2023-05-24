@@ -83,7 +83,7 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx EnricherCtx) (
 				log.Tracef("no version in %s, assuming '1.0'", node.Name)
 				node.FormatVersion = "1.0"
 			}
-			ok, err := cwversion.Statisfies(node.FormatVersion, cwversion.Constraint_parser)
+			ok, err := cwversion.Satisfies(node.FormatVersion, cwversion.Constraint_parser)
 			if err != nil {
 				log.Fatalf("Failed to check version : %s", err)
 			}

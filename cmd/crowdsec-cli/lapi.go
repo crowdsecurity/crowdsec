@@ -14,11 +14,12 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
@@ -51,7 +52,7 @@ func runLapiStatus(cmd *cobra.Command, args []string) error {
 
 	Client, err = apiclient.NewDefaultClient(apiurl,
 		LAPIURLPrefix,
-		fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		fmt.Sprintf("crowdsec/%s", version.String()),
 		nil)
 	if err != nil {
 		log.Fatalf("init default client: %s", err)
@@ -122,7 +123,7 @@ func runLapiRegister(cmd *cobra.Command, args []string) error {
 	_, err = apiclient.RegisterClient(&apiclient.Config{
 		MachineID:     lapiUser,
 		Password:      password,
-		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
 		URL:           apiurl,
 		VersionPrefix: LAPIURLPrefix,
 	}, nil)

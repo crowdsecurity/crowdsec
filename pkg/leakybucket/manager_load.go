@@ -200,7 +200,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 				log.Tracef("no version in %s : %s, assuming '1.0'", bucketFactory.Name, f)
 				bucketFactory.FormatVersion = "1.0"
 			}
-			ok, err := cwversion.Statisfies(bucketFactory.FormatVersion, cwversion.Constraint_scenario)
+			ok, err := cwversion.Satisfies(bucketFactory.FormatVersion, cwversion.Constraint_scenario)
 			if err != nil {
 				log.Fatalf("Failed to check version : %s", err)
 			}

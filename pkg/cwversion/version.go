@@ -8,27 +8,13 @@ import (
 	"runtime"
 	"strings"
 
-	version "github.com/hashicorp/go-version"
+	goversion "github.com/hashicorp/go-version"
+	
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
 )
 
-/*
-
-Given a version number MAJOR.MINOR.PATCH, increment the:
-
-	MAJOR version when you make incompatible API changes,
-	MINOR version when you add functionality in a backwards compatible manner, and
-	PATCH version when you make backwards compatible bug fixes.
-
-Additional labels for pre-release and build metadata are available as extensions to the MAJOR.MINOR.PATCH format.
-
-*/
-
 var (
-	Version             string                  // = "v0.0.0"
 	Codename            string                  // = "SoumSoum"
-	BuildDate           string                  // = "0000-00-00_00:00:00"
-	Tag                 string                  // = "dev"
-	GoVersion           = runtime.Version()[2:] // = "1.13"
 	System              = runtime.GOOS          // = "linux"
 	Constraint_parser   = ">= 1.0, <= 2.0"
 	Constraint_scenario = ">= 1.0, < 3.0"
@@ -38,19 +24,19 @@ var (
 
 func ShowStr() string {
 	ret := ""
-	ret += fmt.Sprintf("version: %s-%s\n", Version, Tag)
+	ret += fmt.Sprintf("version: %s-%s\n", version.Version, version.Tag)
 	ret += fmt.Sprintf("Codename: %s\n", Codename)
-	ret += fmt.Sprintf("BuildDate: %s\n", BuildDate)
-	ret += fmt.Sprintf("GoVersion: %s\n", GoVersion)
+	ret += fmt.Sprintf("BuildDate: %s\n", version.BuildDate)
+	ret += fmt.Sprintf("GoVersion: %s\n", version.GoVersion)
 	ret += fmt.Sprintf("Platform: %s\n", System)
 	return ret
 }
 
 func Show() {
-	log.Printf("version: %s-%s", Version, Tag)
+	log.Printf("version: %s-%s", version.Version, version.Tag)
 	log.Printf("Codename: %s", Codename)
-	log.Printf("BuildDate: %s", BuildDate)
-	log.Printf("GoVersion: %s", GoVersion)
+	log.Printf("BuildDate: %s", version.BuildDate)
+	log.Printf("GoVersion: %s", version.GoVersion)
 	log.Printf("Platform: %s\n", System)
 	log.Printf("Constraint_parser: %s", Constraint_parser)
 	log.Printf("Constraint_scenario: %s", Constraint_scenario)
@@ -59,21 +45,21 @@ func Show() {
 }
 
 func VersionStr() string {
-	return fmt.Sprintf("%s-%s-%s", Version, System, Tag)
+	return fmt.Sprintf("%s-%s-%s", version.Version, System, version.Tag)
 }
 
 func VersionStrip() string {
-	version := strings.Split(Version, "~")
+	version := strings.Split(version.Version, "~")
 	version = strings.Split(version[0], "-")
 	return version[0]
 }
 
-func Statisfies(strvers string, constraint string) (bool, error) {
-	vers, err := version.NewVersion(strvers)
+func Satisfies(strvers string, constraint string) (bool, error) {
+	vers, err := goversion.NewVersion(strvers)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse '%s' : %v", strvers, err)
 	}
-	constraints, err := version.NewConstraint(constraint)
+	constraints, err := goversion.NewConstraint(constraint)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse constraint '%s'", constraint)
 	}

@@ -27,10 +27,10 @@ BUILD_CMD = build
 GO_MODULE_NAME = github.com/crowdsecurity/crowdsec
 
 LD_OPTS_VARS= \
--X '$(GO_MODULE_NAME)/pkg/cwversion.Version=$(BUILD_VERSION)' \
--X '$(GO_MODULE_NAME)/pkg/cwversion.BuildDate=$(BUILD_TIMESTAMP)' \
+-X 'github.com/crowdsecurity/go-cs-lib/pkg/version.Version=$(BUILD_VERSION)' \
+-X 'github.com/crowdsecurity/go-cs-lib/pkg/version.BuildDate=$(BUILD_TIMESTAMP)' \
+-X 'github.com/crowdsecurity/go-cs-lib/pkg/version.Tag=$(BUILD_TAG)' \
 -X '$(GO_MODULE_NAME)/pkg/cwversion.Codename=$(BUILD_CODENAME)' \
--X '$(GO_MODULE_NAME)/pkg/cwversion.Tag=$(BUILD_TAG)' \
 -X '$(GO_MODULE_NAME)/pkg/csconfig.defaultConfigDir=$(DEFAULT_CONFIGDIR)' \
 -X '$(GO_MODULE_NAME)/pkg/csconfig.defaultDataDir=$(DEFAULT_DATADIR)'
 
