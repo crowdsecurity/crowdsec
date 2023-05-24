@@ -401,7 +401,7 @@ if istrue "$LEVEL_INFO"; then
     ARGS="$ARGS -info"
 fi
 
-conf_set_if "$CAPI_WHITELISTS" '.api.server.capi_whitelists_path = strenv(CAPI_WHITELISTS)'
+conf_set_if "$CAPI_WHITELISTS_PATH" '.api.server.capi_whitelists_path = strenv(CAPI_WHITELISTS_PATH)'
 conf_set_if "$METRICS_PORT" '.prometheus.listen_port=env(METRICS_PORT)'
 
 # shellcheck disable=SC2086
