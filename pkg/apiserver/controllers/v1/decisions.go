@@ -242,13 +242,15 @@ func (c *Controller) StreamDecisionChunked(gctx *gin.Context, bouncerInfo *ent.B
 
 		gctx.Writer.Write([]byte(`], "deleted": [`))
 		//Expired decisions
-		err = writeStartupDecisions(gctx, filters, c.DBClient.QueryExpiredDecisionsWithFilters)
-		if err != nil {
-			log.Errorf("failed sending expired decisions for startup: %v", err)
-			gctx.Writer.Write([]byte(`]}`))
-			gctx.Writer.Flush()
-			return err
-		}
+                if (bouncerInfo.Type != "crowdsec-firewall-bouncer") {
+                  err = writeStartupDecisions(gctx, filters, c.DBClient.QueryExpiredDecisionsWithFilters)
+                  if err != nil {
+                          log.Errorf("failed sending expired decisions for startup: %v", err)
+                          gctx.Writer.Write([]byte(`]}`))
+                          gctx.Writer.Flush()
+                          return err
+                  }
+                }
 
 		gctx.Writer.Write([]byte(`]}`))
 		gctx.Writer.Flush()
@@ -297,13 +299,15 @@ func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *en
 			ret["new"] = FormatDecisions(data)
 
 			// getting expired decisions
-			data, err = c.DBClient.QueryExpiredDecisionsWithFilters(filters)
-			if err != nil {
-				log.Errorf("unable to query expired decision for '%s' : %v", bouncerInfo.Name, err)
-				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
-				return err
-			}
-			ret["deleted"] = FormatDecisions(data)
+                        if (bouncerInfo.Type != "crowdsec-firewall-bouncer") {
+                          data, err = c.DBClient.QueryExpiredDecisionsWithFilters(filters)
+                          if err != nil {
+                                  log.Errorf("unable to query expired decision for '%s' : %v", bouncerInfo.Name, err)
+                                  gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+                                  return err
+                          }
+                          ret["deleted"] = FormatDecisions(data)
+                        }
 
 			gctx.JSON(http.StatusOK, ret)
 			return nil
