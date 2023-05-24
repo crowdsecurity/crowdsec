@@ -187,7 +187,6 @@ fi
 
 lapi_credentials_path=$(conf_get '.api.client.credentials_path')
 
-
 if isfalse "$DISABLE_LOCAL_API"; then
     # generate local agent credentials (even if agent is disabled, cscli needs a
     # connection to the API)
@@ -402,6 +401,7 @@ if istrue "$LEVEL_INFO"; then
     ARGS="$ARGS -info"
 fi
 
+conf_set_if "$CAPI_WHITELISTS" '.api.server.capi_whitelists_path = strenv(CAPI_WHITELISTS)'
 conf_set_if "$METRICS_PORT" '.prometheus.listen_port=env(METRICS_PORT)'
 
 # shellcheck disable=SC2086
