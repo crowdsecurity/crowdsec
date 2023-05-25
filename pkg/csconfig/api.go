@@ -223,44 +223,44 @@ func (c *Config) LoadAPIServer() error {
 		log.Warning("crowdsec local API is disabled from flag")
 	}
 
-	if c.API.Server != nil {
-
-		//inherit log level from common, then api->server
-		var logLevel log.Level
-		if c.API.Server.LogLevel != nil {
-			logLevel = *c.API.Server.LogLevel
-		} else if c.Common.LogLevel != nil {
-			logLevel = *c.Common.LogLevel
-		} else {
-			logLevel = log.InfoLevel
-		}
-
-		if c.API.Server.PapiLogLevel == nil {
-			c.API.Server.PapiLogLevel = &logLevel
-		}
-
-		if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
-			if err := c.API.Server.OnlineClient.Load(); err != nil {
-				return errors.Wrap(err, "loading online client credentials")
-			}
-		}
-		if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
-			log.Printf("push and pull to Central API disabled")
-		}
-		if err := c.LoadDBConfig(); err != nil {
-			return err
-		}
-
-		if err := c.API.Server.LoadCapiWhitelists(); err != nil {
-			return err
-		} else if c.API.Server.CapiWhitelistsPath != "" {
-			log.Infof("loaded capi whitelist from %s: %d IPs, %d CIDRs", c.API.Server.CapiWhitelistsPath, len(c.API.Server.CapiWhitelists.Ips), len(c.API.Server.CapiWhitelists.Cidrs))
-		}
-
-	} else {
+	if c.API.Server == nil {
 		log.Warning("crowdsec local API is disabled")
 		c.DisableAPI = true
 		return nil
+	}
+
+	//inherit log level from common, then api->server
+	var logLevel log.Level
+	if c.API.Server.LogLevel != nil {
+		logLevel = *c.API.Server.LogLevel
+	} else if c.Common.LogLevel != nil {
+		logLevel = *c.Common.LogLevel
+	} else {
+		logLevel = log.InfoLevel
+	}
+
+	if c.API.Server.PapiLogLevel == nil {
+		c.API.Server.PapiLogLevel = &logLevel
+	}
+
+	if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
+		if err := c.API.Server.OnlineClient.Load(); err != nil {
+			return errors.Wrap(err, "loading online client credentials")
+		}
+	}
+	if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
+		log.Printf("push and pull to Central API disabled")
+	}
+	if err := c.LoadDBConfig(); err != nil {
+		return err
+	}
+
+	if err := c.API.Server.LoadCapiWhitelists(); err != nil {
+		return err
+	}
+
+	if c.API.Server.CapiWhitelistsPath != "" {
+		log.Infof("loaded capi whitelist from %s: %d IPs, %d CIDRs", c.API.Server.CapiWhitelistsPath, len(c.API.Server.CapiWhitelists.Ips), len(c.API.Server.CapiWhitelists.Cidrs))
 	}
 
 	if c.API.Server.Enable == nil {
