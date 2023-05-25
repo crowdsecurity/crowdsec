@@ -206,7 +206,7 @@ func TestNewAPIC(t *testing.T) {
 			action: func() {},
 			args: args{
 				dbClient:      getDBClient(t),
-				consoleConfig: LoadTestConfig().API.Server.ConsoleConfig,
+				consoleConfig: LoadTestConfig(t).API.Server.ConsoleConfig,
 			},
 		},
 		{
@@ -214,7 +214,7 @@ func TestNewAPIC(t *testing.T) {
 			action: func() { testConfig.Credentials.URL = "foobar http://" },
 			args: args{
 				dbClient:      getDBClient(t),
-				consoleConfig: LoadTestConfig().API.Server.ConsoleConfig,
+				consoleConfig: LoadTestConfig(t).API.Server.ConsoleConfig,
 			},
 			expectedErr: "first path segment in URL cannot contain colon",
 		},
