@@ -214,7 +214,13 @@ func (kc *KafkaConfiguration) NewTLSConfig() (*tls.Config, error) {
 	if err != nil {
 		return &tlsConfig, err
 	}
-	caCertPool := x509.NewCertPool()
+	caCertPool, err := x509.SystemCertPool()
+	if err != nil {
+		return &tlsConfig, fmt.Errorf("unable to load system CA certificates: %w", err)
+	}
+	if caCertPool == nil {
+		caCertPool = x509.NewCertPool()
+	}
 	caCertPool.AppendCertsFromPEM(caCert)
 	tlsConfig.RootCAs = caCertPool
 
