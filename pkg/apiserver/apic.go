@@ -17,6 +17,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
 	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
 	"github.com/crowdsecurity/go-cs-lib/pkg/version"
 
@@ -96,15 +97,15 @@ func decisionsToApiDecisions(decisions []*models.Decision) models.AddSignalsRequ
 	apiDecisions := models.AddSignalsRequestItemDecisions{}
 	for _, decision := range decisions {
 		x := &models.AddSignalsRequestItemDecisionsItem{
-			Duration: types.StrPtr(*decision.Duration),
+			Duration: ptr.Of(*decision.Duration),
 			ID:       new(int64),
-			Origin:   types.StrPtr(*decision.Origin),
-			Scenario: types.StrPtr(*decision.Scenario),
-			Scope:    types.StrPtr(*decision.Scope),
+			Origin:   ptr.Of(*decision.Origin),
+			Scenario: ptr.Of(*decision.Scenario),
+			Scope:    ptr.Of(*decision.Scope),
 			//Simulated: *decision.Simulated,
-			Type:  types.StrPtr(*decision.Type),
+			Type:  ptr.Of(*decision.Type),
 			Until: decision.Until,
-			Value: types.StrPtr(*decision.Value),
+			Value: ptr.Of(*decision.Value),
 			UUID:  decision.UUID,
 		}
 		*x.ID = decision.ID
@@ -429,7 +430,7 @@ func (a *apic) HandleDeletedDecisionsV3(deletedDecisions []*modelscapi.GetDecisi
 			if err != nil {
 				return 0, errors.Wrapf(err, "converting db ret %d", dbCliDel)
 			}
-			updateCounterForDecision(delete_counters, types.StrPtr(types.CAPIOrigin), nil, dbCliDel)
+			updateCounterForDecision(delete_counters, ptr.Of(types.CAPIOrigin), nil, dbCliDel)
 			nbDeleted += dbCliDel
 		}
 	}
@@ -475,26 +476,26 @@ func createAlertsForDecisions(decisions []*models.Decision) []*models.Alert {
 func createAlertForDecision(decision *models.Decision) *models.Alert {
 	newAlert := &models.Alert{}
 	newAlert.Source = &models.Source{}
-	newAlert.Source.Scope = types.StrPtr("")
+	newAlert.Source.Scope = ptr.Of("")
 	if *decision.Origin == types.CAPIOrigin { //to make things more user friendly, we replace CAPI with community-blocklist
-		newAlert.Scenario = types.StrPtr(types.CAPIOrigin)
-		newAlert.Source.Scope = types.StrPtr(types.CAPIOrigin)
+		newAlert.Scenario = ptr.Of(types.CAPIOrigin)
+		newAlert.Source.Scope = ptr.Of(types.CAPIOrigin)
 	} else if *decision.Origin == types.ListOrigin {
-		newAlert.Scenario = types.StrPtr(*decision.Scenario)
-		newAlert.Source.Scope = types.StrPtr(types.ListOrigin)
+		newAlert.Scenario = ptr.Of(*decision.Scenario)
+		newAlert.Source.Scope = ptr.Of(types.ListOrigin)
 	} else {
 		log.Warningf("unknown origin %s", *decision.Origin)
 	}
-	newAlert.Message = types.StrPtr("")
-	newAlert.Source.Value = types.StrPtr("")
-	newAlert.StartAt = types.StrPtr(time.Now().UTC().Format(time.RFC3339))
-	newAlert.StopAt = types.StrPtr(time.Now().UTC().Format(time.RFC3339))
-	newAlert.Capacity = types.Int32Ptr(0)
-	newAlert.Simulated = types.BoolPtr(false)
-	newAlert.EventsCount = types.Int32Ptr(0)
-	newAlert.Leakspeed = types.StrPtr("")
-	newAlert.ScenarioHash = types.StrPtr("")
-	newAlert.ScenarioVersion = types.StrPtr("")
+	newAlert.Message = ptr.Of("")
+	newAlert.Source.Value = ptr.Of("")
+	newAlert.StartAt = ptr.Of(time.Now().UTC().Format(time.RFC3339))
+	newAlert.StopAt = ptr.Of(time.Now().UTC().Format(time.RFC3339))
+	newAlert.Capacity = ptr.Of(int32(0))
+	newAlert.Simulated = ptr.Of(false)
+	newAlert.EventsCount = ptr.Of(int32(0))
+	newAlert.Leakspeed = ptr.Of("")
+	newAlert.ScenarioHash = ptr.Of("")
+	newAlert.ScenarioVersion = ptr.Of("")
 	newAlert.MachineID = database.CapiMachineID
 	return newAlert
 }
@@ -771,10 +772,10 @@ func (a *apic) UpdateBlocklists(links *modelscapi.GetDecisionsStreamResponseLink
 func setAlertScenario(add_counters map[string]map[string]int, delete_counters map[string]map[string]int, alert *models.Alert) *models.Alert {
 	if *alert.Source.Scope == types.CAPIOrigin {
 		*alert.Source.Scope = SCOPE_CAPI_ALIAS_ALIAS
-		alert.Scenario = types.StrPtr(fmt.Sprintf("update : +%d/-%d IPs", add_counters[types.CAPIOrigin]["all"], delete_counters[types.CAPIOrigin]["all"]))
+		alert.Scenario = ptr.Of(fmt.Sprintf("update : +%d/-%d IPs", add_counters[types.CAPIOrigin]["all"], delete_counters[types.CAPIOrigin]["all"]))
 	} else if *alert.Source.Scope == types.ListOrigin {
 		*alert.Source.Scope = fmt.Sprintf("%s:%s", types.ListOrigin, *alert.Scenario)
-		alert.Scenario = types.StrPtr(fmt.Sprintf("update : +%d/-%d IPs", add_counters[types.ListOrigin][*alert.Scenario], delete_counters[types.ListOrigin][*alert.Scenario]))
+		alert.Scenario = ptr.Of(fmt.Sprintf("update : +%d/-%d IPs", add_counters[types.ListOrigin][*alert.Scenario], delete_counters[types.ListOrigin][*alert.Scenario]))
 	}
 	return alert
 }
@@ -822,7 +823,7 @@ func (a *apic) Pull() error {
 
 func (a *apic) GetMetrics() (*models.Metrics, error) {
 	metric := &models.Metrics{
-		ApilVersion: types.StrPtr(version.String()),
+		ApilVersion: ptr.Of(version.String()),
 		Machines:    make([]*models.MetricsAgentInfo, 0),
 		Bouncers:    make([]*models.MetricsBouncerInfo, 0),
 	}

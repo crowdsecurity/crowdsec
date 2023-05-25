@@ -19,6 +19,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
 	"github.com/crowdsecurity/go-cs-lib/pkg/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -580,12 +581,12 @@ decisions.json :
 					log.Debugf("'scope' line %d, using supplied value: '%s'", line, importScope)
 				}
 				decision := models.Decision{
-					Value:     types.StrPtr(decisionLine.Value),
-					Duration:  types.StrPtr(decisionLine.Duration),
-					Origin:    types.StrPtr(decisionLine.Origin),
-					Scenario:  types.StrPtr(decisionLine.Scenario),
-					Type:      types.StrPtr(decisionLine.Type),
-					Scope:     types.StrPtr(decisionLine.Scope),
+					Value:     ptr.Of(decisionLine.Value),
+					Duration:  ptr.Of(decisionLine.Duration),
+					Origin:    ptr.Of(decisionLine.Origin),
+					Scenario:  ptr.Of(decisionLine.Scenario),
+					Type:      ptr.Of(decisionLine.Type),
+					Scope:     ptr.Of(decisionLine.Scope),
 					Simulated: new(bool),
 				}
 				decisionsList = append(decisionsList, &decision)
@@ -601,22 +602,22 @@ decisions.json :
 					decisionBatch := decisionsList[i:end]
 					importAlert := models.Alert{
 						CreatedAt: time.Now().UTC().Format(time.RFC3339),
-						Scenario:  types.StrPtr(fmt.Sprintf("import %s : %d IPs", importFile, len(decisionBatch))),
+						Scenario:  ptr.Of(fmt.Sprintf("import %s : %d IPs", importFile, len(decisionBatch))),
 
-						Message: types.StrPtr(""),
+						Message: ptr.Of(""),
 						Events:  []*models.Event{},
 						Source: &models.Source{
-							Scope: types.StrPtr(""),
-							Value: types.StrPtr(""),
+							Scope: ptr.Of(""),
+							Value: ptr.Of(""),
 						},
-						StartAt:         types.StrPtr(time.Now().UTC().Format(time.RFC3339)),
-						StopAt:          types.StrPtr(time.Now().UTC().Format(time.RFC3339)),
-						Capacity:        types.Int32Ptr(0),
-						Simulated:       types.BoolPtr(false),
-						EventsCount:     types.Int32Ptr(int32(len(decisionBatch))),
-						Leakspeed:       types.StrPtr(""),
-						ScenarioHash:    types.StrPtr(""),
-						ScenarioVersion: types.StrPtr(""),
+						StartAt:         ptr.Of(time.Now().UTC().Format(time.RFC3339)),
+						StopAt:          ptr.Of(time.Now().UTC().Format(time.RFC3339)),
+						Capacity:        ptr.Of(int32(0)),
+						Simulated:       ptr.Of(false),
+						EventsCount:     ptr.Of(int32(len(decisionBatch))),
+						Leakspeed:       ptr.Of(""),
+						ScenarioHash:    ptr.Of(""),
+						ScenarioVersion: ptr.Of(""),
 						Decisions:       decisionBatch,
 					}
 					alerts = append(alerts, &importAlert)
@@ -624,21 +625,21 @@ decisions.json :
 			} else {
 				importAlert := models.Alert{
 					CreatedAt: time.Now().UTC().Format(time.RFC3339),
-					Scenario:  types.StrPtr(fmt.Sprintf("import %s : %d IPs", importFile, len(decisionsList))),
-					Message:   types.StrPtr(""),
+					Scenario:  ptr.Of(fmt.Sprintf("import %s : %d IPs", importFile, len(decisionsList))),
+					Message:   ptr.Of(""),
 					Events:    []*models.Event{},
 					Source: &models.Source{
-						Scope: types.StrPtr(""),
-						Value: types.StrPtr(""),
+						Scope: ptr.Of(""),
+						Value: ptr.Of(""),
 					},
-					StartAt:         types.StrPtr(time.Now().UTC().Format(time.RFC3339)),
-					StopAt:          types.StrPtr(time.Now().UTC().Format(time.RFC3339)),
-					Capacity:        types.Int32Ptr(0),
-					Simulated:       types.BoolPtr(false),
-					EventsCount:     types.Int32Ptr(int32(len(decisionsList))),
-					Leakspeed:       types.StrPtr(""),
-					ScenarioHash:    types.StrPtr(""),
-					ScenarioVersion: types.StrPtr(""),
+					StartAt:         ptr.Of(time.Now().UTC().Format(time.RFC3339)),
+					StopAt:          ptr.Of(time.Now().UTC().Format(time.RFC3339)),
+					Capacity:        ptr.Of(int32(0)),
+					Simulated:       ptr.Of(false),
+					EventsCount:     ptr.Of(int32(len(decisionsList))),
+					Leakspeed:       ptr.Of(""),
+					ScenarioHash:    ptr.Of(""),
+					ScenarioVersion: ptr.Of(""),
 					Decisions:       decisionsList,
 				}
 				alerts = append(alerts, &importAlert)
