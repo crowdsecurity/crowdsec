@@ -1,3 +1,8 @@
+
+BUILD_CODENAME ?= alphaga
+GOARCH ?= $(shell go env GOARCH)
+BUILD_TAG ?= $(shell git rev-parse HEAD)
+
 ifeq ($(OS), Windows_NT)
 	SHELL := pwsh.exe
 	.SHELLFLAGS := -NoProfile -Command

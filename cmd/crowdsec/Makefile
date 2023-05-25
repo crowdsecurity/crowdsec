@@ -7,9 +7,7 @@ endif
 # Go parameters
 GOCMD = go
 GOBUILD = $(GOCMD) build
-GOCLEAN = $(GOCMD) clean
 GOTEST = $(GOCMD) test
-GOGET = $(GOCMD) get
 
 CROWDSEC_BIN = crowdsec$(EXT)
 # names longer than 15 chars break 'pgrep'

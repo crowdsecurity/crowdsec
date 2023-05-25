@@ -1,28 +1,24 @@
 include mk/platform.mk
 
+BUILD_CODENAME ?= alphaga
+
 CROWDSEC_FOLDER = ./cmd/crowdsec
 CSCLI_FOLDER = ./cmd/crowdsec-cli/
 
-HTTP_PLUGIN_FOLDER = ./plugins/notifications/http
-SLACK_PLUGIN_FOLDER = ./plugins/notifications/slack
-SPLUNK_PLUGIN_FOLDER = ./plugins/notifications/splunk
-EMAIL_PLUGIN_FOLDER = ./plugins/notifications/email
-DUMMY_PLUGIN_FOLDER = ./plugins/notifications/dummy
+HTTP_PLUGIN_FOLDER = plugins/notifications/http
+SLACK_PLUGIN_FOLDER = plugins/notifications/slack
+SPLUNK_PLUGIN_FOLDER = plugins/notifications/splunk
+EMAIL_PLUGIN_FOLDER = plugins/notifications/email
+DUMMY_PLUGIN_FOLDER = plugins/notifications/dummy
 
 HTTP_PLUGIN_BIN = notification-http$(EXT)
 SLACK_PLUGIN_BIN = notification-slack$(EXT)
 SPLUNK_PLUGIN_BIN = notification-splunk$(EXT)
 EMAIL_PLUGIN_BIN = notification-email$(EXT)
-DUMMY_PLUGIN_BIN= notification-dummy$(EXT)
-
-HTTP_PLUGIN_CONFIG = http.yaml
-SLACK_PLUGIN_CONFIG = slack.yaml
-SPLUNK_PLUGIN_CONFIG = splunk.yaml
-EMAIL_PLUGIN_CONFIG = email.yaml
+DUMMY_PLUGIN_BIN = notification-dummy$(EXT)
 
 CROWDSEC_BIN = crowdsec$(EXT)
 CSCLI_BIN = cscli$(EXT)
-BUILD_CMD = build
 
 GO_MODULE_NAME = github.com/crowdsecurity/crowdsec
 
@@ -54,6 +50,9 @@ GOTEST = $(GOCMD) test
 
 RELDIR = crowdsec-$(BUILD_VERSION)
 
+# flags for sub-makefiles
+MAKE_FLAGS = --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
+
 .PHONY: build
 build: goversion crowdsec cscli plugins
 
@@ -65,39 +64,39 @@ plugins: http-plugin slack-plugin splunk-plugin email-plugin dummy-plugin
 
 .PHONY: clean
 clean: testclean
-	@$(MAKE) -C $(CROWDSEC_FOLDER) clean --no-print-directory RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
-	@$(MAKE) -C $(CSCLI_FOLDER) clean --no-print-directory RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
+	@$(MAKE) -C $(CROWDSEC_FOLDER) clean $(MAKE_FLAGS)
+	@$(MAKE) -C $(CSCLI_FOLDER) clean $(MAKE_FLAGS)
 	@$(RM) $(CROWDSEC_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) $(CSCLI_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) *.log $(WIN_IGNORE_ERR)
 	@$(RM) crowdsec-release.tgz $(WIN_IGNORE_ERR)
-	@$(RM) $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_BIN) $(WIN_IGNORE_ERR)
-	@$(RM) $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN) $(WIN_IGNORE_ERR)
-	@$(RM) $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN) $(WIN_IGNORE_ERR)
-	@$(RM) $(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_BIN) $(WIN_IGNORE_ERR)
-	@$(RM) $(DUMMY_PLUGIN_FOLDER)/$(DUMMY_PLUGIN_BIN) $(WIN_IGNORE_ERR)
+	@$(RM) ./$(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_BIN) $(WIN_IGNORE_ERR)
+	@$(RM) ./$(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN) $(WIN_IGNORE_ERR)
+	@$(RM) ./$(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN) $(WIN_IGNORE_ERR)
+	@$(RM) ./$(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_BIN) $(WIN_IGNORE_ERR)
+	@$(RM) ./$(DUMMY_PLUGIN_FOLDER)/$(DUMMY_PLUGIN_BIN) $(WIN_IGNORE_ERR)
 
 
 cscli: goversion
-	@$(MAKE) -C $(CSCLI_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
+	@$(MAKE) -C $(CSCLI_FOLDER) build $(MAKE_FLAGS)
 
 crowdsec: goversion
-	@$(MAKE) -C $(CROWDSEC_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
+	@$(MAKE) -C $(CROWDSEC_FOLDER) build $(MAKE_FLAGS)
 
 http-plugin: goversion
-	@$(MAKE) -C $(HTTP_PLUGIN_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
+	@$(MAKE) -C ./$(HTTP_PLUGIN_FOLDER) build $(MAKE_FLAGS)
 
 slack-plugin: goversion
-	@$(MAKE) -C $(SLACK_PLUGIN_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
+	@$(MAKE) -C ./$(SLACK_PLUGIN_FOLDER) build $(MAKE_FLAGS)
 
 splunk-plugin: goversion
-	@$(MAKE) -C $(SPLUNK_PLUGIN_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
+	@$(MAKE) -C ./$(SPLUNK_PLUGIN_FOLDER) build $(MAKE_FLAGS)
 
 email-plugin: goversion
-	@$(MAKE) -C $(EMAIL_PLUGIN_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
+	@$(MAKE) -C ./$(EMAIL_PLUGIN_FOLDER) build $(MAKE_FLAGS)
 
 dummy-plugin: goversion
-	$(MAKE) -C $(DUMMY_PLUGIN_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
+	$(MAKE) -C ./$(DUMMY_PLUGIN_FOLDER) build $(MAKE_FLAGS)
 
 .PHONY: testclean
 testclean: bats-clean
@@ -134,23 +133,23 @@ package-common:
 	@echo "Building Release to dir $(RELDIR)"
 	@$(MKDIR) $(RELDIR)/cmd/crowdsec
 	@$(MKDIR) $(RELDIR)/cmd/crowdsec-cli
-	@$(MKDIR) $(RELDIR)/$(subst ./,,$(HTTP_PLUGIN_FOLDER))
-	@$(MKDIR) $(RELDIR)/$(subst ./,,$(SLACK_PLUGIN_FOLDER))
-	@$(MKDIR) $(RELDIR)/$(subst ./,,$(SPLUNK_PLUGIN_FOLDER))
-	@$(MKDIR) $(RELDIR)/$(subst ./,,$(EMAIL_PLUGIN_FOLDER))
+	@$(MKDIR) $(RELDIR)/$(HTTP_PLUGIN_FOLDER)
+	@$(MKDIR) $(RELDIR)/$(SLACK_PLUGIN_FOLDER)
+	@$(MKDIR) $(RELDIR)/$(SPLUNK_PLUGIN_FOLDER)
+	@$(MKDIR) $(RELDIR)/$(EMAIL_PLUGIN_FOLDER)
 
 	@$(CP) $(CROWDSEC_FOLDER)/$(CROWDSEC_BIN) $(RELDIR)/cmd/crowdsec
 	@$(CP) $(CSCLI_FOLDER)/$(CSCLI_BIN) $(RELDIR)/cmd/crowdsec-cli
 
-	@$(CP) $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_BIN) $(RELDIR)/$(subst ./,,$(HTTP_PLUGIN_FOLDER))
-	@$(CP) $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN) $(RELDIR)/$(subst ./,,$(SLACK_PLUGIN_FOLDER))
-	@$(CP) $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN) $(RELDIR)/$(subst ./,,$(SPLUNK_PLUGIN_FOLDER))
-	@$(CP) $(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_BIN) $(RELDIR)/$(subst ./,,$(EMAIL_PLUGIN_FOLDER))
+	@$(CP) ./$(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_BIN) $(RELDIR)/$(HTTP_PLUGIN_FOLDER)
+	@$(CP) ./$(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN) $(RELDIR)/$(SLACK_PLUGIN_FOLDER)
+	@$(CP) ./$(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN) $(RELDIR)/$(SPLUNK_PLUGIN_FOLDER)
+	@$(CP) ./$(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_BIN) $(RELDIR)/$(EMAIL_PLUGIN_FOLDER)
 
-	@$(CP) $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(HTTP_PLUGIN_FOLDER))
-	@$(CP) $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(SLACK_PLUGIN_FOLDER))
-	@$(CP) $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(SPLUNK_PLUGIN_FOLDER))
-	@$(CP) $(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(EMAIL_PLUGIN_FOLDER))
+	@$(CP) ./$(HTTP_PLUGIN_FOLDER)/http.yaml $(RELDIR)/$(HTTP_PLUGIN_FOLDER)
+	@$(CP) ./$(SLACK_PLUGIN_FOLDER)/slack.yaml $(RELDIR)/$(SLACK_PLUGIN_FOLDER)
+	@$(CP) ./$(SPLUNK_PLUGIN_FOLDER)/splunk.yaml $(RELDIR)/$(SPLUNK_PLUGIN_FOLDER)
+	@$(CP) ./$(EMAIL_PLUGIN_FOLDER)/email.yaml $(RELDIR)/$(EMAIL_PLUGIN_FOLDER)
 
 	@$(CPR) ./config $(RELDIR)
 	@$(CP) wizard.sh $(RELDIR)
