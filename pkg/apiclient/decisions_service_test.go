@@ -8,11 +8,11 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
 	"github.com/crowdsecurity/go-cs-lib/pkg/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/modelscapi"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -461,7 +461,7 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 		Remediation: &tremediationBlocklist,
 		Name:        &tnameBlocklist,
 		Duration:    &tdurationBlocklist,
-	}, types.StrPtr("Sun, 01 Jan 2023 01:01:01 GMT"))
+	}, ptr.Of("Sun, 01 Jan 2023 01:01:01 GMT"))
 	require.NoError(t, err)
 	assert.False(t, isModified)
 	_, isModified, err = newcli.Decisions.GetDecisionsFromBlocklist(context.Background(), &modelscapi.BlocklistLink{
@@ -470,7 +470,7 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 		Remediation: &tremediationBlocklist,
 		Name:        &tnameBlocklist,
 		Duration:    &tdurationBlocklist,
-	}, types.StrPtr("Mon, 02 Jan 2023 01:01:01 GMT"))
+	}, ptr.Of("Mon, 02 Jan 2023 01:01:01 GMT"))
 	require.NoError(t, err)
 	assert.True(t, isModified)
 }
