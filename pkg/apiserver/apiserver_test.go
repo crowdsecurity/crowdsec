@@ -37,13 +37,16 @@ var MachineTest = models.WatcherAuthRequest{
 var UserAgent = fmt.Sprintf("crowdsec-test/%s", version.Version)
 var emptyBody = strings.NewReader("")
 
-func LoadTestConfig() csconfig.Config {
+func LoadTestConfig(t *testing.T) csconfig.Config {
 	config := csconfig.Config{}
 	maxAge := "1h"
 	flushConfig := csconfig.FlushDBCfg{
 		MaxAge: &maxAge,
 	}
+
 	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
+	t.Cleanup(func() { os.RemoveAll(tempDir) })
+
 	dbconfig := csconfig.DatabaseCfg{
 		Type:   "sqlite",
 		DbPath: filepath.Join(tempDir, "ent"),
@@ -69,13 +72,16 @@ func LoadTestConfig() csconfig.Config {
 	return config
 }
 
-func LoadTestConfigForwardedFor() csconfig.Config {
+func LoadTestConfigForwardedFor(t *testing.T) csconfig.Config {
 	config := csconfig.Config{}
 	maxAge := "1h"
 	flushConfig := csconfig.FlushDBCfg{
 		MaxAge: &maxAge,
 	}
+
 	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
+	t.Cleanup(func() { os.RemoveAll(tempDir) })
+
 	dbconfig := csconfig.DatabaseCfg{
 		Type:   "sqlite",
 		DbPath: filepath.Join(tempDir, "ent"),
@@ -103,8 +109,8 @@ func LoadTestConfigForwardedFor() csconfig.Config {
 	return config
 }
 
-func NewAPIServer() (*APIServer, csconfig.Config, error) {
-	config := LoadTestConfig()
+func NewAPIServer(t *testing.T) (*APIServer, csconfig.Config, error) {
+	config := LoadTestConfig(t)
 	os.Remove("./ent")
 	apiServer, err := NewServer(config.API.Server)
 	if err != nil {
@@ -115,8 +121,8 @@ func NewAPIServer() (*APIServer, csconfig.Config, error) {
 	return apiServer, config, nil
 }
 
-func NewAPITest() (*gin.Engine, csconfig.Config, error) {
-	apiServer, config, err := NewAPIServer()
+func NewAPITest(t *testing.T) (*gin.Engine, csconfig.Config, error) {
+	apiServer, config, err := NewAPIServer(t)
 	if err != nil {
 		return nil, config, fmt.Errorf("unable to run local API: %s", err)
 	}
@@ -131,8 +137,8 @@ func NewAPITest() (*gin.Engine, csconfig.Config, error) {
 	return router, config, nil
 }
 
-func NewAPITestForwardedFor() (*gin.Engine, csconfig.Config, error) {
-	config := LoadTestConfigForwardedFor()
+func NewAPITestForwardedFor(t *testing.T) (*gin.Engine, csconfig.Config, error) {
+	config := LoadTestConfigForwardedFor(t)
 
 	os.Remove("./ent")
 	apiServer, err := NewServer(config.API.Server)
@@ -285,7 +291,7 @@ func CreateTestBouncer(config *csconfig.DatabaseCfg) (string, error) {
 }
 
 func TestWithWrongDBConfig(t *testing.T) {
-	config := LoadTestConfig()
+	config := LoadTestConfig(t)
 	config.API.Server.DbConfig.Type = "test"
 	apiServer, err := NewServer(config.API.Server)
 
@@ -294,7 +300,7 @@ func TestWithWrongDBConfig(t *testing.T) {
 }
 
 func TestWithWrongFlushConfig(t *testing.T) {
-	config := LoadTestConfig()
+	config := LoadTestConfig(t)
 	maxItems := -1
 	config.API.Server.DbConfig.Flush.MaxItems = &maxItems
 	apiServer, err := NewServer(config.API.Server)
@@ -304,7 +310,7 @@ func TestWithWrongFlushConfig(t *testing.T) {
 }
 
 func TestUnknownPath(t *testing.T) {
-	router, _, err := NewAPITest()
+	router, _, err := NewAPITest(t)
 	if err != nil {
 		log.Fatalf("unable to run local API: %s", err)
 	}
@@ -334,13 +340,15 @@ ListenURI              string              `yaml:"listen_uri,omitempty"` //127.0
 */
 
 func TestLoggingDebugToFileConfig(t *testing.T) {
-
 	/*declare settings*/
 	maxAge := "1h"
 	flushConfig := csconfig.FlushDBCfg{
 		MaxAge: &maxAge,
 	}
+
 	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
+	t.Cleanup(func() { os.RemoveAll(tempDir) })
+
 	dbconfig := csconfig.DatabaseCfg{
 		Type:   "sqlite",
 		DbPath: filepath.Join(tempDir, "ent"),
@@ -398,7 +406,10 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	flushConfig := csconfig.FlushDBCfg{
 		MaxAge: &maxAge,
 	}
+
 	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
+	t.Cleanup(func() { os.RemoveAll(tempDir) })
+
 	dbconfig := csconfig.DatabaseCfg{
 		Type:   "sqlite",
 		DbPath: filepath.Join(tempDir, "ent"),
