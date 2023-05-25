@@ -135,7 +135,7 @@ func (l *LocalApiClientCfg) Load() error {
 
 		caCertPool, err := x509.SystemCertPool()
 		if err != nil {
-			log.Warningf("Error loading system cert pool: %s", err)
+			log.Warningf("Error loading system CA certificates: %s", err)
 		}
 		if caCertPool == nil {
 			caCertPool = x509.NewCertPool()

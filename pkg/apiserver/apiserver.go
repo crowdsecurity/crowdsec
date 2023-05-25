@@ -315,7 +315,7 @@ func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
 			}
 			caCertPool, err = x509.SystemCertPool()
 			if err != nil {
-				log.Warnf("Error loading system cert pool: %s", err)
+				log.Warnf("Error loading system CA certificates: %s", err)
 			}
 			if caCertPool == nil {
 				caCertPool = x509.NewCertPool()
