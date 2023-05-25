@@ -72,7 +72,6 @@ jobs:
           -e '/plugins/notifications' \
           -e '/pkg/protobufs' \
           -e '/pkg/cwversions' \
-          -e '/pkg/cstest' \
           -e '/pkg/models' \
           < coverage-bats-raw.out \
           > coverage-bats.out
