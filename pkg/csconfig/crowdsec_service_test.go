@@ -5,13 +5,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cstest"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/go-cs-lib/pkg/cstest"
+	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
+
 	"github.com/stretchr/testify/require"
 )
 
 func TestLoadCrowdsec(t *testing.T) {
-	falseBoolPtr := false
 	acquisFullPath, err := filepath.Abs("./tests/acquis.yaml")
 	require.NoError(t, err)
 
@@ -63,7 +63,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				},
 			},
 			expectedResult: &CrowdsecServiceCfg{
-				Enable:                    types.BoolPtr(true),
+				Enable:                    ptr.Of(true),
 				AcquisitionDirPath:        "",
 				ConsoleContextPath:        contextFileFullPath,
 				AcquisitionFilePath:       acquisFullPath,
@@ -81,7 +81,7 @@ func TestLoadCrowdsec(t *testing.T) {
 					"source_ip": {"evt.Parsed.source_ip"},
 				},
 				SimulationConfig: &SimulationConfig{
-					Simulation: &falseBoolPtr,
+					Simulation: ptr.Of(false),
 				},
 			},
 		},
@@ -106,7 +106,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				},
 			},
 			expectedResult: &CrowdsecServiceCfg{
-				Enable:                    types.BoolPtr(true),
+				Enable:                    ptr.Of(true),
 				AcquisitionDirPath:        acquisDirFullPath,
 				AcquisitionFilePath:       acquisFullPath,
 				ConsoleContextPath:        contextFileFullPath,
@@ -124,7 +124,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				},
 				SimulationFilePath: "./tests/simulation.yaml",
 				SimulationConfig: &SimulationConfig{
-					Simulation: &falseBoolPtr,
+					Simulation: ptr.Of(false),
 				},
 			},
 		},
@@ -147,7 +147,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				},
 			},
 			expectedResult: &CrowdsecServiceCfg{
-				Enable:                    types.BoolPtr(true),
+				Enable:                    ptr.Of(true),
 				AcquisitionDirPath:        "",
 				AcquisitionFilePath:       "",
 				ConfigDir:                 configDirFullPath,
@@ -165,7 +165,7 @@ func TestLoadCrowdsec(t *testing.T) {
 					"source_ip": {"evt.Parsed.source_ip"},
 				},
 				SimulationConfig: &SimulationConfig{
-					Simulation: &falseBoolPtr,
+					Simulation: ptr.Of(false),
 				},
 			},
 		},

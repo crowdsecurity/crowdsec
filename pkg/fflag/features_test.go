@@ -9,7 +9,8 @@ import (
 	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/stretchr/testify/require"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cstest"
+	"github.com/crowdsecurity/go-cs-lib/pkg/cstest"
+
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
 
