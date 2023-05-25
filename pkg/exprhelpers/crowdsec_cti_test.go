@@ -9,9 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
 )
 
 var sampledata = map[string]cticlient.SmokeItem{
@@ -106,7 +108,7 @@ func smokeHandler(req *http.Request) *http.Response {
 
 func TestInvalidAuth(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
-	if err := InitCrowdsecCTI(types.StrPtr("asdasd"), nil, nil, nil); err != nil {
+	if err := InitCrowdsecCTI(ptr.Of("asdasd"), nil, nil, nil); err != nil {
 		t.Fatalf("failed to init CTI : %s", err)
 	}
 	//Replace the client created by InitCrowdsecCTI with one that uses a custom transport
@@ -148,7 +150,7 @@ func TestNoKey(t *testing.T) {
 func TestCache(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
 	cacheDuration := 1 * time.Second
-	if err := InitCrowdsecCTI(types.StrPtr(validApiKey), &cacheDuration, nil, nil); err != nil {
+	if err := InitCrowdsecCTI(ptr.Of(validApiKey), &cacheDuration, nil, nil); err != nil {
 		t.Fatalf("failed to init CTI : %s", err)
 	}
 	//Replace the client created by InitCrowdsecCTI with one that uses a custom transport
