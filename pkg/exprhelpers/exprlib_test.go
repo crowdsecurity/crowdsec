@@ -1400,9 +1400,9 @@ func TestParseKv(t *testing.T) {
 			expr:     `ParseKV(value, out, "a")`,
 		},
 		{
-			name:     "ParseKV() test: ignore empty unquoted string",
+			name:     "ParseKV() test: empty unquoted string",
 			value:    `foo= bar=toto`,
-			expected: map[string]string{"bar": "toto"},
+			expected: map[string]string{"bar": "toto", "foo": ""},
 			expr:     `ParseKV(value, out, "a")`,
 		},
 		{
