@@ -51,7 +51,7 @@ var dbClient *database.Client
 
 var exprFunctionOptions []expr.Option
 
-var keyValuePattern = regexp.MustCompile(`\s*(?P<key>[^=\s]+)\s*=\s*(?:"(?P<quoted_value>[^"\\]*(?:\\.[^"\\]*)*)"|(?P<value>[^=\s]+))`)
+var keyValuePattern = regexp.MustCompile(`(?P<key>[^=\s]+)=(?:"(?P<quoted_value>[^"\\]*(?:\\.[^"\\]*)*)"|(?P<value>[^=\s]+)|\s*)`)
 
 func GetExprOptions(ctx map[string]interface{}) []expr.Option {
 	ret := []expr.Option{}

@@ -1399,6 +1399,18 @@ func TestParseKv(t *testing.T) {
 			expected: map[string]string{"foo": "bar=toto"},
 			expr:     `ParseKV(value, out, "a")`,
 		},
+		{
+			name:     "ParseKV() test: empty unquoted string",
+			value:    `foo= bar=toto`,
+			expected: map[string]string{"bar": "toto", "foo": ""},
+			expr:     `ParseKV(value, out, "a")`,
+		},
+		{
+			name:     "ParseKV() test: empty quoted string ",
+			value:    `foo="" bar=toto`,
+			expected: map[string]string{"bar": "toto", "foo": ""},
+			expr:     `ParseKV(value, out, "a")`,
+		},
 	}
 
 	for _, tc := range tests {
