@@ -1,4 +1,4 @@
-module github.com/crowdsecurity/crowdsec
+module github.com/asians-cloud/crowdsec
 
 go 1.20
 
