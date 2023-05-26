@@ -246,8 +246,43 @@ func (p *ParserAssert) AutoGenParserAssert() string {
 					}
 					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Enriched["%s"] == "%s"`+"\n", stage, parser, pidx, ekey, Escape(eval))
 				}
+				for ekey, eval := range result.Evt.Unmarshaled {
+					if eval == "" {
+						continue
+					}
+					base := fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Unmarshaled["%s"]`, stage, parser, pidx, ekey)
+					for _, line := range p.buildUnmarshaledAssert("", eval) {
+						ret += base + line
+					}
+				}
 			}
 		}
+	}
+	return ret
+}
+
+func (p *ParserAssert) buildUnmarshaledAssert(ekey string, eval interface{}) []string {
+	ret := make([]string, 0)
+	switch val := eval.(type) {
+	case map[string]interface{}:
+		for k, v := range val {
+			ret = append(ret, p.buildUnmarshaledAssert(fmt.Sprintf(`%s["%s"]`, ekey, k), v)...)
+		}
+	case map[interface{}]interface{}:
+		for k, v := range val {
+			ret = append(ret, p.buildUnmarshaledAssert(fmt.Sprintf(`%s["%s"]`, ekey, k), v)...)
+		}
+	case []interface{}:
+	case string:
+		ret = append(ret, fmt.Sprintf(`%s == "%s"`+"\n", ekey, Escape(val)))
+	case bool:
+		ret = append(ret, fmt.Sprintf(`%s == %t`+"\n", ekey, val))
+	case int:
+		ret = append(ret, fmt.Sprintf(`%s == %d`+"\n", ekey, val))
+	case float64:
+		ret = append(ret, fmt.Sprintf(`%s == %f`+"\n", ekey, val))
+	default:
+		log.Warningf("unknown type '%T' for key '%s'", val, ekey)
 	}
 	return ret
 }
