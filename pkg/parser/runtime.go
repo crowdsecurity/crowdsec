@@ -326,11 +326,11 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			}
 			clog.Tracef("node (%s) ret : %v", node.rn, ret)
 			if ParseDump {
+				StageParseMutex.Lock()
 				if len(StageParseCache[stage][node.Name]) == 0 {
-					StageParseMutex.Lock()
 					StageParseCache[stage][node.Name] = make([]ParserResult, 0)
-					StageParseMutex.Unlock()
 				}
+				StageParseMutex.Unlock()
 				evtcopy := deepcopy.Copy(event)
 				parserInfo := ParserResult{Evt: evtcopy.(types.Event), Success: ret}
 				StageParseMutex.Lock()
