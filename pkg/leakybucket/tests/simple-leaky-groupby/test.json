@@ -1,0 +1,63 @@
+{
+  "lines": [
+    {
+      "Line": {
+        "Labels": {
+          "type": "testlog"
+        },
+        "Raw": "xxheader VALUE1 trailing stuff"
+      },
+      "MarshaledTime": "2020-01-01T10:00:00+00:00",
+      "Meta": {
+        "source_ip": "192.0.2.11",
+        "username": "root"
+      }
+    },
+    {
+      "Line": {
+        "Labels": {
+          "type": "testlog"
+        },
+        "Raw": "xxheader VALUE2 trailing stuff"
+      },
+      "MarshaledTime": "2020-01-01T10:00:01+00:00",
+      "Meta": {
+        "source_ip": "192.0.2.22",
+        "username": "root"
+      }
+    }
+  ],
+  "results": [
+    {
+      "Alert": {
+        "sources": {
+          "192.0.2.11": {
+            "scope": "Ip",
+            "value": "192.0.2.11",
+            "ip": "192.0.2.11"
+          },
+          "192.0.2.22": {
+            "scope": "Ip",
+            "value": "192.0.2.22",
+            "ip": "192.0.2.22"
+          }
+        },
+        "Alert": {
+          "scenario": "test/simple-leaky-groupby",
+          "events_count": 2
+        },
+        "Events": [
+          {
+            "Meta": [
+              {
+                "key": "source_ip",
+                "value": "192.0.2.11"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
+
