@@ -335,11 +335,12 @@ func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 		if f.config.PollWithoutInotify != nil {
 			inotifyPoll = *f.config.PollWithoutInotify
 		} else {
-			fsType, err := types.GetFSType(file)
+			networkFS, err := types.IsNetworkFS(file)
 			if err != nil {
 				f.logger.Warningf("Could not get fs type for %s : %s", file, err)
 			}
-			if fsType == "nfs" || fsType == "cifs" || fsType == "smb" {
+			f.logger.Debugf("fs for %s is network: %b", file, networkFS)
+			if networkFS {
 				inotifyPoll = false
 			}
 		}
