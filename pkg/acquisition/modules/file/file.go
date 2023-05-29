@@ -335,11 +335,11 @@ func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 		if f.config.PollWithoutInotify != nil {
 			inotifyPoll = *f.config.PollWithoutInotify
 		} else {
-			networkFS, err := types.IsNetworkFS(file)
+			networkFS, fsType, err := types.IsNetworkFS(file)
 			if err != nil {
 				f.logger.Warningf("Could not get fs type for %s : %s", file, err)
 			}
-			f.logger.Debugf("fs for %s is network: %b", file, networkFS)
+			f.logger.Debugf("fs for %s is network: %t (%s)", file, networkFS, fsType)
 			if networkFS {
 				inotifyPoll = false
 			}
@@ -432,12 +432,17 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 				if f.config.PollWithoutInotify != nil {
 					inotifyPoll = *f.config.PollWithoutInotify
 				} else {
-					fsType, err := types.GetFSType(event.Name)
-					if err != nil {
-						f.logger.Warningf("Could not get fs type for %s : %s", event.Name, err)
-					}
-					if fsType == "nfs" || fsType == "cifs" || fsType == "smb" {
-						inotifyPoll = false
+					if f.config.PollWithoutInotify != nil {
+						inotifyPoll = *f.config.PollWithoutInotify
+					} else {
+						networkFS, fsType, err := types.IsNetworkFS(event.Name)
+						if err != nil {
+							f.logger.Warningf("Could not get fs type for %s : %s", event.Name, err)
+						}
+						f.logger.Debugf("fs for %s is network: %t (%s)", event.Name, networkFS, fsType)
+						if networkFS {
+							inotifyPoll = false
+						}
 					}
 				}
 

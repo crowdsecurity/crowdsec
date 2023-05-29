@@ -2,6 +2,11 @@
 
 package types
 
+import (
+	"fmt"
+	"syscall"
+)
+
 // Generated with `man statfs | grep _MAGIC | awk '{split(tolower($1),a,"_"); print $2 ": \"" a[1] "\","}'`
 // ext2/3/4 duplicates removed to just have ext4
 // XIAFS removed as well
