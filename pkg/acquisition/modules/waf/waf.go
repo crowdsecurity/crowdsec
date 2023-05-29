@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/corazawaf/coraza/v3"
+	"github.com/corazawaf/coraza/v3/experimental"
 	corazatypes "github.com/corazawaf/coraza/v3/types"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -198,6 +199,7 @@ func processReqWithEngine(waf coraza.WAF, r *http.Request) (*corazatypes.Interru
 	tx := waf.NewTransaction()
 
 	if tx.IsRuleEngineOff() {
+		log.Printf("engine is off")
 		return nil, nil
 	}
 
@@ -207,8 +209,12 @@ func processReqWithEngine(waf coraza.WAF, r *http.Request) (*corazatypes.Interru
 	}()
 
 	//this method is not exported by coraza, so we have to do it ourselves.
-	//ideally, this would be dealt with by expr code, and we provide helpers to manipulate the transaction object?
-	tx.RemoveRuleByID(1)
+	//ideally, this would be dealt with by expr code, and we provide helpers to manipulate the transaction object?\
+	var txx experimental.FullTransaction
+
+	//txx := experimental.ToFullInterface(tx)
+	txx = tx.(experimental.FullTransaction)
+	txx.RemoveRuleByID(1)
 
 	tx.ProcessConnection(r.RemoteAddr, 0, "", 0)
 
@@ -232,6 +238,7 @@ func processReqWithEngine(waf coraza.WAF, r *http.Request) (*corazatypes.Interru
 
 	in := tx.ProcessRequestHeaders()
 	if in != nil {
+		log.Printf("headerss")
 		return in, nil
 	}
 
@@ -254,14 +261,18 @@ func processReqWithEngine(waf coraza.WAF, r *http.Request) (*corazatypes.Interru
 
 			}
 			if in != nil {
+				log.Printf("nothing here")
 				return in, nil
 			}
 		}
 	}
+	log.Printf("done")
+
 	return nil, nil
 }
 
 func (w *WafSource) wafHandler(rw http.ResponseWriter, r *http.Request) {
+	log.Printf("yolo here  %v", r)
 	//inband first
 	in, err := processReqWithEngine(w.inBandWaf, r)
 	if err != nil { //things went south
