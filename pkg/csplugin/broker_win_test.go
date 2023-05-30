@@ -29,65 +29,6 @@ not if it will actually reject plugins with invalid permissions
 
 var testPath string
 
-func TestGetPluginNameAndTypeFromPath(t *testing.T) {
-	setUp()
-	defer tearDown()
-	type args struct {
-		path string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    string
-		want1   string
-		wantErr bool
-	}{
-		{
-			name: "valid plugin name, single dash",
-			args: args{
-				path: path.Join(testPath, "notification-gitter"),
-			},
-			want:    "notification",
-			want1:   "gitter",
-			wantErr: false,
-		},
-		{
-			name: "invalid plugin name",
-			args: args{
-				path: ".\\tests\\gitter.exe",
-			},
-			want:    "",
-			want1:   "",
-			wantErr: true,
-		},
-		{
-			name: "valid plugin name, multiple dash",
-			args: args{
-				path: ".\\tests\\notification-instant-slack.exe",
-			},
-			want:    "notification-instant",
-			want1:   "slack",
-			wantErr: false,
-		},
-	}
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1, err := getPluginTypeAndSubtypeFromPath(tt.args.path)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("getPluginNameAndTypeFromPath() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("getPluginNameAndTypeFromPath() got = %v, want %v", got, tt.want)
-			}
-			if got1 != tt.want1 {
-				t.Errorf("getPluginNameAndTypeFromPath() got1 = %v, want %v", got1, tt.want1)
-			}
-		})
-	}
-}
-
 func TestListFilesAtPath(t *testing.T) {
 	setUp()
 	defer tearDown()
