@@ -11,44 +11,35 @@ import (
 )
 
 func TestGetPluginNameAndTypeFromPath(t *testing.T) {
-	type args struct {
-		path string
-	}
 	tests := []struct {
 		name        string
-		args        args
+		path        string
 		want        string
 		want1       string
 		expectedErr string
 	}{
 		{
-			name: "valid plugin name, single dash",
-			args: args{
-				path: "/path/to/notification-gitter",
-			},
-			want:    "notification",
-			want1:   "gitter",
+			name:  "valid plugin name, single dash",
+			path:  "/path/to/notification-gitter",
+			want:  "notification",
+			want1: "gitter",
 		},
 		{
-			name: "invalid plugin name",
-			args: args{
-				path: "/path/to/gitter",
-			},
+			name:        "invalid plugin name",
+			path:        "/path/to/gitter",
 			expectedErr: "plugin name /path/to/gitter is invalid. Name should be like {type-name}",
 		},
 		{
-			name: "valid plugin name, multiple dash",
-			args: args{
-				path: "/path/to/notification-instant-slack",
-			},
-			want:    "notification-instant",
-			want1:   "slack",
+			name:  "valid plugin name, multiple dash",
+			path:  "/path/to/notification-instant-slack",
+			want:  "notification-instant",
+			want1: "slack",
 		},
 	}
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			got, got1, err := getPluginTypeAndSubtypeFromPath(tc.args.path)
+			got, got1, err := getPluginTypeAndSubtypeFromPath(tc.path)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
 			assert.Equal(t, tc.want, got)
