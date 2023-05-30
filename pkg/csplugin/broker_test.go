@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"runtime"
 	"testing"
 	"time"
 
@@ -38,10 +37,6 @@ func setPluginPermTo724(t *testing.T) {
 }
 
 func TestBrokerInit(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Skipping test on windows")
-	}
-
 	tests := []struct {
 		name        string
 		action      func(*testing.T)
@@ -480,10 +475,8 @@ func buildDummyPlugin(t *testing.T) {
 }
 
 func setPluginPermTo(t *testing.T, perm string) {
-	if runtime.GOOS != "windows" {
-		err := exec.Command("chmod", perm, path.Join(testPath, "notification-dummy")).Run()
-		require.NoError(t, err, "chmod 744 %s", path.Join(testPath, "notification-dummy"))
-	}
+	err := exec.Command("chmod", perm, path.Join(testPath, "notification-dummy")).Run()
+	require.NoError(t, err, "chmod 744 %s", path.Join(testPath, "notification-dummy"))
 }
 
 func tearDown(t *testing.T) {

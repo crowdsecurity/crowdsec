@@ -27,7 +27,7 @@ func TestGetPluginNameAndTypeFromPath(t *testing.T) {
 		{
 			name:        "invalid plugin name",
 			path:        "c:\\path\\to\\gitter.exe",
-			expectedErr: "something"
+			expectedErr: "something",
 		},
 		{
 			name:  "valid plugin name, multiple dash",
