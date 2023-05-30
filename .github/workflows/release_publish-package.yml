@@ -6,6 +6,10 @@ on:
     types:
       - prereleased
 
+permissions:
+  # Use write for: hub release edit
+  contents: write
+
 jobs:
   build:
     strategy:
@@ -43,8 +47,8 @@ jobs:
         run: make release
 
       - name: Upload to release
-        uses: JasonEtco/upload-to-release@master
-        with:
-          args: crowdsec-release.tgz application/x-gzip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag_name="${GITHUB_REF##*/}"
+          hub release edit -a crowdsec-release.tgz -m "" "$tag_name"
