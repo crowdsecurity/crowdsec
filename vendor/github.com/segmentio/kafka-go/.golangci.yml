@@ -1,0 +1,18 @@
+linters:
+  enable:
+    - bodyclose
+    - errorlint
+    - goconst
+    - godot
+    - gofmt
+    - goimports
+    - prealloc
+
+  disable:
+    # Temporarily disabling so it can be addressed in a dedicated PR.
+    - errcheck
+    - goerr113
+
+linters-settings:
+  goconst:
+    ignore-tests: true

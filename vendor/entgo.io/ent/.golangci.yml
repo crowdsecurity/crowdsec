@@ -1,0 +1,75 @@
+run:
+  go: '1.19'
+  timeout: 5m
+
+linters-settings:
+  errcheck:
+    ignore: fmt:.*,Read|Write|Close|Exec,io:Copy
+  dupl:
+    threshold: 100
+  funlen:
+    lines: 115
+    statements: 115
+  goheader:
+    template: |-
+      Copyright 2019-present Facebook Inc. All rights reserved.
+      This source code is licensed under the Apache 2.0 license found
+      in the LICENSE file in the root directory of this source tree.
+linters:
+  disable-all: true
+  enable:
+    - bodyclose
+    - deadcode
+    - depguard
+    - dogsled
+    - dupl
+    - errcheck
+    - funlen
+    - gocritic
+    # - gofmt; Enable back when upgrading CI to Go 1.20.
+    - goheader
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - staticcheck
+    - structcheck
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unused
+    - varcheck
+    - whitespace
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - dupl
+        - funlen
+        - gosec
+        - gocritic
+    - linters:
+        - unused
+      source: ent.Schema
+    - path: dialect/sql/schema
+      linters:
+        - dupl
+        - gosec
+    - text: "Expect WriteFile permissions to be 0600 or less"
+      linters:
+        - gosec
+    - path: privacy/privacy.go
+      linters:
+        - stylecheck
+    - path: entc/load/schema.go
+      linters:
+        - staticcheck
+    - path: entc/gen/graph.go
+      linters:
+        - gocritic
+    - path: \.go
+      linters:
+        - staticcheck
+      text: SA1019
