@@ -23,6 +23,16 @@ import (
 )
 
 var testPath string
+var binPath string
+
+func pluginBinary() string {
+	binPath = path.Join(testPath, "bin")
+	return path.Join(binPath, "notification-dummy")
+}
+
+func pluginConfig() string {
+	return path.Join(testPath, "config", "dummy.yaml")
+}
 
 func TestBrokerInit(t *testing.T) {
 	tests := []struct {
@@ -53,7 +63,7 @@ func TestBrokerInit(t *testing.T) {
 			name:        "no plugin binary",
 			expectedErr: "binary for plugin dummy_default not found",
 			action: func(t *testing.T) {
-				err := os.Remove(path.Join(testPath, "notification-dummy"))
+				err := os.Remove(pluginBinary())
 				require.NoError(t, err)
 			},
 		},
@@ -112,7 +122,7 @@ func TestBrokerInit(t *testing.T) {
 				Notifications: []string{"dummy_default"},
 			})
 			err := pb.Init(&tc.procCfg, profiles, &csconfig.ConfigurationPaths{
-				PluginDir:       testPath,
+				PluginDir:       binPath,
 				NotificationDir: "./tests/notifications",
 			})
 			defer pb.Kill()
@@ -157,7 +167,7 @@ func TestBrokerNoThreshold(t *testing.T) {
 
 	// default config
 	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
-		PluginDir:       testPath,
+		PluginDir:       binPath,
 		NotificationDir: "./tests/notifications",
 	})
 
@@ -216,7 +226,7 @@ func TestBrokerRunGroupAndTimeThreshold_TimeFirst(t *testing.T) {
 	cfg.GroupWait = 1 * time.Second
 	writeconfig(t, cfg, "tests/notifications/dummy.yaml")
 	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
-		PluginDir:       testPath,
+		PluginDir:       binPath,
 		NotificationDir: "./tests/notifications",
 	})
 	assert.NoError(t, err)
@@ -265,7 +275,7 @@ func TestBrokerRunGroupAndTimeThreshold_CountFirst(t *testing.T) {
 	cfg.GroupWait = 4 * time.Second
 	writeconfig(t, cfg, "tests/notifications/dummy.yaml")
 	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
-		PluginDir:       testPath,
+		PluginDir:       binPath,
 		NotificationDir: "./tests/notifications",
 	})
 	assert.NoError(t, err)
@@ -318,7 +328,7 @@ func TestBrokerRunGroupThreshold(t *testing.T) {
 	cfg.GroupThreshold = 4
 	writeconfig(t, cfg, "tests/notifications/dummy.yaml")
 	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
-		PluginDir:       testPath,
+		PluginDir:       binPath,
 		NotificationDir: "./tests/notifications",
 	})
 
@@ -371,7 +381,7 @@ func TestBrokerRunTimeThreshold(t *testing.T) {
 	cfg.GroupWait = 1 * time.Second
 	writeconfig(t, cfg, "tests/notifications/dummy.yaml")
 	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
-		PluginDir:       testPath,
+		PluginDir:       binPath,
 		NotificationDir: "./tests/notifications",
 	})
 	assert.NoError(t, err)
@@ -413,7 +423,7 @@ func TestBrokerRunSimple(t *testing.T) {
 		Notifications: []string{"dummy_default"},
 	})
 	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
-		PluginDir:       testPath,
+		PluginDir:       binPath,
 		NotificationDir: "./tests/notifications",
 	})
 	assert.NoError(t, err)
@@ -442,16 +452,22 @@ func TestBrokerRunSimple(t *testing.T) {
 func buildDummyPlugin(t *testing.T) {
 	var err error
 
-	testPath, err = os.MkdirTemp("./tests", "cs_plugin_test")
+	testPath, err = os.MkdirTemp("", "cs_plugin_test")
 	require.NoError(t, err)
 
-	pluginBinary := path.Join(testPath, "notification-dummy")
+	// create bin, config directories
+	
+	err = os.MkdirAll(path.Join(testPath, "config"), 0o755)
+	require.NoError(t, err, "while creating config dir")
 
-	cmd := exec.Command("go", "build", "-o", pluginBinary, "../../plugins/notifications/dummy/")
+	err = os.MkdirAll(path.Join(testPath, "bin"), 0o755)
+	require.NoError(t, err, "while creating bin dir")
+	
+	cmd := exec.Command("go", "build", "-o", pluginBinary(), "../../plugins/notifications/dummy/")
 	err = cmd.Run()
 	require.NoError(t, err, "while building dummy plugin")
 
-	err = os.Chmod(pluginBinary, 0o744)
+	err = os.Chmod(pluginBinary(), 0o744)
 	require.NoError(t, err, "chmod 0744 %s", pluginBinary)
 
 	os.Remove("./out")
@@ -460,8 +476,8 @@ func buildDummyPlugin(t *testing.T) {
 func permissionSetter(perm os.FileMode) func(*testing.T) {
 	// temporarily change permissions, and restore them after the test
 	return func(t *testing.T) {
-		err := os.Chmod(path.Join(testPath, "notification-dummy"), perm)
-		require.NoError(t, err, "chmod %s %s", perm, path.Join(testPath, "notification-dummy"))
+		err := os.Chmod(pluginBinary(), perm)
+		require.NoError(t, err, "chmod %s %s", perm, pluginBinary())
 	}
 }
 
