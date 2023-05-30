@@ -440,10 +440,12 @@ func TestBrokerRunSimple(t *testing.T) {
 }
 
 func buildDummyPlugin(t *testing.T) {
-	dir, err := os.MkdirTemp("./tests", "cs_plugin_test")
+	var err error
+
+	testPath, err = os.MkdirTemp("./tests", "cs_plugin_test")
 	require.NoError(t, err)
 
-	pluginBinary := path.Join(dir, "notification-dummy")
+	pluginBinary := path.Join(testPath, "notification-dummy")
 
 	cmd := exec.Command("go", "build", "-o", pluginBinary, "../../plugins/notifications/dummy/")
 	err = cmd.Run()
@@ -452,7 +454,6 @@ func buildDummyPlugin(t *testing.T) {
 	err = os.Chmod(pluginBinary, 0o744)
 	require.NoError(t, err, "chmod 0744 %s", pluginBinary)
 
-	testPath = dir
 	os.Remove("./out")
 }
 

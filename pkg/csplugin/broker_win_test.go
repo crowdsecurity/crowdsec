@@ -51,7 +51,7 @@ func TestBrokerInit(t *testing.T) {
 			name:        "no plugin binary",
 			wantErr:     true,
 			errContains: "binary for plugin dummy_default not found",
-			action: func() {
+			action: func(t *testing.T) {
 				err := os.Remove(path.Join(testPath, "notification-dummy.exe"))
 				require.NoError(t, err)
 			},
@@ -61,10 +61,10 @@ func TestBrokerInit(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-			defer tearDown()
+			defer tearDown(t)
 			buildDummyPlugin(t)
 			if test.action != nil {
-				test.action()
+				test.action(t)
 			}
 			pb := PluginBroker{}
 			profiles := csconfig.NewDefaultConfig().API.Server.Profiles
@@ -88,7 +88,7 @@ func TestBrokerInit(t *testing.T) {
 
 func TestBrokerRun(t *testing.T) {
 	buildDummyPlugin(t)
-	defer tearDown()
+	defer tearDown(t)
 	procCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
 	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
@@ -126,7 +126,7 @@ func buildDummyPlugin(t *testing.T) {
 	testPath = dir
 }
 
-func tearDown() {
+func tearDown(t *testing.T) {
 	err := os.RemoveAll(testPath)
 	require.NoError(t, err)
 
