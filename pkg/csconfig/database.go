@@ -2,6 +2,7 @@ package csconfig
 
 import (
 	"fmt"
+	"path/filepath"
 	"time"
 
 	"entgo.io/ent/dialect"
@@ -61,7 +62,30 @@ func (c *Config) LoadDBConfig() error {
 
 	if c.DbConfig.Type == "sqlite" {
 		if c.DbConfig.UseWal == nil {
-			log.Warning("You are using sqlite without WAL, this can have a performance impact. If you do not store the database in a network share, set db_config.use_wal to true. Set explicitly to false to disable this warning.")
+			dbDir := filepath.Dir(c.DbConfig.DbPath)
+			isNetwork, fsType, err := types.IsNetworkFS(dbDir)
+			if err != nil {
+				log.Warnf("unable to determine if database is on network filesystem: %s", err)
+				log.Warning("You are using sqlite without WAL, this can have a performance impact. If you do not store the database in a network share, set db_config.use_wal to true. Set explicitly to false to disable this warning.")
+				return nil
+			}
+			if isNetwork {
+				log.Debugf("database is on network filesystem (%s), setting useWal to false", fsType)
+				c.DbConfig.UseWal = types.BoolPtr(false)
+			} else {
+				log.Debugf("database is on local filesystem (%s), setting useWal to true", fsType)
+				c.DbConfig.UseWal = types.BoolPtr(true)
+			}
+		} else if *c.DbConfig.UseWal {
+			dbDir := filepath.Dir(c.DbConfig.DbPath)
+			isNetwork, fsType, err := types.IsNetworkFS(dbDir)
+			if err != nil {
+				log.Warnf("unable to determine if database is on network filesystem: %s", err)
+				return nil
+			}
+			if isNetwork {
+				log.Warnf("database seems to be stored on a network share (%s), but useWal is set to true. Proceed at your own risk.", fsType)
+			}
 		}
 
 	}

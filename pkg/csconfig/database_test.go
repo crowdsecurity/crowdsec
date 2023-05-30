@@ -33,6 +33,7 @@ func TestLoadDBConfig(t *testing.T) {
 				Type:         "sqlite",
 				DbPath:       "./tests/test.db",
 				MaxOpenConns: types.IntPtr(10),
+				UseWal:       types.BoolPtr(true),
 			},
 		},
 		{
