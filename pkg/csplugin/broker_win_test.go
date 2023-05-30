@@ -29,51 +29,6 @@ not if it will actually reject plugins with invalid permissions
 
 var testPath string
 
-func TestListFilesAtPath(t *testing.T) {
-	setUp()
-	defer tearDown()
-	type args struct {
-		path string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    []string
-		wantErr bool
-	}{
-		{
-			name: "valid directory",
-			args: args{
-				path: testPath,
-			},
-			want: []string{
-				filepath.Join(testPath, "notification-gitter"),
-				filepath.Join(testPath, "slack"),
-			},
-		},
-		{
-			name: "invalid directory",
-			args: args{
-				path: "./foo/bar/",
-			},
-			wantErr: true,
-		},
-	}
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := listFilesAtPath(tt.args.path)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("listFilesAtPath() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("listFilesAtPath() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestBrokerInit(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -169,28 +124,6 @@ func buildDummyPlugin() {
 	}
 	cmd := exec.Command("go", "build", "-o", path.Join(dir, "notification-dummy.exe"), "../../plugins/notifications/dummy/")
 	if err := cmd.Run(); err != nil {
-		log.Fatal(err)
-	}
-	testPath = dir
-}
-
-func setUp() {
-	dir, err := os.MkdirTemp("./", "cs_plugin_test")
-	if err != nil {
-		log.Fatal(err)
-	}
-	f, err := os.Create(path.Join(dir, "slack"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	f.Close()
-	f, err = os.Create(path.Join(dir, "notification-gitter"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	f.Close()
-	err = os.Mkdir(path.Join(dir, "dummy_dir"), 0666)
-	if err != nil {
 		log.Fatal(err)
 	}
 	testPath = dir

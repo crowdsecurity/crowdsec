@@ -7,8 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"path/filepath"
-	"reflect"
 	"runtime"
 	"testing"
 	"time"
@@ -37,49 +35,6 @@ func setPluginPermTo722(t *testing.T) {
 
 func setPluginPermTo724(t *testing.T) {
 	setPluginPermTo(t, "724")
-}
-
-func TestListFilesAtPath(t *testing.T) {
-	setUp(t)
-	defer tearDown(t)
-	type args struct {
-		path string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    []string
-		expectedErr string
-	}{
-		{
-			name: "valid directory",
-			args: args{
-				path: testPath,
-			},
-			want: []string{
-				filepath.Join(testPath, "notification-gitter"),
-				filepath.Join(testPath, "slack"),
-			},
-		},
-		{
-			name: "invalid directory",
-			args: args{
-				path: "./foo/bar/",
-			},
-			expectedErr: "open ./foo/bar/: " + cstest.FileNotFoundMessage,
-		},
-	}
-	for _, tc := range tests {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			got, err := listFilesAtPath(tc.args.path)
-			cstest.RequireErrorContains(t, err, tc.expectedErr)
-
-			if !reflect.DeepEqual(got, tc.want) {
-				t.Errorf("listFilesAtPath() = %v, want %v", got, tc.want)
-			}
-		})
-	}
 }
 
 func TestBrokerInit(t *testing.T) {
@@ -529,24 +484,6 @@ func setPluginPermTo(t *testing.T, perm string) {
 		err := exec.Command("chmod", perm, path.Join(testPath, "notification-dummy")).Run()
 		require.NoError(t, err, "chmod 744 %s", path.Join(testPath, "notification-dummy"))
 	}
-}
-
-func setUp(t *testing.T) {
-	dir, err := os.MkdirTemp("./", "cs_plugin_test")
-	require.NoError(t, err)
-
-	f, err := os.Create(path.Join(dir, "slack"))
-	require.NoError(t, err)
-
-	f.Close()
-	f, err = os.Create(path.Join(dir, "notification-gitter"))
-	require.NoError(t, err)
-
-	f.Close()
-	err = os.Mkdir(path.Join(dir, "dummy_dir"), 0666)
-	require.NoError(t, err)
-
-	testPath = dir
 }
 
 func tearDown(t *testing.T) {
