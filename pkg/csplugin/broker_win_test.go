@@ -53,9 +53,7 @@ func TestBrokerInit(t *testing.T) {
 			errContains: "binary for plugin dummy_default not found",
 			action: func() {
 				err := os.Remove(path.Join(testPath, "notification-dummy.exe"))
-				if err != nil {
-					t.Fatal(err)
-				}
+				require.NoError(t, err)
 			},
 		},
 	}
@@ -64,7 +62,7 @@ func TestBrokerInit(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			defer tearDown()
-			buildDummyPlugin()
+			buildDummyPlugin(t)
 			if test.action != nil {
 				test.action()
 			}
@@ -89,7 +87,7 @@ func TestBrokerInit(t *testing.T) {
 }
 
 func TestBrokerRun(t *testing.T) {
-	buildDummyPlugin()
+	buildDummyPlugin(t)
 	defer tearDown()
 	procCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
@@ -117,21 +115,20 @@ func TestBrokerRun(t *testing.T) {
 	assert.Equal(t, types.GetLineCountForFile(".\\out"), 2)
 }
 
-func buildDummyPlugin() {
+func buildDummyPlugin(t *testing.T) {
 	dir, err := os.MkdirTemp(".\\tests", "cs_plugin_test")
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	cmd := exec.Command("go", "build", "-o", path.Join(dir, "notification-dummy.exe"), "../../plugins/notifications/dummy/")
-	if err := cmd.Run(); err != nil {
-		log.Fatal(err)
-	}
+	err := cmd.Run()
+	require.NoError(t, err, "while building dummy plugin")
+
 	testPath = dir
 }
 
 func tearDown() {
 	err := os.RemoveAll(testPath)
-	if err != nil {
-		log.Fatal(err)
-	}
+	require.NoError(t, err)
+
+	os.Remove(".\\out")
 }

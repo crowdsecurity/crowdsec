@@ -24,18 +24,6 @@ import (
 
 var testPath string
 
-func setPluginPermTo744(t *testing.T) {
-	setPluginPermTo(t, "744")
-}
-
-func setPluginPermTo722(t *testing.T) {
-	setPluginPermTo(t, "722")
-}
-
-func setPluginPermTo724(t *testing.T) {
-	setPluginPermTo(t, "724")
-}
-
 func TestBrokerInit(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -45,17 +33,16 @@ func TestBrokerInit(t *testing.T) {
 	}{
 		{
 			name:   "valid config",
-			action: setPluginPermTo744,
 		},
 		{
 			name:        "group writable binary",
 			expectedErr: "notification-dummy is world writable",
-			action:      setPluginPermTo722,
+			action:      permissionSetter(0o722),
 		},
 		{
 			name:        "group writable binary",
 			expectedErr: "notification-dummy is group writable",
-			action:      setPluginPermTo724,
+			action:      permissionSetter(0o724),
 		},
 		{
 			name:        "no plugin dir",
@@ -76,7 +63,6 @@ func TestBrokerInit(t *testing.T) {
 			procCfg: csconfig.PluginCfg{
 				User: "123445555551122toto",
 			},
-			action: setPluginPermTo744,
 		},
 		{
 			name:        "only specify group",
@@ -84,7 +70,6 @@ func TestBrokerInit(t *testing.T) {
 			procCfg: csconfig.PluginCfg{
 				Group: "123445555551122toto",
 			},
-			action: setPluginPermTo744,
 		},
 		{
 			name:        "Fails to run as root",
@@ -93,7 +78,6 @@ func TestBrokerInit(t *testing.T) {
 				User:  "root",
 				Group: "root",
 			},
-			action: setPluginPermTo744,
 		},
 		{
 			name:        "Invalid user and group",
@@ -102,7 +86,6 @@ func TestBrokerInit(t *testing.T) {
 				User:  "toto1234",
 				Group: "toto1234",
 			},
-			action: setPluginPermTo744,
 		},
 		{
 			name:        "Valid user and invalid group",
@@ -111,7 +94,6 @@ func TestBrokerInit(t *testing.T) {
 				User:  "nobody",
 				Group: "toto1234",
 			},
-			action: setPluginPermTo744,
 		},
 	}
 
@@ -120,6 +102,7 @@ func TestBrokerInit(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			defer tearDown(t)
 			buildDummyPlugin(t)
+			permissionSetter(0o744)(t)
 			if tc.action != nil {
 				tc.action(t)
 			}
@@ -162,7 +145,6 @@ func TestBrokerNoThreshold(t *testing.T) {
 	DefaultEmptyTicker = 50 * time.Millisecond
 
 	buildDummyPlugin(t)
-	setPluginPermTo744(t)
 	defer tearDown(t)
 
 	// init
@@ -219,7 +201,6 @@ func TestBrokerRunGroupAndTimeThreshold_TimeFirst(t *testing.T) {
 	// test grouping by "time"
 	DefaultEmptyTicker = 50 * time.Millisecond
 	buildDummyPlugin(t)
-	setPluginPermTo744(t)
 	defer tearDown(t)
 
 	// init
@@ -268,7 +249,6 @@ func TestBrokerRunGroupAndTimeThreshold_TimeFirst(t *testing.T) {
 func TestBrokerRunGroupAndTimeThreshold_CountFirst(t *testing.T) {
 	DefaultEmptyTicker = 50 * time.Millisecond
 	buildDummyPlugin(t)
-	setPluginPermTo(t, "744")
 	defer tearDown(t)
 
 	// init
@@ -323,7 +303,6 @@ func TestBrokerRunGroupThreshold(t *testing.T) {
 	// test grouping by "size"
 	DefaultEmptyTicker = 50 * time.Millisecond
 	buildDummyPlugin(t)
-	setPluginPermTo(t, "744")
 	defer tearDown(t)
 
 	// init
@@ -377,7 +356,6 @@ func TestBrokerRunGroupThreshold(t *testing.T) {
 func TestBrokerRunTimeThreshold(t *testing.T) {
 	DefaultEmptyTicker = 50 * time.Millisecond
 	buildDummyPlugin(t)
-	setPluginPermTo(t, "744")
 	defer tearDown(t)
 
 	// init
@@ -427,7 +405,6 @@ func TestBrokerRunTimeThreshold(t *testing.T) {
 func TestBrokerRunSimple(t *testing.T) {
 	DefaultEmptyTicker = 50 * time.Millisecond
 	buildDummyPlugin(t)
-	setPluginPermTo(t, "744")
 	defer tearDown(t)
 	pluginCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
@@ -466,17 +443,25 @@ func buildDummyPlugin(t *testing.T) {
 	dir, err := os.MkdirTemp("./tests", "cs_plugin_test")
 	require.NoError(t, err)
 
-	cmd := exec.Command("go", "build", "-o", path.Join(dir, "notification-dummy"), "../../plugins/notifications/dummy/")
+	pluginBinary := path.Join(dir, "notification-dummy")
+
+	cmd := exec.Command("go", "build", "-o", pluginBinary, "../../plugins/notifications/dummy/")
 	err = cmd.Run()
 	require.NoError(t, err, "while building dummy plugin")
+
+	err = os.Chmod(pluginBinary, 0o744)
+	require.NoError(t, err, "chmod 0744 %s", pluginBinary)
 
 	testPath = dir
 	os.Remove("./out")
 }
 
-func setPluginPermTo(t *testing.T, perm string) {
-	err := exec.Command("chmod", perm, path.Join(testPath, "notification-dummy")).Run()
-	require.NoError(t, err, "chmod 744 %s", path.Join(testPath, "notification-dummy"))
+func permissionSetter(perm os.FileMode) func(*testing.T) {
+	// temporarily change permissions, and restore them after the test
+	return func(t *testing.T) {
+		err := os.Chmod(path.Join(testPath, "notification-dummy"), perm)
+		require.NoError(t, err, "chmod %s %s", perm, path.Join(testPath, "notification-dummy"))
+	}
 }
 
 func tearDown(t *testing.T) {
