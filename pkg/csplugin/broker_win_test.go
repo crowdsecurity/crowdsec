@@ -33,24 +33,20 @@ func TestBrokerInit(t *testing.T) {
 	tests := []struct {
 		name        string
 		action      func()
-		errContains string
-		wantErr     bool
+		expectedErr string
 		procCfg     csconfig.PluginCfg
 	}{
 		{
 			name:    "valid config",
-			wantErr: false,
 		},
 		{
 			name:        "no plugin dir",
-			wantErr:     true,
-			errContains: cstest.FileNotFoundMessage,
+			expectedErr: cstest.FileNotFoundMessage,
 			action:      tearDown,
 		},
 		{
 			name:        "no plugin binary",
-			wantErr:     true,
-			errContains: "binary for plugin dummy_default not found",
+			expectedErr: "binary for plugin dummy_default not found",
 			action: func(t *testing.T) {
 				err := os.Remove(path.Join(testPath, "notification-dummy.exe"))
 				require.NoError(t, err)
@@ -76,12 +72,7 @@ func TestBrokerInit(t *testing.T) {
 				NotificationDir: "./tests/notifications",
 			})
 			defer pb.Kill()
-			if test.wantErr {
-				assert.ErrorContains(t, err, test.errContains)
-			} else {
-				assert.NoError(t, err)
-			}
-
+			cstest.RequireErrorContains(t, err, test.expectedErr)
 		})
 	}
 }

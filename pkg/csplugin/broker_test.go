@@ -4,6 +4,8 @@ package csplugin
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path"
@@ -13,6 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/suite"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
@@ -22,19 +25,153 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-var testPath string
-var binPath string
 
-func pluginBinary() string {
-	binPath = path.Join(testPath, "bin")
-	return path.Join(binPath, "notification-dummy")
+type PluginSuite struct {
+	suite.Suite
+
+	// where the plugin is built
+	buildDir string
+	// full path to the built plugin binary
+	builtBinary string
+
+	runDir string		// temporary directory for each test
+	pluginDir  string		// (config_paths.plugin_dir)
+	notifDir string	// (config_paths.notification_dir)
+	pluginBinary string	// full path to the plugin binary (unique for each test)
+	pluginConfig string	// full path to the notification config (unique for each test)
 }
 
-func pluginConfig() string {
-	return path.Join(testPath, "config", "dummy.yaml")
+
+func TestPluginSuite(t *testing.T) {
+	suite.Run(t, new(PluginSuite))
 }
 
-func TestBrokerInit(t *testing.T) {
+
+func (s *PluginSuite) SetupSuite() {
+	var err error
+
+	t := s.T()
+
+	s.buildDir, err = os.MkdirTemp("", "cs_plugin_test_build")
+	require.NoError(t, err)
+
+	s.builtBinary = path.Join(s.buildDir, "notification-dummy")
+	cmd := exec.Command("go", "build", "-o", s.builtBinary, "../../plugins/notifications/dummy/")
+	err = cmd.Run()
+	require.NoError(t, err, "while building dummy plugin")
+}
+
+
+func (s *PluginSuite) TearDownSuite() {
+	t := s.T()
+	err := os.RemoveAll(s.buildDir)
+	require.NoError(t, err)
+}
+
+
+func copyFile(src string, dst string) error {
+	s, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer s.Close()
+
+	d, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer d.Close()
+
+	_, err = io.Copy(d, s)
+	if err != nil {
+		return err
+	}
+
+	err = d.Sync()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *PluginSuite) SetupTest() {
+	s.SetupSubTest()
+}
+
+func (s *PluginSuite) TearDownTest() {
+	s.TearDownSubTest()
+}
+
+
+func (s *PluginSuite) SetupSubTest() {
+	var err error
+	t := s.T()
+
+	fmt.Printf("SetupTest %s\n", t.Name())
+
+	s.runDir, err = os.MkdirTemp("", "cs_plugin_test")
+	require.NoError(t, err)
+
+	s.pluginDir = path.Join(s.runDir, "bin")
+	err = os.MkdirAll(path.Join(s.runDir, "bin"), 0o755)
+	require.NoError(t, err, "while creating bin dir")
+
+	s.notifDir = path.Join(s.runDir, "config")
+	err = os.MkdirAll(s.notifDir, 0o755)
+	require.NoError(t, err, "while creating config dir")
+
+	s.pluginBinary = path.Join(s.pluginDir, "notification-dummy")
+	err = copyFile(s.builtBinary, s.pluginBinary)
+	require.NoError(t, err, "while copying built binary")
+	err = os.Chmod(s.pluginBinary, 0o744)
+	require.NoError(t, err, "chmod 0744 %s", s.pluginBinary)
+	
+	s.pluginConfig = path.Join(s.notifDir, "dummy.yaml")
+	err = copyFile("testdata/dummy.yaml", s.pluginConfig)
+	require.NoError(t, err, "while copying plugin config")
+}
+
+func (s *PluginSuite) TearDownSubTest() {
+	t := s.T()
+	err := os.RemoveAll(s.runDir)
+	require.NoError(t, err)
+
+	os.Remove("./out")
+}
+
+func (s *PluginSuite) permissionSetter(perm os.FileMode) func(*testing.T) {
+	return func(t *testing.T) {
+		err := os.Chmod(s.pluginBinary, perm)
+		require.NoError(t, err, "chmod %s %s", perm, s.pluginBinary)
+	}
+}
+
+func (s *PluginSuite) readconfig() (PluginConfig) {
+	var config PluginConfig
+	t := s.T()
+
+	orig, err := os.ReadFile(s.pluginConfig)
+	require.NoError(t, err,"unable to read config file %s", s.pluginConfig)
+
+	err = yaml.Unmarshal(orig, &config)
+	require.NoError(t, err,"unable to unmarshal config file")
+	
+	return config
+}
+
+
+func (s *PluginSuite) writeconfig(config PluginConfig) {
+	t := s.T()
+	data, err := yaml.Marshal(&config)
+	require.NoError(t, err,"unable to marshal config file")
+
+	err = os.WriteFile(s.pluginConfig, data, 0644)
+	require.NoError(t, err,"unable to write config file %s", s.pluginConfig)
+}
+
+
+func (s *PluginSuite) TestBrokerInit() {
 	tests := []struct {
 		name        string
 		action      func(*testing.T)
@@ -47,23 +184,26 @@ func TestBrokerInit(t *testing.T) {
 		{
 			name:        "group writable binary",
 			expectedErr: "notification-dummy is world writable",
-			action:      permissionSetter(0o722),
+			action:      s.permissionSetter(0o722),
 		},
 		{
 			name:        "group writable binary",
 			expectedErr: "notification-dummy is group writable",
-			action:      permissionSetter(0o724),
+			action:      s.permissionSetter(0o724),
 		},
 		{
 			name:        "no plugin dir",
 			expectedErr: cstest.FileNotFoundMessage,
-			action:      tearDown,
+			action: func(t *testing.T) {
+				err := os.RemoveAll(s.runDir)
+				require.NoError(t, err)
+			},
 		},
 		{
 			name:        "no plugin binary",
 			expectedErr: "binary for plugin dummy_default not found",
 			action: func(t *testing.T) {
-				err := os.Remove(pluginBinary())
+				err := os.Remove(s.pluginBinary)
 				require.NoError(t, err)
 			},
 		},
@@ -109,10 +249,8 @@ func TestBrokerInit(t *testing.T) {
 
 	for _, tc := range tests {
 		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			defer tearDown(t)
-			buildDummyPlugin(t)
-			permissionSetter(0o744)(t)
+		s.Run(tc.name, func() {
+			t := s.T()
 			if tc.action != nil {
 				tc.action(t)
 			}
@@ -122,8 +260,8 @@ func TestBrokerInit(t *testing.T) {
 				Notifications: []string{"dummy_default"},
 			})
 			err := pb.Init(&tc.procCfg, profiles, &csconfig.ConfigurationPaths{
-				PluginDir:       binPath,
-				NotificationDir: "./tests/notifications",
+				PluginDir:       s.pluginDir,
+				NotificationDir: s.notifDir,
 			})
 			defer pb.Kill()
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
@@ -131,31 +269,11 @@ func TestBrokerInit(t *testing.T) {
 	}
 }
 
-func readconfig(t *testing.T, path string) ([]byte, PluginConfig) {
-	var config PluginConfig
-	orig, err := os.ReadFile("tests/notifications/dummy.yaml")
-	require.NoError(t, err,"unable to read config file %s", path)
-
-	err = yaml.Unmarshal(orig, &config)
-	require.NoError(t, err,"unable to unmarshal config file")
-	
-	return orig, config
-}
-
-func writeconfig(t *testing.T, config PluginConfig, path string) {
-	data, err := yaml.Marshal(&config)
-	require.NoError(t, err,"unable to marshal config file")
-
-	err = os.WriteFile(path, data, 0644)
-	require.NoError(t, err,"unable to write config file %s", path)
-}
-
-func TestBrokerNoThreshold(t *testing.T) {
+func (s *PluginSuite) TestBrokerNoThreshold() {
 	var alerts []models.Alert
 	DefaultEmptyTicker = 50 * time.Millisecond
 
-	buildDummyPlugin(t)
-	defer tearDown(t)
+	t := s.T()
 
 	// init
 	pluginCfg := csconfig.PluginCfg{}
@@ -167,8 +285,8 @@ func TestBrokerNoThreshold(t *testing.T) {
 
 	// default config
 	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
-		PluginDir:       binPath,
-		NotificationDir: "./tests/notifications",
+		PluginDir:       s.pluginDir,
+		NotificationDir: s.notifDir,
 	})
 
 	assert.NoError(t, err)
@@ -186,7 +304,7 @@ func TestBrokerNoThreshold(t *testing.T) {
 	require.NoError(t, err, "Error reading file")
 
 	err = json.Unmarshal(content, &alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 1)
 
 	// remove it
@@ -207,11 +325,11 @@ func TestBrokerNoThreshold(t *testing.T) {
 	assert.Len(t, alerts, 1)
 }
 
-func TestBrokerRunGroupAndTimeThreshold_TimeFirst(t *testing.T) {
+func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_TimeFirst() {
 	// test grouping by "time"
 	DefaultEmptyTicker = 50 * time.Millisecond
-	buildDummyPlugin(t)
-	defer tearDown(t)
+
+	t := s.T()
 
 	// init
 	pluginCfg := csconfig.PluginCfg{}
@@ -221,13 +339,13 @@ func TestBrokerRunGroupAndTimeThreshold_TimeFirst(t *testing.T) {
 		Notifications: []string{"dummy_default"},
 	})
 	// set groupwait and groupthreshold, should honor whichever comes first
-	raw, cfg := readconfig(t, "tests/notifications/dummy.yaml")
+	cfg := s.readconfig()
 	cfg.GroupThreshold = 4
 	cfg.GroupWait = 1 * time.Second
-	writeconfig(t, cfg, "tests/notifications/dummy.yaml")
+	s.writeconfig(cfg)
 	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
-		PluginDir:       binPath,
-		NotificationDir: "./tests/notifications",
+		PluginDir:       s.pluginDir,
+		NotificationDir: s.notifDir,
 	})
 	assert.NoError(t, err)
 	tomb := tomb.Tomb{}
@@ -250,16 +368,12 @@ func TestBrokerRunGroupAndTimeThreshold_TimeFirst(t *testing.T) {
 	err = json.Unmarshal(content, &alerts)
 	assert.NoError(t, err)
 	assert.Len(t, alerts, 3)
-
-	// restore config
-	err = os.WriteFile("tests/notifications/dummy.yaml", raw, 0644)
-	require.NoError(t, err,"unable to write config file")
 }
 
-func TestBrokerRunGroupAndTimeThreshold_CountFirst(t *testing.T) {
+func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_CountFirst() {
 	DefaultEmptyTicker = 50 * time.Millisecond
-	buildDummyPlugin(t)
-	defer tearDown(t)
+
+	t := s.T()
 
 	// init
 	pluginCfg := csconfig.PluginCfg{}
@@ -270,13 +384,13 @@ func TestBrokerRunGroupAndTimeThreshold_CountFirst(t *testing.T) {
 	})
 
 	// set groupwait and groupthreshold, should honor whichever comes first
-	raw, cfg := readconfig(t, "tests/notifications/dummy.yaml")
+	cfg := s.readconfig()
 	cfg.GroupThreshold = 4
 	cfg.GroupWait = 4 * time.Second
-	writeconfig(t, cfg, "tests/notifications/dummy.yaml")
+	s.writeconfig(cfg)
 	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
-		PluginDir:       binPath,
-		NotificationDir: "./tests/notifications",
+		PluginDir:       s.pluginDir,
+		NotificationDir: s.notifDir,
 	})
 	assert.NoError(t, err)
 	tomb := tomb.Tomb{}
@@ -303,17 +417,13 @@ func TestBrokerRunGroupAndTimeThreshold_CountFirst(t *testing.T) {
 	err = json.Unmarshal(content, &alerts)
 	assert.NoError(t, err)
 	assert.Len(t, alerts, 4)
-
-	// restore config
-	err = os.WriteFile("tests/notifications/dummy.yaml", raw, 0644)
-	require.NoError(t, err,"unable to write config file")
 }
 
-func TestBrokerRunGroupThreshold(t *testing.T) {
+func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 	// test grouping by "size"
 	DefaultEmptyTicker = 50 * time.Millisecond
-	buildDummyPlugin(t)
-	defer tearDown(t)
+
+	t := s.T()
 
 	// init
 	pluginCfg := csconfig.PluginCfg{}
@@ -324,12 +434,12 @@ func TestBrokerRunGroupThreshold(t *testing.T) {
 	})
 
 	// set groupwait
-	raw, cfg := readconfig(t, "tests/notifications/dummy.yaml")
+	cfg := s.readconfig()
 	cfg.GroupThreshold = 4
-	writeconfig(t, cfg, "tests/notifications/dummy.yaml")
+	s.writeconfig(cfg)
 	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
-		PluginDir:       binPath,
-		NotificationDir: "./tests/notifications",
+		PluginDir:       s.pluginDir,
+		NotificationDir: s.notifDir,
 	})
 
 	assert.NoError(t, err)
@@ -357,16 +467,12 @@ func TestBrokerRunGroupThreshold(t *testing.T) {
 	err = json.Unmarshal(content, &alerts)
 	assert.NoError(t, err)
 	assert.Len(t, alerts, 4)
-
-	// restore config
-	err = os.WriteFile("tests/notifications/dummy.yaml", raw, 0644)
-	require.NoError(t, err, "unable to write config file")
 }
 
-func TestBrokerRunTimeThreshold(t *testing.T) {
+func (s *PluginSuite) TestBrokerRunTimeThreshold() {
 	DefaultEmptyTicker = 50 * time.Millisecond
-	buildDummyPlugin(t)
-	defer tearDown(t)
+
+	t := s.T()
 
 	// init
 	pluginCfg := csconfig.PluginCfg{}
@@ -377,13 +483,14 @@ func TestBrokerRunTimeThreshold(t *testing.T) {
 	})
 
 	// set groupwait
-	raw, cfg := readconfig(t, "tests/notifications/dummy.yaml")
+	cfg := s.readconfig()
 	cfg.GroupWait = 1 * time.Second
-	writeconfig(t, cfg, "tests/notifications/dummy.yaml")
+	s.writeconfig(cfg)
 	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
-		PluginDir:       binPath,
-		NotificationDir: "./tests/notifications",
+		PluginDir:       s.pluginDir,
+		NotificationDir: s.notifDir,
 	})
+
 	assert.NoError(t, err)
 	tomb := tomb.Tomb{}
 
@@ -406,16 +513,13 @@ func TestBrokerRunTimeThreshold(t *testing.T) {
 	err = json.Unmarshal(content, &alerts)
 	assert.NoError(t, err)
 	assert.Len(t, alerts, 1)
-
-	// restore config
-	err = os.WriteFile("tests/notifications/dummy.yaml", raw, 0644)
-	require.NoError(t, err, "unable to write config file %s", err)
 }
 
-func TestBrokerRunSimple(t *testing.T) {
+func (s *PluginSuite) TestBrokerRunSimple() {
 	DefaultEmptyTicker = 50 * time.Millisecond
-	buildDummyPlugin(t)
-	defer tearDown(t)
+
+	t := s.T()
+	
 	pluginCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
 	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
@@ -423,8 +527,8 @@ func TestBrokerRunSimple(t *testing.T) {
 		Notifications: []string{"dummy_default"},
 	})
 	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
-		PluginDir:       binPath,
-		NotificationDir: "./tests/notifications",
+		PluginDir:       s.pluginDir,
+		NotificationDir: s.notifDir,
 	})
 	assert.NoError(t, err)
 	tomb := tomb.Tomb{}
@@ -447,43 +551,4 @@ func TestBrokerRunSimple(t *testing.T) {
 	err = json.Unmarshal(content, &alerts)
 	assert.NoError(t, err)
 	assert.Len(t, alerts, 2)
-}
-
-func buildDummyPlugin(t *testing.T) {
-	var err error
-
-	testPath, err = os.MkdirTemp("", "cs_plugin_test")
-	require.NoError(t, err)
-
-	// create bin, config directories
-	
-	err = os.MkdirAll(path.Join(testPath, "config"), 0o755)
-	require.NoError(t, err, "while creating config dir")
-
-	err = os.MkdirAll(path.Join(testPath, "bin"), 0o755)
-	require.NoError(t, err, "while creating bin dir")
-	
-	cmd := exec.Command("go", "build", "-o", pluginBinary(), "../../plugins/notifications/dummy/")
-	err = cmd.Run()
-	require.NoError(t, err, "while building dummy plugin")
-
-	err = os.Chmod(pluginBinary(), 0o744)
-	require.NoError(t, err, "chmod 0744 %s", pluginBinary)
-
-	os.Remove("./out")
-}
-
-func permissionSetter(perm os.FileMode) func(*testing.T) {
-	// temporarily change permissions, and restore them after the test
-	return func(t *testing.T) {
-		err := os.Chmod(pluginBinary(), perm)
-		require.NoError(t, err, "chmod %s %s", perm, pluginBinary())
-	}
-}
-
-func tearDown(t *testing.T) {
-	err := os.RemoveAll(testPath)
-	require.NoError(t, err)
-
-	os.Remove("./out")
 }
