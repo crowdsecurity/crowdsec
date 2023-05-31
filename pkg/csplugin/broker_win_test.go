@@ -3,7 +3,6 @@
 package csplugin
 
 import (
-	"log"
 	"os"
 	"os/exec"
 	"path"
@@ -27,14 +26,12 @@ Due to the complexity of file permission modification with go on windows, we onl
 not if it will actually reject plugins with invalid permissions
 */
 
-var testPath string
-
-func TestBrokerInit(t *testing.T) {
+func (s *PluginSuite) TestBrokerInit() {
 	tests := []struct {
 		name        string
-		action      func()
-		expectedErr string
+		action      func(*testing.T)
 		procCfg     csconfig.PluginCfg
+		expectedErr string
 	}{
 		{
 			name:    "valid config",
@@ -42,23 +39,25 @@ func TestBrokerInit(t *testing.T) {
 		{
 			name:        "no plugin dir",
 			expectedErr: cstest.FileNotFoundMessage,
-			action:      tearDown,
+			action: func(t *testing.T) {
+				err := os.RemoveAll(s.runDir)
+				require.NoError(t, err)
+			},
 		},
 		{
 			name:        "no plugin binary",
 			expectedErr: "binary for plugin dummy_default not found",
 			action: func(t *testing.T) {
-				err := os.Remove(path.Join(testPath, "notification-dummy.exe"))
+				err := os.Remove(s.pluginBinary)
 				require.NoError(t, err)
 			},
 		},
 	}
 
-	for _, test := range tests {
-		test := test
-		t.Run(test.name, func(t *testing.T) {
-			defer tearDown(t)
-			buildDummyPlugin(t)
+	for _, tc := range tests {
+		tc := tc
+		s.Run(tc.name, func() {
+			t := s.T()
 			if test.action != nil {
 				test.action(t)
 			}
@@ -68,8 +67,8 @@ func TestBrokerInit(t *testing.T) {
 				Notifications: []string{"dummy_default"},
 			})
 			err := pb.Init(&test.procCfg, profiles, &csconfig.ConfigurationPaths{
-				PluginDir:       testPath,
-				NotificationDir: "./tests/notifications",
+				PluginDir:       s.pluginDir,
+				NotificationDir: s.notifDir,
 			})
 			defer pb.Kill()
 			cstest.RequireErrorContains(t, err, test.expectedErr)
@@ -77,9 +76,8 @@ func TestBrokerInit(t *testing.T) {
 	}
 }
 
-func TestBrokerRun(t *testing.T) {
-	buildDummyPlugin(t)
-	defer tearDown(t)
+func (s *PluginSuite) TestBrokerRun() {
+	t := s.T()
 	procCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
 	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
@@ -87,8 +85,8 @@ func TestBrokerRun(t *testing.T) {
 		Notifications: []string{"dummy_default"},
 	})
 	err := pb.Init(&procCfg, profiles, &csconfig.ConfigurationPaths{
-		PluginDir:       testPath,
-		NotificationDir: "./tests/notifications",
+		PluginDir:       s.pluginDir,
+		NotificationDir: s.notifDir,
 	})
 	assert.NoError(t, err)
 	tomb := tomb.Tomb{}
@@ -104,22 +102,4 @@ func TestBrokerRun(t *testing.T) {
 
 	assert.FileExists(t, ".\\out")
 	assert.Equal(t, types.GetLineCountForFile(".\\out"), 2)
-}
-
-func buildDummyPlugin(t *testing.T) {
-	dir, err := os.MkdirTemp(".\\tests", "cs_plugin_test")
-	require.NoError(t, err)
-
-	cmd := exec.Command("go", "build", "-o", path.Join(dir, "notification-dummy.exe"), "../../plugins/notifications/dummy/")
-	err := cmd.Run()
-	require.NoError(t, err, "while building dummy plugin")
-
-	testPath = dir
-}
-
-func tearDown(t *testing.T) {
-	err := os.RemoveAll(testPath)
-	require.NoError(t, err)
-
-	os.Remove(".\\out")
 }
