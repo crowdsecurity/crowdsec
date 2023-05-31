@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/pkg/version"
@@ -259,7 +260,7 @@ cscli lapi context add --key file_source --value evt.Line.Src
 			}
 			data := csConfig.Crowdsec.ContextToSend[keyToAdd]
 			for _, val := range valuesToAdd {
-				if !inSlice(val, data) {
+				if !slices.Contains(data, val) {
 					log.Infof("value '%s' added to key '%s'", val, keyToAdd)
 					data = append(data, val)
 				}
@@ -333,7 +334,7 @@ cscli lapi context detect crowdsecurity/sshd-logs
 
 			fieldByParsers := make(map[string][]string)
 			for _, node := range csParsers.Nodes {
-				if !detectAll && !inSlice(node.Name, args) {
+				if !detectAll && !slices.Contains(args, node.Name) {
 					continue
 				}
 				if !detectAll {
@@ -344,7 +345,7 @@ cscli lapi context detect crowdsecurity/sshd-logs
 
 				subNodeFields := detectSubNode(node, *csParsers.Ctx)
 				for _, field := range subNodeFields {
-					if !inSlice(field, fieldByParsers[node.Name]) {
+					if !slices.Contains(fieldByParsers[node.Name], field) {
 						fieldByParsers[node.Name] = append(fieldByParsers[node.Name], field)
 					}
 				}
@@ -412,7 +413,7 @@ cscli lapi context delete --value evt.Line.Src
 			for _, value := range valuesToDelete {
 				valueFound := false
 				for key, context := range csConfig.Crowdsec.ContextToSend {
-					if inSlice(value, context) {
+					if slices.Contains(context, value) {
 						valueFound = true
 						csConfig.Crowdsec.ContextToSend[key] = removeFromSlice(value, context)
 						log.Infof("value '%s' has been removed from key '%s'", value, key)
@@ -444,13 +445,13 @@ func detectStaticField(GrokStatics []types.ExtraField) []string {
 	for _, static := range GrokStatics {
 		if static.Parsed != "" {
 			fieldName := fmt.Sprintf("evt.Parsed.%s", static.Parsed)
-			if !inSlice(fieldName, ret) {
+			if !slices.Contains(ret, fieldName) {
 				ret = append(ret, fieldName)
 			}
 		}
 		if static.Meta != "" {
 			fieldName := fmt.Sprintf("evt.Meta.%s", static.Meta)
-			if !inSlice(fieldName, ret) {
+			if !slices.Contains(ret, fieldName) {
 				ret = append(ret, fieldName)
 			}
 		}
@@ -459,7 +460,7 @@ func detectStaticField(GrokStatics []types.ExtraField) []string {
 			if !strings.HasPrefix(fieldName, "evt.") {
 				fieldName = "evt." + fieldName
 			}
-			if !inSlice(fieldName, ret) {
+			if !slices.Contains(ret, fieldName) {
 				ret = append(ret, fieldName)
 			}
 		}
@@ -473,7 +474,7 @@ func detectNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 	if node.Grok.RunTimeRegexp != nil {
 		for _, capturedField := range node.Grok.RunTimeRegexp.Names() {
 			fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
-			if !inSlice(fieldName, ret) {
+			if !slices.Contains(ret, fieldName) {
 				ret = append(ret, fieldName)
 			}
 		}
@@ -486,7 +487,7 @@ func detectNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 		}
 		for _, capturedField := range grokCompiled.Names() {
 			fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
-			if !inSlice(fieldName, ret) {
+			if !slices.Contains(ret, fieldName) {
 				ret = append(ret, fieldName)
 			}
 		}
@@ -495,7 +496,7 @@ func detectNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 	if len(node.Grok.Statics) > 0 {
 		staticsField := detectStaticField(node.Grok.Statics)
 		for _, staticField := range staticsField {
-			if !inSlice(staticField, ret) {
+			if !slices.Contains(ret, staticField) {
 				ret = append(ret, staticField)
 			}
 		}
@@ -504,7 +505,7 @@ func detectNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 	if len(node.Statics) > 0 {
 		staticsField := detectStaticField(node.Statics)
 		for _, staticField := range staticsField {
-			if !inSlice(staticField, ret) {
+			if !slices.Contains(ret, staticField) {
 				ret = append(ret, staticField)
 			}
 		}
@@ -520,7 +521,7 @@ func detectSubNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 		if subnode.Grok.RunTimeRegexp != nil {
 			for _, capturedField := range subnode.Grok.RunTimeRegexp.Names() {
 				fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
-				if !inSlice(fieldName, ret) {
+				if !slices.Contains(ret, fieldName) {
 					ret = append(ret, fieldName)
 				}
 			}
@@ -532,7 +533,7 @@ func detectSubNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 			}
 			for _, capturedField := range grokCompiled.Names() {
 				fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
-				if !inSlice(fieldName, ret) {
+				if !slices.Contains(ret, fieldName) {
 					ret = append(ret, fieldName)
 				}
 			}
@@ -541,7 +542,7 @@ func detectSubNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 		if len(subnode.Grok.Statics) > 0 {
 			staticsField := detectStaticField(subnode.Grok.Statics)
 			for _, staticField := range staticsField {
-				if !inSlice(staticField, ret) {
+				if !slices.Contains(ret, staticField) {
 					ret = append(ret, staticField)
 				}
 			}
@@ -550,7 +551,7 @@ func detectSubNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 		if len(subnode.Statics) > 0 {
 			staticsField := detectStaticField(subnode.Statics)
 			for _, staticField := range staticsField {
-				if !inSlice(staticField, ret) {
+				if !slices.Contains(ret, staticField) {
 					ret = append(ret, staticField)
 				}
 			}

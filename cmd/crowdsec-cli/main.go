@@ -12,6 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
+	"golang.org/x/exp/slices"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -52,7 +53,7 @@ func initConfig() {
 		log.SetLevel(log.ErrorLevel)
 	}
 
-	if !inSlice(os.Args[1], NoNeedConfig) {
+	if !slices.Contains(NoNeedConfig, os.Args[1]) {
 		csConfig, mergedConfig, err = csconfig.NewConfig(ConfigFilePath, false, false, true)
 		if err != nil {
 			log.Fatal(err)
