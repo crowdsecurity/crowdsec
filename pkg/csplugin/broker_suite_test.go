@@ -133,12 +133,14 @@ func (s *PluginSuite) SetupSubTest() {
 
 func (s *PluginSuite) TearDownSubTest() {
 	t := s.T()
-	err := os.RemoveAll(s.runDir)
-	require.NoError(t, err)
-
 	if s.pluginBroker != nil {
 		s.pluginBroker.Kill()
 		s.pluginBroker = nil
+	}
+
+	err := os.RemoveAll(s.runDir)
+	if runtime.GOOS != "windows" {
+		require.NoError(t, err)
 	}
 
 	os.Remove("./out")

@@ -43,7 +43,7 @@ func TestListFilesAtPath(t *testing.T) {
 		{
 			name: "invalid directory",
 			path: "./foo/bar/",
-			expectedErr: "open ./foo/bar/: " + cstest.FileNotFoundMessage,
+			expectedErr: "open ./foo/bar/: " + cstest.PathNotFoundMessage,
 		},
 	}
 	for _, tc := range tests {

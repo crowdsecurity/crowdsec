@@ -35,7 +35,7 @@ func (s *PluginSuite) TestBrokerInit() {
 		},
 		{
 			name:        "no plugin dir",
-			expectedErr: cstest.FileNotFoundMessage,
+			expectedErr: cstest.PathNotFoundMessage,
 			action: func(t *testing.T) {
 				err := os.RemoveAll(s.runDir)
 				require.NoError(t, err)
