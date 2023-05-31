@@ -4,10 +4,6 @@ package csplugin
 
 import (
 	"os"
-	"os/exec"
-	"path"
-	"path/filepath"
-	"reflect"
 	"testing"
 	"time"
 
