@@ -115,6 +115,11 @@ func (s *PluginSuite) SetupSubTest() {
 	require.NoError(t, err, "while creating config dir")
 
 	s.pluginBinary = path.Join(s.pluginDir, "notification-dummy")
+
+	if runtime.GOOS == "windows" {
+		s.pluginBinary += ".exe"
+	}
+
 	err = copyFile(s.builtBinary, s.pluginBinary)
 	require.NoError(t, err, "while copying built binary")
 	err = os.Chmod(s.pluginBinary, 0o744)
