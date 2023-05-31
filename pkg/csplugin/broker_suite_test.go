@@ -1,7 +1,6 @@
 package csplugin
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -17,14 +16,14 @@ import (
 type PluginSuite struct {
 	suite.Suite
 
-	// where the plugin is built
+	// where the plugin is built - temporary directory for the suite
 	buildDir string
 	// full path to the built plugin binary
 	builtBinary string
 
 	runDir string		// temporary directory for each test
-	pluginDir  string		// (config_paths.plugin_dir)
-	notifDir string	// (config_paths.notification_dir)
+	pluginDir  string	// (config_paths.plugin_dir)
+	notifDir string		// (config_paths.notification_dir)
 	pluginBinary string	// full path to the plugin binary (unique for each test)
 	pluginConfig string	// full path to the notification config (unique for each test)
 }
@@ -100,8 +99,6 @@ func (s *PluginSuite) TearDownTest() {
 func (s *PluginSuite) SetupSubTest() {
 	var err error
 	t := s.T()
-
-	fmt.Printf("SetupTest %s\n", t.Name())
 
 	s.runDir, err = os.MkdirTemp("", "cs_plugin_test")
 	require.NoError(t, err)
