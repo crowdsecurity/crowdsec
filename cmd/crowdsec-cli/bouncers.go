@@ -138,7 +138,7 @@ cscli bouncers add MyBouncerName -k <random-key>`,
 
 	flags := cmdBouncersAdd.Flags()
 
-	flags.IntP("length", "l", 16, "length of the api key")
+	flags.IntP("length", "l", 32, "length of the api key")
 	flags.StringP("key", "k", "", "api key for the bouncer")
 
 	return cmdBouncersAdd
