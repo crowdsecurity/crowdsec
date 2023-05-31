@@ -44,6 +44,9 @@ RUN apt-get update && \
     mkdir -p /staging/var/lib/crowdsec && \
     mkdir -p /var/lib/crowdsec/data
 
+RUN echo "deb http://deb.debian.org/debian bullseye-backports main" >> /etc/apt/sources.list \
+    && apt-get update && apt-get install -t bullseye-backports -y libsystemd0
+
 COPY --from=build /go/bin/yq /usr/local/bin/yq
 COPY --from=build /etc/crowdsec /staging/etc/crowdsec
 COPY --from=build /usr/local/bin/crowdsec /usr/local/bin/crowdsec
