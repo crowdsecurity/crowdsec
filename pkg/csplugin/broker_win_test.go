@@ -58,16 +58,7 @@ func (s *PluginSuite) TestBrokerInit() {
 			if tc.action != nil {
 				tc.action(t)
 			}
-			pb := PluginBroker{}
-			profiles := csconfig.NewDefaultConfig().API.Server.Profiles
-			profiles = append(profiles, &csconfig.ProfileCfg{
-				Notifications: []string{"dummy_default"},
-			})
-			err := pb.Init(&tc.procCfg, profiles, &csconfig.ConfigurationPaths{
-				PluginDir:       s.pluginDir,
-				NotificationDir: s.notifDir,
-			})
-			defer pb.Kill()
+			_, err := s.InitBroker(&tc.procCfg)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
@@ -75,20 +66,12 @@ func (s *PluginSuite) TestBrokerInit() {
 
 func (s *PluginSuite) TestBrokerRun() {
 	t := s.T()
-	procCfg := csconfig.PluginCfg{}
-	pb := PluginBroker{}
-	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
-	profiles = append(profiles, &csconfig.ProfileCfg{
-		Notifications: []string{"dummy_default"},
-	})
-	err := pb.Init(&procCfg, profiles, &csconfig.ConfigurationPaths{
-		PluginDir:       s.pluginDir,
-		NotificationDir: s.notifDir,
-	})
+
+	pb, err := s.InitBroker(nil)
 	assert.NoError(t, err)
+
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
-	defer pb.Kill()
 
 	assert.NoFileExists(t, "./out")
 	defer os.Remove("./out")

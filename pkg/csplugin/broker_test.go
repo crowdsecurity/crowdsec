@@ -135,16 +135,7 @@ func (s *PluginSuite) TestBrokerInit() {
 			if tc.action != nil {
 				tc.action(t)
 			}
-			pb := PluginBroker{}
-			profiles := csconfig.NewDefaultConfig().API.Server.Profiles
-			profiles = append(profiles, &csconfig.ProfileCfg{
-				Notifications: []string{"dummy_default"},
-			})
-			err := pb.Init(&tc.procCfg, profiles, &csconfig.ConfigurationPaths{
-				PluginDir:       s.pluginDir,
-				NotificationDir: s.notifDir,
-			})
-			defer pb.Kill()
+			_, err := s.InitBroker(&tc.procCfg)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
@@ -156,25 +147,11 @@ func (s *PluginSuite) TestBrokerNoThreshold() {
 
 	t := s.T()
 
-	// init
-	pluginCfg := csconfig.PluginCfg{}
-	pb := PluginBroker{}
-	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
-	profiles = append(profiles, &csconfig.ProfileCfg{
-		Notifications: []string{"dummy_default"},
-	})
-
-	// default config
-	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
-		PluginDir:       s.pluginDir,
-		NotificationDir: s.notifDir,
-	})
-
+	pb, err := s.InitBroker(nil)
 	assert.NoError(t, err)
-	tomb := tomb.Tomb{}
 
+	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
-	defer pb.Kill()
 
 	// send one item, it should be processed right now
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
@@ -212,27 +189,18 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_TimeFirst() {
 
 	t := s.T()
 
-	// init
-	pluginCfg := csconfig.PluginCfg{}
-	pb := PluginBroker{}
-	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
-	profiles = append(profiles, &csconfig.ProfileCfg{
-		Notifications: []string{"dummy_default"},
-	})
 	// set groupwait and groupthreshold, should honor whichever comes first
 	cfg := s.readconfig()
 	cfg.GroupThreshold = 4
 	cfg.GroupWait = 1 * time.Second
 	s.writeconfig(cfg)
-	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
-		PluginDir:       s.pluginDir,
-		NotificationDir: s.notifDir,
-	})
-	assert.NoError(t, err)
-	tomb := tomb.Tomb{}
 
+	pb, err := s.InitBroker(nil)
+	assert.NoError(t, err)
+
+	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
-	defer pb.Kill()
+
 	// send data
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
@@ -256,28 +224,17 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_CountFirst() {
 
 	t := s.T()
 
-	// init
-	pluginCfg := csconfig.PluginCfg{}
-	pb := PluginBroker{}
-	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
-	profiles = append(profiles, &csconfig.ProfileCfg{
-		Notifications: []string{"dummy_default"},
-	})
-
 	// set groupwait and groupthreshold, should honor whichever comes first
 	cfg := s.readconfig()
 	cfg.GroupThreshold = 4
 	cfg.GroupWait = 4 * time.Second
 	s.writeconfig(cfg)
-	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
-		PluginDir:       s.pluginDir,
-		NotificationDir: s.notifDir,
-	})
-	assert.NoError(t, err)
-	tomb := tomb.Tomb{}
 
+	pb, err := s.InitBroker(nil)
+	assert.NoError(t, err)
+
+	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
-	defer pb.Kill()
 
 	// send data
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
@@ -306,28 +263,16 @@ func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 
 	t := s.T()
 
-	// init
-	pluginCfg := csconfig.PluginCfg{}
-	pb := PluginBroker{}
-	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
-	profiles = append(profiles, &csconfig.ProfileCfg{
-		Notifications: []string{"dummy_default"},
-	})
-
 	// set groupwait
 	cfg := s.readconfig()
 	cfg.GroupThreshold = 4
 	s.writeconfig(cfg)
-	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
-		PluginDir:       s.pluginDir,
-		NotificationDir: s.notifDir,
-	})
 
+	pb, err := s.InitBroker(nil)
 	assert.NoError(t, err)
-	tomb := tomb.Tomb{}
 
+	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
-	defer pb.Kill()
 
 	// send data
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
@@ -355,28 +300,16 @@ func (s *PluginSuite) TestBrokerRunTimeThreshold() {
 
 	t := s.T()
 
-	// init
-	pluginCfg := csconfig.PluginCfg{}
-	pb := PluginBroker{}
-	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
-	profiles = append(profiles, &csconfig.ProfileCfg{
-		Notifications: []string{"dummy_default"},
-	})
-
 	// set groupwait
 	cfg := s.readconfig()
 	cfg.GroupWait = 1 * time.Second
 	s.writeconfig(cfg)
-	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
-		PluginDir:       s.pluginDir,
-		NotificationDir: s.notifDir,
-	})
 
+	pb, err := s.InitBroker(nil)
 	assert.NoError(t, err)
-	tomb := tomb.Tomb{}
 
+	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
-	defer pb.Kill()
 
 	// send data
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
@@ -401,21 +334,11 @@ func (s *PluginSuite) TestBrokerRunSimple() {
 
 	t := s.T()
 	
-	pluginCfg := csconfig.PluginCfg{}
-	pb := PluginBroker{}
-	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
-	profiles = append(profiles, &csconfig.ProfileCfg{
-		Notifications: []string{"dummy_default"},
-	})
-	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
-		PluginDir:       s.pluginDir,
-		NotificationDir: s.notifDir,
-	})
+	pb, err := s.InitBroker(nil)
 	assert.NoError(t, err)
-	tomb := tomb.Tomb{}
 
+	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
-	defer pb.Kill()
 
 	assert.NoFileExists(t, "./out")
 

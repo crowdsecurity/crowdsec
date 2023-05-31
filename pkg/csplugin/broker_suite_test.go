@@ -10,6 +10,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
 
@@ -26,6 +28,8 @@ type PluginSuite struct {
 	notifDir string		// (config_paths.notification_dir)
 	pluginBinary string	// full path to the plugin binary (unique for each test)
 	pluginConfig string	// full path to the notification config (unique for each test)
+
+	pluginBroker *PluginBroker
 }
 
 
@@ -132,5 +136,27 @@ func (s *PluginSuite) TearDownSubTest() {
 	err := os.RemoveAll(s.runDir)
 	require.NoError(t, err)
 
+	if s.pluginBroker != nil {
+		s.pluginBroker.Kill()
+		s.pluginBroker = nil
+	}
+
 	os.Remove("./out")
+}
+
+func (s *PluginSuite) InitBroker(procCfg *csconfig.PluginCfg) (*PluginBroker, error) {
+	pb := PluginBroker{}
+	if procCfg == nil {
+		procCfg = &csconfig.PluginCfg{}
+	}
+	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
+	profiles = append(profiles, &csconfig.ProfileCfg{
+		Notifications: []string{"dummy_default"},
+	})
+	err := pb.Init(procCfg, profiles, &csconfig.ConfigurationPaths{
+		PluginDir:       s.pluginDir,
+		NotificationDir: s.notifDir,
+	})
+	s.pluginBroker = &pb
+	return s.pluginBroker, err
 }
