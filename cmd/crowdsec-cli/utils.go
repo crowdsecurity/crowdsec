@@ -19,6 +19,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/texttheater/golang-levenshtein/levenshtein"
+	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
@@ -35,15 +36,6 @@ func printHelp(cmd *cobra.Command) {
 	if err != nil {
 		log.Fatalf("unable to print help(): %s", err)
 	}
-}
-
-func inSlice(s string, slice []string) bool {
-	for _, str := range slice {
-		if s == str {
-			return true
-		}
-	}
-	return false
 }
 
 func indexOf(s string, slice []string) int {
@@ -115,7 +107,7 @@ func compAllItems(itemType string, args []string, toComplete string) ([]string, 
 	comp := make([]string, 0)
 	hubItems := cwhub.GetHubStatusForItemType(itemType, "", true)
 	for _, item := range hubItems {
-		if !inSlice(item.Name, args) && strings.Contains(item.Name, toComplete) {
+		if !slices.Contains(args, item.Name) && strings.Contains(item.Name, toComplete) {
 			comp = append(comp, item.Name)
 		}
 	}
@@ -747,7 +739,6 @@ func getDBClient() (*database.Client, error) {
 	}
 	return ret, nil
 }
-
 
 func removeFromSlice(val string, slice []string) []string {
 	var i int

@@ -192,15 +192,6 @@ func BoolPtr(b bool) *bool {
 	return &b
 }
 
-func InSlice(str string, slice []string) bool {
-	for _, item := range slice {
-		if str == item {
-			return true
-		}
-	}
-	return false
-}
-
 func UtcNow() time.Time {
 	return time.Now().UTC()
 }

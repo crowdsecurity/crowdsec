@@ -15,6 +15,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/exp/slices"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
@@ -84,7 +85,7 @@ func (a *apic) FetchScenariosListFromDB() ([]string, error) {
 		machineScenarios := strings.Split(v.Scenarios, ",")
 		log.Debugf("%d scenarios for machine %d", len(machineScenarios), v.ID)
 		for _, sv := range machineScenarios {
-			if !types.InSlice(sv, scenarios) && sv != "" {
+			if !slices.Contains(scenarios, sv) && sv != "" {
 				scenarios = append(scenarios, sv)
 			}
 		}
