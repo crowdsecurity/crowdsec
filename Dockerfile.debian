@@ -26,9 +26,6 @@ RUN apt-get update && \
     # In case we need to remove agents here..
     # cscli machines list -o json | yq '.[].machineId' | xargs -r cscli machines delete
 
-RUN echo "deb http://deb.debian.org/debian bullseye-backports main" >> /etc/apt/sources.list \
-    && apt-get update && apt-get install -t bullseye-backports -y libsystemd0
-
 FROM debian:bullseye-slim as slim
 
 ENV DEBIAN_FRONTEND=noninteractive
