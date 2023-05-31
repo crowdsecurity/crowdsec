@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/pkg/cstest"
@@ -54,20 +55,20 @@ func (s *PluginSuite) TestBrokerInit() {
 		tc := tc
 		s.Run(tc.name, func() {
 			t := s.T()
-			if test.action != nil {
-				test.action(t)
+			if tc.action != nil {
+				tc.action(t)
 			}
 			pb := PluginBroker{}
 			profiles := csconfig.NewDefaultConfig().API.Server.Profiles
 			profiles = append(profiles, &csconfig.ProfileCfg{
 				Notifications: []string{"dummy_default"},
 			})
-			err := pb.Init(&test.procCfg, profiles, &csconfig.ConfigurationPaths{
+			err := pb.Init(&tc.procCfg, profiles, &csconfig.ConfigurationPaths{
 				PluginDir:       s.pluginDir,
 				NotificationDir: s.notifDir,
 			})
 			defer pb.Kill()
-			cstest.RequireErrorContains(t, err, test.expectedErr)
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
 }
