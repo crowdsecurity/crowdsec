@@ -27,40 +27,40 @@ setup() {
 #----------
 
 @test "we have one decision" {
-    run -0 cscli simulation disable --global
+    rune -0 cscli simulation disable --global
     fake_log | "${CROWDSEC}" -dsn file:///dev/fd/0 -type syslog -no-api
-    run -0 --separate-stderr cscli decisions list -o json
-    run -0 jq '. | length' <(output)
+    rune -0 cscli decisions list -o json
+    rune -0 jq '. | length' <(output)
     assert_output 1
 }
 
 @test "1.1.1.174 has been banned (exact)" {
-    run -0 cscli simulation disable --global
+    rune -0 cscli simulation disable --global
     fake_log | "${CROWDSEC}" -dsn file:///dev/fd/0 -type syslog -no-api
-    run -0 --separate-stderr cscli decisions list -o json
-    run -0 jq -r '.[].decisions[0].value' <(output)
+    rune -0 cscli decisions list -o json
+    rune -0 jq -r '.[].decisions[0].value' <(output)
     assert_output '1.1.1.174'
 }
 
 @test "decision has simulated == false (exact)" {
-    run -0 cscli simulation disable --global
+    rune -0 cscli simulation disable --global
     fake_log | "${CROWDSEC}" -dsn file:///dev/fd/0 -type syslog -no-api
-    run -0 --separate-stderr cscli decisions list -o json
-    run -0 jq '.[].decisions[0].simulated' <(output)
+    rune -0 cscli decisions list -o json
+    rune -0 jq '.[].decisions[0].simulated' <(output)
     assert_output 'false'
 }
 
 @test "simulated scenario, listing non-simulated: expect no decision" {
-    run -0 cscli simulation enable crowdsecurity/ssh-bf
+    rune -0 cscli simulation enable crowdsecurity/ssh-bf
     fake_log | "${CROWDSEC}" -dsn file:///dev/fd/0 -type syslog -no-api
-    run -0 --separate-stderr cscli decisions list --no-simu -o json
+    rune -0 cscli decisions list --no-simu -o json
     assert_output 'null'
 }
 
 @test "global simulation, listing non-simulated: expect no decision" {
-    run -0 cscli simulation disable crowdsecurity/ssh-bf
-    run -0 cscli simulation enable --global
+    rune -0 cscli simulation disable crowdsecurity/ssh-bf
+    rune -0 cscli simulation enable --global
     fake_log | "${CROWDSEC}" -dsn file:///dev/fd/0 -type syslog -no-api
-    run -0 --separate-stderr cscli decisions list --no-simu -o json
+    rune -0 cscli decisions list --no-simu -o json
     assert_output 'null'
 }

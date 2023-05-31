@@ -58,21 +58,21 @@ setup() {
 #----------
 
 @test "add two bans" {
-    run -0 --separate-stderr cscli decisions add --ip 1.2.3.4 --duration 30s
+    rune -0 cscli decisions add --ip 1.2.3.4 --duration 30s
     assert_stderr --partial 'Decision successfully added'
 
-    run -0 --separate-stderr cscli decisions add --ip 1.2.3.5 --duration 30s
+    rune -0 cscli decisions add --ip 1.2.3.5 --duration 30s
     assert_stderr --partial 'Decision successfully added'
     sleep 2
 }
 
 @test "expected 1 notification" {
-    run -0 cat "${tempfile}"
+    rune -0 cat "${tempfile}"
     assert_output --partial 1.2.3.4
     assert_output --partial 1.2.3.5
 }
 
 @test "second notification works too" {
-    run -0 cat "${tempfile2}"
+    rune -0 cat "${tempfile2}"
     assert_output --partial secondfile
 }

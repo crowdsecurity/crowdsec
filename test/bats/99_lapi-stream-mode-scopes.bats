@@ -29,36 +29,36 @@ api() {
 }
 
 @test "adding decisions for multiple scopes" {
-    run -0 --separate-stderr cscli decisions add -i '1.2.3.6'
+    rune -0 cscli decisions add -i '1.2.3.6'
     assert_stderr --partial 'Decision successfully added'
-    run -0 --separate-stderr cscli decisions add --scope user --value toto
+    rune -0 cscli decisions add --scope user --value toto
     assert_stderr --partial 'Decision successfully added'
 }
 
 @test "stream start (implicit ip scope)" {
-    run -0 api "/v1/decisions/stream?startup=true"
-    run -0 jq -r '.new' <(output)
+    rune -0 api "/v1/decisions/stream?startup=true"
+    rune -0 jq -r '.new' <(output)
     assert_output --partial '1.2.3.6'
     refute_output --partial 'toto'
 }
 
 @test "stream start (explicit ip scope)" {
-    run -0 api "/v1/decisions/stream?startup=true&scopes=ip"
-    run -0 jq -r '.new' <(output)
+    rune -0 api "/v1/decisions/stream?startup=true&scopes=ip"
+    rune -0 jq -r '.new' <(output)
     assert_output --partial '1.2.3.6'
     refute_output --partial 'toto'
 }
 
 @test "stream start (user scope)" {
-    run -0 api "/v1/decisions/stream?startup=true&scopes=user"
-    run -0 jq -r '.new' <(output)
+    rune -0 api "/v1/decisions/stream?startup=true&scopes=user"
+    rune -0 jq -r '.new' <(output)
     refute_output --partial '1.2.3.6'
     assert_output --partial 'toto'
 }
 
 @test "stream start (user+ip scope)" {
-    run -0 api "/v1/decisions/stream?startup=true&scopes=user,ip"
-    run -0 jq -r '.new' <(output)
+    rune -0 api "/v1/decisions/stream?startup=true&scopes=user,ip"
+    rune -0 jq -r '.new' <(output)
     assert_output --partial '1.2.3.6'
     assert_output --partial 'toto'
 }
