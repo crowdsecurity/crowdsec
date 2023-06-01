@@ -61,37 +61,37 @@ teardown() {
 #----------
 
 @test "there are 0 bouncers" {
-    run -0 --separate-stderr cscli bouncers list -o json
+    rune -0 cscli bouncers list -o json
     assert_output "[]"
 }
 
 @test "simulate one bouncer request with a valid cert" {
-    run -0 curl -s --cert "${tmpdir}/bouncer.pem" --key "${tmpdir}/bouncer-key.pem" --cacert "${tmpdir}/bundle.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
+    rune -0 curl -s --cert "${tmpdir}/bouncer.pem" --key "${tmpdir}/bouncer-key.pem" --cacert "${tmpdir}/bundle.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
     assert_output "null"
-    run -0 --separate-stderr cscli bouncers list -o json
-    run -0 jq '. | length' <(output)
+    rune -0 cscli bouncers list -o json
+    rune -0 jq '. | length' <(output)
     assert_output '1'
-    run -0 --separate-stderr cscli bouncers list -o json
-    run -0 jq -r '.[] | .name' <(output)
+    rune -0 cscli bouncers list -o json
+    rune -0 jq -r '.[] | .name' <(output)
     assert_output "localhost@127.0.0.1"
-    run cscli bouncers delete localhost@127.0.0.1
+    rune cscli bouncers delete localhost@127.0.0.1
 }
 
 @test "simulate one bouncer request with an invalid cert" {
-    run curl -s --cert "${tmpdir}/bouncer_invalid.pem" --key "${tmpdir}/bouncer_invalid-key.pem" --cacert "${tmpdir}/ca-key.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
-    run -0 --separate-stderr cscli bouncers list -o json
+    rune curl -s --cert "${tmpdir}/bouncer_invalid.pem" --key "${tmpdir}/bouncer_invalid-key.pem" --cacert "${tmpdir}/ca-key.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
+    rune -0 cscli bouncers list -o json
     assert_output "[]"
 }
 
 @test "simulate one bouncer request with an invalid OU" {
-    run curl -s --cert "${tmpdir}/bouncer_bad_ou.pem" --key "${tmpdir}/bouncer_bad_ou-key.pem" --cacert "${tmpdir}/bundle.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
-    run -0 --separate-stderr cscli bouncers list -o json
+    rune curl -s --cert "${tmpdir}/bouncer_bad_ou.pem" --key "${tmpdir}/bouncer_bad_ou-key.pem" --cacert "${tmpdir}/bundle.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
+    rune -0 cscli bouncers list -o json
     assert_output "[]"
 }
 
 @test "simulate one bouncer request with a revoked certificate" {
-    run -0 curl -i -s --cert "${tmpdir}/bouncer_revoked.pem" --key "${tmpdir}/bouncer_revoked-key.pem" --cacert "${tmpdir}/bundle.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
+    rune -0 curl -i -s --cert "${tmpdir}/bouncer_revoked.pem" --key "${tmpdir}/bouncer_revoked-key.pem" --cacert "${tmpdir}/bundle.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
     assert_output --partial "access forbidden"
-    run -0 --separate-stderr cscli bouncers list -o json
+    rune -0 cscli bouncers list -o json
     assert_output "[]"
 }
