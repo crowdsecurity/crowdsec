@@ -13,9 +13,10 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/yamlpatch"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/crowdsecurity/crowdsec/pkg/yamlpatch"
 )
 
 type APICfg struct {
@@ -132,7 +133,13 @@ func (l *LocalApiClientCfg) Load() error {
 			return errors.Wrapf(err, "failed to load cacert")
 		}
 
-		caCertPool := x509.NewCertPool()
+		caCertPool, err := x509.SystemCertPool()
+		if err != nil {
+			log.Warningf("Error loading system CA certificates: %s", err)
+		}
+		if caCertPool == nil {
+			caCertPool = x509.NewCertPool()
+		}
 		caCertPool.AppendCertsFromPEM(caCert)
 		apiclient.CaCertPool = caCertPool
 	}
@@ -222,42 +229,44 @@ func (c *Config) LoadAPIServer() error {
 		log.Warning("crowdsec local API is disabled from flag")
 	}
 
-	if c.API.Server != nil {
-
-		//inherit log level from common, then api->server
-		var logLevel log.Level
-		if c.API.Server.LogLevel != nil {
-			logLevel = *c.API.Server.LogLevel
-		} else if c.Common.LogLevel != nil {
-			logLevel = *c.Common.LogLevel
-		} else {
-			logLevel = log.InfoLevel
-		}
-
-		if c.API.Server.PapiLogLevel == nil {
-			c.API.Server.PapiLogLevel = &logLevel
-		}
-
-		if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
-			if err := c.API.Server.OnlineClient.Load(); err != nil {
-				return errors.Wrap(err, "loading online client credentials")
-			}
-		}
-		if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
-			log.Printf("push and pull to Central API disabled")
-		}
-		if err := c.LoadDBConfig(); err != nil {
-			return err
-		}
-
-		if err := c.API.Server.LoadCapiWhitelists(); err != nil {
-			return err
-		}
-
-	} else {
+	if c.API.Server == nil {
 		log.Warning("crowdsec local API is disabled")
 		c.DisableAPI = true
 		return nil
+	}
+
+	//inherit log level from common, then api->server
+	var logLevel log.Level
+	if c.API.Server.LogLevel != nil {
+		logLevel = *c.API.Server.LogLevel
+	} else if c.Common.LogLevel != nil {
+		logLevel = *c.Common.LogLevel
+	} else {
+		logLevel = log.InfoLevel
+	}
+
+	if c.API.Server.PapiLogLevel == nil {
+		c.API.Server.PapiLogLevel = &logLevel
+	}
+
+	if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
+		if err := c.API.Server.OnlineClient.Load(); err != nil {
+			return errors.Wrap(err, "loading online client credentials")
+		}
+	}
+	if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
+		log.Printf("push and pull to Central API disabled")
+	}
+	if err := c.LoadDBConfig(); err != nil {
+		return err
+	}
+
+	if err := c.API.Server.LoadCapiWhitelists(); err != nil {
+		return err
+	}
+
+	if c.API.Server.CapiWhitelistsPath != "" {
+		log.Infof("loaded capi whitelist from %s: %d IPs, %d CIDRs", c.API.Server.CapiWhitelistsPath, len(c.API.Server.CapiWhitelists.Ips), len(c.API.Server.CapiWhitelists.Cidrs))
 	}
 
 	if c.API.Server.Enable == nil {
@@ -354,7 +363,7 @@ func (s *LocalApiServerCfg) LoadCapiWhitelists() error {
 	for _, v := range fromCfg.Cidrs {
 		_, tnet, err := net.ParseCIDR(v)
 		if err != nil {
-			return fmt.Errorf("unable to parse cidr whitelist '%s' : %v.", v, err)
+			return fmt.Errorf("unable to parse cidr whitelist '%s' : %v", v, err)
 		}
 		s.CapiWhitelists.Cidrs = append(s.CapiWhitelists.Cidrs, tnet)
 	}

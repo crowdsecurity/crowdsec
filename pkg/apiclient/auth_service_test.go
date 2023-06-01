@@ -10,7 +10,8 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -86,7 +87,7 @@ func TestWatcherRegister(t *testing.T) {
 	clientconfig := Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	}
@@ -128,7 +129,7 @@ func TestWatcherAuth(t *testing.T) {
 	clientConfig := &Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 		Scenarios:     []string{"crowdsecurity/test"},
@@ -216,7 +217,7 @@ func TestWatcherUnregister(t *testing.T) {
 	mycfg := &Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 		Scenarios:     []string{"crowdsecurity/test"},
@@ -270,7 +271,7 @@ func TestWatcherEnroll(t *testing.T) {
 	mycfg := &Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 		Scenarios:     []string{"crowdsecurity/test"},

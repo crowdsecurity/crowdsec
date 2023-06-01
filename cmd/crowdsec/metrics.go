@@ -9,15 +9,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 /*prometheus*/
@@ -61,7 +62,7 @@ var globalCsInfo = prometheus.NewGauge(
 	prometheus.GaugeOpts{
 		Name:        "cs_info",
 		Help:        "Information about Crowdsec.",
-		ConstLabels: prometheus.Labels{"version": cwversion.VersionStr()},
+		ConstLabels: prometheus.Labels{"version": version.String()},
 	},
 )
 
@@ -187,7 +188,7 @@ func servePrometheus(config *csconfig.PrometheusCfg, dbClient *database.Client, 
 		return
 	}
 
-	defer types.CatchPanic("crowdsec/servePrometheus")
+	defer trace.CatchPanic("crowdsec/servePrometheus")
 
 	http.Handle("/metrics", computeDynamicMetrics(promhttp.Handler(), dbClient))
 	<-apiReady

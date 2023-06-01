@@ -562,7 +562,6 @@ func (aq *AlertQuery) loadDecisions(ctx context.Context, query *DecisionQuery, n
 			init(nodes[i])
 		}
 	}
-	query.withFKs = true
 	query.Where(predicate.Decision(func(s *sql.Selector) {
 		s.Where(sql.InValues(alert.DecisionsColumn, fks...))
 	}))
@@ -571,13 +570,10 @@ func (aq *AlertQuery) loadDecisions(ctx context.Context, query *DecisionQuery, n
 		return err
 	}
 	for _, n := range neighbors {
-		fk := n.alert_decisions
-		if fk == nil {
-			return fmt.Errorf(`foreign-key "alert_decisions" is nil for node %v`, n.ID)
-		}
-		node, ok := nodeids[*fk]
+		fk := n.AlertDecisions
+		node, ok := nodeids[fk]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "alert_decisions" returned %v for node %v`, *fk, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "alert_decisions" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}
@@ -593,7 +589,6 @@ func (aq *AlertQuery) loadEvents(ctx context.Context, query *EventQuery, nodes [
 			init(nodes[i])
 		}
 	}
-	query.withFKs = true
 	query.Where(predicate.Event(func(s *sql.Selector) {
 		s.Where(sql.InValues(alert.EventsColumn, fks...))
 	}))
@@ -602,13 +597,10 @@ func (aq *AlertQuery) loadEvents(ctx context.Context, query *EventQuery, nodes [
 		return err
 	}
 	for _, n := range neighbors {
-		fk := n.alert_events
-		if fk == nil {
-			return fmt.Errorf(`foreign-key "alert_events" is nil for node %v`, n.ID)
-		}
-		node, ok := nodeids[*fk]
+		fk := n.AlertEvents
+		node, ok := nodeids[fk]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "alert_events" returned %v for node %v`, *fk, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "alert_events" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}
@@ -624,7 +616,6 @@ func (aq *AlertQuery) loadMetas(ctx context.Context, query *MetaQuery, nodes []*
 			init(nodes[i])
 		}
 	}
-	query.withFKs = true
 	query.Where(predicate.Meta(func(s *sql.Selector) {
 		s.Where(sql.InValues(alert.MetasColumn, fks...))
 	}))
@@ -633,13 +624,10 @@ func (aq *AlertQuery) loadMetas(ctx context.Context, query *MetaQuery, nodes []*
 		return err
 	}
 	for _, n := range neighbors {
-		fk := n.alert_metas
-		if fk == nil {
-			return fmt.Errorf(`foreign-key "alert_metas" is nil for node %v`, n.ID)
-		}
-		node, ok := nodeids[*fk]
+		fk := n.AlertMetas
+		node, ok := nodeids[fk]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "alert_metas" returned %v for node %v`, *fk, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "alert_metas" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}

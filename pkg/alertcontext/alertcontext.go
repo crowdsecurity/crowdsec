@@ -7,10 +7,12 @@ import (
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
+	log "github.com/sirupsen/logrus"
+	"golang.org/x/exp/slices"
+
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -131,7 +133,7 @@ func EventToContext(events []types.Event) (models.Meta, []error) {
 					errors = append(errors, fmt.Errorf("unexpected return type for %s : %T", key, output))
 					continue
 				}
-				if val != "" && !types.InSlice(val, tmpContext[key]) {
+				if val != "" && !slices.Contains(tmpContext[key], val) {
 					tmpContext[key] = append(tmpContext[key], val)
 				}
 			}

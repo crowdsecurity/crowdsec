@@ -16,10 +16,12 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -101,7 +103,7 @@ After running this command your will need to validate the enrollment in the weba
 				MachineID:     csConfig.API.Server.OnlineClient.Credentials.Login,
 				Password:      password,
 				Scenarios:     scenarios,
-				UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+				UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
 				URL:           apiURL,
 				VersionPrefix: "v3",
 			})
@@ -249,7 +251,7 @@ func SetConsoleOpts(args []string, wanted bool) {
 				}
 			} else {
 				log.Infof("%s set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
-				csConfig.API.Server.ConsoleConfig.ConsoleManagement = types.BoolPtr(wanted)
+				csConfig.API.Server.ConsoleConfig.ConsoleManagement = ptr.Of(wanted)
 			}
 			if csConfig.API.Server.OnlineClient.Credentials != nil {
 				changed := false
@@ -283,7 +285,7 @@ func SetConsoleOpts(args []string, wanted bool) {
 				}
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
-				csConfig.API.Server.ConsoleConfig.ShareCustomScenarios = types.BoolPtr(wanted)
+				csConfig.API.Server.ConsoleConfig.ShareCustomScenarios = ptr.Of(wanted)
 			}
 		case csconfig.SEND_TAINTED_SCENARIOS:
 			/*for each flag check if it's already set before setting it*/
@@ -296,7 +298,7 @@ func SetConsoleOpts(args []string, wanted bool) {
 				}
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
-				csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios = types.BoolPtr(wanted)
+				csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios = ptr.Of(wanted)
 			}
 		case csconfig.SEND_MANUAL_SCENARIOS:
 			/*for each flag check if it's already set before setting it*/
@@ -309,7 +311,7 @@ func SetConsoleOpts(args []string, wanted bool) {
 				}
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
-				csConfig.API.Server.ConsoleConfig.ShareManualDecisions = types.BoolPtr(wanted)
+				csConfig.API.Server.ConsoleConfig.ShareManualDecisions = ptr.Of(wanted)
 			}
 		case csconfig.SEND_CONTEXT:
 			/*for each flag check if it's already set before setting it*/
@@ -322,7 +324,7 @@ func SetConsoleOpts(args []string, wanted bool) {
 				}
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_CONTEXT, wanted)
-				csConfig.API.Server.ConsoleConfig.ShareContext = types.BoolPtr(wanted)
+				csConfig.API.Server.ConsoleConfig.ShareContext = ptr.Of(wanted)
 			}
 		default:
 			log.Fatalf("unknown flag %s", arg)

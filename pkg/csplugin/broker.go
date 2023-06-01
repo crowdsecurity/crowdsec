@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"text/template"
@@ -19,8 +18,9 @@ import (
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/csstring"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/csstring"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -383,22 +383,6 @@ func setRequiredFields(pluginCfg *PluginConfig) {
 		pluginCfg.TimeOut = time.Second * 5
 	}
 
-}
-
-// helper which gives paths to all files in the given directory non-recursively
-func listFilesAtPath(path string) ([]string, error) {
-	filePaths := make([]string, 0)
-	files, err := os.ReadDir(path)
-	if err != nil {
-		return nil, err
-	}
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-		filePaths = append(filePaths, filepath.Join(path, file.Name()))
-	}
-	return filePaths, nil
 }
 
 func getUUID() (string, error) {

@@ -377,6 +377,48 @@ var exprFuncs = []exprCustomFunc{
 			new(func(string, string) bool),
 		},
 	},
+	{
+		name:     "KeyExists",
+		function: KeyExists,
+		signature: []interface{}{
+			new(func(string, map[string]any) bool),
+		},
+	},
+	{
+		name:     "LogInfo",
+		function: LogInfo,
+		signature: []interface{}{
+			new(func(string, ...interface{}) bool),
+		},
+	},
+	{
+		name:     "B64Decode",
+		function: B64Decode,
+		signature: []interface{}{
+			new(func(string) string),
+		},
+	},
+	{
+		name:     "UnmarshalJSON",
+		function: UnmarshalJSON,
+		signature: []interface{}{
+			new(func(string, map[string]interface{}, string) error),
+		},
+	},
+	{
+		name:     "ParseKV",
+		function: ParseKV,
+		signature: []interface{}{
+			new(func(string, map[string]interface{}, string) error),
+		},
+	},
+	{
+		name:     "Hostname",
+		function: Hostname,
+		signature: []interface{}{
+			new(func() (string, error)),
+		},
+	},
 }
 
 //go 1.20 "CutPrefix":              strings.CutPrefix,

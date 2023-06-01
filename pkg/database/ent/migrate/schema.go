@@ -141,6 +141,11 @@ var (
 				Unique:  false,
 				Columns: []*schema.Column{DecisionsColumns[3]},
 			},
+			{
+				Name:    "decision_alert_decisions",
+				Unique:  false,
+				Columns: []*schema.Column{DecisionsColumns[16]},
+			},
 		},
 	}
 	// EventsColumns holds the columns for the "events" table.
@@ -165,6 +170,13 @@ var (
 				OnDelete:   schema.Cascade,
 			},
 		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "event_alert_events",
+				Unique:  false,
+				Columns: []*schema.Column{EventsColumns[5]},
+			},
+		},
 	}
 	// MachinesColumns holds the columns for the "machines" table.
 	MachinesColumns = []*schema.Column{
@@ -176,7 +188,7 @@ var (
 		{Name: "machine_id", Type: field.TypeString, Unique: true},
 		{Name: "password", Type: field.TypeString},
 		{Name: "ip_address", Type: field.TypeString},
-		{Name: "scenarios", Type: field.TypeString, Nullable: true, Size: 4095},
+		{Name: "scenarios", Type: field.TypeString, Nullable: true, Size: 100000},
 		{Name: "version", Type: field.TypeString, Nullable: true},
 		{Name: "is_validated", Type: field.TypeBool, Default: false},
 		{Name: "status", Type: field.TypeString, Nullable: true},
@@ -208,6 +220,13 @@ var (
 				Columns:    []*schema.Column{MetaColumns[5]},
 				RefColumns: []*schema.Column{AlertsColumns[0]},
 				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "meta_alert_metas",
+				Unique:  false,
+				Columns: []*schema.Column{MetaColumns[5]},
 			},
 		},
 	}

@@ -2351,34 +2351,22 @@ func UUIDNEQ(v string) predicate.Alert {
 
 // UUIDIn applies the In predicate on the "uuid" field.
 func UUIDIn(vs ...string) predicate.Alert {
-	v := make([]interface{}, len(vs))
+	v := make([]any, len(vs))
 	for i := range v {
 		v[i] = vs[i]
 	}
 	return predicate.Alert(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(v) == 0 {
-			s.Where(sql.False())
-			return
-		}
 		s.Where(sql.In(s.C(FieldUUID), v...))
 	})
 }
 
 // UUIDNotIn applies the NotIn predicate on the "uuid" field.
 func UUIDNotIn(vs ...string) predicate.Alert {
-	v := make([]interface{}, len(vs))
+	v := make([]any, len(vs))
 	for i := range v {
 		v[i] = vs[i]
 	}
 	return predicate.Alert(func(s *sql.Selector) {
-		// if not arguments were provided, append the FALSE constants,
-		// since we can't apply "IN ()". This will make this predicate falsy.
-		if len(v) == 0 {
-			s.Where(sql.False())
-			return
-		}
 		s.Where(sql.NotIn(s.C(FieldUUID), v...))
 	})
 }

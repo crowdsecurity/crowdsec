@@ -25,10 +25,11 @@ type Meta struct {
 	Key string `json:"key,omitempty"`
 	// Value holds the value of the "value" field.
 	Value string `json:"value,omitempty"`
+	// AlertMetas holds the value of the "alert_metas" field.
+	AlertMetas int `json:"alert_metas,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the MetaQuery when eager-loading is set.
-	Edges       MetaEdges `json:"edges"`
-	alert_metas *int
+	Edges MetaEdges `json:"edges"`
 }
 
 // MetaEdges holds the relations/edges for other nodes in the graph.
@@ -58,14 +59,12 @@ func (*Meta) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case meta.FieldID:
+		case meta.FieldID, meta.FieldAlertMetas:
 			values[i] = new(sql.NullInt64)
 		case meta.FieldKey, meta.FieldValue:
 			values[i] = new(sql.NullString)
 		case meta.FieldCreatedAt, meta.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
-		case meta.ForeignKeys[0]: // alert_metas
-			values[i] = new(sql.NullInt64)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type Meta", columns[i])
 		}
@@ -113,12 +112,11 @@ func (m *Meta) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				m.Value = value.String
 			}
-		case meta.ForeignKeys[0]:
+		case meta.FieldAlertMetas:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field alert_metas", value)
+				return fmt.Errorf("unexpected type %T for field alert_metas", values[i])
 			} else if value.Valid {
-				m.alert_metas = new(int)
-				*m.alert_metas = int(value.Int64)
+				m.AlertMetas = int(value.Int64)
 			}
 		}
 	}
@@ -168,6 +166,9 @@ func (m *Meta) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("value=")
 	builder.WriteString(m.Value)
+	builder.WriteString(", ")
+	builder.WriteString("alert_metas=")
+	builder.WriteString(fmt.Sprintf("%v", m.AlertMetas))
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -11,6 +11,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -226,7 +228,7 @@ func HandleSignals(cConfig *csconfig.Config) error {
 	exitChan := make(chan error)
 
 	go func() {
-		defer types.CatchPanic("crowdsec/HandleSignals")
+		defer trace.CatchPanic("crowdsec/HandleSignals")
 	Loop:
 		for {
 			s := <-signalChan

@@ -15,6 +15,8 @@ import (
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -257,7 +259,7 @@ func (j *JournalCtlSource) GetName() string {
 }
 
 func (j *JournalCtlSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
-	defer types.CatchPanic("crowdsec/acquis/journalctl/oneshot")
+	defer trace.CatchPanic("crowdsec/acquis/journalctl/oneshot")
 	err := j.runJournalCtl(out, t)
 	j.logger.Debug("Oneshot journalctl acquisition is done")
 	return err
@@ -266,7 +268,7 @@ func (j *JournalCtlSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb
 
 func (j *JournalCtlSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	t.Go(func() error {
-		defer types.CatchPanic("crowdsec/acquis/journalctl/streaming")
+		defer trace.CatchPanic("crowdsec/acquis/journalctl/streaming")
 		return j.runJournalCtl(out, t)
 	})
 	return nil

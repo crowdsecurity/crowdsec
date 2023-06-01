@@ -11,7 +11,7 @@ import (
 )
 
 func TestLogin(t *testing.T) {
-	router, config, err := NewAPITest()
+	router, config, err := NewAPITest(t)
 	if err != nil {
 		log.Fatalf("unable to run local API: %s", err)
 	}

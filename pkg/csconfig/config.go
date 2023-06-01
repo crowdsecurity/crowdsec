@@ -9,9 +9,10 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csstring"
+	"github.com/crowdsecurity/go-cs-lib/pkg/yamlpatch"
+	"github.com/crowdsecurity/go-cs-lib/pkg/csstring"
+
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/crowdsecurity/crowdsec/pkg/yamlpatch"
 )
 
 // defaultConfigDir is the base path to all configuration files, to be overridden in the Makefile */
@@ -47,12 +48,12 @@ func (c *Config) Dump() error {
 	return nil
 }
 
-func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*Config, error) {
+func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*Config, string, error) {
 	patcher := yamlpatch.NewPatcher(configFile, ".local")
 	patcher.SetQuiet(quiet)
 	fcontent, err := patcher.MergedPatchContent()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	configData := csstring.StrictExpand(string(fcontent), os.LookupEnv)
 	cfg := Config{
@@ -64,9 +65,9 @@ func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool
 	err = yaml.UnmarshalStrict([]byte(configData), &cfg)
 	if err != nil {
 		// this is actually the "merged" yaml
-		return nil, errors.Wrap(err, configFile)
+		return nil, "", errors.Wrap(err, configFile)
 	}
-	return &cfg, nil
+	return &cfg, configData, nil
 }
 
 func NewDefaultConfig() *Config {

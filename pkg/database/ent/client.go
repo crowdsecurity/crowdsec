@@ -425,7 +425,7 @@ func (c *ConfigItemClient) Use(hooks ...Hook) {
 	c.hooks.ConfigItem = append(c.hooks.ConfigItem, hooks...)
 }
 
-// Create returns a create builder for ConfigItem.
+// Create returns a builder for creating a ConfigItem entity.
 func (c *ConfigItemClient) Create() *ConfigItemCreate {
 	mutation := newConfigItemMutation(c.config, OpCreate)
 	return &ConfigItemCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
@@ -460,12 +460,12 @@ func (c *ConfigItemClient) Delete() *ConfigItemDelete {
 	return &ConfigItemDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// DeleteOne returns a delete builder for the given entity.
+// DeleteOne returns a builder for deleting the given entity.
 func (c *ConfigItemClient) DeleteOne(ci *ConfigItem) *ConfigItemDeleteOne {
 	return c.DeleteOneID(ci.ID)
 }
 
-// DeleteOneID returns a delete builder for the given id.
+// DeleteOne returns a builder for deleting the given entity by its id.
 func (c *ConfigItemClient) DeleteOneID(id int) *ConfigItemDeleteOne {
 	builder := c.Delete().Where(configitem.ID(id))
 	builder.mutation.id = &id

@@ -36,34 +36,34 @@ output_new_decisions() {
 
 @test "adding decisions with different duration, scenario, origin" {
     # origin: test
-    run -0 cscli decisions add -i 127.0.0.1 -d 1h -R crowdsecurity/test
+    rune -0 cscli decisions add -i 127.0.0.1 -d 1h -R crowdsecurity/test
     ./instance-crowdsec stop
-    run -0 ./instance-db exec_sql "update decisions set origin='test' where origin='cscli'"
+    rune -0 ./instance-db exec_sql "update decisions set origin='test' where origin='cscli'"
     ./instance-crowdsec start
 
-    run -0 cscli decisions add -i 127.0.0.1 -d 3h -R crowdsecurity/ssh_bf
+    rune -0 cscli decisions add -i 127.0.0.1 -d 3h -R crowdsecurity/ssh_bf
     ./instance-crowdsec stop
-    run -0 ./instance-db exec_sql "update decisions set origin='another_origin' where origin='cscli'"
+    rune -0 ./instance-db exec_sql "update decisions set origin='another_origin' where origin='cscli'"
     ./instance-crowdsec start
 
-    run -0 cscli decisions add -i 127.0.0.1 -d 5h -R crowdsecurity/longest
-    run -0 cscli decisions add -i 127.0.0.2 -d 3h -R crowdsecurity/test
-    run -0 cscli decisions add -i 127.0.0.2 -d 3h -R crowdsecurity/ssh_bf
-    run -0 cscli decisions add -i 127.0.0.2 -d 1h -R crowdsecurity/ssh_bf
+    rune -0 cscli decisions add -i 127.0.0.1 -d 5h -R crowdsecurity/longest
+    rune -0 cscli decisions add -i 127.0.0.2 -d 3h -R crowdsecurity/test
+    rune -0 cscli decisions add -i 127.0.0.2 -d 3h -R crowdsecurity/ssh_bf
+    rune -0 cscli decisions add -i 127.0.0.2 -d 1h -R crowdsecurity/ssh_bf
     ./instance-crowdsec stop
-    run -0 ./instance-db exec_sql "update decisions set origin='test' where origin='cscli'"
+    rune -0 ./instance-db exec_sql "update decisions set origin='test' where origin='cscli'"
     ./instance-crowdsec start
 
     # origin: another_origin
-    run -0 cscli decisions add -i 127.0.0.2 -d 2h -R crowdsecurity/test
+    rune -0 cscli decisions add -i 127.0.0.2 -d 2h -R crowdsecurity/test
     ./instance-crowdsec stop
-    run -0 ./instance-db exec_sql "update decisions set origin='another_origin' where origin='cscli'"
+    rune -0 ./instance-db exec_sql "update decisions set origin='another_origin' where origin='cscli'"
     ./instance-crowdsec start
 }
 
 @test "test startup" {
-    run -0 api "/v1/decisions/stream?startup=true"
-    run -0 output_new_decisions
+    rune -0 api "/v1/decisions/stream?startup=true"
+    rune -0 output_new_decisions
     assert_output - <<-EOT
 	{"duration":"2h59m","origin":"test","scenario":"crowdsecurity/test","scope":"Ip","type":"ban","value":"127.0.0.2"}
 	{"duration":"4h59m","origin":"test","scenario":"crowdsecurity/longest","scope":"Ip","type":"ban","value":"127.0.0.1"}
@@ -71,8 +71,8 @@ output_new_decisions() {
 }
 
 @test "test startup with scenarios containing" {
-    run -0 api "/v1/decisions/stream?startup=true&scenarios_containing=ssh_bf"
-    run -0 output_new_decisions
+    rune -0 api "/v1/decisions/stream?startup=true&scenarios_containing=ssh_bf"
+    rune -0 output_new_decisions
     assert_output - <<-EOT
 	{"duration":"2h59m","origin":"another_origin","scenario":"crowdsecurity/ssh_bf","scope":"Ip","type":"ban","value":"127.0.0.1"}
 	{"duration":"2h59m","origin":"test","scenario":"crowdsecurity/ssh_bf","scope":"Ip","type":"ban","value":"127.0.0.2"}
@@ -80,8 +80,8 @@ output_new_decisions() {
 }
 
 @test "test startup with multiple scenarios containing" {
-    run -0 api "/v1/decisions/stream?startup=true&scenarios_containing=ssh_bf,test"
-    run -0 output_new_decisions
+    rune -0 api "/v1/decisions/stream?startup=true&scenarios_containing=ssh_bf,test"
+    rune -0 output_new_decisions
     assert_output - <<-EOT
 	{"duration":"2h59m","origin":"another_origin","scenario":"crowdsecurity/ssh_bf","scope":"Ip","type":"ban","value":"127.0.0.1"}
 	{"duration":"2h59m","origin":"test","scenario":"crowdsecurity/test","scope":"Ip","type":"ban","value":"127.0.0.2"}
@@ -89,13 +89,13 @@ output_new_decisions() {
 }
 
 @test "test startup with unknown scenarios containing" {
-    run -0 api "/v1/decisions/stream?startup=true&scenarios_containing=unknown"
+    rune -0 api "/v1/decisions/stream?startup=true&scenarios_containing=unknown"
     assert_output '{"deleted":null,"new":null}'
 }
 
 @test "test startup with scenarios containing and not containing" {
-    run -0 api "/v1/decisions/stream?startup=true&scenarios_containing=test&scenarios_not_containing=ssh_bf"
-    run -0 output_new_decisions
+    rune -0 api "/v1/decisions/stream?startup=true&scenarios_containing=test&scenarios_not_containing=ssh_bf"
+    rune -0 output_new_decisions
     assert_output - <<-EOT
 	{"duration":"2h59m","origin":"test","scenario":"crowdsecurity/test","scope":"Ip","type":"ban","value":"127.0.0.2"}
 	{"origin":"test","scenario":"crowdsecurity/test","scope":"Ip","type":"ban","value":"127.0.0.1"}
@@ -103,16 +103,16 @@ output_new_decisions() {
 }
 
 @test "test startup with scenarios containing and not containing 2" {
-    run -0 api "/v1/decisions/stream?startup=true&scenarios_containing=longest&scenarios_not_containing=ssh_bf,test"
-    run -0 output_new_decisions
+    rune -0 api "/v1/decisions/stream?startup=true&scenarios_containing=longest&scenarios_not_containing=ssh_bf,test"
+    rune -0 output_new_decisions
     assert_output - <<-EOT
 	{"duration":"4h59m","origin":"test","scenario":"crowdsecurity/longest","scope":"Ip","type":"ban","value":"127.0.0.1"}
 	EOT
 }
 
 @test "test startup with scenarios not containing" {
-    run -0 api "/v1/decisions/stream?startup=true&scenarios_not_containing=ssh_bf"
-    run -0 output_new_decisions
+    rune -0 api "/v1/decisions/stream?startup=true&scenarios_not_containing=ssh_bf"
+    rune -0 output_new_decisions
     assert_output - <<-EOT
 	{"duration":"2h59m","origin":"test","scenario":"crowdsecurity/test","scope":"Ip","type":"ban","value":"127.0.0.2"}
 	{"duration":"4h59m","origin":"test","scenario":"crowdsecurity/longest","scope":"Ip","type":"ban","value":"127.0.0.1"}
@@ -120,16 +120,16 @@ output_new_decisions() {
 }
 
 @test "test startup with multiple scenarios not containing" {
-    run -0 api "/v1/decisions/stream?startup=true&scenarios_not_containing=ssh_bf,test"
-    run -0 output_new_decisions
+    rune -0 api "/v1/decisions/stream?startup=true&scenarios_not_containing=ssh_bf,test"
+    rune -0 output_new_decisions
     assert_output - <<-EOT
 	{"duration":"4h59m","origin":"test","scenario":"crowdsecurity/longest","scope":"Ip","type":"ban","value":"127.0.0.1"}
 	EOT
 }
 
 @test "test startup with origins parameter" {
-    run -0 api "/v1/decisions/stream?startup=true&origins=another_origin"
-    run -0 output_new_decisions
+    rune -0 api "/v1/decisions/stream?startup=true&origins=another_origin"
+    rune -0 output_new_decisions
     assert_output - <<-EOT
 	{"duration":"1h59m","origin":"another_origin","scenario":"crowdsecurity/test","scope":"Ip","type":"ban","value":"127.0.0.2"}
 	{"duration":"2h59m","origin":"another_origin","scenario":"crowdsecurity/ssh_bf","scope":"Ip","type":"ban","value":"127.0.0.1"}
@@ -137,8 +137,8 @@ output_new_decisions() {
 }
 
 @test "test startup with multiple origins parameter" {
-    run -0 api "/v1/decisions/stream?startup=true&origins=another_origin,test"
-    run -0 output_new_decisions
+    rune -0 api "/v1/decisions/stream?startup=true&origins=another_origin,test"
+    rune -0 output_new_decisions
     assert_output - <<-EOT
 	{"duration":"2h59m","origin":"test","scenario":"crowdsecurity/test","scope":"Ip","type":"ban","value":"127.0.0.2"}
 	{"duration":"4h59m","origin":"test","scenario":"crowdsecurity/longest","scope":"Ip","type":"ban","value":"127.0.0.1"}
@@ -146,7 +146,7 @@ output_new_decisions() {
 }
 
 @test "test startup with unknown origins" {
-    run -0 api "/v1/decisions/stream?startup=true&origins=unknown"
+    rune -0 api "/v1/decisions/stream?startup=true&origins=unknown"
     assert_output '{"deleted":null,"new":null}'
 }
 
