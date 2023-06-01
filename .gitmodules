@@ -14,3 +14,7 @@
 [submodule "tests/lib/bats-mock"]
 	path = test/lib/bats-mock
 	url = https://github.com/crowdsecurity/bats-mock.git
+[submodule "coraza"]
+	path = coraza
+	url = http://github.com/buixor/coraza 
+	branch = testing
