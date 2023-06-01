@@ -71,7 +71,7 @@ require (
 	github.com/bluele/gcache v0.0.2
 	github.com/cespare/xxhash/v2 v2.1.2
 	github.com/coreos/go-systemd/v22 v22.5.0
-	github.com/crowdsecurity/go-cs-lib v0.0.0-20230522120244-fa545c12e7ee
+	github.com/crowdsecurity/go-cs-lib v0.0.0-20230531105801-4c1535c2b3bd
 	github.com/goccy/go-yaml v1.9.7
 	github.com/gofrs/uuid v4.0.0+incompatible
 	github.com/golang-jwt/jwt/v4 v4.2.0
