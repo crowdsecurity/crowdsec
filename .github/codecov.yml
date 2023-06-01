@@ -1,5 +1,10 @@
+# we measure coverage but don't enforce it
+# https://docs.codecov.com/docs/codecov-yaml
 coverage:
   status:
+    patch:
+      default:
+        target: 0%
     project:
       default:
         target: 0%
