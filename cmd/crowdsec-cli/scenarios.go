@@ -25,7 +25,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadHub(); err != nil {
-				log.Fatal(err)
+				return err
 			}
 			if csConfig.Hub == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
@@ -37,7 +37,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 
 			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Info("Run 'sudo cscli hub update' to get the hub index")
-				log.Fatalf("Failed to get Hub index : %v", err)
+				return fmt.Errorf("failed to get hub index: %w", err)
 			}
 
 			return nil
@@ -72,7 +72,7 @@ func NewCmdScenariosInstall() *cobra.Command {
 			return compAllItems(cwhub.SCENARIOS, args, toComplete)
 		},
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			for _, name := range args {
 				t := cwhub.GetItem(cwhub.SCENARIOS, name)
 				if t == nil {
@@ -81,13 +81,13 @@ func NewCmdScenariosInstall() *cobra.Command {
 					continue
 				}
 				if err := cwhub.InstallItem(csConfig, name, cwhub.SCENARIOS, forceAction, downloadOnly); err != nil {
-					if ignoreError {
-						log.Errorf("Error while installing '%s': %s", name, err)
-					} else {
-						log.Fatalf("Error while installing '%s': %s", name, err)
+					if !ignoreError {
+						return fmt.Errorf("error while installing '%s': %w", name, err)
 					}
+					log.Errorf("Error while installing '%s': %s", name, err)
 				}
 			}
+			return nil
 		},
 	}
 	cmdScenariosInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
@@ -108,19 +108,20 @@ func NewCmdScenariosRemove() *cobra.Command {
 			return compInstalledItems(cwhub.SCENARIOS, args, toComplete)
 		},
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if all {
 				cwhub.RemoveMany(csConfig, cwhub.SCENARIOS, "", all, purge, forceAction)
-				return
+				return nil
 			}
 
 			if len(args) == 0 {
-				log.Fatalf("Specify at least one scenario to remove or '--all' flag.")
+				return fmt.Errorf("specify at least one scenario to remove or '--all'")
 			}
 
 			for _, name := range args {
 				cwhub.RemoveMany(csConfig, cwhub.SCENARIOS, name, all, purge, forceAction)
 			}
+			return nil
 		},
 	}
 	cmdScenariosRemove.PersistentFlags().BoolVar(&purge, "purge", false, "Delete source file too")
@@ -140,17 +141,18 @@ func NewCmdScenariosUpgrade() *cobra.Command {
 			return compInstalledItems(cwhub.SCENARIOS, args, toComplete)
 		},
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if all {
 				cwhub.UpgradeConfig(csConfig, cwhub.SCENARIOS, "", forceAction)
 			} else {
 				if len(args) == 0 {
-					log.Fatalf("no target scenario to upgrade")
+					return fmt.Errorf("specify at least one scenario to upgrade or '--all'")
 				}
 				for _, name := range args {
 					cwhub.UpgradeConfig(csConfig, cwhub.SCENARIOS, name, forceAction)
 				}
 			}
+			return nil
 		},
 	}
 	cmdScenariosUpgrade.PersistentFlags().BoolVarP(&all, "all", "a", false, "Upgrade all the scenarios")
