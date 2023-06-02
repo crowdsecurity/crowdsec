@@ -38,6 +38,16 @@ ifdef BUILD_STATIC
 $(warning WARNING: The BUILD_STATIC variable is deprecated and has no effect. Builds are static by default since v1.5.0.)
 endif
 
+# override with "make RE2_TAG=" to use the WebAssembly regexp library
+# override with "make RE2_TAG=,re2_cgo" to use the C++ regexp library
+RE2_TAG ?= $(shell echo "int main() { return 0; }" | $(CC) -x c - -o /dev/null -lre2 >/dev/null 2>&1 && echo ,re2_cgo)
+
+ifneq (,$(RE2_TAG))
+$(info Using C++ regexp library)
+else
+$(info Using WebAssembly regexp library)
+endif
+
 export LD_OPTS=-ldflags "-s -w -extldflags '-static' $(LD_OPTS_VARS)" \
 	-trimpath -tags netgo,osusergo,sqlite_omit_load_extension$(RE2_TAG)
 
@@ -75,14 +85,6 @@ clean: testclean
 	@$(RM) ./$(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) ./$(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) ./$(DUMMY_PLUGIN_FOLDER)/$(DUMMY_PLUGIN_BIN) $(WIN_IGNORE_ERR)
-
-RE2_TAG := $(shell echo "int main() { return 0; }" | $(CC) -x c - -o /dev/null -lre2 >/dev/null 2>&1 && echo ,re2_cgo)
-
-ifneq (,$(RE2_TAG))
-$(info Using C++ regexp library)
-else
-$(info Using WebAssembly regexp library)
-endif
 
 cscli: goversion
 	@$(MAKE) -C $(CSCLI_FOLDER) build $(MAKE_FLAGS)
