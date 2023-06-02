@@ -8,17 +8,8 @@ BUILD_CODENAME ?= alphaga
 CROWDSEC_FOLDER = ./cmd/crowdsec
 CSCLI_FOLDER = ./cmd/crowdsec-cli/
 
-HTTP_PLUGIN_FOLDER = plugins/notifications/http
-SLACK_PLUGIN_FOLDER = plugins/notifications/slack
-SPLUNK_PLUGIN_FOLDER = plugins/notifications/splunk
-EMAIL_PLUGIN_FOLDER = plugins/notifications/email
-DUMMY_PLUGIN_FOLDER = plugins/notifications/dummy
-
-HTTP_PLUGIN_BIN = notification-http$(EXT)
-SLACK_PLUGIN_BIN = notification-slack$(EXT)
-SPLUNK_PLUGIN_BIN = notification-splunk$(EXT)
-EMAIL_PLUGIN_BIN = notification-email$(EXT)
-DUMMY_PLUGIN_BIN = notification-dummy$(EXT)
+PLUGINS ?= http slack splunk email dummy
+PLUGINS_DIR = ./plugins/notifications
 
 CROWDSEC_BIN = crowdsec$(EXT)
 CSCLI_BIN = cscli$(EXT)
@@ -63,7 +54,10 @@ build: goversion crowdsec cscli plugins
 all: clean test build
 
 .PHONY: plugins
-plugins: http-plugin slack-plugin splunk-plugin email-plugin dummy-plugin
+plugins:
+	@for plugin in $(PLUGINS); do \
+		$(MAKE) -C $(PLUGINS_DIR)/$$plugin build $(MAKE_FLAGS); \
+	done
 
 .PHONY: clean
 clean: testclean
@@ -73,11 +67,9 @@ clean: testclean
 	@$(RM) $(CSCLI_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) *.log $(WIN_IGNORE_ERR)
 	@$(RM) crowdsec-release.tgz $(WIN_IGNORE_ERR)
-	@$(RM) ./$(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_BIN) $(WIN_IGNORE_ERR)
-	@$(RM) ./$(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN) $(WIN_IGNORE_ERR)
-	@$(RM) ./$(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN) $(WIN_IGNORE_ERR)
-	@$(RM) ./$(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_BIN) $(WIN_IGNORE_ERR)
-	@$(RM) ./$(DUMMY_PLUGIN_FOLDER)/$(DUMMY_PLUGIN_BIN) $(WIN_IGNORE_ERR)
+	@for plugin in $(PLUGINS); do \
+		$(MAKE) -C $(PLUGINS_DIR)/$$plugin clean $(MAKE_FLAGS); \
+	done
 
 
 cscli: goversion
@@ -85,21 +77,6 @@ cscli: goversion
 
 crowdsec: goversion
 	@$(MAKE) -C $(CROWDSEC_FOLDER) build $(MAKE_FLAGS)
-
-http-plugin: goversion
-	@$(MAKE) -C ./$(HTTP_PLUGIN_FOLDER) build $(MAKE_FLAGS)
-
-slack-plugin: goversion
-	@$(MAKE) -C ./$(SLACK_PLUGIN_FOLDER) build $(MAKE_FLAGS)
-
-splunk-plugin: goversion
-	@$(MAKE) -C ./$(SPLUNK_PLUGIN_FOLDER) build $(MAKE_FLAGS)
-
-email-plugin: goversion
-	@$(MAKE) -C ./$(EMAIL_PLUGIN_FOLDER) build $(MAKE_FLAGS)
-
-dummy-plugin: goversion
-	$(MAKE) -C ./$(DUMMY_PLUGIN_FOLDER) build $(MAKE_FLAGS)
 
 .PHONY: testclean
 testclean: bats-clean
@@ -132,35 +109,33 @@ localstack:
 localstack-stop:
 	docker-compose -f test/localstack/docker-compose.yml down
 
-package-common:
+.PHONY: vendor
+vendor:
+	@echo "Vendoring dependencies"
+	@$(GOCMD) mod vendor
+	@for plugin in $(PLUGINS); do \
+		$(MAKE) -C $(PLUGINS_DIR)/$$plugin vendor $(MAKE_FLAGS); \
+	done
+
+.PHONY: package
+package:
 	@echo "Building Release to dir $(RELDIR)"
 	@$(MKDIR) $(RELDIR)/cmd/crowdsec
 	@$(MKDIR) $(RELDIR)/cmd/crowdsec-cli
-	@$(MKDIR) $(RELDIR)/$(HTTP_PLUGIN_FOLDER)
-	@$(MKDIR) $(RELDIR)/$(SLACK_PLUGIN_FOLDER)
-	@$(MKDIR) $(RELDIR)/$(SPLUNK_PLUGIN_FOLDER)
-	@$(MKDIR) $(RELDIR)/$(EMAIL_PLUGIN_FOLDER)
-
 	@$(CP) $(CROWDSEC_FOLDER)/$(CROWDSEC_BIN) $(RELDIR)/cmd/crowdsec
 	@$(CP) $(CSCLI_FOLDER)/$(CSCLI_BIN) $(RELDIR)/cmd/crowdsec-cli
 
-	@$(CP) ./$(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_BIN) $(RELDIR)/$(HTTP_PLUGIN_FOLDER)
-	@$(CP) ./$(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN) $(RELDIR)/$(SLACK_PLUGIN_FOLDER)
-	@$(CP) ./$(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN) $(RELDIR)/$(SPLUNK_PLUGIN_FOLDER)
-	@$(CP) ./$(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_BIN) $(RELDIR)/$(EMAIL_PLUGIN_FOLDER)
-
-	@$(CP) ./$(HTTP_PLUGIN_FOLDER)/http.yaml $(RELDIR)/$(HTTP_PLUGIN_FOLDER)
-	@$(CP) ./$(SLACK_PLUGIN_FOLDER)/slack.yaml $(RELDIR)/$(SLACK_PLUGIN_FOLDER)
-	@$(CP) ./$(SPLUNK_PLUGIN_FOLDER)/splunk.yaml $(RELDIR)/$(SPLUNK_PLUGIN_FOLDER)
-	@$(CP) ./$(EMAIL_PLUGIN_FOLDER)/email.yaml $(RELDIR)/$(EMAIL_PLUGIN_FOLDER)
+	@for plugin in $(PLUGINS); do \
+		$(MKDIR) $(RELDIR)/$(PLUGINS_DIR)/$$plugin; \
+		$(CP) $(PLUGINS_DIR)/$$plugin/notification-$$plugin$(EXT) $(RELDIR)/$(PLUGINS_DIR)/$$plugin; \
+		$(CP) $(PLUGINS_DIR)/$$plugin/$$plugin.yaml $(RELDIR)/$(PLUGINS_DIR)/$$plugin/; \
+	done
 
 	@$(CPR) ./config $(RELDIR)
 	@$(CP) wizard.sh $(RELDIR)
 	@$(CP) scripts/test_env.sh $(RELDIR)
 	@$(CP) scripts/test_env.ps1 $(RELDIR)
 
-.PHONY: package
-package: package-common
 	@tar cvzf crowdsec-release.tgz $(RELDIR)
 
 .PHONY: check_release
