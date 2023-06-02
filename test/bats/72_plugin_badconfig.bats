@@ -67,6 +67,20 @@ teardown() {
     assert_stderr --partial "api server init: unable to run local API: while loading plugin: plugin name ${PLUGIN_DIR}/badname is invalid. Name should be like {type-name}"
 }
 
+@test "duplicate notification config" {
+    CONFIG_DIR=$(dirname "$CONFIG_YAML")
+    # email_default has two configurations
+    rune -0 yq -i '.name="email_default"' "$CONFIG_DIR/notifications/http.yaml"
+    # enable a notification, otherwise plugins are ignored
+    config_set "${PROFILES_PATH}" '.notifications=["slack_default"]'
+    # we want to check the logs
+    config_set '.common.log_media="stdout"'
+    # the command will fail because slack_deault is not working
+    run -1 --separate-stderr timeout 2s "${CROWDSEC}"
+    # but we have what we wanted
+    assert_stderr --partial "notification 'email_default' is defined multiple times"
+}
+
 @test "bad plugin permission (group writable)" {
     config_set "${PROFILES_PATH}" '.notifications=["http_default"]'
     chmod g+w "${PLUGIN_DIR}"/notification-http

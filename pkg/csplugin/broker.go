@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"strings"
 	"sync"
 	"text/template"
@@ -183,14 +184,14 @@ func (pb *PluginBroker) loadConfig(path string) error {
 			return err
 		}
 		for _, pluginConfig := range pluginConfigs {
+			setRequiredFields(&pluginConfig)
+			if _, ok := pb.pluginConfigByName[pluginConfig.Name]; ok {
+				log.Warningf("notification '%s' is defined multiple times", pluginConfig.Name)
+			}
+			pb.pluginConfigByName[pluginConfig.Name] = pluginConfig
 			if !pb.profilesContainPlugin(pluginConfig.Name) {
 				continue
 			}
-			setRequiredFields(&pluginConfig)
-			if _, ok := pb.pluginConfigByName[pluginConfig.Name]; ok {
-				log.Warnf("several configs for notification %s found  ", pluginConfig.Name)
-			}
-			pb.pluginConfigByName[pluginConfig.Name] = pluginConfig
 		}
 	}
 	err = pb.verifyPluginConfigsWithProfile()
@@ -358,6 +359,10 @@ func ParsePluginConfigFile(path string) ([]PluginConfig, error) {
 			}
 			return []PluginConfig{}, fmt.Errorf("while decoding %s got error %s", path, err)
 		}
+		// if the yaml document is empty, skip
+		if reflect.DeepEqual(pc, PluginConfig{}) {
+			continue
+		}
 		parsedConfigs = append(parsedConfigs, pc)
 	}
 	return parsedConfigs, nil
@@ -371,7 +376,6 @@ func setRequiredFields(pluginCfg *PluginConfig) {
 	if pluginCfg.TimeOut == time.Second*0 {
 		pluginCfg.TimeOut = time.Second * 5
 	}
-
 }
 
 func getUUID() (string, error) {
