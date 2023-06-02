@@ -22,6 +22,7 @@ import (
 // FormatPrometheusMetrics is a complete rip from prom2json
 func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error {
 	mfChan := make(chan *dto.MetricFamily, 1024)
+	errChan := make(chan error, 1)
 
 	// Start with the DefaultTransport for sane defaults.
 	transport := http.DefaultTransport.(*http.Transport).Clone()
@@ -34,14 +35,21 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 		defer trace.CatchPanic("crowdsec/ShowPrometheus")
 		err := prom2json.FetchMetricFamilies(url, mfChan, transport)
 		if err != nil {
-			log.Fatalf("failed to fetch prometheus metrics: %v", err)
+			errChan <- fmt.Errorf("failed to fetch prometheus metrics: %w", err)
+			return
 		}
+		errChan <- nil
 	}()
 
 	result := []*prom2json.Family{}
 	for mf := range mfChan {
 		result = append(result, prom2json.NewFamily(mf))
 	}
+
+	if err := <-errChan; err != nil {
+		return err
+	}
+
 	log.Debugf("Finished reading prometheus output, %d entries", len(result))
 	/*walk*/
 	lapi_decisions_stats := map[string]struct {
