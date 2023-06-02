@@ -78,7 +78,7 @@ teardown() {
     # the command will fail because slack_deault is not working
     run -1 --separate-stderr timeout 2s "${CROWDSEC}"
     # but we have what we wanted
-    assert_stderr --partial "several configs for notification email_default found"
+    assert_stderr --partial "notification 'email_default' is defined multiple times"
 }
 
 @test "bad plugin permission (group writable)" {

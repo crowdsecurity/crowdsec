@@ -184,14 +184,14 @@ func (pb *PluginBroker) loadConfig(path string) error {
 			return err
 		}
 		for _, pluginConfig := range pluginConfigs {
+			setRequiredFields(&pluginConfig)
 			if _, ok := pb.pluginConfigByName[pluginConfig.Name]; ok {
-				log.Warnf("several configs for notification %s found", pluginConfig.Name)
+				log.Warningf("notification '%s' is defined multiple times", pluginConfig.Name)
 			}
 			pb.pluginConfigByName[pluginConfig.Name] = pluginConfig
 			if !pb.profilesContainPlugin(pluginConfig.Name) {
 				continue
 			}
-			setRequiredFields(&pluginConfig)
 		}
 	}
 	err = pb.verifyPluginConfigsWithProfile()
