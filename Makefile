@@ -38,10 +38,6 @@ ifdef BUILD_STATIC
 $(warning WARNING: The BUILD_STATIC variable is deprecated and has no effect. Builds are static by default since v1.5.0.)
 endif
 
-# override with "make RE2_TAG=" to use the WebAssembly regexp library
-# override with "make RE2_TAG=,re2_cgo" to use the C++ regexp library
-RE2_TAG ?= $(shell echo "int main() { return 0; }" | $(CC) -x c - -o /dev/null -lre2 >/dev/null 2>&1 && echo ,re2_cgo)
-
 ifneq (,$(RE2_TAG))
 $(info Using C++ regexp library)
 else
@@ -49,7 +45,7 @@ $(info Using WebAssembly regexp library)
 endif
 
 export LD_OPTS=-ldflags "-s -w -extldflags '-static' $(LD_OPTS_VARS)" \
-	-trimpath -tags netgo,osusergo,sqlite_omit_load_extension$(RE2_TAG)
+	-trimpath -tags netgo,osusergo,sqlite_omit_load_extension$(addprefix ,$(RE2_TAG))
 
 ifneq (,$(TEST_COVERAGE))
 LD_OPTS += -cover
