@@ -8,7 +8,7 @@ BUILD_CODENAME ?= alphaga
 CROWDSEC_FOLDER = ./cmd/crowdsec
 CSCLI_FOLDER = ./cmd/crowdsec-cli/
 
-PLUGINS ?= http slack splunk email dummy
+PLUGINS ?= $(patsubst ./plugins/notifications/%,%,$(wildcard ./plugins/notifications/*))
 PLUGINS_DIR = ./plugins/notifications
 
 CROWDSEC_BIN = crowdsec$(EXT)
@@ -48,16 +48,20 @@ RELDIR = crowdsec-$(BUILD_VERSION)
 MAKE_FLAGS = --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 
 .PHONY: build
-build: goversion crowdsec cscli plugins
+build: pre-build goversion crowdsec cscli plugins
+
+pre-build:
+	$(info Building $(BUILD_VERSION) ($(BUILD_TAG)) for $(GOOS)/$(GOARCH))
+	$(info )
 
 .PHONY: all
 all: clean test build
 
 .PHONY: plugins
 plugins:
-	@for plugin in $(PLUGINS); do \
-		$(MAKE) -C $(PLUGINS_DIR)/$$plugin build $(MAKE_FLAGS); \
-	done
+	@$(foreach plugin,$(PLUGINS), \
+		$(MAKE) -C $(PLUGINS_DIR)/$(plugin) build $(MAKE_FLAGS); \
+	)
 
 .PHONY: clean
 clean: testclean
@@ -67,9 +71,9 @@ clean: testclean
 	@$(RM) $(CSCLI_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) *.log $(WIN_IGNORE_ERR)
 	@$(RM) crowdsec-release.tgz $(WIN_IGNORE_ERR)
-	@for plugin in $(PLUGINS); do \
-		$(MAKE) -C $(PLUGINS_DIR)/$$plugin clean $(MAKE_FLAGS); \
-	done
+	@$(foreach plugin,$(PLUGINS), \
+		$(MAKE) -C $(PLUGINS_DIR)/$(plugin) clean $(MAKE_FLAGS); \
+	)
 
 
 cscli: goversion
@@ -113,9 +117,9 @@ localstack-stop:
 vendor:
 	@echo "Vendoring dependencies"
 	@$(GOCMD) mod vendor
-	@for plugin in $(PLUGINS); do \
-		$(MAKE) -C $(PLUGINS_DIR)/$$plugin vendor $(MAKE_FLAGS); \
-	done
+	@$(foreach plugin,$(PLUGINS), \
+		$(MAKE) -C $(PLUGINS_DIR)/$(plugin) vendor $(MAKE_FLAGS); \
+	)
 
 .PHONY: package
 package:
@@ -125,11 +129,11 @@ package:
 	@$(CP) $(CROWDSEC_FOLDER)/$(CROWDSEC_BIN) $(RELDIR)/cmd/crowdsec
 	@$(CP) $(CSCLI_FOLDER)/$(CSCLI_BIN) $(RELDIR)/cmd/crowdsec-cli
 
-	@for plugin in $(PLUGINS); do \
-		$(MKDIR) $(RELDIR)/$(PLUGINS_DIR)/$$plugin; \
-		$(CP) $(PLUGINS_DIR)/$$plugin/notification-$$plugin$(EXT) $(RELDIR)/$(PLUGINS_DIR)/$$plugin; \
-		$(CP) $(PLUGINS_DIR)/$$plugin/$$plugin.yaml $(RELDIR)/$(PLUGINS_DIR)/$$plugin/; \
-	done
+	@$(foreach plugin,$(PLUGINS), \
+		$(MKDIR) $(RELDIR)/$(PLUGINS_DIR)/$(plugin); \
+		$(CP) $(PLUGINS_DIR)/$(plugin)/notification-$(plugin)$(EXT) $(RELDIR)/$(PLUGINS_DIR)/$(plugin); \
+		$(CP) $(PLUGINS_DIR)/$(plugin)/$(plugin).yaml $(RELDIR)/$(PLUGINS_DIR)/$(plugin)/; \
+	)
 
 	@$(CPR) ./config $(RELDIR)
 	@$(CP) wizard.sh $(RELDIR)
