@@ -129,9 +129,9 @@ func ShutdownCrowdsecRoutines() error {
 	}
 
 	log.Debugf("parsers is done")
-	close(inputEventChan)
-	bucketsTomb.Kill(nil)
+	time.Sleep(1 * time.Second) // ugly workaround for now
 
+	bucketsTomb.Kill(nil)
 	if err := bucketsTomb.Wait(); err != nil {
 		log.Warningf("Buckets returned error : %s", err)
 		reterr = err

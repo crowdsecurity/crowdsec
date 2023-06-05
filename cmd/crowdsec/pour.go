@@ -7,6 +7,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
@@ -20,11 +21,9 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 		select {
 		case <-bucketsTomb.Dying():
 			log.Infof("Bucket routine exiting")
-			if len(input) > 0 {
-				continue //the select is randomly chosen, but we loop until input is empty
-			}
 			return nil
 		case parsed := <-input:
+			log.Printf("debug: %+v", spew.Sdump(parsed))
 			startTime := time.Now()
 			count++
 			if count%5000 == 0 {
