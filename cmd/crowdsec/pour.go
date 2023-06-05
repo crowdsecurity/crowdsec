@@ -20,6 +20,9 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 		select {
 		case <-bucketsTomb.Dying():
 			log.Infof("Bucket routine exiting")
+			if len(input) > 0 {
+				continue //the select is randomly chosen, but we loop until input is empty
+			}
 			return nil
 		case parsed := <-input:
 			startTime := time.Now()
