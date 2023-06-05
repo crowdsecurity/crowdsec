@@ -1,4 +1,4 @@
-package types
+package parser
 
 import (
 	"time"

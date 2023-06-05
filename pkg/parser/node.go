@@ -56,11 +56,11 @@ type Node struct {
 	SubGroks yaml.MapSlice `yaml:"pattern_syntax,omitempty"`
 
 	//Holds a grok pattern
-	Grok types.GrokPattern `yaml:"grok,omitempty"`
+	Grok GrokPattern `yaml:"grok,omitempty"`
 	//Statics can be present in any type of node and is executed last
-	Statics []types.ExtraField `yaml:"statics,omitempty"`
+	Statics []ExtraField `yaml:"statics,omitempty"`
 	//Stash allows to capture data from the log line and store it in an accessible cache
-	Stash []types.DataCapture `yaml:"stash,omitempty"`
+	Stash []DataCapture `yaml:"stash,omitempty"`
 	//Whitelists
 	Whitelist Whitelist           `yaml:"whitelist,omitempty"`
 	Data      []*types.DataSource `yaml:"data,omitempty"`
