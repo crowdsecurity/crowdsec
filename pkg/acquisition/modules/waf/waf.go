@@ -8,6 +8,8 @@ import (
 	"net/http"
 
 	"github.com/corazawaf/coraza/v3"
+	"github.com/corazawaf/coraza/v3/experimental"
+	corazatypes "github.com/corazawaf/coraza/v3/types"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
@@ -20,13 +22,14 @@ import (
 )
 
 type WafSource struct {
-	config  WafSourceConfig
-	logger  *log.Entry
-	mux     *http.ServeMux
-	server  *http.Server
-	addr    string
-	outChan chan types.Event
-	waf     coraza.WAF
+	config       WafSourceConfig
+	logger       *log.Entry
+	mux          *http.ServeMux
+	server       *http.Server
+	addr         string
+	outChan      chan types.Event
+	inBandWaf    coraza.WAF
+	outOfBandWaf coraza.WAF
 }
 
 type WafSourceConfig struct {
@@ -65,7 +68,7 @@ func (w *WafSource) UnmarshalConfig(yamlConfig []byte) error {
 	wafConfig := WafSourceConfig{}
 	err := yaml.UnmarshalStrict(yamlConfig, &wafConfig)
 	if err != nil {
-		return errors.Wrap(err, "Cannot parse k8s-audit configuration")
+		return errors.Wrap(err, "Cannot parse waf configuration")
 	}
 
 	w.config = wafConfig
@@ -91,6 +94,11 @@ func (w *WafSource) UnmarshalConfig(yamlConfig []byte) error {
 		w.config.Mode = configuration.TAIL_MODE
 	}
 	return nil
+}
+
+func logError(error corazatypes.MatchedRule) {
+	msg := error.ErrorLog(0)
+	log.Infof("[logError][%s]  %s", error.Rule().Severity(), msg)
 }
 
 func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
@@ -128,13 +136,28 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 
 	w.logger.Infof("Loading rules %+v", rules)
 
-	waf, err := coraza.NewWAF(coraza.NewWAFConfig().WithDirectives(rules))
+	//in-band waf : kill on sight
+	inbandwaf, err := coraza.NewWAF(
+		coraza.NewWAFConfig().
+			WithErrorCallback(logError).
+			WithDirectives(rules),
+	)
 
 	if err != nil {
 		return errors.Wrap(err, "Cannot create WAF")
 	}
+	w.inBandWaf = inbandwaf
 
-	w.waf = waf
+	//out-of-band waf : log only
+	outofbandwaf, err := coraza.NewWAF(
+		coraza.NewWAFConfig().
+			WithErrorCallback(logError).
+			WithDirectivesFromFile("coraza_outofband.conf"),
+	)
+	if err != nil {
+		return errors.Wrap(err, "Cannot create WAF")
+	}
+	w.outOfBandWaf = outofbandwaf
 
 	//We don´t use the wrapper provided by coraza because we want to fully control what happens when a rule match to send the information in crowdsec
 	w.mux.HandleFunc(w.config.Path, w.wafHandler)
@@ -190,19 +213,26 @@ func (w *WafSource) Dump() interface{} {
 	return w
 }
 
-func (w *WafSource) wafHandler(rw http.ResponseWriter, r *http.Request) {
-	tx := w.waf.NewTransaction()
+func processReqWithEngine(waf coraza.WAF, r *http.Request) (*corazatypes.Interruption, error) {
+	tx := waf.NewTransaction()
 
 	if tx.IsRuleEngineOff() {
-		//Not enabled, just return
-		rw.WriteHeader(http.StatusOK)
-		return
+		log.Printf("engine is off")
+		return nil, nil
 	}
 
 	defer func() {
 		tx.ProcessLogging()
 		tx.Close()
 	}()
+
+	//this method is not exported by coraza, so we have to do it ourselves.
+	//ideally, this would be dealt with by expr code, and we provide helpers to manipulate the transaction object?\
+	var txx experimental.FullTransaction
+
+	//txx := experimental.ToFullInterface(tx)
+	txx = tx.(experimental.FullTransaction)
+	txx.RemoveRuleByID(1)
 
 	tx.ProcessConnection(r.RemoteAddr, 0, "", 0)
 
@@ -226,48 +256,62 @@ func (w *WafSource) wafHandler(rw http.ResponseWriter, r *http.Request) {
 
 	in := tx.ProcessRequestHeaders()
 	if in != nil {
-		w.logger.Warnf("WAF blocked request: %+v", in)
-		rw.WriteHeader(http.StatusForbidden)
-		return
-	}
-
-	in = tx.ProcessRequestHeaders()
-
-	if in != nil {
-		w.logger.Warnf("WAF blocked request: %+v", in)
-		rw.WriteHeader(http.StatusForbidden)
-		return
+		log.Printf("headerss")
+		return in, nil
 	}
 
 	if tx.IsRequestBodyAccessible() {
 		if r.Body != nil && r.Body != http.NoBody {
 			_, _, err := tx.ReadRequestBodyFrom(r.Body)
 			if err != nil {
-				w.logger.Errorf("Cannot read request body: %s", err)
-				rw.WriteHeader(http.StatusInternalServerError)
-				return
+				return nil, errors.Wrap(err, "Cannot read request body")
 			}
 			bodyReader, err := tx.RequestBodyReader()
 			if err != nil {
-				w.logger.Errorf("Cannot read request body: %s", err)
-				rw.WriteHeader(http.StatusInternalServerError)
-				return
+				return nil, errors.Wrap(err, "Cannot read request body")
+
 			}
 			body := io.MultiReader(bodyReader, r.Body)
 			r.Body = ioutil.NopCloser(body)
 			in, err = tx.ProcessRequestBody()
 			if err != nil {
-				w.logger.Errorf("Cannot process request body: %s", err)
-				rw.WriteHeader(http.StatusInternalServerError)
-				return
+				return nil, errors.Wrap(err, "Cannot process request body")
+
 			}
 			if in != nil {
-				w.logger.Warnf("WAF blocked request: %+v", in)
-				rw.WriteHeader(http.StatusForbidden)
-				return
+				log.Printf("nothing here")
+				return in, nil
 			}
 		}
 	}
+	log.Printf("done")
 
+	return nil, nil
+}
+
+func (w *WafSource) wafHandler(rw http.ResponseWriter, r *http.Request) {
+	log.Printf("yolo here  %v", r)
+	//inband first
+	in, err := processReqWithEngine(w.inBandWaf, r)
+	if err != nil { //things went south
+		log.Errorf("Error while processing request : %s", err)
+		rw.WriteHeader(http.StatusForbidden)
+		return
+	}
+	if in != nil {
+		log.Infof("Request blocked by WAF : %+v", in)
+		rw.WriteHeader(http.StatusForbidden)
+		return
+	}
 	rw.WriteHeader(http.StatusOK)
+	//Now we can do out of band
+	in2, err := processReqWithEngine(w.outOfBandWaf, r)
+	if err != nil { //things went south
+		log.Errorf("Error while processing request : %s", err)
+		return
+	}
+	if in2 != nil {
+		log.Infof("WAF triggered : %+v", in2)
+		return
+	}
 }
