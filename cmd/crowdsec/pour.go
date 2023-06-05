@@ -23,7 +23,7 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 			log.Infof("Bucket routine exiting")
 			return nil
 		case parsed := <-input:
-			log.Printf("debug: %+v", spew.Sdump(parsed))
+			fmt.Printf("debug: %+v", spew.Sdump(parsed))
 			startTime := time.Now()
 			count++
 			if count%5000 == 0 {
