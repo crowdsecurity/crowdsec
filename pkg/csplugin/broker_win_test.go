@@ -5,6 +5,7 @@ package csplugin
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"os"
 	"testing"
 	"time"
@@ -17,7 +18,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 /*
