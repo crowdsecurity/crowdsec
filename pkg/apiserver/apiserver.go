@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
@@ -87,7 +89,7 @@ func CustomRecoveryWithWriter() gin.HandlerFunc {
 					log.Warningf("client %s disconnected : %s", c.ClientIP(), err)
 					c.Abort()
 				} else {
-					filename := types.WriteStackTrace(err)
+					filename := trace.WriteStackTrace(err)
 					log.Warningf("client %s error : %s", c.ClientIP(), err)
 					log.Warningf("stacktrace written to %s, please join to your issue", filename)
 					c.AbortWithStatus(http.StatusInternalServerError)
@@ -311,7 +313,13 @@ func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
 			if err != nil {
 				return nil, errors.Wrap(err, "Error opening cert file")
 			}
-			caCertPool = x509.NewCertPool()
+			caCertPool, err = x509.SystemCertPool()
+			if err != nil {
+				log.Warnf("Error loading system CA certificates: %s", err)
+			}
+			if caCertPool == nil {
+				caCertPool = x509.NewCertPool()
+			}
 			caCertPool.AppendCertsFromPEM(caCert)
 		}
 	}
@@ -325,7 +333,7 @@ func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
 }
 
 func (s *APIServer) Run(apiReady chan bool) error {
-	defer types.CatchPanic("lapi/runServer")
+	defer trace.CatchPanic("lapi/runServer")
 	tlsCfg, err := s.GetTLSConfig()
 	if err != nil {
 		return errors.Wrap(err, "while creating TLS config")

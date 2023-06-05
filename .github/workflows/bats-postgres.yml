@@ -10,11 +10,11 @@ jobs:
   build:
     strategy:
       matrix:
-        go-version: ["1.20.1"]
+        go-version: ["1.20.4"]
 
     name: "Build + tests"
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     services:
       database:
         image: postgres:14
@@ -85,24 +85,6 @@ jobs:
         PGPORT: 5432
         PGPASSWORD: "secret"
         PGUSER: postgres
-
-#    - name: "Build crowdsec and fixture (DB_BACKEND: postgres)"
-#      run: make clean bats-build bats-fixture
-#      env:
-#        DB_BACKEND: postgres
-#        PGHOST: 127.0.0.1
-#        PGPORT: 5432
-#        PGPASSWORD: "secret"
-#        PGUSER: postgres
-#
-#    - name: "Run tests (DB_BACKEND: postgres)"
-#      run: make bats-test
-#      env:
-#        DB_BACKEND: postgres
-#        PGHOST: 127.0.0.1
-#        PGPORT: 5432
-#        PGPASSWORD: "secret"
-#        PGUSER: postgres
 
     - name: "Show stack traces"
       run: for file in $(find /tmp/crowdsec-crash.*.txt); do echo ">>>>> $file"; cat $file; echo; done

@@ -14,6 +14,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+
 	"github.com/fsnotify/fsnotify"
 	"github.com/nxadm/tail"
 	"github.com/pkg/errors"
@@ -39,6 +41,7 @@ type FileConfiguration struct {
 	Filename                          string
 	ForceInotify                      bool `yaml:"force_inotify"`
 	MaxBufferSize                     int  `yaml:"max_buffer_size"`
+	PollWithoutInotify                bool `yaml:"poll_without_inotify"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -328,14 +331,14 @@ func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 			continue
 		}
 
-		tail, err := tail.TailFile(file, tail.Config{ReOpen: true, Follow: true, Poll: true, Location: &tail.SeekInfo{Offset: 0, Whence: io.SeekEnd}, Logger: log.NewEntry(log.StandardLogger())})
+		tail, err := tail.TailFile(file, tail.Config{ReOpen: true, Follow: true, Poll: f.config.PollWithoutInotify, Location: &tail.SeekInfo{Offset: 0, Whence: io.SeekEnd}, Logger: log.NewEntry(log.StandardLogger())})
 		if err != nil {
 			f.logger.Errorf("Could not start tailing file %s : %s", file, err)
 			continue
 		}
 		f.tails[file] = true
 		t.Go(func() error {
-			defer types.CatchPanic("crowdsec/acquis/file/live/fsnotify")
+			defer trace.CatchPanic("crowdsec/acquis/file/live/fsnotify")
 			return f.tailFile(out, t, tail)
 		})
 	}
@@ -411,14 +414,14 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 					continue
 				}
 				//Slightly different parameters for Location, as we want to read the first lines of the newly created file
-				tail, err := tail.TailFile(event.Name, tail.Config{ReOpen: true, Follow: true, Poll: true, Location: &tail.SeekInfo{Offset: 0, Whence: io.SeekStart}})
+				tail, err := tail.TailFile(event.Name, tail.Config{ReOpen: true, Follow: true, Poll: f.config.PollWithoutInotify, Location: &tail.SeekInfo{Offset: 0, Whence: io.SeekStart}})
 				if err != nil {
 					logger.Errorf("Could not start tailing file %s : %s", event.Name, err)
 					break
 				}
 				f.tails[event.Name] = true
 				t.Go(func() error {
-					defer types.CatchPanic("crowdsec/acquis/tailfile")
+					defer trace.CatchPanic("crowdsec/acquis/tailfile")
 					return f.tailFile(out, t, tail)
 				})
 			}
@@ -514,22 +517,28 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 		scanner.Buffer(buf, f.config.MaxBufferSize)
 	}
 	for scanner.Scan() {
-		if scanner.Text() == "" {
-			continue
-		}
-		l := types.Line{
-			Raw:     scanner.Text(),
-			Time:    time.Now().UTC(),
-			Src:     filename,
-			Labels:  f.config.Labels,
-			Process: true,
-			Module:  f.GetName(),
-		}
-		logger.Debugf("line %s", l.Raw)
-		linesRead.With(prometheus.Labels{"source": filename}).Inc()
+		select {
+		case <-t.Dying():
+			logger.Infof("File datasource %s stopping", filename)
+			return nil
+		default:
+			if scanner.Text() == "" {
+				continue
+			}
+			l := types.Line{
+				Raw:     scanner.Text(),
+				Time:    time.Now().UTC(),
+				Src:     filename,
+				Labels:  f.config.Labels,
+				Process: true,
+				Module:  f.GetName(),
+			}
+			logger.Debugf("line %s", l.Raw)
+			linesRead.With(prometheus.Labels{"source": filename}).Inc()
 
-		//we're reading logs at once, it must be time-machine buckets
-		out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
+			//we're reading logs at once, it must be time-machine buckets
+			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
+		}
 	}
 	if err := scanner.Err(); err != nil {
 		logger.Errorf("Error while reading file: %s", err)

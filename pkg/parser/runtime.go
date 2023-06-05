@@ -133,11 +133,11 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 			case int:
 				value = strconv.Itoa(out)
 			case map[string]interface{}:
-				clog.Warnf("Expression returned a map, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string")
+				clog.Warnf("Expression '%s' returned a map, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string", static.ExpValue)
 			case []interface{}:
-				clog.Warnf("Expression returned a map, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string")
+				clog.Warnf("Expression '%s' returned an array, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string", static.ExpValue)
 			case nil:
-				clog.Debugf("Expression returned nil, skipping")
+				clog.Debugf("Expression '%s' returned nil, skipping", static.ExpValue)
 			default:
 				clog.Errorf("unexpected return type for RunTimeValue : %T", output)
 				return errors.New("unexpected return type for RunTimeValue")
@@ -164,7 +164,7 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 				processed = true
 				clog.Debugf("+ Method %s('%s') returned %d entries to merge in .Enriched\n", static.Method, value, len(ret))
 				//Hackish check, but those methods do not return any data by design
-				if len(ret) == 0 && static.Method != "UnmarshalXML" && static.Method != "UnmarshalJSON" {
+				if len(ret) == 0 && static.Method != "UnmarshalJSON" {
 					clog.Debugf("+ Method '%s' empty response on '%s'", static.Method, value)
 				}
 				for k, v := range ret {
@@ -265,6 +265,9 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 	if event.Meta == nil {
 		event.Meta = make(map[string]string)
 	}
+	if event.Unmarshaled == nil {
+		event.Unmarshaled = make(map[string]interface{})
+	}
 	if event.Type == types.LOG {
 		log.Tracef("INPUT '%s'", event.Line.Raw)
 	}
@@ -323,11 +326,11 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			}
 			clog.Tracef("node (%s) ret : %v", node.rn, ret)
 			if ParseDump {
+				StageParseMutex.Lock()
 				if len(StageParseCache[stage][node.Name]) == 0 {
-					StageParseMutex.Lock()
 					StageParseCache[stage][node.Name] = make([]ParserResult, 0)
-					StageParseMutex.Unlock()
 				}
+				StageParseMutex.Unlock()
 				evtcopy := deepcopy.Copy(event)
 				parserInfo := ParserResult{Evt: evtcopy.(types.Event), Success: ret}
 				StageParseMutex.Lock()

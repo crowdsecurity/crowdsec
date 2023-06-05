@@ -7,17 +7,18 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/windows/svc"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func StartRunSvc() error {
 	const svcName = "CrowdSec"
 	const svcDescription = "Crowdsec IPS/IDS"
 
-	defer types.CatchPanic("crowdsec/StartRunSvc")
+	defer trace.CatchPanic("crowdsec/StartRunSvc")
 
 	isRunninginService, err := svc.IsWindowsService()
 	if err != nil {
@@ -66,7 +67,7 @@ func WindowsRun() error {
 		return err
 	}
 	// Configure logging
-	log.Infof("Crowdsec %s", cwversion.VersionStr())
+	log.Infof("Crowdsec %s", version.String())
 
 	apiReady := make(chan bool, 1)
 	agentReady := make(chan bool, 1)

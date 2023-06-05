@@ -4773,6 +4773,55 @@ func (m *DecisionMutation) ResetUUID() {
 	delete(m.clearedFields, decision.FieldUUID)
 }
 
+// SetAlertDecisions sets the "alert_decisions" field.
+func (m *DecisionMutation) SetAlertDecisions(i int) {
+	m.owner = &i
+}
+
+// AlertDecisions returns the value of the "alert_decisions" field in the mutation.
+func (m *DecisionMutation) AlertDecisions() (r int, exists bool) {
+	v := m.owner
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAlertDecisions returns the old "alert_decisions" field's value of the Decision entity.
+// If the Decision object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DecisionMutation) OldAlertDecisions(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAlertDecisions is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAlertDecisions requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAlertDecisions: %w", err)
+	}
+	return oldValue.AlertDecisions, nil
+}
+
+// ClearAlertDecisions clears the value of the "alert_decisions" field.
+func (m *DecisionMutation) ClearAlertDecisions() {
+	m.owner = nil
+	m.clearedFields[decision.FieldAlertDecisions] = struct{}{}
+}
+
+// AlertDecisionsCleared returns if the "alert_decisions" field was cleared in this mutation.
+func (m *DecisionMutation) AlertDecisionsCleared() bool {
+	_, ok := m.clearedFields[decision.FieldAlertDecisions]
+	return ok
+}
+
+// ResetAlertDecisions resets all changes to the "alert_decisions" field.
+func (m *DecisionMutation) ResetAlertDecisions() {
+	m.owner = nil
+	delete(m.clearedFields, decision.FieldAlertDecisions)
+}
+
 // SetOwnerID sets the "owner" edge to the Alert entity by id.
 func (m *DecisionMutation) SetOwnerID(id int) {
 	m.owner = &id
@@ -4785,7 +4834,7 @@ func (m *DecisionMutation) ClearOwner() {
 
 // OwnerCleared reports if the "owner" edge to the Alert entity was cleared.
 func (m *DecisionMutation) OwnerCleared() bool {
-	return m.clearedowner
+	return m.AlertDecisionsCleared() || m.clearedowner
 }
 
 // OwnerID returns the "owner" edge ID in the mutation.
@@ -4831,7 +4880,7 @@ func (m *DecisionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *DecisionMutation) Fields() []string {
-	fields := make([]string, 0, 15)
+	fields := make([]string, 0, 16)
 	if m.created_at != nil {
 		fields = append(fields, decision.FieldCreatedAt)
 	}
@@ -4877,6 +4926,9 @@ func (m *DecisionMutation) Fields() []string {
 	if m.uuid != nil {
 		fields = append(fields, decision.FieldUUID)
 	}
+	if m.owner != nil {
+		fields = append(fields, decision.FieldAlertDecisions)
+	}
 	return fields
 }
 
@@ -4915,6 +4967,8 @@ func (m *DecisionMutation) Field(name string) (ent.Value, bool) {
 		return m.Simulated()
 	case decision.FieldUUID:
 		return m.UUID()
+	case decision.FieldAlertDecisions:
+		return m.AlertDecisions()
 	}
 	return nil, false
 }
@@ -4954,6 +5008,8 @@ func (m *DecisionMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldSimulated(ctx)
 	case decision.FieldUUID:
 		return m.OldUUID(ctx)
+	case decision.FieldAlertDecisions:
+		return m.OldAlertDecisions(ctx)
 	}
 	return nil, fmt.Errorf("unknown Decision field %s", name)
 }
@@ -5067,6 +5123,13 @@ func (m *DecisionMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUUID(v)
+		return nil
+	case decision.FieldAlertDecisions:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAlertDecisions(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Decision field %s", name)
@@ -5188,6 +5251,9 @@ func (m *DecisionMutation) ClearedFields() []string {
 	if m.FieldCleared(decision.FieldUUID) {
 		fields = append(fields, decision.FieldUUID)
 	}
+	if m.FieldCleared(decision.FieldAlertDecisions) {
+		fields = append(fields, decision.FieldAlertDecisions)
+	}
 	return fields
 }
 
@@ -5228,6 +5294,9 @@ func (m *DecisionMutation) ClearField(name string) error {
 		return nil
 	case decision.FieldUUID:
 		m.ClearUUID()
+		return nil
+	case decision.FieldAlertDecisions:
+		m.ClearAlertDecisions()
 		return nil
 	}
 	return fmt.Errorf("unknown Decision nullable field %s", name)
@@ -5281,6 +5350,9 @@ func (m *DecisionMutation) ResetField(name string) error {
 		return nil
 	case decision.FieldUUID:
 		m.ResetUUID()
+		return nil
+	case decision.FieldAlertDecisions:
+		m.ResetAlertDecisions()
 		return nil
 	}
 	return fmt.Errorf("unknown Decision field %s", name)
@@ -5646,6 +5718,55 @@ func (m *EventMutation) ResetSerialized() {
 	m.serialized = nil
 }
 
+// SetAlertEvents sets the "alert_events" field.
+func (m *EventMutation) SetAlertEvents(i int) {
+	m.owner = &i
+}
+
+// AlertEvents returns the value of the "alert_events" field in the mutation.
+func (m *EventMutation) AlertEvents() (r int, exists bool) {
+	v := m.owner
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAlertEvents returns the old "alert_events" field's value of the Event entity.
+// If the Event object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *EventMutation) OldAlertEvents(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAlertEvents is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAlertEvents requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAlertEvents: %w", err)
+	}
+	return oldValue.AlertEvents, nil
+}
+
+// ClearAlertEvents clears the value of the "alert_events" field.
+func (m *EventMutation) ClearAlertEvents() {
+	m.owner = nil
+	m.clearedFields[event.FieldAlertEvents] = struct{}{}
+}
+
+// AlertEventsCleared returns if the "alert_events" field was cleared in this mutation.
+func (m *EventMutation) AlertEventsCleared() bool {
+	_, ok := m.clearedFields[event.FieldAlertEvents]
+	return ok
+}
+
+// ResetAlertEvents resets all changes to the "alert_events" field.
+func (m *EventMutation) ResetAlertEvents() {
+	m.owner = nil
+	delete(m.clearedFields, event.FieldAlertEvents)
+}
+
 // SetOwnerID sets the "owner" edge to the Alert entity by id.
 func (m *EventMutation) SetOwnerID(id int) {
 	m.owner = &id
@@ -5658,7 +5779,7 @@ func (m *EventMutation) ClearOwner() {
 
 // OwnerCleared reports if the "owner" edge to the Alert entity was cleared.
 func (m *EventMutation) OwnerCleared() bool {
-	return m.clearedowner
+	return m.AlertEventsCleared() || m.clearedowner
 }
 
 // OwnerID returns the "owner" edge ID in the mutation.
@@ -5704,7 +5825,7 @@ func (m *EventMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *EventMutation) Fields() []string {
-	fields := make([]string, 0, 4)
+	fields := make([]string, 0, 5)
 	if m.created_at != nil {
 		fields = append(fields, event.FieldCreatedAt)
 	}
@@ -5716,6 +5837,9 @@ func (m *EventMutation) Fields() []string {
 	}
 	if m.serialized != nil {
 		fields = append(fields, event.FieldSerialized)
+	}
+	if m.owner != nil {
+		fields = append(fields, event.FieldAlertEvents)
 	}
 	return fields
 }
@@ -5733,6 +5857,8 @@ func (m *EventMutation) Field(name string) (ent.Value, bool) {
 		return m.Time()
 	case event.FieldSerialized:
 		return m.Serialized()
+	case event.FieldAlertEvents:
+		return m.AlertEvents()
 	}
 	return nil, false
 }
@@ -5750,6 +5876,8 @@ func (m *EventMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldTime(ctx)
 	case event.FieldSerialized:
 		return m.OldSerialized(ctx)
+	case event.FieldAlertEvents:
+		return m.OldAlertEvents(ctx)
 	}
 	return nil, fmt.Errorf("unknown Event field %s", name)
 }
@@ -5787,6 +5915,13 @@ func (m *EventMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetSerialized(v)
 		return nil
+	case event.FieldAlertEvents:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAlertEvents(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Event field %s", name)
 }
@@ -5794,13 +5929,16 @@ func (m *EventMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *EventMutation) AddedFields() []string {
-	return nil
+	var fields []string
+	return fields
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *EventMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	}
 	return nil, false
 }
 
@@ -5823,6 +5961,9 @@ func (m *EventMutation) ClearedFields() []string {
 	if m.FieldCleared(event.FieldUpdatedAt) {
 		fields = append(fields, event.FieldUpdatedAt)
 	}
+	if m.FieldCleared(event.FieldAlertEvents) {
+		fields = append(fields, event.FieldAlertEvents)
+	}
 	return fields
 }
 
@@ -5843,6 +5984,9 @@ func (m *EventMutation) ClearField(name string) error {
 	case event.FieldUpdatedAt:
 		m.ClearUpdatedAt()
 		return nil
+	case event.FieldAlertEvents:
+		m.ClearAlertEvents()
+		return nil
 	}
 	return fmt.Errorf("unknown Event nullable field %s", name)
 }
@@ -5862,6 +6006,9 @@ func (m *EventMutation) ResetField(name string) error {
 		return nil
 	case event.FieldSerialized:
 		m.ResetSerialized()
+		return nil
+	case event.FieldAlertEvents:
+		m.ResetAlertEvents()
 		return nil
 	}
 	return fmt.Errorf("unknown Event field %s", name)
@@ -7361,6 +7508,55 @@ func (m *MetaMutation) ResetValue() {
 	m.value = nil
 }
 
+// SetAlertMetas sets the "alert_metas" field.
+func (m *MetaMutation) SetAlertMetas(i int) {
+	m.owner = &i
+}
+
+// AlertMetas returns the value of the "alert_metas" field in the mutation.
+func (m *MetaMutation) AlertMetas() (r int, exists bool) {
+	v := m.owner
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAlertMetas returns the old "alert_metas" field's value of the Meta entity.
+// If the Meta object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MetaMutation) OldAlertMetas(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAlertMetas is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAlertMetas requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAlertMetas: %w", err)
+	}
+	return oldValue.AlertMetas, nil
+}
+
+// ClearAlertMetas clears the value of the "alert_metas" field.
+func (m *MetaMutation) ClearAlertMetas() {
+	m.owner = nil
+	m.clearedFields[meta.FieldAlertMetas] = struct{}{}
+}
+
+// AlertMetasCleared returns if the "alert_metas" field was cleared in this mutation.
+func (m *MetaMutation) AlertMetasCleared() bool {
+	_, ok := m.clearedFields[meta.FieldAlertMetas]
+	return ok
+}
+
+// ResetAlertMetas resets all changes to the "alert_metas" field.
+func (m *MetaMutation) ResetAlertMetas() {
+	m.owner = nil
+	delete(m.clearedFields, meta.FieldAlertMetas)
+}
+
 // SetOwnerID sets the "owner" edge to the Alert entity by id.
 func (m *MetaMutation) SetOwnerID(id int) {
 	m.owner = &id
@@ -7373,7 +7569,7 @@ func (m *MetaMutation) ClearOwner() {
 
 // OwnerCleared reports if the "owner" edge to the Alert entity was cleared.
 func (m *MetaMutation) OwnerCleared() bool {
-	return m.clearedowner
+	return m.AlertMetasCleared() || m.clearedowner
 }
 
 // OwnerID returns the "owner" edge ID in the mutation.
@@ -7419,7 +7615,7 @@ func (m *MetaMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *MetaMutation) Fields() []string {
-	fields := make([]string, 0, 4)
+	fields := make([]string, 0, 5)
 	if m.created_at != nil {
 		fields = append(fields, meta.FieldCreatedAt)
 	}
@@ -7431,6 +7627,9 @@ func (m *MetaMutation) Fields() []string {
 	}
 	if m.value != nil {
 		fields = append(fields, meta.FieldValue)
+	}
+	if m.owner != nil {
+		fields = append(fields, meta.FieldAlertMetas)
 	}
 	return fields
 }
@@ -7448,6 +7647,8 @@ func (m *MetaMutation) Field(name string) (ent.Value, bool) {
 		return m.Key()
 	case meta.FieldValue:
 		return m.Value()
+	case meta.FieldAlertMetas:
+		return m.AlertMetas()
 	}
 	return nil, false
 }
@@ -7465,6 +7666,8 @@ func (m *MetaMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldKey(ctx)
 	case meta.FieldValue:
 		return m.OldValue(ctx)
+	case meta.FieldAlertMetas:
+		return m.OldAlertMetas(ctx)
 	}
 	return nil, fmt.Errorf("unknown Meta field %s", name)
 }
@@ -7502,6 +7705,13 @@ func (m *MetaMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetValue(v)
 		return nil
+	case meta.FieldAlertMetas:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAlertMetas(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Meta field %s", name)
 }
@@ -7509,13 +7719,16 @@ func (m *MetaMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *MetaMutation) AddedFields() []string {
-	return nil
+	var fields []string
+	return fields
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *MetaMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	}
 	return nil, false
 }
 
@@ -7538,6 +7751,9 @@ func (m *MetaMutation) ClearedFields() []string {
 	if m.FieldCleared(meta.FieldUpdatedAt) {
 		fields = append(fields, meta.FieldUpdatedAt)
 	}
+	if m.FieldCleared(meta.FieldAlertMetas) {
+		fields = append(fields, meta.FieldAlertMetas)
+	}
 	return fields
 }
 
@@ -7558,6 +7774,9 @@ func (m *MetaMutation) ClearField(name string) error {
 	case meta.FieldUpdatedAt:
 		m.ClearUpdatedAt()
 		return nil
+	case meta.FieldAlertMetas:
+		m.ClearAlertMetas()
+		return nil
 	}
 	return fmt.Errorf("unknown Meta nullable field %s", name)
 }
@@ -7577,6 +7796,9 @@ func (m *MetaMutation) ResetField(name string) error {
 		return nil
 	case meta.FieldValue:
 		m.ResetValue()
+		return nil
+	case meta.FieldAlertMetas:
+		m.ResetAlertMetas()
 		return nil
 	}
 	return fmt.Errorf("unknown Meta field %s", name)

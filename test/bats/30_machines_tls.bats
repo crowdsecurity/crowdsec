@@ -47,10 +47,8 @@ setup_file() {
 
     # remove all machines
 
-    run -0 cscli machines list -o json
-    run -0 jq -r '.[].machineId' <(output)
-    for machine in $(output); do
-        run -0 cscli machines delete "${machine}"
+    for machine in $(cscli machines list -o json | jq -r '.[].machineId'); do
+        cscli machines delete "${machine}" >/dev/null 2>&1
     done
 
     config_disable_agent
@@ -69,7 +67,6 @@ setup() {
         .api.server.tls.crl_path=strenv(tmpdir) + "/crl.pem" | 
         .api.server.tls.agents_allowed_ou=["agent-ou"]
     '
-
 }
 
 teardown() {
@@ -102,7 +99,7 @@ teardown() {
 
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" 'del(.login,.password)'
     ./instance-crowdsec start
-    run -0 --separate-stderr cscli machines list -o json
+    rune -0 cscli machines list -o json
     assert_output '[]'
 }
 
@@ -116,9 +113,9 @@ teardown() {
 
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" 'del(.login,.password)'
     ./instance-crowdsec start
-    run -0 cscli lapi status
-    run -0 --separate-stderr cscli machines list -o json
-    run -0 jq -c '[. | length, .[0].machineId[0:32], .[0].isValidated, .[0].ipAddress, .[0].auth_type]' <(output)
+    rune -0 cscli lapi status
+    rune -0 cscli machines list -o json
+    rune -0 jq -c '[. | length, .[0].machineId[0:32], .[0].isValidated, .[0].ipAddress, .[0].auth_type]' <(output)
 
     assert_output '[1,"localhost@127.0.0.1",true,"127.0.0.1","tls"]'
     cscli machines delete localhost@127.0.0.1
@@ -133,7 +130,7 @@ teardown() {
     '
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" 'del(.login,.password)'
     ./instance-crowdsec start
-    run -0 --separate-stderr cscli machines list -o json
+    rune -0 cscli machines list -o json
     assert_output '[]'
 }
 
@@ -147,6 +144,6 @@ teardown() {
 
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" 'del(.login,.password)'
     ./instance-crowdsec start
-    run -0 --separate-stderr cscli machines list -o json
+    rune -0 cscli machines list -o json
     assert_output '[]'
 }

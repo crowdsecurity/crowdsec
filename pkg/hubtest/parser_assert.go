@@ -246,8 +246,43 @@ func (p *ParserAssert) AutoGenParserAssert() string {
 					}
 					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Enriched["%s"] == "%s"`+"\n", stage, parser, pidx, ekey, Escape(eval))
 				}
+				for ekey, eval := range result.Evt.Unmarshaled {
+					if eval == "" {
+						continue
+					}
+					base := fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Unmarshaled["%s"]`, stage, parser, pidx, ekey)
+					for _, line := range p.buildUnmarshaledAssert("", eval) {
+						ret += base + line
+					}
+				}
 			}
 		}
+	}
+	return ret
+}
+
+func (p *ParserAssert) buildUnmarshaledAssert(ekey string, eval interface{}) []string {
+	ret := make([]string, 0)
+	switch val := eval.(type) {
+	case map[string]interface{}:
+		for k, v := range val {
+			ret = append(ret, p.buildUnmarshaledAssert(fmt.Sprintf(`%s["%s"]`, ekey, k), v)...)
+		}
+	case map[interface{}]interface{}:
+		for k, v := range val {
+			ret = append(ret, p.buildUnmarshaledAssert(fmt.Sprintf(`%s["%s"]`, ekey, k), v)...)
+		}
+	case []interface{}:
+	case string:
+		ret = append(ret, fmt.Sprintf(`%s == "%s"`+"\n", ekey, Escape(val)))
+	case bool:
+		ret = append(ret, fmt.Sprintf(`%s == %t`+"\n", ekey, val))
+	case int:
+		ret = append(ret, fmt.Sprintf(`%s == %d`+"\n", ekey, val))
+	case float64:
+		ret = append(ret, fmt.Sprintf(`%s == %f`+"\n", ekey, val))
+	default:
+		log.Warningf("unknown type '%T' for key '%s'", val, ekey)
 	}
 	return ret
 }
@@ -348,6 +383,7 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 	yellow := color.New(color.FgYellow).SprintFunc()
 	red := color.New(color.FgRed).SprintFunc()
 	green := color.New(color.FgGreen).SprintFunc()
+	whitelistReason := ""
 	//get each line
 	for tstamp, rawstr := range assoc {
 		if opts.SkipOk {
@@ -407,6 +443,9 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 							detailsDisplay += fmt.Sprintf("\t%s\t\t%s %s evt.%s : %s -> %s\n", presep, sep, change.Type, strings.Join(change.Path, "."), change.From, yellow(change.To))
 							if change.Path[0] == "Whitelisted" && change.To == true {
 								whitelisted = true
+								if whitelistReason == "" {
+									whitelistReason = parsers[parser].Evt.WhitelistReason
+								}
 							}
 							updated++
 						case "delete":
@@ -459,6 +498,8 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 		//did the event enter the bucket pour phase ?
 		if _, ok := state[tstamp]["buckets"]["OK"]; ok {
 			fmt.Printf("\t%s-------- parser success %s\n", sep, emoji.GreenCircle)
+		} else if whitelistReason != "" {
+			fmt.Printf("\t%s-------- parser success, ignored by whitelist (%s) %s\n", sep, whitelistReason, emoji.GreenCircle)
 		} else {
 			fmt.Printf("\t%s-------- parser failure %s\n", sep, emoji.RedCircle)
 		}

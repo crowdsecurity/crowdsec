@@ -11,6 +11,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -160,7 +161,7 @@ func (w *WafSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error
 func (w *WafSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	w.outChan = out
 	t.Go(func() error {
-		defer types.CatchPanic("crowdsec/acquis/waf/live")
+		defer trace.CatchPanic("crowdsec/acquis/waf/live")
 		w.logger.Infof("Starting WAF server on %s:%d%s", w.config.ListenAddr, w.config.ListenPort, w.config.Path)
 		t.Go(func() error {
 			err := w.server.ListenAndServe()

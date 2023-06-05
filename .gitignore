@@ -8,9 +8,16 @@
 .pc
 .vscode
 
+# If vendor is included, allow prebuilt (wasm?) libraries.
+!vendor/**/*.so
+
 # Test binaries, built with `go test -c`
 *.test
 *.cover
+
+# VMs used for dev/test
+
+.vagrant
 
 # Test binaries, built from *_test.go
 pkg/csplugin/tests/cs_plugin_test*
@@ -40,7 +47,6 @@ plugins/notifications/dummy/notification-dummy
 
 # Release stuff
 crowdsec-v*
-pkg/cwhub/hubdir/.index.json
 msi
 *.msi
 **/*.nupkg

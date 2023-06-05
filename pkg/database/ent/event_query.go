@@ -25,7 +25,6 @@ type EventQuery struct {
 	fields     []string
 	predicates []predicate.Event
 	withOwner  *AlertQuery
-	withFKs    bool
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -351,18 +350,11 @@ func (eq *EventQuery) prepareQuery(ctx context.Context) error {
 func (eq *EventQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Event, error) {
 	var (
 		nodes       = []*Event{}
-		withFKs     = eq.withFKs
 		_spec       = eq.querySpec()
 		loadedTypes = [1]bool{
 			eq.withOwner != nil,
 		}
 	)
-	if eq.withOwner != nil {
-		withFKs = true
-	}
-	if withFKs {
-		_spec.Node.Columns = append(_spec.Node.Columns, event.ForeignKeys...)
-	}
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*Event).scanValues(nil, columns)
 	}
@@ -394,10 +386,7 @@ func (eq *EventQuery) loadOwner(ctx context.Context, query *AlertQuery, nodes []
 	ids := make([]int, 0, len(nodes))
 	nodeids := make(map[int][]*Event)
 	for i := range nodes {
-		if nodes[i].alert_events == nil {
-			continue
-		}
-		fk := *nodes[i].alert_events
+		fk := nodes[i].AlertEvents
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}

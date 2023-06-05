@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
@@ -94,6 +96,11 @@ func (ka *KubernetesAuditSource) UnmarshalConfig(yamlConfig []byte) error {
 func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry) error {
 	ka.logger = logger
 
+	err := ka.UnmarshalConfig(config)
+	if err != nil {
+		return err
+	}
+
 	ka.logger.Tracef("K8SAudit configuration: %+v", ka.config)
 
 	ka.addr = fmt.Sprintf("%s:%d", ka.config.ListenAddr, ka.config.ListenPort)
@@ -128,7 +135,7 @@ func (ka *KubernetesAuditSource) OneShotAcquisition(out chan types.Event, t *tom
 func (ka *KubernetesAuditSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	ka.outChan = out
 	t.Go(func() error {
-		defer types.CatchPanic("crowdsec/acquis/k8s-audit/live")
+		defer trace.CatchPanic("crowdsec/acquis/k8s-audit/live")
 		ka.logger.Infof("Starting k8s-audit server on %s:%d%s", ka.config.ListenAddr, ka.config.ListenPort, ka.config.WebhookPath)
 		t.Go(func() error {
 			err := ka.server.ListenAndServe()

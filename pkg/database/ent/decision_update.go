@@ -272,6 +272,26 @@ func (du *DecisionUpdate) ClearUUID() *DecisionUpdate {
 	return du
 }
 
+// SetAlertDecisions sets the "alert_decisions" field.
+func (du *DecisionUpdate) SetAlertDecisions(i int) *DecisionUpdate {
+	du.mutation.SetAlertDecisions(i)
+	return du
+}
+
+// SetNillableAlertDecisions sets the "alert_decisions" field if the given value is not nil.
+func (du *DecisionUpdate) SetNillableAlertDecisions(i *int) *DecisionUpdate {
+	if i != nil {
+		du.SetAlertDecisions(*i)
+	}
+	return du
+}
+
+// ClearAlertDecisions clears the value of the "alert_decisions" field.
+func (du *DecisionUpdate) ClearAlertDecisions() *DecisionUpdate {
+	du.mutation.ClearAlertDecisions()
+	return du
+}
+
 // SetOwnerID sets the "owner" edge to the Alert entity by ID.
 func (du *DecisionUpdate) SetOwnerID(id int) *DecisionUpdate {
 	du.mutation.SetOwnerID(id)
@@ -875,6 +895,26 @@ func (duo *DecisionUpdateOne) SetNillableUUID(s *string) *DecisionUpdateOne {
 // ClearUUID clears the value of the "uuid" field.
 func (duo *DecisionUpdateOne) ClearUUID() *DecisionUpdateOne {
 	duo.mutation.ClearUUID()
+	return duo
+}
+
+// SetAlertDecisions sets the "alert_decisions" field.
+func (duo *DecisionUpdateOne) SetAlertDecisions(i int) *DecisionUpdateOne {
+	duo.mutation.SetAlertDecisions(i)
+	return duo
+}
+
+// SetNillableAlertDecisions sets the "alert_decisions" field if the given value is not nil.
+func (duo *DecisionUpdateOne) SetNillableAlertDecisions(i *int) *DecisionUpdateOne {
+	if i != nil {
+		duo.SetAlertDecisions(*i)
+	}
+	return duo
+}
+
+// ClearAlertDecisions clears the value of the "alert_decisions" field.
+func (duo *DecisionUpdateOne) ClearAlertDecisions() *DecisionUpdateOne {
+	duo.mutation.ClearAlertDecisions()
 	return duo
 }
 

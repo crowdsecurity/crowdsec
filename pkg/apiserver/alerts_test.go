@@ -28,7 +28,7 @@ type LAPI struct {
 
 func SetupLAPITest(t *testing.T) LAPI {
 	t.Helper()
-	router, loginResp, config, err := InitMachineTest()
+	router, loginResp, config, err := InitMachineTest(t)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,8 +68,8 @@ func (l *LAPI) RecordResponse(verb string, url string, body *strings.Reader, aut
 	return w
 }
 
-func InitMachineTest() (*gin.Engine, models.WatcherAuthResponse, csconfig.Config, error) {
-	router, config, err := NewAPITest()
+func InitMachineTest(t *testing.T) (*gin.Engine, models.WatcherAuthResponse, csconfig.Config, error) {
+	router, config, err := NewAPITest(t)
 	if err != nil {
 		return nil, models.WatcherAuthResponse{}, config, fmt.Errorf("unable to run local API: %s", err)
 	}
@@ -151,7 +151,7 @@ func TestCreateAlert(t *testing.T) {
 
 func TestCreateAlertChannels(t *testing.T) {
 
-	apiServer, config, err := NewAPIServer()
+	apiServer, config, err := NewAPIServer(t)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -443,7 +443,7 @@ func TestDeleteAlertByID(t *testing.T) {
 }
 
 func TestDeleteAlertTrustedIPS(t *testing.T) {
-	cfg := LoadTestConfig()
+	cfg := LoadTestConfig(t)
 	// IPv6 mocking doesn't seem to work.
 	// cfg.API.Server.TrustedIPs = []string{"1.2.3.4", "1.2.4.0/24", "::"}
 	cfg.API.Server.TrustedIPs = []string{"1.2.3.4", "1.2.4.0/24"}

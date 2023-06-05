@@ -7,12 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cstest"
+	"github.com/crowdsecurity/go-cs-lib/pkg/cstest"
+	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
 )
 
 func TestLoadLocalApiClientCfg(t *testing.T) {
@@ -53,7 +53,7 @@ func TestLoadLocalApiClientCfg(t *testing.T) {
 			name: "valid configuration with insecure skip verify",
 			input: &LocalApiClientCfg{
 				CredentialsFilePath: "./tests/lapi-secrets.yaml",
-				InsecureSkipVerify:  types.BoolPtr(false),
+				InsecureSkipVerify:  ptr.Of(false),
 			},
 			expected: &ApiCredentialsCfg{
 				URL:      "http://localhost:8080/",
@@ -188,21 +188,21 @@ func TestLoadAPIServer(t *testing.T) {
 				DisableAPI: false,
 			},
 			expected: &LocalApiServerCfg{
-				Enable:    types.BoolPtr(true),
+				Enable:    ptr.Of(true),
 				ListenURI: "http://crowdsec.api",
 				TLS:       nil,
 				DbConfig: &DatabaseCfg{
 					DbPath:       "./tests/test.db",
 					Type:         "sqlite",
-					MaxOpenConns: types.IntPtr(DEFAULT_MAX_OPEN_CONNS),
+					MaxOpenConns: ptr.Of(DEFAULT_MAX_OPEN_CONNS),
 				},
 				ConsoleConfigPath: DefaultConfigPath("console.yaml"),
 				ConsoleConfig: &ConsoleConfig{
-					ShareManualDecisions:  types.BoolPtr(false),
-					ShareTaintedScenarios: types.BoolPtr(true),
-					ShareCustomScenarios:  types.BoolPtr(true),
-					ShareContext:          types.BoolPtr(false),
-					ConsoleManagement:     types.BoolPtr(false),
+					ShareManualDecisions:  ptr.Of(false),
+					ShareTaintedScenarios: ptr.Of(true),
+					ShareCustomScenarios:  ptr.Of(true),
+					ShareContext:          ptr.Of(false),
+					ConsoleManagement:     ptr.Of(false),
 				},
 				LogDir:   LogDirFullPath,
 				LogMedia: "stdout",

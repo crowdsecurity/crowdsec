@@ -187,12 +187,11 @@ fi
 
 lapi_credentials_path=$(conf_get '.api.client.credentials_path')
 
-
 if isfalse "$DISABLE_LOCAL_API"; then
     # generate local agent credentials (even if agent is disabled, cscli needs a
     # connection to the API)
     if ( isfalse "$USE_TLS" || [ "$CLIENT_CERT_FILE" = "" ] ); then
-        if yq -e '.login==strenv(CUSTOM_HOSTNAME)' "$lapi_credentials_path" && ( cscli machines list -o json | yq -e 'any_c(.machineId==strenv(CUSTOM_HOSTNAME))' >/dev/null ); then
+        if yq -e '.login==strenv(CUSTOM_HOSTNAME)' "$lapi_credentials_path" >/dev/null && ( cscli machines list -o json | yq -e 'any_c(.machineId==strenv(CUSTOM_HOSTNAME))' >/dev/null ); then
             echo "Local agent already registered"
         else
             echo "Generate local agent credentials"
@@ -365,6 +364,11 @@ for BOUNCER in /run/secrets/@(bouncer_key|BOUNCER_KEY)* ; do
 done
 shopt -u nullglob extglob
 
+# set all options before validating the configuration
+
+conf_set_if "$CAPI_WHITELISTS_PATH" '.api.server.capi_whitelists_path = strenv(CAPI_WHITELISTS_PATH)'
+conf_set_if "$METRICS_PORT" '.prometheus.listen_port=env(METRICS_PORT)'
+
 ARGS=""
 if [ "$CONFIG_FILE" != "" ]; then
     ARGS="-c $CONFIG_FILE"
@@ -401,8 +405,6 @@ fi
 if istrue "$LEVEL_INFO"; then
     ARGS="$ARGS -info"
 fi
-
-conf_set_if "$METRICS_PORT" '.prometheus.listen_port=env(METRICS_PORT)'
 
 # shellcheck disable=SC2086
 exec crowdsec $ARGS

@@ -12,7 +12,7 @@ import (
 )
 
 func TestCreateMachine(t *testing.T) {
-	router, _, err := NewAPITest()
+	router, _, err := NewAPITest(t)
 	if err != nil {
 		log.Fatalf("unable to run local API: %s", err)
 	}
@@ -53,7 +53,7 @@ func TestCreateMachine(t *testing.T) {
 }
 
 func TestCreateMachineWithForwardedFor(t *testing.T) {
-	router, config, err := NewAPITestForwardedFor()
+	router, config, err := NewAPITestForwardedFor(t)
 	if err != nil {
 		log.Fatalf("unable to run local API: %s", err)
 	}
@@ -82,7 +82,7 @@ func TestCreateMachineWithForwardedFor(t *testing.T) {
 }
 
 func TestCreateMachineWithForwardedForNoConfig(t *testing.T) {
-	router, config, err := NewAPITest()
+	router, config, err := NewAPITest(t)
 	if err != nil {
 		log.Fatalf("unable to run local API: %s", err)
 	}
@@ -113,7 +113,7 @@ func TestCreateMachineWithForwardedForNoConfig(t *testing.T) {
 }
 
 func TestCreateMachineWithoutForwardedFor(t *testing.T) {
-	router, config, err := NewAPITestForwardedFor()
+	router, config, err := NewAPITestForwardedFor(t)
 	if err != nil {
 		log.Fatalf("unable to run local API: %s", err)
 	}
@@ -143,7 +143,7 @@ func TestCreateMachineWithoutForwardedFor(t *testing.T) {
 }
 
 func TestCreateMachineAlreadyExist(t *testing.T) {
-	router, _, err := NewAPITest()
+	router, _, err := NewAPITest(t)
 	if err != nil {
 		log.Fatalf("unable to run local API: %s", err)
 	}

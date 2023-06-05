@@ -8,6 +8,8 @@ import (
 
 	"path/filepath"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -53,7 +55,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers) error {
 		parserWg.Add(1)
 		for i := 0; i < cConfig.Crowdsec.ParserRoutinesCount; i++ {
 			parsersTomb.Go(func() error {
-				defer types.CatchPanic("crowdsec/runParse")
+				defer trace.CatchPanic("crowdsec/runParse")
 				if err := runParse(inputLineChan, inputEventChan, *parsers.Ctx, parsers.Nodes); err != nil { //this error will never happen as parser.Parse is not able to return errors
 					log.Fatalf("starting parse error : %s", err)
 					return err
@@ -79,7 +81,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers) error {
 
 		for i := 0; i < cConfig.Crowdsec.BucketsRoutinesCount; i++ {
 			bucketsTomb.Go(func() error {
-				defer types.CatchPanic("crowdsec/runPour")
+				defer trace.CatchPanic("crowdsec/runPour")
 				if err := runPour(inputEventChan, holders, buckets, cConfig); err != nil {
 					log.Fatalf("starting pour error : %s", err)
 					return err
@@ -97,7 +99,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers) error {
 		outputWg.Add(1)
 		for i := 0; i < cConfig.Crowdsec.OutputRoutinesCount; i++ {
 			outputsTomb.Go(func() error {
-				defer types.CatchPanic("crowdsec/runOutput")
+				defer trace.CatchPanic("crowdsec/runOutput")
 				if err := runOutput(inputEventChan, outputEventChan, buckets, *parsers.Povfwctx, parsers.Povfwnodes, *cConfig.API.Client.Credentials); err != nil {
 					log.Fatalf("starting outputs error : %s", err)
 					return err
@@ -132,9 +134,9 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers) error {
 
 func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config, agentReady chan bool) {
 	crowdsecTomb.Go(func() error {
-		defer types.CatchPanic("crowdsec/serveCrowdsec")
+		defer trace.CatchPanic("crowdsec/serveCrowdsec")
 		go func() {
-			defer types.CatchPanic("crowdsec/runCrowdsec")
+			defer trace.CatchPanic("crowdsec/runCrowdsec")
 			// this logs every time, even at config reload
 			log.Debugf("running agent after %s ms", time.Since(crowdsecT0))
 			agentReady <- true

@@ -19,7 +19,10 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/texttheater/golang-levenshtein/levenshtein"
+	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -33,15 +36,6 @@ func printHelp(cmd *cobra.Command) {
 	if err != nil {
 		log.Fatalf("unable to print help(): %s", err)
 	}
-}
-
-func inSlice(s string, slice []string) bool {
-	for _, str := range slice {
-		if s == str {
-			return true
-		}
-	}
-	return false
 }
 
 func indexOf(s string, slice []string) int {
@@ -113,7 +107,7 @@ func compAllItems(itemType string, args []string, toComplete string) ([]string, 
 	comp := make([]string, 0)
 	hubItems := cwhub.GetHubStatusForItemType(itemType, "", true)
 	for _, item := range hubItems {
-		if !inSlice(item.Name, args) && strings.Contains(item.Name, toComplete) {
+		if !slices.Contains(args, item.Name) && strings.Contains(item.Name, toComplete) {
 			comp = append(comp, item.Name)
 		}
 	}
@@ -519,7 +513,7 @@ func GetPrometheusMetric(url string) []*prom2json.Family {
 	transport.ResponseHeaderTimeout = time.Minute
 
 	go func() {
-		defer types.CatchPanic("crowdsec/GetPrometheusMetric")
+		defer trace.CatchPanic("crowdsec/GetPrometheusMetric")
 		err := prom2json.FetchMetricFamilies(url, mfChan, transport)
 		if err != nil {
 			log.Fatalf("failed to fetch prometheus metrics : %v", err)
@@ -695,30 +689,13 @@ type unit struct {
 }
 
 var ranges = []unit{
-	{
-		value:  1e18,
-		symbol: "E",
-	},
-	{
-		value:  1e15,
-		symbol: "P",
-	},
-	{
-		value:  1e12,
-		symbol: "T",
-	},
-	{
-		value:  1e6,
-		symbol: "M",
-	},
-	{
-		value:  1e3,
-		symbol: "k",
-	},
-	{
-		value:  1,
-		symbol: "",
-	},
+	{value: 1e18, symbol: "E"},
+	{value: 1e15, symbol: "P"},
+	{value: 1e12, symbol: "T"},
+	{value: 1e9,  symbol: "G"},
+	{value: 1e6,  symbol: "M"},
+	{value: 1e3,  symbol: "k"},
+	{value: 1,    symbol: ""},
 }
 
 func formatNumber(num int) string {

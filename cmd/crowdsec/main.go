@@ -154,7 +154,9 @@ func (f *Flags) Parse() {
 	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
 	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
 	flag.BoolVar(&f.DisableCAPI, "no-capi", false, "disable communication with Central API")
-	flag.StringVar(&f.WinSvc, "winsvc", "", "Windows service Action : Install, Remove etc..")
+	if runtime.GOOS == "windows" {
+		flag.StringVar(&f.WinSvc, "winsvc", "", "Windows service Action: Install, Remove etc..")
+	}
 	flag.StringVar(&dumpFolder, "dump-data", "", "dump parsers/buckets raw outputs")
 	flag.Parse()
 }
@@ -192,7 +194,7 @@ func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
 
 // LoadConfig returns a configuration parsed from configuration file
 func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*csconfig.Config, error) {
-	cConfig, err := csconfig.NewConfig(configFile, disableAgent, disableAPI, quiet)
+	cConfig, _, err := csconfig.NewConfig(configFile, disableAgent, disableAPI, quiet)
 	if err != nil {
 		return nil, err
 	}

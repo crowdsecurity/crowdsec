@@ -6,10 +6,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/coreos/go-systemd/daemon"
+	"github.com/coreos/go-systemd/v22/daemon"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
+
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -226,7 +228,7 @@ func HandleSignals(cConfig *csconfig.Config) error {
 	exitChan := make(chan error)
 
 	go func() {
-		defer types.CatchPanic("crowdsec/HandleSignals")
+		defer trace.CatchPanic("crowdsec/HandleSignals")
 	Loop:
 		for {
 			s := <-signalChan
@@ -356,14 +358,24 @@ func Serve(cConfig *csconfig.Config, apiReady chan bool, agentReady chan bool) e
 		return HandleSignals(cConfig)
 	}
 
-	for {
-		select {
-		case <-apiTomb.Dead():
+	waitChans := make([]<-chan struct{}, 0)
+
+	if !cConfig.DisableAgent {
+		waitChans = append(waitChans, crowdsecTomb.Dead())
+	}
+
+	if !cConfig.DisableAPI {
+		waitChans = append(waitChans, apiTomb.Dead())
+	}
+
+	for _, ch := range waitChans {
+		<-ch
+		switch ch {
+		case apiTomb.Dead():
 			log.Infof("api shutdown")
-			return nil
-		case <-crowdsecTomb.Dead():
+		case crowdsecTomb.Dead():
 			log.Infof("crowdsec shutdown")
-			return nil
 		}
 	}
+	return nil
 }

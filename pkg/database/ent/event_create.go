@@ -61,6 +61,20 @@ func (ec *EventCreate) SetSerialized(s string) *EventCreate {
 	return ec
 }
 
+// SetAlertEvents sets the "alert_events" field.
+func (ec *EventCreate) SetAlertEvents(i int) *EventCreate {
+	ec.mutation.SetAlertEvents(i)
+	return ec
+}
+
+// SetNillableAlertEvents sets the "alert_events" field if the given value is not nil.
+func (ec *EventCreate) SetNillableAlertEvents(i *int) *EventCreate {
+	if i != nil {
+		ec.SetAlertEvents(*i)
+	}
+	return ec
+}
+
 // SetOwnerID sets the "owner" edge to the Alert entity by ID.
 func (ec *EventCreate) SetOwnerID(id int) *EventCreate {
 	ec.mutation.SetOwnerID(id)
@@ -256,7 +270,7 @@ func (ec *EventCreate) createSpec() (*Event, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.alert_events = &nodes[0]
+		_node.AlertEvents = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

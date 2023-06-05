@@ -1,4 +1,3 @@
-simulation: off
+simulation: false
 # exclusions:
 #  - crowdsecurity/ssh-bf
- 

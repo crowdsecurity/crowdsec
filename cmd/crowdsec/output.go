@@ -7,10 +7,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
@@ -88,7 +89,7 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 		MachineID:      apiConfig.Login,
 		Password:       password,
 		Scenarios:      scenarios,
-		UserAgent:      fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		UserAgent:      fmt.Sprintf("crowdsec/%s", version.String()),
 		URL:            apiURL,
 		PapiURL:        papiURL,
 		VersionPrefix:  "v1",

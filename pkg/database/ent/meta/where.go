@@ -109,6 +109,13 @@ func Value(v string) predicate.Meta {
 	})
 }
 
+// AlertMetas applies equality check predicate on the "alert_metas" field. It's identical to AlertMetasEQ.
+func AlertMetas(v int) predicate.Meta {
+	return predicate.Meta(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldAlertMetas), v))
+	})
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Meta {
 	return predicate.Meta(func(s *sql.Selector) {
@@ -460,6 +467,56 @@ func ValueEqualFold(v string) predicate.Meta {
 func ValueContainsFold(v string) predicate.Meta {
 	return predicate.Meta(func(s *sql.Selector) {
 		s.Where(sql.ContainsFold(s.C(FieldValue), v))
+	})
+}
+
+// AlertMetasEQ applies the EQ predicate on the "alert_metas" field.
+func AlertMetasEQ(v int) predicate.Meta {
+	return predicate.Meta(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldAlertMetas), v))
+	})
+}
+
+// AlertMetasNEQ applies the NEQ predicate on the "alert_metas" field.
+func AlertMetasNEQ(v int) predicate.Meta {
+	return predicate.Meta(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldAlertMetas), v))
+	})
+}
+
+// AlertMetasIn applies the In predicate on the "alert_metas" field.
+func AlertMetasIn(vs ...int) predicate.Meta {
+	v := make([]any, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Meta(func(s *sql.Selector) {
+		s.Where(sql.In(s.C(FieldAlertMetas), v...))
+	})
+}
+
+// AlertMetasNotIn applies the NotIn predicate on the "alert_metas" field.
+func AlertMetasNotIn(vs ...int) predicate.Meta {
+	v := make([]any, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Meta(func(s *sql.Selector) {
+		s.Where(sql.NotIn(s.C(FieldAlertMetas), v...))
+	})
+}
+
+// AlertMetasIsNil applies the IsNil predicate on the "alert_metas" field.
+func AlertMetasIsNil() predicate.Meta {
+	return predicate.Meta(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldAlertMetas)))
+	})
+}
+
+// AlertMetasNotNil applies the NotNil predicate on the "alert_metas" field.
+func AlertMetasNotNil() predicate.Meta {
+	return predicate.Meta(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldAlertMetas)))
 	})
 }
 
