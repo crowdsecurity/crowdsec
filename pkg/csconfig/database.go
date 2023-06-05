@@ -5,8 +5,9 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
 )
 
 var DEFAULT_MAX_OPEN_CONNS = 100
@@ -56,7 +57,7 @@ func (c *Config) LoadDBConfig() error {
 	}
 
 	if c.DbConfig.MaxOpenConns == nil {
-		c.DbConfig.MaxOpenConns = types.IntPtr(DEFAULT_MAX_OPEN_CONNS)
+		c.DbConfig.MaxOpenConns = ptr.Of(DEFAULT_MAX_OPEN_CONNS)
 	}
 
 	if c.DbConfig.Type == "sqlite" {

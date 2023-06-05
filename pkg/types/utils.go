@@ -176,22 +176,6 @@ func CopyFile(sourceSymLink, destinationFile string) (err error) {
 	return
 }
 
-func StrPtr(s string) *string {
-	return &s
-}
-
-func IntPtr(i int) *int {
-	return &i
-}
-
-func Int32Ptr(i int32) *int32 {
-	return &i
-}
-
-func BoolPtr(b bool) *bool {
-	return &b
-}
-
 func UtcNow() time.Time {
 	return time.Now().UTC()
 }

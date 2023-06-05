@@ -5,11 +5,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
 )
 
 // CrowdsecServiceCfg contains the location of parsers/scenarios/... and acquisition files
@@ -48,7 +47,7 @@ func (c *Config) LoadCrowdsec() error {
 
 	if c.Crowdsec.Enable == nil {
 		// if the option is not present, it is enabled by default
-		c.Crowdsec.Enable = types.BoolPtr(true)
+		c.Crowdsec.Enable = ptr.Of(true)
 	}
 
 	if !*c.Crowdsec.Enable {
@@ -72,20 +71,20 @@ func (c *Config) LoadCrowdsec() error {
 	if c.Crowdsec.AcquisitionDirPath != "" {
 		c.Crowdsec.AcquisitionDirPath, err = filepath.Abs(c.Crowdsec.AcquisitionDirPath)
 		if err != nil {
-			return errors.Wrapf(err, "can't get absolute path of '%s'", c.Crowdsec.AcquisitionDirPath)
+			return fmt.Errorf("can't get absolute path of '%s': %w", c.Crowdsec.AcquisitionDirPath, err)
 		}
 
 		var files []string
 
 		files, err = filepath.Glob(c.Crowdsec.AcquisitionDirPath + "/*.yaml")
 		if err != nil {
-			return errors.Wrap(err, "while globbing acquis_dir")
+			return fmt.Errorf("while globbing acquis_dir: %w", err)
 		}
 		c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, files...)
 
 		files, err = filepath.Glob(c.Crowdsec.AcquisitionDirPath + "/*.yml")
 		if err != nil {
-			return errors.Wrap(err, "while globbing acquis_dir")
+			return fmt.Errorf("while globbing acquis_dir: %w", err)
 		}
 		c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, files...)
 	}
@@ -99,7 +98,7 @@ func (c *Config) LoadCrowdsec() error {
 	}
 
 	if err = c.LoadSimulation(); err != nil {
-		return errors.Wrap(err, "load error (simulation)")
+		return fmt.Errorf("load error (simulation): %w", err)
 	}
 
 	c.Crowdsec.ConfigDir = c.ConfigPaths.ConfigDir
@@ -129,7 +128,7 @@ func (c *Config) LoadCrowdsec() error {
 		}
 		*k, err = filepath.Abs(*k)
 		if err != nil {
-			return errors.Wrapf(err, "failed to get absolute path of '%s'", *k)
+			return fmt.Errorf("failed to get absolute path of '%s': %w", *k, err)
 		}
 	}
 
@@ -137,7 +136,7 @@ func (c *Config) LoadCrowdsec() error {
 	for i, file := range c.Crowdsec.AcquisitionFiles {
 		f, err := filepath.Abs(file)
 		if err != nil {
-			return errors.Wrapf(err, "failed to get absolute path of '%s'", file)
+			return fmt.Errorf("failed to get absolute path of '%s': %w", file, err)
 		}
 		c.Crowdsec.AcquisitionFiles[i] = f
 	}
@@ -147,7 +146,7 @@ func (c *Config) LoadCrowdsec() error {
 	}
 
 	if err := c.LoadHub(); err != nil {
-		return errors.Wrap(err, "while loading hub")
+		return fmt.Errorf("while loading hub: %w", err)
 	}
 
 	c.Crowdsec.ContextToSend = make(map[string][]string, 0)
@@ -186,11 +185,11 @@ func (c *CrowdsecServiceCfg) DumpContextConfigFile() error {
 	var err error
 
 	if out, err = yaml.Marshal(c.ContextToSend); err != nil {
-		return errors.Wrapf(err, "while marshaling ConsoleConfig (for %s)", c.ConsoleContextPath)
+		return fmt.Errorf("while marshaling ConsoleConfig (for %s): %w", c.ConsoleContextPath, err)
 	}
 
 	if err := os.WriteFile(c.ConsoleContextPath, out, 0600); err != nil {
-		return errors.Wrapf(err, "while dumping console config to %s", c.ConsoleContextPath)
+		return fmt.Errorf("while dumping console config to %s: %w", c.ConsoleContextPath, err)
 	}
 
 	log.Infof("%s file saved", c.ConsoleContextPath)

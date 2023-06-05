@@ -15,6 +15,10 @@
 *.test
 *.cover
 
+# VMs used for dev/test
+
+.vagrant
+
 # Test binaries, built from *_test.go
 pkg/csplugin/tests/cs_plugin_test*
 

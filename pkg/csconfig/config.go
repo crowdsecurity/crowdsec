@@ -5,14 +5,12 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/yamlpatch"
 	"github.com/crowdsecurity/go-cs-lib/pkg/csstring"
-
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
+	"github.com/crowdsecurity/go-cs-lib/pkg/yamlpatch"
 )
 
 // defaultConfigDir is the base path to all configuration files, to be overridden in the Makefile */
@@ -42,7 +40,7 @@ type Config struct {
 func (c *Config) Dump() error {
 	out, err := yaml.Marshal(c)
 	if err != nil {
-		return errors.Wrap(err, "failed marshaling config")
+		return fmt.Errorf("failed marshaling config: %w", err)
 	}
 	fmt.Printf("%s", string(out))
 	return nil
@@ -65,7 +63,7 @@ func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool
 	err = yaml.UnmarshalStrict([]byte(configData), &cfg)
 	if err != nil {
 		// this is actually the "merged" yaml
-		return nil, "", errors.Wrap(err, configFile)
+		return nil, "", fmt.Errorf("%s: %w", configFile, err)
 	}
 	return &cfg, configData, nil
 }
@@ -113,14 +111,14 @@ func NewDefaultConfig() *Config {
 			},
 		},
 		CTI: &CTICfg{
-			Enabled: types.BoolPtr(false),
+			Enabled: ptr.Of(false),
 		},
 	}
 
 	dbConfig := DatabaseCfg{
 		Type:         "sqlite",
 		DbPath:       DefaultDataPath("crowdsec.db"),
-		MaxOpenConns: types.IntPtr(DEFAULT_MAX_OPEN_CONNS),
+		MaxOpenConns: ptr.Of(DEFAULT_MAX_OPEN_CONNS),
 	}
 
 	globalCfg := Config{
