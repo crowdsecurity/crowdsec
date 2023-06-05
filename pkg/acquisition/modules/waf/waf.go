@@ -10,6 +10,7 @@ import (
 	"github.com/corazawaf/coraza/v3"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/waf"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -110,7 +111,23 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		Handler: w.mux,
 	}
 
-	waf, err := coraza.NewWAF(coraza.NewWAFConfig())
+	crowdsecWafConfig := waf.NewWafConfig()
+
+	err = crowdsecWafConfig.LoadWafRules()
+
+	if err != nil {
+		return fmt.Errorf("Cannot load WAF rules: %w", err)
+	}
+
+	var rules string
+
+	for _, rule := range crowdsecWafConfig.InbandRules {
+		rules += rule.String() + "\n"
+	}
+
+	w.logger.Infof("Loading rules %+v", rules)
+
+	waf, err := coraza.NewWAF(coraza.NewWAFConfig().WithDirectives(rules))
 
 	if err != nil {
 		return errors.Wrap(err, "Cannot create WAF")
