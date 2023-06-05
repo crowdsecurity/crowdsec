@@ -1,5 +1,8 @@
 include mk/platform.mk
 
+BUILD_REQUIRE_GO_MAJOR ?= 1
+BUILD_REQUIRE_GO_MINOR ?= 20
+
 BUILD_CODENAME ?= alphaga
 
 CROWDSEC_FOLDER = ./cmd/crowdsec

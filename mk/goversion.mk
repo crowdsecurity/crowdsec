@@ -1,7 +1,4 @@
 
-BUILD_REQUIRE_GO_MAJOR ?= 1
-BUILD_REQUIRE_GO_MINOR ?= 20
-
 BUILD_GOVERSION = $(subst go,,$(shell go env GOVERSION))
 
 go_major_minor = $(subst ., ,$(BUILD_GOVERSION))
