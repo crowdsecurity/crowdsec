@@ -20,6 +20,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/pkg/csstring"
+	"github.com/crowdsecurity/go-cs-lib/pkg/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -121,12 +122,8 @@ loop:
 				if threshold == 0 {
 					threshold = 1
 				}
-				for i := 0; i < len(tmpAlerts); i += threshold {
-					end := i + threshold
-					if end > len(tmpAlerts) {
-						end = len(tmpAlerts)
-					}
-					if err := pb.pushNotificationsToPlugin(pluginName, tmpAlerts[i:end]); err != nil {
+				for _, chunk := range slicetools.Chunks(tmpAlerts, threshold) {
+					if err := pb.pushNotificationsToPlugin(pluginName, chunk); err != nil {
 						log.WithField("plugin:", pluginName).Error(err)
 					}
 				}
