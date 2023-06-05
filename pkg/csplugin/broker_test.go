@@ -3,7 +3,9 @@
 package csplugin
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"os"
 	"testing"
 	"time"
@@ -278,21 +280,35 @@ func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(time.Second)
 
 	// because of group threshold, we shouldn't have data yet
 	assert.NoFileExists(t, "./out")
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	time.Sleep(100 * time.Millisecond)
+	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	time.Sleep(time.Second)
 
 	// and now we should
 	content, err := os.ReadFile("./out")
 	require.NoError(t, err, "Error reading file")
 
+	decoder := json.NewDecoder(bytes.NewReader(content))
+
 	var alerts []models.Alert
-	err = json.Unmarshal(content, &alerts)
+
+	// two notifications, one with 4 alerts, one with 2 alerts
+
+	err = decoder.Decode(&alerts)
 	assert.NoError(t, err)
 	assert.Len(t, alerts, 4)
+
+	err = decoder.Decode(&alerts)
+	assert.NoError(t, err)
+	assert.Len(t, alerts, 2)
+
+	err = decoder.Decode(&alerts)
+	assert.Equal(t, err, io.EOF)
 }
 
 func (s *PluginSuite) TestBrokerRunTimeThreshold() {
@@ -346,13 +362,26 @@ func (s *PluginSuite) TestBrokerRunSimple() {
 
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	time.Sleep(time.Millisecond * 200)
+	// make it wait a bit, CI can be slow
+	time.Sleep(time.Second)
 
 	content, err := os.ReadFile("./out")
 	require.NoError(t, err, "Error reading file")
 
+	decoder := json.NewDecoder(bytes.NewReader(content))
+
 	var alerts []models.Alert
-	err = json.Unmarshal(content, &alerts)
+
+	// two notifications, one alert each
+
+	err = decoder.Decode(&alerts)
 	assert.NoError(t, err)
-	assert.Len(t, alerts, 2)
+	assert.Len(t, alerts, 1)
+
+	err = decoder.Decode(&alerts)
+	assert.NoError(t, err)
+	assert.Len(t, alerts, 1)
+
+	err = decoder.Decode(&alerts)
+	assert.Equal(t, err, io.EOF)
 }

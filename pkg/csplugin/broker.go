@@ -20,6 +20,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/pkg/csstring"
+	"github.com/crowdsecurity/go-cs-lib/pkg/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -116,8 +117,15 @@ loop:
 			pb.alertsByPluginName[pluginName] = make([]*models.Alert, 0)
 			pluginMutex.Unlock()
 			go func() {
-				if err := pb.pushNotificationsToPlugin(pluginName, tmpAlerts); err != nil {
-					log.WithField("plugin:", pluginName).Error(err)
+				//Chunk alerts to respect group_threshold
+				threshold := pb.pluginConfigByName[pluginName].GroupThreshold
+				if threshold == 0 {
+					threshold = 1
+				}
+				for _, chunk := range slicetools.Chunks(tmpAlerts, threshold) {
+					if err := pb.pushNotificationsToPlugin(pluginName, chunk); err != nil {
+						log.WithField("plugin:", pluginName).Error(err)
+					}
 				}
 			}()
 
