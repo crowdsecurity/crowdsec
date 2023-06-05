@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"github.com/corazawaf/coraza/v3"
-	"github.com/corazawaf/coraza/v3/experimental"
 	corazatypes "github.com/corazawaf/coraza/v3/types"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -38,23 +37,6 @@ type WafSourceConfig struct {
 	Path                              string `yaml:"path"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
-
-/*
-type DataSource interface {
-	GetMetrics() []prometheus.Collector                                 // Returns pointers to metrics that are managed by the module
-	GetAggregMetrics() []prometheus.Collector                           // Returns pointers to metrics that are managed by the module (aggregated mode, limits cardinality)
-	UnmarshalConfig([]byte) error                                       // Decode and pre-validate the YAML datasource - anything that can be checked before runtime
-	Configure([]byte, *log.Entry) error                                 // Complete the YAML datasource configuration and perform runtime checks.
-	ConfigureByDSN(string, map[string]string, *log.Entry, string) error // Configure the datasource
-	GetMode() string                                                    // Get the mode (TAIL, CAT or SERVER)
-	GetName() string                                                    // Get the name of the module
-	OneShotAcquisition(chan types.Event, *tomb.Tomb) error              // Start one shot acquisition(eg, cat a file)
-	StreamingAcquisition(chan types.Event, *tomb.Tomb) error            // Start live acquisition (eg, tail a file)
-	CanRun() error                                                      // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
-	GetUuid() string                                                    // Get the unique identifier of the datasource
-	Dump() interface{}
-}
-*/
 
 func (w *WafSource) GetMetrics() []prometheus.Collector {
 	return nil
@@ -125,22 +107,22 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	err = crowdsecWafConfig.LoadWafRules()
 
 	if err != nil {
-		return fmt.Errorf("Cannot load WAF rules: %w", err)
+		return fmt.Errorf("cannot load WAF rules: %w", err)
 	}
 
-	var rules string
+	var inBandRules string
 
 	for _, rule := range crowdsecWafConfig.InbandRules {
-		rules += rule.String() + "\n"
+		inBandRules += rule.String() + "\n"
 	}
 
-	w.logger.Infof("Loading rules %+v", rules)
+	w.logger.Infof("Loading rules %+v", inBandRules)
 
 	//in-band waf : kill on sight
 	inbandwaf, err := coraza.NewWAF(
 		coraza.NewWAFConfig().
 			WithErrorCallback(logError).
-			WithDirectives(rules),
+			WithDirectives(inBandRules),
 	)
 
 	if err != nil {
@@ -151,8 +133,8 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	//out-of-band waf : log only
 	outofbandwaf, err := coraza.NewWAF(
 		coraza.NewWAFConfig().
-			WithErrorCallback(logError).
-			WithDirectivesFromFile("coraza_outofband.conf"),
+			WithErrorCallback(logError), //.
+		//WithDirectivesFromFile("coraza_outofband.conf"),
 	)
 	if err != nil {
 		return errors.Wrap(err, "Cannot create WAF")
@@ -228,11 +210,11 @@ func processReqWithEngine(waf coraza.WAF, r *http.Request) (*corazatypes.Interru
 
 	//this method is not exported by coraza, so we have to do it ourselves.
 	//ideally, this would be dealt with by expr code, and we provide helpers to manipulate the transaction object?\
-	var txx experimental.FullTransaction
+	//var txx experimental.FullTransaction
 
 	//txx := experimental.ToFullInterface(tx)
-	txx = tx.(experimental.FullTransaction)
-	txx.RemoveRuleByID(1)
+	//txx = tx.(experimental.FullTransaction)
+	//txx.RemoveRuleByID(1)
 
 	tx.ProcessConnection(r.RemoteAddr, 0, "", 0)
 
