@@ -82,6 +82,7 @@ bats-clean:
 	@$(RM) $(LOCAL_INIT_DIR) $(WIN_IGNORE_ERR)
 	@$(RM) $(TEST_DIR)/dyn-bats/*.bats $(WIN_IGNORE_ERR)
 	@$(RM) test/.environment.sh $(WIN_IGNORE_ERR)
+	@$(RM) test/coverage/* $(WIN_IGNORE_ERR)
 
 # Run the test suite
 bats-test: bats-environment bats-check-requirements
