@@ -48,6 +48,7 @@ COPY --from=build /go/src/crowdsec/plugins/notifications/email/email.yaml /stagi
 COPY --from=build /go/src/crowdsec/plugins/notifications/http/http.yaml /staging/etc/crowdsec/notifications/http.yaml
 COPY --from=build /go/src/crowdsec/plugins/notifications/slack/slack.yaml /staging/etc/crowdsec/notifications/slack.yaml
 COPY --from=build /go/src/crowdsec/plugins/notifications/splunk/splunk.yaml /staging/etc/crowdsec/notifications/splunk.yaml
+COPY --from=build /go/src/crowdsec/plugins/notifications/sentinel/sentinel.yaml /staging/etc/crowdsec/notifications/sentinel.yaml
 COPY --from=build /usr/local/lib/crowdsec/plugins /usr/local/lib/crowdsec/plugins
 
 FROM slim as geoip

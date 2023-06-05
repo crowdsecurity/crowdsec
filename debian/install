@@ -10,3 +10,4 @@ plugins/notifications/slack/slack.yaml      etc/crowdsec/notifications/
 plugins/notifications/http/http.yaml        etc/crowdsec/notifications/
 plugins/notifications/splunk/splunk.yaml    etc/crowdsec/notifications/
 plugins/notifications/email/email.yaml      etc/crowdsec/notifications/
+plugins/notifications/sentinel/sentinel.yaml      etc/crowdsec/notifications/

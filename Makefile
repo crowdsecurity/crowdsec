@@ -13,12 +13,14 @@ SLACK_PLUGIN_FOLDER = plugins/notifications/slack
 SPLUNK_PLUGIN_FOLDER = plugins/notifications/splunk
 EMAIL_PLUGIN_FOLDER = plugins/notifications/email
 DUMMY_PLUGIN_FOLDER = plugins/notifications/dummy
+SENTINEL_PLUGIN_FOLDER = plugins/notifications/sentinel
 
 HTTP_PLUGIN_BIN = notification-http$(EXT)
 SLACK_PLUGIN_BIN = notification-slack$(EXT)
 SPLUNK_PLUGIN_BIN = notification-splunk$(EXT)
 EMAIL_PLUGIN_BIN = notification-email$(EXT)
 DUMMY_PLUGIN_BIN = notification-dummy$(EXT)
+SENTINEL_PLUGIN_BIN = notification-sentinel$(EXT)
 
 CROWDSEC_BIN = crowdsec$(EXT)
 CSCLI_BIN = cscli$(EXT)
@@ -63,7 +65,7 @@ build: goversion crowdsec cscli plugins
 all: clean test build
 
 .PHONY: plugins
-plugins: http-plugin slack-plugin splunk-plugin email-plugin dummy-plugin
+plugins: http-plugin slack-plugin splunk-plugin email-plugin dummy-plugin sentinel-plugin
 
 .PHONY: clean
 clean: testclean
@@ -78,6 +80,7 @@ clean: testclean
 	@$(RM) ./$(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) ./$(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) ./$(DUMMY_PLUGIN_FOLDER)/$(DUMMY_PLUGIN_BIN) $(WIN_IGNORE_ERR)
+	@$(RM) ./$(SENTINEL_PLUGIN_FOLDER)/$(SENTINEL_PLUGIN_BIN) $(WIN_IGNORE_ERR)
 
 
 cscli: goversion
@@ -100,6 +103,9 @@ email-plugin: goversion
 
 dummy-plugin: goversion
 	$(MAKE) -C ./$(DUMMY_PLUGIN_FOLDER) build $(MAKE_FLAGS)
+
+sentinel-plugin: goversion
+	$(MAKE) -C ./$(SENTINEL_PLUGIN_FOLDER) build $(MAKE_FLAGS)
 
 .PHONY: testclean
 testclean: bats-clean
@@ -140,6 +146,7 @@ package-common:
 	@$(MKDIR) $(RELDIR)/$(SLACK_PLUGIN_FOLDER)
 	@$(MKDIR) $(RELDIR)/$(SPLUNK_PLUGIN_FOLDER)
 	@$(MKDIR) $(RELDIR)/$(EMAIL_PLUGIN_FOLDER)
+	@$(MKDIR) $(RELDIR)/$(SENTINEL_PLUGIN_FOLDER)
 
 	@$(CP) $(CROWDSEC_FOLDER)/$(CROWDSEC_BIN) $(RELDIR)/cmd/crowdsec
 	@$(CP) $(CSCLI_FOLDER)/$(CSCLI_BIN) $(RELDIR)/cmd/crowdsec-cli
@@ -148,11 +155,13 @@ package-common:
 	@$(CP) ./$(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN) $(RELDIR)/$(SLACK_PLUGIN_FOLDER)
 	@$(CP) ./$(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN) $(RELDIR)/$(SPLUNK_PLUGIN_FOLDER)
 	@$(CP) ./$(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_BIN) $(RELDIR)/$(EMAIL_PLUGIN_FOLDER)
+	@$(CP) ./$(SENTINEL_PLUGIN_FOLDER)/$(SENTINEL_PLUGIN_BIN) $(RELDIR)/$(SENTINEL_PLUGIN_FOLDER)
 
 	@$(CP) ./$(HTTP_PLUGIN_FOLDER)/http.yaml $(RELDIR)/$(HTTP_PLUGIN_FOLDER)
 	@$(CP) ./$(SLACK_PLUGIN_FOLDER)/slack.yaml $(RELDIR)/$(SLACK_PLUGIN_FOLDER)
 	@$(CP) ./$(SPLUNK_PLUGIN_FOLDER)/splunk.yaml $(RELDIR)/$(SPLUNK_PLUGIN_FOLDER)
 	@$(CP) ./$(EMAIL_PLUGIN_FOLDER)/email.yaml $(RELDIR)/$(EMAIL_PLUGIN_FOLDER)
+	@$(CP) ./$(SENTINEL_PLUGIN_FOLDER)/sentinel.yaml $(RELDIR)/$(SENTINEL_PLUGIN_FOLDER)
 
 	@$(CPR) ./config $(RELDIR)
 	@$(CP) wizard.sh $(RELDIR)
