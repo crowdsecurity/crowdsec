@@ -34,16 +34,16 @@ jobs:
         sudo mkdir -p /etc/crowdsec && sudo cp -a config/* /etc/crowdsec 
         cd hub
         cscli hubtest run bitwarden-bf --debug
-        cscli hubtest run aws-cloudtrail-postexploit --debug
         cscli hubtest run bitwarden-bf --debug
-        cscli hubtest run aws-cloudtrail-postexploit --debug
         cscli hubtest run bitwarden-bf --debug
-        cscli hubtest run aws-cloudtrail-postexploit --debug
         cscli hubtest run bitwarden-bf --debug
-        cscli hubtest run aws-cloudtrail-postexploit --debug
         cscli hubtest run bitwarden-bf --debug
-        cscli hubtest run aws-cloudtrail-postexploit --debug
         cscli hubtest run bitwarden-bf --debug
-        cscli hubtest run aws-cloudtrail-postexploit --debug
         cscli hubtest run bitwarden-bf --debug
-        cscli hubtest run aws-cloudtrail-postexploit --debug
+        cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run bitwarden-bf --debug
