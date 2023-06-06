@@ -24,4 +24,5 @@ jobs:
         sudo apt-get install -y make
         make && cp cmd/crowdsec/crowdsec /usr/local/bin && cp cmd/crowdsec-cli/cscli /usr/local/bin
         cd hub
-        cscli hubtest run bitwarden-bg --debug
+        cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run aws-cloudtrail-postexploit --debug
