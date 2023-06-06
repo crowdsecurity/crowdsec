@@ -250,6 +250,7 @@ func LeakRoutine(leaky *Leaky) error {
 			BucketsPour.With(prometheus.Labels{"name": leaky.Name, "source": msg.Line.Src, "type": msg.Line.Module}).Inc()
 
 			leaky.Pour(leaky, *msg) // glue for now
+			fmt.Printf("msg: %+v", spew.Sdump(msg))
 
 			for _, processor := range processors {
 				msg = processor.AfterBucketPour(leaky.BucketConfig)(*msg, leaky)
