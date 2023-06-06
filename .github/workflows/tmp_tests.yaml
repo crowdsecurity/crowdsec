@@ -18,12 +18,20 @@ jobs:
       with:
         repository: 'crowdsecurity/hub'
         path: hub
-    - run: go version
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+        key: ${{ runner.os }}-${{ matrix.go-version }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.go-version }}-go-
     - name: run tests on last crowdsec tag
       run: |
         sudo apt-get install -y make
         make && cp cmd/crowdsec/crowdsec /usr/local/bin && cp cmd/crowdsec-cli/cscli /usr/local/bin
-        sudo mkdir -p /etc/crowdsec && cp -a config/* /etc/crowdsec 
+        sudo mkdir -p /etc/crowdsec && sudo cp -a config/* /etc/crowdsec 
         cd hub
         cscli hubtest run bitwarden-bf --debug
         cscli hubtest run aws-cloudtrail-postexploit --debug
