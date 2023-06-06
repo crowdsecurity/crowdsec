@@ -249,7 +249,6 @@ func LeakRoutine(leaky *Leaky) error {
 			}
 			BucketsPour.With(prometheus.Labels{"name": leaky.Name, "source": msg.Line.Src, "type": msg.Line.Module}).Inc()
 
-			fmt.Printf("msg: %+v", msg.Meta)
 			leaky.Pour(leaky, *msg) // glue for now
 
 			for _, processor := range processors {
@@ -350,6 +349,7 @@ func Pour(leaky *Leaky, msg types.Event) {
 		leaky.First_ts = time.Now().UTC()
 	}
 	leaky.Last_ts = time.Now().UTC()
+	fmt.Printf("msg: %+v\n", msg.Meta)
 	if leaky.Limiter.Allow() || leaky.conditionalOverflow {
 		leaky.Queue.Add(msg)
 	} else {
