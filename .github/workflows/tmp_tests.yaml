@@ -21,7 +21,7 @@ jobs:
     - run: go version
     - name: run tests on last crowdsec tag
       run: |
-        apt-get install -y make
+        sudo apt-get install -y make
         make && cp cmd/crowdsec/crowdsec /usr/local/bin && cp cmd/crowdsec-cli/cscli /usr/local/bin
         cd hub
         cscli hubtest run bitwarden-bg --debug
