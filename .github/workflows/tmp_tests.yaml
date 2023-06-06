@@ -35,3 +35,15 @@ jobs:
         cd hub
         cscli hubtest run bitwarden-bf --debug
         cscli hubtest run aws-cloudtrail-postexploit --debug
+        cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run aws-cloudtrail-postexploit --debug
+        cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run aws-cloudtrail-postexploit --debug
+        cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run aws-cloudtrail-postexploit --debug
+        cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run aws-cloudtrail-postexploit --debug
+        cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run aws-cloudtrail-postexploit --debug
+        cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run aws-cloudtrail-postexploit --debug
