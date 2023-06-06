@@ -25,6 +25,7 @@ jobs:
       with:
         repository: 'crowdsecurity/hub'
         path: hub
+    - run: go version
     - name: run tests on last crowdsec tag
       run: |
         apt-get install -y make
