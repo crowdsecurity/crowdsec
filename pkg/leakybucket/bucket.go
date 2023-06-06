@@ -250,7 +250,6 @@ func LeakRoutine(leaky *Leaky) error {
 			BucketsPour.With(prometheus.Labels{"name": leaky.Name, "source": msg.Line.Src, "type": msg.Line.Module}).Inc()
 
 			leaky.Pour(leaky, *msg) // glue for now
-			fmt.Printf("msg: %+v", spew.Sdump(msg))
 
 			for _, processor := range processors {
 				msg = processor.AfterBucketPour(leaky.BucketConfig)(*msg, leaky)
@@ -350,10 +349,11 @@ func Pour(leaky *Leaky, msg types.Event) {
 		leaky.First_ts = time.Now().UTC()
 	}
 	leaky.Last_ts = time.Now().UTC()
-
+	fmt.Printf("msg: %+v", spew.Sdump(msg.Meta))
 	if leaky.Limiter.Allow() || leaky.conditionalOverflow {
 		leaky.Queue.Add(msg)
 	} else {
+		fmt.Printf("Overflow !!!")
 		leaky.Ovflw_ts = time.Now().UTC()
 		leaky.logger.Debugf("Last event to be poured, bucket overflow.")
 		leaky.Queue.Add(msg)
