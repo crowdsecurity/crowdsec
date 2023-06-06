@@ -116,6 +116,46 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	//start the heartbeat service
 	log.Debugf("Starting HeartBeat service")
 	Client.HeartBeat.StartHeartBeat(context.Background(), &outputsTomb)
+
+	// define a closure we'll use later
+	handleOvfw := func(event types.Event) error {
+		//if the Alert is nil, it's to signal bucket is ready for GC, don't track this
+		if dumpStates && event.Overflow.Alert != nil {
+			if bucketOverflows == nil {
+				bucketOverflows = make([]types.Event, 0)
+			}
+			bucketOverflows = append(bucketOverflows, event)
+		}
+		/*if alert is empty and mapKey is present, the overflow is just to cleanup bucket*/
+		if event.Overflow.Alert == nil && event.Overflow.Mapkey != "" {
+			buckets.Bucket_map.Delete(event.Overflow.Mapkey)
+			return nil
+		}
+		/* process post overflow parser nodes */
+		event, err := parser.Parse(postOverflowCTX, event, postOverflowNodes)
+		if err != nil {
+			return fmt.Errorf("postoverflow failed : %s", err)
+		}
+		log.Printf("%s", *event.Overflow.Alert.Message)
+		if event.Overflow.Whitelisted {
+			log.Printf("[%s] is whitelisted, skip.", *event.Overflow.Alert.Message)
+			return nil
+		}
+		if event.Overflow.Reprocess {
+			log.Debugf("Overflow being reprocessed.")
+			input <- event
+		}
+		if dumpStates {
+			return nil
+		}
+
+		cacheMutex.Lock()
+		cache = append(cache, event.Overflow)
+		cacheMutex.Unlock()
+
+		return nil
+	}
+
 LOOP:
 	for {
 		select {
@@ -135,6 +175,13 @@ LOOP:
 				}
 			}
 		case <-outputsTomb.Dying():
+			for len(overflow) > 0 {
+				event := <-overflow
+				if err := handleOvfw(event); err != nil {
+					return err
+				}
+			}
+
 			if len(cache) > 0 {
 				cacheMutex.Lock()
 				cachecopy := cache
@@ -145,39 +192,9 @@ LOOP:
 			}
 			break LOOP
 		case event := <-overflow:
-			//if the Alert is nil, it's to signal bucket is ready for GC, don't track this
-			if dumpStates && event.Overflow.Alert != nil {
-				if bucketOverflows == nil {
-					bucketOverflows = make([]types.Event, 0)
-				}
-				bucketOverflows = append(bucketOverflows, event)
+			if err := handleOvfw(event); err != nil {
+				return err
 			}
-			/*if alert is empty and mapKey is present, the overflow is just to cleanup bucket*/
-			if event.Overflow.Alert == nil && event.Overflow.Mapkey != "" {
-				buckets.Bucket_map.Delete(event.Overflow.Mapkey)
-				break
-			}
-			/* process post overflow parser nodes */
-			event, err := parser.Parse(postOverflowCTX, event, postOverflowNodes)
-			if err != nil {
-				return fmt.Errorf("postoverflow failed : %s", err)
-			}
-			log.Printf("%s", *event.Overflow.Alert.Message)
-			if event.Overflow.Whitelisted {
-				log.Printf("[%s] is whitelisted, skip.", *event.Overflow.Alert.Message)
-				continue
-			}
-			if event.Overflow.Reprocess {
-				log.Debugf("Overflow being reprocessed.")
-				input <- event
-			}
-			if dumpStates {
-				continue
-			}
-
-			cacheMutex.Lock()
-			cache = append(cache, event.Overflow)
-			cacheMutex.Unlock()
 		}
 	}
 

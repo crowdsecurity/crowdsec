@@ -7,7 +7,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
@@ -23,7 +22,6 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 			log.Infof("Bucket routine exiting")
 			return nil
 		case parsed := <-input:
-			fmt.Printf("debug: %+v", spew.Sdump(parsed))
 			startTime := time.Now()
 			count++
 			if count%5000 == 0 {

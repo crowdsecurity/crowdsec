@@ -129,7 +129,6 @@ func ShutdownCrowdsecRoutines() error {
 	}
 
 	log.Debugf("parsers is done")
-	time.Sleep(1 * time.Second) // ugly workaround for now
 
 	bucketsTomb.Kill(nil)
 	if err := bucketsTomb.Wait(); err != nil {
@@ -138,7 +137,7 @@ func ShutdownCrowdsecRoutines() error {
 	}
 
 	log.Debugf("buckets is done")
-	time.Sleep(1 * time.Second) // ugly workaround for now
+
 	outputsTomb.Kill(nil)
 
 	if err := outputsTomb.Wait(); err != nil {
