@@ -19,6 +19,8 @@ const (
 	FieldTime = "time"
 	// FieldSerialized holds the string denoting the serialized field in the database.
 	FieldSerialized = "serialized"
+	// FieldAlertEvents holds the string denoting the alert_events field in the database.
+	FieldAlertEvents = "alert_events"
 	// EdgeOwner holds the string denoting the owner edge name in mutations.
 	EdgeOwner = "owner"
 	// Table holds the table name of the event in the database.
@@ -39,23 +41,13 @@ var Columns = []string{
 	FieldUpdatedAt,
 	FieldTime,
 	FieldSerialized,
-}
-
-// ForeignKeys holds the SQL foreign-keys that are owned by the "events"
-// table and are not defined as standalone fields in the schema.
-var ForeignKeys = []string{
-	"alert_events",
+	FieldAlertEvents,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
 	for i := range Columns {
 		if column == Columns[i] {
-			return true
-		}
-	}
-	for i := range ForeignKeys {
-		if column == ForeignKeys[i] {
 			return true
 		}
 	}

@@ -280,6 +280,7 @@ config.yaml) each time the container is run.
 | __LAPI__                | | (useless with DISABLE_LOCAL_API) |
 | `USE_WAL`               | false | Enable Write-Ahead Logging with SQLite |
 | `CUSTOM_HOSTNAME`       | localhost | Name for the local agent (running in the container with LAPI) |
+| `CAPI_WHITELISTS_PATH`  | | Path for capi_whitelists.yaml |
 |                         | | |
 | __Agent__               | | (these don't work with DISABLE_AGENT) |
 | `TYPE`                  | | [`Labels.type`](https://docs.crowdsec.net/Crowdsec/v1/references/acquisition/) for file in time-machine: `-e TYPE="<type>"` |

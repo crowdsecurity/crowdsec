@@ -2,6 +2,7 @@ package exprhelpers
 
 import (
 	"bufio"
+	"encoding/base64"
 	"fmt"
 	"net"
 	"net/url"
@@ -19,15 +20,15 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-
 	"github.com/umahmood/haversine"
+	"github.com/wasilibs/go-re2"
+
+	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-
-	"github.com/wasilibs/go-re2"
 )
 
 var dataFile map[string][]string
@@ -49,6 +50,8 @@ var RegexpCacheMetrics = prometheus.NewGaugeVec(
 var dbClient *database.Client
 
 var exprFunctionOptions []expr.Option
+
+var keyValuePattern = regexp.MustCompile(`(?P<key>[^=\s]+)=(?:"(?P<quoted_value>[^"\\]*(?:\\.[^"\\]*)*)"|(?P<value>[^=\s]+)|\s*)`)
 
 func GetExprOptions(ctx map[string]interface{}) []expr.Option {
 	ret := []expr.Option{}
@@ -88,13 +91,13 @@ func RegexpCacheInit(filename string, CacheCfg types.DataSource) error {
 	//cache is enabled
 
 	if CacheCfg.Size == nil {
-		CacheCfg.Size = types.IntPtr(50)
+		CacheCfg.Size = ptr.Of(50)
 	}
 
 	gc := gcache.New(*CacheCfg.Size)
 
 	if CacheCfg.Strategy == nil {
-		CacheCfg.Strategy = types.StrPtr("LRU")
+		CacheCfg.Strategy = ptr.Of("LRU")
 	}
 	switch *CacheCfg.Strategy {
 	case "LRU":
@@ -584,4 +587,59 @@ func Match(params ...any) (any, error) {
 		return Match(pattern[1:], name[1:])
 	}
 	return matched, nil
+}
+
+func B64Decode(params ...any) (any, error) {
+	encoded := params[0].(string)
+	decoded, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return "", err
+	}
+	return string(decoded), nil
+}
+
+func ParseKV(params ...any) (any, error) {
+
+	blob := params[0].(string)
+	target := params[1].(map[string]interface{})
+	prefix := params[2].(string)
+
+	matches := keyValuePattern.FindAllStringSubmatch(blob, -1)
+	if matches == nil {
+		log.Errorf("could not find any key/value pair in line")
+		return nil, fmt.Errorf("invalid input format")
+	}
+	if _, ok := target[prefix]; !ok {
+		target[prefix] = make(map[string]string)
+	} else {
+		_, ok := target[prefix].(map[string]string)
+		if !ok {
+			log.Errorf("ParseKV: target is not a map[string]string")
+			return nil, fmt.Errorf("target is not a map[string]string")
+		}
+	}
+	for _, match := range matches {
+		key := ""
+		value := ""
+		for i, name := range keyValuePattern.SubexpNames() {
+			if name == "key" {
+				key = match[i]
+			} else if name == "quoted_value" && match[i] != "" {
+				value = match[i]
+			} else if name == "value" && match[i] != "" {
+				value = match[i]
+			}
+		}
+		target[prefix].(map[string]string)[key] = value
+	}
+	log.Tracef("unmarshaled KV: %+v", target[prefix])
+	return nil, nil
+}
+
+func Hostname(params ...any) (any, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		return "", err
+	}
+	return hostname, nil
 }

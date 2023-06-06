@@ -191,6 +191,20 @@ func (dc *DecisionCreate) SetNillableUUID(s *string) *DecisionCreate {
 	return dc
 }
 
+// SetAlertDecisions sets the "alert_decisions" field.
+func (dc *DecisionCreate) SetAlertDecisions(i int) *DecisionCreate {
+	dc.mutation.SetAlertDecisions(i)
+	return dc
+}
+
+// SetNillableAlertDecisions sets the "alert_decisions" field if the given value is not nil.
+func (dc *DecisionCreate) SetNillableAlertDecisions(i *int) *DecisionCreate {
+	if i != nil {
+		dc.SetAlertDecisions(*i)
+	}
+	return dc
+}
+
 // SetOwnerID sets the "owner" edge to the Alert entity by ID.
 func (dc *DecisionCreate) SetOwnerID(id int) *DecisionCreate {
 	dc.mutation.SetOwnerID(id)
@@ -485,7 +499,7 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.alert_decisions = &nodes[0]
+		_node.AlertDecisions = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

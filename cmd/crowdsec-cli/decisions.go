@@ -19,8 +19,10 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -120,7 +122,7 @@ func NewDecisionsCmd() *cobra.Command {
 			Client, err = apiclient.NewClient(&apiclient.Config{
 				MachineID:     csConfig.API.Client.Credentials.Login,
 				Password:      password,
-				UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+				UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
 				URL:           apiurl,
 				VersionPrefix: "v1",
 			})
@@ -488,6 +490,7 @@ func NewDecisionsImportCmd() *cobra.Command {
 		importReason    string
 		importType      string
 		importFile      string
+		batchSize       int
 	)
 
 	var cmdDecisionImport = &cobra.Command{
@@ -578,37 +581,69 @@ decisions.json :
 					log.Debugf("'scope' line %d, using supplied value: '%s'", line, importScope)
 				}
 				decision := models.Decision{
-					Value:     types.StrPtr(decisionLine.Value),
-					Duration:  types.StrPtr(decisionLine.Duration),
-					Origin:    types.StrPtr(decisionLine.Origin),
-					Scenario:  types.StrPtr(decisionLine.Scenario),
-					Type:      types.StrPtr(decisionLine.Type),
-					Scope:     types.StrPtr(decisionLine.Scope),
+					Value:     ptr.Of(decisionLine.Value),
+					Duration:  ptr.Of(decisionLine.Duration),
+					Origin:    ptr.Of(decisionLine.Origin),
+					Scenario:  ptr.Of(decisionLine.Scenario),
+					Type:      ptr.Of(decisionLine.Type),
+					Scope:     ptr.Of(decisionLine.Scope),
 					Simulated: new(bool),
 				}
 				decisionsList = append(decisionsList, &decision)
 			}
 			alerts := models.AddAlertsRequest{}
-			importAlert := models.Alert{
-				CreatedAt: time.Now().UTC().Format(time.RFC3339),
-				Scenario:  types.StrPtr(fmt.Sprintf("import %s : %d IPs", importFile, len(decisionsList))),
-				Message:   types.StrPtr(""),
-				Events:    []*models.Event{},
-				Source: &models.Source{
-					Scope: types.StrPtr(""),
-					Value: types.StrPtr(""),
-				},
-				StartAt:         types.StrPtr(time.Now().UTC().Format(time.RFC3339)),
-				StopAt:          types.StrPtr(time.Now().UTC().Format(time.RFC3339)),
-				Capacity:        types.Int32Ptr(0),
-				Simulated:       types.BoolPtr(false),
-				EventsCount:     types.Int32Ptr(int32(len(decisionsList))),
-				Leakspeed:       types.StrPtr(""),
-				ScenarioHash:    types.StrPtr(""),
-				ScenarioVersion: types.StrPtr(""),
-				Decisions:       decisionsList,
+
+			if batchSize > 0 {
+				for i := 0; i < len(decisionsList); i += batchSize {
+					end := i + batchSize
+					if end > len(decisionsList) {
+						end = len(decisionsList)
+					}
+					decisionBatch := decisionsList[i:end]
+					importAlert := models.Alert{
+						CreatedAt: time.Now().UTC().Format(time.RFC3339),
+						Scenario:  ptr.Of(fmt.Sprintf("import %s : %d IPs", importFile, len(decisionBatch))),
+
+						Message: ptr.Of(""),
+						Events:  []*models.Event{},
+						Source: &models.Source{
+							Scope: ptr.Of(""),
+							Value: ptr.Of(""),
+						},
+						StartAt:         ptr.Of(time.Now().UTC().Format(time.RFC3339)),
+						StopAt:          ptr.Of(time.Now().UTC().Format(time.RFC3339)),
+						Capacity:        ptr.Of(int32(0)),
+						Simulated:       ptr.Of(false),
+						EventsCount:     ptr.Of(int32(len(decisionBatch))),
+						Leakspeed:       ptr.Of(""),
+						ScenarioHash:    ptr.Of(""),
+						ScenarioVersion: ptr.Of(""),
+						Decisions:       decisionBatch,
+					}
+					alerts = append(alerts, &importAlert)
+				}
+			} else {
+				importAlert := models.Alert{
+					CreatedAt: time.Now().UTC().Format(time.RFC3339),
+					Scenario:  ptr.Of(fmt.Sprintf("import %s : %d IPs", importFile, len(decisionsList))),
+					Message:   ptr.Of(""),
+					Events:    []*models.Event{},
+					Source: &models.Source{
+						Scope: ptr.Of(""),
+						Value: ptr.Of(""),
+					},
+					StartAt:         ptr.Of(time.Now().UTC().Format(time.RFC3339)),
+					StopAt:          ptr.Of(time.Now().UTC().Format(time.RFC3339)),
+					Capacity:        ptr.Of(int32(0)),
+					Simulated:       ptr.Of(false),
+					EventsCount:     ptr.Of(int32(len(decisionsList))),
+					Leakspeed:       ptr.Of(""),
+					ScenarioHash:    ptr.Of(""),
+					ScenarioVersion: ptr.Of(""),
+					Decisions:       decisionsList,
+				}
+				alerts = append(alerts, &importAlert)
 			}
-			alerts = append(alerts, &importAlert)
 
 			if len(decisionsList) > 1000 {
 				log.Infof("You are about to add %d decisions, this may take a while", len(decisionsList))
@@ -628,6 +663,7 @@ decisions.json :
 	cmdDecisionImport.Flags().StringVar(&importScope, "scope", types.Ip, "Decision scope (ie. ip,range,username)")
 	cmdDecisionImport.Flags().StringVarP(&importReason, "reason", "R", "", "Decision reason (ie. scenario-name)")
 	cmdDecisionImport.Flags().StringVarP(&importType, "type", "t", "", "Decision type (ie. ban,captcha,throttle)")
+	cmdDecisionImport.Flags().IntVar(&batchSize, "batch", 0, "Split import in batches of N decisions")
 
 	return cmdDecisionImport
 }

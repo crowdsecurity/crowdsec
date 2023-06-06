@@ -25,7 +25,6 @@ type MetaQuery struct {
 	fields     []string
 	predicates []predicate.Meta
 	withOwner  *AlertQuery
-	withFKs    bool
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -351,18 +350,11 @@ func (mq *MetaQuery) prepareQuery(ctx context.Context) error {
 func (mq *MetaQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Meta, error) {
 	var (
 		nodes       = []*Meta{}
-		withFKs     = mq.withFKs
 		_spec       = mq.querySpec()
 		loadedTypes = [1]bool{
 			mq.withOwner != nil,
 		}
 	)
-	if mq.withOwner != nil {
-		withFKs = true
-	}
-	if withFKs {
-		_spec.Node.Columns = append(_spec.Node.Columns, meta.ForeignKeys...)
-	}
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*Meta).scanValues(nil, columns)
 	}
@@ -394,10 +386,7 @@ func (mq *MetaQuery) loadOwner(ctx context.Context, query *AlertQuery, nodes []*
 	ids := make([]int, 0, len(nodes))
 	nodeids := make(map[int][]*Meta)
 	for i := range nodes {
-		if nodes[i].alert_metas == nil {
-			continue
-		}
-		fk := *nodes[i].alert_metas
+		fk := nodes[i].AlertMetas
 		if _, ok := nodeids[fk]; !ok {
 			ids = append(ids, fk)
 		}

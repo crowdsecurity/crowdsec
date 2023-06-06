@@ -7,9 +7,7 @@ endif
 # Go parameters
 GOCMD = go
 GOBUILD = $(GOCMD) build
-GOCLEAN = $(GOCMD) clean
 GOTEST = $(GOCMD) test
-GOGET = $(GOCMD) get
 
 CROWDSEC_BIN = crowdsec$(EXT)
 # names longer than 15 chars break 'pgrep'
@@ -31,7 +29,7 @@ test:
 	$(GOTEST) $(LD_OPTS) -v ./...
 
 clean:
-	@$(RM) $(CROWDSEC_BIN) $(CROWDSEC_BIN).test $(WIN_IGNORE_ERR)
+	@$(RM) $(CROWDSEC_BIN) $(WIN_IGNORE_ERR)
 
 .PHONY: install
 install: install-conf install-bin
@@ -59,7 +57,7 @@ install-conf:
 install-bin:
 	install -v -m 755 -D "$(CROWDSEC_BIN)" "$(BIN_PREFIX)/$(CROWDSEC_BIN)" || exit
 
-.PHONY: systemd"$(BIN_PREFI"$(BIN_PREFIX)/$(CROWDSEC_BIN)""$(BIN_PREFIX)/$(CROWDSEC_BIN)"X)/$(CROWDSEC_BIN)"
+.PHONY: systemd
 systemd: install
 	CFG=$(CFG_PREFIX) PID=$(PID_DIR) BIN=$(BIN_PREFIX)"/"$(CROWDSEC_BIN) envsubst < ../../config/crowdsec.service > "$(SYSTEMD_PATH_FILE)"
 	systemctl daemon-reload

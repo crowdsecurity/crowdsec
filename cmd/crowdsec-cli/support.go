@@ -18,6 +18,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
@@ -182,7 +184,7 @@ func collectAPIStatus(login string, password string, endpoint string, prefix str
 
 	Client, err = apiclient.NewDefaultClient(apiurl,
 		prefix,
-		fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		fmt.Sprintf("crowdsec/%s", version.String()),
 		nil)
 	if err != nil {
 		return []byte(fmt.Sprintf("could not init client: %s", err))

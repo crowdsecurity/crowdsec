@@ -24,7 +24,7 @@ teardown() {
 #----------
 
 @test "we can list collections" {
-    run -0 cscli collections list
+    rune -0 cscli collections list
 }
 
 @test "there are 2 collections (linux and sshd)" {
@@ -105,7 +105,7 @@ teardown() {
     rune -0 cscli collections remove --all
     assert_stderr --partial "Removed symlink [crowdsecurity/sshd]"
     assert_stderr --partial "Removed symlink [crowdsecurity/linux]"
-    rune -0 --separate-stderr cscli hub list -o json
+    rune -0 cscli hub list -o json
     assert_json '{collections:[],parsers:[],postoverflows:[],scenarios:[]}'
     rune -0 cscli collections remove --all
     assert_stderr --partial 'Disabled 0 items'

@@ -186,6 +186,13 @@ func UUID(v string) predicate.Decision {
 	})
 }
 
+// AlertDecisions applies equality check predicate on the "alert_decisions" field. It's identical to AlertDecisionsEQ.
+func AlertDecisions(v int) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldAlertDecisions), v))
+	})
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
@@ -1429,6 +1436,56 @@ func UUIDEqualFold(v string) predicate.Decision {
 func UUIDContainsFold(v string) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
 		s.Where(sql.ContainsFold(s.C(FieldUUID), v))
+	})
+}
+
+// AlertDecisionsEQ applies the EQ predicate on the "alert_decisions" field.
+func AlertDecisionsEQ(v int) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldAlertDecisions), v))
+	})
+}
+
+// AlertDecisionsNEQ applies the NEQ predicate on the "alert_decisions" field.
+func AlertDecisionsNEQ(v int) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldAlertDecisions), v))
+	})
+}
+
+// AlertDecisionsIn applies the In predicate on the "alert_decisions" field.
+func AlertDecisionsIn(vs ...int) predicate.Decision {
+	v := make([]any, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.In(s.C(FieldAlertDecisions), v...))
+	})
+}
+
+// AlertDecisionsNotIn applies the NotIn predicate on the "alert_decisions" field.
+func AlertDecisionsNotIn(vs ...int) predicate.Decision {
+	v := make([]any, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.NotIn(s.C(FieldAlertDecisions), v...))
+	})
+}
+
+// AlertDecisionsIsNil applies the IsNil predicate on the "alert_decisions" field.
+func AlertDecisionsIsNil() predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldAlertDecisions)))
+	})
+}
+
+// AlertDecisionsNotNil applies the NotNil predicate on the "alert_decisions" field.
+func AlertDecisionsNotNil() predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldAlertDecisions)))
 	})
 }
 

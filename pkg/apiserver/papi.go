@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -217,8 +219,7 @@ func (p *Papi) PullOnce(since time.Time, sync bool) error {
 
 // PullPAPI is the long polling client for real-time decisions from PAPI
 func (p *Papi) Pull() error {
-
-	defer types.CatchPanic("lapi/PullPAPI")
+	defer trace.CatchPanic("lapi/PullPAPI")
 	p.Logger.Infof("Starting Polling API Pull")
 
 	lastTimestamp := time.Time{}
@@ -270,7 +271,7 @@ func (p *Papi) Pull() error {
 }
 
 func (p *Papi) SyncDecisions() error {
-	defer types.CatchPanic("lapi/syncDecisionsToCAPI")
+	defer trace.CatchPanic("lapi/syncDecisionsToCAPI")
 
 	var cache models.DecisionsDeleteRequest
 	ticker := time.NewTicker(p.SyncInterval)

@@ -48,11 +48,11 @@ require (
 	github.com/prometheus/client_model v0.3.0
 	github.com/prometheus/prom2json v1.3.0
 	github.com/r3labs/diff/v2 v2.14.1
-	github.com/sirupsen/logrus v1.9.0
+	github.com/sirupsen/logrus v1.9.2
 	github.com/spf13/cobra v1.7.0
-	github.com/stretchr/testify v1.8.2
-	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
-	golang.org/x/mod v0.8.0
+	github.com/stretchr/testify v1.8.3
+	golang.org/x/crypto v0.1.0
+	golang.org/x/mod v0.6.0
 	google.golang.org/grpc v1.47.0
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
@@ -72,6 +72,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2
 	github.com/corazawaf/coraza/v3 v3.0.0-rc.2
 	github.com/coreos/go-systemd/v22 v22.5.0
+	github.com/crowdsecurity/go-cs-lib v0.0.0-20230531105801-4c1535c2b3bd
 	github.com/goccy/go-yaml v1.9.7
 	github.com/gofrs/uuid v4.0.0+incompatible
 	github.com/golang-jwt/jwt/v4 v4.2.0
@@ -85,6 +86,7 @@ require (
 	github.com/texttheater/golang-levenshtein/levenshtein v0.0.0-20200805054039-cae8b0eaed6c
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	github.com/wasilibs/go-re2 v0.2.1
+	golang.org/x/exp v0.0.0-20230515195305-f3d0a9c9a5cc
 	golang.org/x/sys v0.7.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apiserver v0.22.5
@@ -103,7 +105,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/corazawaf/libinjection-go v0.1.2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
-	github.com/docker/distribution v2.8.0+incompatible // indirect
+	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect

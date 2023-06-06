@@ -24,35 +24,33 @@ teardown() {
 #----------
 
 @test "test without -no-api flag" {
-    run -124 --separate-stderr timeout 2s "${CROWDSEC}"
+    rune -124 timeout 2s "${CROWDSEC}"
     # from `man timeout`: If  the  command  times  out,  and --preserve-status is not set, then exit with status 124.
 }
 
 @test "crowdsec should not run without LAPI (-no-api flag)" {
     # really needs 4 secs on slow boxes
-    run -1 --separate-stderr timeout 4s "${CROWDSEC}" -no-api
+    rune -1 timeout 4s "${CROWDSEC}" -no-api
 }
 
 @test "crowdsec should not run without LAPI (no api.server in configuration file)" {
     config_disable_lapi
     config_log_stderr
     # really needs 4 secs on slow boxes
-    run -1 --separate-stderr timeout 4s "${CROWDSEC}"
-
+    rune -1 timeout 4s "${CROWDSEC}"
     assert_stderr --partial "crowdsec local API is disabled"
 }
 
 @test "capi status shouldn't be ok without api.server" {
     config_disable_lapi
-    run -1 --separate-stderr cscli capi status
-
+    rune -1 cscli capi status
     assert_stderr --partial "crowdsec local API is disabled"
     assert_stderr --partial "There is no configuration on 'api.server:'"
 }
 
 @test "cscli config show -o human" {
     config_disable_lapi
-    run -0 cscli config show -o human
+    rune -0 cscli config show -o human
     assert_output --partial "Global:"
     assert_output --partial "Crowdsec:"
     assert_output --partial "cscli:"
@@ -62,9 +60,9 @@ teardown() {
 @test "cscli config backup" {
     config_disable_lapi
     backupdir=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp -u)
-    run -0 cscli config backup "${backupdir}"
-    assert_output --partial "Starting configuration backup"
-    run -1 --separate-stderr cscli config backup "${backupdir}"
+    rune -0 cscli config backup "${backupdir}"
+    assert_stderr --partial "Starting configuration backup"
+    rune -1 cscli config backup "${backupdir}"
     rm -rf -- "${backupdir:?}"
 
     assert_stderr --partial "failed to backup config"
@@ -74,7 +72,7 @@ teardown() {
 @test "lapi status shouldn't be ok without api.server" {
     config_disable_lapi
     ./instance-crowdsec start || true
-    run -1 --separate-stderr cscli machines list
+    rune -1 cscli machines list
     assert_stderr --partial "local API is disabled, please run this command on the local API machine"
 }
 
@@ -82,7 +80,7 @@ teardown() {
     skip 'need to trigger metrics with a live parse'
     config_disable_lapi
     ./instance-crowdsec start
-    run -0 --separate-stderr cscli metrics
+    rune -0 cscli metrics
     assert_output --partial "ROUTE"
     assert_output --partial "/v1/watchers/login"
 

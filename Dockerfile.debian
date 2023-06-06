@@ -1,5 +1,5 @@
 # vim: set ft=dockerfile:
-ARG GOVERSION=1.20.3
+ARG GOVERSION=1.20.4
 
 FROM golang:${GOVERSION}-bullseye AS build
 
@@ -12,7 +12,7 @@ ENV DEBCONF_NOWARNINGS="yes"
 
 # wizard.sh requires GNU coreutils
 RUN apt-get update && \
-    apt-get install -y -q git gcc libc-dev make bash gettext binutils-gold coreutils tzdata && \
+    apt-get install -y -q git gcc libc-dev make bash gettext binutils-gold coreutils tzdata libre2-dev && \
     echo "githubciXXXXXXXXXXXXXXXXXXXXXXXX" > /etc/machine-id && \
     make clean release DOCKER_BUILD=1 && \
     cd crowdsec-v* && \
@@ -43,6 +43,9 @@ RUN apt-get update && \
     mkdir -p /staging/etc/crowdsec/acquis.d && \
     mkdir -p /staging/var/lib/crowdsec && \
     mkdir -p /var/lib/crowdsec/data
+
+RUN echo "deb http://deb.debian.org/debian bullseye-backports main" >> /etc/apt/sources.list \
+    && apt-get update && apt-get install -t bullseye-backports -y libsystemd0
 
 COPY --from=build /go/bin/yq /usr/local/bin/yq
 COPY --from=build /etc/crowdsec /staging/etc/crowdsec

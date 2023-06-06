@@ -866,6 +866,8 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 			continue
 		case "simulated":
 			continue
+		case "with_decisions":
+			continue
 		default:
 			return nil, errors.Wrapf(InvalidFilter, "Filter parameter '%s' is unknown (=%s)", param, value[0])
 		}

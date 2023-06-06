@@ -110,6 +110,16 @@ teardown() {
     assert_output '["http://127.0.0.1:8080/","githubciXXXXXXXXXXXXXXXXXXXXXXXX"]'
 }
 
+@test "cscli config show-yaml" {
+    rune -0 cscli config show-yaml
+    rune -0 yq .common.log_level <(output)
+    assert_output "info"
+    echo 'common: {"log_level": "debug"}' >> "${CONFIG_YAML}.local"
+    rune -0 cscli config show-yaml
+    rune -0 yq .common.log_level <(output)
+    assert_output "debug"
+}
+
 @test "cscli config backup / restore" {
     # test that we need a valid path
     # disabled because in CI, the empty string is not passed as a parameter
@@ -218,7 +228,6 @@ teardown() {
     assert_output --partial "Route"
     assert_output --partial '/v1/watchers/login'
     assert_output --partial "Local Api Metrics:"
-
 }
 
 @test "'cscli completion' with or without configuration file" {

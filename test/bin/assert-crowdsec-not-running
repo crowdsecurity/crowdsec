@@ -2,7 +2,7 @@
 
 is_crowdsec_running() {
     # ignore processes in containers
-    PIDS=$(pgrep --ns $$ -x 'crowdsec|crowdsec.test')
+    PIDS=$(pgrep --ns $$ -x 'crowdsec')
 }
 
 # The process can be slow, especially on CI and during test coverage.
