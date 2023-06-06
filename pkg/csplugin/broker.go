@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"strings"
 	"sync"
 	"text/template"
@@ -19,6 +20,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/pkg/csstring"
+	"github.com/crowdsecurity/go-cs-lib/pkg/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -115,8 +117,15 @@ loop:
 			pb.alertsByPluginName[pluginName] = make([]*models.Alert, 0)
 			pluginMutex.Unlock()
 			go func() {
-				if err := pb.pushNotificationsToPlugin(pluginName, tmpAlerts); err != nil {
-					log.WithField("plugin:", pluginName).Error(err)
+				//Chunk alerts to respect group_threshold
+				threshold := pb.pluginConfigByName[pluginName].GroupThreshold
+				if threshold == 0 {
+					threshold = 1
+				}
+				for _, chunk := range slicetools.Chunks(tmpAlerts, threshold) {
+					if err := pb.pushNotificationsToPlugin(pluginName, chunk); err != nil {
+						log.WithField("plugin:", pluginName).Error(err)
+					}
 				}
 			}()
 
@@ -183,14 +192,14 @@ func (pb *PluginBroker) loadConfig(path string) error {
 			return err
 		}
 		for _, pluginConfig := range pluginConfigs {
+			setRequiredFields(&pluginConfig)
+			if _, ok := pb.pluginConfigByName[pluginConfig.Name]; ok {
+				log.Warningf("notification '%s' is defined multiple times", pluginConfig.Name)
+			}
+			pb.pluginConfigByName[pluginConfig.Name] = pluginConfig
 			if !pb.profilesContainPlugin(pluginConfig.Name) {
 				continue
 			}
-			setRequiredFields(&pluginConfig)
-			if _, ok := pb.pluginConfigByName[pluginConfig.Name]; ok {
-				log.Warnf("several configs for notification %s found  ", pluginConfig.Name)
-			}
-			pb.pluginConfigByName[pluginConfig.Name] = pluginConfig
 		}
 	}
 	err = pb.verifyPluginConfigsWithProfile()
@@ -358,6 +367,10 @@ func ParsePluginConfigFile(path string) ([]PluginConfig, error) {
 			}
 			return []PluginConfig{}, fmt.Errorf("while decoding %s got error %s", path, err)
 		}
+		// if the yaml document is empty, skip
+		if reflect.DeepEqual(pc, PluginConfig{}) {
+			continue
+		}
 		parsedConfigs = append(parsedConfigs, pc)
 	}
 	return parsedConfigs, nil
@@ -371,7 +384,6 @@ func setRequiredFields(pluginCfg *PluginConfig) {
 	if pluginCfg.TimeOut == time.Second*0 {
 		pluginCfg.TimeOut = time.Second * 5
 	}
-
 }
 
 func getUUID() (string, error) {

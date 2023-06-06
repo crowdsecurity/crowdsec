@@ -57,7 +57,7 @@ install-conf:
 install-bin:
 	install -v -m 755 -D "$(CROWDSEC_BIN)" "$(BIN_PREFIX)/$(CROWDSEC_BIN)" || exit
 
-.PHONY: systemd"$(BIN_PREFI"$(BIN_PREFIX)/$(CROWDSEC_BIN)""$(BIN_PREFIX)/$(CROWDSEC_BIN)"X)/$(CROWDSEC_BIN)"
+.PHONY: systemd
 systemd: install
 	CFG=$(CFG_PREFIX) PID=$(PID_DIR) BIN=$(BIN_PREFIX)"/"$(CROWDSEC_BIN) envsubst < ../../config/crowdsec.service > "$(SYSTEMD_PATH_FILE)"
 	systemctl daemon-reload

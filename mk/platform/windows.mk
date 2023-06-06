@@ -22,5 +22,3 @@ WIN_IGNORE_ERR=; exit 0
 # Link to the C++ re2 library with "make RE2_TAG=re2_cgo"
 # or webassembly by default
 RE2_TAG ?=
-
-$(info Building for windows)

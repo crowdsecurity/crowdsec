@@ -3,6 +3,9 @@
 package csplugin
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
 	"os"
 	"testing"
 	"time"
@@ -15,7 +18,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 /*
@@ -81,5 +83,24 @@ func (s *PluginSuite) TestBrokerRun() {
 	time.Sleep(time.Second * 4)
 
 	assert.FileExists(t, ".\\out")
-	assert.Equal(t, types.GetLineCountForFile(".\\out"), 2)
+
+	content, err := os.ReadFile("./out")
+	require.NoError(t, err, "Error reading file")
+
+	decoder := json.NewDecoder(bytes.NewReader(content))
+
+	var alerts []models.Alert
+
+	// two notifications, one alert each
+
+	err = decoder.Decode(&alerts)
+	assert.NoError(t, err)
+	assert.Len(t, alerts, 1)
+
+	err = decoder.Decode(&alerts)
+	assert.NoError(t, err)
+	assert.Len(t, alerts, 1)
+
+	err = decoder.Decode(&alerts)
+	assert.Equal(t, err, io.EOF)
 }

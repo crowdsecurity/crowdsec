@@ -228,7 +228,6 @@ teardown() {
     assert_output --partial "Route"
     assert_output --partial '/v1/watchers/login'
     assert_output --partial "Local Api Metrics:"
-
 }
 
 @test "'cscli completion' with or without configuration file" {

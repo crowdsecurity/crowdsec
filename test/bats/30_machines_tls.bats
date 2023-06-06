@@ -48,7 +48,7 @@ setup_file() {
     # remove all machines
 
     for machine in $(cscli machines list -o json | jq -r '.[].machineId'); do
-        cscli machines delete "${machine}"
+        cscli machines delete "${machine}" >/dev/null 2>&1
     done
 
     config_disable_agent
