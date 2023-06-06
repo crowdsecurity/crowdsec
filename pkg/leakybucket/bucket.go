@@ -349,11 +349,9 @@ func Pour(leaky *Leaky, msg types.Event) {
 		leaky.First_ts = time.Now().UTC()
 	}
 	leaky.Last_ts = time.Now().UTC()
-	fmt.Printf("msg: %+v\n", msg.Meta)
 	if leaky.Limiter.Allow() || leaky.conditionalOverflow {
 		leaky.Queue.Add(msg)
 	} else {
-		fmt.Printf("Overflow !!!")
 		leaky.Ovflw_ts = time.Now().UTC()
 		leaky.logger.Debugf("Last event to be poured, bucket overflow.")
 		leaky.Queue.Add(msg)
