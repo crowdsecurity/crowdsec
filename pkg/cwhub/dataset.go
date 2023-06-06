@@ -1,4 +1,4 @@
-package types
+package cwhub
 
 import (
 	"fmt"
@@ -6,24 +6,14 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"time"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-type DataSource struct {
-	SourceURL string `yaml:"source_url"`
-	DestPath  string `yaml:"dest_file"`
-	Type      string `yaml:"type"`
-	//Control cache strategy on expensive regexps
-	Cache    *bool          `yaml:"cache"`
-	Strategy *string        `yaml:"strategy"`
-	Size     *int           `yaml:"size"`
-	TTL      *time.Duration `yaml:"ttl"`
-}
-
 type DataSet struct {
-	Data []*DataSource `yaml:"data,omitempty"`
+	Data []*types.DataSource `yaml:"data,omitempty"`
 }
 
 func downloadFile(url string, destPath string) error {
@@ -66,7 +56,7 @@ func downloadFile(url string, destPath string) error {
 	return nil
 }
 
-func GetData(data []*DataSource, dataDir string) error {
+func GetData(data []*types.DataSource, dataDir string) error {
 	for _, dataS := range data {
 		destPath := path.Join(dataDir, dataS.DestPath)
 		log.Infof("downloading data '%s' in '%s'", dataS.SourceURL, destPath)
