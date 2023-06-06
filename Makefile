@@ -44,8 +44,10 @@ else
 $(info Using WebAssembly regexp library)
 endif
 
+COMMA=,
+
 export LD_OPTS=-ldflags "-s -w -extldflags '-static' $(LD_OPTS_VARS)" \
-	-trimpath -tags netgo,osusergo,sqlite_omit_load_extension$(addprefix ,$(RE2_TAG))
+	-trimpath -tags netgo,osusergo,sqlite_omit_load_extension$(addprefix $(COMMA),$(RE2_TAG))
 
 ifneq (,$(TEST_COVERAGE))
 LD_OPTS += -cover
