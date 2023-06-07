@@ -429,9 +429,9 @@ func (lim *Limiter) reserveN(t time.Time, n int, maxFutureReserve time.Duration)
 // advance requires that lim.mu is held.
 func (lim *Limiter) advance(t time.Time) (newT time.Time, newTokens float64) {
 	last := lim.last
-	if t.Before(last) {
-		last = t
-	}
+	// if t.Before(last) {
+	// 	last = t
+	// }
 
 	// Calculate the new number of tokens, due to time that passed.
 	elapsed := t.Sub(last)
