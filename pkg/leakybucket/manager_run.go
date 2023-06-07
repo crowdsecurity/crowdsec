@@ -199,6 +199,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 			lastTs := bucket.Last_ts
 			bucket.mutex.Unlock()
 
+			fmt.Printf("bucket created: %+v", firstTs.String())
 			if !firstTs.IsZero() {
 				var d time.Time
 				err = d.UnmarshalText([]byte(parsed.MarshaledTime))
@@ -207,12 +208,11 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 				}
 				if d.After(lastTs.Add(bucket.Duration)) {
 					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, lastTs.Add(bucket.Duration))
-					fmt.Printf("Destroying bucket")
+					fmt.Printf("Destroying bucket\n: %sn", lastTs.String())
 					buckets.Bucket_map.Delete(buckey)
 					//not sure about this, should we create a new one ?
 					sigclosed += 1
 					bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
-					fmt.Printf("bucket created: %+v", bucket)
 					if err != nil {
 						return false, err
 					}
