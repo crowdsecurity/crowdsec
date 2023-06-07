@@ -440,6 +440,7 @@ func (lim *Limiter) advance(t time.Time) (newT time.Time, newTokens float64) {
 	if burst := float64(lim.burst); tokens > burst {
 		tokens = burst
 	}
+	fmt.Printf("time: %s, tokens: %f\n", t.String, tokens)
 	return t, tokens
 }
 
