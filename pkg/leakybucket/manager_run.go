@@ -182,6 +182,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 				buckets.Bucket_map.Delete(buckey)
 				sigclosed += 1
 				bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
+				fmt.Printf("bucket created: %+v", bucket)
 				if err != nil {
 					return false, err
 				}
