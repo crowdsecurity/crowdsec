@@ -52,7 +52,7 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.3
 	golang.org/x/crypto v0.1.0
-	golang.org/x/mod v0.6.0
+	golang.org/x/mod v0.8.0
 	google.golang.org/grpc v1.47.0
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
@@ -206,4 +206,3 @@ require (
 replace golang.org/x/time/rate => github.com/crowdsecurity/crowdsec/pkg/time/rate v0.0.0
 
 replace github.com/corazawaf/coraza/v3 => ./coraza
-

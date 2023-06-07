@@ -132,6 +132,8 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 				value = out
 			case int:
 				value = strconv.Itoa(out)
+			case float64, float32:
+				value = fmt.Sprintf("%f", out)
 			case map[string]interface{}:
 				clog.Warnf("Expression '%s' returned a map, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string", static.ExpValue)
 			case []interface{}:
@@ -139,7 +141,7 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 			case nil:
 				clog.Debugf("Expression '%s' returned nil, skipping", static.ExpValue)
 			default:
-				clog.Errorf("unexpected return type for RunTimeValue : %T", output)
+				clog.Errorf("unexpected return type for '%s' : %T", static.ExpValue, output)
 				return errors.New("unexpected return type for RunTimeValue")
 			}
 		}

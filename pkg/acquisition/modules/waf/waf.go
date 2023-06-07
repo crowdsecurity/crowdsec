@@ -15,6 +15,8 @@ import (
 	corazatypes "github.com/corazawaf/coraza/v3/types"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -144,6 +146,8 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		return errors.Wrap(err, "Cannot create WAF")
 	}
 	w.outOfBandWaf = outofbandwaf
+	log.Printf("OOB -> %s", spew.Sdump(w.outOfBandWaf))
+	log.Printf("IB -> %s", spew.Sdump(w.inBandWaf))
 
 	//We don´t use the wrapper provided by coraza because we want to fully control what happens when a rule match to send the information in crowdsec
 	w.mux.HandleFunc(w.config.Path, w.wafHandler)
@@ -170,7 +174,7 @@ func (w *WafSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error
 func (w *WafSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	w.outChan = out
 	t.Go(func() error {
-		defer types.CatchPanic("crowdsec/acquis/waf/live")
+		defer trace.CatchPanic("crowdsec/acquis/waf/live")
 		w.logger.Infof("Starting WAF server on %s:%d%s", w.config.ListenAddr, w.config.ListenPort, w.config.Path)
 		t.Go(func() error {
 			err := w.server.ListenAndServe()
@@ -200,6 +204,7 @@ func (w *WafSource) Dump() interface{} {
 }
 
 func processReqWithEngine(waf coraza.WAF, r *http.Request, uuid string) (*corazatypes.Interruption, corazatypes.Transaction, error) {
+	var in *corazatypes.Interruption
 	tx := waf.NewTransactionWithID(uuid)
 
 	if tx.IsRuleEngineOff() {
@@ -240,7 +245,8 @@ func processReqWithEngine(waf coraza.WAF, r *http.Request, uuid string) (*coraza
 		tx.AddRequestHeader("Transfer-Encoding", r.TransferEncoding[0])
 	}
 
-	in := tx.ProcessRequestHeaders()
+	in = tx.ProcessRequestHeaders()
+	//if we're inband, we should stop here, but for outofband go to the end
 	if in != nil {
 		log.Printf("headerss")
 		return in, tx, nil
@@ -270,19 +276,22 @@ func processReqWithEngine(waf coraza.WAF, r *http.Request, uuid string) (*coraza
 			}
 		}
 	}
-	log.Printf("done")
-
-	return nil, nil, nil
+	log.Printf("done -> %d", len(tx.MatchedRules()))
+	// if in != nil {
+	// 	log.Printf("exception while processing req")
+	// 	return in, tx, nil
+	// }
+	return nil, tx, nil
 }
 
-func (w *WafSource) TxToEvents(tx corazatypes.Transaction, r *http.Request) ([]types.Event, error) {
+func (w *WafSource) TxToEvents(tx corazatypes.Transaction, r *http.Request, kind string) ([]types.Event, error) {
 	evts := []types.Event{}
 	if tx == nil {
 		return nil, fmt.Errorf("tx is nil")
 	}
 	for idx, rule := range tx.MatchedRules() {
 		log.Printf("rule %d", idx)
-		evt, err := w.RuleMatchToEvent(rule, tx, r)
+		evt, err := w.RuleMatchToEvent(rule, tx, r, kind)
 		if err != nil {
 			return nil, errors.Wrap(err, "Cannot convert rule match to event")
 		}
@@ -293,7 +302,7 @@ func (w *WafSource) TxToEvents(tx corazatypes.Transaction, r *http.Request) ([]t
 }
 
 // Transforms a coraza interruption to a crowdsec event
-func (w *WafSource) RuleMatchToEvent(rule corazatypes.MatchedRule, tx corazatypes.Transaction, r *http.Request) (types.Event, error) {
+func (w *WafSource) RuleMatchToEvent(rule corazatypes.MatchedRule, tx corazatypes.Transaction, r *http.Request, kind string) (types.Event, error) {
 	evt := types.Event{}
 	//we might want to change this based on in-band vs out-of-band ?
 	evt.Type = types.LOG
@@ -306,8 +315,9 @@ func (w *WafSource) RuleMatchToEvent(rule corazatypes.MatchedRule, tx corazatype
 	//why ? because it's more consistent with the other data-sources etc. and it provides users with flexibility to alter our parsers
 	CorazaEvent := map[string]interface{}{
 		//core rule info
-		"rule_id":         rule.Rule().ID(),
-		"rule_action":     tx.Interruption().Action,
+		"rule_type": kind,
+		"rule_id":   rule.Rule().ID(),
+		//"rule_action":     tx.Interruption().Action,
 		"rule_disruptive": rule.Disruptive(),
 		"rule_tags":       rule.Rule().Tags(),
 		"rule_file":       rule.Rule().File(),
@@ -323,6 +333,9 @@ func (w *WafSource) RuleMatchToEvent(rule corazatypes.MatchedRule, tx corazatype
 		"uri":           rule.URI(),
 	}
 
+	if tx.Interruption() != nil {
+		CorazaEvent["rule_action"] = tx.Interruption().Action
+	}
 	corazaEventB, err := json.Marshal(CorazaEvent)
 	if err != nil {
 		return evt, fmt.Errorf("Unable to marshal coraza alert: %w", err)
@@ -352,7 +365,7 @@ func (w *WafSource) wafHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if in != nil {
-		events, err := w.TxToEvents(tx, r)
+		events, err := w.TxToEvents(tx, r, "inband")
 		log.Infof("Request blocked by WAF, %d events to send", len(events))
 		for _, evt := range events {
 			w.outChan <- evt
@@ -373,8 +386,9 @@ func (w *WafSource) wafHandler(rw http.ResponseWriter, r *http.Request) {
 		log.Errorf("Error while processing request : %s", err)
 		return
 	}
-	if in2 != nil {
-		events, err := w.TxToEvents(tx2, r)
+	if tx2 != nil && len(tx2.MatchedRules()) > 0 {
+		log.Printf("got events and stuff to do")
+		events, err := w.TxToEvents(tx2, r, "outofband")
 		log.Infof("Request triggered by WAF, %d events to send", len(events))
 		for _, evt := range events {
 			w.outChan <- evt
