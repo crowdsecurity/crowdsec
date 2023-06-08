@@ -199,7 +199,6 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 			lastTs := bucket.Last_ts
 			bucket.mutex.Unlock()
 
-			fmt.Printf("bucket created: %+v", firstTs.String())
 			if !firstTs.IsZero() {
 				var d time.Time
 				err = d.UnmarshalText([]byte(parsed.MarshaledTime))
