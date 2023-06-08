@@ -179,9 +179,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 			if !ok {
 				//the bucket was found and dead, get a new one and continue
 				bucket.logger.Tracef("Bucket %s found dead, cleanup the body", buckey)
-				fmt.Printf("map before: %+v\n", spew.Sdump(buckets.Bucket_map))
 				buckets.Bucket_map.Delete(buckey)
-				fmt.Printf("map after: %+v\n", spew.Sdump(buckets.Bucket_map))
 				sigclosed += 1
 				bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
 				if err != nil {
@@ -210,7 +208,9 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 				}
 				if d.After(lastTs.Add(bucket.Duration)) {
 					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, lastTs.Add(bucket.Duration))
+					fmt.Printf("map before: %+v\n", spew.Sdump(buckets.Bucket_map))
 					buckets.Bucket_map.Delete(buckey)
+					fmt.Printf("map after: %+v\n", spew.Sdump(buckets.Bucket_map))
 					//not sure about this, should we create a new one ?
 					sigclosed += 1
 					bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
