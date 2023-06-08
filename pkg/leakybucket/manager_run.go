@@ -7,7 +7,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 
 	"github.com/mohae/deepcopy"
@@ -217,7 +216,6 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 						fmt.Printf("map: %s %s", key, value)
 						return true
 					})
-					fmt.Printf("map after: %+v\n", spew.Sdump(buckets.Bucket_map))
 					//not sure about this, should we create a new one ?
 					sigclosed += 1
 					bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
