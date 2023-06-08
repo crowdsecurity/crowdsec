@@ -594,7 +594,7 @@ func RestoreHub(dirPath string) error {
 					log.Infof("Going to restore local/tainted [%s]", tfile.Name())
 					sourceFile := fmt.Sprintf("%s/%s/%s", itemDirectory, stage, tfile.Name())
 					destinationFile := fmt.Sprintf("%s%s", stagedir, tfile.Name())
-					if err = types.CopyFile(sourceFile, destinationFile); err != nil {
+					if err = CopyFile(sourceFile, destinationFile); err != nil {
 						return fmt.Errorf("failed copy %s %s to %s : %s", itype, sourceFile, destinationFile, err)
 					}
 					log.Infof("restored %s to %s", sourceFile, destinationFile)
@@ -603,7 +603,7 @@ func RestoreHub(dirPath string) error {
 				log.Infof("Going to restore local/tainted [%s]", file.Name())
 				sourceFile := fmt.Sprintf("%s/%s", itemDirectory, file.Name())
 				destinationFile := fmt.Sprintf("%s/%s/%s", csConfig.ConfigPaths.ConfigDir, itype, file.Name())
-				if err = types.CopyFile(sourceFile, destinationFile); err != nil {
+				if err = CopyFile(sourceFile, destinationFile); err != nil {
 					return fmt.Errorf("failed copy %s %s to %s : %s", itype, sourceFile, destinationFile, err)
 				}
 				log.Infof("restored %s to %s", sourceFile, destinationFile)
@@ -653,7 +653,7 @@ func BackupHub(dirPath string) error {
 				}
 				clog.Debugf("[%s] : backuping file (tainted:%t local:%t up-to-date:%t)", k, v.Tainted, v.Local, v.UpToDate)
 				tfile := fmt.Sprintf("%s%s/%s", itemDirectory, v.Stage, v.FileName)
-				if err = types.CopyFile(v.LocalPath, tfile); err != nil {
+				if err = CopyFile(v.LocalPath, tfile); err != nil {
 					return fmt.Errorf("failed copy %s %s to %s : %s", itemType, v.LocalPath, tfile, err)
 				}
 				clog.Infof("local/tainted saved %s to %s", v.LocalPath, tfile)
