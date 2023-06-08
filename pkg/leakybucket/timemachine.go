@@ -43,12 +43,12 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 		l.logger.Tracef("Time-Pouring event %s (tokens:%f)", d, l.Limiter.GetTokensCount())
 		l.Queue.Add(msg)
 	} else {
-		fmt.Printf("Overflow !!!")
 		l.Ovflw_ts = d
 		l.logger.Debugf("Bucket overflow at %s", l.Ovflw_ts)
 		l.Queue.Add(msg)
 		l.Out <- l.Queue
 	}
+	fmt.Printf("timestamp: %s\nmsg: %+v\nLimiter last: %s\n", d.String(), spew.Sdump(msg.Line.Raw), l.Limiter.Dump().Last.String())
 	//fmt.Printf("bucket after: %+v\n", *l)
 }
 
