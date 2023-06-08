@@ -6,7 +6,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/time/rate"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -25,7 +24,6 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 		return
 	}
 	err = d.UnmarshalText([]byte(msg.MarshaledTime))
-	fmt.Printf("Before\ntimestamp: %s\nmsg: %+v\nLimiter last: %s\n", d.String(), spew.Sdump(msg.Line.Raw), l.Limiter.Dump().Last.String())
 	if err != nil {
 		log.Warningf("Failed unmarshaling event time (%s) : %v", msg.MarshaledTime, err)
 		return
@@ -80,6 +78,7 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 		consumed_tokens := elapsed.Seconds() * float64(rate.Every(l.Leakspeed))
 		st := l.Limiter.Dump()
 		st.Tokens -= consumed_tokens
+		fmt.Printf("special case: %f", consumed_tokens)
 		if st.Tokens < 0 {
 			l.Ovflw_ts = l.Last_ts
 			l.logger.Debugf("Bucket overflow at %s", l.Ovflw_ts)
