@@ -23,7 +23,7 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 		return
 	}
 	err = d.UnmarshalText([]byte(msg.MarshaledTime))
-	fmt.Printf("timestamp: %s\nmsg: %+v\nLimiter last: %s\n", d.String(), spew.Sdump(msg.Line.Raw), l.Limiter.Dump().Last.String())
+	fmt.Printf("Before\ntimestamp: %s\nmsg: %+v\nLimiter last: %s\n", d.String(), spew.Sdump(msg.Line.Raw), l.Limiter.Dump().Last.String())
 	if err != nil {
 		log.Warningf("Failed unmarshaling event time (%s) : %v", msg.MarshaledTime, err)
 		return
@@ -48,7 +48,7 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 		l.Queue.Add(msg)
 		l.Out <- l.Queue
 	}
-	fmt.Printf("timestamp: %s\nmsg: %+v\nLimiter last: %s\n", d.String(), spew.Sdump(msg.Line.Raw), l.Limiter.Dump().Last.String())
+	fmt.Printf("After\ntimestamp: %s\nmsg: %+v\nLimiter last: %s\n", d.String(), spew.Sdump(msg.Line.Raw), l.Limiter.Dump().Last.String())
 	//fmt.Printf("bucket after: %+v\n", *l)
 }
 
