@@ -208,8 +208,15 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 				}
 				if d.After(lastTs.Add(bucket.Duration)) {
 					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, lastTs.Add(bucket.Duration))
-					fmt.Printf("map before: %+v\n", spew.Sdump(buckets.Bucket_map))
+					buckets.Bucket_map.Range(func(key, value any) bool {
+						fmt.Printf("map: %s %s", key, value)
+						return true
+					})
 					buckets.Bucket_map.Delete(buckey)
+					buckets.Bucket_map.Range(func(key, value any) bool {
+						fmt.Printf("map: %s %s", key, value)
+						return true
+					})
 					fmt.Printf("map after: %+v\n", spew.Sdump(buckets.Bucket_map))
 					//not sure about this, should we create a new one ?
 					sigclosed += 1
