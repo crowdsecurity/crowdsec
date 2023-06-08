@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -256,7 +255,7 @@ func downloadData(dataFolder string, force bool, reader io.Reader) error {
 	dec := yaml.NewDecoder(reader)
 
 	for {
-		data := &types.DataSet{}
+		data := &DataSet{}
 		err = dec.Decode(data)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
@@ -272,7 +271,7 @@ func downloadData(dataFolder string, force bool, reader io.Reader) error {
 			}
 		}
 		if download || force {
-			err = types.GetData(data.Data, dataFolder)
+			err = GetData(data.Data, dataFolder)
 			if err != nil {
 				return errors.Wrap(err, "while getting data")
 			}
