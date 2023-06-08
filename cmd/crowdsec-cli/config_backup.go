@@ -9,7 +9,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
@@ -43,7 +42,7 @@ func backupConfigToDirectory(dirPath string) error {
 
 	if csConfig.ConfigPaths.SimulationFilePath != "" {
 		backupSimulation := filepath.Join(dirPath, "simulation.yaml")
-		if err = types.CopyFile(csConfig.ConfigPaths.SimulationFilePath, backupSimulation); err != nil {
+		if err = CopyFile(csConfig.ConfigPaths.SimulationFilePath, backupSimulation); err != nil {
 			return errors.Wrapf(err, "failed copy %s to %s", csConfig.ConfigPaths.SimulationFilePath, backupSimulation)
 		}
 
@@ -56,7 +55,7 @@ func backupConfigToDirectory(dirPath string) error {
 	*/
 	if csConfig.Crowdsec != nil && csConfig.Crowdsec.AcquisitionFilePath != "" {
 		backupAcquisition := filepath.Join(dirPath, "acquis.yaml")
-		if err = types.CopyFile(csConfig.Crowdsec.AcquisitionFilePath, backupAcquisition); err != nil {
+		if err = CopyFile(csConfig.Crowdsec.AcquisitionFilePath, backupAcquisition); err != nil {
 			return fmt.Errorf("failed copy %s to %s : %s", csConfig.Crowdsec.AcquisitionFilePath, backupAcquisition, err)
 		}
 	}
@@ -78,7 +77,7 @@ func backupConfigToDirectory(dirPath string) error {
 				return errors.Wrapf(err, "while saving %s to %s", acquisFile, acquisBackupDir)
 			}
 
-			if err = types.CopyFile(acquisFile, targetFname); err != nil {
+			if err = CopyFile(acquisFile, targetFname); err != nil {
 				return fmt.Errorf("failed copy %s to %s : %s", acquisFile, targetFname, err)
 			}
 
@@ -88,7 +87,7 @@ func backupConfigToDirectory(dirPath string) error {
 
 	if ConfigFilePath != "" {
 		backupMain := fmt.Sprintf("%s/config.yaml", dirPath)
-		if err = types.CopyFile(ConfigFilePath, backupMain); err != nil {
+		if err = CopyFile(ConfigFilePath, backupMain); err != nil {
 			return fmt.Errorf("failed copy %s to %s : %s", ConfigFilePath, backupMain, err)
 		}
 
@@ -97,7 +96,7 @@ func backupConfigToDirectory(dirPath string) error {
 
 	if csConfig.API != nil && csConfig.API.Server != nil && csConfig.API.Server.OnlineClient != nil && csConfig.API.Server.OnlineClient.CredentialsFilePath != "" {
 		backupCAPICreds := fmt.Sprintf("%s/online_api_credentials.yaml", dirPath)
-		if err = types.CopyFile(csConfig.API.Server.OnlineClient.CredentialsFilePath, backupCAPICreds); err != nil {
+		if err = CopyFile(csConfig.API.Server.OnlineClient.CredentialsFilePath, backupCAPICreds); err != nil {
 			return fmt.Errorf("failed copy %s to %s : %s", csConfig.API.Server.OnlineClient.CredentialsFilePath, backupCAPICreds, err)
 		}
 
@@ -106,7 +105,7 @@ func backupConfigToDirectory(dirPath string) error {
 
 	if csConfig.API != nil && csConfig.API.Client != nil && csConfig.API.Client.CredentialsFilePath != "" {
 		backupLAPICreds := fmt.Sprintf("%s/local_api_credentials.yaml", dirPath)
-		if err = types.CopyFile(csConfig.API.Client.CredentialsFilePath, backupLAPICreds); err != nil {
+		if err = CopyFile(csConfig.API.Client.CredentialsFilePath, backupLAPICreds); err != nil {
 			return fmt.Errorf("failed copy %s to %s : %s", csConfig.API.Client.CredentialsFilePath, backupLAPICreds, err)
 		}
 
@@ -115,7 +114,7 @@ func backupConfigToDirectory(dirPath string) error {
 
 	if csConfig.API != nil && csConfig.API.Server != nil && csConfig.API.Server.ProfilesPath != "" {
 		backupProfiles := fmt.Sprintf("%s/profiles.yaml", dirPath)
-		if err = types.CopyFile(csConfig.API.Server.ProfilesPath, backupProfiles); err != nil {
+		if err = CopyFile(csConfig.API.Server.ProfilesPath, backupProfiles); err != nil {
 			return fmt.Errorf("failed copy %s to %s : %s", csConfig.API.Server.ProfilesPath, backupProfiles, err)
 		}
 

@@ -94,7 +94,7 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 	return true
 }
 
-func printStaticTarget(static types.ExtraField) string {
+func printStaticTarget(static ExtraField) string {
 
 	if static.Method != "" {
 		return static.Method
@@ -111,7 +111,7 @@ func printStaticTarget(static types.ExtraField) string {
 	}
 }
 
-func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) error {
+func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 	//we have a few cases :
 	//(meta||key) + (static||reference||expr)
 	var value string

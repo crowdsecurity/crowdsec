@@ -26,7 +26,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 const (
@@ -47,6 +46,14 @@ const (
 	SUPPORT_ACQUISITION_CONFIG_BASE_PATH = "config/acquis/"
 	SUPPORT_CROWDSEC_PROFILE_PATH        = "config/profiles.yaml"
 )
+
+// from https://github.com/acarl005/stripansi
+var reStripAnsi = regexp.MustCompile("[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))")
+
+func stripAnsiString(str string) string {
+	// the byte version doesn't strip correctly
+	return reStripAnsi.ReplaceAllString(str, "")
+}
 
 func collectMetrics() ([]byte, []byte, error) {
 	log.Info("Collecting prometheus metrics")
@@ -400,7 +407,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 					log.Errorf("Could not add zip entry for %s: %s", filename, err)
 					continue
 				}
-				fw.Write([]byte(types.StripAnsiString(string(data))))
+				fw.Write([]byte(stripAnsiString(string(data))))
 			}
 
 			err = zipWriter.Close()
