@@ -179,9 +179,9 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 			if !ok {
 				//the bucket was found and dead, get a new one and continue
 				bucket.logger.Tracef("Bucket %s found dead, cleanup the body", buckey)
-				fmt.Printf("map: %+v:", spew.Sdump(buckets.Bucket_map))
+				fmt.Printf("map before: %+v\n", spew.Sdump(buckets.Bucket_map))
 				buckets.Bucket_map.Delete(buckey)
-				fmt.Printf("map: %+v:", spew.Sdump(buckets.Bucket_map))
+				fmt.Printf("map after: %+v\n", spew.Sdump(buckets.Bucket_map))
 				sigclosed += 1
 				bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
 				if err != nil {
