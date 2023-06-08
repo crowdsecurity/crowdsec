@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -23,6 +22,7 @@ import (
 // FormatPrometheusMetrics is a complete rip from prom2json
 func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error {
 	mfChan := make(chan *dto.MetricFamily, 1024)
+	errChan := make(chan error, 1)
 
 	// Start with the DefaultTransport for sane defaults.
 	transport := http.DefaultTransport.(*http.Transport).Clone()
@@ -35,14 +35,21 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 		defer trace.CatchPanic("crowdsec/ShowPrometheus")
 		err := prom2json.FetchMetricFamilies(url, mfChan, transport)
 		if err != nil {
-			log.Fatalf("failed to fetch prometheus metrics : %v", err)
+			errChan <- fmt.Errorf("failed to fetch prometheus metrics: %w", err)
+			return
 		}
+		errChan <- nil
 	}()
 
 	result := []*prom2json.Family{}
 	for mf := range mfChan {
 		result = append(result, prom2json.NewFamily(mf))
 	}
+
+	if err := <-errChan; err != nil {
+		return err
+	}
+
 	log.Debugf("Finished reading prometheus output, %d entries", len(result))
 	/*walk*/
 	lapi_decisions_stats := map[string]struct {
@@ -262,36 +269,44 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 
 var noUnit bool
 
+
+func runMetrics(cmd *cobra.Command, args []string) error {
+	if err := csConfig.LoadPrometheus(); err != nil {
+		return fmt.Errorf("failed to load prometheus config: %w", err)
+	}
+
+	if csConfig.Prometheus == nil {
+		return fmt.Errorf("prometheus section missing, can't show metrics")
+	}
+
+	if !csConfig.Prometheus.Enabled {
+		return fmt.Errorf("prometheus is not enabled, can't show metrics")
+	}
+
+	if prometheusURL == "" {
+		prometheusURL = csConfig.Cscli.PrometheusUrl
+	}
+
+	if prometheusURL == "" {
+		return fmt.Errorf("no prometheus url, please specify in %s or via -u", *csConfig.FilePath)
+	}
+
+	err := FormatPrometheusMetrics(color.Output, prometheusURL+"/metrics", csConfig.Cscli.Output)
+	if err != nil {
+		return fmt.Errorf("could not fetch prometheus metrics: %w", err)
+	}
+	return nil
+}
+
+
 func NewMetricsCmd() *cobra.Command {
-	var cmdMetrics = &cobra.Command{
+	cmdMetrics := &cobra.Command{
 		Use:               "metrics",
 		Short:             "Display crowdsec prometheus metrics.",
 		Long:              `Fetch metrics from the prometheus server and display them in a human-friendly way`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
-			if err := csConfig.LoadPrometheus(); err != nil {
-				log.Fatal(err)
-			}
-			if !csConfig.Prometheus.Enabled {
-				log.Warning("Prometheus is not enabled, can't show metrics")
-				os.Exit(1)
-			}
-
-			if prometheusURL == "" {
-				prometheusURL = csConfig.Cscli.PrometheusUrl
-			}
-
-			if prometheusURL == "" {
-				log.Errorf("No prometheus url, please specify in %s or via -u", *csConfig.FilePath)
-				os.Exit(1)
-			}
-
-			err := FormatPrometheusMetrics(color.Output, prometheusURL+"/metrics", csConfig.Cscli.Output)
-			if err != nil {
-				log.Fatalf("could not fetch prometheus metrics: %s", err)
-			}
-		},
+		RunE: runMetrics,
 	}
 	cmdMetrics.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "", "Prometheus url (http://<ip>:<port>/metrics)")
 	cmdMetrics.PersistentFlags().BoolVar(&noUnit, "no-unit", false, "Show the real number instead of formatted with units")

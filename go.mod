@@ -51,7 +51,7 @@ require (
 	github.com/sirupsen/logrus v1.9.2
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.3
-	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
+	golang.org/x/crypto v0.1.0
 	golang.org/x/mod v0.8.0
 	google.golang.org/grpc v1.47.0
 	google.golang.org/protobuf v1.28.1
