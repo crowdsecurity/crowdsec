@@ -24,7 +24,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var LAPIURLPrefix string = "v1"
@@ -440,7 +439,7 @@ cscli lapi context delete --value evt.Line.Src
 	return cmdContext
 }
 
-func detectStaticField(GrokStatics []types.ExtraField) []string {
+func detectStaticField(GrokStatics []parser.ExtraField) []string {
 	ret := make([]string, 0)
 	for _, static := range GrokStatics {
 		if static.Parsed != "" {
