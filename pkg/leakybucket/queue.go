@@ -36,6 +36,10 @@ func (q *Queue) Add(m types.Event) {
 	q.Queue = append(q.Queue, m)
 }
 
+func (q *Queue) Insert(m types.Event) {
+	q.Queue = append([]types.Event{m}, q.Queue...)
+}
+
 // GetQueue returns the entire queue
 func (q *Queue) GetQueue() []types.Event {
 	return q.Queue
