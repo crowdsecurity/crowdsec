@@ -432,7 +432,7 @@ func (lim *Limiter) advance(t time.Time) (newT time.Time, newTokens float64) {
 	if t.Before(last) {
 		last = t
 	}
-
+	fmt.Printf("timestamp: %s", last.String())
 	// Calculate the new number of tokens, due to time that passed.
 	elapsed := t.Sub(last)
 	delta := lim.limit.tokensFromDuration(elapsed)
