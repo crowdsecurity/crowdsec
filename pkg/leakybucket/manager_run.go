@@ -197,7 +197,6 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 			bucket.mutex.Lock()
 			firstTs := bucket.First_ts
 			lastTs := bucket.Last_ts
-			bucket.mutex.Unlock()
 
 			if !firstTs.IsZero() {
 				var d time.Time
@@ -217,6 +216,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 					continue
 				}
 			}
+			bucket.mutex.Unlock()
 		}
 		/*the bucket seems to be up & running*/
 		select {

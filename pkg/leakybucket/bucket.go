@@ -191,7 +191,6 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		l.conditionalOverflow = true
 		l.Duration = l.BucketConfig.leakspeed
 	}
-	fmt.Printf("\nCreating bucket: %s\n", l.Uuid)
 
 	return l
 }
