@@ -164,6 +164,8 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 	attempts := 0
 	start := time.Now().UTC()
 
+	fmt.Printf("evt: %s\n", parsed.Line.Raw)
+
 	for !sent {
 		attempts += 1
 		/* Warn the user if we used more than a 100 ms to pour an event, it's at least an half lock*/
@@ -218,7 +220,6 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 				}
 			}
 		}
-		fmt.Printf("evt: %s\n", parsed.Line.Raw)
 		/*the bucket seems to be up & running*/
 		select {
 		case bucket.In <- parsed:
