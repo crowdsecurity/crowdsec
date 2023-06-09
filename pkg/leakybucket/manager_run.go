@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -286,6 +287,8 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buckets) (bool, error) {
 	var (
 		ok, condition, poured bool
+		wgs                   map[string]*sync.WaitGroup // only used for timemachine
+		wg                    *sync.WaitGroup
 	)
 
 	if BucketPourTrack {
@@ -342,6 +345,17 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		}
 		buckey := GetKey(holders[idx], groupby)
 
+		if parsed.ExpectMode == types.TIMEMACHINE {
+			wg, ok = wgs[buckey]
+			if !ok {
+				wg = &sync.WaitGroup{}
+				wgs[buckey] = wg
+			}
+			wg.Wait()
+			wg.Add(1)
+
+		}
+
 		//we need to either find the existing bucket, or create a new one (if it's the first event to hit it for this partition key)
 		bucket, err := LoadOrStoreBucketFromHolder(buckey, buckets, holders[idx], parsed.ExpectMode)
 		if err != nil {
@@ -349,33 +363,14 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		}
 
 		/*let's see if this time-bucket should have expired */
-		if bucket.Mode == types.TIMEMACHINE {
-
-			firstTs := bucket.First_ts
-			lastTs := bucket.Last_ts
-
-			if !firstTs.IsZero() {
-				var d time.Time
-				err = d.UnmarshalText([]byte(parsed.MarshaledTime))
-				if err != nil {
-					holders[idx].logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
-				}
-				if d.After(lastTs.Add(bucket.Duration)) {
-					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, lastTs.Add(bucket.Duration))
-					buckets.Bucket_map.Delete(buckey)
-					//not sure about this, should we create a new one ?
-					bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holders[idx], parsed.ExpectMode)
-					if err != nil {
-						return false, err
-					}
-					continue
-				}
-			}
-		}
 
 		//finally, pour the even into the bucket
 		//		fmt.Printf("parsed: %s\n", parsed.Line.Raw)
+
 		ok, err := PourItemToBucket(bucket, holders[idx], buckets, &parsed)
+		if parsed.ExpectMode == types.TIMEMACHINE {
+			wg.Done()
+		}
 		if err != nil {
 			return false, errors.Wrap(err, "failed to pour bucket")
 		}
