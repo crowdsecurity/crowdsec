@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -158,13 +159,18 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 	var sent bool
 	var buckey = bucket.Mapkey
 	var err error
+	var wg sync.WaitGroup
 
 	sigclosed := 0
 	failed_sent := 0
 	attempts := 0
 	start := time.Now().UTC()
 
-	fmt.Printf("evt: %s\n", parsed.Line.Raw)
+	if parsed.ExpectMode == types.TIMEMACHINE {
+		wg.Wait()
+		wg.Add(1)
+		defer wg.Done()
+	}
 
 	for !sent {
 		attempts += 1
