@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -14,6 +15,7 @@ import (
 func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *leaky.Buckets, cConfig *csconfig.Config) error {
 	var (
 		count int
+		wg    sync.WaitGroup
 	)
 	for {
 		//bucket is now ready
@@ -42,7 +44,10 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 				}
 			}
 			//here we can bucketify with parsed
+			wg.Wait()
+			wg.Add(1)
 			poured, err := leaky.PourItemToHolders(parsed, holders, buckets)
+			wg.Done()
 			if err != nil {
 				log.Errorf("bucketify failed for: %v", parsed)
 				continue
