@@ -167,6 +167,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 	start := time.Now().UTC()
 
 	if parsed.ExpectMode == types.TIMEMACHINE {
+		fmt.Printf("evt: %s", parsed.Line.Raw)
 		wg.Wait()
 		wg.Add(1)
 		defer wg.Done()
