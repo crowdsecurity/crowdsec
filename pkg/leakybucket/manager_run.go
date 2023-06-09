@@ -218,6 +218,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 				}
 			}
 		}
+		fmt.Printf("evt: %s\n", parsed.Line.Raw)
 		/*the bucket seems to be up & running*/
 		select {
 		case bucket.In <- parsed:
