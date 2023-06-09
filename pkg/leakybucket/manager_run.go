@@ -159,6 +159,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 	var buckey = bucket.Mapkey
 	var err error
 
+	fmt.Printf("debug: %s\n", parsed.Line.Raw)
 	sigclosed := 0
 	failed_sent := 0
 	attempts := 0
