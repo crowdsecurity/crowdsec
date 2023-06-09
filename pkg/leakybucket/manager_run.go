@@ -260,7 +260,11 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 		default:
 			return nil, fmt.Errorf("input event has no expected mode : %+v", expectMode)
 		}
-		fresh_bucket.In = make(chan *types.Event)
+		if expectMode == types.TIMEMACHINE {
+			fresh_bucket.In = make(chan *types.Event, 1)
+		} else {
+			fresh_bucket.In = make(chan *types.Event)
+		}
 		fresh_bucket.Mapkey = partitionKey
 		fresh_bucket.Signal = make(chan bool, 1)
 		actual, stored := buckets.Bucket_map.LoadOrStore(partitionKey, fresh_bucket)
