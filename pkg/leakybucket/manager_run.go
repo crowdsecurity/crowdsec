@@ -194,29 +194,34 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 
 		/*let's see if this time-bucket should have expired */
 		if bucket.Mode == types.TIMEMACHINE {
-			bucket.mutex.Lock()
-			firstTs := bucket.First_ts
-			lastTs := bucket.Last_ts
+			e := func() error {
+				bucket.mutex.Lock()
+				defer bucket.mutex.Unlock()
+				firstTs := bucket.First_ts
+				lastTs := bucket.Last_ts
 
-			if !firstTs.IsZero() {
-				var d time.Time
-				err = d.UnmarshalText([]byte(parsed.MarshaledTime))
-				if err != nil {
-					holder.logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
-				}
-				if d.After(lastTs.Add(bucket.Duration)) {
-					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, lastTs.Add(bucket.Duration))
-					buckets.Bucket_map.Delete(buckey)
-					//not sure about this, should we create a new one ?
-					sigclosed += 1
-					bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
+				if !firstTs.IsZero() {
+					var d time.Time
+					err = d.UnmarshalText([]byte(parsed.MarshaledTime))
 					if err != nil {
-						return false, err
+						holder.logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
 					}
-					continue
+					if d.After(lastTs.Add(bucket.Duration)) {
+						bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, lastTs.Add(bucket.Duration))
+						buckets.Bucket_map.Delete(buckey)
+						//not sure about this, should we create a new one ?
+						sigclosed += 1
+						bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
+						if err != nil {
+							return err
+						}
+					}
 				}
+				return nil
+			}()
+			if e != nil {
+				return false, e
 			}
-			bucket.mutex.Unlock()
 		}
 		/*the bucket seems to be up & running*/
 		select {
