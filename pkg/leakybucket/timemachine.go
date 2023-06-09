@@ -1,9 +1,11 @@
 package leakybucket
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -46,6 +48,8 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 		l.Queue.Add(msg)
 		l.Out <- l.Queue
 	}
+
+	fmt.Printf("limiter: %+v", spew.Sdump(l.Limiter.Dump()))
 }
 
 func NewTimeMachine(g BucketFactory) *Leaky {
