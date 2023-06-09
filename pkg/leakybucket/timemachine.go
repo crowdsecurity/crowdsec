@@ -49,7 +49,7 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 		l.Out <- l.Queue
 	}
 
-	fmt.Printf("evt: %s\nlimiter: %+v\nlimiter: %+v\nbucket: %+v\n\n\n", msg.Line.Raw, &l.Limiter, spew.Sdump(l.Limiter.Dump()), l)
+	fmt.Printf("evt: %s\nlimiter: %+v\nlimiter: %+v\nbucket: %+v\n\n\n", msg.Line.Raw, &l.Limiter, spew.Sdump(l.Limiter.Dump()), l.Uuid)
 }
 
 func NewTimeMachine(g BucketFactory) *Leaky {
