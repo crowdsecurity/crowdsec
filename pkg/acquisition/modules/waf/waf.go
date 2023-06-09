@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -16,7 +17,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
 	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -80,6 +80,7 @@ func (w *WafSource) UnmarshalConfig(yamlConfig []byte) error {
 	if w.config.Mode == "" {
 		w.config.Mode = configuration.TAIL_MODE
 	}
+
 	return nil
 }
 
@@ -118,16 +119,21 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	var inBandRules string
 
 	for _, rule := range crowdsecWafConfig.InbandRules {
+
 		inBandRules += rule.String() + "\n"
 	}
 
-	w.logger.Infof("Loading rules %+v", inBandRules)
+	w.logger.Infof("Loading %d in-band rules", len(strings.Split(inBandRules, "\n")))
+
+	//w.logger.Infof("Loading rules %+v", inBandRules)
+
+	fs := os.DirFS(crowdsecWafConfig.Datadir)
 
 	//in-band waf : kill on sight
 	inbandwaf, err := coraza.NewWAF(
 		coraza.NewWAFConfig().
 			WithErrorCallback(logError).
-			WithDirectives(inBandRules),
+			WithDirectives(inBandRules).WithRootFS(fs),
 	)
 
 	if err != nil {
@@ -145,8 +151,8 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		return errors.Wrap(err, "Cannot create WAF")
 	}
 	w.outOfBandWaf = outofbandwaf
-	log.Printf("OOB -> %s", spew.Sdump(w.outOfBandWaf))
-	log.Printf("IB -> %s", spew.Sdump(w.inBandWaf))
+	//log.Printf("OOB -> %s", spew.Sdump(w.outOfBandWaf))
+	//log.Printf("IB -> %s", spew.Sdump(w.inBandWaf))
 
 	//We don´t use the wrapper provided by coraza because we want to fully control what happens when a rule match to send the information in crowdsec
 	w.mux.HandleFunc(w.config.Path, w.wafHandler)
