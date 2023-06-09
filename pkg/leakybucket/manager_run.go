@@ -159,20 +159,11 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 	var sent bool
 	var buckey = bucket.Mapkey
 	var err error
-	var wg sync.WaitGroup
 
 	sigclosed := 0
 	failed_sent := 0
 	attempts := 0
 	start := time.Now().UTC()
-
-	if parsed.ExpectMode == types.TIMEMACHINE {
-		fmt.Printf("parsed: %s\n", parsed.Line.Raw)
-
-		wg.Wait()
-		wg.Add(1)
-		defer wg.Done()
-	}
 
 	for !sent {
 		attempts += 1
@@ -293,7 +284,14 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buckets) (bool, error) {
 	var (
 		ok, condition, poured bool
+		wg                    sync.WaitGroup
 	)
+
+	if parsed.ExpectMode == types.TIMEMACHINE {
+		wg.Wait()
+		wg.Add(1)
+		defer wg.Done()
+	}
 
 	if BucketPourTrack {
 		if BucketPourCache == nil {
@@ -355,6 +353,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			return false, errors.Wrap(err, "failed to load or store bucket")
 		}
 		//finally, pour the even into the bucket
+		fmt.Printf("parsed: %s\n", parsed.Line.Raw)
 		ok, err := PourItemToBucket(bucket, holders[idx], buckets, &parsed)
 		if err != nil {
 			return false, errors.Wrap(err, "failed to pour bucket")
