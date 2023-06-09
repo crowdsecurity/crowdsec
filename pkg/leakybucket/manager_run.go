@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -155,8 +154,6 @@ func ShutdownAllBuckets(buckets *Buckets) error {
 	return nil
 }
 
-var wg sync.WaitGroup
-
 func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, parsed *types.Event) (bool, error) {
 	var sent bool
 	var buckey = bucket.Mapkey
@@ -208,12 +205,10 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 				}
 				if d.After(lastTs.Add(bucket.Duration)) {
 					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, lastTs.Add(bucket.Duration))
-					wg.Add(1)
 					buckets.Bucket_map.Delete(buckey)
 					//not sure about this, should we create a new one ?
 					sigclosed += 1
 					bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
-					wg.Done()
 					if err != nil {
 						return false, err
 					}
@@ -366,11 +361,9 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 				}
 				if d.After(lastTs.Add(bucket.Duration)) {
 					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, lastTs.Add(bucket.Duration))
-					wg.Add(1)
 					buckets.Bucket_map.Delete(buckey)
 					//not sure about this, should we create a new one ?
 					bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holders[idx], parsed.ExpectMode)
-					wg.Done()
 					if err != nil {
 						return false, err
 					}
