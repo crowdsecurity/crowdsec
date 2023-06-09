@@ -345,6 +345,8 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		}
 		buckey := GetKey(holders[idx], groupby)
 
+		// we prevent pouring in time machine mode when we are already pouring a bucket
+		// with the same key (buckey)
 		if parsed.ExpectMode == types.TIMEMACHINE {
 			if wgs == nil {
 				wgs = make(map[string]*sync.WaitGroup)
