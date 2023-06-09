@@ -237,6 +237,7 @@ func LeakRoutine(leaky *Leaky) error {
 		/*receiving an event*/
 		case msg := <-leaky.In:
 			/*the msg var use is confusing and is redeclared in a different type :/*/
+			fmt.Printf("evt: %s\n", msg.Line.Raw)
 			for _, processor := range processors {
 				msg = processor.OnBucketPour(leaky.BucketConfig)(*msg, leaky)
 				// if &msg == nil we stop processing

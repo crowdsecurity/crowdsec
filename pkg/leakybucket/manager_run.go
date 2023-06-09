@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -284,14 +283,7 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buckets) (bool, error) {
 	var (
 		ok, condition, poured bool
-		wg                    sync.WaitGroup
 	)
-
-	if parsed.ExpectMode == types.TIMEMACHINE {
-		wg.Wait()
-		wg.Add(1)
-		defer wg.Done()
-	}
 
 	if BucketPourTrack {
 		if BucketPourCache == nil {

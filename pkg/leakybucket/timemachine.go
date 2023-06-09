@@ -1,7 +1,6 @@
 package leakybucket
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -13,7 +12,6 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 		d   time.Time
 		err error
 	)
-	fmt.Printf("evt: %s\n", msg.Line.Raw)
 
 	if msg.MarshaledTime == "" {
 		log.WithFields(log.Fields{
