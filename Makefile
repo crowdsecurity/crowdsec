@@ -3,6 +3,9 @@ include mk/platform.mk
 BUILD_REQUIRE_GO_MAJOR ?= 1
 BUILD_REQUIRE_GO_MINOR ?= 20
 
+GOCMD = go
+GOTEST = $(GOCMD) test
+
 BUILD_CODENAME ?= alphaga
 
 CROWDSEC_FOLDER = ./cmd/crowdsec
@@ -14,7 +17,20 @@ PLUGINS_DIR = ./plugins/notifications
 CROWDSEC_BIN = crowdsec$(EXT)
 CSCLI_BIN = cscli$(EXT)
 
+# Directory for the release files
+RELDIR = crowdsec-$(BUILD_VERSION)
+
 GO_MODULE_NAME = github.com/crowdsecurity/crowdsec
+
+# see if we have libre2-dev installed for C++ optimizations
+RE2_CHECK := $(shell pkg-config --libs re2 2>/dev/null)
+
+#--------------------------------------
+#
+# Define MAKE_FLAGS and LD_OPTS for the sub-makefiles in cmd/ and plugins/
+#
+
+MAKE_FLAGS = --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 
 LD_OPTS_VARS= \
 -X 'github.com/crowdsecurity/go-cs-lib/pkg/version.Version=$(BUILD_VERSION)' \
@@ -28,30 +44,37 @@ ifneq (,$(DOCKER_BUILD))
 LD_OPTS_VARS += -X '$(GO_MODULE_NAME)/pkg/cwversion.System=docker'
 endif
 
-ifdef BUILD_STATIC
-$(warning WARNING: The BUILD_STATIC variable is deprecated and has no effect. Builds are static by default since v1.5.0.)
+GO_TAGS := netgo,osusergo,sqlite_omit_load_extension
+
+ifneq (,$(RE2_CHECK))
+# += adds a space that we don't want
+GO_TAGS := $(GO_TAGS),re2_cgo
+LD_OPTS_VARS += -X '$(GO_MODULE_NAME)/pkg/cwversion.Libre2=C++'
 endif
 
 export LD_OPTS=-ldflags "-s -w -extldflags '-static' $(LD_OPTS_VARS)" \
-	-trimpath -tags netgo,osusergo,sqlite_omit_load_extension
+	-trimpath -tags $(GO_TAGS)
 
 ifneq (,$(TEST_COVERAGE))
 LD_OPTS += -cover
 endif
 
-GOCMD = go
-GOTEST = $(GOCMD) test
-
-RELDIR = crowdsec-$(BUILD_VERSION)
-
-# flags for sub-makefiles
-MAKE_FLAGS = --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
+#--------------------------------------
 
 .PHONY: build
 build: pre-build goversion crowdsec cscli plugins
 
+.PHONY: pre-build
 pre-build:
+ifdef BUILD_STATIC
+	$(warning WARNING: The BUILD_STATIC variable is deprecated and has no effect. Builds are static by default since v1.5.0.)
+endif
 	$(info Building $(BUILD_VERSION) ($(BUILD_TAG)) for $(GOOS)/$(GOARCH))
+ifneq (,$(RE2_CHECK))
+	$(info Using C++ regexp library)
+else
+	$(info Fallback to WebAssembly regexp library. To use the C++ version, make sure you have installed libre2-dev and pkg-config.)
+endif
 	$(info )
 
 .PHONY: all
@@ -75,10 +98,11 @@ clean: testclean
 		$(MAKE) -C $(PLUGINS_DIR)/$(plugin) clean $(MAKE_FLAGS); \
 	)
 
-
+.PHONY: cscli
 cscli: goversion
 	@$(MAKE) -C $(CSCLI_FOLDER) build $(MAKE_FLAGS)
 
+.PHONY: crowdsec
 crowdsec: goversion
 	@$(MAKE) -C $(CROWDSEC_FOLDER) build $(MAKE_FLAGS)
 
