@@ -128,6 +128,7 @@ var LeakyRoutineCount int64
 // There's a trick to have an event said when the bucket gets empty to allow its destruction
 func NewLeaky(bucketFactory BucketFactory) *Leaky {
 	bucketFactory.logger.Tracef("Instantiating live bucket %s", bucketFactory.Name)
+	fmt.Printf("Creating bucket")
 	return FromFactory(bucketFactory)
 }
 
