@@ -11,6 +11,8 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
 )
 
+var DataDir string // FIXME: find a better way to pass this to the waf
+
 // CrowdsecServiceCfg contains the location of parsers/scenarios/... and acquisition files
 type CrowdsecServiceCfg struct {
 	Enable                    *bool             `yaml:"enable"`
@@ -105,6 +107,8 @@ func (c *Config) LoadCrowdsec() error {
 	c.Crowdsec.DataDir = c.ConfigPaths.DataDir
 	c.Crowdsec.HubDir = c.ConfigPaths.HubDir
 	c.Crowdsec.HubIndexFile = c.ConfigPaths.HubIndexFile
+
+	DataDir = c.Crowdsec.DataDir // FIXME: find a better way to give it to the waf
 
 	if c.Crowdsec.ParserRoutinesCount <= 0 {
 		c.Crowdsec.ParserRoutinesCount = 1

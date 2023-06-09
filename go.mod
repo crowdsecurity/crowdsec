@@ -70,7 +70,7 @@ require (
 	github.com/blackfireio/osinfo v1.0.3
 	github.com/bluele/gcache v0.0.2
 	github.com/cespare/xxhash/v2 v2.1.2
-	github.com/corazawaf/coraza/v3 v3.0.0-rc.2
+	github.com/corazawaf/coraza/v3 v3.0.0-00010101000000-000000000000
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/crowdsecurity/go-cs-lib v0.0.0-20230531105801-4c1535c2b3bd
 	github.com/goccy/go-yaml v1.9.7

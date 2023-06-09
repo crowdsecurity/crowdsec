@@ -131,6 +131,8 @@ func compInstalledItems(itemType string, args []string, toComplete string) ([]st
 		items, err = cwhub.GetInstalledPostOverflowsAsString()
 	case cwhub.COLLECTIONS:
 		items, err = cwhub.GetInstalledCollectionsAsString()
+	case cwhub.WAF_RULES:
+		items, err = cwhub.GetInstalledWafRulesAsString()
 	default:
 		return nil, cobra.ShellCompDirectiveDefault
 	}
@@ -324,6 +326,8 @@ func ShowMetrics(hubItem *cwhub.Item) {
 			}
 			ShowMetrics(hubItem)
 		}
+	case cwhub.WAF_RULES:
+		log.Fatalf("FIXME: not implemented yet")
 	default:
 		log.Errorf("item of type '%s' is unknown", hubItem.Type)
 	}
