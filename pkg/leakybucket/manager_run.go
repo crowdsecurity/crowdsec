@@ -349,7 +349,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			return false, errors.Wrap(err, "failed to load or store bucket")
 		}
 		//finally, pour the even into the bucket
-		fmt.Printf("parsed: %s\n", parsed.Line.Raw)
+		//		fmt.Printf("parsed: %s\n", parsed.Line.Raw)
 		ok, err := PourItemToBucket(bucket, holders[idx], buckets, &parsed)
 		if err != nil {
 			return false, errors.Wrap(err, "failed to pour bucket")
