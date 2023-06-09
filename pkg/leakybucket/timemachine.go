@@ -49,6 +49,7 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 		l.Out <- l.Queue
 	}
 
+	fmt.Printf("limiter: %+v\n", l.Limiter)
 	fmt.Printf("limiter: %+v", spew.Sdump(l.Limiter.Dump()))
 }
 
