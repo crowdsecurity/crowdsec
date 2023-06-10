@@ -7,18 +7,19 @@ import (
 	"time"
 
 	"github.com/antonmedv/expr"
-	"github.com/crowdsecurity/grokky"
-	"github.com/pkg/errors"
-	yaml "gopkg.in/yaml.v2"
-
 	"github.com/antonmedv/expr/vm"
-	"github.com/crowdsecurity/crowdsec/pkg/cache"
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/davecgh/go-spew/spew"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
+	yaml "gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/grokky"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cache"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type Node struct {

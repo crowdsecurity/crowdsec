@@ -9,19 +9,17 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-
-	"strconv"
-
+	"github.com/antonmedv/expr"
 	"github.com/mohae/deepcopy"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/antonmedv/expr"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 /* ok, this is kinda experimental, I don't know how bad of an idea it is .. */

@@ -7,12 +7,13 @@ import (
 	"sort"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/grokky"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
-
-	"github.com/crowdsecurity/grokky"
-	log "github.com/sirupsen/logrus"
 )
 
 type UnixParserCtx struct {
