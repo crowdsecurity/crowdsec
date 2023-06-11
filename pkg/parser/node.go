@@ -11,7 +11,6 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
 
@@ -450,8 +449,8 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	/* if the node has debugging enabled, create a specific logger with debug
 	that will be used only for processing this node ;) */
 	if n.Debug {
-		var clog = logrus.New()
-		if err := types.ConfigureLogger(clog); err != nil {
+		var clog = log.New()
+		if err = types.ConfigureLogger(clog); err != nil {
 			log.Fatalf("While creating bucket-specific logger : %s", err)
 		}
 		clog.SetLevel(log.DebugLevel)
