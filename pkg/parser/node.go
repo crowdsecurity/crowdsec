@@ -356,29 +356,27 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	}
 
 	//Iterate on leafs
-	if len(n.LeavesNodes) > 0 {
-		for _, leaf := range n.LeavesNodes {
-			ret, err := leaf.process(p, ctx, cachedExprEnv)
-			if err != nil {
-				clog.Tracef("\tNode (%s) failed : %v", leaf.rn, err)
-				clog.Debugf("Event leaving node : ko")
-				return false, err
+	for _, leaf := range n.LeavesNodes {
+		ret, err := leaf.process(p, ctx, cachedExprEnv)
+		if err != nil {
+			clog.Tracef("\tNode (%s) failed : %v", leaf.rn, err)
+			clog.Debugf("Event leaving node : ko")
+			return false, err
+		}
+		clog.Tracef("\tsub-node (%s) ret : %v (strategy:%s)", leaf.rn, ret, n.OnSuccess)
+		if ret {
+			NodeState = true
+			/* if child is successful, stop processing */
+			if n.OnSuccess == "next_stage" {
+				clog.Debugf("child is success, OnSuccess=next_stage, skip")
+				break
 			}
-			clog.Tracef("\tsub-node (%s) ret : %v (strategy:%s)", leaf.rn, ret, n.OnSuccess)
-			if ret {
-				NodeState = true
-				/* if child is successful, stop processing */
-				if n.OnSuccess == "next_stage" {
-					clog.Debugf("child is success, OnSuccess=next_stage, skip")
-					break
-				}
-			} else if !NodeHasOKGrok {
-				/*
-					If the parent node has a successful grok pattern, it's state will stay successful even if one or more chil fails.
-					If the parent node is a skeleton node (no grok pattern), then at least one child must be successful for it to be a success.
-				*/
-				NodeState = false
-			}
+		} else if !NodeHasOKGrok {
+			/*
+				If the parent node has a successful grok pattern, it's state will stay successful even if one or more chil fails.
+				If the parent node is a skeleton node (no grok pattern), then at least one child must be successful for it to be a success.
+			*/
+			NodeState = false
 		}
 	}
 	/*todo : check if a node made the state change ?*/
@@ -538,15 +536,13 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	}
 
 	/* load grok statics */
-	if len(n.Grok.Statics) > 0 {
-		//compile expr statics if present
-		for idx := range n.Grok.Statics {
-			if n.Grok.Statics[idx].ExpValue != "" {
-				n.Grok.Statics[idx].RunTimeValue, err = expr.Compile(n.Grok.Statics[idx].ExpValue,
-					exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
-				if err != nil {
-					return err
-				}
+	//compile expr statics if present
+	for idx := range n.Grok.Statics {
+		if n.Grok.Statics[idx].ExpValue != "" {
+			n.Grok.Statics[idx].RunTimeValue, err = expr.Compile(n.Grok.Statics[idx].ExpValue,
+				exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+			if err != nil {
+				return err
 			}
 		}
 		valid = true
@@ -585,26 +581,25 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	}
 
 	/* compile leafs if present */
-	if len(n.LeavesNodes) > 0 {
-		for idx := range n.LeavesNodes {
-			if n.LeavesNodes[idx].Name == "" {
-				n.LeavesNodes[idx].Name = fmt.Sprintf("child-%s", n.Name)
-			}
-			/*propagate debug/stats to child nodes*/
-			if !n.LeavesNodes[idx].Debug && n.Debug {
-				n.LeavesNodes[idx].Debug = true
-			}
-			if !n.LeavesNodes[idx].Profiling && n.Profiling {
-				n.LeavesNodes[idx].Profiling = true
-			}
-			n.LeavesNodes[idx].Stage = n.Stage
-			err = n.LeavesNodes[idx].compile(pctx, ectx)
-			if err != nil {
-				return err
-			}
+	for idx := range n.LeavesNodes {
+		if n.LeavesNodes[idx].Name == "" {
+			n.LeavesNodes[idx].Name = fmt.Sprintf("child-%s", n.Name)
+		}
+		/*propagate debug/stats to child nodes*/
+		if !n.LeavesNodes[idx].Debug && n.Debug {
+			n.LeavesNodes[idx].Debug = true
+		}
+		if !n.LeavesNodes[idx].Profiling && n.Profiling {
+			n.LeavesNodes[idx].Profiling = true
+		}
+		n.LeavesNodes[idx].Stage = n.Stage
+		err = n.LeavesNodes[idx].compile(pctx, ectx)
+		if err != nil {
+			return err
 		}
 		valid = true
 	}
+
 	/* load statics if present */
 	for idx := range n.Statics {
 		if n.Statics[idx].ExpValue != "" {
