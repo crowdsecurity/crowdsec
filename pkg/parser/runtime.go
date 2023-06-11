@@ -93,18 +93,18 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 }
 
 func printStaticTarget(static ExtraField) string {
-
-	if static.Method != "" {
+	switch {
+	case static.Method != "":
 		return static.Method
-	} else if static.Parsed != "" {
+	case static.Parsed != "":
 		return fmt.Sprintf(".Parsed[%s]", static.Parsed)
-	} else if static.Meta != "" {
+	case static.Meta != "":
 		return fmt.Sprintf(".Meta[%s]", static.Meta)
-	} else if static.Enriched != "" {
+	case static.Enriched != "":
 		return fmt.Sprintf(".Enriched[%s]", static.Enriched)
-	} else if static.TargetByName != "" {
+	case static.TargetByName != "":
 		return static.TargetByName
-	} else {
+	default:
 		return "?"
 	}
 }
