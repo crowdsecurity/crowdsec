@@ -398,10 +398,11 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	if n.Name != "" {
 		NodesHitsOk.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name}).Inc()
 	}
+
 	/*
-		Please kill me. this is to apply statics when the node *has* whitelists that successfully matched the node.
+		This is to apply statics when the node *has* whitelists that successfully matched the node.
 	*/
-	if hasWhitelist && isWhitelisted && len(n.Statics) > 0 || len(n.Statics) > 0 && !hasWhitelist {
+	if len(n.Statics) > 0 && (isWhitelisted || !hasWhitelist) {
 		clog.Debugf("+ Processing %d statics", len(n.Statics))
 		// if all else is good in whitelist, process node's statics
 		err := n.ProcessStatics(n.Statics, p)
