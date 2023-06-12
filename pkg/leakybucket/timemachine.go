@@ -38,7 +38,7 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 	l.Last_ts = d
 	l.mutex.Unlock()
 
-	fmt.Printf("evt: %s", msg.Line.Raw)
+	fmt.Printf("evt: %s\n", msg.Line.Raw)
 	if l.Limiter.AllowN(d, 1) {
 		l.logger.Tracef("Time-Pouring event %s (tokens:%f)", d, l.Limiter.GetTokensCount())
 		l.Queue.Add(msg)
