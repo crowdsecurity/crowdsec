@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -288,7 +287,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 	var (
 		ok, condition, poured bool
 		//		wgs                   map[string]*sync.WaitGroup // only used for timemachine
-		wg *sync.WaitGroup
+		//		wg *sync.WaitGroup
 	)
 
 	if BucketPourTrack {
