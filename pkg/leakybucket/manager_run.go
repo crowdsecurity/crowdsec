@@ -182,11 +182,9 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 			if !ok {
 				//the bucket was found and dead, get a new one and continue
 				bucket.logger.Tracef("Bucket %s found dead, cleanup the body", buckey)
-				bucketsMutex.Lock()
 				buckets.Bucket_map.Delete(buckey)
 				sigclosed += 1
 				bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
-				bucketsMutex.Unlock()
 				if err != nil {
 					return false, err
 				}
@@ -213,12 +211,10 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 				if d.After(lastTs.Add(bucket.Duration)) {
 					fmt.Printf("runned: %s\n", parsed.Line.Raw)
 					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, lastTs.Add(bucket.Duration))
-					bucketsMutex.Lock()
 					buckets.Bucket_map.Delete(buckey)
 					//not sure about this, should we create a new one ?
 					sigclosed += 1
 					bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
-					bucketsMutex.Unlock()
 					if err != nil {
 						return false, err
 					}
@@ -261,7 +257,6 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 
 		switch expectMode {
 		case types.TIMEMACHINE:
-			fmt.Printf("CREATING BUCKET\n")
 			fresh_bucket = NewTimeMachine(holder)
 			holder.logger.Debugf("Creating TimeMachine bucket")
 		case types.LIVE:
@@ -378,7 +373,6 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		}
 		bucketsMutex.Lock()
 		bucket, err := LoadOrStoreBucketFromHolder(buckey, buckets, holders[idx], parsed.ExpectMode)
-		bucketsMutex.Unlock()
 
 		if err != nil {
 			return false, errors.Wrap(err, "failed to load or store bucket")
@@ -394,6 +388,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		if ok {
 			poured = true
 		}
+		bucketsMutex.Unlock()
 	}
 	return poured, nil
 }
