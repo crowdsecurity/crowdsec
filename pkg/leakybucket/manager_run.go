@@ -370,6 +370,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 
 		if bucketsMutex == nil {
 			bucketsMutex = &sync.Mutex{}
+			fmt.Printf("ONCE")
 		}
 		bucketsMutex.Lock()
 		bucket, err := LoadOrStoreBucketFromHolder(buckey, buckets, holders[idx], parsed.ExpectMode)
