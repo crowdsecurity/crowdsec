@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -286,8 +287,8 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buckets) (bool, error) {
 	var (
 		ok, condition, poured bool
-		//		wgs                   map[string]*sync.WaitGroup // only used for timemachine
-		//		wg *sync.WaitGroup
+		wgs                   map[string]*sync.WaitGroup // only used for timemachine
+		wg                    *sync.WaitGroup
 	)
 
 	if BucketPourTrack {
@@ -347,18 +348,17 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		// we prevent pouring in time machine mode when we are already pouring a bucket
 		// with the same key (buckey)
 		if parsed.ExpectMode == types.TIMEMACHINE {
-			fmt.Printf("pour: %s\n", parsed.Line.Raw)
-			// 	if wgs == nil {
-			// 		wgs = make(map[string]*sync.WaitGroup)
-			// 	}
-			// 	wg, ok = wgs[buckey]
-			// 	if !ok {
-			// 		wg = &sync.WaitGroup{}
-			// 		wgs[buckey] = wg
-			// 	}
-			// 	wg.Wait()
-			// 	wg.Add(1)
-
+			if wgs == nil {
+				wgs = make(map[string]*sync.WaitGroup)
+			}
+			wg, ok = wgs[buckey]
+			if !ok {
+				wg = &sync.WaitGroup{}
+				wgs[buckey] = wg
+			}
+			wg.Wait()
+			wg.Add(1)
+			defer wg.Done()
 		}
 
 		//we need to either find the existing bucket, or create a new one (if it's the first event to hit it for this partition key)
@@ -367,15 +367,10 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			return false, errors.Wrap(err, "failed to load or store bucket")
 		}
 
-		/*let's see if this time-bucket should have expired */
-
 		//finally, pour the even into the bucket
 		//		fmt.Printf("parsed: %s\n", parsed.Line.Raw)
 
 		ok, err := PourItemToBucket(bucket, holders[idx], buckets, &parsed)
-		// if parsed.ExpectMode == types.TIMEMACHINE {
-		// 	wg.Done()
-		// }
 		if err != nil {
 			return false, errors.Wrap(err, "failed to pour bucket")
 		}

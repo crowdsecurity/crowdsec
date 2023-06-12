@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -48,6 +49,7 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 		l.Queue.Add(msg)
 		l.Out <- l.Queue
 	}
+	fmt.Printf("lim: %+v\n", spew.Sdump(l.Limiter))
 
 	//	fmt.Printf("evt: %s\nlimiter: %+v\nlimiter: %+v\nbucket: %+v\n\n\n", msg.Line.Raw, &l.Limiter, spew.Sdump(l.Limiter.Dump()), l.Uuid)
 }
