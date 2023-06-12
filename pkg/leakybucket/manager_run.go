@@ -200,6 +200,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 			lastTs := bucket.Last_ts
 
 			if !firstTs.IsZero() {
+				fmt.Printf("runned: %s", parsed.Line.Raw)
 				var d time.Time
 				err = d.UnmarshalText([]byte(parsed.MarshaledTime))
 				if err != nil {
