@@ -24,7 +24,6 @@ import (
 
 /* ok, this is kinda experimental, I don't know how bad of an idea it is .. */
 func SetTargetByName(target string, value string, evt *types.Event) bool {
-
 	if evt == nil {
 		return false
 	}
@@ -69,8 +68,6 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 				tmp = reflect.Indirect(tmp)
 			}
 			iter = tmp
-			//nolint: gosimple
-			break
 		case reflect.Ptr:
 			tmp := iter.Elem()
 			iter = reflect.Indirect(tmp.FieldByName(f))
