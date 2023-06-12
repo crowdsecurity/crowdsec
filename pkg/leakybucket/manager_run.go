@@ -193,7 +193,6 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 			/*nothing to read, but not closed, try to pour */
 			//holder.logger.Tracef("Signal exists but empty, try to pour :)")
 		}
-
 		/*let's see if this time-bucket should have expired */
 		if bucket.Mode == types.TIMEMACHINE {
 			bucket.mutex.Lock()
@@ -221,6 +220,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 				}
 			}
 		}
+
 		/*the bucket seems to be up & running*/
 		select {
 		case bucket.In <- parsed:
@@ -359,6 +359,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 				wg = &sync.WaitGroup{}
 				wgs[buckey] = wg
 			}
+			fmt.Printf("groupby: %s\n", groupby)
 			wg.Wait()
 			wg.Add(1)
 			defer wg.Done()
@@ -366,6 +367,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 
 		//we need to either find the existing bucket, or create a new one (if it's the first event to hit it for this partition key)
 		bucket, err := LoadOrStoreBucketFromHolder(buckey, buckets, holders[idx], parsed.ExpectMode)
+
 		if err != nil {
 			return false, errors.Wrap(err, "failed to load or store bucket")
 		}
