@@ -216,7 +216,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 					//not sure about this, should we create a new one ?
 					sigclosed += 1
 					bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
-					fmt.Printf("Created: %+v\n", spew.Sdump(bucket.Limiter))
+					fmt.Printf("Created at %s: %+v\n", d.String(), spew.Sdump(bucket.Limiter))
 					if err != nil {
 						return false, err
 					}
