@@ -291,10 +291,11 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 	return biface.(*Leaky), nil
 }
 
+var wgs map[string]*sync.WaitGroup // only used for timemachine
+
 func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buckets) (bool, error) {
 	var (
 		ok, condition, poured bool
-		wgs                   map[string]*sync.WaitGroup // only used for timemachine
 		wg                    *sync.WaitGroup
 	)
 
