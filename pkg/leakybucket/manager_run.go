@@ -357,6 +357,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		// with the same key (buckey)
 		if parsed.ExpectMode == types.TIMEMACHINE {
 			if wgs == nil {
+				fmt.Printf("INITIALIZED!!\n")
 				wgs = make(map[string]*sync.WaitGroup)
 			}
 			wg, ok = wgs[buckey]
