@@ -261,6 +261,7 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 
 		switch expectMode {
 		case types.TIMEMACHINE:
+			fmt.Printf("CREATING BUCKET\n")
 			fresh_bucket = NewTimeMachine(holder)
 			holder.logger.Debugf("Creating TimeMachine bucket")
 		case types.LIVE:
