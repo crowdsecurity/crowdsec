@@ -352,12 +352,12 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 				wgs = make(map[string]*sync.WaitGroup)
 			}
 			wg, ok = wgs[buckey]
+			wg.Wait()
+			wg.Add(1)
 			if !ok {
 				wg = &sync.WaitGroup{}
 				wgs[buckey] = wg
 			}
-			wg.Wait()
-			wg.Add(1)
 			defer wg.Done()
 		}
 
