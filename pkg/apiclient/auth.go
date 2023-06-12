@@ -3,23 +3,21 @@ package apiclient
 import (
 	"bytes"
 	"encoding/json"
-	"math/rand"
-	"sync"
-	"time"
-
-	//"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"sync"
+	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/fflag"
-	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	//"google.golang.org/appengine/log"
+
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 type APIKeyTransport struct {

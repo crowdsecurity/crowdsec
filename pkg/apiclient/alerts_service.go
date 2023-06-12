@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/crowdsecurity/crowdsec/pkg/models"
 	qs "github.com/google/go-querystring/query"
+
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 // type ApiAlerts service
