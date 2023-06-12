@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"strings"
@@ -9,7 +10,6 @@ import (
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
@@ -488,7 +488,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	/* handle pattern_syntax and groks */
 	for _, pattern := range n.SubGroks {
 		n.Logger.Tracef("Adding subpattern '%s' : '%s'", pattern.Key, pattern.Value)
-		if err := pctx.Grok.Add(pattern.Key.(string), pattern.Value.(string)); err != nil {
+		if err = pctx.Grok.Add(pattern.Key.(string), pattern.Value.(string)); err != nil {
 			if errors.Is(err, grokky.ErrAlreadyExist) {
 				n.Logger.Warningf("grok '%s' already registred", pattern.Key)
 				continue
@@ -531,7 +531,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		n.Grok.RunTimeValue, err = expr.Compile(n.Grok.ExpValue,
 			exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 		if err != nil {
-			return errors.Wrap(err, "while compiling grok's expression")
+			return fmt.Errorf("while compiling grok's expression: %w", err)
 		}
 	}
 
@@ -553,30 +553,30 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		n.Stash[i].ValueExpression, err = expr.Compile(stash.Value,
 			exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 		if err != nil {
-			return errors.Wrap(err, "while compiling stash value expression")
+			return fmt.Errorf("while compiling stash value expression: %w", err)
 		}
 
 		n.Stash[i].KeyExpression, err = expr.Compile(stash.Key,
 			exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 		if err != nil {
-			return errors.Wrap(err, "while compiling stash key expression")
+			return fmt.Errorf("while compiling stash key expression: %w", err)
 		}
 
 		n.Stash[i].TTLVal, err = time.ParseDuration(stash.TTL)
 		if err != nil {
-			return errors.Wrap(err, "while parsing stash ttl")
+			return fmt.Errorf("while parsing stash ttl: %w", err)
 		}
 
 		logLvl := n.Logger.Logger.GetLevel()
 		//init the cache, does it make sense to create it here just to be sure everything is fine ?
-		if err := cache.CacheInit(cache.CacheCfg{
+		if err = cache.CacheInit(cache.CacheCfg{
 			Size:     n.Stash[i].MaxMapSize,
 			TTL:      n.Stash[i].TTLVal,
 			Name:     n.Stash[i].Name,
 			Strategy: n.Stash[i].Strategy,
 			LogLevel: &logLvl,
 		}); err != nil {
-			return errors.Wrap(err, "while initializing cache")
+			return fmt.Errorf("while initializing cache: %w", err)
 		}
 	}
 
@@ -618,6 +618,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		n.Logger.Debugf("adding ip %s to whitelists", net.ParseIP(v))
 		valid = true
 	}
+
 	for _, v := range n.Whitelist.Cidrs {
 		_, tnet, err := net.ParseCIDR(v)
 		if err != nil {
@@ -627,6 +628,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		n.Logger.Debugf("adding cidr %s to whitelists", tnet)
 		valid = true
 	}
+
 	for _, filter := range n.Whitelist.Exprs {
 		expression := &ExprWhitelist{}
 		expression.Filter, err = expr.Compile(filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
@@ -652,5 +654,6 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	if err := n.validate(pctx, ectx); err != nil {
 		return err
 	}
+
 	return nil
 }
