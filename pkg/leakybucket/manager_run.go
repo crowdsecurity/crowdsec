@@ -373,9 +373,9 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		//		fmt.Printf("parsed: %s\n", parsed.Line.Raw)
 
 		ok, err := PourItemToBucket(bucket, holders[idx], buckets, &parsed)
-		if parsed.ExpectMode == types.TIMEMACHINE {
-			wg.Done()
-		}
+		// if parsed.ExpectMode == types.TIMEMACHINE {
+		// 	wg.Done()
+		// }
 		if err != nil {
 			return false, errors.Wrap(err, "failed to pour bucket")
 		}
