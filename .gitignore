@@ -41,6 +41,7 @@ plugins/notifications/slack/notification-slack
 plugins/notifications/splunk/notification-splunk
 plugins/notifications/email/notification-email
 plugins/notifications/dummy/notification-dummy
+plugins/notifications/syslog/notification-syslog
 
 # Test cache (downloaded files)
 .cache
