@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 
 	"github.com/mohae/deepcopy"
@@ -215,6 +216,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 					//not sure about this, should we create a new one ?
 					sigclosed += 1
 					bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
+					fmt.Printf("Created: %+v\n", spew.Sdump(bucket.Limiter))
 					if err != nil {
 						return false, err
 					}
@@ -368,11 +370,6 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 
 		//we need to either find the existing bucket, or create a new one (if it's the first event to hit it for this partition key)
 
-		if bucketsMutex == nil {
-			bucketsMutex = &sync.Mutex{}
-			fmt.Printf("ONCE")
-		}
-		bucketsMutex.Lock()
 		bucket, err := LoadOrStoreBucketFromHolder(buckey, buckets, holders[idx], parsed.ExpectMode)
 
 		if err != nil {
@@ -389,7 +386,6 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		if ok {
 			poured = true
 		}
-		bucketsMutex.Unlock()
 	}
 	return poured, nil
 }
