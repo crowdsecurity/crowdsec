@@ -196,9 +196,10 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 
 		/*let's see if this time-bucket should have expired */
 		if bucket.Mode == types.TIMEMACHINE {
+			bucket.mutex.Lock()
 			firstTs := bucket.First_ts
 			lastTs := bucket.Last_ts
-
+			bucket.mutex.Unlock()
 			if !firstTs.IsZero() {
 				var d time.Time
 				err = d.UnmarshalText([]byte(parsed.MarshaledTime))
