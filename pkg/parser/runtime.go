@@ -193,7 +193,6 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 		} else {
 			clog.Fatal("unable to process static : unknown target")
 		}
-
 	}
 	return nil
 }
@@ -353,10 +352,8 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			event.Process = false
 			return event, nil
 		}
-
 	}
 
 	event.Process = true
 	return event, nil
-
 }

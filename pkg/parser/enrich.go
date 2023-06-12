@@ -6,7 +6,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-/* should be part of a packaged shared with enrich/geoip.go */
+/* should be part of a package shared with enrich/geoip.go */
 type EnrichFunc func(string, *types.Event, interface{}, *log.Entry) (map[string]string, error)
 type InitFunc func(map[string]string) (interface{}, error)
 

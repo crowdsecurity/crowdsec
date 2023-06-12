@@ -118,7 +118,7 @@ func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 
 	parsers.EnricherCtx, err = Loadplugin(cConfig.Crowdsec.DataDir)
 	if err != nil {
-		return parsers, fmt.Errorf("Failed to load enrich plugin : %v", err)
+		return parsers, fmt.Errorf("failed to load enrich plugin : %v", err)
 	}
 
 	/*
@@ -136,8 +136,8 @@ func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 		log.Infof("Loading postoverflow parsers")
 		parsers.Povfwnodes, err = LoadStages(parsers.PovfwStageFiles, parsers.Povfwctx, parsers.EnricherCtx)
 	} else {
-		parsers.Povfwnodes = []Node{}
 		log.Infof("No postoverflow parsers to load")
+		parsers.Povfwnodes = []Node{}
 	}
 
 	if err != nil {
