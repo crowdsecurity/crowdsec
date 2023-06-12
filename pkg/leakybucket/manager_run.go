@@ -343,6 +343,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			}
 		}
 		buckey := GetKey(holders[idx], groupby)
+		fmt.Printf("pour: %s\n", parsed.Line.Raw)
 
 		// we prevent pouring in time machine mode when we are already pouring a bucket
 		// with the same key (buckey)

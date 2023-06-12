@@ -26,7 +26,6 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 		case parsed := <-input:
 			startTime := time.Now()
 			count++
-			fmt.Printf("pour: %s\n", parsed.Line.Raw)
 			if count%5000 == 0 {
 				log.Infof("%d existing buckets", leaky.LeakyRoutineCount)
 				//when in forensics mode, garbage collect buckets
