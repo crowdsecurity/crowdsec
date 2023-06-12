@@ -144,6 +144,8 @@ func DumpBucketsStateAt(deadline time.Time, outputdir string, buckets *Buckets) 
 	return tmpFileName, nil
 }
 
+var bucketsMutex *sync.Mutex
+
 func ShutdownAllBuckets(buckets *Buckets) error {
 	buckets.Bucket_map.Range(func(rkey, rvalue interface{}) bool {
 		key := rkey.(string)
@@ -182,7 +184,9 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 				bucket.logger.Tracef("Bucket %s found dead, cleanup the body", buckey)
 				buckets.Bucket_map.Delete(buckey)
 				sigclosed += 1
+				bucketsMutex.Lock()
 				bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
+				bucketsMutex.Unlock()
 				if err != nil {
 					return false, err
 				}
@@ -212,7 +216,9 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 					buckets.Bucket_map.Delete(buckey)
 					//not sure about this, should we create a new one ?
 					sigclosed += 1
+					bucketsMutex.Lock()
 					bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
+					bucketsMutex.Unlock()
 					if err != nil {
 						return false, err
 					}
@@ -359,14 +365,19 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 				wg = &sync.WaitGroup{}
 				wgs[buckey] = wg
 			}
-			fmt.Printf("groupby: %s\n", groupby)
 			wg.Wait()
 			wg.Add(1)
 			defer wg.Done()
 		}
 
 		//we need to either find the existing bucket, or create a new one (if it's the first event to hit it for this partition key)
+
+		if bucketsMutex == nil {
+			bucketsMutex = &sync.Mutex{}
+		}
+		bucketsMutex.Lock()
 		bucket, err := LoadOrStoreBucketFromHolder(buckey, buckets, holders[idx], parsed.ExpectMode)
+		bucketsMutex.Unlock()
 
 		if err != nil {
 			return false, errors.Wrap(err, "failed to load or store bucket")
