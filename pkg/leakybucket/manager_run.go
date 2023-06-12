@@ -343,23 +343,23 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			}
 		}
 		buckey := GetKey(holders[idx], groupby)
-		fmt.Printf("pour: %s\n", parsed.Line.Raw)
 
 		// we prevent pouring in time machine mode when we are already pouring a bucket
 		// with the same key (buckey)
-		// if parsed.ExpectMode == types.TIMEMACHINE {
-		// 	if wgs == nil {
-		// 		wgs = make(map[string]*sync.WaitGroup)
-		// 	}
-		// 	wg, ok = wgs[buckey]
-		// 	if !ok {
-		// 		wg = &sync.WaitGroup{}
-		// 		wgs[buckey] = wg
-		// 	}
-		// 	wg.Wait()
-		// 	wg.Add(1)
+		if parsed.ExpectMode == types.TIMEMACHINE {
+			fmt.Printf("pour: %s\n", parsed.Line.Raw)
+			// 	if wgs == nil {
+			// 		wgs = make(map[string]*sync.WaitGroup)
+			// 	}
+			// 	wg, ok = wgs[buckey]
+			// 	if !ok {
+			// 		wg = &sync.WaitGroup{}
+			// 		wgs[buckey] = wg
+			// 	}
+			// 	wg.Wait()
+			// 	wg.Add(1)
 
-		// }
+		}
 
 		//we need to either find the existing bucket, or create a new one (if it's the first event to hit it for this partition key)
 		bucket, err := LoadOrStoreBucketFromHolder(buckey, buckets, holders[idx], parsed.ExpectMode)
