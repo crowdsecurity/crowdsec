@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -10,6 +11,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
+
+var wg sync.WaitGroup
 
 func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *leaky.Buckets, cConfig *csconfig.Config) error {
 	var (
@@ -82,11 +85,14 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 				}
 			}
 			//here we can bucketify with parsed
+			wg.Wait()
+			wg.Add(1)
 			poured, err := leaky.PourItemToHolders(parsed, holders, buckets)
 			if err != nil {
 				log.Errorf("bucketify failed for: %v", parsed)
 				continue
 			}
+			wg.Done()
 			elapsed := time.Since(startTime)
 			globalPourHistogram.With(prometheus.Labels{"type": parsed.Line.Module, "source": parsed.Line.Src}).Observe(elapsed.Seconds())
 			if poured {
