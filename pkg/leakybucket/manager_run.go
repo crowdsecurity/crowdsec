@@ -195,19 +195,15 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 		/*let's see if this time-bucket should have expired */
 		if bucket.Mode == types.TIMEMACHINE {
 			e := func() error {
-				bucket.mutex.Lock()
-				defer bucket.mutex.Unlock()
-				firstTs := bucket.First_ts
-				lastTs := bucket.Last_ts
 
-				if !firstTs.IsZero() {
+				if !bucket.fresh {
 					var d time.Time
 					err = d.UnmarshalText([]byte(parsed.MarshaledTime))
 					if err != nil {
 						holder.logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
 					}
-					if d.After(lastTs.Add(bucket.Duration)) {
-						bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, lastTs.Add(bucket.Duration))
+					if d.After(bucket.GetTimestamp().Add(bucket.Duration)) {
+						bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, bucket.GetTimestamp().Add(bucket.Duration))
 						buckets.Bucket_map.Delete(buckey)
 						//not sure about this, should we create a new one ?
 						sigclosed += 1
@@ -227,6 +223,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 		select {
 		case bucket.In <- parsed:
 			//holder.logger.Tracef("Successfully sent !")
+			bucket.fresh = false
 			if BucketPourTrack {
 				if _, ok := BucketPourCache[bucket.Name]; !ok {
 					BucketPourCache[bucket.Name] = make([]types.Event, 0)
@@ -267,6 +264,7 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 		}
 		fresh_bucket.In = make(chan *types.Event)
 		fresh_bucket.Mapkey = partitionKey
+		fresh_bucket.SetTimestamp()
 		fresh_bucket.Signal = make(chan bool, 1)
 		actual, stored := buckets.Bucket_map.LoadOrStore(partitionKey, fresh_bucket)
 		if !stored {
