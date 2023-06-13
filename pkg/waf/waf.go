@@ -61,7 +61,8 @@ func buildHook(hook Hook) (CompiledHook, error) {
 	}
 	for _, apply := range hook.Apply {
 		program, err := expr.Compile(apply, GetExprWAFOptions(map[string]interface{}{
-			"WafRules": []WafRule{},
+			"InBandRules":    []WafRule{},
+			"OutOfBandRules": []WafRule{},
 		})...)
 		if err != nil {
 			log.Errorf("unable to compile apply %s : %s", apply, err)
@@ -152,7 +153,10 @@ func (w *WafConfig) LoadWafRules() error {
 				//Ignore filter for on load ?
 				if onLoadHook.Apply != nil {
 					for exprIdx, applyExpr := range onLoadHook.Apply {
-						_, err := expr.Run(applyExpr, nil) //FIXME: give proper env
+						_, err := expr.Run(applyExpr, map[string]interface{}{
+							"InBandRules":    []WafRule{},
+							"OutOfBandRules": []WafRule{},
+						})
 						if err != nil {
 							w.logger.Errorf("unable to run apply for on_load rule %s : %s", wafRule.OnLoad[hookIdx].Apply[exprIdx], err)
 							continue

@@ -17,6 +17,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
 	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -141,6 +142,14 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 			WithErrorCallback(logError).
 			WithDirectives(inBandRules).WithRootFS(fs),
 	)
+
+	//for _, rule := range inbandwaf.GetWAF().Rules.GetRules() {
+	//	w.logger.Infof("Action for Rule %d: %+v ", rule.ID(), rule.GetActions())
+	//}
+
+	//betterwaf := experimental.ToBetterWAFEngine(inbandwaf)
+
+	//spew.Dump(betterwaf.Waf.Rules)
 
 	if err != nil {
 		return errors.Wrap(err, "Cannot create WAF")
@@ -288,6 +297,8 @@ func processReqWithEngine(waf coraza.WAF, r ParsedRequest, uuid string, wafType 
 		tx.Close()
 	}()
 
+	log.Infof("Processing request with %s WAF", wafType)
+
 	//this method is not exported by coraza, so we have to do it ourselves.
 	//ideally, this would be dealt with by expr code, and we provide helpers to manipulate the transaction object?\
 	//var txx experimental.FullTransaction
@@ -317,6 +328,12 @@ func processReqWithEngine(waf coraza.WAF, r ParsedRequest, uuid string, wafType 
 	}
 
 	in = tx.ProcessRequestHeaders()
+	//spew.Dump(in)
+	//spew.Dump(tx.MatchedRules())
+
+	for _, rule := range tx.MatchedRules() {
+		spew.Dump(rule.Rule())
+	}
 
 	//if we're inband, we should stop here, but for outofband go to the end
 	if in != nil && wafType == InBand {
