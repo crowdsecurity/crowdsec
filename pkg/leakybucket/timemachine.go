@@ -1,11 +1,35 @@
 package leakybucket
 
 import (
+	"sync"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 )
+
+type timestamp struct {
+	t     time.Time
+	mutex *sync.Mutex
+}
+
+func (l *Leaky) InitTimestamp() *timestamp {
+	return &timestamp{
+		mutex: &sync.Mutex{},
+	}
+}
+
+func (l *Leaky) SetTimestamp() {
+	l.timestamp.mutex.Lock()
+	l.timestamp.t = time.Now()
+	l.timestamp.mutex.Unlock()
+}
+
+func (l *Leaky) GetTimestamp() time.Time {
+	l.timestamp.mutex.Lock()
+	defer l.timestamp.mutex.Unlock()
+	return l.timestamp.t
+}
 
 func TimeMachinePour(l *Leaky, msg types.Event) {
 	var (
@@ -28,13 +52,11 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 	}
 
 	l.Total_count += 1
-	l.mutex.Lock()
 	if l.First_ts.IsZero() {
 		l.logger.Debugf("First event, bucket creation time : %s", d)
 		l.First_ts = d
 	}
 	l.Last_ts = d
-	l.mutex.Unlock()
 
 	if l.Limiter.AllowN(d, 1) {
 		l.logger.Tracef("Time-Pouring event %s (tokens:%f)", d, l.Limiter.GetTokensCount())
