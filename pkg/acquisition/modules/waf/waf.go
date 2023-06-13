@@ -26,8 +26,8 @@ import (
 )
 
 const (
-	InBand    = "INBAND"
-	OutOfBand = "OUTOFBAND"
+	InBand    = "inband"
+	OutOfBand = "outofband"
 )
 
 type WafSource struct {
@@ -124,12 +124,10 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	}
 
 	var inBandRules string
-
 	for _, rule := range crowdsecWafConfig.InbandRules {
 
 		inBandRules += rule.String() + "\n"
 	}
-
 	w.logger.Infof("Loading %d in-band rules", len(strings.Split(inBandRules, "\n")))
 
 	//w.logger.Infof("Loading rules %+v", inBandRules)
@@ -148,17 +146,23 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	}
 	w.inBandWaf = inbandwaf
 
+	var outOfBandRules string
+	for _, rule := range crowdsecWafConfig.OutOfBandRules {
+		outOfBandRules += rule.String() + "\n"
+	}
+
+	w.logger.Infof("Loading %d out-of-band rules", len(strings.Split(outOfBandRules, "\n")))
 	//out-of-band waf : log only
 	outofbandwaf, err := coraza.NewWAF(
 		coraza.NewWAFConfig().
-			WithErrorCallback(logError), //.
-		//WithDirectivesFromFile("coraza_outofband.conf"),
+			WithErrorCallback(logError).
+			WithDirectives(outOfBandRules).WithRootFS(fs),
 	)
+
 	if err != nil {
 		return errors.Wrap(err, "Cannot create WAF")
 	}
 	w.outOfBandWaf = outofbandwaf
-	//log.Printf("OOB -> %s", spew.Sdump(w.outOfBandWaf))
 	//log.Printf("IB -> %s", spew.Sdump(w.inBandWaf))
 
 	//We don´t use the wrapper provided by coraza because we want to fully control what happens when a rule match to send the information in crowdsec
@@ -302,6 +306,7 @@ func processReqWithEngine(waf coraza.WAF, r ParsedRequest, uuid string, wafType 
 	}
 
 	in = tx.ProcessRequestHeaders()
+
 	//if we're inband, we should stop here, but for outofband go to the end
 	if in != nil && wafType == InBand {
 		return in, tx, nil
@@ -309,39 +314,38 @@ func processReqWithEngine(waf coraza.WAF, r ParsedRequest, uuid string, wafType 
 
 	ct := r.Headers.Get("content-type")
 
-	if tx.IsRequestBodyAccessible() {
-		if r.Body != nil && len(r.Body) != 0 {
-			it, _, err := tx.WriteRequestBody(r.Body)
+	if r.Body != nil && len(r.Body) != 0 {
+		it, _, err := tx.WriteRequestBody(r.Body)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "Cannot read request body")
+		}
+
+		if it != nil {
+			return it, nil, nil
+		}
+		// from https://github.com/corazawaf/coraza/blob/main/internal/corazawaf/transaction.go#L419
+		// urlencoded cannot end with CRLF
+		if ct != "application/x-www-form-urlencoded" {
+			it, _, err := tx.WriteRequestBody([]byte{'\r', '\n'})
 			if err != nil {
-				return nil, nil, errors.Wrap(err, "Cannot read request body")
+				return nil, nil, fmt.Errorf("cannot write to request body to buffer: %s", err.Error())
 			}
 
 			if it != nil {
 				return it, nil, nil
 			}
-			// from https://github.com/corazawaf/coraza/blob/main/internal/corazawaf/transaction.go#L419
-			// urlencoded cannot end with CRLF
-			if ct != "application/x-www-form-urlencoded" {
-				it, _, err := tx.WriteRequestBody([]byte{'\r', '\n'})
-				if err != nil {
-					return nil, nil, fmt.Errorf("cannot write to request body to buffer: %s", err.Error())
-				}
-
-				if it != nil {
-					return it, nil, nil
-				}
-			}
-
-			in, err = tx.ProcessRequestBody()
-			if err != nil {
-				return nil, nil, errors.Wrap(err, "Cannot process request body")
-
-			}
-			if in != nil && wafType == InBand {
-				return in, tx, nil
-			}
 		}
 	}
+
+	in, err := tx.ProcessRequestBody()
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "Cannot process request body")
+	}
+
+	if in != nil && wafType == InBand {
+		return in, tx, nil
+	}
+
 	return nil, tx, nil
 }
 
@@ -478,7 +482,6 @@ func (w *WafSource) wafHandler(rw http.ResponseWriter, r *http.Request) {
 
 	// we finished the inband, we can return 200
 	rw.WriteHeader(http.StatusOK)
-
 	// now we can process out of band asynchronously
 	go func() {
 		w.OutOfBandChan <- parsedRequest
