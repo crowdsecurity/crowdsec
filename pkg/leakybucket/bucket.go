@@ -50,8 +50,8 @@ type Leaky struct {
 	Reprocess    bool
 	Simulated    bool
 	Uuid         string
-	First_ts     time.Time
-	Last_ts      time.Time
+	first_ts     *timestamp
+	last_ts      *timestamp
 	Ovflw_ts     time.Time
 	Total_count  int
 	Leakspeed    time.Duration
@@ -196,6 +196,8 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 	}
 
 	l.timestamp = l.InitTimestamp()
+	l.first_ts = l.InitFirstEvent()
+	l.last_ts = l.InitLastEvent()
 
 	return l
 }
@@ -350,10 +352,10 @@ func Pour(leaky *Leaky, msg types.Event) {
 	defer leaky.wgPour.Done()
 
 	leaky.Total_count += 1
-	if leaky.First_ts.IsZero() {
-		leaky.First_ts = time.Now().UTC()
+	if leaky.GetFirstEvent().IsZero() {
+		leaky.SetFirstEvent(time.Now().UTC())
 	}
-	leaky.Last_ts = time.Now().UTC()
+	leaky.SetLastEvent(time.Now().UTC())
 
 	if leaky.Limiter.Allow() || leaky.conditionalOverflow {
 		leaky.Queue.Add(msg)
@@ -388,4 +390,40 @@ func (leaky *Leaky) overflow(ofw *Queue) {
 	BucketsOverflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
 
 	leaky.AllOut <- types.Event{Overflow: alert, Type: types.OVFLW, MarshaledTime: string(mt)}
+}
+
+func (l *Leaky) InitFirstEvent() *timestamp {
+	return &timestamp{
+		mutex: &sync.Mutex{},
+	}
+}
+
+func (l *Leaky) SetFirstEvent(t time.Time) {
+	l.first_ts.mutex.Lock()
+	l.first_ts.t = t
+	l.first_ts.mutex.Unlock()
+}
+
+func (l *Leaky) GetFirstEvent() time.Time {
+	l.first_ts.mutex.Lock()
+	defer l.first_ts.mutex.Unlock()
+	return l.first_ts.t
+}
+
+func (l *Leaky) InitLastEvent() *timestamp {
+	return &timestamp{
+		mutex: &sync.Mutex{},
+	}
+}
+
+func (l *Leaky) SetLastEvent(t time.Time) {
+	l.last_ts.mutex.Lock()
+	l.last_ts.t = t
+	l.last_ts.mutex.Unlock()
+}
+
+func (l *Leaky) GetLastEvent() time.Time {
+	l.last_ts.mutex.Lock()
+	defer l.last_ts.mutex.Unlock()
+	return l.last_ts.t
 }

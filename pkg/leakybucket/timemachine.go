@@ -19,9 +19,9 @@ func (l *Leaky) InitTimestamp() *timestamp {
 	}
 }
 
-func (l *Leaky) SetTimestamp() {
+func (l *Leaky) SetTimestamp(t time.Time) {
 	l.timestamp.mutex.Lock()
-	l.timestamp.t = time.Now()
+	l.timestamp.t = t
 	l.timestamp.mutex.Unlock()
 }
 
@@ -52,11 +52,11 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 	}
 
 	l.Total_count += 1
-	if l.First_ts.IsZero() {
+	if l.GetFirstEvent().IsZero() {
 		l.logger.Debugf("First event, bucket creation time : %s", d)
-		l.First_ts = d
+		l.SetFirstEvent(d)
 	}
-	l.Last_ts = d
+	l.SetLastEvent(d)
 
 	if l.Limiter.AllowN(d, 1) {
 		l.logger.Tracef("Time-Pouring event %s (tokens:%f)", d, l.Limiter.GetTokensCount())

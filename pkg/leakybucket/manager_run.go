@@ -55,13 +55,13 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 		//bucket actually underflowed based on log time, but no in real time
 		if tokat >= tokcapa {
 			BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
-			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.First_ts, tokat, tokcapa)
+			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.GetFirstEvent(), tokat, tokcapa)
 			toflush = append(toflush, key)
 			val.tomb.Kill(nil)
 			return true
 		}
 
-		val.logger.Tracef("(%s) not dead, count:%f capacity:%f", val.First_ts, tokat, tokcapa)
+		val.logger.Tracef("(%s) not dead, count:%f capacity:%f", val.GetFirstEvent(), tokat, tokcapa)
 		if _, ok := serialized[key]; ok {
 			log.Errorf("entry %s already exists", key)
 			return false
@@ -115,11 +115,11 @@ func DumpBucketsStateAt(deadline time.Time, outputdir string, buckets *Buckets) 
 
 		if tokat >= tokcapa {
 			BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
-			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.First_ts, tokat, tokcapa)
+			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.GetFirstEvent(), tokat, tokcapa)
 			discard += 1
 			return true
 		}
-		val.logger.Debugf("(%s) not dead, count:%f capacity:%f", val.First_ts, tokat, tokcapa)
+		val.logger.Debugf("(%s) not dead, count:%f capacity:%f", val.GetFirstEvent(), tokat, tokcapa)
 
 		if _, ok := serialized[key]; ok {
 			log.Errorf("entry %s already exists", key)
@@ -181,6 +181,14 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 				buckets.Bucket_map.Delete(buckey)
 				sigclosed += 1
 				bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
+				if bucket.Mode == types.TIMEMACHINE {
+					var d time.Time
+					err = d.UnmarshalText([]byte(parsed.MarshaledTime))
+					if err != nil {
+						holder.logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
+					}
+					bucket.SetTimestamp(d)
+				}
 				if err != nil {
 					return false, err
 				}
@@ -191,34 +199,29 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 			/*nothing to read, but not closed, try to pour */
 			//holder.logger.Tracef("Signal exists but empty, try to pour :)")
 		}
-
 		/*let's see if this time-bucket should have expired */
 		if bucket.Mode == types.TIMEMACHINE {
-			e := func() error {
-
-				if !bucket.fresh {
-					var d time.Time
-					err = d.UnmarshalText([]byte(parsed.MarshaledTime))
-					if err != nil {
-						holder.logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
-					}
-					if d.After(bucket.GetTimestamp().Add(bucket.Duration)) {
-						bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, bucket.GetTimestamp().Add(bucket.Duration))
-						buckets.Bucket_map.Delete(buckey)
-						//not sure about this, should we create a new one ?
-						sigclosed += 1
-						bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
-						if err != nil {
-							return err
-						}
-					}
+			if !bucket.fresh {
+				var d time.Time
+				err = d.UnmarshalText([]byte(parsed.MarshaledTime))
+				if err != nil {
+					holder.logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
 				}
-				return nil
-			}()
-			if e != nil {
-				return false, e
+				if d.After(bucket.GetTimestamp().Add(bucket.Duration)) {
+					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, bucket.GetTimestamp().Add(bucket.Duration))
+					buckets.Bucket_map.Delete(buckey)
+					//not sure about this, should we create a new one ?
+					sigclosed += 1
+					bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
+					bucket.SetTimestamp(d)
+					if err != nil {
+						return false, err
+					}
+					continue
+				}
 			}
 		}
+
 		/*the bucket seems to be up & running*/
 		select {
 		case bucket.In <- parsed:
@@ -264,7 +267,6 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 		}
 		fresh_bucket.In = make(chan *types.Event)
 		fresh_bucket.Mapkey = partitionKey
-		fresh_bucket.SetTimestamp()
 		fresh_bucket.Signal = make(chan bool, 1)
 		actual, stored := buckets.Bucket_map.LoadOrStore(partitionKey, fresh_bucket)
 		if !stored {
@@ -346,6 +348,15 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		bucket, err := LoadOrStoreBucketFromHolder(buckey, buckets, holders[idx], parsed.ExpectMode)
 		if err != nil {
 			return false, errors.Wrap(err, "failed to load or store bucket")
+		}
+
+		if parsed.ExpectMode == types.TIMEMACHINE {
+			var d time.Time
+			err = d.UnmarshalText([]byte(parsed.MarshaledTime))
+			if err != nil {
+				holders[idx].logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
+			}
+			bucket.SetTimestamp(d)
 		}
 		//finally, pour the even into the bucket
 		ok, err := PourItemToBucket(bucket, holders[idx], buckets, &parsed)

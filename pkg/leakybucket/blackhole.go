@@ -55,13 +55,13 @@ func (bl *Blackhole) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky,
 		bl.hiddenKeys = tmp
 
 		if blackholed {
-			leaky.logger.Tracef("Event is blackholed (%s)", leaky.First_ts)
+			leaky.logger.Tracef("Event is blackholed (%s)", leaky.GetFirstEvent())
 			return types.RuntimeAlert{
 				Mapkey: leaky.Mapkey,
 			}, nil
 		}
 		bl.hiddenKeys = append(bl.hiddenKeys, HiddenKey{leaky.Mapkey, leaky.Ovflw_ts.Add(bl.duration)})
-		leaky.logger.Debugf("Adding overflow to blackhole (%s)", leaky.First_ts)
+		leaky.logger.Debugf("Adding overflow to blackhole (%s)", leaky.GetFirstEvent())
 		return alert, queue
 	}
 
