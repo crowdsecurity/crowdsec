@@ -380,6 +380,32 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 
 		//finally, pour the even into the bucket
 		//		fmt.Printf("parsed: %s\n", parsed.Line.Raw)
+		if bucket.Mode == types.TIMEMACHINE {
+			bucket.mutex.Lock()
+			firstTs := bucket.First_ts
+			lastTs := bucket.Last_ts
+			bucket.mutex.Unlock()
+			if !firstTs.IsZero() {
+				var d time.Time
+				err = d.UnmarshalText([]byte(parsed.MarshaledTime))
+				if err != nil {
+					holders[idx].logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
+				}
+
+				if d.After(lastTs.Add(bucket.Duration)) {
+					fmt.Printf("runned: %s\n", parsed.Line.Raw)
+					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, lastTs.Add(bucket.Duration))
+					buckets.Bucket_map.Delete(buckey)
+					//not sure about this, should we create a new one ?
+					bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holders[idx], parsed.ExpectMode)
+					fmt.Printf("Created at %s: %+v\n", d.String(), spew.Sdump(bucket.Limiter))
+					if err != nil {
+						return false, err
+					}
+					continue
+				}
+			}
+		}
 
 		ok, err := PourItemToBucket(bucket, holders[idx], buckets, &parsed)
 		if err != nil {
