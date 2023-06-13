@@ -360,12 +360,11 @@ func Pour(leaky *Leaky, msg types.Event) {
 	}
 }
 
-func (leaky *Leaky) HaxExpired(t time.Time) bool {
+func (leaky *Leaky) HasExpired(t time.Time) bool {
 	if leaky.Capacity >= 0 {
 		return leaky.Limiter.GetTokensCountAt(t) == float64(leaky.Capacity) && t.Sub(leaky.Last_ts) > leaky.Leakspeed
-	} else {
-		return t.Sub(leaky.First_ts) > leaky.Duration
 	}
+	return t.Sub(leaky.First_ts) > leaky.Duration
 }
 
 func (leaky *Leaky) overflow(ofw *Queue) {
