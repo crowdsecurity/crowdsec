@@ -22,6 +22,46 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 		select {
 		case <-bucketsTomb.Dying():
 			log.Infof("Bucket routine exiting")
+			close(input)
+			for parsed := range input {
+				startTime := time.Now()
+				count++
+				if count%5000 == 0 {
+					log.Infof("%d existing buckets", leaky.LeakyRoutineCount)
+					//when in forensics mode, garbage collect buckets
+					if cConfig.Crowdsec.BucketsGCEnabled {
+						if parsed.MarshaledTime != "" {
+							z := &time.Time{}
+							if err := z.UnmarshalText([]byte(parsed.MarshaledTime)); err != nil {
+								log.Warningf("Failed to unmarshal time from event '%s' : %s", parsed.MarshaledTime, err)
+							} else {
+								log.Warning("Starting buckets garbage collection ...")
+								if err = leaky.GarbageCollectBuckets(*z, buckets); err != nil {
+									return fmt.Errorf("failed to start bucket GC : %s", err)
+								}
+							}
+						}
+					}
+				}
+				//here we can bucketify with parsed
+				poured, err := leaky.PourItemToHolders(parsed, holders, buckets)
+				if err != nil {
+					log.Errorf("bucketify failed for: %v", parsed)
+					continue
+				}
+				elapsed := time.Since(startTime)
+				globalPourHistogram.With(prometheus.Labels{"type": parsed.Line.Module, "source": parsed.Line.Src}).Observe(elapsed.Seconds())
+				if poured {
+					globalBucketPourOk.Inc()
+				} else {
+					globalBucketPourKo.Inc()
+				}
+				if len(parsed.MarshaledTime) != 0 {
+					if err := lastProcessedItem.UnmarshalText([]byte(parsed.MarshaledTime)); err != nil {
+						log.Warningf("failed to unmarshal time from event : %s", err)
+					}
+				}
+			}
 			return nil
 		case parsed := <-input:
 			startTime := time.Now()
@@ -44,10 +84,7 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 				}
 			}
 			//here we can bucketify with parsed
-			wg.Wait()
-			wg.Add(1)
 			poured, err := leaky.PourItemToHolders(parsed, holders, buckets)
-			wg.Done()
 			if err != nil {
 				log.Errorf("bucketify failed for: %v", parsed)
 				continue
