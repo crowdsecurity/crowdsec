@@ -237,17 +237,17 @@ func alertFormatSource(leaky *Leaky, queue *Queue) (map[string]models.Source, st
 func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 	var runtimeAlert types.RuntimeAlert
 
-	leaky.logger.Tracef("Overflow (start: %s, end: %s)", leaky.First_ts, leaky.Ovflw_ts)
+	leaky.logger.Tracef("Overflow (start: %s, end: %s)", leaky.GetFirstEvent(), leaky.Ovflw_ts)
 	/*
 		Craft the models.Alert that is going to be duplicated for each source
 	*/
-	start_at, err := leaky.First_ts.MarshalText()
+	start_at, err := leaky.GetFirstEvent().MarshalText()
 	if err != nil {
-		log.Warningf("failed to marshal start ts %s : %s", leaky.First_ts.String(), err)
+		log.Warningf("failed to marshal start ts %s : %s", leaky.GetFirstEvent().String(), err)
 	}
 	stop_at, err := leaky.Ovflw_ts.MarshalText()
 	if err != nil {
-		log.Warningf("failed to marshal ovflw ts %s : %s", leaky.First_ts.String(), err)
+		log.Warningf("failed to marshal ovflw ts %s : %s", leaky.GetFirstEvent().String(), err)
 	}
 	capacity := int32(leaky.Capacity)
 	EventsCount := int32(leaky.Total_count)
@@ -290,7 +290,7 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 		}
 	}
 
-	*apiAlert.Message = fmt.Sprintf("%s %s performed '%s' (%d events over %s) at %s", source_scope, sourceStr, leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Last_ts)
+	*apiAlert.Message = fmt.Sprintf("%s %s performed '%s' (%d events over %s) at %s", source_scope, sourceStr, leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.GetFirstEvent()), leaky.GetLastEvent())
 	//Get the events from Leaky/Queue
 	apiAlert.Events = EventsFromQueue(queue)
 	var warnings []error
