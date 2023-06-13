@@ -198,14 +198,15 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 		}
 		/*let's see if this time-bucket should have expired */
 		if bucket.Mode == types.TIMEMACHINE {
-			if !bucket.fresh {
+			bucket.mutex.Lock()
+			if !bucket.First_ts.IsZero() {
 				var d time.Time
 				err = d.UnmarshalText([]byte(parsed.MarshaledTime))
 				if err != nil {
 					holder.logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
 				}
 
-				if d.After(bucket.timestamp.Add(bucket.Duration)) {
+				if bucket.HasExpired(d) {
 					fmt.Printf("runned: %s\n", parsed.Line.Raw)
 					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, bucket.timestamp.Add(bucket.Duration))
 					buckets.Bucket_map.Delete(buckey)
@@ -219,6 +220,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 					continue
 				}
 			}
+			bucket.mutex.Unlock()
 		}
 
 		/*the bucket seems to be up & running*/
@@ -226,6 +228,12 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 		case bucket.In <- parsed:
 			//holder.logger.Tracef("Successfully sent !")
 			bucket.fresh = false
+			bucket.mutex.Lock()
+			if bucket.First_ts.IsZero() {
+				bucket.First_ts = time.Now().UTC()
+			}
+			bucket.Last_ts = time.Now().UTC()
+			bucket.mutex.Unlock()
 			if BucketPourTrack {
 				if _, ok := BucketPourCache[bucket.Name]; !ok {
 					BucketPourCache[bucket.Name] = make([]types.Event, 0)
@@ -377,28 +385,6 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 
 		//finally, pour the even into the bucket
 		//		fmt.Printf("parsed: %s\n", parsed.Line.Raw)
-		if bucket.Mode == types.TIMEMACHINE {
-			if !bucket.fresh {
-				var d time.Time
-				err = d.UnmarshalText([]byte(parsed.MarshaledTime))
-				if err != nil {
-					holders[idx].logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
-				}
-
-				if d.After(bucket.timestamp.Add(bucket.Duration)) {
-					fmt.Printf("runned: %s\n", parsed.Line.Raw)
-					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, bucket.timestamp.Add(bucket.Duration))
-					buckets.Bucket_map.Delete(buckey)
-					//not sure about this, should we create a new one ?
-					bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holders[idx], parsed.ExpectMode)
-					fmt.Printf("Created at %s: %+v\n", d.String(), spew.Sdump(bucket.Limiter))
-					if err != nil {
-						return false, err
-					}
-					continue
-				}
-			}
-		}
 
 		ok, err := PourItemToBucket(bucket, holders[idx], buckets, &parsed)
 		if err != nil {

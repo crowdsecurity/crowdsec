@@ -349,10 +349,6 @@ func Pour(leaky *Leaky, msg types.Event) {
 	defer leaky.wgPour.Done()
 
 	leaky.Total_count += 1
-	if leaky.First_ts.IsZero() {
-		leaky.First_ts = time.Now().UTC()
-	}
-	leaky.Last_ts = time.Now().UTC()
 
 	if leaky.Limiter.Allow() || leaky.conditionalOverflow {
 		leaky.Queue.Add(msg)
@@ -361,6 +357,14 @@ func Pour(leaky *Leaky, msg types.Event) {
 		leaky.logger.Debugf("Last event to be poured, bucket overflow.")
 		leaky.Queue.Add(msg)
 		leaky.Out <- leaky.Queue
+	}
+}
+
+func (leaky *Leaky) HaxExpired(t time.Time) bool {
+	if leaky.Capacity >= 0 {
+		return leaky.Limiter.GetTokensCountAt(t) == float64(leaky.Capacity) && t.Sub(leaky.Last_ts) > leaky.Leakspeed
+	} else {
+		return t.Sub(leaky.First_ts) > leaky.Duration
 	}
 }
 
