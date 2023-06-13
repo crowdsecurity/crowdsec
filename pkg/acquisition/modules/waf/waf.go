@@ -38,6 +38,7 @@ type WafSource struct {
 	addr          string
 	outChan       chan types.Event
 	OutOfBandChan chan ParsedRequest
+	InBandChan    chan ParsedRequest
 
 	inBandWaf    coraza.WAF
 	outOfBandWaf coraza.WAF
@@ -190,6 +191,7 @@ func (w *WafSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error
 func (w *WafSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	w.outChan = out
 	w.OutOfBandChan = make(chan ParsedRequest)
+	w.InBandChan = make(chan ParsedRequest)
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/waf/live")
 
@@ -197,6 +199,14 @@ func (w *WafSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) err
 		t.Go(func() error {
 			if err := w.ProcessOutBand(t); err != nil {
 				return errors.Wrap(err, "Processing Out of band routine failed: %s")
+			}
+			return nil
+		})
+
+		// start InBand GoRoutine
+		t.Go(func() error {
+			if err := w.ProcessInBand(t); err != nil {
+				return errors.Wrap(err, "Processing in-band routine failed: %s")
 			}
 			return nil
 		})
@@ -239,6 +249,7 @@ type ParsedRequest struct {
 	Body             []byte
 	TransferEncoding []string
 	UUID             string
+	Tx               corazatypes.Transaction
 }
 
 func NewParsedRequestFromRequest(r *http.Request) (ParsedRequest, error) {
@@ -349,14 +360,14 @@ func processReqWithEngine(waf coraza.WAF, r ParsedRequest, uuid string, wafType 
 	return nil, tx, nil
 }
 
-func (w *WafSource) TxToEvents(tx corazatypes.Transaction, r ParsedRequest, kind string) ([]types.Event, error) {
+func (w *WafSource) TxToEvents(r ParsedRequest, kind string) ([]types.Event, error) {
 	evts := []types.Event{}
-	if tx == nil {
+	if r.Tx == nil {
 		return nil, fmt.Errorf("tx is nil")
 	}
-	for idx, rule := range tx.MatchedRules() {
+	for idx, rule := range r.Tx.MatchedRules() {
 		log.Printf("rule %d", idx)
-		evt, err := w.RuleMatchToEvent(rule, tx, r, kind)
+		evt, err := w.RuleMatchToEvent(rule, r.Tx, r, kind)
 		if err != nil {
 			return nil, errors.Wrap(err, "Cannot convert rule match to event")
 		}
@@ -430,8 +441,9 @@ func (w *WafSource) ProcessOutBand(t *tomb.Tomb) error {
 				log.Errorf("Error while processing request : %s", err)
 				continue
 			}
+			r.Tx = tx2
 			if tx2 != nil && len(tx2.MatchedRules()) > 0 {
-				events, err := w.TxToEvents(tx2, r, OutOfBand)
+				events, err := w.TxToEvents(r, OutOfBand)
 				log.Infof("Request triggered by WAF, %d events to send", len(events))
 				for _, evt := range events {
 					w.outChan <- evt
@@ -441,6 +453,27 @@ func (w *WafSource) ProcessOutBand(t *tomb.Tomb) error {
 					continue
 				}
 				log.Infof("WAF triggered : %+v", in2)
+			}
+		}
+	}
+}
+
+func (w *WafSource) ProcessInBand(t *tomb.Tomb) error {
+	for {
+		select {
+		case <-t.Dying():
+			log.Infof("OutOfBand function is dying")
+			return nil
+		case r := <-w.InBandChan:
+			events, err := w.TxToEvents(r, InBand)
+			if err != nil {
+				log.Errorf("Cannot convert transaction to events : %s", err)
+				continue
+			}
+
+			log.Infof("Request blocked by WAF, %d events to send", len(events))
+			for _, evt := range events {
+				w.outChan <- evt
 			}
 		}
 	}
@@ -468,23 +501,17 @@ func (w *WafSource) wafHandler(rw http.ResponseWriter, r *http.Request) {
 
 	if in != nil {
 		rw.WriteHeader(http.StatusForbidden)
-		events, err := w.TxToEvents(tx, parsedRequest, InBand)
-		log.Infof("Request blocked by WAF, %d events to send", len(events))
-		for _, evt := range events {
-			w.outChan <- evt
-		}
-		if err != nil {
-			log.Errorf("Cannot convert transaction to events : %s", err)
-			return
-		}
-		return
+		go func() {
+			parsedRequest.Tx = tx
+			w.InBandChan <- parsedRequest
+		}()
 	}
 
 	// we finished the inband, we can return 200
 	rw.WriteHeader(http.StatusOK)
-	// now we can process out of band asynchronously
+
+	//now we can process out of band asynchronously
 	go func() {
 		w.OutOfBandChan <- parsedRequest
 	}()
-
 }
