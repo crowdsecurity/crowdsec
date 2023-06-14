@@ -65,7 +65,7 @@ func (c *ConditionalOverflow) AfterBucketPour(b *BucketFactory) func(types.Event
 
 			if condition {
 				l.logger.Debugf("Conditional bucket overflow")
-				l.Ovflw_ts = l.Last_ts
+				l.Ovflw_ts = l.GetLastEvent()
 				l.Out <- l.Queue
 				return nil
 			}

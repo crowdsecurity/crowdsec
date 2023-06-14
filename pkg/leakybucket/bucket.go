@@ -50,8 +50,8 @@ type Leaky struct {
 	Reprocess    bool
 	Simulated    bool
 	Uuid         string
-	First_ts     time.Time
-	Last_ts      time.Time
+	first_ts     *timestamp
+	last_ts      *timestamp
 	Ovflw_ts     time.Time
 	Total_count  int
 	Leakspeed    time.Duration
@@ -70,7 +70,7 @@ type Leaky struct {
 	wgPour              *sync.WaitGroup
 	wgDumpState         *sync.WaitGroup
 	mutex               *sync.Mutex //used only for TIMEMACHINE mode to allow garbage collection without races
-	timestamp           time.Time
+	timestamp           *timestamp
 	fresh               bool
 }
 
@@ -180,7 +180,6 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		wgPour:          bucketFactory.wgPour,
 		wgDumpState:     bucketFactory.wgDumpState,
 		mutex:           &sync.Mutex{},
-		timestamp:       time.Now(),
 		fresh:           true,
 	}
 	if l.BucketConfig.Capacity > 0 && l.BucketConfig.leakspeed != time.Duration(0) {
@@ -195,6 +194,10 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		l.conditionalOverflow = true
 		l.Duration = l.BucketConfig.leakspeed
 	}
+
+	l.timestamp = l.InitTimestamp()
+	l.first_ts = l.InitFirstEvent()
+	l.last_ts = l.InitLastEvent()
 
 	return l
 }
@@ -349,6 +352,10 @@ func Pour(leaky *Leaky, msg types.Event) {
 	defer leaky.wgPour.Done()
 
 	leaky.Total_count += 1
+	if leaky.GetFirstEvent().IsZero() {
+		leaky.SetFirstEvent(time.Now().UTC())
+	}
+	leaky.SetLastEvent(time.Now().UTC())
 
 	if leaky.Limiter.Allow() || leaky.conditionalOverflow {
 		leaky.Queue.Add(msg)
@@ -358,13 +365,6 @@ func Pour(leaky *Leaky, msg types.Event) {
 		leaky.Queue.Add(msg)
 		leaky.Out <- leaky.Queue
 	}
-}
-
-func (leaky *Leaky) HasExpired(t time.Time) bool {
-	if leaky.Capacity >= 0 {
-		return leaky.Limiter.GetTokensCountAt(t) == float64(leaky.Capacity) && t.Sub(leaky.Last_ts) > leaky.Leakspeed
-	}
-	return t.Sub(leaky.First_ts) > leaky.Duration
 }
 
 func (leaky *Leaky) overflow(ofw *Queue) {
@@ -390,4 +390,40 @@ func (leaky *Leaky) overflow(ofw *Queue) {
 	BucketsOverflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
 
 	leaky.AllOut <- types.Event{Overflow: alert, Type: types.OVFLW, MarshaledTime: string(mt)}
+}
+
+func (l *Leaky) InitFirstEvent() *timestamp {
+	return &timestamp{
+		mutex: &sync.Mutex{},
+	}
+}
+
+func (l *Leaky) SetFirstEvent(t time.Time) {
+	l.first_ts.mutex.Lock()
+	l.first_ts.t = t
+	l.first_ts.mutex.Unlock()
+}
+
+func (l *Leaky) GetFirstEvent() time.Time {
+	l.first_ts.mutex.Lock()
+	defer l.first_ts.mutex.Unlock()
+	return l.first_ts.t
+}
+
+func (l *Leaky) InitLastEvent() *timestamp {
+	return &timestamp{
+		mutex: &sync.Mutex{},
+	}
+}
+
+func (l *Leaky) SetLastEvent(t time.Time) {
+	l.last_ts.mutex.Lock()
+	l.last_ts.t = t
+	l.last_ts.mutex.Unlock()
+}
+
+func (l *Leaky) GetLastEvent() time.Time {
+	l.last_ts.mutex.Lock()
+	defer l.last_ts.mutex.Unlock()
+	return l.last_ts.t
 }

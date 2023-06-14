@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"sync"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 
 	"github.com/mohae/deepcopy"
@@ -57,13 +55,13 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 		//bucket actually underflowed based on log time, but no in real time
 		if tokat >= tokcapa {
 			BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
-			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.First_ts, tokat, tokcapa)
+			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.GetFirstEvent(), tokat, tokcapa)
 			toflush = append(toflush, key)
 			val.tomb.Kill(nil)
 			return true
 		}
 
-		val.logger.Tracef("(%s) not dead, count:%f capacity:%f", val.First_ts, tokat, tokcapa)
+		val.logger.Tracef("(%s) not dead, count:%f capacity:%f", val.GetFirstEvent(), tokat, tokcapa)
 		if _, ok := serialized[key]; ok {
 			log.Errorf("entry %s already exists", key)
 			return false
@@ -117,11 +115,11 @@ func DumpBucketsStateAt(deadline time.Time, outputdir string, buckets *Buckets) 
 
 		if tokat >= tokcapa {
 			BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
-			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.First_ts, tokat, tokcapa)
+			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.GetFirstEvent(), tokat, tokcapa)
 			discard += 1
 			return true
 		}
-		val.logger.Debugf("(%s) not dead, count:%f capacity:%f", val.First_ts, tokat, tokcapa)
+		val.logger.Debugf("(%s) not dead, count:%f capacity:%f", val.GetFirstEvent(), tokat, tokcapa)
 
 		if _, ok := serialized[key]; ok {
 			log.Errorf("entry %s already exists", key)
@@ -145,8 +143,6 @@ func DumpBucketsStateAt(deadline time.Time, outputdir string, buckets *Buckets) 
 	return tmpFileName, nil
 }
 
-var bucketsMutex *sync.Mutex
-
 func ShutdownAllBuckets(buckets *Buckets) error {
 	buckets.Bucket_map.Range(func(rkey, rvalue interface{}) bool {
 		key := rkey.(string)
@@ -163,7 +159,6 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 	var buckey = bucket.Mapkey
 	var err error
 
-	//	fmt.Printf("debug: %s\n", parsed.Line.Raw)
 	sigclosed := 0
 	failed_sent := 0
 	attempts := 0
@@ -186,6 +181,14 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 				buckets.Bucket_map.Delete(buckey)
 				sigclosed += 1
 				bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
+				if bucket.Mode == types.TIMEMACHINE {
+					var d time.Time
+					err = d.UnmarshalText([]byte(parsed.MarshaledTime))
+					if err != nil {
+						holder.logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
+					}
+					bucket.SetTimestamp(d)
+				}
 				if err != nil {
 					return false, err
 				}
@@ -198,29 +201,25 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 		}
 		/*let's see if this time-bucket should have expired */
 		if bucket.Mode == types.TIMEMACHINE {
-			bucket.mutex.Lock()
-			if !bucket.First_ts.IsZero() {
+			if !bucket.fresh {
 				var d time.Time
 				err = d.UnmarshalText([]byte(parsed.MarshaledTime))
 				if err != nil {
 					holder.logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
 				}
-
-				if bucket.HasExpired(d) {
-					fmt.Printf("runned: %s\n", parsed.Line.Raw)
-					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, bucket.timestamp.Add(bucket.Duration))
+				if d.After(bucket.GetTimestamp().Add(bucket.Duration)) {
+					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, bucket.GetTimestamp().Add(bucket.Duration))
 					buckets.Bucket_map.Delete(buckey)
 					//not sure about this, should we create a new one ?
 					sigclosed += 1
 					bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
-					fmt.Printf("Created at %s: %+v\n", d.String(), spew.Sdump(bucket.Limiter))
+					bucket.SetTimestamp(d)
 					if err != nil {
 						return false, err
 					}
 					continue
 				}
 			}
-			bucket.mutex.Unlock()
 		}
 
 		/*the bucket seems to be up & running*/
@@ -228,12 +227,6 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 		case bucket.In <- parsed:
 			//holder.logger.Tracef("Successfully sent !")
 			bucket.fresh = false
-			bucket.mutex.Lock()
-			if bucket.First_ts.IsZero() {
-				bucket.First_ts = time.Now().UTC()
-			}
-			bucket.Last_ts = time.Now().UTC()
-			bucket.mutex.Unlock()
 			if BucketPourTrack {
 				if _, ok := BucketPourCache[bucket.Name]; !ok {
 					BucketPourCache[bucket.Name] = make([]types.Event, 0)
@@ -272,11 +265,7 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 		default:
 			return nil, fmt.Errorf("input event has no expected mode : %+v", expectMode)
 		}
-		if expectMode == types.TIMEMACHINE {
-			fresh_bucket.In = make(chan *types.Event, 1)
-		} else {
-			fresh_bucket.In = make(chan *types.Event)
-		}
+		fresh_bucket.In = make(chan *types.Event)
 		fresh_bucket.Mapkey = partitionKey
 		fresh_bucket.Signal = make(chan bool, 1)
 		actual, stored := buckets.Bucket_map.LoadOrStore(partitionKey, fresh_bucket)
@@ -296,12 +285,9 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 	return biface.(*Leaky), nil
 }
 
-var wgs map[string]*sync.WaitGroup // only used for timemachine
-
 func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buckets) (bool, error) {
 	var (
 		ok, condition, poured bool
-		wg                    *sync.WaitGroup
 	)
 
 	if BucketPourTrack {
@@ -358,34 +344,21 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		}
 		buckey := GetKey(holders[idx], groupby)
 
-		// we prevent pouring in time machine mode when we are already pouring a bucket
-		// with the same key (buckey)
-		if parsed.ExpectMode == types.TIMEMACHINE {
-			if wgs == nil {
-				fmt.Printf("INITIALIZED!!\n")
-				wgs = make(map[string]*sync.WaitGroup)
-			}
-			wg, ok = wgs[buckey]
-			if !ok {
-				wg = &sync.WaitGroup{}
-				wgs[buckey] = wg
-			}
-			wg.Wait()
-			wg.Add(1)
-			defer wg.Done()
-		}
-
 		//we need to either find the existing bucket, or create a new one (if it's the first event to hit it for this partition key)
-
 		bucket, err := LoadOrStoreBucketFromHolder(buckey, buckets, holders[idx], parsed.ExpectMode)
-
 		if err != nil {
 			return false, errors.Wrap(err, "failed to load or store bucket")
 		}
 
+		if parsed.ExpectMode == types.TIMEMACHINE {
+			var d time.Time
+			err = d.UnmarshalText([]byte(parsed.MarshaledTime))
+			if err != nil {
+				holders[idx].logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
+			}
+			bucket.SetTimestamp(d)
+		}
 		//finally, pour the even into the bucket
-		//		fmt.Printf("parsed: %s\n", parsed.Line.Raw)
-
 		ok, err := PourItemToBucket(bucket, holders[idx], buckets, &parsed)
 		if err != nil {
 			return false, errors.Wrap(err, "failed to pour bucket")

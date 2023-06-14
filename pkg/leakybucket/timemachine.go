@@ -1,20 +1,41 @@
 package leakybucket
 
 import (
-	"fmt"
+	"sync"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 )
+
+type timestamp struct {
+	t     time.Time
+	mutex *sync.Mutex
+}
+
+func (l *Leaky) InitTimestamp() *timestamp {
+	return &timestamp{
+		mutex: &sync.Mutex{},
+	}
+}
+
+func (l *Leaky) SetTimestamp(t time.Time) {
+	l.timestamp.mutex.Lock()
+	l.timestamp.t = t
+	l.timestamp.mutex.Unlock()
+}
+
+func (l *Leaky) GetTimestamp() time.Time {
+	l.timestamp.mutex.Lock()
+	defer l.timestamp.mutex.Unlock()
+	return l.timestamp.t
+}
 
 func TimeMachinePour(l *Leaky, msg types.Event) {
 	var (
 		d   time.Time
 		err error
 	)
-
 	if msg.MarshaledTime == "" {
 		log.WithFields(log.Fields{
 			"evt_type": msg.Line.Labels["type"],
@@ -31,15 +52,12 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 	}
 
 	l.Total_count += 1
-	l.mutex.Lock()
-	if l.First_ts.IsZero() {
+	if l.GetFirstEvent().IsZero() {
 		l.logger.Debugf("First event, bucket creation time : %s", d)
-		l.First_ts = d
+		l.SetFirstEvent(d)
 	}
-	l.Last_ts = d
-	l.mutex.Unlock()
+	l.SetLastEvent(d)
 
-	fmt.Printf("evt: %s\n", msg.Line.Raw)
 	if l.Limiter.AllowN(d, 1) {
 		l.logger.Tracef("Time-Pouring event %s (tokens:%f)", d, l.Limiter.GetTokensCount())
 		l.Queue.Add(msg)
@@ -49,9 +67,6 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 		l.Queue.Add(msg)
 		l.Out <- l.Queue
 	}
-	fmt.Printf("lim: %+v\n", spew.Sdump(l.Limiter))
-
-	//	fmt.Printf("evt: %s\nlimiter: %+v\nlimiter: %+v\nbucket: %+v\n\n\n", msg.Line.Raw, &l.Limiter, spew.Sdump(l.Limiter.Dump()), l.Uuid)
 }
 
 func NewTimeMachine(g BucketFactory) *Leaky {

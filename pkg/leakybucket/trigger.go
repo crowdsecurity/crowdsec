@@ -23,12 +23,12 @@ func (t *Trigger) OnBucketPour(b *BucketFactory) func(types.Event, *Leaky) *type
 				d = time.Now().UTC()
 			}
 			l.logger.Debugf("yay timemachine overflow time : %s --> %s", d, msg.MarshaledTime)
-			l.Last_ts = d
-			l.First_ts = d
+			l.SetLastEvent(d)
+			l.SetFirstEvent(d)
 			l.Ovflw_ts = d
 		} else {
-			l.Last_ts = time.Now().UTC()
-			l.First_ts = time.Now().UTC()
+			l.SetLastEvent(time.Now())
+			l.SetFirstEvent(time.Now())
 			l.Ovflw_ts = time.Now().UTC()
 		}
 		l.Total_count = 1
