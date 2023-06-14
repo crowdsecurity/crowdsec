@@ -39,7 +39,7 @@ teardown() {
     fake_log >>"${tmpfile}"
     sleep 2
     rm -f -- "${tmpfile}"
-    run -0 --separate-stderr cscli decisions list -o json
-    run -0 jq -r '.[].decisions[0].value' <(output)
+    rune -0 cscli decisions list -o json
+    rune -0 jq -r '.[].decisions[0].value' <(output)
     assert_output '1.1.1.172'
 }

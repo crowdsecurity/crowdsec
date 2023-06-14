@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/enescakir/emoji"
 	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
@@ -85,22 +84,21 @@ func generateID(prefix string) (string, error) {
 	return prefix + suffix, nil
 }
 
-func displayLastHeartBeat(m *ent.Machine, fancy bool) string {
-	var hbDisplay string
-
-	if m.LastHeartbeat != nil {
-		lastHeartBeat := time.Now().UTC().Sub(*m.LastHeartbeat)
-		hbDisplay = lastHeartBeat.Truncate(time.Second).String()
-		if fancy && lastHeartBeat > 2*time.Minute {
-			hbDisplay = fmt.Sprintf("%s %s", emoji.Warning.String(), lastHeartBeat.Truncate(time.Second).String())
-		}
-	} else {
-		hbDisplay = "-"
-		if fancy {
-			hbDisplay = emoji.Warning.String() + " -"
-		}
+// getLastHeartbeat returns the last heartbeat timestamp of a machine
+// and a boolean indicating if the machine is considered active or not.
+func getLastHeartbeat(m *ent.Machine) (string, bool) {
+	if m.LastHeartbeat == nil {
+		return "-", false
 	}
-	return hbDisplay
+
+	elapsed := time.Now().UTC().Sub(*m.LastHeartbeat)
+
+	hb := elapsed.Truncate(time.Second).String()
+	if elapsed > 2*time.Minute {
+		return hb, false
+	}
+
+	return hb, true
 }
 
 func getAgents(out io.Writer, dbClient *database.Client) error {
@@ -130,9 +128,10 @@ func getAgents(out io.Writer, dbClient *database.Client) error {
 			} else {
 				validated = "false"
 			}
-			err := csvwriter.Write([]string{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, displayLastHeartBeat(m, false)})
+			hb, _ := getLastHeartbeat(m)
+			err := csvwriter.Write([]string{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, hb})
 			if err != nil {
-				return fmt.Errorf("failed to write raw output : %s", err)
+				return fmt.Errorf("failed to write raw output: %w", err)
 			}
 		}
 		csvwriter.Flush()

@@ -9,8 +9,17 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/go-co-op/gocron"
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/natefinch/lumberjack.v2"
+	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
 
@@ -22,13 +31,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/gin-gonic/gin"
-	"github.com/go-co-op/gocron"
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/natefinch/lumberjack.v2"
-	"gopkg.in/tomb.v2"
 )
 
 var (
@@ -116,7 +118,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	logFile := ""
 	if config.LogMedia == "file" {
-		logFile = fmt.Sprintf("%s/crowdsec_api.log", config.LogDir)
+		logFile = filepath.Join(config.LogDir, "crowdsec_api.log")
 	}
 
 	if log.GetLevel() < log.DebugLevel {
@@ -162,15 +164,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		if config.CompressLogs != nil {
 			_compress = *config.CompressLogs
 		}
-		/*cf. https://github.com/natefinch/lumberjack/issues/82
-		let's create the file beforehand w/ the right perms */
-		// check if file exists
-		_, err := os.Stat(logFile)
-		// create file if not exists, purposefully ignore errors
-		if os.IsNotExist(err) {
-			file, _ := os.OpenFile(logFile, os.O_RDWR|os.O_CREATE, 0600)
-			file.Close()
-		}
+
 		LogOutput := &lumberjack.Logger{
 			Filename:   logFile,
 			MaxSize:    _maxsize, //megabytes

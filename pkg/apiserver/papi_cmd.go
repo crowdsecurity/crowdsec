@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 )
 
 type deleteDecisions struct {
@@ -75,7 +77,7 @@ func AlertCmd(message *Message, p *Papi, sync bool) error {
 		alert := &models.Alert{}
 
 		if err := json.Unmarshal(data, alert); err != nil {
-			return errors.Wrapf(err, "message for '%s' contains bad alert format", message.Header.OperationType)
+			return fmt.Errorf("message for '%s' contains bad alert format: %w", message.Header.OperationType, err)
 		}
 
 		log.Infof("Received order %s from PAPI (%d decisions)", alert.UUID, len(alert.Decisions))
@@ -83,20 +85,20 @@ func AlertCmd(message *Message, p *Papi, sync bool) error {
 		/*Fix the alert with missing mandatory items*/
 		if alert.StartAt == nil || *alert.StartAt == "" {
 			log.Warnf("Alert %d has no StartAt, setting it to now", alert.ID)
-			alert.StartAt = types.StrPtr(time.Now().UTC().Format(time.RFC3339))
+			alert.StartAt = ptr.Of(time.Now().UTC().Format(time.RFC3339))
 		}
 		if alert.StopAt == nil || *alert.StopAt == "" {
 			log.Warnf("Alert %d has no StopAt, setting it to now", alert.ID)
-			alert.StopAt = types.StrPtr(time.Now().UTC().Format(time.RFC3339))
+			alert.StopAt = ptr.Of(time.Now().UTC().Format(time.RFC3339))
 		}
-		alert.EventsCount = types.Int32Ptr(0)
-		alert.Capacity = types.Int32Ptr(0)
-		alert.Leakspeed = types.StrPtr("")
-		alert.Simulated = types.BoolPtr(false)
-		alert.ScenarioHash = types.StrPtr("")
-		alert.ScenarioVersion = types.StrPtr("")
-		alert.Message = types.StrPtr("")
-		alert.Scenario = types.StrPtr("")
+		alert.EventsCount = ptr.Of(int32(0))
+		alert.Capacity = ptr.Of(int32(0))
+		alert.Leakspeed = ptr.Of("")
+		alert.Simulated = ptr.Of(false)
+		alert.ScenarioHash = ptr.Of("")
+		alert.ScenarioVersion = ptr.Of("")
+		alert.Message = ptr.Of("")
+		alert.Scenario = ptr.Of("")
 		alert.Source = &models.Source{}
 
 		//if we're setting Source.Scope to types.ConsoleOrigin, it messes up the alert's value
@@ -105,7 +107,7 @@ func AlertCmd(message *Message, p *Papi, sync bool) error {
 			alert.Source.Value = alert.Decisions[0].Value
 		} else {
 			log.Warningf("No decision found in alert for Polling API (%s : %s)", message.Header.Source.User, message.Header.Message)
-			alert.Source.Scope = types.StrPtr(types.ConsoleOrigin)
+			alert.Source.Scope = ptr.Of(types.ConsoleOrigin)
 			alert.Source.Value = &message.Header.Source.User
 		}
 		alert.Scenario = &message.Header.Message

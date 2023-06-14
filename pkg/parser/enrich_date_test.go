@@ -3,8 +3,11 @@ package parser
 import (
 	"testing"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
+
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func TestDateParse(t *testing.T) {
@@ -20,7 +23,7 @@ func TestDateParse(t *testing.T) {
 				StrTime: "2019-10-12T07:20:50.52Z",
 			},
 			expected_err:     nil,
-			expected_strTime: types.StrPtr("2019-10-12T07:20:50.52Z"),
+			expected_strTime: ptr.Of("2019-10-12T07:20:50.52Z"),
 		},
 		{
 			name: "02/Jan/2006:15:04:05 -0700",
@@ -28,7 +31,7 @@ func TestDateParse(t *testing.T) {
 				StrTime: "02/Jan/2006:15:04:05 -0700",
 			},
 			expected_err:     nil,
-			expected_strTime: types.StrPtr("2006-01-02T15:04:05-07:00"),
+			expected_strTime: ptr.Of("2006-01-02T15:04:05-07:00"),
 		},
 		{
 			name: "Dec 17 08:17:43",
@@ -37,7 +40,7 @@ func TestDateParse(t *testing.T) {
 				StrTimeFormat: "2006 X 2 zz 15X04X05 oneone Jan",
 			},
 			expected_err:     nil,
-			expected_strTime: types.StrPtr("2011-12-17T08:17:43Z"),
+			expected_strTime: ptr.Of("2011-12-17T08:17:43Z"),
 		},
 	}
 

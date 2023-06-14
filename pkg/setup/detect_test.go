@@ -10,6 +10,7 @@ import (
 	"github.com/lithammer/dedent"
 	"github.com/stretchr/testify/require"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/csstring"
 	"github.com/crowdsecurity/go-cs-lib/pkg/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/setup"
@@ -1007,7 +1008,7 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				"DetectYaml": detectYaml,
 			}
 
-			expectedErr, err := cstest.Interpolate(tc.expectedErr, data)
+			expectedErr, err := csstring.Interpolate(tc.expectedErr, data)
 			require.NoError(err)
 
 			detected, err := setup.Detect(detectYaml, setup.DetectOptions{})

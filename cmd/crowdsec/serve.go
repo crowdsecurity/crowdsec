@@ -6,11 +6,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/coreos/go-systemd/v22/daemon"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/csdaemon"
 	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -350,10 +350,7 @@ func Serve(cConfig *csconfig.Config, apiReady chan bool, agentReady chan bool) e
 	}
 
 	if cConfig.Common != nil && cConfig.Common.Daemonize {
-		sent, err := daemon.SdNotify(false, daemon.SdNotifyReady)
-		if !sent || err != nil {
-			log.Errorf("Failed to notify(sent: %v): %v", sent, err)
-		}
+		csdaemon.NotifySystemd(log.StandardLogger())
 		// wait for signals
 		return HandleSignals(cConfig)
 	}

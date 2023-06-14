@@ -3,9 +3,10 @@ package parser
 import (
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	expr "github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	log "github.com/sirupsen/logrus"
 )
 
 func parseDateWithFormat(date, format string) (string, time.Time) {
