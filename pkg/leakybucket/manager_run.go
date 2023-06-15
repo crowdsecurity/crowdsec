@@ -350,7 +350,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			return false, errors.Wrap(err, "failed to load or store bucket")
 		}
 
-		if parsed.ExpectMode == types.TIMEMACHINE {
+		if parsed.ExpectMode == types.TIMEMACHINE && bucket.fresh {
 			var d time.Time
 			err = d.UnmarshalText([]byte(parsed.MarshaledTime))
 			if err != nil {
