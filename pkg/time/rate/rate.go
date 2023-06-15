@@ -11,8 +11,6 @@ import (
 	"math"
 	"sync"
 	"time"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 // Limit defines the maximum frequency of some events.
@@ -134,7 +132,6 @@ func (lim *Limiter) Allow() bool {
 // Use this method if you intend to drop / skip events that exceed the rate limit.
 // Otherwise use Reserve or Wait.
 func (lim *Limiter) AllowN(now time.Time, n int) bool {
-	fmt.Printf("reserve: %+v\n", spew.Sdump(lim.reserveN(now, n, 0)))
 	return lim.reserveN(now, n, 0).ok
 }
 
