@@ -207,6 +207,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 				if err != nil {
 					holder.logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
 				}
+				fmt.Printf("d: %s %s %s\n", d.String(), bucket.GetTimestamp().String(), bucket.Duration.String())
 				if d.After(bucket.GetTimestamp().Add(bucket.Duration)) {
 					fmt.Printf("Expiring bucket\n")
 					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, bucket.GetTimestamp().Add(bucket.Duration))
