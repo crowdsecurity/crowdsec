@@ -1,7 +1,6 @@
 package leakybucket
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -27,7 +26,6 @@ func (t *Trigger) OnBucketPour(b *BucketFactory) func(types.Event, *Leaky) *type
 			l.SetLastEvent(d)
 			l.SetFirstEvent(d)
 			l.Ovflw_ts = d
-			fmt.Printf("OVERDFLOW")
 		} else {
 			l.SetLastEvent(time.Now())
 			l.SetFirstEvent(time.Now())

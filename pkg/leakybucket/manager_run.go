@@ -271,7 +271,7 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 		fresh_bucket.Mapkey = partitionKey
 		fresh_bucket.Signal = make(chan bool, 1)
 		actual, stored := buckets.Bucket_map.LoadOrStore(partitionKey, fresh_bucket)
-		if !stored {
+		if !stored && (holder.Type != "trigger" || holder.Capacity != 0) {
 			holder.tomb.Go(func() error {
 				return LeakRoutine(fresh_bucket)
 			})
