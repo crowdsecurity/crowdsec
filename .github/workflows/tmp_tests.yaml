@@ -25,10 +25,10 @@ jobs:
         make && cp cmd/crowdsec/crowdsec /usr/local/bin && cp cmd/crowdsec-cli/cscli /usr/local/bin
         sudo mkdir -p /etc/crowdsec && sudo cp -a config/* /etc/crowdsec
         cd hub
-        cscli hubtest run modsecurity-nginx
-        cscli hubtest run modsecurity-nginx
-        cscli hubtest run modsecurity-nginx
-        cscli hubtest run modsecurity-nginx
-        cscli hubtest run modsecurity-nginx
-        cscli hubtest run modsecurity-nginx
-        cscli hubtest run modsecurity-nginx
+        cscli hubtest run modsecurity-nginx --debug
+        cscli hubtest run modsecurity-nginx --debug
+        cscli hubtest run modsecurity-nginx --debug
+        cscli hubtest run modsecurity-nginx --debug
+        cscli hubtest run modsecurity-nginx --debug
+        cscli hubtest run modsecurity-nginx --debug
+        cscli hubtest run modsecurity-nginx --debug
