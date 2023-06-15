@@ -9,7 +9,7 @@ type exprCustomFunc struct {
 }
 
 var exprFuncs = []exprCustomFunc{
-	{
+	/*{
 		name:     "SetRulesToInband",
 		function: SetRulesToInband,
 		signature: []interface{}{
@@ -22,5 +22,5 @@ var exprFuncs = []exprCustomFunc{
 		signature: []interface{}{
 			new(func() error),
 		},
-	},
+	},*/
 }

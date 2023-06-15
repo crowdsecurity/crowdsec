@@ -117,24 +117,32 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		Handler: w.mux,
 	}
 
-	crowdsecWafConfig := waf.NewWafConfig()
+	ruleLoader := waf.NewWafRuleLoader()
 
-	err = crowdsecWafConfig.LoadWafRules()
+	rulesCollections, err := ruleLoader.LoadWafRules()
 
 	if err != nil {
 		return fmt.Errorf("cannot load WAF rules: %w", err)
 	}
 
 	var inBandRules string
-	for _, rule := range crowdsecWafConfig.InbandRules {
+	var outOfBandRules string
 
-		inBandRules += rule.String() + "\n"
+	//spew.Dump(rulesCollections)
+
+	for _, collection := range rulesCollections {
+		if !collection.OutOfBand {
+			inBandRules += collection.String() + "\n"
+		} else {
+			outOfBandRules += collection.String() + "\n"
+		}
 	}
+
 	w.logger.Infof("Loading %d in-band rules", len(strings.Split(inBandRules, "\n")))
 
 	//w.logger.Infof("Loading rules %+v", inBandRules)
 
-	fs := os.DirFS(crowdsecWafConfig.Datadir)
+	fs := os.DirFS(ruleLoader.Datadir)
 
 	//in-band waf : kill on sight
 	inbandwaf, err := coraza.NewWAF(
@@ -143,23 +151,10 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 			WithDirectives(inBandRules).WithRootFS(fs),
 	)
 
-	//for _, rule := range inbandwaf.GetWAF().Rules.GetRules() {
-	//	w.logger.Infof("Action for Rule %d: %+v ", rule.ID(), rule.GetActions())
-	//}
-
-	//betterwaf := experimental.ToBetterWAFEngine(inbandwaf)
-
-	//spew.Dump(betterwaf.Waf.Rules)
-
 	if err != nil {
 		return errors.Wrap(err, "Cannot create WAF")
 	}
 	w.inBandWaf = inbandwaf
-
-	var outOfBandRules string
-	for _, rule := range crowdsecWafConfig.OutOfBandRules {
-		outOfBandRules += rule.String() + "\n"
-	}
 
 	w.logger.Infof("Loading %d out-of-band rules", len(strings.Split(outOfBandRules, "\n")))
 	//out-of-band waf : log only
@@ -173,9 +168,6 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		return errors.Wrap(err, "Cannot create WAF")
 	}
 	w.outOfBandWaf = outofbandwaf
-	//log.Printf("IB -> %s", spew.Sdump(w.inBandWaf))
-
-	//We don´t use the wrapper provided by coraza because we want to fully control what happens when a rule match to send the information in crowdsec
 	w.mux.HandleFunc(w.config.Path, w.wafHandler)
 
 	return nil

@@ -1,6 +1,7 @@
 package waf
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
@@ -27,26 +29,25 @@ type CompiledHook struct {
 	Apply  []*vm.Program `yaml:"-"`
 }
 
-type WafRule struct {
+/*type WafConfig struct {
+	InbandRules    []WafRule
+	OutOfBandRules []WafRule
+	Datadir        string
+	logger         *log.Entry
+}*/
+
+// This represents one "waf-rule" config
+type WafConfig struct {
 	SecLangFilesRules []string `yaml:"seclang_files_rules"`
 	SecLangRules      []string `yaml:"seclang_rules"`
 	OnLoad            []Hook   `yaml:"on_load"`
 	PreEval           []Hook   `yaml:"pre_eval"`
 	OnMatch           []Hook   `yaml:"on_match"`
-
-	CompiledOnLoad  []CompiledHook `yaml:"-"`
-	CompiledPreEval []CompiledHook `yaml:"-"`
-	CompiledOnMatch []CompiledHook `yaml:"-"`
-
-	MergedRules []string `yaml:"-"`
-	OutOfBand   bool     `yaml:"-"`
 }
 
-type WafConfig struct {
-	InbandRules    []WafRule
-	OutOfBandRules []WafRule
-	Datadir        string
-	logger         *log.Entry
+type WafRuleLoader struct {
+	logger  *log.Entry
+	Datadir string
 }
 
 func buildHook(hook Hook) (CompiledHook, error) {
@@ -54,48 +55,56 @@ func buildHook(hook Hook) (CompiledHook, error) {
 	if hook.Filter != "" {
 		program, err := expr.Compile(hook.Filter) //FIXME: opts
 		if err != nil {
-			log.Errorf("unable to compile filter %s : %s", hook.Filter, err)
-			return CompiledHook{}, err
+			return CompiledHook{}, fmt.Errorf("unable to compile filter %s : %w", hook.Filter, err)
 		}
 		compiledHook.Filter = program
 	}
 	for _, apply := range hook.Apply {
 		program, err := expr.Compile(apply, GetExprWAFOptions(map[string]interface{}{
-			"InBandRules":    []WafRule{},
-			"OutOfBandRules": []WafRule{},
+			"rules": &WafRulesCollection{},
 		})...)
 		if err != nil {
-			log.Errorf("unable to compile apply %s : %s", apply, err)
-			return CompiledHook{}, err
+			return CompiledHook{}, fmt.Errorf("unable to compile apply %s : %w", apply, err)
 		}
 		compiledHook.Apply = append(compiledHook.Apply, program)
 	}
 	return compiledHook, nil
 }
 
-func (w *WafConfig) LoadWafRules() error {
-	var files []string
+func (w *WafRuleLoader) LoadWafRules() ([]*WafRulesCollection, error) {
+	var wafRulesFiles []string
 	for _, hubWafRuleItem := range cwhub.GetItemMap(cwhub.WAF_RULES) {
 		if hubWafRuleItem.Installed {
-			files = append(files, hubWafRuleItem.LocalPath)
+			wafRulesFiles = append(wafRulesFiles, hubWafRuleItem.LocalPath)
 		}
 	}
-	w.logger.Infof("Loading %d waf files", len(files))
-	for _, file := range files {
 
-		fileContent, err := os.ReadFile(file) //FIXME: actually read from datadir
+	if len(wafRulesFiles) == 0 {
+		return nil, fmt.Errorf("no waf rules found in hub")
+	}
+
+	w.logger.Infof("Loading %d waf files", len(wafRulesFiles))
+	wafRulesCollections := []*WafRulesCollection{}
+	for _, wafRulesFile := range wafRulesFiles {
+
+		fileContent, err := os.ReadFile(wafRulesFile)
 		if err != nil {
-			w.logger.Errorf("unable to read file %s : %s", file, err)
+			w.logger.Errorf("unable to read file %s : %s", wafRulesFile, err)
 			continue
 		}
-		wafRule := WafRule{}
-		err = yaml.Unmarshal(fileContent, &wafRule)
+		wafConfig := WafConfig{}
+		err = yaml.Unmarshal(fileContent, &wafConfig)
 		if err != nil {
-			w.logger.Errorf("unable to unmarshal file %s : %s", file, err)
+			w.logger.Errorf("unable to unmarshal file %s : %s", wafRulesFile, err)
 			continue
 		}
-		if wafRule.SecLangFilesRules != nil {
-			for _, rulesFile := range wafRule.SecLangFilesRules {
+
+		spew.Dump(wafConfig)
+
+		collection := &WafRulesCollection{}
+
+		if wafConfig.SecLangFilesRules != nil {
+			for _, rulesFile := range wafConfig.SecLangFilesRules {
 				fullPath := filepath.Join(w.Datadir, rulesFile)
 				c, err := os.ReadFile(fullPath)
 				if err != nil {
@@ -109,77 +118,72 @@ func (w *WafConfig) LoadWafRules() error {
 					if strings.TrimSpace(line) == "" {
 						continue
 					}
-					wafRule.MergedRules = append(wafRule.MergedRules, line)
+					collection.Rules = append(collection.Rules, WafRule{RawRule: line})
 				}
 			}
 		}
-		if wafRule.SecLangRules != nil {
-			wafRule.MergedRules = append(wafRule.MergedRules, wafRule.SecLangRules...)
+
+		if wafConfig.SecLangRules != nil {
+			for _, rule := range wafConfig.SecLangRules {
+				collection.Rules = append(collection.Rules, WafRule{RawRule: rule})
+			}
 		}
+
+		//TODO: add our own format
 
 		//compile hooks
-		for _, hook := range wafRule.OnLoad {
+		for _, hook := range wafConfig.OnLoad {
 			compiledHook, err := buildHook(hook)
 			if err != nil {
-				w.logger.Errorf("unable to build hook %s : %s", hook.Filter, err)
+				w.logger.Errorf("unable to build on_load hook %s : %s", hook.Filter, err)
 				continue
 			}
-			wafRule.CompiledOnLoad = append(wafRule.CompiledOnLoad, compiledHook)
+			collection.CompiledOnLoad = append(collection.CompiledOnLoad, compiledHook)
 		}
 
-		for _, hook := range wafRule.PreEval {
+		for _, hook := range wafConfig.PreEval {
 			compiledHook, err := buildHook(hook)
 			if err != nil {
-				w.logger.Errorf("unable to build hook %s : %s", hook.Filter, err)
+				w.logger.Errorf("unable to build pre_eval hook %s : %s", hook.Filter, err)
 				continue
 			}
-			wafRule.CompiledPreEval = append(wafRule.CompiledPreEval, compiledHook)
+			collection.CompiledPreEval = append(collection.CompiledPreEval, compiledHook)
 		}
 
-		for _, hook := range wafRule.OnMatch {
+		for _, hook := range wafConfig.OnMatch {
 			compiledHook, err := buildHook(hook)
 			if err != nil {
-				w.logger.Errorf("unable to build hook %s : %s", hook.Filter, err)
+				w.logger.Errorf("unable to build on_match hook %s : %s", hook.Filter, err)
 				continue
 			}
-			wafRule.CompiledOnMatch = append(wafRule.CompiledOnMatch, compiledHook)
+			collection.CompiledOnMatch = append(collection.CompiledOnMatch, compiledHook)
 		}
 
 		//Run the on_load hooks
-
-		if len(wafRule.CompiledOnLoad) > 0 {
-			w.logger.Infof("Running %d on_load hooks", len(wafRule.CompiledOnLoad))
-			for hookIdx, onLoadHook := range wafRule.CompiledOnLoad {
+		if len(collection.CompiledOnLoad) > 0 {
+			w.logger.Infof("Running %d on_load hooks", len(collection.CompiledOnLoad))
+			for hookIdx, onLoadHook := range collection.CompiledOnLoad {
 				//Ignore filter for on load ?
 				if onLoadHook.Apply != nil {
 					for exprIdx, applyExpr := range onLoadHook.Apply {
 						_, err := expr.Run(applyExpr, map[string]interface{}{
-							"InBandRules":    []WafRule{},
-							"OutOfBandRules": []WafRule{},
+							"rules": collection,
 						})
 						if err != nil {
-							w.logger.Errorf("unable to run apply for on_load rule %s : %s", wafRule.OnLoad[hookIdx].Apply[exprIdx], err)
+							w.logger.Errorf("unable to run apply for on_load rule %s : %s", wafConfig.OnLoad[hookIdx].Apply[exprIdx], err)
 							continue
 						}
 					}
 				}
 			}
 		}
-
-		if wafRule.MergedRules != nil {
-			if wafRule.OutOfBand {
-				w.OutOfBandRules = append(w.OutOfBandRules, wafRule)
-			} else {
-				w.InbandRules = append(w.InbandRules, wafRule)
-			}
-		} else {
-			w.logger.Warnf("no rules found in file %s ??", file)
-		}
+		wafRulesCollections = append(wafRulesCollections, collection)
 	}
-	return nil
+
+	return wafRulesCollections, nil
 }
 
-func NewWafConfig() *WafConfig {
+func NewWafRuleLoader() *WafRuleLoader {
 	//FIXME: find a better way to get the datadir
 	clog := log.New()
 	if err := types.ConfigureLogger(clog); err != nil {
@@ -192,9 +196,5 @@ func NewWafConfig() *WafConfig {
 
 	initWafHelpers()
 
-	return &WafConfig{Datadir: csconfig.DataDir, logger: logger}
-}
-
-func (w *WafRule) String() string {
-	return strings.Join(w.MergedRules, "\n")
+	return &WafRuleLoader{Datadir: csconfig.DataDir, logger: logger}
 }
