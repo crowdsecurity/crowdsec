@@ -215,7 +215,6 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 					sigclosed += 1
 					bucket, err = LoadOrStoreBucketFromHolder(buckey, buckets, holder, parsed.ExpectMode)
 					bucket.SetTimestamp(d)
-					fmt.Printf("d: %s %s %s\n", d.String(), bucket.GetTimestamp().String(), bucket.Duration.String())
 
 					if err != nil {
 						return false, err
@@ -360,6 +359,8 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 				holders[idx].logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
 			}
 			bucket.SetTimestamp(d)
+			fmt.Printf("d: %s %s %s\n", d.String(), bucket.GetTimestamp().String(), bucket.Duration.String())
+
 		}
 		//finally, pour the even into the bucket
 		ok, err := PourItemToBucket(bucket, holders[idx], buckets, &parsed)
