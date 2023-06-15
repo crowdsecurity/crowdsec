@@ -208,6 +208,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 					holder.logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
 				}
 				if d.After(bucket.GetTimestamp().Add(bucket.Duration)) {
+					fmt.Printf("Expiring bucket\n")
 					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, bucket.GetTimestamp().Add(bucket.Duration))
 					buckets.Bucket_map.Delete(buckey)
 					//not sure about this, should we create a new one ?
