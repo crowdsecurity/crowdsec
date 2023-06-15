@@ -358,7 +358,9 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			if err != nil {
 				holders[idx].logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
 			}
-			bucket.SetTimestamp(d)
+			if bucket.fresh {
+				bucket.SetTimestamp(d)
+			}
 			fmt.Printf("d: %s %s %s\n", d.String(), bucket.GetTimestamp().String(), bucket.Duration.String())
 
 		}
