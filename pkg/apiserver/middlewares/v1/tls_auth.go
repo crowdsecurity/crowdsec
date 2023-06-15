@@ -114,15 +114,16 @@ func (ta *TLSAuth) isCRLRevoked(cert *x509.Certificate) (bool, error) {
 		ta.logger.Warnf("could not read CRL file, skipping check: %s", err)
 		return false, nil
 	}
-	crl, err := x509.ParseCRL(crlContent)
+	crl, err := x509.ParseRevocationList(crlContent)
 	if err != nil {
 		ta.logger.Warnf("could not parse CRL file, skipping check: %s", err)
 		return false, nil
 	}
-	if crl.HasExpired(time.Now().UTC()) {
-		ta.logger.Warn("CRL has expired, will still validate the cert against it.")
+	// TODO: verify CRL signature
+	if time.Now().UTC().After(crl.NextUpdate) {
+		ta.logger.Warnf("CRL is expired, will still validate the cert against it.")
 	}
-	for _, revoked := range crl.TBSCertList.RevokedCertificates {
+	for _, revoked := range crl.RevokedCertificates {
 		if revoked.SerialNumber.Cmp(cert.SerialNumber) == 0 {
 			return true, fmt.Errorf("client certificate is revoked by CRL")
 		}

@@ -226,7 +226,3 @@ issues:
     - linters:
         - gocritic
       text: "commentFormatting: put a space between `//` and comment text"
-
-    - linters:
-        - staticcheck
-      text: "x509.ParseCRL has been deprecated since Go 1.19: Use ParseRevocationList instead"
