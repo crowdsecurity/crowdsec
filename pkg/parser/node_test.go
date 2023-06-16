@@ -63,6 +63,5 @@ func TestParserConfigs(t *testing.T) {
 		if CfgTests[idx].Valid == false && err == nil {
 			t.Fatalf("Valid: (%d/%d) expected error", idx+1, len(CfgTests))
 		}
-
 	}
 }
