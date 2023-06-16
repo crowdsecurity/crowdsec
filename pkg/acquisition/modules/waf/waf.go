@@ -152,17 +152,11 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 
 	ruleLoader := waf.NewWafRuleLoader()
 
-<<<<<<< HEAD
 	rulesCollections, err := ruleLoader.LoadWafRules()
-
-=======
-	err = crowdsecWafConfig.LoadWafRules()
->>>>>>> 0c10c8f0 (update waf)
 	if err != nil {
 		return fmt.Errorf("cannot load WAF rules: %w", err)
 	}
 
-<<<<<<< HEAD
 	var inBandRules string
 	var outOfBandRules string
 
@@ -181,22 +175,14 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	//w.logger.Infof("Loading rules %+v", inBandRules)
 
 	fs := os.DirFS(ruleLoader.Datadir)
-=======
 	// always have at least one waf routine
 	if w.config.WafRoutines == 0 {
 		w.config.WafRoutines = 1
 	}
 
-	fs := os.DirFS(crowdsecWafConfig.Datadir)
 	w.InChan = make(chan ParsedRequest)
 	w.WafRunners = make([]WafRunner, w.config.WafRoutines)
 	for nbRoutine := 0; nbRoutine < w.config.WafRoutines; nbRoutine++ {
-		var inBandRules string
-		for _, rule := range crowdsecWafConfig.InbandRules {
->>>>>>> 0c10c8f0 (update waf)
-
-			inBandRules += rule.String() + "\n"
-		}
 		w.logger.Infof("Loading %d in-band rules", len(strings.Split(inBandRules, "\n")))
 
 		//in-band waf : kill on sight
@@ -209,13 +195,6 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		if err != nil {
 			return errors.Wrap(err, "Cannot create WAF")
 		}
-		w.inBandWaf = inbandwaf
-
-		var outOfBandRules string
-		for _, rule := range crowdsecWafConfig.OutOfBandRules {
-			outOfBandRules += rule.String() + "\n"
-		}
-
 		w.logger.Infof("Loading %d out-of-band rules", len(strings.Split(outOfBandRules, "\n")))
 		//out-of-band waf : log only
 		outofbandwaf, err := coraza.NewWAF(
@@ -236,26 +215,13 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		}
 		w.WafRunners[nbRoutine] = runner
 	}
-<<<<<<< HEAD
-	w.inBandWaf = inbandwaf
 
 	w.logger.Infof("Loading %d out-of-band rules", len(strings.Split(outOfBandRules, "\n")))
-	//out-of-band waf : log only
-	outofbandwaf, err := coraza.NewWAF(
-		coraza.NewWAFConfig().
-			WithErrorCallback(logError).
-			WithDirectives(outOfBandRules).WithRootFS(fs),
-	)
-
 	if err != nil {
 		return errors.Wrap(err, "Cannot create WAF")
 	}
-	w.outOfBandWaf = outofbandwaf
-=======
-	//log.Printf("IB -> %s", spew.Sdump(w.inBandWaf))
 
 	//We don´t use the wrapper provided by coraza because we want to fully control what happens when a rule match to send the information in crowdsec
->>>>>>> 0c10c8f0 (update waf)
 	w.mux.HandleFunc(w.config.Path, w.wafHandler)
 
 	return nil
@@ -373,8 +339,6 @@ func processReqWithEngine(waf coraza.WAF, r ParsedRequest, uuid string, wafType 
 		tx.ProcessLogging()
 		tx.Close()
 	}()
-
-	log.Infof("Processing request with %s WAF", wafType)
 
 	//this method is not exported by coraza, so we have to do it ourselves.
 	//ideally, this would be dealt with by expr code, and we provide helpers to manipulate the transaction object?\
