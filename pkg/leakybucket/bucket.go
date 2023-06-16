@@ -283,7 +283,6 @@ func LeakRoutine(leaky *Leaky) error {
 			firstEvent = false
 		/*we overflowed*/
 		case ofw := <-leaky.Out:
-			fmt.Printf("ovflw: %+v", spew.Sdump(ofw))
 			leaky.overflow(ofw)
 			return nil
 		/*suiciiiide*/

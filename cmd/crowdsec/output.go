@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+	"github.com/davecgh/go-spew/spew"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -152,6 +153,7 @@ LOOP:
 				}
 				bucketOverflows = append(bucketOverflows, event)
 			}
+			fmt.Printf("ovflw: %+v", spew.Sdump(event))
 			/*if alert is empty and mapKey is present, the overflow is just to cleanup bucket*/
 			if event.Overflow.Alert == nil && event.Overflow.Mapkey != "" {
 				buckets.Bucket_map.Delete(event.Overflow.Mapkey)
