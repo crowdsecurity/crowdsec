@@ -153,7 +153,7 @@ LOOP:
 				}
 				bucketOverflows = append(bucketOverflows, event)
 			}
-			fmt.Printf("ovflw: %+v", spew.Sdump(event))
+			fmt.Printf("ovflw: %+v", spew.Sdump(event.Overflow))
 			/*if alert is empty and mapKey is present, the overflow is just to cleanup bucket*/
 			if event.Overflow.Alert == nil && event.Overflow.Mapkey != "" {
 				buckets.Bucket_map.Delete(event.Overflow.Mapkey)

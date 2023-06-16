@@ -1,8 +1,6 @@
 package leakybucket
 
 import (
-	"fmt"
-
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 )
@@ -34,9 +32,7 @@ func NewQueue(l int) *Queue {
 func (q *Queue) Add(m types.Event) {
 	for len(q.Queue) > q.L { //we allow to add one element more than the true capacity
 		q.Queue = q.Queue[1:]
-		fmt.Printf("QUEUE BEHEADED\n")
 	}
-	fmt.Printf("added: %s\n", m.Line.Raw)
 	q.Queue = append(q.Queue, m)
 }
 
