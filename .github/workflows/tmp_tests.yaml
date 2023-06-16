@@ -26,6 +26,7 @@ jobs:
         sudo mkdir -p /etc/crowdsec && sudo cp -a config/* /etc/crowdsec
         cd hub
         cscli hubtest run modsecurity-nginx --debug
+        cat .tests/modsecurity-nginx/results/bucket-dump.yaml
         cscli hubtest run modsecurity-nginx --debug
         cscli hubtest run modsecurity-nginx --debug
         cscli hubtest run modsecurity-nginx --debug
