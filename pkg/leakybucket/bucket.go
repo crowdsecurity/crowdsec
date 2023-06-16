@@ -370,6 +370,7 @@ func Pour(leaky *Leaky, msg types.Event) {
 func (leaky *Leaky) overflow(ofw *Queue) {
 	close(leaky.Signal)
 	alert, err := NewAlert(leaky, ofw)
+	fmt.Printf("Ovflw laert %+v", spew.Sdump(alert.Alert))
 	if err != nil {
 		log.Errorf("%s", err)
 	}
