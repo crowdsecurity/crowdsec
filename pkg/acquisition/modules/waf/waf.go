@@ -2,14 +2,12 @@ package wafacquisition
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/corazawaf/coraza/v3"
 	corazatypes "github.com/corazawaf/coraza/v3/types"
@@ -31,24 +29,59 @@ const (
 	OutOfBand = "outofband"
 )
 
+type WafRunner struct {
+	outChan      chan types.Event
+	inChan       chan ParsedRequest
+	inBandWaf    coraza.WAF
+	outOfBandWaf coraza.WAF
+	UUID         string
+}
+
 type WafSource struct {
-	config        WafSourceConfig
-	logger        *log.Entry
-	mux           *http.ServeMux
-	server        *http.Server
-	addr          string
-	outChan       chan types.Event
-	OutOfBandChan chan ParsedRequest
-	InBandChan    chan ParsedRequest
+	config  WafSourceConfig
+	logger  *log.Entry
+	mux     *http.ServeMux
+	server  *http.Server
+	addr    string
+	outChan chan types.Event
+	InChan  chan ParsedRequest
 
 	inBandWaf    coraza.WAF
 	outOfBandWaf coraza.WAF
+
+	WafRunners []WafRunner
+}
+
+type ParsedRequest struct {
+	RemoteAddr       string
+	Host             string
+	ClientIP         string
+	URI              string
+	ClientHost       string
+	Headers          http.Header
+	URL              *url.URL
+	Method           string
+	Proto            string
+	Body             []byte
+	TransferEncoding []string
+	UUID             string
+	Tx               corazatypes.Transaction
+	ResponseChannel  chan ResponseRequest
+}
+
+type ResponseRequest struct {
+	ResponseChannel chan ResponseRequest
+	UUID            string
+	Tx              corazatypes.Transaction
+	Interruption    *corazatypes.Interruption
+	Err             error
 }
 
 type WafSourceConfig struct {
 	ListenAddr                        string `yaml:"listen_addr"`
 	ListenPort                        int    `yaml:"listen_port"`
 	Path                              string `yaml:"path"`
+	WafRoutines                       int    `yaml:"waf_routines"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -119,12 +152,17 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 
 	ruleLoader := waf.NewWafRuleLoader()
 
+<<<<<<< HEAD
 	rulesCollections, err := ruleLoader.LoadWafRules()
 
+=======
+	err = crowdsecWafConfig.LoadWafRules()
+>>>>>>> 0c10c8f0 (update waf)
 	if err != nil {
 		return fmt.Errorf("cannot load WAF rules: %w", err)
 	}
 
+<<<<<<< HEAD
 	var inBandRules string
 	var outOfBandRules string
 
@@ -143,17 +181,62 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	//w.logger.Infof("Loading rules %+v", inBandRules)
 
 	fs := os.DirFS(ruleLoader.Datadir)
-
-	//in-band waf : kill on sight
-	inbandwaf, err := coraza.NewWAF(
-		coraza.NewWAFConfig().
-			WithErrorCallback(logError).
-			WithDirectives(inBandRules).WithRootFS(fs),
-	)
-
-	if err != nil {
-		return errors.Wrap(err, "Cannot create WAF")
+=======
+	// always have at least one waf routine
+	if w.config.WafRoutines == 0 {
+		w.config.WafRoutines = 1
 	}
+
+	fs := os.DirFS(crowdsecWafConfig.Datadir)
+	w.InChan = make(chan ParsedRequest)
+	w.WafRunners = make([]WafRunner, w.config.WafRoutines)
+	for nbRoutine := 0; nbRoutine < w.config.WafRoutines; nbRoutine++ {
+		var inBandRules string
+		for _, rule := range crowdsecWafConfig.InbandRules {
+>>>>>>> 0c10c8f0 (update waf)
+
+			inBandRules += rule.String() + "\n"
+		}
+		w.logger.Infof("Loading %d in-band rules", len(strings.Split(inBandRules, "\n")))
+
+		//in-band waf : kill on sight
+		inbandwaf, err := coraza.NewWAF(
+			coraza.NewWAFConfig().
+				//WithErrorCallback(logError).
+				WithDirectives(inBandRules).WithRootFS(fs),
+		)
+
+		if err != nil {
+			return errors.Wrap(err, "Cannot create WAF")
+		}
+		w.inBandWaf = inbandwaf
+
+		var outOfBandRules string
+		for _, rule := range crowdsecWafConfig.OutOfBandRules {
+			outOfBandRules += rule.String() + "\n"
+		}
+
+		w.logger.Infof("Loading %d out-of-band rules", len(strings.Split(outOfBandRules, "\n")))
+		//out-of-band waf : log only
+		outofbandwaf, err := coraza.NewWAF(
+			coraza.NewWAFConfig().
+				//WithErrorCallback(logError).
+				WithDirectives(outOfBandRules).WithRootFS(fs),
+		)
+
+		if err != nil {
+			return errors.Wrap(err, "Cannot create WAF")
+		}
+
+		runner := WafRunner{
+			outOfBandWaf: outofbandwaf,
+			inBandWaf:    inbandwaf,
+			inChan:       w.InChan,
+			UUID:         uuid.New().String(),
+		}
+		w.WafRunners[nbRoutine] = runner
+	}
+<<<<<<< HEAD
 	w.inBandWaf = inbandwaf
 
 	w.logger.Infof("Loading %d out-of-band rules", len(strings.Split(outOfBandRules, "\n")))
@@ -168,6 +251,11 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		return errors.Wrap(err, "Cannot create WAF")
 	}
 	w.outOfBandWaf = outofbandwaf
+=======
+	//log.Printf("IB -> %s", spew.Sdump(w.inBandWaf))
+
+	//We don´t use the wrapper provided by coraza because we want to fully control what happens when a rule match to send the information in crowdsec
+>>>>>>> 0c10c8f0 (update waf)
 	w.mux.HandleFunc(w.config.Path, w.wafHandler)
 
 	return nil
@@ -191,26 +279,17 @@ func (w *WafSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error
 
 func (w *WafSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	w.outChan = out
-	w.OutOfBandChan = make(chan ParsedRequest)
-	w.InBandChan = make(chan ParsedRequest)
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/waf/live")
 
-		// start outOfBand GoRoutine
-		t.Go(func() error {
-			if err := w.ProcessOutBand(t); err != nil {
-				return errors.Wrap(err, "Processing Out of band routine failed: %s")
-			}
-			return nil
-		})
-
-		// start InBand GoRoutine
-		t.Go(func() error {
-			if err := w.ProcessInBand(t); err != nil {
-				return errors.Wrap(err, "Processing in-band routine failed: %s")
-			}
-			return nil
-		})
+		w.logger.Infof("%d waf runner to start", len(w.WafRunners))
+		for _, runner := range w.WafRunners {
+			w.logger.Infof("Running waf runner: %s", runner.UUID)
+			runner.outChan = out
+			t.Go(func() error {
+				return runner.Run(t)
+			})
+		}
 
 		w.logger.Infof("Starting WAF server on %s:%d%s", w.config.ListenAddr, w.config.ListenPort, w.config.Path)
 		t.Go(func() error {
@@ -240,22 +319,10 @@ func (w *WafSource) Dump() interface{} {
 	return w
 }
 
-type ParsedRequest struct {
-	RemoteAddr       string
-	Host             string
-	Headers          http.Header
-	URL              *url.URL
-	Method           string
-	Proto            string
-	Body             []byte
-	TransferEncoding []string
-	UUID             string
-	Tx               corazatypes.Transaction
-}
-
 func NewParsedRequestFromRequest(r *http.Request) (ParsedRequest, error) {
 	var body []byte
 	var err error
+
 	if r.Body != nil {
 		body = make([]byte, 0)
 		body, err = ioutil.ReadAll(r.Body)
@@ -263,8 +330,25 @@ func NewParsedRequestFromRequest(r *http.Request) (ParsedRequest, error) {
 			return ParsedRequest{}, fmt.Errorf("unable to read body: %s", err)
 		}
 	}
+
+	// the real source of the request is set in 'x-client-ip'
+	clientIP := r.Header.Get("X-Client-Ip")
+	// the real target Host of the request is set in 'x-client-host'
+	clientHost := r.Header.Get("X-Client-Host")
+	// the real URI of the request is set in 'x-client-uri'
+	clientURI := r.Header.Get("X-Client-Uri")
+
+	// delete those headers before coraza process the request
+	delete(r.Header, "x-client-ip")
+	delete(r.Header, "x-client-host")
+	delete(r.Header, "x-client-uri")
+
 	return ParsedRequest{
 		RemoteAddr:       r.RemoteAddr,
+		UUID:             uuid.New().String(),
+		ClientHost:       clientHost,
+		ClientIP:         clientIP,
+		URI:              clientURI,
 		Host:             r.Host,
 		Headers:          r.Header,
 		URL:              r.URL,
@@ -272,6 +356,7 @@ func NewParsedRequestFromRequest(r *http.Request) (ParsedRequest, error) {
 		Proto:            r.Proto,
 		Body:             body,
 		TransferEncoding: r.TransferEncoding,
+		ResponseChannel:  make(chan ResponseRequest),
 	}, nil
 }
 
@@ -299,9 +384,10 @@ func processReqWithEngine(waf coraza.WAF, r ParsedRequest, uuid string, wafType 
 	//txx = tx.(experimental.FullTransaction)
 	//txx.RemoveRuleByID(1)
 
-	tx.ProcessConnection(r.RemoteAddr, 0, "", 0)
+	tx.ProcessConnection(r.ClientIP, 0, "", 0)
 
-	tx.ProcessURI(r.URL.String(), r.Method, r.Proto) //FIXME: get it from the headers
+	//tx.ProcessURI(r.URL.String(), r.Method, r.Proto) //FIXME: get it from the headers
+	tx.ProcessURI(r.URI, r.Method, r.Proto) //FIXME: get it from the headers
 
 	for k, vr := range r.Headers {
 		for _, v := range vr {
@@ -309,10 +395,10 @@ func processReqWithEngine(waf coraza.WAF, r ParsedRequest, uuid string, wafType 
 		}
 	}
 
-	if r.Host != "" {
-		tx.AddRequestHeader("Host", r.Host)
+	if r.ClientHost != "" {
+		tx.AddRequestHeader("Host", r.ClientHost)
 		// This connector relies on the host header (now host field) to populate ServerName
-		tx.SetServerName(r.Host)
+		tx.SetServerName(r.ClientHost)
 	}
 
 	if r.TransferEncoding != nil {
@@ -333,7 +419,6 @@ func processReqWithEngine(waf coraza.WAF, r ParsedRequest, uuid string, wafType 
 	}
 
 	ct := r.Headers.Get("content-type")
-
 	if r.Body != nil && len(r.Body) != 0 {
 		it, _, err := tx.WriteRequestBody(r.Body)
 		if err != nil {
@@ -356,12 +441,10 @@ func processReqWithEngine(waf coraza.WAF, r ParsedRequest, uuid string, wafType 
 			}
 		}
 	}
-
 	in, err := tx.ProcessRequestBody()
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "Cannot process request body")
 	}
-
 	if in != nil && wafType == InBand {
 		return in, tx, nil
 	}
@@ -369,129 +452,57 @@ func processReqWithEngine(waf coraza.WAF, r ParsedRequest, uuid string, wafType 
 	return nil, tx, nil
 }
 
-func (w *WafSource) TxToEvents(r ParsedRequest, kind string) ([]types.Event, error) {
-	evts := []types.Event{}
-	if r.Tx == nil {
-		return nil, fmt.Errorf("tx is nil")
-	}
-	for idx, rule := range r.Tx.MatchedRules() {
-		log.Printf("rule %d", idx)
-		evt, err := w.RuleMatchToEvent(rule, r.Tx, r, kind)
-		if err != nil {
-			return nil, errors.Wrap(err, "Cannot convert rule match to event")
-		}
-		evts = append(evts, evt)
-	}
-
-	return evts, nil
-}
-
-// Transforms a coraza interruption to a crowdsec event
-func (w *WafSource) RuleMatchToEvent(rule corazatypes.MatchedRule, tx corazatypes.Transaction, r ParsedRequest, kind string) (types.Event, error) {
-	evt := types.Event{}
-	//we might want to change this based on in-band vs out-of-band ?
-	evt.Type = types.LOG
-	evt.ExpectMode = types.LIVE
-	//def needs fixing
-	evt.Stage = "s00-raw"
-	evt.Process = true
-
-	//we build a big-ass object that is going to be marshaled in line.raw and unmarshaled later.
-	//why ? because it's more consistent with the other data-sources etc. and it provides users with flexibility to alter our parsers
-	CorazaEvent := map[string]interface{}{
-		//core rule info
-		"rule_type": kind,
-		"rule_id":   rule.Rule().ID(),
-		//"rule_action":     tx.Interruption().Action,
-		"rule_disruptive": rule.Disruptive(),
-		"rule_tags":       rule.Rule().Tags(),
-		"rule_file":       rule.Rule().File(),
-		"rule_file_line":  rule.Rule().Line(),
-		"rule_revision":   rule.Rule().Revision(),
-		"rule_secmark":    rule.Rule().SecMark(),
-		"rule_accuracy":   rule.Rule().Accuracy(),
-
-		//http contextual infos
-		"upstream_addr": r.RemoteAddr,
-		"req_uuid":      tx.ID(),
-		"source_ip":     strings.Split(rule.ClientIPAddress(), ":")[0],
-		"uri":           rule.URI(),
-	}
-
-	if tx.Interruption() != nil {
-		CorazaEvent["rule_action"] = tx.Interruption().Action
-	}
-	corazaEventB, err := json.Marshal(CorazaEvent)
-	if err != nil {
-		return evt, fmt.Errorf("Unable to marshal coraza alert: %w", err)
-	}
-	evt.Line = types.Line{
-		Time: time.Now(),
-		//should we add some info like listen addr/port/path ?
-		Labels:  map[string]string{"type": "waf"},
-		Process: true,
-		Module:  "waf",
-		Src:     "waf",
-		Raw:     string(corazaEventB),
-	}
-
-	return evt, nil
-}
-
-func (w *WafSource) ProcessOutBand(t *tomb.Tomb) error {
+func (r *WafRunner) Run(t *tomb.Tomb) error {
 	for {
 		select {
 		case <-t.Dying():
-			log.Infof("OutOfBand function is dying")
+			log.Infof("Waf Runner is dying")
 			return nil
-		case r := <-w.OutOfBandChan:
-			in2, tx2, err := processReqWithEngine(w.outOfBandWaf, r, r.UUID, OutOfBand)
-			if err != nil { //things went south
-				log.Errorf("Error while processing request : %s", err)
-				continue
+		case request := <-r.inChan:
+			in, tx, err := processReqWithEngine(r.inBandWaf, request, request.UUID, InBand)
+			response := ResponseRequest{
+				Tx:           tx,
+				Interruption: in,
+				Err:          err,
+				UUID:         request.UUID,
 			}
-			r.Tx = tx2
-			if tx2 != nil && len(tx2.MatchedRules()) > 0 {
-				events, err := w.TxToEvents(r, OutOfBand)
-				log.Infof("Request triggered by WAF, %d events to send", len(events))
-				for _, evt := range events {
-					w.outChan <- evt
-				}
-				if err != nil {
-					log.Errorf("Cannot convert transaction to events : %s", err)
-					continue
-				}
-				log.Infof("WAF triggered : %+v", in2)
-			}
-		}
-	}
-}
-
-func (w *WafSource) ProcessInBand(t *tomb.Tomb) error {
-	for {
-		select {
-		case <-t.Dying():
-			log.Infof("OutOfBand function is dying")
-			return nil
-		case r := <-w.InBandChan:
-			events, err := w.TxToEvents(r, InBand)
+			// send back the result to the HTTP handler for the InBand part
+			request.ResponseChannel <- response
+			request.Tx = tx
+			// Generate the events for InBand channel
+			events, err := TxToEvents(request, InBand)
 			if err != nil {
 				log.Errorf("Cannot convert transaction to events : %s", err)
 				continue
 			}
 
-			log.Infof("Request blocked by WAF, %d events to send", len(events))
 			for _, evt := range events {
-				w.outChan <- evt
+				r.outChan <- evt
+			}
+
+			// Process outBand
+			in, tx, err = processReqWithEngine(r.outOfBandWaf, request, request.UUID, OutOfBand)
+			if err != nil { //things went south
+				log.Errorf("Error while processing request : %s", err)
+				continue
+			}
+			request.Tx = tx
+			if tx != nil && len(tx.MatchedRules()) > 0 {
+				events, err := TxToEvents(request, OutOfBand)
+				log.Infof("Request triggered by WAF, %d events to send", len(events))
+				for _, evt := range events {
+					r.outChan <- evt
+				}
+				if err != nil {
+					log.Errorf("Cannot convert transaction to events : %s", err)
+					continue
+				}
 			}
 		}
 	}
 }
 
 func (w *WafSource) wafHandler(rw http.ResponseWriter, r *http.Request) {
-	//let's gen a transaction id to keep consistance accross in-band and out-of-band
-	uuid := uuid.New().String()
-
 	// parse the request only once
 	parsedRequest, err := NewParsedRequestFromRequest(r)
 	if err != nil {
@@ -499,28 +510,22 @@ func (w *WafSource) wafHandler(rw http.ResponseWriter, r *http.Request) {
 		rw.WriteHeader(http.StatusForbidden)
 		return
 	}
+	w.InChan <- parsedRequest
 
-	//inband first
-	in, tx, err := processReqWithEngine(w.inBandWaf, parsedRequest, uuid, InBand)
-	if err != nil { //things went south
-		log.Errorf("Error while processing request : %s", err)
-		rw.WriteHeader(http.StatusForbidden) // do we want to return 403 is smth went wrong ?
+	message := <-parsedRequest.ResponseChannel
+
+	if message.Err != nil {
+		log.Errorf("Error while processing InBAND: %s", err)
+		rw.WriteHeader(http.StatusOK)
 		return
 	}
 
-	if in != nil {
+	if message.Interruption != nil {
 		rw.WriteHeader(http.StatusForbidden)
-		go func() {
-			parsedRequest.Tx = tx
-			w.InBandChan <- parsedRequest
-		}()
+		return
 	}
 
-	// we finished the inband, we can return 200
 	rw.WriteHeader(http.StatusOK)
 
-	//now we can process out of band asynchronously
-	go func() {
-		w.OutOfBandChan <- parsedRequest
-	}()
+	return
 }

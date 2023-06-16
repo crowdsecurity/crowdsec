@@ -43,6 +43,16 @@ type WafConfig struct {
 	OnLoad            []Hook   `yaml:"on_load"`
 	PreEval           []Hook   `yaml:"pre_eval"`
 	OnMatch           []Hook   `yaml:"on_match"`
+<<<<<<< HEAD
+=======
+
+	CompiledOnLoad  []CompiledHook `yaml:"-"`
+	CompiledPreEval []CompiledHook `yaml:"-"`
+	CompiledOnMatch []CompiledHook `yaml:"-"`
+
+	MergedRules []string `yaml:"-"`
+	OutOfBand   bool     `yaml:"outofband"`
+>>>>>>> 0c10c8f0 (update waf)
 }
 
 type WafRuleLoader struct {
