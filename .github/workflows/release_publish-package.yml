@@ -44,11 +44,11 @@ jobs:
             ${{ runner.os }}-${{ matrix.go-version }}-go-
 
       - name: Build the binaries
-        run: make release
+        run: make vendor release
 
       - name: Upload to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag_name="${GITHUB_REF##*/}"
-          hub release edit -a crowdsec-release.tgz -m "" "$tag_name"
+          hub release edit -a crowdsec-release.tgz -a vendor.tgz -m "" "$tag_name"
