@@ -12,14 +12,14 @@ import (
 type RawBayesianCondition struct {
 	ConditionalFilterName string  `yaml:"condition"`
 	Prob_given_true       float32 `yaml:"prob_given_true"`
-	Prob_give_false       float32 `yaml:"prob_given_false"`
+	Prob_given_false      float32 `yaml:"prob_given_false"`
 }
 
 type BayesianEvent struct {
 	ConditionalFilterName    string
 	ConditionalFilterRuntime *vm.Program
 	Prob_given_true          float32
-	Prob_give_false          float32
+	Prob_given_false         float32
 }
 
 type BayesianBucket struct {
@@ -31,27 +31,40 @@ func (c *BayesianBucket) OnBucketInit(g *BucketFactory) error {
 	var err error
 	var compiledExpr *vm.Program
 
+	n := len(g.BayesianConditions)
+	BayesianEventArray := make([]BayesianEvent, n)
+
 	if conditionalExprCache == nil {
 		conditionalExprCache = make(map[string]vm.Program)
 	}
 	conditionalExprCacheLock.Lock()
 
-	for _, bevent := range c.BayesianEventArray {
-		if compiled, ok := conditionalExprCache[bevent.ConditionalFilterName]; ok {
-			bevent.ConditionalFilterRuntime = &compiled
+	for index, bcond := range g.BayesianConditions {
+		var bayesianEvent BayesianEvent
+
+		bayesianEvent.ConditionalFilterName = bcond.ConditionalFilterName
+		bayesianEvent.Prob_given_false = bcond.Prob_given_false
+		bayesianEvent.Prob_given_true = bcond.Prob_given_true
+
+		if compiled, ok := conditionalExprCache[bcond.ConditionalFilterName]; ok {
+			bayesianEvent.ConditionalFilterRuntime = &compiled
 		} else {
 			conditionalExprCacheLock.Unlock()
 			//release the lock during compile same as coditional bucket
-			compiledExpr, err = expr.Compile(bevent.ConditionalFilterName, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
+			compiledExpr, err = expr.Compile(bcond.ConditionalFilterName, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
 			if err != nil {
 				return fmt.Errorf("Bayesian condition compile error : %w", err)
 			}
-			bevent.ConditionalFilterRuntime = compiledExpr
+			bayesianEvent.ConditionalFilterRuntime = compiledExpr
 			conditionalExprCacheLock.Lock()
-			conditionalExprCache[bevent.ConditionalFilterName] = *compiledExpr
+			conditionalExprCache[bcond.ConditionalFilterName] = *compiledExpr
 		}
+
+		BayesianEventArray[index] = bayesianEvent
 	}
 	conditionalExprCacheLock.Unlock()
+	c.BayesianEventArray = BayesianEventArray
+
 	return err
 }
 
