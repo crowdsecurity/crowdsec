@@ -15,7 +15,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
 	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -373,9 +372,9 @@ func processReqWithEngine(waf coraza.WAF, r ParsedRequest, uuid string, wafType 
 	//spew.Dump(in)
 	//spew.Dump(tx.MatchedRules())
 
-	for _, rule := range tx.MatchedRules() {
+	/*for _, rule := range tx.MatchedRules() {
 		spew.Dump(rule.Rule())
-	}
+	}*/
 
 	//if we're inband, we should stop here, but for outofband go to the end
 	if in != nil && wafType == InBand {
@@ -432,16 +431,18 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 			}
 			// send back the result to the HTTP handler for the InBand part
 			request.ResponseChannel <- response
-			request.Tx = tx
-			// Generate the events for InBand channel
-			events, err := TxToEvents(request, InBand)
-			if err != nil {
-				log.Errorf("Cannot convert transaction to events : %s", err)
-				continue
-			}
+			if in != nil {
+				request.Tx = tx
+				// Generate the events for InBand channel
+				events, err := TxToEvents(request, InBand)
+				if err != nil {
+					log.Errorf("Cannot convert transaction to events : %s", err)
+					continue
+				}
 
-			for _, evt := range events {
-				r.outChan <- evt
+				for _, evt := range events {
+					r.outChan <- evt
+				}
 			}
 
 			// Process outBand

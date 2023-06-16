@@ -18,6 +18,9 @@ func TxToEvents(r ParsedRequest, kind string) ([]types.Event, error) {
 	}
 	for _, rule := range r.Tx.MatchedRules() {
 		//log.Printf("rule %d", idx)
+		if rule.Message() == "" {
+			continue
+		}
 		evt, err := RuleMatchToEvent(rule, r.Tx, r, kind)
 		if err != nil {
 			return nil, errors.Wrap(err, "Cannot convert rule match to event")
