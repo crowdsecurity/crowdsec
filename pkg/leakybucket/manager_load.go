@@ -123,6 +123,16 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 		if bucketFactory.leakspeed == 0 {
 			return fmt.Errorf("bad leakspeed for conditional bucket '%s'", bucketFactory.LeakSpeed)
 		}
+	} else if bucketFactory.Type == "bayesian" {
+		if bucketFactory.BayesianConditions == nil {
+			return fmt.Errorf("bayesian bucket must have bayesian conditions")
+		}
+		if bucketFactory.BayesianPrior == 0 {
+			return fmt.Errorf("bayesian bucket must have a valid, non-zero prior")
+		}
+		if bucketFactory.BayesianThreshold == 0 {
+			return fmt.Errorf("bayesian bucket must have a valid, non-zero threshold")
+		}
 	} else {
 		return fmt.Errorf("unknown bucket type '%s'", bucketFactory.Type)
 	}
@@ -319,6 +329,8 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 		bucketFactory.processors = append(bucketFactory.processors, &DumbProcessor{})
 	case "conditional":
 		bucketFactory.processors = append(bucketFactory.processors, &DumbProcessor{})
+	case "bayesian":
+		bucketFactory.processors = append(bucketFactory.processors, &DumbProcessor{})
 	default:
 		return fmt.Errorf("invalid type '%s' in %s : %v", bucketFactory.Type, bucketFactory.Filename, err)
 	}
@@ -356,6 +368,11 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	if bucketFactory.ConditionalOverflow != "" {
 		bucketFactory.logger.Tracef("Adding conditional overflow")
 		bucketFactory.processors = append(bucketFactory.processors, &ConditionalOverflow{})
+	}
+
+	if bucketFactory.BayesianThreshold != 0 {
+		bucketFactory.logger.Tracef("Adding bayesian processor")
+		bucketFactory.processors = append(bucketFactory.processors, &BayesianBucket{})
 	}
 
 	if len(bucketFactory.Data) > 0 {
