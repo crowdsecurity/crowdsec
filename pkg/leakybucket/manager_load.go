@@ -133,6 +133,15 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 		if bucketFactory.BayesianThreshold == 0 {
 			return fmt.Errorf("bayesian bucket must have a valid, non-zero threshold")
 		}
+		if bucketFactory.BayesianPrior > 1 {
+			return fmt.Errorf("bayesian bucket must have a valid, non-zero prior")
+		}
+		if bucketFactory.BayesianThreshold > 1 {
+			return fmt.Errorf("bayesian bucket must have a valid, non-zero threshold")
+		}
+		if bucketFactory.Capacity != -1 {
+			return fmt.Errorf("bayesian bucket must have capacity -1")
+		}
 	} else {
 		return fmt.Errorf("unknown bucket type '%s'", bucketFactory.Type)
 	}
