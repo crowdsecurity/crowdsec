@@ -51,6 +51,8 @@ type BucketFactory struct {
 	Profiling           bool                      `yaml:"profiling"`           //Profiling, if true, will make the bucket record pours/overflows/etc.
 	OverflowFilter      string                    `yaml:"overflow_filter"`     //OverflowFilter if present, is a filter that must return true for the overflow to go through
 	ConditionalOverflow string                    `yaml:"condition"`           //condition if present, is an expression that must return true for the bucket to overflow
+	BayesianPrior       float32                   `yaml:"bayesian_prior"`
+	BayesianThreshold   float32                   `yaml:"bayesian_threshold"`
 	BayesianConditions  []RawBayesianCondition    `yaml:"bayesian_conditions"` //conditions for the bayesian bucket
 	ScopeType           types.ScopeType           `yaml:"scope,omitempty"`     //to enforce a different remediation than blocking an IP. Will default this to IP
 	BucketName          string                    `yaml:"-"`
