@@ -24,7 +24,16 @@ type BayesianEvent struct {
 
 type BayesianBucket struct {
 	BayesianEventArray []BayesianEvent
+	Prior              float32
+	Threshold          float32
 	DumbProcessor
+}
+
+func update_probability(prior, prob_given_true, prob_given_false float32) float32 {
+	numerator := prob_given_true * prior
+	denominator := numerator + prob_given_false*(1-prior)
+
+	return numerator / denominator
 }
 
 func (c *BayesianBucket) OnBucketInit(g *BucketFactory) error {
@@ -53,7 +62,7 @@ func (c *BayesianBucket) OnBucketInit(g *BucketFactory) error {
 			//release the lock during compile same as coditional bucket
 			compiledExpr, err = expr.Compile(bcond.ConditionalFilterName, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
 			if err != nil {
-				return fmt.Errorf("Bayesian condition compile error : %w", err)
+				return fmt.Errorf("bayesian condition compile error : %w", err)
 			}
 			bayesianEvent.ConditionalFilterRuntime = compiledExpr
 			conditionalExprCacheLock.Lock()
@@ -64,6 +73,8 @@ func (c *BayesianBucket) OnBucketInit(g *BucketFactory) error {
 	}
 	conditionalExprCacheLock.Unlock()
 	c.BayesianEventArray = BayesianEventArray
+	c.Prior = g.BayesianPrior
+	c.Threshold = g.BayesianThreshold
 
 	return err
 }
@@ -71,27 +82,39 @@ func (c *BayesianBucket) OnBucketInit(g *BucketFactory) error {
 func (c *BayesianBucket) AfterBucketPour(b *BucketFactory) func(types.Event, *Leaky) *types.Event {
 	return func(msg types.Event, l *Leaky) *types.Event {
 		var condition, ok bool
-		if c.ConditionalFilterRuntime != nil {
-			l.logger.Debugf("Running condition expression : %s", c.ConditionalFilter)
-			ret, err := expr.Run(c.ConditionalFilterRuntime, map[string]interface{}{"evt": &msg, "queue": l.Queue, "leaky": l})
-			if err != nil {
-				l.logger.Errorf("unable to run conditional filter : %s", err)
-				return &msg
-			}
 
-			l.logger.Debugf("Conditional bucket expression returned : %v", ret)
+		for _, bevent := range c.BayesianEventArray {
 
-			if condition, ok = ret.(bool); !ok {
-				l.logger.Warningf("overflow condition, unexpected non-bool return : %T", ret)
-				return &msg
-			}
+			if bevent.ConditionalFilterRuntime != nil {
+				l.logger.Debugf("Running condition expression : %s", bevent.ConditionalFilterName)
+				ret, err := expr.Run(bevent.ConditionalFilterRuntime, map[string]interface{}{"evt": &msg, "queue": l.Queue, "leaky": l})
+				if err != nil {
+					l.logger.Errorf("unable to run conditional filter : %s", err)
+					return &msg
+				}
 
-			if condition {
-				l.logger.Debugf("Conditional bucket overflow")
-				l.Ovflw_ts = l.Last_ts
-				l.Out <- l.Queue
-				return nil
+				l.logger.Debugf("Bayesian bucket expression %s returned : %v", bevent.ConditionalFilterName, ret)
+
+				if condition, ok = ret.(bool); !ok {
+					l.logger.Warningf("bayesian condition, unexpected non-bool return : %T", ret)
+					return &msg
+				}
+
+				if condition {
+					l.logger.Debugf("Condition true, updating prior for : %s", bevent.ConditionalFilterName)
+					c.Prior = update_probability(c.Prior, bevent.Prob_given_true, bevent.Prob_given_false)
+
+				} else {
+					l.logger.Debugf("Condition false, updating prior for : %s", bevent.ConditionalFilterName)
+					c.Prior = update_probability(c.Prior, 1-bevent.Prob_given_true, 1-bevent.Prob_given_false)
+				}
 			}
+		}
+		if c.Prior > c.Threshold {
+			l.logger.Debugf("Bayesian bucket overflow")
+			l.Ovflw_ts = l.Last_ts
+			l.Out <- l.Queue
+			return nil
 		}
 
 		return &msg
