@@ -1,0 +1,21 @@
+type: bayesian
+name: test/bayesian
+debug: true
+description: "bayesian bucket"
+filter: "evt.Meta.log_type == 'http_access-log' || evt.Meta.log_type == 'ssh_access-log'"
+groupby: evt.Meta.source_ip
+bayesian_prior: 0.5
+bayesian_threshold: 0.8
+bayesian_conditions:
+- condition: evt.Meta.http_path == "/"
+  prob_given_evil: 0.8
+  prob_given_benign: 0.2
+  guillotine : true
+- condition: evt.Meta.ssh_user == "admin"
+  prob_given_evil: 0.9
+  prob_given_benign: 0.5
+  guillotine : true
+leakspeed: 30s
+capacity: -1
+labels:
+  type: overflow_1
