@@ -55,7 +55,7 @@
 			}
 		  },
 		  "Alert" : {
-			"scenario": "test/bayesian",
+			"scenario": "test/multiple-bayesian",
 			"events_count": 2
 		  }
 		}

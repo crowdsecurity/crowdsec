@@ -41,7 +41,7 @@
 			}
 		  },
 		  "Alert" : {
-			"scenario": "test/bayesian",
+			"scenario": "test/guillotine-bayesian",
 			"events_count": 2
 		  }
 		}

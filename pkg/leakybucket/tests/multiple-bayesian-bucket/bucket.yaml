@@ -1,5 +1,5 @@
 type: bayesian
-name: test/bayesian
+name: test/multiple-bayesian
 debug: true
 description: "bayesian bucket"
 filter: "evt.Meta.log_type == 'http_access-log' || evt.Meta.log_type == 'ssh_access-log'"
