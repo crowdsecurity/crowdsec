@@ -2,7 +2,6 @@ package leakybucket
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
@@ -90,7 +89,7 @@ func (c *BayesianBucket) AfterBucketPour(b *BucketFactory) func(types.Event, *Le
 	return func(msg types.Event, l *Leaky) *types.Event {
 		var condition, ok bool
 
-		l.logger.Debugf("%s starting bayesian evaluation with prior : %v", time.Now(), c.posterior)
+		l.logger.Debugf("starting bayesian evaluation with prior : %v", c.posterior)
 
 		for _, bevent := range c.BayesianEventArray {
 
@@ -124,8 +123,8 @@ func (c *BayesianBucket) AfterBucketPour(b *BucketFactory) func(types.Event, *Le
 
 						if bevent.Guillotine {
 							bevent.TriggerGuillotine()
-							l.logger.Debugf("%s Triggering guillotine for : %s", time.Now(), bevent.ConditionalFilterName)
-							l.logger.Debugf("%s The Guillotine state is now : %v", time.Now(), bevent.GetGuillotineState())
+							l.logger.Debugf("Triggering guillotine for : %s", bevent.ConditionalFilterName)
+							l.logger.Debugf("The Guillotine state is now : %v", bevent.GetGuillotineState())
 						}
 
 						l.logger.Debugf("Condition true updating prior for : %s", bevent.ConditionalFilterName)
