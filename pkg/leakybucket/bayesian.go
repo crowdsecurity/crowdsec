@@ -11,15 +11,15 @@ import (
 
 type RawBayesianCondition struct {
 	ConditionalFilterName string  `yaml:"condition"`
-	Prob_given_true       float32 `yaml:"prob_given_true"`
-	Prob_given_false      float32 `yaml:"prob_given_false"`
+	Prob_given_evil       float32 `yaml:"prob_given_evil"`
+	Prob_given_benign     float32 `yaml:"prob_given_benign"`
 }
 
 type BayesianEvent struct {
 	ConditionalFilterName    string
 	ConditionalFilterRuntime *vm.Program
-	Prob_given_true          float32
-	Prob_given_false         float32
+	Prob_given_evil          float32
+	Prob_given_benign        float32
 }
 
 type BayesianBucket struct {
@@ -30,9 +30,9 @@ type BayesianBucket struct {
 	DumbProcessor
 }
 
-func update_probability(prior, prob_given_true, prob_given_false float32) float32 {
-	numerator := prob_given_true * prior
-	denominator := numerator + prob_given_false*(1-prior)
+func update_probability(prior, prob_given_evil, prob_given_benign float32) float32 {
+	numerator := prob_given_evil * prior
+	denominator := numerator + prob_given_benign*(1-prior)
 
 	return numerator / denominator
 }
@@ -53,8 +53,8 @@ func (c *BayesianBucket) OnBucketInit(g *BucketFactory) error {
 		var bayesianEvent BayesianEvent
 
 		bayesianEvent.ConditionalFilterName = bcond.ConditionalFilterName
-		bayesianEvent.Prob_given_false = bcond.Prob_given_false
-		bayesianEvent.Prob_given_true = bcond.Prob_given_true
+		bayesianEvent.Prob_given_benign = bcond.Prob_given_benign
+		bayesianEvent.Prob_given_evil = bcond.Prob_given_evil
 
 		if compiled, ok := conditionalExprCache[bcond.ConditionalFilterName]; ok {
 			bayesianEvent.ConditionalFilterRuntime = &compiled
@@ -106,12 +106,12 @@ func (c *BayesianBucket) AfterBucketPour(b *BucketFactory) func(types.Event, *Le
 
 				if condition {
 					l.logger.Debugf("Condition true updating prior for : %s", bevent.ConditionalFilterName)
-					c.posterior = update_probability(c.posterior, bevent.Prob_given_true, bevent.Prob_given_false)
+					c.posterior = update_probability(c.posterior, bevent.Prob_given_evil, bevent.Prob_given_benign)
 					l.logger.Debugf("new value of posterior : %v", c.posterior)
 
 				} else {
 					l.logger.Debugf("Condition false updating prior for : %s", bevent.ConditionalFilterName)
-					c.posterior = update_probability(c.posterior, 1-bevent.Prob_given_true, 1-bevent.Prob_given_false)
+					c.posterior = update_probability(c.posterior, 1-bevent.Prob_given_evil, 1-bevent.Prob_given_benign)
 					l.logger.Debugf("new value of posterior : %v", c.posterior)
 				}
 			}
