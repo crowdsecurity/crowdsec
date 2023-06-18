@@ -121,15 +121,15 @@ func (c *BayesianBucket) AfterBucketPour(b *BucketFactory) func(types.Event, *Le
 
 					if condition {
 
+						l.logger.Debugf("Condition true updating prior for : %s", bevent.ConditionalFilterName)
+						c.posterior = update_probability(c.posterior, bevent.Prob_given_evil, bevent.Prob_given_benign)
+						l.logger.Debugf("new value of posterior : %v", c.posterior)
+
 						if bevent.Guillotine {
 							bevent.TriggerGuillotine()
 							l.logger.Debugf("Triggering guillotine for : %s", bevent.ConditionalFilterName)
 							l.logger.Debugf("The Guillotine state is now : %v", bevent.GetGuillotineState())
 						}
-
-						l.logger.Debugf("Condition true updating prior for : %s", bevent.ConditionalFilterName)
-						c.posterior = update_probability(c.posterior, bevent.Prob_given_evil, bevent.Prob_given_benign)
-						l.logger.Debugf("new value of posterior : %v", c.posterior)
 
 					} else {
 						l.logger.Debugf("Condition false updating prior for : %s", bevent.ConditionalFilterName)
