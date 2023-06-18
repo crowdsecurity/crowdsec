@@ -26,6 +26,7 @@ type BayesianBucket struct {
 	BayesianEventArray []BayesianEvent
 	Prior              float32
 	Threshold          float32
+	posterior          float32
 	DumbProcessor
 }
 
@@ -74,6 +75,7 @@ func (c *BayesianBucket) OnBucketInit(g *BucketFactory) error {
 	conditionalExprCacheLock.Unlock()
 	c.BayesianEventArray = BayesianEventArray
 	c.Prior = g.BayesianPrior
+	c.posterior = g.BayesianPrior
 	c.Threshold = g.BayesianThreshold
 
 	return err
@@ -82,6 +84,8 @@ func (c *BayesianBucket) OnBucketInit(g *BucketFactory) error {
 func (c *BayesianBucket) AfterBucketPour(b *BucketFactory) func(types.Event, *Leaky) *types.Event {
 	return func(msg types.Event, l *Leaky) *types.Event {
 		var condition, ok bool
+
+		l.logger.Debugf("starting bayesian evaluation with prior : %v", c.posterior)
 
 		for _, bevent := range c.BayesianEventArray {
 
@@ -102,22 +106,27 @@ func (c *BayesianBucket) AfterBucketPour(b *BucketFactory) func(types.Event, *Le
 
 				if condition {
 					l.logger.Debugf("Condition true updating prior for : %s", bevent.ConditionalFilterName)
-					c.Prior = update_probability(c.Prior, bevent.Prob_given_true, bevent.Prob_given_false)
+					c.posterior = update_probability(c.posterior, bevent.Prob_given_true, bevent.Prob_given_false)
+					l.logger.Debugf("new value of posterior : %v", c.posterior)
 
 				} else {
 					l.logger.Debugf("Condition false updating prior for : %s", bevent.ConditionalFilterName)
-					c.Prior = update_probability(c.Prior, 1-bevent.Prob_given_true, 1-bevent.Prob_given_false)
+					c.posterior = update_probability(c.posterior, 1-bevent.Prob_given_true, 1-bevent.Prob_given_false)
+					l.logger.Debugf("new value of posterior : %v", c.posterior)
 				}
 			}
 		}
 
-		l.logger.Debugf("value of posterior after events : %v", c.Prior)
+		l.logger.Debugf("value of posterior after events : %v", c.posterior)
 
-		if c.Prior > c.Threshold {
+		if c.posterior > c.Threshold {
 			l.logger.Debugf("Bayesian bucket overflow")
 			l.Ovflw_ts = l.Last_ts
 			l.Out <- l.Queue
 			return nil
+		} else {
+			l.logger.Debugf("Bayesian bucket under threshold : reseting prior")
+			c.posterior = c.Prior
 		}
 
 		return &msg
