@@ -96,20 +96,23 @@ func (c *BayesianBucket) AfterBucketPour(b *BucketFactory) func(types.Event, *Le
 				l.logger.Debugf("Bayesian bucket expression %s returned : %v", bevent.ConditionalFilterName, ret)
 
 				if condition, ok = ret.(bool); !ok {
-					l.logger.Warningf("bayesian condition, unexpected non-bool return : %T", ret)
+					l.logger.Warningf("bayesian condition unexpected non-bool return : %T", ret)
 					return &msg
 				}
 
 				if condition {
-					l.logger.Debugf("Condition true, updating prior for : %s", bevent.ConditionalFilterName)
+					l.logger.Debugf("Condition true updating prior for : %s", bevent.ConditionalFilterName)
 					c.Prior = update_probability(c.Prior, bevent.Prob_given_true, bevent.Prob_given_false)
 
 				} else {
-					l.logger.Debugf("Condition false, updating prior for : %s", bevent.ConditionalFilterName)
+					l.logger.Debugf("Condition false updating prior for : %s", bevent.ConditionalFilterName)
 					c.Prior = update_probability(c.Prior, 1-bevent.Prob_given_true, 1-bevent.Prob_given_false)
 				}
 			}
 		}
+
+		l.logger.Debugf("value of posterior after events : %v", c.Prior)
+
 		if c.Prior > c.Threshold {
 			l.logger.Debugf("Bayesian bucket overflow")
 			l.Ovflw_ts = l.Last_ts
