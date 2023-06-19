@@ -382,7 +382,6 @@ func (leaky *Leaky) overflow(ofw *Queue) {
 			break
 		}
 	}
-	fmt.Printf("Alert: %+v", spew.Sdump(alert))
 
 	if leaky.logger.Level >= log.TraceLevel {
 		leaky.logger.Tracef("Overflow event: %s", spew.Sdump(alert))
