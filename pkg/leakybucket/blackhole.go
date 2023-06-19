@@ -10,6 +10,7 @@ import (
 type HiddenKey struct {
 	key        string
 	expiration time.Time
+	timestamp  time.Time
 }
 
 type Blackhole struct {
@@ -39,7 +40,8 @@ func (bl *Blackhole) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky,
 		for _, element := range bl.hiddenKeys {
 
 			if element.key == leaky.Mapkey {
-				if element.expiration.After(leaky.Ovflw_ts) {
+				// In timemachine mode ordering is not enforced
+				if element.expiration.After(leaky.Ovflw_ts) && element.timestamp.Before(leaky.Ovflw_ts) {
 					leaky.logger.Debugf("Overflow discarded, still blackholed for %s", element.expiration.Sub(leaky.Ovflw_ts))
 					blackholed = true
 				}
@@ -60,7 +62,11 @@ func (bl *Blackhole) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky,
 				Mapkey: leaky.Mapkey,
 			}, nil
 		}
-		bl.hiddenKeys = append(bl.hiddenKeys, HiddenKey{leaky.Mapkey, leaky.Ovflw_ts.Add(bl.duration)})
+		bl.hiddenKeys = append(bl.hiddenKeys, HiddenKey{
+			key:        leaky.Mapkey,
+			expiration: leaky.Ovflw_ts.Add(bl.duration),
+			timestamp:  leaky.GetFirstEvent(),
+		})
 		leaky.logger.Debugf("Adding overflow to blackhole (%s)", leaky.GetFirstEvent())
 		return alert, queue
 	}
