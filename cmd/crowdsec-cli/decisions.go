@@ -1,13 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/jszwec/csvutil"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
 
 	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
 	"github.com/crowdsecurity/go-cs-lib/pkg/version"
@@ -478,6 +480,76 @@ cscli decisions delete --type captcha
 	return cmdDecisionsDelete
 }
 
+func isJSON(content []byte) bool {
+	var js json.RawMessage
+	return json.Unmarshal(content, &js) == nil
+}
+
+func isCSV(content []byte) bool {
+	r := csv.NewReader(bytes.NewReader(content))
+	_, err := r.ReadAll()
+	return err == nil
+}
+
+// XXX:
+func isValidCSVHeader(content []byte) bool {
+	// read the first line, and check if it's a valid header
+	columns := []string{"duration", "origin", "reason", "scope", "type", "value"}
+
+	r := csv.NewReader(bytes.NewReader(content))
+	header, err := r.Read()
+	if err != nil {
+		return false
+	}
+	// check that all string in header are in columns
+	for _, h := range header {
+		if !slices.Contains(columns, h) {
+			return false
+		}
+	}
+	return true
+}
+
+// decisionRaw is only used to unmarshall json/csv decisions
+type decisionRaw struct {
+	Duration string `csv:"duration,omitempty" json:"duration,omitempty"`
+	Origin   string `csv:"origin,omitempty" json:"origin,omitempty"`
+	Scenario string `csv:"reason,omitempty" json:"reason,omitempty"`
+	Scope    string `csv:"scope,omitempty" json:"scope,omitempty"`
+	Type     string `csv:"type,omitempty" json:"type,omitempty"`
+	Value    string `csv:"value" json:"value"`
+}
+
+func parseDecisionList(content []byte) ([]decisionRaw, error) {
+	decisionsListRaw := []decisionRaw{}
+
+	if isJSON(content) {
+		log.Info("JSON detected")
+		if err := json.Unmarshal(content, &decisionsListRaw); err != nil {
+			return nil, fmt.Errorf("unable to unmarshall json: '%s'", err)
+		}
+		return decisionsListRaw, nil
+	}
+
+	if !isCSV(content) {
+		return nil, fmt.Errorf("unable to parse as JSON or CSV")
+	}
+
+	log.Info("CSV detected")
+
+	if !isValidCSVHeader(content) {
+		log.Info("CSV header is invalid -- assuming plain list of values")
+		// the idiomatic way to unmarshall a csv with no header adds a couple dozen lines of code
+		content = []byte(fmt.Sprintf("value\n%s", content))
+	}
+
+	if err := csvutil.Unmarshal(content, &decisionsListRaw); err != nil {
+		return nil, fmt.Errorf("unable to unmarshall csv: '%s'", err)
+	}
+	return decisionsListRaw, nil
+}
+
+
 func NewDecisionsImportCmd() *cobra.Command {
 	var (
 		defaultDuration = "4h"
@@ -503,46 +575,50 @@ func NewDecisionsImportCmd() *cobra.Command {
 duration,scope,value
 24h,ip,1.2.3.4
 
-cscsli decisions import -i decisions.csv
+cscli decisions import -i decisions.csv
 
 decisions.json :
 [{"duration" : "4h", "scope" : "ip", "type" : "ban", "value" : "1.2.3.4"}]
 `,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if importFile == "" {
-				log.Fatalf("Please provide a input file containing decisions with -i flag")
-			}
-			csvData, err := os.ReadFile(importFile)
-			if err != nil {
-				log.Fatalf("unable to open '%s': %s", importFile, err)
-			}
-			type decisionRaw struct {
-				Duration string `csv:"duration,omitempty" json:"duration,omitempty"`
-				Origin   string `csv:"origin,omitempty" json:"origin,omitempty"`
-				Scenario string `csv:"reason,omitempty" json:"reason,omitempty"`
-				Scope    string `csv:"scope,omitempty" json:"scope,omitempty"`
-				Type     string `csv:"type,omitempty" json:"type,omitempty"`
-				Value    string `csv:"value" json:"value"`
-			}
-			var decisionsListRaw []decisionRaw
-			switch fileFormat := filepath.Ext(importFile); fileFormat {
-			case ".json":
-				if err := json.Unmarshal(csvData, &decisionsListRaw); err != nil {
-					log.Fatalf("unable to unmarshall json: '%s'", err)
-				}
-			case ".csv":
-				if err := csvutil.Unmarshal(csvData, &decisionsListRaw); err != nil {
-					log.Fatalf("unable to unmarshall csv: '%s'", err)
-				}
-			default:
-				log.Fatalf("file format not supported for '%s'. supported format are 'json' and 'csv'", importFile)
+				return fmt.Errorf("Please provide a input file containing decisions with -i flag")
 			}
 
-			decisionsList := make([]*models.Decision, 0)
+			var (
+				content []byte
+				fin	*os.File
+				err     error
+			)
+
+			if importFile == "-" {
+				fin = os.Stdin
+				importFile = "stdin"
+			} else {
+				fin, err = os.Open(importFile)
+				if err != nil {
+					return fmt.Errorf("unable to open %s: %s", importFile, err)
+				}
+			}
+
+			content, err = io.ReadAll(fin)
+			if err != nil {
+				return fmt.Errorf("unable to read from %s: %s", importFile, err)
+			}
+
+			decisionsListRaw, err := parseDecisionList(content)
+			if err != nil {
+				return fmt.Errorf("unable to parse decision list: %s", err)
+			}
+
+			decisionsList := make([]*models.Decision, len(decisionsListRaw))
 			for i, decisionLine := range decisionsListRaw {
 				line := i + 2
-				if decisionLine.Value == "" {
-					log.Fatalf("please provide a 'value' in your csv line %d", line)
+				// strip spaces which are not allowed in value, useful
+				// especially for plain list of values
+				valueTrim := strings.TrimSpace(decisionLine.Value)
+				if valueTrim == "" {
+					return fmt.Errorf("please provide a 'value' in your csv line %d", line)
 				}
 				/*deal with defaults and cli-override*/
 				if decisionLine.Duration == "" {
@@ -579,8 +655,8 @@ decisions.json :
 					decisionLine.Scope = importScope
 					log.Debugf("'scope' line %d, using supplied value: '%s'", line, importScope)
 				}
-				decision := models.Decision{
-					Value:     ptr.Of(decisionLine.Value),
+				decisionsList[i] = &models.Decision{
+					Value:     ptr.Of(valueTrim),
 					Duration:  ptr.Of(decisionLine.Duration),
 					Origin:    ptr.Of(decisionLine.Origin),
 					Scenario:  ptr.Of(decisionLine.Scenario),
@@ -588,7 +664,6 @@ decisions.json :
 					Scope:     ptr.Of(decisionLine.Scope),
 					Simulated: new(bool),
 				}
-				decisionsList = append(decisionsList, &decision)
 			}
 			alerts := models.AddAlertsRequest{}
 
@@ -650,9 +725,10 @@ decisions.json :
 
 			_, _, err = Client.Alerts.Add(context.Background(), alerts)
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 			log.Infof("%d decisions successfully imported", len(decisionsList))
+			return nil
 		},
 	}
 

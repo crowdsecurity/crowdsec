@@ -5,6 +5,9 @@ set -u
 
 setup_file() {
     load "../lib/setup_file.sh"
+
+    TESTDATA="${BATS_TEST_DIRNAME}/testdata/90_decisions"
+    export TESTDATA
 }
 
 teardown_file() {
@@ -60,4 +63,30 @@ teardown() {
     rune -1 cscli decisions list --until toto -o json
     rune -0 jq -c '[.level, .msg]' <(stderr | grep "^{")
     assert_output '["fatal","Unable to list decisions : performing request: API error: while parsing duration: time: invalid duration \"toto\""]'
+}
+
+@test "cscli decisions import (json)" {
+    rune -0 cscli decisions import -i "${TESTDATA}/decisions.json"
+    rune -0 cat "${TESTDATA}/decisions.json"
+    rune -0 cscli decisions import -i /dev/stdin < <(output)
+}
+
+@test "cscli decisions import (csv)" {
+    rune -0 cscli decisions import -i "${TESTDATA}/decisions.csv"
+    rune -0 cat "${TESTDATA}/decisions.csv"
+    rune -0 cscli decisions import -i /dev/stdin < <(output)
+}
+
+@test "cscli decisions import (values only)" {
+    rune -0 cscli decisions import -i /dev/stdin <<-EOT
+	1.2.3.4
+	1.2.3.5
+	1.2.3.6
+	EOT
+
+    rune -0 cscli decisions import -i /dev/stdin <<-EOT
+	"  10.2.3.4  "
+	"10.2.3.5   "
+	"   10.2.3.6"
+	EOT
 }
