@@ -368,11 +368,11 @@ func Pour(leaky *Leaky, msg types.Event) {
 }
 
 func (leaky *Leaky) overflow(ofw *Queue) {
-	fmt.Printf("Ovflw laert %+v", spew.Sdump(ofw))
 
 	close(leaky.Signal)
 	alert, err := NewAlert(leaky, ofw)
 	if err != nil {
+		fmt.Printf("Error\n")
 		log.Errorf("%s", err)
 	}
 	leaky.logger.Tracef("Overflow hooks time : %v", leaky.BucketConfig.processors)
