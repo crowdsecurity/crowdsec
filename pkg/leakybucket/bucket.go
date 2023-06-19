@@ -372,7 +372,6 @@ func (leaky *Leaky) overflow(ofw *Queue) {
 	close(leaky.Signal)
 	alert, err := NewAlert(leaky, ofw)
 	if err != nil {
-		fmt.Printf("Error\n")
 		log.Errorf("%s", err)
 	}
 	leaky.logger.Tracef("Overflow hooks time : %v", leaky.BucketConfig.processors)
@@ -383,6 +382,8 @@ func (leaky *Leaky) overflow(ofw *Queue) {
 			break
 		}
 	}
+	fmt.Printf("Alert: %+v", spew.Sdump(alert))
+
 	if leaky.logger.Level >= log.TraceLevel {
 		leaky.logger.Tracef("Overflow event: %s", spew.Sdump(alert))
 	}
