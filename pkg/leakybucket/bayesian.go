@@ -11,16 +11,16 @@ import (
 
 type RawBayesianCondition struct {
 	ConditionalFilterName string  `yaml:"condition"`
-	Prob_given_evil       float32 `yaml:"prob_given_evil"`
-	Prob_given_benign     float32 `yaml:"prob_given_benign"`
+	ProbGivenEvil         float32 `yaml:"prob_given_evil"`
+	ProbGivenBenign       float32 `yaml:"prob_given_benign"`
 	Guillotine            bool    `yaml:"guillotine,omitempty"`
 }
 
 type BayesianEvent struct {
 	ConditionalFilterName    string
 	ConditionalFilterRuntime *vm.Program
-	Prob_given_evil          float32
-	Prob_given_benign        float32
+	ProbGivenEvil            float32
+	ProbGivenBenign          float32
 	Guillotine               bool
 	guillotine_state         bool
 }
@@ -56,8 +56,8 @@ func (c *BayesianBucket) OnBucketInit(g *BucketFactory) error {
 		var bayesianEvent BayesianEvent
 
 		bayesianEvent.ConditionalFilterName = bcond.ConditionalFilterName
-		bayesianEvent.Prob_given_benign = bcond.Prob_given_benign
-		bayesianEvent.Prob_given_evil = bcond.Prob_given_evil
+		bayesianEvent.ProbGivenBenign = bcond.ProbGivenBenign
+		bayesianEvent.ProbGivenEvil = bcond.ProbGivenEvil
 		bayesianEvent.Guillotine = bcond.Guillotine
 
 		if compiled, ok := conditionalExprCache[bcond.ConditionalFilterName]; ok {
@@ -104,7 +104,7 @@ func (c *BayesianBucket) AfterBucketPour(b *BucketFactory) func(types.Event, *Le
 					l.logger.Debugf("guillotine already triggered for %s", bevent.ConditionalFilterName)
 
 					l.logger.Debugf("condition true updating prior for : %s", bevent.ConditionalFilterName)
-					c.posterior = update_probability(c.posterior, bevent.Prob_given_evil, bevent.Prob_given_benign)
+					c.posterior = update_probability(c.posterior, bevent.ProbGivenEvil, bevent.ProbGivenBenign)
 					l.logger.Debugf("new value of posterior : %v", c.posterior)
 				} else {
 					l.logger.Debugf("running condition expression : %s", bevent.ConditionalFilterName)
@@ -124,7 +124,7 @@ func (c *BayesianBucket) AfterBucketPour(b *BucketFactory) func(types.Event, *Le
 					if condition {
 
 						l.logger.Debugf("condition true updating prior for : %s", bevent.ConditionalFilterName)
-						c.posterior = update_probability(c.posterior, bevent.Prob_given_evil, bevent.Prob_given_benign)
+						c.posterior = update_probability(c.posterior, bevent.ProbGivenEvil, bevent.ProbGivenBenign)
 						l.logger.Debugf("new value of posterior : %v", c.posterior)
 
 						if bevent.Guillotine {
@@ -135,7 +135,7 @@ func (c *BayesianBucket) AfterBucketPour(b *BucketFactory) func(types.Event, *Le
 
 					} else {
 						l.logger.Debugf("condition false updating prior for : %s", bevent.ConditionalFilterName)
-						c.posterior = update_probability(c.posterior, 1-bevent.Prob_given_evil, 1-bevent.Prob_given_benign)
+						c.posterior = update_probability(c.posterior, 1-bevent.ProbGivenEvil, 1-bevent.ProbGivenBenign)
 						l.logger.Debugf("new value of posterior : %v", c.posterior)
 					}
 				}
