@@ -20,7 +20,7 @@ require (
 	github.com/docker/docker v20.10.24+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/enescakir/emoji v1.0.0
-	github.com/fatih/color v1.13.0
+	github.com/fatih/color v1.15.0
 	github.com/fsnotify/fsnotify v1.6.0
 	github.com/gin-gonic/gin v1.7.7
 	github.com/go-co-op/gocron v1.17.0
@@ -77,7 +77,7 @@ require (
 	github.com/google/winops v0.0.0-20211216095627-f0e86eb1453b
 	github.com/ivanpirog/coloredcobra v1.0.1
 	github.com/lithammer/dedent v1.1.0
-	github.com/mattn/go-isatty v0.0.14
+	github.com/mattn/go-isatty v0.0.17
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58
 	github.com/segmentio/kafka-go v0.4.34
 	github.com/shirou/gopsutil/v3 v3.22.12
@@ -145,7 +145,7 @@ require (
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/magefile/mage v1.14.0 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
-	github.com/mattn/go-colorable v0.1.12 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
