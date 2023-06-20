@@ -94,7 +94,7 @@ func (b *BayesianEvent) bayesianUpdate(c *BayesianBucket, msg types.Event, l *Le
 		return nil
 	}
 
-	l.logger.Tracef("guillotine value for %s :  %v", b.rawCondition.ConditionalFilterName, b.GetGuillotineState())
+	l.logger.Tracef("guillotine value for %s :  %v", b.rawCondition.ConditionalFilterName, b.getGuillotineState())
 	if b.getGuillotineState() {
 		l.logger.Tracef("guillotine already triggered for %s", b.rawCondition.ConditionalFilterName)
 		l.logger.Tracef("condition true updating prior for : %s", b.rawCondition.ConditionalFilterName)
