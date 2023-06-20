@@ -95,7 +95,7 @@ func (b *BayesianEvent) bayesianUpdate(c *BayesianBucket, msg types.Event, l *Le
 	}
 
 	l.logger.Tracef("guillotine value for %s :  %v", b.rawCondition.ConditionalFilterName, b.GetGuillotineState())
-	if b.GetGuillotineState() {
+	if b.getGuillotineState() {
 		l.logger.Tracef("guillotine already triggered for %s", b.rawCondition.ConditionalFilterName)
 		l.logger.Tracef("condition true updating prior for : %s", b.rawCondition.ConditionalFilterName)
 		c.posterior = updateProbability(c.posterior, b.rawCondition.ProbGivenEvil, b.rawCondition.ProbGivenBenign)
@@ -118,7 +118,7 @@ func (b *BayesianEvent) bayesianUpdate(c *BayesianBucket, msg types.Event, l *Le
 		l.logger.Tracef("condition true updating prior for : %s", b.rawCondition.ConditionalFilterName)
 		c.posterior = updateProbability(c.posterior, b.rawCondition.ProbGivenEvil, b.rawCondition.ProbGivenBenign)
 		l.logger.Tracef("new value of posterior : %v", c.posterior)
-		b.TriggerGuillotine()
+		b.triggerGuillotine()
 	} else {
 		l.logger.Tracef("condition false updating prior for : %s", b.rawCondition.ConditionalFilterName)
 		c.posterior = updateProbability(c.posterior, 1-b.rawCondition.ProbGivenEvil, 1-b.rawCondition.ProbGivenBenign)
@@ -128,14 +128,14 @@ func (b *BayesianEvent) bayesianUpdate(c *BayesianBucket, msg types.Event, l *Le
 	return nil
 }
 
-func (b *BayesianEvent) GetGuillotineState() bool {
+func (b *BayesianEvent) getGuillotineState() bool {
 	if b.rawCondition.Guillotine {
 		return b.guillotineState
 	}
 	return false
 }
 
-func (b *BayesianEvent) TriggerGuillotine() {
+func (b *BayesianEvent) triggerGuillotine() {
 	b.guillotineState = true
 }
 
