@@ -22,7 +22,7 @@ type BayesianEvent struct {
 	ProbGivenEvil            float32
 	ProbGivenBenign          float32
 	Guillotine               bool
-	guillotine_state         bool
+	guillotineState          bool
 }
 
 type BayesianBucket struct {
@@ -33,7 +33,7 @@ type BayesianBucket struct {
 	DumbProcessor
 }
 
-func update_probability(prior, prob_given_evil, prob_given_benign float32) float32 {
+func updateProbability(prior, prob_given_evil, prob_given_benign float32) float32 {
 	numerator := prob_given_evil * prior
 	denominator := numerator + prob_given_benign*(1-prior)
 
@@ -87,58 +87,15 @@ func (c *BayesianBucket) OnBucketInit(g *BucketFactory) error {
 
 func (c *BayesianBucket) AfterBucketPour(b *BucketFactory) func(types.Event, *Leaky) *types.Event {
 	return func(msg types.Event, l *Leaky) *types.Event {
-		var condition, ok bool
 
-		l.logger.Debugf("starting bayesian evaluation : reseting posterior")
+		l.logger.Tracef("starting bayesian evaluation : reseting posterior")
 		c.posterior = c.Prior
 		l.logger.Debugf("starting bayesian evaluation with prior : %v", c.posterior)
 
 		for _, bevent := range c.BayesianEventArray {
-
-			if bevent.ConditionalFilterRuntime != nil {
-
-				l.logger.Debugf("guillotine values for %s : %v and %v", bevent.ConditionalFilterName, bevent.Guillotine, bevent.GetGuillotineState())
-
-				if bevent.Guillotine && bevent.GetGuillotineState() {
-
-					l.logger.Debugf("guillotine already triggered for %s", bevent.ConditionalFilterName)
-
-					l.logger.Debugf("condition true updating prior for : %s", bevent.ConditionalFilterName)
-					c.posterior = update_probability(c.posterior, bevent.ProbGivenEvil, bevent.ProbGivenBenign)
-					l.logger.Debugf("new value of posterior : %v", c.posterior)
-				} else {
-					l.logger.Debugf("running condition expression : %s", bevent.ConditionalFilterName)
-					ret, err := expr.Run(bevent.ConditionalFilterRuntime, map[string]interface{}{"evt": &msg, "queue": l.Queue, "leaky": l})
-					if err != nil {
-						l.logger.Errorf("unable to run conditional filter : %s", err)
-						return &msg
-					}
-
-					l.logger.Debugf("bayesian bucket expression %s returned : %v", bevent.ConditionalFilterName, ret)
-
-					if condition, ok = ret.(bool); !ok {
-						l.logger.Warningf("bayesian condition unexpected non-bool return : %T", ret)
-						return &msg
-					}
-
-					if condition {
-
-						l.logger.Debugf("condition true updating prior for : %s", bevent.ConditionalFilterName)
-						c.posterior = update_probability(c.posterior, bevent.ProbGivenEvil, bevent.ProbGivenBenign)
-						l.logger.Debugf("new value of posterior : %v", c.posterior)
-
-						if bevent.Guillotine {
-							bevent.TriggerGuillotine()
-							l.logger.Debugf("triggering guillotine for : %s", bevent.ConditionalFilterName)
-							l.logger.Debugf("the guillotine state is now : %v", bevent.GetGuillotineState())
-						}
-
-					} else {
-						l.logger.Debugf("condition false updating prior for : %s", bevent.ConditionalFilterName)
-						c.posterior = update_probability(c.posterior, 1-bevent.ProbGivenEvil, 1-bevent.ProbGivenBenign)
-						l.logger.Debugf("new value of posterior : %v", c.posterior)
-					}
-				}
+			err := bevent.bayesianUpdate(c, msg, l)
+			if err != nil {
+				l.logger.Errorf("bayesian update failed for %s with %s", bevent.ConditionalFilterName, err)
 			}
 		}
 
@@ -155,10 +112,66 @@ func (c *BayesianBucket) AfterBucketPour(b *BucketFactory) func(types.Event, *Le
 	}
 }
 
+func (b *BayesianEvent) bayesianUpdate(c *BayesianBucket, msg types.Event, l *Leaky) error {
+
+	var condition, ok bool
+
+	if b.ConditionalFilterRuntime == nil {
+		return nil
+	}
+
+	l.logger.Tracef("guillotine value for %s :  %v", b.ConditionalFilterName, b.GetGuillotineState())
+
+	if b.GetGuillotineState() {
+
+		l.logger.Tracef("guillotine already triggered for %s", b.ConditionalFilterName)
+
+		l.logger.Tracef("condition true updating prior for : %s", b.ConditionalFilterName)
+		c.posterior = updateProbability(c.posterior, b.ProbGivenEvil, b.ProbGivenBenign)
+		l.logger.Tracef("new value of posterior : %v", c.posterior)
+
+		return nil
+	}
+
+	l.logger.Tracef("running condition expression : %s", b.ConditionalFilterName)
+	ret, err := expr.Run(b.ConditionalFilterRuntime, map[string]interface{}{"evt": &msg, "queue": l.Queue, "leaky": l})
+	if err != nil {
+		l.logger.Errorf("unable to run conditional filter : %s", err)
+		return err
+	}
+
+	l.logger.Tracef("bayesian bucket expression %s returned : %v", b.ConditionalFilterName, ret)
+
+	if condition, ok = ret.(bool); !ok {
+		l.logger.Warningf("bayesian condition unexpected non-bool return : %T", ret)
+		return err
+	}
+
+	if condition {
+
+		l.logger.Tracef("condition true updating prior for : %s", b.ConditionalFilterName)
+		c.posterior = updateProbability(c.posterior, b.ProbGivenEvil, b.ProbGivenBenign)
+		l.logger.Tracef("new value of posterior : %v", c.posterior)
+
+		b.TriggerGuillotine()
+
+	} else {
+		l.logger.Tracef("condition false updating prior for : %s", b.ConditionalFilterName)
+		c.posterior = updateProbability(c.posterior, 1-b.ProbGivenEvil, 1-b.ProbGivenBenign)
+		l.logger.Tracef("new value of posterior : %v", c.posterior)
+	}
+
+	return nil
+}
+
 func (b *BayesianEvent) GetGuillotineState() bool {
-	return b.guillotine_state
+	if b.Guillotine {
+		return b.guillotineState
+	} else {
+		return false
+	}
 }
 
 func (b *BayesianEvent) TriggerGuillotine() {
-	b.guillotine_state = true
+	b.guillotineState = true
 }
