@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/corazawaf/coraza/v3"
 	corazatypes "github.com/corazawaf/coraza/v3/types"
@@ -21,6 +22,31 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
+)
+
+var wafParsingHistogram = prometheus.NewHistogramVec(
+	prometheus.HistogramOpts{
+		Help:    "Time spent processing a request by the WAF.",
+		Name:    "cs_waf_parsing_time_seconds",
+		Buckets: []float64{0.0005, 0.001, 0.0015, 0.002, 0.0025, 0.003, 0.004, 0.005, 0.0075, 0.01},
+	},
+	[]string{"source"},
+)
+
+var wafReqCounter = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_waf_reqs_total",
+		Help: "Total events processed by the WAF.",
+	},
+	[]string{"source"},
+)
+
+var wafRuleHits = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_waf_rule_hits",
+		Help: "Count of triggered rule, by rule_id and type (inband/outofband).",
+	},
+	[]string{"rule_id", "type"},
 )
 
 const (
@@ -422,6 +448,9 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 			log.Infof("Waf Runner is dying")
 			return nil
 		case request := <-r.inChan:
+			wafReqCounter.With(prometheus.Labels{"source": request.RemoteAddr}).Inc()
+			//measure the time spent in the WAF
+			startParsing := time.Now()
 			in, tx, err := processReqWithEngine(r.inBandWaf, request, request.UUID, InBand)
 			response := ResponseRequest{
 				Tx:           tx,
@@ -463,6 +492,9 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 					continue
 				}
 			}
+			//measure the full time spent in the WAF
+			elapsed := time.Since(startParsing)
+			wafParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddr}).Observe(elapsed.Seconds())
 		}
 	}
 }

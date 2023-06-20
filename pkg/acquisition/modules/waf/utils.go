@@ -9,6 +9,7 @@ import (
 	corazatypes "github.com/corazawaf/coraza/v3/types"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 func TxToEvents(r ParsedRequest, kind string) ([]types.Event, error) {
@@ -17,10 +18,11 @@ func TxToEvents(r ParsedRequest, kind string) ([]types.Event, error) {
 		return nil, fmt.Errorf("tx is nil")
 	}
 	for _, rule := range r.Tx.MatchedRules() {
-		//log.Printf("rule %d", idx)
+		//we're discarding rules that don't have a message. They are not relevant for us
 		if rule.Message() == "" {
 			continue
 		}
+		wafRuleHits.With(prometheus.Labels{"rule_id": fmt.Sprintf("%d", rule.Rule().ID()), "type": kind}).Inc()
 		evt, err := RuleMatchToEvent(rule, r.Tx, r, kind)
 		if err != nil {
 			return nil, errors.Wrap(err, "Cannot convert rule match to event")
