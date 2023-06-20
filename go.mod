@@ -5,14 +5,23 @@ go 1.20
 require (
 	entgo.io/ent v0.11.3
 	github.com/AlecAivazis/survey/v2 v2.2.7
+	github.com/Masterminds/semver v1.5.0
+	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/alexliesenfeld/health v0.5.1
 	github.com/antonmedv/expr v1.12.5
 	github.com/appleboy/gin-jwt/v2 v2.8.0
+	github.com/aquasecurity/table v1.8.0
+	github.com/aws/aws-lambda-go v1.38.0
 	github.com/aws/aws-sdk-go v1.42.25
+	github.com/beevik/etree v1.1.0
+	github.com/blackfireio/osinfo v1.0.3
+	github.com/bluele/gcache v0.0.2
 	github.com/buger/jsonparser v1.1.1
 	github.com/c-robinson/iplib v1.0.3
+	github.com/cespare/xxhash/v2 v2.1.2
 	github.com/crowdsecurity/dlog v0.0.0-20170105205344-4fb5f8204f26
+	github.com/crowdsecurity/go-cs-lib v0.0.2
 	github.com/crowdsecurity/grokky v0.2.1
 	github.com/crowdsecurity/machineid v1.0.2
 	github.com/davecgh/go-spew v1.1.1
@@ -29,64 +38,52 @@ require (
 	github.com/go-openapi/swag v0.19.14
 	github.com/go-openapi/validate v0.20.0
 	github.com/go-sql-driver/mysql v1.6.0
+	github.com/goccy/go-yaml v1.9.7
+	github.com/gofrs/uuid v4.0.0+incompatible
+	github.com/golang-jwt/jwt/v4 v4.2.0
 	github.com/google/go-querystring v1.0.0
 	github.com/google/uuid v1.3.0
+	github.com/google/winops v0.0.0-20211216095627-f0e86eb1453b
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
 	github.com/hashicorp/go-hclog v1.0.0
 	github.com/hashicorp/go-plugin v1.4.2
 	github.com/hashicorp/go-version v1.2.1
+	github.com/ivanpirog/coloredcobra v1.0.1
 	github.com/jackc/pgx/v4 v4.14.1
 	github.com/jarcoal/httpmock v1.1.0
 	github.com/jszwec/csvutil v1.5.1
+	github.com/lithammer/dedent v1.1.0
+	github.com/mattn/go-isatty v0.0.17
 	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/nxadm/tail v1.4.8
 	github.com/oschwald/geoip2-golang v1.4.0
 	github.com/oschwald/maxminddb-golang v1.8.0
+	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/client_model v0.3.0
 	github.com/prometheus/prom2json v1.3.0
 	github.com/r3labs/diff/v2 v2.14.1
+	github.com/segmentio/kafka-go v0.4.34
+	github.com/shirou/gopsutil/v3 v3.22.12
 	github.com/sirupsen/logrus v1.9.2
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.3
+	github.com/texttheater/golang-levenshtein/levenshtein v0.0.0-20200805054039-cae8b0eaed6c
+	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
+	github.com/wasilibs/go-re2 v0.2.1
 	golang.org/x/crypto v0.1.0
+	golang.org/x/exp v0.0.0-20230515195305-f3d0a9c9a5cc
 	golang.org/x/mod v0.6.0
+	golang.org/x/sys v0.7.0
 	google.golang.org/grpc v1.47.0
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637
 	gopkg.in/yaml.v2 v2.4.0
-	gotest.tools/v3 v3.0.3
-)
-
-require (
-	github.com/Masterminds/semver v1.5.0
-	github.com/Masterminds/sprig/v3 v3.2.2
-	github.com/aquasecurity/table v1.8.0
-	github.com/aws/aws-lambda-go v1.38.0
-	github.com/beevik/etree v1.1.0
-	github.com/blackfireio/osinfo v1.0.3
-	github.com/bluele/gcache v0.0.2
-	github.com/cespare/xxhash/v2 v2.1.2
-	github.com/crowdsecurity/go-cs-lib v0.0.2
-	github.com/goccy/go-yaml v1.9.7
-	github.com/gofrs/uuid v4.0.0+incompatible
-	github.com/golang-jwt/jwt/v4 v4.2.0
-	github.com/google/winops v0.0.0-20211216095627-f0e86eb1453b
-	github.com/ivanpirog/coloredcobra v1.0.1
-	github.com/lithammer/dedent v1.1.0
-	github.com/mattn/go-isatty v0.0.17
-	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58
-	github.com/segmentio/kafka-go v0.4.34
-	github.com/shirou/gopsutil/v3 v3.22.12
-	github.com/texttheater/golang-levenshtein/levenshtein v0.0.0-20200805054039-cae8b0eaed6c
-	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
-	github.com/wasilibs/go-re2 v0.2.1
-	golang.org/x/exp v0.0.0-20230515195305-f3d0a9c9a5cc
-	golang.org/x/sys v0.7.0
 	gopkg.in/yaml.v3 v3.0.1
+	gotest.tools/v3 v3.0.3
 	k8s.io/apiserver v0.22.5
 )
 
