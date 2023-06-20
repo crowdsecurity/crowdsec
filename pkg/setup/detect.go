@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"sort"
 
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 	"github.com/antonmedv/expr"
 	"github.com/blackfireio/osinfo"
 	"github.com/shirou/gopsutil/v3/process"
