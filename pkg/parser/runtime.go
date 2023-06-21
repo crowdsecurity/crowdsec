@@ -9,24 +9,21 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-
-	"strconv"
-
+	"github.com/antonmedv/expr"
 	"github.com/mohae/deepcopy"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/antonmedv/expr"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 /* ok, this is kinda experimental, I don't know how bad of an idea it is .. */
 func SetTargetByName(target string, value string, evt *types.Event) bool {
-
 	if evt == nil {
 		return false
 	}
@@ -71,8 +68,6 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 				tmp = reflect.Indirect(tmp)
 			}
 			iter = tmp
-			//nolint: gosimple
-			break
 		case reflect.Ptr:
 			tmp := iter.Elem()
 			iter = reflect.Indirect(tmp.FieldByName(f))
@@ -95,18 +90,18 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 }
 
 func printStaticTarget(static ExtraField) string {
-
-	if static.Method != "" {
+	switch {
+	case static.Method != "":
 		return static.Method
-	} else if static.Parsed != "" {
+	case static.Parsed != "":
 		return fmt.Sprintf(".Parsed[%s]", static.Parsed)
-	} else if static.Meta != "" {
+	case static.Meta != "":
 		return fmt.Sprintf(".Meta[%s]", static.Meta)
-	} else if static.Enriched != "" {
+	case static.Enriched != "":
 		return fmt.Sprintf(".Enriched[%s]", static.Enriched)
-	} else if static.TargetByName != "" {
+	case static.TargetByName != "":
 		return static.TargetByName
-	} else {
+	default:
 		return "?"
 	}
 }
@@ -195,7 +190,6 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 		} else {
 			clog.Fatal("unable to process static : unknown target")
 		}
-
 	}
 	return nil
 }
@@ -355,10 +349,8 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			event.Process = false
 			return event, nil
 		}
-
 	}
 
 	event.Process = true
 	return event, nil
-
 }
