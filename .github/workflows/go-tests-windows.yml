@@ -54,7 +54,7 @@ jobs:
 
     - name: Build
       run: |
-        make build
+        make build BUILD_RE2_WASM=1
 
     - name: Run tests
       run: |

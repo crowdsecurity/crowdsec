@@ -62,14 +62,14 @@ jobs:
       env:
         GOBIN: /usr/local/bin
       run: |
-        sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential daemonize jq netcat-openbsd
+        sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential daemonize jq netcat-openbsd libre2-dev
         go install github.com/mikefarah/yq/v4@latest
         go install github.com/cloudflare/cfssl/cmd/cfssl@master
         go install github.com/cloudflare/cfssl/cmd/cfssljson@master
 
     - name: "Build crowdsec and fixture (DB_BACKEND: pgx)"
       run: |
-        make clean bats-build bats-fixture
+        make clean bats-build bats-fixture BUILD_STATIC=1
       env:
         DB_BACKEND: pgx
         PGHOST: 127.0.0.1
