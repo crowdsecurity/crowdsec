@@ -41,7 +41,7 @@ func (bl *Blackhole) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky,
 
 			if element.key == leaky.Mapkey {
 				// In timemachine mode ordering is not enforced
-				if element.expiration.After(leaky.Ovflw_ts) && element.timestamp.Before(leaky.GetFirstEvent()) {
+				if element.expiration.After(leaky.Ovflw_ts) && (element.timestamp.Equal(leaky.GetFirstEvent()) || element.timestamp.Before(leaky.GetFirstEvent())) {
 					leaky.logger.Debugf("Overflow discarded, still blackholed for %s", element.expiration.Sub(leaky.Ovflw_ts))
 					blackholed = true
 				}
