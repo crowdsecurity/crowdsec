@@ -199,6 +199,9 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 	l.first_ts = l.InitFirstEvent()
 	l.last_ts = l.InitLastEvent()
 
+	if l.BucketConfig.Type == "bayesian" {
+		l.Duration = l.BucketConfig.leakspeed
+	}
 	return l
 }
 

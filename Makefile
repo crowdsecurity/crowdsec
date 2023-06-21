@@ -137,13 +137,25 @@ localstack:
 localstack-stop:
 	docker-compose -f test/localstack/docker-compose.yml down
 
+# list of plugins that contain go.mod
+PLUGIN_VENDOR = $(foreach plugin,$(PLUGINS),$(shell if [ -f $(PLUGINS_DIR)/$(plugin)/go.mod ]; then echo $(PLUGINS_DIR)/$(plugin); fi))
+
 .PHONY: vendor
 vendor:
-	@echo "Vendoring dependencies"
-	@$(GOCMD) mod vendor
-	@$(foreach plugin,$(PLUGINS), \
-		$(MAKE) -C $(PLUGINS_DIR)/$(plugin) vendor $(MAKE_FLAGS); \
+	$(foreach plugin_dir,$(PLUGIN_VENDOR), \
+		cd $(plugin_dir) >/dev/null && \
+		$(GOCMD) mod vendor && \
+		cd - >/dev/null; \
 	)
+	$(GOCMD) mod vendor
+	tar -czf vendor.tgz vendor $(foreach plugin_dir,$(PLUGIN_VENDOR),$(plugin_dir)/vendor)
+
+.PHONY: vendor-remove
+vendor-remove:
+	$(foreach plugin_dir,$(PLUGIN_VENDOR), \
+		$(RM) $(plugin_dir)/vendor; \
+	)
+	$(RM) vendor vendor.tgz
 
 .PHONY: package
 package:
