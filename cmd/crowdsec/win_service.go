@@ -11,7 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/svc"
@@ -106,7 +105,7 @@ func runService(name string) error {
 	winsvc := crowdsec_winservice{config: cConfig}
 
 	if err := svc.Run(name, &winsvc); err != nil {
-		return errors.Wrapf(err, "%s service failed", name)
+		return fmt.Errorf("%s service failed: %w", name, err)
 	}
 
 	log.Infof("%s service stopped", name)

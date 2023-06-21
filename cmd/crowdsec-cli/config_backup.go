@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -33,17 +32,17 @@ func backupConfigToDirectory(dirPath string) error {
 	/*if parent directory doesn't exist, bail out. create final dir with Mkdir*/
 	parentDir := filepath.Dir(dirPath)
 	if _, err := os.Stat(parentDir); err != nil {
-		return errors.Wrapf(err, "while checking parent directory %s existence", parentDir)
+		return fmt.Errorf("while checking parent directory %s existence: %w", parentDir, err)
 	}
 
 	if err = os.Mkdir(dirPath, 0o700); err != nil {
-		return errors.Wrapf(err, "while creating %s", dirPath)
+		return fmt.Errorf("while creating %s: %w", dirPath, err)
 	}
 
 	if csConfig.ConfigPaths.SimulationFilePath != "" {
 		backupSimulation := filepath.Join(dirPath, "simulation.yaml")
 		if err = CopyFile(csConfig.ConfigPaths.SimulationFilePath, backupSimulation); err != nil {
-			return errors.Wrapf(err, "failed copy %s to %s", csConfig.ConfigPaths.SimulationFilePath, backupSimulation)
+			return fmt.Errorf("failed copy %s to %s: %w", csConfig.ConfigPaths.SimulationFilePath, backupSimulation, err)
 		}
 
 		log.Infof("Saved simulation to %s", backupSimulation)
@@ -74,11 +73,11 @@ func backupConfigToDirectory(dirPath string) error {
 
 			targetFname, err := filepath.Abs(filepath.Join(acquisBackupDir, filepath.Base(acquisFile)))
 			if err != nil {
-				return errors.Wrapf(err, "while saving %s to %s", acquisFile, acquisBackupDir)
+				return fmt.Errorf("while saving %s to %s: %w", acquisFile, acquisBackupDir, err)
 			}
 
 			if err = CopyFile(acquisFile, targetFname); err != nil {
-				return fmt.Errorf("failed copy %s to %s : %s", acquisFile, targetFname, err)
+				return fmt.Errorf("failed copy %s to %s : %w", acquisFile, targetFname, err)
 			}
 
 			log.Infof("Saved acquis %s to %s", acquisFile, targetFname)

@@ -15,7 +15,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/go-openapi/strfmt"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -32,7 +31,7 @@ func NewCapiCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
-				return errors.Wrap(err, "Local API is disabled, please run this command on the local API machine")
+				return fmt.Errorf("local API is disabled, please run this command on the local API machine")
 			}
 			if csConfig.API.Server.OnlineClient == nil {
 				log.Fatalf("no configuration for Central API in '%s'", *csConfig.FilePath)

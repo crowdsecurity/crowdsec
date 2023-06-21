@@ -110,7 +110,7 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 
 		dataSources, err = acquisition.LoadAcquisitionFromDSN(flags.OneShotDSN, flags.Labels, flags.Transform)
 		if err != nil {
-			return errors.Wrapf(err, "failed to configure datasource for %s", flags.OneShotDSN)
+			return fmt.Errorf("failed to configure datasource for %s: %w", flags.OneShotDSN, err)
 		}
 	} else {
 		dataSources, err = acquisition.LoadAcquisitionFromFile(cConfig.Crowdsec)

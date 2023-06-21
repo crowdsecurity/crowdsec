@@ -50,11 +50,11 @@ func PushAlerts(alerts []types.RuntimeAlert, client *apiclient.ApiClient) error 
 	alertsToPush, err := dedupAlerts(alerts)
 
 	if err != nil {
-		return errors.Wrap(err, "failed to transform alerts for api")
+		return fmt.Errorf("failed to transform alerts for api: %w", err)
 	}
 	_, _, err = client.Alerts.Add(ctx, alertsToPush)
 	if err != nil {
-		return errors.Wrap(err, "failed sending alert to LAPI")
+		return fmt.Errorf("failed sending alert to LAPI: %w", err)
 	}
 	return nil
 }
@@ -104,11 +104,11 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 		Scenarios: scenarios,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "authenticate watcher (%s)", apiConfig.Login)
+		return fmt.Errorf("authenticate watcher (%s): %w", apiConfig.Login, err)
 	}
 
 	if err := Client.GetClient().Transport.(*apiclient.JWTTransport).Expiration.UnmarshalText([]byte(authResp.Expire)); err != nil {
-		return errors.Wrap(err, "unable to parse jwt expiration")
+		return fmt.Errorf("unable to parse jwt expiration: %w", err)
 	}
 
 	Client.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
