@@ -30,8 +30,10 @@ test/coverage/*
 *.swp
 *.swo
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
+# Dependencies are not vendored by default, but a tarball is created by "make vendor"
+# and provided in the release. Used by freebsd, gentoo, etc.
+vendor/
+vendor.tgz
 
 # crowdsec binaries
 cmd/crowdsec-cli/cscli
