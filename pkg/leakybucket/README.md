@@ -48,6 +48,15 @@ infinite leakspeed (it never overflows, nor leaks). Nevertheless,
 the event is raised after a fixed duration. The option is called
 duration.
 
+## Bayesian
+
+A Bayesian is a special bucket that runs bayesian inference instead of 
+counting events. Each event must have its likelihoods specified in the
+yaml file under `prob_given_benign` and `prob_given_evil`. The bucket
+will continue evaluating events until the posterior goes above the 
+threshold (triggering the overflow) or the duration (specified by leakspeed)
+expires.
+
 ## Available configuration options for buckets
 
 ### Fields for standard buckets
@@ -101,6 +110,22 @@ Capacity and leakspeed are not relevant for this kind of bucket.
    by https://golang.org/pkg/time/#ParseDuration.
    Nevertheless, this kind of bucket is often used with an infinite
    leakspeed and an infinite capacity [capacity set to -1 for now].
+
+#### Bayesian
+
+ * bayesian_prior: The prior to start with
+ * bayesian_threshold: The threshold for the posterior to trigger the overflow.
+ * bayesian_conditions: List of Bayesian conditions with likelihoods
+
+Bayesian Conditions are built from:
+ * condition: The expr for this specific condition to be true
+ * prob_given_evil: The likelihood an IP satisfies the condition given the fact
+   that it is a maliscious IP
+ * prob_given_benign: The likelihood an IP satisfies the condition given the fact
+   that it is a benign IP
+ * guillotine: Bool to stop the condition from getting evaluated if it has
+   evaluated to true once. This should be used if evaluating the condition is 
+   computationally expensive. 
 
 
 ## Add examples here
