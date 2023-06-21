@@ -80,7 +80,7 @@ func (c *BayesianBucket) AfterBucketPour(b *BucketFactory) func(types.Event, *Le
 
 		if c.posterior > c.threshold {
 			l.logger.Debugf("Bayesian bucket overflow")
-			l.Ovflw_ts = l.Last_ts
+			l.Ovflw_ts = l.GetLastEvent()
 			l.Out <- l.Queue
 			return nil
 		}
