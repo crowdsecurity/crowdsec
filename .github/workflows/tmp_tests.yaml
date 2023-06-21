@@ -25,10 +25,10 @@ jobs:
         make && cp cmd/crowdsec/crowdsec /usr/local/bin && cp cmd/crowdsec-cli/cscli /usr/local/bin
         sudo mkdir -p /etc/crowdsec && sudo cp -a config/* /etc/crowdsec
         cd hub
-        cscli hubtest run apache-http-probing --debug || cat .tests/apache-http-probing/results/bucket-dump.yaml
-        cscli hubtest run apache-http-probing --debug
-        cscli hubtest run apache-http-probing --debug
-        cscli hubtest run apache-http-probing --debug
-        cscli hubtest run apache-http-probing --debug
-        cscli hubtest run apache-http-probing --debug
-        cscli hubtest run apache-http-probing --debug
+        cscli hubtest run proxmox-bf --debug || cat .tests/proxmox-bf/results/bucket-dump.yaml
+        cscli hubtest run proxmox-bf --debug
+        cscli hubtest run proxmox-bf --debug
+        cscli hubtest run proxmox-bf --debug
+        cscli hubtest run proxmox-bf --debug
+        cscli hubtest run proxmox-bf --debug
+        cscli hubtest run proxmox-bf --debug
