@@ -25,10 +25,10 @@ jobs:
         make && cp cmd/crowdsec/crowdsec /usr/local/bin && cp cmd/crowdsec-cli/cscli /usr/local/bin
         sudo mkdir -p /etc/crowdsec && sudo cp -a config/* /etc/crowdsec
         cd hub
-        cscli hubtest run CVE-2022-46169 --debug || cat .tests/CVE-2022-46169/results/bucket-dump.yaml
-        cscli hubtest run CVE-2022-46169 --debug
-        cscli hubtest run CVE-2022-46169 --debug
-        cscli hubtest run CVE-2022-46169 --debug
-        cscli hubtest run CVE-2022-46169 --debug
-        cscli hubtest run CVE-2022-46169 --debug
-        cscli hubtest run CVE-2022-46169 --debug
+        cscli hubtest run modsecurity --debug || cat .tests/modsecurity/results/bucket-dump.yaml
+        cscli hubtest run modsecurity --debug
+        cscli hubtest run modsecurity --debug
+        cscli hubtest run modsecurity --debug
+        cscli hubtest run modsecurity --debug
+        cscli hubtest run modsecurity --debug
+        cscli hubtest run modsecurity --debug
