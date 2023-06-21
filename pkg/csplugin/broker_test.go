@@ -22,7 +22,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-
 func (s *PluginSuite) permissionSetter(perm os.FileMode) func(*testing.T) {
 	return func(t *testing.T) {
 		err := os.Chmod(s.pluginBinary, perm)
@@ -30,29 +29,27 @@ func (s *PluginSuite) permissionSetter(perm os.FileMode) func(*testing.T) {
 	}
 }
 
-func (s *PluginSuite) readconfig() (PluginConfig) {
+func (s *PluginSuite) readconfig() PluginConfig {
 	var config PluginConfig
 	t := s.T()
 
 	orig, err := os.ReadFile(s.pluginConfig)
-	require.NoError(t, err,"unable to read config file %s", s.pluginConfig)
+	require.NoError(t, err, "unable to read config file %s", s.pluginConfig)
 
 	err = yaml.Unmarshal(orig, &config)
-	require.NoError(t, err,"unable to unmarshal config file")
-	
+	require.NoError(t, err, "unable to unmarshal config file")
+
 	return config
 }
-
 
 func (s *PluginSuite) writeconfig(config PluginConfig) {
 	t := s.T()
 	data, err := yaml.Marshal(&config)
-	require.NoError(t, err,"unable to marshal config file")
+	require.NoError(t, err, "unable to marshal config file")
 
 	err = os.WriteFile(s.pluginConfig, data, 0644)
-	require.NoError(t, err,"unable to write config file %s", s.pluginConfig)
+	require.NoError(t, err, "unable to write config file %s", s.pluginConfig)
 }
-
 
 func (s *PluginSuite) TestBrokerInit() {
 	tests := []struct {
@@ -62,7 +59,7 @@ func (s *PluginSuite) TestBrokerInit() {
 		expectedErr string
 	}{
 		{
-			name:   "valid config",
+			name: "valid config",
 		},
 		{
 			name:        "group writable binary",
@@ -349,7 +346,7 @@ func (s *PluginSuite) TestBrokerRunSimple() {
 	DefaultEmptyTicker = 50 * time.Millisecond
 
 	t := s.T()
-	
+
 	pb, err := s.InitBroker(nil)
 	assert.NoError(t, err)
 

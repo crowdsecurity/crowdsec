@@ -27,9 +27,9 @@ func TestListFilesAtPath(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name    string
-		path	string
-		want    []string
+		name        string
+		path        string
+		want        []string
 		expectedErr string
 	}{
 		{
@@ -41,8 +41,8 @@ func TestListFilesAtPath(t *testing.T) {
 			},
 		},
 		{
-			name: "invalid directory",
-			path: "./foo/bar/",
+			name:        "invalid directory",
+			path:        "./foo/bar/",
 			expectedErr: "open ./foo/bar/: " + cstest.PathNotFoundMessage,
 		},
 	}
