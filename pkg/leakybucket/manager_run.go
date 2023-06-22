@@ -366,6 +366,9 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		}
 		//finally, pour the even into the bucket
 		ok, err := PourItemToBucket(bucket, holders[idx], buckets, &parsed)
+		if bucket.orderEvent {
+			<-bucket.chanOrderEvent
+		}
 		if err != nil {
 			return false, errors.Wrap(err, "failed to pour bucket")
 		}
