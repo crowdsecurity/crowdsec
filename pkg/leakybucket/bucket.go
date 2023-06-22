@@ -72,6 +72,8 @@ type Leaky struct {
 	mutex               *sync.Mutex //used only for TIMEMACHINE mode to allow garbage collection without races
 	timestamp           *timestamp
 	fresh               bool
+	chanOrderEvent      chan bool
+	orderEvent          bool
 }
 
 var BucketsPour = prometheus.NewCounterVec(
@@ -181,6 +183,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		wgDumpState:     bucketFactory.wgDumpState,
 		mutex:           &sync.Mutex{},
 		fresh:           true,
+		orderEvent:      bucketFactory.orderEvent,
 	}
 	if l.BucketConfig.Capacity > 0 && l.BucketConfig.leakspeed != time.Duration(0) {
 		l.Duration = time.Duration(l.BucketConfig.Capacity+1) * l.BucketConfig.leakspeed
@@ -201,6 +204,10 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 
 	if l.BucketConfig.Type == "bayesian" {
 		l.Duration = l.BucketConfig.leakspeed
+	}
+
+	if l.orderEvent {
+		l.chanOrderEvent = make(chan bool, 1)
 	}
 	return l
 }
@@ -287,6 +294,9 @@ func LeakRoutine(leaky *Leaky) error {
 		/*we overflowed*/
 		case ofw := <-leaky.Out:
 			leaky.overflow(ofw)
+			if leaky.orderEvent {
+				leaky.chanOrderEvent <- true
+			}
 			return nil
 		/*suiciiiide*/
 		case <-leaky.Suicide:
