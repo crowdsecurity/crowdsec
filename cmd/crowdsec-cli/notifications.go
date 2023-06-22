@@ -254,7 +254,7 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 				return fmt.Errorf("loading api client: %w", err)
 			}
 			if csConfig.API.Client == nil {
-				return fmt.Errorf("there is no configuration on 'api_client:': %w", err)
+				return fmt.Errorf("missing configuration on 'api_client:'")
 			}
 			if csConfig.API.Client.Credentials == nil {
 				return fmt.Errorf("missing API credentials in '%s'", csConfig.API.Client.CredentialsFilePath)
