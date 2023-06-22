@@ -15,13 +15,13 @@ import (
 )
 
 type HubTestItemConfig struct {
-	Parsers         []string           `yaml:"parsers"`
-	Scenarios       []string           `yaml:"scenarios"`
-	PostOVerflows   []string           `yaml:"postoverflows"`
-	LogFile         string             `yaml:"log_file"`
-	LogType         string             `yaml:"log_type"`
-	Labels          map[string]string  `yaml:"labels"`
-	IgnoreParsers   bool               `yaml:"ignore_parsers"`   // if we test a scenario, we don't want to assert on Parser
+	Parsers         []string            `yaml:"parsers"`
+	Scenarios       []string            `yaml:"scenarios"`
+	PostOVerflows   []string            `yaml:"postoverflows"`
+	LogFile         string              `yaml:"log_file"`
+	LogType         string              `yaml:"log_type"`
+	Labels          map[string]string   `yaml:"labels"`
+	IgnoreParsers   bool                `yaml:"ignore_parsers"`   // if we test a scenario, we don't want to assert on Parser
 	OverrideStatics []parser.ExtraField `yaml:"override_statics"` //Allow to override statics. Executed before s00
 }
 
@@ -533,7 +533,7 @@ func (t *HubTestItem) Run() error {
 	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", t.ResultsPath}
 	for labelKey, labelValue := range t.Config.Labels {
 		arg := fmt.Sprintf("%s:%s", labelKey, labelValue)
-		cmdArgs = append(cmdArgs, "-label", arg)
+		cmdArgs = append(cmdArgs, "-label", arg, "order")
 	}
 	crowdsecCmd := exec.Command(t.CrowdSecPath, cmdArgs...)
 	log.Debugf("%s", crowdsecCmd.String())
