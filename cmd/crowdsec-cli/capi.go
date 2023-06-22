@@ -31,8 +31,11 @@ func NewCapiCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
+			if err := csConfig.LoadAPIServer(); err != nil {
 				return fmt.Errorf("local API is disabled, please run this command on the local API machine: %w", err)
+			}
+			if csConfig.DisableAPI {
+				return nil
 			}
 			if csConfig.API.Server.OnlineClient == nil {
 				log.Fatalf("no configuration for Central API in '%s'", *csConfig.FilePath)
@@ -133,7 +136,7 @@ func NewCapiStatusCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			if csConfig.API.Server == nil {
-				log.Fatalln("There is no configuration on 'api.server:'")
+				log.Fatal("There is no configuration on 'api.server:'")
 			}
 			if csConfig.API.Server.OnlineClient == nil {
 				log.Fatalf("Please provide credentials for the Central API (CAPI) in '%s'", csConfig.API.Server.OnlineClient.CredentialsFilePath)
