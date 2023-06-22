@@ -295,6 +295,7 @@ func LeakRoutine(leaky *Leaky) error {
 		case ofw := <-leaky.Out:
 			leaky.overflow(ofw)
 			if leaky.orderEvent {
+				fmt.Printf("HERE")
 				leaky.chanOrderEvent <- true
 			}
 			return nil
