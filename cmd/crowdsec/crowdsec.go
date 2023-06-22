@@ -3,10 +3,12 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
-	"path/filepath"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
 
@@ -16,9 +18,6 @@ import (
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
 )
 
 func initCrowdsec(cConfig *csconfig.Config) (*parser.Parsers, error) {
@@ -118,7 +117,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers) error {
 			aggregated = true
 		}
 		if err := acquisition.GetMetrics(dataSources, aggregated); err != nil {
-			return errors.Wrap(err, "while fetching prometheus metrics for datasources.")
+			return fmt.Errorf("while fetching prometheus metrics for datasources: %w", err)
 		}
 
 	}

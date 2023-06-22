@@ -15,7 +15,6 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -155,7 +154,6 @@ var alertTemplate = `
 
 `
 
-
 func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 	if csConfig.Cscli.Output == "human" {
 		tmpl, err := template.New("alert").Parse(alertTemplate)
@@ -211,11 +209,11 @@ func NewAlertsCmd() *cobra.Command {
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			if err := csConfig.LoadAPIClient(); err != nil {
-				return errors.Wrap(err, "loading api client")
+				return fmt.Errorf("loading api client: %w", err)
 			}
 			apiURL, err := url.Parse(csConfig.API.Client.Credentials.URL)
 			if err != nil {
-				return errors.Wrapf(err, "parsing api url %s", apiURL)
+				return fmt.Errorf("parsing api url %s: %w", apiURL, err)
 			}
 			Client, err = apiclient.NewClient(&apiclient.Config{
 				MachineID:     csConfig.API.Client.Credentials.Login,
@@ -226,7 +224,7 @@ func NewAlertsCmd() *cobra.Command {
 			})
 
 			if err != nil {
-				return errors.Wrap(err, "new api client")
+				return fmt.Errorf("new api client: %w", err)
 			}
 			return nil
 		},

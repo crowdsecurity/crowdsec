@@ -15,7 +15,6 @@ import (
 	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
 	"github.com/jszwec/csvutil"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -112,12 +111,12 @@ func NewDecisionsCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadAPIClient(); err != nil {
-				return errors.Wrap(err, "loading api client")
+				return fmt.Errorf("loading api client: %w", err)
 			}
 			password := strfmt.Password(csConfig.API.Client.Credentials.Password)
 			apiurl, err := url.Parse(csConfig.API.Client.Credentials.URL)
 			if err != nil {
-				return errors.Wrapf(err, "parsing api url %s", csConfig.API.Client.Credentials.URL)
+				return fmt.Errorf("parsing api url %s: %w", csConfig.API.Client.Credentials.URL, err)
 			}
 			Client, err = apiclient.NewClient(&apiclient.Config{
 				MachineID:     csConfig.API.Client.Credentials.Login,
@@ -127,7 +126,7 @@ func NewDecisionsCmd() *cobra.Command {
 				VersionPrefix: "v1",
 			})
 			if err != nil {
-				return errors.Wrap(err, "creating api client")
+				return fmt.Errorf("creating api client: %w", err)
 			}
 			return nil
 		},

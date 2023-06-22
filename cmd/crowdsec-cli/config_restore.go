@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -133,7 +132,7 @@ func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
 		for _, acquisFile := range acquisFiles {
 			targetFname, err := filepath.Abs(csConfig.Crowdsec.AcquisitionDirPath + "/" + filepath.Base(acquisFile))
 			if err != nil {
-				return errors.Wrapf(err, "while saving %s to %s", acquisFile, targetFname)
+				return fmt.Errorf("while saving %s to %s: %w", acquisFile, targetFname, err)
 			}
 
 			log.Debugf("restoring %s to %s", acquisFile, targetFname)
@@ -156,7 +155,7 @@ func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
 
 			targetFname, err := filepath.Abs(filepath.Join(acquisBackupDir, filepath.Base(acquisFile)))
 			if err != nil {
-				return errors.Wrapf(err, "while saving %s to %s", acquisFile, acquisBackupDir)
+				return fmt.Errorf("while saving %s to %s: %w", acquisFile, acquisBackupDir, err)
 			}
 
 			if err = CopyFile(acquisFile, targetFname); err != nil {
@@ -173,7 +172,6 @@ func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
 
 	return nil
 }
-
 
 func runConfigRestore(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
@@ -198,7 +196,6 @@ func runConfigRestore(cmd *cobra.Command, args []string) error {
 
 	return nil
 }
-
 
 func NewConfigRestoreCmd() *cobra.Command {
 	cmdConfigRestore := &cobra.Command{
