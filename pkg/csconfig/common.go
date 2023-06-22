@@ -39,7 +39,7 @@ func (c *Config) LoadCommon() error {
 		}
 		*k, err = filepath.Abs(*k)
 		if err != nil {
-			return errors.Wrapf(err, "failed to get absolute path of '%s'", *k)
+			return fmt.Errorf("failed to get absolute path of '%s': %w", *k, err)
 		}
 	}
 

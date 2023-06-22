@@ -176,9 +176,9 @@ func (ta *TLSAuth) isInvalid(cert *x509.Certificate, issuer *x509.Certificate) (
 	}
 	revoked, err := ta.isRevoked(cert, issuer)
 	if err != nil {
-		//Fail securely, if we can't check the revokation status, let's consider the cert invalid
+		//Fail securely, if we can't check the revocation status, let's consider the cert invalid
 		//We may change this in the future based on users feedback, but this seems the most sensible thing to do
-		return true, errors.Wrap(err, "could not check for client certification revokation status")
+		return true, fmt.Errorf("could not check for client certification revocation status: %w", err)
 	}
 
 	return revoked, nil
@@ -231,7 +231,7 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 		revoked, err := ta.isInvalid(clientCert, c.Request.TLS.VerifiedChains[0][1])
 		if err != nil {
 			ta.logger.Errorf("TLSAuth: error checking if client certificate is revoked: %s", err)
-			return false, "", errors.Wrap(err, "could not check for client certification revokation status")
+			return false, "", fmt.Errorf("could not check for client certification revokation status: %w", err)
 		}
 		if revoked {
 			return false, "", fmt.Errorf("client certificate is revoked")
