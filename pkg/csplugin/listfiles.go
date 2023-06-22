@@ -13,10 +13,9 @@ func listFilesAtPath(path string) ([]string, error) {
 		return nil, err
 	}
 	for _, file := range files {
-		if ! file.IsDir() {
+		if !file.IsDir() {
 			filePaths = append(filePaths, filepath.Join(path, file.Name()))
 		}
 	}
 	return filePaths, nil
 }
-
