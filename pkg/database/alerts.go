@@ -565,7 +565,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 				}
 				marshallMetas, err := json.Marshal(eventItem.Meta)
 				if err != nil {
-					return []string{}, errors.Wrapf(MarshalFail, "event meta '%v' : %s", eventItem.Meta, err)
+					return nil, errors.Wrapf(MarshalFail, "event meta '%v' : %s", eventItem.Meta, err)
 				}
 
 				//the serialized field is too big, let's try to progressively strip it
@@ -583,7 +583,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 
 						marshallMetas, err = json.Marshal(eventItem.Meta)
 						if err != nil {
-							return []string{}, errors.Wrapf(MarshalFail, "event meta '%v' : %s", eventItem.Meta, err)
+							return nil, errors.Wrapf(MarshalFail, "event meta '%v' : %s", eventItem.Meta, err)
 						}
 						if event.SerializedValidator(string(marshallMetas)) == nil {
 							valid = true
@@ -612,7 +612,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			}
 			events, err = c.Ent.Event.CreateBulk(eventBulk...).Save(c.CTX)
 			if err != nil {
-				return []string{}, errors.Wrapf(BulkError, "creating alert events: %s", err)
+				return nil, errors.Wrapf(BulkError, "creating alert events: %s", err)
 			}
 		}
 
@@ -625,7 +625,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			}
 			metas, err = c.Ent.Meta.CreateBulk(metaBulk...).Save(c.CTX)
 			if err != nil {
-				return []string{}, errors.Wrapf(BulkError, "creating alert meta: %s", err)
+				return nil, errors.Wrapf(BulkError, "creating alert meta: %s", err)
 			}
 		}
 
@@ -638,14 +638,14 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 
 				duration, err := time.ParseDuration(*decisionItem.Duration)
 				if err != nil {
-					return []string{}, errors.Wrapf(ParseDurationFail, "decision duration '%+v' : %s", *decisionItem.Duration, err)
+					return nil, errors.Wrapf(ParseDurationFail, "decision duration '%+v' : %s", *decisionItem.Duration, err)
 				}
 
 				/*if the scope is IP or Range, convert the value to integers */
 				if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
 					sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decisionItem.Value)
 					if err != nil {
-						return []string{}, errors.Wrapf(InvalidIPOrRange, "invalid addr/range %s : %s", *decisionItem.Value, err)
+						return nil, fmt.Errorf("%s: %w", *decisionItem.Value, InvalidIPOrRange)
 					}
 				}
 
@@ -668,7 +668,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 				if len(decisionBulk) == decisionBulkSize {
 					decisionsCreateRet, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
 					if err != nil {
-						return []string{}, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
+						return nil, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
 
 					}
 					decisions = append(decisions, decisionsCreateRet...)
@@ -681,7 +681,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			}
 			decisionsCreateRet, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
 			if err != nil {
-				return []string{}, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
+				return nil, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
 			}
 			decisions = append(decisions, decisionsCreateRet...)
 		}
@@ -720,7 +720,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		if len(bulk) == bulkSize {
 			alerts, err := c.Ent.Alert.CreateBulk(bulk...).Save(c.CTX)
 			if err != nil {
-				return []string{}, errors.Wrapf(BulkError, "bulk creating alert : %s", err)
+				return nil, errors.Wrapf(BulkError, "bulk creating alert : %s", err)
 			}
 			for alertIndex, a := range alerts {
 				ret = append(ret, strconv.Itoa(a.ID))
@@ -729,7 +729,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 				for _, d2 := range decisionsChunk {
 					_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
 					if err != nil {
-						return []string{}, fmt.Errorf("error while updating decisions: %s", err)
+						return nil, fmt.Errorf("error while updating decisions: %s", err)
 					}
 				}
 			}
@@ -745,7 +745,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 
 	alerts, err := c.Ent.Alert.CreateBulk(bulk...).Save(c.CTX)
 	if err != nil {
-		return []string{}, errors.Wrapf(BulkError, "leftovers creating alert : %s", err)
+		return nil, errors.Wrapf(BulkError, "leftovers creating alert : %s", err)
 	}
 
 	for alertIndex, a := range alerts {
@@ -755,7 +755,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		for _, d2 := range decisionsChunk {
 			_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
 			if err != nil {
-				return []string{}, fmt.Errorf("error while updating decisions: %s", err)
+				return nil, fmt.Errorf("error while updating decisions: %s", err)
 			}
 		}
 	}

@@ -66,27 +66,68 @@ teardown() {
 }
 
 @test "cscli decisions import (json)" {
+    # import from file
     rune -0 cscli decisions import -i "${TESTDATA}/decisions.json"
+    assert_stderr --partial 'Parsing json'
+    assert_stderr --partial 'Imported 5 decisions'
+
+    # import from stdin
     rune -0 cat "${TESTDATA}/decisions.json"
     rune -0 cscli decisions import -i /dev/stdin < <(output)
+    assert_stderr --partial 'Parsing json'
+    assert_stderr --partial 'Imported 5 decisions'
+
+    # invalid json
+    rune -1 cscli decisions import -i - <<<'{"blah":"blah"}'
+    assert_stderr --partial 'Parsing json'
+    assert_stderr --partial 'unable to parse decision list: json: cannot unmarshal object into Go value of type []main.decisionRaw'
+
+    # json with extra data
+    rune -1 cscli decisions import -i - <<<'{"values":"1.2.3.4","blah":"blah"}'
+    assert_stderr --partial 'Parsing json'
+    assert_stderr --partial 'unable to parse decision list: json: cannot unmarshal object into Go value of type []main.decisionRaw'
 }
 
 @test "cscli decisions import (csv)" {
+    # import from file
     rune -0 cscli decisions import -i "${TESTDATA}/decisions.csv"
+    assert_stderr --partial 'Parsing csv'
+    assert_stderr --partial 'Imported 5 decisions'
+
+    # import from stdin
     rune -0 cat "${TESTDATA}/decisions.csv"
     rune -0 cscli decisions import -i /dev/stdin < <(output)
+    assert_stderr --partial 'Parsing csv'
+    assert_stderr --partial 'Imported 5 decisions'
+
+    # invalid csv
+    rune -1 cscli decisions import -i - <<<'value\n1.2.3.4,5.6.7.8'
+    assert_stderr --partial 'Parsing csv'
+    refute_error
 }
 
 @test "cscli decisions import (values only)" {
-    rune -0 cscli decisions import -i /dev/stdin <<-EOT
+    # can use '-' as stdin
+    rune -0 cscli decisions import -i - --values-only <<-EOT
 	1.2.3.4
 	1.2.3.5
 	1.2.3.6
 	EOT
+    assert_stderr --partial 'Parsing values'
+    assert_stderr --partial 'Imported 3 decisions'
 
-    rune -0 cscli decisions import -i /dev/stdin <<-EOT
-	"  10.2.3.4  "
-	"10.2.3.5   "
-	"   10.2.3.6"
+    rune -0 cscli decisions import -i - --values-only <<-EOT
+	  10.2.3.4  
+	10.2.3.5   
+	   10.2.3.6
 	EOT
+    assert_stderr --partial 'Parsing values'
+    assert_stderr --partial 'Imported 3 decisions'
+
+    rune -1 cscli decisions import -i - --values-only <<-EOT
+	whatever
+	EOT
+    assert_stderr --partial 'Parsing values'
+    assert_stderr --partial 'API error: unable to create alerts: whatever: invalid ip address / range'
 }
+

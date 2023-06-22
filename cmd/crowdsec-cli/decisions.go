@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/csv"
@@ -520,33 +521,32 @@ type decisionRaw struct {
 	Value    string `csv:"value" json:"value"`
 }
 
-func parseDecisionList(content []byte) ([]decisionRaw, error) {
-	decisionsListRaw := []decisionRaw{}
+func parseDecisionList(content []byte, valuesOnly bool) ([]decisionRaw, error) {
+	ret := []decisionRaw{}
 
-	if isJSON(content) {
-		log.Info("JSON detected")
-		if err := json.Unmarshal(content, &decisionsListRaw); err != nil {
-			return nil, fmt.Errorf("unable to unmarshall json: '%s'", err)
+	switch {
+	case valuesOnly:
+		log.Infof("Parsing values")
+		scanner := bufio.NewScanner(bytes.NewReader(content))
+		for scanner.Scan() {
+			value := strings.TrimSpace(scanner.Text())
+			ret = append(ret, decisionRaw{Value: value})
 		}
-		return decisionsListRaw, nil
+		if err := scanner.Err(); err != nil {
+			return nil, fmt.Errorf("unable to parse values: '%s'", err)
+		}
+	case isJSON(content):
+		log.Infof("Parsing json")
+		if err := json.Unmarshal(content, &ret); err != nil {
+			return nil, err
+		}
+	case isCSV(content):
+		log.Infof("Parsing csv")
+		if err := csvutil.Unmarshal(content, &ret); err != nil {
+			return nil, fmt.Errorf("unable to parse csv: '%s'", err)
+		}
 	}
-
-	if !isCSV(content) {
-		return nil, fmt.Errorf("unable to parse as JSON or CSV")
-	}
-
-	log.Info("CSV detected")
-
-	if !isValidCSVHeader(content) {
-		log.Info("CSV header is invalid -- assuming plain list of values")
-		// the idiomatic way to unmarshall a csv with no header adds a couple dozen lines of code
-		content = []byte(fmt.Sprintf("value\n%s", content))
-	}
-
-	if err := csvutil.Unmarshal(content, &decisionsListRaw); err != nil {
-		return nil, fmt.Errorf("unable to unmarshall csv: '%s'", err)
-	}
-	return decisionsListRaw, nil
+	return ret, nil
 }
 
 
@@ -562,6 +562,7 @@ func NewDecisionsImportCmd() *cobra.Command {
 		importType      string
 		importFile      string
 		batchSize       int
+		valuesOnly      bool
 	)
 
 	var cmdDecisionImport = &cobra.Command{
@@ -606,7 +607,7 @@ decisions.json :
 				return fmt.Errorf("unable to read from %s: %s", importFile, err)
 			}
 
-			decisionsListRaw, err := parseDecisionList(content)
+			decisionsListRaw, err := parseDecisionList(content, valuesOnly)
 			if err != nil {
 				return fmt.Errorf("unable to parse decision list: %s", err)
 			}
@@ -614,11 +615,8 @@ decisions.json :
 			decisionsList := make([]*models.Decision, len(decisionsListRaw))
 			for i, decisionLine := range decisionsListRaw {
 				line := i + 2
-				// strip spaces which are not allowed in value, useful
-				// especially for plain list of values
-				valueTrim := strings.TrimSpace(decisionLine.Value)
-				if valueTrim == "" {
-					return fmt.Errorf("please provide a 'value' in your csv line %d", line)
+				if decisionLine.Value == "" {
+					return fmt.Errorf("missing 'value' in line %d", line)
 				}
 				/*deal with defaults and cli-override*/
 				if decisionLine.Duration == "" {
@@ -656,7 +654,7 @@ decisions.json :
 					log.Debugf("'scope' line %d, using supplied value: '%s'", line, importScope)
 				}
 				decisionsList[i] = &models.Decision{
-					Value:     ptr.Of(valueTrim),
+					Value:     ptr.Of(decisionLine.Value),
 					Duration:  ptr.Of(decisionLine.Duration),
 					Origin:    ptr.Of(decisionLine.Origin),
 					Scenario:  ptr.Of(decisionLine.Scenario),
@@ -727,7 +725,7 @@ decisions.json :
 			if err != nil {
 				return err
 			}
-			log.Infof("%d decisions successfully imported", len(decisionsList))
+			log.Infof("Imported %d decisions", len(decisionsList))
 			return nil
 		},
 	}
@@ -739,6 +737,7 @@ decisions.json :
 	cmdDecisionImport.Flags().StringVarP(&importReason, "reason", "R", "", "Decision reason (ie. scenario-name)")
 	cmdDecisionImport.Flags().StringVarP(&importType, "type", "t", "", "Decision type (ie. ban,captcha,throttle)")
 	cmdDecisionImport.Flags().IntVar(&batchSize, "batch", 0, "Split import in batches of N decisions")
+	cmdDecisionImport.Flags().BoolVar(&valuesOnly, "values-only", false, "Each line is a value, no headers")
 
 	return cmdDecisionImport
 }
