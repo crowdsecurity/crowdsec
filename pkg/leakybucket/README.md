@@ -158,7 +158,7 @@ Bayesian Conditions are built from:
 
 [This is not dry enough to have many details here, but:]
 
-The bucket code is triggered by `InfiniBucketify` in `main.go`.
+The bucket code is triggered by runPour in pour.go, by calling the `leaky.PourItemToHolders` function.
 There is one struct called buckets which is for now a
 `map[string]interface{}` that holds all buckets. The key of this map
 is derived from the filter configured for the bucket and its
