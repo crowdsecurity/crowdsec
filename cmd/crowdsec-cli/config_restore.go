@@ -173,7 +173,6 @@ func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
 	return nil
 }
 
-
 func runConfigRestore(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
@@ -197,7 +196,6 @@ func runConfigRestore(cmd *cobra.Command, args []string) error {
 
 	return nil
 }
-
 
 func NewConfigRestoreCmd() *cobra.Command {
 	cmdConfigRestore := &cobra.Command{

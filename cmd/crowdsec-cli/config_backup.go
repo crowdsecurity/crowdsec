@@ -127,7 +127,6 @@ func backupConfigToDirectory(dirPath string) error {
 	return nil
 }
 
-
 func runConfigBackup(cmd *cobra.Command, args []string) error {
 	if err := csConfig.LoadHub(); err != nil {
 		return err
@@ -144,7 +143,6 @@ func runConfigBackup(cmd *cobra.Command, args []string) error {
 
 	return nil
 }
-
 
 func NewConfigBackupCmd() *cobra.Command {
 	cmdConfigBackup := &cobra.Command{

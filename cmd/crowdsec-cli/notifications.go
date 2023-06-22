@@ -27,13 +27,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
 )
 
-
 type NotificationsCfg struct {
 	Config   csplugin.PluginConfig  `json:"plugin_config"`
 	Profiles []*csconfig.ProfileCfg `json:"associated_profiles"`
 	ids      []uint
 }
-
 
 func NewNotificationsCmd() *cobra.Command {
 	var cmdNotifications = &cobra.Command{
@@ -56,14 +54,12 @@ func NewNotificationsCmd() *cobra.Command {
 		},
 	}
 
-
 	cmdNotifications.AddCommand(NewNotificationsListCmd())
 	cmdNotifications.AddCommand(NewNotificationsInspectCmd())
 	cmdNotifications.AddCommand(NewNotificationsReinjectCmd())
 
 	return cmdNotifications
 }
-
 
 func getNotificationsConfiguration() (map[string]NotificationsCfg, error) {
 	pcfgs := map[string]csplugin.PluginConfig{}
@@ -128,7 +124,6 @@ func getNotificationsConfiguration() (map[string]NotificationsCfg, error) {
 	return ncfgs, nil
 }
 
-
 func NewNotificationsListCmd() *cobra.Command {
 	var cmdNotificationsList = &cobra.Command{
 		Use:               "list",
@@ -175,7 +170,6 @@ func NewNotificationsListCmd() *cobra.Command {
 
 	return cmdNotificationsList
 }
-
 
 func NewNotificationsInspectCmd() *cobra.Command {
 	var cmdNotificationsInspect = &cobra.Command{
@@ -225,7 +219,6 @@ func NewNotificationsInspectCmd() *cobra.Command {
 
 	return cmdNotificationsInspect
 }
-
 
 func NewNotificationsReinjectCmd() *cobra.Command {
 	var remediation bool

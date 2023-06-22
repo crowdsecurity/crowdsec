@@ -51,14 +51,14 @@ var (
 )
 
 type Flags struct {
-	ConfigFile     string
+	ConfigFile string
 
-	LogLevelTrace  bool
-	LogLevelDebug  bool
-	LogLevelInfo   bool
-	LogLevelWarn   bool
-	LogLevelError  bool
-	LogLevelFatal  bool
+	LogLevelTrace bool
+	LogLevelDebug bool
+	LogLevelInfo  bool
+	LogLevelWarn  bool
+	LogLevelError bool
+	LogLevelFatal bool
 
 	PrintVersion   bool
 	SingleFileType string

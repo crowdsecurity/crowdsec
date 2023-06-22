@@ -154,7 +154,6 @@ var alertTemplate = `
 
 `
 
-
 func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 	if csConfig.Cscli.Output == "human" {
 		tmpl, err := template.New("alert").Parse(alertTemplate)

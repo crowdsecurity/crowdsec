@@ -6,6 +6,11 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/go-openapi/strfmt"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
+
 	"github.com/crowdsecurity/go-cs-lib/pkg/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -14,10 +19,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/go-openapi/strfmt"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 )
 
 const CAPIBaseURL string = "https://api.crowdsec.net/"
