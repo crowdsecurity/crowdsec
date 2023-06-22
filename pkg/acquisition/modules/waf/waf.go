@@ -24,7 +24,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var wafParsingHistogram = prometheus.NewHistogramVec(
+var WafParsingHistogram = prometheus.NewHistogramVec(
 	prometheus.HistogramOpts{
 		Help:    "Time spent processing a request by the WAF.",
 		Name:    "cs_waf_parsing_time_seconds",
@@ -33,7 +33,7 @@ var wafParsingHistogram = prometheus.NewHistogramVec(
 	[]string{"source"},
 )
 
-var wafReqCounter = prometheus.NewCounterVec(
+var WafReqCounter = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_waf_reqs_total",
 		Help: "Total events processed by the WAF.",
@@ -41,7 +41,7 @@ var wafReqCounter = prometheus.NewCounterVec(
 	[]string{"source"},
 )
 
-var wafRuleHits = prometheus.NewCounterVec(
+var WafRuleHits = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_waf_rule_hits",
 		Help: "Count of triggered rule, by rule_id and type (inband/outofband).",
@@ -448,7 +448,7 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 			log.Infof("Waf Runner is dying")
 			return nil
 		case request := <-r.inChan:
-			wafReqCounter.With(prometheus.Labels{"source": request.RemoteAddr}).Inc()
+			WafReqCounter.With(prometheus.Labels{"source": request.RemoteAddr}).Inc()
 			//measure the time spent in the WAF
 			startParsing := time.Now()
 			in, tx, err := processReqWithEngine(r.inBandWaf, request, request.UUID, InBand)
@@ -494,7 +494,7 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 			}
 			//measure the full time spent in the WAF
 			elapsed := time.Since(startParsing)
-			wafParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddr}).Observe(elapsed.Seconds())
+			WafParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddr}).Observe(elapsed.Seconds())
 		}
 	}
 }
