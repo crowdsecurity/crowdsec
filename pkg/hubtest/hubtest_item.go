@@ -530,10 +530,10 @@ func (t *HubTestItem) Run() error {
 		}
 	}
 
-	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", t.ResultsPath}
+	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", t.ResultsPath, "-order-event"}
 	for labelKey, labelValue := range t.Config.Labels {
 		arg := fmt.Sprintf("%s:%s", labelKey, labelValue)
-		cmdArgs = append(cmdArgs, "-label", arg, "-order-event")
+		cmdArgs = append(cmdArgs, "-label", arg)
 	}
 	crowdsecCmd := exec.Command(t.CrowdSecPath, cmdArgs...)
 	log.Debugf("%s", crowdsecCmd.String())
