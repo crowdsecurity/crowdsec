@@ -523,13 +523,6 @@ func parseDecisionList(content []byte, format string) ([]decisionRaw, error) {
 
 
 func runDecisionsImport(cmd *cobra.Command, args []string) error  {
-	const (
-		defaultDuration = "4h"
-		defaultScope    = "ip"
-		defaultType     = "ban"
-		defaultReason   = "manual"
-	)
-
 	flags := cmd.Flags()
 
 	input, err := flags.GetString("input")
@@ -541,20 +534,32 @@ func runDecisionsImport(cmd *cobra.Command, args []string) error  {
 	if err != nil {
 		return err
 	}
+	if importDuration == "" {
+		return fmt.Errorf("--duration cannot be empty")
+	}
 
 	importScope, err := flags.GetString("scope")
 	if err != nil {
 		return err
+	}
+	if importDuration == "" {
+		return fmt.Errorf("--scope cannot be empty")
 	}
 
 	importReason, err := flags.GetString("reason")
 	if err != nil {
 		return err
 	}
+	if importDuration == "" {
+		return fmt.Errorf("--reason cannot be empty")
+	}
 
 	importType, err := flags.GetString("type")
 	if err != nil {
 		return err
+	}
+	if importDuration == "" {
+		return fmt.Errorf("--type cannot be empty")
 	}
 
 	batchSize, err := flags.GetInt("batch")
@@ -605,60 +610,47 @@ func runDecisionsImport(cmd *cobra.Command, args []string) error  {
 		return err
 	}
 
-	decisionsList := make([]*models.Decision, len(decisionsListRaw))
-	for i, decisionLine := range decisionsListRaw {
-		line := i + 2
-		if decisionLine.Value == "" {
-			return fmt.Errorf("missing 'value' in line %d", line)
+	decisions := make([]*models.Decision, len(decisionsListRaw))
+	for i, d := range decisionsListRaw {
+		if d.Value == "" {
+			return fmt.Errorf("item %d: missing 'value'", i)
 		}
-		/*deal with defaults and cli-override*/
-		if decisionLine.Duration == "" {
-			decisionLine.Duration = defaultDuration
-			log.Debugf("No 'duration' line %d, using default value: '%s'", line, defaultDuration)
-		}
-		if importDuration != "" {
-			decisionLine.Duration = importDuration
-			log.Debugf("'duration' line %d, using supplied value: '%s'", line, importDuration)
-		}
-		decisionLine.Origin = types.CscliImportOrigin
 
-		if decisionLine.Scenario == "" {
-			decisionLine.Scenario = defaultReason
-			log.Debugf("No 'reason' line %d, using value: '%s'", line, decisionLine.Scenario)
+		if d.Duration == "" {
+			d.Duration = importDuration
+			log.Debugf("item %d: missing 'duration', using default '%s'", i, importDuration)
 		}
-		if importReason != "" {
-			decisionLine.Scenario = importReason
-			log.Debugf("No 'reason' line %d, using supplied value: '%s'", line, importReason)
+
+		d.Origin = types.CscliImportOrigin
+
+		if d.Scenario == "" {
+			d.Scenario = importReason
+			log.Debugf("item %d: missing 'reason', using default '%s'", i, importReason)
 		}
-		if decisionLine.Type == "" {
-			decisionLine.Type = defaultType
-			log.Debugf("No 'type' line %d, using default value: '%s'", line, decisionLine.Type)
+
+		if d.Type == "" {
+			d.Type = importType
+			log.Debugf("item %d: missing 'type', using default '%s'", i, importType)
 		}
-		if importType != "" {
-			decisionLine.Type = importType
-			log.Debugf("'type' line %d, using supplied value: '%s'", line, importType)
+
+		if d.Scope == "" {
+			d.Scope = importScope
+			log.Debugf("item %d: missing 'scope', using default '%s'", i, importScope)
 		}
-		if decisionLine.Scope == "" {
-			decisionLine.Scope = defaultScope
-			log.Debugf("No 'scope' line %d, using default value: '%s'", line, decisionLine.Scope)
-		}
-		if importScope != "" {
-			decisionLine.Scope = importScope
-			log.Debugf("'scope' line %d, using supplied value: '%s'", line, importScope)
-		}
-		decisionsList[i] = &models.Decision{
-			Value:     ptr.Of(decisionLine.Value),
-			Duration:  ptr.Of(decisionLine.Duration),
-			Origin:    ptr.Of(decisionLine.Origin),
-			Scenario:  ptr.Of(decisionLine.Scenario),
-			Type:      ptr.Of(decisionLine.Type),
-			Scope:     ptr.Of(decisionLine.Scope),
-			Simulated: new(bool),
+
+		decisions[i] = &models.Decision{
+			Value:     ptr.Of(d.Value),
+			Duration:  ptr.Of(d.Duration),
+			Origin:    ptr.Of(d.Origin),
+			Scenario:  ptr.Of(d.Scenario),
+			Type:      ptr.Of(d.Type),
+			Scope:     ptr.Of(d.Scope),
+			Simulated: ptr.Of(false),
 		}
 	}
 	alerts := models.AddAlertsRequest{}
 
-	for _, chunk := range slicetools.Chunks(decisionsList, batchSize) {
+	for _, chunk := range slicetools.Chunks(decisions, batchSize) {
 		log.Debugf("Processing chunk of %d decisions", len(chunk))
 		importAlert := models.Alert{
 			CreatedAt: time.Now().UTC().Format(time.RFC3339),
@@ -683,15 +675,15 @@ func runDecisionsImport(cmd *cobra.Command, args []string) error  {
 		alerts = append(alerts, &importAlert)
 	}
 
-	if len(decisionsList) > 1000 {
-		log.Infof("You are about to add %d decisions, this may take a while", len(decisionsList))
+	if len(decisions) > 1000 {
+		log.Infof("You are about to add %d decisions, this may take a while", len(decisions))
 	}
 
 	_, _, err = Client.Alerts.Add(context.Background(), alerts)
 	if err != nil {
 		return err
 	}
-	log.Infof("Imported %d decisions", len(decisionsList))
+	log.Infof("Imported %d decisions", len(decisions))
 	return nil
 }
 
@@ -726,10 +718,10 @@ $ echo "1.2.3.4" | cscli decisions import -i - --format values
 	flags := cmdDecisionsImport.Flags()
 	flags.SortFlags = false
 	flags.StringP("input", "i", "", "Input file")
-	flags.StringP("duration", "d", "", "Decision duration (ie. 1h,4h,30m)")
-	flags.String("scope", types.Ip, "Decision scope (ie. ip,range,username)")
-	flags.StringP("reason", "R", "", "Decision reason (ie. scenario-name)")
-	flags.StringP("type", "t", "", "Decision type (ie. ban,captcha,throttle)")
+	flags.StringP("duration", "d", "4h", "Decision duration: 1h,4h,30m")
+	flags.String("scope", types.Ip, "Decision scope: ip,range,username")
+	flags.StringP("reason", "R", "manual", "Decision reason: <scenario-name>")
+	flags.StringP("type", "t", "ban", "Decision type: ban,captcha,throttle")
 	flags.Int("batch", 0, "Split import in batches of N decisions")
 	flags.String("format", "", "Input format: 'json', 'csv' or 'values' (each line is a value, no headers)")
 
