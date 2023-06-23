@@ -204,7 +204,7 @@ cscli decisions list -t ban
 				days, err := strconv.Atoi(realDuration)
 				if err != nil {
 					printHelp(cmd)
-					log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
+					log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Since)
 				}
 				*filter.Since = fmt.Sprintf("%d%s", days*24, "h")
 			}
