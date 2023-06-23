@@ -54,7 +54,7 @@ jobs:
           ${{ runner.os }}-${{ matrix.go-version }}-go-
 
     - name: Build
-      run: make windows_installer
+      run: make windows_installer BUILD_RE2_WASM=1
     - name: Upload MSI
       uses: actions/upload-artifact@v3
       with:

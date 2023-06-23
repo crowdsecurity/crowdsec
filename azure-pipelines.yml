@@ -38,7 +38,7 @@ stages:
               pwsh: true
               #we are not calling make windows_installer because we want to sign the binaries before they are added to the MSI
               script: |
-                make build
+                make build BUILD_RE2_WASM=1
           - task: AzureKeyVault@2
             inputs:
               azureSubscription: 'Azure subscription 1(8a93ab40-7e99-445e-ad47-0f6a3e2ef546)'
