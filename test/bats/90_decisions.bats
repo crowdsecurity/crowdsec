@@ -154,4 +154,17 @@ teardown() {
 	EOT
     assert_stderr --partial 'Parsing values'
     assert_stderr --partial 'API error: unable to create alerts: whatever: invalid ip address / range'
+
+    #----------
+    # Batch
+    #----------
+
+    rune -0 cscli decisions import -i - --format values --batch 2 --debug <<-EOT
+	1.2.3.4
+	1.2.3.5
+	1.2.3.6
+	EOT
+    assert_stderr --partial 'Processing chunk of 2 decisions'
+    assert_stderr --partial 'Processing chunk of 1 decisions'
+    assert_stderr --partial 'Imported 3 decisions'
 }

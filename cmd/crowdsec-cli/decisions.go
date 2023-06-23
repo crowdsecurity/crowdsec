@@ -659,6 +659,7 @@ func runDecisionsImport(cmd *cobra.Command, args []string) error  {
 	alerts := models.AddAlertsRequest{}
 
 	for _, chunk := range slicetools.Chunks(decisionsList, batchSize) {
+		log.Debugf("Processing chunk of %d decisions", len(chunk))
 		importAlert := models.Alert{
 			CreatedAt: time.Now().UTC().Format(time.RFC3339),
 			Scenario:  ptr.Of(fmt.Sprintf("import %s : %d IPs", input, len(chunk))),
