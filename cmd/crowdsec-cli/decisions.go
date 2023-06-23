@@ -697,7 +697,7 @@ func runDecisionsImport(cmd *cobra.Command, args []string) error  {
 func NewDecisionsImportCmd() *cobra.Command {
 	var cmdDecisionsImport = &cobra.Command{
 		Use:   "import [options]",
-		Short: "Import decisions from json or csv file",
+		Short: "Import decisions from a file or pipe",
 		Long: "expected format:\n" +
 			"csv  : any of duration,origin,reason,scope,type,value, with a header line\n" +
 			`json : {"duration" : "24h", "origin" : "my-list", "reason" : "my_scenario", "scope" : "ip", "type" : "ban", "value" : "x.y.z.z"}`,
