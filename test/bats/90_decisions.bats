@@ -65,7 +65,19 @@ teardown() {
     assert_output '["fatal","Unable to list decisions : performing request: API error: while parsing duration: time: invalid duration \"toto\""]'
 }
 
-@test "cscli decisions import (json)" {
+@test "cscli decisions import" {
+    # required input
+    rune -1 cscli decisions import
+    assert_stderr --partial 'required flag(s) \"input\" not set"'
+
+    # unsupported format
+    rune -1 cscli decisions import -i - <<<'value\n5.6.7.8' --format xml
+    assert_stderr --partial "invalid format 'xml', expected one of 'json', 'csv', 'values'"
+
+    #----------
+    # JSON
+    #----------
+
     # import from file
     rune -1 cscli decisions import -i "${TESTDATA}/json_decisions"
     assert_stderr --partial "unable to guess format from file extension, please provide a format with --format flag"
@@ -90,9 +102,11 @@ teardown() {
     rune -1 cscli decisions import -i - <<<'{"values":"1.2.3.4","blah":"blah"}' --format json
     assert_stderr --partial 'Parsing json'
     assert_stderr --partial 'json: cannot unmarshal object into Go value of type []main.decisionRaw'
-}
 
-@test "cscli decisions import (csv)" {
+    #----------
+    # CSV
+    #----------
+
     # import from file
     rune -1 cscli decisions import -i "${TESTDATA}/csv_decisions"
     assert_stderr --partial "unable to guess format from file extension, please provide a format with --format flag"
@@ -113,9 +127,11 @@ teardown() {
     rune -0 cscli decisions import -i - <<<'value\n1.2.3.4,5.6.7.8' --format csv
     assert_stderr --partial 'Parsing csv'
     assert_stderr --partial "Imported 0 decisions"
-}
 
-@test "cscli decisions import (values only)" {
+    #----------
+    # VALUES
+    #----------
+
     # can use '-' as stdin
     rune -0 cscli decisions import -i - --format values <<-EOT
 	1.2.3.4
@@ -138,9 +154,4 @@ teardown() {
 	EOT
     assert_stderr --partial 'Parsing values'
     assert_stderr --partial 'API error: unable to create alerts: whatever: invalid ip address / range'
-}
-
-@test "cscli decisions import (unsupported format)" {
-    rune -1 cscli decisions import -i - <<<'value\n5.6.7.8' --format xml
-    assert_stderr --partial "invalid format 'xml', expected one of 'json', 'csv', 'values'"
 }

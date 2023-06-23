@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
+	"github.com/crowdsecurity/go-cs-lib/pkg/slicetools"
 	"github.com/crowdsecurity/go-cs-lib/pkg/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -521,22 +522,181 @@ func parseDecisionList(content []byte, format string) ([]decisionRaw, error) {
 }
 
 
-func NewDecisionsImportCmd() *cobra.Command {
-	var (
+func runDecisionsImport(cmd *cobra.Command, args []string) error  {
+	const (
 		defaultDuration = "4h"
 		defaultScope    = "ip"
 		defaultType     = "ban"
 		defaultReason   = "manual"
-		importDuration  string
-		importScope     string
-		importReason    string
-		importType      string
-		importFile      string
-		batchSize       int
-		format          string
 	)
 
-	var cmdDecisionImport = &cobra.Command{
+	flags := cmd.Flags()
+
+	input, err := flags.GetString("input")
+	if err != nil {
+		return err
+	}
+
+	importDuration, err := flags.GetString("duration")
+	if err != nil {
+		return err
+	}
+
+	importScope, err := flags.GetString("scope")
+	if err != nil {
+		return err
+	}
+
+	importReason, err := flags.GetString("reason")
+	if err != nil {
+		return err
+	}
+
+	importType, err := flags.GetString("type")
+	if err != nil {
+		return err
+	}
+
+	batchSize, err := flags.GetInt("batch")
+	if err != nil {
+		return err
+	}
+
+	format, err := flags.GetString("format")
+	if err != nil {
+		return err
+	}
+
+	var (
+		content []byte
+		fin	*os.File
+	)
+
+	// set format if the file has a json or csv extension
+	if format == "" {
+		if strings.HasSuffix(input, ".json") {
+			format = "json"
+		} else if strings.HasSuffix(input, ".csv") {
+			format = "csv"
+		}
+	}
+
+	if format == "" {
+		return fmt.Errorf("unable to guess format from file extension, please provide a format with --format flag")
+	}
+
+	if input == "-" {
+		fin = os.Stdin
+		input = "stdin"
+	} else {
+		fin, err = os.Open(input)
+		if err != nil {
+			return fmt.Errorf("unable to open %s: %s", input, err)
+		}
+	}
+
+	content, err = io.ReadAll(fin)
+	if err != nil {
+		return fmt.Errorf("unable to read from %s: %s", input, err)
+	}
+
+	decisionsListRaw, err := parseDecisionList(content, format)
+	if err != nil {
+		return err
+	}
+
+	decisionsList := make([]*models.Decision, len(decisionsListRaw))
+	for i, decisionLine := range decisionsListRaw {
+		line := i + 2
+		if decisionLine.Value == "" {
+			return fmt.Errorf("missing 'value' in line %d", line)
+		}
+		/*deal with defaults and cli-override*/
+		if decisionLine.Duration == "" {
+			decisionLine.Duration = defaultDuration
+			log.Debugf("No 'duration' line %d, using default value: '%s'", line, defaultDuration)
+		}
+		if importDuration != "" {
+			decisionLine.Duration = importDuration
+			log.Debugf("'duration' line %d, using supplied value: '%s'", line, importDuration)
+		}
+		decisionLine.Origin = types.CscliImportOrigin
+
+		if decisionLine.Scenario == "" {
+			decisionLine.Scenario = defaultReason
+			log.Debugf("No 'reason' line %d, using value: '%s'", line, decisionLine.Scenario)
+		}
+		if importReason != "" {
+			decisionLine.Scenario = importReason
+			log.Debugf("No 'reason' line %d, using supplied value: '%s'", line, importReason)
+		}
+		if decisionLine.Type == "" {
+			decisionLine.Type = defaultType
+			log.Debugf("No 'type' line %d, using default value: '%s'", line, decisionLine.Type)
+		}
+		if importType != "" {
+			decisionLine.Type = importType
+			log.Debugf("'type' line %d, using supplied value: '%s'", line, importType)
+		}
+		if decisionLine.Scope == "" {
+			decisionLine.Scope = defaultScope
+			log.Debugf("No 'scope' line %d, using default value: '%s'", line, decisionLine.Scope)
+		}
+		if importScope != "" {
+			decisionLine.Scope = importScope
+			log.Debugf("'scope' line %d, using supplied value: '%s'", line, importScope)
+		}
+		decisionsList[i] = &models.Decision{
+			Value:     ptr.Of(decisionLine.Value),
+			Duration:  ptr.Of(decisionLine.Duration),
+			Origin:    ptr.Of(decisionLine.Origin),
+			Scenario:  ptr.Of(decisionLine.Scenario),
+			Type:      ptr.Of(decisionLine.Type),
+			Scope:     ptr.Of(decisionLine.Scope),
+			Simulated: new(bool),
+		}
+	}
+	alerts := models.AddAlertsRequest{}
+
+	for _, chunk := range slicetools.Chunks(decisionsList, batchSize) {
+		importAlert := models.Alert{
+			CreatedAt: time.Now().UTC().Format(time.RFC3339),
+			Scenario:  ptr.Of(fmt.Sprintf("import %s : %d IPs", input, len(chunk))),
+
+			Message: ptr.Of(""),
+			Events:  []*models.Event{},
+			Source: &models.Source{
+				Scope: ptr.Of(""),
+				Value: ptr.Of(""),
+			},
+			StartAt:         ptr.Of(time.Now().UTC().Format(time.RFC3339)),
+			StopAt:          ptr.Of(time.Now().UTC().Format(time.RFC3339)),
+			Capacity:        ptr.Of(int32(0)),
+			Simulated:       ptr.Of(false),
+			EventsCount:     ptr.Of(int32(len(chunk))),
+			Leakspeed:       ptr.Of(""),
+			ScenarioHash:    ptr.Of(""),
+			ScenarioVersion: ptr.Of(""),
+			Decisions:       chunk,
+		}
+		alerts = append(alerts, &importAlert)
+	}
+
+	if len(decisionsList) > 1000 {
+		log.Infof("You are about to add %d decisions, this may take a while", len(decisionsList))
+	}
+
+	_, _, err = Client.Alerts.Add(context.Background(), alerts)
+	if err != nil {
+		return err
+	}
+	log.Infof("Imported %d decisions", len(decisionsList))
+	return nil
+}
+
+
+func NewDecisionsImportCmd() *cobra.Command {
+	var cmdDecisionsImport = &cobra.Command{
 		Use:   "import [options]",
 		Short: "Import decisions from json or csv file",
 		Long: "expected format :\n" +
@@ -552,178 +712,20 @@ cscli decisions import -i decisions.csv
 decisions.json :
 [{"duration" : "4h", "scope" : "ip", "type" : "ban", "value" : "1.2.3.4"}]
 `,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if importFile == "" {
-				return fmt.Errorf("Please provide a input file containing decisions with -i flag")
-			}
-
-			var (
-				content []byte
-				fin	*os.File
-				err     error
-			)
-
-
-			// if importFile has an json extension, set format to json
-			// if importFile has a csv extension, set format to csv
-			if format == "" {
-				if strings.HasSuffix(importFile, ".json") {
-					format = "json"
-				} else if strings.HasSuffix(importFile, ".csv") {
-					format = "csv"
-				}
-			}
-
-			if format == "" {
-				return fmt.Errorf("unable to guess format from file extension, please provide a format with --format flag")
-			}
-
-			if importFile == "-" {
-				fin = os.Stdin
-				importFile = "stdin"
-			} else {
-				fin, err = os.Open(importFile)
-				if err != nil {
-					return fmt.Errorf("unable to open %s: %s", importFile, err)
-				}
-			}
-
-			content, err = io.ReadAll(fin)
-			if err != nil {
-				return fmt.Errorf("unable to read from %s: %s", importFile, err)
-			}
-
-			decisionsListRaw, err := parseDecisionList(content, format)
-			if err != nil {
-				return err
-			}
-
-			decisionsList := make([]*models.Decision, len(decisionsListRaw))
-			for i, decisionLine := range decisionsListRaw {
-				line := i + 2
-				if decisionLine.Value == "" {
-					return fmt.Errorf("missing 'value' in line %d", line)
-				}
-				/*deal with defaults and cli-override*/
-				if decisionLine.Duration == "" {
-					decisionLine.Duration = defaultDuration
-					log.Debugf("No 'duration' line %d, using default value: '%s'", line, defaultDuration)
-				}
-				if importDuration != "" {
-					decisionLine.Duration = importDuration
-					log.Debugf("'duration' line %d, using supplied value: '%s'", line, importDuration)
-				}
-				decisionLine.Origin = types.CscliImportOrigin
-
-				if decisionLine.Scenario == "" {
-					decisionLine.Scenario = defaultReason
-					log.Debugf("No 'reason' line %d, using value: '%s'", line, decisionLine.Scenario)
-				}
-				if importReason != "" {
-					decisionLine.Scenario = importReason
-					log.Debugf("No 'reason' line %d, using supplied value: '%s'", line, importReason)
-				}
-				if decisionLine.Type == "" {
-					decisionLine.Type = defaultType
-					log.Debugf("No 'type' line %d, using default value: '%s'", line, decisionLine.Type)
-				}
-				if importType != "" {
-					decisionLine.Type = importType
-					log.Debugf("'type' line %d, using supplied value: '%s'", line, importType)
-				}
-				if decisionLine.Scope == "" {
-					decisionLine.Scope = defaultScope
-					log.Debugf("No 'scope' line %d, using default value: '%s'", line, decisionLine.Scope)
-				}
-				if importScope != "" {
-					decisionLine.Scope = importScope
-					log.Debugf("'scope' line %d, using supplied value: '%s'", line, importScope)
-				}
-				decisionsList[i] = &models.Decision{
-					Value:     ptr.Of(decisionLine.Value),
-					Duration:  ptr.Of(decisionLine.Duration),
-					Origin:    ptr.Of(decisionLine.Origin),
-					Scenario:  ptr.Of(decisionLine.Scenario),
-					Type:      ptr.Of(decisionLine.Type),
-					Scope:     ptr.Of(decisionLine.Scope),
-					Simulated: new(bool),
-				}
-			}
-			alerts := models.AddAlertsRequest{}
-
-			if batchSize > 0 {
-				for i := 0; i < len(decisionsList); i += batchSize {
-					end := i + batchSize
-					if end > len(decisionsList) {
-						end = len(decisionsList)
-					}
-					decisionBatch := decisionsList[i:end]
-					importAlert := models.Alert{
-						CreatedAt: time.Now().UTC().Format(time.RFC3339),
-						Scenario:  ptr.Of(fmt.Sprintf("import %s : %d IPs", importFile, len(decisionBatch))),
-
-						Message: ptr.Of(""),
-						Events:  []*models.Event{},
-						Source: &models.Source{
-							Scope: ptr.Of(""),
-							Value: ptr.Of(""),
-						},
-						StartAt:         ptr.Of(time.Now().UTC().Format(time.RFC3339)),
-						StopAt:          ptr.Of(time.Now().UTC().Format(time.RFC3339)),
-						Capacity:        ptr.Of(int32(0)),
-						Simulated:       ptr.Of(false),
-						EventsCount:     ptr.Of(int32(len(decisionBatch))),
-						Leakspeed:       ptr.Of(""),
-						ScenarioHash:    ptr.Of(""),
-						ScenarioVersion: ptr.Of(""),
-						Decisions:       decisionBatch,
-					}
-					alerts = append(alerts, &importAlert)
-				}
-			} else {
-				importAlert := models.Alert{
-					CreatedAt: time.Now().UTC().Format(time.RFC3339),
-					Scenario:  ptr.Of(fmt.Sprintf("import %s : %d IPs", importFile, len(decisionsList))),
-					Message:   ptr.Of(""),
-					Events:    []*models.Event{},
-					Source: &models.Source{
-						Scope: ptr.Of(""),
-						Value: ptr.Of(""),
-					},
-					StartAt:         ptr.Of(time.Now().UTC().Format(time.RFC3339)),
-					StopAt:          ptr.Of(time.Now().UTC().Format(time.RFC3339)),
-					Capacity:        ptr.Of(int32(0)),
-					Simulated:       ptr.Of(false),
-					EventsCount:     ptr.Of(int32(len(decisionsList))),
-					Leakspeed:       ptr.Of(""),
-					ScenarioHash:    ptr.Of(""),
-					ScenarioVersion: ptr.Of(""),
-					Decisions:       decisionsList,
-				}
-				alerts = append(alerts, &importAlert)
-			}
-
-			if len(decisionsList) > 1000 {
-				log.Infof("You are about to add %d decisions, this may take a while", len(decisionsList))
-			}
-
-			_, _, err = Client.Alerts.Add(context.Background(), alerts)
-			if err != nil {
-				return err
-			}
-			log.Infof("Imported %d decisions", len(decisionsList))
-			return nil
-		},
+		RunE: runDecisionsImport,
 	}
 
-	cmdDecisionImport.Flags().SortFlags = false
-	cmdDecisionImport.Flags().StringVarP(&importFile, "input", "i", "", "Input file")
-	cmdDecisionImport.Flags().StringVarP(&importDuration, "duration", "d", "", "Decision duration (ie. 1h,4h,30m)")
-	cmdDecisionImport.Flags().StringVar(&importScope, "scope", types.Ip, "Decision scope (ie. ip,range,username)")
-	cmdDecisionImport.Flags().StringVarP(&importReason, "reason", "R", "", "Decision reason (ie. scenario-name)")
-	cmdDecisionImport.Flags().StringVarP(&importType, "type", "t", "", "Decision type (ie. ban,captcha,throttle)")
-	cmdDecisionImport.Flags().IntVar(&batchSize, "batch", 0, "Split import in batches of N decisions")
-	cmdDecisionImport.Flags().StringVar(&format, "format", "", "Input format: 'json', 'csv' or 'values' (each line is a value, no headers)")
+	flags := cmdDecisionsImport.Flags()
+	flags.SortFlags = false
+	flags.StringP("input", "i", "", "Input file")
+	flags.StringP("duration", "d", "", "Decision duration (ie. 1h,4h,30m)")
+	flags.String("scope", types.Ip, "Decision scope (ie. ip,range,username)")
+	flags.StringP("reason", "R", "", "Decision reason (ie. scenario-name)")
+	flags.StringP("type", "t", "", "Decision type (ie. ban,captcha,throttle)")
+	flags.Int("batch", 0, "Split import in batches of N decisions")
+	flags.String("format", "", "Input format: 'json', 'csv' or 'values' (each line is a value, no headers)")
 
-	return cmdDecisionImport
+	cmdDecisionsImport.MarkFlagRequired("input")
+
+	return cmdDecisionsImport
 }
