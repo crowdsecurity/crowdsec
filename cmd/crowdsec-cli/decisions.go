@@ -530,35 +530,35 @@ func runDecisionsImport(cmd *cobra.Command, args []string) error  {
 		return err
 	}
 
-	importDuration, err := flags.GetString("duration")
+	defaultDuration, err := flags.GetString("duration")
 	if err != nil {
 		return err
 	}
-	if importDuration == "" {
+	if defaultDuration == "" {
 		return fmt.Errorf("--duration cannot be empty")
 	}
 
-	importScope, err := flags.GetString("scope")
+	defaultScope, err := flags.GetString("scope")
 	if err != nil {
 		return err
 	}
-	if importDuration == "" {
+	if defaultScope == "" {
 		return fmt.Errorf("--scope cannot be empty")
 	}
 
-	importReason, err := flags.GetString("reason")
+	defaultReason, err := flags.GetString("reason")
 	if err != nil {
 		return err
 	}
-	if importDuration == "" {
+	if defaultReason == "" {
 		return fmt.Errorf("--reason cannot be empty")
 	}
 
-	importType, err := flags.GetString("type")
+	defaultType, err := flags.GetString("type")
 	if err != nil {
 		return err
 	}
-	if importDuration == "" {
+	if defaultType == "" {
 		return fmt.Errorf("--type cannot be empty")
 	}
 
@@ -617,25 +617,25 @@ func runDecisionsImport(cmd *cobra.Command, args []string) error  {
 		}
 
 		if d.Duration == "" {
-			d.Duration = importDuration
-			log.Debugf("item %d: missing 'duration', using default '%s'", i, importDuration)
+			d.Duration = defaultDuration
+			log.Debugf("item %d: missing 'duration', using default '%s'", i, defaultDuration)
 		}
 
 		d.Origin = types.CscliImportOrigin
 
 		if d.Scenario == "" {
-			d.Scenario = importReason
-			log.Debugf("item %d: missing 'reason', using default '%s'", i, importReason)
+			d.Scenario = defaultReason
+			log.Debugf("item %d: missing 'reason', using default '%s'", i, defaultReason)
 		}
 
 		if d.Type == "" {
-			d.Type = importType
-			log.Debugf("item %d: missing 'type', using default '%s'", i, importType)
+			d.Type = defaultType
+			log.Debugf("item %d: missing 'type', using default '%s'", i, defaultType)
 		}
 
 		if d.Scope == "" {
-			d.Scope = importScope
-			log.Debugf("item %d: missing 'scope', using default '%s'", i, importScope)
+			d.Scope = defaultScope
+			log.Debugf("item %d: missing 'scope', using default '%s'", i, defaultScope)
 		}
 
 		decisions[i] = &models.Decision{
