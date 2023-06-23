@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
