@@ -72,6 +72,8 @@ type Leaky struct {
 	mutex               *sync.Mutex //used only for TIMEMACHINE mode to allow garbage collection without races
 	timestamp           *timestamp
 	fresh               bool
+	chanOrderEvent      chan bool
+	orderEvent          bool
 }
 
 var BucketsPour = prometheus.NewCounterVec(
@@ -181,6 +183,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		wgDumpState:     bucketFactory.wgDumpState,
 		mutex:           &sync.Mutex{},
 		fresh:           true,
+		orderEvent:      bucketFactory.orderEvent,
 	}
 	if l.BucketConfig.Capacity > 0 && l.BucketConfig.leakspeed != time.Duration(0) {
 		l.Duration = time.Duration(l.BucketConfig.Capacity+1) * l.BucketConfig.leakspeed
@@ -198,12 +201,14 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 	l.timestamp = l.InitTimestamp()
 	l.first_ts = l.InitFirstEvent()
 	l.last_ts = l.InitLastEvent()
+
 	if l.BucketConfig.Type == "bayesian" {
 		l.Duration = l.BucketConfig.leakspeed
 	}
-	l.timestamp = l.InitTimestamp()
-	l.first_ts = l.InitFirstEvent()
-	l.last_ts = l.InitLastEvent()
+
+	if l.orderEvent {
+		l.chanOrderEvent = make(chan bool, 0)
+	}
 
 	return l
 }
@@ -235,7 +240,6 @@ func LeakRoutine(leaky *Leaky) error {
 	leaky.Signal <- true
 	atomic.AddInt64(&LeakyRoutineCount, 1)
 	defer atomic.AddInt64(&LeakyRoutineCount, -1)
-
 	for _, f := range processors {
 		err := f.OnBucketInit(leaky.BucketConfig)
 		if err != nil {
@@ -246,11 +250,13 @@ func LeakRoutine(leaky *Leaky) error {
 	}
 
 	leaky.logger.Debugf("Leaky routine starting, lifetime : %s", leaky.Duration)
+
 	for {
 		select {
 		/*receiving an event*/
 		case msg := <-leaky.In:
 			/*the msg var use is confusing and is redeclared in a different type :/*/
+
 			for _, processor := range processors {
 				msg = processor.OnBucketPour(leaky.BucketConfig)(*msg, leaky)
 				// if &msg == nil we stop processing
@@ -264,7 +270,6 @@ func LeakRoutine(leaky *Leaky) error {
 			BucketsPour.With(prometheus.Labels{"name": leaky.Name, "source": msg.Line.Src, "type": msg.Line.Module}).Inc()
 
 			leaky.Pour(leaky, *msg) // glue for now
-
 			for _, processor := range processors {
 				msg = processor.AfterBucketPour(leaky.BucketConfig)(*msg, leaky)
 				if msg == nil {
@@ -290,6 +295,10 @@ func LeakRoutine(leaky *Leaky) error {
 		/*we overflowed*/
 		case ofw := <-leaky.Out:
 			leaky.overflow(ofw)
+			if leaky.orderEvent {
+				fmt.Printf("Sending: %+v", spew.Sdump(leaky.chanOrderEvent))
+				orderEvent[leaky.Mapkey].Done()
+			}
 			return nil
 		/*suiciiiide*/
 		case <-leaky.Suicide:
@@ -374,6 +383,7 @@ func Pour(leaky *Leaky, msg types.Event) {
 }
 
 func (leaky *Leaky) overflow(ofw *Queue) {
+
 	close(leaky.Signal)
 	alert, err := NewAlert(leaky, ofw)
 	if err != nil {
@@ -387,6 +397,7 @@ func (leaky *Leaky) overflow(ofw *Queue) {
 			break
 		}
 	}
+
 	if leaky.logger.Level >= log.TraceLevel {
 		leaky.logger.Tracef("Overflow event: %s", spew.Sdump(alert))
 	}

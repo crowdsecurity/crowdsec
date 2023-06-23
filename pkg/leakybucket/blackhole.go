@@ -37,6 +37,7 @@ func (bl *Blackhole) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky,
 		var blackholed = false
 		var tmp []HiddenKey
 		// search if we are blackholed and refresh the slice
+
 		for _, element := range bl.hiddenKeys {
 
 			if element.key == leaky.Mapkey {
@@ -47,6 +48,7 @@ func (bl *Blackhole) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky,
 				}
 			}
 
+			//rebuild the whole blackhole slice
 			if element.expiration.After(leaky.Ovflw_ts) {
 				tmp = append(tmp, element)
 			} else {

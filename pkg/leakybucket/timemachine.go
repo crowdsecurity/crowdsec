@@ -1,6 +1,7 @@
 package leakybucket
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
@@ -61,12 +62,17 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 	if l.Limiter.AllowN(d, 1) {
 		l.logger.Tracef("Time-Pouring event %s (tokens:%f)", d, l.Limiter.GetTokensCount())
 		l.Queue.Add(msg)
+		fmt.Printf("test\n")
+		if l.orderEvent {
+			orderEvent[l.Mapkey].Done()
+		}
 	} else {
 		l.Ovflw_ts = d
 		l.logger.Debugf("Bucket overflow at %s", l.Ovflw_ts)
 		l.Queue.Add(msg)
 		l.Out <- l.Queue
 	}
+	//	fmt.Printf("Limiter: %+v", spew.Sdump(l.Limiter))
 }
 
 func NewTimeMachine(g BucketFactory) *Leaky {
