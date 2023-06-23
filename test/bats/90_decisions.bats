@@ -59,10 +59,10 @@ teardown() {
 
 @test "cscli decisions list, incorrect parameters" {
     rune -1 cscli decisions list --until toto
-    assert_stderr --partial 'Unable to list decisions : performing request: API error: while parsing duration: time: invalid duration \"toto\"'
+    assert_stderr --partial 'unable to retrieve decisions: performing request: API error: while parsing duration: time: invalid duration \"toto\"'
     rune -1 cscli decisions list --until toto -o json
     rune -0 jq -c '[.level, .msg]' <(stderr | grep "^{")
-    assert_output '["fatal","Unable to list decisions : performing request: API error: while parsing duration: time: invalid duration \"toto\""]'
+    assert_output '["fatal","unable to retrieve decisions: performing request: API error: while parsing duration: time: invalid duration \"toto\""]'
 }
 
 @test "cscli decisions import" {
