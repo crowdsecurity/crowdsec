@@ -81,7 +81,7 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 			//Machine was not found, let's create it
 			log.Printf("machine %s not found, create it", machineID)
 			//let's use an apikey as the password, doesn't matter in this case (generatePassword is only available in cscli)
-			pwd, err := GenerateAPIKey(64)
+			pwd, err := GenerateAPIKey(dummyAPIKeySize)
 			if err != nil {
 				log.WithFields(log.Fields{
 					"ip": c.ClientIP(),
