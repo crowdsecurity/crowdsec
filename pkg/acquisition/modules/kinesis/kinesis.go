@@ -13,7 +13,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
@@ -124,7 +123,7 @@ func (k *KinesisSource) UnmarshalConfig(yamlConfig []byte) error {
 
 	err := yaml.UnmarshalStrict(yamlConfig, &k.Config)
 	if err != nil {
-		return errors.Wrap(err, "Cannot parse kinesis datasource configuration")
+		return fmt.Errorf("Cannot parse kinesis datasource configuration: %w", err)
 	}
 
 	if k.Config.Mode == "" {
@@ -218,7 +217,7 @@ func (k *KinesisSource) WaitForConsumerDeregistration(consumerName string, strea
 				return nil
 			default:
 				k.logger.Errorf("Error while waiting for consumer deregistration: %s", err)
-				return errors.Wrap(err, "Cannot describe stream consumer")
+				return fmt.Errorf("cannot describe stream consumer: %w", err)
 			}
 		}
 		time.Sleep(time.Millisecond * 200 * time.Duration(i+1))
@@ -236,12 +235,12 @@ func (k *KinesisSource) DeregisterConsumer() error {
 		switch err.(type) {
 		case *kinesis.ResourceNotFoundException:
 		default:
-			return errors.Wrap(err, "Cannot deregister stream consumer")
+			return fmt.Errorf("cannot deregister stream consumer: %w", err)
 		}
 	}
 	err = k.WaitForConsumerDeregistration(k.Config.ConsumerName, k.Config.StreamARN)
 	if err != nil {
-		return errors.Wrap(err, "Cannot wait for consumer deregistration")
+		return fmt.Errorf("cannot wait for consumer deregistration: %w", err)
 	}
 	return nil
 }
@@ -253,7 +252,7 @@ func (k *KinesisSource) WaitForConsumerRegistration(consumerARN string) error {
 			ConsumerARN: aws.String(consumerARN),
 		})
 		if err != nil {
-			return errors.Wrap(err, "Cannot describe stream consumer")
+			return fmt.Errorf("cannot describe stream consumer: %w", err)
 		}
 		if *describeOutput.ConsumerDescription.ConsumerStatus == "ACTIVE" {
 			k.logger.Debugf("Consumer %s is active", consumerARN)
@@ -272,11 +271,11 @@ func (k *KinesisSource) RegisterConsumer() (*kinesis.RegisterStreamConsumerOutpu
 		StreamARN:    aws.String(k.Config.StreamARN),
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "Cannot register stream consumer")
+		return nil, fmt.Errorf("cannot register stream consumer: %w", err)
 	}
 	err = k.WaitForConsumerRegistration(*streamConsumer.Consumer.ConsumerARN)
 	if err != nil {
-		return nil, errors.Wrap(err, "Timeout while waiting for consumer to be active")
+		return nil, fmt.Errorf("timeout while waiting for consumer to be active: %w", err)
 	}
 	return streamConsumer, nil
 }
@@ -339,7 +338,7 @@ func (k *KinesisSource) ReadFromSubscription(reader kinesis.SubscribeToShardEven
 			logger.Infof("Subscribed shard reader is dying")
 			err := reader.Close()
 			if err != nil {
-				return errors.Wrap(err, "Cannot close kinesis subscribed shard reader")
+				return fmt.Errorf("cannot close kinesis subscribed shard reader: %w", err)
 			}
 			return nil
 		case event, ok := <-reader.Events():
@@ -362,7 +361,7 @@ func (k *KinesisSource) SubscribeToShards(arn arn.ARN, streamConsumer *kinesis.R
 		StreamName: aws.String(arn.Resource[7:]),
 	})
 	if err != nil {
-		return errors.Wrap(err, "Cannot list shards for enhanced_read")
+		return fmt.Errorf("cannot list shards for enhanced_read: %w", err)
 	}
 
 	for _, shard := range shards.Shards {
@@ -373,7 +372,7 @@ func (k *KinesisSource) SubscribeToShards(arn arn.ARN, streamConsumer *kinesis.R
 			ConsumerARN:      streamConsumer.Consumer.ConsumerARN,
 		})
 		if err != nil {
-			return errors.Wrap(err, "Cannot subscribe to shard")
+			return fmt.Errorf("cannot subscribe to shard: %w", err)
 		}
 		k.shardReaderTomb.Go(func() error {
 			return k.ReadFromSubscription(r.GetEventStream().Reader, out, shardId, arn.Resource[7:])
@@ -385,7 +384,7 @@ func (k *KinesisSource) SubscribeToShards(arn arn.ARN, streamConsumer *kinesis.R
 func (k *KinesisSource) EnhancedRead(out chan types.Event, t *tomb.Tomb) error {
 	parsedARN, err := arn.Parse(k.Config.StreamARN)
 	if err != nil {
-		return errors.Wrap(err, "Cannot parse stream ARN")
+		return fmt.Errorf("cannot parse stream ARN: %w", err)
 	}
 	if !strings.HasPrefix(parsedARN.Resource, "stream/") {
 		return fmt.Errorf("resource part of stream ARN %s does not start with stream/", k.Config.StreamARN)
@@ -395,12 +394,12 @@ func (k *KinesisSource) EnhancedRead(out chan types.Event, t *tomb.Tomb) error {
 	k.logger.Info("starting kinesis acquisition with enhanced fan-out")
 	err = k.DeregisterConsumer()
 	if err != nil {
-		return errors.Wrap(err, "Cannot deregister consumer")
+		return fmt.Errorf("cannot deregister consumer: %w", err)
 	}
 
 	streamConsumer, err := k.RegisterConsumer()
 	if err != nil {
-		return errors.Wrap(err, "Cannot register consumer")
+		return fmt.Errorf("cannot register consumer: %w", err)
 	}
 
 	for {
@@ -408,7 +407,7 @@ func (k *KinesisSource) EnhancedRead(out chan types.Event, t *tomb.Tomb) error {
 
 		err = k.SubscribeToShards(parsedARN, streamConsumer, out)
 		if err != nil {
-			return errors.Wrap(err, "Cannot subscribe to shards")
+			return fmt.Errorf("cannot subscribe to shards: %w", err)
 		}
 		select {
 		case <-t.Dying():
@@ -417,7 +416,7 @@ func (k *KinesisSource) EnhancedRead(out chan types.Event, t *tomb.Tomb) error {
 			_ = k.shardReaderTomb.Wait() //we don't care about the error as we kill the tomb ourselves
 			err = k.DeregisterConsumer()
 			if err != nil {
-				return errors.Wrap(err, "Cannot deregister consumer")
+				return fmt.Errorf("cannot deregister consumer: %w", err)
 			}
 			return nil
 		case <-k.shardReaderTomb.Dying():
@@ -440,7 +439,7 @@ func (k *KinesisSource) ReadFromShard(out chan types.Event, shardId string) erro
 		ShardIteratorType: aws.String(kinesis.ShardIteratorTypeLatest)})
 	if err != nil {
 		logger.Errorf("Cannot get shard iterator: %s", err)
-		return errors.Wrap(err, "Cannot get shard iterator")
+		return fmt.Errorf("cannot get shard iterator: %w", err)
 	}
 	it := sharIt.ShardIterator
 	//AWS recommends to wait for a second between calls to GetRecords for a given shard
@@ -461,7 +460,7 @@ func (k *KinesisSource) ReadFromShard(out chan types.Event, shardId string) erro
 					continue
 				default:
 					logger.Error("Cannot get records")
-					return errors.Wrap(err, "Cannot get records")
+					return fmt.Errorf("cannot get records: %w", err)
 				}
 			}
 			k.ParseAndPushRecords(records.Records, out, logger, shardId)
@@ -486,7 +485,7 @@ func (k *KinesisSource) ReadFromStream(out chan types.Event, t *tomb.Tomb) error
 			StreamName: aws.String(k.Config.StreamName),
 		})
 		if err != nil {
-			return errors.Wrap(err, "Cannot list shards")
+			return fmt.Errorf("cannot list shards: %w", err)
 		}
 		k.shardReaderTomb = &tomb.Tomb{}
 		for _, shard := range shards.Shards {
