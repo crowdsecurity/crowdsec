@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"sync"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 
 	"github.com/mohae/deepcopy"
@@ -283,9 +285,12 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 			biface = actual
 		}
 		holder.logger.Debugf("Created new bucket %s", partitionKey)
+
 	}
 	return biface.(*Leaky), nil
 }
+
+var orderEvent map[string]*sync.WaitGroup
 
 func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buckets) (bool, error) {
 	var (
@@ -364,10 +369,21 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			fmt.Printf("d: %s %s %s\n", d.String(), bucket.GetTimestamp().String(), bucket.Duration.String())
 
 		}
+
 		//finally, pour the even into the bucket
+
+		if bucket.orderEvent {
+			if orderEvent == nil {
+				orderEvent = make(map[string]*sync.WaitGroup)
+			}
+			orderEvent[buckey] = &sync.WaitGroup{}
+			orderEvent[buckey].Add(1)
+		}
+
 		ok, err := PourItemToBucket(bucket, holders[idx], buckets, &parsed)
 		if bucket.orderEvent {
-			<-bucket.chanOrderEvent
+			fmt.Printf("Waiting: %+v", spew.Sdump(bucket.chanOrderEvent))
+			orderEvent[buckey].Wait()
 		}
 		if err != nil {
 			return false, errors.Wrap(err, "failed to pour bucket")
