@@ -171,11 +171,11 @@ cscli decisions list -t ban
 `,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			/*take care of shorthand options*/
-			if err := manageCliDecisionAlerts(filter.IPEquals, filter.RangeEquals, filter.ScopeEquals, filter.ValueEquals); err != nil {
-				log.Fatalf("%s", err)
+			if err = manageCliDecisionAlerts(filter.IPEquals, filter.RangeEquals, filter.ScopeEquals, filter.ValueEquals); err != nil {
+				return err
 			}
 			filter.ActiveDecisionEquals = new(bool)
 			*filter.ActiveDecisionEquals = true
@@ -191,7 +191,7 @@ cscli decisions list -t ban
 				days, err := strconv.Atoi(realDuration)
 				if err != nil {
 					printHelp(cmd)
-					log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
+					return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
 				}
 				*filter.Until = fmt.Sprintf("%d%s", days*24, "h")
 			}
@@ -204,7 +204,7 @@ cscli decisions list -t ban
 				days, err := strconv.Atoi(realDuration)
 				if err != nil {
 					printHelp(cmd)
-					log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Since)
+					return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Since)
 				}
 				*filter.Since = fmt.Sprintf("%d%s", days*24, "h")
 			}
@@ -240,13 +240,15 @@ cscli decisions list -t ban
 
 			alerts, _, err := Client.Alerts.List(context.Background(), filter)
 			if err != nil {
-				log.Fatalf("Unable to list decisions : %v", err)
+				return fmt.Errorf("unable to retrieve decisions: %w", err)
 			}
 
 			err = DecisionsToTable(alerts, printMachine)
 			if err != nil {
-				log.Fatalf("unable to list decisions : %v", err)
+				return fmt.Errorf("unable to print decisions: %w", err)
 			}
+
+			return nil
 		},
 	}
 	cmdDecisionsList.Flags().SortFlags = false
@@ -290,7 +292,7 @@ cscli decisions add --scope username --value foobar
 		/*TBD : fix long and example*/
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			alerts := models.AddAlertsRequest{}
 			origin := types.CscliOrigin
@@ -305,7 +307,7 @@ cscli decisions add --scope username --value foobar
 
 			/*take care of shorthand options*/
 			if err := manageCliDecisionAlerts(&addIP, &addRange, &addScope, &addValue); err != nil {
-				log.Fatalf("%s", err)
+				return err
 			}
 
 			if addIP != "" {
@@ -316,7 +318,7 @@ cscli decisions add --scope username --value foobar
 				addScope = types.Range
 			} else if addValue == "" {
 				printHelp(cmd)
-				log.Fatalf("Missing arguments, a value is required (--ip, --range or --scope and --value)")
+				return fmt.Errorf("Missing arguments, a value is required (--ip, --range or --scope and --value)")
 			}
 
 			if addReason == "" {
@@ -359,10 +361,11 @@ cscli decisions add --scope username --value foobar
 
 			_, _, err = Client.Alerts.Add(context.Background(), alerts)
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 
 			log.Info("Decision successfully added")
+			return nil
 		},
 	}
 
@@ -403,25 +406,27 @@ cscli decisions delete --id 42
 cscli decisions delete --type captcha
 `,
 		/*TBD : refaire le Long/Example*/
-		PreRun: func(cmd *cobra.Command, args []string) {
+		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if delDecisionAll {
-				return
+				return nil
 			}
 			if *delFilter.ScopeEquals == "" && *delFilter.ValueEquals == "" &&
 				*delFilter.TypeEquals == "" && *delFilter.IPEquals == "" &&
 				*delFilter.RangeEquals == "" && *delFilter.ScenarioEquals == "" &&
 				*delFilter.OriginEquals == "" && delDecisionId == "" {
 				cmd.Usage()
-				log.Fatalln("At least one filter or --all must be specified")
+				return fmt.Errorf("at least one filter or --all must be specified")
 			}
+
+			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			var decisions *models.DeleteDecisionResponse
 
 			/*take care of shorthand options*/
-			if err := manageCliDecisionAlerts(delFilter.IPEquals, delFilter.RangeEquals, delFilter.ScopeEquals, delFilter.ValueEquals); err != nil {
-				log.Fatalf("%s", err)
+			if err = manageCliDecisionAlerts(delFilter.IPEquals, delFilter.RangeEquals, delFilter.ScopeEquals, delFilter.ValueEquals); err != nil {
+				return err
 			}
 			if *delFilter.ScopeEquals == "" {
 				delFilter.ScopeEquals = nil
@@ -451,18 +456,19 @@ cscli decisions delete --type captcha
 			if delDecisionId == "" {
 				decisions, _, err = Client.Decisions.Delete(context.Background(), delFilter)
 				if err != nil {
-					log.Fatalf("Unable to delete decisions : %v", err)
+					return fmt.Errorf("Unable to delete decisions: %v", err)
 				}
 			} else {
 				if _, err = strconv.Atoi(delDecisionId); err != nil {
-					log.Fatalf("id '%s' is not an integer: %v", delDecisionId, err)
+					return fmt.Errorf("id '%s' is not an integer: %v", delDecisionId, err)
 				}
 				decisions, _, err = Client.Decisions.DeleteOne(context.Background(), delDecisionId)
 				if err != nil {
-					log.Fatalf("Unable to delete decision : %v", err)
+					return fmt.Errorf("Unable to delete decision: %v", err)
 				}
 			}
 			log.Infof("%s decision(s) deleted", decisions.NbDeleted)
+			return nil
 		},
 	}
 
