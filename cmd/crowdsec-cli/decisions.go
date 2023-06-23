@@ -19,7 +19,6 @@ import (
 	"github.com/jszwec/csvutil"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/slices"
 
 	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
 	"github.com/crowdsecurity/go-cs-lib/pkg/version"
@@ -481,36 +480,6 @@ cscli decisions delete --type captcha
 	return cmdDecisionsDelete
 }
 
-func isJSON(content []byte) bool {
-	var js json.RawMessage
-	return json.Unmarshal(content, &js) == nil
-}
-
-func isCSV(content []byte) bool {
-	r := csv.NewReader(bytes.NewReader(content))
-	_, err := r.ReadAll()
-	return err == nil
-}
-
-// XXX:
-func isValidCSVHeader(content []byte) bool {
-	// read the first line, and check if it's a valid header
-	columns := []string{"duration", "origin", "reason", "scope", "type", "value"}
-
-	r := csv.NewReader(bytes.NewReader(content))
-	header, err := r.Read()
-	if err != nil {
-		return false
-	}
-	// check that all string in header are in columns
-	for _, h := range header {
-		if !slices.Contains(columns, h) {
-			return false
-		}
-	}
-	return true
-}
-
 // decisionRaw is only used to unmarshall json/csv decisions
 type decisionRaw struct {
 	Duration string `csv:"duration,omitempty" json:"duration,omitempty"`
@@ -521,11 +490,11 @@ type decisionRaw struct {
 	Value    string `csv:"value" json:"value"`
 }
 
-func parseDecisionList(content []byte, valuesOnly bool) ([]decisionRaw, error) {
+func parseDecisionList(content []byte, format string) ([]decisionRaw, error) {
 	ret := []decisionRaw{}
 
-	switch {
-	case valuesOnly:
+	switch format {
+	case "values":
 		log.Infof("Parsing values")
 		scanner := bufio.NewScanner(bytes.NewReader(content))
 		for scanner.Scan() {
@@ -535,16 +504,18 @@ func parseDecisionList(content []byte, valuesOnly bool) ([]decisionRaw, error) {
 		if err := scanner.Err(); err != nil {
 			return nil, fmt.Errorf("unable to parse values: '%s'", err)
 		}
-	case isJSON(content):
+	case "json":
 		log.Infof("Parsing json")
 		if err := json.Unmarshal(content, &ret); err != nil {
 			return nil, err
 		}
-	case isCSV(content):
+	case "csv":
 		log.Infof("Parsing csv")
 		if err := csvutil.Unmarshal(content, &ret); err != nil {
 			return nil, fmt.Errorf("unable to parse csv: '%s'", err)
 		}
+	default:
+		return nil, fmt.Errorf("invalid format '%s', expected one of 'json', 'csv', 'values'", format)
 	}
 	return ret, nil
 }
@@ -562,7 +533,7 @@ func NewDecisionsImportCmd() *cobra.Command {
 		importType      string
 		importFile      string
 		batchSize       int
-		valuesOnly      bool
+		format          string
 	)
 
 	var cmdDecisionImport = &cobra.Command{
@@ -592,6 +563,21 @@ decisions.json :
 				err     error
 			)
 
+
+			// if importFile has an json extension, set format to json
+			// if importFile has a csv extension, set format to csv
+			if format == "" {
+				if strings.HasSuffix(importFile, ".json") {
+					format = "json"
+				} else if strings.HasSuffix(importFile, ".csv") {
+					format = "csv"
+				}
+			}
+
+			if format == "" {
+				return fmt.Errorf("unable to guess format from file extension, please provide a format with --format flag")
+			}
+
 			if importFile == "-" {
 				fin = os.Stdin
 				importFile = "stdin"
@@ -607,9 +593,9 @@ decisions.json :
 				return fmt.Errorf("unable to read from %s: %s", importFile, err)
 			}
 
-			decisionsListRaw, err := parseDecisionList(content, valuesOnly)
+			decisionsListRaw, err := parseDecisionList(content, format)
 			if err != nil {
-				return fmt.Errorf("unable to parse decision list: %s", err)
+				return err
 			}
 
 			decisionsList := make([]*models.Decision, len(decisionsListRaw))
@@ -737,7 +723,7 @@ decisions.json :
 	cmdDecisionImport.Flags().StringVarP(&importReason, "reason", "R", "", "Decision reason (ie. scenario-name)")
 	cmdDecisionImport.Flags().StringVarP(&importType, "type", "t", "", "Decision type (ie. ban,captcha,throttle)")
 	cmdDecisionImport.Flags().IntVar(&batchSize, "batch", 0, "Split import in batches of N decisions")
-	cmdDecisionImport.Flags().BoolVar(&valuesOnly, "values-only", false, "Each line is a value, no headers")
+	cmdDecisionImport.Flags().StringVar(&format, "format", "", "Input format: 'json', 'csv' or 'values' (each line is a value, no headers)")
 
 	return cmdDecisionImport
 }
