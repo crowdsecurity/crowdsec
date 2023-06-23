@@ -700,18 +700,25 @@ func NewDecisionsImportCmd() *cobra.Command {
 	var cmdDecisionsImport = &cobra.Command{
 		Use:   "import [options]",
 		Short: "Import decisions from json or csv file",
-		Long: "expected format :\n" +
+		Long: "expected format:\n" +
 			"csv  : any of duration,origin,reason,scope,type,value, with a header line\n" +
 			`json : {"duration" : "24h", "origin" : "my-list", "reason" : "my_scenario", "scope" : "ip", "type" : "ban", "value" : "x.y.z.z"}`,
 		DisableAutoGenTag: true,
-		Example: `decisions.csv :
+		Example: `decisions.csv:
 duration,scope,value
 24h,ip,1.2.3.4
 
-cscli decisions import -i decisions.csv
+$ cscli decisions import -i decisions.csv
 
-decisions.json :
+decisions.json:
 [{"duration" : "4h", "scope" : "ip", "type" : "ban", "value" : "1.2.3.4"}]
+
+The file format is detected from the extension, but can be forced with the --format option
+which is required when reading from standard input.
+
+Raw values, standard input:
+
+$ echo "1.2.3.4" | cscli decisions import -i - --format values
 `,
 		RunE: runDecisionsImport,
 	}
