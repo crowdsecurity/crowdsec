@@ -198,7 +198,7 @@ func (lc *LokiClient) Tail(ctx context.Context) (chan *LokiResponse, error) {
 	for k, v := range lc.config.Headers {
 		requestHeader.Add(k, v)
 	}
-	requestHeader.Set("User-Agent", "Crowdsec "+cwversion.Version)
+	requestHeader.Set("User-Agent", "Crowdsec "+cwversion.VersionStr())
 	lc.Logger.Infof("Connecting to %s", u)
 	conn, resp, err := dialer.Dial(u, requestHeader)
 	defer resp.Body.Close()
@@ -242,7 +242,7 @@ func (lc *LokiClient) QueryRange(ctx context.Context) chan *LokiQueryRangeRespon
 		requestHeader.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(lc.config.Username+":"+lc.config.Password)))
 	}
 
-	requestHeader.Set("User-Agent", "Crowdsec "+cwversion.Version)
+	requestHeader.Set("User-Agent", "Crowdsec "+cwversion.VersionStr())
 	lc.Logger.Infof("Connecting to %s", url)
 	lc.t.Go(func() error {
 		return lc.queryRange(url, ctx, c)

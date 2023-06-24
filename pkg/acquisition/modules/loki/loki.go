@@ -12,16 +12,15 @@ import (
 	"strings"
 	"time"
 
-	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
-
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	lokiclient "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki/internal/lokiclient"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	tomb "gopkg.in/tomb.v2"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
+	lokiclient "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki/internal/lokiclient"
 )
 
 const (
@@ -55,7 +54,7 @@ type LokiConfiguration struct {
 type LokiSource struct {
 	Config LokiConfiguration
 
-	client *lokiclient.LokiClient
+	Client *lokiclient.LokiClient
 
 	logger        *log.Entry
 	lokiWebsocket string
@@ -69,10 +68,8 @@ func (l *LokiSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{linesRead}
 }
 
-func (l *LokiSource) Configure(config []byte, logger *log.Entry) error {
-	l.Config = LokiConfiguration{}
-	l.logger = logger
-	err := yaml.UnmarshalStrict(config, &l.Config)
+func (l *LokiSource) UnmarshalConfig(yamlConfig []byte) error {
+	err := yaml.UnmarshalStrict(yamlConfig, &l.Config)
 	if err != nil {
 		return errors.Wrap(err, "Cannot parse LokiAcquisition configuration")
 	}
@@ -104,6 +101,17 @@ func (l *LokiSource) Configure(config []byte, logger *log.Entry) error {
 		l.Config.Since = 0
 	}
 
+	return nil
+}
+
+func (l *LokiSource) Configure(config []byte, logger *log.Entry) error {
+	l.Config = LokiConfiguration{}
+	l.logger = logger
+	err := l.UnmarshalConfig(config)
+	if err != nil {
+		return err
+	}
+
 	l.logger.Infof("Since value: %s", l.Config.Since.String())
 
 	clientConfig := lokiclient.Config{
@@ -114,12 +122,12 @@ func (l *LokiSource) Configure(config []byte, logger *log.Entry) error {
 		Since:   l.Config.Since,
 	}
 
-	l.client = lokiclient.NewLokiClient(clientConfig)
-	l.client.Logger = logger.WithField("component", "lokiclient")
+	l.Client = lokiclient.NewLokiClient(clientConfig)
+	l.Client.Logger = logger.WithField("component", "lokiclient")
 	return nil
 }
 
-func (l *LokiSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
+func (l *LokiSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	l.logger = logger
 	l.Config = LokiConfiguration{}
 	l.Config.Mode = configuration.CAT_MODE
@@ -136,10 +144,6 @@ func (l *LokiSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 		return errors.New("Empty loki host")
 	}
 	scheme := "http"
-	// FIXME how can use http with container, in a private network?
-	if u.Host == "localhost" || u.Host == "127.0.0.1" || u.Host == "[::1]" {
-		scheme = "http"
-	}
 
 	l.Config.URL = fmt.Sprintf("%s://%s", scheme, u.Host)
 	params := u.Query()
@@ -197,8 +201,8 @@ func (l *LokiSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 		Password: l.Config.Password,
 	}
 
-	l.client = lokiclient.NewLokiClient(clientConfig)
-	l.client.Logger = logger.WithField("component", "lokiclient")
+	l.Client = lokiclient.NewLokiClient(clientConfig)
+	l.Client.Logger = logger.WithField("component", "lokiclient")
 
 	return nil
 }
@@ -216,13 +220,13 @@ func (l *LokiSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) erro
 	l.logger.Debug("Loki one shot acquisition")
 	readyCtx, cancel := context.WithTimeout(context.Background(), l.Config.WaitForReady)
 	defer cancel()
-	err := l.client.Ready(readyCtx)
+	err := l.Client.Ready(readyCtx)
 	if err != nil {
 		return errors.Wrap(err, "loki is not ready")
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	c := l.client.QueryRange(ctx)
+	c := l.Client.QueryRange(ctx)
 
 	for {
 		select {
@@ -259,14 +263,14 @@ func (l *LokiSource) readOneEntry(entry lokiclient.Entry, labels map[string]stri
 		Line:       ll,
 		Process:    true,
 		Type:       types.LOG,
-		ExpectMode: leaky.TIMEMACHINE,
+		ExpectMode: types.TIMEMACHINE,
 	}
 }
 
 func (l *LokiSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	readyCtx, cancel := context.WithTimeout(context.Background(), l.Config.WaitForReady)
 	defer cancel()
-	err := l.client.Ready(readyCtx)
+	err := l.Client.Ready(readyCtx)
 	if err != nil {
 		return errors.Wrap(err, "loki is not ready")
 	}
@@ -274,17 +278,17 @@ func (l *LokiSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 	t.Go(func() error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		respChan, err := l.client.Tail(ctx)
+		respChan, err := l.Client.Tail(ctx)
 		if err != nil {
 			ll.Errorf("could not start loki tail: %s", err)
 			return errors.Wrap(err, "could not start loki tail")
 		}
 		for {
 			select {
-			case resp := <-respChan:
-				if resp == nil {
-					ll.Warnf("got nil response from loki tail")
-					continue
+			case resp, ok := <-respChan:
+				if !ok {
+					ll.Warnf("loki channel closed")
+					return err
 				}
 				if len(resp.DroppedEntries) > 0 {
 					ll.Warnf("%d entries dropped from loki response", len(resp.DroppedEntries))
@@ -304,6 +308,10 @@ func (l *LokiSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 
 func (l *LokiSource) CanRun() error {
 	return nil
+}
+
+func (l *LokiSource) GetUuid() string {
+	return ""
 }
 
 func (l *LokiSource) Dump() interface{} {

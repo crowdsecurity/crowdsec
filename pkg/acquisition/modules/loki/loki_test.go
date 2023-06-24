@@ -13,8 +13,9 @@ import (
 
 	"context"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/cstest"
+
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki"
-	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	tomb "gopkg.in/tomb.v2"
@@ -171,7 +172,7 @@ func TestConfigureDSN(t *testing.T) {
 			"name": test.name,
 		})
 		lokiSource := &loki.LokiSource{}
-		err := lokiSource.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger)
+		err := lokiSource.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
 		cstest.AssertErrorContains(t, err, test.expectedErr)
 		/*if time.Time(lokiSource.Config.Since).Round(time.Second) != test.since.Round(time.Second) {
 			t.Fatalf("Invalid since %v", lokiSource.Config.Since)
@@ -441,5 +442,5 @@ func (l *LogValue) MarshalJSON() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return []byte(fmt.Sprintf(`[%d,%s]`, l.Time.UnixNano(), string(line))), nil
+	return []byte(fmt.Sprintf(`["%d",%s]`, l.Time.UnixNano(), string(line))), nil
 }
