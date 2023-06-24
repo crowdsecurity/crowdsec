@@ -152,12 +152,10 @@ func (l *LokiSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 	}
 	scheme := "http"
 
-	l.Config.URL = fmt.Sprintf("%s://%s", scheme, u.Host)
-	if u.User != nil {
-		l.Config.Auth.Username = u.User.Username()
-		l.Config.Auth.Password, _ = u.User.Password()
-	}
 	params := u.Query()
+	if q := params.Get("ssl"); q != "" {
+		scheme = "https"
+	}
 	if q := params.Get("query"); q != "" {
 		l.Config.Query = q
 	}
@@ -200,6 +198,12 @@ func (l *LokiSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 		}
 		l.Config.LogLevel = &level
 		l.logger.Logger.SetLevel(level)
+	}
+
+	l.Config.URL = fmt.Sprintf("%s://%s", scheme, u.Host)
+	if u.User != nil {
+		l.Config.Auth.Username = u.User.Username()
+		l.Config.Auth.Password, _ = u.User.Password()
 	}
 
 	clientConfig := lokiclient.Config{

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -82,7 +83,7 @@ query: >
 			config: `
 mode: tail
 source: loki
-url: http://@localhost:3100/
+url: http://localhost:3100/
 auth:
   username: foo
   password: bar
@@ -125,6 +126,7 @@ func TestConfigureDSN(t *testing.T) {
 		expectedErr  string
 		since        time.Time
 		password     string
+		scheme       string
 		waitForReady time.Duration
 	}{
 		{
@@ -163,6 +165,11 @@ func TestConfigureDSN(t *testing.T) {
 			expectedErr:  "",
 			waitForReady: 5 * time.Second,
 		},
+		{
+			name:   "SSL DSN",
+			dsn:    `loki://localhost:3100/?ssl=true`,
+			scheme: "https",
+		},
 	}
 
 	for _, test := range tests {
@@ -184,6 +191,12 @@ func TestConfigureDSN(t *testing.T) {
 			p := lokiSource.Config.Auth.Password
 			if test.password != p {
 				t.Fatalf("Password mismatch : %s != %s", test.password, p)
+			}
+		}
+		if test.scheme != "" {
+			url, _ := url.Parse(lokiSource.Config.URL)
+			if test.scheme != url.Scheme {
+				t.Fatalf("Schema mismatch : %s != %s", test.scheme, url.Scheme)
 			}
 		}
 		if test.waitForReady != 0 {
