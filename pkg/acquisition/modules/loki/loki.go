@@ -136,6 +136,7 @@ func (l *LokiSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 	l.Config = LokiConfiguration{}
 	l.Config.Mode = configuration.CAT_MODE
 	l.Config.Labels = labels
+	l.Config.UniqueId = uuid
 
 	u, err := url.Parse(dsn)
 	if err != nil {
@@ -319,7 +320,7 @@ func (l *LokiSource) CanRun() error {
 }
 
 func (l *LokiSource) GetUuid() string {
-	return ""
+	return l.Config.UniqueId
 }
 
 func (l *LokiSource) Dump() interface{} {
