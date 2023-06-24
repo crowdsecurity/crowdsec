@@ -119,11 +119,13 @@ func (l *LokiSource) Configure(config []byte, logger *log.Entry) error {
 	l.logger.Infof("Since value: %s", l.Config.Since.String())
 
 	clientConfig := lokiclient.Config{
-		LokiURL: l.Config.URL,
-		Headers: l.Config.Headers,
-		Limit:   l.Config.Limit,
-		Query:   l.Config.Query,
-		Since:   l.Config.Since,
+		LokiURL:  l.Config.URL,
+		Headers:  l.Config.Headers,
+		Limit:    l.Config.Limit,
+		Query:    l.Config.Query,
+		Since:    l.Config.Since,
+		Username: l.Config.Auth.Username,
+		Password: l.Config.Auth.Password,
 	}
 
 	l.Client = lokiclient.NewLokiClient(clientConfig)

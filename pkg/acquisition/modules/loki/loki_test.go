@@ -82,7 +82,10 @@ query: >
 			config: `
 mode: tail
 source: loki
-url: http://foo:bar@localhost:3100/
+url: http://@localhost:3100/
+auth:
+  username: foo
+  password: bar
 query: >
         {server="demo"}
 `,
@@ -99,16 +102,12 @@ query: >
 			lokiSource := loki.LokiSource{}
 			err := lokiSource.Configure([]byte(test.config), subLogger)
 			cstest.AssertErrorContains(t, err, test.expectedErr)
-			/*if test.password == "" {
-				if lokiSource.auth != nil {
-					t.Fatalf("No auth should be here : %v", lokiSource.auth)
-				}
-			} else {
-				p, _ := lokiSource.auth.Password()
+			if test.password != "" {
+				p := lokiSource.Config.Auth.Password
 				if test.password != p {
-					t.Fatalf("Bad password %s != %s", test.password, p)
+					t.Fatalf("Password mismatch : %s != %s", test.password, p)
 				}
-			}*/
+			}
 			if test.waitForReady != 0 {
 				if lokiSource.Config.WaitForReady != test.waitForReady {
 					t.Fatalf("Wrong WaitForReady %v != %v", lokiSource.Config.WaitForReady, test.waitForReady)
