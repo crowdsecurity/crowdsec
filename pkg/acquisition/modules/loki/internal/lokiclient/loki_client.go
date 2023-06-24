@@ -136,14 +136,14 @@ func (lc *LokiClient) getURLFor(endpoint string, params map[string]string) strin
 		return ""
 	}
 
-	switch endpoint {
-	case "loki/api/v1/tail":
+	if endpoint == "loki/api/v1/tail" {
 		if u.Scheme == "http" {
 			u.Scheme = "ws"
 		} else {
 			u.Scheme = "wss"
 		}
 	}
+
 	return u.String()
 }
 

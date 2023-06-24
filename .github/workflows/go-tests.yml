@@ -108,6 +108,12 @@ jobs:
           --health-timeout 10s
           --health-retries 5
 
+      loki:
+        image: grafana/loki:2.8.0
+        ports:
+          - "3100:3100"
+        command: -config.file=/etc/loki/local-config.yaml
+
     steps:
 
     - name: Check out CrowdSec repository

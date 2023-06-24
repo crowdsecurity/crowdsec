@@ -983,6 +983,16 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				      source: kafka`,
 			expected:    setup.Setup{Setup: []setup.ServiceSetup{}},
 			expectedErr: "invalid datasource for foobar: cannot create a kafka reader with an empty list of broker addresses",
+		}, {
+			name: "source loki: required fields",
+			config: `
+				version: 1.0
+				detect:
+				  foobar:
+				    datasource:
+				      source: loki`,
+			expected:    setup.Setup{Setup: []setup.ServiceSetup{}},
+			expectedErr: "invalid datasource for foobar: Loki query is mandatory",
 		},
 	}
 

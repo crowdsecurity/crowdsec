@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -235,7 +235,7 @@ func feedLoki(logger *log.Entry, n int, title string) error {
 		return err
 	}
 	if resp.StatusCode != 204 {
-		b, _ := ioutil.ReadAll(resp.Body)
+		b, _ := io.ReadAll(resp.Body)
 		logger.Error(string(b))
 		return fmt.Errorf("Bad post status %d", resp.StatusCode)
 	}
@@ -423,6 +423,9 @@ query: >
 	}
 	time.Sleep(time.Second * 2)
 	feedLoki(subLogger, 1, title)
+	if err != nil {
+		t.Fatalf("Unexpected error : %s", err)
+	}
 
 	lokiTomb.Kill(nil)
 	err = lokiTomb.Wait()
