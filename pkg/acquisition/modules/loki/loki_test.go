@@ -153,11 +153,11 @@ func TestConfigureDSN(t *testing.T) {
 			dsn:   `loki://127.0.0.1:3100/?since=3h&query={server="demo"}`,
 			since: time.Now().Add(-3 * time.Hour),
 		},
-		/*{
+		{
 			name:     "Basic Auth",
-			dsn:      `loki://login:password@localhost:3100/?query={server="demo"}`,
+			dsn:      `loki://login:password@localhost:3102/?query={server="demo"}`,
 			password: "password",
-		},*/
+		},
 		{
 			name:         "Correct DSN",
 			dsn:          `loki://localhost:3100/?query={server="demo"}&wait_for_ready=5s`,
@@ -171,26 +171,22 @@ func TestConfigureDSN(t *testing.T) {
 			"type": "loki",
 			"name": test.name,
 		})
+		t.Logf("Test : %s", test.name)
 		lokiSource := &loki.LokiSource{}
 		err := lokiSource.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
 		cstest.AssertErrorContains(t, err, test.expectedErr)
-		/*if time.Time(lokiSource.Config.Since).Round(time.Second) != test.since.Round(time.Second) {
+
+		noDuration, _ := time.ParseDuration("0s")
+		if lokiSource.Config.Since != noDuration && lokiSource.Config.Since.Round(time.Second) != time.Since(test.since).Round(time.Second) {
 			t.Fatalf("Invalid since %v", lokiSource.Config.Since)
 		}
-		if test.password == "" {
-			if lokiSource.auth != nil {
-				t.Fatalf("Password should be empty : %v", lokiSource.auth)
-			}
-		} else {
-			p, _ := lokiSource.auth.Password()
+
+		if test.password != "" {
+			p := lokiSource.Config.Auth.Password
 			if test.password != p {
-				t.Fatalf("Wrong password : %s != %s", test.password, p)
+				t.Fatalf("Password mismatch : %s != %s", test.password, p)
 			}
-			a := lokiSource.header.Get("authorization")
-			if !strings.HasPrefix(a, "Basic ") {
-				t.Fatalf("Bad auth header : %s", a)
-			}
-		}*/
+		}
 		if test.waitForReady != 0 {
 			if lokiSource.Config.WaitForReady != test.waitForReady {
 				t.Fatalf("Wrong WaitForReady %v != %v", lokiSource.Config.WaitForReady, test.waitForReady)

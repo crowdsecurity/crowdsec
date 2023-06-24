@@ -49,6 +49,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/google/winops v0.0.0-20230712152054-af9b550d0601
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
+	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/go-hclog v1.5.0
 	github.com/hashicorp/go-plugin v1.4.10
 	github.com/hashicorp/go-version v1.2.1
@@ -87,6 +88,8 @@ require (
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
+	k8s.io/apiserver v0.27.3
+	gotest.tools/v3 v3.0.3
 	k8s.io/apiserver v0.27.3
 )
 

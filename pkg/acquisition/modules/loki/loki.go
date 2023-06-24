@@ -19,8 +19,8 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	lokiclient "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki/internal/lokiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 const (
@@ -37,17 +37,21 @@ var linesRead = prometheus.NewCounterVec(
 	},
 	[]string{"source"})
 
+type LokiAuthConfiguration struct {
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
+}
+
 type LokiConfiguration struct {
-	URL                               string            `yaml:"url"`    // Loki url
-	Prefix                            string            `yaml:"prefix"` // Loki prefix
-	Query                             string            `yaml:"query"`  // LogQL query
-	Limit                             int               `yaml:"limit"`  // Limit of logs to read
-	DelayFor                          time.Duration     `yaml:"delay_for"`
-	Since                             time.Duration     `yaml:"since"`
-	Headers                           map[string]string `yaml:"headers"`        // HTTP headers for talking to Loki
-	WaitForReady                      time.Duration     `yaml:"wait_for_ready"` // Retry interval, default is 10 seconds
-	Username                          string            `yaml:"username"`
-	Password                          string            `yaml:"password"`
+	URL                               string                `yaml:"url"`    // Loki url
+	Prefix                            string                `yaml:"prefix"` // Loki prefix
+	Query                             string                `yaml:"query"`  // LogQL query
+	Limit                             int                   `yaml:"limit"`  // Limit of logs to read
+	DelayFor                          time.Duration         `yaml:"delay_for"`
+	Since                             time.Duration         `yaml:"since"`
+	Headers                           map[string]string     `yaml:"headers"`        // HTTP headers for talking to Loki
+	WaitForReady                      time.Duration         `yaml:"wait_for_ready"` // Retry interval, default is 10 seconds
+	Auth                              LokiAuthConfiguration `yaml:"auth"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -146,6 +150,10 @@ func (l *LokiSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 	scheme := "http"
 
 	l.Config.URL = fmt.Sprintf("%s://%s", scheme, u.Host)
+	if u.User != nil {
+		l.Config.Auth.Username = u.User.Username()
+		l.Config.Auth.Password, _ = u.User.Password()
+	}
 	params := u.Query()
 	if q := params.Get("query"); q != "" {
 		l.Config.Query = q
@@ -197,8 +205,8 @@ func (l *LokiSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 		Limit:    l.Config.Limit,
 		Query:    l.Config.Query,
 		Since:    l.Config.Since,
-		Username: l.Config.Username,
-		Password: l.Config.Password,
+		Username: l.Config.Auth.Username,
+		Password: l.Config.Auth.Password,
 	}
 
 	l.Client = lokiclient.NewLokiClient(clientConfig)
