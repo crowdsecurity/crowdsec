@@ -20,7 +20,7 @@ RUN apk add --no-cache git g++ gcc libc-dev make bash gettext binutils-gold core
     make install && \
     echo "githubciXXXXXXXXXXXXXXXXXXXXXXXX" > /etc/machine-id && \
     cd - && \
-    make clean release DOCKER_BUILD=1 && \
+    make clean release DOCKER_BUILD=1 BUILD_STATIC=1 && \
     cd crowdsec-v* && \
     ./wizard.sh --docker-mode && \
     cd - >/dev/null && \
