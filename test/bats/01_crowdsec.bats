@@ -154,7 +154,7 @@ teardown() {
     rune -1 timeout 2s "${CROWDSEC}"
     # check warning
     assert_stderr --partial "no acquisition file found"
-    assert_stderr --partial "crowdsec init: while loading acquisition config: no data source enabled"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: no datasource enabled"
 }
 
 @test "crowdsec (error if acquisition_path and acquisition_dir are not defined)" {
@@ -170,7 +170,7 @@ teardown() {
     rune -1 timeout 2s "${CROWDSEC}"
     # check warning
     assert_stderr --partial "no acquisition_path or acquisition_dir specified"
-    assert_stderr --partial "crowdsec init: while loading acquisition config: no data source enabled"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: no datasource enabled"
 }
 
 @test "crowdsec (no error if acquisition_path is empty string but acquisition_dir is not empty)" {
@@ -188,7 +188,7 @@ teardown() {
     cat /dev/null >"$ACQUIS_DIR"/foo.yaml
 
     rune -1 timeout 2s "${CROWDSEC}"
-    assert_stderr --partial "crowdsec init: while loading acquisition config: no data source enabled"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: no datasource enabled"
 }
 
 @test "crowdsec (disabled datasources)" {
@@ -217,6 +217,6 @@ teardown() {
     config_set '.crowdsec_service.acquisition_path=""'
 
     rune -1 timeout 2s env PATH='' "${CROWDSEC}"
-    assert_stderr --partial "crowdsec init: while loading acquisition config: no data source enabled"
+    assert_stderr --partial "crowdsec init: while loading acquisition config: no datasource enabled"
 }
 

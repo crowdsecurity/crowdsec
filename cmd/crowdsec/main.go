@@ -120,7 +120,7 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 	}
 
 	if len(dataSources) == 0 {
-		return fmt.Errorf("no data source enabled")
+		return fmt.Errorf("no datasource enabled")
 	}
 
 	return nil
