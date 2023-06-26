@@ -556,7 +556,7 @@ func (c *Client) BulkDeleteDecisions(decisionsToDelete []*ent.Decision, softDele
 		totalUpdates = 0
 	)
 
-	idsToDelete := make([]int, 0, len(decisionsToDelete))
+	idsToDelete := make([]int, len(decisionsToDelete))
 	for i, decision := range decisionsToDelete {
 		idsToDelete[i] = decision.ID
 	}
@@ -587,7 +587,8 @@ func (c *Client) BulkDeleteDecisions(decisionsToDelete []*ent.Decision, softDele
 func (c *Client) SoftDeleteDecisionByID(decisionID int) (int, []*ent.Decision, error) {
 	toUpdate, err := c.Ent.Decision.Query().Where(decision.IDEQ(decisionID)).All(c.CTX)
 
-	if err != nil {
+	// XXX: do we want 500 or 404 here?
+	if err != nil || len(toUpdate) == 0{
 		c.Log.Warningf("SoftDeleteDecisionByID : %v (nb soft deleted: %d)", err, len(toUpdate))
 		return 0, nil, errors.Wrapf(DeleteFail, "decision with id '%d' doesn't exist", decisionID)
 	}
