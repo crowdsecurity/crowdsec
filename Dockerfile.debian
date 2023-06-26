@@ -1,7 +1,7 @@
 # vim: set ft=dockerfile:
 ARG GOVERSION=1.20.5
 
-FROM golang:${GOVERSION}-bullseye AS build
+FROM golang:${GOVERSION}-bookworm AS build
 
 WORKDIR /go/src/crowdsec
 
@@ -26,7 +26,7 @@ RUN apt-get update && \
     # In case we need to remove agents here..
     # cscli machines list -o json | yq '.[].machineId' | xargs -r cscli machines delete
 
-FROM debian:bullseye-slim as slim
+FROM debian:bookworm-slim as slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV DEBCONF_NOWARNINGS="yes"
@@ -43,9 +43,6 @@ RUN apt-get update && \
     mkdir -p /staging/etc/crowdsec/acquis.d && \
     mkdir -p /staging/var/lib/crowdsec && \
     mkdir -p /var/lib/crowdsec/data
-
-RUN echo "deb http://deb.debian.org/debian bullseye-backports main" >> /etc/apt/sources.list \
-    && apt-get update && apt-get install -t bullseye-backports -y libsystemd0
 
 COPY --from=build /go/bin/yq /usr/local/bin/yq
 COPY --from=build /etc/crowdsec /staging/etc/crowdsec
