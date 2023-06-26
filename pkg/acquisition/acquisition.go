@@ -34,6 +34,20 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+type DataSourceUnavailableError struct {
+	Name string
+	Err error
+}
+
+func (e *DataSourceUnavailableError) Error() string {
+	return fmt.Sprintf("datasource '%s' is not available: %v", e.Name, e.Err)
+}
+
+func (e *DataSourceUnavailableError) Unwrap() error {
+	return e.Err
+}
+
+
 // The interface each datasource must implement
 type DataSource interface {
 	GetMetrics() []prometheus.Collector                                 // Returns pointers to metrics that are managed by the module
@@ -75,7 +89,8 @@ func GetDataSourceIface(dataSourceType string) DataSource {
 
 // DataSourceConfigure creates and returns a DataSource object from a configuration,
 // if the configuration is not valid it returns an error.
-// If the datasource can't be run (eg. journalctl not available), it logs an error but returns (nil, nil)
+// If the datasource can't be run (eg. journalctl not available), it still returns an error which
+// can be checked for the appropriate action.
 func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg) (*DataSource, error) {
 	// we dump it back to []byte, because we want to decode the yaml blob twice:
 	// once to DataSourceCommonCfg, and then later to the dedicated type of the datasource
@@ -101,8 +116,7 @@ func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg) (*DataS
 		subLogger := clog.WithFields(customLog)
 		/* check eventual dependencies are satisfied (ie. journald will check journalctl availability) */
 		if err := dataSrc.CanRun(); err != nil {
-			log.Errorf("datasource %s cannot be run: %s", commonConfig.Source, err)
-			return nil, nil
+			return nil, &DataSourceUnavailableError{Name: commonConfig.Source, Err: err}
 		}
 		/* configure the actual datasource */
 		if err := dataSrc.Configure(yamlConfig, subLogger); err != nil {
@@ -210,10 +224,12 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			sub.UniqueId = uniqueId
 			src, err := DataSourceConfigure(sub)
 			if err != nil {
+				var dserr *DataSourceUnavailableError
+				if errors.As(err, &dserr) {
+					log.Error(err)
+					continue
+				}
 				return nil, fmt.Errorf("while configuring datasource of type %s from %s (position: %d): %w", sub.Source, acquisFile, idx, err)
-			}
-			if src == nil {
-				continue
 			}
 			if sub.TransformExpr != "" {
 				vm, err := expr.Compile(sub.TransformExpr, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)

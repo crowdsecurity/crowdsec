@@ -208,7 +208,7 @@ teardown() {
 
     rune -124 timeout 2s env PATH='' "${CROWDSEC}"
     #shellcheck disable=SC2016
-    assert_stderr --partial 'datasource journalctl cannot be run: exec: "journalctl": executable file not found in $PATH'
+    assert_stderr --partial 'datasource '\''journalctl'\'' is not available: exec: "journalctl": executable file not found in $PATH'
 
     # if all datasources are disabled, crowdsec should exit
 
