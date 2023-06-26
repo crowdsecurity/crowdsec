@@ -73,6 +73,9 @@ func GetDataSourceIface(dataSourceType string) DataSource {
 	return source()
 }
 
+// DataSourceConfigure creates and returns a DataSource object from a configuration,
+// if the configuration is not valid it returns an error.
+// If the datasource can't be run (eg. journalctl not available), it logs an error but returns (nil, nil)
 func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg) (*DataSource, error) {
 	// we dump it back to []byte, because we want to decode the yaml blob twice:
 	// once to DataSourceCommonCfg, and then later to the dedicated type of the datasource
@@ -98,7 +101,8 @@ func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg) (*DataS
 		subLogger := clog.WithFields(customLog)
 		/* check eventual dependencies are satisfied (ie. journald will check journalctl availability) */
 		if err := dataSrc.CanRun(); err != nil {
-			return nil, fmt.Errorf("datasource %s cannot be run: %w", commonConfig.Source, err)
+			log.Errorf("datasource %s cannot be run: %s", commonConfig.Source, err)
+			return nil, nil
 		}
 		/* configure the actual datasource */
 		if err := dataSrc.Configure(yamlConfig, subLogger); err != nil {
@@ -207,6 +211,9 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			src, err := DataSourceConfigure(sub)
 			if err != nil {
 				return nil, fmt.Errorf("while configuring datasource of type %s from %s (position: %d): %w", sub.Source, acquisFile, idx, err)
+			}
+			if src == nil {
+				continue
 			}
 			if sub.TransformExpr != "" {
 				vm, err := expr.Compile(sub.TransformExpr, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
