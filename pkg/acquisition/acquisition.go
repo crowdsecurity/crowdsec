@@ -189,10 +189,11 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 		}
 		dec := yaml.NewDecoder(yamlFile)
 		dec.SetStrict(true)
+		idx := -1
 		for {
 			var sub configuration.DataSourceCommonCfg
-			var idx int
 			err = dec.Decode(&sub)
+			idx += 1
 			if err != nil {
 				if !errors.Is(err, io.EOF) {
 					return nil, fmt.Errorf("failed to yaml decode %s: %w", acquisFile, err)
@@ -209,7 +210,6 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			if len(sub.Labels) == 0 {
 				if sub.Source == "" {
 					log.Debugf("skipping empty item in %s", acquisFile)
-					idx += 1
 					continue
 				}
 				return nil, fmt.Errorf("missing labels in %s (position: %d)", acquisFile, idx)
@@ -239,7 +239,6 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 				transformRuntimes[uniqueId] = vm
 			}
 			sources = append(sources, *src)
-			idx += 1
 		}
 	}
 	return sources, nil
@@ -316,6 +315,11 @@ func transform(transformChan chan types.Event, output chan types.Event, AcquisTo
 }
 
 func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
+	// Don't wait if we have no sources, as it will hang forever
+	if len(sources) == 0 {
+		return nil
+	}
+
 	for i := 0; i < len(sources); i++ {
 		subsrc := sources[i] //ensure its a copy
 		log.Debugf("starting one source %d/%d ->> %T", i, len(sources), subsrc)
@@ -351,11 +355,8 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 			return nil
 		})
 	}
-	// Don't wait if we have no sources, as it will hang forever
-	if len(sources) > 0 {
-		/*return only when acquisition is over (cat) or never (tail)*/
-		err := AcquisTomb.Wait()
-		return err
-	}
-	return nil
+
+	/*return only when acquisition is over (cat) or never (tail)*/
+	err := AcquisTomb.Wait()
+	return err
 }
