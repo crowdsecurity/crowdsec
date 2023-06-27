@@ -196,10 +196,11 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 		}
 		dec := yaml.NewDecoder(yamlFile)
 		dec.SetStrict(true)
+		idx := -1
 		for {
 			var sub configuration.DataSourceCommonCfg
-			var idx int
 			err = dec.Decode(&sub)
+			idx += 1
 			if err != nil {
 				if ! errors.Is(err, io.EOF) {
 					return nil, errors.Wrapf(err, "failed to yaml decode %s", acquisFile)
@@ -216,7 +217,6 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			if len(sub.Labels) == 0 {
 				if sub.Source == "" {
 					log.Debugf("skipping empty item in %s", acquisFile)
-					idx += 1
 					continue
 				}
 				return nil, fmt.Errorf("missing labels in %s (position: %d)", acquisFile, idx)
@@ -237,7 +237,6 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 				return nil, errors.Wrapf(err, "while configuring datasource of type %s from %s (position: %d)", sub.Source, acquisFile, idx)
 			}
 			sources = append(sources, *src)
-			idx += 1
 		}
 	}
 	return sources, nil
