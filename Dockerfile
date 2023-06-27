@@ -5,29 +5,28 @@ FROM golang:${GOVERSION}-alpine AS build
 
 WORKDIR /go/src/crowdsec
 
-COPY . .
-
-# Alpine does not ship a static version of re2, we can build it ourselves
-# Later versions require 'abseil', which is likewise not available in its static form
+# We like to choose the release of re2 to use, and Alpine does not ship a static version anyway.
 ENV RE2_VERSION=2023-03-01
 
 # wizard.sh requires GNU coreutils
-RUN apk add --no-cache git g++ gcc libc-dev make bash gettext binutils-gold coreutils icu-static re2-dev pkgconfig && \
+RUN apk add --no-cache git g++ gcc libc-dev make bash gettext binutils-gold coreutils icu-static pkgconfig && \
     wget https://github.com/google/re2/archive/refs/tags/${RE2_VERSION}.tar.gz && \
     tar -xzf ${RE2_VERSION}.tar.gz && \
     cd re2-${RE2_VERSION} && \
     make && \
     make install && \
     echo "githubciXXXXXXXXXXXXXXXXXXXXXXXX" > /etc/machine-id && \
-    cd - && \
-    make clean release DOCKER_BUILD=1 BUILD_STATIC=1 && \
+    go install github.com/mikefarah/yq/v4@v4.34.1
+
+COPY . .
+
+RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=1 && \
     cd crowdsec-v* && \
     ./wizard.sh --docker-mode && \
     cd - >/dev/null && \
     cscli hub update && \
     cscli collections install crowdsecurity/linux && \
-    cscli parsers install crowdsecurity/whitelists && \
-    go install github.com/mikefarah/yq/v4@v4.31.2
+    cscli parsers install crowdsecurity/whitelists
 
     # In case we need to remove agents here..
     # cscli machines list -o json | yq '.[].machineId' | xargs -r cscli machines delete
