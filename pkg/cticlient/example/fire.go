@@ -44,6 +44,9 @@ func main() {
 		}
 
 		for _, item := range items {
+			if item.State == "refused" {
+				continue
+			}
 			banDuration := time.Until(item.Expiration.Time)
 			allItems = append(allItems, []string{
 				item.Ip,
