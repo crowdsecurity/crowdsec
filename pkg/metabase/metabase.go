@@ -23,7 +23,7 @@ import (
 
 type Metabase struct {
 	Config        *Config
-	Client        *APIClient
+	Client        *MBClient
 	Container     *Container
 	Database      *Database
 	InternalDBURL string
@@ -80,7 +80,7 @@ func (m *Metabase) Init(containerName string) error {
 		return fmt.Errorf("database '%s' not supported", m.Config.Database.Type)
 	}
 
-	m.Client, err = NewAPIClient(m.Config.ListenURL)
+	m.Client, err = NewMBClient(m.Config.ListenURL)
 	if err != nil {
 		return err
 	}
