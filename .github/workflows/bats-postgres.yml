@@ -52,9 +52,6 @@ jobs:
         GOBIN: /usr/local/bin
       run: |
         sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential daemonize jq netcat-openbsd libre2-dev
-        go install github.com/mikefarah/yq/v4@latest
-        go install github.com/cloudflare/cfssl/cmd/cfssl@master
-        go install github.com/cloudflare/cfssl/cmd/cfssljson@master
 
     - name: "Build crowdsec and fixture (DB_BACKEND: pgx)"
       run: |
