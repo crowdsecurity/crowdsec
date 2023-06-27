@@ -133,12 +133,18 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-${{ matrix.go-version }}-go-
 
-    - name: Build and run tests
+    - name: Build and run tests, static
       run: |
+        sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential libre2-dev
         go install github.com/ory/go-acc@v0.2.8
         go install github.com/kyoh86/richgo@v0.3.10
         set -o pipefail
-        make build
+        make build BUILD_STATIC=1
+        make go-acc | richgo testfilter
+
+    - name: Run tests again, dynamic
+      run: |
+        make clean build
         make go-acc | richgo testfilter
 
     - name: Upload unit coverage to Codecov

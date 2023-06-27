@@ -44,7 +44,9 @@ jobs:
             ${{ runner.os }}-${{ matrix.go-version }}-go-
 
       - name: Build the binaries
-        run: make vendor release
+        run: |
+          sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential libre2-dev
+          make vendor release BUILD_STATIC=1
 
       - name: Upload to release
         env:
