@@ -24,28 +24,17 @@ jobs:
           sudo chmod +w /etc/machine-id
           echo githubciXXXXXXXXXXXXXXXXXXXXXXXX | sudo tee /etc/machine-id
 
-    - name: "Set up Go ${{ matrix.go-version }}"
-      uses: actions/setup-go@v3
-      with:
-        go-version: ${{ matrix.go-version }}
-
     - name: "Check out CrowdSec repository"
       uses: actions/checkout@v3
       with:
         fetch-depth: 0
         submodules: true
 
-    - name: Cache Go modules
-      uses: actions/cache@v3
+    - name: "Set up Go ${{ matrix.go-version }}"
+      uses: actions/setup-go@v4
       with:
-        path: |
-          ~/go/pkg/mod
-          ~/.cache/go-build
-          ~/Library/Caches/go-build
-          %LocalAppData%\go-build
-        key: ${{ runner.os }}-${{ matrix.go-version }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ matrix.go-version }}-go-
+        go-version: ${{ matrix.go-version }}
+        cache-dependency-path: "**/go.sum"
 
     - name: "Install bats dependencies"
       env:
