@@ -25,6 +25,20 @@ import (
 	tomb "gopkg.in/tomb.v2"
 )
 
+type DataSourceUnavailableError struct {
+	Name string
+	Err error
+}
+
+func (e *DataSourceUnavailableError) Error() string {
+	return fmt.Sprintf("datasource '%s' is not available: %v", e.Name, e.Err)
+}
+
+func (e *DataSourceUnavailableError) Unwrap() error {
+	return e.Err
+}
+
+
 // The interface each datasource must implement
 type DataSource interface {
 	GetMetrics() []prometheus.Collector                         // Returns pointers to metrics that are managed by the module
@@ -86,8 +100,11 @@ func GetDataSourceIface(dataSourceType string) DataSource {
 	return nil
 }
 
+// DataSourceConfigure creates and returns a DataSource object from a configuration,
+// if the configuration is not valid it returns an error.
+// If the datasource can't be run (eg. journalctl not available), it still returns an error which
+// can be checked for the appropriate action.
 func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg) (*DataSource, error) {
-
 	//we dump it back to []byte, because we want to decode the yaml blob twice :
 	//once to DataSourceCommonCfg, and then later to the dedicated type of the datasource
 	yamlConfig, err := yaml.Marshal(commonConfig)
@@ -112,7 +129,7 @@ func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg) (*DataS
 		subLogger := clog.WithFields(customLog)
 		/* check eventual dependencies are satisfied (ie. journald will check journalctl availability) */
 		if err := dataSrc.CanRun(); err != nil {
-			return nil, errors.Wrapf(err, "datasource %s cannot be run", commonConfig.Source)
+			return nil, &DataSourceUnavailableError{Name: commonConfig.Source, Err: err}
 		}
 		/* configure the actual datasource */
 		if err := dataSrc.Configure(yamlConfig, subLogger); err != nil {
@@ -179,10 +196,11 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 		}
 		dec := yaml.NewDecoder(yamlFile)
 		dec.SetStrict(true)
+		idx := -1
 		for {
 			var sub configuration.DataSourceCommonCfg
-			var idx int
 			err = dec.Decode(&sub)
+			idx += 1
 			if err != nil {
 				if ! errors.Is(err, io.EOF) {
 					return nil, errors.Wrapf(err, "failed to yaml decode %s", acquisFile)
@@ -199,7 +217,6 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			if len(sub.Labels) == 0 {
 				if sub.Source == "" {
 					log.Debugf("skipping empty item in %s", acquisFile)
-					idx += 1
 					continue
 				}
 				return nil, fmt.Errorf("missing labels in %s (position: %d)", acquisFile, idx)
@@ -212,10 +229,14 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			}
 			src, err := DataSourceConfigure(sub)
 			if err != nil {
+				var dserr *DataSourceUnavailableError
+				if errors.As(err, &dserr) {
+					log.Error(err)
+					continue
+				}
 				return nil, errors.Wrapf(err, "while configuring datasource of type %s from %s (position: %d)", sub.Source, acquisFile, idx)
 			}
 			sources = append(sources, *src)
-			idx += 1
 		}
 	}
 	return sources, nil

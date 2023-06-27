@@ -23,22 +23,22 @@ func initCrowdsec(cConfig *csconfig.Config) (*parser.Parsers, error) {
 	var err error
 
 	// Populate cwhub package tools
-	if err := cwhub.GetHubIdx(cConfig.Hub); err != nil {
-		return &parser.Parsers{}, fmt.Errorf("Failed to load hub index : %s", err)
+	if err = cwhub.GetHubIdx(cConfig.Hub); err != nil {
+		return &parser.Parsers{}, fmt.Errorf("while loading hub index : %s", err)
 	}
 
 	// Start loading configs
 	csParsers := newParsers()
 	if csParsers, err = parser.LoadParsers(cConfig, csParsers); err != nil {
-		return &parser.Parsers{}, fmt.Errorf("Failed to load parsers: %s", err)
+		return nil, fmt.Errorf("while loading parsers: %s", err)
 	}
 
 	if err := LoadBuckets(cConfig); err != nil {
-		return &parser.Parsers{}, fmt.Errorf("Failed to load scenarios: %s", err)
+		return nil, fmt.Errorf("while loading scenarios: %s", err)
 	}
 
 	if err := LoadAcquisition(cConfig); err != nil {
-		return &parser.Parsers{}, fmt.Errorf("Error while loading acquisition config : %s", err)
+		return nil, fmt.Errorf("while loading acquisition config: %s", err)
 	}
 	return csParsers, nil
 }

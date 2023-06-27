@@ -171,7 +171,7 @@ log_level: debug
 source: mock_cant_run
 wowo: ajsajasjas
 `,
-			ExpectedError: "datasource mock_cant_run cannot be run: can't run bro",
+			ExpectedError: "datasource 'mock_cant_run' is not available: can't run bro",
 		},
 	}
 
