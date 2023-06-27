@@ -10,7 +10,7 @@ ifdef PACKAGE_TESTING
   INIT_BACKEND = systemd
   CONFIG_BACKEND = global
 else
-  # LOCAL_DIR will contain contains a local instance of crowdsec, complete with
+  # LOCAL_DIR contains a local instance of crowdsec, complete with
   # configuration and data
   LOCAL_DIR = $(TEST_DIR)/local
   BIN_DIR = $(LOCAL_DIR)/bin
