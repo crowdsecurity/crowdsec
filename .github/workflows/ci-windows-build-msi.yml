@@ -40,6 +40,7 @@ jobs:
       uses: actions/setup-go@v4
       with:
         go-version: ${{ matrix.go-version }}
+        cache-dependency-path: "**/go.sum"
 
     - name: Build
       run: make windows_installer BUILD_RE2_WASM=1
