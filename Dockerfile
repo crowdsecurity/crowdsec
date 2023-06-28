@@ -9,11 +9,10 @@ WORKDIR /go/src/crowdsec
 ENV RE2_VERSION=2023-03-01
 
 # wizard.sh requires GNU coreutils
-RUN apk add --no-cache git g++ gcc libc-dev make bash gettext binutils-gold coreutils icu-static pkgconfig && \
+RUN apk add --no-cache git g++ gcc libc-dev make bash gettext binutils-gold coreutils pkgconfig && \
     wget https://github.com/google/re2/archive/refs/tags/${RE2_VERSION}.tar.gz && \
     tar -xzf ${RE2_VERSION}.tar.gz && \
     cd re2-${RE2_VERSION} && \
-    make && \
     make install && \
     echo "githubciXXXXXXXXXXXXXXXXXXXXXXXX" > /etc/machine-id && \
     go install github.com/mikefarah/yq/v4@v4.34.1

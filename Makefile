@@ -78,6 +78,9 @@ endif
 
 GO_TAGS := netgo,osusergo,sqlite_omit_load_extension
 
+# in fedora and other distros, we need to tell where to find re2.pc
+export PKG_CONFIG_PATH := /usr/local/lib/pkgconfig:$(PKG_CONFIG_PATH)
+
 ifeq ($(call bool,$(BUILD_RE2_WASM)),0)
 # see if we have libre2-dev installed for C++ optimizations
 RE2_CHECK := $(shell pkg-config --libs re2 2>/dev/null)
