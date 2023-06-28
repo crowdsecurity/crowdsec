@@ -191,6 +191,10 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		l.conditionalOverflow = true
 		l.Duration = l.BucketConfig.leakspeed
 	}
+
+	if l.BucketConfig.Type == "bayesian" {
+		l.Duration = l.BucketConfig.leakspeed
+	}
 	return l
 }
 

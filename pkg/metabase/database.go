@@ -14,7 +14,7 @@ type Database struct {
 	DBUrl   string
 	Model   *Model
 	Config  *csconfig.DatabaseCfg
-	Client  *APIClient
+	Client  *MBClient
 	Details *Details
 	// in case mysql host is 127.0.0.1 the ip address of mysql/pgsql host will be the docker gateway since metabase run in a container
 }
@@ -41,7 +41,7 @@ type Model struct {
 	Schedules      map[string]interface{} `json:"schedules"`
 }
 
-func NewDatabase(config *csconfig.DatabaseCfg, client *APIClient, remoteDBAddr string) (*Database, error) {
+func NewDatabase(config *csconfig.DatabaseCfg, client *MBClient, remoteDBAddr string) (*Database, error) {
 	var details *Details
 
 	database := Database{}

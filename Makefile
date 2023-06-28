@@ -1,7 +1,35 @@
 include mk/platform.mk
+include mk/gmsl
 
+# By default, this build requires the C++ re2 library to be installed.
+#
+# Debian/Ubuntu: apt install libre2-dev
+# Fedora/CentOS: dnf install re2-devel
+# FreeBSD:       pkg install re2
+# Alpine:        apk add re2-dev
+# Windows:       choco install re2
+# MacOS:         brew install re2
+
+# To build without re2, run "make BUILD_RE2_WASM=1"
+# The WASM version works just as well but might have performance issues, XXX: clarify
+# so it is not recommended for production use.
+BUILD_RE2_WASM ?= 0
+
+# To build static binaries, run "make BUILD_STATIC=1".
+# On some platforms, this requires
+# additional packages (e.g. glibc-static on fedora, centos..).
+# If the static build fails at the link stage, it might be because the static library is not provided
+# for your distribution (look for libre2.a). See the Dockerfile for an example of how to build it.
+BUILD_STATIC ?= 0
+
+# List of plugins to build
+PLUGINS ?= $(patsubst ./plugins/notifications/%,%,$(wildcard ./plugins/notifications/*))
+
+# Can be overriden, if you can deal with the consequences
 BUILD_REQUIRE_GO_MAJOR ?= 1
 BUILD_REQUIRE_GO_MINOR ?= 20
+
+#--------------------------------------
 
 GOCMD = go
 GOTEST = $(GOCMD) test
@@ -10,8 +38,6 @@ BUILD_CODENAME ?= alphaga
 
 CROWDSEC_FOLDER = ./cmd/crowdsec
 CSCLI_FOLDER = ./cmd/crowdsec-cli/
-
-PLUGINS ?= $(patsubst ./plugins/notifications/%,%,$(wildcard ./plugins/notifications/*))
 PLUGINS_DIR = ./plugins/notifications
 
 CROWDSEC_BIN = crowdsec$(EXT)
@@ -22,8 +48,14 @@ RELDIR = crowdsec-$(BUILD_VERSION)
 
 GO_MODULE_NAME = github.com/crowdsecurity/crowdsec
 
-# see if we have libre2-dev installed for C++ optimizations
-RE2_CHECK := $(shell pkg-config --libs re2 2>/dev/null)
+# Check if a given value is considered truthy and returns "0" or "1".
+# A truthy value is one of the following: "1", "yes", or "true", case-insensitive.
+#
+# Usage:
+# ifeq ($(call bool,$(FOO)),1)
+# $(info Let's foo)
+# endif
+bool = $(if $(filter $(call lc, $1),1 yes true),1,0)
 
 #--------------------------------------
 #
@@ -46,13 +78,28 @@ endif
 
 GO_TAGS := netgo,osusergo,sqlite_omit_load_extension
 
-ifneq (,$(RE2_CHECK))
+ifeq ($(call bool,$(BUILD_RE2_WASM)),0)
+# see if we have libre2-dev installed for C++ optimizations
+RE2_CHECK := $(shell pkg-config --libs re2 2>/dev/null)
+ifeq ($(RE2_CHECK),)
+# we could detect the platform and suggest the command to install
+RE2_FAIL := "libre2-dev is not installed, please install it or set BUILD_RE2_WASM=1 to use the WebAssembly version"
+else
 # += adds a space that we don't want
 GO_TAGS := $(GO_TAGS),re2_cgo
 LD_OPTS_VARS += -X '$(GO_MODULE_NAME)/pkg/cwversion.Libre2=C++'
 endif
+endif
 
-export LD_OPTS=-ldflags "-s -w -extldflags '-static' $(LD_OPTS_VARS)" \
+ifeq ($(call bool,$(BUILD_STATIC)),1)
+BUILD_TYPE = static
+EXTLDFLAGS := -extldflags '-static'
+else
+BUILD_TYPE = dynamic
+EXTLDFLAGS :=
+endif
+
+export LD_OPTS=-ldflags "-s -w $(EXTLDFLAGS) $(LD_OPTS_VARS)" \
 	-trimpath -tags $(GO_TAGS)
 
 ifneq (,$(TEST_COVERAGE))
@@ -66,10 +113,12 @@ build: pre-build goversion crowdsec cscli plugins
 
 .PHONY: pre-build
 pre-build:
-ifdef BUILD_STATIC
-	$(warning WARNING: The BUILD_STATIC variable is deprecated and has no effect. Builds are static by default since v1.5.0.)
+	$(info Building $(BUILD_VERSION) ($(BUILD_TAG)) $(BUILD_TYPE) for $(GOOS)/$(GOARCH))
+
+ifneq (,$(RE2_FAIL))
+	$(error $(RE2_FAIL))
 endif
-	$(info Building $(BUILD_VERSION) ($(BUILD_TAG)) for $(GOOS)/$(GOARCH))
+
 ifneq (,$(RE2_CHECK))
 	$(info Using C++ regexp library)
 else
@@ -137,13 +186,25 @@ localstack:
 localstack-stop:
 	docker-compose -f test/localstack/docker-compose.yml down
 
+# list of plugins that contain go.mod
+PLUGIN_VENDOR = $(foreach plugin,$(PLUGINS),$(shell if [ -f $(PLUGINS_DIR)/$(plugin)/go.mod ]; then echo $(PLUGINS_DIR)/$(plugin); fi))
+
 .PHONY: vendor
 vendor:
-	@echo "Vendoring dependencies"
-	@$(GOCMD) mod vendor
-	@$(foreach plugin,$(PLUGINS), \
-		$(MAKE) -C $(PLUGINS_DIR)/$(plugin) vendor $(MAKE_FLAGS); \
+	$(foreach plugin_dir,$(PLUGIN_VENDOR), \
+		cd $(plugin_dir) >/dev/null && \
+		$(GOCMD) mod vendor && \
+		cd - >/dev/null; \
 	)
+	$(GOCMD) mod vendor
+	tar -czf vendor.tgz vendor $(foreach plugin_dir,$(PLUGIN_VENDOR),$(plugin_dir)/vendor)
+
+.PHONY: vendor-remove
+vendor-remove:
+	$(foreach plugin_dir,$(PLUGIN_VENDOR), \
+		$(RM) $(plugin_dir)/vendor; \
+	)
+	$(RM) vendor vendor.tgz
 
 .PHONY: package
 package:

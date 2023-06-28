@@ -23,7 +23,7 @@ import (
 
 type Metabase struct {
 	Config        *Config
-	Client        *APIClient
+	Client        *MBClient
 	Container     *Container
 	Database      *Database
 	InternalDBURL string
@@ -80,7 +80,7 @@ func (m *Metabase) Init(containerName string) error {
 		return fmt.Errorf("database '%s' not supported", m.Config.Database.Type)
 	}
 
-	m.Client, err = NewAPIClient(m.Config.ListenURL)
+	m.Client, err = NewMBClient(m.Config.ListenURL)
 	if err != nil {
 		return err
 	}
@@ -215,7 +215,7 @@ func (m *Metabase) Login(username string, password string) error {
 	}
 
 	if errormsg != nil {
-		return errors.Wrap(err, "http login")
+		return fmt.Errorf("http login: %s", errormsg)
 	}
 	resp, ok := successmsg.(map[string]interface{})
 	if !ok {
@@ -238,7 +238,7 @@ func (m *Metabase) Scan() error {
 		return err
 	}
 	if errormsg != nil {
-		return errors.Wrap(err, "http scan")
+		return fmt.Errorf("http scan: %s", errormsg)
 	}
 
 	return nil
@@ -255,7 +255,7 @@ func (m *Metabase) ResetPassword(current string, newPassword string) error {
 		return errors.Wrap(err, "reset username")
 	}
 	if errormsg != nil {
-		return errors.Wrap(err, "http reset password")
+		return fmt.Errorf("http reset password: %s", errormsg)
 	}
 	return nil
 }
@@ -279,7 +279,7 @@ func (m *Metabase) ResetUsername(username string) error {
 	}
 
 	if errormsg != nil {
-		return errors.Wrap(err, "http reset username")
+		return fmt.Errorf("http reset username: %s", errormsg)
 	}
 
 	return nil

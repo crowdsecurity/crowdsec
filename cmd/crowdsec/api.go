@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"runtime"
 	"time"
 
@@ -20,7 +21,7 @@ func initAPIServer(cConfig *csconfig.Config) (*apiserver.APIServer, error) {
 
 	apiServer, err := apiserver.NewServer(cConfig.API.Server)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to run local API")
+		return nil, fmt.Errorf("unable to run local API: %w", err)
 	}
 
 	if hasPlugins(cConfig.API.Server.Profiles) {
@@ -29,23 +30,27 @@ func initAPIServer(cConfig *csconfig.Config) (*apiserver.APIServer, error) {
 		if cConfig.PluginConfig == nil && runtime.GOOS != "windows" {
 			return nil, errors.New("plugins are enabled, but the plugin_config section is missing in the configuration")
 		}
+
 		if cConfig.ConfigPaths.NotificationDir == "" {
 			return nil, errors.New("plugins are enabled, but config_paths.notification_dir is not defined")
 		}
+
 		if cConfig.ConfigPaths.PluginDir == "" {
 			return nil, errors.New("plugins are enabled, but config_paths.plugin_dir is not defined")
 		}
+
 		err = pluginBroker.Init(cConfig.PluginConfig, cConfig.API.Server.Profiles, cConfig.ConfigPaths)
 		if err != nil {
-			return nil, errors.Wrap(err, "unable to run local API")
+			return nil, fmt.Errorf("unable to run plugin broker: %w", err)
 		}
+
 		log.Info("initiated plugin broker")
 		apiServer.AttachPluginBroker(&pluginBroker)
 	}
 
 	err = apiServer.InitController()
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to run local API")
+		return nil, fmt.Errorf("unable to run local API: %w", err)
 	}
 
 	return apiServer, nil
