@@ -51,6 +51,7 @@ export CONFIG_BACKEND="$(CONFIG_BACKEND)"
 export PACKAGE_TESTING="$(PACKAGE_TESTING)"
 export TEST_COVERAGE="$(TEST_COVERAGE)"
 export GOCOVERDIR="$(TEST_DIR)/coverage"
+export PATH="$(TEST_DIR)/tools:$(PATH)"
 endef
 
 bats-all: bats-clean bats-build bats-fixture bats-test bats-test-hub

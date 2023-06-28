@@ -15,6 +15,9 @@
 *.test
 *.cover
 
+# Test dependencies
+test/tools/*
+
 # VMs used for dev/test
 
 .vagrant
