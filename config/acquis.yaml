@@ -10,6 +10,12 @@ filenames:
  - /var/log/syslog
 labels:
   type: syslog
+--- 
+source: journalctl
+journalctl_filter:
+ - "_SYSTEMD_UNIT=ssh.service"
+labels:
+  type: syslog
 ---
 filename: /var/log/apache2/*.log
 labels:
