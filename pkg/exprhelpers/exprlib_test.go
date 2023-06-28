@@ -1453,6 +1453,13 @@ func TestMerge(t *testing.T) {
 			expected: map[string]string{"foo": "bar"},
 			expr:     `Merge(value, out)`,
 		},
+		{
+			name:               "Merge() test: error on nil source",
+			value:              nil,
+			expected:           nil,
+			expr:               `Merge(value, out)`,
+			expectedRuntimeErr: true,
+		},
 	}
 
 	for _, tc := range tests {
@@ -1464,8 +1471,16 @@ func TestMerge(t *testing.T) {
 				"out":   outMap,
 			}
 			vm, err := expr.Compile(tc.expr, GetExprOptions(env)...)
+			if tc.expectedBuildErr {
+				assert.Error(t, err)
+				return
+			}
 			assert.NoError(t, err)
 			_, err = expr.Run(vm, env)
+			if tc.expectedRuntimeErr {
+				assert.Error(t, err)
+				return
+			}
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expected, outMap)
 		})
@@ -1501,6 +1516,13 @@ func TestMergeSafe(t *testing.T) {
 			expected: map[string]string{"foo": "bar"},
 			expr:     `MergeSafe(value, out)`,
 		},
+		{
+			name:               "MergeSafe() test: error on nil source",
+			value:              nil,
+			expected:           nil,
+			expr:               `MergeSafe(value, out)`,
+			expectedRuntimeErr: true,
+		},
 	}
 
 	for _, tc := range tests {
@@ -1515,8 +1537,16 @@ func TestMergeSafe(t *testing.T) {
 				"out":   outMap,
 			}
 			vm, err := expr.Compile(tc.expr, GetExprOptions(env)...)
+			if tc.expectedBuildErr {
+				assert.Error(t, err)
+				return
+			}
 			assert.NoError(t, err)
 			_, err = expr.Run(vm, env)
+			if tc.expectedRuntimeErr {
+				assert.Error(t, err)
+				return
+			}
 			assert.NoError(t, err)
 			assert.Equal(t, tc.expected, outMap)
 		})

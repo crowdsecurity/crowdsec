@@ -647,6 +647,7 @@ func Hostname(params ...any) (any, error) {
 func Merge(params ...any) (any, error) {
 	source := params[0].(map[string]interface{})
 	target := params[1].(map[string]string)
+	fmt.Println(source, target)
 	if source == nil || target == nil {
 		return "", fmt.Errorf("invalid input format must provide two maps")
 	}
