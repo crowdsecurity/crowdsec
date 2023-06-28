@@ -419,6 +419,20 @@ var exprFuncs = []exprCustomFunc{
 			new(func() (string, error)),
 		},
 	},
+	{
+		name:     "Merge",
+		function: Merge,
+		signature: []interface{}{
+			new(func(map[string]interface{}, map[string]string) error),
+		},
+	},
+	{
+		name:     "MergeSafe",
+		function: MergeSafe,
+		signature: []interface{}{
+			new(func(map[string]interface{}, map[string]string) error),
+		},
+	},
 }
 
 //go 1.20 "CutPrefix":              strings.CutPrefix,

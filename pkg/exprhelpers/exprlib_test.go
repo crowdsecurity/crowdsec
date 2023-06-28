@@ -1429,3 +1429,96 @@ func TestParseKv(t *testing.T) {
 		})
 	}
 }
+
+func TestMerge(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+	tests := []struct {
+		name               string
+		value              map[string]interface{}
+		expected           map[string]string
+		expr               string
+		expectedBuildErr   bool
+		expectedRuntimeErr bool
+	}{
+		{
+			name:     "Merge() test: basic string",
+			value:    map[string]interface{}{"foo": "bar"},
+			expected: map[string]string{"foo": "bar"},
+			expr:     `Merge(value, out)`,
+		},
+		{
+			name:     "Merge() test: ignore non strings",
+			value:    map[string]interface{}{"foo": "bar", "bar": 1, "toto": true},
+			expected: map[string]string{"foo": "bar"},
+			expr:     `Merge(value, out)`,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			outMap := make(map[string]string)
+			env := map[string]interface{}{
+				"value": tc.value,
+				"out":   outMap,
+			}
+			vm, err := expr.Compile(tc.expr, GetExprOptions(env)...)
+			assert.NoError(t, err)
+			_, err = expr.Run(vm, env)
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expected, outMap)
+		})
+	}
+}
+
+func TestMergeSafe(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+	tests := []struct {
+		name               string
+		value              map[string]interface{}
+		expected           map[string]string
+		expr               string
+		expectedBuildErr   bool
+		expectedRuntimeErr bool
+	}{
+		{
+			name:     "MergeSafe() test: basic string",
+			value:    map[string]interface{}{"bar": "foo"},
+			expected: map[string]string{"foo": "bar", "bar": "foo"},
+			expr:     `MergeSafe(value, out)`,
+		},
+		{
+			name:     "MergeSafe() test: ignore non strings",
+			value:    map[string]interface{}{"bar": "foo", "fofo": 1, "toto": true},
+			expected: map[string]string{"foo": "bar", "bar": "foo"},
+			expr:     `MergeSafe(value, out)`,
+		},
+		{
+			name:     "MergeSafe() test: dont replace existing keys",
+			value:    map[string]interface{}{"foo": "test"},
+			expected: map[string]string{"foo": "bar"},
+			expr:     `MergeSafe(value, out)`,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			// Foo bar is always in outMap meaning it should never be overiden by MergeSafe
+			outMap := map[string]string{
+				"foo": "bar",
+			}
+			env := map[string]interface{}{
+				"value": tc.value,
+				"out":   outMap,
+			}
+			vm, err := expr.Compile(tc.expr, GetExprOptions(env)...)
+			assert.NoError(t, err)
+			_, err = expr.Run(vm, env)
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expected, outMap)
+		})
+	}
+}

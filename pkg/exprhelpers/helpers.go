@@ -643,3 +643,33 @@ func Hostname(params ...any) (any, error) {
 	}
 	return hostname, nil
 }
+
+func Merge(params ...any) (any, error) {
+	source := params[0].(map[string]interface{})
+	target := params[1].(map[string]string)
+	if source == nil || target == nil {
+		return "", fmt.Errorf("invalid input format must provide two maps")
+	}
+	for k, v := range source {
+		if p, _ := ToString(v); p != "" {
+			target[k] = p.(string)
+		}
+	}
+	return nil, nil
+}
+
+func MergeSafe(params ...any) (any, error) {
+	source := params[0].(map[string]interface{})
+	target := params[1].(map[string]string)
+	if source == nil || target == nil {
+		return "", fmt.Errorf("invalid input format must provide two maps")
+	}
+	for k, v := range source {
+		if _, ok := target[k]; !ok {
+			if p, _ := ToString(v); p != "" {
+				target[k] = p.(string)
+			}
+		}
+	}
+	return nil, nil
+}
