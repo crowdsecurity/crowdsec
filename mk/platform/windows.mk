@@ -19,4 +19,4 @@ CPR=Copy-Item -Recurse
 MKDIR=New-Item -ItemType directory
 WIN_IGNORE_ERR=; exit 0
 
-PKG_CONFIG:=$(shell where pkg-config 2> nul)
+PKG_CONFIG:=$(shell Get-Command pkg-config -ErrorAction SilentlyContinue)

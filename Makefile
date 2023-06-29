@@ -17,7 +17,7 @@ BUILD_RE2_WASM ?= 0
 
 # To build static binaries, run "make BUILD_STATIC=1".
 # On some platforms, this requires
-# additional packages (e.g. glibc-static on fedora, centos..).
+# additional packages (e.g. glibc-static and libstdc++-static on fedora, centos..).
 # If the static build fails at the link stage, it might be because the static library is not provided
 # for your distribution (look for libre2.a). See the Dockerfile for an example of how to build it.
 BUILD_STATIC ?= 0
@@ -77,14 +77,19 @@ LD_OPTS_VARS += -X '$(GO_MODULE_NAME)/pkg/cwversion.System=docker'
 endif
 
 GO_TAGS := netgo,osusergo,sqlite_omit_load_extension
+# this will be used by Go in the make target
+export PKG_CONFIG_PATH:=/usr/local/lib/pkgconfig:$(PKG_CONFIG_PATH)
 
 ifeq ($(call bool,$(BUILD_RE2_WASM)),0)
 ifeq ($(PKG_CONFIG),)
   $(error "pkg-config is not available. Please install pkg-config.")
 endif
-# see if we have libre2-dev installed for C++ optimizations
-# in fedora and other distros, we need to tell where to find re2.pc
-RE2_CHECK := $(shell PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$(PKG_CONFIG_PATH) $(PKG_CONFIG) --libs re2 2>/dev/null)
+
+# See if we have libre2-dev installed for C++ optimizations.
+# In fedora and other distros, we need to tell where to find re2.pc
+# and $(shell) can't access the exported variable. So we assign it
+# here which in turn does not work in windows.
+RE2_CHECK := $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) $(PKG_CONFIG) --libs re2 2>/dev/null)
 ifeq ($(RE2_CHECK),)
 # we could detect the platform and suggest the command to install
 RE2_FAIL := "libre2-dev is not installed, please install it or set BUILD_RE2_WASM=1 to use the WebAssembly version"
