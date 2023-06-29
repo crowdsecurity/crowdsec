@@ -3,3 +3,4 @@ unset IFS
 set -euf
 
 sudo dnf -y install kitty-terminfo
+sudo dnf config-manager --set-enabled crb

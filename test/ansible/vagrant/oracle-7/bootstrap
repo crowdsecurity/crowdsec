@@ -1,0 +1,5 @@
+#!/bin/sh
+unset IFS
+set -euf
+
+sudo yum-config-manager --enable ol7_optional_latest

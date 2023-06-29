@@ -2,4 +2,5 @@
 unset IFS
 set -euf
 
-sudo dnf -y install kitty-terminfo
+sudo dnf -y install dnf-plugins-core kitty-terminfo
+sudo dnf config-manager --set-enabled powertools
