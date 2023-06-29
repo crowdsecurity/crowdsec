@@ -9,13 +9,13 @@ roles:
   # these should be included as dependencies of crowdsecurity.testing, but sometime are not
   - src: geerlingguy.repo-epel
   - src: gantsign.golang
+  - src: robertdebock.powertools
 
 collections:
   - name: https://github.com/crowdsecurity/ansible-collection-crowdsecurity.testing.git
     type: git
-    version: main
+    version: v0.0.3
 
 #  - name: crowdsecurity.testing
 #    source: ../../../crowdsecurity.testing
 #    type: dir
-
