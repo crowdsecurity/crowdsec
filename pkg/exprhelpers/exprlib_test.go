@@ -1429,3 +1429,71 @@ func TestParseKv(t *testing.T) {
 		})
 	}
 }
+
+func TestToCamelCase(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+	tests := []struct {
+		name     string
+		value    interface{}
+		expected string
+		expr     string
+	}{
+		{
+			name:     "KebabToCamel() test: valid",
+			value:    "foo-bar",
+			expected: "FooBar",
+			expr:     `KebabToCamel(value)`,
+		},
+		{
+			name:     "SnakeToCamel() test: valid",
+			value:    "foo_bar",
+			expected: "FooBar",
+			expr:     `SnakeToCamel(value)`,
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			vm, err := expr.Compile(tc.expr, GetExprOptions(map[string]interface{}{"value": tc.value})...)
+			assert.NoError(t, err)
+			output, err := expr.Run(vm, map[string]interface{}{"value": tc.value})
+			assert.NoError(t, err)
+			require.Equal(t, tc.expected, output)
+		})
+	}
+}
+
+func TestFromCamelCase(t *testing.T) {
+	err := Init(nil)
+	require.NoError(t, err)
+	tests := []struct {
+		name     string
+		value    interface{}
+		expected string
+		expr     string
+	}{
+		{
+			name:     "CamelToKebab() test: valid",
+			value:    "FooBar",
+			expected: "foo-bar",
+			expr:     `CamelToKebab(value)`,
+		},
+		{
+			name:     "CamelToSnake() test: valid",
+			value:    "FooBar",
+			expected: "foo_bar",
+			expr:     `CamelToSnake(value)`,
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			vm, err := expr.Compile(tc.expr, GetExprOptions(map[string]interface{}{"value": tc.value})...)
+			assert.NoError(t, err)
+			output, err := expr.Run(vm, map[string]interface{}{"value": tc.value})
+			assert.NoError(t, err)
+			require.Equal(t, tc.expected, output)
+		})
+	}
+}

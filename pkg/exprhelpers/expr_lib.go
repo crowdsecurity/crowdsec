@@ -419,6 +419,48 @@ var exprFuncs = []exprCustomFunc{
 			new(func() (string, error)),
 		},
 	},
+	{
+		name:     "KebabToCamel",
+		function: KebabToCamel,
+		signature: []interface{}{
+			new(func(string) string),
+		},
+	},
+	{
+		name:     "SnakeToCamel",
+		function: SnakeToCamel,
+		signature: []interface{}{
+			new(func(string) string),
+		},
+	},
+	{
+		name:     "CamelToSnake",
+		function: CamelToSnake,
+		signature: []interface{}{
+			new(func(string) string),
+		},
+	},
+	{
+		name:     "CamelToKebab",
+		function: CamelToKebab,
+		signature: []interface{}{
+			new(func(string) string),
+		},
+	},
+	{
+		name:     "SnakeToKebab",
+		function: SnakeToKebab,
+		signature: []interface{}{
+			new(func(string) string),
+		},
+	},
+	{
+		name:     "KebabToSnake",
+		function: KebabToSnake,
+		signature: []interface{}{
+			new(func(string) string),
+		},
+	},
 }
 
 //go 1.20 "CutPrefix":              strings.CutPrefix,

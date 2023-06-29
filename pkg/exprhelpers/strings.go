@@ -2,6 +2,7 @@ package exprhelpers
 
 import (
 	"strings"
+	"unicode"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -75,4 +76,67 @@ func TrimSuffix(params ...any) (any, error) {
 func LogInfo(params ...any) (any, error) {
 	log.Infof(params[0].(string), params[1:]...)
 	return true, nil
+}
+
+func CamelToSnake(params ...any) (any, error) {
+	return fromCamelCase(params[0].(string), '_'), nil
+}
+
+func CamelToKebab(params ...any) (any, error) {
+	return fromCamelCase(params[0].(string), '-'), nil
+}
+
+// underlying function to convert from camel case
+func fromCamelCase(input string, delimeter rune) string {
+	output := ""
+	for i, c := range input {
+		if unicode.IsUpper(c) {
+			if i != 0 {
+				output += string(delimeter)
+			}
+			output += string(unicode.ToLower(c))
+		} else {
+			output += string(c)
+		}
+	}
+	return output
+}
+
+func SnakeToCamel(params ...any) (any, error) {
+	return toCamelCase(params[0].(string), '_'), nil
+}
+
+func KebabToCamel(params ...any) (any, error) {
+	return toCamelCase(params[0].(string), '-'), nil
+}
+
+// underlying function to convert to camel case
+func toCamelCase(input string, delimeter rune) string {
+	prevWasDel := false
+	ouput := ""
+	for i, c := range input {
+		if c == delimeter {
+			prevWasDel = true
+			continue
+		}
+		if i == 0 {
+			ouput += string(unicode.ToUpper(c))
+			continue
+		}
+		if prevWasDel {
+			ouput += string(unicode.ToUpper(c))
+			prevWasDel = false
+			continue
+		}
+		ouput += string(c)
+	}
+	return ouput
+}
+
+func SnakeToKebab(params ...any) (any, error) {
+	return ReplaceAll(params[0].(string), "_", "-")
+}
+
+func KebabToSnake(params ...any) (any, error) {
+	return ReplaceAll(params[0].(string), "-", "_")
 }
