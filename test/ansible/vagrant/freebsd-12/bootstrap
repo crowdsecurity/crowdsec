@@ -1,0 +1,6 @@
+#!/bin/sh
+
+set -eu
+
+pkg install -y gtar
+

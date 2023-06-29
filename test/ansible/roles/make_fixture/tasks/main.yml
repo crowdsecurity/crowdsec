@@ -1,23 +1,13 @@
 # vim: set ft=yaml.ansible:
 ---
-- name: "Set make_cmd = make (!bsd)"
-  ansible.builtin.set_fact:
-    make_cmd: make
-  when:
-    - ansible_facts.system not in ['FreeBSD', 'OpenBSD']
-
-- name: "Set make_cmd = gmake (bsd)"
-  ansible.builtin.set_fact:
-    make_cmd: gmake
-  when:
-    - ansible_facts.system in ['FreeBSD', 'OpenBSD']
 
 - name: "Build crowdsec from sources, prepare test environment and fixture"
   become: false
   block:
     - name: "Make bats-build bats-fixture"
       ansible.builtin.command:
-        cmd: "{{ make_cmd }} bats-build bats-fixture"
+        # static build and we don't have to mess with LD_LIBRARY_PATH
+        cmd: "{{ make_cmd }} bats-build bats-fixture BUILD_STATIC=1"
         chdir: "{{ ansible_env.HOME }}/crowdsec"
         creates: "{{ ansible_env.HOME }}/crowdsec/test/local-init/init-config-data.tar"
       environment:
