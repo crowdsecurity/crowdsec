@@ -85,11 +85,6 @@ ifeq ($(PKG_CONFIG),)
   $(error "pkg-config is not available. Please install pkg-config.")
 endif
 
-# See if we have libre2-dev installed for C++ optimizations.
-# In fedora and other distros, we need to tell where to find re2.pc
-# and $(shell) can't access the exported variable. So we assign it
-# here which in turn does not work in windows.
-RE2_CHECK := $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH) $(PKG_CONFIG) --libs re2 2>/dev/null)
 ifeq ($(RE2_CHECK),)
 # we could detect the platform and suggest the command to install
 RE2_FAIL := "libre2-dev is not installed, please install it or set BUILD_RE2_WASM=1 to use the WebAssembly version"
