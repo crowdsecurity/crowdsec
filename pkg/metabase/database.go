@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/pkg/errors"
 )
 
 type Database struct {
@@ -80,13 +79,13 @@ func (d *Database) Update() error {
 
 	data, err := json.Marshal(success)
 	if err != nil {
-		return errors.Wrap(err, "update sqlite db response (marshal)")
+		return fmt.Errorf("update sqlite db response (marshal): %w", err)
 	}
 
 	model := Model{}
 
 	if err := json.Unmarshal(data, &model); err != nil {
-		return errors.Wrap(err, "update sqlite db response (unmarshal)")
+		return fmt.Errorf("update sqlite db response (unmarshal): %w", err)
 	}
 	model.Details = d.Details
 	_, errormsg, err = d.Client.Do("PUT", routes[databaseEndpoint], model)
