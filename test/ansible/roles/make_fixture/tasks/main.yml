@@ -1,16 +1,5 @@
 # vim: set ft=yaml.ansible:
 ---
-- name: "Set make_cmd = make (!bsd)"
-  ansible.builtin.set_fact:
-    make_cmd: make
-  when:
-    - ansible_facts.system not in ['FreeBSD', 'OpenBSD']
-
-- name: "Set make_cmd = gmake (bsd)"
-  ansible.builtin.set_fact:
-    make_cmd: gmake
-  when:
-    - ansible_facts.system in ['FreeBSD', 'OpenBSD']
 
 - name: "Build crowdsec from sources, prepare test environment and fixture"
   become: false

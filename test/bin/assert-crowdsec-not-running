@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
 
 is_crowdsec_running() {
-    # ignore processes in containers
-    PIDS=$(pgrep --ns $$ -x 'crowdsec')
+    case $(uname) in
+        "Linux")
+            # ignore processes in containers
+            PIDS=$(pgrep --ns $$ -x 'crowdsec')
+            ;;
+        *)
+            PIDS=$(pgrep -x 'crowdsec')
+            ;;
+    esac
 }
 
 # The process can be slow, especially on CI and during test coverage.
