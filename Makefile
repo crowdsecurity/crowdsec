@@ -79,9 +79,12 @@ endif
 GO_TAGS := netgo,osusergo,sqlite_omit_load_extension
 
 ifeq ($(call bool,$(BUILD_RE2_WASM)),0)
+ifeq ($(PKG_CONFIG),)
+  $(error "pkg-config is not available. Please install pkg-config.")
+endif
 # see if we have libre2-dev installed for C++ optimizations
 # in fedora and other distros, we need to tell where to find re2.pc
-RE2_CHECK := $(shell PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$(PKG_CONFIG_PATH) pkg-config --libs re2 2>/dev/null)
+RE2_CHECK := $(shell PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$(PKG_CONFIG_PATH) $(PKG_CONFIG) --libs re2 2>/dev/null)
 ifeq ($(RE2_CHECK),)
 # we could detect the platform and suggest the command to install
 RE2_FAIL := "libre2-dev is not installed, please install it or set BUILD_RE2_WASM=1 to use the WebAssembly version"
