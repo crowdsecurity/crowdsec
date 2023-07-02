@@ -107,6 +107,7 @@ var validArgs = []string{
 	"scenarios", "parsers", "collections", "capi", "lapi", "postoverflows", "machines",
 	"metrics", "bouncers", "alerts", "decisions", "simulation", "hub", "dashboard",
 	"config", "completion", "version", "console", "notifications", "support",
+	"cti",
 }
 
 func prepender(filename string) string {
@@ -256,6 +257,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewHubTestCmd())
 	rootCmd.AddCommand(NewNotificationsCmd())
 	rootCmd.AddCommand(NewSupportCmd())
+	rootCmd.AddCommand(NewCTICmd())
 
 	if fflag.CscliSetup.IsEnabled() {
 		rootCmd.AddCommand(NewSetupCmd())
