@@ -10,7 +10,7 @@ import (
 func ctiTable(item *cticlient.SmokeItem) {
 	t := newTable(os.Stdout)
 	t.SetRowLines(false)
-	header := []string{"ip", "range", "as", "location", "history", "classification"}
+	header := []string{"ip", "range", "as", "location", "history", "classification", "attacks"}
 	t.SetHeaders(header...)
 
 	countryString := ""
@@ -23,10 +23,11 @@ func ctiTable(item *cticlient.SmokeItem) {
 	row := []string{
 		item.Ip,
 		*item.IpRange,
-		fmt.Sprintf("AS Name: %s\nAS Number: %d", *item.AsName, *item.AsNum),
+		fmt.Sprintf("Name: %s\nNumber: %d", *item.AsName, *item.AsNum),
 		countryString,
 		fmt.Sprintf("First Seen: %s\nLast Seen: %s", *item.History.FirstSeen, *item.History.LastSeen),
 		classificationToString(item, true),
+		attacksToString(item, true),
 	}
 	t.AddRow(row...)
 	t.Render()
@@ -59,6 +60,19 @@ func classificationToString(item *cticlient.SmokeItem, newLine bool) string {
 		output += fmt.Sprintf("- %s", v.Name)
 		if newLine {
 			output += "\n"
+		}
+	}
+	return output
+}
+
+func attacksToString(item *cticlient.SmokeItem, newLine bool) string {
+	output := ""
+	if len(item.AttackDetails) > 0 {
+		for _, v := range item.AttackDetails {
+			output += fmt.Sprintf("- %s", v.Name)
+			if newLine {
+				output += "\n"
+			}
 		}
 	}
 	return output
