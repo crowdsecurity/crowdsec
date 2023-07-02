@@ -101,7 +101,7 @@ func CTISearchCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if item.Ip == "" {
+			if item.Ip == "" && csConfig.Cscli.Output != "json" {
 				return fmt.Errorf("no information found for IP '%s'", args[0])
 			}
 			return CTIToTable(item)
