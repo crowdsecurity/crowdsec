@@ -84,12 +84,6 @@ func CTISearchCmd() *cobra.Command {
 		Short:             "Search for an IP in the CTI database",
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) != 1 {
-				return fmt.Errorf("invalid number of arguments")
-			}
-			return nil
-		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			key, _ := cmd.Flags().GetString("key")
 			ctiClient := cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey(key))
