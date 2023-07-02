@@ -12,14 +12,14 @@ import (
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/enescakir/emoji"
 	"github.com/fatih/color"
-	"github.com/pkg/errors"
 	diff "github.com/r3labs/diff/v2"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type AssertFail struct {
@@ -164,7 +164,7 @@ func (p *ParserAssert) RunExpression(expression string) (interface{}, error) {
 	if err != nil {
 		log.Warningf("running : %s", expression)
 		log.Warningf("runtime error : %s", err)
-		return output, errors.Wrapf(err, "while running expression %s", expression)
+		return output, fmt.Errorf("while running expression %s: %w", expression, err)
 	}
 	return output, nil
 }

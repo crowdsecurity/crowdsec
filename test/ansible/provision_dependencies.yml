@@ -10,9 +10,12 @@
     - crowdsecurity.testing.go
     - crowdsecurity.testing.machine_id
     - crowdsecurity.testing.epel
+    - crowdsecurity.testing.powertools
     - crowdsecurity.testing.git
     - crowdsecurity.testing.gcc
     - crowdsecurity.testing.gnu_make
+    - crowdsecurity.testing.pkg_config
+    - crowdsecurity.testing.re2
     - crowdsecurity.testing.bats_requirements
 
 - name: "Install Postgres"

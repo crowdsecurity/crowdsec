@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 Vagrant.configure('2') do |config|
-  config.vm.box = 'centos/stream8'
+  config.vm.box = 'generic/centos8s'
+  config.vm.provision 'shell', path: 'bootstrap'
 end
 
 common = '../common'

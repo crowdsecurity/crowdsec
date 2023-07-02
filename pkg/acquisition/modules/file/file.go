@@ -14,8 +14,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
-
 	"github.com/fsnotify/fsnotify"
 	"github.com/nxadm/tail"
 	"github.com/pkg/errors"
@@ -23,6 +21,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -110,7 +110,7 @@ func (f *FileSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 
 	f.watcher, err = fsnotify.NewWatcher()
 	if err != nil {
-		return errors.Wrapf(err, "Could not create fsnotify watcher")
+		return fmt.Errorf("could not create fsnotify watcher: %w", err)
 	}
 
 	f.logger.Tracef("Actual FileAcquisition Configuration %+v", f.config)
@@ -130,7 +130,7 @@ func (f *FileSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		}
 		files, err := filepath.Glob(pattern)
 		if err != nil {
-			return errors.Wrap(err, "Glob failure")
+			return fmt.Errorf("glob failure: %w", err)
 		}
 		if len(files) == 0 {
 			f.logger.Warnf("No matching files for pattern %s", pattern)
@@ -191,7 +191,7 @@ func (f *FileSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 	if len(args) == 2 && len(args[1]) != 0 {
 		params, err := url.ParseQuery(args[1])
 		if err != nil {
-			return errors.Wrap(err, "could not parse file args")
+			return fmt.Errorf("could not parse file args: %w", err)
 		}
 		for key, value := range params {
 			switch key {
@@ -201,7 +201,7 @@ func (f *FileSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 				}
 				lvl, err := log.ParseLevel(value[0])
 				if err != nil {
-					return errors.Wrapf(err, "unknown level %s", value[0])
+					return fmt.Errorf("unknown level %s: %w", value[0], err)
 				}
 				f.logger.Logger.SetLevel(lvl)
 			case "max_buffer_size":
@@ -210,7 +210,7 @@ func (f *FileSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 				}
 				maxBufferSize, err := strconv.Atoi(value[0])
 				if err != nil {
-					return errors.Wrapf(err, "could not parse max_buffer_size %s", value[0])
+					return fmt.Errorf("could not parse max_buffer_size %s: %w", value[0], err)
 				}
 				f.config.MaxBufferSize = maxBufferSize
 			default:
@@ -226,7 +226,7 @@ func (f *FileSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 	f.logger.Debugf("Will try pattern %s", args[0])
 	files, err := filepath.Glob(args[0])
 	if err != nil {
-		return errors.Wrap(err, "Glob failure")
+		return fmt.Errorf("glob failure: %w", err)
 	}
 
 	if len(files) == 0 {
@@ -433,7 +433,7 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 		case <-t.Dying():
 			err := f.watcher.Close()
 			if err != nil {
-				return errors.Wrapf(err, "could not remove all inotify watches")
+				return fmt.Errorf("could not remove all inotify watches: %w", err)
 			}
 			return nil
 		}
@@ -495,7 +495,7 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 	fd, err := os.Open(filename)
 
 	if err != nil {
-		return errors.Wrapf(err, "failed opening %s", filename)
+		return fmt.Errorf("failed opening %s: %w", filename, err)
 	}
 	defer fd.Close()
 
@@ -503,7 +503,7 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 		gz, err := gzip.NewReader(fd)
 		if err != nil {
 			logger.Errorf("Failed to read gz file: %s", err)
-			return errors.Wrapf(err, "failed to read gz %s", filename)
+			return fmt.Errorf("failed to read gz %s: %w", filename, err)
 		}
 		defer gz.Close()
 		scanner = bufio.NewScanner(gz)
