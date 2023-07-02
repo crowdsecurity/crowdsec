@@ -10,7 +10,7 @@ import (
 )
 
 func CTIToTable(item *cticlient.SmokeItem) error {
-	switch OutputFormat {
+	switch csConfig.Cscli.Output {
 	case "json":
 		x, _ := json.MarshalIndent(item, "", " ")
 		fmt.Printf("%s", string(x))
@@ -60,9 +60,6 @@ func NewCTICmd() *cobra.Command {
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if OutputFormat == "raw" {
 				return fmt.Errorf("raw output format is not supported for this command")
-			}
-			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
-				return fmt.Errorf("Local API is disabled, please run this command on the local API machine: %w", err)
 			}
 			if csConfig.API.CTI != nil && *csConfig.API.CTI.Key != "" {
 				cmd.PersistentFlags().Set("key", *csConfig.API.CTI.Key)
