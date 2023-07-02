@@ -61,11 +61,11 @@ func NewCTICmd() *cobra.Command {
 			if OutputFormat == "raw" {
 				return fmt.Errorf("raw output format is not supported for this command")
 			}
-			if csConfig.API.CTI != nil && *csConfig.API.CTI.Key != "" {
-				cmd.PersistentFlags().Set("key", *csConfig.API.CTI.Key)
+			if key, _ := cmd.Flags().GetString("key"); csConfig.API.CTI != nil && *csConfig.API.CTI.Key != "" && key == "" {
+				log.Debug("Using API key from config file")
+				cmd.Flags().Set("key", *csConfig.API.CTI.Key)
 			}
 			if key, _ := cmd.Flags().GetString("key"); key == "" {
-				log.Debugf("Using API key: %s", key)
 				return fmt.Errorf("no API key provided")
 			}
 			return nil
