@@ -2,13 +2,13 @@ package main
 
 import (
 	"fmt"
-	"os"
+	"io"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
 )
 
-func ctiTable(item *cticlient.SmokeItem) {
-	t := newTable(os.Stdout)
+func ctiTable(out io.Writer, item *cticlient.SmokeItem) {
+	t := newTable(out)
 	t.SetRowLines(false)
 	header := []string{"ip", "range", "as", "location", "history", "classification", "attacks"}
 	t.SetHeaders(header...)

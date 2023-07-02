@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
+	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -19,7 +20,7 @@ func CTIToTable(item *cticlient.SmokeItem) error {
 			fmt.Println("No result")
 			return nil
 		}
-		ctiTable(item)
+		ctiTable(color.Output, item)
 	case "raw":
 		// TODO : implement raw output
 		//	header := []string{"ip", "range", "as", "location", "history", "classification"}
