@@ -15,13 +15,12 @@ import (
 func CTIToTable(item *cticlient.SmokeItem) error {
 	switch csConfig.Cscli.Output {
 	case "json":
-		x, _ := json.MarshalIndent(item, "", " ")
+		x, err := json.MarshalIndent(item, "", " ")
+		if err != nil {
+			return err
+		}
 		fmt.Printf("%s", string(x))
 	case "human":
-		if item.Ip == "" {
-			fmt.Println("No result")
-			return nil
-		}
 		ctiTable(color.Output, item)
 	case "raw":
 		// TODO : implement raw output
@@ -102,8 +101,10 @@ func CTISearchCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			CTIToTable(item)
-			return nil
+			if item.Ip == "" {
+				return fmt.Errorf("no information found for IP '%s'", args[0])
+			}
+			return CTIToTable(item)
 		},
 	}
 	return cmdCTISearch
