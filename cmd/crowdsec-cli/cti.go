@@ -58,7 +58,7 @@ func NewCTICmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if OutputFormat == "raw" {
+			if csConfig.Cscli.Output == "raw" {
 				return fmt.Errorf("raw output format is not supported for this command")
 			}
 			if key, _ := cmd.Flags().GetString("key"); csConfig.API.CTI != nil && *csConfig.API.CTI.Key != "" && key == "" {
