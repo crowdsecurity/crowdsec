@@ -113,24 +113,24 @@ func KebabToCamel(params ...any) (any, error) {
 // underlying function to convert to camel case
 func toCamelCase(input string, delimeter rune) string {
 	prevWasDel := false
-	ouput := ""
+	output := ""
 	for i, c := range input {
 		if c == delimeter {
 			prevWasDel = true
 			continue
 		}
 		if i == 0 {
-			ouput += string(unicode.ToUpper(c))
+			output += string(unicode.ToUpper(c))
 			continue
 		}
 		if prevWasDel {
-			ouput += string(unicode.ToUpper(c))
+			output += string(unicode.ToUpper(c))
 			prevWasDel = false
 			continue
 		}
-		ouput += string(c)
+		output += string(c)
 	}
-	return ouput
+	return output
 }
 
 func SnakeToKebab(params ...any) (any, error) {

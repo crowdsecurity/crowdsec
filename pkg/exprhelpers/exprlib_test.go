@@ -1456,9 +1456,9 @@ func TestToCamelCase(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			vm, err := expr.Compile(tc.expr, GetExprOptions(map[string]interface{}{"value": tc.value})...)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			output, err := expr.Run(vm, map[string]interface{}{"value": tc.value})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.Equal(t, tc.expected, output)
 		})
 	}
@@ -1490,9 +1490,9 @@ func TestFromCamelCase(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			vm, err := expr.Compile(tc.expr, GetExprOptions(map[string]interface{}{"value": tc.value})...)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			output, err := expr.Run(vm, map[string]interface{}{"value": tc.value})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.Equal(t, tc.expected, output)
 		})
 	}
