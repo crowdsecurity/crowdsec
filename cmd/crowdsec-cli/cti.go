@@ -84,8 +84,8 @@ func NewCTICmd() *cobra.Command {
 func CTISearchCmd() *cobra.Command {
 	var cmdCTISearch = &cobra.Command{
 		Use:               "search [ip]",
-		Short:             "Search for an IP in the CTI database",
-		Args:              cobra.MinimumNArgs(1),
+		Short:             "Search for an single IP in the CTI database",
+		Args:              cobra.MaximumNArgs(1),
 		DisableAutoGenTag: true,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			for _, arg := range args {
