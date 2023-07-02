@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net"
+	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
 	"github.com/fatih/color"
@@ -85,6 +87,14 @@ func CTISearchCmd() *cobra.Command {
 		Short:             "Search for an IP in the CTI database",
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			for _, arg := range args {
+				if ip := net.ParseIP(strings.TrimSpace(arg)); ip == nil {
+					return fmt.Errorf("invalid IP address '%s'", arg)
+				}
+			}
+			return nil
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			key, _ := cmd.Flags().GetString("key")
 			ctiClient := cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey(key))
