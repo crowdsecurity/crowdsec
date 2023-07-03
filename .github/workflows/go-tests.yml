@@ -114,7 +114,7 @@ jobs:
           - "3100:3100"
         options: >-
           --name=loki1
-          --health-cmd "curl -f http://localhost:3100/ready"
+          --health-cmd "wget -q -O -  http://localhost:3100/ready | grep 'ready'"
           --health-interval 30s
           --health-timeout 10s
           --health-retries 5
