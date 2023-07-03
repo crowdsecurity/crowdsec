@@ -2,7 +2,9 @@
 
 Vagrant.configure('2') do |config|
   config.vm.box = 'debian/stretch64'
-  config.vm.provision 'shell', path: 'bootstrap'
+  config.vm.provision "shell", inline: <<-SHELL
+    sudo sed -i s/httpredir.debian.org/archive.debian.org/g /etc/apt/sources.list
+  SHELL
 end
 
 common = '../common'

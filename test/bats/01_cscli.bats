@@ -182,7 +182,7 @@ teardown() {
 
 @test "cscli - empty LAPI credentials file" {
     LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
-    truncate -s 0 "${LOCAL_API_CREDENTIALS}"
+    : > "${LOCAL_API_CREDENTIALS}"
     rune -1 cscli lapi status
     assert_stderr --partial "no credentials or URL found in api client configuration '${LOCAL_API_CREDENTIALS}'"
 

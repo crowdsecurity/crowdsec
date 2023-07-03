@@ -1,6 +1,0 @@
-#!/bin/sh
-unset IFS
-set -euf
-
-dnf config-manager --set-enabled powertools
-dnf -y install kitty-terminfo

@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
 Vagrant.configure('2') do |config|
-  # config.vm.box = "fedora/36-cloud-base"
-  config.vm.box = 'generic/fedora36'
+  config.vm.box = 'debian/bookworm64'
   config.vm.provision "shell", inline: <<-SHELL
+    sudo apt update
+    sudo apt install -y aptitude kitty-terminfo
   SHELL
 end
 
 common = '../common'
-load common if File.exist?(common)
+load common if File.exists?(common)

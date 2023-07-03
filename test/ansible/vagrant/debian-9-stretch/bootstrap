@@ -1,5 +1,0 @@
-#!/bin/sh
-unset IFS
-set -euf
-
-sudo sed -i s/httpredir.debian.org/archive.debian.org/g /etc/apt/sources.list

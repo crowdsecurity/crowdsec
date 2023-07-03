@@ -1,5 +1,0 @@
-#!/bin/sh
-unset IFS
-set -euf
-
-sudo dnf config-manager --set-enabled ol9_codeready_builder
