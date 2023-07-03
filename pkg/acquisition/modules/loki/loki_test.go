@@ -328,7 +328,7 @@ mode: tail
 source: loki
 url: http://127.0.0.1:3100
 query: >
-        {server="demo"}
+  {server="demo"}
 `,
 			expectedErr:   "",
 			streamErr:     "",
