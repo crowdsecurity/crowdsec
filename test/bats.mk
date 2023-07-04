@@ -66,15 +66,22 @@ bats-environment:
 bats-check-requirements:
 	@$(TEST_DIR)/bin/check-requirements
 
+# Install/update some of the tools required to run the tests
+bats-update-tools:
+	GOBIN=$(TEST_DIR)/tools go install github.com/mikefarah/yq/v4@v4.34.1
+	GOBIN=$(TEST_DIR)/tools go install github.com/cloudflare/cfssl/cmd/cfssl@v1.6.4
+	GOBIN=$(TEST_DIR)/tools go install github.com/cloudflare/cfssl/cmd/cfssljson@v1.6.4
+
 # Build and installs crowdsec in a local directory. Rebuilds if already exists.
-bats-build: bats-environment bats-check-requirements
+bats-build: bats-environment
 	@$(MKDIR) $(BIN_DIR) $(LOG_DIR) $(PID_DIR) $(BATS_PLUGIN_DIR)
 	@TEST_COVERAGE=$(TEST_COVERAGE) DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR) $(MAKE) build
 	@install -m 0755 cmd/crowdsec/crowdsec cmd/crowdsec-cli/cscli $(BIN_DIR)/
 	@install -m 0755 plugins/notifications/*/notification-* $(BATS_PLUGIN_DIR)/
 
 # Create a reusable package with initial configuration + data
-bats-fixture:
+bats-fixture: bats-check-requirements bats-update-tools
+	@echo "Creating functional test fixture..."
 	@$(TEST_DIR)/instance-data make
 
 # Remove the local crowdsec installation and the fixture config + data
@@ -87,7 +94,7 @@ bats-clean:
 	@$(RM) test/coverage/* $(WIN_IGNORE_ERR)
 
 # Run the test suite
-bats-test: bats-environment bats-check-requirements
+bats-test: bats-environment
 	$(TEST_DIR)/run-tests $(TEST_DIR)/bats
 
 # Generate dynamic tests

@@ -176,7 +176,7 @@ teardown() {
 }
 
 @test "cscli alerts delete (must ignore the query limit)" {
-    for i in $(seq 1 200); do
+    for _i in $(seq 1 200); do
         rune -0 cscli decisions add -i 1.2.3.4
     done
     rune -0 cscli alerts delete -i 1.2.3.4
