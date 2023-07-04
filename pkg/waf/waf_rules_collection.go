@@ -4,6 +4,8 @@ import "strings"
 
 type WafRule struct {
 	RawRule string
+	RuleID  string
+	InBand  bool
 }
 
 // This is the "compiled" state of a WafConfig

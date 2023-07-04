@@ -67,9 +67,7 @@ func buildHook(hook Hook) (CompiledHook, error) {
 		compiledHook.Filter = program
 	}
 	for _, apply := range hook.Apply {
-		program, err := expr.Compile(apply, GetExprWAFOptions(map[string]interface{}{
-			"rules": &WafRulesCollection{},
-		})...)
+		program, err := expr.Compile(apply, GetExprWAFOptions(GetEnv())...)
 		if err != nil {
 			return CompiledHook{}, fmt.Errorf("unable to compile apply %s : %w", apply, err)
 		}
@@ -173,9 +171,7 @@ func (w *WafRuleLoader) LoadWafRules() ([]*WafRulesCollection, error) {
 				//Ignore filter for on load ?
 				if onLoadHook.Apply != nil {
 					for exprIdx, applyExpr := range onLoadHook.Apply {
-						_, err := expr.Run(applyExpr, map[string]interface{}{
-							"rules": collection,
-						})
+						_, err := expr.Run(applyExpr, GetEnv())
 						if err != nil {
 							w.logger.Errorf("unable to run apply for on_load rule %s : %s", wafConfig.OnLoad[hookIdx].Apply[exprIdx], err)
 							continue
