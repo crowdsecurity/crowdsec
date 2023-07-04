@@ -6,7 +6,6 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -22,13 +21,13 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/aws/aws-sdk-go/service/sqs/sqsiface"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
-
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type S3Configuration struct {
@@ -564,7 +563,7 @@ func (s *S3Source) ConfigureByDSN(dsn string, labels map[string]string, logger *
 	if len(args) == 2 && len(args[1]) != 0 {
 		params, err := url.ParseQuery(args[1])
 		if err != nil {
-			return fmt.Errorf("could not parse s3 args: %w", err)
+			return errors.Wrap(err, "could not parse s3 args")
 		}
 		for key, value := range params {
 			switch key {
@@ -574,7 +573,7 @@ func (s *S3Source) ConfigureByDSN(dsn string, labels map[string]string, logger *
 				}
 				lvl, err := log.ParseLevel(value[0])
 				if err != nil {
-					return fmt.Errorf("unknown level %s: %w", value[0], err)
+					return errors.Wrapf(err, "unknown level %s", value[0])
 				}
 				s.logger.Logger.SetLevel(lvl)
 			case "max_buffer_size":
@@ -583,7 +582,7 @@ func (s *S3Source) ConfigureByDSN(dsn string, labels map[string]string, logger *
 				}
 				maxBufferSize, err := strconv.Atoi(value[0])
 				if err != nil {
-					return fmt.Errorf("invalid value for 'max_buffer_size': %w", err)
+					return errors.Wrapf(err, "invalid value for 'max_buffer_size'")
 				}
 				s.logger.Debugf("Setting max buffer size to %d", maxBufferSize)
 				s.Config.MaxBufferSize = maxBufferSize

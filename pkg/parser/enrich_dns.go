@@ -3,9 +3,9 @@ package parser
 import (
 	"net"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	log "github.com/sirupsen/logrus"
+	//"github.com/crowdsecurity/crowdsec/pkg/parser"
 )
 
 /* All plugins must export a list of function pointers for exported symbols */

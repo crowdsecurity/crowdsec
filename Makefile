@@ -1,35 +1,7 @@
 include mk/platform.mk
-include mk/gmsl
 
-# By default, this build requires the C++ re2 library to be installed.
-#
-# Debian/Ubuntu: apt install libre2-dev
-# Fedora/CentOS: dnf install re2-devel
-# FreeBSD:       pkg install re2
-# Alpine:        apk add re2-dev
-# Windows:       choco install re2
-# MacOS:         brew install re2
-
-# To build without re2, run "make BUILD_RE2_WASM=1"
-# The WASM version is slower and introduces a short delay when starting a process
-# (including cscli) so it is not recommended for production use.
-BUILD_RE2_WASM ?= 0
-
-# To build static binaries, run "make BUILD_STATIC=1".
-# On some platforms, this requires additional packages
-# (e.g. glibc-static and libstdc++-static on fedora, centos.. which are on the powertools/crb repository).
-# If the static build fails at the link stage, it might be because the static library is not provided
-# for your distribution (look for libre2.a). See the Dockerfile for an example of how to build it.
-BUILD_STATIC ?= 0
-
-# List of plugins to build
-PLUGINS ?= $(patsubst ./plugins/notifications/%,%,$(wildcard ./plugins/notifications/*))
-
-# Can be overriden, if you can deal with the consequences
 BUILD_REQUIRE_GO_MAJOR ?= 1
 BUILD_REQUIRE_GO_MINOR ?= 20
-
-#--------------------------------------
 
 GOCMD = go
 GOTEST = $(GOCMD) test
@@ -38,6 +10,8 @@ BUILD_CODENAME ?= alphaga
 
 CROWDSEC_FOLDER = ./cmd/crowdsec
 CSCLI_FOLDER = ./cmd/crowdsec-cli/
+
+PLUGINS ?= $(patsubst ./plugins/notifications/%,%,$(wildcard ./plugins/notifications/*))
 PLUGINS_DIR = ./plugins/notifications
 
 CROWDSEC_BIN = crowdsec$(EXT)
@@ -48,14 +22,8 @@ RELDIR = crowdsec-$(BUILD_VERSION)
 
 GO_MODULE_NAME = github.com/crowdsecurity/crowdsec
 
-# Check if a given value is considered truthy and returns "0" or "1".
-# A truthy value is one of the following: "1", "yes", or "true", case-insensitive.
-#
-# Usage:
-# ifeq ($(call bool,$(FOO)),1)
-# $(info Let's foo)
-# endif
-bool = $(if $(filter $(call lc, $1),1 yes true),1,0)
+# see if we have libre2-dev installed for C++ optimizations
+RE2_CHECK := $(shell pkg-config --libs re2 2>/dev/null)
 
 #--------------------------------------
 #
@@ -78,30 +46,13 @@ endif
 
 GO_TAGS := netgo,osusergo,sqlite_omit_load_extension
 
-ifeq ($(call bool,$(BUILD_RE2_WASM)),0)
-ifeq ($(PKG_CONFIG),)
-  $(error "pkg-config is not available. Please install pkg-config.")
-endif
-
-ifeq ($(RE2_CHECK),)
-# we could detect the platform and suggest the command to install
-RE2_FAIL := "libre2-dev is not installed, please install it or set BUILD_RE2_WASM=1 to use the WebAssembly version"
-else
+ifneq (,$(RE2_CHECK))
 # += adds a space that we don't want
 GO_TAGS := $(GO_TAGS),re2_cgo
 LD_OPTS_VARS += -X '$(GO_MODULE_NAME)/pkg/cwversion.Libre2=C++'
 endif
-endif
 
-ifeq ($(call bool,$(BUILD_STATIC)),1)
-BUILD_TYPE = static
-EXTLDFLAGS := -extldflags '-static'
-else
-BUILD_TYPE = dynamic
-EXTLDFLAGS :=
-endif
-
-export LD_OPTS=-ldflags "-s -w $(EXTLDFLAGS) $(LD_OPTS_VARS)" \
+export LD_OPTS=-ldflags "-s -w -extldflags '-static' $(LD_OPTS_VARS)" \
 	-trimpath -tags $(GO_TAGS)
 
 ifneq (,$(TEST_COVERAGE))
@@ -113,15 +64,12 @@ endif
 .PHONY: build
 build: pre-build goversion crowdsec cscli plugins
 
-# Sanity checks and build information
 .PHONY: pre-build
 pre-build:
-	$(info Building $(BUILD_VERSION) ($(BUILD_TAG)) $(BUILD_TYPE) for $(GOOS)/$(GOARCH))
-
-ifneq (,$(RE2_FAIL))
-	$(error $(RE2_FAIL))
+ifdef BUILD_STATIC
+	$(warning WARNING: The BUILD_STATIC variable is deprecated and has no effect. Builds are static by default since v1.5.0.)
 endif
-
+	$(info Building $(BUILD_VERSION) ($(BUILD_TAG)) for $(GOOS)/$(GOARCH))
 ifneq (,$(RE2_CHECK))
 	$(info Using C++ regexp library)
 else
@@ -165,7 +113,6 @@ testclean: bats-clean
 	@$(RM) pkg/cwhub/install $(WIN_IGNORE_ERR)
 	@$(RM) pkg/types/example.txt $(WIN_IGNORE_ERR)
 
-# for the tests with localstack
 export AWS_ENDPOINT_FORCE=http://localhost:4566
 export AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
 export AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
@@ -173,18 +120,15 @@ export AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 testenv:
 	@echo 'NOTE: You need Docker, docker-compose and run "make localstack" in a separate shell ("make localstack-stop" to terminate it)'
 
-# run the tests with localstack
 .PHONY: test
 test: testenv goversion
 	$(GOTEST) $(LD_OPTS) ./...
 
-# run the tests with localstack and coverage
 .PHONY: go-acc
 go-acc: testenv goversion
 	go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models -- $(LD_OPTS) | \
 		sed 's/ *coverage:.*of statements in.*//'
 
-# mock AWS services
 .PHONY: localstack
 localstack:
 	docker-compose -f test/localstack/docker-compose.yml up
@@ -193,27 +137,13 @@ localstack:
 localstack-stop:
 	docker-compose -f test/localstack/docker-compose.yml down
 
-# list of plugins that contain go.mod
-PLUGIN_VENDOR = $(foreach plugin,$(PLUGINS),$(shell if [ -f $(PLUGINS_DIR)/$(plugin)/go.mod ]; then echo $(PLUGINS_DIR)/$(plugin); fi))
-
-# build vendor.tgz to be distributed with the release
 .PHONY: vendor
 vendor:
-	$(foreach plugin_dir,$(PLUGIN_VENDOR), \
-		cd $(plugin_dir) >/dev/null && \
-		$(GOCMD) mod vendor && \
-		cd - >/dev/null; \
+	@echo "Vendoring dependencies"
+	@$(GOCMD) mod vendor
+	@$(foreach plugin,$(PLUGINS), \
+		$(MAKE) -C $(PLUGINS_DIR)/$(plugin) vendor $(MAKE_FLAGS); \
 	)
-	$(GOCMD) mod vendor
-	tar -czf vendor.tgz vendor $(foreach plugin_dir,$(PLUGIN_VENDOR),$(plugin_dir)/vendor)
-
-# remove vendor directories and vendor.tgz
-.PHONY: vendor-remove
-vendor-remove:
-	$(foreach plugin_dir,$(PLUGIN_VENDOR), \
-		$(RM) $(plugin_dir)/vendor; \
-	)
-	$(RM) vendor vendor.tgz
 
 .PHONY: package
 package:
@@ -244,16 +174,13 @@ else
 	@if (Test-Path -Path $(RELDIR)) { echo "$(RELDIR) already exists, abort" ;  exit 1 ; }
 endif
 
-# build a release tarball
 .PHONY: release
 release: check_release build package
 
-# build the windows installer
 .PHONY: windows_installer
 windows_installer: build
 	@.\make_installer.ps1 -version $(BUILD_VERSION)
 
-# build the chocolatey package
 .PHONY: chocolatey
 chocolatey: windows_installer
 	@.\make_chocolatey.ps1 -version $(BUILD_VERSION)

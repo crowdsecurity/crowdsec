@@ -2,9 +2,6 @@
 
 Vagrant.configure('2') do |config|
   config.vm.box = 'generic/oracle9'
-  config.vm.provision "shell", inline: <<-SHELL
-    sudo dnf config-manager --set-enabled ol9_codeready_builder
-  SHELL
 end
 
 common = '../common'

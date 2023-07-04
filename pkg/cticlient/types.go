@@ -120,7 +120,7 @@ type FireItem struct {
 	BackgroundNoiseScore *int                `json:"background_noise_score"`
 	Scores               CTIScores           `json:"scores"`
 	References           []CTIReferences     `json:"references"`
-	State                string              `json:"state"`
+	Status               string              `json:"status"`
 	Expiration           CustomTime          `json:"expiration"`
 }
 

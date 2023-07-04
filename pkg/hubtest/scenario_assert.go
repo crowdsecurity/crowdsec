@@ -11,11 +11,11 @@ import (
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
-
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
 type ScenarioAssert struct {
@@ -149,7 +149,7 @@ func (s *ScenarioAssert) RunExpression(expression string) (interface{}, error) {
 	env := map[string]interface{}{"results": *s.TestData}
 
 	if runtimeFilter, err = expr.Compile(expression, exprhelpers.GetExprOptions(env)...); err != nil {
-		return nil, err
+		return output, err
 	}
 	// if debugFilter, err = exprhelpers.NewDebugger(assert, expr.Env(env)); err != nil {
 	// 	log.Warningf("Failed building debugher for %s : %s", assert, err)
@@ -162,7 +162,7 @@ func (s *ScenarioAssert) RunExpression(expression string) (interface{}, error) {
 	if err != nil {
 		log.Warningf("running : %s", expression)
 		log.Warningf("runtime error : %s", err)
-		return nil, fmt.Errorf("while running expression %s: %w", expression, err)
+		return output, errors.Wrapf(err, "while running expression %s", expression)
 	}
 	return output, nil
 }

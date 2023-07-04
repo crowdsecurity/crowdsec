@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 )
@@ -30,18 +31,18 @@ func (s *SyslogServer) Listen(listenAddr string, port int) error {
 	s.port = port
 	udpAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", s.listenAddr, s.port))
 	if err != nil {
-		return fmt.Errorf("could not resolve addr %s: %w", s.listenAddr, err)
+		return errors.Wrapf(err, "could not resolve addr %s", s.listenAddr)
 	}
 	udpConn, err := net.ListenUDP("udp", udpAddr)
 	if err != nil {
-		return fmt.Errorf("could not listen on port %d: %w", s.port, err)
+		return errors.Wrapf(err, "could not listen on port %d", s.port)
 	}
 	s.Logger.Debugf("listening on %s:%d", s.listenAddr, s.port)
 	s.udpConn = udpConn
 
 	err = s.udpConn.SetReadDeadline(time.Now().UTC().Add(100 * time.Millisecond))
 	if err != nil {
-		return fmt.Errorf("could not set read deadline on UDP socket: %w", err)
+		return errors.Wrap(err, "could not set read deadline on UDP socket")
 	}
 	return nil
 }
@@ -86,7 +87,7 @@ func (s *SyslogServer) StartServer() *tomb.Tomb {
 func (s *SyslogServer) KillServer() error {
 	err := s.udpConn.Close()
 	if err != nil {
-		return fmt.Errorf("could not close UDP connection: %w", err)
+		return errors.Wrap(err, "could not close UDP connection")
 	}
 	close(s.channel)
 	return nil

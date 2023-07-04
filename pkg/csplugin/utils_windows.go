@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"unsafe"
 
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/windows"
 )
@@ -53,38 +54,38 @@ func CheckPerms(path string) error {
 
 	systemSid, err := windows.CreateWellKnownSid(windows.WELL_KNOWN_SID_TYPE(windows.WinLocalSystemSid))
 	if err != nil {
-		return fmt.Errorf("while creating SYSTEM well known sid: %w", err)
+		return errors.Wrap(err, "while creating SYSTEM well known sid")
 	}
 
 	adminSid, err := windows.CreateWellKnownSid(windows.WELL_KNOWN_SID_TYPE(windows.WinBuiltinAdministratorsSid))
 	if err != nil {
-		return fmt.Errorf("while creating built-in Administrators well known sid: %w", err)
+		return errors.Wrap(err, "while creating built-in Administrators well known sid")
 	}
 
 	currentUser, err := user.Current()
 	if err != nil {
-		return fmt.Errorf("while getting current user: %w", err)
+		return errors.Wrap(err, "while getting current user")
 	}
 
 	currentUserSid, _, _, err := windows.LookupSID("", currentUser.Username)
 
 	if err != nil {
-		return fmt.Errorf("while looking up current user sid: %w", err)
+		return errors.Wrap(err, "while looking up current user sid")
 	}
 
 	sd, err := windows.GetNamedSecurityInfo(path, windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)
 	if err != nil {
-		return fmt.Errorf("while getting owner security info: %w", err)
+		return errors.Wrap(err, "while getting owner security info")
 	}
 	if !sd.IsValid() {
-		return fmt.Errorf("security descriptor is invalid")
+		return errors.New("security descriptor is invalid")
 	}
 	owner, _, err := sd.Owner()
 	if err != nil {
-		return fmt.Errorf("while getting owner: %w", err)
+		return errors.Wrap(err, "while getting owner")
 	}
 	if !owner.IsValid() {
-		return fmt.Errorf("owner is invalid")
+		return errors.New("owner is invalid")
 	}
 
 	if !owner.Equals(systemSid) && !owner.Equals(currentUserSid) && !owner.Equals(adminSid) {
@@ -93,7 +94,7 @@ func CheckPerms(path string) error {
 
 	dacl, _, err := sd.DACL()
 	if err != nil {
-		return fmt.Errorf("while getting DACL: %w", err)
+		return errors.Wrap(err, "while getting DACL")
 	}
 
 	if dacl == nil {
@@ -101,7 +102,7 @@ func CheckPerms(path string) error {
 	}
 
 	if err != nil {
-		return fmt.Errorf("while looking up current user sid: %w", err)
+		return errors.Wrap(err, "while looking up current user sid")
 	}
 
 	rs := reflect.ValueOf(dacl).Elem()
@@ -123,7 +124,7 @@ func CheckPerms(path string) error {
 		ace := &AccessAllowedAce{}
 		ret, _, _ := procGetAce.Call(uintptr(unsafe.Pointer(dacl)), uintptr(i), uintptr(unsafe.Pointer(&ace)))
 		if ret == 0 {
-			return fmt.Errorf("while getting ACE: %w", windows.GetLastError())
+			return errors.Wrap(windows.GetLastError(), "while getting ACE")
 		}
 		log.Debugf("ACE %d: %+v\n", i, ace)
 
@@ -161,14 +162,14 @@ func getProcessAtr() (*syscall.SysProcAttr, error) {
 	err := windows.OpenProcessToken(proc, windows.TOKEN_DUPLICATE|windows.TOKEN_ADJUST_DEFAULT|
 		windows.TOKEN_QUERY|windows.TOKEN_ASSIGN_PRIMARY|windows.TOKEN_ADJUST_GROUPS|windows.TOKEN_ADJUST_PRIVILEGES, &procToken)
 	if err != nil {
-		return nil, fmt.Errorf("while opening process token: %w", err)
+		return nil, errors.Wrapf(err, "while opening process token")
 	}
 	defer procToken.Close()
 
 	err = windows.DuplicateTokenEx(procToken, 0, nil, windows.SecurityImpersonation,
 		windows.TokenPrimary, &token)
 	if err != nil {
-		return nil, fmt.Errorf("while duplicating token: %w", err)
+		return nil, errors.Wrapf(err, "while duplicating token")
 	}
 
 	//Remove all privileges from the token
@@ -176,7 +177,7 @@ func getProcessAtr() (*syscall.SysProcAttr, error) {
 	err = windows.AdjustTokenPrivileges(token, true, nil, 0, nil, nil)
 
 	if err != nil {
-		return nil, fmt.Errorf("while adjusting token privileges: %w", err)
+		return nil, errors.Wrapf(err, "while adjusting token privileges")
 	}
 
 	//Run the plugin as a medium integrity level process
@@ -194,7 +195,7 @@ func getProcessAtr() (*syscall.SysProcAttr, error) {
 		(*byte)(unsafe.Pointer(tml)), tml.Size())
 	if err != nil {
 		token.Close()
-		return nil, fmt.Errorf("while setting token information: %w", err)
+		return nil, errors.Wrapf(err, "while setting token information")
 	}
 
 	return &windows.SysProcAttr{
@@ -208,7 +209,7 @@ func (pb *PluginBroker) CreateCmd(binaryPath string) (*exec.Cmd, error) {
 	cmd := exec.Command(binaryPath)
 	cmd.SysProcAttr, err = getProcessAtr()
 	if err != nil {
-		return nil, fmt.Errorf("while getting process attributes: %w", err)
+		return nil, errors.Wrap(err, "while getting process attributes")
 	}
 	return cmd, err
 }
@@ -228,7 +229,7 @@ func pluginIsValid(path string) error {
 
 	// check if it exists
 	if _, err = os.Stat(path); err != nil {
-		return fmt.Errorf("plugin at %s does not exist", path)
+		return errors.Wrap(err, fmt.Sprintf("plugin at %s does not exist", path))
 	}
 
 	// check if it is owned by root

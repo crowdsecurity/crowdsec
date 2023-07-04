@@ -14,11 +14,16 @@ jobs:
   build:
     strategy:
       matrix:
-        go-version: ["1.20.5"]
+        go-version: ["1.20.4"]
 
     name: Build and upload binary package
     runs-on: ubuntu-latest
     steps:
+
+      - name: "Set up Go ${{ matrix.go-version }}"
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.go-version }}
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
@@ -26,20 +31,24 @@ jobs:
           fetch-depth: 0
           submodules: false
 
-      - name: "Set up Go ${{ matrix.go-version }}"
-        uses: actions/setup-go@v4
+      - name: Cache Go modules
+        uses: actions/cache@v3
         with:
-          go-version: ${{ matrix.go-version }}
-          cache-dependency-path: "**/go.sum"
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+            ~/Library/Caches/go-build
+            %LocalAppData%\go-build
+          key: ${{ runner.os }}-${{ matrix.go-version }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.go-version }}-go-
 
       - name: Build the binaries
-        run: |
-          sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential libre2-dev
-          make vendor release BUILD_STATIC=1
+        run: make release
 
       - name: Upload to release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag_name="${GITHUB_REF##*/}"
-          hub release edit -a crowdsec-release.tgz -a vendor.tgz -m "" "$tag_name"
+          hub release edit -a crowdsec-release.tgz -m "" "$tag_name"

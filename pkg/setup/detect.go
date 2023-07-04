@@ -7,12 +7,15 @@ import (
 	"os/exec"
 	"sort"
 
-	"github.com/Masterminds/semver/v3"
+	"github.com/Masterminds/semver"
 	"github.com/antonmedv/expr"
 	"github.com/blackfireio/osinfo"
 	"github.com/shirou/gopsutil/v3/process"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
+	// goccyyaml "github.com/goccy/go-yaml"
+
+	// "github.com/k0kubun/pp"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
@@ -49,6 +52,7 @@ func validateDataSource(opaqueDS DataSourceItem) error {
 		return nil
 	}
 
+
 	// formally validate YAML
 
 	commonDS := configuration.DataSourceCommonCfg{}
@@ -67,6 +71,7 @@ func validateDataSource(opaqueDS DataSourceItem) error {
 	if commonDS.Source == "" {
 		return fmt.Errorf("source is empty")
 	}
+
 
 	// source must be known
 

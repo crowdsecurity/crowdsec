@@ -2,17 +2,17 @@ package database
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
-	"entgo.io/ent/dialect/sql"
-	"github.com/pkg/errors"
+	"strconv"
 
+	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/pkg/errors"
 )
 
 type DecisionsByScenario struct {

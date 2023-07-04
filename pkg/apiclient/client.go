@@ -11,6 +11,7 @@ import (
 	"net/url"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -124,9 +125,9 @@ func RegisterClient(config *Config, client *http.Client) (*ApiClient, error) {
 	/*if we have http status, return it*/
 	if err != nil {
 		if resp != nil && resp.Response != nil {
-			return nil, fmt.Errorf("api register (%s) http %s: %w", c.BaseURL, resp.Response.Status, err)
+			return nil, errors.Wrapf(err, "api register (%s) http %s : %s", c.BaseURL, resp.Response.Status, err)
 		}
-		return nil, fmt.Errorf("api register (%s): %w", c.BaseURL, err)
+		return nil, errors.Wrapf(err, "api register (%s) : %s", c.BaseURL, err)
 	}
 	return c, nil
 
@@ -165,7 +166,7 @@ func CheckResponse(r *http.Response) error {
 	if err == nil && data != nil {
 		err := json.Unmarshal(data, errorResponse)
 		if err != nil {
-			return fmt.Errorf("http code %d, invalid body: %w", r.StatusCode, err)
+			return errors.Wrapf(err, "http code %d, invalid body", r.StatusCode)
 		}
 	} else {
 		errorResponse.Message = new(string)

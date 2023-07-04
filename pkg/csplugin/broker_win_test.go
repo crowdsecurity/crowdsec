@@ -33,7 +33,7 @@ func (s *PluginSuite) TestBrokerInit() {
 		expectedErr string
 	}{
 		{
-			name: "valid config",
+			name:    "valid config",
 		},
 		{
 			name:        "no plugin dir",

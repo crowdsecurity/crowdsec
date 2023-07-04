@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/pkg/errors"
 )
 
 type HubTest struct {
@@ -104,7 +105,7 @@ func (h *HubTest) LoadAllTests() error {
 	for _, f := range testsFolder {
 		if f.IsDir() {
 			if _, err := h.LoadTestItem(f.Name()); err != nil {
-				return fmt.Errorf("while loading %s: %w", f.Name(), err)
+				return errors.Wrapf(err, "while loading %s", f.Name())
 			}
 		}
 	}

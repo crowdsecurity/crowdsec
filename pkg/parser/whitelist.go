@@ -4,7 +4,6 @@ import (
 	"net"
 
 	"github.com/antonmedv/expr/vm"
-
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
 

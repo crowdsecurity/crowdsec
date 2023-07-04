@@ -15,9 +15,6 @@
 *.test
 *.cover
 
-# Test dependencies
-test/tools/*
-
 # VMs used for dev/test
 
 .vagrant
@@ -33,10 +30,8 @@ test/coverage/*
 *.swp
 *.swo
 
-# Dependencies are not vendored by default, but a tarball is created by "make vendor"
-# and provided in the release. Used by freebsd, gentoo, etc.
-vendor/
-vendor.tgz
+# Dependency directories (remove the comment below to include it)
+# vendor/
 
 # crowdsec binaries
 cmd/crowdsec-cli/cscli

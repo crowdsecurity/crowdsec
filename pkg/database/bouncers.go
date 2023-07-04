@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
+	"github.com/pkg/errors"
 )
 
 func (c *Client) SelectBouncer(apiKeyHash string) (*ent.Bouncer, error) {

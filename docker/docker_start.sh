@@ -56,7 +56,7 @@ conf_get() {
     if [ $# -ge 2 ]; then
         yq e "$1" "$2"
     else
-        cscli config show-yaml | yq e "$1"
+        yq e "$1" "$CONFIG_FILE"
     fi
 }
 

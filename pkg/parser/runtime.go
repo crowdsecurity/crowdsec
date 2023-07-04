@@ -9,21 +9,24 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/antonmedv/expr"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
+
+	"strconv"
+
 	"github.com/mohae/deepcopy"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/antonmedv/expr"
 )
 
 /* ok, this is kinda experimental, I don't know how bad of an idea it is .. */
 func SetTargetByName(target string, value string, evt *types.Event) bool {
+
 	if evt == nil {
 		return false
 	}
@@ -68,6 +71,8 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 				tmp = reflect.Indirect(tmp)
 			}
 			iter = tmp
+			//nolint: gosimple
+			break
 		case reflect.Ptr:
 			tmp := iter.Elem()
 			iter = reflect.Indirect(tmp.FieldByName(f))
@@ -89,24 +94,24 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 	return true
 }
 
-func printStaticTarget(static ExtraField) string {
-	switch {
-	case static.Method != "":
+func printStaticTarget(static types.ExtraField) string {
+
+	if static.Method != "" {
 		return static.Method
-	case static.Parsed != "":
+	} else if static.Parsed != "" {
 		return fmt.Sprintf(".Parsed[%s]", static.Parsed)
-	case static.Meta != "":
+	} else if static.Meta != "" {
 		return fmt.Sprintf(".Meta[%s]", static.Meta)
-	case static.Enriched != "":
+	} else if static.Enriched != "" {
 		return fmt.Sprintf(".Enriched[%s]", static.Enriched)
-	case static.TargetByName != "":
+	} else if static.TargetByName != "" {
 		return static.TargetByName
-	default:
+	} else {
 		return "?"
 	}
 }
 
-func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
+func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) error {
 	//we have a few cases :
 	//(meta||key) + (static||reference||expr)
 	var value string
@@ -192,6 +197,7 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 		} else {
 			clog.Fatal("unable to process static : unknown target")
 		}
+
 	}
 	return nil
 }
@@ -351,8 +357,10 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			event.Process = false
 			return event, nil
 		}
+
 	}
 
 	event.Process = true
 	return event, nil
+
 }

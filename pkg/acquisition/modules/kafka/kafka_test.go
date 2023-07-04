@@ -8,14 +8,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/segmentio/kafka-go"
-	log "github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/require"
-	"gopkg.in/tomb.v2"
-
 	"github.com/crowdsecurity/go-cs-lib/pkg/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/segmentio/kafka-go"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/tomb.v2"
+	"gotest.tools/v3/assert"
 )
 
 func TestConfigure(t *testing.T) {
@@ -179,7 +178,7 @@ topic: crowdsecplaintext`), subLogger)
 					break READLOOP
 				}
 			}
-			require.Equal(t, ts.expectedLines, actualLines)
+			assert.Equal(t, ts.expectedLines, actualLines)
 			tomb.Kill(nil)
 			tomb.Wait()
 		})
@@ -255,7 +254,7 @@ tls:
 					break READLOOP
 				}
 			}
-			require.Equal(t, ts.expectedLines, actualLines)
+			assert.Equal(t, ts.expectedLines, actualLines)
 			tomb.Kill(nil)
 			tomb.Wait()
 		})

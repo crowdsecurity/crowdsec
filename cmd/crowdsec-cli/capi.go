@@ -6,11 +6,6 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/go-openapi/strfmt"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
-
 	"github.com/crowdsecurity/go-cs-lib/pkg/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -19,6 +14,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
 const CAPIBaseURL string = "https://api.crowdsec.net/"
@@ -31,11 +31,8 @@ func NewCapiCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := csConfig.LoadAPIServer(); err != nil {
-				return fmt.Errorf("local API is disabled, please run this command on the local API machine: %w", err)
-			}
-			if csConfig.DisableAPI {
-				return nil
+			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
+				return errors.Wrap(err, "Local API is disabled, please run this command on the local API machine")
 			}
 			if csConfig.API.Server.OnlineClient == nil {
 				log.Fatalf("no configuration for Central API in '%s'", *csConfig.FilePath)
@@ -136,7 +133,7 @@ func NewCapiStatusCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			if csConfig.API.Server == nil {
-				log.Fatal("There is no configuration on 'api.server:'")
+				log.Fatalln("There is no configuration on 'api.server:'")
 			}
 			if csConfig.API.Server.OnlineClient == nil {
 				log.Fatalf("Please provide credentials for the Central API (CAPI) in '%s'", csConfig.API.Server.OnlineClient.CredentialsFilePath)

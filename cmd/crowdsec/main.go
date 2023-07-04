@@ -51,15 +51,12 @@ var (
 )
 
 type Flags struct {
-	ConfigFile string
-
-	LogLevelTrace bool
-	LogLevelDebug bool
-	LogLevelInfo  bool
-	LogLevelWarn  bool
-	LogLevelError bool
-	LogLevelFatal bool
-
+	ConfigFile     string
+	TraceLevel     bool
+	DebugLevel     bool
+	InfoLevel      bool
+	WarnLevel      bool
+	ErrorLevel     bool
 	PrintVersion   bool
 	SingleFileType string
 	Labels         map[string]string
@@ -110,17 +107,13 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 
 		dataSources, err = acquisition.LoadAcquisitionFromDSN(flags.OneShotDSN, flags.Labels, flags.Transform)
 		if err != nil {
-			return fmt.Errorf("failed to configure datasource for %s: %w", flags.OneShotDSN, err)
+			return errors.Wrapf(err, "failed to configure datasource for %s", flags.OneShotDSN)
 		}
 	} else {
 		dataSources, err = acquisition.LoadAcquisitionFromFile(cConfig.Crowdsec)
 		if err != nil {
 			return err
 		}
-	}
-
-	if len(dataSources) == 0 {
-		return fmt.Errorf("no datasource enabled")
 	}
 
 	return nil
@@ -147,14 +140,11 @@ func (l labelsMap) Set(label string) error {
 
 func (f *Flags) Parse() {
 	flag.StringVar(&f.ConfigFile, "c", csconfig.DefaultConfigPath("config.yaml"), "configuration file")
-
-	flag.BoolVar(&f.LogLevelTrace, "trace", false, "set log level to 'trace' (VERY verbose)")
-	flag.BoolVar(&f.LogLevelDebug, "debug", false, "set log level to 'debug'")
-	flag.BoolVar(&f.LogLevelInfo, "info", false, "set log level to 'info'")
-	flag.BoolVar(&f.LogLevelWarn, "warning", false, "set log level to 'warning'")
-	flag.BoolVar(&f.LogLevelError, "error", false, "set log level to 'error'")
-	flag.BoolVar(&f.LogLevelFatal, "fatal", false, "set log level to 'fatal'")
-
+	flag.BoolVar(&f.TraceLevel, "trace", false, "VERY verbose")
+	flag.BoolVar(&f.DebugLevel, "debug", false, "print debug-level on stderr")
+	flag.BoolVar(&f.InfoLevel, "info", false, "print info-level on stderr")
+	flag.BoolVar(&f.WarnLevel, "warning", false, "print warning-level on stderr")
+	flag.BoolVar(&f.ErrorLevel, "error", false, "print error-level on stderr")
 	flag.BoolVar(&f.PrintVersion, "version", false, "display version")
 	flag.StringVar(&f.OneShotDSN, "dsn", "", "Process a single data source in time-machine")
 	flag.StringVar(&f.Transform, "transform", "", "expr to apply on the event after acquisition")
@@ -182,18 +172,16 @@ func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
 
 	// override from flags
 	switch {
-	case f.LogLevelTrace:
+	case f.TraceLevel:
 		ret = log.TraceLevel
-	case f.LogLevelDebug:
+	case f.DebugLevel:
 		ret = log.DebugLevel
-	case f.LogLevelInfo:
+	case f.InfoLevel:
 		ret = log.InfoLevel
-	case f.LogLevelWarn:
+	case f.WarnLevel:
 		ret = log.WarnLevel
-	case f.LogLevelError:
+	case f.ErrorLevel:
 		ret = log.ErrorLevel
-	case f.LogLevelFatal:
-		ret = log.FatalLevel
 	default:
 	}
 

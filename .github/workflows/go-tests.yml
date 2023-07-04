@@ -34,7 +34,7 @@ jobs:
   build:
     strategy:
       matrix:
-        go-version: ["1.20.5"]
+        go-version: ["1.20.4"]
 
     name: "Build + tests"
     runs-on: ubuntu-latest
@@ -110,30 +110,35 @@ jobs:
 
     steps:
 
+    - name: "Set up Go ${{ matrix.go-version }}"
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ matrix.go-version }}
+
     - name: Check out CrowdSec repository
       uses: actions/checkout@v3
       with:
         fetch-depth: 0
         submodules: false
 
-    - name: "Set up Go ${{ matrix.go-version }}"
-      uses: actions/setup-go@v4
+    - name: Cache Go modules
+      uses: actions/cache@v3
       with:
-        go-version: ${{ matrix.go-version }}
-        cache-dependency-path: "**/go.sum"
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+          ~/Library/Caches/go-build
+          %LocalAppData%\go-build
+        key: ${{ runner.os }}-${{ matrix.go-version }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.go-version }}-go-
 
-    - name: Build and run tests, static
+    - name: Build and run tests
       run: |
-        sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential libre2-dev
         go install github.com/ory/go-acc@v0.2.8
         go install github.com/kyoh86/richgo@v0.3.10
         set -o pipefail
-        make build BUILD_STATIC=1
-        make go-acc | richgo testfilter
-
-    - name: Run tests again, dynamic
-      run: |
-        make clean build
+        make build
         make go-acc | richgo testfilter
 
     - name: Upload unit coverage to Codecov

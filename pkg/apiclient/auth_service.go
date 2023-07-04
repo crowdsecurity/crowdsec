@@ -21,6 +21,7 @@ type enrollRequest struct {
 }
 
 func (s *AuthService) UnregisterWatcher(ctx context.Context) (*Response, error) {
+
 	u := fmt.Sprintf("%s/watchers", s.client.URLPrefix)
 	req, err := s.client.NewRequest(http.MethodDelete, u, nil)
 	if err != nil {
@@ -35,6 +36,7 @@ func (s *AuthService) UnregisterWatcher(ctx context.Context) (*Response, error) 
 }
 
 func (s *AuthService) RegisterWatcher(ctx context.Context, registration models.WatcherRegistrationRequest) (*Response, error) {
+
 	u := fmt.Sprintf("%s/watchers", s.client.URLPrefix)
 
 	req, err := s.client.NewRequest(http.MethodPost, u, &registration)

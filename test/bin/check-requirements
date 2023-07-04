@@ -54,25 +54,47 @@ check_pkill() {
     fi
 }
 
+check_yq() {
+    # shellcheck disable=SC2016
+    howto_install='You can install it with your favorite package manager (including snap) or with "go install github.com/mikefarah/yq/v4@latest" and add ~/go/bin to $PATH.'
+    if ! command -v yq >/dev/null; then
+        die "Missing required program 'yq'. ${howto_install}"
+    fi
+    if ! (yq --version | grep mikefarah >/dev/null); then
+        die "yq exists but it's not the one we need (mikefarah/yq). ${howto_install}"
+    fi
+}
+
 check_daemonizer() {
     if ! command -v daemonize >/dev/null; then
         die "missing required program 'daemonize' (package 'daemonize' or 'https://github.com/bmc/daemonize')"
     fi
 }
 
-echo "Checking requirements..."
+check_cfssl() {
+    # shellcheck disable=SC2016
+    howto_install='You can install it with "go install github.com/cloudflare/cfssl/cmd/cfssl@latest" and add ~/go/bin to $PATH.'
+    if ! command -v cfssl >/dev/null; then
+        die "Missing required program 'cfssl'. ${howto_install}"
+    fi
+}
 
-GOBIN=${TEST_DIR}/tools
-export GOBIN
-go install github.com/mikefarah/yq/v4@latest
-go install github.com/cloudflare/cfssl/cmd/cfssl@master
-go install github.com/cloudflare/cfssl/cmd/cfssljson@master
+check_cfssljson() {
+    # shellcheck disable=SC2016
+    howto_install='You can install it with "go install github.com/cloudflare/cfssl/cmd/cfssljson@latest" and add ~/go/bin to $PATH.'
+    if ! command -v cfssljson >/dev/null; then
+        die "Missing required program 'cfssljson'. ${howto_install}"
+    fi
+}
 
 check_bats_core
 check_curl
 check_daemonizer
+check_cfssl
+check_cfssljson
 check_jq
 check_nc
 check_base64
 check_python3
+check_yq
 check_pkill

@@ -2,10 +2,6 @@
 
 Vagrant.configure('2') do |config|
   config.vm.box = 'generic/centos9s'
-  config.vm.provision "shell", inline: <<-SHELL
-    sudo dnf -y install dnf-plugins-core
-    sudo dnf config-manager --set-enabled crb
-  SHELL
 end
 
 common = '../common'

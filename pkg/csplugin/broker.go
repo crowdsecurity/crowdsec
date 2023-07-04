@@ -2,7 +2,6 @@ package csplugin
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -15,6 +14,7 @@ import (
 	"github.com/Masterminds/sprig/v3"
 	"github.com/google/uuid"
 	plugin "github.com/hashicorp/go-plugin"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
@@ -83,10 +83,10 @@ func (pb *PluginBroker) Init(pluginCfg *csconfig.PluginCfg, profileConfigs []*cs
 	pb.pluginProcConfig = pluginCfg
 	pb.pluginsTypesToDispatch = make(map[string]struct{})
 	if err := pb.loadConfig(configPaths.NotificationDir); err != nil {
-		return fmt.Errorf("while loading plugin config: %w", err)
+		return errors.Wrap(err, "while loading plugin config")
 	}
 	if err := pb.loadPlugins(configPaths.PluginDir); err != nil {
-		return fmt.Errorf("while loading plugin: %w", err)
+		return errors.Wrap(err, "while loading plugin")
 	}
 	pb.watcher = PluginWatcher{}
 	pb.watcher.Init(pb.pluginConfigByName, pb.alertsByPluginName)
@@ -268,7 +268,7 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 			data = []byte(csstring.StrictExpand(string(data), os.LookupEnv))
 			_, err = pluginClient.Configure(context.Background(), &protobufs.Config{Config: data})
 			if err != nil {
-				return fmt.Errorf("while configuring %s: %w", pc.Name, err)
+				return errors.Wrapf(err, "while configuring %s", pc.Name)
 			}
 			log.Infof("registered plugin %s", pc.Name)
 			pb.notificationPluginByName[pc.Name] = pluginClient
@@ -354,7 +354,7 @@ func ParsePluginConfigFile(path string) ([]PluginConfig, error) {
 	parsedConfigs := make([]PluginConfig, 0)
 	yamlFile, err := os.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("while opening %s: %w", path, err)
+		return parsedConfigs, errors.Wrapf(err, "while opening %s", path)
 	}
 	dec := yaml.NewDecoder(yamlFile)
 	dec.SetStrict(true)
@@ -365,7 +365,7 @@ func ParsePluginConfigFile(path string) ([]PluginConfig, error) {
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			return nil, fmt.Errorf("while decoding %s got error %s", path, err)
+			return []PluginConfig{}, fmt.Errorf("while decoding %s got error %s", path, err)
 		}
 		// if the yaml document is empty, skip
 		if reflect.DeepEqual(pc, PluginConfig{}) {

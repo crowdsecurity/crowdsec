@@ -2,13 +2,13 @@ package csconfig
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 
 	"github.com/crowdsecurity/go-cs-lib/pkg/yamlpatch"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -53,7 +53,7 @@ func (c *LocalApiServerCfg) LoadProfiles() error {
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			return fmt.Errorf("while decoding %s: %w", c.ProfilesPath, err)
+			return errors.Wrapf(err, "while decoding %s", c.ProfilesPath)
 		}
 		c.Profiles = append(c.Profiles, &t)
 	}

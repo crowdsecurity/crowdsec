@@ -34,14 +34,10 @@ setup() {
     run -0 rpm-install redhat-lsb-core
     if [[ "$(lsb_release -is)" == "Fedora" ]]; then
         run -0 sudo curl -1sSLf "https://openresty.org/package/fedora/openresty.repo" -o "/etc/yum.repos.d/openresty.repo"
-    elif [[ "$(lsb_release -is)" == CentOS* ]]; then   # must match CentOSStream
+    elif [[ "$(lsb_release -is)" == "CentOS" ]]; then
         run -0 sudo curl -1sSLf "https://openresty.org/package/centos/openresty.repo" -o "/etc/yum.repos.d/openresty.repo"
     fi
-    run sudo dnf check-update
-    # 0 = up to date, 100 = updates available
-    if [[ "$status" -ne 0 ]] && [[ "$status" -ne 100 ]]; then
-        fail "dnf check-update failed with status $status"
-    fi
+    run -0 sudo dnf check-update
     run -0 rpm-install openresty
     run -0 sudo systemctl enable openresty.service
 }

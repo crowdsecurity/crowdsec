@@ -10,7 +10,7 @@ jobs:
   build:
     strategy:
       matrix:
-        go-version: ["1.20.5"]
+        go-version: ["1.20.4"]
 
     name: "Build + tests"
     runs-on: ubuntu-latest
@@ -35,27 +35,41 @@ jobs:
           sudo chmod +w /etc/machine-id
           echo githubciXXXXXXXXXXXXXXXXXXXXXXXX | sudo tee /etc/machine-id
 
+    - name: "Set up Go ${{ matrix.go-version }}"
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ matrix.go-version }}
+
     - name: "Check out CrowdSec repository"
       uses: actions/checkout@v3
       with:
         fetch-depth: 0
         submodules: true
 
-    - name: "Set up Go ${{ matrix.go-version }}"
-      uses: actions/setup-go@v4
+    - name: Cache Go modules
+      uses: actions/cache@v3
       with:
-        go-version: ${{ matrix.go-version }}
-        cache-dependency-path: "**/go.sum"
+        path: |
+          ~/go/pkg/mod
+          ~/.cache/go-build
+          ~/Library/Caches/go-build
+          %LocalAppData%\go-build
+        key: ${{ runner.os }}-${{ matrix.go-version }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ matrix.go-version }}-go-
 
     - name: "Install bats dependencies"
       env:
         GOBIN: /usr/local/bin
       run: |
-        sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential daemonize jq netcat-openbsd libre2-dev
+        sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential daemonize jq netcat-openbsd
+        go install github.com/mikefarah/yq/v4@latest
+        go install github.com/cloudflare/cfssl/cmd/cfssl@master
+        go install github.com/cloudflare/cfssl/cmd/cfssljson@master
 
     - name: "Build crowdsec and fixture (DB_BACKEND: pgx)"
       run: |
-        make clean bats-build bats-fixture BUILD_STATIC=1
+        make clean bats-build bats-fixture
       env:
         DB_BACKEND: pgx
         PGHOST: 127.0.0.1

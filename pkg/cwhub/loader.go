@@ -2,17 +2,16 @@ package cwhub
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/mod/semver"
-
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
 /*the walk/parser_visit function can't receive extra args*/
@@ -369,7 +368,7 @@ func GetHubIdx(hub *csconfig.Hub) error {
 	log.Debugf("loading hub idx %s", hub.HubIndexFile)
 	bidx, err := os.ReadFile(hub.HubIndexFile)
 	if err != nil {
-		return fmt.Errorf("unable to read index file: %w", err)
+		return errors.Wrap(err, "unable to read index file")
 	}
 	ret, err := LoadPkgIndex(bidx)
 	if err != nil {

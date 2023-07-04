@@ -6,14 +6,15 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/antonmedv/expr"
-	"github.com/davecgh/go-spew/spew"
-	"github.com/go-openapi/strfmt"
-	log "github.com/sirupsen/logrus"
-
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/davecgh/go-spew/spew"
+	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+
+	"github.com/antonmedv/expr"
 )
 
 // SourceFromEvent extracts and formats a valid models.Source object from an Event
@@ -52,7 +53,7 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 					if leaky.scopeType.RunTimeFilter != nil {
 						retValue, err := expr.Run(leaky.scopeType.RunTimeFilter, map[string]interface{}{"evt": &evt})
 						if err != nil {
-							return srcs, fmt.Errorf("while running scope filter: %w", err)
+							return srcs, errors.Wrapf(err, "while running scope filter")
 						}
 						value, ok := retValue.(string)
 						if !ok {
@@ -127,7 +128,7 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 			if leaky.scopeType.RunTimeFilter != nil {
 				retValue, err := expr.Run(leaky.scopeType.RunTimeFilter, map[string]interface{}{"evt": &evt})
 				if err != nil {
-					return srcs, fmt.Errorf("while running scope filter: %w", err)
+					return srcs, errors.Wrapf(err, "while running scope filter")
 				}
 
 				value, ok := retValue.(string)
@@ -144,7 +145,7 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 		}
 		retValue, err := expr.Run(leaky.scopeType.RunTimeFilter, map[string]interface{}{"evt": &evt})
 		if err != nil {
-			return srcs, fmt.Errorf("while running scope filter: %w", err)
+			return srcs, errors.Wrapf(err, "while running scope filter")
 		}
 
 		value, ok := retValue.(string)
@@ -216,7 +217,7 @@ func alertFormatSource(leaky *Leaky, queue *Queue) (map[string]models.Source, st
 	for _, evt := range queue.Queue {
 		srcs, err := SourceFromEvent(evt, leaky)
 		if err != nil {
-			return nil, "", fmt.Errorf("while extracting scope from bucket %s: %w", leaky.Name, err)
+			return nil, "", errors.Wrapf(err, "while extracting scope from bucket %s", leaky.Name)
 		}
 		for key, src := range srcs {
 			if source_type == types.Undefined {
@@ -275,7 +276,7 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 	//Get the sources from Leaky/Queue
 	sources, source_scope, err := alertFormatSource(leaky, queue)
 	if err != nil {
-		return runtimeAlert, fmt.Errorf("unable to collect sources from bucket: %w", err)
+		return runtimeAlert, errors.Wrap(err, "unable to collect sources from bucket")
 	}
 	runtimeAlert.Sources = sources
 	//Include source info in format string

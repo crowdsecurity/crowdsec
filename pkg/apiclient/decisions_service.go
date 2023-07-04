@@ -6,15 +6,14 @@ import (
 	"fmt"
 	"net/http"
 
-	qs "github.com/google/go-querystring/query"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
-
 	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/modelscapi"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	qs "github.com/google/go-querystring/query"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 type DecisionsService service

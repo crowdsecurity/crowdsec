@@ -1,6 +1,6 @@
 #!/usr/bin/make -f
 
-export DEB_VERSION=$(shell dpkg-parsechangelog | grep -E '^Version:' | cut -f 2 -d ' ')
+export DEB_VERSION=$(shell dpkg-parsechangelog | egrep '^Version:' | cut -f 2 -d ' ')
 export BUILD_VERSION=v${DEB_VERSION}-debian-pragmatic
 export GO111MODULE=on
 
@@ -11,10 +11,12 @@ override_dh_auto_clean:
 override_dh_auto_test:
 override_dh_auto_build:
 override_dh_auto_install:
-
-	# just use the prebuilt binaries, otherwise:
-	# make build BUILD_RE_WASM=0 BUILD_STATIC=1
-
+# mkdir /tmp/go
+# echo $(go version)
+# echo $($GOCMD version)
+# cd cmd/crowdsec && GOROOT=/tmp/go GO111MODULE=on $(GOBUILD) $(LD_OPTS) -o $(CROWDSEC_BIN) -v && cd ..
+# cd cmd/crowdsec-cli  && GOROOT=/tmp/go GO111MODULE=on $(GOBUILD) $(LD_OPTS) -o cscli -v && cd ..
+	make build
 	mkdir -p debian/crowdsec/usr/bin
 	mkdir -p debian/crowdsec/etc/crowdsec
 	mkdir -p debian/crowdsec/usr/share/crowdsec

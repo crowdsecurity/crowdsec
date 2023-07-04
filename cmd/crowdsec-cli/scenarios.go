@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/fatih/color"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -32,7 +33,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 			}
 
 			if err := cwhub.SetHubBranch(); err != nil {
-				return fmt.Errorf("while setting hub branch: %w", err)
+				return errors.Wrap(err, "while setting hub branch")
 			}
 
 			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {

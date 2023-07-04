@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
@@ -200,7 +201,7 @@ func (cw *CloudwatchSource) Configure(yamlConfig []byte, logger *log.Entry) erro
 	targetStream := "*"
 	if cw.Config.StreamRegexp != nil {
 		if _, err := regexp.Compile(*cw.Config.StreamRegexp); err != nil {
-			return fmt.Errorf("while compiling regexp '%s': %w", *cw.Config.StreamRegexp, err)
+			return errors.Wrapf(err, "error while compiling regexp '%s'", *cw.Config.StreamRegexp)
 		}
 		targetStream = *cw.Config.StreamRegexp
 	} else if cw.Config.StreamName != nil {
@@ -344,7 +345,8 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 					},
 				)
 				if err != nil {
-					return fmt.Errorf("while describing group %s: %w", cw.Config.GroupName, err)
+					newerr := errors.Wrapf(err, "while describing group %s", cw.Config.GroupName)
+					return newerr
 				}
 				cw.logger.Tracef("after DescribeLogStreamsPagesWithContext")
 			}
@@ -493,7 +495,7 @@ func (cw *CloudwatchSource) TailLogStream(cfg *LogStreamTailConfig, outChan chan
 					},
 				)
 				if err != nil {
-					newerr := fmt.Errorf("while reading %s/%s: %w", cfg.GroupName, cfg.StreamName, err)
+					newerr := errors.Wrapf(err, "while reading %s/%s", cfg.GroupName, cfg.StreamName)
 					cfg.logger.Warningf("err : %s", newerr)
 					return newerr
 				}
@@ -530,7 +532,7 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, labels map[string]string,
 
 	u, err := url.ParseQuery(args[1])
 	if err != nil {
-		return fmt.Errorf("while parsing %s: %w", dsn, err)
+		return errors.Wrapf(err, "while parsing %s", dsn)
 	}
 
 	for k, v := range u {
@@ -541,7 +543,7 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, labels map[string]string,
 			}
 			lvl, err := log.ParseLevel(v[0])
 			if err != nil {
-				return fmt.Errorf("unknown level %s: %w", v[0], err)
+				return errors.Wrapf(err, "unknown level %s", v[0])
 			}
 			cw.logger.Logger.SetLevel(lvl)
 
@@ -575,7 +577,7 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, labels map[string]string,
 			//let's reuse our parser helper so that a ton of date formats are supported
 			duration, err := time.ParseDuration(v[0])
 			if err != nil {
-				return fmt.Errorf("unable to parse '%s' as duration: %w", v[0], err)
+				return errors.Wrapf(err, "unable to parse '%s' as duration", v[0])
 			}
 			cw.logger.Debugf("parsed '%s' as '%s'", v[0], duration)
 			start := time.Now().UTC().Add(-duration)
@@ -672,7 +674,7 @@ func (cw *CloudwatchSource) CatLogStream(cfg *LogStreamTailConfig, outChan chan 
 				},
 			)
 			if err != nil {
-				return fmt.Errorf("while reading logs from %s/%s: %w", cfg.GroupName, cfg.StreamName, err)
+				return errors.Wrapf(err, "while reading logs from %s/%s", cfg.GroupName, cfg.StreamName)
 			}
 			cfg.logger.Tracef("after GetLogEventsPagesWithContext")
 		case <-cw.t.Dying():

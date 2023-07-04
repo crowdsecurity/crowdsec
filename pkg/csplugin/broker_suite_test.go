@@ -14,6 +14,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
+
 type PluginSuite struct {
 	suite.Suite
 
@@ -22,18 +23,20 @@ type PluginSuite struct {
 	// full path to the built plugin binary
 	builtBinary string
 
-	runDir       string // temporary directory for each test
-	pluginDir    string // (config_paths.plugin_dir)
-	notifDir     string // (config_paths.notification_dir)
-	pluginBinary string // full path to the plugin binary (unique for each test)
-	pluginConfig string // full path to the notification config (unique for each test)
+	runDir string		// temporary directory for each test
+	pluginDir  string	// (config_paths.plugin_dir)
+	notifDir string		// (config_paths.notification_dir)
+	pluginBinary string	// full path to the plugin binary (unique for each test)
+	pluginConfig string	// full path to the notification config (unique for each test)
 
 	pluginBroker *PluginBroker
 }
 
+
 func TestPluginSuite(t *testing.T) {
 	suite.Run(t, new(PluginSuite))
 }
+
 
 func (s *PluginSuite) SetupSuite() {
 	var err error
@@ -54,11 +57,13 @@ func (s *PluginSuite) SetupSuite() {
 	require.NoError(t, err, "while building dummy plugin")
 }
 
+
 func (s *PluginSuite) TearDownSuite() {
 	t := s.T()
 	err := os.RemoveAll(s.buildDir)
 	require.NoError(t, err)
 }
+
 
 func copyFile(src string, dst string) error {
 	s, err := os.Open(src)
@@ -94,6 +99,7 @@ func (s *PluginSuite) TearDownTest() {
 	s.TearDownSubTest()
 }
 
+
 func (s *PluginSuite) SetupSubTest() {
 	var err error
 	t := s.T()
@@ -119,7 +125,7 @@ func (s *PluginSuite) SetupSubTest() {
 	require.NoError(t, err, "while copying built binary")
 	err = os.Chmod(s.pluginBinary, 0o744)
 	require.NoError(t, err, "chmod 0744 %s", s.pluginBinary)
-
+	
 	s.pluginConfig = path.Join(s.notifDir, "dummy.yaml")
 	err = copyFile("testdata/dummy.yaml", s.pluginConfig)
 	require.NoError(t, err, "while copying plugin config")

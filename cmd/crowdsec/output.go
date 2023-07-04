@@ -7,10 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-openapi/strfmt"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
-
 	"github.com/crowdsecurity/go-cs-lib/pkg/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -20,6 +16,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 func dedupAlerts(alerts []types.RuntimeAlert) ([]*models.Alert, error) {
@@ -51,11 +50,11 @@ func PushAlerts(alerts []types.RuntimeAlert, client *apiclient.ApiClient) error 
 	alertsToPush, err := dedupAlerts(alerts)
 
 	if err != nil {
-		return fmt.Errorf("failed to transform alerts for api: %w", err)
+		return errors.Wrap(err, "failed to transform alerts for api")
 	}
 	_, _, err = client.Alerts.Add(ctx, alertsToPush)
 	if err != nil {
-		return fmt.Errorf("failed sending alert to LAPI: %w", err)
+		return errors.Wrap(err, "failed sending alert to LAPI")
 	}
 	return nil
 }
@@ -105,11 +104,11 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 		Scenarios: scenarios,
 	})
 	if err != nil {
-		return fmt.Errorf("authenticate watcher (%s): %w", apiConfig.Login, err)
+		return errors.Wrapf(err, "authenticate watcher (%s)", apiConfig.Login)
 	}
 
 	if err := Client.GetClient().Transport.(*apiclient.JWTTransport).Expiration.UnmarshalText([]byte(authResp.Expire)); err != nil {
-		return fmt.Errorf("unable to parse jwt expiration: %w", err)
+		return errors.Wrap(err, "unable to parse jwt expiration")
 	}
 
 	Client.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token

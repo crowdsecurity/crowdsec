@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
@@ -23,6 +24,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var LAPIURLPrefix string = "v1"
@@ -203,7 +205,7 @@ func NewLapiCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadAPIClient(); err != nil {
-				return fmt.Errorf("loading api client: %w", err)
+				return errors.Wrap(err, "loading api client")
 			}
 			return nil
 		},
@@ -438,7 +440,7 @@ cscli lapi context delete --value evt.Line.Src
 	return cmdContext
 }
 
-func detectStaticField(GrokStatics []parser.ExtraField) []string {
+func detectStaticField(GrokStatics []types.ExtraField) []string {
 	ret := make([]string, 0)
 	for _, static := range GrokStatics {
 		if static.Parsed != "" {

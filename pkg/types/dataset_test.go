@@ -1,4 +1,4 @@
-package cwhub
+package types
 
 import (
 	"os"
@@ -9,7 +9,7 @@ import (
 	"github.com/jarcoal/httpmock"
 )
 
-func TestDownloadFile(t *testing.T) {
+func TestDownladFile(t *testing.T) {
 	examplePath := "./example.txt"
 	defer os.Remove(examplePath)
 

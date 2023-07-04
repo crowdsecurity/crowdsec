@@ -10,7 +10,7 @@ ifdef PACKAGE_TESTING
   INIT_BACKEND = systemd
   CONFIG_BACKEND = global
 else
-  # LOCAL_DIR contains a local instance of crowdsec, complete with
+  # LOCAL_DIR will contain contains a local instance of crowdsec, complete with
   # configuration and data
   LOCAL_DIR = $(TEST_DIR)/local
   BIN_DIR = $(LOCAL_DIR)/bin
@@ -51,7 +51,6 @@ export CONFIG_BACKEND="$(CONFIG_BACKEND)"
 export PACKAGE_TESTING="$(PACKAGE_TESTING)"
 export TEST_COVERAGE="$(TEST_COVERAGE)"
 export GOCOVERDIR="$(TEST_DIR)/coverage"
-export PATH="$(TEST_DIR)/tools:$(PATH)"
 endef
 
 bats-all: bats-clean bats-build bats-fixture bats-test bats-test-hub

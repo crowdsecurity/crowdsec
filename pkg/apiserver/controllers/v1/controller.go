@@ -2,8 +2,9 @@ package v1
 
 import (
 	"context"
-	"fmt"
 	"net"
+
+	//"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
 
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -11,6 +12,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/pkg/errors"
 )
 
 type Controller struct {
@@ -46,7 +48,7 @@ func New(cfg *ControllerV1Config) (*Controller, error) {
 
 	profiles, err := csprofiles.NewProfile(cfg.ProfilesCfg)
 	if err != nil {
-		return &Controller{}, fmt.Errorf("failed to compile profiles: %w", err)
+		return &Controller{}, errors.Wrapf(err, "failed to compile profiles")
 	}
 
 	v1 := &Controller{

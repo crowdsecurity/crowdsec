@@ -1,8 +1,6 @@
 Source: crowdsec
 Maintainer: Crowdsec Team <debian@crowdsec.net>
-Build-Depends: debhelper, bash
-Section: admin
-Priority: optional
+Build-Depends: debhelper, bash, git
 
 Package: crowdsec
 Architecture: any

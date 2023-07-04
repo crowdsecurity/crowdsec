@@ -3,7 +3,7 @@ package v1
 import (
 	"crypto/rand"
 	"crypto/sha512"
-	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"strings"
@@ -15,11 +15,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const (
+var (
 	APIKeyHeader      = "X-Api-Key"
 	bouncerContextKey = "bouncer_info"
-	// max allowed by bcrypt 72 = 54 bytes in base64
-	dummyAPIKeySize   = 54
 )
 
 type APIKey struct {
@@ -33,7 +31,7 @@ func GenerateAPIKey(n int) (string, error) {
 	if _, err := rand.Read(bytes); err != nil {
 		return "", err
 	}
-	return base64.StdEncoding.EncodeToString(bytes), nil
+	return hex.EncodeToString(bytes), nil
 }
 
 func NewAPIKey(dbClient *database.Client) *APIKey {
@@ -84,7 +82,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 			if err != nil && strings.Contains(err.Error(), "bouncer not found") {
 				//Because we have a valid cert, automatically create the bouncer in the database if it does not exist
 				//Set a random API key, but it will never be used
-				apiKey, err := GenerateAPIKey(dummyAPIKeySize)
+				apiKey, err := GenerateAPIKey(64)
 				if err != nil {
 					log.WithFields(log.Fields{
 						"ip": c.ClientIP(),

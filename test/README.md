@@ -56,6 +56,9 @@ architectures.
 ## pre-requisites
 
  - `git submodule init; git submodule update`
+ - `go install github.com/cloudflare/cfssl/cmd/cfssl@latest`
+ - `go install github.com/cloudflare/cfssl/cmd/cfssljson@latest`
+ - `go install github.com/mikefarah/yq/v4@latest`
  - `base64`
  - `bash>=4.4`
  - `curl`
@@ -86,7 +89,7 @@ In BATS, you write tests in the form of Bash functions that have unique
 descriptions (the name of the test). You can do most things that you can
 normally do in a shell function. If there is any error condition, the test
 fails. A set of functions is provided to implement assertions, and a mechanism
-of `setup`/`teardown` is provided at the level of individual tests (functions)
+of `setup`/`teardown` is provided a the level of individual tests (functions)
 or group of tests (files).
 
 The stdout/stderr of the commands within the test function are captured by
@@ -125,6 +128,11 @@ separate [tap reporter](https://www.npmjs.com/package/tape#pretty-reporters) or
 included in a larger test suite. The TAP specification is pretty minimalist and
 some glue may be needed.
 
+
+Other tools that you can find useful:
+
+ - [mikefarah/yq](https://github.com/mikefarah/yq) - to parse and update YAML files on the fly
+ - [aliou/bats.vim](https://github.com/aliou/bats.vim) - for syntax highlighting (use bash otherwise)
 
 # setup and teardown
 

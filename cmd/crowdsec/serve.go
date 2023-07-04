@@ -1,16 +1,16 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/coreos/go-systemd/v22/daemon"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/csdaemon"
 	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -68,7 +68,7 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 		}
 		apiServer, err := initAPIServer(cConfig)
 		if err != nil {
-			return nil, fmt.Errorf("unable to init api server: %w", err)
+			return nil, errors.Wrap(err, "unable to init api server")
 		}
 
 		apiReady := make(chan bool, 1)
@@ -78,7 +78,7 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 	if !cConfig.DisableAgent {
 		csParsers, err := initCrowdsec(cConfig)
 		if err != nil {
-			return nil, fmt.Errorf("unable to init crowdsec: %w", err)
+			return nil, errors.Wrap(err, "unable to init crowdsec")
 		}
 
 		// restore bucket state
@@ -180,13 +180,13 @@ func shutdownCrowdsec() error {
 func shutdown(sig os.Signal, cConfig *csconfig.Config) error {
 	if !cConfig.DisableAgent {
 		if err := shutdownCrowdsec(); err != nil {
-			return fmt.Errorf("failed to shut down crowdsec: %w", err)
+			return errors.Wrap(err, "failed to shut down crowdsec")
 		}
 	}
 
 	if !cConfig.DisableAPI {
 		if err := shutdownAPI(); err != nil {
-			return fmt.Errorf("failed to shut down api routines: %w", err)
+			return errors.Wrap(err, "failed to shut down api routines")
 		}
 	}
 
@@ -238,13 +238,13 @@ func HandleSignals(cConfig *csconfig.Config) error {
 				log.Warning("SIGHUP received, reloading")
 
 				if err = shutdown(s, cConfig); err != nil {
-					exitChan <- fmt.Errorf("failed shutdown: %w", err)
+					exitChan <- errors.Wrap(err, "failed shutdown")
 
 					break Loop
 				}
 
 				if newConfig, err = reloadHandler(s); err != nil {
-					exitChan <- fmt.Errorf("reload handler failure: %w", err)
+					exitChan <- errors.Wrap(err, "reload handler failure")
 
 					break Loop
 				}
@@ -256,7 +256,7 @@ func HandleSignals(cConfig *csconfig.Config) error {
 			case os.Interrupt, syscall.SIGTERM:
 				log.Warning("SIGTERM received, shutting down")
 				if err = shutdown(s, cConfig); err != nil {
-					exitChan <- fmt.Errorf("failed shutdown: %w", err)
+					exitChan <- errors.Wrap(err, "failed shutdown")
 
 					break Loop
 				}
@@ -284,17 +284,17 @@ func Serve(cConfig *csconfig.Config, apiReady chan bool, agentReady chan bool) e
 	if cConfig.API.Server != nil && cConfig.API.Server.DbConfig != nil {
 		dbClient, err := database.NewClient(cConfig.API.Server.DbConfig)
 		if err != nil {
-			return fmt.Errorf("failed to get database client: %w", err)
+			return errors.Wrap(err, "failed to get database client")
 		}
 
 		err = exprhelpers.Init(dbClient)
 		if err != nil {
-			return fmt.Errorf("failed to init expr helpers: %w", err)
+			return errors.Wrap(err, "failed to init expr helpers")
 		}
 	} else {
 		err := exprhelpers.Init(nil)
 		if err != nil {
-			return fmt.Errorf("failed to init expr helpers: %w", err)
+			return errors.Wrap(err, "failed to init expr helpers")
 		}
 
 		log.Warningln("Exprhelpers loaded without database client.")
@@ -303,7 +303,7 @@ func Serve(cConfig *csconfig.Config, apiReady chan bool, agentReady chan bool) e
 	if cConfig.API.CTI != nil && *cConfig.API.CTI.Enabled {
 		log.Infof("Crowdsec CTI helper enabled")
 		if err := exprhelpers.InitCrowdsecCTI(cConfig.API.CTI.Key, cConfig.API.CTI.CacheTimeout, cConfig.API.CTI.CacheSize, cConfig.API.CTI.LogLevel); err != nil {
-			return fmt.Errorf("failed to init crowdsec cti: %w", err)
+			return errors.Wrap(err, "failed to init crowdsec cti")
 		}
 	}
 
@@ -319,7 +319,7 @@ func Serve(cConfig *csconfig.Config, apiReady chan bool, agentReady chan bool) e
 
 		apiServer, err := initAPIServer(cConfig)
 		if err != nil {
-			return fmt.Errorf("api server init: %w", err)
+			return errors.Wrap(err, "api server init")
 		}
 
 		if !flags.TestMode {
@@ -332,7 +332,7 @@ func Serve(cConfig *csconfig.Config, apiReady chan bool, agentReady chan bool) e
 	if !cConfig.DisableAgent {
 		csParsers, err := initCrowdsec(cConfig)
 		if err != nil {
-			return fmt.Errorf("crowdsec init: %w", err)
+			return errors.Wrap(err, "crowdsec init")
 		}
 
 		// if it's just linting, we're done
@@ -350,7 +350,10 @@ func Serve(cConfig *csconfig.Config, apiReady chan bool, agentReady chan bool) e
 	}
 
 	if cConfig.Common != nil && cConfig.Common.Daemonize {
-		csdaemon.NotifySystemd(log.StandardLogger())
+		sent, err := daemon.SdNotify(false, daemon.SdNotifyReady)
+		if !sent || err != nil {
+			log.Errorf("Failed to notify(sent: %v): %v", sent, err)
+		}
 		// wait for signals
 		return HandleSignals(cConfig)
 	}

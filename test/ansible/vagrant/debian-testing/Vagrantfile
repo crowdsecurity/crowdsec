@@ -2,8 +2,6 @@
 
 Vagrant.configure('2') do |config|
   config.vm.box = 'debian/testing64'
-  config.vm.provision "shell", inline: <<-SHELL
-  SHELL
 end
 
 common = '../common'

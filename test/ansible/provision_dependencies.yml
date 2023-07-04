@@ -13,8 +13,6 @@
     - crowdsecurity.testing.git
     - crowdsecurity.testing.gcc
     - crowdsecurity.testing.gnu_make
-    - crowdsecurity.testing.pkg_config
-    - crowdsecurity.testing.re2
     - crowdsecurity.testing.bats_requirements
 
 - name: "Install Postgres"

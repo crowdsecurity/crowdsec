@@ -65,6 +65,7 @@ linters:
     # - asciicheck          # Simple linter to check that your code does not contain non-ASCII identifiers
     # - bidichk             # Checks for dangerous unicode character sequences
     # - decorder            # check declaration order and count of types, constants, variables and functions
+    # - depguard            # Go linter that checks if package imports are in a list of acceptable packages
     # - dupword             # checks for duplicate words in the source code
     # - durationcheck       # check for two durations multiplied together
     # - errcheck            # Errcheck is a program for checking for unchecked errors in go programs. These unchecked errors can be critical bugs in some cases
@@ -124,7 +125,6 @@ linters:
     - thelper               # thelper detects golang test helpers without t.Helper() call and checks the consistency of test helpers
     - wastedassign          # wastedassign finds wasted assignment statements.
     - wrapcheck             # Checks that errors returned from external packages are wrapped
-    - depguard              # Go linter that checks if package imports are in a list of acceptable packages
 
     #
     # Recommended? (requires some work)

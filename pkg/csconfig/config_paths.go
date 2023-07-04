@@ -3,6 +3,8 @@ package csconfig
 import (
 	"fmt"
 	"path/filepath"
+
+	"github.com/pkg/errors"
 )
 
 type ConfigurationPaths struct {
@@ -48,7 +50,7 @@ func (c *Config) LoadConfigurationPaths() error {
 		}
 		*k, err = filepath.Abs(*k)
 		if err != nil {
-			return fmt.Errorf("failed to get absolute path of '%s': %w", *k, err)
+			return errors.Wrapf(err, "failed to get absolute path of '%s'", *k)
 		}
 	}
 

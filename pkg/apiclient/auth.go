@@ -3,21 +3,23 @@ package apiclient
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
-	"io"
 	"math/rand"
-	"net/http"
-	"net/http/httputil"
-	"net/url"
 	"sync"
 	"time"
 
-	"github.com/go-openapi/strfmt"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
+	//"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httputil"
+	"net/url"
 
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	//"google.golang.org/appengine/log"
 )
 
 type APIKeyTransport struct {
@@ -167,11 +169,11 @@ func (t *JWTTransport) refreshJwtToken() error {
 	enc.SetEscapeHTML(false)
 	err = enc.Encode(auth)
 	if err != nil {
-		return fmt.Errorf("could not encode jwt auth body: %w", err)
+		return errors.Wrap(err, "could not encode jwt auth body")
 	}
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s%s/watchers/login", t.URL, t.VersionPrefix), buf)
 	if err != nil {
-		return fmt.Errorf("could not create request: %w", err)
+		return errors.Wrap(err, "could not create request")
 	}
 	req.Header.Add("Content-Type", "application/json")
 	client := &http.Client{
@@ -194,7 +196,7 @@ func (t *JWTTransport) refreshJwtToken() error {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("could not get jwt token: %w", err)
+		return errors.Wrap(err, "could not get jwt token")
 	}
 	log.Debugf("auth-jwt : http %d", resp.StatusCode)
 
@@ -215,10 +217,10 @@ func (t *JWTTransport) refreshJwtToken() error {
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return fmt.Errorf("unable to decode response: %w", err)
+		return errors.Wrap(err, "unable to decode response")
 	}
 	if err := t.Expiration.UnmarshalText([]byte(response.Expire)); err != nil {
-		return fmt.Errorf("unable to parse jwt expiration: %w", err)
+		return errors.Wrap(err, "unable to parse jwt expiration")
 	}
 	t.Token = response.Token
 
@@ -261,7 +263,7 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if err != nil {
 		/*we had an error (network error for example, or 401 because token is refused), reset the token ?*/
 		t.Token = ""
-		return resp, fmt.Errorf("performing jwt auth: %w", err)
+		return resp, errors.Wrapf(err, "performing jwt auth")
 	}
 
 	log.Debugf("resp-jwt: %d", resp.StatusCode)

@@ -11,11 +11,11 @@ roles:
   - src: gantsign.golang
 
 collections:
-  - name: ansible.posix
   - name: https://github.com/crowdsecurity/ansible-collection-crowdsecurity.testing.git
     type: git
-    version: v0.0.4
+    version: main
 
 #  - name: crowdsecurity.testing
 #    source: ../../../crowdsecurity.testing
 #    type: dir
+

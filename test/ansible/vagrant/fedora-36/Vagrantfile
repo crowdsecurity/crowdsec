@@ -3,8 +3,6 @@
 Vagrant.configure('2') do |config|
   # config.vm.box = "fedora/36-cloud-base"
   config.vm.box = 'generic/fedora36'
-  config.vm.provision "shell", inline: <<-SHELL
-  SHELL
 end
 
 common = '../common'

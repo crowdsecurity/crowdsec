@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/windows/svc"
 
@@ -21,7 +22,7 @@ func StartRunSvc() error {
 
 	isRunninginService, err := svc.IsWindowsService()
 	if err != nil {
-		return fmt.Errorf("failed to determine if we are running in windows service mode: %w", err)
+		return errors.Wrap(err, "failed to determine if we are running in windows service mode")
 	}
 	if isRunninginService {
 		return runService(svcName)
@@ -30,22 +31,22 @@ func StartRunSvc() error {
 	if flags.WinSvc == "Install" {
 		err = installService(svcName, svcDescription)
 		if err != nil {
-			return fmt.Errorf("failed to %s %s: %w", flags.WinSvc, svcName, err)
+			return errors.Wrapf(err, "failed to %s %s", flags.WinSvc, svcName)
 		}
 	} else if flags.WinSvc == "Remove" {
 		err = removeService(svcName)
 		if err != nil {
-			return fmt.Errorf("failed to %s %s: %w", flags.WinSvc, svcName, err)
+			return errors.Wrapf(err, "failed to %s %s", flags.WinSvc, svcName)
 		}
 	} else if flags.WinSvc == "Start" {
 		err = startService(svcName)
 		if err != nil {
-			return fmt.Errorf("failed to %s %s: %w", flags.WinSvc, svcName, err)
+			return errors.Wrapf(err, "failed to %s %s", flags.WinSvc, svcName)
 		}
 	} else if flags.WinSvc == "Stop" {
 		err = controlService(svcName, svc.Stop, svc.Stopped)
 		if err != nil {
-			return fmt.Errorf("failed to %s %s: %w", flags.WinSvc, svcName, err)
+			return errors.Wrapf(err, "failed to %s %s", flags.WinSvc, svcName)
 		}
 	} else if flags.WinSvc == "" {
 		return WindowsRun()
@@ -65,7 +66,7 @@ func WindowsRun() error {
 	if err != nil {
 		return err
 	}
-
+	// Configure logging
 	log.Infof("Crowdsec %s", version.String())
 
 	apiReady := make(chan bool, 1)
