@@ -234,7 +234,7 @@ func feedLoki(logger *log.Entry, n int, title string) error {
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode != 204 {
+	if resp.StatusCode != http.StatusNoContent {
 		b, _ := io.ReadAll(resp.Body)
 		logger.Error(string(b))
 		return fmt.Errorf("Bad post status %d", resp.StatusCode)
@@ -422,7 +422,7 @@ query: >
 		t.Fatalf("Unexpected error : %s", err)
 	}
 	time.Sleep(time.Second * 2)
-	feedLoki(subLogger, 1, title)
+	err = feedLoki(subLogger, 1, title)
 	if err != nil {
 		t.Fatalf("Unexpected error : %s", err)
 	}
