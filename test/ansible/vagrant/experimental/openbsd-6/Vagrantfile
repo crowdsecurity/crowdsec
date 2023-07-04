@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 Vagrant.configure('2') do |config|
-  config.vm.box = 'generic/openbsd7'
+  config.vm.box = 'generic/openbsd6'
   # config.vm.box_version = '4.2.16'
   config.vm.provision "shell", inline: <<-SHELL
-    sudo pkg_add python-3.9.16 py3-pip gcc-11.2.0p3 openssl-3.0.8 gtar-1.34
+  sudo pkg_add python py3-pip gcc openssl-1.0.2up3 gtar-1.34
     # sudo pkg_add -u
     # sudo pkg_add kitty
   SHELL

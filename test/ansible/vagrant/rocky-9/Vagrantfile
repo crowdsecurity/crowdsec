@@ -2,6 +2,10 @@
 
 Vagrant.configure('2') do |config|
   config.vm.box = 'generic/rocky9'
+  config.vm.provision "shell", inline: <<-SHELL
+    sudo dnf config-manager --set-enabled crb
+    sudo dnf -y install kitty-terminfo
+  SHELL
 end
 
 common = '../common'

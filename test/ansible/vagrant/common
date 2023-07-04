@@ -1,46 +1,75 @@
 # vim: set ft=ruby:
 # frozen_string_literal: true
 
+def find_ansible_cfg
+  path = Pathname.new(Dir.pwd)
+  until path.root?
+    ansible_cfg = path + 'ansible.cfg'
+    return path if ansible_cfg.exist?
+    path = path.parent
+  end
+  nil # return nil if not found
+end
+
 Vagrant.configure('2') do |config|
   config.vm.define 'crowdsec'
+
+  if ARGV.any? { |arg| arg == 'up' || arg == 'provision' }
+    unless ENV['DB_BACKEND']
+      $stderr.puts "\e[31mThe DB_BACKEND environment variable is not defined. Please set up the environment and try again.\e[0m"
+      exit 1
+    end
+  end
+
+  config.vm.provision 'shell', path: 'bootstrap' if File.exists?('bootstrap')
+  config.vm.synced_folder '.', '/vagrant', disabled: true
 
   config.vm.provider :libvirt do |libvirt|
     libvirt.cpus = 1
     libvirt.memory = 1536
   end
 
-  config.vm.synced_folder '.', '/vagrant', disabled: true
+  path = find_ansible_cfg
+  if !path
+    puts "ansible.cfg not found"
+  end
 
   config.vm.provision 'ansible' do |ansible|
     # ansible.verbose = 'vvvv'
-    ansible.config_file = '../../ansible.cfg'
-    ansible.playbook = '../../run_all.yml'
+    ansible.config_file = (path + 'ansible.cfg').to_s
+    ansible.playbook = (path + 'run_all.yml').to_s
+    ansible.compatibility_mode = "2.0"
   end
 
   # same as above, to run the steps separately
 
-  # config.vm.provision 'ansible' do |provdep|
-  #   provdep.config_file = '../../ansible.cfg'
-  #   provdep.playbook = '../../provision_dependencies.yml'
+  # config.vm.provision 'ansible' do |ansible|
+  #   ansible.config_file = (path + 'ansible.cfg').to_s
+  #   ansible.playbook = (path + 'provision_dependencies.yml').to_s
+  #   ansible.compatibility_mode = "2.0"
   # end
 
-  # config.vm.provision 'ansible' do |provtest|
-  #   provtest.config_file = '../../ansible.cfg'
-  #   provtest.playbook = '../../provision_test_suite.yml'
+  # config.vm.provision 'ansible' do |ansible|
+  #   ansible.config_file = (path + 'ansible.cfg').to_s
+  #   ansible.playbook = (path + 'provision_test_suite.yml').to_s
+  #   ansible.compatibility_mode = "2.0"
   # end
 
-  # config.vm.provision 'ansible' do |preptest|
-  #   preptest.config_file = '../../ansible.cfg'
-  #   preptest.playbook = '../../install_binary_package.yml'
+  # config.vm.provision 'ansible' do |ansible|
+  #   ansible.config_file = (path + 'ansible.cfg').to_s
+  #   ansible.playbook = (path + 'install_binary_package.yml').to_s
+  #   ansible.compatibility_mode = "2.0"
   # end
 
-  # config.vm.provision 'ansible' do |preptest|
-  #   preptest.config_file = '../../ansible.cfg'
-  #   preptest.playbook = '../../prepare_tests.yml'
+  # config.vm.provision 'ansible' do |ansible|
+  #   ansible.config_file = (path + 'ansible.cfg').to_s
+  #   ansible.playbook = (path + 'prepare_tests.yml').to_s
+  #   ansible.compatibility_mode = "2.0"
   # end
 
-  # config.vm.provision 'ansible' do |runtests|
-  #   runtests.config_file = '../../ansible.cfg'
-  #   runtests.playbook = '../../run_tests.yml'
+  # config.vm.provision 'ansible' do |ansible|
+  #   ansible.config_file = (path + 'ansible.cfg').to_s
+  #   ansible.playbook = (path + 'run_tests.yml').to_s
+  #   ansible.compatibility_mode = "2.0"
   # end
 end

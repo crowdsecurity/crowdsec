@@ -2,42 +2,10 @@
 
 Vagrant.configure('2') do |config|
   config.vm.box = 'generic/ubuntu2204'
-  config.vm.define 'wizard'
-
-  config.vm.provision 'shell', path: 'bootstrap'
-
-  config.vm.provider :libvirt do |libvirt|
-    libvirt.cpus = 4
-    libvirt.memory = 4096
-  end
-
-  config.vm.synced_folder '.', '/vagrant', disabled: true
-
-  # install the dependencies for functional tests
-
-  config.vm.provision 'ansible' do |provdep|
-    provdep.config_file = '../../../ansible.cfg'
-    provdep.playbook = '../../../provision_dependencies.yml'
-  end
-
-  config.vm.provision 'ansible' do |provtest|
-    provtest.config_file = '../../../ansible.cfg'
-    provtest.playbook = '../../../provision_test_suite.yml'
-  end
-
-  config.vm.provision 'ansible' do |preptest|
-    preptest.config_file = '../../../ansible.cfg'
-    preptest.playbook = '../../../prepare_tests.yml'
-  end
-
-  config.vm.provision 'ansible' do |preptest|
-    preptest.config_file = '../../../ansible.cfg'
-    preptest.playbook = '../../../debug_tools.yml'
-  end
-
-  config.vm.provision 'ansible' do |preptest|
-    preptest.config_file = '../../../ansible.cfg'
-    preptest.playbook = '../../../run_wizard_tests.yml'
-  end
-
+  config.vm.provision "shell", inline: <<-SHELL
+    sudo apt install -y aptitude kitty-terminfo
+  SHELL
 end
+
+common = '../common'
+load common if File.exists?(common)
