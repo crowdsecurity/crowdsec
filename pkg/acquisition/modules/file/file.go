@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -371,12 +370,13 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 				matched := false
 				for _, pattern := range f.config.Filenames {
 					logger.Debugf("Matching %s with %s", pattern, event.Name)
-					matched, err = path.Match(pattern, event.Name)
+					matched, err = filepath.Match(pattern, event.Name)
 					if err != nil {
 						logger.Errorf("Could not match pattern : %s", err)
 						continue
 					}
 					if matched {
+						logger.Debugf("Matched %s with %s", pattern, event.Name)
 						break
 					}
 				}
