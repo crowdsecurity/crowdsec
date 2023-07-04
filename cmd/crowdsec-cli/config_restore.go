@@ -7,13 +7,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
@@ -38,7 +36,7 @@ func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
 		backupMain := fmt.Sprintf("%s/config.yaml", dirPath)
 		if _, err = os.Stat(backupMain); err == nil {
 			if csConfig.ConfigPaths != nil && csConfig.ConfigPaths.ConfigDir != "" {
-				if err = types.CopyFile(backupMain, fmt.Sprintf("%s/config.yaml", csConfig.ConfigPaths.ConfigDir)); err != nil {
+				if err = CopyFile(backupMain, fmt.Sprintf("%s/config.yaml", csConfig.ConfigPaths.ConfigDir)); err != nil {
 					return fmt.Errorf("failed copy %s to %s : %s", backupMain, csConfig.ConfigPaths.ConfigDir, err)
 				}
 			}
@@ -51,21 +49,21 @@ func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
 
 		backupCAPICreds := fmt.Sprintf("%s/online_api_credentials.yaml", dirPath)
 		if _, err = os.Stat(backupCAPICreds); err == nil {
-			if err = types.CopyFile(backupCAPICreds, csConfig.API.Server.OnlineClient.CredentialsFilePath); err != nil {
+			if err = CopyFile(backupCAPICreds, csConfig.API.Server.OnlineClient.CredentialsFilePath); err != nil {
 				return fmt.Errorf("failed copy %s to %s : %s", backupCAPICreds, csConfig.API.Server.OnlineClient.CredentialsFilePath, err)
 			}
 		}
 
 		backupLAPICreds := fmt.Sprintf("%s/local_api_credentials.yaml", dirPath)
 		if _, err = os.Stat(backupLAPICreds); err == nil {
-			if err = types.CopyFile(backupLAPICreds, csConfig.API.Client.CredentialsFilePath); err != nil {
+			if err = CopyFile(backupLAPICreds, csConfig.API.Client.CredentialsFilePath); err != nil {
 				return fmt.Errorf("failed copy %s to %s : %s", backupLAPICreds, csConfig.API.Client.CredentialsFilePath, err)
 			}
 		}
 
 		backupProfiles := fmt.Sprintf("%s/profiles.yaml", dirPath)
 		if _, err = os.Stat(backupProfiles); err == nil {
-			if err = types.CopyFile(backupProfiles, csConfig.API.Server.ProfilesPath); err != nil {
+			if err = CopyFile(backupProfiles, csConfig.API.Server.ProfilesPath); err != nil {
 				return fmt.Errorf("failed copy %s to %s : %s", backupProfiles, csConfig.API.Server.ProfilesPath, err)
 			}
 		}
@@ -106,7 +104,7 @@ func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
 
 	backupSimulation := fmt.Sprintf("%s/simulation.yaml", dirPath)
 	if _, err = os.Stat(backupSimulation); err == nil {
-		if err = types.CopyFile(backupSimulation, csConfig.ConfigPaths.SimulationFilePath); err != nil {
+		if err = CopyFile(backupSimulation, csConfig.ConfigPaths.SimulationFilePath); err != nil {
 			return fmt.Errorf("failed copy %s to %s : %s", backupSimulation, csConfig.ConfigPaths.SimulationFilePath, err)
 		}
 	}
@@ -123,7 +121,7 @@ func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
 	if _, err = os.Stat(backupAcquisition); err == nil {
 		log.Debugf("restoring backup'ed %s", backupAcquisition)
 
-		if err = types.CopyFile(backupAcquisition, csConfig.Crowdsec.AcquisitionFilePath); err != nil {
+		if err = CopyFile(backupAcquisition, csConfig.Crowdsec.AcquisitionFilePath); err != nil {
 			return fmt.Errorf("failed copy %s to %s : %s", backupAcquisition, csConfig.Crowdsec.AcquisitionFilePath, err)
 		}
 	}
@@ -134,12 +132,12 @@ func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
 		for _, acquisFile := range acquisFiles {
 			targetFname, err := filepath.Abs(csConfig.Crowdsec.AcquisitionDirPath + "/" + filepath.Base(acquisFile))
 			if err != nil {
-				return errors.Wrapf(err, "while saving %s to %s", acquisFile, targetFname)
+				return fmt.Errorf("while saving %s to %s: %w", acquisFile, targetFname, err)
 			}
 
 			log.Debugf("restoring %s to %s", acquisFile, targetFname)
 
-			if err = types.CopyFile(acquisFile, targetFname); err != nil {
+			if err = CopyFile(acquisFile, targetFname); err != nil {
 				return fmt.Errorf("failed copy %s to %s : %s", acquisFile, targetFname, err)
 			}
 		}
@@ -157,10 +155,10 @@ func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
 
 			targetFname, err := filepath.Abs(filepath.Join(acquisBackupDir, filepath.Base(acquisFile)))
 			if err != nil {
-				return errors.Wrapf(err, "while saving %s to %s", acquisFile, acquisBackupDir)
+				return fmt.Errorf("while saving %s to %s: %w", acquisFile, acquisBackupDir, err)
 			}
 
-			if err = types.CopyFile(acquisFile, targetFname); err != nil {
+			if err = CopyFile(acquisFile, targetFname); err != nil {
 				return fmt.Errorf("failed copy %s to %s : %s", acquisFile, targetFname, err)
 			}
 
@@ -174,7 +172,6 @@ func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
 
 	return nil
 }
-
 
 func runConfigRestore(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
@@ -199,7 +196,6 @@ func runConfigRestore(cmd *cobra.Command, args []string) error {
 
 	return nil
 }
-
 
 func NewConfigRestoreCmd() *cobra.Command {
 	cmdConfigRestore := &cobra.Command{

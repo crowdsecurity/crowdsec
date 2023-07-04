@@ -25,7 +25,7 @@ import (
 var responseByPath map[string]string
 
 func TestItemStatus(t *testing.T) {
-	cfg := envSetup()
+	cfg := envSetup(t)
 	defer envTearDown(cfg)
 
 	err := UpdateHubIdx(cfg.Hub)
@@ -73,7 +73,7 @@ func TestItemStatus(t *testing.T) {
 }
 
 func TestGetters(t *testing.T) {
-	cfg := envSetup()
+	cfg := envSetup(t)
 	defer envTearDown(cfg)
 
 	err := UpdateHubIdx(cfg.Hub)
@@ -134,7 +134,7 @@ func TestGetters(t *testing.T) {
 }
 
 func TestIndexDownload(t *testing.T) {
-	cfg := envSetup()
+	cfg := envSetup(t)
 	defer envTearDown(cfg)
 
 	err := UpdateHubIdx(cfg.Hub)
@@ -155,10 +155,16 @@ func getTestCfg() (cfg *csconfig.Config) {
 	return
 }
 
-func envSetup() *csconfig.Config {
+func envSetup(t *testing.T) *csconfig.Config {
 	resetResponseByPath()
 	log.SetLevel(log.DebugLevel)
 	cfg := getTestCfg()
+
+	defaultTransport := http.DefaultClient.Transport
+	t.Cleanup(func() {
+		http.DefaultClient.Transport = defaultTransport
+	})
+
 	//Mock the http client
 	http.DefaultClient.Transport = newMockTransport()
 
@@ -321,7 +327,7 @@ func TestInstallParser(t *testing.T) {
 	 - check its status
 	 - remove it
 	*/
-	cfg := envSetup()
+	cfg := envSetup(t)
 	defer envTearDown(cfg)
 
 	getHubIdxOrFail(t)
@@ -353,7 +359,7 @@ func TestInstallCollection(t *testing.T) {
 	 - check its status
 	 - remove it
 	*/
-	cfg := envSetup()
+	cfg := envSetup(t)
 	defer envTearDown(cfg)
 
 	getHubIdxOrFail(t)

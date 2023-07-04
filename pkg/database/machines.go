@@ -5,12 +5,12 @@ import (
 	"time"
 
 	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/pkg/errors"
-	"golang.org/x/crypto/bcrypt"
 )
 
 const CapiMachineID = types.CAPIOrigin

@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/version"
-
 	"github.com/stretchr/testify/assert"
+
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
 )
 
 func TestNewRequestInvalid(t *testing.T) {

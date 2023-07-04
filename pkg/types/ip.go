@@ -6,13 +6,14 @@ import (
 	"math"
 	"net"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
+// LastAddress returns the last address of a network
 func LastAddress(n net.IPNet) net.IP {
+	// get the last address by ORing the hostmask and the IP
 	ip := n.IP.To4()
 	if ip == nil {
+		// IPv6
 		ip = n.IP
 		return net.IP{
 			ip[0] | ^n.Mask[0], ip[1] | ^n.Mask[1], ip[2] | ^n.Mask[2],
@@ -35,7 +36,7 @@ func Addr2Ints(anyIP string) (int, int64, int64, int64, int64, error) {
 	if strings.Contains(anyIP, "/") {
 		_, net, err := net.ParseCIDR(anyIP)
 		if err != nil {
-			return -1, 0, 0, 0, 0, errors.Wrapf(err, "while parsing range %s", anyIP)
+			return -1, 0, 0, 0, 0, fmt.Errorf("while parsing range %s: %w", anyIP, err)
 		}
 		return Range2Ints(*net)
 	}
@@ -47,7 +48,7 @@ func Addr2Ints(anyIP string) (int, int64, int64, int64, int64, error) {
 
 	sz, start, end, err := IP2Ints(ip)
 	if err != nil {
-		return -1, 0, 0, 0, 0, errors.Wrapf(err, "while parsing ip %s", anyIP)
+		return -1, 0, 0, 0, 0, fmt.Errorf("while parsing ip %s: %w", anyIP, err)
 	}
 
 	return sz, start, end, start, end, nil
@@ -58,12 +59,12 @@ func Range2Ints(network net.IPNet) (int, int64, int64, int64, int64, error) {
 
 	szStart, nwStart, sfxStart, err := IP2Ints(network.IP)
 	if err != nil {
-		return -1, 0, 0, 0, 0, errors.Wrap(err, "converting first ip in range")
+		return -1, 0, 0, 0, 0, fmt.Errorf("converting first ip in range: %w", err)
 	}
 	lastAddr := LastAddress(network)
 	szEnd, nwEnd, sfxEnd, err := IP2Ints(lastAddr)
 	if err != nil {
-		return -1, 0, 0, 0, 0, errors.Wrap(err, "transforming last address of range")
+		return -1, 0, 0, 0, 0, fmt.Errorf("transforming last address of range: %w", err)
 	}
 	if szEnd != szStart {
 		return -1, 0, 0, 0, 0, fmt.Errorf("inconsistent size for range first(%d) and last(%d) ip", szStart, szEnd)
