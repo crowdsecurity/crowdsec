@@ -71,7 +71,7 @@ require (
 	github.com/stretchr/testify v1.8.3
 	github.com/texttheater/golang-levenshtein/levenshtein v0.0.0-20200805054039-cae8b0eaed6c
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
-	github.com/wasilibs/go-re2 v0.2.1
+	github.com/wasilibs/go-re2 v1.3.0
 	golang.org/x/crypto v0.1.0
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	golang.org/x/mod v0.11.0
@@ -167,7 +167,7 @@ require (
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/tetratelabs/wazero v1.0.0-rc.2 // indirect
+	github.com/tetratelabs/wazero v1.2.1 // indirect
 	github.com/tidwall/gjson v1.13.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
