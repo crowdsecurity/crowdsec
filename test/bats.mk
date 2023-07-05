@@ -68,9 +68,11 @@ bats-check-requirements:
 
 # Install/update some of the tools required to run the tests
 bats-update-tools:
-	GOBIN=$(TEST_DIR)/tools go install github.com/mikefarah/yq/v4@v4.34.1
-	GOBIN=$(TEST_DIR)/tools go install github.com/cloudflare/cfssl/cmd/cfssl@v1.6.4
-	GOBIN=$(TEST_DIR)/tools go install github.com/cloudflare/cfssl/cmd/cfssljson@v1.6.4
+	# yq v4.34.1
+	GOBIN=$(TEST_DIR)/tools go install github.com/mikefarah/yq/v4@5ef537f3fd1a9437aa3ee44c32c6459a126efdc4
+	# cfssl v1.6.4
+	GOBIN=$(TEST_DIR)/tools go install github.com/cloudflare/cfssl/cmd/cfssl@b4d0d877cac528f63db39dfb62d5c96cd3a32a0b
+	GOBIN=$(TEST_DIR)/tools go install github.com/cloudflare/cfssl/cmd/cfssljson@b4d0d877cac528f63db39dfb62d5c96cd3a32a0b
 
 # Build and installs crowdsec in a local directory. Rebuilds if already exists.
 bats-build: bats-environment
