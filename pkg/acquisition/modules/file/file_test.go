@@ -260,7 +260,7 @@ func TestLiveAcquisition(t *testing.T) {
 		// if we do not have access to the file
 		permDeniedFile = `C:\Windows\System32\config\SAM`
 		permDeniedError = `unable to read C:\Windows\System32\config\SAM : open C:\Windows\System32\config\SAM: The process cannot access the file because it is being used by another process`
-		testPattern = `test_files\\*.log` // the \ must be escaped for the yaml config
+		testPattern = `test_files\*.log`
 	}
 
 	tests := []struct {
