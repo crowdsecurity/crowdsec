@@ -171,7 +171,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 				decision.UUID = uuid.NewString()
 			}
 			for pIdx, profile := range c.Profiles {
-				_, matched, err := profile.EvaluateProfile(alert)
+				_, matched, notification, err := profile.EvaluateProfile(alert)
 				if err != nil {
 					profile.Logger.Warningf("error while evaluating profile %s : %v", profile.Cfg.Name, err)
 					continue
@@ -179,7 +179,9 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 				if !matched {
 					continue
 				}
-				c.sendAlertToPluginChannel(alert, uint(pIdx))
+				if notification {
+					c.sendAlertToPluginChannel(alert, uint(pIdx))
+				}
 				if profile.Cfg.OnSuccess == "break" {
 					break
 				}
@@ -192,7 +194,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		}
 
 		for pIdx, profile := range c.Profiles {
-			profileDecisions, matched, err := profile.EvaluateProfile(alert)
+			profileDecisions, matched, notification, err := profile.EvaluateProfile(alert)
 			forceBreak := false
 			if err != nil {
 				switch profile.Cfg.OnError {
@@ -221,7 +223,9 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 				alert.Decisions = append(alert.Decisions, profileDecisions...)
 			}
 			profileAlert := *alert
-			c.sendAlertToPluginChannel(&profileAlert, uint(pIdx))
+			if notification {
+				c.sendAlertToPluginChannel(&profileAlert, uint(pIdx))
+			}
 			if profile.Cfg.OnSuccess == "break" || forceBreak {
 				break
 			}

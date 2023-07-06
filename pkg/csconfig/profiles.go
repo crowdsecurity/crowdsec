@@ -20,15 +20,16 @@ import (
 
 // Profile structure(s) are used by the local API to "decide" what kind of decision should be applied when a scenario with an active remediation has been triggered
 type ProfileCfg struct {
-	Name          string            `yaml:"name,omitempty"`
-	Debug         *bool             `yaml:"debug,omitempty"`
-	Filters       []string          `yaml:"filters,omitempty"` //A list of OR'ed expressions. the models.Alert object
-	Decisions     []models.Decision `yaml:"decisions,omitempty"`
-	DurationExpr  string            `yaml:"duration_expr,omitempty"`
-	OnSuccess     string            `yaml:"on_success,omitempty"` //continue or break
-	OnFailure     string            `yaml:"on_failure,omitempty"` //continue or break
-	OnError       string            `yaml:"on_error,omitempty"`   //continue, break, error, report, apply, ignore
-	Notifications []string          `yaml:"notifications,omitempty"`
+	Name                string            `yaml:"name,omitempty"`
+	Debug               *bool             `yaml:"debug,omitempty"`
+	Filters             []string          `yaml:"filters,omitempty"` //A list of OR'ed expressions. the models.Alert object
+	Decisions           []models.Decision `yaml:"decisions,omitempty"`
+	DurationExpr        string            `yaml:"duration_expr,omitempty"`
+	OnSuccess           string            `yaml:"on_success,omitempty"` //continue or break
+	OnFailure           string            `yaml:"on_failure,omitempty"` //continue or break
+	OnError             string            `yaml:"on_error,omitempty"`   //continue, break, error, report, apply, ignore
+	Notifications       []string          `yaml:"notifications,omitempty"`
+	NotificationFilters []string          `yaml:"notification_filters,omitempty"`
 }
 
 func (c *LocalApiServerCfg) LoadProfiles() error {

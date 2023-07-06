@@ -16,12 +16,13 @@ import (
 )
 
 type Runtime struct {
-	RuntimeFilters      []*vm.Program               `json:"-" yaml:"-"`
-	DebugFilters        []*exprhelpers.ExprDebugger `json:"-" yaml:"-"`
-	RuntimeDurationExpr *vm.Program                 `json:"-" yaml:"-"`
-	DebugDurationExpr   *exprhelpers.ExprDebugger   `json:"-" yaml:"-"`
-	Cfg                 *csconfig.ProfileCfg        `json:"-" yaml:"-"`
-	Logger              *log.Entry                  `json:"-" yaml:"-"`
+	RuntimeFilters             []*vm.Program               `json:"-" yaml:"-"`
+	DebugFilters               []*exprhelpers.ExprDebugger `json:"-" yaml:"-"`
+	RuntimeDurationExpr        *vm.Program                 `json:"-" yaml:"-"`
+	RuntimeNotificationFilters []*vm.Program               `json:"-" yaml:"-"`
+	DebugDurationExpr          *exprhelpers.ExprDebugger   `json:"-" yaml:"-"`
+	Cfg                        *csconfig.ProfileCfg        `json:"-" yaml:"-"`
+	Logger                     *log.Entry                  `json:"-" yaml:"-"`
 }
 
 var defaultDuration = "4h"
@@ -31,7 +32,7 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 	profilesRuntime := make([]*Runtime, 0)
 
 	for _, profile := range profilesCfg {
-		var runtimeFilter, runtimeDurationExpr *vm.Program
+		var runtimeFilter, runtimeDurationExpr, notificationFilter *vm.Program
 		var debugFilter, debugDurationExpr *exprhelpers.ExprDebugger
 		runtime := &Runtime{}
 		xlog := log.New()
@@ -70,6 +71,12 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 			}
 		}
 
+		for nIdx, expression := range profile.NotificationFilters {
+			if notificationFilter, err = expr.Compile(expression, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
+				return []*Runtime{}, errors.Wrapf(err, "error compiling notification_filter of '%s'", profile.Name)
+			}
+			runtime.RuntimeNotificationFilters[nIdx] = notificationFilter
+		}
 		if profile.DurationExpr != "" {
 			if runtimeDurationExpr, err = expr.Compile(profile.DurationExpr, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
 				return []*Runtime{}, errors.Wrapf(err, "error compiling duration_expr of %s", profile.Name)
@@ -161,15 +168,16 @@ func (Profile *Runtime) GenerateDecisionFromProfile(Alert *models.Alert) ([]*mod
 }
 
 // EvaluateProfile is going to evaluate an Alert against a profile to generate Decisions
-func (Profile *Runtime) EvaluateProfile(Alert *models.Alert) ([]*models.Decision, bool, error) {
+func (Profile *Runtime) EvaluateProfile(Alert *models.Alert) ([]*models.Decision, bool, bool, error) {
 	var decisions []*models.Decision
 
 	matched := false
+	notification := true
 	for eIdx, expression := range Profile.RuntimeFilters {
 		output, err := expr.Run(expression, map[string]interface{}{"Alert": Alert})
 		if err != nil {
 			Profile.Logger.Warningf("failed to run whitelist expr : %v", err)
-			return nil, matched, errors.Wrapf(err, "while running expression %s", Profile.Cfg.Filters[eIdx])
+			return nil, matched, notification, errors.Wrapf(err, "while running expression %s", Profile.Cfg.Filters[eIdx])
 		}
 		switch out := output.(type) {
 		case bool:
@@ -181,9 +189,27 @@ func (Profile *Runtime) EvaluateProfile(Alert *models.Alert) ([]*models.Decision
 				/*the expression matched, create the associated decision*/
 				subdecisions, err := Profile.GenerateDecisionFromProfile(Alert)
 				if err != nil {
-					return nil, matched, errors.Wrapf(err, "while generating decision from profile %s", Profile.Cfg.Name)
+					return nil, matched, notification, errors.Wrapf(err, "while generating decision from profile %s", Profile.Cfg.Name)
 				}
-
+				for _, notification_expression := range Profile.RuntimeNotificationFilters {
+					if !notification {
+						break
+					}
+					notification_output, err := expr.Run(notification_expression, map[string]interface{}{"Alert": Alert})
+					if err != nil {
+						Profile.Logger.Warningf("failed to run notification expr : %v", err)
+						return nil, matched, notification, errors.Wrapf(err, "while running expression %s", Profile.Cfg.Filters[eIdx])
+					}
+					switch notification_out := notification_output.(type) {
+					case bool:
+						if Profile.Cfg.Debug != nil && *Profile.Cfg.Debug {
+							Profile.DebugFilters[eIdx].Run(Profile.Logger, notification_out, map[string]interface{}{"Alert": Alert})
+						}
+						notification = notification_out
+					default:
+						return nil, matched, notification, fmt.Errorf("unexpected type %t (%v) while running '%s'", notification_output, notification_output, Profile.Cfg.NotificationFilters[eIdx])
+					}
+				}
 				decisions = append(decisions, subdecisions...)
 			} else {
 				Profile.Logger.Debugf("Profile %s filter is unsuccessful", Profile.Cfg.Name)
@@ -193,11 +219,11 @@ func (Profile *Runtime) EvaluateProfile(Alert *models.Alert) ([]*models.Decision
 			}
 
 		default:
-			return nil, matched, fmt.Errorf("unexpected type %t (%v) while running '%s'", output, output, Profile.Cfg.Filters[eIdx])
+			return nil, matched, notification, fmt.Errorf("unexpected type %t (%v) while running '%s'", output, output, Profile.Cfg.Filters[eIdx])
 
 		}
 
 	}
 
-	return decisions, matched, nil
+	return decisions, matched, notification, nil
 }

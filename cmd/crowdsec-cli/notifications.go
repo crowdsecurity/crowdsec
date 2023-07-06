@@ -306,7 +306,7 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 			}
 
 			for id, profile := range profiles {
-				_, matched, err := profile.EvaluateProfile(alert)
+				_, matched, _, err := profile.EvaluateProfile(alert)
 				if err != nil {
 					return fmt.Errorf("can't evaluate profile %s: %w", profile.Cfg.Name, err)
 				}

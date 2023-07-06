@@ -192,7 +192,7 @@ func TestEvaluateProfile(t *testing.T) {
 			if err != nil {
 				t.Errorf("failed to get newProfile : %+v", err)
 			}
-			got, got1, _ := profile[0].EvaluateProfile(tt.args.Alert)
+			got, got1, _, _ := profile[0].EvaluateProfile(tt.args.Alert)
 			if !reflect.DeepEqual(len(got), tt.expectedDecisionCount) {
 				t.Errorf("EvaluateProfile() got = %+v, want %+v", got, tt.expectedDecisionCount)
 			}
