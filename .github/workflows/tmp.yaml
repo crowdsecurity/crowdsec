@@ -25,10 +25,4 @@ jobs:
         make CGO_ENABLED=1 BUILD_RE_WASM=0 BUILD_STATIC=1 && cp cmd/crowdsec/crowdsec /usr/local/bin && cp cmd/crowdsec-cli/cscli /usr/local/bin
         sudo mkdir -p /etc/crowdsec && sudo cp -a config/* /etc/crowdsec
         cd hub
-        cscli hubtest run modsecurity --debug || cat .tests/modsecurity/results/bucket-dump.yaml
-        cscli hubtest run modsecurity --debug
-        cscli hubtest run modsecurity --debug
-        cscli hubtest run modsecurity --debug
-        cscli hubtest run modsecurity --debug
-        cscli hubtest run modsecurity --debug
-        cscli hubtest run modsecurity --debug
+        cscli hubtest run --all || cat .tests/modsecurity/results/bucket-dump.yaml
