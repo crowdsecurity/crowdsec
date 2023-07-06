@@ -3,6 +3,7 @@ package cwhub
 import (
 	"bytes"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,29 +12,28 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
 var ErrIndexNotFound = fmt.Errorf("index not found")
 
 func UpdateHubIdx(hub *csconfig.Hub) error {
-
 	bidx, err := DownloadHubIdx(hub)
 	if err != nil {
-		return errors.Wrap(err, "failed to download index")
+		return fmt.Errorf("failed to download index: %w", err)
 	}
 	ret, err := LoadPkgIndex(bidx)
 	if err != nil {
 		if !errors.Is(err, ReferenceMissingError) {
-			return errors.Wrap(err, "failed to read index")
+			return fmt.Errorf("failed to read index: %w", err)
 		}
 	}
 	hubIdx = ret
 	if err, _ := LocalSync(hub); err != nil {
-		return errors.Wrap(err, "failed to sync")
+		return fmt.Errorf("failed to sync: %w", err)
 	}
 	return nil
 }
@@ -42,11 +42,11 @@ func DownloadHubIdx(hub *csconfig.Hub) ([]byte, error) {
 	log.Debugf("fetching index from branch %s (%s)", HubBranch, fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile))
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile), nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to build request for hub index")
+		return nil, fmt.Errorf("failed to build request for hub index: %w", err)
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed http request for hub index")
+		return nil, fmt.Errorf("failed http request for hub index: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -57,7 +57,7 @@ func DownloadHubIdx(hub *csconfig.Hub) ([]byte, error) {
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to read request answer for hub index")
+		return nil, fmt.Errorf("failed to read request answer for hub index: %w", err)
 	}
 
 	oldContent, err := os.ReadFile(hub.HubIndexFile)
@@ -73,13 +73,13 @@ func DownloadHubIdx(hub *csconfig.Hub) ([]byte, error) {
 	file, err := os.OpenFile(hub.HubIndexFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "while opening hub index file")
+		return nil, fmt.Errorf("while opening hub index file: %w", err)
 	}
 	defer file.Close()
 
 	wsize, err := file.WriteString(string(body))
 	if err != nil {
-		return nil, errors.Wrap(err, "while writing hub index file")
+		return nil, fmt.Errorf("while writing hub index file: %w", err)
 	}
 	log.Infof("Wrote new %d bytes index to %s", wsize, hub.HubIndexFile)
 	return body, nil
@@ -119,19 +119,19 @@ func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool, updateOnly b
 				log.Tracef("collection, recurse")
 				hubIdx[ptrtype][p], err = DownloadLatest(hub, val, overwrite, updateOnly)
 				if err != nil {
-					return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
+					return target, fmt.Errorf("while downloading %s: %w", val.Name, err)
 				}
 			}
 			item, err := DownloadItem(hub, val, overwrite)
 			if err != nil {
-				return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
+				return target, fmt.Errorf("while downloading %s: %w", val.Name, err)
 			}
 
 			// We need to enable an item when it has been added to a collection since latest release of the collection.
 			// We check if val.Downloaded is false because maybe the item has been disabled by the user.
 			if !item.Installed && !val.Downloaded {
 				if item, err = EnableItem(hub, item); err != nil {
-					return target, errors.Wrapf(err, "enabling '%s'", item.Name)
+					return target, fmt.Errorf("enabling '%s': %w", item.Name, err)
 				}
 			}
 			hubIdx[ptrtype][p] = item
@@ -160,11 +160,11 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 	}
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf(RawFileURLTemplate, HubBranch, target.RemotePath), nil)
 	if err != nil {
-		return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", req.URL.String()))
+		return target, fmt.Errorf("while downloading %s: %w", req.URL.String(), err)
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", req.URL.String()))
+		return target, fmt.Errorf("while downloading %s: %w", req.URL.String(), err)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return target, fmt.Errorf("bad http code %d for %s", resp.StatusCode, req.URL.String())
@@ -172,11 +172,11 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return target, errors.Wrap(err, fmt.Sprintf("while reading %s", req.URL.String()))
+		return target, fmt.Errorf("while reading %s: %w", req.URL.String(), err)
 	}
 	h := sha256.New()
 	if _, err := h.Write(body); err != nil {
-		return target, errors.Wrap(err, fmt.Sprintf("while hashing %s", target.Name))
+		return target, fmt.Errorf("while hashing %s: %w", target.Name, err)
 	}
 	meow := fmt.Sprintf("%x", h.Sum(nil))
 	if meow != target.Versions[target.Version].Digest {
@@ -192,7 +192,7 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 	/*ensure that target file is within target dir*/
 	finalPath, err := filepath.Abs(tdir + "/" + target.RemotePath)
 	if err != nil {
-		return target, errors.Wrapf(err, "Abs error on %s", tdir+"/"+target.RemotePath)
+		return target, fmt.Errorf("filepath.Abs error on %s: %w", tdir+"/"+target.RemotePath, err)
 	}
 	if !strings.HasPrefix(finalPath, tdir) {
 		return target, fmt.Errorf("path %s escapes %s, abort", target.RemotePath, tdir)
@@ -201,7 +201,7 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 	if _, err = os.Stat(parent_dir); os.IsNotExist(err) {
 		log.Debugf("%s doesn't exist, create", parent_dir)
 		if err := os.MkdirAll(parent_dir, os.ModePerm); err != nil {
-			return target, errors.Wrap(err, "while creating parent directories")
+			return target, fmt.Errorf("while creating parent directories: %w", err)
 		}
 	}
 	/*check actual file*/
@@ -214,19 +214,19 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 
 	f, err := os.OpenFile(tdir+"/"+target.RemotePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
-		return target, errors.Wrap(err, "while opening file")
+		return target, fmt.Errorf("while opening file: %w", err)
 	}
 	defer f.Close()
 	_, err = f.WriteString(string(body))
 	if err != nil {
-		return target, errors.Wrap(err, "while writing file")
+		return target, fmt.Errorf("while writing file: %w", err)
 	}
 	target.Downloaded = true
 	target.Tainted = false
 	target.UpToDate = true
 
 	if err = downloadData(dataFolder, overwrite, bytes.NewReader(body)); err != nil {
-		return target, errors.Wrapf(err, "while downloading data for %s", target.FileName)
+		return target, fmt.Errorf("while downloading data for %s: %w", target.FileName, err)
 	}
 
 	hubIdx[target.Type][target.Name] = target
@@ -241,11 +241,11 @@ func DownloadDataIfNeeded(hub *csconfig.Hub, target Item, force bool) error {
 	)
 	itemFilePath := fmt.Sprintf("%s/%s/%s/%s", hub.ConfigDir, target.Type, target.Stage, target.FileName)
 	if itemFile, err = os.Open(itemFilePath); err != nil {
-		return errors.Wrapf(err, "while opening %s", itemFilePath)
+		return fmt.Errorf("while opening %s: %w", itemFilePath, err)
 	}
 	defer itemFile.Close()
 	if err = downloadData(dataFolder, force, itemFile); err != nil {
-		return errors.Wrapf(err, "while downloading data for %s", itemFilePath)
+		return fmt.Errorf("while downloading data for %s: %w", itemFilePath, err)
 	}
 	return nil
 }
@@ -261,7 +261,7 @@ func downloadData(dataFolder string, force bool, reader io.Reader) error {
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			return errors.Wrap(err, "while reading file")
+			return fmt.Errorf("while reading file: %w", err)
 		}
 
 		download := false
@@ -273,7 +273,7 @@ func downloadData(dataFolder string, force bool, reader io.Reader) error {
 		if download || force {
 			err = GetData(data.Data, dataFolder)
 			if err != nil {
-				return errors.Wrap(err, "while getting data")
+				return fmt.Errorf("while getting data: %w", err)
 			}
 		}
 	}
