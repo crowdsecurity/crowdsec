@@ -222,8 +222,8 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 			if len(alert.Decisions) == 0 { // non manual decision
 				alert.Decisions = append(alert.Decisions, profileDecisions...)
 			}
-			profileAlert := *alert
 			if notification {
+				profileAlert := *alert
 				c.sendAlertToPluginChannel(&profileAlert, uint(pIdx))
 			}
 			if profile.Cfg.OnSuccess == "break" || forceBreak {
