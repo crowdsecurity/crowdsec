@@ -21,8 +21,8 @@ jobs:
     - run: go version
     - name: run tests on last crowdsec tag
       run: |
-        sudo apt-get install -y make
-        make && cp cmd/crowdsec/crowdsec /usr/local/bin && cp cmd/crowdsec-cli/cscli /usr/local/bin
+        sudo apt-get install -y make libre2-dev
+        make CGO_ENABLED=1 BUILD_RE_WASM=0 BUILD_STATIC=1 && cp cmd/crowdsec/crowdsec /usr/local/bin && cp cmd/crowdsec-cli/cscli /usr/local/bin
         sudo mkdir -p /etc/crowdsec && sudo cp -a config/* /etc/crowdsec
         cd hub
         cscli hubtest run modsecurity --debug || cat .tests/modsecurity/results/bucket-dump.yaml
