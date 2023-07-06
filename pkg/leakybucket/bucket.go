@@ -70,6 +70,7 @@ type Leaky struct {
 	wgPour              *sync.WaitGroup
 	wgDumpState         *sync.WaitGroup
 	mutex               *sync.Mutex //used only for TIMEMACHINE mode to allow garbage collection without races
+	orderEvent          bool
 }
 
 var BucketsPour = prometheus.NewCounterVec(
