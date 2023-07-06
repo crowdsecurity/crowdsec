@@ -37,15 +37,15 @@ require (
 	github.com/go-openapi/swag v0.19.14
 	github.com/go-openapi/validate v0.20.0
 	github.com/go-sql-driver/mysql v1.6.0
-	github.com/goccy/go-yaml v1.9.7
+	github.com/goccy/go-yaml v1.11.0
 	github.com/gofrs/uuid v4.0.0+incompatible
 	github.com/golang-jwt/jwt/v4 v4.2.0
 	github.com/google/go-querystring v1.0.0
 	github.com/google/uuid v1.3.0
 	github.com/google/winops v0.0.0-20211216095627-f0e86eb1453b
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
-	github.com/hashicorp/go-hclog v1.0.0
-	github.com/hashicorp/go-plugin v1.4.2
+	github.com/hashicorp/go-hclog v1.5.0
+	github.com/hashicorp/go-plugin v1.4.10
 	github.com/hashicorp/go-version v1.2.1
 	github.com/ivanpirog/coloredcobra v1.0.1
 	github.com/jackc/pgx/v4 v4.14.1
@@ -66,13 +66,13 @@ require (
 	github.com/r3labs/diff/v2 v2.14.1
 	github.com/segmentio/kafka-go v0.4.34
 	github.com/shirou/gopsutil/v3 v3.23.5
-	github.com/sirupsen/logrus v1.9.2
+	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.3
 	github.com/texttheater/golang-levenshtein/levenshtein v0.0.0-20200805054039-cae8b0eaed6c
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	github.com/wasilibs/go-re2 v1.3.0
-	golang.org/x/crypto v0.1.0
+	golang.org/x/crypto v0.7.0
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	golang.org/x/mod v0.11.0
 	golang.org/x/sys v0.9.0
