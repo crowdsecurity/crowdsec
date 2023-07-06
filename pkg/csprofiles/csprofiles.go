@@ -191,23 +191,20 @@ func (Profile *Runtime) EvaluateProfile(Alert *models.Alert) ([]*models.Decision
 				if err != nil {
 					return nil, matched, notification, errors.Wrapf(err, "while generating decision from profile %s", Profile.Cfg.Name)
 				}
-				for _, notification_expression := range Profile.RuntimeNotificationFilters {
+				for nfIdx, notification_expression := range Profile.RuntimeNotificationFilters {
 					if !notification {
 						break
 					}
 					notification_output, err := expr.Run(notification_expression, map[string]interface{}{"Alert": Alert})
 					if err != nil {
 						Profile.Logger.Warningf("failed to run notification expr : %v", err)
-						return nil, matched, notification, errors.Wrapf(err, "while running expression %s", Profile.Cfg.Filters[eIdx])
+						return nil, matched, notification, errors.Wrapf(err, "while running expression %s", Profile.Cfg.NotificationFilters[nfIdx])
 					}
 					switch notification_out := notification_output.(type) {
 					case bool:
-						if Profile.Cfg.Debug != nil && *Profile.Cfg.Debug {
-							Profile.DebugFilters[eIdx].Run(Profile.Logger, notification_out, map[string]interface{}{"Alert": Alert})
-						}
 						notification = notification_out
 					default:
-						return nil, matched, notification, fmt.Errorf("unexpected type %t (%v) while running '%s'", notification_output, notification_output, Profile.Cfg.NotificationFilters[eIdx])
+						return nil, matched, notification, fmt.Errorf("unexpected type %t (%v) while running '%s'", notification_output, notification_output, Profile.Cfg.NotificationFilters[nfIdx])
 					}
 				}
 				decisions = append(decisions, subdecisions...)
