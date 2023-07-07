@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/antonmedv/expr"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/mohae/deepcopy"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -356,6 +357,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			orderEvent[buckey].Add(1)
 		}
 
+		fmt.Printf("Pouring: %s", spew.Sdump(parsed.Line.Raw))
 		ok, err := PourItemToBucket(bucket, holders[idx], buckets, &parsed)
 
 		if bucket.orderEvent {
