@@ -70,6 +70,7 @@ type Flags struct {
 	WinSvc         string
 	DisableCAPI    bool
 	Transform      string
+	OrderEvent     bool
 }
 
 type labelsMap map[string]string
@@ -87,7 +88,7 @@ func LoadBuckets(cConfig *csconfig.Config) error {
 	buckets = leakybucket.NewBuckets()
 
 	log.Infof("Loading %d scenario files", len(files))
-	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, files, &bucketsTomb, buckets)
+	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, files, &bucketsTomb, buckets, flags.OrderEvent)
 
 	if err != nil {
 		return fmt.Errorf("scenario loading failed: %v", err)
@@ -110,7 +111,7 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 
 		dataSources, err = acquisition.LoadAcquisitionFromDSN(flags.OneShotDSN, flags.Labels, flags.Transform)
 		if err != nil {
-			return fmt.Errorf("failed to configure datasource for %s: %w", flags.OneShotDSN, err)
+			return errors.Wrapf(err, "failed to configure datasource for %s", flags.OneShotDSN)
 		}
 	} else {
 		dataSources, err = acquisition.LoadAcquisitionFromFile(cConfig.Crowdsec)
@@ -164,6 +165,7 @@ func (f *Flags) Parse() {
 	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
 	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
 	flag.BoolVar(&f.DisableCAPI, "no-capi", false, "disable communication with Central API")
+	flag.BoolVar(&f.OrderEvent, "order-event", false, "enforce event ordering with significant perfomance cost")
 	if runtime.GOOS == "windows" {
 		flag.StringVar(&f.WinSvc, "winsvc", "", "Windows service Action: Install, Remove etc..")
 	}
@@ -322,7 +324,7 @@ func main() {
 	}
 
 	// some features can require configuration or command-line options,
-	// so we need to parse them asap. we'll load from feature.yaml later.
+	// so wwe need to parse them asap. we'll load from feature.yaml later.
 	if err := csconfig.LoadFeatureFlagsEnv(log.StandardLogger()); err != nil {
 		log.Fatalf("failed to set feature flags from environment: %s", err)
 	}
