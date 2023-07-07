@@ -25,4 +25,17 @@ jobs:
         make CGO_ENABLED=1 BUILD_RE_WASM=0 BUILD_STATIC=1 && cp cmd/crowdsec/crowdsec /usr/local/bin && cp cmd/crowdsec-cli/cscli /usr/local/bin
         sudo mkdir -p /etc/crowdsec && sudo cp -a config/* /etc/crowdsec
         cd hub
-        cscli hubtest run --all
+        cscli hubtest run bitwarden-bf
+        cscli hubtest run bitwarden-bf
+        cscli hubtest run bitwarden-bf
+        cscli hubtest run bitwarden-bf
+        cscli hubtest run bitwarden-bf
+        cscli hubtest run bitwarden-bf
+        cscli hubtest run bitwarden-bf
+        cscli hubtest run bitwarden-bf
+        cscli hubtest run bitwarden-bf
+        cscli hubtest run bitwarden-bf
+        cscli hubtest run bitwarden-bf
+        cscli hubtest run bitwarden-bf
+        cscli hubtest run bitwarden-bf
+        cscli hubtest run bitwarden-bf
