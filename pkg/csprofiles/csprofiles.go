@@ -21,6 +21,7 @@ type Runtime struct {
 	RuntimeDurationExpr        *vm.Program                 `json:"-" yaml:"-"`
 	RuntimeNotificationFilters []*vm.Program               `json:"-" yaml:"-"`
 	DebugDurationExpr          *exprhelpers.ExprDebugger   `json:"-" yaml:"-"`
+	DebugNotificationFilters   []*exprhelpers.ExprDebugger `json:"-" yaml:"-"`
 	Cfg                        *csconfig.ProfileCfg        `json:"-" yaml:"-"`
 	Logger                     *log.Entry                  `json:"-" yaml:"-"`
 }
@@ -77,6 +78,12 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 				return []*Runtime{}, errors.Wrapf(err, "error compiling notification_filter of '%s'", profile.Name)
 			}
 			runtime.RuntimeNotificationFilters[nIdx] = notificationFilter
+			if profile.Debug != nil && *profile.Debug {
+				if debugFilter, err = exprhelpers.NewDebugger(expression, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
+					log.Debugf("Error compiling debug filter of %s : %s", profile.Name, err)
+				}
+				runtime.DebugNotificationFilters[nIdx] = debugFilter
+			}
 		}
 		if profile.DurationExpr != "" {
 			if runtimeDurationExpr, err = expr.Compile(profile.DurationExpr, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
@@ -203,6 +210,9 @@ func (Profile *Runtime) EvaluateProfile(Alert *models.Alert) ([]*models.Decision
 					}
 					switch notification_out := notification_output.(type) {
 					case bool:
+						if Profile.Cfg.Debug != nil && *Profile.Cfg.Debug {
+							Profile.DebugNotificationFilters[nfIdx].Run(Profile.Logger, notification_out, map[string]interface{}{"Alert": Alert})
+						}
 						notification = notification_out
 					default:
 						return nil, matched, notification, fmt.Errorf("unexpected type %t (%v) while running '%s'", notification_output, notification_output, Profile.Cfg.NotificationFilters[nfIdx])
