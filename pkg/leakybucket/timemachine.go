@@ -1,9 +1,11 @@
 package leakybucket
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -35,7 +37,7 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 	}
 	l.Last_ts = d
 	l.mutex.Unlock()
-
+	fmt.Printf("event: %s", spew.Sdump(msg.Line.Raw))
 	if l.Limiter.AllowN(d, 1) {
 		l.logger.Tracef("Time-Pouring event %s (tokens:%f)", d, l.Limiter.GetTokensCount())
 		l.Queue.Add(msg)
