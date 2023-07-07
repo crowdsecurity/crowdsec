@@ -49,6 +49,7 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 		runtime.RuntimeFilters = make([]*vm.Program, len(profile.Filters))
 		runtime.RuntimeNotificationFilters = make([]*vm.Program, len(profile.NotificationFilters))
 		runtime.DebugFilters = make([]*exprhelpers.ExprDebugger, len(profile.Filters))
+		runtime.DebugNotificationFilters = make([]*exprhelpers.ExprDebugger, len(profile.NotificationFilters))
 		runtime.Cfg = profile
 		if runtime.Cfg.OnSuccess != "" && runtime.Cfg.OnSuccess != "continue" && runtime.Cfg.OnSuccess != "break" {
 			return []*Runtime{}, fmt.Errorf("invalid 'on_success' for '%s': %s", profile.Name, runtime.Cfg.OnSuccess)
