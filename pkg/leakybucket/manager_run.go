@@ -353,6 +353,10 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			if orderEvent == nil {
 				orderEvent = make(map[string]*sync.WaitGroup)
 			}
+			if orderEvent[buckey] != nil {
+				orderEvent[buckey].Wait()
+			}
+
 			orderEvent[buckey] = &sync.WaitGroup{}
 			orderEvent[buckey].Add(1)
 		}

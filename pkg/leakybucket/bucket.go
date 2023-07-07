@@ -246,6 +246,7 @@ func LeakRoutine(leaky *Leaky) error {
 				msg = processor.OnBucketPour(leaky.BucketConfig)(*msg, leaky)
 				// if &msg == nil we stop processing
 				if msg == nil {
+					orderEvent[leaky.Mapkey].Done()
 					goto End
 				}
 			}
@@ -259,6 +260,7 @@ func LeakRoutine(leaky *Leaky) error {
 			for _, processor := range processors {
 				msg = processor.AfterBucketPour(leaky.BucketConfig)(*msg, leaky)
 				if msg == nil {
+					orderEvent[leaky.Mapkey].Done()
 					goto End
 				}
 			}
@@ -278,7 +280,8 @@ func LeakRoutine(leaky *Leaky) error {
 				}
 			}
 			firstEvent = false
-		/*we overflowed*/
+			/*we overflowed*/
+			orderEvent[leaky.Mapkey].Done()
 		case ofw := <-leaky.Out:
 			leaky.overflow(ofw)
 			return nil
