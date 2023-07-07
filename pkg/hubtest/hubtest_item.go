@@ -15,13 +15,13 @@ import (
 )
 
 type HubTestItemConfig struct {
-	Parsers         []string           `yaml:"parsers"`
-	Scenarios       []string           `yaml:"scenarios"`
-	PostOVerflows   []string           `yaml:"postoverflows"`
-	LogFile         string             `yaml:"log_file"`
-	LogType         string             `yaml:"log_type"`
-	Labels          map[string]string  `yaml:"labels"`
-	IgnoreParsers   bool               `yaml:"ignore_parsers"`   // if we test a scenario, we don't want to assert on Parser
+	Parsers         []string            `yaml:"parsers"`
+	Scenarios       []string            `yaml:"scenarios"`
+	PostOVerflows   []string            `yaml:"postoverflows"`
+	LogFile         string              `yaml:"log_file"`
+	LogType         string              `yaml:"log_type"`
+	Labels          map[string]string   `yaml:"labels"`
+	IgnoreParsers   bool                `yaml:"ignore_parsers"`   // if we test a scenario, we don't want to assert on Parser
 	OverrideStatics []parser.ExtraField `yaml:"override_statics"` //Allow to override statics. Executed before s00
 }
 
@@ -519,7 +519,7 @@ func (t *HubTestItem) Run() error {
 		return fmt.Errorf("Log file '%s' is empty, please fill it with log", logFile)
 	}
 
-	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--auto"}
+	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--auto", "-order-event"}
 	cscliRegisterCmd := exec.Command(t.CscliPath, cmdArgs...)
 	log.Debugf("%s", cscliRegisterCmd.String())
 	output, err := cscliRegisterCmd.CombinedOutput()
