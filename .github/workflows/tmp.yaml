@@ -39,3 +39,15 @@ jobs:
         cscli hubtest run bitwarden-bf --debug
         cscli hubtest run bitwarden-bf --debug
         cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run bitwarden-bf --debug
+        cscli hubtest run bitwarden-bf --debug
