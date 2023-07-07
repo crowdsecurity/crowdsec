@@ -519,7 +519,7 @@ func (t *HubTestItem) Run() error {
 		return fmt.Errorf("Log file '%s' is empty, please fill it with log", logFile)
 	}
 
-	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--auto", "-order-event"}
+	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--auto"}
 	cscliRegisterCmd := exec.Command(t.CscliPath, cmdArgs...)
 	log.Debugf("%s", cscliRegisterCmd.String())
 	output, err := cscliRegisterCmd.CombinedOutput()
@@ -530,7 +530,7 @@ func (t *HubTestItem) Run() error {
 		}
 	}
 
-	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", t.ResultsPath}
+	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", t.ResultsPath, "-order-event"}
 	for labelKey, labelValue := range t.Config.Labels {
 		arg := fmt.Sprintf("%s:%s", labelKey, labelValue)
 		cmdArgs = append(cmdArgs, "-label", arg)
