@@ -179,6 +179,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		wgPour:          bucketFactory.wgPour,
 		wgDumpState:     bucketFactory.wgDumpState,
 		mutex:           &sync.Mutex{},
+		orderEvent:      bucketFactory.orderEvent,
 	}
 	if l.BucketConfig.Capacity > 0 && l.BucketConfig.leakspeed != time.Duration(0) {
 		l.Duration = time.Duration(l.BucketConfig.Capacity+1) * l.BucketConfig.leakspeed
