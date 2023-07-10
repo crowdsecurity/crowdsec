@@ -2,15 +2,16 @@ package wafacquisition
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/antonmedv/expr"
 	"github.com/corazawaf/coraza/v3"
+	"github.com/corazawaf/coraza/v3/experimental"
 	corazatypes "github.com/corazawaf/coraza/v3/types"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -55,11 +56,20 @@ const (
 )
 
 type WafRunner struct {
-	outChan      chan types.Event
-	inChan       chan ParsedRequest
-	inBandWaf    coraza.WAF
-	outOfBandWaf coraza.WAF
-	UUID         string
+	outChan          chan types.Event
+	inChan           chan waf.ParsedRequest
+	inBandWaf        coraza.WAF
+	outOfBandWaf     coraza.WAF
+	UUID             string
+	RulesCollections []*waf.WafRulesCollection
+}
+
+type WafSourceConfig struct {
+	ListenAddr                        string `yaml:"listen_addr"`
+	ListenPort                        int    `yaml:"listen_port"`
+	Path                              string `yaml:"path"`
+	WafRoutines                       int    `yaml:"waf_routines"`
+	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
 type WafSource struct {
@@ -69,45 +79,13 @@ type WafSource struct {
 	server  *http.Server
 	addr    string
 	outChan chan types.Event
-	InChan  chan ParsedRequest
+	InChan  chan waf.ParsedRequest
 
-	inBandWaf    coraza.WAF
-	outOfBandWaf coraza.WAF
+	inBandWaf        coraza.WAF
+	outOfBandWaf     coraza.WAF
+	RulesCollections []*waf.WafRulesCollection
 
 	WafRunners []WafRunner
-}
-
-type ParsedRequest struct {
-	RemoteAddr       string
-	Host             string
-	ClientIP         string
-	URI              string
-	ClientHost       string
-	Headers          http.Header
-	URL              *url.URL
-	Method           string
-	Proto            string
-	Body             []byte
-	TransferEncoding []string
-	UUID             string
-	Tx               corazatypes.Transaction
-	ResponseChannel  chan ResponseRequest
-}
-
-type ResponseRequest struct {
-	ResponseChannel chan ResponseRequest
-	UUID            string
-	Tx              corazatypes.Transaction
-	Interruption    *corazatypes.Interruption
-	Err             error
-}
-
-type WafSourceConfig struct {
-	ListenAddr                        string `yaml:"listen_addr"`
-	ListenPort                        int    `yaml:"listen_port"`
-	Path                              string `yaml:"path"`
-	WafRoutines                       int    `yaml:"waf_routines"`
-	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
 func (w *WafSource) GetMetrics() []prometheus.Collector {
@@ -182,6 +160,8 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		return fmt.Errorf("cannot load WAF rules: %w", err)
 	}
 
+	w.RulesCollections = rulesCollections
+
 	var inBandRules string
 	var outOfBandRules string
 
@@ -205,7 +185,7 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		w.config.WafRoutines = 1
 	}
 
-	w.InChan = make(chan ParsedRequest)
+	w.InChan = make(chan waf.ParsedRequest)
 	w.WafRunners = make([]WafRunner, w.config.WafRoutines)
 	for nbRoutine := 0; nbRoutine < w.config.WafRoutines; nbRoutine++ {
 		w.logger.Infof("Loading %d in-band rules", len(strings.Split(inBandRules, "\n")))
@@ -233,10 +213,11 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		}
 
 		runner := WafRunner{
-			outOfBandWaf: outofbandwaf,
-			inBandWaf:    inbandwaf,
-			inChan:       w.InChan,
-			UUID:         uuid.New().String(),
+			outOfBandWaf:     outofbandwaf,
+			inBandWaf:        inbandwaf,
+			inChan:           w.InChan,
+			UUID:             uuid.New().String(),
+			RulesCollections: rulesCollections,
 		}
 		w.WafRunners[nbRoutine] = runner
 	}
@@ -310,51 +291,8 @@ func (w *WafSource) Dump() interface{} {
 	return w
 }
 
-func NewParsedRequestFromRequest(r *http.Request) (ParsedRequest, error) {
-	var body []byte
-	var err error
-
-	if r.Body != nil {
-		body = make([]byte, 0)
-		body, err = ioutil.ReadAll(r.Body)
-		if err != nil {
-			return ParsedRequest{}, fmt.Errorf("unable to read body: %s", err)
-		}
-	}
-
-	// the real source of the request is set in 'x-client-ip'
-	clientIP := r.Header.Get("X-Client-Ip")
-	// the real target Host of the request is set in 'x-client-host'
-	clientHost := r.Header.Get("X-Client-Host")
-	// the real URI of the request is set in 'x-client-uri'
-	clientURI := r.Header.Get("X-Client-Uri")
-
-	// delete those headers before coraza process the request
-	delete(r.Header, "x-client-ip")
-	delete(r.Header, "x-client-host")
-	delete(r.Header, "x-client-uri")
-
-	return ParsedRequest{
-		RemoteAddr:       r.RemoteAddr,
-		UUID:             uuid.New().String(),
-		ClientHost:       clientHost,
-		ClientIP:         clientIP,
-		URI:              clientURI,
-		Host:             r.Host,
-		Headers:          r.Header,
-		URL:              r.URL,
-		Method:           r.Method,
-		Proto:            r.Proto,
-		Body:             body,
-		TransferEncoding: r.TransferEncoding,
-		ResponseChannel:  make(chan ResponseRequest),
-	}, nil
-}
-
-func processReqWithEngine(waf coraza.WAF, r ParsedRequest, uuid string, wafType string) (*corazatypes.Interruption, corazatypes.Transaction, error) {
+func processReqWithEngine(tx experimental.FullTransaction, r waf.ParsedRequest, wafType string) (*corazatypes.Interruption, experimental.FullTransaction, error) {
 	var in *corazatypes.Interruption
-	tx := waf.NewTransactionWithID(uuid)
-
 	if tx.IsRuleEngineOff() {
 		log.Printf("engine is off")
 		return nil, nil, nil
@@ -372,7 +310,6 @@ func processReqWithEngine(waf coraza.WAF, r ParsedRequest, uuid string, wafType 
 	//txx := experimental.ToFullInterface(tx)
 	//txx = tx.(experimental.FullTransaction)
 	//txx.RemoveRuleByID(1)
-
 	tx.ProcessConnection(r.ClientIP, 0, "", 0)
 
 	//tx.ProcessURI(r.URL.String(), r.Method, r.Proto) //FIXME: get it from the headers
@@ -395,12 +332,15 @@ func processReqWithEngine(waf coraza.WAF, r ParsedRequest, uuid string, wafType 
 	}
 
 	in = tx.ProcessRequestHeaders()
+
 	//spew.Dump(in)
 	//spew.Dump(tx.MatchedRules())
 
-	/*for _, rule := range tx.MatchedRules() {
-		spew.Dump(rule.Rule())
-	}*/
+	for _, rule := range tx.MatchedRules() {
+		if rule.Message() == "" {
+			continue
+		}
+	}
 
 	//if we're inband, we should stop here, but for outofband go to the end
 	if in != nil && wafType == InBand {
@@ -451,17 +391,105 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 			WafReqCounter.With(prometheus.Labels{"source": request.RemoteAddr}).Inc()
 			//measure the time spent in the WAF
 			startParsing := time.Now()
-			in, tx, err := processReqWithEngine(r.inBandWaf, request, request.UUID, InBand)
-			response := ResponseRequest{
-				Tx:           tx,
-				Interruption: in,
-				Err:          err,
-				UUID:         request.UUID,
+			inBoundTx := r.inBandWaf.NewTransactionWithID(request.UUID)
+			expTx := inBoundTx.(experimental.FullTransaction)
+			// we use this internal transaction for the expr helpers
+			tx := waf.NewTransaction(expTx)
+
+			//Run the pre_eval hooks
+			for _, rules := range r.RulesCollections {
+				if len(rules.CompiledPreEval) == 0 {
+					continue
+				}
+				for _, compiledHook := range rules.CompiledPreEval {
+					if compiledHook.Filter != nil {
+						res, err := expr.Run(compiledHook.Filter, map[string]interface{}{
+							"rules": rules,
+							"req":   request,
+						})
+						if err != nil {
+							log.Errorf("unable to run PreEval filter: %s", err)
+							continue
+						}
+
+						switch t := res.(type) {
+						case bool:
+							if t == false {
+								log.Infof("filter didnt match")
+								continue
+							}
+						default:
+							log.Errorf("Filter must return a boolean, can't filter")
+							continue
+						}
+					}
+					// here means there is no filter or the filter matched
+					for _, applyExpr := range compiledHook.Apply {
+						_, err := expr.Run(applyExpr, map[string]interface{}{
+							"rules":          rules,
+							"req":            request,
+							"RemoveRuleByID": tx.RemoveRuleByIDWithError,
+						})
+						if err != nil {
+							log.Errorf("unable to apply filter: %s", err)
+							continue
+						}
+					}
+				}
 			}
+
+			in, expTx, err := processReqWithEngine(expTx, request, InBand)
+			request.Tx = expTx
+
+			response := waf.NewResponseRequest(expTx, in, request.UUID, err)
+
+			// run the on_match hooks
+			for _, rules := range r.RulesCollections {
+				if len(rules.CompiledOnMatch) == 0 {
+					continue
+				}
+				for _, compiledHook := range rules.CompiledOnMatch {
+					if compiledHook.Filter != nil {
+						res, err := expr.Run(compiledHook.Filter, map[string]interface{}{
+							"rules": rules,
+							"req":   request,
+						})
+						if err != nil {
+							log.Errorf("unable to run PreEval filter: %s", err)
+							continue
+						}
+
+						switch t := res.(type) {
+						case bool:
+							if t == false {
+								continue
+							}
+						default:
+							log.Errorf("Filter must return a boolean, can't filter")
+							continue
+						}
+					}
+					// here means there is no filter or the filter matched
+					for _, applyExpr := range compiledHook.Apply {
+						_, err := expr.Run(applyExpr, map[string]interface{}{
+							"rules":              rules,
+							"req":                request,
+							"RemoveRuleByID":     tx.RemoveRuleByIDWithError,
+							"SetRemediation":     response.SetRemediation,
+							"SetRemediationByID": response.SetRemediationByID,
+							"CancelEvent":        response.CancelEvent,
+						})
+						if err != nil {
+							log.Errorf("unable to apply filter: %s", err)
+							continue
+						}
+					}
+				}
+			}
+
 			// send back the result to the HTTP handler for the InBand part
 			request.ResponseChannel <- response
-			if in != nil {
-				request.Tx = tx
+			if in != nil && response.SendEvents {
 				// Generate the events for InBand channel
 				events, err := TxToEvents(request, InBand)
 				if err != nil {
@@ -475,13 +503,15 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 			}
 
 			// Process outBand
-			in, tx, err = processReqWithEngine(r.outOfBandWaf, request, request.UUID, OutOfBand)
+			outBandTx := r.outOfBandWaf.NewTransactionWithID(request.UUID)
+			expTx = outBandTx.(experimental.FullTransaction)
+			in, expTx, err = processReqWithEngine(expTx, request, OutOfBand)
 			if err != nil { //things went south
 				log.Errorf("Error while processing request : %s", err)
 				continue
 			}
-			request.Tx = tx
-			if tx != nil && len(tx.MatchedRules()) > 0 {
+			request.Tx = expTx
+			if expTx != nil && len(expTx.MatchedRules()) > 0 {
 				events, err := TxToEvents(request, OutOfBand)
 				log.Infof("Request triggered by WAF, %d events to send", len(events))
 				for _, evt := range events {
@@ -499,9 +529,13 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 	}
 }
 
+type BodyResponse struct {
+	Action string `json:"action"`
+}
+
 func (w *WafSource) wafHandler(rw http.ResponseWriter, r *http.Request) {
 	// parse the request only once
-	parsedRequest, err := NewParsedRequestFromRequest(r)
+	parsedRequest, err := waf.NewParsedRequestFromRequest(r)
 	if err != nil {
 		log.Errorf("%s", err)
 		rw.WriteHeader(http.StatusForbidden)
@@ -519,10 +553,22 @@ func (w *WafSource) wafHandler(rw http.ResponseWriter, r *http.Request) {
 
 	if message.Interruption != nil {
 		rw.WriteHeader(http.StatusForbidden)
+		body, err := json.Marshal(BodyResponse{Action: message.Interruption.Action})
+		if err != nil {
+			log.Errorf("unable to build response: %s", err)
+		} else {
+			rw.Write(body)
+		}
 		return
 	}
 
 	rw.WriteHeader(http.StatusOK)
+	body, err := json.Marshal(BodyResponse{Action: "allow"})
+	if err != nil {
+		log.Errorf("unable to build response: %s", err)
+	} else {
+		rw.Write(body)
+	}
 
 	return
 }

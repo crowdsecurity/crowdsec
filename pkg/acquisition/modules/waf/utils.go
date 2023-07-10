@@ -8,11 +8,13 @@ import (
 
 	corazatypes "github.com/corazawaf/coraza/v3/types"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/waf"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
 )
 
-func TxToEvents(r ParsedRequest, kind string) ([]types.Event, error) {
+func TxToEvents(r waf.ParsedRequest, kind string) ([]types.Event, error) {
 	evts := []types.Event{}
 	if r.Tx == nil {
 		return nil, fmt.Errorf("tx is nil")
@@ -34,7 +36,7 @@ func TxToEvents(r ParsedRequest, kind string) ([]types.Event, error) {
 }
 
 // Transforms a coraza interruption to a crowdsec event
-func RuleMatchToEvent(rule corazatypes.MatchedRule, tx corazatypes.Transaction, r ParsedRequest, kind string) (types.Event, error) {
+func RuleMatchToEvent(rule corazatypes.MatchedRule, tx corazatypes.Transaction, r waf.ParsedRequest, kind string) (types.Event, error) {
 	evt := types.Event{}
 	//we might want to change this based on in-band vs out-of-band ?
 	evt.Type = types.LOG
@@ -42,7 +44,7 @@ func RuleMatchToEvent(rule corazatypes.MatchedRule, tx corazatypes.Transaction, 
 	//def needs fixing
 	evt.Stage = "s00-raw"
 	evt.Process = true
-
+	log.Infof("SOURCE IP: %+v", rule)
 	//we build a big-ass object that is going to be marshaled in line.raw and unmarshaled later.
 	//why ? because it's more consistent with the other data-sources etc. and it provides users with flexibility to alter our parsers
 	CorazaEvent := map[string]interface{}{
