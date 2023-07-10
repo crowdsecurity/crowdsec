@@ -355,13 +355,15 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			}
 			if orderEvent[buckey] != nil {
 				orderEvent[buckey].Wait()
+			} else {
+				orderEvent[buckey] = &sync.WaitGroup{}
 			}
 
-			orderEvent[buckey] = &sync.WaitGroup{}
 			orderEvent[buckey].Add(1)
 		}
 
 		fmt.Printf("Pouring: %s", spew.Sdump(parsed.Line.Raw))
+		fmt.Printf("debug: %s", spew.Sdump(orderEvent[buckey]))
 		ok, err := PourItemToBucket(bucket, holders[idx], buckets, &parsed)
 
 		if bucket.orderEvent {
