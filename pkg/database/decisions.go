@@ -108,7 +108,7 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 	}
 	query, err = applyStartIpEndIpFilter(query, contains, ip_sz, start_ip, start_sfx, end_ip, end_sfx)
 	if err != nil {
-		return nil, errors.Wrapf(err, "fail to apply StartIpEndIpFilter")
+		return nil, fmt.Errorf("fail to apply StartIpEndIpFilter: %w", err)
 	}
 	return query, nil
 }

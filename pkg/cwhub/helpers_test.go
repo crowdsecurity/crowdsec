@@ -25,7 +25,7 @@ func TestUpgradeConfigNewScenarioInCollection(t *testing.T) {
 	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].UpToDate)
 	require.False(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Tainted)
 
-	// This is the sceanrio that gets added in next version of collection
+	// This is the scenario that gets added in next version of collection
 	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/barfoo_scenario"].Downloaded)
 	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/barfoo_scenario"].Installed)
 
@@ -54,7 +54,7 @@ func TestUpgradeConfigNewScenarioInCollection(t *testing.T) {
 
 // Install a collection, disable a scenario.
 // Upgrade should install should not enable/download the disabled scenario.
-func TestUpgradeConfigInDisabledSceanarioShouldNotBeInstalled(t *testing.T) {
+func TestUpgradeConfigInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 	cfg := envSetup(t)
 	defer envTearDown(cfg)
 
@@ -134,7 +134,7 @@ func TestUpgradeConfigNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *
 
 	// collection receives an update. It now adds new scenario "crowdsecurity/barfoo_scenario"
 	// we now attempt to upgrade the collection, however it shouldn't install the foobar_scenario
-	// we just removed. Nor should it install the newly added sceanrio
+	// we just removed. Nor should it install the newly added scenario
 	pushUpdateToCollectionInHub()
 
 	if err := UpdateHubIdx(cfg.Hub); err != nil {

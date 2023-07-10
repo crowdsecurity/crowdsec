@@ -78,6 +78,9 @@ endif
 
 GO_TAGS := netgo,osusergo,sqlite_omit_load_extension
 
+# this will be used by Go in the make target, some distributions require it
+export PKG_CONFIG_PATH:=/usr/local/lib/pkgconfig:$(PKG_CONFIG_PATH)
+
 ifeq ($(call bool,$(BUILD_RE2_WASM)),0)
 ifeq ($(PKG_CONFIG),)
   $(error "pkg-config is not available. Please install pkg-config.")

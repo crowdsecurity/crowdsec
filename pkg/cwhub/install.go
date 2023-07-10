@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -17,7 +16,7 @@ func purgeItem(hub *csconfig.Hub, target Item) (Item, error) {
 
 	// disable hub file
 	if err := os.Remove(hubpath); err != nil {
-		return target, errors.Wrap(err, "while removing file")
+		return target, fmt.Errorf("while removing file: %w", err)
 	}
 
 	target.Downloaded = false
@@ -73,7 +72,7 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 					if toRemove {
 						hubIdx[ptrtype][p], err = DisableItem(hub, val, purge, force)
 						if err != nil {
-							return target, errors.Wrap(err, fmt.Sprintf("while disabling %s", p))
+							return target, fmt.Errorf("while disabling %s: %w", p, err)
 						}
 					} else {
 						log.Infof("%s was not removed because it belongs to another collection", val.Name)
@@ -98,11 +97,11 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 		}
 		hubpath, err := os.Readlink(syml)
 		if err != nil {
-			return target, errors.Wrap(err, "while reading symlink")
+			return target, fmt.Errorf("while reading symlink: %w", err)
 		}
 		absPath, err := filepath.Abs(hdir + "/" + target.RemotePath)
 		if err != nil {
-			return target, errors.Wrap(err, "while abs path")
+			return target, fmt.Errorf("while abs path: %w", err)
 		}
 		if hubpath != absPath {
 			log.Warningf("%s (%s) isn't a symlink to %s", target.Name, syml, absPath)
@@ -111,7 +110,7 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 
 		//remove the symlink
 		if err = os.Remove(syml); err != nil {
-			return target, errors.Wrap(err, "while removing symlink")
+			return target, fmt.Errorf("while removing symlink: %w", err)
 		}
 		log.Infof("Removed symlink [%s] : %s", target.Name, syml)
 	}
@@ -151,7 +150,7 @@ func EnableItem(hub *csconfig.Hub, target Item) (Item, error) {
 	if _, err := os.Stat(parent_dir); os.IsNotExist(err) {
 		log.Printf("%s doesn't exist, create", parent_dir)
 		if err := os.MkdirAll(parent_dir, os.ModePerm); err != nil {
-			return target, errors.Wrap(err, "while creating directory")
+			return target, fmt.Errorf("while creating directory: %w", err)
 		}
 	}
 
@@ -163,12 +162,12 @@ func EnableItem(hub *csconfig.Hub, target Item) (Item, error) {
 			for _, p := range ptr {
 				val, ok := hubIdx[ptrtype][p]
 				if !ok {
-					return target, fmt.Errorf("required %s %s of %s doesn't exist, abort.", ptrtype, p, target.Name)
+					return target, fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
 				}
 
 				hubIdx[ptrtype][p], err = EnableItem(hub, val)
 				if err != nil {
-					return target, errors.Wrap(err, fmt.Sprintf("while installing %s", p))
+					return target, fmt.Errorf("while installing %s: %w", p, err)
 				}
 			}
 		}
@@ -183,16 +182,16 @@ func EnableItem(hub *csconfig.Hub, target Item) (Item, error) {
 	//tdir+target.RemotePath
 	srcPath, err := filepath.Abs(hdir + "/" + target.RemotePath)
 	if err != nil {
-		return target, errors.Wrap(err, "while getting source path")
+		return target, fmt.Errorf("while getting source path: %w", err)
 	}
 
 	dstPath, err := filepath.Abs(parent_dir + "/" + target.FileName)
 	if err != nil {
-		return target, errors.Wrap(err, "while getting destination path")
+		return target, fmt.Errorf("while getting destination path: %w", err)
 	}
 
 	if err = os.Symlink(srcPath, dstPath); err != nil {
-		return target, errors.Wrap(err, fmt.Sprintf("while creating symlink from %s to %s", srcPath, dstPath))
+		return target, fmt.Errorf("while creating symlink from %s to %s: %w", srcPath, dstPath, err)
 	}
 
 	log.Printf("Enabled %s : %s", target.Type, target.Name)

@@ -62,12 +62,6 @@ check_daemonizer() {
 
 echo "Checking requirements..."
 
-GOBIN=${TEST_DIR}/tools
-export GOBIN
-go install github.com/mikefarah/yq/v4@latest
-go install github.com/cloudflare/cfssl/cmd/cfssl@master
-go install github.com/cloudflare/cfssl/cmd/cfssljson@master
-
 check_bats_core
 check_curl
 check_daemonizer
