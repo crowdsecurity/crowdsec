@@ -11,13 +11,13 @@ include mk/gmsl
 # MacOS:         brew install re2
 
 # To build without re2, run "make BUILD_RE2_WASM=1"
-# The WASM version works just as well but might have performance issues, XXX: clarify
-# so it is not recommended for production use.
+# The WASM version is slower and introduces a short delay when starting a process
+# (including cscli) so it is not recommended for production use.
 BUILD_RE2_WASM ?= 0
 
 # To build static binaries, run "make BUILD_STATIC=1".
-# On some platforms, this requires
-# additional packages (e.g. glibc-static and libstdc++-static on fedora, centos..).
+# On some platforms, this requires additional packages
+# (e.g. glibc-static and libstdc++-static on fedora, centos.. which are on the powertools/crb repository).
 # If the static build fails at the link stage, it might be because the static library is not provided
 # for your distribution (look for libre2.a). See the Dockerfile for an example of how to build it.
 BUILD_STATIC ?= 0
@@ -77,7 +77,8 @@ LD_OPTS_VARS += -X '$(GO_MODULE_NAME)/pkg/cwversion.System=docker'
 endif
 
 GO_TAGS := netgo,osusergo,sqlite_omit_load_extension
-# this will be used by Go in the make target
+
+# this will be used by Go in the make target, some distributions require it
 export PKG_CONFIG_PATH:=/usr/local/lib/pkgconfig:$(PKG_CONFIG_PATH)
 
 ifeq ($(call bool,$(BUILD_RE2_WASM)),0)
@@ -115,6 +116,7 @@ endif
 .PHONY: build
 build: pre-build goversion crowdsec cscli plugins
 
+# Sanity checks and build information
 .PHONY: pre-build
 pre-build:
 	$(info Building $(BUILD_VERSION) ($(BUILD_TAG)) $(BUILD_TYPE) for $(GOOS)/$(GOARCH))
@@ -166,6 +168,7 @@ testclean: bats-clean
 	@$(RM) pkg/cwhub/install $(WIN_IGNORE_ERR)
 	@$(RM) pkg/types/example.txt $(WIN_IGNORE_ERR)
 
+# for the tests with localstack
 export AWS_ENDPOINT_FORCE=http://localhost:4566
 export AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
 export AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
@@ -173,15 +176,18 @@ export AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 testenv:
 	@echo 'NOTE: You need Docker, docker-compose and run "make localstack" in a separate shell ("make localstack-stop" to terminate it)'
 
+# run the tests with localstack
 .PHONY: test
 test: testenv goversion
 	$(GOTEST) $(LD_OPTS) ./...
 
+# run the tests with localstack and coverage
 .PHONY: go-acc
 go-acc: testenv goversion
 	go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models -- $(LD_OPTS) | \
 		sed 's/ *coverage:.*of statements in.*//'
 
+# mock AWS services
 .PHONY: localstack
 localstack:
 	docker-compose -f test/localstack/docker-compose.yml up
@@ -193,6 +199,7 @@ localstack-stop:
 # list of plugins that contain go.mod
 PLUGIN_VENDOR = $(foreach plugin,$(PLUGINS),$(shell if [ -f $(PLUGINS_DIR)/$(plugin)/go.mod ]; then echo $(PLUGINS_DIR)/$(plugin); fi))
 
+# build vendor.tgz to be distributed with the release
 .PHONY: vendor
 vendor:
 	$(foreach plugin_dir,$(PLUGIN_VENDOR), \
@@ -203,6 +210,7 @@ vendor:
 	$(GOCMD) mod vendor
 	tar -czf vendor.tgz vendor $(foreach plugin_dir,$(PLUGIN_VENDOR),$(plugin_dir)/vendor)
 
+# remove vendor directories and vendor.tgz
 .PHONY: vendor-remove
 vendor-remove:
 	$(foreach plugin_dir,$(PLUGIN_VENDOR), \
@@ -239,13 +247,16 @@ else
 	@if (Test-Path -Path $(RELDIR)) { echo "$(RELDIR) already exists, abort" ;  exit 1 ; }
 endif
 
+# build a release tarball
 .PHONY: release
 release: check_release build package
 
+# build the windows installer
 .PHONY: windows_installer
 windows_installer: build
 	@.\make_installer.ps1 -version $(BUILD_VERSION)
 
+# build the chocolatey package
 .PHONY: chocolatey
 chocolatey: windows_installer
 	@.\make_chocolatey.ps1 -version $(BUILD_VERSION)

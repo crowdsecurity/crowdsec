@@ -1,6 +1,0 @@
-#!/bin/sh
-unset IFS
-set -euf
-
-sudo dnf -y install dnf-plugins-core
-dnf config-manager --set-enabled crb

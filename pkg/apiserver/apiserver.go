@@ -106,7 +106,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	var flushScheduler *gocron.Scheduler
 	dbClient, err := database.NewClient(config.DbConfig)
 	if err != nil {
-		return &APIServer{}, errors.Wrap(err, "unable to init database client")
+		return &APIServer{}, fmt.Errorf("unable to init database client: %w", err)
 	}
 
 	if config.DbConfig.Flush != nil {
@@ -129,7 +129,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	if config.TrustedProxies != nil && config.UseForwardedForHeaders {
 		if err := router.SetTrustedProxies(*config.TrustedProxies); err != nil {
-			return &APIServer{}, errors.Wrap(err, "while setting trusted_proxies")
+			return &APIServer{}, fmt.Errorf("while setting trusted_proxies: %w", err)
 		}
 		router.ForwardedByClientIP = true
 	} else {
@@ -140,7 +140,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	clog := log.New()
 
 	if err := types.ConfigureLogger(clog); err != nil {
-		return nil, errors.Wrap(err, "while configuring gin logger")
+		return nil, fmt.Errorf("while configuring gin logger: %w", err)
 	}
 	if config.LogLevel != nil {
 		clog.SetLevel(*config.LogLevel)
@@ -305,7 +305,7 @@ func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
 			log.Infof("(tls) Client Auth Type set to %s", clientAuthType.String())
 			caCert, err = os.ReadFile(s.TLS.CACertPath)
 			if err != nil {
-				return nil, errors.Wrap(err, "Error opening cert file")
+				return nil, fmt.Errorf("while opening cert file: %w", err)
 			}
 			caCertPool, err = x509.SystemCertPool()
 			if err != nil {
@@ -330,7 +330,7 @@ func (s *APIServer) Run(apiReady chan bool) error {
 	defer trace.CatchPanic("lapi/runServer")
 	tlsCfg, err := s.GetTLSConfig()
 	if err != nil {
-		return errors.Wrap(err, "while creating TLS config")
+		return fmt.Errorf("while creating TLS config: %w", err)
 	}
 	s.httpServer = &http.Server{
 		Addr:      s.URL,
@@ -448,7 +448,7 @@ func (s *APIServer) Shutdown() error {
 	}
 	s.httpServerTomb.Kill(nil)
 	if err := s.httpServerTomb.Wait(); err != nil {
-		return errors.Wrap(err, "while waiting on httpServerTomb")
+		return fmt.Errorf("while waiting on httpServerTomb: %w", err)
 	}
 	return nil
 }
@@ -461,7 +461,7 @@ func (s *APIServer) InitController() error {
 
 	err := s.controller.Init()
 	if err != nil {
-		return errors.Wrap(err, "controller init")
+		return fmt.Errorf("controller init: %w", err)
 	}
 	if s.TLS != nil {
 		var cacheExpiration time.Duration
@@ -477,7 +477,7 @@ func (s *APIServer) InitController() error {
 				"type":      "agent",
 			}))
 		if err != nil {
-			return errors.Wrap(err, "while creating TLS auth for agents")
+			return fmt.Errorf("while creating TLS auth for agents: %w", err)
 		}
 		s.controller.HandlerV1.Middlewares.APIKey.TlsAuth, err = v1.NewTLSAuth(s.TLS.AllowedBouncersOU, s.TLS.CRLPath,
 			cacheExpiration,
@@ -486,7 +486,7 @@ func (s *APIServer) InitController() error {
 				"type":      "bouncer",
 			}))
 		if err != nil {
-			return errors.Wrap(err, "while creating TLS auth for bouncers")
+			return fmt.Errorf("while creating TLS auth for bouncers: %w", err)
 		}
 	}
 	return err

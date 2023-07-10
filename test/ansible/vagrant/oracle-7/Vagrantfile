@@ -2,6 +2,9 @@
 
 Vagrant.configure('2') do |config|
   config.vm.box = 'generic/oracle7'
+  config.vm.provision "shell", inline: <<-SHELL
+    sudo yum-config-manager --enable ol7_optional_latest
+  SHELL
 end
 
 common = '../common'

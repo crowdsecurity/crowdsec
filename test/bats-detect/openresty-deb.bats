@@ -37,8 +37,13 @@ setup() {
         run -0 sudo gpg --yes --dearmor -o /usr/share/keyrings/openresty.gpg < <(output)
         run -0 sudo tee <<< "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/openresty.gpg] http://openresty.org/package/ubuntu $(lsb_release -sc) main" /etc/apt/sources.list.d/openresty.list
     else
+        release="$(lsb_release -sc)"
+        # Debian 12 package is not available as of 2023-07-3
+        if [[ "$release" == "bookworm" ]]; then
+            release="bullseye"
+        fi
         run -0 sudo apt-key add - < <(output)
-        run -0 sudo tee <<< "deb http://openresty.org/package/debian $(lsb_release -sc) openresty" /etc/apt/sources.list.d/openresty.list
+        run -0 sudo tee <<< "deb http://openresty.org/package/debian $release openresty" /etc/apt/sources.list.d/openresty.list
     fi
     run -0 deb-update
     run -0 deb-install openresty

@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 Vagrant.configure('2') do |config|
-   config.vm.box = "fedora/38-cloud-base"
+  config.vm.box = "fedora/38-cloud-base"
+  config.vm.provision "shell", inline: <<-SHELL
+  SHELL
 end
 
 common = '../common'
