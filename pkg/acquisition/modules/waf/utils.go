@@ -10,6 +10,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -23,6 +24,7 @@ func TxToEvents(r waf.ParsedRequest, kind string) ([]types.Event, error) {
 		if rule.Message() == "" {
 			continue
 		}
+		WafRuleHits.With(prometheus.Labels{"rule_id": fmt.Sprintf("%d", rule.Rule().ID()), "type": kind}).Inc()
 		evt, err := RuleMatchToEvent(rule, r.Tx, r, kind)
 		if err != nil {
 			return nil, errors.Wrap(err, "Cannot convert rule match to event")

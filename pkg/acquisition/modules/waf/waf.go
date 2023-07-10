@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/antonmedv/expr"
 	"github.com/corazawaf/coraza/v3"
@@ -61,6 +62,49 @@ type WafSource struct {
 
 	WafRunners []WafRunner
 }
+
+var WafGlobalParsingHistogram = prometheus.NewHistogramVec(
+	prometheus.HistogramOpts{
+		Help:    "Time spent processing a request by the WAF.",
+		Name:    "cs_waf_parsing_time_seconds",
+		Buckets: []float64{0.0005, 0.001, 0.0015, 0.002, 0.0025, 0.003, 0.004, 0.005, 0.0075, 0.01},
+	},
+	[]string{"source"},
+)
+
+var WafInbandParsingHistogram = prometheus.NewHistogramVec(
+	prometheus.HistogramOpts{
+		Help:    "Time spent processing a request by the inband WAF.",
+		Name:    "cs_waf_inband_parsing_time_seconds",
+		Buckets: []float64{0.0005, 0.001, 0.0015, 0.002, 0.0025, 0.003, 0.004, 0.005, 0.0075, 0.01},
+	},
+	[]string{"source"},
+)
+
+var WafOutbandParsingHistogram = prometheus.NewHistogramVec(
+	prometheus.HistogramOpts{
+		Help:    "Time spent processing a request by the WAF.",
+		Name:    "cs_waf_outband_parsing_time_seconds",
+		Buckets: []float64{0.0005, 0.001, 0.0015, 0.002, 0.0025, 0.003, 0.004, 0.005, 0.0075, 0.01},
+	},
+	[]string{"source"},
+)
+
+var WafReqCounter = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_waf_reqs_total",
+		Help: "Total events processed by the WAF.",
+	},
+	[]string{"source"},
+)
+
+var WafRuleHits = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_waf_rule_hits",
+		Help: "Count of triggered rule, by rule_id and type (inband/outofband).",
+	},
+	[]string{"rule_id", "type"},
+)
 
 func (w *WafSource) GetMetrics() []prometheus.Collector {
 	return nil
@@ -362,6 +406,9 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 			log.Infof("Waf Runner is dying")
 			return nil
 		case request := <-r.inChan:
+			WafReqCounter.With(prometheus.Labels{"source": request.RemoteAddr}).Inc()
+			//measure the time spent in the WAF
+			startParsing := time.Now()
 			inBoundTx := r.inBandWaf.NewTransactionWithID(request.UUID)
 			expTx := inBoundTx.(experimental.FullTransaction)
 			// we use this internal transaction for the expr helpers
@@ -457,7 +504,9 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 					}
 				}
 			}
-
+			//measure the full time spent in the WAF
+			elapsed := time.Since(startParsing)
+			WafInbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddr}).Observe(elapsed.Seconds())
 			// send back the result to the HTTP handler for the InBand part
 			request.ResponseChannel <- response
 			if in != nil && response.SendEvents {
@@ -473,6 +522,7 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 				}
 			}
 
+			outBandStart := time.Now()
 			// Process outBand
 			outBandTx := r.outOfBandWaf.NewTransactionWithID(request.UUID)
 			expTx = outBandTx.(experimental.FullTransaction)
@@ -493,6 +543,11 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 					continue
 				}
 			}
+			//measure the full time spent in the WAF
+			totalElapsed := time.Since(startParsing)
+			WafGlobalParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddr}).Observe(totalElapsed.Seconds())
+			elapsed = time.Since(outBandStart)
+			WafOutbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddr}).Observe(elapsed.Seconds())
 		}
 	}
 }
