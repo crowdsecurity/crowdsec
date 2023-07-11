@@ -14,6 +14,53 @@ const (
 	OVFLW
 )
 
+/*
+ 1. If user triggered a rule that is for a CVE, that has high confidence and that is blocking, ban
+ 2. If user triggered 3 distinct rules with medium confidence accross 3 different requests, ban
+
+
+any(evt.Waf.ByTag("CVE"), {.confidence == "high" && .action == "block"})
+
+len(evt.Waf.ByTagRx("*CVE*").ByConfidence("high").ByAction("block")) > 1
+
+*/
+
+var WAAP_KEY = "coraza_rules"
+
+type WaapEvent []map[string]interface{}
+
+func (w WaapEvent) ByID(id int) WaapEvent {
+	waap := WaapEvent{}
+
+	for _, rule := range w {
+		if rule["id"] == id {
+			waap = append(waap, rule)
+		}
+	}
+	return waap
+}
+
+func (w WaapEvent) IDs() []int {
+	ret := make([]int, 0)
+	for _, rule := range w {
+		ret = append(ret, rule["id"].(int))
+	}
+	return ret
+}
+
+/*
+ - evt.Waf.ByConfid
+*/
+
+//all(evt.Waf.ByTag("toto"), {.id == 1234})
+//evt.Waf.ByID(1234).Message()
+//evt.Waf.ByID(1234).ByID(2345).Message()
+
+//evt.Waf.GetRulesByTag("sql-injection").Names()
+
+// func (w *WaapEvent) GetRuleById() []string {
+// }
+
 // Event is the structure representing a runtime event (log or overflow)
 type Event struct {
 	/* is it a log or an overflow */
@@ -39,6 +86,7 @@ type Event struct {
 	StrTimeFormat string       `yaml:"StrTimeFormat,omitempty" json:"StrTimeFormat,omitempty"`
 	MarshaledTime string       `yaml:"MarshaledTime,omitempty" json:"MarshaledTime,omitempty"`
 	Process       bool         `yaml:"Process,omitempty" json:"Process,omitempty"` //can be set to false to avoid processing line
+	Waap          WaapEvent    `yaml:"Waap,omitempty" json:"Waap,omitempty"`
 	/* Meta is the only part that will make it to the API - it should be normalized */
 	Meta map[string]string `yaml:"Meta,omitempty" json:"Meta,omitempty"`
 }
