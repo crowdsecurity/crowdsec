@@ -44,7 +44,11 @@ func RuleMatchToEvent(rule corazatypes.MatchedRule, tx corazatypes.Transaction, 
 	//def needs fixing
 	evt.Stage = "s00-raw"
 	evt.Process = true
-	log.Infof("SOURCE IP: %+v", rule)
+	log.WithFields(log.Fields{
+		"module": "waf",
+		"source": rule.ClientIPAddress(),
+		"id":     rule.Rule().ID(),
+	}).Infof("%s", rule.Message())
 	//we build a big-ass object that is going to be marshaled in line.raw and unmarshaled later.
 	//why ? because it's more consistent with the other data-sources etc. and it provides users with flexibility to alter our parsers
 	CorazaEvent := map[string]interface{}{
