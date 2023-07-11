@@ -165,7 +165,7 @@ func (f *Flags) Parse() {
 	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
 	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
 	flag.BoolVar(&f.DisableCAPI, "no-capi", false, "disable communication with Central API")
-	flag.BoolVar(&f.OrderEvent, "order-event", false, "enforce event ordering with significant perfomance cost")
+	flag.BoolVar(&f.OrderEvent, "order-event", false, "enforce event ordering with significant performance cost")
 	if runtime.GOOS == "windows" {
 		flag.StringVar(&f.WinSvc, "winsvc", "", "Windows service Action: Install, Remove etc..")
 	}
