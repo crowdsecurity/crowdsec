@@ -1,42 +1,18 @@
 package wafacquisition
 
 import (
-	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
-	corazatypes "github.com/corazawaf/coraza/v3/types"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/corazawaf/coraza/v3/experimental"
+	types "github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
-	"github.com/pkg/errors"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
 
-func TxToEvents(r waf.ParsedRequest, kind string) ([]types.Event, error) {
-	evts := []types.Event{}
-	if r.Tx == nil {
-		return nil, fmt.Errorf("tx is nil")
-	}
-	for _, rule := range r.Tx.MatchedRules() {
-		//log.Printf("rule %d", idx)
-		if rule.Message() == "" {
-			continue
-		}
-		WafRuleHits.With(prometheus.Labels{"rule_id": fmt.Sprintf("%d", rule.Rule().ID()), "type": kind}).Inc()
-		evt, err := RuleMatchToEvent(rule, r.Tx, r, kind)
-		if err != nil {
-			return nil, errors.Wrap(err, "Cannot convert rule match to event")
-		}
-		evts = append(evts, evt)
-	}
-
-	return evts, nil
-}
-
-// Transforms a coraza interruption to a crowdsec event
-func RuleMatchToEvent(rule corazatypes.MatchedRule, tx corazatypes.Transaction, r waf.ParsedRequest, kind string) (types.Event, error) {
+func EventFromRequest(r waf.ParsedRequest) (types.Event, error) {
 	evt := types.Event{}
 	//we might want to change this based on in-band vs out-of-band ?
 	evt.Type = types.LOG
@@ -44,39 +20,12 @@ func RuleMatchToEvent(rule corazatypes.MatchedRule, tx corazatypes.Transaction, 
 	//def needs fixing
 	evt.Stage = "s00-raw"
 	evt.Process = true
-	log.WithFields(log.Fields{
-		"module": "waf",
-		"source": rule.ClientIPAddress(),
-		"id":     rule.Rule().ID(),
-	}).Infof("%s", rule.Message())
-	//we build a big-ass object that is going to be marshaled in line.raw and unmarshaled later.
-	//why ? because it's more consistent with the other data-sources etc. and it provides users with flexibility to alter our parsers
-	CorazaEvent := map[string]interface{}{
-		//core rule info
-		"rule_type": kind,
-		"rule_id":   rule.Rule().ID(),
-		//"rule_action":     tx.Interruption().Action,
-		"rule_disruptive": rule.Disruptive(),
-		"rule_tags":       rule.Rule().Tags(),
-		"rule_file":       rule.Rule().File(),
-		"rule_file_line":  rule.Rule().Line(),
-		"rule_revision":   rule.Rule().Revision(),
-		"rule_secmark":    rule.Rule().SecMark(),
-		"rule_accuracy":   rule.Rule().Accuracy(),
-
-		//http contextual infos
-		"upstream_addr": r.RemoteAddr,
-		"req_uuid":      tx.ID(),
-		"source_ip":     strings.Split(rule.ClientIPAddress(), ":")[0],
-		"uri":           rule.URI(),
-	}
-
-	if tx.Interruption() != nil {
-		CorazaEvent["rule_action"] = tx.Interruption().Action
-	}
-	corazaEventB, err := json.Marshal(CorazaEvent)
-	if err != nil {
-		return evt, fmt.Errorf("Unable to marshal coraza alert: %w", err)
+	evt.Parsed = map[string]string{
+		"source_ip":   r.ClientIP,
+		"target_host": r.Host,
+		"target_uri":  r.URI,
+		"method":      r.Method,
+		"req_uuid":    r.Tx.ID(),
 	}
 	evt.Line = types.Line{
 		Time: time.Now(),
@@ -85,8 +34,57 @@ func RuleMatchToEvent(rule corazatypes.MatchedRule, tx corazatypes.Transaction, 
 		Process: true,
 		Module:  "waf",
 		Src:     "waf",
-		Raw:     string(corazaEventB),
+		Raw:     "dummy-waf-data", //we discard empty Line.Raw items :)
 	}
+	evt.Waap = []map[string]interface{}{}
 
 	return evt, nil
+}
+
+func LogWaapEvent(evt *types.Event) {
+	log.WithFields(log.Fields{
+		"module":     "waf",
+		"source":     evt.Parsed["source_ip"],
+		"target_uri": evt.Parsed["target_uri"],
+	}).Infof("%s triggered %d rules [%+v]", evt.Parsed["source_ip"], len(evt.Waap), evt.Waap.GetRuleIDs())
+	log.Infof("%s", evt.Waap)
+}
+
+func AccumulateTxToEvent(tx experimental.FullTransaction, kind string, evt *types.Event) error {
+
+	if tx.IsInterrupted() {
+		log.Infof("interrupted() = %t", tx.IsInterrupted())
+		log.Infof("interrupted.action = %s", tx.Interruption().Action)
+		if evt.Meta == nil {
+			evt.Meta = map[string]string{}
+		}
+		evt.Meta["waap_interrupted"] = "1"
+		evt.Meta["waap_action"] = tx.Interruption().Action
+	}
+	log.Infof("TX %s", spew.Sdump(tx.MatchedRules()))
+	for _, rule := range tx.MatchedRules() {
+		if rule.Message() == "" {
+			continue
+		}
+		WafRuleHits.With(prometheus.Labels{"rule_id": fmt.Sprintf("%d", rule.Rule().ID()), "type": kind}).Inc()
+
+		corazaRule := map[string]interface{}{
+			"id":         rule.Rule().ID(),
+			"uri":        evt.Parsed["uri"],
+			"rule_type":  kind,
+			"method":     evt.Parsed["method"],
+			"disruptive": rule.Disruptive(),
+			"tags":       rule.Rule().Tags(),
+			"file":       rule.Rule().File(),
+			"file_line":  rule.Rule().Line(),
+			"revision":   rule.Rule().Revision(),
+			"secmark":    rule.Rule().SecMark(),
+			"accuracy":   rule.Rule().Accuracy(),
+			"msg":        rule.Message(),
+			"severity":   rule.Rule().Severity().String(),
+		}
+		evt.Waap = append(evt.Waap, corazaRule)
+	}
+
+	return nil
 }

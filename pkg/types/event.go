@@ -1,6 +1,7 @@
 package types
 
 import (
+	"regexp"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -13,6 +14,133 @@ const (
 	LOG = iota
 	OVFLW
 )
+
+/*
+ 1. If user triggered a rule that is for a CVE, that has high confidence and that is blocking, ban
+ 2. If user triggered 3 distinct rules with medium confidence accross 3 different requests, ban
+
+
+any(evt.Waf.ByTag("CVE"), {.confidence == "high" && .action == "block"})
+
+len(evt.Waf.ByTagRx("*CVE*").ByConfidence("high").ByAction("block")) > 1
+
+*/
+
+type WaapEvent []map[string]interface{}
+
+func (w WaapEvent) ByID(id int) WaapEvent {
+	waap := WaapEvent{}
+
+	for _, rule := range w {
+		if rule["id"] == id {
+			waap = append(waap, rule)
+		}
+	}
+	return waap
+}
+
+func (w WaapEvent) GetURI() string {
+	for _, rule := range w {
+		return rule["uri"].(string)
+	}
+	return ""
+}
+
+func (w WaapEvent) GetMethod() string {
+	for _, rule := range w {
+		return rule["method"].(string)
+	}
+	return ""
+}
+
+func (w WaapEvent) GetRuleIDs() []int {
+	ret := make([]int, 0)
+	for _, rule := range w {
+		ret = append(ret, rule["id"].(int))
+	}
+	return ret
+}
+
+func (w WaapEvent) ByKind(kind string) WaapEvent {
+	waap := WaapEvent{}
+	for _, rule := range w {
+		if rule["kind"] == kind {
+			waap = append(waap, rule)
+		}
+	}
+	return waap
+}
+
+func (w WaapEvent) Kinds() []string {
+	ret := make([]string, 0)
+	for _, rule := range w {
+		exists := false
+		for _, val := range ret {
+			if val == rule["kind"] {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			ret = append(ret, rule["kind"].(string))
+		}
+	}
+	return ret
+}
+
+func (w WaapEvent) ByTag(match string) WaapEvent {
+	waap := WaapEvent{}
+	for _, rule := range w {
+		for _, tag := range rule["tags"].([]string) {
+			if tag == match {
+				waap = append(waap, rule)
+				break
+			}
+		}
+	}
+	return waap
+}
+
+func (w WaapEvent) ByTagRx(rx string) WaapEvent {
+	waap := WaapEvent{}
+	re := regexp.MustCompile(rx)
+	if re == nil {
+		return waap
+	}
+	for _, rule := range w {
+		for _, tag := range rule["tags"].([]string) {
+			if re.MatchString(tag) {
+				waap = append(waap, rule)
+				break
+			}
+		}
+	}
+	return waap
+}
+
+func (w WaapEvent) ByDisruptiveness(is bool) WaapEvent {
+	log.Infof("%s", w)
+	wap := WaapEvent{}
+	for _, rule := range w {
+		if rule["disruptive"] == is {
+			wap = append(wap, rule)
+		}
+	}
+	log.Infof("ByDisruptiveness(%t) -> %d", is, len(wap))
+
+	return wap
+}
+
+func (w WaapEvent) BySeverity(severity string) WaapEvent {
+	wap := WaapEvent{}
+	for _, rule := range w {
+		if rule["severity"] == severity {
+			wap = append(wap, rule)
+		}
+	}
+	log.Infof("BySeverity(%t) -> %d", severity, len(wap))
+	return wap
+}
 
 // Event is the structure representing a runtime event (log or overflow)
 type Event struct {
@@ -39,6 +167,7 @@ type Event struct {
 	StrTimeFormat string       `yaml:"StrTimeFormat,omitempty" json:"StrTimeFormat,omitempty"`
 	MarshaledTime string       `yaml:"MarshaledTime,omitempty" json:"MarshaledTime,omitempty"`
 	Process       bool         `yaml:"Process,omitempty" json:"Process,omitempty"` //can be set to false to avoid processing line
+	Waap          WaapEvent    `yaml:"Waap,omitempty" json:"Waap,omitempty"`
 	/* Meta is the only part that will make it to the API - it should be normalized */
 	Meta map[string]string `yaml:"Meta,omitempty" json:"Meta,omitempty"`
 }

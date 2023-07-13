@@ -17,6 +17,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
 	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -406,6 +407,7 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 			log.Infof("Waf Runner is dying")
 			return nil
 		case request := <-r.inChan:
+			var evt *types.Event
 			WafReqCounter.With(prometheus.Labels{"source": request.RemoteAddr}).Inc()
 			//measure the time spent in the WAF
 			startParsing := time.Now()
@@ -458,6 +460,7 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 
 			in, expTx, err := processReqWithEngine(expTx, request, InBand)
 			request.Tx = expTx
+			log.Infof("-> %s", spew.Sdump(in))
 
 			response := waf.NewResponseRequest(expTx, in, request.UUID, err)
 
@@ -510,16 +513,17 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 			// send back the result to the HTTP handler for the InBand part
 			request.ResponseChannel <- response
 			if in != nil && response.SendEvents {
-				// Generate the events for InBand channel
-				events, err := TxToEvents(request, InBand)
+				evt = &types.Event{}
+				*evt, err = EventFromRequest(request)
 				if err != nil {
-					log.Errorf("Cannot convert transaction to events : %s", err)
-					continue
+					return fmt.Errorf("cannot create event from waap context : %w", err)
 				}
-
-				for _, evt := range events {
-					r.outChan <- evt
+				err = AccumulateTxToEvent(expTx, InBand, evt)
+				if err != nil {
+					return fmt.Errorf("cannot convert transaction to event : %w", err)
 				}
+				LogWaapEvent(evt)
+				r.outChan <- *evt
 			}
 
 			outBandStart := time.Now()
@@ -533,15 +537,21 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 			}
 			request.Tx = expTx
 			if expTx != nil && len(expTx.MatchedRules()) > 0 {
-				events, err := TxToEvents(request, OutOfBand)
-				log.Infof("Request triggered by WAF, %d events to send", len(events))
-				for _, evt := range events {
-					r.outChan <- evt
+				//if event was not instantiated after inband processing, do it now
+				if evt == nil {
+					*evt, err = EventFromRequest(request)
+					if err != nil {
+						return fmt.Errorf("cannot create event from waap context : %w", err)
+					}
 				}
+
+				err = AccumulateTxToEvent(expTx, InBand, evt)
 				if err != nil {
-					log.Errorf("Cannot convert transaction to events : %s", err)
-					continue
+					return fmt.Errorf("cannot convert transaction to event : %w", err)
 				}
+				LogWaapEvent(evt)
+				r.outChan <- *evt
+
 			}
 			//measure the full time spent in the WAF
 			totalElapsed := time.Since(startParsing)
