@@ -1,6 +1,7 @@
 package types
 
 import (
+	"regexp"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -25,8 +26,6 @@ len(evt.Waf.ByTagRx("*CVE*").ByConfidence("high").ByAction("block")) > 1
 
 */
 
-var WAAP_KEY = "coraza_rules"
-
 type WaapEvent []map[string]interface{}
 
 func (w WaapEvent) ByID(id int) WaapEvent {
@@ -40,7 +39,21 @@ func (w WaapEvent) ByID(id int) WaapEvent {
 	return waap
 }
 
-func (w WaapEvent) IDs() []int {
+func (w WaapEvent) GetURI() string {
+	for _, rule := range w {
+		return rule["uri"].(string)
+	}
+	return ""
+}
+
+func (w WaapEvent) GetMethod() string {
+	for _, rule := range w {
+		return rule["method"].(string)
+	}
+	return ""
+}
+
+func (w WaapEvent) GetRuleIDs() []int {
 	ret := make([]int, 0)
 	for _, rule := range w {
 		ret = append(ret, rule["id"].(int))
@@ -48,18 +61,86 @@ func (w WaapEvent) IDs() []int {
 	return ret
 }
 
-/*
- - evt.Waf.ByConfid
-*/
+func (w WaapEvent) ByKind(kind string) WaapEvent {
+	waap := WaapEvent{}
+	for _, rule := range w {
+		if rule["kind"] == kind {
+			waap = append(waap, rule)
+		}
+	}
+	return waap
+}
 
-//all(evt.Waf.ByTag("toto"), {.id == 1234})
-//evt.Waf.ByID(1234).Message()
-//evt.Waf.ByID(1234).ByID(2345).Message()
+func (w WaapEvent) Kinds() []string {
+	ret := make([]string, 0)
+	for _, rule := range w {
+		exists := false
+		for _, val := range ret {
+			if val == rule["kind"] {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			ret = append(ret, rule["kind"].(string))
+		}
+	}
+	return ret
+}
 
-//evt.Waf.GetRulesByTag("sql-injection").Names()
+func (w WaapEvent) ByTag(match string) WaapEvent {
+	waap := WaapEvent{}
+	for _, rule := range w {
+		for _, tag := range rule["tags"].([]string) {
+			if tag == match {
+				waap = append(waap, rule)
+				break
+			}
+		}
+	}
+	return waap
+}
 
-// func (w *WaapEvent) GetRuleById() []string {
-// }
+func (w WaapEvent) ByTagRx(rx string) WaapEvent {
+	waap := WaapEvent{}
+	re := regexp.MustCompile(rx)
+	if re == nil {
+		return waap
+	}
+	for _, rule := range w {
+		for _, tag := range rule["tags"].([]string) {
+			if re.MatchString(tag) {
+				waap = append(waap, rule)
+				break
+			}
+		}
+	}
+	return waap
+}
+
+func (w WaapEvent) ByDisruptiveness(is bool) WaapEvent {
+	log.Infof("%s", w)
+	wap := WaapEvent{}
+	for _, rule := range w {
+		if rule["disruptive"] == is {
+			wap = append(wap, rule)
+		}
+	}
+	log.Infof("ByDisruptiveness(%t) -> %d", is, len(wap))
+
+	return wap
+}
+
+func (w WaapEvent) BySeverity(severity string) WaapEvent {
+	wap := WaapEvent{}
+	for _, rule := range w {
+		if rule["severity"] == severity {
+			wap = append(wap, rule)
+		}
+	}
+	log.Infof("BySeverity(%t) -> %d", severity, len(wap))
+	return wap
+}
 
 // Event is the structure representing a runtime event (log or overflow)
 type Event struct {

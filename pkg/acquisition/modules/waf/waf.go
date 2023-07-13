@@ -17,6 +17,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
 	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -459,6 +460,7 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 
 			in, expTx, err := processReqWithEngine(expTx, request, InBand)
 			request.Tx = expTx
+			log.Infof("-> %s", spew.Sdump(in))
 
 			response := waf.NewResponseRequest(expTx, in, request.UUID, err)
 
