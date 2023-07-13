@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/corazawaf/coraza/v3/experimental"
-	types "github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/coraza/v3/experimental"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/prometheus/client_golang/prometheus"

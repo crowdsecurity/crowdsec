@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/corazawaf/coraza/v3/experimental"
-	corazatypes "github.com/corazawaf/coraza/v3/types"
+	"github.com/crowdsecurity/coraza/v3/experimental"
+	corazatypes "github.com/crowdsecurity/coraza/v3/types"
 	"github.com/google/uuid"
 )
 

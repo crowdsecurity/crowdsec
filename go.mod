@@ -48,10 +48,10 @@ require (
 	github.com/prometheus/client_model v0.3.0
 	github.com/prometheus/prom2json v1.3.0
 	github.com/r3labs/diff/v2 v2.14.1
-	github.com/sirupsen/logrus v1.9.2
+	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.3
-	golang.org/x/crypto v0.1.0
+	golang.org/x/crypto v0.10.0
 	golang.org/x/mod v0.8.0
 	google.golang.org/grpc v1.47.0
 	google.golang.org/protobuf v1.28.1
@@ -70,8 +70,8 @@ require (
 	github.com/blackfireio/osinfo v1.0.3
 	github.com/bluele/gcache v0.0.2
 	github.com/cespare/xxhash/v2 v2.1.2
-	github.com/corazawaf/coraza/v3 v3.0.0-00010101000000-000000000000
 	github.com/coreos/go-systemd/v22 v22.5.0
+	github.com/crowdsecurity/coraza/v3 v3.0.0-20230713124654-1e01677657b5
 	github.com/crowdsecurity/go-cs-lib v0.0.0-20230531105801-4c1535c2b3bd
 	github.com/goccy/go-yaml v1.9.7
 	github.com/gofrs/uuid v4.0.0+incompatible
@@ -87,7 +87,7 @@ require (
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	github.com/wasilibs/go-re2 v0.2.1
 	golang.org/x/exp v0.0.0-20230515195305-f3d0a9c9a5cc
-	golang.org/x/sys v0.7.0
+	golang.org/x/sys v0.9.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apiserver v0.22.5
 )
@@ -145,7 +145,7 @@ require (
 	github.com/klauspost/compress v1.15.7 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
-	github.com/magefile/mage v1.14.0 // indirect
+	github.com/magefile/mage v1.15.0 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
@@ -185,10 +185,10 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	github.com/zclconf/go-cty v1.8.0 // indirect
 	go.mongodb.org/mongo-driver v1.9.0 // indirect
-	golang.org/x/net v0.9.0 // indirect
+	golang.org/x/net v0.11.0 // indirect
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
-	golang.org/x/term v0.7.0 // indirect
-	golang.org/x/text v0.9.0 // indirect
+	golang.org/x/term v0.9.0 // indirect
+	golang.org/x/text v0.10.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20220502173005-c8bf987b8c21 // indirect
@@ -204,5 +204,3 @@ require (
 )
 
 replace golang.org/x/time/rate => github.com/crowdsecurity/crowdsec/pkg/time/rate v0.0.0
-
-replace github.com/corazawaf/coraza/v3 => ./coraza

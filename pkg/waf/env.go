@@ -1,6 +1,6 @@
 package waf
 
-import "github.com/corazawaf/coraza/v3/experimental"
+import "github.com/crowdsecurity/coraza/v3/experimental"
 
 type Transaction struct {
 	Tx experimental.FullTransaction

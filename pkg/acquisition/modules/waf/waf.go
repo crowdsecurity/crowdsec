@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/antonmedv/expr"
-	"github.com/corazawaf/coraza/v3"
-	"github.com/corazawaf/coraza/v3/experimental"
-	corazatypes "github.com/corazawaf/coraza/v3/types"
+	"github.com/crowdsecurity/coraza/v3"
+	"github.com/crowdsecurity/coraza/v3/experimental"
+	corazatypes "github.com/crowdsecurity/coraza/v3/types"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
@@ -149,7 +149,7 @@ func (w *WafSource) UnmarshalConfig(yamlConfig []byte) error {
 }
 
 func logError(error corazatypes.MatchedRule) {
-	msg := error.ErrorLog(0)
+	msg := error.ErrorLog()
 	log.Infof("[logError][%s]  %s", error.Rule().Severity(), msg)
 }
 
@@ -356,6 +356,7 @@ func processReqWithEngine(tx experimental.FullTransaction, r waf.ParsedRequest, 
 	//spew.Dump(tx.MatchedRules())
 
 	for _, rule := range tx.MatchedRules() {
+		log.Infof("Rule %d disruptive: %t", rule.Rule().ID(), rule.Disruptive())
 		if rule.Message() == "" {
 			continue
 		}
