@@ -64,8 +64,12 @@ bool = $(if $(filter $(call lc, $1),1 yes true),1,0)
 
 MAKE_FLAGS = --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 
+# Normalize the version number because semver does not handle '~' correctly
+# This string is used to retrieve the correct hub branch
+PKG_VERSION := $(subst ~,-,$(BUILD_VERSION))
+
 LD_OPTS_VARS= \
--X 'github.com/crowdsecurity/go-cs-lib/pkg/version.Version=$(BUILD_VERSION)' \
+-X 'github.com/crowdsecurity/go-cs-lib/pkg/version.Version=$(PKG_VERSION)' \
 -X 'github.com/crowdsecurity/go-cs-lib/pkg/version.BuildDate=$(BUILD_TIMESTAMP)' \
 -X 'github.com/crowdsecurity/go-cs-lib/pkg/version.Tag=$(BUILD_TAG)' \
 -X '$(GO_MODULE_NAME)/pkg/cwversion.Codename=$(BUILD_CODENAME)' \
