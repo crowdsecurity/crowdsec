@@ -26,11 +26,17 @@ func EventFromRequest(r waf.ParsedRequest) (types.Event, error) {
 		"target_uri":  r.URI,
 		"method":      r.Method,
 		"req_uuid":    r.Tx.ID(),
+		"source":      "coraza",
+
+		//TBD:
+		//http_status
+		//user_agent
+
 	}
 	evt.Line = types.Line{
 		Time: time.Now(),
 		//should we add some info like listen addr/port/path ?
-		Labels:  map[string]string{"type": "waf"},
+		Labels:  map[string]string{"type": "coraza-waf"},
 		Process: true,
 		Module:  "waf",
 		Src:     "waf",
@@ -58,6 +64,9 @@ func AccumulateTxToEvent(tx experimental.FullTransaction, kind string, evt *type
 		if evt.Meta == nil {
 			evt.Meta = map[string]string{}
 		}
+		evt.Parsed["interrupted"] = "true"
+		evt.Parsed["action"] = tx.Interruption().Action
+
 		evt.Meta["waap_interrupted"] = "1"
 		evt.Meta["waap_action"] = tx.Interruption().Action
 	}

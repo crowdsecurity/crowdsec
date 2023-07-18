@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"regexp"
 	"time"
 
@@ -28,15 +29,33 @@ len(evt.Waf.ByTagRx("*CVE*").ByConfidence("high").ByAction("block")) > 1
 
 type WaapEvent []map[string]interface{}
 
-func (w WaapEvent) ByID(id int) WaapEvent {
-	waap := WaapEvent{}
+type Field string
 
+func (f Field) String() string {
+	return fmt.Sprintf("%s", f)
+}
+
+const (
+	ID         Field = "id"
+	RuleType   Field = "rule_type"
+	Tags       Field = "tags"
+	File       Field = "file"
+	Confidence Field = "confidence"
+	Revision   Field = "revision"
+	SecMark    Field = "secmark"
+	Accuracy   Field = "accuracy"
+	Msg        Field = "msg"
+	Severity   Field = "severity"
+	Kind       Field = "kind"
+)
+
+// getters
+func (w WaapEvent) GetField(field Field) []interface{} {
+	ret := make([]interface{}, 0)
 	for _, rule := range w {
-		if rule["id"] == id {
-			waap = append(waap, rule)
-		}
+		ret = append(ret, rule[field.String()])
 	}
-	return waap
+	return ret
 }
 
 func (w WaapEvent) GetURI() string {
@@ -61,16 +80,6 @@ func (w WaapEvent) GetRuleIDs() []int {
 	return ret
 }
 
-func (w WaapEvent) ByKind(kind string) WaapEvent {
-	waap := WaapEvent{}
-	for _, rule := range w {
-		if rule["kind"] == kind {
-			waap = append(waap, rule)
-		}
-	}
-	return waap
-}
-
 func (w WaapEvent) Kinds() []string {
 	ret := make([]string, 0)
 	for _, rule := range w {
@@ -86,6 +95,43 @@ func (w WaapEvent) Kinds() []string {
 		}
 	}
 	return ret
+}
+
+// filters
+func (w WaapEvent) ByID(id int) WaapEvent {
+	waap := WaapEvent{}
+
+	for _, rule := range w {
+		if rule["id"] == id {
+			waap = append(waap, rule)
+		}
+	}
+	return waap
+}
+
+func (w WaapEvent) ByKind(kind string) WaapEvent {
+	waap := WaapEvent{}
+	for _, rule := range w {
+		if rule["kind"] == kind {
+			waap = append(waap, rule)
+		}
+	}
+	return waap
+}
+
+func (w WaapEvent) ByTags(match []string) WaapEvent {
+	waap := WaapEvent{}
+	for _, rule := range w {
+		for _, tag := range rule["tags"].([]string) {
+			for _, match_tag := range match {
+				if tag == match_tag {
+					waap = append(waap, rule)
+					break
+				}
+			}
+		}
+	}
+	return waap
 }
 
 func (w WaapEvent) ByTag(match string) WaapEvent {
@@ -138,7 +184,18 @@ func (w WaapEvent) BySeverity(severity string) WaapEvent {
 			wap = append(wap, rule)
 		}
 	}
-	log.Infof("BySeverity(%t) -> %d", severity, len(wap))
+	log.Infof("BySeverity(%s) -> %d", severity, len(wap))
+	return wap
+}
+
+func (w WaapEvent) ByAccuracy(accuracy string) WaapEvent {
+	wap := WaapEvent{}
+	for _, rule := range w {
+		if rule["accuracy"] == accuracy {
+			wap = append(wap, rule)
+		}
+	}
+	log.Infof("ByAccuracy(%s) -> %d", accuracy, len(wap))
 	return wap
 }
 
