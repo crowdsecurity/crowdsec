@@ -7,6 +7,7 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.2.7
 	github.com/Masterminds/semver/v3 v3.1.1
 	github.com/Masterminds/sprig/v3 v3.2.2
+	github.com/agext/levenshtein v1.2.1
 	github.com/alexliesenfeld/health v0.5.1
 	github.com/antonmedv/expr v1.12.5
 	github.com/appleboy/gin-jwt/v2 v2.8.0
@@ -69,7 +70,6 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.3
-	github.com/texttheater/golang-levenshtein/levenshtein v0.0.0-20200805054039-cae8b0eaed6c
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	github.com/wasilibs/go-re2 v1.3.0
 	golang.org/x/crypto v0.7.0
@@ -89,7 +89,6 @@ require (
 	ariga.io/atlas v0.7.2-0.20220927111110-867ee0cca56a // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
-	github.com/agext/levenshtein v1.2.1 // indirect
 	github.com/ahmetalpbalkan/dlog v0.0.0-20170105205344-4fb5f8204f26 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef // indirect
