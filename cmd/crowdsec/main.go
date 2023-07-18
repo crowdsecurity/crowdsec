@@ -324,7 +324,7 @@ func main() {
 	}
 
 	// some features can require configuration or command-line options,
-	// so wwe need to parse them asap. we'll load from feature.yaml later.
+	// so we need to parse them asap. we'll load from feature.yaml later.
 	if err := csconfig.LoadFeatureFlagsEnv(log.StandardLogger()); err != nil {
 		log.Fatalf("failed to set feature flags from environment: %s", err)
 	}
