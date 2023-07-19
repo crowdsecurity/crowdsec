@@ -374,7 +374,7 @@ func (r *WafRunner) processReqWithEngine(tx experimental.FullTransaction, parsed
 	//spew.Dump(tx.MatchedRules())
 
 	for _, rule := range tx.MatchedRules() {
-		r.logger.Infof("Rule %d disruptive: %t", rule.Rule().ID(), rule.Disruptive())
+		//r.logger.Infof("Rule %d disruptive: %t", rule.Rule().ID(), rule.Disruptive())
 		if rule.Message() == "" {
 			continue
 		}

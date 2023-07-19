@@ -52,7 +52,7 @@ func LogWaapEvent(evt *types.Event) {
 		"source":     evt.Parsed["source_ip"],
 		"target_uri": evt.Parsed["target_uri"],
 	}).Infof("%s triggered %d rules [%+v]", evt.Parsed["source_ip"], len(evt.Waap), evt.Waap.GetRuleIDs())
-	log.Infof("%s", evt.Waap)
+	//log.Infof("%s", evt.Waap)
 }
 
 func (r *WafRunner) AccumulateTxToEvent(tx experimental.FullTransaction, kind string, evt *types.Event) error {
