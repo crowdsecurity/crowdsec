@@ -7,7 +7,6 @@ import (
 	"github.com/crowdsecurity/coraza/v3/experimental"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
@@ -70,7 +69,7 @@ func AccumulateTxToEvent(tx experimental.FullTransaction, kind string, evt *type
 		evt.Meta["waap_interrupted"] = "1"
 		evt.Meta["waap_action"] = tx.Interruption().Action
 	}
-	log.Infof("TX %s", spew.Sdump(tx.MatchedRules()))
+	//log.Infof("TX %s", spew.Sdump(tx.MatchedRules()))
 	for _, rule := range tx.MatchedRules() {
 		if rule.Message() == "" {
 			continue
