@@ -293,7 +293,7 @@ func (w *WafSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) err
 
 		w.logger.Infof("%d waf runner to start", len(w.WafRunners))
 		for _, runner := range w.WafRunners {
-			w.logger.Infof("Running waf runner: %s", runner.UUID)
+			runner := runner
 			runner.outChan = out
 			t.Go(func() error {
 				return runner.Run(t)
@@ -420,6 +420,7 @@ func (r *WafRunner) processReqWithEngine(tx experimental.FullTransaction, parsed
 }
 
 func (r *WafRunner) Run(t *tomb.Tomb) error {
+	r.logger.Infof("Waf Runner ready to process event")
 	for {
 		select {
 		case <-t.Dying():
