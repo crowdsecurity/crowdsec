@@ -238,7 +238,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		controller.DecisionDeleteChan = nil
 	}
 
-	if !*apiClient.credentials.ShareSignals {
+	if apiClient.credentials.DisableSharingSignals {
 		controller.AlertsAddChan = nil
 	}
 
@@ -343,10 +343,10 @@ func (s *APIServer) Run(apiReady chan bool) error {
 	}
 
 	if s.apic != nil {
-		if !*s.apic.credentials.ShareSignals {
-			log.Info("capi push: sharing signals set to false")
+		if s.apic.credentials.DisableSharingSignals {
+			log.Info("capi push: disabled sharing signals")
 		}
-		if *s.apic.credentials.ShareSignals {
+		if !s.apic.credentials.DisableSharingSignals {
 			s.apic.pushTomb.Go(func() error {
 				if err := s.apic.Push(); err != nil {
 					log.Errorf("capi push: %s", err)
@@ -356,10 +356,10 @@ func (s *APIServer) Run(apiReady chan bool) error {
 			})
 		}
 
-		if !*s.apic.credentials.ReceiveCommunityBlocklist {
-			log.Info("capi pull: receive community blocklist set to false")
+		if s.apic.credentials.DisableReceiveBlocklist {
+			log.Info("capi pull: disabled receiving blocklist (includes third party lists)")
 		}
-		if *s.apic.credentials.ReceiveCommunityBlocklist {
+		if !s.apic.credentials.DisableReceiveBlocklist {
 			s.apic.pullTomb.Go(func() error {
 				if err := s.apic.Pull(); err != nil {
 					log.Errorf("capi pull: %s", err)
@@ -369,8 +369,8 @@ func (s *APIServer) Run(apiReady chan bool) error {
 			})
 		}
 
-		if !*s.apic.credentials.ShareSignals && *s.apic.credentials.ReceiveCommunityBlocklist && !s.isEnrolled {
-			log.Warn("capi: Instance is not enrolled in console. (Combination of Sharing: false, Receiving: true may impose a limit on community blocklist)")
+		if s.apic.credentials.DisableSharingSignals && !s.apic.credentials.DisableReceiveBlocklist && !s.isEnrolled {
+			log.Warn("capi: instance is not enrolled in console. combination of disabled sharing signals and enabled receiving blocklists will result in limited community blocklist")
 		}
 
 		//csConfig.API.Server.ConsoleConfig.ShareCustomScenarios

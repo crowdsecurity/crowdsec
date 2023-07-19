@@ -25,15 +25,15 @@ type APICfg struct {
 }
 
 type ApiCredentialsCfg struct {
-	PapiURL                   string `yaml:"papi_url,omitempty" json:"papi_url,omitempty"`
-	URL                       string `yaml:"url,omitempty" json:"url,omitempty"`
-	Login                     string `yaml:"login,omitempty" json:"login,omitempty"`
-	Password                  string `yaml:"password,omitempty" json:"-"`
-	CACertPath                string `yaml:"ca_cert_path,omitempty"`
-	KeyPath                   string `yaml:"key_path,omitempty"`
-	CertPath                  string `yaml:"cert_path,omitempty"`
-	ShareSignals              *bool  `yaml:"share_signals,omitempty"`
-	ReceiveCommunityBlocklist *bool  `yaml:"receive_community_blocklists,omitempty"`
+	PapiURL                 string `yaml:"papi_url,omitempty" json:"papi_url,omitempty"`
+	URL                     string `yaml:"url,omitempty" json:"url,omitempty"`
+	Login                   string `yaml:"login,omitempty" json:"login,omitempty"`
+	Password                string `yaml:"password,omitempty" json:"-"`
+	CACertPath              string `yaml:"ca_cert_path,omitempty"`
+	KeyPath                 string `yaml:"key_path,omitempty"`
+	CertPath                string `yaml:"cert_path,omitempty"`
+	DisableSharingSignals   bool   `yaml:"disable_share_signals"`
+	DisableReceiveBlocklist bool   `yaml:"disable_receiving_blocklists"`
 }
 
 /*global api config (for lapi->oapi)*/
@@ -90,15 +90,7 @@ func (o *OnlineApiClientCfg) Load() error {
 	if err != nil {
 		return fmt.Errorf("failed unmarshaling api server credentials configuration file '%s': %w", o.CredentialsFilePath, err)
 	}
-	if o.Credentials.ShareSignals == nil {
-		log.Debug("capi share signals nil defaulting to true")
-		o.Credentials.ShareSignals = ptr.Of(true)
-	}
 
-	if o.Credentials.ReceiveCommunityBlocklist == nil {
-		log.Debug("capi receive community blocklist nil defaulting to true")
-		o.Credentials.ReceiveCommunityBlocklist = ptr.Of(true)
-	}
 	if o.Credentials.Login == "" || o.Credentials.Password == "" || o.Credentials.URL == "" {
 		log.Warningf("can't load CAPI credentials from '%s' (missing field)", o.CredentialsFilePath)
 		o.Credentials = nil
