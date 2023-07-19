@@ -7,7 +7,6 @@ import (
 	"github.com/crowdsecurity/coraza/v3/experimental"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
@@ -57,7 +56,7 @@ func LogWaapEvent(evt *types.Event) {
 }
 
 func AccumulateTxToEvent(tx experimental.FullTransaction, kind string, evt *types.Event) error {
-	log.Infof("TX %s", spew.Sdump(tx))
+	log.Infof("TX %v", &tx)
 	if tx.IsInterrupted() {
 		log.Infof("interrupted() = %t", tx.IsInterrupted())
 		log.Infof("interrupted.action = %s", tx.Interruption().Action)
