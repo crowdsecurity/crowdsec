@@ -356,10 +356,10 @@ func (s *APIServer) Run(apiReady chan bool) error {
 			})
 		}
 
-		if s.apic.credentials.DisableReceiveBlocklist {
+		if s.apic.credentials.DisableReceivingBlocklists {
 			log.Info("capi pull: disabled receiving blocklist (includes third party lists)")
 		}
-		if !s.apic.credentials.DisableReceiveBlocklist {
+		if !s.apic.credentials.DisableReceivingBlocklists {
 			s.apic.pullTomb.Go(func() error {
 				if err := s.apic.Pull(); err != nil {
 					log.Errorf("capi pull: %s", err)
@@ -369,7 +369,7 @@ func (s *APIServer) Run(apiReady chan bool) error {
 			})
 		}
 
-		if s.apic.credentials.DisableSharingSignals && !s.apic.credentials.DisableReceiveBlocklist && !s.isEnrolled {
+		if s.apic.credentials.DisableSharingSignals && !s.apic.credentials.DisableReceivingBlocklists && !s.isEnrolled {
 			log.Warn("capi: instance is not enrolled in console. combination of disabled sharing signals and enabled receiving blocklists will result in limited community blocklist")
 		}
 
