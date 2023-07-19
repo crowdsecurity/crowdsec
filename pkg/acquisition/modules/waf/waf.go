@@ -565,7 +565,7 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 					}
 				}
 
-				err = r.AccumulateTxToEvent(expTx, InBand, evt)
+				err = r.AccumulateTxToEvent(expTx, OutOfBand, evt)
 				if err != nil {
 					return fmt.Errorf("cannot convert transaction to event : %w", err)
 				}
