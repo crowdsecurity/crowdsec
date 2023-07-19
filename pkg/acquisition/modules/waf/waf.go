@@ -17,7 +17,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
 	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -38,6 +37,7 @@ type WafRunner struct {
 	outOfBandWaf     coraza.WAF
 	UUID             string
 	RulesCollections []*waf.WafRulesCollection
+	logger           *log.Entry
 }
 
 type WafSourceConfig struct {
@@ -45,6 +45,7 @@ type WafSourceConfig struct {
 	ListenPort                        int    `yaml:"listen_port"`
 	Path                              string `yaml:"path"`
 	WafRoutines                       int    `yaml:"waf_routines"`
+	Debug                             bool   `yaml:"debug"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -230,13 +231,30 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		if err != nil {
 			return errors.Wrap(err, "Cannot create WAF")
 		}
+		wafUUID := uuid.New().String()
+		wafLogger := &log.Entry{}
+		if w.config.Debug {
+			var clog = log.New()
+			if err := types.ConfigureLogger(clog); err != nil {
+				log.Fatalf("While creating bucket-specific logger : %s", err)
+			}
+			clog.SetLevel(log.DebugLevel)
+			wafLogger = clog.WithFields(log.Fields{
+				"uuid": wafUUID,
+			})
+		} else {
+			wafLogger = log.WithFields(log.Fields{
+				"uuid": wafUUID,
+			})
+		}
 
 		runner := WafRunner{
 			outOfBandWaf:     outofbandwaf,
 			inBandWaf:        inbandwaf,
 			inChan:           w.InChan,
-			UUID:             uuid.New().String(),
+			UUID:             wafUUID,
 			RulesCollections: rulesCollections,
+			logger:           wafLogger,
 		}
 		w.WafRunners[nbRoutine] = runner
 	}
@@ -310,10 +328,10 @@ func (w *WafSource) Dump() interface{} {
 	return w
 }
 
-func processReqWithEngine(tx experimental.FullTransaction, r waf.ParsedRequest, wafType string) (*corazatypes.Interruption, experimental.FullTransaction, error) {
+func (r *WafRunner) processReqWithEngine(tx experimental.FullTransaction, parsedRequest waf.ParsedRequest, wafType string) (*corazatypes.Interruption, experimental.FullTransaction, error) {
 	var in *corazatypes.Interruption
 	if tx.IsRuleEngineOff() {
-		log.Printf("engine is off")
+		r.logger.Printf("engine is off")
 		return nil, nil, nil
 	}
 
@@ -329,25 +347,25 @@ func processReqWithEngine(tx experimental.FullTransaction, r waf.ParsedRequest, 
 	//txx := experimental.ToFullInterface(tx)
 	//txx = tx.(experimental.FullTransaction)
 	//txx.RemoveRuleByID(1)
-	tx.ProcessConnection(r.ClientIP, 0, "", 0)
+	tx.ProcessConnection(parsedRequest.ClientIP, 0, "", 0)
 
-	//tx.ProcessURI(r.URL.String(), r.Method, r.Proto) //FIXME: get it from the headers
-	tx.ProcessURI(r.URI, r.Method, r.Proto) //FIXME: get it from the headers
+	//tx.ProcessURI(parsedRequest.URL.String(), parsedRequest.Method, parsedRequest.Proto) //FIXME: get it from the headers
+	tx.ProcessURI(parsedRequest.URI, parsedRequest.Method, parsedRequest.Proto) //FIXME: get it from the headers
 
-	for k, vr := range r.Headers {
+	for k, vr := range parsedRequest.Headers {
 		for _, v := range vr {
 			tx.AddRequestHeader(k, v)
 		}
 	}
 
-	if r.ClientHost != "" {
-		tx.AddRequestHeader("Host", r.ClientHost)
+	if parsedRequest.ClientHost != "" {
+		tx.AddRequestHeader("Host", parsedRequest.ClientHost)
 		// This connector relies on the host header (now host field) to populate ServerName
-		tx.SetServerName(r.ClientHost)
+		tx.SetServerName(parsedRequest.ClientHost)
 	}
 
-	if r.TransferEncoding != nil {
-		tx.AddRequestHeader("Transfer-Encoding", r.TransferEncoding[0])
+	if parsedRequest.TransferEncoding != nil {
+		tx.AddRequestHeader("Transfer-Encoding", parsedRequest.TransferEncoding[0])
 	}
 
 	in = tx.ProcessRequestHeaders()
@@ -356,7 +374,7 @@ func processReqWithEngine(tx experimental.FullTransaction, r waf.ParsedRequest, 
 	//spew.Dump(tx.MatchedRules())
 
 	for _, rule := range tx.MatchedRules() {
-		log.Infof("Rule %d disruptive: %t", rule.Rule().ID(), rule.Disruptive())
+		r.logger.Infof("Rule %d disruptive: %t", rule.Rule().ID(), rule.Disruptive())
 		if rule.Message() == "" {
 			continue
 		}
@@ -367,9 +385,9 @@ func processReqWithEngine(tx experimental.FullTransaction, r waf.ParsedRequest, 
 		return in, tx, nil
 	}
 
-	ct := r.Headers.Get("content-type")
-	if r.Body != nil && len(r.Body) != 0 {
-		it, _, err := tx.WriteRequestBody(r.Body)
+	ct := parsedRequest.Headers.Get("content-type")
+	if parsedRequest.Body != nil && len(parsedRequest.Body) != 0 {
+		it, _, err := tx.WriteRequestBody(parsedRequest.Body)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "Cannot read request body")
 		}
@@ -405,7 +423,7 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 	for {
 		select {
 		case <-t.Dying():
-			log.Infof("Waf Runner is dying")
+			r.logger.Infof("Waf Runner is dying")
 			return nil
 		case request := <-r.inChan:
 			var evt *types.Event
@@ -459,9 +477,9 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 				}
 			}
 
-			in, expTx, err := processReqWithEngine(expTx, request, InBand)
+			in, expTx, err := r.processReqWithEngine(expTx, request, InBand)
 			request.Tx = expTx
-			log.Infof("-> %s", spew.Sdump(in))
+			//log.Infof("-> %s", spew.Sdump(in))
 
 			response := waf.NewResponseRequest(expTx, in, request.UUID, err)
 
@@ -477,7 +495,7 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 							"req":   request,
 						})
 						if err != nil {
-							log.Errorf("unable to run PreEval filter: %s", err)
+							r.logger.Errorf("unable to run PreEval filter: %s", err)
 							continue
 						}
 
@@ -487,7 +505,7 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 								continue
 							}
 						default:
-							log.Errorf("Filter must return a boolean, can't filter")
+							r.logger.Errorf("Filter must return a boolean, can't filter")
 							continue
 						}
 					}
@@ -502,7 +520,7 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 							"CancelEvent":        response.CancelEvent,
 						})
 						if err != nil {
-							log.Errorf("unable to apply filter: %s", err)
+							r.logger.Errorf("unable to apply filter: %s", err)
 							continue
 						}
 					}
@@ -519,7 +537,7 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 				if err != nil {
 					return fmt.Errorf("cannot create event from waap context : %w", err)
 				}
-				err = AccumulateTxToEvent(expTx, InBand, evt)
+				err = r.AccumulateTxToEvent(expTx, InBand, evt)
 				if err != nil {
 					return fmt.Errorf("cannot convert transaction to event : %w", err)
 				}
@@ -531,9 +549,9 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 			// Process outBand
 			outBandTx := r.outOfBandWaf.NewTransactionWithID(request.UUID)
 			expTx = outBandTx.(experimental.FullTransaction)
-			in, expTx, err = processReqWithEngine(expTx, request, OutOfBand)
+			in, expTx, err = r.processReqWithEngine(expTx, request, OutOfBand)
 			if err != nil { //things went south
-				log.Errorf("Error while processing request : %s", err)
+				r.logger.Errorf("Error while processing request : %s", err)
 				continue
 			}
 			request.Tx = expTx
@@ -546,7 +564,7 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 					}
 				}
 
-				err = AccumulateTxToEvent(expTx, InBand, evt)
+				err = r.AccumulateTxToEvent(expTx, InBand, evt)
 				if err != nil {
 					return fmt.Errorf("cannot convert transaction to event : %w", err)
 				}

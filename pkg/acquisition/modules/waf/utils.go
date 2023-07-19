@@ -55,11 +55,11 @@ func LogWaapEvent(evt *types.Event) {
 	log.Infof("%s", evt.Waap)
 }
 
-func AccumulateTxToEvent(tx experimental.FullTransaction, kind string, evt *types.Event) error {
-	log.Infof("TX %v", &tx)
+func (r *WafRunner) AccumulateTxToEvent(tx experimental.FullTransaction, kind string, evt *types.Event) error {
+	r.logger.Infof("TX %v", &tx)
 	if tx.IsInterrupted() {
-		log.Infof("interrupted() = %t", tx.IsInterrupted())
-		log.Infof("interrupted.action = %s", tx.Interruption().Action)
+		r.logger.Infof("interrupted() = %t", tx.IsInterrupted())
+		r.logger.Infof("interrupted.action = %s", tx.Interruption().Action)
 		if evt.Meta == nil {
 			evt.Meta = map[string]string{}
 		}
@@ -69,7 +69,7 @@ func AccumulateTxToEvent(tx experimental.FullTransaction, kind string, evt *type
 		evt.Meta["waap_interrupted"] = "1"
 		evt.Meta["waap_action"] = tx.Interruption().Action
 	}
-	//log.Infof("TX %s", spew.Sdump(tx.MatchedRules()))
+	//r.logger.Infof("TX %s", spew.Sdump(tx.MatchedRules()))
 	for _, rule := range tx.MatchedRules() {
 		if rule.Message() == "" {
 			continue
