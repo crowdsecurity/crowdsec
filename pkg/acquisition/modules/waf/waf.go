@@ -587,7 +587,11 @@ func (w *WafSource) wafHandler(rw http.ResponseWriter, r *http.Request) {
 
 	if message.Interruption != nil {
 		rw.WriteHeader(http.StatusForbidden)
-		body, err := json.Marshal(BodyResponse{Action: message.Interruption.Action})
+		action := message.Interruption.Action
+		if action == "deny" { // bouncers understand "ban" and not "deny"
+			action = "ban"
+		}
+		body, err := json.Marshal(BodyResponse{Action: action})
 		if err != nil {
 			log.Errorf("unable to build response: %s", err)
 		} else {
