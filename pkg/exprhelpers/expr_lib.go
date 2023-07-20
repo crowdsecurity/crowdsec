@@ -26,6 +26,16 @@ var exprFuncs = []exprCustomFunc{
 		signature: []interface{}{},
 	},
 	{
+		name:      "Distinct",
+		function:  Distinct,
+		signature: []interface{}{},
+	},
+	{
+		name:      "FlattenDistinct",
+		function:  FlattenDistinct,
+		signature: []interface{}{},
+	},
+	{
 		name:     "Distance",
 		function: Distance,
 		signature: []interface{}{

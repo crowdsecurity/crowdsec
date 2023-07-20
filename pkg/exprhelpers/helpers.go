@@ -173,6 +173,33 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 
 // Expr helpers
 
+func Distinct(params ...any) (any, error) {
+
+	if rt := reflect.TypeOf(params[0]).Kind(); rt != reflect.Slice && rt != reflect.Array {
+		return nil, nil
+	}
+	array := params[0].([]interface{})
+	if array == nil {
+		return nil, nil
+	}
+
+	var exists map[any]bool = make(map[any]bool)
+	var ret []interface{} = make([]interface{}, 0)
+
+	for _, val := range array {
+		if _, ok := exists[val]; !ok {
+			exists[val] = true
+			ret = append(ret, val)
+		}
+	}
+	return ret, nil
+
+}
+
+func FlattenDistinct(params ...any) (any, error) {
+	return Distinct(flatten(nil, reflect.ValueOf(params)))
+}
+
 func Flatten(params ...any) (any, error) {
 	return flatten(nil, reflect.ValueOf(params)), nil
 }
