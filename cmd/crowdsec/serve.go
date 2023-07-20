@@ -344,7 +344,7 @@ func Serve(cConfig *csconfig.Config, apiReady chan bool, agentReady chan bool) e
 	}
 
 	if flags.TestMode {
-		log.Infof("test done")
+		log.Infof("Configuration test done")
 		pluginBroker.Kill()
 		os.Exit(0)
 	}
