@@ -69,7 +69,7 @@ func (r *WafRunner) AccumulateTxToEvent(tx experimental.FullTransaction, kind st
 		evt.Meta["waap_interrupted"] = "1"
 		evt.Meta["waap_action"] = tx.Interruption().Action
 	}
-	//r.logger.Infof("TX %s", spew.Sdump(tx.MatchedRules()))
+
 	for _, rule := range tx.MatchedRules() {
 		if rule.Message() == "" {
 			continue
