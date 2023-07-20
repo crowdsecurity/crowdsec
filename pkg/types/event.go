@@ -155,6 +155,7 @@ func (w WaapEvent) ByTagRx(rx string) WaapEvent {
 	}
 	for _, rule := range w {
 		for _, tag := range rule["tags"].([]string) {
+			log.Infof("ByTagRx: %s = %s -> %t", rx, tag, re.MatchString(tag))
 			if re.MatchString(tag) {
 				waap = append(waap, rule)
 				break

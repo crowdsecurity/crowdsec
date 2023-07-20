@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -170,7 +171,27 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 	return nil
 }
 
-//Expr helpers
+// Expr helpers
+
+func Flatten(params ...any) (any, error) {
+	return flatten(nil, reflect.ValueOf(params)), nil
+}
+
+func flatten(args []interface{}, v reflect.Value) []interface{} {
+	if v.Kind() == reflect.Interface {
+		v = v.Elem()
+	}
+
+	if v.Kind() == reflect.Array || v.Kind() == reflect.Slice {
+		for i := 0; i < v.Len(); i++ {
+			args = flatten(args, v.Index(i))
+		}
+	} else {
+		args = append(args, v.Interface())
+	}
+
+	return args
+}
 
 // func Get(arr []string, index int) string {
 func Get(params ...any) (any, error) {

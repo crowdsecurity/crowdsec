@@ -21,6 +21,11 @@ var exprFuncs = []exprCustomFunc{
 		},
 	},
 	{
+		name:      "Flatten",
+		function:  Flatten,
+		signature: []interface{}{},
+	},
+	{
 		name:     "Distance",
 		function: Distance,
 		signature: []interface{}{
