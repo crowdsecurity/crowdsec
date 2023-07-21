@@ -43,7 +43,7 @@ type Config struct {
 var (
 	metabaseDefaultUser     = "crowdsec@crowdsec.net"
 	metabaseDefaultPassword = "!!Cr0wdS3c_M3t4b4s3??"
-	metabaseImage           = "metabase/metabase:v0.41.5"
+	metabaseImage           = "metabase/metabase:v0.46.6.1"
 	containerSharedFolder   = "/metabase-data"
 	metabaseSQLiteDBURL     = "https://crowdsec-statics-assets.s3-eu-west-1.amazonaws.com/metabase_sqlite.zip"
 )
