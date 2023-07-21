@@ -88,7 +88,7 @@ func (m *Metabase) Init(containerName string, version string) error {
 	if err != nil {
 		return err
 	}
-	m.Container, err = NewContainer(m.Config.ListenAddr, m.Config.ListenPort, m.Config.DBPath, containerName, fmt.Sprint("%s%s", metabaseImage, version), DBConnectionURI, m.Config.DockerGroupID)
+	m.Container, err = NewContainer(m.Config.ListenAddr, m.Config.ListenPort, m.Config.DBPath, containerName, fmt.Sprintf("%s%s", metabaseImage, version), DBConnectionURI, m.Config.DockerGroupID)
 	if err != nil {
 		return fmt.Errorf("container init: %w", err)
 	}
