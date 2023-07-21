@@ -21,12 +21,13 @@ import (
 )
 
 var (
-	metabaseUser         = "crowdsec@crowdsec.net"
-	metabasePassword     string
-	metabaseDbPath       string
-	metabaseConfigPath   string
-	metabaseConfigFolder = "metabase/"
-	metabaseConfigFile   = "metabase.yaml"
+	metabaseUser           = "crowdsec@crowdsec.net"
+	metabasePassword       string
+	metabaseDbPath         string
+	metabaseConfigPath     string
+	metabaseConfigFolder   = "metabase/"
+	metabaseConfigFile     = "metabase.yaml"
+	metabaseDefaultVersion = "v0.46.6.1"
 	/**/
 	metabaseListenAddress = "127.0.0.1"
 	metabaseListenPort    = "3000"
@@ -95,7 +96,6 @@ cscli dashboard remove
 
 	return cmdDashboard
 }
-
 
 func NewDashboardSetupCmd() *cobra.Command {
 	var force bool
@@ -180,7 +180,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 				log.Fatalf("unable to chown sqlite db file '%s': %s", csConfig.DbConfig.DbPath, err)
 			}
 
-			mb, err := metabase.SetupMetabase(csConfig.API.Server.DbConfig, metabaseListenAddress, metabaseListenPort, metabaseUser, metabasePassword, metabaseDbPath, dockerGroup.Gid, metabaseContainerID)
+			mb, err := metabase.SetupMetabase(csConfig.API.Server.DbConfig, metabaseListenAddress, metabaseListenPort, metabaseUser, metabasePassword, metabaseDbPath, dockerGroup.Gid, metabaseContainerID, metabaseDefaultVersion)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -199,6 +199,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 	cmdDashSetup.Flags().BoolVarP(&force, "force", "f", false, "Force setup : override existing files.")
 	cmdDashSetup.Flags().StringVarP(&metabaseDbPath, "dir", "d", "", "Shared directory with metabase container.")
 	cmdDashSetup.Flags().StringVarP(&metabaseListenAddress, "listen", "l", metabaseListenAddress, "Listen address of container")
+	cmdDashSetup.Flags().StringVarP(&metabaseDefaultVersion, "version", "v", metabaseDefaultVersion, "Metabase version to use")
 	cmdDashSetup.Flags().StringVarP(&metabaseListenPort, "port", "p", metabaseListenPort, "Listen port of container")
 	cmdDashSetup.Flags().BoolVarP(&forceYes, "yes", "y", false, "force  yes")
 	//cmdDashSetup.Flags().StringVarP(&metabaseUser, "user", "u", "crowdsec@crowdsec.net", "metabase user")
@@ -215,7 +216,7 @@ func NewDashboardStartCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			mb, err := metabase.NewMetabase(metabaseConfigPath, metabaseContainerID)
+			mb, err := metabase.NewMetabase(metabaseConfigPath, metabaseContainerID, metabaseDefaultVersion)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -245,7 +246,6 @@ func NewDashboardStopCmd() *cobra.Command {
 	return cmdDashStop
 }
 
-
 func NewDashboardShowPasswordCmd() *cobra.Command {
 	var cmdDashShowPassword = &cobra.Command{Use: "show-password",
 		Short:             "displays password of metabase.",
@@ -261,7 +261,6 @@ func NewDashboardShowPasswordCmd() *cobra.Command {
 	}
 	return cmdDashShowPassword
 }
-
 
 func NewDashboardRemoveCmd() *cobra.Command {
 	var force bool
