@@ -224,7 +224,7 @@ func NewDashboardStartCmd() *cobra.Command {
 				log.Fatalf("Failed to start metabase container : %s", err)
 			}
 			log.Infof("Started metabase")
-			log.Infof("url : http://%s:%s", mb.Config.ListenAddr, mb.config.ListenPort)
+			log.Infof("url : http://%s:%s", mb.Config.ListenAddr, mb.Config.ListenPort)
 		},
 	}
 	return cmdDashStart
