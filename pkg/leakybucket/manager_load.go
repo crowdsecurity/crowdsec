@@ -268,7 +268,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 		return nil, nil, fmt.Errorf("unable to load alert context: %s", err)
 	}
 
-	log.Warningf("Loaded %d scenarios", len(ret))
+	log.Infof("Loaded %d scenarios", len(ret))
 	return ret, response, nil
 }
 
