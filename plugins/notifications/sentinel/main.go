@@ -48,7 +48,7 @@ func (s *SentinelPlugin) getAuthorizationHeader(now string, length int, pluginNa
 	encodedHash := base64.StdEncoding.EncodeToString(h.Sum(nil))
 	authorization := "SharedKey " + s.PluginConfigByName[pluginName].CustomerID + ":" + encodedHash
 
-	logger.Info("authorization header", "header", authorization)
+	logger.Trace("authorization header", "header", authorization)
 
 	return authorization, nil
 }
@@ -87,7 +87,7 @@ func (s *SentinelPlugin) Notify(ctx context.Context, notification *protobufs.Not
 		return &protobufs.Empty{}, err
 	}
 	defer resp.Body.Close()
-	logger.Info("sent notification to sentinel", "status", resp.Status)
+	logger.Debug("sent notification to sentinel", "status", resp.Status)
 
 	if resp.StatusCode != 200 {
 		return &protobufs.Empty{}, fmt.Errorf("failed to send notification to sentinel: %s", resp.Status)
