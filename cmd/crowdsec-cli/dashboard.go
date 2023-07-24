@@ -308,11 +308,11 @@ func passwordIsValid(password string) bool {
 
 func checkSystemMemory(forceYes *bool) error {
 	totMem := memory.TotalMemory()
-	var answer bool
 	if totMem >= uint64(math.Pow(2, 30)) {
 		return nil
 	}
 	if !*forceYes {
+		var answer bool
 		prompt := &survey.Confirm{
 			Message: "Metabase requires 1-2GB of RAM, your system is below this requirement continue ?",
 			Default: true,
@@ -351,26 +351,26 @@ func warnIfNotLoopback(addr string, forceYes *bool) error {
 	return nil
 }
 
-func checkGroups(force *bool) (*user.Group, error) {
-	var answer bool
+func checkGroups(forceYes *bool) (*user.Group, error) {
 	groupExist := false
 	dockerGroup, err := user.LookupGroup(crowdsecGroup)
 	if err == nil {
 		groupExist = true
 	}
-	if !forceYes && !groupExist {
-		prompt := &survey.Confirm{
-			Message: fmt.Sprintf("For metabase docker to be able to access SQLite file we need to add a new group called '%s' to the system, is it ok for you ?", crowdsecGroup),
-			Default: true,
-		}
-		if err := survey.AskOne(prompt, &answer); err != nil {
-			return dockerGroup, fmt.Errorf("unable to ask to force: %s", err)
-		}
-	}
-	if !answer && !forceYes && !groupExist {
-		return dockerGroup, fmt.Errorf("unable to continue without creating '%s' group", crowdsecGroup)
-	}
 	if !groupExist {
+		if !*forceYes {
+			var answer bool
+			prompt := &survey.Confirm{
+				Message: fmt.Sprintf("For metabase docker to be able to access SQLite file we need to add a new group called '%s' to the system, is it ok for you ?", crowdsecGroup),
+				Default: true,
+			}
+			if err := survey.AskOne(prompt, &answer); err != nil {
+				return dockerGroup, fmt.Errorf("unable to ask to question: %s", err)
+			}
+			if !answer {
+				return dockerGroup, fmt.Errorf("unable to continue without creating '%s' group", crowdsecGroup)
+			}
+		}
 		groupAddCmd, err := exec.LookPath("groupadd")
 		if err != nil {
 			return dockerGroup, fmt.Errorf("unable to find 'groupadd' command, can't continue")
