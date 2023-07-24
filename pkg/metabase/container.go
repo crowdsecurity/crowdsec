@@ -161,10 +161,6 @@ func RemoveContainer(name string) error {
 }
 
 func RemoveImageContainer(image string) error {
-	if image == "" {
-		/* Default image for backporting */
-		image = "metabase/metabase:v0.41.5"
-	}
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return fmt.Errorf("failed to create docker client : %s", err)

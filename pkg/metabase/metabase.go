@@ -95,12 +95,12 @@ func (m *Metabase) Init(containerName string, image string) error {
 
 	return nil
 }
-func NewMetabase(configPath string, containerName string, image string) (*Metabase, error) {
+func NewMetabase(configPath string, containerName string) (*Metabase, error) {
 	m := &Metabase{}
 	if err := m.LoadConfig(configPath); err != nil {
 		return m, err
 	}
-	if err := m.Init(containerName, image); err != nil {
+	if err := m.Init(containerName, m.Config.Image); err != nil {
 		return m, err
 	}
 	return m, nil
@@ -129,7 +129,11 @@ func (m *Metabase) LoadConfig(configPath string) error {
 	if config.ListenURL == "" {
 		return fmt.Errorf("'listen_url' not found in configuration file '%s'", configPath)
 	}
-
+	/* Default image for backporting */
+	if config.Image == "" {
+		config.Image = "metabase/metabase:v0.41.5"
+		log.Warn("Image not found in configuration file, you are using an old dashboard setup (v0.41.5), please remove your dashboard and re-create it to use the latest version.")
+	}
 	m.Config = config
 
 	return nil
