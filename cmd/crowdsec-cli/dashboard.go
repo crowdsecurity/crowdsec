@@ -309,7 +309,10 @@ func passwordIsValid(password string) bool {
 func checkSystemMemory(forceYes *bool) error {
 	totMem := memory.TotalMemory()
 	var answer bool
-	if !*forceYes && uint64(math.Pow(2, 30)) >= totMem {
+	if totMem >= uint64(math.Pow(2, 30)) {
+		return nil
+	}
+	if !*forceYes {
 		prompt := &survey.Confirm{
 			Message: "Metabase requires 1-2GB of RAM, your system is below this requirement continue ?",
 			Default: true,
@@ -320,18 +323,19 @@ func checkSystemMemory(forceYes *bool) error {
 		if !answer {
 			return fmt.Errorf("user aborted")
 		}
+		return nil
 	}
 	log.Warn("Metabase requires 1-2GB of RAM, your system is below this requirement")
 	return nil
 }
 
-func warnIfNotLoopback(addr string, force *bool) error {
+func warnIfNotLoopback(addr string, forceYes *bool) error {
 	if addr == "127.0.0.1" || addr == "[::1]" {
 		return nil
 	}
 	log.Warnf("You are potentially exposing your metabase port to the internet (addr: %s), please consider using a reverse proxy", addr)
 	log.Warn("CrowdSec takes no responsibility for security of your metabase instance.")
-	if !*force {
+	if !*forceYes {
 		var answer bool
 		prompt := &survey.Confirm{
 			Message: "Do you want to continue ?",
