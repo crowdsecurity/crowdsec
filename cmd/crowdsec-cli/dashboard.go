@@ -353,7 +353,6 @@ func warnIfNotLoopback(addr string, forceYes *bool) error {
 
 func checkGroups(force *bool) (*user.Group, error) {
 	var answer bool
-	var err error
 	groupExist := false
 	dockerGroup, err := user.LookupGroup(crowdsecGroup)
 	if err == nil {
