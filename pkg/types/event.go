@@ -3,6 +3,7 @@ package types
 import (
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -27,8 +28,12 @@ len(evt.Waf.ByTagRx("*CVE*").ByConfidence("high").ByAction("block")) > 1
 
 */
 
-type WaapEvent []map[string]interface{}
+type MatchedRules []map[string]interface{}
 
+type WaapEvent struct {
+	MatchedRules
+	Vars map[string]string
+}
 type Field string
 
 func (f Field) String() string {
@@ -49,8 +54,28 @@ const (
 	Kind       Field = "kind"
 )
 
+func (w WaapEvent) GetVar(varName string) string {
+	if w.Vars == nil {
+		return ""
+	}
+	parsed := strings.Split(varName, ".")
+	if len(parsed) == 1 {
+		//no subkey
+		return w.Vars[varName]
+	} else if len(parsed) == 2 {
+		//subkey
+		if w.Vars[parsed[0]] == "" {
+			return ""
+		}
+		return w.Vars[parsed[0]][parsed[1]]
+	}
+	log.Warningf("invalid variable name %s", varName)
+	return ""
+
+}
+
 // getters
-func (w WaapEvent) GetField(field Field) []interface{} {
+func (w MatchedRules) GetField(field Field) []interface{} {
 	ret := make([]interface{}, 0)
 	for _, rule := range w {
 		ret = append(ret, rule[field.String()])
@@ -58,21 +83,21 @@ func (w WaapEvent) GetField(field Field) []interface{} {
 	return ret
 }
 
-func (w WaapEvent) GetURI() string {
+func (w MatchedRules) GetURI() string {
 	for _, rule := range w {
 		return rule["uri"].(string)
 	}
 	return ""
 }
 
-func (w WaapEvent) GetMethod() string {
+func (w MatchedRules) GetMethod() string {
 	for _, rule := range w {
 		return rule["method"].(string)
 	}
 	return ""
 }
 
-func (w WaapEvent) GetRuleIDs() []int {
+func (w MatchedRules) GetRuleIDs() []int {
 	ret := make([]int, 0)
 	for _, rule := range w {
 		ret = append(ret, rule["id"].(int))
@@ -80,7 +105,7 @@ func (w WaapEvent) GetRuleIDs() []int {
 	return ret
 }
 
-func (w WaapEvent) Kinds() []string {
+func (w MatchedRules) Kinds() []string {
 	ret := make([]string, 0)
 	for _, rule := range w {
 		exists := false
@@ -98,8 +123,8 @@ func (w WaapEvent) Kinds() []string {
 }
 
 // filters
-func (w WaapEvent) ByID(id int) WaapEvent {
-	waap := WaapEvent{}
+func (w MatchedRules) ByID(id int) MatchedRules {
+	waap := MatchedRules{}
 
 	for _, rule := range w {
 		if rule["id"] == id {
@@ -109,8 +134,8 @@ func (w WaapEvent) ByID(id int) WaapEvent {
 	return waap
 }
 
-func (w WaapEvent) ByKind(kind string) WaapEvent {
-	waap := WaapEvent{}
+func (w MatchedRules) ByKind(kind string) MatchedRules {
+	waap := MatchedRules{}
 	for _, rule := range w {
 		if rule["kind"] == kind {
 			waap = append(waap, rule)
@@ -119,8 +144,8 @@ func (w WaapEvent) ByKind(kind string) WaapEvent {
 	return waap
 }
 
-func (w WaapEvent) ByTags(match []string) WaapEvent {
-	waap := WaapEvent{}
+func (w MatchedRules) ByTags(match []string) MatchedRules {
+	waap := MatchedRules{}
 	for _, rule := range w {
 		for _, tag := range rule["tags"].([]string) {
 			for _, match_tag := range match {
@@ -134,8 +159,8 @@ func (w WaapEvent) ByTags(match []string) WaapEvent {
 	return waap
 }
 
-func (w WaapEvent) ByTag(match string) WaapEvent {
-	waap := WaapEvent{}
+func (w MatchedRules) ByTag(match string) MatchedRules {
+	waap := MatchedRules{}
 	for _, rule := range w {
 		for _, tag := range rule["tags"].([]string) {
 			if tag == match {
@@ -147,8 +172,8 @@ func (w WaapEvent) ByTag(match string) WaapEvent {
 	return waap
 }
 
-func (w WaapEvent) ByTagRx(rx string) WaapEvent {
-	waap := WaapEvent{}
+func (w MatchedRules) ByTagRx(rx string) MatchedRules {
+	waap := MatchedRules{}
 	re := regexp.MustCompile(rx)
 	if re == nil {
 		return waap
@@ -165,9 +190,9 @@ func (w WaapEvent) ByTagRx(rx string) WaapEvent {
 	return waap
 }
 
-func (w WaapEvent) ByDisruptiveness(is bool) WaapEvent {
+func (w MatchedRules) ByDisruptiveness(is bool) MatchedRules {
 	log.Infof("%s", w)
-	wap := WaapEvent{}
+	wap := MatchedRules{}
 	for _, rule := range w {
 		if rule["disruptive"] == is {
 			wap = append(wap, rule)
@@ -178,8 +203,8 @@ func (w WaapEvent) ByDisruptiveness(is bool) WaapEvent {
 	return wap
 }
 
-func (w WaapEvent) BySeverity(severity string) WaapEvent {
-	wap := WaapEvent{}
+func (w MatchedRules) BySeverity(severity string) MatchedRules {
+	wap := MatchedRules{}
 	for _, rule := range w {
 		if rule["severity"] == severity {
 			wap = append(wap, rule)
@@ -189,8 +214,8 @@ func (w WaapEvent) BySeverity(severity string) WaapEvent {
 	return wap
 }
 
-func (w WaapEvent) ByAccuracy(accuracy string) WaapEvent {
-	wap := WaapEvent{}
+func (w MatchedRules) ByAccuracy(accuracy string) MatchedRules {
+	wap := MatchedRules{}
 	for _, rule := range w {
 		if rule["accuracy"] == accuracy {
 			wap = append(wap, rule)

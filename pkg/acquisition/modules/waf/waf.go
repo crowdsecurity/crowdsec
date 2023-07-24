@@ -11,10 +11,8 @@ import (
 
 	"github.com/antonmedv/expr"
 	"github.com/crowdsecurity/coraza/v3"
-	"github.com/crowdsecurity/coraza/v3/collection"
 	"github.com/crowdsecurity/coraza/v3/experimental"
 	corazatypes "github.com/crowdsecurity/coraza/v3/types"
-	"github.com/crowdsecurity/coraza/v3/types/variables"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
@@ -338,7 +336,8 @@ func (r *WafRunner) processReqWithEngine(tx experimental.FullTransaction, parsed
 
 	defer func() {
 		tx.ProcessLogging()
-		tx.Close()
+		//Dont close the transaction here: we still need access to the variables afterwards
+		//tx.Close()
 	}()
 
 	//this method is not exported by coraza, so we have to do it ourselves.
@@ -370,17 +369,6 @@ func (r *WafRunner) processReqWithEngine(tx experimental.FullTransaction, parsed
 	}
 
 	in = tx.ProcessRequestHeaders()
-
-	for _, v := range tx.Collection(variables.TX).FindAll() {
-		log.Infof("tx variable: %s | %s", v.Key(), v.Value())
-	}
-
-	tx.Variables().All(func(v variables.RuleVariable, col collection.Collection) bool {
-		log.Infof("Collection: %s", col.Name())
-		log.Infof("Variable: %s", v.Name())
-		//collect := tx.Collection(col)
-		return true
-	})
 
 	//spew.Dump(in)
 	//spew.Dump(tx.MatchedRules())
@@ -569,6 +557,7 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 				LogWaapEvent(evt)
 				r.outChan <- *evt
 			}
+			expTx.Close()
 
 			outBandStart := time.Now()
 			// Process outBand
@@ -595,8 +584,8 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 				}
 				LogWaapEvent(evt)
 				r.outChan <- *evt
-
 			}
+			expTx.Close()
 			//measure the full time spent in the WAF
 			totalElapsed := time.Since(startParsing)
 			WafGlobalParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddr}).Observe(totalElapsed.Seconds())

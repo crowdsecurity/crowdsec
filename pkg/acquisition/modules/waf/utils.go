@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/crowdsecurity/coraza/v3/collection"
 	"github.com/crowdsecurity/coraza/v3/experimental"
+	"github.com/crowdsecurity/coraza/v3/types/variables"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
 	"github.com/prometheus/client_golang/prometheus"
@@ -71,6 +73,14 @@ func (r *WafRunner) AccumulateTxToEvent(tx experimental.FullTransaction, kind st
 		evt.Meta["waap_interrupted"] = "1"
 		evt.Meta["waap_action"] = tx.Interruption().Action
 	}
+
+	tx.Variables().All(func(v variables.RuleVariable, col collection.Collection) bool {
+		for _, variable := range col.FindAll() {
+			r.logger.Infof("%s.%s = %s", variable.Variable().Name(), variable.Key(), variable.Value())
+		}
+		return true
+	})
+
 	r.logger.Infof("variables addr in AccumulateTxToEvent: %p", tx.Variables())
 	//log.Infof("variables: %s", spew.Sdump(tx.Variables()))
 	//log.Infof("tx variables: %+v", tx.Collection(variables.TX))
