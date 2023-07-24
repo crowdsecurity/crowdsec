@@ -7,19 +7,15 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
-	"github.com/jszwec/csvutil"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
 	"github.com/crowdsecurity/go-cs-lib/pkg/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -112,12 +108,12 @@ func NewDecisionsCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadAPIClient(); err != nil {
-				return errors.Wrap(err, "loading api client")
+				return fmt.Errorf("loading api client: %w", err)
 			}
 			password := strfmt.Password(csConfig.API.Client.Credentials.Password)
 			apiurl, err := url.Parse(csConfig.API.Client.Credentials.URL)
 			if err != nil {
-				return errors.Wrapf(err, "parsing api url %s", csConfig.API.Client.Credentials.URL)
+				return fmt.Errorf("parsing api url %s: %w", csConfig.API.Client.Credentials.URL, err)
 			}
 			Client, err = apiclient.NewClient(&apiclient.Config{
 				MachineID:     csConfig.API.Client.Credentials.Login,
@@ -127,7 +123,7 @@ func NewDecisionsCmd() *cobra.Command {
 				VersionPrefix: "v1",
 			})
 			if err != nil {
-				return errors.Wrap(err, "creating api client")
+				return fmt.Errorf("creating api client: %w", err)
 			}
 			return nil
 		},
@@ -169,11 +165,11 @@ cscli decisions list -t ban
 `,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			/*take care of shorthand options*/
-			if err := manageCliDecisionAlerts(filter.IPEquals, filter.RangeEquals, filter.ScopeEquals, filter.ValueEquals); err != nil {
-				log.Fatalf("%s", err)
+			if err = manageCliDecisionAlerts(filter.IPEquals, filter.RangeEquals, filter.ScopeEquals, filter.ValueEquals); err != nil {
+				return err
 			}
 			filter.ActiveDecisionEquals = new(bool)
 			*filter.ActiveDecisionEquals = true
@@ -189,7 +185,7 @@ cscli decisions list -t ban
 				days, err := strconv.Atoi(realDuration)
 				if err != nil {
 					printHelp(cmd)
-					log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
+					return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
 				}
 				*filter.Until = fmt.Sprintf("%d%s", days*24, "h")
 			}
@@ -202,7 +198,7 @@ cscli decisions list -t ban
 				days, err := strconv.Atoi(realDuration)
 				if err != nil {
 					printHelp(cmd)
-					log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
+					return fmt.Errorf("can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Since)
 				}
 				*filter.Since = fmt.Sprintf("%d%s", days*24, "h")
 			}
@@ -238,13 +234,15 @@ cscli decisions list -t ban
 
 			alerts, _, err := Client.Alerts.List(context.Background(), filter)
 			if err != nil {
-				log.Fatalf("Unable to list decisions : %v", err)
+				return fmt.Errorf("unable to retrieve decisions: %w", err)
 			}
 
 			err = DecisionsToTable(alerts, printMachine)
 			if err != nil {
-				log.Fatalf("unable to list decisions : %v", err)
+				return fmt.Errorf("unable to print decisions: %w", err)
 			}
+
+			return nil
 		},
 	}
 	cmdDecisionsList.Flags().SortFlags = false
@@ -288,7 +286,7 @@ cscli decisions add --scope username --value foobar
 		/*TBD : fix long and example*/
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			alerts := models.AddAlertsRequest{}
 			origin := types.CscliOrigin
@@ -303,7 +301,7 @@ cscli decisions add --scope username --value foobar
 
 			/*take care of shorthand options*/
 			if err := manageCliDecisionAlerts(&addIP, &addRange, &addScope, &addValue); err != nil {
-				log.Fatalf("%s", err)
+				return err
 			}
 
 			if addIP != "" {
@@ -314,7 +312,7 @@ cscli decisions add --scope username --value foobar
 				addScope = types.Range
 			} else if addValue == "" {
 				printHelp(cmd)
-				log.Fatalf("Missing arguments, a value is required (--ip, --range or --scope and --value)")
+				return fmt.Errorf("Missing arguments, a value is required (--ip, --range or --scope and --value)")
 			}
 
 			if addReason == "" {
@@ -357,10 +355,11 @@ cscli decisions add --scope username --value foobar
 
 			_, _, err = Client.Alerts.Add(context.Background(), alerts)
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 
 			log.Info("Decision successfully added")
+			return nil
 		},
 	}
 
@@ -401,25 +400,27 @@ cscli decisions delete --id 42
 cscli decisions delete --type captcha
 `,
 		/*TBD : refaire le Long/Example*/
-		PreRun: func(cmd *cobra.Command, args []string) {
+		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if delDecisionAll {
-				return
+				return nil
 			}
 			if *delFilter.ScopeEquals == "" && *delFilter.ValueEquals == "" &&
 				*delFilter.TypeEquals == "" && *delFilter.IPEquals == "" &&
 				*delFilter.RangeEquals == "" && *delFilter.ScenarioEquals == "" &&
 				*delFilter.OriginEquals == "" && delDecisionId == "" {
 				cmd.Usage()
-				log.Fatalln("At least one filter or --all must be specified")
+				return fmt.Errorf("at least one filter or --all must be specified")
 			}
+
+			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			var decisions *models.DeleteDecisionResponse
 
 			/*take care of shorthand options*/
-			if err := manageCliDecisionAlerts(delFilter.IPEquals, delFilter.RangeEquals, delFilter.ScopeEquals, delFilter.ValueEquals); err != nil {
-				log.Fatalf("%s", err)
+			if err = manageCliDecisionAlerts(delFilter.IPEquals, delFilter.RangeEquals, delFilter.ScopeEquals, delFilter.ValueEquals); err != nil {
+				return err
 			}
 			if *delFilter.ScopeEquals == "" {
 				delFilter.ScopeEquals = nil
@@ -449,18 +450,19 @@ cscli decisions delete --type captcha
 			if delDecisionId == "" {
 				decisions, _, err = Client.Decisions.Delete(context.Background(), delFilter)
 				if err != nil {
-					log.Fatalf("Unable to delete decisions : %v", err)
+					return fmt.Errorf("Unable to delete decisions: %v", err)
 				}
 			} else {
 				if _, err = strconv.Atoi(delDecisionId); err != nil {
-					log.Fatalf("id '%s' is not an integer: %v", delDecisionId, err)
+					return fmt.Errorf("id '%s' is not an integer: %v", delDecisionId, err)
 				}
 				decisions, _, err = Client.Decisions.DeleteOne(context.Background(), delDecisionId)
 				if err != nil {
-					log.Fatalf("Unable to delete decision : %v", err)
+					return fmt.Errorf("Unable to delete decision: %v", err)
 				}
 			}
 			log.Infof("%s decision(s) deleted", decisions.NbDeleted)
+			return nil
 		},
 	}
 
@@ -477,193 +479,4 @@ cscli decisions delete --type captcha
 	cmdDecisionsDelete.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
 
 	return cmdDecisionsDelete
-}
-
-func NewDecisionsImportCmd() *cobra.Command {
-	var (
-		defaultDuration = "4h"
-		defaultScope    = "ip"
-		defaultType     = "ban"
-		defaultReason   = "manual"
-		importDuration  string
-		importScope     string
-		importReason    string
-		importType      string
-		importFile      string
-		batchSize       int
-	)
-
-	var cmdDecisionImport = &cobra.Command{
-		Use:   "import [options]",
-		Short: "Import decisions from json or csv file",
-		Long: "expected format :\n" +
-			"csv  : any of duration,origin,reason,scope,type,value, with a header line\n" +
-			`json : {"duration" : "24h", "origin" : "my-list", "reason" : "my_scenario", "scope" : "ip", "type" : "ban", "value" : "x.y.z.z"}`,
-		DisableAutoGenTag: true,
-		Example: `decisions.csv :
-duration,scope,value
-24h,ip,1.2.3.4
-
-cscsli decisions import -i decisions.csv
-
-decisions.json :
-[{"duration" : "4h", "scope" : "ip", "type" : "ban", "value" : "1.2.3.4"}]
-`,
-		Run: func(cmd *cobra.Command, args []string) {
-			if importFile == "" {
-				log.Fatalf("Please provide a input file containing decisions with -i flag")
-			}
-			csvData, err := os.ReadFile(importFile)
-			if err != nil {
-				log.Fatalf("unable to open '%s': %s", importFile, err)
-			}
-			type decisionRaw struct {
-				Duration string `csv:"duration,omitempty" json:"duration,omitempty"`
-				Origin   string `csv:"origin,omitempty" json:"origin,omitempty"`
-				Scenario string `csv:"reason,omitempty" json:"reason,omitempty"`
-				Scope    string `csv:"scope,omitempty" json:"scope,omitempty"`
-				Type     string `csv:"type,omitempty" json:"type,omitempty"`
-				Value    string `csv:"value" json:"value"`
-			}
-			var decisionsListRaw []decisionRaw
-			switch fileFormat := filepath.Ext(importFile); fileFormat {
-			case ".json":
-				if err := json.Unmarshal(csvData, &decisionsListRaw); err != nil {
-					log.Fatalf("unable to unmarshall json: '%s'", err)
-				}
-			case ".csv":
-				if err := csvutil.Unmarshal(csvData, &decisionsListRaw); err != nil {
-					log.Fatalf("unable to unmarshall csv: '%s'", err)
-				}
-			default:
-				log.Fatalf("file format not supported for '%s'. supported format are 'json' and 'csv'", importFile)
-			}
-
-			decisionsList := make([]*models.Decision, 0)
-			for i, decisionLine := range decisionsListRaw {
-				line := i + 2
-				if decisionLine.Value == "" {
-					log.Fatalf("please provide a 'value' in your csv line %d", line)
-				}
-				/*deal with defaults and cli-override*/
-				if decisionLine.Duration == "" {
-					decisionLine.Duration = defaultDuration
-					log.Debugf("No 'duration' line %d, using default value: '%s'", line, defaultDuration)
-				}
-				if importDuration != "" {
-					decisionLine.Duration = importDuration
-					log.Debugf("'duration' line %d, using supplied value: '%s'", line, importDuration)
-				}
-				decisionLine.Origin = types.CscliImportOrigin
-
-				if decisionLine.Scenario == "" {
-					decisionLine.Scenario = defaultReason
-					log.Debugf("No 'reason' line %d, using value: '%s'", line, decisionLine.Scenario)
-				}
-				if importReason != "" {
-					decisionLine.Scenario = importReason
-					log.Debugf("No 'reason' line %d, using supplied value: '%s'", line, importReason)
-				}
-				if decisionLine.Type == "" {
-					decisionLine.Type = defaultType
-					log.Debugf("No 'type' line %d, using default value: '%s'", line, decisionLine.Type)
-				}
-				if importType != "" {
-					decisionLine.Type = importType
-					log.Debugf("'type' line %d, using supplied value: '%s'", line, importType)
-				}
-				if decisionLine.Scope == "" {
-					decisionLine.Scope = defaultScope
-					log.Debugf("No 'scope' line %d, using default value: '%s'", line, decisionLine.Scope)
-				}
-				if importScope != "" {
-					decisionLine.Scope = importScope
-					log.Debugf("'scope' line %d, using supplied value: '%s'", line, importScope)
-				}
-				decision := models.Decision{
-					Value:     ptr.Of(decisionLine.Value),
-					Duration:  ptr.Of(decisionLine.Duration),
-					Origin:    ptr.Of(decisionLine.Origin),
-					Scenario:  ptr.Of(decisionLine.Scenario),
-					Type:      ptr.Of(decisionLine.Type),
-					Scope:     ptr.Of(decisionLine.Scope),
-					Simulated: new(bool),
-				}
-				decisionsList = append(decisionsList, &decision)
-			}
-			alerts := models.AddAlertsRequest{}
-
-			if batchSize > 0 {
-				for i := 0; i < len(decisionsList); i += batchSize {
-					end := i + batchSize
-					if end > len(decisionsList) {
-						end = len(decisionsList)
-					}
-					decisionBatch := decisionsList[i:end]
-					importAlert := models.Alert{
-						CreatedAt: time.Now().UTC().Format(time.RFC3339),
-						Scenario:  ptr.Of(fmt.Sprintf("import %s : %d IPs", importFile, len(decisionBatch))),
-
-						Message: ptr.Of(""),
-						Events:  []*models.Event{},
-						Source: &models.Source{
-							Scope: ptr.Of(""),
-							Value: ptr.Of(""),
-						},
-						StartAt:         ptr.Of(time.Now().UTC().Format(time.RFC3339)),
-						StopAt:          ptr.Of(time.Now().UTC().Format(time.RFC3339)),
-						Capacity:        ptr.Of(int32(0)),
-						Simulated:       ptr.Of(false),
-						EventsCount:     ptr.Of(int32(len(decisionBatch))),
-						Leakspeed:       ptr.Of(""),
-						ScenarioHash:    ptr.Of(""),
-						ScenarioVersion: ptr.Of(""),
-						Decisions:       decisionBatch,
-					}
-					alerts = append(alerts, &importAlert)
-				}
-			} else {
-				importAlert := models.Alert{
-					CreatedAt: time.Now().UTC().Format(time.RFC3339),
-					Scenario:  ptr.Of(fmt.Sprintf("import %s : %d IPs", importFile, len(decisionsList))),
-					Message:   ptr.Of(""),
-					Events:    []*models.Event{},
-					Source: &models.Source{
-						Scope: ptr.Of(""),
-						Value: ptr.Of(""),
-					},
-					StartAt:         ptr.Of(time.Now().UTC().Format(time.RFC3339)),
-					StopAt:          ptr.Of(time.Now().UTC().Format(time.RFC3339)),
-					Capacity:        ptr.Of(int32(0)),
-					Simulated:       ptr.Of(false),
-					EventsCount:     ptr.Of(int32(len(decisionsList))),
-					Leakspeed:       ptr.Of(""),
-					ScenarioHash:    ptr.Of(""),
-					ScenarioVersion: ptr.Of(""),
-					Decisions:       decisionsList,
-				}
-				alerts = append(alerts, &importAlert)
-			}
-
-			if len(decisionsList) > 1000 {
-				log.Infof("You are about to add %d decisions, this may take a while", len(decisionsList))
-			}
-
-			_, _, err = Client.Alerts.Add(context.Background(), alerts)
-			if err != nil {
-				log.Fatal(err)
-			}
-			log.Infof("%d decisions successfully imported", len(decisionsList))
-		},
-	}
-
-	cmdDecisionImport.Flags().SortFlags = false
-	cmdDecisionImport.Flags().StringVarP(&importFile, "input", "i", "", "Input file")
-	cmdDecisionImport.Flags().StringVarP(&importDuration, "duration", "d", "", "Decision duration (ie. 1h,4h,30m)")
-	cmdDecisionImport.Flags().StringVar(&importScope, "scope", types.Ip, "Decision scope (ie. ip,range,username)")
-	cmdDecisionImport.Flags().StringVarP(&importReason, "reason", "R", "", "Decision reason (ie. scenario-name)")
-	cmdDecisionImport.Flags().StringVarP(&importType, "type", "t", "", "Decision type (ie. ban,captcha,throttle)")
-	cmdDecisionImport.Flags().IntVar(&batchSize, "batch", 0, "Split import in batches of N decisions")
-
-	return cmdDecisionImport
 }

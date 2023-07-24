@@ -3,10 +3,12 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
-	"path/filepath"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
 
@@ -16,31 +18,28 @@ import (
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
 )
 
 func initCrowdsec(cConfig *csconfig.Config) (*parser.Parsers, error) {
 	var err error
 
 	// Populate cwhub package tools
-	if err := cwhub.GetHubIdx(cConfig.Hub); err != nil {
-		return &parser.Parsers{}, fmt.Errorf("Failed to load hub index : %s", err)
+	if err = cwhub.GetHubIdx(cConfig.Hub); err != nil {
+		return nil, fmt.Errorf("while loading hub index: %w", err)
 	}
 
 	// Start loading configs
 	csParsers := parser.NewParsers()
 	if csParsers, err = parser.LoadParsers(cConfig, csParsers); err != nil {
-		return &parser.Parsers{}, fmt.Errorf("Failed to load parsers: %s", err)
+		return nil, fmt.Errorf("while loading parsers: %w", err)
 	}
 
 	if err := LoadBuckets(cConfig); err != nil {
-		return &parser.Parsers{}, fmt.Errorf("Failed to load scenarios: %s", err)
+		return nil, fmt.Errorf("while loading scenarios: %w", err)
 	}
 
 	if err := LoadAcquisition(cConfig); err != nil {
-		return &parser.Parsers{}, fmt.Errorf("Error while loading acquisition config : %s", err)
+		return nil, fmt.Errorf("while loading acquisition config: %w", err)
 	}
 	return csParsers, nil
 }
@@ -118,7 +117,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers) error {
 			aggregated = true
 		}
 		if err := acquisition.GetMetrics(dataSources, aggregated); err != nil {
-			return errors.Wrap(err, "while fetching prometheus metrics for datasources.")
+			return fmt.Errorf("while fetching prometheus metrics for datasources: %w", err)
 		}
 
 	}

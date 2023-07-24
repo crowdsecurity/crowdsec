@@ -4,14 +4,15 @@ ifeq ($(OS), Windows_NT)
 	EXT = .exe
 endif
 
-# Go parameters
+PLUGIN = dummy
+BINARY_NAME = notification-$(PLUGIN)$(EXT)
+
 GOCMD = go
 GOBUILD = $(GOCMD) build
-
-BINARY_NAME = notification-dummy$(EXT)
 
 build: clean
 	$(GOBUILD) $(LD_OPTS) $(BUILD_VENDOR_FLAGS) -o $(BINARY_NAME)
 
+.PHONY: clean
 clean:
 	@$(RM) $(BINARY_NAME) $(WIN_IGNORE_ERR)

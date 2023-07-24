@@ -6,8 +6,11 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
+
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var DEFAULT_MAX_OPEN_CONNS = 100
@@ -57,7 +60,7 @@ func (c *Config) LoadDBConfig() error {
 	}
 
 	if c.DbConfig.MaxOpenConns == nil {
-		c.DbConfig.MaxOpenConns = types.IntPtr(DEFAULT_MAX_OPEN_CONNS)
+		c.DbConfig.MaxOpenConns = ptr.Of(DEFAULT_MAX_OPEN_CONNS)
 	}
 
 	if c.DbConfig.Type == "sqlite" {
@@ -71,10 +74,10 @@ func (c *Config) LoadDBConfig() error {
 			}
 			if isNetwork {
 				log.Debugf("database is on network filesystem (%s), setting useWal to false", fsType)
-				c.DbConfig.UseWal = types.BoolPtr(false)
+				c.DbConfig.UseWal = ptr.Of(false)
 			} else {
 				log.Debugf("database is on local filesystem (%s), setting useWal to true", fsType)
-				c.DbConfig.UseWal = types.BoolPtr(true)
+				c.DbConfig.UseWal = ptr.Of(true)
 			}
 		} else if *c.DbConfig.UseWal {
 			dbDir := filepath.Dir(c.DbConfig.DbPath)

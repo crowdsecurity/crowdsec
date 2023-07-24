@@ -11,6 +11,7 @@ import (
 	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
 
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -106,7 +107,7 @@ func runBouncersAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	if csConfig.Cscli.Output == "human" {
-		fmt.Printf("Api key for '%s':\n\n", keyName)
+		fmt.Printf("API key for '%s':\n\n", keyName)
 		fmt.Printf("   %s\n\n", apiKey)
 		fmt.Print("Please keep this key since you will not be able to retrieve it!\n")
 	} else if csConfig.Cscli.Output == "raw" {
@@ -122,7 +123,6 @@ func runBouncersAdd(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-
 func NewBouncersAddCmd() *cobra.Command {
 	cmdBouncersAdd := &cobra.Command{
 		Use:   "add MyBouncerName [--length 16]",
@@ -133,7 +133,7 @@ cscli bouncers add MyBouncerName -l 24
 cscli bouncers add MyBouncerName -k <random-key>`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE: runBouncersAdd,
+		RunE:              runBouncersAdd,
 	}
 
 	flags := cmdBouncersAdd.Flags()
@@ -143,7 +143,6 @@ cscli bouncers add MyBouncerName -k <random-key>`,
 
 	return cmdBouncersAdd
 }
-
 
 func runBouncersDelete(cmd *cobra.Command, args []string) error {
 	for _, bouncerID := range args {
@@ -156,7 +155,6 @@ func runBouncersDelete(cmd *cobra.Command, args []string) error {
 
 	return nil
 }
-
 
 func NewBouncersDeleteCmd() *cobra.Command {
 	cmdBouncersDelete := &cobra.Command{
@@ -178,7 +176,7 @@ func NewBouncersDeleteCmd() *cobra.Command {
 			}
 			ret := make([]string, 0)
 			for _, bouncer := range bouncers {
-				if strings.Contains(bouncer.Name, toComplete) && !inSlice(bouncer.Name, args) {
+				if strings.Contains(bouncer.Name, toComplete) && !slices.Contains(args, bouncer.Name) {
 					ret = append(ret, bouncer.Name)
 				}
 			}

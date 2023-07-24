@@ -101,9 +101,9 @@ teardown() {
     # check that LAPI configuration is loaded (human and json, not shows in raw)
 
     rune -0 cscli config show -o human
-    assert_line --regexp ".*- URL\s+: http://127.0.0.1:8080/"
-    assert_line --regexp ".*- Login\s+: githubciXXXXXXXXXXXXXXXXXXXXXXXX"
-    assert_line --regexp ".*- Credentials File\s+: .*/local_api_credentials.yaml"
+    assert_line --regexp ".*- URL +: http://127.0.0.1:8080/"
+    assert_line --regexp ".*- Login +: githubciXXXXXXXXXXXXXXXXXXXXXXXX"
+    assert_line --regexp ".*- Credentials File +: .*/local_api_credentials.yaml"
 
     rune -0 cscli config show -o json
     rune -0 jq -c '.API.Client.Credentials | [.url,.login]' <(output)
@@ -182,7 +182,7 @@ teardown() {
 
 @test "cscli - empty LAPI credentials file" {
     LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
-    truncate -s 0 "${LOCAL_API_CREDENTIALS}"
+    : > "${LOCAL_API_CREDENTIALS}"
     rune -1 cscli lapi status
     assert_stderr --partial "no credentials or URL found in api client configuration '${LOCAL_API_CREDENTIALS}'"
 
@@ -227,8 +227,7 @@ teardown() {
     rune -0 cscli metrics
     assert_output --partial "Route"
     assert_output --partial '/v1/watchers/login'
-    assert_output --partial "Local Api Metrics:"
-
+    assert_output --partial "Local API Metrics:"
 }
 
 @test "'cscli completion' with or without configuration file" {

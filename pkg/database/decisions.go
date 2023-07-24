@@ -2,17 +2,17 @@ package database
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
-	"strconv"
-
 	"entgo.io/ent/dialect/sql"
+	"github.com/pkg/errors"
+
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/pkg/errors"
 )
 
 type DecisionsByScenario struct {
@@ -108,7 +108,7 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 	}
 	query, err = applyStartIpEndIpFilter(query, contains, ip_sz, start_ip, start_sfx, end_ip, end_sfx)
 	if err != nil {
-		return nil, errors.Wrapf(err, "fail to apply StartIpEndIpFilter")
+		return nil, fmt.Errorf("fail to apply StartIpEndIpFilter: %w", err)
 	}
 	return query, nil
 }

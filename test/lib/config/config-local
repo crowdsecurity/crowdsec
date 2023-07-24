@@ -100,7 +100,7 @@ config_generate() {
     .api.server.profiles_path=strenv(CONFIG_DIR)+"/profiles.yaml" |
     .api.server.console_path=strenv(CONFIG_DIR)+"/console.yaml" |
     .crowdsec_service.console_context_path=strenv(CONFIG_DIR) + "/console/context.yaml" |
-    .api.server.online_client.credentials_path=strenv(CONFIG_DIR)+"/online_api_credentials.yaml"
+    del(.api.server.online_client)
     ' ../config/config.yaml >"${CONFIG_DIR}/config.yaml"
 }
 
@@ -120,18 +120,15 @@ make_init_data() {
     ./instance-db config-yaml
     ./instance-db setup
 
-    "$CSCLI" machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto
-    "$CSCLI" hub update
-    "$CSCLI" collections install crowdsecurity/linux
+    "$CSCLI" --warning machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto
+    "$CSCLI" --warning hub update
+    "$CSCLI" --warning collections install crowdsecurity/linux
 
     mkdir -p "$LOCAL_INIT_DIR"
 
     ./instance-db dump "${LOCAL_INIT_DIR}/database"
 
     echo "${DB_BACKEND}" > "${LOCAL_INIT_DIR}/.backend"
-
-    # disable CAPI by default
-    yq e 'del(.api.server.online_client)' -i "${CONFIG_DIR}/config.yaml"
 
     "${TAR}" -C "${LOCAL_DIR}" --create \
         --exclude "${REL_DATA_DIR}"/crowdsec.db \

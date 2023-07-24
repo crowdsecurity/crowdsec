@@ -1,15 +1,17 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
-	"github.com/crowdsecurity/crowdsec/pkg/database"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/tomb.v2"
+
+	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
+
+	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
 )
 
 func NewPapiCmd() *cobra.Command {
@@ -20,7 +22,7 @@ func NewPapiCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
-				return errors.Wrap(err, "Local API is disabled, please run this command on the local API machine")
+				return fmt.Errorf("Local API is disabled, please run this command on the local API machine: %w", err)
 			}
 			if csConfig.API.Server.OnlineClient == nil {
 				log.Fatalf("no configuration for Central API in '%s'", *csConfig.FilePath)
@@ -71,7 +73,7 @@ func NewPapiStatusCmd() *cobra.Command {
 			var lastTimestampStr *string
 			lastTimestampStr, err = dbClient.GetConfigItem(apiserver.PapiPullKey)
 			if err != nil {
-				lastTimestampStr = types.StrPtr("never")
+				lastTimestampStr = ptr.Of("never")
 			}
 			log.Infof("You can successfully interact with Polling API (PAPI)")
 			log.Infof("Console plan: %s", perms.Plan)

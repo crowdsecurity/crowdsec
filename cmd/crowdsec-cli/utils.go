@@ -18,7 +18,8 @@ import (
 	"github.com/prometheus/prom2json"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/texttheater/golang-levenshtein/levenshtein"
+	"github.com/agext/levenshtein"
+	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
@@ -35,15 +36,6 @@ func printHelp(cmd *cobra.Command) {
 	if err != nil {
 		log.Fatalf("unable to print help(): %s", err)
 	}
-}
-
-func inSlice(s string, slice []string) bool {
-	for _, str := range slice {
-		if s == str {
-			return true
-		}
-	}
-	return false
 }
 
 func indexOf(s string, slice []string) int {
@@ -98,7 +90,7 @@ func GetDistance(itemType string, itemName string) (*cwhub.Item, int) {
 	}
 
 	for _, s := range allItems {
-		d := levenshtein.DistanceForStrings([]rune(itemName), []rune(s), levenshtein.DefaultOptions)
+		d := levenshtein.Distance(itemName, s, nil)
 		if d < nearestScore {
 			nearestScore = d
 			nearestItem = cwhub.GetItem(itemType, s)
@@ -115,7 +107,7 @@ func compAllItems(itemType string, args []string, toComplete string) ([]string, 
 	comp := make([]string, 0)
 	hubItems := cwhub.GetHubStatusForItemType(itemType, "", true)
 	for _, item := range hubItems {
-		if !inSlice(item.Name, args) && strings.Contains(item.Name, toComplete) {
+		if !slices.Contains(args, item.Name) && strings.Contains(item.Name, toComplete) {
 			comp = append(comp, item.Name)
 		}
 	}
@@ -602,7 +594,7 @@ func RestoreHub(dirPath string) error {
 					log.Infof("Going to restore local/tainted [%s]", tfile.Name())
 					sourceFile := fmt.Sprintf("%s/%s/%s", itemDirectory, stage, tfile.Name())
 					destinationFile := fmt.Sprintf("%s%s", stagedir, tfile.Name())
-					if err = types.CopyFile(sourceFile, destinationFile); err != nil {
+					if err = CopyFile(sourceFile, destinationFile); err != nil {
 						return fmt.Errorf("failed copy %s %s to %s : %s", itype, sourceFile, destinationFile, err)
 					}
 					log.Infof("restored %s to %s", sourceFile, destinationFile)
@@ -611,7 +603,7 @@ func RestoreHub(dirPath string) error {
 				log.Infof("Going to restore local/tainted [%s]", file.Name())
 				sourceFile := fmt.Sprintf("%s/%s", itemDirectory, file.Name())
 				destinationFile := fmt.Sprintf("%s/%s/%s", csConfig.ConfigPaths.ConfigDir, itype, file.Name())
-				if err = types.CopyFile(sourceFile, destinationFile); err != nil {
+				if err = CopyFile(sourceFile, destinationFile); err != nil {
 					return fmt.Errorf("failed copy %s %s to %s : %s", itype, sourceFile, destinationFile, err)
 				}
 				log.Infof("restored %s to %s", sourceFile, destinationFile)
@@ -661,7 +653,7 @@ func BackupHub(dirPath string) error {
 				}
 				clog.Debugf("[%s] : backuping file (tainted:%t local:%t up-to-date:%t)", k, v.Tainted, v.Local, v.UpToDate)
 				tfile := fmt.Sprintf("%s%s/%s", itemDirectory, v.Stage, v.FileName)
-				if err = types.CopyFile(v.LocalPath, tfile); err != nil {
+				if err = CopyFile(v.LocalPath, tfile); err != nil {
 					return fmt.Errorf("failed copy %s %s to %s : %s", itemType, v.LocalPath, tfile, err)
 				}
 				clog.Infof("local/tainted saved %s to %s", v.LocalPath, tfile)
@@ -693,30 +685,13 @@ type unit struct {
 }
 
 var ranges = []unit{
-	{
-		value:  1e18,
-		symbol: "E",
-	},
-	{
-		value:  1e15,
-		symbol: "P",
-	},
-	{
-		value:  1e12,
-		symbol: "T",
-	},
-	{
-		value:  1e6,
-		symbol: "M",
-	},
-	{
-		value:  1e3,
-		symbol: "k",
-	},
-	{
-		value:  1,
-		symbol: "",
-	},
+	{value: 1e18, symbol: "E"},
+	{value: 1e15, symbol: "P"},
+	{value: 1e12, symbol: "T"},
+	{value: 1e9,  symbol: "G"},
+	{value: 1e6,  symbol: "M"},
+	{value: 1e3,  symbol: "k"},
+	{value: 1,    symbol: ""},
 }
 
 func formatNumber(num int) string {
@@ -747,7 +722,6 @@ func getDBClient() (*database.Client, error) {
 	}
 	return ret, nil
 }
-
 
 func removeFromSlice(val string, slice []string) []string {
 	var i int

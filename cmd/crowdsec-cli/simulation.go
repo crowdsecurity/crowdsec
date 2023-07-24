@@ -6,6 +6,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -161,7 +162,7 @@ func NewSimulationEnableCmd() *cobra.Command {
 					if !item.Installed {
 						log.Warningf("'%s' isn't enabled", scenario)
 					}
-					isExcluded := inSlice(scenario, csConfig.Cscli.SimulationConfig.Exclusions)
+					isExcluded := slices.Contains(csConfig.Cscli.SimulationConfig.Exclusions, scenario)
 					if *csConfig.Cscli.SimulationConfig.Simulation && !isExcluded {
 						log.Warning("global simulation is already enabled")
 						continue
@@ -210,7 +211,7 @@ func NewSimulationDisableCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) > 0 {
 				for _, scenario := range args {
-					isExcluded := inSlice(scenario, csConfig.Cscli.SimulationConfig.Exclusions)
+					isExcluded := slices.Contains(csConfig.Cscli.SimulationConfig.Exclusions, scenario)
 					if !*csConfig.Cscli.SimulationConfig.Simulation && !isExcluded {
 						log.Warningf("%s isn't in simulation mode", scenario)
 						continue

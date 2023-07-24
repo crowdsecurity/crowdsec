@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
@@ -100,7 +99,7 @@ func (s *SyslogSource) UnmarshalConfig(yamlConfig []byte) error {
 
 	err := yaml.UnmarshalStrict(yamlConfig, &s.config)
 	if err != nil {
-		return errors.Wrap(err, "Cannot parse syslog configuration")
+		return fmt.Errorf("cannot parse syslog configuration: %w", err)
 	}
 
 	if s.config.Addr == "" {
@@ -140,7 +139,7 @@ func (s *SyslogSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) 
 	s.server.SetChannel(c)
 	err := s.server.Listen(s.config.Addr, s.config.Port)
 	if err != nil {
-		return errors.Wrap(err, "could not start syslog server")
+		return fmt.Errorf("could not start syslog server: %w", err)
 	}
 	s.serverTomb = s.server.StartServer()
 	t.Go(func() error {

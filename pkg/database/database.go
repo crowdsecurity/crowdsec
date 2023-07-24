@@ -8,15 +8,17 @@ import (
 	"time"
 
 	entsql "entgo.io/ent/dialect/sql"
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/go-co-op/gocron"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type Client struct {
@@ -35,7 +37,7 @@ func getEntDriver(dbtype string, dbdialect string, dsn string, config *csconfig.
 	}
 	if config.MaxOpenConns == nil {
 		log.Warningf("MaxOpenConns is 0, defaulting to %d", csconfig.DEFAULT_MAX_OPEN_CONNS)
-		config.MaxOpenConns = types.IntPtr(csconfig.DEFAULT_MAX_OPEN_CONNS)
+		config.MaxOpenConns = ptr.Of(csconfig.DEFAULT_MAX_OPEN_CONNS)
 	}
 	db.SetMaxOpenConns(*config.MaxOpenConns)
 	drv := entsql.OpenDB(dbdialect, db)
@@ -51,7 +53,7 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 	/*The logger that will be used by db operations*/
 	clog := log.New()
 	if err := types.ConfigureLogger(clog); err != nil {
-		return nil, errors.Wrap(err, "while configuring db logger")
+		return nil, fmt.Errorf("while configuring db logger: %w", err)
 	}
 	if config.LogLevel != nil {
 		clog.SetLevel(*config.LogLevel)
@@ -68,10 +70,10 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 		if _, err := os.Stat(config.DbPath); os.IsNotExist(err) {
 			f, err := os.OpenFile(config.DbPath, os.O_CREATE|os.O_RDWR, 0600)
 			if err != nil {
-				return &Client{}, errors.Wrapf(err, "failed to create SQLite database file %q", config.DbPath)
+				return &Client{}, fmt.Errorf("failed to create SQLite database file %q: %w", config.DbPath, err)
 			}
 			if err := f.Close(); err != nil {
-				return &Client{}, errors.Wrapf(err, "failed to create SQLite database file %q", config.DbPath)
+				return &Client{}, fmt.Errorf("failed to create SQLite database file %q: %w", config.DbPath, err)
 			}
 		}
 		//Always try to set permissions to simplify a bit the code for windows (as the permissions set by OpenFile will be garbage)
@@ -111,7 +113,7 @@ func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Sched
 	scheduler := gocron.NewScheduler(time.UTC)
 	job, err := scheduler.Every(1).Minute().Do(c.FlushAlerts, maxAge, maxItems)
 	if err != nil {
-		return nil, errors.Wrap(err, "while starting FlushAlerts scheduler")
+		return nil, fmt.Errorf("while starting FlushAlerts scheduler: %w", err)
 	}
 	job.SingletonMode()
 	// Init & Start cronjob every hour for bouncers/agents
@@ -119,14 +121,14 @@ func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Sched
 		if config.AgentsGC.Cert != nil {
 			duration, err := types.ParseDuration(*config.AgentsGC.Cert)
 			if err != nil {
-				return nil, errors.Wrap(err, "while parsing agents cert auto-delete duration")
+				return nil, fmt.Errorf("while parsing agents cert auto-delete duration: %w", err)
 			}
 			config.AgentsGC.CertDuration = &duration
 		}
 		if config.AgentsGC.LoginPassword != nil {
 			duration, err := types.ParseDuration(*config.AgentsGC.LoginPassword)
 			if err != nil {
-				return nil, errors.Wrap(err, "while parsing agents login/password auto-delete duration")
+				return nil, fmt.Errorf("while parsing agents login/password auto-delete duration: %w", err)
 			}
 			config.AgentsGC.LoginPasswordDuration = &duration
 		}
@@ -138,14 +140,14 @@ func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Sched
 		if config.BouncersGC.Cert != nil {
 			duration, err := types.ParseDuration(*config.BouncersGC.Cert)
 			if err != nil {
-				return nil, errors.Wrap(err, "while parsing bouncers cert auto-delete duration")
+				return nil, fmt.Errorf("while parsing bouncers cert auto-delete duration: %w", err)
 			}
 			config.BouncersGC.CertDuration = &duration
 		}
 		if config.BouncersGC.Api != nil {
 			duration, err := types.ParseDuration(*config.BouncersGC.Api)
 			if err != nil {
-				return nil, errors.Wrap(err, "while parsing bouncers api auto-delete duration")
+				return nil, fmt.Errorf("while parsing bouncers api auto-delete duration: %w", err)
 			}
 			config.BouncersGC.ApiDuration = &duration
 		}
@@ -155,7 +157,7 @@ func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Sched
 	}
 	baJob, err := scheduler.Every(1).Minute().Do(c.FlushAgentsAndBouncers, config.AgentsGC, config.BouncersGC)
 	if err != nil {
-		return nil, errors.Wrap(err, "while starting FlushAgentsAndBouncers scheduler")
+		return nil, fmt.Errorf("while starting FlushAgentsAndBouncers scheduler: %w", err)
 	}
 	baJob.SingletonMode()
 	scheduler.StartAsync()

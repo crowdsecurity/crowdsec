@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"runtime"
-	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -13,6 +12,8 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
 )
 
 type Container struct {
@@ -139,8 +140,8 @@ func StopContainer(name string) error {
 		return fmt.Errorf("failed to create docker client : %s", err)
 	}
 	ctx := context.Background()
-	to := 20 * time.Second
-	if err := cli.ContainerStop(ctx, name, &to); err != nil {
+	to := container.StopOptions{Timeout: ptr.Of(20)}
+	if err := cli.ContainerStop(ctx, name, to); err != nil {
 		return fmt.Errorf("failed while stopping %s : %s", name, err)
 	}
 	log.Printf("container stopped successfully")

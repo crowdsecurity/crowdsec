@@ -9,14 +9,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
 	"github.com/crowdsecurity/go-cs-lib/pkg/yamlpatch"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type APICfg struct {
@@ -83,11 +82,11 @@ func (o *OnlineApiClientCfg) Load() error {
 	o.Credentials = new(ApiCredentialsCfg)
 	fcontent, err := os.ReadFile(o.CredentialsFilePath)
 	if err != nil {
-		return errors.Wrapf(err, "failed to read api server credentials configuration file '%s'", o.CredentialsFilePath)
+		return fmt.Errorf("failed to read api server credentials configuration file '%s': %w", o.CredentialsFilePath, err)
 	}
 	err = yaml.UnmarshalStrict(fcontent, o.Credentials)
 	if err != nil {
-		return errors.Wrapf(err, "failed unmarshaling api server credentials configuration file '%s'", o.CredentialsFilePath)
+		return fmt.Errorf("failed unmarshaling api server credentials configuration file '%s': %w", o.CredentialsFilePath, err)
 	}
 	if o.Credentials.Login == "" || o.Credentials.Password == "" || o.Credentials.URL == "" {
 		log.Warningf("can't load CAPI credentials from '%s' (missing field)", o.CredentialsFilePath)
@@ -105,7 +104,7 @@ func (l *LocalApiClientCfg) Load() error {
 	}
 	err = yaml.UnmarshalStrict(fcontent, &l.Credentials)
 	if err != nil {
-		return errors.Wrapf(err, "failed unmarshaling api client credential configuration file '%s'", l.CredentialsFilePath)
+		return fmt.Errorf("failed unmarshaling api client credential configuration file '%s': %w", l.CredentialsFilePath, err)
 	}
 	if l.Credentials == nil || l.Credentials.URL == "" {
 		return fmt.Errorf("no credentials or URL found in api client configuration '%s'", l.CredentialsFilePath)
@@ -130,7 +129,7 @@ func (l *LocalApiClientCfg) Load() error {
 	if l.Credentials.CACertPath != "" {
 		caCert, err := os.ReadFile(l.Credentials.CACertPath)
 		if err != nil {
-			return errors.Wrapf(err, "failed to load cacert")
+			return fmt.Errorf("failed to load cacert: %w", err)
 		}
 
 		caCertPool, err := x509.SystemCertPool()
@@ -147,7 +146,7 @@ func (l *LocalApiClientCfg) Load() error {
 	if l.Credentials.CertPath != "" && l.Credentials.KeyPath != "" {
 		cert, err := tls.LoadX509KeyPair(l.Credentials.CertPath, l.Credentials.KeyPath)
 		if err != nil {
-			return errors.Wrapf(err, "failed to load api client certificate")
+			return fmt.Errorf("failed to load api client certificate: %w", err)
 		}
 
 		apiclient.Cert = &cert
@@ -251,7 +250,7 @@ func (c *Config) LoadAPIServer() error {
 
 	if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
 		if err := c.API.Server.OnlineClient.Load(); err != nil {
-			return errors.Wrap(err, "loading online client credentials")
+			return fmt.Errorf("loading online client credentials: %w", err)
 		}
 	}
 	if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
@@ -271,7 +270,7 @@ func (c *Config) LoadAPIServer() error {
 
 	if c.API.Server.Enable == nil {
 		// if the option is not present, it is enabled by default
-		c.API.Server.Enable = types.BoolPtr(true)
+		c.API.Server.Enable = ptr.Of(true)
 	}
 
 	if !*c.API.Server.Enable {
@@ -300,18 +299,18 @@ func (c *Config) LoadAPIServer() error {
 		c.API.Server.UseForwardedForHeaders = true
 	}
 	if err := c.API.Server.LoadProfiles(); err != nil {
-		return errors.Wrap(err, "while loading profiles for LAPI")
+		return fmt.Errorf("while loading profiles for LAPI: %w", err)
 	}
 	if c.API.Server.ConsoleConfigPath == "" {
 		c.API.Server.ConsoleConfigPath = DefaultConsoleConfigFilePath
 	}
 	if err := c.API.Server.LoadConsoleConfig(); err != nil {
-		return errors.Wrap(err, "while loading console options")
+		return fmt.Errorf("while loading console options: %w", err)
 	}
 
 	if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
 		if err := c.API.Server.OnlineClient.Load(); err != nil {
-			return errors.Wrap(err, "loading online client credentials")
+			return fmt.Errorf("loading online client credentials: %w", err)
 		}
 	}
 	if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
@@ -320,7 +319,7 @@ func (c *Config) LoadAPIServer() error {
 
 	if c.API.CTI != nil {
 		if err := c.API.CTI.Load(); err != nil {
-			return errors.Wrap(err, "loading CTI configuration")
+			return fmt.Errorf("loading CTI configuration: %w", err)
 		}
 	}
 

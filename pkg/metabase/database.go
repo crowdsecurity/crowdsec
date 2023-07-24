@@ -7,14 +7,13 @@ import (
 	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/pkg/errors"
 )
 
 type Database struct {
 	DBUrl   string
 	Model   *Model
 	Config  *csconfig.DatabaseCfg
-	Client  *APIClient
+	Client  *MBClient
 	Details *Details
 	// in case mysql host is 127.0.0.1 the ip address of mysql/pgsql host will be the docker gateway since metabase run in a container
 }
@@ -41,7 +40,7 @@ type Model struct {
 	Schedules      map[string]interface{} `json:"schedules"`
 }
 
-func NewDatabase(config *csconfig.DatabaseCfg, client *APIClient, remoteDBAddr string) (*Database, error) {
+func NewDatabase(config *csconfig.DatabaseCfg, client *MBClient, remoteDBAddr string) (*Database, error) {
 	var details *Details
 
 	database := Database{}
@@ -80,13 +79,13 @@ func (d *Database) Update() error {
 
 	data, err := json.Marshal(success)
 	if err != nil {
-		return errors.Wrap(err, "update sqlite db response (marshal)")
+		return fmt.Errorf("update sqlite db response (marshal): %w", err)
 	}
 
 	model := Model{}
 
 	if err := json.Unmarshal(data, &model); err != nil {
-		return errors.Wrap(err, "update sqlite db response (unmarshal)")
+		return fmt.Errorf("update sqlite db response (unmarshal): %w", err)
 	}
 	model.Details = d.Details
 	_, errormsg, err = d.Client.Do("PUT", routes[databaseEndpoint], model)

@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/segmentio/kafka-go"
 	log "github.com/sirupsen/logrus"
@@ -93,12 +92,12 @@ func (k *KafkaSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 
 	dialer, err := k.Config.NewDialer()
 	if err != nil {
-		return errors.Wrapf(err, "cannot create %s dialer", dataSourceName)
+		return fmt.Errorf("cannot create %s dialer: %w", dataSourceName, err)
 	}
 
 	k.Reader, err = k.Config.NewReader(dialer)
 	if err != nil {
-		return errors.Wrapf(err, "cannote create %s reader", dataSourceName)
+		return fmt.Errorf("cannote create %s reader: %w", dataSourceName, err)
 	}
 
 	if k.Reader == nil {
@@ -149,7 +148,7 @@ func (k *KafkaSource) ReadMessage(out chan types.Event) error {
 			if err == io.EOF {
 				return nil
 			}
-			k.logger.Errorln(errors.Wrapf(err, "while reading %s message", dataSourceName))
+			k.logger.Errorln(fmt.Errorf("while reading %s message: %w", dataSourceName, err))
 		}
 		l := types.Line{
 			Raw:     string(m.Value),
@@ -181,7 +180,7 @@ func (k *KafkaSource) RunReader(out chan types.Event, t *tomb.Tomb) error {
 		case <-t.Dying():
 			k.logger.Infof("%s datasource topic %s stopping", dataSourceName, k.Config.Topic)
 			if err := k.Reader.Close(); err != nil {
-				return errors.Wrapf(err, "while closing  %s reader on topic '%s'", dataSourceName, k.Config.Topic)
+				return fmt.Errorf("while closing  %s reader on topic '%s': %w", dataSourceName, k.Config.Topic, err)
 			}
 			return nil
 		}
@@ -264,7 +263,7 @@ func (kc *KafkaConfiguration) NewReader(dialer *kafka.Dialer) (*kafka.Reader, er
 		rConf.GroupID = kc.GroupID
 	}
 	if err := rConf.Validate(); err != nil {
-		return &kafka.Reader{}, errors.Wrapf(err, "while validating reader configuration")
+		return &kafka.Reader{}, fmt.Errorf("while validating reader configuration: %w", err)
 	}
 	return kafka.NewReader(rConf), nil
 }

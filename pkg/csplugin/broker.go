@@ -2,10 +2,11 @@ package csplugin
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
+	"reflect"
 	"strings"
 	"sync"
 	"text/template"
@@ -14,12 +15,12 @@ import (
 	"github.com/Masterminds/sprig/v3"
 	"github.com/google/uuid"
 	plugin "github.com/hashicorp/go-plugin"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/pkg/csstring"
+	"github.com/crowdsecurity/go-cs-lib/pkg/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -82,10 +83,10 @@ func (pb *PluginBroker) Init(pluginCfg *csconfig.PluginCfg, profileConfigs []*cs
 	pb.pluginProcConfig = pluginCfg
 	pb.pluginsTypesToDispatch = make(map[string]struct{})
 	if err := pb.loadConfig(configPaths.NotificationDir); err != nil {
-		return errors.Wrap(err, "while loading plugin config")
+		return fmt.Errorf("while loading plugin config: %w", err)
 	}
 	if err := pb.loadPlugins(configPaths.PluginDir); err != nil {
-		return errors.Wrap(err, "while loading plugin")
+		return fmt.Errorf("while loading plugin: %w", err)
 	}
 	pb.watcher = PluginWatcher{}
 	pb.watcher.Init(pb.pluginConfigByName, pb.alertsByPluginName)
@@ -116,8 +117,15 @@ loop:
 			pb.alertsByPluginName[pluginName] = make([]*models.Alert, 0)
 			pluginMutex.Unlock()
 			go func() {
-				if err := pb.pushNotificationsToPlugin(pluginName, tmpAlerts); err != nil {
-					log.WithField("plugin:", pluginName).Error(err)
+				//Chunk alerts to respect group_threshold
+				threshold := pb.pluginConfigByName[pluginName].GroupThreshold
+				if threshold == 0 {
+					threshold = 1
+				}
+				for _, chunk := range slicetools.Chunks(tmpAlerts, threshold) {
+					if err := pb.pushNotificationsToPlugin(pluginName, chunk); err != nil {
+						log.WithField("plugin:", pluginName).Error(err)
+					}
 				}
 			}()
 
@@ -184,14 +192,14 @@ func (pb *PluginBroker) loadConfig(path string) error {
 			return err
 		}
 		for _, pluginConfig := range pluginConfigs {
+			setRequiredFields(&pluginConfig)
+			if _, ok := pb.pluginConfigByName[pluginConfig.Name]; ok {
+				log.Warningf("notification '%s' is defined multiple times", pluginConfig.Name)
+			}
+			pb.pluginConfigByName[pluginConfig.Name] = pluginConfig
 			if !pb.profilesContainPlugin(pluginConfig.Name) {
 				continue
 			}
-			setRequiredFields(&pluginConfig)
-			if _, ok := pb.pluginConfigByName[pluginConfig.Name]; ok {
-				log.Warnf("several configs for notification %s found  ", pluginConfig.Name)
-			}
-			pb.pluginConfigByName[pluginConfig.Name] = pluginConfig
 		}
 	}
 	err = pb.verifyPluginConfigsWithProfile()
@@ -260,7 +268,7 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 			data = []byte(csstring.StrictExpand(string(data), os.LookupEnv))
 			_, err = pluginClient.Configure(context.Background(), &protobufs.Config{Config: data})
 			if err != nil {
-				return errors.Wrapf(err, "while configuring %s", pc.Name)
+				return fmt.Errorf("while configuring %s: %w", pc.Name, err)
 			}
 			log.Infof("registered plugin %s", pc.Name)
 			pb.notificationPluginByName[pc.Name] = pluginClient
@@ -346,7 +354,7 @@ func ParsePluginConfigFile(path string) ([]PluginConfig, error) {
 	parsedConfigs := make([]PluginConfig, 0)
 	yamlFile, err := os.Open(path)
 	if err != nil {
-		return parsedConfigs, errors.Wrapf(err, "while opening %s", path)
+		return nil, fmt.Errorf("while opening %s: %w", path, err)
 	}
 	dec := yaml.NewDecoder(yamlFile)
 	dec.SetStrict(true)
@@ -357,7 +365,11 @@ func ParsePluginConfigFile(path string) ([]PluginConfig, error) {
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			return []PluginConfig{}, fmt.Errorf("while decoding %s got error %s", path, err)
+			return nil, fmt.Errorf("while decoding %s got error %s", path, err)
+		}
+		// if the yaml document is empty, skip
+		if reflect.DeepEqual(pc, PluginConfig{}) {
+			continue
 		}
 		parsedConfigs = append(parsedConfigs, pc)
 	}
@@ -372,23 +384,6 @@ func setRequiredFields(pluginCfg *PluginConfig) {
 	if pluginCfg.TimeOut == time.Second*0 {
 		pluginCfg.TimeOut = time.Second * 5
 	}
-
-}
-
-// helper which gives paths to all files in the given directory non-recursively
-func listFilesAtPath(path string) ([]string, error) {
-	filePaths := make([]string, 0)
-	files, err := os.ReadDir(path)
-	if err != nil {
-		return nil, err
-	}
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-		filePaths = append(filePaths, filepath.Join(path, file.Name()))
-	}
-	return filePaths, nil
 }
 
 func getUUID() (string, error) {

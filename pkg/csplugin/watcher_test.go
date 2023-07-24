@@ -7,9 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
-	"gotest.tools/v3/assert"
+
+	"github.com/crowdsecurity/go-cs-lib/pkg/cstest"
+
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 var ctx = context.Background()
@@ -64,7 +67,7 @@ func TestPluginWatcherInterval(t *testing.T) {
 	ct, cancel := context.WithTimeout(ctx, time.Microsecond)
 	defer cancel()
 	err := listenChannelWithTimeout(ct, pw.PluginEvents)
-	assert.ErrorContains(t, err, "context deadline exceeded")
+	cstest.RequireErrorContains(t, err, "context deadline exceeded")
 	resetTestTomb(&testTomb, &pw)
 	testTomb = tomb.Tomb{}
 	pw.Start(&testTomb)
@@ -72,7 +75,7 @@ func TestPluginWatcherInterval(t *testing.T) {
 	ct, cancel = context.WithTimeout(ctx, time.Millisecond*5)
 	defer cancel()
 	err = listenChannelWithTimeout(ct, pw.PluginEvents)
-	assert.NilError(t, err)
+	require.NoError(t, err)
 	resetTestTomb(&testTomb, &pw)
 	// This is to avoid the int complaining
 }
@@ -96,7 +99,7 @@ func TestPluginAlertCountWatcher(t *testing.T) {
 	ct, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 	err := listenChannelWithTimeout(ct, pw.PluginEvents)
-	assert.ErrorContains(t, err, "context deadline exceeded")
+	cstest.RequireErrorContains(t, err, "context deadline exceeded")
 
 	// Channel won't contain any events since threshold is not crossed.
 	resetWatcherAlertCounter(&pw)
@@ -104,7 +107,7 @@ func TestPluginAlertCountWatcher(t *testing.T) {
 	ct, cancel = context.WithTimeout(ctx, time.Second)
 	defer cancel()
 	err = listenChannelWithTimeout(ct, pw.PluginEvents)
-	assert.ErrorContains(t, err, "context deadline exceeded")
+	cstest.RequireErrorContains(t, err, "context deadline exceeded")
 
 	// Channel will contain an event since threshold is crossed.
 	resetWatcherAlertCounter(&pw)
@@ -112,6 +115,6 @@ func TestPluginAlertCountWatcher(t *testing.T) {
 	ct, cancel = context.WithTimeout(ctx, time.Second)
 	defer cancel()
 	err = listenChannelWithTimeout(ct, pw.PluginEvents)
-	assert.NilError(t, err)
+	require.NoError(t, err)
 	resetTestTomb(&testTomb, &pw)
 }

@@ -1,9 +1,10 @@
-package types
+package parser
 
 import (
 	"time"
 
 	"github.com/antonmedv/expr/vm"
+
 	"github.com/crowdsecurity/grokky"
 )
 
