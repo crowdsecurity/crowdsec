@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -21,13 +20,13 @@ import (
 )
 
 var (
-	metabaseUser           = "crowdsec@crowdsec.net"
-	metabasePassword       string
-	metabaseDbPath         string
-	metabaseConfigPath     string
-	metabaseConfigFolder   = "metabase/"
-	metabaseConfigFile     = "metabase.yaml"
-	metabaseDefaultVersion = "v0.46.6.1"
+	metabaseUser         = "crowdsec@crowdsec.net"
+	metabasePassword     string
+	metabaseDbPath       string
+	metabaseConfigPath   string
+	metabaseConfigFolder = "metabase/"
+	metabaseConfigFile   = "metabase.yaml"
+	metabaseImage        = "metabase/metabase:v0.46.6.1"
 	/**/
 	metabaseListenAddress = "127.0.0.1"
 	metabaseListenPort    = "3000"
@@ -111,7 +110,7 @@ cscli dashboard setup
 cscli dashboard setup --listen 0.0.0.0
 cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
  `,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if metabaseDbPath == "" {
 				metabaseDbPath = csConfig.ConfigPaths.DataDir
 			}
@@ -123,70 +122,22 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 					isValid = passwordIsValid(metabasePassword)
 				}
 			}
-			var answer bool
-			if valid, err := checkSystemMemory(); err == nil && !valid {
-				if !forceYes {
-					prompt := &survey.Confirm{
-						Message: "Metabase requires 1-2GB of RAM, your system is below this requirement continue ?",
-						Default: true,
-					}
-					if err := survey.AskOne(prompt, &answer); err != nil {
-						log.Warnf("unable to ask about RAM check: %s", err)
-					}
-					if !answer {
-						log.Fatal("Unable to continue due to RAM requirement")
-					}
-				} else {
-					log.Warnf("Metabase requires 1-2GB of RAM, your system is below this requirement")
-				}
+			if err := checkSystemMemory(&forceYes); err != nil {
+				return err
 			}
-			groupExist := false
-			dockerGroup, err := user.LookupGroup(crowdsecGroup)
-			if err == nil {
-				groupExist = true
+			if err := warnIfNotLoopback(metabaseListenAddress, &forceYes); err != nil {
+				return err
 			}
-			if !forceYes && !groupExist {
-				prompt := &survey.Confirm{
-					Message: fmt.Sprintf("For metabase docker to be able to access SQLite file we need to add a new group called '%s' to the system, is it ok for you ?", crowdsecGroup),
-					Default: true,
-				}
-				if err := survey.AskOne(prompt, &answer); err != nil {
-					log.Fatalf("unable to ask to force: %s", err)
-				}
-			}
-			if !answer && !forceYes && !groupExist {
-				log.Fatalf("unable to continue without creating '%s' group", crowdsecGroup)
-			}
-			if !groupExist {
-				groupAddCmd, err := exec.LookPath("groupadd")
-				if err != nil {
-					log.Fatalf("unable to find 'groupadd' command, can't continue")
-				}
-
-				groupAdd := &exec.Cmd{Path: groupAddCmd, Args: []string{groupAddCmd, crowdsecGroup}}
-				if err := groupAdd.Run(); err != nil {
-					log.Fatalf("unable to add group '%s': %s", dockerGroup, err)
-				}
-				dockerGroup, err = user.LookupGroup(crowdsecGroup)
-				if err != nil {
-					log.Fatalf("unable to lookup '%s' group: %+v", dockerGroup, err)
-				}
-			}
-			intID, err := strconv.Atoi(dockerGroup.Gid)
+			dockerGroup, err := checkGroups(&forceYes)
 			if err != nil {
-				log.Fatalf("unable to convert group ID to int: %s", err)
+				return err
 			}
-			if err := os.Chown(csConfig.DbConfig.DbPath, 0, intID); err != nil {
-				log.Fatalf("unable to chown sqlite db file '%s': %s", csConfig.DbConfig.DbPath, err)
-			}
-
-			mb, err := metabase.SetupMetabase(csConfig.API.Server.DbConfig, metabaseListenAddress, metabaseListenPort, metabaseUser, metabasePassword, metabaseDbPath, dockerGroup.Gid, metabaseContainerID, metabaseDefaultVersion)
+			mb, err := metabase.SetupMetabase(csConfig.API.Server.DbConfig, metabaseListenAddress, metabaseListenPort, metabaseUser, metabasePassword, metabaseDbPath, dockerGroup.Gid, metabaseContainerID, metabaseImage)
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
-
 			if err := mb.DumpConfig(metabaseConfigPath); err != nil {
-				log.Fatal(err)
+				return err
 			}
 
 			log.Infof("Metabase is ready")
@@ -194,12 +145,13 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			fmt.Printf("\tURL       : '%s'\n", mb.Config.ListenURL)
 			fmt.Printf("\tusername  : '%s'\n", mb.Config.Username)
 			fmt.Printf("\tpassword  : '%s'\n", mb.Config.Password)
+			return nil
 		},
 	}
 	cmdDashSetup.Flags().BoolVarP(&force, "force", "f", false, "Force setup : override existing files")
 	cmdDashSetup.Flags().StringVarP(&metabaseDbPath, "dir", "d", "", "Shared directory with metabase container")
 	cmdDashSetup.Flags().StringVarP(&metabaseListenAddress, "listen", "l", metabaseListenAddress, "Listen address of container")
-	cmdDashSetup.Flags().StringVarP(&metabaseDefaultVersion, "version", "v", metabaseDefaultVersion, "Metabase version to use")
+	cmdDashSetup.Flags().StringVarP(&metabaseImage, "version", "v", metabaseImage, "Metabase image to use")
 	cmdDashSetup.Flags().StringVarP(&metabaseListenPort, "port", "p", metabaseListenPort, "Listen port of container")
 	cmdDashSetup.Flags().BoolVarP(&forceYes, "yes", "y", false, "force  yes")
 	//cmdDashSetup.Flags().StringVarP(&metabaseUser, "user", "u", "crowdsec@crowdsec.net", "metabase user")
@@ -215,16 +167,20 @@ func NewDashboardStartCmd() *cobra.Command {
 		Long:              `Stats the metabase container using docker.`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
-			mb, err := metabase.NewMetabase(metabaseConfigPath, metabaseContainerID, metabaseDefaultVersion)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			mb, err := metabase.NewMetabase(metabaseConfigPath, metabaseContainerID, fmt.Sprintf("%s:%s", metabaseListenAddress, metabaseListenPort))
 			if err != nil {
-				log.Fatal(err)
+				return err
+			}
+			if err := warnIfNotLoopback(mb.Config.ListenAddr, &forceYes); err != nil {
+				return err
 			}
 			if err := mb.Container.Start(); err != nil {
-				log.Fatalf("Failed to start metabase container : %s", err)
+				return fmt.Errorf("failed to start metabase container : %s", err)
 			}
 			log.Infof("Started metabase")
 			log.Infof("url : http://%s:%s", mb.Config.ListenAddr, mb.Config.ListenPort)
+			return nil
 		},
 	}
 	return cmdDashStart
@@ -315,7 +271,11 @@ cscli dashboard remove --force
 					log.Warningf("failed to remove metabase internal db : %s", err)
 				}
 				if force {
-					if err := metabase.RemoveImageContainer(); err != nil {
+					m := metabase.Metabase{}
+					if err := m.LoadConfig(metabaseConfigPath); err != nil {
+						log.Fatal(err)
+					}
+					if err := metabase.RemoveImageContainer(m.Config.Image); err != nil {
 						if !strings.Contains(err.Error(), "No such image") {
 							log.Fatalf("removing docker image: %s", err)
 						}
@@ -346,13 +306,88 @@ func passwordIsValid(password string) bool {
 
 }
 
-func checkSystemMemory() (bool, error) {
+func checkSystemMemory(forceYes *bool) error {
 	totMem := memory.TotalMemory()
-	if totMem == 0 {
-		return true, errors.New("Unable to get system total memory")
+	var answer bool
+	if !*forceYes && uint64(math.Pow(2, 30)) >= totMem {
+		prompt := &survey.Confirm{
+			Message: "Metabase requires 1-2GB of RAM, your system is below this requirement continue ?",
+			Default: true,
+		}
+		if err := survey.AskOne(prompt, &answer); err != nil {
+			return fmt.Errorf("unable to ask about RAM check: %s", err)
+		}
+		if !answer {
+			return fmt.Errorf("user aborted")
+		}
 	}
-	if uint64(math.Pow(2, 30)) >= totMem {
-		return false, nil
+	log.Warn("Metabase requires 1-2GB of RAM, your system is below this requirement")
+	return nil
+}
+
+func warnIfNotLoopback(addr string, force *bool) error {
+	if addr == "127.0.0.1" || addr == "[::1]" {
+		return nil
 	}
-	return true, nil
+	log.Warnf("You are potentially exposing your metabase port to the internet (addr: %s), please consider using a reverse proxy", addr)
+	log.Warn("CrowdSec takes no responsibility for security of your metabase instance.")
+	if !*force {
+		var answer bool
+		prompt := &survey.Confirm{
+			Message: "Do you want to continue ?",
+			Default: true,
+		}
+		if err := survey.AskOne(prompt, &answer); err != nil {
+			return fmt.Errorf("unable to ask to question: %s", err)
+		}
+		if !answer {
+			return fmt.Errorf("user aborted")
+		}
+	}
+	return nil
+}
+
+func checkGroups(force *bool) (*user.Group, error) {
+	var answer bool
+	var err error
+	groupExist := false
+	dockerGroup, err := user.LookupGroup(crowdsecGroup)
+	if err == nil {
+		groupExist = true
+	}
+	if !forceYes && !groupExist {
+		prompt := &survey.Confirm{
+			Message: fmt.Sprintf("For metabase docker to be able to access SQLite file we need to add a new group called '%s' to the system, is it ok for you ?", crowdsecGroup),
+			Default: true,
+		}
+		if err := survey.AskOne(prompt, &answer); err != nil {
+			return dockerGroup, fmt.Errorf("unable to ask to force: %s", err)
+		}
+	}
+	if !answer && !forceYes && !groupExist {
+		return dockerGroup, fmt.Errorf("unable to continue without creating '%s' group", crowdsecGroup)
+	}
+	if !groupExist {
+		groupAddCmd, err := exec.LookPath("groupadd")
+		if err != nil {
+			return dockerGroup, fmt.Errorf("unable to find 'groupadd' command, can't continue")
+		}
+
+		groupAdd := &exec.Cmd{Path: groupAddCmd, Args: []string{groupAddCmd, crowdsecGroup}}
+		if err := groupAdd.Run(); err != nil {
+			return dockerGroup, fmt.Errorf("unable to add group '%s': %s", dockerGroup, err)
+		}
+		dockerGroup, err = user.LookupGroup(crowdsecGroup)
+		if err != nil {
+			return dockerGroup, fmt.Errorf("unable to lookup '%s' group: %+v", dockerGroup, err)
+		}
+	}
+	intID, err := strconv.Atoi(dockerGroup.Gid)
+	if err != nil {
+		return dockerGroup, fmt.Errorf("unable to convert group ID to int: %s", err)
+	}
+	if err := os.Chown(csConfig.DbConfig.DbPath, 0, intID); err != nil {
+		return dockerGroup, fmt.Errorf("unable to chown sqlite db file '%s': %s", csConfig.DbConfig.DbPath, err)
+	}
+	return dockerGroup, nil
 }
