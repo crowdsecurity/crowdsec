@@ -168,7 +168,7 @@ func NewDashboardStartCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			mb, err := metabase.NewMetabase(metabaseConfigPath, metabaseContainerID, fmt.Sprintf("%s:%s", metabaseListenAddress, metabaseListenPort))
+			mb, err := metabase.NewMetabase(metabaseConfigPath, metabaseContainerID, metabaseImage)
 			if err != nil {
 				return err
 			}
