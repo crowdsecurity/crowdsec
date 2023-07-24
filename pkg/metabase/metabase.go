@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,15 +16,14 @@ import (
 
 	"github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/pkg/errors"
-	"gopkg.in/yaml.v2"
 )
 
 type Metabase struct {
 	Config        *Config
-	Client        *APIClient
+	Client        *MBClient
 	Container     *Container
 	Database      *Database
 	InternalDBURL string
@@ -80,7 +80,7 @@ func (m *Metabase) Init(containerName string) error {
 		return fmt.Errorf("database '%s' not supported", m.Config.Database.Type)
 	}
 
-	m.Client, err = NewAPIClient(m.Config.ListenURL)
+	m.Client, err = NewMBClient(m.Config.ListenURL)
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func (m *Metabase) Init(containerName string) error {
 	}
 	m.Container, err = NewContainer(m.Config.ListenAddr, m.Config.ListenPort, m.Config.DBPath, containerName, metabaseImage, DBConnectionURI, m.Config.DockerGroupID)
 	if err != nil {
-		return errors.Wrap(err, "container init")
+		return fmt.Errorf("container init: %w", err)
 	}
 
 	return nil
@@ -151,36 +151,36 @@ func SetupMetabase(dbConfig *csconfig.DatabaseCfg, listenAddr string, listenPort
 		},
 	}
 	if err := metabase.Init(containerName); err != nil {
-		return nil, errors.Wrap(err, "metabase setup init")
+		return nil, fmt.Errorf("metabase setup init: %w", err)
 	}
 
 	if err := metabase.DownloadDatabase(false); err != nil {
-		return nil, errors.Wrap(err, "metabase db download")
+		return nil, fmt.Errorf("metabase db download: %w", err)
 	}
 
 	if err := metabase.Container.Create(); err != nil {
-		return nil, errors.Wrap(err, "container create")
+		return nil, fmt.Errorf("container create: %w", err)
 	}
 
 	if err := metabase.Container.Start(); err != nil {
-		return nil, errors.Wrap(err, "container start")
+		return nil, fmt.Errorf("container start: %w", err)
 	}
 
 	log.Infof("waiting for metabase to be up (can take up to a minute)")
 	if err := metabase.WaitAlive(); err != nil {
-		return nil, errors.Wrap(err, "wait alive")
+		return nil, fmt.Errorf("wait alive: %w", err)
 	}
 
 	if err := metabase.Database.Update(); err != nil {
-		return nil, errors.Wrap(err, "update database")
+		return nil, fmt.Errorf("update database: %w", err)
 	}
 
 	if err := metabase.Scan(); err != nil {
-		return nil, errors.Wrap(err, "db scan")
+		return nil, fmt.Errorf("db scan: %w", err)
 	}
 
 	if err := metabase.ResetCredentials(); err != nil {
-		return nil, errors.Wrap(err, "reset creds")
+		return nil, fmt.Errorf("reset creds: %w", err)
 	}
 
 	return metabase, nil
@@ -193,7 +193,7 @@ func (m *Metabase) WaitAlive() error {
 		if err != nil {
 			if strings.Contains(err.Error(), "password:did not match stored password") {
 				log.Errorf("Password mismatch error, is your dashboard already setup ? Run 'cscli dashboard remove' to reset it.")
-				return errors.Wrapf(err, "Password mismatch error")
+				return fmt.Errorf("password mismatch error: %w", err)
 			}
 			log.Debugf("%+v", err)
 		} else {
@@ -215,7 +215,7 @@ func (m *Metabase) Login(username string, password string) error {
 	}
 
 	if errormsg != nil {
-		return errors.Wrap(err, "http login")
+		return fmt.Errorf("http login: %s", errormsg)
 	}
 	resp, ok := successmsg.(map[string]interface{})
 	if !ok {
@@ -238,7 +238,7 @@ func (m *Metabase) Scan() error {
 		return err
 	}
 	if errormsg != nil {
-		return errors.Wrap(err, "http scan")
+		return fmt.Errorf("http scan: %s", errormsg)
 	}
 
 	return nil
@@ -252,10 +252,10 @@ func (m *Metabase) ResetPassword(current string, newPassword string) error {
 	}
 	_, errormsg, err := m.Client.Do("PUT", routes[resetPasswordEndpoint], body)
 	if err != nil {
-		return errors.Wrap(err, "reset username")
+		return fmt.Errorf("reset username: %w", err)
 	}
 	if errormsg != nil {
-		return errors.Wrap(err, "http reset password")
+		return fmt.Errorf("http reset password: %s", errormsg)
 	}
 	return nil
 }
@@ -275,11 +275,11 @@ func (m *Metabase) ResetUsername(username string) error {
 
 	_, errormsg, err := m.Client.Do("PUT", routes[userEndpoint], body)
 	if err != nil {
-		return errors.Wrap(err, "reset username")
+		return fmt.Errorf("reset username: %w", err)
 	}
 
 	if errormsg != nil {
-		return errors.Wrap(err, "http reset username")
+		return fmt.Errorf("http reset username: %s", errormsg)
 	}
 
 	return nil

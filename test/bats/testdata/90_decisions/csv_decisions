@@ -1,0 +1,6 @@
+origin,scope,value,reason,type,duration
+cscli,ip,1.6.11.16,manual import from csv,ban,1h
+cscli,ip,2.7.12.17,manual import from csv,ban,1h
+cscli,ip,3.8.13.18,manual import from csv,ban,1h
+cscli,ip,4.9.14.19,manual import from csv,ban,1h
+cscli,ip,5.10.15.20,manual import from csv,ban,1h

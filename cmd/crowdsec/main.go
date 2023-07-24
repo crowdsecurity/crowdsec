@@ -51,12 +51,15 @@ var (
 )
 
 type Flags struct {
-	ConfigFile     string
-	TraceLevel     bool
-	DebugLevel     bool
-	InfoLevel      bool
-	WarnLevel      bool
-	ErrorLevel     bool
+	ConfigFile string
+
+	LogLevelTrace bool
+	LogLevelDebug bool
+	LogLevelInfo  bool
+	LogLevelWarn  bool
+	LogLevelError bool
+	LogLevelFatal bool
+
 	PrintVersion   bool
 	SingleFileType string
 	Labels         map[string]string
@@ -67,6 +70,7 @@ type Flags struct {
 	WinSvc         string
 	DisableCAPI    bool
 	Transform      string
+	OrderEvent     bool
 }
 
 type labelsMap map[string]string
@@ -84,7 +88,7 @@ func LoadBuckets(cConfig *csconfig.Config) error {
 	buckets = leakybucket.NewBuckets()
 
 	log.Infof("Loading %d scenario files", len(files))
-	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, files, &bucketsTomb, buckets)
+	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, files, &bucketsTomb, buckets, flags.OrderEvent)
 
 	if err != nil {
 		return fmt.Errorf("scenario loading failed: %v", err)
@@ -116,6 +120,10 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 		}
 	}
 
+	if len(dataSources) == 0 {
+		return fmt.Errorf("no datasource enabled")
+	}
+
 	return nil
 }
 
@@ -140,11 +148,14 @@ func (l labelsMap) Set(label string) error {
 
 func (f *Flags) Parse() {
 	flag.StringVar(&f.ConfigFile, "c", csconfig.DefaultConfigPath("config.yaml"), "configuration file")
-	flag.BoolVar(&f.TraceLevel, "trace", false, "VERY verbose")
-	flag.BoolVar(&f.DebugLevel, "debug", false, "print debug-level on stderr")
-	flag.BoolVar(&f.InfoLevel, "info", false, "print info-level on stderr")
-	flag.BoolVar(&f.WarnLevel, "warning", false, "print warning-level on stderr")
-	flag.BoolVar(&f.ErrorLevel, "error", false, "print error-level on stderr")
+
+	flag.BoolVar(&f.LogLevelTrace, "trace", false, "set log level to 'trace' (VERY verbose)")
+	flag.BoolVar(&f.LogLevelDebug, "debug", false, "set log level to 'debug'")
+	flag.BoolVar(&f.LogLevelInfo, "info", false, "set log level to 'info'")
+	flag.BoolVar(&f.LogLevelWarn, "warning", false, "set log level to 'warning'")
+	flag.BoolVar(&f.LogLevelError, "error", false, "set log level to 'error'")
+	flag.BoolVar(&f.LogLevelFatal, "fatal", false, "set log level to 'fatal'")
+
 	flag.BoolVar(&f.PrintVersion, "version", false, "display version")
 	flag.StringVar(&f.OneShotDSN, "dsn", "", "Process a single data source in time-machine")
 	flag.StringVar(&f.Transform, "transform", "", "expr to apply on the event after acquisition")
@@ -154,6 +165,7 @@ func (f *Flags) Parse() {
 	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
 	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
 	flag.BoolVar(&f.DisableCAPI, "no-capi", false, "disable communication with Central API")
+	flag.BoolVar(&f.OrderEvent, "order-event", false, "enforce event ordering with significant performance cost")
 	if runtime.GOOS == "windows" {
 		flag.StringVar(&f.WinSvc, "winsvc", "", "Windows service Action: Install, Remove etc..")
 	}
@@ -172,16 +184,18 @@ func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
 
 	// override from flags
 	switch {
-	case f.TraceLevel:
+	case f.LogLevelTrace:
 		ret = log.TraceLevel
-	case f.DebugLevel:
+	case f.LogLevelDebug:
 		ret = log.DebugLevel
-	case f.InfoLevel:
+	case f.LogLevelInfo:
 		ret = log.InfoLevel
-	case f.WarnLevel:
+	case f.LogLevelWarn:
 		ret = log.WarnLevel
-	case f.ErrorLevel:
+	case f.LogLevelError:
 		ret = log.ErrorLevel
+	case f.LogLevelFatal:
+		ret = log.FatalLevel
 	default:
 	}
 
@@ -310,7 +324,7 @@ func main() {
 	}
 
 	// some features can require configuration or command-line options,
-	// so wwe need to parse them asap. we'll load from feature.yaml later.
+	// so we need to parse them asap. we'll load from feature.yaml later.
 	if err := csconfig.LoadFeatureFlagsEnv(log.StandardLogger()); err != nil {
 		log.Fatalf("failed to set feature flags from environment: %s", err)
 	}

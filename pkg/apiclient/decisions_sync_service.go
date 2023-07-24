@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 type DecisionDeleteService service
@@ -18,12 +18,12 @@ func (d *DecisionDeleteService) Add(ctx context.Context, deletedDecisions *model
 	u := fmt.Sprintf("%s/decisions/delete", d.client.URLPrefix)
 	req, err := d.client.NewRequest(http.MethodPost, u, &deletedDecisions)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "while building request")
+		return nil, nil, fmt.Errorf("while building request: %w", err)
 	}
 
 	resp, err := d.client.Do(ctx, req, &response)
 	if err != nil {
-		return nil, resp, errors.Wrap(err, "while performing request")
+		return nil, resp, fmt.Errorf("while performing request: %w", err)
 	}
 	if resp.Response.StatusCode != http.StatusOK {
 		log.Warnf("Decisions delete response : http %s", resp.Response.Status)

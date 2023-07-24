@@ -146,7 +146,7 @@ func GetItemByPath(itemType string, itemPath string) (*Item, error) {
 	finalName := ""
 	f, err := os.Lstat(itemPath)
 	if err != nil {
-		return nil, errors.Wrapf(err, "while performing lstat on %s", itemPath)
+		return nil, fmt.Errorf("while performing lstat on %s: %w", itemPath, err)
 	}
 
 	if f.Mode()&os.ModeSymlink == 0 {
@@ -156,7 +156,7 @@ func GetItemByPath(itemType string, itemPath string) (*Item, error) {
 		/*resolve the symlink to hub file*/
 		pathInHub, err := os.Readlink(itemPath)
 		if err != nil {
-			return nil, errors.Wrapf(err, "while reading symlink of %s", itemPath)
+			return nil, fmt.Errorf("while reading symlink of %s: %w", itemPath, err)
 		}
 		//extract author from path
 		fname := filepath.Base(pathInHub)
@@ -238,7 +238,7 @@ func GetInstalledScenariosAsString() ([]string, error) {
 
 	items, err := GetInstalledScenarios()
 	if err != nil {
-		return nil, errors.Wrap(err, "while fetching scenarios")
+		return nil, fmt.Errorf("while fetching scenarios: %w", err)
 	}
 	for _, it := range items {
 		retStr = append(retStr, it.Name)
@@ -279,7 +279,7 @@ func GetInstalledParsersAsString() ([]string, error) {
 
 	items, err := GetInstalledParsers()
 	if err != nil {
-		return nil, errors.Wrap(err, "while fetching parsers")
+		return nil, fmt.Errorf("while fetching parsers: %w", err)
 	}
 	for _, it := range items {
 		retStr = append(retStr, it.Name)
@@ -306,7 +306,7 @@ func GetInstalledPostOverflowsAsString() ([]string, error) {
 
 	items, err := GetInstalledPostOverflows()
 	if err != nil {
-		return nil, errors.Wrap(err, "while fetching post overflows")
+		return nil, fmt.Errorf("while fetching post overflows: %w", err)
 	}
 	for _, it := range items {
 		retStr = append(retStr, it.Name)
@@ -319,8 +319,9 @@ func GetInstalledCollectionsAsString() ([]string, error) {
 
 	items, err := GetInstalledCollections()
 	if err != nil {
-		return nil, errors.Wrap(err, "while fetching collections")
+		return nil, fmt.Errorf("while fetching collections: %w", err)
 	}
+
 	for _, it := range items {
 		retStr = append(retStr, it.Name)
 	}

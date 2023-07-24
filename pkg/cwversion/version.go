@@ -20,6 +20,7 @@ var (
 	Constraint_scenario = ">= 1.0, < 3.0"
 	Constraint_api      = "v1"
 	Constraint_acquis   = ">= 1.0, < 2.0"
+	Libre2              = "WebAssembly"
 )
 
 func ShowStr() string {
@@ -38,6 +39,7 @@ func Show() {
 	log.Printf("BuildDate: %s", version.BuildDate)
 	log.Printf("GoVersion: %s", version.GoVersion)
 	log.Printf("Platform: %s\n", System)
+	log.Printf("libre2: %s\n", Libre2)
 	log.Printf("Constraint_parser: %s", Constraint_parser)
 	log.Printf("Constraint_scenario: %s", Constraint_scenario)
 	log.Printf("Constraint_api: %s", Constraint_api)

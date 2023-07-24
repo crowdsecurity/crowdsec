@@ -17,7 +17,7 @@ Description: Address of the local API server
 Template: crowdsec/capi
 Type: boolean
 Default: true
-Description: Do you want to the centralized remote API server ?
+Description: Do you want to use the centralized remote API server ?
  To share information with other crowdsec you can register to the centralized remote API server.
  .
  If you don't know what to do, answer yes.

@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/go-openapi/strfmt"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
@@ -24,7 +23,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var LAPIURLPrefix string = "v1"
@@ -182,7 +180,7 @@ func NewLapiRegisterCmd() *cobra.Command {
 	cmdLapiRegister := &cobra.Command{
 		Use:   "register",
 		Short: "Register a machine to Local API (LAPI)",
-		Long: `Register you machine to the Local API (LAPI).
+		Long: `Register your machine to the Local API (LAPI).
 Keep in mind the machine needs to be validated by an administrator on LAPI side to be effective.`,
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
@@ -205,7 +203,7 @@ func NewLapiCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadAPIClient(); err != nil {
-				return errors.Wrap(err, "loading api client")
+				return fmt.Errorf("loading api client: %w", err)
 			}
 			return nil
 		},
@@ -440,7 +438,7 @@ cscli lapi context delete --value evt.Line.Src
 	return cmdContext
 }
 
-func detectStaticField(GrokStatics []types.ExtraField) []string {
+func detectStaticField(GrokStatics []parser.ExtraField) []string {
 	ret := make([]string, 0)
 	for _, static := range GrokStatics {
 		if static.Parsed != "" {

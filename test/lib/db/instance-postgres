@@ -42,10 +42,9 @@ exec_sql() {
 
 setup() {
     exec_sql "DROP DATABASE IF EXISTS crowdsec_test;"
-    exec_sql "CREATE DATABASE crowdsec_test;"
     exec_sql "DROP USER IF EXISTS crowdsec_test;"
     exec_sql "CREATE USER crowdsec_test WITH ENCRYPTED PASSWORD 'crowdsec_test';"
-    exec_sql "GRANT ALL PRIVILEGES ON DATABASE crowdsec_test TO crowdsec_test;"
+    exec_sql "CREATE DATABASE crowdsec_test OWNER crowdsec_test;"
 }
 
 dump() {

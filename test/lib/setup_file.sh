@@ -127,6 +127,24 @@ is_db_sqlite() {
 }
 export -f is_db_sqlite
 
+crowdsec_log() {
+    echo "$(config_get .common.log_dir)"/crowdsec.log
+}
+export -f crowdsec_log
+
+truncate_log() {
+    true > "$(crowdsec_log)"
+}
+export -f truncate_log
+
+assert_log() {
+    local oldout="${output:-}"
+    output="$(cat "$(crowdsec_log)")"
+    assert_output "$@"
+    output="${oldout}"
+}
+export -f assert_log
+
 # Compare ignoring the key order, and allow "expected" without quoted identifiers.
 # Preserve the output variable in case the following commands require it.
 assert_json() {

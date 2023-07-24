@@ -12,8 +12,6 @@ Patch0:         crowdsec.unit.patch
 Patch1:         user.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
-BuildRequires:  git
-BuildRequires:  make
 BuildRequires:  systemd
 Requires: crontabs
 %{?fc33:BuildRequires: systemd-rpm-macros}
@@ -27,7 +25,6 @@ Requires: crontabs
 
 %define version_number  %(echo $VERSION)
 %define releasever  %(echo $RELEASEVER)
-%global local_version v%{version_number}-%{releasever}-rpm
 %global name crowdsec
 %global __mangle_shebangs_exclude_from /usr/bin/env
 
@@ -38,7 +35,6 @@ Requires: crontabs
 %patch1
 
 %build
-BUILD_VERSION=%{local_version} make build
 sed -i "s#/usr/local/lib/crowdsec/plugins/#%{_libdir}/%{name}/plugins/#g" config/config.yaml
 
 %install

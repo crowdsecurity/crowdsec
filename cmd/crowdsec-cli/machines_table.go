@@ -24,7 +24,11 @@ func getAgentsTable(out io.Writer, machines []*ent.Machine) {
 			validated = emoji.Prohibited.String()
 		}
 
-		t.AddRow(m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, displayLastHeartBeat(m, true))
+		hb, active := getLastHeartbeat(m)
+		if !active {
+			hb = emoji.Warning.String() + " " + hb
+		}
+		t.AddRow(m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, hb)
 	}
 
 	t.Render()
