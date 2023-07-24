@@ -196,8 +196,8 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			fmt.Printf("\tpassword  : '%s'\n", mb.Config.Password)
 		},
 	}
-	cmdDashSetup.Flags().BoolVarP(&force, "force", "f", false, "Force setup : override existing files.")
-	cmdDashSetup.Flags().StringVarP(&metabaseDbPath, "dir", "d", "", "Shared directory with metabase container.")
+	cmdDashSetup.Flags().BoolVarP(&force, "force", "f", false, "Force setup : override existing files")
+	cmdDashSetup.Flags().StringVarP(&metabaseDbPath, "dir", "d", "", "Shared directory with metabase container")
 	cmdDashSetup.Flags().StringVarP(&metabaseListenAddress, "listen", "l", metabaseListenAddress, "Listen address of container")
 	cmdDashSetup.Flags().StringVarP(&metabaseListenPort, "port", "p", metabaseListenPort, "Listen port of container")
 	cmdDashSetup.Flags().BoolVarP(&forceYes, "yes", "y", false, "force  yes")

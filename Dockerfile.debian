@@ -1,32 +1,41 @@
 # vim: set ft=dockerfile:
-ARG GOVERSION=1.20.4
+ARG GOVERSION=1.20.6
 
-FROM golang:${GOVERSION}-bullseye AS build
+FROM golang:${GOVERSION}-bookworm AS build
 
 WORKDIR /go/src/crowdsec
-
-COPY . .
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV DEBCONF_NOWARNINGS="yes"
 
+# We like to choose the release of re2 to use, the debian version is usually older.
+ENV RE2_VERSION=2023-03-01
+
 # wizard.sh requires GNU coreutils
 RUN apt-get update && \
-    apt-get install -y -q git gcc libc-dev make bash gettext binutils-gold coreutils tzdata libre2-dev && \
+    apt-get install -y -q git gcc libc-dev make bash gettext binutils-gold coreutils tzdata && \
+    wget https://github.com/google/re2/archive/refs/tags/${RE2_VERSION}.tar.gz && \
+    tar -xzf ${RE2_VERSION}.tar.gz && \
+    cd re2-${RE2_VERSION} && \
+    make && \
+    make install && \
     echo "githubciXXXXXXXXXXXXXXXXXXXXXXXX" > /etc/machine-id && \
-    make clean release DOCKER_BUILD=1 && \
+    go install github.com/mikefarah/yq/v4@v4.34.1
+
+COPY . .
+
+RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=1 && \
     cd crowdsec-v* && \
     ./wizard.sh --docker-mode && \
     cd - >/dev/null && \
     cscli hub update && \
     cscli collections install crowdsecurity/linux && \
-    cscli parsers install crowdsecurity/whitelists && \
-    go install github.com/mikefarah/yq/v4@v4.31.2
+    cscli parsers install crowdsecurity/whitelists
 
     # In case we need to remove agents here..
     # cscli machines list -o json | yq '.[].machineId' | xargs -r cscli machines delete
 
-FROM debian:bullseye-slim as slim
+FROM debian:bookworm-slim as slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV DEBCONF_NOWARNINGS="yes"
@@ -43,9 +52,6 @@ RUN apt-get update && \
     mkdir -p /staging/etc/crowdsec/acquis.d && \
     mkdir -p /staging/var/lib/crowdsec && \
     mkdir -p /var/lib/crowdsec/data
-
-RUN echo "deb http://deb.debian.org/debian bullseye-backports main" >> /etc/apt/sources.list \
-    && apt-get update && apt-get install -t bullseye-backports -y libsystemd0
 
 COPY --from=build /go/bin/yq /usr/local/bin/yq
 COPY --from=build /etc/crowdsec /staging/etc/crowdsec

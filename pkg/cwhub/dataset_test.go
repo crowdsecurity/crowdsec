@@ -9,7 +9,7 @@ import (
 	"github.com/jarcoal/httpmock"
 )
 
-func TestDownladFile(t *testing.T) {
+func TestDownloadFile(t *testing.T) {
 	examplePath := "./example.txt"
 	defer os.Remove(examplePath)
 

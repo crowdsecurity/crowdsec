@@ -51,14 +51,14 @@ var (
 )
 
 type Flags struct {
-	ConfigFile     string
+	ConfigFile string
 
-	LogLevelTrace  bool
-	LogLevelDebug  bool
-	LogLevelInfo   bool
-	LogLevelWarn   bool
-	LogLevelError  bool
-	LogLevelFatal  bool
+	LogLevelTrace bool
+	LogLevelDebug bool
+	LogLevelInfo  bool
+	LogLevelWarn  bool
+	LogLevelError bool
+	LogLevelFatal bool
 
 	PrintVersion   bool
 	SingleFileType string
@@ -70,6 +70,7 @@ type Flags struct {
 	WinSvc         string
 	DisableCAPI    bool
 	Transform      string
+	OrderEvent     bool
 }
 
 type labelsMap map[string]string
@@ -87,7 +88,7 @@ func LoadBuckets(cConfig *csconfig.Config) error {
 	buckets = leakybucket.NewBuckets()
 
 	log.Infof("Loading %d scenario files", len(files))
-	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, files, &bucketsTomb, buckets)
+	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, files, &bucketsTomb, buckets, flags.OrderEvent)
 
 	if err != nil {
 		return fmt.Errorf("scenario loading failed: %v", err)
@@ -117,6 +118,10 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	if len(dataSources) == 0 {
+		return fmt.Errorf("no datasource enabled")
 	}
 
 	return nil
@@ -160,6 +165,7 @@ func (f *Flags) Parse() {
 	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
 	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
 	flag.BoolVar(&f.DisableCAPI, "no-capi", false, "disable communication with Central API")
+	flag.BoolVar(&f.OrderEvent, "order-event", false, "enforce event ordering with significant performance cost")
 	if runtime.GOOS == "windows" {
 		flag.StringVar(&f.WinSvc, "winsvc", "", "Windows service Action: Install, Remove etc..")
 	}
@@ -318,7 +324,7 @@ func main() {
 	}
 
 	// some features can require configuration or command-line options,
-	// so wwe need to parse them asap. we'll load from feature.yaml later.
+	// so we need to parse them asap. we'll load from feature.yaml later.
 	if err := csconfig.LoadFeatureFlagsEnv(log.StandardLogger()); err != nil {
 		log.Fatalf("failed to set feature flags from environment: %s", err)
 	}

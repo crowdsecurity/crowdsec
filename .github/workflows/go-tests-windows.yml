@@ -22,17 +22,12 @@ jobs:
   build:
     strategy:
       matrix:
-        go-version: ["1.20.4"]
+        go-version: ["1.20.6"]
 
     name: "Build + tests"
     runs-on: windows-2022
 
     steps:
-
-    - name: "Set up Go ${{ matrix.go-version }}"
-      uses: actions/setup-go@v3
-      with:
-        go-version: ${{ matrix.go-version }}
 
     - name: Check out CrowdSec repository
       uses: actions/checkout@v3
@@ -40,21 +35,15 @@ jobs:
         fetch-depth: 0
         submodules: false
 
-    - name: Cache Go modules
-      uses: actions/cache@v3
+    - name: "Set up Go ${{ matrix.go-version }}"
+      uses: actions/setup-go@v4
       with:
-        path: |
-          ~/go/pkg/mod
-          ~/.cache/go-build
-          ~/Library/Caches/go-build
-          %LocalAppData%\go-build
-        key: ${{ runner.os }}-${{ matrix.go-version }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ matrix.go-version }}-go-
+        go-version: ${{ matrix.go-version }}
+        cache-dependency-path: "**/go.sum"
 
     - name: Build
       run: |
-        make build
+        make build BUILD_RE2_WASM=1
 
     - name: Run tests
       run: |

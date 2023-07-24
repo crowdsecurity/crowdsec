@@ -2,19 +2,13 @@
 
 Vagrant.configure('2') do |config|
   config.vm.box = 'generic/openbsd7'
-  config.vm.define 'crowdsec'
-
-  config.vm.provision 'shell', path: 'bootstrap'
-
-  config.vm.provider :libvirt do |libvirt|
-    libvirt.cpus = 1
-    libvirt.memory = 1536
-  end
-
-  config.vm.synced_folder '.', '/vagrant', disabled: true
-
-  config.vm.provision 'ansible' do |ansible|
-    ansible.config_file = '../../../ansible.cfg'
-    ansible.playbook = '../../../run_all.yml'
-  end
+  # config.vm.box_version = '4.2.16'
+  config.vm.provision "shell", inline: <<-SHELL
+    sudo pkg_add python-3.9.16 py3-pip gcc-11.2.0p3 openssl-3.0.8 gtar-1.34
+    # sudo pkg_add -u
+    # sudo pkg_add kitty
+  SHELL
 end
+
+common = '../../common'
+load common if File.exist?(common)

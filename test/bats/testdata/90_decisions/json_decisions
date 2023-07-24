@@ -1,0 +1,42 @@
+[
+    {
+        "origin": "cscli",
+        "scope": "ip",
+        "value": "1.6.11.16",
+        "reason": "manual import from csv",
+        "type": "ban",
+        "duration": "1h"
+    },
+    {
+        "origin": "cscli",
+        "scope": "ip",
+        "value": "2.7.12.17",
+        "reason": "manual import from csv",
+        "type": "ban",
+        "duration": "1h"
+    },
+    {
+        "origin": "cscli",
+        "scope": "ip",
+        "value": "3.8.13.18",
+        "reason": "manual import from csv",
+        "type": "ban",
+        "duration": "1h"
+    },
+    {
+        "origin": "cscli",
+        "scope": "ip",
+        "value": "4.9.14.19",
+        "reason": "manual import from csv",
+        "type": "ban",
+        "duration": "1h"
+    },
+    {
+        "origin": "cscli",
+        "scope": "ip",
+        "value": "5.10.15.20",
+        "reason": "manual import from csv",
+        "type": "ban",
+        "duration": "1h"
+    }
+]

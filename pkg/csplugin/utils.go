@@ -3,6 +3,7 @@
 package csplugin
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"math"
@@ -13,8 +14,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-
-	"github.com/pkg/errors"
 )
 
 func CheckCredential(uid int, gid int) *syscall.SysProcAttr {
@@ -35,7 +34,7 @@ func (pb *PluginBroker) CreateCmd(binaryPath string) (*exec.Cmd, error) {
 		}
 		cmd.SysProcAttr, err = getProcessAttr(pb.pluginProcConfig.User, pb.pluginProcConfig.Group)
 		if err != nil {
-			return nil, errors.Wrap(err, "while getting process attributes")
+			return nil, fmt.Errorf("while getting process attributes: %w", err)
 		}
 		cmd.SysProcAttr.Credential.NoSetGroups = true
 	}
@@ -105,17 +104,17 @@ func pluginIsValid(path string) error {
 
 	// check if it exists
 	if details, err = os.Stat(path); err != nil {
-		return errors.Wrap(err, fmt.Sprintf("plugin at %s does not exist", path))
+		return fmt.Errorf("plugin at %s does not exist: %w", path, err)
 	}
 
 	// check if it is owned by current user
 	currentUser, err := user.Current()
 	if err != nil {
-		return errors.Wrap(err, "while getting current user")
+		return fmt.Errorf("while getting current user: %w", err)
 	}
 	currentUID, err := getUID(currentUser.Username)
 	if err != nil {
-		return errors.Wrap(err, "while looking up the current uid")
+		return fmt.Errorf("while looking up the current uid: %w", err)
 	}
 	stat := details.Sys().(*syscall.Stat_t)
 	if stat.Uid != currentUID {

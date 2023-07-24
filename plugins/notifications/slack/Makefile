@@ -16,8 +16,3 @@ build: clean
 .PHONY: clean
 clean:
 	@$(RM) $(BINARY_NAME) $(WIN_IGNORE_ERR)
-
-.PHONY: vendor
-vendor:
-	@echo "vendoring $(PLUGIN) plugin..."
-	@$(GOCMD) mod vendor

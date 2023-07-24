@@ -2,19 +2,19 @@ package leakybucket
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"os"
+	"sync"
 	"time"
 
-	"github.com/pkg/errors"
-
+	"github.com/antonmedv/expr"
 	"github.com/mohae/deepcopy"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/antonmedv/expr"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 var serialized map[string]Leaky
@@ -280,6 +280,8 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 	return biface.(*Leaky), nil
 }
 
+var orderEvent map[string]*sync.WaitGroup
+
 func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buckets) (bool, error) {
 	var (
 		ok, condition, poured bool
@@ -342,12 +344,31 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		//we need to either find the existing bucket, or create a new one (if it's the first event to hit it for this partition key)
 		bucket, err := LoadOrStoreBucketFromHolder(buckey, buckets, holders[idx], parsed.ExpectMode)
 		if err != nil {
-			return false, errors.Wrap(err, "failed to load or store bucket")
+			return false, fmt.Errorf("failed to load or store bucket: %w", err)
 		}
 		//finally, pour the even into the bucket
+
+		if bucket.orderEvent {
+			if orderEvent == nil {
+				orderEvent = make(map[string]*sync.WaitGroup)
+			}
+			if orderEvent[buckey] != nil {
+				orderEvent[buckey].Wait()
+			} else {
+				orderEvent[buckey] = &sync.WaitGroup{}
+			}
+
+			orderEvent[buckey].Add(1)
+		}
+
 		ok, err := PourItemToBucket(bucket, holders[idx], buckets, &parsed)
+
+		if bucket.orderEvent {
+			orderEvent[buckey].Wait()
+		}
+
 		if err != nil {
-			return false, errors.Wrap(err, "failed to pour bucket")
+			return false, fmt.Errorf("failed to pour bucket: %w", err)
 		}
 		if ok {
 			poured = true

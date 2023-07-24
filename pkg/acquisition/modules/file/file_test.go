@@ -38,7 +38,7 @@ func TestBadConfiguration(t *testing.T) {
 		{
 			name:        "glob syntax error",
 			config:      `filename: "[asd-.log"`,
-			expectedErr: "Glob failure: syntax error in pattern",
+			expectedErr: "glob failure: syntax error in pattern",
 		},
 		{
 			name: "bad exclude regexp",
@@ -150,7 +150,7 @@ filename: /`,
 			config: `
 mode: cat
 filename: "[*-.log"`,
-			expectedConfigErr: "Glob failure: syntax error in pattern",
+			expectedConfigErr: "glob failure: syntax error in pattern",
 			logLevel:          log.WarnLevel,
 			expectedLines:     0,
 		},
@@ -260,7 +260,7 @@ func TestLiveAcquisition(t *testing.T) {
 		// if we do not have access to the file
 		permDeniedFile = `C:\Windows\System32\config\SAM`
 		permDeniedError = `unable to read C:\Windows\System32\config\SAM : open C:\Windows\System32\config\SAM: The process cannot access the file because it is being used by another process`
-		testPattern = `test_files\\*.log` // the \ must be escaped for the yaml config
+		testPattern = `test_files\*.log`
 	}
 
 	tests := []struct {

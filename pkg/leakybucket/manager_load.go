@@ -43,7 +43,7 @@ type BucketFactory struct {
 	GroupBy             string                    `yaml:"groupby,omitempty"`   //groupy is an expr that allows to determine the partitions of the bucket. A common example is the source_ip
 	Distinct            string                    `yaml:"distinct"`            //Distinct, when present, adds a `Pour()` processor that will only pour uniq items (based on distinct expr result)
 	Debug               bool                      `yaml:"debug"`               //Debug, when set to true, will enable debugging for _this_ scenario specifically
-	Labels              map[string]string         `yaml:"labels"`              //Labels is K:V list aiming at providing context the overflow
+	Labels              map[string]interface{}    `yaml:"labels"`              //Labels is K:V list aiming at providing context the overflow
 	Blackhole           string                    `yaml:"blackhole,omitempty"` //Blackhole is a duration that, if present, will prevent same bucket partition to overflow more often than $duration
 	logger              *log.Entry                `yaml:"-"`                   //logger is bucket-specific logger (used by Debug as well)
 	Reprocess           bool                      `yaml:"reprocess"`           //Reprocess, if true, will for the bucket to be re-injected into processing chain
@@ -51,6 +51,9 @@ type BucketFactory struct {
 	Profiling           bool                      `yaml:"profiling"`           //Profiling, if true, will make the bucket record pours/overflows/etc.
 	OverflowFilter      string                    `yaml:"overflow_filter"`     //OverflowFilter if present, is a filter that must return true for the overflow to go through
 	ConditionalOverflow string                    `yaml:"condition"`           //condition if present, is an expression that must return true for the bucket to overflow
+	BayesianPrior       float32                   `yaml:"bayesian_prior"`
+	BayesianThreshold   float32                   `yaml:"bayesian_threshold"`
+	BayesianConditions  []RawBayesianCondition    `yaml:"bayesian_conditions"` //conditions for the bayesian bucket
 	ScopeType           types.ScopeType           `yaml:"scope,omitempty"`     //to enforce a different remediation than blocking an IP. Will default this to IP
 	BucketName          string                    `yaml:"-"`
 	Filename            string                    `yaml:"-"`
@@ -71,6 +74,7 @@ type BucketFactory struct {
 	tomb                *tomb.Tomb                `yaml:"-"`
 	wgPour              *sync.WaitGroup           `yaml:"-"`
 	wgDumpState         *sync.WaitGroup           `yaml:"-"`
+	orderEvent          bool
 }
 
 // we use one NameGenerator for all the future buckets
@@ -120,6 +124,25 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 		if bucketFactory.leakspeed == 0 {
 			return fmt.Errorf("bad leakspeed for conditional bucket '%s'", bucketFactory.LeakSpeed)
 		}
+	} else if bucketFactory.Type == "bayesian" {
+		if bucketFactory.BayesianConditions == nil {
+			return fmt.Errorf("bayesian bucket must have bayesian conditions")
+		}
+		if bucketFactory.BayesianPrior == 0 {
+			return fmt.Errorf("bayesian bucket must have a valid, non-zero prior")
+		}
+		if bucketFactory.BayesianThreshold == 0 {
+			return fmt.Errorf("bayesian bucket must have a valid, non-zero threshold")
+		}
+		if bucketFactory.BayesianPrior > 1 {
+			return fmt.Errorf("bayesian bucket must have a valid, non-zero prior")
+		}
+		if bucketFactory.BayesianThreshold > 1 {
+			return fmt.Errorf("bayesian bucket must have a valid, non-zero threshold")
+		}
+		if bucketFactory.Capacity != -1 {
+			return fmt.Errorf("bayesian bucket must have capacity -1")
+		}
 	} else {
 		return fmt.Errorf("unknown bucket type '%s'", bucketFactory.Type)
 	}
@@ -156,7 +179,7 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 	return nil
 }
 
-func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.Tomb, buckets *Buckets) ([]BucketFactory, chan types.Event, error) {
+func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.Tomb, buckets *Buckets, orderEvent bool) ([]BucketFactory, chan types.Event, error) {
 	var (
 		ret      = []BucketFactory{}
 		response chan types.Event
@@ -234,6 +257,9 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 				log.Errorf("Failed to load bucket %s : %v", bucketFactory.Name, err)
 				return nil, nil, fmt.Errorf("loading of %s failed : %v", bucketFactory.Name, err)
 			}
+
+			bucketFactory.orderEvent = orderEvent
+
 			ret = append(ret, bucketFactory)
 		}
 	}
@@ -242,7 +268,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 		return nil, nil, fmt.Errorf("unable to load alert context: %s", err)
 	}
 
-	log.Warningf("Loaded %d scenarios", len(ret))
+	log.Infof("Loaded %d scenarios", len(ret))
 	return ret, response, nil
 }
 
@@ -316,6 +342,8 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 		bucketFactory.processors = append(bucketFactory.processors, &DumbProcessor{})
 	case "conditional":
 		bucketFactory.processors = append(bucketFactory.processors, &DumbProcessor{})
+	case "bayesian":
+		bucketFactory.processors = append(bucketFactory.processors, &DumbProcessor{})
 	default:
 		return fmt.Errorf("invalid type '%s' in %s : %v", bucketFactory.Type, bucketFactory.Filename, err)
 	}
@@ -353,6 +381,11 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	if bucketFactory.ConditionalOverflow != "" {
 		bucketFactory.logger.Tracef("Adding conditional overflow")
 		bucketFactory.processors = append(bucketFactory.processors, &ConditionalOverflow{})
+	}
+
+	if bucketFactory.BayesianThreshold != 0 {
+		bucketFactory.logger.Tracef("Adding bayesian processor")
+		bucketFactory.processors = append(bucketFactory.processors, &BayesianBucket{})
 	}
 
 	if len(bucketFactory.Data) > 0 {

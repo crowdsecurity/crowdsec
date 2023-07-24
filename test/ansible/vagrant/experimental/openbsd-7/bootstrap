@@ -1,6 +1,0 @@
-#!/bin/sh
-unset IFS
-set -euf
-
-sudo pkg_add -u
-sudo pkg_add python-3.9.13 py3-pip gcc-11.2.0p2 openssl-3.0.3p0 gtar-1.34 truncate-5.2.1
