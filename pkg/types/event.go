@@ -67,7 +67,7 @@ func (w WaapEvent) GetVar(varName string) string {
 		if w.Vars[parsed[0]] == "" {
 			return ""
 		}
-		return w.Vars[parsed[0]][parsed[1]]
+		//return w.Vars[parsed[0]][parsed[1]]
 	}
 	log.Warningf("invalid variable name %s", varName)
 	return ""

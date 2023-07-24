@@ -42,7 +42,7 @@ func EventFromRequest(r waf.ParsedRequest) (types.Event, error) {
 		Src:     "waf",
 		Raw:     "dummy-waf-data", //we discard empty Line.Raw items :)
 	}
-	evt.Waap = []map[string]interface{}{}
+	evt.Waap = types.WaapEvent{}
 
 	return evt, nil
 }
@@ -106,7 +106,7 @@ func (r *WafRunner) AccumulateTxToEvent(tx experimental.FullTransaction, kind st
 			"msg":        rule.Message(),
 			"severity":   rule.Rule().Severity().String(),
 		}
-		evt.Waap = append(evt.Waap, corazaRule)
+		evt.Waap.MatchedRules = append(evt.Waap.MatchedRules, corazaRule)
 	}
 
 	return nil
