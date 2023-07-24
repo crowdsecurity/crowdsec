@@ -107,7 +107,7 @@ func runBouncersAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	if csConfig.Cscli.Output == "human" {
-		fmt.Printf("Api key for '%s':\n\n", keyName)
+		fmt.Printf("API key for '%s':\n\n", keyName)
 		fmt.Printf("   %s\n\n", apiKey)
 		fmt.Print("Please keep this key since you will not be able to retrieve it!\n")
 	} else if csConfig.Cscli.Output == "raw" {

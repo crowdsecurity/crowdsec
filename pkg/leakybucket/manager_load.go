@@ -74,6 +74,7 @@ type BucketFactory struct {
 	tomb                *tomb.Tomb                `yaml:"-"`
 	wgPour              *sync.WaitGroup           `yaml:"-"`
 	wgDumpState         *sync.WaitGroup           `yaml:"-"`
+	orderEvent          bool
 }
 
 // we use one NameGenerator for all the future buckets
@@ -178,7 +179,7 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 	return nil
 }
 
-func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.Tomb, buckets *Buckets) ([]BucketFactory, chan types.Event, error) {
+func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.Tomb, buckets *Buckets, orderEvent bool) ([]BucketFactory, chan types.Event, error) {
 	var (
 		ret      = []BucketFactory{}
 		response chan types.Event
@@ -256,6 +257,9 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 				log.Errorf("Failed to load bucket %s : %v", bucketFactory.Name, err)
 				return nil, nil, fmt.Errorf("loading of %s failed : %v", bucketFactory.Name, err)
 			}
+
+			bucketFactory.orderEvent = orderEvent
+
 			ret = append(ret, bucketFactory)
 		}
 	}
@@ -264,7 +268,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 		return nil, nil, fmt.Errorf("unable to load alert context: %s", err)
 	}
 
-	log.Warningf("Loaded %d scenarios", len(ret))
+	log.Infof("Loaded %d scenarios", len(ret))
 	return ret, response, nil
 }
 

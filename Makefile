@@ -43,6 +43,11 @@ PLUGINS_DIR = ./plugins/notifications
 CROWDSEC_BIN = crowdsec$(EXT)
 CSCLI_BIN = cscli$(EXT)
 
+# semver comparison to select the hub branch requires the version to start with "v"
+ifneq ($(call substr,$(BUILD_VERSION),1,1),v)
+    $(error BUILD_VERSION "$(BUILD_VERSION)" should start with "v")
+endif
+
 # Directory for the release files
 RELDIR = crowdsec-$(BUILD_VERSION)
 

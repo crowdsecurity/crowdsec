@@ -180,7 +180,7 @@ func NewLapiRegisterCmd() *cobra.Command {
 	cmdLapiRegister := &cobra.Command{
 		Use:   "register",
 		Short: "Register a machine to Local API (LAPI)",
-		Long: `Register you machine to the Local API (LAPI).
+		Long: `Register your machine to the Local API (LAPI).
 Keep in mind the machine needs to be validated by an administrator on LAPI side to be effective.`,
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
