@@ -11,7 +11,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
@@ -104,7 +103,7 @@ func (w *WafRuleLoader) LoadWafRules() ([]*WafRulesCollection, error) {
 			continue
 		}
 
-		spew.Dump(wafConfig)
+		//spew.Dump(wafConfig)
 
 		collection := &WafRulesCollection{}
 

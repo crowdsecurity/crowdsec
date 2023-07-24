@@ -11,8 +11,10 @@ import (
 
 	"github.com/antonmedv/expr"
 	"github.com/crowdsecurity/coraza/v3"
+	"github.com/crowdsecurity/coraza/v3/collection"
 	"github.com/crowdsecurity/coraza/v3/experimental"
 	corazatypes "github.com/crowdsecurity/coraza/v3/types"
+	"github.com/crowdsecurity/coraza/v3/types/variables"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
@@ -206,6 +208,7 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	}
 
 	w.InChan = make(chan waf.ParsedRequest)
+	w.logger.Infof("w.InChan creation: %p", w.InChan)
 	w.WafRunners = make([]WafRunner, w.config.WafRoutines)
 	for nbRoutine := 0; nbRoutine < w.config.WafRoutines; nbRoutine++ {
 		w.logger.Infof("Loading %d in-band rules", len(strings.Split(inBandRules, "\n")))
@@ -259,10 +262,7 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		w.WafRunners[nbRoutine] = runner
 	}
 
-	w.logger.Infof("Loading %d out-of-band rules", len(strings.Split(outOfBandRules, "\n")))
-	if err != nil {
-		return errors.Wrap(err, "Cannot create WAF")
-	}
+	w.logger.Infof("Created %d waf runners", len(w.WafRunners))
 
 	//We don´t use the wrapper provided by coraza because we want to fully control what happens when a rule match to send the information in crowdsec
 	w.mux.HandleFunc(w.config.Path, w.wafHandler)
@@ -296,6 +296,7 @@ func (w *WafSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) err
 			runner := runner
 			runner.outChan = out
 			t.Go(func() error {
+				defer trace.CatchPanic("crowdsec/acquis/waf/live/runner")
 				return runner.Run(t)
 			})
 		}
@@ -370,15 +371,26 @@ func (r *WafRunner) processReqWithEngine(tx experimental.FullTransaction, parsed
 
 	in = tx.ProcessRequestHeaders()
 
+	for _, v := range tx.Collection(variables.TX).FindAll() {
+		log.Infof("tx variable: %s | %s", v.Key(), v.Value())
+	}
+
+	tx.Variables().All(func(v variables.RuleVariable, col collection.Collection) bool {
+		log.Infof("Collection: %s", col.Name())
+		log.Infof("Variable: %s", v.Name())
+		//collect := tx.Collection(col)
+		return true
+	})
+
 	//spew.Dump(in)
 	//spew.Dump(tx.MatchedRules())
 
-	for _, rule := range tx.MatchedRules() {
-		//r.logger.Infof("Rule %d disruptive: %t", rule.Rule().ID(), rule.Disruptive())
+	/*for _, rule := range tx.MatchedRules() {
+		log.Infof("Rule %d disruptive: %t", rule.Rule().ID(), rule.Disruptive())
 		if rule.Message() == "" {
 			continue
 		}
-	}
+	}*/
 
 	//if we're inband, we should stop here, but for outofband go to the end
 	if in != nil && wafType == InBand {
@@ -393,6 +405,7 @@ func (r *WafRunner) processReqWithEngine(tx experimental.FullTransaction, parsed
 		}
 
 		if it != nil {
+			//log.Infof("blocking rule id %d", in.RuleID)
 			return it, nil, nil
 		}
 		// from https://github.com/corazawaf/coraza/blob/main/internal/corazawaf/transaction.go#L419
@@ -413,6 +426,8 @@ func (r *WafRunner) processReqWithEngine(tx experimental.FullTransaction, parsed
 		return nil, nil, errors.Wrap(err, "Cannot process request body")
 	}
 	if in != nil && wafType == InBand {
+		//log.Infof("blocking rule id %d", in.RuleID)
+
 		return in, tx, nil
 	}
 
@@ -427,6 +442,7 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 			r.logger.Infof("Waf Runner is dying")
 			return nil
 		case request := <-r.inChan:
+			r.logger.Infof("Requests handled by runner %s", r.UUID)
 			var evt *types.Event
 			WafReqCounter.With(prometheus.Labels{"source": request.RemoteAddr}).Inc()
 			//measure the time spent in the WAF
@@ -435,6 +451,8 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 			expTx := inBoundTx.(experimental.FullTransaction)
 			// we use this internal transaction for the expr helpers
 			tx := waf.NewTransaction(expTx)
+
+			//r.logger.Infof("Processing request %s | tx: %p", request.UUID, tx)
 
 			//Run the pre_eval hooks
 			for _, rules := range r.RulesCollections {
@@ -481,6 +499,12 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 			in, expTx, err := r.processReqWithEngine(expTx, request, InBand)
 			request.Tx = expTx
 			//log.Infof("-> %s", spew.Sdump(in))
+
+			//log.Infof("tx variables: %+v", expTx.Collection(variables.TX))
+
+			//foo := expTx.(plugintypes.TransactionState)
+
+			//log.Infof("from tstate: %+v", foo.Variables().TX().FindAll())
 
 			response := waf.NewResponseRequest(expTx, in, request.UUID, err)
 

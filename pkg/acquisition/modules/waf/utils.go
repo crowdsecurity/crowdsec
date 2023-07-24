@@ -8,7 +8,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 func EventFromRequest(r waf.ParsedRequest) (types.Event, error) {
@@ -47,16 +46,17 @@ func EventFromRequest(r waf.ParsedRequest) (types.Event, error) {
 }
 
 func LogWaapEvent(evt *types.Event) {
-	log.WithFields(log.Fields{
+	/*log.WithFields(log.Fields{
 		"module":     "waf",
 		"source":     evt.Parsed["source_ip"],
 		"target_uri": evt.Parsed["target_uri"],
-	}).Infof("%s triggered %d rules [%+v]", evt.Parsed["source_ip"], len(evt.Waap), evt.Waap.GetRuleIDs())
+	}).Infof("%s triggered %d rules [%+v]", evt.Parsed["source_ip"], len(evt.Waap), evt.Waap.GetRuleIDs())*/
 	//log.Infof("%s", evt.Waap)
 }
 
 func (r *WafRunner) AccumulateTxToEvent(tx experimental.FullTransaction, kind string, evt *types.Event) error {
-	r.logger.Infof("TX %v", &tx)
+
+	//log.Infof("tx addr: %p", tx)
 	if tx.IsInterrupted() {
 		r.logger.Infof("interrupted() = %t", tx.IsInterrupted())
 		r.logger.Infof("interrupted.action = %s", tx.Interruption().Action)
@@ -66,10 +66,15 @@ func (r *WafRunner) AccumulateTxToEvent(tx experimental.FullTransaction, kind st
 		evt.Parsed["interrupted"] = "true"
 		evt.Parsed["action"] = tx.Interruption().Action
 
+		//log.Infof("action: %s", tx.Interruption().Action)
+
 		evt.Meta["waap_interrupted"] = "1"
 		evt.Meta["waap_action"] = tx.Interruption().Action
 	}
-
+	r.logger.Infof("variables addr in AccumulateTxToEvent: %p", tx.Variables())
+	//log.Infof("variables: %s", spew.Sdump(tx.Variables()))
+	//log.Infof("tx variables: %+v", tx.Collection(variables.TX))
+	//log.Infof("TX %s", spew.Sdump(tx.MatchedRules()))
 	for _, rule := range tx.MatchedRules() {
 		if rule.Message() == "" {
 			continue
