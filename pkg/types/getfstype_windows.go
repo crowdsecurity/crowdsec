@@ -34,7 +34,7 @@ func GetFSType(path string) (string, error) {
 		nFileSystemNameSize  = uint32(len(fileSystemNameBuffer))
 	)
 
-	ret, _, err := syscall.SyscallN(uintptr(getVolumeInformation),
+	ret, _, err := syscall.SyscallN(getVolumeInformation,
 		uintptr(unsafe.Pointer(volumeRootPtr)),
 		0,
 		0,
