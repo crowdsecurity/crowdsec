@@ -127,7 +127,7 @@
                      <File Id="notification_email.exe" Source="plugins\notifications\email\notification-email.exe" />
                      <File Id="notification_http.exe" Source="plugins\notifications\http\notification-http.exe" />
                      <File Id="notification_splunk.exe" Source="plugins\notifications\splunk\notification-splunk.exe" />
-                     <File Id="notification_sentinel.exe" Source="plugins\notifications\splunk\notification-sentinel.exe" />
+                     <File Id="notification_sentinel.exe" Source="plugins\notifications\sentinel\notification-sentinel.exe" />
                   </Component>
                </Directory>
             </Directory>
