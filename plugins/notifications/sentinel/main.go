@@ -55,6 +55,15 @@ func (s *SentinelPlugin) getAuthorizationHeader(now string, length int, pluginNa
 
 func (s *SentinelPlugin) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
 
+	if _, ok := s.PluginConfigByName[notification.Name]; !ok {
+		return nil, fmt.Errorf("invalid plugin config name %s", notification.Name)
+	}
+	cfg := s.PluginConfigByName[notification.Name]
+
+	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
+		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
+	}
+
 	logger.Info("received notification for sentinel config", "name", notification.Name)
 
 	url := fmt.Sprintf("https://%s.ods.opinsights.azure.com/api/logs?api-version=2016-04-01", s.PluginConfigByName[notification.Name].CustomerID)
