@@ -78,7 +78,7 @@ type Item struct {
 	PostOverflows []string `yaml:"postoverflows,omitempty" json:"postoverflows,omitempty"`
 	Scenarios     []string `yaml:"scenarios,omitempty" json:"scenarios,omitempty"`
 	Collections   []string `yaml:"collections,omitempty" json:"collections,omitempty"`
-	WafRules      []string `yaml:"waf_rules,omitempty" json:"waf_rules,omitempty"`
+	WafRules      []string `yaml:"waf-rules,omitempty" json:"waf-rules,omitempty"`
 }
 
 func (i *Item) toHubStatus() ItemHubStatus {
