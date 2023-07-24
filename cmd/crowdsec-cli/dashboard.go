@@ -330,15 +330,14 @@ func checkSystemMemory(forceYes *bool) error {
 }
 
 func warnIfNotLoopback(addr string, forceYes *bool) error {
-	if addr == "127.0.0.1" || addr == "[::1]" {
+	if addr == "127.0.0.1" || addr == "::1" {
 		return nil
 	}
 	log.Warnf("You are potentially exposing your metabase port to the internet (addr: %s), please consider using a reverse proxy", addr)
-	log.Warn("CrowdSec takes no responsibility for security of your metabase instance.")
 	if !*forceYes {
 		var answer bool
 		prompt := &survey.Confirm{
-			Message: "Do you want to continue ?",
+			Message: "CrowdSec takes no responsibility for security of your metabase instance. Do you want to continue ?",
 			Default: true,
 		}
 		if err := survey.AskOne(prompt, &answer); err != nil {
