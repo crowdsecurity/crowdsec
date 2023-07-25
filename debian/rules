@@ -29,6 +29,7 @@ override_dh_auto_install:
 	install -m 551 plugins/notifications/http/notification-http debian/crowdsec/usr/lib/crowdsec/plugins/
 	install -m 551 plugins/notifications/splunk/notification-splunk debian/crowdsec/usr/lib/crowdsec/plugins/
 	install -m 551 plugins/notifications/email/notification-email debian/crowdsec/usr/lib/crowdsec/plugins/
+	install -m 551 plugins/notifications/sentinel/notification-sentinel debian/crowdsec/usr/lib/crowdsec/plugins/
 
 	cp cmd/crowdsec/crowdsec debian/crowdsec/usr/bin
 	cp cmd/crowdsec-cli/cscli debian/crowdsec/usr/bin

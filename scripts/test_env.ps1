@@ -71,7 +71,7 @@ $parser_s02="$parser_dir\s02-enrich"
 $scenarios_dir="$config_dir\scenarios"
 $postoverflows_dir="$config_dir\postoverflows"
 $hub_dir="$config_dir\hub"
-$plugins=@("http", "slack", "splunk")
+$plugins=@("http", "slack", "splunk", "email", "sentinel")
 $plugins_dir="plugins"
 $notif_dir="notifications"
 
