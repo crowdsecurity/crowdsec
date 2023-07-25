@@ -122,6 +122,18 @@ func (c *Client) DeleteWatcher(name string) error {
 	return nil
 }
 
+func (c *Client) BulkDeleteWatchers(machines []*ent.Machine) (int, error) {
+	ids := []int{}
+	for _, m := range machines {
+		ids = append(ids, m.ID)
+	}
+	nbDeleted, err := c.Ent.Machine.Delete().Where(machine.IDIn(ids...)).Exec(c.CTX)
+	if err != nil {
+		return nbDeleted, err
+	}
+	return nbDeleted, nil
+}
+
 func (c *Client) UpdateMachineLastPush(machineID string) error {
 	_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(machineID)).SetLastPush(time.Now().UTC()).Save(c.CTX)
 	if err != nil {
@@ -185,25 +197,10 @@ func (c *Client) IsMachineRegistered(machineID string) (bool, error) {
 
 }
 
-func (c *Client) QueryLastHeartbeat(t time.Time) ([]*ent.Machine, error) {
-	return c.Ent.Machine.Query().Where(machine.LastHeartbeatLT(t)).All(c.CTX)
+func (c *Client) queryLastHeartbeat(t time.Time, b bool) ([]*ent.Machine, error) {
+	return c.Ent.Machine.Query().Where(machine.LastHeartbeatLT(t), machine.IsValidatedEQ(b)).All(c.CTX)
 }
 
-func (c *Client) PruneMachines(t time.Time) (int, error) {
-	var total int
-	num, err := c.Ent.Machine.
-		Delete().
-		Where(machine.IsValidated(false)).Exec(c.CTX)
-	if err != nil {
-		return 0, errors.Wrap(err, "could not prune machines:")
-	}
-	total += num
-	num, err = c.Ent.Machine.
-		Delete().
-		Where(machine.LastHeartbeatLT(t)).Exec(c.CTX)
-	if err != nil {
-		return 0, errors.Wrap(err, "could not prune machines:")
-	}
-	total += num
-	return total, nil
+func (c *Client) QueryLastValidatedHeartbeat(t time.Time) ([]*ent.Machine, error) {
+	return c.queryLastHeartbeat(t, true)
 }

@@ -369,65 +369,84 @@ func runMachinesDelete(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-var pruneCount int
-var parsedDuration time.Duration
-var force bool
-
 func NewMachinesPruneCmd() *cobra.Command {
+	var machines []*ent.Machine
+	var parsedDuration time.Duration
+	var force bool
 	cmdMachinesPrune := &cobra.Command{
 		Use:               "prune",
 		Short:             "prune machine list",
 		Long:              `prune all machines that are not validate OR has not made heartbeat in over 10 minutes`,
 		Example:           `cscli machines prune`,
 		DisableAutoGenTag: true,
-		PreRun: func(cmd *cobra.Command, args []string) {
+		PreRunE: func(cmd *cobra.Command, args []string) error {
 			flags := cmd.Flags()
 			dur, _ := flags.GetString("duration")
 			force, _ = flags.GetBool("force")
-			parsedDuration, _ = time.ParseDuration(fmt.Sprintf("-%s", dur))
+			notValidOnly, _ := flags.GetBool("not-validated-only")
 			var err error
-			dbClient, err = database.NewClient(csConfig.DbConfig)
+			parsedDuration, err = time.ParseDuration(fmt.Sprintf("-%s", dur))
 			if err != nil {
-				log.Fatalf("unable to create new database client: %s", err)
+				return fmt.Errorf("unable to parse duration '%s': %s", dur, err)
 			}
-			if !force {
-				if pending, err := dbClient.QueryPendingMachine(); err == nil {
-					pruneCount += len(pending)
-				} else {
-					log.Fatal("Error querying unvalidated machines")
-				}
-				if pending, err := dbClient.QueryLastHeartbeat(time.Now().UTC().Add(parsedDuration)); err == nil {
-					pruneCount += len(pending)
-				} else {
-					log.Fatal("Error querying unvalidated machines")
-				}
-			}
-		},
-		Run: func(cmd *cobra.Command, args []string) {
-			var nbDeleted int
-			var err error
-			var answer bool
-			if !force {
+			if parsedDuration < 60*time.Second && !notValidOnly {
+				var answer bool
 				prompt := &survey.Confirm{
-					Message: fmt.Sprintf("You are about to delete %d machines from the database continue?", pruneCount),
+					Message: "The duration you provided is less than 60 seconds are you sure you want to continue?",
 					Default: true,
 				}
 				if err := survey.AskOne(prompt, &answer); err != nil {
-					log.Warnf("unable to ask about prune check: %s", err)
+					return fmt.Errorf("unable to ask about prune check: %s", err)
 				}
 				if !answer {
-					log.Fatal("User aborted prune no changes were made")
+					return fmt.Errorf("user aborted prune no changes were made")
 				}
 			}
-			if nbDeleted, err = dbClient.PruneMachines(time.Now().UTC().Add(parsedDuration)); err != nil {
-				log.Fatalf("unable to prune machines: %s", err)
+			dbClient, err = database.NewClient(csConfig.DbConfig)
+			if err != nil {
+				return fmt.Errorf("unable to create new database client: %s", err)
 			}
-			log.Infof("sucessfully delete %d machines", nbDeleted)
+			if !force {
+				if pending, err := dbClient.QueryPendingMachine(); err == nil {
+					machines = append(machines, pending...)
+				}
+				if !notValidOnly {
+					if pending, err := dbClient.QueryLastValidatedHeartbeat(time.Now().UTC().Add(parsedDuration)); err == nil {
+						machines = append(machines, pending...)
+					}
+				}
+				if len(machines) == 0 {
+					return fmt.Errorf("no machines to prune")
+				}
+				getAgentsTable(color.Output, machines)
+			}
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if !force {
+				var answer bool
+				prompt := &survey.Confirm{
+					Message: fmt.Sprintf("You are about to delete %d machines from the database continue?", len(machines)),
+					Default: true,
+				}
+				if err := survey.AskOne(prompt, &answer); err != nil {
+					return fmt.Errorf("unable to ask about prune check: %s", err)
+				}
+				if !answer {
+					return fmt.Errorf("user aborted prune no changes were made")
+				}
+			}
+			nbDeleted, err := dbClient.BulkDeleteWatchers(machines)
+			if err != nil {
+				return fmt.Errorf("unable to prune machines: %s", err)
+			}
+			log.Infof("successfully delete %d machines", nbDeleted)
+			return nil
 		},
 	}
-	flags := cmdMachinesPrune.Flags()
-	flags.StringP("duration", "d", "10m", "duration of time since last heartbeat EG 10m")
-	flags.Bool("force", false, "will not prompt to confirm deleteion")
+	cmdMachinesPrune.Flags().StringP("duration", "d", "10m", "duration of time since validated machine last heartbeat")
+	cmdMachinesPrune.Flags().Bool("not-validated-only", false, "only prune machines that are not validated")
+	cmdMachinesPrune.Flags().Bool("force", false, "force prune without asking for confirmation")
 
 	return cmdMachinesPrune
 }
