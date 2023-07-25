@@ -378,6 +378,7 @@ func NewMachinesPruneCmd() *cobra.Command {
 		Short:             "prune machine list",
 		Long:              `prune all machines that are not validate OR has not made heartbeat in over 10 minutes`,
 		Example:           `cscli machines prune`,
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			flags := cmd.Flags()
@@ -389,11 +390,11 @@ func NewMachinesPruneCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("unable to parse duration '%s': %s", dur, err)
 			}
-			if parsedDuration < 60*time.Second && !notValidOnly {
+			if parsedDuration >= time.Minute-2*time.Minute && !notValidOnly {
 				var answer bool
 				prompt := &survey.Confirm{
-					Message: "The duration you provided is less than 60 seconds are you sure you want to continue?",
-					Default: true,
+					Message: "The duration you provided is less than or equal 60 seconds this can break installations do you want to continue?",
+					Default: false,
 				}
 				if err := survey.AskOne(prompt, &answer); err != nil {
 					return fmt.Errorf("unable to ask about prune check: %s", err)
@@ -406,20 +407,18 @@ func NewMachinesPruneCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("unable to create new database client: %s", err)
 			}
-			if !force {
-				if pending, err := dbClient.QueryPendingMachine(); err == nil {
+			if pending, err := dbClient.QueryPendingMachine(); err == nil {
+				machines = append(machines, pending...)
+			}
+			if !notValidOnly {
+				if pending, err := dbClient.QueryLastValidatedHeartbeat(time.Now().UTC().Add(parsedDuration)); err == nil {
 					machines = append(machines, pending...)
 				}
-				if !notValidOnly {
-					if pending, err := dbClient.QueryLastValidatedHeartbeat(time.Now().UTC().Add(parsedDuration)); err == nil {
-						machines = append(machines, pending...)
-					}
-				}
-				if len(machines) == 0 {
-					return fmt.Errorf("no machines to prune")
-				}
-				getAgentsTable(color.Output, machines)
 			}
+			if len(machines) == 0 {
+				return fmt.Errorf("no machines to prune")
+			}
+			getAgentsTable(color.Output, machines)
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
