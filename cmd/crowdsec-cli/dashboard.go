@@ -125,7 +125,8 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			if err := checkSystemMemory(&forceYes); err != nil {
 				return err
 			}
-			if err := warnIfNotLoopback(metabaseListenAddress, &forceYes); err != nil {
+			warnIfNotLoopback(metabaseListenAddress)
+			if err := disclaimer(&forceYes); err != nil {
 				return err
 			}
 			dockerGroup, err := checkGroups(&forceYes)
@@ -172,7 +173,8 @@ func NewDashboardStartCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := warnIfNotLoopback(mb.Config.ListenAddr, &forceYes); err != nil {
+			warnIfNotLoopback(mb.Config.ListenAddr)
+			if err := disclaimer(&forceYes); err != nil {
 				return err
 			}
 			if err := mb.Container.Start(); err != nil {
@@ -183,6 +185,7 @@ func NewDashboardStartCmd() *cobra.Command {
 			return nil
 		},
 	}
+	cmdDashStart.Flags().BoolVarP(&forceYes, "yes", "y", false, "force  yes")
 	return cmdDashStart
 }
 
@@ -321,7 +324,7 @@ func checkSystemMemory(forceYes *bool) error {
 			return fmt.Errorf("unable to ask about RAM check: %s", err)
 		}
 		if !answer {
-			return fmt.Errorf("user aborted")
+			return fmt.Errorf("user stated no to continue")
 		}
 		return nil
 	}
@@ -329,24 +332,29 @@ func checkSystemMemory(forceYes *bool) error {
 	return nil
 }
 
-func warnIfNotLoopback(addr string, forceYes *bool) error {
+func warnIfNotLoopback(addr string) {
 	if addr == "127.0.0.1" || addr == "::1" {
-		return nil
+		return
 	}
 	log.Warnf("You are potentially exposing your metabase port to the internet (addr: %s), please consider using a reverse proxy", addr)
+}
+
+func disclaimer(forceYes *bool) error {
 	if !*forceYes {
 		var answer bool
 		prompt := &survey.Confirm{
-			Message: "CrowdSec takes no responsibility for security of your metabase instance. Do you want to continue ?",
+			Message: "CrowdSec takes no responsibility for the security of your metabase instance. Do you accept these responsibilities ?",
 			Default: true,
 		}
 		if err := survey.AskOne(prompt, &answer); err != nil {
 			return fmt.Errorf("unable to ask to question: %s", err)
 		}
 		if !answer {
-			return fmt.Errorf("user aborted")
+			return fmt.Errorf("user stated no to responsibilities")
 		}
+		return nil
 	}
+	log.Warn("CrowdSec takes no responsibility for the security of your metabase instance. You used force yes, so you accept this disclaimer")
 	return nil
 }
 
