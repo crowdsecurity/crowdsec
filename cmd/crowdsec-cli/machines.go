@@ -390,7 +390,7 @@ func NewMachinesPruneCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("unable to parse duration '%s': %s", dur, err)
 			}
-			if parsedDuration >= time.Minute-2*time.Minute && !notValidOnly {
+			if parsedDuration >= 0-60*time.Second && !notValidOnly {
 				var answer bool
 				prompt := &survey.Confirm{
 					Message: "The duration you provided is less than or equal 60 seconds this can break installations do you want to continue?",
