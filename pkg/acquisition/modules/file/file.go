@@ -340,6 +340,7 @@ func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 			}
 			f.logger.Debugf("fs for %s is network: %t (%s)", file, networkFS, fsType)
 			if networkFS {
+				f.logger.Warnf("Disabling inotify poll on %s as it is on a network share. You can manually set poll_without_inotify to true to make this message disappear, or to false to enforce inotify poll", file)
 				inotifyPoll = false
 			}
 		}
