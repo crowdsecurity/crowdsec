@@ -47,7 +47,7 @@ PARSER_S02="$PARSER_DIR/s02-enrich"
 SCENARIOS_DIR="$CONFIG_DIR/scenarios"
 POSTOVERFLOWS_DIR="$CONFIG_DIR/postoverflows"
 HUB_DIR="$CONFIG_DIR/hub"
-PLUGINS="http slack splunk email"
+PLUGINS="http slack splunk email sentinel"
 PLUGINS_DIR="plugins"
 NOTIF_DIR="notifications"
 
