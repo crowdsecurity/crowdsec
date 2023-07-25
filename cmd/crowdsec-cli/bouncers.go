@@ -266,7 +266,7 @@ func NewBouncersCmd() *cobra.Command {
 	var cmdBouncers = &cobra.Command{
 		Use:   "bouncers [action]",
 		Short: "Manage bouncers [requires local API]",
-		Long: `To list/add/delete bouncers.
+		Long: `To list/add/delete/prune bouncers.
 Note: This command requires database direct access, so is intended to be run on Local API/master.
 `,
 		Args:              cobra.MinimumNArgs(1),
