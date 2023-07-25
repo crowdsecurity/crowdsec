@@ -485,7 +485,7 @@ func NewMachinesCmd() *cobra.Command {
 	var cmdMachines = &cobra.Command{
 		Use:   "machines [action]",
 		Short: "Manage local API machines [requires local API]",
-		Long: `To list/add/delete/validate machines.
+		Long: `To list/add/delete/validate/prune machines.
 Note: This command requires database direct access, so is intended to be run on the local API machine.
 `,
 		Example:           `cscli machines [action]`,
