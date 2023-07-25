@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -15,6 +16,7 @@ import (
 
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -188,6 +190,78 @@ func NewBouncersDeleteCmd() *cobra.Command {
 	return cmdBouncersDelete
 }
 
+func NewBouncersPruneCmd() *cobra.Command {
+	var bouncers []*ent.Bouncer
+	var parsedDuration time.Duration
+	var force bool
+	cmdBouncersPrune := &cobra.Command{
+		Use:               "prune",
+		Short:             "prune bouncers",
+		Args:              cobra.NoArgs,
+		DisableAutoGenTag: true,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			flags := cmd.Flags()
+			dur, _ := flags.GetString("duration")
+			force, _ = flags.GetBool("force")
+			var err error
+			parsedDuration, err = time.ParseDuration(fmt.Sprintf("-%s", dur))
+			if err != nil {
+				return fmt.Errorf("unable to parse duration '%s': %s", dur, err)
+			}
+			if parsedDuration >= 0-2*time.Minute {
+				var answer bool
+				prompt := &survey.Confirm{
+					Message: "The duration you provided is less than or equal 2 minutes this may remove active bouncers continue?",
+					Default: false,
+				}
+				if err := survey.AskOne(prompt, &answer); err != nil {
+					return fmt.Errorf("unable to ask about prune check: %s", err)
+				}
+				if !answer {
+					return fmt.Errorf("user aborted prune no changes were made")
+				}
+			}
+			dbClient, err = database.NewClient(csConfig.DbConfig)
+			if err != nil {
+				return fmt.Errorf("unable to create new database client: %s", err)
+			}
+			bouncers, err = dbClient.QueryBouncersLastPulltimeLT(time.Now().UTC().Add(parsedDuration))
+			if err != nil {
+				return fmt.Errorf("unable to query bouncers: %s", err)
+			}
+			if len(bouncers) == 0 {
+				return fmt.Errorf("no bouncers to prune")
+			}
+			getBouncersTable(color.Output, bouncers)
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if !force {
+				var answer bool
+				prompt := &survey.Confirm{
+					Message: fmt.Sprintf("You are about to delete %d bouncers from the database continue?", len(bouncers)),
+					Default: true,
+				}
+				if err := survey.AskOne(prompt, &answer); err != nil {
+					return fmt.Errorf("unable to ask about prune check: %s", err)
+				}
+				if !answer {
+					return fmt.Errorf("user aborted prune no changes were made")
+				}
+			}
+			nbDeleted, err := dbClient.BulkDeleteBouncers(bouncers)
+			if err != nil {
+				return fmt.Errorf("unable to prune bouncers: %s", err)
+			}
+			log.Infof("successfully delete %d bouncers", nbDeleted)
+			return nil
+		},
+	}
+	cmdBouncersPrune.Flags().StringP("duration", "d", "60m", "duration of time since last pull")
+	cmdBouncersPrune.Flags().Bool("force", false, "force prune without asking for confirmation")
+	return cmdBouncersPrune
+}
+
 func NewBouncersCmd() *cobra.Command {
 	var cmdBouncers = &cobra.Command{
 		Use:   "bouncers [action]",
@@ -214,6 +288,7 @@ Note: This command requires database direct access, so is intended to be run on 
 	cmdBouncers.AddCommand(NewBouncersListCmd())
 	cmdBouncers.AddCommand(NewBouncersAddCmd())
 	cmdBouncers.AddCommand(NewBouncersDeleteCmd())
+	cmdBouncers.AddCommand(NewBouncersPruneCmd())
 
 	return cmdBouncers
 }
