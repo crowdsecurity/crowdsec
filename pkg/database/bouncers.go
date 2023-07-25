@@ -8,7 +8,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
-	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
 )
 
 func (c *Client) SelectBouncer(apiKeyHash string) (*ent.Bouncer, error) {
@@ -108,10 +107,6 @@ func (c *Client) UpdateBouncerTypeAndVersion(bType string, version string, ID in
 	return nil
 }
 
-func (c *Client) queryBouncersLastPulltime(query predicate.Bouncer) ([]*ent.Bouncer, error) {
-	return c.Ent.Bouncer.Query().Where(query).All(c.CTX)
-}
-
 func (c *Client) QueryBouncersLastPulltimeLT(t time.Time) ([]*ent.Bouncer, error) {
-	return c.queryBouncersLastPulltime(bouncer.LastPullLT(t))
+	return c.Ent.Bouncer.Query().Where(bouncer.LastPullLT(t)).All(c.CTX)
 }
