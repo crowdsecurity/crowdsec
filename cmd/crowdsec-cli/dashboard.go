@@ -152,7 +152,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 	cmdDashSetup.Flags().BoolVarP(&force, "force", "f", false, "Force setup : override existing files")
 	cmdDashSetup.Flags().StringVarP(&metabaseDbPath, "dir", "d", "", "Shared directory with metabase container")
 	cmdDashSetup.Flags().StringVarP(&metabaseListenAddress, "listen", "l", metabaseListenAddress, "Listen address of container")
-	cmdDashSetup.Flags().StringVarP(&metabaseImage, "version", "v", metabaseImage, "Metabase image to use")
+	cmdDashSetup.Flags().StringVar(&metabaseImage, "metabase-image", metabaseImage, "Metabase image to use")
 	cmdDashSetup.Flags().StringVarP(&metabaseListenPort, "port", "p", metabaseListenPort, "Listen port of container")
 	cmdDashSetup.Flags().BoolVarP(&forceYes, "yes", "y", false, "force  yes")
 	//cmdDashSetup.Flags().StringVarP(&metabaseUser, "user", "u", "crowdsec@crowdsec.net", "metabase user")
