@@ -196,10 +196,11 @@ func NewDashboardStopCmd() *cobra.Command {
 		Long:              `Stops the metabase container using docker.`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := metabase.StopContainer(metabaseContainerID); err != nil {
-				log.Fatalf("unable to stop container '%s': %s", metabaseContainerID, err)
+				return fmt.Errorf("unable to stop container '%s': %s", metabaseContainerID, err)
 			}
+			return nil
 		},
 	}
 	return cmdDashStop
@@ -210,12 +211,13 @@ func NewDashboardShowPasswordCmd() *cobra.Command {
 		Short:             "displays password of metabase.",
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			m := metabase.Metabase{}
 			if err := m.LoadConfig(metabaseConfigPath); err != nil {
-				log.Fatal(err)
+				return err
 			}
 			log.Printf("'%s'", m.Config.Password)
+			return nil
 		},
 	}
 	return cmdDashShowPassword
@@ -234,57 +236,59 @@ func NewDashboardRemoveCmd() *cobra.Command {
 cscli dashboard remove
 cscli dashboard remove --force
  `,
-		Run: func(cmd *cobra.Command, args []string) {
-			answer := true
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if !forceYes {
+				var answer bool
 				prompt := &survey.Confirm{
 					Message: "Do you really want to remove crowdsec dashboard? (all your changes will be lost)",
 					Default: true,
 				}
 				if err := survey.AskOne(prompt, &answer); err != nil {
-					log.Fatalf("unable to ask to force: %s", err)
+					return fmt.Errorf("unable to ask to force: %s", err)
+				}
+				if !answer {
+					return fmt.Errorf("user stated no to continue")
 				}
 			}
-			if answer {
-				if metabase.IsContainerExist(metabaseContainerID) {
-					log.Debugf("Stopping container %s", metabaseContainerID)
-					if err := metabase.StopContainer(metabaseContainerID); err != nil {
-						log.Warningf("unable to stop container '%s': %s", metabaseContainerID, err)
+			if metabase.IsContainerExist(metabaseContainerID) {
+				log.Debugf("Stopping container %s", metabaseContainerID)
+				if err := metabase.StopContainer(metabaseContainerID); err != nil {
+					log.Warningf("unable to stop container '%s': %s", metabaseContainerID, err)
+				}
+				dockerGroup, err := user.LookupGroup(crowdsecGroup)
+				if err == nil { // if group exist, remove it
+					groupDelCmd, err := exec.LookPath("groupdel")
+					if err != nil {
+						return fmt.Errorf("unable to find 'groupdel' command, can't continue")
 					}
-					dockerGroup, err := user.LookupGroup(crowdsecGroup)
-					if err == nil { // if group exist, remove it
-						groupDelCmd, err := exec.LookPath("groupdel")
-						if err != nil {
-							log.Fatalf("unable to find 'groupdel' command, can't continue")
-						}
 
-						groupDel := &exec.Cmd{Path: groupDelCmd, Args: []string{groupDelCmd, crowdsecGroup}}
-						if err := groupDel.Run(); err != nil {
-							log.Errorf("unable to delete group '%s': %s", dockerGroup, err)
-						}
+					groupDel := &exec.Cmd{Path: groupDelCmd, Args: []string{groupDelCmd, crowdsecGroup}}
+					if err := groupDel.Run(); err != nil {
+						log.Warnf("unable to delete group '%s': %s", dockerGroup, err)
 					}
-					log.Debugf("Removing container %s", metabaseContainerID)
-					if err := metabase.RemoveContainer(metabaseContainerID); err != nil {
-						log.Warningf("unable to remove container '%s': %s", metabaseContainerID, err)
-					}
-					log.Infof("container %s stopped & removed", metabaseContainerID)
 				}
-				log.Debugf("Removing metabase db %s", csConfig.ConfigPaths.DataDir)
-				if err := metabase.RemoveDatabase(csConfig.ConfigPaths.DataDir); err != nil {
-					log.Warningf("failed to remove metabase internal db : %s", err)
+				log.Debugf("Removing container %s", metabaseContainerID)
+				if err := metabase.RemoveContainer(metabaseContainerID); err != nil {
+					log.Warnf("unable to remove container '%s': %s", metabaseContainerID, err)
 				}
-				if force {
-					m := metabase.Metabase{}
-					if err := m.LoadConfig(metabaseConfigPath); err != nil {
-						log.Fatal(err)
-					}
-					if err := metabase.RemoveImageContainer(m.Config.Image); err != nil {
-						if !strings.Contains(err.Error(), "No such image") {
-							log.Fatalf("removing docker image: %s", err)
-						}
+				log.Infof("container %s stopped & removed", metabaseContainerID)
+			}
+			log.Debugf("Removing metabase db %s", csConfig.ConfigPaths.DataDir)
+			if err := metabase.RemoveDatabase(csConfig.ConfigPaths.DataDir); err != nil {
+				log.Warnf("failed to remove metabase internal db : %s", err)
+			}
+			if force {
+				m := metabase.Metabase{}
+				if err := m.LoadConfig(metabaseConfigPath); err != nil {
+					return err
+				}
+				if err := metabase.RemoveImageContainer(m.Config.Image); err != nil {
+					if !strings.Contains(err.Error(), "No such image") {
+						return fmt.Errorf("removing docker image: %s", err)
 					}
 				}
 			}
+			return nil
 		},
 	}
 	cmdDashRemove.Flags().BoolVarP(&force, "force", "f", false, "Remove also the metabase image")
