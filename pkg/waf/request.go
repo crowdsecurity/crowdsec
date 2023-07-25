@@ -11,6 +11,13 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	URIHeaderName  = "X-Crowdsec-Waf-Uri"
+	VerbHeaderName = "X-Crowdsec-Waf-Verb"
+	HostHeaderName = "X-Crowdsec-Waf-Host"
+	IPHeaderName   = "X-Crowdsec-Waf-Ip"
+)
+
 type ResponseRequest struct {
 	UUID         string
 	Tx           corazatypes.Transaction
@@ -77,16 +84,19 @@ func NewParsedRequestFromRequest(r *http.Request) (ParsedRequest, error) {
 	}
 
 	// the real source of the request is set in 'x-client-ip'
-	clientIP := r.Header.Get("X-Client-Ip")
+	clientIP := r.Header.Get(IPHeaderName)
 	// the real target Host of the request is set in 'x-client-host'
-	clientHost := r.Header.Get("X-Client-Host")
+	clientHost := r.Header.Get(HostHeaderName)
 	// the real URI of the request is set in 'x-client-uri'
-	clientURI := r.Header.Get("X-Client-Uri")
+	clientURI := r.Header.Get(URIHeaderName)
+	// the real VERB of the request is set in 'x-client-uri'
+	clientMethod := r.Header.Get(VerbHeaderName)
 
 	// delete those headers before coraza process the request
-	delete(r.Header, "x-client-ip")
-	delete(r.Header, "x-client-host")
-	delete(r.Header, "x-client-uri")
+	delete(r.Header, IPHeaderName)
+	delete(r.Header, HostHeaderName)
+	delete(r.Header, URIHeaderName)
+	delete(r.Header, VerbHeaderName)
 
 	return ParsedRequest{
 		RemoteAddr:       r.RemoteAddr,
@@ -94,10 +104,10 @@ func NewParsedRequestFromRequest(r *http.Request) (ParsedRequest, error) {
 		ClientHost:       clientHost,
 		ClientIP:         clientIP,
 		URI:              clientURI,
+		Method:           clientMethod,
 		Host:             r.Host,
 		Headers:          r.Header,
 		URL:              r.URL,
-		Method:           r.Method,
 		Proto:            r.Proto,
 		Body:             body,
 		TransferEncoding: r.TransferEncoding,
