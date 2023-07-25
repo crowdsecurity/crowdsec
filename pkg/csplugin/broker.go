@@ -323,7 +323,7 @@ func (pb *PluginBroker) pushNotificationsToPlugin(pluginName string, alerts []*m
 		return nil
 	}
 
-	message, err := formatAlerts(pb.pluginConfigByName[pluginName].Format, alerts)
+	message, err := FormatAlerts(pb.pluginConfigByName[pluginName].Format, alerts)
 	if err != nil {
 		return err
 	}
@@ -407,7 +407,7 @@ func getHandshake() (plugin.HandshakeConfig, error) {
 	return handshake, nil
 }
 
-func formatAlerts(format string, alerts []*models.Alert) (string, error) {
+func FormatAlerts(format string, alerts []*models.Alert) (string, error) {
 	template, err := template.New("").Funcs(sprig.TxtFuncMap()).Funcs(funcMap()).Parse(format)
 	if err != nil {
 		return "", err
