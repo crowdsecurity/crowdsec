@@ -78,5 +78,5 @@ teardown() {
     rune -0 cscli metrics
     assert_output --partial "Route"
     assert_output --partial '/v1/watchers/login'
-    assert_output --partial "Local Api Metrics:"
+    assert_output --partial "Local API Metrics:"
 }
