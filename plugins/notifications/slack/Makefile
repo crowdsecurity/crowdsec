@@ -7,8 +7,8 @@ endif
 PLUGIN=slack
 BINARY_NAME = notification-$(PLUGIN)$(EXT)
 
-GOCMD = go
-GOBUILD = $(GOCMD) build
+GO = go
+GOBUILD = $(GO) build
 
 build: clean
 	$(GOBUILD) $(LD_OPTS) $(BUILD_VENDOR_FLAGS) -o $(BINARY_NAME)
