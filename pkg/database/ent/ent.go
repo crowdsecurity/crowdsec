@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/configitem"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
@@ -36,12 +37,13 @@ type OrderFunc func(*sql.Selector)
 // columnChecker returns a function indicates if the column exists in the given column.
 func columnChecker(table string) func(string) error {
 	checks := map[string]func(string) bool{
-		alert.Table:    alert.ValidColumn,
-		bouncer.Table:  bouncer.ValidColumn,
-		decision.Table: decision.ValidColumn,
-		event.Table:    event.ValidColumn,
-		machine.Table:  machine.ValidColumn,
-		meta.Table:     meta.ValidColumn,
+		alert.Table:      alert.ValidColumn,
+		bouncer.Table:    bouncer.ValidColumn,
+		configitem.Table: configitem.ValidColumn,
+		decision.Table:   decision.ValidColumn,
+		event.Table:      event.ValidColumn,
+		machine.Table:    machine.ValidColumn,
+		meta.Table:       meta.ValidColumn,
 	}
 	check, ok := checks[table]
 	if !ok {

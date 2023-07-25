@@ -2,29 +2,30 @@ package leakybucket
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"os"
+	"sync"
 	"time"
 
-	"github.com/pkg/errors"
-
+	"github.com/antonmedv/expr"
 	"github.com/mohae/deepcopy"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/antonmedv/expr"
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 var serialized map[string]Leaky
 var BucketPourCache map[string][]types.Event
 var BucketPourTrack bool
 
-/*The leaky routines lifecycle are based on "real" time.
+/*
+The leaky routines lifecycle are based on "real" time.
 But when we are running in time-machine mode, the reference time is in logs and not "real" time.
-Thus we need to garbage collect them to avoid a skyrocketing memory usage.*/
+Thus we need to garbage collect them to avoid a skyrocketing memory usage.
+*/
 func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 	buckets.wgPour.Wait()
 	buckets.wgDumpState.Add(1)
@@ -192,7 +193,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 		}
 
 		/*let's see if this time-bucket should have expired */
-		if bucket.Mode == TIMEMACHINE {
+		if bucket.Mode == types.TIMEMACHINE {
 			bucket.mutex.Lock()
 			firstTs := bucket.First_ts
 			lastTs := bucket.Last_ts
@@ -250,10 +251,10 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 		var fresh_bucket *Leaky
 
 		switch expectMode {
-		case TIMEMACHINE:
+		case types.TIMEMACHINE:
 			fresh_bucket = NewTimeMachine(holder)
 			holder.logger.Debugf("Creating TimeMachine bucket")
-		case LIVE:
+		case types.LIVE:
 			fresh_bucket = NewLeaky(holder)
 			holder.logger.Debugf("Creating Live bucket")
 		default:
@@ -279,6 +280,8 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 	return biface.(*Leaky), nil
 }
 
+var orderEvent map[string]*sync.WaitGroup
+
 func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buckets) (bool, error) {
 	var (
 		ok, condition, poured bool
@@ -295,8 +298,6 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		BucketPourCache["OK"] = append(BucketPourCache["OK"], evt.(types.Event))
 	}
 
-	cachedExprEnv := exprhelpers.GetExprEnv(map[string]interface{}{"evt": &parsed})
-
 	//find the relevant holders (scenarios)
 	for idx := 0; idx < len(holders); idx++ {
 		//for idx, holder := range holders {
@@ -304,7 +305,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		//evaluate bucket's condition
 		if holders[idx].RunTimeFilter != nil {
 			holders[idx].logger.Tracef("event against holder %d/%d", idx, len(holders))
-			output, err := expr.Run(holders[idx].RunTimeFilter, cachedExprEnv)
+			output, err := expr.Run(holders[idx].RunTimeFilter, map[string]interface{}{"evt": &parsed})
 			if err != nil {
 				holders[idx].logger.Errorf("failed parsing : %v", err)
 				return false, fmt.Errorf("leaky failed : %s", err)
@@ -316,7 +317,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			}
 
 			if holders[idx].Debug {
-				holders[idx].ExprDebugger.Run(holders[idx].logger, condition, cachedExprEnv)
+				holders[idx].ExprDebugger.Run(holders[idx].logger, condition, map[string]interface{}{"evt": &parsed})
 			}
 			if !condition {
 				holders[idx].logger.Debugf("Event leaving node : ko (filter mismatch)")
@@ -327,7 +328,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		//groupby determines the partition key for the specific bucket
 		var groupby string
 		if holders[idx].RunTimeGroupBy != nil {
-			tmpGroupBy, err := expr.Run(holders[idx].RunTimeGroupBy, cachedExprEnv)
+			tmpGroupBy, err := expr.Run(holders[idx].RunTimeGroupBy, map[string]interface{}{"evt": &parsed})
 			if err != nil {
 				holders[idx].logger.Errorf("failed groupby : %v", err)
 				return false, errors.New("leaky failed :/")
@@ -343,12 +344,31 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		//we need to either find the existing bucket, or create a new one (if it's the first event to hit it for this partition key)
 		bucket, err := LoadOrStoreBucketFromHolder(buckey, buckets, holders[idx], parsed.ExpectMode)
 		if err != nil {
-			return false, errors.Wrap(err, "failed to load or store bucket")
+			return false, fmt.Errorf("failed to load or store bucket: %w", err)
 		}
 		//finally, pour the even into the bucket
+
+		if bucket.orderEvent {
+			if orderEvent == nil {
+				orderEvent = make(map[string]*sync.WaitGroup)
+			}
+			if orderEvent[buckey] != nil {
+				orderEvent[buckey].Wait()
+			} else {
+				orderEvent[buckey] = &sync.WaitGroup{}
+			}
+
+			orderEvent[buckey].Add(1)
+		}
+
 		ok, err := PourItemToBucket(bucket, holders[idx], buckets, &parsed)
+
+		if bucket.orderEvent {
+			orderEvent[buckey].Wait()
+		}
+
 		if err != nil {
-			return false, errors.Wrap(err, "failed to pour bucket")
+			return false, fmt.Errorf("failed to pour bucket: %w", err)
 		}
 		if ok {
 			poured = true

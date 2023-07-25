@@ -1,148 +1,170 @@
+include mk/platform.mk
+include mk/gmsl
 
-ifeq ($(OS), Windows_NT)
-	SHELL := pwsh.exe
-	.SHELLFLAGS := -NoProfile -Command
-	CS_ROOT = $(shell (Get-Location).Path)
-	SYSTEM = windows
-	EXT = .exe
-else
-	CS_ROOT ?= $(shell pwd)
-	SYSTEM ?= $(shell uname -s | tr '[A-Z]' '[a-z]')
-endif
+# By default, this build requires the C++ re2 library to be installed.
+#
+# Debian/Ubuntu: apt install libre2-dev
+# Fedora/CentOS: dnf install re2-devel
+# FreeBSD:       pkg install re2
+# Alpine:        apk add re2-dev
+# Windows:       choco install re2
+# MacOS:         brew install re2
 
-ifneq ("$(wildcard $(CURDIR)/platform/$(SYSTEM).mk)", "")
-	include $(CURDIR)/platform/$(SYSTEM).mk
-else
-	include $(CURDIR)/platform/linux.mk
-endif
+# To build without re2, run "make BUILD_RE2_WASM=1"
+# The WASM version is slower and introduces a short delay when starting a process
+# (including cscli) so it is not recommended for production use.
+BUILD_RE2_WASM ?= 0
 
-ifneq ($(OS), Windows_NT)
-	include $(CS_ROOT)/platform/unix_common.mk
-endif
+# To build static binaries, run "make BUILD_STATIC=1".
+# On some platforms, this requires additional packages
+# (e.g. glibc-static and libstdc++-static on fedora, centos.. which are on the powertools/crb repository).
+# If the static build fails at the link stage, it might be because the static library is not provided
+# for your distribution (look for libre2.a). See the Dockerfile for an example of how to build it.
+BUILD_STATIC ?= 0
 
-CROWDSEC_FOLDER = ./cmd/crowdsec
-CSCLI_FOLDER = ./cmd/crowdsec-cli/
+# List of plugins to build
+PLUGINS ?= $(patsubst ./plugins/notifications/%,%,$(wildcard ./plugins/notifications/*))
 
-HTTP_PLUGIN_FOLDER = ./plugins/notifications/http
-SLACK_PLUGIN_FOLDER = ./plugins/notifications/slack
-SPLUNK_PLUGIN_FOLDER = ./plugins/notifications/splunk
-EMAIL_PLUGIN_FOLDER = ./plugins/notifications/email
-DUMMY_PLUGIN_FOLDER = ./plugins/notifications/dummy
+# Can be overriden, if you can deal with the consequences
+BUILD_REQUIRE_GO_MAJOR ?= 1
+BUILD_REQUIRE_GO_MINOR ?= 20
 
-HTTP_PLUGIN_BIN = notification-http$(EXT)
-SLACK_PLUGIN_BIN = notification-slack$(EXT)
-SPLUNK_PLUGIN_BIN = notification-splunk$(EXT)
-EMAIL_PLUGIN_BIN = notification-email$(EXT)
-DUMMY_PLUGIN_BIN= notification-dummy$(EXT)
-
-HTTP_PLUGIN_CONFIG = http.yaml
-SLACK_PLUGIN_CONFIG = slack.yaml
-SPLUNK_PLUGIN_CONFIG = splunk.yaml
-EMAIL_PLUGIN_CONFIG = email.yaml
-
-CROWDSEC_BIN = crowdsec$(EXT)
-CSCLI_BIN = cscli$(EXT)
-BUILD_CMD = build
-
-MINIMUM_SUPPORTED_GO_MAJOR_VERSION = 1
-MINIMUM_SUPPORTED_GO_MINOR_VERSION = 19
-
-go_major_minor = $(subst ., ,$(BUILD_GOVERSION))
-GO_MAJOR_VERSION = $(word 1, $(go_major_minor))
-GO_MINOR_VERSION = $(word 2, $(go_major_minor))
-
-GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not supported, please use at least $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION).$(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
-GO_MODULE_NAME = github.com/crowdsecurity/crowdsec
-
-LD_OPTS_VARS= \
--X '$(GO_MODULE_NAME)/cmd/crowdsec.bincoverTesting=$(BINCOVER_TESTING)' \
--X '$(GO_MODULE_NAME)/cmd/crowdsec-cli.bincoverTesting=$(BINCOVER_TESTING)' \
--X '$(GO_MODULE_NAME)/pkg/cwversion.Version=$(BUILD_VERSION)' \
--X '$(GO_MODULE_NAME)/pkg/cwversion.BuildDate=$(BUILD_TIMESTAMP)' \
--X '$(GO_MODULE_NAME)/pkg/cwversion.Codename=$(BUILD_CODENAME)' \
--X '$(GO_MODULE_NAME)/pkg/cwversion.Tag=$(BUILD_TAG)' \
--X '$(GO_MODULE_NAME)/pkg/csconfig.defaultConfigDir=$(DEFAULT_CONFIGDIR)' \
--X '$(GO_MODULE_NAME)/pkg/csconfig.defaultDataDir=$(DEFAULT_DATADIR)'
-
-ifdef BUILD_STATIC
-	export LD_OPTS=-ldflags "-s -w $(LD_OPTS_VARS) -extldflags '-static'" -tags netgo,osusergo,sqlite_omit_load_extension
-else
-	export LD_OPTS=-ldflags "-s -w $(LD_OPTS_VARS)"
-endif
+#--------------------------------------
 
 GOCMD = go
 GOTEST = $(GOCMD) test
 
+BUILD_CODENAME ?= alphaga
+
+CROWDSEC_FOLDER = ./cmd/crowdsec
+CSCLI_FOLDER = ./cmd/crowdsec-cli/
+PLUGINS_DIR = ./plugins/notifications
+
+CROWDSEC_BIN = crowdsec$(EXT)
+CSCLI_BIN = cscli$(EXT)
+
+# semver comparison to select the hub branch requires the version to start with "v"
+ifneq ($(call substr,$(BUILD_VERSION),1,1),v)
+    $(error BUILD_VERSION "$(BUILD_VERSION)" should start with "v")
+endif
+
+# Directory for the release files
 RELDIR = crowdsec-$(BUILD_VERSION)
 
+GO_MODULE_NAME = github.com/crowdsecurity/crowdsec
+
+# Check if a given value is considered truthy and returns "0" or "1".
+# A truthy value is one of the following: "1", "yes", or "true", case-insensitive.
+#
+# Usage:
+# ifeq ($(call bool,$(FOO)),1)
+# $(info Let's foo)
+# endif
+bool = $(if $(filter $(call lc, $1),1 yes true),1,0)
+
+#--------------------------------------
+#
+# Define MAKE_FLAGS and LD_OPTS for the sub-makefiles in cmd/ and plugins/
+#
+
+MAKE_FLAGS = --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
+
+LD_OPTS_VARS= \
+-X 'github.com/crowdsecurity/go-cs-lib/pkg/version.Version=$(BUILD_VERSION)' \
+-X 'github.com/crowdsecurity/go-cs-lib/pkg/version.BuildDate=$(BUILD_TIMESTAMP)' \
+-X 'github.com/crowdsecurity/go-cs-lib/pkg/version.Tag=$(BUILD_TAG)' \
+-X '$(GO_MODULE_NAME)/pkg/cwversion.Codename=$(BUILD_CODENAME)' \
+-X '$(GO_MODULE_NAME)/pkg/csconfig.defaultConfigDir=$(DEFAULT_CONFIGDIR)' \
+-X '$(GO_MODULE_NAME)/pkg/csconfig.defaultDataDir=$(DEFAULT_DATADIR)'
+
+ifneq (,$(DOCKER_BUILD))
+LD_OPTS_VARS += -X '$(GO_MODULE_NAME)/pkg/cwversion.System=docker'
+endif
+
+GO_TAGS := netgo,osusergo,sqlite_omit_load_extension
+
+# this will be used by Go in the make target, some distributions require it
+export PKG_CONFIG_PATH:=/usr/local/lib/pkgconfig:$(PKG_CONFIG_PATH)
+
+ifeq ($(call bool,$(BUILD_RE2_WASM)),0)
+ifeq ($(PKG_CONFIG),)
+  $(error "pkg-config is not available. Please install pkg-config.")
+endif
+
+ifeq ($(RE2_CHECK),)
+# we could detect the platform and suggest the command to install
+RE2_FAIL := "libre2-dev is not installed, please install it or set BUILD_RE2_WASM=1 to use the WebAssembly version"
+else
+# += adds a space that we don't want
+GO_TAGS := $(GO_TAGS),re2_cgo
+LD_OPTS_VARS += -X '$(GO_MODULE_NAME)/pkg/cwversion.Libre2=C++'
+endif
+endif
+
+ifeq ($(call bool,$(BUILD_STATIC)),1)
+BUILD_TYPE = static
+EXTLDFLAGS := -extldflags '-static'
+else
+BUILD_TYPE = dynamic
+EXTLDFLAGS :=
+endif
+
+export LD_OPTS=-ldflags "-s -w $(EXTLDFLAGS) $(LD_OPTS_VARS)" \
+	-trimpath -tags $(GO_TAGS)
+
+ifneq (,$(TEST_COVERAGE))
+LD_OPTS += -cover
+endif
+
+#--------------------------------------
+
 .PHONY: build
-build: goversion crowdsec cscli plugins
+build: pre-build goversion crowdsec cscli plugins
+
+# Sanity checks and build information
+.PHONY: pre-build
+pre-build:
+	$(info Building $(BUILD_VERSION) ($(BUILD_TAG)) $(BUILD_TYPE) for $(GOOS)/$(GOARCH))
+
+ifneq (,$(RE2_FAIL))
+	$(error $(RE2_FAIL))
+endif
+
+ifneq (,$(RE2_CHECK))
+	$(info Using C++ regexp library)
+else
+	$(info Fallback to WebAssembly regexp library. To use the C++ version, make sure you have installed libre2-dev and pkg-config.)
+endif
+	$(info )
 
 .PHONY: all
 all: clean test build
 
 .PHONY: plugins
-plugins: http-plugin slack-plugin splunk-plugin email-plugin dummy-plugin
-
-.PHONY: goversion
-goversion:
-ifneq ($(OS), Windows_NT)
-	@if [ $(GO_MAJOR_VERSION) -gt $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) ]; then \
-		exit 0 ;\
-	elif [ $(GO_MAJOR_VERSION) -lt $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) ]; then \
-		echo '$(GO_VERSION_VALIDATION_ERR_MSG)';\
-		exit 1; \
-	elif [ $(GO_MINOR_VERSION) -lt $(MINIMUM_SUPPORTED_GO_MINOR_VERSION) ] ; then \
-		echo '$(GO_VERSION_VALIDATION_ERR_MSG)';\
-		exit 1; \
-	fi
-else
-	# This needs Set-ExecutionPolicy -Scope CurrentUser Unrestricted
-	@$(CS_ROOT)/scripts/check_go_version.ps1 $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) $(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
-endif
+plugins:
+	@$(foreach plugin,$(PLUGINS), \
+		$(MAKE) -C $(PLUGINS_DIR)/$(plugin) build $(MAKE_FLAGS); \
+	)
 
 .PHONY: clean
 clean: testclean
-	@$(MAKE) -C $(CROWDSEC_FOLDER) clean --no-print-directory RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
-	@$(MAKE) -C $(CSCLI_FOLDER) clean --no-print-directory RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
+	@$(MAKE) -C $(CROWDSEC_FOLDER) clean $(MAKE_FLAGS)
+	@$(MAKE) -C $(CSCLI_FOLDER) clean $(MAKE_FLAGS)
 	@$(RM) $(CROWDSEC_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) $(CSCLI_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) *.log $(WIN_IGNORE_ERR)
 	@$(RM) crowdsec-release.tgz $(WIN_IGNORE_ERR)
-	@$(RM) crowdsec-release-static.tgz $(WIN_IGNORE_ERR)
-	@$(RM) $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_BIN) $(WIN_IGNORE_ERR)
-	@$(RM) $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN) $(WIN_IGNORE_ERR)
-	@$(RM) $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN) $(WIN_IGNORE_ERR)
-	@$(RM) $(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_BIN) $(WIN_IGNORE_ERR)
-	@$(RM) $(DUMMY_PLUGIN_FOLDER)/$(DUMMY_PLUGIN_BIN) $(WIN_IGNORE_ERR)
+	@$(foreach plugin,$(PLUGINS), \
+		$(MAKE) -C $(PLUGINS_DIR)/$(plugin) clean $(MAKE_FLAGS); \
+	)
 
-
+.PHONY: cscli
 cscli: goversion
-	@$(MAKE) -C $(CSCLI_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
+	@$(MAKE) -C $(CSCLI_FOLDER) build $(MAKE_FLAGS)
 
-cscli-bincover: goversion
-	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(CSCLI_FOLDER) build-bincover --no-print-directory
-
+.PHONY: crowdsec
 crowdsec: goversion
-	@$(MAKE) -C $(CROWDSEC_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
-
-crowdsec-bincover: goversion
-	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(CROWDSEC_FOLDER) build-bincover --no-print-directory
-
-http-plugin: goversion
-	@$(MAKE) -C $(HTTP_PLUGIN_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
-
-slack-plugin: goversion
-	@$(MAKE) -C $(SLACK_PLUGIN_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
-
-splunk-plugin: goversion
-	@$(MAKE) -C $(SPLUNK_PLUGIN_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
-
-email-plugin: goversion
-	@$(MAKE) -C $(EMAIL_PLUGIN_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
-
-dummy-plugin: goversion
-	$(MAKE) -C $(DUMMY_PLUGIN_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
+	@$(MAKE) -C $(CROWDSEC_FOLDER) build $(MAKE_FLAGS)
 
 .PHONY: testclean
 testclean: bats-clean
@@ -151,49 +173,75 @@ testclean: bats-clean
 	@$(RM) pkg/cwhub/install $(WIN_IGNORE_ERR)
 	@$(RM) pkg/types/example.txt $(WIN_IGNORE_ERR)
 
-.PHONY: test
-test: export AWS_ENDPOINT_FORCE=http://localhost:4566
-test: goversion
+# for the tests with localstack
+export AWS_ENDPOINT_FORCE=http://localhost:4566
+export AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+export AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+
+testenv:
 	@echo 'NOTE: You need Docker, docker-compose and run "make localstack" in a separate shell ("make localstack-stop" to terminate it)'
+
+# run the tests with localstack
+.PHONY: test
+test: testenv goversion
 	$(GOTEST) $(LD_OPTS) ./...
 
+# run the tests with localstack and coverage
+.PHONY: go-acc
+go-acc: testenv goversion
+	go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models -- $(LD_OPTS) | \
+		sed 's/ *coverage:.*of statements in.*//'
+
+# mock AWS services
 .PHONY: localstack
 localstack:
-	docker-compose -f tests/localstack/docker-compose.yml up
+	docker-compose -f test/localstack/docker-compose.yml up
 
 .PHONY: localstack-stop
 localstack-stop:
-	docker-compose -f tests/localstack/docker-compose.yml down
+	docker-compose -f test/localstack/docker-compose.yml down
 
-package-common:
+# list of plugins that contain go.mod
+PLUGIN_VENDOR = $(foreach plugin,$(PLUGINS),$(shell if [ -f $(PLUGINS_DIR)/$(plugin)/go.mod ]; then echo $(PLUGINS_DIR)/$(plugin); fi))
+
+# build vendor.tgz to be distributed with the release
+.PHONY: vendor
+vendor:
+	$(foreach plugin_dir,$(PLUGIN_VENDOR), \
+		cd $(plugin_dir) >/dev/null && \
+		$(GOCMD) mod vendor && \
+		cd - >/dev/null; \
+	)
+	$(GOCMD) mod vendor
+	tar -czf vendor.tgz vendor $(foreach plugin_dir,$(PLUGIN_VENDOR),$(plugin_dir)/vendor)
+
+# remove vendor directories and vendor.tgz
+.PHONY: vendor-remove
+vendor-remove:
+	$(foreach plugin_dir,$(PLUGIN_VENDOR), \
+		$(RM) $(plugin_dir)/vendor; \
+	)
+	$(RM) vendor vendor.tgz
+
+.PHONY: package
+package:
 	@echo "Building Release to dir $(RELDIR)"
 	@$(MKDIR) $(RELDIR)/cmd/crowdsec
 	@$(MKDIR) $(RELDIR)/cmd/crowdsec-cli
-	@$(MKDIR) $(RELDIR)/$(subst ./,,$(HTTP_PLUGIN_FOLDER))
-	@$(MKDIR) $(RELDIR)/$(subst ./,,$(SLACK_PLUGIN_FOLDER))
-	@$(MKDIR) $(RELDIR)/$(subst ./,,$(SPLUNK_PLUGIN_FOLDER))
-	@$(MKDIR) $(RELDIR)/$(subst ./,,$(EMAIL_PLUGIN_FOLDER))
-
 	@$(CP) $(CROWDSEC_FOLDER)/$(CROWDSEC_BIN) $(RELDIR)/cmd/crowdsec
 	@$(CP) $(CSCLI_FOLDER)/$(CSCLI_BIN) $(RELDIR)/cmd/crowdsec-cli
 
-	@$(CP) $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_BIN) $(RELDIR)/$(subst ./,,$(HTTP_PLUGIN_FOLDER))
-	@$(CP) $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN) $(RELDIR)/$(subst ./,,$(SLACK_PLUGIN_FOLDER))
-	@$(CP) $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN) $(RELDIR)/$(subst ./,,$(SPLUNK_PLUGIN_FOLDER))
-	@$(CP) $(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_BIN) $(RELDIR)/$(subst ./,,$(EMAIL_PLUGIN_FOLDER))
-
-	@$(CP) $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(HTTP_PLUGIN_FOLDER))
-	@$(CP) $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(SLACK_PLUGIN_FOLDER))
-	@$(CP) $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(SPLUNK_PLUGIN_FOLDER))
-	@$(CP) $(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(EMAIL_PLUGIN_FOLDER))
+	@$(foreach plugin,$(PLUGINS), \
+		$(MKDIR) $(RELDIR)/$(PLUGINS_DIR)/$(plugin); \
+		$(CP) $(PLUGINS_DIR)/$(plugin)/notification-$(plugin)$(EXT) $(RELDIR)/$(PLUGINS_DIR)/$(plugin); \
+		$(CP) $(PLUGINS_DIR)/$(plugin)/$(plugin).yaml $(RELDIR)/$(PLUGINS_DIR)/$(plugin)/; \
+	)
 
 	@$(CPR) ./config $(RELDIR)
 	@$(CP) wizard.sh $(RELDIR)
 	@$(CP) scripts/test_env.sh $(RELDIR)
 	@$(CP) scripts/test_env.ps1 $(RELDIR)
 
-.PHONY: package
-package: package-common
 	@tar cvzf crowdsec-release.tgz $(RELDIR)
 
 .PHONY: check_release
@@ -204,15 +252,27 @@ else
 	@if (Test-Path -Path $(RELDIR)) { echo "$(RELDIR) already exists, abort" ;  exit 1 ; }
 endif
 
+# build a release tarball
 .PHONY: release
 release: check_release build package
 
+# build the windows installer
 .PHONY: windows_installer
 windows_installer: build
 	@.\make_installer.ps1 -version $(BUILD_VERSION)
 
+# build the chocolatey package
 .PHONY: chocolatey
 chocolatey: windows_installer
 	@.\make_chocolatey.ps1 -version $(BUILD_VERSION)
 
-include tests/bats.mk
+# Include test/bats.mk only if it exists
+# to allow building without a test/ directory
+# (i.e. inside docker)
+ifeq (,$(wildcard test/bats.mk))
+bats-clean:
+else
+include test/bats.mk
+endif
+
+include mk/goversion.mk

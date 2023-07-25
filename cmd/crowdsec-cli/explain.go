@@ -50,6 +50,12 @@ func runExplain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	opts.ShowNotOkParsers, err = flags.GetBool("only-successful-parsers")
+	opts.ShowNotOkParsers = !opts.ShowNotOkParsers
+	if err != nil {
+		return err
+	}
+
 	crowdsec, err := flags.GetString("crowdsec")
 	if err != nil {
 		return err
@@ -65,25 +71,29 @@ func runExplain(cmd *cobra.Command, args []string) error {
 	}
 
 	if logFile == "-" && ((fileInfo.Mode() & os.ModeCharDevice) == os.ModeCharDevice) {
-		log.Fatal("-f - is intended to work with pipes.")
+		return fmt.Errorf("the option -f - is intended to work with pipes")
 	}
 
 	var f *os.File
-	dir := os.TempDir()
 
+	// using empty string fallback to /tmp
+	dir, err := os.MkdirTemp("", "cscli_explain")
+	if err != nil {
+		return fmt.Errorf("couldn't create a temporary directory to store cscli explain result: %s", err)
+	}
 	tmpFile := ""
 	// we create a  temporary log file if a log line/stdin has been provided
 	if logLine != "" || logFile == "-" {
 		tmpFile = filepath.Join(dir, "cscli_test_tmp.log")
 		f, err = os.Create(tmpFile)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		if logLine != "" {
 			_, err = f.WriteString(logLine)
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 		} else if logFile == "-" {
 			reader := bufio.NewReader(os.Stdin)
@@ -110,7 +120,7 @@ func runExplain(cmd *cobra.Command, args []string) error {
 	if logFile != "" {
 		absolutePath, err := filepath.Abs(logFile)
 		if err != nil {
-			log.Fatalf("unable to get absolute path of '%s', exiting", logFile)
+			return fmt.Errorf("unable to get absolute path of '%s', exiting", logFile)
 		}
 		dsn = fmt.Sprintf("file://%s", absolutePath)
 		lineCount := types.GetLineCountForFile(absolutePath)
@@ -120,22 +130,21 @@ func runExplain(cmd *cobra.Command, args []string) error {
 	}
 
 	if dsn == "" {
-		log.Fatal("no acquisition (--file or --dsn) provided, can't run cscli test.")
+		return fmt.Errorf("no acquisition (--file or --dsn) provided, can't run cscli test")
 	}
 
-	cmdArgs := []string{"-c", ConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", "./", "-no-api"}
+	cmdArgs := []string{"-c", ConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", dir, "-no-api"}
 	crowdsecCmd := exec.Command(crowdsec, cmdArgs...)
-	crowdsecCmd.Dir = dir
 	output, err := crowdsecCmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(string(output))
-		log.Fatalf("fail to run crowdsec for test: %v", err)
+		return fmt.Errorf("fail to run crowdsec for test: %v", err)
 	}
 
 	// rm the temporary log file if only a log line/stdin was provided
 	if tmpFile != "" {
 		if err := os.Remove(tmpFile); err != nil {
-			log.Fatalf("unable to remove tmp log file '%s': %+v", tmpFile, err)
+			return fmt.Errorf("unable to remove tmp log file '%s': %+v", tmpFile, err)
 		}
 	}
 	parserDumpFile := filepath.Join(dir, hubtest.ParserResultFileName)
@@ -143,15 +152,19 @@ func runExplain(cmd *cobra.Command, args []string) error {
 
 	parserDump, err := hubtest.LoadParserDump(parserDumpFile)
 	if err != nil {
-		log.Fatalf("unable to load parser dump result: %s", err)
+		return fmt.Errorf("unable to load parser dump result: %s", err)
 	}
 
 	bucketStateDump, err := hubtest.LoadBucketPourDump(bucketStateDumpFile)
 	if err != nil {
-		log.Fatalf("unable to load bucket dump result: %s", err)
+		return fmt.Errorf("unable to load bucket dump result: %s", err)
 	}
 
 	hubtest.DumpTree(*parserDump, *bucketStateDump, opts)
+
+	if err := os.RemoveAll(dir); err != nil {
+		return fmt.Errorf("unable to delete temporary directory '%s': %s", dir, err)
+	}
 
 	return nil
 }
@@ -182,6 +195,7 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 	flags.StringP("type", "t", "", "Type of the acquisition to test")
 	flags.BoolP("verbose", "v", false, "Display individual changes")
 	flags.Bool("failures", false, "Only show failed lines")
+	flags.Bool("only-successful-parsers", false, "Only show successful parsers")
 	flags.String("crowdsec", "crowdsec", "Path to crowdsec")
 
 	return cmdExplain

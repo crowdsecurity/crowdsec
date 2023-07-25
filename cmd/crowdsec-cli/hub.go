@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/fatih/color"
@@ -98,7 +99,15 @@ Fetches the [.index.json](https://github.com/crowdsecurity/hub/blob/master/.inde
 				log.Fatal(err)
 			}
 			if err := cwhub.UpdateHubIdx(csConfig.Hub); err != nil {
-				log.Fatalf("Failed to get Hub index : %v", err)
+				if errors.Is(err, cwhub.ErrIndexNotFound) {
+					log.Warnf("Could not find index file for branch '%s', using 'master'", cwhub.HubBranch)
+					cwhub.HubBranch = "master"
+					if err := cwhub.UpdateHubIdx(csConfig.Hub); err != nil {
+						log.Fatalf("Failed to get Hub index after retry : %v", err)
+					}
+				} else {
+					log.Fatalf("Failed to get Hub index : %v", err)
+				}
 			}
 			//use LocalSync to get warnings about tainted / outdated items
 			_, warn := cwhub.LocalSync(csConfig.Hub)

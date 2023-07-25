@@ -18,13 +18,14 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 const (
@@ -45,6 +46,14 @@ const (
 	SUPPORT_ACQUISITION_CONFIG_BASE_PATH = "config/acquis/"
 	SUPPORT_CROWDSEC_PROFILE_PATH        = "config/profiles.yaml"
 )
+
+// from https://github.com/acarl005/stripansi
+var reStripAnsi = regexp.MustCompile("[\u001B\u009B][[\\]()#;?]*(?:(?:(?:[a-zA-Z\\d]*(?:;[a-zA-Z\\d]*)*)?\u0007)|(?:(?:\\d{1,4}(?:;\\d{0,4})*)?[\\dA-PRZcf-ntqry=><~]))")
+
+func stripAnsiString(str string) string {
+	// the byte version doesn't strip correctly
+	return reStripAnsi.ReplaceAllString(str, "")
+}
 
 func collectMetrics() ([]byte, []byte, error) {
 	log.Info("Collecting prometheus metrics")
@@ -101,7 +110,6 @@ func collectFeatures() []byte {
 	}
 	return w.Bytes()
 }
-
 
 func collectOSInfo() ([]byte, error) {
 	log.Info("Collecting OS info")
@@ -183,7 +191,7 @@ func collectAPIStatus(login string, password string, endpoint string, prefix str
 
 	Client, err = apiclient.NewDefaultClient(apiurl,
 		prefix,
-		fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		fmt.Sprintf("crowdsec/%s", version.String()),
 		nil)
 	if err != nil {
 		return []byte(fmt.Sprintf("could not init client: %s", err))
@@ -194,7 +202,7 @@ func collectAPIStatus(login string, password string, endpoint string, prefix str
 		Scenarios: scenarios,
 	}
 
-	_, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
+	_, _, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
 	if err != nil {
 		return []byte(fmt.Sprintf("Could not authenticate to API: %s", err))
 	} else {
@@ -277,7 +285,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			var err error
 			var skipHub, skipDB, skipCAPI, skipLAPI, skipAgent bool
 			infos := map[string][]byte{
-				SUPPORT_VERSION_PATH: collectVersion(),
+				SUPPORT_VERSION_PATH:  collectVersion(),
 				SUPPORT_FEATURES_PATH: collectFeatures(),
 			}
 
@@ -399,7 +407,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 					log.Errorf("Could not add zip entry for %s: %s", filename, err)
 					continue
 				}
-				fw.Write([]byte(types.StripAnsiString(string(data))))
+				fw.Write([]byte(stripAnsiString(string(data))))
 			}
 
 			err = zipWriter.Close()

@@ -11,24 +11,20 @@ import (
 	"sync"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
-
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-
-	"github.com/davecgh/go-spew/spew"
-	"github.com/sirupsen/logrus"
-	log "github.com/sirupsen/logrus"
-
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/goombaio/namegenerator"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	yaml "gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 // BucketFactory struct holds all fields for any bucket configuration. This is to have a
@@ -47,7 +43,7 @@ type BucketFactory struct {
 	GroupBy             string                    `yaml:"groupby,omitempty"`   //groupy is an expr that allows to determine the partitions of the bucket. A common example is the source_ip
 	Distinct            string                    `yaml:"distinct"`            //Distinct, when present, adds a `Pour()` processor that will only pour uniq items (based on distinct expr result)
 	Debug               bool                      `yaml:"debug"`               //Debug, when set to true, will enable debugging for _this_ scenario specifically
-	Labels              map[string]string         `yaml:"labels"`              //Labels is K:V list aiming at providing context the overflow
+	Labels              map[string]interface{}    `yaml:"labels"`              //Labels is K:V list aiming at providing context the overflow
 	Blackhole           string                    `yaml:"blackhole,omitempty"` //Blackhole is a duration that, if present, will prevent same bucket partition to overflow more often than $duration
 	logger              *log.Entry                `yaml:"-"`                   //logger is bucket-specific logger (used by Debug as well)
 	Reprocess           bool                      `yaml:"reprocess"`           //Reprocess, if true, will for the bucket to be re-injected into processing chain
@@ -55,6 +51,9 @@ type BucketFactory struct {
 	Profiling           bool                      `yaml:"profiling"`           //Profiling, if true, will make the bucket record pours/overflows/etc.
 	OverflowFilter      string                    `yaml:"overflow_filter"`     //OverflowFilter if present, is a filter that must return true for the overflow to go through
 	ConditionalOverflow string                    `yaml:"condition"`           //condition if present, is an expression that must return true for the bucket to overflow
+	BayesianPrior       float32                   `yaml:"bayesian_prior"`
+	BayesianThreshold   float32                   `yaml:"bayesian_threshold"`
+	BayesianConditions  []RawBayesianCondition    `yaml:"bayesian_conditions"` //conditions for the bayesian bucket
 	ScopeType           types.ScopeType           `yaml:"scope,omitempty"`     //to enforce a different remediation than blocking an IP. Will default this to IP
 	BucketName          string                    `yaml:"-"`
 	Filename            string                    `yaml:"-"`
@@ -75,6 +74,7 @@ type BucketFactory struct {
 	tomb                *tomb.Tomb                `yaml:"-"`
 	wgPour              *sync.WaitGroup           `yaml:"-"`
 	wgDumpState         *sync.WaitGroup           `yaml:"-"`
+	orderEvent          bool
 }
 
 // we use one NameGenerator for all the future buckets
@@ -124,6 +124,25 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 		if bucketFactory.leakspeed == 0 {
 			return fmt.Errorf("bad leakspeed for conditional bucket '%s'", bucketFactory.LeakSpeed)
 		}
+	} else if bucketFactory.Type == "bayesian" {
+		if bucketFactory.BayesianConditions == nil {
+			return fmt.Errorf("bayesian bucket must have bayesian conditions")
+		}
+		if bucketFactory.BayesianPrior == 0 {
+			return fmt.Errorf("bayesian bucket must have a valid, non-zero prior")
+		}
+		if bucketFactory.BayesianThreshold == 0 {
+			return fmt.Errorf("bayesian bucket must have a valid, non-zero threshold")
+		}
+		if bucketFactory.BayesianPrior > 1 {
+			return fmt.Errorf("bayesian bucket must have a valid, non-zero prior")
+		}
+		if bucketFactory.BayesianThreshold > 1 {
+			return fmt.Errorf("bayesian bucket must have a valid, non-zero threshold")
+		}
+		if bucketFactory.Capacity != -1 {
+			return fmt.Errorf("bayesian bucket must have capacity -1")
+		}
 	} else {
 		return fmt.Errorf("unknown bucket type '%s'", bucketFactory.Type)
 	}
@@ -138,7 +157,7 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 			err           error
 		)
 		if bucketFactory.ScopeType.Filter != "" {
-			if runTimeFilter, err = expr.Compile(bucketFactory.ScopeType.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}}))); err != nil {
+			if runTimeFilter, err = expr.Compile(bucketFactory.ScopeType.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...); err != nil {
 				return fmt.Errorf("Error compiling the scope filter: %s", err)
 			}
 			bucketFactory.ScopeType.RunTimeFilter = runTimeFilter
@@ -151,7 +170,7 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 			err           error
 		)
 		if bucketFactory.ScopeType.Filter != "" {
-			if runTimeFilter, err = expr.Compile(bucketFactory.ScopeType.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}}))); err != nil {
+			if runTimeFilter, err = expr.Compile(bucketFactory.ScopeType.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...); err != nil {
 				return fmt.Errorf("Error compiling the scope filter: %s", err)
 			}
 			bucketFactory.ScopeType.RunTimeFilter = runTimeFilter
@@ -160,9 +179,9 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 	return nil
 }
 
-func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.Tomb, buckets *Buckets) ([]BucketFactory, chan types.Event, error) {
+func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.Tomb, buckets *Buckets, orderEvent bool) ([]BucketFactory, chan types.Event, error) {
 	var (
-		ret      []BucketFactory = []BucketFactory{}
+		ret      = []BucketFactory{}
 		response chan types.Event
 	)
 
@@ -204,7 +223,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 				log.Tracef("no version in %s : %s, assuming '1.0'", bucketFactory.Name, f)
 				bucketFactory.FormatVersion = "1.0"
 			}
-			ok, err := cwversion.Statisfies(bucketFactory.FormatVersion, cwversion.Constraint_scenario)
+			ok, err := cwversion.Satisfies(bucketFactory.FormatVersion, cwversion.Constraint_scenario)
 			if err != nil {
 				log.Fatalf("Failed to check version : %s", err)
 			}
@@ -238,6 +257,9 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 				log.Errorf("Failed to load bucket %s : %v", bucketFactory.Name, err)
 				return nil, nil, fmt.Errorf("loading of %s failed : %v", bucketFactory.Name, err)
 			}
+
+			bucketFactory.orderEvent = orderEvent
+
 			ret = append(ret, bucketFactory)
 		}
 	}
@@ -246,7 +268,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 		return nil, nil, fmt.Errorf("unable to load alert context: %s", err)
 	}
 
-	log.Warningf("Loaded %d scenarios", len(ret))
+	log.Infof("Loaded %d scenarios", len(ret))
 	return ret, response, nil
 }
 
@@ -254,7 +276,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	var err error
 	if bucketFactory.Debug {
-		var clog = logrus.New()
+		var clog = log.New()
 		if err := types.ConfigureLogger(clog); err != nil {
 			log.Fatalf("While creating bucket-specific logger : %s", err)
 		}
@@ -290,19 +312,19 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 		bucketFactory.logger.Warning("Bucket without filter, abort.")
 		return fmt.Errorf("bucket without filter directive")
 	}
-	bucketFactory.RunTimeFilter, err = expr.Compile(bucketFactory.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+	bucketFactory.RunTimeFilter, err = expr.Compile(bucketFactory.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 	if err != nil {
 		return fmt.Errorf("invalid filter '%s' in %s : %v", bucketFactory.Filter, bucketFactory.Filename, err)
 	}
 	if bucketFactory.Debug {
-		bucketFactory.ExprDebugger, err = exprhelpers.NewDebugger(bucketFactory.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+		bucketFactory.ExprDebugger, err = exprhelpers.NewDebugger(bucketFactory.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 		if err != nil {
 			log.Errorf("unable to build debug filter for '%s' : %s", bucketFactory.Filter, err)
 		}
 	}
 
 	if bucketFactory.GroupBy != "" {
-		bucketFactory.RunTimeGroupBy, err = expr.Compile(bucketFactory.GroupBy, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+		bucketFactory.RunTimeGroupBy, err = expr.Compile(bucketFactory.GroupBy, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 		if err != nil {
 			return fmt.Errorf("invalid groupby '%s' in %s : %v", bucketFactory.GroupBy, bucketFactory.Filename, err)
 		}
@@ -320,17 +342,19 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 		bucketFactory.processors = append(bucketFactory.processors, &DumbProcessor{})
 	case "conditional":
 		bucketFactory.processors = append(bucketFactory.processors, &DumbProcessor{})
+	case "bayesian":
+		bucketFactory.processors = append(bucketFactory.processors, &DumbProcessor{})
 	default:
 		return fmt.Errorf("invalid type '%s' in %s : %v", bucketFactory.Type, bucketFactory.Filename, err)
 	}
 
 	if bucketFactory.Distinct != "" {
-		bucketFactory.logger.Tracef("Adding a non duplicate filter on %s.", bucketFactory.Name)
+		bucketFactory.logger.Tracef("Adding a non duplicate filter")
 		bucketFactory.processors = append(bucketFactory.processors, &Uniq{})
 	}
 
 	if bucketFactory.CancelOnFilter != "" {
-		bucketFactory.logger.Tracef("Adding a cancel_on filter on %s.", bucketFactory.Name)
+		bucketFactory.logger.Tracef("Adding a cancel_on filter")
 		bucketFactory.processors = append(bucketFactory.processors, &CancelOnFilter{})
 	}
 
@@ -355,13 +379,13 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	}
 
 	if bucketFactory.ConditionalOverflow != "" {
-		bucketFactory.logger.Tracef("Adding conditional overflow.")
-		condovflw, err := NewConditionalOverflow(bucketFactory)
-		if err != nil {
-			bucketFactory.logger.Errorf("Error creating conditional overflow : %s", err)
-			return fmt.Errorf("error creating conditional overflow : %s", err)
-		}
-		bucketFactory.processors = append(bucketFactory.processors, condovflw)
+		bucketFactory.logger.Tracef("Adding conditional overflow")
+		bucketFactory.processors = append(bucketFactory.processors, &ConditionalOverflow{})
+	}
+
+	if bucketFactory.BayesianThreshold != 0 {
+		bucketFactory.logger.Tracef("Adding bayesian processor")
+		bucketFactory.processors = append(bucketFactory.processors, &BayesianBucket{})
 	}
 
 	if len(bucketFactory.Data) > 0 {
@@ -373,6 +397,9 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 			err = exprhelpers.FileInit(bucketFactory.DataDir, data.DestPath, data.Type)
 			if err != nil {
 				bucketFactory.logger.Errorf("unable to init data for file '%s': %s", data.DestPath, err)
+			}
+			if data.Type == "regexp" { //cache only makes sense for regexp
+				exprhelpers.RegexpCacheInit(data.DestPath, *data)
 			}
 		}
 	}
@@ -409,9 +436,9 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 			if h.Name == v.Name {
 				log.Debugf("found factory %s/%s -> %s", h.Author, h.Name, h.Description)
 				//check in which mode the bucket was
-				if v.Mode == TIMEMACHINE {
+				if v.Mode == types.TIMEMACHINE {
 					tbucket = NewTimeMachine(h)
-				} else if v.Mode == LIVE {
+				} else if v.Mode == types.LIVE {
 					tbucket = NewLeaky(h)
 				} else {
 					log.Errorf("Unknown bucket type : %d", v.Mode)

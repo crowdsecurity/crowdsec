@@ -2,16 +2,17 @@ package cwhub
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/mod/semver"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
 /*the walk/parser_visit function can't receive extra args*/
@@ -102,7 +103,7 @@ func parser_visit(path string, f os.DirEntry, err error) error {
 		when the collection is installed, both files are created
 	*/
 	//non symlinks are local user files or hub files
-	if f.Type() & os.ModeSymlink == 0 {
+	if f.Type()&os.ModeSymlink == 0 {
 		local = true
 		log.Tracef("%s isn't a symlink", path)
 	} else {
@@ -267,6 +268,9 @@ func CollecDepsCheck(v *Item) error {
 				if val.Type == COLLECTIONS {
 					log.Tracef("collec, recurse.")
 					if err := CollecDepsCheck(&val); err != nil {
+						if val.Tainted {
+							v.Tainted = true
+						}
 						return fmt.Errorf("sub collection %s is broken : %s", val.Name, err)
 					}
 					hubIdx[ptrtype][p] = val
@@ -362,7 +366,7 @@ func GetHubIdx(hub *csconfig.Hub) error {
 	log.Debugf("loading hub idx %s", hub.HubIndexFile)
 	bidx, err := os.ReadFile(hub.HubIndexFile)
 	if err != nil {
-		return errors.Wrap(err, "unable to read index file")
+		return fmt.Errorf("unable to read index file: %w", err)
 	}
 	ret, err := LoadPkgIndex(bidx)
 	if err != nil {

@@ -47,6 +47,12 @@ func cmdConsoleStatusTable(out io.Writer, csConfig csconfig.Config) {
 				activated = string(emoji.CheckMarkButton)
 			}
 			t.AddRow(option, activated, "Send context with alerts to the console")
+		case csconfig.CONSOLE_MANAGEMENT:
+			activated := string(emoji.CrossMark)
+			if *csConfig.API.Server.ConsoleConfig.ConsoleManagement {
+				activated = string(emoji.CheckMarkButton)
+			}
+			t.AddRow(option, activated, "Receive decisions from console")
 		}
 	}
 

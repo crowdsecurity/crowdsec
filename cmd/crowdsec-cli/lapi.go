@@ -9,20 +9,20 @@ import (
 	"strings"
 
 	"github.com/go-openapi/strfmt"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var LAPIURLPrefix string = "v1"
@@ -51,7 +51,7 @@ func runLapiStatus(cmd *cobra.Command, args []string) error {
 
 	Client, err = apiclient.NewDefaultClient(apiurl,
 		LAPIURLPrefix,
-		fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		fmt.Sprintf("crowdsec/%s", version.String()),
 		nil)
 	if err != nil {
 		log.Fatalf("init default client: %s", err)
@@ -63,7 +63,7 @@ func runLapiStatus(cmd *cobra.Command, args []string) error {
 	}
 	log.Infof("Loaded credentials from %s", csConfig.API.Client.CredentialsFilePath)
 	log.Infof("Trying to authenticate with username %s on %s", login, apiurl)
-	_, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
+	_, _, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
 	if err != nil {
 		log.Fatalf("Failed to authenticate to Local API (LAPI) : %s", err)
 	} else {
@@ -122,7 +122,7 @@ func runLapiRegister(cmd *cobra.Command, args []string) error {
 	_, err = apiclient.RegisterClient(&apiclient.Config{
 		MachineID:     lapiUser,
 		Password:      password,
-		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
 		URL:           apiurl,
 		VersionPrefix: LAPIURLPrefix,
 	}, nil)
@@ -180,7 +180,7 @@ func NewLapiRegisterCmd() *cobra.Command {
 	cmdLapiRegister := &cobra.Command{
 		Use:   "register",
 		Short: "Register a machine to Local API (LAPI)",
-		Long: `Register you machine to the Local API (LAPI).
+		Long: `Register your machine to the Local API (LAPI).
 Keep in mind the machine needs to be validated by an administrator on LAPI side to be effective.`,
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
@@ -203,7 +203,7 @@ func NewLapiCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadAPIClient(); err != nil {
-				return errors.Wrap(err, "loading api client")
+				return fmt.Errorf("loading api client: %w", err)
 			}
 			return nil
 		},
@@ -258,7 +258,7 @@ cscli lapi context add --key file_source --value evt.Line.Src
 			}
 			data := csConfig.Crowdsec.ContextToSend[keyToAdd]
 			for _, val := range valuesToAdd {
-				if !inSlice(val, data) {
+				if !slices.Contains(data, val) {
 					log.Infof("value '%s' added to key '%s'", val, keyToAdd)
 					data = append(data, val)
 				}
@@ -332,7 +332,7 @@ cscli lapi context detect crowdsecurity/sshd-logs
 
 			fieldByParsers := make(map[string][]string)
 			for _, node := range csParsers.Nodes {
-				if !detectAll && !inSlice(node.Name, args) {
+				if !detectAll && !slices.Contains(args, node.Name) {
 					continue
 				}
 				if !detectAll {
@@ -343,7 +343,7 @@ cscli lapi context detect crowdsecurity/sshd-logs
 
 				subNodeFields := detectSubNode(node, *csParsers.Ctx)
 				for _, field := range subNodeFields {
-					if !inSlice(field, fieldByParsers[node.Name]) {
+					if !slices.Contains(fieldByParsers[node.Name], field) {
 						fieldByParsers[node.Name] = append(fieldByParsers[node.Name], field)
 					}
 				}
@@ -411,7 +411,7 @@ cscli lapi context delete --value evt.Line.Src
 			for _, value := range valuesToDelete {
 				valueFound := false
 				for key, context := range csConfig.Crowdsec.ContextToSend {
-					if inSlice(value, context) {
+					if slices.Contains(context, value) {
 						valueFound = true
 						csConfig.Crowdsec.ContextToSend[key] = removeFromSlice(value, context)
 						log.Infof("value '%s' has been removed from key '%s'", value, key)
@@ -438,18 +438,18 @@ cscli lapi context delete --value evt.Line.Src
 	return cmdContext
 }
 
-func detectStaticField(GrokStatics []types.ExtraField) []string {
+func detectStaticField(GrokStatics []parser.ExtraField) []string {
 	ret := make([]string, 0)
 	for _, static := range GrokStatics {
 		if static.Parsed != "" {
 			fieldName := fmt.Sprintf("evt.Parsed.%s", static.Parsed)
-			if !inSlice(fieldName, ret) {
+			if !slices.Contains(ret, fieldName) {
 				ret = append(ret, fieldName)
 			}
 		}
 		if static.Meta != "" {
 			fieldName := fmt.Sprintf("evt.Meta.%s", static.Meta)
-			if !inSlice(fieldName, ret) {
+			if !slices.Contains(ret, fieldName) {
 				ret = append(ret, fieldName)
 			}
 		}
@@ -458,7 +458,7 @@ func detectStaticField(GrokStatics []types.ExtraField) []string {
 			if !strings.HasPrefix(fieldName, "evt.") {
 				fieldName = "evt." + fieldName
 			}
-			if !inSlice(fieldName, ret) {
+			if !slices.Contains(ret, fieldName) {
 				ret = append(ret, fieldName)
 			}
 		}
@@ -472,7 +472,7 @@ func detectNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 	if node.Grok.RunTimeRegexp != nil {
 		for _, capturedField := range node.Grok.RunTimeRegexp.Names() {
 			fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
-			if !inSlice(fieldName, ret) {
+			if !slices.Contains(ret, fieldName) {
 				ret = append(ret, fieldName)
 			}
 		}
@@ -485,7 +485,7 @@ func detectNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 		}
 		for _, capturedField := range grokCompiled.Names() {
 			fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
-			if !inSlice(fieldName, ret) {
+			if !slices.Contains(ret, fieldName) {
 				ret = append(ret, fieldName)
 			}
 		}
@@ -494,7 +494,7 @@ func detectNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 	if len(node.Grok.Statics) > 0 {
 		staticsField := detectStaticField(node.Grok.Statics)
 		for _, staticField := range staticsField {
-			if !inSlice(staticField, ret) {
+			if !slices.Contains(ret, staticField) {
 				ret = append(ret, staticField)
 			}
 		}
@@ -503,7 +503,7 @@ func detectNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 	if len(node.Statics) > 0 {
 		staticsField := detectStaticField(node.Statics)
 		for _, staticField := range staticsField {
-			if !inSlice(staticField, ret) {
+			if !slices.Contains(ret, staticField) {
 				ret = append(ret, staticField)
 			}
 		}
@@ -519,7 +519,7 @@ func detectSubNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 		if subnode.Grok.RunTimeRegexp != nil {
 			for _, capturedField := range subnode.Grok.RunTimeRegexp.Names() {
 				fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
-				if !inSlice(fieldName, ret) {
+				if !slices.Contains(ret, fieldName) {
 					ret = append(ret, fieldName)
 				}
 			}
@@ -531,7 +531,7 @@ func detectSubNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 			}
 			for _, capturedField := range grokCompiled.Names() {
 				fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
-				if !inSlice(fieldName, ret) {
+				if !slices.Contains(ret, fieldName) {
 					ret = append(ret, fieldName)
 				}
 			}
@@ -540,7 +540,7 @@ func detectSubNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 		if len(subnode.Grok.Statics) > 0 {
 			staticsField := detectStaticField(subnode.Grok.Statics)
 			for _, staticField := range staticsField {
-				if !inSlice(staticField, ret) {
+				if !slices.Contains(ret, staticField) {
 					ret = append(ret, staticField)
 				}
 			}
@@ -549,7 +549,7 @@ func detectSubNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 		if len(subnode.Statics) > 0 {
 			staticsField := detectStaticField(subnode.Statics)
 			for _, staticField := range staticsField {
-				if !inSlice(staticField, ret) {
+				if !slices.Contains(ret, staticField) {
 					ret = append(ret, staticField)
 				}
 			}

@@ -214,8 +214,8 @@ event_ids:
 				}
 				t.Fatalf("timeout")
 			case e := <-c:
-
-				linesRead = append(linesRead, exprhelpers.XMLGetNodeValue(e.Line.Raw, "/Event/EventData[1]/Data"))
+				line, _ := exprhelpers.XMLGetNodeValue(e.Line.Raw, "/Event/EventData[1]/Data")
+				linesRead = append(linesRead, line.(string))
 				if len(linesRead) == len(lines) {
 					break READLOOP
 				}

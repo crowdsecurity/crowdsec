@@ -14,11 +14,11 @@ const (
 	OVFLW
 )
 
-//Event is the structure representing a runtime event (log or overflow)
+// Event is the structure representing a runtime event (log or overflow)
 type Event struct {
 	/* is it a log or an overflow */
 	Type            int    `yaml:"Type,omitempty" json:"Type,omitempty"`             //Can be types.LOG (0) or types.OVFLOW (1)
-	ExpectMode      int    `yaml:"ExpectMode,omitempty" json:"ExpectMode,omitempty"` //how to buckets should handle event : leaky.TIMEMACHINE or leaky.LIVE
+	ExpectMode      int    `yaml:"ExpectMode,omitempty" json:"ExpectMode,omitempty"` //how to buckets should handle event : types.TIMEMACHINE or types.LIVE
 	Whitelisted     bool   `yaml:"Whitelisted,omitempty" json:"Whitelisted,omitempty"`
 	WhitelistReason string `yaml:"WhitelistReason,omitempty" json:"whitelist_reason,omitempty"`
 	//should add whitelist reason ?
@@ -73,7 +73,7 @@ func (e *Event) GetMeta(key string) string {
 	return ""
 }
 
-//Move in leakybuckets
+// Move in leakybuckets
 const (
 	Undefined = ""
 	Ip        = "Ip"
@@ -83,7 +83,7 @@ const (
 	AS        = "AS"
 )
 
-//Move in leakybuckets
+// Move in leakybuckets
 type ScopeType struct {
 	Scope         string `yaml:"type"`
 	Filter        string `yaml:"expression"`

@@ -61,6 +61,8 @@ type Alert struct {
 	ScenarioHash string `json:"scenarioHash,omitempty"`
 	// Simulated holds the value of the "simulated" field.
 	Simulated bool `json:"simulated,omitempty"`
+	// UUID holds the value of the "uuid" field.
+	UUID string `json:"uuid,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the AlertQuery when eager-loading is set.
 	Edges          AlertEdges `json:"edges"`
@@ -133,7 +135,7 @@ func (*Alert) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullFloat64)
 		case alert.FieldID, alert.FieldEventsCount, alert.FieldCapacity:
 			values[i] = new(sql.NullInt64)
-		case alert.FieldScenario, alert.FieldBucketId, alert.FieldMessage, alert.FieldSourceIp, alert.FieldSourceRange, alert.FieldSourceAsNumber, alert.FieldSourceAsName, alert.FieldSourceCountry, alert.FieldSourceScope, alert.FieldSourceValue, alert.FieldLeakSpeed, alert.FieldScenarioVersion, alert.FieldScenarioHash:
+		case alert.FieldScenario, alert.FieldBucketId, alert.FieldMessage, alert.FieldSourceIp, alert.FieldSourceRange, alert.FieldSourceAsNumber, alert.FieldSourceAsName, alert.FieldSourceCountry, alert.FieldSourceScope, alert.FieldSourceValue, alert.FieldLeakSpeed, alert.FieldScenarioVersion, alert.FieldScenarioHash, alert.FieldUUID:
 			values[i] = new(sql.NullString)
 		case alert.FieldCreatedAt, alert.FieldUpdatedAt, alert.FieldStartedAt, alert.FieldStoppedAt:
 			values[i] = new(sql.NullTime)
@@ -294,6 +296,12 @@ func (a *Alert) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				a.Simulated = value.Bool
 			}
+		case alert.FieldUUID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field uuid", values[i])
+			} else if value.Valid {
+				a.UUID = value.String
+			}
 		case alert.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for edge-field machine_alerts", value)
@@ -418,6 +426,9 @@ func (a *Alert) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("simulated=")
 	builder.WriteString(fmt.Sprintf("%v", a.Simulated))
+	builder.WriteString(", ")
+	builder.WriteString("uuid=")
+	builder.WriteString(a.UUID)
 	builder.WriteByte(')')
 	return builder.String()
 }

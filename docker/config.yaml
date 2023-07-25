@@ -14,6 +14,7 @@ config_paths:
   plugin_dir: /usr/local/lib/crowdsec/plugins/
 crowdsec_service:
   acquisition_path: /etc/crowdsec/acquis.yaml
+  acquisition_dir: /etc/crowdsec/acquis.d
   parser_routines: 1
 plugin_config:
   user: nobody

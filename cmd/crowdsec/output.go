@@ -7,17 +7,18 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-openapi/strfmt"
+	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/go-openapi/strfmt"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 )
 
 func dedupAlerts(alerts []types.RuntimeAlert) ([]*models.Alert, error) {
@@ -49,11 +50,11 @@ func PushAlerts(alerts []types.RuntimeAlert, client *apiclient.ApiClient) error 
 	alertsToPush, err := dedupAlerts(alerts)
 
 	if err != nil {
-		return errors.Wrap(err, "failed to transform alerts for api")
+		return fmt.Errorf("failed to transform alerts for api: %w", err)
 	}
 	_, _, err = client.Alerts.Add(ctx, alertsToPush)
 	if err != nil {
-		return errors.Wrap(err, "failed sending alert to LAPI")
+		return fmt.Errorf("failed sending alert to LAPI: %w", err)
 	}
 	return nil
 }
@@ -71,35 +72,47 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 
 	scenarios, err := cwhub.GetInstalledScenariosAsString()
 	if err != nil {
-		return errors.Wrapf(err, "loading list of installed hub scenarios: %s", err)
+		return fmt.Errorf("loading list of installed hub scenarios: %w", err)
 	}
 
 	apiURL, err := url.Parse(apiConfig.URL)
 	if err != nil {
-		return errors.Wrapf(err, "parsing api url ('%s'): %s", apiConfig.URL, err)
+		return fmt.Errorf("parsing api url ('%s'): %w", apiConfig.URL, err)
 	}
-
+	papiURL, err := url.Parse(apiConfig.PapiURL)
+	if err != nil {
+		return fmt.Errorf("parsing polling api url ('%s'): %w", apiConfig.PapiURL, err)
+	}
 	password := strfmt.Password(apiConfig.Password)
 
 	Client, err := apiclient.NewClient(&apiclient.Config{
 		MachineID:      apiConfig.Login,
 		Password:       password,
 		Scenarios:      scenarios,
-		UserAgent:      fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		UserAgent:      fmt.Sprintf("crowdsec/%s", version.String()),
 		URL:            apiURL,
+		PapiURL:        papiURL,
 		VersionPrefix:  "v1",
 		UpdateScenario: cwhub.GetInstalledScenariosAsString,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "new client api: %s", err)
+		return fmt.Errorf("new client api: %w", err)
 	}
-	if _, err = Client.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
+	authResp, _, err := Client.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
 		MachineID: &apiConfig.Login,
 		Password:  &password,
 		Scenarios: scenarios,
-	}); err != nil {
-		return errors.Wrapf(err, "authenticate watcher (%s)", apiConfig.Login)
+	})
+	if err != nil {
+		return fmt.Errorf("authenticate watcher (%s): %w", apiConfig.Login, err)
 	}
+
+	if err := Client.GetClient().Transport.(*apiclient.JWTTransport).Expiration.UnmarshalText([]byte(authResp.Expire)); err != nil {
+		return fmt.Errorf("unable to parse jwt expiration: %w", err)
+	}
+
+	Client.GetClient().Transport.(*apiclient.JWTTransport).Token = authResp.Token
+
 	//start the heartbeat service
 	log.Debugf("Starting HeartBeat service")
 	Client.HeartBeat.StartHeartBeat(context.Background(), &outputsTomb)

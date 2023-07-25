@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/confluentinc/bincover"
 	"github.com/fatih/color"
 	cc "github.com/ivanpirog/coloredcobra"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
+	"golang.org/x/exp/slices"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -20,8 +20,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
-
-var bincoverTesting = ""
 
 var trace_lvl, dbg_lvl, nfo_lvl, wrn_lvl, err_lvl bool
 
@@ -39,6 +37,8 @@ var all bool
 
 var prometheusURL string
 
+var mergedConfig string
+
 func initConfig() {
 	var err error
 	if trace_lvl {
@@ -53,8 +53,8 @@ func initConfig() {
 		log.SetLevel(log.ErrorLevel)
 	}
 
-	if !inSlice(os.Args[1], NoNeedConfig) {
-		csConfig, err = csconfig.NewConfig(ConfigFilePath, false, false, true)
+	if !slices.Contains(NoNeedConfig, os.Args[1]) {
+		csConfig, mergedConfig, err = csconfig.NewConfig(ConfigFilePath, false, false, true)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -159,16 +159,16 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	}
 
 	cc.Init(&cc.Config{
-		RootCmd: rootCmd,
-		Headings: cc.Yellow,
-		Commands: cc.Green + cc.Bold,
+		RootCmd:       rootCmd,
+		Headings:      cc.Yellow,
+		Commands:      cc.Green + cc.Bold,
 		CmdShortDescr: cc.Cyan,
-		Example: cc.Italic,
-		ExecName: cc.Bold,
-		Aliases: cc.Bold + cc.Italic,
+		Example:       cc.Italic,
+		ExecName:      cc.Bold,
+		Aliases:       cc.Bold + cc.Italic,
 		FlagsDataType: cc.White,
-		Flags: cc.Green,
-		FlagsDescr: cc.Cyan,
+		Flags:         cc.Green,
+		FlagsDescr:    cc.Cyan,
 	})
 	rootCmd.SetOut(color.Output)
 
@@ -178,10 +178,11 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 		Args:              cobra.ExactArgs(0),
 		Hidden:            true,
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := doc.GenMarkdownTreeCustom(rootCmd, "./doc/", prepender, linkHandler); err != nil {
-				log.Fatalf("Failed to generate cobra doc: %s", err)
+				return fmt.Errorf("Failed to generate cobra doc: %s", err)
 			}
+			return nil
 		},
 	}
 	rootCmd.AddCommand(cmdDocGen)
@@ -198,17 +199,32 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(cmdVersion)
 
 	rootCmd.PersistentFlags().StringVarP(&ConfigFilePath, "config", "c", csconfig.DefaultConfigPath("config.yaml"), "path to crowdsec config file")
-	rootCmd.PersistentFlags().StringVarP(&OutputFormat, "output", "o", "", "Output format: human, json, raw.")
-	rootCmd.PersistentFlags().StringVarP(&OutputColor, "color", "", "auto", "Output color: yes, no, auto.")
-	rootCmd.PersistentFlags().BoolVar(&dbg_lvl, "debug", false, "Set logging to debug.")
-	rootCmd.PersistentFlags().BoolVar(&nfo_lvl, "info", false, "Set logging to info.")
-	rootCmd.PersistentFlags().BoolVar(&wrn_lvl, "warning", false, "Set logging to warning.")
-	rootCmd.PersistentFlags().BoolVar(&err_lvl, "error", false, "Set logging to error.")
-	rootCmd.PersistentFlags().BoolVar(&trace_lvl, "trace", false, "Set logging to trace.")
+	rootCmd.PersistentFlags().StringVarP(&OutputFormat, "output", "o", "", "Output format: human, json, raw")
+	rootCmd.PersistentFlags().StringVarP(&OutputColor, "color", "", "auto", "Output color: yes, no, auto")
+	rootCmd.PersistentFlags().BoolVar(&dbg_lvl, "debug", false, "Set logging to debug")
+	rootCmd.PersistentFlags().BoolVar(&nfo_lvl, "info", false, "Set logging to info")
+	rootCmd.PersistentFlags().BoolVar(&wrn_lvl, "warning", false, "Set logging to warning")
+	rootCmd.PersistentFlags().BoolVar(&err_lvl, "error", false, "Set logging to error")
+	rootCmd.PersistentFlags().BoolVar(&trace_lvl, "trace", false, "Set logging to trace")
 
 	rootCmd.PersistentFlags().StringVar(&cwhub.HubBranch, "branch", "", "Override hub branch on github")
 	if err := rootCmd.PersistentFlags().MarkHidden("branch"); err != nil {
 		log.Fatalf("failed to hide flag: %s", err)
+	}
+
+	// Look for "-c /path/to/config.yaml"
+	// This duplicates the logic in cobra, but we need to do it before
+	// because feature flags can change which subcommands are available.
+	for i, arg := range os.Args {
+		if arg == "-c" || arg == "--config" {
+			if len(os.Args) > i+1 {
+				ConfigFilePath = os.Args[i+1]
+			}
+		}
+	}
+
+	if err := csconfig.LoadFeatureFlagsFile(ConfigFilePath, log.StandardLogger()); err != nil {
+		log.Fatal(err)
 	}
 
 	if len(os.Args) > 1 {
@@ -225,7 +241,6 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewDashboardCmd())
 	rootCmd.AddCommand(NewDecisionsCmd())
 	rootCmd.AddCommand(NewAlertsCmd())
-	//	rootCmd.AddCommand(NewInspectCmd())
 	rootCmd.AddCommand(NewSimulationCmds())
 	rootCmd.AddCommand(NewBouncersCmd())
 	rootCmd.AddCommand(NewMachinesCmd())
@@ -242,16 +257,15 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewNotificationsCmd())
 	rootCmd.AddCommand(NewSupportCmd())
 
-	if err := rootCmd.Execute(); err != nil {
-		if bincoverTesting != "" {
-			log.Debug("coverage report is enabled")
-		}
+	if fflag.CscliSetup.IsEnabled() {
+		rootCmd.AddCommand(NewSetupCmd())
+	}
 
-		exitCode := 1
-		log.NewEntry(log.StandardLogger()).Log(log.FatalLevel, err)
-		if bincoverTesting == "" {
-			os.Exit(exitCode)
-		}
-		bincover.ExitCode = exitCode
+	if fflag.PapiClient.IsEnabled() {
+		rootCmd.AddCommand(NewPapiCmd())
+	}
+
+	if err := rootCmd.Execute(); err != nil {
+		log.Fatal(err)
 	}
 }

@@ -10,20 +10,19 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
 
 type HubTestItemConfig struct {
-	Parsers         []string           `yaml:"parsers"`
-	Scenarios       []string           `yaml:"scenarios"`
-	PostOVerflows   []string           `yaml:"postoverflows"`
-	LogFile         string             `yaml:"log_file"`
-	LogType         string             `yaml:"log_type"`
-	Labels          map[string]string  `yaml:"labels"`
-	IgnoreParsers   bool               `yaml:"ignore_parsers"`   // if we test a scenario, we don't want to assert on Parser
-	OverrideStatics []types.ExtraField `yaml:"override_statics"` //Allow to override statics. Executed before s00
+	Parsers         []string            `yaml:"parsers"`
+	Scenarios       []string            `yaml:"scenarios"`
+	PostOVerflows   []string            `yaml:"postoverflows"`
+	LogFile         string              `yaml:"log_file"`
+	LogType         string              `yaml:"log_type"`
+	Labels          map[string]string   `yaml:"labels"`
+	IgnoreParsers   bool                `yaml:"ignore_parsers"`   // if we test a scenario, we don't want to assert on Parser
+	OverrideStatics []parser.ExtraField `yaml:"override_statics"` //Allow to override statics. Executed before s00
 }
 
 type HubIndex struct {
@@ -531,7 +530,7 @@ func (t *HubTestItem) Run() error {
 		}
 	}
 
-	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", t.ResultsPath}
+	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", t.ResultsPath, "-order-event"}
 	for labelKey, labelValue := range t.Config.Labels {
 		arg := fmt.Sprintf("%s:%s", labelKey, labelValue)
 		cmdArgs = append(cmdArgs, "-label", arg)

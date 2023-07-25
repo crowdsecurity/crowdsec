@@ -25,10 +25,11 @@ type Event struct {
 	Time time.Time `json:"time,omitempty"`
 	// Serialized holds the value of the "serialized" field.
 	Serialized string `json:"serialized,omitempty"`
+	// AlertEvents holds the value of the "alert_events" field.
+	AlertEvents int `json:"alert_events,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the EventQuery when eager-loading is set.
-	Edges        EventEdges `json:"edges"`
-	alert_events *int
+	Edges EventEdges `json:"edges"`
 }
 
 // EventEdges holds the relations/edges for other nodes in the graph.
@@ -58,14 +59,12 @@ func (*Event) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case event.FieldID:
+		case event.FieldID, event.FieldAlertEvents:
 			values[i] = new(sql.NullInt64)
 		case event.FieldSerialized:
 			values[i] = new(sql.NullString)
 		case event.FieldCreatedAt, event.FieldUpdatedAt, event.FieldTime:
 			values[i] = new(sql.NullTime)
-		case event.ForeignKeys[0]: // alert_events
-			values[i] = new(sql.NullInt64)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type Event", columns[i])
 		}
@@ -113,12 +112,11 @@ func (e *Event) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				e.Serialized = value.String
 			}
-		case event.ForeignKeys[0]:
+		case event.FieldAlertEvents:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for edge-field alert_events", value)
+				return fmt.Errorf("unexpected type %T for field alert_events", values[i])
 			} else if value.Valid {
-				e.alert_events = new(int)
-				*e.alert_events = int(value.Int64)
+				e.AlertEvents = int(value.Int64)
 			}
 		}
 	}
@@ -168,6 +166,9 @@ func (e *Event) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("serialized=")
 	builder.WriteString(e.Serialized)
+	builder.WriteString(", ")
+	builder.WriteString("alert_events=")
+	builder.WriteString(fmt.Sprintf("%v", e.AlertEvents))
 	builder.WriteByte(')')
 	return builder.String()
 }

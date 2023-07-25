@@ -1,0 +1,12 @@
+# frozen_string_literal: true
+
+Vagrant.configure('2') do |config|
+  config.vm.box = 'generic/alma8'
+  config.vm.provision "shell", inline: <<-SHELL
+    sudo dnf -y install dnf-plugins-core kitty-terminfo
+    sudo dnf config-manager --set-enabled powertools
+  SHELL
+end
+
+common = '../common'
+load common if File.exist?(common)

@@ -8,10 +8,10 @@
 package main
 
 import (
+	"fmt"
 	"syscall"
 	"time"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/svc"
@@ -97,12 +97,8 @@ func runService(name string) error {
 		log.Warnf("Failed to open event log: %s", err)
 	}
 
-	cConfig, err := csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
+	cConfig, err := LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
 	if err != nil {
-		return err
-	}
-
-	if err := LoadConfig(cConfig); err != nil {
 		return err
 	}
 
@@ -110,7 +106,7 @@ func runService(name string) error {
 	winsvc := crowdsec_winservice{config: cConfig}
 
 	if err := svc.Run(name, &winsvc); err != nil {
-		return errors.Wrapf(err, "%s service failed", name)
+		return fmt.Errorf("%s service failed: %w", name, err)
 	}
 
 	log.Infof("%s service stopped", name)

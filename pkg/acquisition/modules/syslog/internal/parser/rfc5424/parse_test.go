@@ -4,8 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/cstest"
+
 	"github.com/stretchr/testify/require"
-	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 )
 
 func TestPri(t *testing.T) {

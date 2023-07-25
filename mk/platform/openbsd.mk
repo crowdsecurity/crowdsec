@@ -1,0 +1,3 @@
+# OpenBSD specific
+
+MAKE=gmake

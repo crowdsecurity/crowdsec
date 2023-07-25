@@ -3,12 +3,13 @@ package main
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/windows/svc"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 )
 
@@ -16,9 +17,11 @@ func StartRunSvc() error {
 	const svcName = "CrowdSec"
 	const svcDescription = "Crowdsec IPS/IDS"
 
+	defer trace.CatchPanic("crowdsec/StartRunSvc")
+
 	isRunninginService, err := svc.IsWindowsService()
 	if err != nil {
-		return errors.Wrap(err, "failed to determine if we are running in windows service mode")
+		return fmt.Errorf("failed to determine if we are running in windows service mode: %w", err)
 	}
 	if isRunninginService {
 		return runService(svcName)
@@ -27,22 +30,22 @@ func StartRunSvc() error {
 	if flags.WinSvc == "Install" {
 		err = installService(svcName, svcDescription)
 		if err != nil {
-			return errors.Wrapf(err, "failed to %s %s", flags.WinSvc, svcName)
+			return fmt.Errorf("failed to %s %s: %w", flags.WinSvc, svcName, err)
 		}
 	} else if flags.WinSvc == "Remove" {
 		err = removeService(svcName)
 		if err != nil {
-			return errors.Wrapf(err, "failed to %s %s", flags.WinSvc, svcName)
+			return fmt.Errorf("failed to %s %s: %w", flags.WinSvc, svcName, err)
 		}
 	} else if flags.WinSvc == "Start" {
 		err = startService(svcName)
 		if err != nil {
-			return errors.Wrapf(err, "failed to %s %s", flags.WinSvc, svcName)
+			return fmt.Errorf("failed to %s %s: %w", flags.WinSvc, svcName, err)
 		}
 	} else if flags.WinSvc == "Stop" {
 		err = controlService(svcName, svc.Stop, svc.Stopped)
 		if err != nil {
-			return errors.Wrapf(err, "failed to %s %s", flags.WinSvc, svcName)
+			return fmt.Errorf("failed to %s %s: %w", flags.WinSvc, svcName, err)
 		}
 	} else if flags.WinSvc == "" {
 		return WindowsRun()
@@ -58,19 +61,12 @@ func WindowsRun() error {
 		err     error
 	)
 
-	cConfig, err = csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
+	cConfig, err = LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
 	if err != nil {
 		return err
 	}
-	if err := LoadConfig(cConfig); err != nil {
-		return err
-	}
-	// Configure logging
-	log.Infof("Crowdsec %s", cwversion.VersionStr())
 
-	if bincoverTesting != "" {
-		log.Debug("coverage report is enabled")
-	}
+	log.Infof("Crowdsec %s", version.String())
 
 	apiReady := make(chan bool, 1)
 	agentReady := make(chan bool, 1)
@@ -84,7 +80,7 @@ func WindowsRun() error {
 			dbClient, err = database.NewClient(cConfig.DbConfig)
 
 			if err != nil {
-				log.Fatalf("unable to create database client: %s", err)
+				return fmt.Errorf("unable to create database client: %s", err)
 			}
 		}
 		registerPrometheus(cConfig.Prometheus)

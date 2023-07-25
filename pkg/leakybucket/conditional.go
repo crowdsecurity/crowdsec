@@ -2,7 +2,7 @@ package leakybucket
 
 import (
 	"fmt"
-	"time"
+	"sync"
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
@@ -10,24 +10,39 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+var conditionalExprCache map[string]vm.Program
+var conditionalExprCacheLock sync.Mutex
+
 type ConditionalOverflow struct {
 	ConditionalFilter        string
 	ConditionalFilterRuntime *vm.Program
 	DumbProcessor
 }
 
-func NewConditionalOverflow(g *BucketFactory) (*ConditionalOverflow, error) {
+func (c *ConditionalOverflow) OnBucketInit(g *BucketFactory) error {
 	var err error
+	var compiledExpr *vm.Program
 
-	c := ConditionalOverflow{}
-	c.ConditionalFilter = g.ConditionalOverflow
-	c.ConditionalFilterRuntime, err = expr.Compile(c.ConditionalFilter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{
-		"queue": &Queue{}, "leaky": &Leaky{}})))
-	if err != nil {
-		g.logger.Errorf("Unable to compile condition expression for conditional bucket : %s", err)
-		return nil, fmt.Errorf("unable to compile condition expression for conditional bucket : %v", err)
+	if conditionalExprCache == nil {
+		conditionalExprCache = make(map[string]vm.Program)
 	}
-	return &c, nil
+	conditionalExprCacheLock.Lock()
+	if compiled, ok := conditionalExprCache[g.ConditionalOverflow]; ok {
+		conditionalExprCacheLock.Unlock()
+		c.ConditionalFilterRuntime = &compiled
+	} else {
+		conditionalExprCacheLock.Unlock()
+		//release the lock during compile
+		compiledExpr, err = expr.Compile(g.ConditionalOverflow, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
+		if err != nil {
+			return fmt.Errorf("conditional compile error : %w", err)
+		}
+		c.ConditionalFilterRuntime = compiledExpr
+		conditionalExprCacheLock.Lock()
+		conditionalExprCache[g.ConditionalOverflow] = *compiledExpr
+		conditionalExprCacheLock.Unlock()
+	}
+	return err
 }
 
 func (c *ConditionalOverflow) AfterBucketPour(b *BucketFactory) func(types.Event, *Leaky) *types.Event {
@@ -35,7 +50,7 @@ func (c *ConditionalOverflow) AfterBucketPour(b *BucketFactory) func(types.Event
 		var condition, ok bool
 		if c.ConditionalFilterRuntime != nil {
 			l.logger.Debugf("Running condition expression : %s", c.ConditionalFilter)
-			ret, err := expr.Run(c.ConditionalFilterRuntime, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &msg, "queue": l.Queue, "leaky": l}))
+			ret, err := expr.Run(c.ConditionalFilterRuntime, map[string]interface{}{"evt": &msg, "queue": l.Queue, "leaky": l})
 			if err != nil {
 				l.logger.Errorf("unable to run conditional filter : %s", err)
 				return &msg
@@ -50,7 +65,7 @@ func (c *ConditionalOverflow) AfterBucketPour(b *BucketFactory) func(types.Event
 
 			if condition {
 				l.logger.Debugf("Conditional bucket overflow")
-				l.Ovflw_ts = time.Now().UTC()
+				l.Ovflw_ts = l.Last_ts
 				l.Out <- l.Queue
 				return nil
 			}

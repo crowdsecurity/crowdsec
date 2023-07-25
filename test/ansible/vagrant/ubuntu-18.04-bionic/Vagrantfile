@@ -1,0 +1,11 @@
+# frozen_string_literal: true
+
+Vagrant.configure('2') do |config|
+  # the official boxes only supports virtualbox
+  config.vm.box = 'generic/ubuntu1804'
+  config.vm.provision "shell", inline: <<-SHELL
+  SHELL
+end
+
+common = '../common'
+load common if File.exist?(common)

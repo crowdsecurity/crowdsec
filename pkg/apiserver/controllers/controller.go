@@ -16,16 +16,18 @@ import (
 )
 
 type Controller struct {
-	Ectx          context.Context
-	DBClient      *database.Client
-	Router        *gin.Engine
-	Profiles      []*csconfig.ProfileCfg
-	CAPIChan      chan []*models.Alert
-	PluginChannel chan csplugin.ProfileAlert
-	Log           *log.Logger
-	ConsoleConfig *csconfig.ConsoleConfig
-	TrustedIPs    []net.IPNet
-	HandlerV1     *v1.Controller
+	Ectx                          context.Context
+	DBClient                      *database.Client
+	Router                        *gin.Engine
+	Profiles                      []*csconfig.ProfileCfg
+	AlertsAddChan                 chan []*models.Alert
+	DecisionDeleteChan            chan []*models.Decision
+	PluginChannel                 chan csplugin.ProfileAlert
+	Log                           *log.Logger
+	ConsoleConfig                 *csconfig.ConsoleConfig
+	TrustedIPs                    []net.IPNet
+	HandlerV1                     *v1.Controller
+	DisableRemoteLapiRegistration bool
 }
 
 func (c *Controller) Init() error {
@@ -59,13 +61,14 @@ func (c *Controller) NewV1() error {
 	var err error
 
 	v1Config := v1.ControllerV1Config{
-		DbClient:      c.DBClient,
-		Ctx:           c.Ectx,
-		ProfilesCfg:   c.Profiles,
-		CapiChan:      c.CAPIChan,
-		PluginChannel: c.PluginChannel,
-		ConsoleConfig: *c.ConsoleConfig,
-		TrustedIPs:    c.TrustedIPs,
+		DbClient:           c.DBClient,
+		Ctx:                c.Ectx,
+		ProfilesCfg:        c.Profiles,
+		DecisionDeleteChan: c.DecisionDeleteChan,
+		AlertsAddChan:      c.AlertsAddChan,
+		PluginChannel:      c.PluginChannel,
+		ConsoleConfig:      *c.ConsoleConfig,
+		TrustedIPs:         c.TrustedIPs,
 	}
 
 	c.HandlerV1, err = v1.New(&v1Config)
@@ -83,7 +86,7 @@ func (c *Controller) NewV1() error {
 	})
 
 	groupV1 := c.Router.Group("/v1")
-	groupV1.POST("/watchers", c.HandlerV1.CreateMachine)
+	groupV1.POST("/watchers", c.HandlerV1.AbortRemoteIf(c.DisableRemoteLapiRegistration), c.HandlerV1.CreateMachine)
 	groupV1.POST("/watchers/login", c.HandlerV1.Middlewares.JWT.Middleware.LoginHandler)
 
 	jwtAuth := groupV1.Group("")

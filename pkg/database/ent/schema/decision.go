@@ -37,6 +37,8 @@ func (Decision) Fields() []ent.Field {
 		field.String("value"),
 		field.String("origin"),
 		field.Bool("simulated").Default(false),
+		field.String("uuid").Optional(), //this uuid is mostly here to ensure that CAPI/PAPI has a unique id for each decision
+		field.Int("alert_decisions").Optional(),
 	}
 }
 
@@ -45,6 +47,7 @@ func (Decision) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("owner", Alert.Type).
 			Ref("decisions").
+			Field("alert_decisions").
 			Unique(),
 	}
 }
@@ -54,5 +57,6 @@ func (Decision) Indexes() []ent.Index {
 		index.Fields("start_ip", "end_ip"),
 		index.Fields("value"),
 		index.Fields("until"),
+		index.Fields("alert_decisions"),
 	}
 }

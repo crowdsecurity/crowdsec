@@ -19,25 +19,33 @@ on:
       - windows/installer/*.wxs
       - .github/workflows/ci-windows-build-msi.yml
 
-
 jobs:
   build:
+    strategy:
+      matrix:
+        go-version: ["1.20.6"]
+
     name: Build
     runs-on: windows-2019
+
     steps:
-    - name: Set up Go 1.19
-      uses: actions/setup-go@v3
-      with:
-        go-version: 1.19
-      id: go
+
     - name: Check out code into the Go module directory
       uses: actions/checkout@v3
       with:
         fetch-depth: 0
+        submodules: false
+
+    - name: "Set up Go ${{ matrix.go-version }}"
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ matrix.go-version }}
+        cache-dependency-path: "**/go.sum"
+
     - name: Build
-      run: make windows_installer
+      run: make windows_installer BUILD_RE2_WASM=1
     - name: Upload MSI
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         path: crowdsec*msi
         name: crowdsec.msi

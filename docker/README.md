@@ -21,17 +21,21 @@ All the following images are available on Docker Hub for the architectures
 
 Recommended for production usage. Also available on GitHub (ghcr.io).
 
- - `crowdsecurity/crowdsec:latest`
+ - `crowdsecurity/crowdsec:dev`
 
-For development and testing.
+The latest stable release.
+
+ - `crowdsecurity/crowdsec:dev`
+
+For development and testing, from the master branch.
 
 since v1.4.2:
 
  - `crowdsecurity/crowdsec:slim`
 
-Reduced size by 60%, does not include notifier plugins nor the GeoIP database.
-If you need these details on decisions, running `cscli hub upgrade` inside the
-container downloads the GeoIP database at runtime.
+Reduced size by 60%, it does not include the notifier plugins nor the GeoIP database.
+If you need these details on decisions, run `cscli hub upgrade` inside the
+container to download the GeoIP database at runtime.
 
 
 ### Debian (since v1.3.3)
@@ -43,27 +47,28 @@ The debian version includes support for systemd and journalctl.
 
 ### Custom
 
-You can build your images with Dockerfile and Dockerfile-debian.
+You can build your custom images with Dockerfile and Dockerfile-debian.
 
-For example, if you want a Debian version without plugin notifiers:
+For example, if you need a Debian version without plugin notifiers:
 
 ```console
-$ docker build -f Dockerfile.debian --target slim
+$ docker build -f Dockerfile.debian --target slim .
 ```
 
-The supported values for target are: full, with-geoip, with-plugins, slim.
+The supported values for target are: full, geoip, plugins, slim.
 
 Note: for crowdsec versions < 1.5.0, the syntax is
 
 ```console
-$ docker build -f Dockerfile.debian --build-arg=BUILD_ENV=slim
+$ docker build -f Dockerfile.debian --build-arg=BUILD_ENV=slim .
 ```
 
 
 ## Required configuration
 
 ### Journalctl (only for debian image)
-To use journalctl as a log stream, with or without the `DSN` environment variable, it's important to mount the journal log from the host to the container itself.
+
+To use journalctl as a log stream, with or without the `DSN` environment variable, you need to mount the journal log from the host to the container itself.
 This can be done by adding the following volume mount to the docker command:
 
 ```
@@ -71,19 +76,57 @@ This can be done by adding the following volume mount to the docker command:
 ```
 
 ### Logs ingestion and processing
+
 Collections are a good place to start: https://docs.crowdsec.net/docs/collections/intro
 
 Find collections, scenarios, parsers and postoverflows in the hub: https://hub.crowdsec.net
 
-
 * Specify collections | scenarios | parsers | postoverflows to install via the environment variables (by default [`crowdsecurity/linux`](https://hub.crowdsec.net/author/crowdsecurity/collections/linux) is installed)
-* Mount volumes to specify your log files that should be ingested by crowdsec
-### Acquisition
+* Mount volumes to specify which log files should be ingested by crowdsec
 
-`/etc/crowdsec/acquis.yaml` maps logs to the provided parsers. Find out more here: https://docs.crowdsec.net/docs/concepts/#acquisition
 
-acquis.yaml example:
-```shell
+### Acquisition (one file per datasource - recommended)
+
+The files in `/etc/crowdsec/acquis.d/` map the logs to the provided parsers. Find out more here: https://docs.crowdsec.net/docs/concepts/#acquisition
+
+The directory might contain for example
+
+`ssh.yaml`:
+
+```yaml
+filenames:
+ - /logs/auth.log
+ - /logs/syslog
+labels:
+  type: syslog
+```
+
+`apache.yaml`:
+
+``` yaml
+filename: /logs/apache2/*.log
+labels:
+  type: apache2
+```
+
+`labels.type`: use `syslog` if the logs come from syslog, otherwise check the collection's documentation for the relevant type.
+
+You can bind the directory from the host or have it in a Docker volume, the former is easier to update as you add more applications.
+
+Note: In versions < 1.5, the acquisition directory is not configured by default. You can add it by mounting the `/etc/crowdsec/config.yaml.local` file:
+
+```yaml
+crowdsec_service:
+  acquisition_dir: /etc/crowdsec/acquis.d
+```
+
+
+### Acquisition (single file - deprecated)
+
+Before 1.5.0, it was recommended to put your acquisition configuration in /etc/crowdsec/acquis.yaml. You can still do it
+if you prefer but it's more effective to have one file per datasource.
+
+```yaml title="/etc/crowdsec/acquis.yaml"
 filenames:
  - /logs/auth.log
  - /logs/syslog
@@ -95,22 +138,26 @@ labels:
   type: apache2
 ```
 
-`labels.type`: use `syslog` if the logs come from syslog, otherwise check the collection's documentation for the relevant type.
 
 ## Recommended configuration
+
 ### Volumes
 
-We strongly suggest mounting **named volumes** for Crowdsec configuration and database to avoid credentials and decisions loss in case of container destruction and recreation, version update, etc.
+We strongly suggest persisting the Crowdsec configuration and database in **named volumes**, or bind-mount them from the host,
+to avoid losing credentials and decision data in case of container destruction and recreation, version update, etc.
 
 * Credentials and configuration: `/etc/crowdsec`
+* Acquisition: `/etc/crowdsec/acquis.d` and/or `/etc/crowdsec.acquis.yaml` (yes, they can be nested in `/etc/crowdsec`)
 * Database when using SQLite (default): `/var/lib/crowdsec/data`
+
 
 ## Start a Crowdsec instance
 
 ```shell
 docker run -d \
-    -v local_path_to_crowdsec_config/acquis.yaml:/etc/crowdsec/acquis.yaml \
     -v crowdsec_config:/etc/crowdsec \
+    -v local_path_to_crowdsec_config/acquis.d:/etc/crowdsec/acquis.d \
+    -v local_path_to_crowdsec_config/acquis.yaml:/etc/crowdsec/acquis.yaml \
     -v crowdsec_data:/var/lib/crowdsec/data \
     -v /var/log/auth.log:/logs/auth.log:ro \
     -v /var/log/syslog.log:/logs/syslog.log:ro \
@@ -120,22 +167,31 @@ docker run -d \
     --name crowdsec crowdsecurity/crowdsec
 ```
 
+
 ## ... or docker-compose
 
 Check this full-stack example using docker-compose: https://github.com/crowdsecurity/example-docker-compose
 
+
 # How to extend this image
 
 ## Full configuration
+
 The container is built with a specific docker
 [configuration](https://github.com/crowdsecurity/crowdsec/blob/master/docker/config.yaml).
 If you need to change it and the docker variables (see below) are not enough,
-you can bind `/etc/crowdsec/config.yaml` to your configuration file.
+you can mount `/etc/crowdsec/config.yaml.local` from the host.
+The file should contain only the options from `config.yaml` that you want to change,
+as documented in [`Overriding values`](https://docs.crowdsec.net/docs/configuration/crowdsec_configuration#overriding-values).
+
+It is not recommended anymore to bind-mount the full config.yaml file and you should not need to do it.
 
 ## Notifications
-If you wish to use the [notification system](https://docs.crowdsec.net/docs/notification_plugins/intro), you will need to mount at least a custom `profiles.yaml` and a notification configuration to `/etc/crowdsec/notifications`
+
+If you want to use the [notification system](https://docs.crowdsec.net/docs/notification_plugins/intro), you have to use the full image (not slim) and mount at least a custom `profiles.yaml` and a notification configuration to `/etc/crowdsec/notifications`
 
 # Deployment use cases
+
 Crowdsec is composed of an `agent` that parses logs and creates `alerts`, and a
 `local API (LAPI)` that transforms these alerts into decisions. Both functions
 are provided by the same executables, so the agent and the LAPI can run in the
@@ -224,6 +280,7 @@ config.yaml) each time the container is run.
 | __LAPI__                | | (useless with DISABLE_LOCAL_API) |
 | `USE_WAL`               | false | Enable Write-Ahead Logging with SQLite |
 | `CUSTOM_HOSTNAME`       | localhost | Name for the local agent (running in the container with LAPI) |
+| `CAPI_WHITELISTS_PATH`  | | Path for capi_whitelists.yaml |
 |                         | | |
 | __Agent__               | | (these don't work with DISABLE_AGENT) |
 | `TYPE`                  | | [`Labels.type`](https://docs.crowdsec.net/Crowdsec/v1/references/acquisition/) for file in time-machine: `-e TYPE="<type>"` |
@@ -272,12 +329,6 @@ config.yaml) each time the container is run.
 | __Developer options__   | | |
 | `CI_TESTING`            | false | Used during functional tests |
 | `DEBUG`                 | false | Trace the entrypoint |
-
-## Volumes
-
-* `/var/lib/crowdsec/data/` - Directory where all crowdsec data (Databases) is located
-
-* `/etc/crowdsec/` - Directory where all crowdsec configurations are located
 
 ## File Locations
 

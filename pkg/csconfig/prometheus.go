@@ -2,7 +2,6 @@ package csconfig
 
 import "fmt"
 
-/**/
 type PrometheusCfg struct {
 	Enabled    bool   `yaml:"enabled"`
 	Level      string `yaml:"level"` //aggregated|full
@@ -16,6 +15,5 @@ func (c *Config) LoadPrometheus() error {
 			c.Cscli.PrometheusUrl = fmt.Sprintf("http://%s:%d", c.Prometheus.ListenAddr, c.Prometheus.ListenPort)
 		}
 	}
-
 	return nil
 }

@@ -39,6 +39,10 @@ const (
 	FieldOrigin = "origin"
 	// FieldSimulated holds the string denoting the simulated field in the database.
 	FieldSimulated = "simulated"
+	// FieldUUID holds the string denoting the uuid field in the database.
+	FieldUUID = "uuid"
+	// FieldAlertDecisions holds the string denoting the alert_decisions field in the database.
+	FieldAlertDecisions = "alert_decisions"
 	// EdgeOwner holds the string denoting the owner edge name in mutations.
 	EdgeOwner = "owner"
 	// Table holds the table name of the decision in the database.
@@ -69,23 +73,14 @@ var Columns = []string{
 	FieldValue,
 	FieldOrigin,
 	FieldSimulated,
-}
-
-// ForeignKeys holds the SQL foreign-keys that are owned by the "decisions"
-// table and are not defined as standalone fields in the schema.
-var ForeignKeys = []string{
-	"alert_decisions",
+	FieldUUID,
+	FieldAlertDecisions,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
 func ValidColumn(column string) bool {
 	for i := range Columns {
 		if column == Columns[i] {
-			return true
-		}
-	}
-	for i := range ForeignKeys {
-		if column == ForeignKeys[i] {
 			return true
 		}
 	}

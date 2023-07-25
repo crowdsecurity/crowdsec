@@ -5,9 +5,11 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"gotest.tools/v3/assert"
 )
 
 var (
@@ -94,7 +96,7 @@ func TestNewProfile(t *testing.T) {
 			}
 			profile, _ := NewProfile(profilesCfg)
 			fmt.Printf("expected : %+v | result : %+v", test.expectedNbProfile, len(profile))
-			assert.Equal(t, test.expectedNbProfile, len(profile))
+			require.Len(t, profile, test.expectedNbProfile)
 		})
 	}
 }
@@ -104,6 +106,9 @@ func TestEvaluateProfile(t *testing.T) {
 		profileCfg *csconfig.ProfileCfg
 		Alert      *models.Alert
 	}
+
+	exprhelpers.Init(nil)
+
 	tests := []struct {
 		name                  string
 		args                  args
@@ -195,7 +200,7 @@ func TestEvaluateProfile(t *testing.T) {
 				t.Errorf("EvaluateProfile() got1 = %v, want %v", got1, tt.expectedMatchStatus)
 			}
 			if tt.expectedDuration != "" {
-				assert.Equal(t, tt.expectedDuration, *got[0].Duration, "The two durations should be the same")
+				require.Equal(t, tt.expectedDuration, *got[0].Duration, "The two durations should be the same")
 			}
 		})
 	}

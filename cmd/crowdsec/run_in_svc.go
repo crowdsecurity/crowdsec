@@ -4,13 +4,16 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/writer"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 )
 
@@ -19,6 +22,8 @@ func StartRunSvc() error {
 		cConfig *csconfig.Config
 		err     error
 	)
+
+	defer trace.CatchPanic("crowdsec/StartRunSvc")
 
 	// Set a default logger with level=fatal on stderr,
 	// in addition to the one we configure afterwards
@@ -30,19 +35,11 @@ func StartRunSvc() error {
 		},
 	})
 
-	cConfig, err = csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false)
-	if err != nil {
-		return err
-	}
-	if err := LoadConfig(cConfig); err != nil {
+	if cConfig, err = LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false); err != nil {
 		return err
 	}
 
-	log.Infof("Crowdsec %s", cwversion.VersionStr())
-
-	if bincoverTesting != "" {
-		log.Debug("coverage report is enabled")
-	}
+	log.Infof("Crowdsec %s", version.String())
 
 	apiReady := make(chan bool, 1)
 	agentReady := make(chan bool, 1)
@@ -56,7 +53,7 @@ func StartRunSvc() error {
 			dbClient, err = database.NewClient(cConfig.DbConfig)
 
 			if err != nil {
-				log.Fatalf("unable to create database client: %s", err)
+				return fmt.Errorf("unable to create database client: %s", err)
 			}
 		}
 		registerPrometheus(cConfig.Prometheus)

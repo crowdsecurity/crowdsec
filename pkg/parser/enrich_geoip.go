@@ -5,11 +5,11 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-	log "github.com/sirupsen/logrus"
-
 	"github.com/oschwald/geoip2-golang"
 	"github.com/oschwald/maxminddb-golang"
+	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func IpToRange(field string, p *types.Event, ctx interface{}, plog *log.Entry) (map[string]string, error) {

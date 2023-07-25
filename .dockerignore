@@ -1,3 +1,6 @@
 # We include .git in the build context because excluding it would break the
 # "make release" target, which uses git to retrieve the build version and tag.
 #.git
+
+/tests
+/crowdsec-v*

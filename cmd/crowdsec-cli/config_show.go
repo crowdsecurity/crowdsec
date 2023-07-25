@@ -3,12 +3,16 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+	"text/template"
 
 	"github.com/antonmedv/expr"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
 
 func showConfigKey(key string) error {
@@ -16,7 +20,10 @@ func showConfigKey(key string) error {
 		Config *csconfig.Config
 	}
 
-	program, err := expr.Compile(key, expr.Env(Env{}))
+	opts := []expr.Option{}
+	opts = append(opts, exprhelpers.GetExprOptions(map[string]interface{}{})...)
+	opts = append(opts, expr.Env(Env{}))
+	program, err := expr.Compile(key, opts...)
 	if err != nil {
 		return err
 	}
@@ -47,8 +54,134 @@ func showConfigKey(key string) error {
 	return nil
 }
 
+var configShowTemplate = `Global:
+
+{{- if .ConfigPaths }}
+   - Configuration Folder   : {{.ConfigPaths.ConfigDir}}
+   - Configuration Folder   : {{.ConfigPaths.ConfigDir}}
+   - Data Folder            : {{.ConfigPaths.DataDir}}
+   - Hub Folder             : {{.ConfigPaths.HubDir}}
+   - Simulation File        : {{.ConfigPaths.SimulationFilePath}}
+{{- end }}
+
+{{- if .Common }}
+   - Log Folder             : {{.Common.LogDir}}
+   - Log level              : {{.Common.LogLevel}}
+   - Log Media              : {{.Common.LogMedia}}
+{{- end }}
+
+{{- if .Crowdsec }}
+Crowdsec:
+  - Acquisition File        : {{.Crowdsec.AcquisitionFilePath}}
+  - Parsers routines        : {{.Crowdsec.ParserRoutinesCount}}
+{{- if .Crowdsec.AcquisitionDirPath }}
+  - Acquisition Folder      : {{.Crowdsec.AcquisitionDirPath}}
+{{- end }}
+{{- end }}
+
+{{- if .Cscli }}
+cscli:
+  - Output                  : {{.Cscli.Output}}
+  - Hub Branch              : {{.Cscli.HubBranch}}
+  - Hub Folder              : {{.Cscli.HubDir}}
+{{- end }}
+
+{{- if .API }}
+{{- if .API.Client }}
+API Client:
+{{- if  .API.Client.Credentials }}
+  - URL                     : {{.API.Client.Credentials.URL}}
+  - Login                   : {{.API.Client.Credentials.Login}}
+{{- end }}
+  - Credentials File        : {{.API.Client.CredentialsFilePath}}
+{{- end }}
+
+{{- if .API.Server }}
+Local API Server:
+  - Listen URL              : {{.API.Server.ListenURI}}
+  - Profile File            : {{.API.Server.ProfilesPath}}
+
+{{- if .API.Server.TLS }}
+{{- if .API.Server.TLS.CertFilePath }}
+  - Cert File : {{.API.Server.TLS.CertFilePath}}
+{{- end }}
+
+{{- if .API.Server.TLS.KeyFilePath }}
+  - Key File  : {{.API.Server.TLS.KeyFilePath}}
+{{- end }}
+
+{{- if .API.Server.TLS.CACertPath }}
+  - CA Cert   : {{.API.Server.TLS.CACertPath}}
+{{- end }}
+
+{{- if .API.Server.TLS.CRLPath }}
+  - CRL       : {{.API.Server.TLS.CRLPath}}
+{{- end }}
+
+{{- if .API.Server.TLS.CacheExpiration }}
+  - Cache Expiration : {{.API.Server.TLS.CacheExpiration}}
+{{- end }}
+
+{{- if .API.Server.TLS.ClientVerification }}
+  - Client Verification : {{.API.Server.TLS.ClientVerification}}
+{{- end }}
+
+{{- if .API.Server.TLS.AllowedAgentsOU }}
+{{- range .API.Server.TLS.AllowedAgentsOU }}
+  - Allowed Agents OU       : {{.}}
+{{- end }}
+{{- end }}
+
+{{- if .API.Server.TLS.AllowedBouncersOU }}
+{{- range .API.Server.TLS.AllowedBouncersOU }}
+  - Allowed Bouncers OU       : {{.}}
+{{- end }}
+{{- end }}
+{{- end }}
+
+  - Trusted IPs: 
+{{- range .API.Server.TrustedIPs }}
+      - {{.}}
+{{- end }}
+
+{{- if and .API.Server.OnlineClient .API.Server.OnlineClient.Credentials }}
+Central API:
+  - URL                     : {{.API.Server.OnlineClient.Credentials.URL}}
+  - Login                   : {{.API.Server.OnlineClient.Credentials.Login}}
+  - Credentials File        : {{.API.Server.OnlineClient.CredentialsFilePath}}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- if .DbConfig }}
+  - Database:
+      - Type                : {{.DbConfig.Type}}
+{{- if eq .DbConfig.Type "sqlite" }}
+      - Path                : {{.DbConfig.DbPath}}
+{{- else}}
+      - Host                : {{.DbConfig.Host}}
+      - Port                : {{.DbConfig.Port}}
+      - User                : {{.DbConfig.User}}
+      - DB Name             : {{.DbConfig.DbName}}
+{{- end }}
+{{- if .DbConfig.Flush }}
+{{- if .DbConfig.Flush.MaxAge }}
+      - Flush age           : {{.DbConfig.Flush.MaxAge}}
+{{- end }}
+{{- if .DbConfig.Flush.MaxItems }}
+      - Flush size          : {{.DbConfig.Flush.MaxItems}}
+{{- end }}
+{{- end }}
+{{- end }}
+`
+
 func runConfigShow(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
+
+	if err := csConfig.LoadAPIClient(); err != nil {
+		log.Errorf("failed to load API client configuration: %s", err)
+		// don't return, we can still show the configuration
+	}
 
 	key, err := flags.GetString("key")
 	if err != nil {
@@ -61,125 +194,13 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 
 	switch csConfig.Cscli.Output {
 	case "human":
-		fmt.Printf("Global:\n")
-
-		if csConfig.ConfigPaths != nil {
-			fmt.Printf("   - Configuration Folder   : %s\n", csConfig.ConfigPaths.ConfigDir)
-			fmt.Printf("   - Data Folder            : %s\n", csConfig.ConfigPaths.DataDir)
-			fmt.Printf("   - Hub Folder             : %s\n", csConfig.ConfigPaths.HubDir)
-			fmt.Printf("   - Simulation File        : %s\n", csConfig.ConfigPaths.SimulationFilePath)
+		tmp, err := template.New("config").Parse(configShowTemplate)
+		if err != nil {
+			return err
 		}
-
-		if csConfig.Common != nil {
-			fmt.Printf("   - Log Folder             : %s\n", csConfig.Common.LogDir)
-			fmt.Printf("   - Log level              : %s\n", csConfig.Common.LogLevel)
-			fmt.Printf("   - Log Media              : %s\n", csConfig.Common.LogMedia)
-		}
-
-		if csConfig.Crowdsec != nil {
-			fmt.Printf("Crowdsec:\n")
-			fmt.Printf("  - Acquisition File        : %s\n", csConfig.Crowdsec.AcquisitionFilePath)
-			fmt.Printf("  - Parsers routines        : %d\n", csConfig.Crowdsec.ParserRoutinesCount)
-			if csConfig.Crowdsec.AcquisitionDirPath != "" {
-				fmt.Printf("  - Acquisition Folder      : %s\n", csConfig.Crowdsec.AcquisitionDirPath)
-			}
-		}
-
-		if csConfig.Cscli != nil {
-			fmt.Printf("cscli:\n")
-			fmt.Printf("  - Output                  : %s\n", csConfig.Cscli.Output)
-			fmt.Printf("  - Hub Branch              : %s\n", csConfig.Cscli.HubBranch)
-			fmt.Printf("  - Hub Folder              : %s\n", csConfig.Cscli.HubDir)
-		}
-
-		if csConfig.API != nil {
-			if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil {
-				fmt.Printf("API Client:\n")
-				fmt.Printf("  - URL                     : %s\n", csConfig.API.Client.Credentials.URL)
-				fmt.Printf("  - Login                   : %s\n", csConfig.API.Client.Credentials.Login)
-				fmt.Printf("  - Credentials File        : %s\n", csConfig.API.Client.CredentialsFilePath)
-			}
-
-			if csConfig.API.Server != nil {
-				fmt.Printf("Local API Server:\n")
-				fmt.Printf("  - Listen URL              : %s\n", csConfig.API.Server.ListenURI)
-				fmt.Printf("  - Profile File            : %s\n", csConfig.API.Server.ProfilesPath)
-
-				if csConfig.API.Server.TLS != nil {
-					if csConfig.API.Server.TLS.CertFilePath != "" {
-						fmt.Printf("  - Cert File : %s\n", csConfig.API.Server.TLS.CertFilePath)
-					}
-
-					if csConfig.API.Server.TLS.KeyFilePath != "" {
-						fmt.Printf("  - Key File  : %s\n", csConfig.API.Server.TLS.KeyFilePath)
-					}
-
-					if csConfig.API.Server.TLS.CACertPath != "" {
-						fmt.Printf("  - CA Cert   : %s\n", csConfig.API.Server.TLS.CACertPath)
-					}
-
-					if csConfig.API.Server.TLS.CRLPath != "" {
-						fmt.Printf("  - CRL       : %s\n", csConfig.API.Server.TLS.CRLPath)
-					}
-
-					if csConfig.API.Server.TLS.CacheExpiration != nil {
-						fmt.Printf("  - Cache Expiration : %s\n", csConfig.API.Server.TLS.CacheExpiration)
-					}
-
-					if csConfig.API.Server.TLS.ClientVerification != "" {
-						fmt.Printf("  - Client Verification : %s\n", csConfig.API.Server.TLS.ClientVerification)
-					}
-
-					if csConfig.API.Server.TLS.AllowedAgentsOU != nil {
-						for _, ou := range csConfig.API.Server.TLS.AllowedAgentsOU {
-							fmt.Printf("      - Allowed Agents OU       : %s\n", ou)
-						}
-					}
-
-					if csConfig.API.Server.TLS.AllowedBouncersOU != nil {
-						for _, ou := range csConfig.API.Server.TLS.AllowedBouncersOU {
-							fmt.Printf("      - Allowed Bouncers OU       : %s\n", ou)
-						}
-					}
-				}
-
-				fmt.Printf("  - Trusted IPs: \n")
-
-				for _, ip := range csConfig.API.Server.TrustedIPs {
-					fmt.Printf("      - %s\n", ip)
-				}
-
-				if csConfig.API.Server.OnlineClient != nil && csConfig.API.Server.OnlineClient.Credentials != nil {
-					fmt.Printf("Central API:\n")
-					fmt.Printf("  - URL                     : %s\n", csConfig.API.Server.OnlineClient.Credentials.URL)
-					fmt.Printf("  - Login                   : %s\n", csConfig.API.Server.OnlineClient.Credentials.Login)
-					fmt.Printf("  - Credentials File        : %s\n", csConfig.API.Server.OnlineClient.CredentialsFilePath)
-				}
-			}
-		}
-
-		if csConfig.DbConfig != nil {
-			fmt.Printf("  - Database:\n")
-			fmt.Printf("      - Type                : %s\n", csConfig.DbConfig.Type)
-
-			switch csConfig.DbConfig.Type {
-			case "sqlite":
-				fmt.Printf("      - Path                : %s\n", csConfig.DbConfig.DbPath)
-			default:
-				fmt.Printf("      - Host                : %s\n", csConfig.DbConfig.Host)
-				fmt.Printf("      - Port                : %d\n", csConfig.DbConfig.Port)
-				fmt.Printf("      - User                : %s\n", csConfig.DbConfig.User)
-				fmt.Printf("      - DB Name             : %s\n", csConfig.DbConfig.DbName)
-			}
-
-			if csConfig.DbConfig.Flush != nil {
-				if *csConfig.DbConfig.Flush.MaxAge != "" {
-					fmt.Printf("      - Flush age           : %s\n", *csConfig.DbConfig.Flush.MaxAge)
-				}
-				if *csConfig.DbConfig.Flush.MaxItems != 0 {
-					fmt.Printf("      - Flush size          : %d\n", *csConfig.DbConfig.Flush.MaxItems)
-				}
-			}
+		err = tmp.Execute(os.Stdout, csConfig)
+		if err != nil {
+			return err
 		}
 	case "json":
 		data, err := json.MarshalIndent(csConfig, "", "  ")
@@ -198,7 +219,6 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 	}
 	return nil
 }
-
 
 func NewConfigShowCmd() *cobra.Command {
 	cmdConfigShow := &cobra.Command{

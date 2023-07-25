@@ -11,9 +11,9 @@ import (
 	"testing"
 
 	log "github.com/sirupsen/logrus"
-
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
 )
 
 const validApiKey = "my-api-key"
@@ -202,12 +202,12 @@ func TestFireOk(t *testing.T) {
 	assert.Equal(t, len(data.Items), 3)
 	assert.Equal(t, data.Items[0].Ip, "1.2.3.4")
 	//page 1 is the default
-	data, err = cticlient.Fire(FireParams{Page: types.IntPtr(1)})
+	data, err = cticlient.Fire(FireParams{Page: ptr.Of(1)})
 	assert.Equal(t, err, nil)
 	assert.Equal(t, len(data.Items), 3)
 	assert.Equal(t, data.Items[0].Ip, "1.2.3.4")
 	//page 2
-	data, err = cticlient.Fire(FireParams{Page: types.IntPtr(2)})
+	data, err = cticlient.Fire(FireParams{Page: ptr.Of(2)})
 	assert.Equal(t, err, nil)
 	assert.Equal(t, len(data.Items), 3)
 	assert.Equal(t, data.Items[0].Ip, "4.2.3.4")
@@ -250,7 +250,7 @@ func TestSmokeInfoValidIP(t *testing.T) {
 	}
 
 	assert.Equal(t, "1.1.1.1", resp.Ip)
-	assert.Equal(t, types.StrPtr("1.1.1.0/24"), resp.IpRange)
+	assert.Equal(t, ptr.Of("1.1.1.0/24"), resp.IpRange)
 }
 
 func TestSmokeUnknownIP(t *testing.T) {

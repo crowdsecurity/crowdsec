@@ -12,13 +12,12 @@ import (
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/enescakir/emoji"
 	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/machineid"
@@ -67,7 +66,7 @@ func generateIDPrefix() (string, error) {
 	if err == nil {
 		return bId.String(), nil
 	}
-	return "", errors.Wrap(err, "generating machine id")
+	return "", fmt.Errorf("generating machine id: %w", err)
 }
 
 // Generate a unique identifier, composed by a prefix and a random suffix.
@@ -85,22 +84,21 @@ func generateID(prefix string) (string, error) {
 	return prefix + suffix, nil
 }
 
-func displayLastHeartBeat(m *ent.Machine, fancy bool) string {
-	var hbDisplay string
-
-	if m.LastHeartbeat != nil {
-		lastHeartBeat := time.Now().UTC().Sub(*m.LastHeartbeat)
-		hbDisplay = lastHeartBeat.Truncate(time.Second).String()
-		if fancy && lastHeartBeat > 2*time.Minute {
-			hbDisplay = fmt.Sprintf("%s %s", emoji.Warning.String(), lastHeartBeat.Truncate(time.Second).String())
-		}
-	} else {
-		hbDisplay = "-"
-		if fancy {
-			hbDisplay = emoji.Warning.String() + " -"
-		}
+// getLastHeartbeat returns the last heartbeat timestamp of a machine
+// and a boolean indicating if the machine is considered active or not.
+func getLastHeartbeat(m *ent.Machine) (string, bool) {
+	if m.LastHeartbeat == nil {
+		return "-", false
 	}
-	return hbDisplay
+
+	elapsed := time.Now().UTC().Sub(*m.LastHeartbeat)
+
+	hb := elapsed.Truncate(time.Second).String()
+	if elapsed > 2*time.Minute {
+		return hb, false
+	}
+
+	return hb, true
 }
 
 func getAgents(out io.Writer, dbClient *database.Client) error {
@@ -114,14 +112,14 @@ func getAgents(out io.Writer, dbClient *database.Client) error {
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
 		if err := enc.Encode(machines); err != nil {
-			log.Fatalf("failed to unmarshal")
+			return fmt.Errorf("failed to marshal")
 		}
 		return nil
 	} else if csConfig.Cscli.Output == "raw" {
 		csvwriter := csv.NewWriter(out)
 		err := csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version", "auth_type", "last_heartbeat"})
 		if err != nil {
-			log.Fatalf("failed to write header: %s", err)
+			return fmt.Errorf("failed to write header: %s", err)
 		}
 		for _, m := range machines {
 			var validated string
@@ -130,9 +128,10 @@ func getAgents(out io.Writer, dbClient *database.Client) error {
 			} else {
 				validated = "false"
 			}
-			err := csvwriter.Write([]string{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, displayLastHeartBeat(m, false)})
+			hb, _ := getLastHeartbeat(m)
+			err := csvwriter.Write([]string{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, hb})
 			if err != nil {
-				log.Fatalf("failed to write raw output : %s", err)
+				return fmt.Errorf("failed to write raw output: %w", err)
 			}
 		}
 		csvwriter.Flush()
@@ -150,18 +149,22 @@ func NewMachinesListCmd() *cobra.Command {
 		Example:           `cscli machines list`,
 		Args:              cobra.MaximumNArgs(1),
 		DisableAutoGenTag: true,
-		PreRun: func(cmd *cobra.Command, args []string) {
+		PreRunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			dbClient, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {
-				log.Fatalf("unable to create new database client: %s", err)
+				return fmt.Errorf("unable to create new database client: %s", err)
 			}
+
+			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			err := getAgents(color.Output, dbClient)
 			if err != nil {
-				log.Fatalf("unable to list machines: %s", err)
+				return fmt.Errorf("unable to list machines: %s", err)
 			}
+
+			return nil
 		},
 	}
 
@@ -179,19 +182,21 @@ cscli machines add --auto
 cscli machines add MyTestMachine --auto
 cscli machines add MyTestMachine --password MyPassword
 `,
-		PreRun: func(cmd *cobra.Command, args []string) {
+		PreRunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			dbClient, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {
-				log.Fatalf("unable to create new database client: %s", err)
+				return fmt.Errorf("unable to create new database client: %s", err)
 			}
+
+			return nil
 		},
 		RunE: runMachinesAdd,
 	}
 
 	flags := cmdMachinesAdd.Flags()
 	flags.StringP("password", "p", "", "machine password to login to the API")
-	flags.StringP("file", "f", "", "output file destination (defaults to "+csconfig.DefaultConfigPath("local_api_credentials.yaml"))
+	flags.StringP("file", "f", "", "output file destination (defaults to "+csconfig.DefaultConfigPath("local_api_credentials.yaml")+")")
 	flags.StringP("url", "u", "", "URL of the local API")
 	flags.BoolP("interactive", "i", false, "interfactive mode to enter the password")
 	flags.BoolP("auto", "a", false, "automatically generate password (and username if not provided)")
@@ -246,7 +251,7 @@ func runMachinesAdd(cmd *cobra.Command, args []string) error {
 		}
 		machineID, err = generateID("")
 		if err != nil {
-			log.Fatalf("unable to generate machine id : %s", err)
+			return fmt.Errorf("unable to generate machine id: %s", err)
 		}
 	} else {
 		machineID = args[0]
@@ -275,7 +280,7 @@ func runMachinesAdd(cmd *cobra.Command, args []string) error {
 	password := strfmt.Password(machinePassword)
 	_, err = dbClient.CreateMachine(&machineID, &password, "", true, forceAdd, types.PasswordAuthType)
 	if err != nil {
-		log.Fatalf("unable to create machine: %s", err)
+		return fmt.Errorf("unable to create machine: %s", err)
 	}
 	log.Infof("Machine '%s' successfully added to the local API", machineID)
 
@@ -285,7 +290,7 @@ func runMachinesAdd(cmd *cobra.Command, args []string) error {
 		} else if csConfig.API.Server != nil && csConfig.API.Server.ListenURI != "" {
 			apiURL = "http://" + csConfig.API.Server.ListenURI
 		} else {
-			log.Fatalf("unable to dump an api URL. Please provide it in your configuration or with the -u parameter")
+			return fmt.Errorf("unable to dump an api URL. Please provide it in your configuration or with the -u parameter")
 		}
 	}
 	apiCfg := csconfig.ApiCredentialsCfg{
@@ -295,12 +300,12 @@ func runMachinesAdd(cmd *cobra.Command, args []string) error {
 	}
 	apiConfigDump, err := yaml.Marshal(apiCfg)
 	if err != nil {
-		log.Fatalf("unable to marshal api credentials: %s", err)
+		return fmt.Errorf("unable to marshal api credentials: %s", err)
 	}
 	if dumpFile != "" && dumpFile != "-" {
 		err = os.WriteFile(dumpFile, apiConfigDump, 0644)
 		if err != nil {
-			log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
+			return fmt.Errorf("write api credentials in '%s' failed: %s", dumpFile, err)
 		}
 		log.Printf("API credentials dumped to '%s'", dumpFile)
 	} else {
@@ -318,12 +323,13 @@ func NewMachinesDeleteCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"remove"},
 		DisableAutoGenTag: true,
-		PreRun: func(cmd *cobra.Command, args []string) {
+		PreRunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			dbClient, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {
-				log.Fatalf("unable to create new database client: %s", err)
+				return fmt.Errorf("unable to create new database client: %s", err)
 			}
+			return nil
 		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			var err error
@@ -338,7 +344,7 @@ func NewMachinesDeleteCmd() *cobra.Command {
 			}
 			ret := make([]string, 0)
 			for _, machine := range machines {
-				if strings.Contains(machine.MachineId, toComplete) && !inSlice(machine.MachineId, args) {
+				if strings.Contains(machine.MachineId, toComplete) && !slices.Contains(args, machine.MachineId) {
 					ret = append(ret, machine.MachineId)
 				}
 			}
@@ -434,19 +440,23 @@ func NewMachinesValidateCmd() *cobra.Command {
 		Example:           `cscli machines validate "machine_name"`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		PreRun: func(cmd *cobra.Command, args []string) {
+		PreRunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			dbClient, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {
-				log.Fatalf("unable to create new database client: %s", err)
+				return fmt.Errorf("unable to create new database client: %s", err)
 			}
+
+			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			machineID := args[0]
 			if err := dbClient.ValidateMachine(machineID); err != nil {
-				log.Fatalf("unable to validate machine '%s': %s", machineID, err)
+				return fmt.Errorf("unable to validate machine '%s': %s", machineID, err)
 			}
 			log.Infof("machine '%s' validated successfully", machineID)
+
+			return nil
 		},
 	}
 
@@ -463,13 +473,15 @@ Note: This command requires database direct access, so is intended to be run on 
 		Example:           `cscli machines [action]`,
 		DisableAutoGenTag: true,
 		Aliases:           []string{"machine"},
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
 				if err != nil {
 					log.Errorf("local api : %s", err)
 				}
-				log.Fatal("Local API is disabled, please run this command on the local API machine")
+				return fmt.Errorf("local API is disabled, please run this command on the local API machine")
 			}
+
+			return nil
 		},
 	}
 

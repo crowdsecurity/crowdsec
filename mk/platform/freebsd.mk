@@ -1,0 +1,3 @@
+# FreeBSD specific
+
+MAKE=gmake

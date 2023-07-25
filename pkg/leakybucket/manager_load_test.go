@@ -14,7 +14,7 @@ type cfgTest struct {
 }
 
 func runTest(tests []cfgTest) error {
-	var tomb *tomb.Tomb = &tomb.Tomb{}
+	var tomb = &tomb.Tomb{}
 	for idx, cfg := range tests {
 		err := LoadBucket(&cfg.cfg, tomb)
 		if cfg.loadable && err != nil {
@@ -113,6 +113,28 @@ func TestCounterBucketsConfig(t *testing.T) {
 		{BucketFactory{Name: "test", Description: "test1", Type: "counter", Capacity: -1, Duration: "abc", Filter: "true"}, false, false},
 		//capacity must be -1
 		{BucketFactory{Name: "test", Description: "test1", Type: "counter", Capacity: 0, Duration: "5s", Filter: "true"}, false, false},
+	}
+	if err := runTest(CfgTests); err != nil {
+		t.Fatalf("%s", err)
+	}
+
+}
+
+func TestBayesianBucketsConfig(t *testing.T) {
+	var CfgTests = []cfgTest{
+
+		//basic valid counter
+		{BucketFactory{Name: "test", Description: "test1", Type: "bayesian", Capacity: -1, Filter: "true", BayesianPrior: 0.5, BayesianThreshold: 0.5, BayesianConditions: []RawBayesianCondition{{ConditionalFilterName: "true", ProbGivenEvil: 0.5, ProbGivenBenign: 0.5}}}, true, true},
+		//bad capacity
+		{BucketFactory{Name: "test", Description: "test1", Type: "bayesian", Capacity: 1, Filter: "true", BayesianPrior: 0.5, BayesianThreshold: 0.5, BayesianConditions: []RawBayesianCondition{{ConditionalFilterName: "true", ProbGivenEvil: 0.5, ProbGivenBenign: 0.5}}}, false, false},
+		//missing prior
+		{BucketFactory{Name: "test", Description: "test1", Type: "bayesian", Capacity: -1, Filter: "true", BayesianThreshold: 0.5, BayesianConditions: []RawBayesianCondition{{ConditionalFilterName: "true", ProbGivenEvil: 0.5, ProbGivenBenign: 0.5}}}, false, false},
+		//missing threshold
+		{BucketFactory{Name: "test", Description: "test1", Type: "bayesian", Capacity: -1, Filter: "true", BayesianPrior: 0.5, BayesianConditions: []RawBayesianCondition{{ConditionalFilterName: "true", ProbGivenEvil: 0.5, ProbGivenBenign: 0.5}}}, false, false},
+		//bad prior
+		{BucketFactory{Name: "test", Description: "test1", Type: "bayesian", Capacity: -1, Filter: "true", BayesianPrior: 1.5, BayesianThreshold: 0.5, BayesianConditions: []RawBayesianCondition{{ConditionalFilterName: "true", ProbGivenEvil: 0.5, ProbGivenBenign: 0.5}}}, false, false},
+		//bad threshold
+		{BucketFactory{Name: "test", Description: "test1", Type: "bayesian", Capacity: -1, Filter: "true", BayesianPrior: 0.5, BayesianThreshold: 1.5, BayesianConditions: []RawBayesianCondition{{ConditionalFilterName: "true", ProbGivenEvil: 0.5, ProbGivenBenign: 0.5}}}, false, false},
 	}
 	if err := runTest(CfgTests); err != nil {
 		t.Fatalf("%s", err)

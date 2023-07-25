@@ -199,7 +199,7 @@ func lapiStatsTable(out io.Writer, stats map[string]map[string]int) {
 	}
 
 	if numRows > 0 {
-		renderTableTitle(out, "\nLocal Api Metrics:")
+		renderTableTitle(out, "\nLocal API Metrics:")
 		t.Render()
 	}
 }
@@ -213,7 +213,7 @@ func lapiMachineStatsTable(out io.Writer, stats map[string]map[string]map[string
 	numRows := lapiMetricsToTable(t, stats)
 
 	if numRows > 0 {
-		renderTableTitle(out, "\nLocal Api Machines Metrics:")
+		renderTableTitle(out, "\nLocal API Machines Metrics:")
 		t.Render()
 	}
 }
@@ -227,7 +227,7 @@ func lapiBouncerStatsTable(out io.Writer, stats map[string]map[string]map[string
 	numRows := lapiMetricsToTable(t, stats)
 
 	if numRows > 0 {
-		renderTableTitle(out, "\nLocal Api Bouncers Metrics:")
+		renderTableTitle(out, "\nLocal API Bouncers Metrics:")
 		t.Render()
 	}
 }
@@ -253,7 +253,7 @@ func lapiDecisionStatsTable(out io.Writer, stats map[string]struct {
 	}
 
 	if numRows > 0 {
-		renderTableTitle(out, "\nLocal Api Bouncers Decisions:")
+		renderTableTitle(out, "\nLocal API Bouncers Decisions:")
 		t.Render()
 	}
 }
@@ -280,7 +280,7 @@ func decisionStatsTable(out io.Writer, stats map[string]map[string]map[string]in
 	}
 
 	if numRows > 0 {
-		renderTableTitle(out, "\nLocal Api Decisions:")
+		renderTableTitle(out, "\nLocal API Decisions:")
 		t.Render()
 	}
 }
@@ -301,7 +301,7 @@ func alertStatsTable(out io.Writer, stats map[string]int) {
 	}
 
 	if numRows > 0 {
-		renderTableTitle(out, "\nLocal Api Alerts:")
+		renderTableTitle(out, "\nLocal API Alerts:")
 		t.Render()
 	}
 }

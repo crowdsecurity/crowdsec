@@ -12,8 +12,6 @@ Patch0:         crowdsec.unit.patch
 Patch1:         user.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
-BuildRequires:  git
-BuildRequires:  make
 BuildRequires:  systemd
 Requires: crontabs
 %{?fc33:BuildRequires: systemd-rpm-macros}
@@ -27,7 +25,6 @@ Requires: crontabs
 
 %define version_number  %(echo $VERSION)
 %define releasever  %(echo $RELEASEVER)
-%global local_version v%{version_number}-%{releasever}-rpm
 %global name crowdsec
 %global __mangle_shebangs_exclude_from /usr/bin/env
 
@@ -38,7 +35,6 @@ Requires: crontabs
 %patch1
 
 %build
-BUILD_VERSION=%{local_version} make build
 sed -i "s#/usr/local/lib/crowdsec/plugins/#%{_libdir}/%{name}/plugins/#g" config/config.yaml
 
 %install
@@ -71,11 +67,14 @@ install -m 551 plugins/notifications/slack/notification-slack %{buildroot}%{_lib
 install -m 551 plugins/notifications/http/notification-http %{buildroot}%{_libdir}/%{name}/plugins/
 install -m 551 plugins/notifications/splunk/notification-splunk %{buildroot}%{_libdir}/%{name}/plugins/
 install -m 551 plugins/notifications/email/notification-email %{buildroot}%{_libdir}/%{name}/plugins/
+install -m 551 plugins/notifications/sentinel/notification-sentinel %{buildroot}%{_libdir}/%{name}/plugins/
 
 install -m 600 plugins/notifications/slack/slack.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 install -m 600 plugins/notifications/http/http.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 install -m 600 plugins/notifications/splunk/splunk.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 install -m 600 plugins/notifications/email/email.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
+install -m 600 plugins/notifications/sentinel/sentinel.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
+
 
 %clean
 rm -rf %{buildroot}
@@ -89,6 +88,7 @@ rm -rf %{buildroot}
 %{_libdir}/%{name}/plugins/notification-http
 %{_libdir}/%{name}/plugins/notification-splunk
 %{_libdir}/%{name}/plugins/notification-email
+%{_libdir}/%{name}/plugins/notification-sentinel
 %{_sysconfdir}/%{name}/patterns/linux-syslog
 %{_sysconfdir}/%{name}/patterns/ruby
 %{_sysconfdir}/%{name}/patterns/nginx

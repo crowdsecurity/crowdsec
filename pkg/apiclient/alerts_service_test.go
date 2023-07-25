@@ -8,11 +8,13 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
-	"github.com/crowdsecurity/crowdsec/pkg/models"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 func TestAlertsListAsMachine(t *testing.T) {
@@ -31,7 +33,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
@@ -124,7 +126,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 			Capacity:  &tcapacity,
 			CreatedAt: "2020-11-28T10:20:47+01:00",
 			Decisions: []*models.Decision{
-				&models.Decision{
+				{
 					Duration: &tduration,
 					ID:       1,
 					Origin:   &torigin,
@@ -137,7 +139,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 				},
 			},
 			Events: []*models.Event{
-				&models.Event{
+				{
 					Meta: models.Meta{
 						&models.MetaItems0{
 							Key:   "target_user",
@@ -149,8 +151,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 						},
 					},
 					Timestamp: &ttimestamp,
-				},
-				&models.Event{
+				}, {
 					Meta: models.Meta{
 						&models.MetaItems0{
 							Key:   "target_user",
@@ -234,7 +235,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
@@ -323,7 +324,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 		Capacity:  &tcapacity,
 		CreatedAt: "2020-11-28T10:20:47+01:00",
 		Decisions: []*models.Decision{
-			&models.Decision{
+			{
 				Duration: &tduration,
 				ID:       1,
 				Origin:   &torigin,
@@ -336,7 +337,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 			},
 		},
 		Events: []*models.Event{
-			&models.Event{
+			{
 				Meta: models.Meta{
 					&models.MetaItems0{
 						Key:   "target_user",
@@ -348,8 +349,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 					},
 				},
 				Timestamp: &ttimestamp,
-			},
-			&models.Event{
+			}, {
 				Meta: models.Meta{
 					&models.MetaItems0{
 						Key:   "target_user",
@@ -425,7 +425,7 @@ func TestAlertsCreateAsMachine(t *testing.T) {
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
@@ -469,7 +469,7 @@ func TestAlertsDeleteAsMachine(t *testing.T) {
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
-		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})

@@ -11,11 +11,11 @@ import (
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type ScenarioAssert struct {
@@ -148,21 +148,21 @@ func (s *ScenarioAssert) RunExpression(expression string) (interface{}, error) {
 
 	env := map[string]interface{}{"results": *s.TestData}
 
-	if runtimeFilter, err = expr.Compile(expression, expr.Env(exprhelpers.GetExprEnv(env))); err != nil {
-		return output, err
+	if runtimeFilter, err = expr.Compile(expression, exprhelpers.GetExprOptions(env)...); err != nil {
+		return nil, err
 	}
-	// if debugFilter, err = exprhelpers.NewDebugger(assert, expr.Env(exprhelpers.GetExprEnv(env))); err != nil {
+	// if debugFilter, err = exprhelpers.NewDebugger(assert, expr.Env(env)); err != nil {
 	// 	log.Warningf("Failed building debugher for %s : %s", assert, err)
 	// }
 
 	//dump opcode in trace level
 	log.Tracef("%s", runtimeFilter.Disassemble())
 
-	output, err = expr.Run(runtimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"results": *s.TestData}))
+	output, err = expr.Run(runtimeFilter, map[string]interface{}{"results": *s.TestData})
 	if err != nil {
 		log.Warningf("running : %s", expression)
 		log.Warningf("runtime error : %s", err)
-		return output, errors.Wrapf(err, "while running expression %s", expression)
+		return nil, fmt.Errorf("while running expression %s: %w", expression, err)
 	}
 	return output, nil
 }

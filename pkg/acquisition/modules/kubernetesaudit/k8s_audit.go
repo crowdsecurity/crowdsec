@@ -8,15 +8,16 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 	"k8s.io/apiserver/pkg/apis/audit"
+
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type KubernetesAuditConfiguration struct {
@@ -49,6 +50,10 @@ var requestCount = prometheus.NewCounterVec(
 	},
 	[]string{"source"})
 
+func (ka *KubernetesAuditSource) GetUuid() string {
+	return ka.config.UniqueId
+}
+
 func (ka *KubernetesAuditSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{eventCount, requestCount}
 }
@@ -61,7 +66,7 @@ func (ka *KubernetesAuditSource) UnmarshalConfig(yamlConfig []byte) error {
 	k8sConfig := KubernetesAuditConfiguration{}
 	err := yaml.UnmarshalStrict(yamlConfig, &k8sConfig)
 	if err != nil {
-		return errors.Wrap(err, "Cannot parse k8s-audit configuration")
+		return fmt.Errorf("cannot parse k8s-audit configuration: %w", err)
 	}
 
 	ka.config = k8sConfig
@@ -91,6 +96,11 @@ func (ka *KubernetesAuditSource) UnmarshalConfig(yamlConfig []byte) error {
 func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry) error {
 	ka.logger = logger
 
+	err := ka.UnmarshalConfig(config)
+	if err != nil {
+		return err
+	}
+
 	ka.logger.Tracef("K8SAudit configuration: %+v", ka.config)
 
 	ka.addr = fmt.Sprintf("%s:%d", ka.config.ListenAddr, ka.config.ListenPort)
@@ -106,7 +116,7 @@ func (ka *KubernetesAuditSource) Configure(config []byte, logger *log.Entry) err
 	return nil
 }
 
-func (ka *KubernetesAuditSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
+func (ka *KubernetesAuditSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	return fmt.Errorf("k8s-audit datasource does not support command-line acquisition")
 }
 
@@ -125,12 +135,12 @@ func (ka *KubernetesAuditSource) OneShotAcquisition(out chan types.Event, t *tom
 func (ka *KubernetesAuditSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	ka.outChan = out
 	t.Go(func() error {
-		defer types.CatchPanic("crowdsec/acquis/k8s-audit/live")
+		defer trace.CatchPanic("crowdsec/acquis/k8s-audit/live")
 		ka.logger.Infof("Starting k8s-audit server on %s:%d%s", ka.config.ListenAddr, ka.config.ListenPort, ka.config.WebhookPath)
 		t.Go(func() error {
 			err := ka.server.ListenAndServe()
 			if err != nil && err != http.ErrServerClosed {
-				return errors.Wrap(err, "k8s-audit server failed")
+				return fmt.Errorf("k8s-audit server failed: %w", err)
 			}
 			return nil
 		})
@@ -194,7 +204,7 @@ func (ka *KubernetesAuditSource) webhookHandler(w http.ResponseWriter, r *http.R
 			Line:       l,
 			Process:    true,
 			Type:       types.LOG,
-			ExpectMode: leakybucket.LIVE,
+			ExpectMode: types.LIVE,
 		}
 	}
 }

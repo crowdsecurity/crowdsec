@@ -4,7 +4,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-
 func NewConfigCmd() *cobra.Command {
 	cmdConfig := &cobra.Command{
 		Use:               "config [command]",
@@ -14,6 +13,7 @@ func NewConfigCmd() *cobra.Command {
 	}
 
 	cmdConfig.AddCommand(NewConfigShowCmd())
+	cmdConfig.AddCommand(NewConfigShowYAMLCmd())
 	cmdConfig.AddCommand(NewConfigBackupCmd())
 	cmdConfig.AddCommand(NewConfigRestoreCmd())
 	cmdConfig.AddCommand(NewConfigFeatureFlagsCmd())

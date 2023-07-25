@@ -13,9 +13,10 @@ import (
 	tomb "gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/cstest"
+
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -58,9 +59,10 @@ func (f *MockSource) GetMetrics() []prometheus.Collector                      { 
 func (f *MockSource) GetAggregMetrics() []prometheus.Collector                { return nil }
 func (f *MockSource) Dump() interface{}                                       { return f }
 func (f *MockSource) GetName() string                                         { return "mock" }
-func (f *MockSource) ConfigureByDSN(string, map[string]string, *log.Entry) error {
+func (f *MockSource) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
 	return fmt.Errorf("not supported")
 }
+func (f *MockSource) GetUuid() string { return "" }
 
 // copy the mocksource, but this one can't run
 type MockSourceCantRun struct {
@@ -165,7 +167,7 @@ log_level: debug
 source: mock_cant_run
 wowo: ajsajasjas
 `,
-			ExpectedError: "datasource mock_cant_run cannot be run: can't run bro",
+			ExpectedError: "datasource 'mock_cant_run' is not available: can't run bro",
 		},
 	}
 
@@ -326,9 +328,10 @@ func (f *MockCat) CanRun() error                            { return nil }
 func (f *MockCat) GetMetrics() []prometheus.Collector       { return nil }
 func (f *MockCat) GetAggregMetrics() []prometheus.Collector { return nil }
 func (f *MockCat) Dump() interface{}                        { return f }
-func (f *MockCat) ConfigureByDSN(string, map[string]string, *log.Entry) error {
+func (f *MockCat) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
 	return fmt.Errorf("not supported")
 }
+func (f *MockCat) GetUuid() string { return "" }
 
 //----
 
@@ -367,9 +370,10 @@ func (f *MockTail) CanRun() error                            { return nil }
 func (f *MockTail) GetMetrics() []prometheus.Collector       { return nil }
 func (f *MockTail) GetAggregMetrics() []prometheus.Collector { return nil }
 func (f *MockTail) Dump() interface{}                        { return f }
-func (f *MockTail) ConfigureByDSN(string, map[string]string, *log.Entry) error {
+func (f *MockTail) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
 	return fmt.Errorf("not supported")
 }
+func (f *MockTail) GetUuid() string { return "" }
 
 //func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
 
@@ -490,13 +494,14 @@ func (f *MockSourceByDSN) GetMetrics() []prometheus.Collector                   
 func (f *MockSourceByDSN) GetAggregMetrics() []prometheus.Collector                { return nil }
 func (f *MockSourceByDSN) Dump() interface{}                                       { return f }
 func (f *MockSourceByDSN) GetName() string                                         { return "mockdsn" }
-func (f *MockSourceByDSN) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
+func (f *MockSourceByDSN) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	dsn = strings.TrimPrefix(dsn, "mockdsn://")
 	if dsn != "test_expect" {
 		return fmt.Errorf("unexpected value")
 	}
 	return nil
 }
+func (f *MockSourceByDSN) GetUuid() string { return "" }
 
 func TestConfigureByDSN(t *testing.T) {
 	tests := []struct {
@@ -529,7 +534,7 @@ func TestConfigureByDSN(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.dsn, func(t *testing.T) {
-			srcs, err := LoadAcquisitionFromDSN(tc.dsn, map[string]string{"type": "test_label"})
+			srcs, err := LoadAcquisitionFromDSN(tc.dsn, map[string]string{"type": "test_label"}, "")
 			cstest.RequireErrorContains(t, err, tc.ExpectedError)
 
 			assert.Len(t, srcs, tc.ExpectedResLen)

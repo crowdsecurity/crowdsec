@@ -6,24 +6,22 @@ import (
 	"sync/atomic"
 	"time"
 
-	//"log"
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+
 	"github.com/crowdsecurity/crowdsec/pkg/time/rate"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/mohae/deepcopy"
-	"gopkg.in/tomb.v2"
-
-	//rate "time/rate"
-
 	"github.com/davecgh/go-spew/spew"
+	"github.com/mohae/deepcopy"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	//"golang.org/x/time/rate"
+	"gopkg.in/tomb.v2"
 )
 
-const (
-	LIVE = iota
-	TIMEMACHINE
-)
+// those constants are now defined in types/constants
+// const (
+// 	LIVE = iota
+// 	TIMEMACHINE
+// )
 
 // Leaky represents one instance of a bucket
 type Leaky struct {
@@ -72,6 +70,7 @@ type Leaky struct {
 	wgPour              *sync.WaitGroup
 	wgDumpState         *sync.WaitGroup
 	mutex               *sync.Mutex //used only for TIMEMACHINE mode to allow garbage collection without races
+	orderEvent          bool
 }
 
 var BucketsPour = prometheus.NewCounterVec(
@@ -171,7 +170,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		Pour:            Pour,
 		Reprocess:       bucketFactory.Reprocess,
 		Profiling:       bucketFactory.Profiling,
-		Mode:            LIVE,
+		Mode:            types.LIVE,
 		scopeType:       bucketFactory.ScopeType,
 		scenarioVersion: bucketFactory.ScenarioVersion,
 		hash:            bucketFactory.hash,
@@ -180,6 +179,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		wgPour:          bucketFactory.wgPour,
 		wgDumpState:     bucketFactory.wgDumpState,
 		mutex:           &sync.Mutex{},
+		orderEvent:      bucketFactory.orderEvent,
 	}
 	if l.BucketConfig.Capacity > 0 && l.BucketConfig.leakspeed != time.Duration(0) {
 		l.Duration = time.Duration(l.BucketConfig.Capacity+1) * l.BucketConfig.leakspeed
@@ -193,6 +193,10 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		l.conditionalOverflow = true
 		l.Duration = l.BucketConfig.leakspeed
 	}
+
+	if l.BucketConfig.Type == "bayesian" {
+		l.Duration = l.BucketConfig.leakspeed
+	}
 	return l
 }
 
@@ -201,12 +205,12 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 func LeakRoutine(leaky *Leaky) error {
 
 	var (
-		durationTickerChan <-chan time.Time = make(<-chan time.Time)
+		durationTickerChan = make(<-chan time.Time)
 		durationTicker     *time.Ticker
-		firstEvent         bool = true
+		firstEvent         = true
 	)
 
-	defer types.CatchPanic(fmt.Sprintf("crowdsec/LeakRoutine/%s", leaky.Name))
+	defer trace.CatchPanic(fmt.Sprintf("crowdsec/LeakRoutine/%s", leaky.Name))
 
 	BucketsCurrentCount.With(prometheus.Labels{"name": leaky.Name}).Inc()
 	defer BucketsCurrentCount.With(prometheus.Labels{"name": leaky.Name}).Dec()
@@ -243,6 +247,9 @@ func LeakRoutine(leaky *Leaky) error {
 				msg = processor.OnBucketPour(leaky.BucketConfig)(*msg, leaky)
 				// if &msg == nil we stop processing
 				if msg == nil {
+					if leaky.orderEvent {
+						orderEvent[leaky.Mapkey].Done()
+					}
 					goto End
 				}
 			}
@@ -256,6 +263,9 @@ func LeakRoutine(leaky *Leaky) error {
 			for _, processor := range processors {
 				msg = processor.AfterBucketPour(leaky.BucketConfig)(*msg, leaky)
 				if msg == nil {
+					if leaky.orderEvent {
+						orderEvent[leaky.Mapkey].Done()
+					}
 					goto End
 				}
 			}
@@ -275,7 +285,10 @@ func LeakRoutine(leaky *Leaky) error {
 				}
 			}
 			firstEvent = false
-		/*we overflowed*/
+			/*we overflowed*/
+			if leaky.orderEvent {
+				orderEvent[leaky.Mapkey].Done()
+			}
 		case ofw := <-leaky.Out:
 			leaky.overflow(ofw)
 			return nil

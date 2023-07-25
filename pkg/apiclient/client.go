@@ -11,7 +11,6 @@ import (
 	"net/url"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/pkg/errors"
 )
 
 var (
@@ -27,15 +26,21 @@ type ApiClient struct {
 	common service
 	/*config stuff*/
 	BaseURL   *url.URL
+	PapiURL   *url.URL
 	URLPrefix string
 	UserAgent string
 	/*exposed Services*/
-	Decisions *DecisionsService
-	Alerts    *AlertsService
-	Auth      *AuthService
-	Metrics   *MetricsService
-	Signal    *SignalService
-	HeartBeat *HeartBeatService
+	Decisions      *DecisionsService
+	DecisionDelete *DecisionDeleteService
+	Alerts         *AlertsService
+	Auth           *AuthService
+	Metrics        *MetricsService
+	Signal         *SignalService
+	HeartBeat      *HeartBeatService
+}
+
+func (a *ApiClient) GetClient() *http.Client {
+	return a.client
 }
 
 type service struct {
@@ -57,14 +62,17 @@ func NewClient(config *Config) (*ApiClient, error) {
 	if Cert != nil {
 		tlsconfig.Certificates = []tls.Certificate{*Cert}
 	}
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tlsconfig
-	c := &ApiClient{client: t.Client(), BaseURL: config.URL, UserAgent: config.UserAgent, URLPrefix: config.VersionPrefix}
+	if ht, ok := http.DefaultTransport.(*http.Transport); ok {
+		ht.TLSClientConfig = &tlsconfig
+	}
+	c := &ApiClient{client: t.Client(), BaseURL: config.URL, UserAgent: config.UserAgent, URLPrefix: config.VersionPrefix, PapiURL: config.PapiURL}
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)
 	c.Alerts = (*AlertsService)(&c.common)
 	c.Auth = (*AuthService)(&c.common)
 	c.Metrics = (*MetricsService)(&c.common)
 	c.Signal = (*SignalService)(&c.common)
+	c.DecisionDelete = (*DecisionDeleteService)(&c.common)
 	c.HeartBeat = (*HeartBeatService)(&c.common)
 
 	return c, nil
@@ -90,6 +98,7 @@ func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *htt
 	c.Auth = (*AuthService)(&c.common)
 	c.Metrics = (*MetricsService)(&c.common)
 	c.Signal = (*SignalService)(&c.common)
+	c.DecisionDelete = (*DecisionDeleteService)(&c.common)
 	c.HeartBeat = (*HeartBeatService)(&c.common)
 
 	return c, nil
@@ -115,9 +124,9 @@ func RegisterClient(config *Config, client *http.Client) (*ApiClient, error) {
 	/*if we have http status, return it*/
 	if err != nil {
 		if resp != nil && resp.Response != nil {
-			return nil, errors.Wrapf(err, "api register (%s) http %s : %s", c.BaseURL, resp.Response.Status, err)
+			return nil, fmt.Errorf("api register (%s) http %s: %w", c.BaseURL, resp.Response.Status, err)
 		}
-		return nil, errors.Wrapf(err, "api register (%s) : %s", c.BaseURL, err)
+		return nil, fmt.Errorf("api register (%s): %w", c.BaseURL, err)
 	}
 	return c, nil
 
@@ -148,7 +157,7 @@ func newResponse(r *http.Response) *Response {
 }
 
 func CheckResponse(r *http.Response) error {
-	if c := r.StatusCode; 200 <= c && c <= 299 {
+	if c := r.StatusCode; 200 <= c && c <= 299 || c == 304 {
 		return nil
 	}
 	errorResponse := &ErrorResponse{}
@@ -156,7 +165,7 @@ func CheckResponse(r *http.Response) error {
 	if err == nil && data != nil {
 		err := json.Unmarshal(data, errorResponse)
 		if err != nil {
-			return errors.Wrapf(err, "http code %d, invalid body", r.StatusCode)
+			return fmt.Errorf("http code %d, invalid body: %w", r.StatusCode, err)
 		}
 	} else {
 		errorResponse.Message = new(string)

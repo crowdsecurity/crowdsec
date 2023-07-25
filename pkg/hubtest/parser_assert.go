@@ -12,14 +12,14 @@ import (
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/enescakir/emoji"
 	"github.com/fatih/color"
-	"github.com/pkg/errors"
 	diff "github.com/r3labs/diff/v2"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type AssertFail struct {
@@ -153,18 +153,18 @@ func (p *ParserAssert) RunExpression(expression string) (interface{}, error) {
 
 	env := map[string]interface{}{"results": *p.TestData}
 
-	if runtimeFilter, err = expr.Compile(expression, expr.Env(exprhelpers.GetExprEnv(env))); err != nil {
+	if runtimeFilter, err = expr.Compile(expression, exprhelpers.GetExprOptions(env)...); err != nil {
 		return output, err
 	}
 
 	//dump opcode in trace level
 	log.Tracef("%s", runtimeFilter.Disassemble())
 
-	output, err = expr.Run(runtimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"results": *p.TestData}))
+	output, err = expr.Run(runtimeFilter, map[string]interface{}{"results": *p.TestData})
 	if err != nil {
 		log.Warningf("running : %s", expression)
 		log.Warningf("runtime error : %s", err)
-		return output, errors.Wrapf(err, "while running expression %s", expression)
+		return output, fmt.Errorf("while running expression %s: %w", expression, err)
 	}
 	return output, nil
 }
@@ -246,8 +246,43 @@ func (p *ParserAssert) AutoGenParserAssert() string {
 					}
 					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Enriched["%s"] == "%s"`+"\n", stage, parser, pidx, ekey, Escape(eval))
 				}
+				for ekey, eval := range result.Evt.Unmarshaled {
+					if eval == "" {
+						continue
+					}
+					base := fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Unmarshaled["%s"]`, stage, parser, pidx, ekey)
+					for _, line := range p.buildUnmarshaledAssert("", eval) {
+						ret += base + line
+					}
+				}
 			}
 		}
+	}
+	return ret
+}
+
+func (p *ParserAssert) buildUnmarshaledAssert(ekey string, eval interface{}) []string {
+	ret := make([]string, 0)
+	switch val := eval.(type) {
+	case map[string]interface{}:
+		for k, v := range val {
+			ret = append(ret, p.buildUnmarshaledAssert(fmt.Sprintf(`%s["%s"]`, ekey, k), v)...)
+		}
+	case map[interface{}]interface{}:
+		for k, v := range val {
+			ret = append(ret, p.buildUnmarshaledAssert(fmt.Sprintf(`%s["%s"]`, ekey, k), v)...)
+		}
+	case []interface{}:
+	case string:
+		ret = append(ret, fmt.Sprintf(`%s == "%s"`+"\n", ekey, Escape(val)))
+	case bool:
+		ret = append(ret, fmt.Sprintf(`%s == %t`+"\n", ekey, val))
+	case int:
+		ret = append(ret, fmt.Sprintf(`%s == %d`+"\n", ekey, val))
+	case float64:
+		ret = append(ret, fmt.Sprintf(`%s == %f`+"\n", ekey, val))
+	default:
+		log.Warningf("unknown type '%T' for key '%s'", val, ekey)
 	}
 	return ret
 }
@@ -299,8 +334,9 @@ func LoadParserDump(filepath string) (*ParserResults, error) {
 }
 
 type DumpOpts struct {
-	Details bool
-	SkipOk  bool
+	Details          bool
+	SkipOk           bool
+	ShowNotOkParsers bool
 }
 
 func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts DumpOpts) {
@@ -347,6 +383,7 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 	yellow := color.New(color.FgYellow).SprintFunc()
 	red := color.New(color.FgRed).SprintFunc()
 	green := color.New(color.FgGreen).SprintFunc()
+	whitelistReason := ""
 	//get each line
 	for tstamp, rawstr := range assoc {
 		if opts.SkipOk {
@@ -396,25 +433,24 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 				detailsDisplay := ""
 
 				if res {
-					if prev_item.Stage == "" {
-						changeStr = "first_parser"
-					} else {
-						changelog, _ := diff.Diff(prev_item, parsers[parser].Evt)
-						for _, change := range changelog {
-							switch change.Type {
-							case "create":
-								created++
-								detailsDisplay += fmt.Sprintf("\t%s\t\t%s %s evt.%s : %s\n", presep, sep, change.Type, strings.Join(change.Path, "."), green(change.To))
-							case "update":
-								detailsDisplay += fmt.Sprintf("\t%s\t\t%s %s evt.%s : %s -> %s\n", presep, sep, change.Type, strings.Join(change.Path, "."), change.From, yellow(change.To))
-								if change.Path[0] == "Whitelisted" && change.To == true {
-									whitelisted = true
+					changelog, _ := diff.Diff(prev_item, parsers[parser].Evt)
+					for _, change := range changelog {
+						switch change.Type {
+						case "create":
+							created++
+							detailsDisplay += fmt.Sprintf("\t%s\t\t%s %s evt.%s : %s\n", presep, sep, change.Type, strings.Join(change.Path, "."), green(change.To))
+						case "update":
+							detailsDisplay += fmt.Sprintf("\t%s\t\t%s %s evt.%s : %s -> %s\n", presep, sep, change.Type, strings.Join(change.Path, "."), change.From, yellow(change.To))
+							if change.Path[0] == "Whitelisted" && change.To == true {
+								whitelisted = true
+								if whitelistReason == "" {
+									whitelistReason = parsers[parser].Evt.WhitelistReason
 								}
-								updated++
-							case "delete":
-								deleted++
-								detailsDisplay += fmt.Sprintf("\t%s\t\t%s %s evt.%s\n", presep, sep, change.Type, red(strings.Join(change.Path, ".")))
 							}
+							updated++
+						case "delete":
+							deleted++
+							detailsDisplay += fmt.Sprintf("\t%s\t\t%s %s evt.%s\n", presep, sep, change.Type, red(strings.Join(change.Path, ".")))
 						}
 					}
 					prev_item = parsers[parser].Evt
@@ -449,7 +485,7 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 					if opts.Details {
 						fmt.Print(detailsDisplay)
 					}
-				} else {
+				} else if opts.ShowNotOkParsers {
 					fmt.Printf("\t%s\t%s %s %s\n", presep, sep, emoji.RedCircle, parser)
 
 				}
@@ -462,6 +498,8 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 		//did the event enter the bucket pour phase ?
 		if _, ok := state[tstamp]["buckets"]["OK"]; ok {
 			fmt.Printf("\t%s-------- parser success %s\n", sep, emoji.GreenCircle)
+		} else if whitelistReason != "" {
+			fmt.Printf("\t%s-------- parser success, ignored by whitelist (%s) %s\n", sep, whitelistReason, emoji.GreenCircle)
 		} else {
 			fmt.Printf("\t%s-------- parser failure %s\n", sep, emoji.RedCircle)
 		}

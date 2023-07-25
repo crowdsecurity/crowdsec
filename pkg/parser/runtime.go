@@ -9,24 +9,21 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-
-	"strconv"
-
+	"github.com/antonmedv/expr"
 	"github.com/mohae/deepcopy"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/antonmedv/expr"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 /* ok, this is kinda experimental, I don't know how bad of an idea it is .. */
 func SetTargetByName(target string, value string, evt *types.Event) bool {
-
 	if evt == nil {
 		return false
 	}
@@ -71,8 +68,6 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 				tmp = reflect.Indirect(tmp)
 			}
 			iter = tmp
-			//nolint: gosimple
-			break
 		case reflect.Ptr:
 			tmp := iter.Elem()
 			iter = reflect.Indirect(tmp.FieldByName(f))
@@ -94,37 +89,35 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 	return true
 }
 
-func printStaticTarget(static types.ExtraField) string {
-
-	if static.Method != "" {
+func printStaticTarget(static ExtraField) string {
+	switch {
+	case static.Method != "":
 		return static.Method
-	} else if static.Parsed != "" {
+	case static.Parsed != "":
 		return fmt.Sprintf(".Parsed[%s]", static.Parsed)
-	} else if static.Meta != "" {
+	case static.Meta != "":
 		return fmt.Sprintf(".Meta[%s]", static.Meta)
-	} else if static.Enriched != "" {
+	case static.Enriched != "":
 		return fmt.Sprintf(".Enriched[%s]", static.Enriched)
-	} else if static.TargetByName != "" {
+	case static.TargetByName != "":
 		return static.TargetByName
-	} else {
+	default:
 		return "?"
 	}
 }
 
-func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) error {
+func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 	//we have a few cases :
 	//(meta||key) + (static||reference||expr)
 	var value string
 	clog := n.Logger
-
-	cachedExprEnv := exprhelpers.GetExprEnv(map[string]interface{}{"evt": event})
 
 	for _, static := range statics {
 		value = ""
 		if static.Value != "" {
 			value = static.Value
 		} else if static.RunTimeValue != nil {
-			output, err := expr.Run(static.RunTimeValue, cachedExprEnv)
+			output, err := expr.Run(static.RunTimeValue, map[string]interface{}{"evt": event})
 			if err != nil {
 				clog.Warningf("failed to run RunTimeValue : %v", err)
 				continue
@@ -135,11 +128,11 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 			case int:
 				value = strconv.Itoa(out)
 			case map[string]interface{}:
-				clog.Warnf("Expression returned a map, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string")
+				clog.Warnf("Expression '%s' returned a map, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string", static.ExpValue)
 			case []interface{}:
-				clog.Warnf("Expression returned a map, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string")
+				clog.Warnf("Expression '%s' returned an array, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string", static.ExpValue)
 			case nil:
-				clog.Debugf("Expression returned nil, skipping")
+				clog.Debugf("Expression '%s' returned nil, skipping", static.ExpValue)
 			default:
 				clog.Errorf("unexpected return type for RunTimeValue : %T", output)
 				return errors.New("unexpected return type for RunTimeValue")
@@ -166,7 +159,7 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 				processed = true
 				clog.Debugf("+ Method %s('%s') returned %d entries to merge in .Enriched\n", static.Method, value, len(ret))
 				//Hackish check, but those methods do not return any data by design
-				if len(ret) == 0 && static.Method != "UnmarshalXML" && static.Method != "UnmarshalJSON" {
+				if len(ret) == 0 && static.Method != "UnmarshalJSON" {
 					clog.Debugf("+ Method '%s' empty response on '%s'", static.Method, value)
 				}
 				for k, v := range ret {
@@ -197,7 +190,6 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 		} else {
 			clog.Fatal("unable to process static : unknown target")
 		}
-
 	}
 	return nil
 }
@@ -243,9 +235,10 @@ type ParserResult struct {
 var ParseDump bool
 var DumpFolder string
 var StageParseCache map[string]map[string][]ParserResult
+var StageParseMutex sync.Mutex
 
 func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error) {
-	var event types.Event = xp
+	var event = xp
 
 	/* the stage is undefined, probably line is freshly acquired, set to first stage !*/
 	if event.Stage == "" && len(ctx.Stages) > 0 {
@@ -266,25 +259,30 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 	if event.Meta == nil {
 		event.Meta = make(map[string]string)
 	}
+	if event.Unmarshaled == nil {
+		event.Unmarshaled = make(map[string]interface{})
+	}
 	if event.Type == types.LOG {
 		log.Tracef("INPUT '%s'", event.Line.Raw)
 	}
 
-	cachedExprEnv := exprhelpers.GetExprEnv(map[string]interface{}{"evt": &event})
-
 	if ParseDump {
 		if StageParseCache == nil {
+			StageParseMutex.Lock()
 			StageParseCache = make(map[string]map[string][]ParserResult)
 			StageParseCache["success"] = make(map[string][]ParserResult)
 			StageParseCache["success"][""] = make([]ParserResult, 0)
+			StageParseMutex.Unlock()
 		}
 	}
 
 	for _, stage := range ctx.Stages {
 		if ParseDump {
+			StageParseMutex.Lock()
 			if _, ok := StageParseCache[stage]; !ok {
 				StageParseCache[stage] = make(map[string][]ParserResult)
 			}
+			StageParseMutex.Unlock()
 		}
 		/* if the node is forward in stages, seek to this stage */
 		/* this is for example used by testing system to inject logs in post-syslog-parsing phase*/
@@ -315,19 +313,23 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			if ctx.Profiling {
 				node.Profiling = true
 			}
-			ret, err := node.process(&event, ctx, cachedExprEnv)
+			ret, err := node.process(&event, ctx, map[string]interface{}{"evt": &event})
 			if err != nil {
 				clog.Errorf("Error while processing node : %v", err)
 				return event, err
 			}
 			clog.Tracef("node (%s) ret : %v", node.rn, ret)
 			if ParseDump {
+				StageParseMutex.Lock()
 				if len(StageParseCache[stage][node.Name]) == 0 {
 					StageParseCache[stage][node.Name] = make([]ParserResult, 0)
 				}
+				StageParseMutex.Unlock()
 				evtcopy := deepcopy.Copy(event)
 				parserInfo := ParserResult{Evt: evtcopy.(types.Event), Success: ret}
+				StageParseMutex.Lock()
 				StageParseCache[stage][node.Name] = append(StageParseCache[stage][node.Name], parserInfo)
+				StageParseMutex.Unlock()
 			}
 			if ret {
 				isStageOK = true
@@ -347,10 +349,8 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			event.Process = false
 			return event, nil
 		}
-
 	}
 
 	event.Process = true
 	return event, nil
-
 }

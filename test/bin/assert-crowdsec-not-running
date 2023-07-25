@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+is_crowdsec_running() {
+    case $(uname) in
+        "Linux")
+            # ignore processes in containers
+            PIDS=$(pgrep --ns $$ -x 'crowdsec')
+            ;;
+        *)
+            PIDS=$(pgrep -x 'crowdsec')
+            ;;
+    esac
+}
+
+# The process can be slow, especially on CI and during test coverage.
+# Give it some time, maybe it's quitting soon.
+for _i in {1..10}; do
+    is_crowdsec_running || exit 0
+    sleep .5
+done
+
+PIDS=$(echo "${PIDS}" | tr '\n' ' ')
+msg="CrowdSec is already running (PID ${PIDS}). Please terminate it and run the tests again."
+
+# Are we inside a setup() or @test? Is file descriptor 3 open?
+if { true >&3; } 2>/dev/null; then
+    echo "${msg}" >&3
+else
+    echo "${msg}" >&2
+fi
+
+# cause the calling setup() or @test to fail
+exit 1

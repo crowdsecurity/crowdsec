@@ -1,0 +1,11 @@
+# frozen_string_literal: true
+
+Vagrant.configure('2') do |config|
+  config.vm.box = 'generic/freebsd13'
+  config.vm.provision "shell", inline: <<-SHELL
+    pkg install -y gtar
+  SHELL
+end
+
+common = '../common'
+load common if File.exist?(common)

@@ -2,49 +2,60 @@
 
 ## Bucket concepts
 
-Leakybucket is used for decision making. Under certain conditions
-enriched events are poured in these buckets. When these buckets are
+The Leakybucket is used for decision making. Under certain conditions,
+enriched events are poured into these buckets. When these buckets are
 full, we raise a new event. After this event is raised the bucket is
 destroyed. There are many types of buckets, and we welcome any new
 useful design of buckets.
 
-Usually the bucket configuration generates the creation of many
-buckets. They are differenciated by a field called stackkey. When two
-events arrives with the same stackkey they go in the same matching
+Usually, the bucket configuration generates the creation of many
+buckets. They are differentiated by a field called stackkey. When two
+events arrive with the same stackkey they go in the same matching
 bucket.
 
 The very purpose of these buckets is to detect clients that exceed a
-certain rate of attemps to do something (ssh connection, http
-authentication failure, etc...). Thus, the most use stackkey field is
+certain rate of attempts to do something (ssh connection, http
+authentication failure, etc...). Thus, the most used stackkey field is
 often the source_ip.
 
 ## Standard leaky buckets
 
 Default buckets have two main configuration options:
+
  * capacity: number of events the bucket can hold. When the capacity
    is reached and a new event is poured, a new event is raised. We
    call this type of event overflow. This is an int.
+
  * leakspeed: duration needed for an event to leak. When an event
-   leaks, it disappear from the bucket.
+   leaks, it disappears from the bucket.
 
 ## Trigger
 
-It's a special type of bucket with a zero capacity. Thus, when an
-event is poured in a trigger, it always raises an overflow.
+A Trigger is a special type of bucket with a capacity of zero. Thus, when an
+event is poured into a trigger, it always raises an overflow.
 
 ## Uniq
 
-It's a bucket working as the standard leaky bucket except for one
+A Uniq is a bucket working like the standard leaky bucket except for one
 thing: a filter returns a property for each event and only one
 occurrence of this property is allowed in the bucket, thus the bucket
 is called uniq.
 
 ## Counter
 
-It's a special type of bucket with an infinite capacity and an
-infinite leakspeed (it never overflows, neither leaks). Nevertheless,
+A Counter is a special type of bucket with an infinite capacity and an
+infinite leakspeed (it never overflows, nor leaks). Nevertheless,
 the event is raised after a fixed duration. The option is called
 duration.
+
+## Bayesian
+
+A Bayesian is a special bucket that runs bayesian inference instead of 
+counting events. Each event must have its likelihoods specified in the
+yaml file under `prob_given_benign` and `prob_given_evil`. The bucket
+will continue evaluating events until the posterior goes above the 
+threshold (triggering the overflow) or the duration (specified by leakspeed)
+expires.
 
 ## Available configuration options for buckets
 
@@ -52,36 +63,41 @@ duration.
 
 * type: mandatory field. Must be one of "leaky", "trigger", "uniq" or
   "counter"
-* name: mandatory field, but the value is totally open. Nevertheless
+
+* name: mandatory field, but the value is totally open. Nevertheless,
   this value will tag the events raised by the bucket.
-* filter: mandatory field. It's a filter that is run when the decision
-  to make an event match the bucket or not. The filter have to return
+
+* filter: mandatory field. It's a filter that is run to decide whether
+  an event matches the bucket or not. The filter has to return
   a boolean. As a filter implementation we use
   https://github.com/antonmedv/expr
+
 * capacity: [mandatory for now, shouldn't be mandatory in the final
   version] it's the size of the bucket. When pouring in a bucket
   already with size events, it overflows.
-* leakspeed: leakspeed is a time duration (has to be parseable by
-  https://golang.org/pkg/time/#ParseDuration). After each interval an
+
+* leakspeed: leakspeed is a time duration (it has to be parsed by
+  https://golang.org/pkg/time/#ParseDuration). After each interval, an
   event is leaked from the bucket.
+
 * stackkey: mandatory field. This field is used to differentiate on
-  which bucket ongoing events will be poured. When an unknown stackkey
-  is seen in an event a new bucket is created.
-* on_overflow: optional field, that tells the what to do when the
-  bucket is returning the overflow event. As of today, the possibility
-  are these: "ban,1h", "Reprocess", "Delete".
-  Reprocess is used to send the raised event back in the event pool to
-  be matched agains buckets
+  which instance of the bucket the matching events will be poured.
+  When an unknown stackkey is seen in an event, a new bucket is created.
+
+* on_overflow: optional field, that tells what to do when the
+  bucket is returning the overflow event. As of today, the possibilities
+  are "ban,1h", "Reprocess" or "Delete".
+  Reprocess is used to send the raised event back to the event pool to
+  be matched against buckets
 
 ### Fields for special buckets
 
 #### Uniq
 
-Uniq has an extra field uniq_filter which is too use the filter
-implementation from https://github.com/antonmedv/expr. The filter must
-return a string. All strins returned by this filter in the same
-buckets have to be different. Thus, if a string is seen twice it is
-dismissed.
+ * uniq_filter: an expression that must comply with the syntax defined
+   in https://github.com/antonmedv/expr and must return a string.
+   All strings returned by this filter in the same buckets have to be different.
+   Thus if a string is seen twice, the event is dismissed.
 
 #### Trigger
 
@@ -89,11 +105,27 @@ Capacity and leakspeed are not relevant for this kind of bucket.
 
 #### Counter
 
-It's a special kind of bucket that raise an event and is destroyed
-after a fixed duration. The configuration field used is duration and
-must be parseable by https://golang.org/pkg/time/#ParseDuration.
-Nevertheless, this kind of bucket is often used with an infinite
-leakspeed and an infinite capacity [capacity set to -1 for now].
+ * duration: the Counter will be destroyed after this interval
+   has elapsed since its creation. The duration must be parsed
+   by https://golang.org/pkg/time/#ParseDuration.
+   Nevertheless, this kind of bucket is often used with an infinite
+   leakspeed and an infinite capacity [capacity set to -1 for now].
+
+#### Bayesian
+
+ * bayesian_prior: The prior to start with
+ * bayesian_threshold: The threshold for the posterior to trigger the overflow.
+ * bayesian_conditions: List of Bayesian conditions with likelihoods
+
+Bayesian Conditions are built from:
+ * condition: The expr for this specific condition to be true
+ * prob_given_evil: The likelihood an IP satisfies the condition given the fact
+   that it is a maliscious IP
+ * prob_given_benign: The likelihood an IP satisfies the condition given the fact
+   that it is a benign IP
+ * guillotine: Bool to stop the condition from getting evaluated if it has
+   evaluated to true once. This should be used if evaluating the condition is 
+   computationally expensive. 
 
 
 ## Add examples here
@@ -126,17 +158,17 @@ leakspeed and an infinite capacity [capacity set to -1 for now].
 
 [This is not dry enough to have many details here, but:]
 
-The bucket code is triggered by `InfiniBucketify` in main.go.
-There's one struct called buckets which is for now a
+The bucket code is triggered by runPour in pour.go, by calling the `leaky.PourItemToHolders` function.
+There is one struct called buckets which is for now a
 `map[string]interface{}` that holds all buckets. The key of this map
-is derivated from the filter configured for the bucket and its
-stackkey. This looks like complicated, but in fact it allows us to use
-only one structs. This is done in buckets.go.
+is derived from the filter configured for the bucket and its
+stackkey. This looks complicated, but it allows us to use
+only one struct. This is done in buckets.go.
 
-On top of that the implementation define only the standard leaky
-bucket. A goroutine is launched for every buckets (bucket.go). This
+On top of that the implementation defines only the standard leaky
+bucket. A goroutine is launched for every bucket (`bucket.go`). This
 goroutine manages the life of the bucket.
 
 For special buckets, hooks are defined at initialization time in
-manager.go. Hooks are called when relevant by the bucket gorourine
-when events are poured and/or when bucket overflows.
+manager.go. Hooks are called when relevant by the bucket goroutine
+when events are poured and/or when a bucket overflows.

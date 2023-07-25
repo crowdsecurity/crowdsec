@@ -9,14 +9,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -134,9 +134,9 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 			linesRead.With(prometheus.Labels{"source": j.src}).Inc()
 			var evt types.Event
 			if !j.config.UseTimeMachine {
-				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
+				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE}
 			} else {
-				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.TIMEMACHINE}
+				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
 			}
 			out <- evt
 		case stderrLine := <-stderrChan:
@@ -153,6 +153,10 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 			}
 		}
 	}
+}
+
+func (j *JournalCtlSource) GetUuid() string {
+	return j.config.UniqueId
 }
 
 func (j *JournalCtlSource) GetMetrics() []prometheus.Collector {
@@ -201,11 +205,12 @@ func (j *JournalCtlSource) Configure(yamlConfig []byte, logger *log.Entry) error
 	return nil
 }
 
-func (j *JournalCtlSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
+func (j *JournalCtlSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	j.logger = logger
 	j.config = JournalCtlConfiguration{}
 	j.config.Mode = configuration.CAT_MODE
 	j.config.Labels = labels
+	j.config.UniqueId = uuid
 
 	//format for the DSN is : journalctl://filters=FILTER1&filters=FILTER2
 	if !strings.HasPrefix(dsn, "journalctl://") {
@@ -231,7 +236,7 @@ func (j *JournalCtlSource) ConfigureByDSN(dsn string, labels map[string]string, 
 			}
 			lvl, err := log.ParseLevel(value[0])
 			if err != nil {
-				return errors.Wrapf(err, "unknown level %s", value[0])
+				return fmt.Errorf("unknown level %s: %w", value[0], err)
 			}
 			j.logger.Logger.SetLevel(lvl)
 		case "since":
@@ -253,7 +258,7 @@ func (j *JournalCtlSource) GetName() string {
 }
 
 func (j *JournalCtlSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
-	defer types.CatchPanic("crowdsec/acquis/journalctl/oneshot")
+	defer trace.CatchPanic("crowdsec/acquis/journalctl/oneshot")
 	err := j.runJournalCtl(out, t)
 	j.logger.Debug("Oneshot journalctl acquisition is done")
 	return err
@@ -262,7 +267,7 @@ func (j *JournalCtlSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb
 
 func (j *JournalCtlSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	t.Go(func() error {
-		defer types.CatchPanic("crowdsec/acquis/journalctl/streaming")
+		defer trace.CatchPanic("crowdsec/acquis/journalctl/streaming")
 		return j.runJournalCtl(out, t)
 	})
 	return nil

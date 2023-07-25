@@ -61,6 +61,20 @@ func (mc *MetaCreate) SetValue(s string) *MetaCreate {
 	return mc
 }
 
+// SetAlertMetas sets the "alert_metas" field.
+func (mc *MetaCreate) SetAlertMetas(i int) *MetaCreate {
+	mc.mutation.SetAlertMetas(i)
+	return mc
+}
+
+// SetNillableAlertMetas sets the "alert_metas" field if the given value is not nil.
+func (mc *MetaCreate) SetNillableAlertMetas(i *int) *MetaCreate {
+	if i != nil {
+		mc.SetAlertMetas(*i)
+	}
+	return mc
+}
+
 // SetOwnerID sets the "owner" edge to the Alert entity by ID.
 func (mc *MetaCreate) SetOwnerID(id int) *MetaCreate {
 	mc.mutation.SetOwnerID(id)
@@ -256,7 +270,7 @@ func (mc *MetaCreate) createSpec() (*Meta, *sqlgraph.CreateSpec) {
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.alert_metas = &nodes[0]
+		_node.AlertMetas = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

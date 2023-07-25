@@ -1,29 +1,41 @@
 # vim: set ft=dockerfile:
-ARG GOVERSION=1.19
+ARG GOVERSION=1.20.6
 
-FROM golang:${GOVERSION}-bullseye AS build
+FROM golang:${GOVERSION}-bookworm AS build
 
 WORKDIR /go/src/crowdsec
-
-COPY . .
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV DEBCONF_NOWARNINGS="yes"
 
+# We like to choose the release of re2 to use, the debian version is usually older.
+ENV RE2_VERSION=2023-03-01
+
 # wizard.sh requires GNU coreutils
 RUN apt-get update && \
     apt-get install -y -q git gcc libc-dev make bash gettext binutils-gold coreutils tzdata && \
+    wget https://github.com/google/re2/archive/refs/tags/${RE2_VERSION}.tar.gz && \
+    tar -xzf ${RE2_VERSION}.tar.gz && \
+    cd re2-${RE2_VERSION} && \
+    make && \
+    make install && \
     echo "githubciXXXXXXXXXXXXXXXXXXXXXXXX" > /etc/machine-id && \
-    SYSTEM="docker" make clean release && \
+    go install github.com/mikefarah/yq/v4@v4.34.1
+
+COPY . .
+
+RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=1 && \
     cd crowdsec-v* && \
     ./wizard.sh --docker-mode && \
     cd - >/dev/null && \
     cscli hub update && \
     cscli collections install crowdsecurity/linux && \
-    cscli parsers install crowdsecurity/whitelists && \
-    go install github.com/mikefarah/yq/v4@v4.30.6
+    cscli parsers install crowdsecurity/whitelists
 
-FROM debian:bullseye-slim as slim
+    # In case we need to remove agents here..
+    # cscli machines list -o json | yq '.[].machineId' | xargs -r cscli machines delete
+
+FROM debian:bookworm-slim as slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV DEBCONF_NOWARNINGS="yes"
@@ -37,6 +49,7 @@ RUN apt-get update && \
     bash \
     tzdata && \
     mkdir -p /staging/etc/crowdsec && \
+    mkdir -p /staging/etc/crowdsec/acquis.d && \
     mkdir -p /staging/var/lib/crowdsec && \
     mkdir -p /var/lib/crowdsec/data
 
@@ -49,7 +62,6 @@ COPY --from=build /go/src/crowdsec/docker/config.yaml /staging/etc/crowdsec/conf
 RUN yq -n '.url="http://0.0.0.0:8080"' | install -m 0600 /dev/stdin /staging/etc/crowdsec/local_api_credentials.yaml && \
     yq eval -i ".plugin_config.group = \"nogroup\"" /staging/etc/crowdsec/config.yaml
 
-
 ENTRYPOINT /bin/bash docker_start.sh
 
 FROM slim as plugins
@@ -60,6 +72,7 @@ COPY --from=build /go/src/crowdsec/plugins/notifications/email/email.yaml /stagi
 COPY --from=build /go/src/crowdsec/plugins/notifications/http/http.yaml /staging/etc/crowdsec/notifications/http.yaml
 COPY --from=build /go/src/crowdsec/plugins/notifications/slack/slack.yaml /staging/etc/crowdsec/notifications/slack.yaml
 COPY --from=build /go/src/crowdsec/plugins/notifications/splunk/splunk.yaml /staging/etc/crowdsec/notifications/splunk.yaml
+COPY --from=build /go/src/crowdsec/plugins/notifications/sentinel/sentinel.yaml /staging/etc/crowdsec/notifications/sentinel.yaml
 COPY --from=build /usr/local/lib/crowdsec/plugins /usr/local/lib/crowdsec/plugins
 
 FROM slim as geoip

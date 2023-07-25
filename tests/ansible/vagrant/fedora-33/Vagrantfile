@@ -1,9 +1,0 @@
-# frozen_string_literal: true
-
-Vagrant.configure('2') do |config|
-  # config.vm.box = "fedora/33-cloud-base"
-  config.vm.box = 'generic/fedora33'
-end
-
-common = '../common'
-load common if File.exist?(common)

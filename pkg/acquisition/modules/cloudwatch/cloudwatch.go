@@ -13,14 +13,12 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -43,7 +41,7 @@ var linesRead = prometheus.NewCounterVec(
 	[]string{"group", "stream"},
 )
 
-//CloudwatchSource is the runtime instance keeping track of N streams within 1 cloudwatch group
+// CloudwatchSource is the runtime instance keeping track of N streams within 1 cloudwatch group
 type CloudwatchSource struct {
 	Config CloudwatchSourceConfiguration
 	/*runtime stuff*/
@@ -54,7 +52,7 @@ type CloudwatchSource struct {
 	streamIndexes    map[string]string
 }
 
-//CloudwatchSourceConfiguration allows user to define one or more streams to monitor within a cloudwatch log group
+// CloudwatchSourceConfiguration allows user to define one or more streams to monitor within a cloudwatch log group
 type CloudwatchSourceConfiguration struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 	GroupName                         string         `yaml:"group_name"`              //the group name to be monitored
@@ -74,7 +72,7 @@ type CloudwatchSourceConfiguration struct {
 	AwsRegion                         *string        `yaml:"aws_region,omitempty"`
 }
 
-//LogStreamTailConfig is the configuration for one given stream within one group
+// LogStreamTailConfig is the configuration for one given stream within one group
 type LogStreamTailConfig struct {
 	GroupName                  string
 	StreamName                 string
@@ -100,6 +98,10 @@ var (
 	def_GetLogEventsPagesLimit  = int64(1000)
 	def_AwsConfigDir            = ""
 )
+
+func (cw *CloudwatchSource) GetUuid() string {
+	return cw.Config.UniqueId
+}
 
 func (cw *CloudwatchSource) UnmarshalConfig(yamlConfig []byte) error {
 	cw.Config = CloudwatchSourceConfiguration{}
@@ -198,7 +200,7 @@ func (cw *CloudwatchSource) Configure(yamlConfig []byte, logger *log.Entry) erro
 	targetStream := "*"
 	if cw.Config.StreamRegexp != nil {
 		if _, err := regexp.Compile(*cw.Config.StreamRegexp); err != nil {
-			return errors.Wrapf(err, "error while compiling regexp '%s'", *cw.Config.StreamRegexp)
+			return fmt.Errorf("while compiling regexp '%s': %w", *cw.Config.StreamRegexp, err)
 		}
 		targetStream = *cw.Config.StreamRegexp
 	} else if cw.Config.StreamName != nil {
@@ -317,9 +319,9 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 								//the stream has been updated recently, check if we should monitor it
 								var expectMode int
 								if !cw.Config.UseTimeMachine {
-									expectMode = leaky.LIVE
+									expectMode = types.LIVE
 								} else {
-									expectMode = leaky.TIMEMACHINE
+									expectMode = types.TIMEMACHINE
 								}
 								monitorStream := LogStreamTailConfig{
 									GroupName:                  cw.Config.GroupName,
@@ -342,8 +344,7 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 					},
 				)
 				if err != nil {
-					newerr := errors.Wrapf(err, "while describing group %s", cw.Config.GroupName)
-					return newerr
+					return fmt.Errorf("while describing group %s: %w", cw.Config.GroupName, err)
 				}
 				cw.logger.Tracef("after DescribeLogStreamsPagesWithContext")
 			}
@@ -351,7 +352,7 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 	}
 }
 
-//LogStreamManager receives the potential streams to monitor, and starts a go routine when needed
+// LogStreamManager receives the potential streams to monitor, and starts a go routine when needed
 func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outChan chan types.Event) error {
 
 	cw.logger.Debugf("starting to monitor streams for %s", cw.Config.GroupName)
@@ -492,7 +493,7 @@ func (cw *CloudwatchSource) TailLogStream(cfg *LogStreamTailConfig, outChan chan
 					},
 				)
 				if err != nil {
-					newerr := errors.Wrapf(err, "while reading %s/%s", cfg.GroupName, cfg.StreamName)
+					newerr := fmt.Errorf("while reading %s/%s: %w", cfg.GroupName, cfg.StreamName, err)
 					cfg.logger.Warningf("err : %s", newerr)
 					return newerr
 				}
@@ -510,7 +511,7 @@ func (cw *CloudwatchSource) TailLogStream(cfg *LogStreamTailConfig, outChan chan
 	}
 }
 
-func (cw *CloudwatchSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
+func (cw *CloudwatchSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
 	cw.logger = logger
 
 	dsn = strings.TrimPrefix(dsn, cw.GetName()+"://")
@@ -525,9 +526,11 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, labels map[string]string,
 	cw.Config.GroupName = frags[0]
 	cw.Config.StreamName = &frags[1]
 	cw.Config.Labels = labels
+	cw.Config.UniqueId = uuid
+
 	u, err := url.ParseQuery(args[1])
 	if err != nil {
-		return errors.Wrapf(err, "while parsing %s", dsn)
+		return fmt.Errorf("while parsing %s: %w", dsn, err)
 	}
 
 	for k, v := range u {
@@ -538,7 +541,7 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, labels map[string]string,
 			}
 			lvl, err := log.ParseLevel(v[0])
 			if err != nil {
-				return errors.Wrapf(err, "unknown level %s", v[0])
+				return fmt.Errorf("unknown level %s: %w", v[0], err)
 			}
 			cw.logger.Logger.SetLevel(lvl)
 
@@ -572,7 +575,7 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, labels map[string]string,
 			//let's reuse our parser helper so that a ton of date formats are supported
 			duration, err := time.ParseDuration(v[0])
 			if err != nil {
-				return errors.Wrapf(err, "unable to parse '%s' as duration", v[0])
+				return fmt.Errorf("unable to parse '%s' as duration: %w", v[0], err)
 			}
 			cw.logger.Debugf("parsed '%s' as '%s'", v[0], duration)
 			start := time.Now().UTC().Add(-duration)
@@ -617,7 +620,7 @@ func (cw *CloudwatchSource) OneShotAcquisition(out chan types.Event, t *tomb.Tom
 			"stream": *cw.Config.StreamName,
 		}),
 		Labels:     cw.Config.Labels,
-		ExpectMode: leaky.TIMEMACHINE,
+		ExpectMode: types.TIMEMACHINE,
 	}
 	return cw.CatLogStream(&config, out)
 }
@@ -669,7 +672,7 @@ func (cw *CloudwatchSource) CatLogStream(cfg *LogStreamTailConfig, outChan chan 
 				},
 			)
 			if err != nil {
-				return errors.Wrapf(err, "while reading logs from %s/%s", cfg.GroupName, cfg.StreamName)
+				return fmt.Errorf("while reading logs from %s/%s: %w", cfg.GroupName, cfg.StreamName, err)
 			}
 			cfg.logger.Tracef("after GetLogEventsPagesWithContext")
 		case <-cw.t.Dying():

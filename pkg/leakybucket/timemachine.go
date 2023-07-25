@@ -35,7 +35,6 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 	}
 	l.Last_ts = d
 	l.mutex.Unlock()
-
 	if l.Limiter.AllowN(d, 1) {
 		l.logger.Tracef("Time-Pouring event %s (tokens:%f)", d, l.Limiter.GetTokensCount())
 		l.Queue.Add(msg)
@@ -51,6 +50,6 @@ func NewTimeMachine(g BucketFactory) *Leaky {
 	l := NewLeaky(g)
 	g.logger.Tracef("Instantiating timeMachine bucket")
 	l.Pour = TimeMachinePour
-	l.Mode = TIMEMACHINE
+	l.Mode = types.TIMEMACHINE
 	return l
 }

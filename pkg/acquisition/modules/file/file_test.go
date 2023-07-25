@@ -13,8 +13,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/cstest"
+
 	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
-	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -37,7 +38,7 @@ func TestBadConfiguration(t *testing.T) {
 		{
 			name:        "glob syntax error",
 			config:      `filename: "[asd-.log"`,
-			expectedErr: "Glob failure: syntax error in pattern",
+			expectedErr: "glob failure: syntax error in pattern",
 		},
 		{
 			name: "bad exclude regexp",
@@ -97,7 +98,7 @@ func TestConfigureDSN(t *testing.T) {
 		tc := tc
 		t.Run(tc.dsn, func(t *testing.T) {
 			f := fileacquisition.FileSource{}
-			err := f.ConfigureByDSN(tc.dsn, map[string]string{"type": "testtype"}, subLogger)
+			err := f.ConfigureByDSN(tc.dsn, map[string]string{"type": "testtype"}, subLogger, "")
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}
@@ -149,7 +150,7 @@ filename: /`,
 			config: `
 mode: cat
 filename: "[*-.log"`,
-			expectedConfigErr: "Glob failure: syntax error in pattern",
+			expectedConfigErr: "glob failure: syntax error in pattern",
 			logLevel:          log.WarnLevel,
 			expectedLines:     0,
 		},
@@ -259,7 +260,7 @@ func TestLiveAcquisition(t *testing.T) {
 		// if we do not have access to the file
 		permDeniedFile = `C:\Windows\System32\config\SAM`
 		permDeniedError = `unable to read C:\Windows\System32\config\SAM : open C:\Windows\System32\config\SAM: The process cannot access the file because it is being used by another process`
-		testPattern = `test_files\\*.log` // the \ must be escaped for the yaml config
+		testPattern = `test_files\*.log`
 	}
 
 	tests := []struct {

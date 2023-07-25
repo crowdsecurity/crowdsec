@@ -1,0 +1,3 @@
+# Linux specific
+
+MAKE=make

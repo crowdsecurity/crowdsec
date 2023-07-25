@@ -1,0 +1,18 @@
+# vim: set ft=yaml.ansible:
+---
+
+- name: "Install debug tools"
+  hosts: all
+  become: true
+  tasks:
+    - name: "Install debug tools"
+      ansible.builtin.apt:
+        pkg:
+          - kitty
+          - neovim
+          - zsh
+          - zsh-autosuggestions
+          - zsh-syntax-highlighting
+          - zsh-theme-powerlevel9k
+      when:
+        - ansible_facts.os_family == "Debian"

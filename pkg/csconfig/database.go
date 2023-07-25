@@ -5,8 +5,9 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
 )
 
 var DEFAULT_MAX_OPEN_CONNS = 100
@@ -56,7 +57,7 @@ func (c *Config) LoadDBConfig() error {
 	}
 
 	if c.DbConfig.MaxOpenConns == nil {
-		c.DbConfig.MaxOpenConns = types.IntPtr(DEFAULT_MAX_OPEN_CONNS)
+		c.DbConfig.MaxOpenConns = ptr.Of(DEFAULT_MAX_OPEN_CONNS)
 	}
 
 	if c.DbConfig.Type == "sqlite" {
@@ -102,9 +103,10 @@ func (d *DatabaseCfg) ConnectionDialect() (string, string, error) {
 		return "sqlite3", dialect.SQLite, nil
 	case "mysql":
 		return "mysql", dialect.MySQL, nil
-	case "postgres", "postgresql":
-		return "postgres", dialect.Postgres, nil
-	case "pgx":
+	case "pgx", "postgresql", "postgres":
+		if d.Type != "pgx" {
+			log.Debugf("database type '%s' is deprecated, switching to 'pgx' instead", d.Type)
+		}
 		return "pgx", dialect.Postgres, nil
 	}
 	return "", "", fmt.Errorf("unknown database type '%s'", d.Type)

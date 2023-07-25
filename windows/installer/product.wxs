@@ -99,6 +99,9 @@
                         <File Id="splunk.yaml" Source="plugins\notifications\splunk\splunk.yaml" Name="splunk.yaml">
                            <PermissionEx Sddl="D:PAI(A;;FA;;;SY)(A;;FA;;;BA)"/>
                         </File>
+                        <File Id="sentinel.yaml" Source="plugins\notifications\sentinel\sentinel.yaml" Name="sentinel.yaml">
+                           <PermissionEx Sddl="D:PAI(A;;FA;;;SY)(A;;FA;;;BA)"/>
+                        </File>
                      </Component>
                   </Directory>
                   <Directory Id="PatternsDir" Name="patterns" />
@@ -124,6 +127,7 @@
                      <File Id="notification_email.exe" Source="plugins\notifications\email\notification-email.exe" />
                      <File Id="notification_http.exe" Source="plugins\notifications\http\notification-http.exe" />
                      <File Id="notification_splunk.exe" Source="plugins\notifications\splunk\notification-splunk.exe" />
+                     <File Id="notification_sentinel.exe" Source="plugins\notifications\sentinel\notification-sentinel.exe" />
                   </Component>
                </Directory>
             </Directory>
@@ -132,17 +136,17 @@
 
 
       <SetProperty Id="HubUpdate" Value="&quot;[INSTALLDIR]\cscli.exe&quot; hub update" Sequence="execute" Before="HubUpdate" />
-      <CustomAction Id="HubUpdate" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="check" Impersonate="no" />
-      <SetProperty Id="InstallWinCollection" Value="&quot;[INSTALLDIR]\cscli.exe&quot; collections install crowdsecurity/windows" Sequence="execute" Before="InstallWinCollection" />
-      <CustomAction Id="InstallWinCollection" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="check" Impersonate="no" />
+      <CustomAction Id="HubUpdate" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="ignore" Impersonate="no" />
+      <SetProperty Id="InstallWinCollection" Value="&quot;[INSTALLDIR]\cscli.exe&quot; collections install crowdsecurity/windows crowdsecurity/windows-firewall crowdsecurity/iis crowdsecurity/mssql" Sequence="execute" Before="InstallWinCollection" />
+      <CustomAction Id="InstallWinCollection" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="ignore" Impersonate="no" />
       <SetProperty Id="FixPermissionsCreds" Value="&quot;icacls.exe&quot; C:\ProgramData\CrowdSec\config\*_api_credentials.yaml /inheritance:r /grant:r *S-1-5-32-544:(F)" Sequence="execute" Before="FixPermissionsCreds" />
       <CustomAction Id="FixPermissionsCreds" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="check" Impersonate="no" />
       <SetProperty Id="FixPermissionsNotif" Value="&quot;icacls.exe&quot; C:\ProgramData\CrowdSec\config\notifications\*.yaml /inheritance:r /grant:r *S-1-5-32-544:(F)" Sequence="execute" Before="FixPermissionsNotif" />
       <CustomAction Id="FixPermissionsNotif" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="check" Impersonate="no" />
       <SetProperty Id="RegisterMachine" Value="&quot;[INSTALLDIR]\cscli.exe&quot; machines add -a" Sequence="execute" Before="RegisterMachine" />
-      <CustomAction Id="RegisterMachine" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="check" Impersonate="no" />
+      <CustomAction Id="RegisterMachine" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="ignore" Impersonate="no" />
       <SetProperty Id="RegisterCAPI" Value="&quot;[INSTALLDIR]\cscli.exe&quot; capi register" Sequence="execute" Before="RegisterMachine" />
-      <CustomAction Id="RegisterCAPI" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="check" Impersonate="no" />
+      <CustomAction Id="RegisterCAPI" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="ignore" Impersonate="no" />
       <InstallExecuteSequence>
          <WriteEnvironmentStrings />
          <Custom Action="HubUpdate" After="InstallFiles">NOT Installed AND NOT REMOVE</Custom>

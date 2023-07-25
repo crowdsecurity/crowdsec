@@ -19,18 +19,15 @@ env:
   CROWDSEC_FEATURE_DISABLE_HTTP_RETRY_BACKOFF: true
 
 jobs:
-
   build:
+    strategy:
+      matrix:
+        go-version: ["1.20.6"]
+
     name: "Build + tests"
     runs-on: windows-2022
 
     steps:
-
-    - name: "Set up Go 1.19"
-      uses: actions/setup-go@v3
-      with:
-        go-version: 1.19
-      id: go
 
     - name: Check out CrowdSec repository
       uses: actions/checkout@v3
@@ -38,9 +35,15 @@ jobs:
         fetch-depth: 0
         submodules: false
 
+    - name: "Set up Go ${{ matrix.go-version }}"
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ matrix.go-version }}
+        cache-dependency-path: "**/go.sum"
+
     - name: Build
       run: |
-        make build
+        make build BUILD_RE2_WASM=1
 
     - name: Run tests
       run: |
@@ -54,3 +57,14 @@ jobs:
       with:
         files: coverage.out
         flags: unit-windows
+
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v3
+      with:
+        version: v1.51
+        args: --issues-exit-code=1 --timeout 10m
+        only-new-issues: false
+        # the cache is already managed above, enabling it here
+        # gives errors when extracting
+        skip-pkg-cache: true
+        skip-build-cache: true

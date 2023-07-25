@@ -2,9 +2,8 @@ package v1
 
 import (
 	"context"
+	"fmt"
 	"net"
-
-	//"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
 
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -12,26 +11,31 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/pkg/errors"
 )
 
 type Controller struct {
-	Ectx          context.Context
-	DBClient      *database.Client
-	APIKeyHeader  string
-	Middlewares   *middlewares.Middlewares
-	Profiles      []*csprofiles.Runtime
-	CAPIChan      chan []*models.Alert
+	Ectx         context.Context
+	DBClient     *database.Client
+	APIKeyHeader string
+	Middlewares  *middlewares.Middlewares
+	Profiles     []*csprofiles.Runtime
+
+	AlertsAddChan      chan []*models.Alert
+	DecisionDeleteChan chan []*models.Decision
+
 	PluginChannel chan csplugin.ProfileAlert
 	ConsoleConfig csconfig.ConsoleConfig
 	TrustedIPs    []net.IPNet
 }
 
 type ControllerV1Config struct {
-	DbClient      *database.Client
-	Ctx           context.Context
-	ProfilesCfg   []*csconfig.ProfileCfg
-	CapiChan      chan []*models.Alert
+	DbClient    *database.Client
+	Ctx         context.Context
+	ProfilesCfg []*csconfig.ProfileCfg
+
+	AlertsAddChan      chan []*models.Alert
+	DecisionDeleteChan chan []*models.Decision
+
 	PluginChannel chan csplugin.ProfileAlert
 	ConsoleConfig csconfig.ConsoleConfig
 	TrustedIPs    []net.IPNet
@@ -42,18 +46,19 @@ func New(cfg *ControllerV1Config) (*Controller, error) {
 
 	profiles, err := csprofiles.NewProfile(cfg.ProfilesCfg)
 	if err != nil {
-		return &Controller{}, errors.Wrapf(err, "failed to compile profiles")
+		return &Controller{}, fmt.Errorf("failed to compile profiles: %w", err)
 	}
 
 	v1 := &Controller{
-		Ectx:          cfg.Ctx,
-		DBClient:      cfg.DbClient,
-		APIKeyHeader:  middlewares.APIKeyHeader,
-		Profiles:      profiles,
-		CAPIChan:      cfg.CapiChan,
-		PluginChannel: cfg.PluginChannel,
-		ConsoleConfig: cfg.ConsoleConfig,
-		TrustedIPs:    cfg.TrustedIPs,
+		Ectx:               cfg.Ctx,
+		DBClient:           cfg.DbClient,
+		APIKeyHeader:       middlewares.APIKeyHeader,
+		Profiles:           profiles,
+		AlertsAddChan:      cfg.AlertsAddChan,
+		DecisionDeleteChan: cfg.DecisionDeleteChan,
+		PluginChannel:      cfg.PluginChannel,
+		ConsoleConfig:      cfg.ConsoleConfig,
+		TrustedIPs:         cfg.TrustedIPs,
 	}
 	v1.Middlewares, err = middlewares.NewMiddlewares(cfg.DbClient)
 	if err != nil {

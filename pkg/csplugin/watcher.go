@@ -4,9 +4,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/models"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 /*
@@ -82,7 +83,7 @@ func (pw *PluginWatcher) Start(tomb *tomb.Tomb) {
 
 func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 	var watchTime time.Duration
-	var watchCount int = -1
+	watchCount := -1
 	// Threshold can be set : by time, by count, or both
 	// if only time is set, honor it
 	// if only count is set, put timer to 1 second and just check size
@@ -108,7 +109,7 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 	}
 
 	ticker := time.NewTicker(watchTime)
-	var lastSend time.Time = time.Now()
+	lastSend := time.Now()
 	for {
 		select {
 		case <-ticker.C:

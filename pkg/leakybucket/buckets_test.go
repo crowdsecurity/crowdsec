@@ -30,8 +30,8 @@ type TestFile struct {
 
 func TestBucket(t *testing.T) {
 	var (
-		envSetting            = os.Getenv("TEST_ONLY")
-		tomb       *tomb.Tomb = &tomb.Tomb{}
+		envSetting = os.Getenv("TEST_ONLY")
+		tomb       = &tomb.Tomb{}
 	)
 	err := exprhelpers.Init(nil)
 	if err != nil {
@@ -115,7 +115,7 @@ func testOneBucket(t *testing.T, dir string, tomb *tomb.Tomb) error {
 	cscfg := &csconfig.CrowdsecServiceCfg{
 		DataDir: "tests",
 	}
-	holders, response, err := LoadBuckets(cscfg, files, tomb, buckets)
+	holders, response, err := LoadBuckets(cscfg, files, tomb, buckets, false)
 	if err != nil {
 		t.Fatalf("failed loading bucket : %s", err)
 	}
@@ -174,7 +174,7 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 			latest_ts = ts
 		}
 
-		in.ExpectMode = TIMEMACHINE
+		in.ExpectMode = types.TIMEMACHINE
 		log.Infof("Buckets input : %s", spew.Sdump(in))
 		ok, err := PourItemToHolders(in, holders, buckets)
 		if err != nil {

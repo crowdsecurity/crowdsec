@@ -9,21 +9,28 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/gin-gonic/gin"
+	"github.com/go-co-op/gocron"
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/natefinch/lumberjack.v2"
+	"gopkg.in/tomb.v2"
+
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/gin-gonic/gin"
-	"github.com/go-co-op/gocron"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/natefinch/lumberjack.v2"
-	"gopkg.in/tomb.v2"
 )
 
 var (
@@ -40,8 +47,10 @@ type APIServer struct {
 	router         *gin.Engine
 	httpServer     *http.Server
 	apic           *apic
+	papi           *Papi
 	httpServerTomb tomb.Tomb
 	consoleConfig  *csconfig.ConsoleConfig
+	isEnrolled     bool
 }
 
 // RecoveryWithWriter returns a middleware for a given writer that recovers from any panics and writes a 500 if there was one.
@@ -82,7 +91,7 @@ func CustomRecoveryWithWriter() gin.HandlerFunc {
 					log.Warningf("client %s disconnected : %s", c.ClientIP(), err)
 					c.Abort()
 				} else {
-					filename := types.WriteStackTrace(err)
+					filename := trace.WriteStackTrace(err)
 					log.Warningf("client %s error : %s", c.ClientIP(), err)
 					log.Warningf("stacktrace written to %s, please join to your issue", filename)
 					c.AbortWithStatus(http.StatusInternalServerError)
@@ -97,7 +106,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	var flushScheduler *gocron.Scheduler
 	dbClient, err := database.NewClient(config.DbConfig)
 	if err != nil {
-		return &APIServer{}, errors.Wrap(err, "unable to init database client")
+		return &APIServer{}, fmt.Errorf("unable to init database client: %w", err)
 	}
 
 	if config.DbConfig.Flush != nil {
@@ -109,7 +118,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	logFile := ""
 	if config.LogMedia == "file" {
-		logFile = fmt.Sprintf("%s/crowdsec_api.log", config.LogDir)
+		logFile = filepath.Join(config.LogDir, "crowdsec_api.log")
 	}
 
 	if log.GetLevel() < log.DebugLevel {
@@ -120,7 +129,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	if config.TrustedProxies != nil && config.UseForwardedForHeaders {
 		if err := router.SetTrustedProxies(*config.TrustedProxies); err != nil {
-			return &APIServer{}, errors.Wrap(err, "while setting trusted_proxies")
+			return &APIServer{}, fmt.Errorf("while setting trusted_proxies: %w", err)
 		}
 		router.ForwardedByClientIP = true
 	} else {
@@ -131,7 +140,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	clog := log.New()
 
 	if err := types.ConfigureLogger(clog); err != nil {
-		return nil, errors.Wrap(err, "while configuring gin logger")
+		return nil, fmt.Errorf("while configuring gin logger: %w", err)
 	}
 	if config.LogLevel != nil {
 		clog.SetLevel(*config.LogLevel)
@@ -155,15 +164,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		if config.CompressLogs != nil {
 			_compress = *config.CompressLogs
 		}
-		/*cf. https://github.com/natefinch/lumberjack/issues/82
-		let's create the file beforehand w/ the right perms */
-		// check if file exists
-		_, err := os.Stat(logFile)
-		// create file if not exists, purposefully ignore errors
-		if os.IsNotExist(err) {
-			file, _ := os.OpenFile(logFile, os.O_RDWR|os.O_CREATE, 0600)
-			file.Close()
-		}
+
 		LogOutput := &lumberjack.Logger{
 			Filename:   logFile,
 			MaxSize:    _maxsize, //megabytes
@@ -197,27 +198,46 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	router.Use(CustomRecoveryWithWriter())
 
 	controller := &controllers.Controller{
-		DBClient:      dbClient,
-		Ectx:          context.Background(),
-		Router:        router,
-		Profiles:      config.Profiles,
-		Log:           clog,
-		ConsoleConfig: config.ConsoleConfig,
+		DBClient:                      dbClient,
+		Ectx:                          context.Background(),
+		Router:                        router,
+		Profiles:                      config.Profiles,
+		Log:                           clog,
+		ConsoleConfig:                 config.ConsoleConfig,
+		DisableRemoteLapiRegistration: config.DisableRemoteLapiRegistration,
 	}
 
 	var apiClient *apic
+	var papiClient *Papi
+	var isMachineEnrolled = false
 
 	if config.OnlineClient != nil && config.OnlineClient.Credentials != nil {
-		log.Printf("Loading CAPI pusher")
-		apiClient, err = NewAPIC(config.OnlineClient, dbClient, config.ConsoleConfig)
+		log.Printf("Loading CAPI manager")
+		apiClient, err = NewAPIC(config.OnlineClient, dbClient, config.ConsoleConfig, config.CapiWhitelists)
 		if err != nil {
 			return &APIServer{}, err
 		}
-		controller.CAPIChan = apiClient.alertToPush
+		log.Infof("CAPI manager configured successfully")
+		isMachineEnrolled = isEnrolled(apiClient.apiClient)
+		controller.AlertsAddChan = apiClient.AlertsAddChan
+		if fflag.PapiClient.IsEnabled() {
+			if isMachineEnrolled {
+				log.Infof("Machine is enrolled in the console, Loading PAPI Client")
+				papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
+				if err != nil {
+					return &APIServer{}, err
+				}
+				controller.DecisionDeleteChan = papiClient.Channels.DeleteDecisionChannel
+			} else {
+				log.Errorf("Machine is not enrolled in the console, can't synchronize with the console")
+			}
+		}
 	} else {
 		apiClient = nil
-		controller.CAPIChan = nil
+		controller.AlertsAddChan = nil
+		controller.DecisionDeleteChan = nil
 	}
+
 	if trustedIPs, err := config.GetTrustedIPs(); err == nil {
 		controller.TrustedIPs = trustedIPs
 	} else {
@@ -233,10 +253,27 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		flushScheduler: flushScheduler,
 		router:         router,
 		apic:           apiClient,
+		papi:           papiClient,
 		httpServerTomb: tomb.Tomb{},
 		consoleConfig:  config.ConsoleConfig,
+		isEnrolled:     isMachineEnrolled,
 	}, nil
 
+}
+
+func isEnrolled(client *apiclient.ApiClient) bool {
+	apiHTTPClient := client.GetClient()
+	jwtTransport := apiHTTPClient.Transport.(*apiclient.JWTTransport)
+	tokenStr := jwtTransport.Token
+
+	token, _ := jwt.Parse(tokenStr, nil)
+	if token == nil {
+		return false
+	}
+	claims := token.Claims.(jwt.MapClaims)
+	_, ok := claims["organization_id"]
+
+	return ok
 }
 
 func (s *APIServer) Router() (*gin.Engine, error) {
@@ -268,9 +305,15 @@ func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
 			log.Infof("(tls) Client Auth Type set to %s", clientAuthType.String())
 			caCert, err = os.ReadFile(s.TLS.CACertPath)
 			if err != nil {
-				return nil, errors.Wrap(err, "Error opening cert file")
+				return nil, fmt.Errorf("while opening cert file: %w", err)
 			}
-			caCertPool = x509.NewCertPool()
+			caCertPool, err = x509.SystemCertPool()
+			if err != nil {
+				log.Warnf("Error loading system CA certificates: %s", err)
+			}
+			if caCertPool == nil {
+				caCertPool = x509.NewCertPool()
+			}
 			caCertPool.AppendCertsFromPEM(caCert)
 		}
 	}
@@ -284,10 +327,10 @@ func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
 }
 
 func (s *APIServer) Run(apiReady chan bool) error {
-	defer types.CatchPanic("lapi/runServer")
+	defer trace.CatchPanic("lapi/runServer")
 	tlsCfg, err := s.GetTLSConfig()
 	if err != nil {
-		return errors.Wrap(err, "while creating TLS config")
+		return fmt.Errorf("while creating TLS config: %w", err)
 	}
 	s.httpServer = &http.Server{
 		Addr:      s.URL,
@@ -303,6 +346,7 @@ func (s *APIServer) Run(apiReady chan bool) error {
 			}
 			return nil
 		})
+
 		s.apic.pullTomb.Go(func() error {
 			if err := s.apic.Pull(); err != nil {
 				log.Errorf("capi pull: %s", err)
@@ -310,6 +354,37 @@ func (s *APIServer) Run(apiReady chan bool) error {
 			}
 			return nil
 		})
+
+		//csConfig.API.Server.ConsoleConfig.ShareCustomScenarios
+		if s.isEnrolled {
+			if fflag.PapiClient.IsEnabled() {
+				if s.consoleConfig.ConsoleManagement != nil && *s.consoleConfig.ConsoleManagement {
+					if s.papi.URL != "" {
+						log.Infof("Starting PAPI decision receiver")
+						s.papi.pullTomb.Go(func() error {
+							if err := s.papi.Pull(); err != nil {
+								log.Errorf("papi pull: %s", err)
+								return err
+							}
+							return nil
+						})
+
+						s.papi.syncTomb.Go(func() error {
+							if err := s.papi.SyncDecisions(); err != nil {
+								log.Errorf("capi decisions sync: %s", err)
+								return err
+							}
+							return nil
+						})
+					} else {
+						log.Warnf("papi_url is not set in online_api_credentials.yaml, can't synchronize with the console. Run cscli console enable console_management to add it.")
+					}
+				} else {
+					log.Warningf("Machine is not allowed to synchronize decisions, you can enable it with `cscli console enable console_management`")
+				}
+			}
+		}
+
 		s.apic.metricsTomb.Go(func() error {
 			s.apic.SendMetrics(make(chan bool))
 			return nil
@@ -320,7 +395,13 @@ func (s *APIServer) Run(apiReady chan bool) error {
 		go func() {
 			apiReady <- true
 			log.Infof("CrowdSec Local API listening on %s", s.URL)
-			if s.TLS != nil && s.TLS.CertFilePath != "" && s.TLS.KeyFilePath != "" {
+			if s.TLS != nil && (s.TLS.CertFilePath != "" || s.TLS.KeyFilePath != "") {
+				if s.TLS.KeyFilePath == "" {
+					log.Fatalf("while serving local API: %v", errors.New("missing TLS key file"))
+				} else if s.TLS.CertFilePath == "" {
+					log.Fatalf("while serving local API: %v", errors.New("missing TLS cert file"))
+				}
+
 				if err := s.httpServer.ListenAndServeTLS(s.TLS.CertFilePath, s.TLS.KeyFilePath); err != nil {
 					log.Fatalf("while serving local API: %v", err)
 				}
@@ -340,6 +421,9 @@ func (s *APIServer) Run(apiReady chan bool) error {
 func (s *APIServer) Close() {
 	if s.apic != nil {
 		s.apic.Shutdown() // stop apic first since it use dbClient
+	}
+	if s.papi != nil {
+		s.papi.Shutdown() // papi also uses the dbClient
 	}
 	s.dbClient.Ent.Close()
 	if s.flushScheduler != nil {
@@ -364,7 +448,7 @@ func (s *APIServer) Shutdown() error {
 	}
 	s.httpServerTomb.Kill(nil)
 	if err := s.httpServerTomb.Wait(); err != nil {
-		return errors.Wrap(err, "while waiting on httpServerTomb")
+		return fmt.Errorf("while waiting on httpServerTomb: %w", err)
 	}
 	return nil
 }
@@ -377,7 +461,7 @@ func (s *APIServer) InitController() error {
 
 	err := s.controller.Init()
 	if err != nil {
-		return errors.Wrap(err, "controller init")
+		return fmt.Errorf("controller init: %w", err)
 	}
 	if s.TLS != nil {
 		var cacheExpiration time.Duration
@@ -393,7 +477,7 @@ func (s *APIServer) InitController() error {
 				"type":      "agent",
 			}))
 		if err != nil {
-			return errors.Wrap(err, "while creating TLS auth for agents")
+			return fmt.Errorf("while creating TLS auth for agents: %w", err)
 		}
 		s.controller.HandlerV1.Middlewares.APIKey.TlsAuth, err = v1.NewTLSAuth(s.TLS.AllowedBouncersOU, s.TLS.CRLPath,
 			cacheExpiration,
@@ -402,7 +486,7 @@ func (s *APIServer) InitController() error {
 				"type":      "bouncer",
 			}))
 		if err != nil {
-			return errors.Wrap(err, "while creating TLS auth for bouncers")
+			return fmt.Errorf("while creating TLS auth for bouncers: %w", err)
 		}
 	}
 	return err

@@ -15,25 +15,23 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/tomb.v2"
+
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 )
-
 
 type NotificationsCfg struct {
 	Config   csplugin.PluginConfig  `json:"plugin_config"`
 	Profiles []*csconfig.ProfileCfg `json:"associated_profiles"`
 	ids      []uint
 }
-
 
 func NewNotificationsCmd() *cobra.Command {
 	var cmdNotifications = &cobra.Command{
@@ -56,7 +54,6 @@ func NewNotificationsCmd() *cobra.Command {
 		},
 	}
 
-
 	cmdNotifications.AddCommand(NewNotificationsListCmd())
 	cmdNotifications.AddCommand(NewNotificationsInspectCmd())
 	cmdNotifications.AddCommand(NewNotificationsReinjectCmd())
@@ -64,18 +61,17 @@ func NewNotificationsCmd() *cobra.Command {
 	return cmdNotifications
 }
 
-
 func getNotificationsConfiguration() (map[string]NotificationsCfg, error) {
 	pcfgs := map[string]csplugin.PluginConfig{}
 	wf := func(path string, info fs.FileInfo, err error) error {
 		if info == nil {
-			return errors.Wrapf(err, "error while traversing directory %s", path)
+			return fmt.Errorf("error while traversing directory %s: %w", path, err)
 		}
 		name := filepath.Join(csConfig.ConfigPaths.NotificationDir, info.Name()) //Avoid calling info.Name() twice
 		if (strings.HasSuffix(name, "yaml") || strings.HasSuffix(name, "yml")) && !(info.IsDir()) {
 			ts, err := csplugin.ParsePluginConfigFile(name)
 			if err != nil {
-				return errors.Wrapf(err, "Loading notifification plugin configuration with %s", name)
+				return fmt.Errorf("loading notifification plugin configuration with %s: %w", name, err)
 			}
 			for _, t := range ts {
 				pcfgs[t.Name] = t
@@ -85,14 +81,14 @@ func getNotificationsConfiguration() (map[string]NotificationsCfg, error) {
 	}
 
 	if err := filepath.Walk(csConfig.ConfigPaths.NotificationDir, wf); err != nil {
-		return nil, errors.Wrap(err, "Loading notifification plugin configuration")
+		return nil, fmt.Errorf("while loading notifification plugin configuration: %w", err)
 	}
 
 	// A bit of a tricky stuf now: reconcile profiles and notification plugins
 	ncfgs := map[string]NotificationsCfg{}
 	profiles, err := csprofiles.NewProfile(csConfig.API.Server.Profiles)
 	if err != nil {
-		return nil, errors.Wrap(err, "Cannot extract profiles from configuration")
+		return nil, fmt.Errorf("while extracting profiles from configuration: %w", err)
 	}
 	for profileID, profile := range profiles {
 	loop:
@@ -128,7 +124,6 @@ func getNotificationsConfiguration() (map[string]NotificationsCfg, error) {
 	return ncfgs, nil
 }
 
-
 func NewNotificationsListCmd() *cobra.Command {
 	var cmdNotificationsList = &cobra.Command{
 		Use:               "list",
@@ -140,7 +135,7 @@ func NewNotificationsListCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, arg []string) error {
 			ncfgs, err := getNotificationsConfiguration()
 			if err != nil {
-				return errors.Wrap(err, "Can't build profiles configuration")
+				return fmt.Errorf("can't build profiles configuration: %w", err)
 			}
 
 			if csConfig.Cscli.Output == "human" {
@@ -148,14 +143,14 @@ func NewNotificationsListCmd() *cobra.Command {
 			} else if csConfig.Cscli.Output == "json" {
 				x, err := json.MarshalIndent(ncfgs, "", " ")
 				if err != nil {
-					return errors.New("failed to marshal notification configuration")
+					return fmt.Errorf("failed to marshal notification configuration: %w", err)
 				}
 				fmt.Printf("%s", string(x))
 			} else if csConfig.Cscli.Output == "raw" {
 				csvwriter := csv.NewWriter(os.Stdout)
 				err := csvwriter.Write([]string{"Name", "Type", "Profile name"})
 				if err != nil {
-					return errors.Wrap(err, "failed to write raw header")
+					return fmt.Errorf("failed to write raw header: %w", err)
 				}
 				for _, b := range ncfgs {
 					profilesList := []string{}
@@ -164,7 +159,7 @@ func NewNotificationsListCmd() *cobra.Command {
 					}
 					err := csvwriter.Write([]string{b.Config.Name, b.Config.Type, strings.Join(profilesList, ", ")})
 					if err != nil {
-						return errors.Wrap(err, "failed to write raw content")
+						return fmt.Errorf("failed to write raw content: %w", err)
 					}
 				}
 				csvwriter.Flush()
@@ -175,7 +170,6 @@ func NewNotificationsListCmd() *cobra.Command {
 
 	return cmdNotificationsList
 }
-
 
 func NewNotificationsInspectCmd() *cobra.Command {
 	var cmdNotificationsInspect = &cobra.Command{
@@ -194,14 +188,14 @@ func NewNotificationsInspectCmd() *cobra.Command {
 			pluginName := arg[0]
 
 			if pluginName == "" {
-				errors.New("Please provide a plugin name to inspect")
+				return fmt.Errorf("please provide a plugin name to inspect")
 			}
 			ncfgs, err := getNotificationsConfiguration()
 			if err != nil {
-				return errors.Wrap(err, "Can't build profiles configuration")
+				return fmt.Errorf("can't build profiles configuration: %w", err)
 			}
 			if cfg, ok = ncfgs[pluginName]; !ok {
-				return errors.New("The provided plugin name doesn't exist or isn't active")
+				return fmt.Errorf("plugin '%s' does not exist or is not active", pluginName)
 			}
 
 			if csConfig.Cscli.Output == "human" || csConfig.Cscli.Output == "raw" {
@@ -215,7 +209,7 @@ func NewNotificationsInspectCmd() *cobra.Command {
 			} else if csConfig.Cscli.Output == "json" {
 				x, err := json.MarshalIndent(cfg, "", " ")
 				if err != nil {
-					return errors.New("failed to marshal notification configuration")
+					return fmt.Errorf("failed to marshal notification configuration: %w", err)
 				}
 				fmt.Printf("%s", string(x))
 			}
@@ -225,7 +219,6 @@ func NewNotificationsInspectCmd() *cobra.Command {
 
 	return cmdNotificationsInspect
 }
-
 
 func NewNotificationsReinjectCmd() *cobra.Command {
 	var remediation bool
@@ -249,45 +242,45 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 			)
 			if len(args) != 1 {
 				printHelp(cmd)
-				return errors.New("Wrong number of argument: there should be one argument")
+				return fmt.Errorf("wrong number of argument: there should be one argument")
 			}
 
 			//first: get the alert
 			id, err := strconv.Atoi(args[0])
 			if err != nil {
-				return errors.New(fmt.Sprintf("bad alert id %s", args[0]))
+				return fmt.Errorf("bad alert id %s", args[0])
 			}
 			if err := csConfig.LoadAPIClient(); err != nil {
-				return errors.Wrapf(err, "loading api client")
+				return fmt.Errorf("loading api client: %w", err)
 			}
 			if csConfig.API.Client == nil {
-				return errors.New("There is no configuration on 'api_client:'")
+				return fmt.Errorf("missing configuration on 'api_client:'")
 			}
 			if csConfig.API.Client.Credentials == nil {
-				return errors.New(fmt.Sprintf("Please provide credentials for the API in '%s'", csConfig.API.Client.CredentialsFilePath))
+				return fmt.Errorf("missing API credentials in '%s'", csConfig.API.Client.CredentialsFilePath)
 			}
 			apiURL, err := url.Parse(csConfig.API.Client.Credentials.URL)
 			if err != nil {
-				return errors.Wrapf(err, "error parsing the URL of the API")
+				return fmt.Errorf("error parsing the URL of the API: %w", err)
 			}
 			client, err := apiclient.NewClient(&apiclient.Config{
 				MachineID:     csConfig.API.Client.Credentials.Login,
 				Password:      strfmt.Password(csConfig.API.Client.Credentials.Password),
-				UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+				UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
 				URL:           apiURL,
 				VersionPrefix: "v1",
 			})
 			if err != nil {
-				return errors.Wrapf(err, "error creating the client for the API")
+				return fmt.Errorf("error creating the client for the API: %w", err)
 			}
 			alert, _, err := client.Alerts.GetByID(context.Background(), id)
 			if err != nil {
-				return errors.Wrapf(err, fmt.Sprintf("can't find alert with id %s", args[0]))
+				return fmt.Errorf("can't find alert with id %s: %w", args[0], err)
 			}
 
 			if alertOverride != "" {
 				if err = json.Unmarshal([]byte(alertOverride), alert); err != nil {
-					return errors.Wrapf(err, "Can't unmarshal the data given in the alert flag")
+					return fmt.Errorf("can't unmarshal data in the alert flag: %w", err)
 				}
 			}
 			if !remediation {
@@ -297,7 +290,7 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 			// second we start plugins
 			err = pluginBroker.Init(csConfig.PluginConfig, csConfig.API.Server.Profiles, csConfig.ConfigPaths)
 			if err != nil {
-				return errors.Wrapf(err, "Can't initialize plugins")
+				return fmt.Errorf("can't initialize plugins: %w", err)
 			}
 
 			pluginTomb.Go(func() error {
@@ -309,13 +302,13 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 
 			profiles, err := csprofiles.NewProfile(csConfig.API.Server.Profiles)
 			if err != nil {
-				return errors.Wrap(err, "Cannot extract profiles from configuration")
+				return fmt.Errorf("cannot extract profiles from configuration: %w", err)
 			}
 
 			for id, profile := range profiles {
 				_, matched, err := profile.EvaluateProfile(alert)
 				if err != nil {
-					return errors.Wrapf(err, "can't evaluate profile %s", profile.Cfg.Name)
+					return fmt.Errorf("can't evaluate profile %s: %w", profile.Cfg.Name, err)
 				}
 				if !matched {
 					log.Infof("The profile %s didn't match", profile.Cfg.Name)
@@ -343,7 +336,7 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 			}
 
 			//			time.Sleep(2 * time.Second) // There's no mechanism to ensure notification has been sent
-			pluginTomb.Kill(errors.New("terminating"))
+			pluginTomb.Kill(fmt.Errorf("terminating"))
 			pluginTomb.Wait()
 			return nil
 		},

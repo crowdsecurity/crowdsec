@@ -4,23 +4,26 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/enescakir/emoji"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/mod/semver"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 )
 
 // pick a hub branch corresponding to the current crowdsec version.
 func chooseHubBranch() (string, error) {
 	latest, err := cwversion.Latest()
 	if err != nil {
-		return "master", err
+		log.Warningf("Unable to retrieve latest crowdsec version: %s, defaulting to master", err)
+		//lint:ignore nilerr reason
+		return "master", nil // ignore
 	}
 
 	csVersion := cwversion.VersionStrip()
 	if csVersion == latest {
+		log.Debugf("current version is equal to latest (%s)", csVersion)
 		return "master", nil
 	}
 
@@ -76,11 +79,11 @@ func InstallItem(csConfig *csconfig.Config, name string, obtype string, force bo
 
 	item, err := DownloadLatest(csConfig.Hub, item, force, true)
 	if err != nil {
-		return errors.Wrapf(err, "while downloading %s", item.Name)
+		return fmt.Errorf("while downloading %s: %w", item.Name, err)
 	}
 
 	if err := AddItem(obtype, item); err != nil {
-		return errors.Wrapf(err, "while adding %s", item.Name)
+		return fmt.Errorf("while adding %s: %w", item.Name, err)
 	}
 
 	if downloadOnly {
@@ -90,11 +93,11 @@ func InstallItem(csConfig *csconfig.Config, name string, obtype string, force bo
 
 	item, err = EnableItem(csConfig.Hub, item)
 	if err != nil {
-		return errors.Wrapf(err, "while enabling %s", item.Name)
+		return fmt.Errorf("while enabling %s: %w", item.Name, err)
 	}
 
 	if err := AddItem(obtype, item); err != nil {
-		return errors.Wrapf(err, "while adding %s", item.Name)
+		return fmt.Errorf("while adding %s: %w", item.Name, err)
 	}
 
 	log.Infof("Enabled %s", item.Name)

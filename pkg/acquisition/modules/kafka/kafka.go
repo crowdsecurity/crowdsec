@@ -10,15 +10,15 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/segmentio/kafka-go"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -55,6 +55,10 @@ type KafkaSource struct {
 	Reader *kafka.Reader
 }
 
+func (k *KafkaSource) GetUuid() string {
+	return k.Config.UniqueId
+}
+
 func (k *KafkaSource) UnmarshalConfig(yamlConfig []byte) error {
 	k.Config = KafkaConfiguration{}
 
@@ -88,12 +92,12 @@ func (k *KafkaSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 
 	dialer, err := k.Config.NewDialer()
 	if err != nil {
-		return errors.Wrapf(err, "cannot create %s dialer", dataSourceName)
+		return fmt.Errorf("cannot create %s dialer: %w", dataSourceName, err)
 	}
 
 	k.Reader, err = k.Config.NewReader(dialer)
 	if err != nil {
-		return errors.Wrapf(err, "cannote create %s reader", dataSourceName)
+		return fmt.Errorf("cannote create %s reader: %w", dataSourceName, err)
 	}
 
 	if k.Reader == nil {
@@ -103,7 +107,7 @@ func (k *KafkaSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	return nil
 }
 
-func (k *KafkaSource) ConfigureByDSN(string, map[string]string, *log.Entry) error {
+func (k *KafkaSource) ConfigureByDSN(string, map[string]string, *log.Entry, string) error {
 	return fmt.Errorf("%s datasource does not support command-line acquisition", dataSourceName)
 }
 
@@ -144,7 +148,7 @@ func (k *KafkaSource) ReadMessage(out chan types.Event) error {
 			if err == io.EOF {
 				return nil
 			}
-			k.logger.Errorln(errors.Wrapf(err, "while reading %s message", dataSourceName))
+			k.logger.Errorln(fmt.Errorf("while reading %s message: %w", dataSourceName, err))
 		}
 		l := types.Line{
 			Raw:     string(m.Value),
@@ -158,9 +162,9 @@ func (k *KafkaSource) ReadMessage(out chan types.Event) error {
 		var evt types.Event
 
 		if !k.Config.UseTimeMachine {
-			evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leakybucket.LIVE}
+			evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE}
 		} else {
-			evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leakybucket.TIMEMACHINE}
+			evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
 		}
 		out <- evt
 	}
@@ -176,7 +180,7 @@ func (k *KafkaSource) RunReader(out chan types.Event, t *tomb.Tomb) error {
 		case <-t.Dying():
 			k.logger.Infof("%s datasource topic %s stopping", dataSourceName, k.Config.Topic)
 			if err := k.Reader.Close(); err != nil {
-				return errors.Wrapf(err, "while closing  %s reader on topic '%s'", dataSourceName, k.Config.Topic)
+				return fmt.Errorf("while closing  %s reader on topic '%s': %w", dataSourceName, k.Config.Topic, err)
 			}
 			return nil
 		}
@@ -187,7 +191,7 @@ func (k *KafkaSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) e
 	k.logger.Infof("start reader on topic '%s'", k.Config.Topic)
 
 	t.Go(func() error {
-		defer types.CatchPanic("crowdsec/acquis/kafka/live")
+		defer trace.CatchPanic("crowdsec/acquis/kafka/live")
 		return k.RunReader(out, t)
 	})
 
@@ -209,7 +213,13 @@ func (kc *KafkaConfiguration) NewTLSConfig() (*tls.Config, error) {
 	if err != nil {
 		return &tlsConfig, err
 	}
-	caCertPool := x509.NewCertPool()
+	caCertPool, err := x509.SystemCertPool()
+	if err != nil {
+		return &tlsConfig, fmt.Errorf("unable to load system CA certificates: %w", err)
+	}
+	if caCertPool == nil {
+		caCertPool = x509.NewCertPool()
+	}
 	caCertPool.AppendCertsFromPEM(caCert)
 	tlsConfig.RootCAs = caCertPool
 
@@ -253,7 +263,7 @@ func (kc *KafkaConfiguration) NewReader(dialer *kafka.Dialer) (*kafka.Reader, er
 		rConf.GroupID = kc.GroupID
 	}
 	if err := rConf.Validate(); err != nil {
-		return &kafka.Reader{}, errors.Wrapf(err, "while validating reader configuration")
+		return &kafka.Reader{}, fmt.Errorf("while validating reader configuration: %w", err)
 	}
 	return kafka.NewReader(rConf), nil
 }

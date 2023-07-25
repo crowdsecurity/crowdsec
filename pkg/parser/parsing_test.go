@@ -11,11 +11,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type TestFile struct {
@@ -54,7 +55,6 @@ func TestParser(t *testing.T) {
 			}
 		}
 	}
-
 }
 
 func BenchmarkParser(t *testing.B) {
@@ -90,7 +90,6 @@ func BenchmarkParser(t *testing.B) {
 }
 
 func testOneParser(pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing.B) error {
-
 	var (
 		err    error
 		pnodes []Node
@@ -112,7 +111,7 @@ func testOneParser(pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing
 	if err != nil {
 		panic(err)
 	}
-	if err := yaml.UnmarshalStrict(out.Bytes(), &parser_configs); err != nil {
+	if err = yaml.UnmarshalStrict(out.Bytes(), &parser_configs); err != nil {
 		return fmt.Errorf("failed unmarshaling %s : %s", parser_cfg_file, err)
 	}
 
@@ -196,7 +195,7 @@ func loadTestFile(file string) []TestFile {
 
 func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bool) {
 	var retInfo []string
-	var valid bool = false
+	var valid = false
 	expectMaps := []map[string]string{expected.Parsed, expected.Meta, expected.Enriched}
 	outMaps := []map[string]string{out.Parsed, out.Meta, out.Enriched}
 	outLabels := []string{"Parsed", "Meta", "Enriched"}
@@ -372,10 +371,10 @@ func TestGeneratePatternsDoc(t *testing.T) {
 	}
 	log.Infof("-> %s", spew.Sdump(pctx))
 	/*don't judge me, we do it for the users*/
-	p := make(PairList, len(pctx.Grok))
+	p := make(PairList, len(pctx.Grok.Patterns))
 
 	i := 0
-	for key, val := range pctx.Grok {
+	for key, val := range pctx.Grok.Patterns {
 		p[i] = Pair{key, val}
 		p[i].Value = strings.ReplaceAll(p[i].Value, "{%{", "\\{\\%\\{")
 		i++
@@ -399,7 +398,7 @@ func TestGeneratePatternsDoc(t *testing.T) {
 		t.Fatal("failed to write to file")
 	}
 	for _, k := range p {
-		if _, err := f.WriteString(fmt.Sprintf("## %s\n\nPattern :\n```\n%s\n```\n\n", k.Key, k.Value)); err != nil {
+		if _, err := fmt.Fprintf(f, "## %s\n\nPattern :\n```\n%s\n```\n\n", k.Key, k.Value); err != nil {
 			t.Fatal("failed to write to file")
 		}
 		fmt.Printf("%v\t%v\n", k.Key, k.Value)
@@ -414,5 +413,4 @@ func TestGeneratePatternsDoc(t *testing.T) {
 		t.Fatal("failed to write to file")
 	}
 	f.Close()
-
 }

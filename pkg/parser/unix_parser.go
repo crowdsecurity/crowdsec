@@ -7,11 +7,13 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/grokky"
-	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
 
 type UnixParserCtx struct {
@@ -34,6 +36,7 @@ type Parsers struct {
 func Init(c map[string]interface{}) (*UnixParserCtx, error) {
 	r := UnixParserCtx{}
 	r.Grok = grokky.NewBase()
+	r.Grok.UseRe2 = fflag.Re2GrokSupport.IsEnabled()
 	files, err := os.ReadDir(c["patterns"].(string))
 	if err != nil {
 		return nil, err
@@ -115,7 +118,7 @@ func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 
 	parsers.EnricherCtx, err = Loadplugin(cConfig.Crowdsec.DataDir)
 	if err != nil {
-		return parsers, fmt.Errorf("Failed to load enrich plugin : %v", err)
+		return parsers, fmt.Errorf("failed to load enrich plugin : %v", err)
 	}
 
 	/*
@@ -133,8 +136,8 @@ func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 		log.Infof("Loading postoverflow parsers")
 		parsers.Povfwnodes, err = LoadStages(parsers.PovfwStageFiles, parsers.Povfwctx, parsers.EnricherCtx)
 	} else {
-		parsers.Povfwnodes = []Node{}
 		log.Infof("No postoverflow parsers to load")
+		parsers.Povfwnodes = []Node{}
 	}
 
 	if err != nil {

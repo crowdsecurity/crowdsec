@@ -10,6 +10,7 @@ import (
 	"time"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
+	"github.com/google/uuid"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
@@ -44,6 +45,7 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 		Capacity:        &alert.Capacity,
 		Leakspeed:       &alert.LeakSpeed,
 		Simulated:       &alert.Simulated,
+		UUID:            alert.UUID,
 		Source: &models.Source{
 			Scope:     &alert.SourceScope,
 			Value:     &alert.SourceValue,
@@ -159,8 +161,15 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		}
 
 		alert.MachineID = machineID
+		//generate uuid here for alert
+		alert.UUID = uuid.NewString()
+
 		//if coming from cscli, alert already has decisions
 		if len(alert.Decisions) != 0 {
+			//alert already has a decision (cscli decisions add etc.), generate uuid here
+			for _, decision := range alert.Decisions {
+				decision.UUID = uuid.NewString()
+			}
 			for pIdx, profile := range c.Profiles {
 				_, matched, err := profile.EvaluateProfile(alert)
 				if err != nil {
@@ -176,7 +185,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 				}
 			}
 			decision := alert.Decisions[0]
-			if decision.Origin != nil && *decision.Origin == "cscli-import" {
+			if decision.Origin != nil && *decision.Origin == types.CscliImportOrigin {
 				stopFlush = true
 			}
 			continue
@@ -201,11 +210,13 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 					return
 				}
 			}
-
 			if !matched {
 				continue
 			}
-
+			for _, decision := range profileDecisions {
+				decision.UUID = uuid.NewString()
+			}
+			//generate uuid here for alert
 			if len(alert.Decisions) == 0 { // non manual decision
 				alert.Decisions = append(alert.Decisions, profileDecisions...)
 			}
@@ -229,9 +240,9 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		return
 	}
 
-	if c.CAPIChan != nil {
+	if c.AlertsAddChan != nil {
 		select {
-		case c.CAPIChan <- input:
+		case c.AlertsAddChan <- input:
 			log.Debug("alert sent to CAPI channel")
 		default:
 			log.Warning("Cannot send alert to Central API channel")

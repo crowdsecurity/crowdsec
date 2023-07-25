@@ -14,11 +14,15 @@ import (
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
+
+	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
+	"github.com/crowdsecurity/go-cs-lib/pkg/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -99,9 +103,9 @@ After running this command your will need to validate the enrollment in the weba
 				MachineID:     csConfig.API.Server.OnlineClient.Credentials.Login,
 				Password:      password,
 				Scenarios:     scenarios,
-				UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+				UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
 				URL:           apiURL,
-				VersionPrefix: "v2",
+				VersionPrefix: "v3",
 			})
 			resp, err := c.Auth.EnrollWatcher(context.Background(), args[0], name, tags, overwrite)
 			if err != nil {
@@ -209,10 +213,11 @@ Disable given information push to the central API.`,
 				}
 
 				rows := [][]string{
-					{"share_manual_decisions", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareManualDecisions)},
-					{"share_custom", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios)},
-					{"share_tainted", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios)},
-					{"share_context", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareContext)},
+					{csconfig.SEND_MANUAL_SCENARIOS, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareManualDecisions)},
+					{csconfig.SEND_CUSTOM_SCENARIOS, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios)},
+					{csconfig.SEND_TAINTED_SCENARIOS, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios)},
+					{csconfig.SEND_CONTEXT, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareContext)},
+					{csconfig.CONSOLE_MANAGEMENT, fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ConsoleManagement)},
 				}
 				for _, row := range rows {
 					err = csvwriter.Write(row)
@@ -232,57 +237,94 @@ Disable given information push to the central API.`,
 func SetConsoleOpts(args []string, wanted bool) {
 	for _, arg := range args {
 		switch arg {
+		case csconfig.CONSOLE_MANAGEMENT:
+			if !fflag.PapiClient.IsEnabled() {
+				continue
+			}
+			/*for each flag check if it's already set before setting it*/
+			if csConfig.API.Server.ConsoleConfig.ConsoleManagement != nil {
+				if *csConfig.API.Server.ConsoleConfig.ConsoleManagement == wanted {
+					log.Debugf("%s already set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
+				} else {
+					log.Infof("%s set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
+					*csConfig.API.Server.ConsoleConfig.ConsoleManagement = wanted
+				}
+			} else {
+				log.Infof("%s set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
+				csConfig.API.Server.ConsoleConfig.ConsoleManagement = ptr.Of(wanted)
+			}
+			if csConfig.API.Server.OnlineClient.Credentials != nil {
+				changed := false
+				if wanted && csConfig.API.Server.OnlineClient.Credentials.PapiURL == "" {
+					changed = true
+					csConfig.API.Server.OnlineClient.Credentials.PapiURL = types.PAPIBaseURL
+				} else if !wanted && csConfig.API.Server.OnlineClient.Credentials.PapiURL != "" {
+					changed = true
+					csConfig.API.Server.OnlineClient.Credentials.PapiURL = ""
+				}
+				if changed {
+					fileContent, err := yaml.Marshal(csConfig.API.Server.OnlineClient.Credentials)
+					if err != nil {
+						log.Fatalf("Cannot marshal credentials: %s", err)
+					}
+					log.Infof("Updating credentials file: %s", csConfig.API.Server.OnlineClient.CredentialsFilePath)
+					err = os.WriteFile(csConfig.API.Server.OnlineClient.CredentialsFilePath, fileContent, 0600)
+					if err != nil {
+						log.Fatalf("Cannot write credentials file: %s", err)
+					}
+				}
+			}
 		case csconfig.SEND_CUSTOM_SCENARIOS:
 			/*for each flag check if it's already set before setting it*/
 			if csConfig.API.Server.ConsoleConfig.ShareCustomScenarios != nil {
 				if *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios == wanted {
-					log.Infof("%s already set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
+					log.Debugf("%s already set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
 				} else {
 					log.Infof("%s set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
 					*csConfig.API.Server.ConsoleConfig.ShareCustomScenarios = wanted
 				}
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
-				csConfig.API.Server.ConsoleConfig.ShareCustomScenarios = types.BoolPtr(wanted)
+				csConfig.API.Server.ConsoleConfig.ShareCustomScenarios = ptr.Of(wanted)
 			}
 		case csconfig.SEND_TAINTED_SCENARIOS:
 			/*for each flag check if it's already set before setting it*/
 			if csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios != nil {
 				if *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios == wanted {
-					log.Infof("%s already set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
+					log.Debugf("%s already set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
 				} else {
 					log.Infof("%s set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
 					*csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios = wanted
 				}
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
-				csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios = types.BoolPtr(wanted)
+				csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios = ptr.Of(wanted)
 			}
 		case csconfig.SEND_MANUAL_SCENARIOS:
 			/*for each flag check if it's already set before setting it*/
 			if csConfig.API.Server.ConsoleConfig.ShareManualDecisions != nil {
 				if *csConfig.API.Server.ConsoleConfig.ShareManualDecisions == wanted {
-					log.Infof("%s already set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
+					log.Debugf("%s already set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
 				} else {
 					log.Infof("%s set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
 					*csConfig.API.Server.ConsoleConfig.ShareManualDecisions = wanted
 				}
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
-				csConfig.API.Server.ConsoleConfig.ShareManualDecisions = types.BoolPtr(wanted)
+				csConfig.API.Server.ConsoleConfig.ShareManualDecisions = ptr.Of(wanted)
 			}
 		case csconfig.SEND_CONTEXT:
 			/*for each flag check if it's already set before setting it*/
 			if csConfig.API.Server.ConsoleConfig.ShareContext != nil {
 				if *csConfig.API.Server.ConsoleConfig.ShareContext == wanted {
-					log.Infof("%s already set to %t", csconfig.SEND_CONTEXT, wanted)
+					log.Debugf("%s already set to %t", csconfig.SEND_CONTEXT, wanted)
 				} else {
 					log.Infof("%s set to %t", csconfig.SEND_CONTEXT, wanted)
 					*csConfig.API.Server.ConsoleConfig.ShareContext = wanted
 				}
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_CONTEXT, wanted)
-				csConfig.API.Server.ConsoleConfig.ShareContext = types.BoolPtr(wanted)
+				csConfig.API.Server.ConsoleConfig.ShareContext = ptr.Of(wanted)
 			}
 		default:
 			log.Fatalf("unknown flag %s", arg)

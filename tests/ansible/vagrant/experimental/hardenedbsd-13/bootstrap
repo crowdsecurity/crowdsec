@@ -1,5 +1,0 @@
-#!/bin/sh
-unset IFS
-set -euf
-
-sudo pkg install python3

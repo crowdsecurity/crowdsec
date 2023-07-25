@@ -6,12 +6,13 @@ import (
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 )
 
 type Runtime struct {
@@ -47,18 +48,19 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 		runtime.DebugFilters = make([]*exprhelpers.ExprDebugger, len(profile.Filters))
 		runtime.Cfg = profile
 		if runtime.Cfg.OnSuccess != "" && runtime.Cfg.OnSuccess != "continue" && runtime.Cfg.OnSuccess != "break" {
-			return []*Runtime{}, errors.Wrapf(err, "invalid 'on_success' for '%s' : %s", profile.Name, runtime.Cfg.OnSuccess)
+			return []*Runtime{}, fmt.Errorf("invalid 'on_success' for '%s': %s", profile.Name, runtime.Cfg.OnSuccess)
 		}
 		if runtime.Cfg.OnFailure != "" && runtime.Cfg.OnFailure != "continue" && runtime.Cfg.OnFailure != "break" && runtime.Cfg.OnFailure != "apply" {
-			return []*Runtime{}, errors.Wrapf(err, "invalid 'on_failure' for '%s' : %s", profile.Name, runtime.Cfg.OnFailure)
+			return []*Runtime{}, fmt.Errorf("invalid 'on_failure' for '%s' : %s", profile.Name, runtime.Cfg.OnFailure)
 		}
 		for fIdx, filter := range profile.Filters {
-			if runtimeFilter, err = expr.Compile(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
+
+			if runtimeFilter, err = expr.Compile(filter, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
 				return []*Runtime{}, errors.Wrapf(err, "error compiling filter of '%s'", profile.Name)
 			}
 			runtime.RuntimeFilters[fIdx] = runtimeFilter
 			if profile.Debug != nil && *profile.Debug {
-				if debugFilter, err = exprhelpers.NewDebugger(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
+				if debugFilter, err = exprhelpers.NewDebugger(filter, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
 					log.Debugf("Error compiling debug filter of %s : %s", profile.Name, err)
 					// Don't fail if we can't compile the filter - for now
 					//	return errors.Wrapf(err, "Error compiling debug filter of %s", profile.Name)
@@ -69,13 +71,13 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 		}
 
 		if profile.DurationExpr != "" {
-			if runtimeDurationExpr, err = expr.Compile(profile.DurationExpr, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
+			if runtimeDurationExpr, err = expr.Compile(profile.DurationExpr, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
 				return []*Runtime{}, errors.Wrapf(err, "error compiling duration_expr of %s", profile.Name)
 			}
 
 			runtime.RuntimeDurationExpr = runtimeDurationExpr
 			if profile.Debug != nil && *profile.Debug {
-				if debugDurationExpr, err = exprhelpers.NewDebugger(profile.DurationExpr, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
+				if debugDurationExpr, err = exprhelpers.NewDebugger(profile.DurationExpr, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
 					log.Debugf("Error compiling debug duration_expr of %s : %s", profile.Name, err)
 				}
 				runtime.DebugDurationExpr = debugDurationExpr
@@ -100,7 +102,7 @@ func (Profile *Runtime) GenerateDecisionFromProfile(Alert *models.Alert) ([]*mod
 
 	for _, refDecision := range Profile.Cfg.Decisions {
 		decision := models.Decision{}
-		/*the reference decision from profile is in sumulated mode */
+		/*the reference decision from profile is in simulated mode */
 		if refDecision.Simulated != nil && *refDecision.Simulated {
 			decision.Simulated = new(bool)
 			*decision.Simulated = true
@@ -120,7 +122,7 @@ func (Profile *Runtime) GenerateDecisionFromProfile(Alert *models.Alert) ([]*mod
 		/*some fields are populated from the reference object : duration, scope, type*/
 		decision.Duration = new(string)
 		if Profile.Cfg.DurationExpr != "" && Profile.RuntimeDurationExpr != nil {
-			duration, err := expr.Run(Profile.RuntimeDurationExpr, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
+			duration, err := expr.Run(Profile.RuntimeDurationExpr, map[string]interface{}{"Alert": Alert})
 			if err != nil {
 				Profile.Logger.Warningf("Failed to run duration_expr : %v", err)
 				*decision.Duration = *refDecision.Duration
@@ -147,7 +149,7 @@ func (Profile *Runtime) GenerateDecisionFromProfile(Alert *models.Alert) ([]*mod
 		decision.Value = new(string)
 		*decision.Value = *Alert.Source.Value
 		decision.Origin = new(string)
-		*decision.Origin = "crowdsec"
+		*decision.Origin = types.CrowdSecOrigin
 		if refDecision.Origin != nil {
 			*decision.Origin = fmt.Sprintf("%s/%s", *decision.Origin, *refDecision.Origin)
 		}
@@ -164,7 +166,7 @@ func (Profile *Runtime) EvaluateProfile(Alert *models.Alert) ([]*models.Decision
 
 	matched := false
 	for eIdx, expression := range Profile.RuntimeFilters {
-		output, err := expr.Run(expression, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
+		output, err := expr.Run(expression, map[string]interface{}{"Alert": Alert})
 		if err != nil {
 			Profile.Logger.Warningf("failed to run whitelist expr : %v", err)
 			return nil, matched, errors.Wrapf(err, "while running expression %s", Profile.Cfg.Filters[eIdx])
@@ -172,7 +174,7 @@ func (Profile *Runtime) EvaluateProfile(Alert *models.Alert) ([]*models.Decision
 		switch out := output.(type) {
 		case bool:
 			if Profile.Cfg.Debug != nil && *Profile.Cfg.Debug {
-				Profile.DebugFilters[eIdx].Run(Profile.Logger, out, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
+				Profile.DebugFilters[eIdx].Run(Profile.Logger, out, map[string]interface{}{"Alert": Alert})
 			}
 			if out {
 				matched = true

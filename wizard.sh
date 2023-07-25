@@ -60,25 +60,35 @@ ACTION=""
 DEBUG_MODE="false"
 FORCE_MODE="false"
 
-SUPPORTED_SERVICES='apache2
+# the ssh service has different names on deb vs rpm-based distros
+if [[ -f "/etc/debian_version" ]]; then
+    SSH_NAME="ssh"
+else
+    SSH_NAME="sshd"
+fi
+
+SUPPORTED_SERVICES="apache2
 httpd
 nginx
-sshd
+$SSH_NAME
 mysql
 telnet
 smb
-'
+"
 
 
 HTTP_PLUGIN_BINARY="./plugins/notifications/http/notification-http"
 SLACK_PLUGIN_BINARY="./plugins/notifications/slack/notification-slack"
 SPLUNK_PLUGIN_BINARY="./plugins/notifications/splunk/notification-splunk"
 EMAIL_PLUGIN_BINARY="./plugins/notifications/email/notification-email"
+SENTINEL_PLUGIN_BINARY="./plugins/notifications/sentinel/notification-sentinel"
 
 HTTP_PLUGIN_CONFIG="./plugins/notifications/http/http.yaml"
 SLACK_PLUGIN_CONFIG="./plugins/notifications/slack/slack.yaml"
 SPLUNK_PLUGIN_CONFIG="./plugins/notifications/splunk/splunk.yaml"
 EMAIL_PLUGIN_CONFIG="./plugins/notifications/email/email.yaml"
+SENTINEL_PLUGIN_CONFIG="./plugins/notifications/sentinel/sentinel.yaml"
+
 
 BACKUP_DIR=$(mktemp -d)
 rm -rf -- "$BACKUP_DIR"
@@ -162,7 +172,7 @@ detect_services () {
 declare -A log_input_tags
 log_input_tags[apache2]='type: apache2'
 log_input_tags[nginx]='type: nginx'
-log_input_tags[sshd]='type: syslog'
+log_input_tags[$SSH_NAME]='type: syslog'
 log_input_tags[rsyslog]='type: syslog'
 log_input_tags[telnet]='type: telnet'
 log_input_tags[mysql]='type: mysql'
@@ -172,7 +182,7 @@ log_input_tags[linux]="type: syslog"
 declare -A log_locations
 log_locations[apache2]='/var/log/apache2/*.log,/var/log/*httpd*.log,/var/log/httpd/*log'
 log_locations[nginx]='/var/log/nginx/*.log,/usr/local/openresty/nginx/logs/*.log'
-log_locations[sshd]='/var/log/auth.log,/var/log/sshd.log,/var/log/secure'
+log_locations[$SSH_NAME]='/var/log/auth.log,/var/log/sshd.log,/var/log/secure'
 log_locations[rsyslog]='/var/log/syslog'
 log_locations[telnet]='/var/log/telnetd*.log'
 log_locations[mysql]='/var/log/mysql/error.log'
@@ -511,12 +521,14 @@ install_plugins(){
     cp ${SPLUNK_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
     cp ${HTTP_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
     cp ${EMAIL_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
+    cp ${SENTINEL_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
 
     if [[ ${DOCKER_MODE} == "false" ]]; then
         cp -n ${SLACK_PLUGIN_CONFIG} /etc/crowdsec/notifications/
         cp -n ${SPLUNK_PLUGIN_CONFIG} /etc/crowdsec/notifications/
         cp -n ${HTTP_PLUGIN_CONFIG} /etc/crowdsec/notifications/
         cp -n ${EMAIL_PLUGIN_CONFIG} /etc/crowdsec/notifications/
+        cp -n ${SENTINEL_PLUGIN_CONFIG} /etc/crowdsec/notifications/
     fi
 }
 
