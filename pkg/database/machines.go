@@ -10,6 +10,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -123,9 +124,9 @@ func (c *Client) DeleteWatcher(name string) error {
 }
 
 func (c *Client) BulkDeleteWatchers(machines []*ent.Machine) (int, error) {
-	ids := []int{}
-	for _, m := range machines {
-		ids = append(ids, m.ID)
+	ids := make([]int, len(machines))
+	for i, b := range machines {
+		ids[i] = b.ID
 	}
 	nbDeleted, err := c.Ent.Machine.Delete().Where(machine.IDIn(ids...)).Exec(c.CTX)
 	if err != nil {
@@ -197,10 +198,10 @@ func (c *Client) IsMachineRegistered(machineID string) (bool, error) {
 
 }
 
-func (c *Client) queryLastHeartbeat(t time.Time, b bool) ([]*ent.Machine, error) {
-	return c.Ent.Machine.Query().Where(machine.LastHeartbeatLT(t), machine.IsValidatedEQ(b)).All(c.CTX)
+func (c *Client) queryLastHeartbeat(q predicate.Machine, b bool) ([]*ent.Machine, error) {
+	return c.Ent.Machine.Query().Where(q, machine.IsValidatedEQ(b)).All(c.CTX)
 }
 
-func (c *Client) QueryLastValidatedHeartbeat(t time.Time) ([]*ent.Machine, error) {
-	return c.queryLastHeartbeat(t, true)
+func (c *Client) QueryLastValidatedHeartbeatLT(t time.Time) ([]*ent.Machine, error) {
+	return c.queryLastHeartbeat(machine.LastHeartbeatLT(t), true)
 }

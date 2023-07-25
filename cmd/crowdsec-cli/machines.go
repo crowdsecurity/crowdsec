@@ -411,7 +411,7 @@ func NewMachinesPruneCmd() *cobra.Command {
 				machines = append(machines, pending...)
 			}
 			if !notValidOnly {
-				if pending, err := dbClient.QueryLastValidatedHeartbeat(time.Now().UTC().Add(parsedDuration)); err == nil {
+				if pending, err := dbClient.QueryLastValidatedHeartbeatLT(time.Now().UTC().Add(parsedDuration)); err == nil {
 					machines = append(machines, pending...)
 				}
 			}
