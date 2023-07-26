@@ -60,8 +60,7 @@ func getBouncers(out io.Writer, dbClient *database.Client) error {
 func NewBouncersListCmd() *cobra.Command {
 	cmdBouncersList := &cobra.Command{
 		Use:               "list",
-		Short:             "List bouncers",
-		Long:              `List bouncers`,
+		Short:             "list all bouncers within the database",
 		Example:           `cscli bouncers list`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
@@ -128,8 +127,7 @@ func runBouncersAdd(cmd *cobra.Command, args []string) error {
 func NewBouncersAddCmd() *cobra.Command {
 	cmdBouncersAdd := &cobra.Command{
 		Use:   "add MyBouncerName [--length 16]",
-		Short: "add bouncer",
-		Long:  `add bouncer`,
+		Short: "add a single bouncer to the database",
 		Example: `cscli bouncers add MyBouncerName
 cscli bouncers add MyBouncerName -l 24
 cscli bouncers add MyBouncerName -k <random-key>`,
@@ -161,7 +159,7 @@ func runBouncersDelete(cmd *cobra.Command, args []string) error {
 func NewBouncersDeleteCmd() *cobra.Command {
 	cmdBouncersDelete := &cobra.Command{
 		Use:               "delete MyBouncerName",
-		Short:             "delete bouncer",
+		Short:             "delete a single bouncer from the database",
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"remove"},
 		DisableAutoGenTag: true,
@@ -196,9 +194,11 @@ func NewBouncersPruneCmd() *cobra.Command {
 	var force bool
 	cmdBouncersPrune := &cobra.Command{
 		Use:               "prune",
-		Short:             "prune bouncers",
+		Short:             "prune multiple bouncers from the database",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
+		Example: `cscli bouncers prune -d 60m
+cscli bouncers prune -d 60m --force`,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			flags := cmd.Flags()
 			dur, _ := flags.GetString("duration")
@@ -221,10 +221,6 @@ func NewBouncersPruneCmd() *cobra.Command {
 					return fmt.Errorf("user aborted prune no changes were made")
 				}
 			}
-			dbClient, err = database.NewClient(csConfig.DbConfig)
-			if err != nil {
-				return fmt.Errorf("unable to create new database client: %s", err)
-			}
 			bouncers, err = dbClient.QueryBouncersLastPulltimeLT(time.Now().UTC().Add(parsedDuration))
 			if err != nil {
 				return fmt.Errorf("unable to query bouncers: %s", err)
@@ -239,8 +235,8 @@ func NewBouncersPruneCmd() *cobra.Command {
 			if !force {
 				var answer bool
 				prompt := &survey.Confirm{
-					Message: fmt.Sprintf("You are about to delete %d bouncers from the database continue?", len(bouncers)),
-					Default: true,
+					Message: "You are about to PERMANENTLY remove the above bouncers from the database these will NOT be recoverable, continue?",
+					Default: false,
 				}
 				if err := survey.AskOne(prompt, &answer); err != nil {
 					return fmt.Errorf("unable to ask about prune check: %s", err)
