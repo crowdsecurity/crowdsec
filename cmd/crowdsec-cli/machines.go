@@ -144,7 +144,7 @@ func getAgents(out io.Writer, dbClient *database.Client) error {
 func NewMachinesListCmd() *cobra.Command {
 	cmdMachinesList := &cobra.Command{
 		Use:               "list",
-		Short:             "list machines in the database",
+		Short:             "list all machines in the database",
 		Long:              `list all machines in the database with their status and last heartbeat`,
 		Example:           `cscli machines list`,
 		Args:              cobra.NoArgs,
@@ -165,7 +165,7 @@ func NewMachinesListCmd() *cobra.Command {
 func NewMachinesAddCmd() *cobra.Command {
 	cmdMachinesAdd := &cobra.Command{
 		Use:               "add",
-		Short:             "add a machine to the database",
+		Short:             "add a single machine to the database",
 		DisableAutoGenTag: true,
 		Long:              `Register a new machine in the database. cscli should be on the same machine as LAPI.`,
 		Example: `
@@ -343,8 +343,8 @@ func NewMachinesPruneCmd() *cobra.Command {
 	var force bool
 	cmdMachinesPrune := &cobra.Command{
 		Use:   "prune",
-		Short: "prune machines from the database",
-		Long:  `prune machines that are not validated or have not connected to the local API in a given duration.`,
+		Short: "prune multiple machines from the database",
+		Long:  `prune multiple machines that are not validated or have not connected to the local API in a given duration.`,
 		Example: `cscli machines prune
 cscli machines prune --duration 1h
 cscli machines prune --not-validated-only --force`,
