@@ -41,16 +41,21 @@ func NewNotificationsCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"notifications", "notification"},
 		DisableAutoGenTag: true,
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			var (
-				err error
-			)
-			if err = csConfig.API.Server.LoadProfiles(); err != nil {
-				log.Fatal(err)
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := csConfig.LoadAPIServer(); err != nil {
+				return fmt.Errorf("local API is disabled, please run this command on the local API machine: %w", err)
+			}
+			if csConfig.DisableAPI {
+				return fmt.Errorf("local API is disabled, please run this command on the local API machine")
+			}
+			if err := csConfig.API.Server.LoadProfiles(); err != nil {
+				return fmt.Errorf("while loading profiles: %w", err)
 			}
 			if csConfig.ConfigPaths.NotificationDir == "" {
-				log.Fatalf("config_paths.notification_dir is not set in crowdsec config")
+				return fmt.Errorf("config_paths.notification_dir is not set in crowdsec config")
 			}
+
+			return nil
 		},
 	}
 
