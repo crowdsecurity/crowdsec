@@ -342,10 +342,12 @@ func NewMachinesPruneCmd() *cobra.Command {
 	var parsedDuration time.Duration
 	var force bool
 	cmdMachinesPrune := &cobra.Command{
-		Use:               "prune",
-		Short:             "prune machines from the database",
-		Long:              `prune machines that are not validated or have not connected to the local API in a given duration.`,
-		Example:           `cscli machines prune`,
+		Use:   "prune",
+		Short: "prune machines from the database",
+		Long:  `prune machines that are not validated or have not connected to the local API in a given duration.`,
+		Example: `cscli machines prune
+cscli machines prune --duration 1h
+cscli machines prune --not-validated-only --force`,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
