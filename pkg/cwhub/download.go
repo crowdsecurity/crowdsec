@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -266,7 +265,7 @@ func downloadData(dataFolder string, force bool, reader io.Reader) error {
 
 		download := false
 		for _, dataS := range data.Data {
-			if _, err := os.Stat(path.Join(dataFolder, dataS.DestPath)); os.IsNotExist(err) {
+			if _, err := os.Stat(filepath.Join(dataFolder, dataS.DestPath)); os.IsNotExist(err) {
 				download = true
 			}
 		}
