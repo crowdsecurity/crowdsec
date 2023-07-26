@@ -118,7 +118,7 @@ func (Profile *Runtime) GenerateDecisionFromProfile(Alert *models.Alert) ([]*mod
 
 	for _, refDecision := range Profile.Cfg.Decisions {
 		decision := models.Decision{}
-		/*the reference decision from profile is in sumulated mode */
+		/*the reference decision from profile is in simulated mode */
 		if refDecision.Simulated != nil && *refDecision.Simulated {
 			decision.Simulated = new(bool)
 			*decision.Simulated = true

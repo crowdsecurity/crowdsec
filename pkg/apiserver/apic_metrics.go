@@ -81,7 +81,7 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 	const checkInt = 20 * time.Second
 
 	// intervals must always be > 0
-	metInts := []time.Duration{1, a.metricsIntervalFirst, a.metricsInterval}
+	metInts := []time.Duration{1*time.Millisecond, a.metricsIntervalFirst, a.metricsInterval}
 
 	log.Infof("Start send metrics to CrowdSec Central API (interval: %s once, then %s)",
 		metInts[1].Round(time.Second), metInts[2])
@@ -94,8 +94,6 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 		return metInts[count]
 	}
 
-	// store the list of machine IDs to compare
-	// with the next list
 	machineIDs := []string{}
 
 	reloadMachineIDs := func() {
@@ -106,6 +104,10 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 		}
 		machineIDs = ids
 	}
+
+	// store the list of machine IDs to compare
+	// with the next list
+	reloadMachineIDs()
 
 	checkTicker := time.NewTicker(checkInt)
 	metTicker := time.NewTicker(nextMetInt())
@@ -121,9 +123,10 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 			reloadMachineIDs()
 			if !slices.Equal(oldIDs, machineIDs) {
 				log.Infof("capi metrics: machines changed, immediate send")
-				metTicker.Reset(1)
+				metTicker.Reset(1*time.Millisecond)
 			}
 		case <-metTicker.C:
+			metTicker.Stop()
 			metrics, err := a.GetMetrics()
 			if err != nil {
 				log.Errorf("unable to get metrics (%s), will retry", err)
