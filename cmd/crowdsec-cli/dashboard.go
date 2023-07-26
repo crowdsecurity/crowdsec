@@ -402,7 +402,7 @@ func checkGroups(forceYes *bool) (*user.Group, error) {
 		return dockerGroup, fmt.Errorf("unable to convert group ID to int: %s", err)
 	}
 	if stat, err := os.Stat(csConfig.DbConfig.DbPath); err == nil {
-		if uint32(intID) != stat.Sys().(*syscall.Stat_t).Gid {
+		if intID != int(stat.Sys().(*syscall.Stat_t).Gid) {
 			if err := os.Chown(csConfig.DbConfig.DbPath, 0, intID); err != nil {
 				return dockerGroup, fmt.Errorf("unable to chown sqlite db file '%s': %s", csConfig.DbConfig.DbPath, err)
 			}
