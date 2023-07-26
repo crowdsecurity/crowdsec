@@ -29,7 +29,7 @@ setup() {
     assert_stderr --partial "You can successfully interact with Central API (CAPI)"
 }
 
-@test "can only register from a lapi instance" {
+@test "capi register must be run from lapi" {
     config_disable_lapi
     rune -1 cscli capi register --schmilblick githubciXXXXXXXXXXXXXXXXXXXXXXXX
     assert_stderr --partial "local API is disabled, please run this command on the local API machine"
