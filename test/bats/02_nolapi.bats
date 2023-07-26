@@ -45,7 +45,7 @@ teardown() {
     config_disable_lapi
     rune -1 cscli capi status
     assert_stderr --partial "crowdsec local API is disabled"
-    assert_stderr --partial "There is no configuration on 'api.server:'"
+    assert_stderr --partial "local API is disabled, please run this command on the local API machine"
 }
 
 @test "cscli config show -o human" {

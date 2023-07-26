@@ -134,10 +134,6 @@ func NewCapiStatusCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			var err error
-			if csConfig.API.Server == nil {
-				log.Fatal("There is no configuration on 'api.server:'")
-			}
 			if csConfig.API.Server.OnlineClient == nil {
 				log.Fatalf("Please provide credentials for the Central API (CAPI) in '%s'", csConfig.API.Server.OnlineClient.CredentialsFilePath)
 			}
