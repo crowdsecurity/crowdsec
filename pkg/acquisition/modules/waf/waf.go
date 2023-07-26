@@ -591,7 +591,7 @@ func (w *WafSource) wafHandler(rw http.ResponseWriter, r *http.Request) {
 	parsedRequest, err := waf.NewParsedRequestFromRequest(r)
 	if err != nil {
 		log.Errorf("%s", err)
-		rw.WriteHeader(http.StatusForbidden)
+		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	w.InChan <- parsedRequest
@@ -600,7 +600,7 @@ func (w *WafSource) wafHandler(rw http.ResponseWriter, r *http.Request) {
 
 	if message.Err != nil {
 		log.Errorf("Error while processing InBAND: %s", err)
-		rw.WriteHeader(http.StatusOK)
+		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -622,7 +622,8 @@ func (w *WafSource) wafHandler(rw http.ResponseWriter, r *http.Request) {
 	rw.WriteHeader(http.StatusOK)
 	body, err := json.Marshal(BodyResponse{Action: "allow"})
 	if err != nil {
-		log.Errorf("unable to build response: %s", err)
+		log.Errorf("unable to marshal response: %s", err)
+		rw.WriteHeader(http.StatusInternalServerError)
 	} else {
 		rw.Write(body)
 	}

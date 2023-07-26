@@ -85,12 +85,24 @@ func NewParsedRequestFromRequest(r *http.Request) (ParsedRequest, error) {
 
 	// the real source of the request is set in 'x-client-ip'
 	clientIP := r.Header.Get(IPHeaderName)
+	if clientIP == "" {
+		return ParsedRequest{}, fmt.Errorf("Missing '%s' header", IPHeaderName)
+	}
 	// the real target Host of the request is set in 'x-client-host'
 	clientHost := r.Header.Get(HostHeaderName)
+	if clientHost == "" {
+		return ParsedRequest{}, fmt.Errorf("Missing '%s' header", HostHeaderName)
+	}
 	// the real URI of the request is set in 'x-client-uri'
 	clientURI := r.Header.Get(URIHeaderName)
+	if clientURI == "" {
+		return ParsedRequest{}, fmt.Errorf("Missing '%s' header", URIHeaderName)
+	}
 	// the real VERB of the request is set in 'x-client-uri'
 	clientMethod := r.Header.Get(VerbHeaderName)
+	if clientMethod == "" {
+		return ParsedRequest{}, fmt.Errorf("Missing '%s' header", VerbHeaderName)
+	}
 
 	// delete those headers before coraza process the request
 	delete(r.Header, IPHeaderName)
