@@ -29,6 +29,12 @@ setup() {
     assert_stderr --partial "You can successfully interact with Central API (CAPI)"
 }
 
+@test "can only register from a lapi instance" {
+    config_disable_lapi
+    rune -1 cscli capi register --schmilblick githubciXXXXXXXXXXXXXXXXXXXXXXXX
+    assert_stderr --partial "local API is disabled, please run this command on the local API machine"
+}
+
 @test "cscli alerts list: receive a community pull when capi is enabled" {
     sleep 2
     ./instance-crowdsec start
