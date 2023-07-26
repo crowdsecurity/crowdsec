@@ -35,7 +35,7 @@ func NewCapiCmd() *cobra.Command {
 				return fmt.Errorf("local API is disabled, please run this command on the local API machine: %w", err)
 			}
 			if csConfig.DisableAPI {
-				return nil
+				return fmt.Errorf("local API is disabled, please run this command on the local API machine")
 			}
 			if csConfig.API.Server.OnlineClient == nil {
 				log.Fatalf("no configuration for Central API in '%s'", *csConfig.FilePath)
