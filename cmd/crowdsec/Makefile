@@ -5,9 +5,9 @@ ifeq ($(OS), Windows_NT)
 endif
 
 # Go parameters
-GOCMD = go
-GOBUILD = $(GOCMD) build
-GOTEST = $(GOCMD) test
+GO = go
+GOBUILD = $(GO) build
+GOTEST = $(GO) test
 
 CROWDSEC_BIN = crowdsec$(EXT)
 # names longer than 15 chars break 'pgrep'

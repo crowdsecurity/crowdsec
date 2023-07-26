@@ -5,8 +5,8 @@ ifeq ($(OS), Windows_NT)
 endif
 
 # Go parameters
-GOCMD = go
-GOBUILD = $(GOCMD) build
+GO = go
+GOBUILD = $(GO) build
 
 BINARY_NAME = notification-sentinel$(EXT)
 
