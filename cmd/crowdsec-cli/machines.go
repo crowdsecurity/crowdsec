@@ -144,20 +144,11 @@ func getAgents(out io.Writer, dbClient *database.Client) error {
 func NewMachinesListCmd() *cobra.Command {
 	cmdMachinesList := &cobra.Command{
 		Use:               "list",
-		Short:             "List machines",
-		Long:              `List `,
+		Short:             "list machines in the database",
+		Long:              `list all machines in the database with their status and last heartbeat`,
 		Example:           `cscli machines list`,
-		Args:              cobra.MaximumNArgs(1),
+		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-			dbClient, err = database.NewClient(csConfig.DbConfig)
-			if err != nil {
-				return fmt.Errorf("unable to create new database client: %s", err)
-			}
-
-			return nil
-		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := getAgents(color.Output, dbClient)
 			if err != nil {
@@ -174,7 +165,7 @@ func NewMachinesListCmd() *cobra.Command {
 func NewMachinesAddCmd() *cobra.Command {
 	cmdMachinesAdd := &cobra.Command{
 		Use:               "add",
-		Short:             "add machine to the database.",
+		Short:             "add a machine to the database",
 		DisableAutoGenTag: true,
 		Long:              `Register a new machine in the database. cscli should be on the same machine as LAPI.`,
 		Example: `
@@ -182,15 +173,6 @@ cscli machines add --auto
 cscli machines add MyTestMachine --auto
 cscli machines add MyTestMachine --password MyPassword
 `,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-			dbClient, err = database.NewClient(csConfig.DbConfig)
-			if err != nil {
-				return fmt.Errorf("unable to create new database client: %s", err)
-			}
-
-			return nil
-		},
 		RunE: runMachinesAdd,
 	}
 
@@ -318,26 +300,12 @@ func runMachinesAdd(cmd *cobra.Command, args []string) error {
 func NewMachinesDeleteCmd() *cobra.Command {
 	cmdMachinesDelete := &cobra.Command{
 		Use:               "delete [machine_name]...",
-		Short:             "delete machines",
+		Short:             "delete machine(s) by name",
 		Example:           `cscli machines delete "machine1" "machine2"`,
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"remove"},
 		DisableAutoGenTag: true,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-			dbClient, err = database.NewClient(csConfig.DbConfig)
-			if err != nil {
-				return fmt.Errorf("unable to create new database client: %s", err)
-			}
-			return nil
-		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			var err error
-			dbClient, err = getDBClient()
-			if err != nil {
-				cobra.CompError("unable to create new database client: " + err.Error())
-				return nil, cobra.ShellCompDirectiveNoFileComp
-			}
 			machines, err := dbClient.ListMachines()
 			if err != nil {
 				cobra.CompError("unable to list machines " + err.Error())
@@ -375,7 +343,7 @@ func NewMachinesPruneCmd() *cobra.Command {
 	var force bool
 	cmdMachinesPrune := &cobra.Command{
 		Use:               "prune",
-		Short:             "prune machines",
+		Short:             "prune machines from the database",
 		Long:              `prune machines that are not validated or have not connected to the local API in a given duration.`,
 		Example:           `cscli machines prune`,
 		Args:              cobra.NoArgs,
@@ -403,10 +371,7 @@ func NewMachinesPruneCmd() *cobra.Command {
 					return fmt.Errorf("user aborted prune no changes were made")
 				}
 			}
-			dbClient, err = database.NewClient(csConfig.DbConfig)
-			if err != nil {
-				return fmt.Errorf("unable to create new database client: %s", err)
-			}
+
 			if pending, err := dbClient.QueryPendingMachine(); err == nil {
 				machines = append(machines, pending...)
 			}
@@ -425,8 +390,8 @@ func NewMachinesPruneCmd() *cobra.Command {
 			if !force {
 				var answer bool
 				prompt := &survey.Confirm{
-					Message: fmt.Sprintf("You are about to delete %d machines from the database continue?", len(machines)),
-					Default: true,
+					Message: "You are about to PERMANENTLY remove the above machines from the database these will NOT be recoverable, continue?",
+					Default: false,
 				}
 				if err := survey.AskOne(prompt, &answer); err != nil {
 					return fmt.Errorf("unable to ask about prune check: %s", err)
@@ -458,15 +423,6 @@ func NewMachinesValidateCmd() *cobra.Command {
 		Example:           `cscli machines validate "machine_name"`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-			dbClient, err = database.NewClient(csConfig.DbConfig)
-			if err != nil {
-				return fmt.Errorf("unable to create new database client: %s", err)
-			}
-
-			return nil
-		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			machineID := args[0]
 			if err := dbClient.ValidateMachine(machineID); err != nil {
@@ -492,13 +448,17 @@ Note: This command requires database direct access, so is intended to be run on 
 		DisableAutoGenTag: true,
 		Aliases:           []string{"machine"},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			var err error
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
 				if err != nil {
 					log.Errorf("local api : %s", err)
 				}
 				return fmt.Errorf("local API is disabled, please run this command on the local API machine")
 			}
-
+			dbClient, err = database.NewClient(csConfig.DbConfig)
+			if err != nil {
+				return fmt.Errorf("unable to create new database client: %s", err)
+			}
 			return nil
 		},
 	}
