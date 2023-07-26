@@ -220,6 +220,7 @@ if istrue "$DISABLE_LOCAL_API"; then
     # in case of persistent configuration
     conf_set_if "$AGENT_USERNAME" '.login = strenv(AGENT_USERNAME)' "$lapi_credentials_path"
     conf_set_if "$AGENT_PASSWORD" '.password = strenv(AGENT_PASSWORD)' "$lapi_credentials_path"
+    conf_set 'del(.api.server)'
 fi
 
 conf_set_if "$INSECURE_SKIP_VERIFY" '.api.client.insecure_skip_verify = env(INSECURE_SKIP_VERIFY)'
@@ -243,7 +244,7 @@ if istrue "$DISABLE_ONLINE_API"; then
 fi
 
 # registration to online API for signal push
-if isfalse "$DISABLE_ONLINE_API" ; then
+if isfalse "$DISABLE_LOCAL_API" && isfalse "$DISABLE_ONLINE_API" ; then
     CONFIG_DIR=$(conf_get '.config_paths.config_dir')
     export CONFIG_DIR
     config_exists=$(conf_get '.api.server.online_client | has("credentials_path")')
@@ -255,7 +256,7 @@ if isfalse "$DISABLE_ONLINE_API" ; then
 fi
 
 # Enroll instance if enroll key is provided
-if isfalse "$DISABLE_ONLINE_API" && [ "$ENROLL_KEY" != "" ]; then
+if isfalse "$DISABLE_LOCAL_API" && isfalse "$DISABLE_ONLINE_API" && [ "$ENROLL_KEY" != "" ]; then
     enroll_args=""
     if [ "$ENROLL_INSTANCE_NAME" != "" ]; then
         enroll_args="--name $ENROLL_INSTANCE_NAME"
@@ -388,10 +389,6 @@ fi
 
 if istrue "$DISABLE_AGENT"; then
     ARGS="$ARGS -no-cs"
-fi
-
-if istrue "$DISABLE_LOCAL_API"; then
-    ARGS="$ARGS -no-api"
 fi
 
 if istrue "$LEVEL_TRACE"; then
