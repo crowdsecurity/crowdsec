@@ -33,7 +33,7 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 	profilesRuntime := make([]*Runtime, 0)
 
 	for _, profile := range profilesCfg {
-		var runtimeFilter, runtimeDurationExpr, notificationFilter *vm.Program
+		var runtimeFilter, runtimeDurationExpr, runtimeNotificationFilter *vm.Program
 		var debugFilter, debugDurationExpr, debugNotificationExpr *exprhelpers.ExprDebugger
 		runtime := &Runtime{}
 		xlog := log.New()
@@ -75,10 +75,10 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 		}
 
 		for nIdx, expression := range profile.NotificationFilters {
-			if notificationFilter, err = expr.Compile(expression, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
+			if runtimeNotificationFilter, err = expr.Compile(expression, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
 				return []*Runtime{}, errors.Wrapf(err, "error compiling notification_filter of '%s'", profile.Name)
 			}
-			runtime.RuntimeNotificationFilters[nIdx] = notificationFilter
+			runtime.RuntimeNotificationFilters[nIdx] = runtimeNotificationFilter
 			if profile.Debug != nil && *profile.Debug {
 				if debugNotificationExpr, err = exprhelpers.NewDebugger(expression, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
 					log.Debugf("Error compiling debug filter of %s : %s", profile.Name, err)
