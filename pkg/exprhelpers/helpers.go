@@ -7,7 +7,7 @@ import (
 	"net"
 	"net/url"
 	"os"
-	"path"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -128,7 +128,7 @@ func UpdateRegexpCacheMetrics() {
 
 func FileInit(fileFolder string, filename string, fileType string) error {
 	log.Debugf("init (folder:%s) (file:%s) (type:%s)", fileFolder, filename, fileType)
-	filepath := path.Join(fileFolder, filename)
+	filepath := filepath.Join(fileFolder, filename)
 	file, err := os.Open(filepath)
 	if err != nil {
 		return err

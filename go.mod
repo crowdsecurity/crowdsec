@@ -43,7 +43,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/google/go-querystring v1.0.0
 	github.com/google/uuid v1.3.0
-	github.com/google/winops v0.0.0-20211216095627-f0e86eb1453b
+	github.com/google/winops v0.0.0-20230712152054-af9b550d0601
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
 	github.com/hashicorp/go-hclog v1.5.0
 	github.com/hashicorp/go-plugin v1.4.10
@@ -187,6 +187,7 @@ require (
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/term v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
+	golang.org/x/time v0.2.0 // indirect
 	golang.org/x/tools v0.7.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
