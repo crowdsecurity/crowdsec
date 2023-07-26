@@ -31,8 +31,8 @@ BUILD_REQUIRE_GO_MINOR ?= 20
 
 #--------------------------------------
 
-GOCMD = go
-GOTEST = $(GOCMD) test
+GO = go
+GOTEST = $(GO) test
 
 BUILD_CODENAME ?= alphaga
 
@@ -209,11 +209,20 @@ PLUGIN_VENDOR = $(foreach plugin,$(PLUGINS),$(shell if [ -f $(PLUGINS_DIR)/$(plu
 vendor:
 	$(foreach plugin_dir,$(PLUGIN_VENDOR), \
 		cd $(plugin_dir) >/dev/null && \
-		$(GOCMD) mod vendor && \
+		$(GO) mod vendor && \
 		cd - >/dev/null; \
 	)
-	$(GOCMD) mod vendor
+	$(GO) mod vendor
 	tar -czf vendor.tgz vendor $(foreach plugin_dir,$(PLUGIN_VENDOR),$(plugin_dir)/vendor)
+
+.PHONY: tidy
+tidy:
+	$(GO) mod tidy
+	$(foreach plugin_dir,$(PLUGIN_VENDOR), \
+		cd $(plugin_dir) >/dev/null && \
+		$(GO) mod tidy && \
+		cd - >/dev/null; \
+	)
 
 # remove vendor directories and vendor.tgz
 .PHONY: vendor-remove
@@ -222,6 +231,7 @@ vendor-remove:
 		$(RM) $(plugin_dir)/vendor; \
 	)
 	$(RM) vendor vendor.tgz
+
 
 .PHONY: package
 package:

@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 
@@ -116,7 +115,7 @@ title: %s
 ---
 `
 	name := filepath.Base(filename)
-	base := strings.TrimSuffix(name, path.Ext(name))
+	base := strings.TrimSuffix(name, filepath.Ext(name))
 	return fmt.Sprintf(header, base, strings.ReplaceAll(base, "_", " "))
 }
 

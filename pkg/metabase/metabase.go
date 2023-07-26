@@ -9,7 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -311,7 +311,7 @@ func (m *Metabase) DumpConfig(path string) error {
 
 func (m *Metabase) DownloadDatabase(force bool) error {
 
-	metabaseDBSubpath := path.Join(m.Config.DBPath, "metabase.db")
+	metabaseDBSubpath := filepath.Join(m.Config.DBPath, "metabase.db")
 	_, err := os.Stat(metabaseDBSubpath)
 	if err == nil && !force {
 		log.Printf("%s exists, skip.", metabaseDBSubpath)
@@ -383,5 +383,5 @@ func (m *Metabase) ExtractDatabase(buf *bytes.Reader) error {
 }
 
 func RemoveDatabase(dataDir string) error {
-	return os.RemoveAll(path.Join(dataDir, "metabase.db"))
+	return os.RemoveAll(filepath.Join(dataDir, "metabase.db"))
 }
