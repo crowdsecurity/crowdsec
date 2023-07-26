@@ -86,6 +86,22 @@ func TestNewProfile(t *testing.T) {
 			},
 			expectedNbProfile: 1,
 		},
+		{
+			name: "filter ok and notification_filter ok",
+			profileCfg: &csconfig.ProfileCfg{
+				Filters: []string{
+					"1==1",
+				},
+				NotificationFilters: []string{
+					"1==1",
+				},
+				Debug: &boolTrue,
+				Decisions: []models.Decision{
+					{Type: &typ, Scope: &scope, Simulated: &boolFalse, Duration: &duration},
+				},
+			},
+			expectedNbProfile: 1,
+		},
 	}
 
 	for _, test := range tests {
@@ -110,11 +126,12 @@ func TestEvaluateProfile(t *testing.T) {
 	exprhelpers.Init(nil)
 
 	tests := []struct {
-		name                  string
-		args                  args
-		expectedDecisionCount int // count of expected decisions
-		expectedDuration      string
-		expectedMatchStatus   bool
+		name                       string
+		args                       args
+		expectedDecisionCount      int // count of expected decisions
+		expectedDuration           string
+		expectedMatchStatus        bool
+		expectedNotificationStatus bool
 	}{
 		{
 			name: "simple pass single expr",
@@ -125,8 +142,9 @@ func TestEvaluateProfile(t *testing.T) {
 				},
 				Alert: &models.Alert{Remediation: true, Scenario: &scenario},
 			},
-			expectedDecisionCount: 0,
-			expectedMatchStatus:   true,
+			expectedDecisionCount:      0,
+			expectedMatchStatus:        true,
+			expectedNotificationStatus: true,
 		},
 		{
 			name: "simple fail single expr",
@@ -136,8 +154,9 @@ func TestEvaluateProfile(t *testing.T) {
 				},
 				Alert: &models.Alert{Remediation: true},
 			},
-			expectedDecisionCount: 0,
-			expectedMatchStatus:   false,
+			expectedDecisionCount:      0,
+			expectedMatchStatus:        false,
+			expectedNotificationStatus: true,
 		},
 		{
 			name: "1 expr fail 1 expr pass should still eval to match",
@@ -147,8 +166,9 @@ func TestEvaluateProfile(t *testing.T) {
 				},
 				Alert: &models.Alert{Remediation: true},
 			},
-			expectedDecisionCount: 0,
-			expectedMatchStatus:   true,
+			expectedDecisionCount:      0,
+			expectedMatchStatus:        true,
+			expectedNotificationStatus: true,
 		},
 		{
 			name: "simple filter with  2 decision",
@@ -162,8 +182,9 @@ func TestEvaluateProfile(t *testing.T) {
 				},
 				Alert: &models.Alert{Remediation: true, Scenario: &scenario, Source: &models.Source{Value: &value}},
 			},
-			expectedDecisionCount: 2,
-			expectedMatchStatus:   true,
+			expectedDecisionCount:      2,
+			expectedMatchStatus:        true,
+			expectedNotificationStatus: true,
 		},
 		{
 			name: "simple filter with decision_expr",
@@ -177,9 +198,50 @@ func TestEvaluateProfile(t *testing.T) {
 				},
 				Alert: &models.Alert{Remediation: true, Scenario: &scenario, Source: &models.Source{Value: &value}},
 			},
-			expectedDecisionCount: 1,
-			expectedDuration:      "16h",
-			expectedMatchStatus:   true,
+			expectedDecisionCount:      1,
+			expectedDuration:           "16h",
+			expectedMatchStatus:        true,
+			expectedNotificationStatus: true,
+		},
+		{
+			name: "simple filter with notification filter",
+			args: args{
+				profileCfg: &csconfig.ProfileCfg{
+					Filters: []string{"1==1"},
+					NotificationFilters: []string{
+						"1==1",
+					},
+					Decisions: []models.Decision{
+						{Type: &typ, Scope: &scope, Simulated: &boolFalse},
+					},
+					DurationExpr: "Sprintf('%dh', 4*4)",
+				},
+				Alert: &models.Alert{Remediation: true, Scenario: &scenario, Source: &models.Source{Value: &value}},
+			},
+			expectedDecisionCount:      1,
+			expectedDuration:           "16h",
+			expectedMatchStatus:        true,
+			expectedNotificationStatus: true,
+		},
+		{
+			name: "simple filter with failing notification filter",
+			args: args{
+				profileCfg: &csconfig.ProfileCfg{
+					Filters: []string{"1==1"},
+					NotificationFilters: []string{
+						"1!=1",
+					},
+					Decisions: []models.Decision{
+						{Type: &typ, Scope: &scope, Simulated: &boolFalse},
+					},
+					DurationExpr: "Sprintf('%dh', 4*4)",
+				},
+				Alert: &models.Alert{Remediation: true, Scenario: &scenario, Source: &models.Source{Value: &value}},
+			},
+			expectedDecisionCount:      1,
+			expectedDuration:           "16h",
+			expectedMatchStatus:        true,
+			expectedNotificationStatus: false,
 		},
 	}
 	for _, tt := range tests {
@@ -192,12 +254,15 @@ func TestEvaluateProfile(t *testing.T) {
 			if err != nil {
 				t.Errorf("failed to get newProfile : %+v", err)
 			}
-			got, got1, _, _ := profile[0].EvaluateProfile(tt.args.Alert)
+			got, got1, notification, _ := profile[0].EvaluateProfile(tt.args.Alert)
 			if !reflect.DeepEqual(len(got), tt.expectedDecisionCount) {
 				t.Errorf("EvaluateProfile() got = %+v, want %+v", got, tt.expectedDecisionCount)
 			}
 			if got1 != tt.expectedMatchStatus {
 				t.Errorf("EvaluateProfile() got1 = %v, want %v", got1, tt.expectedMatchStatus)
+			}
+			if notification != tt.expectedNotificationStatus {
+				t.Errorf("EvaluateProfile() notification = %v, want %v", notification, tt.expectedNotificationStatus)
 			}
 			if tt.expectedDuration != "" {
 				require.Equal(t, tt.expectedDuration, *got[0].Duration, "The two durations should be the same")
