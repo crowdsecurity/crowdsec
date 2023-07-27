@@ -27,6 +27,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 type NotificationsCfg struct {
@@ -225,8 +226,9 @@ func NewNotificationsInspectCmd() *cobra.Command {
 }
 
 func NewNotificationsReinjectCmd() *cobra.Command {
-	var remediation bool
 	var alertOverride string
+	var id int
+	var alert *models.Alert
 
 	var cmdNotificationsReinject = &cobra.Command{
 		Use:   "reinject",
@@ -239,29 +241,11 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 `,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			var (
-				pluginBroker csplugin.PluginBroker
-				pluginTomb   tomb.Tomb
-			)
-			if len(args) != 1 {
-				printHelp(cmd)
-				return fmt.Errorf("wrong number of argument: there should be one argument")
-			}
-
-			//first: get the alert
-			id, err := strconv.Atoi(args[0])
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			var err error
+			id, err = strconv.Atoi(args[0])
 			if err != nil {
 				return fmt.Errorf("bad alert id %s", args[0])
-			}
-			if err := csConfig.LoadAPIClient(); err != nil {
-				return fmt.Errorf("loading api client: %w", err)
-			}
-			if csConfig.API.Client == nil {
-				return fmt.Errorf("missing configuration on 'api_client:'")
-			}
-			if csConfig.API.Client.Credentials == nil {
-				return fmt.Errorf("missing API credentials in '%s'", csConfig.API.Client.CredentialsFilePath)
 			}
 			apiURL, err := url.Parse(csConfig.API.Client.Credentials.URL)
 			if err != nil {
@@ -277,22 +261,30 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 			if err != nil {
 				return fmt.Errorf("error creating the client for the API: %w", err)
 			}
-			alert, _, err := client.Alerts.GetByID(context.Background(), id)
+			alert, _, err = client.Alerts.GetByID(context.Background(), id)
 			if err != nil {
 				return fmt.Errorf("can't find alert with id %s: %w", args[0], err)
 			}
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var (
+				pluginBroker csplugin.PluginBroker
+				pluginTomb   tomb.Tomb
+			)
+			if len(args) != 1 {
+				printHelp(cmd)
+				return fmt.Errorf("wrong number of argument: there should be one argument")
+			}
 
 			if alertOverride != "" {
-				if err = json.Unmarshal([]byte(alertOverride), alert); err != nil {
+				if err := json.Unmarshal([]byte(alertOverride), alert); err != nil {
 					return fmt.Errorf("can't unmarshal data in the alert flag: %w", err)
 				}
 			}
-			if !remediation {
-				alert.Remediation = true
-			}
 
 			// second we start plugins
-			err = pluginBroker.Init(csConfig.PluginConfig, csConfig.API.Server.Profiles, csConfig.ConfigPaths)
+			err := pluginBroker.Init(csConfig.PluginConfig, csConfig.API.Server.Profiles, csConfig.ConfigPaths)
 			if err != nil {
 				return fmt.Errorf("can't initialize plugins: %w", err)
 			}
@@ -338,14 +330,12 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 					break
 				}
 			}
-
-			//			time.Sleep(2 * time.Second) // There's no mechanism to ensure notification has been sent
+			//time.Sleep(2 * time.Second) // There's no mechanism to ensure notification has been sent
 			pluginTomb.Kill(fmt.Errorf("terminating"))
 			pluginTomb.Wait()
 			return nil
 		},
 	}
-	cmdNotificationsReinject.Flags().BoolVarP(&remediation, "remediation", "r", false, "Set Alert.Remediation to false in the reinjected alert (see your profile filter configuration)")
 	cmdNotificationsReinject.Flags().StringVarP(&alertOverride, "alert", "a", "", "JSON string used to override alert fields in the reinjected alert (see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
 
 	return cmdNotificationsReinject
