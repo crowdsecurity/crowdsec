@@ -19,6 +19,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 const CAPIBaseURL string = "https://api.crowdsec.net/"
@@ -31,11 +33,12 @@ func NewCapiCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := requireLAPI(csConfig); err != nil {
+			if err := require.LAPI(csConfig); err != nil {
 				return err
 			}
-			if csConfig.API.Server.OnlineClient == nil {
-				return fmt.Errorf("no configuration for Central API in '%s'", *csConfig.FilePath)
+
+			if err := require.CAPI(csConfig); err != nil {
+				return err
 			}
 
 			return nil

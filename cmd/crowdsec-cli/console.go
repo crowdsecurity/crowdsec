@@ -22,6 +22,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 func NewConsoleCmd() *cobra.Command {
@@ -31,13 +33,13 @@ func NewConsoleCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := requireLAPI(csConfig); err != nil {
+			if err := require.LAPI(csConfig); err != nil {
 				return err
 			}
-			if err := requireCAPI(csConfig); err != nil {
+			if err := require.CAPI(csConfig); err != nil {
 				return err
 			}
-			if err := requireEnrolled(csConfig); err != nil {
+			if err := require.Enrolled(csConfig); err != nil {
 				return err
 			}
 			return nil

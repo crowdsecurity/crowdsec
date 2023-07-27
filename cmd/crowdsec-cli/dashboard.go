@@ -17,6 +17,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metabase"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 var (
@@ -55,7 +57,7 @@ cscli dashboard stop
 cscli dashboard remove
 `,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := requireLAPI(csConfig); err != nil {
+			if err := require.LAPI(csConfig); err != nil {
 				return err
 			}
 
@@ -69,7 +71,7 @@ cscli dashboard remove
 				return err
 			}
 
-			if err := requireDB(csConfig); err != nil {
+			if err := require.DB(csConfig); err != nil {
 				return err
 			}
 

@@ -1,4 +1,4 @@
-package main
+package require
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
-func requireLAPI(c *csconfig.Config) error {
+func LAPI(c *csconfig.Config) error {
 	if err := c.LoadAPIServer(); err != nil {
 		return fmt.Errorf("failed to load Local API: %w", err)
 	}
@@ -18,15 +18,15 @@ func requireLAPI(c *csconfig.Config) error {
 	return nil
 }
 
-func requireCAPI(c *csconfig.Config) error {
+func CAPI(c *csconfig.Config) error {
 	if c.API.Server.OnlineClient == nil {
 		return fmt.Errorf("no configuration for Central API (CAPI) in '%s'", *c.FilePath)
 	}
 	return nil
 }
 
-func requireEnrolled(c *csconfig.Config) error {
-	if err := requireCAPI(c); err != nil {
+func Enrolled(c *csconfig.Config) error {
+	if err := CAPI(c); err != nil {
 		return err
 	}
 
@@ -37,10 +37,34 @@ func requireEnrolled(c *csconfig.Config) error {
 	return nil
 }
 
-func requireDB(c *csconfig.Config) error {
+func DB(c *csconfig.Config) error {
 	if err := c.LoadDBConfig(); err != nil {
 		return fmt.Errorf("this command requires direct database access (must be run on the local API machine): %w", err)
 	}
+	return nil
+}
+
+func Profiles(c *csconfig.Config) error {
+	if err := LAPI(c); err != nil {
+		return err
+	}
+
+	if err := c.API.Server.LoadProfiles(); err != nil {
+		return fmt.Errorf("while loading profiles: %w", err)
+	}
+
+	return nil
+}
+
+func Notifications(c *csconfig.Config) error {
+	if err := LAPI(c); err != nil {
+		return err
+	}
+
+	if c.ConfigPaths.NotificationDir == "" {
+		return fmt.Errorf("config_paths.notification_dir is not set in crowdsec config")
+	}
+
 	return nil
 }
 
