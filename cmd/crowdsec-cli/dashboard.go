@@ -54,23 +54,23 @@ cscli dashboard start
 cscli dashboard stop
 cscli dashboard remove
 `,
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			if err := metabase.TestAvailability(); err != nil {
-				log.Fatalf("%s", err)
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := requireLAPI(csConfig); err != nil {
+				return err
 			}
 
-			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
-				log.Fatal("Local API is disabled, please run this command on the local API machine")
+			if err := metabase.TestAvailability(); err != nil {
+				return err
 			}
 
 			metabaseConfigFolderPath := filepath.Join(csConfig.ConfigPaths.ConfigDir, metabaseConfigFolder)
 			metabaseConfigPath = filepath.Join(metabaseConfigFolderPath, metabaseConfigFile)
 			if err := os.MkdirAll(metabaseConfigFolderPath, os.ModePerm); err != nil {
-				log.Fatal(err)
+				return err
 			}
-			if err := csConfig.LoadDBConfig(); err != nil {
-				log.Errorf("This command requires direct database access (must be run on the local API machine)")
-				log.Fatal(err)
+
+			if err := requireDB(csConfig); err != nil {
+				return err
 			}
 
 			/*
@@ -84,6 +84,7 @@ cscli dashboard remove
 					metabaseContainerID = oldContainerID
 				}
 			}
+			return nil
 		},
 	}
 

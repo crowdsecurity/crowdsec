@@ -42,11 +42,8 @@ func NewNotificationsCmd() *cobra.Command {
 		Aliases:           []string{"notifications", "notification"},
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := csConfig.LoadAPIServer(); err != nil {
-				return fmt.Errorf("local API is disabled, please run this command on the local API machine: %w", err)
-			}
-			if csConfig.DisableAPI {
-				return fmt.Errorf("local API is disabled, please run this command on the local API machine")
+			if err := requireLAPI(csConfig); err != nil {
+				return err
 			}
 			if err := csConfig.API.Server.LoadProfiles(); err != nil {
 				return fmt.Errorf("while loading profiles: %w", err)

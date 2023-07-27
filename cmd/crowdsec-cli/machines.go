@@ -411,11 +411,8 @@ Note: This command requires database direct access, so is intended to be run on 
 		DisableAutoGenTag: true,
 		Aliases:           []string{"machine"},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
-				if err != nil {
-					log.Errorf("local api : %s", err)
-				}
-				return fmt.Errorf("local API is disabled, please run this command on the local API machine")
+			if err := requireLAPI(csConfig); err != nil {
+				return err
 			}
 
 			return nil

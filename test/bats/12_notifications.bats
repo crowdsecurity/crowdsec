@@ -35,5 +35,5 @@ teardown() {
 @test "cscli notifications must be run from lapi" {
     config_disable_lapi
     rune -1 cscli notifications list
-    assert_stderr --partial "local API is disabled, please run this command on the local API machine"
+    assert_stderr --partial "local API is disabled -- this command must be run on the local API machine"
 }
