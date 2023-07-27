@@ -28,8 +28,8 @@ func NewPapiCmd() *cobra.Command {
 			if err := require.CAPI(csConfig); err != nil {
 				return err
 			}
-			if csConfig.API.Server.OnlineClient.Credentials.PapiURL == "" {
-				log.Fatalf("no PAPI URL in configuration")
+			if err := require.PAPI(csConfig); err != nil {
+				return err
 			}
 			return nil
 		},

@@ -25,6 +25,21 @@ func CAPI(c *csconfig.Config) error {
 	return nil
 }
 
+func PAPI(c *csconfig.Config) error {
+	if err := LAPI(c); err != nil {
+		return err
+	}
+
+	if err := CAPI(c); err != nil {
+		return err
+	}
+
+	if c.API.Server.OnlineClient.Credentials.PapiURL == "" {
+		return fmt.Errorf("no PAPI URL in configuration")
+	}
+	return nil
+}
+
 func Enrolled(c *csconfig.Config) error {
 	if err := CAPI(c); err != nil {
 		return err
