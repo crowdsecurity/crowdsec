@@ -3,7 +3,6 @@ package types
 import (
 	"fmt"
 	"regexp"
-	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -58,18 +57,10 @@ func (w WaapEvent) GetVar(varName string) string {
 	if w.Vars == nil {
 		return ""
 	}
-	parsed := strings.Split(varName, ".")
-	if len(parsed) == 1 {
-		//no subkey
-		return w.Vars[varName]
-	} else if len(parsed) == 2 {
-		//subkey
-		if w.Vars[parsed[0]] == "" {
-			return ""
-		}
-		//return w.Vars[parsed[0]][parsed[1]]
+	if val, ok := w.Vars[varName]; ok {
+		return val
 	}
-	log.Warningf("invalid variable name %s", varName)
+	log.Infof("var %s not found", varName, w.Vars)
 	return ""
 
 }

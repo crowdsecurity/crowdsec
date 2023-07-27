@@ -74,8 +74,22 @@ func (r *WafRunner) AccumulateTxToEvent(tx experimental.FullTransaction, kind st
 		evt.Meta["waap_action"] = tx.Interruption().Action
 	}
 
+	if evt.Waap.Vars == nil {
+		evt.Waap.Vars = map[string]string{}
+	}
+
 	tx.Variables().All(func(v variables.RuleVariable, col collection.Collection) bool {
 		for _, variable := range col.FindAll() {
+			key := ""
+			if variable.Key() == "" {
+				key = variable.Variable().Name()
+			} else {
+				key = variable.Variable().Name() + "." + variable.Key()
+			}
+			if variable.Value() == "" {
+				continue
+			}
+			evt.Waap.Vars[key] = variable.Value()
 			r.logger.Infof("%s.%s = %s", variable.Variable().Name(), variable.Key(), variable.Value())
 		}
 		return true
