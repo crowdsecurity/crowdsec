@@ -234,6 +234,21 @@ func (c *Config) LoadAPIServer() error {
 		return nil
 	}
 
+	if c.API.Server.Enable == nil {
+		// if the option is not present, it is enabled by default
+		c.API.Server.Enable = ptr.Of(true)
+	}
+
+	if !*c.API.Server.Enable {
+		log.Warning("crowdsec local API is disabled because 'enable' is set to false")
+		c.DisableAPI = true
+		return nil
+	}
+
+	if c.DisableAPI {
+		return nil
+	}
+
 	//inherit log level from common, then api->server
 	var logLevel log.Level
 	if c.API.Server.LogLevel != nil {
@@ -266,21 +281,6 @@ func (c *Config) LoadAPIServer() error {
 
 	if c.API.Server.CapiWhitelistsPath != "" {
 		log.Infof("loaded capi whitelist from %s: %d IPs, %d CIDRs", c.API.Server.CapiWhitelistsPath, len(c.API.Server.CapiWhitelists.Ips), len(c.API.Server.CapiWhitelists.Cidrs))
-	}
-
-	if c.API.Server.Enable == nil {
-		// if the option is not present, it is enabled by default
-		c.API.Server.Enable = ptr.Of(true)
-	}
-
-	if !*c.API.Server.Enable {
-		log.Warning("crowdsec local API is disabled because 'enable' is set to false")
-		c.DisableAPI = true
-		return nil
-	}
-
-	if c.DisableAPI {
-		return nil
 	}
 
 	if err := c.LoadCommon(); err != nil {
