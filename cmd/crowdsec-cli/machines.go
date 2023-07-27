@@ -452,6 +452,7 @@ Note: This command requires database direct access, so is intended to be run on 
 		DisableAutoGenTag: true,
 		Aliases:           []string{"machine"},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			var err error
 			if err := require.LAPI(csConfig); err != nil {
 				return err
 			}
