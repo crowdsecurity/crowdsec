@@ -220,7 +220,6 @@ if istrue "$DISABLE_LOCAL_API"; then
     # in case of persistent configuration
     conf_set_if "$AGENT_USERNAME" '.login = strenv(AGENT_USERNAME)' "$lapi_credentials_path"
     conf_set_if "$AGENT_PASSWORD" '.password = strenv(AGENT_PASSWORD)' "$lapi_credentials_path"
-    conf_set 'del(.api.server)'
 fi
 
 conf_set_if "$INSECURE_SKIP_VERIFY" '.api.client.insecure_skip_verify = env(INSECURE_SKIP_VERIFY)'
@@ -279,8 +278,7 @@ if [ "$GID" != "" ]; then
     fi
 fi
 
-# XXX only with LAPI
-if istrue "$USE_TLS"; then
+if isfalse "$DISABLE_LOCAL_API" && istrue "$USE_TLS"; then
     agents_allowed_yaml=$(csv2yaml "$AGENTS_ALLOWED_OU")
     export agents_allowed_yaml
     bouncers_allowed_yaml=$(csv2yaml "$BOUNCERS_ALLOWED_OU")
@@ -359,7 +357,7 @@ shopt -s nullglob extglob
 for BOUNCER in /run/secrets/@(bouncer_key|BOUNCER_KEY)* ; do
     KEY=$(cat "${BOUNCER}")
     NAME=$(echo "${BOUNCER}" | awk -F "/" '{printf $NF}' | cut -d_  -f2-)
-    if [[ -n $KEY ]] && [[ -n $NAME ]]; then    
+    if [[ -n $KEY ]] && [[ -n $NAME ]]; then
         register_bouncer "$NAME" "$KEY"
     fi
 done
@@ -369,6 +367,12 @@ shopt -u nullglob extglob
 
 conf_set_if "$CAPI_WHITELISTS_PATH" '.api.server.capi_whitelists_path = strenv(CAPI_WHITELISTS_PATH)'
 conf_set_if "$METRICS_PORT" '.prometheus.listen_port=env(METRICS_PORT)'
+
+if istrue "$DISABLE_LOCAL_API"; then
+    conf_set '.api.server.enable=false'
+else
+    conf_set '.api.server.enable=true'
+fi
 
 ARGS=""
 if [ "$CONFIG_FILE" != "" ]; then
