@@ -249,13 +249,13 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		return nil, err
 	}
 
-	if !flags.DisableAgent {
+	if !cConfig.DisableAgent {
 		if err := cConfig.LoadCrowdsec(); err != nil {
 			return nil, err
 		}
 	}
 
-	if !flags.DisableAPI {
+	if !cConfig.DisableAPI {
 		if err := cConfig.LoadAPIServer(); err != nil {
 			return nil, err
 		}
@@ -290,7 +290,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 			cConfig.API.Server.OnlineClient = nil
 		}
 		/*if the api is disabled as well, just read file and exit, don't daemonize*/
-		if flags.DisableAPI {
+		if cConfig.DisableAPI {
 			cConfig.Common.Daemonize = false
 		}
 		log.Infof("single file mode : log_media=%s daemonize=%t", cConfig.Common.LogMedia, cConfig.Common.Daemonize)

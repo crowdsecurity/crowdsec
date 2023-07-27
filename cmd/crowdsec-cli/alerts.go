@@ -25,6 +25,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 func DecisionsFromAlert(alert *models.Alert) string {
@@ -525,8 +527,8 @@ func NewAlertsFlushCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
-			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
-				return fmt.Errorf("local API is disabled, please run this command on the local API machine")
+			if err := require.LAPI(csConfig); err != nil {
+				return err
 			}
 			dbClient, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {
