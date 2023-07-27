@@ -41,7 +41,7 @@ teardown() {
     config_disable_capi
     ./instance-crowdsec start
     rune -1 cscli capi status
-    assert_stderr --partial "no configuration for Central API in "
+    assert_stderr --partial "no configuration for Central API (CAPI) in "
 }
 
 @test "no capi: cscli config show" {

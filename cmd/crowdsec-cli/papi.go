@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -12,6 +11,8 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 func NewPapiCmd() *cobra.Command {
@@ -21,14 +22,14 @@ func NewPapiCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
-				return fmt.Errorf("Local API is disabled, please run this command on the local API machine: %w", err)
+			if err := require.LAPI(csConfig); err != nil {
+				return err
 			}
-			if csConfig.API.Server.OnlineClient == nil {
-				log.Fatalf("no configuration for Central API in '%s'", *csConfig.FilePath)
+			if err := require.CAPI(csConfig); err != nil {
+				return err
 			}
-			if csConfig.API.Server.OnlineClient.Credentials.PapiURL == "" {
-				log.Fatalf("no PAPI URL in configuration")
+			if err := require.PAPI(csConfig); err != nil {
+				return err
 			}
 			return nil
 		},

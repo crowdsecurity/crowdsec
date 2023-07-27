@@ -16,6 +16,8 @@ import (
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 func getBouncers(out io.Writer, dbClient *database.Client) error {
@@ -200,9 +202,10 @@ Note: This command requires database direct access, so is intended to be run on 
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			var err error
-			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
-				return fmt.Errorf("local API is disabled, please run this command on the local API machine")
+			if err = require.LAPI(csConfig); err != nil {
+				return err
 			}
+
 			dbClient, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {
 				return fmt.Errorf("unable to create new database client: %s", err)

@@ -243,7 +243,7 @@ if istrue "$DISABLE_ONLINE_API"; then
 fi
 
 # registration to online API for signal push
-if isfalse "$DISABLE_ONLINE_API" ; then
+if isfalse "$DISABLE_LOCAL_API" && isfalse "$DISABLE_ONLINE_API" ; then
     CONFIG_DIR=$(conf_get '.config_paths.config_dir')
     export CONFIG_DIR
     config_exists=$(conf_get '.api.server.online_client | has("credentials_path")')
@@ -255,7 +255,7 @@ if isfalse "$DISABLE_ONLINE_API" ; then
 fi
 
 # Enroll instance if enroll key is provided
-if isfalse "$DISABLE_ONLINE_API" && [ "$ENROLL_KEY" != "" ]; then
+if isfalse "$DISABLE_LOCAL_API" && isfalse "$DISABLE_ONLINE_API" && [ "$ENROLL_KEY" != "" ]; then
     enroll_args=""
     if [ "$ENROLL_INSTANCE_NAME" != "" ]; then
         enroll_args="--name $ENROLL_INSTANCE_NAME"
@@ -278,8 +278,7 @@ if [ "$GID" != "" ]; then
     fi
 fi
 
-# XXX only with LAPI
-if istrue "$USE_TLS"; then
+if isfalse "$DISABLE_LOCAL_API" && istrue "$USE_TLS"; then
     agents_allowed_yaml=$(csv2yaml "$AGENTS_ALLOWED_OU")
     export agents_allowed_yaml
     bouncers_allowed_yaml=$(csv2yaml "$BOUNCERS_ALLOWED_OU")
@@ -358,7 +357,7 @@ shopt -s nullglob extglob
 for BOUNCER in /run/secrets/@(bouncer_key|BOUNCER_KEY)* ; do
     KEY=$(cat "${BOUNCER}")
     NAME=$(echo "${BOUNCER}" | awk -F "/" '{printf $NF}' | cut -d_  -f2-)
-    if [[ -n $KEY ]] && [[ -n $NAME ]]; then    
+    if [[ -n $KEY ]] && [[ -n $NAME ]]; then
         register_bouncer "$NAME" "$KEY"
     fi
 done
@@ -368,6 +367,12 @@ shopt -u nullglob extglob
 
 conf_set_if "$CAPI_WHITELISTS_PATH" '.api.server.capi_whitelists_path = strenv(CAPI_WHITELISTS_PATH)'
 conf_set_if "$METRICS_PORT" '.prometheus.listen_port=env(METRICS_PORT)'
+
+if istrue "$DISABLE_LOCAL_API"; then
+    conf_set '.api.server.enable=false'
+else
+    conf_set '.api.server.enable=true'
+fi
 
 ARGS=""
 if [ "$CONFIG_FILE" != "" ]; then
@@ -388,10 +393,6 @@ fi
 
 if istrue "$DISABLE_AGENT"; then
     ARGS="$ARGS -no-cs"
-fi
-
-if istrue "$DISABLE_LOCAL_API"; then
-    ARGS="$ARGS -no-api"
 fi
 
 if istrue "$LEVEL_TRACE"; then
