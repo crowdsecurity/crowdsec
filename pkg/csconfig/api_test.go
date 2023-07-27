@@ -234,6 +234,7 @@ func TestLoadAPIServer(t *testing.T) {
 				DisableAPI: false,
 			},
 			expected: &LocalApiServerCfg{
+				Enable:    ptr.Of(true),
 				PapiLogLevel: &logLevel,
 			},
 			expectedErr: "no database configuration provided",

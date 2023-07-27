@@ -25,6 +25,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 type NotificationsCfg struct {
@@ -41,16 +43,18 @@ func NewNotificationsCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"notifications", "notification"},
 		DisableAutoGenTag: true,
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			var (
-				err error
-			)
-			if err = csConfig.API.Server.LoadProfiles(); err != nil {
-				log.Fatal(err)
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := require.LAPI(csConfig); err != nil {
+				return err
 			}
-			if csConfig.ConfigPaths.NotificationDir == "" {
-				log.Fatalf("config_paths.notification_dir is not set in crowdsec config")
+			if err := require.Profiles(csConfig); err != nil {
+				return err
 			}
+			if err := require.Notifications(csConfig); err != nil {
+				return err
+			}
+
+			return nil
 		},
 	}
 

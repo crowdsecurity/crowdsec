@@ -26,6 +26,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 var (
@@ -411,11 +413,8 @@ Note: This command requires database direct access, so is intended to be run on 
 		DisableAutoGenTag: true,
 		Aliases:           []string{"machine"},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
-				if err != nil {
-					log.Errorf("local api : %s", err)
-				}
-				return fmt.Errorf("local API is disabled, please run this command on the local API machine")
+			if err := require.LAPI(csConfig); err != nil {
+				return err
 			}
 
 			return nil
