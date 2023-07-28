@@ -340,9 +340,7 @@ func runMachinesDelete(cmd *cobra.Command, args []string) error {
 }
 
 func NewMachinesPruneCmd() *cobra.Command {
-	var machines []*ent.Machine
 	var parsedDuration time.Duration
-	var force bool
 	cmdMachinesPrune := &cobra.Command{
 		Use:   "prune",
 		Short: "prune multiple machines from the database",
@@ -353,29 +351,32 @@ cscli machines prune --not-validated-only --force`,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			flags := cmd.Flags()
-			dur, _ := flags.GetString("duration")
-			force, _ = flags.GetBool("force")
-			notValidOnly, _ := flags.GetBool("not-validated-only")
+			dur, _ := cmd.Flags().GetString("duration")
 			var err error
 			parsedDuration, err = time.ParseDuration(fmt.Sprintf("-%s", dur))
 			if err != nil {
 				return fmt.Errorf("unable to parse duration '%s': %s", dur, err)
 			}
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			notValidOnly, _ := cmd.Flags().GetBool("not-validated-only")
+			force, _ := cmd.Flags().GetBool("force")
 			if parsedDuration >= 0-60*time.Second && !notValidOnly {
 				var answer bool
 				prompt := &survey.Confirm{
-					Message: "The duration you provided is less than or equal 60 seconds this can break installations do you want to continue?",
+					Message: "The duration you provided is less than or equal 60 seconds this can break installations do you want to continue ?",
 					Default: false,
 				}
 				if err := survey.AskOne(prompt, &answer); err != nil {
 					return fmt.Errorf("unable to ask about prune check: %s", err)
 				}
 				if !answer {
-					return fmt.Errorf("user aborted prune no changes were made")
+					fmt.Println("user aborted prune no changes were made")
+					return nil
 				}
 			}
-
+			machines := make([]*ent.Machine, 0)
 			if pending, err := dbClient.QueryPendingMachine(); err == nil {
 				machines = append(machines, pending...)
 			}
@@ -385,30 +386,29 @@ cscli machines prune --not-validated-only --force`,
 				}
 			}
 			if len(machines) == 0 {
-				return fmt.Errorf("no machines to prune")
+				fmt.Println("no machines to prune")
+				return nil
 			}
 			getAgentsTable(color.Output, machines)
-			return nil
-		},
-		RunE: func(cmd *cobra.Command, args []string) error {
 			if !force {
 				var answer bool
 				prompt := &survey.Confirm{
-					Message: "You are about to PERMANENTLY remove the above machines from the database these will NOT be recoverable, continue?",
+					Message: "You are about to PERMANENTLY remove the above machines from the database these will NOT be recoverable, continue ?",
 					Default: false,
 				}
 				if err := survey.AskOne(prompt, &answer); err != nil {
 					return fmt.Errorf("unable to ask about prune check: %s", err)
 				}
 				if !answer {
-					return fmt.Errorf("user aborted prune no changes were made")
+					fmt.Println("user aborted prune no changes were made")
+					return nil
 				}
 			}
 			nbDeleted, err := dbClient.BulkDeleteWatchers(machines)
 			if err != nil {
 				return fmt.Errorf("unable to prune machines: %s", err)
 			}
-			log.Infof("successfully delete %d machines", nbDeleted)
+			fmt.Printf("successfully delete %d machines\n", nbDeleted)
 			return nil
 		},
 	}
