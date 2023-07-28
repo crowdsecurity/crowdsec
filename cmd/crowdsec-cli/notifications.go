@@ -18,13 +18,16 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/tomb.v2"
+	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
 	"github.com/crowdsecurity/go-cs-lib/pkg/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -62,11 +65,12 @@ func NewNotificationsCmd() *cobra.Command {
 	cmdNotifications.AddCommand(NewNotificationsListCmd())
 	cmdNotifications.AddCommand(NewNotificationsInspectCmd())
 	cmdNotifications.AddCommand(NewNotificationsReinjectCmd())
+	cmdNotifications.AddCommand(NewNotificationsTestCmd())
 
 	return cmdNotifications
 }
 
-func getNotificationsConfiguration() (map[string]NotificationsCfg, error) {
+func getPluginConfigs() (map[string]csplugin.PluginConfig, error) {
 	pcfgs := map[string]csplugin.PluginConfig{}
 	wf := func(path string, info fs.FileInfo, err error) error {
 		if info == nil {
@@ -79,6 +83,7 @@ func getNotificationsConfiguration() (map[string]NotificationsCfg, error) {
 				return fmt.Errorf("loading notifification plugin configuration with %s: %w", name, err)
 			}
 			for _, t := range ts {
+				csplugin.SetRequiredFields(&t)
 				pcfgs[t.Name] = t
 			}
 		}
@@ -88,8 +93,15 @@ func getNotificationsConfiguration() (map[string]NotificationsCfg, error) {
 	if err := filepath.Walk(csConfig.ConfigPaths.NotificationDir, wf); err != nil {
 		return nil, fmt.Errorf("while loading notifification plugin configuration: %w", err)
 	}
+	return pcfgs, nil
+}
 
+func getProfilesConfigs() (map[string]NotificationsCfg, error) {
 	// A bit of a tricky stuf now: reconcile profiles and notification plugins
+	pcfgs, err := getPluginConfigs()
+	if err != nil {
+		return nil, err
+	}
 	ncfgs := map[string]NotificationsCfg{}
 	profiles, err := csprofiles.NewProfile(csConfig.API.Server.Profiles)
 	if err != nil {
@@ -132,13 +144,13 @@ func getNotificationsConfiguration() (map[string]NotificationsCfg, error) {
 func NewNotificationsListCmd() *cobra.Command {
 	var cmdNotificationsList = &cobra.Command{
 		Use:               "list",
-		Short:             "List active notifications plugins",
-		Long:              `List active notifications plugins`,
+		Short:             "list active notifications plugins",
+		Long:              `list active notifications plugins`,
 		Example:           `cscli notifications list`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, arg []string) error {
-			ncfgs, err := getNotificationsConfiguration()
+			ncfgs, err := getProfilesConfigs()
 			if err != nil {
 				return fmt.Errorf("can't build profiles configuration: %w", err)
 			}
@@ -184,25 +196,21 @@ func NewNotificationsInspectCmd() *cobra.Command {
 		Example:           `cscli notifications inspect <plugin_name>`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, arg []string) error {
-			var (
-				cfg NotificationsCfg
-				ok  bool
-			)
-
-			pluginName := arg[0]
-
-			if pluginName == "" {
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			if args[0] == "" {
 				return fmt.Errorf("please provide a plugin name to inspect")
 			}
-			ncfgs, err := getNotificationsConfiguration()
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ncfgs, err := getProfilesConfigs()
 			if err != nil {
 				return fmt.Errorf("can't build profiles configuration: %w", err)
 			}
-			if cfg, ok = ncfgs[pluginName]; !ok {
-				return fmt.Errorf("plugin '%s' does not exist or is not active", pluginName)
+			cfg, ok := ncfgs[args[0]]
+			if !ok {
+				return fmt.Errorf("plugin '%s' does not exist or is not active", args[0])
 			}
-
 			if csConfig.Cscli.Output == "human" || csConfig.Cscli.Output == "raw" {
 				fmt.Printf(" - %15s: %15s\n", "Type", cfg.Config.Type)
 				fmt.Printf(" - %15s: %15s\n", "Name", cfg.Config.Name)
@@ -225,15 +233,118 @@ func NewNotificationsInspectCmd() *cobra.Command {
 	return cmdNotificationsInspect
 }
 
+func NewNotificationsTestCmd() *cobra.Command {
+	var (
+		pluginBroker  csplugin.PluginBroker
+		cfg           csplugin.PluginConfig
+		pluginTomb    tomb.Tomb
+		alertOverride string
+	)
+	var cmdNotificationsTest = &cobra.Command{
+		Use:               "test [plugin name]",
+		Short:             "send a generic test alert to notification plugin",
+		Long:              `send a generic test alert to a notification plugin to test configuration even if it not active in profiles`,
+		Example:           `cscli notifications test [plugin_name]`,
+		Args:              cobra.ExactArgs(1),
+		DisableAutoGenTag: true,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			var ok bool
+			if args[0] == "" {
+				return fmt.Errorf("please provide a plugin name to inspect")
+			}
+			pconfigs, err := getPluginConfigs()
+			if err != nil {
+				return fmt.Errorf("can't build profiles configuration: %w", err)
+			}
+			cfg, ok = pconfigs[args[0]]
+			if !ok {
+				return fmt.Errorf("plugin '%s' does not exist or is not active", args[0])
+			}
+			//Create a single profile with plugin name as notification name
+			return pluginBroker.Init(csConfig.PluginConfig, []*csconfig.ProfileCfg{
+				{
+					Notifications: []string{
+						cfg.Name,
+					},
+				},
+			}, csConfig.ConfigPaths)
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			origin := types.CscliOrigin
+			capacity := int32(0)
+			leakSpeed := "0"
+			eventsCount := int32(1)
+			empty := ""
+			simulated := false
+			startAt := time.Now().UTC().Format(time.RFC3339)
+			stopAt := time.Now().UTC().Format(time.RFC3339)
+			createdAt := time.Now().UTC().Format(time.RFC3339)
+			addReason := "test alert"
+			addValue := "10.10.10.10"
+			addScope := "Ip"
+			addDuration := "4h"
+
+			pluginTomb.Go(func() error {
+				pluginBroker.Run(&pluginTomb)
+				return nil
+			})
+			alert := &models.Alert{
+				Capacity: &capacity,
+				Decisions: []*models.Decision{{
+					Duration: &addDuration,
+					Scope:    &addScope,
+					Value:    &addValue,
+					Type:     ptr.Of("ban"),
+					Scenario: &addReason,
+					Origin:   &origin,
+				}},
+				Events:          []*models.Event{},
+				EventsCount:     &eventsCount,
+				Leakspeed:       &leakSpeed,
+				Message:         &addReason,
+				ScenarioHash:    &empty,
+				Scenario:        &addReason,
+				ScenarioVersion: &empty,
+				Simulated:       &simulated,
+				Source: &models.Source{
+					AsName:   empty,
+					AsNumber: empty,
+					Cn:       empty,
+					IP:       addValue,
+					Range:    empty,
+					Scope:    &addScope,
+					Value:    &addValue,
+				},
+				StartAt:   &startAt,
+				StopAt:    &stopAt,
+				CreatedAt: createdAt,
+			}
+			if err := yaml.Unmarshal([]byte(alertOverride), alert); err != nil {
+				return fmt.Errorf("failed to unmarshal alert override: %w", err)
+			}
+			pluginBroker.PluginChannel <- csplugin.ProfileAlert{
+				ProfileID: uint(0),
+				Alert:     alert,
+			}
+			//time.Sleep(2 * time.Second) // There's no mechanism to ensure notification has been sent
+			pluginTomb.Kill(fmt.Errorf("terminating"))
+			pluginTomb.Wait()
+			return nil
+		},
+	}
+	cmdNotificationsTest.Flags().StringVarP(&alertOverride, "alert", "a", "", "JSON string used to override alert fields in the test alert (see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
+
+	return cmdNotificationsTest
+}
+
 func NewNotificationsReinjectCmd() *cobra.Command {
 	var alertOverride string
-	var id int
 	var alert *models.Alert
 
 	var cmdNotificationsReinject = &cobra.Command{
 		Use:   "reinject",
-		Short: "reinject alert into notifications system",
-		Long:  `Reinject alert into notifications system`,
+		Short: "reinject a alert into profiles to trigger notifications",
+		Long:  `reinject a alert into profiles to be evaluated by the filter and sent to matched notifications plugins`,
 		Example: `
 cscli notifications reinject <alert_id>
 cscli notifications reinject <alert_id> --remediation
@@ -243,27 +354,9 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 		DisableAutoGenTag: true,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			var err error
-			id, err = strconv.Atoi(args[0])
+			alert, err = FetchAlertFromArgString(args[0])
 			if err != nil {
-				return fmt.Errorf("bad alert id %s", args[0])
-			}
-			apiURL, err := url.Parse(csConfig.API.Client.Credentials.URL)
-			if err != nil {
-				return fmt.Errorf("error parsing the URL of the API: %w", err)
-			}
-			client, err := apiclient.NewClient(&apiclient.Config{
-				MachineID:     csConfig.API.Client.Credentials.Login,
-				Password:      strfmt.Password(csConfig.API.Client.Credentials.Password),
-				UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
-				URL:           apiURL,
-				VersionPrefix: "v1",
-			})
-			if err != nil {
-				return fmt.Errorf("error creating the client for the API: %w", err)
-			}
-			alert, _, err = client.Alerts.GetByID(context.Background(), id)
-			if err != nil {
-				return fmt.Errorf("can't find alert with id %s: %w", args[0], err)
+				return err
 			}
 			return nil
 		},
@@ -272,18 +365,11 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 				pluginBroker csplugin.PluginBroker
 				pluginTomb   tomb.Tomb
 			)
-			if len(args) != 1 {
-				printHelp(cmd)
-				return fmt.Errorf("wrong number of argument: there should be one argument")
-			}
-
 			if alertOverride != "" {
 				if err := json.Unmarshal([]byte(alertOverride), alert); err != nil {
 					return fmt.Errorf("can't unmarshal data in the alert flag: %w", err)
 				}
 			}
-
-			// second we start plugins
 			err := pluginBroker.Init(csConfig.PluginConfig, csConfig.API.Server.Profiles, csConfig.ConfigPaths)
 			if err != nil {
 				return fmt.Errorf("can't initialize plugins: %w", err)
@@ -293,8 +379,6 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 				pluginBroker.Run(&pluginTomb)
 				return nil
 			})
-
-			//third: get the profile(s), and process the whole stuff
 
 			profiles, err := csprofiles.NewProfile(csConfig.API.Server.Profiles)
 			if err != nil {
@@ -339,4 +423,30 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 	cmdNotificationsReinject.Flags().StringVarP(&alertOverride, "alert", "a", "", "JSON string used to override alert fields in the reinjected alert (see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
 
 	return cmdNotificationsReinject
+}
+
+func FetchAlertFromArgString(toParse string) (*models.Alert, error) {
+	id, err := strconv.Atoi(toParse)
+	if err != nil {
+		return nil, fmt.Errorf("bad alert id %s", toParse)
+	}
+	apiURL, err := url.Parse(csConfig.API.Client.Credentials.URL)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing the URL of the API: %w", err)
+	}
+	client, err := apiclient.NewClient(&apiclient.Config{
+		MachineID:     csConfig.API.Client.Credentials.Login,
+		Password:      strfmt.Password(csConfig.API.Client.Credentials.Password),
+		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
+		URL:           apiURL,
+		VersionPrefix: "v1",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error creating the client for the API: %w", err)
+	}
+	alert, _, err := client.Alerts.GetByID(context.Background(), id)
+	if err != nil {
+		return nil, fmt.Errorf("can't find alert with id %d: %w", id, err)
+	}
+	return alert, nil
 }
