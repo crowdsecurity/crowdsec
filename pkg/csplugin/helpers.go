@@ -6,6 +6,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	log "github.com/sirupsen/logrus"
 )
 
 var helpers = template.FuncMap{
@@ -20,8 +21,14 @@ var helpers = template.FuncMap{
 		}
 		return metaValues
 	},
-	"CrowdsecCTI": exprhelpers.CrowdsecCTI,
-	"Hostname":    os.Hostname,
+	"CrowdsecCTI": func(x string) any {
+		ret, err := exprhelpers.CrowdsecCTI(x)
+		if err != nil {
+			log.Warningf("error while calling CrowdsecCTI : %s", err)
+		}
+		return ret
+	},
+	"Hostname": os.Hostname,
 }
 
 func funcMap() template.FuncMap {
