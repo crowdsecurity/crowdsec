@@ -26,14 +26,6 @@ func CAPI(c *csconfig.Config) error {
 }
 
 func PAPI(c *csconfig.Config) error {
-	if err := LAPI(c); err != nil {
-		return err
-	}
-
-	if err := CAPI(c); err != nil {
-		return err
-	}
-
 	if c.API.Server.OnlineClient.Credentials.PapiURL == "" {
 		return fmt.Errorf("no PAPI URL in configuration")
 	}
@@ -41,10 +33,6 @@ func PAPI(c *csconfig.Config) error {
 }
 
 func Enrolled(c *csconfig.Config) error {
-	if err := CAPI(c); err != nil {
-		return err
-	}
-
 	if c.API.Server.OnlineClient.Credentials == nil {
 		return fmt.Errorf("the Central API (CAPI) must be configured with 'cscli capi register'")
 	}
@@ -60,10 +48,6 @@ func DB(c *csconfig.Config) error {
 }
 
 func Profiles(c *csconfig.Config) error {
-	if err := LAPI(c); err != nil {
-		return err
-	}
-
 	if err := c.API.Server.LoadProfiles(); err != nil {
 		return fmt.Errorf("while loading profiles: %w", err)
 	}
@@ -72,10 +56,6 @@ func Profiles(c *csconfig.Config) error {
 }
 
 func Notifications(c *csconfig.Config) error {
-	if err := LAPI(c); err != nil {
-		return err
-	}
-
 	if c.ConfigPaths.NotificationDir == "" {
 		return fmt.Errorf("config_paths.notification_dir is not set in crowdsec config")
 	}
