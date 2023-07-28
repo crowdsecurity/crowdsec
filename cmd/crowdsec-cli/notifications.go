@@ -250,7 +250,7 @@ func NewNotificationsTestCmd() *cobra.Command {
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			var ok bool
 			if args[0] == "" {
-				return fmt.Errorf("please provide a plugin name to inspect")
+				return fmt.Errorf("please provide a plugin name to test")
 			}
 			pconfigs, err := getPluginConfigs()
 			if err != nil {
@@ -258,7 +258,7 @@ func NewNotificationsTestCmd() *cobra.Command {
 			}
 			cfg, ok = pconfigs[args[0]]
 			if !ok {
-				return fmt.Errorf("plugin '%s' does not exist or is not active", args[0])
+				return fmt.Errorf("plugin name: '%s' does not exist", args[0])
 			}
 			//Create a single profile with plugin name as notification name
 			return pluginBroker.Init(csConfig.PluginConfig, []*csconfig.ProfileCfg{
@@ -332,7 +332,7 @@ func NewNotificationsTestCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmdNotificationsTest.Flags().StringVarP(&alertOverride, "alert", "a", "", "JSON string used to override alert fields in the test alert (see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
+	cmdNotificationsTest.Flags().StringVarP(&alertOverride, "alert", "a", "", "JSON string used to override alert fields in the generic alert (see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
 
 	return cmdNotificationsTest
 }
