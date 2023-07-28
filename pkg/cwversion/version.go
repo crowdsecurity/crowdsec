@@ -10,7 +10,7 @@ import (
 
 	goversion "github.com/hashicorp/go-version"
 	
-	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+	"github.com/crowdsecurity/go-cs-lib/version"
 )
 
 var (
