@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/dghubble/sling"
 	log "github.com/sirupsen/logrus"
