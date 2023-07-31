@@ -5,8 +5,8 @@ After=syslog.target network.target remote-fs.target nss-lookup.target
 [Service]
 Type=notify
 Environment=LC_ALL=C LANG=C
-ExecStartPre=/usr/local/bin/crowdsec -c /etc/crowdsec/config.yaml -t -error
-ExecStart=/usr/local/bin/crowdsec -c /etc/crowdsec/config.yaml
+ExecStartPre=/usr/bin/crowdsec -c /etc/crowdsec/config.yaml -t -error
+ExecStart=/usr/bin/crowdsec -c /etc/crowdsec/config.yaml
 #ExecStartPost=/bin/sleep 0.1
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
