@@ -119,14 +119,14 @@ func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Sched
 	// Init & Start cronjob every hour for bouncers/agents
 	if config.AgentsGC != nil {
 		if config.AgentsGC.Cert != nil {
-			duration, err := types.ParseDuration(*config.AgentsGC.Cert)
+			duration, err := ParseDuration(*config.AgentsGC.Cert)
 			if err != nil {
 				return nil, fmt.Errorf("while parsing agents cert auto-delete duration: %w", err)
 			}
 			config.AgentsGC.CertDuration = &duration
 		}
 		if config.AgentsGC.LoginPassword != nil {
-			duration, err := types.ParseDuration(*config.AgentsGC.LoginPassword)
+			duration, err := ParseDuration(*config.AgentsGC.LoginPassword)
 			if err != nil {
 				return nil, fmt.Errorf("while parsing agents login/password auto-delete duration: %w", err)
 			}
@@ -138,14 +138,14 @@ func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Sched
 	}
 	if config.BouncersGC != nil {
 		if config.BouncersGC.Cert != nil {
-			duration, err := types.ParseDuration(*config.BouncersGC.Cert)
+			duration, err := ParseDuration(*config.BouncersGC.Cert)
 			if err != nil {
 				return nil, fmt.Errorf("while parsing bouncers cert auto-delete duration: %w", err)
 			}
 			config.BouncersGC.CertDuration = &duration
 		}
 		if config.BouncersGC.Api != nil {
-			duration, err := types.ParseDuration(*config.BouncersGC.Api)
+			duration, err := ParseDuration(*config.BouncersGC.Api)
 			if err != nil {
 				return nil, fmt.Errorf("while parsing bouncers api auto-delete duration: %w", err)
 			}

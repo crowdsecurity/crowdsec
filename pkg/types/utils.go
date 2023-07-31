@@ -3,8 +3,6 @@ package types
 import (
 	"fmt"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -64,26 +62,6 @@ func ConfigureLogger(clog *log.Logger) error {
 	}
 	clog.SetLevel(logLevel)
 	return nil
-}
-
-func ParseDuration(d string) (time.Duration, error) {
-	durationStr := d
-	if strings.HasSuffix(d, "d") {
-		days := strings.Split(d, "d")[0]
-		if len(days) == 0 {
-			return 0, fmt.Errorf("'%s' can't be parsed as duration", d)
-		}
-		daysInt, err := strconv.Atoi(days)
-		if err != nil {
-			return 0, err
-		}
-		durationStr = strconv.Itoa(daysInt*24) + "h"
-	}
-	duration, err := time.ParseDuration(durationStr)
-	if err != nil {
-		return 0, err
-	}
-	return duration, nil
 }
 
 func UtcNow() time.Time {

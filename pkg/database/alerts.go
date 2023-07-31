@@ -809,7 +809,7 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 				return nil, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", value[0], err)
 			}
 		case "since":
-			duration, err := types.ParseDuration(value[0])
+			duration, err := ParseDuration(value[0])
 			if err != nil {
 				return nil, fmt.Errorf("while parsing duration: %w", err)
 			}
@@ -819,7 +819,7 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 			}
 			predicates = append(predicates, alert.StartedAtGTE(since))
 		case "created_before":
-			duration, err := types.ParseDuration(value[0])
+			duration, err := ParseDuration(value[0])
 			if err != nil {
 				return nil, fmt.Errorf("while parsing duration: %w", err)
 			}
@@ -829,7 +829,7 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 			}
 			predicates = append(predicates, alert.CreatedAtLTE(since))
 		case "until":
-			duration, err := types.ParseDuration(value[0])
+			duration, err := ParseDuration(value[0])
 			if err != nil {
 				return nil, fmt.Errorf("while parsing duration: %w", err)
 			}
