@@ -67,8 +67,8 @@ func (r *WafRunner) AccumulateTxToEvent(tx experimental.FullTransaction, kind st
 
 	//log.Infof("tx addr: %p", tx)
 	if tx.IsInterrupted() {
-		r.logger.Infof("interrupted() = %t", tx.IsInterrupted())
-		r.logger.Infof("interrupted.action = %s", tx.Interruption().Action)
+		//r.logger.Infof("interrupted() = %t", tx.IsInterrupted())
+		//r.logger.Infof("interrupted.action = %s", tx.Interruption().Action)
 		if evt.Meta == nil {
 			evt.Meta = map[string]string{}
 		}
@@ -106,7 +106,7 @@ func (r *WafRunner) AccumulateTxToEvent(tx experimental.FullTransaction, kind st
 				match := collectionToKeep.MatchString(key)
 				if match {
 					evt.Waap.Vars[key] = variable.Value()
-					r.logger.Infof("%s.%s = %s", variable.Variable().Name(), variable.Key(), variable.Value())
+					r.logger.Debugf("%s.%s = %s", variable.Variable().Name(), variable.Key(), variable.Value())
 				} else {
 					r.logger.Debugf("%s.%s != %s (%s) (not kept)", variable.Variable().Name(), variable.Key(), collectionToKeep, variable.Value())
 				}
