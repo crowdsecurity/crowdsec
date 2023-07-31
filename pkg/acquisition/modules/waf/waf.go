@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -38,7 +39,7 @@ type WafRunner struct {
 	UUID              string
 	RulesCollections  []*waf.WafRulesCollection
 	logger            *log.Entry
-	VariablesTracking []string
+	VariablesTracking []*regexp.Regexp
 }
 
 type WafSourceConfig struct {
@@ -251,6 +252,16 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 			})
 		}
 
+		var compiledVariableRules []*regexp.Regexp
+
+		for _, variable := range w.config.VariablesTracking {
+			compiledVariableRule, err := regexp.Compile(variable)
+			if err != nil {
+				return fmt.Errorf("cannot compile variable regexp %s: %w", variable, err)
+			}
+			compiledVariableRules = append(compiledVariableRules, compiledVariableRule)
+		}
+
 		runner := WafRunner{
 			outOfBandWaf:      outofbandwaf,
 			inBandWaf:         inbandwaf,
@@ -258,7 +269,7 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 			UUID:              wafUUID,
 			RulesCollections:  rulesCollections,
 			logger:            wafLogger,
-			VariablesTracking: w.config.VariablesTracking,
+			VariablesTracking: compiledVariableRules,
 		}
 		w.WafRunners[nbRoutine] = runner
 	}

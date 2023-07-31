@@ -2,7 +2,6 @@ package wafacquisition
 
 import (
 	"fmt"
-	"regexp"
 	"time"
 
 	"github.com/crowdsecurity/coraza/v3/collection"
@@ -104,16 +103,12 @@ func (r *WafRunner) AccumulateTxToEvent(tx experimental.FullTransaction, kind st
 				continue
 			}
 			for _, collectionToKeep := range r.VariablesTracking {
-				match, err := regexp.MatchString("(?i)"+collectionToKeep, key)
-				if err != nil {
-					r.logger.Warningf("error matching %s with %s: %s", key, collectionToKeep, err)
-					continue
-				}
+				match := collectionToKeep.MatchString(key)
 				if match {
 					evt.Waap.Vars[key] = variable.Value()
 					r.logger.Infof("%s.%s = %s", variable.Variable().Name(), variable.Key(), variable.Value())
 				} else {
-					r.logger.Infof("%s.%s != %s (%s) (not kept)", variable.Variable().Name(), variable.Key(), collectionToKeep, variable.Value())
+					r.logger.Debugf("%s.%s != %s (%s) (not kept)", variable.Variable().Name(), variable.Key(), collectionToKeep, variable.Value())
 				}
 			}
 		}
