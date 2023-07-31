@@ -170,7 +170,9 @@ func (w *WafRuleLoader) LoadWafRules() ([]*WafRulesCollection, error) {
 				//Ignore filter for on load ?
 				if onLoadHook.Apply != nil {
 					for exprIdx, applyExpr := range onLoadHook.Apply {
-						_, err := expr.Run(applyExpr, GetEnv())
+						_, err := expr.Run(applyExpr, map[string]interface{}{
+							"rules": collection,
+						})
 						if err != nil {
 							w.logger.Errorf("unable to run apply for on_load rule %s : %s", wafConfig.OnLoad[hookIdx].Apply[exprIdx], err)
 							continue
