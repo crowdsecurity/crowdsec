@@ -574,10 +574,11 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 			if expTx != nil && len(expTx.MatchedRules()) > 0 {
 				//if event was not instantiated after inband processing, do it now
 				if evt == nil {
-					*evt, err = EventFromRequest(request)
+					tmpEvt, err := EventFromRequest(request)
 					if err != nil {
 						return fmt.Errorf("cannot create event from waap context : %w", err)
 					}
+					evt = &tmpEvt
 				}
 
 				err = r.AccumulateTxToEvent(expTx, OutOfBand, evt)
