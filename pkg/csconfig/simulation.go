@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/yamlpatch"
+	"github.com/crowdsecurity/go-cs-lib/yamlpatch"
 	"gopkg.in/yaml.v2"
 )
 

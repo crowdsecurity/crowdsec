@@ -12,8 +12,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
-	"github.com/crowdsecurity/go-cs-lib/pkg/yamlpatch"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
+	"github.com/crowdsecurity/go-cs-lib/yamlpatch"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 )
@@ -234,6 +234,21 @@ func (c *Config) LoadAPIServer() error {
 		return nil
 	}
 
+	if c.API.Server.Enable == nil {
+		// if the option is not present, it is enabled by default
+		c.API.Server.Enable = ptr.Of(true)
+	}
+
+	if !*c.API.Server.Enable {
+		log.Warning("crowdsec local API is disabled because 'enable' is set to false")
+		c.DisableAPI = true
+		return nil
+	}
+
+	if c.DisableAPI {
+		return nil
+	}
+
 	//inherit log level from common, then api->server
 	var logLevel log.Level
 	if c.API.Server.LogLevel != nil {
@@ -253,9 +268,11 @@ func (c *Config) LoadAPIServer() error {
 			return fmt.Errorf("loading online client credentials: %w", err)
 		}
 	}
+
 	if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
 		log.Printf("push and pull to Central API disabled")
 	}
+
 	if err := c.LoadDBConfig(); err != nil {
 		return err
 	}
@@ -268,53 +285,35 @@ func (c *Config) LoadAPIServer() error {
 		log.Infof("loaded capi whitelist from %s: %d IPs, %d CIDRs", c.API.Server.CapiWhitelistsPath, len(c.API.Server.CapiWhitelists.Ips), len(c.API.Server.CapiWhitelists.Cidrs))
 	}
 
-	if c.API.Server.Enable == nil {
-		// if the option is not present, it is enabled by default
-		c.API.Server.Enable = ptr.Of(true)
-	}
-
-	if !*c.API.Server.Enable {
-		log.Warning("crowdsec local API is disabled because 'enable' is set to false")
-		c.DisableAPI = true
-		return nil
-	}
-
-	if c.DisableAPI {
-		return nil
-	}
-
 	if err := c.LoadCommon(); err != nil {
 		return fmt.Errorf("loading common configuration: %s", err)
 	}
+
 	c.API.Server.LogDir = c.Common.LogDir
 	c.API.Server.LogMedia = c.Common.LogMedia
 	c.API.Server.CompressLogs = c.Common.CompressLogs
 	c.API.Server.LogMaxSize = c.Common.LogMaxSize
 	c.API.Server.LogMaxAge = c.Common.LogMaxAge
 	c.API.Server.LogMaxFiles = c.Common.LogMaxFiles
+
 	if c.API.Server.UseForwardedForHeaders && c.API.Server.TrustedProxies == nil {
 		c.API.Server.TrustedProxies = &[]string{"0.0.0.0/0"}
 	}
+
 	if c.API.Server.TrustedProxies != nil {
 		c.API.Server.UseForwardedForHeaders = true
 	}
+
 	if err := c.API.Server.LoadProfiles(); err != nil {
 		return fmt.Errorf("while loading profiles for LAPI: %w", err)
 	}
+
 	if c.API.Server.ConsoleConfigPath == "" {
 		c.API.Server.ConsoleConfigPath = DefaultConsoleConfigFilePath
 	}
+
 	if err := c.API.Server.LoadConsoleConfig(); err != nil {
 		return fmt.Errorf("while loading console options: %w", err)
-	}
-
-	if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
-		if err := c.API.Server.OnlineClient.Load(); err != nil {
-			return fmt.Errorf("loading online client credentials: %w", err)
-		}
-	}
-	if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
-		log.Printf("push and pull to Central API disabled")
 	}
 
 	if c.API.CTI != nil {

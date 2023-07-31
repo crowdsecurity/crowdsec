@@ -14,7 +14,7 @@ import (
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -180,7 +180,7 @@ func NewLapiRegisterCmd() *cobra.Command {
 	cmdLapiRegister := &cobra.Command{
 		Use:   "register",
 		Short: "Register a machine to Local API (LAPI)",
-		Long: `Register you machine to the Local API (LAPI).
+		Long: `Register your machine to the Local API (LAPI).
 Keep in mind the machine needs to be validated by an administrator on LAPI side to be effective.`,
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,

@@ -18,11 +18,11 @@ import (
 	"github.com/prometheus/prom2json"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/texttheater/golang-levenshtein/levenshtein"
+	"github.com/agext/levenshtein"
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -90,7 +90,7 @@ func GetDistance(itemType string, itemName string) (*cwhub.Item, int) {
 	}
 
 	for _, s := range allItems {
-		d := levenshtein.DistanceForStrings([]rune(itemName), []rune(s), levenshtein.DefaultOptions)
+		d := levenshtein.Distance(itemName, s, nil)
 		if d < nearestScore {
 			nearestScore = d
 			nearestItem = cwhub.GetItem(itemType, s)

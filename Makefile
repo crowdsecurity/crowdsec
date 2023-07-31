@@ -31,8 +31,8 @@ BUILD_REQUIRE_GO_MINOR ?= 20
 
 #--------------------------------------
 
-GOCMD = go
-GOTEST = $(GOCMD) test
+GO = go
+GOTEST = $(GO) test
 
 BUILD_CODENAME ?= alphaga
 
@@ -42,6 +42,11 @@ PLUGINS_DIR = ./plugins/notifications
 
 CROWDSEC_BIN = crowdsec$(EXT)
 CSCLI_BIN = cscli$(EXT)
+
+# semver comparison to select the hub branch requires the version to start with "v"
+ifneq ($(call substr,$(BUILD_VERSION),1,1),v)
+    $(error BUILD_VERSION "$(BUILD_VERSION)" should start with "v")
+endif
 
 # Directory for the release files
 RELDIR = crowdsec-$(BUILD_VERSION)
@@ -65,9 +70,9 @@ bool = $(if $(filter $(call lc, $1),1 yes true),1,0)
 MAKE_FLAGS = --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 
 LD_OPTS_VARS= \
--X 'github.com/crowdsecurity/go-cs-lib/pkg/version.Version=$(BUILD_VERSION)' \
--X 'github.com/crowdsecurity/go-cs-lib/pkg/version.BuildDate=$(BUILD_TIMESTAMP)' \
--X 'github.com/crowdsecurity/go-cs-lib/pkg/version.Tag=$(BUILD_TAG)' \
+-X 'github.com/crowdsecurity/go-cs-lib/version.Version=$(BUILD_VERSION)' \
+-X 'github.com/crowdsecurity/go-cs-lib/version.BuildDate=$(BUILD_TIMESTAMP)' \
+-X 'github.com/crowdsecurity/go-cs-lib/version.Tag=$(BUILD_TAG)' \
 -X '$(GO_MODULE_NAME)/pkg/cwversion.Codename=$(BUILD_CODENAME)' \
 -X '$(GO_MODULE_NAME)/pkg/csconfig.defaultConfigDir=$(DEFAULT_CONFIGDIR)' \
 -X '$(GO_MODULE_NAME)/pkg/csconfig.defaultDataDir=$(DEFAULT_DATADIR)'
@@ -77,6 +82,9 @@ LD_OPTS_VARS += -X '$(GO_MODULE_NAME)/pkg/cwversion.System=docker'
 endif
 
 GO_TAGS := netgo,osusergo,sqlite_omit_load_extension
+
+# this will be used by Go in the make target, some distributions require it
+export PKG_CONFIG_PATH:=/usr/local/lib/pkgconfig:$(PKG_CONFIG_PATH)
 
 ifeq ($(call bool,$(BUILD_RE2_WASM)),0)
 ifeq ($(PKG_CONFIG),)
@@ -201,11 +209,20 @@ PLUGIN_VENDOR = $(foreach plugin,$(PLUGINS),$(shell if [ -f $(PLUGINS_DIR)/$(plu
 vendor:
 	$(foreach plugin_dir,$(PLUGIN_VENDOR), \
 		cd $(plugin_dir) >/dev/null && \
-		$(GOCMD) mod vendor && \
+		$(GO) mod vendor && \
 		cd - >/dev/null; \
 	)
-	$(GOCMD) mod vendor
+	$(GO) mod vendor
 	tar -czf vendor.tgz vendor $(foreach plugin_dir,$(PLUGIN_VENDOR),$(plugin_dir)/vendor)
+
+.PHONY: tidy
+tidy:
+	$(GO) mod tidy
+	$(foreach plugin_dir,$(PLUGIN_VENDOR), \
+		cd $(plugin_dir) >/dev/null && \
+		$(GO) mod tidy && \
+		cd - >/dev/null; \
+	)
 
 # remove vendor directories and vendor.tgz
 .PHONY: vendor-remove
@@ -214,6 +231,7 @@ vendor-remove:
 		$(RM) $(plugin_dir)/vendor; \
 	)
 	$(RM) vendor vendor.tgz
+
 
 .PHONY: package
 package:

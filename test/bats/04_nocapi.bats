@@ -41,7 +41,7 @@ teardown() {
     config_disable_capi
     ./instance-crowdsec start
     rune -1 cscli capi status
-    assert_stderr --partial "no configuration for Central API in "
+    assert_stderr --partial "no configuration for Central API (CAPI) in "
 }
 
 @test "no capi: cscli config show" {
@@ -78,5 +78,5 @@ teardown() {
     rune -0 cscli metrics
     assert_output --partial "Route"
     assert_output --partial '/v1/watchers/login'
-    assert_output --partial "Local Api Metrics:"
+    assert_output --partial "Local API Metrics:"
 }

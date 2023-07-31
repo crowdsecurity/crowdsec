@@ -60,5 +60,11 @@ setup() {
     ONLINE_API_CREDENTIALS_YAML="$(config_get '.api.server.online_client.credentials_path')"
     rm "${ONLINE_API_CREDENTIALS_YAML}"
     rune -1 cscli capi status
-    assert_stderr --partial "local API is disabled, please run this command on the local API machine: loading online client credentials: failed to read api server credentials configuration file '${ONLINE_API_CREDENTIALS_YAML}': open ${ONLINE_API_CREDENTIALS_YAML}: no such file or directory"
+    assert_stderr --partial "failed to load Local API: loading online client credentials: failed to read api server credentials configuration file '${ONLINE_API_CREDENTIALS_YAML}': open ${ONLINE_API_CREDENTIALS_YAML}: no such file or directory"
+}
+
+@test "capi register must be run from lapi" {
+    config_disable_lapi
+    rune -1 cscli capi register --schmilblick githubciXXXXXXXXXXXXXXXXXXXXXXXX
+    assert_stderr --partial "local API is disabled -- this command must be run on the local API machine"
 }

@@ -8,10 +8,9 @@ import (
 	"time"
 
 	"github.com/go-openapi/strfmt"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -73,16 +72,16 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 
 	scenarios, err := cwhub.GetInstalledScenariosAsString()
 	if err != nil {
-		return errors.Wrapf(err, "loading list of installed hub scenarios: %s", err)
+		return fmt.Errorf("loading list of installed hub scenarios: %w", err)
 	}
 
 	apiURL, err := url.Parse(apiConfig.URL)
 	if err != nil {
-		return errors.Wrapf(err, "parsing api url ('%s'): %s", apiConfig.URL, err)
+		return fmt.Errorf("parsing api url ('%s'): %w", apiConfig.URL, err)
 	}
 	papiURL, err := url.Parse(apiConfig.PapiURL)
 	if err != nil {
-		return errors.Wrapf(err, "parsing polling api url ('%s'): %s", apiConfig.PapiURL, err)
+		return fmt.Errorf("parsing polling api url ('%s'): %w", apiConfig.PapiURL, err)
 	}
 	password := strfmt.Password(apiConfig.Password)
 
@@ -97,7 +96,7 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 		UpdateScenario: cwhub.GetInstalledScenariosAsString,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "new client api: %s", err)
+		return fmt.Errorf("new client api: %w", err)
 	}
 	authResp, _, err := Client.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
 		MachineID: &apiConfig.Login,

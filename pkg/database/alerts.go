@@ -131,14 +131,14 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 	alerts, err := c.Ent.Alert.Query().Where(alert.UUID(alertItem.UUID)).WithDecisions().All(c.CTX)
 
 	if err != nil && !ent.IsNotFound(err) {
-		return "", errors.Wrap(err, "unable to query alerts for uuid %s")
+		return "", fmt.Errorf("unable to query alerts for uuid %s: %w", alertItem.UUID, err)
 	}
 
 	//alert wasn't found, insert it (expected hotpath)
 	if ent.IsNotFound(err) || len(alerts) == 0 {
 		ret, err := c.CreateAlert(machineID, []*models.Alert{alertItem})
 		if err != nil {
-			return "", errors.Wrap(err, "unable to create alert")
+			return "", fmt.Errorf("unable to create alert: %w", err)
 		}
 		return ret[0], nil
 	}
@@ -256,7 +256,7 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 	//now that we bulk created missing decisions, let's update the alert
 	err = c.Ent.Alert.Update().Where(alert.UUID(alertItem.UUID)).AddDecisions(decisions...).Exec(c.CTX)
 	if err != nil {
-		return "", errors.Wrapf(err, "updating alert %s : %s", alertItem.UUID, err)
+		return "", fmt.Errorf("updating alert %s: %w", alertItem.UUID, err)
 	}
 
 	return "", nil
@@ -442,7 +442,7 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 				if rollbackErr != nil {
 					log.Errorf("rollback error: %s", rollbackErr)
 				}
-				return 0, 0, 0, errors.Wrap(err, "while deleting older community blocklist decisions")
+				return 0, 0, 0, fmt.Errorf("while deleting older community blocklist decisions: %w", err)
 			}
 			deleted += deletedDecisions
 
@@ -475,7 +475,7 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 			if rollbackErr != nil {
 				log.Errorf("rollback error: %s", rollbackErr)
 			}
-			return 0, 0, 0, errors.Wrap(err, "while deleting older community blocklist decisions")
+			return 0, 0, 0, fmt.Errorf("while deleting older community blocklist decisions: %w", err)
 		}
 		deleted += deletedDecisions
 	}
@@ -811,7 +811,7 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 		case "since":
 			duration, err := types.ParseDuration(value[0])
 			if err != nil {
-				return nil, errors.Wrap(err, "while parsing duration")
+				return nil, fmt.Errorf("while parsing duration: %w", err)
 			}
 			since := time.Now().UTC().Add(-duration)
 			if since.IsZero() {
@@ -821,21 +821,21 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 		case "created_before":
 			duration, err := types.ParseDuration(value[0])
 			if err != nil {
-				return nil, errors.Wrap(err, "while parsing duration")
+				return nil, fmt.Errorf("while parsing duration: %w", err)
 			}
 			since := time.Now().UTC().Add(-duration)
 			if since.IsZero() {
-				return nil, fmt.Errorf("Empty time now() - %s", since.String())
+				return nil, fmt.Errorf("empty time now() - %s", since.String())
 			}
 			predicates = append(predicates, alert.CreatedAtLTE(since))
 		case "until":
 			duration, err := types.ParseDuration(value[0])
 			if err != nil {
-				return nil, errors.Wrap(err, "while parsing duration")
+				return nil, fmt.Errorf("while parsing duration: %w", err)
 			}
 			until := time.Now().UTC().Add(-duration)
 			if until.IsZero() {
-				return nil, fmt.Errorf("Empty time now() - %s", until.String())
+				return nil, fmt.Errorf("empty time now() - %s", until.String())
 			}
 			predicates = append(predicates, alert.StartedAtLTE(until))
 		case "decision_type":
@@ -966,13 +966,13 @@ func (c *Client) AlertsCountPerScenario(filters map[string][]string) (map[string
 	query, err := BuildAlertRequestFromFilter(query, filters)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to build alert request")
+		return nil, fmt.Errorf("failed to build alert request: %w", err)
 	}
 
 	err = query.GroupBy(alert.FieldScenario).Aggregate(ent.Count()).Scan(ctx, &res)
 
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to count alerts per scenario")
+		return nil, fmt.Errorf("failed to count alerts per scenario: %w", err)
 	}
 
 	counts := make(map[string]int)
@@ -1270,7 +1270,7 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 	totalAlerts, err = c.TotalAlerts()
 	if err != nil {
 		c.Log.Warningf("FlushAlerts (max items count) : %s", err)
-		return errors.Wrap(err, "unable to get alerts count")
+		return fmt.Errorf("unable to get alerts count: %w", err)
 	}
 	c.Log.Debugf("FlushAlerts (Total alerts): %d", totalAlerts)
 	if MaxAge != "" {
@@ -1280,7 +1280,7 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 		nbDeleted, err := c.DeleteAlertWithFilter(filter)
 		if err != nil {
 			c.Log.Warningf("FlushAlerts (max age) : %s", err)
-			return errors.Wrapf(err, "unable to flush alerts with filter until: %s", MaxAge)
+			return fmt.Errorf("unable to flush alerts with filter until=%s: %w", MaxAge, err)
 		}
 		c.Log.Debugf("FlushAlerts (deleted max age alerts): %d", nbDeleted)
 		deletedByAge = nbDeleted
@@ -1300,7 +1300,7 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 		c.Log.Debugf("FlushAlerts (last alert): %+v", lastAlert)
 		if err != nil {
 			c.Log.Errorf("FlushAlerts: could not get last alert: %s", err)
-			return errors.Wrap(err, "could not get last alert")
+			return fmt.Errorf("could not get last alert: %w", err)
 		}
 
 		if len(lastAlert) != 0 {
@@ -1314,7 +1314,7 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 
 				if err != nil {
 					c.Log.Errorf("FlushAlerts: Could not delete alerts : %s", err)
-					return errors.Wrap(err, "could not delete alerts")
+					return fmt.Errorf("could not delete alerts: %w", err)
 				}
 			}
 		}

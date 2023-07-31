@@ -4,9 +4,7 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io/fs"
 	"net/url"
 	"os"
 
@@ -16,14 +14,16 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
-	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
+	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 func NewConsoleCmd() *cobra.Command {
@@ -33,24 +33,14 @@ func NewConsoleCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
-				var fdErr *fs.PathError
-				if errors.As(err, &fdErr) {
-					log.Fatalf("Unable to load Local API : %s", fdErr)
-				}
-				if err != nil {
-					log.Fatalf("Unable to load required Local API Configuration : %s", err)
-				}
-				log.Fatal("Local API is disabled, please run this command on the local API machine")
+			if err := require.LAPI(csConfig); err != nil {
+				return err
 			}
-			if csConfig.DisableAPI {
-				log.Fatal("Local API is disabled, please run this command on the local API machine")
+			if err := require.CAPI(csConfig); err != nil {
+				return err
 			}
-			if csConfig.API.Server.OnlineClient == nil {
-				log.Fatalf("No configuration for Central API (CAPI) in '%s'", *csConfig.FilePath)
-			}
-			if csConfig.API.Server.OnlineClient.Credentials == nil {
-				log.Fatal("You must configure Central API (CAPI) with `cscli capi register` before accessing console features.")
+			if err := require.Enrolled(csConfig); err != nil {
+				return err
 			}
 			return nil
 		},

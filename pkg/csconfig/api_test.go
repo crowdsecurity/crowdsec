@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/cstest"
-	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
+	"github.com/crowdsecurity/go-cs-lib/cstest"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 func TestLoadLocalApiClientCfg(t *testing.T) {
@@ -234,6 +234,7 @@ func TestLoadAPIServer(t *testing.T) {
 				DisableAPI: false,
 			},
 			expected: &LocalApiServerCfg{
+				Enable:    ptr.Of(true),
 				PapiLogLevel: &logLevel,
 			},
 			expectedErr: "no database configuration provided",

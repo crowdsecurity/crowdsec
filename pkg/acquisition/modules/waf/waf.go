@@ -17,7 +17,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
-	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
