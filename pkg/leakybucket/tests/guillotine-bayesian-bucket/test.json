@@ -1,0 +1,50 @@
+{
+	"lines": [
+	   {
+		  "Line": {
+			 "Labels": {
+				"type": "nginx"
+			 },
+			 "Raw": "don't care"
+		  },
+		  "MarshaledTime": "2020-01-01T10:00:00.000Z",
+		  "Meta": {
+			 "source_ip": "2a00:1450:4007:816::200e",
+			 "log_type": "http_access-log",
+			 "http_path": "/"
+		  }
+	   },
+	   {
+		"Line": {
+		   "Labels": {
+			  "type": "nginx"
+		   },
+		   "Raw": "don't care"
+		},
+		"MarshaledTime": "2020-01-01T10:00:00.000Z",
+		"Meta": {
+		   "source_ip": "2a00:1450:4007:816::200e",
+		   "log_type": "ssh_access-log",
+		   "ssh_user": "admin"
+		}
+	 }
+	],
+	"results": [
+	  {
+		"Type" : 1,
+		"Alert": {
+		  "sources" : {
+			"2a00:1450:4007:816::200e": {
+			  "ip": "2a00:1450:4007:816::200e",
+			  "scope": "Ip",
+			  "value": "2a00:1450:4007:816::200e"
+			}
+		  },
+		  "Alert" : {
+			"scenario": "test/guillotine-bayesian",
+			"events_count": 2
+		  }
+		}
+	  }
+	]
+  }

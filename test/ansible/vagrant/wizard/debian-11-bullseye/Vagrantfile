@@ -1,0 +1,12 @@
+# frozen_string_literal: true
+
+Vagrant.configure('2') do |config|
+  config.vm.box = 'debian/bullseye64'
+  config.vm.provision "shell", inline: <<-SHELL
+    sudo apt update
+    sudo apt install -y aptitude kitty-terminfo
+  SHELL
+end
+
+common = '../common'
+load common if File.exists?(common)

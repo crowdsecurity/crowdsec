@@ -12,9 +12,7 @@ import (
 )
 
 func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *leaky.Buckets, cConfig *csconfig.Config) error {
-	var (
-		count int
-	)
+	count := 0
 	for {
 		//bucket is now ready
 		select {

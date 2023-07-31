@@ -1,0 +1,14 @@
+# frozen_string_literal: true
+
+Vagrant.configure('2') do |config|
+  config.vm.box = 'generic/openbsd6'
+  # config.vm.box_version = '4.2.16'
+  config.vm.provision "shell", inline: <<-SHELL
+  sudo pkg_add python py3-pip gcc openssl-1.0.2up3 gtar-1.34
+    # sudo pkg_add -u
+    # sudo pkg_add kitty
+  SHELL
+end
+
+common = '../../common'
+load common if File.exist?(common)

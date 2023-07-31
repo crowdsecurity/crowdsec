@@ -33,7 +33,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var (
+const (
+	// delta values must be smaller than the interval
 	pullIntervalDefault    = time.Hour * 2
 	pullIntervalDelta      = 5 * time.Minute
 	pushIntervalDefault    = time.Second * 10
@@ -71,7 +72,12 @@ type apic struct {
 
 // randomDuration returns a duration value between d-delta and d+delta
 func randomDuration(d time.Duration, delta time.Duration) time.Duration {
-	return time.Duration(float64(d) + float64(delta)*(-1.0+2.0*rand.Float64()))
+	ret := d + time.Duration(rand.Int63n(int64(2*delta))) - delta
+	// ticker interval must be > 0 (nanoseconds)
+	if ret <= 0 {
+		return 1
+	}
+	return ret
 }
 
 func (a *apic) FetchScenariosListFromDB() ([]string, error) {
@@ -818,80 +824,6 @@ func (a *apic) Pull() error {
 			a.metricsTomb.Kill(nil)
 			a.pushTomb.Kill(nil)
 			return nil
-		}
-	}
-}
-
-func (a *apic) GetMetrics() (*models.Metrics, error) {
-	metric := &models.Metrics{
-		ApilVersion: ptr.Of(version.String()),
-		Machines:    make([]*models.MetricsAgentInfo, 0),
-		Bouncers:    make([]*models.MetricsBouncerInfo, 0),
-	}
-	machines, err := a.dbClient.ListMachines()
-	if err != nil {
-		return metric, err
-	}
-	bouncers, err := a.dbClient.ListBouncers()
-	if err != nil {
-		return metric, err
-	}
-	var lastpush string
-	for _, machine := range machines {
-		if machine.LastPush == nil {
-			lastpush = time.Time{}.String()
-		} else {
-			lastpush = machine.LastPush.String()
-		}
-		m := &models.MetricsAgentInfo{
-			Version:    machine.Version,
-			Name:       machine.MachineId,
-			LastUpdate: machine.UpdatedAt.String(),
-			LastPush:   lastpush,
-		}
-		metric.Machines = append(metric.Machines, m)
-	}
-
-	for _, bouncer := range bouncers {
-		m := &models.MetricsBouncerInfo{
-			Version:    bouncer.Version,
-			CustomName: bouncer.Name,
-			Name:       bouncer.Type,
-			LastPull:   bouncer.LastPull.String(),
-		}
-		metric.Bouncers = append(metric.Bouncers, m)
-	}
-	return metric, nil
-}
-
-func (a *apic) SendMetrics(stop chan (bool)) {
-	defer trace.CatchPanic("lapi/metricsToAPIC")
-
-	ticker := time.NewTicker(a.metricsIntervalFirst)
-
-	log.Infof("Start send metrics to CrowdSec Central API (interval: %s once, then %s)", a.metricsIntervalFirst.Round(time.Second), a.metricsInterval)
-
-	for {
-		metrics, err := a.GetMetrics()
-		if err != nil {
-			log.Errorf("unable to get metrics (%s), will retry", err)
-		}
-		_, _, err = a.apiClient.Metrics.Add(context.Background(), metrics)
-		if err != nil {
-			log.Errorf("capi metrics: failed: %s", err)
-		} else {
-			log.Infof("capi metrics: metrics sent successfully")
-		}
-
-		select {
-		case <-stop:
-			return
-		case <-ticker.C:
-			ticker.Reset(a.metricsInterval)
-		case <-a.metricsTomb.Dying(): // if one apic routine is dying, do we kill the others?
-			a.pullTomb.Kill(nil)
-			a.pushTomb.Kill(nil)
-			return
 		}
 	}
 }

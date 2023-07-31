@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
@@ -237,7 +236,7 @@ func (j *JournalCtlSource) ConfigureByDSN(dsn string, labels map[string]string, 
 			}
 			lvl, err := log.ParseLevel(value[0])
 			if err != nil {
-				return errors.Wrapf(err, "unknown level %s", value[0])
+				return fmt.Errorf("unknown level %s: %w", value[0], err)
 			}
 			j.logger.Logger.SetLevel(lvl)
 		case "since":

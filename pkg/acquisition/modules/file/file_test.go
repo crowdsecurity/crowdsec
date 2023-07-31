@@ -38,7 +38,7 @@ func TestBadConfiguration(t *testing.T) {
 		{
 			name:        "glob syntax error",
 			config:      `filename: "[asd-.log"`,
-			expectedErr: "Glob failure: syntax error in pattern",
+			expectedErr: "glob failure: syntax error in pattern",
 		},
 		{
 			name: "bad exclude regexp",
@@ -150,7 +150,7 @@ filename: /`,
 			config: `
 mode: cat
 filename: "[*-.log"`,
-			expectedConfigErr: "Glob failure: syntax error in pattern",
+			expectedConfigErr: "glob failure: syntax error in pattern",
 			logLevel:          log.WarnLevel,
 			expectedLines:     0,
 		},

@@ -12,7 +12,6 @@ import (
 
 	dockerTypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
@@ -80,7 +79,7 @@ func (d *DockerSource) UnmarshalConfig(yamlConfig []byte) error {
 
 	err := yaml.UnmarshalStrict(yamlConfig, &d.Config)
 	if err != nil {
-		return errors.Wrap(err, "Cannot parse DockerAcquisition configuration")
+		return fmt.Errorf("while parsing DockerAcquisition configuration: %w", err)
 	}
 
 	if d.logger != nil {
@@ -214,7 +213,7 @@ func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 
 	parameters, err := url.ParseQuery(args[1])
 	if err != nil {
-		return errors.Wrapf(err, "while parsing parameters %s: %s", dsn, err)
+		return fmt.Errorf("while parsing parameters %s: %w", dsn, err)
 	}
 
 	for k, v := range parameters {
@@ -225,7 +224,7 @@ func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 			}
 			lvl, err := log.ParseLevel(v[0])
 			if err != nil {
-				return errors.Wrapf(err, "unknown level %s", v[0])
+				return fmt.Errorf("unknown level %s: %w", v[0], err)
 			}
 			d.logger.Logger.SetLevel(lvl)
 		case "until":

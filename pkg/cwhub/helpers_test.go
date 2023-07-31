@@ -9,7 +9,7 @@ import (
 //Download index, install collection. Add scenario to collection (hub-side), update index, upgrade collection
 // We expect the new scenario to be installed
 func TestUpgradeConfigNewScenarioInCollection(t *testing.T) {
-	cfg := envSetup()
+	cfg := envSetup(t)
 	defer envTearDown(cfg)
 
 	// fresh install of collection
@@ -55,7 +55,7 @@ func TestUpgradeConfigNewScenarioInCollection(t *testing.T) {
 // Install a collection, disable a scenario.
 // Upgrade should install should not enable/download the disabled scenario.
 func TestUpgradeConfigInDisabledSceanarioShouldNotBeInstalled(t *testing.T) {
-	cfg := envSetup()
+	cfg := envSetup(t)
 	defer envTearDown(cfg)
 
 	// fresh install of collection
@@ -103,7 +103,7 @@ func getHubIdxOrFail(t *testing.T) {
 // Upgrade should not enable/download the disabled scenario.
 // Upgrade should install and enable the newly added scenario.
 func TestUpgradeConfigNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *testing.T) {
-	cfg := envSetup()
+	cfg := envSetup(t)
 	defer envTearDown(cfg)
 
 	// fresh install of collection

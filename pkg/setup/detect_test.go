@@ -10,6 +10,7 @@ import (
 	"github.com/lithammer/dedent"
 	"github.com/stretchr/testify/require"
 
+	"github.com/crowdsecurity/go-cs-lib/pkg/csstring"
 	"github.com/crowdsecurity/go-cs-lib/pkg/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/setup"
@@ -117,16 +118,16 @@ func TestVersionCheck(t *testing.T) {
 		{"1", ">1", false, ""},
 		{"1", ">=1", true, ""},
 		{"1.0", "<1.0", false, ""},
-		{"1", "<1", true, ""},       // XXX why?
-		{"1.3.5", "1.3", false, ""}, // XXX ok?
+		{"1", "<1", false, ""},
+		{"1.3.5", "1.3", true, ""},
 		{"1.0", "<1.0", false, ""},
 		{"1.0", "<=1.0", true, ""},
 		{"2", ">1, <3", true, ""},
 		{"2", "<=2, >=2.2", false, ""},
 		{"2.3", "~2", true, ""},
 		{"2.3", "=2", true, ""},
-		{"1.1.1", "=1.1", false, ""},
-		{"1.1.1", "1.1", false, ""},
+		{"1.1.1", "=1.1", true, ""},
+		{"1.1.1", "1.1", true, ""},
 		{"1.1", "!=1.1.1", true, ""},
 		{"1.1", "~1.1.1", false, ""},
 		{"1.1.1", "~1.1", true, ""},
@@ -136,7 +137,7 @@ func TestVersionCheck(t *testing.T) {
 		{"19.04", "=19.4", true, ""},
 		{"19.04", "~19.4", true, ""},
 		{"1.2.3", "~1.2", true, ""},
-		{"1.2.3", "!=1.2", true, ""},
+		{"1.2.3", "!=1.2", false, ""},
 		{"1.2.3", "1.1.1 - 1.3.4", true, ""},
 		{"1.3.5", "1.1.1 - 1.3.4", false, ""},
 		{"1.3.5", "=1", true, ""},
@@ -1007,7 +1008,7 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				"DetectYaml": detectYaml,
 			}
 
-			expectedErr, err := cstest.Interpolate(tc.expectedErr, data)
+			expectedErr, err := csstring.Interpolate(tc.expectedErr, data)
 			require.NoError(err)
 
 			detected, err := setup.Detect(detectYaml, setup.DetectOptions{})
