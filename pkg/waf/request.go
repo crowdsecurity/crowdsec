@@ -37,11 +37,17 @@ func NewResponseRequest(Tx experimental.FullTransaction, in *corazatypes.Interru
 }
 
 func (r *ResponseRequest) SetRemediation(remediation string) error {
+	if r.Interruption == nil {
+		return nil
+	}
 	r.Interruption.Action = remediation
 	return nil
 }
 
 func (r *ResponseRequest) SetRemediationByID(ID int, remediation string) error {
+	if r.Interruption == nil {
+		return nil
+	}
 	if r.Interruption.RuleID == ID {
 		r.Interruption.Action = remediation
 	}
