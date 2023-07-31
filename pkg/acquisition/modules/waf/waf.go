@@ -31,21 +31,23 @@ const (
 )
 
 type WafRunner struct {
-	outChan          chan types.Event
-	inChan           chan waf.ParsedRequest
-	inBandWaf        coraza.WAF
-	outOfBandWaf     coraza.WAF
-	UUID             string
-	RulesCollections []*waf.WafRulesCollection
-	logger           *log.Entry
+	outChan           chan types.Event
+	inChan            chan waf.ParsedRequest
+	inBandWaf         coraza.WAF
+	outOfBandWaf      coraza.WAF
+	UUID              string
+	RulesCollections  []*waf.WafRulesCollection
+	logger            *log.Entry
+	VariablesTracking []string
 }
 
 type WafSourceConfig struct {
-	ListenAddr                        string `yaml:"listen_addr"`
-	ListenPort                        int    `yaml:"listen_port"`
-	Path                              string `yaml:"path"`
-	WafRoutines                       int    `yaml:"waf_routines"`
-	Debug                             bool   `yaml:"debug"`
+	ListenAddr                        string   `yaml:"listen_addr"`
+	ListenPort                        int      `yaml:"listen_port"`
+	Path                              string   `yaml:"path"`
+	WafRoutines                       int      `yaml:"waf_routines"`
+	Debug                             bool     `yaml:"debug"`
+	VariablesTracking                 []string `yaml:"variables_tracking"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -250,12 +252,13 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		}
 
 		runner := WafRunner{
-			outOfBandWaf:     outofbandwaf,
-			inBandWaf:        inbandwaf,
-			inChan:           w.InChan,
-			UUID:             wafUUID,
-			RulesCollections: rulesCollections,
-			logger:           wafLogger,
+			outOfBandWaf:      outofbandwaf,
+			inBandWaf:         inbandwaf,
+			inChan:            w.InChan,
+			UUID:              wafUUID,
+			RulesCollections:  rulesCollections,
+			logger:            wafLogger,
+			VariablesTracking: w.config.VariablesTracking,
 		}
 		w.WafRunners[nbRoutine] = runner
 	}

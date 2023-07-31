@@ -2,6 +2,7 @@ package wafacquisition
 
 import (
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/crowdsecurity/coraza/v3/collection"
@@ -56,6 +57,13 @@ func LogWaapEvent(evt *types.Event) {
 	//log.Infof("%s", evt.Waap)
 }
 
+/*
+ how to configure variables to be kept:
+  1) full collection : tx.*
+  2) subvariables : tx.a*
+
+*/
+
 func (r *WafRunner) AccumulateTxToEvent(tx experimental.FullTransaction, kind string, evt *types.Event) error {
 
 	//log.Infof("tx addr: %p", tx)
@@ -78,6 +86,12 @@ func (r *WafRunner) AccumulateTxToEvent(tx experimental.FullTransaction, kind st
 		evt.Waap.Vars = map[string]string{}
 	}
 
+	// collectionsToKeep := []string{
+	// 	"toto",
+	// 	"TX.allowed_methods",
+	// 	"TX.*_score",
+	// }
+
 	tx.Variables().All(func(v variables.RuleVariable, col collection.Collection) bool {
 		for _, variable := range col.FindAll() {
 			key := ""
@@ -89,8 +103,19 @@ func (r *WafRunner) AccumulateTxToEvent(tx experimental.FullTransaction, kind st
 			if variable.Value() == "" {
 				continue
 			}
-			evt.Waap.Vars[key] = variable.Value()
-			r.logger.Infof("%s.%s = %s", variable.Variable().Name(), variable.Key(), variable.Value())
+			for _, collectionToKeep := range r.VariablesTracking {
+				match, err := regexp.MatchString("(?i)"+collectionToKeep, key)
+				if err != nil {
+					r.logger.Warningf("error matching %s with %s: %s", key, collectionToKeep, err)
+					continue
+				}
+				if match {
+					evt.Waap.Vars[key] = variable.Value()
+					r.logger.Infof("%s.%s = %s", variable.Variable().Name(), variable.Key(), variable.Value())
+				} else {
+					r.logger.Infof("%s.%s != %s (%s) (not kept)", variable.Variable().Name(), variable.Key(), collectionToKeep, variable.Value())
+				}
+			}
 		}
 		return true
 	})
