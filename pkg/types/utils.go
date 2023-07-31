@@ -1,9 +1,7 @@
 package types
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -90,18 +88,4 @@ func ParseDuration(d string) (time.Duration, error) {
 
 func UtcNow() time.Time {
 	return time.Now().UTC()
-}
-
-func GetLineCountForFile(filepath string) int {
-	f, err := os.Open(filepath)
-	if err != nil {
-		log.Fatalf("unable to open log file %s : %s", filepath, err)
-	}
-	defer f.Close()
-	lc := 0
-	fs := bufio.NewScanner(f)
-	for fs.Scan() {
-		lc++
-	}
-	return lc
 }
