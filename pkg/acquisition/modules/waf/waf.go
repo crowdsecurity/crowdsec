@@ -399,7 +399,6 @@ func (r *WafRunner) processReqWithEngine(tx experimental.FullTransaction, parsed
 		return in, tx, nil
 	}
 
-	ct := parsedRequest.Headers.Get("content-type")
 	if parsedRequest.Body != nil && len(parsedRequest.Body) != 0 {
 		it, _, err := tx.WriteRequestBody(parsedRequest.Body)
 		if err != nil {
@@ -410,19 +409,8 @@ func (r *WafRunner) processReqWithEngine(tx experimental.FullTransaction, parsed
 			//log.Infof("blocking rule id %d", in.RuleID)
 			return it, nil, nil
 		}
-		// from https://github.com/corazawaf/coraza/blob/main/internal/corazawaf/transaction.go#L419
-		// urlencoded cannot end with CRLF
-		if ct != "application/x-www-form-urlencoded" {
-			it, _, err := tx.WriteRequestBody([]byte{'\r', '\n'})
-			if err != nil {
-				return nil, nil, fmt.Errorf("cannot write to request body to buffer: %s", err.Error())
-			}
-
-			if it != nil {
-				return it, nil, nil
-			}
-		}
 	}
+
 	in, err := tx.ProcessRequestBody()
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "Cannot process request body")
