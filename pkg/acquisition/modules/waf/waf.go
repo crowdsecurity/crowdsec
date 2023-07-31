@@ -578,6 +578,7 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 					if err != nil {
 						return fmt.Errorf("cannot create event from waap context : %w", err)
 					}
+					r.logger.Infof("REAL MATCHED RULES: %+v", len(tmpEvt.Waap.MatchedRules))
 					evt = &tmpEvt
 				}
 
