@@ -10,7 +10,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
 	"github.com/prometheus/client_golang/prometheus"
-	log "github.com/sirupsen/logrus"
 )
 
 func EventFromRequest(r waf.ParsedRequest) (types.Event, error) {
@@ -121,7 +120,6 @@ func (r *WafRunner) AccumulateTxToEvent(tx experimental.FullTransaction, kind st
 	//log.Infof("TX %s", spew.Sdump(tx.MatchedRules()))
 
 	for _, rule := range tx.MatchedRules() {
-		log.Infof("Matched rules ID: %+v", rule.Rule().ID())
 		if rule.Message() == "" {
 			continue
 		}
