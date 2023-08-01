@@ -34,7 +34,7 @@ setup() {
     ./instance-crowdsec start
     for ((i=0; i<15; i++)); do
         sleep 2
-        [[ $(cscli alerts list -a -o json 2>/dev/null || cscli alerts list -o json) != "null" ]] && break
+        [[ $(cscli alerts list -a -o json) != "[]" ]] && break
     done
 
     rune -0 cscli alerts list -a -o json
