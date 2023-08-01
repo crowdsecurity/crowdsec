@@ -578,7 +578,6 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 					if err != nil {
 						return fmt.Errorf("cannot create event from waap context : %w", err)
 					}
-					r.logger.Infof("REAL MATCHED RULES: %+v", len(tmpEvt.Waap.MatchedRules))
 					evt = &tmpEvt
 				}
 
@@ -586,8 +585,13 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 				if err != nil {
 					return fmt.Errorf("cannot convert transaction to event : %w", err)
 				}
-				LogWaapEvent(evt)
-				r.outChan <- *evt
+
+				// expTx.MatchedRules() returns also rules that set variables
+				// in evt.Waap.MatchedRules we have filtered those rules
+				if len(evt.Waap.MatchedRules) > 0 {
+					LogWaapEvent(evt)
+					r.outChan <- *evt
+				}
 			}
 			expTx.Close()
 			//measure the full time spent in the WAF
