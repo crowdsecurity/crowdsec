@@ -176,6 +176,8 @@ func (w *WafSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		Handler: w.mux,
 	}
 
+	RegisterRX()
+
 	ruleLoader := waf.NewWafRuleLoader()
 
 	rulesCollections, err := ruleLoader.LoadWafRules()
