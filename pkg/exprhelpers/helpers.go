@@ -180,7 +180,7 @@ func Distinct(params ...any) (any, error) {
 	}
 	array := params[0].([]interface{})
 	if array == nil {
-		return nil, nil
+		return []interface{}{}, nil
 	}
 
 	var exists map[any]bool = make(map[any]bool)
