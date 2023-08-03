@@ -136,7 +136,7 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		log.Debugf("ignored file %s%s because already loaded", fileFolder, filename)
 		return nil
 	}
-	dataFile[filename] = []string{}
+
 	filepath := filepath.Join(fileFolder, filename)
 	file, err := os.Open(filepath)
 	if err != nil {
