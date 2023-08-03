@@ -160,7 +160,7 @@ func runBouncersDelete(cmd *cobra.Command, args []string) error {
 func NewBouncersDeleteCmd() *cobra.Command {
 	cmdBouncersDelete := &cobra.Command{
 		Use:               "delete MyBouncerName",
-		Short:             "delete a single bouncer from the database",
+		Short:             "delete bouncer(s) from the database",
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"remove"},
 		DisableAutoGenTag: true,
