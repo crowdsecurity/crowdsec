@@ -151,5 +151,7 @@ func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 
 	parsers.Ctx.Grok = grokky.Host{}
 	parsers.Povfwctx.Grok = grokky.Host{}
+	parsers.StageFiles = []Stagefile{}
+	parsers.PovfwStageFiles = []Stagefile{}
 	return parsers, nil
 }
