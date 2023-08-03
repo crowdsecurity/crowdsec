@@ -128,6 +128,15 @@ func UpdateRegexpCacheMetrics() {
 
 func FileInit(fileFolder string, filename string, fileType string) error {
 	log.Debugf("init (folder:%s) (file:%s) (type:%s)", fileFolder, filename, fileType)
+	if fileType == "" {
+		log.Debugf("ignored file %s%s because no type specified", fileFolder, filename)
+		return nil
+	}
+	if _, ok := dataFile[filename]; ok {
+		log.Debugf("ignored file %s%s because already loaded", fileFolder, filename)
+		return nil
+	}
+	dataFile[filename] = []string{}
 	filepath := filepath.Join(fileFolder, filename)
 	file, err := os.Open(filepath)
 	if err != nil {
@@ -135,13 +144,6 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 	}
 	defer file.Close()
 
-	if fileType == "" {
-		log.Debugf("ignored file %s%s because no type specified", fileFolder, filename)
-		return nil
-	}
-	if _, ok := dataFile[filename]; !ok {
-		dataFile[filename] = []string{}
-	}
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		if strings.HasPrefix(scanner.Text(), "#") { // allow comments
