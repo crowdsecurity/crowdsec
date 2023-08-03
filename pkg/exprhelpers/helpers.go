@@ -156,9 +156,9 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		case "regex", "regexp":
 			if fflag.Re2RegexpInfileSupport.IsEnabled() {
 				dataFileRe2[filename] = append(dataFileRe2[filename], re2.MustCompile(scanner.Text()))
-			} else {
-				dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
+				continue
 			}
+			dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
 		case "string":
 			dataFile[filename] = append(dataFile[filename], scanner.Text())
 		default:
