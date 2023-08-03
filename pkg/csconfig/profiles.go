@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/yamlpatch"
+	"github.com/crowdsecurity/go-cs-lib/yamlpatch"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"gopkg.in/yaml.v2"

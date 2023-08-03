@@ -123,6 +123,7 @@ rm -rf %{buildroot}
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/slack.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/splunk.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/email.yaml
+%config(noreplace) %{_sysconfdir}/%{name}/notifications/sentinel.yaml
 %config(noreplace) %{_sysconfdir}/cron.daily/%{name}
 
 %{_unitdir}/%{name}.service

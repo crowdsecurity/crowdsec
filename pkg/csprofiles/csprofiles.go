@@ -185,7 +185,7 @@ func (Profile *Runtime) EvaluateProfile(Alert *models.Alert) ([]*models.Decision
 	for eIdx, expression := range Profile.RuntimeFilters {
 		output, err := expr.Run(expression, map[string]interface{}{"Alert": Alert})
 		if err != nil {
-			Profile.Logger.Warningf("failed to run whitelist expr : %v", err)
+			Profile.Logger.Warningf("failed to run profile expr for %s : %v", Profile.Cfg.Name, err)
 			return nil, matched, notification, errors.Wrapf(err, "while running expression %s", Profile.Cfg.Filters[eIdx])
 		}
 		switch out := output.(type) {

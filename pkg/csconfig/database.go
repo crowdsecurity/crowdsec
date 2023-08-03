@@ -7,7 +7,7 @@ import (
 	"entgo.io/ent/dialect"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 var DEFAULT_MAX_OPEN_CONNS = 100

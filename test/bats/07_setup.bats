@@ -311,7 +311,7 @@ update-notifier-motd.timer              enabled enabled
 @test "cscli setup detect (process)" {
     # This is harder to mock, because gopsutil requires proc/ to be a mount
     # point. So we pick a process that exists for sure.
-    expected_process=$(basename "$SHELL")
+    expected_process=cscli
 
     cat <<-EOT >"${DETECT_YAML}"
 	version: 1.0
