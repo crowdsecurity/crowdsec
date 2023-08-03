@@ -132,7 +132,7 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		log.Debugf("ignored file %s%s because no type specified", fileFolder, filename)
 		return nil
 	}
-	if _, ok := dataFile[filename]; ok {
+	if ok := existsInFileMaps(filename, fileType); ok {
 		log.Debugf("ignored file %s%s because already loaded", fileFolder, filename)
 		return nil
 	}
@@ -170,6 +170,21 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		return err
 	}
 	return nil
+}
+
+func existsInFileMaps(filename string, ftype string) bool {
+	ok := false
+	switch ftype {
+	case "regex", "regexp":
+		if fflag.Re2RegexpInfileSupport.IsEnabled() {
+			_, ok = dataFileRe2[filename]
+		} else {
+			_, ok = dataFileRegex[filename]
+		}
+	case "string":
+		_, ok = dataFile[filename]
+	}
+	return ok
 }
 
 //Expr helpers
