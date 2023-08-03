@@ -149,5 +149,7 @@ func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 		parsers.Povfwctx.Profiling = true
 	}
 
+	parsers.Ctx.Grok = grokky.Host{}
+	parsers.Povfwctx.Grok = grokky.Host{}
 	return parsers, nil
 }
