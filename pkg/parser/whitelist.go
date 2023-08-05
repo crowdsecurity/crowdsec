@@ -20,10 +20,7 @@ type Whitelist struct {
 
 // returns true if the whitelist has at least one IP or CIDR
 func (W Whitelist) ContainsIPLists() bool {
-	if len(W.B_Ips) > 0 || len(W.B_Cidrs) > 0 {
-		return true
-	}
-	return false
+	return len(W.B_Ips) > 0 || len(W.B_Cidrs) > 0
 }
 
 type ExprWhitelist struct {
