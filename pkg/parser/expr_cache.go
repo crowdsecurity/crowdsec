@@ -32,11 +32,12 @@ func (c *ExprCache) Get(toParse string, opts []expr.Option) (*vm.Program, error)
 	c.mu.Lock()
 	program, ok := c.cache[key]
 	if !ok {
+		c.mu.Unlock()
 		program, err = expr.Compile(toParse, opts...)
 		if err != nil {
-			c.mu.Unlock()
 			return nil, err
 		}
+		c.mu.Lock()
 		c.cache[key] = program
 	}
 	c.mu.Unlock()
