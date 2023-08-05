@@ -2,6 +2,7 @@ package parser
 
 import (
 	"hash/fnv"
+	"sync"
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
@@ -9,6 +10,7 @@ import (
 
 type ExprCache struct {
 	cache map[uint32]*vm.Program
+	mu    sync.Mutex
 }
 
 func hash(s string) uint32 {
@@ -27,13 +29,16 @@ func NewExprCache() *ExprCache {
 func (c *ExprCache) Get(toParse string, opts []expr.Option) (*vm.Program, error) {
 	var err error
 	key := hash(toParse)
+	c.mu.Lock()
 	program, ok := c.cache[key]
 	if !ok {
 		program, err = expr.Compile(toParse, opts...)
 		if err != nil {
+			c.mu.Unlock()
 			return nil, err
 		}
 		c.cache[key] = program
 	}
+	c.mu.Unlock()
 	return program, err
 }
