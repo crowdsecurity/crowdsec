@@ -21,6 +21,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+var internalCache = NewExprCache()
+
 type Node struct {
 	FormatVersion string `yaml:"format"`
 	//Enable config + runtime debug of node via config o/
@@ -471,7 +473,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 
 	//compile filter if present
 	if n.Filter != "" {
-		n.RunTimeFilter, err = expr.Compile(n.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+		n.RunTimeFilter, err = internalCache.Get(n.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}}))
 		if err != nil {
 			return fmt.Errorf("compilation of '%s' failed: %v", n.Filter, err)
 		}
@@ -528,8 +530,8 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 
 	/*if grok source is an expression*/
 	if n.Grok.ExpValue != "" {
-		n.Grok.RunTimeValue, err = expr.Compile(n.Grok.ExpValue,
-			exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+		n.Grok.RunTimeValue, err = internalCache.Get(n.Grok.ExpValue,
+			exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}}))
 		if err != nil {
 			return fmt.Errorf("while compiling grok's expression: %w", err)
 		}
@@ -539,8 +541,8 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	//compile expr statics if present
 	for idx := range n.Grok.Statics {
 		if n.Grok.Statics[idx].ExpValue != "" {
-			n.Grok.Statics[idx].RunTimeValue, err = expr.Compile(n.Grok.Statics[idx].ExpValue,
-				exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+			n.Grok.Statics[idx].RunTimeValue, err = internalCache.Get(n.Grok.Statics[idx].ExpValue,
+				exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}}))
 			if err != nil {
 				return err
 			}
@@ -550,14 +552,14 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 
 	/* load data capture (stash) */
 	for i, stash := range n.Stash {
-		n.Stash[i].ValueExpression, err = expr.Compile(stash.Value,
-			exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+		n.Stash[i].ValueExpression, err = internalCache.Get(stash.Value,
+			exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}}))
 		if err != nil {
 			return fmt.Errorf("while compiling stash value expression: %w", err)
 		}
 
-		n.Stash[i].KeyExpression, err = expr.Compile(stash.Key,
-			exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+		n.Stash[i].KeyExpression, err = internalCache.Get(stash.Key,
+			exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}}))
 		if err != nil {
 			return fmt.Errorf("while compiling stash key expression: %w", err)
 		}
@@ -603,7 +605,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	/* load statics if present */
 	for idx := range n.Statics {
 		if n.Statics[idx].ExpValue != "" {
-			n.Statics[idx].RunTimeValue, err = expr.Compile(n.Statics[idx].ExpValue, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+			n.Statics[idx].RunTimeValue, err = internalCache.Get(n.Statics[idx].ExpValue, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}}))
 			if err != nil {
 				n.Logger.Errorf("Statics Compilation failed %v.", err)
 				return err
@@ -631,7 +633,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 
 	for _, filter := range n.Whitelist.Exprs {
 		expression := &ExprWhitelist{}
-		expression.Filter, err = expr.Compile(filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+		expression.Filter, err = internalCache.Get(filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}}))
 		if err != nil {
 			n.Logger.Fatalf("Unable to compile whitelist expression '%s' : %v.", filter, err)
 		}
