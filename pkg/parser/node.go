@@ -189,35 +189,38 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 			srcs = append(srcs, net.ParseIP(k))
 		}
 	}
-	for _, src := range srcs {
+
+	if n.Whitelist.ContainsIPLists() {
+		for _, src := range srcs {
+			if isWhitelisted {
+				break
+			}
+			for _, v := range n.Whitelist.B_Ips {
+				if v.Equal(src) {
+					clog.Debugf("Event from [%s] is whitelisted by IP (%s), reason [%s]", src, v, n.Whitelist.Reason)
+					isWhitelisted = true
+					break
+				}
+				clog.Tracef("whitelist: %s is not eq [%s]", src, v)
+			}
+			for _, v := range n.Whitelist.B_Cidrs {
+				if v.Contains(src) {
+					clog.Debugf("Event from [%s] is whitelisted by CIDR (%s), reason [%s]", src, v, n.Whitelist.Reason)
+					isWhitelisted = true
+					break
+				}
+				clog.Tracef("whitelist: %s not in [%s]", src, v)
+			}
+		}
+		hasWhitelist = true
+	}
+
+	/* run whitelist expression tests anyway */
+	for eidx, e := range n.Whitelist.B_Exprs {
+		//if we already know the event is whitelisted, skip the rest of the expressions
 		if isWhitelisted {
 			break
 		}
-		for _, v := range n.Whitelist.B_Ips {
-			if v.Equal(src) {
-				clog.Debugf("Event from [%s] is whitelisted by IP (%s), reason [%s]", src, v, n.Whitelist.Reason)
-				isWhitelisted = true
-			} else {
-				clog.Tracef("whitelist: %s is not eq [%s]", src, v)
-			}
-			hasWhitelist = true
-		}
-		for _, v := range n.Whitelist.B_Cidrs {
-			if v.Contains(src) {
-				clog.Debugf("Event from [%s] is whitelisted by CIDR (%s), reason [%s]", src, v, n.Whitelist.Reason)
-				isWhitelisted = true
-			} else {
-				clog.Tracef("whitelist: %s not in [%s]", src, v)
-			}
-			hasWhitelist = true
-		}
-	}
-
-	if isWhitelisted {
-		p.Whitelisted = true
-	}
-	/* run whitelist expression tests anyway */
-	for eidx, e := range n.Whitelist.B_Exprs {
 		output, err := expr.Run(e.Filter, cachedExprEnv)
 		if err != nil {
 			clog.Warningf("failed to run whitelist expr : %v", err)
@@ -231,7 +234,6 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 			}
 			if out {
 				clog.Debugf("Event is whitelisted by expr, reason [%s]", n.Whitelist.Reason)
-				p.Whitelisted = true
 				isWhitelisted = true
 			}
 			hasWhitelist = true
@@ -239,7 +241,9 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 			log.Errorf("unexpected type %t (%v) while running '%s'", output, output, n.Whitelist.Exprs[eidx])
 		}
 	}
+
 	if isWhitelisted {
+		p.Whitelisted = true
 		p.WhitelistReason = n.Whitelist.Reason
 		/*huglily wipe the ban order if the event is whitelisted and it's an overflow */
 		if p.Type == types.OVFLW { /*don't do this at home kids */
@@ -253,8 +257,8 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	}
 
 	//Process grok if present, should be exclusive with nodes :)
-	gstr := ""
 	if n.Grok.RunTimeRegexp != nil {
+		gstr := ""
 		clog.Tracef("Processing grok pattern : %s : %p", n.Grok.RegexpName, n.Grok.RunTimeRegexp)
 		//for unparsed, parsed etc. set sensible defaults to reduce user hassle
 		if n.Grok.TargetField != "" {
