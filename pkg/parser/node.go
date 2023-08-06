@@ -134,17 +134,15 @@ func (n *Node) validate(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	return nil
 }
 
-func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[string]interface{}) (bool, error) {
+func (n *Node) process(p *types.Event, ctx *UnixParserCtx, expressionEnv map[string]interface{}) (bool, error) {
 	var NodeState bool
 	var NodeHasOKGrok bool
 	clog := n.Logger
 
-	cachedExprEnv := expressionEnv
-
 	clog.Tracef("Event entering node")
 	if n.RunTimeFilter != nil {
 		//Evaluate node's filter
-		output, err := expr.Run(n.RunTimeFilter, cachedExprEnv)
+		output, err := expr.Run(n.RunTimeFilter, expressionEnv)
 		if err != nil {
 			clog.Warningf("failed to run filter : %v", err)
 			clog.Debugf("Event leaving node : ko")
@@ -154,7 +152,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		switch out := output.(type) {
 		case bool:
 			if n.Debug {
-				n.ExprDebugger.Run(clog, out, cachedExprEnv)
+				n.ExprDebugger.Run(clog, out, expressionEnv)
 			}
 			if !out {
 				clog.Debugf("Event leaving node : ko (failed filter)")
@@ -221,7 +219,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		if isWhitelisted {
 			break
 		}
-		output, err := expr.Run(e.Filter, cachedExprEnv)
+		output, err := expr.Run(e.Filter, expressionEnv)
 		if err != nil {
 			clog.Warningf("failed to run whitelist expr : %v", err)
 			clog.Debug("Event leaving node : ko")
@@ -230,7 +228,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		switch out := output.(type) {
 		case bool:
 			if n.Debug {
-				e.ExprDebugger.Run(clog, out, cachedExprEnv)
+				e.ExprDebugger.Run(clog, out, expressionEnv)
 			}
 			if out {
 				clog.Debugf("Event is whitelisted by expr, reason [%s]", n.Whitelist.Reason)
@@ -272,7 +270,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 				NodeState = false
 			}
 		} else if n.Grok.RunTimeValue != nil {
-			output, err := expr.Run(n.Grok.RunTimeValue, cachedExprEnv)
+			output, err := expr.Run(n.Grok.RunTimeValue, expressionEnv)
 			if err != nil {
 				clog.Warningf("failed to run RunTimeValue : %v", err)
 				NodeState = false
@@ -331,7 +329,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 				continue
 			}
 			//collect the data
-			output, err := expr.Run(stash.ValueExpression, cachedExprEnv)
+			output, err := expr.Run(stash.ValueExpression, expressionEnv)
 			if err != nil {
 				clog.Warningf("Error while running stash val expression : %v", err)
 			}
@@ -345,7 +343,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 			}
 
 			//collect the key
-			output, err = expr.Run(stash.KeyExpression, cachedExprEnv)
+			output, err = expr.Run(stash.KeyExpression, expressionEnv)
 			if err != nil {
 				clog.Warningf("Error while running stash key expression : %v", err)
 			}
@@ -363,7 +361,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 
 	//Iterate on leafs
 	for _, leaf := range n.LeavesNodes {
-		ret, err := leaf.process(p, ctx, cachedExprEnv)
+		ret, err := leaf.process(p, ctx, expressionEnv)
 		if err != nil {
 			clog.Tracef("\tNode (%s) failed : %v", leaf.rn, err)
 			clog.Debugf("Event leaving node : ko")

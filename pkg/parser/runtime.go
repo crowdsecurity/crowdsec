@@ -300,6 +300,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 		}
 
 		isStageOK := false
+		exprEnv := map[string]interface{}{"evt": &event}
 		for idx, node := range nodes {
 			//Only process current stage's nodes
 			if event.Stage != node.Stage {
@@ -313,7 +314,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			if ctx.Profiling {
 				node.Profiling = true
 			}
-			ret, err := node.process(&event, ctx, map[string]interface{}{"evt": &event})
+			ret, err := node.process(&event, &ctx, exprEnv)
 			if err != nil {
 				clog.Errorf("Error while processing node : %v", err)
 				return event, err
