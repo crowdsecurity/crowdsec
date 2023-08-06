@@ -43,7 +43,6 @@ func TestExprCache(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_u := make(map[string]bool, tt.expected_unique_count)
-			_c := 0
 			cache := NewExprCache()
 			for _, expr := range tt.expressions {
 				program, err := cache.Get(expr, nil)
@@ -53,11 +52,10 @@ func TestExprCache(t *testing.T) {
 				address := fmt.Sprintf("%p", program)
 				if _, ok := _u[address]; !ok {
 					_u[address] = true
-					_c++
 				}
 			}
-			if _c != tt.expected_unique_count {
-				t.Errorf("expected %d unique expressions, got %d", tt.expected_unique_count, _c)
+			if len(_u) != tt.expected_unique_count {
+				t.Errorf("expected %d unique expressions, got %d", tt.expected_unique_count, len(_u))
 			}
 		})
 	}
