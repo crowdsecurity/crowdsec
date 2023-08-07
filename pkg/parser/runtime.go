@@ -194,12 +194,14 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 	return nil
 }
 
+var promLabels = []string{"source", "type", "name"}
+
 var NodesHits = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_node_hits_total",
 		Help: "Total events entered node.",
 	},
-	[]string{"source", "type", "name"},
+	promLabels,
 )
 
 var NodesHitsOk = prometheus.NewCounterVec(
@@ -207,7 +209,7 @@ var NodesHitsOk = prometheus.NewCounterVec(
 		Name: "cs_node_hits_ok_total",
 		Help: "Total events successfully exited node.",
 	},
-	[]string{"source", "type", "name"},
+	promLabels,
 )
 
 var NodesHitsKo = prometheus.NewCounterVec(
@@ -215,7 +217,7 @@ var NodesHitsKo = prometheus.NewCounterVec(
 		Name: "cs_node_hits_ko_total",
 		Help: "Total events unsuccessfully exited node.",
 	},
-	[]string{"source", "type", "name"},
+	promLabels,
 )
 
 func stageidx(stage string, stages []string) int {
