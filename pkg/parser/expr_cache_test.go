@@ -41,7 +41,7 @@ func TestExprCache(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+		t.Run(tt.name, func(_t *testing.T) {
 			_u := make(map[string]bool, tt.expected_unique_count)
 			cache := NewExprCache()
 			for _, expr := range tt.expressions {
