@@ -73,12 +73,15 @@ type Leaky struct {
 	orderEvent          bool
 }
 
+var promLabelName = []string{"name"}
+var promLabelFull = []string{"source", "type", "name"}
+
 var BucketsPour = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_bucket_poured_total",
 		Help: "Total events were poured in bucket.",
 	},
-	[]string{"source", "type", "name"},
+	promLabelFull,
 )
 
 var BucketsOverflow = prometheus.NewCounterVec(
@@ -86,7 +89,7 @@ var BucketsOverflow = prometheus.NewCounterVec(
 		Name: "cs_bucket_overflowed_total",
 		Help: "Total buckets overflowed.",
 	},
-	[]string{"name"},
+	promLabelName,
 )
 
 var BucketsCanceled = prometheus.NewCounterVec(
@@ -94,7 +97,7 @@ var BucketsCanceled = prometheus.NewCounterVec(
 		Name: "cs_bucket_canceled_total",
 		Help: "Total buckets canceled.",
 	},
-	[]string{"name"},
+	promLabelName,
 )
 
 var BucketsUnderflow = prometheus.NewCounterVec(
@@ -102,7 +105,7 @@ var BucketsUnderflow = prometheus.NewCounterVec(
 		Name: "cs_bucket_underflowed_total",
 		Help: "Total buckets underflowed.",
 	},
-	[]string{"name"},
+	promLabelName,
 )
 
 var BucketsInstantiation = prometheus.NewCounterVec(
@@ -110,7 +113,7 @@ var BucketsInstantiation = prometheus.NewCounterVec(
 		Name: "cs_bucket_created_total",
 		Help: "Total buckets were instantiated.",
 	},
-	[]string{"name"},
+	promLabelName,
 )
 
 var BucketsCurrentCount = prometheus.NewGaugeVec(
@@ -118,7 +121,7 @@ var BucketsCurrentCount = prometheus.NewGaugeVec(
 		Name: "cs_buckets",
 		Help: "Number of buckets that currently exist.",
 	},
-	[]string{"name"},
+	promLabelName,
 )
 
 var LeakyRoutineCount int64
