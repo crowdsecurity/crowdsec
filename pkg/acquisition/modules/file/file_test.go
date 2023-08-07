@@ -410,9 +410,7 @@ force_inotify: true`, testPattern),
 
 			if tc.expectedLines != 0 {
 				fd, err := os.Create("test_files/stream.log")
-				if err != nil {
-					t.Fatalf("could not create test file : %s", err)
-				}
+				require.NoError(t, err, "could not create test file")
 
 				for i := 0; i < 5; i++ {
 					_, err = fmt.Fprintf(fd, "%d\n", i)
@@ -424,7 +422,7 @@ force_inotify: true`, testPattern),
 
 				fd.Close()
 				// we sleep to make sure we detect the new file
-				time.Sleep(1 * time.Second)
+				time.Sleep(2 * time.Second)
 				os.Remove("test_files/stream.log")
 				assert.Equal(t, tc.expectedLines, actualLines)
 			}
