@@ -422,7 +422,7 @@ force_inotify: true`, testPattern),
 
 				fd.Close()
 				// we sleep to make sure we detect the new file
-				time.Sleep(2 * time.Second)
+				time.Sleep(3 * time.Second)
 				os.Remove("test_files/stream.log")
 				assert.Equal(t, tc.expectedLines, actualLines)
 			}
