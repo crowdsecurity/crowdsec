@@ -621,7 +621,7 @@ func (a *apic) PullTop(forcePull bool) error {
 }
 
 func (a *apic) ApplyApicWhitelists(decisions []*models.Decision) []*models.Decision {
-	if a.whitelists == nil {
+	if a.whitelists == nil || len(a.whitelists.Cidrs) == 0 && len(a.whitelists.Ips) == 0 {
 		return decisions
 	}
 	//deal with CAPI whitelists for fire. We want to avoid having a second list, so we shrink in place
