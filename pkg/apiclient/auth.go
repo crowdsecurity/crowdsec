@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	pp "github.com/k0kubun/pp/v3"
+
 	"github.com/go-openapi/strfmt"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -113,6 +115,9 @@ func (r retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 			r.onBeforeRequest(i)
 		}
 		clonedReq := cloneRequest(req)
+		clonedReq = clonedReq.WithContext(req.Context())
+		pp.Println("--------------------------")
+		pp.Println(clonedReq.Context())
 		resp, err = r.next.RoundTrip(clonedReq)
 		if err != nil {
 			log.Errorf("error while performing request: %s; %d retries left", err, r.maxAttempts-i-1)
