@@ -656,8 +656,7 @@ func (a *apic) ApplyApicWhitelists(decisions []*models.Decision) []*models.Decis
 		outIdx++
 	}
 	//shrink the list, those are deleted items
-	decisions = decisions[:outIdx]
-	return decisions
+	return decisions[:outIdx]
 }
 
 func (a *apic) SaveAlerts(alertsFromCapi []*models.Alert, add_counters map[string]map[string]int, delete_counters map[string]map[string]int) error {
@@ -707,6 +706,60 @@ func (a *apic) ShouldForcePullBlocklist(blocklist *modelscapi.BlocklistLink) (bo
 	return false, nil
 }
 
+func (a *apic) updateBlocklist(client *apiclient.ApiClient, blocklist *modelscapi.BlocklistLink, add_counters map[string]map[string]int) error {
+	if blocklist.Scope == nil {
+		log.Warningf("blocklist has no scope")
+		return nil
+	}
+	if blocklist.Duration == nil {
+		log.Warningf("blocklist has no duration")
+		return nil
+	}
+	forcePull, err := a.ShouldForcePullBlocklist(blocklist)
+	if err != nil {
+		return fmt.Errorf("while checking if we should force pull blocklist %s: %w", *blocklist.Name, err)
+	}
+	blocklistConfigItemName := fmt.Sprintf("blocklist:%s:last_pull", *blocklist.Name)
+	var lastPullTimestamp *string
+	if !forcePull {
+		lastPullTimestamp, err = a.dbClient.GetConfigItem(blocklistConfigItemName)
+		if err != nil {
+			return fmt.Errorf("while getting last pull timestamp for blocklist %s: %w", *blocklist.Name, err)
+		}
+	}
+	decisions, hasChanged, err := client.Decisions.GetDecisionsFromBlocklist(context.Background(), blocklist, lastPullTimestamp)
+	if err != nil {
+		return fmt.Errorf("while getting decisions from blocklist %s: %w", *blocklist.Name, err)
+	}
+	if !hasChanged {
+		if lastPullTimestamp == nil {
+			log.Infof("blocklist %s hasn't been modified or there was an error reading it, skipping", *blocklist.Name)
+		} else {
+			log.Infof("blocklist %s hasn't been modified since %s, skipping", *blocklist.Name, *lastPullTimestamp)
+		}
+		return nil
+	}
+	err = a.dbClient.SetConfigItem(blocklistConfigItemName, time.Now().UTC().Format(http.TimeFormat))
+	if err != nil {
+		return fmt.Errorf("while setting last pull timestamp for blocklist %s: %w", *blocklist.Name, err)
+	}
+	if len(decisions) == 0 {
+		log.Infof("blocklist %s has no decisions", *blocklist.Name)
+		return nil
+	}
+	//apply APIC specific whitelists
+	decisions = a.ApplyApicWhitelists(decisions)
+	alert := createAlertForDecision(decisions[0])
+	alertsFromCapi := []*models.Alert{alert}
+	alertsFromCapi = fillAlertsWithDecisions(alertsFromCapi, decisions, add_counters)
+
+	err = a.SaveAlerts(alertsFromCapi, add_counters, nil)
+	if err != nil {
+		return fmt.Errorf("while saving alert from blocklist %s: %w", *blocklist.Name, err)
+	}
+	return nil
+}
+
 func (a *apic) UpdateBlocklists(links *modelscapi.GetDecisionsStreamResponseLinks, add_counters map[string]map[string]int) error {
 	if links == nil {
 		return nil
@@ -721,56 +774,9 @@ func (a *apic) UpdateBlocklists(links *modelscapi.GetDecisionsStreamResponseLink
 		return fmt.Errorf("while creating default client: %w", err)
 	}
 	for _, blocklist := range links.Blocklists {
-		if blocklist.Scope == nil {
-			log.Warningf("blocklist has no scope")
-			continue
-		}
-		if blocklist.Duration == nil {
-			log.Warningf("blocklist has no duration")
-			continue
-		}
-		forcePull, err := a.ShouldForcePullBlocklist(blocklist)
-		if err != nil {
-			return fmt.Errorf("while checking if we should force pull blocklist %s: %w", *blocklist.Name, err)
-		}
-		blocklistConfigItemName := fmt.Sprintf("blocklist:%s:last_pull", *blocklist.Name)
-		var lastPullTimestamp *string
-		if !forcePull {
-			lastPullTimestamp, err = a.dbClient.GetConfigItem(blocklistConfigItemName)
-			if err != nil {
-				return fmt.Errorf("while getting last pull timestamp for blocklist %s: %w", *blocklist.Name, err)
-			}
-		}
-		decisions, has_changed, err := defaultClient.Decisions.GetDecisionsFromBlocklist(context.Background(), blocklist, lastPullTimestamp)
-		if err != nil {
-			return fmt.Errorf("while getting decisions from blocklist %s: %w", *blocklist.Name, err)
-		}
-		if !has_changed {
-			if lastPullTimestamp == nil {
-				log.Infof("blocklist %s hasn't been modified or there was an error reading it, skipping", *blocklist.Name)
-			} else {
-				log.Infof("blocklist %s hasn't been modified since %s, skipping", *blocklist.Name, *lastPullTimestamp)
-			}
-			continue
-		}
-		err = a.dbClient.SetConfigItem(blocklistConfigItemName, time.Now().UTC().Format(http.TimeFormat))
-		if err != nil {
-			return fmt.Errorf("while setting last pull timestamp for blocklist %s: %w", *blocklist.Name, err)
-		}
-		if len(decisions) == 0 {
-			log.Infof("blocklist %s has no decisions", *blocklist.Name)
-			continue
-		}
-		//apply APIC specific whitelists
-		decisions = a.ApplyApicWhitelists(decisions)
-		alert := createAlertForDecision(decisions[0])
-		alertsFromCapi := []*models.Alert{alert}
-		alertsFromCapi = fillAlertsWithDecisions(alertsFromCapi, decisions, add_counters)
-
-		err = a.SaveAlerts(alertsFromCapi, add_counters, nil)
-		if err != nil {
-			return fmt.Errorf("while saving alert from blocklist %s: %w", *blocklist.Name, err)
-		}
+		if err := a.updateBlocklist(defaultClient, blocklist, add_counters); err != nil {
+			return err
+		}	
 	}
 	return nil
 }
