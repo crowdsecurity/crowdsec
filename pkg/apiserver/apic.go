@@ -662,17 +662,17 @@ func (a *apic) ApplyApicWhitelists(decisions []*models.Decision) []*models.Decis
 }
 
 func (a *apic) SaveAlerts(alertsFromCapi []*models.Alert, add_counters map[string]map[string]int, delete_counters map[string]map[string]int) error {
-	for idx, alert := range alertsFromCapi {
-		alertsFromCapi[idx] = setAlertScenario(add_counters, delete_counters, alert)
-		log.Debugf("%s has %d decisions", *alertsFromCapi[idx].Source.Scope, len(alertsFromCapi[idx].Decisions))
+	for _, alert := range alertsFromCapi {
+		setAlertScenario(alert, add_counters, delete_counters)
+		log.Debugf("%s has %d decisions", *alert.Source.Scope, len(alert.Decisions))
 		if a.dbClient.Type == "sqlite" && (a.dbClient.WalMode == nil || !*a.dbClient.WalMode) {
 			log.Warningf("sqlite is not using WAL mode, LAPI might become unresponsive when inserting the community blocklist")
 		}
-		alertID, inserted, deleted, err := a.dbClient.UpdateCommunityBlocklist(alertsFromCapi[idx])
+		alertID, inserted, deleted, err := a.dbClient.UpdateCommunityBlocklist(alert)
 		if err != nil {
-			return fmt.Errorf("while saving alert from %s: %w", *alertsFromCapi[idx].Source.Scope, err)
+			return fmt.Errorf("while saving alert from %s: %w", *alert.Source.Scope, err)
 		}
-		log.Printf("%s : added %d entries, deleted %d entries (alert:%d)", *alertsFromCapi[idx].Source.Scope, inserted, deleted, alertID)
+		log.Printf("%s : added %d entries, deleted %d entries (alert:%d)", *alert.Source.Scope, inserted, deleted, alertID)
 	}
 
 	return nil
@@ -776,7 +776,7 @@ func (a *apic) UpdateBlocklists(links *modelscapi.GetDecisionsStreamResponseLink
 	return nil
 }
 
-func setAlertScenario(add_counters map[string]map[string]int, delete_counters map[string]map[string]int, alert *models.Alert) *models.Alert {
+func setAlertScenario(alert *models.Alert, add_counters map[string]map[string]int, delete_counters map[string]map[string]int) {
 	if *alert.Source.Scope == types.CAPIOrigin {
 		*alert.Source.Scope = SCOPE_CAPI_ALIAS_ALIAS
 		alert.Scenario = ptr.Of(fmt.Sprintf("update : +%d/-%d IPs", add_counters[types.CAPIOrigin]["all"], delete_counters[types.CAPIOrigin]["all"]))
@@ -784,7 +784,6 @@ func setAlertScenario(add_counters map[string]map[string]int, delete_counters ma
 		*alert.Source.Scope = fmt.Sprintf("%s:%s", types.ListOrigin, *alert.Scenario)
 		alert.Scenario = ptr.Of(fmt.Sprintf("update : +%d/-%d IPs", add_counters[types.ListOrigin][*alert.Scenario], delete_counters[types.ListOrigin][*alert.Scenario]))
 	}
-	return alert
 }
 
 func (a *apic) Pull() error {
