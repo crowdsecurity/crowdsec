@@ -27,7 +27,7 @@ PLUGINS ?= $(patsubst ./cmd/notification-%,%,$(wildcard ./cmd/notification-*))
 
 # Can be overriden, if you can deal with the consequences
 BUILD_REQUIRE_GO_MAJOR ?= 1
-BUILD_REQUIRE_GO_MINOR ?= 20
+BUILD_REQUIRE_GO_MINOR ?= 21
 
 #--------------------------------------
 
