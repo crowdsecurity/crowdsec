@@ -622,7 +622,7 @@ func (a *apic) PullTop(forcePull bool) error {
 
 // if decisions is whitelisted: return representation of the whitelist ip or cidr
 // if not whitelisted: empty string
-func (a *apic) whitelistedBy(decision models.Decision) string {
+func (a *apic) whitelistedBy(decision *models.Decision) string {
 	if decision.Value == nil {
 		return ""
 	}
@@ -647,7 +647,7 @@ func (a *apic) ApplyApicWhitelists(decisions []*models.Decision) []*models.Decis
 	//deal with CAPI whitelists for fire. We want to avoid having a second list, so we shrink in place
 	outIdx := 0
 	for _, decision := range decisions {
-		whitelister := a.whitelistedBy(*decision)
+		whitelister := a.whitelistedBy(decision)
 		if whitelister != "" {
 			log.Infof("%s from %s is whitelisted by %s", *decision.Value, *decision.Scenario, whitelister)
 			continue
