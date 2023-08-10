@@ -18,6 +18,10 @@ type Whitelist struct {
 	B_Exprs []*ExprWhitelist
 }
 
+func (W Whitelist) ContainsIPLists() bool {
+	return len(W.B_Ips) > 0 || len(W.B_Cidrs) > 0
+}
+
 type ExprWhitelist struct {
 	Filter       *vm.Program
 	ExprDebugger *exprhelpers.ExprDebugger // used to debug expression by printing the content of each variable of the expression
