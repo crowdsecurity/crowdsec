@@ -216,6 +216,29 @@ func NewLapiCmd() *cobra.Command {
 	return cmdLapi
 }
 
+func AddContext(key string, values []string) error {
+	if err := alertcontext.ValidateContextExpr(key, values); err != nil {
+		return fmt.Errorf("invalid context configuration :%s", err)
+	}
+	if _, ok := csConfig.Crowdsec.ContextToSend[key]; !ok {
+		csConfig.Crowdsec.ContextToSend[key] = make([]string, 0)
+		log.Infof("key '%s' added", key)
+	}
+	data := csConfig.Crowdsec.ContextToSend[key]
+	for _, val := range values {
+		if !slices.Contains(data, val) {
+			log.Infof("value '%s' added to key '%s'", val, key)
+			data = append(data, val)
+		}
+		csConfig.Crowdsec.ContextToSend[key] = data
+	}
+	if err := csConfig.Crowdsec.DumpContextConfigFile(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func NewLapiContextCmd() *cobra.Command {
 	cmdContext := &cobra.Command{
 		Use:               "context [command]",
@@ -246,32 +269,29 @@ func NewLapiContextCmd() *cobra.Command {
 		Short: "Add context to send with alerts. You must specify the output key with the expr value you want",
 		Example: `cscli lapi context add --key source_ip --value evt.Meta.source_ip
 cscli lapi context add --key file_source --value evt.Line.Src
+cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user 
 		`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := alertcontext.ValidateContextExpr(keyToAdd, valuesToAdd); err != nil {
-				log.Fatalf("invalid context configuration :%s", err)
-			}
-			if _, ok := csConfig.Crowdsec.ContextToSend[keyToAdd]; !ok {
-				csConfig.Crowdsec.ContextToSend[keyToAdd] = make([]string, 0)
-				log.Infof("key '%s' added", keyToAdd)
-			}
-			data := csConfig.Crowdsec.ContextToSend[keyToAdd]
-			for _, val := range valuesToAdd {
-				if !slices.Contains(data, val) {
-					log.Infof("value '%s' added to key '%s'", val, keyToAdd)
-					data = append(data, val)
+			if keyToAdd != "" {
+				if err := AddContext(keyToAdd, valuesToAdd); err != nil {
+					log.Fatalf(err.Error())
 				}
-				csConfig.Crowdsec.ContextToSend[keyToAdd] = data
+				return
 			}
-			if err := csConfig.Crowdsec.DumpContextConfigFile(); err != nil {
-				log.Fatalf(err.Error())
+
+			for _, v := range valuesToAdd {
+				keySlice := strings.Split(v, ".")
+				key := keySlice[len(keySlice)-1]
+				value := []string{v}
+				if err := AddContext(key, value); err != nil {
+					log.Fatalf(err.Error())
+				}
 			}
 		},
 	}
 	cmdContextAdd.Flags().StringVarP(&keyToAdd, "key", "k", "", "The key of the different values to send")
 	cmdContextAdd.Flags().StringSliceVar(&valuesToAdd, "value", []string{}, "The expr fields to associate with the key")
-	cmdContextAdd.MarkFlagRequired("key")
 	cmdContextAdd.MarkFlagRequired("value")
 	cmdContext.AddCommand(cmdContextAdd)
 
