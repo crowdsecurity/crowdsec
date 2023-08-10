@@ -128,6 +128,19 @@ func UpdateRegexpCacheMetrics() {
 
 func FileInit(fileFolder string, filename string, fileType string) error {
 	log.Debugf("init (folder:%s) (file:%s) (type:%s)", fileFolder, filename, fileType)
+	if fileType == "" {
+		log.Debugf("ignored file %s%s because no type specified", fileFolder, filename)
+		return nil
+	}
+	ok, err := existsInFileMaps(filename, fileType)
+	if ok {
+		log.Debugf("ignored file %s%s because already loaded", fileFolder, filename)
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
 	filepath := filepath.Join(fileFolder, filename)
 	file, err := os.Open(filepath)
 	if err != nil {
@@ -135,13 +148,6 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 	}
 	defer file.Close()
 
-	if fileType == "" {
-		log.Debugf("ignored file %s%s because no type specified", fileFolder, filename)
-		return nil
-	}
-	if _, ok := dataFile[filename]; !ok {
-		dataFile[filename] = []string{}
-	}
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		if strings.HasPrefix(scanner.Text(), "#") { // allow comments
@@ -154,13 +160,11 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		case "regex", "regexp":
 			if fflag.Re2RegexpInfileSupport.IsEnabled() {
 				dataFileRe2[filename] = append(dataFileRe2[filename], re2.MustCompile(scanner.Text()))
-			} else {
-				dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
+				continue
 			}
+			dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
 		case "string":
 			dataFile[filename] = append(dataFile[filename], scanner.Text())
-		default:
-			return fmt.Errorf("unknown data type '%s' for : '%s'", fileType, filename)
 		}
 	}
 
@@ -168,6 +172,24 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		return err
 	}
 	return nil
+}
+
+func existsInFileMaps(filename string, ftype string) (bool, error) {
+	ok := false
+	var err error
+	switch ftype {
+	case "regex", "regexp":
+		if fflag.Re2RegexpInfileSupport.IsEnabled() {
+			_, ok = dataFileRe2[filename]
+		} else {
+			_, ok = dataFileRegex[filename]
+		}
+	case "string":
+		_, ok = dataFile[filename]
+	default:
+		err = fmt.Errorf("unknown data type '%s' for : '%s'", ftype, filename)
+	}
+	return ok, err
 }
 
 //Expr helpers
