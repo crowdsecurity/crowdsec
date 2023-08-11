@@ -126,6 +126,12 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 		}
 		csvwriter.Flush()
 	} else if csConfig.Cscli.Output == "json" {
+		if *alerts == nil {
+			// avoid returning "null" in json
+			// could be cleaner if we used slice of alerts directly
+			fmt.Println("[]")
+			return nil
+		}
 		x, _ := json.MarshalIndent(alerts, "", " ")
 		fmt.Printf("%s", string(x))
 	} else if csConfig.Cscli.Output == "human" {
