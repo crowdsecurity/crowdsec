@@ -365,6 +365,15 @@ for BOUNCER in /run/secrets/@(bouncer_key|BOUNCER_KEY)* ; do
 done
 shopt -u nullglob extglob
 
+## Create acquisition files
+for ACQUIS in $(compgen -A variable | grep -i ACQUIS); do
+    CONTENT=$(printf '%s' "${!ACQUIS}" | base64 -d)
+    NAME=$(printf '%s' "$ACQUIS" | cut -d_  -f2-)
+    if [[ -n $CONTENT ]] && [[ -n $NAME ]]; then
+        echo "$CONTENT" > "/etc/crowdsec/acquis.d/$NAME.yaml"
+    fi
+done
+
 # set all options before validating the configuration
 
 conf_set_if "$CAPI_WHITELISTS_PATH" '.api.server.capi_whitelists_path = strenv(CAPI_WHITELISTS_PATH)'
