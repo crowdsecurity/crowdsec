@@ -4,10 +4,8 @@ ifeq ($(OS), Windows_NT)
 	EXT = .exe
 endif
 
-# Go parameters
 GO = go
 GOBUILD = $(GO) build
-GOTEST = $(GO) test
 
 BINARY_NAME = cscli$(EXT)
 PREFIX ?= "/"

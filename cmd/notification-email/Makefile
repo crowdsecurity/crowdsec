@@ -4,12 +4,11 @@ ifeq ($(OS), Windows_NT)
 	EXT = .exe
 endif
 
-PLUGIN = email
-BINARY_NAME = notification-$(PLUGIN)$(EXT)
-
 GO = go
 GOBUILD = $(GO) build
 
+PLUGIN = email
+BINARY_NAME = notification-$(PLUGIN)$(EXT)
 build: clean
 	$(GOBUILD) $(LD_OPTS) $(BUILD_VENDOR_FLAGS) -o $(BINARY_NAME)
 
