@@ -37,8 +37,8 @@ function copy_file() {
 	#envsubst < "./config/dev.yaml" > $BASE/dev.yaml
     Copy-Item .\config\dev.yaml $base\dev.yaml
     $plugins | ForEach-Object {
-        Copy-Item $plugins_dir\$notif_dir\$_\notification-$_.exe $base\$plugins_dir\notification-$_.exe
-		Copy-Item $plugins_dir\$notif_dir\$_\$_.yaml $config_dir\$notif_dir\$_.yaml
+        Copy-Item .\cmd\notification-$_\notification-$_.exe $base\$plugins_dir\notification-$_.exe
+		Copy-Item .\cmd\notification-$_\$_.yaml $config_dir\$notif_dir\$_.yaml
     }
 }
 

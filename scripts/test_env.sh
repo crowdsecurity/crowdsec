@@ -86,8 +86,8 @@ copy_files() {
 	envsubst < "./config/dev.yaml" > $BASE/dev.yaml
 	for plugin in $PLUGINS
 	do
-		cp $PLUGINS_DIR/$NOTIF_DIR/$plugin/notification-$plugin $BASE/$PLUGINS_DIR/notification-$plugin
-		cp $PLUGINS_DIR/$NOTIF_DIR/$plugin/$plugin.yaml $CONFIG_DIR/$NOTIF_DIR/$plugin.yaml
+		cp cmd/notification-$plugin/notification-$plugin $BASE/$PLUGINS_DIR/notification-$plugin
+		cp cmd/notification-$plugin/$plugin.yaml $CONFIG_DIR/$NOTIF_DIR/$plugin.yaml
 	done
 }
 

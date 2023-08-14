@@ -227,9 +227,9 @@ package:
 	@$(CP) $(CSCLI_FOLDER)/$(CSCLI_BIN) $(RELDIR)/cmd/crowdsec-cli
 
 	@$(foreach plugin,$(PLUGINS), \
-		$(MKDIR) $(RELDIR)/$(PLUGINS_DIR)/$(plugin); \
-		$(CP) $(PLUGINS_DIR)/$(plugin)/notification-$(plugin)$(EXT) $(RELDIR)/$(PLUGINS_DIR)/$(plugin); \
-		$(CP) $(PLUGINS_DIR)/$(plugin)/$(plugin).yaml $(RELDIR)/$(PLUGINS_DIR)/$(plugin)/; \
+		$(MKDIR) $(RELDIR)/$(PLUGINS_DIR_PREFIX)$(plugin); \
+		$(CP) $(PLUGINS_DIR_PREFIX)$(plugin)/notification-$(plugin)$(EXT) $(RELDIR)/$(PLUGINS_DIR_PREFIX)$(plugin); \
+		$(CP) $(PLUGINS_DIR_PREFIX)$(plugin)/$(plugin).yaml $(RELDIR)/$(PLUGINS_DIR_PREFIX)$(plugin)/; \
 	)
 
 	@$(CPR) ./config $(RELDIR)

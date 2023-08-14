@@ -6,8 +6,8 @@ config/patterns/*       etc/crowdsec/patterns
 config/crowdsec.service lib/systemd/system
 
 # Referenced configs:
-plugins/notifications/slack/slack.yaml      etc/crowdsec/notifications/
-plugins/notifications/http/http.yaml        etc/crowdsec/notifications/
-plugins/notifications/splunk/splunk.yaml    etc/crowdsec/notifications/
-plugins/notifications/email/email.yaml      etc/crowdsec/notifications/
-plugins/notifications/sentinel/sentinel.yaml      etc/crowdsec/notifications/
+cmd/notification-slack/slack.yaml        etc/crowdsec/notifications/
+cmd/notification-http/http.yaml          etc/crowdsec/notifications/
+cmd/notification-splunk/splunk.yaml      etc/crowdsec/notifications/
+cmd/notification-email/email.yaml        etc/crowdsec/notifications/
+cmd/notification-sentinel/sentinel.yaml  etc/crowdsec/notifications/

@@ -76,7 +76,7 @@ config_generate() {
 	    type: syslog
 	EOT
 
-    cp ../plugins/notifications/*/{http,email,slack,splunk,dummy,sentinel}.yaml \
+    cp ../cmd/notification-*/*.yaml \
        "${CONFIG_DIR}/notifications/"
 
     yq e '
