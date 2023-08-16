@@ -141,12 +141,24 @@ func ShutdownCrowdsecRoutines() error {
 	time.Sleep(1 * time.Second) // ugly workaround for now
 	outputsTomb.Kill(nil)
 
-	if err := outputsTomb.Wait(); err != nil {
-		log.Warningf("Ouputs returned error : %s", err)
-		reterr = err
+	done := make(chan error, 1)
+	go func() {
+		done <- outputsTomb.Wait()
+	}()
+
+	// wait for outputs to finish, max 3 seconds
+	select {
+	case err := <-done:
+		if err != nil {
+			log.Warningf("Outputs returned error : %s", err)
+			reterr = err
+		}
+		log.Debugf("outputs are done")
+	case <-time.After(3 * time.Second):
+		// this can happen if outputs are stuck in a http retry loop
+		log.Warningf("Outputs didn't finish in time, some events may have not been flushed")
 	}
 
-	log.Debugf("outputs are done")
 	// He's dead, Jim.
 	crowdsecTomb.Kill(nil)
 
