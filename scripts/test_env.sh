@@ -3,10 +3,10 @@
 BASE="./tests"
 
 usage() {
-	  echo "Usage:"
-	  echo "    ./wizard.sh -h                               Display this help message."
-	  echo "    ./test_env.sh -d ./tests                     Create test environment in './tests' folder"
-	  exit 0
+	echo "Usage:"
+	echo "    $0 -h                             Display this help message."
+	echo "    $0 -d ./tests                     Create test environment in './tests' folder"
+	exit 0
 }
 
 
