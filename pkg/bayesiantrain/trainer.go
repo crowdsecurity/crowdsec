@@ -16,10 +16,6 @@ var exprCacheLock sync.Mutex
 
 type LogEventStorage struct {
 	ParsedIpEvents map[string]fakeBucket
-	posLabelCount  int
-	posLabelMutex  sync.Mutex
-	negLabelCount  int
-	negLabelMutex  sync.Mutex
 	labeled        bool
 	total          int
 	nEvilIps       int
@@ -32,29 +28,66 @@ type fakeBucket struct {
 	label  int
 }
 
-func evaluateProgramOnBucket(l *fakeBucket, compiledExpr *vm.Program, posLabelCount *int, posLabelMutex *sync.Mutex, negLabelCount *int, negLabelMutex *sync.Mutex) error {
+type evalIpResult struct {
+	Result int
+	Label  int
+	Error  error
+}
+
+type evalHypothesisResult struct {
+	EvilIpsWithHypothesis   int
+	BenignIpsWithHypothesis int
+	Error                   error
+}
+
+func evaluateProgramOnBucket(l *fakeBucket, compiledExpr *vm.Program, outputChan chan<- evalIpResult) {
 	var hypothesis, ok bool
 	for index, evt := range l.events {
 		ret, err := expr.Run(compiledExpr, map[string]interface{}{"evt": &evt, "queue": leakybucket.Queue{Queue: l.events[:index], L: index + 1}, "leaky": &(l.leaky)})
 		if err != nil {
-			return fmt.Errorf("unable to run conditional filter : %s", err)
+			outputChan <- evalIpResult{Error: err}
 		}
 
 		if hypothesis, ok = ret.(bool); !ok {
-			return fmt.Errorf("bayesion hypothesis, unexpected non-bool return : %T", ret)
+			outputChan <- evalIpResult{Error: fmt.Errorf("bayesion hypothesis, unexpected non-bool return : %T", ret)}
 		}
 
 		if hypothesis {
-			posLabelMutex.Unlock()
-			*posLabelCount = *posLabelCount + 1
-			posLabelMutex.Lock()
-			return nil
+			outputChan <- evalIpResult{Result: 1, Label: l.label}
+			break
 		}
 	}
-	negLabelMutex.Unlock()
-	*negLabelCount = *negLabelCount + 1
-	negLabelMutex.Lock()
-	return nil
+
+	outputChan <- evalIpResult{Result: 0, Label: l.label}
+}
+
+func controllerRoutine(inputChan <-chan evalIpResult, outputChan chan<- evalHypothesisResult, totalIps int) {
+
+	var evilIpsWithHypothesis = 0
+	var benignIpsWithHypothesis = 0
+	var totalIpsSeen = 0
+	for {
+		result := <-inputChan
+
+		if result.Error != nil {
+			outputChan <- evalHypothesisResult{Error: result.Error}
+			break
+		}
+
+		if result.Label == 0 {
+			benignIpsWithHypothesis += result.Result
+		}
+		if result.Label == 1 {
+			evilIpsWithHypothesis += result.Result
+		}
+		totalIpsSeen += 1
+
+		if totalIpsSeen == totalIps {
+			break
+		}
+	}
+
+	outputChan <- evalHypothesisResult{EvilIpsWithHypothesis: evilIpsWithHypothesis, BenignIpsWithHypothesis: benignIpsWithHypothesis, Error: nil}
 }
 
 func (s *LogEventStorage) InsertLabels(evilIps []string) {
@@ -75,22 +108,31 @@ func (s *LogEventStorage) InsertLabels(evilIps []string) {
 func (s *LogEventStorage) TestHypothesis(hypothesis string) error {
 
 	if !s.labeled {
-		return fmt.Errorf("LogEventStorage has not been labeled yet, add labels using InserLabels")
+		return fmt.Errorf("LogEventStorage has not been labeled yet, add labels using InsertLabels")
 	}
 	compiled, err := compileAndCacheHypothesis(hypothesis)
 	if err != nil {
 		return err
 	}
 
-	s.negLabelCount = 0
-	s.posLabelCount = 0
-	s.negLabelMutex.Lock()
-	s.posLabelMutex.Lock()
+	inputChan := make(chan evalIpResult, 1000)
+	outputChan := make(chan evalHypothesisResult)
+	defer close(inputChan)
+	defer close(outputChan)
+
 	for _, v := range s.ParsedIpEvents {
-		go evaluateProgramOnBucket(&v, compiled, &s.posLabelCount, &s.posLabelMutex, &s.negLabelCount, &s.negLabelMutex)
+		go evaluateProgramOnBucket(&v, compiled, inputChan)
 	}
-	s.negLabelMutex.Unlock()
-	s.negLabelMutex.Unlock()
+
+	go controllerRoutine(inputChan, outputChan, s.total)
+
+	result := <-outputChan
+
+	if result.Error != nil {
+		return result.Error
+	}
+
+	fmt.Printf("Finished Hypothesis testing, evil ips with hypothesis %v benign ips with hpyothesis %v", result.EvilIpsWithHypothesis, result.BenignIpsWithHypothesis)
 
 	return nil
 }
