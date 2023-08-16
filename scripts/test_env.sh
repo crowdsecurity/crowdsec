@@ -24,7 +24,7 @@ do
 		exit 0
 		;;
 	*)    # unknown option
-		log_err "Unknown argument ${key}."
+		echo "Unknown argument ${key}." >&2
 		usage
 		exit 1
 		;;
