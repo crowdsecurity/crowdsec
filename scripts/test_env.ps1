@@ -9,7 +9,7 @@ function show_help() {
     Write-Output ".\test_env.ps1 -d tests #creates test env in .\tests"
 }
 
-function create_arbo() {
+function create_tree() {
 	$null = New-Item -ItemType Directory $data_dir
 	$null = New-Item -ItemType Directory $log_dir
 	$null = New-Item -ItemType Directory $config_dir
@@ -76,9 +76,9 @@ $plugins_dir="plugins"
 $notif_dir="notifications"
 
 
-Write-Output "Creating test arbo in $base"
-create_arbo
-Write-Output "Arbo created"
+Write-Output "Creating test tree in $base"
+create_tree
+Write-Output "Tree created"
 Write-Output "Copying files"
 copy_file
 Write-Output "Files copied"

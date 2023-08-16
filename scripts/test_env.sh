@@ -57,7 +57,7 @@ log_info() {
 	echo -e "[$date][INFO] $msg"
 }
 
-create_arbo() {
+create_tree() {
 	mkdir -p "$BASE"
 	mkdir -p "$DATA_DIR"
 	mkdir -p "$LOG_DIR"
@@ -103,9 +103,9 @@ setup_api() {
 
 
 main() {
-	log_info "Creating test arboresence in $BASE"
-	create_arbo
-	log_info "Arboresence created"
+	log_info "Creating test tree in $BASE"
+	create_tree
+	log_info "Tree created"
 	log_info "Copying needed files for tests environment"
 	copy_files
 	log_info "Files copied"
