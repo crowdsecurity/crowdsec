@@ -9,7 +9,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/pkg/errors"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/slicetools"
+	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
