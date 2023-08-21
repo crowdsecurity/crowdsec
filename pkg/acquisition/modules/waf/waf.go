@@ -543,6 +543,7 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 					}
 				}
 			}
+			logged := false
 			//measure the full time spent in the WAF
 			elapsed := time.Since(startParsing)
 			WafInbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddr}).Observe(elapsed.Seconds())
@@ -558,7 +559,8 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 				if err != nil {
 					return fmt.Errorf("cannot convert transaction to event : %w", err)
 				}
-				LogWaapEvent(evt)
+				LogWaapEvent(evt, r.logger)
+				logged = true
 				r.outChan <- *evt
 			}
 			expTx.Close()
@@ -591,7 +593,9 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 				// expTx.MatchedRules() returns also rules that set variables
 				// in evt.Waap.MatchedRules we have filtered those rules
 				if len(evt.Waap.MatchedRules) > 0 {
-					LogWaapEvent(evt)
+					if !logged {
+						LogWaapEvent(evt, r.logger)
+					}
 					r.outChan <- *evt
 				}
 			}

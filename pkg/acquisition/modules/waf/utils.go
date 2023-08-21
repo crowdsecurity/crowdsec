@@ -10,6 +10,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
 	"github.com/prometheus/client_golang/prometheus"
+	log "github.com/sirupsen/logrus"
 )
 
 func EventFromRequest(r waf.ParsedRequest) (types.Event, error) {
@@ -47,12 +48,26 @@ func EventFromRequest(r waf.ParsedRequest) (types.Event, error) {
 	return evt, nil
 }
 
-func LogWaapEvent(evt *types.Event) {
-	/*log.WithFields(log.Fields{
-		"module":     "waf",
-		"source":     evt.Parsed["source_ip"],
-		"target_uri": evt.Parsed["target_uri"],
-	}).Infof("%s triggered %d rules [%+v]", evt.Parsed["source_ip"], len(evt.Waap), evt.Waap.GetRuleIDs())*/
+func LogWaapEvent(evt *types.Event, logger *log.Entry) {
+	req := evt.Parsed["target_uri"]
+	if len(req) > 12 {
+		req = req[:10] + ".."
+	}
+
+	if evt.Parsed["interrupted"] == "true" {
+		logger.WithFields(log.Fields{
+			"module":     "waf",
+			"source":     evt.Parsed["source_ip"],
+			"target_uri": req,
+		}).Infof("%s blocked on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Waap.MatchedRules), evt.Waap.GetRuleIDs())
+	} else {
+		logger.WithFields(log.Fields{
+			"module":     "waf",
+			"source":     evt.Parsed["source_ip"],
+			"target_uri": req,
+		}).Debugf("%s triggerd non-blocking rules on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Waap.MatchedRules), evt.Waap.GetRuleIDs())
+	}
+
 	//log.Infof("%s", evt.Waap)
 }
 
@@ -62,6 +77,11 @@ func LogWaapEvent(evt *types.Event) {
   2) subvariables : tx.a*
 
 */
+
+// func LogWaapEvent(evt *types.Event) error {
+
+// 	return nil
+// }
 
 func (r *WafRunner) AccumulateTxToEvent(tx experimental.FullTransaction, kind string, evt *types.Event) error {
 
