@@ -187,7 +187,10 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		}
 	}
 
-	isWhitelisted, hasWhitelist := n.Whitelist.Check(srcs, cachedExprEnv)
+	isWhitelisted, hasWhitelist, exprErr := n.Whitelist.Check(srcs, cachedExprEnv)
+	if exprErr != nil {
+		return false, nil
+	}
 
 	if isWhitelisted {
 		p.Whitelisted = true

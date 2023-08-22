@@ -29,9 +29,11 @@ func (W Whitelist) ContainsExprLists() bool {
 	return len(W.B_Exprs) > 0
 }
 
-func (W Whitelist) Check(srcs []net.IP, cachedExprEnv map[string]interface{}) (bool, bool) {
+func (W Whitelist) Check(srcs []net.IP, cachedExprEnv map[string]interface{}) (bool, bool, error) {
 	isWhitelisted := false
 	hasWhitelist := false
+	var err error
+	var output interface{}
 	if W.ContainsIPLists() {
 		for _, src := range srcs {
 			if isWhitelisted {
@@ -62,7 +64,7 @@ func (W Whitelist) Check(srcs []net.IP, cachedExprEnv map[string]interface{}) (b
 		if isWhitelisted {
 			break
 		}
-		output, err := expr.Run(e.Filter, cachedExprEnv)
+		output, err = expr.Run(e.Filter, cachedExprEnv)
 		if err != nil {
 			W.Node.Logger.Warningf("failed to run whitelist expr : %v", err)
 			W.Node.Logger.Debug("Event leaving node : ko")
@@ -82,7 +84,7 @@ func (W Whitelist) Check(srcs []net.IP, cachedExprEnv map[string]interface{}) (b
 			log.Errorf("unexpected type %t (%v) while running '%s'", output, output, W.Exprs[eidx])
 		}
 	}
-	return isWhitelisted, hasWhitelist
+	return isWhitelisted, hasWhitelist, err
 }
 
 type ExprWhitelist struct {
