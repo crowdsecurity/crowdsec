@@ -1,6 +1,7 @@
 package types
 
 import (
+	"net"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -71,6 +72,21 @@ func (e *Event) GetMeta(key string) string {
 		}
 	}
 	return ""
+}
+
+func (e *Event) GetSources() []net.IP {
+	var srcs []net.IP
+	if e.Type == LOG {
+		if _, ok := e.Meta["source_ip"]; ok {
+			srcs = append(srcs, net.ParseIP(e.Meta["source_ip"]))
+		}
+	}
+	if e.Type == OVFLW {
+		for k := range e.Overflow.Sources {
+			srcs = append(srcs, net.ParseIP(k))
+		}
+	}
+	return srcs
 }
 
 // Move in leakybuckets

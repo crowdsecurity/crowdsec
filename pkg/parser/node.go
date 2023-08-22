@@ -173,21 +173,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		NodesHits.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name}).Inc()
 	}
 
-	var srcs []net.IP
-	/*overflow and log don't hold the source ip in the same field, should be changed */
-	/* perform whitelist checks for ips, cidr accordingly */
-	/* TODO move whitelist elsewhere */
-	if p.Type == types.LOG {
-		if _, ok := p.Meta["source_ip"]; ok {
-			srcs = append(srcs, net.ParseIP(p.Meta["source_ip"]))
-		}
-	} else if p.Type == types.OVFLW {
-		for k := range p.Overflow.Sources {
-			srcs = append(srcs, net.ParseIP(k))
-		}
-	}
-
-	isWhitelisted, hasWhitelist, exprErr := n.Whitelist.Check(srcs, cachedExprEnv)
+	isWhitelisted, hasWhitelist, exprErr := n.Whitelist.Check(p.GetSources(), cachedExprEnv)
 	if exprErr != nil {
 		// Previous code returned nil if there was an error, so we keep this behavior
 		return false, nil //nolint:nilerr
