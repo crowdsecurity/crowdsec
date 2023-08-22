@@ -74,7 +74,7 @@ func (e *Event) GetMeta(key string) string {
 	return ""
 }
 
-func (e *Event) GetSources() []net.IP {
+func (e *Event) ParseIPSources() []net.IP {
 	var srcs []net.IP
 	if e.Type == LOG {
 		if _, ok := e.Meta["source_ip"]; ok {
