@@ -189,7 +189,8 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 
 	isWhitelisted, hasWhitelist, exprErr := n.Whitelist.Check(srcs, cachedExprEnv)
 	if exprErr != nil {
-		return false, nil
+		// Previous code returned nil if there was an error, so we keep this behavior
+		return false, nil //nolint:nilerr
 	}
 
 	if isWhitelisted {
@@ -198,8 +199,8 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		/*huglily wipe the ban order if the event is whitelisted and it's an overflow */
 		if p.Type == types.OVFLW { /*don't do this at home kids */
 			ips := []string{}
-			for _, src := range srcs {
-				ips = append(ips, src.String())
+			for k := range p.Overflow.Sources {
+				ips = append(ips, k)
 			}
 			clog.Infof("Ban for %s whitelisted, reason [%s]", strings.Join(ips, ","), n.Whitelist.Reason)
 			p.Overflow.Whitelisted = true
