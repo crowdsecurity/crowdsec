@@ -172,8 +172,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	if n.Name != "" {
 		NodesHits.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name}).Inc()
 	}
-	isWhitelisted := false
-	hasWhitelist := false
+
 	var srcs []net.IP
 	/*overflow and log don't hold the source ip in the same field, should be changed */
 	/* perform whitelist checks for ips, cidr accordingly */
@@ -188,57 +187,8 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		}
 	}
 
-	if n.Whitelist.ContainsIPLists() {
-		for _, src := range srcs {
-			if isWhitelisted {
-				break
-			}
-			for _, v := range n.Whitelist.B_Ips {
-				if v.Equal(src) {
-					clog.Debugf("Event from [%s] is whitelisted by IP (%s), reason [%s]", src, v, n.Whitelist.Reason)
-					isWhitelisted = true
-					break
-				}
-				clog.Tracef("whitelist: %s is not eq [%s]", src, v)
-			}
-			for _, v := range n.Whitelist.B_Cidrs {
-				if v.Contains(src) {
-					clog.Debugf("Event from [%s] is whitelisted by CIDR (%s), reason [%s]", src, v, n.Whitelist.Reason)
-					isWhitelisted = true
-					break
-				}
-				clog.Tracef("whitelist: %s not in [%s]", src, v)
-			}
-		}
-		hasWhitelist = true
-	}
+	isWhitelisted, hasWhitelist := n.Whitelist.Check(srcs, cachedExprEnv, clog)
 
-	/* run whitelist expression tests anyway */
-	for eidx, e := range n.Whitelist.B_Exprs {
-		//if we already know the event is whitelisted, skip the rest of the expressions
-		if isWhitelisted {
-			break
-		}
-		output, err := expr.Run(e.Filter, cachedExprEnv)
-		if err != nil {
-			clog.Warningf("failed to run whitelist expr : %v", err)
-			clog.Debug("Event leaving node : ko")
-			return false, nil
-		}
-		switch out := output.(type) {
-		case bool:
-			if n.Debug {
-				e.ExprDebugger.Run(clog, out, cachedExprEnv)
-			}
-			if out {
-				clog.Debugf("Event is whitelisted by expr, reason [%s]", n.Whitelist.Reason)
-				isWhitelisted = true
-			}
-			hasWhitelist = true
-		default:
-			log.Errorf("unexpected type %t (%v) while running '%s'", output, output, n.Whitelist.Exprs[eidx])
-		}
-	}
 	if isWhitelisted {
 		p.Whitelisted = true
 		p.WhitelistReason = n.Whitelist.Reason
@@ -619,7 +569,6 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	for _, v := range n.Whitelist.Ips {
 		n.Whitelist.B_Ips = append(n.Whitelist.B_Ips, net.ParseIP(v))
 		n.Logger.Debugf("adding ip %s to whitelists", net.ParseIP(v))
-		valid = true
 	}
 
 	for _, v := range n.Whitelist.Cidrs {
@@ -629,7 +578,6 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		}
 		n.Whitelist.B_Cidrs = append(n.Whitelist.B_Cidrs, tnet)
 		n.Logger.Debugf("adding cidr %s to whitelists", tnet)
-		valid = true
 	}
 
 	for _, filter := range n.Whitelist.Exprs {
@@ -644,6 +592,10 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		}
 		n.Whitelist.B_Exprs = append(n.Whitelist.B_Exprs, expression)
 		n.Logger.Debugf("adding expression %s to whitelists", filter)
+	}
+
+	if n.Whitelist.ContainsIPLists() || n.Whitelist.ContainsExprLists() {
+		n.Whitelist.Node = n
 		valid = true
 	}
 
