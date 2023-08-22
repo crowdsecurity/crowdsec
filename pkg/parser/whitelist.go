@@ -66,7 +66,7 @@ func (W Whitelist) Check(srcs []net.IP, cachedExprEnv map[string]interface{}) (b
 		if err != nil {
 			W.Node.Logger.Warningf("failed to run whitelist expr : %v", err)
 			W.Node.Logger.Debug("Event leaving node : ko")
-			return false, false
+			break
 		}
 		switch out := output.(type) {
 		case bool:
