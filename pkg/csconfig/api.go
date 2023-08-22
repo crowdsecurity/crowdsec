@@ -344,12 +344,15 @@ func (s *LocalApiServerCfg) LoadCapiWhitelists() error {
 	}
 
 	var fromCfg capiWhitelists
-	s.CapiWhitelists = &CapiWhitelist{}
 
 	defer fd.Close()
 	decoder := yaml.NewDecoder(fd)
 	if err := decoder.Decode(&fromCfg); err != nil {
 		return fmt.Errorf("while parsing capi whitelist file '%s': %s", s.CapiWhitelistsPath, err)
+	}
+	s.CapiWhitelists = &CapiWhitelist{
+		Ips:   make([]net.IP, len(fromCfg.Ips)),
+		Cidrs: make([]*net.IPNet, len(fromCfg.Cidrs)),
 	}
 	for _, v := range fromCfg.Ips {
 		ip := net.ParseIP(v)
