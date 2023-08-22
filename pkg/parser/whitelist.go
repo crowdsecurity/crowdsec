@@ -5,7 +5,6 @@ import (
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
@@ -81,7 +80,7 @@ func (W Whitelist) Check(srcs []net.IP, cachedExprEnv map[string]interface{}) (b
 			}
 			hasWhitelist = true
 		default:
-			log.Errorf("unexpected type %t (%v) while running '%s'", output, output, W.Exprs[eidx])
+			W.Node.Logger.Errorf("unexpected type %t (%v) while running '%s'", output, output, W.Exprs[eidx])
 		}
 	}
 	return isWhitelisted, hasWhitelist, err
