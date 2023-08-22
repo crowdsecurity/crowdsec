@@ -29,7 +29,7 @@ func (W Whitelist) ContainsExprLists() bool {
 	return len(W.B_Exprs) > 0
 }
 
-func (W Whitelist) Check(srcs []net.IP, cachedExprEnv map[string]interface{}, clog *log.Entry) (bool, bool) {
+func (W Whitelist) Check(srcs []net.IP, cachedExprEnv map[string]interface{}) (bool, bool) {
 	isWhitelisted := false
 	hasWhitelist := false
 	if W.ContainsIPLists() {
@@ -39,19 +39,19 @@ func (W Whitelist) Check(srcs []net.IP, cachedExprEnv map[string]interface{}, cl
 			}
 			for _, v := range W.B_Ips {
 				if v.Equal(src) {
-					clog.Debugf("Event from [%s] is whitelisted by IP (%s), reason [%s]", src, v, W.Reason)
+					W.Node.Logger.Debugf("Event from [%s] is whitelisted by IP (%s), reason [%s]", src, v, W.Reason)
 					isWhitelisted = true
 					break
 				}
-				clog.Tracef("whitelist: %s is not eq [%s]", src, v)
+				W.Node.Logger.Tracef("whitelist: %s is not eq [%s]", src, v)
 			}
 			for _, v := range W.B_Cidrs {
 				if v.Contains(src) {
-					clog.Debugf("Event from [%s] is whitelisted by CIDR (%s), reason [%s]", src, v, W.Reason)
+					W.Node.Logger.Debugf("Event from [%s] is whitelisted by CIDR (%s), reason [%s]", src, v, W.Reason)
 					isWhitelisted = true
 					break
 				}
-				clog.Tracef("whitelist: %s not in [%s]", src, v)
+				W.Node.Logger.Tracef("whitelist: %s not in [%s]", src, v)
 			}
 		}
 		hasWhitelist = true
@@ -64,17 +64,17 @@ func (W Whitelist) Check(srcs []net.IP, cachedExprEnv map[string]interface{}, cl
 		}
 		output, err := expr.Run(e.Filter, cachedExprEnv)
 		if err != nil {
-			clog.Warningf("failed to run whitelist expr : %v", err)
-			clog.Debug("Event leaving node : ko")
+			W.Node.Logger.Warningf("failed to run whitelist expr : %v", err)
+			W.Node.Logger.Debug("Event leaving node : ko")
 			return false, false
 		}
 		switch out := output.(type) {
 		case bool:
 			if W.Node.Debug {
-				e.ExprDebugger.Run(clog, out, cachedExprEnv)
+				e.ExprDebugger.Run(W.Node.Logger, out, cachedExprEnv)
 			}
 			if out {
-				clog.Debugf("Event is whitelisted by expr, reason [%s]", W.Reason)
+				W.Node.Logger.Debugf("Event is whitelisted by expr, reason [%s]", W.Reason)
 				isWhitelisted = true
 			}
 			hasWhitelist = true
