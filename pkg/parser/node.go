@@ -211,9 +211,6 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		}
 	}
 
-	if isWhitelisted {
-		p.Whitelisted = true
-	}
 	/* run whitelist expression tests anyway */
 	for eidx, e := range n.Whitelist.B_Exprs {
 		output, err := expr.Run(e.Filter, cachedExprEnv)
@@ -237,7 +234,8 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 			log.Errorf("unexpected type %t (%v) while running '%s'", output, output, n.Whitelist.Exprs[eidx])
 		}
 	}
-	if isWhitelisted {
+	if isWhitelisted && !p.Whitelisted {
+		p.Whitelisted = true
 		p.WhitelistReason = n.Whitelist.Reason
 		/*huglily wipe the ban order if the event is whitelisted and it's an overflow */
 		if p.Type == types.OVFLW { /*don't do this at home kids */
