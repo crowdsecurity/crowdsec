@@ -22,6 +22,12 @@ type LogEventStorage struct {
 	nBenignIps     int
 }
 
+type BayesianResult struct {
+	condition       string
+	probGivenEvil   float32
+	probGivenBenign float32
+}
+
 type fakeBucket struct {
 	events []types.Event
 	leaky  *leakybucket.Leaky
@@ -117,8 +123,6 @@ func (s *LogEventStorage) TestHypothesis(hypothesis string) error {
 
 	inputChan := make(chan evalIpResult, 1000)
 	outputChan := make(chan evalHypothesisResult)
-	defer close(inputChan)
-	defer close(outputChan)
 
 	for _, v := range s.ParsedIpEvents {
 		go evaluateProgramOnBucket(&v, compiled, inputChan)
@@ -132,7 +136,11 @@ func (s *LogEventStorage) TestHypothesis(hypothesis string) error {
 		return result.Error
 	}
 
-	fmt.Printf("Finished Hypothesis testing, evil ips with hypothesis %v benign ips with hpyothesis %v", result.EvilIpsWithHypothesis, result.BenignIpsWithHypothesis)
+	bayesian := BayesianResult{condition: hypothesis, probGivenEvil: float32(result.EvilIpsWithHypothesis) / float32(s.nEvilIps), probGivenBenign: float32(result.BenignIpsWithHypothesis) / float32(s.nBenignIps)}
+
+	bayesian.printResults()
+
+	fmt.Printf("Finished Hypothesis testing, evil ips with hypothesis %v benign ips with hypothesis %v", result.EvilIpsWithHypothesis, result.BenignIpsWithHypothesis)
 
 	return nil
 }
@@ -156,4 +164,11 @@ func compileAndCacheHypothesis(hypothesis string) (*vm.Program, error) {
 	exprCache[hypothesis] = *compiledExpr
 	exprCacheLock.Unlock()
 	return compiledExpr, nil
+}
+
+func (b *BayesianResult) printResults() {
+	fmt.Printf("- condition: %s", b.condition)
+	fmt.Printf("  prob_given_evil: %v", b.probGivenEvil)
+	fmt.Printf("  prob_given_benign: %v", b.probGivenBenign)
+	fmt.Printf("  guillotine: true")
 }
