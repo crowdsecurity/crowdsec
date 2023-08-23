@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"net"
 	"testing"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -76,7 +75,6 @@ func TestWhitelistCheck(t *testing.T) {
 	tests := []struct {
 		name             string
 		whitelist        Whitelist
-		sources          []net.IP
 		event            *types.Event
 		expected_outcome bool
 	}{
@@ -88,8 +86,10 @@ func TestWhitelistCheck(t *testing.T) {
 					"127.0.0.1",
 				},
 			},
-			sources: []net.IP{
-				net.ParseIP("127.0.0.1"),
+			event: &types.Event{
+				Meta: map[string]string{
+					"source_ip": "127.0.0.1",
+				},
 			},
 			expected_outcome: true,
 		},
@@ -101,8 +101,10 @@ func TestWhitelistCheck(t *testing.T) {
 					"127.0.0.1",
 				},
 			},
-			sources: []net.IP{
-				net.ParseIP("127.0.0.2"),
+			event: &types.Event{
+				Meta: map[string]string{
+					"source_ip": "127.0.0.2",
+				},
 			},
 		},
 		{
@@ -113,8 +115,10 @@ func TestWhitelistCheck(t *testing.T) {
 					"127.0.0.1/32",
 				},
 			},
-			sources: []net.IP{
-				net.ParseIP("127.0.0.1"),
+			event: &types.Event{
+				Meta: map[string]string{
+					"source_ip": "127.0.0.1",
+				},
 			},
 			expected_outcome: true,
 		},
@@ -126,8 +130,10 @@ func TestWhitelistCheck(t *testing.T) {
 					"127.0.0.1/32",
 				},
 			},
-			sources: []net.IP{
-				net.ParseIP("127.0.0.2"),
+			event: &types.Event{
+				Meta: map[string]string{
+					"source_ip": "127.0.0.2",
+				},
 			},
 		},
 		{
@@ -167,7 +173,7 @@ func TestWhitelistCheck(t *testing.T) {
 			var err error
 			node.Whitelist = tt.whitelist
 			node.CompileWLs()
-			isWhitelisted := node.CheckIPsWL(tt.sources)
+			isWhitelisted := node.CheckIPsWL(tt.event.ParseIPSources())
 			if !isWhitelisted {
 				isWhitelisted, err = node.CheckExprWL(map[string]interface{}{"evt": tt.event})
 			}
