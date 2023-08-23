@@ -26,18 +26,22 @@ type ExprWhitelist struct {
 	ExprDebugger *exprhelpers.ExprDebugger // used to debug expression by printing the content of each variable of the expression
 }
 
-func (n *Node) ContainsIPLists() bool {
-	return len(n.Whitelist.B_Ips) > 0 || len(n.Whitelist.B_Cidrs) > 0
+func (n *Node) ContainsWLs() bool {
+	return n.ContainsIPLists() || n.ContainsExprLists()
 }
 
 func (n *Node) ContainsExprLists() bool {
 	return len(n.Whitelist.B_Exprs) > 0
 }
 
-func (n *Node) CheckIPsWL(srcs []net.IP) (bool, bool) {
+func (n *Node) ContainsIPLists() bool {
+	return len(n.Whitelist.B_Ips) > 0 || len(n.Whitelist.B_Cidrs) > 0
+}
+
+func (n *Node) CheckIPsWL(srcs []net.IP) bool {
 	isWhitelisted := false
 	if !n.ContainsIPLists() {
-		return isWhitelisted, false
+		return isWhitelisted
 	}
 	for _, src := range srcs {
 		if isWhitelisted {
@@ -60,17 +64,17 @@ func (n *Node) CheckIPsWL(srcs []net.IP) (bool, bool) {
 			n.Logger.Tracef("whitelist: %s not in [%s]", src, v)
 		}
 	}
-	return isWhitelisted, true
+	return isWhitelisted
 }
 
-func (n *Node) CheckExprWL(cachedExprEnv map[string]interface{}) (bool, bool, error) {
+func (n *Node) CheckExprWL(cachedExprEnv map[string]interface{}) (bool, error) {
 	err := error(nil)
 	output := interface{}(nil)
 
 	isWhitelisted := false
 
 	if !n.ContainsExprLists() {
-		return false, false, nil
+		return false, nil
 	}
 	/* run whitelist expression tests anyway */
 	for eidx, e := range n.Whitelist.B_Exprs {
@@ -97,10 +101,10 @@ func (n *Node) CheckExprWL(cachedExprEnv map[string]interface{}) (bool, bool, er
 			n.Logger.Errorf("unexpected type %t (%v) while running '%s'", output, output, n.Whitelist.Exprs[eidx])
 		}
 	}
-	return isWhitelisted, true, err
+	return isWhitelisted, err
 }
 
-func (n *Node) Compile() (bool, error) {
+func (n *Node) CompileWLs() (bool, error) {
 	for _, v := range n.Whitelist.Ips {
 		n.Whitelist.B_Ips = append(n.Whitelist.B_Ips, net.ParseIP(v))
 		n.Logger.Debugf("adding ip %s to whitelists", net.ParseIP(v))
