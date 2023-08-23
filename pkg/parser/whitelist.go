@@ -6,7 +6,6 @@ import (
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -113,7 +112,7 @@ func (W *Whitelist) Compile(n *Node) (bool, error) {
 		}
 		expression.ExprDebugger, err = exprhelpers.NewDebugger(filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 		if err != nil {
-			log.Errorf("unable to build debug filter for '%s' : %s", filter, err)
+			n.Logger.Errorf("unable to build debug filter for '%s' : %s", filter, err)
 		}
 		W.B_Exprs = append(W.B_Exprs, expression)
 		n.Logger.Debugf("adding expression %s to whitelists", filter)
