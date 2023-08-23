@@ -171,8 +171,11 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	if n.Name != "" {
 		NodesHits.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name}).Inc()
 	}
-
-	isWhitelisted, hasWhitelist, exprErr := n.Whitelist.Check(p.ParseIPSources(), cachedExprEnv)
+	exprErr := error(nil)
+	isWhitelisted, hasWhitelist := n.CheckIPsWL(p.ParseIPSources())
+	if !isWhitelisted {
+		isWhitelisted, hasWhitelist, exprErr = n.CheckExprWL(cachedExprEnv)
+	}
 	if exprErr != nil {
 		// Previous code returned nil if there was an error, so we keep this behavior
 		return false, nil //nolint:nilerr
@@ -555,7 +558,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	}
 
 	/* compile whitelists if present */
-	whitelistValid, err := n.Whitelist.Compile(n)
+	whitelistValid, err := n.Compile()
 	if err != nil {
 		return err
 	}

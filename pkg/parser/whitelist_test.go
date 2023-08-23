@@ -60,7 +60,8 @@ func TestWhitelistCompile(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := tt.whitelist.Compile(node)
+			node.Whitelist = tt.whitelist
+			_, err := node.Compile()
 			if err == nil && tt.expected_err {
 				t.Fatalf("Whitelist expected to error %s", tt.name)
 			}
@@ -163,8 +164,13 @@ func TestWhitelistCheck(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			tt.whitelist.Compile(node)
-			isWhitelisted, _, err := tt.whitelist.Check(tt.sources, map[string]interface{}{"evt": tt.event})
+			var err error
+			node.Whitelist = tt.whitelist
+			node.Compile()
+			isWhitelisted, _ := node.CheckIPsWL(tt.sources)
+			if !isWhitelisted {
+				isWhitelisted, _, err = node.CheckExprWL(map[string]interface{}{"evt": tt.event})
+			}
 			if err != nil {
 				t.Fatalf("failed to check whitelist: %s", err)
 			}
