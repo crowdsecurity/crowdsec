@@ -3,7 +3,6 @@ package parser
 import (
 	"errors"
 	"fmt"
-	"net"
 	"strings"
 	"time"
 
@@ -556,38 +555,11 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	}
 
 	/* compile whitelists if present */
-	for _, v := range n.Whitelist.Ips {
-		n.Whitelist.B_Ips = append(n.Whitelist.B_Ips, net.ParseIP(v))
-		n.Logger.Debugf("adding ip %s to whitelists", net.ParseIP(v))
+	whitelistValid, err := n.Whitelist.Compile(n)
+	if err != nil {
+		return err
 	}
-
-	for _, v := range n.Whitelist.Cidrs {
-		_, tnet, err := net.ParseCIDR(v)
-		if err != nil {
-			n.Logger.Fatalf("Unable to parse cidr whitelist '%s' : %v.", v, err)
-		}
-		n.Whitelist.B_Cidrs = append(n.Whitelist.B_Cidrs, tnet)
-		n.Logger.Debugf("adding cidr %s to whitelists", tnet)
-	}
-
-	for _, filter := range n.Whitelist.Exprs {
-		expression := &ExprWhitelist{}
-		expression.Filter, err = expr.Compile(filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
-		if err != nil {
-			n.Logger.Fatalf("Unable to compile whitelist expression '%s' : %v.", filter, err)
-		}
-		expression.ExprDebugger, err = exprhelpers.NewDebugger(filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
-		if err != nil {
-			log.Errorf("unable to build debug filter for '%s' : %s", filter, err)
-		}
-		n.Whitelist.B_Exprs = append(n.Whitelist.B_Exprs, expression)
-		n.Logger.Debugf("adding expression %s to whitelists", filter)
-	}
-
-	if n.Whitelist.ContainsIPLists() || n.Whitelist.ContainsExprLists() {
-		n.Whitelist.Node = n
-		valid = true
-	}
+	valid = valid || whitelistValid
 
 	if !valid {
 		/* node is empty, error force return */

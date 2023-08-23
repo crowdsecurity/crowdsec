@@ -1,12 +1,15 @@
 package parser
 
 import (
+	"fmt"
 	"net"
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type Whitelist struct {
@@ -84,6 +87,43 @@ func (W Whitelist) Check(srcs []net.IP, cachedExprEnv map[string]interface{}) (b
 		}
 	}
 	return isWhitelisted, hasWhitelist, err
+}
+
+func (W *Whitelist) Compile(n *Node) (bool, error) {
+	for _, v := range W.Ips {
+		W.B_Ips = append(W.B_Ips, net.ParseIP(v))
+		n.Logger.Debugf("adding ip %s to whitelists", net.ParseIP(v))
+	}
+
+	for _, v := range W.Cidrs {
+		_, tnet, err := net.ParseCIDR(v)
+		if err != nil {
+			return false, fmt.Errorf("unable to parse cidr whitelist '%s' : %v", v, err)
+		}
+		W.B_Cidrs = append(W.B_Cidrs, tnet)
+		n.Logger.Debugf("adding cidr %s to whitelists", tnet)
+	}
+
+	for _, filter := range W.Exprs {
+		var err error
+		expression := &ExprWhitelist{}
+		expression.Filter, err = expr.Compile(filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+		if err != nil {
+			return false, fmt.Errorf("unable to compile whitelist expression '%s' : %v", filter, err)
+		}
+		expression.ExprDebugger, err = exprhelpers.NewDebugger(filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+		if err != nil {
+			log.Errorf("unable to build debug filter for '%s' : %s", filter, err)
+		}
+		W.B_Exprs = append(W.B_Exprs, expression)
+		n.Logger.Debugf("adding expression %s to whitelists", filter)
+	}
+	valid := false
+	if W.ContainsIPLists() || W.ContainsExprLists() {
+		W.Node = n
+		valid = true
+	}
+	return valid, nil
 }
 
 type ExprWhitelist struct {
