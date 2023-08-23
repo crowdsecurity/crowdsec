@@ -75,7 +75,7 @@ func TestParseIPSources(t *testing.T) {
 			if !slices.EqualFunc(ips, tt.expected_outcome, func(a, b net.IP) bool {
 				return a.Equal(b)
 			}) {
-				t.Errorf("Expected: %s, Recieved: %s", tt.expected_outcome, ips)
+				t.Errorf("Expected: %s, got: %s", tt.expected_outcome, ips)
 			}
 		})
 	}
