@@ -135,7 +135,7 @@ func (n *Node) CompileWLs() (bool, error) {
 		n.Logger.Debugf("adding expression %s to whitelists", filter)
 	}
 	valid := false
-	if n.ContainsIPLists() || n.ContainsExprLists() {
+	if n.ContainsWLs() {
 		valid = true
 	}
 	return valid, nil
