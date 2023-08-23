@@ -58,7 +58,6 @@ var configShowTemplate = `Global:
 
 {{- if .ConfigPaths }}
    - Configuration Folder   : {{.ConfigPaths.ConfigDir}}
-   - Configuration Folder   : {{.ConfigPaths.ConfigDir}}
    - Data Folder            : {{.ConfigPaths.DataDir}}
    - Hub Folder             : {{.ConfigPaths.HubDir}}
    - Simulation File        : {{.ConfigPaths.SimulationFilePath}}
