@@ -171,8 +171,11 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	if n.Name != "" {
 		NodesHits.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name}).Inc()
 	}
-
-	isWhitelisted, hasWhitelist, exprErr := n.Whitelist.Check(p.ParseIPSources(), cachedExprEnv)
+	exprErr := error(nil)
+	isWhitelisted := n.CheckIPsWL(p.ParseIPSources())
+	if !isWhitelisted {
+		isWhitelisted, exprErr = n.CheckExprWL(cachedExprEnv)
+	}
 	if exprErr != nil {
 		// Previous code returned nil if there was an error, so we keep this behavior
 		return false, nil //nolint:nilerr
@@ -340,9 +343,10 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	}
 
 	/*
-		This is to apply statics when the node *has* whitelists that successfully matched the node.
+		This is to apply statics when the node either was whitelisted, or is not a whitelist (it has no expr/ips wl)
+		It is overconvoluted and should be simplified
 	*/
-	if len(n.Statics) > 0 && (isWhitelisted || !hasWhitelist) {
+	if len(n.Statics) > 0 && (isWhitelisted || !n.ContainsWLs()) {
 		clog.Debugf("+ Processing %d statics", len(n.Statics))
 		// if all else is good in whitelist, process node's statics
 		err := n.ProcessStatics(n.Statics, p)
@@ -555,7 +559,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	}
 
 	/* compile whitelists if present */
-	whitelistValid, err := n.Whitelist.Compile(n)
+	whitelistValid, err := n.CompileWLs()
 	if err != nil {
 		return err
 	}
