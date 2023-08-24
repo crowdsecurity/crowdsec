@@ -2,7 +2,7 @@ package waf
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -78,12 +78,11 @@ type ParsedRequest struct {
 }
 
 func NewParsedRequestFromRequest(r *http.Request) (ParsedRequest, error) {
-	var body []byte
 	var err error
+	body := make([]byte, 0)
 
 	if r.Body != nil {
-		body = make([]byte, 0)
-		body, err = ioutil.ReadAll(r.Body)
+		body, err = io.ReadAll(r.Body)
 		if err != nil {
 			return ParsedRequest{}, fmt.Errorf("unable to read body: %s", err)
 		}

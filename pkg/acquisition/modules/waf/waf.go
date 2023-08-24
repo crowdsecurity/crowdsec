@@ -61,8 +61,6 @@ type WafSource struct {
 	outChan chan types.Event
 	InChan  chan waf.ParsedRequest
 
-	inBandWaf        coraza.WAF
-	outOfBandWaf     coraza.WAF
 	RulesCollections []*waf.WafRulesCollection
 
 	WafRunners []WafRunner
@@ -464,7 +462,7 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 
 						switch t := res.(type) {
 						case bool:
-							if t == false {
+							if !t {
 								log.Infof("filter didnt match")
 								continue
 							}
@@ -518,7 +516,7 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 
 						switch t := res.(type) {
 						case bool:
-							if t == false {
+							if !t {
 								continue
 							}
 						default:
@@ -569,6 +567,7 @@ func (r *WafRunner) Run(t *tomb.Tomb) error {
 			// Process outBand
 			outBandTx := r.outOfBandWaf.NewTransactionWithID(request.UUID)
 			expTx = outBandTx.(experimental.FullTransaction)
+
 			in, expTx, err = r.processReqWithEngine(expTx, request, OutOfBand)
 			if err != nil { //things went south
 				r.logger.Errorf("Error while processing request : %s", err)
@@ -655,5 +654,4 @@ func (w *WafSource) wafHandler(rw http.ResponseWriter, r *http.Request) {
 		rw.Write(body)
 	}
 
-	return
 }
