@@ -34,6 +34,7 @@ func TestLoadDBConfig(t *testing.T) {
 				Type:         "sqlite",
 				DbPath:       "./tests/test.db",
 				MaxOpenConns: ptr.Of(10),
+				DecisionBulkSize: defaultDecisionBulkSize,
 			},
 		},
 		{

@@ -30,7 +30,6 @@ const (
 	paginationSize   = 100 // used to queryAlert to avoid 'too many SQL variable'
 	defaultLimit     = 100 // default limit of element to returns when query alerts
 	bulkSize         = 50  // bulk size when create alerts
-	decisionBulkSize = 50
 )
 
 func formatAlertCN(source models.Source) string {
@@ -192,7 +191,7 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 	log.Debugf("Adding %d missing decisions to alert %s", len(missingDecisions), foundAlert.UUID)
 
 	decisions := make([]*ent.Decision, 0)
-	decisionBulk := make([]*ent.DecisionCreate, 0, decisionBulkSize)
+	decisionBulk := make([]*ent.DecisionCreate, 0, c.decisionBulkSize)
 
 	for i, decisionItem := range missingDecisions {
 		var start_ip, start_sfx, end_ip, end_sfx int64
@@ -234,17 +233,17 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 			SetUUID(decisionItem.UUID)
 
 		decisionBulk = append(decisionBulk, decisionCreate)
-		if len(decisionBulk) == decisionBulkSize {
+		if len(decisionBulk) == c.decisionBulkSize {
 			decisionsCreateRet, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
 			if err != nil {
 				return "", errors.Wrapf(BulkError, "creating alert decisions: %s", err)
 
 			}
 			decisions = append(decisions, decisionsCreateRet...)
-			if len(missingDecisions)-i <= decisionBulkSize {
+			if len(missingDecisions)-i <= c.decisionBulkSize {
 				decisionBulk = make([]*ent.DecisionCreate, 0, (len(missingDecisions) - i))
 			} else {
-				decisionBulk = make([]*ent.DecisionCreate, 0, decisionBulkSize)
+				decisionBulk = make([]*ent.DecisionCreate, 0, c.decisionBulkSize)
 			}
 		}
 	}
@@ -353,8 +352,8 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 	if err != nil {
 		return 0, 0, 0, errors.Wrapf(BulkError, "error creating transaction : %s", err)
 	}
-	decisionBulk := make([]*ent.DecisionCreate, 0, decisionBulkSize)
-	valueList := make([]string, 0, decisionBulkSize)
+	decisionBulk := make([]*ent.DecisionCreate, 0, c.decisionBulkSize)
+	valueList := make([]string, 0, c.decisionBulkSize)
 	DecOrigin := CapiMachineID
 	if *alertItem.Decisions[0].Origin == CapiMachineID || *alertItem.Decisions[0].Origin == CapiListsMachineID {
 		DecOrigin = *alertItem.Decisions[0].Origin
@@ -418,7 +417,7 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 		}
 		valueList = append(valueList, *decisionItem.Value)
 
-		if len(decisionBulk) == decisionBulkSize {
+		if len(decisionBulk) == c.decisionBulkSize {
 
 			insertedDecisions, err := txClient.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
 			if err != nil {
@@ -446,12 +445,12 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 			}
 			deleted += deletedDecisions
 
-			if len(alertItem.Decisions)-i <= decisionBulkSize {
+			if len(alertItem.Decisions)-i <= c.decisionBulkSize {
 				decisionBulk = make([]*ent.DecisionCreate, 0, (len(alertItem.Decisions) - i))
 				valueList = make([]string, 0, (len(alertItem.Decisions) - i))
 			} else {
-				decisionBulk = make([]*ent.DecisionCreate, 0, decisionBulkSize)
-				valueList = make([]string, 0, decisionBulkSize)
+				decisionBulk = make([]*ent.DecisionCreate, 0, c.decisionBulkSize)
+				valueList = make([]string, 0, c.decisionBulkSize)
 			}
 		}
 
@@ -631,7 +630,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 
 		decisions = make([]*ent.Decision, 0)
 		if len(alertItem.Decisions) > 0 {
-			decisionBulk := make([]*ent.DecisionCreate, 0, decisionBulkSize)
+			decisionBulk := make([]*ent.DecisionCreate, 0, c.decisionBulkSize)
 			for i, decisionItem := range alertItem.Decisions {
 				var start_ip, start_sfx, end_ip, end_sfx int64
 				var sz int
@@ -665,17 +664,17 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 					SetUUID(decisionItem.UUID)
 
 				decisionBulk = append(decisionBulk, decisionCreate)
-				if len(decisionBulk) == decisionBulkSize {
+				if len(decisionBulk) == c.decisionBulkSize {
 					decisionsCreateRet, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
 					if err != nil {
 						return nil, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
 
 					}
 					decisions = append(decisions, decisionsCreateRet...)
-					if len(alertItem.Decisions)-i <= decisionBulkSize {
+					if len(alertItem.Decisions)-i <= c.decisionBulkSize {
 						decisionBulk = make([]*ent.DecisionCreate, 0, (len(alertItem.Decisions) - i))
 					} else {
-						decisionBulk = make([]*ent.DecisionCreate, 0, decisionBulkSize)
+						decisionBulk = make([]*ent.DecisionCreate, 0, c.decisionBulkSize)
 					}
 				}
 			}

@@ -12,19 +12,22 @@ import (
 
 var DEFAULT_MAX_OPEN_CONNS = 100
 
+const defaultDecisionBulkSize = 50
+
 type DatabaseCfg struct {
-	User         string      `yaml:"user"`
-	Password     string      `yaml:"password"`
-	DbName       string      `yaml:"db_name"`
-	Sslmode      string      `yaml:"sslmode"`
-	Host         string      `yaml:"host"`
-	Port         int         `yaml:"port"`
-	DbPath       string      `yaml:"db_path"`
-	Type         string      `yaml:"type"`
-	Flush        *FlushDBCfg `yaml:"flush"`
-	LogLevel     *log.Level  `yaml:"log_level"`
-	MaxOpenConns *int        `yaml:"max_open_conns,omitempty"`
-	UseWal       *bool       `yaml:"use_wal,omitempty"`
+	User             string      `yaml:"user"`
+	Password         string      `yaml:"password"`
+	DbName           string      `yaml:"db_name"`
+	Sslmode          string      `yaml:"sslmode"`
+	Host             string      `yaml:"host"`
+	Port             int         `yaml:"port"`
+	DbPath           string      `yaml:"db_path"`
+	Type             string      `yaml:"type"`
+	Flush            *FlushDBCfg `yaml:"flush"`
+	LogLevel         *log.Level  `yaml:"log_level"`
+	MaxOpenConns     *int        `yaml:"max_open_conns,omitempty"`
+	UseWal           *bool       `yaml:"use_wal,omitempty"`
+	DecisionBulkSize int         `yaml:"decision_bulk_size,omitempty"`
 }
 
 type AuthGCCfg struct {
@@ -60,11 +63,15 @@ func (c *Config) LoadDBConfig() error {
 		c.DbConfig.MaxOpenConns = ptr.Of(DEFAULT_MAX_OPEN_CONNS)
 	}
 
+	if c.DbConfig.DecisionBulkSize == 0 {
+		log.Tracef("No decision_bulk_size value provided, using default value of %d", defaultDecisionBulkSize)
+		c.DbConfig.DecisionBulkSize = defaultDecisionBulkSize
+	}
+
 	if c.DbConfig.Type == "sqlite" {
 		if c.DbConfig.UseWal == nil {
 			log.Warning("You are using sqlite without WAL, this can have a performance impact. If you do not store the database in a network share, set db_config.use_wal to true. Set explicitly to false to disable this warning.")
 		}
-
 	}
 
 	return nil
