@@ -58,7 +58,7 @@ func (s *Splunk) Notify(ctx context.Context, notification *protobufs.Notificatio
 		return &protobufs.Empty{}, err
 	}
 
-	req, err := http.NewRequest("POST", cfg.URL, strings.NewReader(string(data)))
+	req, err := http.NewRequest(http.MethodPost, cfg.URL, strings.NewReader(string(data)))
 	if err != nil {
 		return &protobufs.Empty{}, err
 	}
@@ -70,7 +70,7 @@ func (s *Splunk) Notify(ctx context.Context, notification *protobufs.Notificatio
 		return &protobufs.Empty{}, err
 	}
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		content, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return &protobufs.Empty{}, fmt.Errorf("got non 200 response and failed to read error %s", err)

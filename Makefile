@@ -23,7 +23,7 @@ BUILD_RE2_WASM ?= 0
 BUILD_STATIC ?= 0
 
 # List of plugins to build
-PLUGINS ?= $(patsubst ./plugins/notifications/%,%,$(wildcard ./plugins/notifications/*))
+PLUGINS ?= $(patsubst ./cmd/notification-%,%,$(wildcard ./cmd/notification-*))
 
 # Can be overriden, if you can deal with the consequences
 BUILD_REQUIRE_GO_MAJOR ?= 1
@@ -38,7 +38,7 @@ BUILD_CODENAME ?= alphaga
 
 CROWDSEC_FOLDER = ./cmd/crowdsec
 CSCLI_FOLDER = ./cmd/crowdsec-cli/
-PLUGINS_DIR = ./plugins/notifications
+PLUGINS_DIR_PREFIX = ./cmd/notification-
 
 CROWDSEC_BIN = crowdsec$(EXT)
 CSCLI_BIN = cscli$(EXT)
@@ -143,7 +143,7 @@ all: clean test build
 .PHONY: plugins
 plugins:
 	@$(foreach plugin,$(PLUGINS), \
-		$(MAKE) -C $(PLUGINS_DIR)/$(plugin) build $(MAKE_FLAGS); \
+		$(MAKE) -C $(PLUGINS_DIR_PREFIX)$(plugin) build $(MAKE_FLAGS); \
 	)
 
 .PHONY: clean
@@ -155,7 +155,7 @@ clean: testclean
 	@$(RM) *.log $(WIN_IGNORE_ERR)
 	@$(RM) crowdsec-release.tgz $(WIN_IGNORE_ERR)
 	@$(foreach plugin,$(PLUGINS), \
-		$(MAKE) -C $(PLUGINS_DIR)/$(plugin) clean $(MAKE_FLAGS); \
+		$(MAKE) -C $(PLUGINS_DIR_PREFIX)$(plugin) clean $(MAKE_FLAGS); \
 	)
 
 .PHONY: cscli
@@ -165,6 +165,12 @@ cscli: goversion
 .PHONY: crowdsec
 crowdsec: goversion
 	@$(MAKE) -C $(CROWDSEC_FOLDER) build $(MAKE_FLAGS)
+
+.PHONY: notification-email
+notification-email: goversion
+	@$(MAKE) -C cmd/notification-email build $(MAKE_FLAGS)
+
+
 
 .PHONY: testclean
 testclean: bats-clean
@@ -201,37 +207,16 @@ localstack:
 localstack-stop:
 	docker-compose -f test/localstack/docker-compose.yml down
 
-# list of plugins that contain go.mod
-PLUGIN_VENDOR = $(foreach plugin,$(PLUGINS),$(shell if [ -f $(PLUGINS_DIR)/$(plugin)/go.mod ]; then echo $(PLUGINS_DIR)/$(plugin); fi))
-
 # build vendor.tgz to be distributed with the release
 .PHONY: vendor
 vendor:
-	$(foreach plugin_dir,$(PLUGIN_VENDOR), \
-		cd $(plugin_dir) >/dev/null && \
-		$(GO) mod vendor && \
-		cd - >/dev/null; \
-	)
 	$(GO) mod vendor
-	tar -czf vendor.tgz vendor $(foreach plugin_dir,$(PLUGIN_VENDOR),$(plugin_dir)/vendor)
-
-.PHONY: tidy
-tidy:
-	$(GO) mod tidy
-	$(foreach plugin_dir,$(PLUGIN_VENDOR), \
-		cd $(plugin_dir) >/dev/null && \
-		$(GO) mod tidy && \
-		cd - >/dev/null; \
-	)
+	tar -czf vendor.tgz vendor
 
 # remove vendor directories and vendor.tgz
 .PHONY: vendor-remove
 vendor-remove:
-	$(foreach plugin_dir,$(PLUGIN_VENDOR), \
-		$(RM) $(plugin_dir)/vendor; \
-	)
 	$(RM) vendor vendor.tgz
-
 
 .PHONY: package
 package:
@@ -242,9 +227,9 @@ package:
 	@$(CP) $(CSCLI_FOLDER)/$(CSCLI_BIN) $(RELDIR)/cmd/crowdsec-cli
 
 	@$(foreach plugin,$(PLUGINS), \
-		$(MKDIR) $(RELDIR)/$(PLUGINS_DIR)/$(plugin); \
-		$(CP) $(PLUGINS_DIR)/$(plugin)/notification-$(plugin)$(EXT) $(RELDIR)/$(PLUGINS_DIR)/$(plugin); \
-		$(CP) $(PLUGINS_DIR)/$(plugin)/$(plugin).yaml $(RELDIR)/$(PLUGINS_DIR)/$(plugin)/; \
+		$(MKDIR) $(RELDIR)/$(PLUGINS_DIR_PREFIX)$(plugin); \
+		$(CP) $(PLUGINS_DIR_PREFIX)$(plugin)/notification-$(plugin)$(EXT) $(RELDIR)/$(PLUGINS_DIR_PREFIX)$(plugin); \
+		$(CP) $(PLUGINS_DIR_PREFIX)$(plugin)/$(plugin).yaml $(RELDIR)/$(PLUGINS_DIR_PREFIX)$(plugin)/; \
 	)
 
 	@$(CPR) ./config $(RELDIR)
