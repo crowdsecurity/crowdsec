@@ -7,6 +7,8 @@ setup_file() {
     load "../lib/setup_file.sh"
     ./instance-data load
     HUB_DIR=$(config_get '.config_paths.hub_dir')
+    # remove trailing slash if any (like in default config.yaml from package)
+    HUB_DIR=${HUB_DIR%/}
     export HUB_DIR
     DETECT_YAML="${HUB_DIR}/detect.yaml"
     export DETECT_YAML

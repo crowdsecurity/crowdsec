@@ -73,11 +73,9 @@ teardown() {
     rune -0 yq -i '.name="email_default"' "$CONFIG_DIR/notifications/http.yaml"
     # enable a notification, otherwise plugins are ignored
     config_set "${PROFILES_PATH}" '.notifications=["slack_default"]'
-    # we want to check the logs
+    # the slack plugin may fail or not, but we just need the logs
     config_set '.common.log_media="stdout"'
-    # the command will fail because slack_deault is not working
-    run -1 --separate-stderr timeout 2s "${CROWDSEC}"
-    # but we have what we wanted
+    rune timeout 2s "${CROWDSEC}"
     assert_stderr --partial "notification 'email_default' is defined multiple times"
 }
 
