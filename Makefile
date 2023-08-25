@@ -209,14 +209,15 @@ localstack-stop:
 
 # build vendor.tgz to be distributed with the release
 .PHONY: vendor
-vendor:
+vendor: vendor-remove
 	$(GO) mod vendor
-	tar -czf vendor.tgz vendor
+	tar czf vendor.tgz vendor
+	tar --create --auto-compress --file=$(RELDIR)-vendor.tar.xz vendor
 
 # remove vendor directories and vendor.tgz
 .PHONY: vendor-remove
 vendor-remove:
-	$(RM) vendor vendor.tgz
+	$(RM) vendor vendor.tgz *-vendor.tar.xz
 
 .PHONY: package
 package:

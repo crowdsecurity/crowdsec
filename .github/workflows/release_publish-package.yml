@@ -42,4 +42,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag_name="${GITHUB_REF##*/}"
-          hub release edit -a crowdsec-release.tgz -a vendor.tgz -m "" "$tag_name"
+          hub release edit -a crowdsec-release.tgz -a vendor.tgz -a *-vendor.tar.xz -m "" "$tag_name"
