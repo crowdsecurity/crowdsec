@@ -64,7 +64,7 @@ bool = $(if $(filter $(call lc, $1),1 yes true),1,0)
 
 #--------------------------------------
 #
-# Define MAKE_FLAGS and LD_OPTS for the sub-makefiles in cmd/ and plugins/
+# Define MAKE_FLAGS and LD_OPTS for the sub-makefiles in cmd/
 #
 
 MAKE_FLAGS = --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
@@ -101,6 +101,7 @@ LD_OPTS_VARS += -X '$(GO_MODULE_NAME)/pkg/cwversion.Libre2=C++'
 endif
 endif
 
+# Build static to avoid the runtime dependency on libre2.so
 ifeq ($(call bool,$(BUILD_STATIC)),1)
 BUILD_TYPE = static
 EXTLDFLAGS := -extldflags '-static'
@@ -109,7 +110,14 @@ BUILD_TYPE = dynamic
 EXTLDFLAGS :=
 endif
 
-export LD_OPTS=-ldflags "-s -w $(EXTLDFLAGS) $(LD_OPTS_VARS)" \
+# Build with debug symbols to use Delve
+ifeq ($(call bool,$(DEBUG)),1)
+STRIP_SYMBOLS :=
+else
+STRIP_SYMBOLS := -s -w
+endif
+
+export LD_OPTS=-ldflags "$(STRIP_SYMBOLS) $(EXTLDFLAGS) $(LD_OPTS_VARS)" \
 	-trimpath -tags $(GO_TAGS)
 
 ifneq (,$(TEST_COVERAGE))
