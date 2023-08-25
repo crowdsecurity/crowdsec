@@ -61,8 +61,6 @@ config_generate() {
        ../config/online_api_credentials.yaml \
        "${CONFIG_DIR}/"
 
-    cp ../config/context.yaml "${CONFIG_DIR}/console/"
-
     cp ../config/detect.yaml \
        "${HUB_DIR}"
 
