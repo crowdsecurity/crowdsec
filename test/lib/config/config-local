@@ -123,6 +123,8 @@ make_init_data() {
     "$CSCLI" --warning machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto
     "$CSCLI" --warning hub update
     "$CSCLI" --warning collections install crowdsecurity/linux
+    # the whitelists are installed by the deb & rpm packages, so we test with the same config
+    "$CSCLI" --warning parsers install crowdsecurity/whitelists
 
     mkdir -p "$LOCAL_INIT_DIR"
 

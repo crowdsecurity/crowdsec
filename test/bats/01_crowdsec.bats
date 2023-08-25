@@ -192,6 +192,12 @@ teardown() {
 }
 
 @test "crowdsec (disabled datasources)" {
+    if is_package_testing; then
+        # we can't hide journalctl in package testing
+        # because crowdsec is run from systemd
+        skip "n/a for package testing"
+    fi
+
     config_set '.common.log_media="stdout"'
 
     # a datasource cannot run - missing journalctl command

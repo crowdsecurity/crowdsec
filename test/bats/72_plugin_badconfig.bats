@@ -75,7 +75,7 @@ teardown() {
     config_set "${PROFILES_PATH}" '.notifications=["slack_default"]'
     # we want to check the logs
     config_set '.common.log_media="stdout"'
-    # the command will fail because slack_deault is not working
+    # the command will fail because slack_default is not working
     run -1 --separate-stderr timeout 2s "${CROWDSEC}"
     # but we have what we wanted
     assert_stderr --partial "notification 'email_default' is defined multiple times"
