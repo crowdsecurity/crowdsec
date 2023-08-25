@@ -146,7 +146,7 @@ teardown() {
     # restore
     rm "${SIMULATION_YAML}"
     rune -0 cscli config restore "${backupdir}"
-    assert_file_exist "${SIMULATION_YAML}"
+    assert_file_exists "${SIMULATION_YAML}"
 
     # cleanup
     rm -rf -- "${backupdir:?}"
@@ -283,7 +283,7 @@ teardown() {
 
 @test "cscli support dump (smoke test)" {
     rune -0 cscli support dump -f "$BATS_TEST_TMPDIR"/dump.zip
-    assert_file_exist "$BATS_TEST_TMPDIR"/dump.zip
+    assert_file_exists "$BATS_TEST_TMPDIR"/dump.zip
 }
 
 @test "cscli explain" {
@@ -321,14 +321,14 @@ teardown() {
     rune -0 cscli doc
     refute_output
     refute_stderr
-    assert_file_exist "doc/cscli.md"
+    assert_file_exists "doc/cscli.md"
     assert_file_not_exist "doc/cscli_setup.md"
 
     # commands guarded by feature flags are not documented unless the feature flag is set
 
     export CROWDSEC_FEATURE_CSCLI_SETUP="true"
     rune -0 cscli doc
-    assert_file_exist "doc/cscli_setup.md"
+    assert_file_exists "doc/cscli_setup.md"
 }
 
 @test "feature.yaml for subcommands" {

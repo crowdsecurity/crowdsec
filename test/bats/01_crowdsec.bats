@@ -79,7 +79,7 @@ teardown() {
 
     rune -0 ./instance-crowdsec start-pid
     PID="$output"
-    assert_file_exist "$log_old"
+    assert_file_exists "$log_old"
     assert_file_contains "$log_old" "Starting processing data"
 
     logdir2=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp -u)
@@ -113,7 +113,7 @@ teardown() {
 
     sleep 5
 
-    assert_file_exist "$log_new"
+    assert_file_exists "$log_new"
 
     for ((i=0; i<10; i++)); do
         sleep 1
