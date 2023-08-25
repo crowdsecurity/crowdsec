@@ -22,12 +22,13 @@ import (
 )
 
 type Client struct {
-	Ent      *ent.Client
-	CTX      context.Context
-	Log      *log.Logger
-	CanFlush bool
-	Type     string
-	WalMode  *bool
+	Ent              *ent.Client
+	CTX              context.Context
+	Log              *log.Logger
+	CanFlush         bool
+	Type             string
+	WalMode          *bool
+	decisionBulkSize int
 }
 
 func getEntDriver(dbtype string, dbdialect string, dsn string, config *csconfig.DatabaseCfg) (*entsql.Driver, error) {
@@ -93,7 +94,16 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 	if err = client.Schema.Create(context.Background()); err != nil {
 		return nil, fmt.Errorf("failed creating schema resources: %v", err)
 	}
-	return &Client{Ent: client, CTX: context.Background(), Log: clog, CanFlush: true, Type: config.Type, WalMode: config.UseWal}, nil
+
+	return &Client{
+		Ent: client,
+		CTX: context.Background(),
+		Log: clog,
+		CanFlush: true,
+		Type: config.Type,
+		WalMode: config.UseWal,
+		decisionBulkSize: config.DecisionBulkSize,
+	}, nil
 }
 
 func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Scheduler, error) {
