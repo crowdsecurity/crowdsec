@@ -92,7 +92,6 @@ ifeq ($(PKG_CONFIG),)
 endif
 
 ifeq ($(RE2_CHECK),)
-# we could detect the platform and suggest the command to install
 RE2_FAIL := "libre2-dev is not installed, please install it or set BUILD_RE2_WASM=1 to use the WebAssembly version"
 else
 # += adds a space that we don't want
@@ -110,17 +109,19 @@ BUILD_TYPE = dynamic
 EXTLDFLAGS :=
 endif
 
-# Build with debug symbols to use Delve
+# Build with debug symbols, and disable optimizations + inlining, to use Delve
 ifeq ($(call bool,$(DEBUG)),1)
 STRIP_SYMBOLS :=
+DISABLE_OPTIMIZATION := -gcflags "-N -l"
 else
 STRIP_SYMBOLS := -s -w
+DISABLE_OPTIMIZATION :=
 endif
 
 export LD_OPTS=-ldflags "$(STRIP_SYMBOLS) $(EXTLDFLAGS) $(LD_OPTS_VARS)" \
-	-trimpath -tags $(GO_TAGS)
+	-trimpath -tags $(GO_TAGS) $(DISABLE_OPTIMIZATION)
 
-ifneq (,$(TEST_COVERAGE))
+ifeq ($(call bool,$(TEST_COVERAGE)),1)
 LD_OPTS += -cover
 endif
 
@@ -143,7 +144,17 @@ ifneq (,$(RE2_CHECK))
 else
 	$(info Fallback to WebAssembly regexp library. To use the C++ version, make sure you have installed libre2-dev and pkg-config.)
 endif
+
+ifeq ($(call bool,$(DEBUG)),1)
+	$(info Building with debug symbols and disabled optimizations)
+endif
+
+ifeq ($(call bool,$(TEST_COVERAGE)),1)
+	$(info Test coverage collection enabled)
+endif
+
 	$(info )
+
 
 .PHONY: all
 all: clean test build
