@@ -36,9 +36,28 @@ setup() {
     assert_output --partial "tainted"
     assert_output --partial "context"
     assert_output --partial "console_management"
+    rune -0 cscli console status -o json
+    assert_json - <<- EOT
+	{
+	"ConsoleManagement": false,
+	"ShareContext": false,
+	"ShareCustomScenarios": true,
+	"ShareManualDecisions": false,
+	"ShareTaintedScenarios": true
+	}
+	EOT
+    rune -0 cscli console status -o raw
+    assert_output - <<-EOT
+	option,enabled
+	manual,false
+	custom,true
+	tainted,true
+	context,false
+	console_management,false
+	EOT
 }
 
-@test "cscli console enable [option]" {
+@test "cscli console enable" {
     rune -0 cscli console enable manual --debug
     assert_stderr --partial "manual set to true"
     assert_stderr --partial "[manual] have been enabled"
@@ -60,7 +79,7 @@ setup() {
     assert_stderr --partial "unknown flag tralala"
 }
 
-@test "cscli console disable [option]" {
+@test "cscli console disable" {
     rune -0 cscli console disable tainted --debug
     assert_stderr --partial "tainted set to false"
     assert_stderr --partial "[tainted] have been disabled"

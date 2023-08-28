@@ -182,8 +182,8 @@ Disable given information push to the central API.`,
 	cmdConsole.AddCommand(cmdDisable)
 
 	cmdConsoleStatus := &cobra.Command{
-		Use:               "status [option]",
-		Short:             "Shows status of one or all console options",
+		Use:               "status",
+		Short:             "Shows status of the console options",
 		Example:           `sudo cscli console status`,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
