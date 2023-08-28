@@ -1,31 +1,62 @@
 #!/usr/bin/env python3
 
+import datetime
 import json
 import logging
 import sys
+import urllib
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
+
 class RequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
-        request_path = self.path
+        logging.info("Request path: %s", self.path)
+
+        parsed_path = urllib.parse.urlparse(self.path)
+        routes = {
+            '/': self.root,
+            '/v3/watchers/login': self.v3_watchers_login,
+        }
+
+        if parsed_path.path in routes:
+            routes[parsed_path.path]()
+            return
+
+        self.send_response(404)
+        self.end_headers()
+        self.wfile.write(b'404 Not found')
+
+    def log_message(self, format, *args):
+        return
+
+    def root(self):
         request_body = self.rfile.read(int(self.headers['Content-Length']))
         request_body = json.loads(request_body.decode())
         log = {
-            "path": request_path,
+            "path": self.path,
             "status": 200,
             "request_body": request_body,
         }
         print(json.dumps(log))
         self.send_response(200)
-        self.send_header('Content-type','application/json')
+        self.send_header('Content-type', 'application/json')
         self.end_headers()
         self.wfile.write(json.dumps({}).encode())
         self.wfile.flush()
-        return
 
-    def log_message(self, format, *args):
-        return
+    def v3_watchers_login(self):
+        j = {
+            'code': 200,
+            'token': '',
+            'expire': datetime.datetime.now().strftime('%Y-%m-%dT%H:%M:%SZ'),
+        }
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps(j).encode())
+        self.wfile.flush()
+
 
 def main(argv):
     try:
@@ -42,6 +73,6 @@ def main(argv):
     return 0
 
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     sys.exit(main(sys.argv))
