@@ -39,11 +39,11 @@ setup() {
     rune -0 cscli console status -o json
     assert_json - <<- EOT
 	{
-	"ConsoleManagement": false,
-	"ShareContext": false,
-	"ShareCustomScenarios": true,
-	"ShareManualDecisions": false,
-	"ShareTaintedScenarios": true
+	"console_management": false,
+	"context": false,
+	"custom": true,
+	"manual": false,
+	"tainted": true
 	}
 	EOT
     rune -0 cscli console status -o raw

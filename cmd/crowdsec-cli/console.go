@@ -191,7 +191,15 @@ Disable given information push to the central API.`,
 			case "human":
 				cmdConsoleStatusTable(color.Output, *csConfig)
 			case "json":
-				data, err := json.MarshalIndent(csConfig.API.Server.ConsoleConfig, "", "  ")
+				c := csConfig.API.Server.ConsoleConfig
+				out := map[string](*bool){
+					csconfig.SEND_MANUAL_SCENARIOS: c.ShareManualDecisions,
+					csconfig.SEND_CUSTOM_SCENARIOS: c.ShareCustomScenarios,
+					csconfig.SEND_TAINTED_SCENARIOS: c.ShareTaintedScenarios,
+					csconfig.SEND_CONTEXT: c.ShareContext,
+					csconfig.CONSOLE_MANAGEMENT: c.ConsoleManagement,
+				}
+				data, err := json.MarshalIndent(out, "", "  ")
 				if err != nil {
 					return fmt.Errorf("failed to marshal configuration: %s", err)
 				}
