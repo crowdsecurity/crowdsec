@@ -22,7 +22,7 @@ SYSTEMD_PATH_FILE = "/etc/systemd/system/crowdsec.service"
 all: clean test build
 
 build: clean
-	$(GOBUILD) $(LD_OPTS) $(BUILD_VENDOR_FLAGS) -o $(CROWDSEC_BIN)
+	$(GOBUILD) $(LD_OPTS) -o $(CROWDSEC_BIN)
 
 test:
 	$(GOTEST) $(LD_OPTS) -v ./...

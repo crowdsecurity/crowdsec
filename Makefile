@@ -64,7 +64,7 @@ bool = $(if $(filter $(call lc, $1),1 yes true),1,0)
 
 #--------------------------------------
 #
-# Define MAKE_FLAGS and LD_OPTS for the sub-makefiles in cmd/ and plugins/
+# Define MAKE_FLAGS and LD_OPTS for the sub-makefiles in cmd/
 #
 
 MAKE_FLAGS = --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
@@ -92,7 +92,6 @@ ifeq ($(PKG_CONFIG),)
 endif
 
 ifeq ($(RE2_CHECK),)
-# we could detect the platform and suggest the command to install
 RE2_FAIL := "libre2-dev is not installed, please install it or set BUILD_RE2_WASM=1 to use the WebAssembly version"
 else
 # += adds a space that we don't want
@@ -101,6 +100,7 @@ LD_OPTS_VARS += -X '$(GO_MODULE_NAME)/pkg/cwversion.Libre2=C++'
 endif
 endif
 
+# Build static to avoid the runtime dependency on libre2.so
 ifeq ($(call bool,$(BUILD_STATIC)),1)
 BUILD_TYPE = static
 EXTLDFLAGS := -extldflags '-static'
@@ -109,10 +109,19 @@ BUILD_TYPE = dynamic
 EXTLDFLAGS :=
 endif
 
-export LD_OPTS=-ldflags "-s -w $(EXTLDFLAGS) $(LD_OPTS_VARS)" \
-	-trimpath -tags $(GO_TAGS)
+# Build with debug symbols, and disable optimizations + inlining, to use Delve
+ifeq ($(call bool,$(DEBUG)),1)
+STRIP_SYMBOLS :=
+DISABLE_OPTIMIZATION := -gcflags "-N -l"
+else
+STRIP_SYMBOLS := -s -w
+DISABLE_OPTIMIZATION :=
+endif
 
-ifneq (,$(TEST_COVERAGE))
+export LD_OPTS=-ldflags "$(STRIP_SYMBOLS) $(EXTLDFLAGS) $(LD_OPTS_VARS)" \
+	-trimpath -tags $(GO_TAGS) $(DISABLE_OPTIMIZATION)
+
+ifeq ($(call bool,$(TEST_COVERAGE)),1)
 LD_OPTS += -cover
 endif
 
@@ -135,7 +144,17 @@ ifneq (,$(RE2_CHECK))
 else
 	$(info Fallback to WebAssembly regexp library. To use the C++ version, make sure you have installed libre2-dev and pkg-config.)
 endif
+
+ifeq ($(call bool,$(DEBUG)),1)
+	$(info Building with debug symbols and disabled optimizations)
+endif
+
+ifeq ($(call bool,$(TEST_COVERAGE)),1)
+	$(info Test coverage collection enabled)
+endif
+
 	$(info )
+
 
 .PHONY: all
 all: clean test build
