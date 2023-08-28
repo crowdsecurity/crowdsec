@@ -2,6 +2,8 @@ module github.com/crowdsecurity/crowdsec
 
 go 1.21
 
+toolchain go1.21.0
+
 require (
 	entgo.io/ent v0.12.4
 	github.com/AlecAivazis/survey/v2 v2.2.7
@@ -75,7 +77,6 @@ require (
 	github.com/wasilibs/go-re2 v1.3.0
 	github.com/xhit/go-simple-mail/v2 v2.16.0
 	golang.org/x/crypto v0.9.0
-	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	golang.org/x/mod v0.11.0
 	golang.org/x/sys v0.9.0
 	google.golang.org/grpc v1.56.1
