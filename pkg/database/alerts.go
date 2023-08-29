@@ -45,7 +45,6 @@ func formatAlertCN(source models.Source) string {
 }
 
 func formatAlertSource(alert *models.Alert) string {
-	// pp.Println(alert)
 	if alert.Source == nil || alert.Source.Scope == nil || *alert.Source.Scope == "" {
 		return "empty source"
 	}
@@ -129,7 +128,6 @@ func formatAlertAsString(machineId string, alert *models.Alert) []string {
 // if alert already exists, it checks it associated decisions already exists
 // if some associated decisions are missing (ie. previous insert ended up in error) it inserts them
 func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) (string, error) {
-
 	if alertItem.UUID == "" {
 		return "", fmt.Errorf("alert UUID is empty")
 	}
@@ -142,11 +140,11 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 
 	//alert wasn't found, insert it (expected hotpath)
 	if ent.IsNotFound(err) || len(alerts) == 0 {
-		ret, err := c.CreateAlert(machineID, []*models.Alert{alertItem})
+		alertIDs, err := c.CreateAlert(machineID, []*models.Alert{alertItem})
 		if err != nil {
 			return "", fmt.Errorf("unable to create alert: %w", err)
 		}
-		return ret[0], nil
+		return alertIDs[0], nil
 	}
 
 	//this should never happen
@@ -155,22 +153,24 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 	}
 
 	log.Infof("Alert %s already exists, checking associated decisions", alertItem.UUID)
+
 	//alert is found, check for any missing decisions
-	missingUuids := []string{}
-	newUuids := []string{}
-	for _, decItem := range alertItem.Decisions {
-		newUuids = append(newUuids, decItem.UUID)
+
+	newUuids := make([]string, len(alertItem.Decisions))
+	for i, decItem := range alertItem.Decisions {
+		newUuids[i] = decItem.UUID
 	}
 
 	foundAlert := alerts[0]
-	foundUuids := []string{}
-	for _, decItem := range foundAlert.Edges.Decisions {
-		foundUuids = append(foundUuids, decItem.UUID)
+	foundUuids := make([]string, len(foundAlert.Edges.Decisions))
+	for i, decItem := range foundAlert.Edges.Decisions {
+		foundUuids[i] = decItem.UUID
 	}
 
 	sort.Strings(foundUuids)
 	sort.Strings(newUuids)
 
+	missingUuids := []string{}
 	for idx, uuid := range newUuids {
 		if len(foundUuids) < idx+1 || uuid != foundUuids[idx] {
 			log.Warningf("Decision with uuid %s not found in alert %s", uuid, foundAlert.UUID)
@@ -197,8 +197,7 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 	//add missing decisions
 	log.Debugf("Adding %d missing decisions to alert %s", len(missingDecisions), foundAlert.UUID)
 
-	decisions := make([]*ent.Decision, 0)
-	decisionBulk := make([]*ent.DecisionCreate, 0, c.decisionBulkSize)
+	decisionBuilders := make([]*ent.DecisionCreate, len(missingDecisions))
 
 	for i, decisionItem := range missingDecisions {
 		var start_ip, start_sfx, end_ip, end_sfx int64
@@ -224,7 +223,7 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 		}
 		decisionUntil := alertTime.UTC().Add(decisionDuration)
 
-		decisionCreate := c.Ent.Decision.Create().
+		decisionBuilder := c.Ent.Decision.Create().
 			SetUntil(decisionUntil).
 			SetScenario(*decisionItem.Scenario).
 			SetType(*decisionItem.Type).
@@ -239,32 +238,30 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 			SetSimulated(*alertItem.Simulated).
 			SetUUID(decisionItem.UUID)
 
-		// todo chunks
-		decisionBulk = append(decisionBulk, decisionCreate)
-		if len(decisionBulk) == c.decisionBulkSize {
-			decisionsCreateRet, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
-			if err != nil {
-				return "", errors.Wrapf(BulkError, "creating alert decisions: %s", err)
+		decisionBuilders[i] = decisionBuilder
+	}
 
-			}
-			decisions = append(decisions, decisionsCreateRet...)
-			if len(missingDecisions)-i <= c.decisionBulkSize {
-				decisionBulk = make([]*ent.DecisionCreate, 0, (len(missingDecisions) - i))
-			} else {
-				decisionBulk = make([]*ent.DecisionCreate, 0, c.decisionBulkSize)
-			}
+	decisions := []*ent.Decision{}
+
+	builderChunks := slicetools.Chunks(decisionBuilders, c.decisionBulkSize)
+
+	for _, builderChunk := range builderChunks {
+		decisionsCreateRet, err := c.Ent.Decision.CreateBulk(builderChunk...).Save(c.CTX)
+		if err != nil {
+			return "", errors.Wrapf(BulkError, "creating alert decisions: %s", err)
 		}
+		decisions = append(decisions, decisionsCreateRet...)
 	}
 
-	decisionsCreateRet, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
-	if err != nil {
-		return "", errors.Wrapf(BulkError, "creating alert decisions: %s", err)
-	}
-	decisions = append(decisions, decisionsCreateRet...)
 	//now that we bulk created missing decisions, let's update the alert
-	err = c.Ent.Alert.Update().Where(alert.UUID(alertItem.UUID)).AddDecisions(decisions...).Exec(c.CTX)
-	if err != nil {
-		return "", fmt.Errorf("updating alert %s: %w", alertItem.UUID, err)
+
+	decisionChunks := slicetools.Chunks(decisions, c.decisionBulkSize)
+
+	for _, decisionChunk := range decisionChunks {
+		err = c.Ent.Alert.Update().Where(alert.UUID(alertItem.UUID)).AddDecisions(decisionChunk...).Exec(c.CTX)
+		if err != nil {
+			return "", fmt.Errorf("updating alert %s: %w", alertItem.UUID, err)
+		}
 	}
 
 	return "", nil
@@ -523,7 +520,7 @@ func (c *Client) createDecisionChunk(simulated bool, stopAtTime time.Time, decis
 
 
 func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts []*models.Alert) ([]string, error) {
-	alertCreate := make([]*ent.AlertCreate, len(alerts))
+	alertBuilders := make([]*ent.AlertCreate, len(alerts))
 	alertDecisions := make([][]*ent.Decision, len(alerts))
 	for i, alertItem := range alerts {
 		var metas []*ent.Meta
@@ -625,18 +622,16 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 
 		decisions := []*ent.Decision{}
 
-		if len(alertItem.Decisions) > 0 {
-			decisionChunks := slicetools.Chunks(alertItem.Decisions, c.decisionBulkSize)
-			for _, decisionChunk := range decisionChunks {
-				decisionRet, err := c.createDecisionChunk(*alertItem.Simulated, stopAtTime, decisionChunk)
-				if err != nil {
-					return nil, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
-				}
-				decisions = append(decisions, decisionRet...)
+		decisionChunks := slicetools.Chunks(alertItem.Decisions, c.decisionBulkSize)
+		for _, decisionChunk := range decisionChunks {
+			decisionRet, err := c.createDecisionChunk(*alertItem.Simulated, stopAtTime, decisionChunk)
+			if err != nil {
+				return nil, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
 			}
+			decisions = append(decisions, decisionRet...)
 		}
 
-		alertB := c.Ent.Alert.
+		alertBuilder := c.Ent.Alert.
 			Create().
 			SetScenario(*alertItem.Scenario).
 			SetMessage(*alertItem.Message).
@@ -662,14 +657,14 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 			AddMetas(metas...)
 
 		if owner != nil {
-			alertB.SetOwner(owner)
+			alertBuilder.SetOwner(owner)
 		}
 
-		alertCreate[i] = alertB
+		alertBuilders[i] = alertBuilder
 		alertDecisions[i] = decisions
 	}
 
-	alertsCreateBulk, err := c.Ent.Alert.CreateBulk(alertCreate...).Save(c.CTX)
+	alertsCreateBulk, err := c.Ent.Alert.CreateBulk(alertBuilders...).Save(c.CTX)
 	if err != nil {
 		return nil, errors.Wrapf(BulkError, "bulk creating alert : %s", err)
 	}
@@ -692,7 +687,6 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 
 
 func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]string, error) {
-	ret := []string{}
 	var owner *ent.Machine
 	var err error
 
@@ -705,23 +699,22 @@ func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]str
 			c.Log.Debugf("CreateAlertBulk: Machine Id %s doesn't exist", machineID)
 			owner = nil
 		}
-	} else {
-		owner = nil
 	}
 
 	c.Log.Debugf("writing %d items", len(alertList))
 
 	alertChunks := slicetools.Chunks(alertList, bulkSize)
+	alertIDs := []string{}
 
 	for _, alertChunk := range alertChunks {
-		alertIds, err := c.createAlertChunk(machineID, owner, alertChunk)
+		ids, err := c.createAlertChunk(machineID, owner, alertChunk)
 		if err != nil {
 			return []string{}, errors.Wrapf(QueryFail, "machine '%s': %s", machineID, err)
 		}
-		ret = append(ret, alertIds...)
+		alertIDs = append(alertIDs, ids...)
 	}
 
-	return ret, nil
+	return alertIDs, nil
 }
 
 func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, error) {
@@ -905,6 +898,7 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 	}
 	return predicates, nil
 }
+
 func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]string) (*ent.AlertQuery, error) {
 	preds, err := AlertPredicatesFromFilter(filter)
 	if err != nil {
@@ -914,7 +908,6 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 }
 
 func (c *Client) AlertsCountPerScenario(filters map[string][]string) (map[string]int, error) {
-
 	var res []struct {
 		Scenario string
 		Count    int
@@ -950,7 +943,6 @@ func (c *Client) TotalAlerts() (int, error) {
 }
 
 func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert, error) {
-
 	sort := "DESC" // we sort by desc by default
 	if val, ok := filter["sort"]; ok {
 		if val[0] != "ASC" && val[0] != "DESC" {
@@ -1143,6 +1135,7 @@ func (c *Client) FlushOrphans() {
 	}
 }
 
+// WAT
 func (c *Client) FlushAgentsAndBouncers(agentsCfg *csconfig.AuthGCCfg, bouncersCfg *csconfig.AuthGCCfg) error {
 	log.Debug("starting FlushAgentsAndBouncers")
 	if bouncersCfg != nil {
