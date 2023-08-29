@@ -13,7 +13,7 @@ Patch1:         user.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  systemd
-Requires: crontabs
+Requires: (crontabs or cron)
 %{?fc33:BuildRequires: systemd-rpm-macros}
 %{?fc34:BuildRequires: systemd-rpm-macros}
 %{?fc35:BuildRequires: systemd-rpm-macros}
