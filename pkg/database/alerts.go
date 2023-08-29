@@ -13,6 +13,8 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/go-cs-lib/slicetools"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
@@ -252,6 +254,7 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 			}
 		}
 	}
+
 	decisionsCreateRet, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
 	if err != nil {
 		return "", errors.Wrapf(BulkError, "creating alert decisions: %s", err)
@@ -495,23 +498,6 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 	return alertRef.ID, inserted, deleted, nil
 }
 
-func chunkDecisions(decisions []*ent.Decision, chunkSize int) [][]*ent.Decision {
-	var ret [][]*ent.Decision
-	var chunk []*ent.Decision
-
-	for _, d := range decisions {
-		chunk = append(chunk, d)
-		if len(chunk) == chunkSize {
-			ret = append(ret, chunk)
-			chunk = nil
-		}
-	}
-	if len(chunk) > 0 {
-		ret = append(ret, chunk)
-	}
-	return ret
-}
-
 func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([]string, error) {
 	ret := []string{}
 	var owner *ent.Machine
@@ -728,7 +714,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			for alertIndex, a := range alerts {
 				ret = append(ret, strconv.Itoa(a.ID))
 				d := alertDecisions[alertIndex]
-				decisionsChunk := chunkDecisions(d, c.decisionBulkSize)
+				decisionsChunk := slicetools.Chunks(d, c.decisionBulkSize)
 				for _, d2 := range decisionsChunk {
 					_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
 					if err != nil {
@@ -754,7 +740,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 	for alertIndex, a := range alerts {
 		ret = append(ret, strconv.Itoa(a.ID))
 		d := alertDecisions[alertIndex]
-		decisionsChunk := chunkDecisions(d, c.decisionBulkSize)
+		decisionsChunk := slicetools.Chunks(d, c.decisionBulkSize)
 		for _, d2 := range decisionsChunk {
 			_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
 			if err != nil {
