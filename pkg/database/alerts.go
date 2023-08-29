@@ -89,6 +89,10 @@ func formatAlertAsString(machineId string, alert *models.Alert) []string {
 
 	var retStr []string
 
+	if alert.Decisions[0].Origin != nil && *alert.Decisions[0].Origin == types.CscliImportOrigin {
+		return []string{fmt.Sprintf("(%s) alert : %s for %d decisions", machineId, reason, len(alert.Decisions))}
+	}
+
 	for i, decisionItem := range alert.Decisions {
 		decision := ""
 		if alert.Simulated != nil && *alert.Simulated {
@@ -509,7 +513,6 @@ func chunkDecisions(decisions []*ent.Decision, chunkSize int) [][]*ent.Decision 
 
 func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([]string, error) {
 	ret := []string{}
-	bulkSize := 20
 	var owner *ent.Machine
 	var err error
 
@@ -528,7 +531,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 
 	c.Log.Debugf("writing %d items", len(alertList))
 	bulk := make([]*ent.AlertCreate, 0, bulkSize)
-	alertDecisions := make([][]*ent.Decision, 0, bulkSize)
+	alertDecisions := make([][]*ent.Decision, 0, c.decisionBulkSize)
 	for i, alertItem := range alertList {
 		var decisions []*ent.Decision
 		var metas []*ent.Meta
@@ -724,7 +727,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			for alertIndex, a := range alerts {
 				ret = append(ret, strconv.Itoa(a.ID))
 				d := alertDecisions[alertIndex]
-				decisionsChunk := chunkDecisions(d, bulkSize)
+				decisionsChunk := chunkDecisions(d, c.decisionBulkSize)
 				for _, d2 := range decisionsChunk {
 					_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
 					if err != nil {
@@ -737,7 +740,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 				alertDecisions = make([][]*ent.Decision, 0, (len(alertList) - i))
 			} else {
 				bulk = make([]*ent.AlertCreate, 0, bulkSize)
-				alertDecisions = make([][]*ent.Decision, 0, bulkSize)
+				alertDecisions = make([][]*ent.Decision, 0, c.decisionBulkSize)
 			}
 		}
 	}
@@ -750,7 +753,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 	for alertIndex, a := range alerts {
 		ret = append(ret, strconv.Itoa(a.ID))
 		d := alertDecisions[alertIndex]
-		decisionsChunk := chunkDecisions(d, bulkSize)
+		decisionsChunk := chunkDecisions(d, c.decisionBulkSize)
 		for _, d2 := range decisionsChunk {
 			_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
 			if err != nil {
