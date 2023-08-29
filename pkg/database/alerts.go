@@ -43,7 +43,8 @@ func formatAlertCN(source models.Source) string {
 }
 
 func formatAlertSource(alert *models.Alert) string {
-	if alert.Source == nil {
+	// pp.Println(alert)
+	if alert.Source == nil || alert.Source.Scope == nil || *alert.Source.Scope == "" {
 		return "empty source"
 	}
 
