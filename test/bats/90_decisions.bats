@@ -163,7 +163,6 @@ teardown() {
 	whatever
 	EOT
     assert_stderr --partial 'Parsing values'
-    # XXX confusing error message
     assert_stderr --partial 'creating alert decisions: whatever: invalid ip address / range'
 
     #----------
