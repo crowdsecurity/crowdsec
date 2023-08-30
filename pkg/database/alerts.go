@@ -701,7 +701,7 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 	var start_ip, start_sfx, end_ip, end_sfx int64
 	var hasActiveDecision bool
 	var ip_sz int
-	var contains bool = true
+	var contains = true
 	/*if contains is true, return bans that *contains* the given value (value is the inner)
 	  else, return bans that are *contained* by the given value (value is the outer)*/
 
@@ -724,7 +724,7 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 				return nil, errors.Wrapf(InvalidFilter, "invalid contains value : %s", err)
 			}
 		case "scope":
-			var scope string = value[0]
+			var scope = value[0]
 			if strings.ToLower(scope) == "ip" {
 				scope = types.Ip
 			} else if strings.ToLower(scope) == "range" {
