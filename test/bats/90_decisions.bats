@@ -164,7 +164,7 @@ teardown() {
 	EOT
     assert_stderr --partial 'Parsing values'
     # XXX confusing error message
-    assert_stderr --partial 'creating alert decisions: whatever: invalid ip address / range: unable to insert bulk: unable to query'
+    assert_stderr --partial 'creating alert decisions: whatever: invalid ip address / range'
 
     #----------
     # Batch

@@ -248,7 +248,7 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 	for _, builderChunk := range builderChunks {
 		decisionsCreateRet, err := c.Ent.Decision.CreateBulk(builderChunk...).Save(c.CTX)
 		if err != nil {
-			return "", errors.Wrapf(BulkError, "creating alert decisions: %s", err)
+			return "", fmt.Errorf("creating alert decisions: %w", err)
 		}
 		decisions = append(decisions, decisionsCreateRet...)
 	}
@@ -440,7 +440,7 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 	log.Debugf("deleted %d decisions for %s vs %s", deleted, DecOrigin, *alertItem.Decisions[0].Origin)
 	insertedDecisions, err := txClient.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
 	if err != nil {
-		return 0, 0, 0, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
+		return 0, 0, 0, fmt.Errorf("creating alert decisions: %w", err)
 	}
 	inserted += len(insertedDecisions)
 	/*Deleting older decisions from capi*/
@@ -511,7 +511,7 @@ func (c *Client) createDecisionChunk(simulated bool, stopAtTime time.Time, decis
 
 	ret, err := c.Ent.Decision.CreateBulk(decisionCreate...).Save(c.CTX)
 	if err != nil {
-		return nil, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
+		return nil, fmt.Errorf("creating alert decisions: %w", err)
 
 	}
 
@@ -626,7 +626,7 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 		for _, decisionChunk := range decisionChunks {
 			decisionRet, err := c.createDecisionChunk(*alertItem.Simulated, stopAtTime, decisionChunk)
 			if err != nil {
-				return nil, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
+				return nil, fmt.Errorf("creating alert decisions: %w", err)
 			}
 			decisions = append(decisions, decisionRet...)
 		}
@@ -694,7 +694,7 @@ func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]str
 		owner, err = c.QueryMachineByID(machineID)
 		if err != nil {
 			if errors.Cause(err) != UserNotExists {
-				return []string{}, errors.Wrapf(QueryFail, "machine '%s': %s", machineID, err)
+				return nil, fmt.Errorf("machine '%s': %w", machineID, err)
 			}
 			c.Log.Debugf("CreateAlertBulk: Machine Id %s doesn't exist", machineID)
 			owner = nil
@@ -709,7 +709,7 @@ func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]str
 	for _, alertChunk := range alertChunks {
 		ids, err := c.createAlertChunk(machineID, owner, alertChunk)
 		if err != nil {
-			return []string{}, errors.Wrapf(QueryFail, "machine '%s': %s", machineID, err)
+			return nil, fmt.Errorf("machine '%s': %w", machineID, err)
 		}
 		alertIDs = append(alertIDs, ids...)
 	}
@@ -955,7 +955,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 	if val, ok := filter["limit"]; ok {
 		limitConv, err := strconv.Atoi(val[0])
 		if err != nil {
-			return []*ent.Alert{}, errors.Wrapf(QueryFail, "bad limit in parameters: %s", val)
+			return nil, errors.Wrapf(QueryFail, "bad limit in parameters: %s", val)
 		}
 		limit = limitConv
 
@@ -966,7 +966,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 		alerts := c.Ent.Alert.Query()
 		alerts, err := BuildAlertRequestFromFilter(alerts, filter)
 		if err != nil {
-			return []*ent.Alert{}, err
+			return nil, err
 		}
 
 		//only if with_decisions is present and set to false, we exclude this
@@ -984,7 +984,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 		if limit == 0 {
 			limit, err = alerts.Count(c.CTX)
 			if err != nil {
-				return []*ent.Alert{}, fmt.Errorf("unable to count nb alerts: %s", err)
+				return nil, fmt.Errorf("unable to count nb alerts: %s", err)
 			}
 		}
 
@@ -996,7 +996,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 
 		result, err := alerts.Limit(paginationSize).Offset(offset).All(c.CTX)
 		if err != nil {
-			return []*ent.Alert{}, errors.Wrapf(QueryFail, "pagination size: %d, offset: %d: %s", paginationSize, offset, err)
+			return nil, errors.Wrapf(QueryFail, "pagination size: %d, offset: %d: %s", paginationSize, offset, err)
 		}
 		if diff := limit - len(ret); diff < paginationSize {
 			if len(result) < diff {
