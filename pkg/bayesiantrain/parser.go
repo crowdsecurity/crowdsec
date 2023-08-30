@@ -13,14 +13,14 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-type parserAndFileStorage struct {
+type ParserAndFileStorage struct {
 	Files     []string
 	Parsersen *parser.Parsers
 }
 
-func loadParsers(input, patterns, files string) parserAndFileStorage {
+func LoadParsers(input, patterns, files string) ParserAndFileStorage {
 
-	s := parserAndFileStorage{}
+	s := ParserAndFileStorage{}
 	p := &parser.Parsers{}
 	p.Ctx, _ = parser.Init(map[string]interface{}{
 		"patterns": patterns,
@@ -44,7 +44,7 @@ func loadParsers(input, patterns, files string) parserAndFileStorage {
 	return s
 }
 
-func (p *parserAndFileStorage) ParseLogs() (LogEventStorage, error) {
+func (p *ParserAndFileStorage) ParseLogs() (LogEventStorage, error) {
 
 	var storage LogEventStorage
 	var scanner *bufio.Scanner
