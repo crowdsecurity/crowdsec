@@ -40,74 +40,90 @@ func (c *Client) FlushOrphans() {
 	}
 }
 
+func (c *Client) flushBouncers(bouncersCfg *csconfig.AuthGCCfg) {
+	if bouncersCfg == nil {
+		return
+	}
+
+	if bouncersCfg.ApiDuration != nil {
+		log.Debug("trying to delete old bouncers from api")
+
+		deletionCount, err := c.Ent.Bouncer.Delete().Where(
+			bouncer.LastPullLTE(time.Now().UTC().Add(-*bouncersCfg.ApiDuration)),
+		).Where(
+			bouncer.AuthTypeEQ(types.ApiKeyAuthType),
+		).Exec(c.CTX)
+		if err != nil {
+			c.Log.Errorf("while auto-deleting expired bouncers (api key) : %s", err)
+		} else if deletionCount > 0 {
+			c.Log.Infof("deleted %d expired bouncers (api auth)", deletionCount)
+		}
+	}
+
+	if bouncersCfg.CertDuration != nil {
+		log.Debug("trying to delete old bouncers from cert")
+
+		deletionCount, err := c.Ent.Bouncer.Delete().Where(
+			bouncer.LastPullLTE(time.Now().UTC().Add(-*bouncersCfg.CertDuration)),
+		).Where(
+			bouncer.AuthTypeEQ(types.TlsAuthType),
+		).Exec(c.CTX)
+		if err != nil {
+			c.Log.Errorf("while auto-deleting expired bouncers (api key) : %s", err)
+		} else if deletionCount > 0 {
+			c.Log.Infof("deleted %d expired bouncers (api auth)", deletionCount)
+		}
+	}
+}
+
+func (c *Client) flushAgents(agentsCfg *csconfig.AuthGCCfg) {
+	if agentsCfg == nil {
+		return
+	}
+
+	if agentsCfg.CertDuration != nil {
+		log.Debug("trying to delete old agents from cert")
+
+		deletionCount, err := c.Ent.Machine.Delete().Where(
+			machine.LastHeartbeatLTE(time.Now().UTC().Add(-*agentsCfg.CertDuration)),
+		).Where(
+			machine.Not(machine.HasAlerts()),
+		).Where(
+			machine.AuthTypeEQ(types.TlsAuthType),
+		).Exec(c.CTX)
+		log.Debugf("deleted %d entries", deletionCount)
+		if err != nil {
+			c.Log.Errorf("while auto-deleting expired machine (cert) : %s", err)
+		} else if deletionCount > 0 {
+			c.Log.Infof("deleted %d expired machine (cert auth)", deletionCount)
+		}
+	}
+
+	if agentsCfg.LoginPasswordDuration != nil {
+		log.Debug("trying to delete old agents from password")
+
+		deletionCount, err := c.Ent.Machine.Delete().Where(
+			machine.LastHeartbeatLTE(time.Now().UTC().Add(-*agentsCfg.LoginPasswordDuration)),
+		).Where(
+			machine.Not(machine.HasAlerts()),
+		).Where(
+			machine.AuthTypeEQ(types.PasswordAuthType),
+		).Exec(c.CTX)
+		log.Debugf("deleted %d entries", deletionCount)
+		if err != nil {
+			c.Log.Errorf("while auto-deleting expired machine (password) : %s", err)
+		} else if deletionCount > 0 {
+			c.Log.Infof("deleted %d expired machine (password auth)", deletionCount)
+		}
+	}
+}
+
 func (c *Client) FlushAgentsAndBouncers(agentsCfg *csconfig.AuthGCCfg, bouncersCfg *csconfig.AuthGCCfg) error {
 	log.Debug("starting FlushAgentsAndBouncers")
-	if bouncersCfg != nil {
-		if bouncersCfg.ApiDuration != nil {
-			log.Debug("trying to delete old bouncers from api")
-			deletionCount, err := c.Ent.Bouncer.Delete().Where(
-				bouncer.LastPullLTE(time.Now().UTC().Add(-*bouncersCfg.ApiDuration)),
-			).Where(
-				bouncer.AuthTypeEQ(types.ApiKeyAuthType),
-			).Exec(c.CTX)
-			if err != nil {
-				c.Log.Errorf("while auto-deleting expired bouncers (api key) : %s", err)
-			} else if deletionCount > 0 {
-				c.Log.Infof("deleted %d expired bouncers (api auth)", deletionCount)
-			}
-		}
-		if bouncersCfg.CertDuration != nil {
-			log.Debug("trying to delete old bouncers from cert")
 
-			deletionCount, err := c.Ent.Bouncer.Delete().Where(
-				bouncer.LastPullLTE(time.Now().UTC().Add(-*bouncersCfg.CertDuration)),
-			).Where(
-				bouncer.AuthTypeEQ(types.TlsAuthType),
-			).Exec(c.CTX)
-			if err != nil {
-				c.Log.Errorf("while auto-deleting expired bouncers (api key) : %s", err)
-			} else if deletionCount > 0 {
-				c.Log.Infof("deleted %d expired bouncers (api auth)", deletionCount)
-			}
-		}
-	}
+	c.flushBouncers(bouncersCfg)
+	c.flushAgents(agentsCfg)
 
-	if agentsCfg != nil {
-		if agentsCfg.CertDuration != nil {
-			log.Debug("trying to delete old agents from cert")
-
-			deletionCount, err := c.Ent.Machine.Delete().Where(
-				machine.LastHeartbeatLTE(time.Now().UTC().Add(-*agentsCfg.CertDuration)),
-			).Where(
-				machine.Not(machine.HasAlerts()),
-			).Where(
-				machine.AuthTypeEQ(types.TlsAuthType),
-			).Exec(c.CTX)
-			log.Debugf("deleted %d entries", deletionCount)
-			if err != nil {
-				c.Log.Errorf("while auto-deleting expired machine (cert) : %s", err)
-			} else if deletionCount > 0 {
-				c.Log.Infof("deleted %d expired machine (cert auth)", deletionCount)
-			}
-		}
-		if agentsCfg.LoginPasswordDuration != nil {
-			log.Debug("trying to delete old agents from password")
-
-			deletionCount, err := c.Ent.Machine.Delete().Where(
-				machine.LastHeartbeatLTE(time.Now().UTC().Add(-*agentsCfg.LoginPasswordDuration)),
-			).Where(
-				machine.Not(machine.HasAlerts()),
-			).Where(
-				machine.AuthTypeEQ(types.PasswordAuthType),
-			).Exec(c.CTX)
-			log.Debugf("deleted %d entries", deletionCount)
-			if err != nil {
-				c.Log.Errorf("while auto-deleting expired machine (password) : %s", err)
-			} else if deletionCount > 0 {
-				c.Log.Infof("deleted %d expired machine (password auth)", deletionCount)
-			}
-		}
-	}
 	return nil
 }
 
