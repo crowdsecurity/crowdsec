@@ -12,7 +12,12 @@ import (
 
 var DEFAULT_MAX_OPEN_CONNS = 100
 
-const defaultDecisionBulkSize = 50
+const (
+	defaultDecisionBulkSize = 50
+	// we need an upper bound due to the sqlite limit of 32k variables in a query
+	// we have 15 variables per decision, so 32768/15 = 2184.5333
+	maxDecisionBulkSize     = 2000
+)
 
 type DatabaseCfg struct {
 	User             string      `yaml:"user"`
@@ -66,6 +71,11 @@ func (c *Config) LoadDBConfig() error {
 	if c.DbConfig.DecisionBulkSize == 0 {
 		log.Tracef("No decision_bulk_size value provided, using default value of %d", defaultDecisionBulkSize)
 		c.DbConfig.DecisionBulkSize = defaultDecisionBulkSize
+	}
+
+	if c.DbConfig.DecisionBulkSize > maxDecisionBulkSize {
+		log.Warningf("decision_bulk_size too high (%d), setting to the maximum value of %d", c.DbConfig.DecisionBulkSize, maxDecisionBulkSize)
+		c.DbConfig.DecisionBulkSize = maxDecisionBulkSize
 	}
 
 	if c.DbConfig.Type == "sqlite" {

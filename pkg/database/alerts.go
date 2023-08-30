@@ -489,8 +489,7 @@ func (c *Client) createDecisionChunk(simulated bool, stopAtTime time.Time, decis
 
 	ret, err := c.Ent.Decision.CreateBulk(decisionCreate...).Save(c.CTX)
 	if err != nil {
-		return nil, fmt.Errorf("creating alert decisions: %w", err)
-
+		return nil, err
 	}
 
 	return ret, nil
