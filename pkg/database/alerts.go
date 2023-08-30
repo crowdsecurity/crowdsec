@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mattn/go-sqlite3"
+
 	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -652,9 +654,29 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 		d := alertDecisions[i]
 		decisionsChunk := slicetools.Chunks(d, c.decisionBulkSize)
 		for _, d2 := range decisionsChunk {
-			_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
-			if err != nil {
-				return nil, fmt.Errorf("error while updating decisions: %s", err)
+			maxRetries := 5
+			retry := 0
+			for retry < maxRetries {
+				// so much for the happy path... but sqlite3 errors work differently
+				_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
+				if err == nil {
+					break
+				}
+				if sqliteErr, ok := err.(sqlite3.Error); ok {
+					if sqliteErr.Code == sqlite3.ErrBusy {
+						// sqlite3.Error{
+						//   Code:         5,
+						//   ExtendedCode: 5,
+						//   SystemErrno:  0,
+						//   err:          "database is locked",
+						// }
+						retry++
+						log.Warningf("while updating decisions, sqlite3.ErrBusy: %s, retry %d of %d", err, retry, maxRetries)
+						time.Sleep(1 * time.Second)
+						continue
+					}
+				}
+				return nil, fmt.Errorf("error while updating decisions: %w", err)
 			}
 		}
 	}
