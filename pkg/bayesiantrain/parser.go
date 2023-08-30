@@ -4,16 +4,44 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type parserAndFileStorage struct {
-	files     []string
-	parsersen parser.Parsers
+	Files     []string
+	Parsersen *parser.Parsers
+}
+
+func loadParsers(input, patterns, files string) parserAndFileStorage {
+
+	s := parserAndFileStorage{}
+	p := &parser.Parsers{}
+	p.Ctx, _ = parser.Init(map[string]interface{}{
+		"patterns": patterns,
+		"data":     "",
+	})
+	for _, name := range strings.Split(input, ",") {
+
+		p.StageFiles = append(p.StageFiles, parser.Stagefile{
+			Filename: name,
+			Stage:    "s01-parse",
+		})
+	}
+	p.Nodes, _ = parser.LoadStages(p.StageFiles, p.Ctx, p.EnricherCtx)
+
+	for _, name := range strings.Split(files, ",") {
+
+		s.Files = append(s.Files, name)
+	}
+	s.Parsersen = p
+
+	return s
 }
 
 func (p *parserAndFileStorage) ParseLogs() (LogEventStorage, error) {
@@ -29,7 +57,7 @@ func (p *parserAndFileStorage) ParseLogs() (LogEventStorage, error) {
 		ParsedIpEvents: make(map[string]fakeBucket),
 		total:          0,
 	}
-	for _, file := range p.files {
+	for _, file := range p.Files {
 		fd, err := os.Open(file)
 
 		if err != nil {
@@ -51,7 +79,7 @@ func (p *parserAndFileStorage) ParseLogs() (LogEventStorage, error) {
 			}
 
 			evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
-			evt, err = parser.Parse(*p.parsersen.Ctx, evt, p.parsersen.Nodes)
+			evt, err = parser.Parse(*p.Parsersen.Ctx, evt, p.Parsersen.Nodes)
 
 			if err != nil {
 				return LogEventStorage{}, fmt.Errorf("failed parsing line %s: %w", l.Raw, err)
@@ -77,4 +105,18 @@ func (p *parserAndFileStorage) ParseLogs() (LogEventStorage, error) {
 	}
 
 	return storage, nil
+}
+
+func CreateFakeConfig(configDir string, dataDir string) (cConfig *csconfig.Config) {
+
+	svcConfig := csconfig.CrowdsecServiceCfg{
+		ConfigDir: configDir,
+		DataDir:   dataDir,
+	}
+	config := csconfig.Config{
+		Crowdsec:   &svcConfig,
+		Prometheus: nil,
+	}
+
+	return &config
 }
