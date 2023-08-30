@@ -163,7 +163,8 @@ teardown() {
 	whatever
 	EOT
     assert_stderr --partial 'Parsing values'
-    assert_stderr --partial 'API error: unable to create alerts: whatever: invalid ip address / range'
+    # XXX confusing error message
+    assert_stderr --partial 'creating alert decisions: whatever: invalid ip address / range: unable to insert bulk: unable to query'
 
     #----------
     # Batch
