@@ -37,6 +37,7 @@ func LoadParsers(input, patterns, files string) ParserAndFileStorage {
 
 	for _, name := range strings.Split(files, ",") {
 
+		fmt.Printf("Added log with filename : %v", name)
 		s.Files = append(s.Files, name)
 	}
 	s.Parsersen = p
@@ -44,19 +45,96 @@ func LoadParsers(input, patterns, files string) ParserAndFileStorage {
 	return s
 }
 
-func (p *ParserAndFileStorage) ParseLogs() (LogEventStorage, error) {
+type parseResult struct {
+	evt types.Event
+	err error
+}
 
+func parsingRoutine(ctx parser.UnixParserCtx, Nodes []parser.Node, inputChan <-chan types.Event, outputChan chan<- parseResult) {
+
+	for {
+		ievt := <-inputChan
+		evt, err := parser.Parse(ctx, ievt, Nodes)
+		if err != nil {
+			evt = ievt // We return the evt we fail to parse so collectingRoutine can add trace
+		}
+		outputChan <- parseResult{evt, err}
+	}
+}
+
+func collectingRoutine(outputChan <-chan parseResult, resultChan chan<- LogEventStorage, messageChan <-chan int) {
 	var storage LogEventStorage
-	var scanner *bufio.Scanner
-	var evt types.Event
 	var bucket fakeBucket
 	var ip string
 	var exists bool
+
+	hasReceivedTotal := false
+	count := 0
+	total := 0
 
 	storage = LogEventStorage{
 		ParsedIpEvents: make(map[string]fakeBucket),
 		total:          0,
 	}
+LOOP:
+	for {
+		select {
+		case total = <-messageChan:
+			fmt.Println("Received total: %v", total)
+			hasReceivedTotal = true
+			if total == count {
+				break LOOP
+			}
+		case res := <-outputChan:
+			count += 1
+			if count%10000 == 0 {
+				fmt.Printf("\nLines processed : %v", count)
+			}
+			if res.err != nil {
+				fmt.Printf("failed parsing %v", res.err)
+				continue
+			}
+			ip, exists = res.evt.Meta["source_ip"]
+			if !exists {
+				fmt.Printf("no source ip found error, skipping")
+				continue
+			}
+			bucket, exists = storage.ParsedIpEvents[ip]
+			if !exists {
+				bucket = fakeBucket{
+					events: []types.Event{},
+					leaky:  &leakybucket.Leaky{},
+					label:  0,
+				}
+			}
+			bucket.events = append(bucket.events, res.evt)
+			storage.ParsedIpEvents[ip] = bucket
+			if hasReceivedTotal && total == count {
+				break LOOP
+			}
+		}
+	}
+
+	resultChan <- storage
+}
+
+func (p *ParserAndFileStorage) ParseLogs(routinesCount int) (LogEventStorage, error) {
+
+	var scanner *bufio.Scanner
+	var evt types.Event
+
+	inputChan := make(chan types.Event, 10000)
+	outputChan := make(chan parseResult, 10000)
+	resultChan := make(chan LogEventStorage)
+	messageChan := make(chan int)
+
+	for i := 1; i <= routinesCount; i++ {
+		go parsingRoutine(*p.Parsersen.Ctx, p.Parsersen.Nodes, inputChan, outputChan)
+	}
+
+	go collectingRoutine(outputChan, resultChan, messageChan)
+
+	progress := 0
 	for _, file := range p.Files {
 		fd, err := os.Open(file)
 
@@ -79,30 +157,17 @@ func (p *ParserAndFileStorage) ParseLogs() (LogEventStorage, error) {
 			}
 
 			evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.TIMEMACHINE}
-			evt, err = parser.Parse(*p.Parsersen.Ctx, evt, p.Parsersen.Nodes)
+			inputChan <- evt
 
-			if err != nil {
-				return LogEventStorage{}, fmt.Errorf("failed parsing line %s: %w", l.Raw, err)
+			progress += 1
+			if progress%10000 == 0 {
+				fmt.Printf("\nLines read : %v", progress)
 			}
-
-			ip, exists = evt.Meta["source_ip"]
-			if !exists {
-				return LogEventStorage{}, fmt.Errorf("no source ip found in evt %s: ", l.Raw)
-			}
-
-			bucket, exists = storage.ParsedIpEvents[ip]
-			if !exists {
-				bucket = fakeBucket{
-					events: []types.Event{},
-					leaky:  &leakybucket.Leaky{},
-					label:  0,
-				}
-			}
-			bucket.events = append(bucket.events, evt)
-			storage.ParsedIpEvents[ip] = bucket
 		}
-
 	}
+	messageChan <- progress
+	fmt.Println("Sent total to collecting routine: %v", progress)
+	storage := <-resultChan
 
 	return storage, nil
 }
