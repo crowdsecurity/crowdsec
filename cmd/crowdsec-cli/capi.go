@@ -60,16 +60,16 @@ func NewCapiRegisterCmd() *cobra.Command {
 		Short:             "Register to Central API (CAPI)",
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			capiUser, err := generateID(capiUserPrefix)
 			if err != nil {
-				log.Fatalf("unable to generate machine id: %s", err)
+				return fmt.Errorf("unable to generate machine id: %s", err)
 			}
 			password := strfmt.Password(generatePassword(passwordLength))
 			apiurl, err := url.Parse(types.CAPIBaseURL)
 			if err != nil {
-				log.Fatalf("unable to parse api url %s : %s", types.CAPIBaseURL, err)
+				return fmt.Errorf("unable to parse api url %s: %s", types.CAPIBaseURL, err)
 			}
 			_, err = apiclient.RegisterClient(&apiclient.Config{
 				MachineID:     capiUser,
@@ -80,7 +80,7 @@ func NewCapiRegisterCmd() *cobra.Command {
 			}, nil)
 
 			if err != nil {
-				log.Fatalf("api client register ('%s'): %s", types.CAPIBaseURL, err)
+				return fmt.Errorf("api client register ('%s'): %s", types.CAPIBaseURL, err)
 			}
 			log.Printf("Successfully registered to Central API (CAPI)")
 
@@ -103,19 +103,20 @@ func NewCapiRegisterCmd() *cobra.Command {
 			}
 			apiConfigDump, err := yaml.Marshal(apiCfg)
 			if err != nil {
-				log.Fatalf("unable to marshal api credentials: %s", err)
+				return fmt.Errorf("unable to marshal api credentials: %s", err)
 			}
 			if dumpFile != "" {
 				err = os.WriteFile(dumpFile, apiConfigDump, 0600)
 				if err != nil {
-					log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
+					return fmt.Errorf("write api credentials in '%s' failed: %s", dumpFile, err)
 				}
 				log.Printf("Central API credentials dumped to '%s'", dumpFile)
 			} else {
-				fmt.Printf("%s\n", string(apiConfigDump))
+				fmt.Println(string(apiConfigDump))
 			}
 
 			log.Warning(ReloadMessage())
+			return nil
 		},
 	}
 	cmdCapiRegister.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
@@ -133,40 +134,36 @@ func NewCapiStatusCmd() *cobra.Command {
 		Short:             "Check status with the Central API (CAPI)",
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
-			if csConfig.API.Server.OnlineClient == nil {
-				log.Fatalf("Please provide credentials for the Central API (CAPI) in '%s'", csConfig.API.Server.OnlineClient.CredentialsFilePath)
-			}
-
-			if csConfig.API.Server.OnlineClient.Credentials == nil {
-				log.Fatalf("no credentials for Central API (CAPI) in '%s'", csConfig.API.Server.OnlineClient.CredentialsFilePath)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := require.CAPIRegistered(csConfig); err != nil {
+				return err
 			}
 
 			password := strfmt.Password(csConfig.API.Server.OnlineClient.Credentials.Password)
 			apiurl, err := url.Parse(csConfig.API.Server.OnlineClient.Credentials.URL)
 			if err != nil {
-				log.Fatalf("parsing api url ('%s'): %s", csConfig.API.Server.OnlineClient.Credentials.URL, err)
+				return fmt.Errorf("unable to parse api url %s: %s", csConfig.API.Server.OnlineClient.Credentials.URL, err)
 			}
 
 			if err := csConfig.LoadHub(); err != nil {
-				log.Fatal(err)
+				return err
 			}
 
 			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Info("Run 'sudo cscli hub update' to get the hub index")
-				log.Fatalf("Failed to load hub index : %s", err)
+				return fmt.Errorf("failed to load hub index : %s", err)
 			}
 			scenarios, err := cwhub.GetInstalledScenariosAsString()
 			if err != nil {
-				log.Fatalf("failed to get scenarios : %s", err)
+				return fmt.Errorf("failed to get scenarios: %s", err)
 			}
 			if len(scenarios) == 0 {
-				log.Fatalf("no scenarios installed, abort")
+				return fmt.Errorf("no scenarios installed, abort")
 			}
 
 			Client, err = apiclient.NewDefaultClient(apiurl, CAPIURLPrefix, fmt.Sprintf("crowdsec/%s", version.String()), nil)
 			if err != nil {
-				log.Fatalf("init default client: %s", err)
+				return fmt.Errorf("init default client: %s", err)
 			}
 			t := models.WatcherAuthRequest{
 				MachineID: &csConfig.API.Server.OnlineClient.Credentials.Login,
@@ -177,9 +174,10 @@ func NewCapiStatusCmd() *cobra.Command {
 			log.Infof("Trying to authenticate with username %s on %s", csConfig.API.Server.OnlineClient.Credentials.Login, apiurl)
 			_, _, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
 			if err != nil {
-				log.Fatalf("Failed to authenticate to Central API (CAPI) : %s", err)
+				return fmt.Errorf("failed to authenticate to Central API (CAPI): %s", err)
 			}
 			log.Infof("You can successfully interact with Central API (CAPI)")
+			return nil
 		},
 	}
 

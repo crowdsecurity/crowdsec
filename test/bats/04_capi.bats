@@ -68,3 +68,9 @@ setup() {
     rune -1 cscli capi register --schmilblick githubciXXXXXXXXXXXXXXXXXXXXXXXX
     assert_stderr --partial "local API is disabled -- this command must be run on the local API machine"
 }
+
+@test "cscli capi status: fails without config section online_client" {
+    config_set 'del(.api.server.online_client)'
+    rune -1 cscli capi status
+    assert_stderr --partial "no configuration for Central API (CAPI) in '$CONFIG_YAML'"
+}
