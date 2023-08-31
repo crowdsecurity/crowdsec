@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-co-op/gocron"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -14,6 +15,77 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
+
+
+func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Scheduler, error) {
+	maxItems := 0
+	maxAge := ""
+	if config.MaxItems != nil && *config.MaxItems <= 0 {
+		return nil, fmt.Errorf("max_items can't be zero or negative number")
+	}
+	if config.MaxItems != nil {
+		maxItems = *config.MaxItems
+	}
+	if config.MaxAge != nil && *config.MaxAge != "" {
+		maxAge = *config.MaxAge
+	}
+
+	// Init & Start cronjob every minute for alerts
+	scheduler := gocron.NewScheduler(time.UTC)
+	job, err := scheduler.Every(1).Minute().Do(c.FlushAlerts, maxAge, maxItems)
+	if err != nil {
+		return nil, fmt.Errorf("while starting FlushAlerts scheduler: %w", err)
+	}
+	job.SingletonMode()
+	// Init & Start cronjob every hour for bouncers/agents
+	if config.AgentsGC != nil {
+		if config.AgentsGC.Cert != nil {
+			duration, err := ParseDuration(*config.AgentsGC.Cert)
+			if err != nil {
+				return nil, fmt.Errorf("while parsing agents cert auto-delete duration: %w", err)
+			}
+			config.AgentsGC.CertDuration = &duration
+		}
+		if config.AgentsGC.LoginPassword != nil {
+			duration, err := ParseDuration(*config.AgentsGC.LoginPassword)
+			if err != nil {
+				return nil, fmt.Errorf("while parsing agents login/password auto-delete duration: %w", err)
+			}
+			config.AgentsGC.LoginPasswordDuration = &duration
+		}
+		if config.AgentsGC.Api != nil {
+			log.Warning("agents auto-delete for API auth is not supported (use cert or login_password)")
+		}
+	}
+	if config.BouncersGC != nil {
+		if config.BouncersGC.Cert != nil {
+			duration, err := ParseDuration(*config.BouncersGC.Cert)
+			if err != nil {
+				return nil, fmt.Errorf("while parsing bouncers cert auto-delete duration: %w", err)
+			}
+			config.BouncersGC.CertDuration = &duration
+		}
+		if config.BouncersGC.Api != nil {
+			duration, err := ParseDuration(*config.BouncersGC.Api)
+			if err != nil {
+				return nil, fmt.Errorf("while parsing bouncers api auto-delete duration: %w", err)
+			}
+			config.BouncersGC.ApiDuration = &duration
+		}
+		if config.BouncersGC.LoginPassword != nil {
+			log.Warning("bouncers auto-delete for login/password auth is not supported (use cert or api)")
+		}
+	}
+	baJob, err := scheduler.Every(1).Minute().Do(c.FlushAgentsAndBouncers, config.AgentsGC, config.BouncersGC)
+	if err != nil {
+		return nil, fmt.Errorf("while starting FlushAgentsAndBouncers scheduler: %w", err)
+	}
+	baJob.SingletonMode()
+	scheduler.StartAsync()
+
+	return scheduler, nil
+}
+
 
 func (c *Client) FlushOrphans() {
 	/* While it has only been linked to some very corner-case bug : https://github.com/crowdsecurity/crowdsec/issues/778 */
