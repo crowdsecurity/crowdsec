@@ -36,6 +36,7 @@ func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Sched
 	if err != nil {
 		return nil, fmt.Errorf("while starting FlushAlerts scheduler: %w", err)
 	}
+
 	job.SingletonMode()
 	// Init & Start cronjob every hour for bouncers/agents
 	if config.AgentsGC != nil {
@@ -80,6 +81,7 @@ func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Sched
 	if err != nil {
 		return nil, fmt.Errorf("while starting FlushAgentsAndBouncers scheduler: %w", err)
 	}
+
 	baJob.SingletonMode()
 	scheduler.StartAsync()
 
@@ -90,25 +92,24 @@ func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Sched
 func (c *Client) FlushOrphans() {
 	/* While it has only been linked to some very corner-case bug : https://github.com/crowdsecurity/crowdsec/issues/778 */
 	/* We want to take care of orphaned events for which the parent alert/decision has been deleted */
-
-	events_count, err := c.Ent.Event.Delete().Where(event.Not(event.HasOwner())).Exec(c.CTX)
+	eventsCount, err := c.Ent.Event.Delete().Where(event.Not(event.HasOwner())).Exec(c.CTX)
 	if err != nil {
-		c.Log.Warningf("error while deleting orphan events : %s", err)
+		c.Log.Warningf("error while deleting orphan events: %s", err)
 		return
 	}
-	if events_count > 0 {
-		c.Log.Infof("%d deleted orphan events", events_count)
+	if eventsCount > 0 {
+		c.Log.Infof("%d deleted orphan events", eventsCount)
 	}
 
-	events_count, err = c.Ent.Decision.Delete().Where(
+	eventsCount, err = c.Ent.Decision.Delete().Where(
 		decision.Not(decision.HasOwner())).Where(decision.UntilLTE(time.Now().UTC())).Exec(c.CTX)
 
 	if err != nil {
-		c.Log.Warningf("error while deleting orphan decisions : %s", err)
+		c.Log.Warningf("error while deleting orphan decisions: %s", err)
 		return
 	}
-	if events_count > 0 {
-		c.Log.Infof("%d deleted orphan decisions", events_count)
+	if eventsCount > 0 {
+		c.Log.Infof("%d deleted orphan decisions", eventsCount)
 	}
 }
 
@@ -126,7 +127,7 @@ func (c *Client) flushBouncers(bouncersCfg *csconfig.AuthGCCfg) {
 			bouncer.AuthTypeEQ(types.ApiKeyAuthType),
 		).Exec(c.CTX)
 		if err != nil {
-			c.Log.Errorf("while auto-deleting expired bouncers (api key) : %s", err)
+			c.Log.Errorf("while auto-deleting expired bouncers (api key): %s", err)
 		} else if deletionCount > 0 {
 			c.Log.Infof("deleted %d expired bouncers (api auth)", deletionCount)
 		}
@@ -141,7 +142,7 @@ func (c *Client) flushBouncers(bouncersCfg *csconfig.AuthGCCfg) {
 			bouncer.AuthTypeEQ(types.TlsAuthType),
 		).Exec(c.CTX)
 		if err != nil {
-			c.Log.Errorf("while auto-deleting expired bouncers (api key) : %s", err)
+			c.Log.Errorf("while auto-deleting expired bouncers (api key): %s", err)
 		} else if deletionCount > 0 {
 			c.Log.Infof("deleted %d expired bouncers (api auth)", deletionCount)
 		}
@@ -165,7 +166,7 @@ func (c *Client) flushAgents(agentsCfg *csconfig.AuthGCCfg) {
 		).Exec(c.CTX)
 		log.Debugf("deleted %d entries", deletionCount)
 		if err != nil {
-			c.Log.Errorf("while auto-deleting expired machine (cert) : %s", err)
+			c.Log.Errorf("while auto-deleting expired machine (cert): %s", err)
 		} else if deletionCount > 0 {
 			c.Log.Infof("deleted %d expired machine (cert auth)", deletionCount)
 		}
@@ -183,7 +184,7 @@ func (c *Client) flushAgents(agentsCfg *csconfig.AuthGCCfg) {
 		).Exec(c.CTX)
 		log.Debugf("deleted %d entries", deletionCount)
 		if err != nil {
-			c.Log.Errorf("while auto-deleting expired machine (password) : %s", err)
+			c.Log.Errorf("while auto-deleting expired machine (password): %s", err)
 		} else if deletionCount > 0 {
 			c.Log.Infof("deleted %d expired machine (password auth)", deletionCount)
 		}
@@ -215,9 +216,10 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 	c.Log.Debug("Done flushing orphan alerts")
 	totalAlerts, err = c.TotalAlerts()
 	if err != nil {
-		c.Log.Warningf("FlushAlerts (max items count) : %s", err)
+		c.Log.Warningf("FlushAlerts (max items count): %s", err)
 		return fmt.Errorf("unable to get alerts count: %w", err)
 	}
+
 	c.Log.Debugf("FlushAlerts (Total alerts): %d", totalAlerts)
 	if MaxAge != "" {
 		filter := map[string][]string{
@@ -225,9 +227,10 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 		}
 		nbDeleted, err := c.DeleteAlertWithFilter(filter)
 		if err != nil {
-			c.Log.Warningf("FlushAlerts (max age) : %s", err)
+			c.Log.Warningf("FlushAlerts (max age): %s", err)
 			return fmt.Errorf("unable to flush alerts with filter until=%s: %w", MaxAge, err)
 		}
+
 		c.Log.Debugf("FlushAlerts (deleted max age alerts): %d", nbDeleted)
 		deletedByAge = nbDeleted
 	}
@@ -259,7 +262,7 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 				deletedByNbItem, err = c.Ent.Alert.Delete().Where(alert.IDLT(maxid)).Exec(c.CTX)
 
 				if err != nil {
-					c.Log.Errorf("FlushAlerts: Could not delete alerts : %s", err)
+					c.Log.Errorf("FlushAlerts: Could not delete alerts: %s", err)
 					return fmt.Errorf("could not delete alerts: %w", err)
 				}
 			}
