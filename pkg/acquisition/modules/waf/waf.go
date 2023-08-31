@@ -45,6 +45,8 @@ type WafRunner struct {
 type WafSourceConfig struct {
 	ListenAddr                        string   `yaml:"listen_addr"`
 	ListenPort                        int      `yaml:"listen_port"`
+	CertFilePath                      string   `yaml:"cert_file"`
+	KeyFilePath                       string   `yaml:"key_file"`
 	Path                              string   `yaml:"path"`
 	WafRoutines                       int      `yaml:"waf_routines"`
 	Debug                             bool     `yaml:"debug"`
@@ -315,7 +317,13 @@ func (w *WafSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) err
 
 		w.logger.Infof("Starting WAF server on %s:%d%s", w.config.ListenAddr, w.config.ListenPort, w.config.Path)
 		t.Go(func() error {
-			err := w.server.ListenAndServe()
+			var err error
+			if w.config.CertFilePath != "" && w.config.KeyFilePath != "" {
+				err = w.server.ListenAndServeTLS(w.config.CertFilePath, w.config.KeyFilePath)
+			} else {
+				err = w.server.ListenAndServe()
+			}
+
 			if err != nil && err != http.ErrServerClosed {
 				return errors.Wrap(err, "WAF server failed")
 			}
