@@ -31,6 +31,7 @@ const (
 	paginationSize   = 100 // used to queryAlert to avoid 'too many SQL variable'
 	defaultLimit     = 100 // default limit of element to returns when query alerts
 	bulkSize         = 50  // bulk size when create alerts
+	maxLockRetries   = 10  // how many times to retry a bulk operation when sqlite3.ErrBusy is encountered
 )
 
 func formatAlertCN(source models.Source) string {
@@ -651,9 +652,8 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 		d := alertDecisions[i]
 		decisionsChunk := slicetools.Chunks(d, c.decisionBulkSize)
 		for _, d2 := range decisionsChunk {
-			maxRetries := 5
 			retry := 0
-			for retry < maxRetries {
+			for retry < maxLockRetries {
 				// so much for the happy path... but sqlite3 errors work differently
 				_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
 				if err == nil {
@@ -668,7 +668,7 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 						//   err:          "database is locked",
 						// }
 						retry++
-						log.Warningf("while updating decisions, sqlite3.ErrBusy: %s, retry %d of %d", err, retry, maxRetries)
+						log.Warningf("while updating decisions, sqlite3.ErrBusy: %s, retry %d of %d", err, retry, maxLockRetries)
 						time.Sleep(1 * time.Second)
 						continue
 					}
