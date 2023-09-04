@@ -53,7 +53,6 @@ jobs:
       uses: actions/setup-go@v4
       with:
         go-version: ${{ matrix.go-version }}
-        cache-dependency-path: "**/go.sum"
 
     - name: "Install bats dependencies"
       env:
