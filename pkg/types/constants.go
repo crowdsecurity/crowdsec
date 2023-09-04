@@ -9,8 +9,6 @@ const PAPIVersion = "v1"
 const PAPIPollUrl = "/decisions/stream/poll"
 const PAPIPermissionsUrl = "/permissions"
 
-const CAPIBaseURL = "https://api.crowdsec.net/"
-
 const CscliOrigin = "cscli"
 const CrowdSecOrigin = "crowdsec"
 const ConsoleOrigin = "console"

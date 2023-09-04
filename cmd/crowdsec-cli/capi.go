@@ -16,14 +16,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
-const CAPIBaseURL string = "https://api.crowdsec.net/"
 const CAPIURLPrefix = "v3"
 
 func NewCapiCmd() *cobra.Command {
@@ -65,15 +62,20 @@ func runCapiRegister(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	capiURL, err := flags.GetString("capi-url")
+	if err != nil {
+		return err
+	}
+
 	capiUser, err := generateID(capiUserPrefix)
 	if err != nil {
 		return fmt.Errorf("unable to generate machine id: %s", err)
 	}
 
 	password := strfmt.Password(generatePassword(passwordLength))
-	apiurl, err := url.Parse(types.CAPIBaseURL)
+	apiurl, err := url.Parse(capiURL)
 	if err != nil {
-		return fmt.Errorf("unable to parse api url %s: %s", types.CAPIBaseURL, err)
+		return fmt.Errorf("unable to parse api url %s: %s", capiURL, err)
 	}
 	_, err = apiclient.RegisterClient(&apiclient.Config{
 		MachineID:     capiUser,
@@ -84,7 +86,7 @@ func runCapiRegister(cmd *cobra.Command, args []string) error {
 	}, nil)
 
 	if err != nil {
-		return fmt.Errorf("api client register ('%s'): %s", types.CAPIBaseURL, err)
+		return fmt.Errorf("api client register ('%s'): %s", capiURL, err)
 	}
 	log.Printf("Successfully registered to Central API (CAPI)")
 
@@ -101,11 +103,7 @@ func runCapiRegister(cmd *cobra.Command, args []string) error {
 	apiCfg := csconfig.ApiCredentialsCfg{
 		Login:    capiUser,
 		Password: password.String(),
-		URL:      types.CAPIBaseURL,
-	}
-
-	if fflag.PapiClient.IsEnabled() {
-		apiCfg.PapiURL = types.PAPIBaseURL
+		URL:      capiURL,
 	}
 
 	apiConfigDump, err := yaml.Marshal(apiCfg)
@@ -140,6 +138,8 @@ func NewCapiRegisterCmd() *cobra.Command {
 	flags := cmdCapiRegister.Flags()
 	flags.StringP("file", "f", "", "output file destination")
 	flags.String("schmilblick", "", "set a schmilblick (use in tests only)")
+	flags.String("capi-url", "https://api.crowdsec.net/", "set the CAPI url")
+	flags.String("papi-url", "https://papi.api.crowdsec.net/", "set the PAPI url")
 
 	if err := flags.MarkHidden("schmilblick"); err != nil {
 		log.Fatalf("failed to hide flag: %s", err)

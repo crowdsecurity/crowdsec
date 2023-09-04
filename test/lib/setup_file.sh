@@ -85,6 +85,11 @@ config_disable_lapi() {
 }
 export -f config_disable_lapi
 
+config_enable_lapi() {
+    config_set '.api.server.enable=true'
+}
+export -f config_enable_lapi
+
 config_disable_capi() {
     config_set 'del(.api.server.online_client)'
 }
