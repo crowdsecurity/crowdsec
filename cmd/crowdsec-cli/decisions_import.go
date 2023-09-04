@@ -188,7 +188,9 @@ func runDecisionsImport(cmd *cobra.Command, args []string) error  {
 		}
 	}
 
-	alerts := models.AddAlertsRequest{}
+	if len(decisions) > 1000 {
+		log.Infof("You are about to add %d decisions, this may take a while", len(decisions))
+	}
 
 	for _, chunk := range slicetools.Chunks(decisions, batchSize) {
 		log.Debugf("Processing chunk of %d decisions", len(chunk))
@@ -212,16 +214,11 @@ func runDecisionsImport(cmd *cobra.Command, args []string) error  {
 			ScenarioVersion: ptr.Of(""),
 			Decisions:       chunk,
 		}
-		alerts = append(alerts, &importAlert)
-	}
 
-	if len(decisions) > 1000 {
-		log.Infof("You are about to add %d decisions, this may take a while", len(decisions))
-	}
-
-	_, _, err = Client.Alerts.Add(context.Background(), alerts)
-	if err != nil {
-		return err
+		_, _, err = Client.Alerts.Add(context.Background(), models.AddAlertsRequest{&importAlert})
+		if err != nil {
+			return err
+		}
 	}
 
 	log.Infof("Imported %d decisions", len(decisions))
