@@ -51,82 +51,103 @@ func NewCapiCmd() *cobra.Command {
 	return cmdCapi
 }
 
-func NewCapiRegisterCmd() *cobra.Command {
-	var capiUserPrefix string
-	var outputFile string
 
+func runCapiRegister(cmd *cobra.Command, args []string) error {
+	flags := cmd.Flags()
+
+	outputFile, err := flags.GetString("file")
+	if err != nil {
+		return err
+	}
+
+	capiUserPrefix, err := flags.GetString("schmilblick")
+	if err != nil {
+		return err
+	}
+
+	capiUser, err := generateID(capiUserPrefix)
+	if err != nil {
+		return fmt.Errorf("unable to generate machine id: %s", err)
+	}
+
+	password := strfmt.Password(generatePassword(passwordLength))
+	apiurl, err := url.Parse(types.CAPIBaseURL)
+	if err != nil {
+		return fmt.Errorf("unable to parse api url %s: %s", types.CAPIBaseURL, err)
+	}
+	_, err = apiclient.RegisterClient(&apiclient.Config{
+		MachineID:     capiUser,
+		Password:      password,
+		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
+		URL:           apiurl,
+		VersionPrefix: CAPIURLPrefix,
+	}, nil)
+
+	if err != nil {
+		return fmt.Errorf("api client register ('%s'): %s", types.CAPIBaseURL, err)
+	}
+	log.Printf("Successfully registered to Central API (CAPI)")
+
+	var dumpFile string
+
+	if outputFile != "" {
+		dumpFile = outputFile
+	} else if csConfig.API.Server.OnlineClient.CredentialsFilePath != "" {
+		dumpFile = csConfig.API.Server.OnlineClient.CredentialsFilePath
+	} else {
+		dumpFile = ""
+	}
+
+	apiCfg := csconfig.ApiCredentialsCfg{
+		Login:    capiUser,
+		Password: password.String(),
+		URL:      types.CAPIBaseURL,
+	}
+
+	if fflag.PapiClient.IsEnabled() {
+		apiCfg.PapiURL = types.PAPIBaseURL
+	}
+
+	apiConfigDump, err := yaml.Marshal(apiCfg)
+	if err != nil {
+		return fmt.Errorf("unable to marshal api credentials: %s", err)
+	}
+
+	if dumpFile != "" {
+		err = os.WriteFile(dumpFile, apiConfigDump, 0600)
+		if err != nil {
+			return fmt.Errorf("write api credentials in '%s' failed: %s", dumpFile, err)
+		}
+		log.Printf("Central API credentials dumped to '%s'", dumpFile)
+	} else {
+		fmt.Println(string(apiConfigDump))
+	}
+
+	log.Warning(ReloadMessage())
+	return nil
+}
+
+
+func NewCapiRegisterCmd() *cobra.Command {
 	var cmdCapiRegister = &cobra.Command{
 		Use:               "register",
 		Short:             "Register to Central API (CAPI)",
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-			capiUser, err := generateID(capiUserPrefix)
-			if err != nil {
-				return fmt.Errorf("unable to generate machine id: %s", err)
-			}
-			password := strfmt.Password(generatePassword(passwordLength))
-			apiurl, err := url.Parse(types.CAPIBaseURL)
-			if err != nil {
-				return fmt.Errorf("unable to parse api url %s: %s", types.CAPIBaseURL, err)
-			}
-			_, err = apiclient.RegisterClient(&apiclient.Config{
-				MachineID:     capiUser,
-				Password:      password,
-				UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
-				URL:           apiurl,
-				VersionPrefix: CAPIURLPrefix,
-			}, nil)
-
-			if err != nil {
-				return fmt.Errorf("api client register ('%s'): %s", types.CAPIBaseURL, err)
-			}
-			log.Printf("Successfully registered to Central API (CAPI)")
-
-			var dumpFile string
-
-			if outputFile != "" {
-				dumpFile = outputFile
-			} else if csConfig.API.Server.OnlineClient.CredentialsFilePath != "" {
-				dumpFile = csConfig.API.Server.OnlineClient.CredentialsFilePath
-			} else {
-				dumpFile = ""
-			}
-			apiCfg := csconfig.ApiCredentialsCfg{
-				Login:    capiUser,
-				Password: password.String(),
-				URL:      types.CAPIBaseURL,
-			}
-			if fflag.PapiClient.IsEnabled() {
-				apiCfg.PapiURL = types.PAPIBaseURL
-			}
-			apiConfigDump, err := yaml.Marshal(apiCfg)
-			if err != nil {
-				return fmt.Errorf("unable to marshal api credentials: %s", err)
-			}
-			if dumpFile != "" {
-				err = os.WriteFile(dumpFile, apiConfigDump, 0600)
-				if err != nil {
-					return fmt.Errorf("write api credentials in '%s' failed: %s", dumpFile, err)
-				}
-				log.Printf("Central API credentials dumped to '%s'", dumpFile)
-			} else {
-				fmt.Println(string(apiConfigDump))
-			}
-
-			log.Warning(ReloadMessage())
-			return nil
-		},
+		RunE: runCapiRegister,
 	}
-	cmdCapiRegister.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
-	cmdCapiRegister.Flags().StringVar(&capiUserPrefix, "schmilblick", "", "set a schmilblick (use in tests only)")
-	if err := cmdCapiRegister.Flags().MarkHidden("schmilblick"); err != nil {
+
+	flags := cmdCapiRegister.Flags()
+	flags.StringP("file", "f", "", "output file destination")
+	flags.String("schmilblick", "", "set a schmilblick (use in tests only)")
+
+	if err := flags.MarkHidden("schmilblick"); err != nil {
 		log.Fatalf("failed to hide flag: %s", err)
 	}
 
 	return cmdCapiRegister
 }
+
 
 func NewCapiStatusCmd() *cobra.Command {
 	var cmdCapiStatus = &cobra.Command{
