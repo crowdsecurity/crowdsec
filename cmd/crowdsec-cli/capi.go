@@ -134,7 +134,7 @@ func NewCapiRegisterCmd() *cobra.Command {
 		Short:             "Register to Central API (CAPI)",
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
-		RunE: runCapiRegister,
+		RunE:              runCapiRegister,
 	}
 
 	flags := cmdCapiRegister.Flags()
@@ -149,57 +149,60 @@ func NewCapiRegisterCmd() *cobra.Command {
 }
 
 
+func runCapiStatus(cmd *cobra.Command, args []string) error {
+	if err := require.CAPIRegistered(csConfig); err != nil {
+		return err
+	}
+
+	password := strfmt.Password(csConfig.API.Server.OnlineClient.Credentials.Password)
+	apiurl, err := url.Parse(csConfig.API.Server.OnlineClient.Credentials.URL)
+	if err != nil {
+		return fmt.Errorf("unable to parse api url %s: %s", csConfig.API.Server.OnlineClient.Credentials.URL, err)
+	}
+
+	if err := csConfig.LoadHub(); err != nil {
+		return err
+	}
+
+	if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
+		log.Info("Run 'sudo cscli hub update' to get the hub index")
+		return fmt.Errorf("failed to load hub index : %s", err)
+	}
+	scenarios, err := cwhub.GetInstalledScenariosAsString()
+	if err != nil {
+		return fmt.Errorf("failed to get scenarios: %s", err)
+	}
+	if len(scenarios) == 0 {
+		return fmt.Errorf("no scenarios installed, abort")
+	}
+
+	Client, err = apiclient.NewDefaultClient(apiurl, CAPIURLPrefix, fmt.Sprintf("crowdsec/%s", version.String()), nil)
+	if err != nil {
+		return fmt.Errorf("init default client: %s", err)
+	}
+	t := models.WatcherAuthRequest{
+		MachineID: &csConfig.API.Server.OnlineClient.Credentials.Login,
+		Password:  &password,
+		Scenarios: scenarios,
+	}
+	log.Infof("Loaded credentials from %s", csConfig.API.Server.OnlineClient.CredentialsFilePath)
+	log.Infof("Trying to authenticate with username %s on %s", csConfig.API.Server.OnlineClient.Credentials.Login, apiurl)
+	_, _, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
+	if err != nil {
+		return fmt.Errorf("failed to authenticate to Central API (CAPI): %s", err)
+	}
+	log.Infof("You can successfully interact with Central API (CAPI)")
+	return nil
+}
+
+
 func NewCapiStatusCmd() *cobra.Command {
 	var cmdCapiStatus = &cobra.Command{
 		Use:               "status",
 		Short:             "Check status with the Central API (CAPI)",
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := require.CAPIRegistered(csConfig); err != nil {
-				return err
-			}
-
-			password := strfmt.Password(csConfig.API.Server.OnlineClient.Credentials.Password)
-			apiurl, err := url.Parse(csConfig.API.Server.OnlineClient.Credentials.URL)
-			if err != nil {
-				return fmt.Errorf("unable to parse api url %s: %s", csConfig.API.Server.OnlineClient.Credentials.URL, err)
-			}
-
-			if err := csConfig.LoadHub(); err != nil {
-				return err
-			}
-
-			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-				log.Info("Run 'sudo cscli hub update' to get the hub index")
-				return fmt.Errorf("failed to load hub index : %s", err)
-			}
-			scenarios, err := cwhub.GetInstalledScenariosAsString()
-			if err != nil {
-				return fmt.Errorf("failed to get scenarios: %s", err)
-			}
-			if len(scenarios) == 0 {
-				return fmt.Errorf("no scenarios installed, abort")
-			}
-
-			Client, err = apiclient.NewDefaultClient(apiurl, CAPIURLPrefix, fmt.Sprintf("crowdsec/%s", version.String()), nil)
-			if err != nil {
-				return fmt.Errorf("init default client: %s", err)
-			}
-			t := models.WatcherAuthRequest{
-				MachineID: &csConfig.API.Server.OnlineClient.Credentials.Login,
-				Password:  &password,
-				Scenarios: scenarios,
-			}
-			log.Infof("Loaded credentials from %s", csConfig.API.Server.OnlineClient.CredentialsFilePath)
-			log.Infof("Trying to authenticate with username %s on %s", csConfig.API.Server.OnlineClient.Credentials.Login, apiurl)
-			_, _, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
-			if err != nil {
-				return fmt.Errorf("failed to authenticate to Central API (CAPI): %s", err)
-			}
-			log.Infof("You can successfully interact with Central API (CAPI)")
-			return nil
-		},
+		RunE:              runCapiStatus,
 	}
 
 	return cmdCapiStatus
