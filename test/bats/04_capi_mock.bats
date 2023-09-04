@@ -37,7 +37,7 @@ teardown() {
 #----------
 
 @test "cscli capi status" {
-    rune -0 cscli capi register --schmilblick githubciXXXXXXXXXXXXXXXXXXXXXXXX
+    rune -0 cscli capi register --url "$MOCK_URL" --schmilblick githubciXXXXXXXXXXXXXXXXXXXXXXXX
     rune -0 cscli capi status
     assert_stderr --partial "Loaded credentials from"
     assert_stderr --partial "Trying to authenticate with username"

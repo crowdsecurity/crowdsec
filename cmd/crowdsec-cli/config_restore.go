@@ -18,6 +18,7 @@ import (
 type OldAPICfg struct {
 	MachineID string `json:"machine_id"`
 	Password  string `json:"password"`
+	URL       string `json:"url"`
 }
 
 /* Restore crowdsec configurations to directory <dirPath> :
@@ -84,7 +85,7 @@ func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
 			apiCfg := csconfig.ApiCredentialsCfg{
 				Login:    oldAPICfg.MachineID,
 				Password: oldAPICfg.Password,
-				URL:      CAPIBaseURL,
+				URL:      oldAPICfg.URL,
 			}
 			apiConfigDump, err := yaml.Marshal(apiCfg)
 			if err != nil {
