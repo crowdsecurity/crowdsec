@@ -64,6 +64,7 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 		c.Abort()
 		return nil, errors.New("TLS auth is not configured")
 	}
+
 	validCert, extractedCN, err := j.TlsAuth.ValidateCert(c)
 	if err != nil {
 		log.Error(err)
@@ -71,6 +72,7 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 		c.Abort()
 		return nil, errors.Wrap(err, "while trying to validate client cert")
 	}
+
 	if !validCert {
 		c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 		c.Abort()
@@ -105,17 +107,18 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 			return nil, errors.Errorf("machine %s attempted to auth with TLS cert but it is configured to use %s", ret.machineID, ret.clientMachine.AuthType)
 		}
 		ret.machineID = ret.clientMachine.MachineId
-		loginInput := struct {
-			Scenarios []string `json:"scenarios"`
-		}{
-			Scenarios: []string{},
-		}
-		err := c.ShouldBindJSON(&loginInput)
-		if err != nil {
-			return nil, errors.Wrap(err, "missing scenarios list in login request for TLS auth")
-		}
-		ret.scenariosInput = loginInput.Scenarios
 	}
+
+	loginInput := struct {
+		Scenarios []string `json:"scenarios"`
+	}{
+		Scenarios: []string{},
+	}
+	err = c.ShouldBindJSON(&loginInput)
+	if err != nil {
+		return nil, errors.Wrap(err, "missing scenarios list in login request for TLS auth")
+	}
+	ret.scenariosInput = loginInput.Scenarios
 
 	return &ret, nil
 }
