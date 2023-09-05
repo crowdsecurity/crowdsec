@@ -54,12 +54,18 @@ func LogWaapEvent(evt *types.Event, logger *log.Entry) {
 		req = req[:10] + ".."
 	}
 
-	if evt.Parsed["interrupted"] == "true" {
+	if evt.Meta["waap_interrupted"] == "true" {
 		logger.WithFields(log.Fields{
 			"module":     "waf",
 			"source":     evt.Parsed["source_ip"],
 			"target_uri": req,
 		}).Infof("%s blocked on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Waap.MatchedRules), evt.Waap.GetRuleIDs())
+	} else if evt.Parsed["outofband_interrupted"] == "true" {
+		logger.WithFields(log.Fields{
+			"module":     "waf",
+			"source":     evt.Parsed["source_ip"],
+			"target_uri": req,
+		}).Infof("%s out-of-band blocking rules on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Waap.MatchedRules), evt.Waap.GetRuleIDs())
 	} else {
 		logger.WithFields(log.Fields{
 			"module":     "waf",
@@ -68,7 +74,6 @@ func LogWaapEvent(evt *types.Event, logger *log.Entry) {
 		}).Debugf("%s triggerd non-blocking rules on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Waap.MatchedRules), evt.Waap.GetRuleIDs())
 	}
 
-	//log.Infof("%s", evt.Waap)
 }
 
 /*
@@ -92,13 +97,15 @@ func (r *WafRunner) AccumulateTxToEvent(tx experimental.FullTransaction, kind st
 		if evt.Meta == nil {
 			evt.Meta = map[string]string{}
 		}
-		evt.Parsed["interrupted"] = "true"
-		evt.Parsed["action"] = tx.Interruption().Action
-
-		//log.Infof("action: %s", tx.Interruption().Action)
-
-		evt.Meta["waap_interrupted"] = "1"
-		evt.Meta["waap_action"] = tx.Interruption().Action
+		if kind == InBand {
+			evt.Meta["waap_interrupted"] = "true"
+			evt.Meta["waap_action"] = tx.Interruption().Action
+			evt.Parsed["inband_interrupted"] = "true"
+			evt.Parsed["inband_action"] = tx.Interruption().Action
+		} else {
+			evt.Parsed["outofband_interrupted"] = "true"
+			evt.Parsed["outofband_action"] = tx.Interruption().Action
+		}
 	}
 
 	if evt.Waap.Vars == nil {
