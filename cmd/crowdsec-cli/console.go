@@ -46,11 +46,21 @@ func NewConsoleCmd() *cobra.Command {
 		},
 	}
 
+	cmdConsole.AddCommand(NewConsoleEnrollCmd())
+	cmdConsole.AddCommand(NewConsoleEnableCmd())
+	cmdConsole.AddCommand(NewConsoleDisableCmd())
+	cmdConsole.AddCommand(NewConsoleStatusCmd())
+
+	return cmdConsole
+}
+
+
+func NewConsoleEnrollCmd() *cobra.Command {
 	name := ""
 	overwrite := false
 	tags := []string{}
 
-	cmdEnroll := &cobra.Command{
+ 	var cmdConsoleEnroll = &cobra.Command{
 		Use:   "enroll [enroll-key]",
 		Short: "Enroll this instance to https://app.crowdsec.net [requires local API]",
 		Long: `
@@ -116,14 +126,19 @@ After running this command your will need to validate the enrollment in the weba
 			return nil
 		},
 	}
-	cmdEnroll.Flags().StringVarP(&name, "name", "n", "", "Name to display in the console")
-	cmdEnroll.Flags().BoolVarP(&overwrite, "overwrite", "", false, "Force enroll the instance")
-	cmdEnroll.Flags().StringSliceVarP(&tags, "tags", "t", tags, "Tags to display in the console")
-	cmdConsole.AddCommand(cmdEnroll)
 
-	var enableAll, disableAll bool
+	cmdConsoleEnroll.Flags().StringVarP(&name, "name", "n", "", "Name to display in the console")
+	cmdConsoleEnroll.Flags().BoolVarP(&overwrite, "overwrite", "", false, "Force enroll the instance")
+	cmdConsoleEnroll.Flags().StringSliceVarP(&tags, "tags", "t", tags, "Tags to display in the console")
 
-	cmdEnable := &cobra.Command{
+	return cmdConsoleEnroll
+}
+
+
+func NewConsoleEnableCmd() *cobra.Command {
+	var enableAll bool
+
+	cmdConsoleEnable := &cobra.Command{
 		Use:     "enable [option]",
 		Short:   "Enable a console option",
 		Example: "sudo cscli console enable tainted",
@@ -150,10 +165,16 @@ Enable given information push to the central API. Allows to empower the console`
 			return nil
 		},
 	}
-	cmdEnable.Flags().BoolVarP(&enableAll, "all", "a", false, "Enable all console options")
-	cmdConsole.AddCommand(cmdEnable)
 
-	cmdDisable := &cobra.Command{
+	cmdConsoleEnable.Flags().BoolVarP(&enableAll, "all", "a", false, "Enable all console options")
+	return cmdConsoleEnable
+}
+
+
+func NewConsoleDisableCmd() *cobra.Command {
+	var disableAll bool
+
+	cmdConsoleDisable := &cobra.Command{
 		Use:     "disable [option]",
 		Short:   "Disable a console option",
 		Example: "sudo cscli console disable tainted",
@@ -178,9 +199,14 @@ Disable given information push to the central API.`,
 			return nil
 		},
 	}
-	cmdDisable.Flags().BoolVarP(&disableAll, "all", "a", false, "Disable all console options")
-	cmdConsole.AddCommand(cmdDisable)
 
+	cmdConsoleDisable.Flags().BoolVarP(&disableAll, "all", "a", false, "Disable all console options")
+
+	return cmdConsoleDisable
+}
+
+
+func NewConsoleStatusCmd() *cobra.Command {
 	cmdConsoleStatus := &cobra.Command{
 		Use:               "status",
 		Short:             "Shows status of the console options",
@@ -229,9 +255,7 @@ Disable given information push to the central API.`,
 			return nil
 		},
 	}
-	cmdConsole.AddCommand(cmdConsoleStatus)
-
-	return cmdConsole
+	return cmdConsoleStatus
 }
 
 func SetConsoleOpts(args []string, wanted bool) error {

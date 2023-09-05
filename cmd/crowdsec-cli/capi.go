@@ -139,7 +139,6 @@ func NewCapiRegisterCmd() *cobra.Command {
 	flags.StringP("file", "f", "", "output file destination")
 	flags.String("schmilblick", "", "set a schmilblick (use in tests only)")
 	flags.String("capi-url", "https://api.crowdsec.net/", "set the CAPI url")
-	flags.String("papi-url", "https://papi.api.crowdsec.net/", "set the PAPI url")
 
 	if err := flags.MarkHidden("schmilblick"); err != nil {
 		log.Fatalf("failed to hide flag: %s", err)
