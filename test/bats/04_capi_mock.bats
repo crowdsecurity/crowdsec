@@ -37,7 +37,7 @@ teardown() {
 #----------
 
 @test "cscli capi status" {
-    rune -0 cscli capi register --url "$MOCK_URL" --schmilblick githubciXXXXXXXXXXXXXXXXXXXXXXXX
+    rune -0 cscli capi register --capi-url "$MOCK_URL" --schmilblick githubciXXXXXXXXXXXXXXXXXXXXXXXX
     rune -0 cscli capi status
     assert_stderr --partial "Loaded credentials from"
     assert_stderr --partial "Trying to authenticate with username"
@@ -59,6 +59,7 @@ teardown() {
 #}
 
 @test "we have exactly one machine, localhost" {
+    rune -0 cscli lapi status
     rune -0 cscli machines list -o json
     rune -0 jq -c '[. | length, .[0].machineId[0:32], .[0].isValidated, .[0].ipAddress]' <(output)
     assert_json '[1,"githubciXXXXXXXXXXXXXXXXXXXXXXXX",true,"127.0.0.1"]'

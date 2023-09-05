@@ -12,10 +12,13 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 class RequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         logging.info("Request path: %s", self.path)
+        logging.debug("Request headers: %s", self.headers)
+        logging.debug("Request payload: %s", self.rfile.read(int(self.headers['Content-Length'])))
 
         parsed_path = urllib.parse.urlparse(self.path)
         routes = {
             '/': self.root,
+            '/v3/watchers': self.v3_watchers,
             '/v3/watchers/login': self.v3_watchers_login,
         }
 
@@ -43,6 +46,16 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.send_header('Content-type', 'application/json')
         self.end_headers()
         self.wfile.write(json.dumps({}).encode())
+        self.wfile.flush()
+
+    # register a new watcher
+    def v3_watchers(self):
+        j = {
+        }
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps(j).encode())
         self.wfile.flush()
 
     def v3_watchers_login(self):
@@ -74,5 +87,5 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
     sys.exit(main(sys.argv))
