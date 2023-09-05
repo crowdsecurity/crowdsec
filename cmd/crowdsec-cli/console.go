@@ -21,7 +21,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
@@ -116,7 +115,7 @@ After running this command your will need to validate the enrollment in the weba
 				return nil
 			}
 
-			if err := SetConsoleOpts([]string{csconfig.SEND_MANUAL_SCENARIOS, csconfig.SEND_TAINTED_SCENARIOS}, true); err != nil {
+			if err := SetConsoleOpts([]string{csconfig.SEND_MANUAL_SCENARIOS, csconfig.SEND_TAINTED_SCENARIOS}, true, ""); err != nil {
 				return err
 			}
 
@@ -136,7 +135,10 @@ After running this command your will need to validate the enrollment in the weba
 
 
 func NewConsoleEnableCmd() *cobra.Command {
-	var enableAll bool
+	var (
+		enableAll bool
+		papiURL string
+	)
 
 	cmdConsoleEnable := &cobra.Command{
 		Use:     "enable [option]",
@@ -148,7 +150,7 @@ Enable given information push to the central API. Allows to empower the console`
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if enableAll {
-				if err := SetConsoleOpts(csconfig.CONSOLE_CONFIGS, true); err != nil {
+				if err := SetConsoleOpts(csconfig.CONSOLE_CONFIGS, true, papiURL); err != nil {
 					return err
 				}
 				log.Infof("All features have been enabled successfully")
@@ -156,7 +158,7 @@ Enable given information push to the central API. Allows to empower the console`
 				if len(args) == 0 {
 					return fmt.Errorf("you must specify at least one feature to enable")
 				}
-				if err := SetConsoleOpts(args, true); err != nil {
+				if err := SetConsoleOpts(args, true, papiURL); err != nil {
 					return err
 				}
 				log.Infof("%v have been enabled", args)
@@ -167,6 +169,8 @@ Enable given information push to the central API. Allows to empower the console`
 	}
 
 	cmdConsoleEnable.Flags().BoolVarP(&enableAll, "all", "a", false, "Enable all console options")
+	cmdConsoleEnable.Flags().StringVar(&papiURL, "papi-url", "https://papi.api.crowdsec.net", "Enable all console options")
+
 	return cmdConsoleEnable
 }
 
@@ -184,12 +188,12 @@ Disable given information push to the central API.`,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if disableAll {
-				if err := SetConsoleOpts(csconfig.CONSOLE_CONFIGS, false); err != nil {
+				if err := SetConsoleOpts(csconfig.CONSOLE_CONFIGS, false, ""); err != nil {
 					return err
 				}
 				log.Infof("All features have been disabled")
 			} else {
-				if err := SetConsoleOpts(args, false); err != nil {
+				if err := SetConsoleOpts(args, false, ""); err != nil {
 					return err
 				}
 				log.Infof("%v have been disabled", args)
@@ -258,7 +262,7 @@ func NewConsoleStatusCmd() *cobra.Command {
 	return cmdConsoleStatus
 }
 
-func SetConsoleOpts(args []string, wanted bool) error {
+func SetConsoleOpts(args []string, wanted bool, papiURL string) error {
 	for _, arg := range args {
 		switch arg {
 		case csconfig.CONSOLE_MANAGEMENT:
@@ -281,7 +285,7 @@ func SetConsoleOpts(args []string, wanted bool) error {
 				changed := false
 				if wanted && csConfig.API.Server.OnlineClient.Credentials.PapiURL == "" {
 					changed = true
-					csConfig.API.Server.OnlineClient.Credentials.PapiURL = types.PAPIBaseURL
+					csConfig.API.Server.OnlineClient.Credentials.PapiURL = papiURL
 				} else if !wanted && csConfig.API.Server.OnlineClient.Credentials.PapiURL != "" {
 					changed = true
 					csConfig.API.Server.OnlineClient.Credentials.PapiURL = ""
