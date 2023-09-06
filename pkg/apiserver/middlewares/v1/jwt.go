@@ -85,7 +85,7 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 		First(j.DbClient.CTX)
 	if ent.IsNotFound(err) {
 		//Machine was not found, let's create it
-		log.Printf("machine %s not found, create it", ret.machineID)
+		log.Infof("machine %s not found, create it", ret.machineID)
 		//let's use an apikey as the password, doesn't matter in this case (generatePassword is only available in cscli)
 		pwd, err := GenerateAPIKey(dummyAPIKeySize)
 		if err != nil {
@@ -145,7 +145,7 @@ func (j *JWT) authPlain(c *gin.Context) (*authInput, error) {
 		Where(machine.MachineId(ret.machineID)).
 		First(j.DbClient.CTX)
 	if err != nil {
-		log.Printf("Error machine login for %s : %+v ", ret.machineID, err)
+		log.Infof("Error machine login for %s : %+v ", ret.machineID, err)
 		return nil, err
 	}
 
