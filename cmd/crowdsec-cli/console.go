@@ -169,7 +169,7 @@ Enable given information push to the central API. Allows to empower the console`
 	}
 
 	cmdConsoleEnable.Flags().BoolVarP(&enableAll, "all", "a", false, "Enable all console options")
-	cmdConsoleEnable.Flags().StringVar(&papiURL, "papi-url", "https://papi.api.crowdsec.net", "Enable all console options")
+	cmdConsoleEnable.Flags().StringVar(&papiURL, "papi-url", "https://papi.api.crowdsec.net", "set the PAPI url")
 
 	return cmdConsoleEnable
 }

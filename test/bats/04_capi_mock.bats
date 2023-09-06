@@ -17,7 +17,7 @@ setup() {
     ./instance-data load
     config_enable_capi
     MOCK_PORT="9999"
-    MOCK_URL="http://localhost:$MOCK_PORT/"
+    MOCK_URL="http://localhost:$MOCK_PORT/capi/"
     export MOCK_URL
     config_set "$(config_get '.api.server.online_client.credentials_path')" '
     .url=strenv(MOCK_URL) |
@@ -36,8 +36,14 @@ teardown() {
 
 #----------
 
-@test "cscli capi status" {
+@test "cscli capi register --capi-url" {
     rune -0 cscli capi register --capi-url "$MOCK_URL" --schmilblick githubciXXXXXXXXXXXXXXXXXXXXXXXX
+    rune -0 yq '[.url, .login | split("") | .[0:32] | join("")]' \
+        "$(config_get '.api.server.online_client.credentials_path')" -o csv
+    assert_output "http://localhost:9999/capi/,githubciXXXXXXXXXXXXXXXXXXXXXXXX"
+}
+
+@test "cscli capi status" {
     rune -0 cscli capi status
     assert_stderr --partial "Loaded credentials from"
     assert_stderr --partial "Trying to authenticate with username"
@@ -45,18 +51,17 @@ teardown() {
     assert_stderr --partial "You can successfully interact with Central API (CAPI)"
 }
 
-#@test "cscli alerts list: receive a community pull when capi is enabled" {
-#    sleep 2
-#    ./instance-crowdsec start
-#    for ((i=0; i<15; i++)); do
-#        sleep 2
-#        [[ $(cscli alerts list -a -o json) != "[]" ]] && break
-#    done
-#
-#    rune -0 cscli alerts list -a -o json
-#    rune -0 jq -r '. | length' <(output)
-#    refute_output 0
-#}
+@test "cscli alerts list: receive a community pull when capi is enabled" {
+    sleep 2
+    for ((i=0; i<15; i++)); do
+        sleep 2
+        [[ $(cscli alerts list -a -o json) != "[]" ]] && break
+    done
+
+    rune -0 cscli alerts list -a -o json
+    rune -0 jq -r '. | length' <(output)
+    refute_output 0
+}
 
 @test "we have exactly one machine, localhost" {
     rune -0 cscli lapi status

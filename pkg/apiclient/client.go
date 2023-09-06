@@ -161,16 +161,28 @@ func CheckResponse(r *http.Response) error {
 		return nil
 	}
 	errorResponse := &ErrorResponse{}
+
+	defer r.Body.Close()
+
 	data, err := io.ReadAll(r.Body)
 	if err == nil && data != nil {
-		err := json.Unmarshal(data, errorResponse)
-		if err != nil {
-			return fmt.Errorf("http code %d, invalid body: %w", r.StatusCode, err)
+		// do not assume json
+		if r.Header.Get("Content-Type") == "application/json" {
+			err := json.Unmarshal(data, errorResponse)
+			if err != nil {
+				return fmt.Errorf("http code %d, invalid body: %w", r.StatusCode, err)
+			}
+		} else {
+			errorResponse.Message = new(string)
+			*errorResponse.Message = string(data)
+//			errorResponse.Errors = new([]string)
+//			*errorResponse.Errors = []string{string(data)}
 		}
 	} else {
 		errorResponse.Message = new(string)
 		*errorResponse.Message = fmt.Sprintf("http code %d, no error message", r.StatusCode)
 	}
+
 	return errorResponse
 }
 
