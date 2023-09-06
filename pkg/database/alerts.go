@@ -96,7 +96,7 @@ func formatAlertAsString(machineID string, alert *models.Alert) []string {
 	var retStr []string
 
 	if alert.Decisions[0].Origin != nil && *alert.Decisions[0].Origin == types.CscliImportOrigin {
-		return []string{fmt.Sprintf("(%s) alert : %s for %d decisions", machineID, reason, len(alert.Decisions))}
+		return []string{fmt.Sprintf("(%s) alert : %s", machineID, reason)}
 	}
 
 	for i, decisionItem := range alert.Decisions {
