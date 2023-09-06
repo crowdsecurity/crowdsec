@@ -2,6 +2,7 @@ package v1
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -16,7 +17,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -70,7 +70,7 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 		log.Error(err)
 		c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 		c.Abort()
-		return nil, errors.Wrap(err, "while trying to validate client cert")
+		return nil, fmt.Errorf("while trying to validate client cert: %w", err)
 	}
 
 	if !validCert {
@@ -98,13 +98,13 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 		password := strfmt.Password(pwd)
 		ret.clientMachine, err = j.DbClient.CreateMachine(&ret.machineID, &password, "", true, true, types.TlsAuthType)
 		if err != nil {
-			return nil, errors.Wrapf(err, "while creating machine entry for %s", ret.machineID)
+			return nil, fmt.Errorf("while creating machine entry for %s: %w", ret.machineID, err)
 		}
 	} else if err != nil {
-		return nil, errors.Wrapf(err, "while selecting machine entry for %s", ret.machineID)
+		return nil, fmt.Errorf("while selecting machine entry for %s: %w", ret.machineID, err)
 	} else {
 		if ret.clientMachine.AuthType != types.TlsAuthType {
-			return nil, errors.Errorf("machine %s attempted to auth with TLS cert but it is configured to use %s", ret.machineID, ret.clientMachine.AuthType)
+			return nil, fmt.Errorf("machine %s attempted to auth with TLS cert but it is configured to use %s", ret.machineID, ret.clientMachine.AuthType)
 		}
 		ret.machineID = ret.clientMachine.MachineId
 	}
@@ -116,7 +116,7 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 	}
 	err = c.ShouldBindJSON(&loginInput)
 	if err != nil {
-		return nil, errors.Wrap(err, "missing scenarios list in login request for TLS auth")
+		return nil, fmt.Errorf("missing scenarios list in login request for TLS auth: %w", err)
 	}
 	ret.scenariosInput = loginInput.Scenarios
 
@@ -132,7 +132,7 @@ func (j *JWT) authPlain(c *gin.Context) (*authInput, error) {
 	ret := authInput{}
 
 	if err = c.ShouldBindJSON(&loginInput); err != nil {
-		return nil, errors.Wrap(err, "missing")
+		return nil, fmt.Errorf("missing: %w", err)
 	}
 	if err = loginInput.Validate(strfmt.Default); err != nil {
 		return nil, errors.New("input format error")
@@ -155,7 +155,7 @@ func (j *JWT) authPlain(c *gin.Context) (*authInput, error) {
 	}
 
 	if ret.clientMachine.AuthType != types.PasswordAuthType {
-		return nil, errors.Errorf("machine %s attempted to auth with password but it is configured to use %s", ret.machineID, ret.clientMachine.AuthType)
+		return nil, fmt.Errorf("machine %s attempted to auth with password but it is configured to use %s", ret.machineID, ret.clientMachine.AuthType)
 	}
 
 	if !ret.clientMachine.IsValidated {
