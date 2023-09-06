@@ -364,7 +364,7 @@ func TestSetFromYamlFile(t *testing.T) {
 	defer os.Remove(tmpfile.Name())
 
 	// write the config file
-	_, err = tmpfile.Write([]byte("- experimental1"))
+	_, err = tmpfile.WriteString("- experimental1")
 	require.NoError(t, err)
 	require.NoError(t, tmpfile.Close())
 

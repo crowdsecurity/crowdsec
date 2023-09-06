@@ -163,6 +163,12 @@ Central API:
       - User                : {{.DbConfig.User}}
       - DB Name             : {{.DbConfig.DbName}}
 {{- end }}
+{{- if .DbConfig.MaxOpenConns }}
+      - Max Open Conns      : {{.DbConfig.MaxOpenConns}}
+{{- end }}
+{{- if ne .DbConfig.DecisionBulkSize 0 }}
+      - Decision Bulk Size  : {{.DbConfig.DecisionBulkSize}}
+{{- end }}
 {{- if .DbConfig.Flush }}
 {{- if .DbConfig.Flush.MaxAge }}
       - Flush age           : {{.DbConfig.Flush.MaxAge}}

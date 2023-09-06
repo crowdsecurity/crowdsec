@@ -63,17 +63,17 @@ install -m 644 -D config/context.yaml %{buildroot}%{_sysconfdir}/crowdsec/consol
 install -m 750 -D config/%{name}.cron.daily %{buildroot}%{_sysconfdir}/cron.daily/%{name}
 install -m 644 -D %{SOURCE1} %{buildroot}%{_presetdir}
 
-install -m 551 plugins/notifications/slack/notification-slack %{buildroot}%{_libdir}/%{name}/plugins/
-install -m 551 plugins/notifications/http/notification-http %{buildroot}%{_libdir}/%{name}/plugins/
-install -m 551 plugins/notifications/splunk/notification-splunk %{buildroot}%{_libdir}/%{name}/plugins/
-install -m 551 plugins/notifications/email/notification-email %{buildroot}%{_libdir}/%{name}/plugins/
-install -m 551 plugins/notifications/sentinel/notification-sentinel %{buildroot}%{_libdir}/%{name}/plugins/
+install -m 551 cmd/notification-slack/notification-slack %{buildroot}%{_libdir}/%{name}/plugins/
+install -m 551 cmd/notification-http/notification-http %{buildroot}%{_libdir}/%{name}/plugins/
+install -m 551 cmd/notification-splunk/notification-splunk %{buildroot}%{_libdir}/%{name}/plugins/
+install -m 551 cmd/notification-email/notification-email %{buildroot}%{_libdir}/%{name}/plugins/
+install -m 551 cmd/notification-sentinel/notification-sentinel %{buildroot}%{_libdir}/%{name}/plugins/
 
-install -m 600 plugins/notifications/slack/slack.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
-install -m 600 plugins/notifications/http/http.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
-install -m 600 plugins/notifications/splunk/splunk.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
-install -m 600 plugins/notifications/email/email.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
-install -m 600 plugins/notifications/sentinel/sentinel.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
+install -m 600 cmd/notification-slack/slack.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
+install -m 600 cmd/notification-http/http.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
+install -m 600 cmd/notification-splunk/splunk.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
+install -m 600 cmd/notification-email/email.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
+install -m 600 cmd/notification-sentinel/sentinel.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 
 
 %clean

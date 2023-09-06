@@ -12,8 +12,21 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
+
+func GetLineCountForFile(filepath string) (int, error) {
+	f, err := os.Open(filepath)
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+	lc := 0
+	fs := bufio.NewScanner(f)
+	for fs.Scan() {
+		lc++
+	}
+	return lc, nil
+}
 
 func runExplain(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
@@ -123,7 +136,10 @@ func runExplain(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("unable to get absolute path of '%s', exiting", logFile)
 		}
 		dsn = fmt.Sprintf("file://%s", absolutePath)
-		lineCount := types.GetLineCountForFile(absolutePath)
+		lineCount, err := GetLineCountForFile(absolutePath)
+		if err != nil {
+			return err
+		}
 		if lineCount > 100 {
 			log.Warnf("log file contains %d lines. This may take lot of resources.", lineCount)
 		}

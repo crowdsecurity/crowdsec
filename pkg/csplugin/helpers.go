@@ -1,6 +1,7 @@
 package csplugin
 
 import (
+	"html"
 	"os"
 	"text/template"
 
@@ -28,7 +29,8 @@ var helpers = template.FuncMap{
 		}
 		return ret
 	},
-	"Hostname": os.Hostname,
+	"Hostname":   os.Hostname,
+	"HTMLEscape": html.EscapeString,
 }
 
 func funcMap() template.FuncMap {
