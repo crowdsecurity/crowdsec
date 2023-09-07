@@ -97,7 +97,7 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 	}
 	err = yaml.Unmarshal(yamlFile, configFileData)
 	if err != nil {
-		return nil, fmt.Errorf("Unmarshal: %v", err)
+		return nil, fmt.Errorf("unmarshal: %v", err)
 	}
 
 	parserAssertFilePath := filepath.Join(testPath, ParserAssertFileName)
@@ -516,7 +516,7 @@ func (t *HubTestItem) Run() error {
 		return fmt.Errorf("unable to stat log file '%s': %s", logFile, err)
 	}
 	if logFileStat.Size() == 0 {
-		return fmt.Errorf("Log file '%s' is empty, please fill it with log", logFile)
+		return fmt.Errorf("log file '%s' is empty, please fill it with log", logFile)
 	}
 
 	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--auto"}
