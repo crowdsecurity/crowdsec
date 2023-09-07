@@ -30,9 +30,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
-var (
-	passwordLength = 64
-)
+const passwordLength = 64
 
 func generatePassword(length int) string {
 	upper := "ABCDEFGHIJKLMNOPQRSTUVWXY"

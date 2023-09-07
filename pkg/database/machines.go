@@ -19,8 +19,8 @@ const CapiListsMachineID = types.ListOrigin
 func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipAddress string, isValidated bool, force bool, authType string) (*ent.Machine, error) {
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
 	if err != nil {
-		c.Log.Warningf("CreateMachine : %s", err)
-		return nil, errors.Wrap(HashError, "")
+		c.Log.Warningf("CreateMachine: %s", err)
+		return nil, HashError
 	}
 
 	machineExist, err := c.Ent.Machine.
