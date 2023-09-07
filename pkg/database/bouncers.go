@@ -31,7 +31,7 @@ func (c *Client) SelectBouncerByName(bouncerName string) (*ent.Bouncer, error) {
 func (c *Client) ListBouncers() ([]*ent.Bouncer, error) {
 	result, err := c.Ent.Bouncer.Query().All(c.CTX)
 	if err != nil {
-		return []*ent.Bouncer{}, errors.Wrapf(QueryFail, "listing bouncer: %s", err)
+		return nil, errors.Wrapf(QueryFail, "listing bouncers: %s", err)
 	}
 	return result, nil
 }
