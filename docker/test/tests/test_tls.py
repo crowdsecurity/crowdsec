@@ -287,6 +287,19 @@ def test_tls_client_ou(crowdsec, certs_dir):
 
     lapi_env['AGENTS_ALLOWED_OU'] = 'custom-client-ou'
 
+    # change container names to avoid conflict
+    # recreate certificates because they need the new hostname
+
+    rand = uuid.uuid1()
+    lapiname = 'lapi-' + str(rand)
+    agentname = 'agent-' + str(rand)
+
+    agent_env['LOCAL_API_URL'] = f'https://{lapiname}:8080'
+
+    volumes = {
+        certs_dir(lapi_hostname=lapiname, agent_ou='custom-client-ou'): {'bind': '/etc/ssl/crowdsec', 'mode': 'ro'},
+    }
+
     cs_lapi = crowdsec(name=lapiname, environment=lapi_env, volumes=volumes)
     cs_agent = crowdsec(name=agentname, environment=agent_env, volumes=volumes)
 
