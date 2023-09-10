@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/antonmedv/expr/vm"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
@@ -74,6 +75,7 @@ func collectingRoutine(outputChan <-chan parseResult, resultChan chan<- LogEvent
 
 	storage = LogEventStorage{
 		ParsedIpEvents: make(map[string]fakeBucket),
+		exprCache:      make(map[string]vm.Program),
 		total:          0,
 	}
 LOOP:
