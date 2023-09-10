@@ -72,6 +72,31 @@ func evaluateProgramOnBucket(l *fakeBucket, compiledExpr *vm.Program, outputChan
 	outputChan <- evalIpResult{Result: result, Label: l.label}
 }
 
+func evaluateSingleProgramOnBucket(l *fakeBucket, compiledExpr *vm.Program) evalIpResult {
+	var hypothesis, ok bool
+	var queue leakybucket.Queue
+
+	result := 0
+	for index, evt := range l.events {
+		queue = leakybucket.Queue{Queue: l.events[:index], L: index + 1}
+		ret, err := expr.Run(compiledExpr, map[string]interface{}{"evt": &evt, "queue": &queue, "leaky": (*l).leaky})
+		if err != nil {
+			return evalIpResult{Error: err}
+		}
+
+		if hypothesis, ok = ret.(bool); !ok {
+			return evalIpResult{Error: fmt.Errorf("bayesion hypothesis, unexpected non-bool return : %T", ret)}
+		}
+
+		if hypothesis {
+			result = 1
+			break
+		}
+	}
+
+	return evalIpResult{Result: result, Label: l.label}
+}
+
 func controllerRoutine(inputChan <-chan evalIpResult, outputChan chan<- evalHypothesisResult, totalIps int) {
 
 	var evilIpsWithHypothesis = 0
@@ -114,6 +139,44 @@ func (s *LogEventStorage) InsertLabels(evilIps []string) {
 	s.nEvilIps = nUsedLabels
 	s.nBenignIps = s.total - s.nEvilIps
 	s.labeled = true
+}
+
+func (s *LogEventStorage) TestHypothesisSingle(hypothesis string) error {
+	var result evalIpResult
+	var evilIpsWithHypothesis = 0
+	var benignIpsWithHypothesis = 0
+
+	if !s.labeled {
+		return fmt.Errorf("LogEventStorage has not been labeled yet, add labels using InsertLabels")
+	}
+	err := compileAndCacheHypothesis(hypothesis, s)
+	if err != nil {
+		return err
+	}
+	condition := s.exprCache[hypothesis]
+
+	for _, v := range s.ParsedIpEvents {
+
+		result = evaluateSingleProgramOnBucket(&v, &condition)
+		if result.Error != nil {
+			return result.Error
+		}
+
+		if result.Label == 0 {
+			benignIpsWithHypothesis += result.Result
+		}
+		if result.Label == 1 {
+			evilIpsWithHypothesis += result.Result
+		}
+	}
+
+	bayesian := BayesianResult{condition: hypothesis, probGivenEvil: float32(evilIpsWithHypothesis) / float32(s.nEvilIps), probGivenBenign: float32(benignIpsWithHypothesis) / float32(s.nBenignIps)}
+
+	bayesian.printResults()
+
+	fmt.Printf("Finished Hypothesis testing, evil ips with hypothesis %v benign ips with hypothesis %v", evilIpsWithHypothesis, benignIpsWithHypothesis)
+
+	return nil
 }
 
 func (s *LogEventStorage) TestHypothesis(hypothesis string) error {
