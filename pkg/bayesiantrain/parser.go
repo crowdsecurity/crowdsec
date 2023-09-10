@@ -125,8 +125,8 @@ func (p *ParserAndFileStorage) ParseLogs(routinesCount int) (LogEventStorage, er
 	var scanner *bufio.Scanner
 	var evt types.Event
 
-	inputChan := make(chan types.Event, 10000)
-	outputChan := make(chan parseResult, 10000)
+	inputChan := make(chan types.Event, 1000000)
+	outputChan := make(chan parseResult, 1000000)
 	resultChan := make(chan LogEventStorage)
 	messageChan := make(chan int)
 
