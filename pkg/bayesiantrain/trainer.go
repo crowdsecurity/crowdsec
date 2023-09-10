@@ -11,15 +11,14 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var exprCache map[string]vm.Program
-var exprCacheLock sync.Mutex
-
 type LogEventStorage struct {
 	ParsedIpEvents map[string]fakeBucket
 	labeled        bool
 	total          int
 	nEvilIps       int
 	nBenignIps     int
+	exprCache      map[string]vm.Program
+	exprCacheLock  sync.Mutex
 }
 
 type BayesianResult struct {
@@ -48,23 +47,29 @@ type evalHypothesisResult struct {
 
 func evaluateProgramOnBucket(l *fakeBucket, compiledExpr *vm.Program, outputChan chan<- evalIpResult) {
 	var hypothesis, ok bool
+	var queue leakybucket.Queue
+
+	result := 0
 	for index, evt := range l.events {
-		ret, err := expr.Run(compiledExpr, map[string]interface{}{"evt": &evt, "queue": leakybucket.Queue{Queue: l.events[:index], L: index + 1}, "leaky": &(l.leaky)})
+		queue = leakybucket.Queue{Queue: l.events, L: index + 1}
+		ret, err := expr.Run(compiledExpr, map[string]interface{}{"evt": &evt, "queue": &queue, "leaky": (*l).leaky})
 		if err != nil {
 			outputChan <- evalIpResult{Error: err}
+			break
 		}
 
 		if hypothesis, ok = ret.(bool); !ok {
 			outputChan <- evalIpResult{Error: fmt.Errorf("bayesion hypothesis, unexpected non-bool return : %T", ret)}
+			break
 		}
 
 		if hypothesis {
-			outputChan <- evalIpResult{Result: 1, Label: l.label}
+			result = 1
 			break
 		}
 	}
 
-	outputChan <- evalIpResult{Result: 0, Label: l.label}
+	outputChan <- evalIpResult{Result: result, Label: l.label}
 }
 
 func controllerRoutine(inputChan <-chan evalIpResult, outputChan chan<- evalHypothesisResult, totalIps int) {
@@ -116,16 +121,17 @@ func (s *LogEventStorage) TestHypothesis(hypothesis string) error {
 	if !s.labeled {
 		return fmt.Errorf("LogEventStorage has not been labeled yet, add labels using InsertLabels")
 	}
-	compiled, err := compileAndCacheHypothesis(hypothesis)
+	err := compileAndCacheHypothesis(hypothesis, s)
 	if err != nil {
 		return err
 	}
+	condition := s.exprCache[hypothesis]
 
 	inputChan := make(chan evalIpResult, 1000)
 	outputChan := make(chan evalHypothesisResult)
 
 	for _, v := range s.ParsedIpEvents {
-		go evaluateProgramOnBucket(&v, compiled, inputChan)
+		go evaluateProgramOnBucket(&v, &condition, inputChan)
 	}
 
 	go controllerRoutine(inputChan, outputChan, s.total)
@@ -145,25 +151,25 @@ func (s *LogEventStorage) TestHypothesis(hypothesis string) error {
 	return nil
 }
 
-func compileAndCacheHypothesis(hypothesis string) (*vm.Program, error) {
+func compileAndCacheHypothesis(hypothesis string, s *LogEventStorage) error {
 
 	var compiledExpr *vm.Program
 	var err error
 
-	exprCacheLock.Lock()
-	if compiled, ok := exprCache[hypothesis]; ok {
-		exprCacheLock.Unlock()
-		return &compiled, nil
+	s.exprCacheLock.Lock()
+	if _, ok := s.exprCache[hypothesis]; ok {
+		s.exprCacheLock.Unlock()
+		return nil
 	}
-	exprCacheLock.Unlock()
+	s.exprCacheLock.Unlock()
 	compiledExpr, err = expr.Compile(hypothesis, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &leakybucket.Queue{}, "leaky": &leakybucket.Leaky{}, "evt": &types.Event{}})...)
 	if err != nil {
-		return nil, fmt.Errorf("hypothesis compile error : %w", err)
+		return fmt.Errorf("hypothesis compile error : %w", err)
 	}
-	exprCacheLock.Lock()
-	exprCache[hypothesis] = *compiledExpr
-	exprCacheLock.Unlock()
-	return compiledExpr, nil
+	s.exprCacheLock.Lock()
+	s.exprCache[hypothesis] = *compiledExpr
+	s.exprCacheLock.Unlock()
+	return nil
 }
 
 func (b *BayesianResult) printResults() {
