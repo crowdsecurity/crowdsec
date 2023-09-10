@@ -72,6 +72,7 @@ func collectingRoutine(outputChan <-chan parseResult, resultChan chan<- LogEvent
 	hasReceivedTotal := false
 	count := 0
 	total := 0
+	totalIps := 0
 
 	storage = LogEventStorage{
 		ParsedIpEvents: make(map[string]fakeBucket),
@@ -108,6 +109,7 @@ LOOP:
 					leaky:  &leakybucket.Leaky{},
 					label:  0,
 				}
+				totalIps += 1
 			}
 			bucket.events = append(bucket.events, res.evt)
 			storage.ParsedIpEvents[ip] = bucket
@@ -116,6 +118,7 @@ LOOP:
 			}
 		}
 	}
+	storage.total = totalIps
 
 	resultChan <- storage
 }
