@@ -37,6 +37,11 @@ receiver_emails:
 # One of "ssltls", "starttls", "none"
 encryption_type: ssltls
 
+## If your email server is hitting the default send timeout, you can increase the timeout values
+#email_timeout:
+#  send: 10s
+#  connect: 10s
+## Must be a valid golang duration (https://golang.org/pkg/time/#ParseDuration)
 ---
 
 # type: email

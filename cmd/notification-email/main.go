@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 	"github.com/hashicorp/go-hclog"
@@ -36,17 +37,38 @@ type PluginConfig struct {
 	Name     string  `yaml:"name"`
 	LogLevel *string `yaml:"log_level"`
 
-	SMTPHost       string   `yaml:"smtp_host"`
-	SMTPPort       int      `yaml:"smtp_port"`
-	SMTPUsername   string   `yaml:"smtp_username"`
-	SMTPPassword   string   `yaml:"smtp_password"`
-	SenderEmail    string   `yaml:"sender_email"`
-	SenderName     string   `yaml:"sender_name"`
-	ReceiverEmails []string `yaml:"receiver_emails"`
-	EmailSubject   string   `yaml:"email_subject"`
-	EncryptionType string   `yaml:"encryption_type"`
-	AuthType       string   `yaml:"auth_type"`
-	HeloHost       string   `yaml:"helo_host"`
+	SMTPHost       string       `yaml:"smtp_host"`
+	SMTPPort       int          `yaml:"smtp_port"`
+	SMTPUsername   string       `yaml:"smtp_username"`
+	SMTPPassword   string       `yaml:"smtp_password"`
+	SenderEmail    string       `yaml:"sender_email"`
+	SenderName     string       `yaml:"sender_name"`
+	ReceiverEmails []string     `yaml:"receiver_emails"`
+	EmailSubject   string       `yaml:"email_subject"`
+	EncryptionType string       `yaml:"encryption_type"`
+	AuthType       string       `yaml:"auth_type"`
+	HeloHost       string       `yaml:"helo_host"`
+	EmailTimeout   EmailTimeout `yaml:"email_timeout"`
+}
+
+type EmailTimeout struct {
+	Connect   string        `yaml:"connect"`
+	Send      string        `yaml:"send"`
+	P_Connect time.Duration `yaml:"-"`
+	P_Send    time.Duration `yaml:"-"`
+}
+
+func (e *EmailTimeout) Parse() error {
+	var err error
+	e.P_Connect, err = time.ParseDuration(e.Connect)
+	if err != nil {
+		return fmt.Errorf("invalid connect timeout: %s", err)
+	}
+	e.P_Send, err = time.ParseDuration(e.Send)
+	if err != nil {
+		return fmt.Errorf("invalid send timeout: %s", err)
+	}
+	return nil
 }
 
 type EmailPlugin struct {
@@ -61,7 +83,8 @@ func (n *EmailPlugin) Configure(ctx context.Context, config *protobufs.Config) (
 		EncryptionType: "ssltls",
 		AuthType:       "login",
 		SenderEmail:    "crowdsec@crowdsec.local",
-		HeloHost:	"localhost",
+		HeloHost:       "localhost",
+		EmailTimeout:   EmailTimeout{Connect: "10s", Send: "10s"},
 	}
 
 	if err := yaml.Unmarshal(config.Config, &d); err != nil {
@@ -78,6 +101,10 @@ func (n *EmailPlugin) Configure(ctx context.Context, config *protobufs.Config) (
 
 	if d.ReceiverEmails == nil || len(d.ReceiverEmails) == 0 {
 		return nil, fmt.Errorf("Receiver emails are not set")
+	}
+
+	if err := d.EmailTimeout.Parse(); err != nil {
+		return nil, err
 	}
 
 	n.ConfigByName[d.Name] = d
@@ -107,6 +134,8 @@ func (n *EmailPlugin) Notify(ctx context.Context, notification *protobufs.Notifi
 	server.Encryption = EncryptionStringToType[cfg.EncryptionType]
 	server.Authentication = AuthStringToType[cfg.AuthType]
 	server.Helo = cfg.HeloHost
+	server.ConnectTimeout = cfg.EmailTimeout.P_Connect
+	server.SendTimeout = cfg.EmailTimeout.P_Send
 
 	logger.Debug("making smtp connection")
 	smtpClient, err := server.Connect()
