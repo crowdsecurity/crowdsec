@@ -88,12 +88,9 @@ func LogWaapEvent(evt *types.Event, logger *log.Entry) {
 // 	return nil
 // }
 
-func (r *WafRunner) AccumulateTxToEvent(tx experimental.FullTransaction, kind string, evt *types.Event) error {
+func AccumulateTxToEvent(logger log.Entry, tx experimental.FullTransaction, kind string, evt *types.Event, wr *waf.WaapRuntimeConfig) error {
 
-	//log.Infof("tx addr: %p", tx)
 	if tx.IsInterrupted() {
-		//r.logger.Infof("interrupted() = %t", tx.IsInterrupted())
-		//r.logger.Infof("interrupted.action = %s", tx.Interruption().Action)
 		if evt.Meta == nil {
 			evt.Meta = map[string]string{}
 		}
@@ -112,12 +109,6 @@ func (r *WafRunner) AccumulateTxToEvent(tx experimental.FullTransaction, kind st
 		evt.Waap.Vars = map[string]string{}
 	}
 
-	// collectionsToKeep := []string{
-	// 	"toto",
-	// 	"TX.allowed_methods",
-	// 	"TX.*_score",
-	// }
-
 	tx.Variables().All(func(v variables.RuleVariable, col collection.Collection) bool {
 		for _, variable := range col.FindAll() {
 			key := ""
@@ -129,22 +120,18 @@ func (r *WafRunner) AccumulateTxToEvent(tx experimental.FullTransaction, kind st
 			if variable.Value() == "" {
 				continue
 			}
-			for _, collectionToKeep := range r.VariablesTracking {
+			for _, collectionToKeep := range wr.CompiledVariablesTracking {
 				match := collectionToKeep.MatchString(key)
 				if match {
 					evt.Waap.Vars[key] = variable.Value()
-					r.logger.Debugf("%s.%s = %s", variable.Variable().Name(), variable.Key(), variable.Value())
+					logger.Debugf("%s.%s = %s", variable.Variable().Name(), variable.Key(), variable.Value())
 				} else {
-					r.logger.Debugf("%s.%s != %s (%s) (not kept)", variable.Variable().Name(), variable.Key(), collectionToKeep, variable.Value())
+					logger.Debugf("%s.%s != %s (%s) (not kept)", variable.Variable().Name(), variable.Key(), collectionToKeep, variable.Value())
 				}
 			}
 		}
 		return true
 	})
-
-	//log.Infof("variables: %s", spew.Sdump(tx.Variables()))
-	//log.Infof("tx variables: %+v", tx.Collection(variables.TX))
-	//log.Infof("TX %s", spew.Sdump(tx.MatchedRules()))
 
 	for _, rule := range tx.MatchedRules() {
 		if rule.Message() == "" {
