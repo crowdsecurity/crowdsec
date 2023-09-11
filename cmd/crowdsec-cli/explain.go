@@ -74,6 +74,11 @@ func runExplain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	labels, err := flags.GetString("labels")
+	if err != nil {
+		return err
+	}
+
 	fileInfo, _ := os.Stdin.Stat()
 
 	if logType == "" || (logLine == "" && logFile == "" && dsn == "") {
@@ -150,6 +155,10 @@ func runExplain(cmd *cobra.Command, args []string) error {
 	}
 
 	cmdArgs := []string{"-c", ConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", dir, "-no-api"}
+	if labels != "" {
+		log.Debugf("adding labels %s", labels)
+		cmdArgs = append(cmdArgs, "-label", labels)
+	}
 	crowdsecCmd := exec.Command(crowdsec, cmdArgs...)
 	output, err := crowdsecCmd.CombinedOutput()
 	if err != nil {
@@ -209,6 +218,7 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 	flags.StringP("dsn", "d", "", "DSN to test")
 	flags.StringP("log", "l", "", "Log line to test")
 	flags.StringP("type", "t", "", "Type of the acquisition to test")
+	flags.String("labels", "", "Additional labels to add to the acquisition format (key:value,key2:value2)")
 	flags.BoolP("verbose", "v", false, "Display individual changes")
 	flags.Bool("failures", false, "Only show failed lines")
 	flags.Bool("only-successful-parsers", false, "Only show successful parsers")
