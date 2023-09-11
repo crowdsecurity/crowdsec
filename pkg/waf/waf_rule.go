@@ -4,7 +4,7 @@ type VPatchRule struct {
 	//Those 2 together represent something like ARGS.foo
 	//If only target is set, it's used for variables that are not a collection (REQUEST_METHOD, etc)
 	Target   string `yaml:"target"`
-	Variable string `yaml:"var`
+	Variable string `yaml:"var"`
 
 	//Operations
 	Match     string `yaml:"match"`     //@rx
