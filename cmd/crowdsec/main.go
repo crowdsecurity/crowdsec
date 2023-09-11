@@ -138,10 +138,6 @@ func (l *labelsMap) String() string {
 }
 
 func (l labelsMap) Set(label string) error {
-	if label == "" {
-		//Explain will pass empty string if no labels are provided
-		return nil
-	}
 	for _, pair := range strings.Split(label, ",") {
 		split := strings.Split(pair, ":")
 		if len(split) != 2 {

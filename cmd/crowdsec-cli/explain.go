@@ -155,6 +155,9 @@ func runExplain(cmd *cobra.Command, args []string) error {
 	}
 
 	cmdArgs := []string{"-c", ConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", dir, "-label", labels, "-no-api"}
+	if labels != "" {
+		cmdArgs = append(cmdArgs, "-label", labels)
+	}
 	crowdsecCmd := exec.Command(crowdsec, cmdArgs...)
 	output, err := crowdsecCmd.CombinedOutput()
 	if err != nil {
