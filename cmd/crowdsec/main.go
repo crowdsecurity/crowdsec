@@ -138,11 +138,17 @@ func (l *labelsMap) String() string {
 }
 
 func (l labelsMap) Set(label string) error {
-	split := strings.Split(label, ":")
-	if len(split) != 2 {
-		return errors.Wrapf(errors.New("Bad Format"), "for Label '%s'", label)
+	if label == "" {
+		//Explain will pass empty string if no labels are provided
+		return nil
 	}
-	l[split[0]] = split[1]
+	for _, pair := range strings.Split(label, ",") {
+		split := strings.Split(pair, ":")
+		if len(split) != 2 {
+			return fmt.Errorf("invalid format for label '%s', must be key:value", pair)
+		}
+		l[split[0]] = split[1]
+	}
 	return nil
 }
 
