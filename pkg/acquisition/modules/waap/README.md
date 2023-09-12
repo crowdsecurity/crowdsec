@@ -1,31 +1,12 @@
-Ongoing poc for Coraza
+Ongoing poc for Coraza WAAP
 
-For config:
+# Configuration pieces
 
-coraza_inband.conf:
-```shell
-SecRuleEngine On
-SecRule ARGS:id "@eq 0" "id:1, phase:1,deny, status:403,msg:'Invalid id',log,auditlog"
-SecRequestBodyAccess On
-SecRule REQUEST_BODY "@contains password" "id:2, phase:2,deny, status:403,msg:'Invalid request body',log,auditlog"
-```
+## Acquisition
 
+acquisition example:
 
-coraza_outofband.conf:
-```shell
-SecRuleEngine On
-SecRule ARGS:id "@eq 1" "id:3,phase:1,log,msg:'Invalid id',log,auditlog"
-SecRule ARGS:idd "@eq 2" "id:4,phase:1,log,msg:'Invalid id',log,auditlog"
-SecRequestBodyAccess On
-#We know that because we are not cloning the body in waf.go, the outofband rules cannot access body as it has been consumed.
-#We are finding a way around this
-#SecRule REQUEST_BODY "@contains totolol" "id:4, phase:2,deny,msg:'Invalid request body',log,auditlog"
-#SecRule REQUEST_BODY "@contains password" "id:2, phase:2,deny, status:403,msg:'Invalid request body',log,auditlog"
-
-```
-
-
-acquis.yaml :
+> `config/acquis.yaml` :
 
 ```yaml
 listen_addr: 127.0.0.1
@@ -34,71 +15,38 @@ path: /
 source: waf
 labels:
   type: waf
+#routines: 1
+waap_config: mytest
 ```
 
-Coraza parser:
+## Waap config
+
+The waap config defines what rules that will be loaded by a given waap engine (associated with an acquis).
+
+> `config/waap_configs/mytest.yaml`
 
 ```yaml
-onsuccess: next_stage
-debug: true
-filter: "evt.Parsed.program == 'waf'"
-name: crowdsecurity/waf-logs
-description: "Parse WAF logs"
-statics:
-  - parsed: cloudtrail_parsed
-    expression: UnmarshalJSON(evt.Line.Raw, evt.Unmarshaled, 'waf')
-  - meta: req_uuid
-    expression: evt.Unmarshaled.waf.req_uuid
-  - meta: source_ip
-    expression: evt.Unmarshaled.waf.source_ip
-  - meta: rule_id
-    expression: evt.Unmarshaled.waf.rule_id
-  - meta: action
-    expression: evt.Unmarshaled.waf.rule_action
-  - meta: service
-    value: waf
-  - parsed: event_type
-    value: waf_match
-
+name: mytest.yaml
+outofband_rules:
+ - crowdsec/crs-default
+inband_rules:
+ - crowdsec/vpatch-default
+default_remediation: block
+variables_tracking:
+ - session_*
+# onload:
+#  - apply:
+#     - DisabledInBandRuleByID(1003)
+# pre_eval:
+#   - filter: evt.SourceIP == '1.3.4.5' 
+#     apply:
+#       - DisableOutOfBandRuleByID(2302)
 ```
 
-Coraza trigger scenario:
+# Waap Rules
+
+For the above two to work, we need to have the two refered waap collection installed : `crowdsec/crs-default` and `crowdsec/vpatch-default`. You need to set hub_branch to ...
 
 ```yaml
-type: trigger
-filter: evt.Parsed.event_type == "waf_match" && evt.Unmarshaled.waf.rule_type == "inband"
-debug: true
-name: coroza-triggger
-description: here we go
-blackhole: 2m
-labels:
-  type: exploit
-  remediation: true
-groupby: "evt.Meta.source_ip"
+cscli waf-rules install ...
 ```
-
-Coraza leaky scenario:
-
-```yaml
-type: leaky
-filter: evt.Parsed.event_type == "waf_match" && evt.Unmarshaled.waf.rule_type == "outofband"
-debug: true
-name: coroza-leaky
-description: here we go
-blackhole: 2m
-leakspeed: 30s
-capacity: 1
-labels:
-  type: exploit
-  remediation: true
-groupby: "evt.Meta.source_ip"
-distinct: evt.Meta.rule_id
-```
-
-
-
-To be solved:
- - We need to solve the body cloning issue
- - Merge w/ hub
-
-

@@ -2,12 +2,14 @@ package waf
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
 	corazatypes "github.com/crowdsecurity/coraza/v3/types"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
 type Hook struct {
@@ -61,6 +63,19 @@ type WaapConfig struct {
 	PreEval            []Hook   `yaml:"pre_eval"`
 	OnMatch            []Hook   `yaml:"on_match"`
 	VariablesTracking  []string `yaml:"variables_tracking"`
+}
+
+func (wc *WaapConfig) Load(file string) error {
+	yamlFile, err := os.ReadFile(file)
+	if err != nil {
+		return fmt.Errorf("unable to read file %s : %s", file, err)
+	}
+	err = yaml.UnmarshalStrict(yamlFile, wc)
+	if err != nil {
+		return fmt.Errorf("unable to parse yaml file %s : %s", file, err)
+	}
+	return nil
+
 }
 
 func (wc *WaapConfig) Build() (*WaapRuntimeConfig, error) {

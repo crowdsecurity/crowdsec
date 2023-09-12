@@ -34,6 +34,7 @@ type WaapSourceConfig struct {
 	Routines                          int    `yaml:"routines"`
 	Debug                             bool   `yaml:"debug"`
 	WaapConfig                        string `yaml:"waap_config"`
+	WaapConfigPath                    string `yaml:"waap_config_path"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -118,6 +119,24 @@ func (w *WaapSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	}
 
 	w.InChan = make(chan waf.ParsedRequest)
+
+	//let's load the associated waap_config:
+	if wc.WaapConfigPath != "" {
+		return fmt.Errorf("resolution gor waap_config not implemented yet")
+	} else if wc.WaapConfig != "" {
+		waapCfg := waf.WaapConfig{}
+		err := waapCfg.Load(wc.WaapConfig)
+		if err != nil {
+			return fmt.Errorf("unable to load waap_config : %s", err)
+		}
+		w.WaapRuntime, err = waapCfg.Build()
+		if err != nil {
+			return fmt.Errorf("unable to build waap_config : %s", err)
+		}
+	} else {
+		return fmt.Errorf("no waap_config provided")
+	}
+
 	w.WaapRunners = make([]WaapRunner, wc.Routines)
 
 	for nbRoutine := 0; nbRoutine < wc.Routines; nbRoutine++ {
