@@ -12,7 +12,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
-	waf "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/waf"
+	waap "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/waap"
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -171,7 +171,7 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 			v1.LapiRouteHits,
 			leaky.BucketsCurrentCount,
 			cache.CacheMetrics, exprhelpers.RegexpCacheMetrics,
-			waf.WafGlobalParsingHistogram, waf.WafReqCounter, waf.WafRuleHits,
+			waap.WafGlobalParsingHistogram, waap.WafReqCounter, waap.WafRuleHits,
 		)
 	} else {
 		log.Infof("Loading prometheus collectors")
@@ -182,7 +182,7 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 			leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstantiation, leaky.BucketsOverflow, leaky.BucketsCurrentCount,
 			globalActiveDecisions, globalAlerts,
 			cache.CacheMetrics, exprhelpers.RegexpCacheMetrics,
-			waf.WafGlobalParsingHistogram, waf.WafInbandParsingHistogram, waf.WafOutbandParsingHistogram, waf.WafReqCounter, waf.WafRuleHits,
+			waap.WafGlobalParsingHistogram, waap.WafInbandParsingHistogram, waap.WafOutbandParsingHistogram, waap.WafReqCounter, waap.WafRuleHits,
 		)
 
 	}

@@ -27,7 +27,7 @@ import (
 	k8sauditacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kubernetesaudit"
 	s3acquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/s3"
 	syslogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog"
-	wafacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/waf"
+	wafacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/waap"
 	wineventlogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/wineventlog"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 
