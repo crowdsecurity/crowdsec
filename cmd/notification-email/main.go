@@ -48,8 +48,8 @@ type PluginConfig struct {
 	EncryptionType string   `yaml:"encryption_type"`
 	AuthType       string   `yaml:"auth_type"`
 	HeloHost       string   `yaml:"helo_host"`
-	ConnectTimeout int      `yaml:"connect_timeout"`
-	SendTimeout    int      `yaml:"send_timeout"`
+	ConnectTimeout string   `yaml:"connect_timeout"`
+	SendTimeout    string   `yaml:"send_timeout"`
 }
 
 type EmailPlugin struct {
@@ -111,12 +111,22 @@ func (n *EmailPlugin) Notify(ctx context.Context, notification *protobufs.Notifi
 	server.Authentication = AuthStringToType[cfg.AuthType]
 	server.Helo = cfg.HeloHost
 
-	if cfg.ConnectTimeout != 0 {
-		server.ConnectTimeout = time.Duration(cfg.ConnectTimeout) * time.Second
+	var err error
+
+	if cfg.ConnectTimeout != "" {
+		server.ConnectTimeout, err = time.ParseDuration(cfg.ConnectTimeout)
+		if err != nil {
+			logger.Warn(fmt.Sprintf("invalid connect timeout '%s', using default '10s'", cfg.ConnectTimeout))
+			server.ConnectTimeout = 10 * time.Second
+		}
 	}
 
-	if cfg.SendTimeout != 0 {
-		server.SendTimeout = time.Duration(cfg.SendTimeout) * time.Second
+	if cfg.SendTimeout != "" {
+		server.SendTimeout, err = time.ParseDuration(cfg.ConnectTimeout)
+		if err != nil {
+			logger.Warn(fmt.Sprintf("invalid send timeout '%s', using default '10s'", cfg.SendTimeout))
+			server.ConnectTimeout = 10 * time.Second
+		}
 	}
 
 	logger.Debug("making smtp connection")

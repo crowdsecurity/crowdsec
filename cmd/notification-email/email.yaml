@@ -37,6 +37,11 @@ receiver_emails:
 # One of "ssltls", "starttls", "none"
 encryption_type: ssltls
 
+# If the email server is hitting the default timeouts (10 seconds), you can increase them here
+#
+# connect_timeout: 10s
+# send_timeout: 10s
+
 ---
 
 # type: email
