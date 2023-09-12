@@ -146,7 +146,7 @@ func runExplain(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		if lineCount > 100 {
-			log.Warnf("log file contains %d lines. This may take lot of resources.", lineCount)
+			log.Warnf("The log file contains %d lines. This may take a lot of resources.", lineCount)
 		}
 	}
 

@@ -83,7 +83,7 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 	// intervals must always be > 0
 	metInts := []time.Duration{1*time.Millisecond, a.metricsIntervalFirst, a.metricsInterval}
 
-	log.Infof("Start send metrics to CrowdSec Central API (interval: %s once, then %s)",
+	log.Infof("Start sending metrics to CrowdSec Central API (interval: %s once, then %s)",
 		metInts[1].Round(time.Second), metInts[2])
 
 	count := -1
