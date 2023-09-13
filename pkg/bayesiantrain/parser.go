@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -75,9 +76,10 @@ func collectingRoutine(outputChan <-chan parseResult, resultChan chan<- LogEvent
 	totalIps := 0
 
 	storage = LogEventStorage{
-		ParsedIpEvents: make(map[string]fakeBucket),
-		exprCache:      make(map[string]vm.Program),
-		total:          0,
+		ParsedIpEvents:   make(map[string]fakeBucket),
+		CachedHypotheses: make(map[string]BayesianResult),
+		exprCache:        make(map[string]vm.Program),
+		total:            0,
 	}
 LOOP:
 	for {
@@ -173,6 +175,8 @@ func (p *ParserAndFileStorage) ParseLogs(routinesCount int) (LogEventStorage, er
 	messageChan <- progress
 	fmt.Println("Sent total to collecting routine: %v", progress)
 	storage := <-resultChan
+
+	runtime.GC()
 
 	return storage, nil
 }

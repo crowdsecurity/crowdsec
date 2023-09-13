@@ -12,25 +12,21 @@ import (
 )
 
 type LogEventStorage struct {
-	ParsedIpEvents map[string]fakeBucket
-	labeled        bool
-	total          int
-	nEvilIps       int
-	nBenignIps     int
-	exprCache      map[string]vm.Program
-	exprCacheLock  sync.Mutex
+	ParsedIpEvents   map[string]fakeBucket
+	CachedHypotheses map[string]BayesianResult
+	labeled          bool
+	total            int
+	nEvilIps         int
+	nBenignIps       int
+	exprCache        map[string]vm.Program
+	exprCacheLock    sync.Mutex
 }
 
 type BayesianResult struct {
 	condition       string
-	probGivenEvil   float32
-	probGivenBenign float32
-}
-
-type fakeBucket struct {
-	events []types.Event
-	leaky  *leakybucket.Leaky
-	label  int
+	Attached        bool
+	ProbGivenEvil   float32
+	ProbGivenBenign float32
 }
 
 type evalIpResult struct {
@@ -141,6 +137,47 @@ func (s *LogEventStorage) InsertLabels(evilIps []string) {
 	s.labeled = true
 }
 
+func (s *LogEventStorage) GenerateBucketMetrics(threshold float32) error {
+	var res int
+	var falsePositive int
+	var falseNegative int
+	var truePositive int
+	var trueNegative int
+
+	prior := float32(s.nEvilIps) / float32(s.total)
+
+	for _, bucket := range s.ParsedIpEvents {
+
+		res = bucket.scoreTrainedClassifier(s.CachedHypotheses, s.exprCache, prior, threshold)
+		if res < 0 {
+			return fmt.Errorf("generatebucketmetrics returned an error, aborting")
+		}
+		if bucket.label == 1 {
+			if res == 1 {
+				truePositive += 1
+			} else {
+				falseNegative += 1
+			}
+		} else {
+			if res == 1 {
+				falsePositive += 1
+			} else {
+				trueNegative += 1
+			}
+		}
+	}
+
+	fmt.Println("raw : ", falsePositive, falseNegative, truePositive, trueNegative)
+	printBucketMetrics(falsePositive, falseNegative, truePositive, trueNegative)
+
+	return nil
+}
+
+func printBucketMetrics(falsePositive, falseNegative, truePositive, trueNegative int) {
+	fmt.Printf("Precision: %v\n", float32(truePositive)/float32(truePositive+falsePositive))
+	fmt.Printf("Recall: %v\n", float32(truePositive)/float32(truePositive+falseNegative))
+}
+
 func (s *LogEventStorage) TestHypothesisSingle(hypothesis string) error {
 	var result evalIpResult
 	var evilIpsWithHypothesis = 0
@@ -149,7 +186,7 @@ func (s *LogEventStorage) TestHypothesisSingle(hypothesis string) error {
 	if !s.labeled {
 		return fmt.Errorf("LogEventStorage has not been labeled yet, add labels using InsertLabels")
 	}
-	err := compileAndCacheHypothesis(hypothesis, s)
+	err := compileAndCacheExpr(hypothesis, s)
 	if err != nil {
 		return err
 	}
@@ -170,12 +207,33 @@ func (s *LogEventStorage) TestHypothesisSingle(hypothesis string) error {
 		}
 	}
 
-	bayesian := BayesianResult{condition: hypothesis, probGivenEvil: float32(evilIpsWithHypothesis) / float32(s.nEvilIps), probGivenBenign: float32(benignIpsWithHypothesis) / float32(s.nBenignIps)}
+	bayesian := BayesianResult{condition: hypothesis, ProbGivenEvil: float32(evilIpsWithHypothesis) / float32(s.nEvilIps), ProbGivenBenign: float32(benignIpsWithHypothesis) / float32(s.nBenignIps)}
 
 	bayesian.printResults()
+	s.CachedHypotheses[hypothesis] = bayesian
 
-	fmt.Printf("Finished Hypothesis testing, evil ips with hypothesis %v benign ips with hypothesis %v", evilIpsWithHypothesis, benignIpsWithHypothesis)
+	fmt.Printf("Finished Hypothesis testing, evil ips with hypothesis %v benign ips with hypothesis %v\n", evilIpsWithHypothesis, benignIpsWithHypothesis)
 
+	return nil
+}
+
+func (s *LogEventStorage) AttachHypothesis(hypothesis string) error {
+
+	var res BayesianResult
+	var ok bool
+
+	res, ok = s.CachedHypotheses[hypothesis]
+	if !ok {
+		fmt.Printf("Hypothesis %s was not found in cache, running a training loop\n", hypothesis)
+		err := s.TestHypothesisSingle(hypothesis)
+		if err != nil {
+			return fmt.Errorf("failed to train hypothesis, train loop returned %s", err)
+		}
+		res = s.CachedHypotheses[hypothesis]
+	}
+
+	res.Attached = true
+	s.CachedHypotheses[hypothesis] = res
 	return nil
 }
 
@@ -184,7 +242,7 @@ func (s *LogEventStorage) TestHypothesis(hypothesis string) error {
 	if !s.labeled {
 		return fmt.Errorf("LogEventStorage has not been labeled yet, add labels using InsertLabels")
 	}
-	err := compileAndCacheHypothesis(hypothesis, s)
+	err := compileAndCacheExpr(hypothesis, s)
 	if err != nil {
 		return err
 	}
@@ -205,7 +263,7 @@ func (s *LogEventStorage) TestHypothesis(hypothesis string) error {
 		return result.Error
 	}
 
-	bayesian := BayesianResult{condition: hypothesis, probGivenEvil: float32(result.EvilIpsWithHypothesis) / float32(s.nEvilIps), probGivenBenign: float32(result.BenignIpsWithHypothesis) / float32(s.nBenignIps)}
+	bayesian := BayesianResult{condition: hypothesis, ProbGivenEvil: float32(result.EvilIpsWithHypothesis) / float32(s.nEvilIps), ProbGivenBenign: float32(result.BenignIpsWithHypothesis) / float32(s.nBenignIps)}
 
 	bayesian.printResults()
 
@@ -214,7 +272,7 @@ func (s *LogEventStorage) TestHypothesis(hypothesis string) error {
 	return nil
 }
 
-func compileAndCacheHypothesis(hypothesis string, s *LogEventStorage) error {
+func compileAndCacheExpr(hypothesis string, s *LogEventStorage) error {
 
 	var compiledExpr *vm.Program
 	var err error
@@ -236,8 +294,8 @@ func compileAndCacheHypothesis(hypothesis string, s *LogEventStorage) error {
 }
 
 func (b *BayesianResult) printResults() {
-	fmt.Printf("- condition: %s", b.condition)
-	fmt.Printf("  prob_given_evil: %v", b.probGivenEvil)
-	fmt.Printf("  prob_given_benign: %v", b.probGivenBenign)
-	fmt.Printf("  guillotine: true")
+	fmt.Printf("- condition: %s\n", b.condition)
+	fmt.Printf("  prob_given_evil: %v\n", b.ProbGivenEvil)
+	fmt.Printf("  prob_given_benign: %v\n", b.ProbGivenBenign)
+	fmt.Printf("  guillotine: true\n")
 }
