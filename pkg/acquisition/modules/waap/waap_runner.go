@@ -31,10 +31,10 @@ func (r *WaapRunner) Run(t *tomb.Tomb) error {
 			return nil
 		case request := <-r.inChan:
 			r.logger.Infof("Requests handled by runner %s", request.UUID)
+			r.WaapRuntime.ClearResponse()
 
-			//tx := waf.NewExtendedTransaction(r.WaapInbandEngine, r.UUID)
 			WafReqCounter.With(prometheus.Labels{"source": request.RemoteAddr}).Inc()
-			//measure the time spent in the WAF
+			//to measure the time spent in the WAF
 			startParsing := time.Now()
 
 			//pre eval (expr) rules
@@ -43,7 +43,6 @@ func (r *WaapRunner) Run(t *tomb.Tomb) error {
 				r.logger.Errorf("unable to process PreEval rules: %s", err)
 				continue
 			}
-
 			//inband WAAP rules
 			interrupt, err := r.WaapRuntime.ProcessInBandRules(request)
 			elapsed := time.Since(startParsing)

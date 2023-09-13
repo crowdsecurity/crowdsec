@@ -21,6 +21,7 @@ type Hook struct {
 	ApplyExpr []*vm.Program `yaml:"-"`
 }
 
+// @tko : todo - debug mode
 func (h *Hook) Build() error {
 
 	if h.Filter != "" {
@@ -31,7 +32,7 @@ func (h *Hook) Build() error {
 		h.FilterExpr = program
 	}
 	for _, apply := range h.Apply {
-		program, err := expr.Compile(apply, GetExprWAFOptions(GetEnv())...)
+		program, err := expr.Compile(apply, GetExprWAFOptions(GetHookEnv(WaapRuntimeConfig{}, ParsedRequest{}))...)
 		if err != nil {
 			return fmt.Errorf("unable to compile apply %s : %w", apply, err)
 		}
@@ -40,18 +41,30 @@ func (h *Hook) Build() error {
 	return nil
 }
 
+type WaapTempResponse struct {
+	InBandInterrupt    bool
+	OutOfBandInterrupt bool
+	Action             string //allow, deny, captcha, log
+	HTTPResponseCode   int
+	SendEvent          bool //do we send an internal event on rule match
+}
+
 // runtime version of WaapConfig
 type WaapRuntimeConfig struct {
 	Name                      string
 	OutOfBandRules            []WaapCollection
-	OutOfBandTx               ExtendedTransaction //is it a good idea ?
 	InBandRules               []WaapCollection
-	InBandTx                  ExtendedTransaction //is it a good idea ?
 	DefaultRemediation        string
 	CompiledOnLoad            []Hook
 	CompiledPreEval           []Hook
 	CompiledOnMatch           []Hook
 	CompiledVariablesTracking []*regexp.Regexp
+	Config                    *WaapConfig
+
+	//those are ephemeral, created/destroyed with every req
+	OutOfBandTx ExtendedTransaction //is it a good idea ?
+	InBandTx    ExtendedTransaction //is it a good idea ?
+	Response    WaapTempResponse
 }
 
 type WaapConfig struct {
@@ -59,10 +72,22 @@ type WaapConfig struct {
 	OutOfBandRules     []string `yaml:"outofband_rules"`
 	InBandRules        []string `yaml:"inband_rules"`
 	DefaultRemediation string   `yaml:"default_remediation"`
+	DefaultPassAction  string   `yaml:"default_pass_action"`
+	BlockedHTTPCode    int      `yaml:"blocked_http_code"`
+	PassedHTTPCode     int      `yaml:"passed_http_code"`
 	OnLoad             []Hook   `yaml:"on_load"`
 	PreEval            []Hook   `yaml:"pre_eval"`
 	OnMatch            []Hook   `yaml:"on_match"`
 	VariablesTracking  []string `yaml:"variables_tracking"`
+}
+
+func (w *WaapRuntimeConfig) ClearResponse() {
+	log.Infof("#-> %p", w)
+	w.Response = WaapTempResponse{}
+	log.Infof("-> %p", w.Config)
+	w.Response.Action = w.Config.DefaultPassAction
+	w.Response.HTTPResponseCode = w.Config.PassedHTTPCode
+	w.Response.SendEvent = true
 }
 
 func (wc *WaapConfig) Load(file string) error {
@@ -74,6 +99,21 @@ func (wc *WaapConfig) Load(file string) error {
 	if err != nil {
 		return fmt.Errorf("unable to parse yaml file %s : %s", file, err)
 	}
+	if wc.Name == "" {
+		return fmt.Errorf("name cannot be empty")
+	}
+	if wc.DefaultRemediation == "" {
+		return fmt.Errorf("default_remediation cannot be empty")
+	}
+	if wc.BlockedHTTPCode == 0 {
+		wc.BlockedHTTPCode = 403
+	}
+	if wc.PassedHTTPCode == 0 {
+		wc.PassedHTTPCode = 200
+	}
+	if wc.DefaultPassAction == "" {
+		wc.DefaultPassAction = "allow"
+	}
 	return nil
 
 }
@@ -81,6 +121,7 @@ func (wc *WaapConfig) Load(file string) error {
 func (wc *WaapConfig) Build() (*WaapRuntimeConfig, error) {
 	ret := &WaapRuntimeConfig{}
 	ret.Name = wc.Name
+	ret.Config = wc
 	ret.DefaultRemediation = wc.DefaultRemediation
 
 	//load rules
@@ -160,13 +201,12 @@ func (w *WaapRuntimeConfig) ProcessOnMatchRules(request ParsedRequest, response 
 		}
 		for _, applyExpr := range rule.ApplyExpr {
 			_, err := expr.Run(applyExpr, map[string]interface{}{
-				//"rules":                 w.InBandTx.Tx.Rules, //what is it supposed to be ? matched rules ?
-				"req":                   request,
-				"RemoveInbandRuleByID":  w.RemoveInbandRuleByID,
-				"RemoveOutbandRuleByID": w.RemoveOutbandRuleByID,
-				"SetRemediation":        response.SetRemediation,
-				"SetRemediationByID":    response.SetRemediationByID,
-				"CancelEvent":           response.CancelEvent,
+				// "req":                   request,
+				// "RemoveInbandRuleByID":  w.RemoveInbandRuleByID,
+				// "RemoveOutbandRuleByID": w.RemoveOutbandRuleByID,
+				// "SetAction":             response.SetAction,
+				// "SetRemediationByID":    response.SetRemediationByID,
+				// "CancelEvent":           response.CancelEvent,
 			})
 			if err != nil {
 				log.Errorf("unable to apply filter: %s", err)
@@ -180,10 +220,7 @@ func (w *WaapRuntimeConfig) ProcessOnMatchRules(request ParsedRequest, response 
 func (w *WaapRuntimeConfig) ProcessPreEvalRules(request ParsedRequest) error {
 	for _, rule := range w.CompiledPreEval {
 		if rule.FilterExpr != nil {
-			output, err := expr.Run(rule.FilterExpr, map[string]interface{}{
-				//"rules": rules, //is it still useful ?
-				"req": request,
-			})
+			output, err := expr.Run(rule.FilterExpr, GetHookEnv(*w, request))
 			if err != nil {
 				return fmt.Errorf("unable to run filter %s : %w", rule.Filter, err)
 			}
@@ -200,13 +237,7 @@ func (w *WaapRuntimeConfig) ProcessPreEvalRules(request ParsedRequest) error {
 		}
 		// here means there is no filter or the filter matched
 		for _, applyExpr := range rule.ApplyExpr {
-			_, err := expr.Run(applyExpr, map[string]interface{}{
-				"inband_rules":          w.InBandRules,
-				"outband_rules":         w.OutOfBandRules,
-				"req":                   request,
-				"RemoveInbandRuleByID":  w.RemoveInbandRuleByID,
-				"RemoveOutbandRuleByID": w.RemoveOutbandRuleByID,
-			})
+			_, err := expr.Run(applyExpr, GetHookEnv(*w, request))
 			if err != nil {
 				log.Errorf("unable to apply filter: %s", err)
 				continue
@@ -221,15 +252,37 @@ func (w *WaapRuntimeConfig) ProcessPreEvalRules(request ParsedRequest) error {
 add the helpers to:
  - remove by id-range
  - remove by tag
+ - set remediation by tag/id-range
 
 */
 
-func (w *WaapRuntimeConfig) RemoveInbandRuleByID(id int) {
-	w.InBandTx.RemoveRuleByIDWithError(id)
+func (w *WaapRuntimeConfig) RemoveInbandRuleByID(id int) error {
+	return w.InBandTx.RemoveRuleByIDWithError(id)
 }
 
-func (w *WaapRuntimeConfig) RemoveOutbandRuleByID(id int) {
-	w.OutOfBandTx.RemoveRuleByIDWithError(id)
+func (w *WaapRuntimeConfig) CancelEvent() error {
+	w.Response.SendEvent = false
+	return nil
+}
+
+func (w *WaapRuntimeConfig) SetActionnByID(id int, action string) error {
+	panic("not implemented")
+	return nil
+}
+
+func (w *WaapRuntimeConfig) RemoveOutbandRuleByID(id int) error {
+	return w.OutOfBandTx.RemoveRuleByIDWithError(id)
+}
+
+func (w *WaapRuntimeConfig) SetAction(action string) error {
+	w.Response.Action = action
+	return nil
+
+}
+
+func (w *WaapRuntimeConfig) SetHTTPCode(code int) error {
+	w.Response.HTTPResponseCode = code
+	return nil
 }
 
 func (w *WaapRuntimeConfig) ProcessInBandRules(request ParsedRequest) (*corazatypes.Interruption, error) {
@@ -256,4 +309,23 @@ func (w *WaapRuntimeConfig) ProcessOutOfBandRules(request ParsedRequest) (*coraz
 		}
 	}
 	return nil, nil
+}
+
+type BodyResponse struct {
+	Action     string `json:"action"`
+	HTTPStatus int    `json:"http_status"`
+}
+
+func (w *WaapRuntimeConfig) GenerateResponse(interrupted bool) (BodyResponse, error) {
+	resp := BodyResponse{}
+	//if there is no interrupt, we should allow with default code
+	if !interrupted {
+		resp.Action = w.Config.DefaultPassAction
+		resp.HTTPStatus = w.Config.PassedHTTPCode
+		return resp, nil
+	}
+	resp.Action = w.Config.DefaultRemediation
+	resp.HTTPStatus = w.Config.BlockedHTTPCode
+
+	return resp, nil
 }

@@ -30,12 +30,3 @@ func GetExprWAFOptions(ctx map[string]interface{}) []expr.Option {
 	}
 	return baseHelpers
 }
-
-func SetRulesToInband(params ...any) (any, error) {
-
-	return nil, nil
-}
-
-func SetRulesToOutOfBand(params ...any) (any, error) {
-	return nil, nil
-}

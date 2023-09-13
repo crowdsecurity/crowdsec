@@ -25,18 +25,17 @@ func (t *ExtendedTransaction) RemoveRuleByIDWithError(id int) error {
 	return nil
 }
 
-func GetEnv() map[string]interface{} {
-	ResponseRequest := ResponseRequest{}
-	ParsedRequest := ParsedRequest{}
-	Rules := &WaapCollection{}
-	Tx := ExtendedTransaction{}
-
+// simply used to ease the compilation & runtime of the hooks
+func GetHookEnv(w WaapRuntimeConfig, request ParsedRequest) map[string]interface{} {
 	return map[string]interface{}{
-		"rules":              Rules,
-		"req":                ParsedRequest,
-		"SetRemediation":     ResponseRequest.SetRemediation,
-		"SetRemediationByID": ResponseRequest.SetRemediationByID,
-		"CancelEvent":        ResponseRequest.CancelEvent,
-		"RemoveRuleByID":     Tx.RemoveRuleByIDWithError,
+		"inband_rules":          w.InBandRules,
+		"outband_rules":         w.OutOfBandRules,
+		"req":                   request,
+		"RemoveInbandRuleByID":  w.RemoveInbandRuleByID,
+		"RemoveOutbandRuleByID": w.RemoveOutbandRuleByID,
+		"SetAction":             w.SetAction,
+		"SetHTTPCode":           w.SetHTTPCode,
+		"SetActionByID":         w.SetActionnByID,
+		"CancelEvent":           w.CancelEvent,
 	}
 }

@@ -52,6 +52,11 @@ type WaapSource struct {
 	WaapRunners []WaapRunner //one for each go-routine
 }
 
+// @tko + @sbl : we might want to get rid of that or improve it
+type BodyResponse struct {
+	Action string `json:"action"`
+}
+
 func (wc *WaapSource) UnmarshalConfig(yamlConfig []byte) error {
 
 	err := yaml.UnmarshalStrict(yamlConfig, &wc.config)
@@ -165,10 +170,13 @@ func (w *WaapSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 			})
 		}
 
+		//we copy WaapRutime for each runner
+		wrt := *w.WaapRuntime
 		runner := WaapRunner{
-			inChan: w.InChan,
-			UUID:   wafUUID,
-			logger: wafLogger,
+			inChan:      w.InChan,
+			UUID:        wafUUID,
+			logger:      wafLogger,
+			WaapRuntime: &wrt,
 		}
 		w.WaapRunners[nbRoutine] = runner
 		//most likely missign somethign here to actually start the runner :)
@@ -247,10 +255,6 @@ func (w *WaapSource) Dump() interface{} {
 	return w
 }
 
-type BodyResponse struct {
-	Action string `json:"action"`
-}
-
 // should this be in the runner ?
 func (w *WaapSource) waapHandler(rw http.ResponseWriter, r *http.Request) {
 	// parse the request only once
@@ -264,6 +268,7 @@ func (w *WaapSource) waapHandler(rw http.ResponseWriter, r *http.Request) {
 
 	message := <-parsedRequest.ResponseChannel
 
+	//@tko this parts needs to be redone
 	if message.Err != nil {
 		log.Errorf("Error while processing InBAND: %s", err)
 		rw.WriteHeader(http.StatusInternalServerError)

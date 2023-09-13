@@ -36,29 +36,29 @@ func NewResponseRequest(Tx experimental.FullTransaction, in *corazatypes.Interru
 	}
 }
 
-func (r *ResponseRequest) SetRemediation(remediation string) error {
-	if r.Interruption == nil {
-		return nil
-	}
-	r.Interruption.Action = remediation
-	return nil
-}
+// func (r *ResponseRequest) SetRemediation(remediation string) error {
+// 	if r.Interruption == nil {
+// 		return nil
+// 	}
+// 	r.Interruption.Action = remediation
+// 	return nil
+// }
 
-func (r *ResponseRequest) SetRemediationByID(ID int, remediation string) error {
-	if r.Interruption == nil {
-		return nil
-	}
-	if r.Interruption.RuleID == ID {
-		r.Interruption.Action = remediation
-	}
-	return nil
-}
+// func (r *ResponseRequest) SetRemediationByID(ID int, remediation string) error {
+// 	if r.Interruption == nil {
+// 		return nil
+// 	}
+// 	if r.Interruption.RuleID == ID {
+// 		r.Interruption.Action = remediation
+// 	}
+// 	return nil
+// }
 
-func (r *ResponseRequest) CancelEvent() error {
-	// true by default
-	r.SendEvents = false
-	return nil
-}
+// func (r *ResponseRequest) CancelEvent() error {
+// 	// true by default
+// 	r.SendEvents = false
+// 	return nil
+// }
 
 type ParsedRequest struct {
 	RemoteAddr       string
@@ -77,6 +77,7 @@ type ParsedRequest struct {
 	ResponseChannel  chan ResponseRequest
 }
 
+// Generate a ParsedRequest from a http.Request. ParsedRequest can be consumed by the Waap Engine
 func NewParsedRequestFromRequest(r *http.Request) (ParsedRequest, error) {
 	var err error
 	body := make([]byte, 0)
