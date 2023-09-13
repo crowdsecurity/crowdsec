@@ -217,6 +217,13 @@ func (w *WaapRuntimeConfig) ProcessPreEvalRules(request ParsedRequest) error {
 	return nil
 }
 
+/* @sbl / @tko
+add the helpers to:
+ - remove by id-range
+ - remove by tag
+
+*/
+
 func (w *WaapRuntimeConfig) RemoveInbandRuleByID(id int) {
 	w.InBandTx.RemoveRuleByIDWithError(id)
 }
