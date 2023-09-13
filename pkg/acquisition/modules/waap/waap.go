@@ -53,7 +53,8 @@ type WaapSource struct {
 }
 
 func (wc *WaapSource) UnmarshalConfig(yamlConfig []byte) error {
-	err := yaml.UnmarshalStrict(yamlConfig, wc.config)
+
+	err := yaml.UnmarshalStrict(yamlConfig, &wc.config)
 	if err != nil {
 		return errors.Wrap(err, "Cannot parse waf configuration")
 	}
@@ -82,6 +83,10 @@ func (wc *WaapSource) UnmarshalConfig(yamlConfig []byte) error {
 	if wc.config.Routines == 0 {
 		wc.config.Routines = 1
 	}
+
+	if wc.config.WaapConfig == "" && wc.config.WaapConfigPath == "" {
+		return fmt.Errorf("waap_config or waap_config_path must be set")
+	}
 	return nil
 }
 
@@ -99,17 +104,17 @@ func logError(error corazatypes.MatchedRule) {
 }
 
 func (w *WaapSource) Configure(yamlConfig []byte, logger *log.Entry) error {
-	wc := WaapSourceConfig{}
+	//wc := WaapSourceConfig{}
 	err := w.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return errors.Wrap(err, "unable to parse waf configuration")
 	}
 	w.logger = logger
-	w.config = wc
+	//w.config = wc
 
 	w.logger.Tracef("WAF configuration: %+v", w.config)
 
-	w.addr = fmt.Sprintf("%s:%d", wc.ListenAddr, wc.ListenPort)
+	w.addr = fmt.Sprintf("%s:%d", w.config.ListenAddr, w.config.ListenPort)
 
 	w.mux = http.NewServeMux()
 
@@ -121,11 +126,9 @@ func (w *WaapSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	w.InChan = make(chan waf.ParsedRequest)
 
 	//let's load the associated waap_config:
-	if wc.WaapConfigPath != "" {
-		return fmt.Errorf("resolution gor waap_config not implemented yet")
-	} else if wc.WaapConfig != "" {
+	if w.config.WaapConfigPath != "" {
 		waapCfg := waf.WaapConfig{}
-		err := waapCfg.Load(wc.WaapConfig)
+		err := waapCfg.Load(w.config.WaapConfigPath)
 		if err != nil {
 			return fmt.Errorf("unable to load waap_config : %s", err)
 		}
@@ -133,19 +136,21 @@ func (w *WaapSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		if err != nil {
 			return fmt.Errorf("unable to build waap_config : %s", err)
 		}
+	} else if w.config.WaapConfig != "" {
+		return fmt.Errorf("resolution of waap_config not implemented yet")
 	} else {
 		return fmt.Errorf("no waap_config provided")
 	}
 
-	w.WaapRunners = make([]WaapRunner, wc.Routines)
+	w.WaapRunners = make([]WaapRunner, w.config.Routines)
 
-	for nbRoutine := 0; nbRoutine < wc.Routines; nbRoutine++ {
+	for nbRoutine := 0; nbRoutine < w.config.Routines; nbRoutine++ {
 
 		wafUUID := uuid.New().String()
 		wafLogger := &log.Entry{}
 
 		//configure logger
-		if wc.Debug {
+		if w.config.Debug {
 			var clog = log.New()
 			if err := types.ConfigureLogger(clog); err != nil {
 				log.Fatalf("While creating bucket-specific logger : %s", err)
