@@ -149,7 +149,9 @@ func (k *KafkaSource) ReadMessage(out chan types.Event) error {
 				return nil
 			}
 			k.logger.Errorln(fmt.Errorf("while reading %s message: %w", dataSourceName, err))
+			continue
 		}
+		k.logger.Tracef("got message: %s", string(m.Value))
 		l := types.Line{
 			Raw:     string(m.Value),
 			Labels:  k.Config.Labels,
