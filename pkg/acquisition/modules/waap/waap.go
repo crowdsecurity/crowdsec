@@ -267,29 +267,7 @@ func (w *WaapSource) waapHandler(rw http.ResponseWriter, r *http.Request) {
 	w.InChan <- parsedRequest
 
 	response := <-parsedRequest.ResponseChannel
-
-	// //@tko this parts needs to be redone
-	// if message.Err != nil {
-	// 	log.Errorf("Error while processing InBAND: %s", err)
-	// 	rw.WriteHeader(http.StatusInternalServerError)
-	// 	return
-	// }
-
-	// //here we must rely on WaapRuntimeConfig to know what to do
-	// if message.Interruption != nil {
-	// 	rw.WriteHeader(http.StatusForbidden)
-	// 	action := message.Interruption.Action
-	// 	if action == "deny" { // bouncers understand "ban" and not "deny"
-	// 		action = "ban"
-	// 	}
-	// 	body, err := json.Marshal(BodyResponse{Action: action})
-	// 	if err != nil {
-	// 		log.Errorf("unable to build response: %s", err)
-	// 	} else {
-	// 		rw.Write(body)
-	// 	}
-	// 	return
-	// }
+	log.Infof("resp %+v", response)
 
 	rw.WriteHeader(response.HTTPResponseCode)
 	body, err := json.Marshal(BodyResponse{Action: response.Action})

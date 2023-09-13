@@ -43,6 +43,7 @@ func (r *WaapRunner) Run(t *tomb.Tomb) error {
 				r.logger.Errorf("unable to process PreEval rules: %s", err)
 				continue
 			}
+			log.Infof("now response is -> %s", r.WaapRuntime.Response.Action)
 			//inband WAAP rules
 			err = r.WaapRuntime.ProcessInBandRules(request)
 			elapsed := time.Since(startParsing)

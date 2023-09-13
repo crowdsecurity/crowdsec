@@ -32,7 +32,7 @@ func (h *Hook) Build() error {
 		h.FilterExpr = program
 	}
 	for _, apply := range h.Apply {
-		program, err := expr.Compile(apply, GetExprWAFOptions(GetHookEnv(WaapRuntimeConfig{}, ParsedRequest{}))...)
+		program, err := expr.Compile(apply, GetExprWAFOptions(GetHookEnv(&WaapRuntimeConfig{}, ParsedRequest{}))...)
 		if err != nil {
 			return fmt.Errorf("unable to compile apply %s : %w", apply, err)
 		}
@@ -220,7 +220,7 @@ func (w *WaapRuntimeConfig) ProcessOnMatchRules(request ParsedRequest) error {
 func (w *WaapRuntimeConfig) ProcessPreEvalRules(request ParsedRequest) error {
 	for _, rule := range w.CompiledPreEval {
 		if rule.FilterExpr != nil {
-			output, err := expr.Run(rule.FilterExpr, GetHookEnv(*w, request))
+			output, err := expr.Run(rule.FilterExpr, GetHookEnv(w, request))
 			if err != nil {
 				return fmt.Errorf("unable to run filter %s : %w", rule.Filter, err)
 			}
@@ -237,7 +237,7 @@ func (w *WaapRuntimeConfig) ProcessPreEvalRules(request ParsedRequest) error {
 		}
 		// here means there is no filter or the filter matched
 		for _, applyExpr := range rule.ApplyExpr {
-			_, err := expr.Run(applyExpr, GetHookEnv(*w, request))
+			_, err := expr.Run(applyExpr, GetHookEnv(w, request))
 			if err != nil {
 				log.Errorf("unable to apply filter: %s", err)
 				continue
@@ -275,7 +275,24 @@ func (w *WaapRuntimeConfig) RemoveOutbandRuleByID(id int) error {
 }
 
 func (w *WaapRuntimeConfig) SetAction(action string) error {
-	w.Response.Action = action
+	log.Infof("setting to %s", action)
+	switch action {
+	case "allow":
+		w.Response.Action = action
+		w.Response.HTTPResponseCode = w.Config.PassedHTTPCode
+		//how should we handle this ?
+	case "deny", "ban", "block":
+		w.Response.Action = "ban"
+		w.Response.HTTPResponseCode = w.Config.BlockedHTTPCode
+	case "log":
+		w.Response.Action = action
+		w.Response.HTTPResponseCode = w.Config.PassedHTTPCode
+	case "captcha":
+		w.Response.Action = action
+		w.Response.HTTPResponseCode = w.Config.BlockedHTTPCode
+	default:
+		return fmt.Errorf("unknown action %s", action)
+	}
 	return nil
 
 }

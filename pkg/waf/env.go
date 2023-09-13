@@ -26,7 +26,7 @@ func (t *ExtendedTransaction) RemoveRuleByIDWithError(id int) error {
 }
 
 // simply used to ease the compilation & runtime of the hooks
-func GetHookEnv(w WaapRuntimeConfig, request ParsedRequest) map[string]interface{} {
+func GetHookEnv(w *WaapRuntimeConfig, request ParsedRequest) map[string]interface{} {
 	return map[string]interface{}{
 		"inband_rules":          w.InBandRules,
 		"outband_rules":         w.OutOfBandRules,
