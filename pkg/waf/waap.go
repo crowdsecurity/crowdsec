@@ -177,7 +177,7 @@ func (wc *WaapConfig) Build() (*WaapRuntimeConfig, error) {
 	return ret, nil
 }
 
-func (w *WaapRuntimeConfig) ProcessOnMatchRules(request ParsedRequest, response ResponseRequest) error {
+func (w *WaapRuntimeConfig) ProcessOnMatchRules(request ParsedRequest) error {
 
 	for _, rule := range w.CompiledOnMatch {
 		if rule.FilterExpr != nil {
@@ -285,17 +285,15 @@ func (w *WaapRuntimeConfig) SetHTTPCode(code int) error {
 	return nil
 }
 
-func (w *WaapRuntimeConfig) ProcessInBandRules(request ParsedRequest) (*corazatypes.Interruption, error) {
+func (w *WaapRuntimeConfig) ProcessInBandRules(request ParsedRequest) error {
 	for _, rule := range w.InBandRules {
-		interrupt, err := rule.Eval(request)
+		_, err := rule.Eval(request)
 		if err != nil {
-			return nil, fmt.Errorf("unable to process inband rule %s : %s", rule.GetDisplayName(), err)
+			return fmt.Errorf("unable to process inband rule %s : %s", rule.GetDisplayName(), err)
 		}
-		if interrupt != nil {
-			return interrupt, nil
-		}
+		//...
 	}
-	return nil, nil
+	return nil
 }
 
 func (w *WaapRuntimeConfig) ProcessOutOfBandRules(request ParsedRequest) (*corazatypes.Interruption, error) {

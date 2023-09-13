@@ -44,22 +44,22 @@ func (r *WaapRunner) Run(t *tomb.Tomb) error {
 				continue
 			}
 			//inband WAAP rules
-			interrupt, err := r.WaapRuntime.ProcessInBandRules(request)
+			err = r.WaapRuntime.ProcessInBandRules(request)
 			elapsed := time.Since(startParsing)
 			WafInbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddr}).Observe(elapsed.Seconds())
 
 			//generate reponse for the remediation component, based on the WAAP config + inband rules evaluation
 			//@tko : this should move in the WaapRuntimeConfig as it knows what to do with the interruption and the expected remediation
-			response := waf.NewResponseRequest(r.WaapRuntime.InBandTx.Tx, interrupt, request.UUID, err)
+			//response := waf.NewResponseRequest(r.WaapRuntime.InBandTx.Tx, interrupt, request.UUID, err)
 
-			err = r.WaapRuntime.ProcessOnMatchRules(request, response)
+			err = r.WaapRuntime.ProcessOnMatchRules(request)
 			if err != nil {
 				r.logger.Errorf("unable to process OnMatch rules: %s", err)
 				continue
 			}
 
 			// send back the result to the HTTP handler for the InBand part
-			request.ResponseChannel <- response
+			request.ResponseChannel <- r.WaapRuntime.Response
 
 		}
 	}

@@ -7,7 +7,6 @@ import (
 	"net/url"
 
 	"github.com/crowdsecurity/coraza/v3/experimental"
-	corazatypes "github.com/crowdsecurity/coraza/v3/types"
 	"github.com/google/uuid"
 )
 
@@ -18,23 +17,23 @@ const (
 	IPHeaderName   = "X-Crowdsec-Waf-Ip"
 )
 
-type ResponseRequest struct {
-	UUID         string
-	Tx           corazatypes.Transaction
-	Interruption *corazatypes.Interruption
-	Err          error
-	SendEvents   bool
-}
+// type ResponseRequest struct {
+// 	UUID         string
+// 	Tx           corazatypes.Transaction
+// 	Interruption *corazatypes.Interruption
+// 	Err          error
+// 	SendEvents   bool
+// }
 
-func NewResponseRequest(Tx experimental.FullTransaction, in *corazatypes.Interruption, UUID string, err error) ResponseRequest {
-	return ResponseRequest{
-		UUID:         UUID,
-		Tx:           Tx,
-		Interruption: in,
-		Err:          err,
-		SendEvents:   true,
-	}
-}
+// func NewResponseRequest(Tx experimental.FullTransaction, in *corazatypes.Interruption, UUID string, err error) ResponseRequest {
+// 	return ResponseRequest{
+// 		UUID:         UUID,
+// 		Tx:           Tx,
+// 		Interruption: in,
+// 		Err:          err,
+// 		SendEvents:   true,
+// 	}
+// }
 
 // func (r *ResponseRequest) SetRemediation(remediation string) error {
 // 	if r.Interruption == nil {
@@ -74,7 +73,7 @@ type ParsedRequest struct {
 	TransferEncoding []string
 	UUID             string
 	Tx               experimental.FullTransaction
-	ResponseChannel  chan ResponseRequest
+	ResponseChannel  chan WaapTempResponse
 }
 
 // Generate a ParsedRequest from a http.Request. ParsedRequest can be consumed by the Waap Engine
@@ -129,6 +128,6 @@ func NewParsedRequestFromRequest(r *http.Request) (ParsedRequest, error) {
 		Proto:            r.Proto,
 		Body:             body,
 		TransferEncoding: r.TransferEncoding,
-		ResponseChannel:  make(chan ResponseRequest),
+		ResponseChannel:  make(chan WaapTempResponse),
 	}, nil
 }
