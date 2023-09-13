@@ -49,6 +49,8 @@ type WaapSource struct {
 	InChan      chan waf.ParsedRequest
 	WaapRuntime *waf.WaapRuntimeConfig
 
+	WaapConfigs map[string]waf.WaapConfig
+
 	WaapRunners []WaapRunner //one for each go-routine
 }
 
