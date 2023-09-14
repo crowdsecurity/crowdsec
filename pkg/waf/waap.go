@@ -70,17 +70,18 @@ type WaapRuntimeConfig struct {
 }
 
 type WaapConfig struct {
-	Name               string   `yaml:"name"`
-	OutOfBandRules     []string `yaml:"outofband_rules"`
-	InBandRules        []string `yaml:"inband_rules"`
-	DefaultRemediation string   `yaml:"default_remediation"`
-	DefaultPassAction  string   `yaml:"default_pass_action"`
-	BlockedHTTPCode    int      `yaml:"blocked_http_code"`
-	PassedHTTPCode     int      `yaml:"passed_http_code"`
-	OnLoad             []Hook   `yaml:"on_load"`
-	PreEval            []Hook   `yaml:"pre_eval"`
-	OnMatch            []Hook   `yaml:"on_match"`
-	VariablesTracking  []string `yaml:"variables_tracking"`
+	Name               string     `yaml:"name"`
+	OutOfBandRules     []string   `yaml:"outofband_rules"`
+	InBandRules        []string   `yaml:"inband_rules"`
+	DefaultRemediation string     `yaml:"default_remediation"`
+	DefaultPassAction  string     `yaml:"default_pass_action"`
+	BlockedHTTPCode    int        `yaml:"blocked_http_code"`
+	PassedHTTPCode     int        `yaml:"passed_http_code"`
+	OnLoad             []Hook     `yaml:"on_load"`
+	PreEval            []Hook     `yaml:"pre_eval"`
+	OnMatch            []Hook     `yaml:"on_match"`
+	VariablesTracking  []string   `yaml:"variables_tracking"`
+	Logger             *log.Entry `yaml:"-"`
 }
 
 func (w *WaapRuntimeConfig) ClearResponse() {
@@ -93,6 +94,9 @@ func (w *WaapRuntimeConfig) ClearResponse() {
 }
 
 func (wc *WaapConfig) Load(file string) error {
+
+	wc.Logger.Debugf("loading config %s", file)
+
 	yamlFile, err := os.ReadFile(file)
 	if err != nil {
 		return fmt.Errorf("unable to read file %s : %s", file, err)
@@ -127,6 +131,7 @@ func (wc *WaapConfig) Build() (*WaapRuntimeConfig, error) {
 
 	//load rules
 	for _, rule := range wc.OutOfBandRules {
+		wc.Logger.Debugf("loading outofband rule %s", rule)
 		collection, err := LoadCollection(rule)
 		if err != nil {
 			return nil, fmt.Errorf("unable to load outofband rule %s : %s", rule, err)
@@ -135,6 +140,7 @@ func (wc *WaapConfig) Build() (*WaapRuntimeConfig, error) {
 	}
 
 	for _, rule := range wc.InBandRules {
+		wc.Logger.Debugf("loading inband rule %s", rule)
 		collection, err := LoadCollection(rule)
 		if err != nil {
 			return nil, fmt.Errorf("unable to load inband rule %s : %s", rule, err)

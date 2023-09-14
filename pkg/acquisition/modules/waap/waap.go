@@ -134,7 +134,7 @@ func (w *WaapSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 
 	//let's load the associated waap_config:
 	if w.config.WaapConfigPath != "" {
-		waapCfg := waf.WaapConfig{}
+		waapCfg := waf.WaapConfig{Logger: w.logger.WithField("component", "waap_config")}
 		err := waapCfg.Load(w.config.WaapConfigPath)
 		if err != nil {
 			return fmt.Errorf("unable to load waap_config : %s", err)
