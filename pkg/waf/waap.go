@@ -65,6 +65,7 @@ type WaapRuntimeConfig struct {
 	OutOfBandTx ExtendedTransaction //is it a good idea ?
 	InBandTx    ExtendedTransaction //is it a good idea ?
 	Response    WaapTempResponse
+	//should we store matched rules here ?
 }
 
 type WaapConfig struct {
@@ -181,10 +182,7 @@ func (w *WaapRuntimeConfig) ProcessOnMatchRules(request ParsedRequest) error {
 
 	for _, rule := range w.CompiledOnMatch {
 		if rule.FilterExpr != nil {
-			output, err := expr.Run(rule.FilterExpr, map[string]interface{}{
-				//"rules": rules, //is it still useful ?
-				"req": request,
-			})
+			output, err := expr.Run(rule.FilterExpr, GetHookEnv(w, request))
 			if err != nil {
 				return fmt.Errorf("unable to run filter %s : %w", rule.Filter, err)
 			}
@@ -275,12 +273,12 @@ func (w *WaapRuntimeConfig) RemoveOutbandRuleByID(id int) error {
 }
 
 func (w *WaapRuntimeConfig) SetAction(action string) error {
-	log.Infof("setting to %s", action)
+	//log.Infof("setting to %s", action)
 	switch action {
 	case "allow":
 		w.Response.Action = action
 		w.Response.HTTPResponseCode = w.Config.PassedHTTPCode
-		//how should we handle this ?
+		//@tko how should we handle this ? it seems bouncer only understand bans, but it might be misleading ?
 	case "deny", "ban", "block":
 		w.Response.Action = "ban"
 		w.Response.HTTPResponseCode = w.Config.BlockedHTTPCode
