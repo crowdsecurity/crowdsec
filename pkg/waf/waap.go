@@ -117,7 +117,6 @@ func (wc *WaapConfig) Load(file string) error {
 		wc.DefaultPassAction = "allow"
 	}
 	return nil
-
 }
 
 func (wc *WaapConfig) Build() (*WaapRuntimeConfig, error) {
