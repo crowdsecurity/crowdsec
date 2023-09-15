@@ -131,6 +131,7 @@ rm -rf %{buildroot}
 %ghost %{_sysconfdir}/%{name}/hub/.index.json
 %ghost %{_localstatedir}/log/%{name}.log
 %dir /var/lib/%{name}/data/
+%dir %{_sysconfdir}/crowdsec/%{name}/hub
 
 %ghost %{_sysconfdir}/crowdsec/local_api_credentials.yaml
 %ghost %{_sysconfdir}/crowdsec/online_api_credentials.yaml
