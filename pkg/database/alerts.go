@@ -28,10 +28,10 @@ import (
 )
 
 const (
-	paginationSize   = 100 // used to queryAlert to avoid 'too many SQL variable'
-	defaultLimit     = 100 // default limit of element to returns when query alerts
-	bulkSize         = 50  // bulk size when create alerts
-	maxLockRetries   = 10  // how many times to retry a bulk operation when sqlite3.ErrBusy is encountered
+	paginationSize = 100 // used to queryAlert to avoid 'too many SQL variable'
+	defaultLimit   = 100 // default limit of element to returns when query alerts
+	bulkSize       = 50  // bulk size when create alerts
+	maxLockRetries = 10  // how many times to retry a bulk operation when sqlite3.ErrBusy is encountered
 )
 
 func formatAlertCN(source models.Source) string {
@@ -485,7 +485,6 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 	return alertRef.ID, inserted, deleted, nil
 }
 
-
 func (c *Client) createDecisionChunk(simulated bool, stopAtTime time.Time, decisions []*models.Decision) ([]*ent.Decision, error) {
 	decisionCreate := make([]*ent.DecisionCreate, len(decisions))
 
@@ -531,7 +530,6 @@ func (c *Client) createDecisionChunk(simulated bool, stopAtTime time.Time, decis
 
 	return ret, nil
 }
-
 
 func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts []*models.Alert) ([]string, error) {
 	alertBuilders := make([]*ent.AlertCreate, len(alerts))
@@ -737,7 +735,6 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 	return ret, nil
 }
 
-
 func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]string, error) {
 	var owner *ent.Machine
 	var err error
@@ -863,6 +860,8 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 		case "include_capi": //allows to exclude one or more specific origins
 			if value[0] == "false" {
 				predicates = append(predicates, alert.Not(alert.HasDecisionsWith(decision.OriginEQ(types.CAPIOrigin))))
+				predicates = append(predicates, alert.Not(alert.HasDecisionsWith(decision.OriginEQ(types.ListOrigin))))
+
 			} else if value[0] != "true" {
 				log.Errorf("Invalid bool '%s' for include_capi", value[0])
 			}
