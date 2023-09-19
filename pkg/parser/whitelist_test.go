@@ -3,6 +3,7 @@ package parser
 import (
 	"testing"
 
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 )
@@ -162,6 +163,119 @@ func TestWhitelistCheck(t *testing.T) {
 			event: &types.Event{
 				Meta: map[string]string{
 					"source_ip": "127.0.0.2",
+				},
+			},
+		},
+		{
+			name: "Postoverflow IP Whitelisted",
+			whitelist: Whitelist{
+				Reason: "test",
+				Ips: []string{
+					"192.168.1.1",
+				},
+			},
+			event: &types.Event{
+				Type: types.OVFLW,
+				Overflow: types.RuntimeAlert{
+					Sources: map[string]models.Source{
+						"192.168.1.1": {},
+					},
+				},
+			},
+			expected_outcome: true,
+		},
+		{
+			name: "Postoverflow IP Not Whitelisted",
+			whitelist: Whitelist{
+				Reason: "test",
+				Ips: []string{
+					"192.168.1.2",
+				},
+			},
+			event: &types.Event{
+				Type: types.OVFLW,
+				Overflow: types.RuntimeAlert{
+					Sources: map[string]models.Source{
+						"192.168.1.1": {},
+					},
+				},
+			},
+		},
+		{
+			name: "Postoverflow CIDR Whitelisted",
+			whitelist: Whitelist{
+				Reason: "test",
+				Cidrs: []string{
+					"192.168.1.1/32",
+				},
+			},
+			event: &types.Event{
+				Type: types.OVFLW,
+				Overflow: types.RuntimeAlert{
+					Sources: map[string]models.Source{
+						"192.168.1.1": {},
+					},
+				},
+			},
+			expected_outcome: true,
+		},
+		{
+			name: "Postoverflow CIDR Not Whitelisted",
+			whitelist: Whitelist{
+				Reason: "test",
+				Cidrs: []string{
+					"192.168.1.2/32",
+				},
+			},
+			event: &types.Event{
+				Type: types.OVFLW,
+				Overflow: types.RuntimeAlert{
+					Sources: map[string]models.Source{
+						"192.168.1.1": {},
+					},
+				},
+			},
+		},
+		{
+			name: "Postoverflow EXPR Whitelisted",
+			whitelist: Whitelist{
+				Reason: "test",
+				Exprs: []string{
+					"evt.Overflow.APIAlerts[0].Source.Cn == 'test'",
+				},
+			},
+			event: &types.Event{
+				Type: types.OVFLW,
+				Overflow: types.RuntimeAlert{
+					APIAlerts: []models.Alert{
+						{
+							Source: &models.Source{
+								Cn: "test",
+							},
+						},
+					},
+				},
+			},
+			expected_outcome: true,
+		},
+		{
+			name: "Postoverflow EXPR Not Whitelisted",
+			whitelist: Whitelist{
+				Reason: "test",
+				Exprs: []string{
+					"evt.Overflow.APIAlerts[0].Source.Cn == 'test2'",
+				},
+			},
+			event: &types.Event{
+				Type: types.OVFLW,
+				Overflow: types.RuntimeAlert{
+					APIAlerts: []models.Alert{
+						{
+							Source: &models.Source{
+								Cn: "test",
+							},
+						},
+					},
 				},
 			},
 		},
