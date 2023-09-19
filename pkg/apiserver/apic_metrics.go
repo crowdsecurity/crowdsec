@@ -131,10 +131,13 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 			if err != nil {
 				log.Errorf("unable to get metrics (%s), will retry", err)
 			}
-			log.Info("capi metrics: sending")
-			_, _, err = a.apiClient.Metrics.Add(context.Background(), metrics)
-			if err != nil {
-				log.Errorf("capi metrics: failed: %s", err)
+			// metrics are nil if they could not be retrieved
+			if metrics != nil {
+				log.Info("capi metrics: sending")
+				_, _, err = a.apiClient.Metrics.Add(context.Background(), metrics)
+				if err != nil {
+					log.Errorf("capi metrics: failed: %s", err)
+				}
 			}
 			metTicker.Reset(nextMetInt())
 		case <-a.metricsTomb.Dying(): // if one apic routine is dying, do we kill the others?
