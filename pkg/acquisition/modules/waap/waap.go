@@ -180,6 +180,10 @@ func (w *WaapSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 			logger:      wafLogger,
 			WaapRuntime: &wrt,
 		}
+		err := runner.Init()
+		if err != nil {
+			return fmt.Errorf("unable to initialize runner : %s", err)
+		}
 		w.WaapRunners[nbRoutine] = runner
 		//most likely missign somethign here to actually start the runner :)
 	}
@@ -269,10 +273,14 @@ func (w *WaapSource) waapHandler(rw http.ResponseWriter, r *http.Request) {
 	w.InChan <- parsedRequest
 
 	response := <-parsedRequest.ResponseChannel
-	log.Infof("resp %+v", response)
 
-	rw.WriteHeader(response.HTTPResponseCode)
-	body, err := json.Marshal(BodyResponse{Action: response.Action})
+	waapResponse := w.WaapRuntime.GenerateResponse(response.InBandInterrupt)
+
+	log.Infof("resp %+v", response)
+	log.Infof("waap resp %+v", waapResponse)
+
+	rw.WriteHeader(waapResponse.HTTPStatus)
+	body, err := json.Marshal(BodyResponse{Action: waapResponse.Action})
 	if err != nil {
 		log.Errorf("unable to marshal response: %s", err)
 		rw.WriteHeader(http.StatusInternalServerError)

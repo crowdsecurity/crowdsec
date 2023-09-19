@@ -120,3 +120,11 @@ func (w WaapCollection) Eval(req ParsedRequest) (*corazatypes.Interruption, erro
 func (w WaapCollection) GetDisplayName() string {
 	return w.collectionName
 }
+
+func (w WaapCollection) String() string {
+	ret := ""
+	for _, rule := range w.Rules {
+		ret += rule + "\n"
+	}
+	return ret
+}

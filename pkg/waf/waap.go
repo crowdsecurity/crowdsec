@@ -7,7 +7,6 @@ import (
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
-	corazatypes "github.com/crowdsecurity/coraza/v3/types"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
@@ -131,7 +130,7 @@ func (wc *WaapConfig) Build() (*WaapRuntimeConfig, error) {
 
 	//load rules
 	for _, rule := range wc.OutOfBandRules {
-		wc.Logger.Debugf("loading outofband rule %s", rule)
+		wc.Logger.Infof("loading outofband rule %s", rule)
 		collection, err := LoadCollection(rule)
 		if err != nil {
 			return nil, fmt.Errorf("unable to load outofband rule %s : %s", rule, err)
@@ -139,14 +138,17 @@ func (wc *WaapConfig) Build() (*WaapRuntimeConfig, error) {
 		ret.OutOfBandRules = append(ret.OutOfBandRules, collection)
 	}
 
+	wc.Logger.Infof("Loaded %d outofband rules", len(ret.OutOfBandRules))
 	for _, rule := range wc.InBandRules {
-		wc.Logger.Debugf("loading inband rule %s", rule)
+		wc.Logger.Infof("loading inband rule %s", rule)
 		collection, err := LoadCollection(rule)
 		if err != nil {
 			return nil, fmt.Errorf("unable to load inband rule %s : %s", rule, err)
 		}
 		ret.InBandRules = append(ret.InBandRules, collection)
 	}
+
+	wc.Logger.Infof("Loaded %d inband rules", len(ret.InBandRules))
 
 	//load hooks
 	for _, hook := range wc.OnLoad {
@@ -311,45 +313,21 @@ func (w *WaapRuntimeConfig) SetHTTPCode(code int) error {
 	return nil
 }
 
-func (w *WaapRuntimeConfig) ProcessInBandRules(request ParsedRequest) error {
-	for _, rule := range w.InBandRules {
-		_, err := rule.Eval(request)
-		if err != nil {
-			return fmt.Errorf("unable to process inband rule %s : %s", rule.GetDisplayName(), err)
-		}
-		//...
-	}
-	return nil
-}
-
-func (w *WaapRuntimeConfig) ProcessOutOfBandRules(request ParsedRequest) (*corazatypes.Interruption, error) {
-	for _, rule := range w.OutOfBandRules {
-		interrupt, err := rule.Eval(request)
-		if err != nil {
-			return nil, fmt.Errorf("unable to process inband rule %s : %s", rule.GetDisplayName(), err)
-		}
-		if interrupt != nil {
-			return interrupt, nil
-		}
-	}
-	return nil, nil
-}
-
 type BodyResponse struct {
 	Action     string `json:"action"`
 	HTTPStatus int    `json:"http_status"`
 }
 
-func (w *WaapRuntimeConfig) GenerateResponse(interrupted bool) (BodyResponse, error) {
+func (w *WaapRuntimeConfig) GenerateResponse(interrupted bool) BodyResponse {
 	resp := BodyResponse{}
 	//if there is no interrupt, we should allow with default code
 	if !interrupted {
 		resp.Action = w.Config.DefaultPassAction
 		resp.HTTPStatus = w.Config.PassedHTTPCode
-		return resp, nil
+		return resp
 	}
 	resp.Action = w.Config.DefaultRemediation
 	resp.HTTPStatus = w.Config.BlockedHTTPCode
 
-	return resp, nil
+	return resp
 }
