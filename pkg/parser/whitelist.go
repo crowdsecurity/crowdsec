@@ -134,9 +134,5 @@ func (n *Node) CompileWLs() (bool, error) {
 		n.Whitelist.B_Exprs = append(n.Whitelist.B_Exprs, expression)
 		n.Logger.Debugf("adding expression %s to whitelists", filter)
 	}
-	valid := false
-	if n.ContainsWLs() {
-		valid = true
-	}
-	return valid, nil
+	return n.ContainsWLs(), nil
 }
