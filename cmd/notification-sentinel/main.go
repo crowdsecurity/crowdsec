@@ -78,7 +78,7 @@ func (s *SentinelPlugin) Notify(ctx context.Context, notification *protobufs.Not
 		return &protobufs.Empty{}, err
 	}
 
-	req, err := http.NewRequest("POST", url, body)
+	req, err := http.NewRequest(http.MethodPost, url, body)
 	if err != nil {
 		logger.Error("failed to create request", "error", err)
 		return &protobufs.Empty{}, err
@@ -98,7 +98,7 @@ func (s *SentinelPlugin) Notify(ctx context.Context, notification *protobufs.Not
 	defer resp.Body.Close()
 	logger.Debug("sent notification to sentinel", "status", resp.Status)
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return &protobufs.Empty{}, fmt.Errorf("failed to send notification to sentinel: %s", resp.Status)
 	}
 

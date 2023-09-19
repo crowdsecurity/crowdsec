@@ -105,6 +105,7 @@ linters:
     # Recommended? (easy)
     #
 
+    - depguard              # Go linter that checks if package imports are in a list of acceptable packages
     - dogsled               # Checks assignments with too many blank identifiers (e.g. x, _, _, _, := f())
     - errchkjson            # Checks types passed to the json encoding functions. Reports unsupported types and optionally reports occations, where the check for the returned error can be omitted.
     - errorlint             # errorlint is a linter for that can be used to find code that will cause problems with the error wrapping scheme introduced in Go 1.13.
@@ -121,10 +122,10 @@ linters:
     - nosprintfhostport     # Checks for misuse of Sprintf to construct a host with port in a URL.
     - promlinter            # Check Prometheus metrics naming via promlint
     - revive                # Fast, configurable, extensible, flexible, and beautiful linter for Go. Drop-in replacement of golint.
+    - tagalign              # check that struct tags are well aligned [fast: true, auto-fix: true]
     - thelper               # thelper detects golang test helpers without t.Helper() call and checks the consistency of test helpers
     - wastedassign          # wastedassign finds wasted assignment statements.
     - wrapcheck             # Checks that errors returned from external packages are wrapped
-    - depguard              # Go linter that checks if package imports are in a list of acceptable packages
 
     #
     # Recommended? (requires some work)

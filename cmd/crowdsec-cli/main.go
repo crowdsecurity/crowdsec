@@ -53,11 +53,11 @@ func initConfig() {
 	}
 
 	if !slices.Contains(NoNeedConfig, os.Args[1]) {
+		log.Debugf("Using %s as configuration file", ConfigFilePath)
 		csConfig, mergedConfig, err = csconfig.NewConfig(ConfigFilePath, false, false, true)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Debugf("Using %s as configuration file", ConfigFilePath)
 		if err := csConfig.LoadCSCLI(); err != nil {
 			log.Fatal(err)
 		}

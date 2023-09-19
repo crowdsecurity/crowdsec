@@ -4,14 +4,13 @@ ifeq ($(OS), Windows_NT)
 	EXT = .exe
 endif
 
-PLUGIN = dummy
-BINARY_NAME = notification-$(PLUGIN)$(EXT)
-
 GO = go
 GOBUILD = $(GO) build
 
+BINARY_NAME = notification-splunk$(EXT)
+
 build: clean
-	$(GOBUILD) $(LD_OPTS) $(BUILD_VENDOR_FLAGS) -o $(BINARY_NAME)
+	$(GOBUILD) $(LD_OPTS) -o $(BINARY_NAME)
 
 .PHONY: clean
 clean:

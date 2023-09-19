@@ -75,7 +75,7 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx EnricherCtx) (
 
 			//check for empty bucket
 			if node.Name == "" && node.Description == "" && node.Author == "" {
-				log.Infof("Node in %s has no name,author or description. Skipping.", stageFile.Filename)
+				log.Infof("Node in %s has no name, author or description. Skipping.", stageFile.Filename)
 				continue
 			}
 			//check compat
