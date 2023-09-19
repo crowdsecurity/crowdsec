@@ -51,8 +51,9 @@ type WaapTempResponse struct {
 
 // runtime version of WaapConfig
 type WaapRuntimeConfig struct {
-	Name                      string
-	OutOfBandRules            []WaapCollection
+	Name           string
+	OutOfBandRules []WaapCollection
+	//OutOfBandEngine XXX
 	InBandRules               []WaapCollection
 	DefaultRemediation        string
 	CompiledOnLoad            []Hook
@@ -263,7 +264,12 @@ func (w *WaapRuntimeConfig) CancelEvent() error {
 	return nil
 }
 
-func (w *WaapRuntimeConfig) SetActionnByID(id int, action string) error {
+func (w *WaapRuntimeConfig) SetActionByTag(tag string, action string) error {
+	panic("not implemented")
+	return nil
+}
+
+func (w *WaapRuntimeConfig) SetActionByID(id int, action string) error {
 	panic("not implemented")
 	return nil
 }
