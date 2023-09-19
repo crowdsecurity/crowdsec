@@ -129,7 +129,7 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 			metTicker.Stop()
 			metrics, err := a.GetMetrics()
 			if err != nil {
-				log.Errorf("unable to get metrics (%s), will retry", err)
+				log.Errorf("unable to get metrics (%s)", err)
 			}
 			// metrics are nil if they could not be retrieved
 			if metrics != nil {
