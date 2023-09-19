@@ -226,7 +226,6 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 			}
 			if out {
 				clog.Debugf("Event is whitelisted by expr, reason [%s]", n.Whitelist.Reason)
-				p.Whitelisted = true
 				isWhitelisted = true
 			}
 			hasWhitelist = true
