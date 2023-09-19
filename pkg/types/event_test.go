@@ -2,10 +2,10 @@ package types
 
 import (
 	"net"
+	"slices"
 	"testing"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"golang.org/x/exp/slices"
 )
 
 func TestParseIPSources(t *testing.T) {
