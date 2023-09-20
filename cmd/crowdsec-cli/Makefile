@@ -4,10 +4,8 @@ ifeq ($(OS), Windows_NT)
 	EXT = .exe
 endif
 
-# Go parameters
 GO = go
 GOBUILD = $(GO) build
-GOTEST = $(GO) test
 
 BINARY_NAME = cscli$(EXT)
 PREFIX ?= "/"
@@ -17,7 +15,7 @@ BIN_PREFIX = $(PREFIX)"/usr/local/bin/"
 all: clean build
 
 build: clean
-	$(GOBUILD) $(LD_OPTS) $(BUILD_VENDOR_FLAGS) -o $(BINARY_NAME)
+	$(GOBUILD) $(LD_OPTS) -o $(BINARY_NAME)
 
 .PHONY: install
 install: install-conf install-bin

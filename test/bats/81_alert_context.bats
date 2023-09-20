@@ -40,7 +40,12 @@ teardown() {
 	  type: syslog
 	EOT
 
-    CONTEXT_YAML=$(config_get '.crowdsec_service.console_context_path')
+    # we set the path here because the default is empty
+    CONFIG_DIR=$(dirname "$CONFIG_YAML")
+    CONTEXT_YAML="$CONFIG_DIR/console/context.yaml"
+    export CONTEXT_YAML
+    config_set '.crowdsec_service.console_context_path=strenv(CONTEXT_YAML)'
+    mkdir -p "$CONFIG_DIR/console"
 
     cat <<-EOT >"${CONTEXT_YAML}"
 	target_user:
