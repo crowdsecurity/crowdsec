@@ -43,8 +43,6 @@ const (
 	metricsIntervalDelta   = time.Minute * 15
 )
 
-var SCOPE_CAPI_ALIAS_ALIAS string = "crowdsecurity/community-blocklist" //we don't use "CAPI" directly, to make it less confusing for the user
-
 type apic struct {
 	// when changing the intervals in tests, always set *First too
 	// or they can be negative
@@ -776,14 +774,14 @@ func (a *apic) UpdateBlocklists(links *modelscapi.GetDecisionsStreamResponseLink
 	for _, blocklist := range links.Blocklists {
 		if err := a.updateBlocklist(defaultClient, blocklist, add_counters); err != nil {
 			return err
-		}	
+		}
 	}
 	return nil
 }
 
 func setAlertScenario(alert *models.Alert, add_counters map[string]map[string]int, delete_counters map[string]map[string]int) {
 	if *alert.Source.Scope == types.CAPIOrigin {
-		*alert.Source.Scope = SCOPE_CAPI_ALIAS_ALIAS
+		*alert.Source.Scope = types.CommunityBlocklistPullSourceScope
 		alert.Scenario = ptr.Of(fmt.Sprintf("update : +%d/-%d IPs", add_counters[types.CAPIOrigin]["all"], delete_counters[types.CAPIOrigin]["all"]))
 	} else if *alert.Source.Scope == types.ListOrigin {
 		*alert.Source.Scope = fmt.Sprintf("%s:%s", types.ListOrigin, *alert.Scenario)

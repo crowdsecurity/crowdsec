@@ -859,8 +859,22 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 			predicates = append(predicates, alert.HasDecisionsWith(decision.OriginEQ(value[0])))
 		case "include_capi": //allows to exclude one or more specific origins
 			if value[0] == "false" {
-				predicates = append(predicates, alert.Not(alert.HasDecisionsWith(decision.OriginEQ(types.CAPIOrigin))))
-				predicates = append(predicates, alert.Not(alert.HasDecisionsWith(decision.OriginEQ(types.ListOrigin))))
+				predicates = append(predicates, alert.Or(
+					//do not show alerts with active decisions having origin CAPI or lists
+					alert.And(
+						alert.Not(alert.HasDecisionsWith(decision.OriginEQ(types.CAPIOrigin))),
+						alert.Not(alert.HasDecisionsWith(decision.OriginEQ(types.ListOrigin))),
+					),
+					alert.And(
+						//do not show neither alerts with no decisions if the Source Scope is lists: or CAPI
+						alert.Not(alert.HasDecisions()),
+						alert.Or(
+							alert.SourceScopeHasPrefix(types.ListOrigin+":"),
+							alert.SourceScopeEQ(types.CommunityBlocklistPullSourceScope),
+						),
+					),
+				),
+				)
 
 			} else if value[0] != "true" {
 				log.Errorf("Invalid bool '%s' for include_capi", value[0])
