@@ -2,6 +2,7 @@ package bayesiantrain
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
@@ -15,7 +16,14 @@ type fakeBucket struct {
 	label  int
 }
 
-func (f *fakeBucket) scoreTrainedClassifier(results map[string]BayesianResult, exprCache map[string]vm.Program, prior float32, threshold float32) int {
+type inferenceResult struct {
+	ip          string
+	prediction  int
+	label       int
+	probability float32
+}
+
+func (f *fakeBucket) scoreTrainedClassifier(results map[string]BayesianResult, exprCache map[string]vm.Program, prior float32, threshold float32, resultChan chan<- inferenceResult) int {
 	var posterior float32
 	var queue leakybucket.Queue
 	var program vm.Program
@@ -23,6 +31,8 @@ func (f *fakeBucket) scoreTrainedClassifier(results map[string]BayesianResult, e
 	var ok bool
 	var guillotinecache map[string]bool
 
+	ip := f.events[0].Meta["source_ip"]
+	label := f.label
 	guillotinecache = make(map[string]bool)
 
 	for index, evt := range f.events {
@@ -60,9 +70,35 @@ func (f *fakeBucket) scoreTrainedClassifier(results map[string]BayesianResult, e
 		}
 
 		if posterior >= threshold {
+			resultChan <- inferenceResult{ip, 1, label, posterior}
 			return 1
 		}
 	}
-
+	resultChan <- inferenceResult{ip, 0, label, posterior}
 	return 0
+}
+
+func saveResultsToDisk(inputChan <-chan inferenceResult) {
+	var res inferenceResult
+	var str string
+	var more bool
+
+	f, err := os.Create("inference_result.csv")
+
+	if err != nil {
+		fmt.Printf("%s", err)
+	}
+
+	f.WriteString("ip,probability,label\n")
+
+	defer f.Close()
+
+	for {
+		res, more = <-inputChan
+		if !more {
+			return
+		}
+		str = fmt.Sprint(res.ip, ",", res.probability, ",", res.label, "\n")
+		f.WriteString(str)
+	}
 }

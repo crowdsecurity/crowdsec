@@ -143,12 +143,16 @@ func (s *LogEventStorage) GenerateBucketMetrics(threshold float32) error {
 	var falseNegative int
 	var truePositive int
 	var trueNegative int
+	var inferenceChannel chan inferenceResult
 
+	inferenceChannel = make(chan inferenceResult, 20)
 	prior := float32(s.nEvilIps) / float32(s.total)
+
+	go saveResultsToDisk(inferenceChannel)
 
 	for _, bucket := range s.ParsedIpEvents {
 
-		res = bucket.scoreTrainedClassifier(s.CachedHypotheses, s.exprCache, prior, threshold)
+		res = bucket.scoreTrainedClassifier(s.CachedHypotheses, s.exprCache, prior, threshold, inferenceChannel)
 		if res < 0 {
 			return fmt.Errorf("generatebucketmetrics returned an error, aborting")
 		}
@@ -166,6 +170,8 @@ func (s *LogEventStorage) GenerateBucketMetrics(threshold float32) error {
 			}
 		}
 	}
+
+	close(inferenceChannel)
 
 	fmt.Println("raw : ", falsePositive, falseNegative, truePositive, trueNegative)
 	printBucketMetrics(falsePositive, falseNegative, truePositive, trueNegative)
