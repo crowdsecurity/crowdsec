@@ -859,18 +859,20 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 			predicates = append(predicates, alert.HasDecisionsWith(decision.OriginEQ(value[0])))
 		case "include_capi": //allows to exclude one or more specific origins
 			if value[0] == "false" {
-				predicates = append(predicates, alert.Or(
+				predicates = append(predicates, alert.And(
 					//do not show alerts with active decisions having origin CAPI or lists
 					alert.And(
 						alert.Not(alert.HasDecisionsWith(decision.OriginEQ(types.CAPIOrigin))),
 						alert.Not(alert.HasDecisionsWith(decision.OriginEQ(types.ListOrigin))),
 					),
-					alert.And(
-						//do not show neither alerts with no decisions if the Source Scope is lists: or CAPI
-						alert.Not(alert.HasDecisions()),
-						alert.Or(
-							alert.SourceScopeHasPrefix(types.ListOrigin+":"),
-							alert.SourceScopeEQ(types.CommunityBlocklistPullSourceScope),
+					alert.Not(
+						alert.And(
+							//do not show neither alerts with no decisions if the Source Scope is lists: or CAPI
+							alert.Not(alert.HasDecisions()),
+							alert.Or(
+								alert.SourceScopeHasPrefix(types.ListOrigin+":"),
+								alert.SourceScopeEQ(types.CommunityBlocklistPullSourceScope),
+							),
 						),
 					),
 				),
