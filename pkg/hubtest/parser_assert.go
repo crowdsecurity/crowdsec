@@ -255,6 +255,12 @@ func (p *ParserAssert) AutoGenParserAssert() string {
 						ret += base + line
 					}
 				}
+				if result.Evt.Whitelisted {
+					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Whitelisted == true`+"\n", stage, parser, pidx)
+					if result.Evt.WhitelistReason != "" {
+						ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.WhitelistReason == "%s"`+"\n", stage, parser, pidx, Escape(result.Evt.WhitelistReason))
+					}
+				}
 			}
 		}
 	}
