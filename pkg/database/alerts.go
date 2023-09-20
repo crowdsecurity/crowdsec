@@ -17,7 +17,6 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
-	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
@@ -871,7 +870,8 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 						alert.Not(alert.HasDecisions()),
 						alert.Or(
 							alert.SourceScopeHasPrefix(types.ListOrigin+":"),
-							alert.SourceScopeEQ(apiserver.SCOPE_CAPI_ALIAS_ALIAS),
+							//see apiserver.SCOPE_CAPI_ALIAS_ALIAS
+							alert.SourceScopeEQ("crowdsecurity/community-blocklist"),
 						),
 					),
 				),
