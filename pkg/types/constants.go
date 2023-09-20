@@ -18,6 +18,8 @@ const CscliImportOrigin = "cscli-import"
 const ListOrigin = "lists"
 const CAPIOrigin = "CAPI"
 
+const CommunityPullAlertsOrigin = "crowdsecurity/community-blocklist"
+
 const DecisionTypeBan = "ban"
 
 func GetOrigins() []string {

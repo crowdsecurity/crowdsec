@@ -870,8 +870,7 @@ func AlertPredicatesFromFilter(filter map[string][]string) ([]predicate.Alert, e
 						alert.Not(alert.HasDecisions()),
 						alert.Or(
 							alert.SourceScopeHasPrefix(types.ListOrigin+":"),
-							//see apiserver.SCOPE_CAPI_ALIAS_ALIAS
-							alert.SourceScopeEQ("crowdsecurity/community-blocklist"),
+							alert.SourceScopeEQ(types.CommunityPullAlertsOrigin),
 						),
 					),
 				),

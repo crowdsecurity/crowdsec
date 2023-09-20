@@ -689,7 +689,7 @@ func TestAPICWhitelists(t *testing.T) {
 		alertScenario[alert.SourceScope]++
 	}
 	assert.Equal(t, 3, len(alertScenario))
-	assert.Equal(t, 1, alertScenario[SCOPE_CAPI_ALIAS_ALIAS])
+	assert.Equal(t, 1, alertScenario[types.CommunityPullAlertsOrigin])
 	assert.Equal(t, 1, alertScenario["lists:blocklist1"])
 	assert.Equal(t, 1, alertScenario["lists:blocklist2"])
 
@@ -818,7 +818,7 @@ func TestAPICPullTop(t *testing.T) {
 		alertScenario[alert.SourceScope]++
 	}
 	assert.Equal(t, 3, len(alertScenario))
-	assert.Equal(t, 1, alertScenario[SCOPE_CAPI_ALIAS_ALIAS])
+	assert.Equal(t, 1, alertScenario[types.CommunityPullAlertsOrigin])
 	assert.Equal(t, 1, alertScenario["lists:blocklist1"])
 	assert.Equal(t, 1, alertScenario["lists:blocklist2"])
 
