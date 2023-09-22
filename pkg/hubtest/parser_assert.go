@@ -319,6 +319,10 @@ func LoadParserDump(filepath string) (*ParserResults, error) {
 	/*the very last one is set to 'success' which is just a bool indicating if the line was successfully parsed*/
 	lastStage := stages[len(stages)-2]
 
+	//If last stage is empty, we can't check anything to warn the user
+	if len(pdump[lastStage]) == 0 {
+		return &pdump, nil
+	}
 	parsers := make([]string, 0, len(pdump[lastStage]))
 	for k := range pdump[lastStage] {
 		parsers = append(parsers, k)
