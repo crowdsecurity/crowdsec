@@ -316,12 +316,14 @@ func LoadParserDump(filepath string) (*ParserResults, error) {
 		stages = append(stages, k)
 	}
 	sort.Strings(stages)
-	/*the very last one is set to 'success' which is just a bool indicating if the line was successfully parsed*/
-	lastStage := stages[len(stages)-2]
-
-	//If last stage is empty, we can't check anything to warn the user
-	if len(pdump[lastStage]) == 0 {
-		return &pdump, nil
+	var lastStage string
+	//Loop over stages to find last successful one with at least one parser
+	for i := len(stages) - 2; i >= 0; i-- {
+		if len(pdump[stages[i]]) == 0 {
+			continue
+		}
+		lastStage = stages[i]
+		break
 	}
 	parsers := make([]string, 0, len(pdump[lastStage]))
 	for k := range pdump[lastStage] {
