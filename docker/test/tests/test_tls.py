@@ -4,7 +4,7 @@
 Test agent-lapi and cscli-lapi communication via TLS, on the same container.
 """
 
-import random
+import uuid
 
 from pytest_cs import Status
 
@@ -140,7 +140,7 @@ def test_tls_lapi_var(crowdsec, flavor, certs_dir):
 def test_tls_split_lapi_agent(crowdsec, flavor, certs_dir):
     """Server-only certificate, split containers"""
 
-    rand = random.randint(0, 10000)
+    rand = uuid.uuid1()
     lapiname = 'lapi-' + str(rand)
     agentname = 'agent-' + str(rand)
 
@@ -193,7 +193,7 @@ def test_tls_split_lapi_agent(crowdsec, flavor, certs_dir):
 def test_tls_mutual_split_lapi_agent(crowdsec, flavor, certs_dir):
     """Server and client certificates, split containers"""
 
-    rand = random.randint(0, 10000)
+    rand = uuid.uuid1()
     lapiname = 'lapi-' + str(rand)
     agentname = 'agent-' + str(rand)
 
@@ -244,7 +244,7 @@ def test_tls_mutual_split_lapi_agent(crowdsec, flavor, certs_dir):
 def test_tls_client_ou(crowdsec, certs_dir):
     """Check behavior of client certificate vs AGENTS_ALLOWED_OU"""
 
-    rand = random.randint(0, 10000)
+    rand = uuid.uuid1()
     lapiname = 'lapi-' + str(rand)
     agentname = 'agent-' + str(rand)
 
@@ -286,6 +286,19 @@ def test_tls_client_ou(crowdsec, certs_dir):
             ])
 
     lapi_env['AGENTS_ALLOWED_OU'] = 'custom-client-ou'
+
+    # change container names to avoid conflict
+    # recreate certificates because they need the new hostname
+
+    rand = uuid.uuid1()
+    lapiname = 'lapi-' + str(rand)
+    agentname = 'agent-' + str(rand)
+
+    agent_env['LOCAL_API_URL'] = f'https://{lapiname}:8080'
+
+    volumes = {
+        certs_dir(lapi_hostname=lapiname, agent_ou='custom-client-ou'): {'bind': '/etc/ssl/crowdsec', 'mode': 'ro'},
+    }
 
     cs_lapi = crowdsec(name=lapiname, environment=lapi_env, volumes=volumes)
     cs_agent = crowdsec(name=agentname, environment=agent_env, volumes=volumes)

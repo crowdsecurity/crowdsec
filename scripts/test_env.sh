@@ -3,10 +3,10 @@
 BASE="./tests"
 
 usage() {
-	  echo "Usage:"
-	  echo "    ./wizard.sh -h                               Display this help message."
-	  echo "    ./test_env.sh -d ./tests                     Create test environment in './tests' folder"
-	  exit 0
+	echo "Usage:"
+	echo "    $0 -h                             Display this help message."
+	echo "    $0 -d ./tests                     Create test environment in './tests' folder"
+	exit 0
 }
 
 
@@ -24,7 +24,7 @@ do
 		exit 0
 		;;
 	*)    # unknown option
-		log_err "Unknown argument ${key}."
+		echo "Unknown argument ${key}." >&2
 		usage
 		exit 1
 		;;
@@ -57,7 +57,7 @@ log_info() {
 	echo -e "[$date][INFO] $msg"
 }
 
-create_arbo() {
+create_tree() {
 	mkdir -p "$BASE"
 	mkdir -p "$DATA_DIR"
 	mkdir -p "$LOG_DIR"
@@ -86,8 +86,8 @@ copy_files() {
 	envsubst < "./config/dev.yaml" > $BASE/dev.yaml
 	for plugin in $PLUGINS
 	do
-		cp $PLUGINS_DIR/$NOTIF_DIR/$plugin/notification-$plugin $BASE/$PLUGINS_DIR/notification-$plugin
-		cp $PLUGINS_DIR/$NOTIF_DIR/$plugin/$plugin.yaml $CONFIG_DIR/$NOTIF_DIR/$plugin.yaml
+		cp cmd/notification-$plugin/notification-$plugin $BASE/$PLUGINS_DIR/notification-$plugin
+		cp cmd/notification-$plugin/$plugin.yaml $CONFIG_DIR/$NOTIF_DIR/$plugin.yaml
 	done
 }
 
@@ -103,9 +103,9 @@ setup_api() {
 
 
 main() {
-	log_info "Creating test arboresence in $BASE"
-	create_arbo
-	log_info "Arboresence created"
+	log_info "Creating test tree in $BASE"
+	create_tree
+	log_info "Tree created"
 	log_info "Copying needed files for tests environment"
 	copy_files
 	log_info "Files copied"

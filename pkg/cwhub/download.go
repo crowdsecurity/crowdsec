@@ -76,7 +76,7 @@ func DownloadHubIdx(hub *csconfig.Hub) ([]byte, error) {
 	}
 	defer file.Close()
 
-	wsize, err := file.WriteString(string(body))
+	wsize, err := file.Write(body)
 	if err != nil {
 		return nil, fmt.Errorf("while writing hub index file: %w", err)
 	}
@@ -216,7 +216,7 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 		return target, fmt.Errorf("while opening file: %w", err)
 	}
 	defer f.Close()
-	_, err = f.WriteString(string(body))
+	_, err = f.Write(body)
 	if err != nil {
 		return target, fmt.Errorf("while writing file: %w", err)
 	}

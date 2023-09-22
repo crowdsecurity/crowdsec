@@ -43,7 +43,7 @@ func downloadFile(url string, destPath string) error {
 		return err
 	}
 
-	_, err = file.WriteString(string(body))
+	_, err = file.Write(body)
 	if err != nil {
 		return err
 	}

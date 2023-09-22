@@ -87,19 +87,19 @@
                   </Component>
                   <Directory Id="NotifConfigDir" Name="notifications">
                      <Component Id="NotifConfig" Guid="4d04a852-e876-408f-95a7-a7effa7762c4">
-                        <File Id="slack.yaml" Source="plugins\notifications\slack\slack.yaml" Name="slack.yaml">
+                        <File Id="slack.yaml" Source="cmd\notification-slack\slack.yaml" Name="slack.yaml">
                            <PermissionEx Sddl="D:PAI(A;;FA;;;SY)(A;;FA;;;BA)"/>
                         </File>
-                        <File Id="http.yaml" Source="plugins\notifications\http\http.yaml" Name="http.yaml">
+                        <File Id="http.yaml" Source="cmd\notification-http\http.yaml" Name="http.yaml">
                            <PermissionEx Sddl="D:PAI(A;;FA;;;SY)(A;;FA;;;BA)"/>
                         </File>
-                        <File Id="email.yaml" Source="plugins\notifications\email\email.yaml" Name="email.yaml">
+                        <File Id="email.yaml" Source="cmd\notification-email\email.yaml" Name="email.yaml">
                            <PermissionEx Sddl="D:PAI(A;;FA;;;SY)(A;;FA;;;BA)"/>
                         </File>
-                        <File Id="splunk.yaml" Source="plugins\notifications\splunk\splunk.yaml" Name="splunk.yaml">
+                        <File Id="splunk.yaml" Source="cmd\notification-splunk\splunk.yaml" Name="splunk.yaml">
                            <PermissionEx Sddl="D:PAI(A;;FA;;;SY)(A;;FA;;;BA)"/>
                         </File>
-                        <File Id="sentinel.yaml" Source="plugins\notifications\sentinel\sentinel.yaml" Name="sentinel.yaml">
+                        <File Id="sentinel.yaml" Source="cmd\notification-sentinel\sentinel.yaml" Name="sentinel.yaml">
                            <PermissionEx Sddl="D:PAI(A;;FA;;;SY)(A;;FA;;;BA)"/>
                         </File>
                      </Component>
@@ -123,11 +123,11 @@
                </Directory>
                <Directory Id="CrowdsecPluginsDir" Name="plugins">
                   <Component Id="CreateCrowdsecPluginsDir" Guid="bb7c8f19-8457-44b9-a538-aed494ec575d">
-                     <File Id="notification_slack.exe" Source="plugins\notifications\slack\notification-slack.exe" />
-                     <File Id="notification_email.exe" Source="plugins\notifications\email\notification-email.exe" />
-                     <File Id="notification_http.exe" Source="plugins\notifications\http\notification-http.exe" />
-                     <File Id="notification_splunk.exe" Source="plugins\notifications\splunk\notification-splunk.exe" />
-                     <File Id="notification_sentinel.exe" Source="plugins\notifications\sentinel\notification-sentinel.exe" />
+                     <File Id="notification_slack.exe" Source="cmd\notification-slack\notification-slack.exe" />
+                     <File Id="notification_email.exe" Source="cmd\notification-email\notification-email.exe" />
+                     <File Id="notification_http.exe" Source="cmd\notification-http\notification-http.exe" />
+                     <File Id="notification_splunk.exe" Source="cmd\notification-splunk\notification-splunk.exe" />
+                     <File Id="notification_sentinel.exe" Source="cmd\notification-sentinel\notification-sentinel.exe" />
                   </Component>
                </Directory>
             </Directory>

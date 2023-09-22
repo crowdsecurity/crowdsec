@@ -58,7 +58,6 @@ var configShowTemplate = `Global:
 
 {{- if .ConfigPaths }}
    - Configuration Folder   : {{.ConfigPaths.ConfigDir}}
-   - Configuration Folder   : {{.ConfigPaths.ConfigDir}}
    - Data Folder            : {{.ConfigPaths.DataDir}}
    - Hub Folder             : {{.ConfigPaths.HubDir}}
    - Simulation File        : {{.ConfigPaths.SimulationFilePath}}
@@ -163,6 +162,12 @@ Central API:
       - Port                : {{.DbConfig.Port}}
       - User                : {{.DbConfig.User}}
       - DB Name             : {{.DbConfig.DbName}}
+{{- end }}
+{{- if .DbConfig.MaxOpenConns }}
+      - Max Open Conns      : {{.DbConfig.MaxOpenConns}}
+{{- end }}
+{{- if ne .DbConfig.DecisionBulkSize 0 }}
+      - Decision Bulk Size  : {{.DbConfig.DecisionBulkSize}}
 {{- end }}
 {{- if .DbConfig.Flush }}
 {{- if .DbConfig.Flush.MaxAge }}

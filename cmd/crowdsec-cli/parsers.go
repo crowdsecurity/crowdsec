@@ -10,7 +10,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-
 func NewParsersCmd() *cobra.Command {
 	var cmdParsers = &cobra.Command{
 		Use:   "parsers [action] [config]",
@@ -26,20 +25,21 @@ cscli parsers remove crowdsecurity/sshd-logs
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadHub(); err != nil {
-				log.Fatal(err)
+				return err
 			}
 			if csConfig.Hub == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 
 			if err := cwhub.SetHubBranch(); err != nil {
-				return fmt.Errorf("error while setting hub branch: %s", err)
+				return fmt.Errorf("while setting hub branch: %w", err)
 			}
 
 			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Info("Run 'sudo cscli hub update' to get the hub index")
-				log.Fatalf("Failed to get Hub index : %v", err)
+				return fmt.Errorf("failed to get hub index: %w", err)
 			}
+
 			return nil
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
@@ -59,7 +59,6 @@ cscli parsers remove crowdsecurity/sshd-logs
 	return cmdParsers
 }
 
-
 func NewParsersInstallCmd() *cobra.Command {
 	var ignoreError bool
 
@@ -73,7 +72,7 @@ func NewParsersInstallCmd() *cobra.Command {
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compAllItems(cwhub.PARSERS, args, toComplete)
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			for _, name := range args {
 				t := cwhub.GetItem(cwhub.PARSERS, name)
 				if t == nil {
@@ -82,15 +81,16 @@ func NewParsersInstallCmd() *cobra.Command {
 					continue
 				}
 				if err := cwhub.InstallItem(csConfig, name, cwhub.PARSERS, forceAction, downloadOnly); err != nil {
-					if ignoreError {
-						log.Errorf("Error while installing '%s': %s", name, err)
-					} else {
-						log.Fatalf("Error while installing '%s': %s", name, err)
+					if !ignoreError {
+						return fmt.Errorf("error while installing '%s': %w", name, err)
 					}
+					log.Errorf("Error while installing '%s': %s", name, err)
 				}
 			}
+			return nil
 		},
 	}
+
 	cmdParsersInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
 	cmdParsersInstall.PersistentFlags().BoolVar(&forceAction, "force", false, "Force install : Overwrite tainted and outdated files")
 	cmdParsersInstall.PersistentFlags().BoolVar(&ignoreError, "ignore", false, "Ignore errors when installing multiple parsers")
@@ -98,33 +98,35 @@ func NewParsersInstallCmd() *cobra.Command {
 	return cmdParsersInstall
 }
 
-
 func NewParsersRemoveCmd() *cobra.Command {
-	var cmdParsersRemove = &cobra.Command{
+	cmdParsersRemove := &cobra.Command{
 		Use:               "remove [config]",
 		Short:             "Remove given parser(s)",
 		Long:              `Remove given parse(s) from hub`,
-		Aliases:           []string{"delete"},
 		Example:           `cscli parsers remove crowdsec/xxx crowdsec/xyz`,
+		Aliases:           []string{"delete"},
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cwhub.PARSERS, args, toComplete)
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if all {
 				cwhub.RemoveMany(csConfig, cwhub.PARSERS, "", all, purge, forceAction)
-				return
+				return nil
 			}
 
 			if len(args) == 0 {
-				log.Fatalf("Specify at least one parser to remove or '--all' flag.")
+				return fmt.Errorf("specify at least one parser to remove or '--all'")
 			}
 
 			for _, name := range args {
 				cwhub.RemoveMany(csConfig, cwhub.PARSERS, name, all, purge, forceAction)
 			}
+
+			return nil
 		},
 	}
+
 	cmdParsersRemove.PersistentFlags().BoolVar(&purge, "purge", false, "Delete source file too")
 	cmdParsersRemove.PersistentFlags().BoolVar(&forceAction, "force", false, "Force remove : Remove tainted and outdated files")
 	cmdParsersRemove.PersistentFlags().BoolVar(&all, "all", false, "Delete all the parsers")
@@ -132,9 +134,8 @@ func NewParsersRemoveCmd() *cobra.Command {
 	return cmdParsersRemove
 }
 
-
 func NewParsersUpgradeCmd() *cobra.Command {
-	var cmdParsersUpgrade = &cobra.Command{
+	cmdParsersUpgrade := &cobra.Command{
 		Use:               "upgrade [config]",
 		Short:             "Upgrade given parser(s)",
 		Long:              `Fetch and upgrade given parser(s) from hub`,
@@ -143,25 +144,26 @@ func NewParsersUpgradeCmd() *cobra.Command {
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cwhub.PARSERS, args, toComplete)
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if all {
 				cwhub.UpgradeConfig(csConfig, cwhub.PARSERS, "", forceAction)
 			} else {
 				if len(args) == 0 {
-					log.Fatalf("no target parser to upgrade")
+					return fmt.Errorf("specify at least one parser to upgrade or '--all'")
 				}
 				for _, name := range args {
 					cwhub.UpgradeConfig(csConfig, cwhub.PARSERS, name, forceAction)
 				}
 			}
+			return nil
 		},
 	}
+
 	cmdParsersUpgrade.PersistentFlags().BoolVar(&all, "all", false, "Upgrade all the parsers")
 	cmdParsersUpgrade.PersistentFlags().BoolVar(&forceAction, "force", false, "Force upgrade : Overwrite tainted and outdated files")
 
 	return cmdParsersUpgrade
 }
-
 
 func NewParsersInspectCmd() *cobra.Command {
 	var cmdParsersInspect = &cobra.Command{
@@ -178,11 +180,11 @@ func NewParsersInspectCmd() *cobra.Command {
 			InspectItem(args[0], cwhub.PARSERS)
 		},
 	}
+
 	cmdParsersInspect.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "", "Prometheus url")
 
 	return cmdParsersInspect
 }
-
 
 func NewParsersListCmd() *cobra.Command {
 	var cmdParsersList = &cobra.Command{
@@ -196,6 +198,7 @@ cscli parser list crowdsecurity/xxx`,
 			ListItems(color.Output, []string{cwhub.PARSERS}, args, false, true, all)
 		},
 	}
+
 	cmdParsersList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
 
 	return cmdParsersList

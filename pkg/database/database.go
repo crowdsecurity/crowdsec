@@ -5,10 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	"time"
 
 	entsql "entgo.io/ent/dialect/sql"
-	"github.com/go-co-op/gocron"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	_ "github.com/mattn/go-sqlite3"
@@ -22,12 +20,13 @@ import (
 )
 
 type Client struct {
-	Ent      *ent.Client
-	CTX      context.Context
-	Log      *log.Logger
-	CanFlush bool
-	Type     string
-	WalMode  *bool
+	Ent              *ent.Client
+	CTX              context.Context
+	Log              *log.Logger
+	CanFlush         bool
+	Type             string
+	WalMode          *bool
+	decisionBulkSize int
 }
 
 func getEntDriver(dbtype string, dbdialect string, dsn string, config *csconfig.DatabaseCfg) (*entsql.Driver, error) {
@@ -93,74 +92,14 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 	if err = client.Schema.Create(context.Background()); err != nil {
 		return nil, fmt.Errorf("failed creating schema resources: %v", err)
 	}
-	return &Client{Ent: client, CTX: context.Background(), Log: clog, CanFlush: true, Type: config.Type, WalMode: config.UseWal}, nil
-}
 
-func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Scheduler, error) {
-	maxItems := 0
-	maxAge := ""
-	if config.MaxItems != nil && *config.MaxItems <= 0 {
-		return nil, fmt.Errorf("max_items can't be zero or negative number")
-	}
-	if config.MaxItems != nil {
-		maxItems = *config.MaxItems
-	}
-	if config.MaxAge != nil && *config.MaxAge != "" {
-		maxAge = *config.MaxAge
-	}
-
-	// Init & Start cronjob every minute for alerts
-	scheduler := gocron.NewScheduler(time.UTC)
-	job, err := scheduler.Every(1).Minute().Do(c.FlushAlerts, maxAge, maxItems)
-	if err != nil {
-		return nil, fmt.Errorf("while starting FlushAlerts scheduler: %w", err)
-	}
-	job.SingletonMode()
-	// Init & Start cronjob every hour for bouncers/agents
-	if config.AgentsGC != nil {
-		if config.AgentsGC.Cert != nil {
-			duration, err := types.ParseDuration(*config.AgentsGC.Cert)
-			if err != nil {
-				return nil, fmt.Errorf("while parsing agents cert auto-delete duration: %w", err)
-			}
-			config.AgentsGC.CertDuration = &duration
-		}
-		if config.AgentsGC.LoginPassword != nil {
-			duration, err := types.ParseDuration(*config.AgentsGC.LoginPassword)
-			if err != nil {
-				return nil, fmt.Errorf("while parsing agents login/password auto-delete duration: %w", err)
-			}
-			config.AgentsGC.LoginPasswordDuration = &duration
-		}
-		if config.AgentsGC.Api != nil {
-			log.Warning("agents auto-delete for API auth is not supported (use cert or login_password)")
-		}
-	}
-	if config.BouncersGC != nil {
-		if config.BouncersGC.Cert != nil {
-			duration, err := types.ParseDuration(*config.BouncersGC.Cert)
-			if err != nil {
-				return nil, fmt.Errorf("while parsing bouncers cert auto-delete duration: %w", err)
-			}
-			config.BouncersGC.CertDuration = &duration
-		}
-		if config.BouncersGC.Api != nil {
-			duration, err := types.ParseDuration(*config.BouncersGC.Api)
-			if err != nil {
-				return nil, fmt.Errorf("while parsing bouncers api auto-delete duration: %w", err)
-			}
-			config.BouncersGC.ApiDuration = &duration
-		}
-		if config.BouncersGC.LoginPassword != nil {
-			log.Warning("bouncers auto-delete for login/password auth is not supported (use cert or api)")
-		}
-	}
-	baJob, err := scheduler.Every(1).Minute().Do(c.FlushAgentsAndBouncers, config.AgentsGC, config.BouncersGC)
-	if err != nil {
-		return nil, fmt.Errorf("while starting FlushAgentsAndBouncers scheduler: %w", err)
-	}
-	baJob.SingletonMode()
-	scheduler.StartAsync()
-
-	return scheduler, nil
+	return &Client{
+		Ent: client,
+		CTX: context.Background(),
+		Log: clog,
+		CanFlush: true,
+		Type: config.Type,
+		WalMode: config.UseWal,
+		decisionBulkSize: config.DecisionBulkSize,
+	}, nil
 }

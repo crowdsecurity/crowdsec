@@ -32,7 +32,7 @@ func PAPI(c *csconfig.Config) error {
 	return nil
 }
 
-func Enrolled(c *csconfig.Config) error {
+func CAPIRegistered(c *csconfig.Config) error {
 	if c.API.Server.OnlineClient.Credentials == nil {
 		return fmt.Errorf("the Central API (CAPI) must be configured with 'cscli capi register'")
 	}

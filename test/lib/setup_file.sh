@@ -116,18 +116,23 @@ output() {
 }
 export -f output
 
+is_package_testing() {
+    [[ "$PACKAGE_TESTING" != "" ]]
+}
+export -f is_package_testing
+
 is_db_postgres() {
-    [[ "${DB_BACKEND}" =~ ^postgres|pgx$ ]]
+    [[ "$DB_BACKEND" =~ ^postgres|pgx$ ]]
 }
 export -f is_db_postgres
 
 is_db_mysql() {
-    [[ "${DB_BACKEND}" == "mysql" ]]
+    [[ "$DB_BACKEND" == "mysql" ]]
 }
 export -f is_db_mysql
 
 is_db_sqlite() {
-    [[ "${DB_BACKEND}" == "sqlite" ]]
+    [[ "$DB_BACKEND" == "sqlite" ]]
 }
 export -f is_db_sqlite
 
