@@ -14,7 +14,7 @@ jobs:
   build:
     strategy:
       matrix:
-        go-version: ["1.20.7"]
+        go-version: ["1.20.8"]
 
     name: "Build + tests"
     runs-on: ubuntu-latest
@@ -44,7 +44,6 @@ jobs:
       uses: actions/setup-go@v4
       with:
         go-version: ${{ matrix.go-version }}
-        cache-dependency-path: "**/go.sum"
 
     - name: "Install bats dependencies"
       env:

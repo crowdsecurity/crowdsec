@@ -33,7 +33,9 @@ func GenerateAPIKey(n int) (string, error) {
 	if _, err := rand.Read(bytes); err != nil {
 		return "", err
 	}
-	return base64.StdEncoding.EncodeToString(bytes), nil
+	encoded := base64.StdEncoding.EncodeToString(bytes)
+	// the '=' can cause issues on some bouncers
+	return strings.TrimRight(encoded, "="), nil
 }
 
 func NewAPIKey(dbClient *database.Client) *APIKey {
