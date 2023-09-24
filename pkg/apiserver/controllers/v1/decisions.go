@@ -1,17 +1,18 @@
 package v1
 
 import (
-	json "github.com/goccy/go-json"
 	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/gin-gonic/gin"
+	json "github.com/goccy/go-json"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/gin-gonic/gin"
-	log "github.com/sirupsen/logrus"
 )
 
 // Format decisions for the bouncers

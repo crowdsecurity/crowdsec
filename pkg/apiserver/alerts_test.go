@@ -1,7 +1,6 @@
 package apiserver
 
 import (
-	json "github.com/goccy/go-json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -9,13 +8,14 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/gin-gonic/gin"
+	json "github.com/goccy/go-json"
+	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/gin-gonic/gin"
-
-	log "github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/assert"
 )
 
 type LAPI struct {

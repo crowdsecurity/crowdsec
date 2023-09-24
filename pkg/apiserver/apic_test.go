@@ -3,7 +3,6 @@ package apiserver
 import (
 	"bytes"
 	"context"
-	json "github.com/goccy/go-json"
 	"fmt"
 	"net"
 	"net/http"
@@ -14,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	json "github.com/goccy/go-json"
 	"github.com/jarcoal/httpmock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"

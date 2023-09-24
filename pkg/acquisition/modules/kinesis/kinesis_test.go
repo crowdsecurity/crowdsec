@@ -3,7 +3,6 @@ package kinesisacquisition
 import (
 	"bytes"
 	"compress/gzip"
-	json "github.com/goccy/go-json"
 	"fmt"
 	"net"
 	"os"
@@ -12,15 +11,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/go-cs-lib/cstest"
-
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
+	json "github.com/goccy/go-json"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/tomb.v2"
+
+	"github.com/crowdsecurity/go-cs-lib/cstest"
+
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func getLocalStackEndpoint() (string, error) {

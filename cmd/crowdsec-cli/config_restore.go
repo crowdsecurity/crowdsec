@@ -1,12 +1,12 @@
 package main
 
 import (
-	json "github.com/goccy/go-json"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
+	json "github.com/goccy/go-json"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -20,7 +20,8 @@ type OldAPICfg struct {
 	Password  string `json:"password"`
 }
 
-/* Restore crowdsec configurations to directory <dirPath> :
+/*
+	Restore crowdsec configurations to directory <dirPath> :
 
 - Main config (config.yaml)
 - Profiles config (profiles.yaml)

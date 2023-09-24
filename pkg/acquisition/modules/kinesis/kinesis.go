@@ -3,7 +3,6 @@ package kinesisacquisition
 import (
 	"bytes"
 	"compress/gzip"
-	json "github.com/goccy/go-json"
 	"fmt"
 	"io"
 	"strings"
@@ -13,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/arn"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
+	json "github.com/goccy/go-json"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"

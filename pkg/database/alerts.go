@@ -2,16 +2,15 @@ package database
 
 import (
 	"context"
-	json "github.com/goccy/go-json"
 	"fmt"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/mattn/go-sqlite3"
-
 	"github.com/davecgh/go-spew/spew"
+	json "github.com/goccy/go-json"
+	"github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 

@@ -3,7 +3,6 @@ package main
 import (
 	saferand "crypto/rand"
 	"encoding/csv"
-	json "github.com/goccy/go-json"
 	"fmt"
 	"io"
 	"math/big"
@@ -14,6 +13,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
+	json "github.com/goccy/go-json"
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -22,12 +22,11 @@ import (
 
 	"github.com/crowdsecurity/machineid"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 var (

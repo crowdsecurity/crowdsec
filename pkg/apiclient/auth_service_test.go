@@ -3,13 +3,13 @@ package apiclient
 import (
 	"bytes"
 	"context"
-	json "github.com/goccy/go-json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"testing"
 
+	json "github.com/goccy/go-json"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 

@@ -1,12 +1,12 @@
 package main
 
 import (
-	json "github.com/goccy/go-json"
 	"fmt"
 	"os"
 	"text/template"
 
 	"github.com/antonmedv/expr"
+	json "github.com/goccy/go-json"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -204,7 +204,7 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 		// pointers in boolean tests. Prefix notation is the cherry on top.
 		funcs := template.FuncMap{
 			// can't use generics here
-			"ValueBool": func(b *bool) bool { return b!=nil && *b },
+			"ValueBool": func(b *bool) bool { return b != nil && *b },
 		}
 
 		tmp, err := template.New("config").Funcs(funcs).Parse(configShowTemplate)

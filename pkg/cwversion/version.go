@@ -1,21 +1,21 @@
 package cwversion
 
 import (
-	json "github.com/goccy/go-json"
 	"fmt"
 	"log"
 	"net/http"
 	"runtime"
 	"strings"
 
+	json "github.com/goccy/go-json"
 	goversion "github.com/hashicorp/go-version"
-	
+
 	"github.com/crowdsecurity/go-cs-lib/version"
 )
 
 var (
-	Codename            string                  // = "SoumSoum"
-	System              = runtime.GOOS          // = "linux"
+	Codename            string         // = "SoumSoum"
+	System              = runtime.GOOS // = "linux"
 	Constraint_parser   = ">= 1.0, <= 2.0"
 	Constraint_scenario = ">= 1.0, < 3.0"
 	Constraint_api      = "v1"

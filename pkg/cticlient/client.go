@@ -1,13 +1,13 @@
 package cticlient
 
 import (
-	json "github.com/goccy/go-json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
+	json "github.com/goccy/go-json"
 	log "github.com/sirupsen/logrus"
 )
 

@@ -4,11 +4,12 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	json "github.com/goccy/go-json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+
+	json "github.com/goccy/go-json"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )

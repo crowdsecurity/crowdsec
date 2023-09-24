@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/csv"
-	json "github.com/goccy/go-json"
 	"fmt"
 	"io"
 	"strings"
@@ -10,15 +9,15 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/fatih/color"
+	json "github.com/goccy/go-json"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 func getBouncers(out io.Writer, dbClient *database.Client) error {

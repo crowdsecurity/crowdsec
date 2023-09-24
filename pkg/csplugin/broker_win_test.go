@@ -4,12 +4,12 @@ package csplugin
 
 import (
 	"bytes"
-	json "github.com/goccy/go-json"
 	"io"
 	"os"
 	"testing"
 	"time"
 
+	json "github.com/goccy/go-json"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"

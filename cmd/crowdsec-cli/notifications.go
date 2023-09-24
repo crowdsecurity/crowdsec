@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/csv"
-	json "github.com/goccy/go-json"
 	"fmt"
 	"io/fs"
 	"net/url"
@@ -15,18 +14,18 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
+	json "github.com/goccy/go-json"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/version"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
-
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 type NotificationsCfg struct {

@@ -1,10 +1,10 @@
 package apiserver
 
 import (
-	json "github.com/goccy/go-json"
 	"fmt"
 	"time"
 
+	json "github.com/goccy/go-json"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"

@@ -1,7 +1,6 @@
 package v1
 
 import (
-	json "github.com/goccy/go-json"
 	"fmt"
 	"net"
 	"net/http"
@@ -10,15 +9,16 @@ import (
 	"time"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
+	"github.com/gin-gonic/gin"
+	"github.com/go-openapi/strfmt"
+	json "github.com/goccy/go-json"
 	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/gin-gonic/gin"
-	"github.com/go-openapi/strfmt"
-	log "github.com/sirupsen/logrus"
 )
 
 func FormatOneAlert(alert *ent.Alert) *models.Alert {

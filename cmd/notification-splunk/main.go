@@ -3,18 +3,18 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	json "github.com/goccy/go-json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"strings"
 
-	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
+	json "github.com/goccy/go-json"
 	"github.com/hashicorp/go-hclog"
 	plugin "github.com/hashicorp/go-plugin"
-
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 )
 
 var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{

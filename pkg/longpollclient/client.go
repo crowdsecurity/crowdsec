@@ -1,13 +1,13 @@
 package longpollclient
 
 import (
-	json "github.com/goccy/go-json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"time"
 
+	json "github.com/goccy/go-json"
 	"github.com/gofrs/uuid"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"

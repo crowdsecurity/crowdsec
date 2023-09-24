@@ -1,7 +1,6 @@
 package leakybucket
 
 import (
-	json "github.com/goccy/go-json"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +13,7 @@ import (
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
 	"github.com/davecgh/go-spew/spew"
+	json "github.com/goccy/go-json"
 	"github.com/goombaio/namegenerator"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"

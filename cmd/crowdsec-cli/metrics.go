@@ -1,7 +1,6 @@
 package main
 
 import (
-	json "github.com/goccy/go-json"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +9,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	json "github.com/goccy/go-json"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prom2json"
 	log "github.com/sirupsen/logrus"
@@ -282,7 +282,6 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 
 var noUnit bool
 
-
 func runMetrics(cmd *cobra.Command, args []string) error {
 	if err := csConfig.LoadPrometheus(); err != nil {
 		return fmt.Errorf("failed to load prometheus config: %w", err)
@@ -311,7 +310,6 @@ func runMetrics(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-
 func NewMetricsCmd() *cobra.Command {
 	cmdMetrics := &cobra.Command{
 		Use:               "metrics",
@@ -319,7 +317,7 @@ func NewMetricsCmd() *cobra.Command {
 		Long:              `Fetch metrics from the prometheus server and display them in a human-friendly way`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE: runMetrics,
+		RunE:              runMetrics,
 	}
 	cmdMetrics.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "", "Prometheus url (http://<ip>:<port>/metrics)")
 	cmdMetrics.PersistentFlags().BoolVar(&noUnit, "no-unit", false, "Show the real number instead of formatted with units")

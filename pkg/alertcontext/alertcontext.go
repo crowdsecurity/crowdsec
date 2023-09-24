@@ -1,12 +1,12 @@
 package alertcontext
 
 import (
-	json "github.com/goccy/go-json"
 	"fmt"
 	"strconv"
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
+	json "github.com/goccy/go-json"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 

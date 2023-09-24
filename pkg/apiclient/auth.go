@@ -2,7 +2,6 @@ package apiclient
 
 import (
 	"bytes"
-	json "github.com/goccy/go-json"
 	"fmt"
 	"io"
 	"math/rand"
@@ -13,6 +12,7 @@ import (
 	"time"
 
 	"github.com/go-openapi/strfmt"
+	json "github.com/goccy/go-json"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 

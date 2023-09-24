@@ -1,10 +1,11 @@
 package metabase
 
 import (
-	json "github.com/goccy/go-json"
 	"fmt"
 	"path/filepath"
 	"strings"
+
+	json "github.com/goccy/go-json"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )

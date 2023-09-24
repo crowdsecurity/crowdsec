@@ -1,7 +1,6 @@
 package apiserver
 
 import (
-	json "github.com/goccy/go-json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -11,20 +10,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
+	"github.com/go-openapi/strfmt"
+	json "github.com/goccy/go-json"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/crowdsecurity/go-cs-lib/version"
 
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
-	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/go-openapi/strfmt"
-	"github.com/pkg/errors"
-
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
-	"github.com/gin-gonic/gin"
-
-	log "github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/assert"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var testMachineID = "test"

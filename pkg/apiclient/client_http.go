@@ -3,7 +3,6 @@ package apiclient
 import (
 	"bytes"
 	"context"
-	json "github.com/goccy/go-json"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +11,7 @@ import (
 	"net/url"
 	"strings"
 
+	json "github.com/goccy/go-json"
 	log "github.com/sirupsen/logrus"
 )
 

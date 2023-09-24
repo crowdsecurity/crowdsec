@@ -2,7 +2,6 @@ package parser
 
 import (
 	json "github.com/goccy/go-json"
-
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"

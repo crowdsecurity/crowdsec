@@ -1,7 +1,6 @@
 package main
 
 import (
-	json "github.com/goccy/go-json"
 	"fmt"
 	"math"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/enescakir/emoji"
 	"github.com/fatih/color"
+	json "github.com/goccy/go-json"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -58,7 +58,6 @@ func NewHubTestCmd() *cobra.Command {
 
 	return cmdHubTest
 }
-
 
 func NewHubTestCreateCmd() *cobra.Command {
 	parsers := []string{}
@@ -172,7 +171,6 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 
 	return cmdHubTestCreate
 }
-
 
 func NewHubTestRunCmd() *cobra.Command {
 	var noClean bool
@@ -327,7 +325,6 @@ func NewHubTestRunCmd() *cobra.Command {
 	return cmdHubTestRun
 }
 
-
 func NewHubTestCleanCmd() *cobra.Command {
 	var cmdHubTestClean = &cobra.Command{
 		Use:               "clean",
@@ -351,7 +348,6 @@ func NewHubTestCleanCmd() *cobra.Command {
 
 	return cmdHubTestClean
 }
-
 
 func NewHubTestInfoCmd() *cobra.Command {
 	var cmdHubTestInfo = &cobra.Command{
@@ -380,7 +376,6 @@ func NewHubTestInfoCmd() *cobra.Command {
 
 	return cmdHubTestInfo
 }
-
 
 func NewHubTestListCmd() *cobra.Command {
 	var cmdHubTestList = &cobra.Command{
@@ -411,7 +406,6 @@ func NewHubTestListCmd() *cobra.Command {
 
 	return cmdHubTestList
 }
-
 
 func NewHubTestCoverageCmd() *cobra.Command {
 	var showParserCov bool
@@ -514,7 +508,6 @@ func NewHubTestCoverageCmd() *cobra.Command {
 	return cmdHubTestCoverage
 }
 
-
 func NewHubTestEvalCmd() *cobra.Command {
 	var evalExpression string
 	var cmdHubTestEval = &cobra.Command{
@@ -546,7 +539,6 @@ func NewHubTestEvalCmd() *cobra.Command {
 
 	return cmdHubTestEval
 }
-
 
 func NewHubTestExplainCmd() *cobra.Command {
 	var cmdHubTestExplain = &cobra.Command{

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/csv"
-	json "github.com/goccy/go-json"
 	"fmt"
 	"net/url"
 	"os"
@@ -13,6 +12,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
+	json "github.com/goccy/go-json"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 

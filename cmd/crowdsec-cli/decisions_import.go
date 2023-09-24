@@ -4,13 +4,13 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	json "github.com/goccy/go-json"
 	"fmt"
 	"io"
 	"os"
 	"strings"
 	"time"
 
+	json "github.com/goccy/go-json"
 	"github.com/jszwec/csvutil"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -62,8 +62,7 @@ func parseDecisionList(content []byte, format string) ([]decisionRaw, error) {
 	return ret, nil
 }
 
-
-func runDecisionsImport(cmd *cobra.Command, args []string) error  {
+func runDecisionsImport(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
 	input, err := flags.GetString("input")
@@ -115,7 +114,7 @@ func runDecisionsImport(cmd *cobra.Command, args []string) error  {
 
 	var (
 		content []byte
-		fin	*os.File
+		fin     *os.File
 	)
 
 	// set format if the file has a json or csv extension
@@ -224,7 +223,6 @@ func runDecisionsImport(cmd *cobra.Command, args []string) error  {
 	log.Infof("Imported %d decisions", len(decisions))
 	return nil
 }
-
 
 func NewDecisionsImportCmd() *cobra.Command {
 	var cmdDecisionsImport = &cobra.Command{

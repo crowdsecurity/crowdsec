@@ -1,7 +1,6 @@
 package leakybucket
 
 import (
-	json "github.com/goccy/go-json"
 	"errors"
 	"fmt"
 	"math"
@@ -10,6 +9,7 @@ import (
 	"time"
 
 	"github.com/antonmedv/expr"
+	json "github.com/goccy/go-json"
 	"github.com/mohae/deepcopy"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"

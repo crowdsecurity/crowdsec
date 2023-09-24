@@ -2,13 +2,13 @@ package exprhelpers
 
 import (
 	"bytes"
-	json "github.com/goccy/go-json"
 	"io"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
 
+	json "github.com/goccy/go-json"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"

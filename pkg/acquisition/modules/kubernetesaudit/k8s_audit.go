@@ -2,12 +2,12 @@ package kubernetesauditacquisition
 
 import (
 	"context"
-	json "github.com/goccy/go-json"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
+	json "github.com/goccy/go-json"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"

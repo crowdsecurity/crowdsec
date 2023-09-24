@@ -1,7 +1,6 @@
 package cwhub
 
 import (
-	json "github.com/goccy/go-json"
 	"errors"
 	"fmt"
 	"os"
@@ -9,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	json "github.com/goccy/go-json"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/mod/semver"
 

@@ -1,15 +1,15 @@
 package metabase
 
 import (
-	json "github.com/goccy/go-json"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/crowdsecurity/go-cs-lib/version"
-
 	"github.com/dghubble/sling"
+	json "github.com/goccy/go-json"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/go-cs-lib/version"
 )
 
 type MBClient struct {
