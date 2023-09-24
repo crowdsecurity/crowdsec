@@ -1,7 +1,7 @@
 package cwhub
 
 import (
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"errors"
 	"fmt"
 	"os"

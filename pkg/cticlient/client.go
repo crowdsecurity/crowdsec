@@ -1,7 +1,7 @@
 package cticlient
 
 import (
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"errors"
 	"fmt"
 	"io"

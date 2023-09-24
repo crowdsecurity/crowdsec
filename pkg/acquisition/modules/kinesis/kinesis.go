@@ -3,7 +3,7 @@ package kinesisacquisition
 import (
 	"bytes"
 	"compress/gzip"
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"fmt"
 	"io"
 	"strings"

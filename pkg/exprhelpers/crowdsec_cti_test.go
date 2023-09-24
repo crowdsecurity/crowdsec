@@ -2,7 +2,7 @@ package exprhelpers
 
 import (
 	"bytes"
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"io"
 	"net/http"
 	"strings"

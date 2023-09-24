@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"fmt"
 	"io"
 	"net/http"

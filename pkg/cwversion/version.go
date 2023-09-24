@@ -1,7 +1,7 @@
 package cwversion
 
 import (
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"fmt"
 	"log"
 	"net/http"

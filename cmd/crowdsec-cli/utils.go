@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/csv"
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"fmt"
 	"io"
 	"math"

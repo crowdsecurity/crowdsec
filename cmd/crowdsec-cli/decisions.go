@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"encoding/csv"
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"fmt"
 	"net/url"
 	"os"

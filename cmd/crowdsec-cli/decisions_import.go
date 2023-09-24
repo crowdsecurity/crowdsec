@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"fmt"
 	"io"
 	"os"

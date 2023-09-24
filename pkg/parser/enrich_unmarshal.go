@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"encoding/json"
+	json "github.com/goccy/go-json"
 
 	log "github.com/sirupsen/logrus"
 

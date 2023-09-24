@@ -1,7 +1,7 @@
 package v1
 
 import (
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"fmt"
 	"net"
 	"net/http"

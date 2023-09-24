@@ -3,7 +3,7 @@ package main
 import (
 	saferand "crypto/rand"
 	"encoding/csv"
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"fmt"
 	"io"
 	"math/big"

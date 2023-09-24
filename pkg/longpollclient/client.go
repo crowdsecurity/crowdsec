@@ -1,7 +1,7 @@
 package longpollclient
 
 import (
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"fmt"
 	"io"
 	"net/http"

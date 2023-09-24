@@ -4,7 +4,7 @@ package csplugin
 
 import (
 	"bytes"
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"io"
 	"os"
 	"testing"

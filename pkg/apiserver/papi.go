@@ -2,7 +2,7 @@ package apiserver
 
 import (
 	"context"
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"fmt"
 	"net/http"
 	"sync"

@@ -2,7 +2,7 @@ package leakybucket
 
 import (
 	"bytes"
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"errors"
 	"fmt"
 	"html/template"

@@ -3,7 +3,7 @@ package apiclient
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"errors"
 	"fmt"
 	"io"

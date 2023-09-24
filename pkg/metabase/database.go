@@ -1,7 +1,7 @@
 package metabase
 
 import (
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"fmt"
 	"path/filepath"
 	"strings"

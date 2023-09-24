@@ -2,7 +2,7 @@ package apiclient
 
 import (
 	"bytes"
-	"encoding/json"
+	json "github.com/goccy/go-json"
 	"fmt"
 	"io"
 	"math/rand"
