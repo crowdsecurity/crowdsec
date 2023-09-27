@@ -214,6 +214,7 @@ func NewAlertsCmd() *cobra.Command {
 		Short:             "Manage alerts",
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
+		Aliases:           []string{"alert"},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			if err := csConfig.LoadAPIClient(); err != nil {
