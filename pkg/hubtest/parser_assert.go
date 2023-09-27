@@ -228,30 +228,34 @@ func (p *ParserAssert) AutoGenParserAssert() string {
 				if !result.Success {
 					continue
 				}
-				for pkey, pval := range result.Evt.Parsed {
+				for _, pkey := range sortedMapKeys(result.Evt.Parsed) {
+					pval := result.Evt.Parsed[pkey]
 					if pval == "" {
 						continue
 					}
 					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Parsed["%s"] == "%s"`+"\n", stage, parser, pidx, pkey, Escape(pval))
 				}
-				for mkey, mval := range result.Evt.Meta {
+				for _, mkey := range sortedMapKeys(result.Evt.Meta) {
+					mval := result.Evt.Meta[mkey]
 					if mval == "" {
 						continue
 					}
 					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Meta["%s"] == "%s"`+"\n", stage, parser, pidx, mkey, Escape(mval))
 				}
-				for ekey, eval := range result.Evt.Enriched {
+				for _, ekey := range sortedMapKeys(result.Evt.Enriched) {
+					eval := result.Evt.Enriched[ekey]
 					if eval == "" {
 						continue
 					}
 					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Enriched["%s"] == "%s"`+"\n", stage, parser, pidx, ekey, Escape(eval))
 				}
-				for ekey, eval := range result.Evt.Unmarshaled {
-					if eval == "" {
+				for _, ukey := range sortedMapKeys(result.Evt.Unmarshaled) {
+					uval := result.Evt.Unmarshaled[ukey]
+					if uval == "" {
 						continue
 					}
-					base := fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Unmarshaled["%s"]`, stage, parser, pidx, ekey)
-					for _, line := range p.buildUnmarshaledAssert("", eval) {
+					base := fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Unmarshaled["%s"]`, stage, parser, pidx, ukey)
+					for _, line := range p.buildUnmarshaledAssert("", uval) {
 						ret += base + line
 					}
 				}
