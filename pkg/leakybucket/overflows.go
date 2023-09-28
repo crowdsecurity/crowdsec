@@ -160,7 +160,7 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 }
 
 // EventsFromQueue iterates the queue to collect & prepare meta-datas from alert
-func EventsFromQueue(queue *Queue) []*models.Event {
+func EventsFromQueue(queue *types.Queue) []*models.Event {
 
 	events := []*models.Event{}
 
@@ -207,7 +207,7 @@ func EventsFromQueue(queue *Queue) []*models.Event {
 }
 
 // alertFormatSource iterates over the queue to collect sources
-func alertFormatSource(leaky *Leaky, queue *Queue) (map[string]models.Source, string, error) {
+func alertFormatSource(leaky *Leaky, queue *types.Queue) (map[string]models.Source, string, error) {
 	var sources = make(map[string]models.Source)
 	var source_type string
 
@@ -233,7 +233,7 @@ func alertFormatSource(leaky *Leaky, queue *Queue) (map[string]models.Source, st
 }
 
 // NewAlert will generate a RuntimeAlert and its APIAlert(s) from a bucket that overflowed
-func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
+func NewAlert(leaky *Leaky, queue *types.Queue) (types.RuntimeAlert, error) {
 	var runtimeAlert types.RuntimeAlert
 
 	leaky.logger.Tracef("Overflow (start: %s, end: %s)", leaky.First_ts, leaky.Ovflw_ts)

@@ -151,7 +151,7 @@ func (b *BayesianEvent) compileCondition() error {
 
 	conditionalExprCacheLock.Unlock()
 	//release the lock during compile same as coditional bucket
-	compiledExpr, err = expr.Compile(b.rawCondition.ConditionalFilterName, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
+	compiledExpr, err = expr.Compile(b.rawCondition.ConditionalFilterName, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &types.Queue{}, "leaky": &Leaky{}, "evt": &types.Event{}})...)
 	if err != nil {
 		return fmt.Errorf("bayesian condition compile error: %w", err)
 	}

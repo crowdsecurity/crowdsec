@@ -14,6 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -305,7 +306,10 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		//evaluate bucket's condition
 		if holders[idx].RunTimeFilter != nil {
 			holders[idx].logger.Tracef("event against holder %d/%d", idx, len(holders))
-			output, err := expr.Run(holders[idx].RunTimeFilter, map[string]interface{}{"evt": &parsed})
+			output, err := exprhelpers.Run(holders[idx].RunTimeFilter,
+				map[string]interface{}{"evt": &parsed},
+				holders[idx].logger,
+				holders[idx].Debug)
 			if err != nil {
 				holders[idx].logger.Errorf("failed parsing : %v", err)
 				return false, fmt.Errorf("leaky failed : %s", err)
@@ -314,10 +318,6 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			if condition, ok = output.(bool); !ok {
 				holders[idx].logger.Errorf("unexpected non-bool return : %T", output)
 				holders[idx].logger.Fatalf("Filter issue")
-			}
-
-			if holders[idx].Debug {
-				holders[idx].ExprDebugger.Run(holders[idx].logger, condition, map[string]interface{}{"evt": &parsed})
 			}
 			if !condition {
 				holders[idx].logger.Debugf("Event leaving node : ko (filter mismatch)")
