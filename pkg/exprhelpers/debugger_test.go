@@ -52,6 +52,7 @@ func TestBaseDbg(t *testing.T) {
 					Right:              "hello world",
 					StrConditionResult: "true",
 					ConditionResult:    boolPtr(true),
+					Finalized:          true,
 				},
 			},
 		},
@@ -65,6 +66,15 @@ func TestBaseDbg(t *testing.T) {
 					FuncName:    "Upper",
 					Args:        []string{"b"},
 					FuncResults: []string{"B"},
+					Finalized:   true,
+				},
+				{
+					Comparison:         true,
+					Left:               "B",
+					Right:              "B",
+					StrConditionResult: "true",
+					ConditionResult:    boolPtr(true),
+					Finalized:          true,
 				},
 			},
 		},
@@ -93,11 +103,16 @@ func TestBaseDbg(t *testing.T) {
 			}
 		}
 		if len(outdbg) != len(test.ExpectedOutputs) {
+			for idx, out := range outdbg {
+				t.Errorf("output %d/%d : %+v", idx, len(outdbg), out)
+			}
 			t.Fatalf("test %s : expected %d outputs, got %d", test.Name, len(test.ExpectedOutputs), len(outdbg))
 		}
 		for i, out := range outdbg {
 			if !reflect.DeepEqual(out, test.ExpectedOutputs[i]) {
-				t.Fatalf("test %s : expected output %d : %+v, got %+v", test.Name, i, test.ExpectedOutputs[i], out)
+				t.Errorf("Expected: %+v", test.ExpectedOutputs[i])
+				t.Errorf("Got     : %+v", out)
+				t.Fatalf("mismatched out %d/%d", i, len(outdbg))
 			}
 		}
 	}

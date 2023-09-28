@@ -296,8 +296,11 @@ func RunWithDebug(program *vm.Program, env interface{}, logger *log.Entry) ([]Op
 		outputs[lastOutIdx].StrConditionResult = fmt.Sprintf("%v", ret)
 		outputs[lastOutIdx].ConditionResult = new(bool)
 		*outputs[lastOutIdx].ConditionResult = ret.(bool)
+		outputs[lastOutIdx].Finalized = true
 	default:
 		outputs[lastOutIdx].StrConditionResult = fmt.Sprintf("%v", ret)
+		outputs[lastOutIdx].Finalized = true
+
 	}
 	return outputs, ret, nil
 }
