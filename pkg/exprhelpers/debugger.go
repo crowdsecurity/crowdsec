@@ -57,56 +57,44 @@ func (o *OpOutput) String() string {
 		ret += fmt.Sprintf("[%s]", o.Code)
 	}
 	ret += " "
-	if o.BlockStart {
+
+	switch {
+	case o.BlockStart:
 		ret = fmt.Sprintf("%*cBLOCK_START [%s]", o.CodeDepth, ' ', o.Code)
 		return ret
-	}
-	if o.BlockEnd {
+	case o.BlockEnd:
 		ret = fmt.Sprintf("%*cBLOCK_END [%s]", o.CodeDepth-IndentStep, ' ', o.Code)
 		if len(o.StrConditionResult) > 0 {
 			ret += fmt.Sprintf(" -> %s", o.StrConditionResult)
 		}
 		return ret
 		//A block end can carry a value, for example if it's a count, any, all etc. XXX
-
-	}
-	if o.Func {
+	case o.Func:
 		return ret + fmt.Sprintf("%s(%s) = %s", o.FuncName, strings.Join(o.Args, ", "), strings.Join(o.FuncResults, ", "))
-
-	}
-	if o.Comparison {
+	case o.Comparison:
 		if o.Negated {
 			ret += "NOT "
 		}
 		ret += fmt.Sprintf("%s == %s -> %s", o.Left, o.Right, o.StrConditionResult)
 		return ret
-	}
-	if o.ConditionIn {
+	case o.ConditionIn:
 		return ret + fmt.Sprintf("%s in %s -> %s", o.Args[0], o.Args[1], o.StrConditionResult)
-	}
-	if o.JumpIf {
-		if o.IfTrue {
-			if o.ConditionResult != nil {
-				if *o.ConditionResult {
-					return ret + "OR[KO]"
-				} else {
-					return ret + "OR[OK]"
-				}
-			} else {
-				return ret + "OR(?)"
+	case o.JumpIf && o.IfTrue:
+		if o.ConditionResult != nil {
+			if *o.ConditionResult {
+				return ret + "OR[KO]"
 			}
+			return ret + "OR[OK]"
 		}
-		if o.IfFalse {
-			if o.ConditionResult != nil {
-				if *o.ConditionResult {
-					return ret + "AND[OK]"
-				} else {
-					return ret + "AND[KO]"
-				}
-			} else {
-				return ret + "AND(?)"
+		return ret + "OR(?)"
+	case o.JumpIf && o.IfFalse:
+		if o.ConditionResult != nil {
+			if *o.ConditionResult {
+				return ret + "AND[OK]"
 			}
+			return ret + "AND[KO]"
 		}
+		return ret + "AND(?)"
 	}
 	return ret + ""
 }
@@ -145,11 +133,10 @@ func (erp ExprRuntimeDebug) extractCode(ip int, program *vm.Program, parts []str
 			if startLine != endLine {
 				code_snippet += lines[i][startColumn:]
 				continue
-			} else {
-				//log.Tracef("adding data from line %d from %d to %d", i, startColumn, endColumn)
-				code_snippet += lines[i][startColumn:endColumn]
-				break
 			}
+			//log.Tracef("adding data from line %d from %d to %d", i, startColumn, endColumn)
+			code_snippet += lines[i][startColumn:endColumn]
+			break
 		}
 		if i == endLine {
 			code_snippet += lines[i][:endColumn]
@@ -293,10 +280,8 @@ func Run(program *vm.Program, env interface{}, logger *log.Entry, debug bool) (a
 		dbgInfo, ret, err := RunWithDebug(program, env, logger)
 		DisplayExprDebug(program, dbgInfo, logger, ret)
 		return ret, err
-	} else {
-		return expr.Run(program, env)
-
 	}
+	return expr.Run(program, env)
 }
 
 func DisplayExprDebug(program *vm.Program, outputs []OpOutput, logger *log.Entry, ret any) {
@@ -345,12 +330,11 @@ func RunWithDebug(program *vm.Program, env interface{}, logger *log.Entry) ([]Op
 				debugErr <- fmt.Errorf("error while debugging at ip %d", ip)
 				return
 			}
-			if !done {
-				vm.Step()
-			} else {
+			if done {
 				debugErr <- nil
 				return
 			}
+			vm.Step()
 		}
 	}()
 	ret, err := vm.Run(program, env)
