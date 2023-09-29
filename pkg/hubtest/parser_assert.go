@@ -319,11 +319,10 @@ func LoadParserDump(filepath string) (*ParserResults, error) {
 	var lastStage string
 	//Loop over stages to find last successful one with at least one parser
 	for i := len(stages) - 2; i >= 0; i-- {
-		if len(pdump[stages[i]]) == 0 {
-			continue
+		if len(pdump[stages[i]]) != 0 {
+			lastStage = stages[i]
+			break
 		}
-		lastStage = stages[i]
-		break
 	}
 	parsers := make([]string, 0, len(pdump[lastStage]))
 	for k := range pdump[lastStage] {
