@@ -354,19 +354,19 @@ func (s *LocalApiServerCfg) LoadCapiWhitelists() error {
 		Ips:   make([]net.IP, len(fromCfg.Ips)),
 		Cidrs: make([]*net.IPNet, len(fromCfg.Cidrs)),
 	}
-	for _, v := range fromCfg.Ips {
+	for idx, v := range fromCfg.Ips {
 		ip := net.ParseIP(v)
 		if ip == nil {
 			return fmt.Errorf("unable to parse ip whitelist '%s'", v)
 		}
-		s.CapiWhitelists.Ips = append(s.CapiWhitelists.Ips, ip)
+		s.CapiWhitelists.Ips[idx] = ip
 	}
-	for _, v := range fromCfg.Cidrs {
+	for idx, v := range fromCfg.Cidrs {
 		_, tnet, err := net.ParseCIDR(v)
 		if err != nil {
 			return fmt.Errorf("unable to parse cidr whitelist '%s' : %v", v, err)
 		}
-		s.CapiWhitelists.Cidrs = append(s.CapiWhitelists.Cidrs, tnet)
+		s.CapiWhitelists.Cidrs[idx] = tnet
 	}
 	return nil
 }
