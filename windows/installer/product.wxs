@@ -60,6 +60,9 @@
                      </Component>
                   </Directory>
                   <Directory Id="ContextDir" Name="context">
+                     <Component Id="CreateContextDir" Guid="fa136232-a8cc-496e-86f3-578d7d1e619c">
+                        <CreateFolder />
+                     </Component>
                   </Directory>
                   <Component Id="OnlineCreds" Guid="a652a6cb-d464-40b1-8f50-78dce0135d20">
                      <File Id="online_api_credentials.yaml" Source="config\online_api_credentials.yaml">
@@ -174,6 +177,7 @@
          <ComponentRef Id="NotifConfig" />
          <ComponentRef Id="CreateCrowdsecPluginsDir"/>
          <ComponentRef Id="CreateCrowdsecDataDir" />
+         <ComponentRef Id="CreateContextDir" />
          <ComponentRef Id="ConsoleContextFile"/>
          <ComponentRef Id="Csconfig_lapi" />
          <ComponentRef Id="Csconfig_no_lapi" />
