@@ -75,13 +75,14 @@ func NewAlertContext(contextToSend []csconfig.ContextToSend, valueLength int) er
 			}
 
 			for _, value := range values {
-				valueCompiled, err := expr.Compile(value, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
-				if err != nil {
-					return fmt.Errorf("compilation of '%s' context value failed: %v", value, err)
-				}
 				if slices.Contains(alertContext.ContextToSend[key], value) {
 					log.Debugf("value '%s' from '%s' already in context", value, ctx.SourceFile)
 					continue
+				}
+
+				valueCompiled, err := expr.Compile(value, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+				if err != nil {
+					return fmt.Errorf("compilation of '%s' context value failed: %v", value, err)
 				}
 
 				alertContext.ContextToSendCompiled[key] = append(alertContext.ContextToSendCompiled[key], valueCompiled)
