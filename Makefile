@@ -165,8 +165,26 @@ plugins:
 		$(MAKE) -C $(PLUGINS_DIR_PREFIX)$(plugin) build $(MAKE_FLAGS); \
 	)
 
+# same as "$(MAKE) -f debian/rules clean" but without the dependency on debhelper
+.PHONY: clean-debian
+clean-debian:
+	@$(RM) -r debian/crowdsec
+	@$(RM) -r debian/crowdsec
+	@$(RM) -r debian/files
+	@$(RM) -r debian/.debhelper
+	@$(RM) -r debian/*.substvars
+	@$(RM) -r debian/*-stamp
+
+.PHONY: clean-rpm
+clean-rpm:
+	@$(RM) -r rpm/BUILD
+	@$(RM) -r rpm/BUILDROOT
+	@$(RM) -r rpm/RPMS
+	@$(RM) -r rpm/SOURCES/*.tar.gz
+	@$(RM) -r rpm/SRPMS
+
 .PHONY: clean
-clean: testclean
+clean: clean-debian clean-rpm testclean
 	@$(MAKE) -C $(CROWDSEC_FOLDER) clean $(MAKE_FLAGS)
 	@$(MAKE) -C $(CSCLI_FOLDER) clean $(MAKE_FLAGS)
 	@$(RM) $(CROWDSEC_BIN) $(WIN_IGNORE_ERR)
