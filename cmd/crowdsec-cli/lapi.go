@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -216,24 +217,29 @@ func NewLapiCmd() *cobra.Command {
 	return cmdLapi
 }
 
-func AddContext(key string, values []string) error {
+func AddContext(key string, values []string, targetFile string) error {
 	if err := alertcontext.ValidateContextExpr(key, values); err != nil {
 		return fmt.Errorf("invalid context configuration :%s", err)
 	}
-	if _, ok := csConfig.Crowdsec.ContextToSend[key]; !ok {
-		csConfig.Crowdsec.ContextToSend[key] = make([]string, 0)
-		log.Infof("key '%s' added", key)
-	}
-	data := csConfig.Crowdsec.ContextToSend[key]
-	for _, val := range values {
-		if !slices.Contains(data, val) {
-			log.Infof("value '%s' added to key '%s'", val, key)
-			data = append(data, val)
+
+	for _, ctx := range csConfig.Crowdsec.ContextToSend {
+		if ctx.SourceFile == targetFile {
+			if _, ok := ctx.Context[key]; !ok {
+				ctx.Context[key] = make([]string, 0)
+				log.Infof("key '%s' added", key)
+			}
+			data := ctx.Context[key]
+			for _, val := range values {
+				if !slices.Contains(data, val) {
+					log.Infof("value '%s' added to key '%s'", val, key)
+					data = append(data, val)
+				}
+				ctx.Context[key] = data
+			}
+			if err := csConfig.Crowdsec.DumpContextConfigFile(ctx); err != nil {
+				return err
+			}
 		}
-		csConfig.Crowdsec.ContextToSend[key] = data
-	}
-	if err := csConfig.Crowdsec.DumpContextConfigFile(); err != nil {
-		return err
 	}
 
 	return nil
@@ -246,7 +252,7 @@ func NewLapiContextCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadCrowdsec(); err != nil {
-				fileNotFoundMessage := fmt.Sprintf("failed to open context file: open %s: no such file or directory", csConfig.Crowdsec.ConsoleContextPath)
+				fileNotFoundMessage := fmt.Sprintf("failed to open context file: open %s: no such file or directory", csConfig.Crowdsec.ContextPath)
 				if err.Error() != fileNotFoundMessage {
 					log.Fatalf("Unable to load CrowdSec Agent: %s", err)
 				}
@@ -264,6 +270,7 @@ func NewLapiContextCmd() *cobra.Command {
 
 	var keyToAdd string
 	var valuesToAdd []string
+	var filetoAdd string
 	cmdContextAdd := &cobra.Command{
 		Use:   "add",
 		Short: "Add context to send with alerts. You must specify the output key with the expr value you want",
@@ -273,8 +280,21 @@ cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user
 		`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
+			if filetoAdd == "" {
+				filetoAdd = csConfig.Crowdsec.ContextPath
+			}
+
+			// check if the provided file is the context path file or in the configured context directory
+			fileInFolder, err := isFilePathInFolder(csConfig.Crowdsec.ContextDir, filetoAdd)
+			if err != nil {
+				log.Fatalf("unable to get relative path from '%s' and '%s'", filetoAdd, csConfig.Crowdsec.ContextDir)
+			}
+			if filetoAdd != csConfig.Crowdsec.ContextPath && !fileInFolder {
+				log.Fatalf("file to edit ('%s') must be '%s' or in the folder '%s/'", filetoAdd, csConfig.Crowdsec.ContextPath, csConfig.Crowdsec.ContextDir)
+			}
+
 			if keyToAdd != "" {
-				if err := AddContext(keyToAdd, valuesToAdd); err != nil {
+				if err := AddContext(keyToAdd, valuesToAdd, filetoAdd); err != nil {
 					log.Fatalf(err.Error())
 				}
 				return
@@ -284,13 +304,14 @@ cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user
 				keySlice := strings.Split(v, ".")
 				key := keySlice[len(keySlice)-1]
 				value := []string{v}
-				if err := AddContext(key, value); err != nil {
+				if err := AddContext(key, value, filetoAdd); err != nil {
 					log.Fatalf(err.Error())
 				}
 			}
 		},
 	}
 	cmdContextAdd.Flags().StringVarP(&keyToAdd, "key", "k", "", "The key of the different values to send")
+	cmdContextAdd.Flags().StringVarP(&filetoAdd, "file", "f", "", "Filepath to add context")
 	cmdContextAdd.Flags().StringSliceVar(&valuesToAdd, "value", []string{}, "The expr fields to associate with the key")
 	cmdContextAdd.MarkFlagRequired("value")
 	cmdContext.AddCommand(cmdContextAdd)
@@ -300,18 +321,28 @@ cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user
 		Short:             "List context to send with alerts",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			if len(csConfig.Crowdsec.ContextToSend) == 0 {
-				fmt.Println("No context found on this agent. You can use 'cscli lapi context add' to add context to your alerts.")
-				return
+			contextFound := false
+			for _, ctx := range csConfig.Crowdsec.ContextToSend {
+				if len(ctx.Context) == 0 {
+					continue
+				}
+				contextFound = true
+				var dump []byte
+				var err error
+				if csConfig.Cscli.Output == "json" {
+					dump, err = json.MarshalIndent(ctx, "", " ")
+				} else {
+					dump, err = yaml.Marshal(ctx)
+				}
+				if err != nil {
+					log.Fatalf("unable to show context status: %s", err)
+				}
+				fmt.Println(string(dump))
 			}
 
-			dump, err := yaml.Marshal(csConfig.Crowdsec.ContextToSend)
-			if err != nil {
-				log.Fatalf("unable to show context status: %s", err)
+			if !contextFound {
+				log.Fatalf("No context found for this agent.")
 			}
-
-			fmt.Println(string(dump))
-
 		},
 	}
 	cmdContext.AddCommand(cmdContextStatus)
@@ -407,6 +438,7 @@ cscli lapi context detect crowdsecurity/sshd-logs
 
 	var keysToDelete []string
 	var valuesToDelete []string
+	var fileToDelete string
 	cmdContextDelete := &cobra.Command{
 		Use:   "delete",
 		Short: "Delete context to send with alerts",
@@ -419,40 +451,61 @@ cscli lapi context delete --value evt.Line.Src
 				log.Fatalf("please provide at least a key or a value to delete")
 			}
 
-			for _, key := range keysToDelete {
-				if _, ok := csConfig.Crowdsec.ContextToSend[key]; ok {
-					delete(csConfig.Crowdsec.ContextToSend, key)
-					log.Infof("key '%s' has been removed", key)
-				} else {
-					log.Warningf("key '%s' doesn't exist", key)
-				}
+			if fileToDelete == "" {
+				fileToDelete = csConfig.Crowdsec.ContextPath
 			}
 
-			for _, value := range valuesToDelete {
-				valueFound := false
-				for key, context := range csConfig.Crowdsec.ContextToSend {
-					if slices.Contains(context, value) {
-						valueFound = true
-						csConfig.Crowdsec.ContextToSend[key] = removeFromSlice(value, context)
-						log.Infof("value '%s' has been removed from key '%s'", value, key)
+			// check if the provided file is the context path file or in the configured context directory
+			fileInFolder, err := isFilePathInFolder(csConfig.Crowdsec.ContextDir, fileToDelete)
+			if err != nil {
+				log.Fatalf("unable to get relative path from '%s' and '%s'", fileToDelete, csConfig.Crowdsec.ContextDir)
+			}
+			if fileToDelete != csConfig.Crowdsec.ContextPath && !fileInFolder {
+				log.Fatalf("file to edit ('%s') must be '%s' or in the folder '%s/'", fileToDelete, csConfig.Crowdsec.ContextPath, csConfig.Crowdsec.ContextDir)
+			}
+
+			for _, ctx := range csConfig.Crowdsec.ContextToSend {
+				if ctx.SourceFile != fileToDelete {
+					continue
+				}
+
+				for _, key := range keysToDelete {
+					if _, ok := ctx.Context[key]; ok {
+						delete(ctx.Context, key)
+						log.Infof("key '%s' has been removed", key)
+					} else {
+						log.Warningf("key '%s' doesn't exist", key)
 					}
-					if len(csConfig.Crowdsec.ContextToSend[key]) == 0 {
-						delete(csConfig.Crowdsec.ContextToSend, key)
+				}
+
+				for _, value := range valuesToDelete {
+					valueFound := false
+					for key, context := range ctx.Context {
+						if slices.Contains(context, value) {
+							valueFound = true
+							ctx.Context[key] = removeFromSlice(value, context)
+							log.Infof("value '%s' has been removed from key '%s'", value, key)
+						}
+						if len(ctx.Context[key]) == 0 {
+							delete(ctx.Context, key)
+						}
+					}
+					if !valueFound {
+						log.Warningf("value '%s' not found", value)
 					}
 				}
-				if !valueFound {
-					log.Warningf("value '%s' not found", value)
+
+				if err := csConfig.Crowdsec.DumpContextConfigFile(ctx); err != nil {
+					log.Fatalf(err.Error())
 				}
-			}
 
-			if err := csConfig.Crowdsec.DumpContextConfigFile(); err != nil {
-				log.Fatalf(err.Error())
+				break
 			}
-
 		},
 	}
 	cmdContextDelete.Flags().StringSliceVarP(&keysToDelete, "key", "k", []string{}, "The keys to delete")
 	cmdContextDelete.Flags().StringSliceVar(&valuesToDelete, "value", []string{}, "The expr fields to delete")
+	cmdContextDelete.Flags().StringVarP(&fileToDelete, "file", "f", "", "Filepath to add context")
 	cmdContext.AddCommand(cmdContextDelete)
 
 	return cmdContext

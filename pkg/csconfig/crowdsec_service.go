@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -11,29 +12,35 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
+type ContextToSend struct {
+	SourceFile string              `yaml:"filepath" json:"filepath"`
+	Context    map[string][]string `yaml:"context" json:"context"`
+}
+
 // CrowdsecServiceCfg contains the location of parsers/scenarios/... and acquisition files
 type CrowdsecServiceCfg struct {
-	Enable                    *bool             `yaml:"enable"`
-	AcquisitionFilePath       string            `yaml:"acquisition_path,omitempty"`
-	AcquisitionDirPath        string            `yaml:"acquisition_dir,omitempty"`
-	ConsoleContextPath        string            `yaml:"console_context_path"`
-	ConsoleContextValueLength int               `yaml:"console_context_value_length"`
-	AcquisitionFiles          []string          `yaml:"-"`
-	ParserRoutinesCount       int               `yaml:"parser_routines"`
-	BucketsRoutinesCount      int               `yaml:"buckets_routines"`
-	OutputRoutinesCount       int               `yaml:"output_routines"`
-	SimulationConfig          *SimulationConfig `yaml:"-"`
-	LintOnly                  bool              `yaml:"-"`                          // if set to true, exit after loading configs
-	BucketStateFile           string            `yaml:"state_input_file,omitempty"` // if we need to unserialize buckets at start
-	BucketStateDumpDir        string            `yaml:"state_output_dir,omitempty"` // if we need to unserialize buckets on shutdown
-	BucketsGCEnabled          bool              `yaml:"-"`                          // we need to garbage collect buckets when in forensic mode
+	Enable               *bool             `yaml:"enable"`
+	AcquisitionFilePath  string            `yaml:"acquisition_path,omitempty"`
+	AcquisitionDirPath   string            `yaml:"acquisition_dir,omitempty"`
+	ContextPath          string            `yaml:"console_context_path"`
+	ContextDir           string            `yaml:"console_context_dir"`
+	ContextValueLength   int               `yaml:"console_context_value_length"`
+	AcquisitionFiles     []string          `yaml:"-"`
+	ParserRoutinesCount  int               `yaml:"parser_routines"`
+	BucketsRoutinesCount int               `yaml:"buckets_routines"`
+	OutputRoutinesCount  int               `yaml:"output_routines"`
+	SimulationConfig     *SimulationConfig `yaml:"-"`
+	LintOnly             bool              `yaml:"-"`                          // if set to true, exit after loading configs
+	BucketStateFile      string            `yaml:"state_input_file,omitempty"` // if we need to unserialize buckets at start
+	BucketStateDumpDir   string            `yaml:"state_output_dir,omitempty"` // if we need to unserialize buckets on shutdown
+	BucketsGCEnabled     bool              `yaml:"-"`                          // we need to garbage collect buckets when in forensic mode
 
-	HubDir             string              `yaml:"-"`
-	DataDir            string              `yaml:"-"`
-	ConfigDir          string              `yaml:"-"`
-	HubIndexFile       string              `yaml:"-"`
-	SimulationFilePath string              `yaml:"-"`
-	ContextToSend      map[string][]string `yaml:"-"`
+	HubDir             string          `yaml:"-"`
+	DataDir            string          `yaml:"-"`
+	ConfigDir          string          `yaml:"-"`
+	HubIndexFile       string          `yaml:"-"`
+	SimulationFilePath string          `yaml:"-"`
+	ContextToSend      []ContextToSend `yaml:"-"`
 }
 
 func (c *Config) LoadCrowdsec() error {
@@ -149,21 +156,21 @@ func (c *Config) LoadCrowdsec() error {
 		return fmt.Errorf("while loading hub: %w", err)
 	}
 
-	c.Crowdsec.ContextToSend = make(map[string][]string, 0)
+	c.Crowdsec.ContextToSend = make([]ContextToSend, 0)
 	fallback := false
-	if c.Crowdsec.ConsoleContextPath == "" {
+	if c.Crowdsec.ContextPath == "" {
 		// fallback to default config file
-		c.Crowdsec.ConsoleContextPath = filepath.Join(c.Crowdsec.ConfigDir, "console", "context.yaml")
+		c.Crowdsec.ContextPath = filepath.Join(c.Crowdsec.ConfigDir, "console", "context.yaml")
 		fallback = true
 	}
 
-	f, err := filepath.Abs(c.Crowdsec.ConsoleContextPath)
+	f, err := filepath.Abs(c.Crowdsec.ContextPath)
 	if err != nil {
-		return fmt.Errorf("fail to get absolute path of %s: %s", c.Crowdsec.ConsoleContextPath, err)
+		return fmt.Errorf("fail to get absolute path of %s: %s", c.Crowdsec.ContextPath, err)
 	}
 
-	c.Crowdsec.ConsoleContextPath = f
-	yamlFile, err := os.ReadFile(c.Crowdsec.ConsoleContextPath)
+	c.Crowdsec.ContextPath = f
+	yamlFile, err := os.ReadFile(c.Crowdsec.ContextPath)
 	if err != nil {
 		if fallback {
 			log.Debugf("Default context config file doesn't exist, will not use it")
@@ -171,28 +178,77 @@ func (c *Config) LoadCrowdsec() error {
 			return fmt.Errorf("failed to open context file: %s", err)
 		}
 	} else {
-		err = yaml.Unmarshal(yamlFile, c.Crowdsec.ContextToSend)
+		ctxToSend := ContextToSend{
+			SourceFile: c.Crowdsec.ContextPath,
+			Context:    make(map[string][]string),
+		}
+		err = yaml.Unmarshal(yamlFile, ctxToSend.Context)
 		if err != nil {
-			return fmt.Errorf("unmarshaling labels console config file '%s': %s", c.Crowdsec.ConsoleContextPath, err)
+			return fmt.Errorf("unmarshaling context config file '%s': %s", c.Crowdsec.ContextPath, err)
+		}
+		c.Crowdsec.ContextToSend = append(c.Crowdsec.ContextToSend, ctxToSend)
+	}
+
+	if c.Crowdsec.ContextDir == "" {
+		// fallback to default config file
+		c.Crowdsec.ContextDir = filepath.Join(c.Crowdsec.ConfigDir, "context")
+		fallback = true
+	}
+
+	// if context folder exist, try to read it
+	if _, err := os.Stat(c.Crowdsec.ContextDir); !os.IsNotExist(err) {
+		err := filepath.Walk(c.Crowdsec.ContextDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !strings.HasSuffix(path, ".yaml") && !strings.HasSuffix(path, ".yml") {
+				return nil
+			}
+
+			f, err := filepath.Abs(path)
+			if err != nil {
+				return fmt.Errorf("fail to get absolute path of %s: %s", path, err)
+			}
+
+			yamlFile, err := os.ReadFile(f)
+			if err != nil {
+				return fmt.Errorf("unable to read context file '%s': %s", f, err.Error())
+			}
+			ctxToSend := ContextToSend{
+				SourceFile: f,
+				Context:    make(map[string][]string),
+			}
+			err = yaml.Unmarshal(yamlFile, ctxToSend.Context)
+			if err != nil {
+				return fmt.Errorf("unable to unmarshal context file '%s': %s", f, err)
+			}
+			log.Debugf("Reading %s context file: %+v", f, string(yamlFile))
+
+			c.Crowdsec.ContextToSend = append(c.Crowdsec.ContextToSend, ctxToSend)
+
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("unable to list context directory: %s", err.Error())
 		}
 	}
 
 	return nil
 }
 
-func (c *CrowdsecServiceCfg) DumpContextConfigFile() error {
+func (c *CrowdsecServiceCfg) DumpContextConfigFile(contextToSend ContextToSend) error {
 	var out []byte
 	var err error
 
-	if out, err = yaml.Marshal(c.ContextToSend); err != nil {
-		return fmt.Errorf("while marshaling ConsoleConfig (for %s): %w", c.ConsoleContextPath, err)
+	if out, err = yaml.Marshal(contextToSend.Context); err != nil {
+		return fmt.Errorf("while marshaling ConsoleConfig (for %s): %w", contextToSend.SourceFile, err)
 	}
 
-	if err := os.WriteFile(c.ConsoleContextPath, out, 0600); err != nil {
-		return fmt.Errorf("while dumping console config to %s: %w", c.ConsoleContextPath, err)
+	if err := os.WriteFile(contextToSend.SourceFile, out, 0600); err != nil {
+		return fmt.Errorf("while dumping console config to %s: %w", contextToSend.SourceFile, err)
 	}
 
-	log.Infof("%s file saved", c.ConsoleContextPath)
+	log.Infof("%s file saved", contextToSend.SourceFile)
 
 	return nil
 }

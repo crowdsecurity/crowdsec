@@ -264,7 +264,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 		}
 	}
 
-	if err := alertcontext.NewAlertContext(cscfg.ContextToSend, cscfg.ConsoleContextValueLength); err != nil {
+	if err := alertcontext.NewAlertContext(cscfg.ContextToSend, cscfg.ContextValueLength); err != nil {
 		return nil, nil, fmt.Errorf("unable to load alert context: %s", err)
 	}
 

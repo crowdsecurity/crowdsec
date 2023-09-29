@@ -9,16 +9,17 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/agext/levenshtein"
 	"github.com/fatih/color"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prom2json"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/agext/levenshtein"
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 
@@ -688,10 +689,10 @@ var ranges = []unit{
 	{value: 1e18, symbol: "E"},
 	{value: 1e15, symbol: "P"},
 	{value: 1e12, symbol: "T"},
-	{value: 1e9,  symbol: "G"},
-	{value: 1e6,  symbol: "M"},
-	{value: 1e3,  symbol: "k"},
-	{value: 1,    symbol: ""},
+	{value: 1e9, symbol: "G"},
+	{value: 1e6, symbol: "M"},
+	{value: 1e3, symbol: "k"},
+	{value: 1, symbol: ""},
 }
 
 func formatNumber(num int) string {
@@ -745,4 +746,19 @@ func removeFromSlice(val string, slice []string) []string {
 
 	return slice
 
+}
+
+/*
+isFilePathInFolder uses filepath.Rel() to obtain a relative path
+from basePath to targetPath. If the relative path contains "..",
+then targetPath is not a sub-path of basePath
+*/
+func isFilePathInFolder(folderpath string, targetFilepath string) (bool, error) {
+	relPath, err := filepath.Rel(folderpath, targetFilepath)
+	if err != nil {
+		return false, err
+	}
+	log.Infof("F: %+v | T: %+v", folderpath, targetFilepath)
+	log.Infof("REAL POATH: %+v", relPath)
+	return !strings.Contains(relPath, ".."), nil
 }

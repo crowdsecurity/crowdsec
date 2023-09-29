@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
 	log "github.com/sirupsen/logrus"
@@ -40,7 +42,7 @@ func ValidateContextExpr(key string, expressions []string) error {
 	return nil
 }
 
-func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
+func NewAlertContext(contextToSend []csconfig.ContextToSend, valueLength int) error {
 	var clog = log.New()
 	if err := types.ConfigureLogger(clog); err != nil {
 		return fmt.Errorf("couldn't create logger for alert context: %s", err)
@@ -56,20 +58,31 @@ func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 	}
 
 	alertContext = Context{
-		ContextToSend:         contextToSend,
+		ContextToSend:         make(map[string][]string),
 		ContextValueLen:       valueLength,
 		Log:                   clog,
 		ContextToSendCompiled: make(map[string][]*vm.Program),
 	}
 
-	for key, values := range contextToSend {
-		alertContext.ContextToSendCompiled[key] = make([]*vm.Program, 0)
-		for _, value := range values {
-			valueCompiled, err := expr.Compile(value, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
-			if err != nil {
-				return fmt.Errorf("compilation of '%s' context value failed: %v", value, err)
+	for _, ctx := range contextToSend {
+		for key, values := range ctx.Context {
+			if _, ok := alertContext.ContextToSend[key]; !ok {
+				alertContext.ContextToSend[key] = make([]string, 0)
 			}
-			alertContext.ContextToSendCompiled[key] = append(alertContext.ContextToSendCompiled[key], valueCompiled)
+
+			alertContext.ContextToSendCompiled[key] = make([]*vm.Program, 0)
+			for _, value := range values {
+				valueCompiled, err := expr.Compile(value, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
+				if err != nil {
+					return fmt.Errorf("compilation of '%s' context value failed: %v", value, err)
+				}
+				alertContext.ContextToSendCompiled[key] = append(alertContext.ContextToSendCompiled[key], valueCompiled)
+				if slices.Contains(alertContext.ContextToSend[key], value) {
+					log.Debugf("value '%s' from '%s' already in context", value, ctx.SourceFile)
+					continue
+				}
+				alertContext.ContextToSend[key] = append(alertContext.ContextToSend[key], value)
+			}
 		}
 	}
 
