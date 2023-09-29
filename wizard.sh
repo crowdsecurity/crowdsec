@@ -29,6 +29,7 @@ CROWDSEC_LOG_FILE="/var/log/crowdsec.log"
 LAPI_LOG_FILE="/var/log/crowdsec_api.log"
 CROWDSEC_PLUGIN_DIR="${CROWDSEC_USR_DIR}/plugins"
 CROWDSEC_CONSOLE_DIR="${CROWDSEC_PATH}/console"
+CROWDSEC_CONTEXT_DIR="${CROWDSEC_PATH}/context"
 
 CROWDSEC_BIN="./cmd/crowdsec/crowdsec"
 CSCLI_BIN="./cmd/crowdsec-cli/cscli"
@@ -415,6 +416,7 @@ install_crowdsec() {
     mkdir -p "${CROWDSEC_CONFIG_PATH}/collections" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/patterns" || exit
     mkdir -p "${CROWDSEC_CONSOLE_DIR}" || exit
+    mkdir -p "${CROWDSEC_CONTEXT_DIR}" || exit
 
     #tmp
     mkdir -p /tmp/data

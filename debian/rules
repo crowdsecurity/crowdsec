@@ -21,6 +21,7 @@ override_dh_auto_install:
 	mkdir -p debian/crowdsec/etc/crowdsec/hub/
 	mkdir -p debian/crowdsec/usr/share/crowdsec/config
 	mkdir -p debian/crowdsec/etc/crowdsec/console/
+	mkdir -p debian/crowdsec/etc/crowdsec/context/
 
 	mkdir -p debian/crowdsec/usr/lib/crowdsec/plugins/
 	mkdir -p debian/crowdsec/etc/crowdsec/notifications/
