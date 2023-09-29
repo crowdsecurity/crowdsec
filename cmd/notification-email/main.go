@@ -122,10 +122,10 @@ func (n *EmailPlugin) Notify(ctx context.Context, notification *protobufs.Notifi
 	}
 
 	if cfg.SendTimeout != "" {
-		server.SendTimeout, err = time.ParseDuration(cfg.ConnectTimeout)
+		server.SendTimeout, err = time.ParseDuration(cfg.SendTimeout)
 		if err != nil {
 			logger.Warn(fmt.Sprintf("invalid send timeout '%s', using default '10s'", cfg.SendTimeout))
-			server.ConnectTimeout = 10 * time.Second
+			server.SendTimeout = 10 * time.Second
 		}
 	}
 
