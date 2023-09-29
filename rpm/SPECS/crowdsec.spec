@@ -42,6 +42,7 @@ rm -rf %{buildroot}
 mkdir -p %{buildroot}/etc/crowdsec/hub
 mkdir -p %{buildroot}/etc/crowdsec/patterns
 mkdir -p %{buildroot}/etc/crowdsec/console/
+mkdir -p %{buildroot}/etc/crowdsec/context/
 mkdir -p %{buildroot}%{_sharedstatedir}/%{name}/data
 mkdir -p %{buildroot}%{_presetdir}
 
