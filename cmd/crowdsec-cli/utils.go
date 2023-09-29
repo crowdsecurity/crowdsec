@@ -758,7 +758,5 @@ func isFilePathInFolder(folderpath string, targetFilepath string) (bool, error) 
 	if err != nil {
 		return false, err
 	}
-	log.Infof("F: %+v | T: %+v", folderpath, targetFilepath)
-	log.Infof("REAL POATH: %+v", relPath)
 	return !strings.Contains(relPath, ".."), nil
 }

@@ -218,6 +218,10 @@ func NewLapiCmd() *cobra.Command {
 }
 
 func AddContext(key string, values []string, targetFile string) error {
+	if err := exprhelpers.Init(nil); err != nil {
+		return fmt.Errorf(err.Error())
+	}
+
 	if err := alertcontext.ValidateContextExpr(key, values); err != nil {
 		return fmt.Errorf("invalid context configuration :%s", err)
 	}
