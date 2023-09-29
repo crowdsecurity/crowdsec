@@ -40,8 +40,9 @@ type OpOutput struct {
 	IfTrue  bool
 	IfFalse bool
 	//
-	Condition   bool //true if it's a condition
-	ConditionIn bool
+	Condition         bool //true if it's a condition
+	ConditionIn       bool
+	ConditionContains bool
 	//used for comparisons, conditional jumps and conditions
 	StrConditionResult string
 	ConditionResult    *bool //should always be present for conditions
@@ -60,10 +61,14 @@ func (o *OpOutput) String() string {
 
 	switch {
 	case o.BlockStart:
-		ret = fmt.Sprintf("%*cBLOCK_START [%s]", o.CodeDepth, ' ', o.Code)
+		ret = fmt.Sprintf("%*cBLOCK_START [%s]", o.CodeDepth-IndentStep, ' ', o.Code)
 		return ret
 	case o.BlockEnd:
-		ret = fmt.Sprintf("%*cBLOCK_END [%s]", o.CodeDepth-IndentStep, ' ', o.Code)
+		indent := o.CodeDepth - (IndentStep * 2)
+		if indent < 0 {
+			indent = 0
+		}
+		ret = fmt.Sprintf("%*cBLOCK_END [%s]", indent, ' ', o.Code)
 		if len(o.StrConditionResult) > 0 {
 			ret += fmt.Sprintf(" -> %s", o.StrConditionResult)
 		}
@@ -79,6 +84,8 @@ func (o *OpOutput) String() string {
 		return ret
 	case o.ConditionIn:
 		return ret + fmt.Sprintf("%s in %s -> %s", o.Args[0], o.Args[1], o.StrConditionResult)
+	case o.ConditionContains:
+		return ret + fmt.Sprintf("%s contains %s -> %s", o.Args[0], o.Args[1], o.StrConditionResult)
 	case o.JumpIf && o.IfTrue:
 		if o.ConditionResult != nil {
 			if *o.ConditionResult {
@@ -101,32 +108,42 @@ func (o *OpOutput) String() string {
 
 func (erp ExprRuntimeDebug) extractCode(ip int, program *vm.Program, parts []string) string {
 
+	//log.Tracef("# extracting code for ip %d [%s]", ip, parts[1])
 	if program.Locations[ip].Line == 0 { //it seems line is zero when it's not actual code (ie. op push at the beginning)
+		log.Tracef("zero location ?")
 		return ""
 	}
-	startLine := program.Locations[ip].Line - 1
+	startLine := program.Locations[ip].Line
 	startColumn := program.Locations[ip].Column
-	endLine := startLine
 	lines := strings.Split(program.Source.Content(), "\n")
-	log.Tracef(" start offset : %d, %d", startLine, startColumn)
 
-	//by default we go to end of line
-	endColumn := len(lines[endLine])
+	endCol := 0
+	endLine := 0
 
-	//we seek the next OP with a diff code offset
 	for i := ip + 1; i < len(program.Locations); i++ {
-		if program.Locations[i].Line > program.Locations[ip].Line {
-			endLine = program.Locations[i].Line - 1
-			endColumn = program.Locations[i].Column
-			break
-		}
-		if program.Locations[i].Line == program.Locations[ip].Line &&
-			program.Locations[i].Column > program.Locations[ip].Column {
-			endColumn = program.Locations[i].Column
-			break
+		if program.Locations[i].Line > startLine || (program.Locations[i].Line == startLine && program.Locations[i].Column > startColumn) {
+			//we didn't had values yet and it's superior to current one, take it
+			if endLine == 0 && endCol == 0 {
+				endLine = program.Locations[i].Line
+				endCol = program.Locations[i].Column
+			}
+			//however, we are looking for the closest upper one
+			if program.Locations[i].Line < endLine || (program.Locations[i].Line == endLine && program.Locations[i].Column < endCol) {
+				endLine = program.Locations[i].Line
+				endCol = program.Locations[i].Column - 1
+			}
+
 		}
 	}
+	//maybe it was the last instruction ?
+	if endCol == 0 && endLine == 0 {
+		endLine = len(lines)
+		endCol = len(lines[endLine-1])
+	}
 	code_snippet := ""
+	startLine -= 1 //line count starts at 1
+	endLine -= 1
+
 	for i := startLine; i <= endLine; i++ {
 		//log.Tracef("collecting, line %d, len: %d", i, len(lines[i]))
 		if i == startLine {
@@ -135,20 +152,27 @@ func (erp ExprRuntimeDebug) extractCode(ip int, program *vm.Program, parts []str
 				continue
 			}
 			//log.Tracef("adding data from line %d from %d to %d", i, startColumn, endColumn)
-			code_snippet += lines[i][startColumn:endColumn]
+			code_snippet += lines[i][startColumn:endCol]
 			break
 		}
 		if i == endLine {
-			code_snippet += lines[i][:endColumn]
+			code_snippet += lines[i][:endCol]
 			break
 		}
 		code_snippet += lines[i]
 	}
 
-	//log.Tracef(" end offset :  %d - %d", endLine, endColumn)
-	//log.Tracef(" snippet    : '%s'", code_snippet)
 	log.Tracef("#code extract for ip %d [%s] -> '%s'", ip, parts[1], code_snippet)
-	return code_snippet
+	return strings.Trim(code_snippet, " \t")
+}
+
+func autoQuote(v any) string {
+	switch x := v.(type) {
+	case string:
+		return fmt.Sprintf("%q", x)
+	default:
+		return fmt.Sprintf("%v", x)
+	}
 }
 
 func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, parts []string, outputs []OpOutput) ([]OpOutput, error) {
@@ -165,10 +189,14 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 		//log.Tracef("Complete previous item ? [stack:%+v]", vm.Stack())
 		if outputs[prevIdxOut].Func && !outputs[prevIdxOut].Finalized {
 			//erp.Logger.Tracef("previous op was func call, setting result of %d to %v", prevIdxOut, vm.Stack())
-			for _, val := range vm.Stack() {
-				outputs[prevIdxOut].FuncResults = append(outputs[prevIdxOut].FuncResults, fmt.Sprintf("%v", val))
-				outputs[prevIdxOut].Finalized = true
+			stack := vm.Stack()
+			num_items := 1
+			for i := len(stack) - 1; i >= 0 && num_items > 0; i-- {
+				//log.Tracef("appending %v to %v", stack[i], outputs[prevIdxOut].FuncResults)
+				outputs[prevIdxOut].FuncResults = append(outputs[prevIdxOut].FuncResults, autoQuote(stack[i]))
+				num_items--
 			}
+			outputs[prevIdxOut].Finalized = true
 		} else if outputs[prevIdxOut].Comparison && !outputs[prevIdxOut].Finalized {
 			stack := vm.Stack()
 			//erp.Logger.Tracef("previous op was comparison, setting result of %d to %v", prevIdxOut, vm.Stack())
@@ -235,29 +263,85 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 			*out.ConditionResult = val
 		}
 		outputs = append(outputs, out)
-	case "OpCall1", "OpCall2", "OpCall3", "OpCallN", "OpCallFast", "OpCallTyped": //Op for function calls
+	case "OpCall1": //Op for function calls
 		out.Func = true
 		out.FuncName = parts[3]
-		for _, val := range vm.Stack() {
-			out.Args = append(out.Args, fmt.Sprintf("%v", val))
+		stack := vm.Stack()
+		num_items := 1
+		for i := len(stack) - 1; i >= 0 && num_items > 0; i-- {
+			out.Args = append(out.Args, autoQuote(stack[i]))
+			num_items--
+		}
+		outputs = append(outputs, out)
+	case "OpCall2": //Op for function calls
+		out.Func = true
+		out.FuncName = parts[3]
+		stack := vm.Stack()
+		num_items := 2
+		for i := len(stack) - 1; i >= 0 && num_items > 0; i-- {
+			out.Args = append(out.Args, autoQuote(stack[i]))
+			num_items--
+		}
+		outputs = append(outputs, out)
+	case "OpCall3": //Op for function calls
+		out.Func = true
+		out.FuncName = parts[3]
+		stack := vm.Stack()
+		num_items := 3
+		for i := len(stack) - 1; i >= 0 && num_items > 0; i-- {
+			out.Args = append(out.Args, autoQuote(stack[i]))
+			num_items--
+		}
+		outputs = append(outputs, out)
+	//double check OpCallFast and OpCallTyped
+	case "OpCallFast", "OpCallTyped":
+		//
+	case "OpCallN": //Op for function calls with more than 3 args
+		out.Func = true
+		out.FuncName = parts[1]
+		stack := vm.Stack()
+		//this one is the actual <nb_args>
+		if len(parts[2]) >= 3 {
+			strnum := strings.TrimSuffix(parts[2][1:], ">")
+			num_items, _ := strconv.Atoi(strnum)
+			if num_items > 0 {
+				//we need to skip the top item on stack
+				for i := len(stack) - 2; i >= 0 && num_items > 0; i-- {
+					out.Args = append(out.Args, autoQuote(stack[i]))
+					num_items--
+				}
+			}
+		} else { //let's blindly take the items on stack
+			for _, val := range vm.Stack() {
+				out.Args = append(out.Args, autoQuote(val))
+			}
 		}
 		outputs = append(outputs, out)
 	case "OpEqualString", "OpEqual", "OpEqualInt": //comparisons
-
 		stack := vm.Stack()
 		out.Comparison = true
-		out.Left = fmt.Sprintf("%v", stack[0])
-		out.Right = fmt.Sprintf("%v", stack[1])
+		out.Left = autoQuote(stack[0])
+		out.Right = autoQuote(stack[1])
 		outputs = append(outputs, out)
 	case "OpIn": //in operator
 		stack := vm.Stack()
 		out.Condition = true
 		out.ConditionIn = true
-		out.Args = append(out.Args, fmt.Sprintf("%v", stack[0]))
 		//seems that we tend to receive stack[1] as a map.
 		//it is tempting to use reflect to extract keys, but we end up with an array that doesn't match the initial order
 		//(because of the random order of the map)
-		out.Args = append(out.Args, fmt.Sprintf("%v", stack[1]))
+		out.Args = append(out.Args, autoQuote(stack[0]))
+		out.Args = append(out.Args, autoQuote(stack[1]))
+		outputs = append(outputs, out)
+	case "OpContains": //kind OpIn , but reverse
+		stack := vm.Stack()
+		out.Condition = true
+		out.ConditionContains = true
+		//seems that we tend to receive stack[1] as a map.
+		//it is tempting to use reflect to extract keys, but we end up with an array that doesn't match the initial order
+		//(because of the random order of the map)
+		out.Args = append(out.Args, autoQuote(stack[0]))
+		out.Args = append(out.Args, autoQuote(stack[1]))
 		outputs = append(outputs, out)
 	}
 	return outputs, nil
@@ -298,7 +382,6 @@ func RunWithDebug(program *vm.Program, env interface{}, logger *log.Entry) ([]Op
 		Logger: logger,
 	}
 	var debugErr chan error = make(chan error)
-	//log.Tracef("------")
 	vm := vm.Debug()
 	done := false
 	program.Opcodes(&buf)
