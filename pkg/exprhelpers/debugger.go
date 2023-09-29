@@ -113,7 +113,7 @@ func (o *OpOutput) String() string {
 
 func (erp ExprRuntimeDebug) extractCode(ip int, program *vm.Program, parts []string) string {
 
-	if program.Locations[ip].Line == 0 { //it seems line is zero when it's not actual code (ie. op push at the begining)
+	if program.Locations[ip].Line == 0 { //it seems line is zero when it's not actual code (ie. op push at the beginning)
 		return ""
 	}
 	startLine := program.Locations[ip].Line - 1
@@ -186,10 +186,9 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 			stack := vm.Stack()
 			//erp.Logger.Tracef("previous op was comparison, setting result of %d to %v", prevIdxOut, vm.Stack())
 			outputs[prevIdxOut].StrConditionResult = fmt.Sprintf("%+v", stack)
-			switch stack[0].(type) {
-			case bool:
+			if val, ok := stack[0].(bool); ok {
 				outputs[prevIdxOut].ConditionResult = new(bool)
-				*outputs[prevIdxOut].ConditionResult = stack[0].(bool)
+				*outputs[prevIdxOut].ConditionResult = val
 			}
 			outputs[prevIdxOut].Finalized = true
 		}
@@ -233,10 +232,10 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 		out.JumpIf = true
 		out.IfTrue = true
 		out.StrConditionResult = fmt.Sprintf("%v", stack[0])
-		switch stack[0].(type) {
-		case bool:
+
+		if val, ok := stack[0].(bool); ok {
 			out.ConditionResult = new(bool)
-			*out.ConditionResult = stack[0].(bool)
+			*out.ConditionResult = val
 		}
 		outputs = append(outputs, out)
 	case "OpJumpIfFalse": //AND
@@ -244,10 +243,9 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 		out.JumpIf = true
 		out.IfFalse = true
 		out.StrConditionResult = fmt.Sprintf("%v", stack[0])
-		switch stack[0].(type) {
-		case bool:
+		if val, ok := stack[0].(bool); ok {
 			out.ConditionResult = new(bool)
-			*out.ConditionResult = stack[0].(bool)
+			*out.ConditionResult = val
 		}
 		outputs = append(outputs, out)
 	case "OpCall1", "OpCall2", "OpCall3", "OpCallN", "OpCallFast", "OpCallTyped": //Op for function calls
@@ -366,18 +364,15 @@ func RunWithDebug(program *vm.Program, env interface{}, logger *log.Entry) ([]Op
 	if len(outputs) > 0 {
 		lastOutIdx := len(outputs)
 		if lastOutIdx > 0 {
-			lastOutIdx = lastOutIdx - 1
+			lastOutIdx -= 1
 		}
-		switch ret.(type) {
+		switch val := ret.(type) {
 		case bool:
 			log.Tracef("completing with bool %t", ret)
 			//if outputs[lastOutIdx].Comparison {
 			outputs[lastOutIdx].StrConditionResult = fmt.Sprintf("%v", ret)
 			outputs[lastOutIdx].ConditionResult = new(bool)
-			*outputs[lastOutIdx].ConditionResult = ret.(bool)
-			// } else if outputs[lastOutIdx].Func {
-
-			// }
+			*outputs[lastOutIdx].ConditionResult = val
 			outputs[lastOutIdx].Finalized = true
 		default:
 			log.Tracef("completing with type %T -> %v", ret, ret)
