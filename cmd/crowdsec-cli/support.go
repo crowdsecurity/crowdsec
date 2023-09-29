@@ -20,6 +20,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/version"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
@@ -129,24 +130,6 @@ func collectOSInfo() ([]byte, error) {
 	w.WriteString(fmt.Sprintf("Build: %s\n", info.Build))
 
 	return w.Bytes(), nil
-}
-
-func initHub() error {
-	if err := csConfig.LoadHub(); err != nil {
-		return fmt.Errorf("cannot load hub: %s", err)
-	}
-	if csConfig.Hub == nil {
-		return fmt.Errorf("hub not configured")
-	}
-
-	if err := cwhub.SetHubBranch(); err != nil {
-		return fmt.Errorf("cannot set hub branch: %s", err)
-	}
-
-	if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-		return fmt.Errorf("no hub index found: %s", err)
-	}
-	return nil
 }
 
 func collectHubItems(itemType string) []byte {
@@ -312,8 +295,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				skipAgent = true
 			}
 
-			err = initHub()
-			if err != nil {
+			if err := require.Hub(csConfig); err != nil {
 				log.Warn("Could not init hub, running on LAPI ? Hub related information will not be collected")
 				skipHub = true
 				infos[SUPPORT_PARSERS_PATH] = []byte(err.Error())
