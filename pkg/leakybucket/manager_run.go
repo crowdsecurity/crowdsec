@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/antonmedv/expr"
 	"github.com/mohae/deepcopy"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -328,7 +327,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		//groupby determines the partition key for the specific bucket
 		var groupby string
 		if holders[idx].RunTimeGroupBy != nil {
-			tmpGroupBy, err := expr.Run(holders[idx].RunTimeGroupBy, map[string]interface{}{"evt": &parsed})
+			tmpGroupBy, err := exprhelpers.Run(holders[idx].RunTimeGroupBy, map[string]interface{}{"evt": &parsed}, holders[idx].logger, holders[idx].Debug)
 			if err != nil {
 				holders[idx].logger.Errorf("failed groupby : %v", err)
 				return false, errors.New("leaky failed :/")

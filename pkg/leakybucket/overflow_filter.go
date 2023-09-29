@@ -38,8 +38,8 @@ func NewOverflowFilter(g *BucketFactory) (*OverflowFilter, error) {
 
 func (u *OverflowFilter) OnBucketOverflow(Bucket *BucketFactory) func(*Leaky, types.RuntimeAlert, *types.Queue) (types.RuntimeAlert, *types.Queue) {
 	return func(l *Leaky, s types.RuntimeAlert, q *types.Queue) (types.RuntimeAlert, *types.Queue) {
-		el, err := expr.Run(u.FilterRuntime, map[string]interface{}{
-			"queue": q, "signal": s, "leaky": l})
+		el, err := exprhelpers.Run(u.FilterRuntime, map[string]interface{}{
+			"queue": q, "signal": s, "leaky": l}, l.logger, Bucket.Debug)
 		if err != nil {
 			l.logger.Errorf("Failed running overflow filter: %s", err)
 			return s, q
