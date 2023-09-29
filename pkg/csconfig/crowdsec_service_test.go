@@ -36,6 +36,9 @@ func TestLoadCrowdsec(t *testing.T) {
 	contextFileFullPath, err := filepath.Abs("./tests/context.yaml")
 	require.NoError(t, err)
 
+	contextDirFullPath, err := filepath.Abs("./tests/context/")
+	require.NoError(t, err)
+
 	tests := []struct {
 		name           string
 		input          *Config
@@ -66,6 +69,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				Enable:               ptr.Of(true),
 				AcquisitionDirPath:   "",
 				ContextPath:          contextFileFullPath,
+				ContextDir:           contextDirFullPath,
 				AcquisitionFilePath:  acquisFullPath,
 				ConfigDir:            configDirFullPath,
 				DataDir:              dataFullPath,
@@ -79,7 +83,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				SimulationFilePath:   "./tests/simulation.yaml",
 				ContextToSend: []ContextToSend{
 					ContextToSend{
-						SourceFile: "./tests/context.yaml",
+						SourceFile: contextFileFullPath,
 						Context: map[string][]string{
 							"source_ip": {"evt.Parsed.source_ip"},
 						},
@@ -115,6 +119,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				AcquisitionDirPath:   acquisDirFullPath,
 				AcquisitionFilePath:  acquisFullPath,
 				ContextPath:          contextFileFullPath,
+				ContextDir:           contextDirFullPath,
 				ConfigDir:            configDirFullPath,
 				HubIndexFile:         hubIndexFileFullPath,
 				DataDir:              dataFullPath,
@@ -126,7 +131,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				AcquisitionFiles:     []string{acquisFullPath, acquisInDirFullPath},
 				ContextToSend: []ContextToSend{
 					ContextToSend{
-						SourceFile: "./tests/context.yaml",
+						SourceFile: contextFileFullPath,
 						Context: map[string][]string{
 							"source_ip": {"evt.Parsed.source_ip"},
 						},
@@ -169,11 +174,12 @@ func TestLoadCrowdsec(t *testing.T) {
 				ParserRoutinesCount:  1,
 				OutputRoutinesCount:  1,
 				ContextValueLength:   10,
+				ContextDir:           contextDirFullPath,
 				AcquisitionFiles:     []string{},
 				SimulationFilePath:   "",
 				ContextToSend: []ContextToSend{
 					ContextToSend{
-						SourceFile: "./tests/context.yaml",
+						SourceFile: contextFileFullPath,
 						Context: map[string][]string{
 							"source_ip": {"evt.Parsed.source_ip"},
 						},

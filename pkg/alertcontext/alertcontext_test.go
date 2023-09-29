@@ -2,24 +2,34 @@ package alertcontext
 
 import (
 	"fmt"
+	"path/filepath"
 	"testing"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewAlertContext(t *testing.T) {
+	contextFileFullPath, err := filepath.Abs("./tests/context.yaml")
+	require.NoError(t, err)
 	tests := []struct {
 		name          string
-		contextToSend map[string][]string
+		contextToSend []csconfig.ContextToSend
 		valueLength   int
 		expectedErr   error
 	}{
 		{
 			name: "basic config test",
-			contextToSend: map[string][]string{
-				"test": {"evt.Parsed.source_ip"},
+			contextToSend: []csconfig.ContextToSend{
+				csconfig.ContextToSend{
+					SourceFile: contextFileFullPath,
+					Context: map[string][]string{
+						"source_ip": {"evt.Parsed.source_ip"},
+					},
+				},
 			},
 			valueLength: 100,
 			expectedErr: nil,
@@ -35,18 +45,26 @@ func TestNewAlertContext(t *testing.T) {
 }
 
 func TestEventToContext(t *testing.T) {
+	contextFileFullPath, err := filepath.Abs("./tests/context.yaml")
+	require.NoError(t, err)
+
 	tests := []struct {
 		name           string
-		contextToSend  map[string][]string
+		contextToSend  []csconfig.ContextToSend
 		valueLength    int
 		events         []types.Event
 		expectedResult models.Meta
 	}{
 		{
 			name: "basic test",
-			contextToSend: map[string][]string{
-				"source_ip":         {"evt.Parsed.source_ip"},
-				"nonexistent_field": {"evt.Parsed.nonexist"},
+			contextToSend: []csconfig.ContextToSend{
+				csconfig.ContextToSend{
+					SourceFile: contextFileFullPath,
+					Context: map[string][]string{
+						"source_ip":         {"evt.Parsed.source_ip"},
+						"nonexistent_field": {"evt.Parsed.nonexist"},
+					},
+				},
 			},
 			valueLength: 100,
 			events: []types.Event{
@@ -66,10 +84,14 @@ func TestEventToContext(t *testing.T) {
 		},
 		{
 			name: "test many events",
-			contextToSend: map[string][]string{
-				"source_ip":      {"evt.Parsed.source_ip"},
-				"source_machine": {"evt.Parsed.source_machine"},
-				"cve":            {"evt.Parsed.cve"},
+			contextToSend: []csconfig.ContextToSend{
+				csconfig.ContextToSend{
+					SourceFile: contextFileFullPath,
+					Context: map[string][]string{
+						"source_ip":      {"evt.Parsed.source_ip"},
+						"source_machine": {"evt.Parsed.source_machine"},
+						"cve":            {"evt.Parsed.cve"}},
+				},
 			},
 			valueLength: 100,
 			events: []types.Event{
@@ -112,11 +134,17 @@ func TestEventToContext(t *testing.T) {
 		},
 		{
 			name: "test many events with result above max length (need truncate, keep only 2 on 3 elements)",
-			contextToSend: map[string][]string{
-				"source_ip":      {"evt.Parsed.source_ip"},
-				"source_machine": {"evt.Parsed.source_machine"},
-				"uri":            {"evt.Parsed.uri"},
+			contextToSend: []csconfig.ContextToSend{
+				csconfig.ContextToSend{
+					SourceFile: contextFileFullPath,
+					Context: map[string][]string{
+						"source_ip":      {"evt.Parsed.source_ip"},
+						"source_machine": {"evt.Parsed.source_machine"},
+						"uri":            {"evt.Parsed.uri"},
+					},
+				},
 			},
+
 			valueLength: 100,
 			events: []types.Event{
 				{
@@ -158,10 +186,15 @@ func TestEventToContext(t *testing.T) {
 		},
 		{
 			name: "test one events with result above max length (need truncate on one element)",
-			contextToSend: map[string][]string{
-				"source_ip":      {"evt.Parsed.source_ip"},
-				"source_machine": {"evt.Parsed.source_machine"},
-				"uri":            {"evt.Parsed.uri"},
+			contextToSend: []csconfig.ContextToSend{
+				csconfig.ContextToSend{
+					SourceFile: contextFileFullPath,
+					Context: map[string][]string{
+						"source_ip":      {"evt.Parsed.source_ip"},
+						"source_machine": {"evt.Parsed.source_machine"},
+						"uri":            {"evt.Parsed.uri"},
+					},
+				},
 			},
 			valueLength: 100,
 			events: []types.Event{
