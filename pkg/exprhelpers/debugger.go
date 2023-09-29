@@ -16,9 +16,15 @@ type ExprRuntimeDebug struct {
 	Outputs []OpOutput
 }
 
+var IndentStep = 4
+
 // we use this struct to store the output of the expr runtime
 type OpOutput struct {
-	Snippet string
+	Code string //relevant code part
+
+	CodeDepth  int //level of nesting
+	BlockStart bool
+	BlockEnd   bool
 
 	Func        bool //true if it's a function call
 	FuncName    string
@@ -26,6 +32,7 @@ type OpOutput struct {
 	FuncResults []string
 	//
 	Comparison bool //true if it's a comparison
+	Negated    bool
 	Left       string
 	Right      string
 	//
@@ -33,8 +40,8 @@ type OpOutput struct {
 	IfTrue  bool
 	IfFalse bool
 	//
-	Condition bool //true if it's a condition
-
+	Condition   bool //true if it's a condition
+	ConditionIn bool
 	//used for comparisons, conditional jumps and conditions
 	StrConditionResult string
 	ConditionResult    *bool //should always be present for conditions
@@ -44,16 +51,38 @@ type OpOutput struct {
 }
 
 func (o *OpOutput) String() string {
-	ret := ""
-	if o.Snippet != "" {
-		ret = fmt.Sprintf("[%s] ", o.Snippet)
+
+	ret := fmt.Sprintf("%*c", o.CodeDepth, ' ')
+	if len(o.Code) != 0 {
+		ret += fmt.Sprintf("[%s]", o.Code)
+	}
+	ret += " "
+	if o.BlockStart {
+		ret = fmt.Sprintf("%*cBLOCK_START [%s]", o.CodeDepth, ' ', o.Code)
+		return ret
+	}
+	if o.BlockEnd {
+		ret = fmt.Sprintf("%*cBLOCK_END [%s]", o.CodeDepth-IndentStep, ' ', o.Code)
+		if len(o.StrConditionResult) > 0 {
+			ret += fmt.Sprintf(" -> %s", o.StrConditionResult)
+		}
+		return ret
+		//A block end can carry a value, for example if it's a count, any, all etc. XXX
+
 	}
 	if o.Func {
 		return ret + fmt.Sprintf("%s(%s) = %s", o.FuncName, strings.Join(o.Args, ", "), strings.Join(o.FuncResults, ", "))
 
 	}
 	if o.Comparison {
-		return ret + fmt.Sprintf("%s == %s -> %s", o.Left, o.Right, o.StrConditionResult)
+		if o.Negated {
+			ret += "NOT "
+		}
+		ret += fmt.Sprintf("%s == %s -> %s", o.Left, o.Right, o.StrConditionResult)
+		return ret
+	}
+	if o.ConditionIn {
+		return ret + fmt.Sprintf("%s in %s -> %s", o.Args[0], o.Args[1], o.StrConditionResult)
 	}
 	if o.JumpIf {
 		if o.IfTrue {
@@ -79,26 +108,83 @@ func (o *OpOutput) String() string {
 			}
 		}
 	}
-	return ""
+	return ret + ""
+}
+
+func (erp ExprRuntimeDebug) extractCode(ip int, program *vm.Program, parts []string) string {
+
+	if program.Locations[ip].Line == 0 { //it seems line is zero when it's not actual code (ie. op push at the begining)
+		return ""
+	}
+	startLine := program.Locations[ip].Line - 1
+	startColumn := program.Locations[ip].Column
+	endLine := startLine
+	lines := strings.Split(program.Source.Content(), "\n")
+	log.Tracef(" start offset : %d, %d", startLine, startColumn)
+
+	//by default we go to end of line
+	endColumn := len(lines[endLine])
+
+	//we seek the next OP with a diff code offset
+	for i := ip + 1; i < len(program.Locations); i++ {
+		if program.Locations[i].Line > program.Locations[ip].Line {
+			endLine = program.Locations[i].Line - 1
+			endColumn = program.Locations[i].Column
+			break
+		}
+		if program.Locations[i].Line == program.Locations[ip].Line &&
+			program.Locations[i].Column > program.Locations[ip].Column {
+			endColumn = program.Locations[i].Column
+			break
+		}
+	}
+	code_snippet := ""
+	for i := startLine; i <= endLine; i++ {
+		//log.Tracef("collecting, line %d, len: %d", i, len(lines[i]))
+		if i == startLine {
+			if startLine != endLine {
+				code_snippet += lines[i][startColumn:]
+				continue
+			} else {
+				//log.Tracef("adding data from line %d from %d to %d", i, startColumn, endColumn)
+				code_snippet += lines[i][startColumn:endColumn]
+				break
+			}
+		}
+		if i == endLine {
+			code_snippet += lines[i][:endColumn]
+			break
+		}
+		code_snippet += lines[i]
+	}
+
+	//log.Tracef(" end offset :  %d - %d", endLine, endColumn)
+	//log.Tracef(" snippet    : '%s'", code_snippet)
+	log.Tracef("#code extract for ip %d [%s] -> '%s'", ip, parts[1], code_snippet)
+	return code_snippet
 }
 
 func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, parts []string, outputs []OpOutput) ([]OpOutput, error) {
 
 	IdxOut := len(outputs)
 	prevIdxOut := 0
+	currentDepth := 0
 
 	//when there is a function call or comparison, we need to wait for the next instruction to get the result and "finalize" the previous one
 	if IdxOut > 0 {
 		prevIdxOut = IdxOut - 1
+		//log.Tracef("extracted depth %d from previous instruction (%d)", outputs[prevIdxOut].CodeDepth, prevIdxOut)
+		currentDepth = outputs[prevIdxOut].CodeDepth
+		//log.Tracef("Complete previous item ? [stack:%+v]", vm.Stack())
 		if outputs[prevIdxOut].Func && !outputs[prevIdxOut].Finalized {
-			erp.Logger.Tracef("previous op was func call, setting result of %d to %v", prevIdxOut, vm.Stack())
+			//erp.Logger.Tracef("previous op was func call, setting result of %d to %v", prevIdxOut, vm.Stack())
 			for _, val := range vm.Stack() {
 				outputs[prevIdxOut].FuncResults = append(outputs[prevIdxOut].FuncResults, fmt.Sprintf("%v", val))
 				outputs[prevIdxOut].Finalized = true
 			}
 		} else if outputs[prevIdxOut].Comparison && !outputs[prevIdxOut].Finalized {
 			stack := vm.Stack()
-			erp.Logger.Tracef("previous op was comparison, setting result of %d to %v", prevIdxOut, vm.Stack())
+			//erp.Logger.Tracef("previous op was comparison, setting result of %d to %v", prevIdxOut, vm.Stack())
 			outputs[prevIdxOut].StrConditionResult = fmt.Sprintf("%+v", stack)
 			switch stack[0].(type) {
 			case bool:
@@ -109,44 +195,44 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 		}
 	}
 
-	erp.Logger.Tracef("%s %+v (%+v)", parts[1], vm.Stack(), parts)
+	erp.Logger.Tracef("[STEP %d:%s] (stack:%+v) (parts:%+v) {depth:%d}", ip, parts[1], vm.Stack(), parts, currentDepth)
+	out := OpOutput{}
+	out.CodeDepth = currentDepth
+	out.Code = erp.extractCode(ip, program, parts)
 
 	switch parts[1] {
+	case "OpBegin":
+		out.CodeDepth += IndentStep
+		out.BlockStart = true
+		outputs = append(outputs, out)
+	case "OpEnd":
+		out.CodeDepth -= IndentStep
+		out.BlockEnd = true
+		//OpEnd can carry value, if it's any/all/count etc.
+		if len(vm.Stack()) > 0 {
+			out.StrConditionResult = fmt.Sprintf("%v", vm.Stack())
+		}
+		outputs = append(outputs, out)
+	case "OpNot":
+		//negate the previous condition
+		outputs[prevIdxOut].Negated = true
 	case "OpTrue": //generated when possible ? (1 == 1)
-		out := OpOutput{
-			Condition:          true,
-			ConditionResult:    new(bool),
-			StrConditionResult: "true",
-		}
-		snip, ok := program.Source.Snippet(ip)
-		if ok {
-			out.Snippet = snip
-		}
+		out.Condition = true
+		out.ConditionResult = new(bool)
 		*out.ConditionResult = true
+		out.StrConditionResult = "true"
 		outputs = append(outputs, out)
 	case "OpFalse": //generated when possible ? (1 != 1)
-		out := OpOutput{
-			Condition:          true,
-			ConditionResult:    new(bool),
-			StrConditionResult: "false",
-		}
-		snip, ok := program.Source.Snippet(ip)
-		if ok {
-			out.Snippet = snip
-		}
+		out.Condition = true
+		out.ConditionResult = new(bool)
 		*out.ConditionResult = false
+		out.StrConditionResult = "false"
 		outputs = append(outputs, out)
 	case "OpJumpIfTrue": //OR
 		stack := vm.Stack()
-		out := OpOutput{
-			JumpIf:             true,
-			IfTrue:             true,
-			StrConditionResult: fmt.Sprintf("%v", stack[0]),
-		}
-		snip, ok := program.Source.Snippet(ip)
-		if ok {
-			out.Snippet = snip
-		}
+		out.JumpIf = true
+		out.IfTrue = true
+		out.StrConditionResult = fmt.Sprintf("%v", stack[0])
 		switch stack[0].(type) {
 		case bool:
 			out.ConditionResult = new(bool)
@@ -155,15 +241,9 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 		outputs = append(outputs, out)
 	case "OpJumpIfFalse": //AND
 		stack := vm.Stack()
-		out := OpOutput{
-			JumpIf:             true,
-			IfFalse:            true,
-			StrConditionResult: fmt.Sprintf("%v", stack[0]),
-		}
-		snip, ok := program.Source.Snippet(ip)
-		if ok {
-			out.Snippet = snip
-		}
+		out.JumpIf = true
+		out.IfFalse = true
+		out.StrConditionResult = fmt.Sprintf("%v", stack[0])
 		switch stack[0].(type) {
 		case bool:
 			out.ConditionResult = new(bool)
@@ -171,36 +251,34 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 		}
 		outputs = append(outputs, out)
 	case "OpCall1", "OpCall2", "OpCall3", "OpCallN", "OpCallFast", "OpCallTyped": //Op for function calls
-		out := OpOutput{
-			Func:     true,
-			FuncName: parts[3],
-		}
-		snip, ok := program.Source.Snippet(ip)
-		if ok {
-			out.Snippet = snip
-		}
+		out.Func = true
+		out.FuncName = parts[3]
 		for _, val := range vm.Stack() {
 			out.Args = append(out.Args, fmt.Sprintf("%v", val))
 		}
 		outputs = append(outputs, out)
 	case "OpEqualString", "OpEqual", "OpEqualInt": //comparisons
+
 		stack := vm.Stack()
-		out := OpOutput{
-			Comparison: true,
-			Left:       fmt.Sprintf("%v", stack[0]),
-			Right:      fmt.Sprintf("%v", stack[1]),
-		}
-		snip, ok := program.Source.Snippet(ip)
-		if ok {
-			out.Snippet = snip
-		}
+		out.Comparison = true
+		out.Left = fmt.Sprintf("%v", stack[0])
+		out.Right = fmt.Sprintf("%v", stack[1])
+		outputs = append(outputs, out)
+	case "OpIn": //in operator
+		stack := vm.Stack()
+		out.Condition = true
+		out.ConditionIn = true
+		out.Args = append(out.Args, fmt.Sprintf("%v", stack[0]))
+		//seems that we tend to receive stack[1] as a map.
+		//it is tempting to use reflect to extract keys, but we end up with an array that doesn't match the initial order
+		//(because of the random order of the map)
+		out.Args = append(out.Args, fmt.Sprintf("%v", stack[1]))
 		outputs = append(outputs, out)
 	}
 	return outputs, nil
 }
 
 func (erp ExprRuntimeDebug) ipSeek(ip int) []string {
-	//Snippet + index ?
 	for i := 0; i < len(erp.Lines); i++ {
 		parts := strings.Split(erp.Lines[i], "\t")
 		if parts[0] == strconv.Itoa(ip) {
@@ -213,7 +291,7 @@ func (erp ExprRuntimeDebug) ipSeek(ip int) []string {
 func Run(program *vm.Program, env interface{}, logger *log.Entry, debug bool) (any, error) {
 	if debug {
 		dbgInfo, ret, err := RunWithDebug(program, env, logger)
-		DisplayExprDebug(program, dbgInfo, logger)
+		DisplayExprDebug(program, dbgInfo, logger, ret)
 		return ret, err
 	} else {
 		return expr.Run(program, env)
@@ -221,8 +299,8 @@ func Run(program *vm.Program, env interface{}, logger *log.Entry, debug bool) (a
 	}
 }
 
-func DisplayExprDebug(program *vm.Program, outputs []OpOutput, logger *log.Entry) {
-	logger.Debugf("dbg: %s", program.Source.Content())
+func DisplayExprDebug(program *vm.Program, outputs []OpOutput, logger *log.Entry, ret any) {
+	logger.Debugf("dbg(result=%v): %s", ret, program.Source.Content())
 	for _, output := range outputs {
 		logger.Debugf("%s", output.String())
 	}
@@ -237,7 +315,7 @@ func RunWithDebug(program *vm.Program, env interface{}, logger *log.Entry) ([]Op
 		Logger: logger,
 	}
 	var debugErr chan error = make(chan error)
-
+	//log.Tracef("------")
 	vm := vm.Debug()
 	done := false
 	program.Opcodes(&buf)
@@ -257,7 +335,6 @@ func RunWithDebug(program *vm.Program, env interface{}, logger *log.Entry) ([]Op
 		}
 		vm.Step()
 		for ip := range vm.Position() {
-			erp.Logger.Tracef("[STEP] ip %d", ip)
 			ops := erp.ipSeek(ip)
 			if ops == nil { //we reached the end of the program, we shouldn't throw an error
 				erp.Logger.Tracef("[DONE] ip %d", ip)
@@ -269,7 +346,6 @@ func RunWithDebug(program *vm.Program, env interface{}, logger *log.Entry) ([]Op
 				return
 			}
 			if !done {
-				erp.Logger.Tracef("[STEP]")
 				vm.Step()
 			} else {
 				debugErr <- nil
@@ -287,20 +363,29 @@ func RunWithDebug(program *vm.Program, env interface{}, logger *log.Entry) ([]Op
 		log.Warningf("error while debugging expr: %s", err)
 	}
 	//the overall result of expression is the result of last op ?
-	lastOutIdx := len(outputs)
-	if lastOutIdx > 0 {
-		lastOutIdx = lastOutIdx - 1
-	}
-	switch ret.(type) {
-	case bool:
-		outputs[lastOutIdx].StrConditionResult = fmt.Sprintf("%v", ret)
-		outputs[lastOutIdx].ConditionResult = new(bool)
-		*outputs[lastOutIdx].ConditionResult = ret.(bool)
-		outputs[lastOutIdx].Finalized = true
-	default:
-		outputs[lastOutIdx].StrConditionResult = fmt.Sprintf("%v", ret)
-		outputs[lastOutIdx].Finalized = true
+	if len(outputs) > 0 {
+		lastOutIdx := len(outputs)
+		if lastOutIdx > 0 {
+			lastOutIdx = lastOutIdx - 1
+		}
+		switch ret.(type) {
+		case bool:
+			log.Tracef("completing with bool %t", ret)
+			//if outputs[lastOutIdx].Comparison {
+			outputs[lastOutIdx].StrConditionResult = fmt.Sprintf("%v", ret)
+			outputs[lastOutIdx].ConditionResult = new(bool)
+			*outputs[lastOutIdx].ConditionResult = ret.(bool)
+			// } else if outputs[lastOutIdx].Func {
 
+			// }
+			outputs[lastOutIdx].Finalized = true
+		default:
+			log.Tracef("completing with type %T -> %v", ret, ret)
+			outputs[lastOutIdx].StrConditionResult = fmt.Sprintf("%v", ret)
+			outputs[lastOutIdx].Finalized = true
+		}
+	} else {
+		log.Tracef("no output from expr runtime")
 	}
 	return outputs, ret, nil
 }
