@@ -43,9 +43,8 @@ type Node struct {
 	rn        string //this is only for us in debug, a random generated name for each node
 	//Filter is executed at runtime (with current log line as context)
 	//and must succeed or node is exited
-	Filter        string                    `yaml:"filter,omitempty"`
-	RunTimeFilter *vm.Program               `yaml:"-" json:"-"` //the actual compiled filter
-	ExprDebugger  *exprhelpers.ExprDebugger `yaml:"-" json:"-"` //used to debug expression by printing the content of each variable of the expression
+	Filter        string      `yaml:"filter,omitempty"`
+	RunTimeFilter *vm.Program `yaml:"-" json:"-"` //the actual compiled filter
 	//If node has leafs, execute all of them until one asks for a 'break'
 	LeavesNodes []Node `yaml:"nodes,omitempty"`
 	//Flag used to describe when to 'break' or return an 'error'
@@ -142,7 +141,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	clog.Tracef("Event entering node")
 	if n.RunTimeFilter != nil {
 		//Evaluate node's filter
-		output, err := expr.Run(n.RunTimeFilter, cachedExprEnv)
+		output, err := exprhelpers.Run(n.RunTimeFilter, cachedExprEnv, clog, n.Debug)
 		if err != nil {
 			clog.Warningf("failed to run filter : %v", err)
 			clog.Debugf("Event leaving node : ko")
@@ -151,9 +150,6 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 
 		switch out := output.(type) {
 		case bool:
-			if n.Debug {
-				n.ExprDebugger.Run(clog, out, cachedExprEnv)
-			}
 			if !out {
 				clog.Debugf("Event leaving node : ko (failed filter)")
 				return false, nil
@@ -213,7 +209,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 
 	/* run whitelist expression tests anyway */
 	for eidx, e := range n.Whitelist.B_Exprs {
-		output, err := expr.Run(e.Filter, cachedExprEnv)
+		output, err := exprhelpers.Run(e.Filter, cachedExprEnv, clog, n.Debug)
 		if err != nil {
 			clog.Warningf("failed to run whitelist expr : %v", err)
 			clog.Debug("Event leaving node : ko")
@@ -221,9 +217,6 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		}
 		switch out := output.(type) {
 		case bool:
-			if n.Debug {
-				e.ExprDebugger.Run(clog, out, cachedExprEnv)
-			}
 			if out {
 				clog.Debugf("Event is whitelisted by expr, reason [%s]", n.Whitelist.Reason)
 				isWhitelisted = true
@@ -263,7 +256,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 				NodeState = false
 			}
 		} else if n.Grok.RunTimeValue != nil {
-			output, err := expr.Run(n.Grok.RunTimeValue, cachedExprEnv)
+			output, err := exprhelpers.Run(n.Grok.RunTimeValue, cachedExprEnv, clog, n.Debug)
 			if err != nil {
 				clog.Warningf("failed to run RunTimeValue : %v", err)
 				NodeState = false
@@ -322,7 +315,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 				continue
 			}
 			//collect the data
-			output, err := expr.Run(stash.ValueExpression, cachedExprEnv)
+			output, err := exprhelpers.Run(stash.ValueExpression, cachedExprEnv, clog, n.Debug)
 			if err != nil {
 				clog.Warningf("Error while running stash val expression : %v", err)
 			}
@@ -336,7 +329,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 			}
 
 			//collect the key
-			output, err = expr.Run(stash.KeyExpression, cachedExprEnv)
+			output, err = exprhelpers.Run(stash.KeyExpression, cachedExprEnv, clog, n.Debug)
 			if err != nil {
 				clog.Warningf("Error while running stash key expression : %v", err)
 			}
@@ -472,14 +465,6 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		if err != nil {
 			return fmt.Errorf("compilation of '%s' failed: %v", n.Filter, err)
 		}
-
-		if n.Debug {
-			n.ExprDebugger, err = exprhelpers.NewDebugger(n.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
-			if err != nil {
-				log.Errorf("unable to build debug filter for '%s' : %s", n.Filter, err)
-			}
-		}
-
 	}
 
 	/* handle pattern_syntax and groks */
@@ -631,10 +616,6 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		expression.Filter, err = expr.Compile(filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 		if err != nil {
 			n.Logger.Fatalf("Unable to compile whitelist expression '%s' : %v.", filter, err)
-		}
-		expression.ExprDebugger, err = exprhelpers.NewDebugger(filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
-		if err != nil {
-			log.Errorf("unable to build debug filter for '%s' : %s", filter, err)
 		}
 		n.Whitelist.B_Exprs = append(n.Whitelist.B_Exprs, expression)
 		n.Logger.Debugf("adding expression %s to whitelists", filter)

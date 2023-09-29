@@ -4,8 +4,6 @@ import (
 	"net"
 
 	"github.com/antonmedv/expr/vm"
-
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
 
 type Whitelist struct {
@@ -19,6 +17,5 @@ type Whitelist struct {
 }
 
 type ExprWhitelist struct {
-	Filter       *vm.Program
-	ExprDebugger *exprhelpers.ExprDebugger // used to debug expression by printing the content of each variable of the expression
+	Filter *vm.Program
 }
