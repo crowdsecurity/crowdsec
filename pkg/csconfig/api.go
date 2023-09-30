@@ -3,7 +3,9 @@ package csconfig
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"strings"
@@ -331,43 +333,59 @@ type capiWhitelists struct {
 	Cidrs []string `yaml:"cidrs"`
 }
 
-func (s *LocalApiServerCfg) LoadCapiWhitelists() error {
-	if s.CapiWhitelistsPath == "" {
-		return nil
-	}
-	if _, err := os.Stat(s.CapiWhitelistsPath); os.IsNotExist(err) {
-		return fmt.Errorf("capi whitelist file '%s' does not exist", s.CapiWhitelistsPath)
-	}
-	fd, err := os.Open(s.CapiWhitelistsPath)
-	if err != nil {
-		return fmt.Errorf("unable to open capi whitelist file '%s': %s", s.CapiWhitelistsPath, err)
-	}
+func parseCapiWhitelists(fd io.Reader) (*CapiWhitelist, error) {
+	fromCfg := capiWhitelists{}
 
-	var fromCfg capiWhitelists
-
-	defer fd.Close()
 	decoder := yaml.NewDecoder(fd)
 	if err := decoder.Decode(&fromCfg); err != nil {
-		return fmt.Errorf("while parsing capi whitelist file '%s': %s", s.CapiWhitelistsPath, err)
+		if errors.Is(err, io.EOF) {
+			return nil, fmt.Errorf("empty file")
+		}
+		return nil, err
 	}
-	s.CapiWhitelists = &CapiWhitelist{
+	ret := &CapiWhitelist{
 		Ips:   make([]net.IP, len(fromCfg.Ips)),
 		Cidrs: make([]*net.IPNet, len(fromCfg.Cidrs)),
 	}
 	for idx, v := range fromCfg.Ips {
 		ip := net.ParseIP(v)
 		if ip == nil {
-			return fmt.Errorf("unable to parse ip whitelist '%s'", v)
+			return nil, fmt.Errorf("invalid IP address: %s", v)
 		}
-		s.CapiWhitelists.Ips[idx] = ip
+		ret.Ips[idx] = ip
 	}
 	for idx, v := range fromCfg.Cidrs {
 		_, tnet, err := net.ParseCIDR(v)
 		if err != nil {
-			return fmt.Errorf("unable to parse cidr whitelist '%s' : %v", v, err)
+			return nil, err
 		}
-		s.CapiWhitelists.Cidrs[idx] = tnet
+		ret.Cidrs[idx] = tnet
 	}
+
+	return ret, nil
+}
+
+func (s *LocalApiServerCfg) LoadCapiWhitelists() error {
+	if s.CapiWhitelistsPath == "" {
+		return nil
+	}
+
+	if _, err := os.Stat(s.CapiWhitelistsPath); os.IsNotExist(err) {
+		return fmt.Errorf("capi whitelist file '%s' does not exist", s.CapiWhitelistsPath)
+	}
+
+	fd, err := os.Open(s.CapiWhitelistsPath)
+	if err != nil {
+		return fmt.Errorf("unable to open capi whitelist file '%s': %s", s.CapiWhitelistsPath, err)
+	}
+
+	defer fd.Close()
+
+	s.CapiWhitelists, err = parseCapiWhitelists(fd)
+	if err != nil {
+		return fmt.Errorf("while parsing capi whitelist file '%s': %w", s.CapiWhitelistsPath, err)
+	}
+
 	return nil
 }
 

@@ -33,14 +33,26 @@ teardown() {
 }
 
 @test "capi_whitelists: empty file" {
+    echo > "$CAPI_WHITELISTS_YAML"
+    rune -1 timeout 1s "${CROWDSEC}"
+    assert_stderr --partial "while parsing capi whitelist file '$CAPI_WHITELISTS_YAML': empty file"
+}
+
+@test "capi_whitelists: empty lists" {
     echo '{"ips": [], "cidrs": []}' > "$CAPI_WHITELISTS_YAML"
     rune -124 timeout 1s "${CROWDSEC}"
+}
+
+@test "capi_whitelists: bad ip" {
+    echo '{"ips": ["blahblah"], "cidrs": []}' > "$CAPI_WHITELISTS_YAML"
+    rune -1 timeout 1s "${CROWDSEC}"
+    assert_stderr --partial "while parsing capi whitelist file '$CAPI_WHITELISTS_YAML': invalid IP address: blahblah"
 }
 
 @test "capi_whitelists: bad cidr" {
     echo '{"ips": [], "cidrs": ["blahblah"]}' > "$CAPI_WHITELISTS_YAML"
     rune -1 timeout 1s "${CROWDSEC}"
-    assert_stderr --partial "unable to parse cidr whitelist 'blahblah' : invalid CIDR address: blahblah"
+    assert_stderr --partial "while parsing capi whitelist file '$CAPI_WHITELISTS_YAML': invalid CIDR address: blahblah"
 }
 
 @test "capi_whitelists: file with ip and cidr values" {
@@ -52,5 +64,6 @@ teardown() {
 	- 1.2.3.0/24
 	EOT
 
-    rune -124 timeout 1s "${CROWDSEC}"
+    config_set '.common.log_level="trace"'
+    rune -0 ./instance-crowdsec start
 }
