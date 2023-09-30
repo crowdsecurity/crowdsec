@@ -167,6 +167,18 @@ LOOP:
 				log.Printf("[%s] is whitelisted, skip.", *event.Overflow.Alert.Message)
 				continue
 			}
+			/* Inject postoverflow meta into the overflown state*/
+			for key, value := range event.Meta {
+				kv := &models.MetaItems0{
+					Key:   key,
+					Value: value,
+				}
+				for _, alert := range event.Overflow.APIAlerts {
+					for _, event := range alert.Events {
+						event.Meta = append(event.Meta, kv)
+					}
+				}
+			}
 			if event.Overflow.Reprocess {
 				log.Debugf("Overflow being reprocessed.")
 				input <- event
