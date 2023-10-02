@@ -114,7 +114,7 @@ func TestBaseDbg(t *testing.T) {
 			Expr: "count(base_struct.Myarr, {Upper(#) == 'C'}) == 1",
 			Env:  defaultEnv,
 			ExpectedOutputs: []OpOutput{
-				{Code: "count(base_struct.Myarr,", CodeDepth: 4, BlockStart: true, ConditionResult: (*bool)(nil), Finalized: false},
+				{Code: "count(base_struct.Myarr, {", CodeDepth: 4, BlockStart: true, ConditionResult: (*bool)(nil), Finalized: false},
 				{Code: "Upper(#)", CodeDepth: 4, Func: true, FuncName: "Upper", Args: []string{"\"a\""}, FuncResults: []string{"\"A\""}, ConditionResult: (*bool)(nil), Finalized: true},
 				{Code: "== 'C'})", CodeDepth: 4, Comparison: true, Left: "\"A\"", Right: "\"C\"", StrConditionResult: "[false]", ConditionResult: boolPtr(false), Finalized: true},
 				{Code: "count(base_struct.Myarr, {Upper(#) == 'C'})", CodeDepth: 4, JumpIf: true, IfFalse: true, StrConditionResult: "false", ConditionResult: boolPtr(false), Finalized: false},
@@ -133,7 +133,7 @@ func TestBaseDbg(t *testing.T) {
 			Expr: "count(base_struct.Myarr, {Upper(#) == 'C'}) == 1 && Upper(base_struct.Foo) == 'BAR'",
 			Env:  defaultEnv,
 			ExpectedOutputs: []OpOutput{
-				{Code: "count(base_struct.Myarr,", CodeDepth: 4, BlockStart: true, ConditionResult: (*bool)(nil), Finalized: false},
+				{Code: "count(base_struct.Myarr, {", CodeDepth: 4, BlockStart: true, ConditionResult: (*bool)(nil), Finalized: false},
 				{Code: "Upper(#)", CodeDepth: 4, Func: true, FuncName: "Upper", Args: []string{"\"a\""}, FuncResults: []string{"\"A\""}, ConditionResult: (*bool)(nil), Finalized: true},
 				{Code: "== 'C'})", CodeDepth: 4, Comparison: true, Left: "\"A\"", Right: "\"C\"", StrConditionResult: "[false]", ConditionResult: boolPtr(false), Finalized: true},
 				{Code: "count(base_struct.Myarr, {Upper(#) == 'C'})", CodeDepth: 4, JumpIf: true, IfFalse: true, StrConditionResult: "false", ConditionResult: boolPtr(false), Finalized: false},

@@ -130,7 +130,7 @@ func (erp ExprRuntimeDebug) extractCode(ip int, program *vm.Program, parts []str
 			//however, we are looking for the closest upper one
 			if program.Locations[i].Line < endLine || (program.Locations[i].Line == endLine && program.Locations[i].Column < endCol) {
 				endLine = program.Locations[i].Line
-				endCol = program.Locations[i].Column - 1
+				endCol = program.Locations[i].Column
 			}
 
 		}
@@ -145,13 +145,11 @@ func (erp ExprRuntimeDebug) extractCode(ip int, program *vm.Program, parts []str
 	endLine -= 1
 
 	for i := startLine; i <= endLine; i++ {
-		//log.Tracef("collecting, line %d, len: %d", i, len(lines[i]))
 		if i == startLine {
 			if startLine != endLine {
 				code_snippet += lines[i][startColumn:]
 				continue
 			}
-			//log.Tracef("adding data from line %d from %d to %d", i, startColumn, endColumn)
 			code_snippet += lines[i][startColumn:endCol]
 			break
 		}
@@ -163,7 +161,7 @@ func (erp ExprRuntimeDebug) extractCode(ip int, program *vm.Program, parts []str
 	}
 
 	log.Tracef("#code extract for ip %d [%s] -> '%s'", ip, parts[1], code_snippet)
-	return strings.Trim(code_snippet, " \t")
+	return strings.Trim(code_snippet, " \t\n")
 }
 
 func autoQuote(v any) string {
@@ -184,22 +182,17 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 	//when there is a function call or comparison, we need to wait for the next instruction to get the result and "finalize" the previous one
 	if IdxOut > 0 {
 		prevIdxOut = IdxOut - 1
-		//log.Tracef("extracted depth %d from previous instruction (%d)", outputs[prevIdxOut].CodeDepth, prevIdxOut)
 		currentDepth = outputs[prevIdxOut].CodeDepth
-		//log.Tracef("Complete previous item ? [stack:%+v]", vm.Stack())
 		if outputs[prevIdxOut].Func && !outputs[prevIdxOut].Finalized {
-			//erp.Logger.Tracef("previous op was func call, setting result of %d to %v", prevIdxOut, vm.Stack())
 			stack := vm.Stack()
 			num_items := 1
 			for i := len(stack) - 1; i >= 0 && num_items > 0; i-- {
-				//log.Tracef("appending %v to %v", stack[i], outputs[prevIdxOut].FuncResults)
 				outputs[prevIdxOut].FuncResults = append(outputs[prevIdxOut].FuncResults, autoQuote(stack[i]))
 				num_items--
 			}
 			outputs[prevIdxOut].Finalized = true
 		} else if outputs[prevIdxOut].Comparison && !outputs[prevIdxOut].Finalized {
 			stack := vm.Stack()
-			//erp.Logger.Tracef("previous op was comparison, setting result of %d to %v", prevIdxOut, vm.Stack())
 			outputs[prevIdxOut].StrConditionResult = fmt.Sprintf("%+v", stack)
 			if val, ok := stack[0].(bool); ok {
 				outputs[prevIdxOut].ConditionResult = new(bool)
@@ -300,15 +293,15 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 		out.Func = true
 		out.FuncName = parts[1]
 		stack := vm.Stack()
-		//this one is the actual <nb_args>
-		if len(parts[2]) >= 3 {
-			strnum := strings.TrimSuffix(parts[2][1:], ">")
-			num_items, _ := strconv.Atoi(strnum)
-			if num_items > 0 {
+
+		//for OpCallN, we get the number of args
+		if len(program.Arguments) >= ip {
+			nb_args := program.Arguments[ip]
+			if nb_args > 0 {
 				//we need to skip the top item on stack
-				for i := len(stack) - 2; i >= 0 && num_items > 0; i-- {
+				for i := len(stack) - 2; i >= 0 && nb_args > 0; i-- {
 					out.Args = append(out.Args, autoQuote(stack[i]))
-					num_items--
+					nb_args--
 				}
 			}
 		} else { //let's blindly take the items on stack
@@ -367,7 +360,7 @@ func Run(program *vm.Program, env interface{}, logger *log.Entry, debug bool) (a
 }
 
 func DisplayExprDebug(program *vm.Program, outputs []OpOutput, logger *log.Entry, ret any) {
-	logger.Debugf("dbg(result=%v): %s", ret, program.Source.Content())
+	logger.Debugf("dbg(result=%v): %s", ret, strings.ReplaceAll(program.Source.Content(), "\n", ""))
 	for _, output := range outputs {
 		logger.Debugf("%s", output.String())
 	}
