@@ -192,7 +192,6 @@ func (c *Config) LoadCrowdsec() error {
 	if c.Crowdsec.ContextDir == "" {
 		// fallback to default config file
 		c.Crowdsec.ContextDir = filepath.Join(c.Crowdsec.ConfigDir, "context")
-		fallback = true
 	}
 
 	// if context folder exist, try to read it
