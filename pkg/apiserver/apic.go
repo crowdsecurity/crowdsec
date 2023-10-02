@@ -56,6 +56,7 @@ type apic struct {
 	metricsIntervalFirst time.Duration
 	dbClient             *database.Client
 	apiClient            *apiclient.ApiClient
+	isHAEnabled          bool
 	AlertsAddChan        chan []*models.Alert
 
 	mu            sync.Mutex
@@ -162,7 +163,7 @@ func alertToSignal(alert *models.Alert, scenarioTrust string, shareContext bool)
 	return signal
 }
 
-func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig, apicWhitelist *csconfig.CapiWhitelist) (*apic, error) {
+func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig, apicWhitelist *csconfig.CapiWhitelist, haConfig *csconfig.HighAvailabilityCfg) (*apic, error) {
 	var err error
 	ret := &apic{
 
@@ -184,6 +185,10 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 		metricsIntervalFirst: randomDuration(metricsIntervalDefault, metricsIntervalDelta),
 		isPulling:            make(chan bool, 1),
 		whitelists:           apicWhitelist,
+	}
+
+	if haConfig != nil && *haConfig.Enabled {
+		ret.isHAEnabled = *haConfig.Enabled
 	}
 
 	password := strfmt.Password(config.Credentials.Password)
@@ -571,6 +576,15 @@ func (a *apic) PullTop(forcePull bool) error {
 		}
 	}
 
+	if a.isHAEnabled {
+		log.Debug("Acquiring lock for pullCAPI")
+		err = a.dbClient.AcquirePullCAPILock()
+		if a.dbClient.IsLocked(err) {
+			log.Info("PullCAPI is already running, skipping")
+			return nil
+		}
+	}
+
 	log.Infof("Starting community-blocklist update")
 
 	data, _, err := a.apiClient.Decisions.GetStreamV3(context.Background(), apiclient.DecisionsStreamOpts{Startup: a.startup})
@@ -616,6 +630,13 @@ func (a *apic) PullTop(forcePull bool) error {
 	// update blocklists
 	if err := a.UpdateBlocklists(data.Links, add_counters); err != nil {
 		return fmt.Errorf("while updating blocklists: %w", err)
+	}
+
+	if a.isHAEnabled {
+		log.Debug("Releasing lock for pullCAPI")
+		if err := a.dbClient.ReleasePullCAPILock(); err != nil {
+			return fmt.Errorf("while releasing lock: %w", err)
+		}
 	}
 	return nil
 }

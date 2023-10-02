@@ -15,6 +15,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/configitem"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/lock"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 )
@@ -42,6 +43,7 @@ func columnChecker(table string) func(string) error {
 		configitem.Table: configitem.ValidColumn,
 		decision.Table:   decision.ValidColumn,
 		event.Table:      event.ValidColumn,
+		lock.Table:       lock.ValidColumn,
 		machine.Table:    machine.ValidColumn,
 		meta.Table:       meta.ValidColumn,
 	}

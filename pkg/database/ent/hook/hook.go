@@ -74,6 +74,19 @@ func (f EventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error
 	return f(ctx, mv)
 }
 
+// The LockFunc type is an adapter to allow the use of ordinary
+// function as Lock mutator.
+type LockFunc func(context.Context, *ent.LockMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f LockFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	mv, ok := m.(*ent.LockMutation)
+	if !ok {
+		return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.LockMutation", m)
+	}
+	return f(ctx, mv)
+}
+
 // The MachineFunc type is an adapter to allow the use of ordinary
 // function as Machine mutator.
 type MachineFunc func(context.Context, *ent.MachineMutation) (ent.Value, error)

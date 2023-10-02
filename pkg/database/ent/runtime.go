@@ -10,6 +10,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/configitem"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/lock"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/schema"
@@ -137,6 +138,12 @@ func init() {
 	eventDescSerialized := eventFields[3].Descriptor()
 	// event.SerializedValidator is a validator for the "serialized" field. It is called by the builders before save.
 	event.SerializedValidator = eventDescSerialized.Validators[0].(func(string) error)
+	lockFields := schema.Lock{}.Fields()
+	_ = lockFields
+	// lockDescCreatedAt is the schema descriptor for created_at field.
+	lockDescCreatedAt := lockFields[1].Descriptor()
+	// lock.DefaultCreatedAt holds the default value on creation for the created_at field.
+	lock.DefaultCreatedAt = lockDescCreatedAt.Default.(func() time.Time)
 	machineFields := schema.Machine{}.Fields()
 	_ = machineFields
 	// machineDescCreatedAt is the schema descriptor for created_at field.

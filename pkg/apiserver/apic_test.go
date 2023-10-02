@@ -236,7 +236,7 @@ func TestNewAPIC(t *testing.T) {
 				),
 			))
 			tc.action()
-			_, err := NewAPIC(testConfig, tc.args.dbClient, tc.args.consoleConfig, nil)
+			_, err := NewAPIC(testConfig, tc.args.dbClient, tc.args.consoleConfig, nil, nil)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 		})
 	}

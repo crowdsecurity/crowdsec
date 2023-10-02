@@ -21,6 +21,9 @@ type Decision func(*sql.Selector)
 // Event is the predicate function for event builders.
 type Event func(*sql.Selector)
 
+// Lock is the predicate function for lock builders.
+type Lock func(*sql.Selector)
+
 // Machine is the predicate function for machine builders.
 type Machine func(*sql.Selector)
 

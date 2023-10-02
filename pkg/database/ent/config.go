@@ -29,6 +29,7 @@ type hooks struct {
 	ConfigItem []ent.Hook
 	Decision   []ent.Hook
 	Event      []ent.Hook
+	Lock       []ent.Hook
 	Machine    []ent.Hook
 	Meta       []ent.Hook
 }

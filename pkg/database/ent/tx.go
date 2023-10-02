@@ -22,6 +22,8 @@ type Tx struct {
 	Decision *DecisionClient
 	// Event is the client for interacting with the Event builders.
 	Event *EventClient
+	// Lock is the client for interacting with the Lock builders.
+	Lock *LockClient
 	// Machine is the client for interacting with the Machine builders.
 	Machine *MachineClient
 	// Meta is the client for interacting with the Meta builders.
@@ -166,6 +168,7 @@ func (tx *Tx) init() {
 	tx.ConfigItem = NewConfigItemClient(tx.config)
 	tx.Decision = NewDecisionClient(tx.config)
 	tx.Event = NewEventClient(tx.config)
+	tx.Lock = NewLockClient(tx.config)
 	tx.Machine = NewMachineClient(tx.config)
 	tx.Meta = NewMetaClient(tx.config)
 }

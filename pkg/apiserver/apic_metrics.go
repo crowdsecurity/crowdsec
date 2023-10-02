@@ -81,7 +81,7 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 	const checkInt = 20 * time.Second
 
 	// intervals must always be > 0
-	metInts := []time.Duration{1*time.Millisecond, a.metricsIntervalFirst, a.metricsInterval}
+	metInts := []time.Duration{1 * time.Millisecond, a.metricsIntervalFirst, a.metricsInterval}
 
 	log.Infof("Start send metrics to CrowdSec Central API (interval: %s once, then %s)",
 		metInts[1].Round(time.Second), metInts[2])
@@ -123,10 +123,21 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 			reloadMachineIDs()
 			if !slices.Equal(oldIDs, machineIDs) {
 				log.Infof("capi metrics: machines changed, immediate send")
-				metTicker.Reset(1*time.Millisecond)
+				metTicker.Reset(1 * time.Millisecond)
 			}
 		case <-metTicker.C:
 			metTicker.Stop()
+			if a.isHAEnabled {
+				log.Debug("capi metrics: acquiring lock")
+				err := a.dbClient.AcquirePushMetricsLock()
+				if a.dbClient.IsLocked(err) {
+					log.Infof("another instance of crowdsec is already pushing metrics, skipping")
+					metTicker.Reset(nextMetInt())
+				}
+				if err != nil {
+					log.Errorf("unable to acquire pushMetrics lock (%s)", err)
+				}
+			}
 			metrics, err := a.GetMetrics()
 			if err != nil {
 				log.Errorf("unable to get metrics (%s), will retry", err)
@@ -135,6 +146,13 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 			_, _, err = a.apiClient.Metrics.Add(context.Background(), metrics)
 			if err != nil {
 				log.Errorf("capi metrics: failed: %s", err)
+			}
+			if a.isHAEnabled {
+				log.Debug("capi metrics: releasing lock")
+				err = a.dbClient.ReleasePushMetricsLock()
+				if err != nil {
+					log.Errorf("unable to release metrics lock (%s)", err)
+				}
 			}
 			metTicker.Reset(nextMetInt())
 		case <-a.metricsTomb.Dying(): // if one apic routine is dying, do we kill the others?

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 
+	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -23,6 +24,7 @@ type BouncerQuery struct {
 	order      []OrderFunc
 	fields     []string
 	predicates []predicate.Bouncer
+	modifiers  []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -324,6 +326,9 @@ func (bq *BouncerQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Boun
 		nodes = append(nodes, node)
 		return node.assignValues(columns, values)
 	}
+	if len(bq.modifiers) > 0 {
+		_spec.Modifiers = bq.modifiers
+	}
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -338,6 +343,9 @@ func (bq *BouncerQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Boun
 
 func (bq *BouncerQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := bq.querySpec()
+	if len(bq.modifiers) > 0 {
+		_spec.Modifiers = bq.modifiers
+	}
 	_spec.Node.Columns = bq.fields
 	if len(bq.fields) > 0 {
 		_spec.Unique = bq.unique != nil && *bq.unique
@@ -419,6 +427,9 @@ func (bq *BouncerQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if bq.unique != nil && *bq.unique {
 		selector.Distinct()
 	}
+	for _, m := range bq.modifiers {
+		m(selector)
+	}
 	for _, p := range bq.predicates {
 		p(selector)
 	}
@@ -434,6 +445,32 @@ func (bq *BouncerQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// ForUpdate locks the selected rows against concurrent updates, and prevent them from being
+// updated, deleted or "selected ... for update" by other sessions, until the transaction is
+// either committed or rolled-back.
+func (bq *BouncerQuery) ForUpdate(opts ...sql.LockOption) *BouncerQuery {
+	if bq.driver.Dialect() == dialect.Postgres {
+		bq.Unique(false)
+	}
+	bq.modifiers = append(bq.modifiers, func(s *sql.Selector) {
+		s.ForUpdate(opts...)
+	})
+	return bq
+}
+
+// ForShare behaves similarly to ForUpdate, except that it acquires a shared mode lock
+// on any rows that are read. Other sessions can read the rows, but cannot modify them
+// until your transaction commits.
+func (bq *BouncerQuery) ForShare(opts ...sql.LockOption) *BouncerQuery {
+	if bq.driver.Dialect() == dialect.Postgres {
+		bq.Unique(false)
+	}
+	bq.modifiers = append(bq.modifiers, func(s *sql.Selector) {
+		s.ForShare(opts...)
+	})
+	return bq
 }
 
 // BouncerGroupBy is the group-by builder for Bouncer entities.

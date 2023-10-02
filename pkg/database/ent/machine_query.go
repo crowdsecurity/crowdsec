@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 
+	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -26,6 +27,7 @@ type MachineQuery struct {
 	fields     []string
 	predicates []predicate.Machine
 	withAlerts *AlertQuery
+	modifiers  []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -365,6 +367,9 @@ func (mq *MachineQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Mach
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	if len(mq.modifiers) > 0 {
+		_spec.Modifiers = mq.modifiers
+	}
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -418,6 +423,9 @@ func (mq *MachineQuery) loadAlerts(ctx context.Context, query *AlertQuery, nodes
 
 func (mq *MachineQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := mq.querySpec()
+	if len(mq.modifiers) > 0 {
+		_spec.Modifiers = mq.modifiers
+	}
 	_spec.Node.Columns = mq.fields
 	if len(mq.fields) > 0 {
 		_spec.Unique = mq.unique != nil && *mq.unique
@@ -499,6 +507,9 @@ func (mq *MachineQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if mq.unique != nil && *mq.unique {
 		selector.Distinct()
 	}
+	for _, m := range mq.modifiers {
+		m(selector)
+	}
 	for _, p := range mq.predicates {
 		p(selector)
 	}
@@ -514,6 +525,32 @@ func (mq *MachineQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// ForUpdate locks the selected rows against concurrent updates, and prevent them from being
+// updated, deleted or "selected ... for update" by other sessions, until the transaction is
+// either committed or rolled-back.
+func (mq *MachineQuery) ForUpdate(opts ...sql.LockOption) *MachineQuery {
+	if mq.driver.Dialect() == dialect.Postgres {
+		mq.Unique(false)
+	}
+	mq.modifiers = append(mq.modifiers, func(s *sql.Selector) {
+		s.ForUpdate(opts...)
+	})
+	return mq
+}
+
+// ForShare behaves similarly to ForUpdate, except that it acquires a shared mode lock
+// on any rows that are read. Other sessions can read the rows, but cannot modify them
+// until your transaction commits.
+func (mq *MachineQuery) ForShare(opts ...sql.LockOption) *MachineQuery {
+	if mq.driver.Dialect() == dialect.Postgres {
+		mq.Unique(false)
+	}
+	mq.modifiers = append(mq.modifiers, func(s *sql.Selector) {
+		s.ForShare(opts...)
+	})
+	return mq
 }
 
 // MachineGroupBy is the group-by builder for Machine entities.

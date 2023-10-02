@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 
+	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -25,6 +26,7 @@ type DecisionQuery struct {
 	fields     []string
 	predicates []predicate.Decision
 	withOwner  *AlertQuery
+	modifiers  []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -364,6 +366,9 @@ func (dq *DecisionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Dec
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	if len(dq.modifiers) > 0 {
+		_spec.Modifiers = dq.modifiers
+	}
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -411,6 +416,9 @@ func (dq *DecisionQuery) loadOwner(ctx context.Context, query *AlertQuery, nodes
 
 func (dq *DecisionQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := dq.querySpec()
+	if len(dq.modifiers) > 0 {
+		_spec.Modifiers = dq.modifiers
+	}
 	_spec.Node.Columns = dq.fields
 	if len(dq.fields) > 0 {
 		_spec.Unique = dq.unique != nil && *dq.unique
@@ -492,6 +500,9 @@ func (dq *DecisionQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if dq.unique != nil && *dq.unique {
 		selector.Distinct()
 	}
+	for _, m := range dq.modifiers {
+		m(selector)
+	}
 	for _, p := range dq.predicates {
 		p(selector)
 	}
@@ -507,6 +518,32 @@ func (dq *DecisionQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// ForUpdate locks the selected rows against concurrent updates, and prevent them from being
+// updated, deleted or "selected ... for update" by other sessions, until the transaction is
+// either committed or rolled-back.
+func (dq *DecisionQuery) ForUpdate(opts ...sql.LockOption) *DecisionQuery {
+	if dq.driver.Dialect() == dialect.Postgres {
+		dq.Unique(false)
+	}
+	dq.modifiers = append(dq.modifiers, func(s *sql.Selector) {
+		s.ForUpdate(opts...)
+	})
+	return dq
+}
+
+// ForShare behaves similarly to ForUpdate, except that it acquires a shared mode lock
+// on any rows that are read. Other sessions can read the rows, but cannot modify them
+// until your transaction commits.
+func (dq *DecisionQuery) ForShare(opts ...sql.LockOption) *DecisionQuery {
+	if dq.driver.Dialect() == dialect.Postgres {
+		dq.Unique(false)
+	}
+	dq.modifiers = append(dq.modifiers, func(s *sql.Selector) {
+		s.ForShare(opts...)
+	})
+	return dq
 }
 
 // DecisionGroupBy is the group-by builder for Decision entities.

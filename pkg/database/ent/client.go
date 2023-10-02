@@ -15,6 +15,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/configitem"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/lock"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 
@@ -38,6 +39,8 @@ type Client struct {
 	Decision *DecisionClient
 	// Event is the client for interacting with the Event builders.
 	Event *EventClient
+	// Lock is the client for interacting with the Lock builders.
+	Lock *LockClient
 	// Machine is the client for interacting with the Machine builders.
 	Machine *MachineClient
 	// Meta is the client for interacting with the Meta builders.
@@ -60,6 +63,7 @@ func (c *Client) init() {
 	c.ConfigItem = NewConfigItemClient(c.config)
 	c.Decision = NewDecisionClient(c.config)
 	c.Event = NewEventClient(c.config)
+	c.Lock = NewLockClient(c.config)
 	c.Machine = NewMachineClient(c.config)
 	c.Meta = NewMetaClient(c.config)
 }
@@ -100,6 +104,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		ConfigItem: NewConfigItemClient(cfg),
 		Decision:   NewDecisionClient(cfg),
 		Event:      NewEventClient(cfg),
+		Lock:       NewLockClient(cfg),
 		Machine:    NewMachineClient(cfg),
 		Meta:       NewMetaClient(cfg),
 	}, nil
@@ -126,6 +131,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		ConfigItem: NewConfigItemClient(cfg),
 		Decision:   NewDecisionClient(cfg),
 		Event:      NewEventClient(cfg),
+		Lock:       NewLockClient(cfg),
 		Machine:    NewMachineClient(cfg),
 		Meta:       NewMetaClient(cfg),
 	}, nil
@@ -161,6 +167,7 @@ func (c *Client) Use(hooks ...Hook) {
 	c.ConfigItem.Use(hooks...)
 	c.Decision.Use(hooks...)
 	c.Event.Use(hooks...)
+	c.Lock.Use(hooks...)
 	c.Machine.Use(hooks...)
 	c.Meta.Use(hooks...)
 }
@@ -709,6 +716,96 @@ func (c *EventClient) QueryOwner(e *Event) *AlertQuery {
 // Hooks returns the client hooks.
 func (c *EventClient) Hooks() []Hook {
 	return c.hooks.Event
+}
+
+// LockClient is a client for the Lock schema.
+type LockClient struct {
+	config
+}
+
+// NewLockClient returns a client for the Lock from the given config.
+func NewLockClient(c config) *LockClient {
+	return &LockClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `lock.Hooks(f(g(h())))`.
+func (c *LockClient) Use(hooks ...Hook) {
+	c.hooks.Lock = append(c.hooks.Lock, hooks...)
+}
+
+// Create returns a builder for creating a Lock entity.
+func (c *LockClient) Create() *LockCreate {
+	mutation := newLockMutation(c.config, OpCreate)
+	return &LockCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Lock entities.
+func (c *LockClient) CreateBulk(builders ...*LockCreate) *LockCreateBulk {
+	return &LockCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Lock.
+func (c *LockClient) Update() *LockUpdate {
+	mutation := newLockMutation(c.config, OpUpdate)
+	return &LockUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *LockClient) UpdateOne(l *Lock) *LockUpdateOne {
+	mutation := newLockMutation(c.config, OpUpdateOne, withLock(l))
+	return &LockUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *LockClient) UpdateOneID(id int) *LockUpdateOne {
+	mutation := newLockMutation(c.config, OpUpdateOne, withLockID(id))
+	return &LockUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Lock.
+func (c *LockClient) Delete() *LockDelete {
+	mutation := newLockMutation(c.config, OpDelete)
+	return &LockDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *LockClient) DeleteOne(l *Lock) *LockDeleteOne {
+	return c.DeleteOneID(l.ID)
+}
+
+// DeleteOne returns a builder for deleting the given entity by its id.
+func (c *LockClient) DeleteOneID(id int) *LockDeleteOne {
+	builder := c.Delete().Where(lock.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &LockDeleteOne{builder}
+}
+
+// Query returns a query builder for Lock.
+func (c *LockClient) Query() *LockQuery {
+	return &LockQuery{
+		config: c.config,
+	}
+}
+
+// Get returns a Lock entity by its id.
+func (c *LockClient) Get(ctx context.Context, id int) (*Lock, error) {
+	return c.Query().Where(lock.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *LockClient) GetX(ctx context.Context, id int) *Lock {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *LockClient) Hooks() []Hook {
+	return c.hooks.Lock
 }
 
 // MachineClient is a client for the Machine schema.
