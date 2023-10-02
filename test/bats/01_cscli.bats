@@ -102,12 +102,12 @@ teardown() {
 
     rune -0 cscli config show -o human
     assert_line --regexp ".*- URL +: http://127.0.0.1:8080/"
-    assert_line --regexp ".*- Login +: githubciXXXXXXXXXXXXXXXXXXXXXXXX"
+    assert_line --regexp ".*- Login +: githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?"
     assert_line --regexp ".*- Credentials File +: .*/local_api_credentials.yaml"
 
     rune -0 cscli config show -o json
-    rune -0 jq -c '.API.Client.Credentials | [.url,.login]' <(output)
-    assert_output '["http://127.0.0.1:8080/","githubciXXXXXXXXXXXXXXXXXXXXXXXX"]'
+    rune -0 jq -c '.API.Client.Credentials | [.url,.login[0:32]]' <(output)
+    assert_json '["http://127.0.0.1:8080/","githubciXXXXXXXXXXXXXXXXXXXXXXXX"]'
 }
 
 @test "cscli config show-yaml" {
@@ -146,7 +146,7 @@ teardown() {
     # restore
     rm "${SIMULATION_YAML}"
     rune -0 cscli config restore "${backupdir}"
-    assert_file_exist "${SIMULATION_YAML}"
+    assert_file_exists "${SIMULATION_YAML}"
 
     # cleanup
     rm -rf -- "${backupdir:?}"
@@ -227,7 +227,7 @@ teardown() {
     rune -0 cscli metrics
     assert_output --partial "Route"
     assert_output --partial '/v1/watchers/login'
-    assert_output --partial "Local Api Metrics:"
+    assert_output --partial "Local API Metrics:"
 }
 
 @test "'cscli completion' with or without configuration file" {
@@ -283,7 +283,7 @@ teardown() {
 
 @test "cscli support dump (smoke test)" {
     rune -0 cscli support dump -f "$BATS_TEST_TMPDIR"/dump.zip
-    assert_file_exist "$BATS_TEST_TMPDIR"/dump.zip
+    assert_file_exists "$BATS_TEST_TMPDIR"/dump.zip
 }
 
 @test "cscli explain" {
@@ -321,14 +321,14 @@ teardown() {
     rune -0 cscli doc
     refute_output
     refute_stderr
-    assert_file_exist "doc/cscli.md"
+    assert_file_exists "doc/cscli.md"
     assert_file_not_exist "doc/cscli_setup.md"
 
     # commands guarded by feature flags are not documented unless the feature flag is set
 
     export CROWDSEC_FEATURE_CSCLI_SETUP="true"
     rune -0 cscli doc
-    assert_file_exist "doc/cscli_setup.md"
+    assert_file_exists "doc/cscli_setup.md"
 }
 
 @test "feature.yaml for subcommands" {

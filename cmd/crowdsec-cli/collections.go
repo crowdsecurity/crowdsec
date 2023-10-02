@@ -21,19 +21,19 @@ func NewCollectionsCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadHub(); err != nil {
-				log.Fatal(err)
+				return err
 			}
 			if csConfig.Hub == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 
 			if err := cwhub.SetHubBranch(); err != nil {
-				return fmt.Errorf("error while setting hub branch: %s", err)
+				return fmt.Errorf("while setting hub branch: %w", err)
 			}
 
 			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Info("Run 'sudo cscli hub update' to get the hub index")
-				log.Fatalf("Failed to get Hub index : %v", err)
+				return fmt.Errorf("failed to get hub index: %w", err)
 			}
 
 			return nil
@@ -47,6 +47,7 @@ func NewCollectionsCmd() *cobra.Command {
 	}
 
 	var ignoreError bool
+
 	var cmdCollectionsInstall = &cobra.Command{
 		Use:     "install collection",
 		Short:   "Install given collection(s)",
@@ -57,7 +58,7 @@ func NewCollectionsCmd() *cobra.Command {
 			return compAllItems(cwhub.COLLECTIONS, args, toComplete)
 		},
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			for _, name := range args {
 				t := cwhub.GetItem(cwhub.COLLECTIONS, name)
 				if t == nil {
@@ -67,11 +68,12 @@ func NewCollectionsCmd() *cobra.Command {
 				}
 				if err := cwhub.InstallItem(csConfig, name, cwhub.COLLECTIONS, forceAction, downloadOnly); err != nil {
 					if !ignoreError {
-						log.Fatalf("Error while installing '%s': %s", name, err)
+						return fmt.Errorf("error while installing '%s': %w", name, err)
 					}
 					log.Errorf("Error while installing '%s': %s", name, err)
 				}
 			}
+			return nil
 		},
 	}
 	cmdCollectionsInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
@@ -89,21 +91,21 @@ func NewCollectionsCmd() *cobra.Command {
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cwhub.COLLECTIONS, args, toComplete)
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if all {
 				cwhub.RemoveMany(csConfig, cwhub.COLLECTIONS, "", all, purge, forceAction)
-				return
+				return nil
 			}
 
 			if len(args) == 0 {
-				log.Fatal("Specify at least one collection to remove or '--all' flag.")
+				return fmt.Errorf("specify at least one collection to remove or '--all'")
 			}
 
 			for _, name := range args {
 				if !forceAction {
 					item := cwhub.GetItem(cwhub.COLLECTIONS, name)
 					if item == nil {
-						log.Fatalf("unable to retrieve: %s\n", name)
+						return fmt.Errorf("unable to retrieve: %s", name)
 					}
 					if len(item.BelongsToCollections) > 0 {
 						log.Warningf("%s belongs to other collections :\n%s\n", name, item.BelongsToCollections)
@@ -113,6 +115,7 @@ func NewCollectionsCmd() *cobra.Command {
 				}
 				cwhub.RemoveMany(csConfig, cwhub.COLLECTIONS, name, all, purge, forceAction)
 			}
+			return nil
 		},
 	}
 	cmdCollectionsRemove.PersistentFlags().BoolVar(&purge, "purge", false, "Delete source file too")
@@ -129,17 +132,18 @@ func NewCollectionsCmd() *cobra.Command {
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cwhub.COLLECTIONS, args, toComplete)
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if all {
 				cwhub.UpgradeConfig(csConfig, cwhub.COLLECTIONS, "", forceAction)
 			} else {
 				if len(args) == 0 {
-					log.Fatalf("no target collection to upgrade")
+					return fmt.Errorf("specify at least one collection to upgrade or '--all'")
 				}
 				for _, name := range args {
 					cwhub.UpgradeConfig(csConfig, cwhub.COLLECTIONS, name, forceAction)
 				}
 			}
+			return nil
 		},
 	}
 	cmdCollectionsUpgrade.PersistentFlags().BoolVarP(&all, "all", "a", false, "Upgrade all the collections")

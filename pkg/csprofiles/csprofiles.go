@@ -102,7 +102,7 @@ func (Profile *Runtime) GenerateDecisionFromProfile(Alert *models.Alert) ([]*mod
 
 	for _, refDecision := range Profile.Cfg.Decisions {
 		decision := models.Decision{}
-		/*the reference decision from profile is in sumulated mode */
+		/*the reference decision from profile is in simulated mode */
 		if refDecision.Simulated != nil && *refDecision.Simulated {
 			decision.Simulated = new(bool)
 			*decision.Simulated = true
@@ -168,7 +168,7 @@ func (Profile *Runtime) EvaluateProfile(Alert *models.Alert) ([]*models.Decision
 	for eIdx, expression := range Profile.RuntimeFilters {
 		output, err := expr.Run(expression, map[string]interface{}{"Alert": Alert})
 		if err != nil {
-			Profile.Logger.Warningf("failed to run whitelist expr : %v", err)
+			Profile.Logger.Warningf("failed to run profile expr for %s : %v", Profile.Cfg.Name, err)
 			return nil, matched, errors.Wrapf(err, "while running expression %s", Profile.Cfg.Filters[eIdx])
 		}
 		switch out := output.(type) {

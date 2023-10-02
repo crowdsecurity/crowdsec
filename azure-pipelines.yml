@@ -27,7 +27,7 @@ stages:
           - task: GoTool@0
             displayName: "Install Go 1.20"
             inputs:
-                version: '1.20.6'
+                version: '1.20.8'
 
           - pwsh: |
               choco install -y make

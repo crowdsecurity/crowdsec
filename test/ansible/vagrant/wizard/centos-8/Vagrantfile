@@ -10,4 +10,4 @@ Vagrant.configure('2') do |config|
 end
 
 common = '../common'
-load common if File.exists?(common)
+load common if File.exist?(common)

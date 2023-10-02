@@ -14,9 +14,9 @@ import (
 	"github.com/prometheus/prom2json"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+	"github.com/crowdsecurity/go-cs-lib/trace"
 )
 
 // FormatPrometheusMetrics is a complete rip from prom2json
@@ -244,26 +244,39 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 		decisionStatsTable(out, decisions_stats)
 		alertStatsTable(out, alerts_stats)
 		stashStatsTable(out, stash_stats)
-	} else if formatType == "json" {
-		for _, val := range []interface{}{acquis_stats, parsers_stats, buckets_stats, lapi_stats, lapi_bouncer_stats, lapi_machine_stats, lapi_decisions_stats, decisions_stats, alerts_stats, stash_stats} {
-			x, err := json.MarshalIndent(val, "", " ")
-			if err != nil {
-				return fmt.Errorf("failed to unmarshal metrics : %v", err)
-			}
-			out.Write(x)
-		}
-		return nil
-
-	} else if formatType == "raw" {
-		for _, val := range []interface{}{acquis_stats, parsers_stats, buckets_stats, lapi_stats, lapi_bouncer_stats, lapi_machine_stats, lapi_decisions_stats, decisions_stats, alerts_stats, stash_stats} {
-			x, err := yaml.Marshal(val)
-			if err != nil {
-				return fmt.Errorf("failed to unmarshal metrics : %v", err)
-			}
-			out.Write(x)
-		}
 		return nil
 	}
+
+	stats := make(map[string]any)
+
+	stats["acquisition"] = acquis_stats
+	stats["buckets"] = buckets_stats
+	stats["parsers"] = parsers_stats
+	stats["lapi"] = lapi_stats
+	stats["lapi_machine"] = lapi_machine_stats
+	stats["lapi_bouncer"] = lapi_bouncer_stats
+	stats["lapi_decisions"] = lapi_decisions_stats
+	stats["decisions"] = decisions_stats
+	stats["alerts"] = alerts_stats
+	stats["stash"] = stash_stats
+
+	switch formatType {
+	case "json":
+		x, err := json.MarshalIndent(stats, "", " ")
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal metrics : %v", err)
+		}
+		out.Write(x)
+	case "raw":
+		x, err := yaml.Marshal(stats)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal metrics : %v", err)
+		}
+		out.Write(x)
+	default:
+		return fmt.Errorf("unknown format type %s", formatType)
+	}
+
 	return nil
 }
 

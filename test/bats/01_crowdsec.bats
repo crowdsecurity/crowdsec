@@ -79,7 +79,7 @@ teardown() {
 
     rune -0 ./instance-crowdsec start-pid
     PID="$output"
-    assert_file_exist "$log_old"
+    assert_file_exists "$log_old"
     assert_file_contains "$log_old" "Starting processing data"
 
     logdir2=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp -u)
@@ -113,7 +113,7 @@ teardown() {
 
     sleep 5
 
-    assert_file_exist "$log_new"
+    assert_file_exists "$log_new"
 
     for ((i=0; i<10; i++)); do
         sleep 1
@@ -192,6 +192,12 @@ teardown() {
 }
 
 @test "crowdsec (disabled datasources)" {
+    if is_package_testing; then
+        # we can't hide journalctl in package testing
+        # because crowdsec is run from systemd
+        skip "n/a for package testing"
+    fi
+
     config_set '.common.log_media="stdout"'
 
     # a datasource cannot run - missing journalctl command

@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/time/rate"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -70,6 +70,7 @@ type Leaky struct {
 	wgPour              *sync.WaitGroup
 	wgDumpState         *sync.WaitGroup
 	mutex               *sync.Mutex //used only for TIMEMACHINE mode to allow garbage collection without races
+	orderEvent          bool
 }
 
 var BucketsPour = prometheus.NewCounterVec(
@@ -178,6 +179,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		wgPour:          bucketFactory.wgPour,
 		wgDumpState:     bucketFactory.wgDumpState,
 		mutex:           &sync.Mutex{},
+		orderEvent:      bucketFactory.orderEvent,
 	}
 	if l.BucketConfig.Capacity > 0 && l.BucketConfig.leakspeed != time.Duration(0) {
 		l.Duration = time.Duration(l.BucketConfig.Capacity+1) * l.BucketConfig.leakspeed
@@ -245,6 +247,9 @@ func LeakRoutine(leaky *Leaky) error {
 				msg = processor.OnBucketPour(leaky.BucketConfig)(*msg, leaky)
 				// if &msg == nil we stop processing
 				if msg == nil {
+					if leaky.orderEvent {
+						orderEvent[leaky.Mapkey].Done()
+					}
 					goto End
 				}
 			}
@@ -258,6 +263,9 @@ func LeakRoutine(leaky *Leaky) error {
 			for _, processor := range processors {
 				msg = processor.AfterBucketPour(leaky.BucketConfig)(*msg, leaky)
 				if msg == nil {
+					if leaky.orderEvent {
+						orderEvent[leaky.Mapkey].Done()
+					}
 					goto End
 				}
 			}
@@ -277,7 +285,10 @@ func LeakRoutine(leaky *Leaky) error {
 				}
 			}
 			firstEvent = false
-		/*we overflowed*/
+			/*we overflowed*/
+			if leaky.orderEvent {
+				orderEvent[leaky.Mapkey].Done()
+			}
 		case ofw := <-leaky.Out:
 			leaky.overflow(ofw)
 			return nil

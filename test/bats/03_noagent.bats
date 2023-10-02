@@ -40,13 +40,19 @@ teardown() {
 }
 
 @test "no agent: cscli config show" {
-    config_disable_agent
+    config_set '.crowdsec_service.enable=false'
     rune -0 cscli config show -o human
     assert_output --partial "Global:"
     assert_output --partial "cscli:"
     assert_output --partial "Local API Server:"
+    assert_output --partial "Crowdsec (disabled):"
 
-    refute_output --partial "Crowdsec:"
+    config_set 'del(.crowdsec_service)'
+    rune -0 cscli config show -o human
+    assert_output --partial "Global:"
+    assert_output --partial "cscli:"
+    assert_output --partial "Local API Server:"
+    refute_output --partial "Crowdsec"
 }
 
 @test "no agent: cscli config backup" {

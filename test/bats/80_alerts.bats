@@ -118,7 +118,7 @@ teardown() {
     rune -0 cscli alerts list --until 200d -o human
     assert_output "No active alerts"
     rune -0 cscli alerts list --until 200d -o json
-    assert_output "null"
+    assert_json "[]"
     rune -0 cscli alerts list --until 200d -o raw
     assert_output "id,scope,value,reason,country,as,decisions,created_at"
     rune -0 cscli alerts list --until 200d -o raw --machine
@@ -172,7 +172,7 @@ teardown() {
     rune -0 cscli alerts delete -i 1.2.3.4
     assert_stderr --partial 'alert(s) deleted'
     rune -0 cscli decisions list -o json
-    assert_output null
+    assert_json '[]'
 }
 
 @test "cscli alerts delete (must ignore the query limit)" {

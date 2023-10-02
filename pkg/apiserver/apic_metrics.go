@@ -7,9 +7,9 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/exp/slices"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
-	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
-	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
+	"github.com/crowdsecurity/go-cs-lib/trace"
+	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -81,9 +81,9 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 	const checkInt = 20 * time.Second
 
 	// intervals must always be > 0
-	metInts := []time.Duration{1, a.metricsIntervalFirst, a.metricsInterval}
+	metInts := []time.Duration{1*time.Millisecond, a.metricsIntervalFirst, a.metricsInterval}
 
-	log.Infof("Start send metrics to CrowdSec Central API (interval: %s once, then %s)",
+	log.Infof("Start sending metrics to CrowdSec Central API (interval: %s once, then %s)",
 		metInts[1].Round(time.Second), metInts[2])
 
 	count := -1
@@ -94,8 +94,6 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 		return metInts[count]
 	}
 
-	// store the list of machine IDs to compare
-	// with the next list
 	machineIDs := []string{}
 
 	reloadMachineIDs := func() {
@@ -106,6 +104,10 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 		}
 		machineIDs = ids
 	}
+
+	// store the list of machine IDs to compare
+	// with the next list
+	reloadMachineIDs()
 
 	checkTicker := time.NewTicker(checkInt)
 	metTicker := time.NewTicker(nextMetInt())
@@ -121,17 +123,21 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 			reloadMachineIDs()
 			if !slices.Equal(oldIDs, machineIDs) {
 				log.Infof("capi metrics: machines changed, immediate send")
-				metTicker.Reset(1)
+				metTicker.Reset(1*time.Millisecond)
 			}
 		case <-metTicker.C:
+			metTicker.Stop()
 			metrics, err := a.GetMetrics()
 			if err != nil {
-				log.Errorf("unable to get metrics (%s), will retry", err)
+				log.Errorf("unable to get metrics (%s)", err)
 			}
-			log.Info("capi metrics: sending")
-			_, _, err = a.apiClient.Metrics.Add(context.Background(), metrics)
-			if err != nil {
-				log.Errorf("capi metrics: failed: %s", err)
+			// metrics are nil if they could not be retrieved
+			if metrics != nil {
+				log.Info("capi metrics: sending")
+				_, _, err = a.apiClient.Metrics.Add(context.Background(), metrics)
+				if err != nil {
+					log.Errorf("capi metrics: failed: %s", err)
+				}
 			}
 			metTicker.Reset(nextMetInt())
 		case <-a.metricsTomb.Dying(): // if one apic routine is dying, do we kill the others?
