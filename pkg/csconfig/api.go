@@ -376,7 +376,7 @@ func (s *LocalApiServerCfg) LoadCapiWhitelists() error {
 
 	fd, err := os.Open(s.CapiWhitelistsPath)
 	if err != nil {
-		return fmt.Errorf("unable to open capi whitelist file '%s': %s", s.CapiWhitelistsPath, err)
+		return fmt.Errorf("while opening capi whitelist file: %s", err)
 	}
 
 	defer fd.Close()

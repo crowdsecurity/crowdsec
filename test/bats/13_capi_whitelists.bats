@@ -32,6 +32,13 @@ teardown() {
     assert_stderr --partial "capi whitelist file '$CAPI_WHITELISTS_YAML' does not exist"
 }
 
+@test "capi_whitelists: error on open" {
+    echo > "$CAPI_WHITELISTS_YAML"
+    chmod 000 "$CAPI_WHITELISTS_YAML"
+    rune -1 timeout 1s "${CROWDSEC}"
+    assert_stderr --partial "while opening capi whitelist file: open $CAPI_WHITELISTS_YAML: permission denied"
+}
+
 @test "capi_whitelists: empty file" {
     echo > "$CAPI_WHITELISTS_YAML"
     rune -1 timeout 1s "${CROWDSEC}"
