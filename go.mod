@@ -21,7 +21,7 @@ require (
 	github.com/c-robinson/iplib v1.0.3
 	github.com/cespare/xxhash/v2 v2.2.0
 	github.com/crowdsecurity/dlog v0.0.0-20170105205344-4fb5f8204f26
-	github.com/crowdsecurity/go-cs-lib v0.0.3
+	github.com/crowdsecurity/go-cs-lib v0.0.4
 	github.com/crowdsecurity/grokky v0.2.1
 	github.com/crowdsecurity/machineid v1.0.2
 	github.com/davecgh/go-spew v1.1.1
@@ -68,10 +68,12 @@ require (
 	github.com/segmentio/kafka-go v0.4.34
 	github.com/shirou/gopsutil/v3 v3.23.5
 	github.com/sirupsen/logrus v1.9.3
+	github.com/slack-go/slack v0.12.2
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.4
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	github.com/wasilibs/go-re2 v1.3.0
+	github.com/xhit/go-simple-mail/v2 v2.16.0
 	golang.org/x/crypto v0.9.0
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	golang.org/x/mod v0.11.0
@@ -121,6 +123,7 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
+	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/hcl/v2 v2.13.0 // indirect
 	github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect
@@ -176,6 +179,7 @@ require (
 	github.com/tidwall/gjson v1.13.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
+	github.com/toorop/go-dkim v0.0.0-20201103131630-e1cd1a0a5208 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect

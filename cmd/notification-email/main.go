@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 	"github.com/hashicorp/go-hclog"
@@ -47,6 +48,8 @@ type PluginConfig struct {
 	EncryptionType string   `yaml:"encryption_type"`
 	AuthType       string   `yaml:"auth_type"`
 	HeloHost       string   `yaml:"helo_host"`
+	ConnectTimeout string   `yaml:"connect_timeout"`
+	SendTimeout    string   `yaml:"send_timeout"`
 }
 
 type EmailPlugin struct {
@@ -77,7 +80,7 @@ func (n *EmailPlugin) Configure(ctx context.Context, config *protobufs.Config) (
 	}
 
 	if d.ReceiverEmails == nil || len(d.ReceiverEmails) == 0 {
-		return nil, fmt.Errorf("Receiver emails are not set")
+		return nil, fmt.Errorf("receiver emails are not set")
 	}
 
 	n.ConfigByName[d.Name] = d
@@ -107,6 +110,24 @@ func (n *EmailPlugin) Notify(ctx context.Context, notification *protobufs.Notifi
 	server.Encryption = EncryptionStringToType[cfg.EncryptionType]
 	server.Authentication = AuthStringToType[cfg.AuthType]
 	server.Helo = cfg.HeloHost
+
+	var err error
+
+	if cfg.ConnectTimeout != "" {
+		server.ConnectTimeout, err = time.ParseDuration(cfg.ConnectTimeout)
+		if err != nil {
+			logger.Warn(fmt.Sprintf("invalid connect timeout '%s', using default '10s'", cfg.ConnectTimeout))
+			server.ConnectTimeout = 10 * time.Second
+		}
+	}
+
+	if cfg.SendTimeout != "" {
+		server.SendTimeout, err = time.ParseDuration(cfg.SendTimeout)
+		if err != nil {
+			logger.Warn(fmt.Sprintf("invalid send timeout '%s', using default '10s'", cfg.SendTimeout))
+			server.SendTimeout = 10 * time.Second
+		}
+	}
 
 	logger.Debug("making smtp connection")
 	smtpClient, err := server.Connect()
