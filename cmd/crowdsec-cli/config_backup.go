@@ -11,7 +11,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-/* Backup crowdsec configurations to directory <dirPath> :
+/*
+	Backup crowdsec configurations to directory <dirPath>:
 
 - Main config (config.yaml)
 - Profiles config (profiles.yaml)
@@ -19,6 +20,7 @@ import (
 - Backup of API credentials (local API and online API)
 - List of scenarios, parsers, postoverflows and collections that are up-to-date
 - Tainted/local/out-of-date scenarios, parsers, postoverflows and collections
+- Acquisition files (acquis.yaml, acquis.d/*.yaml)
 */
 func backupConfigToDirectory(dirPath string) error {
 	var err error

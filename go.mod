@@ -73,7 +73,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	github.com/wasilibs/go-re2 v1.3.0
-	github.com/xhit/go-simple-mail/v2 v2.15.0
+	github.com/xhit/go-simple-mail/v2 v2.16.0
 	golang.org/x/crypto v0.9.0
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	golang.org/x/mod v0.11.0
