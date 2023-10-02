@@ -2,6 +2,7 @@ package csconfig
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -234,7 +235,7 @@ func TestLoadAPIServer(t *testing.T) {
 				DisableAPI: false,
 			},
 			expected: &LocalApiServerCfg{
-				Enable:    ptr.Of(true),
+				Enable:       ptr.Of(true),
 				PapiLogLevel: &logLevel,
 			},
 			expectedErr: "no database configuration provided",
@@ -257,5 +258,69 @@ func TestLoadAPIServer(t *testing.T) {
 
 			assert.Equal(t, test.expected, test.input.API.Server)
 		}
+	}
+}
+
+func mustParseCIDRNet(s string) *net.IPNet {
+	_, ipNet, err := net.ParseCIDR(s)
+	if err != nil {
+		panic(fmt.Sprintf("MustParseCIDR: parsing %q: %v", s, err))
+	}
+	return ipNet
+}
+
+func TestParseCapiWhitelists(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		expected    *CapiWhitelist
+		expectedErr string
+	}{
+		{
+			name:  "empty file",
+			input: "",
+			expected: &CapiWhitelist{
+				Ips:   []net.IP{},
+				Cidrs: []*net.IPNet{},
+			},
+			expectedErr: "empty file",
+		},
+		{
+			name:  "empty ip and cidr",
+			input: `{"ips": [], "cidrs": []}`,
+			expected: &CapiWhitelist{
+				Ips:   []net.IP{},
+				Cidrs: []*net.IPNet{},
+			},
+		},
+		{
+			name:  "some ip",
+			input: `{"ips": ["1.2.3.4"]}`,
+			expected: &CapiWhitelist{
+				Ips:   []net.IP{net.IPv4(1, 2, 3, 4)},
+				Cidrs: []*net.IPNet{},
+			},
+		},
+		{
+			name:  "some cidr",
+			input: `{"cidrs": ["1.2.3.0/24"]}`,
+			expected: &CapiWhitelist{
+				Ips:   []net.IP{},
+				Cidrs: []*net.IPNet{mustParseCIDRNet("1.2.3.0/24")},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			wl, err := parseCapiWhitelists(strings.NewReader(tc.input))
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
+			if tc.expectedErr != "" {
+				return
+			}
+
+			assert.Equal(t, tc.expected, wl)
+		})
 	}
 }
