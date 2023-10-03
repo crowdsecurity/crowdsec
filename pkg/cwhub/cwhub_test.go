@@ -132,6 +132,7 @@ func TestGetters(t *testing.T) {
 		if err == nil {
 			t.Fatalf("Expected error")
 		}
+
 		if fmt.Sprintf("%s", err) != "ItemType ratata is unknown" {
 			t.Fatalf("unexpected error")
 		}

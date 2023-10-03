@@ -15,10 +15,10 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
-// the walk/parser_visit function can't receive extra args
+// the walk/parserVisit function can't receive extra args
 var hubdir, installdir string
 
-func parser_visit(path string, f os.DirEntry, err error) error {
+func parserVisit(path string, f os.DirEntry, err error) error {
 	var (
 		target  Item
 		local   bool
@@ -353,7 +353,7 @@ func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
 			log.Errorf("failed %s : %s", cpath, err)
 		}
 
-		err = filepath.WalkDir(cpath, parser_visit)
+		err = filepath.WalkDir(cpath, parserVisit)
 		if err != nil {
 			return err, warnings
 		}
@@ -413,7 +413,7 @@ func GetHubIdx(hub *csconfig.Hub) error {
 	ret, err := LoadPkgIndex(bidx)
 	if err != nil {
 		if !errors.Is(err, ReferenceMissingError) {
-			log.Fatalf("Unable to load existing index : %v.", err)
+			return fmt.Errorf("unable to load existing index: %w", err)
 		}
 
 		return err
@@ -423,7 +423,7 @@ func GetHubIdx(hub *csconfig.Hub) error {
 
 	err, _ = LocalSync(hub)
 	if err != nil {
-		log.Fatalf("Failed to sync Hub index with local deployment : %v", err)
+		return fmt.Errorf("failed to sync Hub index with local deployment : %w", err)
 	}
 
 	return nil
