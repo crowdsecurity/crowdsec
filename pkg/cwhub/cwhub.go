@@ -133,12 +133,8 @@ func getSHA256(filepath string) (string, error) {
 }
 
 func GetItemMap(itemType string) map[string]Item {
-	var (
-		m  map[string]Item
-		ok bool
-	)
-
-	if m, ok = hubIdx[itemType]; !ok {
+	m, ok := hubIdx[itemType]
+	if !ok {
 		return nil
 	}
 
@@ -194,21 +190,14 @@ func GetItem(itemType string, itemName string) *Item {
 }
 
 func AddItem(itemType string, item Item) error {
-	in := false
-
 	for _, itype := range ItemTypes {
 		if itype == itemType {
-			in = true
+			hubIdx[itemType][item.Name] = item
+			return nil
 		}
 	}
 
-	if !in {
-		return fmt.Errorf("ItemType %s is unknown", itemType)
-	}
-
-	hubIdx[itemType][item.Name] = item
-
-	return nil
+	return fmt.Errorf("ItemType %s is unknown", itemType)
 }
 
 func DisplaySummary() {
