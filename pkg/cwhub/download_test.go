@@ -5,8 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
 func TestDownloadHubIdx(t *testing.T) {

@@ -146,7 +146,7 @@ func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool, updateOnly b
 func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) {
 	var tdir = hub.HubDir
 	var dataFolder = hub.DataDir
-	/*if user didn't --force, don't overwrite local, tainted, up-to-date files*/
+	// if user didn't --force, don't overwrite local, tainted, up-to-date files
 	if !overwrite {
 		if target.Tainted {
 			log.Debugf("%s : tainted, not updated", target.Name)
@@ -188,7 +188,7 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 	tmpdirs := strings.Split(tdir+"/"+target.RemotePath, "/")
 	parent_dir := strings.Join(tmpdirs[:len(tmpdirs)-1], "/")
 
-	/*ensure that target file is within target dir*/
+	// ensure that target file is within target dir
 	finalPath, err := filepath.Abs(tdir + "/" + target.RemotePath)
 	if err != nil {
 		return target, fmt.Errorf("filepath.Abs error on %s: %w", tdir+"/"+target.RemotePath, err)
@@ -196,14 +196,14 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 	if !strings.HasPrefix(finalPath, tdir) {
 		return target, fmt.Errorf("path %s escapes %s, abort", target.RemotePath, tdir)
 	}
-	/*check dir*/
+	// check dir
 	if _, err = os.Stat(parent_dir); os.IsNotExist(err) {
 		log.Debugf("%s doesn't exist, create", parent_dir)
 		if err := os.MkdirAll(parent_dir, os.ModePerm); err != nil {
 			return target, fmt.Errorf("while creating parent directories: %w", err)
 		}
 	}
-	/*check actual file*/
+	// check actual file
 	if _, err = os.Stat(finalPath); !os.IsNotExist(err) {
 		log.Warningf("%s : overwrite", target.Name)
 		log.Debugf("target: %s/%s", tdir, target.RemotePath)

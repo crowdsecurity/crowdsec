@@ -25,7 +25,7 @@ func purgeItem(hub *csconfig.Hub, target Item) (Item, error) {
 	return target, nil
 }
 
-//DisableItem to disable an item managed by the hub, removes the symlink if purge is true
+// DisableItem to disable an item managed by the hub, removes the symlink if purge is true
 func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, error) {
 	var tdir = hub.ConfigDir
 	var hdir = hub.HubDir
@@ -54,7 +54,7 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 		return target, fmt.Errorf("%s is tainted, use '--force' to overwrite", target.Name)
 	}
 
-	/*for a COLLECTIONS, disable sub-items*/
+	// for a COLLECTIONS, disable sub-items
 	if target.Type == COLLECTIONS {
 		var tmp = [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections}
 		for idx, ptr := range tmp {
@@ -133,7 +133,7 @@ func EnableItem(hub *csconfig.Hub, target Item) (Item, error) {
 	var hdir = hub.HubDir
 	var err error
 	parent_dir := filepath.Clean(tdir + "/" + target.Type + "/" + target.Stage + "/")
-	/*create directories if needed*/
+	// create directories if needed
 	if target.Installed {
 		if target.Tainted {
 			return target, fmt.Errorf("%s is tainted, won't enable unless --force", target.Name)
@@ -141,7 +141,7 @@ func EnableItem(hub *csconfig.Hub, target Item) (Item, error) {
 		if target.Local {
 			return target, fmt.Errorf("%s is local, won't enable", target.Name)
 		}
-		/* if it's a collection, check sub-items even if the collection file itself is up-to-date */
+		// if it's a collection, check sub-items even if the collection file itself is up-to-date
 		if target.UpToDate && target.Type != COLLECTIONS {
 			log.Tracef("%s is installed and up-to-date, skip.", target.Name)
 			return target, nil
@@ -154,7 +154,7 @@ func EnableItem(hub *csconfig.Hub, target Item) (Item, error) {
 		}
 	}
 
-	/*install sub-items if it's a collection*/
+	// install sub-items if it's a collection
 	if target.Type == COLLECTIONS {
 		var tmp = [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections}
 		for idx, ptr := range tmp {
@@ -179,7 +179,7 @@ func EnableItem(hub *csconfig.Hub, target Item) (Item, error) {
 		return target, nil
 	}
 
-	//tdir+target.RemotePath
+	// tdir+target.RemotePath
 	srcPath, err := filepath.Abs(hdir + "/" + target.RemotePath)
 	if err != nil {
 		return target, fmt.Errorf("while getting source path: %w", err)

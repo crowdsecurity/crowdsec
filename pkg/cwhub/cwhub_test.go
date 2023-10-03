@@ -9,8 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
 /*
@@ -189,7 +190,6 @@ func envSetup(t *testing.T) *csconfig.Config {
 	return cfg
 }
 
-
 func envTearDown(cfg *csconfig.Config) {
 	if err := os.RemoveAll(cfg.Hub.ConfigDir); err != nil {
 		log.Fatalf("failed to remove %s : %s", cfg.Hub.ConfigDir, err)
@@ -199,7 +199,6 @@ func envTearDown(cfg *csconfig.Config) {
 		log.Fatalf("failed to remove %s : %s", cfg.Hub.HubDir, err)
 	}
 }
-
 
 func testInstallItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 
