@@ -303,70 +303,72 @@ func CollecDepsCheck(v *Item) error {
 		return nil
 	}
 
+	if v.Type != COLLECTIONS {
+		return nil
+	}
+
 	// if it's a collection, ensure all the items are installed, or tag it as tainted
-	if v.Type == COLLECTIONS {
-		log.Tracef("checking submembers of %s installed:%t", v.Name, v.Installed)
+	log.Tracef("checking submembers of %s installed:%t", v.Name, v.Installed)
 
-		for idx, itemSlice := range [][]string{v.Parsers, v.PostOverflows, v.Scenarios, v.Collections} {
-			sliceType := ItemTypes[idx]
-			for _, itemName := range itemSlice {
-				item, ok := hubIdx[sliceType][itemName]
-				if !ok {
-					log.Fatalf("Referred %s %s in collection %s doesn't exist.", sliceType, itemName, v.Name)
-				}
+	for idx, itemSlice := range [][]string{v.Parsers, v.PostOverflows, v.Scenarios, v.Collections} {
+		sliceType := ItemTypes[idx]
+		for _, itemName := range itemSlice {
+			item, ok := hubIdx[sliceType][itemName]
+			if !ok {
+				log.Fatalf("Referred %s %s in collection %s doesn't exist.", sliceType, itemName, v.Name)
+			}
 
-				log.Tracef("check %s installed:%t", item.Name, item.Installed)
+			log.Tracef("check %s installed:%t", item.Name, item.Installed)
 
-				if !v.Installed {
-					continue
-				}
+			if !v.Installed {
+				continue
+			}
 
-				if item.Type == COLLECTIONS {
-					log.Tracef("collec, recurse.")
+			if item.Type == COLLECTIONS {
+				log.Tracef("collec, recurse.")
 
-					if err := CollecDepsCheck(&item); err != nil {
-						if item.Tainted {
-							v.Tainted = true
-						}
-
-						return fmt.Errorf("sub collection %s is broken: %w", item.Name, err)
+				if err := CollecDepsCheck(&item); err != nil {
+					if item.Tainted {
+						v.Tainted = true
 					}
 
-					hubIdx[sliceType][itemName] = item
-				}
-
-				// propagate the state of sub-items to set
-				if item.Tainted {
-					v.Tainted = true
-					return fmt.Errorf("tainted %s %s, tainted", sliceType, itemName)
-				}
-
-				if !item.Installed && v.Installed {
-					v.Tainted = true
-					return fmt.Errorf("missing %s %s, tainted", sliceType, itemName)
-				}
-
-				if !item.UpToDate {
-					v.UpToDate = false
-					return fmt.Errorf("outdated %s %s", sliceType, itemName)
-				}
-
-				skip := false
-
-				for idx := range item.BelongsToCollections {
-					if item.BelongsToCollections[idx] == v.Name {
-						skip = true
-					}
-				}
-
-				if !skip {
-					item.BelongsToCollections = append(item.BelongsToCollections, v.Name)
+					return fmt.Errorf("sub collection %s is broken: %w", item.Name, err)
 				}
 
 				hubIdx[sliceType][itemName] = item
-
-				log.Tracef("checking for %s - tainted:%t uptodate:%t", itemName, v.Tainted, v.UpToDate)
 			}
+
+			// propagate the state of sub-items to set
+			if item.Tainted {
+				v.Tainted = true
+				return fmt.Errorf("tainted %s %s, tainted", sliceType, itemName)
+			}
+
+			if !item.Installed && v.Installed {
+				v.Tainted = true
+				return fmt.Errorf("missing %s %s, tainted", sliceType, itemName)
+			}
+
+			if !item.UpToDate {
+				v.UpToDate = false
+				return fmt.Errorf("outdated %s %s", sliceType, itemName)
+			}
+
+			skip := false
+
+			for idx := range item.BelongsToCollections {
+				if item.BelongsToCollections[idx] == v.Name {
+					skip = true
+				}
+			}
+
+			if !skip {
+				item.BelongsToCollections = append(item.BelongsToCollections, v.Name)
+			}
+
+			hubIdx[sliceType][itemName] = item
+
+			log.Tracef("checking for %s - tainted:%t uptodate:%t", itemName, v.Tainted, v.UpToDate)
 		}
 	}
 
