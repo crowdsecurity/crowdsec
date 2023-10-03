@@ -105,7 +105,7 @@ func (w walker) getItemInfo(path string) (itemFileInfo, bool, error) {
 	}
 
 	log.Tracef("stage:%s ftype:%s", ret.stage, ret.ftype)
-	// log.Printf("%s -> name:%s stage:%s", path, fname, stage)
+	// log.Infof("%s -> name:%s stage:%s", path, fname, stage)
 
 	if ret.stage == SCENARIOS {
 		ret.ftype = SCENARIOS
@@ -181,7 +181,7 @@ func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
 	if local && !inhub {
 		log.Tracef("%s is a local file, skip", path)
 		skippedLocal++
-		//	log.Printf("local scenario, skip.")
+		//	log.Infof("local scenario, skip.")
 
 		_, fileName := filepath.Split(path)
 
@@ -255,7 +255,7 @@ func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
 		for _, version := range versions {
 			val := item.Versions[version]
 			if sha != val.Digest {
-				// log.Printf("matching filenames, wrong hash %s != %s -- %s", sha, val.Digest, spew.Sdump(v))
+				// log.Infof("matching filenames, wrong hash %s != %s -- %s", sha, val.Digest, spew.Sdump(v))
 				continue
 			}
 

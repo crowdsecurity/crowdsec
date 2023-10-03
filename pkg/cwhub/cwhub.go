@@ -203,11 +203,11 @@ func AddItem(itemType string, item Item) error {
 }
 
 func DisplaySummary() {
-	log.Printf("Loaded %d collecs, %d parsers, %d scenarios, %d post-overflow parsers", len(hubIdx[COLLECTIONS]),
+	log.Infof("Loaded %d collecs, %d parsers, %d scenarios, %d post-overflow parsers", len(hubIdx[COLLECTIONS]),
 		len(hubIdx[PARSERS]), len(hubIdx[SCENARIOS]), len(hubIdx[PARSERS_OVFLW]))
 
 	if skippedLocal > 0 || skippedTainted > 0 {
-		log.Printf("unmanaged items: %d local, %d tainted", skippedLocal, skippedTainted)
+		log.Infof("unmanaged items: %d local, %d tainted", skippedLocal, skippedTainted)
 	}
 }
 

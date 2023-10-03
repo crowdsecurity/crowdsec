@@ -403,7 +403,7 @@ func TestInstallCollection(t *testing.T) {
 
 		it = hubIdx[COLLECTIONS][it.Name]
 		x := GetHubStatusForItemType(COLLECTIONS, it.Name, false)
-		log.Printf("%+v", x)
+		log.Infof("%+v", x)
 
 		break
 	}
@@ -425,7 +425,7 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 	response.Header.Set("Content-Type", "application/json")
 
-	log.Printf("---> %s", req.URL.Path)
+	log.Infof("---> %s", req.URL.Path)
 
 	// FAKE PARSER
 	resp, ok := responseByPath[req.URL.Path]
