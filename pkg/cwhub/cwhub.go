@@ -16,17 +16,17 @@ import (
 )
 
 // managed configuration types
-var PARSERS = "parsers"
-var PARSERS_OVFLW = "postoverflows"
-var SCENARIOS = "scenarios"
-var COLLECTIONS = "collections"
+const PARSERS = "parsers"
+const PARSERS_OVFLW = "postoverflows"
+const SCENARIOS = "scenarios"
+const COLLECTIONS = "collections"
 var ItemTypes = []string{PARSERS, PARSERS_OVFLW, SCENARIOS, COLLECTIONS}
 
 var hubIdx map[string]map[string]Item
 
 var RawFileURLTemplate = "https://hub-cdn.crowdsec.net/%s/%s"
 var HubBranch = "master"
-var HubIndexFile = ".index.json"
+const HubIndexFile = ".index.json"
 
 type ItemVersion struct {
 	Digest     string `json:"digest,omitempty"`
