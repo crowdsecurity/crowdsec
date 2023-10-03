@@ -81,30 +81,41 @@ type Item struct {
 	Collections   []string `json:"collections,omitempty"   yaml:"collections,omitempty"`
 }
 
-func (i *Item) toHubStatus() ItemHubStatus {
-	hubStatus := ItemHubStatus{}
-	hubStatus.Name = i.Name
-	hubStatus.LocalVersion = i.LocalVersion
-	hubStatus.LocalPath = i.LocalPath
-	hubStatus.Description = i.Description
-
-	status, ok, warning, managed := ItemStatus(*i)
-	hubStatus.Status = status
-
+func toEmoji(managed bool, installed bool, warning bool, ok bool) emoji.Emoji {
 	if !managed {
-		hubStatus.UTF8_Status = fmt.Sprintf("%v  %s", emoji.House, status)
-	} else if !i.Installed {
-		hubStatus.UTF8_Status = fmt.Sprintf("%v  %s", emoji.Prohibited, status)
-	} else if warning {
-		hubStatus.UTF8_Status = fmt.Sprintf("%v  %s", emoji.Warning, status)
-	} else if ok {
-		hubStatus.UTF8_Status = fmt.Sprintf("%v  %s", emoji.CheckMark, status)
+		return emoji.House
 	}
 
-	return hubStatus
+	if !installed {
+		return emoji.Prohibited
+	}
+
+	if warning {
+		return emoji.Warning
+	}
+
+	if ok {
+		return emoji.CheckMark
+	}
+
+	// XXX: this is new
+	return emoji.QuestionMark
 }
 
-// XXX: can we remve these globals?
+func (i *Item) toHubStatus() ItemHubStatus {
+	status, ok, warning, managed := ItemStatus(*i)
+
+	return ItemHubStatus{
+		Name:         i.Name,
+		LocalVersion: i.LocalVersion,
+		LocalPath:    i.LocalPath,
+		Description:  i.Description,
+		Status:       status,
+		UTF8_Status:  fmt.Sprintf("%v  %s", toEmoji(managed, i.Installed, warning, ok), status),
+	}
+}
+
+// XXX: can we remove these globals?
 var skippedLocal = 0
 var skippedTainted = 0
 
