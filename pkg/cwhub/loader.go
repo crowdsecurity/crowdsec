@@ -18,6 +18,10 @@ import (
 // the walk/parserVisit function can't receive extra args
 var hubdir, installdir string
 
+func validItemFileName(vname string, fauthor string, fname string) bool {
+	return (fauthor+"/"+fname == vname+".yaml") || (fauthor+"/"+fname == vname+".yml")
+}
+
 func parserVisit(path string, f os.DirEntry, err error) error {
 	var (
 		target  Item
@@ -171,8 +175,9 @@ func parserVisit(path string, f os.DirEntry, err error) error {
 			if fauthor != v.Author {
 				continue
 			}
+
 			// wrong file
-			if CheckName(v.Name, fauthor, fname) {
+			if !validItemFileName(v.Name, fauthor, fname) {
 				continue
 			}
 
