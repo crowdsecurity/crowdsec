@@ -167,7 +167,12 @@ func (erp ExprRuntimeDebug) extractCode(ip int, program *vm.Program, parts []str
 func autoQuote(v any) string {
 	switch x := v.(type) {
 	case string:
-		return fmt.Sprintf("%q", x)
+		//let's avoid printing long strings. it can happen ie. when we are debugging expr with `File()` or similar helpers
+		if len(x) > 40 {
+			return fmt.Sprintf("%q", x[:40]+"...")
+		} else {
+			return fmt.Sprintf("%q", x)
+		}
 	default:
 		return fmt.Sprintf("%v", x)
 	}
