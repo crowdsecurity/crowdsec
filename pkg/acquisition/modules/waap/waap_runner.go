@@ -61,13 +61,10 @@ func (r *WaapRunner) Init() error {
 	return nil
 }
 
-func (r *WaapRunner) ProcessInBandRules(request *waf.ParsedRequest) error {
+func (r *WaapRunner) processRequest(tx experimental.FullTransaction, request *waf.ParsedRequest) error {
 	var in *corazatypes.Interruption
 	var err error
-
-	tx := r.WaapInbandEngine.NewTransactionWithID(request.UUID)
-
-	request.Tx = tx.(experimental.FullTransaction)
+	request.Tx = tx
 
 	if request.Tx.IsRuleEngineOff() {
 		r.logger.Debugf("rule engine is off, skipping")
@@ -76,7 +73,7 @@ func (r *WaapRunner) ProcessInBandRules(request *waf.ParsedRequest) error {
 
 	defer func() {
 		request.Tx.ProcessLogging()
-		//We don't close the transaction here, as it will reset coraza internal state and break out of bands rules
+		//We don't close the transaction here, as it will reset coraza internal state and break variable tracking
 	}()
 
 	request.Tx.ProcessConnection(request.RemoteAddr, 0, "", 0)
@@ -123,16 +120,23 @@ func (r *WaapRunner) ProcessInBandRules(request *waf.ParsedRequest) error {
 	}
 
 	if in != nil {
-		r.logger.Infof("inband rules matched for body : %d", in.RuleID)
+		r.logger.Infof("rules matched for body : %d", in.RuleID)
 		return nil
 	}
 
 	return nil
 }
 
-func (r *WaapRunner) ProcessOutOfBandRules(request waf.ParsedRequest) (*corazatypes.Interruption, error) {
+func (r *WaapRunner) ProcessInBandRules(request *waf.ParsedRequest) error {
+	tx := r.WaapInbandEngine.NewTransactionWithID(request.UUID)
+	err := r.processRequest(tx.(experimental.FullTransaction), request)
+	return err
+}
 
-	return nil, nil
+func (r *WaapRunner) ProcessOutOfBandRules(request *waf.ParsedRequest) error {
+	tx := r.WaapOutbandEngine.NewTransactionWithID(request.UUID)
+	err := r.processRequest(tx.(experimental.FullTransaction), request)
+	return err
 }
 
 func (r *WaapRunner) Run(t *tomb.Tomb) error {
@@ -181,6 +185,17 @@ func (r *WaapRunner) Run(t *tomb.Tomb) error {
 
 			// send back the result to the HTTP handler for the InBand part
 			request.ResponseChannel <- r.WaapRuntime.Response
+
+			err = r.ProcessOutOfBandRules(&request)
+			if err != nil {
+				r.logger.Errorf("unable to process OutOfBand rules: %s", err)
+				continue
+			}
+
+			if in := request.Tx.Interruption(); in != nil {
+				r.logger.Debugf("outband rules matched : %d", in.RuleID)
+				r.WaapRuntime.Response.OutOfBandInterrupt = true
+			}
 
 		}
 	}
