@@ -89,17 +89,17 @@ func (o *OpOutput) String() string {
 	case o.JumpIf && o.IfTrue:
 		if o.ConditionResult != nil {
 			if *o.ConditionResult {
-				return ret + "OR[KO]"
+				return ret + "OR -> false"
 			}
-			return ret + "OR[OK]"
+			return ret + "OR -> true"
 		}
 		return ret + "OR(?)"
 	case o.JumpIf && o.IfFalse:
 		if o.ConditionResult != nil {
 			if *o.ConditionResult {
-				return ret + "AND[OK]"
+				return ret + "AND -> true"
 			}
-			return ret + "AND[KO]"
+			return ret + "AND -> false"
 		}
 		return ret + "AND(?)"
 	}
@@ -161,7 +161,7 @@ func (erp ExprRuntimeDebug) extractCode(ip int, program *vm.Program, parts []str
 	}
 
 	log.Tracef("#code extract for ip %d [%s] -> '%s'", ip, parts[1], code_snippet)
-	return strings.Trim(code_snippet, " \t\n")
+	return cleanTextForDebug(code_snippet)
 }
 
 func autoQuote(v any) string {
@@ -191,7 +191,7 @@ func (erp ExprRuntimeDebug) ipDebug(ip int, vm *vm.VM, program *vm.Program, part
 				num_items--
 			}
 			outputs[prevIdxOut].Finalized = true
-		} else if outputs[prevIdxOut].Comparison && !outputs[prevIdxOut].Finalized {
+		} else if (outputs[prevIdxOut].Comparison || outputs[prevIdxOut].Condition) && !outputs[prevIdxOut].Finalized {
 			stack := vm.Stack()
 			outputs[prevIdxOut].StrConditionResult = fmt.Sprintf("%+v", stack)
 			if val, ok := stack[0].(bool); ok {
@@ -359,8 +359,14 @@ func Run(program *vm.Program, env interface{}, logger *log.Entry, debug bool) (a
 	return expr.Run(program, env)
 }
 
+func cleanTextForDebug(text string) string {
+	text = strings.Join(strings.Fields(text), " ")
+	text = strings.Trim(text, " \t\n")
+	return text
+}
+
 func DisplayExprDebug(program *vm.Program, outputs []OpOutput, logger *log.Entry, ret any) {
-	logger.Debugf("dbg(result=%v): %s", ret, strings.ReplaceAll(program.Source.Content(), "\n", ""))
+	logger.Debugf("dbg(result=%v): %s", ret, cleanTextForDebug(program.Source.Content()))
 	for _, output := range outputs {
 		logger.Debugf("%s", output.String())
 	}

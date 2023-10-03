@@ -218,7 +218,7 @@ func TestBaseDbg(t *testing.T) {
 				{Code: "== 42", CodeDepth: 0, Comparison: true, Left: "42", Right: "42", StrConditionResult: "[true]", ConditionResult: boolPtr(true), Finalized: true},
 				{Code: "&&", CodeDepth: 0, JumpIf: true, IfFalse: true, StrConditionResult: "true", ConditionResult: boolPtr(true), Finalized: false},
 				{Code: "== 'hello world'", CodeDepth: 0, Comparison: true, Left: "\"hello world\"", Right: "\"hello world\"", StrConditionResult: "[true]", ConditionResult: boolPtr(true), Finalized: true},
-				{Code: "&&\t\t\t\t\t(", CodeDepth: 0, JumpIf: true, IfFalse: true, StrConditionResult: "true", ConditionResult: boolPtr(true), Finalized: false},
+				{Code: "&& (", CodeDepth: 0, JumpIf: true, IfFalse: true, StrConditionResult: "true", ConditionResult: boolPtr(true), Finalized: false},
 				{Code: "== 41", CodeDepth: 0, Comparison: true, Left: "42", Right: "41", StrConditionResult: "[false]", ConditionResult: boolPtr(false), Finalized: true},
 				{Code: "||", CodeDepth: 0, JumpIf: true, IfTrue: true, StrConditionResult: "false", ConditionResult: boolPtr(false), Finalized: false},
 				{Code: "== 42)", CodeDepth: 0, Comparison: true, Left: "42", Right: "42", StrConditionResult: "true", ConditionResult: boolPtr(true), Finalized: true},
@@ -232,6 +232,24 @@ func TestBaseDbg(t *testing.T) {
 				{Code: "Upper(base_string)", CodeDepth: 0, Func: true, FuncName: "Upper", Args: []string{"\"hello world\""}, FuncResults: []string{"\"HELLO WORLD\""}, ConditionResult: (*bool)(nil), Finalized: true},
 				{Code: "Upper('wOrlD')", CodeDepth: 0, Func: true, FuncName: "Upper", Args: []string{"\"wOrlD\""}, FuncResults: []string{"\"WORLD\""}, ConditionResult: (*bool)(nil), Finalized: true},
 				{Code: "contains Upper('wOrlD')", CodeDepth: 0, Args: []string{"\"HELLO WORLD\"", "\"WORLD\""}, Condition: true, ConditionContains: true, StrConditionResult: "true", ConditionResult: boolPtr(true), Finalized: true},
+			},
+		},
+		{
+			Name: "upper + complex",
+			Expr: `( Upper(base_string) contains Upper('/someurl?x=1') || 
+								Upper(base_string) contains Upper('/someotherurl?account-name=admin&account-status=1&ow=cmd') ) 
+								and base_string startsWith ('40') and Upper(base_string) == 'POST'`,
+			Env: defaultEnv,
+			ExpectedOutputs: []OpOutput{
+				{Code: "Upper(base_string)", CodeDepth: 0, Func: true, FuncName: "Upper", Args: []string{"\"hello world\""}, FuncResults: []string{"\"HELLO WORLD\""}, ConditionResult: (*bool)(nil), Finalized: true},
+				{Code: "Upper('/someurl?x=1')", CodeDepth: 0, Func: true, FuncName: "Upper", Args: []string{"\"/someurl?x=1\""}, FuncResults: []string{"\"/SOMEURL?X=1\""}, ConditionResult: (*bool)(nil), Finalized: true},
+				{Code: "contains Upper('/someurl?x=1')", CodeDepth: 0, Args: []string{"\"HELLO WORLD\"", "\"/SOMEURL?X=1\""}, Condition: true, ConditionContains: true, StrConditionResult: "[false]", ConditionResult: boolPtr(false), Finalized: true},
+				{Code: "||", CodeDepth: 0, JumpIf: true, IfTrue: true, StrConditionResult: "false", ConditionResult: boolPtr(false), Finalized: false},
+				{Code: "Upper(base_string)", CodeDepth: 0, Func: true, FuncName: "Upper", Args: []string{"\"hello world\""}, FuncResults: []string{"\"HELLO WORLD\""}, ConditionResult: (*bool)(nil), Finalized: true},
+				{Code: "Upper('/someotherurl?account-name=admin&account-status=1&ow=cmd') )", CodeDepth: 0, Func: true, FuncName: "Upper", Args: []string{"\"/someotherurl?account-name=admin&account-status=1&ow=cmd\""}, FuncResults: []string{"\"/SOMEOTHERURL?ACCOUNT-NAME=ADMIN&ACCOUNT-STATUS=1&OW=CMD\""}, ConditionResult: (*bool)(nil), Finalized: true},
+				{Code: "contains Upper('/someotherurl?account-name=admin&account-status=1&ow=cmd') )", CodeDepth: 0, Args: []string{"\"HELLO WORLD\"", "\"/SOMEOTHERURL?ACCOUNT-NAME=ADMIN&ACCOUNT-STATUS=1&OW=CMD\""}, Condition: true, ConditionContains: true, StrConditionResult: "[false]", ConditionResult: boolPtr(false), Finalized: true},
+				{Code: "and", CodeDepth: 0, JumpIf: true, IfFalse: true, StrConditionResult: "false", ConditionResult: boolPtr(false), Finalized: false},
+				{Code: "and", CodeDepth: 0, JumpIf: true, IfFalse: true, StrConditionResult: "false", ConditionResult: boolPtr(false), Finalized: true},
 			},
 		},
 	}
