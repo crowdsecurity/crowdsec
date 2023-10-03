@@ -391,22 +391,24 @@ func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
 	}
 
 	for k, v := range hubIdx[COLLECTIONS] {
-		if v.Installed {
-			versionStatus := GetVersionStatus(&v)
-			switch versionStatus {
-			case 0: // latest
-				if err := CollecDepsCheck(&v); err != nil {
-					warnings = append(warnings, fmt.Sprintf("dependency of %s : %s", v.Name, err))
-					hubIdx[COLLECTIONS][k] = v
-				}
-			case 1: // not up-to-date
-				warnings = append(warnings, fmt.Sprintf("update for collection %s available (currently:%s, latest:%s)", v.Name, v.LocalVersion, v.Version))
-			default: // version is higher than the highest available from hub?
-				warnings = append(warnings, fmt.Sprintf("collection %s is in the future (currently:%s, latest:%s)", v.Name, v.LocalVersion, v.Version))
-			}
-
-			log.Debugf("installed (%s) - status:%d | installed:%s | latest : %s | full : %+v", v.Name, versionStatus, v.LocalVersion, v.Version, v.Versions)
+		if !v.Installed {
+			continue
 		}
+
+		versionStatus := GetVersionStatus(&v)
+		switch versionStatus {
+		case 0: // latest
+			if err := CollecDepsCheck(&v); err != nil {
+				warnings = append(warnings, fmt.Sprintf("dependency of %s : %s", v.Name, err))
+				hubIdx[COLLECTIONS][k] = v
+			}
+		case 1: // not up-to-date
+			warnings = append(warnings, fmt.Sprintf("update for collection %s available (currently:%s, latest:%s)", v.Name, v.LocalVersion, v.Version))
+		default: // version is higher than the highest available from hub?
+			warnings = append(warnings, fmt.Sprintf("collection %s is in the future (currently:%s, latest:%s)", v.Name, v.LocalVersion, v.Version))
+		}
+
+		log.Debugf("installed (%s) - status:%d | installed:%s | latest : %s | full : %+v", v.Name, versionStatus, v.LocalVersion, v.Version, v.Versions)
 	}
 
 	return nil, warnings
@@ -448,6 +450,7 @@ func GetHubIdx(hub *csconfig.Hub) error {
 			return fmt.Errorf("unable to load existing index: %w", err)
 		}
 
+		// XXX: why the error check if we bail out anyway?
 		return err
 	}
 
@@ -486,17 +489,18 @@ func LoadPkgIndex(buff []byte) (map[string]map[string]Item, error) {
 			item.FileName = x[len(x)-1]
 			RawIndex[itemType][idx] = item
 
+			if itemType != COLLECTIONS {
+				continue
+			}
+
 			// if it's a collection, check its sub-items are present
 			// XXX should be done later
-			if itemType == COLLECTIONS {
-				var tmp = [][]string{item.Parsers, item.PostOverflows, item.Scenarios, item.Collections}
-				for idx, ptr := range tmp {
-					ptrtype := ItemTypes[idx]
-					for _, p := range ptr {
-						if _, ok := RawIndex[ptrtype][p]; !ok {
-							log.Errorf("Referred %s %s in collection %s doesn't exist.", ptrtype, p, item.Name)
-							missingItems = append(missingItems, p)
-						}
+			for idx, ptr := range [][]string{item.Parsers, item.PostOverflows, item.Scenarios, item.Collections} {
+				ptrtype := ItemTypes[idx]
+				for _, p := range ptr {
+					if _, ok := RawIndex[ptrtype][p]; !ok {
+						log.Errorf("Referred %s %s in collection %s doesn't exist.", ptrtype, p, item.Name)
+						missingItems = append(missingItems, p)
 					}
 				}
 			}
