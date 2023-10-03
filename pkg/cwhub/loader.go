@@ -180,7 +180,7 @@ func parser_visit(path string, f os.DirEntry, err error) error {
 				log.Tracef("marking %s as downloaded", v.Name)
 				v.Downloaded = true
 			}
-		} else if CheckSuffix(hubpath, v.RemotePath) {
+		} else if !hasPathSuffix(hubpath, v.RemotePath) {
 			// wrong file
 			// <type>/<stage>/<author>/<name>.yaml
 			continue

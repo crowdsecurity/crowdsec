@@ -7,12 +7,11 @@ import "strings"
 
 const PathSeparator = "/"
 
-func CheckSuffix(hubpath string, remotePath string) bool {
-	if !strings.HasSuffix(hubpath, remotePath) {
+func hasPathSuffix(hubpath string, remotePath string) bool {
+	if strings.HasSuffix(hubpath, remotePath) {
 		return true
-	} else {
-		return false
 	}
+	return false
 }
 
 func CheckName(vname string, fauthor string, fname string) bool {
