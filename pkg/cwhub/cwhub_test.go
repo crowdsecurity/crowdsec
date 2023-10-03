@@ -155,13 +155,13 @@ func TestIndexDownload(t *testing.T) {
 	}
 }
 
-func getTestCfg() (cfg *csconfig.Config) {
-	cfg = &csconfig.Config{Hub: &csconfig.Hub{}}
+func getTestCfg() *csconfig.Config {
+	cfg := &csconfig.Config{Hub: &csconfig.Hub{}}
 	cfg.Hub.ConfigDir, _ = filepath.Abs("./install")
 	cfg.Hub.HubDir, _ = filepath.Abs("./hubdir")
 	cfg.Hub.HubIndexFile = filepath.Clean("./hubdir/.index.json")
 
-	return
+	return cfg
 }
 
 func envSetup(t *testing.T) *csconfig.Config {
