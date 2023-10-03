@@ -11,16 +11,15 @@ import (
 )
 
 func purgeItem(hub *csconfig.Hub, target Item) (Item, error) {
-	var hdir = hub.HubDir
-	hubpath := hdir + "/" + target.RemotePath
+	itempath := hub.HubDir + "/" + target.RemotePath
 
 	// disable hub file
-	if err := os.Remove(hubpath); err != nil {
+	if err := os.Remove(itempath); err != nil {
 		return target, fmt.Errorf("while removing file: %w", err)
 	}
 
 	target.Downloaded = false
-	log.Infof("Removed source file [%s] : %s", target.Name, hubpath)
+	log.Infof("Removed source file [%s]: %s", target.Name, itempath)
 	hubIdx[target.Type][target.Name] = target
 
 	return target, nil
@@ -29,9 +28,6 @@ func purgeItem(hub *csconfig.Hub, target Item) (Item, error) {
 // DisableItem to disable an item managed by the hub, removes the symlink if purge is true
 func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, error) {
 	var err error
-
-	tdir := hub.ConfigDir
-	hdir := hub.HubDir
 
 	if !target.Installed {
 		if purge {
@@ -44,7 +40,7 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 		return target, nil
 	}
 
-	syml, err := filepath.Abs(tdir + "/" + target.Type + "/" + target.Stage + "/" + target.FileName)
+	syml, err := filepath.Abs(hub.ConfigDir + "/" + target.Type + "/" + target.Stage + "/" + target.FileName)
 	if err != nil {
 		return Item{}, err
 	}
@@ -100,14 +96,17 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 			log.Warningf("%s (%s) isn't a symlink, can't disable", target.Name, syml)
 			return target, fmt.Errorf("%s isn't managed by hub", target.Name)
 		}
+
 		hubpath, err := os.Readlink(syml)
 		if err != nil {
 			return target, fmt.Errorf("while reading symlink: %w", err)
 		}
-		absPath, err := filepath.Abs(hdir + "/" + target.RemotePath)
+
+		absPath, err := filepath.Abs(hub.HubDir + "/" + target.RemotePath)
 		if err != nil {
 			return target, fmt.Errorf("while abs path: %w", err)
 		}
+
 		if hubpath != absPath {
 			log.Warningf("%s (%s) isn't a symlink to %s", target.Name, syml, absPath)
 			return target, fmt.Errorf("%s isn't managed by hub", target.Name)
@@ -117,6 +116,7 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 		if err = os.Remove(syml); err != nil {
 			return target, fmt.Errorf("while removing symlink: %w", err)
 		}
+
 		log.Infof("Removed symlink [%s] : %s", target.Name, syml)
 	}
 
@@ -139,10 +139,8 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 func EnableItem(hub *csconfig.Hub, target Item) (Item, error) {
 	var err error
 
-	tdir := hub.ConfigDir
-	hdir := hub.HubDir
+	parent_dir := filepath.Clean(hub.ConfigDir + "/" + target.Type + "/" + target.Stage + "/")
 
-	parent_dir := filepath.Clean(tdir + "/" + target.Type + "/" + target.Stage + "/")
 	// create directories if needed
 	if target.Installed {
 		if target.Tainted {
@@ -152,6 +150,7 @@ func EnableItem(hub *csconfig.Hub, target Item) (Item, error) {
 		if target.Local {
 			return target, fmt.Errorf("%s is local, won't enable", target.Name)
 		}
+
 		// if it's a collection, check sub-items even if the collection file itself is up-to-date
 		if target.UpToDate && target.Type != COLLECTIONS {
 			log.Tracef("%s is installed and up-to-date, skip.", target.Name)
@@ -192,8 +191,8 @@ func EnableItem(hub *csconfig.Hub, target Item) (Item, error) {
 		return target, nil
 	}
 
-	// tdir+target.RemotePath
-	srcPath, err := filepath.Abs(hdir + "/" + target.RemotePath)
+	// hub.ConfigDir + target.RemotePath
+	srcPath, err := filepath.Abs(hub.HubDir + "/" + target.RemotePath)
 	if err != nil {
 		return target, fmt.Errorf("while getting source path: %w", err)
 	}
