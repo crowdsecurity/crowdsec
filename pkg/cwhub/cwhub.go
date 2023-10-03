@@ -88,6 +88,7 @@ func (i *Item) toHubStatus() ItemHubStatus {
 
 	status, ok, warning, managed := ItemStatus(*i)
 	hubStatus.Status = status
+
 	if !managed {
 		hubStatus.UTF8_Status = fmt.Sprintf("%v  %s", emoji.House, status)
 	} else if !i.Installed {
@@ -97,6 +98,7 @@ func (i *Item) toHubStatus() ItemHubStatus {
 	} else if ok {
 		hubStatus.UTF8_Status = fmt.Sprintf("%v  %s", emoji.CheckMark, status)
 	}
+
 	return hubStatus
 }
 
@@ -131,12 +133,15 @@ func getSHA256(filepath string) (string, error) {
 }
 
 func GetItemMap(itemType string) map[string]Item {
-	var m map[string]Item
-	var ok bool
+	var (
+		m map[string]Item
+		ok bool
+	)
 
 	if m, ok = hubIdx[itemType]; !ok {
 		return nil
 	}
+
 	return m
 }
 
@@ -144,6 +149,7 @@ func GetItemMap(itemType string) map[string]Item {
 func GetItemByPath(itemType string, itemPath string) (*Item, error) {
 	// try to resolve symlink
 	finalName := ""
+
 	f, err := os.Lstat(itemPath)
 	if err != nil {
 		return nil, fmt.Errorf("while performing lstat on %s: %w", itemPath, err)
@@ -172,8 +178,10 @@ func GetItemByPath(itemType string, itemPath string) (*Item, error) {
 		if v, ok := m[finalName]; ok {
 			return &v, nil
 		}
+
 		return nil, fmt.Errorf("%s not found in %s", finalName, itemType)
 	}
+
 	return nil, fmt.Errorf("item type %s doesn't exist", itemType)
 }
 
@@ -181,26 +189,32 @@ func GetItem(itemType string, itemName string) *Item {
 	if m, ok := GetItemMap(itemType)[itemName]; ok {
 		return &m
 	}
+
 	return nil
 }
 
 func AddItem(itemType string, item Item) error {
 	in := false
+
 	for _, itype := range ItemTypes {
 		if itype == itemType {
 			in = true
 		}
 	}
+
 	if !in {
 		return fmt.Errorf("ItemType %s is unknown", itemType)
 	}
+
 	hubIdx[itemType][item.Name] = item
+
 	return nil
 }
 
 func DisplaySummary() {
 	log.Printf("Loaded %d collecs, %d parsers, %d scenarios, %d post-overflow parsers", len(hubIdx[COLLECTIONS]),
 		len(hubIdx[PARSERS]), len(hubIdx[SCENARIOS]), len(hubIdx[PARSERS_OVFLW]))
+
 	if skippedLocal > 0 || skippedTainted > 0 {
 		log.Printf("unmanaged items: %d local, %d tainted", skippedLocal, skippedTainted)
 	}
@@ -210,6 +224,7 @@ func DisplaySummary() {
 func ItemStatus(v Item) (string, bool, bool, bool) {
 	strret := "disabled"
 	Ok := false
+
 	if v.Installed {
 		Ok = true
 		strret = "enabled"
@@ -230,6 +245,7 @@ func ItemStatus(v Item) (string, bool, bool, bool) {
 		strret += ",update-available"
 		Warning = true
 	}
+
 	return strret, Ok, Warning, Managed
 }
 
@@ -240,9 +256,11 @@ func GetInstalledScenariosAsString() ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("while fetching scenarios: %w", err)
 	}
+
 	for _, it := range items {
 		retStr = append(retStr, it.Name)
 	}
+
 	return retStr, nil
 }
 
@@ -252,11 +270,13 @@ func GetInstalledScenarios() ([]Item, error) {
 	if _, ok := hubIdx[SCENARIOS]; !ok {
 		return nil, fmt.Errorf("no scenarios in hubIdx")
 	}
+
 	for _, item := range hubIdx[SCENARIOS] {
 		if item.Installed {
 			retItems = append(retItems, item)
 		}
 	}
+
 	return retItems, nil
 }
 
@@ -266,11 +286,13 @@ func GetInstalledParsers() ([]Item, error) {
 	if _, ok := hubIdx[PARSERS]; !ok {
 		return nil, fmt.Errorf("no parsers in hubIdx")
 	}
+
 	for _, item := range hubIdx[PARSERS] {
 		if item.Installed {
 			retItems = append(retItems, item)
 		}
 	}
+
 	return retItems, nil
 }
 
@@ -281,9 +303,11 @@ func GetInstalledParsersAsString() ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("while fetching parsers: %w", err)
 	}
+
 	for _, it := range items {
 		retStr = append(retStr, it.Name)
 	}
+
 	return retStr, nil
 }
 
@@ -293,11 +317,13 @@ func GetInstalledPostOverflows() ([]Item, error) {
 	if _, ok := hubIdx[PARSERS_OVFLW]; !ok {
 		return nil, fmt.Errorf("no post overflows in hubIdx")
 	}
+
 	for _, item := range hubIdx[PARSERS_OVFLW] {
 		if item.Installed {
 			retItems = append(retItems, item)
 		}
 	}
+
 	return retItems, nil
 }
 
@@ -308,9 +334,11 @@ func GetInstalledPostOverflowsAsString() ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("while fetching post overflows: %w", err)
 	}
+
 	for _, it := range items {
 		retStr = append(retStr, it.Name)
 	}
+
 	return retStr, nil
 }
 
@@ -325,6 +353,7 @@ func GetInstalledCollectionsAsString() ([]string, error) {
 	for _, it := range items {
 		retStr = append(retStr, it.Name)
 	}
+
 	return retStr, nil
 }
 
@@ -334,11 +363,13 @@ func GetInstalledCollections() ([]Item, error) {
 	if _, ok := hubIdx[COLLECTIONS]; !ok {
 		return nil, fmt.Errorf("no collection in hubIdx")
 	}
+
 	for _, item := range hubIdx[COLLECTIONS] {
 		if item.Installed {
 			retItems = append(retItems, item)
 		}
 	}
+
 	return retItems, nil
 }
 
@@ -365,6 +396,8 @@ func GetHubStatusForItemType(itemType string, name string, all bool) []ItemHubSt
 		// Check the item status
 		ret = append(ret, item.toHubStatus())
 	}
+
 	sort.Slice(ret, func(i, j int) bool { return ret[i].Name < ret[j].Name })
+
 	return ret
 }
