@@ -104,12 +104,12 @@ func (i *Item) toHubStatus() ItemHubStatus {
 	return hubStatus
 }
 
+// XXX: can we remve these globals?
 var skippedLocal = 0
 var skippedTainted = 0
 
 // To be used when reference(s) (is/are) missing in a collection
 var ReferenceMissingError = errors.New("Reference(s) missing in collection")
-var MissingHubIndex = errors.New("hub index can't be found")
 
 // GetVersionStatus: semver requires 'v' prefix
 func GetVersionStatus(v *Item) int {

@@ -240,10 +240,11 @@ func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
 				continue
 			}
 
+			// we got an exact match, update struct
+
 			v.Downloaded = true
 			v.LocalHash = sha
 
-			// we got an exact match, update struct
 			if !inhub {
 				log.Tracef("found exact match for %s, version is %s, latest is %s", v.Name, version, v.Version)
 				v.LocalPath = path
@@ -264,7 +265,7 @@ func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
 		}
 
 		if !match {
-			log.Tracef("got tainted match for %s : %s", v.Name, path)
+			log.Tracef("got tainted match for %s: %s", v.Name, path)
 
 			skippedTainted++
 			// the file and the stage is right, but the hash is wrong, it has been tainted by user
