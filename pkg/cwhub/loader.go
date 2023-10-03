@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/mod/semver"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
@@ -101,7 +100,6 @@ func (w walker) getItemInfo(path string) (itemFileInfo, bool, error) {
 
 func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
 	var (
-		target  Item
 		local   bool
 		hubpath string
 	)
@@ -165,16 +163,19 @@ func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
 		log.Tracef("%s is a local file, skip", path)
 		skippedLocal++
 		//	log.Printf("local scenario, skip.")
-		target.Name = info.fname
-		target.Stage = info.stage
-		target.Installed = true
-		target.Type = info.ftype
-		target.Local = true
-		target.LocalPath = path
-		target.UpToDate = true
-		_, target.FileName = filepath.Split(path)
 
-		hubIdx[info.ftype][info.fname] = target
+		_, fileName := filepath.Split(path)
+
+		hubIdx[info.ftype][info.fname] = Item{
+			Name:      info.fname,
+			Stage:     info.stage,
+			Installed: true,
+			Type:      info.ftype,
+			Local:     true,
+			LocalPath: path,
+			UpToDate:  true,
+			FileName:  fileName,
+		}
 
 		return nil
 	}
@@ -250,7 +251,6 @@ func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
 				v.Tainted = false
 				// if we're walking the hub, present file doesn't means installed file
 				v.Installed = true
-				_, target.FileName = filepath.Split(path)
 			}
 
 			if version == v.Version {
@@ -277,7 +277,6 @@ func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
 			v.LocalVersion = "?"
 			v.Tainted = true
 			v.LocalHash = sha
-			_, target.FileName = filepath.Split(path)
 		}
 
 		// update the entry if appropriate
