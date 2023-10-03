@@ -55,7 +55,6 @@ func (s *ScenarioAssert) AutoGenFromFile(filename string) (string, error) {
 }
 
 func (s *ScenarioAssert) LoadTest(filename string, bucketpour string) error {
-	var err error
 	bucketDump, err := LoadScenarioDump(filename)
 	if err != nil {
 		return fmt.Errorf("loading scenario dump file '%s': %+v", filename, err)

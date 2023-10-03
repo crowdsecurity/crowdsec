@@ -4,9 +4,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/jarcoal/httpmock"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDownloadFile(t *testing.T) {
@@ -26,6 +25,7 @@ func TestDownloadFile(t *testing.T) {
 		"https://example.com/x",
 		httpmock.NewStringResponder(404, "not found"),
 	)
+
 	err := downloadFile("https://example.com/xx", examplePath)
 	assert.NoError(t, err)
 	content, err := os.ReadFile(examplePath)
