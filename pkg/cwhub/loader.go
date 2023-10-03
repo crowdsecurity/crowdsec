@@ -32,36 +32,16 @@ func NewWalker(hub *csconfig.Hub) walker {
 	}
 }
 
-func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
-	var (
-		target  Item
-		local   bool
-		hubpath string
-		inhub   bool
-		fname   string
-		ftype   string
-		fauthor string
-		stage   string
-	)
+type itemFileInfo struct {
+	fname   string
+	stage   string
+	ftype   string
+	fauthor string
+}
 
-	if err != nil {
-		log.Debugf("while syncing hub dir: %s", err)
-		// there is a path error, we ignore the file
-		return nil
-	}
-
-	path, err = filepath.Abs(path)
-	if err != nil {
-		return err
-	}
-	// we only care about files
-	if f == nil || f.IsDir() {
-		return nil
-	}
-	// we only care about yaml files
-	if !strings.HasSuffix(f.Name(), ".yaml") && !strings.HasSuffix(f.Name(), ".yml") {
-		return nil
-	}
+func (w walker) getItemInfo(path string) (itemFileInfo, bool, error) {
+	ret := itemFileInfo{}
+	inhub := false
 
 	subs := strings.Split(path, string(os.PathSeparator))
 
@@ -79,10 +59,10 @@ func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
 			log.Fatalf("path is too short : %s (%d)", path, len(subs))
 		}
 
-		fname = subs[len(subs)-1]
-		fauthor = subs[len(subs)-2]
-		stage = subs[len(subs)-3]
-		ftype = subs[len(subs)-4]
+		ret.fname = subs[len(subs)-1]
+		ret.fauthor = subs[len(subs)-2]
+		ret.stage = subs[len(subs)-3]
+		ret.ftype = subs[len(subs)-4]
 	} else if strings.HasPrefix(path, w.installdir) { // we're in install /etc/crowdsec/<type>/...
 		log.Tracef("in install dir")
 		if len(subs) < 3 {
@@ -92,28 +72,65 @@ func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
 		///.../config/postoverflow/stage/file.yaml
 		///.../config/scenarios/scenar.yaml
 		///.../config/collections/linux.yaml //file is empty
-		fname = subs[len(subs)-1]
-		stage = subs[len(subs)-2]
-		ftype = subs[len(subs)-3]
-		fauthor = ""
+		ret.fname = subs[len(subs)-1]
+		ret.stage = subs[len(subs)-2]
+		ret.ftype = subs[len(subs)-3]
+		ret.fauthor = ""
 	} else {
-		return fmt.Errorf("file '%s' is not from hub '%s' nor from the configuration directory '%s'", path, w.hubdir, w.installdir)
+		return itemFileInfo{}, false, fmt.Errorf("file '%s' is not from hub '%s' nor from the configuration directory '%s'", path, w.hubdir, w.installdir)
 	}
 
-	log.Tracef("stage:%s ftype:%s", stage, ftype)
+	log.Tracef("stage:%s ftype:%s", ret.stage, ret.ftype)
 	// log.Printf("%s -> name:%s stage:%s", path, fname, stage)
-	if stage == SCENARIOS {
-		ftype = SCENARIOS
-		stage = ""
-	} else if stage == COLLECTIONS {
-		ftype = COLLECTIONS
-		stage = ""
-	} else if ftype != PARSERS && ftype != PARSERS_OVFLW {
+
+	if ret.stage == SCENARIOS {
+		ret.ftype = SCENARIOS
+		ret.stage = ""
+	} else if ret.stage == COLLECTIONS {
+		ret.ftype = COLLECTIONS
+		ret.stage = ""
+	} else if ret.ftype != PARSERS && ret.ftype != PARSERS_OVFLW {
 		// its a PARSER / PARSER_OVFLW with a stage
-		return fmt.Errorf("unknown configuration type for file '%s'", path)
+		return itemFileInfo{}, inhub, fmt.Errorf("unknown configuration type for file '%s'", path)
 	}
 
-	log.Tracef("CORRECTED [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
+	log.Tracef("CORRECTED [%s] by [%s] in stage [%s] of type [%s]", ret.fname, ret.fauthor, ret.stage, ret.ftype)
+
+	return ret, inhub, nil
+}
+
+func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
+	var (
+		target  Item
+		local   bool
+		hubpath string
+	)
+
+	if err != nil {
+		log.Debugf("while syncing hub dir: %s", err)
+		// there is a path error, we ignore the file
+		return nil
+	}
+
+	path, err = filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+
+	// we only care about files
+	if f == nil || f.IsDir() {
+		return nil
+	}
+
+	// we only care about yaml files
+	if !strings.HasSuffix(f.Name(), ".yaml") && !strings.HasSuffix(f.Name(), ".yml") {
+		return nil
+	}
+
+	info, inhub, err := w.getItemInfo(path)
+	if err != nil {
+		return err
+	}
 
 	/*
 		we can encounter 'collections' in the form of a symlink :
@@ -148,46 +165,47 @@ func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
 		log.Tracef("%s is a local file, skip", path)
 		skippedLocal++
 		//	log.Printf("local scenario, skip.")
-		target.Name = fname
-		target.Stage = stage
+		target.Name = info.fname
+		target.Stage = info.stage
 		target.Installed = true
-		target.Type = ftype
+		target.Type = info.ftype
 		target.Local = true
 		target.LocalPath = path
 		target.UpToDate = true
 		_, target.FileName = filepath.Split(path)
 
-		hubIdx[ftype][fname] = target
+		hubIdx[info.ftype][info.fname] = target
 
 		return nil
 	}
+
 	// try to find which configuration item it is
-	log.Tracef("check [%s] of %s", fname, ftype)
+	log.Tracef("check [%s] of %s", info.fname, info.ftype)
 
 	match := false
 
-	for k, v := range hubIdx[ftype] {
-		log.Tracef("check [%s] vs [%s] : %s", fname, v.RemotePath, ftype+"/"+stage+"/"+fname+".yaml")
+	for k, v := range hubIdx[info.ftype] {
+		log.Tracef("check [%s] vs [%s] : %s", info.fname, v.RemotePath, info.ftype+"/"+info.stage+"/"+info.fname+".yaml")
 
-		if fname != v.FileName {
-			log.Tracef("%s != %s (filename)", fname, v.FileName)
+		if info.fname != v.FileName {
+			log.Tracef("%s != %s (filename)", info.fname, v.FileName)
 			continue
 		}
 
 		// wrong stage
-		if v.Stage != stage {
+		if v.Stage != info.stage {
 			continue
 		}
 
 		// if we are walking hub dir, just mark present files as downloaded
 		if inhub {
 			// wrong author
-			if fauthor != v.Author {
+			if info.fauthor != v.Author {
 				continue
 			}
 
 			// wrong file
-			if !validItemFileName(v.Name, fauthor, fname) {
+			if !validItemFileName(v.Name, info.fauthor, info.fname) {
 				continue
 			}
 
@@ -220,6 +238,7 @@ func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
 				// log.Printf("matching filenames, wrong hash %s != %s -- %s", sha, val.Digest, spew.Sdump(v))
 				continue
 			}
+
 			// we got an exact match, update struct
 			if !inhub {
 				log.Tracef("found exact match for %s, version is %s, latest is %s", v.Name, version, v.Version)
@@ -269,12 +288,12 @@ func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
 		// } else if !inhub {
 
 		// } else if
-		hubIdx[ftype][k] = v
+		hubIdx[info.ftype][k] = v
 
 		return nil
 	}
 
-	log.Infof("Ignoring file %s of type %s", path, ftype)
+	log.Infof("Ignoring file %s of type %s", path, info.ftype)
 
 	return nil
 }
