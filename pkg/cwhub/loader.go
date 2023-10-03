@@ -14,8 +14,33 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
+func isYAMLFileName(path string) bool {
+	return strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml")
+}
+
 func validItemFileName(vname string, fauthor string, fname string) bool {
 	return (fauthor+"/"+fname == vname+".yaml") || (fauthor+"/"+fname == vname+".yml")
+}
+
+func handleSymlink(path string) (string, error) {
+	hubpath, err := os.Readlink(path)
+	if err != nil {
+		return "", fmt.Errorf("unable to read symlink of %s", path)
+	}
+	// the symlink target doesn't exist, user might have removed ~/.hub/hub/...yaml without deleting /etc/crowdsec/....yaml
+	_, err = os.Lstat(hubpath)
+	if os.IsNotExist(err) {
+		log.Infof("%s is a symlink to %s that doesn't exist, deleting symlink", path, hubpath)
+		// remove the symlink
+		if err = os.Remove(path); err != nil {
+			return "", fmt.Errorf("failed to unlink %s: %w", path, err)
+		}
+
+		// XXX: is this correct?
+		return "", nil
+	}
+
+	return hubpath, nil
 }
 
 type walker struct {
@@ -120,8 +145,7 @@ func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
 		return nil
 	}
 
-	// we only care about yaml files
-	if !strings.HasSuffix(f.Name(), ".yaml") && !strings.HasSuffix(f.Name(), ".yml") {
+	if !isYAMLFileName(f.Name()) {
 		return nil
 	}
 
@@ -141,21 +165,16 @@ func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
 
 		log.Tracef("%s isn't a symlink", path)
 	} else {
-		hubpath, err = os.Readlink(path)
+		hubpath, err = handleSymlink(path)
 		if err != nil {
-			return fmt.Errorf("unable to read symlink of %s", path)
-		}
-		// the symlink target doesn't exist, user might have removed ~/.hub/hub/...yaml without deleting /etc/crowdsec/....yaml
-		_, err := os.Lstat(hubpath)
-		if os.IsNotExist(err) {
-			log.Infof("%s is a symlink to %s that doesn't exist, deleting symlink", path, hubpath)
-			// remove the symlink
-			if err = os.Remove(path); err != nil {
-				return fmt.Errorf("failed to unlink %s: %w", path, err)
-			}
-			return nil
+			return err
 		}
 		log.Tracef("%s points to %s", path, hubpath)
+
+		if hubpath == "" {
+			// XXX: is this correct?
+			return nil
+		}
 	}
 
 	// if it's not a symlink and not in hub, it's a local file, don't bother
