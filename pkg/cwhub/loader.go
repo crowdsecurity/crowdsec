@@ -15,14 +15,24 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
-// the walk/parserVisit function can't receive extra args
-var hubdir, installdir string
-
 func validItemFileName(vname string, fauthor string, fname string) bool {
 	return (fauthor+"/"+fname == vname+".yaml") || (fauthor+"/"+fname == vname+".yml")
 }
 
-func parserVisit(path string, f os.DirEntry, err error) error {
+type walker struct {
+	// the walk/parserVisit function can't receive extra args
+	hubdir     string
+	installdir string
+}
+
+func NewWalker(hub *csconfig.Hub) walker {
+	return walker{
+		hubdir:     hub.HubDir,
+		installdir: hub.ConfigDir,
+	}
+}
+
+func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
 	var (
 		target  Item
 		local   bool
@@ -55,10 +65,10 @@ func parserVisit(path string, f os.DirEntry, err error) error {
 
 	subs := strings.Split(path, string(os.PathSeparator))
 
-	log.Tracef("path:%s, hubdir:%s, installdir:%s", path, hubdir, installdir)
+	log.Tracef("path:%s, hubdir:%s, installdir:%s", path, w.hubdir, w.installdir)
 	log.Tracef("subs:%v", subs)
 	// we're in hub (~/.hub/hub/)
-	if strings.HasPrefix(path, hubdir) {
+	if strings.HasPrefix(path, w.hubdir) {
 		log.Tracef("in hub dir")
 
 		inhub = true
@@ -73,7 +83,7 @@ func parserVisit(path string, f os.DirEntry, err error) error {
 		fauthor = subs[len(subs)-2]
 		stage = subs[len(subs)-3]
 		ftype = subs[len(subs)-4]
-	} else if strings.HasPrefix(path, installdir) { // we're in install /etc/crowdsec/<type>/...
+	} else if strings.HasPrefix(path, w.installdir) { // we're in install /etc/crowdsec/<type>/...
 		log.Tracef("in install dir")
 		if len(subs) < 3 {
 			log.Fatalf("path is too short : %s (%d)", path, len(subs))
@@ -87,7 +97,7 @@ func parserVisit(path string, f os.DirEntry, err error) error {
 		ftype = subs[len(subs)-3]
 		fauthor = ""
 	} else {
-		return fmt.Errorf("file '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubdir, installdir)
+		return fmt.Errorf("file '%s' is not from hub '%s' nor from the configuration directory '%s'", path, w.hubdir, w.installdir)
 	}
 
 	log.Tracef("stage:%s ftype:%s", stage, ftype)
@@ -181,7 +191,7 @@ func parserVisit(path string, f os.DirEntry, err error) error {
 				continue
 			}
 
-			if path == hubdir+"/"+v.RemotePath {
+			if path == w.hubdir+"/"+v.RemotePath {
 				log.Tracef("marking %s as downloaded", v.Name)
 				v.Downloaded = true
 			}
@@ -347,8 +357,6 @@ func CollecDepsCheck(v *Item) error {
 }
 
 func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
-	hubdir = hub.HubDir
-	installdir = hub.ConfigDir
 	warnings := []string{}
 
 	// For each, scan PARSERS, PARSERS_OVFLW, SCENARIOS and COLLECTIONS last
@@ -358,7 +366,7 @@ func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
 			log.Errorf("failed %s : %s", cpath, err)
 		}
 
-		err = filepath.WalkDir(cpath, parserVisit)
+		err = filepath.WalkDir(cpath, NewWalker(hub).parserVisit)
 		if err != nil {
 			return err, warnings
 		}
