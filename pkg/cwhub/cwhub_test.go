@@ -128,12 +128,12 @@ func TestGetters(t *testing.T) {
 		}
 
 		// Add bad item
-		if err := AddItem("ratata", *item); err != nil {
-			if fmt.Sprintf("%s", err) != "ItemType ratata is unknown" {
-				t.Fatalf("unexpected error")
-			}
-		} else {
+		err := AddItem("ratata", *item)
+		if err == nil {
 			t.Fatalf("Expected error")
+		}
+		if fmt.Sprintf("%s", err) != "ItemType ratata is unknown" {
+			t.Fatalf("unexpected error")
 		}
 
 		break
@@ -424,34 +424,32 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 	response.Header.Set("Content-Type", "application/json")
 
-	responseBody := ""
-
 	log.Printf("---> %s", req.URL.Path)
 
 	// FAKE PARSER
-	if resp, ok := responseByPath[req.URL.Path]; ok {
-		responseBody = resp
-	} else {
+	resp, ok := responseByPath[req.URL.Path]
+	if !ok {
 		log.Fatalf("unexpected url :/ %s", req.URL.Path)
 	}
 
-	response.Body = io.NopCloser(strings.NewReader(responseBody))
+	response.Body = io.NopCloser(strings.NewReader(resp))
 
 	return response, nil
 }
 
 func fileToStringX(path string) string {
-	if f, err := os.Open(path); err == nil {
-		defer f.Close()
-
-		if data, err := io.ReadAll(f); err == nil {
-			return strings.ReplaceAll(string(data), "\r\n", "\n")
-		} else {
-			panic(err)
-		}
-	} else {
+	f, err := os.Open(path)
+	if err != nil {
 		panic(err)
 	}
+	defer f.Close()
+
+	data, err := io.ReadAll(f)
+	if err != nil {
+		panic(err)
+	}
+
+	return strings.ReplaceAll(string(data), "\r\n", "\n")
 }
 
 func resetResponseByPath() {

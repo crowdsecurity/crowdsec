@@ -234,7 +234,7 @@ func parser_visit(path string, f os.DirEntry, err error) error {
 		if !match {
 			log.Tracef("got tainted match for %s : %s", v.Name, path)
 
-			skippedTainted += 1
+			skippedTainted++
 			// the file and the stage is right, but the hash is wrong, it has been tainted by user
 			if !inhub {
 				v.LocalPath = path

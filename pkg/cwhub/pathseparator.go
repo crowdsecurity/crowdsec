@@ -8,16 +8,9 @@ import "strings"
 const PathSeparator = "/"
 
 func hasPathSuffix(hubpath string, remotePath string) bool {
-	if strings.HasSuffix(hubpath, remotePath) {
-		return true
-	}
-	return false
+	return strings.HasSuffix(hubpath, remotePath)
 }
 
 func CheckName(vname string, fauthor string, fname string) bool {
-	if vname+".yaml" != fauthor+"/"+fname && vname+".yml" != fauthor+"/"+fname {
-		return true
-	} else {
-		return false
-	}
+	return (vname+".yaml" != fauthor+"/"+fname) && (vname+".yml" != fauthor+"/"+fname)
 }

@@ -242,8 +242,8 @@ func ItemStatus(v Item) (string, bool, bool, bool) {
 		Warning = true
 		strret += ",tainted"
 	} else if !v.UpToDate && !v.Local {
-		strret += ",update-available"
 		Warning = true
+		strret += ",update-available"
 	}
 
 	return strret, Ok, Warning, Managed
