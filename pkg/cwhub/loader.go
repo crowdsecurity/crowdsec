@@ -312,63 +312,63 @@ func CollecDepsCheck(v *Item) error {
 
 	for idx, itemSlice := range [][]string{v.Parsers, v.PostOverflows, v.Scenarios, v.Collections} {
 		sliceType := ItemTypes[idx]
-		for _, itemName := range itemSlice {
-			item, ok := hubIdx[sliceType][itemName]
+		for _, subName := range itemSlice {
+			subItem, ok := hubIdx[sliceType][subName]
 			if !ok {
-				log.Fatalf("Referred %s %s in collection %s doesn't exist.", sliceType, itemName, v.Name)
+				log.Fatalf("Referred %s %s in collection %s doesn't exist.", sliceType, subName, v.Name)
 			}
 
-			log.Tracef("check %s installed:%t", item.Name, item.Installed)
+			log.Tracef("check %s installed:%t", subItem.Name, subItem.Installed)
 
 			if !v.Installed {
 				continue
 			}
 
-			if item.Type == COLLECTIONS {
+			if subItem.Type == COLLECTIONS {
 				log.Tracef("collec, recurse.")
 
-				if err := CollecDepsCheck(&item); err != nil {
-					if item.Tainted {
+				if err := CollecDepsCheck(&subItem); err != nil {
+					if subItem.Tainted {
 						v.Tainted = true
 					}
 
-					return fmt.Errorf("sub collection %s is broken: %w", item.Name, err)
+					return fmt.Errorf("sub collection %s is broken: %w", subItem.Name, err)
 				}
 
-				hubIdx[sliceType][itemName] = item
+				hubIdx[sliceType][subName] = subItem
 			}
 
 			// propagate the state of sub-items to set
-			if item.Tainted {
+			if subItem.Tainted {
 				v.Tainted = true
-				return fmt.Errorf("tainted %s %s, tainted", sliceType, itemName)
+				return fmt.Errorf("tainted %s %s, tainted", sliceType, subName)
 			}
 
-			if !item.Installed && v.Installed {
+			if !subItem.Installed && v.Installed {
 				v.Tainted = true
-				return fmt.Errorf("missing %s %s, tainted", sliceType, itemName)
+				return fmt.Errorf("missing %s %s, tainted", sliceType, subName)
 			}
 
-			if !item.UpToDate {
+			if !subItem.UpToDate {
 				v.UpToDate = false
-				return fmt.Errorf("outdated %s %s", sliceType, itemName)
+				return fmt.Errorf("outdated %s %s", sliceType, subName)
 			}
 
 			skip := false
 
-			for idx := range item.BelongsToCollections {
-				if item.BelongsToCollections[idx] == v.Name {
+			for idx := range subItem.BelongsToCollections {
+				if subItem.BelongsToCollections[idx] == v.Name {
 					skip = true
 				}
 			}
 
 			if !skip {
-				item.BelongsToCollections = append(item.BelongsToCollections, v.Name)
+				subItem.BelongsToCollections = append(subItem.BelongsToCollections, v.Name)
 			}
 
-			hubIdx[sliceType][itemName] = item
+			hubIdx[sliceType][subName] = subItem
 
-			log.Tracef("checking for %s - tainted:%t uptodate:%t", itemName, v.Tainted, v.UpToDate)
+			log.Tracef("checking for %s - tainted:%t uptodate:%t", subName, v.Tainted, v.UpToDate)
 		}
 	}
 
