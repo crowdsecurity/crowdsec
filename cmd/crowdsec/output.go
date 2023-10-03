@@ -145,13 +145,6 @@ LOOP:
 			}
 			break LOOP
 		case event := <-overflow:
-			//if the Alert is nil, it's to signal bucket is ready for GC, don't track this
-			if dumpStates && event.Overflow.Alert != nil {
-				if bucketOverflows == nil {
-					bucketOverflows = make([]types.Event, 0)
-				}
-				bucketOverflows = append(bucketOverflows, event)
-			}
 			/*if alert is empty and mapKey is present, the overflow is just to cleanup bucket*/
 			if event.Overflow.Alert == nil && event.Overflow.Mapkey != "" {
 				buckets.Bucket_map.Delete(event.Overflow.Mapkey)
@@ -163,6 +156,14 @@ LOOP:
 				return fmt.Errorf("postoverflow failed : %s", err)
 			}
 			log.Printf("%s", *event.Overflow.Alert.Message)
+			//if the Alert is nil, it's to signal bucket is ready for GC, don't track this
+			//dump after postoveflow processing to avoid missing whitelist info
+			if dumpStates && event.Overflow.Alert != nil {
+				if bucketOverflows == nil {
+					bucketOverflows = make([]types.Event, 0)
+				}
+				bucketOverflows = append(bucketOverflows, event)
+			}
 			if event.Overflow.Whitelisted {
 				log.Printf("[%s] is whitelisted, skip.", *event.Overflow.Alert.Message)
 				continue
