@@ -119,14 +119,14 @@ func getSHA256(filepath string) (string, error) {
 	// Digest of file
 	f, err := os.Open(filepath)
 	if err != nil {
-		return "", fmt.Errorf("unable to open '%s': %s", filepath, err)
+		return "", fmt.Errorf("unable to open '%s': %w", filepath, err)
 	}
 
 	defer f.Close()
 
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
-		return "", fmt.Errorf("unable to calculate sha256 of '%s': %s", filepath, err)
+		return "", fmt.Errorf("unable to calculate sha256 of '%s': %w", filepath, err)
 	}
 
 	return fmt.Sprintf("%x", h.Sum(nil)), nil
@@ -134,7 +134,7 @@ func getSHA256(filepath string) (string, error) {
 
 func GetItemMap(itemType string) map[string]Item {
 	var (
-		m map[string]Item
+		m  map[string]Item
 		ok bool
 	)
 

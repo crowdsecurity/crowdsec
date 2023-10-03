@@ -20,14 +20,14 @@ var hubdir, installdir string
 
 func parser_visit(path string, f os.DirEntry, err error) error {
 	var (
-		target Item
-		local bool
+		target  Item
+		local   bool
 		hubpath string
-		inhub bool
-		fname string
-		ftype string
+		inhub   bool
+		fname   string
+		ftype   string
 		fauthor string
-		stage string
+		stage   string
 	)
 
 	if err != nil {
@@ -122,7 +122,7 @@ func parser_visit(path string, f os.DirEntry, err error) error {
 			log.Infof("%s is a symlink to %s that doesn't exist, deleting symlink", path, hubpath)
 			// remove the symlink
 			if err = os.Remove(path); err != nil {
-				return fmt.Errorf("failed to unlink %s: %+v", path, err)
+				return fmt.Errorf("failed to unlink %s: %w", path, err)
 			}
 			return nil
 		}
@@ -297,7 +297,7 @@ func CollecDepsCheck(v *Item) error {
 							v.Tainted = true
 						}
 
-						return fmt.Errorf("sub collection %s is broken: %s", val.Name, err)
+						return fmt.Errorf("sub collection %s is broken: %w", val.Name, err)
 					}
 
 					hubIdx[ptrtype][p] = val
@@ -387,12 +387,12 @@ func LocalSync(hub *csconfig.Hub) (error, []string) {
 
 	err, warnings := SyncDir(hub, hub.ConfigDir)
 	if err != nil {
-		return fmt.Errorf("failed to scan %s : %s", hub.ConfigDir, err), warnings
+		return fmt.Errorf("failed to scan %s: %w", hub.ConfigDir, err), warnings
 	}
 
 	err, _ = SyncDir(hub, hub.HubDir)
 	if err != nil {
-		return fmt.Errorf("failed to scan %s : %s", hub.HubDir, err), warnings
+		return fmt.Errorf("failed to scan %s: %w", hub.HubDir, err), warnings
 	}
 
 	return nil, warnings
@@ -432,13 +432,13 @@ func GetHubIdx(hub *csconfig.Hub) error {
 // LoadPkgIndex loads a local .index.json file and returns the map of parsers/scenarios/collections associated
 func LoadPkgIndex(buff []byte) (map[string]map[string]Item, error) {
 	var (
-		err error
-		RawIndex map[string]map[string]Item
+		err          error
+		RawIndex     map[string]map[string]Item
 		missingItems []string
 	)
 
 	if err = json.Unmarshal(buff, &RawIndex); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal index : %v", err)
+		return nil, fmt.Errorf("failed to unmarshal index: %w", err)
 	}
 
 	log.Debugf("%d item types in hub index", len(ItemTypes))
