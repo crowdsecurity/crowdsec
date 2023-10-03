@@ -434,7 +434,7 @@ func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
 	return nil, warnings
 }
 
-// Updates the infos from HubInit() with the local state
+// Updates the info from HubInit() with the local state
 func LocalSync(hub *csconfig.Hub) (error, []string) {
 	skippedLocal = 0
 	skippedTainted = 0
