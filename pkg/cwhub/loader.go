@@ -239,20 +239,18 @@ func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
 				continue
 			}
 
+			v.Downloaded = true
+			v.LocalHash = sha
+
 			// we got an exact match, update struct
 			if !inhub {
 				log.Tracef("found exact match for %s, version is %s, latest is %s", v.Name, version, v.Version)
 				v.LocalPath = path
 				v.LocalVersion = version
 				v.Tainted = false
-				v.Downloaded = true
 				// if we're walking the hub, present file doesn't means installed file
 				v.Installed = true
-				v.LocalHash = sha
 				_, target.FileName = filepath.Split(path)
-			} else {
-				v.Downloaded = true
-				v.LocalHash = sha
 			}
 
 			if version == v.Version {
@@ -281,6 +279,7 @@ func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
 			v.LocalHash = sha
 			_, target.FileName = filepath.Split(path)
 		}
+
 		// update the entry if appropriate
 		// if _, ok := hubIdx[ftype][k]; !ok || !inhub || v.D {
 		// 	fmt.Printf("Updating %s", k)
@@ -393,19 +392,20 @@ func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
 
 	for k, v := range hubIdx[COLLECTIONS] {
 		if v.Installed {
-			versStat := GetVersionStatus(&v)
-			if versStat == 0 { // latest
+			versionStatus := GetVersionStatus(&v)
+			switch versionStatus {
+			case 0: // latest
 				if err := CollecDepsCheck(&v); err != nil {
 					warnings = append(warnings, fmt.Sprintf("dependency of %s : %s", v.Name, err))
 					hubIdx[COLLECTIONS][k] = v
 				}
-			} else if versStat == 1 { // not up-to-date
+			case 1: // not up-to-date
 				warnings = append(warnings, fmt.Sprintf("update for collection %s available (currently:%s, latest:%s)", v.Name, v.LocalVersion, v.Version))
-			} else { // version is higher than the highest available from hub?
+			default: // version is higher than the highest available from hub?
 				warnings = append(warnings, fmt.Sprintf("collection %s is in the future (currently:%s, latest:%s)", v.Name, v.LocalVersion, v.Version))
 			}
 
-			log.Debugf("installed (%s) - status:%d | installed:%s | latest : %s | full : %+v", v.Name, semver.Compare("v"+v.Version, "v"+v.LocalVersion), v.LocalVersion, v.Version, v.Versions)
+			log.Debugf("installed (%s) - status:%d | installed:%s | latest : %s | full : %+v", v.Name, versionStatus, v.LocalVersion, v.Version, v.Versions)
 		}
 	}
 
@@ -464,12 +464,11 @@ func GetHubIdx(hub *csconfig.Hub) error {
 // LoadPkgIndex loads a local .index.json file and returns the map of parsers/scenarios/collections associated
 func LoadPkgIndex(buff []byte) (map[string]map[string]Item, error) {
 	var (
-		err          error
 		RawIndex     map[string]map[string]Item
 		missingItems []string
 	)
 
-	if err = json.Unmarshal(buff, &RawIndex); err != nil {
+	if err := json.Unmarshal(buff, &RawIndex); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal index: %w", err)
 	}
 
