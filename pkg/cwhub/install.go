@@ -22,14 +22,16 @@ func purgeItem(hub *csconfig.Hub, target Item) (Item, error) {
 	target.Downloaded = false
 	log.Infof("Removed source file [%s] : %s", target.Name, hubpath)
 	hubIdx[target.Type][target.Name] = target
+
 	return target, nil
 }
 
-//DisableItem to disable an item managed by the hub, removes the symlink if purge is true
+// DisableItem to disable an item managed by the hub, removes the symlink if purge is true
 func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, error) {
-	var tdir = hub.ConfigDir
-	var hdir = hub.HubDir
 	var err error
+
+	tdir := hub.ConfigDir
+	hdir := hub.HubDir
 
 	if !target.Installed {
 		if purge {
@@ -38,6 +40,7 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 				return target, err
 			}
 		}
+
 		return target, nil
 	}
 
@@ -54,7 +57,7 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 		return target, fmt.Errorf("%s is tainted, use '--force' to overwrite", target.Name)
 	}
 
-	/*for a COLLECTIONS, disable sub-items*/
+	// for a COLLECTIONS, disable sub-items
 	if target.Type == COLLECTIONS {
 		var tmp = [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections}
 		for idx, ptr := range tmp {
@@ -63,12 +66,14 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 				if val, ok := hubIdx[ptrtype][p]; ok {
 					// check if the item doesn't belong to another collection before removing it
 					toRemove := true
+
 					for _, collection := range val.BelongsToCollections {
 						if collection != target.Name {
 							toRemove = false
 							break
 						}
 					}
+
 					if toRemove {
 						hubIdx[ptrtype][p], err = DisableItem(hub, val, purge, force)
 						if err != nil {
@@ -114,6 +119,7 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 		}
 		log.Infof("Removed symlink [%s] : %s", target.Name, syml)
 	}
+
 	target.Installed = false
 
 	if purge {
@@ -122,39 +128,46 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 			return target, err
 		}
 	}
+
 	hubIdx[target.Type][target.Name] = target
+
 	return target, nil
 }
 
 // creates symlink between actual config file at hub.HubDir and hub.ConfigDir
 // Handles collections recursively
 func EnableItem(hub *csconfig.Hub, target Item) (Item, error) {
-	var tdir = hub.ConfigDir
-	var hdir = hub.HubDir
 	var err error
+
+	tdir := hub.ConfigDir
+	hdir := hub.HubDir
+
 	parent_dir := filepath.Clean(tdir + "/" + target.Type + "/" + target.Stage + "/")
-	/*create directories if needed*/
+	// create directories if needed
 	if target.Installed {
 		if target.Tainted {
 			return target, fmt.Errorf("%s is tainted, won't enable unless --force", target.Name)
 		}
+
 		if target.Local {
 			return target, fmt.Errorf("%s is local, won't enable", target.Name)
 		}
-		/* if it's a collection, check sub-items even if the collection file itself is up-to-date */
+		// if it's a collection, check sub-items even if the collection file itself is up-to-date
 		if target.UpToDate && target.Type != COLLECTIONS {
 			log.Tracef("%s is installed and up-to-date, skip.", target.Name)
 			return target, nil
 		}
 	}
+
 	if _, err := os.Stat(parent_dir); os.IsNotExist(err) {
 		log.Printf("%s doesn't exist, create", parent_dir)
+
 		if err := os.MkdirAll(parent_dir, os.ModePerm); err != nil {
 			return target, fmt.Errorf("while creating directory: %w", err)
 		}
 	}
 
-	/*install sub-items if it's a collection*/
+	// install sub-items if it's a collection
 	if target.Type == COLLECTIONS {
 		var tmp = [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections}
 		for idx, ptr := range tmp {
@@ -179,7 +192,7 @@ func EnableItem(hub *csconfig.Hub, target Item) (Item, error) {
 		return target, nil
 	}
 
-	//tdir+target.RemotePath
+	// tdir+target.RemotePath
 	srcPath, err := filepath.Abs(hdir + "/" + target.RemotePath)
 	if err != nil {
 		return target, fmt.Errorf("while getting source path: %w", err)
@@ -197,5 +210,6 @@ func EnableItem(hub *csconfig.Hub, target Item) (Item, error) {
 	log.Printf("Enabled %s : %s", target.Type, target.Name)
 	target.Installed = true
 	hubIdx[target.Type][target.Name] = target
+
 	return target, nil
 }
