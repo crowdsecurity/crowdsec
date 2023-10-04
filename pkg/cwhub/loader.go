@@ -10,28 +10,98 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/mod/semver"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
-
-// the walk/parserVisit function can't receive extra args
-var hubdir, installdir string
 
 func validItemFileName(vname string, fauthor string, fname string) bool {
 	return (fauthor+"/"+fname == vname+".yaml") || (fauthor+"/"+fname == vname+".yml")
 }
 
-func parserVisit(path string, f os.DirEntry, err error) error {
+type walker struct {
+	// the walk/parserVisit function can't receive extra args
+	hubdir     string
+	installdir string
+}
+
+func NewWalker(hub *csconfig.Hub) walker {
+	return walker{
+		hubdir:     hub.HubDir,
+		installdir: hub.ConfigDir,
+	}
+}
+
+type itemFileInfo struct {
+	fname   string
+	stage   string
+	ftype   string
+	fauthor string
+}
+
+func (w walker) getItemInfo(path string) (itemFileInfo, bool, error) {
+	ret := itemFileInfo{}
+	inhub := false
+
+	subs := strings.Split(path, string(os.PathSeparator))
+
+	log.Tracef("path:%s, hubdir:%s, installdir:%s", path, w.hubdir, w.installdir)
+	log.Tracef("subs:%v", subs)
+	// we're in hub (~/.hub/hub/)
+	if strings.HasPrefix(path, w.hubdir) {
+		log.Tracef("in hub dir")
+
+		inhub = true
+		//.../hub/parsers/s00-raw/crowdsec/skip-pretag.yaml
+		//.../hub/scenarios/crowdsec/ssh_bf.yaml
+		//.../hub/profiles/crowdsec/linux.yaml
+		if len(subs) < 4 {
+			log.Fatalf("path is too short : %s (%d)", path, len(subs))
+		}
+
+		ret.fname = subs[len(subs)-1]
+		ret.fauthor = subs[len(subs)-2]
+		ret.stage = subs[len(subs)-3]
+		ret.ftype = subs[len(subs)-4]
+	} else if strings.HasPrefix(path, w.installdir) { // we're in install /etc/crowdsec/<type>/...
+		log.Tracef("in install dir")
+		if len(subs) < 3 {
+			log.Fatalf("path is too short : %s (%d)", path, len(subs))
+		}
+		///.../config/parser/stage/file.yaml
+		///.../config/postoverflow/stage/file.yaml
+		///.../config/scenarios/scenar.yaml
+		///.../config/collections/linux.yaml //file is empty
+		ret.fname = subs[len(subs)-1]
+		ret.stage = subs[len(subs)-2]
+		ret.ftype = subs[len(subs)-3]
+		ret.fauthor = ""
+	} else {
+		return itemFileInfo{}, false, fmt.Errorf("file '%s' is not from hub '%s' nor from the configuration directory '%s'", path, w.hubdir, w.installdir)
+	}
+
+	log.Tracef("stage:%s ftype:%s", ret.stage, ret.ftype)
+	// log.Printf("%s -> name:%s stage:%s", path, fname, stage)
+
+	if ret.stage == SCENARIOS {
+		ret.ftype = SCENARIOS
+		ret.stage = ""
+	} else if ret.stage == COLLECTIONS {
+		ret.ftype = COLLECTIONS
+		ret.stage = ""
+	} else if ret.ftype != PARSERS && ret.ftype != PARSERS_OVFLW {
+		// its a PARSER / PARSER_OVFLW with a stage
+		return itemFileInfo{}, inhub, fmt.Errorf("unknown configuration type for file '%s'", path)
+	}
+
+	log.Tracef("CORRECTED [%s] by [%s] in stage [%s] of type [%s]", ret.fname, ret.fauthor, ret.stage, ret.ftype)
+
+	return ret, inhub, nil
+}
+
+func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
 	var (
-		target  Item
 		local   bool
 		hubpath string
-		inhub   bool
-		fname   string
-		ftype   string
-		fauthor string
-		stage   string
 	)
 
 	if err != nil {
@@ -44,66 +114,21 @@ func parserVisit(path string, f os.DirEntry, err error) error {
 	if err != nil {
 		return err
 	}
+
 	// we only care about files
 	if f == nil || f.IsDir() {
 		return nil
 	}
+
 	// we only care about yaml files
 	if !strings.HasSuffix(f.Name(), ".yaml") && !strings.HasSuffix(f.Name(), ".yml") {
 		return nil
 	}
 
-	subs := strings.Split(path, string(os.PathSeparator))
-
-	log.Tracef("path:%s, hubdir:%s, installdir:%s", path, hubdir, installdir)
-	log.Tracef("subs:%v", subs)
-	// we're in hub (~/.hub/hub/)
-	if strings.HasPrefix(path, hubdir) {
-		log.Tracef("in hub dir")
-
-		inhub = true
-		//.../hub/parsers/s00-raw/crowdsec/skip-pretag.yaml
-		//.../hub/scenarios/crowdsec/ssh_bf.yaml
-		//.../hub/profiles/crowdsec/linux.yaml
-		if len(subs) < 4 {
-			log.Fatalf("path is too short : %s (%d)", path, len(subs))
-		}
-
-		fname = subs[len(subs)-1]
-		fauthor = subs[len(subs)-2]
-		stage = subs[len(subs)-3]
-		ftype = subs[len(subs)-4]
-	} else if strings.HasPrefix(path, installdir) { // we're in install /etc/crowdsec/<type>/...
-		log.Tracef("in install dir")
-		if len(subs) < 3 {
-			log.Fatalf("path is too short : %s (%d)", path, len(subs))
-		}
-		///.../config/parser/stage/file.yaml
-		///.../config/postoverflow/stage/file.yaml
-		///.../config/scenarios/scenar.yaml
-		///.../config/collections/linux.yaml //file is empty
-		fname = subs[len(subs)-1]
-		stage = subs[len(subs)-2]
-		ftype = subs[len(subs)-3]
-		fauthor = ""
-	} else {
-		return fmt.Errorf("file '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubdir, installdir)
+	info, inhub, err := w.getItemInfo(path)
+	if err != nil {
+		return err
 	}
-
-	log.Tracef("stage:%s ftype:%s", stage, ftype)
-	// log.Printf("%s -> name:%s stage:%s", path, fname, stage)
-	if stage == SCENARIOS {
-		ftype = SCENARIOS
-		stage = ""
-	} else if stage == COLLECTIONS {
-		ftype = COLLECTIONS
-		stage = ""
-	} else if ftype != PARSERS && ftype != PARSERS_OVFLW {
-		// its a PARSER / PARSER_OVFLW with a stage
-		return fmt.Errorf("unknown configuration type for file '%s'", path)
-	}
-
-	log.Tracef("CORRECTED [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
 
 	/*
 		we can encounter 'collections' in the form of a symlink :
@@ -138,50 +163,54 @@ func parserVisit(path string, f os.DirEntry, err error) error {
 		log.Tracef("%s is a local file, skip", path)
 		skippedLocal++
 		//	log.Printf("local scenario, skip.")
-		target.Name = fname
-		target.Stage = stage
-		target.Installed = true
-		target.Type = ftype
-		target.Local = true
-		target.LocalPath = path
-		target.UpToDate = true
-		_, target.FileName = filepath.Split(path)
 
-		hubIdx[ftype][fname] = target
+		_, fileName := filepath.Split(path)
+
+		hubIdx[info.ftype][info.fname] = Item{
+			Name:      info.fname,
+			Stage:     info.stage,
+			Installed: true,
+			Type:      info.ftype,
+			Local:     true,
+			LocalPath: path,
+			UpToDate:  true,
+			FileName:  fileName,
+		}
 
 		return nil
 	}
+
 	// try to find which configuration item it is
-	log.Tracef("check [%s] of %s", fname, ftype)
+	log.Tracef("check [%s] of %s", info.fname, info.ftype)
 
 	match := false
 
-	for k, v := range hubIdx[ftype] {
-		log.Tracef("check [%s] vs [%s] : %s", fname, v.RemotePath, ftype+"/"+stage+"/"+fname+".yaml")
+	for k, v := range hubIdx[info.ftype] {
+		log.Tracef("check [%s] vs [%s] : %s", info.fname, v.RemotePath, info.ftype+"/"+info.stage+"/"+info.fname+".yaml")
 
-		if fname != v.FileName {
-			log.Tracef("%s != %s (filename)", fname, v.FileName)
+		if info.fname != v.FileName {
+			log.Tracef("%s != %s (filename)", info.fname, v.FileName)
 			continue
 		}
 
 		// wrong stage
-		if v.Stage != stage {
+		if v.Stage != info.stage {
 			continue
 		}
 
 		// if we are walking hub dir, just mark present files as downloaded
 		if inhub {
 			// wrong author
-			if fauthor != v.Author {
+			if info.fauthor != v.Author {
 				continue
 			}
 
 			// wrong file
-			if !validItemFileName(v.Name, fauthor, fname) {
+			if !validItemFileName(v.Name, info.fauthor, info.fname) {
 				continue
 			}
 
-			if path == hubdir+"/"+v.RemotePath {
+			if path == w.hubdir+"/"+v.RemotePath {
 				log.Tracef("marking %s as downloaded", v.Name)
 				v.Downloaded = true
 			}
@@ -210,20 +239,18 @@ func parserVisit(path string, f os.DirEntry, err error) error {
 				// log.Printf("matching filenames, wrong hash %s != %s -- %s", sha, val.Digest, spew.Sdump(v))
 				continue
 			}
+
+			v.Downloaded = true
+			v.LocalHash = sha
+
 			// we got an exact match, update struct
 			if !inhub {
 				log.Tracef("found exact match for %s, version is %s, latest is %s", v.Name, version, v.Version)
 				v.LocalPath = path
 				v.LocalVersion = version
 				v.Tainted = false
-				v.Downloaded = true
 				// if we're walking the hub, present file doesn't means installed file
 				v.Installed = true
-				v.LocalHash = sha
-				_, target.FileName = filepath.Split(path)
-			} else {
-				v.Downloaded = true
-				v.LocalHash = sha
 			}
 
 			if version == v.Version {
@@ -250,8 +277,8 @@ func parserVisit(path string, f os.DirEntry, err error) error {
 			v.LocalVersion = "?"
 			v.Tainted = true
 			v.LocalHash = sha
-			_, target.FileName = filepath.Split(path)
 		}
+
 		// update the entry if appropriate
 		// if _, ok := hubIdx[ftype][k]; !ok || !inhub || v.D {
 		// 	fmt.Printf("Updating %s", k)
@@ -259,12 +286,12 @@ func parserVisit(path string, f os.DirEntry, err error) error {
 		// } else if !inhub {
 
 		// } else if
-		hubIdx[ftype][k] = v
+		hubIdx[info.ftype][k] = v
 
 		return nil
 	}
 
-	log.Infof("Ignoring file %s of type %s", path, ftype)
+	log.Infof("Ignoring file %s of type %s", path, info.ftype)
 
 	return nil
 }
@@ -347,8 +374,6 @@ func CollecDepsCheck(v *Item) error {
 }
 
 func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
-	hubdir = hub.HubDir
-	installdir = hub.ConfigDir
 	warnings := []string{}
 
 	// For each, scan PARSERS, PARSERS_OVFLW, SCENARIOS and COLLECTIONS last
@@ -358,28 +383,31 @@ func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
 			log.Errorf("failed %s : %s", cpath, err)
 		}
 
-		err = filepath.WalkDir(cpath, parserVisit)
+		err = filepath.WalkDir(cpath, NewWalker(hub).parserVisit)
 		if err != nil {
 			return err, warnings
 		}
 	}
 
 	for k, v := range hubIdx[COLLECTIONS] {
-		if v.Installed {
-			versStat := GetVersionStatus(&v)
-			if versStat == 0 { // latest
-				if err := CollecDepsCheck(&v); err != nil {
-					warnings = append(warnings, fmt.Sprintf("dependency of %s : %s", v.Name, err))
-					hubIdx[COLLECTIONS][k] = v
-				}
-			} else if versStat == 1 { // not up-to-date
-				warnings = append(warnings, fmt.Sprintf("update for collection %s available (currently:%s, latest:%s)", v.Name, v.LocalVersion, v.Version))
-			} else { // version is higher than the highest available from hub?
-				warnings = append(warnings, fmt.Sprintf("collection %s is in the future (currently:%s, latest:%s)", v.Name, v.LocalVersion, v.Version))
-			}
-
-			log.Debugf("installed (%s) - status:%d | installed:%s | latest : %s | full : %+v", v.Name, semver.Compare("v"+v.Version, "v"+v.LocalVersion), v.LocalVersion, v.Version, v.Versions)
+		if !v.Installed {
+			continue
 		}
+
+		versionStatus := GetVersionStatus(&v)
+		switch versionStatus {
+		case 0: // latest
+			if err := CollecDepsCheck(&v); err != nil {
+				warnings = append(warnings, fmt.Sprintf("dependency of %s : %s", v.Name, err))
+				hubIdx[COLLECTIONS][k] = v
+			}
+		case 1: // not up-to-date
+			warnings = append(warnings, fmt.Sprintf("update for collection %s available (currently:%s, latest:%s)", v.Name, v.LocalVersion, v.Version))
+		default: // version is higher than the highest available from hub?
+			warnings = append(warnings, fmt.Sprintf("collection %s is in the future (currently:%s, latest:%s)", v.Name, v.LocalVersion, v.Version))
+		}
+
+		log.Debugf("installed (%s) - status:%d | installed:%s | latest : %s | full : %+v", v.Name, versionStatus, v.LocalVersion, v.Version, v.Versions)
 	}
 
 	return nil, warnings
@@ -421,6 +449,7 @@ func GetHubIdx(hub *csconfig.Hub) error {
 			return fmt.Errorf("unable to load existing index: %w", err)
 		}
 
+		// XXX: why the error check if we bail out anyway?
 		return err
 	}
 
@@ -437,12 +466,11 @@ func GetHubIdx(hub *csconfig.Hub) error {
 // LoadPkgIndex loads a local .index.json file and returns the map of parsers/scenarios/collections associated
 func LoadPkgIndex(buff []byte) (map[string]map[string]Item, error) {
 	var (
-		err          error
 		RawIndex     map[string]map[string]Item
 		missingItems []string
 	)
 
-	if err = json.Unmarshal(buff, &RawIndex); err != nil {
+	if err := json.Unmarshal(buff, &RawIndex); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal index: %w", err)
 	}
 
@@ -460,17 +488,18 @@ func LoadPkgIndex(buff []byte) (map[string]map[string]Item, error) {
 			item.FileName = x[len(x)-1]
 			RawIndex[itemType][idx] = item
 
+			if itemType != COLLECTIONS {
+				continue
+			}
+
 			// if it's a collection, check its sub-items are present
 			// XXX should be done later
-			if itemType == COLLECTIONS {
-				var tmp = [][]string{item.Parsers, item.PostOverflows, item.Scenarios, item.Collections}
-				for idx, ptr := range tmp {
-					ptrtype := ItemTypes[idx]
-					for _, p := range ptr {
-						if _, ok := RawIndex[ptrtype][p]; !ok {
-							log.Errorf("Referred %s %s in collection %s doesn't exist.", ptrtype, p, item.Name)
-							missingItems = append(missingItems, p)
-						}
+			for idx, ptr := range [][]string{item.Parsers, item.PostOverflows, item.Scenarios, item.Collections} {
+				ptrtype := ItemTypes[idx]
+				for _, p := range ptr {
+					if _, ok := RawIndex[ptrtype][p]; !ok {
+						log.Errorf("Referred %s %s in collection %s doesn't exist.", ptrtype, p, item.Name)
+						missingItems = append(missingItems, p)
 					}
 				}
 			}
