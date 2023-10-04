@@ -58,6 +58,7 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 	}{}
 	acquis_stats := map[string]map[string]int{}
 	parsers_stats := map[string]map[string]int{}
+	whitelist_stats := map[string]map[string]int{}
 	buckets_stats := map[string]map[string]int{}
 	lapi_stats := map[string]map[string]int{}
 	lapi_machine_stats := map[string]map[string]map[string]int{}
@@ -173,6 +174,18 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 					parsers_stats[name] = make(map[string]int)
 				}
 				parsers_stats[name]["unparsed"] += ival
+			case "cs_node_hits_wl_ok_total":
+				subName := fmt.Sprintf("%s:[%s]", name, metric.Labels["expression"])
+				if _, ok := whitelist_stats[subName]; !ok {
+					whitelist_stats[subName] = make(map[string]int)
+				}
+				whitelist_stats[subName]["wl"] += ival
+			case "cs_node_hits_wl_ko_total":
+				subName := fmt.Sprintf("%s:[%s]", name, metric.Labels["expression"])
+				if _, ok := whitelist_stats[subName]; !ok {
+					whitelist_stats[subName] = make(map[string]int)
+				}
+				whitelist_stats[subName]["nowl"] += ival
 			case "cs_lapi_route_requests_total":
 				if _, ok := lapi_stats[route]; !ok {
 					lapi_stats[route] = make(map[string]int)
@@ -237,6 +250,7 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 		acquisStatsTable(out, acquis_stats)
 		bucketStatsTable(out, buckets_stats)
 		parserStatsTable(out, parsers_stats)
+		whitelistStatsTable(out, whitelist_stats)
 		lapiStatsTable(out, lapi_stats)
 		lapiMachineStatsTable(out, lapi_machine_stats)
 		lapiBouncerStatsTable(out, lapi_bouncer_stats)
@@ -252,6 +266,7 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 	stats["acquisition"] = acquis_stats
 	stats["buckets"] = buckets_stats
 	stats["parsers"] = parsers_stats
+	stats["whitelist"] = whitelist_stats
 	stats["lapi"] = lapi_stats
 	stats["lapi_machine"] = lapi_machine_stats
 	stats["lapi_bouncer"] = lapi_bouncer_stats
@@ -282,7 +297,6 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 
 var noUnit bool
 
-
 func runMetrics(cmd *cobra.Command, args []string) error {
 	if err := csConfig.LoadPrometheus(); err != nil {
 		return fmt.Errorf("failed to load prometheus config: %w", err)
@@ -311,7 +325,6 @@ func runMetrics(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-
 func NewMetricsCmd() *cobra.Command {
 	cmdMetrics := &cobra.Command{
 		Use:               "metrics",
@@ -319,7 +332,7 @@ func NewMetricsCmd() *cobra.Command {
 		Long:              `Fetch metrics from the prometheus server and display them in a human-friendly way`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE: runMetrics,
+		RunE:              runMetrics,
 	}
 	cmdMetrics.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "", "Prometheus url (http://<ip>:<port>/metrics)")
 	cmdMetrics.PersistentFlags().BoolVar(&noUnit, "no-unit", false, "Show the real number instead of formatted with units")

@@ -173,7 +173,7 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 	} else {
 		log.Infof("Loading prometheus collectors")
 		prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
-			parser.NodesHits, parser.NodesHitsOk, parser.NodesHitsKo,
+			parser.NodesHits, parser.NodesHitsOk, parser.NodesHitsKo, parser.NodesHitsWl, parser.NodesHitsWlOk, parser.NodesHitsWlKo,
 			globalCsInfo, globalParsingHistogram, globalPourHistogram,
 			v1.LapiRouteHits, v1.LapiMachineHits, v1.LapiBouncerHits, v1.LapiNilDecisions, v1.LapiNonNilDecisions, v1.LapiResponseTime,
 			leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstantiation, leaky.BucketsOverflow, leaky.BucketsCurrentCount,

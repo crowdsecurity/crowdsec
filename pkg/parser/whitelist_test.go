@@ -287,9 +287,9 @@ func TestWhitelistCheck(t *testing.T) {
 			var err error
 			node.Whitelist = tt.whitelist
 			node.CompileWLs()
-			isWhitelisted := node.CheckIPsWL(tt.event.ParseIPSources())
+			isWhitelisted := node.CheckIPsWL(tt.event)
 			if !isWhitelisted {
-				isWhitelisted, err = node.CheckExprWL(map[string]interface{}{"evt": tt.event})
+				isWhitelisted, err = node.CheckExprWL(map[string]interface{}{"evt": tt.event}, tt.event)
 			}
 			if err != nil {
 				t.Fatalf("failed to check whitelist: %s", err)

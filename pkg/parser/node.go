@@ -9,7 +9,6 @@ import (
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
 	"github.com/davecgh/go-spew/spew"
-	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
 
@@ -168,22 +167,23 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		NodeState = true
 	}
 
-	if n.Name != "" {
-		NodesHits.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name}).Inc()
-	}
+	n.IncPromHits(p)
 	exprErr := error(nil)
-	isWhitelisted := n.CheckIPsWL(p.ParseIPSources())
+	isWhitelisted := n.CheckIPsWL(p)
 	if !isWhitelisted {
-		isWhitelisted, exprErr = n.CheckExprWL(cachedExprEnv)
+		isWhitelisted, exprErr = n.CheckExprWL(cachedExprEnv, p)
 	}
+
 	if exprErr != nil {
 		// Previous code returned nil if there was an error, so we keep this behavior
 		return false, nil //nolint:nilerr
 	}
 
-	if isWhitelisted && !p.Whitelisted {
-		p.Whitelisted = true
-		p.WhitelistReason = n.Whitelist.Reason
+	if isWhitelisted {
+		if !p.Whitelisted {
+			p.Whitelisted = true
+			p.WhitelistReason = n.Whitelist.Reason
+		}
 		/*huglily wipe the ban order if the event is whitelisted and it's an overflow */
 		if p.Type == types.OVFLW { /*don't do this at home kids */
 			ips := []string{}
@@ -331,16 +331,12 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 
 	//grok or leafs failed, don't process statics
 	if !NodeState {
-		if n.Name != "" {
-			NodesHitsKo.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name}).Inc()
-		}
+		n.IncKoNodeHits(p)
 		clog.Debugf("Event leaving node : ko")
 		return NodeState, nil
 	}
 
-	if n.Name != "" {
-		NodesHitsOk.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name}).Inc()
-	}
+	n.IncOkNodeHits(p)
 
 	/*
 		This is to apply statics when the node either was whitelisted, or is not a whitelist (it has no expr/ips wl)

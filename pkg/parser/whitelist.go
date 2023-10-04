@@ -38,12 +38,12 @@ func (n *Node) ContainsIPLists() bool {
 	return len(n.Whitelist.B_Ips) > 0 || len(n.Whitelist.B_Cidrs) > 0
 }
 
-func (n *Node) CheckIPsWL(srcs []net.IP) bool {
+func (n *Node) CheckIPsWL(p *types.Event) bool {
 	isWhitelisted := false
 	if !n.ContainsIPLists() {
 		return isWhitelisted
 	}
-	for _, src := range srcs {
+	for _, src := range p.ParseIPSources() {
 		if isWhitelisted {
 			break
 		}
@@ -51,23 +51,27 @@ func (n *Node) CheckIPsWL(srcs []net.IP) bool {
 			if v.Equal(src) {
 				n.Logger.Debugf("Event from [%s] is whitelisted by IP (%s), reason [%s]", src, v, n.Whitelist.Reason)
 				isWhitelisted = true
+				n.IncOkWLHits(p, v.String())
 				break
 			}
+			n.IncKoWLHits(p, v.String())
 			n.Logger.Tracef("whitelist: %s is not eq [%s]", src, v)
 		}
 		for _, v := range n.Whitelist.B_Cidrs {
 			if v.Contains(src) {
 				n.Logger.Debugf("Event from [%s] is whitelisted by CIDR (%s), reason [%s]", src, v, n.Whitelist.Reason)
 				isWhitelisted = true
+				n.IncOkWLHits(p, v.String())
 				break
 			}
+			n.IncKoWLHits(p, v.String())
 			n.Logger.Tracef("whitelist: %s not in [%s]", src, v)
 		}
 	}
 	return isWhitelisted
 }
 
-func (n *Node) CheckExprWL(cachedExprEnv map[string]interface{}) (bool, error) {
+func (n *Node) CheckExprWL(cachedExprEnv map[string]interface{}, p *types.Event) (bool, error) {
 	err := error(nil)
 	output := interface{}(nil)
 
@@ -96,6 +100,9 @@ func (n *Node) CheckExprWL(cachedExprEnv map[string]interface{}) (bool, error) {
 			if out {
 				n.Logger.Debugf("Event is whitelisted by expr, reason [%s]", n.Whitelist.Reason)
 				isWhitelisted = true
+				n.IncOkWLHits(p, fmt.Sprintf("%d", eidx))
+			} else {
+				n.IncKoWLHits(p, fmt.Sprintf("%d", eidx))
 			}
 		default:
 			n.Logger.Errorf("unexpected type %t (%v) while running '%s'", output, output, n.Whitelist.Exprs[eidx])

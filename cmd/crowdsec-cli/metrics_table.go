@@ -129,6 +129,20 @@ func parserStatsTable(out io.Writer, stats map[string]map[string]int) {
 	}
 }
 
+func whitelistStatsTable(out io.Writer, stats map[string]map[string]int) {
+	t := newTable(out)
+	t.SetRowLines(false)
+	t.SetHeaders("Whitelist", "WL", "NoWL")
+	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
+	keys := []string{"wl", "nowl"}
+	if numRows, err := metricsToTable(t, stats, keys); err != nil {
+		log.Warningf("while collecting metrics stats: %s", err)
+	} else if numRows > 0 {
+		renderTableTitle(out, "\nWhitelist Metrics:")
+		t.Render()
+	}
+}
+
 func stashStatsTable(out io.Writer, stats map[string]struct {
 	Type  string
 	Count int
