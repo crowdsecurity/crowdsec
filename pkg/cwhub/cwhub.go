@@ -31,7 +31,7 @@ var HubBranch = "master"
 const HubIndexFile = ".index.json"
 
 type ItemVersion struct {
-	Digest     string `json:"digest,omitempty"`
+	Digest     string `json:"digest,omitempty"`	// meow
 	Deprecated bool   `json:"deprecated,omitempty"`
 }
 
@@ -57,15 +57,12 @@ type Item struct {
 	BelongsToCollections []string `json:"belongs_to_collections,omitempty" yaml:"belongs_to_collections,omitempty"` // parent collection if any
 
 	// remote (hub) info
-	RemoteURL  string                 `json:"remoteURL,omitempty" yaml:"remoteURL,omitempty"`   // the full remote uri of file in http
 	RemotePath string                 `json:"path,omitempty"      yaml:"remote_path,omitempty"` // the path relative to (git | hub API) ie. /parsers/stage/author/file.yaml
-	RemoteHash string                 `json:"hash,omitempty"      yaml:"hash,omitempty"`        // the meow
 	Version    string                 `json:"version,omitempty"`                                // the last version
 	Versions   map[string]ItemVersion `json:"versions,omitempty"  yaml:"-"`                     // the list of existing versions
 
 	// local (deployed) info
 	LocalPath string `json:"local_path,omitempty" yaml:"local_path,omitempty"` // the local path relative to ${CFG_DIR}
-	// LocalHubPath string
 	LocalVersion string `json:"local_version,omitempty"`
 	LocalHash    string `json:"local_hash,omitempty"` // the local meow
 	Installed    bool   `json:"installed,omitempty"`
