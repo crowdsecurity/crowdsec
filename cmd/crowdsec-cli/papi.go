@@ -53,7 +53,7 @@ func NewPapiStatusCmd() *cobra.Command {
 				log.Fatalf("unable to initialize database client : %s", err)
 			}
 
-			apic, err := apiserver.NewAPIC(csConfig.API.Server.OnlineClient, dbClient, csConfig.API.Server.ConsoleConfig, csConfig.API.Server.CapiWhitelists, csConfig.API.Server.HighAvailability)
+			apic, err := apiserver.NewAPIC(csConfig.API.Server.OnlineClient, dbClient, csConfig.API.Server.ConsoleConfig, csConfig.API.Server.CapiWhitelists)
 
 			if err != nil {
 				log.Fatalf("unable to initialize API client : %s", err)
@@ -103,7 +103,7 @@ func NewPapiSyncCmd() *cobra.Command {
 				log.Fatalf("unable to initialize database client : %s", err)
 			}
 
-			apic, err := apiserver.NewAPIC(csConfig.API.Server.OnlineClient, dbClient, csConfig.API.Server.ConsoleConfig, csConfig.API.Server.CapiWhitelists, csConfig.API.Server.HighAvailability)
+			apic, err := apiserver.NewAPIC(csConfig.API.Server.OnlineClient, dbClient, csConfig.API.Server.ConsoleConfig, csConfig.API.Server.CapiWhitelists)
 
 			if err != nil {
 				log.Fatalf("unable to initialize API client : %s", err)

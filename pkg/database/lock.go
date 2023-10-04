@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	CAPIPullLockTimeout = 130
-	MetricsLockTimeout  = 40
+	CAPIPullLockTimeout = 120
+	MetricsLockTimeout  = 30
 )
 
 func (c *Client) AcquireLock(name string) error {
@@ -22,8 +22,11 @@ func (c *Client) AcquireLock(name string) error {
 		SetName(name).
 		SetCreatedAt(types.UtcNow()).
 		Save(c.CTX)
+	if ent.IsConstraintError(err) {
+		return err
+	}
 	if err != nil {
-		return errors.Wrapf(QueryFail, "insert lock: %s", err)
+		return errors.Wrapf(InsertFail, "insert lock: %s", err)
 	}
 	return nil
 }
@@ -31,19 +34,19 @@ func (c *Client) AcquireLock(name string) error {
 func (c *Client) ReleaseLock(name string) error {
 	_, err := c.Ent.Lock.Delete().Where(lock.NameEQ(name)).Exec(c.CTX)
 	if err != nil {
-		return errors.Wrapf(QueryFail, "delete lock: %s", err)
+		return errors.Wrapf(DeleteFail, "delete lock: %s", err)
 	}
 	return nil
 }
 
 func (c *Client) ReleaseLockWithTimeout(name string, timeout int) error {
-	log.Debugf("releasing (%s) orphin locks", name)
+	log.Debugf("(%s) releasing orphin locks", name)
 	_, err := c.Ent.Lock.Delete().Where(
 		lock.NameEQ(name),
-		lock.CreatedAtGT(time.Now().Add(-time.Duration(timeout)*time.Minute)),
+		lock.CreatedAtLT(time.Now().Add(-time.Duration(timeout)*time.Minute)),
 	).Exec(c.CTX)
 	if err != nil {
-		return errors.Wrapf(QueryFail, "delete lock: %s", err)
+		return errors.Wrapf(DeleteFail, "delete lock: %s", err)
 	}
 	return nil
 }

@@ -186,34 +186,29 @@ type CapiWhitelist struct {
 
 /*local api service configuration*/
 type LocalApiServerCfg struct {
-	Enable                        *bool                `yaml:"enable"`
-	ListenURI                     string               `yaml:"listen_uri,omitempty"` // 127.0.0.1:8080
-	TLS                           *TLSCfg              `yaml:"tls"`
-	DbConfig                      *DatabaseCfg         `yaml:"-"`
-	LogDir                        string               `yaml:"-"`
-	LogMedia                      string               `yaml:"-"`
-	OnlineClient                  *OnlineApiClientCfg  `yaml:"online_client"`
-	ProfilesPath                  string               `yaml:"profiles_path,omitempty"`
-	ConsoleConfigPath             string               `yaml:"console_path,omitempty"`
-	ConsoleConfig                 *ConsoleConfig       `yaml:"-"`
-	Profiles                      []*ProfileCfg        `yaml:"-"`
-	LogLevel                      *log.Level           `yaml:"log_level"`
-	UseForwardedForHeaders        bool                 `yaml:"use_forwarded_for_headers,omitempty"`
-	TrustedProxies                *[]string            `yaml:"trusted_proxies,omitempty"`
-	CompressLogs                  *bool                `yaml:"-"`
-	LogMaxSize                    int                  `yaml:"-"`
-	LogMaxAge                     int                  `yaml:"-"`
-	LogMaxFiles                   int                  `yaml:"-"`
-	TrustedIPs                    []string             `yaml:"trusted_ips,omitempty"`
-	PapiLogLevel                  *log.Level           `yaml:"papi_log_level"`
-	DisableRemoteLapiRegistration bool                 `yaml:"disable_remote_lapi_registration,omitempty"`
-	CapiWhitelistsPath            string               `yaml:"capi_whitelists_path,omitempty"`
-	CapiWhitelists                *CapiWhitelist       `yaml:"-"`
-	HighAvailability              *HighAvailabilityCfg `yaml:"high_availability,omitempty"`
-}
-
-type HighAvailabilityCfg struct {
-	Enabled *bool `yaml:"enabled"`
+	Enable                        *bool               `yaml:"enable"`
+	ListenURI                     string              `yaml:"listen_uri,omitempty"` // 127.0.0.1:8080
+	TLS                           *TLSCfg             `yaml:"tls"`
+	DbConfig                      *DatabaseCfg        `yaml:"-"`
+	LogDir                        string              `yaml:"-"`
+	LogMedia                      string              `yaml:"-"`
+	OnlineClient                  *OnlineApiClientCfg `yaml:"online_client"`
+	ProfilesPath                  string              `yaml:"profiles_path,omitempty"`
+	ConsoleConfigPath             string              `yaml:"console_path,omitempty"`
+	ConsoleConfig                 *ConsoleConfig      `yaml:"-"`
+	Profiles                      []*ProfileCfg       `yaml:"-"`
+	LogLevel                      *log.Level          `yaml:"log_level"`
+	UseForwardedForHeaders        bool                `yaml:"use_forwarded_for_headers,omitempty"`
+	TrustedProxies                *[]string           `yaml:"trusted_proxies,omitempty"`
+	CompressLogs                  *bool               `yaml:"-"`
+	LogMaxSize                    int                 `yaml:"-"`
+	LogMaxAge                     int                 `yaml:"-"`
+	LogMaxFiles                   int                 `yaml:"-"`
+	TrustedIPs                    []string            `yaml:"trusted_ips,omitempty"`
+	PapiLogLevel                  *log.Level          `yaml:"papi_log_level"`
+	DisableRemoteLapiRegistration bool                `yaml:"disable_remote_lapi_registration,omitempty"`
+	CapiWhitelistsPath            string              `yaml:"capi_whitelists_path,omitempty"`
+	CapiWhitelists                *CapiWhitelist      `yaml:"-"`
 }
 
 type TLSCfg struct {

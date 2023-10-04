@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math"
 
-	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -26,7 +25,6 @@ type EventQuery struct {
 	fields     []string
 	predicates []predicate.Event
 	withOwner  *AlertQuery
-	modifiers  []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -366,9 +364,6 @@ func (eq *EventQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Event,
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
-	if len(eq.modifiers) > 0 {
-		_spec.Modifiers = eq.modifiers
-	}
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -416,9 +411,6 @@ func (eq *EventQuery) loadOwner(ctx context.Context, query *AlertQuery, nodes []
 
 func (eq *EventQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := eq.querySpec()
-	if len(eq.modifiers) > 0 {
-		_spec.Modifiers = eq.modifiers
-	}
 	_spec.Node.Columns = eq.fields
 	if len(eq.fields) > 0 {
 		_spec.Unique = eq.unique != nil && *eq.unique
@@ -500,9 +492,6 @@ func (eq *EventQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if eq.unique != nil && *eq.unique {
 		selector.Distinct()
 	}
-	for _, m := range eq.modifiers {
-		m(selector)
-	}
 	for _, p := range eq.predicates {
 		p(selector)
 	}
@@ -518,32 +507,6 @@ func (eq *EventQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
-}
-
-// ForUpdate locks the selected rows against concurrent updates, and prevent them from being
-// updated, deleted or "selected ... for update" by other sessions, until the transaction is
-// either committed or rolled-back.
-func (eq *EventQuery) ForUpdate(opts ...sql.LockOption) *EventQuery {
-	if eq.driver.Dialect() == dialect.Postgres {
-		eq.Unique(false)
-	}
-	eq.modifiers = append(eq.modifiers, func(s *sql.Selector) {
-		s.ForUpdate(opts...)
-	})
-	return eq
-}
-
-// ForShare behaves similarly to ForUpdate, except that it acquires a shared mode lock
-// on any rows that are read. Other sessions can read the rows, but cannot modify them
-// until your transaction commits.
-func (eq *EventQuery) ForShare(opts ...sql.LockOption) *EventQuery {
-	if eq.driver.Dialect() == dialect.Postgres {
-		eq.Unique(false)
-	}
-	eq.modifiers = append(eq.modifiers, func(s *sql.Selector) {
-		s.ForShare(opts...)
-	})
-	return eq
 }
 
 // EventGroupBy is the group-by builder for Event entities.

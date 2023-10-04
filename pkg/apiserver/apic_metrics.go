@@ -127,16 +127,15 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 			}
 		case <-metTicker.C:
 			metTicker.Stop()
-			if a.isHAEnabled {
-				log.Debug("capi metrics: acquiring lock")
-				err := a.dbClient.AcquirePushMetricsLock()
-				if a.dbClient.IsLocked(err) {
-					log.Infof("another instance of crowdsec is already pushing metrics, skipping")
-					metTicker.Reset(nextMetInt())
-				}
-				if err != nil {
-					log.Errorf("unable to acquire pushMetrics lock (%s)", err)
-				}
+			log.Debug("capi metrics: acquiring lock")
+			err := a.dbClient.AcquirePushMetricsLock()
+			if a.dbClient.IsLocked(err) {
+				log.Infof("another instance of crowdsec is already pushing metrics, skipping")
+				metTicker.Reset(nextMetInt())
+				return
+			}
+			if err != nil {
+				log.Errorf("unable to acquire pushMetrics lock (%s)", err)
 			}
 			metrics, err := a.GetMetrics()
 			if err != nil {
@@ -147,12 +146,10 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 			if err != nil {
 				log.Errorf("capi metrics: failed: %s", err)
 			}
-			if a.isHAEnabled {
-				log.Debug("capi metrics: releasing lock")
-				err = a.dbClient.ReleasePushMetricsLock()
-				if err != nil {
-					log.Errorf("unable to release metrics lock (%s)", err)
-				}
+			log.Debug("capi metrics: releasing lock")
+			err = a.dbClient.ReleasePushMetricsLock()
+			if err != nil {
+				log.Errorf("unable to release metrics lock (%s)", err)
 			}
 			metTicker.Reset(nextMetInt())
 		case <-a.metricsTomb.Dying(): // if one apic routine is dying, do we kill the others?
