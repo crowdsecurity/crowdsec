@@ -18,7 +18,7 @@ func chooseHubBranch() (string, error) {
 	if err != nil {
 		log.Warningf("Unable to retrieve latest crowdsec version: %s, defaulting to master", err)
 		//lint:ignore nilerr
-		return "master", nil // ignore
+		return "master", nil
 	}
 
 	csVersion := cwversion.VersionStrip()
