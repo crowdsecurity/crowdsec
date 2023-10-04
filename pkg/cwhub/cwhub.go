@@ -47,24 +47,24 @@ type ItemHubStatus struct {
 // Item can be: parsed, scenario, collection
 type Item struct {
 	// descriptive info
-	Type                 string   `yaml:"type,omitempty" json:"type,omitempty"`                                     // parser|postoverflows|scenario|collection(|enrich)
-	Stage                string   `json:"stage,omitempty" yaml:"stage,omitempty,omitempty"`                         // Stage for parser|postoverflow: s00-raw/s01-...
+	Type                 string   `json:"type,omitempty"                   yaml:"type,omitempty"`                   // parser|postoverflows|scenario|collection(|enrich)
+	Stage                string   `json:"stage,omitempty"                  yaml:"stage,omitempty"`                  // Stage for parser|postoverflow: s00-raw/s01-...
 	Name                 string   `json:"name,omitempty"`                                                           // as seen in .config.json, usually "author/name"
 	FileName             string   `json:"file_name,omitempty"`                                                      // the filename, ie. apache2-logs.yaml
-	Description          string   `yaml:"description,omitempty" json:"description,omitempty"`                       // as seen in .config.json
+	Description          string   `json:"description,omitempty"            yaml:"description,omitempty"`            // as seen in .config.json
 	Author               string   `json:"author,omitempty"`                                                         // as seen in .config.json
-	References           []string `yaml:"references,omitempty" json:"references,omitempty"`                         // as seen in .config.json
-	BelongsToCollections []string `yaml:"belongs_to_collections,omitempty" json:"belongs_to_collections,omitempty"` // if it's part of collections, track name here
+	References           []string `json:"references,omitempty"             yaml:"references,omitempty"`             // as seen in .config.json
+	BelongsToCollections []string `json:"belongs_to_collections,omitempty" yaml:"belongs_to_collections,omitempty"` // if it's part of collections, track name here
 
-	// remote (hub) infos
-	RemoteURL  string                 `yaml:"remoteURL,omitempty" json:"remoteURL,omitempty"` // the full remote uri of file in http
-	RemotePath string                 `json:"path,omitempty" yaml:"remote_path,omitempty"`    // the path relative to git ie. /parsers/stage/author/file.yaml
-	RemoteHash string                 `yaml:"hash,omitempty" json:"hash,omitempty"`           // the meow
-	Version    string                 `json:"version,omitempty"`                              // the last version
-	Versions   map[string]ItemVersion `json:"versions,omitempty" yaml:"-"`                    // the list of existing versions
+	// remote (hub) info
+	RemoteURL  string                 `json:"remoteURL,omitempty" yaml:"remoteURL,omitempty"`   // the full remote uri of file in http
+	RemotePath string                 `json:"path,omitempty"      yaml:"remote_path,omitempty"` // the path relative to git ie. /parsers/stage/author/file.yaml
+	RemoteHash string                 `json:"hash,omitempty"      yaml:"hash,omitempty"`        // the meow
+	Version    string                 `json:"version,omitempty"`                                // the last version
+	Versions   map[string]ItemVersion `json:"versions,omitempty"  yaml:"-"`                     // the list of existing versions
 
-	// local (deployed) infos
-	LocalPath string `yaml:"local_path,omitempty" json:"local_path,omitempty"` // the local path relative to ${CFG_DIR}
+	// local (deployed) info
+	LocalPath string `json:"local_path,omitempty" yaml:"local_path,omitempty"` // the local path relative to ${CFG_DIR}
 	// LocalHubPath string
 	LocalVersion string `json:"local_version,omitempty"`
 	LocalHash    string `json:"local_hash,omitempty"` // the local meow
@@ -75,41 +75,52 @@ type Item struct {
 	Local        bool   `json:"local,omitempty"`   // if it's a non versioned control one
 
 	// if it's a collection, it not a single file
-	Parsers       []string `yaml:"parsers,omitempty" json:"parsers,omitempty"`
-	PostOverflows []string `yaml:"postoverflows,omitempty" json:"postoverflows,omitempty"`
-	Scenarios     []string `yaml:"scenarios,omitempty" json:"scenarios,omitempty"`
-	Collections   []string `yaml:"collections,omitempty" json:"collections,omitempty"`
+	Parsers       []string `json:"parsers,omitempty"       yaml:"parsers,omitempty"`
+	PostOverflows []string `json:"postoverflows,omitempty" yaml:"postoverflows,omitempty"`
+	Scenarios     []string `json:"scenarios,omitempty"     yaml:"scenarios,omitempty"`
+	Collections   []string `json:"collections,omitempty"   yaml:"collections,omitempty"`
+}
+
+func toEmoji(managed bool, installed bool, warning bool, ok bool) emoji.Emoji {
+	if !managed {
+		return emoji.House
+	}
+
+	if !installed {
+		return emoji.Prohibited
+	}
+
+	if warning {
+		return emoji.Warning
+	}
+
+	if ok {
+		return emoji.CheckMark
+	}
+
+	// XXX: this is new
+	return emoji.QuestionMark
 }
 
 func (i *Item) toHubStatus() ItemHubStatus {
-	hubStatus := ItemHubStatus{}
-	hubStatus.Name = i.Name
-	hubStatus.LocalVersion = i.LocalVersion
-	hubStatus.LocalPath = i.LocalPath
-	hubStatus.Description = i.Description
-
 	status, ok, warning, managed := ItemStatus(*i)
-	hubStatus.Status = status
 
-	if !managed {
-		hubStatus.UTF8_Status = fmt.Sprintf("%v  %s", emoji.House, status)
-	} else if !i.Installed {
-		hubStatus.UTF8_Status = fmt.Sprintf("%v  %s", emoji.Prohibited, status)
-	} else if warning {
-		hubStatus.UTF8_Status = fmt.Sprintf("%v  %s", emoji.Warning, status)
-	} else if ok {
-		hubStatus.UTF8_Status = fmt.Sprintf("%v  %s", emoji.CheckMark, status)
+	return ItemHubStatus{
+		Name:         i.Name,
+		LocalVersion: i.LocalVersion,
+		LocalPath:    i.LocalPath,
+		Description:  i.Description,
+		Status:       status,
+		UTF8_Status:  fmt.Sprintf("%v  %s", toEmoji(managed, i.Installed, warning, ok), status),
 	}
-
-	return hubStatus
 }
 
+// XXX: can we remove these globals?
 var skippedLocal = 0
 var skippedTainted = 0
 
 // To be used when reference(s) (is/are) missing in a collection
 var ReferenceMissingError = errors.New("Reference(s) missing in collection")
-var MissingHubIndex = errors.New("hub index can't be found")
 
 // GetVersionStatus: semver requires 'v' prefix
 func GetVersionStatus(v *Item) int {
@@ -203,11 +214,11 @@ func AddItem(itemType string, item Item) error {
 }
 
 func DisplaySummary() {
-	log.Printf("Loaded %d collecs, %d parsers, %d scenarios, %d post-overflow parsers", len(hubIdx[COLLECTIONS]),
+	log.Infof("Loaded %d collecs, %d parsers, %d scenarios, %d post-overflow parsers", len(hubIdx[COLLECTIONS]),
 		len(hubIdx[PARSERS]), len(hubIdx[SCENARIOS]), len(hubIdx[PARSERS_OVFLW]))
 
 	if skippedLocal > 0 || skippedTainted > 0 {
-		log.Printf("unmanaged items: %d local, %d tainted", skippedLocal, skippedTainted)
+		log.Infof("unmanaged items: %d local, %d tainted", skippedLocal, skippedTainted)
 	}
 }
 

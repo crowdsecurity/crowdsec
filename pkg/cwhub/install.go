@@ -159,7 +159,7 @@ func EnableItem(hub *csconfig.Hub, target Item) (Item, error) {
 	}
 
 	if _, err := os.Stat(parent_dir); os.IsNotExist(err) {
-		log.Printf("%s doesn't exist, create", parent_dir)
+		log.Infof("%s doesn't exist, create", parent_dir)
 
 		if err := os.MkdirAll(parent_dir, os.ModePerm); err != nil {
 			return target, fmt.Errorf("while creating directory: %w", err)
@@ -187,7 +187,7 @@ func EnableItem(hub *csconfig.Hub, target Item) (Item, error) {
 
 	// check if file already exists where it should in configdir (eg /etc/crowdsec/collections/)
 	if _, err := os.Lstat(parent_dir + "/" + target.FileName); !os.IsNotExist(err) {
-		log.Printf("%s already exists.", parent_dir+"/"+target.FileName)
+		log.Infof("%s already exists.", parent_dir+"/"+target.FileName)
 		return target, nil
 	}
 
@@ -206,7 +206,7 @@ func EnableItem(hub *csconfig.Hub, target Item) (Item, error) {
 		return target, fmt.Errorf("while creating symlink from %s to %s: %w", srcPath, dstPath, err)
 	}
 
-	log.Printf("Enabled %s : %s", target.Type, target.Name)
+	log.Infof("Enabled %s : %s", target.Type, target.Name)
 	target.Installed = true
 	hubIdx[target.Type][target.Name] = target
 
