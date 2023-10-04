@@ -156,7 +156,7 @@ func NewCapiStatusCmd() *cobra.Command {
 				log.Info("Run 'sudo cscli hub update' to get the hub index")
 				log.Fatalf("Failed to load hub index : %s", err)
 			}
-			scenarios, err := cwhub.GetInstalledScenariosAsString()
+			scenarios, err := cwhub.GetInstalledItemsAsString(cwhub.SCENARIOS)
 			if err != nil {
 				log.Fatalf("failed to get scenarios : %s", err)
 			}
