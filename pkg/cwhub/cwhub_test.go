@@ -128,12 +128,13 @@ func TestGetters(t *testing.T) {
 		}
 
 		// Add bad item
-		if err := AddItem("ratata", *item); err != nil {
-			if fmt.Sprintf("%s", err) != "ItemType ratata is unknown" {
-				t.Fatalf("unexpected error")
-			}
-		} else {
+		err := AddItem("ratata", *item)
+		if err == nil {
 			t.Fatalf("Expected error")
+		}
+
+		if fmt.Sprintf("%s", err) != "ItemType ratata is unknown" {
+			t.Fatalf("unexpected error")
 		}
 
 		break
@@ -155,13 +156,13 @@ func TestIndexDownload(t *testing.T) {
 	}
 }
 
-func getTestCfg() (cfg *csconfig.Config) {
-	cfg = &csconfig.Config{Hub: &csconfig.Hub{}}
+func getTestCfg() *csconfig.Config {
+	cfg := &csconfig.Config{Hub: &csconfig.Hub{}}
 	cfg.Hub.ConfigDir, _ = filepath.Abs("./install")
 	cfg.Hub.HubDir, _ = filepath.Abs("./hubdir")
 	cfg.Hub.HubIndexFile = filepath.Clean("./hubdir/.index.json")
 
-	return
+	return cfg
 }
 
 func envSetup(t *testing.T) *csconfig.Config {
@@ -424,34 +425,32 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 	response.Header.Set("Content-Type", "application/json")
 
-	responseBody := ""
-
 	log.Printf("---> %s", req.URL.Path)
 
 	// FAKE PARSER
-	if resp, ok := responseByPath[req.URL.Path]; ok {
-		responseBody = resp
-	} else {
+	resp, ok := responseByPath[req.URL.Path]
+	if !ok {
 		log.Fatalf("unexpected url :/ %s", req.URL.Path)
 	}
 
-	response.Body = io.NopCloser(strings.NewReader(responseBody))
+	response.Body = io.NopCloser(strings.NewReader(resp))
 
 	return response, nil
 }
 
 func fileToStringX(path string) string {
-	if f, err := os.Open(path); err == nil {
-		defer f.Close()
-
-		if data, err := io.ReadAll(f); err == nil {
-			return strings.ReplaceAll(string(data), "\r\n", "\n")
-		} else {
-			panic(err)
-		}
-	} else {
+	f, err := os.Open(path)
+	if err != nil {
 		panic(err)
 	}
+	defer f.Close()
+
+	data, err := io.ReadAll(f)
+	if err != nil {
+		panic(err)
+	}
+
+	return strings.ReplaceAll(string(data), "\r\n", "\n")
 }
 
 func resetResponseByPath() {

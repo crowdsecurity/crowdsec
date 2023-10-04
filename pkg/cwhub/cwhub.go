@@ -16,17 +16,17 @@ import (
 )
 
 // managed configuration types
-var PARSERS = "parsers"
-var PARSERS_OVFLW = "postoverflows"
-var SCENARIOS = "scenarios"
-var COLLECTIONS = "collections"
+const PARSERS = "parsers"
+const PARSERS_OVFLW = "postoverflows"
+const SCENARIOS = "scenarios"
+const COLLECTIONS = "collections"
 var ItemTypes = []string{PARSERS, PARSERS_OVFLW, SCENARIOS, COLLECTIONS}
 
 var hubIdx map[string]map[string]Item
 
 var RawFileURLTemplate = "https://hub-cdn.crowdsec.net/%s/%s"
 var HubBranch = "master"
-var HubIndexFile = ".index.json"
+const HubIndexFile = ".index.json"
 
 type ItemVersion struct {
 	Digest     string `json:"digest,omitempty"`
@@ -119,26 +119,22 @@ func getSHA256(filepath string) (string, error) {
 	// Digest of file
 	f, err := os.Open(filepath)
 	if err != nil {
-		return "", fmt.Errorf("unable to open '%s': %s", filepath, err)
+		return "", fmt.Errorf("unable to open '%s': %w", filepath, err)
 	}
 
 	defer f.Close()
 
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
-		return "", fmt.Errorf("unable to calculate sha256 of '%s': %s", filepath, err)
+		return "", fmt.Errorf("unable to calculate sha256 of '%s': %w", filepath, err)
 	}
 
 	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
 
 func GetItemMap(itemType string) map[string]Item {
-	var (
-		m map[string]Item
-		ok bool
-	)
-
-	if m, ok = hubIdx[itemType]; !ok {
+	m, ok := hubIdx[itemType]
+	if !ok {
 		return nil
 	}
 
@@ -194,21 +190,14 @@ func GetItem(itemType string, itemName string) *Item {
 }
 
 func AddItem(itemType string, item Item) error {
-	in := false
-
 	for _, itype := range ItemTypes {
 		if itype == itemType {
-			in = true
+			hubIdx[itemType][item.Name] = item
+			return nil
 		}
 	}
 
-	if !in {
-		return fmt.Errorf("ItemType %s is unknown", itemType)
-	}
-
-	hubIdx[itemType][item.Name] = item
-
-	return nil
+	return fmt.Errorf("ItemType %s is unknown", itemType)
 }
 
 func DisplaySummary() {
@@ -242,8 +231,8 @@ func ItemStatus(v Item) (string, bool, bool, bool) {
 		Warning = true
 		strret += ",tainted"
 	} else if !v.UpToDate && !v.Local {
-		strret += ",update-available"
 		Warning = true
+		strret += ",update-available"
 	}
 
 	return strret, Ok, Warning, Managed
