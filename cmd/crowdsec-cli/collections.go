@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
@@ -20,20 +21,8 @@ func NewCollectionsCmd() *cobra.Command {
 		Aliases:           []string{"collection"},
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := csConfig.LoadHub(); err != nil {
+			if err := require.Hub(csConfig); err != nil {
 				return err
-			}
-			if csConfig.Hub == nil {
-				return fmt.Errorf("you must configure cli before interacting with hub")
-			}
-
-			if err := cwhub.SetHubBranch(); err != nil {
-				return fmt.Errorf("while setting hub branch: %w", err)
-			}
-
-			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-				log.Info("Run 'sudo cscli hub update' to get the hub index")
-				return fmt.Errorf("failed to get hub index: %w", err)
 			}
 
 			return nil
