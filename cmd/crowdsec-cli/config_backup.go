@@ -8,7 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 /*
@@ -130,13 +130,8 @@ func backupConfigToDirectory(dirPath string) error {
 }
 
 func runConfigBackup(cmd *cobra.Command, args []string) error {
-	if err := csConfig.LoadHub(); err != nil {
+	if err := require.Hub(csConfig); err != nil {
 		return err
-	}
-
-	if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-		log.Info("Run 'sudo cscli hub update' to get the hub index")
-		return fmt.Errorf("failed to get Hub index: %w", err)
 	}
 
 	if err := backupConfigToDirectory(args[0]); err != nil {

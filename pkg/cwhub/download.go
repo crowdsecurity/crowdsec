@@ -155,7 +155,7 @@ func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool, updateOnly b
 
 	target, err = DownloadItem(hub, target, overwrite)
 	if err != nil {
-		return target, fmt.Errorf("failed to download item : %s", err)
+		return target, fmt.Errorf("failed to download item: %w", err)
 	}
 
 	return target, nil
