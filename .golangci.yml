@@ -200,6 +200,18 @@ issues:
       text: "shadow: declaration of \"err\" shadows declaration"
 
     #
+    # typecheck
+    #
+
+    - linters:
+        - typecheck
+      text: "undefined: min"
+
+    - linters:
+        - typecheck
+      text: "undefined: max"
+
+    #
     # errcheck
     #
 

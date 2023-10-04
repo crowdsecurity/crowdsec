@@ -5,17 +5,18 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/version"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -36,14 +37,11 @@ func runLapiStatus(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		log.Fatalf("parsing api url ('%s'): %s", apiurl, err)
 	}
-	if err := csConfig.LoadHub(); err != nil {
+
+	if err := require.Hub(csConfig); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-		log.Info("Run 'sudo cscli hub update' to get the hub index")
-		log.Fatalf("Failed to load hub index : %s", err)
-	}
 	scenarios, err := cwhub.GetInstalledScenariosAsString()
 	if err != nil {
 		log.Fatalf("failed to get scenarios : %s", err)
