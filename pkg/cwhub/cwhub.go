@@ -154,44 +154,53 @@ func GetItemMap(itemType string) map[string]Item {
 	return m
 }
 
-// GetItemByPath retrieves the item from hubIdx based on the path. To achieve this it will resolve symlink to find associated hub item.
-func GetItemByPath(itemType string, itemPath string) (*Item, error) {
-	// try to resolve symlink
-	finalName := ""
-
+// Given a FileInfo, extract the map key. Follow a symlink if necessary
+func itemKey(itemPath string) (string, error) {
 	f, err := os.Lstat(itemPath)
 	if err != nil {
-		return nil, fmt.Errorf("while performing lstat on %s: %w", itemPath, err)
+		return "", fmt.Errorf("while performing lstat on %s: %w", itemPath, err)
 	}
 
 	if f.Mode()&os.ModeSymlink == 0 {
-		// it's not a symlink, it should be the filename itsef the key
-		finalName = filepath.Base(itemPath)
-	} else {
-		// resolve the symlink to hub file
-		pathInHub, err := os.Readlink(itemPath)
-		if err != nil {
-			return nil, fmt.Errorf("while reading symlink of %s: %w", itemPath, err)
-		}
-		// extract author from path
-		fname := filepath.Base(pathInHub)
-		author := filepath.Base(filepath.Dir(pathInHub))
-		// trim yaml suffix
-		fname = strings.TrimSuffix(fname, ".yaml")
-		fname = strings.TrimSuffix(fname, ".yml")
-		finalName = fmt.Sprintf("%s/%s", author, fname)
+		// it's not a symlink, so the filename itsef should be the key
+		return filepath.Base(itemPath), nil
 	}
 
-	// it's not a symlink, it should be the filename itsef the key
-	if m := GetItemMap(itemType); m != nil {
-		if v, ok := m[finalName]; ok {
-			return &v, nil
-		}
-
-		return nil, fmt.Errorf("%s not found in %s", finalName, itemType)
+	// resolve the symlink to hub file
+	pathInHub, err := os.Readlink(itemPath)
+	if err != nil {
+		return "", fmt.Errorf("while reading symlink of %s: %w", itemPath, err)
 	}
 
-	return nil, fmt.Errorf("item type %s doesn't exist", itemType)
+	// extract author from path
+	fname := filepath.Base(pathInHub)
+	author := filepath.Base(filepath.Dir(pathInHub))
+
+	// trim yaml suffix
+	fname = strings.TrimSuffix(fname, ".yaml")
+	fname = strings.TrimSuffix(fname, ".yml")
+
+	return fmt.Sprintf("%s/%s", author, fname), nil
+}
+
+// GetItemByPath retrieves the item from hubIdx based on the path. To achieve this it will resolve symlink to find associated hub item.
+func GetItemByPath(itemType string, itemPath string) (*Item, error) {
+	itemKey, err := itemKey(itemPath)
+	if err != nil {
+		return nil, err
+	}
+
+	m := GetItemMap(itemType)
+	if m == nil {
+		return nil, fmt.Errorf("item type %s doesn't exist", itemType)
+	}
+
+	v, ok := m[itemKey]
+	if !ok {
+		return nil, fmt.Errorf("%s not found in %s", itemKey, itemType)
+	}
+
+	return &v, nil
 }
 
 func GetItem(itemType string, itemName string) *Item {
