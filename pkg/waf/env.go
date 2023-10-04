@@ -38,5 +38,7 @@ func GetHookEnv(w *WaapRuntimeConfig, request ParsedRequest) map[string]interfac
 		"SetHTTPCode":           w.SetHTTPCode,
 		"SetActionByID":         w.SetActionByID,
 		"CancelEvent":           w.CancelEvent,
+		"IsInBand":              request.IsInBand,
+		"IsOutBand":             request.IsOutBand,
 	}
 }

@@ -74,6 +74,8 @@ type ParsedRequest struct {
 	UUID             string
 	Tx               experimental.FullTransaction
 	ResponseChannel  chan WaapTempResponse
+	IsInBand         bool
+	IsOutBand        bool
 }
 
 // Generate a ParsedRequest from a http.Request. ParsedRequest can be consumed by the Waap Engine

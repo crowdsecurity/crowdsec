@@ -150,6 +150,9 @@ func (r *WaapRunner) Run(t *tomb.Tomb) error {
 			r.logger.Infof("Requests handled by runner %s", request.UUID)
 			r.WaapRuntime.ClearResponse()
 
+			request.IsInBand = true
+			request.IsOutBand = false
+
 			WafReqCounter.With(prometheus.Labels{"source": request.RemoteAddr}).Inc()
 			//to measure the time spent in the WAF
 			startParsing := time.Now()
@@ -171,20 +174,24 @@ func (r *WaapRunner) Run(t *tomb.Tomb) error {
 			if in := request.Tx.Interruption(); in != nil {
 				r.logger.Debugf("inband rules matched : %d", in.RuleID)
 				r.WaapRuntime.Response.InBandInterrupt = true
+
+				err = r.WaapRuntime.ProcessOnMatchRules(request)
+				if err != nil {
+					r.logger.Errorf("unable to process OnMatch rules: %s", err)
+					continue
+				}
 			}
 			elapsed := time.Since(startParsing)
 			WafInbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddr}).Observe(elapsed.Seconds())
 
 			//generate reponse for the remediation component, based on the WAAP config + inband rules evaluation
 			//@tko : this should move in the WaapRuntimeConfig as it knows what to do with the interruption and the expected remediation
-			err = r.WaapRuntime.ProcessOnMatchRules(request)
-			if err != nil {
-				r.logger.Errorf("unable to process OnMatch rules: %s", err)
-				continue
-			}
 
 			// send back the result to the HTTP handler for the InBand part
 			request.ResponseChannel <- r.WaapRuntime.Response
+
+			request.IsInBand = false
+			request.IsOutBand = true
 
 			err = r.ProcessOutOfBandRules(&request)
 			if err != nil {
@@ -195,6 +202,14 @@ func (r *WaapRunner) Run(t *tomb.Tomb) error {
 			if in := request.Tx.Interruption(); in != nil {
 				r.logger.Debugf("outband rules matched : %d", in.RuleID)
 				r.WaapRuntime.Response.OutOfBandInterrupt = true
+			} else {
+				continue
+			}
+
+			err = r.WaapRuntime.ProcessOnMatchRules(request)
+			if err != nil {
+				r.logger.Errorf("unable to process OnMatch rules: %s", err)
+				continue
 			}
 
 		}
