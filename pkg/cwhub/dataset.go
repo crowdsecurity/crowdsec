@@ -5,7 +5,7 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path"
+	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
 
@@ -18,6 +18,7 @@ type DataSet struct {
 
 func downloadFile(url string, destPath string) error {
 	log.Debugf("downloading %s in %s", url, destPath)
+
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return err
@@ -43,7 +44,7 @@ func downloadFile(url string, destPath string) error {
 		return err
 	}
 
-	_, err = file.WriteString(string(body))
+	_, err = file.Write(body)
 	if err != nil {
 		return err
 	}
@@ -58,8 +59,9 @@ func downloadFile(url string, destPath string) error {
 
 func GetData(data []*types.DataSource, dataDir string) error {
 	for _, dataS := range data {
-		destPath := path.Join(dataDir, dataS.DestPath)
+		destPath := filepath.Join(dataDir, dataS.DestPath)
 		log.Infof("downloading data '%s' in '%s'", dataS.SourceURL, destPath)
+
 		err := downloadFile(dataS.SourceURL, destPath)
 		if err != nil {
 			return err

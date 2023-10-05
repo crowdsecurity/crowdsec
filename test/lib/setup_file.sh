@@ -67,7 +67,9 @@ config_set() {
 export -f config_set
 
 config_disable_agent() {
-    config_set 'del(.crowdsec_service)'
+    config_set '.crowdsec_service.enable=false'
+    # this should be equivalent to:
+    # config_set 'del(.crowdsec_service)'
 }
 export -f config_disable_agent
 
@@ -77,7 +79,9 @@ config_log_stderr() {
 export -f config_log_stderr
 
 config_disable_lapi() {
-    config_set 'del(.api.server)'
+    config_set '.api.server.enable=false'
+    # this should be equivalent to:
+    # config_set 'del(.api.server)'
 }
 export -f config_disable_lapi
 
@@ -112,18 +116,23 @@ output() {
 }
 export -f output
 
+is_package_testing() {
+    [[ "$PACKAGE_TESTING" != "" ]]
+}
+export -f is_package_testing
+
 is_db_postgres() {
-    [[ "${DB_BACKEND}" =~ ^postgres|pgx$ ]]
+    [[ "$DB_BACKEND" =~ ^postgres|pgx$ ]]
 }
 export -f is_db_postgres
 
 is_db_mysql() {
-    [[ "${DB_BACKEND}" == "mysql" ]]
+    [[ "$DB_BACKEND" == "mysql" ]]
 }
 export -f is_db_mysql
 
 is_db_sqlite() {
-    [[ "${DB_BACKEND}" == "sqlite" ]]
+    [[ "$DB_BACKEND" == "sqlite" ]]
 }
 export -f is_db_sqlite
 

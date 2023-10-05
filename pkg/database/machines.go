@@ -122,6 +122,18 @@ func (c *Client) DeleteWatcher(name string) error {
 	return nil
 }
 
+func (c *Client) BulkDeleteWatchers(machines []*ent.Machine) (int, error) {
+	ids := make([]int, len(machines))
+	for i, b := range machines {
+		ids[i] = b.ID
+	}
+	nbDeleted, err := c.Ent.Machine.Delete().Where(machine.IDIn(ids...)).Exec(c.CTX)
+	if err != nil {
+		return nbDeleted, err
+	}
+	return nbDeleted, nil
+}
+
 func (c *Client) UpdateMachineLastPush(machineID string) error {
 	_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(machineID)).SetLastPush(time.Now().UTC()).Save(c.CTX)
 	if err != nil {
@@ -183,4 +195,7 @@ func (c *Client) IsMachineRegistered(machineID string) (bool, error) {
 
 	return false, nil
 
+}
+func (c *Client) QueryLastValidatedHeartbeatLT(t time.Time) ([]*ent.Machine, error) {
+	return c.Ent.Machine.Query().Where(machine.LastHeartbeatLT(t), machine.IsValidatedEQ(true)).All(c.CTX)
 }

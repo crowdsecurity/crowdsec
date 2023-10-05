@@ -138,11 +138,13 @@ func (l *labelsMap) String() string {
 }
 
 func (l labelsMap) Set(label string) error {
-	split := strings.Split(label, ":")
-	if len(split) != 2 {
-		return errors.Wrapf(errors.New("Bad Format"), "for Label '%s'", label)
+	for _, pair := range strings.Split(label, ",") {
+		split := strings.Split(pair, ":")
+		if len(split) != 2 {
+			return fmt.Errorf("invalid format for label '%s', must be key:value", pair)
+		}
+		l[split[0]] = split[1]
 	}
-	l[split[0]] = split[1]
 	return nil
 }
 
@@ -249,13 +251,13 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		return nil, err
 	}
 
-	if !flags.DisableAgent {
+	if !cConfig.DisableAgent {
 		if err := cConfig.LoadCrowdsec(); err != nil {
 			return nil, err
 		}
 	}
 
-	if !flags.DisableAPI {
+	if !cConfig.DisableAPI {
 		if err := cConfig.LoadAPIServer(); err != nil {
 			return nil, err
 		}
@@ -290,7 +292,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 			cConfig.API.Server.OnlineClient = nil
 		}
 		/*if the api is disabled as well, just read file and exit, don't daemonize*/
-		if flags.DisableAPI {
+		if cConfig.DisableAPI {
 			cConfig.Common.Daemonize = false
 		}
 		log.Infof("single file mode : log_media=%s daemonize=%t", cConfig.Common.LogMedia, cConfig.Common.Daemonize)

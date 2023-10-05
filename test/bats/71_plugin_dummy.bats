@@ -5,7 +5,7 @@ set -u
 
 setup_file() {
     load "../lib/setup_file.sh"
-    [[ -n "${PACKAGE_TESTING}" ]] && return
+    is_package_testing && return
 
     ./instance-data load
 
@@ -51,7 +51,7 @@ teardown_file() {
 }
 
 setup() {
-    [[ -n "${PACKAGE_TESTING}" ]] && skip
+    is_package_testing && skip
     load "../lib/setup.sh"
 }
 

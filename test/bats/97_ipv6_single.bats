@@ -33,7 +33,7 @@ api() {
     # delete community pull
     rune -0 cscli decisions delete --all
     rune -0 cscli decisions list -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "adding decision for ip 1111:2222:3333:4444:5555:6666:7777:8888" {
@@ -67,7 +67,7 @@ api() {
 
 @test "CLI - decisions for ip 1211:2222:3333:4444:5555:6666:7777:8888" {
     rune -0 cscli decisions list -i '1211:2222:3333:4444:5555:6666:7777:8888' -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "API - decisions for ip 1211:2222:3333:4444:5555:6666:7777:888" {
@@ -77,7 +77,7 @@ api() {
 
 @test "CLI - decisions for ip 1111:2222:3333:4444:5555:6666:7777:8887" {
     rune -0 cscli decisions list -i '1111:2222:3333:4444:5555:6666:7777:8887' -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "API - decisions for ip 1111:2222:3333:4444:5555:6666:7777:8887" {
@@ -87,7 +87,7 @@ api() {
 
 @test "CLI - decisions for range 1111:2222:3333:4444:5555:6666:7777:8888/48" {
     rune -0 cscli decisions list -r '1111:2222:3333:4444:5555:6666:7777:8888/48' -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "API - decisions for range 1111:2222:3333:4444:5555:6666:7777:8888/48" {
@@ -109,7 +109,7 @@ api() {
 
 @test "CLI - decisions for range 1111:2222:3333:4444:5555:6666:7777:8888/64" {
     rune -0 cscli decisions list -r '1111:2222:3333:4444:5555:6666:7777:8888/64' -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "API - decisions for range 1111:2222:3333:4444:5555:6666:7777:8888/64" {
@@ -141,7 +141,7 @@ api() {
 
 @test "CLI - decisions for ip 1111:2222:3333:4444:5555:6666:7777:8889 after delete" {
     rune -0 cscli decisions list -i '1111:2222:3333:4444:5555:6666:7777:8889' -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "deleting decision for range 1111:2222:3333:4444:5555:6666:7777:8888/64" {
@@ -151,5 +151,5 @@ api() {
 
 @test "CLI - decisions for ip/range in 1111:2222:3333:4444:5555:6666:7777:8888/64 after delete" {
     rune -0 cscli decisions list -r '1111:2222:3333:4444:5555:6666:7777:8888/64' -o json --contained
-    assert_output 'null'
+    assert_json '[]'
 }

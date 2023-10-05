@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -19,6 +19,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 const CAPIBaseURL string = "https://api.crowdsec.net/"
@@ -31,14 +33,12 @@ func NewCapiCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := csConfig.LoadAPIServer(); err != nil {
-				return fmt.Errorf("local API is disabled, please run this command on the local API machine: %w", err)
+			if err := require.LAPI(csConfig); err != nil {
+				return err
 			}
-			if csConfig.DisableAPI {
-				return nil
-			}
-			if csConfig.API.Server.OnlineClient == nil {
-				log.Fatalf("no configuration for Central API in '%s'", *csConfig.FilePath)
+
+			if err := require.CAPI(csConfig); err != nil {
+				return err
 			}
 
 			return nil
@@ -134,10 +134,6 @@ func NewCapiStatusCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			var err error
-			if csConfig.API.Server == nil {
-				log.Fatal("There is no configuration on 'api.server:'")
-			}
 			if csConfig.API.Server.OnlineClient == nil {
 				log.Fatalf("Please provide credentials for the Central API (CAPI) in '%s'", csConfig.API.Server.OnlineClient.CredentialsFilePath)
 			}
@@ -160,7 +156,7 @@ func NewCapiStatusCmd() *cobra.Command {
 				log.Info("Run 'sudo cscli hub update' to get the hub index")
 				log.Fatalf("Failed to load hub index : %s", err)
 			}
-			scenarios, err := cwhub.GetInstalledScenariosAsString()
+			scenarios, err := cwhub.GetInstalledItemsAsString(cwhub.SCENARIOS)
 			if err != nil {
 				log.Fatalf("failed to get scenarios : %s", err)
 			}

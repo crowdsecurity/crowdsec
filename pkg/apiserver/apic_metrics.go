@@ -2,14 +2,14 @@ package apiserver
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/exp/slices"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
-	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
-	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
+	"github.com/crowdsecurity/go-cs-lib/trace"
+	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -83,7 +83,7 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 	// intervals must always be > 0
 	metInts := []time.Duration{1 * time.Millisecond, a.metricsIntervalFirst, a.metricsInterval}
 
-	log.Infof("Start send metrics to CrowdSec Central API (interval: %s once, then %s)",
+	log.Infof("Start sending metrics to CrowdSec Central API (interval: %s once, then %s)",
 		metInts[1].Round(time.Second), metInts[2])
 
 	count := -1
@@ -139,12 +139,15 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 			}
 			metrics, err := a.GetMetrics()
 			if err != nil {
-				log.Errorf("unable to get metrics (%s), will retry", err)
+				log.Errorf("unable to get metrics (%s)", err)
 			}
-			log.Info("capi metrics: sending")
-			_, _, err = a.apiClient.Metrics.Add(context.Background(), metrics)
-			if err != nil {
-				log.Errorf("capi metrics: failed: %s", err)
+			// metrics are nil if they could not be retrieved
+			if metrics != nil {
+				log.Info("capi metrics: sending")
+				_, _, err = a.apiClient.Metrics.Add(context.Background(), metrics)
+				if err != nil {
+					log.Errorf("capi metrics: failed: %s", err)
+				}
 			}
 			log.Debug("capi metrics: releasing lock")
 			err = a.dbClient.ReleasePushMetricsLock()

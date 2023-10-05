@@ -1,5 +1,5 @@
 # vim: set ft=dockerfile:
-ARG GOVERSION=1.20.6
+ARG GOVERSION=1.21.1
 
 FROM golang:${GOVERSION}-bookworm AS build
 
@@ -68,10 +68,11 @@ FROM slim as plugins
 
 # Due to the wizard using cp -n, we have to copy the config files directly from the source as -n does not exist in busybox cp
 # The files are here for reference, as users will need to mount a new version to be actually able to use notifications
-COPY --from=build /go/src/crowdsec/plugins/notifications/email/email.yaml /staging/etc/crowdsec/notifications/email.yaml
-COPY --from=build /go/src/crowdsec/plugins/notifications/http/http.yaml /staging/etc/crowdsec/notifications/http.yaml
-COPY --from=build /go/src/crowdsec/plugins/notifications/slack/slack.yaml /staging/etc/crowdsec/notifications/slack.yaml
-COPY --from=build /go/src/crowdsec/plugins/notifications/splunk/splunk.yaml /staging/etc/crowdsec/notifications/splunk.yaml
+COPY --from=build /go/src/crowdsec/cmd/notification-email/email.yaml /staging/etc/crowdsec/notifications/email.yaml
+COPY --from=build /go/src/crowdsec/cmd/notification-http/http.yaml /staging/etc/crowdsec/notifications/http.yaml
+COPY --from=build /go/src/crowdsec/cmd/notification-slack/slack.yaml /staging/etc/crowdsec/notifications/slack.yaml
+COPY --from=build /go/src/crowdsec/cmd/notification-splunk/splunk.yaml /staging/etc/crowdsec/notifications/splunk.yaml
+COPY --from=build /go/src/crowdsec/cmd/notification-sentinel/sentinel.yaml /staging/etc/crowdsec/notifications/sentinel.yaml
 COPY --from=build /usr/local/lib/crowdsec/plugins /usr/local/lib/crowdsec/plugins
 
 FROM slim as geoip

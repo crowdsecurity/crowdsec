@@ -19,12 +19,14 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 func DecisionsFromAlert(alert *models.Alert) string {
@@ -124,6 +126,12 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 		}
 		csvwriter.Flush()
 	} else if csConfig.Cscli.Output == "json" {
+		if *alerts == nil {
+			// avoid returning "null" in json
+			// could be cleaner if we used slice of alerts directly
+			fmt.Println("[]")
+			return nil
+		}
 		x, _ := json.MarshalIndent(alerts, "", " ")
 		fmt.Printf("%s", string(x))
 	} else if csConfig.Cscli.Output == "human" {
@@ -206,6 +214,7 @@ func NewAlertsCmd() *cobra.Command {
 		Short:             "Manage alerts",
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
+		Aliases:           []string{"alert"},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			if err := csConfig.LoadAPIClient(); err != nil {
@@ -525,8 +534,8 @@ func NewAlertsFlushCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
-			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
-				return fmt.Errorf("local API is disabled, please run this command on the local API machine")
+			if err := require.LAPI(csConfig); err != nil {
+				return err
 			}
 			dbClient, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {
