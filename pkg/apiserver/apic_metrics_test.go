@@ -26,15 +26,15 @@ func TestAPICSendMetrics(t *testing.T) {
 	}{
 		{
 			name:            "basic",
-			duration:        time.Millisecond * 60,
-			metricsInterval: time.Millisecond * 10,
+			duration:        time.Millisecond * 120,
+			metricsInterval: time.Millisecond * 20,
 			expectedCalls:   5,
 			setUp:           func(api *apic) {},
 		},
 		{
 			name:            "with some metrics",
-			duration:        time.Millisecond * 60,
-			metricsInterval: time.Millisecond * 10,
+			duration:        time.Millisecond * 120,
+			metricsInterval: time.Millisecond * 20,
 			expectedCalls:   5,
 			setUp: func(api *apic) {
 				api.dbClient.Ent.Machine.Delete().ExecX(context.Background())
