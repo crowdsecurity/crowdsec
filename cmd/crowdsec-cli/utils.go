@@ -24,6 +24,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -45,25 +46,6 @@ func indexOf(s string, slice []string) int {
 		}
 	}
 	return -1
-}
-
-func LoadHub() error {
-	if err := csConfig.LoadHub(); err != nil {
-		log.Fatal(err)
-	}
-	if csConfig.Hub == nil {
-		return fmt.Errorf("unable to load hub")
-	}
-
-	if err := cwhub.SetHubBranch(); err != nil {
-		log.Warningf("unable to set hub branch (%s), default to master", err)
-	}
-
-	if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-		return fmt.Errorf("Failed to get Hub index : '%w'. Run 'sudo cscli hub update' to get the hub index", err)
-	}
-
-	return nil
 }
 
 func Suggest(itemType string, baseItem string, suggestItem string, score int, ignoreErr bool) {
@@ -100,7 +82,7 @@ func GetDistance(itemType string, itemName string) (*cwhub.Item, int) {
 }
 
 func compAllItems(itemType string, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	if err := LoadHub(); err != nil {
+	if err := require.Hub(csConfig); err != nil {
 		return nil, cobra.ShellCompDirectiveDefault
 	}
 
@@ -116,7 +98,7 @@ func compAllItems(itemType string, args []string, toComplete string) ([]string, 
 }
 
 func compInstalledItems(itemType string, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	if err := LoadHub(); err != nil {
+	if err := require.Hub(csConfig); err != nil {
 		return nil, cobra.ShellCompDirectiveDefault
 	}
 
@@ -518,9 +500,8 @@ func RestoreHub(dirPath string) error {
 	if err := csConfig.LoadHub(); err != nil {
 		return err
 	}
-	if err := cwhub.SetHubBranch(); err != nil {
-		return fmt.Errorf("error while setting hub branch: %s", err)
-	}
+
+	cwhub.SetHubBranch()
 
 	for _, itype := range cwhub.ItemTypes {
 		itemDirectory := fmt.Sprintf("%s/%s/", dirPath, itype)

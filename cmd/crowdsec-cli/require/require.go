@@ -73,9 +73,7 @@ func Hub (c *csconfig.Config) error {
 		return fmt.Errorf("you must configure cli before interacting with hub")
 	}
 
-	if err := cwhub.SetHubBranch(); err != nil {
-		return fmt.Errorf("while setting hub branch: %w", err)
-	}
+	cwhub.SetHubBranch()
 
 	if err := cwhub.GetHubIdx(c.Hub); err != nil {
 		return fmt.Errorf("failed to read Hub index: '%w'. Run 'sudo cscli hub update' to download the index again", err)
