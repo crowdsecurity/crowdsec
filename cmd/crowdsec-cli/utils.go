@@ -38,15 +38,6 @@ func printHelp(cmd *cobra.Command) {
 	}
 }
 
-func indexOf(s string, slice []string) int {
-	for i, elem := range slice {
-		if s == elem {
-			return i
-		}
-	}
-	return -1
-}
-
 func Suggest(itemType string, baseItem string, suggestItem string, score int, ignoreErr bool) {
 	errMsg := ""
 	if score < MaxDistance {
