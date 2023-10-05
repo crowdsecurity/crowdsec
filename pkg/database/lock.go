@@ -13,11 +13,9 @@ import (
 
 const (
 	CAPIPullLockTimeout = 120
-	MetricsLockTimeout  = 30
 )
 
 func (c *Client) AcquireLock(name string) error {
-	// pessimistic lock
 	_, err := c.Ent.Lock.Create().
 		SetName(name).
 		SetCreatedAt(types.UtcNow()).
@@ -53,19 +51,6 @@ func (c *Client) ReleaseLockWithTimeout(name string, timeout int) error {
 
 func (c *Client) IsLocked(err error) bool {
 	return ent.IsConstraintError(err)
-}
-
-func (c *Client) AcquirePushMetricsLock() error {
-	lockName := "pushMetrics"
-	err := c.ReleaseLockWithTimeout(lockName, MetricsLockTimeout)
-	if err != nil {
-		log.Errorf("unable to release pushMetrics lock: %s", err)
-	}
-	return c.AcquireLock(lockName)
-}
-
-func (c *Client) ReleasePushMetricsLock() error {
-	return c.ReleaseLock("pushMetrics")
 }
 
 func (c *Client) AcquirePullCAPILock() error {
