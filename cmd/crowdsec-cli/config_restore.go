@@ -13,11 +13,131 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 type OldAPICfg struct {
 	MachineID string `json:"machine_id"`
 	Password  string `json:"password"`
+}
+
+// it's a rip of the cli version, but in silent-mode
+func silentInstallItem(name string, obtype string) (string, error) {
+	var item = cwhub.GetItem(obtype, name)
+	if item == nil {
+		return "", fmt.Errorf("error retrieving item")
+	}
+	it := *item
+	if downloadOnly && it.Downloaded && it.UpToDate {
+		return fmt.Sprintf("%s is already downloaded and up-to-date", it.Name), nil
+	}
+	it, err := cwhub.DownloadLatest(csConfig.Hub, it, forceAction, false)
+	if err != nil {
+		return "", fmt.Errorf("error while downloading %s : %v", it.Name, err)
+	}
+	if err := cwhub.AddItem(obtype, it); err != nil {
+		return "", err
+	}
+
+	if downloadOnly {
+		return fmt.Sprintf("Downloaded %s to %s", it.Name, csConfig.Cscli.HubDir+"/"+it.RemotePath), nil
+	}
+	it, err = cwhub.EnableItem(csConfig.Hub, it)
+	if err != nil {
+		return "", fmt.Errorf("error while enabling %s : %v", it.Name, err)
+	}
+	if err := cwhub.AddItem(obtype, it); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("Enabled %s", it.Name), nil
+}
+
+func restoreHub(dirPath string) error {
+	var err error
+
+	if err := csConfig.LoadHub(); err != nil {
+		return err
+	}
+
+	cwhub.SetHubBranch()
+
+	for _, itype := range cwhub.ItemTypes {
+		itemDirectory := fmt.Sprintf("%s/%s/", dirPath, itype)
+		if _, err = os.Stat(itemDirectory); err != nil {
+			log.Infof("no %s in backup", itype)
+			continue
+		}
+		/*restore the upstream items*/
+		upstreamListFN := fmt.Sprintf("%s/upstream-%s.json", itemDirectory, itype)
+		file, err := os.ReadFile(upstreamListFN)
+		if err != nil {
+			return fmt.Errorf("error while opening %s : %s", upstreamListFN, err)
+		}
+		var upstreamList []string
+		err = json.Unmarshal(file, &upstreamList)
+		if err != nil {
+			return fmt.Errorf("error unmarshaling %s : %s", upstreamListFN, err)
+		}
+		for _, toinstall := range upstreamList {
+			label, err := silentInstallItem(toinstall, itype)
+			if err != nil {
+				log.Errorf("Error while installing %s : %s", toinstall, err)
+			} else if label != "" {
+				log.Infof("Installed %s : %s", toinstall, label)
+			} else {
+				log.Printf("Installed %s : ok", toinstall)
+			}
+		}
+
+		/*restore the local and tainted items*/
+		files, err := os.ReadDir(itemDirectory)
+		if err != nil {
+			return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory, err)
+		}
+		for _, file := range files {
+			//this was the upstream data
+			if file.Name() == fmt.Sprintf("upstream-%s.json", itype) {
+				continue
+			}
+			if itype == cwhub.PARSERS || itype == cwhub.PARSERS_OVFLW {
+				//we expect a stage here
+				if !file.IsDir() {
+					continue
+				}
+				stage := file.Name()
+				stagedir := fmt.Sprintf("%s/%s/%s/", csConfig.ConfigPaths.ConfigDir, itype, stage)
+				log.Debugf("Found stage %s in %s, target directory : %s", stage, itype, stagedir)
+				if err = os.MkdirAll(stagedir, os.ModePerm); err != nil {
+					return fmt.Errorf("error while creating stage directory %s : %s", stagedir, err)
+				}
+				/*find items*/
+				ifiles, err := os.ReadDir(itemDirectory + "/" + stage + "/")
+				if err != nil {
+					return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory+"/"+stage, err)
+				}
+				//finally copy item
+				for _, tfile := range ifiles {
+					log.Infof("Going to restore local/tainted [%s]", tfile.Name())
+					sourceFile := fmt.Sprintf("%s/%s/%s", itemDirectory, stage, tfile.Name())
+					destinationFile := fmt.Sprintf("%s%s", stagedir, tfile.Name())
+					if err = CopyFile(sourceFile, destinationFile); err != nil {
+						return fmt.Errorf("failed copy %s %s to %s : %s", itype, sourceFile, destinationFile, err)
+					}
+					log.Infof("restored %s to %s", sourceFile, destinationFile)
+				}
+			} else {
+				log.Infof("Going to restore local/tainted [%s]", file.Name())
+				sourceFile := fmt.Sprintf("%s/%s", itemDirectory, file.Name())
+				destinationFile := fmt.Sprintf("%s/%s/%s", csConfig.ConfigPaths.ConfigDir, itype, file.Name())
+				if err = CopyFile(sourceFile, destinationFile); err != nil {
+					return fmt.Errorf("failed copy %s %s to %s : %s", itype, sourceFile, destinationFile, err)
+				}
+				log.Infof("restored %s to %s", sourceFile, destinationFile)
+			}
+
+		}
+	}
+	return nil
 }
 
 /*
@@ -168,7 +288,7 @@ func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
 		}
 	}
 
-	if err = RestoreHub(dirPath); err != nil {
+	if err = restoreHub(dirPath); err != nil {
 		return fmt.Errorf("failed to restore hub config : %s", err)
 	}
 
