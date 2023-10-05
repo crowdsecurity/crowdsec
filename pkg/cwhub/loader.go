@@ -484,7 +484,7 @@ func GetHubIdx(hub *csconfig.Hub) error {
 	return nil
 }
 
-// LoadPkgIndex loads a local .index.json file and returns the map of parsers/scenarios/collections associated
+// LoadPkgIndex loads a local .index.json file and returns the map of associated parsers/scenarios/collections
 func LoadPkgIndex(buff []byte) (map[string]map[string]Item, error) {
 	var (
 		RawIndex     map[string]map[string]Item
@@ -497,9 +497,8 @@ func LoadPkgIndex(buff []byte) (map[string]map[string]Item, error) {
 
 	log.Debugf("%d item types in hub index", len(ItemTypes))
 
-	// Iterate over the different types to complete struct
+	// Iterate over the different types to complete the struct
 	for _, itemType := range ItemTypes {
-		// complete struct
 		log.Tracef("%d item", len(RawIndex[itemType]))
 
 		for name, item := range RawIndex[itemType] {

@@ -87,11 +87,11 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 
 	stat, err := os.Lstat(syml)
 	if os.IsNotExist(err) {
-		if !purge && !force { //we only accept to "delete" non existing items if it's a purge
+		if !purge && !force { // we only accept to "delete" non existing items if it's a purge
 			return target, fmt.Errorf("can't delete %s : %s doesn't exist", target.Name, syml)
 		}
 	} else {
-		//if it's managed by hub, it's a symlink to csconfig.GConfig.hub.HubDir / ...
+		// if it's managed by hub, it's a symlink to csconfig.GConfig.hub.HubDir / ...
 		if stat.Mode()&os.ModeSymlink == 0 {
 			log.Warningf("%s (%s) isn't a symlink, can't disable", target.Name, syml)
 			return target, fmt.Errorf("%s isn't managed by hub", target.Name)
@@ -112,7 +112,7 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 			return target, fmt.Errorf("%s isn't managed by hub", target.Name)
 		}
 
-		//remove the symlink
+		// remove the symlink
 		if err = os.Remove(syml); err != nil {
 			return target, fmt.Errorf("while removing symlink: %w", err)
 		}
