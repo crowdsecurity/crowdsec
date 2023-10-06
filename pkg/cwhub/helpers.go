@@ -56,9 +56,8 @@ func SetHubBranch() {
 	}
 
 	// use the branch corresponding to the crowdsec version
-	branch := chooseHubBranch()
+	HubBranch = chooseHubBranch()
 
-	HubBranch = branch
 	log.Debugf("Using branch '%s' for the hub", HubBranch)
 }
 
