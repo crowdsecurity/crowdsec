@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -19,7 +20,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/agext/levenshtein"
-	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
@@ -120,25 +120,12 @@ func compInstalledItems(itemType string, args []string, toComplete string) ([]st
 		return nil, cobra.ShellCompDirectiveDefault
 	}
 
-	var items []string
-	var err error
-	switch itemType {
-	case cwhub.PARSERS:
-		items, err = cwhub.GetInstalledParsersAsString()
-	case cwhub.SCENARIOS:
-		items, err = cwhub.GetInstalledScenariosAsString()
-	case cwhub.PARSERS_OVFLW:
-		items, err = cwhub.GetInstalledPostOverflowsAsString()
-	case cwhub.COLLECTIONS:
-		items, err = cwhub.GetInstalledCollectionsAsString()
-	default:
-		return nil, cobra.ShellCompDirectiveDefault
-	}
-
+	items, err := cwhub.GetInstalledItemsAsString(itemType)
 	if err != nil {
 		cobra.CompDebugln(fmt.Sprintf("list installed %s err: %s", itemType, err), true)
 		return nil, cobra.ShellCompDirectiveDefault
 	}
+
 	comp := make([]string, 0)
 
 	if toComplete != "" {

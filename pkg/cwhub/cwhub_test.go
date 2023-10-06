@@ -9,8 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
 /*
@@ -29,30 +30,33 @@ func TestItemStatus(t *testing.T) {
 	defer envTearDown(cfg)
 
 	err := UpdateHubIdx(cfg.Hub)
-	//DownloadHubIdx()
+	// DownloadHubIdx()
 	if err != nil {
 		t.Fatalf("failed to download index : %s", err)
 	}
+
 	if err := GetHubIdx(cfg.Hub); err != nil {
 		t.Fatalf("failed to load hub index : %s", err)
 	}
 
-	//get existing map
+	// get existing map
 	x := GetItemMap(COLLECTIONS)
 	if len(x) == 0 {
 		t.Fatalf("expected non empty result")
 	}
 
-	//Get item : good and bad
+	// Get item : good and bad
 	for k := range x {
 		item := GetItem(COLLECTIONS, k)
 		if item == nil {
 			t.Fatalf("expected item")
 		}
+
 		item.Installed = true
 		item.UpToDate = false
 		item.Local = false
 		item.Tainted = false
+
 		txt, _, _, _ := ItemStatus(*item)
 		if txt != "enabled,update-available" {
 			t.Fatalf("got '%s'", txt)
@@ -62,6 +66,7 @@ func TestItemStatus(t *testing.T) {
 		item.UpToDate = false
 		item.Local = true
 		item.Tainted = false
+
 		txt, _, _, _ = ItemStatus(*item)
 		if txt != "disabled,local" {
 			t.Fatalf("got '%s'", txt)
@@ -69,6 +74,7 @@ func TestItemStatus(t *testing.T) {
 
 		break
 	}
+
 	DisplaySummary()
 }
 
@@ -77,26 +83,28 @@ func TestGetters(t *testing.T) {
 	defer envTearDown(cfg)
 
 	err := UpdateHubIdx(cfg.Hub)
-	//DownloadHubIdx()
+	// DownloadHubIdx()
 	if err != nil {
 		t.Fatalf("failed to download index : %s", err)
 	}
+
 	if err := GetHubIdx(cfg.Hub); err != nil {
 		t.Fatalf("failed to load hub index : %s", err)
 	}
 
-	//get non existing map
+	// get non existing map
 	empty := GetItemMap("ratata")
 	if empty != nil {
 		t.Fatalf("expected nil result")
 	}
-	//get existing map
+
+	// get existing map
 	x := GetItemMap(COLLECTIONS)
 	if len(x) == 0 {
 		t.Fatalf("expected non empty result")
 	}
 
-	//Get item : good and bad
+	// Get item : good and bad
 	for k := range x {
 		empty := GetItem(COLLECTIONS, k+"nope")
 		if empty != nil {
@@ -108,7 +116,7 @@ func TestGetters(t *testing.T) {
 			t.Fatalf("expected non empty item")
 		}
 
-		//Add item and get it
+		// Add item and get it
 		item.Name += "nope"
 		if err := AddItem(COLLECTIONS, *item); err != nil {
 			t.Fatalf("didn't expect error : %s", err)
@@ -119,18 +127,18 @@ func TestGetters(t *testing.T) {
 			t.Fatalf("expected non empty item")
 		}
 
-		//Add bad item
-		if err := AddItem("ratata", *item); err != nil {
-			if fmt.Sprintf("%s", err) != "ItemType ratata is unknown" {
-				t.Fatalf("unexpected error")
-			}
-		} else {
+		// Add bad item
+		err := AddItem("ratata", *item)
+		if err == nil {
 			t.Fatalf("Expected error")
+		}
+
+		if fmt.Sprintf("%s", err) != "ItemType ratata is unknown" {
+			t.Fatalf("unexpected error")
 		}
 
 		break
 	}
-
 }
 
 func TestIndexDownload(t *testing.T) {
@@ -138,34 +146,38 @@ func TestIndexDownload(t *testing.T) {
 	defer envTearDown(cfg)
 
 	err := UpdateHubIdx(cfg.Hub)
-	//DownloadHubIdx()
+	// DownloadHubIdx()
 	if err != nil {
 		t.Fatalf("failed to download index : %s", err)
 	}
+
 	if err := GetHubIdx(cfg.Hub); err != nil {
 		t.Fatalf("failed to load hub index : %s", err)
 	}
 }
 
-func getTestCfg() (cfg *csconfig.Config) {
-	cfg = &csconfig.Config{Hub: &csconfig.Hub{}}
+func getTestCfg() *csconfig.Config {
+	cfg := &csconfig.Config{Hub: &csconfig.Hub{}}
 	cfg.Hub.ConfigDir, _ = filepath.Abs("./install")
 	cfg.Hub.HubDir, _ = filepath.Abs("./hubdir")
 	cfg.Hub.HubIndexFile = filepath.Clean("./hubdir/.index.json")
-	return
+
+	return cfg
 }
 
 func envSetup(t *testing.T) *csconfig.Config {
 	resetResponseByPath()
 	log.SetLevel(log.DebugLevel)
+
 	cfg := getTestCfg()
 
 	defaultTransport := http.DefaultClient.Transport
+
 	t.Cleanup(func() {
 		http.DefaultClient.Transport = defaultTransport
 	})
 
-	//Mock the http client
+	// Mock the http client
 	http.DefaultClient.Transport = newMockTransport()
 
 	if err := os.MkdirAll(cfg.Hub.ConfigDir, 0700); err != nil {
@@ -189,7 +201,6 @@ func envSetup(t *testing.T) *csconfig.Config {
 	return cfg
 }
 
-
 func envTearDown(cfg *csconfig.Config) {
 	if err := os.RemoveAll(cfg.Hub.ConfigDir); err != nil {
 		log.Fatalf("failed to remove %s : %s", cfg.Hub.ConfigDir, err)
@@ -200,23 +211,25 @@ func envTearDown(cfg *csconfig.Config) {
 	}
 }
 
-
 func testInstallItem(cfg *csconfig.Hub, t *testing.T, item Item) {
-
-	//Install the parser
+	// Install the parser
 	item, err := DownloadLatest(cfg, item, false, false)
 	if err != nil {
 		t.Fatalf("error while downloading %s : %v", item.Name, err)
 	}
+
 	if err, _ := LocalSync(cfg); err != nil {
 		t.Fatalf("taint: failed to run localSync : %s", err)
 	}
+
 	if !hubIdx[item.Type][item.Name].UpToDate {
 		t.Fatalf("download: %s should be up-to-date", item.Name)
 	}
+
 	if hubIdx[item.Type][item.Name].Installed {
 		t.Fatalf("download: %s should not be installed", item.Name)
 	}
+
 	if hubIdx[item.Type][item.Name].Tainted {
 		t.Fatalf("download: %s should not be tainted", item.Name)
 	}
@@ -225,9 +238,11 @@ func testInstallItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	if err != nil {
 		t.Fatalf("error while enabling %s : %v.", item.Name, err)
 	}
+
 	if err, _ := LocalSync(cfg); err != nil {
 		t.Fatalf("taint: failed to run localSync : %s", err)
 	}
+
 	if !hubIdx[item.Type][item.Name].Installed {
 		t.Fatalf("install: %s should be installed", item.Name)
 	}
@@ -237,6 +252,7 @@ func testTaintItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	if hubIdx[item.Type][item.Name].Tainted {
 		t.Fatalf("pre-taint: %s should not be tainted", item.Name)
 	}
+
 	f, err := os.OpenFile(item.LocalPath, os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		t.Fatalf("(taint) opening %s (%s) : %s", item.LocalPath, item.Name, err)
@@ -246,32 +262,37 @@ func testTaintItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	if _, err = f.WriteString("tainted"); err != nil {
 		t.Fatalf("tainting %s : %s", item.Name, err)
 	}
-	//Local sync and check status
+
+	// Local sync and check status
 	if err, _ := LocalSync(cfg); err != nil {
 		t.Fatalf("taint: failed to run localSync : %s", err)
 	}
+
 	if !hubIdx[item.Type][item.Name].Tainted {
 		t.Fatalf("taint: %s should be tainted", item.Name)
 	}
 }
 
 func testUpdateItem(cfg *csconfig.Hub, t *testing.T, item Item) {
-
 	if hubIdx[item.Type][item.Name].UpToDate {
 		t.Fatalf("update: %s should NOT be up-to-date", item.Name)
 	}
-	//Update it + check status
+
+	// Update it + check status
 	item, err := DownloadLatest(cfg, item, true, true)
 	if err != nil {
 		t.Fatalf("failed to update %s : %s", item.Name, err)
 	}
-	//Local sync and check status
+
+	// Local sync and check status
 	if err, _ := LocalSync(cfg); err != nil {
 		t.Fatalf("failed to run localSync : %s", err)
 	}
+
 	if !hubIdx[item.Type][item.Name].UpToDate {
 		t.Fatalf("update: %s should be up-to-date", item.Name)
 	}
+
 	if hubIdx[item.Type][item.Name].Tainted {
 		t.Fatalf("update: %s should not be tainted anymore", item.Name)
 	}
@@ -281,43 +302,51 @@ func testDisableItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	if !item.Installed {
 		t.Fatalf("disable: %s should be installed", item.Name)
 	}
-	//Remove
+
+	// Remove
 	item, err := DisableItem(cfg, item, false, false)
 	if err != nil {
 		t.Fatalf("failed to disable item : %v", err)
 	}
-	//Local sync and check status
+
+	// Local sync and check status
 	if err, warns := LocalSync(cfg); err != nil || len(warns) > 0 {
 		t.Fatalf("failed to run localSync : %s (%+v)", err, warns)
 	}
+
 	if hubIdx[item.Type][item.Name].Tainted {
 		t.Fatalf("disable: %s should not be tainted anymore", item.Name)
 	}
+
 	if hubIdx[item.Type][item.Name].Installed {
 		t.Fatalf("disable: %s should not be installed anymore", item.Name)
 	}
+
 	if !hubIdx[item.Type][item.Name].Downloaded {
 		t.Fatalf("disable: %s should still be downloaded", item.Name)
 	}
-	//Purge
+
+	// Purge
 	item, err = DisableItem(cfg, item, true, false)
 	if err != nil {
 		t.Fatalf("failed to purge item : %v", err)
 	}
-	//Local sync and check status
+
+	// Local sync and check status
 	if err, warns := LocalSync(cfg); err != nil || len(warns) > 0 {
 		t.Fatalf("failed to run localSync : %s (%+v)", err, warns)
 	}
+
 	if hubIdx[item.Type][item.Name].Installed {
 		t.Fatalf("disable: %s should not be installed anymore", item.Name)
 	}
+
 	if hubIdx[item.Type][item.Name].Downloaded {
 		t.Fatalf("disable: %s should not be downloaded", item.Name)
 	}
 }
 
 func TestInstallParser(t *testing.T) {
-
 	/*
 	 - install a random parser
 	 - check its status
@@ -331,7 +360,7 @@ func TestInstallParser(t *testing.T) {
 	defer envTearDown(cfg)
 
 	getHubIdxOrFail(t)
-	//map iteration is random by itself
+	// map iteration is random by itself
 	for _, it := range hubIdx[PARSERS] {
 		testInstallItem(cfg.Hub, t, it)
 		it = hubIdx[PARSERS][it.Name]
@@ -349,7 +378,6 @@ func TestInstallParser(t *testing.T) {
 }
 
 func TestInstallCollection(t *testing.T) {
-
 	/*
 	 - install a random parser
 	 - check its status
@@ -363,7 +391,7 @@ func TestInstallCollection(t *testing.T) {
 	defer envTearDown(cfg)
 
 	getHubIdxOrFail(t)
-	//map iteration is random by itself
+	// map iteration is random by itself
 	for _, it := range hubIdx[COLLECTIONS] {
 		testInstallItem(cfg.Hub, t, it)
 		it = hubIdx[COLLECTIONS][it.Name]
@@ -375,7 +403,8 @@ func TestInstallCollection(t *testing.T) {
 
 		it = hubIdx[COLLECTIONS][it.Name]
 		x := GetHubStatusForItemType(COLLECTIONS, it.Name, false)
-		log.Printf("%+v", x)
+		log.Infof("%+v", x)
+
 		break
 	}
 }
@@ -395,39 +424,41 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		StatusCode: http.StatusOK,
 	}
 	response.Header.Set("Content-Type", "application/json")
-	responseBody := ""
-	log.Printf("---> %s", req.URL.Path)
 
-	/*FAKE PARSER*/
-	if resp, ok := responseByPath[req.URL.Path]; ok {
-		responseBody = resp
-	} else {
+	log.Infof("---> %s", req.URL.Path)
+
+	// FAKE PARSER
+	resp, ok := responseByPath[req.URL.Path]
+	if !ok {
 		log.Fatalf("unexpected url :/ %s", req.URL.Path)
 	}
 
-	response.Body = io.NopCloser(strings.NewReader(responseBody))
+	response.Body = io.NopCloser(strings.NewReader(resp))
+
 	return response, nil
 }
 
 func fileToStringX(path string) string {
-	if f, err := os.Open(path); err == nil {
-		defer f.Close()
-		if data, err := io.ReadAll(f); err == nil {
-			return strings.ReplaceAll(string(data), "\r\n", "\n")
-		} else {
-			panic(err)
-		}
-	} else {
+	f, err := os.Open(path)
+	if err != nil {
 		panic(err)
 	}
+	defer f.Close()
+
+	data, err := io.ReadAll(f)
+	if err != nil {
+		panic(err)
+	}
+
+	return strings.ReplaceAll(string(data), "\r\n", "\n")
 }
 
 func resetResponseByPath() {
 	responseByPath = map[string]string{
-		"/master/parsers/s01-parse/crowdsecurity/foobar_parser.yaml":    fileToStringX("./tests/foobar_parser.yaml"),
-		"/master/parsers/s01-parse/crowdsecurity/foobar_subparser.yaml": fileToStringX("./tests/foobar_parser.yaml"),
-		"/master/collections/crowdsecurity/test_collection.yaml":        fileToStringX("./tests/collection_v1.yaml"),
-		"/master/.index.json": fileToStringX("./tests/index1.json"),
+		"/master/parsers/s01-parse/crowdsecurity/foobar_parser.yaml":    fileToStringX("./testdata/foobar_parser.yaml"),
+		"/master/parsers/s01-parse/crowdsecurity/foobar_subparser.yaml": fileToStringX("./testdata/foobar_parser.yaml"),
+		"/master/collections/crowdsecurity/test_collection.yaml":        fileToStringX("./testdata/collection_v1.yaml"),
+		"/master/.index.json": fileToStringX("./testdata/index1.json"),
 		"/master/scenarios/crowdsecurity/foobar_scenario.yaml": `filter: true
 name: crowdsecurity/foobar_scenario`,
 		"/master/scenarios/crowdsecurity/barfoo_scenario.yaml": `filter: true

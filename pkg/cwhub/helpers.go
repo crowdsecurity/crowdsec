@@ -17,8 +17,8 @@ func chooseHubBranch() (string, error) {
 	latest, err := cwversion.Latest()
 	if err != nil {
 		log.Warningf("Unable to retrieve latest crowdsec version: %s, defaulting to master", err)
-		//lint:ignore nilerr reason
-		return "master", nil // ignore
+		//lint:ignore nilerr
+		return "master", nil
 	}
 
 	csVersion := cwversion.VersionStrip()
@@ -41,8 +41,10 @@ func chooseHubBranch() (string, error) {
 	log.Warnf("Crowdsec is not the latest version. "+
 		"Current version is '%s' and the latest stable version is '%s'. Please update it!",
 		csVersion, latest)
+
 	log.Warnf("As a result, you will not be able to use parsers/scenarios/collections "+
 		"added to Crowdsec Hub after CrowdSec %s", latest)
+
 	return csVersion, nil
 }
 
@@ -58,8 +60,10 @@ func SetHubBranch() error {
 	if err != nil {
 		return err
 	}
+
 	HubBranch = branch
 	log.Debugf("Using branch '%s' for the hub", HubBranch)
+
 	return nil
 }
 
@@ -72,6 +76,7 @@ func InstallItem(csConfig *csconfig.Config, name string, obtype string, force bo
 	item := *it
 	if downloadOnly && item.Downloaded && item.UpToDate {
 		log.Warningf("%s is already downloaded and up-to-date", item.Name)
+
 		if !force {
 			return nil
 		}
@@ -120,6 +125,7 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 
 		item := *it
 		item, err = DisableItem(csConfig.Hub, item, purge, forceAction)
+
 		if err != nil {
 			log.Fatalf("unable to disable %s : %v", item.Name, err)
 		}
@@ -127,6 +133,7 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 		if err := AddItem(itemType, item); err != nil {
 			log.Fatalf("unable to add %s: %v", item.Name, err)
 		}
+
 		return
 	}
 
@@ -139,6 +146,7 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 		if !v.Installed {
 			continue
 		}
+
 		v, err = DisableItem(csConfig.Hub, v, purge, forceAction)
 		if err != nil {
 			log.Fatalf("unable to disable %s : %v", v.Name, err)
@@ -149,6 +157,7 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 		}
 		disabled++
 	}
+
 	log.Infof("Disabled %d items", disabled)
 }
 

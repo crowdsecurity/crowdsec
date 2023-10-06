@@ -8,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
@@ -50,16 +51,12 @@ func NewHubListCmd() *cobra.Command {
 		Short:             "List installed configs",
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := require.Hub(csConfig); err != nil {
+				return err
+			}
 
-			if err := csConfig.LoadHub(); err != nil {
-				log.Fatal(err)
-			}
-			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-				log.Info("Run 'sudo cscli hub update' to get the hub index")
-				log.Fatalf("Failed to get Hub index : %v", err)
-			}
-			//use LocalSync to get warnings about tainted / outdated items
+			// use LocalSync to get warnings about tainted / outdated items
 			_, warn := cwhub.LocalSync(csConfig.Hub)
 			for _, v := range warn {
 				log.Info(v)
@@ -68,6 +65,8 @@ func NewHubListCmd() *cobra.Command {
 			ListItems(color.Output, []string{
 				cwhub.COLLECTIONS, cwhub.PARSERS, cwhub.SCENARIOS, cwhub.PARSERS_OVFLW,
 			}, args, true, false, all)
+
+			return nil
 		},
 	}
 	cmdHubList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
@@ -94,19 +93,18 @@ Fetches the [.index.json](https://github.com/crowdsecurity/hub/blob/master/.inde
 			}
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadHub(); err != nil {
-				log.Fatal(err)
+				return err
 			}
 			if err := cwhub.UpdateHubIdx(csConfig.Hub); err != nil {
-				if errors.Is(err, cwhub.ErrIndexNotFound) {
-					log.Warnf("Could not find index file for branch '%s', using 'master'", cwhub.HubBranch)
-					cwhub.HubBranch = "master"
-					if err := cwhub.UpdateHubIdx(csConfig.Hub); err != nil {
-						log.Fatalf("Failed to get Hub index after retry : %v", err)
-					}
-				} else {
-					log.Fatalf("Failed to get Hub index : %v", err)
+				if !errors.Is(err, cwhub.ErrIndexNotFound) {
+					return fmt.Errorf("failed to get Hub index : %w", err)
+				}
+				log.Warnf("Could not find index file for branch '%s', using 'master'", cwhub.HubBranch)
+				cwhub.HubBranch = "master"
+				if err := cwhub.UpdateHubIdx(csConfig.Hub); err != nil {
+					return fmt.Errorf("failed to get Hub index after retry: %w", err)
 				}
 			}
 			//use LocalSync to get warnings about tainted / outdated items
@@ -114,6 +112,8 @@ Fetches the [.index.json](https://github.com/crowdsecurity/hub/blob/master/.inde
 			for _, v := range warn {
 				log.Info(v)
 			}
+
+			return nil
 		},
 	}
 
@@ -139,13 +139,9 @@ Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if 
 			}
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
-			if err := csConfig.LoadHub(); err != nil {
-				log.Fatal(err)
-			}
-			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-				log.Info("Run 'sudo cscli hub update' to get the hub index")
-				log.Fatalf("Failed to get Hub index : %v", err)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := require.Hub(csConfig); err != nil {
+				return err
 			}
 
 			log.Infof("Upgrading collections")
@@ -156,6 +152,8 @@ Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if 
 			cwhub.UpgradeConfig(csConfig, cwhub.SCENARIOS, "", forceAction)
 			log.Infof("Upgrading postoverflows")
 			cwhub.UpgradeConfig(csConfig, cwhub.PARSERS_OVFLW, "", forceAction)
+
+			return nil
 		},
 	}
 	cmdHubUpgrade.PersistentFlags().BoolVar(&forceAction, "force", false, "Force upgrade : Overwrite tainted and outdated files")

@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 type OldAPICfg struct {
@@ -20,7 +20,8 @@ type OldAPICfg struct {
 	Password  string `json:"password"`
 }
 
-/* Restore crowdsec configurations to directory <dirPath> :
+/*
+	Restore crowdsec configurations to directory <dirPath>:
 
 - Main config (config.yaml)
 - Profiles config (profiles.yaml)
@@ -28,6 +29,7 @@ type OldAPICfg struct {
 - Backup of API credentials (local API and online API)
 - List of scenarios, parsers, postoverflows and collections that are up-to-date
 - Tainted/local/out-of-date scenarios, parsers, postoverflows and collections
+- Acquisition files (acquis.yaml, acquis.d/*.yaml)
 */
 func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
 	var err error
@@ -111,7 +113,7 @@ func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
 
 	/*if there is a acquisition dir, restore its content*/
 	if csConfig.Crowdsec.AcquisitionDirPath != "" {
-		if err = os.Mkdir(csConfig.Crowdsec.AcquisitionDirPath, 0o700); err != nil {
+		if err = os.MkdirAll(csConfig.Crowdsec.AcquisitionDirPath, 0o700); err != nil {
 			return fmt.Errorf("error while creating %s : %s", csConfig.Crowdsec.AcquisitionDirPath, err)
 		}
 	}
@@ -181,13 +183,8 @@ func runConfigRestore(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := csConfig.LoadHub(); err != nil {
+	if err := require.Hub(csConfig); err != nil {
 		return err
-	}
-
-	if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-		log.Info("Run 'sudo cscli hub update' to get the hub index")
-		return fmt.Errorf("failed to get Hub index: %w", err)
 	}
 
 	if err := restoreConfigFromDirectory(args[0], oldBackup); err != nil {
