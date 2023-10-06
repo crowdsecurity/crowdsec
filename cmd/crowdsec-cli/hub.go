@@ -88,9 +88,8 @@ Fetches the [.index.json](https://github.com/crowdsecurity/hub/blob/master/.inde
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 
-			if err := cwhub.SetHubBranch(); err != nil {
-				return fmt.Errorf("error while setting hub branch: %s", err)
-			}
+			cwhub.SetHubBranch()
+
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -134,9 +133,8 @@ Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if 
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 
-			if err := cwhub.SetHubBranch(); err != nil {
-				return fmt.Errorf("error while setting hub branch: %s", err)
-			}
+			cwhub.SetHubBranch()
+
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {

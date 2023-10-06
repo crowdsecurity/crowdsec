@@ -1,9 +1,7 @@
 package cwhub
 
 import (
-	"crypto/sha256"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -40,7 +38,7 @@ type ItemHubStatus struct {
 	LocalVersion string `json:"local_version"`
 	LocalPath    string `json:"local_path"`
 	Description  string `json:"description"`
-	UTF8_Status  string `json:"utf8_status"`
+	UTF8Status   string `json:"utf8_status"`
 	Status       string `json:"status"`
 }
 
@@ -62,7 +60,7 @@ type Item struct {
 	Versions   map[string]ItemVersion `json:"versions,omitempty"  yaml:"-"`                     // the list of existing versions
 
 	// local (deployed) info
-	LocalPath string `json:"local_path,omitempty" yaml:"local_path,omitempty"` // the local path relative to ${CFG_DIR}
+	LocalPath    string `json:"local_path,omitempty" yaml:"local_path,omitempty"` // the local path relative to ${CFG_DIR}
 	LocalVersion string `json:"local_version,omitempty"`
 	LocalHash    string `json:"local_hash,omitempty"` // the local meow
 	Installed    bool   `json:"installed,omitempty"`
@@ -78,29 +76,48 @@ type Item struct {
 	Collections   []string `json:"collections,omitempty"   yaml:"collections,omitempty"`
 }
 
-func toEmoji(managed bool, installed bool, warning bool, ok bool) emoji.Emoji {
-	if !managed {
-		return emoji.House
+func (i *Item) status() (string, emoji.Emoji) {
+	status := "disabled"
+	ok := false
+
+	if i.Installed {
+		ok = true
+		status = "enabled"
 	}
 
-	if !installed {
-		return emoji.Prohibited
+	managed := true
+	if i.Local {
+		managed = false
+		status += ",local"
 	}
 
-	if warning {
-		return emoji.Warning
+	warning := false
+	if i.Tainted {
+		warning = true
+		status += ",tainted"
+	} else if !i.UpToDate && !i.Local {
+		warning = true
+		status += ",update-available"
 	}
 
-	if ok {
-		return emoji.CheckMark
+	emo := emoji.QuestionMark
+
+	switch {
+	case !managed:
+		emo = emoji.House
+	case !i.Installed:
+		emo = emoji.Prohibited
+	case warning:
+		emo = emoji.Warning
+	case ok:
+		emo = emoji.CheckMark
 	}
 
-	// XXX: this is new
-	return emoji.QuestionMark
+	return status, emo
 }
 
-func (i *Item) toHubStatus() ItemHubStatus {
-	status, ok, warning, managed := ItemStatus(*i)
+func (i *Item) hubStatus() ItemHubStatus {
+	status, emo := i.status()
 
 	return ItemHubStatus{
 		Name:         i.Name,
@@ -108,8 +125,13 @@ func (i *Item) toHubStatus() ItemHubStatus {
 		LocalPath:    i.LocalPath,
 		Description:  i.Description,
 		Status:       status,
-		UTF8_Status:  fmt.Sprintf("%v  %s", toEmoji(managed, i.Installed, warning, ok), status),
+		UTF8Status:   fmt.Sprintf("%v  %s", emo, status),
 	}
+}
+
+// versionStatus: semver requires 'v' prefix
+func (i *Item) versionStatus() int {
+	return semver.Compare("v"+i.Version, "v"+i.LocalVersion)
 }
 
 // XXX: can we remove these globals?
@@ -117,27 +139,6 @@ var skippedLocal = 0
 var skippedTainted = 0
 
 var ReferenceMissingError = errors.New("Reference(s) missing in collection")
-
-// GetVersionStatus: semver requires 'v' prefix
-func GetVersionStatus(v *Item) int {
-	return semver.Compare("v"+v.Version, "v"+v.LocalVersion)
-}
-
-func getSHA256(filepath string) (string, error) {
-	f, err := os.Open(filepath)
-	if err != nil {
-		return "", fmt.Errorf("unable to open '%s': %w", filepath, err)
-	}
-
-	defer f.Close()
-
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return "", fmt.Errorf("unable to calculate sha256 of '%s': %w", filepath, err)
-	}
-
-	return fmt.Sprintf("%x", h.Sum(nil)), nil
-}
 
 func GetItemMap(itemType string) map[string]Item {
 	m, ok := hubIdx[itemType]
@@ -223,35 +224,6 @@ func DisplaySummary() {
 	}
 }
 
-// returns: human-text, Enabled, Warning, Unmanaged
-func ItemStatus(v Item) (string, bool, bool, bool) {
-	strret := "disabled"
-	Ok := false
-
-	if v.Installed {
-		Ok = true
-		strret = "enabled"
-	}
-
-	Managed := true
-	if v.Local {
-		Managed = false
-		strret += ",local"
-	}
-
-	// tainted or out of date
-	Warning := false
-	if v.Tainted {
-		Warning = true
-		strret += ",tainted"
-	} else if !v.UpToDate && !v.Local {
-		Warning = true
-		strret += ",update-available"
-	}
-
-	return strret, Ok, Warning, Managed
-}
-
 func GetInstalledItems(itemType string) ([]Item, error) {
 	var retItems []Item
 
@@ -305,7 +277,7 @@ func GetHubStatusForItemType(itemType string, name string, all bool) []ItemHubSt
 			continue
 		}
 		// Check the item status
-		ret = append(ret, item.toHubStatus())
+		ret = append(ret, item.hubStatus())
 	}
 
 	sort.Slice(ret, func(i, j int) bool { return ret[i].Name < ret[j].Name })

@@ -1,9 +1,11 @@
 package cwhub
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -41,6 +43,22 @@ func handleSymlink(path string) (string, error) {
 	}
 
 	return hubpath, nil
+}
+
+func getSHA256(filepath string) (string, error) {
+	f, err := os.Open(filepath)
+	if err != nil {
+		return "", fmt.Errorf("unable to open '%s': %w", filepath, err)
+	}
+
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", fmt.Errorf("unable to calculate sha256 of '%s': %w", filepath, err)
+	}
+
+	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
 
 type walker struct {
@@ -317,7 +335,7 @@ func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
 }
 
 func CollecDepsCheck(v *Item) error {
-	if GetVersionStatus(v) != 0 { // not up-to-date
+	if v.versionStatus() != 0 { // not up-to-date
 		log.Debugf("%s dependencies not checked : not up-to-date", v.Name)
 		return nil
 	}
@@ -415,11 +433,11 @@ func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
 			continue
 		}
 
-		versionStatus := GetVersionStatus(&item)
-		switch versionStatus {
+		vs := item.versionStatus()
+		switch vs {
 		case 0: // latest
 			if err := CollecDepsCheck(&item); err != nil {
-				warnings = append(warnings, fmt.Sprintf("dependency of %s : %s", item.Name, err))
+				warnings = append(warnings, fmt.Sprintf("dependency of %s: %s", item.Name, err))
 				hubIdx[COLLECTIONS][name] = item
 			}
 		case 1: // not up-to-date
@@ -428,7 +446,7 @@ func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
 			warnings = append(warnings, fmt.Sprintf("collection %s is in the future (currently:%s, latest:%s)", item.Name, item.LocalVersion, item.Version))
 		}
 
-		log.Debugf("installed (%s) - status:%d | installed:%s | latest : %s | full : %+v", item.Name, versionStatus, item.LocalVersion, item.Version, item.Versions)
+		log.Debugf("installed (%s) - status:%d | installed:%s | latest : %s | full : %+v", item.Name, vs, item.LocalVersion, item.Version, item.Versions)
 	}
 
 	return nil, warnings
