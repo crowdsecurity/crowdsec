@@ -2,6 +2,7 @@ package csconfig
 
 import (
 	"testing"
+	"gopkg.in/yaml.v2"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,6 +42,6 @@ func TestNewCrowdSecConfig(t *testing.T) {
 
 func TestDefaultConfig(t *testing.T) {
 	x := NewDefaultConfig()
-	err := x.Dump()
-	require.NoError(t, err)
+	_, err := yaml.Marshal(x)
+	require.NoError(t, err, "failed marshaling config: %s", err)
 }

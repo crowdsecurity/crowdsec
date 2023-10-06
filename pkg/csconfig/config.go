@@ -37,15 +37,6 @@ type Config struct {
 	Hub          *Hub                `yaml:"-"`
 }
 
-func (c *Config) Dump() error {
-	out, err := yaml.Marshal(c)
-	if err != nil {
-		return fmt.Errorf("failed marshaling config: %w", err)
-	}
-	fmt.Printf("%s", string(out))
-	return nil
-}
-
 func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*Config, string, error) {
 	patcher := yamlpatch.NewPatcher(configFile, ".local")
 	patcher.SetQuiet(quiet)
