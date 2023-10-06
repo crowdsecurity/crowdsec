@@ -43,7 +43,6 @@ func (c *LocalApiServerCfg) LoadProfiles() error {
 	}
 	reader := bytes.NewReader(fcontent)
 
-	//process the yaml
 	dec := yaml.NewDecoder(reader)
 	dec.SetStrict(true)
 	for {
