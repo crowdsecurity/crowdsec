@@ -131,16 +131,16 @@ func (i *Item) hubStatus() ItemHubStatus {
 	}
 }
 
+// versionStatus: semver requires 'v' prefix
+func (i *Item) versionStatus() int {
+	return semver.Compare("v"+i.Version, "v"+i.LocalVersion)
+}
+
 // XXX: can we remove these globals?
 var skippedLocal = 0
 var skippedTainted = 0
 
 var ReferenceMissingError = errors.New("Reference(s) missing in collection")
-
-// GetVersionStatus: semver requires 'v' prefix
-func GetVersionStatus(v *Item) int {
-	return semver.Compare("v"+v.Version, "v"+v.LocalVersion)
-}
 
 func getSHA256(filepath string) (string, error) {
 	f, err := os.Open(filepath)
