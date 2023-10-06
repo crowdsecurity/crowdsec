@@ -30,10 +30,19 @@ const (
 	lokiLimit    int           = 100
 )
 
+var countDroppedEntries int = 0
+
 var linesRead = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_lokisource_hits_total",
 		Help: "Total lines that were read.",
+	},
+	[]string{"source"})
+
+var entriesDropped = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_lokisource_total_dropped_entries",
+		Help: "Total entries that were dropped.",
 	},
 	[]string{"source"})
 
@@ -65,11 +74,11 @@ type LokiSource struct {
 }
 
 func (l *LokiSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{linesRead, entriesDropped}
 }
 
 func (l *LokiSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{linesRead, entriesDropped}
 }
 
 func (l *LokiSource) UnmarshalConfig(yamlConfig []byte) error {
@@ -85,6 +94,11 @@ func (l *LokiSource) UnmarshalConfig(yamlConfig []byte) error {
 	if l.Config.WaitForReady == 0 {
 		l.Config.WaitForReady = 10 * time.Second
 	}
+
+	if l.Config.DelayFor < 0*time.Second || l.Config.DelayFor > 5*time.Second {
+		return errors.New("delay_for should be a value between 1s and 5s")
+	}
+
 	if l.Config.Mode == "" {
 		l.Config.Mode = configuration.TAIL_MODE
 	}
@@ -167,13 +181,19 @@ func (l *LokiSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 	} else {
 		l.Config.WaitForReady = 10 * time.Second
 	}
+
 	if d := params.Get("delay_for"); d != "" {
-		delayFor, err := time.ParseDuration(d)
+		l.Config.DelayFor, err = time.ParseDuration(d)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "can't parse since in DSN configuration")
 		}
-		l.Config.DelayFor = delayFor
+		if l.Config.DelayFor < 0*time.Second || l.Config.DelayFor > 5*time.Second {
+			return errors.New("delay_for should be a value between 1s and 5s")
+		}
+	} else {
+		l.Config.DelayFor = 0 * time.Second
 	}
+
 	if s := params.Get("since"); s != "" {
 		l.Config.Since, err = time.ParseDuration(s)
 		if err != nil {
@@ -214,6 +234,7 @@ func (l *LokiSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 		Since:    l.Config.Since,
 		Username: l.Config.Auth.Username,
 		Password: l.Config.Auth.Password,
+		DelayFor: int(l.Config.DelayFor / time.Second),
 	}
 
 	l.Client = lokiclient.NewLokiClient(clientConfig)
@@ -306,6 +327,9 @@ func (l *LokiSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 					return err
 				}
 				if len(resp.DroppedEntries) > 0 {
+					countDroppedEntries += len(resp.DroppedEntries)
+					ll.WithField("query", l.Config.Query)
+					ll.WithField("source", l.GetName())
 					ll.Warnf("%d entries dropped from loki response", len(resp.DroppedEntries))
 				}
 				for _, stream := range resp.Streams {

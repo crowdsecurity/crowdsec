@@ -34,11 +34,11 @@ type Config struct {
 	Username string
 	Password string
 
-	Since        time.Duration
-	Until        time.Duration
-	WaitForReady time.Duration
+	Since time.Duration
+	Until time.Duration
 
-	Limit int
+	DelayFor int
+	Limit    int
 }
 
 func (lc *LokiClient) tailLogs(conn *websocket.Conn, c chan *LokiResponse, ctx context.Context) error {
@@ -180,9 +180,10 @@ func (lc *LokiClient) Tail(ctx context.Context) (chan *LokiResponse, error) {
 	responseChan := make(chan *LokiResponse)
 	dialer := &websocket.Dialer{} //TODO: TLS support
 	u := lc.getURLFor("loki/api/v1/tail", map[string]string{
-		"limit": strconv.Itoa(lc.config.Limit),
-		"start": strconv.Itoa(int(time.Now().Add(-lc.config.Since).UnixNano())),
-		"query": lc.config.Query,
+		"limit":     strconv.Itoa(lc.config.Limit),
+		"start":     strconv.Itoa(int(time.Now().Add(-lc.config.Since).UnixNano())),
+		"query":     lc.config.Query,
+		"delay_for": strconv.Itoa(lc.config.DelayFor),
 	})
 
 	lc.Logger.Debugf("Since: %s (%s)", lc.config.Since, time.Now().Add(-lc.config.Since))

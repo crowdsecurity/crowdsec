@@ -32,6 +32,7 @@ func TestConfiguration(t *testing.T) {
 		expectedErr  string
 		password     string
 		waitForReady time.Duration
+		delayFor     time.Duration
 		testName     string
 	}{
 		{
@@ -75,8 +76,22 @@ wait_for_ready: 5s
 query: >
         {server="demo"}
 `,
+			expectedErr:  "",
+			testName:     "Correct config with wait_for_ready",
+			waitForReady: 5 * time.Second,
+		},
+		{
+			config: `
+mode: tail
+source: loki
+url: http://localhost:3100/
+delay_for: 1s
+query: >
+        {server="demo"}
+`,
 			expectedErr: "",
-			testName:    "Correct config with wait_for_ready",
+			testName:    "Correct config with delay_for",
+			delayFor:    1 * time.Second,
 		},
 		{
 
@@ -93,6 +108,19 @@ query: >
 			expectedErr: "",
 			password:    "bar",
 			testName:    "Correct config with password",
+		},
+		{
+
+			config: `
+mode: tail
+source: loki
+url: http://localhost:3100/
+delay_for: 10s
+query: >
+        {server="demo"}
+`,
+			expectedErr: "delay_for should be a value between 1s and 5s",
+			testName:    "Invalid DelayFor",
 		},
 	}
 	subLogger := log.WithFields(log.Fields{
@@ -114,6 +142,11 @@ query: >
 					t.Fatalf("Wrong WaitForReady %v != %v", lokiSource.Config.WaitForReady, test.waitForReady)
 				}
 			}
+			if test.delayFor != 0 {
+				if lokiSource.Config.DelayFor != test.delayFor {
+					t.Fatalf("Wrong DelayFor %v != %v", lokiSource.Config.DelayFor, test.delayFor)
+				}
+			}
 		})
 	}
 }
@@ -128,6 +161,7 @@ func TestConfigureDSN(t *testing.T) {
 		password     string
 		scheme       string
 		waitForReady time.Duration
+		delayFor     time.Duration
 	}{
 		{
 			name:        "Wrong scheme",
@@ -150,6 +184,11 @@ func TestConfigureDSN(t *testing.T) {
 			expectedErr: "invalid DSN loki for loki source, must start with loki://",
 		},
 		{
+			name:        "Invalid Delay",
+			dsn:         `loki://localhost:3100/?query={server="demo"}&delay_for=10s`,
+			expectedErr: "delay_for should be a value between 1s and 5s",
+		},
+		{
 			name:  "Bad since param",
 			dsn:   `loki://127.0.0.1:3100/?since=3h&query={server="demo"}`,
 			since: time.Now().Add(-3 * time.Hour),
@@ -161,9 +200,10 @@ func TestConfigureDSN(t *testing.T) {
 		},
 		{
 			name:         "Correct DSN",
-			dsn:          `loki://localhost:3100/?query={server="demo"}&wait_for_ready=5s`,
+			dsn:          `loki://localhost:3100/?query={server="demo"}&wait_for_ready=5s&delay_for=1s`,
 			expectedErr:  "",
 			waitForReady: 5 * time.Second,
+			delayFor:     1 * time.Second,
 		},
 		{
 			name:   "SSL DSN",
@@ -202,6 +242,11 @@ func TestConfigureDSN(t *testing.T) {
 		if test.waitForReady != 0 {
 			if lokiSource.Config.WaitForReady != test.waitForReady {
 				t.Fatalf("Wrong WaitForReady %v != %v", lokiSource.Config.WaitForReady, test.waitForReady)
+			}
+		}
+		if test.delayFor != 0 {
+			if lokiSource.Config.DelayFor != test.delayFor {
+				t.Fatalf("Wrong DelayFor %v != %v", lokiSource.Config.DelayFor, test.delayFor)
 			}
 		}
 	}
