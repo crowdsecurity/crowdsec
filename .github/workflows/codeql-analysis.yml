@@ -45,6 +45,9 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
+      with:
+        # required to pick up tags for BUILD_VERSION
+        fetch-depth: 0
 
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
@@ -58,8 +61,8 @@ jobs:
 
     # Autobuild attempts to build any compiled languages  (C/C++, C#, or Java).
     # If this step fails, then you should remove it and run the build manually (see below)
-    - name: Autobuild
-      uses: github/codeql-action/autobuild@v2
+    # - name: Autobuild
+    #   uses: github/codeql-action/autobuild@v2
 
     # ℹ️ Command-line programs to run using the OS shell.
     # 📚 https://git.io/JvXDl
@@ -68,9 +71,14 @@ jobs:
     #    and modify them (or add more) to build your code if your project
     #    uses a compiled language
 
-    #- run: |
-    #   make bootstrap
-    #   make release
+    - name: "Set up Go"
+      uses: actions/setup-go@v4
+      with:
+        go-version: "1.21.0"
+        cache-dependency-path: "**/go.sum"
+
+    - run: |
+       make clean build BUILD_RE2_WASM=1
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v2
