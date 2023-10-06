@@ -71,16 +71,11 @@ After running this command your will need to validate the enrollment in the weba
 				return fmt.Errorf("could not parse CAPI URL: %s", err)
 			}
 
-			if err := csConfig.LoadHub(); err != nil {
+			if err := require.Hub(csConfig); err != nil {
 				return err
 			}
 
-			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-				log.Info("Run 'sudo cscli hub update' to get the hub index")
-				return fmt.Errorf("failed to load hub index: %s", err)
-			}
-
-			scenarios, err := cwhub.GetInstalledScenariosAsString()
+			scenarios, err := cwhub.GetInstalledItemsAsString(cwhub.SCENARIOS)
 			if err != nil {
 				return fmt.Errorf("failed to get installed scenarios: %s", err)
 			}

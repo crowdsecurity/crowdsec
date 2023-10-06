@@ -13,54 +13,52 @@ import (
 )
 
 // pick a hub branch corresponding to the current crowdsec version.
-func chooseHubBranch() (string, error) {
+func chooseHubBranch() string {
 	latest, err := cwversion.Latest()
 	if err != nil {
 		log.Warningf("Unable to retrieve latest crowdsec version: %s, defaulting to master", err)
-		//lint:ignore nilerr reason
-		return "master", nil // ignore
+		//lint:ignore nilerr
+		return "master"
 	}
 
 	csVersion := cwversion.VersionStrip()
 	if csVersion == latest {
 		log.Debugf("current version is equal to latest (%s)", csVersion)
-		return "master", nil
+		return "master"
 	}
 
 	// if current version is greater than the latest we are in pre-release
 	if semver.Compare(csVersion, latest) == 1 {
 		log.Debugf("Your current crowdsec version seems to be a pre-release (%s)", csVersion)
-		return "master", nil
+		return "master"
 	}
 
 	if csVersion == "" {
 		log.Warning("Crowdsec version is not set, using master branch for the hub")
-		return "master", nil
+		return "master"
 	}
 
 	log.Warnf("Crowdsec is not the latest version. "+
 		"Current version is '%s' and the latest stable version is '%s'. Please update it!",
 		csVersion, latest)
+
 	log.Warnf("As a result, you will not be able to use parsers/scenarios/collections "+
 		"added to Crowdsec Hub after CrowdSec %s", latest)
-	return csVersion, nil
+
+	return csVersion
 }
 
 // SetHubBranch sets the package variable that points to the hub branch.
-func SetHubBranch() error {
+func SetHubBranch() {
 	// a branch is already set, or specified from the flags
 	if HubBranch != "" {
-		return nil
+		return
 	}
 
 	// use the branch corresponding to the crowdsec version
-	branch, err := chooseHubBranch()
-	if err != nil {
-		return err
-	}
-	HubBranch = branch
+	HubBranch = chooseHubBranch()
+
 	log.Debugf("Using branch '%s' for the hub", HubBranch)
-	return nil
 }
 
 func InstallItem(csConfig *csconfig.Config, name string, obtype string, force bool, downloadOnly bool) error {
@@ -72,6 +70,7 @@ func InstallItem(csConfig *csconfig.Config, name string, obtype string, force bo
 	item := *it
 	if downloadOnly && item.Downloaded && item.UpToDate {
 		log.Warningf("%s is already downloaded and up-to-date", item.Name)
+
 		if !force {
 			return nil
 		}
@@ -120,6 +119,7 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 
 		item := *it
 		item, err = DisableItem(csConfig.Hub, item, purge, forceAction)
+
 		if err != nil {
 			log.Fatalf("unable to disable %s : %v", item.Name, err)
 		}
@@ -127,6 +127,7 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 		if err := AddItem(itemType, item); err != nil {
 			log.Fatalf("unable to add %s: %v", item.Name, err)
 		}
+
 		return
 	}
 
@@ -139,6 +140,7 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 		if !v.Installed {
 			continue
 		}
+
 		v, err = DisableItem(csConfig.Hub, v, purge, forceAction)
 		if err != nil {
 			log.Fatalf("unable to disable %s : %v", v.Name, err)
@@ -149,6 +151,7 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 		}
 		disabled++
 	}
+
 	log.Infof("Disabled %d items", disabled)
 }
 
