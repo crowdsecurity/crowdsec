@@ -27,29 +27,28 @@ func silentInstallItem(name string, obtype string) (string, error) {
 	if item == nil {
 		return "", fmt.Errorf("error retrieving item")
 	}
-	it := *item
-	if downloadOnly && it.Downloaded && it.UpToDate {
-		return fmt.Sprintf("%s is already downloaded and up-to-date", it.Name), nil
+	if downloadOnly && item.Downloaded && item.UpToDate {
+		return fmt.Sprintf("%s is already downloaded and up-to-date", item.Name), nil
 	}
-	it, err := cwhub.DownloadLatest(csConfig.Hub, it, forceAction, false)
+	err := cwhub.DownloadLatest(csConfig.Hub, item, forceAction, false)
 	if err != nil {
-		return "", fmt.Errorf("error while downloading %s : %v", it.Name, err)
+		return "", fmt.Errorf("error while downloading %s : %v", item.Name, err)
 	}
-	if err := cwhub.AddItem(obtype, it); err != nil {
+	if err := cwhub.AddItem(obtype, *item); err != nil {
 		return "", err
 	}
 
 	if downloadOnly {
-		return fmt.Sprintf("Downloaded %s to %s", it.Name, csConfig.Cscli.HubDir+"/"+it.RemotePath), nil
+		return fmt.Sprintf("Downloaded %s to %s", item.Name, csConfig.Cscli.HubDir+"/"+item.RemotePath), nil
 	}
-	it, err = cwhub.EnableItem(csConfig.Hub, it)
+	err = cwhub.EnableItem(csConfig.Hub, item)
 	if err != nil {
-		return "", fmt.Errorf("error while enabling %s : %v", it.Name, err)
+		return "", fmt.Errorf("error while enabling %s : %v", item.Name, err)
 	}
-	if err := cwhub.AddItem(obtype, it); err != nil {
+	if err := cwhub.AddItem(obtype, *item); err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("Enabled %s", it.Name), nil
+	return fmt.Sprintf("Enabled %s", item.Name), nil
 }
 
 func restoreHub(dirPath string) error {
