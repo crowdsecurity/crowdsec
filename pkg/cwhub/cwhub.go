@@ -242,15 +242,15 @@ func GetInstalledItems(itemType string) ([]Item, error) {
 }
 
 func GetInstalledItemsAsString(itemType string) ([]string, error) {
-	var retStr []string
-
 	items, err := GetInstalledItems(itemType)
 	if err != nil {
-		return nil, fmt.Errorf("while fetching %s: %w", itemType, err)
+		return nil, err
 	}
 
-	for _, it := range items {
-		retStr = append(retStr, it.Name)
+	retStr := make([]string, len(items))
+
+	for i, it := range items {
+		retStr[i] = it.Name
 	}
 
 	return retStr, nil
