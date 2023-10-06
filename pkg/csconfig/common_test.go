@@ -7,19 +7,16 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLoadCommon(t *testing.T) {
 	pidDirPath := "./tests"
 	LogDirFullPath, err := filepath.Abs("./tests/log/")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	WorkingDirFullPath, err := filepath.Abs("./tests")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	tests := []struct {
 		name           string
@@ -85,10 +82,6 @@ func TestLoadCommon(t *testing.T) {
 		}
 
 		isOk := assert.Equal(t, test.expectedResult, test.Input.Common)
-		if !isOk {
-			t.Fatalf("TEST '%s': NOK", test.name)
-		} else {
-			fmt.Printf("TEST '%s': OK\n", test.name)
-		}
+		require.True(t, isOk)
 	}
 }
