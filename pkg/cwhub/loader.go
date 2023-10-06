@@ -1,9 +1,11 @@
 package cwhub
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -41,6 +43,22 @@ func handleSymlink(path string) (string, error) {
 	}
 
 	return hubpath, nil
+}
+
+func getSHA256(filepath string) (string, error) {
+	f, err := os.Open(filepath)
+	if err != nil {
+		return "", fmt.Errorf("unable to open '%s': %w", filepath, err)
+	}
+
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", fmt.Errorf("unable to calculate sha256 of '%s': %w", filepath, err)
+	}
+
+	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
 
 type walker struct {

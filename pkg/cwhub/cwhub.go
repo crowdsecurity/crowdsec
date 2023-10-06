@@ -1,9 +1,7 @@
 package cwhub
 
 import (
-	"crypto/sha256"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -141,22 +139,6 @@ var skippedLocal = 0
 var skippedTainted = 0
 
 var ReferenceMissingError = errors.New("Reference(s) missing in collection")
-
-func getSHA256(filepath string) (string, error) {
-	f, err := os.Open(filepath)
-	if err != nil {
-		return "", fmt.Errorf("unable to open '%s': %w", filepath, err)
-	}
-
-	defer f.Close()
-
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return "", fmt.Errorf("unable to calculate sha256 of '%s': %w", filepath, err)
-	}
-
-	return fmt.Sprintf("%x", h.Sum(nil)), nil
-}
 
 func GetItemMap(itemType string) map[string]Item {
 	m, ok := hubIdx[itemType]
