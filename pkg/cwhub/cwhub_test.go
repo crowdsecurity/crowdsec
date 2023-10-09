@@ -218,7 +218,7 @@ func testInstallItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 		t.Fatalf("error while downloading %s : %v", item.Name, err)
 	}
 
-	if err, _ := LocalSync(cfg); err != nil {
+	if err, _ = LocalSync(cfg); err != nil {
 		t.Fatalf("taint: failed to run localSync : %s", err)
 	}
 
