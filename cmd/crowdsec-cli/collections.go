@@ -14,9 +14,13 @@ import (
 func NewCollectionsCmd() *cobra.Command {
 	cmdCollections := &cobra.Command{
 		Use:   "collections [action]",
-		Short: "Manage collections from hub",
-		Long:  `Install/Remove/Upgrade/Inspect collections from the CrowdSec Hub.`,
-		/*TBD fix help*/
+		Short: "Install/Remove/Upgrade/Inspect collections from the CrowdSec Hub.",
+		Example: `cscli collections install crowdsec/xxx crowdsec/xyz
+cscli collections inspect crowdsec/xxx crowdsec/xyz
+cscli collections upgrade crowdsec/xxx crowdsec/xyz
+cscli collections list
+cscli collections remove crowdsec/xxx crowdsec/xyz
+`,
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"collection"},
 		DisableAutoGenTag: true,
