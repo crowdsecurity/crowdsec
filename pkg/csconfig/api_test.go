@@ -1,7 +1,6 @@
 package csconfig
 
 import (
-	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -10,6 +9,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
@@ -139,25 +139,21 @@ func TestLoadAPIServer(t *testing.T) {
 	tmpLAPI := &LocalApiServerCfg{
 		ProfilesPath: "./testdata/profiles.yaml",
 	}
-	if err := tmpLAPI.LoadProfiles(); err != nil {
-		t.Fatalf("loading tmp profiles: %+v", err)
-	}
+	err := tmpLAPI.LoadProfiles()
+	require.NoError(t, err)
 
 	LogDirFullPath, err := filepath.Abs("./testdata")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	logLevel := log.InfoLevel
 	config := &Config{}
 	fcontent, err := os.ReadFile("./testdata/config.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	configData := os.ExpandEnv(string(fcontent))
 	err = yaml.UnmarshalStrict([]byte(configData), &config)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
+
 	tests := []struct {
 		name        string
 		input       *Config
@@ -196,6 +192,7 @@ func TestLoadAPIServer(t *testing.T) {
 					DbPath:       "./testdata/test.db",
 					Type:         "sqlite",
 					MaxOpenConns: ptr.Of(DEFAULT_MAX_OPEN_CONNS),
+					DecisionBulkSize: defaultDecisionBulkSize,
 				},
 				ConsoleConfigPath: DefaultConfigPath("console.yaml"),
 				ConsoleConfig: &ConsoleConfig{
@@ -242,30 +239,23 @@ func TestLoadAPIServer(t *testing.T) {
 		},
 	}
 
-	for idx, test := range tests {
-		err := test.input.LoadAPIServer()
-		if err == nil && test.expectedErr != "" {
-			fmt.Printf("TEST '%s': NOK\n", test.name)
-			t.Fatalf("Test number %d/%d expected error, didn't get it", idx+1, len(tests))
-		} else if test.expectedErr != "" {
-			fmt.Printf("ERR: %+v\n", err)
-			if !strings.HasPrefix(fmt.Sprintf("%s", err), test.expectedErr) {
-				fmt.Printf("TEST '%s': NOK\n", test.name)
-				t.Fatalf("%d/%d expected '%s' got '%s'", idx, len(tests),
-					test.expectedErr,
-					fmt.Sprintf("%s", err))
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.input.LoadAPIServer()
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
+			if tc.expectedErr != "" {
+				return
 			}
 
-			assert.Equal(t, test.expected, test.input.API.Server)
-		}
+			assert.Equal(t, tc.expected, tc.input.API.Server)
+		})
 	}
 }
 
-func mustParseCIDRNet(s string) *net.IPNet {
+func mustParseCIDRNet(t *testing.T, s string) *net.IPNet {
 	_, ipNet, err := net.ParseCIDR(s)
-	if err != nil {
-		panic(fmt.Sprintf("MustParseCIDR: parsing %q: %v", s, err))
-	}
+	require.NoError(t, err)
 	return ipNet
 }
 
@@ -306,7 +296,7 @@ func TestParseCapiWhitelists(t *testing.T) {
 			input: `{"cidrs": ["1.2.3.0/24"]}`,
 			expected: &CapiWhitelist{
 				Ips:   []net.IP{},
-				Cidrs: []*net.IPNet{mustParseCIDRNet("1.2.3.0/24")},
+				Cidrs: []*net.IPNet{mustParseCIDRNet(t, "1.2.3.0/24")},
 			},
 		},
 	}
