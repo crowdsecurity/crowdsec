@@ -163,7 +163,6 @@ func DownloadLatest(hub *csconfig.Hub, target *Item, overwrite bool, updateOnly 
 
 func DownloadItem(hub *csconfig.Hub, target *Item, overwrite bool) error {
 	tdir := hub.HubDir
-	dataFolder := hub.DataDir
 
 	// if user didn't --force, don't overwrite local, tainted, up-to-date files
 	if !overwrite {
@@ -260,7 +259,7 @@ func DownloadItem(hub *csconfig.Hub, target *Item, overwrite bool) error {
 	target.Tainted = false
 	target.UpToDate = true
 
-	if err = downloadData(dataFolder, overwrite, bytes.NewReader(body)); err != nil {
+	if err = downloadData(hub.InstallDataDir, overwrite, bytes.NewReader(body)); err != nil {
 		return fmt.Errorf("while downloading data for %s: %w", target.FileName, err)
 	}
 
@@ -270,21 +269,16 @@ func DownloadItem(hub *csconfig.Hub, target *Item, overwrite bool) error {
 }
 
 func DownloadDataIfNeeded(hub *csconfig.Hub, target Item, force bool) error {
-	var (
-		dataFolder = hub.DataDir
-		itemFile   *os.File
-		err        error
-	)
+	itemFilePath := fmt.Sprintf("%s/%s/%s/%s", hub.InstallDir, target.Type, target.Stage, target.FileName)
 
-	itemFilePath := fmt.Sprintf("%s/%s/%s/%s", hub.ConfigDir, target.Type, target.Stage, target.FileName)
-
-	if itemFile, err = os.Open(itemFilePath); err != nil {
+	itemFile, err := os.Open(itemFilePath)
+	if err != nil {
 		return fmt.Errorf("while opening %s: %w", itemFilePath, err)
 	}
 
 	defer itemFile.Close()
 
-	if err = downloadData(dataFolder, force, itemFile); err != nil {
+	if err = downloadData(hub.InstallDataDir, force, itemFile); err != nil {
 		return fmt.Errorf("while downloading data for %s: %w", itemFilePath, err)
 	}
 

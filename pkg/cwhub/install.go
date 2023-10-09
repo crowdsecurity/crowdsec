@@ -82,7 +82,7 @@ func DisableItem(hub *csconfig.Hub, target *Item, purge bool, force bool) error 
 		}
 	}
 
-	syml, err := filepath.Abs(hub.ConfigDir + "/" + target.Type + "/" + target.Stage + "/" + target.FileName)
+	syml, err := filepath.Abs(hub.InstallDir + "/" + target.Type + "/" + target.Stage + "/" + target.FileName)
 	if err != nil {
 		return err
 	}
@@ -142,7 +142,7 @@ func DisableItem(hub *csconfig.Hub, target *Item, purge bool, force bool) error 
 func EnableItem(hub *csconfig.Hub, target *Item) error {
 	var err error
 
-	parent_dir := filepath.Clean(hub.ConfigDir + "/" + target.Type + "/" + target.Stage + "/")
+	parent_dir := filepath.Clean(hub.InstallDir + "/" + target.Type + "/" + target.Stage + "/")
 
 	// create directories if needed
 	if target.Installed {

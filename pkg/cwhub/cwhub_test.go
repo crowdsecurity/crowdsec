@@ -122,7 +122,7 @@ func TestIndexDownload(t *testing.T) {
 
 func getTestCfg() *csconfig.Config {
 	cfg := &csconfig.Config{Hub: &csconfig.Hub{}}
-	cfg.Hub.ConfigDir, _ = filepath.Abs("./install")
+	cfg.Hub.InstallDir, _ = filepath.Abs("./install")
 	cfg.Hub.HubDir, _ = filepath.Abs("./hubdir")
 	cfg.Hub.HubIndexFile = filepath.Clean("./hubdir/.index.json")
 
@@ -144,7 +144,7 @@ func envSetup(t *testing.T) *csconfig.Config {
 	// Mock the http client
 	http.DefaultClient.Transport = newMockTransport()
 
-	err := os.MkdirAll(cfg.Hub.ConfigDir, 0700)
+	err := os.MkdirAll(cfg.Hub.InstallDir, 0700)
 	require.NoError(t, err)
 
 	err = os.MkdirAll(cfg.Hub.HubDir, 0700)
@@ -163,8 +163,8 @@ func envSetup(t *testing.T) *csconfig.Config {
 }
 
 func envTearDown(cfg *csconfig.Config) {
-	if err := os.RemoveAll(cfg.Hub.ConfigDir); err != nil {
-		log.Fatalf("failed to remove %s : %s", cfg.Hub.ConfigDir, err)
+	if err := os.RemoveAll(cfg.Hub.InstallDir); err != nil {
+		log.Fatalf("failed to remove %s : %s", cfg.Hub.InstallDir, err)
 	}
 
 	if err := os.RemoveAll(cfg.Hub.HubDir); err != nil {

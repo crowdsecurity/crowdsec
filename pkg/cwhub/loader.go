@@ -70,7 +70,7 @@ type walker struct {
 func NewWalker(hub *csconfig.Hub) walker {
 	return walker{
 		hubdir:     hub.HubDir,
-		installdir: hub.ConfigDir,
+		installdir: hub.InstallDir,
 	}
 }
 
@@ -457,9 +457,9 @@ func LocalSync(hub *csconfig.Hub) (error, []string) {
 	skippedLocal = 0
 	skippedTainted = 0
 
-	err, warnings := SyncDir(hub, hub.ConfigDir)
+	err, warnings := SyncDir(hub, hub.InstallDir)
 	if err != nil {
-		return fmt.Errorf("failed to scan %s: %w", hub.ConfigDir, err), warnings
+		return fmt.Errorf("failed to scan %s: %w", hub.InstallDir, err), warnings
 	}
 
 	err, _ = SyncDir(hub, hub.HubDir)

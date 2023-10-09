@@ -2,10 +2,10 @@ package csconfig
 
 /*cscli specific config, such as hub directory*/
 type Hub struct {
-	HubDir       string
-	ConfigDir    string
-	HubIndexFile string
-	DataDir      string
+	HubIndexFile   string
+	HubDir         string
+	InstallDir     string
+	InstallDataDir string
 }
 
 func (c *Config) LoadHub() error {
@@ -14,10 +14,10 @@ func (c *Config) LoadHub() error {
 	}
 
 	c.Hub = &Hub{
-		HubIndexFile: c.ConfigPaths.HubIndexFile,
-		ConfigDir:    c.ConfigPaths.ConfigDir,
-		HubDir:       c.ConfigPaths.HubDir,
-		DataDir:      c.ConfigPaths.DataDir,
+		HubIndexFile:   c.ConfigPaths.HubIndexFile,
+		HubDir:         c.ConfigPaths.HubDir,
+		InstallDir:     c.ConfigPaths.ConfigDir,
+		InstallDataDir: c.ConfigPaths.DataDir,
 	}
 
 	return nil
