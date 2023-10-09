@@ -30,8 +30,6 @@ const (
 	lokiLimit    int           = 100
 )
 
-var countDroppedEntries int = 0
-
 var linesRead = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_lokisource_hits_total",
@@ -144,6 +142,7 @@ func (l *LokiSource) Configure(config []byte, logger *log.Entry) error {
 
 	l.Client = lokiclient.NewLokiClient(clientConfig)
 	l.Client.Logger = logger.WithField("component", "lokiclient")
+	l.Client.Logger.WithField("source", l.Config.URL)
 	return nil
 }
 
@@ -327,9 +326,8 @@ func (l *LokiSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 					return err
 				}
 				if len(resp.DroppedEntries) > 0 {
-					countDroppedEntries += len(resp.DroppedEntries)
+					entriesDropped.With(prometheus.Labels{"source": l.Config.URL}).Add(float64(len(resp.DroppedEntries)))
 					ll.WithField("query", l.Config.Query)
-					ll.WithField("source", l.GetName())
 					ll.Warnf("%d entries dropped from loki response", len(resp.DroppedEntries))
 				}
 				for _, stream := range resp.Streams {

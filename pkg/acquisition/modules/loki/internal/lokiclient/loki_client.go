@@ -41,34 +41,6 @@ type Config struct {
 	Limit    int
 }
 
-func (lc *LokiClient) tailLogs(conn *websocket.Conn, c chan *LokiResponse, ctx context.Context) error {
-	tick := time.NewTicker(100 * time.Millisecond)
-
-	for {
-		select {
-		case <-lc.t.Dying():
-			lc.Logger.Info("LokiClient tomb is dying, closing connection")
-			tick.Stop()
-			return conn.Close()
-		case <-ctx.Done(): //this is technically useless, as the read from the websocket is blocking :(
-			lc.Logger.Info("LokiClient context is done, closing connection")
-			tick.Stop()
-			return conn.Close()
-		case <-tick.C:
-			lc.Logger.Debug("Reading from WS")
-			jsonResponse := &LokiResponse{}
-			err := conn.ReadJSON(jsonResponse)
-			if err != nil {
-				close(c)
-				return err
-			}
-			lc.Logger.Tracef("Read from WS: %v", jsonResponse)
-			c <- jsonResponse
-			lc.Logger.Debug("Sent response to channel")
-		}
-	}
-}
-
 func (lc *LokiClient) queryRange(uri string, ctx context.Context, c chan *LokiQueryRangeResponse) error {
 	for {
 		select {
@@ -178,7 +150,7 @@ func (lc *LokiClient) Ready(ctx context.Context) error {
 
 func (lc *LokiClient) Tail(ctx context.Context) (chan *LokiResponse, error) {
 	responseChan := make(chan *LokiResponse)
-	dialer := &websocket.Dialer{} //TODO: TLS support
+	dialer := &websocket.Dialer{}
 	u := lc.getURLFor("loki/api/v1/tail", map[string]string{
 		"limit":     strconv.Itoa(lc.config.Limit),
 		"start":     strconv.Itoa(int(time.Now().Add(-lc.config.Since).UnixNano())),
@@ -201,21 +173,25 @@ func (lc *LokiClient) Tail(ctx context.Context) (chan *LokiResponse, error) {
 	}
 	requestHeader.Set("User-Agent", "Crowdsec "+cwversion.VersionStr())
 	lc.Logger.Infof("Connecting to %s", u)
-	conn, resp, err := dialer.Dial(u, requestHeader)
-	defer resp.Body.Close()
+	conn, _, err := dialer.Dial(u, requestHeader)
+
 	if err != nil {
-		if resp != nil {
-			buf, err2 := io.ReadAll(resp.Body)
-			if err2 != nil {
-				return nil, fmt.Errorf("error reading response body while handling WS error: %s (%s)", err, err2)
-			}
-			return nil, fmt.Errorf("error dialing WS: %s: %s", err, string(buf))
-		}
-		return nil, err
+		lc.Logger.Errorf("Error connecting to websocket, err: %s", err)
+		return responseChan, fmt.Errorf("error connecting to websocket")
 	}
 
 	lc.t.Go(func() error {
-		return lc.tailLogs(conn, responseChan, ctx)
+		for {
+			jsonResponse := &LokiResponse{}
+			err = conn.ReadJSON(jsonResponse)
+
+			if err != nil {
+				lc.Logger.Errorf("Websocket write: %s, raw: %s", err, jsonResponse)
+				return fmt.Errorf("Websocket write: %s, raw: %s", err, jsonResponse)
+			}
+
+			responseChan <- jsonResponse
+		}
 	})
 
 	return responseChan, nil

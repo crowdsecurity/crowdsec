@@ -37,7 +37,7 @@ import (
 
 type DataSourceUnavailableError struct {
 	Name string
-	Err error
+	Err  error
 }
 
 func (e *DataSourceUnavailableError) Error() string {
@@ -47,7 +47,6 @@ func (e *DataSourceUnavailableError) Error() string {
 func (e *DataSourceUnavailableError) Unwrap() error {
 	return e.Err
 }
-
 
 // The interface each datasource must implement
 type DataSource interface {
@@ -75,7 +74,7 @@ var AcquisitionSources = map[string]func() DataSource{
 	"wineventlog": func() DataSource { return &wineventlogacquisition.WinEventLogSource{} },
 	"kafka":       func() DataSource { return &kafkaacquisition.KafkaSource{} },
 	"k8s-audit":   func() DataSource { return &k8sauditacquisition.KubernetesAuditSource{} },
-	"loki": 	   func() DataSource { return &lokiacquisition.LokiSource{} },
+	"loki":        func() DataSource { return &lokiacquisition.LokiSource{} },
 	"s3":          func() DataSource { return &s3acquisition.S3Source{} },
 }
 
