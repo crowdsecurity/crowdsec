@@ -11,14 +11,14 @@ import (
 
 func TestLoadDBConfig(t *testing.T) {
 	tests := []struct {
-		name           string
-		Input          *Config
-		expectedResult *DatabaseCfg
-		expectedErr    string
+		name        string
+		input       *Config
+		expected    *DatabaseCfg
+		expectedErr string
 	}{
 		{
 			name: "basic valid configuration",
-			Input: &Config{
+			input: &Config{
 				DbConfig: &DatabaseCfg{
 					Type:         "sqlite",
 					DbPath:       "./testdata/test.db",
@@ -29,7 +29,7 @@ func TestLoadDBConfig(t *testing.T) {
 					Server: &LocalApiServerCfg{},
 				},
 			},
-			expectedResult: &DatabaseCfg{
+			expected: &DatabaseCfg{
 				Type:             "sqlite",
 				DbPath:           "./testdata/test.db",
 				MaxOpenConns:     ptr.Of(10),
@@ -37,23 +37,23 @@ func TestLoadDBConfig(t *testing.T) {
 			},
 		},
 		{
-			name:           "no configuration path",
-			Input:          &Config{},
-			expectedResult: nil,
-			expectedErr:    "no database configuration provided",
+			name:        "no configuration path",
+			input:       &Config{},
+			expected:    nil,
+			expectedErr: "no database configuration provided",
 		},
 	}
 
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.Input.LoadDBConfig()
+			err := tc.input.LoadDBConfig()
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 			if tc.expectedErr != "" {
 				return
 			}
 
-			assert.Equal(t, tc.expectedResult, tc.Input.DbConfig)
+			assert.Equal(t, tc.expected, tc.input.DbConfig)
 		})
 	}
 }

@@ -11,13 +11,13 @@ import (
 func TestLoadPrometheus(t *testing.T) {
 	tests := []struct {
 		name        string
-		Input       *Config
+		input       *Config
 		expectedURL string
 		expectedErr string
 	}{
 		{
 			name: "basic valid configuration",
-			Input: &Config{
+			input: &Config{
 				Prometheus: &PrometheusCfg{
 					Enabled:    true,
 					Level:      "full",
@@ -33,10 +33,10 @@ func TestLoadPrometheus(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.Input.LoadPrometheus()
+			err := tc.input.LoadPrometheus()
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
-			require.Equal(t, tc.expectedURL, tc.Input.Cscli.PrometheusUrl)
+			require.Equal(t, tc.expectedURL, tc.input.Cscli.PrometheusUrl)
 		})
 	}
 }

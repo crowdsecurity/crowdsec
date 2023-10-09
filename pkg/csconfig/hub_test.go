@@ -24,14 +24,14 @@ func TestLoadHub(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name           string
-		Input          *Config
-		expectedResult *Hub
-		expectedErr    string
+		name        string
+		input       *Config
+		expected    *Hub
+		expectedErr string
 	}{
 		{
 			name: "basic valid configuration",
-			Input: &Config{
+			input: &Config{
 				ConfigPaths: &ConfigurationPaths{
 					ConfigDir:    "./testdata",
 					DataDir:      "./data",
@@ -39,7 +39,7 @@ func TestLoadHub(t *testing.T) {
 					HubIndexFile: "./hub/.index.json",
 				},
 			},
-			expectedResult: &Hub{
+			expected: &Hub{
 				ConfigDir:    configDirFullPath,
 				DataDir:      dataFullPath,
 				HubDir:       hubFullPath,
@@ -48,7 +48,7 @@ func TestLoadHub(t *testing.T) {
 		},
 		{
 			name: "no data dir",
-			Input: &Config{
+			input: &Config{
 				ConfigPaths: &ConfigurationPaths{
 					ConfigDir:    "./testdata",
 					HubDir:       "./hub",
@@ -59,7 +59,7 @@ func TestLoadHub(t *testing.T) {
 		},
 		{
 			name:        "no configuration path",
-			Input:       &Config{},
+			input:       &Config{},
 			expectedErr: "no configuration paths provided",
 		},
 	}
@@ -67,13 +67,13 @@ func TestLoadHub(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.Input.LoadHub()
+			err := tc.input.LoadHub()
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 			if tc.expectedErr != "" {
 				return
 			}
 
-			assert.Equal(t, tc.expectedResult, tc.Input.Hub)
+			assert.Equal(t, tc.expected, tc.input.Hub)
 		})
 	}
 }

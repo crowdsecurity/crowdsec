@@ -19,14 +19,14 @@ func TestSimulationLoading(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name           string
-		Input          *Config
-		expectedResult *SimulationConfig
-		expectedErr    string
+		name        string
+		input       *Config
+		expected    *SimulationConfig
+		expectedErr string
 	}{
 		{
 			name: "basic valid simulation",
-			Input: &Config{
+			input: &Config{
 				ConfigPaths: &ConfigurationPaths{
 					SimulationFilePath: "./testdata/simulation.yaml",
 					DataDir:            "./data",
@@ -34,11 +34,11 @@ func TestSimulationLoading(t *testing.T) {
 				Crowdsec: &CrowdsecServiceCfg{},
 				Cscli:    &CscliCfg{},
 			},
-			expectedResult: &SimulationConfig{Simulation: new(bool)},
+			expected: &SimulationConfig{Simulation: new(bool)},
 		},
 		{
 			name: "basic nil config",
-			Input: &Config{
+			input: &Config{
 				ConfigPaths: &ConfigurationPaths{
 					SimulationFilePath: "",
 					DataDir:            "./data",
@@ -49,7 +49,7 @@ func TestSimulationLoading(t *testing.T) {
 		},
 		{
 			name: "basic bad file name",
-			Input: &Config{
+			input: &Config{
 				ConfigPaths: &ConfigurationPaths{
 					SimulationFilePath: "./testdata/xxx.yaml",
 					DataDir:            "./data",
@@ -60,7 +60,7 @@ func TestSimulationLoading(t *testing.T) {
 		},
 		{
 			name: "basic bad file content",
-			Input: &Config{
+			input: &Config{
 				ConfigPaths: &ConfigurationPaths{
 					SimulationFilePath: "./testdata/config.yaml",
 					DataDir:            "./data",
@@ -71,7 +71,7 @@ func TestSimulationLoading(t *testing.T) {
 		},
 		{
 			name: "basic bad file content",
-			Input: &Config{
+			input: &Config{
 				ConfigPaths: &ConfigurationPaths{
 					SimulationFilePath: "./testdata/config.yaml",
 					DataDir:            "./data",
@@ -85,10 +85,10 @@ func TestSimulationLoading(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.Input.LoadSimulation()
+			err := tc.input.LoadSimulation()
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
-			assert.Equal(t, tc.expectedResult, tc.Input.Crowdsec.SimulationConfig)
+			assert.Equal(t, tc.expected, tc.input.Crowdsec.SimulationConfig)
 		})
 	}
 }
@@ -109,32 +109,32 @@ func TestIsSimulated(t *testing.T) {
 		name             string
 		SimulationConfig *SimulationConfig
 		Input            string
-		expectedResult   bool
+		expected         bool
 	}{
 		{
 			name:             "No simulation except (in exclusion)",
 			SimulationConfig: simCfgOff,
 			Input:            "test",
-			expectedResult:   true,
+			expected:         true,
 		},
 		{
 			name:             "All simulation (not in exclusion)",
 			SimulationConfig: simCfgOn,
 			Input:            "toto",
-			expectedResult:   true,
+			expected:         true,
 		},
 		{
 			name:             "All simulation (in exclusion)",
 			SimulationConfig: simCfgOn,
 			Input:            "test",
-			expectedResult:   false,
+			expected:         false,
 		},
 	}
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			isSimulated := tc.SimulationConfig.IsSimulated(tc.Input)
-			require.Equal(t, tc.expectedResult, isSimulated)
+			require.Equal(t, tc.expected, isSimulated)
 		})
 	}
 }

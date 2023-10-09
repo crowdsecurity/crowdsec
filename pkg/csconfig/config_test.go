@@ -23,19 +23,19 @@ func TestNormalLoad(t *testing.T) {
 
 func TestNewCrowdSecConfig(t *testing.T) {
 	tests := []struct {
-		name           string
-		expectedResult *Config
+		name     string
+		expected *Config
 	}{
 		{
-			name:           "new configuration: basic",
-			expectedResult: &Config{},
+			name:     "new configuration: basic",
+			expected: &Config{},
 		},
 	}
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			result := &Config{}
-			assert.Equal(t, tc.expectedResult, result)
+			assert.Equal(t, tc.expected, result)
 		})
 	}
 }

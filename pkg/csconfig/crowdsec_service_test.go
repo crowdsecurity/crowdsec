@@ -36,10 +36,10 @@ func TestLoadCrowdsec(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name           string
-		input          *Config
-		expectedResult *CrowdsecServiceCfg
-		expectedErr    string
+		name        string
+		input       *Config
+		expected    *CrowdsecServiceCfg
+		expectedErr string
 	}{
 		{
 			name: "basic valid configuration",
@@ -61,7 +61,7 @@ func TestLoadCrowdsec(t *testing.T) {
 					ConsoleContextValueLength: 2500,
 				},
 			},
-			expectedResult: &CrowdsecServiceCfg{
+			expected: &CrowdsecServiceCfg{
 				Enable:                    ptr.Of(true),
 				AcquisitionDirPath:        "",
 				ConsoleContextPath:        contextFileFullPath,
@@ -104,7 +104,7 @@ func TestLoadCrowdsec(t *testing.T) {
 					ConsoleContextPath:  "./testdata/context.yaml",
 				},
 			},
-			expectedResult: &CrowdsecServiceCfg{
+			expected: &CrowdsecServiceCfg{
 				Enable:                    ptr.Of(true),
 				AcquisitionDirPath:        acquisDirFullPath,
 				AcquisitionFilePath:       acquisFullPath,
@@ -145,7 +145,7 @@ func TestLoadCrowdsec(t *testing.T) {
 					ConsoleContextValueLength: 10,
 				},
 			},
-			expectedResult: &CrowdsecServiceCfg{
+			expected: &CrowdsecServiceCfg{
 				Enable:                    ptr.Of(true),
 				AcquisitionDirPath:        "",
 				AcquisitionFilePath:       "",
@@ -197,7 +197,7 @@ func TestLoadCrowdsec(t *testing.T) {
 					HubDir:    "./hub",
 				},
 			},
-			expectedResult: nil,
+			expected: nil,
 		},
 	}
 
@@ -210,7 +210,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				return
 			}
 
-			require.Equal(t, tc.expectedResult, tc.input.Crowdsec)
+			require.Equal(t, tc.expected, tc.input.Crowdsec)
 		})
 	}
 }

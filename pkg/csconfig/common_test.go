@@ -19,14 +19,14 @@ func TestLoadCommon(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name           string
-		Input          *Config
-		expected       *CommonCfg
-		expectedErr    string
+		name        string
+		input       *Config
+		expected    *CommonCfg
+		expectedErr string
 	}{
 		{
 			name: "basic valid configuration",
-			Input: &Config{
+			input: &Config{
 				Common: &CommonCfg{
 					Daemonize:  true,
 					PidDir:     "./testdata",
@@ -45,7 +45,7 @@ func TestLoadCommon(t *testing.T) {
 		},
 		{
 			name: "empty working dir",
-			Input: &Config{
+			input: &Config{
 				Common: &CommonCfg{
 					Daemonize: true,
 					PidDir:    "./testdata",
@@ -61,9 +61,9 @@ func TestLoadCommon(t *testing.T) {
 			},
 		},
 		{
-			name:           "no common",
-			Input:          &Config{},
-			expected: nil,
+			name:        "no common",
+			input:       &Config{},
+			expected:    nil,
 			expectedErr: "no common block provided in configuration file",
 		},
 	}
@@ -71,13 +71,13 @@ func TestLoadCommon(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.Input.LoadCommon()
+			err := tc.input.LoadCommon()
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 			if tc.expectedErr != "" {
 				return
 			}
 
-			assert.Equal(t, tc.expected, tc.Input.Common)
+			assert.Equal(t, tc.expected, tc.input.Common)
 		})
 	}
 }

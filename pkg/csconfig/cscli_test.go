@@ -24,14 +24,14 @@ func TestLoadCSCLI(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name           string
-		Input          *Config
-		expectedResult *CscliCfg
-		expectedErr    string
+		name        string
+		input       *Config
+		expected    *CscliCfg
+		expectedErr string
 	}{
 		{
 			name: "basic valid configuration",
-			Input: &Config{
+			input: &Config{
 				ConfigPaths: &ConfigurationPaths{
 					ConfigDir:    "./testdata",
 					DataDir:      "./data",
@@ -39,7 +39,7 @@ func TestLoadCSCLI(t *testing.T) {
 					HubIndexFile: "./hub/.index.json",
 				},
 			},
-			expectedResult: &CscliCfg{
+			expected: &CscliCfg{
 				ConfigDir:    configDirFullPath,
 				DataDir:      dataFullPath,
 				HubDir:       hubFullPath,
@@ -47,23 +47,23 @@ func TestLoadCSCLI(t *testing.T) {
 			},
 		},
 		{
-			name:           "no configuration path",
-			Input:          &Config{},
-			expectedResult: &CscliCfg{},
-			expectedErr:   "no configuration paths provided",
+			name:        "no configuration path",
+			input:       &Config{},
+			expected:    &CscliCfg{},
+			expectedErr: "no configuration paths provided",
 		},
 	}
 
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.Input.LoadCSCLI()
+			err := tc.input.LoadCSCLI()
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 			if tc.expectedErr != "" {
 				return
 			}
 
-			assert.Equal(t, tc.expectedResult, tc.Input.Cscli)
+			assert.Equal(t, tc.expected, tc.input.Cscli)
 		})
 	}
 }
