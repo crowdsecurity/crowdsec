@@ -12,10 +12,10 @@ import (
 )
 
 func TestSimulationLoading(t *testing.T) {
-	testXXFullPath, err := filepath.Abs("./tests/xxx.yaml")
+	testXXFullPath, err := filepath.Abs("./testdata/xxx.yaml")
 	require.NoError(t, err)
 
-	badYamlFullPath, err := filepath.Abs("./tests/config.yaml")
+	badYamlFullPath, err := filepath.Abs("./testdata/config.yaml")
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -28,7 +28,7 @@ func TestSimulationLoading(t *testing.T) {
 			name: "basic valid simulation",
 			Input: &Config{
 				ConfigPaths: &ConfigurationPaths{
-					SimulationFilePath: "./tests/simulation.yaml",
+					SimulationFilePath: "./testdata/simulation.yaml",
 					DataDir:            "./data",
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
@@ -51,7 +51,7 @@ func TestSimulationLoading(t *testing.T) {
 			name: "basic bad file name",
 			Input: &Config{
 				ConfigPaths: &ConfigurationPaths{
-					SimulationFilePath: "./tests/xxx.yaml",
+					SimulationFilePath: "./testdata/xxx.yaml",
 					DataDir:            "./data",
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
@@ -62,7 +62,7 @@ func TestSimulationLoading(t *testing.T) {
 			name: "basic bad file content",
 			Input: &Config{
 				ConfigPaths: &ConfigurationPaths{
-					SimulationFilePath: "./tests/config.yaml",
+					SimulationFilePath: "./testdata/config.yaml",
 					DataDir:            "./data",
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
@@ -73,7 +73,7 @@ func TestSimulationLoading(t *testing.T) {
 			name: "basic bad file content",
 			Input: &Config{
 				ConfigPaths: &ConfigurationPaths{
-					SimulationFilePath: "./tests/config.yaml",
+					SimulationFilePath: "./testdata/config.yaml",
 					DataDir:            "./data",
 				},
 				Crowdsec: &CrowdsecServiceCfg{},

@@ -11,11 +11,11 @@ import (
 )
 
 func TestLoadCommon(t *testing.T) {
-	pidDirPath := "./tests"
-	LogDirFullPath, err := filepath.Abs("./tests/log/")
+	pidDirPath := "./testdata"
+	LogDirFullPath, err := filepath.Abs("./testdata/log/")
 	require.NoError(t, err)
 
-	WorkingDirFullPath, err := filepath.Abs("./tests")
+	WorkingDirFullPath, err := filepath.Abs("./testdata")
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -29,10 +29,10 @@ func TestLoadCommon(t *testing.T) {
 			Input: &Config{
 				Common: &CommonCfg{
 					Daemonize:  true,
-					PidDir:     "./tests",
+					PidDir:     "./testdata",
 					LogMedia:   "file",
-					LogDir:     "./tests/log/",
-					WorkingDir: "./tests/",
+					LogDir:     "./testdata/log/",
+					WorkingDir: "./testdata/",
 				},
 			},
 			expectedResult: &CommonCfg{
@@ -48,9 +48,9 @@ func TestLoadCommon(t *testing.T) {
 			Input: &Config{
 				Common: &CommonCfg{
 					Daemonize: true,
-					PidDir:    "./tests",
+					PidDir:    "./testdata",
 					LogMedia:  "file",
-					LogDir:    "./tests/log/",
+					LogDir:    "./testdata/log/",
 				},
 			},
 			expectedResult: &CommonCfg{

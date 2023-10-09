@@ -22,7 +22,7 @@ func TestLoadDBConfig(t *testing.T) {
 			Input: &Config{
 				DbConfig: &DatabaseCfg{
 					Type:         "sqlite",
-					DbPath:       "./tests/test.db",
+					DbPath:       "./testdata/test.db",
 					MaxOpenConns: ptr.Of(10),
 				},
 				Cscli: &CscliCfg{},
@@ -32,7 +32,7 @@ func TestLoadDBConfig(t *testing.T) {
 			},
 			expectedResult: &DatabaseCfg{
 				Type:         "sqlite",
-				DbPath:       "./tests/test.db",
+				DbPath:       "./testdata/test.db",
 				MaxOpenConns: ptr.Of(10),
 				DecisionBulkSize: defaultDecisionBulkSize,
 			},

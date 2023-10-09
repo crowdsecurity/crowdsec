@@ -20,7 +20,7 @@ func TestLoadCSCLI(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	configDirFullPath, err := filepath.Abs("./tests")
+	configDirFullPath, err := filepath.Abs("./testdata")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +40,7 @@ func TestLoadCSCLI(t *testing.T) {
 			name: "basic valid configuration",
 			Input: &Config{
 				ConfigPaths: &ConfigurationPaths{
-					ConfigDir:    "./tests",
+					ConfigDir:    "./testdata",
 					DataDir:      "./data",
 					HubDir:       "./hub",
 					HubIndexFile: "./hub/.index.json",

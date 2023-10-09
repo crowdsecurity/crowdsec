@@ -26,7 +26,7 @@ func TestLoadLocalApiClientCfg(t *testing.T) {
 		{
 			name: "basic valid configuration",
 			input: &LocalApiClientCfg{
-				CredentialsFilePath: "./tests/lapi-secrets.yaml",
+				CredentialsFilePath: "./testdata/lapi-secrets.yaml",
 			},
 			expected: &ApiCredentialsCfg{
 				URL:      "http://localhost:8080/",
@@ -37,7 +37,7 @@ func TestLoadLocalApiClientCfg(t *testing.T) {
 		{
 			name: "invalid configuration",
 			input: &LocalApiClientCfg{
-				CredentialsFilePath: "./tests/bad_lapi-secrets.yaml",
+				CredentialsFilePath: "./testdata/bad_lapi-secrets.yaml",
 			},
 			expected:    &ApiCredentialsCfg{},
 			expectedErr: "field unknown_key not found in type csconfig.ApiCredentialsCfg",
@@ -45,15 +45,15 @@ func TestLoadLocalApiClientCfg(t *testing.T) {
 		{
 			name: "invalid configuration filepath",
 			input: &LocalApiClientCfg{
-				CredentialsFilePath: "./tests/nonexist_lapi-secrets.yaml",
+				CredentialsFilePath: "./testdata/nonexist_lapi-secrets.yaml",
 			},
 			expected:    nil,
-			expectedErr: "open ./tests/nonexist_lapi-secrets.yaml: " + cstest.FileNotFoundMessage,
+			expectedErr: "open ./testdata/nonexist_lapi-secrets.yaml: " + cstest.FileNotFoundMessage,
 		},
 		{
 			name: "valid configuration with insecure skip verify",
 			input: &LocalApiClientCfg{
-				CredentialsFilePath: "./tests/lapi-secrets.yaml",
+				CredentialsFilePath: "./testdata/lapi-secrets.yaml",
 				InsecureSkipVerify:  ptr.Of(false),
 			},
 			expected: &ApiCredentialsCfg{
@@ -88,7 +88,7 @@ func TestLoadOnlineApiClientCfg(t *testing.T) {
 		{
 			name: "basic valid configuration",
 			input: &OnlineApiClientCfg{
-				CredentialsFilePath: "./tests/online-api-secrets.yaml",
+				CredentialsFilePath: "./testdata/online-api-secrets.yaml",
 			},
 			expected: &ApiCredentialsCfg{
 				URL:      "http://crowdsec.api",
@@ -99,7 +99,7 @@ func TestLoadOnlineApiClientCfg(t *testing.T) {
 		{
 			name: "invalid configuration",
 			input: &OnlineApiClientCfg{
-				CredentialsFilePath: "./tests/bad_lapi-secrets.yaml",
+				CredentialsFilePath: "./testdata/bad_lapi-secrets.yaml",
 			},
 			expected:    &ApiCredentialsCfg{},
 			expectedErr: "failed unmarshaling api server credentials",
@@ -107,14 +107,14 @@ func TestLoadOnlineApiClientCfg(t *testing.T) {
 		{
 			name: "missing field configuration",
 			input: &OnlineApiClientCfg{
-				CredentialsFilePath: "./tests/bad_online-api-secrets.yaml",
+				CredentialsFilePath: "./testdata/bad_online-api-secrets.yaml",
 			},
 			expected: nil,
 		},
 		{
 			name: "invalid configuration filepath",
 			input: &OnlineApiClientCfg{
-				CredentialsFilePath: "./tests/nonexist_online-api-secrets.yaml",
+				CredentialsFilePath: "./testdata/nonexist_online-api-secrets.yaml",
 			},
 			expected:    &ApiCredentialsCfg{},
 			expectedErr: "failed to read api server credentials",
@@ -137,19 +137,19 @@ func TestLoadOnlineApiClientCfg(t *testing.T) {
 
 func TestLoadAPIServer(t *testing.T) {
 	tmpLAPI := &LocalApiServerCfg{
-		ProfilesPath: "./tests/profiles.yaml",
+		ProfilesPath: "./testdata/profiles.yaml",
 	}
 	if err := tmpLAPI.LoadProfiles(); err != nil {
 		t.Fatalf("loading tmp profiles: %+v", err)
 	}
 
-	LogDirFullPath, err := filepath.Abs("./tests")
+	LogDirFullPath, err := filepath.Abs("./testdata")
 	if err != nil {
 		t.Fatal(err)
 	}
 	logLevel := log.InfoLevel
 	config := &Config{}
-	fcontent, err := os.ReadFile("./tests/config.yaml")
+	fcontent, err := os.ReadFile("./testdata/config.yaml")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,18 +172,18 @@ func TestLoadAPIServer(t *testing.T) {
 					Server: &LocalApiServerCfg{
 						ListenURI: "http://crowdsec.api",
 						OnlineClient: &OnlineApiClientCfg{
-							CredentialsFilePath: "./tests/online-api-secrets.yaml",
+							CredentialsFilePath: "./testdata/online-api-secrets.yaml",
 						},
-						ProfilesPath: "./tests/profiles.yaml",
+						ProfilesPath: "./testdata/profiles.yaml",
 						PapiLogLevel: &logLevel,
 					},
 				},
 				DbConfig: &DatabaseCfg{
 					Type:   "sqlite",
-					DbPath: "./tests/test.db",
+					DbPath: "./testdata/test.db",
 				},
 				Common: &CommonCfg{
-					LogDir:   "./tests/",
+					LogDir:   "./testdata/",
 					LogMedia: "stdout",
 				},
 				DisableAPI: false,
@@ -193,7 +193,7 @@ func TestLoadAPIServer(t *testing.T) {
 				ListenURI: "http://crowdsec.api",
 				TLS:       nil,
 				DbConfig: &DatabaseCfg{
-					DbPath:       "./tests/test.db",
+					DbPath:       "./testdata/test.db",
 					Type:         "sqlite",
 					MaxOpenConns: ptr.Of(DEFAULT_MAX_OPEN_CONNS),
 				},
@@ -208,7 +208,7 @@ func TestLoadAPIServer(t *testing.T) {
 				LogDir:   LogDirFullPath,
 				LogMedia: "stdout",
 				OnlineClient: &OnlineApiClientCfg{
-					CredentialsFilePath: "./tests/online-api-secrets.yaml",
+					CredentialsFilePath: "./testdata/online-api-secrets.yaml",
 					Credentials: &ApiCredentialsCfg{
 						URL:      "http://crowdsec.api",
 						Login:    "test",
@@ -216,7 +216,7 @@ func TestLoadAPIServer(t *testing.T) {
 					},
 				},
 				Profiles:               tmpLAPI.Profiles,
-				ProfilesPath:           "./tests/profiles.yaml",
+				ProfilesPath:           "./testdata/profiles.yaml",
 				UseForwardedForHeaders: false,
 				PapiLogLevel:           &logLevel,
 			},
@@ -229,7 +229,7 @@ func TestLoadAPIServer(t *testing.T) {
 					Server: &LocalApiServerCfg{},
 				},
 				Common: &CommonCfg{
-					LogDir:   "./tests/",
+					LogDir:   "./testdata/",
 					LogMedia: "stdout",
 				},
 				DisableAPI: false,
