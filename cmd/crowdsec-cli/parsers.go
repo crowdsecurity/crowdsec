@@ -12,7 +12,7 @@ import (
 )
 
 func NewParsersCmd() *cobra.Command {
-	var cmdParsers = &cobra.Command{
+	cmdParsers := &cobra.Command{
 		Use:   "parsers [action] [config]",
 		Short: "Install/Remove/Upgrade/Inspect parser(s) from hub",
 		Example: `cscli parsers install crowdsecurity/sshd-logs
@@ -51,7 +51,7 @@ cscli parsers remove crowdsecurity/sshd-logs
 func NewParsersInstallCmd() *cobra.Command {
 	var ignoreError bool
 
-	var cmdParsersInstall = &cobra.Command{
+	cmdParsersInstall := &cobra.Command{
 		Use:               "install [config]",
 		Short:             "Install given parser(s)",
 		Long:              `Fetch and install given parser(s) from hub`,
@@ -69,6 +69,7 @@ func NewParsersInstallCmd() *cobra.Command {
 					Suggest(cwhub.PARSERS, name, nearestItem.Name, score, ignoreError)
 					continue
 				}
+
 				if err := cwhub.InstallItem(csConfig, name, cwhub.PARSERS, forceAction, downloadOnly); err != nil {
 					if !ignoreError {
 						return fmt.Errorf("error while installing '%s': %w", name, err)
@@ -167,8 +168,8 @@ func NewParsersInspectCmd() *cobra.Command {
 		Short:             "Inspect given parser",
 		Long:              `Inspect given parser`,
 		Example:           `cscli parsers inspect crowdsec/xxx`,
-		DisableAutoGenTag: true,
 		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cwhub.PARSERS, args, toComplete)
 		},

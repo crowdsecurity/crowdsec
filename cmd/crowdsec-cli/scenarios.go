@@ -79,6 +79,7 @@ func NewCmdScenariosInstall() *cobra.Command {
 			return nil
 		},
 	}
+
 	cmdScenariosInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
 	cmdScenariosInstall.PersistentFlags().BoolVar(&forceAction, "force", false, "Force install : Overwrite tainted and outdated files")
 	cmdScenariosInstall.PersistentFlags().BoolVar(&ignoreError, "ignore", false, "Ignore errors when installing multiple scenarios")
@@ -88,15 +89,15 @@ func NewCmdScenariosInstall() *cobra.Command {
 
 func NewCmdScenariosRemove() *cobra.Command {
 	var cmdScenariosRemove = &cobra.Command{
-		Use:     "remove [config]",
-		Short:   "Remove given scenario(s)",
-		Long:    `remove given scenario(s)`,
-		Example: `cscli scenarios remove crowdsec/xxx crowdsec/xyz`,
-		Aliases: []string{"delete"},
+		Use:               "remove [config]",
+		Short:             "Remove given scenario(s)",
+		Long:              `remove given scenario(s)`,
+		Example:           `cscli scenarios remove crowdsec/xxx crowdsec/xyz`,
+		Aliases:           []string{"delete"},
+		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cwhub.SCENARIOS, args, toComplete)
 		},
-		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if all {
 				err := cwhub.RemoveMany(csConfig, cwhub.SCENARIOS, "", all, purge, forceAction)
@@ -119,6 +120,7 @@ func NewCmdScenariosRemove() *cobra.Command {
 			return nil
 		},
 	}
+
 	cmdScenariosRemove.PersistentFlags().BoolVar(&purge, "purge", false, "Delete source file too")
 	cmdScenariosRemove.PersistentFlags().BoolVar(&forceAction, "force", false, "Force remove : Remove tainted and outdated files")
 	cmdScenariosRemove.PersistentFlags().BoolVar(&all, "all", false, "Delete all the scenarios")
@@ -128,14 +130,14 @@ func NewCmdScenariosRemove() *cobra.Command {
 
 func NewCmdScenariosUpgrade() *cobra.Command {
 	var cmdScenariosUpgrade = &cobra.Command{
-		Use:     "upgrade [config]",
-		Short:   "Upgrade given scenario(s)",
-		Long:    `Fetch and Upgrade given scenario(s) from hub`,
-		Example: `cscli scenarios upgrade crowdsec/xxx crowdsec/xyz`,
+		Use:               "upgrade [config]",
+		Short:             "Upgrade given scenario(s)",
+		Long:              `Fetch and Upgrade given scenario(s) from hub`,
+		Example:           `cscli scenarios upgrade crowdsec/xxx crowdsec/xyz`,
+		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cwhub.SCENARIOS, args, toComplete)
 		},
-		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if all {
 				cwhub.UpgradeConfig(csConfig, cwhub.SCENARIOS, "", forceAction)
@@ -150,6 +152,7 @@ func NewCmdScenariosUpgrade() *cobra.Command {
 			return nil
 		},
 	}
+
 	cmdScenariosUpgrade.PersistentFlags().BoolVarP(&all, "all", "a", false, "Upgrade all the scenarios")
 	cmdScenariosUpgrade.PersistentFlags().BoolVar(&forceAction, "force", false, "Force upgrade : Overwrite tainted and outdated files")
 
@@ -158,19 +161,20 @@ func NewCmdScenariosUpgrade() *cobra.Command {
 
 func NewCmdScenariosInspect() *cobra.Command {
 	var cmdScenariosInspect = &cobra.Command{
-		Use:     "inspect [config]",
-		Short:   "Inspect given scenario",
-		Long:    `Inspect given scenario`,
-		Example: `cscli scenarios inspect crowdsec/xxx`,
-		Args:    cobra.MinimumNArgs(1),
+		Use:               "inspect [config]",
+		Short:             "Inspect given scenario",
+		Long:              `Inspect given scenario`,
+		Example:           `cscli scenarios inspect crowdsec/xxx`,
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cwhub.SCENARIOS, args, toComplete)
 		},
-		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			InspectItem(args[0], cwhub.SCENARIOS)
 		},
 	}
+
 	cmdScenariosInspect.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "", "Prometheus url")
 
 	return cmdScenariosInspect
@@ -188,6 +192,7 @@ cscli scenarios list crowdsecurity/xxx`,
 			ListItems(color.Output, []string{cwhub.SCENARIOS}, args, false, true, all)
 		},
 	}
+
 	cmdScenariosList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
 
 	return cmdScenariosList

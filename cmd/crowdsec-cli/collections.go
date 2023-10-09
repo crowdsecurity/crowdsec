@@ -12,7 +12,7 @@ import (
 )
 
 func NewCollectionsCmd() *cobra.Command {
-	var cmdCollections = &cobra.Command{
+	cmdCollections := &cobra.Command{
 		Use:   "collections [action]",
 		Short: "Manage collections from hub",
 		Long:  `Install/Remove/Upgrade/Inspect collections from the CrowdSec Hub.`,
@@ -35,18 +35,28 @@ func NewCollectionsCmd() *cobra.Command {
 		},
 	}
 
+	cmdCollections.AddCommand(NewCollectionsInstallCmd())
+	cmdCollections.AddCommand(NewCollectionsRemoveCmd())
+	cmdCollections.AddCommand(NewCollectionsUpgradeCmd())
+	cmdCollections.AddCommand(NewCollectionsInspectCmd())
+	cmdCollections.AddCommand(NewCollectionsListCmd())
+
+	return cmdCollections
+}
+
+func NewCollectionsInstallCmd() *cobra.Command {
 	var ignoreError bool
 
-	var cmdCollectionsInstall = &cobra.Command{
-		Use:     "install collection",
-		Short:   "Install given collection(s)",
-		Long:    `Fetch and install given collection(s) from hub`,
-		Example: `cscli collections install crowdsec/xxx crowdsec/xyz`,
-		Args:    cobra.MinimumNArgs(1),
+	cmdCollectionsInstall := &cobra.Command{
+		Use:               "install collection",
+		Short:             "Install given collection(s)",
+		Long:              `Fetch and install given collection(s) from hub`,
+		Example:           `cscli collections install crowdsec/xxx crowdsec/xyz`,
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compAllItems(cwhub.COLLECTIONS, args, toComplete)
 		},
-		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			for _, name := range args {
 				t := cwhub.GetItem(cwhub.COLLECTIONS, name)
@@ -55,6 +65,7 @@ func NewCollectionsCmd() *cobra.Command {
 					Suggest(cwhub.COLLECTIONS, name, nearestItem.Name, score, ignoreError)
 					continue
 				}
+
 				if err := cwhub.InstallItem(csConfig, name, cwhub.COLLECTIONS, forceAction, downloadOnly); err != nil {
 					if !ignoreError {
 						return fmt.Errorf("error while installing '%s': %w", name, err)
@@ -65,12 +76,16 @@ func NewCollectionsCmd() *cobra.Command {
 			return nil
 		},
 	}
+
 	cmdCollectionsInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
 	cmdCollectionsInstall.PersistentFlags().BoolVar(&forceAction, "force", false, "Force install : Overwrite tainted and outdated files")
 	cmdCollectionsInstall.PersistentFlags().BoolVar(&ignoreError, "ignore", false, "Ignore errors when installing multiple collections")
-	cmdCollections.AddCommand(cmdCollectionsInstall)
 
-	var cmdCollectionsRemove = &cobra.Command{
+	return cmdCollectionsInstall
+}
+
+func NewCollectionsRemoveCmd() *cobra.Command {
+	cmdCollectionsRemove := &cobra.Command{
 		Use:               "remove collection",
 		Short:             "Remove given collection(s)",
 		Long:              `Remove given collection(s) from hub`,
@@ -112,15 +127,20 @@ func NewCollectionsCmd() *cobra.Command {
 					return err
 				}
 			}
+
 			return nil
 		},
 	}
+
 	cmdCollectionsRemove.PersistentFlags().BoolVar(&purge, "purge", false, "Delete source file too")
 	cmdCollectionsRemove.PersistentFlags().BoolVar(&forceAction, "force", false, "Force remove : Remove tainted and outdated files")
 	cmdCollectionsRemove.PersistentFlags().BoolVar(&all, "all", false, "Delete all the collections")
-	cmdCollections.AddCommand(cmdCollectionsRemove)
 
-	var cmdCollectionsUpgrade = &cobra.Command{
+	return cmdCollectionsRemove
+}
+
+func NewCollectionsUpgradeCmd() *cobra.Command {
+	cmdCollectionsUpgrade := &cobra.Command{
 		Use:               "upgrade collection",
 		Short:             "Upgrade given collection(s)",
 		Long:              `Fetch and upgrade given collection(s) from hub`,
@@ -143,11 +163,15 @@ func NewCollectionsCmd() *cobra.Command {
 			return nil
 		},
 	}
+
 	cmdCollectionsUpgrade.PersistentFlags().BoolVarP(&all, "all", "a", false, "Upgrade all the collections")
 	cmdCollectionsUpgrade.PersistentFlags().BoolVar(&forceAction, "force", false, "Force upgrade : Overwrite tainted and outdated files")
-	cmdCollections.AddCommand(cmdCollectionsUpgrade)
 
-	var cmdCollectionsInspect = &cobra.Command{
+	return cmdCollectionsUpgrade
+}
+
+func NewCollectionsInspectCmd() *cobra.Command {
+	cmdCollectionsInspect := &cobra.Command{
 		Use:               "inspect collection",
 		Short:             "Inspect given collection",
 		Long:              `Inspect given collection`,
@@ -163,10 +187,14 @@ func NewCollectionsCmd() *cobra.Command {
 			}
 		},
 	}
-	cmdCollectionsInspect.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "", "Prometheus url")
-	cmdCollections.AddCommand(cmdCollectionsInspect)
 
-	var cmdCollectionsList = &cobra.Command{
+	cmdCollectionsInspect.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "", "Prometheus url")
+
+	return cmdCollectionsInspect
+}
+
+func NewCollectionsListCmd() *cobra.Command {
+	cmdCollectionsList := &cobra.Command{
 		Use:               "list collection [-a]",
 		Short:             "List all collections",
 		Long:              `List all collections`,
@@ -177,8 +205,8 @@ func NewCollectionsCmd() *cobra.Command {
 			ListItems(color.Output, []string{cwhub.COLLECTIONS}, args, false, true, all)
 		},
 	}
-	cmdCollectionsList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
-	cmdCollections.AddCommand(cmdCollectionsList)
 
-	return cmdCollections
+	cmdCollectionsList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
+
+	return cmdCollectionsList
 }

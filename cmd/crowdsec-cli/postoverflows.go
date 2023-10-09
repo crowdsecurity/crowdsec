@@ -16,10 +16,11 @@ func NewPostOverflowsCmd() *cobra.Command {
 		Use:   "postoverflows [action] [config]",
 		Short: "Install/Remove/Upgrade/Inspect postoverflow(s) from hub",
 		Example: `cscli postoverflows install crowdsecurity/cdn-whitelist
-		cscli postoverflows inspect crowdsecurity/cdn-whitelist
-		cscli postoverflows upgrade crowdsecurity/cdn-whitelist
-		cscli postoverflows list
-		cscli postoverflows remove crowdsecurity/cdn-whitelist`,
+cscli postoverflows inspect crowdsecurity/cdn-whitelist
+cscli postoverflows upgrade crowdsecurity/cdn-whitelist
+cscli postoverflows list
+cscli postoverflows remove crowdsecurity/cdn-whitelist
+`,
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"postoverflow"},
 		DisableAutoGenTag: true,
@@ -166,8 +167,8 @@ func NewPostOverflowsInspectCmd() *cobra.Command {
 		Short:             "Inspect given postoverflow",
 		Long:              `Inspect given postoverflow`,
 		Example:           `cscli postoverflows inspect crowdsec/xxx crowdsec/xyz`,
-		DisableAutoGenTag: true,
 		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cwhub.PARSERS_OVFLW, args, toComplete)
 		},
