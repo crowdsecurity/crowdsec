@@ -58,9 +58,9 @@ func TestLoadHub(t *testing.T) {
 			expectedErr: "please provide a data directory with the 'data_dir' directive in the 'config_paths' section",
 		},
 		{
-			name:           "no configuration path",
-			Input:          &Config{},
-			expectedErr:	"no configuration paths provided",
+			name:        "no configuration path",
+			Input:       &Config{},
+			expectedErr: "no configuration paths provided",
 		},
 	}
 

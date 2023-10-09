@@ -22,7 +22,7 @@ func TestSimulationLoading(t *testing.T) {
 		name           string
 		Input          *Config
 		expectedResult *SimulationConfig
-		expectedErr    	string
+		expectedErr    string
 	}{
 		{
 			name: "basic valid simulation",
@@ -45,7 +45,7 @@ func TestSimulationLoading(t *testing.T) {
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
 			},
-			expectedErr: "simulation.yaml: "+cstest.FileNotFoundMessage,
+			expectedErr: "simulation.yaml: " + cstest.FileNotFoundMessage,
 		},
 		{
 			name: "basic bad file name",

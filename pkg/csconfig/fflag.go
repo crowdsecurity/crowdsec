@@ -10,7 +10,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
 
-
 // LoadFeatureFlagsEnv parses the environment variables to enable feature flags.
 func LoadFeatureFlagsEnv(logger *log.Logger) error {
 	if err := fflag.Crowdsec.SetFromEnv(logger); err != nil {
@@ -18,7 +17,6 @@ func LoadFeatureFlagsEnv(logger *log.Logger) error {
 	}
 	return nil
 }
-
 
 // LoadFeatureFlags parses feature.yaml to enable feature flags.
 // The file is in the same directory as config.yaml, which is provided
@@ -32,7 +30,6 @@ func LoadFeatureFlagsFile(configPath string, logger *log.Logger) error {
 	}
 	return nil
 }
-
 
 // ListFeatureFlags returns a list of the enabled feature flags.
 func ListFeatureFlags() string {

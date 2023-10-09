@@ -3,9 +3,9 @@ package csconfig
 import (
 	"testing"
 
-	"github.com/crowdsecurity/go-cs-lib/cstest"
-
 	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/go-cs-lib/cstest"
 )
 
 func TestLoadPrometheus(t *testing.T) {

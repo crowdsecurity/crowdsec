@@ -11,11 +11,11 @@ import (
 )
 
 const (
-	DEFAULT_MAX_OPEN_CONNS = 100
+	DEFAULT_MAX_OPEN_CONNS  = 100
 	defaultDecisionBulkSize = 1000
 	// we need an upper bound due to the sqlite limit of 32k variables in a query
 	// we have 15 variables per decision, so 32768/15 = 2184.5333
-	maxDecisionBulkSize     = 2000
+	maxDecisionBulkSize = 2000
 )
 
 type DatabaseCfg struct {

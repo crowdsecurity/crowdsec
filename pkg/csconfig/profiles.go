@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"io"
 
+	"gopkg.in/yaml.v2"
+
 	"github.com/crowdsecurity/go-cs-lib/yamlpatch"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"gopkg.in/yaml.v2"
 )
 
 // var OnErrorDefault = OnErrorIgnore

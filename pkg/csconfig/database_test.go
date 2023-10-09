@@ -31,9 +31,9 @@ func TestLoadDBConfig(t *testing.T) {
 				},
 			},
 			expectedResult: &DatabaseCfg{
-				Type:         "sqlite",
-				DbPath:       "./testdata/test.db",
-				MaxOpenConns: ptr.Of(10),
+				Type:             "sqlite",
+				DbPath:           "./testdata/test.db",
+				MaxOpenConns:     ptr.Of(10),
 				DecisionBulkSize: defaultDecisionBulkSize,
 			},
 		},

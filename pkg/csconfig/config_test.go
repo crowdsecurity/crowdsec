@@ -2,10 +2,10 @@ package csconfig
 
 import (
 	"testing"
-	"gopkg.in/yaml.v2"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 )
