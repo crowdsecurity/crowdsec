@@ -105,18 +105,13 @@ func InstallItem(csConfig *csconfig.Config, name string, obtype string, force bo
 
 // XXX this must return errors instead of log.Fatal
 func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all bool, purge bool, forceAction bool) {
-	var (
-		err      error
-		disabled int
-	)
-
 	if name != "" {
 		item := GetItem(itemType, name)
 		if item == nil {
 			log.Fatalf("unable to retrieve: %s", name)
 		}
 
-		err = DisableItem(csConfig.Hub, item, purge, forceAction)
+		err := DisableItem(csConfig.Hub, item, purge, forceAction)
 
 		if err != nil {
 			log.Fatalf("unable to disable %s : %v", item.Name, err)
@@ -133,13 +128,15 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 		log.Fatal("removing item: no item specified")
 	}
 
+	disabled := 0
+
 	// remove all
 	for _, v := range GetItemMap(itemType) {
 		if !v.Installed {
 			continue
 		}
 
-		err = DisableItem(csConfig.Hub, &v, purge, forceAction)
+		err := DisableItem(csConfig.Hub, &v, purge, forceAction)
 		if err != nil {
 			log.Fatalf("unable to disable %s : %v", v.Name, err)
 		}
@@ -154,11 +151,8 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 }
 
 func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, force bool) {
-	var (
-		err     error
-		updated int
-		found   bool
-	)
+	updated := 0
+	found := false
 
 	for _, v := range GetItemMap(itemType) {
 		if name != "" && name != v.Name {
@@ -180,7 +174,7 @@ func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, forc
 		if v.UpToDate {
 			log.Infof("%s : up-to-date", v.Name)
 
-			if err = DownloadDataIfNeeded(csConfig.Hub, v, force); err != nil {
+			if err := DownloadDataIfNeeded(csConfig.Hub, v, force); err != nil {
 				log.Fatalf("%s : download failed : %v", v.Name, err)
 			}
 
@@ -189,8 +183,7 @@ func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, forc
 			}
 		}
 
-		err = DownloadLatest(csConfig.Hub, &v, force, true)
-		if err != nil {
+		if err := DownloadLatest(csConfig.Hub, &v, force, true); err != nil {
 			log.Fatalf("%s : download failed : %v", v.Name, err)
 		}
 

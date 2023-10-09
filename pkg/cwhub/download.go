@@ -135,7 +135,9 @@ func DownloadLatest(hub *csconfig.Hub, target *Item, overwrite bool, updateOnly 
 					return fmt.Errorf("while downloading %s: %w", val.Name, err)
 				}
 			}
+
 			downloaded := val.Downloaded
+
 			err = DownloadItem(hub, &val, overwrite)
 			if err != nil {
 				return fmt.Errorf("while downloading %s: %w", val.Name, err)

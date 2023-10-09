@@ -51,8 +51,7 @@ func DisableItem(hub *csconfig.Hub, target *Item, purge bool, force bool) error 
 
 	// for a COLLECTIONS, disable sub-items
 	if target.Type == COLLECTIONS {
-		var tmp = [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections}
-		for idx, ptr := range tmp {
+		for idx, ptr := range [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections} {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
 				if val, ok := hubIdx[ptrtype][p]; ok {
@@ -170,8 +169,7 @@ func EnableItem(hub *csconfig.Hub, target *Item) error {
 
 	// install sub-items if it's a collection
 	if target.Type == COLLECTIONS {
-		var tmp = [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections}
-		for idx, ptr := range tmp {
+		for idx, ptr := range [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections} {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
 				val, ok := hubIdx[ptrtype][p]
