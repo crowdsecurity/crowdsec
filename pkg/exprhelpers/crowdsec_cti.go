@@ -25,12 +25,11 @@ var CTIBackOffDuration time.Duration = 5 * time.Minute
 var ctiClient *cticlient.CrowdsecCTIClient
 
 func InitCrowdsecCTI(Key *string, TTL *time.Duration, Size *int, LogLevel *log.Level) error {
-	if Key != nil {
-		CTIApiKey = *Key
-	} else {
+	if Key == nil {
 		CTIApiEnabled = false
 		return fmt.Errorf("CTI API key not set, CTI will not be available")
 	}
+	CTIApiKey = *Key
 	if Size == nil {
 		Size = new(int)
 		*Size = 1000
