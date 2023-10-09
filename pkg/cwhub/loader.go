@@ -484,7 +484,7 @@ func GetHubIdx(hub *csconfig.Hub) error {
 
 	ret, err := LoadPkgIndex(bidx)
 	if err != nil {
-		if !errors.Is(err, ReferenceMissingError) {
+		if !errors.Is(err, ErrMissingReference) {
 			return fmt.Errorf("unable to load existing index: %w", err)
 		}
 
@@ -545,7 +545,7 @@ func LoadPkgIndex(buff []byte) (map[string]map[string]Item, error) {
 	}
 
 	if len(missingItems) > 0 {
-		return RawIndex, fmt.Errorf("%q: %w", missingItems, ReferenceMissingError)
+		return RawIndex, fmt.Errorf("%q: %w", missingItems, ErrMissingReference)
 	}
 
 	return RawIndex, nil

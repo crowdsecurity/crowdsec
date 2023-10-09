@@ -41,7 +41,6 @@ func DisableItem(hub *csconfig.Hub, target *Item, purge bool, force bool) error 
 		return nil
 	}
 
-
 	if target.Local {
 		return fmt.Errorf("%s isn't managed by hub. Please delete manually", target.Name)
 	}

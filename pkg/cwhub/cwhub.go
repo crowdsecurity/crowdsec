@@ -29,7 +29,7 @@ var HubBranch = "master"
 const HubIndexFile = ".index.json"
 
 type ItemVersion struct {
-	Digest     string `json:"digest,omitempty"`	// meow
+	Digest     string `json:"digest,omitempty"` // meow
 	Deprecated bool   `json:"deprecated,omitempty"`
 }
 
@@ -138,7 +138,7 @@ func (i *Item) versionStatus() int {
 var skippedLocal = 0
 var skippedTainted = 0
 
-var ReferenceMissingError = errors.New("Reference(s) missing in collection")
+var ErrMissingReference = errors.New("Reference(s) missing in collection")
 
 func GetItemMap(itemType string) map[string]Item {
 	m, ok := hubIdx[itemType]

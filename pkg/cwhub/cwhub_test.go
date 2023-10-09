@@ -251,7 +251,6 @@ func testDisableItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	require.NoError(t, err, "failed to run localSync")
 	require.Empty(t, warns, "unexpected warnings : %+v", warns)
 
-
 	assert.False(t, hubIdx[item.Type][item.Name].Installed, "%s should not be installed anymore", item.Name)
 	assert.False(t, hubIdx[item.Type][item.Name].Downloaded, "%s should not be downloaded", item.Name)
 }

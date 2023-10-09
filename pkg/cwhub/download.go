@@ -27,7 +27,7 @@ func UpdateHubIdx(hub *csconfig.Hub) error {
 
 	ret, err := LoadPkgIndex(bidx)
 	if err != nil {
-		if !errors.Is(err, ReferenceMissingError) {
+		if !errors.Is(err, ErrMissingReference) {
 			return fmt.Errorf("failed to read index: %w", err)
 		}
 	}
