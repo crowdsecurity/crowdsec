@@ -34,7 +34,7 @@ func UpdateHubIdx(hub *csconfig.Hub) error {
 
 	hubIdx = ret
 
-	if err, _ := LocalSync(hub); err != nil {
+	if _, err := LocalSync(hub); err != nil {
 		return fmt.Errorf("failed to sync: %w", err)
 	}
 
