@@ -1,13 +1,13 @@
 package csconfig
 
 import (
-	"fmt"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/go-cs-lib/cstest"
 )
 
 func TestLoadCommon(t *testing.T) {
@@ -21,8 +21,8 @@ func TestLoadCommon(t *testing.T) {
 	tests := []struct {
 		name           string
 		Input          *Config
-		expectedResult *CommonCfg
-		err            string
+		expected       *CommonCfg
+		expectedErr    string
 	}{
 		{
 			name: "basic valid configuration",
@@ -35,7 +35,7 @@ func TestLoadCommon(t *testing.T) {
 					WorkingDir: "./testdata/",
 				},
 			},
-			expectedResult: &CommonCfg{
+			expected: &CommonCfg{
 				Daemonize:  true,
 				PidDir:     pidDirPath,
 				LogMedia:   "file",
@@ -53,7 +53,7 @@ func TestLoadCommon(t *testing.T) {
 					LogDir:    "./testdata/log/",
 				},
 			},
-			expectedResult: &CommonCfg{
+			expected: &CommonCfg{
 				Daemonize: true,
 				PidDir:    pidDirPath,
 				LogMedia:  "file",
@@ -63,25 +63,21 @@ func TestLoadCommon(t *testing.T) {
 		{
 			name:           "no common",
 			Input:          &Config{},
-			expectedResult: nil,
+			expected: nil,
+			expectedErr: "no common block provided in configuration file",
 		},
 	}
 
-	for idx, test := range tests {
-		err := test.Input.LoadCommon()
-		if err == nil && test.err != "" {
-			fmt.Printf("TEST '%s': NOK\n", test.name)
-			t.Fatalf("%d/%d expected error, didn't get it", idx, len(tests))
-		} else if test.err != "" {
-			if !strings.HasPrefix(fmt.Sprintf("%s", err), test.err) {
-				fmt.Printf("TEST '%s': NOK\n", test.name)
-				t.Fatalf("%d/%d expected '%s' got '%s'", idx, len(tests),
-					test.err,
-					fmt.Sprintf("%s", err))
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.Input.LoadCommon()
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
+			if tc.expectedErr != "" {
+				return
 			}
-		}
 
-		isOk := assert.Equal(t, test.expectedResult, test.Input.Common)
-		require.True(t, isOk)
+			assert.Equal(t, tc.expected, tc.Input.Common)
+		})
 	}
 }
