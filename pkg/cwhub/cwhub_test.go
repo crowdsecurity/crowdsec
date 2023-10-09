@@ -122,7 +122,7 @@ func TestIndexDownload(t *testing.T) {
 
 func getTestCfg() *csconfig.Config {
 	cfg := &csconfig.Config{Hub: &csconfig.Hub{}}
-	cfg.Hub.ConfigDir, _ = filepath.Abs("./install")
+	cfg.Hub.InstallDir, _ = filepath.Abs("./install")
 	cfg.Hub.HubDir, _ = filepath.Abs("./hubdir")
 	cfg.Hub.HubIndexFile = filepath.Clean("./hubdir/.index.json")
 
@@ -144,7 +144,7 @@ func envSetup(t *testing.T) *csconfig.Config {
 	// Mock the http client
 	http.DefaultClient.Transport = newMockTransport()
 
-	err := os.MkdirAll(cfg.Hub.ConfigDir, 0700)
+	err := os.MkdirAll(cfg.Hub.InstallDir, 0700)
 	require.NoError(t, err)
 
 	err = os.MkdirAll(cfg.Hub.HubDir, 0700)
@@ -163,8 +163,8 @@ func envSetup(t *testing.T) *csconfig.Config {
 }
 
 func envTearDown(cfg *csconfig.Config) {
-	if err := os.RemoveAll(cfg.Hub.ConfigDir); err != nil {
-		log.Fatalf("failed to remove %s : %s", cfg.Hub.ConfigDir, err)
+	if err := os.RemoveAll(cfg.Hub.InstallDir); err != nil {
+		log.Fatalf("failed to remove %s : %s", cfg.Hub.InstallDir, err)
 	}
 
 	if err := os.RemoveAll(cfg.Hub.HubDir); err != nil {
@@ -177,7 +177,7 @@ func testInstallItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	err := DownloadLatest(cfg, &item, false, false)
 	require.NoError(t, err, "failed to download %s", item.Name)
 
-	err, _ = LocalSync(cfg)
+	_, err = LocalSync(cfg)
 	require.NoError(t, err, "failed to run localSync")
 
 	assert.True(t, hubIdx[item.Type][item.Name].UpToDate, "%s should be up-to-date", item.Name)
@@ -187,7 +187,7 @@ func testInstallItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	err = EnableItem(cfg, &item)
 	require.NoError(t, err, "failed to enable %s", item.Name)
 
-	err, _ = LocalSync(cfg)
+	_, err = LocalSync(cfg)
 	require.NoError(t, err, "failed to run localSync")
 
 	assert.True(t, hubIdx[item.Type][item.Name].Installed, "%s should be installed", item.Name)
@@ -205,7 +205,7 @@ func testTaintItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	require.NoError(t, err, "failed to write to %s (%s)", item.LocalPath, item.Name)
 
 	// Local sync and check status
-	err, _ = LocalSync(cfg)
+	_, err = LocalSync(cfg)
 	require.NoError(t, err, "failed to run localSync")
 
 	assert.True(t, hubIdx[item.Type][item.Name].Tainted, "%s should be tainted", item.Name)
@@ -219,7 +219,7 @@ func testUpdateItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	require.NoError(t, err, "failed to update %s", item.Name)
 
 	// Local sync and check status
-	err, _ = LocalSync(cfg)
+	_, err = LocalSync(cfg)
 	require.NoError(t, err, "failed to run localSync")
 
 	assert.True(t, hubIdx[item.Type][item.Name].UpToDate, "%s should be up-to-date", item.Name)
@@ -234,7 +234,7 @@ func testDisableItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	require.NoError(t, err, "failed to disable %s", item.Name)
 
 	// Local sync and check status
-	err, warns := LocalSync(cfg)
+	warns, err := LocalSync(cfg)
 	require.NoError(t, err, "failed to run localSync")
 	require.Empty(t, warns, "unexpected warnings : %+v", warns)
 
@@ -247,10 +247,9 @@ func testDisableItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	require.NoError(t, err, "failed to purge %s", item.Name)
 
 	// Local sync and check status
-	err, warns = LocalSync(cfg)
+	warns, err = LocalSync(cfg)
 	require.NoError(t, err, "failed to run localSync")
 	require.Empty(t, warns, "unexpected warnings : %+v", warns)
-
 
 	assert.False(t, hubIdx[item.Type][item.Name].Installed, "%s should not be installed anymore", item.Name)
 	assert.False(t, hubIdx[item.Type][item.Name].Downloaded, "%s should not be downloaded", item.Name)

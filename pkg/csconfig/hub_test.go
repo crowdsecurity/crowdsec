@@ -40,10 +40,10 @@ func TestLoadHub(t *testing.T) {
 				},
 			},
 			expected: &Hub{
-				ConfigDir:    configDirFullPath,
-				DataDir:      dataFullPath,
-				HubDir:       hubFullPath,
-				HubIndexFile: hubIndexFileFullPath,
+				HubDir:         hubFullPath,
+				HubIndexFile:   hubIndexFileFullPath,
+				InstallDir:     configDirFullPath,
+				InstallDataDir: dataFullPath,
 			},
 		},
 		{

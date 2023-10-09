@@ -27,14 +27,14 @@ func UpdateHubIdx(hub *csconfig.Hub) error {
 
 	ret, err := LoadPkgIndex(bidx)
 	if err != nil {
-		if !errors.Is(err, ReferenceMissingError) {
+		if !errors.Is(err, ErrMissingReference) {
 			return fmt.Errorf("failed to read index: %w", err)
 		}
 	}
 
 	hubIdx = ret
 
-	if err, _ := LocalSync(hub); err != nil {
+	if _, err := LocalSync(hub); err != nil {
 		return fmt.Errorf("failed to sync: %w", err)
 	}
 
@@ -135,8 +135,10 @@ func DownloadLatest(hub *csconfig.Hub, target *Item, overwrite bool, updateOnly 
 					return fmt.Errorf("while downloading %s: %w", val.Name, err)
 				}
 			}
+
 			downloaded := val.Downloaded
-			err := DownloadItem(hub, &val, overwrite)
+
+			err = DownloadItem(hub, &val, overwrite)
 			if err != nil {
 				return fmt.Errorf("while downloading %s: %w", val.Name, err)
 			}
@@ -163,7 +165,6 @@ func DownloadLatest(hub *csconfig.Hub, target *Item, overwrite bool, updateOnly 
 
 func DownloadItem(hub *csconfig.Hub, target *Item, overwrite bool) error {
 	tdir := hub.HubDir
-	dataFolder := hub.DataDir
 
 	// if user didn't --force, don't overwrite local, tainted, up-to-date files
 	if !overwrite {
@@ -200,7 +201,7 @@ func DownloadItem(hub *csconfig.Hub, target *Item, overwrite bool) error {
 	}
 
 	h := sha256.New()
-	if _, err := h.Write(body); err != nil {
+	if _, err = h.Write(body); err != nil {
 		return fmt.Errorf("while hashing %s: %w", target.Name, err)
 	}
 
@@ -215,7 +216,7 @@ func DownloadItem(hub *csconfig.Hub, target *Item, overwrite bool) error {
 	//all good, install
 	//check if parent dir exists
 	tmpdirs := strings.Split(tdir+"/"+target.RemotePath, "/")
-	parent_dir := strings.Join(tmpdirs[:len(tmpdirs)-1], "/")
+	parentDir := strings.Join(tmpdirs[:len(tmpdirs)-1], "/")
 
 	// ensure that target file is within target dir
 	finalPath, err := filepath.Abs(tdir + "/" + target.RemotePath)
@@ -228,10 +229,10 @@ func DownloadItem(hub *csconfig.Hub, target *Item, overwrite bool) error {
 	}
 
 	// check dir
-	if _, err = os.Stat(parent_dir); os.IsNotExist(err) {
-		log.Debugf("%s doesn't exist, create", parent_dir)
+	if _, err = os.Stat(parentDir); os.IsNotExist(err) {
+		log.Debugf("%s doesn't exist, create", parentDir)
 
-		if err := os.MkdirAll(parent_dir, os.ModePerm); err != nil {
+		if err = os.MkdirAll(parentDir, os.ModePerm); err != nil {
 			return fmt.Errorf("while creating parent directories: %w", err)
 		}
 	}
@@ -260,7 +261,7 @@ func DownloadItem(hub *csconfig.Hub, target *Item, overwrite bool) error {
 	target.Tainted = false
 	target.UpToDate = true
 
-	if err = downloadData(dataFolder, overwrite, bytes.NewReader(body)); err != nil {
+	if err = downloadData(hub.InstallDataDir, overwrite, bytes.NewReader(body)); err != nil {
 		return fmt.Errorf("while downloading data for %s: %w", target.FileName, err)
 	}
 
@@ -270,21 +271,16 @@ func DownloadItem(hub *csconfig.Hub, target *Item, overwrite bool) error {
 }
 
 func DownloadDataIfNeeded(hub *csconfig.Hub, target Item, force bool) error {
-	var (
-		dataFolder = hub.DataDir
-		itemFile   *os.File
-		err        error
-	)
+	itemFilePath := fmt.Sprintf("%s/%s/%s/%s", hub.InstallDir, target.Type, target.Stage, target.FileName)
 
-	itemFilePath := fmt.Sprintf("%s/%s/%s/%s", hub.ConfigDir, target.Type, target.Stage, target.FileName)
-
-	if itemFile, err = os.Open(itemFilePath); err != nil {
+	itemFile, err := os.Open(itemFilePath)
+	if err != nil {
 		return fmt.Errorf("while opening %s: %w", itemFilePath, err)
 	}
 
 	defer itemFile.Close()
 
-	if err = downloadData(dataFolder, force, itemFile); err != nil {
+	if err = downloadData(hub.InstallDataDir, force, itemFile); err != nil {
 		return fmt.Errorf("while downloading data for %s: %w", itemFilePath, err)
 	}
 
@@ -311,7 +307,7 @@ func downloadData(dataFolder string, force bool, reader io.Reader) error {
 		download := false
 
 		for _, dataS := range data.Data {
-			if _, err := os.Stat(filepath.Join(dataFolder, dataS.DestPath)); os.IsNotExist(err) {
+			if _, err = os.Stat(filepath.Join(dataFolder, dataS.DestPath)); os.IsNotExist(err) {
 				download = true
 			}
 		}
