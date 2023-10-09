@@ -214,7 +214,7 @@ func DownloadItem(hub *csconfig.Hub, target *Item, overwrite bool) error {
 	//all good, install
 	//check if parent dir exists
 	tmpdirs := strings.Split(tdir+"/"+target.RemotePath, "/")
-	parent_dir := strings.Join(tmpdirs[:len(tmpdirs)-1], "/")
+	parentDir := strings.Join(tmpdirs[:len(tmpdirs)-1], "/")
 
 	// ensure that target file is within target dir
 	finalPath, err := filepath.Abs(tdir + "/" + target.RemotePath)
@@ -227,10 +227,10 @@ func DownloadItem(hub *csconfig.Hub, target *Item, overwrite bool) error {
 	}
 
 	// check dir
-	if _, err = os.Stat(parent_dir); os.IsNotExist(err) {
-		log.Debugf("%s doesn't exist, create", parent_dir)
+	if _, err = os.Stat(parentDir); os.IsNotExist(err) {
+		log.Debugf("%s doesn't exist, create", parentDir)
 
-		if err := os.MkdirAll(parent_dir, os.ModePerm); err != nil {
+		if err := os.MkdirAll(parentDir, os.ModePerm); err != nil {
 			return fmt.Errorf("while creating parent directories: %w", err)
 		}
 	}

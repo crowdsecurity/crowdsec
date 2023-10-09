@@ -141,7 +141,7 @@ func DisableItem(hub *csconfig.Hub, target *Item, purge bool, force bool) error 
 func EnableItem(hub *csconfig.Hub, target *Item) error {
 	var err error
 
-	parent_dir := filepath.Clean(hub.InstallDir + "/" + target.Type + "/" + target.Stage + "/")
+	parentDir := filepath.Clean(hub.InstallDir + "/" + target.Type + "/" + target.Stage + "/")
 
 	// create directories if needed
 	if target.Installed {
@@ -160,10 +160,10 @@ func EnableItem(hub *csconfig.Hub, target *Item) error {
 		}
 	}
 
-	if _, err := os.Stat(parent_dir); os.IsNotExist(err) {
-		log.Infof("%s doesn't exist, create", parent_dir)
+	if _, err := os.Stat(parentDir); os.IsNotExist(err) {
+		log.Infof("%s doesn't exist, create", parentDir)
 
-		if err := os.MkdirAll(parent_dir, os.ModePerm); err != nil {
+		if err := os.MkdirAll(parentDir, os.ModePerm); err != nil {
 			return fmt.Errorf("while creating directory: %w", err)
 		}
 	}
@@ -188,8 +188,8 @@ func EnableItem(hub *csconfig.Hub, target *Item) error {
 	}
 
 	// check if file already exists where it should in configdir (eg /etc/crowdsec/collections/)
-	if _, err := os.Lstat(parent_dir + "/" + target.FileName); !os.IsNotExist(err) {
-		log.Infof("%s already exists.", parent_dir+"/"+target.FileName)
+	if _, err := os.Lstat(parentDir + "/" + target.FileName); !os.IsNotExist(err) {
+		log.Infof("%s already exists.", parentDir+"/"+target.FileName)
 		return nil
 	}
 
@@ -199,7 +199,7 @@ func EnableItem(hub *csconfig.Hub, target *Item) error {
 		return fmt.Errorf("while getting source path: %w", err)
 	}
 
-	dstPath, err := filepath.Abs(parent_dir + "/" + target.FileName)
+	dstPath, err := filepath.Abs(parentDir + "/" + target.FileName)
 	if err != nil {
 		return fmt.Errorf("while getting destination path: %w", err)
 	}
