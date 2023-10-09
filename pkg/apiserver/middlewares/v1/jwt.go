@@ -135,7 +135,7 @@ func (j *JWT) authPlain(c *gin.Context) (*authInput, error) {
 		return nil, fmt.Errorf("missing: %w", err)
 	}
 	if err = loginInput.Validate(strfmt.Default); err != nil {
-		return nil, errors.New("input format error")
+		return nil, err
 	}
 	ret.machineID = *loginInput.MachineID
 	password := *loginInput.Password
