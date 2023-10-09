@@ -178,12 +178,12 @@ func runDecisionsImport(cmd *cobra.Command, args []string) error  {
 		}
 
 		decisions[i] = &models.Decision{
-			Value:     ptr.Of(d.Value),
-			Duration:  ptr.Of(d.Duration),
+			Value:     &d.Value,
+			Duration:  &d.Duration,
 			Origin:    ptr.Of(types.CscliImportOrigin),
-			Scenario:  ptr.Of(d.Scenario),
-			Type:      ptr.Of(d.Type),
-			Scope:     ptr.Of(d.Scope),
+			Scenario:  &d.Scenario,
+			Type:      &d.Type,
+			Scope:     &d.Scope,
 			Simulated: ptr.Of(false),
 		}
 	}

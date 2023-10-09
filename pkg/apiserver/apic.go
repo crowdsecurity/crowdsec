@@ -102,15 +102,15 @@ func decisionsToApiDecisions(decisions []*models.Decision) models.AddSignalsRequ
 	apiDecisions := models.AddSignalsRequestItemDecisions{}
 	for _, decision := range decisions {
 		x := &models.AddSignalsRequestItemDecisionsItem{
-			Duration: ptr.Of(*decision.Duration),
+			Duration: decision.Duration,
 			ID:       new(int64),
-			Origin:   ptr.Of(*decision.Origin),
-			Scenario: ptr.Of(*decision.Scenario),
-			Scope:    ptr.Of(*decision.Scope),
+			Origin:   decision.Origin,
+			Scenario: decision.Scenario,
+			Scope:    decision.Scope,
 			//Simulated: *decision.Simulated,
-			Type:  ptr.Of(*decision.Type),
+			Type:  decision.Type,
 			Until: decision.Until,
-			Value: ptr.Of(*decision.Value),
+			Value: decision.Value,
 			UUID:  decision.UUID,
 		}
 		*x.ID = decision.ID
@@ -486,7 +486,7 @@ func createAlertForDecision(decision *models.Decision) *models.Alert {
 		newAlert.Scenario = ptr.Of(types.CAPIOrigin)
 		newAlert.Source.Scope = ptr.Of(types.CAPIOrigin)
 	} else if *decision.Origin == types.ListOrigin {
-		newAlert.Scenario = ptr.Of(*decision.Scenario)
+		newAlert.Scenario = decision.Scenario
 		newAlert.Source.Scope = ptr.Of(types.ListOrigin)
 	} else {
 		log.Warningf("unknown origin %s", *decision.Origin)
