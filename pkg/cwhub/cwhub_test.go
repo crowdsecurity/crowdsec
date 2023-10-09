@@ -213,7 +213,7 @@ func envTearDown(cfg *csconfig.Config) {
 
 func testInstallItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	// Install the parser
-	item, err := DownloadLatest(cfg, item, false, false)
+	err := DownloadLatest(cfg, &item, false, false)
 	if err != nil {
 		t.Fatalf("error while downloading %s : %v", item.Name, err)
 	}
@@ -234,7 +234,7 @@ func testInstallItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 		t.Fatalf("download: %s should not be tainted", item.Name)
 	}
 
-	item, err = EnableItem(cfg, item)
+	err = EnableItem(cfg, &item)
 	if err != nil {
 		t.Fatalf("error while enabling %s : %v.", item.Name, err)
 	}
@@ -279,7 +279,7 @@ func testUpdateItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	}
 
 	// Update it + check status
-	item, err := DownloadLatest(cfg, item, true, true)
+	err := DownloadLatest(cfg, &item, true, true)
 	if err != nil {
 		t.Fatalf("failed to update %s : %s", item.Name, err)
 	}
@@ -304,7 +304,7 @@ func testDisableItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	}
 
 	// Remove
-	item, err := DisableItem(cfg, item, false, false)
+	err := DisableItem(cfg, &item, false, false)
 	if err != nil {
 		t.Fatalf("failed to disable item : %v", err)
 	}
@@ -327,7 +327,7 @@ func testDisableItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	}
 
 	// Purge
-	item, err = DisableItem(cfg, item, true, false)
+	err = DisableItem(cfg, &item, true, false)
 	if err != nil {
 		t.Fatalf("failed to purge item : %v", err)
 	}
