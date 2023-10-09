@@ -99,7 +99,11 @@ func NewPostOverflowsRemoveCmd() *cobra.Command {
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if all {
-				cwhub.RemoveMany(csConfig, cwhub.PARSERS_OVFLW, "", all, purge, forceAction)
+				err := cwhub.RemoveMany(csConfig, cwhub.PARSERS_OVFLW, "", all, purge, forceAction)
+				if err != nil {
+					return err
+				}
+
 				return nil
 			}
 
@@ -108,7 +112,10 @@ func NewPostOverflowsRemoveCmd() *cobra.Command {
 			}
 
 			for _, name := range args {
-				cwhub.RemoveMany(csConfig, cwhub.PARSERS_OVFLW, name, all, purge, forceAction)
+				err := cwhub.RemoveMany(csConfig, cwhub.PARSERS_OVFLW, name, all, purge, forceAction)
+				if err != nil {
+					return err
+				}
 			}
 
 			return nil

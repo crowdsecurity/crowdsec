@@ -103,29 +103,28 @@ func InstallItem(csConfig *csconfig.Config, name string, obtype string, force bo
 	return nil
 }
 
-// XXX this must return errors instead of log.Fatal
-func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all bool, purge bool, forceAction bool) {
+func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all bool, purge bool, forceAction bool) error {
 	if name != "" {
 		item := GetItem(itemType, name)
 		if item == nil {
-			log.Fatalf("unable to retrieve: %s", name)
+			return fmt.Errorf("unable to retrieve: %s", name)
 		}
 
 		err := DisableItem(csConfig.Hub, item, purge, forceAction)
 
 		if err != nil {
-			log.Fatalf("unable to disable %s : %v", item.Name, err)
+			return fmt.Errorf("unable to disable %s: %w", item.Name, err)
 		}
 
 		if err = AddItem(itemType, *item); err != nil {
-			log.Fatalf("unable to add %s: %v", item.Name, err)
+			return fmt.Errorf("unable to add %s: %w", item.Name, err)
 		}
 
-		return
+		return nil
 	}
 
 	if !all {
-		log.Fatal("removing item: no item specified")
+		return fmt.Errorf("removing item: no item specified")
 	}
 
 	disabled := 0
@@ -138,16 +137,18 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 
 		err := DisableItem(csConfig.Hub, &v, purge, forceAction)
 		if err != nil {
-			log.Fatalf("unable to disable %s : %v", v.Name, err)
+			return fmt.Errorf("unable to disable %s: %w", v.Name, err)
 		}
 
 		if err := AddItem(itemType, v); err != nil {
-			log.Fatalf("unable to add %s: %v", v.Name, err)
+			return fmt.Errorf("unable to add %s: %w", v.Name, err)
 		}
 		disabled++
 	}
 
 	log.Infof("Disabled %d items", disabled)
+
+	return nil
 }
 
 func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, force bool) {

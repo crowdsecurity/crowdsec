@@ -100,7 +100,11 @@ func NewParsersRemoveCmd() *cobra.Command {
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if all {
-				cwhub.RemoveMany(csConfig, cwhub.PARSERS, "", all, purge, forceAction)
+				err := cwhub.RemoveMany(csConfig, cwhub.PARSERS, "", all, purge, forceAction)
+				if err != nil {
+					return err
+				}
+
 				return nil
 			}
 
@@ -109,7 +113,10 @@ func NewParsersRemoveCmd() *cobra.Command {
 			}
 
 			for _, name := range args {
-				cwhub.RemoveMany(csConfig, cwhub.PARSERS, name, all, purge, forceAction)
+				err := cwhub.RemoveMany(csConfig, cwhub.PARSERS, name, all, purge, forceAction)
+				if err != nil {
+					return err
+				}
 			}
 
 			return nil

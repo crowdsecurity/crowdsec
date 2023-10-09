@@ -82,7 +82,11 @@ func NewCollectionsCmd() *cobra.Command {
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if all {
-				cwhub.RemoveMany(csConfig, cwhub.COLLECTIONS, "", all, purge, forceAction)
+				err := cwhub.RemoveMany(csConfig, cwhub.COLLECTIONS, "", all, purge, forceAction)
+				if err != nil {
+					return err
+				}
+
 				return nil
 			}
 
@@ -102,7 +106,11 @@ func NewCollectionsCmd() *cobra.Command {
 						continue
 					}
 				}
-				cwhub.RemoveMany(csConfig, cwhub.COLLECTIONS, name, all, purge, forceAction)
+
+				err := cwhub.RemoveMany(csConfig, cwhub.COLLECTIONS, name, all, purge, forceAction)
+				if err != nil {
+					return err
+				}
 			}
 			return nil
 		},

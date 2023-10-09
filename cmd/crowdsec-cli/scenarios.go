@@ -99,7 +99,10 @@ func NewCmdScenariosRemove() *cobra.Command {
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if all {
-				cwhub.RemoveMany(csConfig, cwhub.SCENARIOS, "", all, purge, forceAction)
+				err := cwhub.RemoveMany(csConfig, cwhub.SCENARIOS, "", all, purge, forceAction)
+				if err != nil {
+					return err
+				}
 				return nil
 			}
 
@@ -108,7 +111,10 @@ func NewCmdScenariosRemove() *cobra.Command {
 			}
 
 			for _, name := range args {
-				cwhub.RemoveMany(csConfig, cwhub.SCENARIOS, name, all, purge, forceAction)
+				err := cwhub.RemoveMany(csConfig, cwhub.SCENARIOS, name, all, purge, forceAction)
+				if err != nil {
+					return err
+				}
 			}
 			return nil
 		},
