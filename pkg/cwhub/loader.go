@@ -61,14 +61,14 @@ func getSHA256(filepath string) (string, error) {
 	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
 
-type walker struct {
+type Walker struct {
 	// the walk/parserVisit function can't receive extra args
 	hubdir     string
 	installdir string
 }
 
-func NewWalker(hub *csconfig.Hub) walker {
-	return walker{
+func NewWalker(hub *csconfig.Hub) Walker {
+	return Walker{
 		hubdir:     hub.HubDir,
 		installdir: hub.InstallDir,
 	}
@@ -81,7 +81,7 @@ type itemFileInfo struct {
 	fauthor string
 }
 
-func (w walker) getItemInfo(path string) (itemFileInfo, bool, error) {
+func (w Walker) getItemInfo(path string) (itemFileInfo, bool, error) {
 	ret := itemFileInfo{}
 	inhub := false
 
@@ -141,7 +141,7 @@ func (w walker) getItemInfo(path string) (itemFileInfo, bool, error) {
 	return ret, inhub, nil
 }
 
-func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
+func (w Walker) parserVisit(path string, f os.DirEntry, err error) error {
 	var (
 		local   bool
 		hubpath string
