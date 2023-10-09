@@ -25,12 +25,11 @@ var CTIBackOffDuration time.Duration = 5 * time.Minute
 var ctiClient *cticlient.CrowdsecCTIClient
 
 func InitCrowdsecCTI(Key *string, TTL *time.Duration, Size *int, LogLevel *log.Level) error {
-	if Key != nil {
-		CTIApiKey = *Key
-	} else {
+	if Key == nil {
 		CTIApiEnabled = false
 		return fmt.Errorf("CTI API key not set, CTI will not be available")
 	}
+	CTIApiKey = *Key
 	if Size == nil {
 		Size = new(int)
 		*Size = 1000
@@ -112,15 +111,16 @@ func CrowdsecCTI(params ...any) (any, error) {
 	ctiResp, err := ctiClient.GetIPInfo(ip)
 	ctiClient.Logger.Debugf("request for %s took %v", ip, time.Since(before))
 	if err != nil {
-		if err == cticlient.ErrUnauthorized {
+		switch err {
+		case cticlient.ErrUnauthorized:
 			CTIApiEnabled = false
 			ctiClient.Logger.Errorf("Invalid API key provided, disabling CTI API")
 			return &cticlient.SmokeItem{}, cticlient.ErrUnauthorized
-		} else if err == cticlient.ErrLimit {
+		case cticlient.ErrLimit:
 			CTIBackOffUntil = time.Now().Add(CTIBackOffDuration)
 			ctiClient.Logger.Errorf("CTI API is throttled, will try again in %s", CTIBackOffDuration)
 			return &cticlient.SmokeItem{}, cticlient.ErrLimit
-		} else {
+		default:
 			ctiClient.Logger.Warnf("CTI API error : %s", err)
 			return &cticlient.SmokeItem{}, fmt.Errorf("unexpected error : %v", err)
 		}

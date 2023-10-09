@@ -216,7 +216,7 @@ func LeakRoutine(leaky *Leaky) error {
 	defer BucketsCurrentCount.With(prometheus.Labels{"name": leaky.Name}).Dec()
 
 	/*todo : we create a logger at runtime while we want leakroutine to be up asap, might not be a good idea*/
-	leaky.logger = leaky.BucketConfig.logger.WithFields(log.Fields{"capacity": leaky.Capacity, "partition": leaky.Mapkey, "bucket_id": leaky.Uuid})
+	leaky.logger = leaky.BucketConfig.logger.WithFields(log.Fields{"partition": leaky.Mapkey, "bucket_id": leaky.Uuid})
 
 	//We copy the processors, as they are coming from the BucketFactory, and thus are shared between buckets
 	//If we don't copy, processors using local cache (such as Uniq) are subject to race conditions

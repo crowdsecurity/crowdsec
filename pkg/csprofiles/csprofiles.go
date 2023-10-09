@@ -86,8 +86,15 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 
 		for _, decision := range profile.Decisions {
 			if runtime.RuntimeDurationExpr == nil {
-				if _, err := time.ParseDuration(*decision.Duration); err != nil {
-					return []*Runtime{}, errors.Wrapf(err, "error parsing duration '%s' of %s", *decision.Duration, profile.Name)
+				var duration string
+				if decision.Duration != nil {
+					duration = *decision.Duration
+				} else {
+					runtime.Logger.Warningf("No duration specified for %s, using default duration %s", profile.Name, defaultDuration)
+					duration = defaultDuration
+				}
+				if _, err := time.ParseDuration(duration); err != nil {
+					return []*Runtime{}, errors.Wrapf(err, "error parsing duration '%s' of %s", duration, profile.Name)
 				}
 			}
 		}

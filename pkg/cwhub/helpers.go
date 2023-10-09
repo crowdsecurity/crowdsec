@@ -62,12 +62,11 @@ func SetHubBranch() {
 }
 
 func InstallItem(csConfig *csconfig.Config, name string, obtype string, force bool, downloadOnly bool) error {
-	it := GetItem(obtype, name)
-	if it == nil {
+	item := GetItem(obtype, name)
+	if item == nil {
 		return fmt.Errorf("unable to retrieve item: %s", name)
 	}
 
-	item := *it
 	if downloadOnly && item.Downloaded && item.UpToDate {
 		log.Warningf("%s is already downloaded and up-to-date", item.Name)
 
@@ -76,12 +75,12 @@ func InstallItem(csConfig *csconfig.Config, name string, obtype string, force bo
 		}
 	}
 
-	item, err := DownloadLatest(csConfig.Hub, item, force, true)
+	err := DownloadLatest(csConfig.Hub, item, force, true)
 	if err != nil {
 		return fmt.Errorf("while downloading %s: %w", item.Name, err)
 	}
 
-	if err := AddItem(obtype, item); err != nil {
+	if err := AddItem(obtype, *item); err != nil {
 		return fmt.Errorf("while adding %s: %w", item.Name, err)
 	}
 
@@ -90,12 +89,12 @@ func InstallItem(csConfig *csconfig.Config, name string, obtype string, force bo
 		return nil
 	}
 
-	item, err = EnableItem(csConfig.Hub, item)
+	err = EnableItem(csConfig.Hub, item)
 	if err != nil {
 		return fmt.Errorf("while enabling %s: %w", item.Name, err)
 	}
 
-	if err := AddItem(obtype, item); err != nil {
+	if err := AddItem(obtype, *item); err != nil {
 		return fmt.Errorf("while adding %s: %w", item.Name, err)
 	}
 
@@ -112,19 +111,18 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 	)
 
 	if name != "" {
-		it := GetItem(itemType, name)
-		if it == nil {
+		item := GetItem(itemType, name)
+		if item == nil {
 			log.Fatalf("unable to retrieve: %s", name)
 		}
 
-		item := *it
-		item, err = DisableItem(csConfig.Hub, item, purge, forceAction)
+		err = DisableItem(csConfig.Hub, item, purge, forceAction)
 
 		if err != nil {
 			log.Fatalf("unable to disable %s : %v", item.Name, err)
 		}
 
-		if err := AddItem(itemType, item); err != nil {
+		if err := AddItem(itemType, *item); err != nil {
 			log.Fatalf("unable to add %s: %v", item.Name, err)
 		}
 
@@ -141,7 +139,7 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 			continue
 		}
 
-		v, err = DisableItem(csConfig.Hub, v, purge, forceAction)
+		err = DisableItem(csConfig.Hub, &v, purge, forceAction)
 		if err != nil {
 			log.Fatalf("unable to disable %s : %v", v.Name, err)
 		}
@@ -191,7 +189,7 @@ func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, forc
 			}
 		}
 
-		v, err = DownloadLatest(csConfig.Hub, v, force, true)
+		err = DownloadLatest(csConfig.Hub, &v, force, true)
 		if err != nil {
 			log.Fatalf("%s : download failed : %v", v.Name, err)
 		}

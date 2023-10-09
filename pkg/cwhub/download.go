@@ -96,7 +96,7 @@ func DownloadHubIdx(hub *csconfig.Hub) ([]byte, error) {
 }
 
 // DownloadLatest will download the latest version of Item to the tdir directory
-func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool, updateOnly bool) (Item, error) {
+func DownloadLatest(hub *csconfig.Hub, target *Item, overwrite bool, updateOnly bool) error {
 	var err error
 
 	log.Debugf("Downloading %s %s", target.Type, target.Name)
@@ -104,7 +104,7 @@ func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool, updateOnly b
 	if target.Type != COLLECTIONS {
 		if !target.Installed && updateOnly && target.Downloaded {
 			log.Debugf("skipping upgrade of %s : not installed", target.Name)
-			return target, nil
+			return nil
 		}
 
 		return DownloadItem(hub, target, overwrite)
@@ -117,7 +117,7 @@ func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool, updateOnly b
 		for _, p := range ptr {
 			val, ok := hubIdx[ptrtype][p]
 			if !ok {
-				return target, fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
+				return fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
 			}
 
 			if !val.Installed && updateOnly && val.Downloaded {
@@ -130,38 +130,38 @@ func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool, updateOnly b
 			if ptrtype == COLLECTIONS {
 				log.Tracef("collection, recurse")
 
-				hubIdx[ptrtype][p], err = DownloadLatest(hub, val, overwrite, updateOnly)
+				err = DownloadLatest(hub, &val, overwrite, updateOnly)
 				if err != nil {
-					return target, fmt.Errorf("while downloading %s: %w", val.Name, err)
+					return fmt.Errorf("while downloading %s: %w", val.Name, err)
 				}
 			}
-
-			item, err := DownloadItem(hub, val, overwrite)
+			downloaded := val.Downloaded
+			err := DownloadItem(hub, &val, overwrite)
 			if err != nil {
-				return target, fmt.Errorf("while downloading %s: %w", val.Name, err)
+				return fmt.Errorf("while downloading %s: %w", val.Name, err)
 			}
 
 			// We need to enable an item when it has been added to a collection since latest release of the collection.
 			// We check if val.Downloaded is false because maybe the item has been disabled by the user.
-			if !item.Installed && !val.Downloaded {
-				if item, err = EnableItem(hub, item); err != nil {
-					return target, fmt.Errorf("enabling '%s': %w", item.Name, err)
+			if !val.Installed && !downloaded {
+				if err = EnableItem(hub, &val); err != nil {
+					return fmt.Errorf("enabling '%s': %w", val.Name, err)
 				}
 			}
 
-			hubIdx[ptrtype][p] = item
+			hubIdx[ptrtype][p] = val
 		}
 	}
 
-	target, err = DownloadItem(hub, target, overwrite)
+	err = DownloadItem(hub, target, overwrite)
 	if err != nil {
-		return target, fmt.Errorf("failed to download item: %w", err)
+		return fmt.Errorf("failed to download item: %w", err)
 	}
 
-	return target, nil
+	return nil
 }
 
-func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) {
+func DownloadItem(hub *csconfig.Hub, target *Item, overwrite bool) error {
 	tdir := hub.HubDir
 	dataFolder := hub.DataDir
 
@@ -169,7 +169,7 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 	if !overwrite {
 		if target.Tainted {
 			log.Debugf("%s : tainted, not updated", target.Name)
-			return target, nil
+			return nil
 		}
 
 		if target.UpToDate {
@@ -180,28 +180,28 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf(RawFileURLTemplate, HubBranch, target.RemotePath), nil)
 	if err != nil {
-		return target, fmt.Errorf("while downloading %s: %w", req.URL.String(), err)
+		return fmt.Errorf("while downloading %s: %w", req.URL.String(), err)
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return target, fmt.Errorf("while downloading %s: %w", req.URL.String(), err)
+		return fmt.Errorf("while downloading %s: %w", req.URL.String(), err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return target, fmt.Errorf("bad http code %d for %s", resp.StatusCode, req.URL.String())
+		return fmt.Errorf("bad http code %d for %s", resp.StatusCode, req.URL.String())
 	}
 
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return target, fmt.Errorf("while reading %s: %w", req.URL.String(), err)
+		return fmt.Errorf("while reading %s: %w", req.URL.String(), err)
 	}
 
 	h := sha256.New()
 	if _, err := h.Write(body); err != nil {
-		return target, fmt.Errorf("while hashing %s: %w", target.Name, err)
+		return fmt.Errorf("while hashing %s: %w", target.Name, err)
 	}
 
 	meow := fmt.Sprintf("%x", h.Sum(nil))
@@ -209,7 +209,7 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 		log.Errorf("Downloaded version doesn't match index, please 'hub update'")
 		log.Debugf("got %s, expected %s", meow, target.Versions[target.Version].Digest)
 
-		return target, fmt.Errorf("invalid download hash for %s", target.Name)
+		return fmt.Errorf("invalid download hash for %s", target.Name)
 	}
 
 	//all good, install
@@ -220,11 +220,11 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 	// ensure that target file is within target dir
 	finalPath, err := filepath.Abs(tdir + "/" + target.RemotePath)
 	if err != nil {
-		return target, fmt.Errorf("filepath.Abs error on %s: %w", tdir+"/"+target.RemotePath, err)
+		return fmt.Errorf("filepath.Abs error on %s: %w", tdir+"/"+target.RemotePath, err)
 	}
 
 	if !strings.HasPrefix(finalPath, tdir) {
-		return target, fmt.Errorf("path %s escapes %s, abort", target.RemotePath, tdir)
+		return fmt.Errorf("path %s escapes %s, abort", target.RemotePath, tdir)
 	}
 
 	// check dir
@@ -232,7 +232,7 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 		log.Debugf("%s doesn't exist, create", parent_dir)
 
 		if err := os.MkdirAll(parent_dir, os.ModePerm); err != nil {
-			return target, fmt.Errorf("while creating parent directories: %w", err)
+			return fmt.Errorf("while creating parent directories: %w", err)
 		}
 	}
 
@@ -246,14 +246,14 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 
 	f, err := os.OpenFile(tdir+"/"+target.RemotePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
-		return target, fmt.Errorf("while opening file: %w", err)
+		return fmt.Errorf("while opening file: %w", err)
 	}
 
 	defer f.Close()
 
 	_, err = f.Write(body)
 	if err != nil {
-		return target, fmt.Errorf("while writing file: %w", err)
+		return fmt.Errorf("while writing file: %w", err)
 	}
 
 	target.Downloaded = true
@@ -261,12 +261,12 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 	target.UpToDate = true
 
 	if err = downloadData(dataFolder, overwrite, bytes.NewReader(body)); err != nil {
-		return target, fmt.Errorf("while downloading data for %s: %w", target.FileName, err)
+		return fmt.Errorf("while downloading data for %s: %w", target.FileName, err)
 	}
 
-	hubIdx[target.Type][target.Name] = target
+	hubIdx[target.Type][target.Name] = *target
 
-	return target, nil
+	return nil
 }
 
 func DownloadDataIfNeeded(hub *csconfig.Hub, target Item, force bool) error {
