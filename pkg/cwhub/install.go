@@ -29,6 +29,19 @@ func purgeItem(hub *csconfig.Hub, target Item) (Item, error) {
 func DisableItem(hub *csconfig.Hub, target *Item, purge bool, force bool) error {
 	var err error
 
+	// already disabled, noop unless purge
+	if !target.Installed {
+		if purge {
+			*target, err = purgeItem(hub, *target)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+
 	if target.Local {
 		return fmt.Errorf("%s isn't managed by hub. Please delete manually", target.Name)
 	}
