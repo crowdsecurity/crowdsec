@@ -80,7 +80,7 @@ func InstallItem(csConfig *csconfig.Config, name string, obtype string, force bo
 		return fmt.Errorf("while downloading %s: %w", item.Name, err)
 	}
 
-	if err := AddItem(obtype, *item); err != nil {
+	if err = AddItem(obtype, *item); err != nil {
 		return fmt.Errorf("while adding %s: %w", item.Name, err)
 	}
 
@@ -122,7 +122,7 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 			log.Fatalf("unable to disable %s : %v", item.Name, err)
 		}
 
-		if err := AddItem(itemType, *item); err != nil {
+		if err = AddItem(itemType, *item); err != nil {
 			log.Fatalf("unable to add %s: %v", item.Name, err)
 		}
 

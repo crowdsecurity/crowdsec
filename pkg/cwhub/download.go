@@ -136,7 +136,7 @@ func DownloadLatest(hub *csconfig.Hub, target *Item, overwrite bool, updateOnly 
 				}
 			}
 			downloaded := val.Downloaded
-			err := DownloadItem(hub, &val, overwrite)
+			err = DownloadItem(hub, &val, overwrite)
 			if err != nil {
 				return fmt.Errorf("while downloading %s: %w", val.Name, err)
 			}
@@ -199,7 +199,7 @@ func DownloadItem(hub *csconfig.Hub, target *Item, overwrite bool) error {
 	}
 
 	h := sha256.New()
-	if _, err := h.Write(body); err != nil {
+	if _, err = h.Write(body); err != nil {
 		return fmt.Errorf("while hashing %s: %w", target.Name, err)
 	}
 
@@ -230,7 +230,7 @@ func DownloadItem(hub *csconfig.Hub, target *Item, overwrite bool) error {
 	if _, err = os.Stat(parentDir); os.IsNotExist(err) {
 		log.Debugf("%s doesn't exist, create", parentDir)
 
-		if err := os.MkdirAll(parentDir, os.ModePerm); err != nil {
+		if err = os.MkdirAll(parentDir, os.ModePerm); err != nil {
 			return fmt.Errorf("while creating parent directories: %w", err)
 		}
 	}
@@ -305,7 +305,7 @@ func downloadData(dataFolder string, force bool, reader io.Reader) error {
 		download := false
 
 		for _, dataS := range data.Data {
-			if _, err := os.Stat(filepath.Join(dataFolder, dataS.DestPath)); os.IsNotExist(err) {
+			if _, err = os.Stat(filepath.Join(dataFolder, dataS.DestPath)); os.IsNotExist(err) {
 				download = true
 			}
 		}

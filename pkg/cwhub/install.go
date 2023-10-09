@@ -160,10 +160,10 @@ func EnableItem(hub *csconfig.Hub, target *Item) error {
 		}
 	}
 
-	if _, err := os.Stat(parentDir); os.IsNotExist(err) {
+	if _, err = os.Stat(parentDir); os.IsNotExist(err) {
 		log.Infof("%s doesn't exist, create", parentDir)
 
-		if err := os.MkdirAll(parentDir, os.ModePerm); err != nil {
+		if err = os.MkdirAll(parentDir, os.ModePerm); err != nil {
 			return fmt.Errorf("while creating directory: %w", err)
 		}
 	}
@@ -188,7 +188,7 @@ func EnableItem(hub *csconfig.Hub, target *Item) error {
 	}
 
 	// check if file already exists where it should in configdir (eg /etc/crowdsec/collections/)
-	if _, err := os.Lstat(parentDir + "/" + target.FileName); !os.IsNotExist(err) {
+	if _, err = os.Lstat(parentDir + "/" + target.FileName); !os.IsNotExist(err) {
 		log.Infof("%s already exists.", parentDir+"/"+target.FileName)
 		return nil
 	}
