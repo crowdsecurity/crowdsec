@@ -1,7 +1,6 @@
 package cwhub
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -10,6 +9,10 @@ import (
 	"testing"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
@@ -29,28 +32,21 @@ func TestItemStatus(t *testing.T) {
 	cfg := envSetup(t)
 	defer envTearDown(cfg)
 
-	err := UpdateHubIdx(cfg.Hub)
 	// DownloadHubIdx()
-	if err != nil {
-		t.Fatalf("failed to download index : %s", err)
-	}
+	err := UpdateHubIdx(cfg.Hub)
+	require.NoError(t, err, "failed to download index")
 
-	if err := GetHubIdx(cfg.Hub); err != nil {
-		t.Fatalf("failed to load hub index : %s", err)
-	}
+	err = GetHubIdx(cfg.Hub)
+	require.NoError(t, err, "failed to load hub index")
 
 	// get existing map
 	x := GetItemMap(COLLECTIONS)
-	if len(x) == 0 {
-		t.Fatalf("expected non empty result")
-	}
+	require.NotEmpty(t, x)
 
 	// Get item : good and bad
 	for k := range x {
 		item := GetItem(COLLECTIONS, k)
-		if item == nil {
-			t.Fatalf("expected item")
-		}
+		require.NotNil(t, item)
 
 		item.Installed = true
 		item.UpToDate = false
@@ -58,9 +54,7 @@ func TestItemStatus(t *testing.T) {
 		item.Tainted = false
 
 		txt, _ := item.status()
-		if txt != "enabled,update-available" {
-			t.Fatalf("got '%s'", txt)
-		}
+		require.Equal(t, "enabled,update-available", txt)
 
 		item.Installed = false
 		item.UpToDate = false
@@ -68,11 +62,7 @@ func TestItemStatus(t *testing.T) {
 		item.Tainted = false
 
 		txt, _ = item.status()
-		if txt != "disabled,local" {
-			t.Fatalf("got '%s'", txt)
-		}
-
-		break
+		require.Equal(t, "disabled,local", txt)
 	}
 
 	DisplaySummary()
@@ -82,62 +72,39 @@ func TestGetters(t *testing.T) {
 	cfg := envSetup(t)
 	defer envTearDown(cfg)
 
-	err := UpdateHubIdx(cfg.Hub)
 	// DownloadHubIdx()
-	if err != nil {
-		t.Fatalf("failed to download index : %s", err)
-	}
+	err := UpdateHubIdx(cfg.Hub)
+	require.NoError(t, err, "failed to download index")
 
-	if err := GetHubIdx(cfg.Hub); err != nil {
-		t.Fatalf("failed to load hub index : %s", err)
-	}
+	err = GetHubIdx(cfg.Hub)
+	require.NoError(t, err, "failed to load hub index")
 
 	// get non existing map
 	empty := GetItemMap("ratata")
-	if empty != nil {
-		t.Fatalf("expected nil result")
-	}
+	require.Nil(t, empty)
 
 	// get existing map
 	x := GetItemMap(COLLECTIONS)
-	if len(x) == 0 {
-		t.Fatalf("expected non empty result")
-	}
+	require.NotEmpty(t, x)
 
 	// Get item : good and bad
 	for k := range x {
 		empty := GetItem(COLLECTIONS, k+"nope")
-		if empty != nil {
-			t.Fatalf("expected empty item")
-		}
+		require.Nil(t, empty)
 
 		item := GetItem(COLLECTIONS, k)
-		if item == nil {
-			t.Fatalf("expected non empty item")
-		}
+		require.NotNil(t, item)
 
 		// Add item and get it
 		item.Name += "nope"
-		if err := AddItem(COLLECTIONS, *item); err != nil {
-			t.Fatalf("didn't expect error : %s", err)
-		}
+		err := AddItem(COLLECTIONS, *item)
+		require.NoError(t, err)
 
 		newitem := GetItem(COLLECTIONS, item.Name)
-		if newitem == nil {
-			t.Fatalf("expected non empty item")
-		}
+		require.NotNil(t, newitem)
 
-		// Add bad item
-		err := AddItem("ratata", *item)
-		if err == nil {
-			t.Fatalf("Expected error")
-		}
-
-		if fmt.Sprintf("%s", err) != "ItemType ratata is unknown" {
-			t.Fatalf("unexpected error")
-		}
-
-		break
+		err = AddItem("ratata", *item)
+		cstest.RequireErrorContains(t, err, "ItemType ratata is unknown")
 	}
 }
 
@@ -145,15 +112,12 @@ func TestIndexDownload(t *testing.T) {
 	cfg := envSetup(t)
 	defer envTearDown(cfg)
 
-	err := UpdateHubIdx(cfg.Hub)
 	// DownloadHubIdx()
-	if err != nil {
-		t.Fatalf("failed to download index : %s", err)
-	}
+	err := UpdateHubIdx(cfg.Hub)
+	require.NoError(t, err, "failed to download index")
 
-	if err := GetHubIdx(cfg.Hub); err != nil {
-		t.Fatalf("failed to load hub index : %s", err)
-	}
+	err = GetHubIdx(cfg.Hub)
+	require.NoError(t, err, "failed to load hub index")
 }
 
 func getTestCfg() *csconfig.Config {
@@ -180,17 +144,14 @@ func envSetup(t *testing.T) *csconfig.Config {
 	// Mock the http client
 	http.DefaultClient.Transport = newMockTransport()
 
-	if err := os.MkdirAll(cfg.Hub.ConfigDir, 0700); err != nil {
-		log.Fatalf("mkdir : %s", err)
-	}
+	err := os.MkdirAll(cfg.Hub.ConfigDir, 0700)
+	require.NoError(t, err)
 
-	if err := os.MkdirAll(cfg.Hub.HubDir, 0700); err != nil {
-		log.Fatalf("failed to mkdir %s : %s", cfg.Hub.HubDir, err)
-	}
+	err = os.MkdirAll(cfg.Hub.HubDir, 0700)
+	require.NoError(t, err)
 
-	if err := UpdateHubIdx(cfg.Hub); err != nil {
-		log.Fatalf("failed to download index : %s", err)
-	}
+	err = UpdateHubIdx(cfg.Hub)
+	require.NoError(t, err)
 
 	// if err := os.RemoveAll(cfg.Hub.InstallDir); err != nil {
 	// 	log.Fatalf("failed to remove %s : %s", cfg.Hub.InstallDir, err)
@@ -214,136 +175,85 @@ func envTearDown(cfg *csconfig.Config) {
 func testInstallItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	// Install the parser
 	err := DownloadLatest(cfg, &item, false, false)
-	if err != nil {
-		t.Fatalf("error while downloading %s : %v", item.Name, err)
-	}
+	require.NoError(t, err, "failed to download %s", item.Name)
 
-	if err, _ = LocalSync(cfg); err != nil {
-		t.Fatalf("taint: failed to run localSync : %s", err)
-	}
+	err, _ = LocalSync(cfg)
+	require.NoError(t, err, "failed to run localSync")
 
-	if !hubIdx[item.Type][item.Name].UpToDate {
-		t.Fatalf("download: %s should be up-to-date", item.Name)
-	}
-
-	if hubIdx[item.Type][item.Name].Installed {
-		t.Fatalf("download: %s should not be installed", item.Name)
-	}
-
-	if hubIdx[item.Type][item.Name].Tainted {
-		t.Fatalf("download: %s should not be tainted", item.Name)
-	}
+	assert.True(t, hubIdx[item.Type][item.Name].UpToDate, "%s should be up-to-date", item.Name)
+	assert.False(t, hubIdx[item.Type][item.Name].Installed, "%s should not be installed", item.Name)
+	assert.False(t, hubIdx[item.Type][item.Name].Tainted, "%s should not be tainted", item.Name)
 
 	err = EnableItem(cfg, &item)
-	if err != nil {
-		t.Fatalf("error while enabling %s : %v.", item.Name, err)
-	}
+	require.NoError(t, err, "failed to enable %s", item.Name)
 
-	if err, _ := LocalSync(cfg); err != nil {
-		t.Fatalf("taint: failed to run localSync : %s", err)
-	}
+	err, _ = LocalSync(cfg)
+	require.NoError(t, err, "failed to run localSync")
 
-	if !hubIdx[item.Type][item.Name].Installed {
-		t.Fatalf("install: %s should be installed", item.Name)
-	}
+	assert.True(t, hubIdx[item.Type][item.Name].Installed, "%s should be installed", item.Name)
 }
 
 func testTaintItem(cfg *csconfig.Hub, t *testing.T, item Item) {
-	if hubIdx[item.Type][item.Name].Tainted {
-		t.Fatalf("pre-taint: %s should not be tainted", item.Name)
-	}
+	assert.False(t, hubIdx[item.Type][item.Name].Tainted, "%s should not be tainted", item.Name)
 
 	f, err := os.OpenFile(item.LocalPath, os.O_APPEND|os.O_WRONLY, 0600)
-	if err != nil {
-		t.Fatalf("(taint) opening %s (%s) : %s", item.LocalPath, item.Name, err)
-	}
+	require.NoError(t, err, "failed to open %s (%s)", item.LocalPath, item.Name)
+
 	defer f.Close()
 
-	if _, err = f.WriteString("tainted"); err != nil {
-		t.Fatalf("tainting %s : %s", item.Name, err)
-	}
+	_, err = f.WriteString("tainted")
+	require.NoError(t, err, "failed to write to %s (%s)", item.LocalPath, item.Name)
 
 	// Local sync and check status
-	if err, _ := LocalSync(cfg); err != nil {
-		t.Fatalf("taint: failed to run localSync : %s", err)
-	}
+	err, _ = LocalSync(cfg)
+	require.NoError(t, err, "failed to run localSync")
 
-	if !hubIdx[item.Type][item.Name].Tainted {
-		t.Fatalf("taint: %s should be tainted", item.Name)
-	}
+	assert.True(t, hubIdx[item.Type][item.Name].Tainted, "%s should be tainted", item.Name)
 }
 
 func testUpdateItem(cfg *csconfig.Hub, t *testing.T, item Item) {
-	if hubIdx[item.Type][item.Name].UpToDate {
-		t.Fatalf("update: %s should NOT be up-to-date", item.Name)
-	}
+	assert.False(t, hubIdx[item.Type][item.Name].UpToDate, "%s should not be up-to-date", item.Name)
 
 	// Update it + check status
 	err := DownloadLatest(cfg, &item, true, true)
-	if err != nil {
-		t.Fatalf("failed to update %s : %s", item.Name, err)
-	}
+	require.NoError(t, err, "failed to update %s", item.Name)
 
 	// Local sync and check status
-	if err, _ := LocalSync(cfg); err != nil {
-		t.Fatalf("failed to run localSync : %s", err)
-	}
+	err, _ = LocalSync(cfg)
+	require.NoError(t, err, "failed to run localSync")
 
-	if !hubIdx[item.Type][item.Name].UpToDate {
-		t.Fatalf("update: %s should be up-to-date", item.Name)
-	}
-
-	if hubIdx[item.Type][item.Name].Tainted {
-		t.Fatalf("update: %s should not be tainted anymore", item.Name)
-	}
+	assert.True(t, hubIdx[item.Type][item.Name].UpToDate, "%s should be up-to-date", item.Name)
+	assert.False(t, hubIdx[item.Type][item.Name].Tainted, "%s should not be tainted anymore", item.Name)
 }
 
 func testDisableItem(cfg *csconfig.Hub, t *testing.T, item Item) {
-	if !item.Installed {
-		t.Fatalf("disable: %s should be installed", item.Name)
-	}
+	assert.True(t, hubIdx[item.Type][item.Name].Installed, "%s should be installed", item.Name)
 
 	// Remove
 	err := DisableItem(cfg, &item, false, false)
-	if err != nil {
-		t.Fatalf("failed to disable item : %v", err)
-	}
+	require.NoError(t, err, "failed to disable %s", item.Name)
 
 	// Local sync and check status
-	if err, warns := LocalSync(cfg); err != nil || len(warns) > 0 {
-		t.Fatalf("failed to run localSync : %s (%+v)", err, warns)
-	}
+	err, warns := LocalSync(cfg)
+	require.NoError(t, err, "failed to run localSync")
+	require.Empty(t, warns, "unexpected warnings : %+v", warns)
 
-	if hubIdx[item.Type][item.Name].Tainted {
-		t.Fatalf("disable: %s should not be tainted anymore", item.Name)
-	}
-
-	if hubIdx[item.Type][item.Name].Installed {
-		t.Fatalf("disable: %s should not be installed anymore", item.Name)
-	}
-
-	if !hubIdx[item.Type][item.Name].Downloaded {
-		t.Fatalf("disable: %s should still be downloaded", item.Name)
-	}
+	assert.False(t, hubIdx[item.Type][item.Name].Tainted, "%s should not be tainted anymore", item.Name)
+	assert.False(t, hubIdx[item.Type][item.Name].Installed, "%s should not be installed anymore", item.Name)
+	assert.True(t, hubIdx[item.Type][item.Name].Downloaded, "%s should still be downloaded", item.Name)
 
 	// Purge
 	err = DisableItem(cfg, &item, true, false)
-	if err != nil {
-		t.Fatalf("failed to purge item : %v", err)
-	}
+	require.NoError(t, err, "failed to purge %s", item.Name)
 
 	// Local sync and check status
-	if err, warns := LocalSync(cfg); err != nil || len(warns) > 0 {
-		t.Fatalf("failed to run localSync : %s (%+v)", err, warns)
-	}
+	err, warns = LocalSync(cfg)
+	require.NoError(t, err, "failed to run localSync")
+	require.Empty(t, warns, "unexpected warnings : %+v", warns)
 
-	if hubIdx[item.Type][item.Name].Installed {
-		t.Fatalf("disable: %s should not be installed anymore", item.Name)
-	}
 
-	if hubIdx[item.Type][item.Name].Downloaded {
-		t.Fatalf("disable: %s should not be downloaded", item.Name)
-	}
+	assert.False(t, hubIdx[item.Type][item.Name].Installed, "%s should not be installed anymore", item.Name)
+	assert.False(t, hubIdx[item.Type][item.Name].Downloaded, "%s should not be downloaded", item.Name)
 }
 
 func TestInstallParser(t *testing.T) {
