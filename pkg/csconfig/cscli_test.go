@@ -1,40 +1,33 @@
 package csconfig
 
 import (
-	"fmt"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/go-cs-lib/cstest"
 )
 
 func TestLoadCSCLI(t *testing.T) {
 	hubFullPath, err := filepath.Abs("./hub")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	dataFullPath, err := filepath.Abs("./data")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	configDirFullPath, err := filepath.Abs("./testdata")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	hubIndexFileFullPath, err := filepath.Abs("./hub/.index.json")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	tests := []struct {
 		name           string
 		Input          *Config
 		expectedResult *CscliCfg
-		err            string
+		expectedErr    string
 	}{
 		{
 			name: "basic valid configuration",
@@ -57,28 +50,20 @@ func TestLoadCSCLI(t *testing.T) {
 			name:           "no configuration path",
 			Input:          &Config{},
 			expectedResult: &CscliCfg{},
+			expectedErr:   "no configuration paths provided",
 		},
 	}
 
-	for idx, test := range tests {
-		err := test.Input.LoadCSCLI()
-		if err == nil && test.err != "" {
-			fmt.Printf("TEST '%s': NOK\n", test.name)
-			t.Fatalf("%d/%d expected error, didn't get it", idx, len(tests))
-		} else if test.err != "" {
-			if !strings.HasPrefix(fmt.Sprintf("%s", err), test.err) {
-				fmt.Printf("TEST '%s': NOK\n", test.name)
-				t.Fatalf("%d/%d expected '%s' got '%s'", idx, len(tests),
-					test.err,
-					fmt.Sprintf("%s", err))
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.Input.LoadCSCLI()
+			cstest.RequireErrorContains(t, err, tc.expectedErr)
+			if tc.expectedErr != "" {
+				return
 			}
-		}
 
-		isOk := assert.Equal(t, test.expectedResult, test.Input.Cscli)
-		if !isOk {
-			t.Fatalf("TEST '%s': NOK", test.name)
-		} else {
-			fmt.Printf("TEST '%s': OK\n", test.name)
-		}
+			assert.Equal(t, tc.expectedResult, tc.Input.Cscli)
+		})
 	}
 }

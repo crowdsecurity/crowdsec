@@ -1,7 +1,6 @@
 package csconfig
 
 import (
-	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -205,7 +204,6 @@ func TestLoadCrowdsec(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			fmt.Printf("TEST '%s'\n", tc.name)
 			err := tc.input.LoadCrowdsec()
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 			if tc.expectedErr != "" {

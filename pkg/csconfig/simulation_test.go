@@ -133,8 +133,8 @@ func TestIsSimulated(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			IsSimulated := tc.SimulationConfig.IsSimulated(tc.Input)
-			require.Equal(t, tc.expectedResult, IsSimulated)
+			isSimulated := tc.SimulationConfig.IsSimulated(tc.Input)
+			require.Equal(t, tc.expectedResult, isSimulated)
 		})
 	}
 }
