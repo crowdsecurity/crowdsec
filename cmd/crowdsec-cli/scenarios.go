@@ -140,7 +140,7 @@ func runScenariosRemove(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, name := range args {
-		err := cwhub.RemoveMany(csConfig, cwhub.SCENARIOS, name, all, purge, forceAction)
+		err := cwhub.RemoveMany(csConfig, cwhub.SCENARIOS, name, all, purge, force)
 		if err != nil {
 			return err
 		}
