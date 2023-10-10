@@ -88,11 +88,11 @@ func runScenariosInstall(cmd *cobra.Command, args []string) error {
 
 func NewCmdScenariosInstall() *cobra.Command {
 	cmdScenariosInstall := &cobra.Command{
-		Use:     "install [config]",
-		Short:   "Install given scenario(s)",
-		Long:    `Fetch and install given scenario(s) from hub`,
-		Example: `cscli scenarios install crowdsec/xxx crowdsec/xyz`,
-		Args:    cobra.MinimumNArgs(1),
+		Use:               "install [config]",
+		Short:             "Install given scenario(s)",
+		Long:              `Fetch and install given scenario(s) from hub`,
+		Example:           `cscli scenarios install crowdsec/xxx crowdsec/xyz`,
+		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compAllItems(cwhub.SCENARIOS, args, toComplete)
@@ -148,7 +148,6 @@ func runScenariosRemove(cmd *cobra.Command, args []string) error {
 
 	return nil
 }
-
 
 func NewCmdScenariosRemove() *cobra.Command {
 	cmdScenariosRemove := &cobra.Command{
@@ -278,7 +277,7 @@ func NewCmdScenariosList() *cobra.Command {
 		Example: `cscli scenarios list
 cscli scenarios list crowdsecurity/xxx`,
 		DisableAutoGenTag: true,
-		RunE: runScenariosList,
+		RunE:              runScenariosList,
 	}
 
 	flags := cmdScenariosList.Flags()

@@ -149,7 +149,6 @@ func runParsersRemove(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-
 func NewParsersRemoveCmd() *cobra.Command {
 	cmdParsersRemove := &cobra.Command{
 		Use:               "remove [config]",
@@ -278,7 +277,7 @@ func NewParsersListCmd() *cobra.Command {
 		Example: `cscli parsers list
 cscli parser list crowdsecurity/xxx`,
 		DisableAutoGenTag: true,
-		RunE: runParsersList,
+		RunE:              runParsersList,
 	}
 
 	flags := cmdParsersList.Flags()
