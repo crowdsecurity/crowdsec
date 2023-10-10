@@ -214,13 +214,7 @@ func InspectItem(name string, objecitemType string) {
 		//This is technically wrong to do this, as the prometheus section contains a listen address, not an URL to query prometheus
 		//But for ease of use, we will use the listen address as the prometheus URL because it will be 127.0.0.1 in the default case
 		listenAddr := csConfig.Prometheus.ListenAddr
-		if listenAddr == "" {
-			listenAddr = "127.0.0.1"
-		}
 		listenPort := csConfig.Prometheus.ListenPort
-		if listenPort == 0 {
-			listenPort = 6060
-		}
 		prometheusURL = fmt.Sprintf("http://%s:%d/metrics", listenAddr, listenPort)
 		log.Debugf("No prometheus URL provided using: %s", prometheusURL)
 	}

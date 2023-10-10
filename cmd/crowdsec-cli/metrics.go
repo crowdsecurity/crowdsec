@@ -306,7 +306,7 @@ func runMetrics(cmd *cobra.Command, args []string) error {
 
 	err := FormatPrometheusMetrics(color.Output, prometheusURL+"/metrics", csConfig.Cscli.Output)
 	if err != nil {
-		return fmt.Errorf("could not fetch prometheus metrics: %w", err)
+		return err
 	}
 	return nil
 }
