@@ -135,7 +135,7 @@ func collectOSInfo() ([]byte, error) {
 func collectHubItems(itemType string) []byte {
 	out := bytes.NewBuffer(nil)
 	log.Infof("Collecting %s list", itemType)
-	ListItems(out, []string{itemType}, []string{}, false, true, all)
+	ListItems(out, []string{itemType}, []string{}, false, true, false)
 	return out.Bytes()
 }
 
