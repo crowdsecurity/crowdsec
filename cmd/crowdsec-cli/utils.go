@@ -185,34 +185,39 @@ func ListItems(out io.Writer, itemTypes []string, args []string, showType bool, 
 	}
 }
 
-func InspectItem(name string, objecitemType string) {
-
+func InspectItem(name string, objecitemType string, noMetrics bool) error {
 	hubItem := cwhub.GetItem(objecitemType, name)
 	if hubItem == nil {
-		log.Fatalf("unable to retrieve item.")
+		return fmt.Errorf("unable to retrieve item '%s'", name)
 	}
-	var b []byte
-	var err error
+
+	var (
+		b []byte
+		err error
+	)
+
 	switch csConfig.Cscli.Output {
 	case "human", "raw":
 		b, err = yaml.Marshal(*hubItem)
 		if err != nil {
-			log.Fatalf("unable to marshal item : %s", err)
+			return fmt.Errorf("unable to marshal item: %s", err)
 		}
 	case "json":
 		b, err = json.MarshalIndent(*hubItem, "", " ")
 		if err != nil {
-			log.Fatalf("unable to marshal item : %s", err)
+			return fmt.Errorf("unable to marshal item: %s", err)
 		}
 	}
+
 	fmt.Printf("%s", string(b))
-	if csConfig.Cscli.Output == "json" || csConfig.Cscli.Output == "raw" {
-		return
+
+	if noMetrics || csConfig.Cscli.Output == "json" || csConfig.Cscli.Output == "raw" {
+		return nil
 	}
 
 	if prometheusURL == "" {
-		//This is technically wrong to do this, as the prometheus section contains a listen address, not an URL to query prometheus
-		//But for ease of use, we will use the listen address as the prometheus URL because it will be 127.0.0.1 in the default case
+		// This is technically wrong to do this, as the prometheus section contains a listen address, not an URL to query prometheus
+		// But for ease of use, we will use the listen address as the prometheus URL because it will be 127.0.0.1 in the default case
 		listenAddr := csConfig.Prometheus.ListenAddr
 		listenPort := csConfig.Prometheus.ListenPort
 		prometheusURL = fmt.Sprintf("http://%s:%d/metrics", listenAddr, listenPort)
@@ -221,6 +226,8 @@ func InspectItem(name string, objecitemType string) {
 
 	fmt.Printf("\nCurrent metrics : \n")
 	ShowMetrics(hubItem)
+
+	return nil
 }
 
 func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *string) error {

@@ -242,8 +242,15 @@ func runCollectionsInspect(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	noMetrics, err := flags.GetBool("no-metrics")
+	if err != nil {
+		return err
+	}
+
 	for _, name := range args {
-		InspectItem(name, cwhub.COLLECTIONS)
+		if err = InspectItem(name, cwhub.COLLECTIONS, noMetrics); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -265,6 +272,7 @@ func NewCollectionsInspectCmd() *cobra.Command {
 
 	flags := cmdCollectionsInspect.Flags()
 	flags.StringP("url", "u", "", "Prometheus url")
+	flags.Bool("no-metrics", false, "Don't show metrics (when cscli.output=human)")
 
 	return cmdCollectionsInspect
 }

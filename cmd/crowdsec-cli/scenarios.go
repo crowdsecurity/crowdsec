@@ -230,8 +230,15 @@ func runScenariosInspect(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	noMetrics, err := flags.GetBool("no-metrics")
+	if err != nil {
+		return err
+	}
+
 	for _, name := range args {
-		InspectItem(name, cwhub.SCENARIOS)
+		if err = InspectItem(name, cwhub.SCENARIOS, noMetrics); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -253,6 +260,7 @@ func NewCmdScenariosInspect() *cobra.Command {
 
 	flags := cmdScenariosInspect.Flags()
 	flags.StringP("url", "u", "", "Prometheus url")
+	flags.Bool("no-metrics", false, "Don't show metrics (when cscli.output=human)")
 
 	return cmdScenariosInspect
 }
