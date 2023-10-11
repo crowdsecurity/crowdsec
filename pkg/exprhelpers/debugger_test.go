@@ -47,6 +47,10 @@ func boolPtr(b bool) *bool {
 	return &b
 }
 
+type teststruct struct {
+	Foo string
+}
+
 func TestBaseDbg(t *testing.T) {
 	defaultEnv := map[string]interface{}{
 		"queue":        &types.Queue{},
@@ -55,6 +59,7 @@ func TestBaseDbg(t *testing.T) {
 		"base_string":  "hello world",
 		"base_int":     42,
 		"base_float":   42.42,
+		"nillvar":      &teststruct{},
 		"base_struct": struct {
 			Foo   string
 			Bar   int
@@ -73,6 +78,18 @@ func TestBaseDbg(t *testing.T) {
 
 	//Missing multi parametes function
 	tests := []ExprDbgTest{
+		{
+			Name:                "nill deref",
+			Expr:                "Upper('1') == '1' && nillvar.Foo == '42'",
+			Env:                 defaultEnv,
+			LogLevel:            log.TraceLevel,
+			ExpectedFailRuntime: true,
+			ExpectedOutputs: []OpOutput{
+				{Code: "Upper('1')", CodeDepth: 0, Func: true, FuncName: "Upper", Args: []string{"\"1\""}, FuncResults: []string{"\"1\""}, ConditionResult: (*bool)(nil), Finalized: true},
+				{Code: "== '1'", CodeDepth: 0, Comparison: true, Left: "\"1\"", Right: "\"1\"", StrConditionResult: "[true]", ConditionResult: boolPtr(true), Finalized: true},
+				{Code: "&&", CodeDepth: 0, JumpIf: true, IfFalse: true, StrConditionResult: "<nil>", ConditionResult: boolPtr(true), Finalized: true},
+			},
+		},
 		{
 			Name: "OpCall2",
 			Expr: "UpperTwo('hello', 'world') == 'HELLOWORLD'",
@@ -282,7 +299,7 @@ func TestBaseDbg(t *testing.T) {
 		supaEnv = append(supaEnv, extraFuncs...)
 
 		prog, err := expr.Compile(test.Expr, supaEnv...)
-		if test.ExpectedFailRuntime {
+		if test.ExpectedFailedCompile {
 			if err == nil {
 				t.Fatalf("test %s : expected compile error", test.Name)
 			}
@@ -290,6 +307,9 @@ func TestBaseDbg(t *testing.T) {
 			if err != nil {
 				t.Fatalf("test %s : unexpected compile error : %s", test.Name, err)
 			}
+		}
+		if test.Name == "nill deref" {
+			test.Env["nillvar"] = nil
 		}
 		outdbg, ret, err := RunWithDebug(prog, test.Env, logger)
 		if test.ExpectedFailRuntime {

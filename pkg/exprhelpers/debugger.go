@@ -421,15 +421,20 @@ func RunWithDebug(program *vm.Program, env interface{}, logger *log.Entry) ([]Op
 			}
 			vm.Step()
 		}
+		debugErr <- nil
 	}()
+
+	var return_error error
 	ret, err := vm.Run(program, env)
 	done = true
+	//if the expr runtime failed, we don't need to wait for the debug to finish
 	if err != nil {
-		return nil, nil, err
-	}
-	err = <-debugErr
-	if err != nil {
-		log.Warningf("error while debugging expr: %s", err)
+		return_error = err
+	} else {
+		err = <-debugErr
+		if err != nil {
+			log.Warningf("error while debugging expr: %s", err)
+		}
 	}
 	//the overall result of expression is the result of last op ?
 	if len(outputs) > 0 {
@@ -453,5 +458,5 @@ func RunWithDebug(program *vm.Program, env interface{}, logger *log.Entry) ([]Op
 	} else {
 		log.Tracef("no output from expr runtime")
 	}
-	return outputs, ret, nil
+	return outputs, ret, return_error
 }
