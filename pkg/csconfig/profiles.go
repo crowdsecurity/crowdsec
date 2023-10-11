@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"io"
 
+	"gopkg.in/yaml.v2"
+
 	"github.com/crowdsecurity/go-cs-lib/yamlpatch"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"gopkg.in/yaml.v2"
 )
 
 // var OnErrorDefault = OnErrorIgnore
@@ -43,7 +44,6 @@ func (c *LocalApiServerCfg) LoadProfiles() error {
 	}
 	reader := bytes.NewReader(fcontent)
 
-	//process the yaml
 	dec := yaml.NewDecoder(reader)
 	dec.SetStrict(true)
 	for {

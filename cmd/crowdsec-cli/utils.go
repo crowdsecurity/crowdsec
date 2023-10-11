@@ -8,7 +8,7 @@ import (
 	"math"
 	"net"
 	"net/http"
-	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -19,11 +19,11 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/agext/levenshtein"
-	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -36,34 +36,6 @@ func printHelp(cmd *cobra.Command) {
 	if err != nil {
 		log.Fatalf("unable to print help(): %s", err)
 	}
-}
-
-func indexOf(s string, slice []string) int {
-	for i, elem := range slice {
-		if s == elem {
-			return i
-		}
-	}
-	return -1
-}
-
-func LoadHub() error {
-	if err := csConfig.LoadHub(); err != nil {
-		log.Fatal(err)
-	}
-	if csConfig.Hub == nil {
-		return fmt.Errorf("unable to load hub")
-	}
-
-	if err := cwhub.SetHubBranch(); err != nil {
-		log.Warningf("unable to set hub branch (%s), default to master", err)
-	}
-
-	if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-		return fmt.Errorf("Failed to get Hub index : '%w'. Run 'sudo cscli hub update' to get the hub index", err)
-	}
-
-	return nil
 }
 
 func Suggest(itemType string, baseItem string, suggestItem string, score int, ignoreErr bool) {
@@ -100,7 +72,7 @@ func GetDistance(itemType string, itemName string) (*cwhub.Item, int) {
 }
 
 func compAllItems(itemType string, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	if err := LoadHub(); err != nil {
+	if err := require.Hub(csConfig); err != nil {
 		return nil, cobra.ShellCompDirectiveDefault
 	}
 
@@ -116,29 +88,16 @@ func compAllItems(itemType string, args []string, toComplete string) ([]string, 
 }
 
 func compInstalledItems(itemType string, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	if err := LoadHub(); err != nil {
+	if err := require.Hub(csConfig); err != nil {
 		return nil, cobra.ShellCompDirectiveDefault
 	}
 
-	var items []string
-	var err error
-	switch itemType {
-	case cwhub.PARSERS:
-		items, err = cwhub.GetInstalledParsersAsString()
-	case cwhub.SCENARIOS:
-		items, err = cwhub.GetInstalledScenariosAsString()
-	case cwhub.PARSERS_OVFLW:
-		items, err = cwhub.GetInstalledPostOverflowsAsString()
-	case cwhub.COLLECTIONS:
-		items, err = cwhub.GetInstalledCollectionsAsString()
-	default:
-		return nil, cobra.ShellCompDirectiveDefault
-	}
-
+	items, err := cwhub.GetInstalledItemsAsString(itemType)
 	if err != nil {
 		cobra.CompDebugln(fmt.Sprintf("list installed %s err: %s", itemType, err), true)
 		return nil, cobra.ShellCompDirectiveDefault
 	}
+
 	comp := make([]string, 0)
 
 	if toComplete != "" {
@@ -466,37 +425,6 @@ func GetScenarioMetric(url string, itemName string) map[string]int {
 	return stats
 }
 
-// it's a rip of the cli version, but in silent-mode
-func silenceInstallItem(name string, obtype string) (string, error) {
-	var item = cwhub.GetItem(obtype, name)
-	if item == nil {
-		return "", fmt.Errorf("error retrieving item")
-	}
-	it := *item
-	if downloadOnly && it.Downloaded && it.UpToDate {
-		return fmt.Sprintf("%s is already downloaded and up-to-date", it.Name), nil
-	}
-	it, err := cwhub.DownloadLatest(csConfig.Hub, it, forceAction, false)
-	if err != nil {
-		return "", fmt.Errorf("error while downloading %s : %v", it.Name, err)
-	}
-	if err := cwhub.AddItem(obtype, it); err != nil {
-		return "", err
-	}
-
-	if downloadOnly {
-		return fmt.Sprintf("Downloaded %s to %s", it.Name, csConfig.Cscli.HubDir+"/"+it.RemotePath), nil
-	}
-	it, err = cwhub.EnableItem(csConfig.Hub, it)
-	if err != nil {
-		return "", fmt.Errorf("error while enabling %s : %v", it.Name, err)
-	}
-	if err := cwhub.AddItem(obtype, it); err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("Enabled %s", it.Name), nil
-}
-
 func GetPrometheusMetric(url string) []*prom2json.Family {
 	mfChan := make(chan *dto.MetricFamily, 1024)
 
@@ -523,160 +451,6 @@ func GetPrometheusMetric(url string) []*prom2json.Family {
 	log.Debugf("Finished reading prometheus output, %d entries", len(result))
 
 	return result
-}
-
-func RestoreHub(dirPath string) error {
-	var err error
-
-	if err := csConfig.LoadHub(); err != nil {
-		return err
-	}
-	if err := cwhub.SetHubBranch(); err != nil {
-		return fmt.Errorf("error while setting hub branch: %s", err)
-	}
-
-	for _, itype := range cwhub.ItemTypes {
-		itemDirectory := fmt.Sprintf("%s/%s/", dirPath, itype)
-		if _, err = os.Stat(itemDirectory); err != nil {
-			log.Infof("no %s in backup", itype)
-			continue
-		}
-		/*restore the upstream items*/
-		upstreamListFN := fmt.Sprintf("%s/upstream-%s.json", itemDirectory, itype)
-		file, err := os.ReadFile(upstreamListFN)
-		if err != nil {
-			return fmt.Errorf("error while opening %s : %s", upstreamListFN, err)
-		}
-		var upstreamList []string
-		err = json.Unmarshal(file, &upstreamList)
-		if err != nil {
-			return fmt.Errorf("error unmarshaling %s : %s", upstreamListFN, err)
-		}
-		for _, toinstall := range upstreamList {
-			label, err := silenceInstallItem(toinstall, itype)
-			if err != nil {
-				log.Errorf("Error while installing %s : %s", toinstall, err)
-			} else if label != "" {
-				log.Infof("Installed %s : %s", toinstall, label)
-			} else {
-				log.Printf("Installed %s : ok", toinstall)
-			}
-		}
-
-		/*restore the local and tainted items*/
-		files, err := os.ReadDir(itemDirectory)
-		if err != nil {
-			return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory, err)
-		}
-		for _, file := range files {
-			//this was the upstream data
-			if file.Name() == fmt.Sprintf("upstream-%s.json", itype) {
-				continue
-			}
-			if itype == cwhub.PARSERS || itype == cwhub.PARSERS_OVFLW {
-				//we expect a stage here
-				if !file.IsDir() {
-					continue
-				}
-				stage := file.Name()
-				stagedir := fmt.Sprintf("%s/%s/%s/", csConfig.ConfigPaths.ConfigDir, itype, stage)
-				log.Debugf("Found stage %s in %s, target directory : %s", stage, itype, stagedir)
-				if err = os.MkdirAll(stagedir, os.ModePerm); err != nil {
-					return fmt.Errorf("error while creating stage directory %s : %s", stagedir, err)
-				}
-				/*find items*/
-				ifiles, err := os.ReadDir(itemDirectory + "/" + stage + "/")
-				if err != nil {
-					return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory+"/"+stage, err)
-				}
-				//finally copy item
-				for _, tfile := range ifiles {
-					log.Infof("Going to restore local/tainted [%s]", tfile.Name())
-					sourceFile := fmt.Sprintf("%s/%s/%s", itemDirectory, stage, tfile.Name())
-					destinationFile := fmt.Sprintf("%s%s", stagedir, tfile.Name())
-					if err = CopyFile(sourceFile, destinationFile); err != nil {
-						return fmt.Errorf("failed copy %s %s to %s : %s", itype, sourceFile, destinationFile, err)
-					}
-					log.Infof("restored %s to %s", sourceFile, destinationFile)
-				}
-			} else {
-				log.Infof("Going to restore local/tainted [%s]", file.Name())
-				sourceFile := fmt.Sprintf("%s/%s", itemDirectory, file.Name())
-				destinationFile := fmt.Sprintf("%s/%s/%s", csConfig.ConfigPaths.ConfigDir, itype, file.Name())
-				if err = CopyFile(sourceFile, destinationFile); err != nil {
-					return fmt.Errorf("failed copy %s %s to %s : %s", itype, sourceFile, destinationFile, err)
-				}
-				log.Infof("restored %s to %s", sourceFile, destinationFile)
-			}
-
-		}
-	}
-	return nil
-}
-
-func BackupHub(dirPath string) error {
-	var err error
-	var itemDirectory string
-	var upstreamParsers []string
-
-	for _, itemType := range cwhub.ItemTypes {
-		clog := log.WithFields(log.Fields{
-			"type": itemType,
-		})
-		itemMap := cwhub.GetItemMap(itemType)
-		if itemMap == nil {
-			clog.Infof("No %s to backup.", itemType)
-			continue
-		}
-		itemDirectory = fmt.Sprintf("%s/%s/", dirPath, itemType)
-		if err := os.MkdirAll(itemDirectory, os.ModePerm); err != nil {
-			return fmt.Errorf("error while creating %s : %s", itemDirectory, err)
-		}
-		upstreamParsers = []string{}
-		for k, v := range itemMap {
-			clog = clog.WithFields(log.Fields{
-				"file": v.Name,
-			})
-			if !v.Installed { //only backup installed ones
-				clog.Debugf("[%s] : not installed", k)
-				continue
-			}
-
-			//for the local/tainted ones, we backup the full file
-			if v.Tainted || v.Local || !v.UpToDate {
-				//we need to backup stages for parsers
-				if itemType == cwhub.PARSERS || itemType == cwhub.PARSERS_OVFLW {
-					fstagedir := fmt.Sprintf("%s%s", itemDirectory, v.Stage)
-					if err := os.MkdirAll(fstagedir, os.ModePerm); err != nil {
-						return fmt.Errorf("error while creating stage dir %s : %s", fstagedir, err)
-					}
-				}
-				clog.Debugf("[%s] : backuping file (tainted:%t local:%t up-to-date:%t)", k, v.Tainted, v.Local, v.UpToDate)
-				tfile := fmt.Sprintf("%s%s/%s", itemDirectory, v.Stage, v.FileName)
-				if err = CopyFile(v.LocalPath, tfile); err != nil {
-					return fmt.Errorf("failed copy %s %s to %s : %s", itemType, v.LocalPath, tfile, err)
-				}
-				clog.Infof("local/tainted saved %s to %s", v.LocalPath, tfile)
-				continue
-			}
-			clog.Debugf("[%s] : from hub, just backup name (up-to-date:%t)", k, v.UpToDate)
-			clog.Infof("saving, version:%s, up-to-date:%t", v.Version, v.UpToDate)
-			upstreamParsers = append(upstreamParsers, v.Name)
-		}
-		//write the upstream items
-		upstreamParsersFname := fmt.Sprintf("%s/upstream-%s.json", itemDirectory, itemType)
-		upstreamParsersContent, err := json.MarshalIndent(upstreamParsers, "", " ")
-		if err != nil {
-			return fmt.Errorf("failed marshaling upstream parsers : %s", err)
-		}
-		err = os.WriteFile(upstreamParsersFname, upstreamParsersContent, 0644)
-		if err != nil {
-			return fmt.Errorf("unable to write to %s %s : %s", itemType, upstreamParsersFname, err)
-		}
-		clog.Infof("Wrote %d entries for %s to %s", len(upstreamParsers), itemType, upstreamParsersFname)
-	}
-
-	return nil
 }
 
 type unit struct {
