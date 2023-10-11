@@ -13,13 +13,13 @@ import (
 
 func NewScenariosCmd() *cobra.Command {
 	cmdScenarios := &cobra.Command{
-		Use:   "scenarios [action] [config]",
-		Short: "Install/Remove/Upgrade/Inspect scenario(s) from hub",
-		Example: `cscli scenarios list [-a]
-cscli scenarios install crowdsecurity/ssh-bf
-cscli scenarios inspect crowdsecurity/ssh-bf
-cscli scenarios upgrade crowdsecurity/ssh-bf
-cscli scenarios remove crowdsecurity/ssh-bf
+		Use:   "scenarios <action> [scenario]...",
+		Short: "Manage hub scenarios",
+		Example: `cscli scenarios list -a
+cscli scenarios install crowdsecurity/ssh-bf crowdsecurity/http-probing
+cscli scenarios inspect crowdsecurity/ssh-bf crowdsecurity/http-probing
+cscli scenarios upgrade crowdsecurity/ssh-bf crowdsecurity/http-probing
+cscli scenarios remove crowdsecurity/ssh-bf crowdsecurity/http-probing
 `,
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"scenario"},
@@ -88,10 +88,10 @@ func runScenariosInstall(cmd *cobra.Command, args []string) error {
 
 func NewCmdScenariosInstall() *cobra.Command {
 	cmdScenariosInstall := &cobra.Command{
-		Use:               "install [config]",
+		Use:               "install <scenario>...",
 		Short:             "Install given scenario(s)",
-		Long:              `Fetch and install given scenario(s) from hub`,
-		Example:           `cscli scenarios install crowdsec/xxx crowdsec/xyz`,
+		Long:              `Fetch and install one or more scenarios from the hub`,
+		Example:           `cscli scenarios install crowdsecurity/ssh-bf crowdsecurity/http-probing`,
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -102,7 +102,7 @@ func NewCmdScenariosInstall() *cobra.Command {
 
 	flags := cmdScenariosInstall.Flags()
 	flags.BoolP("download-only", "d", false, "Only download packages, don't enable")
-	flags.Bool("force", false, "Force install : Overwrite tainted and outdated files")
+	flags.Bool("force", false, "Force install: overwrite tainted and outdated files")
 	flags.Bool("ignore", false, "Ignore errors when installing multiple scenarios")
 
 	return cmdScenariosInstall
@@ -151,10 +151,10 @@ func runScenariosRemove(cmd *cobra.Command, args []string) error {
 
 func NewCmdScenariosRemove() *cobra.Command {
 	cmdScenariosRemove := &cobra.Command{
-		Use:               "remove [config]",
+		Use:               "remove <scenario>...",
 		Short:             "Remove given scenario(s)",
-		Long:              `remove given scenario(s)`,
-		Example:           `cscli scenarios remove crowdsec/xxx crowdsec/xyz`,
+		Long:              `remove one or more scenarios`,
+		Example:           `cscli scenarios remove crowdsecurity/ssh-bf crowdsecurity/http-probing`,
 		Aliases:           []string{"delete"},
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -165,8 +165,8 @@ func NewCmdScenariosRemove() *cobra.Command {
 
 	flags := cmdScenariosRemove.Flags()
 	flags.Bool("purge", false, "Delete source file too")
-	flags.Bool("force", false, "Force remove: Remove tainted and outdated files")
-	flags.Bool("all", false, "Delete all the scenarios")
+	flags.Bool("force", false, "Force remove: remove tainted and outdated files")
+	flags.Bool("all", false, "Remove all the scenarios")
 
 	return cmdScenariosRemove
 }
@@ -202,10 +202,10 @@ func runScenariosUpgrade(cmd *cobra.Command, args []string) error {
 
 func NewCmdScenariosUpgrade() *cobra.Command {
 	cmdScenariosUpgrade := &cobra.Command{
-		Use:               "upgrade [config]",
+		Use:               "upgrade <scenario>...",
 		Short:             "Upgrade given scenario(s)",
-		Long:              `Fetch and Upgrade given scenario(s) from hub`,
-		Example:           `cscli scenarios upgrade crowdsec/xxx crowdsec/xyz`,
+		Long:              `Fetch and upgrade one or more scenarios from the hub`,
+		Example:           `cscli scenarios upgrade crowdsecurity/ssh-bf crowdsecurity/http-probing`,
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cwhub.SCENARIOS, args, toComplete)
@@ -215,7 +215,7 @@ func NewCmdScenariosUpgrade() *cobra.Command {
 
 	flags := cmdScenariosUpgrade.Flags()
 	flags.BoolP("all", "a", false, "Upgrade all the scenarios")
-	flags.Bool("force", false, "Force upgrade : Overwrite tainted and outdated files")
+	flags.Bool("force", false, "Force upgrade: overwrite tainted and outdated files")
 
 	return cmdScenariosUpgrade
 }
@@ -230,17 +230,19 @@ func runScenariosInspect(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	InspectItem(args[0], cwhub.SCENARIOS)
+	for _, name := range args {
+		InspectItem(name, cwhub.SCENARIOS)
+	}
 
 	return nil
 }
 
 func NewCmdScenariosInspect() *cobra.Command {
 	cmdScenariosInspect := &cobra.Command{
-		Use:               "inspect [config]",
-		Short:             "Inspect given scenario",
-		Long:              `Inspect given scenario`,
-		Example:           `cscli scenarios inspect crowdsec/xxx`,
+		Use:               "inspect <scenario>",
+		Short:             "Inspect a scenario",
+		Long:              `Inspect a scenario`,
+		Example:           `cscli scenarios inspect crowdsecurity/ssh-bf crowdsecurity/http-probing`,
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -271,11 +273,12 @@ func runScenariosList(cmd *cobra.Command, args []string) error {
 
 func NewCmdScenariosList() *cobra.Command {
 	cmdScenariosList := &cobra.Command{
-		Use:   "list [config]",
-		Short: "List all scenario(s) or given one",
-		Long:  `List all scenario(s) or given one`,
+		Use:   "list [scenario]...",
+		Short: "List all scenarios, or the specified ones",
+		Long:  `List all scenarios, or the specified ones`,
 		Example: `cscli scenarios list
-cscli scenarios list crowdsecurity/xxx`,
+cscli scenarios list -a
+cscli scenarios list crowdsecurity/ssh-bf crowdsecurity/http-probing`,
 		DisableAutoGenTag: true,
 		RunE:              runScenariosList,
 	}
