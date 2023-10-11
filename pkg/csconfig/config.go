@@ -58,6 +58,21 @@ func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool
 		// this is actually the "merged" yaml
 		return nil, "", fmt.Errorf("%s: %w", configFile, err)
 	}
+
+	if cfg.Prometheus == nil {
+		cfg.Prometheus = &PrometheusCfg{}
+	}
+
+	if cfg.Prometheus.ListenAddr == "" {
+		cfg.Prometheus.ListenAddr = "127.0.0.1"
+		log.Debugf("prometheus.listen_addr is empty, defaulting to %s", cfg.Prometheus.ListenAddr)
+	}
+
+	if cfg.Prometheus.ListenPort == 0 {
+		cfg.Prometheus.ListenPort = 6060
+		log.Debugf("prometheus.listen_port is empty or zero, defaulting to %d", cfg.Prometheus.ListenPort)
+	}
+
 	return &cfg, configData, nil
 }
 
