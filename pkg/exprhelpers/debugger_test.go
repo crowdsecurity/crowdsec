@@ -82,7 +82,6 @@ func TestBaseDbg(t *testing.T) {
 			Name:                "nill deref",
 			Expr:                "Upper('1') == '1' && nillvar.Foo == '42'",
 			Env:                 defaultEnv,
-			LogLevel:            log.TraceLevel,
 			ExpectedFailRuntime: true,
 			ExpectedOutputs: []OpOutput{
 				{Code: "Upper('1')", CodeDepth: 0, Func: true, FuncName: "Upper", Args: []string{"\"1\""}, FuncResults: []string{"\"1\""}, ConditionResult: (*bool)(nil), Finalized: true},
