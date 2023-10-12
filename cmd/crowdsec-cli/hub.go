@@ -45,33 +45,71 @@ cscli hub update # Download list of available configurations from the hub
 	return cmdHub
 }
 
+func runHubList(cmd *cobra.Command, args []string) error {
+	flags := cmd.Flags()
+
+	all, err := flags.GetBool("all")
+	if err != nil {
+		return err
+	}
+
+	if err := require.Hub(csConfig); err != nil {
+		return err
+	}
+
+	// use LocalSync to get warnings about tainted / outdated items
+	warn, _ := cwhub.LocalSync(csConfig.Hub)
+	for _, v := range warn {
+		log.Info(v)
+	}
+
+	cwhub.DisplaySummary()
+
+	ListItems(color.Output, []string{
+		cwhub.COLLECTIONS, cwhub.PARSERS, cwhub.SCENARIOS, cwhub.PARSERS_OVFLW,
+	}, args, true, false, all)
+
+	return nil
+}
+
 func NewHubListCmd() *cobra.Command {
 	var cmdHubList = &cobra.Command{
 		Use:               "list [-a]",
 		Short:             "List installed configs",
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := require.Hub(csConfig); err != nil {
-				return err
-			}
-
-			// use LocalSync to get warnings about tainted / outdated items
-			warn, _ := cwhub.LocalSync(csConfig.Hub)
-			for _, v := range warn {
-				log.Info(v)
-			}
-			cwhub.DisplaySummary()
-			ListItems(color.Output, []string{
-				cwhub.COLLECTIONS, cwhub.PARSERS, cwhub.SCENARIOS, cwhub.PARSERS_OVFLW,
-			}, args, true, false, all)
-
-			return nil
-		},
+		RunE: 	    runHubList,
 	}
-	cmdHubList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
+
+	flags := cmdHubList.Flags()
+	flags.BoolP("all", "a", false, "List disabled items as well")
 
 	return cmdHubList
+}
+
+func runHubUpdate(cmd *cobra.Command, args []string) error {
+	if err := csConfig.LoadHub(); err != nil {
+		return err
+	}
+
+	if err := cwhub.UpdateHubIdx(csConfig.Hub); err != nil {
+		if !errors.Is(err, cwhub.ErrIndexNotFound) {
+			return fmt.Errorf("failed to get Hub index : %w", err)
+		}
+		log.Warnf("Could not find index file for branch '%s', using 'master'", cwhub.HubBranch)
+		cwhub.HubBranch = "master"
+		if err := cwhub.UpdateHubIdx(csConfig.Hub); err != nil {
+			return fmt.Errorf("failed to get Hub index after retry: %w", err)
+		}
+	}
+
+	// use LocalSync to get warnings about tainted / outdated items
+	warn, _ := cwhub.LocalSync(csConfig.Hub)
+	for _, v := range warn {
+		log.Info(v)
+	}
+
+	return nil
 }
 
 func NewHubUpdateCmd() *cobra.Command {
@@ -92,31 +130,34 @@ Fetches the [.index.json](https://github.com/crowdsecurity/hub/blob/master/.inde
 
 			return nil
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := csConfig.LoadHub(); err != nil {
-				return err
-			}
-			if err := cwhub.UpdateHubIdx(csConfig.Hub); err != nil {
-				if !errors.Is(err, cwhub.ErrIndexNotFound) {
-					return fmt.Errorf("failed to get Hub index : %w", err)
-				}
-				log.Warnf("Could not find index file for branch '%s', using 'master'", cwhub.HubBranch)
-				cwhub.HubBranch = "master"
-				if err := cwhub.UpdateHubIdx(csConfig.Hub); err != nil {
-					return fmt.Errorf("failed to get Hub index after retry: %w", err)
-				}
-			}
-			// use LocalSync to get warnings about tainted / outdated items
-			warn, _ := cwhub.LocalSync(csConfig.Hub)
-			for _, v := range warn {
-				log.Info(v)
-			}
-
-			return nil
-		},
+		RunE: runHubUpdate,
 	}
 
 	return cmdHubUpdate
+}
+
+func runHubUpgrade(cmd *cobra.Command, args []string) error {
+	flags := cmd.Flags()
+
+	force, err := flags.GetBool("force")
+	if err != nil {
+		return err
+	}
+
+	if err := require.Hub(csConfig); err != nil {
+		return err
+	}
+
+	log.Infof("Upgrading collections")
+	cwhub.UpgradeConfig(csConfig, cwhub.COLLECTIONS, "", force)
+	log.Infof("Upgrading parsers")
+	cwhub.UpgradeConfig(csConfig, cwhub.PARSERS, "", force)
+	log.Infof("Upgrading scenarios")
+	cwhub.UpgradeConfig(csConfig, cwhub.SCENARIOS, "", force)
+	log.Infof("Upgrading postoverflows")
+	cwhub.UpgradeConfig(csConfig, cwhub.PARSERS_OVFLW, "", force)
+
+	return nil
 }
 
 func NewHubUpgradeCmd() *cobra.Command {
@@ -137,24 +178,11 @@ Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if 
 
 			return nil
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := require.Hub(csConfig); err != nil {
-				return err
-			}
-
-			log.Infof("Upgrading collections")
-			cwhub.UpgradeConfig(csConfig, cwhub.COLLECTIONS, "", forceAction)
-			log.Infof("Upgrading parsers")
-			cwhub.UpgradeConfig(csConfig, cwhub.PARSERS, "", forceAction)
-			log.Infof("Upgrading scenarios")
-			cwhub.UpgradeConfig(csConfig, cwhub.SCENARIOS, "", forceAction)
-			log.Infof("Upgrading postoverflows")
-			cwhub.UpgradeConfig(csConfig, cwhub.PARSERS_OVFLW, "", forceAction)
-
-			return nil
-		},
+		RunE: runHubUpgrade,
 	}
-	cmdHubUpgrade.PersistentFlags().BoolVar(&forceAction, "force", false, "Force upgrade : Overwrite tainted and outdated files")
+
+	flags := cmdHubUpgrade.Flags()
+	flags.Bool("force", false, "Force upgrade : Overwrite tainted and outdated files")
 
 	return cmdHubUpgrade
 }

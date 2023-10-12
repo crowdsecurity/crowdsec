@@ -27,10 +27,7 @@ func silentInstallItem(name string, obtype string) (string, error) {
 	if item == nil {
 		return "", fmt.Errorf("error retrieving item")
 	}
-	if downloadOnly && item.Downloaded && item.UpToDate {
-		return fmt.Sprintf("%s is already downloaded and up-to-date", item.Name), nil
-	}
-	err := cwhub.DownloadLatest(csConfig.Hub, item, forceAction, false)
+	err := cwhub.DownloadLatest(csConfig.Hub, item, false, false)
 	if err != nil {
 		return "", fmt.Errorf("error while downloading %s : %v", item.Name, err)
 	}
@@ -38,9 +35,6 @@ func silentInstallItem(name string, obtype string) (string, error) {
 		return "", err
 	}
 
-	if downloadOnly {
-		return fmt.Sprintf("Downloaded %s to %s", item.Name, csConfig.Cscli.HubDir+"/"+item.RemotePath), nil
-	}
 	err = cwhub.EnableItem(csConfig.Hub, item)
 	if err != nil {
 		return "", fmt.Errorf("error while enabling %s : %v", item.Name, err)
