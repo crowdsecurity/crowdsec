@@ -116,15 +116,15 @@ teardown() {
     rune -1 cscli collections install
     assert_stderr --partial 'requires at least 1 arg(s), only received 0'
 
+    # not in hub
+    rune -1 cscli collections install crowdsecurity/blahblah
+    assert_stderr --partial "can't find 'crowdsecurity/blahblah' in collections"
+
     # simple install
     rune -0 cscli collections install crowdsecurity/sshd
     rune -0 cscli collections inspect crowdsecurity/sshd --no-metrics
     assert_output --partial 'crowdsecurity/sshd'
     assert_output --partial 'installed: true'
-
-    # not in hub
-    rune -1 cscli collections install crowdsecurity/blahblah
-    assert_stderr --partial "can't find 'crowdsecurity/blahblah' in collections"
 
     # autocorrect
     rune -1 cscli collections install crowdsecurity/ssshd
@@ -256,3 +256,62 @@ teardown() {
     assert_output "0"
 }
 
+@test "cscli collections upgrade [collection]..." {
+    rune -1 cscli collections upgrade
+    assert_stderr --partial "specify at least one collection to upgrade or '--all'"
+
+    # XXX: should this return 1 instead of log.Error?
+    rune -0 cscli collections upgrade blahblah/blahblah
+    assert_stderr --partial "can't find 'blahblah/blahblah' in collections"
+
+    # XXX: same message if the item exists but is not installed, this is confusing
+    rune -0 cscli collections upgrade crowdsecurity/sshd
+    assert_stderr --partial "can't find 'crowdsecurity/sshd' in collections"
+
+    # hash of an empty file
+    sha256_empty="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+    # add version 0.0 to the hub
+    new_hub=$(jq --arg DIGEST "$sha256_empty" <"$HUB_DIR/.index.json" '. * {collections:{"crowdsecurity/sshd":{"versions":{"0.0":{"digest":$DIGEST, "deprecated": false}}}}}')
+    echo "$new_hub" >"$HUB_DIR/.index.json"
+ 
+    rune -0 cscli collections install crowdsecurity/sshd
+
+    # bring the file to v0.0
+    truncate -s 0 "$CONFIG_DIR/collections/sshd.yaml"
+    rune -0 cscli collections inspect crowdsecurity/sshd -o json
+    rune -0 jq -e '.local_version=="0.0"' <(output)
+
+    # upgrade
+    rune -0 cscli collections upgrade crowdsecurity/sshd
+    rune -0 cscli collections inspect crowdsecurity/sshd -o json
+    rune -0 jq -e '.local_version==.version' <(output)
+
+    # taint
+    echo "dirty" >"$CONFIG_DIR/collections/sshd.yaml"
+    # XXX: should return error
+    rune -0 cscli collections upgrade crowdsecurity/sshd
+    assert_stderr --partial "crowdsecurity/sshd is tainted, --force to overwrite"
+    rune -0 cscli collections inspect crowdsecurity/sshd -o json
+    rune -0 jq -e '.local_version=="?"' <(output)
+
+    # force upgrade with taint
+    rune -0 cscli collections upgrade crowdsecurity/sshd --force
+    rune -0 cscli collections inspect crowdsecurity/sshd -o json
+    rune -0 jq -e '.local_version==.version' <(output)
+
+    # multiple items
+    rune -0 cscli collections install crowdsecurity/smb
+    echo "dirty" >"$CONFIG_DIR/collections/sshd.yaml"
+    echo "dirty" >"$CONFIG_DIR/collections/smb.yaml"
+    rune -0 cscli collections list -o json
+    rune -0 jq -e '[.collections[].local_version]==["?","?"]' <(output)
+    rune -0 cscli collections upgrade crowdsecurity/sshd crowdsecurity/smb
+    rune -0 jq -e '[.collections[].local_version]==[.collections[].version]' <(output)
+
+    # upgrade all
+    echo "dirty" >"$CONFIG_DIR/collections/sshd.yaml"
+    echo "dirty" >"$CONFIG_DIR/collections/smb.yaml"
+    rune -0 cscli collections upgrade --all
+    rune -0 jq -e '[.collections[].local_version]==[.collections[].version]' <(output)
+}

@@ -116,15 +116,15 @@ teardown() {
     rune -1 cscli parsers install
     assert_stderr --partial 'requires at least 1 arg(s), only received 0'
 
+    # not in hub
+    rune -1 cscli parsers install crowdsecurity/blahblah
+    assert_stderr --partial "can't find 'crowdsecurity/blahblah' in parsers"
+
     # simple install
     rune -0 cscli parsers install crowdsecurity/whitelists
     rune -0 cscli parsers inspect crowdsecurity/whitelists --no-metrics
     assert_output --partial 'crowdsecurity/whitelists'
     assert_output --partial 'installed: true'
-
-    # not in hub
-    rune -1 cscli parsers install crowdsecurity/blahblah
-    assert_stderr --partial "can't find 'crowdsecurity/blahblah' in parsers"
 
     # autocorrect
     rune -1 cscli parsers install crowdsecurity/sshd-logz
@@ -152,6 +152,9 @@ teardown() {
     rune -0 cscli parsers install crowdsecurity/whitelists
     assert_file_exists "$CONFIG_DIR/parsers/s02-enrich/whitelists.yaml"
 }
+
+# XXX: test install with --force
+# XXX: test install with --ignore
 
 @test "cscli parsers inspect [parser]..." {
     rune -1 cscli parsers inspect

@@ -116,15 +116,15 @@ teardown() {
     rune -1 cscli postoverflows install
     assert_stderr --partial 'requires at least 1 arg(s), only received 0'
 
+    # not in hub
+    rune -1 cscli postoverflows install crowdsecurity/blahblah
+    assert_stderr --partial "can't find 'crowdsecurity/blahblah' in postoverflows"
+
     # simple install
     rune -0 cscli postoverflows install crowdsecurity/rdns
     rune -0 cscli postoverflows inspect crowdsecurity/rdns --no-metrics
     assert_output --partial 'crowdsecurity/rdns'
     assert_output --partial 'installed: true'
-
-    # not in hub
-    rune -1 cscli postoverflows install crowdsecurity/blahblah
-    assert_stderr --partial "can't find 'crowdsecurity/blahblah' in postoverflows"
 
     # autocorrect
     rune -1 cscli postoverflows install crowdsecurity/rdnf
@@ -258,3 +258,62 @@ teardown() {
     assert_output "0"
 }
 
+@test "cscli postoverflows upgrade [postoverflow]..." {
+    rune -1 cscli postoverflows upgrade
+    assert_stderr --partial "specify at least one postoverflow to upgrade or '--all'"
+
+    # XXX: should this return 1 instead of log.Error?
+    rune -0 cscli postoverflows upgrade blahblah/blahblah
+    assert_stderr --partial "can't find 'blahblah/blahblah' in postoverflows"
+
+    # XXX: same message if the item exists but is not installed, this is confusing
+    rune -0 cscli postoverflows upgrade crowdsecurity/rdns
+    assert_stderr --partial "can't find 'crowdsecurity/rdns' in postoverflows"
+
+    # hash of an empty file
+    sha256_empty="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+    # add version 0.0 to the hub
+    new_hub=$(jq --arg DIGEST "$sha256_empty" <"$HUB_DIR/.index.json" '. * {postoverflows:{"crowdsecurity/rdns":{"versions":{"0.0":{"digest":$DIGEST, "deprecated": false}}}}}')
+    echo "$new_hub" >"$HUB_DIR/.index.json"
+ 
+    rune -0 cscli postoverflows install crowdsecurity/rdns
+
+    # bring the file to v0.0
+    truncate -s 0 "$CONFIG_DIR/postoverflows/s00-enrich/rdns.yaml"
+    rune -0 cscli postoverflows inspect crowdsecurity/rdns -o json
+    rune -0 jq -e '.local_version=="0.0"' <(output)
+
+    # upgrade
+    rune -0 cscli postoverflows upgrade crowdsecurity/rdns
+    rune -0 cscli postoverflows inspect crowdsecurity/rdns -o json
+    rune -0 jq -e '.local_version==.version' <(output)
+
+    # taint
+    echo "dirty" >"$CONFIG_DIR/postoverflows/s00-enrich/rdns.yaml"
+    # XXX: should return error
+    rune -0 cscli postoverflows upgrade crowdsecurity/rdns
+    assert_stderr --partial "crowdsecurity/rdns is tainted, --force to overwrite"
+    rune -0 cscli postoverflows inspect crowdsecurity/rdns -o json
+    rune -0 jq -e '.local_version=="?"' <(output)
+
+    # force upgrade with taint
+    rune -0 cscli postoverflows upgrade crowdsecurity/rdns --force
+    rune -0 cscli postoverflows inspect crowdsecurity/rdns -o json
+    rune -0 jq -e '.local_version==.version' <(output)
+
+    # multiple items
+    rune -0 cscli postoverflows install crowdsecurity/cdn-whitelist
+    echo "dirty" >"$CONFIG_DIR/postoverflows/s00-enrich/rdns.yaml"
+    echo "dirty" >"$CONFIG_DIR/postoverflows/s01-whitelist/cdn-whitelist.yaml"
+    rune -0 cscli postoverflows list -o json
+    rune -0 jq -e '[.postoverflows[].local_version]==["?","?"]' <(output)
+    rune -0 cscli postoverflows upgrade crowdsecurity/rdns crowdsecurity/cdn-whitelist
+    rune -0 jq -e '[.postoverflows[].local_version]==[.postoverflows[].version]' <(output)
+
+    # upgrade all
+    echo "dirty" >"$CONFIG_DIR/postoverflows/s00-enrich/rdns.yaml"
+    echo "dirty" >"$CONFIG_DIR/postoverflows/s01-whitelist/cdn-whitelist.yaml"
+    rune -0 cscli postoverflows upgrade --all
+    rune -0 jq -e '[.postoverflows[].local_version]==[.postoverflows[].version]' <(output)
+}

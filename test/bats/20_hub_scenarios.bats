@@ -116,15 +116,15 @@ teardown() {
     rune -1 cscli scenarios install
     assert_stderr --partial 'requires at least 1 arg(s), only received 0'
 
+    # not in hub
+    rune -1 cscli scenarios install crowdsecurity/blahblah
+    assert_stderr --partial "can't find 'crowdsecurity/blahblah' in scenarios"
+
     # simple install
     rune -0 cscli scenarios install crowdsecurity/ssh-bf
     rune -0 cscli scenarios inspect crowdsecurity/ssh-bf --no-metrics
     assert_output --partial 'crowdsecurity/ssh-bf'
     assert_output --partial 'installed: true'
-
-    # not in hub
-    rune -1 cscli scenarios install crowdsecurity/blahblah
-    assert_stderr --partial "can't find 'crowdsecurity/blahblah' in scenarios"
 
     # autocorrect
     rune -1 cscli scenarios install crowdsecurity/ssh-tf
@@ -257,3 +257,62 @@ teardown() {
     assert_output "0"
 }
 
+@test "cscli scenarios upgrade [scenario]..." {
+    rune -1 cscli scenarios upgrade
+    assert_stderr --partial "specify at least one scenario to upgrade or '--all'"
+
+    # XXX: should this return 1 instead of log.Error?
+    rune -0 cscli scenarios upgrade blahblah/blahblah
+    assert_stderr --partial "can't find 'blahblah/blahblah' in scenarios"
+
+    # XXX: same message if the item exists but is not installed, this is confusing
+    rune -0 cscli scenarios upgrade crowdsecurity/ssh-bf
+    assert_stderr --partial "can't find 'crowdsecurity/ssh-bf' in scenarios"
+
+    # hash of an empty file
+    sha256_empty="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+    # add version 0.0 to the hub
+    new_hub=$(jq --arg DIGEST "$sha256_empty" <"$HUB_DIR/.index.json" '. * {scenarios:{"crowdsecurity/ssh-bf":{"versions":{"0.0":{"digest":$DIGEST, "deprecated": false}}}}}')
+    echo "$new_hub" >"$HUB_DIR/.index.json"
+ 
+    rune -0 cscli scenarios install crowdsecurity/ssh-bf
+
+    # bring the file to v0.0
+    truncate -s 0 "$CONFIG_DIR/scenarios/ssh-bf.yaml"
+    rune -0 cscli scenarios inspect crowdsecurity/ssh-bf -o json
+    rune -0 jq -e '.local_version=="0.0"' <(output)
+
+    # upgrade
+    rune -0 cscli scenarios upgrade crowdsecurity/ssh-bf
+    rune -0 cscli scenarios inspect crowdsecurity/ssh-bf -o json
+    rune -0 jq -e '.local_version==.version' <(output)
+
+    # taint
+    echo "dirty" >"$CONFIG_DIR/scenarios/ssh-bf.yaml"
+    # XXX: should return error
+    rune -0 cscli scenarios upgrade crowdsecurity/ssh-bf
+    assert_stderr --partial "crowdsecurity/ssh-bf is tainted, --force to overwrite"
+    rune -0 cscli scenarios inspect crowdsecurity/ssh-bf -o json
+    rune -0 jq -e '.local_version=="?"' <(output)
+
+    # force upgrade with taint
+    rune -0 cscli scenarios upgrade crowdsecurity/ssh-bf --force
+    rune -0 cscli scenarios inspect crowdsecurity/ssh-bf -o json
+    rune -0 jq -e '.local_version==.version' <(output)
+
+    # multiple items
+    rune -0 cscli scenarios install crowdsecurity/telnet-bf
+    echo "dirty" >"$CONFIG_DIR/scenarios/ssh-bf.yaml"
+    echo "dirty" >"$CONFIG_DIR/scenarios/telnet-bf.yaml"
+    rune -0 cscli scenarios list -o json
+    rune -0 jq -e '[.scenarios[].local_version]==["?","?"]' <(output)
+    rune -0 cscli scenarios upgrade crowdsecurity/ssh-bf crowdsecurity/telnet-bf
+    rune -0 jq -e '[.scenarios[].local_version]==[.scenarios[].version]' <(output)
+
+    # upgrade all
+    echo "dirty" >"$CONFIG_DIR/scenarios/ssh-bf.yaml"
+    echo "dirty" >"$CONFIG_DIR/scenarios/telnet-bf.yaml"
+    rune -0 cscli scenarios upgrade --all
+    rune -0 jq -e '[.scenarios[].local_version]==[.scenarios[].version]' <(output)
+}
