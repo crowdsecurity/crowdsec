@@ -98,7 +98,7 @@ func (w Walker) getItemInfo(path string) (itemFileInfo, bool, error) {
 		//.../hub/scenarios/crowdsec/ssh_bf.yaml
 		//.../hub/profiles/crowdsec/linux.yaml
 		if len(subs) < 4 {
-			log.Fatalf("path is too short : %s (%d)", path, len(subs))
+			return itemFileInfo{}, false, fmt.Errorf("path is too short : %s (%d)", path, len(subs))
 		}
 
 		ret.fname = subs[len(subs)-1]
@@ -108,7 +108,7 @@ func (w Walker) getItemInfo(path string) (itemFileInfo, bool, error) {
 	} else if strings.HasPrefix(path, w.installdir) { // we're in install /etc/crowdsec/<type>/...
 		log.Tracef("in install dir")
 		if len(subs) < 3 {
-			log.Fatalf("path is too short : %s (%d)", path, len(subs))
+			return itemFileInfo{}, false, fmt.Errorf("path is too short: %s (%d)", path, len(subs))
 		}
 		///.../config/parser/stage/file.yaml
 		///.../config/postoverflow/stage/file.yaml
@@ -352,7 +352,7 @@ func CollecDepsCheck(v *Item) error {
 		for _, subName := range itemSlice {
 			subItem, ok := hubIdx[sliceType][subName]
 			if !ok {
-				log.Fatalf("Referred %s %s in collection %s doesn't exist.", sliceType, subName, v.Name)
+				return fmt.Errorf("referred %s %s in collection %s doesn't exist", sliceType, subName, v.Name)
 			}
 
 			log.Tracef("check %s installed:%t", subItem.Name, subItem.Installed)

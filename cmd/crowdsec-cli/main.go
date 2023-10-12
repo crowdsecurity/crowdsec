@@ -29,11 +29,6 @@ var dbClient *database.Client
 var OutputFormat string
 var OutputColor string
 
-var downloadOnly bool
-var forceAction bool
-var purge bool
-var all bool
-
 var prometheusURL string
 
 var mergedConfig string
