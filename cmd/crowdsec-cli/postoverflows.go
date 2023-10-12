@@ -283,8 +283,8 @@ func runPostOverflowsList(cmd *cobra.Command, args []string) error {
 func NewPostOverflowsListCmd() *cobra.Command {
 	cmdPostOverflowsList := &cobra.Command{
 		Use:   "list [postoverflow]...",
-		Short: "List all postoverflows, or the specified one",
-		Long:  `List all postoverflows, or the specified one`,
+		Short: "List postoverflows",
+		Long:  `List of installed/available/specified postoverflows`,
 		Example: `cscli postoverflows list
 cscli postoverflows list -a
 cscli postoverflows list crowdsecurity/cdn-whitelist crowdsecurity/rdns`,

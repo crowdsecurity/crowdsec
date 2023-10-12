@@ -282,8 +282,8 @@ func runParsersList(cmd *cobra.Command, args []string) error {
 func NewParsersListCmd() *cobra.Command {
 	cmdParsersList := &cobra.Command{
 		Use:   "list [parser... | -a]",
-		Short: "List all parsers, or the specified ones",
-		Long:  `List all parsers, or the specified ones`,
+		Short: "List parsers",
+		Long:  `List of installed/available/specified parsers`,
 		Example: `cscli parsers list
 cscli parsers list -a
 cscli parsers list crowdsecurity/caddy-logs crowdsecurity/sshd-logs`,

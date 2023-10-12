@@ -15,17 +15,14 @@ import (
 func NewHubCmd() *cobra.Command {
 	var cmdHub = &cobra.Command{
 		Use:   "hub [action]",
-		Short: "Manage Hub",
-		Long: `
-Hub management
+		Short: "Manage hub index",
+		Long: `Hub management
 
 List/update parsers/scenarios/postoverflows/collections from [Crowdsec Hub](https://hub.crowdsec.net).
-The Hub is managed by cscli, to get the latest hub files from [Crowdsec Hub](https://hub.crowdsec.net), you need to update.
-		`,
-		Example: `
-cscli hub list   # List all installed configurations
-cscli hub update # Download list of available configurations from the hub
-		`,
+The Hub is managed by cscli, to get the latest hub files from [Crowdsec Hub](https://hub.crowdsec.net), you need to update.`,
+		Example: `cscli hub list
+cscli hub update
+cscli hub upgrade`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -75,7 +72,7 @@ func runHubList(cmd *cobra.Command, args []string) error {
 func NewHubListCmd() *cobra.Command {
 	var cmdHubList = &cobra.Command{
 		Use:               "list [-a]",
-		Short:             "List installed configs",
+		Short:             "List all installed configurations",
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		RunE: 	    runHubList,
@@ -115,7 +112,7 @@ func runHubUpdate(cmd *cobra.Command, args []string) error {
 func NewHubUpdateCmd() *cobra.Command {
 	var cmdHubUpdate = &cobra.Command{
 		Use:   "update",
-		Short: "Fetch available configs from hub",
+		Short: "Download the latest index (catalog of available configurations)",
 		Long: `
 Fetches the [.index.json](https://github.com/crowdsecurity/hub/blob/master/.index.json) file from hub, containing the list of available configs.
 `,
@@ -163,7 +160,7 @@ func runHubUpgrade(cmd *cobra.Command, args []string) error {
 func NewHubUpgradeCmd() *cobra.Command {
 	var cmdHubUpgrade = &cobra.Command{
 		Use:   "upgrade",
-		Short: "Upgrade all configs installed from hub",
+		Short: "Upgrade all configurations to their latest version",
 		Long: `
 Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if you want the latest versions available.
 `,
@@ -182,7 +179,7 @@ Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if 
 	}
 
 	flags := cmdHubUpgrade.Flags()
-	flags.Bool("force", false, "Force upgrade : Overwrite tainted and outdated files")
+	flags.Bool("force", false, "Force upgrade: overwrite tainted and outdated files")
 
 	return cmdHubUpgrade
 }

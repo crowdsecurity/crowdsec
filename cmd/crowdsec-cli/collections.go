@@ -295,8 +295,8 @@ func runCollectionsList(cmd *cobra.Command, args []string) error {
 func NewCollectionsListCmd() *cobra.Command {
 	cmdCollectionsList := &cobra.Command{
 		Use:   "list [collection... | -a]",
-		Short: "List all collections, or the specified ones",
-		Long:  `List all collections, or the specified ones`,
+		Short: "List collections",
+		Long:  `List of installed/available/specified collections`,
 		Example: `cscli collections list
 cscli collections list -a
 cscli collections list crowdsecurity/http-cve crowdsecurity/iptables`,

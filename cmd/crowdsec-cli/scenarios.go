@@ -282,8 +282,8 @@ func runScenariosList(cmd *cobra.Command, args []string) error {
 func NewCmdScenariosList() *cobra.Command {
 	cmdScenariosList := &cobra.Command{
 		Use:   "list [scenario]...",
-		Short: "List all scenarios, or the specified ones",
-		Long:  `List all scenarios, or the specified ones`,
+		Short: "List scenarios",
+		Long:  `List of installed/available/specified scenarios`,
 		Example: `cscli scenarios list
 cscli scenarios list -a
 cscli scenarios list crowdsecurity/ssh-bf crowdsecurity/http-probing`,
