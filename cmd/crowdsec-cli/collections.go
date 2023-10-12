@@ -235,11 +235,13 @@ func NewCollectionsUpgradeCmd() *cobra.Command {
 func runCollectionsInspect(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
-	var err error
-	// XXX: set global
-	prometheusURL, err = flags.GetString("url")
+	url, err := flags.GetString("url")
 	if err != nil {
 		return err
+	}
+
+	if url != "" {
+		csConfig.Cscli.PrometheusUrl = url
 	}
 
 	for _, name := range args {

@@ -12,7 +12,7 @@ type PrometheusCfg struct {
 func (c *Config) LoadPrometheus() error {
 	if c.Cscli != nil && c.Cscli.PrometheusUrl == "" && c.Prometheus != nil {
 		if c.Prometheus.ListenAddr != "" && c.Prometheus.ListenPort != 0 {
-			c.Cscli.PrometheusUrl = fmt.Sprintf("http://%s:%d", c.Prometheus.ListenAddr, c.Prometheus.ListenPort)
+			c.Cscli.PrometheusUrl = fmt.Sprintf("http://%s:%d/metrics", c.Prometheus.ListenAddr, c.Prometheus.ListenPort)
 		}
 	}
 	return nil
