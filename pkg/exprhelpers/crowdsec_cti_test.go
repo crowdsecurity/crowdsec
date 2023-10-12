@@ -106,6 +106,16 @@ func smokeHandler(req *http.Request) *http.Response {
 	}
 }
 
+func TestNillClient(t *testing.T) {
+	defer ShutdownCrowdsecCTI()
+	if err := InitCrowdsecCTI(ptr.Of(""), nil, nil, nil); err != cticlient.ErrDisabled {
+		t.Fatalf("failed to init CTI : %s", err)
+	}
+	item, err := CrowdsecCTI("1.2.3.4")
+	assert.Equal(t, err, cticlient.ErrDisabled)
+	assert.Equal(t, item, &cticlient.SmokeItem{})
+}
+
 func TestInvalidAuth(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
 	if err := InitCrowdsecCTI(ptr.Of("asdasd"), nil, nil, nil); err != nil {
