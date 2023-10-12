@@ -26,7 +26,7 @@ func TestLoadPrometheus(t *testing.T) {
 				},
 				Cscli: &CscliCfg{},
 			},
-			expectedURL: "http://127.0.0.1:6060",
+			expectedURL: "http://127.0.0.1:6060/metrics",
 		},
 	}
 
