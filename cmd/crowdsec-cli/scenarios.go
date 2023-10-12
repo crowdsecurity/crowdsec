@@ -185,7 +185,9 @@ func runScenariosUpgrade(cmd *cobra.Command, args []string) error {
 	}
 
 	if all {
-		cwhub.UpgradeConfig(csConfig, cwhub.SCENARIOS, "", force)
+		if err := cwhub.UpgradeConfig(csConfig, cwhub.SCENARIOS, "", force); err != nil {
+			return err
+		}
 		return nil
 	}
 
@@ -194,7 +196,9 @@ func runScenariosUpgrade(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, name := range args {
-		cwhub.UpgradeConfig(csConfig, cwhub.SCENARIOS, name, force)
+		if err := cwhub.UpgradeConfig(csConfig, cwhub.SCENARIOS, name, force); err != nil {
+			return err
+		}
 	}
 
 	return nil

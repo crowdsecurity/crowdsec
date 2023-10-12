@@ -185,7 +185,9 @@ func runPostOverflowUpgrade(cmd *cobra.Command, args []string) error {
 	}
 
 	if all {
-		cwhub.UpgradeConfig(csConfig, cwhub.PARSERS_OVFLW, "", force)
+		if err := cwhub.UpgradeConfig(csConfig, cwhub.PARSERS_OVFLW, "", force); err != nil {
+			return err
+		}
 		return nil
 	}
 
@@ -194,7 +196,9 @@ func runPostOverflowUpgrade(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, name := range args {
-		cwhub.UpgradeConfig(csConfig, cwhub.PARSERS_OVFLW, name, force)
+		if err := cwhub.UpgradeConfig(csConfig, cwhub.PARSERS_OVFLW, name, force); err != nil {
+			return err
+		}
 	}
 
 	return nil

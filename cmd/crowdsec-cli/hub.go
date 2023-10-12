@@ -146,13 +146,24 @@ func runHubUpgrade(cmd *cobra.Command, args []string) error {
 	}
 
 	log.Infof("Upgrading collections")
-	cwhub.UpgradeConfig(csConfig, cwhub.COLLECTIONS, "", force)
+	if err := cwhub.UpgradeConfig(csConfig, cwhub.COLLECTIONS, "", force); err != nil {
+		return err
+	}
+
 	log.Infof("Upgrading parsers")
-	cwhub.UpgradeConfig(csConfig, cwhub.PARSERS, "", force)
+	if err := cwhub.UpgradeConfig(csConfig, cwhub.PARSERS, "", force); err != nil {
+		return err
+	}
+
 	log.Infof("Upgrading scenarios")
-	cwhub.UpgradeConfig(csConfig, cwhub.SCENARIOS, "", force)
+	if err := cwhub.UpgradeConfig(csConfig, cwhub.SCENARIOS, "", force); err != nil {
+		return err
+	}
+
 	log.Infof("Upgrading postoverflows")
-	cwhub.UpgradeConfig(csConfig, cwhub.PARSERS_OVFLW, "", force)
+	if err := cwhub.UpgradeConfig(csConfig, cwhub.PARSERS_OVFLW, "", force); err != nil {
+		return err
+	}
 
 	return nil
 }

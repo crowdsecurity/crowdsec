@@ -198,7 +198,9 @@ func runCollectionsUpgrade(cmd *cobra.Command, args []string) error {
 	}
 
 	if all {
-		cwhub.UpgradeConfig(csConfig, cwhub.COLLECTIONS, "", force)
+		if err := cwhub.UpgradeConfig(csConfig, cwhub.COLLECTIONS, "", force); err != nil {
+			return err
+		}
 		return nil
 	}
 
@@ -207,7 +209,9 @@ func runCollectionsUpgrade(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, name := range args {
-		cwhub.UpgradeConfig(csConfig, cwhub.COLLECTIONS, name, force)
+		if err := cwhub.UpgradeConfig(csConfig, cwhub.COLLECTIONS, name, force); err != nil {
+			return err
+		}
 	}
 
 	return nil
