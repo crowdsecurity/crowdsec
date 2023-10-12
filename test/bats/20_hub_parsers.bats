@@ -260,7 +260,66 @@ teardown() {
     assert_output "0"
 }
 
-#@test "cscli parsers upgrade [parser]..." {
+@test "cscli parsers upgrade [parser]..." {
+    rune -1 cscli parsers upgrade
+    assert_stderr --partial "specify at least one parser to upgrade or '--all'"
+
+    # XXX: should this return 1 instead of log.Error?
+    rune -0 cscli parsers upgrade blahblah/blahblah
+    assert_stderr --partial "can't find 'blahblah/blahblah' in parsers"
+
+    # XXX: same message if the item exists but is not installed, this is confusing
+    rune -0 cscli parsers upgrade crowdsecurity/whitelists
+    assert_stderr --partial "can't find 'crowdsecurity/whitelists' in parsers"
+
+    # hash of an empty file
+    sha256_empty="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+    # add version 0.0 to the hub
+    new_hub=$(jq --arg DIGEST "$sha256_empty" <"$HUB_DIR/.index.json" '. * {parsers:{"crowdsecurity/whitelists":{"versions":{"0.0":{"digest":$DIGEST, "deprecated": false}}}}}')
+    echo "$new_hub" >"$HUB_DIR/.index.json"
+ 
+    rune -0 cscli parsers install crowdsecurity/whitelists
+
+    # bring the file to v0.0
+    truncate -s 0 "$CONFIG_DIR/parsers/s02-enrich/whitelists.yaml"
+    rune -0 cscli parsers inspect crowdsecurity/whitelists -o json
+    rune -0 jq -e '.local_version=="0.0"' <(output)
+
+    # upgrade
+    rune -0 cscli parsers upgrade crowdsecurity/whitelists
+    rune -0 cscli parsers inspect crowdsecurity/whitelists -o json
+    rune -0 jq -e '.local_version==.version' <(output)
+
+    # taint
+    echo "dirty" >"$CONFIG_DIR/parsers/s02-enrich/whitelists.yaml"
+    # XXX: should return error
+    rune -0 cscli parsers upgrade crowdsecurity/whitelists
+    assert_stderr --partial "crowdsecurity/whitelists is tainted, --force to overwrite"
+    rune -0 cscli parsers inspect crowdsecurity/whitelists -o json
+    rune -0 jq -e '.local_version=="?"' <(output)
+
+    # force upgrade with taint
+    rune -0 cscli parsers upgrade crowdsecurity/whitelists --force
+    rune -0 cscli parsers inspect crowdsecurity/whitelists -o json
+    rune -0 jq -e '.local_version==.version' <(output)
+
+    # multiple items
+    rune -0 cscli parsers install crowdsecurity/windows-auth
+    echo "dirty" >"$CONFIG_DIR/parsers/s02-enrich/whitelists.yaml"
+    echo "dirty" >"$CONFIG_DIR/parsers/s01-parse/windows-auth.yaml"
+    rune -0 cscli parsers list -o json
+    rune -0 jq -e '[.parsers[].local_version]==["?","?"]' <(output)
+    rune -0 cscli parsers upgrade crowdsecurity/whitelists crowdsecurity/windows-auth
+    rune -0 jq -e '[.parsers[].local_version]==[.parsers[].version]' <(output)
+
+    # upgrade all
+    echo "dirty" >"$CONFIG_DIR/parsers/s02-enrich/whitelists.yaml"
+    echo "dirty" >"$CONFIG_DIR/parsers/s01-parse/windows-auth.yaml"
+    rune -0 cscli parsers upgrade --all
+    rune -0 jq -e '[.parsers[].local_version]==[.parsers[].version]' <(output)
+}
+
 
 
 #@test "must use --force to remove a collection that belongs to another, which becomes tainted" {

@@ -210,7 +210,7 @@ func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, forc
 	if !found && name == "" {
 		log.Infof("No %s installed, nothing to upgrade", itemType)
 	} else if !found {
-		log.Errorf("Item '%s' not found in hub", name)
+		log.Errorf("can't find '%s' in %s", name, itemType)
 	} else if updated == 0 && found {
 		if name == "" {
 			log.Infof("All %s are already up-to-date", itemType)
