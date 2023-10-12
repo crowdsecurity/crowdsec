@@ -41,9 +41,9 @@ func printHelp(cmd *cobra.Command) {
 func Suggest(itemType string, baseItem string, suggestItem string, score int, ignoreErr bool) {
 	errMsg := ""
 	if score < MaxDistance {
-		errMsg = fmt.Sprintf("unable to find %s '%s', did you mean %s ?", itemType, baseItem, suggestItem)
+		errMsg = fmt.Sprintf("can't find '%s' in %s, did you mean %s?", baseItem, itemType, suggestItem)
 	} else {
-		errMsg = fmt.Sprintf("unable to find %s '%s'", itemType, baseItem)
+		errMsg = fmt.Sprintf("can't find '%s' in %s", baseItem, itemType)
 	}
 	if ignoreErr {
 		log.Error(errMsg)
@@ -185,10 +185,10 @@ func ListItems(out io.Writer, itemTypes []string, args []string, showType bool, 
 	}
 }
 
-func InspectItem(name string, objecitemType string, noMetrics bool) error {
-	hubItem := cwhub.GetItem(objecitemType, name)
+func InspectItem(name string, itemType string, noMetrics bool) error {
+	hubItem := cwhub.GetItem(itemType, name)
 	if hubItem == nil {
-		return fmt.Errorf("unable to retrieve item '%s'", name)
+		return fmt.Errorf("can't find '%s' in %s", name, itemType)
 	}
 
 	var (
@@ -224,7 +224,7 @@ func InspectItem(name string, objecitemType string, noMetrics bool) error {
 		log.Debugf("No prometheus URL provided using: %s", prometheusURL)
 	}
 
-	fmt.Printf("\nCurrent metrics : \n")
+	fmt.Printf("\nCurrent metrics: \n")
 	ShowMetrics(hubItem)
 
 	return nil

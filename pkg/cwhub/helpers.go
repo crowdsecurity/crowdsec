@@ -107,7 +107,7 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 	if name != "" {
 		item := GetItem(itemType, name)
 		if item == nil {
-			return fmt.Errorf("unable to retrieve: %s", name)
+			return fmt.Errorf("can't find '%s' in %s", name, itemType)
 		}
 
 		err := DisableItem(csConfig.Hub, item, purge, forceAction)

@@ -143,7 +143,8 @@ func runCollectionsRemove(cmd *cobra.Command, args []string) error {
 		if !force {
 			item := cwhub.GetItem(cwhub.COLLECTIONS, name)
 			if item == nil {
-				return fmt.Errorf("unable to retrieve: %s", name)
+				// XXX: this should be in GetItem?
+				return fmt.Errorf("can't find '%s' in %s", name, cwhub.COLLECTIONS)
 			}
 			if len(item.BelongsToCollections) > 0 {
 				log.Warningf("%s belongs to other collections:\n%s\n", name, item.BelongsToCollections)
