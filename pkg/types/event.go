@@ -76,12 +76,12 @@ func (e *Event) GetMeta(key string) string {
 
 func (e *Event) ParseIPSources() []net.IP {
 	var srcs []net.IP
-	if e.Type == LOG {
+	switch e.Type {
+	case LOG:
 		if _, ok := e.Meta["source_ip"]; ok {
 			srcs = append(srcs, net.ParseIP(e.Meta["source_ip"]))
 		}
-	}
-	if e.Type == OVFLW {
+	case OVFLW:
 		for k := range e.Overflow.Sources {
 			srcs = append(srcs, net.ParseIP(k))
 		}
