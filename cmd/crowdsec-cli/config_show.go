@@ -58,7 +58,6 @@ var configShowTemplate = `Global:
 
 {{- if .ConfigPaths }}
    - Configuration Folder   : {{.ConfigPaths.ConfigDir}}
-   - Configuration Folder   : {{.ConfigPaths.ConfigDir}}
    - Data Folder            : {{.ConfigPaths.DataDir}}
    - Hub Folder             : {{.ConfigPaths.HubDir}}
    - Simulation File        : {{.ConfigPaths.SimulationFilePath}}
@@ -71,7 +70,7 @@ var configShowTemplate = `Global:
 {{- end }}
 
 {{- if .Crowdsec }}
-Crowdsec:
+Crowdsec{{if and .Crowdsec.Enable (not (ValueBool .Crowdsec.Enable))}} (disabled){{end}}:
   - Acquisition File        : {{.Crowdsec.AcquisitionFilePath}}
   - Parsers routines        : {{.Crowdsec.ParserRoutinesCount}}
 {{- if .Crowdsec.AcquisitionDirPath }}
@@ -97,7 +96,7 @@ API Client:
 {{- end }}
 
 {{- if .API.Server }}
-Local API Server:
+Local API Server{{if and .API.Server.Enable (not (ValueBool .API.Server.Enable))}} (disabled){{end}}:
   - Listen URL              : {{.API.Server.ListenURI}}
   - Profile File            : {{.API.Server.ProfilesPath}}
 
@@ -164,6 +163,12 @@ Central API:
       - User                : {{.DbConfig.User}}
       - DB Name             : {{.DbConfig.DbName}}
 {{- end }}
+{{- if .DbConfig.MaxOpenConns }}
+      - Max Open Conns      : {{.DbConfig.MaxOpenConns}}
+{{- end }}
+{{- if ne .DbConfig.DecisionBulkSize 0 }}
+      - Decision Bulk Size  : {{.DbConfig.DecisionBulkSize}}
+{{- end }}
 {{- if .DbConfig.Flush }}
 {{- if .DbConfig.Flush.MaxAge }}
       - Flush age           : {{.DbConfig.Flush.MaxAge}}
@@ -194,7 +199,15 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 
 	switch csConfig.Cscli.Output {
 	case "human":
-		tmp, err := template.New("config").Parse(configShowTemplate)
+		// The tests on .Enable look funny because the option has a true default which has
+		// not been set yet (we don't really load the LAPI) and go templates don't dereference
+		// pointers in boolean tests. Prefix notation is the cherry on top.
+		funcs := template.FuncMap{
+			// can't use generics here
+			"ValueBool": func(b *bool) bool { return b!=nil && *b },
+		}
+
+		tmp, err := template.New("config").Funcs(funcs).Parse(configShowTemplate)
 		if err != nil {
 			return err
 		}

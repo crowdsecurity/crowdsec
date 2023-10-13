@@ -3,7 +3,7 @@ package parser
 import (
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -46,7 +46,7 @@ func Init(c map[string]interface{}) (*UnixParserCtx, error) {
 		if strings.Contains(f.Name(), ".") {
 			continue
 		}
-		if err := r.Grok.AddFromFile(path.Join(c["patterns"].(string), f.Name())); err != nil {
+		if err := r.Grok.AddFromFile(filepath.Join(c["patterns"].(string), f.Name())); err != nil {
 			log.Errorf("failed to load pattern %s : %v", f.Name(), err)
 			return nil, err
 		}
@@ -97,7 +97,7 @@ func NewParsers() *Parsers {
 func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 	var err error
 
-	patternsDir := path.Join(cConfig.Crowdsec.ConfigDir, "patterns/")
+	patternsDir := filepath.Join(cConfig.Crowdsec.ConfigDir, "patterns/")
 	log.Infof("Loading grok library %s", patternsDir)
 	/* load base regexps for two grok parsers */
 	parsers.Ctx, err = Init(map[string]interface{}{"patterns": patternsDir,
@@ -148,6 +148,12 @@ func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 		parsers.Ctx.Profiling = true
 		parsers.Povfwctx.Profiling = true
 	}
-
+	/*
+		Reset CTX grok to reduce memory footprint after we compile all the patterns
+	*/
+	parsers.Ctx.Grok = grokky.Host{}
+	parsers.Povfwctx.Grok = grokky.Host{}
+	parsers.StageFiles = []Stagefile{}
+	parsers.PovfwStageFiles = []Stagefile{}
 	return parsers, nil
 }

@@ -86,8 +86,15 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 
 		for _, decision := range profile.Decisions {
 			if runtime.RuntimeDurationExpr == nil {
-				if _, err := time.ParseDuration(*decision.Duration); err != nil {
-					return []*Runtime{}, errors.Wrapf(err, "error parsing duration '%s' of %s", *decision.Duration, profile.Name)
+				var duration string
+				if decision.Duration != nil {
+					duration = *decision.Duration
+				} else {
+					runtime.Logger.Warningf("No duration specified for %s, using default duration %s", profile.Name, defaultDuration)
+					duration = defaultDuration
+				}
+				if _, err := time.ParseDuration(duration); err != nil {
+					return []*Runtime{}, errors.Wrapf(err, "error parsing duration '%s' of %s", duration, profile.Name)
 				}
 			}
 		}
@@ -102,7 +109,7 @@ func (Profile *Runtime) GenerateDecisionFromProfile(Alert *models.Alert) ([]*mod
 
 	for _, refDecision := range Profile.Cfg.Decisions {
 		decision := models.Decision{}
-		/*the reference decision from profile is in sumulated mode */
+		/*the reference decision from profile is in simulated mode */
 		if refDecision.Simulated != nil && *refDecision.Simulated {
 			decision.Simulated = new(bool)
 			*decision.Simulated = true
@@ -168,7 +175,7 @@ func (Profile *Runtime) EvaluateProfile(Alert *models.Alert) ([]*models.Decision
 	for eIdx, expression := range Profile.RuntimeFilters {
 		output, err := expr.Run(expression, map[string]interface{}{"Alert": Alert})
 		if err != nil {
-			Profile.Logger.Warningf("failed to run whitelist expr : %v", err)
+			Profile.Logger.Warningf("failed to run profile expr for %s : %v", Profile.Cfg.Name, err)
 			return nil, matched, errors.Wrapf(err, "while running expression %s", Profile.Cfg.Filters[eIdx])
 		}
 		switch out := output.(type) {

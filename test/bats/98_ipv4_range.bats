@@ -33,7 +33,7 @@ api() {
     # delete community pull
     rune -0 cscli decisions delete --all
     rune -0 cscli decisions list -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "adding decision for range 4.4.4.0/24" {
@@ -69,7 +69,7 @@ api() {
 
 @test "CLI - decisions for ip contained in 4.4.4." {
     rune -0 cscli decisions list -i '4.4.4.4' -o json --contained
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "API - decisions for ip contained in 4.4.4." {
@@ -79,7 +79,7 @@ api() {
 
 @test "CLI - decisions for ip 5.4.4." {
     rune -0 cscli decisions list -i '5.4.4.3' -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "API - decisions for ip 5.4.4." {
@@ -89,7 +89,7 @@ api() {
 
 @test "CLI - decisions for range 4.4.0.0/1" {
     rune -0 cscli decisions list -r '4.4.0.0/16' -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "API - decisions for range 4.4.0.0/1" {
@@ -125,7 +125,7 @@ api() {
 
 @test "CLI - decisions for range 4.4.3.2/2" {
     rune -0 cscli decisions list -r '4.4.3.2/28' -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "API - decisions for range 4.4.3.2/2" {

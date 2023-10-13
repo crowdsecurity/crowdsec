@@ -3,12 +3,13 @@ package main
 import (
 	"fmt"
 	"os"
+	"slices"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
@@ -18,7 +19,7 @@ func addToExclusion(name string) error {
 }
 
 func removeFromExclusion(name string) error {
-	index := indexOf(name, csConfig.Cscli.SimulationConfig.Exclusions)
+	index := slices.Index(csConfig.Cscli.SimulationConfig.Exclusions, name)
 
 	// Remove element from the slice
 	csConfig.Cscli.SimulationConfig.Exclusions[index] = csConfig.Cscli.SimulationConfig.Exclusions[len(csConfig.Cscli.SimulationConfig.Exclusions)-1]
@@ -144,12 +145,8 @@ func NewSimulationEnableCmd() *cobra.Command {
 		Example:           `cscli simulation enable`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := csConfig.LoadHub(); err != nil {
+			if err := require.Hub(csConfig); err != nil {
 				log.Fatal(err)
-			}
-			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-				log.Info("Run 'sudo cscli hub update' to get the hub index")
-				log.Fatalf("Failed to get Hub index : %v", err)
 			}
 
 			if len(args) > 0 {

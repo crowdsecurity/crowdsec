@@ -10,8 +10,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/csdaemon"
-	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+	"github.com/crowdsecurity/go-cs-lib/csdaemon"
+	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -141,12 +141,24 @@ func ShutdownCrowdsecRoutines() error {
 	time.Sleep(1 * time.Second) // ugly workaround for now
 	outputsTomb.Kill(nil)
 
-	if err := outputsTomb.Wait(); err != nil {
-		log.Warningf("Ouputs returned error : %s", err)
-		reterr = err
+	done := make(chan error, 1)
+	go func() {
+		done <- outputsTomb.Wait()
+	}()
+
+	// wait for outputs to finish, max 3 seconds
+	select {
+	case err := <-done:
+		if err != nil {
+			log.Warningf("Outputs returned error : %s", err)
+			reterr = err
+		}
+		log.Debugf("outputs are done")
+	case <-time.After(3 * time.Second):
+		// this can happen if outputs are stuck in a http retry loop
+		log.Warningf("Outputs didn't finish in time, some events may have not been flushed")
 	}
 
-	log.Debugf("outputs are done")
 	// He's dead, Jim.
 	crowdsecTomb.Kill(nil)
 
@@ -344,7 +356,7 @@ func Serve(cConfig *csconfig.Config, apiReady chan bool, agentReady chan bool) e
 	}
 
 	if flags.TestMode {
-		log.Infof("test done")
+		log.Infof("Configuration test done")
 		pluginBroker.Kill()
 		os.Exit(0)
 	}

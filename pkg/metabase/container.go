@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"runtime"
-	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -13,6 +12,8 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 type Container struct {
@@ -96,7 +97,7 @@ func (c *Container) Create() error {
 	switch os {
 	case "linux":
 	case "windows", "darwin":
-		return fmt.Errorf("Mac and Windows are not supported yet")
+		return fmt.Errorf("mac and windows are not supported yet")
 	default:
 		return fmt.Errorf("OS '%s' is not supported", os)
 	}
@@ -139,8 +140,8 @@ func StopContainer(name string) error {
 		return fmt.Errorf("failed to create docker client : %s", err)
 	}
 	ctx := context.Background()
-	to := 20 * time.Second
-	if err := cli.ContainerStop(ctx, name, &to); err != nil {
+	to := container.StopOptions{Timeout: ptr.Of(20)}
+	if err := cli.ContainerStop(ctx, name, to); err != nil {
 		return fmt.Errorf("failed while stopping %s : %s", name, err)
 	}
 	log.Printf("container stopped successfully")
@@ -160,15 +161,15 @@ func RemoveContainer(name string) error {
 	return nil
 }
 
-func RemoveImageContainer() error {
+func RemoveImageContainer(image string) error {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return fmt.Errorf("failed to create docker client : %s", err)
 	}
 	ctx := context.Background()
-	log.Printf("Removing docker image '%s'", metabaseImage)
-	if _, err := cli.ImageRemove(ctx, metabaseImage, types.ImageRemoveOptions{}); err != nil {
-		return fmt.Errorf("failed to remove image container %s : %s", metabaseImage, err)
+	log.Printf("Removing docker image '%s'", image)
+	if _, err := cli.ImageRemove(ctx, image, types.ImageRemoveOptions{}); err != nil {
+		return fmt.Errorf("failed to remove image container %s : %s", image, err)
 	}
 	return nil
 }

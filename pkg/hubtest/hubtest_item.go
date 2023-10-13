@@ -15,13 +15,13 @@ import (
 )
 
 type HubTestItemConfig struct {
-	Parsers         []string           `yaml:"parsers"`
-	Scenarios       []string           `yaml:"scenarios"`
-	PostOVerflows   []string           `yaml:"postoverflows"`
-	LogFile         string             `yaml:"log_file"`
-	LogType         string             `yaml:"log_type"`
-	Labels          map[string]string  `yaml:"labels"`
-	IgnoreParsers   bool               `yaml:"ignore_parsers"`   // if we test a scenario, we don't want to assert on Parser
+	Parsers         []string            `yaml:"parsers"`
+	Scenarios       []string            `yaml:"scenarios"`
+	PostOVerflows   []string            `yaml:"postoverflows"`
+	LogFile         string              `yaml:"log_file"`
+	LogType         string              `yaml:"log_type"`
+	Labels          map[string]string   `yaml:"labels"`
+	IgnoreParsers   bool                `yaml:"ignore_parsers"`   // if we test a scenario, we don't want to assert on Parser
 	OverrideStatics []parser.ExtraField `yaml:"override_statics"` //Allow to override statics. Executed before s00
 }
 
@@ -97,7 +97,7 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 	}
 	err = yaml.Unmarshal(yamlFile, configFileData)
 	if err != nil {
-		return nil, fmt.Errorf("Unmarshal: %v", err)
+		return nil, fmt.Errorf("unmarshal: %v", err)
 	}
 
 	parserAssertFilePath := filepath.Join(testPath, ParserAssertFileName)
@@ -122,10 +122,10 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 		ScenarioResultFile:        filepath.Join(resultPath, ScenarioResultFileName),
 		BucketPourResultFile:      filepath.Join(resultPath, BucketPourResultFileName),
 		RuntimeHubConfig: &csconfig.Hub{
-			HubDir:       runtimeHubFolder,
-			ConfigDir:    runtimeFolder,
-			HubIndexFile: hubTest.HubIndexFile,
-			DataDir:      filepath.Join(runtimeFolder, "data"),
+			HubDir:         runtimeHubFolder,
+			HubIndexFile:   hubTest.HubIndexFile,
+			InstallDir:     runtimeFolder,
+			InstallDataDir: filepath.Join(runtimeFolder, "data"),
 		},
 		Config:                 configFileData,
 		HubPath:                hubTest.HubPath,
@@ -516,7 +516,7 @@ func (t *HubTestItem) Run() error {
 		return fmt.Errorf("unable to stat log file '%s': %s", logFile, err)
 	}
 	if logFileStat.Size() == 0 {
-		return fmt.Errorf("Log file '%s' is empty, please fill it with log", logFile)
+		return fmt.Errorf("log file '%s' is empty, please fill it with log", logFile)
 	}
 
 	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--auto"}
@@ -530,7 +530,7 @@ func (t *HubTestItem) Run() error {
 		}
 	}
 
-	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", t.ResultsPath}
+	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", t.ResultsPath, "-order-event"}
 	for labelKey, labelValue := range t.Config.Labels {
 		arg := fmt.Sprintf("%s:%s", labelKey, labelValue)
 		cmdArgs = append(cmdArgs, "-label", arg)
@@ -555,7 +555,7 @@ func (t *HubTestItem) Run() error {
 		if os.IsNotExist(err) {
 			parserAssertFile, err := os.Create(t.ParserAssert.File)
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 			parserAssertFile.Close()
 		}
@@ -591,7 +591,7 @@ func (t *HubTestItem) Run() error {
 		if os.IsNotExist(err) {
 			scenarioAssertFile, err := os.Create(t.ScenarioAssert.File)
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 			scenarioAssertFile.Close()
 		}

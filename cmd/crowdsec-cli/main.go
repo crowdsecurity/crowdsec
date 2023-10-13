@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/fatih/color"
@@ -12,7 +12,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
-	"golang.org/x/exp/slices"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -54,11 +53,11 @@ func initConfig() {
 	}
 
 	if !slices.Contains(NoNeedConfig, os.Args[1]) {
+		log.Debugf("Using %s as configuration file", ConfigFilePath)
 		csConfig, mergedConfig, err = csconfig.NewConfig(ConfigFilePath, false, false, true)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Debugf("Using %s as configuration file", ConfigFilePath)
 		if err := csConfig.LoadCSCLI(); err != nil {
 			log.Fatal(err)
 		}
@@ -116,7 +115,7 @@ title: %s
 ---
 `
 	name := filepath.Base(filename)
-	base := strings.TrimSuffix(name, path.Ext(name))
+	base := strings.TrimSuffix(name, filepath.Ext(name))
 	return fmt.Sprintf(header, base, strings.ReplaceAll(base, "_", " "))
 }
 
@@ -189,7 +188,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	/*usage*/
 	var cmdVersion = &cobra.Command{
 		Use:               "version",
-		Short:             "Display version and exit.",
+		Short:             "Display version",
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -199,13 +198,13 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(cmdVersion)
 
 	rootCmd.PersistentFlags().StringVarP(&ConfigFilePath, "config", "c", csconfig.DefaultConfigPath("config.yaml"), "path to crowdsec config file")
-	rootCmd.PersistentFlags().StringVarP(&OutputFormat, "output", "o", "", "Output format: human, json, raw.")
-	rootCmd.PersistentFlags().StringVarP(&OutputColor, "color", "", "auto", "Output color: yes, no, auto.")
-	rootCmd.PersistentFlags().BoolVar(&dbg_lvl, "debug", false, "Set logging to debug.")
-	rootCmd.PersistentFlags().BoolVar(&nfo_lvl, "info", false, "Set logging to info.")
-	rootCmd.PersistentFlags().BoolVar(&wrn_lvl, "warning", false, "Set logging to warning.")
-	rootCmd.PersistentFlags().BoolVar(&err_lvl, "error", false, "Set logging to error.")
-	rootCmd.PersistentFlags().BoolVar(&trace_lvl, "trace", false, "Set logging to trace.")
+	rootCmd.PersistentFlags().StringVarP(&OutputFormat, "output", "o", "", "Output format: human, json, raw")
+	rootCmd.PersistentFlags().StringVarP(&OutputColor, "color", "", "auto", "Output color: yes, no, auto")
+	rootCmd.PersistentFlags().BoolVar(&dbg_lvl, "debug", false, "Set logging to debug")
+	rootCmd.PersistentFlags().BoolVar(&nfo_lvl, "info", false, "Set logging to info")
+	rootCmd.PersistentFlags().BoolVar(&wrn_lvl, "warning", false, "Set logging to warning")
+	rootCmd.PersistentFlags().BoolVar(&err_lvl, "error", false, "Set logging to error")
+	rootCmd.PersistentFlags().BoolVar(&trace_lvl, "trace", false, "Set logging to trace")
 
 	rootCmd.PersistentFlags().StringVar(&cwhub.HubBranch, "branch", "", "Override hub branch on github")
 	if err := rootCmd.PersistentFlags().MarkHidden("branch"); err != nil {

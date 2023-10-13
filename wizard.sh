@@ -77,15 +77,18 @@ smb
 "
 
 
-HTTP_PLUGIN_BINARY="./plugins/notifications/http/notification-http"
-SLACK_PLUGIN_BINARY="./plugins/notifications/slack/notification-slack"
-SPLUNK_PLUGIN_BINARY="./plugins/notifications/splunk/notification-splunk"
-EMAIL_PLUGIN_BINARY="./plugins/notifications/email/notification-email"
+HTTP_PLUGIN_BINARY="./cmd/notification-http/notification-http"
+SLACK_PLUGIN_BINARY="./cmd/notification-slack/notification-slack"
+SPLUNK_PLUGIN_BINARY="./cmd/notification-splunk/notification-splunk"
+EMAIL_PLUGIN_BINARY="./cmd/notification-email/notification-email"
+SENTINEL_PLUGIN_BINARY="./cmd/notification-sentinel/notification-sentinel"
 
-HTTP_PLUGIN_CONFIG="./plugins/notifications/http/http.yaml"
-SLACK_PLUGIN_CONFIG="./plugins/notifications/slack/slack.yaml"
-SPLUNK_PLUGIN_CONFIG="./plugins/notifications/splunk/splunk.yaml"
-EMAIL_PLUGIN_CONFIG="./plugins/notifications/email/email.yaml"
+HTTP_PLUGIN_CONFIG="./cmd/notification-http/http.yaml"
+SLACK_PLUGIN_CONFIG="./cmd/notification-slack/slack.yaml"
+SPLUNK_PLUGIN_CONFIG="./cmd/notification-splunk/splunk.yaml"
+EMAIL_PLUGIN_CONFIG="./cmd/notification-email/email.yaml"
+SENTINEL_PLUGIN_CONFIG="./cmd/notification-sentinel/sentinel.yaml"
+
 
 BACKUP_DIR=$(mktemp -d)
 rm -rf -- "$BACKUP_DIR"
@@ -518,12 +521,14 @@ install_plugins(){
     cp ${SPLUNK_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
     cp ${HTTP_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
     cp ${EMAIL_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
+    cp ${SENTINEL_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
 
     if [[ ${DOCKER_MODE} == "false" ]]; then
         cp -n ${SLACK_PLUGIN_CONFIG} /etc/crowdsec/notifications/
         cp -n ${SPLUNK_PLUGIN_CONFIG} /etc/crowdsec/notifications/
         cp -n ${HTTP_PLUGIN_CONFIG} /etc/crowdsec/notifications/
         cp -n ${EMAIL_PLUGIN_CONFIG} /etc/crowdsec/notifications/
+        cp -n ${SENTINEL_PLUGIN_CONFIG} /etc/crowdsec/notifications/
     fi
 }
 

@@ -8,50 +8,50 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/cstest"
+	"github.com/crowdsecurity/go-cs-lib/cstest"
 )
 
 func TestSimulationLoading(t *testing.T) {
-	testXXFullPath, err := filepath.Abs("./tests/xxx.yaml")
+	testXXFullPath, err := filepath.Abs("./testdata/xxx.yaml")
 	require.NoError(t, err)
 
-	badYamlFullPath, err := filepath.Abs("./tests/config.yaml")
+	badYamlFullPath, err := filepath.Abs("./testdata/config.yaml")
 	require.NoError(t, err)
 
 	tests := []struct {
-		name           string
-		Input          *Config
-		expectedResult *SimulationConfig
-		expectedErr    	string
+		name        string
+		input       *Config
+		expected    *SimulationConfig
+		expectedErr string
 	}{
 		{
 			name: "basic valid simulation",
-			Input: &Config{
+			input: &Config{
 				ConfigPaths: &ConfigurationPaths{
-					SimulationFilePath: "./tests/simulation.yaml",
+					SimulationFilePath: "./testdata/simulation.yaml",
 					DataDir:            "./data",
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
 				Cscli:    &CscliCfg{},
 			},
-			expectedResult: &SimulationConfig{Simulation: new(bool)},
+			expected: &SimulationConfig{Simulation: new(bool)},
 		},
 		{
 			name: "basic nil config",
-			Input: &Config{
+			input: &Config{
 				ConfigPaths: &ConfigurationPaths{
 					SimulationFilePath: "",
 					DataDir:            "./data",
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
 			},
-			expectedErr: "simulation.yaml: "+cstest.FileNotFoundMessage,
+			expectedErr: "simulation.yaml: " + cstest.FileNotFoundMessage,
 		},
 		{
 			name: "basic bad file name",
-			Input: &Config{
+			input: &Config{
 				ConfigPaths: &ConfigurationPaths{
-					SimulationFilePath: "./tests/xxx.yaml",
+					SimulationFilePath: "./testdata/xxx.yaml",
 					DataDir:            "./data",
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
@@ -60,9 +60,9 @@ func TestSimulationLoading(t *testing.T) {
 		},
 		{
 			name: "basic bad file content",
-			Input: &Config{
+			input: &Config{
 				ConfigPaths: &ConfigurationPaths{
-					SimulationFilePath: "./tests/config.yaml",
+					SimulationFilePath: "./testdata/config.yaml",
 					DataDir:            "./data",
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
@@ -71,9 +71,9 @@ func TestSimulationLoading(t *testing.T) {
 		},
 		{
 			name: "basic bad file content",
-			Input: &Config{
+			input: &Config{
 				ConfigPaths: &ConfigurationPaths{
-					SimulationFilePath: "./tests/config.yaml",
+					SimulationFilePath: "./testdata/config.yaml",
 					DataDir:            "./data",
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
@@ -85,10 +85,10 @@ func TestSimulationLoading(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.Input.LoadSimulation()
+			err := tc.input.LoadSimulation()
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 
-			assert.Equal(t, tc.expectedResult, tc.Input.Crowdsec.SimulationConfig)
+			assert.Equal(t, tc.expected, tc.input.Crowdsec.SimulationConfig)
 		})
 	}
 }
@@ -109,32 +109,32 @@ func TestIsSimulated(t *testing.T) {
 		name             string
 		SimulationConfig *SimulationConfig
 		Input            string
-		expectedResult   bool
+		expected         bool
 	}{
 		{
 			name:             "No simulation except (in exclusion)",
 			SimulationConfig: simCfgOff,
 			Input:            "test",
-			expectedResult:   true,
+			expected:         true,
 		},
 		{
 			name:             "All simulation (not in exclusion)",
 			SimulationConfig: simCfgOn,
 			Input:            "toto",
-			expectedResult:   true,
+			expected:         true,
 		},
 		{
 			name:             "All simulation (in exclusion)",
 			SimulationConfig: simCfgOn,
 			Input:            "test",
-			expectedResult:   false,
+			expected:         false,
 		},
 	}
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			IsSimulated := tc.SimulationConfig.IsSimulated(tc.Input)
-			require.Equal(t, tc.expectedResult, IsSimulated)
+			isSimulated := tc.SimulationConfig.IsSimulated(tc.Input)
+			require.Equal(t, tc.expected, isSimulated)
 		})
 	}
 }

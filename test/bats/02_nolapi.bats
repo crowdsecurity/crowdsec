@@ -45,16 +45,23 @@ teardown() {
     config_disable_lapi
     rune -1 cscli capi status
     assert_stderr --partial "crowdsec local API is disabled"
-    assert_stderr --partial "There is no configuration on 'api.server:'"
+    assert_stderr --partial "local API is disabled -- this command must be run on the local API machine"
 }
 
-@test "cscli config show -o human" {
-    config_disable_lapi
+@test "no lapi: cscli config show -o human" {
+    config_set '.api.server.enable=false'
     rune -0 cscli config show -o human
     assert_output --partial "Global:"
     assert_output --partial "Crowdsec:"
     assert_output --partial "cscli:"
-    refute_output --partial "Local API Server:"
+    assert_output --partial "Local API Server (disabled):"
+
+    config_set 'del(.api.server)'
+    rune -0 cscli config show -o human
+    assert_output --partial "Global:"
+    assert_output --partial "Crowdsec:"
+    assert_output --partial "cscli:"
+    refute_output --partial "Local API Server"
 }
 
 @test "cscli config backup" {
@@ -73,7 +80,7 @@ teardown() {
     config_disable_lapi
     ./instance-crowdsec start || true
     rune -1 cscli machines list
-    assert_stderr --partial "local API is disabled, please run this command on the local API machine"
+    assert_stderr --partial "local API is disabled -- this command must be run on the local API machine"
 }
 
 @test "cscli metrics" {
@@ -85,5 +92,5 @@ teardown() {
     assert_output --partial "/v1/watchers/login"
 
     assert_stderr --partial "crowdsec local API is disabled"
-    assert_stderr --partial "local API is disabled, please run this command on the local API machine"
+    assert_stderr --partial "local API is disabled -- this command must be run on the local API machine"
 }

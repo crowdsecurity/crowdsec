@@ -23,25 +23,30 @@ BUILD_RE2_WASM ?= 0
 BUILD_STATIC ?= 0
 
 # List of plugins to build
-PLUGINS ?= $(patsubst ./plugins/notifications/%,%,$(wildcard ./plugins/notifications/*))
+PLUGINS ?= $(patsubst ./cmd/notification-%,%,$(wildcard ./cmd/notification-*))
 
 # Can be overriden, if you can deal with the consequences
 BUILD_REQUIRE_GO_MAJOR ?= 1
-BUILD_REQUIRE_GO_MINOR ?= 20
+BUILD_REQUIRE_GO_MINOR ?= 21
 
 #--------------------------------------
 
-GOCMD = go
-GOTEST = $(GOCMD) test
+GO = go
+GOTEST = $(GO) test
 
 BUILD_CODENAME ?= alphaga
 
 CROWDSEC_FOLDER = ./cmd/crowdsec
 CSCLI_FOLDER = ./cmd/crowdsec-cli/
-PLUGINS_DIR = ./plugins/notifications
+PLUGINS_DIR_PREFIX = ./cmd/notification-
 
 CROWDSEC_BIN = crowdsec$(EXT)
 CSCLI_BIN = cscli$(EXT)
+
+# semver comparison to select the hub branch requires the version to start with "v"
+ifneq ($(call substr,$(BUILD_VERSION),1,1),v)
+    $(error BUILD_VERSION "$(BUILD_VERSION)" should start with "v")
+endif
 
 # Directory for the release files
 RELDIR = crowdsec-$(BUILD_VERSION)
@@ -59,15 +64,15 @@ bool = $(if $(filter $(call lc, $1),1 yes true),1,0)
 
 #--------------------------------------
 #
-# Define MAKE_FLAGS and LD_OPTS for the sub-makefiles in cmd/ and plugins/
+# Define MAKE_FLAGS and LD_OPTS for the sub-makefiles in cmd/
 #
 
 MAKE_FLAGS = --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 
 LD_OPTS_VARS= \
--X 'github.com/crowdsecurity/go-cs-lib/pkg/version.Version=$(BUILD_VERSION)' \
--X 'github.com/crowdsecurity/go-cs-lib/pkg/version.BuildDate=$(BUILD_TIMESTAMP)' \
--X 'github.com/crowdsecurity/go-cs-lib/pkg/version.Tag=$(BUILD_TAG)' \
+-X 'github.com/crowdsecurity/go-cs-lib/version.Version=$(BUILD_VERSION)' \
+-X 'github.com/crowdsecurity/go-cs-lib/version.BuildDate=$(BUILD_TIMESTAMP)' \
+-X 'github.com/crowdsecurity/go-cs-lib/version.Tag=$(BUILD_TAG)' \
 -X '$(GO_MODULE_NAME)/pkg/cwversion.Codename=$(BUILD_CODENAME)' \
 -X '$(GO_MODULE_NAME)/pkg/csconfig.defaultConfigDir=$(DEFAULT_CONFIGDIR)' \
 -X '$(GO_MODULE_NAME)/pkg/csconfig.defaultDataDir=$(DEFAULT_DATADIR)'
@@ -87,7 +92,6 @@ ifeq ($(PKG_CONFIG),)
 endif
 
 ifeq ($(RE2_CHECK),)
-# we could detect the platform and suggest the command to install
 RE2_FAIL := "libre2-dev is not installed, please install it or set BUILD_RE2_WASM=1 to use the WebAssembly version"
 else
 # += adds a space that we don't want
@@ -96,6 +100,7 @@ LD_OPTS_VARS += -X '$(GO_MODULE_NAME)/pkg/cwversion.Libre2=C++'
 endif
 endif
 
+# Build static to avoid the runtime dependency on libre2.so
 ifeq ($(call bool,$(BUILD_STATIC)),1)
 BUILD_TYPE = static
 EXTLDFLAGS := -extldflags '-static'
@@ -104,10 +109,19 @@ BUILD_TYPE = dynamic
 EXTLDFLAGS :=
 endif
 
-export LD_OPTS=-ldflags "-s -w $(EXTLDFLAGS) $(LD_OPTS_VARS)" \
-	-trimpath -tags $(GO_TAGS)
+# Build with debug symbols, and disable optimizations + inlining, to use Delve
+ifeq ($(call bool,$(DEBUG)),1)
+STRIP_SYMBOLS :=
+DISABLE_OPTIMIZATION := -gcflags "-N -l"
+else
+STRIP_SYMBOLS := -s -w
+DISABLE_OPTIMIZATION :=
+endif
 
-ifneq (,$(TEST_COVERAGE))
+export LD_OPTS=-ldflags "$(STRIP_SYMBOLS) $(EXTLDFLAGS) $(LD_OPTS_VARS)" \
+	-trimpath -tags $(GO_TAGS) $(DISABLE_OPTIMIZATION)
+
+ifeq ($(call bool,$(TEST_COVERAGE)),1)
 LD_OPTS += -cover
 endif
 
@@ -130,7 +144,17 @@ ifneq (,$(RE2_CHECK))
 else
 	$(info Fallback to WebAssembly regexp library. To use the C++ version, make sure you have installed libre2-dev and pkg-config.)
 endif
+
+ifeq ($(call bool,$(DEBUG)),1)
+	$(info Building with debug symbols and disabled optimizations)
+endif
+
+ifeq ($(call bool,$(TEST_COVERAGE)),1)
+	$(info Test coverage collection enabled)
+endif
+
 	$(info )
+
 
 .PHONY: all
 all: clean test build
@@ -138,11 +162,29 @@ all: clean test build
 .PHONY: plugins
 plugins:
 	@$(foreach plugin,$(PLUGINS), \
-		$(MAKE) -C $(PLUGINS_DIR)/$(plugin) build $(MAKE_FLAGS); \
+		$(MAKE) -C $(PLUGINS_DIR_PREFIX)$(plugin) build $(MAKE_FLAGS); \
 	)
 
+# same as "$(MAKE) -f debian/rules clean" but without the dependency on debhelper
+.PHONY: clean-debian
+clean-debian:
+	@$(RM) -r debian/crowdsec
+	@$(RM) -r debian/crowdsec
+	@$(RM) -r debian/files
+	@$(RM) -r debian/.debhelper
+	@$(RM) -r debian/*.substvars
+	@$(RM) -r debian/*-stamp
+
+.PHONY: clean-rpm
+clean-rpm:
+	@$(RM) -r rpm/BUILD
+	@$(RM) -r rpm/BUILDROOT
+	@$(RM) -r rpm/RPMS
+	@$(RM) -r rpm/SOURCES/*.tar.gz
+	@$(RM) -r rpm/SRPMS
+
 .PHONY: clean
-clean: testclean
+clean: clean-debian clean-rpm testclean
 	@$(MAKE) -C $(CROWDSEC_FOLDER) clean $(MAKE_FLAGS)
 	@$(MAKE) -C $(CSCLI_FOLDER) clean $(MAKE_FLAGS)
 	@$(RM) $(CROWDSEC_BIN) $(WIN_IGNORE_ERR)
@@ -150,7 +192,7 @@ clean: testclean
 	@$(RM) *.log $(WIN_IGNORE_ERR)
 	@$(RM) crowdsec-release.tgz $(WIN_IGNORE_ERR)
 	@$(foreach plugin,$(PLUGINS), \
-		$(MAKE) -C $(PLUGINS_DIR)/$(plugin) clean $(MAKE_FLAGS); \
+		$(MAKE) -C $(PLUGINS_DIR_PREFIX)$(plugin) clean $(MAKE_FLAGS); \
 	)
 
 .PHONY: cscli
@@ -160,6 +202,12 @@ cscli: goversion
 .PHONY: crowdsec
 crowdsec: goversion
 	@$(MAKE) -C $(CROWDSEC_FOLDER) build $(MAKE_FLAGS)
+
+.PHONY: notification-email
+notification-email: goversion
+	@$(MAKE) -C cmd/notification-email build $(MAKE_FLAGS)
+
+
 
 .PHONY: testclean
 testclean: bats-clean
@@ -196,27 +244,17 @@ localstack:
 localstack-stop:
 	docker-compose -f test/localstack/docker-compose.yml down
 
-# list of plugins that contain go.mod
-PLUGIN_VENDOR = $(foreach plugin,$(PLUGINS),$(shell if [ -f $(PLUGINS_DIR)/$(plugin)/go.mod ]; then echo $(PLUGINS_DIR)/$(plugin); fi))
-
 # build vendor.tgz to be distributed with the release
 .PHONY: vendor
-vendor:
-	$(foreach plugin_dir,$(PLUGIN_VENDOR), \
-		cd $(plugin_dir) >/dev/null && \
-		$(GOCMD) mod vendor && \
-		cd - >/dev/null; \
-	)
-	$(GOCMD) mod vendor
-	tar -czf vendor.tgz vendor $(foreach plugin_dir,$(PLUGIN_VENDOR),$(plugin_dir)/vendor)
+vendor: vendor-remove
+	$(GO) mod vendor
+	tar czf vendor.tgz vendor
+	tar --create --auto-compress --file=$(RELDIR)-vendor.tar.xz vendor
 
 # remove vendor directories and vendor.tgz
 .PHONY: vendor-remove
 vendor-remove:
-	$(foreach plugin_dir,$(PLUGIN_VENDOR), \
-		$(RM) $(plugin_dir)/vendor; \
-	)
-	$(RM) vendor vendor.tgz
+	$(RM) vendor vendor.tgz *-vendor.tar.xz
 
 .PHONY: package
 package:
@@ -227,9 +265,9 @@ package:
 	@$(CP) $(CSCLI_FOLDER)/$(CSCLI_BIN) $(RELDIR)/cmd/crowdsec-cli
 
 	@$(foreach plugin,$(PLUGINS), \
-		$(MKDIR) $(RELDIR)/$(PLUGINS_DIR)/$(plugin); \
-		$(CP) $(PLUGINS_DIR)/$(plugin)/notification-$(plugin)$(EXT) $(RELDIR)/$(PLUGINS_DIR)/$(plugin); \
-		$(CP) $(PLUGINS_DIR)/$(plugin)/$(plugin).yaml $(RELDIR)/$(PLUGINS_DIR)/$(plugin)/; \
+		$(MKDIR) $(RELDIR)/$(PLUGINS_DIR_PREFIX)$(plugin); \
+		$(CP) $(PLUGINS_DIR_PREFIX)$(plugin)/notification-$(plugin)$(EXT) $(RELDIR)/$(PLUGINS_DIR_PREFIX)$(plugin); \
+		$(CP) $(PLUGINS_DIR_PREFIX)$(plugin)/$(plugin).yaml $(RELDIR)/$(PLUGINS_DIR_PREFIX)$(plugin)/; \
 	)
 
 	@$(CPR) ./config $(RELDIR)

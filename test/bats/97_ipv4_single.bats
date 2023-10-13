@@ -33,7 +33,7 @@ api() {
     # delete community pull
     rune -0 cscli decisions delete --all
     rune -0 cscli decisions list -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "API - first decisions list: must be empty" {
@@ -74,7 +74,7 @@ api() {
 
 @test "CLI - decision for 1.2.3.5" {
     rune -0 cscli decisions list -i '1.2.3.5' -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "API - decision for 1.2.3.5" {
@@ -86,7 +86,7 @@ api() {
 
 @test "CLI - decision for 1.2.3.0/24" {
     rune -0 cscli decisions list -r '1.2.3.0/24' -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "API - decision for 1.2.3.0/24" {

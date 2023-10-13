@@ -70,6 +70,7 @@ type Flags struct {
 	WinSvc         string
 	DisableCAPI    bool
 	Transform      string
+	OrderEvent     bool
 }
 
 type labelsMap map[string]string
@@ -87,7 +88,7 @@ func LoadBuckets(cConfig *csconfig.Config) error {
 	buckets = leakybucket.NewBuckets()
 
 	log.Infof("Loading %d scenario files", len(files))
-	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, files, &bucketsTomb, buckets)
+	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, files, &bucketsTomb, buckets, flags.OrderEvent)
 
 	if err != nil {
 		return fmt.Errorf("scenario loading failed: %v", err)
@@ -110,7 +111,7 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 
 		dataSources, err = acquisition.LoadAcquisitionFromDSN(flags.OneShotDSN, flags.Labels, flags.Transform)
 		if err != nil {
-			return fmt.Errorf("failed to configure datasource for %s: %w", flags.OneShotDSN, err)
+			return errors.Wrapf(err, "failed to configure datasource for %s", flags.OneShotDSN)
 		}
 	} else {
 		dataSources, err = acquisition.LoadAcquisitionFromFile(cConfig.Crowdsec)
@@ -137,11 +138,13 @@ func (l *labelsMap) String() string {
 }
 
 func (l labelsMap) Set(label string) error {
-	split := strings.Split(label, ":")
-	if len(split) != 2 {
-		return errors.Wrapf(errors.New("Bad Format"), "for Label '%s'", label)
+	for _, pair := range strings.Split(label, ",") {
+		split := strings.Split(pair, ":")
+		if len(split) != 2 {
+			return fmt.Errorf("invalid format for label '%s', must be key:value", pair)
+		}
+		l[split[0]] = split[1]
 	}
-	l[split[0]] = split[1]
 	return nil
 }
 
@@ -164,6 +167,7 @@ func (f *Flags) Parse() {
 	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
 	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
 	flag.BoolVar(&f.DisableCAPI, "no-capi", false, "disable communication with Central API")
+	flag.BoolVar(&f.OrderEvent, "order-event", false, "enforce event ordering with significant performance cost")
 	if runtime.GOOS == "windows" {
 		flag.StringVar(&f.WinSvc, "winsvc", "", "Windows service Action: Install, Remove etc..")
 	}
@@ -247,13 +251,13 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		return nil, err
 	}
 
-	if !flags.DisableAgent {
+	if !cConfig.DisableAgent {
 		if err := cConfig.LoadCrowdsec(); err != nil {
 			return nil, err
 		}
 	}
 
-	if !flags.DisableAPI {
+	if !cConfig.DisableAPI {
 		if err := cConfig.LoadAPIServer(); err != nil {
 			return nil, err
 		}
@@ -288,7 +292,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 			cConfig.API.Server.OnlineClient = nil
 		}
 		/*if the api is disabled as well, just read file and exit, don't daemonize*/
-		if flags.DisableAPI {
+		if cConfig.DisableAPI {
 			cConfig.Common.Daemonize = false
 		}
 		log.Infof("single file mode : log_media=%s daemonize=%t", cConfig.Common.LogMedia, cConfig.Common.Daemonize)

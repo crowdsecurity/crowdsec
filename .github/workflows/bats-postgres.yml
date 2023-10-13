@@ -10,14 +10,14 @@ jobs:
   build:
     strategy:
       matrix:
-        go-version: ["1.20.5"]
+        go-version: ["1.21.3"]
 
     name: "Build + tests"
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
       database:
-        image: postgres:14
+        image: postgres:16
         env:
           POSTGRES_PASSWORD: "secret"
         ports:
@@ -29,6 +29,14 @@ jobs:
           --health-retries 5
 
     steps:
+
+    - name: "Install pg_dump v16"
+      # we can remove this when it's released on ubuntu-latest
+      run: |
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          wget -qO- https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo tee /etc/apt/trusted.gpg.d/pgdg.asc &>/dev/null
+          sudo apt update
+          sudo apt -qq -y -o=Dpkg::Use-Pty=0 install postgresql-client-16
 
     - name: "Force machineid"
       run: |
@@ -45,7 +53,6 @@ jobs:
       uses: actions/setup-go@v4
       with:
         go-version: ${{ matrix.go-version }}
-        cache-dependency-path: "**/go.sum"
 
     - name: "Install bats dependencies"
       env:

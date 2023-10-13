@@ -5,17 +5,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"time"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/slices"
 
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 func getBouncers(out io.Writer, dbClient *database.Client) error {
@@ -58,8 +61,7 @@ func getBouncers(out io.Writer, dbClient *database.Client) error {
 func NewBouncersListCmd() *cobra.Command {
 	cmdBouncersList := &cobra.Command{
 		Use:               "list",
-		Short:             "List bouncers",
-		Long:              `List bouncers`,
+		Short:             "list all bouncers within the database",
 		Example:           `cscli bouncers list`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
@@ -107,7 +109,7 @@ func runBouncersAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	if csConfig.Cscli.Output == "human" {
-		fmt.Printf("Api key for '%s':\n\n", keyName)
+		fmt.Printf("API key for '%s':\n\n", keyName)
 		fmt.Printf("   %s\n\n", apiKey)
 		fmt.Print("Please keep this key since you will not be able to retrieve it!\n")
 	} else if csConfig.Cscli.Output == "raw" {
@@ -126,8 +128,7 @@ func runBouncersAdd(cmd *cobra.Command, args []string) error {
 func NewBouncersAddCmd() *cobra.Command {
 	cmdBouncersAdd := &cobra.Command{
 		Use:   "add MyBouncerName [--length 16]",
-		Short: "add bouncer",
-		Long:  `add bouncer`,
+		Short: "add a single bouncer to the database",
 		Example: `cscli bouncers add MyBouncerName
 cscli bouncers add MyBouncerName -l 24
 cscli bouncers add MyBouncerName -k <random-key>`,
@@ -159,7 +160,7 @@ func runBouncersDelete(cmd *cobra.Command, args []string) error {
 func NewBouncersDeleteCmd() *cobra.Command {
 	cmdBouncersDelete := &cobra.Command{
 		Use:               "delete MyBouncerName",
-		Short:             "delete bouncer",
+		Short:             "delete bouncer(s) from the database",
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"remove"},
 		DisableAutoGenTag: true,
@@ -188,11 +189,81 @@ func NewBouncersDeleteCmd() *cobra.Command {
 	return cmdBouncersDelete
 }
 
+func NewBouncersPruneCmd() *cobra.Command {
+	var parsedDuration time.Duration
+	cmdBouncersPrune := &cobra.Command{
+		Use:               "prune",
+		Short:             "prune multiple bouncers from the database",
+		Args:              cobra.NoArgs,
+		DisableAutoGenTag: true,
+		Example: `cscli bouncers prune -d 60m
+cscli bouncers prune -d 60m --force`,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			dur, _ := cmd.Flags().GetString("duration")
+			var err error
+			parsedDuration, err = time.ParseDuration(fmt.Sprintf("-%s", dur))
+			if err != nil {
+				return fmt.Errorf("unable to parse duration '%s': %s", dur, err)
+			}
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			force, _ := cmd.Flags().GetBool("force")
+			if parsedDuration >= 0-2*time.Minute {
+				var answer bool
+				prompt := &survey.Confirm{
+					Message: "The duration you provided is less than or equal 2 minutes this may remove active bouncers continue ?",
+					Default: false,
+				}
+				if err := survey.AskOne(prompt, &answer); err != nil {
+					return fmt.Errorf("unable to ask about prune check: %s", err)
+				}
+				if !answer {
+					fmt.Println("user aborted prune no changes were made")
+					return nil
+				}
+			}
+			bouncers, err := dbClient.QueryBouncersLastPulltimeLT(time.Now().UTC().Add(parsedDuration))
+			if err != nil {
+				return fmt.Errorf("unable to query bouncers: %s", err)
+			}
+			if len(bouncers) == 0 {
+				fmt.Println("no bouncers to prune")
+				return nil
+			}
+			getBouncersTable(color.Output, bouncers)
+			if !force {
+				var answer bool
+				prompt := &survey.Confirm{
+					Message: "You are about to PERMANENTLY remove the above bouncers from the database these will NOT be recoverable, continue ?",
+					Default: false,
+				}
+				if err := survey.AskOne(prompt, &answer); err != nil {
+					return fmt.Errorf("unable to ask about prune check: %s", err)
+				}
+				if !answer {
+					fmt.Println("user aborted prune no changes were made")
+					return nil
+				}
+			}
+			nbDeleted, err := dbClient.BulkDeleteBouncers(bouncers)
+			if err != nil {
+				return fmt.Errorf("unable to prune bouncers: %s", err)
+			}
+			fmt.Printf("successfully delete %d bouncers\n", nbDeleted)
+			return nil
+		},
+	}
+	cmdBouncersPrune.Flags().StringP("duration", "d", "60m", "duration of time since last pull")
+	cmdBouncersPrune.Flags().Bool("force", false, "force prune without asking for confirmation")
+	return cmdBouncersPrune
+}
+
 func NewBouncersCmd() *cobra.Command {
 	var cmdBouncers = &cobra.Command{
 		Use:   "bouncers [action]",
 		Short: "Manage bouncers [requires local API]",
-		Long: `To list/add/delete bouncers.
+		Long: `To list/add/delete/prune bouncers.
 Note: This command requires database direct access, so is intended to be run on Local API/master.
 `,
 		Args:              cobra.MinimumNArgs(1),
@@ -200,9 +271,10 @@ Note: This command requires database direct access, so is intended to be run on 
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			var err error
-			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
-				return fmt.Errorf("local API is disabled, please run this command on the local API machine")
+			if err = require.LAPI(csConfig); err != nil {
+				return err
 			}
+
 			dbClient, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {
 				return fmt.Errorf("unable to create new database client: %s", err)
@@ -214,6 +286,7 @@ Note: This command requires database direct access, so is intended to be run on 
 	cmdBouncers.AddCommand(NewBouncersListCmd())
 	cmdBouncers.AddCommand(NewBouncersAddCmd())
 	cmdBouncers.AddCommand(NewBouncersDeleteCmd())
+	cmdBouncers.AddCommand(NewBouncersPruneCmd())
 
 	return cmdBouncers
 }
