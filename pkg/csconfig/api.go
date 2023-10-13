@@ -58,7 +58,6 @@ type CTICfg struct {
 }
 
 func (a *CTICfg) Load() error {
-
 	if a.Key == nil {
 		*a.Enabled = false
 	}
