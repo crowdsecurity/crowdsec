@@ -147,8 +147,8 @@ func runCollectionsRemove(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("can't find '%s' in %s", name, cwhub.COLLECTIONS)
 			}
 			if len(item.BelongsToCollections) > 0 {
-				log.Warningf("%s belongs to other collections:\n%s\n", name, item.BelongsToCollections)
-				log.Printf("Run 'sudo cscli collections remove %s --force' if you want to force remove this sub collection\n", name)
+				log.Warningf("%s belongs to other collections: %s", name, item.BelongsToCollections)
+				log.Warningf("Run 'sudo cscli collections remove %s --force' if you want to force remove this sub collection", name)
 				continue
 			}
 		}
