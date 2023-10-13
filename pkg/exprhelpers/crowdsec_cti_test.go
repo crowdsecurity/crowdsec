@@ -145,7 +145,7 @@ func TestInvalidAuth(t *testing.T) {
 func TestNoKey(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
 	err := InitCrowdsecCTI(nil, nil, nil, nil)
-	assert.ErrorContains(t, err, "CTI API key not set")
+	assert.ErrorIs(t, err, cticlient.ErrDisabled)
 	//Replace the client created by InitCrowdsecCTI with one that uses a custom transport
 	ctiClient = cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey("asdasd"), cticlient.WithHTTPClient(&http.Client{
 		Transport: RoundTripFunc(smokeHandler),
