@@ -8,6 +8,7 @@ import (
 	"io"
 	"math/big"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -17,7 +18,6 @@ import (
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/machineid"

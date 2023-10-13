@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
 
@@ -87,7 +89,14 @@ func runConfigFeatureFlags(cmd *cobra.Command, args []string) error {
 
 	fmt.Println("To enable a feature you can: ")
 	fmt.Println("  - set the environment variable CROWDSEC_FEATURE_<uppercase_feature_name> to true")
-	fmt.Printf("  - add the line '- <feature_name>' to the file %s/feature.yaml\n", csConfig.ConfigPaths.ConfigDir)
+
+	featurePath, err := filepath.Abs(csconfig.GetFeatureFilePath(ConfigFilePath))
+	if err != nil {
+		// we already read the file, shouldn't happen
+		return err
+	}
+
+	fmt.Printf("  - add the line '- <feature_name>' to the file %s\n", featurePath)
 	fmt.Println()
 
 	if len(enabled) == 0 && len(disabled) == 0 {
