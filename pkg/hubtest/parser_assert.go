@@ -258,8 +258,8 @@ func (p *ParserAssert) AutoGenParserAssert() string {
 					if uval == "" {
 						continue
 					}
-					base := fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Unmarshaled["%s"]`, stage, parser, pidx, ekey)
-					for _, line := range p.buildUnmarshaledAssert(base, eval) {
+					base := fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Unmarshaled["%s"]`, stage, parser, pidx, ukey)
+					for _, line := range p.buildUnmarshaledAssert(base, uval) {
 						ret += line
 					}
 				}
