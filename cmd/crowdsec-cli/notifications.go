@@ -243,7 +243,7 @@ func NewNotificationsTestCmd() *cobra.Command {
 	var cmdNotificationsTest = &cobra.Command{
 		Use:               "test [plugin name]",
 		Short:             "send a generic test alert to notification plugin",
-		Long:              `send a generic test alert to a notification plugin to test configuration even if it not active in profiles`,
+		Long:              `send a generic test alert to a notification plugin to test configuration even if is not active`,
 		Example:           `cscli notifications test [plugin_name]`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
@@ -270,54 +270,40 @@ func NewNotificationsTestCmd() *cobra.Command {
 			}, csConfig.ConfigPaths)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			origin := types.CscliOrigin
-			capacity := int32(0)
-			leakSpeed := "0"
-			eventsCount := int32(1)
-			empty := ""
-			simulated := false
-			startAt := time.Now().UTC().Format(time.RFC3339)
-			stopAt := time.Now().UTC().Format(time.RFC3339)
-			createdAt := time.Now().UTC().Format(time.RFC3339)
-			addReason := "test alert"
-			addValue := "10.10.10.10"
-			addScope := "Ip"
-			addDuration := "4h"
-
 			pluginTomb.Go(func() error {
 				pluginBroker.Run(&pluginTomb)
 				return nil
 			})
 			alert := &models.Alert{
-				Capacity: &capacity,
+				Capacity: ptr.Of(int32(0)),
 				Decisions: []*models.Decision{{
-					Duration: &addDuration,
-					Scope:    &addScope,
-					Value:    &addValue,
+					Duration: ptr.Of("4h"),
+					Scope:    ptr.Of("Ip"),
+					Value:    ptr.Of("10.10.10.10"),
 					Type:     ptr.Of("ban"),
-					Scenario: &addReason,
-					Origin:   &origin,
+					Scenario: ptr.Of("test alert"),
+					Origin:   ptr.Of(types.CscliOrigin),
 				}},
 				Events:          []*models.Event{},
-				EventsCount:     &eventsCount,
-				Leakspeed:       &leakSpeed,
-				Message:         &addReason,
-				ScenarioHash:    &empty,
-				Scenario:        &addReason,
-				ScenarioVersion: &empty,
-				Simulated:       &simulated,
+				EventsCount:     ptr.Of(int32(1)),
+				Leakspeed:       ptr.Of("0"),
+				Message:         ptr.Of("test alert"),
+				ScenarioHash:    ptr.Of(""),
+				Scenario:        ptr.Of("test alert"),
+				ScenarioVersion: ptr.Of(""),
+				Simulated:       ptr.Of(false),
 				Source: &models.Source{
-					AsName:   empty,
-					AsNumber: empty,
-					Cn:       empty,
-					IP:       addValue,
-					Range:    empty,
-					Scope:    &addScope,
-					Value:    &addValue,
+					AsName:   "",
+					AsNumber: "",
+					Cn:       "",
+					IP:       "10.10.10.10",
+					Range:    "",
+					Scope:    ptr.Of("Ip"),
+					Value:    ptr.Of("10.10.10.10"),
 				},
-				StartAt:   &startAt,
-				StopAt:    &stopAt,
-				CreatedAt: createdAt,
+				StartAt:   ptr.Of(time.Now().UTC().Format(time.RFC3339)),
+				StopAt:    ptr.Of(time.Now().UTC().Format(time.RFC3339)),
+				CreatedAt: time.Now().UTC().Format(time.RFC3339),
 			}
 			if err := yaml.Unmarshal([]byte(alertOverride), alert); err != nil {
 				return fmt.Errorf("failed to unmarshal alert override: %w", err)
@@ -343,11 +329,11 @@ func NewNotificationsReinjectCmd() *cobra.Command {
 
 	var cmdNotificationsReinject = &cobra.Command{
 		Use:   "reinject",
-		Short: "reinject a alert into profiles to trigger notifications",
-		Long:  `reinject a alert into profiles to be evaluated by the filter and sent to matched notifications plugins`,
+		Short: "reinject an alert into profiles to trigger notifications",
+		Long:  `reinject an alert into profiles to be evaluated by the filter and sent to matched notifications plugins`,
 		Example: `
 cscli notifications reinject <alert_id>
-cscli notifications reinject <alert_id> --remediation
+cscli notifications reinject <alert_id> -a '{"remediation": false,"scenario":"notification/test"}'
 cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"notification/test"}'
 `,
 		Args:              cobra.ExactArgs(1),
