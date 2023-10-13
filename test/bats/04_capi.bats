@@ -34,7 +34,7 @@ setup() {
     ./instance-crowdsec start
     for ((i=0; i<15; i++)); do
         sleep 2
-        [[ $(cscli alerts list -a -o json 2>/dev/null || cscli alerts list -o json) != "null" ]] && break
+        [[ $(cscli alerts list -a -o json) != "[]" ]] && break
     done
 
     rune -0 cscli alerts list -a -o json
@@ -45,7 +45,7 @@ setup() {
 @test "we have exactly one machine, localhost" {
     rune -0 cscli machines list -o json
     rune -0 jq -c '[. | length, .[0].machineId[0:32], .[0].isValidated, .[0].ipAddress]' <(output)
-    assert_output '[1,"githubciXXXXXXXXXXXXXXXXXXXXXXXX",true,"127.0.0.1"]'
+    assert_json '[1,"githubciXXXXXXXXXXXXXXXXXXXXXXXX",true,"127.0.0.1"]'
 }
 
 @test "no agent: capi status should be ok" {

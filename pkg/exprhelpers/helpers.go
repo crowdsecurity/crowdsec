@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/base64"
 	"fmt"
+	"math"
 	"net"
 	"net/url"
 	"os"
@@ -23,7 +24,7 @@ import (
 	"github.com/umahmood/haversine"
 	"github.com/wasilibs/go-re2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -54,6 +55,16 @@ var exprFunctionOptions []expr.Option
 var keyValuePattern = regexp.MustCompile(`(?P<key>[^=\s]+)=(?:"(?P<quoted_value>[^"\\]*(?:\\.[^"\\]*)*)"|(?P<value>[^=\s]+)|\s*)`)
 
 func GetExprOptions(ctx map[string]interface{}) []expr.Option {
+	if len(exprFunctionOptions) == 0 {
+		exprFunctionOptions = []expr.Option{}
+		for _, function := range exprFuncs {
+			exprFunctionOptions = append(exprFunctionOptions,
+				expr.Function(function.name,
+					function.function,
+					function.signature...,
+				))
+		}
+	}
 	ret := []expr.Option{}
 	ret = append(ret, exprFunctionOptions...)
 	ret = append(ret, expr.Env(ctx))
@@ -65,15 +76,6 @@ func Init(databaseClient *database.Client) error {
 	dataFileRegex = make(map[string][]*regexp.Regexp)
 	dataFileRe2 = make(map[string][]*re2.Regexp)
 	dbClient = databaseClient
-
-	exprFunctionOptions = []expr.Option{}
-	for _, function := range exprFuncs {
-		exprFunctionOptions = append(exprFunctionOptions,
-			expr.Function(function.name,
-				function.function,
-				function.signature...,
-			))
-	}
 
 	return nil
 }
@@ -587,6 +589,16 @@ func Match(params ...any) (any, error) {
 		return Match(pattern[1:], name[1:])
 	}
 	return matched, nil
+}
+
+func FloatApproxEqual(params ...any) (any, error) {
+	float1 := params[0].(float64)
+	float2 := params[1].(float64)
+
+	if math.Abs(float1-float2) < 1e-6 {
+		return true, nil
+	}
+	return false, nil
 }
 
 func B64Decode(params ...any) (any, error) {

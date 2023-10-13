@@ -1,9 +1,13 @@
 module github.com/crowdsecurity/crowdsec
 
-go 1.20
+go 1.21
+
+// Don't use the toolchain directive to avoid uncontrolled downloads during
+// a build, especially in sandboxed environments (freebsd, gentoo...).
+// toolchain go1.21.3
 
 require (
-	entgo.io/ent v0.11.3
+	entgo.io/ent v0.12.4
 	github.com/AlecAivazis/survey/v2 v2.2.7
 	github.com/Masterminds/semver/v3 v3.1.1
 	github.com/Masterminds/sprig/v3 v3.2.2
@@ -21,7 +25,7 @@ require (
 	github.com/c-robinson/iplib v1.0.3
 	github.com/cespare/xxhash/v2 v2.2.0
 	github.com/crowdsecurity/dlog v0.0.0-20170105205344-4fb5f8204f26
-	github.com/crowdsecurity/go-cs-lib v0.0.2
+	github.com/crowdsecurity/go-cs-lib v0.0.4
 	github.com/crowdsecurity/grokky v0.2.1
 	github.com/crowdsecurity/machineid v1.0.2
 	github.com/davecgh/go-spew v1.1.1
@@ -68,12 +72,13 @@ require (
 	github.com/segmentio/kafka-go v0.4.34
 	github.com/shirou/gopsutil/v3 v3.23.5
 	github.com/sirupsen/logrus v1.9.3
+	github.com/slack-go/slack v0.12.2
 	github.com/spf13/cobra v1.7.0
-	github.com/stretchr/testify v1.8.3
+	github.com/stretchr/testify v1.8.4
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	github.com/wasilibs/go-re2 v1.3.0
+	github.com/xhit/go-simple-mail/v2 v2.16.0
 	golang.org/x/crypto v0.9.0
-	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	golang.org/x/mod v0.11.0
 	golang.org/x/sys v0.9.0
 	google.golang.org/grpc v1.56.1
@@ -86,7 +91,7 @@ require (
 )
 
 require (
-	ariga.io/atlas v0.7.2-0.20220927111110-867ee0cca56a // indirect
+	ariga.io/atlas v0.14.1-0.20230918065911-83ad451a4935 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/ahmetalpbalkan/dlog v0.0.0-20170105205344-4fb5f8204f26 // indirect
@@ -121,6 +126,7 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
+	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/hcl/v2 v2.13.0 // indirect
 	github.com/hashicorp/yamux v0.0.0-20180604194846-3520598351bb // indirect
 	github.com/huandu/xstrings v1.3.2 // indirect
@@ -176,6 +182,7 @@ require (
 	github.com/tidwall/gjson v1.13.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
+	github.com/toorop/go-dkim v0.0.0-20201103131630-e1cd1a0a5208 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
@@ -188,7 +195,7 @@ require (
 	golang.org/x/term v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	golang.org/x/time v0.2.0 // indirect
-	golang.org/x/tools v0.7.0 // indirect
+	golang.org/x/tools v0.8.1-0.20230428195545-5283a0178901 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect

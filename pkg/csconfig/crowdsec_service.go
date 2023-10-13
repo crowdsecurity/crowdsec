@@ -8,7 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 // CrowdsecServiceCfg contains the location of parsers/scenarios/... and acquisition files

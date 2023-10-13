@@ -18,8 +18,9 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+	"github.com/crowdsecurity/go-cs-lib/version"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
@@ -131,24 +132,6 @@ func collectOSInfo() ([]byte, error) {
 	return w.Bytes(), nil
 }
 
-func initHub() error {
-	if err := csConfig.LoadHub(); err != nil {
-		return fmt.Errorf("cannot load hub: %s", err)
-	}
-	if csConfig.Hub == nil {
-		return fmt.Errorf("hub not configured")
-	}
-
-	if err := cwhub.SetHubBranch(); err != nil {
-		return fmt.Errorf("cannot set hub branch: %s", err)
-	}
-
-	if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-		return fmt.Errorf("no hub index found: %s", err)
-	}
-	return nil
-}
-
 func collectHubItems(itemType string) []byte {
 	out := bytes.NewBuffer(nil)
 	log.Infof("Collecting %s list", itemType)
@@ -184,7 +167,7 @@ func collectAPIStatus(login string, password string, endpoint string, prefix str
 	if err != nil {
 		return []byte(fmt.Sprintf("cannot parse API URL: %s", err))
 	}
-	scenarios, err := cwhub.GetInstalledScenariosAsString()
+	scenarios, err := cwhub.GetInstalledItemsAsString(cwhub.SCENARIOS)
 	if err != nil {
 		return []byte(fmt.Sprintf("could not collect scenarios: %s", err))
 	}
@@ -312,8 +295,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				skipAgent = true
 			}
 
-			err = initHub()
-			if err != nil {
+			if err := require.Hub(csConfig); err != nil {
 				log.Warn("Could not init hub, running on LAPI ? Hub related information will not be collected")
 				skipHub = true
 				infos[SUPPORT_PARSERS_PATH] = []byte(err.Error())

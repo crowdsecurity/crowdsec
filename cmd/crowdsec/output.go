@@ -10,7 +10,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -70,7 +70,7 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	var cache []types.RuntimeAlert
 	var cacheMutex sync.Mutex
 
-	scenarios, err := cwhub.GetInstalledScenariosAsString()
+	scenarios, err := cwhub.GetInstalledItemsAsString(cwhub.SCENARIOS)
 	if err != nil {
 		return fmt.Errorf("loading list of installed hub scenarios: %w", err)
 	}
@@ -93,7 +93,7 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 		URL:            apiURL,
 		PapiURL:        papiURL,
 		VersionPrefix:  "v1",
-		UpdateScenario: cwhub.GetInstalledScenariosAsString,
+		UpdateScenario: func() ([]string, error) {return cwhub.GetInstalledItemsAsString(cwhub.SCENARIOS)},
 	})
 	if err != nil {
 		return fmt.Errorf("new client api: %w", err)

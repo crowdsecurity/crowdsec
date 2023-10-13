@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+	"github.com/crowdsecurity/go-cs-lib/version"
 
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/models"

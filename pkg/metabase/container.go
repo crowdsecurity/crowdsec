@@ -13,7 +13,7 @@ import (
 	"github.com/docker/go-connections/nat"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 type Container struct {

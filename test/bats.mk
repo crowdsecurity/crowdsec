@@ -77,9 +77,9 @@ bats-update-tools:
 # Build and installs crowdsec in a local directory. Rebuilds if already exists.
 bats-build: bats-environment
 	@$(MKDIR) $(BIN_DIR) $(LOG_DIR) $(PID_DIR) $(BATS_PLUGIN_DIR)
-	@TEST_COVERAGE=$(TEST_COVERAGE) DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR) $(MAKE) build
+	@$(MAKE) build DEBUG=1 TEST_COVERAGE=$(TEST_COVERAGE) DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR)
 	@install -m 0755 cmd/crowdsec/crowdsec cmd/crowdsec-cli/cscli $(BIN_DIR)/
-	@install -m 0755 plugins/notifications/*/notification-* $(BATS_PLUGIN_DIR)/
+	@install -m 0755 cmd/notification-*/notification-* $(BATS_PLUGIN_DIR)/
 
 # Create a reusable package with initial configuration + data
 bats-fixture: bats-check-requirements bats-update-tools

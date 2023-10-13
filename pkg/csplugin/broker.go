@@ -19,8 +19,8 @@ import (
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/csstring"
-	"github.com/crowdsecurity/go-cs-lib/pkg/slicetools"
+	"github.com/crowdsecurity/go-cs-lib/csstring"
+	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"

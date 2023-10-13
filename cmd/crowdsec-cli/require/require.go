@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 func LAPI(c *csconfig.Config) error {
@@ -32,7 +33,7 @@ func PAPI(c *csconfig.Config) error {
 	return nil
 }
 
-func Enrolled(c *csconfig.Config) error {
+func CAPIRegistered(c *csconfig.Config) error {
 	if c.API.Server.OnlineClient.Credentials == nil {
 		return fmt.Errorf("the Central API (CAPI) must be configured with 'cscli capi register'")
 	}
@@ -63,3 +64,20 @@ func Notifications(c *csconfig.Config) error {
 	return nil
 }
 
+func Hub (c *csconfig.Config) error {
+	if err := c.LoadHub(); err != nil {
+		return err
+	}
+
+	if c.Hub == nil {
+		return fmt.Errorf("you must configure cli before interacting with hub")
+	}
+
+	cwhub.SetHubBranch()
+
+	if err := cwhub.GetHubIdx(c.Hub); err != nil {
+		return fmt.Errorf("failed to read Hub index: '%w'. Run 'sudo cscli hub update' to download the index again", err)
+	}
+
+	return nil
+}

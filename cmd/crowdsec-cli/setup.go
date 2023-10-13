@@ -112,6 +112,20 @@ func runSetupDetect(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	var detectReader *os.File
+
+	switch detectConfigFile {
+	case "-":
+		log.Tracef("Reading detection rules from stdin")
+		detectReader = os.Stdin
+	default:
+		log.Tracef("Reading detection rules: %s", detectConfigFile)
+		detectReader, err = os.Open(detectConfigFile)
+		if err != nil {
+			return err
+		}
+	}
+
 	listSupportedServices, err := flags.GetBool("list-supported-services")
 	if err != nil {
 		return err
@@ -171,7 +185,7 @@ func runSetupDetect(cmd *cobra.Command, args []string) error {
 	}
 
 	if listSupportedServices {
-		supported, err := setup.ListSupported(detectConfigFile)
+		supported, err := setup.ListSupported(detectReader)
 		if err != nil {
 			return err
 		}
@@ -195,7 +209,7 @@ func runSetupDetect(cmd *cobra.Command, args []string) error {
 		SnubSystemd:  snubSystemd,
 	}
 
-	hubSetup, err := setup.Detect(detectConfigFile, opts)
+	hubSetup, err := setup.Detect(detectReader, opts)
 	if err != nil {
 		return fmt.Errorf("detecting services: %w", err)
 	}

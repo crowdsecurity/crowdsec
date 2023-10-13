@@ -20,9 +20,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/cstest"
-	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
-	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+	"github.com/crowdsecurity/go-cs-lib/cstest"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
+	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -689,7 +689,7 @@ func TestAPICWhitelists(t *testing.T) {
 		alertScenario[alert.SourceScope]++
 	}
 	assert.Equal(t, 3, len(alertScenario))
-	assert.Equal(t, 1, alertScenario[SCOPE_CAPI_ALIAS_ALIAS])
+	assert.Equal(t, 1, alertScenario[types.CommunityBlocklistPullSourceScope])
 	assert.Equal(t, 1, alertScenario["lists:blocklist1"])
 	assert.Equal(t, 1, alertScenario["lists:blocklist2"])
 
@@ -818,7 +818,7 @@ func TestAPICPullTop(t *testing.T) {
 		alertScenario[alert.SourceScope]++
 	}
 	assert.Equal(t, 3, len(alertScenario))
-	assert.Equal(t, 1, alertScenario[SCOPE_CAPI_ALIAS_ALIAS])
+	assert.Equal(t, 1, alertScenario[types.CommunityBlocklistPullSourceScope])
 	assert.Equal(t, 1, alertScenario["lists:blocklist1"])
 	assert.Equal(t, 1, alertScenario["lists:blocklist2"])
 

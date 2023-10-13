@@ -148,6 +148,12 @@ func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 		parsers.Ctx.Profiling = true
 		parsers.Povfwctx.Profiling = true
 	}
-
+	/*
+		Reset CTX grok to reduce memory footprint after we compile all the patterns
+	*/
+	parsers.Ctx.Grok = grokky.Host{}
+	parsers.Povfwctx.Grok = grokky.Host{}
+	parsers.StageFiles = []Stagefile{}
+	parsers.PovfwStageFiles = []Stagefile{}
 	return parsers, nil
 }

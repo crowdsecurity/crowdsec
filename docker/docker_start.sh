@@ -273,8 +273,10 @@ fi
 # crowdsec sqlite database permissions
 if [ "$GID" != "" ]; then
     if istrue "$(conf_get '.db_config.type == "sqlite"')"; then
-        chown ":$GID" "$(conf_get '.db_config.db_path')"
-        echo "sqlite database permissions updated"
+        # don't fail if the db is not there yet
+        chown -f ":$GID" "$(conf_get '.db_config.db_path')" 2>/dev/null \
+            && echo "sqlite database permissions updated" \
+            || true
     fi
 fi
 

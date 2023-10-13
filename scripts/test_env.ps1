@@ -9,7 +9,7 @@ function show_help() {
     Write-Output ".\test_env.ps1 -d tests #creates test env in .\tests"
 }
 
-function create_arbo() {
+function create_tree() {
 	$null = New-Item -ItemType Directory $data_dir
 	$null = New-Item -ItemType Directory $log_dir
 	$null = New-Item -ItemType Directory $config_dir
@@ -37,8 +37,8 @@ function copy_file() {
 	#envsubst < "./config/dev.yaml" > $BASE/dev.yaml
     Copy-Item .\config\dev.yaml $base\dev.yaml
     $plugins | ForEach-Object {
-        Copy-Item $plugins_dir\$notif_dir\$_\notification-$_.exe $base\$plugins_dir\notification-$_.exe
-		Copy-Item $plugins_dir\$notif_dir\$_\$_.yaml $config_dir\$notif_dir\$_.yaml
+        Copy-Item .\cmd\notification-$_\notification-$_.exe $base\$plugins_dir\notification-$_.exe
+		Copy-Item .\cmd\notification-$_\$_.yaml $config_dir\$notif_dir\$_.yaml
     }
 }
 
@@ -76,9 +76,9 @@ $plugins_dir="plugins"
 $notif_dir="notifications"
 
 
-Write-Output "Creating test arbo in $base"
-create_arbo
-Write-Output "Arbo created"
+Write-Output "Creating test tree in $base"
+create_tree
+Write-Output "Tree created"
 Write-Output "Copying files"
 copy_file
 Write-Output "Files copied"
