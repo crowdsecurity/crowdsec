@@ -236,7 +236,6 @@ func NewNotificationsInspectCmd() *cobra.Command {
 func NewNotificationsTestCmd() *cobra.Command {
 	var (
 		pluginBroker  csplugin.PluginBroker
-		cfg           csplugin.PluginConfig
 		pluginTomb    tomb.Tomb
 		alertOverride string
 	)
@@ -248,15 +247,11 @@ func NewNotificationsTestCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			var ok bool
-			if args[0] == "" {
-				return fmt.Errorf("please provide a plugin name to test")
-			}
 			pconfigs, err := getPluginConfigs()
 			if err != nil {
 				return fmt.Errorf("can't build profiles configuration: %w", err)
 			}
-			cfg, ok = pconfigs[args[0]]
+			cfg, ok := pconfigs[args[0]]
 			if !ok {
 				return fmt.Errorf("plugin name: '%s' does not exist", args[0])
 			}
