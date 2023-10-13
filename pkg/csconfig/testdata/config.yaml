@@ -7,7 +7,7 @@ prometheus:
   enabled: true
   level: full
 crowdsec_service:
-  acquisition_path: ./tests/acquis.yaml
+  acquisition_path: ./testdata/acquis.yaml
   parser_routines: 1
 cscli:
   output: human
@@ -21,17 +21,17 @@ db_config:
   type: sqlite
 api:
   client:
-    credentials_path: ./tests/lapi-secrets.yaml
+    credentials_path: ./testdata/lapi-secrets.yaml
   server:
-    profiles_path: ./tests/profiles.yaml
+    profiles_path: ./testdata/profiles.yaml
     listen_uri: 127.0.0.1:8080
     tls: null
     online_client:
-      credentials_path: ./tests/online-api-secrets.yaml
+      credentials_path: ./testdata/online-api-secrets.yaml
 config_paths:
-  config_dir: ./tests
+  config_dir: ./testdata
   data_dir: .
-  simulation_path: ./tests/simulation.yaml
-  index_path: ./tests/hub/.index.json
-  hub_dir: ./tests/hub
+  simulation_path: ./testdata/simulation.yaml
+  index_path: ./testdata/hub/.index.json
+  hub_dir: ./testdata/hub
 

@@ -13,23 +13,31 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-// managed item types
-const PARSERS = "parsers"
-const PARSERS_OVFLW = "postoverflows"
-const SCENARIOS = "scenarios"
-const COLLECTIONS = "collections"
+const (
+	HubIndexFile = ".index.json"
 
-var ItemTypes = []string{PARSERS, PARSERS_OVFLW, SCENARIOS, COLLECTIONS}
+	// managed item types
+	PARSERS       = "parsers"
+	PARSERS_OVFLW = "postoverflows"
+	SCENARIOS     = "scenarios"
+	COLLECTIONS   = "collections"
+)
 
-var hubIdx map[string]map[string]Item
+var (
+	ItemTypes = []string{PARSERS, PARSERS_OVFLW, SCENARIOS, COLLECTIONS}
 
-var RawFileURLTemplate = "https://hub-cdn.crowdsec.net/%s/%s"
-var HubBranch = "master"
+	ErrMissingReference = errors.New("Reference(s) missing in collection")
 
-const HubIndexFile = ".index.json"
+	// XXX: can we remove these globals?
+	skippedLocal       = 0
+	skippedTainted     = 0
+	RawFileURLTemplate = "https://hub-cdn.crowdsec.net/%s/%s"
+	HubBranch          = "master"
+	hubIdx             map[string]map[string]Item
+)
 
 type ItemVersion struct {
-	Digest     string `json:"digest,omitempty"`	// meow
+	Digest     string `json:"digest,omitempty"` // meow
 	Deprecated bool   `json:"deprecated,omitempty"`
 }
 
@@ -134,12 +142,6 @@ func (i *Item) versionStatus() int {
 	return semver.Compare("v"+i.Version, "v"+i.LocalVersion)
 }
 
-// XXX: can we remove these globals?
-var skippedLocal = 0
-var skippedTainted = 0
-
-var ReferenceMissingError = errors.New("Reference(s) missing in collection")
-
 func GetItemMap(itemType string) map[string]Item {
 	m, ok := hubIdx[itemType]
 	if !ok {
@@ -167,9 +169,9 @@ func itemKey(itemPath string) (string, error) {
 		return "", fmt.Errorf("while reading symlink of %s: %w", itemPath, err)
 	}
 
-	fname := filepath.Base(pathInHub)
 	author := filepath.Base(filepath.Dir(pathInHub))
 
+	fname := filepath.Base(pathInHub)
 	fname = strings.TrimSuffix(fname, ".yaml")
 	fname = strings.TrimSuffix(fname, ".yml")
 
@@ -225,12 +227,12 @@ func DisplaySummary() {
 }
 
 func GetInstalledItems(itemType string) ([]Item, error) {
-	var retItems []Item
-
 	items, ok := hubIdx[itemType]
 	if !ok {
 		return nil, fmt.Errorf("no %s in hubIdx", itemType)
 	}
+
+	retItems := make([]Item, 0)
 
 	for _, item := range items {
 		if item.Installed {
@@ -242,15 +244,15 @@ func GetInstalledItems(itemType string) ([]Item, error) {
 }
 
 func GetInstalledItemsAsString(itemType string) ([]string, error) {
-	var retStr []string
-
 	items, err := GetInstalledItems(itemType)
 	if err != nil {
-		return nil, fmt.Errorf("while fetching %s: %w", itemType, err)
+		return nil, err
 	}
 
-	for _, it := range items {
-		retStr = append(retStr, it.Name)
+	retStr := make([]string, len(items))
+
+	for i, it := range items {
+		retStr[i] = it.Name
 	}
 
 	return retStr, nil
@@ -264,7 +266,7 @@ func GetHubStatusForItemType(itemType string, name string, all bool) []ItemHubSt
 		return nil
 	}
 
-	var ret = make([]ItemHubStatus, 0)
+	ret := make([]ItemHubStatus, 0)
 
 	// remember, you do it for the user :)
 	for _, item := range hubIdx[itemType] {
