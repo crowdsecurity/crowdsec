@@ -57,7 +57,7 @@ func NewHubListCmd() *cobra.Command {
 			}
 
 			// use LocalSync to get warnings about tainted / outdated items
-			_, warn := cwhub.LocalSync(csConfig.Hub)
+			warn, _ := cwhub.LocalSync(csConfig.Hub)
 			for _, v := range warn {
 				log.Info(v)
 			}
@@ -88,9 +88,8 @@ Fetches the [.index.json](https://github.com/crowdsecurity/hub/blob/master/.inde
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 
-			if err := cwhub.SetHubBranch(); err != nil {
-				return fmt.Errorf("error while setting hub branch: %s", err)
-			}
+			cwhub.SetHubBranch()
+
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -107,8 +106,8 @@ Fetches the [.index.json](https://github.com/crowdsecurity/hub/blob/master/.inde
 					return fmt.Errorf("failed to get Hub index after retry: %w", err)
 				}
 			}
-			//use LocalSync to get warnings about tainted / outdated items
-			_, warn := cwhub.LocalSync(csConfig.Hub)
+			// use LocalSync to get warnings about tainted / outdated items
+			warn, _ := cwhub.LocalSync(csConfig.Hub)
 			for _, v := range warn {
 				log.Info(v)
 			}
@@ -134,9 +133,8 @@ Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if 
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 
-			if err := cwhub.SetHubBranch(); err != nil {
-				return fmt.Errorf("error while setting hub branch: %s", err)
-			}
+			cwhub.SetHubBranch()
+
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {

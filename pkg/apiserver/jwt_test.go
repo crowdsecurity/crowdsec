@@ -55,7 +55,7 @@ func TestLogin(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 401, w.Code)
-	assert.Equal(t, "{\"code\":401,\"message\":\"input format error\"}", w.Body.String())
+	assert.Equal(t, "{\"code\":401,\"message\":\"validation failure list:\\npassword in body is required\"}", w.Body.String())
 
 	//Validate machine
 	err = ValidateMachine("test", config.API.Server.DbConfig)

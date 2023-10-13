@@ -19,7 +19,7 @@ func addToExclusion(name string) error {
 }
 
 func removeFromExclusion(name string) error {
-	index := indexOf(name, csConfig.Cscli.SimulationConfig.Exclusions)
+	index := slices.Index(csConfig.Cscli.SimulationConfig.Exclusions, name)
 
 	// Remove element from the slice
 	csConfig.Cscli.SimulationConfig.Exclusions[index] = csConfig.Cscli.SimulationConfig.Exclusions[len(csConfig.Cscli.SimulationConfig.Exclusions)-1]

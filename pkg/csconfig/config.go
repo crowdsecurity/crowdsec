@@ -1,3 +1,5 @@
+// Package csconfig contains the configuration structures for crowdsec and cscli.
+
 package csconfig
 
 import (
@@ -35,15 +37,6 @@ type Config struct {
 	DisableAPI   bool                `yaml:"-"`
 	DisableAgent bool                `yaml:"-"`
 	Hub          *Hub                `yaml:"-"`
-}
-
-func (c *Config) Dump() error {
-	out, err := yaml.Marshal(c)
-	if err != nil {
-		return fmt.Errorf("failed marshaling config: %w", err)
-	}
-	fmt.Printf("%s", string(out))
-	return nil
 }
 
 func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*Config, string, error) {
