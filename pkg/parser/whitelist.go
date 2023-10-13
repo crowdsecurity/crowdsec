@@ -68,9 +68,6 @@ func (n *Node) CheckIPsWL(srcs []net.IP) bool {
 }
 
 func (n *Node) CheckExprWL(cachedExprEnv map[string]interface{}) (bool, error) {
-	err := error(nil)
-	output := interface{}(nil)
-
 	isWhitelisted := false
 
 	if !n.ContainsExprLists() {
@@ -82,11 +79,11 @@ func (n *Node) CheckExprWL(cachedExprEnv map[string]interface{}) (bool, error) {
 		if isWhitelisted {
 			break
 		}
-		output, err = expr.Run(e.Filter, cachedExprEnv)
+		output, err := expr.Run(e.Filter, cachedExprEnv)
 		if err != nil {
 			n.Logger.Warningf("failed to run whitelist expr : %v", err)
 			n.Logger.Debug("Event leaving node : ko")
-			break
+			return isWhitelisted, err
 		}
 		switch out := output.(type) {
 		case bool:
@@ -101,7 +98,7 @@ func (n *Node) CheckExprWL(cachedExprEnv map[string]interface{}) (bool, error) {
 			n.Logger.Errorf("unexpected type %t (%v) while running '%s'", output, output, n.Whitelist.Exprs[eidx])
 		}
 	}
-	return isWhitelisted, err
+	return isWhitelisted, nil
 }
 
 func (n *Node) CompileWLs() (bool, error) {
