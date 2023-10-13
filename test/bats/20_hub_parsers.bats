@@ -20,6 +20,10 @@ setup() {
     load "../lib/bats-file/load.bash"
     ./instance-data load
     hub_uninstall_all
+    # XXX: remove all "content" fields from the index, to make sure
+    # XXX: we don't rely on it in any way
+    hub_min=$(jq <"$HUB_DIR/.index.json" 'del(..|.content?) | del(..|.long_description?) | del(..|.deprecated?) | del (..|.labels?)')
+    echo "$hub_min" >"$HUB_DIR/.index.json"
 }
 
 teardown() {

@@ -5,6 +5,10 @@ set -u
 
 setup_file() {
     load "../lib/setup_file.sh"
+    HUB_DIR=$(config_get '.config_paths.hub_dir')
+    export HUB_DIR
+    CONFIG_DIR=$(config_get '.config_paths.config_dir')
+    export CONFIG_DIR
 }
 
 teardown_file() {
@@ -13,7 +17,11 @@ teardown_file() {
 
 setup() {
     load "../lib/setup.sh"
+    load "../lib/bats-file/load.bash"
     ./instance-data load
+    hub_uninstall_all
+    hub_min=$(jq <"$HUB_DIR/.index.json" 'del(..|.content?) | del(..|.long_description?) | del(..|.deprecated?) | del (..|.labels?)')
+    echo "$hub_min" >"$HUB_DIR/.index.json"
 }
 
 teardown() {
@@ -22,123 +30,57 @@ teardown() {
 
 #----------
 
-@test "we can list collections" {
-    rune -0 cscli collections list
-}
+@test "cscli collections (dependencies)" {
+    # inject a dependency: smb requires sshd
+    hub_dep=$(jq <"$HUB_DIR/.index.json" '. * {collections:{"crowdsecurity/smb":{collections:["crowdsecurity/sshd"]}}}')
+    echo "$hub_dep" >"$HUB_DIR/.index.json"
 
-@test "there are 2 collections (linux and sshd)" {
+    # verify that installing smb brings sshd
+    rune -0 cscli collections install crowdsecurity/smb
     rune -0 cscli collections list -o json
-    rune -0 jq '.collections | length' <(output)
-    assert_output 2
-}
+    rune -0 jq -e '[.collections[].name]==["crowdsecurity/smb","crowdsecurity/sshd"]' <(output)
 
-@test "can install a collection (as a regular user) and remove it" {
-    # collection is not installed
+    # verify that removing smb removes sshd too
+    rune -0 cscli collections remove crowdsecurity/smb
     rune -0 cscli collections list -o json
-    rune -0 jq -r '.collections[].name' <(output)
-    refute_line "crowdsecurity/mysql"
+    rune -0 jq -e '.collections | length == 0' <(output)
 
-    # we install it
-    rune -0 cscli collections install crowdsecurity/mysql -o human
-    assert_stderr --partial "Enabled crowdsecurity/mysql"
-
-    # it has been installed
-    rune -0 cscli collections list -o json
-    rune -0 jq -r '.collections[].name' <(output)
-    assert_line "crowdsecurity/mysql"
-
-    # we install it
-    rune -0 cscli collections remove crowdsecurity/mysql -o human
-    assert_stderr --partial "Removed symlink [crowdsecurity/mysql]"
-
-    # it has been removed
-    rune -0 cscli collections list -o json
-    rune -0 jq -r '.collections[].name' <(output)
-    refute_line "crowdsecurity/mysql"
-}
-
-@test "must use --force to remove a collection that belongs to another, which becomes tainted" {
-    # we expect no error since we may have multiple collections, some removed and some not
+    # we can't remove sshd without --force
+    rune -0 cscli collections install crowdsecurity/smb
+    # XXX: should this be an error?
     rune -0 cscli collections remove crowdsecurity/sshd
-    assert_stderr --partial "crowdsecurity/sshd belongs to other collections"
-    assert_stderr --partial "[crowdsecurity/linux]"
+    assert_stderr --partial "crowdsecurity/sshd belongs to other collections: [crowdsecurity/smb]"
+    assert_stderr --partial "Run 'sudo cscli collections remove crowdsecurity/sshd --force' if you want to force remove this sub collection"
+    rune -0 cscli collections list -o json
+    rune -0 jq -c '[.collections[].name]' <(output)
+    assert_json '["crowdsecurity/smb","crowdsecurity/sshd"]'
 
+    # use the --force
     rune -0 cscli collections remove crowdsecurity/sshd --force
-    assert_stderr --partial "Removed symlink [crowdsecurity/sshd]"
-    rune -0 cscli collections inspect crowdsecurity/linux -o json
-    rune -0 jq -r '.tainted' <(output)
-    assert_output "true"
+    rune -0 cscli collections list -o json
+    rune -0 jq -c '[.collections[].name]' <(output)
+    assert_json '["crowdsecurity/smb"]'
+
+    # and now smb is tainted!
+    rune -0 cscli collections inspect crowdsecurity/smb -o json
+    rune -0 jq -e '.tainted//false==true' <(output)
+    rune -0 cscli collections remove crowdsecurity/smb --force
+
+    # empty
+    rune -0 cscli collections list -o json
+    rune -0 jq -e '.collections | length == 0' <(output)
+
+    # reinstall
+    rune -0 cscli collections install crowdsecurity/smb --force
+
+    # taint on sshd means smb is tainted as well
+    rune -0 cscli collections inspect crowdsecurity/smb -o json
+    jq -e '.tainted//false==false' <(output)
+    echo "dirty" >"$CONFIG_DIR/collections/sshd.yaml"
+    rune -0 cscli collections inspect crowdsecurity/smb -o json
+    jq -e '.tainted//false==true' <(output)
+
+    # now we can't remove smb without --force
+    rune -1 cscli collections remove crowdsecurity/smb
+    assert_stderr --partial "unable to disable crowdsecurity/smb: crowdsecurity/smb is tainted, use '--force' to overwrite"
 }
-
-@test "can remove a collection" {
-    rune -0 cscli collections remove crowdsecurity/linux
-    assert_stderr --partial "Removed"
-    assert_stderr --regexp   ".*for the new configuration to be effective."
-    rune -0 cscli collections inspect crowdsecurity/linux -o human --no-metrics
-    assert_line 'installed: false'
-}
-
-@test "collections delete is an alias for collections remove" {
-    rune -0 cscli collections delete crowdsecurity/linux
-    assert_stderr --partial "Removed"
-    assert_stderr --regexp   ".*for the new configuration to be effective."
-}
-
-@test "removing a collection that does not exist is noop" {
-    rune -0 cscli collections remove crowdsecurity/apache2
-    refute_stderr --partial "Removed"
-    assert_stderr --regexp   ".*for the new configuration to be effective."
-}
-
-@test "can remove a removed collection" {
-    rune -0 cscli collections install crowdsecurity/mysql
-    rune -0 cscli collections remove crowdsecurity/mysql
-    assert_stderr --partial "Removed"
-    rune -0 cscli collections remove crowdsecurity/mysql
-    refute_stderr --partial "Removed"
-}
-
-@test "can remove all collections" {
-    # we may have this too, from package installs
-    rune cscli parsers delete crowdsecurity/whitelists
-    rune -0 cscli collections remove --all
-    assert_stderr --partial "Removed symlink [crowdsecurity/sshd]"
-    assert_stderr --partial "Removed symlink [crowdsecurity/linux]"
-    rune -0 cscli hub list -o json
-    assert_json '{collections:[],parsers:[],postoverflows:[],scenarios:[]}'
-    rune -0 cscli collections remove --all
-    assert_stderr --partial 'Disabled 0 items'
-}
-
-@test "a taint bubbles up to the top collection" {
-    coll=crowdsecurity/nginx
-    subcoll=crowdsecurity/base-http-scenarios
-    scenario=crowdsecurity/http-crawl-non_statics
-
-    # install a collection with dependencies
-    rune -0 cscli collections install "$coll"
-
-    # the collection, subcollection and scenario are installed and not tainted
-    # we have to default to false because tainted is (as of 1.4.6) returned
-    # only when true
-    rune -0 cscli collections inspect "$coll" -o json
-    rune -0 jq -e '(.installed,.tainted|false)==(true,false)' <(output)
-    rune -0 cscli collections inspect "$subcoll" -o json
-    rune -0 jq -e '(.installed,.tainted|false)==(true,false)' <(output)
-    rune -0 cscli scenarios inspect "$scenario" -o json
-    rune -0 jq -e '(.installed,.tainted|false)==(true,false)' <(output)
-
-    # we taint the scenario
-    HUB_DIR=$(config_get '.config_paths.hub_dir')
-    yq e '.description="I am tainted"' -i "$HUB_DIR/scenarios/$scenario.yaml"
-
-    # the collection, subcollection and scenario are now tainted
-    rune -0 cscli scenarios inspect "$scenario" -o json
-    rune -0 jq -e '(.installed,.tainted)==(true,true)' <(output)
-    rune -0 cscli collections inspect "$subcoll" -o json
-    rune -0 jq -e '(.installed,.tainted)==(true,true)' <(output)
-    rune -0 cscli collections inspect "$coll" -o json
-    rune -0 jq -e '(.installed,.tainted)==(true,true)' <(output)
-}
-
-# TODO test download-only

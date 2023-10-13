@@ -183,7 +183,7 @@ func runParsersUpgrade(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	if all {
 		if err := cwhub.UpgradeConfig(csConfig, cwhub.PARSERS, "", force); err != nil {
 			return err
