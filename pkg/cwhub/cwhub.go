@@ -1,10 +1,13 @@
+// Package cwhub is responsible for installing and upgrading the local hub files.
+//
+// This includes retrieving the index, the items to install (parsers, scenarios, data files...)
+// and managing the dependencies and taints.
 package cwhub
 
 import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/enescakir/emoji"
@@ -36,18 +39,12 @@ var (
 	hubIdx             map[string]map[string]Item
 )
 
+// ItemVersion is used to detect the version of a given item
+// by comparing the hash of each version to the local file.
+// If the item does not match any known version, it is considered tainted.
 type ItemVersion struct {
-	Digest     string `json:"digest,omitempty"` // meow
-	Deprecated bool   `json:"deprecated,omitempty"`
-}
-
-type ItemHubStatus struct {
-	Name         string `json:"name"`
-	LocalVersion string `json:"local_version"`
-	LocalPath    string `json:"local_path"`
-	Description  string `json:"description"`
-	UTF8Status   string `json:"utf8_status"`
-	Status       string `json:"status"`
+	Digest     string `json:"digest,omitempty"`     // meow
+	Deprecated bool   `json:"deprecated,omitempty"` // XXX: do we keep this?
 }
 
 // Item can be: parser, scenario, collection..
@@ -84,7 +81,7 @@ type Item struct {
 	Collections   []string `json:"collections,omitempty"   yaml:"collections,omitempty"`
 }
 
-func (i *Item) status() (string, emoji.Emoji) {
+func (i *Item) Status() (string, emoji.Emoji) {
 	status := "disabled"
 	ok := false
 
@@ -122,19 +119,6 @@ func (i *Item) status() (string, emoji.Emoji) {
 	}
 
 	return status, emo
-}
-
-func (i *Item) hubStatus() ItemHubStatus {
-	status, emo := i.status()
-
-	return ItemHubStatus{
-		Name:         i.Name,
-		LocalVersion: i.LocalVersion,
-		LocalPath:    i.LocalPath,
-		Description:  i.Description,
-		Status:       status,
-		UTF8Status:   fmt.Sprintf("%v  %s", emo, status),
-	}
 }
 
 // versionStatus: semver requires 'v' prefix
@@ -256,33 +240,4 @@ func GetInstalledItemsAsString(itemType string) ([]string, error) {
 	}
 
 	return retStr, nil
-}
-
-// Returns a slice of entries for packages: name, status, local_path, local_version, utf8_status (fancy)
-func GetHubStatusForItemType(itemType string, name string, all bool) []ItemHubStatus {
-	if _, ok := hubIdx[itemType]; !ok {
-		log.Errorf("type %s doesn't exist", itemType)
-
-		return nil
-	}
-
-	ret := make([]ItemHubStatus, 0)
-
-	// remember, you do it for the user :)
-	for _, item := range hubIdx[itemType] {
-		if name != "" && name != item.Name {
-			// user has requested a specific name
-			continue
-		}
-		// Only enabled items ?
-		if !all && !item.Installed {
-			continue
-		}
-		// Check the item status
-		ret = append(ret, item.hubStatus())
-	}
-
-	sort.Slice(ret, func(i, j int) bool { return ret[i].Name < ret[j].Name })
-
-	return ret
 }

@@ -6,11 +6,9 @@ import (
 
 	"github.com/aquasecurity/table"
 	"github.com/enescakir/emoji"
-
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func listHubItemTable(out io.Writer, title string, statuses []cwhub.ItemHubStatus) {
+func listHubItemTable(out io.Writer, title string, statuses []ItemHubStatus) {
 	t := newLightTable(out)
 	t.SetHeaders("Name", fmt.Sprintf("%v Status", emoji.Package), "Version", "Local Path")
 	t.SetHeaderAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
