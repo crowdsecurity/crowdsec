@@ -10,14 +10,16 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func listHubItemTable(out io.Writer, title string, statuses []cwhub.ItemHubStatus) {
+func listHubItemTable(out io.Writer, title string, itemType string, itemNames []string) {
 	t := newLightTable(out)
 	t.SetHeaders("Name", fmt.Sprintf("%v Status", emoji.Package), "Version", "Local Path")
 	t.SetHeaderAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
 	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
 
-	for _, status := range statuses {
-		t.AddRow(status.Name, status.UTF8Status, status.LocalVersion, status.LocalPath)
+	for itemName := range itemNames {
+		item := cwhub.GetItem(itemType, itemNames[itemName])
+		status, emo := item.Status()
+		t.AddRow(item.Name, fmt.Sprintf("%v  %s", emo, status), item.LocalVersion, item.LocalPath)
 	}
 	renderTableTitle(out, title)
 	t.Render()

@@ -77,41 +77,42 @@ teardown() {
     assert_output "$expected"
 }
 
-
 @test "cscli scenarios list [scenario]..." {
+    # non-existent
+    rune -1 cscli scenario install foo/bar
+    assert_stderr --partial "can't find 'foo/bar' in scenarios"
+ 
+    # not installed
+    rune -0 cscli scenarios list crowdsecurity/ssh-bf
+    assert_output --regexp 'crowdsecurity/ssh-bf.*disabled'
+
+    # install two items
     rune -0 cscli scenarios install crowdsecurity/ssh-bf crowdsecurity/telnet-bf
 
-    # list one item
+    # list an installed item
     rune -0 cscli scenarios list crowdsecurity/ssh-bf
-    assert_output --partial "crowdsecurity/ssh-bf"
+    assert_output --regexp "crowdsecurity/ssh-bf.*enabled"
     refute_output --partial "crowdsecurity/telnet-bf"
 
-    # list multiple items
-    rune -0 cscli scenarios list crowdsecurity/ssh-bf crowdsecurity/telnet-bf
+    # list multiple installed and non installed items
+    rune -0 cscli scenarios list crowdsecurity/ssh-bf crowdsecurity/telnet-bf crowdsecurity/aws-bf crowdsecurity/aws-bf
     assert_output --partial "crowdsecurity/ssh-bf"
     assert_output --partial "crowdsecurity/telnet-bf"
+    assert_output --partial "crowdsecurity/aws-bf"
 
     rune -0 cscli scenarios list crowdsecurity/ssh-bf -o json
     rune -0 jq '.scenarios | length' <(output)
     assert_output "1"
-    rune -0 cscli scenarios list crowdsecurity/ssh-bf crowdsecurity/telnet-bf -o json
+    rune -0 cscli scenarios list crowdsecurity/ssh-bf crowdsecurity/telnet-bf crowdsecurity/aws-bf -o json
     rune -0 jq '.scenarios | length' <(output)
-    assert_output "2"
+    assert_output "3"
 
     rune -0 cscli scenarios list crowdsecurity/ssh-bf -o raw
     rune -0 grep -vc 'name,status,version,description' <(output)
     assert_output "1"
-    rune -0 cscli scenarios list crowdsecurity/ssh-bf crowdsecurity/telnet-bf -o raw
+    rune -0 cscli scenarios list crowdsecurity/ssh-bf crowdsecurity/telnet-bf crowdsecurity/aws-bf -o raw
     rune -0 grep -vc 'name,status,version,description' <(output)
-    assert_output "2"
-}
-
-@test "cscli scenarios list [scenario]... (not installed / not existing)" {
-    skip "not implemented yet"
-    # not installed
-    rune -1 cscli scenarios list crowdsecurity/ssh-bf
-    # not existing
-    rune -1 cscli scenarios list blahblah/blahblah
+    assert_output "3"
 }
 
 @test "cscli scenarios install [scenario]..." {
