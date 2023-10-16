@@ -167,15 +167,6 @@ func InspectItem(name string, itemType string, noMetrics bool) error {
 		return nil
 	}
 
-	if prometheusURL == "" {
-		// This is technically wrong to do this, as the prometheus section contains a listen address, not an URL to query prometheus
-		// But for ease of use, we will use the listen address as the prometheus URL because it will be 127.0.0.1 in the default case
-		listenAddr := csConfig.Prometheus.ListenAddr
-		listenPort := csConfig.Prometheus.ListenPort
-		prometheusURL = fmt.Sprintf("http://%s:%d/metrics", listenAddr, listenPort)
-		log.Debugf("No prometheus URL provided using: %s", prometheusURL)
-	}
-
 	fmt.Printf("\nCurrent metrics: \n")
 	ShowMetrics(hubItem)
 
