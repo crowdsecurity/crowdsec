@@ -12,7 +12,6 @@ import (
 
 	"github.com/enescakir/emoji"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/mod/semver"
 )
 
@@ -20,9 +19,6 @@ import (
 var (
 	ErrMissingReference = errors.New("Reference(s) missing in collection")
 
-	// XXX: can we remove these globals?
-	skippedLocal       = 0
-	skippedTainted     = 0
 	RawFileURLTemplate = "https://hub-cdn.crowdsec.net/%s/%s"
 	HubBranch          = "master"
 )
@@ -209,19 +205,6 @@ func AddItem(itemType string, item Item) error {
 	}
 
 	return fmt.Errorf("ItemType %s is unknown", itemType)
-}
-
-// DisplaySummary prints a total count of the hub items
-func DisplaySummary() {
-	msg := "Loaded: "
-	for itemType := range hubIdx.Items {
-		msg += fmt.Sprintf("%d %s, ", len(hubIdx.Items[itemType]), itemType)
-	}
-	log.Info(strings.Trim(msg, ", "))
-
-	if skippedLocal > 0 || skippedTainted > 0 {
-		log.Infof("unmanaged items: %d local, %d tainted", skippedLocal, skippedTainted)
-	}
 }
 
 // GetInstalledItems returns the list of installed items

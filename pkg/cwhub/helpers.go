@@ -95,9 +95,9 @@ func InstallItem(csConfig *csconfig.Config, name string, itemType string, force 
 		return fmt.Errorf("while enabling %s: %w", item.Name, err)
 	}
 
-//	if err := AddItem(itemType, *item); err != nil {
-//		return fmt.Errorf("while adding %s: %w", item.Name, err)
-//	}
+	if err := AddItem(itemType, *item); err != nil {
+		return fmt.Errorf("while adding %s: %w", item.Name, err)
+	}
 
 	log.Infof("Enabled %s", item.Name)
 

@@ -131,7 +131,7 @@ func (w Walker) getItemInfo(path string) (itemFileInfo, bool, error) {
 		ret.ftype = COLLECTIONS
 		ret.stage = ""
 	} else if ret.ftype != PARSERS && ret.ftype != POSTOVERFLOWS {
-		// its a PARSER / PARSER_OVFLW with a stage
+		// its a PARSER / POSTOVERFLOW with a stage
 		return itemFileInfo{}, inhub, fmt.Errorf("unknown configuration type for file '%s'", path)
 	}
 
@@ -197,7 +197,7 @@ func (w Walker) itemVisit(path string, f os.DirEntry, err error) error {
 	// if it's not a symlink and not in hub, it's a local file, don't bother
 	if local && !inhub {
 		log.Tracef("%s is a local file, skip", path)
-		skippedLocal++
+		hubIdx.skippedLocal++
 		//	log.Infof("local scenario, skip.")
 
 		_, fileName := filepath.Split(path)
@@ -303,7 +303,7 @@ func (w Walker) itemVisit(path string, f os.DirEntry, err error) error {
 		if !match {
 			log.Tracef("got tainted match for %s: %s", item.Name, path)
 
-			skippedTainted++
+			hubIdx.skippedTainted++
 			// the file and the stage is right, but the hash is wrong, it has been tainted by user
 			if !inhub {
 				item.LocalPath = path
@@ -316,13 +316,6 @@ func (w Walker) itemVisit(path string, f os.DirEntry, err error) error {
 			item.LocalHash = sha
 		}
 
-		// update the entry if appropriate
-		// if _, ok := hubIdx[ftype][k]; !ok || !inhub || v.D {
-		// 	fmt.Printf("Updating %s", k)
-		// 	hubIdx[ftype][k] = v
-		// } else if !inhub {
-
-		// } else if
 		hubIdx.Items[info.ftype][name] = item
 
 		return nil
@@ -453,8 +446,8 @@ func SyncDir(hub *csconfig.Hub, dir string) ([]string, error) {
 
 // Updates the info from HubInit() with the local state
 func LocalSync(hub *csconfig.Hub) ([]string, error) {
-	skippedLocal = 0
-	skippedTainted = 0
+	hubIdx.skippedLocal = 0
+	hubIdx.skippedTainted = 0
 
 	warnings, err := SyncDir(hub, hub.InstallDir)
 	if err != nil {

@@ -23,19 +23,41 @@ var (
 	// XXX: The order is important, as it is used to construct the
 	//      index tree in memory --> collections must be last
 	ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, COLLECTIONS}
-	hubIdx    = HubIndex{nil}
+	hubIdx    = HubIndex{}
 )
 
 
+type HubItems map[string]map[string]Item
+
 type HubIndex struct {
-	Items map[string]map[string]Item
+	Items HubItems
+	skippedLocal   int
+	skippedTainted int
 }
 
+// displaySummary prints a total count of the hub items
+func (h HubIndex) displaySummary() {
+	msg := "Loaded: "
+	for itemType := range h.Items {
+		msg += fmt.Sprintf("%d %s, ", len(h.Items[itemType]), itemType)
+	}
+	log.Info(strings.Trim(msg, ", "))
+
+	if h.skippedLocal > 0 || h.skippedTainted > 0 {
+		log.Infof("unmanaged items: %d local, %d tainted", h.skippedLocal, h.skippedTainted)
+	}
+}
+
+// DisplaySummary prints a total count of the hub items.
+// It is a wrapper around HubIndex.displaySummary() to avoid exporting the hub singleton
+func DisplaySummary() {
+	hubIdx.displaySummary()
+}
 
 // ParseIndex takes the content of a .index.json file and returns the map of associated parsers/scenarios/collections
-func ParseIndex(buff []byte) (map[string]map[string]Item, error) {
+func ParseIndex(buff []byte) (HubItems, error) {
 	var (
-		RawIndex     map[string]map[string]Item
+		RawIndex     HubItems
 		missingItems []string
 	)
 
