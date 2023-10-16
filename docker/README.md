@@ -19,11 +19,7 @@ All the following images are available on Docker Hub for the architectures
 
  - `crowdsecurity/crowdsec:{version}`
 
-Recommended for production usage. Also available on GitHub (ghcr.io).
-
- - `crowdsecurity/crowdsec:dev`
-
-The latest stable release.
+Latest stable release recommended for production usage. Also available on GitHub (ghcr.io).
 
  - `crowdsecurity/crowdsec:dev`
 
@@ -189,6 +185,14 @@ It is not recommended anymore to bind-mount the full config.yaml file and you sh
 ## Notifications
 
 If you want to use the [notification system](https://docs.crowdsec.net/docs/notification_plugins/intro), you have to use the full image (not slim) and mount at least a custom `profiles.yaml` and a notification configuration to `/etc/crowdsec/notifications`
+
+```shell
+docker run -d \
+    -v ./profiles.yaml:/etc/crowdsec/profiles.yaml \
+    -v ./http_notification.yaml:/etc/crowdsec/notifications/http_notification.yaml \
+    -p 8080:8080 -p 6060:6060 \
+    --name crowdsec crowdsecurity/crowdsec
+```
 
 # Deployment use cases
 
