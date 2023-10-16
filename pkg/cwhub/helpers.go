@@ -81,7 +81,7 @@ func InstallItem(csConfig *csconfig.Config, name string, itemType string, force 
 		return fmt.Errorf("while downloading %s: %w", item.Name, err)
 	}
 
-	if err = AddItem(obtype, *item); err != nil {
+	if err = AddItem(itemType, *item); err != nil {
 		return fmt.Errorf("while adding %s: %w", item.Name, err)
 	}
 

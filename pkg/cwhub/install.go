@@ -20,7 +20,7 @@ func purgeItem(hub *csconfig.Hub, target Item) (Item, error) {
 
 	target.Downloaded = false
 	log.Infof("Removed source file [%s]: %s", target.Name, itempath)
-	hubIdx[target.Type][target.Name] = target
+	hubIdx.Items[target.Type][target.Name] = target
 
 	return target, nil
 }
@@ -54,7 +54,7 @@ func DisableItem(hub *csconfig.Hub, target *Item, purge bool, force bool) error 
 		for idx, ptr := range [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections} {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
-				if val, ok := hubIdx[ptrtype][p]; ok {
+				if val, ok := hubIdx.Items[ptrtype][p]; ok {
 					// check if the item doesn't belong to another collection before removing it
 					toRemove := true
 
@@ -130,7 +130,7 @@ func DisableItem(hub *csconfig.Hub, target *Item, purge bool, force bool) error 
 		}
 	}
 
-	hubIdx[target.Type][target.Name] = *target
+	hubIdx.Items[target.Type][target.Name] = *target
 
 	return nil
 }
@@ -172,7 +172,7 @@ func EnableItem(hub *csconfig.Hub, target *Item) error {
 		for idx, ptr := range [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections} {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
-				val, ok := hubIdx[ptrtype][p]
+				val, ok := hubIdx.Items[ptrtype][p]
 				if !ok {
 					return fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
 				}
@@ -208,7 +208,7 @@ func EnableItem(hub *csconfig.Hub, target *Item) error {
 
 	log.Infof("Enabled %s : %s", target.Type, target.Name)
 	target.Installed = true
-	hubIdx[target.Type][target.Name] = *target
+	hubIdx.Items[target.Type][target.Name] = *target
 
 	return nil
 }

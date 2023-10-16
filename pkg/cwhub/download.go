@@ -33,7 +33,7 @@ func UpdateHubIdx(hub *csconfig.Hub) error {
 		}
 	}
 
-	hubIdx = ret
+	hubIdx = HubIndex{Items: ret}
 
 	if _, err := LocalSync(hub); err != nil {
 		return fmt.Errorf("failed to sync: %w", err)
@@ -117,7 +117,7 @@ func DownloadLatest(hub *csconfig.Hub, target *Item, overwrite bool, updateOnly 
 	for idx, ptr := range tmp {
 		ptrtype := ItemTypes[idx]
 		for _, p := range ptr {
-			val, ok := hubIdx[ptrtype][p]
+			val, ok := hubIdx.Items[ptrtype][p]
 			if !ok {
 				return fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
 			}
@@ -153,7 +153,7 @@ func DownloadLatest(hub *csconfig.Hub, target *Item, overwrite bool, updateOnly 
 				}
 			}
 
-			hubIdx[ptrtype][p] = val
+			hubIdx.Items[ptrtype][p] = val
 		}
 	}
 
@@ -267,7 +267,7 @@ func DownloadItem(hub *csconfig.Hub, target *Item, overwrite bool) error {
 		return fmt.Errorf("while downloading data for %s: %w", target.FileName, err)
 	}
 
-	hubIdx[target.Type][target.Name] = *target
+	hubIdx.Items[target.Type][target.Name] = *target
 
 	return nil
 }

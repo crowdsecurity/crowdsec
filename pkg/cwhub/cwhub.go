@@ -16,19 +16,8 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-const (
-	HubIndexFile = ".index.json"
-
-	// managed item types
-	COLLECTIONS   = "collections"
-	PARSERS       = "parsers"
-	POSTOVERFLOWS = "postoverflows"
-	SCENARIOS     = "scenarios"
-)
 
 var (
-	ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, COLLECTIONS}
-
 	ErrMissingReference = errors.New("Reference(s) missing in collection")
 
 	// XXX: can we remove these globals?
@@ -36,7 +25,6 @@ var (
 	skippedTainted     = 0
 	RawFileURLTemplate = "https://hub-cdn.crowdsec.net/%s/%s"
 	HubBranch          = "master"
-	hubIdx             map[string]map[string]Item
 )
 
 // ItemVersion is used to detect the version of a given item
@@ -130,7 +118,7 @@ func (i *Item) versionStatus() int {
 
 // GetItemMap returns the map of items for a given type
 func GetItemMap(itemType string) map[string]Item {
-	m, ok := hubIdx[itemType]
+	m, ok := hubIdx.Items[itemType]
 	if !ok {
 		return nil
 	}
@@ -215,7 +203,7 @@ func GetItemNames(itemType string) []string {
 func AddItem(itemType string, item Item) error {
 	for _, itype := range ItemTypes {
 		if itype == itemType {
-			hubIdx[itemType][item.Name] = item
+			hubIdx.Items[itemType][item.Name] = item
 			return nil
 		}
 	}
@@ -226,8 +214,8 @@ func AddItem(itemType string, item Item) error {
 // DisplaySummary prints a total count of the hub items
 func DisplaySummary() {
 	msg := "Loaded: "
-	for itemType := range hubIdx {
-		msg += fmt.Sprintf("%d %s, ", len(hubIdx[itemType]), itemType)
+	for itemType := range hubIdx.Items {
+		msg += fmt.Sprintf("%d %s, ", len(hubIdx.Items[itemType]), itemType)
 	}
 	log.Info(strings.Trim(msg, ", "))
 
@@ -238,7 +226,7 @@ func DisplaySummary() {
 
 // GetInstalledItems returns the list of installed items
 func GetInstalledItems(itemType string) ([]Item, error) {
-	items, ok := hubIdx[itemType]
+	items, ok := hubIdx.Items[itemType]
 	if !ok {
 		return nil, fmt.Errorf("no %s in hubIdx", itemType)
 	}

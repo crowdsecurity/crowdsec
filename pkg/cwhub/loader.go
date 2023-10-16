@@ -203,7 +203,7 @@ func (w Walker) itemVisit(path string, f os.DirEntry, err error) error {
 
 		_, fileName := filepath.Split(path)
 
-		hubIdx[info.ftype][info.fname] = Item{
+		hubIdx.Items[info.ftype][info.fname] = Item{
 			Name:      info.fname,
 			Stage:     info.stage,
 			Installed: true,
@@ -222,7 +222,7 @@ func (w Walker) itemVisit(path string, f os.DirEntry, err error) error {
 
 	match := false
 
-	for name, item := range hubIdx[info.ftype] {
+	for name, item := range hubIdx.Items[info.ftype] {
 		log.Tracef("check [%s] vs [%s] : %s", info.fname, item.RemotePath, info.ftype+"/"+info.stage+"/"+info.fname+".yaml")
 
 		if info.fname != item.FileName {
@@ -324,7 +324,7 @@ func (w Walker) itemVisit(path string, f os.DirEntry, err error) error {
 		// } else if !inhub {
 
 		// } else if
-		hubIdx[info.ftype][name] = item
+		hubIdx.Items[info.ftype][name] = item
 
 		return nil
 	}
@@ -350,7 +350,7 @@ func CollecDepsCheck(v *Item) error {
 	for idx, itemSlice := range [][]string{v.Parsers, v.PostOverflows, v.Scenarios, v.Collections} {
 		sliceType := ItemTypes[idx]
 		for _, subName := range itemSlice {
-			subItem, ok := hubIdx[sliceType][subName]
+			subItem, ok := hubIdx.Items[sliceType][subName]
 			if !ok {
 				return fmt.Errorf("referred %s %s in collection %s doesn't exist", sliceType, subName, v.Name)
 			}
@@ -372,7 +372,7 @@ func CollecDepsCheck(v *Item) error {
 					return fmt.Errorf("sub collection %s is broken: %w", subItem.Name, err)
 				}
 
-				hubIdx[sliceType][subName] = subItem
+				hubIdx.Items[sliceType][subName] = subItem
 			}
 
 			// propagate the state of sub-items to set
@@ -403,7 +403,7 @@ func CollecDepsCheck(v *Item) error {
 				subItem.BelongsToCollections = append(subItem.BelongsToCollections, v.Name)
 			}
 
-			hubIdx[sliceType][subName] = subItem
+			hubIdx.Items[sliceType][subName] = subItem
 
 			log.Tracef("checking for %s - tainted:%t uptodate:%t", subName, v.Tainted, v.UpToDate)
 		}
@@ -428,7 +428,7 @@ func SyncDir(hub *csconfig.Hub, dir string) ([]string, error) {
 		}
 	}
 
-	for name, item := range hubIdx[COLLECTIONS] {
+	for name, item := range hubIdx.Items[COLLECTIONS] {
 		if !item.Installed {
 			continue
 		}
@@ -438,7 +438,7 @@ func SyncDir(hub *csconfig.Hub, dir string) ([]string, error) {
 		case 0: // latest
 			if err := CollecDepsCheck(&item); err != nil {
 				warnings = append(warnings, fmt.Sprintf("dependency of %s: %s", item.Name, err))
-				hubIdx[COLLECTIONS][name] = item
+				hubIdx.Items[COLLECTIONS][name] = item
 			}
 		case 1: // not up-to-date
 			warnings = append(warnings, fmt.Sprintf("update for collection %s available (currently:%s, latest:%s)", item.Name, item.LocalVersion, item.Version))
@@ -492,7 +492,7 @@ func GetHubIdx(hub *csconfig.Hub) error {
 		return err
 	}
 
-	hubIdx = ret
+	hubIdx = HubIndex{Items: ret}
 
 	_, err = LocalSync(hub)
 	if err != nil {
@@ -517,7 +517,7 @@ func LoadPkgIndex(buff []byte) (map[string]map[string]Item, error) {
 
 	// Iterate over the different types to complete the struct
 	for _, itemType := range ItemTypes {
-		log.Tracef("%d item", len(RawIndex[itemType]))
+		log.Tracef("%s: %d items", itemType, len(RawIndex[itemType]))
 
 		for name, item := range RawIndex[itemType] {
 			item.Name = name
