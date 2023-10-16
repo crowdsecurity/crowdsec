@@ -4,7 +4,7 @@ go 1.21
 
 // Don't use the toolchain directive to avoid uncontrolled downloads during
 // a build, especially in sandboxed environments (freebsd, gentoo...).
-// toolchain go1.21.1
+// toolchain go1.21.3
 
 require (
 	entgo.io/ent v0.12.4
