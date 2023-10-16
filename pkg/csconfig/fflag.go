@@ -18,12 +18,18 @@ func LoadFeatureFlagsEnv(logger *log.Logger) error {
 	return nil
 }
 
-// LoadFeatureFlags parses feature.yaml to enable feature flags.
+// FeatureFlagsFileLocation returns the path to the feature.yaml file.
 // The file is in the same directory as config.yaml, which is provided
 // as the fist parameter. This can be different than ConfigPaths.ConfigDir
-func LoadFeatureFlagsFile(configPath string, logger *log.Logger) error {
+// because we have not read config.yaml yet so we don't know the value of ConfigDir.
+func GetFeatureFilePath(configPath string) string {
 	dir := filepath.Dir(configPath)
-	featurePath := filepath.Join(dir, "feature.yaml")
+	return filepath.Join(dir, "feature.yaml")
+}
+
+// LoadFeatureFlags parses feature.yaml to enable feature flags.
+func LoadFeatureFlagsFile(configPath string, logger *log.Logger) error {
+	featurePath := GetFeatureFilePath(configPath)
 
 	if err := fflag.Crowdsec.SetFromYamlFile(featurePath, logger); err != nil {
 		return fmt.Errorf("file %s: %s", featurePath, err)
