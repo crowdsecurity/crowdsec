@@ -107,7 +107,7 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 	if name != "" {
 		item := GetItem(itemType, name)
 		if item == nil {
-			return fmt.Errorf("unable to retrieve: %s", name)
+			return fmt.Errorf("can't find '%s' in %s", name, itemType)
 		}
 
 		err := DisableItem(csConfig.Hub, item, purge, forceAction)
@@ -151,7 +151,7 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 	return nil
 }
 
-func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, force bool) {
+func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, force bool) error {
 	updated := 0
 	found := false
 
@@ -166,17 +166,17 @@ func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, forc
 		}
 
 		if !v.Downloaded {
-			log.Warningf("%s : not downloaded, please install.", v.Name)
+			log.Warningf("%s: not downloaded, please install.", v.Name)
 			continue
 		}
 
 		found = true
 
 		if v.UpToDate {
-			log.Infof("%s : up-to-date", v.Name)
+			log.Infof("%s: up-to-date", v.Name)
 
 			if err := DownloadDataIfNeeded(csConfig.Hub, v, force); err != nil {
-				log.Fatalf("%s : download failed : %v", v.Name, err)
+				return fmt.Errorf("%s: download failed: %w", v.Name, err)
 			}
 
 			if !force {
@@ -185,7 +185,7 @@ func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, forc
 		}
 
 		if err := DownloadLatest(csConfig.Hub, &v, force, true); err != nil {
-			log.Fatalf("%s : download failed : %v", v.Name, err)
+			return fmt.Errorf("%s: download failed: %w", v.Name, err)
 		}
 
 		if !v.UpToDate {
@@ -203,14 +203,14 @@ func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, forc
 		}
 
 		if err := AddItem(itemType, v); err != nil {
-			log.Fatalf("unable to add %s: %v", v.Name, err)
+			return fmt.Errorf("unable to add %s: %w", v.Name, err)
 		}
 	}
 
 	if !found && name == "" {
 		log.Infof("No %s installed, nothing to upgrade", itemType)
 	} else if !found {
-		log.Errorf("Item '%s' not found in hub", name)
+		log.Errorf("can't find '%s' in %s", name, itemType)
 	} else if updated == 0 && found {
 		if name == "" {
 			log.Infof("All %s are already up-to-date", itemType)
@@ -220,4 +220,6 @@ func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, forc
 	} else if updated != 0 {
 		log.Infof("Upgraded %d items", updated)
 	}
+
+	return nil
 }

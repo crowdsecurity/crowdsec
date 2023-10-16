@@ -300,10 +300,6 @@ func runMetrics(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err = csConfig.LoadPrometheus(); err != nil {
-		return fmt.Errorf("failed to load prometheus config: %w", err)
-	}
-
 	if csConfig.Prometheus == nil {
 		return fmt.Errorf("prometheus section missing, can't show metrics")
 	}

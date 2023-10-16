@@ -41,9 +41,9 @@ func printHelp(cmd *cobra.Command) {
 func Suggest(itemType string, baseItem string, suggestItem string, score int, ignoreErr bool) {
 	errMsg := ""
 	if score < MaxDistance {
-		errMsg = fmt.Sprintf("unable to find %s '%s', did you mean %s ?", itemType, baseItem, suggestItem)
+		errMsg = fmt.Sprintf("can't find '%s' in %s, did you mean %s?", baseItem, itemType, suggestItem)
 	} else {
-		errMsg = fmt.Sprintf("unable to find %s '%s'", itemType, baseItem)
+		errMsg = fmt.Sprintf("can't find '%s' in %s", baseItem, itemType)
 	}
 	if ignoreErr {
 		log.Error(errMsg)
@@ -185,33 +185,40 @@ func ListItems(out io.Writer, itemTypes []string, args []string, showType bool, 
 	}
 }
 
-func InspectItem(name string, objecitemType string) {
-
-	hubItem := cwhub.GetItem(objecitemType, name)
+func InspectItem(name string, itemType string, noMetrics bool) error {
+	hubItem := cwhub.GetItem(itemType, name)
 	if hubItem == nil {
-		log.Fatalf("unable to retrieve item.")
+		return fmt.Errorf("can't find '%s' in %s", name, itemType)
 	}
-	var b []byte
-	var err error
+
+	var (
+		b []byte
+		err error
+	)
+
 	switch csConfig.Cscli.Output {
 	case "human", "raw":
 		b, err = yaml.Marshal(*hubItem)
 		if err != nil {
-			log.Fatalf("unable to marshal item : %s", err)
+			return fmt.Errorf("unable to marshal item: %s", err)
 		}
 	case "json":
 		b, err = json.MarshalIndent(*hubItem, "", " ")
 		if err != nil {
-			log.Fatalf("unable to marshal item : %s", err)
+			return fmt.Errorf("unable to marshal item: %s", err)
 		}
 	}
+
 	fmt.Printf("%s", string(b))
-	if csConfig.Cscli.Output == "json" || csConfig.Cscli.Output == "raw" {
-		return
+
+	if noMetrics || csConfig.Cscli.Output == "json" || csConfig.Cscli.Output == "raw" {
+		return nil
 	}
 
-	fmt.Printf("\nCurrent metrics : \n")
+	fmt.Printf("\nCurrent metrics: \n")
 	ShowMetrics(hubItem)
+
+	return nil
 }
 
 func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *string) error {

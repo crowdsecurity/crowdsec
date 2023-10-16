@@ -238,6 +238,12 @@ assert_stderr_line() {
 }
 export -f assert_stderr_line
 
+hub_uninstall_all() {
+    CONFIG_DIR=$(dirname "$CONFIG_YAML")
+    rm -rf "$CONFIG_DIR"/collections/* "$CONFIG_DIR"/parsers/*/* "$CONFIG_DIR"/scenarios/* "$CONFIG_DIR"/postoverflows/*
+}
+export -f hub_uninstall_all
+
 # remove color and style sequences from stdin
 plaintext() {
     sed -E 's/\x1B\[[0-9;]*[JKmsu]//g'

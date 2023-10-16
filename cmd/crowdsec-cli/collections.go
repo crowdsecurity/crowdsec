@@ -13,13 +13,13 @@ import (
 
 func NewCollectionsCmd() *cobra.Command {
 	cmdCollections := &cobra.Command{
-		Use:   "collections [action]",
-		Short: "Install/Remove/Upgrade/Inspect collections from the CrowdSec Hub.",
-		Example: `cscli collections install crowdsec/xxx crowdsec/xyz
-cscli collections inspect crowdsec/xxx crowdsec/xyz
-cscli collections upgrade crowdsec/xxx crowdsec/xyz
-cscli collections list
-cscli collections remove crowdsec/xxx crowdsec/xyz
+		Use:   "collections <action> [collection]...",
+		Short: "Manage hub collections",
+		Example: `cscli collections list -a
+cscli collections install crowdsecurity/http-cve crowdsecurity/iptables
+cscli collections inspect crowdsecurity/http-cve crowdsecurity/iptables
+cscli collections upgrade crowdsecurity/http-cve crowdsecurity/iptables
+cscli collections remove crowdsecurity/http-cve crowdsecurity/iptables
 `,
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"collection"},
@@ -88,10 +88,10 @@ func runCollectionsInstall(cmd *cobra.Command, args []string) error {
 
 func NewCollectionsInstallCmd() *cobra.Command {
 	cmdCollectionsInstall := &cobra.Command{
-		Use:               "install collection",
+		Use:               "install <collection>...",
 		Short:             "Install given collection(s)",
-		Long:              `Fetch and install given collection(s) from hub`,
-		Example:           `cscli collections install crowdsec/xxx crowdsec/xyz`,
+		Long:              `Fetch and install one or more collections from hub`,
+		Example:           `cscli collections install crowdsecurity/http-cve crowdsecurity/iptables`,
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -102,7 +102,7 @@ func NewCollectionsInstallCmd() *cobra.Command {
 
 	flags := cmdCollectionsInstall.Flags()
 	flags.BoolP("download-only", "d", false, "Only download packages, don't enable")
-	flags.Bool("force", false, "Force install : Overwrite tainted and outdated files")
+	flags.Bool("force", false, "Force install: overwrite tainted and outdated files")
 	flags.Bool("ignore", false, "Ignore errors when installing multiple collections")
 
 	return cmdCollectionsInstall
@@ -143,11 +143,12 @@ func runCollectionsRemove(cmd *cobra.Command, args []string) error {
 		if !force {
 			item := cwhub.GetItem(cwhub.COLLECTIONS, name)
 			if item == nil {
-				return fmt.Errorf("unable to retrieve: %s", name)
+				// XXX: this should be in GetItem?
+				return fmt.Errorf("can't find '%s' in %s", name, cwhub.COLLECTIONS)
 			}
 			if len(item.BelongsToCollections) > 0 {
-				log.Warningf("%s belongs to other collections :\n%s\n", name, item.BelongsToCollections)
-				log.Printf("Run 'sudo cscli collections remove %s --force' if you want to force remove this sub collection\n", name)
+				log.Warningf("%s belongs to other collections: %s", name, item.BelongsToCollections)
+				log.Warningf("Run 'sudo cscli collections remove %s --force' if you want to force remove this sub collection", name)
 				continue
 			}
 		}
@@ -163,10 +164,10 @@ func runCollectionsRemove(cmd *cobra.Command, args []string) error {
 
 func NewCollectionsRemoveCmd() *cobra.Command {
 	cmdCollectionsRemove := &cobra.Command{
-		Use:               "remove collection",
+		Use:               "remove <collection>...",
 		Short:             "Remove given collection(s)",
-		Long:              `Remove given collection(s) from hub`,
-		Example:           `cscli collections remove crowdsec/xxx crowdsec/xyz`,
+		Long:              `Remove one or more collections`,
+		Example:           `cscli collections remove crowdsecurity/http-cve crowdsecurity/iptables`,
 		Aliases:           []string{"delete"},
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -177,8 +178,8 @@ func NewCollectionsRemoveCmd() *cobra.Command {
 
 	flags := cmdCollectionsRemove.Flags()
 	flags.Bool("purge", false, "Delete source file too")
-	flags.Bool("force", false, "Force remove : Remove tainted and outdated files")
-	flags.Bool("all", false, "Delete all the collections")
+	flags.Bool("force", false, "Force remove: remove tainted and outdated files")
+	flags.Bool("all", false, "Remove all the collections")
 
 	return cmdCollectionsRemove
 }
@@ -197,7 +198,9 @@ func runCollectionsUpgrade(cmd *cobra.Command, args []string) error {
 	}
 
 	if all {
-		cwhub.UpgradeConfig(csConfig, cwhub.COLLECTIONS, "", force)
+		if err := cwhub.UpgradeConfig(csConfig, cwhub.COLLECTIONS, "", force); err != nil {
+			return err
+		}
 		return nil
 	}
 
@@ -206,7 +209,9 @@ func runCollectionsUpgrade(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, name := range args {
-		cwhub.UpgradeConfig(csConfig, cwhub.COLLECTIONS, name, force)
+		if err := cwhub.UpgradeConfig(csConfig, cwhub.COLLECTIONS, name, force); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -214,10 +219,10 @@ func runCollectionsUpgrade(cmd *cobra.Command, args []string) error {
 
 func NewCollectionsUpgradeCmd() *cobra.Command {
 	cmdCollectionsUpgrade := &cobra.Command{
-		Use:               "upgrade collection",
+		Use:               "upgrade <collection>...",
 		Short:             "Upgrade given collection(s)",
-		Long:              `Fetch and upgrade given collection(s) from hub`,
-		Example:           `cscli collections upgrade crowdsec/xxx crowdsec/xyz`,
+		Long:              `Fetch and upgrade one or more collections from the hub`,
+		Example:           `cscli collections upgrade crowdsecurity/http-cve crowdsecurity/iptables`,
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cwhub.COLLECTIONS, args, toComplete)
@@ -227,7 +232,7 @@ func NewCollectionsUpgradeCmd() *cobra.Command {
 
 	flags := cmdCollectionsUpgrade.Flags()
 	flags.BoolP("all", "a", false, "Upgrade all the collections")
-	flags.Bool("force", false, "Force upgrade : Overwrite tainted and outdated files")
+	flags.Bool("force", false, "Force upgrade: overwrite tainted and outdated files")
 
 	return cmdCollectionsUpgrade
 }
@@ -244,8 +249,15 @@ func runCollectionsInspect(cmd *cobra.Command, args []string) error {
 		csConfig.Cscli.PrometheusUrl = url
 	}
 
+	noMetrics, err := flags.GetBool("no-metrics")
+	if err != nil {
+		return err
+	}
+
 	for _, name := range args {
-		InspectItem(name, cwhub.COLLECTIONS)
+		if err = InspectItem(name, cwhub.COLLECTIONS, noMetrics); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -253,10 +265,10 @@ func runCollectionsInspect(cmd *cobra.Command, args []string) error {
 
 func NewCollectionsInspectCmd() *cobra.Command {
 	cmdCollectionsInspect := &cobra.Command{
-		Use:               "inspect collection",
-		Short:             "Inspect given collection",
-		Long:              `Inspect given collection`,
-		Example:           `cscli collections inspect crowdsec/xxx crowdsec/xyz`,
+		Use:               "inspect <collection>...",
+		Short:             "Inspect given collection(s)",
+		Long:              `Inspect one or more collections`,
+		Example:           `cscli collections inspect crowdsecurity/http-cve crowdsecurity/iptables`,
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -267,6 +279,7 @@ func NewCollectionsInspectCmd() *cobra.Command {
 
 	flags := cmdCollectionsInspect.Flags()
 	flags.StringP("url", "u", "", "Prometheus url")
+	flags.Bool("no-metrics", false, "Don't show metrics (when cscli.output=human)")
 
 	return cmdCollectionsInspect
 }
@@ -287,11 +300,12 @@ func runCollectionsList(cmd *cobra.Command, args []string) error {
 
 func NewCollectionsListCmd() *cobra.Command {
 	cmdCollectionsList := &cobra.Command{
-		Use:               "list collection [-a]",
-		Short:             "List all collections",
-		Long:              `List all collections`,
-		Example:           `cscli collections list`,
-		Args:              cobra.ExactArgs(0),
+		Use:   "list [collection... | -a]",
+		Short: "List collections",
+		Long:  `List of installed/available/specified collections`,
+		Example: `cscli collections list
+cscli collections list -a
+cscli collections list crowdsecurity/http-cve crowdsecurity/iptables`,
 		DisableAutoGenTag: true,
 		RunE:              runCollectionsList,
 	}
