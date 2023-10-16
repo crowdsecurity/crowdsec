@@ -131,7 +131,7 @@ func (w Walker) getItemInfo(path string) (itemFileInfo, bool, error) {
 	} else if ret.stage == COLLECTIONS {
 		ret.ftype = COLLECTIONS
 		ret.stage = ""
-	} else if ret.ftype != PARSERS && ret.ftype != PARSERS_OVFLW {
+	} else if ret.ftype != PARSERS && ret.ftype != POSTOVERFLOWS {
 		// its a PARSER / PARSER_OVFLW with a stage
 		return itemFileInfo{}, inhub, fmt.Errorf("unknown configuration type for file '%s'", path)
 	}

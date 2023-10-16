@@ -20,14 +20,14 @@ const (
 	HubIndexFile = ".index.json"
 
 	// managed item types
-	PARSERS       = "parsers"
-	PARSERS_OVFLW = "postoverflows"
-	SCENARIOS     = "scenarios"
 	COLLECTIONS   = "collections"
+	PARSERS       = "parsers"
+	POSTOVERFLOWS = "postoverflows"
+	SCENARIOS     = "scenarios"
 )
 
 var (
-	ItemTypes = []string{PARSERS, PARSERS_OVFLW, SCENARIOS, COLLECTIONS}
+	ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, COLLECTIONS}
 
 	ErrMissingReference = errors.New("Reference(s) missing in collection")
 
@@ -220,7 +220,7 @@ func AddItem(itemType string, item Item) error {
 
 func DisplaySummary() {
 	log.Infof("Loaded %d collecs, %d parsers, %d scenarios, %d post-overflow parsers", len(hubIdx[COLLECTIONS]),
-		len(hubIdx[PARSERS]), len(hubIdx[SCENARIOS]), len(hubIdx[PARSERS_OVFLW]))
+		len(hubIdx[PARSERS]), len(hubIdx[SCENARIOS]), len(hubIdx[POSTOVERFLOWS]))
 
 	if skippedLocal > 0 || skippedTainted > 0 {
 		log.Infof("unmanaged items: %d local, %d tainted", skippedLocal, skippedTainted)

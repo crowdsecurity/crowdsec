@@ -63,7 +63,7 @@ func runHubList(cmd *cobra.Command, args []string) error {
 	cwhub.DisplaySummary()
 
 	err = ListItems(color.Output, []string{
-		cwhub.COLLECTIONS, cwhub.PARSERS, cwhub.SCENARIOS, cwhub.PARSERS_OVFLW,
+		cwhub.COLLECTIONS, cwhub.PARSERS, cwhub.SCENARIOS, cwhub.POSTOVERFLOWS,
 	}, nil, true, false, all)
 	if err != nil {
 		return err
@@ -164,7 +164,7 @@ func runHubUpgrade(cmd *cobra.Command, args []string) error {
 	}
 
 	log.Infof("Upgrading postoverflows")
-	if err := cwhub.UpgradeConfig(csConfig, cwhub.PARSERS_OVFLW, "", force); err != nil {
+	if err := cwhub.UpgradeConfig(csConfig, cwhub.POSTOVERFLOWS, "", force); err != nil {
 		return err
 	}
 

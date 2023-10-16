@@ -333,7 +333,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			if !skipHub {
 				infos[SUPPORT_PARSERS_PATH] = collectHubItems(cwhub.PARSERS)
 				infos[SUPPORT_SCENARIOS_PATH] = collectHubItems(cwhub.SCENARIOS)
-				infos[SUPPORT_POSTOVERFLOWS_PATH] = collectHubItems(cwhub.PARSERS_OVFLW)
+				infos[SUPPORT_POSTOVERFLOWS_PATH] = collectHubItems(cwhub.POSTOVERFLOWS)
 				infos[SUPPORT_COLLECTIONS_PATH] = collectHubItems(cwhub.COLLECTIONS)
 			}
 

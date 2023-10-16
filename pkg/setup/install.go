@@ -121,7 +121,7 @@ func InstallHubItems(csConfig *csconfig.Config, input []byte, dryRun bool) error
 					continue
 				}
 
-				if err := cwhub.InstallItem(csConfig, postoverflow, cwhub.PARSERS_OVFLW, forceAction, downloadOnly); err != nil {
+				if err := cwhub.InstallItem(csConfig, postoverflow, cwhub.POSTOVERFLOWS, forceAction, downloadOnly); err != nil {
 					return fmt.Errorf("while installing postoverflow %s: %w", postoverflow, err)
 				}
 			}
