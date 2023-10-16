@@ -2,8 +2,9 @@ package types
 
 import (
 	"net"
-	"slices"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -72,11 +73,7 @@ func TestParseIPSources(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			ips := tt.evt.ParseIPSources()
-			if !slices.EqualFunc(ips, tt.expected, func(a, b net.IP) bool {
-				return a.Equal(b)
-			}) {
-				t.Errorf("Expected: %s, got: %s", tt.expected, ips)
-			}
+			assert.Equal(t, ips, tt.expected)
 		})
 	}
 }

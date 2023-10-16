@@ -3,11 +3,13 @@ package parser
 import (
 	"testing"
 
-	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/crowdsecurity/go-cs-lib/cstest"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/go-cs-lib/cstest"
+
+	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 func TestWhitelistCompile(t *testing.T) {
@@ -17,8 +19,7 @@ func TestWhitelistCompile(t *testing.T) {
 	tests := []struct {
 		name        string
 		whitelist   Whitelist
-		expectedErr bool
-		expected    string
+		expectedErr string
 	}{
 		{
 			name: "Valid CIDR whitelist",
@@ -37,8 +38,7 @@ func TestWhitelistCompile(t *testing.T) {
 					"127.0.0.1/1000",
 				},
 			},
-			expectedErr: true,
-			expected:    "invalid CIDR address",
+			expectedErr: "invalid CIDR address",
 		},
 		{
 			name: "Valid EXPR whitelist",
@@ -57,20 +57,16 @@ func TestWhitelistCompile(t *testing.T) {
 					"evt.THISPROPERTYSHOULDERROR == true",
 				},
 			},
-			expectedErr: true,
-			expected:    "types.Event has no field",
+			expectedErr: "types.Event has no field",
 		},
 	}
 
 	for _, tt := range tests {
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			node.Whitelist = tt.whitelist
 			_, err := node.CompileWLs()
-			if !tt.expectedErr {
-				require.NoError(t, err)
-			} else {
-				cstest.RequireErrorContains(t, err, tt.expected)
-			}
+			cstest.RequireErrorContains(t, err, tt.expectedErr)
 		})
 	}
 }
@@ -298,9 +294,7 @@ func TestWhitelistCheck(t *testing.T) {
 				isWhitelisted, err = node.CheckExprWL(map[string]interface{}{"evt": tt.event})
 			}
 			require.NoError(t, err)
-			if isWhitelisted != tt.expected {
-				t.Fatalf("expected %t, got %t", tt.expected, isWhitelisted)
-			}
+			require.Equal(t, tt.expected, isWhitelisted)
 		})
 	}
 }
