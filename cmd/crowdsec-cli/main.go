@@ -29,8 +29,6 @@ var dbClient *database.Client
 var OutputFormat string
 var OutputColor string
 
-var prometheusURL string
-
 var mergedConfig string
 
 func initConfig() {
