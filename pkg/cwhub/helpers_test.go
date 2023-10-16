@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//Download index, install collection. Add scenario to collection (hub-side), update index, upgrade collection
+// Download index, install collection. Add scenario to collection (hub-side), update index, upgrade collection
 // We expect the new scenario to be installed
 func TestUpgradeConfigNewScenarioInCollection(t *testing.T) {
 	cfg := envSetup(t)
@@ -37,6 +37,7 @@ func TestUpgradeConfigNewScenarioInCollection(t *testing.T) {
 	if err := UpdateHubIdx(cfg.Hub); err != nil {
 		t.Fatalf("failed to download index : %s", err)
 	}
+
 	getHubIdxOrFail(t)
 
 	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
@@ -49,7 +50,6 @@ func TestUpgradeConfigNewScenarioInCollection(t *testing.T) {
 
 	require.True(t, hubIdx[SCENARIOS]["crowdsecurity/barfoo_scenario"].Downloaded)
 	require.True(t, hubIdx[SCENARIOS]["crowdsecurity/barfoo_scenario"].Installed)
-
 }
 
 // Install a collection, disable a scenario.
@@ -140,6 +140,7 @@ func TestUpgradeConfigNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *
 	if err := UpdateHubIdx(cfg.Hub); err != nil {
 		t.Fatalf("failed to download index : %s", err)
 	}
+
 	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
 	getHubIdxOrFail(t)
 
@@ -151,11 +152,12 @@ func TestUpgradeConfigNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *
 
 func assertCollectionDepsInstalled(t *testing.T, collection string) {
 	t.Helper()
+
 	c := hubIdx[COLLECTIONS][collection]
 	require.NoError(t, CollecDepsCheck(&c))
 }
 
 func pushUpdateToCollectionInHub() {
-	responseByPath["/master/.index.json"] = fileToStringX("./tests/index2.json")
-	responseByPath["/master/collections/crowdsecurity/test_collection.yaml"] = fileToStringX("./tests/collection_v2.yaml")
+	responseByPath["/master/.index.json"] = fileToStringX("./testdata/index2.json")
+	responseByPath["/master/collections/crowdsecurity/test_collection.yaml"] = fileToStringX("./testdata/collection_v2.yaml")
 }

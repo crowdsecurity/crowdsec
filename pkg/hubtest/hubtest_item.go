@@ -97,7 +97,7 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 	}
 	err = yaml.Unmarshal(yamlFile, configFileData)
 	if err != nil {
-		return nil, fmt.Errorf("Unmarshal: %v", err)
+		return nil, fmt.Errorf("unmarshal: %v", err)
 	}
 
 	parserAssertFilePath := filepath.Join(testPath, ParserAssertFileName)
@@ -122,10 +122,10 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 		ScenarioResultFile:        filepath.Join(resultPath, ScenarioResultFileName),
 		BucketPourResultFile:      filepath.Join(resultPath, BucketPourResultFileName),
 		RuntimeHubConfig: &csconfig.Hub{
-			HubDir:       runtimeHubFolder,
-			ConfigDir:    runtimeFolder,
-			HubIndexFile: hubTest.HubIndexFile,
-			DataDir:      filepath.Join(runtimeFolder, "data"),
+			HubDir:         runtimeHubFolder,
+			HubIndexFile:   hubTest.HubIndexFile,
+			InstallDir:     runtimeFolder,
+			InstallDataDir: filepath.Join(runtimeFolder, "data"),
 		},
 		Config:                 configFileData,
 		HubPath:                hubTest.HubPath,
@@ -516,7 +516,7 @@ func (t *HubTestItem) Run() error {
 		return fmt.Errorf("unable to stat log file '%s': %s", logFile, err)
 	}
 	if logFileStat.Size() == 0 {
-		return fmt.Errorf("Log file '%s' is empty, please fill it with log", logFile)
+		return fmt.Errorf("log file '%s' is empty, please fill it with log", logFile)
 	}
 
 	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--auto"}
@@ -555,7 +555,7 @@ func (t *HubTestItem) Run() error {
 		if os.IsNotExist(err) {
 			parserAssertFile, err := os.Create(t.ParserAssert.File)
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 			parserAssertFile.Close()
 		}
@@ -591,7 +591,7 @@ func (t *HubTestItem) Run() error {
 		if os.IsNotExist(err) {
 			scenarioAssertFile, err := os.Create(t.ScenarioAssert.File)
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 			scenarioAssertFile.Close()
 		}
