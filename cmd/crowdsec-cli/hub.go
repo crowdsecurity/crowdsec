@@ -50,7 +50,7 @@ func runHubList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := require.Hub(csConfig); err != nil {
+	if err = require.Hub(csConfig); err != nil {
 		return err
 	}
 
@@ -62,9 +62,12 @@ func runHubList(cmd *cobra.Command, args []string) error {
 
 	cwhub.DisplaySummary()
 
-	ListItems(color.Output, []string{
+	err = ListItems(color.Output, []string{
 		cwhub.COLLECTIONS, cwhub.PARSERS, cwhub.SCENARIOS, cwhub.PARSERS_OVFLW,
-	}, args, true, false, all)
+	}, nil, true, false, all)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

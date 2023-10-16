@@ -190,6 +190,23 @@ func GetItem(itemType string, itemName string) *Item {
 	return nil
 }
 
+// GetItemNames returns the list of item (full) names for a given type
+// ie. for parsers: crowdsecurity/apache2 crowdsecurity/nginx
+// The names can be used to retrieve the item with GetItem()
+func GetItemNames(itemType string) []string {
+	m := GetItemMap(itemType)
+	if m == nil {
+		return nil
+	}
+
+	names := make([]string, 0, len(m))
+	for k := range m {
+		names = append(names, k)
+	}
+
+	return names
+}
+
 func AddItem(itemType string, item Item) error {
 	for _, itype := range ItemTypes {
 		if itype == itemType {

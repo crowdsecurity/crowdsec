@@ -277,8 +277,9 @@ func runScenariosList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// XXX: will happily ignore missing scenarios
-	ListItems(color.Output, []string{cwhub.SCENARIOS}, args, false, true, all)
+	if err = ListItems(color.Output, []string{cwhub.SCENARIOS}, args, false, true, all); err != nil {
+		return err
+	}
 
 	return nil
 }

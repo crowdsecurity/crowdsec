@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"sort"
 	"strings"
 
@@ -14,29 +15,84 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func ListItems(out io.Writer, itemTypes []string, args []string, showType bool, showHeader bool, all bool) {
-	var hubStatusByItemType = make(map[string][]ItemHubStatus)
 
-	for _, itemType := range itemTypes {
-		itemName := ""
-		if len(args) == 1 {
-			itemName = args[0]
+func selectItems(itemType string, args []string, installedOnly bool) ([]string, error) {
+	itemNames := cwhub.GetItemNames(itemType)
+
+	notExist := []string{}
+	if len(args) > 0 {
+		installedOnly = false
+		for _, arg := range args {
+			if !slices.Contains(itemNames, arg) {
+				notExist = append(notExist, arg)
+			}
 		}
-		hubStatusByItemType[itemType] = GetHubStatusForItemType(itemType, itemName, all)
 	}
 
+	if len(notExist) > 0 {
+		return nil, fmt.Errorf("item(s) '%s' not found in %s", strings.Join(notExist, ", "), itemType)
+	}
+
+	if len(args) > 0 {
+		itemNames = args
+	}
+
+	if installedOnly {
+		installed := []string{}
+		for _, item := range itemNames {
+			if cwhub.GetItem(itemType, item).Installed {
+				installed = append(installed, item)
+			}
+		}
+		return installed, nil
+	}
+	return itemNames, nil
+}
+
+
+func ListItems(out io.Writer, itemTypes []string, args []string, showType bool, showHeader bool, all bool) error {
+	var err error
+	items := make(map[string][]string)
+	for _, itemType := range itemTypes {
+		if items[itemType], err = selectItems(itemType, args, !all); err != nil {
+			return err
+		}
+	}
+		
 	if csConfig.Cscli.Output == "human" {
 		for _, itemType := range itemTypes {
-			var statuses []ItemHubStatus
-			var ok bool
-			if statuses, ok = hubStatusByItemType[itemType]; !ok {
-				log.Errorf("unknown item type: %s", itemType)
-				continue
-			}
-			listHubItemTable(out, "\n"+strings.ToUpper(itemType), statuses)
+			listHubItemTable(out, "\n"+strings.ToUpper(itemType), itemType, items[itemType])
 		}
 	} else if csConfig.Cscli.Output == "json" {
-		x, err := json.MarshalIndent(hubStatusByItemType, "", " ")
+		type itemHubStatus struct {
+			Name         string `json:"name"`
+			LocalVersion string `json:"local_version"`
+			LocalPath    string `json:"local_path"`
+			Description  string `json:"description"`
+			UTF8Status   string `json:"utf8_status"`
+			Status       string `json:"status"`
+		}
+
+		hubStatus := make(map[string][]itemHubStatus)
+		for _, itemType := range itemTypes {
+			// empty slice in case there are no items of this type
+			hubStatus[itemType] = make([]itemHubStatus, len(items[itemType]))
+			for i, itemName := range items[itemType] {
+				item := cwhub.GetItem(itemType, itemName)
+				status, emo := item.Status()
+				hubStatus[itemType][i] = itemHubStatus{
+					Name:         item.Name,
+					LocalVersion: item.LocalVersion,
+					LocalPath:    item.LocalPath,
+					Description:  item.Description,
+					Status:       status,
+					UTF8Status:   fmt.Sprintf("%v  %s", emo, status),
+				}
+			}
+			h := hubStatus[itemType]
+			sort.Slice(h, func(i, j int) bool { return h[i].Name < h[j].Name })
+		}
+		x, err := json.MarshalIndent(hubStatus, "", " ")
 		if err != nil {
 			log.Fatalf("failed to unmarshal")
 		}
@@ -55,21 +111,17 @@ func ListItems(out io.Writer, itemTypes []string, args []string, showType bool, 
 
 		}
 		for _, itemType := range itemTypes {
-			var statuses []ItemHubStatus
-			var ok bool
-			if statuses, ok = hubStatusByItemType[itemType]; !ok {
-				log.Errorf("unknown item type: %s", itemType)
-				continue
-			}
-			for _, status := range statuses {
-				if status.LocalVersion == "" {
-					status.LocalVersion = "n/a"
+			for _, itemName := range items[itemType] {
+				item := cwhub.GetItem(itemType, itemName)
+				status, _ := item.Status()
+				if item.LocalVersion == "" {
+					item.LocalVersion = "n/a"
 				}
 				row := []string{
-					status.Name,
-					status.Status,
-					status.LocalVersion,
-					status.Description,
+					item.Name,
+					status,
+					item.LocalVersion,
+					item.Description,
 				}
 				if showType {
 					row = append(row, itemType)
@@ -82,6 +134,7 @@ func ListItems(out io.Writer, itemTypes []string, args []string, showType bool, 
 		}
 		csvwriter.Flush()
 	}
+	return nil
 }
 
 func InspectItem(name string, itemType string, noMetrics bool) error {
@@ -127,58 +180,4 @@ func InspectItem(name string, itemType string, noMetrics bool) error {
 	ShowMetrics(hubItem)
 
 	return nil
-}
-
-// ItemHubStatus is used to display the status of an item
-type ItemHubStatus struct {
-	Name         string `json:"name"`
-	LocalVersion string `json:"local_version"`
-	LocalPath    string `json:"local_path"`
-	Description  string `json:"description"`
-	UTF8Status   string `json:"utf8_status"`
-	Status       string `json:"status"`
-}
-
-func hubStatus(i cwhub.Item) ItemHubStatus {
-	status, emo := i.Status()
-
-	return ItemHubStatus{
-		Name:         i.Name,
-		LocalVersion: i.LocalVersion,
-		LocalPath:    i.LocalPath,
-		Description:  i.Description,
-		Status:       status,
-		UTF8Status:   fmt.Sprintf("%v  %s", emo, status),
-	}
-}
-
-// Returns a slice of entries for packages: name, status, local_path, local_version, utf8_status (fancy)
-func GetHubStatusForItemType(itemType string, name string, all bool) []ItemHubStatus {
-	items := cwhub.GetItemMap(itemType)
-	if items == nil {
-		log.Errorf("type %s doesn't exist", itemType)
-
-		return nil
-	}
-
-	ret := make([]ItemHubStatus, 0)
-
-	// remember, you do it for the user :)
-	for _, item := range items {
-		if name != "" && name != item.Name {
-			// user has requested a specific name
-			continue
-		}
-
-		// Only enabled items ?
-		if !all && !item.Installed {
-			continue
-		}
-		// Check the item status
-		ret = append(ret, hubStatus(item))
-	}
-
-	sort.Slice(ret, func(i, j int) bool { return ret[i].Name < ret[j].Name })
-
-	return ret
 }
