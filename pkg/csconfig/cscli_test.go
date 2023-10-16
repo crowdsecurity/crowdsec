@@ -38,12 +38,19 @@ func TestLoadCSCLI(t *testing.T) {
 					HubDir:       "./hub",
 					HubIndexFile: "./hub/.index.json",
 				},
+				Prometheus: &PrometheusCfg{
+					Enabled:    true,
+					Level:      "full",
+					ListenAddr: "127.0.0.1",
+					ListenPort: 6060,
+				},
 			},
 			expected: &CscliCfg{
-				ConfigDir:    configDirFullPath,
-				DataDir:      dataFullPath,
-				HubDir:       hubFullPath,
-				HubIndexFile: hubIndexFileFullPath,
+				ConfigDir:     configDirFullPath,
+				DataDir:       dataFullPath,
+				HubDir:        hubFullPath,
+				HubIndexFile:  hubIndexFileFullPath,
+				PrometheusUrl: "http://127.0.0.1:6060/metrics",
 			},
 		},
 		{

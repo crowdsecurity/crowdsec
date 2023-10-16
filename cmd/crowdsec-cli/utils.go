@@ -215,7 +215,7 @@ func InspectItem(name string, itemType string, noMetrics bool) error {
 		return nil
 	}
 
-	fmt.Printf("\nCurrent metrics : \n")
+	fmt.Printf("\nCurrent metrics: \n")
 	ShowMetrics(hubItem)
 
 	return nil
