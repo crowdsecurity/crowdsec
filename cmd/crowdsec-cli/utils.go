@@ -215,16 +215,7 @@ func InspectItem(name string, itemType string, noMetrics bool) error {
 		return nil
 	}
 
-	if prometheusURL == "" {
-		// This is technically wrong to do this, as the prometheus section contains a listen address, not an URL to query prometheus
-		// But for ease of use, we will use the listen address as the prometheus URL because it will be 127.0.0.1 in the default case
-		listenAddr := csConfig.Prometheus.ListenAddr
-		listenPort := csConfig.Prometheus.ListenPort
-		prometheusURL = fmt.Sprintf("http://%s:%d/metrics", listenAddr, listenPort)
-		log.Debugf("No prometheus URL provided using: %s", prometheusURL)
-	}
-
-	fmt.Printf("\nCurrent metrics: \n")
+	fmt.Printf("\nCurrent metrics : \n")
 	ShowMetrics(hubItem)
 
 	return nil
@@ -263,18 +254,18 @@ func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *
 func ShowMetrics(hubItem *cwhub.Item) {
 	switch hubItem.Type {
 	case cwhub.PARSERS:
-		metrics := GetParserMetric(prometheusURL, hubItem.Name)
+		metrics := GetParserMetric(hubItem.Name)
 		parserMetricsTable(color.Output, hubItem.Name, metrics)
 	case cwhub.SCENARIOS:
-		metrics := GetScenarioMetric(prometheusURL, hubItem.Name)
+		metrics := GetScenarioMetric(hubItem.Name)
 		scenarioMetricsTable(color.Output, hubItem.Name, metrics)
 	case cwhub.COLLECTIONS:
 		for _, item := range hubItem.Parsers {
-			metrics := GetParserMetric(prometheusURL, item)
+			metrics := GetParserMetric(item)
 			parserMetricsTable(color.Output, item, metrics)
 		}
 		for _, item := range hubItem.Scenarios {
-			metrics := GetScenarioMetric(prometheusURL, item)
+			metrics := GetScenarioMetric(item)
 			scenarioMetricsTable(color.Output, item, metrics)
 		}
 		for _, item := range hubItem.Collections {
@@ -290,10 +281,10 @@ func ShowMetrics(hubItem *cwhub.Item) {
 }
 
 // GetParserMetric is a complete rip from prom2json
-func GetParserMetric(url string, itemName string) map[string]map[string]int {
+func GetParserMetric(itemName string) map[string]map[string]int {
 	stats := make(map[string]map[string]int)
 
-	result := GetPrometheusMetric(url)
+	result := GetPrometheusMetric()
 	for idx, fam := range result {
 		if !strings.HasPrefix(fam.Name, "cs_") {
 			continue
@@ -371,7 +362,7 @@ func GetParserMetric(url string, itemName string) map[string]map[string]int {
 	return stats
 }
 
-func GetScenarioMetric(url string, itemName string) map[string]int {
+func GetScenarioMetric(itemName string) map[string]int {
 	stats := make(map[string]int)
 
 	stats["instantiation"] = 0
@@ -380,7 +371,7 @@ func GetScenarioMetric(url string, itemName string) map[string]int {
 	stats["pour"] = 0
 	stats["underflow"] = 0
 
-	result := GetPrometheusMetric(url)
+	result := GetPrometheusMetric()
 	for idx, fam := range result {
 		if !strings.HasPrefix(fam.Name, "cs_") {
 			continue
@@ -426,7 +417,7 @@ func GetScenarioMetric(url string, itemName string) map[string]int {
 	return stats
 }
 
-func GetPrometheusMetric(url string) []*prom2json.Family {
+func GetPrometheusMetric() []*prom2json.Family {
 	mfChan := make(chan *dto.MetricFamily, 1024)
 
 	// Start with the DefaultTransport for sane defaults.
@@ -439,7 +430,7 @@ func GetPrometheusMetric(url string) []*prom2json.Family {
 
 	go func() {
 		defer trace.CatchPanic("crowdsec/GetPrometheusMetric")
-		err := prom2json.FetchMetricFamilies(url, mfChan, transport)
+		err := prom2json.FetchMetricFamilies(csConfig.Cscli.PrometheusUrl, mfChan, transport)
 		if err != nil {
 			log.Fatalf("failed to fetch prometheus metrics : %v", err)
 		}
