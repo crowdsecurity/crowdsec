@@ -254,11 +254,6 @@ func runCollectionsInspect(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	noMetrics, err := flags.GetBool("no-metrics")
-	if err != nil {
-		return err
-	}
-
 	for _, name := range args {
 		if err = InspectItem(name, cwhub.COLLECTIONS, noMetrics); err != nil {
 			return err
