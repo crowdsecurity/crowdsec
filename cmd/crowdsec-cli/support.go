@@ -58,10 +58,6 @@ func stripAnsiString(str string) string {
 
 func collectMetrics() ([]byte, []byte, error) {
 	log.Info("Collecting prometheus metrics")
-	err := csConfig.LoadPrometheus()
-	if err != nil {
-		return nil, nil, err
-	}
 
 	if csConfig.Cscli.PrometheusUrl == "" {
 		log.Warn("No Prometheus URL configured, metrics will not be collected")
@@ -69,7 +65,7 @@ func collectMetrics() ([]byte, []byte, error) {
 	}
 
 	humanMetrics := bytes.NewBuffer(nil)
-	err = FormatPrometheusMetrics(humanMetrics, csConfig.Cscli.PrometheusUrl, "human")
+	err := FormatPrometheusMetrics(humanMetrics, csConfig.Cscli.PrometheusUrl, "human")
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not fetch promtheus metrics: %s", err)

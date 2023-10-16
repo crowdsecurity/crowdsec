@@ -1,5 +1,9 @@
 package csconfig
 
+import (
+	"fmt"
+)
+
 /*cscli specific config, such as hub directory*/
 type CscliCfg struct {
 	Output             string            `yaml:"output,omitempty"`
@@ -26,6 +30,10 @@ func (c *Config) LoadCSCLI() error {
 	c.Cscli.DataDir = c.ConfigPaths.DataDir
 	c.Cscli.HubDir = c.ConfigPaths.HubDir
 	c.Cscli.HubIndexFile = c.ConfigPaths.HubIndexFile
+
+	if c.Prometheus.ListenAddr != "" && c.Prometheus.ListenPort != 0 {
+		c.Cscli.PrometheusUrl = fmt.Sprintf("http://%s:%d/metrics", c.Prometheus.ListenAddr, c.Prometheus.ListenPort)
+	}
 
 	return nil
 }

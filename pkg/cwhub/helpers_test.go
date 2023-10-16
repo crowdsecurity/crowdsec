@@ -45,7 +45,8 @@ func TestUpgradeConfigNewScenarioInCollection(t *testing.T) {
 	require.False(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].UpToDate)
 	require.False(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Tainted)
 
-	UpgradeConfig(cfg, COLLECTIONS, "crowdsecurity/test_collection", false)
+	err := UpgradeConfig(cfg, COLLECTIONS, "crowdsecurity/test_collection", false)
+	require.NoError(t, err)
 	assertCollectionDepsInstalled(t, "crowdsecurity/test_collection")
 
 	require.True(t, hubIdx[SCENARIOS]["crowdsecurity/barfoo_scenario"].Downloaded)
@@ -85,11 +86,12 @@ func TestUpgradeConfigInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
 	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].UpToDate)
 
-	if err := UpdateHubIdx(cfg.Hub); err != nil {
+	if err = UpdateHubIdx(cfg.Hub); err != nil {
 		t.Fatalf("failed to download index : %s", err)
 	}
 
-	UpgradeConfig(cfg, COLLECTIONS, "crowdsecurity/test_collection", false)
+	err = UpgradeConfig(cfg, COLLECTIONS, "crowdsecurity/test_collection", false)
+	require.NoError(t, err)
 
 	getHubIdxOrFail(t)
 	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
@@ -141,14 +143,16 @@ func TestUpgradeConfigNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *
 	// we just removed. Nor should it install the newly added scenario
 	pushUpdateToCollectionInHub()
 
-	if err := UpdateHubIdx(cfg.Hub); err != nil {
+	if err = UpdateHubIdx(cfg.Hub); err != nil {
 		t.Fatalf("failed to download index : %s", err)
 	}
 
 	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
 	getHubIdxOrFail(t)
 
-	UpgradeConfig(cfg, COLLECTIONS, "crowdsecurity/test_collection", false)
+	err = UpgradeConfig(cfg, COLLECTIONS, "crowdsecurity/test_collection", false)
+	require.NoError(t, err)
+
 	getHubIdxOrFail(t)
 	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
 	require.True(t, hubIdx[SCENARIOS]["crowdsecurity/barfoo_scenario"].Installed)
