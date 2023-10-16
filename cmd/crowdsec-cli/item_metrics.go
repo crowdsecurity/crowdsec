@@ -21,18 +21,18 @@ import (
 func ShowMetrics(hubItem *cwhub.Item) {
 	switch hubItem.Type {
 	case cwhub.PARSERS:
-		metrics := GetParserMetric(prometheusURL, hubItem.Name)
+		metrics := GetParserMetric(csConfig.Cscli.PrometheusUrl, hubItem.Name)
 		parserMetricsTable(color.Output, hubItem.Name, metrics)
 	case cwhub.SCENARIOS:
-		metrics := GetScenarioMetric(prometheusURL, hubItem.Name)
+		metrics := GetScenarioMetric(csConfig.Cscli.PrometheusUrl, hubItem.Name)
 		scenarioMetricsTable(color.Output, hubItem.Name, metrics)
 	case cwhub.COLLECTIONS:
 		for _, item := range hubItem.Parsers {
-			metrics := GetParserMetric(prometheusURL, item)
+			metrics := GetParserMetric(csConfig.Cscli.PrometheusUrl, item)
 			parserMetricsTable(color.Output, item, metrics)
 		}
 		for _, item := range hubItem.Scenarios {
-			metrics := GetScenarioMetric(prometheusURL, item)
+			metrics := GetScenarioMetric(csConfig.Cscli.PrometheusUrl, item)
 			scenarioMetricsTable(color.Output, item, metrics)
 		}
 		for _, item := range hubItem.Collections {
