@@ -26,7 +26,7 @@ func UpdateHubIdx(hub *csconfig.Hub) error {
 		return fmt.Errorf("failed to download index: %w", err)
 	}
 
-	ret, err := LoadPkgIndex(bidx)
+	ret, err := ParseIndex(bidx)
 	if err != nil {
 		if !errors.Is(err, ErrMissingReference) {
 			return fmt.Errorf("failed to read index: %w", err)

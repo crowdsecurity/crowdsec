@@ -62,7 +62,7 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest,
 	}
 
 	// load hub index
-	hubIndex, err := cwhub.LoadPkgIndex(bidx)
+	hubIndex, err := cwhub.ParseIndex(bidx)
 	if err != nil {
 		return HubTest{}, fmt.Errorf("unable to load hub index file: %s", err)
 	}
