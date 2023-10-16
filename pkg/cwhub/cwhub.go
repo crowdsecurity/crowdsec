@@ -47,16 +47,16 @@ type ItemVersion struct {
 	Deprecated bool   `json:"deprecated,omitempty"` // XXX: do we keep this?
 }
 
-// Item can be: parser, scenario, collection..
+// Item represents an object managed in the hub. It can be a parser, scenario, collection..
 type Item struct {
 	// descriptive info
 	Type                 string   `json:"type,omitempty"                   yaml:"type,omitempty"`                   // parser|postoverflows|scenario|collection(|enrich)
 	Stage                string   `json:"stage,omitempty"                  yaml:"stage,omitempty"`                  // Stage for parser|postoverflow: s00-raw/s01-...
-	Name                 string   `json:"name,omitempty"`                                                           // as seen in .config.json, usually "author/name"
+	Name                 string   `json:"name,omitempty"`                                                           // as seen in .index.json, usually "author/name"
 	FileName             string   `json:"file_name,omitempty"`                                                      // the filename, ie. apache2-logs.yaml
-	Description          string   `json:"description,omitempty"            yaml:"description,omitempty"`            // as seen in .config.json
-	Author               string   `json:"author,omitempty"`                                                         // as seen in .config.json
-	References           []string `json:"references,omitempty"             yaml:"references,omitempty"`             // as seen in .config.json
+	Description          string   `json:"description,omitempty"            yaml:"description,omitempty"`            // as seen in .index.json
+	Author               string   `json:"author,omitempty"`                                                         // as seen in .index.json
+	References           []string `json:"references,omitempty"             yaml:"references,omitempty"`              // as seen in .index.json
 	BelongsToCollections []string `json:"belongs_to_collections,omitempty" yaml:"belongs_to_collections,omitempty"` // parent collection if any
 
 	// remote (hub) info
@@ -74,13 +74,15 @@ type Item struct {
 	Tainted      bool   `json:"tainted,omitempty"` // has it been locally modified
 	Local        bool   `json:"local,omitempty"`   // if it's a non versioned control one
 
-	// if it's a collection, it's not a single file
+	// if it's a collection, it can have sub items
 	Parsers       []string `json:"parsers,omitempty"       yaml:"parsers,omitempty"`
 	PostOverflows []string `json:"postoverflows,omitempty" yaml:"postoverflows,omitempty"`
 	Scenarios     []string `json:"scenarios,omitempty"     yaml:"scenarios,omitempty"`
 	Collections   []string `json:"collections,omitempty"   yaml:"collections,omitempty"`
 }
 
+// Status returns the status of the item as a string and an emoji
+// ie. "enabled,update-available" and emoji.Warning
 func (i *Item) Status() (string, emoji.Emoji) {
 	status := "disabled"
 	ok := false
@@ -126,6 +128,7 @@ func (i *Item) versionStatus() int {
 	return semver.Compare("v"+i.Version, "v"+i.LocalVersion)
 }
 
+// GetItemMap returns the map of items for a given type
 func GetItemMap(itemType string) map[string]Item {
 	m, ok := hubIdx[itemType]
 	if !ok {
@@ -135,7 +138,7 @@ func GetItemMap(itemType string) map[string]Item {
 	return m
 }
 
-// Given a FileInfo, extract the map key. Follow a symlink if necessary
+// itemKey extracts the map key of an item (i.e. author/name) from its pathname. Follows a symlink if necessary
 func itemKey(itemPath string) (string, error) {
 	f, err := os.Lstat(itemPath)
 	if err != nil {
@@ -182,6 +185,7 @@ func GetItemByPath(itemType string, itemPath string) (*Item, error) {
 	return &v, nil
 }
 
+// GetItem returns the item from hub based on its type and full name (author/name)
 func GetItem(itemType string, itemName string) *Item {
 	if m, ok := GetItemMap(itemType)[itemName]; ok {
 		return &m
@@ -207,6 +211,7 @@ func GetItemNames(itemType string) []string {
 	return names
 }
 
+// AddItem adds an item to the hub index
 func AddItem(itemType string, item Item) error {
 	for _, itype := range ItemTypes {
 		if itype == itemType {
@@ -218,15 +223,20 @@ func AddItem(itemType string, item Item) error {
 	return fmt.Errorf("ItemType %s is unknown", itemType)
 }
 
+// DisplaySummary prints a total count of the hub items
 func DisplaySummary() {
-	log.Infof("Loaded %d collecs, %d parsers, %d scenarios, %d post-overflow parsers", len(hubIdx[COLLECTIONS]),
-		len(hubIdx[PARSERS]), len(hubIdx[SCENARIOS]), len(hubIdx[POSTOVERFLOWS]))
+	msg := "Loaded: "
+	for itemType := range hubIdx {
+		msg += fmt.Sprintf("%d %s, ", len(hubIdx[itemType]), itemType)
+	}
+	log.Info(strings.Trim(msg, ", "))
 
 	if skippedLocal > 0 || skippedTainted > 0 {
 		log.Infof("unmanaged items: %d local, %d tainted", skippedLocal, skippedTainted)
 	}
 }
 
+// GetInstalledItems returns the list of installed items
 func GetInstalledItems(itemType string) ([]Item, error) {
 	items, ok := hubIdx[itemType]
 	if !ok {
@@ -244,6 +254,7 @@ func GetInstalledItems(itemType string) ([]Item, error) {
 	return retItems, nil
 }
 
+// GetInstalledItemsAsString returns the names of the installed items
 func GetInstalledItemsAsString(itemType string) ([]string, error) {
 	items, err := GetInstalledItems(itemType)
 	if err != nil {

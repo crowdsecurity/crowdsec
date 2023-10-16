@@ -141,7 +141,7 @@ func (w Walker) getItemInfo(path string) (itemFileInfo, bool, error) {
 	return ret, inhub, nil
 }
 
-func (w Walker) parserVisit(path string, f os.DirEntry, err error) error {
+func (w Walker) itemVisit(path string, f os.DirEntry, err error) error {
 	var (
 		local   bool
 		hubpath string
@@ -415,14 +415,14 @@ func CollecDepsCheck(v *Item) error {
 func SyncDir(hub *csconfig.Hub, dir string) ([]string, error) {
 	warnings := []string{}
 
-	// For each, scan PARSERS, PARSERS_OVFLW, SCENARIOS and COLLECTIONS last
+	// For each, scan PARSERS, POSTOVERFLOWS, SCENARIOS and COLLECTIONS last
 	for _, scan := range ItemTypes {
 		cpath, err := filepath.Abs(fmt.Sprintf("%s/%s", dir, scan))
 		if err != nil {
 			log.Errorf("failed %s : %s", cpath, err)
 		}
 
-		err = filepath.WalkDir(cpath, NewWalker(hub).parserVisit)
+		err = filepath.WalkDir(cpath, NewWalker(hub).itemVisit)
 		if err != nil {
 			return warnings, err
 		}

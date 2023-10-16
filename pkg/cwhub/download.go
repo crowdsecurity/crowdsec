@@ -19,6 +19,7 @@ import (
 
 var ErrIndexNotFound = fmt.Errorf("index not found")
 
+// UpdateHubIdx downloads the latest version of the index and updates the one in memory
 func UpdateHubIdx(hub *csconfig.Hub) error {
 	bidx, err := DownloadHubIdx(hub)
 	if err != nil {
@@ -41,6 +42,7 @@ func UpdateHubIdx(hub *csconfig.Hub) error {
 	return nil
 }
 
+// DownloadHubIdx downloads the latest version of the index and returns the content
 func DownloadHubIdx(hub *csconfig.Hub) ([]byte, error) {
 	log.Debugf("fetching index from branch %s (%s)", HubBranch, fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile))
 
@@ -270,6 +272,7 @@ func DownloadItem(hub *csconfig.Hub, target *Item, overwrite bool) error {
 	return nil
 }
 
+// DownloadDataIfNeeded downloads the data files for an item
 func DownloadDataIfNeeded(hub *csconfig.Hub, target Item, force bool) error {
 	itemFilePath := fmt.Sprintf("%s/%s/%s/%s", hub.InstallDir, target.Type, target.Stage, target.FileName)
 
@@ -287,6 +290,7 @@ func DownloadDataIfNeeded(hub *csconfig.Hub, target Item, force bool) error {
 	return nil
 }
 
+// downloadData downloads the data files for an item
 func downloadData(dataFolder string, force bool, reader io.Reader) error {
 	var err error
 
