@@ -279,8 +279,9 @@ func runParsersList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// XXX: will happily ignore missing parsers
-	ListItems(color.Output, []string{cwhub.PARSERS}, args, false, true, all)
+	if err = ListItems(color.Output, []string{cwhub.PARSERS}, args, false, true, all); err != nil {
+		return err
+	}
 
 	return nil
 }

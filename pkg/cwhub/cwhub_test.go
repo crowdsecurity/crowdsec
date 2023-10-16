@@ -53,7 +53,7 @@ func TestItemStatus(t *testing.T) {
 		item.Local = false
 		item.Tainted = false
 
-		txt, _ := item.status()
+		txt, _ := item.Status()
 		require.Equal(t, "enabled,update-available", txt)
 
 		item.Installed = false
@@ -61,7 +61,7 @@ func TestItemStatus(t *testing.T) {
 		item.Local = true
 		item.Tainted = false
 
-		txt, _ = item.status()
+		txt, _ = item.Status()
 		require.Equal(t, "disabled,local", txt)
 	}
 
@@ -273,10 +273,8 @@ func TestInstallParser(t *testing.T) {
 	for _, it := range hubIdx[PARSERS] {
 		testInstallItem(cfg.Hub, t, it)
 		it = hubIdx[PARSERS][it.Name]
-		_ = GetHubStatusForItemType(PARSERS, it.Name, false)
 		testTaintItem(cfg.Hub, t, it)
 		it = hubIdx[PARSERS][it.Name]
-		_ = GetHubStatusForItemType(PARSERS, it.Name, false)
 		testUpdateItem(cfg.Hub, t, it)
 		it = hubIdx[PARSERS][it.Name]
 		testDisableItem(cfg.Hub, t, it)
@@ -309,11 +307,6 @@ func TestInstallCollection(t *testing.T) {
 		testUpdateItem(cfg.Hub, t, it)
 		it = hubIdx[COLLECTIONS][it.Name]
 		testDisableItem(cfg.Hub, t, it)
-
-		it = hubIdx[COLLECTIONS][it.Name]
-		x := GetHubStatusForItemType(COLLECTIONS, it.Name, false)
-		log.Infof("%+v", x)
-
 		break
 	}
 }
