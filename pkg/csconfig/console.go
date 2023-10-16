@@ -82,23 +82,3 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 
 	return nil
 }
-
-func (c *LocalApiServerCfg) DumpConsoleConfig() error {
-	var out []byte
-	var err error
-
-	if out, err = yaml.Marshal(c.ConsoleConfig); err != nil {
-		return fmt.Errorf("while marshaling ConsoleConfig (for %s): %w", c.ConsoleConfigPath, err)
-	}
-	if c.ConsoleConfigPath == "" {
-		c.ConsoleConfigPath = DefaultConsoleConfigFilePath
-		log.Debugf("Empty console_path, defaulting to %s", c.ConsoleConfigPath)
-
-	}
-
-	if err := os.WriteFile(c.ConsoleConfigPath, out, 0600); err != nil {
-		return fmt.Errorf("while dumping console config to %s: %w", c.ConsoleConfigPath, err)
-	}
-
-	return nil
-}

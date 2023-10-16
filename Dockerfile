@@ -1,5 +1,5 @@
 # vim: set ft=dockerfile:
-ARG GOVERSION=1.21.1
+ARG GOVERSION=1.21.3
 
 FROM golang:${GOVERSION}-alpine AS build
 

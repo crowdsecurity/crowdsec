@@ -173,11 +173,11 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	if !isWhitelisted {
 		isWhitelisted, exprErr = n.CheckExprWL(cachedExprEnv, p)
 	}
-
 	if exprErr != nil {
 		// Previous code returned nil if there was an error, so we keep this behavior
 		return false, nil //nolint:nilerr
 	}
+
 
 	if isWhitelisted {
 		if !p.Whitelisted {

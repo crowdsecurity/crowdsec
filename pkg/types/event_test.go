@@ -2,17 +2,18 @@ package types
 
 import (
 	"net"
-	"slices"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
 func TestParseIPSources(t *testing.T) {
 	tests := []struct {
-		name             string
-		evt              Event
-		expected_outcome []net.IP
+		name     string
+		evt      Event
+		expected []net.IP
 	}{
 		{
 			name: "ParseIPSources: Valid Log Sources",
@@ -22,7 +23,7 @@ func TestParseIPSources(t *testing.T) {
 					"source_ip": "127.0.0.1",
 				},
 			},
-			expected_outcome: []net.IP{
+			expected: []net.IP{
 				net.ParseIP("127.0.0.1"),
 			},
 		},
@@ -36,7 +37,7 @@ func TestParseIPSources(t *testing.T) {
 					},
 				},
 			},
-			expected_outcome: []net.IP{
+			expected: []net.IP{
 				net.ParseIP("127.0.0.1"),
 			},
 		},
@@ -48,7 +49,7 @@ func TestParseIPSources(t *testing.T) {
 					"source_ip": "IAMNOTANIP",
 				},
 			},
-			expected_outcome: []net.IP{
+			expected: []net.IP{
 				nil,
 			},
 		},
@@ -62,7 +63,7 @@ func TestParseIPSources(t *testing.T) {
 					},
 				},
 			},
-			expected_outcome: []net.IP{
+			expected: []net.IP{
 				nil,
 			},
 		},
@@ -72,11 +73,7 @@ func TestParseIPSources(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			ips := tt.evt.ParseIPSources()
-			if !slices.EqualFunc(ips, tt.expected_outcome, func(a, b net.IP) bool {
-				return a.Equal(b)
-			}) {
-				t.Errorf("Expected: %s, got: %s", tt.expected_outcome, ips)
-			}
+			assert.Equal(t, ips, tt.expected)
 		})
 	}
 }

@@ -1,9 +1,11 @@
 package cwhub
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -43,16 +45,32 @@ func handleSymlink(path string) (string, error) {
 	return hubpath, nil
 }
 
-type walker struct {
+func getSHA256(filepath string) (string, error) {
+	f, err := os.Open(filepath)
+	if err != nil {
+		return "", fmt.Errorf("unable to open '%s': %w", filepath, err)
+	}
+
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", fmt.Errorf("unable to calculate sha256 of '%s': %w", filepath, err)
+	}
+
+	return fmt.Sprintf("%x", h.Sum(nil)), nil
+}
+
+type Walker struct {
 	// the walk/parserVisit function can't receive extra args
 	hubdir     string
 	installdir string
 }
 
-func NewWalker(hub *csconfig.Hub) walker {
-	return walker{
+func NewWalker(hub *csconfig.Hub) Walker {
+	return Walker{
 		hubdir:     hub.HubDir,
-		installdir: hub.ConfigDir,
+		installdir: hub.InstallDir,
 	}
 }
 
@@ -63,7 +81,7 @@ type itemFileInfo struct {
 	fauthor string
 }
 
-func (w walker) getItemInfo(path string) (itemFileInfo, bool, error) {
+func (w Walker) getItemInfo(path string) (itemFileInfo, bool, error) {
 	ret := itemFileInfo{}
 	inhub := false
 
@@ -123,7 +141,7 @@ func (w walker) getItemInfo(path string) (itemFileInfo, bool, error) {
 	return ret, inhub, nil
 }
 
-func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
+func (w Walker) parserVisit(path string, f os.DirEntry, err error) error {
 	var (
 		local   bool
 		hubpath string
@@ -317,7 +335,7 @@ func (w walker) parserVisit(path string, f os.DirEntry, err error) error {
 }
 
 func CollecDepsCheck(v *Item) error {
-	if GetVersionStatus(v) != 0 { // not up-to-date
+	if v.versionStatus() != 0 { // not up-to-date
 		log.Debugf("%s dependencies not checked : not up-to-date", v.Name)
 		return nil
 	}
@@ -394,7 +412,7 @@ func CollecDepsCheck(v *Item) error {
 	return nil
 }
 
-func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
+func SyncDir(hub *csconfig.Hub, dir string) ([]string, error) {
 	warnings := []string{}
 
 	// For each, scan PARSERS, PARSERS_OVFLW, SCENARIOS and COLLECTIONS last
@@ -406,7 +424,7 @@ func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
 
 		err = filepath.WalkDir(cpath, NewWalker(hub).parserVisit)
 		if err != nil {
-			return err, warnings
+			return warnings, err
 		}
 	}
 
@@ -415,11 +433,11 @@ func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
 			continue
 		}
 
-		versionStatus := GetVersionStatus(&item)
-		switch versionStatus {
+		vs := item.versionStatus()
+		switch vs {
 		case 0: // latest
 			if err := CollecDepsCheck(&item); err != nil {
-				warnings = append(warnings, fmt.Sprintf("dependency of %s : %s", item.Name, err))
+				warnings = append(warnings, fmt.Sprintf("dependency of %s: %s", item.Name, err))
 				hubIdx[COLLECTIONS][name] = item
 			}
 		case 1: // not up-to-date
@@ -428,28 +446,28 @@ func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
 			warnings = append(warnings, fmt.Sprintf("collection %s is in the future (currently:%s, latest:%s)", item.Name, item.LocalVersion, item.Version))
 		}
 
-		log.Debugf("installed (%s) - status:%d | installed:%s | latest : %s | full : %+v", item.Name, versionStatus, item.LocalVersion, item.Version, item.Versions)
+		log.Debugf("installed (%s) - status:%d | installed:%s | latest : %s | full : %+v", item.Name, vs, item.LocalVersion, item.Version, item.Versions)
 	}
 
-	return nil, warnings
+	return warnings, nil
 }
 
 // Updates the info from HubInit() with the local state
-func LocalSync(hub *csconfig.Hub) (error, []string) {
+func LocalSync(hub *csconfig.Hub) ([]string, error) {
 	skippedLocal = 0
 	skippedTainted = 0
 
-	err, warnings := SyncDir(hub, hub.ConfigDir)
+	warnings, err := SyncDir(hub, hub.InstallDir)
 	if err != nil {
-		return fmt.Errorf("failed to scan %s: %w", hub.ConfigDir, err), warnings
+		return warnings, fmt.Errorf("failed to scan %s: %w", hub.InstallDir, err)
 	}
 
-	err, _ = SyncDir(hub, hub.HubDir)
+	_, err = SyncDir(hub, hub.HubDir)
 	if err != nil {
-		return fmt.Errorf("failed to scan %s: %w", hub.HubDir, err), warnings
+		return warnings, fmt.Errorf("failed to scan %s: %w", hub.HubDir, err)
 	}
 
-	return nil, warnings
+	return warnings, nil
 }
 
 func GetHubIdx(hub *csconfig.Hub) error {
@@ -466,7 +484,7 @@ func GetHubIdx(hub *csconfig.Hub) error {
 
 	ret, err := LoadPkgIndex(bidx)
 	if err != nil {
-		if !errors.Is(err, ReferenceMissingError) {
+		if !errors.Is(err, ErrMissingReference) {
 			return fmt.Errorf("unable to load existing index: %w", err)
 		}
 
@@ -476,7 +494,7 @@ func GetHubIdx(hub *csconfig.Hub) error {
 
 	hubIdx = ret
 
-	err, _ = LocalSync(hub)
+	_, err = LocalSync(hub)
 	if err != nil {
 		return fmt.Errorf("failed to sync Hub index with local deployment : %w", err)
 	}
@@ -484,7 +502,7 @@ func GetHubIdx(hub *csconfig.Hub) error {
 	return nil
 }
 
-// LoadPkgIndex loads a local .index.json file and returns the map of parsers/scenarios/collections associated
+// LoadPkgIndex loads a local .index.json file and returns the map of associated parsers/scenarios/collections
 func LoadPkgIndex(buff []byte) (map[string]map[string]Item, error) {
 	var (
 		RawIndex     map[string]map[string]Item
@@ -497,9 +515,8 @@ func LoadPkgIndex(buff []byte) (map[string]map[string]Item, error) {
 
 	log.Debugf("%d item types in hub index", len(ItemTypes))
 
-	// Iterate over the different types to complete struct
+	// Iterate over the different types to complete the struct
 	for _, itemType := range ItemTypes {
-		// complete struct
 		log.Tracef("%d item", len(RawIndex[itemType]))
 
 		for name, item := range RawIndex[itemType] {
@@ -528,7 +545,7 @@ func LoadPkgIndex(buff []byte) (map[string]map[string]Item, error) {
 	}
 
 	if len(missingItems) > 0 {
-		return RawIndex, fmt.Errorf("%q: %w", missingItems, ReferenceMissingError)
+		return RawIndex, fmt.Errorf("%q: %w", missingItems, ErrMissingReference)
 	}
 
 	return RawIndex, nil

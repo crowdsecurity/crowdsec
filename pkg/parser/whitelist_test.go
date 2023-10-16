@@ -3,9 +3,14 @@ package parser
 import (
 	"testing"
 
+
+	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/go-cs-lib/cstest"
+
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	log "github.com/sirupsen/logrus"
 )
 
 func TestWhitelistCompile(t *testing.T) {
@@ -13,9 +18,9 @@ func TestWhitelistCompile(t *testing.T) {
 		Logger: log.NewEntry(log.New()),
 	}
 	tests := []struct {
-		name         string
-		whitelist    Whitelist
-		expected_err bool
+		name        string
+		whitelist   Whitelist
+		expectedErr string
 	}{
 		{
 			name: "Valid CIDR whitelist",
@@ -34,7 +39,7 @@ func TestWhitelistCompile(t *testing.T) {
 					"127.0.0.1/1000",
 				},
 			},
-			expected_err: true,
+			expectedErr: "invalid CIDR address",
 		},
 		{
 			name: "Valid EXPR whitelist",
@@ -53,7 +58,7 @@ func TestWhitelistCompile(t *testing.T) {
 					"evt.THISPROPERTYSHOULDERROR == true",
 				},
 			},
-			expected_err: true,
+			expectedErr: "types.Event has no field",
 		},
 	}
 
@@ -62,9 +67,7 @@ func TestWhitelistCompile(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			node.Whitelist = tt.whitelist
 			_, err := node.CompileWLs()
-			if err == nil && tt.expected_err {
-				t.Fatalf("Whitelist expected to error %s", tt.name)
-			}
+			cstest.RequireErrorContains(t, err, tt.expectedErr)
 		})
 	}
 }
@@ -74,10 +77,10 @@ func TestWhitelistCheck(t *testing.T) {
 		Logger: log.NewEntry(log.New()),
 	}
 	tests := []struct {
-		name             string
-		whitelist        Whitelist
-		event            *types.Event
-		expected_outcome bool
+		name      string
+		whitelist Whitelist
+		event     *types.Event
+		expected  bool
 	}{
 		{
 			name: "IP Whitelisted",
@@ -92,7 +95,7 @@ func TestWhitelistCheck(t *testing.T) {
 					"source_ip": "127.0.0.1",
 				},
 			},
-			expected_outcome: true,
+			expected: true,
 		},
 		{
 			name: "IP Not Whitelisted",
@@ -121,7 +124,7 @@ func TestWhitelistCheck(t *testing.T) {
 					"source_ip": "127.0.0.1",
 				},
 			},
-			expected_outcome: true,
+			expected: true,
 		},
 		{
 			name: "CIDR Not Whitelisted",
@@ -150,7 +153,7 @@ func TestWhitelistCheck(t *testing.T) {
 					"source_ip": "127.0.0.1",
 				},
 			},
-			expected_outcome: true,
+			expected: true,
 		},
 		{
 			name: "EXPR Not Whitelisted",
@@ -182,7 +185,7 @@ func TestWhitelistCheck(t *testing.T) {
 					},
 				},
 			},
-			expected_outcome: true,
+			expected: true,
 		},
 		{
 			name: "Postoverflow IP Not Whitelisted",
@@ -217,7 +220,7 @@ func TestWhitelistCheck(t *testing.T) {
 					},
 				},
 			},
-			expected_outcome: true,
+			expected: true,
 		},
 		{
 			name: "Postoverflow CIDR Not Whitelisted",
@@ -256,7 +259,7 @@ func TestWhitelistCheck(t *testing.T) {
 					},
 				},
 			},
-			expected_outcome: true,
+			expected: true,
 		},
 		{
 			name: "Postoverflow EXPR Not Whitelisted",
@@ -287,16 +290,12 @@ func TestWhitelistCheck(t *testing.T) {
 			var err error
 			node.Whitelist = tt.whitelist
 			node.CompileWLs()
-			isWhitelisted := node.CheckIPsWL(tt.event)
+			isWhitelisted := node.CheckIPsWL(tt.event.ParseIPSources())
 			if !isWhitelisted {
-				isWhitelisted, err = node.CheckExprWL(map[string]interface{}{"evt": tt.event}, tt.event)
+				isWhitelisted, err = node.CheckExprWL(map[string]interface{}{"evt": tt.event})
 			}
-			if err != nil {
-				t.Fatalf("failed to check whitelist: %s", err)
-			}
-			if isWhitelisted != tt.expected_outcome {
-				t.Fatalf("expected %t, got %t", tt.expected_outcome, isWhitelisted)
-			}
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, isWhitelisted)
 		})
 	}
 }
