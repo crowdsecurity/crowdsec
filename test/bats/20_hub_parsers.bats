@@ -79,41 +79,42 @@ teardown() {
     assert_output "$expected"
 }
 
-
 @test "cscli parsers list [parser]..." {
+    # non-existent
+    rune -1 cscli parsers install foo/bar
+    assert_stderr --partial "can't find 'foo/bar' in parsers"
+
+    # not installed
+    rune -0 cscli parsers list crowdsecurity/whitelists
+    assert_output --regexp 'crowdsecurity/whitelists.*disabled'
+
+    # install two items
     rune -0 cscli parsers install crowdsecurity/whitelists crowdsecurity/windows-auth
 
-    # list one item
+    # list an installed item
     rune -0 cscli parsers list crowdsecurity/whitelists
-    assert_output --partial "crowdsecurity/whitelists"
+    assert_output --regexp "crowdsecurity/whitelists.*enabled"
     refute_output --partial "crowdsecurity/windows-auth"
 
-    # list multiple items
-    rune -0 cscli parsers list crowdsecurity/whitelists crowdsecurity/windows-auth
+    # list multiple installed and non installed items
+    rune -0 cscli parsers list crowdsecurity/whitelists crowdsecurity/windows-auth crowdsecurity/traefik-logs
     assert_output --partial "crowdsecurity/whitelists"
     assert_output --partial "crowdsecurity/windows-auth"
+    assert_output --partial "crowdsecurity/traefik-logs"
 
     rune -0 cscli parsers list crowdsecurity/whitelists -o json
     rune -0 jq '.parsers | length' <(output)
     assert_output "1"
-    rune -0 cscli parsers list crowdsecurity/whitelists crowdsecurity/windows-auth -o json
+    rune -0 cscli parsers list crowdsecurity/whitelists crowdsecurity/windows-auth crowdsecurity/traefik-logs -o json
     rune -0 jq '.parsers | length' <(output)
-    assert_output "2"
+    assert_output "3"
 
     rune -0 cscli parsers list crowdsecurity/whitelists -o raw
     rune -0 grep -vc 'name,status,version,description' <(output)
     assert_output "1"
-    rune -0 cscli parsers list crowdsecurity/whitelists crowdsecurity/windows-auth -o raw
+    rune -0 cscli parsers list crowdsecurity/whitelists crowdsecurity/windows-auth crowdsecurity/traefik-logs -o raw
     rune -0 grep -vc 'name,status,version,description' <(output)
-    assert_output "2"
-}
-
-@test "cscli parsers list [parser]... (not installed / not existing)" {
-    skip "not implemented yet"
-    # not installed
-    rune -1 cscli parsers list crowdsecurity/whitelists
-    # not existing
-    rune -1 cscli parsers list blahblah/blahblah
+    assert_output "3"
 }
 
 @test "cscli parsers install [parser]..." {
