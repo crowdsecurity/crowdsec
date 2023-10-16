@@ -94,6 +94,7 @@ teardown() {
     # list an installed item
     rune -0 cscli parsers list crowdsecurity/whitelists
     assert_output --regexp "crowdsecurity/whitelists.*enabled"
+    refute_output --partial "crowdsecurity/windows-auth"
 
     # list multiple installed and non installed items
     rune -0 cscli parsers list crowdsecurity/whitelists crowdsecurity/windows-auth crowdsecurity/traefik-logs
