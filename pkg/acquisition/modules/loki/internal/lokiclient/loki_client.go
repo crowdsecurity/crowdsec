@@ -41,52 +41,61 @@ type Config struct {
 	Limit    int
 }
 
-func (lc *LokiClient) queryRange(uri string, ctx context.Context, c chan *LokiQueryRangeResponse) error {
+func updateURI(uri string, lq LokiQueryRangeResponse, infinite bool) string {
+	u, _ := url.Parse(uri)
+	queryParams := u.Query()
+
+	if len(lq.Data.Result) > 0 {
+		lastTs := lq.Data.Result[0].Entries[len(lq.Data.Result[0].Entries)-1].Timestamp
+		// +1 the last timestamp to avoid getting the same result again.
+		queryParams.Set("start", strconv.Itoa(int(lastTs.UnixNano()+1)))
+	}
+
+	if infinite {
+		queryParams.Set("end", strconv.Itoa(int(time.Now().UnixNano())))
+	}
+
+	u.RawQuery = queryParams.Encode()
+	return u.String()
+}
+
+func (lc *LokiClient) queryRange(uri string, ctx context.Context, c chan *LokiQueryRangeResponse, infinite bool) error {
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-lc.t.Dying():
 			return lc.t.Err()
-		default:
+		case <-ticker.C:
 			lc.Logger.Debugf("Querying Loki: %s", uri)
 			resp, err := http.Get(uri)
 
 			if err != nil {
 				return errors.Wrapf(err, "error querying range")
 			}
+			defer resp.Body.Close() // Ensure the response body is always closed.
+
 			if resp.StatusCode != http.StatusOK {
 				body, _ := io.ReadAll(resp.Body)
-				resp.Body.Close()
 				return errors.Wrapf(err, "bad HTTP response code: %d: %s", resp.StatusCode, string(body))
 			}
 
 			var lq LokiQueryRangeResponse
-
-			json.NewDecoder(resp.Body).Decode(&lq)
-			resp.Body.Close()
+			if err := json.NewDecoder(resp.Body).Decode(&lq); err != nil {
+				return errors.Wrapf(err, "error decoding Loki response")
+			}
 
 			lc.Logger.Tracef("Got response: %+v", lq)
-
 			c <- &lq
 
-			if len(lq.Data.Result) == 0 || len(lq.Data.Result[0].Entries) < lc.config.Limit {
+			if !infinite && (len(lq.Data.Result) == 0 || len(lq.Data.Result[0].Entries) < lc.config.Limit) {
 				lc.Logger.Infof("Got less than %d results (%d), stopping", lc.config.Limit, len(lq.Data.Result))
 				close(c)
 				return nil
 			}
-			//Can we assume we will always have only one stream?
-			lastTs := lq.Data.Result[0].Entries[len(lq.Data.Result[0].Entries)-1].Timestamp
-
-			lc.Logger.Infof("Got %d results, last timestamp: %s (converted: %s)", len(lq.Data.Result[0].Entries), lastTs, strconv.Itoa(lastTs.Nanosecond()))
-			u, err := url.Parse(uri) //we can ignore the error, we know it's valid
-			if err != nil {
-				return errors.Wrapf(err, "error parsing URL")
-			}
-			queryParams := u.Query()
-			queryParams.Set("start", strconv.Itoa(int(lastTs.UnixNano())))
-			u.RawQuery = queryParams.Encode()
-			uri = u.String()
+			uri = updateURI(uri, lq, infinite)
 		}
 	}
 }
@@ -197,7 +206,7 @@ func (lc *LokiClient) Tail(ctx context.Context) (chan *LokiResponse, error) {
 	return responseChan, nil
 }
 
-func (lc *LokiClient) QueryRange(ctx context.Context) chan *LokiQueryRangeResponse {
+func (lc *LokiClient) QueryRange(ctx context.Context, infinite bool) chan *LokiQueryRangeResponse {
 	url := lc.getURLFor("loki/api/v1/query_range", map[string]string{
 		"query":     lc.config.Query,
 		"start":     strconv.Itoa(int(time.Now().Add(-lc.config.Since).UnixNano())),
@@ -222,7 +231,7 @@ func (lc *LokiClient) QueryRange(ctx context.Context) chan *LokiQueryRangeRespon
 	requestHeader.Set("User-Agent", "Crowdsec "+cwversion.VersionStr())
 	lc.Logger.Infof("Connecting to %s", url)
 	lc.t.Go(func() error {
-		return lc.queryRange(url, ctx, c)
+		return lc.queryRange(url, ctx, c, infinite)
 	})
 	return c
 }
