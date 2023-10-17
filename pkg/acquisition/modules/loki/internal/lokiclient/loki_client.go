@@ -186,8 +186,8 @@ func (lc *LokiClient) Tail(ctx context.Context) (chan *LokiResponse, error) {
 			err = conn.ReadJSON(jsonResponse)
 
 			if err != nil {
-				lc.Logger.Errorf("Websocket write: %s, raw: %s", err, jsonResponse)
-				return fmt.Errorf("Websocket write: %s, raw: %s", err, jsonResponse)
+				lc.Logger.Errorf("Error reading from websocket: %s", err)
+				return fmt.Errorf("websocket error: %w", err)
 			}
 
 			responseChan <- jsonResponse
