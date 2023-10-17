@@ -92,7 +92,7 @@ func restoreHub(dirPath string) error {
 			if file.Name() == fmt.Sprintf("upstream-%s.json", itype) {
 				continue
 			}
-			if itype == cwhub.PARSERS || itype == cwhub.PARSERS_OVFLW {
+			if itype == cwhub.PARSERS || itype == cwhub.POSTOVERFLOWS {
 				//we expect a stage here
 				if !file.IsDir() {
 					continue

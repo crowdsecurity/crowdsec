@@ -67,15 +67,15 @@ func runPostOverflowsInstall(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, name := range args {
-		t := cwhub.GetItem(cwhub.PARSERS_OVFLW, name)
+		t := cwhub.GetItem(cwhub.POSTOVERFLOWS, name)
 		if t == nil {
-			nearestItem, score := GetDistance(cwhub.PARSERS_OVFLW, name)
-			Suggest(cwhub.PARSERS_OVFLW, name, nearestItem.Name, score, ignoreError)
+			nearestItem, score := GetDistance(cwhub.POSTOVERFLOWS, name)
+			Suggest(cwhub.POSTOVERFLOWS, name, nearestItem.Name, score, ignoreError)
 
 			continue
 		}
 
-		if err := cwhub.InstallItem(csConfig, name, cwhub.PARSERS_OVFLW, force, downloadOnly); err != nil {
+		if err := cwhub.InstallItem(csConfig, name, cwhub.POSTOVERFLOWS, force, downloadOnly); err != nil {
 			if !ignoreError {
 				return fmt.Errorf("error while installing '%s': %w", name, err)
 			}
@@ -95,7 +95,7 @@ func NewPostOverflowsInstallCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compAllItems(cwhub.PARSERS_OVFLW, args, toComplete)
+			return compAllItems(cwhub.POSTOVERFLOWS, args, toComplete)
 		},
 		RunE: runPostOverflowsInstall,
 	}
@@ -127,7 +127,7 @@ func runPostOverflowsRemove(cmd *cobra.Command, args []string) error {
 	}
 
 	if all {
-		err := cwhub.RemoveMany(csConfig, cwhub.PARSERS_OVFLW, "", all, purge, force)
+		err := cwhub.RemoveMany(csConfig, cwhub.POSTOVERFLOWS, "", all, purge, force)
 		if err != nil {
 			return err
 		}
@@ -140,7 +140,7 @@ func runPostOverflowsRemove(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, name := range args {
-		err := cwhub.RemoveMany(csConfig, cwhub.PARSERS_OVFLW, name, all, purge, force)
+		err := cwhub.RemoveMany(csConfig, cwhub.POSTOVERFLOWS, name, all, purge, force)
 		if err != nil {
 			return err
 		}
@@ -158,7 +158,7 @@ func NewPostOverflowsRemoveCmd() *cobra.Command {
 		Aliases:           []string{"delete"},
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compInstalledItems(cwhub.PARSERS_OVFLW, args, toComplete)
+			return compInstalledItems(cwhub.POSTOVERFLOWS, args, toComplete)
 		},
 		RunE: runPostOverflowsRemove,
 	}
@@ -185,7 +185,7 @@ func runPostOverflowUpgrade(cmd *cobra.Command, args []string) error {
 	}
 
 	if all {
-		if err := cwhub.UpgradeConfig(csConfig, cwhub.PARSERS_OVFLW, "", force); err != nil {
+		if err := cwhub.UpgradeConfig(csConfig, cwhub.POSTOVERFLOWS, "", force); err != nil {
 			return err
 		}
 		return nil
@@ -196,7 +196,7 @@ func runPostOverflowUpgrade(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, name := range args {
-		if err := cwhub.UpgradeConfig(csConfig, cwhub.PARSERS_OVFLW, name, force); err != nil {
+		if err := cwhub.UpgradeConfig(csConfig, cwhub.POSTOVERFLOWS, name, force); err != nil {
 			return err
 		}
 	}
@@ -212,7 +212,7 @@ func NewPostOverflowsUpgradeCmd() *cobra.Command {
 		Example:           `cscli postoverflows upgrade crowdsecurity/cdn-whitelist crowdsecurity/rdns`,
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compInstalledItems(cwhub.PARSERS_OVFLW, args, toComplete)
+			return compInstalledItems(cwhub.POSTOVERFLOWS, args, toComplete)
 		},
 		RunE: runPostOverflowUpgrade,
 	}
@@ -242,7 +242,7 @@ func runPostOverflowsInspect(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, name := range args {
-		if err = InspectItem(name, cwhub.PARSERS_OVFLW, noMetrics); err != nil {
+		if err = InspectItem(name, cwhub.POSTOVERFLOWS, noMetrics); err != nil {
 			return err
 		}
 	}
@@ -259,13 +259,13 @@ func NewPostOverflowsInspectCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compInstalledItems(cwhub.PARSERS_OVFLW, args, toComplete)
+			return compInstalledItems(cwhub.POSTOVERFLOWS, args, toComplete)
 		},
 		RunE: runPostOverflowsInspect,
 	}
 
 	flags := cmdPostOverflowsInspect.Flags()
-	// XXX: is this needed for postoverflows?
+
 	flags.StringP("url", "u", "", "Prometheus url")
 	flags.Bool("no-metrics", false, "Don't show metrics (when cscli.output=human)")
 
@@ -280,7 +280,7 @@ func runPostOverflowsList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err = ListItems(color.Output, []string{cwhub.PARSERS_OVFLW}, args, false, true, all); err != nil {
+	if err = ListItems(color.Output, []string{cwhub.POSTOVERFLOWS}, args, false, true, all); err != nil {
 		return err
 	}
 

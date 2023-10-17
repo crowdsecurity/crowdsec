@@ -12,12 +12,12 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 )
 
-// pick a hub branch corresponding to the current crowdsec version.
+// chooseHubBranch returns the branch name to use for the hub
+// It can be "master" or branch corresponding to the current crowdsec version
 func chooseHubBranch() string {
 	latest, err := cwversion.Latest()
 	if err != nil {
 		log.Warningf("Unable to retrieve latest crowdsec version: %s, defaulting to master", err)
-		//lint:ignore nilerr
 		return "master"
 	}
 
@@ -61,8 +61,9 @@ func SetHubBranch() {
 	log.Debugf("Using branch '%s' for the hub", HubBranch)
 }
 
-func InstallItem(csConfig *csconfig.Config, name string, obtype string, force bool, downloadOnly bool) error {
-	item := GetItem(obtype, name)
+// InstallItem installs an item from the hub
+func InstallItem(csConfig *csconfig.Config, name string, itemType string, force bool, downloadOnly bool) error {
+	item := GetItem(itemType, name)
 	if item == nil {
 		return fmt.Errorf("unable to retrieve item: %s", name)
 	}
@@ -80,7 +81,7 @@ func InstallItem(csConfig *csconfig.Config, name string, obtype string, force bo
 		return fmt.Errorf("while downloading %s: %w", item.Name, err)
 	}
 
-	if err = AddItem(obtype, *item); err != nil {
+	if err = AddItem(itemType, *item); err != nil {
 		return fmt.Errorf("while adding %s: %w", item.Name, err)
 	}
 
@@ -94,7 +95,7 @@ func InstallItem(csConfig *csconfig.Config, name string, obtype string, force bo
 		return fmt.Errorf("while enabling %s: %w", item.Name, err)
 	}
 
-	if err := AddItem(obtype, *item); err != nil {
+	if err := AddItem(itemType, *item); err != nil {
 		return fmt.Errorf("while adding %s: %w", item.Name, err)
 	}
 
@@ -103,6 +104,7 @@ func InstallItem(csConfig *csconfig.Config, name string, obtype string, force bo
 	return nil
 }
 
+// RemoveItem removes one - or all - the items from the hub
 func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all bool, purge bool, forceAction bool) error {
 	if name != "" {
 		item := GetItem(itemType, name)
@@ -151,6 +153,7 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 	return nil
 }
 
+// UpgradeConfig upgrades an item from the hub
 func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, force bool) error {
 	updated := 0
 	found := false

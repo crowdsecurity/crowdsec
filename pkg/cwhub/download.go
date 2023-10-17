@@ -19,20 +19,21 @@ import (
 
 var ErrIndexNotFound = fmt.Errorf("index not found")
 
+// UpdateHubIdx downloads the latest version of the index and updates the one in memory
 func UpdateHubIdx(hub *csconfig.Hub) error {
 	bidx, err := DownloadHubIdx(hub)
 	if err != nil {
 		return fmt.Errorf("failed to download index: %w", err)
 	}
 
-	ret, err := LoadPkgIndex(bidx)
+	ret, err := ParseIndex(bidx)
 	if err != nil {
 		if !errors.Is(err, ErrMissingReference) {
 			return fmt.Errorf("failed to read index: %w", err)
 		}
 	}
 
-	hubIdx = ret
+	hubIdx = HubIndex{Items: ret}
 
 	if _, err := LocalSync(hub); err != nil {
 		return fmt.Errorf("failed to sync: %w", err)
@@ -41,6 +42,7 @@ func UpdateHubIdx(hub *csconfig.Hub) error {
 	return nil
 }
 
+// DownloadHubIdx downloads the latest version of the index and returns the content
 func DownloadHubIdx(hub *csconfig.Hub) ([]byte, error) {
 	log.Debugf("fetching index from branch %s (%s)", HubBranch, fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile))
 
@@ -115,7 +117,7 @@ func DownloadLatest(hub *csconfig.Hub, target *Item, overwrite bool, updateOnly 
 	for idx, ptr := range tmp {
 		ptrtype := ItemTypes[idx]
 		for _, p := range ptr {
-			val, ok := hubIdx[ptrtype][p]
+			val, ok := hubIdx.Items[ptrtype][p]
 			if !ok {
 				return fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
 			}
@@ -151,7 +153,7 @@ func DownloadLatest(hub *csconfig.Hub, target *Item, overwrite bool, updateOnly 
 				}
 			}
 
-			hubIdx[ptrtype][p] = val
+			hubIdx.Items[ptrtype][p] = val
 		}
 	}
 
@@ -265,11 +267,12 @@ func DownloadItem(hub *csconfig.Hub, target *Item, overwrite bool) error {
 		return fmt.Errorf("while downloading data for %s: %w", target.FileName, err)
 	}
 
-	hubIdx[target.Type][target.Name] = *target
+	hubIdx.Items[target.Type][target.Name] = *target
 
 	return nil
 }
 
+// DownloadDataIfNeeded downloads the data files for an item
 func DownloadDataIfNeeded(hub *csconfig.Hub, target Item, force bool) error {
 	itemFilePath := fmt.Sprintf("%s/%s/%s/%s", hub.InstallDir, target.Type, target.Stage, target.FileName)
 
@@ -287,6 +290,7 @@ func DownloadDataIfNeeded(hub *csconfig.Hub, target Item, force bool) error {
 	return nil
 }
 
+// downloadData downloads the data files for an item
 func downloadData(dataFolder string, force bool, reader io.Reader) error {
 	var err error
 

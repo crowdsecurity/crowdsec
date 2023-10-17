@@ -25,10 +25,6 @@ type HubTestItemConfig struct {
 	OverrideStatics []parser.ExtraField `yaml:"override_statics"` //Allow to override statics. Executed before s00
 }
 
-type HubIndex struct {
-	Data map[string]map[string]cwhub.Item
-}
-
 type HubTestItem struct {
 	Name string
 	Path string
@@ -56,7 +52,7 @@ type HubTestItem struct {
 	TemplateConfigPath     string
 	TemplateProfilePath    string
 	TemplateSimulationPath string
-	HubIndex               *HubIndex
+	HubIndex               *cwhub.HubIndex
 
 	Config *HubTestItemConfig
 
@@ -148,7 +144,7 @@ func (t *HubTestItem) InstallHub() error {
 			continue
 		}
 		var parserDirDest string
-		if hubParser, ok := t.HubIndex.Data[cwhub.PARSERS][parser]; ok {
+		if hubParser, ok := t.HubIndex.Items[cwhub.PARSERS][parser]; ok {
 			parserSource, err := filepath.Abs(filepath.Join(t.HubPath, hubParser.RemotePath))
 			if err != nil {
 				return fmt.Errorf("can't get absolute path of '%s': %s", parserSource, err)
@@ -232,7 +228,7 @@ func (t *HubTestItem) InstallHub() error {
 			continue
 		}
 		var scenarioDirDest string
-		if hubScenario, ok := t.HubIndex.Data[cwhub.SCENARIOS][scenario]; ok {
+		if hubScenario, ok := t.HubIndex.Items[cwhub.SCENARIOS][scenario]; ok {
 			scenarioSource, err := filepath.Abs(filepath.Join(t.HubPath, hubScenario.RemotePath))
 			if err != nil {
 				return fmt.Errorf("can't get absolute path to: %s", scenarioSource)
@@ -301,7 +297,7 @@ func (t *HubTestItem) InstallHub() error {
 			continue
 		}
 		var postoverflowDirDest string
-		if hubPostOverflow, ok := t.HubIndex.Data[cwhub.PARSERS_OVFLW][postoverflow]; ok {
+		if hubPostOverflow, ok := t.HubIndex.Items[cwhub.POSTOVERFLOWS][postoverflow]; ok {
 			postoverflowSource, err := filepath.Abs(filepath.Join(t.HubPath, hubPostOverflow.RemotePath))
 			if err != nil {
 				return fmt.Errorf("can't get absolute path of '%s': %s", postoverflowSource, err)
@@ -423,7 +419,7 @@ func (t *HubTestItem) InstallHub() error {
 	}
 
 	// install data for postoverflows if needed
-	ret = cwhub.GetItemMap(cwhub.PARSERS_OVFLW)
+	ret = cwhub.GetItemMap(cwhub.POSTOVERFLOWS)
 	for postoverflowName, item := range ret {
 		if item.Installed {
 			if err := cwhub.DownloadDataIfNeeded(t.RuntimeHubConfig, item, true); err != nil {
