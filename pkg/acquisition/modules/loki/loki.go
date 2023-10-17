@@ -37,13 +37,6 @@ var linesRead = prometheus.NewCounterVec(
 	},
 	[]string{"source"})
 
-var entriesDropped = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_lokisource_total_dropped_entries",
-		Help: "Total entries that were dropped.",
-	},
-	[]string{"source"})
-
 type LokiAuthConfiguration struct {
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
@@ -72,11 +65,11 @@ type LokiSource struct {
 }
 
 func (l *LokiSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead, entriesDropped}
+	return []prometheus.Collector{linesRead}
 }
 
 func (l *LokiSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead, entriesDropped}
+	return []prometheus.Collector{linesRead}
 }
 
 func (l *LokiSource) UnmarshalConfig(yamlConfig []byte) error {
@@ -260,7 +253,7 @@ func (l *LokiSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) erro
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	c := l.Client.QueryRange(ctx)
+	c := l.Client.QueryRange(ctx, false)
 
 	for {
 		select {
@@ -270,7 +263,7 @@ func (l *LokiSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) erro
 			return nil
 		case resp, ok := <-c:
 			if !ok {
-				l.logger.Info("Loki acuiqisition done, chan closed")
+				l.logger.Info("Loki acquisition done, chan closed")
 				cancel()
 				return nil
 			}
@@ -293,11 +286,15 @@ func (l *LokiSource) readOneEntry(entry lokiclient.Entry, labels map[string]stri
 	ll.Module = l.GetName()
 
 	linesRead.With(prometheus.Labels{"source": l.Config.URL}).Inc()
+	expectMode := types.LIVE
+	if l.Config.UseTimeMachine {
+		expectMode = types.TIMEMACHINE
+	}
 	out <- types.Event{
 		Line:       ll,
 		Process:    true,
 		Type:       types.LOG,
-		ExpectMode: types.TIMEMACHINE,
+		ExpectMode: expectMode,
 	}
 }
 
@@ -312,7 +309,7 @@ func (l *LokiSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 	t.Go(func() error {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-		respChan, err := l.Client.Tail(ctx)
+		respChan := l.Client.QueryRange(ctx, true)
 		if err != nil {
 			ll.Errorf("could not start loki tail: %s", err)
 			return fmt.Errorf("while starting loki tail: %w", err)
@@ -324,11 +321,7 @@ func (l *LokiSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 					ll.Warnf("loki channel closed")
 					return err
 				}
-				if len(resp.DroppedEntries) > 0 {
-					entriesDropped.With(prometheus.Labels{"source": l.Config.URL}).Add(float64(len(resp.DroppedEntries)))
-					ll.WithField("query", l.Config.Query).Warnf("%d entries dropped from loki response", len(resp.DroppedEntries))
-				}
-				for _, stream := range resp.Streams {
+				for _, stream := range resp.Data.Result {
 					for _, entry := range stream.Entries {
 						l.readOneEntry(entry, l.Config.Labels, out)
 					}
