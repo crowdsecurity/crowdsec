@@ -19,7 +19,7 @@ type CscliCfg struct {
 	PrometheusUrl      string            `yaml:"prometheus_uri"`
 }
 
-func (c *Config) LoadCSCLI() error {
+func (c *Config) loadCSCLI() error {
 	if c.Cscli == nil {
 		c.Cscli = &CscliCfg{}
 	}

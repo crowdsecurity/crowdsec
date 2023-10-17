@@ -85,9 +85,16 @@ func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool
 		return nil, "", err
 	}
 
+	if err = cfg.loadCSCLI(); err != nil {
+		return nil, "", err
+	}
+
 	return &cfg, configData, nil
 }
 
+// XXX: We must not not have a different behavior with an empty vs a missing configuration file.
+// XXX: For this reason, all defaults have to come from NewConfig(). The following function should
+// XXX: be replaced
 func NewDefaultConfig() *Config {
 	logLevel := log.InfoLevel
 	commonCfg := CommonCfg{

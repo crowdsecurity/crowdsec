@@ -51,10 +51,8 @@ func initConfig() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		if err := csConfig.LoadCSCLI(); err != nil {
-			log.Fatal(err)
-		}
 	} else {
+		// XXX: check all the defaults
 		csConfig = csconfig.NewDefaultConfig()
 	}
 
