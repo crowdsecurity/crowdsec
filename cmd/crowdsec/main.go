@@ -88,7 +88,7 @@ func LoadBuckets(cConfig *csconfig.Config) error {
 	buckets = leakybucket.NewBuckets()
 
 	log.Infof("Loading %d scenario files", len(files))
-	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, files, &bucketsTomb, buckets, flags.OrderEvent)
+	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, cConfig.ConfigPaths.DataDir, files, &bucketsTomb, buckets, flags.OrderEvent)
 
 	if err != nil {
 		return fmt.Errorf("scenario loading failed: %v", err)

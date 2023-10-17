@@ -97,16 +97,16 @@ func NewParsers() *Parsers {
 func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 	var err error
 
-	patternsDir := filepath.Join(cConfig.Crowdsec.ConfigDir, "patterns/")
+	patternsDir := filepath.Join(cConfig.ConfigPaths.ConfigDir, "patterns/")
 	log.Infof("Loading grok library %s", patternsDir)
 	/* load base regexps for two grok parsers */
 	parsers.Ctx, err = Init(map[string]interface{}{"patterns": patternsDir,
-		"data": cConfig.Crowdsec.DataDir})
+		"data": cConfig.ConfigPaths.DataDir})
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load parser patterns : %v", err)
 	}
 	parsers.Povfwctx, err = Init(map[string]interface{}{"patterns": patternsDir,
-		"data": cConfig.Crowdsec.DataDir})
+		"data": cConfig.ConfigPaths.DataDir})
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load postovflw parser patterns : %v", err)
 	}
@@ -116,7 +116,7 @@ func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 	*/
 	log.Infof("Loading enrich plugins")
 
-	parsers.EnricherCtx, err = Loadplugin(cConfig.Crowdsec.DataDir)
+	parsers.EnricherCtx, err = Loadplugin(cConfig.ConfigPaths.DataDir)
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load enrich plugin : %v", err)
 	}

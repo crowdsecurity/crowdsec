@@ -9,6 +9,9 @@ type HubCfg struct {
 }
 
 func (c *Config) loadHub() error {
+
+	// XXX: HubBranch too -- from cscli or chooseHubBranch() ?
+
 	c.Hub = &HubCfg{
 		HubIndexFile:   c.ConfigPaths.HubIndexFile,
 		HubDir:         c.ConfigPaths.HubDir,

@@ -28,10 +28,6 @@ type CrowdsecServiceCfg struct {
 	BucketStateDumpDir        string            `yaml:"state_output_dir,omitempty"` // if we need to unserialize buckets on shutdown
 	BucketsGCEnabled          bool              `yaml:"-"`                          // we need to garbage collect buckets when in forensic mode
 
-	HubDir             string              `yaml:"-"`
-	DataDir            string              `yaml:"-"`
-	ConfigDir          string              `yaml:"-"`
-	HubIndexFile       string              `yaml:"-"`
 	SimulationFilePath string              `yaml:"-"`
 	ContextToSend      map[string][]string `yaml:"-"`
 }
@@ -101,11 +97,6 @@ func (c *Config) LoadCrowdsec() error {
 		return fmt.Errorf("load error (simulation): %w", err)
 	}
 
-	c.Crowdsec.ConfigDir = c.ConfigPaths.ConfigDir
-	c.Crowdsec.DataDir = c.ConfigPaths.DataDir
-	c.Crowdsec.HubDir = c.ConfigPaths.HubDir
-	c.Crowdsec.HubIndexFile = c.ConfigPaths.HubIndexFile
-
 	if c.Crowdsec.ParserRoutinesCount <= 0 {
 		c.Crowdsec.ParserRoutinesCount = 1
 	}
@@ -149,7 +140,7 @@ func (c *Config) LoadCrowdsec() error {
 	fallback := false
 	if c.Crowdsec.ConsoleContextPath == "" {
 		// fallback to default config file
-		c.Crowdsec.ConsoleContextPath = filepath.Join(c.Crowdsec.ConfigDir, "console", "context.yaml")
+		c.Crowdsec.ConsoleContextPath = filepath.Join(c.ConfigPaths.ConfigDir, "console", "context.yaml")
 		fallback = true
 	}
 
