@@ -205,7 +205,7 @@ func (s *ScenarioAssert) AutoGenScenarioAssert() string {
 		}
 		for evtIndex, evt := range event.Overflow.Alert.Events {
 			for _, meta := range evt.Meta {
-				ret += fmt.Sprintf(`results[%d].Overflow.Alert.Events[%d].GetMeta("%s") == "%s"`+"\n", eventIndex, evtIndex, meta.Key, meta.Value)
+				ret += fmt.Sprintf(`results[%d].Overflow.Alert.Events[%d].GetMeta("%s") == "%s"`+"\n", eventIndex, evtIndex, meta.Key, Escape(meta.Value))
 			}
 		}
 		ret += fmt.Sprintf(`results[%d].Overflow.Alert.GetScenario() == "%s"`+"\n", eventIndex, *event.Overflow.Alert.Scenario)
