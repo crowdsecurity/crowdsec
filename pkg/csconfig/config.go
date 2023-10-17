@@ -88,11 +88,8 @@ func NewDefaultConfig() *Config {
 	logLevel := log.InfoLevel
 	commonCfg := CommonCfg{
 		Daemonize: false,
-		PidDir:    "/tmp/",
 		LogMedia:  "stdout",
-		//LogDir unneeded
 		LogLevel:   &logLevel,
-		WorkingDir: ".",
 	}
 	prometheus := PrometheusCfg{
 		Enabled: true,

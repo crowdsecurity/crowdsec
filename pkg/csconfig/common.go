@@ -34,7 +34,6 @@ func (c *Config) loadCommon() error {
 
 	var CommonCleanup = []*string{
 		&c.Common.LogDir,
-		&c.Common.WorkingDir,
 	}
 	for _, k := range CommonCleanup {
 		if *k == "" {
