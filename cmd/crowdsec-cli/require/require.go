@@ -65,10 +65,6 @@ func Notifications(c *csconfig.Config) error {
 }
 
 func Hub (c *csconfig.Config) error {
-	if err := c.LoadHub(); err != nil {
-		return err
-	}
-
 	if c.Hub == nil {
 		return fmt.Errorf("you must configure cli before interacting with hub")
 	}

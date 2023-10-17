@@ -8,7 +8,7 @@ type HubCfg struct {
 	InstallDataDir string	// Where to install data
 }
 
-func (c *Config) LoadHub() error {
+func (c *Config) loadHub() error {
 	c.Hub = &HubCfg{
 		HubIndexFile:   c.ConfigPaths.HubIndexFile,
 		HubDir:         c.ConfigPaths.HubDir,

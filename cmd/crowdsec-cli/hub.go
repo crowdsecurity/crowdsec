@@ -88,10 +88,6 @@ func NewHubListCmd() *cobra.Command {
 }
 
 func runHubUpdate(cmd *cobra.Command, args []string) error {
-	if err := csConfig.LoadHub(); err != nil {
-		return err
-	}
-
 	if err := cwhub.UpdateHubIdx(csConfig.Hub); err != nil {
 		if !errors.Is(err, cwhub.ErrIndexNotFound) {
 			return fmt.Errorf("failed to get Hub index : %w", err)

@@ -81,6 +81,10 @@ func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool
 		return nil, "", err
 	}
 
+	if err = cfg.loadHub(); err != nil {
+		return nil, "", err
+	}
+
 	return &cfg, configData, nil
 }
 
