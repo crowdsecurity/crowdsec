@@ -22,7 +22,7 @@ type CommonCfg struct {
 	ForceColorLogs bool       `yaml:"force_color_logs,omitempty"`
 }
 
-func (c *Config) LoadCommon() error {
+func (c *Config) loadCommon() error {
 	var err error
 	if c.Common == nil {
 		return fmt.Errorf("no common block provided in configuration file")

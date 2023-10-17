@@ -23,9 +23,6 @@ func (c *Config) LoadCSCLI() error {
 	if c.Cscli == nil {
 		c.Cscli = &CscliCfg{}
 	}
-	if err := c.LoadConfigurationPaths(); err != nil {
-		return err
-	}
 	c.Cscli.ConfigDir = c.ConfigPaths.ConfigDir
 	c.Cscli.DataDir = c.ConfigPaths.DataDir
 	c.Cscli.HubDir = c.ConfigPaths.HubDir

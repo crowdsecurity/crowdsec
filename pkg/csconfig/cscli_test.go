@@ -1,28 +1,14 @@
 package csconfig
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 )
 
 func TestLoadCSCLI(t *testing.T) {
-	hubFullPath, err := filepath.Abs("./hub")
-	require.NoError(t, err)
-
-	dataFullPath, err := filepath.Abs("./data")
-	require.NoError(t, err)
-
-	configDirFullPath, err := filepath.Abs("./testdata")
-	require.NoError(t, err)
-
-	hubIndexFileFullPath, err := filepath.Abs("./hub/.index.json")
-	require.NoError(t, err)
-
 	tests := []struct {
 		name        string
 		input       *Config
@@ -46,18 +32,12 @@ func TestLoadCSCLI(t *testing.T) {
 				},
 			},
 			expected: &CscliCfg{
-				ConfigDir:     configDirFullPath,
-				DataDir:       dataFullPath,
-				HubDir:        hubFullPath,
-				HubIndexFile:  hubIndexFileFullPath,
+				ConfigDir:     "./testdata",
+				DataDir:       "./data",
+				HubDir:        "./hub",
+				HubIndexFile:  "./hub/.index.json",
 				PrometheusUrl: "http://127.0.0.1:6060/metrics",
 			},
-		},
-		{
-			name:        "no configuration path",
-			input:       &Config{},
-			expected:    &CscliCfg{},
-			expectedErr: "no configuration paths provided",
 		},
 	}
 

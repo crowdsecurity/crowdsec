@@ -9,10 +9,6 @@ type HubCfg struct {
 }
 
 func (c *Config) LoadHub() error {
-	if err := c.LoadConfigurationPaths(); err != nil {
-		return err
-	}
-
 	c.Hub = &HubCfg{
 		HubIndexFile:   c.ConfigPaths.HubIndexFile,
 		HubDir:         c.ConfigPaths.HubDir,

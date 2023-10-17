@@ -228,11 +228,6 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		dumpStates = true
 	}
 
-	// Configuration paths are dependency to load crowdsec configuration
-	if err := cConfig.LoadConfigurationPaths(); err != nil {
-		return nil, err
-	}
-
 	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
 		// if we're in time-machine mode, we don't want to log to file
 		cConfig.Common.LogMedia = "stdout"

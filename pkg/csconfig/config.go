@@ -73,6 +73,14 @@ func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool
 		log.Debugf("prometheus.listen_port is empty or zero, defaulting to %d", cfg.Prometheus.ListenPort)
 	}
 
+	if err = cfg.loadConfigurationPaths(); err != nil {
+		return nil, "", err
+	}
+
+	if err = cfg.loadCommon(); err != nil {
+		return nil, "", err
+	}
+
 	return &cfg, configData, nil
 }
 

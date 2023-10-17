@@ -15,21 +15,25 @@ type ConfigurationPaths struct {
 	NotificationDir    string `yaml:"notification_dir,omitempty"`
 }
 
-func (c *Config) LoadConfigurationPaths() error {
+func (c *Config) loadConfigurationPaths() error {
 	var err error
 	if c.ConfigPaths == nil {
+		// XXX: test me
 		return fmt.Errorf("no configuration paths provided")
 	}
 
 	if c.ConfigPaths.DataDir == "" {
+		// XXX: test me
 		return fmt.Errorf("please provide a data directory with the 'data_dir' directive in the 'config_paths' section")
 	}
 
 	if c.ConfigPaths.HubDir == "" {
+		// XXX: test me
 		c.ConfigPaths.HubDir = filepath.Clean(c.ConfigPaths.ConfigDir + "/hub")
 	}
 
 	if c.ConfigPaths.HubIndexFile == "" {
+		// XXX: test me
 		c.ConfigPaths.HubIndexFile = filepath.Clean(c.ConfigPaths.HubDir + "/.index.json")
 	}
 
