@@ -44,7 +44,7 @@ func TestConfiguration(t *testing.T) {
 			config: `
 mode: tail
 source: loki`,
-			expectedErr: "Loki query is mandatory",
+			expectedErr: "loki query is mandatory",
 			testName:    "Missing url",
 		},
 		{
@@ -53,7 +53,7 @@ mode: tail
 source: loki
 url: http://localhost:3100/
 `,
-			expectedErr: "Loki query is mandatory",
+			expectedErr: "loki query is mandatory",
 			testName:    "Missing query",
 		},
 		{
@@ -176,7 +176,7 @@ func TestConfigureDSN(t *testing.T) {
 		{
 			name:        "Empty host",
 			dsn:         "loki://",
-			expectedErr: "Empty loki host",
+			expectedErr: "empty loki host",
 		},
 		{
 			name:        "Invalid DSN",
