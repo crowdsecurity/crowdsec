@@ -36,7 +36,7 @@ type Config struct {
 	PluginConfig *PluginCfg          `yaml:"plugin_config,omitempty"`
 	DisableAPI   bool                `yaml:"-"`
 	DisableAgent bool                `yaml:"-"`
-	Hub          *Hub                `yaml:"-"`
+	Hub          *HubCfg             `yaml:"-"`
 }
 
 func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*Config, string, error) {

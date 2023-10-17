@@ -26,7 +26,7 @@ func TestLoadHub(t *testing.T) {
 	tests := []struct {
 		name        string
 		input       *Config
-		expected    *Hub
+		expected    *HubCfg
 		expectedErr string
 	}{
 		{
@@ -39,7 +39,7 @@ func TestLoadHub(t *testing.T) {
 					HubIndexFile: "./hub/.index.json",
 				},
 			},
-			expected: &Hub{
+			expected: &HubCfg{
 				HubDir:         hubFullPath,
 				HubIndexFile:   hubIndexFileFullPath,
 				InstallDir:     configDirFullPath,

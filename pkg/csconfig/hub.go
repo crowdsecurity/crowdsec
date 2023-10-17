@@ -1,11 +1,11 @@
 package csconfig
 
-/*cscli specific config, such as hub directory*/
-type Hub struct {
-	HubIndexFile   string
-	HubDir         string
-	InstallDir     string
-	InstallDataDir string
+// HubConfig holds the configuration for a hub
+type HubCfg struct {
+	HubIndexFile   string	// Path to the local index file
+	HubDir         string	// Where the hub items are downloaded
+	InstallDir     string	// Where to install items
+	InstallDataDir string	// Where to install data
 }
 
 func (c *Config) LoadHub() error {
@@ -13,7 +13,7 @@ func (c *Config) LoadHub() error {
 		return err
 	}
 
-	c.Hub = &Hub{
+	c.Hub = &HubCfg{
 		HubIndexFile:   c.ConfigPaths.HubIndexFile,
 		HubDir:         c.ConfigPaths.HubDir,
 		InstallDir:     c.ConfigPaths.ConfigDir,

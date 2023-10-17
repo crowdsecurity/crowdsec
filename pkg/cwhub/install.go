@@ -10,7 +10,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
-func purgeItem(hub *csconfig.Hub, target Item) (Item, error) {
+func purgeItem(hub *csconfig.HubCfg, target Item) (Item, error) {
 	itempath := hub.HubDir + "/" + target.RemotePath
 
 	// disable hub file
@@ -26,7 +26,7 @@ func purgeItem(hub *csconfig.Hub, target Item) (Item, error) {
 }
 
 // DisableItem to disable an item managed by the hub, removes the symlink if purge is true
-func DisableItem(hub *csconfig.Hub, target *Item, purge bool, force bool) error {
+func DisableItem(hub *csconfig.HubCfg, target *Item, purge bool, force bool) error {
 	var err error
 
 	// already disabled, noop unless purge
@@ -137,7 +137,7 @@ func DisableItem(hub *csconfig.Hub, target *Item, purge bool, force bool) error 
 
 // creates symlink between actual config file at hub.HubDir and hub.ConfigDir
 // Handles collections recursively
-func EnableItem(hub *csconfig.Hub, target *Item) error {
+func EnableItem(hub *csconfig.HubCfg, target *Item) error {
 	var err error
 
 	parentDir := filepath.Clean(hub.InstallDir + "/" + target.Type + "/" + target.Stage + "/")
