@@ -21,8 +21,10 @@ import (
 type LokiClient struct {
 	Logger *log.Entry
 
-	config Config
-	t      *tomb.Tomb
+	config                Config
+	t                     *tomb.Tomb
+	fail_start            time.Time
+	currentTickerInterval time.Duration
 }
 
 type Config struct {
@@ -36,6 +38,8 @@ type Config struct {
 
 	Since time.Duration
 	Until time.Duration
+
+	FailMaxDuration time.Duration
 
 	DelayFor int
 	Limit    int
@@ -59,8 +63,51 @@ func updateURI(uri string, lq LokiQueryRangeResponse, infinite bool) string {
 	return u.String()
 }
 
+func (lc *LokiClient) SetTomb(t *tomb.Tomb) {
+	lc.t = t
+}
+
+func (lc *LokiClient) resetFailStart() {
+	if !lc.fail_start.IsZero() {
+		log.Infof("loki is back after %s", time.Since(lc.fail_start))
+	}
+	lc.fail_start = time.Time{}
+}
+func (lc *LokiClient) shouldRetry() bool {
+	if lc.fail_start.IsZero() {
+		lc.Logger.Warningf("loki is not available, will retry for %s", lc.config.FailMaxDuration)
+		lc.fail_start = time.Now()
+		return true
+	}
+	if time.Since(lc.fail_start) > lc.config.FailMaxDuration {
+		lc.Logger.Errorf("loki didn't manage to recover after %s, giving up", lc.config.FailMaxDuration)
+		return false
+	}
+	return true
+}
+
+func (lc *LokiClient) increaseTicker(ticker *time.Ticker) {
+	maxTicker := 10 * time.Second
+	if lc.currentTickerInterval < maxTicker {
+		lc.currentTickerInterval *= 2
+		if lc.currentTickerInterval > maxTicker {
+			lc.currentTickerInterval = maxTicker
+		}
+		ticker.Reset(lc.currentTickerInterval)
+	}
+}
+
+func (lc *LokiClient) decreaseTicker(ticker *time.Ticker) {
+	minTicker := 100 * time.Millisecond
+	if lc.currentTickerInterval != minTicker {
+		lc.currentTickerInterval = minTicker
+		ticker.Reset(lc.currentTickerInterval)
+	}
+}
+
 func (lc *LokiClient) queryRange(uri string, ctx context.Context, c chan *LokiQueryRangeResponse, infinite bool) error {
-	ticker := time.NewTicker(100 * time.Millisecond)
+	lc.currentTickerInterval = 100 * time.Millisecond
+	ticker := time.NewTicker(lc.currentTickerInterval)
 	defer ticker.Stop()
 	for {
 		select {
@@ -71,32 +118,54 @@ func (lc *LokiClient) queryRange(uri string, ctx context.Context, c chan *LokiQu
 		case <-ticker.C:
 			lc.Logger.Debugf("Querying Loki: %s", uri)
 			resp, err := http.Get(uri)
-
 			if err != nil {
-				return errors.Wrapf(err, "error querying range")
+				if ok := lc.shouldRetry(); !ok {
+					return errors.Wrapf(err, "error querying range")
+				} else {
+					lc.increaseTicker(ticker)
+					continue
+				}
 			}
 
 			if resp.StatusCode != http.StatusOK {
 				body, _ := io.ReadAll(resp.Body)
 				resp.Body.Close()
-				return errors.Wrapf(err, "bad HTTP response code: %d: %s", resp.StatusCode, string(body))
+				if ok := lc.shouldRetry(); !ok {
+					return errors.Wrapf(err, "bad HTTP response code: %d: %s", resp.StatusCode, string(body))
+				} else {
+					lc.increaseTicker(ticker)
+					continue
+				}
 			}
 
 			var lq LokiQueryRangeResponse
 			if err := json.NewDecoder(resp.Body).Decode(&lq); err != nil {
 				resp.Body.Close()
-				return errors.Wrapf(err, "error decoding Loki response")
+				if ok := lc.shouldRetry(); !ok {
+					return errors.Wrapf(err, "error decoding Loki response")
+				} else {
+					lc.increaseTicker(ticker)
+					continue
+				}
 			}
 			resp.Body.Close()
 
 			lc.Logger.Tracef("Got response: %+v", lq)
 			c <- &lq
-
+			lc.resetFailStart()
 			if !infinite && (len(lq.Data.Result) == 0 || len(lq.Data.Result[0].Entries) < lc.config.Limit) {
 				lc.Logger.Infof("Got less than %d results (%d), stopping", lc.config.Limit, len(lq.Data.Result))
 				close(c)
 				return nil
 			}
+			if infinite {
+				if len(lq.Data.Result) > 0 { //as long as we get results, we keep decreasing the ticker
+					lc.decreaseTicker(ticker)
+				} else {
+					lc.increaseTicker(ticker)
+				}
+			}
+
 			uri = updateURI(uri, lq, infinite)
 		}
 	}
@@ -239,5 +308,5 @@ func (lc *LokiClient) QueryRange(ctx context.Context, infinite bool) chan *LokiQ
 }
 
 func NewLokiClient(config Config) *LokiClient {
-	return &LokiClient{t: &tomb.Tomb{}, Logger: log.WithField("component", "lokiclient"), config: config}
+	return &LokiClient{Logger: log.WithField("component", "lokiclient"), config: config}
 }

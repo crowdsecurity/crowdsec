@@ -52,6 +52,7 @@ type LokiConfiguration struct {
 	Headers                           map[string]string     `yaml:"headers"`        // HTTP headers for talking to Loki
 	WaitForReady                      time.Duration         `yaml:"wait_for_ready"` // Retry interval, default is 10 seconds
 	Auth                              LokiAuthConfiguration `yaml:"auth"`
+	MaxFailureDuration                time.Duration         `yaml:"max_failure_duration"` // Max duration of failure before stopping the source
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -110,6 +111,10 @@ func (l *LokiSource) UnmarshalConfig(yamlConfig []byte) error {
 		l.Config.Since = 0
 	}
 
+	if l.Config.MaxFailureDuration == 0 {
+		l.Config.MaxFailureDuration = 30 * time.Second
+	}
+
 	return nil
 }
 
@@ -124,13 +129,14 @@ func (l *LokiSource) Configure(config []byte, logger *log.Entry) error {
 	l.logger.Infof("Since value: %s", l.Config.Since.String())
 
 	clientConfig := lokiclient.Config{
-		LokiURL:  l.Config.URL,
-		Headers:  l.Config.Headers,
-		Limit:    l.Config.Limit,
-		Query:    l.Config.Query,
-		Since:    l.Config.Since,
-		Username: l.Config.Auth.Username,
-		Password: l.Config.Auth.Password,
+		LokiURL:         l.Config.URL,
+		Headers:         l.Config.Headers,
+		Limit:           l.Config.Limit,
+		Query:           l.Config.Query,
+		Since:           l.Config.Since,
+		Username:        l.Config.Auth.Username,
+		Password:        l.Config.Auth.Password,
+		FailMaxDuration: l.Config.MaxFailureDuration,
 	}
 
 	l.Client = lokiclient.NewLokiClient(clientConfig)
@@ -192,6 +198,16 @@ func (l *LokiSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 		}
 	}
 
+	if max_failure_duration := params.Get("max_failure_duration"); max_failure_duration != "" {
+		duration, err := time.ParseDuration(max_failure_duration)
+		if err != nil {
+			return fmt.Errorf("invalid max_failure_duration in dsn: %w", err)
+		}
+		l.Config.MaxFailureDuration = duration
+	} else {
+		l.Config.MaxFailureDuration = 5 * time.Second // for OneShot mode it doesn't make sense to have longer duration
+	}
+
 	if limit := params.Get("limit"); limit != "" {
 		limit, err := strconv.Atoi(limit)
 		if err != nil {
@@ -245,6 +261,7 @@ func (l *LokiSource) GetName() string {
 // OneShotAcquisition reads a set of file and returns when done
 func (l *LokiSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	l.logger.Debug("Loki one shot acquisition")
+	l.Client.SetTomb(t)
 	readyCtx, cancel := context.WithTimeout(context.Background(), l.Config.WaitForReady)
 	defer cancel()
 	err := l.Client.Ready(readyCtx)
@@ -299,6 +316,7 @@ func (l *LokiSource) readOneEntry(entry lokiclient.Entry, labels map[string]stri
 }
 
 func (l *LokiSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+	l.Client.SetTomb(t)
 	readyCtx, cancel := context.WithTimeout(context.Background(), l.Config.WaitForReady)
 	defer cancel()
 	err := l.Client.Ready(readyCtx)
