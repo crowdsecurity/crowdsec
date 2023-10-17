@@ -212,11 +212,7 @@ func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
 func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*csconfig.Config, error) {
 	cConfig, _, err := csconfig.NewConfig(configFile, disableAgent, disableAPI, quiet)
 	if err != nil {
-		return nil, err
-	}
-
-	if (cConfig.Common == nil || *cConfig.Common == csconfig.CommonCfg{}) {
-		return nil, fmt.Errorf("unable to load configuration: common section is empty")
+		return nil, fmt.Errorf("while loading configuration file: %w", err)
 	}
 
 	cConfig.Common.LogLevel = newLogLevel(cConfig.Common.LogLevel, flags)
