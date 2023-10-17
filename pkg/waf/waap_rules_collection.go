@@ -22,10 +22,11 @@ type WaapCollection struct {
 
 // to be filled w/ seb update
 type WaapCollectionConfig struct {
-	Type              string   `yaml:"type"`
-	Name              string   `yaml:"name"`
-	SecLangFilesRules []string `yaml:"seclang_files_rules"`
-	SecLangRules      []string `yaml:"seclang_rules"`
+	Type              string       `yaml:"type"`
+	Name              string       `yaml:"name"`
+	SecLangFilesRules []string     `yaml:"seclang_files_rules"`
+	SecLangRules      []string     `yaml:"seclang_rules"`
+	Rules             []VPatchRule `yaml:"rules"`
 }
 
 func LoadCollection(collection string) (WaapCollection, error) {
@@ -48,7 +49,7 @@ func LoadCollection(collection string) (WaapCollection, error) {
 
 		var rule WaapCollectionConfig
 
-		err = yaml.Unmarshal(content, &rule)
+		err = yaml.UnmarshalStrict(content, &rule)
 
 		if err != nil {
 			log.Warnf("unable to unmarshal file %s : %s", hubWafRuleItem.LocalPath, err)
@@ -73,6 +74,8 @@ func LoadCollection(collection string) (WaapCollection, error) {
 	if loadedRule, ok = waapRules[collection]; !ok {
 		return WaapCollection{}, fmt.Errorf("no waap rules found for collection %s", collection)
 	}
+
+	log.Infof("Found rule collection %s with %+v", loadedRule.Name, loadedRule)
 
 	waapCol := WaapCollection{
 		collectionName: loadedRule.Name,
@@ -100,6 +103,13 @@ func LoadCollection(collection string) (WaapCollection, error) {
 
 	if loadedRule.SecLangRules != nil {
 		waapCol.Rules = append(waapCol.Rules, loadedRule.SecLangRules...)
+	}
+
+	if loadedRule.Rules != nil {
+		for _, rule := range loadedRule.Rules {
+			log.Infof("Adding rule %s", rule.String())
+			waapCol.Rules = append(waapCol.Rules, rule.String())
+		}
 	}
 
 	return waapCol, nil
