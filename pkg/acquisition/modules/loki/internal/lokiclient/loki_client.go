@@ -75,17 +75,19 @@ func (lc *LokiClient) queryRange(uri string, ctx context.Context, c chan *LokiQu
 			if err != nil {
 				return errors.Wrapf(err, "error querying range")
 			}
-			defer resp.Body.Close() // Ensure the response body is always closed.
 
 			if resp.StatusCode != http.StatusOK {
 				body, _ := io.ReadAll(resp.Body)
+				resp.Body.Close()
 				return errors.Wrapf(err, "bad HTTP response code: %d: %s", resp.StatusCode, string(body))
 			}
 
 			var lq LokiQueryRangeResponse
 			if err := json.NewDecoder(resp.Body).Decode(&lq); err != nil {
+				resp.Body.Close()
 				return errors.Wrapf(err, "error decoding Loki response")
 			}
+			resp.Body.Close()
 
 			lc.Logger.Tracef("Got response: %+v", lq)
 			c <- &lq
