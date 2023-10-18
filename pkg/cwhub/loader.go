@@ -19,10 +19,6 @@ func isYAMLFileName(path string) bool {
 	return strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml")
 }
 
-func validItemFileName(vname string, fauthor string, fname string) bool {
-	return (fauthor+"/"+fname == vname+".yaml") || (fauthor+"/"+fname == vname+".yml")
-}
-
 func handleSymlink(path string) (string, error) {
 	hubpath, err := os.Readlink(path)
 	if err != nil {
@@ -241,8 +237,8 @@ func (w Walker) itemVisit(path string, f os.DirEntry, err error) error {
 				continue
 			}
 
-			// wrong file
-			if !validItemFileName(item.Name, info.fauthor, info.fname) {
+			// not the item we're looking for
+			if !item.validPath(info.fauthor, info.fname) {
 				continue
 			}
 

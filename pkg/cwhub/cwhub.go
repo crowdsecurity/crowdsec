@@ -112,6 +112,13 @@ func (i *Item) versionStatus() int {
 	return semver.Compare("v"+i.Version, "v"+i.LocalVersion)
 }
 
+// validPath returns true if the (relative) path is allowed for the item
+// dirNmae: the directory name (ie. crowdsecurity)
+// fileName: the filename (ie. apache2-logs.yaml)
+func (i *Item) validPath(dirName, fileName string) bool {
+	return (dirName+"/"+fileName == i.Name+".yaml") || (dirName+"/"+fileName == i.Name+".yml")
+}
+
 // GetItemMap returns the map of items for a given type
 func GetItemMap(itemType string) map[string]Item {
 	m, ok := hubIdx.Items[itemType]
