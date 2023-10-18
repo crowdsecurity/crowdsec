@@ -16,14 +16,14 @@ source: waf
 labels:
   type: waf
 #routines: 1
-waap_config_path: config/waap_configs/mytest.yaml
+waap_config_path: config/waap-configs/mytest.yaml
 ```
 
 ## Waap config
 
 The waap config defines what rules that will be loaded by a given waap engine (associated with an acquis).
 
-> `config/waap_configs/mytest.yaml`
+> `config/waap-configs/mytest.yaml`
 
 ```yaml
 name: default

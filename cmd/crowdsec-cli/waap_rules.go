@@ -12,16 +12,16 @@ import (
 
 func NewWafRulesCmd() *cobra.Command {
 	var cmdWafRules = &cobra.Command{
-		Use:   "waf-rules [action] [config]",
+		Use:   "waap-rules [action] [config]",
 		Short: "Install/Remove/Upgrade/Inspect waf-rule(s) from hub",
-		Example: `cscli waf-rules install crowdsecurity/core-rule-set
-cscli waf-rules inspect crowdsecurity/core-rule-set
-cscli waf-rules upgrade crowdsecurity/core-rule-set
-cscli waf-rules list
-cscli waf-rules remove crowdsecurity/core-rule-set
+		Example: `cscli waap-rules install crowdsecurity/core-rule-set
+cscli waap-rules inspect crowdsecurity/core-rule-set
+cscli waap-rules upgrade crowdsecurity/core-rule-set
+cscli waap-rules list
+cscli waap-rules remove crowdsecurity/core-rule-set
 `,
 		Args:              cobra.MinimumNArgs(1),
-		Aliases:           []string{"waf-rule"},
+		Aliases:           []string{"waap-rule"},
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadHub(); err != nil {
@@ -102,7 +102,7 @@ func NewWafRulesRemoveCmd() *cobra.Command {
 		Short:             "Remove given waf-rule(s)",
 		Long:              `Remove given waf-rule(s) from hub`,
 		Aliases:           []string{"delete"},
-		Example:           `cscli waf-rules remove crowdsec/xxx crowdsec/xyz`,
+		Example:           `cscli waap-rules remove crowdsec/xxx crowdsec/xyz`,
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cwhub.WAAP_RULES, args, toComplete)
@@ -134,7 +134,7 @@ func NewWafRulesUpgradeCmd() *cobra.Command {
 		Use:               "upgrade [config]",
 		Short:             "Upgrade given waf-rule(s)",
 		Long:              `Fetch and upgrade given waf-rule(s) from hub`,
-		Example:           `cscli waf-rules upgrade crowdsec/xxx crowdsec/xyz`,
+		Example:           `cscli waap-rules upgrade crowdsec/xxx crowdsec/xyz`,
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cwhub.WAAP_RULES, args, toComplete)
@@ -163,7 +163,7 @@ func NewWafRulesInspectCmd() *cobra.Command {
 		Use:               "inspect [name]",
 		Short:             "Inspect given waf rule",
 		Long:              `Inspect given waf rule`,
-		Example:           `cscli waf-rules inspect crowdsec/xxx`,
+		Example:           `cscli waap-rules inspect crowdsec/xxx`,
 		DisableAutoGenTag: true,
 		Args:              cobra.MinimumNArgs(1),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -183,8 +183,8 @@ func NewWafRulesListCmd() *cobra.Command {
 		Use:   "list [name]",
 		Short: "List all waf rules or given one",
 		Long:  `List all waf rules or given one`,
-		Example: `cscli waf-rules list
-cscli waf-rules list crowdsecurity/xxx`,
+		Example: `cscli waap-rules list
+cscli waap-rules list crowdsecurity/xxx`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			ListItems(color.Output, []string{cwhub.WAAP_RULES}, args, false, true, all)
