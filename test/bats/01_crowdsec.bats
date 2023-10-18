@@ -55,16 +55,16 @@ teardown() {
     assert_stderr --partial "unable to create database client: unknown database type 'meh'"
 }
 
-@test "crowdsec - bad configuration (empty/missing common section)" {
+@test "crowdsec - default logging configuration (empty/missing common section)" {
     config_set '.common={}'
-    rune -1 "${CROWDSEC}"
+    rune -124 timeout 1s "${CROWDSEC}"
     refute_output
-    assert_stderr --partial "unable to load configuration: common section is empty"
+    assert_stderr --partial "Starting processing data"
 
     config_set 'del(.common)'
-    rune -1 "${CROWDSEC}"
+    rune -124 timeout 1s "${CROWDSEC}"
     refute_output
-    assert_stderr --partial "unable to load configuration: common section is empty"
+    assert_stderr --partial "Starting processing data"
 }
 
 @test "CS_LAPI_SECRET not strong enough" {

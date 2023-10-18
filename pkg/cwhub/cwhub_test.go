@@ -121,7 +121,7 @@ func TestIndexDownload(t *testing.T) {
 }
 
 func getTestCfg() *csconfig.Config {
-	cfg := &csconfig.Config{Hub: &csconfig.Hub{}}
+	cfg := &csconfig.Config{Hub: &csconfig.HubCfg{}}
 	cfg.Hub.InstallDir, _ = filepath.Abs("./install")
 	cfg.Hub.HubDir, _ = filepath.Abs("./hubdir")
 	cfg.Hub.HubIndexFile = filepath.Clean("./hubdir/.index.json")
@@ -172,7 +172,7 @@ func envTearDown(cfg *csconfig.Config) {
 	}
 }
 
-func testInstallItem(cfg *csconfig.Hub, t *testing.T, item Item) {
+func testInstallItem(cfg *csconfig.HubCfg, t *testing.T, item Item) {
 	// Install the parser
 	err := DownloadLatest(cfg, &item, false, false)
 	require.NoError(t, err, "failed to download %s", item.Name)
@@ -193,7 +193,7 @@ func testInstallItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	assert.True(t, hubIdx.Items[item.Type][item.Name].Installed, "%s should be installed", item.Name)
 }
 
-func testTaintItem(cfg *csconfig.Hub, t *testing.T, item Item) {
+func testTaintItem(cfg *csconfig.HubCfg, t *testing.T, item Item) {
 	assert.False(t, hubIdx.Items[item.Type][item.Name].Tainted, "%s should not be tainted", item.Name)
 
 	f, err := os.OpenFile(item.LocalPath, os.O_APPEND|os.O_WRONLY, 0600)
@@ -211,7 +211,7 @@ func testTaintItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	assert.True(t, hubIdx.Items[item.Type][item.Name].Tainted, "%s should be tainted", item.Name)
 }
 
-func testUpdateItem(cfg *csconfig.Hub, t *testing.T, item Item) {
+func testUpdateItem(cfg *csconfig.HubCfg, t *testing.T, item Item) {
 	assert.False(t, hubIdx.Items[item.Type][item.Name].UpToDate, "%s should not be up-to-date", item.Name)
 
 	// Update it + check status
@@ -226,7 +226,7 @@ func testUpdateItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	assert.False(t, hubIdx.Items[item.Type][item.Name].Tainted, "%s should not be tainted anymore", item.Name)
 }
 
-func testDisableItem(cfg *csconfig.Hub, t *testing.T, item Item) {
+func testDisableItem(cfg *csconfig.HubCfg, t *testing.T, item Item) {
 	assert.True(t, hubIdx.Items[item.Type][item.Name].Installed, "%s should be installed", item.Name)
 
 	// Remove

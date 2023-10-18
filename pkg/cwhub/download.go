@@ -20,7 +20,7 @@ import (
 var ErrIndexNotFound = fmt.Errorf("index not found")
 
 // UpdateHubIdx downloads the latest version of the index and updates the one in memory
-func UpdateHubIdx(hub *csconfig.Hub) error {
+func UpdateHubIdx(hub *csconfig.HubCfg) error {
 	bidx, err := DownloadHubIdx(hub)
 	if err != nil {
 		return fmt.Errorf("failed to download index: %w", err)
@@ -43,7 +43,7 @@ func UpdateHubIdx(hub *csconfig.Hub) error {
 }
 
 // DownloadHubIdx downloads the latest version of the index and returns the content
-func DownloadHubIdx(hub *csconfig.Hub) ([]byte, error) {
+func DownloadHubIdx(hub *csconfig.HubCfg) ([]byte, error) {
 	log.Debugf("fetching index from branch %s (%s)", HubBranch, fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile))
 
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile), nil)
@@ -98,7 +98,7 @@ func DownloadHubIdx(hub *csconfig.Hub) ([]byte, error) {
 }
 
 // DownloadLatest will download the latest version of Item to the tdir directory
-func DownloadLatest(hub *csconfig.Hub, target *Item, overwrite bool, updateOnly bool) error {
+func DownloadLatest(hub *csconfig.HubCfg, target *Item, overwrite bool, updateOnly bool) error {
 	var err error
 
 	log.Debugf("Downloading %s %s", target.Type, target.Name)
@@ -165,7 +165,7 @@ func DownloadLatest(hub *csconfig.Hub, target *Item, overwrite bool, updateOnly 
 	return nil
 }
 
-func DownloadItem(hub *csconfig.Hub, target *Item, overwrite bool) error {
+func DownloadItem(hub *csconfig.HubCfg, target *Item, overwrite bool) error {
 	tdir := hub.HubDir
 
 	// if user didn't --force, don't overwrite local, tainted, up-to-date files
@@ -273,7 +273,7 @@ func DownloadItem(hub *csconfig.Hub, target *Item, overwrite bool) error {
 }
 
 // DownloadDataIfNeeded downloads the data files for an item
-func DownloadDataIfNeeded(hub *csconfig.Hub, target Item, force bool) error {
+func DownloadDataIfNeeded(hub *csconfig.HubCfg, target Item, force bool) error {
 	itemFilePath := fmt.Sprintf("%s/%s/%s/%s", hub.InstallDir, target.Type, target.Stage, target.FileName)
 
 	itemFile, err := os.Open(itemFilePath)

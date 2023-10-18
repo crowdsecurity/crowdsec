@@ -29,6 +29,8 @@ var (
 
 type HubItems map[string]map[string]Item
 
+// HubIndex represents the runtime status of the hub (parsed items, etc.)
+// XXX: this could be renamed "Hub" tout court once the confusion with HubCfg is cleared
 type HubIndex struct {
 	Items HubItems
 	skippedLocal   int

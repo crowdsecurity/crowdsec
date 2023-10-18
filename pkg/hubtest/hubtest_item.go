@@ -39,7 +39,7 @@ type HubTestItem struct {
 	RuntimeConfigFilePath     string
 	RuntimeProfileFilePath    string
 	RuntimeSimulationFilePath string
-	RuntimeHubConfig          *csconfig.Hub
+	RuntimeHubConfig          *csconfig.HubCfg
 
 	ResultsPath          string
 	ParserResultFile     string
@@ -117,7 +117,7 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 		ParserResultFile:          filepath.Join(resultPath, ParserResultFileName),
 		ScenarioResultFile:        filepath.Join(resultPath, ScenarioResultFileName),
 		BucketPourResultFile:      filepath.Join(resultPath, BucketPourResultFileName),
-		RuntimeHubConfig: &csconfig.Hub{
+		RuntimeHubConfig: &csconfig.HubCfg{
 			HubDir:         runtimeHubFolder,
 			HubIndexFile:   hubTest.HubIndexFile,
 			InstallDir:     runtimeFolder,

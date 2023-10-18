@@ -52,10 +52,6 @@ func InstallHubItems(csConfig *csconfig.Config, input []byte, dryRun bool) error
 		return err
 	}
 
-	if err := csConfig.LoadHub(); err != nil {
-		return fmt.Errorf("loading hub: %w", err)
-	}
-
 	cwhub.SetHubBranch()
 
 	if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {

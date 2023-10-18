@@ -66,7 +66,7 @@ type Walker struct {
 	installdir string
 }
 
-func NewWalker(hub *csconfig.Hub) Walker {
+func NewWalker(hub *csconfig.HubCfg) Walker {
 	return Walker{
 		hubdir:     hub.HubDir,
 		installdir: hub.InstallDir,
@@ -404,7 +404,7 @@ func CollecDepsCheck(v *Item) error {
 	return nil
 }
 
-func SyncDir(hub *csconfig.Hub, dir string) ([]string, error) {
+func SyncDir(hub *csconfig.HubCfg, dir string) ([]string, error) {
 	warnings := []string{}
 
 	// For each, scan PARSERS, POSTOVERFLOWS, SCENARIOS and COLLECTIONS last
@@ -445,7 +445,7 @@ func SyncDir(hub *csconfig.Hub, dir string) ([]string, error) {
 }
 
 // Updates the info from HubInit() with the local state
-func LocalSync(hub *csconfig.Hub) ([]string, error) {
+func LocalSync(hub *csconfig.HubCfg) ([]string, error) {
 	hubIdx.skippedLocal = 0
 	hubIdx.skippedTainted = 0
 
@@ -462,7 +462,7 @@ func LocalSync(hub *csconfig.Hub) ([]string, error) {
 	return warnings, nil
 }
 
-func GetHubIdx(hub *csconfig.Hub) error {
+func GetHubIdx(hub *csconfig.HubCfg) error {
 	if hub == nil {
 		return fmt.Errorf("no configuration found for hub")
 	}

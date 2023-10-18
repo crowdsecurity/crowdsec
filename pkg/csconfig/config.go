@@ -36,7 +36,7 @@ type Config struct {
 	PluginConfig *PluginCfg          `yaml:"plugin_config,omitempty"`
 	DisableAPI   bool                `yaml:"-"`
 	DisableAgent bool                `yaml:"-"`
-	Hub          *Hub                `yaml:"-"`
+	Hub          *HubCfg             `yaml:"-"`
 }
 
 func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*Config, string, error) {
@@ -73,18 +73,34 @@ func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool
 		log.Debugf("prometheus.listen_port is empty or zero, defaulting to %d", cfg.Prometheus.ListenPort)
 	}
 
+	if err = cfg.loadCommon(); err != nil {
+		return nil, "", err
+	}
+
+	if err = cfg.loadConfigurationPaths(); err != nil {
+		return nil, "", err
+	}
+
+	if err = cfg.loadHub(); err != nil {
+		return nil, "", err
+	}
+
+	if err = cfg.loadCSCLI(); err != nil {
+		return nil, "", err
+	}
+
 	return &cfg, configData, nil
 }
 
+// XXX: We must not not have a different behavior with an empty vs a missing configuration file.
+// XXX: For this reason, all defaults have to come from NewConfig(). The following function should
+// XXX: be replaced
 func NewDefaultConfig() *Config {
 	logLevel := log.InfoLevel
 	commonCfg := CommonCfg{
 		Daemonize: false,
-		PidDir:    "/tmp/",
 		LogMedia:  "stdout",
-		//LogDir unneeded
 		LogLevel:   &logLevel,
-		WorkingDir: ".",
 	}
 	prometheus := PrometheusCfg{
 		Enabled: true,

@@ -48,10 +48,6 @@ func silentInstallItem(name string, obtype string) (string, error) {
 func restoreHub(dirPath string) error {
 	var err error
 
-	if err := csConfig.LoadHub(); err != nil {
-		return err
-	}
-
 	cwhub.SetHubBranch()
 
 	for _, itype := range cwhub.ItemTypes {
