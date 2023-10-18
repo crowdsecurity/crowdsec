@@ -63,23 +63,23 @@ func NewWafRulesInstallCmd() *cobra.Command {
 
 	var cmdWafRulesInstall = &cobra.Command{
 		Use:               "install [config]",
-		Short:             "Install given waf-rule(s)",
-		Long:              `Fetch and install given waf-rule(s) from hub`,
-		Example:           `cscli waf-rules install crowdsec/xxx crowdsec/xyz`,
+		Short:             "Install given waap-rule(s)",
+		Long:              `Fetch and install given waap-rule(s) from hub`,
+		Example:           `cscli waap-rules install crowdsec/xxx crowdsec/xyz`,
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compAllItems(cwhub.WAF_RULES, args, toComplete)
+			return compAllItems(cwhub.WAAP_RULES, args, toComplete)
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
-				t := cwhub.GetItem(cwhub.WAF_RULES, name)
+				t := cwhub.GetItem(cwhub.WAAP_RULES, name)
 				if t == nil {
-					nearestItem, score := GetDistance(cwhub.WAF_RULES, name)
-					Suggest(cwhub.WAF_RULES, name, nearestItem.Name, score, ignoreError)
+					nearestItem, score := GetDistance(cwhub.WAAP_RULES, name)
+					Suggest(cwhub.WAAP_RULES, name, nearestItem.Name, score, ignoreError)
 					continue
 				}
-				if err := cwhub.InstallItem(csConfig, name, cwhub.WAF_RULES, forceAction, downloadOnly); err != nil {
+				if err := cwhub.InstallItem(csConfig, name, cwhub.WAAP_RULES, forceAction, downloadOnly); err != nil {
 					if ignoreError {
 						log.Errorf("Error while installing '%s': %s", name, err)
 					} else {
@@ -105,11 +105,11 @@ func NewWafRulesRemoveCmd() *cobra.Command {
 		Example:           `cscli waf-rules remove crowdsec/xxx crowdsec/xyz`,
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compInstalledItems(cwhub.WAF_RULES, args, toComplete)
+			return compInstalledItems(cwhub.WAAP_RULES, args, toComplete)
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
-				cwhub.RemoveMany(csConfig, cwhub.WAF_RULES, "", all, purge, forceAction)
+				cwhub.RemoveMany(csConfig, cwhub.WAAP_RULES, "", all, purge, forceAction)
 				return
 			}
 
@@ -118,7 +118,7 @@ func NewWafRulesRemoveCmd() *cobra.Command {
 			}
 
 			for _, name := range args {
-				cwhub.RemoveMany(csConfig, cwhub.WAF_RULES, name, all, purge, forceAction)
+				cwhub.RemoveMany(csConfig, cwhub.WAAP_RULES, name, all, purge, forceAction)
 			}
 		},
 	}
@@ -137,17 +137,17 @@ func NewWafRulesUpgradeCmd() *cobra.Command {
 		Example:           `cscli waf-rules upgrade crowdsec/xxx crowdsec/xyz`,
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compInstalledItems(cwhub.WAF_RULES, args, toComplete)
+			return compInstalledItems(cwhub.WAAP_RULES, args, toComplete)
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
-				cwhub.UpgradeConfig(csConfig, cwhub.WAF_RULES, "", forceAction)
+				cwhub.UpgradeConfig(csConfig, cwhub.WAAP_RULES, "", forceAction)
 			} else {
 				if len(args) == 0 {
 					log.Fatalf("no target waf rule to upgrade")
 				}
 				for _, name := range args {
-					cwhub.UpgradeConfig(csConfig, cwhub.WAF_RULES, name, forceAction)
+					cwhub.UpgradeConfig(csConfig, cwhub.WAAP_RULES, name, forceAction)
 				}
 			}
 		},
@@ -167,10 +167,10 @@ func NewWafRulesInspectCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		Args:              cobra.MinimumNArgs(1),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compInstalledItems(cwhub.WAF_RULES, args, toComplete)
+			return compInstalledItems(cwhub.WAAP_RULES, args, toComplete)
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			InspectItem(args[0], cwhub.WAF_RULES)
+			InspectItem(args[0], cwhub.WAAP_RULES)
 		},
 	}
 	cmdWafRulesInspect.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "", "Prometheus url")
@@ -187,7 +187,7 @@ func NewWafRulesListCmd() *cobra.Command {
 cscli waf-rules list crowdsecurity/xxx`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			ListItems(color.Output, []string{cwhub.WAF_RULES}, args, false, true, all)
+			ListItems(color.Output, []string{cwhub.WAAP_RULES}, args, false, true, all)
 		},
 	}
 	cmdWafRulesList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")

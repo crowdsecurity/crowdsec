@@ -20,6 +20,8 @@ type WaapCollection struct {
 	Rules          []string
 }
 
+var WAAP_RULE = "waap-rule"
+
 // to be filled w/ seb update
 type WaapCollectionConfig struct {
 	Type              string       `yaml:"type"`
@@ -35,7 +37,7 @@ func LoadCollection(collection string) (WaapCollection, error) {
 	//FIXME: do it once globally
 	waapRules := make(map[string]WaapCollectionConfig)
 
-	for _, hubWafRuleItem := range cwhub.GetItemMap(cwhub.WAF_RULES) {
+	for _, hubWafRuleItem := range cwhub.GetItemMap(cwhub.WAAP_RULES) {
 		log.Infof("loading %s", hubWafRuleItem.LocalPath)
 		if !hubWafRuleItem.Installed {
 			continue
@@ -57,8 +59,8 @@ func LoadCollection(collection string) (WaapCollection, error) {
 			continue
 		}
 
-		if rule.Type != "waf-rule" { //FIXME: rename to waap-rule when hub is properly updated
-			log.Warnf("unexpected type %s instead of waap-rule for file %s", rule.Type, hubWafRuleItem.LocalPath)
+		if rule.Type != WAAP_RULE { //FIXME: rename to waap-rule when hub is properly updated
+			log.Warnf("unexpected type %s instead of %s for file %s", rule.Type, WAAP_RULE, hubWafRuleItem.LocalPath)
 			continue
 		}
 		log.Infof("Adding %s to waap rules", rule.Name)

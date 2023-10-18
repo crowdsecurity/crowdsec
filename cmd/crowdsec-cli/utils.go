@@ -13,12 +13,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/agext/levenshtein"
 	"github.com/fatih/color"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prom2json"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/agext/levenshtein"
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 
@@ -131,7 +131,7 @@ func compInstalledItems(itemType string, args []string, toComplete string) ([]st
 		items, err = cwhub.GetInstalledPostOverflowsAsString()
 	case cwhub.COLLECTIONS:
 		items, err = cwhub.GetInstalledCollectionsAsString()
-	case cwhub.WAF_RULES:
+	case cwhub.WAAP_RULES:
 		items, err = cwhub.GetInstalledWafRulesAsString()
 	default:
 		return nil, cobra.ShellCompDirectiveDefault
@@ -326,7 +326,7 @@ func ShowMetrics(hubItem *cwhub.Item) {
 			}
 			ShowMetrics(hubItem)
 		}
-	case cwhub.WAF_RULES:
+	case cwhub.WAAP_RULES:
 		log.Fatalf("FIXME: not implemented yet")
 	default:
 		log.Errorf("item of type '%s' is unknown", hubItem.Type)
@@ -692,10 +692,10 @@ var ranges = []unit{
 	{value: 1e18, symbol: "E"},
 	{value: 1e15, symbol: "P"},
 	{value: 1e12, symbol: "T"},
-	{value: 1e9,  symbol: "G"},
-	{value: 1e6,  symbol: "M"},
-	{value: 1e3,  symbol: "k"},
-	{value: 1,    symbol: ""},
+	{value: 1e9, symbol: "G"},
+	{value: 1e6, symbol: "M"},
+	{value: 1e3, symbol: "k"},
+	{value: 1, symbol: ""},
 }
 
 func formatNumber(num int) string {

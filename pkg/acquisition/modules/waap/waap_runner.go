@@ -97,7 +97,7 @@ func (r *WaapRunner) processRequest(tx experimental.FullTransaction, request *wa
 	in = request.Tx.ProcessRequestHeaders()
 
 	if in != nil {
-		r.logger.Infof("inband rules matched for headers : %d", in.Action)
+		r.logger.Infof("inband rules matched for headers : %s", in.Action)
 		return nil
 	}
 

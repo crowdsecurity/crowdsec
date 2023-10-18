@@ -20,8 +20,8 @@ var PARSERS = "parsers"
 var PARSERS_OVFLW = "postoverflows"
 var SCENARIOS = "scenarios"
 var COLLECTIONS = "collections"
-var WAF_RULES = "waf-rules"
-var ItemTypes = []string{PARSERS, PARSERS_OVFLW, SCENARIOS, COLLECTIONS, WAF_RULES}
+var WAAP_RULES = "waap-rules"
+var ItemTypes = []string{PARSERS, PARSERS_OVFLW, SCENARIOS, COLLECTIONS, WAAP_RULES}
 
 var hubIdx map[string]map[string]Item
 
@@ -78,7 +78,7 @@ type Item struct {
 	PostOverflows []string `yaml:"postoverflows,omitempty" json:"postoverflows,omitempty"`
 	Scenarios     []string `yaml:"scenarios,omitempty" json:"scenarios,omitempty"`
 	Collections   []string `yaml:"collections,omitempty" json:"collections,omitempty"`
-	WafRules      []string `yaml:"waf-rules,omitempty" json:"waf-rules,omitempty"`
+	WafRules      []string `yaml:"waap-rules,omitempty" json:"waap-rules,omitempty"`
 }
 
 func (i *Item) toHubStatus() ItemHubStatus {
@@ -202,7 +202,7 @@ func AddItem(itemType string, item Item) error {
 
 func DisplaySummary() {
 	log.Printf("Loaded %d collecs, %d parsers, %d scenarios, %d post-overflow parsers, %d waf rules", len(hubIdx[COLLECTIONS]),
-		len(hubIdx[PARSERS]), len(hubIdx[SCENARIOS]), len(hubIdx[PARSERS_OVFLW]), len(hubIdx[WAF_RULES]))
+		len(hubIdx[PARSERS]), len(hubIdx[SCENARIOS]), len(hubIdx[PARSERS_OVFLW]), len(hubIdx[WAAP_RULES]))
 	if skippedLocal > 0 || skippedTainted > 0 {
 		log.Printf("unmanaged items : %d local, %d tainted", skippedLocal, skippedTainted)
 	}
@@ -347,10 +347,10 @@ func GetInstalledCollections() ([]Item, error) {
 func GetInstalledWafRules() ([]Item, error) {
 	var retItems []Item
 
-	if _, ok := hubIdx[WAF_RULES]; !ok {
+	if _, ok := hubIdx[WAAP_RULES]; !ok {
 		return nil, fmt.Errorf("no waf rules in hubIdx")
 	}
-	for _, item := range hubIdx[WAF_RULES] {
+	for _, item := range hubIdx[WAAP_RULES] {
 		if item.Installed {
 			retItems = append(retItems, item)
 		}
