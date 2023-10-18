@@ -29,23 +29,16 @@ import (
 var responseByPath map[string]string
 
 func TestItemStatus(t *testing.T) {
-	cfg := envSetup(t)
+	cfg, hub := envSetup(t)
 	defer envTearDown(cfg)
 
-	// DownloadHubIdx()
-	err := UpdateHubIdx(cfg.Hub)
-	require.NoError(t, err, "failed to download index")
-
-	err = GetHubIdx(cfg.Hub)
-	require.NoError(t, err, "failed to load hub index")
-
 	// get existing map
-	x := GetItemMap(COLLECTIONS)
+	x := hub.GetItemMap(COLLECTIONS)
 	require.NotEmpty(t, x)
 
 	// Get item : good and bad
 	for k := range x {
-		item := GetItem(COLLECTIONS, k)
+		item := hub.GetItem(COLLECTIONS, k)
 		require.NotNil(t, item)
 
 		item.Installed = true
@@ -69,54 +62,46 @@ func TestItemStatus(t *testing.T) {
 }
 
 func TestGetters(t *testing.T) {
-	cfg := envSetup(t)
+	cfg, hub := envSetup(t)
 	defer envTearDown(cfg)
 
-	// DownloadHubIdx()
-	err := UpdateHubIdx(cfg.Hub)
-	require.NoError(t, err, "failed to download index")
-
-	err = GetHubIdx(cfg.Hub)
-	require.NoError(t, err, "failed to load hub index")
-
 	// get non existing map
-	empty := GetItemMap("ratata")
+	empty := hub.GetItemMap("ratata")
 	require.Nil(t, empty)
 
 	// get existing map
-	x := GetItemMap(COLLECTIONS)
+	x := hub.GetItemMap(COLLECTIONS)
 	require.NotEmpty(t, x)
 
 	// Get item : good and bad
 	for k := range x {
-		empty := GetItem(COLLECTIONS, k+"nope")
+		empty := hub.GetItem(COLLECTIONS, k+"nope")
 		require.Nil(t, empty)
 
-		item := GetItem(COLLECTIONS, k)
+		item := hub.GetItem(COLLECTIONS, k)
 		require.NotNil(t, item)
 
 		// Add item and get it
 		item.Name += "nope"
-		err := AddItem(COLLECTIONS, *item)
+		err := hub.AddItem(COLLECTIONS, *item)
 		require.NoError(t, err)
 
-		newitem := GetItem(COLLECTIONS, item.Name)
+		newitem := hub.GetItem(COLLECTIONS, item.Name)
 		require.NotNil(t, newitem)
 
-		err = AddItem("ratata", *item)
+		err = hub.AddItem("ratata", *item)
 		cstest.RequireErrorContains(t, err, "ItemType ratata is unknown")
 	}
 }
 
 func TestIndexDownload(t *testing.T) {
-	cfg := envSetup(t)
+	cfg, _ := envSetup(t)
 	defer envTearDown(cfg)
 
-	// DownloadHubIdx()
-	err := UpdateHubIdx(cfg.Hub)
+	_, err := InitHubUpdate(cfg.Hub)
 	require.NoError(t, err, "failed to download index")
 
-	err = GetHubIdx(cfg.Hub)
+	_, err = GetHub()
 	require.NoError(t, err, "failed to load hub index")
 }
 
@@ -129,7 +114,7 @@ func getTestCfg() *csconfig.Config {
 	return cfg
 }
 
-func envSetup(t *testing.T) *csconfig.Config {
+func envSetup(t *testing.T) (*csconfig.Config, *Hub) {
 	resetResponseByPath()
 	log.SetLevel(log.DebugLevel)
 
@@ -150,8 +135,8 @@ func envSetup(t *testing.T) *csconfig.Config {
 	err = os.MkdirAll(cfg.Hub.HubDir, 0700)
 	require.NoError(t, err)
 
-	err = UpdateHubIdx(cfg.Hub)
-	require.NoError(t, err)
+	hub, err := InitHubUpdate(cfg.Hub)
+	require.NoError(t, err, "failed to download index")
 
 	// if err := os.RemoveAll(cfg.Hub.InstallDir); err != nil {
 	// 	log.Fatalf("failed to remove %s : %s", cfg.Hub.InstallDir, err)
@@ -159,7 +144,7 @@ func envSetup(t *testing.T) *csconfig.Config {
 	// if err := os.MkdirAll(cfg.Hub.InstallDir, 0700); err != nil {
 	// 	log.Fatalf("failed to mkdir %s : %s", cfg.Hub.InstallDir, err)
 	// }
-	return cfg
+	return cfg, hub
 }
 
 func envTearDown(cfg *csconfig.Config) {
@@ -174,27 +159,34 @@ func envTearDown(cfg *csconfig.Config) {
 
 func testInstallItem(cfg *csconfig.HubCfg, t *testing.T, item Item) {
 	// Install the parser
-	err := DownloadLatest(cfg, &item, false, false)
+	
+	hub, err := GetHub()
+	require.NoError(t, err)
+
+	err = hub.DownloadLatest(&item, false, false)
 	require.NoError(t, err, "failed to download %s", item.Name)
 
-	_, err = LocalSync(cfg)
+	_, err = hub.LocalSync()
 	require.NoError(t, err, "failed to run localSync")
 
-	assert.True(t, hubIdx.Items[item.Type][item.Name].UpToDate, "%s should be up-to-date", item.Name)
-	assert.False(t, hubIdx.Items[item.Type][item.Name].Installed, "%s should not be installed", item.Name)
-	assert.False(t, hubIdx.Items[item.Type][item.Name].Tainted, "%s should not be tainted", item.Name)
+	assert.True(t, hub.Items[item.Type][item.Name].UpToDate, "%s should be up-to-date", item.Name)
+	assert.False(t, hub.Items[item.Type][item.Name].Installed, "%s should not be installed", item.Name)
+	assert.False(t, hub.Items[item.Type][item.Name].Tainted, "%s should not be tainted", item.Name)
 
-	err = EnableItem(cfg, &item)
+	err = hub.EnableItem(&item)
 	require.NoError(t, err, "failed to enable %s", item.Name)
 
-	_, err = LocalSync(cfg)
+	_, err = hub.LocalSync()
 	require.NoError(t, err, "failed to run localSync")
 
-	assert.True(t, hubIdx.Items[item.Type][item.Name].Installed, "%s should be installed", item.Name)
+	assert.True(t, hub.Items[item.Type][item.Name].Installed, "%s should be installed", item.Name)
 }
 
 func testTaintItem(cfg *csconfig.HubCfg, t *testing.T, item Item) {
-	assert.False(t, hubIdx.Items[item.Type][item.Name].Tainted, "%s should not be tainted", item.Name)
+	hub, err := GetHub()
+	require.NoError(t, err)
+
+	assert.False(t, hub.Items[item.Type][item.Name].Tainted, "%s should not be tainted", item.Name)
 
 	f, err := os.OpenFile(item.LocalPath, os.O_APPEND|os.O_WRONLY, 0600)
 	require.NoError(t, err, "failed to open %s (%s)", item.LocalPath, item.Name)
@@ -205,54 +197,60 @@ func testTaintItem(cfg *csconfig.HubCfg, t *testing.T, item Item) {
 	require.NoError(t, err, "failed to write to %s (%s)", item.LocalPath, item.Name)
 
 	// Local sync and check status
-	_, err = LocalSync(cfg)
+	_, err = hub.LocalSync()
 	require.NoError(t, err, "failed to run localSync")
 
-	assert.True(t, hubIdx.Items[item.Type][item.Name].Tainted, "%s should be tainted", item.Name)
+	assert.True(t, hub.Items[item.Type][item.Name].Tainted, "%s should be tainted", item.Name)
 }
 
 func testUpdateItem(cfg *csconfig.HubCfg, t *testing.T, item Item) {
-	assert.False(t, hubIdx.Items[item.Type][item.Name].UpToDate, "%s should not be up-to-date", item.Name)
+	hub, err := GetHub()
+	require.NoError(t, err)
+
+	assert.False(t, hub.Items[item.Type][item.Name].UpToDate, "%s should not be up-to-date", item.Name)
 
 	// Update it + check status
-	err := DownloadLatest(cfg, &item, true, true)
+	err = hub.DownloadLatest(&item, true, true)
 	require.NoError(t, err, "failed to update %s", item.Name)
 
 	// Local sync and check status
-	_, err = LocalSync(cfg)
+	_, err = hub.LocalSync()
 	require.NoError(t, err, "failed to run localSync")
 
-	assert.True(t, hubIdx.Items[item.Type][item.Name].UpToDate, "%s should be up-to-date", item.Name)
-	assert.False(t, hubIdx.Items[item.Type][item.Name].Tainted, "%s should not be tainted anymore", item.Name)
+	assert.True(t, hub.Items[item.Type][item.Name].UpToDate, "%s should be up-to-date", item.Name)
+	assert.False(t, hub.Items[item.Type][item.Name].Tainted, "%s should not be tainted anymore", item.Name)
 }
 
 func testDisableItem(cfg *csconfig.HubCfg, t *testing.T, item Item) {
-	assert.True(t, hubIdx.Items[item.Type][item.Name].Installed, "%s should be installed", item.Name)
+	hub, err := GetHub()
+	require.NoError(t, err)
+
+	assert.True(t, hub.Items[item.Type][item.Name].Installed, "%s should be installed", item.Name)
 
 	// Remove
-	err := DisableItem(cfg, &item, false, false)
+	err = hub.DisableItem(&item, false, false)
 	require.NoError(t, err, "failed to disable %s", item.Name)
 
 	// Local sync and check status
-	warns, err := LocalSync(cfg)
+	warns, err := hub.LocalSync()
 	require.NoError(t, err, "failed to run localSync")
 	require.Empty(t, warns, "unexpected warnings : %+v", warns)
 
-	assert.False(t, hubIdx.Items[item.Type][item.Name].Tainted, "%s should not be tainted anymore", item.Name)
-	assert.False(t, hubIdx.Items[item.Type][item.Name].Installed, "%s should not be installed anymore", item.Name)
-	assert.True(t, hubIdx.Items[item.Type][item.Name].Downloaded, "%s should still be downloaded", item.Name)
+	assert.False(t, hub.Items[item.Type][item.Name].Tainted, "%s should not be tainted anymore", item.Name)
+	assert.False(t, hub.Items[item.Type][item.Name].Installed, "%s should not be installed anymore", item.Name)
+	assert.True(t, hub.Items[item.Type][item.Name].Downloaded, "%s should still be downloaded", item.Name)
 
 	// Purge
-	err = DisableItem(cfg, &item, true, false)
+	err = hub.DisableItem(&item, true, false)
 	require.NoError(t, err, "failed to purge %s", item.Name)
 
 	// Local sync and check status
-	warns, err = LocalSync(cfg)
+	warns, err = hub.LocalSync()
 	require.NoError(t, err, "failed to run localSync")
 	require.Empty(t, warns, "unexpected warnings : %+v", warns)
 
-	assert.False(t, hubIdx.Items[item.Type][item.Name].Installed, "%s should not be installed anymore", item.Name)
-	assert.False(t, hubIdx.Items[item.Type][item.Name].Downloaded, "%s should not be downloaded", item.Name)
+	assert.False(t, hub.Items[item.Type][item.Name].Installed, "%s should not be installed anymore", item.Name)
+	assert.False(t, hub.Items[item.Type][item.Name].Downloaded, "%s should not be downloaded", item.Name)
 }
 
 func TestInstallParser(t *testing.T) {
@@ -265,20 +263,20 @@ func TestInstallParser(t *testing.T) {
 	 - check its status
 	 - remove it
 	*/
-	cfg := envSetup(t)
+	cfg, hub := envSetup(t)
 	defer envTearDown(cfg)
 
 	getHubIdxOrFail(t)
 	// map iteration is random by itself
-	for _, it := range hubIdx.Items[PARSERS] {
+	for _, it := range hub.Items[PARSERS] {
 		testInstallItem(cfg.Hub, t, it)
-		it = hubIdx.Items[PARSERS][it.Name]
+		it = hub.Items[PARSERS][it.Name]
 		testTaintItem(cfg.Hub, t, it)
-		it = hubIdx.Items[PARSERS][it.Name]
+		it = hub.Items[PARSERS][it.Name]
 		testUpdateItem(cfg.Hub, t, it)
-		it = hubIdx.Items[PARSERS][it.Name]
+		it = hub.Items[PARSERS][it.Name]
 		testDisableItem(cfg.Hub, t, it)
-		it = hubIdx.Items[PARSERS][it.Name]
+		it = hub.Items[PARSERS][it.Name]
 
 		break
 	}
@@ -294,18 +292,18 @@ func TestInstallCollection(t *testing.T) {
 	 - check its status
 	 - remove it
 	*/
-	cfg := envSetup(t)
+	cfg, hub := envSetup(t)
 	defer envTearDown(cfg)
 
 	getHubIdxOrFail(t)
 	// map iteration is random by itself
-	for _, it := range hubIdx.Items[COLLECTIONS] {
+	for _, it := range hub.Items[COLLECTIONS] {
 		testInstallItem(cfg.Hub, t, it)
-		it = hubIdx.Items[COLLECTIONS][it.Name]
+		it = hub.Items[COLLECTIONS][it.Name]
 		testTaintItem(cfg.Hub, t, it)
-		it = hubIdx.Items[COLLECTIONS][it.Name]
+		it = hub.Items[COLLECTIONS][it.Name]
 		testUpdateItem(cfg.Hub, t, it)
-		it = hubIdx.Items[COLLECTIONS][it.Name]
+		it = hub.Items[COLLECTIONS][it.Name]
 		testDisableItem(cfg.Hub, t, it)
 		break
 	}
