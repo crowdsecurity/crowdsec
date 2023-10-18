@@ -64,16 +64,17 @@ func Notifications(c *csconfig.Config) error {
 	return nil
 }
 
-func Hub (c *csconfig.Config) error {
+func Hub (c *csconfig.Config) (*cwhub.Hub, error) {
 	if c.Hub == nil {
-		return fmt.Errorf("you must configure cli before interacting with hub")
+		return nil, fmt.Errorf("you must configure cli before interacting with hub")
 	}
 
 	cwhub.SetHubBranch()
 
-	if err := cwhub.GetHubIdx(c.Hub); err != nil {
-		return fmt.Errorf("failed to read Hub index: '%w'. Run 'sudo cscli hub update' to download the index again", err)
+	hub, err := cwhub.InitHub(c.Hub)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read Hub index: '%w'. Run 'sudo cscli hub update' to download the index again", err)
 	}
 
-	return nil
+	return hub, nil
 }

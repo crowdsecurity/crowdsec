@@ -33,7 +33,11 @@ func GetDistance(itemType string, itemName string) (*cwhub.Item, int) {
 	allItems := make([]string, 0)
 	nearestScore := 100
 	nearestItem := &cwhub.Item{}
-	hubItems := cwhub.GetItemMap(itemType)
+
+	// XXX: handle error
+	hub, _ := cwhub.GetHub()
+
+	hubItems := hub.GetItemMap(itemType)
 	for _, item := range hubItems {
 		allItems = append(allItems, item.Name)
 	}
@@ -42,19 +46,20 @@ func GetDistance(itemType string, itemName string) (*cwhub.Item, int) {
 		d := levenshtein.Distance(itemName, s, nil)
 		if d < nearestScore {
 			nearestScore = d
-			nearestItem = cwhub.GetItem(itemType, s)
+			nearestItem = hub.GetItem(itemType, s)
 		}
 	}
 	return nearestItem, nearestScore
 }
 
 func compAllItems(itemType string, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	if err := require.Hub(csConfig); err != nil {
+	hub, err := require.Hub(csConfig)
+	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault
 	}
 
 	comp := make([]string, 0)
-	hubItems := cwhub.GetItemMap(itemType)
+	hubItems := hub.GetItemMap(itemType)
 	for _, item := range hubItems {
 		if !slices.Contains(args, item.Name) && strings.Contains(item.Name, toComplete) {
 			comp = append(comp, item.Name)
@@ -65,11 +70,12 @@ func compAllItems(itemType string, args []string, toComplete string) ([]string, 
 }
 
 func compInstalledItems(itemType string, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	if err := require.Hub(csConfig); err != nil {
+	hub, err := require.Hub(csConfig)
+	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault
 	}
 
-	items, err := cwhub.GetInstalledItemsAsString(itemType)
+	items, err := hub.GetInstalledItemsAsString(itemType)
 	if err != nil {
 		cobra.CompDebugln(fmt.Sprintf("list installed %s err: %s", itemType, err), true)
 		return nil, cobra.ShellCompDirectiveDefault

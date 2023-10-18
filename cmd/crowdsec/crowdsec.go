@@ -23,8 +23,8 @@ import (
 func initCrowdsec(cConfig *csconfig.Config) (*parser.Parsers, error) {
 	var err error
 
-	// Populate cwhub package tools
-	if err = cwhub.GetHubIdx(cConfig.Hub); err != nil {
+	hub, err := cwhub.InitHub(cConfig.Hub)
+	if err != nil {
 		return nil, fmt.Errorf("while loading hub index: %w", err)
 	}
 
@@ -34,7 +34,7 @@ func initCrowdsec(cConfig *csconfig.Config) (*parser.Parsers, error) {
 		return nil, fmt.Errorf("while loading parsers: %w", err)
 	}
 
-	if err := LoadBuckets(cConfig); err != nil {
+	if err := LoadBuckets(cConfig, hub); err != nil {
 		return nil, fmt.Errorf("while loading scenarios: %w", err)
 	}
 

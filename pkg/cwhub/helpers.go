@@ -8,7 +8,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/mod/semver"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 )
 
@@ -62,8 +61,8 @@ func SetHubBranch() {
 }
 
 // InstallItem installs an item from the hub
-func InstallItem(csConfig *csconfig.Config, name string, itemType string, force bool, downloadOnly bool) error {
-	item := GetItem(itemType, name)
+func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly bool) error {
+	item := h.GetItem(itemType, name)
 	if item == nil {
 		return fmt.Errorf("unable to retrieve item: %s", name)
 	}
@@ -76,26 +75,26 @@ func InstallItem(csConfig *csconfig.Config, name string, itemType string, force 
 		}
 	}
 
-	err := DownloadLatest(csConfig.Hub, item, force, true)
+	err := h.DownloadLatest(item, force, true)
 	if err != nil {
 		return fmt.Errorf("while downloading %s: %w", item.Name, err)
 	}
 
-	if err = AddItem(itemType, *item); err != nil {
+	if err = h.AddItem(itemType, *item); err != nil {
 		return fmt.Errorf("while adding %s: %w", item.Name, err)
 	}
 
 	if downloadOnly {
-		log.Infof("Downloaded %s to %s", item.Name, filepath.Join(csConfig.Hub.HubDir, item.RemotePath))
+		log.Infof("Downloaded %s to %s", item.Name, filepath.Join(h.cfg.HubDir, item.RemotePath))
 		return nil
 	}
 
-	err = EnableItem(csConfig.Hub, item)
+	err = h.EnableItem(item)
 	if err != nil {
 		return fmt.Errorf("while enabling %s: %w", item.Name, err)
 	}
 
-	if err := AddItem(itemType, *item); err != nil {
+	if err := h.AddItem(itemType, *item); err != nil {
 		return fmt.Errorf("while adding %s: %w", item.Name, err)
 	}
 
@@ -105,20 +104,20 @@ func InstallItem(csConfig *csconfig.Config, name string, itemType string, force 
 }
 
 // RemoveItem removes one - or all - the items from the hub
-func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all bool, purge bool, forceAction bool) error {
+func (h *Hub) RemoveMany(itemType string, name string, all bool, purge bool, forceAction bool) error {
 	if name != "" {
-		item := GetItem(itemType, name)
+		item := h.GetItem(itemType, name)
 		if item == nil {
 			return fmt.Errorf("can't find '%s' in %s", name, itemType)
 		}
 
-		err := DisableItem(csConfig.Hub, item, purge, forceAction)
+		err := h.DisableItem(item, purge, forceAction)
 
 		if err != nil {
 			return fmt.Errorf("unable to disable %s: %w", item.Name, err)
 		}
 
-		if err = AddItem(itemType, *item); err != nil {
+		if err = h.AddItem(itemType, *item); err != nil {
 			return fmt.Errorf("unable to add %s: %w", item.Name, err)
 		}
 
@@ -132,17 +131,17 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 	disabled := 0
 
 	// remove all
-	for _, v := range GetItemMap(itemType) {
+	for _, v := range h.GetItemMap(itemType) {
 		if !v.Installed {
 			continue
 		}
 
-		err := DisableItem(csConfig.Hub, &v, purge, forceAction)
+		err := h.DisableItem(&v, purge, forceAction)
 		if err != nil {
 			return fmt.Errorf("unable to disable %s: %w", v.Name, err)
 		}
 
-		if err := AddItem(itemType, v); err != nil {
+		if err := h.AddItem(itemType, v); err != nil {
 			return fmt.Errorf("unable to add %s: %w", v.Name, err)
 		}
 		disabled++
@@ -154,11 +153,11 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 }
 
 // UpgradeConfig upgrades an item from the hub
-func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, force bool) error {
+func (h *Hub) UpgradeConfig(itemType string, name string, force bool) error {
 	updated := 0
 	found := false
 
-	for _, v := range GetItemMap(itemType) {
+	for _, v := range h.GetItemMap(itemType) {
 		if name != "" && name != v.Name {
 			continue
 		}
@@ -178,7 +177,7 @@ func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, forc
 		if v.UpToDate {
 			log.Infof("%s: up-to-date", v.Name)
 
-			if err := DownloadDataIfNeeded(csConfig.Hub, v, force); err != nil {
+			if err := h.DownloadDataIfNeeded(v, force); err != nil {
 				return fmt.Errorf("%s: download failed: %w", v.Name, err)
 			}
 
@@ -187,7 +186,7 @@ func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, forc
 			}
 		}
 
-		if err := DownloadLatest(csConfig.Hub, &v, force, true); err != nil {
+		if err := h.DownloadLatest(&v, force, true); err != nil {
 			return fmt.Errorf("%s: download failed: %w", v.Name, err)
 		}
 
@@ -205,7 +204,7 @@ func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, forc
 			updated++
 		}
 
-		if err := AddItem(itemType, v); err != nil {
+		if err := h.AddItem(itemType, v); err != nil {
 			return fmt.Errorf("unable to add %s: %w", v.Name, err)
 		}
 	}

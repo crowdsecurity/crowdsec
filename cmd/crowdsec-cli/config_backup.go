@@ -13,7 +13,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
-func backupHub(dirPath string) error {
+func backupHub(hub *cwhub.Hub, dirPath string) error {
 	var err error
 	var itemDirectory string
 	var upstreamParsers []string
@@ -22,7 +22,7 @@ func backupHub(dirPath string) error {
 		clog := log.WithFields(log.Fields{
 			"type": itemType,
 		})
-		itemMap := cwhub.GetItemMap(itemType)
+		itemMap := hub.GetItemMap(itemType)
 		if itemMap == nil {
 			clog.Infof("No %s to backup.", itemType)
 			continue
@@ -189,7 +189,12 @@ func backupConfigToDirectory(dirPath string) error {
 		log.Infof("Saved profiles to %s", backupProfiles)
 	}
 
-	if err = backupHub(dirPath); err != nil {
+	hub, err := cwhub.GetHub()
+	if err != nil {
+		return err
+	}
+
+	if err = backupHub(hub, dirPath); err != nil {
 		return fmt.Errorf("failed to backup hub config: %s", err)
 	}
 
@@ -197,7 +202,7 @@ func backupConfigToDirectory(dirPath string) error {
 }
 
 func runConfigBackup(cmd *cobra.Command, args []string) error {
-	if err := require.Hub(csConfig); err != nil {
+	if _, err := require.Hub(csConfig); err != nil {
 		return err
 	}
 

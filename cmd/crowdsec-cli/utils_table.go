@@ -16,8 +16,10 @@ func listHubItemTable(out io.Writer, title string, itemType string, itemNames []
 	t.SetHeaderAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
 	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
 
+	hub, _ := cwhub.GetHub()
+
 	for itemName := range itemNames {
-		item := cwhub.GetItem(itemType, itemNames[itemName])
+		item := hub.GetItem(itemType, itemNames[itemName])
 		status, emo := item.Status()
 		t.AddRow(item.Name, fmt.Sprintf("%v  %s", emo, status), item.LocalVersion, item.LocalPath)
 	}

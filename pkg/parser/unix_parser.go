@@ -64,8 +64,12 @@ func NewParsers() *Parsers {
 		StageFiles:      make([]Stagefile, 0),
 		PovfwStageFiles: make([]Stagefile, 0),
 	}
+
+	// XXX: handle error
+	hub, _ := cwhub.GetHub()
+
 	for _, itemType := range []string{cwhub.PARSERS, cwhub.POSTOVERFLOWS} {
-		for _, hubParserItem := range cwhub.GetItemMap(itemType) {
+		for _, hubParserItem := range hub.GetItemMap(itemType) {
 			if hubParserItem.Installed {
 				stagefile := Stagefile{
 					Filename: hubParserItem.LocalPath,

@@ -75,12 +75,12 @@ type Flags struct {
 
 type labelsMap map[string]string
 
-func LoadBuckets(cConfig *csconfig.Config) error {
+func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 	var (
 		err   error
 		files []string
 	)
-	for _, hubScenarioItem := range cwhub.GetItemMap(cwhub.SCENARIOS) {
+	for _, hubScenarioItem := range hub.GetItemMap(cwhub.SCENARIOS) {
 		if hubScenarioItem.Installed {
 			files = append(files, hubScenarioItem.LocalPath)
 		}

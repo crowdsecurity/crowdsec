@@ -25,7 +25,7 @@ cscli collections remove crowdsecurity/http-cve crowdsecurity/iptables
 		Aliases:           []string{"collection"},
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := require.Hub(csConfig); err != nil {
+			if _, err := require.Hub(csConfig); err != nil {
 				return err
 			}
 
@@ -66,8 +66,13 @@ func runCollectionsInstall(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	hub, err := cwhub.GetHub()
+	if err != nil {
+		return err
+	}
+
 	for _, name := range args {
-		t := cwhub.GetItem(cwhub.COLLECTIONS, name)
+		t := hub.GetItem(cwhub.COLLECTIONS, name)
 		if t == nil {
 			nearestItem, score := GetDistance(cwhub.COLLECTIONS, name)
 			Suggest(cwhub.COLLECTIONS, name, nearestItem.Name, score, ignoreError)
@@ -75,7 +80,7 @@ func runCollectionsInstall(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		if err := cwhub.InstallItem(csConfig, name, cwhub.COLLECTIONS, force, downloadOnly); err != nil {
+		if err := hub.InstallItem(name, cwhub.COLLECTIONS, force, downloadOnly); err != nil {
 			if !ignoreError {
 				return fmt.Errorf("error while installing '%s': %w", name, err)
 			}
@@ -126,8 +131,13 @@ func runCollectionsRemove(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	hub, err := cwhub.GetHub()
+	if err != nil {
+		return err
+	}
+
 	if all {
-		err := cwhub.RemoveMany(csConfig, cwhub.COLLECTIONS, "", all, purge, force)
+		err := hub.RemoveMany(cwhub.COLLECTIONS, "", all, purge, force)
 		if err != nil {
 			return err
 		}
@@ -141,7 +151,7 @@ func runCollectionsRemove(cmd *cobra.Command, args []string) error {
 
 	for _, name := range args {
 		if !force {
-			item := cwhub.GetItem(cwhub.COLLECTIONS, name)
+			item := hub.GetItem(cwhub.COLLECTIONS, name)
 			if item == nil {
 				// XXX: this should be in GetItem?
 				return fmt.Errorf("can't find '%s' in %s", name, cwhub.COLLECTIONS)
@@ -153,7 +163,7 @@ func runCollectionsRemove(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		err := cwhub.RemoveMany(csConfig, cwhub.COLLECTIONS, name, all, purge, force)
+		err := hub.RemoveMany(cwhub.COLLECTIONS, name, all, purge, force)
 		if err != nil {
 			return err
 		}
@@ -197,8 +207,13 @@ func runCollectionsUpgrade(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	hub, err := cwhub.GetHub()
+	if err != nil {
+		return err
+	}
+
 	if all {
-		if err := cwhub.UpgradeConfig(csConfig, cwhub.COLLECTIONS, "", force); err != nil {
+		if err := hub.UpgradeConfig(cwhub.COLLECTIONS, "", force); err != nil {
 			return err
 		}
 		return nil
@@ -209,7 +224,7 @@ func runCollectionsUpgrade(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, name := range args {
-		if err := cwhub.UpgradeConfig(csConfig, cwhub.COLLECTIONS, name, force); err != nil {
+		if err := hub.UpgradeConfig(cwhub.COLLECTIONS, name, force); err != nil {
 			return err
 		}
 	}

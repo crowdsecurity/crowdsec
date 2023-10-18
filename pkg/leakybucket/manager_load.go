@@ -185,6 +185,11 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, dataDir string, files []str
 		response chan types.Event
 	)
 
+	hub, err := cwhub.GetHub()
+	if err != nil {
+		return nil, nil, err
+	}
+
 	response = make(chan types.Event, 1)
 	for _, f := range files {
 		log.Debugf("Loading '%s'", f)
@@ -235,7 +240,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, dataDir string, files []str
 			bucketFactory.Filename = filepath.Clean(f)
 			bucketFactory.BucketName = seed.Generate()
 			bucketFactory.ret = response
-			hubItem, err := cwhub.GetItemByPath(cwhub.SCENARIOS, bucketFactory.Filename)
+			hubItem, err := hub.GetItemByPath(cwhub.SCENARIOS, bucketFactory.Filename)
 			if err != nil {
 				log.Errorf("scenario %s (%s) couldn't be find in hub (ignore if in unit tests)", bucketFactory.Name, bucketFactory.Filename)
 			} else {
