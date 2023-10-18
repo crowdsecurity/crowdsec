@@ -3,6 +3,7 @@ package waf
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 type VPatchRule struct {
@@ -17,8 +18,6 @@ type VPatchRule struct {
 	Detect    string       `yaml:"detect"`          //@detectXSS, @detectSQLi, etc
 	Logic     string       `yaml:"logic,omitempty"` // "AND", "OR", or empty if not applicable
 	SubRules  []VPatchRule `yaml:"sub_rules,omitempty"`
-
-	id int
 }
 
 func (v *VPatchRule) String() string {
@@ -46,26 +45,21 @@ func (v *VPatchRule) constructRule(depth int) string {
 
 	switch v.Logic {
 	case "AND":
-		// Add "chain" to the current rule
 		result = strings.TrimSuffix(result, `"`) + `,chain"` + "\n"
 		for _, subRule := range v.SubRules {
 			result += subRule.constructRule(depth + 1)
 		}
 	case "OR":
 		skips := countTotalRules(v.SubRules) - 1
-		// If the "OR" rule is at the top level and is followed by any rule, we need to count that too
 		if depth == 0 {
-			skips++ // For the current rule
+			skips++
 		}
-		// Add the skip directive to the current rule too
 		result = strings.TrimSuffix(result, `"`) + fmt.Sprintf(`,skip:%d"`+"\n", skips)
 		for _, subRule := range v.SubRules {
 			skips--
 			if skips > 0 {
-				// Append skip directive and decrease the skip count
 				result += strings.TrimSuffix(subRule.singleRuleString(), `"`) + fmt.Sprintf(`,skip:%d"`+"\n", skips)
 			} else {
-				// If no skip is required, append only a newline
 				result += subRule.singleRuleString() + "\n"
 			}
 		}
@@ -91,7 +85,9 @@ func (v *VPatchRule) singleRuleString() string {
 		ruleStr = fmt.Sprintf(`SecRule %s "%s"`, v.Target, operator)
 	}
 
-	actions := fmt.Sprintf(` "id:%d,deny,log`, v.id)
+	//FIXME: phase2 should probably not be hardcoded
+	//Find a better way than using time.Now().UnixMilli() to generate a unique ID
+	actions := fmt.Sprintf(` "id:%d,deny,log,phase:2`, time.Now().UnixNano())
 
 	// Handle transformation
 	if v.Transform != "" {

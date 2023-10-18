@@ -149,6 +149,12 @@ func (w *WaapSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		return fmt.Errorf("no waap_config provided")
 	}
 
+	err = w.WaapRuntime.ProcessOnLoadRules()
+
+	if err != nil {
+		return fmt.Errorf("unable to process on load rules : %s", err)
+	}
+
 	w.WaapRunners = make([]WaapRunner, w.config.Routines)
 
 	for nbRoutine := 0; nbRoutine < w.config.Routines; nbRoutine++ {

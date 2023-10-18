@@ -27,6 +27,7 @@ type WaapCollectionConfig struct {
 	SecLangFilesRules []string     `yaml:"seclang_files_rules"`
 	SecLangRules      []string     `yaml:"seclang_rules"`
 	Rules             []VPatchRule `yaml:"rules"`
+	Data              interface{}  `yaml:"data"` //Ignore it
 }
 
 func LoadCollection(collection string) (WaapCollection, error) {

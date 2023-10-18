@@ -186,6 +186,35 @@ func (wc *WaapConfig) Build() (*WaapRuntimeConfig, error) {
 	return ret, nil
 }
 
+func (w *WaapRuntimeConfig) ProcessOnLoadRules() error {
+	for _, rule := range w.CompiledOnMatch {
+		if rule.FilterExpr != nil {
+			output, err := expr.Run(rule.FilterExpr, GetHookEnv(w, ParsedRequest{}))
+			if err != nil {
+				return fmt.Errorf("unable to run filter %s : %w", rule.Filter, err)
+			}
+			switch t := output.(type) {
+			case bool:
+				if !t {
+					log.Infof("filter didnt match")
+					continue
+				}
+			default:
+				log.Errorf("Filter must return a boolean, can't filter")
+				continue
+			}
+		}
+		for _, applyExpr := range rule.ApplyExpr {
+			_, err := expr.Run(applyExpr, GetHookEnv(w, ParsedRequest{}))
+			if err != nil {
+				log.Errorf("unable to apply filter: %s", err)
+				continue
+			}
+		}
+	}
+	return nil
+}
+
 func (w *WaapRuntimeConfig) ProcessOnMatchRules(request ParsedRequest) error {
 
 	for _, rule := range w.CompiledOnMatch {

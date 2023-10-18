@@ -36,6 +36,25 @@ func TestVPatchRuleString(t *testing.T) {
 SecRule REQUEST_URI "@rx /joomla/index.php/component/users/" "id:0,deny,log"`,
 		},
 		{
+			name: "AND Logic Rule",
+			rule: VPatchRule{
+				Logic: "AND",
+				SubRules: []VPatchRule{
+					{
+						Target: "REQUEST_URI",
+						Match:  "/joomla/index.php/component/users/",
+					},
+					{
+						Target:   "ARGS",
+						Variable: "bar",
+						Match:    "[0-9]",
+					},
+				},
+			},
+			expected: `SecRule ARGS:bar "@rx [0-9]" "id:0,deny,log,chain"
+SecRule REQUEST_URI "@rx /joomla/index.php/component/users/" "id:0,deny,log"`,
+		},
+		{
 			name: "OR Logic Rule",
 			rule: VPatchRule{
 				Target:   "REQUEST_HEADERS",
