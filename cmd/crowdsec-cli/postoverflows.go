@@ -25,7 +25,7 @@ cscli postoverflows remove crowdsecurity/cdn-whitelist crowdsecurity/rdns
 		Aliases:           []string{"postoverflow"},
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := require.Hub(csConfig); err != nil {
+			if _, err := require.Hub(csConfig); err != nil {
 				return err
 			}
 
@@ -66,8 +66,13 @@ func runPostOverflowsInstall(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	hub, err := cwhub.GetHub()
+	if err != nil {
+		return err
+	}
+
 	for _, name := range args {
-		t := cwhub.GetItem(cwhub.POSTOVERFLOWS, name)
+		t := hub.GetItem(cwhub.POSTOVERFLOWS, name)
 		if t == nil {
 			nearestItem, score := GetDistance(cwhub.POSTOVERFLOWS, name)
 			Suggest(cwhub.POSTOVERFLOWS, name, nearestItem.Name, score, ignoreError)
@@ -75,7 +80,7 @@ func runPostOverflowsInstall(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		if err := cwhub.InstallItem(csConfig, name, cwhub.POSTOVERFLOWS, force, downloadOnly); err != nil {
+		if err := hub.InstallItem(name, cwhub.POSTOVERFLOWS, force, downloadOnly); err != nil {
 			if !ignoreError {
 				return fmt.Errorf("error while installing '%s': %w", name, err)
 			}
@@ -126,8 +131,13 @@ func runPostOverflowsRemove(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	hub, err := cwhub.GetHub()
+	if err != nil {
+		return err
+	}
+
 	if all {
-		err := cwhub.RemoveMany(csConfig, cwhub.POSTOVERFLOWS, "", all, purge, force)
+		err := hub.RemoveMany(cwhub.POSTOVERFLOWS, "", all, purge, force)
 		if err != nil {
 			return err
 		}
@@ -140,7 +150,7 @@ func runPostOverflowsRemove(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, name := range args {
-		err := cwhub.RemoveMany(csConfig, cwhub.POSTOVERFLOWS, name, all, purge, force)
+		err := hub.RemoveMany(cwhub.POSTOVERFLOWS, name, all, purge, force)
 		if err != nil {
 			return err
 		}
@@ -184,8 +194,13 @@ func runPostOverflowUpgrade(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	hub, err := cwhub.GetHub()
+	if err != nil {
+		return err
+	}
+
 	if all {
-		if err := cwhub.UpgradeConfig(csConfig, cwhub.POSTOVERFLOWS, "", force); err != nil {
+		if err := hub.UpgradeConfig(cwhub.POSTOVERFLOWS, "", force); err != nil {
 			return err
 		}
 		return nil
@@ -196,7 +211,7 @@ func runPostOverflowUpgrade(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, name := range args {
-		if err := cwhub.UpgradeConfig(csConfig, cwhub.POSTOVERFLOWS, name, force); err != nil {
+		if err := hub.UpgradeConfig(cwhub.POSTOVERFLOWS, name, force); err != nil {
 			return err
 		}
 	}

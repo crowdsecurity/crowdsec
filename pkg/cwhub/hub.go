@@ -6,8 +6,9 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
-)
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+)
 
 const (
 	HubIndexFile = ".index.json"
@@ -20,25 +21,34 @@ const (
 )
 
 var (
-	// XXX: The order is important, as it is used to construct the
-	//      index tree in memory --> collections must be last
+	// XXX: The order is important, as it is used to range over sub-items in collections
 	ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, COLLECTIONS}
-	hubIdx    = HubIndex{}
 )
-
 
 type HubItems map[string]map[string]Item
 
-// HubIndex represents the runtime status of the hub (parsed items, etc.)
-// XXX: this could be renamed "Hub" tout court once the confusion with HubCfg is cleared
-type HubIndex struct {
-	Items HubItems
+// Hub represents the runtime status of the hub (parsed items, etc.)
+type Hub struct {
+	Items          HubItems
+	cfg            *csconfig.HubCfg
 	skippedLocal   int
 	skippedTainted int
 }
 
+var theHub *Hub
+
+// GetHub returns the hub singleton
+// it returns an error if it's not initialized to avoid nil dereference
+func GetHub() (*Hub, error) {
+	if theHub == nil {
+		return nil, fmt.Errorf("hub not initialized")
+	}
+
+	return theHub, nil
+}
+
 // displaySummary prints a total count of the hub items
-func (h HubIndex) displaySummary() {
+func (h Hub) displaySummary() {
 	msg := "Loaded: "
 	for itemType := range h.Items {
 		msg += fmt.Sprintf("%d %s, ", len(h.Items[itemType]), itemType)
@@ -52,8 +62,14 @@ func (h HubIndex) displaySummary() {
 
 // DisplaySummary prints a total count of the hub items.
 // It is a wrapper around HubIndex.displaySummary() to avoid exporting the hub singleton
-func DisplaySummary() {
-	hubIdx.displaySummary()
+// XXX: to be removed later
+func DisplaySummary() error {
+	hub, err := GetHub()
+	if err != nil {
+		return err
+	}
+	hub.displaySummary()
+	return nil
 }
 
 // ParseIndex takes the content of a .index.json file and returns the map of associated parsers/scenarios/collections

@@ -70,7 +70,12 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	var cache []types.RuntimeAlert
 	var cacheMutex sync.Mutex
 
-	scenarios, err := cwhub.GetInstalledItemsAsString(cwhub.SCENARIOS)
+	hub, err := cwhub.GetHub()
+	if err != nil {
+		return err
+	}
+
+	scenarios, err := hub.GetInstalledItemsAsString(cwhub.SCENARIOS)
 	if err != nil {
 		return fmt.Errorf("loading list of installed hub scenarios: %w", err)
 	}
@@ -93,7 +98,7 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 		URL:            apiURL,
 		PapiURL:        papiURL,
 		VersionPrefix:  "v1",
-		UpdateScenario: func() ([]string, error) {return cwhub.GetInstalledItemsAsString(cwhub.SCENARIOS)},
+		UpdateScenario: func() ([]string, error) {return hub.GetInstalledItemsAsString(cwhub.SCENARIOS)},
 	})
 	if err != nil {
 		return fmt.Errorf("new client api: %w", err)

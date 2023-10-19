@@ -32,10 +32,6 @@ func TestLoadCSCLI(t *testing.T) {
 				},
 			},
 			expected: &CscliCfg{
-				ConfigDir:     "./testdata",
-				DataDir:       "./data",
-				HubDir:        "./hub",
-				HubIndexFile:  "./hub/.index.json",
 				PrometheusUrl: "http://127.0.0.1:6060/metrics",
 			},
 		},

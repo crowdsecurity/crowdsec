@@ -6,12 +6,10 @@ import (
 	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
-
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
-func purgeItem(hub *csconfig.HubCfg, target Item) (Item, error) {
-	itempath := hub.HubDir + "/" + target.RemotePath
+func (h *Hub) purgeItem(target Item) (Item, error) {
+	itempath := h.cfg.HubDir + "/" + target.RemotePath
 
 	// disable hub file
 	if err := os.Remove(itempath); err != nil {
@@ -20,19 +18,19 @@ func purgeItem(hub *csconfig.HubCfg, target Item) (Item, error) {
 
 	target.Downloaded = false
 	log.Infof("Removed source file [%s]: %s", target.Name, itempath)
-	hubIdx.Items[target.Type][target.Name] = target
+	h.Items[target.Type][target.Name] = target
 
 	return target, nil
 }
 
 // DisableItem to disable an item managed by the hub, removes the symlink if purge is true
-func DisableItem(hub *csconfig.HubCfg, target *Item, purge bool, force bool) error {
+func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
 	var err error
 
 	// already disabled, noop unless purge
 	if !target.Installed {
 		if purge {
-			*target, err = purgeItem(hub, *target)
+			*target, err = h.purgeItem(*target)
 			if err != nil {
 				return err
 			}
@@ -54,7 +52,7 @@ func DisableItem(hub *csconfig.HubCfg, target *Item, purge bool, force bool) err
 		for idx, ptr := range [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections} {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
-				if val, ok := hubIdx.Items[ptrtype][p]; ok {
+				if val, ok := h.Items[ptrtype][p]; ok {
 					// check if the item doesn't belong to another collection before removing it
 					toRemove := true
 
@@ -66,7 +64,7 @@ func DisableItem(hub *csconfig.HubCfg, target *Item, purge bool, force bool) err
 					}
 
 					if toRemove {
-						err = DisableItem(hub, &val, purge, force)
+						err = h.DisableItem(&val, purge, force)
 						if err != nil {
 							return fmt.Errorf("while disabling %s: %w", p, err)
 						}
@@ -80,7 +78,7 @@ func DisableItem(hub *csconfig.HubCfg, target *Item, purge bool, force bool) err
 		}
 	}
 
-	syml, err := filepath.Abs(hub.InstallDir + "/" + target.Type + "/" + target.Stage + "/" + target.FileName)
+	syml, err := filepath.Abs(h.cfg.InstallDir + "/" + target.Type + "/" + target.Stage + "/" + target.FileName)
 	if err != nil {
 		return err
 	}
@@ -103,7 +101,7 @@ func DisableItem(hub *csconfig.HubCfg, target *Item, purge bool, force bool) err
 			return fmt.Errorf("while reading symlink: %w", err)
 		}
 
-		absPath, err := filepath.Abs(hub.HubDir + "/" + target.RemotePath)
+		absPath, err := filepath.Abs(h.cfg.HubDir + "/" + target.RemotePath)
 		if err != nil {
 			return fmt.Errorf("while abs path: %w", err)
 		}
@@ -124,23 +122,23 @@ func DisableItem(hub *csconfig.HubCfg, target *Item, purge bool, force bool) err
 	target.Installed = false
 
 	if purge {
-		*target, err = purgeItem(hub, *target)
+		*target, err = h.purgeItem(*target)
 		if err != nil {
 			return err
 		}
 	}
 
-	hubIdx.Items[target.Type][target.Name] = *target
+	h.Items[target.Type][target.Name] = *target
 
 	return nil
 }
 
 // creates symlink between actual config file at hub.HubDir and hub.ConfigDir
 // Handles collections recursively
-func EnableItem(hub *csconfig.HubCfg, target *Item) error {
+func (h *Hub) EnableItem(target *Item) error {
 	var err error
 
-	parentDir := filepath.Clean(hub.InstallDir + "/" + target.Type + "/" + target.Stage + "/")
+	parentDir := filepath.Clean(h.cfg.InstallDir + "/" + target.Type + "/" + target.Stage + "/")
 
 	// create directories if needed
 	if target.Installed {
@@ -172,12 +170,12 @@ func EnableItem(hub *csconfig.HubCfg, target *Item) error {
 		for idx, ptr := range [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections} {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
-				val, ok := hubIdx.Items[ptrtype][p]
+				val, ok := h.Items[ptrtype][p]
 				if !ok {
 					return fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
 				}
 
-				err = EnableItem(hub, &val)
+				err = h.EnableItem(&val)
 				if err != nil {
 					return fmt.Errorf("while installing %s: %w", p, err)
 				}
@@ -192,7 +190,7 @@ func EnableItem(hub *csconfig.HubCfg, target *Item) error {
 	}
 
 	// hub.ConfigDir + target.RemotePath
-	srcPath, err := filepath.Abs(hub.HubDir + "/" + target.RemotePath)
+	srcPath, err := filepath.Abs(h.cfg.HubDir + "/" + target.RemotePath)
 	if err != nil {
 		return fmt.Errorf("while getting source path: %w", err)
 	}
@@ -208,7 +206,7 @@ func EnableItem(hub *csconfig.HubCfg, target *Item) error {
 
 	log.Infof("Enabled %s : %s", target.Type, target.Name)
 	target.Installed = true
-	hubIdx.Items[target.Type][target.Name] = *target
+	h.Items[target.Type][target.Name] = *target
 
 	return nil
 }

@@ -100,7 +100,7 @@ func NewDefaultConfig() *Config {
 	commonCfg := CommonCfg{
 		Daemonize: false,
 		LogMedia:  "stdout",
-		LogLevel:   &logLevel,
+		LogLevel:  &logLevel,
 	}
 	prometheus := PrometheusCfg{
 		Enabled: true,

@@ -18,7 +18,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func ShowMetrics(hubItem *cwhub.Item) {
+func ShowMetrics(hub *cwhub.Hub, hubItem *cwhub.Item) {
 	switch hubItem.Type {
 	case cwhub.PARSERS:
 		metrics := GetParserMetric(csConfig.Cscli.PrometheusUrl, hubItem.Name)
@@ -36,11 +36,11 @@ func ShowMetrics(hubItem *cwhub.Item) {
 			scenarioMetricsTable(color.Output, item, metrics)
 		}
 		for _, item := range hubItem.Collections {
-			hubItem = cwhub.GetItem(cwhub.COLLECTIONS, item)
+			hubItem = hub.GetItem(cwhub.COLLECTIONS, item)
 			if hubItem == nil {
 				log.Fatalf("unable to retrieve item '%s' from collection '%s'", item, hubItem.Name)
 			}
-			ShowMetrics(hubItem)
+			ShowMetrics(hub, hubItem)
 		}
 	default:
 		log.Errorf("item of type '%s' is unknown", hubItem.Type)

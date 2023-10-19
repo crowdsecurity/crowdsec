@@ -50,12 +50,13 @@ func runHubList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err = require.Hub(csConfig); err != nil {
+	hub, err := require.Hub(csConfig)
+	if err != nil {
 		return err
 	}
 
 	// use LocalSync to get warnings about tainted / outdated items
-	warn, _ := cwhub.LocalSync(csConfig.Hub)
+	warn, _ := hub.LocalSync()
 	for _, v := range warn {
 		log.Info(v)
 	}
@@ -88,19 +89,24 @@ func NewHubListCmd() *cobra.Command {
 }
 
 func runHubUpdate(cmd *cobra.Command, args []string) error {
-	if err := cwhub.UpdateHubIdx(csConfig.Hub); err != nil {
+	cwhub.SetHubBranch()
+
+	// don't use require.Hub because if there is no index file, it would fail
+
+	hub, err := cwhub.InitHubUpdate(csConfig.Hub)
+	if err != nil {
 		if !errors.Is(err, cwhub.ErrIndexNotFound) {
 			return fmt.Errorf("failed to get Hub index : %w", err)
 		}
 		log.Warnf("Could not find index file for branch '%s', using 'master'", cwhub.HubBranch)
 		cwhub.HubBranch = "master"
-		if err := cwhub.UpdateHubIdx(csConfig.Hub); err != nil {
+		if hub, err = cwhub.InitHubUpdate(csConfig.Hub); err != nil {
 			return fmt.Errorf("failed to get Hub index after retry: %w", err)
 		}
 	}
 
 	// use LocalSync to get warnings about tainted / outdated items
-	warn, _ := cwhub.LocalSync(csConfig.Hub)
+	warn, _ := hub.LocalSync()
 	for _, v := range warn {
 		log.Info(v)
 	}
@@ -122,8 +128,6 @@ Fetches the [.index.json](https://github.com/crowdsecurity/hub/blob/master/.inde
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 
-			cwhub.SetHubBranch()
-
 			return nil
 		},
 		RunE: runHubUpdate,
@@ -140,27 +144,28 @@ func runHubUpgrade(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := require.Hub(csConfig); err != nil {
+	hub, err := require.Hub(csConfig)
+	if err != nil {
 		return err
 	}
 
 	log.Infof("Upgrading collections")
-	if err := cwhub.UpgradeConfig(csConfig, cwhub.COLLECTIONS, "", force); err != nil {
+	if err := hub.UpgradeConfig(cwhub.COLLECTIONS, "", force); err != nil {
 		return err
 	}
 
 	log.Infof("Upgrading parsers")
-	if err := cwhub.UpgradeConfig(csConfig, cwhub.PARSERS, "", force); err != nil {
+	if err := hub.UpgradeConfig(cwhub.PARSERS, "", force); err != nil {
 		return err
 	}
 
 	log.Infof("Upgrading scenarios")
-	if err := cwhub.UpgradeConfig(csConfig, cwhub.SCENARIOS, "", force); err != nil {
+	if err := hub.UpgradeConfig(cwhub.SCENARIOS, "", force); err != nil {
 		return err
 	}
 
 	log.Infof("Upgrading postoverflows")
-	if err := cwhub.UpgradeConfig(csConfig, cwhub.POSTOVERFLOWS, "", force); err != nil {
+	if err := hub.UpgradeConfig(cwhub.POSTOVERFLOWS, "", force); err != nil {
 		return err
 	}
 

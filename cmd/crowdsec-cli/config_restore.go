@@ -23,23 +23,28 @@ type OldAPICfg struct {
 
 // it's a rip of the cli version, but in silent-mode
 func silentInstallItem(name string, obtype string) (string, error) {
-	var item = cwhub.GetItem(obtype, name)
-	if item == nil {
-		return "", fmt.Errorf("error retrieving item")
-	}
-	err := cwhub.DownloadLatest(csConfig.Hub, item, false, false)
+	hub, err := cwhub.GetHub()
 	if err != nil {
-		return "", fmt.Errorf("error while downloading %s : %v", item.Name, err)
-	}
-	if err := cwhub.AddItem(obtype, *item); err != nil {
 		return "", err
 	}
 
-	err = cwhub.EnableItem(csConfig.Hub, item)
+	var item = hub.GetItem(obtype, name)
+	if item == nil {
+		return "", fmt.Errorf("error retrieving item")
+	}
+	err = hub.DownloadLatest(item, false, false)
+	if err != nil {
+		return "", fmt.Errorf("error while downloading %s : %v", item.Name, err)
+	}
+	if err := hub.AddItem(obtype, *item); err != nil {
+		return "", err
+	}
+
+	err = hub.EnableItem(item)
 	if err != nil {
 		return "", fmt.Errorf("error while enabling %s : %v", item.Name, err)
 	}
-	if err := cwhub.AddItem(obtype, *item); err != nil {
+	if err := hub.AddItem(obtype, *item); err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("Enabled %s", item.Name), nil
@@ -292,7 +297,7 @@ func runConfigRestore(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if err := require.Hub(csConfig); err != nil {
+	if _, err := require.Hub(csConfig); err != nil {
 		return err
 	}
 

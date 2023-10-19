@@ -8,12 +8,14 @@ import (
 	"html/template"
 	"io"
 	"os"
+	"path/filepath"
 	"reflect"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -33,7 +35,20 @@ func TestBucket(t *testing.T) {
 		envSetting = os.Getenv("TEST_ONLY")
 		tomb       = &tomb.Tomb{}
 	)
-	err := exprhelpers.Init(nil)
+
+	testdata := "./tests"
+
+	hubCfg := &csconfig.HubCfg{
+		HubDir: filepath.Join(testdata, "hub"),
+		HubIndexFile: filepath.Join(testdata, "hub", "index.json"),
+	}
+
+	_, err := cwhub.InitHub(hubCfg)
+	if err != nil {
+		t.Fatalf("failed to init hub : %s", err)
+	}
+
+	err = exprhelpers.Init(nil)
 	if err != nil {
 		log.Fatalf("exprhelpers init failed: %s", err)
 	}
@@ -44,12 +59,15 @@ func TestBucket(t *testing.T) {
 		}
 	} else {
 		wg := new(sync.WaitGroup)
-		fds, err := os.ReadDir("./tests/")
+		fds, err := os.ReadDir(testdata)
 		if err != nil {
 			t.Fatalf("Unable to read test directory : %s", err)
 		}
 		for _, fd := range fds {
-			fname := "./tests/" + fd.Name()
+			if fd.Name() == "hub" {
+				continue
+			}
+			fname := filepath.Join(testdata, fd.Name())
 			log.Infof("Running test on %s", fname)
 			tomb.Go(func() error {
 				wg.Add(1)
@@ -112,10 +130,8 @@ func testOneBucket(t *testing.T, dir string, tomb *tomb.Tomb) error {
 		files = append(files, x.Filename)
 	}
 
-	cscfg := &csconfig.CrowdsecServiceCfg{
-		DataDir: "tests",
-	}
-	holders, response, err := LoadBuckets(cscfg, files, tomb, buckets, false)
+	cscfg := &csconfig.CrowdsecServiceCfg{}
+	holders, response, err := LoadBuckets(cscfg, "tests", files, tomb, buckets, false)
 	if err != nil {
 		t.Fatalf("failed loading bucket : %s", err)
 	}
@@ -123,7 +139,7 @@ func testOneBucket(t *testing.T, dir string, tomb *tomb.Tomb) error {
 		watchTomb(tomb)
 		return nil
 	})
-	if !testFile(t, dir+"/test.json", dir+"/in-buckets_state.json", holders, response, buckets) {
+	if !testFile(t, filepath.Join(dir, "test.json"), filepath.Join(dir, "in-buckets_state.json"), holders, response, buckets) {
 		return fmt.Errorf("tests from %s failed", dir)
 	}
 	return nil

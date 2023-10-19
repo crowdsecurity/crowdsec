@@ -25,7 +25,7 @@ cscli scenarios remove crowdsecurity/ssh-bf crowdsecurity/http-probing
 		Aliases:           []string{"scenario"},
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := require.Hub(csConfig); err != nil {
+			if _, err := require.Hub(csConfig); err != nil {
 				return err
 			}
 
@@ -66,8 +66,13 @@ func runScenariosInstall(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	hub, err := cwhub.GetHub()
+	if err != nil {
+		return err
+	}
+
 	for _, name := range args {
-		t := cwhub.GetItem(cwhub.SCENARIOS, name)
+		t := hub.GetItem(cwhub.SCENARIOS, name)
 		if t == nil {
 			nearestItem, score := GetDistance(cwhub.SCENARIOS, name)
 			Suggest(cwhub.SCENARIOS, name, nearestItem.Name, score, ignoreError)
@@ -75,7 +80,7 @@ func runScenariosInstall(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		if err := cwhub.InstallItem(csConfig, name, cwhub.SCENARIOS, force, downloadOnly); err != nil {
+		if err := hub.InstallItem(name, cwhub.SCENARIOS, force, downloadOnly); err != nil {
 			if !ignoreError {
 				return fmt.Errorf("error while installing '%s': %w", name, err)
 			}
@@ -126,8 +131,13 @@ func runScenariosRemove(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	hub, err := cwhub.GetHub()
+	if err != nil {
+		return err
+	}
+
 	if all {
-		err := cwhub.RemoveMany(csConfig, cwhub.SCENARIOS, "", all, purge, force)
+		err := hub.RemoveMany(cwhub.SCENARIOS, "", all, purge, force)
 		if err != nil {
 			return err
 		}
@@ -140,7 +150,7 @@ func runScenariosRemove(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, name := range args {
-		err := cwhub.RemoveMany(csConfig, cwhub.SCENARIOS, name, all, purge, force)
+		err := hub.RemoveMany(cwhub.SCENARIOS, name, all, purge, force)
 		if err != nil {
 			return err
 		}
@@ -184,8 +194,13 @@ func runScenariosUpgrade(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	hub, err := cwhub.GetHub()
+	if err != nil {
+		return err
+	}
+
 	if all {
-		if err := cwhub.UpgradeConfig(csConfig, cwhub.SCENARIOS, "", force); err != nil {
+		if err := hub.UpgradeConfig(cwhub.SCENARIOS, "", force); err != nil {
 			return err
 		}
 		return nil
@@ -196,7 +211,7 @@ func runScenariosUpgrade(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, name := range args {
-		if err := cwhub.UpgradeConfig(csConfig, cwhub.SCENARIOS, name, force); err != nil {
+		if err := hub.UpgradeConfig(cwhub.SCENARIOS, name, force); err != nil {
 			return err
 		}
 	}

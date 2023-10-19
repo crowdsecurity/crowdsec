@@ -38,11 +38,12 @@ func runLapiStatus(cmd *cobra.Command, args []string) error {
 		log.Fatalf("parsing api url ('%s'): %s", apiurl, err)
 	}
 
-	if err := require.Hub(csConfig); err != nil {
+	hub, err := require.Hub(csConfig)
+	if err != nil {
 		log.Fatal(err)
 	}
 
-	scenarios, err := cwhub.GetInstalledItemsAsString(cwhub.SCENARIOS)
+	scenarios, err := hub.GetInstalledItemsAsString(cwhub.SCENARIOS)
 	if err != nil {
 		log.Fatalf("failed to get scenarios : %s", err)
 	}
@@ -338,9 +339,9 @@ cscli lapi context detect crowdsecurity/sshd-logs
 				log.Fatalf("Failed to init expr helpers : %s", err)
 			}
 
-			// Populate cwhub package tools
-			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-				log.Fatalf("Failed to load hub index : %s", err)
+			_, err = require.Hub(csConfig)
+			if err != nil {
+				log.Fatal(err)
 			}
 
 			csParsers := parser.NewParsers()

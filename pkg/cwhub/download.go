@@ -19,31 +19,39 @@ import (
 
 var ErrIndexNotFound = fmt.Errorf("index not found")
 
-// UpdateHubIdx downloads the latest version of the index and updates the one in memory
-func UpdateHubIdx(hub *csconfig.HubCfg) error {
-	bidx, err := DownloadHubIdx(hub)
+// InitHubUpdate is like InitHub but downloads and updates the index instead of reading from the disk
+// It is used to inizialize the hub when there is no index file yet
+func InitHubUpdate(cfg *csconfig.HubCfg) (*Hub, error) {
+	if cfg == nil {
+		return nil, fmt.Errorf("no configuration found for hub")
+	}
+
+	bidx, err := DownloadHubIdx(cfg.HubIndexFile)
 	if err != nil {
-		return fmt.Errorf("failed to download index: %w", err)
+		return nil, fmt.Errorf("failed to download index: %w", err)
 	}
 
 	ret, err := ParseIndex(bidx)
 	if err != nil {
 		if !errors.Is(err, ErrMissingReference) {
-			return fmt.Errorf("failed to read index: %w", err)
+			return nil, fmt.Errorf("failed to read index: %w", err)
 		}
 	}
 
-	hubIdx = HubIndex{Items: ret}
-
-	if _, err := LocalSync(hub); err != nil {
-		return fmt.Errorf("failed to sync: %w", err)
+	theHub = &Hub{
+		Items: ret,
+		cfg:   cfg,
 	}
 
-	return nil
+	if _, err := theHub.LocalSync(); err != nil {
+		return nil, fmt.Errorf("failed to sync: %w", err)
+	}
+
+	return theHub, nil
 }
 
 // DownloadHubIdx downloads the latest version of the index and returns the content
-func DownloadHubIdx(hub *csconfig.HubCfg) ([]byte, error) {
+func DownloadHubIdx(indexPath string) ([]byte, error) {
 	log.Debugf("fetching index from branch %s (%s)", HubBranch, fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile))
 
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile), nil)
@@ -70,7 +78,7 @@ func DownloadHubIdx(hub *csconfig.HubCfg) ([]byte, error) {
 		return nil, fmt.Errorf("failed to read request answer for hub index: %w", err)
 	}
 
-	oldContent, err := os.ReadFile(hub.HubIndexFile)
+	oldContent, err := os.ReadFile(indexPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			log.Warningf("failed to read hub index: %s", err)
@@ -80,7 +88,7 @@ func DownloadHubIdx(hub *csconfig.HubCfg) ([]byte, error) {
 		// write it anyway, can't hurt
 	}
 
-	file, err := os.OpenFile(hub.HubIndexFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	file, err := os.OpenFile(indexPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 
 	if err != nil {
 		return nil, fmt.Errorf("while opening hub index file: %w", err)
@@ -92,13 +100,13 @@ func DownloadHubIdx(hub *csconfig.HubCfg) ([]byte, error) {
 		return nil, fmt.Errorf("while writing hub index file: %w", err)
 	}
 
-	log.Infof("Wrote new %d bytes index to %s", wsize, hub.HubIndexFile)
+	log.Infof("Wrote new %d bytes index to %s", wsize, indexPath)
 
 	return body, nil
 }
 
 // DownloadLatest will download the latest version of Item to the tdir directory
-func DownloadLatest(hub *csconfig.HubCfg, target *Item, overwrite bool, updateOnly bool) error {
+func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) error {
 	var err error
 
 	log.Debugf("Downloading %s %s", target.Type, target.Name)
@@ -109,7 +117,7 @@ func DownloadLatest(hub *csconfig.HubCfg, target *Item, overwrite bool, updateOn
 			return nil
 		}
 
-		return DownloadItem(hub, target, overwrite)
+		return h.DownloadItem(target, overwrite)
 	}
 
 	// collection
@@ -117,7 +125,7 @@ func DownloadLatest(hub *csconfig.HubCfg, target *Item, overwrite bool, updateOn
 	for idx, ptr := range tmp {
 		ptrtype := ItemTypes[idx]
 		for _, p := range ptr {
-			val, ok := hubIdx.Items[ptrtype][p]
+			val, ok := h.Items[ptrtype][p]
 			if !ok {
 				return fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
 			}
@@ -132,7 +140,7 @@ func DownloadLatest(hub *csconfig.HubCfg, target *Item, overwrite bool, updateOn
 			if ptrtype == COLLECTIONS {
 				log.Tracef("collection, recurse")
 
-				err = DownloadLatest(hub, &val, overwrite, updateOnly)
+				err = h.DownloadLatest(&val, overwrite, updateOnly)
 				if err != nil {
 					return fmt.Errorf("while downloading %s: %w", val.Name, err)
 				}
@@ -140,7 +148,7 @@ func DownloadLatest(hub *csconfig.HubCfg, target *Item, overwrite bool, updateOn
 
 			downloaded := val.Downloaded
 
-			err = DownloadItem(hub, &val, overwrite)
+			err = h.DownloadItem(&val, overwrite)
 			if err != nil {
 				return fmt.Errorf("while downloading %s: %w", val.Name, err)
 			}
@@ -148,16 +156,16 @@ func DownloadLatest(hub *csconfig.HubCfg, target *Item, overwrite bool, updateOn
 			// We need to enable an item when it has been added to a collection since latest release of the collection.
 			// We check if val.Downloaded is false because maybe the item has been disabled by the user.
 			if !val.Installed && !downloaded {
-				if err = EnableItem(hub, &val); err != nil {
+				if err = h.EnableItem(&val); err != nil {
 					return fmt.Errorf("enabling '%s': %w", val.Name, err)
 				}
 			}
 
-			hubIdx.Items[ptrtype][p] = val
+			h.Items[ptrtype][p] = val
 		}
 	}
 
-	err = DownloadItem(hub, target, overwrite)
+	err = h.DownloadItem(target, overwrite)
 	if err != nil {
 		return fmt.Errorf("failed to download item: %w", err)
 	}
@@ -165,8 +173,8 @@ func DownloadLatest(hub *csconfig.HubCfg, target *Item, overwrite bool, updateOn
 	return nil
 }
 
-func DownloadItem(hub *csconfig.HubCfg, target *Item, overwrite bool) error {
-	tdir := hub.HubDir
+func (h *Hub) DownloadItem(target *Item, overwrite bool) error {
+	tdir := h.cfg.HubDir
 
 	// if user didn't --force, don't overwrite local, tainted, up-to-date files
 	if !overwrite {
@@ -202,12 +210,12 @@ func DownloadItem(hub *csconfig.HubCfg, target *Item, overwrite bool) error {
 		return fmt.Errorf("while reading %s: %w", req.URL.String(), err)
 	}
 
-	h := sha256.New()
-	if _, err = h.Write(body); err != nil {
+	hash := sha256.New()
+	if _, err = hash.Write(body); err != nil {
 		return fmt.Errorf("while hashing %s: %w", target.Name, err)
 	}
 
-	meow := fmt.Sprintf("%x", h.Sum(nil))
+	meow := fmt.Sprintf("%x", hash.Sum(nil))
 	if meow != target.Versions[target.Version].Digest {
 		log.Errorf("Downloaded version doesn't match index, please 'hub update'")
 		log.Debugf("got %s, expected %s", meow, target.Versions[target.Version].Digest)
@@ -263,18 +271,18 @@ func DownloadItem(hub *csconfig.HubCfg, target *Item, overwrite bool) error {
 	target.Tainted = false
 	target.UpToDate = true
 
-	if err = downloadData(hub.InstallDataDir, overwrite, bytes.NewReader(body)); err != nil {
+	if err = downloadData(h.cfg.InstallDataDir, overwrite, bytes.NewReader(body)); err != nil {
 		return fmt.Errorf("while downloading data for %s: %w", target.FileName, err)
 	}
 
-	hubIdx.Items[target.Type][target.Name] = *target
+	h.Items[target.Type][target.Name] = *target
 
 	return nil
 }
 
 // DownloadDataIfNeeded downloads the data files for an item
-func DownloadDataIfNeeded(hub *csconfig.HubCfg, target Item, force bool) error {
-	itemFilePath := fmt.Sprintf("%s/%s/%s/%s", hub.InstallDir, target.Type, target.Stage, target.FileName)
+func (h *Hub) DownloadDataIfNeeded(target Item, force bool) error {
+	itemFilePath := fmt.Sprintf("%s/%s/%s/%s", h.cfg.InstallDir, target.Type, target.Stage, target.FileName)
 
 	itemFile, err := os.Open(itemFilePath)
 	if err != nil {
@@ -283,7 +291,7 @@ func DownloadDataIfNeeded(hub *csconfig.HubCfg, target Item, force bool) error {
 
 	defer itemFile.Close()
 
-	if err = downloadData(hub.InstallDataDir, force, itemFile); err != nil {
+	if err = downloadData(h.cfg.InstallDataDir, force, itemFile); err != nil {
 		return fmt.Errorf("while downloading data for %s: %w", itemFilePath, err)
 	}
 

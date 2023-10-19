@@ -19,10 +19,6 @@ func isYAMLFileName(path string) bool {
 	return strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml")
 }
 
-func validItemFileName(vname string, fauthor string, fname string) bool {
-	return (fauthor+"/"+fname == vname+".yaml") || (fauthor+"/"+fname == vname+".yml")
-}
-
 func handleSymlink(path string) (string, error) {
 	hubpath, err := os.Readlink(path)
 	if err != nil {
@@ -60,19 +56,6 @@ func getSHA256(filepath string) (string, error) {
 	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
 
-type Walker struct {
-	// the walk/parserVisit function can't receive extra args
-	hubdir     string
-	installdir string
-}
-
-func NewWalker(hub *csconfig.HubCfg) Walker {
-	return Walker{
-		hubdir:     hub.HubDir,
-		installdir: hub.InstallDir,
-	}
-}
-
 type itemFileInfo struct {
 	fname   string
 	stage   string
@@ -80,16 +63,19 @@ type itemFileInfo struct {
 	fauthor string
 }
 
-func (w Walker) getItemInfo(path string) (itemFileInfo, bool, error) {
+func (h *Hub) getItemInfo(path string) (itemFileInfo, bool, error) {
 	ret := itemFileInfo{}
 	inhub := false
 
+	hubDir := h.cfg.HubDir
+	installDir := h.cfg.InstallDir
+
 	subs := strings.Split(path, string(os.PathSeparator))
 
-	log.Tracef("path:%s, hubdir:%s, installdir:%s", path, w.hubdir, w.installdir)
+	log.Tracef("path:%s, hubdir:%s, installdir:%s", path, hubDir, installDir)
 	log.Tracef("subs:%v", subs)
 	// we're in hub (~/.hub/hub/)
-	if strings.HasPrefix(path, w.hubdir) {
+	if strings.HasPrefix(path, hubDir) {
 		log.Tracef("in hub dir")
 
 		inhub = true
@@ -104,7 +90,7 @@ func (w Walker) getItemInfo(path string) (itemFileInfo, bool, error) {
 		ret.fauthor = subs[len(subs)-2]
 		ret.stage = subs[len(subs)-3]
 		ret.ftype = subs[len(subs)-4]
-	} else if strings.HasPrefix(path, w.installdir) { // we're in install /etc/crowdsec/<type>/...
+	} else if strings.HasPrefix(path, installDir) { // we're in install /etc/crowdsec/<type>/...
 		log.Tracef("in install dir")
 		if len(subs) < 3 {
 			return itemFileInfo{}, false, fmt.Errorf("path is too short: %s (%d)", path, len(subs))
@@ -118,7 +104,7 @@ func (w Walker) getItemInfo(path string) (itemFileInfo, bool, error) {
 		ret.ftype = subs[len(subs)-3]
 		ret.fauthor = ""
 	} else {
-		return itemFileInfo{}, false, fmt.Errorf("file '%s' is not from hub '%s' nor from the configuration directory '%s'", path, w.hubdir, w.installdir)
+		return itemFileInfo{}, false, fmt.Errorf("file '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubDir, installDir)
 	}
 
 	log.Tracef("stage:%s ftype:%s", ret.stage, ret.ftype)
@@ -140,7 +126,7 @@ func (w Walker) getItemInfo(path string) (itemFileInfo, bool, error) {
 	return ret, inhub, nil
 }
 
-func (w Walker) itemVisit(path string, f os.DirEntry, err error) error {
+func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 	var (
 		local   bool
 		hubpath string
@@ -166,7 +152,7 @@ func (w Walker) itemVisit(path string, f os.DirEntry, err error) error {
 		return nil
 	}
 
-	info, inhub, err := w.getItemInfo(path)
+	info, inhub, err := h.getItemInfo(path)
 	if err != nil {
 		return err
 	}
@@ -197,12 +183,12 @@ func (w Walker) itemVisit(path string, f os.DirEntry, err error) error {
 	// if it's not a symlink and not in hub, it's a local file, don't bother
 	if local && !inhub {
 		log.Tracef("%s is a local file, skip", path)
-		hubIdx.skippedLocal++
+		h.skippedLocal++
 		//	log.Infof("local scenario, skip.")
 
 		_, fileName := filepath.Split(path)
 
-		hubIdx.Items[info.ftype][info.fname] = Item{
+		h.Items[info.ftype][info.fname] = Item{
 			Name:      info.fname,
 			Stage:     info.stage,
 			Installed: true,
@@ -221,7 +207,7 @@ func (w Walker) itemVisit(path string, f os.DirEntry, err error) error {
 
 	match := false
 
-	for name, item := range hubIdx.Items[info.ftype] {
+	for name, item := range h.Items[info.ftype] {
 		log.Tracef("check [%s] vs [%s] : %s", info.fname, item.RemotePath, info.ftype+"/"+info.stage+"/"+info.fname+".yaml")
 
 		if info.fname != item.FileName {
@@ -241,12 +227,12 @@ func (w Walker) itemVisit(path string, f os.DirEntry, err error) error {
 				continue
 			}
 
-			// wrong file
-			if !validItemFileName(item.Name, info.fauthor, info.fname) {
+			// not the item we're looking for
+			if !item.validPath(info.fauthor, info.fname) {
 				continue
 			}
 
-			if path == w.hubdir+"/"+item.RemotePath {
+			if path == h.cfg.HubDir+"/"+item.RemotePath {
 				log.Tracef("marking %s as downloaded", item.Name)
 				item.Downloaded = true
 			}
@@ -303,7 +289,7 @@ func (w Walker) itemVisit(path string, f os.DirEntry, err error) error {
 		if !match {
 			log.Tracef("got tainted match for %s: %s", item.Name, path)
 
-			hubIdx.skippedTainted++
+			h.skippedTainted++
 			// the file and the stage is right, but the hash is wrong, it has been tainted by user
 			if !inhub {
 				item.LocalPath = path
@@ -316,7 +302,7 @@ func (w Walker) itemVisit(path string, f os.DirEntry, err error) error {
 			item.LocalHash = sha
 		}
 
-		hubIdx.Items[info.ftype][name] = item
+		h.Items[info.ftype][name] = item
 
 		return nil
 	}
@@ -326,13 +312,13 @@ func (w Walker) itemVisit(path string, f os.DirEntry, err error) error {
 	return nil
 }
 
-func CollecDepsCheck(v *Item) error {
-	if v.versionStatus() != 0 { // not up-to-date
-		log.Debugf("%s dependencies not checked : not up-to-date", v.Name)
+func (h *Hub) CollectDepsCheck(v *Item) error {
+	if v.Type != COLLECTIONS {
 		return nil
 	}
 
-	if v.Type != COLLECTIONS {
+	if v.versionStatus() != 0 { // not up-to-date
+		log.Debugf("%s dependencies not checked: not up-to-date", v.Name)
 		return nil
 	}
 
@@ -342,7 +328,7 @@ func CollecDepsCheck(v *Item) error {
 	for idx, itemSlice := range [][]string{v.Parsers, v.PostOverflows, v.Scenarios, v.Collections} {
 		sliceType := ItemTypes[idx]
 		for _, subName := range itemSlice {
-			subItem, ok := hubIdx.Items[sliceType][subName]
+			subItem, ok := h.Items[sliceType][subName]
 			if !ok {
 				return fmt.Errorf("referred %s %s in collection %s doesn't exist", sliceType, subName, v.Name)
 			}
@@ -356,7 +342,7 @@ func CollecDepsCheck(v *Item) error {
 			if subItem.Type == COLLECTIONS {
 				log.Tracef("collec, recurse.")
 
-				if err := CollecDepsCheck(&subItem); err != nil {
+				if err := h.CollectDepsCheck(&subItem); err != nil {
 					if subItem.Tainted {
 						v.Tainted = true
 					}
@@ -364,7 +350,7 @@ func CollecDepsCheck(v *Item) error {
 					return fmt.Errorf("sub collection %s is broken: %w", subItem.Name, err)
 				}
 
-				hubIdx.Items[sliceType][subName] = subItem
+				h.Items[sliceType][subName] = subItem
 			}
 
 			// propagate the state of sub-items to set
@@ -395,7 +381,7 @@ func CollecDepsCheck(v *Item) error {
 				subItem.BelongsToCollections = append(subItem.BelongsToCollections, v.Name)
 			}
 
-			hubIdx.Items[sliceType][subName] = subItem
+			h.Items[sliceType][subName] = subItem
 
 			log.Tracef("checking for %s - tainted:%t uptodate:%t", subName, v.Tainted, v.UpToDate)
 		}
@@ -404,7 +390,7 @@ func CollecDepsCheck(v *Item) error {
 	return nil
 }
 
-func SyncDir(hub *csconfig.HubCfg, dir string) ([]string, error) {
+func (h *Hub) SyncDir(dir string) ([]string, error) {
 	warnings := []string{}
 
 	// For each, scan PARSERS, POSTOVERFLOWS, SCENARIOS and COLLECTIONS last
@@ -414,13 +400,13 @@ func SyncDir(hub *csconfig.HubCfg, dir string) ([]string, error) {
 			log.Errorf("failed %s : %s", cpath, err)
 		}
 
-		err = filepath.WalkDir(cpath, NewWalker(hub).itemVisit)
+		err = filepath.WalkDir(cpath, h.itemVisit)
 		if err != nil {
 			return warnings, err
 		}
 	}
 
-	for name, item := range hubIdx.Items[COLLECTIONS] {
+	for name, item := range h.Items[COLLECTIONS] {
 		if !item.Installed {
 			continue
 		}
@@ -428,9 +414,9 @@ func SyncDir(hub *csconfig.HubCfg, dir string) ([]string, error) {
 		vs := item.versionStatus()
 		switch vs {
 		case 0: // latest
-			if err := CollecDepsCheck(&item); err != nil {
+			if err := h.CollectDepsCheck(&item); err != nil {
 				warnings = append(warnings, fmt.Sprintf("dependency of %s: %s", item.Name, err))
-				hubIdx.Items[COLLECTIONS][name] = item
+				h.Items[COLLECTIONS][name] = item
 			}
 		case 1: // not up-to-date
 			warnings = append(warnings, fmt.Sprintf("update for collection %s available (currently:%s, latest:%s)", item.Name, item.LocalVersion, item.Version))
@@ -445,51 +431,55 @@ func SyncDir(hub *csconfig.HubCfg, dir string) ([]string, error) {
 }
 
 // Updates the info from HubInit() with the local state
-func LocalSync(hub *csconfig.HubCfg) ([]string, error) {
-	hubIdx.skippedLocal = 0
-	hubIdx.skippedTainted = 0
+func (h *Hub) LocalSync() ([]string, error) {
+	h.skippedLocal = 0
+	h.skippedTainted = 0
 
-	warnings, err := SyncDir(hub, hub.InstallDir)
+	warnings, err := h.SyncDir(h.cfg.InstallDir)
 	if err != nil {
-		return warnings, fmt.Errorf("failed to scan %s: %w", hub.InstallDir, err)
+		return warnings, fmt.Errorf("failed to scan %s: %w", h.cfg.InstallDir, err)
 	}
 
-	_, err = SyncDir(hub, hub.HubDir)
+	_, err = h.SyncDir(h.cfg.HubDir)
 	if err != nil {
-		return warnings, fmt.Errorf("failed to scan %s: %w", hub.HubDir, err)
+		return warnings, fmt.Errorf("failed to scan %s: %w", h.cfg.HubDir, err)
 	}
 
 	return warnings, nil
 }
 
-func GetHubIdx(hub *csconfig.HubCfg) error {
-	if hub == nil {
-		return fmt.Errorf("no configuration found for hub")
+// InitHub initializes the Hub, syncs the local state and returns the singleton for immediate use
+func InitHub(cfg *csconfig.HubCfg) (*Hub, error) {
+	if cfg == nil {
+		return nil, fmt.Errorf("no configuration found for hub")
 	}
 
-	log.Debugf("loading hub idx %s", hub.HubIndexFile)
+	log.Debugf("loading hub idx %s", cfg.HubIndexFile)
 
-	bidx, err := os.ReadFile(hub.HubIndexFile)
+	bidx, err := os.ReadFile(cfg.HubIndexFile)
 	if err != nil {
-		return fmt.Errorf("unable to read index file: %w", err)
+		return nil, fmt.Errorf("unable to read index file: %w", err)
 	}
 
 	ret, err := ParseIndex(bidx)
 	if err != nil {
 		if !errors.Is(err, ErrMissingReference) {
-			return fmt.Errorf("unable to load existing index: %w", err)
+			return nil, fmt.Errorf("unable to load existing index: %w", err)
 		}
 
 		// XXX: why the error check if we bail out anyway?
-		return err
+		return nil, err
 	}
 
-	hubIdx = HubIndex{Items: ret}
+	theHub = &Hub{
+		Items: ret,
+		cfg:   cfg,
+	}
 
-	_, err = LocalSync(hub)
+	_, err = theHub.LocalSync()
 	if err != nil {
-		return fmt.Errorf("failed to sync Hub index with local deployment : %w", err)
+		return nil, fmt.Errorf("failed to sync Hub index with local deployment : %w", err)
 	}
 
-	return nil
+	return theHub, nil
 }

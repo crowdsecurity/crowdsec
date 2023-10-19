@@ -52,7 +52,7 @@ type HubTestItem struct {
 	TemplateConfigPath     string
 	TemplateProfilePath    string
 	TemplateSimulationPath string
-	HubIndex               *cwhub.HubIndex
+	HubIndex               *cwhub.Hub
 
 	Config *HubTestItemConfig
 
@@ -391,16 +391,16 @@ func (t *HubTestItem) InstallHub() error {
 	}
 
 	// load installed hub
-	err := cwhub.GetHubIdx(t.RuntimeHubConfig)
+	hub, err := cwhub.InitHub(t.RuntimeHubConfig)
 	if err != nil {
-		log.Fatalf("can't local sync the hub: %+v", err)
+		log.Fatal(err)
 	}
 
 	// install data for parsers if needed
-	ret := cwhub.GetItemMap(cwhub.PARSERS)
+	ret := hub.GetItemMap(cwhub.PARSERS)
 	for parserName, item := range ret {
 		if item.Installed {
-			if err := cwhub.DownloadDataIfNeeded(t.RuntimeHubConfig, item, true); err != nil {
+			if err := hub.DownloadDataIfNeeded(item, true); err != nil {
 				return fmt.Errorf("unable to download data for parser '%s': %+v", parserName, err)
 			}
 			log.Debugf("parser '%s' installed successfully in runtime environment", parserName)
@@ -408,10 +408,10 @@ func (t *HubTestItem) InstallHub() error {
 	}
 
 	// install data for scenarios if needed
-	ret = cwhub.GetItemMap(cwhub.SCENARIOS)
+	ret = hub.GetItemMap(cwhub.SCENARIOS)
 	for scenarioName, item := range ret {
 		if item.Installed {
-			if err := cwhub.DownloadDataIfNeeded(t.RuntimeHubConfig, item, true); err != nil {
+			if err := hub.DownloadDataIfNeeded(item, true); err != nil {
 				return fmt.Errorf("unable to download data for parser '%s': %+v", scenarioName, err)
 			}
 			log.Debugf("scenario '%s' installed successfully in runtime environment", scenarioName)
@@ -419,10 +419,10 @@ func (t *HubTestItem) InstallHub() error {
 	}
 
 	// install data for postoverflows if needed
-	ret = cwhub.GetItemMap(cwhub.POSTOVERFLOWS)
+	ret = hub.GetItemMap(cwhub.POSTOVERFLOWS)
 	for postoverflowName, item := range ret {
 		if item.Installed {
-			if err := cwhub.DownloadDataIfNeeded(t.RuntimeHubConfig, item, true); err != nil {
+			if err := hub.DownloadDataIfNeeded(item, true); err != nil {
 				return fmt.Errorf("unable to download data for parser '%s': %+v", postoverflowName, err)
 			}
 			log.Debugf("postoverflow '%s' installed successfully in runtime environment", postoverflowName)

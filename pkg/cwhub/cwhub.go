@@ -15,7 +15,6 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-
 var (
 	ErrMissingReference = errors.New("Reference(s) missing in collection")
 
@@ -40,7 +39,7 @@ type Item struct {
 	FileName             string   `json:"file_name,omitempty"`                                                      // the filename, ie. apache2-logs.yaml
 	Description          string   `json:"description,omitempty"            yaml:"description,omitempty"`            // as seen in .index.json
 	Author               string   `json:"author,omitempty"`                                                         // as seen in .index.json
-	References           []string `json:"references,omitempty"             yaml:"references,omitempty"`              // as seen in .index.json
+	References           []string `json:"references,omitempty"             yaml:"references,omitempty"`             // as seen in .index.json
 	BelongsToCollections []string `json:"belongs_to_collections,omitempty" yaml:"belongs_to_collections,omitempty"` // parent collection if any
 
 	// remote (hub) info
@@ -112,9 +111,16 @@ func (i *Item) versionStatus() int {
 	return semver.Compare("v"+i.Version, "v"+i.LocalVersion)
 }
 
+// validPath returns true if the (relative) path is allowed for the item
+// dirNmae: the directory name (ie. crowdsecurity)
+// fileName: the filename (ie. apache2-logs.yaml)
+func (i *Item) validPath(dirName, fileName string) bool {
+	return (dirName+"/"+fileName == i.Name+".yaml") || (dirName+"/"+fileName == i.Name+".yml")
+}
+
 // GetItemMap returns the map of items for a given type
-func GetItemMap(itemType string) map[string]Item {
-	m, ok := hubIdx.Items[itemType]
+func (h *Hub) GetItemMap(itemType string) map[string]Item {
+	m, ok := h.Items[itemType]
 	if !ok {
 		return nil
 	}
@@ -123,6 +129,7 @@ func GetItemMap(itemType string) map[string]Item {
 }
 
 // itemKey extracts the map key of an item (i.e. author/name) from its pathname. Follows a symlink if necessary
+// XXX: only used by leakybucket manager
 func itemKey(itemPath string) (string, error) {
 	f, err := os.Lstat(itemPath)
 	if err != nil {
@@ -150,13 +157,13 @@ func itemKey(itemPath string) (string, error) {
 }
 
 // GetItemByPath retrieves the item from hubIdx based on the path. To achieve this it will resolve symlink to find associated hub item.
-func GetItemByPath(itemType string, itemPath string) (*Item, error) {
+func (h *Hub) GetItemByPath(itemType string, itemPath string) (*Item, error) {
 	itemKey, err := itemKey(itemPath)
 	if err != nil {
 		return nil, err
 	}
 
-	m := GetItemMap(itemType)
+	m := h.GetItemMap(itemType)
 	if m == nil {
 		return nil, fmt.Errorf("item type %s doesn't exist", itemType)
 	}
@@ -170,19 +177,20 @@ func GetItemByPath(itemType string, itemPath string) (*Item, error) {
 }
 
 // GetItem returns the item from hub based on its type and full name (author/name)
-func GetItem(itemType string, itemName string) *Item {
-	if m, ok := GetItemMap(itemType)[itemName]; ok {
-		return &m
+func (h *Hub) GetItem(itemType string, itemName string) *Item {
+	m, ok := h.GetItemMap(itemType)[itemName]
+	if !ok {
+		return nil
 	}
 
-	return nil
+	return &m
 }
 
 // GetItemNames returns the list of item (full) names for a given type
 // ie. for parsers: crowdsecurity/apache2 crowdsecurity/nginx
 // The names can be used to retrieve the item with GetItem()
-func GetItemNames(itemType string) []string {
-	m := GetItemMap(itemType)
+func (h *Hub) GetItemNames(itemType string) []string {
+	m := h.GetItemMap(itemType)
 	if m == nil {
 		return nil
 	}
@@ -196,10 +204,10 @@ func GetItemNames(itemType string) []string {
 }
 
 // AddItem adds an item to the hub index
-func AddItem(itemType string, item Item) error {
+func (h *Hub) AddItem(itemType string, item Item) error {
 	for _, itype := range ItemTypes {
 		if itype == itemType {
-			hubIdx.Items[itemType][item.Name] = item
+			h.Items[itemType][item.Name] = item
 			return nil
 		}
 	}
@@ -208,8 +216,8 @@ func AddItem(itemType string, item Item) error {
 }
 
 // GetInstalledItems returns the list of installed items
-func GetInstalledItems(itemType string) ([]Item, error) {
-	items, ok := hubIdx.Items[itemType]
+func (h *Hub) GetInstalledItems(itemType string) ([]Item, error) {
+	items, ok := h.Items[itemType]
 	if !ok {
 		return nil, fmt.Errorf("no %s in hubIdx", itemType)
 	}
@@ -226,8 +234,8 @@ func GetInstalledItems(itemType string) ([]Item, error) {
 }
 
 // GetInstalledItemsAsString returns the names of the installed items
-func GetInstalledItemsAsString(itemType string) ([]string, error) {
-	items, err := GetInstalledItems(itemType)
+func (h *Hub) GetInstalledItemsAsString(itemType string) ([]string, error) {
+	items, err := h.GetInstalledItems(itemType)
 	if err != nil {
 		return nil, err
 	}
