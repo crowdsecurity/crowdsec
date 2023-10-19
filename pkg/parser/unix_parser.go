@@ -64,7 +64,7 @@ func NewParsers() *Parsers {
 		StageFiles:      make([]Stagefile, 0),
 		PovfwStageFiles: make([]Stagefile, 0),
 	}
-	for _, itemType := range []string{cwhub.PARSERS, cwhub.PARSERS_OVFLW} {
+	for _, itemType := range []string{cwhub.PARSERS, cwhub.POSTOVERFLOWS} {
 		for _, hubParserItem := range cwhub.GetItemMap(itemType) {
 			if hubParserItem.Installed {
 				stagefile := Stagefile{
@@ -74,7 +74,7 @@ func NewParsers() *Parsers {
 				if itemType == cwhub.PARSERS {
 					parsers.StageFiles = append(parsers.StageFiles, stagefile)
 				}
-				if itemType == cwhub.PARSERS_OVFLW {
+				if itemType == cwhub.POSTOVERFLOWS {
 					parsers.PovfwStageFiles = append(parsers.PovfwStageFiles, stagefile)
 				}
 			}

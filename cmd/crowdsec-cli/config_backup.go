@@ -44,7 +44,7 @@ func backupHub(dirPath string) error {
 			//for the local/tainted ones, we backup the full file
 			if v.Tainted || v.Local || !v.UpToDate {
 				//we need to backup stages for parsers
-				if itemType == cwhub.PARSERS || itemType == cwhub.PARSERS_OVFLW {
+				if itemType == cwhub.PARSERS || itemType == cwhub.POSTOVERFLOWS {
 					fstagedir := fmt.Sprintf("%s%s", itemDirectory, v.Stage)
 					if err := os.MkdirAll(fstagedir, os.ModePerm); err != nil {
 						return fmt.Errorf("error while creating stage dir %s : %s", fstagedir, err)

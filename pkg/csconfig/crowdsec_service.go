@@ -149,10 +149,6 @@ func (c *Config) LoadCrowdsec() error {
 		return fmt.Errorf("loading api client: %s", err)
 	}
 
-	if err := c.LoadHub(); err != nil {
-		return fmt.Errorf("while loading hub: %w", err)
-	}
-
 	c.Crowdsec.ContextToSend = make(map[string][]string, 0)
 	fallback := false
 	if c.Crowdsec.ConsoleContextPath == "" {

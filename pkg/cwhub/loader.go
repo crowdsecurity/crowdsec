@@ -2,7 +2,6 @@ package cwhub
 
 import (
 	"crypto/sha256"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -67,7 +66,7 @@ type Walker struct {
 	installdir string
 }
 
-func NewWalker(hub *csconfig.Hub) Walker {
+func NewWalker(hub *csconfig.HubCfg) Walker {
 	return Walker{
 		hubdir:     hub.HubDir,
 		installdir: hub.InstallDir,
@@ -98,7 +97,7 @@ func (w Walker) getItemInfo(path string) (itemFileInfo, bool, error) {
 		//.../hub/scenarios/crowdsec/ssh_bf.yaml
 		//.../hub/profiles/crowdsec/linux.yaml
 		if len(subs) < 4 {
-			log.Fatalf("path is too short : %s (%d)", path, len(subs))
+			return itemFileInfo{}, false, fmt.Errorf("path is too short : %s (%d)", path, len(subs))
 		}
 
 		ret.fname = subs[len(subs)-1]
@@ -108,7 +107,7 @@ func (w Walker) getItemInfo(path string) (itemFileInfo, bool, error) {
 	} else if strings.HasPrefix(path, w.installdir) { // we're in install /etc/crowdsec/<type>/...
 		log.Tracef("in install dir")
 		if len(subs) < 3 {
-			log.Fatalf("path is too short : %s (%d)", path, len(subs))
+			return itemFileInfo{}, false, fmt.Errorf("path is too short: %s (%d)", path, len(subs))
 		}
 		///.../config/parser/stage/file.yaml
 		///.../config/postoverflow/stage/file.yaml
@@ -134,7 +133,7 @@ func (w Walker) getItemInfo(path string) (itemFileInfo, bool, error) {
 	} else if ret.stage == WAAP_RULES {
 		ret.ftype = WAAP_RULES
 		ret.stage = ""
-	} else if ret.ftype != PARSERS && ret.ftype != PARSERS_OVFLW {
+	} else if ret.ftype != PARSERS && ret.ftype != POSTOVERFLOWS {
 		// its a PARSER / PARSER_OVFLW with a stage
 		return itemFileInfo{}, inhub, fmt.Errorf("unknown configuration type for file '%s'", path)
 	}
@@ -144,7 +143,7 @@ func (w Walker) getItemInfo(path string) (itemFileInfo, bool, error) {
 	return ret, inhub, nil
 }
 
-func (w Walker) parserVisit(path string, f os.DirEntry, err error) error {
+func (w Walker) itemVisit(path string, f os.DirEntry, err error) error {
 	var (
 		local   bool
 		hubpath string
@@ -201,12 +200,12 @@ func (w Walker) parserVisit(path string, f os.DirEntry, err error) error {
 	// if it's not a symlink and not in hub, it's a local file, don't bother
 	if local && !inhub {
 		log.Tracef("%s is a local file, skip", path)
-		skippedLocal++
+		hubIdx.skippedLocal++
 		//	log.Infof("local scenario, skip.")
 
 		_, fileName := filepath.Split(path)
 
-		hubIdx[info.ftype][info.fname] = Item{
+		hubIdx.Items[info.ftype][info.fname] = Item{
 			Name:      info.fname,
 			Stage:     info.stage,
 			Installed: true,
@@ -225,7 +224,7 @@ func (w Walker) parserVisit(path string, f os.DirEntry, err error) error {
 
 	match := false
 
-	for name, item := range hubIdx[info.ftype] {
+	for name, item := range hubIdx.Items[info.ftype] {
 		log.Tracef("check [%s] vs [%s] : %s", info.fname, item.RemotePath, info.ftype+"/"+info.stage+"/"+info.fname+".yaml")
 
 		if info.fname != item.FileName {
@@ -307,7 +306,7 @@ func (w Walker) parserVisit(path string, f os.DirEntry, err error) error {
 		if !match {
 			log.Tracef("got tainted match for %s: %s", item.Name, path)
 
-			skippedTainted++
+			hubIdx.skippedTainted++
 			// the file and the stage is right, but the hash is wrong, it has been tainted by user
 			if !inhub {
 				item.LocalPath = path
@@ -320,14 +319,7 @@ func (w Walker) parserVisit(path string, f os.DirEntry, err error) error {
 			item.LocalHash = sha
 		}
 
-		// update the entry if appropriate
-		// if _, ok := hubIdx[ftype][k]; !ok || !inhub || v.D {
-		// 	fmt.Printf("Updating %s", k)
-		// 	hubIdx[ftype][k] = v
-		// } else if !inhub {
-
-		// } else if
-		hubIdx[info.ftype][name] = item
+		hubIdx.Items[info.ftype][name] = item
 
 		return nil
 	}
@@ -353,9 +345,9 @@ func CollecDepsCheck(v *Item) error {
 	for idx, itemSlice := range [][]string{v.Parsers, v.PostOverflows, v.Scenarios, v.Collections} {
 		sliceType := ItemTypes[idx]
 		for _, subName := range itemSlice {
-			subItem, ok := hubIdx[sliceType][subName]
+			subItem, ok := hubIdx.Items[sliceType][subName]
 			if !ok {
-				log.Fatalf("Referred %s %s in collection %s doesn't exist.", sliceType, subName, v.Name)
+				return fmt.Errorf("referred %s %s in collection %s doesn't exist", sliceType, subName, v.Name)
 			}
 
 			log.Tracef("check %s installed:%t", subItem.Name, subItem.Installed)
@@ -375,7 +367,7 @@ func CollecDepsCheck(v *Item) error {
 					return fmt.Errorf("sub collection %s is broken: %w", subItem.Name, err)
 				}
 
-				hubIdx[sliceType][subName] = subItem
+				hubIdx.Items[sliceType][subName] = subItem
 			}
 
 			// propagate the state of sub-items to set
@@ -406,7 +398,7 @@ func CollecDepsCheck(v *Item) error {
 				subItem.BelongsToCollections = append(subItem.BelongsToCollections, v.Name)
 			}
 
-			hubIdx[sliceType][subName] = subItem
+			hubIdx.Items[sliceType][subName] = subItem
 
 			log.Tracef("checking for %s - tainted:%t uptodate:%t", subName, v.Tainted, v.UpToDate)
 		}
@@ -415,23 +407,23 @@ func CollecDepsCheck(v *Item) error {
 	return nil
 }
 
-func SyncDir(hub *csconfig.Hub, dir string) ([]string, error) {
+func SyncDir(hub *csconfig.HubCfg, dir string) ([]string, error) {
 	warnings := []string{}
 
-	// For each, scan PARSERS, PARSERS_OVFLW, SCENARIOS and COLLECTIONS last
+	// For each, scan PARSERS, POSTOVERFLOWS, SCENARIOS and COLLECTIONS last
 	for _, scan := range ItemTypes {
 		cpath, err := filepath.Abs(fmt.Sprintf("%s/%s", dir, scan))
 		if err != nil {
 			log.Errorf("failed %s : %s", cpath, err)
 		}
 
-		err = filepath.WalkDir(cpath, NewWalker(hub).parserVisit)
+		err = filepath.WalkDir(cpath, NewWalker(hub).itemVisit)
 		if err != nil {
 			return warnings, err
 		}
 	}
 
-	for name, item := range hubIdx[COLLECTIONS] {
+	for name, item := range hubIdx.Items[COLLECTIONS] {
 		if !item.Installed {
 			continue
 		}
@@ -441,7 +433,7 @@ func SyncDir(hub *csconfig.Hub, dir string) ([]string, error) {
 		case 0: // latest
 			if err := CollecDepsCheck(&item); err != nil {
 				warnings = append(warnings, fmt.Sprintf("dependency of %s: %s", item.Name, err))
-				hubIdx[COLLECTIONS][name] = item
+				hubIdx.Items[COLLECTIONS][name] = item
 			}
 		case 1: // not up-to-date
 			warnings = append(warnings, fmt.Sprintf("update for collection %s available (currently:%s, latest:%s)", item.Name, item.LocalVersion, item.Version))
@@ -456,9 +448,9 @@ func SyncDir(hub *csconfig.Hub, dir string) ([]string, error) {
 }
 
 // Updates the info from HubInit() with the local state
-func LocalSync(hub *csconfig.Hub) ([]string, error) {
-	skippedLocal = 0
-	skippedTainted = 0
+func LocalSync(hub *csconfig.HubCfg) ([]string, error) {
+	hubIdx.skippedLocal = 0
+	hubIdx.skippedTainted = 0
 
 	warnings, err := SyncDir(hub, hub.InstallDir)
 	if err != nil {
@@ -473,7 +465,7 @@ func LocalSync(hub *csconfig.Hub) ([]string, error) {
 	return warnings, nil
 }
 
-func GetHubIdx(hub *csconfig.Hub) error {
+func GetHubIdx(hub *csconfig.HubCfg) error {
 	if hub == nil {
 		return fmt.Errorf("no configuration found for hub")
 	}
@@ -485,7 +477,7 @@ func GetHubIdx(hub *csconfig.Hub) error {
 		return fmt.Errorf("unable to read index file: %w", err)
 	}
 
-	ret, err := LoadPkgIndex(bidx)
+	ret, err := ParseIndex(bidx)
 	if err != nil {
 		if !errors.Is(err, ErrMissingReference) {
 			return fmt.Errorf("unable to load existing index: %w", err)
@@ -495,7 +487,7 @@ func GetHubIdx(hub *csconfig.Hub) error {
 		return err
 	}
 
-	hubIdx = ret
+	hubIdx = HubIndex{Items: ret}
 
 	_, err = LocalSync(hub)
 	if err != nil {
@@ -503,53 +495,4 @@ func GetHubIdx(hub *csconfig.Hub) error {
 	}
 
 	return nil
-}
-
-// LoadPkgIndex loads a local .index.json file and returns the map of associated parsers/scenarios/collections
-func LoadPkgIndex(buff []byte) (map[string]map[string]Item, error) {
-	var (
-		RawIndex     map[string]map[string]Item
-		missingItems []string
-	)
-
-	if err := json.Unmarshal(buff, &RawIndex); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal index: %w", err)
-	}
-
-	log.Debugf("%d item types in hub index", len(ItemTypes))
-
-	// Iterate over the different types to complete the struct
-	for _, itemType := range ItemTypes {
-		log.Tracef("%d item", len(RawIndex[itemType]))
-
-		for name, item := range RawIndex[itemType] {
-			item.Name = name
-			item.Type = itemType
-			x := strings.Split(item.RemotePath, "/")
-			item.FileName = x[len(x)-1]
-			RawIndex[itemType][name] = item
-
-			if itemType != COLLECTIONS {
-				continue
-			}
-
-			// if it's a collection, check its sub-items are present
-			// XXX should be done later
-			for idx, ptr := range [][]string{item.Parsers, item.PostOverflows, item.Scenarios, item.Collections, item.WafRules} {
-				ptrtype := ItemTypes[idx]
-				for _, p := range ptr {
-					if _, ok := RawIndex[ptrtype][p]; !ok {
-						log.Errorf("Referred %s %s in collection %s doesn't exist.", ptrtype, p, item.Name)
-						missingItems = append(missingItems, p)
-					}
-				}
-			}
-		}
-	}
-
-	if len(missingItems) > 0 {
-		return RawIndex, fmt.Errorf("%q: %w", missingItems, ErrMissingReference)
-	}
-
-	return RawIndex, nil
 }

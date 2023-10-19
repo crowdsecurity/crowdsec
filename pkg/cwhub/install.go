@@ -10,7 +10,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
-func purgeItem(hub *csconfig.Hub, target Item) (Item, error) {
+func purgeItem(hub *csconfig.HubCfg, target Item) (Item, error) {
 	itempath := hub.HubDir + "/" + target.RemotePath
 
 	// disable hub file
@@ -20,13 +20,13 @@ func purgeItem(hub *csconfig.Hub, target Item) (Item, error) {
 
 	target.Downloaded = false
 	log.Infof("Removed source file [%s]: %s", target.Name, itempath)
-	hubIdx[target.Type][target.Name] = target
+	hubIdx.Items[target.Type][target.Name] = target
 
 	return target, nil
 }
 
 // DisableItem to disable an item managed by the hub, removes the symlink if purge is true
-func DisableItem(hub *csconfig.Hub, target *Item, purge bool, force bool) error {
+func DisableItem(hub *csconfig.HubCfg, target *Item, purge bool, force bool) error {
 	var err error
 
 	// already disabled, noop unless purge
@@ -54,7 +54,7 @@ func DisableItem(hub *csconfig.Hub, target *Item, purge bool, force bool) error 
 		for idx, ptr := range [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections} {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
-				if val, ok := hubIdx[ptrtype][p]; ok {
+				if val, ok := hubIdx.Items[ptrtype][p]; ok {
 					// check if the item doesn't belong to another collection before removing it
 					toRemove := true
 
@@ -130,14 +130,14 @@ func DisableItem(hub *csconfig.Hub, target *Item, purge bool, force bool) error 
 		}
 	}
 
-	hubIdx[target.Type][target.Name] = *target
+	hubIdx.Items[target.Type][target.Name] = *target
 
 	return nil
 }
 
 // creates symlink between actual config file at hub.HubDir and hub.ConfigDir
 // Handles collections recursively
-func EnableItem(hub *csconfig.Hub, target *Item) error {
+func EnableItem(hub *csconfig.HubCfg, target *Item) error {
 	var err error
 
 	parentDir := filepath.Clean(hub.InstallDir + "/" + target.Type + "/" + target.Stage + "/")
@@ -172,7 +172,7 @@ func EnableItem(hub *csconfig.Hub, target *Item) error {
 		for idx, ptr := range [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections} {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
-				val, ok := hubIdx[ptrtype][p]
+				val, ok := hubIdx.Items[ptrtype][p]
 				if !ok {
 					return fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
 				}
@@ -208,7 +208,7 @@ func EnableItem(hub *csconfig.Hub, target *Item) error {
 
 	log.Infof("Enabled %s : %s", target.Type, target.Name)
 	target.Installed = true
-	hubIdx[target.Type][target.Name] = *target
+	hubIdx.Items[target.Type][target.Name] = *target
 
 	return nil
 }

@@ -20,18 +20,6 @@ func TestLoadCrowdsec(t *testing.T) {
 	acquisDirFullPath, err := filepath.Abs("./testdata/acquis")
 	require.NoError(t, err)
 
-	hubFullPath, err := filepath.Abs("./hub")
-	require.NoError(t, err)
-
-	dataFullPath, err := filepath.Abs("./data")
-	require.NoError(t, err)
-
-	configDirFullPath, err := filepath.Abs("./testdata")
-	require.NoError(t, err)
-
-	hubIndexFileFullPath, err := filepath.Abs("./hub/.index.json")
-	require.NoError(t, err)
-
 	contextFileFullPath, err := filepath.Abs("./testdata/context.yaml")
 	require.NoError(t, err)
 
@@ -66,10 +54,11 @@ func TestLoadCrowdsec(t *testing.T) {
 				AcquisitionDirPath:        "",
 				ConsoleContextPath:        contextFileFullPath,
 				AcquisitionFilePath:       acquisFullPath,
-				ConfigDir:                 configDirFullPath,
-				DataDir:                   dataFullPath,
-				HubDir:                    hubFullPath,
-				HubIndexFile:              hubIndexFileFullPath,
+				ConfigDir:                 "./testdata",
+				DataDir:                   "./data",
+				HubDir:                    "./hub",
+				// XXX: need to ensure a default here
+				HubIndexFile:              "",
 				BucketsRoutinesCount:      1,
 				ParserRoutinesCount:       1,
 				OutputRoutinesCount:       1,
@@ -109,10 +98,11 @@ func TestLoadCrowdsec(t *testing.T) {
 				AcquisitionDirPath:        acquisDirFullPath,
 				AcquisitionFilePath:       acquisFullPath,
 				ConsoleContextPath:        contextFileFullPath,
-				ConfigDir:                 configDirFullPath,
-				HubIndexFile:              hubIndexFileFullPath,
-				DataDir:                   dataFullPath,
-				HubDir:                    hubFullPath,
+				ConfigDir:                 "./testdata",
+				// XXX: need to ensure a default here
+				HubIndexFile:              "",
+				DataDir:                   "./data",
+				HubDir:                    "./hub",
 				BucketsRoutinesCount:      1,
 				ParserRoutinesCount:       1,
 				OutputRoutinesCount:       1,
@@ -141,7 +131,7 @@ func TestLoadCrowdsec(t *testing.T) {
 					},
 				},
 				Crowdsec: &CrowdsecServiceCfg{
-					ConsoleContextPath:        contextFileFullPath,
+					ConsoleContextPath:        "./testdata/context.yaml",
 					ConsoleContextValueLength: 10,
 				},
 			},
@@ -149,10 +139,11 @@ func TestLoadCrowdsec(t *testing.T) {
 				Enable:                    ptr.Of(true),
 				AcquisitionDirPath:        "",
 				AcquisitionFilePath:       "",
-				ConfigDir:                 configDirFullPath,
-				HubIndexFile:              hubIndexFileFullPath,
-				DataDir:                   dataFullPath,
-				HubDir:                    hubFullPath,
+				ConfigDir:                 "./testdata",
+				// XXX: need to ensure a default here
+				HubIndexFile:              "",
+				DataDir:                   "./data",
+				HubDir:                    "./hub",
 				ConsoleContextPath:        contextFileFullPath,
 				BucketsRoutinesCount:      1,
 				ParserRoutinesCount:       1,

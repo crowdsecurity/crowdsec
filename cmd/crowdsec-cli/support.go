@@ -58,10 +58,6 @@ func stripAnsiString(str string) string {
 
 func collectMetrics() ([]byte, []byte, error) {
 	log.Info("Collecting prometheus metrics")
-	err := csConfig.LoadPrometheus()
-	if err != nil {
-		return nil, nil, err
-	}
 
 	if csConfig.Cscli.PrometheusUrl == "" {
 		log.Warn("No Prometheus URL configured, metrics will not be collected")
@@ -69,13 +65,13 @@ func collectMetrics() ([]byte, []byte, error) {
 	}
 
 	humanMetrics := bytes.NewBuffer(nil)
-	err = FormatPrometheusMetrics(humanMetrics, csConfig.Cscli.PrometheusUrl+"/metrics", "human")
+	err := FormatPrometheusMetrics(humanMetrics, csConfig.Cscli.PrometheusUrl, "human")
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not fetch promtheus metrics: %s", err)
 	}
 
-	req, err := http.NewRequest(http.MethodGet, csConfig.Cscli.PrometheusUrl+"/metrics", nil)
+	req, err := http.NewRequest(http.MethodGet, csConfig.Cscli.PrometheusUrl, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not create requests to prometheus endpoint: %s", err)
 	}
@@ -135,7 +131,9 @@ func collectOSInfo() ([]byte, error) {
 func collectHubItems(itemType string) []byte {
 	out := bytes.NewBuffer(nil)
 	log.Infof("Collecting %s list", itemType)
-	ListItems(out, []string{itemType}, []string{}, false, true, all)
+	if err := ListItems(out, []string{itemType}, []string{}, false, true, false); err != nil {
+		log.Warnf("could not collect %s list: %s", itemType, err)
+	}
 	return out.Bytes()
 }
 
@@ -335,7 +333,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			if !skipHub {
 				infos[SUPPORT_PARSERS_PATH] = collectHubItems(cwhub.PARSERS)
 				infos[SUPPORT_SCENARIOS_PATH] = collectHubItems(cwhub.SCENARIOS)
-				infos[SUPPORT_POSTOVERFLOWS_PATH] = collectHubItems(cwhub.PARSERS_OVFLW)
+				infos[SUPPORT_POSTOVERFLOWS_PATH] = collectHubItems(cwhub.POSTOVERFLOWS)
 				infos[SUPPORT_COLLECTIONS_PATH] = collectHubItems(cwhub.COLLECTIONS)
 			}
 

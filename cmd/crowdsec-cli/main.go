@@ -29,13 +29,6 @@ var dbClient *database.Client
 var OutputFormat string
 var OutputColor string
 
-var downloadOnly bool
-var forceAction bool
-var purge bool
-var all bool
-
-var prometheusURL string
-
 var mergedConfig string
 
 func initConfig() {
@@ -58,10 +51,8 @@ func initConfig() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		if err := csConfig.LoadCSCLI(); err != nil {
-			log.Fatal(err)
-		}
 	} else {
+		// XXX: check all the defaults
 		csConfig = csconfig.NewDefaultConfig()
 	}
 
@@ -255,7 +246,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewHubTestCmd())
 	rootCmd.AddCommand(NewNotificationsCmd())
 	rootCmd.AddCommand(NewSupportCmd())
-	rootCmd.AddCommand(NewWafRulesCmd())
+	rootCmd.AddCommand(NewWaapRulesCmd())
 
 	if fflag.CscliSetup.IsEnabled() {
 		rootCmd.AddCommand(NewSetupCmd())

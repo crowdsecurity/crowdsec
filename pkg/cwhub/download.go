@@ -19,20 +19,21 @@ import (
 
 var ErrIndexNotFound = fmt.Errorf("index not found")
 
-func UpdateHubIdx(hub *csconfig.Hub) error {
+// UpdateHubIdx downloads the latest version of the index and updates the one in memory
+func UpdateHubIdx(hub *csconfig.HubCfg) error {
 	bidx, err := DownloadHubIdx(hub)
 	if err != nil {
 		return fmt.Errorf("failed to download index: %w", err)
 	}
 
-	ret, err := LoadPkgIndex(bidx)
+	ret, err := ParseIndex(bidx)
 	if err != nil {
 		if !errors.Is(err, ErrMissingReference) {
 			return fmt.Errorf("failed to read index: %w", err)
 		}
 	}
 
-	hubIdx = ret
+	hubIdx = HubIndex{Items: ret}
 
 	if _, err := LocalSync(hub); err != nil {
 		return fmt.Errorf("failed to sync: %w", err)
@@ -41,7 +42,8 @@ func UpdateHubIdx(hub *csconfig.Hub) error {
 	return nil
 }
 
-func DownloadHubIdx(hub *csconfig.Hub) ([]byte, error) {
+// DownloadHubIdx downloads the latest version of the index and returns the content
+func DownloadHubIdx(hub *csconfig.HubCfg) ([]byte, error) {
 	log.Debugf("fetching index from branch %s (%s)", HubBranch, fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile))
 
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile), nil)
@@ -96,7 +98,7 @@ func DownloadHubIdx(hub *csconfig.Hub) ([]byte, error) {
 }
 
 // DownloadLatest will download the latest version of Item to the tdir directory
-func DownloadLatest(hub *csconfig.Hub, target *Item, overwrite bool, updateOnly bool) error {
+func DownloadLatest(hub *csconfig.HubCfg, target *Item, overwrite bool, updateOnly bool) error {
 	var err error
 
 	log.Debugf("Downloading %s %s", target.Type, target.Name)
@@ -115,7 +117,7 @@ func DownloadLatest(hub *csconfig.Hub, target *Item, overwrite bool, updateOnly 
 	for idx, ptr := range tmp {
 		ptrtype := ItemTypes[idx]
 		for _, p := range ptr {
-			val, ok := hubIdx[ptrtype][p]
+			val, ok := hubIdx.Items[ptrtype][p]
 			if !ok {
 				return fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
 			}
@@ -151,7 +153,7 @@ func DownloadLatest(hub *csconfig.Hub, target *Item, overwrite bool, updateOnly 
 				}
 			}
 
-			hubIdx[ptrtype][p] = val
+			hubIdx.Items[ptrtype][p] = val
 		}
 	}
 
@@ -163,7 +165,7 @@ func DownloadLatest(hub *csconfig.Hub, target *Item, overwrite bool, updateOnly 
 	return nil
 }
 
-func DownloadItem(hub *csconfig.Hub, target *Item, overwrite bool) error {
+func DownloadItem(hub *csconfig.HubCfg, target *Item, overwrite bool) error {
 	tdir := hub.HubDir
 
 	// if user didn't --force, don't overwrite local, tainted, up-to-date files
@@ -265,12 +267,13 @@ func DownloadItem(hub *csconfig.Hub, target *Item, overwrite bool) error {
 		return fmt.Errorf("while downloading data for %s: %w", target.FileName, err)
 	}
 
-	hubIdx[target.Type][target.Name] = *target
+	hubIdx.Items[target.Type][target.Name] = *target
 
 	return nil
 }
 
-func DownloadDataIfNeeded(hub *csconfig.Hub, target Item, force bool) error {
+// DownloadDataIfNeeded downloads the data files for an item
+func DownloadDataIfNeeded(hub *csconfig.HubCfg, target Item, force bool) error {
 	itemFilePath := fmt.Sprintf("%s/%s/%s/%s", hub.InstallDir, target.Type, target.Stage, target.FileName)
 
 	itemFile, err := os.Open(itemFilePath)
@@ -287,6 +290,7 @@ func DownloadDataIfNeeded(hub *csconfig.Hub, target Item, force bool) error {
 	return nil
 }
 
+// downloadData downloads the data files for an item
 func downloadData(dataFolder string, force bool, reader io.Reader) error {
 	var err error
 

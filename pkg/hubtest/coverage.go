@@ -27,12 +27,12 @@ type ScenarioCoverage struct {
 
 func (h *HubTest) GetParsersCoverage() ([]ParserCoverage, error) {
 	var coverage []ParserCoverage
-	if _, ok := h.HubIndex.Data[cwhub.PARSERS]; !ok {
+	if _, ok := h.HubIndex.Items[cwhub.PARSERS]; !ok {
 		return coverage, fmt.Errorf("no parsers in hub index")
 	}
 	//populate from hub, iterate in alphabetical order
 	var pkeys []string
-	for pname := range h.HubIndex.Data[cwhub.PARSERS] {
+	for pname := range h.HubIndex.Items[cwhub.PARSERS] {
 		pkeys = append(pkeys, pname)
 	}
 	sort.Strings(pkeys)
@@ -100,12 +100,12 @@ func (h *HubTest) GetParsersCoverage() ([]ParserCoverage, error) {
 
 func (h *HubTest) GetScenariosCoverage() ([]ScenarioCoverage, error) {
 	var coverage []ScenarioCoverage
-	if _, ok := h.HubIndex.Data[cwhub.SCENARIOS]; !ok {
+	if _, ok := h.HubIndex.Items[cwhub.SCENARIOS]; !ok {
 		return coverage, fmt.Errorf("no scenarios in hub index")
 	}
 	//populate from hub, iterate in alphabetical order
 	var pkeys []string
-	for scenarioName := range h.HubIndex.Data[cwhub.SCENARIOS] {
+	for scenarioName := range h.HubIndex.Items[cwhub.SCENARIOS] {
 		pkeys = append(pkeys, scenarioName)
 	}
 	sort.Strings(pkeys)

@@ -18,7 +18,7 @@ type HubTest struct {
 	TemplateConfigPath     string
 	TemplateProfilePath    string
 	TemplateSimulationPath string
-	HubIndex               *HubIndex
+	HubIndex               *cwhub.HubIndex
 	Tests                  []*HubTestItem
 }
 
@@ -62,7 +62,7 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest,
 	}
 
 	// load hub index
-	hubIndex, err := cwhub.LoadPkgIndex(bidx)
+	hubIndex, err := cwhub.ParseIndex(bidx)
 	if err != nil {
 		return HubTest{}, fmt.Errorf("unable to load hub index file: %s", err)
 	}
@@ -80,7 +80,7 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest,
 		TemplateConfigPath:     templateConfigFilePath,
 		TemplateProfilePath:    templateProfilePath,
 		TemplateSimulationPath: templateSimulationPath,
-		HubIndex:               &HubIndex{Data: hubIndex},
+		HubIndex:               &cwhub.HubIndex{Items: hubIndex},
 	}, nil
 }
 

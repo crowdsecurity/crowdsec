@@ -52,10 +52,6 @@ func InstallHubItems(csConfig *csconfig.Config, input []byte, dryRun bool) error
 		return err
 	}
 
-	if err := csConfig.LoadHub(); err != nil {
-		return fmt.Errorf("loading hub: %w", err)
-	}
-
 	cwhub.SetHubBranch()
 
 	if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
@@ -121,7 +117,7 @@ func InstallHubItems(csConfig *csconfig.Config, input []byte, dryRun bool) error
 					continue
 				}
 
-				if err := cwhub.InstallItem(csConfig, postoverflow, cwhub.PARSERS_OVFLW, forceAction, downloadOnly); err != nil {
+				if err := cwhub.InstallItem(csConfig, postoverflow, cwhub.POSTOVERFLOWS, forceAction, downloadOnly); err != nil {
 					return fmt.Errorf("while installing postoverflow %s: %w", postoverflow, err)
 				}
 			}
