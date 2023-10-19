@@ -331,7 +331,7 @@ func (h *Hub) CollectDepsCheck(v *Item) error {
 	// if it's a collection, ensure all the items are installed, or tag it as tainted
 	log.Tracef("checking submembers of %s installed:%t", v.Name, v.Installed)
 
-	for idx, itemSlice := range [][]string{v.Parsers, v.PostOverflows, v.Scenarios, v.Collections} {
+	for idx, itemSlice := range [][]string{v.Parsers, v.PostOverflows, v.Scenarios, v.WaapRules, v.WaapConfigs, v.Collections} {
 		sliceType := ItemTypes[idx]
 		for _, subName := range itemSlice {
 			subItem, ok := h.Items[sliceType][subName]
