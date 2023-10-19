@@ -62,13 +62,14 @@ func TestGetters(t *testing.T) {
 
 		// Add item and get it
 		item.Name += "nope"
-		err := hub.AddItem(COLLECTIONS, *item)
+		err := hub.AddItem(*item)
 		require.NoError(t, err)
 
 		newitem := hub.GetItem(COLLECTIONS, item.Name)
 		require.NotNil(t, newitem)
 
-		err = hub.AddItem("ratata", *item)
+		item.Type = "ratata"
+		err = hub.AddItem(*item)
 		cstest.RequireErrorContains(t, err, "ItemType ratata is unknown")
 	}
 }

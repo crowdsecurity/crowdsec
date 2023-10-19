@@ -154,15 +154,15 @@ func (h *Hub) GetItemNames(itemType string) []string {
 }
 
 // AddItem adds an item to the hub index
-func (h *Hub) AddItem(itemType string, item Item) error {
-	for _, itype := range ItemTypes {
-		if itype == itemType {
-			h.Items[itemType][item.Name] = item
+func (h *Hub) AddItem(item Item) error {
+	for _, t := range ItemTypes {
+		if t == item.Type {
+			h.Items[t][item.Name] = item
 			return nil
 		}
 	}
 
-	return fmt.Errorf("ItemType %s is unknown", itemType)
+	return fmt.Errorf("ItemType %s is unknown", item.Type)
 }
 
 // GetInstalledItems returns the list of installed items

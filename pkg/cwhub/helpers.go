@@ -38,7 +38,7 @@ func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly
 		return fmt.Errorf("while downloading %s: %w", item.Name, err)
 	}
 
-	if err = h.AddItem(itemType, *item); err != nil {
+	if err = h.AddItem(*item); err != nil {
 		return fmt.Errorf("while adding %s: %w", item.Name, err)
 	}
 
@@ -52,7 +52,7 @@ func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly
 		return fmt.Errorf("while enabling %s: %w", item.Name, err)
 	}
 
-	if err := h.AddItem(itemType, *item); err != nil {
+	if err := h.AddItem(*item); err != nil {
 		return fmt.Errorf("while adding %s: %w", item.Name, err)
 	}
 
@@ -75,7 +75,7 @@ func (h *Hub) RemoveMany(itemType string, name string, all bool, purge bool, for
 			return fmt.Errorf("unable to disable %s: %w", item.Name, err)
 		}
 
-		if err = h.AddItem(itemType, *item); err != nil {
+		if err = h.AddItem(*item); err != nil {
 			return fmt.Errorf("unable to add %s: %w", item.Name, err)
 		}
 
@@ -99,7 +99,7 @@ func (h *Hub) RemoveMany(itemType string, name string, all bool, purge bool, for
 			return fmt.Errorf("unable to disable %s: %w", v.Name, err)
 		}
 
-		if err := h.AddItem(itemType, v); err != nil {
+		if err := h.AddItem(v); err != nil {
 			return fmt.Errorf("unable to add %s: %w", v.Name, err)
 		}
 		disabled++
@@ -162,7 +162,7 @@ func (h *Hub) UpgradeConfig(itemType string, name string, force bool) error {
 			updated++
 		}
 
-		if err := h.AddItem(itemType, v); err != nil {
+		if err := h.AddItem(v); err != nil {
 			return fmt.Errorf("unable to add %s: %w", v.Name, err)
 		}
 	}
