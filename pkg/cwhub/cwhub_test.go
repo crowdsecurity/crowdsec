@@ -29,8 +29,7 @@ import (
 var responseByPath map[string]string
 
 func TestItemStatus(t *testing.T) {
-	cfg, hub := envSetup(t)
-	defer envTearDown(cfg)
+	hub := envSetup(t)
 
 	// get existing map
 	x := hub.GetItemMap(COLLECTIONS)
@@ -62,8 +61,7 @@ func TestItemStatus(t *testing.T) {
 }
 
 func TestGetters(t *testing.T) {
-	cfg, hub := envSetup(t)
-	defer envTearDown(cfg)
+	hub := envSetup(t)
 
 	// get non existing map
 	empty := hub.GetItemMap("ratata")
@@ -95,30 +93,64 @@ func TestGetters(t *testing.T) {
 }
 
 func TestIndexDownload(t *testing.T) {
-	cfg, _ := envSetup(t)
-	defer envTearDown(cfg)
+	hub := envSetup(t)
 
-	_, err := InitHubUpdate(cfg.Hub)
+	_, err := InitHubUpdate(hub.cfg)
 	require.NoError(t, err, "failed to download index")
 
 	_, err = GetHub()
 	require.NoError(t, err, "failed to load hub index")
 }
 
-func getTestCfg() *csconfig.Config {
-	cfg := &csconfig.Config{Hub: &csconfig.HubCfg{}}
-	cfg.Hub.InstallDir, _ = filepath.Abs("./install")
-	cfg.Hub.HubDir, _ = filepath.Abs("./hubdir")
-	cfg.Hub.HubIndexFile = filepath.Clean("./hubdir/.index.json")
+// testHub initializes a temporary hub with an empty json file, optionally updating it
+func testHub(t *testing.T, update bool) (*Hub) {
+	tmpDir, err := os.MkdirTemp("", "testhub")
+	require.NoError(t, err)
 
-	return cfg
+	hubCfg := &csconfig.HubCfg{
+		HubDir:        filepath.Join(tmpDir, "crowdsec", "hub"),
+		HubIndexFile:  filepath.Join(tmpDir, "crowdsec", "hub", ".index.json"),
+		InstallDir:    filepath.Join(tmpDir, "crowdsec"),
+		InstallDataDir: filepath.Join(tmpDir, "installed-data"),
+	}
+
+	err = os.MkdirAll(hubCfg.HubDir, 0700)
+	require.NoError(t, err)
+
+	err = os.MkdirAll(hubCfg.InstallDir, 0700)
+	require.NoError(t, err)
+
+	err = os.MkdirAll(hubCfg.InstallDataDir, 0700)
+	require.NoError(t, err)
+
+	index, err := os.Create(hubCfg.HubIndexFile)
+	require.NoError(t, err)
+
+	_, err = index.WriteString(`{}`)
+	require.NoError(t, err)
+
+	index.Close()
+
+	t.Cleanup(func() {
+		os.RemoveAll(tmpDir)
+	})
+
+	constructor := InitHub
+
+	if update {
+		constructor = InitHubUpdate
+	}
+
+	hub, err := constructor(hubCfg)
+	require.NoError(t, err)
+
+	return hub
 }
 
-func envSetup(t *testing.T) (*csconfig.Config, *Hub) {
+
+func envSetup(t *testing.T) *Hub {
 	resetResponseByPath()
 	log.SetLevel(log.DebugLevel)
-
-	cfg := getTestCfg()
 
 	defaultTransport := http.DefaultClient.Transport
 
@@ -129,14 +161,7 @@ func envSetup(t *testing.T) (*csconfig.Config, *Hub) {
 	// Mock the http client
 	http.DefaultClient.Transport = newMockTransport()
 
-	err := os.MkdirAll(cfg.Hub.InstallDir, 0700)
-	require.NoError(t, err)
-
-	err = os.MkdirAll(cfg.Hub.HubDir, 0700)
-	require.NoError(t, err)
-
-	hub, err := InitHubUpdate(cfg.Hub)
-	require.NoError(t, err, "failed to download index")
+	hub := testHub(t, true)
 
 	// if err := os.RemoveAll(cfg.Hub.InstallDir); err != nil {
 	// 	log.Fatalf("failed to remove %s : %s", cfg.Hub.InstallDir, err)
@@ -144,20 +169,10 @@ func envSetup(t *testing.T) (*csconfig.Config, *Hub) {
 	// if err := os.MkdirAll(cfg.Hub.InstallDir, 0700); err != nil {
 	// 	log.Fatalf("failed to mkdir %s : %s", cfg.Hub.InstallDir, err)
 	// }
-	return cfg, hub
+	return hub
 }
 
-func envTearDown(cfg *csconfig.Config) {
-	if err := os.RemoveAll(cfg.Hub.InstallDir); err != nil {
-		log.Fatalf("failed to remove %s : %s", cfg.Hub.InstallDir, err)
-	}
-
-	if err := os.RemoveAll(cfg.Hub.HubDir); err != nil {
-		log.Fatalf("failed to remove %s : %s", cfg.Hub.HubDir, err)
-	}
-}
-
-func testInstallItem(cfg *csconfig.HubCfg, t *testing.T, item Item) {
+func testInstallItem(hub *Hub, t *testing.T, item Item) {
 	// Install the parser
 	
 	hub, err := GetHub()
@@ -182,7 +197,7 @@ func testInstallItem(cfg *csconfig.HubCfg, t *testing.T, item Item) {
 	assert.True(t, hub.Items[item.Type][item.Name].Installed, "%s should be installed", item.Name)
 }
 
-func testTaintItem(cfg *csconfig.HubCfg, t *testing.T, item Item) {
+func testTaintItem(hub *Hub, t *testing.T, item Item) {
 	hub, err := GetHub()
 	require.NoError(t, err)
 
@@ -203,7 +218,7 @@ func testTaintItem(cfg *csconfig.HubCfg, t *testing.T, item Item) {
 	assert.True(t, hub.Items[item.Type][item.Name].Tainted, "%s should be tainted", item.Name)
 }
 
-func testUpdateItem(cfg *csconfig.HubCfg, t *testing.T, item Item) {
+func testUpdateItem(hub *Hub, t *testing.T, item Item) {
 	hub, err := GetHub()
 	require.NoError(t, err)
 
@@ -221,7 +236,7 @@ func testUpdateItem(cfg *csconfig.HubCfg, t *testing.T, item Item) {
 	assert.False(t, hub.Items[item.Type][item.Name].Tainted, "%s should not be tainted anymore", item.Name)
 }
 
-func testDisableItem(cfg *csconfig.HubCfg, t *testing.T, item Item) {
+func testDisableItem(hub *Hub, t *testing.T, item Item) {
 	hub, err := GetHub()
 	require.NoError(t, err)
 
@@ -263,19 +278,17 @@ func TestInstallParser(t *testing.T) {
 	 - check its status
 	 - remove it
 	*/
-	cfg, hub := envSetup(t)
-	defer envTearDown(cfg)
+	hub := envSetup(t)
 
-	getHubIdxOrFail(t)
 	// map iteration is random by itself
 	for _, it := range hub.Items[PARSERS] {
-		testInstallItem(cfg.Hub, t, it)
+		testInstallItem(hub, t, it)
 		it = hub.Items[PARSERS][it.Name]
-		testTaintItem(cfg.Hub, t, it)
+		testTaintItem(hub, t, it)
 		it = hub.Items[PARSERS][it.Name]
-		testUpdateItem(cfg.Hub, t, it)
+		testUpdateItem(hub, t, it)
 		it = hub.Items[PARSERS][it.Name]
-		testDisableItem(cfg.Hub, t, it)
+		testDisableItem(hub, t, it)
 		it = hub.Items[PARSERS][it.Name]
 
 		break
@@ -292,19 +305,17 @@ func TestInstallCollection(t *testing.T) {
 	 - check its status
 	 - remove it
 	*/
-	cfg, hub := envSetup(t)
-	defer envTearDown(cfg)
+	hub := envSetup(t)
 
-	getHubIdxOrFail(t)
 	// map iteration is random by itself
 	for _, it := range hub.Items[COLLECTIONS] {
-		testInstallItem(cfg.Hub, t, it)
+		testInstallItem(hub, t, it)
 		it = hub.Items[COLLECTIONS][it.Name]
-		testTaintItem(cfg.Hub, t, it)
+		testTaintItem(hub, t, it)
 		it = hub.Items[COLLECTIONS][it.Name]
-		testUpdateItem(cfg.Hub, t, it)
+		testUpdateItem(hub, t, it)
 		it = hub.Items[COLLECTIONS][it.Name]
-		testDisableItem(cfg.Hub, t, it)
+		testDisableItem(hub, t, it)
 		break
 	}
 }
