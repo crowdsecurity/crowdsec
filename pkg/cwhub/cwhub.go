@@ -63,6 +63,7 @@ type Item struct {
 	Scenarios     []string `json:"scenarios,omitempty"     yaml:"scenarios,omitempty"`
 	Collections   []string `json:"collections,omitempty"   yaml:"collections,omitempty"`
 	WaapRules     []string `json:"waap-rules,omitempty"    yaml:"waap-rules,omitempty"`
+	WaapConfigs   []string `json:"waap-configs,omitempty"  yaml:"waap-configs,omitempty"`
 }
 
 // Status returns the status of the item as a string and an emoji

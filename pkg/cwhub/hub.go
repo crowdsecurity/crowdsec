@@ -19,11 +19,12 @@ const (
 	POSTOVERFLOWS = "postoverflows"
 	SCENARIOS     = "scenarios"
 	WAAP_RULES    = "waap-rules"
+	WAAP_CONFIGS  = "waap-configs"
 )
 
 var (
 	// XXX: The order is important, as it is used to range over sub-items in collections
-	ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, WAAP_RULES, COLLECTIONS}
+	ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, WAAP_RULES, WAAP_CONFIGS, COLLECTIONS}
 )
 
 type HubItems map[string]map[string]Item
@@ -107,7 +108,7 @@ func ParseIndex(buff []byte) (HubItems, error) {
 
 			// if it's a collection, check its sub-items are present
 			// XXX should be done later
-			for idx, ptr := range [][]string{item.Parsers, item.PostOverflows, item.Scenarios, item.WaapRules, item.Collections} {
+			for idx, ptr := range [][]string{item.Parsers, item.PostOverflows, item.Scenarios, item.WaapRules, item.WaapConfigs, item.Collections} {
 				ptrtype := ItemTypes[idx]
 				for _, p := range ptr {
 					if _, ok := RawIndex[ptrtype][p]; !ok {

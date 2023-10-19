@@ -49,7 +49,7 @@ func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
 
 	// for a COLLECTIONS, disable sub-items
 	if target.Type == COLLECTIONS {
-		for idx, ptr := range [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections} {
+		for idx, ptr := range [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.WaapRules, target.WaapConfigs, target.Collections} {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
 				if val, ok := h.Items[ptrtype][p]; ok {
