@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
 const (
@@ -20,24 +22,38 @@ const (
 )
 
 var (
-	// XXX: The order is important, as it is used to construct the
-	//      index tree in memory --> collections must be last
-	ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, COLLECTIONS, WAAP_RULES}
-	hubIdx    = HubIndex{}
+	// XXX: The order is important, as it is used to range over sub-items in collections
+	ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, WAAP_RULES, COLLECTIONS}
 )
 
 type HubItems map[string]map[string]Item
 
-// HubIndex represents the runtime status of the hub (parsed items, etc.)
-// XXX: this could be renamed "Hub" tout court once the confusion with HubCfg is cleared
-type HubIndex struct {
+// Hub represents the runtime status of the hub (parsed items, etc.)
+type Hub struct {
 	Items          HubItems
+	cfg            *csconfig.HubCfg
 	skippedLocal   int
 	skippedTainted int
 }
 
+var theHub *Hub
+
+// GetHub returns the hub singleton
+// it returns an error if it's not initialized to avoid nil dereference
+func GetHub() (*Hub, error) {
+	if theHub == nil {
+		return nil, fmt.Errorf("hub not initialized")
+	}
+
+	return theHub, nil
+}
+
+func (h Hub) GetDataDir() string {
+	return h.cfg.InstallDataDir
+}
+
 // displaySummary prints a total count of the hub items
-func (h HubIndex) displaySummary() {
+func (h Hub) displaySummary() {
 	msg := "Loaded: "
 	for itemType := range h.Items {
 		msg += fmt.Sprintf("%d %s, ", len(h.Items[itemType]), itemType)
@@ -51,8 +67,14 @@ func (h HubIndex) displaySummary() {
 
 // DisplaySummary prints a total count of the hub items.
 // It is a wrapper around HubIndex.displaySummary() to avoid exporting the hub singleton
-func DisplaySummary() {
-	hubIdx.displaySummary()
+// XXX: to be removed later
+func DisplaySummary() error {
+	hub, err := GetHub()
+	if err != nil {
+		return err
+	}
+	hub.displaySummary()
+	return nil
 }
 
 // ParseIndex takes the content of a .index.json file and returns the map of associated parsers/scenarios/collections
@@ -85,7 +107,7 @@ func ParseIndex(buff []byte) (HubItems, error) {
 
 			// if it's a collection, check its sub-items are present
 			// XXX should be done later
-			for idx, ptr := range [][]string{item.Parsers, item.PostOverflows, item.Scenarios, item.Collections} {
+			for idx, ptr := range [][]string{item.Parsers, item.PostOverflows, item.Scenarios, item.WaapRules, item.Collections} {
 				ptrtype := ItemTypes[idx]
 				for _, p := range ptr {
 					if _, ok := RawIndex[ptrtype][p]; !ok {

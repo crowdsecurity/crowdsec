@@ -71,11 +71,12 @@ After running this command your will need to validate the enrollment in the weba
 				return fmt.Errorf("could not parse CAPI URL: %s", err)
 			}
 
-			if err := require.Hub(csConfig); err != nil {
+			hub, err := require.Hub(csConfig)
+			if err != nil {
 				return err
 			}
 
-			scenarios, err := cwhub.GetInstalledItemsAsString(cwhub.SCENARIOS)
+			scenarios, err := hub.GetInstalledItemsAsString(cwhub.SCENARIOS)
 			if err != nil {
 				return fmt.Errorf("failed to get installed scenarios: %s", err)
 			}

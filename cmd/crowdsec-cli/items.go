@@ -16,8 +16,8 @@ import (
 )
 
 
-func selectItems(itemType string, args []string, installedOnly bool) ([]string, error) {
-	itemNames := cwhub.GetItemNames(itemType)
+func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly bool) ([]string, error) {
+	itemNames := hub.GetItemNames(itemType)
 
 	notExist := []string{}
 	if len(args) > 0 {
@@ -40,7 +40,7 @@ func selectItems(itemType string, args []string, installedOnly bool) ([]string, 
 	if installedOnly {
 		installed := []string{}
 		for _, item := range itemNames {
-			if cwhub.GetItem(itemType, item).Installed {
+			if hub.GetItem(itemType, item).Installed {
 				installed = append(installed, item)
 			}
 		}
@@ -52,9 +52,15 @@ func selectItems(itemType string, args []string, installedOnly bool) ([]string, 
 
 func ListItems(out io.Writer, itemTypes []string, args []string, showType bool, showHeader bool, all bool) error {
 	var err error
+
+	hub, err := cwhub.GetHub()
+	if err != nil {
+		return err
+	}
+
 	items := make(map[string][]string)
 	for _, itemType := range itemTypes {
-		if items[itemType], err = selectItems(itemType, args, !all); err != nil {
+		if items[itemType], err = selectItems(hub, itemType, args, !all); err != nil {
 			return err
 		}
 	}
@@ -78,7 +84,7 @@ func ListItems(out io.Writer, itemTypes []string, args []string, showType bool, 
 			// empty slice in case there are no items of this type
 			hubStatus[itemType] = make([]itemHubStatus, len(items[itemType]))
 			for i, itemName := range items[itemType] {
-				item := cwhub.GetItem(itemType, itemName)
+				item := hub.GetItem(itemType, itemName)
 				status, emo := item.Status()
 				hubStatus[itemType][i] = itemHubStatus{
 					Name:         item.Name,
@@ -112,7 +118,7 @@ func ListItems(out io.Writer, itemTypes []string, args []string, showType bool, 
 		}
 		for _, itemType := range itemTypes {
 			for _, itemName := range items[itemType] {
-				item := cwhub.GetItem(itemType, itemName)
+				item := hub.GetItem(itemType, itemName)
 				status, _ := item.Status()
 				if item.LocalVersion == "" {
 					item.LocalVersion = "n/a"
@@ -138,15 +144,17 @@ func ListItems(out io.Writer, itemTypes []string, args []string, showType bool, 
 }
 
 func InspectItem(name string, itemType string, noMetrics bool) error {
-	hubItem := cwhub.GetItem(itemType, name)
+	hub, err := cwhub.GetHub()
+	if err != nil {
+		return err
+	}
+
+	hubItem := hub.GetItem(itemType, name)
 	if hubItem == nil {
 		return fmt.Errorf("can't find '%s' in %s", name, itemType)
 	}
 
-	var (
-		b   []byte
-		err error
-	)
+	var b   []byte
 
 	switch csConfig.Cscli.Output {
 	case "human", "raw":
@@ -168,7 +176,7 @@ func InspectItem(name string, itemType string, noMetrics bool) error {
 	}
 
 	fmt.Printf("\nCurrent metrics: \n")
-	ShowMetrics(hubItem)
+	ShowMetrics(hub, hubItem)
 
 	return nil
 }

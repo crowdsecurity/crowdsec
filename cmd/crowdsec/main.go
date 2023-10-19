@@ -75,12 +75,12 @@ type Flags struct {
 
 type labelsMap map[string]string
 
-func LoadBuckets(cConfig *csconfig.Config) error {
+func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 	var (
 		err   error
 		files []string
 	)
-	for _, hubScenarioItem := range cwhub.GetItemMap(cwhub.SCENARIOS) {
+	for _, hubScenarioItem := range hub.GetItemMap(cwhub.SCENARIOS) {
 		if hubScenarioItem.Installed {
 			files = append(files, hubScenarioItem.LocalPath)
 		}
@@ -88,7 +88,7 @@ func LoadBuckets(cConfig *csconfig.Config) error {
 	buckets = leakybucket.NewBuckets()
 
 	log.Infof("Loading %d scenario files", len(files))
-	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, files, &bucketsTomb, buckets, flags.OrderEvent)
+	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, cConfig.ConfigPaths.DataDir, files, &bucketsTomb, buckets, flags.OrderEvent)
 
 	if err != nil {
 		return fmt.Errorf("scenario loading failed: %v", err)

@@ -145,13 +145,14 @@ func NewSimulationEnableCmd() *cobra.Command {
 		Example:           `cscli simulation enable`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := require.Hub(csConfig); err != nil {
+			hub, err := require.Hub(csConfig)
+			if err != nil {
 				log.Fatal(err)
 			}
 
 			if len(args) > 0 {
 				for _, scenario := range args {
-					var item = cwhub.GetItem(cwhub.SCENARIOS, scenario)
+					var item = hub.GetItem(cwhub.SCENARIOS, scenario)
 					if item == nil {
 						log.Errorf("'%s' doesn't exist or is not a scenario", scenario)
 						continue

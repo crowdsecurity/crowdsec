@@ -54,7 +54,8 @@ func InstallHubItems(csConfig *csconfig.Config, input []byte, dryRun bool) error
 
 	cwhub.SetHubBranch()
 
-	if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
+	hub, err := cwhub.InitHub(csConfig.Hub)
+	if err != nil {
 		return fmt.Errorf("getting hub index: %w", err)
 	}
 
@@ -75,7 +76,7 @@ func InstallHubItems(csConfig *csconfig.Config, input []byte, dryRun bool) error
 					continue
 				}
 
-				if err := cwhub.InstallItem(csConfig, collection, cwhub.COLLECTIONS, forceAction, downloadOnly); err != nil {
+				if err := hub.InstallItem(collection, cwhub.COLLECTIONS, forceAction, downloadOnly); err != nil {
 					return fmt.Errorf("while installing collection %s: %w", collection, err)
 				}
 			}
@@ -89,7 +90,7 @@ func InstallHubItems(csConfig *csconfig.Config, input []byte, dryRun bool) error
 					continue
 				}
 
-				if err := cwhub.InstallItem(csConfig, parser, cwhub.PARSERS, forceAction, downloadOnly); err != nil {
+				if err := hub.InstallItem(parser, cwhub.PARSERS, forceAction, downloadOnly); err != nil {
 					return fmt.Errorf("while installing parser %s: %w", parser, err)
 				}
 			}
@@ -103,7 +104,7 @@ func InstallHubItems(csConfig *csconfig.Config, input []byte, dryRun bool) error
 					continue
 				}
 
-				if err := cwhub.InstallItem(csConfig, scenario, cwhub.SCENARIOS, forceAction, downloadOnly); err != nil {
+				if err := hub.InstallItem(scenario, cwhub.SCENARIOS, forceAction, downloadOnly); err != nil {
 					return fmt.Errorf("while installing scenario %s: %w", scenario, err)
 				}
 			}
@@ -117,7 +118,7 @@ func InstallHubItems(csConfig *csconfig.Config, input []byte, dryRun bool) error
 					continue
 				}
 
-				if err := cwhub.InstallItem(csConfig, postoverflow, cwhub.POSTOVERFLOWS, forceAction, downloadOnly); err != nil {
+				if err := hub.InstallItem(postoverflow, cwhub.POSTOVERFLOWS, forceAction, downloadOnly); err != nil {
 					return fmt.Errorf("while installing postoverflow %s: %w", postoverflow, err)
 				}
 			}

@@ -8,6 +8,7 @@ import (
 
 	corazatypes "github.com/crowdsecurity/coraza/v3/types"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
 	"github.com/crowdsecurity/go-cs-lib/trace"
@@ -157,6 +158,12 @@ func (w *WaapSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 
 	w.WaapRunners = make([]WaapRunner, w.config.Routines)
 
+	hub, err := cwhub.GetHub()
+
+	if err != nil {
+		return fmt.Errorf("unable to load hub : %s", err)
+	}
+
 	for nbRoutine := 0; nbRoutine < w.config.Routines; nbRoutine++ {
 
 		wafUUID := uuid.New().String()
@@ -186,7 +193,7 @@ func (w *WaapSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 			logger:      wafLogger,
 			WaapRuntime: &wrt,
 		}
-		err := runner.Init()
+		err := runner.Init(hub.GetDataDir())
 		if err != nil {
 			return fmt.Errorf("unable to initialize runner : %s", err)
 		}

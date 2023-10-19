@@ -8,7 +8,6 @@ import (
 	"github.com/crowdsecurity/coraza/v3"
 	"github.com/crowdsecurity/coraza/v3/experimental"
 	corazatypes "github.com/crowdsecurity/coraza/v3/types"
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
 	"github.com/prometheus/client_golang/prometheus"
@@ -27,9 +26,9 @@ type WaapRunner struct {
 	logger            *log.Entry
 }
 
-func (r *WaapRunner) Init() error {
+func (r *WaapRunner) Init(datadir string) error {
 	var err error
-	fs := os.DirFS(csconfig.DataDir)
+	fs := os.DirFS(datadir)
 
 	inBandRules := ""
 	outOfBandRules := ""

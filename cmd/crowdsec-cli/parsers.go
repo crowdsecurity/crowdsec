@@ -25,7 +25,7 @@ cscli parsers remove crowdsecurity/caddy-logs crowdsecurity/sshd-logs
 		Aliases:           []string{"parser"},
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := require.Hub(csConfig); err != nil {
+			if _, err := require.Hub(csConfig); err != nil {
 				return err
 			}
 
@@ -66,8 +66,13 @@ func runParsersInstall(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	hub, err := cwhub.GetHub()
+	if err != nil {
+		return err
+	}
+
 	for _, name := range args {
-		t := cwhub.GetItem(cwhub.PARSERS, name)
+		t := hub.GetItem(cwhub.PARSERS, name)
 		if t == nil {
 			nearestItem, score := GetDistance(cwhub.PARSERS, name)
 			Suggest(cwhub.PARSERS, name, nearestItem.Name, score, ignoreError)
@@ -75,7 +80,7 @@ func runParsersInstall(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		if err := cwhub.InstallItem(csConfig, name, cwhub.PARSERS, force, downloadOnly); err != nil {
+		if err := hub.InstallItem(name, cwhub.PARSERS, force, downloadOnly); err != nil {
 			if !ignoreError {
 				return fmt.Errorf("error while installing '%s': %w", name, err)
 			}
@@ -126,8 +131,13 @@ func runParsersRemove(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	hub, err := cwhub.GetHub()
+	if err != nil {
+		return err
+	}
+
 	if all {
-		err := cwhub.RemoveMany(csConfig, cwhub.PARSERS, "", all, purge, force)
+		err := hub.RemoveMany(cwhub.PARSERS, "", all, purge, force)
 		if err != nil {
 			return err
 		}
@@ -140,7 +150,7 @@ func runParsersRemove(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, name := range args {
-		err := cwhub.RemoveMany(csConfig, cwhub.PARSERS, name, all, purge, force)
+		err := hub.RemoveMany(cwhub.PARSERS, name, all, purge, force)
 		if err != nil {
 			return err
 		}
@@ -184,8 +194,13 @@ func runParsersUpgrade(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	hub, err := cwhub.GetHub()
+	if err != nil {
+		return err
+	}
+
 	if all {
-		if err := cwhub.UpgradeConfig(csConfig, cwhub.PARSERS, "", force); err != nil {
+		if err := hub.UpgradeConfig(cwhub.PARSERS, "", force); err != nil {
 			return err
 		}
 		return nil
@@ -196,7 +211,7 @@ func runParsersUpgrade(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, name := range args {
-		if err := cwhub.UpgradeConfig(csConfig, cwhub.PARSERS, name, force); err != nil {
+		if err := hub.UpgradeConfig(cwhub.PARSERS, name, force); err != nil {
 			return err
 		}
 	}

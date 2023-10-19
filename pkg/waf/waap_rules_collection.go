@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	corazatypes "github.com/crowdsecurity/coraza/v3/types"
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"gopkg.in/yaml.v2"
 
@@ -37,7 +36,12 @@ func LoadCollection(collection string) (WaapCollection, error) {
 	//FIXME: do it once globally
 	waapRules := make(map[string]WaapCollectionConfig)
 
-	for _, hubWafRuleItem := range cwhub.GetItemMap(cwhub.WAAP_RULES) {
+	hub, err := cwhub.GetHub()
+	if err != nil {
+		return WaapCollection{}, fmt.Errorf("unable to load hub : %s", err)
+	}
+
+	for _, hubWafRuleItem := range hub.GetItemMap(cwhub.WAAP_RULES) {
 		log.Infof("loading %s", hubWafRuleItem.LocalPath)
 		if !hubWafRuleItem.Installed {
 			continue
@@ -86,7 +90,7 @@ func LoadCollection(collection string) (WaapCollection, error) {
 
 	if loadedRule.SecLangFilesRules != nil {
 		for _, rulesFile := range loadedRule.SecLangFilesRules {
-			fullPath := filepath.Join(csconfig.DataDir, rulesFile)
+			fullPath := filepath.Join(hub.GetDataDir(), rulesFile)
 			c, err := os.ReadFile(fullPath)
 			if err != nil {
 				log.Errorf("unable to read file %s : %s", rulesFile, err)

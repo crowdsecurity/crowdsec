@@ -179,11 +179,16 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 	return nil
 }
 
-func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.Tomb, buckets *Buckets, orderEvent bool) ([]BucketFactory, chan types.Event, error) {
+func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, dataDir string, files []string, tomb *tomb.Tomb, buckets *Buckets, orderEvent bool) ([]BucketFactory, chan types.Event, error) {
 	var (
 		ret      = []BucketFactory{}
 		response chan types.Event
 	)
+
+	hub, err := cwhub.GetHub()
+	if err != nil {
+		return nil, nil, err
+	}
 
 	response = make(chan types.Event, 1)
 	for _, f := range files {
@@ -212,7 +217,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 				log.Tracef("End of yaml file")
 				break
 			}
-			bucketFactory.DataDir = cscfg.DataDir
+			bucketFactory.DataDir = dataDir
 			//check empty
 			if bucketFactory.Name == "" {
 				log.Errorf("Won't load nameless bucket")
@@ -235,7 +240,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 			bucketFactory.Filename = filepath.Clean(f)
 			bucketFactory.BucketName = seed.Generate()
 			bucketFactory.ret = response
-			hubItem, err := cwhub.GetItemByPath(cwhub.SCENARIOS, bucketFactory.Filename)
+			hubItem, err := hub.GetItemByPath(cwhub.SCENARIOS, bucketFactory.Filename)
 			if err != nil {
 				log.Errorf("scenario %s (%s) couldn't be find in hub (ignore if in unit tests)", bucketFactory.Name, bucketFactory.Filename)
 			} else {

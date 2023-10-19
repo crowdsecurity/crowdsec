@@ -25,7 +25,7 @@ cscli waap-rules remove crowdsecurity/crs
 		Aliases:           []string{"waap-rule"},
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := require.Hub(csConfig); err != nil {
+			if _, err := require.Hub(csConfig); err != nil {
 				return err
 			}
 
@@ -66,8 +66,13 @@ func runWaapRulesInstall(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	hub, err := cwhub.GetHub()
+	if err != nil {
+		return err
+	}
+
 	for _, name := range args {
-		t := cwhub.GetItem(cwhub.WAAP_RULES, name)
+		t := hub.GetItem(cwhub.WAAP_RULES, name)
 		if t == nil {
 			nearestItem, score := GetDistance(cwhub.WAAP_RULES, name)
 			Suggest(cwhub.WAAP_RULES, name, nearestItem.Name, score, ignoreError)
@@ -75,7 +80,7 @@ func runWaapRulesInstall(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		if err := cwhub.InstallItem(csConfig, name, cwhub.WAAP_RULES, force, downloadOnly); err != nil {
+		if err := hub.InstallItem(name, cwhub.WAAP_RULES, force, downloadOnly); err != nil {
 			if !ignoreError {
 				return fmt.Errorf("error while installing '%s': %w", name, err)
 			}
@@ -126,8 +131,13 @@ func runWaapRulesRemove(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	hub, err := cwhub.GetHub()
+	if err != nil {
+		return err
+	}
+
 	if all {
-		err := cwhub.RemoveMany(csConfig, cwhub.WAAP_RULES, "", all, purge, force)
+		err := hub.RemoveMany(cwhub.WAAP_RULES, "", all, purge, force)
 		if err != nil {
 			return err
 		}
@@ -140,7 +150,7 @@ func runWaapRulesRemove(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, name := range args {
-		err := cwhub.RemoveMany(csConfig, cwhub.WAAP_RULES, name, all, purge, force)
+		err := hub.RemoveMany(cwhub.WAAP_RULES, name, all, purge, force)
 		if err != nil {
 			return err
 		}
@@ -184,8 +194,13 @@ func runWaapRulesUpgrade(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	hub, err := cwhub.GetHub()
+	if err != nil {
+		return err
+	}
+
 	if all {
-		if err := cwhub.UpgradeConfig(csConfig, cwhub.WAAP_RULES, "", force); err != nil {
+		if err := hub.UpgradeConfig(cwhub.WAAP_RULES, "", force); err != nil {
 			return err
 		}
 		return nil
@@ -196,7 +211,7 @@ func runWaapRulesUpgrade(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, name := range args {
-		if err := cwhub.UpgradeConfig(csConfig, cwhub.WAAP_RULES, name, force); err != nil {
+		if err := hub.UpgradeConfig(cwhub.WAAP_RULES, name, force); err != nil {
 			return err
 		}
 	}
