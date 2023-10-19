@@ -116,7 +116,6 @@ func (lc *LokiClient) queryRange(uri string, ctx context.Context, c chan *LokiQu
 		case <-lc.t.Dying():
 			return lc.t.Err()
 		case <-ticker.C:
-			lc.Logger.Debugf("Querying Loki: %s", uri)
 			resp, err := http.Get(uri)
 			if err != nil {
 				if ok := lc.shouldRetry(); !ok {
@@ -149,7 +148,6 @@ func (lc *LokiClient) queryRange(uri string, ctx context.Context, c chan *LokiQu
 				}
 			}
 			resp.Body.Close()
-
 			lc.Logger.Tracef("Got response: %+v", lq)
 			c <- &lq
 			lc.resetFailStart()
@@ -158,8 +156,13 @@ func (lc *LokiClient) queryRange(uri string, ctx context.Context, c chan *LokiQu
 				close(c)
 				return nil
 			}
+			if len(lq.Data.Result) > 0 {
+				lc.Logger.Debugf("(timer:%v) %d results / %d entries result[0] (uri:%s)", lc.currentTickerInterval, len(lq.Data.Result), len(lq.Data.Result[0].Entries), uri)
+			} else {
+				lc.Logger.Debugf("(timer:%v) no results (uri:%s)", lc.currentTickerInterval, uri)
+			}
 			if infinite {
-				if len(lq.Data.Result) > 0 { //as long as we get results, we keep decreasing the ticker
+				if len(lq.Data.Result) > 0 { //as long as we get results, we keep lowest ticker
 					lc.decreaseTicker(ticker)
 				} else {
 					lc.increaseTicker(ticker)
