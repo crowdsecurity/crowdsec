@@ -88,7 +88,7 @@ func DownloadHubIdx(indexPath string) ([]byte, error) {
 		// write it anyway, can't hurt
 	}
 
-	file, err := os.OpenFile(indexPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	file, err := os.OpenFile(indexPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 
 	if err != nil {
 		return nil, fmt.Errorf("while opening hub index file: %w", err)
@@ -255,7 +255,7 @@ func (h *Hub) DownloadItem(target *Item, overwrite bool) error {
 		log.Infof("%s : OK", target.Name)
 	}
 
-	f, err := os.OpenFile(tdir+"/"+target.RemotePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	f, err := os.OpenFile(tdir+"/"+target.RemotePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 	if err != nil {
 		return fmt.Errorf("while opening file: %w", err)
 	}

@@ -39,7 +39,7 @@ func downloadFile(url string, destPath string) error {
 		return fmt.Errorf("download response 'HTTP %d' : %s", resp.StatusCode, string(body))
 	}
 
-	file, err := os.OpenFile(destPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	file, err := os.OpenFile(destPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
 		return err
 	}

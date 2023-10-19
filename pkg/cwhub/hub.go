@@ -53,6 +53,7 @@ func (h Hub) displaySummary() {
 	for itemType := range h.Items {
 		msg += fmt.Sprintf("%d %s, ", len(h.Items[itemType]), itemType)
 	}
+
 	log.Info(strings.Trim(msg, ", "))
 
 	if h.skippedLocal > 0 || h.skippedTainted > 0 {
@@ -68,7 +69,9 @@ func DisplaySummary() error {
 	if err != nil {
 		return err
 	}
+
 	hub.displaySummary()
+
 	return nil
 }
 

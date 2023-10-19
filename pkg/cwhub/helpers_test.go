@@ -99,6 +99,7 @@ func TestUpgradeConfigInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 func getHubOrFail(t *testing.T, hubCfg *csconfig.HubCfg) *Hub {
 	hub, err := InitHub(hubCfg)
 	require.NoError(t, err, "failed to load hub index")
+
 	return hub
 }
 

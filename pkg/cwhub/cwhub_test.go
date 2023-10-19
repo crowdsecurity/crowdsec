@@ -115,13 +115,13 @@ func testHub(t *testing.T, update bool) *Hub {
 		InstallDataDir: filepath.Join(tmpDir, "installed-data"),
 	}
 
-	err = os.MkdirAll(hubCfg.HubDir, 0700)
+	err = os.MkdirAll(hubCfg.HubDir, 0o700)
 	require.NoError(t, err)
 
-	err = os.MkdirAll(hubCfg.InstallDir, 0700)
+	err = os.MkdirAll(hubCfg.InstallDir, 0o700)
 	require.NoError(t, err)
 
-	err = os.MkdirAll(hubCfg.InstallDataDir, 0700)
+	err = os.MkdirAll(hubCfg.InstallDataDir, 0o700)
 	require.NoError(t, err)
 
 	index, err := os.Create(hubCfg.HubIndexFile)
@@ -163,18 +163,11 @@ func envSetup(t *testing.T) *Hub {
 
 	hub := testHub(t, true)
 
-	// if err := os.RemoveAll(cfg.Hub.InstallDir); err != nil {
-	// 	log.Fatalf("failed to remove %s : %s", cfg.Hub.InstallDir, err)
-	// }
-	// if err := os.MkdirAll(cfg.Hub.InstallDir, 0700); err != nil {
-	// 	log.Fatalf("failed to mkdir %s : %s", cfg.Hub.InstallDir, err)
-	// }
 	return hub
 }
 
 func testInstallItem(hub *Hub, t *testing.T, item Item) {
 	// Install the parser
-
 	err := hub.DownloadLatest(&item, false, false)
 	require.NoError(t, err, "failed to download %s", item.Name)
 
@@ -304,6 +297,7 @@ func TestInstallCollection(t *testing.T) {
 		testUpdateItem(hub, t, it)
 		it = hub.Items[COLLECTIONS][it.Name]
 		testDisableItem(hub, t, it)
+
 		break
 	}
 }
