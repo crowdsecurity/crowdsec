@@ -10,7 +10,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
-
 const (
 	HubIndexFile = ".index.json"
 
@@ -26,13 +25,12 @@ var (
 	ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, COLLECTIONS}
 )
 
-
 type HubItems map[string]map[string]Item
 
 // Hub represents the runtime status of the hub (parsed items, etc.)
 type Hub struct {
-	Items HubItems
-	cfg   *csconfig.HubCfg
+	Items          HubItems
+	cfg            *csconfig.HubCfg
 	skippedLocal   int
 	skippedTainted int
 }
@@ -61,7 +59,6 @@ func (h Hub) displaySummary() {
 		log.Infof("unmanaged items: %d local, %d tainted", h.skippedLocal, h.skippedTainted)
 	}
 }
-
 
 // DisplaySummary prints a total count of the hub items.
 // It is a wrapper around HubIndex.displaySummary() to avoid exporting the hub singleton

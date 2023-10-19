@@ -57,7 +57,8 @@ func TestItemStatus(t *testing.T) {
 		require.Equal(t, "disabled,local", txt)
 	}
 
-	DisplaySummary()
+	err := DisplaySummary()
+	require.NoError(t, err)
 }
 
 func TestGetters(t *testing.T) {
@@ -103,14 +104,14 @@ func TestIndexDownload(t *testing.T) {
 }
 
 // testHub initializes a temporary hub with an empty json file, optionally updating it
-func testHub(t *testing.T, update bool) (*Hub) {
+func testHub(t *testing.T, update bool) *Hub {
 	tmpDir, err := os.MkdirTemp("", "testhub")
 	require.NoError(t, err)
 
 	hubCfg := &csconfig.HubCfg{
-		HubDir:        filepath.Join(tmpDir, "crowdsec", "hub"),
-		HubIndexFile:  filepath.Join(tmpDir, "crowdsec", "hub", ".index.json"),
-		InstallDir:    filepath.Join(tmpDir, "crowdsec"),
+		HubDir:         filepath.Join(tmpDir, "crowdsec", "hub"),
+		HubIndexFile:   filepath.Join(tmpDir, "crowdsec", "hub", ".index.json"),
+		InstallDir:     filepath.Join(tmpDir, "crowdsec"),
 		InstallDataDir: filepath.Join(tmpDir, "installed-data"),
 	}
 
@@ -147,7 +148,6 @@ func testHub(t *testing.T, update bool) (*Hub) {
 	return hub
 }
 
-
 func envSetup(t *testing.T) *Hub {
 	resetResponseByPath()
 	log.SetLevel(log.DebugLevel)
@@ -174,11 +174,8 @@ func envSetup(t *testing.T) *Hub {
 
 func testInstallItem(hub *Hub, t *testing.T, item Item) {
 	// Install the parser
-	
-	hub, err := GetHub()
-	require.NoError(t, err)
 
-	err = hub.DownloadLatest(&item, false, false)
+	err := hub.DownloadLatest(&item, false, false)
 	require.NoError(t, err, "failed to download %s", item.Name)
 
 	_, err = hub.LocalSync()
@@ -198,9 +195,6 @@ func testInstallItem(hub *Hub, t *testing.T, item Item) {
 }
 
 func testTaintItem(hub *Hub, t *testing.T, item Item) {
-	hub, err := GetHub()
-	require.NoError(t, err)
-
 	assert.False(t, hub.Items[item.Type][item.Name].Tainted, "%s should not be tainted", item.Name)
 
 	f, err := os.OpenFile(item.LocalPath, os.O_APPEND|os.O_WRONLY, 0600)
@@ -219,13 +213,10 @@ func testTaintItem(hub *Hub, t *testing.T, item Item) {
 }
 
 func testUpdateItem(hub *Hub, t *testing.T, item Item) {
-	hub, err := GetHub()
-	require.NoError(t, err)
-
 	assert.False(t, hub.Items[item.Type][item.Name].UpToDate, "%s should not be up-to-date", item.Name)
 
 	// Update it + check status
-	err = hub.DownloadLatest(&item, true, true)
+	err := hub.DownloadLatest(&item, true, true)
 	require.NoError(t, err, "failed to update %s", item.Name)
 
 	// Local sync and check status
@@ -237,13 +228,10 @@ func testUpdateItem(hub *Hub, t *testing.T, item Item) {
 }
 
 func testDisableItem(hub *Hub, t *testing.T, item Item) {
-	hub, err := GetHub()
-	require.NoError(t, err)
-
 	assert.True(t, hub.Items[item.Type][item.Name].Installed, "%s should be installed", item.Name)
 
 	// Remove
-	err = hub.DisableItem(&item, false, false)
+	err := hub.DisableItem(&item, false, false)
 	require.NoError(t, err, "failed to disable %s", item.Name)
 
 	// Local sync and check status

@@ -15,7 +15,6 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-
 var (
 	ErrMissingReference = errors.New("Reference(s) missing in collection")
 
@@ -40,7 +39,7 @@ type Item struct {
 	FileName             string   `json:"file_name,omitempty"`                                                      // the filename, ie. apache2-logs.yaml
 	Description          string   `json:"description,omitempty"            yaml:"description,omitempty"`            // as seen in .index.json
 	Author               string   `json:"author,omitempty"`                                                         // as seen in .index.json
-	References           []string `json:"references,omitempty"             yaml:"references,omitempty"`              // as seen in .index.json
+	References           []string `json:"references,omitempty"             yaml:"references,omitempty"`             // as seen in .index.json
 	BelongsToCollections []string `json:"belongs_to_collections,omitempty" yaml:"belongs_to_collections,omitempty"` // parent collection if any
 
 	// remote (hub) info
@@ -249,4 +248,3 @@ func (h *Hub) GetInstalledItemsAsString(itemType string) ([]string, error) {
 
 	return retStr, nil
 }
-
