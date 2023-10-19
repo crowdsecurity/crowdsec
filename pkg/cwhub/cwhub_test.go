@@ -28,6 +28,69 @@ import (
 
 var responseByPath map[string]string
 
+// testHub initializes a temporary hub with an empty json file, optionally updating it
+func testHub(t *testing.T, update bool) *Hub {
+	tmpDir, err := os.MkdirTemp("", "testhub")
+	require.NoError(t, err)
+
+	hubCfg := &csconfig.HubCfg{
+		HubDir:         filepath.Join(tmpDir, "crowdsec", "hub"),
+		HubIndexFile:   filepath.Join(tmpDir, "crowdsec", "hub", ".index.json"),
+		InstallDir:     filepath.Join(tmpDir, "crowdsec"),
+		InstallDataDir: filepath.Join(tmpDir, "installed-data"),
+	}
+
+	err = os.MkdirAll(hubCfg.HubDir, 0o700)
+	require.NoError(t, err)
+
+	err = os.MkdirAll(hubCfg.InstallDir, 0o700)
+	require.NoError(t, err)
+
+	err = os.MkdirAll(hubCfg.InstallDataDir, 0o700)
+	require.NoError(t, err)
+
+	index, err := os.Create(hubCfg.HubIndexFile)
+	require.NoError(t, err)
+
+	_, err = index.WriteString(`{}`)
+	require.NoError(t, err)
+
+	index.Close()
+
+	t.Cleanup(func() {
+		os.RemoveAll(tmpDir)
+	})
+
+	constructor := InitHub
+
+	if update {
+		constructor = InitHubUpdate
+	}
+
+	hub, err := constructor(hubCfg)
+	require.NoError(t, err)
+
+	return hub
+}
+
+func envSetup(t *testing.T) *Hub {
+	resetResponseByPath()
+	log.SetLevel(log.DebugLevel)
+
+	defaultTransport := http.DefaultClient.Transport
+
+	t.Cleanup(func() {
+		http.DefaultClient.Transport = defaultTransport
+	})
+
+	// Mock the http client
+	http.DefaultClient.Transport = newMockTransport()
+
+	hub := testHub(t, true)
+
+	return hub
+}
+
 func TestItemStatus(t *testing.T) {
 	hub := envSetup(t)
 
@@ -101,69 +164,6 @@ func TestIndexDownload(t *testing.T) {
 
 	_, err = GetHub()
 	require.NoError(t, err, "failed to load hub index")
-}
-
-// testHub initializes a temporary hub with an empty json file, optionally updating it
-func testHub(t *testing.T, update bool) *Hub {
-	tmpDir, err := os.MkdirTemp("", "testhub")
-	require.NoError(t, err)
-
-	hubCfg := &csconfig.HubCfg{
-		HubDir:         filepath.Join(tmpDir, "crowdsec", "hub"),
-		HubIndexFile:   filepath.Join(tmpDir, "crowdsec", "hub", ".index.json"),
-		InstallDir:     filepath.Join(tmpDir, "crowdsec"),
-		InstallDataDir: filepath.Join(tmpDir, "installed-data"),
-	}
-
-	err = os.MkdirAll(hubCfg.HubDir, 0o700)
-	require.NoError(t, err)
-
-	err = os.MkdirAll(hubCfg.InstallDir, 0o700)
-	require.NoError(t, err)
-
-	err = os.MkdirAll(hubCfg.InstallDataDir, 0o700)
-	require.NoError(t, err)
-
-	index, err := os.Create(hubCfg.HubIndexFile)
-	require.NoError(t, err)
-
-	_, err = index.WriteString(`{}`)
-	require.NoError(t, err)
-
-	index.Close()
-
-	t.Cleanup(func() {
-		os.RemoveAll(tmpDir)
-	})
-
-	constructor := InitHub
-
-	if update {
-		constructor = InitHubUpdate
-	}
-
-	hub, err := constructor(hubCfg)
-	require.NoError(t, err)
-
-	return hub
-}
-
-func envSetup(t *testing.T) *Hub {
-	resetResponseByPath()
-	log.SetLevel(log.DebugLevel)
-
-	defaultTransport := http.DefaultClient.Transport
-
-	t.Cleanup(func() {
-		http.DefaultClient.Transport = defaultTransport
-	})
-
-	// Mock the http client
-	http.DefaultClient.Transport = newMockTransport()
-
-	hub := testHub(t, true)
-
-	return hub
 }
 
 func testInstallItem(hub *Hub, t *testing.T, item Item) {

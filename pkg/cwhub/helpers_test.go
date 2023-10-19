@@ -14,8 +14,6 @@ func TestUpgradeConfigNewScenarioInCollection(t *testing.T) {
 	hub := envSetup(t)
 
 	// fresh install of collection
-	hub = getHubOrFail(t, hub.cfg)
-
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
 
@@ -59,8 +57,6 @@ func TestUpgradeConfigInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 	hub := envSetup(t)
 
 	// fresh install of collection
-	hub = getHubOrFail(t, hub.cfg)
-
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
 	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
@@ -110,8 +106,6 @@ func TestUpgradeConfigNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *
 	hub := envSetup(t)
 
 	// fresh install of collection
-	hub = getHubOrFail(t, hub.cfg)
-
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
 	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
