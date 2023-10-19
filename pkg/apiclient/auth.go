@@ -96,10 +96,16 @@ func (r retryRoundTripper) ShouldRetry(statusCode int) bool {
 func (r retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	var resp *http.Response
 	var err error
+
 	backoff := 0
-	for i := 0; i < r.maxAttempts; i++ {
+	maxAttempts := r.maxAttempts
+	if fflag.DisableHttpRetryBackoff.IsEnabled() {
+		maxAttempts = 1
+	}
+
+	for i := 0; i < maxAttempts; i++ {
 		if i > 0 {
-			if r.withBackOff && !fflag.DisableHttpRetryBackoff.IsEnabled() {
+			if r.withBackOff {
 				backoff += 10 + rand.Intn(20)
 			}
 			log.Infof("retrying in %d seconds (attempt %d of %d)", backoff, i+1, r.maxAttempts)
@@ -115,7 +121,10 @@ func (r retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 		clonedReq := cloneRequest(req)
 		resp, err = r.next.RoundTrip(clonedReq)
 		if err != nil {
-			log.Errorf("error while performing request: %s; %d retries left", err, r.maxAttempts-i-1)
+			left := maxAttempts - i - 1
+			if left > 0 {
+				log.Errorf("error while performing request: %s; %d retries left", err, left)
+			}
 			continue
 		}
 		if !r.ShouldRetry(resp.StatusCode) {
@@ -264,7 +273,9 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		return resp, fmt.Errorf("performing jwt auth: %w", err)
 	}
 
-	log.Debugf("resp-jwt: %d", resp.StatusCode)
+	if resp != nil {
+		log.Debugf("resp-jwt: %d", resp.StatusCode)
+	}
 
 	return resp, nil
 }

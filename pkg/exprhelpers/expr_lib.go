@@ -434,6 +434,13 @@ var exprFuncs = []exprCustomFunc{
 			new(func() (string, error)),
 		},
 	},
+	{
+		name:     "FloatApproxEqual",
+		function: FloatApproxEqual,
+		signature: []interface{}{
+			new(func(float64, float64) bool),
+		},
+	},
 }
 
 //go 1.20 "CutPrefix":              strings.CutPrefix,

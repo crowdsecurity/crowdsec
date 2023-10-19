@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/fatih/color"
@@ -11,7 +12,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
-	"golang.org/x/exp/slices"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -53,11 +53,11 @@ func initConfig() {
 	}
 
 	if !slices.Contains(NoNeedConfig, os.Args[1]) {
+		log.Debugf("Using %s as configuration file", ConfigFilePath)
 		csConfig, mergedConfig, err = csconfig.NewConfig(ConfigFilePath, false, false, true)
 		if err != nil {
 			log.Fatal(err)
 		}
-		log.Debugf("Using %s as configuration file", ConfigFilePath)
 		if err := csConfig.LoadCSCLI(); err != nil {
 			log.Fatal(err)
 		}
@@ -188,7 +188,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	/*usage*/
 	var cmdVersion = &cobra.Command{
 		Use:               "version",
-		Short:             "Display version and exit.",
+		Short:             "Display version",
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {

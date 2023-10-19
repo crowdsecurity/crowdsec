@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"net"
 	"regexp"
 	"time"
 
@@ -274,6 +275,21 @@ func (e *Event) GetMeta(key string) string {
 		}
 	}
 	return ""
+}
+
+func (e *Event) ParseIPSources() []net.IP {
+	var srcs []net.IP
+	switch e.Type {
+	case LOG:
+		if _, ok := e.Meta["source_ip"]; ok {
+			srcs = append(srcs, net.ParseIP(e.Meta["source_ip"]))
+		}
+	case OVFLW:
+		for k := range e.Overflow.Sources {
+			srcs = append(srcs, net.ParseIP(k))
+		}
+	}
+	return srcs
 }
 
 // Move in leakybuckets

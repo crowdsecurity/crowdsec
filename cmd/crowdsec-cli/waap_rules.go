@@ -31,9 +31,7 @@ cscli waap-rules remove crowdsecurity/core-rule-set
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 
-			if err := cwhub.SetHubBranch(); err != nil {
-				return fmt.Errorf("error while setting hub branch: %s", err)
-			}
+			cwhub.SetHubBranch()
 
 			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Info("Run 'sudo cscli hub update' to get the hub index")

@@ -39,7 +39,7 @@ func NewConsoleCmd() *cobra.Command {
 			if err := require.CAPI(csConfig); err != nil {
 				return err
 			}
-			if err := require.Enrolled(csConfig); err != nil {
+			if err := require.CAPIRegistered(csConfig); err != nil {
 				return err
 			}
 			return nil
@@ -64,25 +64,20 @@ After running this command your will need to validate the enrollment in the weba
 `,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			password := strfmt.Password(csConfig.API.Server.OnlineClient.Credentials.Password)
 			apiURL, err := url.Parse(csConfig.API.Server.OnlineClient.Credentials.URL)
 			if err != nil {
-				log.Fatalf("Could not parse CAPI URL : %s", err)
+				return fmt.Errorf("could not parse CAPI URL: %s", err)
 			}
 
-			if err := csConfig.LoadHub(); err != nil {
-				log.Fatal(err)
+			if err := require.Hub(csConfig); err != nil {
+				return err
 			}
 
-			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-				log.Fatalf("Failed to load hub index : %s", err)
-				log.Info("Run 'sudo cscli hub update' to get the hub index")
-			}
-
-			scenarios, err := cwhub.GetInstalledScenariosAsString()
+			scenarios, err := cwhub.GetInstalledItemsAsString(cwhub.SCENARIOS)
 			if err != nil {
-				log.Fatalf("failed to get scenarios : %s", err)
+				return fmt.Errorf("failed to get installed scenarios: %s", err)
 			}
 
 			if len(scenarios) == 0 {
@@ -99,20 +94,21 @@ After running this command your will need to validate the enrollment in the weba
 			})
 			resp, err := c.Auth.EnrollWatcher(context.Background(), args[0], name, tags, overwrite)
 			if err != nil {
-				log.Fatalf("Could not enroll instance: %s", err)
+				return fmt.Errorf("could not enroll instance: %s", err)
 			}
 			if resp.Response.StatusCode == 200 && !overwrite {
 				log.Warning("Instance already enrolled. You can use '--overwrite' to force enroll")
-				return
+				return nil
 			}
 
-			SetConsoleOpts(csconfig.CONSOLE_CONFIGS, true)
-			if err := csConfig.API.Server.DumpConsoleConfig(); err != nil {
-				log.Fatalf("failed writing console config : %s", err)
+			if err := SetConsoleOpts([]string{csconfig.SEND_MANUAL_SCENARIOS, csconfig.SEND_TAINTED_SCENARIOS}, true); err != nil {
+				return err
 			}
-			log.Infof("Enabled tainted&manual alerts sharing, see 'cscli console status'.")
-			log.Infof("Watcher successfully enrolled. Visit https://app.crowdsec.net to accept it.")
-			log.Infof("Please restart crowdsec after accepting the enrollment.")
+
+			log.Info("Enabled tainted&manual alerts sharing, see 'cscli console status'.")
+			log.Info("Watcher successfully enrolled. Visit https://app.crowdsec.net to accept it.")
+			log.Info("Please restart crowdsec after accepting the enrollment.")
+			return nil
 		},
 	}
 	cmdEnroll.Flags().StringVarP(&name, "name", "n", "", "Name to display in the console")
@@ -130,21 +126,23 @@ After running this command your will need to validate the enrollment in the weba
 Enable given information push to the central API. Allows to empower the console`,
 		ValidArgs:         csconfig.CONSOLE_CONFIGS,
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if enableAll {
-				SetConsoleOpts(csconfig.CONSOLE_CONFIGS, true)
+				if err := SetConsoleOpts(csconfig.CONSOLE_CONFIGS, true); err != nil {
+					return err
+				}
 				log.Infof("All features have been enabled successfully")
 			} else {
 				if len(args) == 0 {
-					log.Fatalf("You must specify at least one feature to enable")
+					return fmt.Errorf("you must specify at least one feature to enable")
 				}
-				SetConsoleOpts(args, true)
+				if err := SetConsoleOpts(args, true); err != nil {
+					return err
+				}
 				log.Infof("%v have been enabled", args)
 			}
-			if err := csConfig.API.Server.DumpConsoleConfig(); err != nil {
-				log.Fatalf("failed writing console config : %s", err)
-			}
 			log.Infof(ReloadMessage())
+			return nil
 		},
 	}
 	cmdEnable.Flags().BoolVarP(&enableAll, "all", "a", false, "Enable all console options")
@@ -157,49 +155,55 @@ Enable given information push to the central API. Allows to empower the console`
 		Long: `
 Disable given information push to the central API.`,
 		ValidArgs:         csconfig.CONSOLE_CONFIGS,
-		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if disableAll {
-				SetConsoleOpts(csconfig.CONSOLE_CONFIGS, false)
-			} else {
-				SetConsoleOpts(args, false)
-			}
-
-			if err := csConfig.API.Server.DumpConsoleConfig(); err != nil {
-				log.Fatalf("failed writing console config : %s", err)
-			}
-			if disableAll {
+				if err := SetConsoleOpts(csconfig.CONSOLE_CONFIGS, false); err != nil {
+					return err
+				}
 				log.Infof("All features have been disabled")
 			} else {
+				if err := SetConsoleOpts(args, false); err != nil {
+					return err
+				}
 				log.Infof("%v have been disabled", args)
 			}
+
 			log.Infof(ReloadMessage())
+			return nil
 		},
 	}
 	cmdDisable.Flags().BoolVarP(&disableAll, "all", "a", false, "Disable all console options")
 	cmdConsole.AddCommand(cmdDisable)
 
 	cmdConsoleStatus := &cobra.Command{
-		Use:               "status [option]",
-		Short:             "Shows status of one or all console options",
+		Use:               "status",
+		Short:             "Shows status of the console options",
 		Example:           `sudo cscli console status`,
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			switch csConfig.Cscli.Output {
 			case "human":
 				cmdConsoleStatusTable(color.Output, *csConfig)
 			case "json":
-				data, err := json.MarshalIndent(csConfig.API.Server.ConsoleConfig, "", "  ")
-				if err != nil {
-					log.Fatalf("failed to marshal configuration: %s", err)
+				c := csConfig.API.Server.ConsoleConfig
+				out := map[string](*bool){
+					csconfig.SEND_MANUAL_SCENARIOS: c.ShareManualDecisions,
+					csconfig.SEND_CUSTOM_SCENARIOS: c.ShareCustomScenarios,
+					csconfig.SEND_TAINTED_SCENARIOS: c.ShareTaintedScenarios,
+					csconfig.SEND_CONTEXT: c.ShareContext,
+					csconfig.CONSOLE_MANAGEMENT: c.ConsoleManagement,
 				}
-				fmt.Printf("%s\n", string(data))
+				data, err := json.MarshalIndent(out, "", "  ")
+				if err != nil {
+					return fmt.Errorf("failed to marshal configuration: %s", err)
+				}
+				fmt.Println(string(data))
 			case "raw":
 				csvwriter := csv.NewWriter(os.Stdout)
 				err := csvwriter.Write([]string{"option", "enabled"})
 				if err != nil {
-					log.Fatal(err)
+					return err
 				}
 
 				rows := [][]string{
@@ -212,11 +216,12 @@ Disable given information push to the central API.`,
 				for _, row := range rows {
 					err = csvwriter.Write(row)
 					if err != nil {
-						log.Fatal(err)
+						return err
 					}
 				}
 				csvwriter.Flush()
 			}
+			return nil
 		},
 	}
 	cmdConsole.AddCommand(cmdConsoleStatus)
@@ -224,7 +229,25 @@ Disable given information push to the central API.`,
 	return cmdConsole
 }
 
-func SetConsoleOpts(args []string, wanted bool) {
+func dumpConsoleConfig(c *csconfig.LocalApiServerCfg) error {
+	out, err := yaml.Marshal(c.ConsoleConfig)
+	if err != nil {
+		return fmt.Errorf("while marshaling ConsoleConfig (for %s): %w", c.ConsoleConfigPath, err)
+	}
+
+	if c.ConsoleConfigPath == "" {
+		c.ConsoleConfigPath = csconfig.DefaultConsoleConfigFilePath
+		log.Debugf("Empty console_path, defaulting to %s", c.ConsoleConfigPath)
+	}
+
+	if err := os.WriteFile(c.ConsoleConfigPath, out, 0600); err != nil {
+		return fmt.Errorf("while dumping console config to %s: %w", c.ConsoleConfigPath, err)
+	}
+
+	return nil
+}
+
+func SetConsoleOpts(args []string, wanted bool) error {
 	for _, arg := range args {
 		switch arg {
 		case csconfig.CONSOLE_MANAGEMENT:
@@ -255,12 +278,12 @@ func SetConsoleOpts(args []string, wanted bool) {
 				if changed {
 					fileContent, err := yaml.Marshal(csConfig.API.Server.OnlineClient.Credentials)
 					if err != nil {
-						log.Fatalf("Cannot marshal credentials: %s", err)
+						return fmt.Errorf("cannot marshal credentials: %s", err)
 					}
 					log.Infof("Updating credentials file: %s", csConfig.API.Server.OnlineClient.CredentialsFilePath)
 					err = os.WriteFile(csConfig.API.Server.OnlineClient.CredentialsFilePath, fileContent, 0600)
 					if err != nil {
-						log.Fatalf("Cannot write credentials file: %s", err)
+						return fmt.Errorf("cannot write credentials file: %s", err)
 					}
 				}
 			}
@@ -317,8 +340,13 @@ func SetConsoleOpts(args []string, wanted bool) {
 				csConfig.API.Server.ConsoleConfig.ShareContext = ptr.Of(wanted)
 			}
 		default:
-			log.Fatalf("unknown flag %s", arg)
+			return fmt.Errorf("unknown flag %s", arg)
 		}
 	}
 
+	if err := dumpConsoleConfig(csConfig.API.Server); err != nil {
+		return fmt.Errorf("failed writing console config: %s", err)
+	}
+
+	return nil
 }

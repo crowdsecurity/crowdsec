@@ -284,14 +284,12 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 		bucketFactory.logger = clog.WithFields(log.Fields{
 			"cfg":  bucketFactory.BucketName,
 			"name": bucketFactory.Name,
-			"file": bucketFactory.Filename,
 		})
 	} else {
 		/* else bind it to the default one (might find something more elegant here)*/
 		bucketFactory.logger = log.WithFields(log.Fields{
 			"cfg":  bucketFactory.BucketName,
 			"name": bucketFactory.Name,
-			"file": bucketFactory.Filename,
 		})
 	}
 

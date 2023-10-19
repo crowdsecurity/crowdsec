@@ -86,6 +86,19 @@ func TestNewProfile(t *testing.T) {
 			},
 			expectedNbProfile: 1,
 		},
+		{
+			name: "filter ok and no duration",
+			profileCfg: &csconfig.ProfileCfg{
+				Filters: []string{
+					"1==1",
+				},
+				Debug: &boolTrue,
+				Decisions: []models.Decision{
+					{Type: &typ, Scope: &scope, Simulated: &boolFalse},
+				},
+			},
+			expectedNbProfile: 1,
+		},
 	}
 
 	for _, test := range tests {

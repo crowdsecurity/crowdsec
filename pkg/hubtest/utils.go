@@ -4,18 +4,29 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 )
 
-func Copy(sourceFile string, destinationFile string) error {
-	input, err := os.ReadFile(sourceFile)
+func sortedMapKeys[V any](m map[string]V) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+func Copy(src string, dst string) error {
+	content, err := os.ReadFile(src)
 	if err != nil {
 		return err
 	}
 
-	err = os.WriteFile(destinationFile, input, 0644)
+	err = os.WriteFile(dst, content, 0644)
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -60,6 +71,7 @@ func CopyDir(src string, dest string) error {
 	if err != nil {
 		return err
 	}
+
 	if !file.IsDir() {
 		return fmt.Errorf("Source " + file.Name() + " is not a directory!")
 	}
@@ -75,32 +87,15 @@ func CopyDir(src string, dest string) error {
 	}
 
 	for _, f := range files {
-
 		if f.IsDir() {
-
-			err = CopyDir(src+"/"+f.Name(), dest+"/"+f.Name())
-			if err != nil {
+			if err = CopyDir(filepath.Join(src, f.Name()), filepath.Join(dest, f.Name())); err != nil {
 				return err
 			}
-
+		} else {
+			if err = Copy(filepath.Join(src, f.Name()), filepath.Join(dest, f.Name())); err != nil {
+				return err
+			}
 		}
-
-		if !f.IsDir() {
-
-			content, err := os.ReadFile(src + "/" + f.Name())
-			if err != nil {
-				return err
-
-			}
-
-			err = os.WriteFile(dest+"/"+f.Name(), content, 0755)
-			if err != nil {
-				return err
-
-			}
-
-		}
-
 	}
 
 	return nil

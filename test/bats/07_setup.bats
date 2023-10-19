@@ -7,6 +7,8 @@ setup_file() {
     load "../lib/setup_file.sh"
     ./instance-data load
     HUB_DIR=$(config_get '.config_paths.hub_dir')
+    # remove trailing slash if any (like in default config.yaml from package)
+    HUB_DIR=${HUB_DIR%/}
     export HUB_DIR
     DETECT_YAML="${HUB_DIR}/detect.yaml"
     export DETECT_YAML
@@ -68,7 +70,11 @@ teardown() {
     assert_line --partial "--skip-service strings      ignore a service, don't recommend hub/datasources (can be repeated)"
 
     rune -1 cscli setup detect --detect-config /path/does/not/exist
-    assert_stderr --partial "detecting services: while reading file: open /path/does/not/exist: no such file or directory"
+    assert_stderr --partial "open /path/does/not/exist: no such file or directory"
+
+    # - is stdin
+    rune -1 cscli setup detect --detect-config - <<< "{}"
+    assert_stderr --partial "detecting services: missing version tag (must be 1.0)"
 
     # rm -f "${HUB_DIR}/detect.yaml"
 }
@@ -142,7 +148,7 @@ teardown() {
 	EOT
 
     rune -1 cscli setup detect --list-supported-services --detect-config "$tempfile"
-    assert_stderr --partial "while parsing ${tempfile}: yaml: unmarshal errors:"
+    assert_stderr --partial "yaml: unmarshal errors:"
 
     rm -f "$tempfile"
 }

@@ -55,7 +55,6 @@ func (s *ScenarioAssert) AutoGenFromFile(filename string) (string, error) {
 }
 
 func (s *ScenarioAssert) LoadTest(filename string, bucketpour string) error {
-	var err error
 	bucketDump, err := LoadScenarioDump(filename)
 	if err != nil {
 		return fmt.Errorf("loading scenario dump file '%s': %+v", filename, err)
@@ -206,7 +205,7 @@ func (s *ScenarioAssert) AutoGenScenarioAssert() string {
 		}
 		for evtIndex, evt := range event.Overflow.Alert.Events {
 			for _, meta := range evt.Meta {
-				ret += fmt.Sprintf(`results[%d].Overflow.Alert.Events[%d].GetMeta("%s") == "%s"`+"\n", eventIndex, evtIndex, meta.Key, meta.Value)
+				ret += fmt.Sprintf(`results[%d].Overflow.Alert.Events[%d].GetMeta("%s") == "%s"`+"\n", eventIndex, evtIndex, meta.Key, Escape(meta.Value))
 			}
 		}
 		ret += fmt.Sprintf(`results[%d].Overflow.Alert.GetScenario() == "%s"`+"\n", eventIndex, *event.Overflow.Alert.Scenario)

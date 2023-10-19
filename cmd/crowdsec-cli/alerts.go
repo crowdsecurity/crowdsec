@@ -126,6 +126,12 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 		}
 		csvwriter.Flush()
 	} else if csConfig.Cscli.Output == "json" {
+		if *alerts == nil {
+			// avoid returning "null" in json
+			// could be cleaner if we used slice of alerts directly
+			fmt.Println("[]")
+			return nil
+		}
 		x, _ := json.MarshalIndent(alerts, "", " ")
 		fmt.Printf("%s", string(x))
 	} else if csConfig.Cscli.Output == "human" {
@@ -208,6 +214,7 @@ func NewAlertsCmd() *cobra.Command {
 		Short:             "Manage alerts",
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
+		Aliases:           []string{"alert"},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			if err := csConfig.LoadAPIClient(); err != nil {

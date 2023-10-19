@@ -103,7 +103,6 @@ func (p *ParserAssert) AssertFile(testFile string) error {
 		p.NbAssert += 1
 		if !ok {
 			log.Debugf("%s is FALSE", scanner.Text())
-			//fmt.SPrintf(" %s '%s'\n", emoji.RedSquare, scanner.Text())
 			failedAssert := &AssertFail{
 				File:       p.File,
 				Line:       nbLine,
@@ -112,10 +111,13 @@ func (p *ParserAssert) AssertFile(testFile string) error {
 			}
 			variableRE := regexp.MustCompile(`(?P<variable>[^  =]+) == .*`)
 			match := variableRE.FindStringSubmatch(scanner.Text())
+			variable := ""
 			if len(match) == 0 {
 				log.Infof("Couldn't get variable of line '%s'", scanner.Text())
+				variable = scanner.Text()
+			} else {
+				variable = match[1]
 			}
-			variable := match[1]
 			result, err := p.EvalExpression(variable)
 			if err != nil {
 				log.Errorf("unable to evaluate variable '%s': %s", variable, err)
@@ -123,6 +125,7 @@ func (p *ParserAssert) AssertFile(testFile string) error {
 			}
 			failedAssert.Debug[variable] = result
 			p.Fails = append(p.Fails, *failedAssert)
+
 			continue
 		}
 		//fmt.Printf(" %s '%s'\n", emoji.GreenSquare, scanner.Text())
@@ -154,13 +157,14 @@ func (p *ParserAssert) RunExpression(expression string) (interface{}, error) {
 	env := map[string]interface{}{"results": *p.TestData}
 
 	if runtimeFilter, err = expr.Compile(expression, exprhelpers.GetExprOptions(env)...); err != nil {
+		log.Errorf("failed to compile '%s' : %s", expression, err)
 		return output, err
 	}
 
 	//dump opcode in trace level
 	log.Tracef("%s", runtimeFilter.Disassemble())
 
-	output, err = expr.Run(runtimeFilter, map[string]interface{}{"results": *p.TestData})
+	output, err = expr.Run(runtimeFilter, env)
 	if err != nil {
 		log.Warningf("running : %s", expression)
 		log.Warningf("runtime error : %s", err)
@@ -228,32 +232,40 @@ func (p *ParserAssert) AutoGenParserAssert() string {
 				if !result.Success {
 					continue
 				}
-				for pkey, pval := range result.Evt.Parsed {
+				for _, pkey := range sortedMapKeys(result.Evt.Parsed) {
+					pval := result.Evt.Parsed[pkey]
 					if pval == "" {
 						continue
 					}
 					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Parsed["%s"] == "%s"`+"\n", stage, parser, pidx, pkey, Escape(pval))
 				}
-				for mkey, mval := range result.Evt.Meta {
+				for _, mkey := range sortedMapKeys(result.Evt.Meta) {
+					mval := result.Evt.Meta[mkey]
 					if mval == "" {
 						continue
 					}
 					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Meta["%s"] == "%s"`+"\n", stage, parser, pidx, mkey, Escape(mval))
 				}
-				for ekey, eval := range result.Evt.Enriched {
+				for _, ekey := range sortedMapKeys(result.Evt.Enriched) {
+					eval := result.Evt.Enriched[ekey]
 					if eval == "" {
 						continue
 					}
 					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Enriched["%s"] == "%s"`+"\n", stage, parser, pidx, ekey, Escape(eval))
 				}
-				for ekey, eval := range result.Evt.Unmarshaled {
-					if eval == "" {
+				for _, ukey := range sortedMapKeys(result.Evt.Unmarshaled) {
+					uval := result.Evt.Unmarshaled[ukey]
+					if uval == "" {
 						continue
 					}
-					base := fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Unmarshaled["%s"]`, stage, parser, pidx, ekey)
-					for _, line := range p.buildUnmarshaledAssert("", eval) {
-						ret += base + line
+					base := fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Unmarshaled["%s"]`, stage, parser, pidx, ukey)
+					for _, line := range p.buildUnmarshaledAssert(base, uval) {
+						ret += line
 					}
+				}
+				ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Whitelisted == %t`+"\n", stage, parser, pidx, result.Evt.Whitelisted)
+				if result.Evt.WhitelistReason != "" {
+					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.WhitelistReason == "%s"`+"\n", stage, parser, pidx, Escape(result.Evt.WhitelistReason))
 				}
 			}
 		}
@@ -280,7 +292,8 @@ func (p *ParserAssert) buildUnmarshaledAssert(ekey string, eval interface{}) []s
 	case int:
 		ret = append(ret, fmt.Sprintf(`%s == %d`+"\n", ekey, val))
 	case float64:
-		ret = append(ret, fmt.Sprintf(`%s == %f`+"\n", ekey, val))
+		ret = append(ret, fmt.Sprintf(`FloatApproxEqual(%s, %f)`+"\n",
+			ekey, val))
 	default:
 		log.Warningf("unknown type '%T' for key '%s'", val, ekey)
 	}
@@ -312,9 +325,14 @@ func LoadParserDump(filepath string) (*ParserResults, error) {
 		stages = append(stages, k)
 	}
 	sort.Strings(stages)
-	/*the very last one is set to 'success' which is just a bool indicating if the line was successfully parsed*/
-	lastStage := stages[len(stages)-2]
-
+	var lastStage string
+	//Loop over stages to find last successful one with at least one parser
+	for i := len(stages) - 2; i >= 0; i-- {
+		if len(pdump[stages[i]]) != 0 {
+			lastStage = stages[i]
+			break
+		}
+	}
 	parsers := make([]string, 0, len(pdump[lastStage]))
 	for k := range pdump[lastStage] {
 		parsers = append(parsers, k)
