@@ -1,6 +1,7 @@
 package cwhub
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -65,6 +67,43 @@ func GetData(data []*types.DataSource, dataDir string) error {
 		err := downloadFile(dataS.SourceURL, destPath)
 		if err != nil {
 			return err
+		}
+	}
+
+	return nil
+}
+
+// downloadData downloads the data files for an item
+func downloadData(dataFolder string, force bool, reader io.Reader) error {
+	var err error
+
+	dec := yaml.NewDecoder(reader)
+
+	for {
+		data := &DataSet{}
+
+		err = dec.Decode(data)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+
+			return fmt.Errorf("while reading file: %w", err)
+		}
+
+		download := false
+
+		for _, dataS := range data.Data {
+			if _, err = os.Stat(filepath.Join(dataFolder, dataS.DestPath)); os.IsNotExist(err) {
+				download = true
+			}
+		}
+
+		if download || force {
+			err = GetData(data.Data, dataFolder)
+			if err != nil {
+				return fmt.Errorf("while getting data: %w", err)
+			}
 		}
 	}
 

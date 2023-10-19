@@ -1,8 +1,13 @@
 package cwhub
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -10,22 +15,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
-const (
-	HubIndexFile = ".index.json"
-
-	// managed item types
-	COLLECTIONS   = "collections"
-	PARSERS       = "parsers"
-	POSTOVERFLOWS = "postoverflows"
-	SCENARIOS     = "scenarios"
-)
-
-var (
-	// XXX: The order is important, as it is used to range over sub-items in collections
-	ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, COLLECTIONS}
-)
-
-type HubItems map[string]map[string]Item
+const HubIndexFile = ".index.json"
 
 // Hub represents the runtime status of the hub (parsed items, etc.)
 type Hub struct {
@@ -35,7 +25,10 @@ type Hub struct {
 	skippedTainted int
 }
 
-var theHub *Hub
+var (
+	theHub           *Hub
+	ErrIndexNotFound = fmt.Errorf("index not found")
+)
 
 // GetHub returns the hub singleton
 // it returns an error if it's not initialized to avoid nil dereference
@@ -47,35 +40,129 @@ func GetHub() (*Hub, error) {
 	return theHub, nil
 }
 
-// displaySummary prints a total count of the hub items
-func (h Hub) displaySummary() {
-	msg := "Loaded: "
-	for itemType := range h.Items {
-		msg += fmt.Sprintf("%d %s, ", len(h.Items[itemType]), itemType)
+// InitHub initializes the Hub, syncs the local state and returns the singleton for immediate use
+func InitHub(cfg *csconfig.HubCfg) (*Hub, error) {
+	if cfg == nil {
+		return nil, fmt.Errorf("no configuration found for hub")
 	}
 
-	log.Info(strings.Trim(msg, ", "))
+	log.Debugf("loading hub idx %s", cfg.HubIndexFile)
 
-	if h.skippedLocal > 0 || h.skippedTainted > 0 {
-		log.Infof("unmanaged items: %d local, %d tainted", h.skippedLocal, h.skippedTainted)
-	}
-}
-
-// DisplaySummary prints a total count of the hub items.
-// It is a wrapper around HubIndex.displaySummary() to avoid exporting the hub singleton
-// XXX: to be removed later
-func DisplaySummary() error {
-	hub, err := GetHub()
+	bidx, err := os.ReadFile(cfg.HubIndexFile)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("unable to read index file: %w", err)
 	}
 
-	hub.displaySummary()
+	ret, err := ParseIndex(bidx)
+	if err != nil {
+		if !errors.Is(err, ErrMissingReference) {
+			return nil, fmt.Errorf("unable to load existing index: %w", err)
+		}
 
-	return nil
+		// XXX: why the error check if we bail out anyway?
+		return nil, err
+	}
+
+	theHub = &Hub{
+		Items: ret,
+		cfg:   cfg,
+	}
+
+	_, err = theHub.LocalSync()
+	if err != nil {
+		return nil, fmt.Errorf("failed to sync Hub index with local deployment : %w", err)
+	}
+
+	return theHub, nil
 }
 
-// ParseIndex takes the content of a .index.json file and returns the map of associated parsers/scenarios/collections
+// InitHubUpdate is like InitHub but downloads and updates the index instead of reading from the disk
+// It is used to inizialize the hub when there is no index file yet
+func InitHubUpdate(cfg *csconfig.HubCfg) (*Hub, error) {
+	if cfg == nil {
+		return nil, fmt.Errorf("no configuration found for hub")
+	}
+
+	bidx, err := DownloadIndex(cfg.HubIndexFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to download index: %w", err)
+	}
+
+	ret, err := ParseIndex(bidx)
+	if err != nil {
+		if !errors.Is(err, ErrMissingReference) {
+			return nil, fmt.Errorf("failed to read index: %w", err)
+		}
+	}
+
+	theHub = &Hub{
+		Items: ret,
+		cfg:   cfg,
+	}
+
+	if _, err := theHub.LocalSync(); err != nil {
+		return nil, fmt.Errorf("failed to sync: %w", err)
+	}
+
+	return theHub, nil
+}
+
+// DownloadIndex downloads the latest version of the index and returns the content
+func DownloadIndex(indexPath string) ([]byte, error) {
+	log.Debugf("fetching index from branch %s (%s)", HubBranch, fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile))
+
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build request for hub index: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed http request for hub index: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, ErrIndexNotFound
+		}
+
+		return nil, fmt.Errorf("bad http code %d while requesting %s", resp.StatusCode, req.URL.String())
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read request answer for hub index: %w", err)
+	}
+
+	oldContent, err := os.ReadFile(indexPath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			log.Warningf("failed to read hub index: %s", err)
+		}
+	} else if bytes.Equal(body, oldContent) {
+		log.Info("hub index is up to date")
+		// write it anyway, can't hurt
+	}
+
+	file, err := os.OpenFile(indexPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+
+	if err != nil {
+		return nil, fmt.Errorf("while opening hub index file: %w", err)
+	}
+	defer file.Close()
+
+	wsize, err := file.Write(body)
+	if err != nil {
+		return nil, fmt.Errorf("while writing hub index file: %w", err)
+	}
+
+	log.Infof("Wrote new %d bytes index to %s", wsize, indexPath)
+
+	return body, nil
+}
+
+// ParseIndex takes the content of an index file and returns the map of associated parsers/scenarios/collections
 func ParseIndex(buff []byte) (HubItems, error) {
 	var (
 		RawIndex     HubItems
@@ -122,4 +209,35 @@ func ParseIndex(buff []byte) (HubItems, error) {
 	}
 
 	return RawIndex, nil
+}
+
+// ItemStats returns total counts of the hub items
+func (h Hub) ItemStats() []string {
+	loaded := ""
+	for _, itemType := range ItemTypes {
+		// ensure the order is always the same
+		if h.Items[itemType] == nil {
+			continue
+		}
+		if len(h.Items[itemType]) == 0 {
+			continue
+		}
+		loaded += fmt.Sprintf("%d %s, ", len(h.Items[itemType]), itemType)
+	}
+
+	loaded = strings.Trim(loaded, ", ")
+	if loaded == "" {
+		// empty hub
+		loaded = "0 items"
+	}
+
+	ret := []string{
+		fmt.Sprintf("Loaded: %s", loaded),
+	}
+
+	if h.skippedLocal > 0 || h.skippedTainted > 0 {
+		ret = append(ret, fmt.Sprintf("Unmanaged items: %d local, %d tainted", h.skippedLocal, h.skippedTainted))
+	}
+
+	return ret
 }

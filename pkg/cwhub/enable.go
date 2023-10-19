@@ -1,5 +1,8 @@
 package cwhub
 
+// Enable/disable items already installed (no downloading here)
+// This file is not named install.go to avoid confusion with the functions in helpers.go
+
 import (
 	"fmt"
 	"os"
@@ -7,6 +10,84 @@ import (
 
 	log "github.com/sirupsen/logrus"
 )
+
+// creates symlink between actual config file at hub.HubDir and hub.ConfigDir
+// Handles collections recursively
+func (h *Hub) EnableItem(target *Item) error {
+	var err error
+
+	parentDir := filepath.Clean(h.cfg.InstallDir + "/" + target.Type + "/" + target.Stage + "/")
+
+	// create directories if needed
+	if target.Installed {
+		if target.Tainted {
+			return fmt.Errorf("%s is tainted, won't enable unless --force", target.Name)
+		}
+
+		if target.Local {
+			return fmt.Errorf("%s is local, won't enable", target.Name)
+		}
+
+		// if it's a collection, check sub-items even if the collection file itself is up-to-date
+		if target.UpToDate && target.Type != COLLECTIONS {
+			log.Tracef("%s is installed and up-to-date, skip.", target.Name)
+			return nil
+		}
+	}
+
+	if _, err = os.Stat(parentDir); os.IsNotExist(err) {
+		log.Infof("%s doesn't exist, create", parentDir)
+
+		if err = os.MkdirAll(parentDir, os.ModePerm); err != nil {
+			return fmt.Errorf("while creating directory: %w", err)
+		}
+	}
+
+	// install sub-items if it's a collection
+	if target.Type == COLLECTIONS {
+		for idx, ptr := range [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections} {
+			ptrtype := ItemTypes[idx]
+			for _, p := range ptr {
+				val, ok := h.Items[ptrtype][p]
+				if !ok {
+					return fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
+				}
+
+				err = h.EnableItem(&val)
+				if err != nil {
+					return fmt.Errorf("while installing %s: %w", p, err)
+				}
+			}
+		}
+	}
+
+	// check if file already exists where it should in configdir (eg /etc/crowdsec/collections/)
+	if _, err = os.Lstat(parentDir + "/" + target.FileName); !os.IsNotExist(err) {
+		log.Infof("%s already exists.", parentDir+"/"+target.FileName)
+		return nil
+	}
+
+	// hub.ConfigDir + target.RemotePath
+	srcPath, err := filepath.Abs(h.cfg.HubDir + "/" + target.RemotePath)
+	if err != nil {
+		return fmt.Errorf("while getting source path: %w", err)
+	}
+
+	dstPath, err := filepath.Abs(parentDir + "/" + target.FileName)
+	if err != nil {
+		return fmt.Errorf("while getting destination path: %w", err)
+	}
+
+	if err = os.Symlink(srcPath, dstPath); err != nil {
+		return fmt.Errorf("while creating symlink from %s to %s: %w", srcPath, dstPath, err)
+	}
+
+	log.Infof("Enabled %s : %s", target.Type, target.Name)
+	target.Installed = true
+	h.Items[target.Type][target.Name] = *target
+
+	return nil
+}
 
 func (h *Hub) purgeItem(target Item) (Item, error) {
 	itempath := h.cfg.HubDir + "/" + target.RemotePath
@@ -128,84 +209,6 @@ func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
 		}
 	}
 
-	h.Items[target.Type][target.Name] = *target
-
-	return nil
-}
-
-// creates symlink between actual config file at hub.HubDir and hub.ConfigDir
-// Handles collections recursively
-func (h *Hub) EnableItem(target *Item) error {
-	var err error
-
-	parentDir := filepath.Clean(h.cfg.InstallDir + "/" + target.Type + "/" + target.Stage + "/")
-
-	// create directories if needed
-	if target.Installed {
-		if target.Tainted {
-			return fmt.Errorf("%s is tainted, won't enable unless --force", target.Name)
-		}
-
-		if target.Local {
-			return fmt.Errorf("%s is local, won't enable", target.Name)
-		}
-
-		// if it's a collection, check sub-items even if the collection file itself is up-to-date
-		if target.UpToDate && target.Type != COLLECTIONS {
-			log.Tracef("%s is installed and up-to-date, skip.", target.Name)
-			return nil
-		}
-	}
-
-	if _, err = os.Stat(parentDir); os.IsNotExist(err) {
-		log.Infof("%s doesn't exist, create", parentDir)
-
-		if err = os.MkdirAll(parentDir, os.ModePerm); err != nil {
-			return fmt.Errorf("while creating directory: %w", err)
-		}
-	}
-
-	// install sub-items if it's a collection
-	if target.Type == COLLECTIONS {
-		for idx, ptr := range [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections} {
-			ptrtype := ItemTypes[idx]
-			for _, p := range ptr {
-				val, ok := h.Items[ptrtype][p]
-				if !ok {
-					return fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
-				}
-
-				err = h.EnableItem(&val)
-				if err != nil {
-					return fmt.Errorf("while installing %s: %w", p, err)
-				}
-			}
-		}
-	}
-
-	// check if file already exists where it should in configdir (eg /etc/crowdsec/collections/)
-	if _, err = os.Lstat(parentDir + "/" + target.FileName); !os.IsNotExist(err) {
-		log.Infof("%s already exists.", parentDir+"/"+target.FileName)
-		return nil
-	}
-
-	// hub.ConfigDir + target.RemotePath
-	srcPath, err := filepath.Abs(h.cfg.HubDir + "/" + target.RemotePath)
-	if err != nil {
-		return fmt.Errorf("while getting source path: %w", err)
-	}
-
-	dstPath, err := filepath.Abs(parentDir + "/" + target.FileName)
-	if err != nil {
-		return fmt.Errorf("while getting destination path: %w", err)
-	}
-
-	if err = os.Symlink(srcPath, dstPath); err != nil {
-		return fmt.Errorf("while creating symlink from %s to %s: %w", srcPath, dstPath, err)
-	}
-
-	log.Infof("Enabled %s : %s", target.Type, target.Name)
-	target.Installed = true
 	h.Items[target.Type][target.Name] = *target
 
 	return nil

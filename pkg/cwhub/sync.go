@@ -2,7 +2,6 @@ package cwhub
 
 import (
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -11,8 +10,6 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
-
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
 func isYAMLFileName(path string) bool {
@@ -446,40 +443,4 @@ func (h *Hub) LocalSync() ([]string, error) {
 	}
 
 	return warnings, nil
-}
-
-// InitHub initializes the Hub, syncs the local state and returns the singleton for immediate use
-func InitHub(cfg *csconfig.HubCfg) (*Hub, error) {
-	if cfg == nil {
-		return nil, fmt.Errorf("no configuration found for hub")
-	}
-
-	log.Debugf("loading hub idx %s", cfg.HubIndexFile)
-
-	bidx, err := os.ReadFile(cfg.HubIndexFile)
-	if err != nil {
-		return nil, fmt.Errorf("unable to read index file: %w", err)
-	}
-
-	ret, err := ParseIndex(bidx)
-	if err != nil {
-		if !errors.Is(err, ErrMissingReference) {
-			return nil, fmt.Errorf("unable to load existing index: %w", err)
-		}
-
-		// XXX: why the error check if we bail out anyway?
-		return nil, err
-	}
-
-	theHub = &Hub{
-		Items: ret,
-		cfg:   cfg,
-	}
-
-	_, err = theHub.LocalSync()
-	if err != nil {
-		return nil, fmt.Errorf("failed to sync Hub index with local deployment : %w", err)
-	}
-
-	return theHub, nil
 }

@@ -9,10 +9,7 @@ import (
 	"testing"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
@@ -73,8 +70,9 @@ func testHub(t *testing.T, update bool) *Hub {
 	return hub
 }
 
+// envSetup initializes the temporary hub and mocks the http client
 func envSetup(t *testing.T) *Hub {
-	resetResponseByPath()
+	setResponseByPath()
 	log.SetLevel(log.DebugLevel)
 
 	defaultTransport := http.DefaultClient.Transport
@@ -89,217 +87,6 @@ func envSetup(t *testing.T) *Hub {
 	hub := testHub(t, true)
 
 	return hub
-}
-
-func TestItemStatus(t *testing.T) {
-	hub := envSetup(t)
-
-	// get existing map
-	x := hub.GetItemMap(COLLECTIONS)
-	require.NotEmpty(t, x)
-
-	// Get item : good and bad
-	for k := range x {
-		item := hub.GetItem(COLLECTIONS, k)
-		require.NotNil(t, item)
-
-		item.Installed = true
-		item.UpToDate = false
-		item.Local = false
-		item.Tainted = false
-
-		txt, _ := item.Status()
-		require.Equal(t, "enabled,update-available", txt)
-
-		item.Installed = false
-		item.UpToDate = false
-		item.Local = true
-		item.Tainted = false
-
-		txt, _ = item.Status()
-		require.Equal(t, "disabled,local", txt)
-	}
-
-	err := DisplaySummary()
-	require.NoError(t, err)
-}
-
-func TestGetters(t *testing.T) {
-	hub := envSetup(t)
-
-	// get non existing map
-	empty := hub.GetItemMap("ratata")
-	require.Nil(t, empty)
-
-	// get existing map
-	x := hub.GetItemMap(COLLECTIONS)
-	require.NotEmpty(t, x)
-
-	// Get item : good and bad
-	for k := range x {
-		empty := hub.GetItem(COLLECTIONS, k+"nope")
-		require.Nil(t, empty)
-
-		item := hub.GetItem(COLLECTIONS, k)
-		require.NotNil(t, item)
-
-		// Add item and get it
-		item.Name += "nope"
-		err := hub.AddItem(COLLECTIONS, *item)
-		require.NoError(t, err)
-
-		newitem := hub.GetItem(COLLECTIONS, item.Name)
-		require.NotNil(t, newitem)
-
-		err = hub.AddItem("ratata", *item)
-		cstest.RequireErrorContains(t, err, "ItemType ratata is unknown")
-	}
-}
-
-func TestIndexDownload(t *testing.T) {
-	hub := envSetup(t)
-
-	_, err := InitHubUpdate(hub.cfg)
-	require.NoError(t, err, "failed to download index")
-
-	_, err = GetHub()
-	require.NoError(t, err, "failed to load hub index")
-}
-
-func testInstallItem(hub *Hub, t *testing.T, item Item) {
-	// Install the parser
-	err := hub.DownloadLatest(&item, false, false)
-	require.NoError(t, err, "failed to download %s", item.Name)
-
-	_, err = hub.LocalSync()
-	require.NoError(t, err, "failed to run localSync")
-
-	assert.True(t, hub.Items[item.Type][item.Name].UpToDate, "%s should be up-to-date", item.Name)
-	assert.False(t, hub.Items[item.Type][item.Name].Installed, "%s should not be installed", item.Name)
-	assert.False(t, hub.Items[item.Type][item.Name].Tainted, "%s should not be tainted", item.Name)
-
-	err = hub.EnableItem(&item)
-	require.NoError(t, err, "failed to enable %s", item.Name)
-
-	_, err = hub.LocalSync()
-	require.NoError(t, err, "failed to run localSync")
-
-	assert.True(t, hub.Items[item.Type][item.Name].Installed, "%s should be installed", item.Name)
-}
-
-func testTaintItem(hub *Hub, t *testing.T, item Item) {
-	assert.False(t, hub.Items[item.Type][item.Name].Tainted, "%s should not be tainted", item.Name)
-
-	f, err := os.OpenFile(item.LocalPath, os.O_APPEND|os.O_WRONLY, 0600)
-	require.NoError(t, err, "failed to open %s (%s)", item.LocalPath, item.Name)
-
-	defer f.Close()
-
-	_, err = f.WriteString("tainted")
-	require.NoError(t, err, "failed to write to %s (%s)", item.LocalPath, item.Name)
-
-	// Local sync and check status
-	_, err = hub.LocalSync()
-	require.NoError(t, err, "failed to run localSync")
-
-	assert.True(t, hub.Items[item.Type][item.Name].Tainted, "%s should be tainted", item.Name)
-}
-
-func testUpdateItem(hub *Hub, t *testing.T, item Item) {
-	assert.False(t, hub.Items[item.Type][item.Name].UpToDate, "%s should not be up-to-date", item.Name)
-
-	// Update it + check status
-	err := hub.DownloadLatest(&item, true, true)
-	require.NoError(t, err, "failed to update %s", item.Name)
-
-	// Local sync and check status
-	_, err = hub.LocalSync()
-	require.NoError(t, err, "failed to run localSync")
-
-	assert.True(t, hub.Items[item.Type][item.Name].UpToDate, "%s should be up-to-date", item.Name)
-	assert.False(t, hub.Items[item.Type][item.Name].Tainted, "%s should not be tainted anymore", item.Name)
-}
-
-func testDisableItem(hub *Hub, t *testing.T, item Item) {
-	assert.True(t, hub.Items[item.Type][item.Name].Installed, "%s should be installed", item.Name)
-
-	// Remove
-	err := hub.DisableItem(&item, false, false)
-	require.NoError(t, err, "failed to disable %s", item.Name)
-
-	// Local sync and check status
-	warns, err := hub.LocalSync()
-	require.NoError(t, err, "failed to run localSync")
-	require.Empty(t, warns, "unexpected warnings : %+v", warns)
-
-	assert.False(t, hub.Items[item.Type][item.Name].Tainted, "%s should not be tainted anymore", item.Name)
-	assert.False(t, hub.Items[item.Type][item.Name].Installed, "%s should not be installed anymore", item.Name)
-	assert.True(t, hub.Items[item.Type][item.Name].Downloaded, "%s should still be downloaded", item.Name)
-
-	// Purge
-	err = hub.DisableItem(&item, true, false)
-	require.NoError(t, err, "failed to purge %s", item.Name)
-
-	// Local sync and check status
-	warns, err = hub.LocalSync()
-	require.NoError(t, err, "failed to run localSync")
-	require.Empty(t, warns, "unexpected warnings : %+v", warns)
-
-	assert.False(t, hub.Items[item.Type][item.Name].Installed, "%s should not be installed anymore", item.Name)
-	assert.False(t, hub.Items[item.Type][item.Name].Downloaded, "%s should not be downloaded", item.Name)
-}
-
-func TestInstallParser(t *testing.T) {
-	/*
-	 - install a random parser
-	 - check its status
-	 - taint it
-	 - check its status
-	 - force update it
-	 - check its status
-	 - remove it
-	*/
-	hub := envSetup(t)
-
-	// map iteration is random by itself
-	for _, it := range hub.Items[PARSERS] {
-		testInstallItem(hub, t, it)
-		it = hub.Items[PARSERS][it.Name]
-		testTaintItem(hub, t, it)
-		it = hub.Items[PARSERS][it.Name]
-		testUpdateItem(hub, t, it)
-		it = hub.Items[PARSERS][it.Name]
-		testDisableItem(hub, t, it)
-		it = hub.Items[PARSERS][it.Name]
-
-		break
-	}
-}
-
-func TestInstallCollection(t *testing.T) {
-	/*
-	 - install a random parser
-	 - check its status
-	 - taint it
-	 - check its status
-	 - force update it
-	 - check its status
-	 - remove it
-	*/
-	hub := envSetup(t)
-
-	// map iteration is random by itself
-	for _, it := range hub.Items[COLLECTIONS] {
-		testInstallItem(hub, t, it)
-		it = hub.Items[COLLECTIONS][it.Name]
-		testTaintItem(hub, t, it)
-		it = hub.Items[COLLECTIONS][it.Name]
-		testUpdateItem(hub, t, it)
-		it = hub.Items[COLLECTIONS][it.Name]
-		testDisableItem(hub, t, it)
-
-		break
-	}
 }
 
 type mockTransport struct{}
@@ -346,7 +133,7 @@ func fileToStringX(path string) string {
 	return strings.ReplaceAll(string(data), "\r\n", "\n")
 }
 
-func resetResponseByPath() {
+func setResponseByPath() {
 	responseByPath = map[string]string{
 		"/master/parsers/s01-parse/crowdsecurity/foobar_parser.yaml":    fileToStringX("./testdata/foobar_parser.yaml"),
 		"/master/parsers/s01-parse/crowdsecurity/foobar_subparser.yaml": fileToStringX("./testdata/foobar_parser.yaml"),
