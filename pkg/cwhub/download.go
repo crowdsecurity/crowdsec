@@ -121,7 +121,7 @@ func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) erro
 	}
 
 	// collection
-	var tmp = [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections}
+	var tmp = [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.WaapRules, target.WaapConfigs, target.Collections}
 	for idx, ptr := range tmp {
 		ptrtype := ItemTypes[idx]
 		for _, p := range ptr {

@@ -167,7 +167,7 @@ func (h *Hub) EnableItem(target *Item) error {
 
 	// install sub-items if it's a collection
 	if target.Type == COLLECTIONS {
-		for idx, ptr := range [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections} {
+		for idx, ptr := range [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.WaapRules, target.WaapConfigs, target.Collections} {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
 				val, ok := h.Items[ptrtype][p]
