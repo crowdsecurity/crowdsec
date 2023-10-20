@@ -84,9 +84,9 @@ type WaapConfig struct {
 }
 
 func (w *WaapRuntimeConfig) ClearResponse() {
-	log.Infof("#-> %p", w)
+	log.Debugf("#-> %p", w)
 	w.Response = WaapTempResponse{}
-	log.Infof("-> %p", w.Config)
+	log.Debugf("-> %p", w.Config)
 	w.Response.Action = w.Config.DefaultPassAction
 	w.Response.HTTPResponseCode = w.Config.PassedHTTPCode
 	w.Response.SendEvent = true
@@ -109,6 +109,12 @@ func (wc *WaapConfig) Load(file string) error {
 	}
 	if wc.DefaultRemediation == "" {
 		return fmt.Errorf("default_remediation cannot be empty")
+	}
+	switch wc.DefaultRemediation {
+	case "ban", "captcha", "log":
+		//those are the officially supported remediation(s)
+	default:
+		wc.Logger.Warningf("default '%s' remediation of %s is none of [ban,captcha,log] ensure bouncer compatbility!", wc.DefaultRemediation, file)
 	}
 	if wc.BlockedHTTPCode == 0 {
 		wc.BlockedHTTPCode = 403
