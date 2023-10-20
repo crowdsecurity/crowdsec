@@ -258,6 +258,14 @@ teardown() {
     assert_output "0"
 }
 
+@test "cscli parsers remove [parser]... --force" {
+    # remove a parser that belongs to a collection
+    rune -0 cscli collections install crowdsecurity/linux
+    rune -0 cscli collections remove crowdsecurity/sshd
+    assert_stderr --partial "crowdsecurity/sshd belongs to collections: [crowdsecurity/linux]"
+    assert_stderr --partial "Run 'sudo cscli collections remove crowdsecurity/sshd --force' if you want to force remove this collection"
+}
+
 @test "cscli collections upgrade [collection]..." {
     rune -1 cscli collections upgrade
     assert_stderr --partial "specify at least one collection to upgrade or '--all'"

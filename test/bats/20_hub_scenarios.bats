@@ -260,6 +260,14 @@ teardown() {
     assert_output "0"
 }
 
+@test "cscli scenarios remove [scenario]... --force" {
+    # remove a scenario that belongs to a collection
+    rune -0 cscli collections install crowdsecurity/sshd
+    rune -0 cscli scenarios remove crowdsecurity/ssh-bf
+    assert_stderr --partial "crowdsecurity/ssh-bf belongs to collections: [crowdsecurity/sshd]"
+    assert_stderr --partial "Run 'sudo cscli scenarios remove crowdsecurity/ssh-bf --force' if you want to force remove this scenario"
+}
+
 @test "cscli scenarios upgrade [scenario]..." {
     rune -1 cscli scenarios upgrade
     assert_stderr --partial "specify at least one scenario to upgrade or '--all'"
