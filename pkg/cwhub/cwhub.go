@@ -8,9 +8,4 @@ import (
 	"errors"
 )
 
-var (
-	ErrMissingReference = errors.New("Reference(s) missing in collection")
-
-	RawFileURLTemplate = "https://hub-cdn.crowdsec.net/%s/%s"
-	HubBranch          = "master"
-)
+var ErrMissingReference = errors.New("Reference(s) missing in collection")

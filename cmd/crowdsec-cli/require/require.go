@@ -64,12 +64,10 @@ func Notifications(c *csconfig.Config) error {
 	return nil
 }
 
-func Hub (c *csconfig.Config) (*cwhub.Hub, error) {
+func Hub(c *csconfig.Config) (*cwhub.Hub, error) {
 	if c.Hub == nil {
 		return nil, fmt.Errorf("you must configure cli before interacting with hub")
 	}
-
-	cwhub.SetHubBranch()
 
 	hub, err := cwhub.InitHub(c.Hub)
 	if err != nil {

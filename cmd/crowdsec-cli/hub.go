@@ -12,6 +12,13 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
+const (
+	hubURLTemplate  = "https://hub-cdn.crowdsec.net/%s/%s"
+	remoteIndexPath = ".index.json"
+)
+
+var hubBranch = ""
+
 func NewHubCmd() *cobra.Command {
 	var cmdHub = &cobra.Command{
 		Use:   "hub [action]",
@@ -33,7 +40,6 @@ cscli hub upgrade`,
 			return nil
 		},
 	}
-	cmdHub.PersistentFlags().StringVarP(&cwhub.HubBranch, "branch", "b", "", "Use given branch from hub")
 
 	cmdHub.AddCommand(NewHubListCmd())
 	cmdHub.AddCommand(NewHubUpdateCmd())
@@ -81,7 +87,7 @@ func NewHubListCmd() *cobra.Command {
 		Short:             "List all installed configurations",
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE: 	    runHubList,
+		RunE:              runHubList,
 	}
 
 	flags := cmdHubList.Flags()
@@ -91,18 +97,23 @@ func NewHubListCmd() *cobra.Command {
 }
 
 func runHubUpdate(cmd *cobra.Command, args []string) error {
-	cwhub.SetHubBranch()
-
 	// don't use require.Hub because if there is no index file, it would fail
 
-	hub, err := cwhub.InitHubUpdate(csConfig.Hub)
+	branch := hubBranch
+	if branch == "" {
+		branch = chooseHubBranch()
+	}
+
+	log.Debugf("Using branch '%s' for the hub", branch)
+
+	hub, err := cwhub.InitHubUpdate(csConfig.Hub, hubURLTemplate, branch, remoteIndexPath)
 	if err != nil {
 		if !errors.Is(err, cwhub.ErrIndexNotFound) {
 			return fmt.Errorf("failed to get Hub index : %w", err)
 		}
-		log.Warnf("Could not find index file for branch '%s', using 'master'", cwhub.HubBranch)
-		cwhub.HubBranch = "master"
-		if hub, err = cwhub.InitHubUpdate(csConfig.Hub); err != nil {
+		log.Warnf("Could not find index file for branch '%s', using 'master'", branch)
+		branch = "master"
+		if hub, err = cwhub.InitHubUpdate(csConfig.Hub, hubURLTemplate, branch, remoteIndexPath); err != nil {
 			return fmt.Errorf("failed to get Hub index after retry: %w", err)
 		}
 	}
@@ -146,28 +157,35 @@ func runHubUpgrade(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	branch := hubBranch
+	if branch == "" {
+		branch = chooseHubBranch()
+	}
+
+	log.Debugf("Using branch '%s' for the hub", branch)
+
 	hub, err := require.Hub(csConfig)
 	if err != nil {
 		return err
 	}
 
 	log.Infof("Upgrading collections")
-	if err := hub.UpgradeConfig(cwhub.COLLECTIONS, "", force); err != nil {
+	if err := hub.UpgradeConfig(cwhub.COLLECTIONS, "", force, hubURLTemplate, branch); err != nil {
 		return err
 	}
 
 	log.Infof("Upgrading parsers")
-	if err := hub.UpgradeConfig(cwhub.PARSERS, "", force); err != nil {
+	if err := hub.UpgradeConfig(cwhub.PARSERS, "", force, hubURLTemplate, branch); err != nil {
 		return err
 	}
 
 	log.Infof("Upgrading scenarios")
-	if err := hub.UpgradeConfig(cwhub.SCENARIOS, "", force); err != nil {
+	if err := hub.UpgradeConfig(cwhub.SCENARIOS, "", force, hubURLTemplate, branch); err != nil {
 		return err
 	}
 
 	log.Infof("Upgrading postoverflows")
-	if err := hub.UpgradeConfig(cwhub.POSTOVERFLOWS, "", force); err != nil {
+	if err := hub.UpgradeConfig(cwhub.POSTOVERFLOWS, "", force, hubURLTemplate, branch); err != nil {
 		return err
 	}
 
@@ -187,8 +205,6 @@ Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if 
 			if csConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
-
-			cwhub.SetHubBranch()
 
 			return nil
 		},

@@ -14,6 +14,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
+const mockURLTemplate = "https://hub-cdn.crowdsec.net/%s/%s"
+
 /*
  To test :
   - Download 'first' hub index
@@ -58,14 +60,15 @@ func testHub(t *testing.T, update bool) *Hub {
 		os.RemoveAll(tmpDir)
 	})
 
-	constructor := InitHub
+	var hub *Hub
 
 	if update {
-		constructor = InitHubUpdate
+		hub, err = InitHubUpdate(hubCfg, mockURLTemplate, "master", ".index.json")
+		require.NoError(t, err)
+	} else {
+		hub, err = InitHub(hubCfg)
+		require.NoError(t, err)
 	}
-
-	hub, err := constructor(hubCfg)
-	require.NoError(t, err)
 
 	return hub
 }

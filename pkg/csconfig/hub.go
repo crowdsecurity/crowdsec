@@ -1,6 +1,6 @@
 package csconfig
 
-// HubConfig holds the configuration for a hub
+// HubCfg holds the configuration for a hub
 type HubCfg struct {
 	HubIndexFile   string	// Path to the local index file
 	HubDir         string	// Where the hub items are downloaded
@@ -9,9 +9,6 @@ type HubCfg struct {
 }
 
 func (c *Config) loadHub() error {
-
-	// XXX: HubBranch too -- from cscli or chooseHubBranch() ?
-
 	c.Hub = &HubCfg{
 		HubIndexFile:   c.ConfigPaths.HubIndexFile,
 		HubDir:         c.ConfigPaths.HubDir,

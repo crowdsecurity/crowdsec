@@ -13,7 +13,7 @@ import (
 func TestInitHubUpdate(t *testing.T) {
 	hub := envSetup(t)
 
-	_, err := InitHubUpdate(hub.cfg)
+	_, err := InitHubUpdate(hub.cfg, mockURLTemplate, "master", ".index.json")
 	require.NoError(t, err)
 
 	_, err = GetHub()
@@ -21,7 +21,6 @@ func TestInitHubUpdate(t *testing.T) {
 }
 
 func TestDownloadIndex(t *testing.T) {
-	back := RawFileURLTemplate
 	// bad url template
 	fmt.Println("Test 'bad URL'")
 
@@ -32,9 +31,7 @@ func TestDownloadIndex(t *testing.T) {
 		os.Remove(tmpIndex.Name())
 	})
 
-	RawFileURLTemplate = "x"
-
-	ret, err := DownloadIndex(tmpIndex.Name())
+	ret, err := DownloadIndex(tmpIndex.Name(), "x", "", "")
 	cstest.RequireErrorContains(t, err, "failed to build request for hub index: parse ")
 
 	fmt.Printf("->%+v", ret)
@@ -42,9 +39,7 @@ func TestDownloadIndex(t *testing.T) {
 	// bad domain
 	fmt.Println("Test 'bad domain'")
 
-	RawFileURLTemplate = "https://baddomain/%s/%s"
-
-	ret, err = DownloadIndex(tmpIndex.Name())
+	ret, err = DownloadIndex(tmpIndex.Name(), "https://baddomain/%s/%s", "master", ".index.json")
 	cstest.RequireErrorContains(t, err, "failed http request for hub index: Get")
 
 	fmt.Printf("->%+v", ret)
@@ -52,12 +47,8 @@ func TestDownloadIndex(t *testing.T) {
 	// bad target path
 	fmt.Println("Test 'bad target path'")
 
-	RawFileURLTemplate = back
-
-	ret, err = DownloadIndex("/does/not/exist/index.json")
+	ret, err = DownloadIndex("/does/not/exist/index.json", mockURLTemplate, "master", ".index.json")
 	cstest.RequireErrorContains(t, err, "while opening hub index file: open /does/not/exist/index.json:")
-
-	RawFileURLTemplate = back
 
 	fmt.Printf("->%+v", ret)
 }
