@@ -260,6 +260,14 @@ teardown() {
     assert_output "0"
 }
 
+@test "cscli postoverflows remove [parser]... --force" {
+    # remove a parser that belongs to a collection
+    rune -0 cscli collections install crowdsecurity/auditd
+    rune -0 cscli postoverflows remove crowdsecurity/auditd-whitelisted-process
+    assert_stderr --partial "crowdsecurity/auditd-whitelisted-process belongs to collections: [crowdsecurity/auditd]"
+    assert_stderr --partial "Run 'sudo cscli postoverflows remove crowdsecurity/auditd-whitelisted-process --force' if you want to force remove this postoverflow"
+}
+
 @test "cscli postoverflows upgrade [postoverflow]..." {
     rune -1 cscli postoverflows upgrade
     assert_stderr --partial "specify at least one postoverflow to upgrade or '--all'"

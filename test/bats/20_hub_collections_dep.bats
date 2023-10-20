@@ -49,8 +49,8 @@ teardown() {
     rune -0 cscli collections install crowdsecurity/smb
     # XXX: should this be an error?
     rune -0 cscli collections remove crowdsecurity/sshd
-    assert_stderr --partial "crowdsecurity/sshd belongs to other collections: [crowdsecurity/smb]"
-    assert_stderr --partial "Run 'sudo cscli collections remove crowdsecurity/sshd --force' if you want to force remove this sub collection"
+    assert_stderr --partial "crowdsecurity/sshd belongs to collections: [crowdsecurity/smb]"
+    assert_stderr --partial "Run 'sudo cscli collections remove crowdsecurity/sshd --force' if you want to force remove this collection"
     rune -0 cscli collections list -o json
     rune -0 jq -c '[.collections[].name]' <(output)
     assert_json '["crowdsecurity/smb","crowdsecurity/sshd"]'

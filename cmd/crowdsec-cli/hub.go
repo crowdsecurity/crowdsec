@@ -61,7 +61,9 @@ func runHubList(cmd *cobra.Command, args []string) error {
 		log.Info(v)
 	}
 
-	cwhub.DisplaySummary()
+	for line := range hub.ItemStats() {
+		log.Info(line)
+	}
 
 	err = ListItems(color.Output, []string{
 		cwhub.COLLECTIONS, cwhub.PARSERS, cwhub.SCENARIOS, cwhub.POSTOVERFLOWS,

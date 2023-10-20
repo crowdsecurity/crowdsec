@@ -36,7 +36,7 @@ func silentInstallItem(name string, obtype string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error while downloading %s : %v", item.Name, err)
 	}
-	if err := hub.AddItem(obtype, *item); err != nil {
+	if err := hub.AddItem(*item); err != nil {
 		return "", err
 	}
 
@@ -44,7 +44,7 @@ func silentInstallItem(name string, obtype string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error while enabling %s : %v", item.Name, err)
 	}
-	if err := hub.AddItem(obtype, *item); err != nil {
+	if err := hub.AddItem(*item); err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("Enabled %s", item.Name), nil

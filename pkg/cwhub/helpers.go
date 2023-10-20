@@ -1,64 +1,22 @@
 package cwhub
 
+// Install, upgrade and remove items from the hub to the local configuration
+
+// XXX: this file could use a better name
+
 import (
+	"bytes"
+	"crypto/sha256"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/enescakir/emoji"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/mod/semver"
-
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 )
-
-// chooseHubBranch returns the branch name to use for the hub
-// It can be "master" or branch corresponding to the current crowdsec version
-func chooseHubBranch() string {
-	latest, err := cwversion.Latest()
-	if err != nil {
-		log.Warningf("Unable to retrieve latest crowdsec version: %s, defaulting to master", err)
-		return "master"
-	}
-
-	csVersion := cwversion.VersionStrip()
-	if csVersion == latest {
-		log.Debugf("current version is equal to latest (%s)", csVersion)
-		return "master"
-	}
-
-	// if current version is greater than the latest we are in pre-release
-	if semver.Compare(csVersion, latest) == 1 {
-		log.Debugf("Your current crowdsec version seems to be a pre-release (%s)", csVersion)
-		return "master"
-	}
-
-	if csVersion == "" {
-		log.Warning("Crowdsec version is not set, using master branch for the hub")
-		return "master"
-	}
-
-	log.Warnf("Crowdsec is not the latest version. "+
-		"Current version is '%s' and the latest stable version is '%s'. Please update it!",
-		csVersion, latest)
-
-	log.Warnf("As a result, you will not be able to use parsers/scenarios/collections "+
-		"added to Crowdsec Hub after CrowdSec %s", latest)
-
-	return csVersion
-}
-
-// SetHubBranch sets the package variable that points to the hub branch.
-func SetHubBranch() {
-	// a branch is already set, or specified from the flags
-	if HubBranch != "" {
-		return
-	}
-
-	// use the branch corresponding to the crowdsec version
-	HubBranch = chooseHubBranch()
-
-	log.Debugf("Using branch '%s' for the hub", HubBranch)
-}
 
 // InstallItem installs an item from the hub
 func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly bool) error {
@@ -80,7 +38,7 @@ func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly
 		return fmt.Errorf("while downloading %s: %w", item.Name, err)
 	}
 
-	if err = h.AddItem(itemType, *item); err != nil {
+	if err = h.AddItem(*item); err != nil {
 		return fmt.Errorf("while adding %s: %w", item.Name, err)
 	}
 
@@ -94,7 +52,7 @@ func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly
 		return fmt.Errorf("while enabling %s: %w", item.Name, err)
 	}
 
-	if err := h.AddItem(itemType, *item); err != nil {
+	if err := h.AddItem(*item); err != nil {
 		return fmt.Errorf("while adding %s: %w", item.Name, err)
 	}
 
@@ -117,7 +75,7 @@ func (h *Hub) RemoveMany(itemType string, name string, all bool, purge bool, for
 			return fmt.Errorf("unable to disable %s: %w", item.Name, err)
 		}
 
-		if err = h.AddItem(itemType, *item); err != nil {
+		if err = h.AddItem(*item); err != nil {
 			return fmt.Errorf("unable to add %s: %w", item.Name, err)
 		}
 
@@ -141,7 +99,7 @@ func (h *Hub) RemoveMany(itemType string, name string, all bool, purge bool, for
 			return fmt.Errorf("unable to disable %s: %w", v.Name, err)
 		}
 
-		if err := h.AddItem(itemType, v); err != nil {
+		if err := h.AddItem(v); err != nil {
 			return fmt.Errorf("unable to add %s: %w", v.Name, err)
 		}
 		disabled++
@@ -204,7 +162,7 @@ func (h *Hub) UpgradeConfig(itemType string, name string, force bool) error {
 			updated++
 		}
 
-		if err := h.AddItem(itemType, v); err != nil {
+		if err := h.AddItem(v); err != nil {
 			return fmt.Errorf("unable to add %s: %w", v.Name, err)
 		}
 	}
@@ -221,6 +179,195 @@ func (h *Hub) UpgradeConfig(itemType string, name string, force bool) error {
 		}
 	} else if updated != 0 {
 		log.Infof("Upgraded %d items", updated)
+	}
+
+	return nil
+}
+
+// DownloadLatest will download the latest version of Item to the tdir directory
+func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) error {
+	var err error
+
+	log.Debugf("Downloading %s %s", target.Type, target.Name)
+
+	if target.Type != COLLECTIONS {
+		if !target.Installed && updateOnly && target.Downloaded {
+			log.Debugf("skipping upgrade of %s : not installed", target.Name)
+			return nil
+		}
+
+		return h.DownloadItem(target, overwrite)
+	}
+
+	// collection
+	for _, sub := range target.SubItems() {
+		val, ok := h.Items[sub.Type][sub.Name]
+		if !ok {
+			return fmt.Errorf("required %s %s of %s doesn't exist, abort", sub.Type, sub.Name, target.Name)
+		}
+
+		if !val.Installed && updateOnly && val.Downloaded {
+			log.Debugf("skipping upgrade of %s : not installed", target.Name)
+			continue
+		}
+
+		log.Debugf("Download %s sub-item : %s %s (%t -> %t)", target.Name, sub.Type, sub.Name, target.Installed, updateOnly)
+		//recurse as it's a collection
+		if sub.Type == COLLECTIONS {
+			log.Tracef("collection, recurse")
+
+			err = h.DownloadLatest(&val, overwrite, updateOnly)
+			if err != nil {
+				return fmt.Errorf("while downloading %s: %w", val.Name, err)
+			}
+		}
+
+		downloaded := val.Downloaded
+
+		err = h.DownloadItem(&val, overwrite)
+		if err != nil {
+			return fmt.Errorf("while downloading %s: %w", val.Name, err)
+		}
+
+		// We need to enable an item when it has been added to a collection since latest release of the collection.
+		// We check if val.Downloaded is false because maybe the item has been disabled by the user.
+		if !val.Installed && !downloaded {
+			if err = h.EnableItem(&val); err != nil {
+				return fmt.Errorf("enabling '%s': %w", val.Name, err)
+			}
+		}
+
+		h.Items[sub.Type][sub.Name] = val
+	}
+
+	err = h.DownloadItem(target, overwrite)
+	if err != nil {
+		return fmt.Errorf("failed to download item: %w", err)
+	}
+
+	return nil
+}
+
+func (h *Hub) DownloadItem(target *Item, overwrite bool) error {
+	tdir := h.cfg.HubDir
+
+	// if user didn't --force, don't overwrite local, tainted, up-to-date files
+	if !overwrite {
+		if target.Tainted {
+			log.Debugf("%s : tainted, not updated", target.Name)
+			return nil
+		}
+
+		if target.UpToDate {
+			//  We still have to check if data files are present
+			log.Debugf("%s : up-to-date, not updated", target.Name)
+		}
+	}
+
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf(RawFileURLTemplate, HubBranch, target.RemotePath), nil)
+	if err != nil {
+		return fmt.Errorf("while downloading %s: %w", req.URL.String(), err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("while downloading %s: %w", req.URL.String(), err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("bad http code %d for %s", resp.StatusCode, req.URL.String())
+	}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("while reading %s: %w", req.URL.String(), err)
+	}
+
+	hash := sha256.New()
+	if _, err = hash.Write(body); err != nil {
+		return fmt.Errorf("while hashing %s: %w", target.Name, err)
+	}
+
+	meow := fmt.Sprintf("%x", hash.Sum(nil))
+	if meow != target.Versions[target.Version].Digest {
+		log.Errorf("Downloaded version doesn't match index, please 'hub update'")
+		log.Debugf("got %s, expected %s", meow, target.Versions[target.Version].Digest)
+
+		return fmt.Errorf("invalid download hash for %s", target.Name)
+	}
+
+	//all good, install
+	//check if parent dir exists
+	tmpdirs := strings.Split(tdir+"/"+target.RemotePath, "/")
+	parentDir := strings.Join(tmpdirs[:len(tmpdirs)-1], "/")
+
+	// ensure that target file is within target dir
+	finalPath, err := filepath.Abs(tdir + "/" + target.RemotePath)
+	if err != nil {
+		return fmt.Errorf("filepath.Abs error on %s: %w", tdir+"/"+target.RemotePath, err)
+	}
+
+	if !strings.HasPrefix(finalPath, tdir) {
+		return fmt.Errorf("path %s escapes %s, abort", target.RemotePath, tdir)
+	}
+
+	// check dir
+	if _, err = os.Stat(parentDir); os.IsNotExist(err) {
+		log.Debugf("%s doesn't exist, create", parentDir)
+
+		if err = os.MkdirAll(parentDir, os.ModePerm); err != nil {
+			return fmt.Errorf("while creating parent directories: %w", err)
+		}
+	}
+
+	// check actual file
+	if _, err = os.Stat(finalPath); !os.IsNotExist(err) {
+		log.Warningf("%s : overwrite", target.Name)
+		log.Debugf("target: %s/%s", tdir, target.RemotePath)
+	} else {
+		log.Infof("%s : OK", target.Name)
+	}
+
+	f, err := os.OpenFile(tdir+"/"+target.RemotePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+	if err != nil {
+		return fmt.Errorf("while opening file: %w", err)
+	}
+
+	defer f.Close()
+
+	_, err = f.Write(body)
+	if err != nil {
+		return fmt.Errorf("while writing file: %w", err)
+	}
+
+	target.Downloaded = true
+	target.Tainted = false
+	target.UpToDate = true
+
+	if err = downloadData(h.cfg.InstallDataDir, overwrite, bytes.NewReader(body)); err != nil {
+		return fmt.Errorf("while downloading data for %s: %w", target.FileName, err)
+	}
+
+	h.Items[target.Type][target.Name] = *target
+
+	return nil
+}
+
+// DownloadDataIfNeeded downloads the data files for an item
+func (h *Hub) DownloadDataIfNeeded(target Item, force bool) error {
+	itemFilePath := fmt.Sprintf("%s/%s/%s/%s", h.cfg.InstallDir, target.Type, target.Stage, target.FileName)
+
+	itemFile, err := os.Open(itemFilePath)
+	if err != nil {
+		return fmt.Errorf("while opening %s: %w", itemFilePath, err)
+	}
+
+	defer itemFile.Close()
+
+	if err = downloadData(h.cfg.InstallDataDir, force, itemFile); err != nil {
+		return fmt.Errorf("while downloading data for %s: %w", itemFilePath, err)
 	}
 
 	return nil
