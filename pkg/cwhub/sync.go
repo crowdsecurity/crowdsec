@@ -113,12 +113,6 @@ func (h *Hub) getItemInfo(path string) (itemFileInfo, bool, error) {
 	} else if ret.stage == COLLECTIONS {
 		ret.ftype = COLLECTIONS
 		ret.stage = ""
-	} else if ret.stage == WAAPRULES {
-		ret.ftype = WAAPRULES
-		ret.stage = ""
-	} else if ret.stage == WAAPCONFIGS {
-		ret.ftype = WAAPCONFIGS
-		ret.stage = ""
 	} else if ret.ftype != PARSERS && ret.ftype != POSTOVERFLOWS {
 		// its a PARSER / POSTOVERFLOW with a stage
 		return itemFileInfo{}, inhub, fmt.Errorf("unknown configuration type for file '%s'", path)

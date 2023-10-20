@@ -13,12 +13,10 @@ const (
 	PARSERS       = "parsers"
 	POSTOVERFLOWS = "postoverflows"
 	SCENARIOS     = "scenarios"
-	WAAPRULES     = "waap-rules"
-	WAAPCONFIGS   = "waap-configs"
 )
 
 // XXX: The order is important, as it is used to range over sub-items in collections
-var ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, WAAPRULES, WAAPCONFIGS, COLLECTIONS}
+var ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, COLLECTIONS}
 
 type HubItems map[string]map[string]Item
 
@@ -61,8 +59,6 @@ type Item struct {
 	Parsers       []string `json:"parsers,omitempty"       yaml:"parsers,omitempty"`
 	PostOverflows []string `json:"postoverflows,omitempty" yaml:"postoverflows,omitempty"`
 	Scenarios     []string `json:"scenarios,omitempty"     yaml:"scenarios,omitempty"`
-	WaapRules     []string `json:"waap-rules,omitempty"    yaml:"waap-rules,omitempty"`
-	WaapConfigs   []string `json:"waap-configs,omitempty"  yaml:"waap-configs,omitempty"`
 	Collections   []string `json:"collections,omitempty"   yaml:"collections,omitempty"`
 }
 
@@ -77,8 +73,6 @@ func (i *Item) SubItems() []SubItem {
 		len(i.Parsers) +
 		len(i.PostOverflows) +
 		len(i.Scenarios) +
-		len(i.WaapRules) +
-		len(i.WaapConfigs) +
 		len(i.Collections))
 	n := 0
 	for _, name := range i.Parsers {
@@ -91,14 +85,6 @@ func (i *Item) SubItems() []SubItem {
 	}
 	for _, name := range i.Scenarios {
 		sub[n] = SubItem{Type: SCENARIOS, Name: name}
-		n++
-	}
-	for _, name := range i.WaapRules {
-		sub[n] = SubItem{Type: WAAPRULES, Name: name}
-		n++
-	}
-	for _, name := range i.WaapConfigs {
-		sub[n] = SubItem{Type: WAAPCONFIGS, Name: name}
 		n++
 	}
 	for _, name := range i.Collections {
