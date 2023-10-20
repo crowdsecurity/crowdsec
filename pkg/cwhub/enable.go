@@ -45,18 +45,15 @@ func (h *Hub) EnableItem(target *Item) error {
 
 	// install sub-items if it's a collection
 	if target.Type == COLLECTIONS {
-		for idx, ptr := range [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections} {
-			ptrtype := ItemTypes[idx]
-			for _, p := range ptr {
-				val, ok := h.Items[ptrtype][p]
-				if !ok {
-					return fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
-				}
+		for _, sub := range target.SubItems() {
+			val, ok := h.Items[sub.Type][sub.Name]
+			if !ok {
+				return fmt.Errorf("required %s %s of %s doesn't exist, abort", sub.Type, sub.Name, target.Name)
+			}
 
-				err = h.EnableItem(&val)
-				if err != nil {
-					return fmt.Errorf("while installing %s: %w", p, err)
-				}
+			err = h.EnableItem(&val)
+			if err != nil {
+				return fmt.Errorf("while installing %s: %w", sub.Name, err)
 			}
 		}
 	}
@@ -130,31 +127,30 @@ func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
 
 	// for a COLLECTIONS, disable sub-items
 	if target.Type == COLLECTIONS {
-		for idx, ptr := range [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections} {
-			ptrtype := ItemTypes[idx]
-			for _, p := range ptr {
-				if val, ok := h.Items[ptrtype][p]; ok {
-					// check if the item doesn't belong to another collection before removing it
-					toRemove := true
+		for _, sub := range target.SubItems() {
+		       	val, ok := h.Items[sub.Type][sub.Name]
+			if !ok {
+		       		log.Errorf("Referred %s %s in collection %s doesn't exist.", sub.Type, sub.Name, target.Name)
+				continue
+		       	}
 
-					for _, collection := range val.BelongsToCollections {
-						if collection != target.Name {
-							toRemove = false
-							break
-						}
-					}
+			// check if the item doesn't belong to another collection before removing it
+			toRemove := true
 
-					if toRemove {
-						err = h.DisableItem(&val, purge, force)
-						if err != nil {
-							return fmt.Errorf("while disabling %s: %w", p, err)
-						}
-					} else {
-						log.Infof("%s was not removed because it belongs to another collection", val.Name)
-					}
-				} else {
-					log.Errorf("Referred %s %s in collection %s doesn't exist.", ptrtype, p, target.Name)
+			for _, collection := range val.BelongsToCollections {
+				if collection != target.Name {
+					toRemove = false
+					break
 				}
+			}
+
+			if toRemove {
+				err = h.DisableItem(&val, purge, force)
+				if err != nil {
+					return fmt.Errorf("while disabling %s: %w", sub.Name, err)
+				}
+			} else {
+				log.Infof("%s was not removed because it belongs to another collection", val.Name)
 			}
 		}
 	}

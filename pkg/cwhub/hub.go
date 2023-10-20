@@ -192,13 +192,10 @@ func ParseIndex(buff []byte) (HubItems, error) {
 
 			// if it's a collection, check its sub-items are present
 			// XXX should be done later
-			for idx, ptr := range [][]string{item.Parsers, item.PostOverflows, item.Scenarios, item.Collections} {
-				ptrtype := ItemTypes[idx]
-				for _, p := range ptr {
-					if _, ok := RawIndex[ptrtype][p]; !ok {
-						log.Errorf("Referred %s %s in collection %s doesn't exist.", ptrtype, p, item.Name)
-						missingItems = append(missingItems, p)
-					}
+			for _, sub := range item.SubItems() {
+				if _, ok := RawIndex[sub.Type][sub.Name]; !ok {
+					log.Errorf("Referred %s %s in collection %s doesn't exist.", sub.Type, sub.Name, item.Name)
+					missingItems = append(missingItems, sub.Name)
 				}
 			}
 		}

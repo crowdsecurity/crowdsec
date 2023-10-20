@@ -13,10 +13,12 @@ const (
 	PARSERS       = "parsers"
 	POSTOVERFLOWS = "postoverflows"
 	SCENARIOS     = "scenarios"
+	WAAPRULES     = "waap-rules"
+	WAAPCONFIGS   = "waap-configs"
 )
 
 // XXX: The order is important, as it is used to range over sub-items in collections
-var ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, COLLECTIONS}
+var ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, WAAPRULES, WAAPCONFIGS, COLLECTIONS}
 
 type HubItems map[string]map[string]Item
 
@@ -31,7 +33,7 @@ type ItemVersion struct {
 // Item represents an object managed in the hub. It can be a parser, scenario, collection..
 type Item struct {
 	// descriptive info
-	Type                 string   `json:"type,omitempty"                   yaml:"type,omitempty"`                   // parser|postoverflows|scenario|collection(|enrich)
+	Type                 string   `json:"type,omitempty"                   yaml:"type,omitempty"`                   // can be any of the ItemTypes
 	Stage                string   `json:"stage,omitempty"                  yaml:"stage,omitempty"`                  // Stage for parser|postoverflow: s00-raw/s01-...
 	Name                 string   `json:"name,omitempty"`                                                           // as seen in .index.json, usually "author/name"
 	FileName             string   `json:"file_name,omitempty"`                                                      // the filename, ie. apache2-logs.yaml
@@ -52,14 +54,58 @@ type Item struct {
 	Installed    bool   `json:"installed,omitempty"`
 	Downloaded   bool   `json:"downloaded,omitempty"`
 	UpToDate     bool   `json:"up_to_date,omitempty"`
-	Tainted      bool   `json:"tainted,omitempty"` // has it been locally modified
+	Tainted      bool   `json:"tainted,omitempty"` // has it been locally modified?
 	Local        bool   `json:"local,omitempty"`   // if it's a non versioned control one
 
 	// if it's a collection, it can have sub items
 	Parsers       []string `json:"parsers,omitempty"       yaml:"parsers,omitempty"`
 	PostOverflows []string `json:"postoverflows,omitempty" yaml:"postoverflows,omitempty"`
 	Scenarios     []string `json:"scenarios,omitempty"     yaml:"scenarios,omitempty"`
+	WaapRules     []string `json:"waap-rules,omitempty"    yaml:"waap-rules,omitempty"`
+	WaapConfigs   []string `json:"waap-configs,omitempty"  yaml:"waap-configs,omitempty"`
 	Collections   []string `json:"collections,omitempty"   yaml:"collections,omitempty"`
+}
+
+
+type SubItem struct {
+	Type string
+	Name string
+}
+
+func (i *Item) SubItems() []SubItem {
+	sub := make([]SubItem,
+		len(i.Parsers) +
+		len(i.PostOverflows) +
+		len(i.Scenarios) +
+		len(i.WaapRules) +
+		len(i.WaapConfigs) +
+		len(i.Collections))
+	n := 0
+	for _, name := range i.Parsers {
+		sub[n] = SubItem{Type: PARSERS, Name: name}
+		n++
+	}
+	for _, name := range i.PostOverflows {
+		sub[n] = SubItem{Type: POSTOVERFLOWS, Name: name}
+		n++
+	}
+	for _, name := range i.Scenarios {
+		sub[n] = SubItem{Type: SCENARIOS, Name: name}
+		n++
+	}
+	for _, name := range i.WaapRules {
+		sub[n] = SubItem{Type: WAAPRULES, Name: name}
+		n++
+	}
+	for _, name := range i.WaapConfigs {
+		sub[n] = SubItem{Type: WAAPCONFIGS, Name: name}
+		n++
+	}
+	for _, name := range i.Collections {
+		sub[n] = SubItem{Type: COLLECTIONS, Name: name}
+		n++
+	}
+	return sub
 }
 
 // Status returns the status of the item as a string and an emoji

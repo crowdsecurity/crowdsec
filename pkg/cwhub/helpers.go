@@ -200,48 +200,44 @@ func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) erro
 	}
 
 	// collection
-	var tmp = [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections}
-	for idx, ptr := range tmp {
-		ptrtype := ItemTypes[idx]
-		for _, p := range ptr {
-			val, ok := h.Items[ptrtype][p]
-			if !ok {
-				return fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
-			}
+	for _, sub := range target.SubItems() {
+		val, ok := h.Items[sub.Type][sub.Name]
+		if !ok {
+			return fmt.Errorf("required %s %s of %s doesn't exist, abort", sub.Type, sub.Name, target.Name)
+		}
 
-			if !val.Installed && updateOnly && val.Downloaded {
-				log.Debugf("skipping upgrade of %s : not installed", target.Name)
-				continue
-			}
+		if !val.Installed && updateOnly && val.Downloaded {
+			log.Debugf("skipping upgrade of %s : not installed", target.Name)
+			continue
+		}
 
-			log.Debugf("Download %s sub-item : %s %s (%t -> %t)", target.Name, ptrtype, p, target.Installed, updateOnly)
-			//recurse as it's a collection
-			if ptrtype == COLLECTIONS {
-				log.Tracef("collection, recurse")
+		log.Debugf("Download %s sub-item : %s %s (%t -> %t)", target.Name, sub.Type, sub.Name, target.Installed, updateOnly)
+		//recurse as it's a collection
+		if sub.Type == COLLECTIONS {
+			log.Tracef("collection, recurse")
 
-				err = h.DownloadLatest(&val, overwrite, updateOnly)
-				if err != nil {
-					return fmt.Errorf("while downloading %s: %w", val.Name, err)
-				}
-			}
-
-			downloaded := val.Downloaded
-
-			err = h.DownloadItem(&val, overwrite)
+			err = h.DownloadLatest(&val, overwrite, updateOnly)
 			if err != nil {
 				return fmt.Errorf("while downloading %s: %w", val.Name, err)
 			}
-
-			// We need to enable an item when it has been added to a collection since latest release of the collection.
-			// We check if val.Downloaded is false because maybe the item has been disabled by the user.
-			if !val.Installed && !downloaded {
-				if err = h.EnableItem(&val); err != nil {
-					return fmt.Errorf("enabling '%s': %w", val.Name, err)
-				}
-			}
-
-			h.Items[ptrtype][p] = val
 		}
+
+		downloaded := val.Downloaded
+
+		err = h.DownloadItem(&val, overwrite)
+		if err != nil {
+			return fmt.Errorf("while downloading %s: %w", val.Name, err)
+		}
+
+		// We need to enable an item when it has been added to a collection since latest release of the collection.
+		// We check if val.Downloaded is false because maybe the item has been disabled by the user.
+		if !val.Installed && !downloaded {
+			if err = h.EnableItem(&val); err != nil {
+				return fmt.Errorf("enabling '%s': %w", val.Name, err)
+			}
+		}
+
+		h.Items[sub.Type][sub.Name] = val
 	}
 
 	err = h.DownloadItem(target, overwrite)
