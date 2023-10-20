@@ -25,6 +25,7 @@ var WAAP_RULE = "waap-rule"
 type WaapCollectionConfig struct {
 	Type              string       `yaml:"type"`
 	Name              string       `yaml:"name"`
+	Description       string       `yaml:"description"`
 	SecLangFilesRules []string     `yaml:"seclang_files_rules"`
 	SecLangRules      []string     `yaml:"seclang_rules"`
 	Rules             []VPatchRule `yaml:"rules"`
