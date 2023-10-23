@@ -40,9 +40,12 @@ func (r *WaapRunner) Init(datadir string) error {
 	for _, collection := range r.WaapRuntime.OutOfBandRules {
 		outOfBandRules += collection.String()
 	}
-
+	//adapt the logger level to the WAAP
+	runnerLogger := r.logger.Dup()
+	runnerLogger.Logger.SetLevel(r.WaapRuntime.Config.LogLevel)
+	runnerLogger.Infof("setting logger of %s to %s", r.WaapRuntime.Name, r.WaapRuntime.Config.LogLevel)
 	r.WaapInbandEngine, err = coraza.NewWAF(
-		coraza.NewWAFConfig().WithDirectives(inBandRules).WithRootFS(fs),
+		coraza.NewWAFConfig().WithDirectives(inBandRules).WithRootFS(fs).WithDebugLogger(NewCrzLogger(runnerLogger)),
 	)
 
 	if err != nil {
@@ -50,7 +53,7 @@ func (r *WaapRunner) Init(datadir string) error {
 	}
 
 	r.WaapOutbandEngine, err = coraza.NewWAF(
-		coraza.NewWAFConfig().WithDirectives(outOfBandRules).WithRootFS(fs),
+		coraza.NewWAFConfig().WithDirectives(outOfBandRules).WithRootFS(fs).WithDebugLogger(NewCrzLogger(runnerLogger)),
 	)
 
 	if err != nil {
