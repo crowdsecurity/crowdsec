@@ -210,7 +210,7 @@ func ParseIndex(buff []byte) (HubItems, error) {
 }
 
 // ItemStats returns total counts of the hub items
-func (h Hub) ItemStats() []string {
+func (h *Hub) ItemStats() []string {
 	loaded := ""
 	for _, itemType := range ItemTypes {
 		// ensure the order is always the same
