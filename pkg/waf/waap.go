@@ -60,6 +60,7 @@ type WaapRuntimeConfig struct {
 	CompiledOnMatch           []Hook
 	CompiledVariablesTracking []*regexp.Regexp
 	Config                    *WaapConfig
+	//CorazaLogger              debuglog.Logger
 
 	//those are ephemeral, created/destroyed with every req
 	OutOfBandTx ExtendedTransaction //is it a good idea ?
@@ -80,6 +81,7 @@ type WaapConfig struct {
 	PreEval            []Hook     `yaml:"pre_eval"`
 	OnMatch            []Hook     `yaml:"on_match"`
 	VariablesTracking  []string   `yaml:"variables_tracking"`
+	LogLevel           log.Level  `yaml:"log_level"`
 	Logger             *log.Entry `yaml:"-"`
 }
 
@@ -104,9 +106,12 @@ func (wc *WaapConfig) Load(file string) error {
 	if err != nil {
 		return fmt.Errorf("unable to parse yaml file %s : %s", file, err)
 	}
+
 	if wc.Name == "" {
 		return fmt.Errorf("name cannot be empty")
 	}
+	wc.Logger = wc.Logger.WithField("name", wc.Name)
+	wc.Logger.Logger.SetLevel(wc.LogLevel)
 	if wc.DefaultRemediation == "" {
 		return fmt.Errorf("default_remediation cannot be empty")
 	}
