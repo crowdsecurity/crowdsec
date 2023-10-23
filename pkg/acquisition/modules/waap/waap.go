@@ -167,23 +167,20 @@ func (w *WaapSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	for nbRoutine := 0; nbRoutine < w.config.Routines; nbRoutine++ {
 
 		wafUUID := uuid.New().String()
-		wafLogger := &log.Entry{}
+		var wafLogger *log.Entry
 
 		//configure logger
-		if w.config.Debug {
-			var clog = log.New()
-			if err := types.ConfigureLogger(clog); err != nil {
-				log.Fatalf("While creating bucket-specific logger : %s", err)
-			}
-			clog.SetLevel(log.DebugLevel)
-			wafLogger = clog.WithFields(log.Fields{
-				"uuid": wafUUID,
-			})
-		} else {
-			wafLogger = log.WithFields(log.Fields{
-				"uuid": wafUUID,
-			})
+		var clog = log.New()
+		if err := types.ConfigureLogger(clog); err != nil {
+			log.Fatalf("While creating bucket-specific logger : %s", err)
 		}
+		//is it still needed ?
+		if w.config.Debug {
+			clog.SetLevel(log.DebugLevel)
+		}
+		wafLogger = clog.WithFields(log.Fields{
+			"uuid": wafUUID,
+		})
 
 		//we copy WaapRutime for each runner
 		wrt := *w.WaapRuntime
