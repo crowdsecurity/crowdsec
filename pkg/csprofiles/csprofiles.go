@@ -109,7 +109,12 @@ func (Profile *Runtime) GenerateDecisionFromProfile(Alert *models.Alert) ([]*mod
 			*decision.Scope = *Alert.Source.Scope
 		}
 		/*some fields are populated from the reference object : duration, scope, type*/
+
 		decision.Duration = new(string)
+		if refDecision.Duration != nil {
+			*decision.Duration = *refDecision.Duration
+		}
+
 		if Profile.Cfg.DurationExpr != "" && Profile.RuntimeDurationExpr != nil {
 			profileDebug := false
 			if Profile.Cfg.Debug != nil && *Profile.Cfg.Debug {
@@ -118,21 +123,14 @@ func (Profile *Runtime) GenerateDecisionFromProfile(Alert *models.Alert) ([]*mod
 			duration, err := exprhelpers.Run(Profile.RuntimeDurationExpr, map[string]interface{}{"Alert": Alert}, Profile.Logger, profileDebug)
 			if err != nil {
 				Profile.Logger.Warningf("Failed to run duration_expr : %v", err)
-				*decision.Duration = *refDecision.Duration
 			} else {
 				durationStr := fmt.Sprint(duration)
 				if _, err := time.ParseDuration(durationStr); err != nil {
 					Profile.Logger.Warningf("Failed to parse expr duration result '%s'", duration)
-					*decision.Duration = *refDecision.Duration
 				} else {
 					*decision.Duration = durationStr
 				}
 			}
-		} else {
-			if refDecision.Duration == nil {
-				*decision.Duration = defaultDuration
-			}
-			*decision.Duration = *refDecision.Duration
 		}
 
 		decision.Type = new(string)
