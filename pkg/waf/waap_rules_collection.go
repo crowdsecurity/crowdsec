@@ -43,7 +43,7 @@ func LoadCollection(collection string) (WaapCollection, error) {
 	}
 
 	for _, hubWafRuleItem := range hub.GetItemMap(cwhub.WAAP_RULES) {
-		log.Infof("loading %s", hubWafRuleItem.LocalPath)
+		//log.Infof("loading %s", hubWafRuleItem.LocalPath)
 		if !hubWafRuleItem.Installed {
 			continue
 		}
