@@ -29,14 +29,14 @@ func WaapEventGeneration(inEvt types.Event) (types.Event, error) {
 
 	alert := models.Alert{}
 	alert.Capacity = ptr.Of(int32(1))
-	alert.Events = make([]*models.Event, 0) //TBD
-	alert.Meta = make(models.Meta, 0)       //TBD
+	alert.Events = make([]*models.Event, 0) //@tko -> URI, method, UA, param name
+	alert.Meta = make(models.Meta, 0)       //@tko -> URI, method, UA, param name
 	alert.EventsCount = ptr.Of(int32(1))
 	alert.Labels = []string{"waf"} //don't know what to do about this
 	alert.Leakspeed = ptr.Of("")
 	msg := fmt.Sprintf("WAF alert: %s", inEvt.Waap.MatchedRules.GetName())
 	alert.Message = &msg
-	alert.Scenario = ptr.Of(inEvt.Waap.MatchedRules.GetName())
+	alert.Scenario = ptr.Of(inEvt.Waap.MatchedRules.GetName())           // @sbl : should we be able to do inEvt.Waap.MatchedRules.GetHash()
 	alert.ScenarioHash = ptr.Of(inEvt.Waap.MatchedRules.GetHash())       // @sbl : should we be able to do inEvt.Waap.MatchedRules.GetHash()
 	alert.ScenarioVersion = ptr.Of(inEvt.Waap.MatchedRules.GetVersion()) // @sbl : should we be able to do inEvt.Waap.MatchedRules.GetVersion()
 	alert.Simulated = ptr.Of(false)
