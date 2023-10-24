@@ -85,6 +85,7 @@ func (w MatchedRules) GetURI() string {
 
 func (w MatchedRules) GetHash() string {
 	for _, rule := range w {
+		//@sbl : let's fix this
 		return rule["hash"].(string)
 	}
 	return ""
@@ -92,6 +93,7 @@ func (w MatchedRules) GetHash() string {
 
 func (w MatchedRules) GetVersion() string {
 	for _, rule := range w {
+		//@sbl : let's fix this
 		return rule["version"].(string)
 	}
 	return ""
@@ -99,7 +101,7 @@ func (w MatchedRules) GetVersion() string {
 
 func (w MatchedRules) GetName() string {
 	for _, rule := range w {
-		//@sbl : let's fix this, we want to be able to the name of the rule :)
+		//@sbl : let's fix this
 		return rule["name"].(string)
 	}
 	return ""
