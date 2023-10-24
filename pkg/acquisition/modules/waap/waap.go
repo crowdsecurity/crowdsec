@@ -65,6 +65,11 @@ func (wc *WaapSource) UnmarshalConfig(yamlConfig []byte) error {
 		return errors.Wrap(err, "Cannot parse waf configuration")
 	}
 
+	if wc.config.LogLevel == nil {
+		level := new(log.Level)
+		*level = log.InfoLevel
+		wc.config.LogLevel = level
+	}
 	if wc.config.ListenAddr == "" {
 		return fmt.Errorf("listen_addr cannot be empty")
 	}
