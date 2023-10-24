@@ -165,14 +165,22 @@ func (r *WaapRunner) Run(t *tomb.Tomb) error {
 				r.logger.Errorf("unable to process PreEval rules: %s", err)
 				continue
 			}
-			log.Infof("now response is -> %s", r.WaapRuntime.Response.Action)
 			//inband WAAP rules
 			err = r.ProcessInBandRules(&request)
 			if err != nil {
 				r.logger.Errorf("unable to process InBand rules: %s", err)
 				continue
 			}
-
+			//create the associated event for crowdsec itself
+			evt, err := EventFromRequest(request)
+			if err != nil {
+				//let's not interrupt the pipeline for this
+				r.logger.Errorf("unable to create event from request : %s", err)
+			}
+			err = r.AccumulateTxToEvent(&evt, request)
+			if err != nil {
+				r.logger.Errorf("unable to accumulate tx to event : %s", err)
+			}
 			if in := request.Tx.Interruption(); in != nil {
 				r.logger.Debugf("inband rules matched : %d", in.RuleID)
 				r.WaapRuntime.Response.InBandInterrupt = true
@@ -200,20 +208,21 @@ func (r *WaapRunner) Run(t *tomb.Tomb) error {
 				r.logger.Errorf("unable to process OutOfBand rules: %s", err)
 				continue
 			}
-
+			err = r.AccumulateTxToEvent(&evt, request)
+			if err != nil {
+				r.logger.Errorf("unable to accumulate tx to event : %s", err)
+			}
 			if in := request.Tx.Interruption(); in != nil {
 				r.logger.Debugf("outband rules matched : %d", in.RuleID)
 				r.WaapRuntime.Response.OutOfBandInterrupt = true
-			} else {
-				continue
+				err = r.WaapRuntime.ProcessOnMatchRules(request)
+				if err != nil {
+					r.logger.Errorf("unable to process OnMatch rules: %s", err)
+					continue
+				}
 			}
-
-			err = r.WaapRuntime.ProcessOnMatchRules(request)
-			if err != nil {
-				r.logger.Errorf("unable to process OnMatch rules: %s", err)
-				continue
-			}
-
+			r.logger.Debugf("sending event %p to outChan", &evt)
+			r.outChan <- evt
 		}
 	}
 }

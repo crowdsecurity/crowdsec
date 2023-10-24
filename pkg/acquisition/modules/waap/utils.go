@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/coraza/v3/collection"
-	"github.com/crowdsecurity/coraza/v3/experimental"
 	"github.com/crowdsecurity/coraza/v3/types/variables"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
@@ -76,32 +75,23 @@ func LogWaapEvent(evt *types.Event, logger *log.Entry) {
 
 }
 
-/*
- how to configure variables to be kept:
-  1) full collection : tx.*
-  2) subvariables : tx.a*
-
-*/
-
-// func LogWaapEvent(evt *types.Event) error {
-
-// 	return nil
-// }
-
-func AccumulateTxToEvent(logger log.Entry, tx experimental.FullTransaction, kind string, evt *types.Event, wr *waf.WaapRuntimeConfig) error {
-
-	if tx.IsInterrupted() {
+func (r *WaapRunner) AccumulateTxToEvent(evt *types.Event, req waf.ParsedRequest) error {
+	if evt == nil {
+		//an error was already emitted, let's not spam the logs
+		return nil
+	}
+	if req.Tx.IsInterrupted() {
 		if evt.Meta == nil {
 			evt.Meta = map[string]string{}
 		}
-		if kind == InBand {
+		if req.IsInBand {
 			evt.Meta["waap_interrupted"] = "true"
-			evt.Meta["waap_action"] = tx.Interruption().Action
+			evt.Meta["waap_action"] = req.Tx.Interruption().Action
 			evt.Parsed["inband_interrupted"] = "true"
-			evt.Parsed["inband_action"] = tx.Interruption().Action
+			evt.Parsed["inband_action"] = req.Tx.Interruption().Action
 		} else {
 			evt.Parsed["outofband_interrupted"] = "true"
-			evt.Parsed["outofband_action"] = tx.Interruption().Action
+			evt.Parsed["outofband_action"] = req.Tx.Interruption().Action
 		}
 	}
 
@@ -109,7 +99,7 @@ func AccumulateTxToEvent(logger log.Entry, tx experimental.FullTransaction, kind
 		evt.Waap.Vars = map[string]string{}
 	}
 
-	tx.Variables().All(func(v variables.RuleVariable, col collection.Collection) bool {
+	req.Tx.Variables().All(func(v variables.RuleVariable, col collection.Collection) bool {
 		for _, variable := range col.FindAll() {
 			key := ""
 			if variable.Key() == "" {
@@ -120,22 +110,27 @@ func AccumulateTxToEvent(logger log.Entry, tx experimental.FullTransaction, kind
 			if variable.Value() == "" {
 				continue
 			}
-			for _, collectionToKeep := range wr.CompiledVariablesTracking {
+			for _, collectionToKeep := range r.WaapRuntime.CompiledVariablesTracking {
 				match := collectionToKeep.MatchString(key)
 				if match {
 					evt.Waap.Vars[key] = variable.Value()
-					logger.Debugf("%s.%s = %s", variable.Variable().Name(), variable.Key(), variable.Value())
+					r.logger.Debugf("%s.%s = %s", variable.Variable().Name(), variable.Key(), variable.Value())
 				} else {
-					logger.Debugf("%s.%s != %s (%s) (not kept)", variable.Variable().Name(), variable.Key(), collectionToKeep, variable.Value())
+					r.logger.Debugf("%s.%s != %s (%s) (not kept)", variable.Variable().Name(), variable.Key(), collectionToKeep, variable.Value())
 				}
 			}
 		}
 		return true
 	})
 
-	for _, rule := range tx.MatchedRules() {
+	for _, rule := range req.Tx.MatchedRules() {
 		if rule.Message() == "" {
+			r.logger.Tracef("discarding rule %d", rule.Rule().ID())
 			continue
+		}
+		kind := "outofband"
+		if req.IsInBand {
+			kind = "inband"
 		}
 		WafRuleHits.With(prometheus.Labels{"rule_id": fmt.Sprintf("%d", rule.Rule().ID()), "type": kind}).Inc()
 
@@ -158,4 +153,5 @@ func AccumulateTxToEvent(logger log.Entry, tx experimental.FullTransaction, kind
 	}
 
 	return nil
+
 }
