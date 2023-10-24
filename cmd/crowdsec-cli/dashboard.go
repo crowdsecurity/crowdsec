@@ -37,7 +37,7 @@ var (
 
 	forceYes bool
 
-	/*informations needed to setup a random password on user's behalf*/
+	// information needed to set up a random password on user's behalf
 )
 
 func NewDashboardCmd() *cobra.Command {
