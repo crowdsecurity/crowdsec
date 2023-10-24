@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 
-	corazatypes "github.com/crowdsecurity/coraza/v3/types"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -33,7 +32,6 @@ type WaapSourceConfig struct {
 	KeyFilePath                       string `yaml:"key_file"`
 	Path                              string `yaml:"path"`
 	Routines                          int    `yaml:"routines"`
-	Debug                             bool   `yaml:"debug"`
 	WaapConfig                        string `yaml:"waap_config"`
 	WaapConfigPath                    string `yaml:"waap_config_path"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
@@ -106,19 +104,13 @@ func (w *WaapSource) GetAggregMetrics() []prometheus.Collector {
 	return nil
 }
 
-func logError(error corazatypes.MatchedRule) {
-	msg := error.ErrorLog()
-	log.Infof("[logError][%s]  %s", error.Rule().Severity(), msg)
-}
-
 func (w *WaapSource) Configure(yamlConfig []byte, logger *log.Entry) error {
-	//wc := WaapSourceConfig{}
 	err := w.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return errors.Wrap(err, "unable to parse waf configuration")
 	}
 	w.logger = logger
-	//w.config = wc
+	w.logger.Logger.SetLevel(*w.config.LogLevel)
 
 	w.logger.Tracef("WAF configuration: %+v", w.config)
 
@@ -167,27 +159,14 @@ func (w *WaapSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	for nbRoutine := 0; nbRoutine < w.config.Routines; nbRoutine++ {
 
 		wafUUID := uuid.New().String()
-		var wafLogger *log.Entry
-
-		//configure logger
-		var clog = log.New()
-		if err := types.ConfigureLogger(clog); err != nil {
-			log.Fatalf("While creating bucket-specific logger : %s", err)
-		}
-		//is it still needed ?
-		if w.config.Debug {
-			clog.SetLevel(log.DebugLevel)
-		}
-		wafLogger = clog.WithFields(log.Fields{
-			"uuid": wafUUID,
-		})
-
 		//we copy WaapRutime for each runner
 		wrt := *w.WaapRuntime
 		runner := WaapRunner{
-			inChan:      w.InChan,
-			UUID:        wafUUID,
-			logger:      wafLogger,
+			inChan: w.InChan,
+			UUID:   wafUUID,
+			logger: w.logger.WithFields(log.Fields{
+				"uuid": wafUUID,
+			}),
 			WaapRuntime: &wrt,
 		}
 		err := runner.Init(hub.GetDataDir())
@@ -195,7 +174,6 @@ func (w *WaapSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 			return fmt.Errorf("unable to initialize runner : %s", err)
 		}
 		w.WaapRunners[nbRoutine] = runner
-		//most likely missign somethign here to actually start the runner :)
 	}
 
 	w.logger.Infof("Created %d waf runners", len(w.WaapRunners))
