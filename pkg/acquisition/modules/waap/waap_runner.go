@@ -221,8 +221,15 @@ func (r *WaapRunner) Run(t *tomb.Tomb) error {
 					continue
 				}
 			}
-			r.logger.Debugf("sending event %p to outChan", &evt)
 			r.outChan <- evt
+			/*we generate a second event that will go directly to LAPI.
+			we don't want to risk losing all visibility on waap events if the user is missing a scenario*/
+			waapOvlfw, err := WaapEventGeneration(evt)
+			if err != nil {
+				r.logger.Errorf("unable to generate waap event : %s", err)
+			} else {
+				r.outChan <- waapOvlfw
+			}
 		}
 	}
 }
