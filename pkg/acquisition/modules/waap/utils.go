@@ -6,11 +6,48 @@ import (
 
 	"github.com/crowdsecurity/coraza/v3/collection"
 	"github.com/crowdsecurity/coraza/v3/types/variables"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
+
+func WaapEventGeneration(inEvt types.Event) (types.Event, error) {
+	evt := types.Event{}
+	evt.Type = types.WAAP
+	evt.Process = true
+	source := models.Source{
+		Value: ptr.Of(inEvt.Parsed["source_ip"]),
+		IP:    inEvt.Parsed["source_ip"],
+		Scope: ptr.Of(types.Ip),
+	}
+
+	evt.Overflow.Sources = make(map[string]models.Source)
+	evt.Overflow.Sources["ip"] = source
+
+	alert := models.Alert{}
+	alert.Capacity = ptr.Of(int32(1))
+	alert.Events = make([]*models.Event, 0) //TBD
+	alert.Meta = make(models.Meta, 0)       //TBD
+	alert.EventsCount = ptr.Of(int32(1))
+	alert.Labels = []string{"waf"} //don't know what to do about this
+	alert.Leakspeed = ptr.Of("")
+	msg := fmt.Sprintf("WAF alert: %s", inEvt.Waap.MatchedRules.GetName())
+	alert.Message = &msg
+	alert.Scenario = ptr.Of(inEvt.Waap.MatchedRules.GetName())
+	alert.ScenarioHash = ptr.Of(inEvt.Waap.MatchedRules.GetHash())       // @sbl : should we be able to do inEvt.Waap.MatchedRules.GetHash()
+	alert.ScenarioVersion = ptr.Of(inEvt.Waap.MatchedRules.GetVersion()) // @sbl : should we be able to do inEvt.Waap.MatchedRules.GetVersion()
+	alert.Simulated = ptr.Of(false)
+	alert.Source = &source
+	alert.StartAt = ptr.Of(time.Now().UTC().Format(time.RFC3339))
+	alert.StopAt = ptr.Of(time.Now().UTC().Format(time.RFC3339))
+
+	evt.Overflow.APIAlerts = []models.Alert{alert}
+	evt.Overflow.Alert = &alert
+	return evt, nil
+}
 
 func EventFromRequest(r waf.ParsedRequest) (types.Event, error) {
 	evt := types.Event{}
@@ -76,6 +113,7 @@ func LogWaapEvent(evt *types.Event, logger *log.Entry) {
 }
 
 func (r *WaapRunner) AccumulateTxToEvent(evt *types.Event, req waf.ParsedRequest) error {
+
 	if evt == nil {
 		//an error was already emitted, let's not spam the logs
 		return nil
