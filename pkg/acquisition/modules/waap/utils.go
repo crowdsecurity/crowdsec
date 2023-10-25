@@ -1,6 +1,7 @@
 package wafacquisition
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -31,6 +32,21 @@ func WaapEventGeneration(inEvt types.Event) (types.Event, error) {
 	alert.Capacity = ptr.Of(int32(1))
 	alert.Events = make([]*models.Event, 0) //@tko -> URI, method, UA, param name
 	alert.Meta = make(models.Meta, 0)       //@tko -> URI, method, UA, param name
+	for _, key := range []string{"target_uri", "method"} {
+
+		valueByte, err := json.Marshal([]string{inEvt.Parsed[key]})
+		if err != nil {
+			log.Debugf("unable to serialize key %s", key)
+			continue
+		}
+
+		meta := models.MetaItems0{
+			Key:   key,
+			Value: string(valueByte),
+		}
+		alert.Meta = append(alert.Meta, &meta)
+		log.Infof("adding Meta - %s = %s", key, inEvt.Parsed[key])
+	}
 	alert.EventsCount = ptr.Of(int32(1))
 	alert.Labels = []string{"waf"} //don't know what to do about this
 	alert.Leakspeed = ptr.Of("")
