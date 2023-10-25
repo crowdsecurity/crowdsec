@@ -74,23 +74,29 @@ func (i *Item) SubItems() []SubItem {
 		len(i.PostOverflows) +
 		len(i.Scenarios) +
 		len(i.Collections))
+
 	n := 0
+
 	for _, name := range i.Parsers {
 		sub[n] = SubItem{Type: PARSERS, Name: name}
 		n++
 	}
+
 	for _, name := range i.PostOverflows {
 		sub[n] = SubItem{Type: POSTOVERFLOWS, Name: name}
 		n++
 	}
+
 	for _, name := range i.Scenarios {
 		sub[n] = SubItem{Type: SCENARIOS, Name: name}
 		n++
 	}
+
 	for _, name := range i.Collections {
 		sub[n] = SubItem{Type: COLLECTIONS, Name: name}
 		n++
 	}
+
 	return sub
 }
 

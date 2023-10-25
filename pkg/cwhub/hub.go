@@ -212,14 +212,17 @@ func ParseIndex(buff []byte) (HubItems, error) {
 // ItemStats returns total counts of the hub items
 func (h *Hub) ItemStats() []string {
 	loaded := ""
+
 	for _, itemType := range ItemTypes {
 		// ensure the order is always the same
 		if h.Items[itemType] == nil {
 			continue
 		}
+
 		if len(h.Items[itemType]) == 0 {
 			continue
 		}
+
 		loaded += fmt.Sprintf("%d %s, ", len(h.Items[itemType]), itemType)
 	}
 

@@ -7,6 +7,7 @@ package cwhub
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -291,7 +292,7 @@ func (h *Hub) DownloadItem(target *Item, overwrite bool, hubURLTemplate, branch 
 		return fmt.Errorf("while hashing %s: %w", target.Name, err)
 	}
 
-	meow := fmt.Sprintf("%x", hash.Sum(nil))
+	meow := hex.EncodeToString(hash.Sum(nil))
 	if meow != target.Versions[target.Version].Digest {
 		log.Errorf("Downloaded version doesn't match index, please 'hub update'")
 		log.Debugf("got %s, expected %s", meow, target.Versions[target.Version].Digest)

@@ -2,6 +2,7 @@ package cwhub
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -50,7 +51,7 @@ func getSHA256(filepath string) (string, error) {
 		return "", fmt.Errorf("unable to calculate sha256 of '%s': %w", filepath, err)
 	}
 
-	return fmt.Sprintf("%x", h.Sum(nil)), nil
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 type itemFileInfo struct {
