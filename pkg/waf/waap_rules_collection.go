@@ -8,6 +8,7 @@ import (
 
 	corazatypes "github.com/crowdsecurity/coraza/v3/types"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/waf/waap_rule"
 	"gopkg.in/yaml.v2"
 
 	log "github.com/sirupsen/logrus"
@@ -23,13 +24,13 @@ var WAAP_RULE = "waap-rule"
 
 // to be filled w/ seb update
 type WaapCollectionConfig struct {
-	Type              string       `yaml:"type"`
-	Name              string       `yaml:"name"`
-	Description       string       `yaml:"description"`
-	SecLangFilesRules []string     `yaml:"seclang_files_rules"`
-	SecLangRules      []string     `yaml:"seclang_rules"`
-	Rules             []VPatchRule `yaml:"rules"`
-	Data              interface{}  `yaml:"data"` //Ignore it
+	Type              string                 `yaml:"type"`
+	Name              string                 `yaml:"name"`
+	Description       string                 `yaml:"description"`
+	SecLangFilesRules []string               `yaml:"seclang_files_rules"`
+	SecLangRules      []string               `yaml:"seclang_rules"`
+	Rules             []waap_rule.CustomRule `yaml:"rules"`
+	Data              interface{}            `yaml:"data"` //Ignore it
 }
 
 func LoadCollection(collection string) (WaapCollection, error) {
@@ -115,8 +116,13 @@ func LoadCollection(collection string) (WaapCollection, error) {
 
 	if loadedRule.Rules != nil {
 		for _, rule := range loadedRule.Rules {
-			log.Infof("Adding rule %s", rule.String())
-			waapCol.Rules = append(waapCol.Rules, rule.String())
+			strRule, err := rule.Convert(waap_rule.ModsecurityRuleType, loadedRule.Name)
+			if err != nil {
+				log.Errorf("unable to convert rule %s : %s", rule.Name, err)
+				return WaapCollection{}, err
+			}
+			log.Infof("Adding rule %s", strRule)
+			waapCol.Rules = append(waapCol.Rules, strRule)
 		}
 	}
 
