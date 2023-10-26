@@ -72,7 +72,6 @@ func EventFromRequest(r waf.ParsedRequest) (types.Event, error) {
 	evt.ExpectMode = types.LIVE
 	//def needs fixing
 	evt.Stage = "s00-raw"
-	evt.Process = true
 	evt.Parsed = map[string]string{
 		"source_ip":   r.ClientIP,
 		"target_host": r.Host,
@@ -134,19 +133,25 @@ func (r *WaapRunner) AccumulateTxToEvent(evt *types.Event, req waf.ParsedRequest
 		//an error was already emitted, let's not spam the logs
 		return nil
 	}
-	if req.Tx.IsInterrupted() {
-		if evt.Meta == nil {
-			evt.Meta = map[string]string{}
-		}
-		if req.IsInBand {
-			evt.Meta["waap_interrupted"] = "true"
-			evt.Meta["waap_action"] = req.Tx.Interruption().Action
-			evt.Parsed["inband_interrupted"] = "true"
-			evt.Parsed["inband_action"] = req.Tx.Interruption().Action
-		} else {
-			evt.Parsed["outofband_interrupted"] = "true"
-			evt.Parsed["outofband_action"] = req.Tx.Interruption().Action
-		}
+
+	if !req.Tx.IsInterrupted() {
+		//if the phase didn't generate an interruption, we don't have anything to add to the event
+		return nil
+	}
+	//if one interruption was generated, event is good for processing :)
+	evt.Process = true
+
+	if evt.Meta == nil {
+		evt.Meta = map[string]string{}
+	}
+	if req.IsInBand {
+		evt.Meta["waap_interrupted"] = "true"
+		evt.Meta["waap_action"] = req.Tx.Interruption().Action
+		evt.Parsed["inband_interrupted"] = "true"
+		evt.Parsed["inband_action"] = req.Tx.Interruption().Action
+	} else {
+		evt.Parsed["outofband_interrupted"] = "true"
+		evt.Parsed["outofband_action"] = req.Tx.Interruption().Action
 	}
 
 	if evt.Waap.Vars == nil {

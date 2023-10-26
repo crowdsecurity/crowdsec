@@ -234,9 +234,14 @@ func (r *WaapRunner) Run(t *tomb.Tomb) error {
 					continue
 				}
 			}
+
+			if !evt.Process {
+				continue
+			}
+
+			//we generate two events: one that is going to be picked up by the acquisition pipeline (parsers, scenarios etc.)
+			//and a second one that will go straight to LAPI
 			r.outChan <- evt
-			/*we generate a second event that will go directly to LAPI.
-			we don't want to risk losing all visibility on waap events if the user is missing a scenario*/
 			waapOvlfw, err := WaapEventGeneration(evt)
 			if err != nil {
 				r.logger.Errorf("unable to generate waap event : %s", err)
