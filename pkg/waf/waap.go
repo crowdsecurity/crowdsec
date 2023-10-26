@@ -81,7 +81,7 @@ type WaapConfig struct {
 	PreEval            []Hook     `yaml:"pre_eval"`
 	OnMatch            []Hook     `yaml:"on_match"`
 	VariablesTracking  []string   `yaml:"variables_tracking"`
-	LogLevel           log.Level  `yaml:"log_level"`
+	LogLevel           *log.Level `yaml:"log_level"`
 	Logger             *log.Entry `yaml:"-"`
 }
 
@@ -110,8 +110,12 @@ func (wc *WaapConfig) Load(file string) error {
 	if wc.Name == "" {
 		return fmt.Errorf("name cannot be empty")
 	}
+	if wc.LogLevel == nil {
+		lvl := log.InfoLevel
+		wc.LogLevel = &lvl
+	}
 	wc.Logger = wc.Logger.WithField("name", wc.Name)
-	wc.Logger.Logger.SetLevel(wc.LogLevel)
+	wc.Logger.Logger.SetLevel(*wc.LogLevel)
 	if wc.DefaultRemediation == "" {
 		return fmt.Errorf("default_remediation cannot be empty")
 	}
