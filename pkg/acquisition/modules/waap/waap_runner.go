@@ -51,12 +51,22 @@ func (r *WaapRunner) Init(datadir string) error {
 		return fmt.Errorf("unable to initialize inband engine : %w", err)
 	}
 
+	tx := r.WaapInbandEngine.NewTransaction()
+	if !tx.IsRequestBodyAccessible() {
+		runnerLogger.Warningf("request body is not accessible, inband rules won't be able to match on it")
+	}
+
 	r.WaapOutbandEngine, err = coraza.NewWAF(
 		coraza.NewWAFConfig().WithDirectives(outOfBandRules).WithRootFS(fs).WithDebugLogger(NewCrzLogger(runnerLogger)),
 	)
 
 	if err != nil {
 		return fmt.Errorf("unable to initialize outband engine : %w", err)
+	}
+
+	tx = r.WaapOutbandEngine.NewTransaction()
+	if !tx.IsRequestBodyAccessible() {
+		runnerLogger.Warningf("request body is not accessible, outband rules won't be able to match on it")
 	}
 
 	return nil
