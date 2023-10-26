@@ -55,6 +55,7 @@ func (r *WaapRunner) Init(datadir string) error {
 	if !tx.IsRequestBodyAccessible() {
 		runnerLogger.Warningf("request body is not accessible, inband rules won't be able to match on it")
 	}
+	tx.Close()
 
 	r.WaapOutbandEngine, err = coraza.NewWAF(
 		coraza.NewWAFConfig().WithDirectives(outOfBandRules).WithRootFS(fs).WithDebugLogger(NewCrzLogger(runnerLogger)),
@@ -68,6 +69,7 @@ func (r *WaapRunner) Init(datadir string) error {
 	if !tx.IsRequestBodyAccessible() {
 		runnerLogger.Warningf("request body is not accessible, outband rules won't be able to match on it")
 	}
+	tx.Close()
 
 	return nil
 }
