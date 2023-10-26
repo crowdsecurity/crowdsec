@@ -42,7 +42,6 @@ func (r *WaapRunner) Init(datadir string) error {
 	}
 	//adapt the logger level to the WAAP
 	runnerLogger := r.logger.Dup()
-	runnerLogger.Logger.SetLevel(r.WaapRuntime.Config.LogLevel)
 	runnerLogger.Infof("setting logger of %s to %s", r.WaapRuntime.Name, r.WaapRuntime.Config.LogLevel)
 	r.WaapInbandEngine, err = coraza.NewWAF(
 		coraza.NewWAFConfig().WithDirectives(inBandRules).WithRootFS(fs).WithDebugLogger(NewCrzLogger(runnerLogger)),
