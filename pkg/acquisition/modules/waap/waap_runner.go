@@ -40,36 +40,38 @@ func (r *WaapRunner) Init(datadir string) error {
 	for _, collection := range r.WaapRuntime.OutOfBandRules {
 		outOfBandRules += collection.String()
 	}
-	//adapt the logger level to the WAAP
 	runnerLogger := r.logger.Dup()
-	runnerLogger.Infof("setting logger of %s to %s", r.WaapRuntime.Name, r.WaapRuntime.Config.LogLevel)
-	r.WaapInbandEngine, err = coraza.NewWAF(
-		coraza.NewWAFConfig().WithDirectives(inBandRules).WithRootFS(fs).WithDebugLogger(NewCrzLogger(runnerLogger)),
-	)
 
+	//setting up inband engine
+	inbandCfg := coraza.NewWAFConfig().WithDirectives(inBandRules).WithRootFS(fs).WithDebugLogger(NewCrzLogger(runnerLogger))
+	if !r.WaapRuntime.Config.InbandOptions.DisableBodyInspection {
+		inbandCfg = inbandCfg.WithRequestBodyAccess()
+	} else {
+		log.Warningf("Disabling body inspection, Inband rules will not be able to match on body's content.")
+	}
+	if r.WaapRuntime.Config.InbandOptions.RequestBodyInMemoryLimit != nil {
+		inbandCfg = inbandCfg.WithRequestBodyInMemoryLimit(*r.WaapRuntime.Config.InbandOptions.RequestBodyInMemoryLimit)
+	}
+	r.WaapInbandEngine, err = coraza.NewWAF(inbandCfg)
 	if err != nil {
 		return fmt.Errorf("unable to initialize inband engine : %w", err)
 	}
 
-	tx := r.WaapInbandEngine.NewTransaction()
-	if !tx.IsRequestBodyAccessible() {
-		runnerLogger.Warningf("request body is not accessible, inband rules won't be able to match on it")
+	//setting up outband engine
+	outbandCfg := coraza.NewWAFConfig().WithDirectives(outOfBandRules).WithRootFS(fs).WithDebugLogger(NewCrzLogger(runnerLogger))
+	if !r.WaapRuntime.Config.OutOfBandOptions.DisableBodyInspection {
+		outbandCfg = outbandCfg.WithRequestBodyAccess()
+	} else {
+		log.Warningf("Disabling body inspection, Out of band rules will not be able to match on body's content.")
 	}
-	tx.Close()
-
-	r.WaapOutbandEngine, err = coraza.NewWAF(
-		coraza.NewWAFConfig().WithDirectives(outOfBandRules).WithRootFS(fs).WithDebugLogger(NewCrzLogger(runnerLogger)),
-	)
+	if r.WaapRuntime.Config.OutOfBandOptions.RequestBodyInMemoryLimit != nil {
+		outbandCfg = outbandCfg.WithRequestBodyInMemoryLimit(*r.WaapRuntime.Config.OutOfBandOptions.RequestBodyInMemoryLimit)
+	}
+	r.WaapOutbandEngine, err = coraza.NewWAF(outbandCfg)
 
 	if err != nil {
 		return fmt.Errorf("unable to initialize outband engine : %w", err)
 	}
-
-	tx = r.WaapOutbandEngine.NewTransaction()
-	if !tx.IsRequestBodyAccessible() {
-		runnerLogger.Warningf("request body is not accessible, outband rules won't be able to match on it")
-	}
-	tx.Close()
 
 	return nil
 }

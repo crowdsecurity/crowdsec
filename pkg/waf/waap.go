@@ -48,12 +48,18 @@ type WaapTempResponse struct {
 	SendEvent          bool //do we send an internal event on rule match
 }
 
+type WaapSubEngineOpts struct {
+	DisableBodyInspection    bool `yaml:"disable_body_inspection"`
+	RequestBodyInMemoryLimit *int `yaml:"request_body_in_memory_limit"`
+}
+
 // runtime version of WaapConfig
 type WaapRuntimeConfig struct {
 	Name           string
 	OutOfBandRules []WaapCollection
-	//OutOfBandEngine XXX
-	InBandRules               []WaapCollection
+
+	InBandRules []WaapCollection
+
 	DefaultRemediation        string
 	CompiledOnLoad            []Hook
 	CompiledPreEval           []Hook
@@ -67,22 +73,26 @@ type WaapRuntimeConfig struct {
 	InBandTx    ExtendedTransaction //is it a good idea ?
 	Response    WaapTempResponse
 	//should we store matched rules here ?
+
 }
 
 type WaapConfig struct {
-	Name               string     `yaml:"name"`
-	OutOfBandRules     []string   `yaml:"outofband_rules"`
-	InBandRules        []string   `yaml:"inband_rules"`
-	DefaultRemediation string     `yaml:"default_remediation"`
-	DefaultPassAction  string     `yaml:"default_pass_action"`
-	BlockedHTTPCode    int        `yaml:"blocked_http_code"`
-	PassedHTTPCode     int        `yaml:"passed_http_code"`
-	OnLoad             []Hook     `yaml:"on_load"`
-	PreEval            []Hook     `yaml:"pre_eval"`
-	OnMatch            []Hook     `yaml:"on_match"`
-	VariablesTracking  []string   `yaml:"variables_tracking"`
-	LogLevel           *log.Level `yaml:"log_level"`
-	Logger             *log.Entry `yaml:"-"`
+	Name               string            `yaml:"name"`
+	OutOfBandRules     []string          `yaml:"outofband_rules"`
+	InBandRules        []string          `yaml:"inband_rules"`
+	DefaultRemediation string            `yaml:"default_remediation"`
+	DefaultPassAction  string            `yaml:"default_pass_action"`
+	BlockedHTTPCode    int               `yaml:"blocked_http_code"`
+	PassedHTTPCode     int               `yaml:"passed_http_code"`
+	OnLoad             []Hook            `yaml:"on_load"`
+	PreEval            []Hook            `yaml:"pre_eval"`
+	OnMatch            []Hook            `yaml:"on_match"`
+	VariablesTracking  []string          `yaml:"variables_tracking"`
+	InbandOptions      WaapSubEngineOpts `yaml:"inband_options"`
+	OutOfBandOptions   WaapSubEngineOpts `yaml:"outofband_options"`
+
+	LogLevel *log.Level `yaml:"log_level"`
+	Logger   *log.Entry `yaml:"-"`
 }
 
 func (w *WaapRuntimeConfig) ClearResponse() {
