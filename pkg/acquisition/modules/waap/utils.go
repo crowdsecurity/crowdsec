@@ -202,6 +202,9 @@ func (r *WaapRunner) AccumulateTxToEvent(evt *types.Event, req waf.ParsedRequest
 			"accuracy":   rule.Rule().Accuracy(),
 			"msg":        rule.Message(),
 			"severity":   rule.Rule().Severity().String(),
+			"name":       "FIXFIXFIXFIXFIX",
+			"hash":       "FIXIFIX",
+			"version":    "FIXFIXFIX",
 		}
 		evt.Waap.MatchedRules = append(evt.Waap.MatchedRules, corazaRule)
 	}
