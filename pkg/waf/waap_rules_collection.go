@@ -26,6 +26,7 @@ var WAAP_RULE = "waap-rule"
 type WaapCollectionConfig struct {
 	Type              string                 `yaml:"type"`
 	Name              string                 `yaml:"name"`
+	Debug             bool                   `yaml:"debug"`
 	Description       string                 `yaml:"description"`
 	SecLangFilesRules []string               `yaml:"seclang_files_rules"`
 	SecLangRules      []string               `yaml:"seclang_rules"`
@@ -70,6 +71,11 @@ func LoadCollection(collection string) (WaapCollection, error) {
 			continue
 		}
 		log.Infof("Adding %s to waap rules", rule.Name)
+		// if rule.Debug {
+		// 	log.Infof("Enabling debug for collection %s", rule.Name)
+
+		// 	//SetRuleDebug(rule.ID, true)
+		// }
 		waapRules[rule.Name] = rule
 	}
 
