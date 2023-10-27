@@ -87,7 +87,7 @@ func TestUpgradeItemInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 
 	didUpdate, err := hub.UpgradeItem(COLLECTIONS, "crowdsecurity/test_collection", false, mockURLTemplate, "master")
 	require.NoError(t, err)
-	require.True(t, didUpdate)
+	require.False(t, didUpdate)
 
 	hub = getHubOrFail(t, hub.cfg)
 	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
