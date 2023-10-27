@@ -89,11 +89,7 @@ func LoadCollection(collection string) (WaapCollection, error) {
 		rule.version = hubWafRuleItem.Version
 
 		log.Infof("Adding %s to waap rules", rule.Name)
-		// if rule.Debug {
-		// 	log.Infof("Enabling debug for collection %s", rule.Name)
 
-		// 	//SetRuleDebug(rule.ID, true)
-		// }
 		waapRules[rule.Name] = rule
 	}
 
@@ -107,8 +103,6 @@ func LoadCollection(collection string) (WaapCollection, error) {
 	if loadedRule, ok = waapRules[collection]; !ok {
 		return WaapCollection{}, fmt.Errorf("no waap rules found for collection %s", collection)
 	}
-
-	log.Infof("Found rule collection %s with %+v", loadedRule.Name, loadedRule)
 
 	waapCol := WaapCollection{
 		collectionName: loadedRule.Name,
