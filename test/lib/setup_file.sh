@@ -238,11 +238,17 @@ assert_stderr_line() {
 }
 export -f assert_stderr_line
 
-hub_uninstall_all() {
+# remove all installed items and data
+hub_purge_all() {
     CONFIG_DIR=$(dirname "$CONFIG_YAML")
     rm -rf "$CONFIG_DIR"/collections/* "$CONFIG_DIR"/parsers/*/* "$CONFIG_DIR"/scenarios/* "$CONFIG_DIR"/postoverflows/*
+    rm -rf "$CONFIG_DIR"/hub/collections/* "$CONFIG_DIR"/hub/parsers/*/* "$CONFIG_DIR"/hub/scenarios/* "$CONFIG_DIR"/hub/postoverflows/*
+    DATA_DIR=$(config_get .config_paths.data_dir)
+    # should remove everything except the db (find $DATA_DIR -not -name "crowdsec.db*" -delete),
+    # but don't play with fire if there is a misconfiguration
+    rm -rfv "$DATA_DIR"/GeoLite*
 }
-export -f hub_uninstall_all
+export -f hub_purge_all
 
 # remove color and style sequences from stdin
 plaintext() {

@@ -20,7 +20,7 @@ setup() {
     load "../lib/setup.sh"
     load "../lib/bats-file/load.bash"
     ./instance-data load
-    hub_uninstall_all
+    hub_purge_all
     hub_min=$(jq <"$HUB_DIR/.index.json" 'del(..|.content?) | del(..|.long_description?) | del(..|.deprecated?) | del (..|.labels?)')
     echo "$hub_min" >"$HUB_DIR/.index.json"
 }
@@ -224,12 +224,17 @@ teardown() {
 @test "cscli collections remove [collection]..." {
     rune -1 cscli collections remove
     assert_stderr --partial "specify at least one collection to remove or '--all'"
-
     rune -1 cscli collections remove blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in collections"
 
-    # XXX: we can however remove a real item if it's not installed, or already removed
     rune -0 cscli collections remove crowdsecurity/sshd
+    assert_stderr --partial 'removing crowdsecurity/sshd: not downloaded -- no removal required'
+
+    rune -0 cscli collections install crowdsecurity/sshd --download-only
+    rune -0 cscli collections remove crowdsecurity/sshd
+    assert_stderr --partial 'removing crowdsecurity/sshd: already uninstalled'
+    rune -0 cscli collections remove crowdsecurity/sshd --purge
+    assert_stderr --partial 'Removed source file [crowdsecurity/sshd]'
 
     # install, then remove, check files
     rune -0 cscli collections install crowdsecurity/sshd

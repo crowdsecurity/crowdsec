@@ -20,7 +20,7 @@ setup() {
     load "../lib/setup.sh"
     load "../lib/bats-file/load.bash"
     ./instance-data load
-    hub_uninstall_all
+    hub_purge_all
     hub_min=$(jq <"$HUB_DIR/.index.json" 'del(..|.content?) | del(..|.long_description?) | del(..|.deprecated?) | del (..|.labels?)')
     echo "$hub_min" >"$HUB_DIR/.index.json"
 }
@@ -226,12 +226,17 @@ teardown() {
 @test "cscli postoverflows remove [postoverflow]..." {
     rune -1 cscli postoverflows remove
     assert_stderr --partial "specify at least one postoverflow to remove or '--all'"
-
     rune -1 cscli postoverflows remove blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in postoverflows"
 
-    # XXX: we can however remove a real item if it's not installed, or already removed
     rune -0 cscli postoverflows remove crowdsecurity/rdns
+    assert_stderr --partial 'removing crowdsecurity/rdns: not downloaded -- no removal required'
+
+    rune -0 cscli postoverflows install crowdsecurity/rdns --download-only
+    rune -0 cscli postoverflows remove crowdsecurity/rdns
+    assert_stderr --partial 'removing crowdsecurity/rdns: already uninstalled'
+    rune -0 cscli postoverflows remove crowdsecurity/rdns --purge
+    assert_stderr --partial 'Removed source file [crowdsecurity/rdns]'
 
     # install, then remove, check files
     rune -0 cscli postoverflows install crowdsecurity/rdns

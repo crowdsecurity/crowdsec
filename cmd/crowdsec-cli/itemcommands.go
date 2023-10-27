@@ -175,12 +175,6 @@ func NewItemsCmd(typeName string) *cobra.Command {
 
 			return nil
 		},
-		PersistentPostRun: func(cmd *cobra.Command, args []string) {
-			if cmd.Name() == "inspect" || cmd.Name() == "list" {
-				return
-			}
-			log.Infof(ReloadMessage())
-		},
 	}
 
 	cmd.AddCommand(NewItemsInstallCmd(typeName))
@@ -234,6 +228,8 @@ func itemsInstallRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 				log.Errorf("Error while installing '%s': %s", name, err)
 			}
 		}
+		// XXX: only reload if we installed something
+		log.Infof(ReloadMessage())
 		return nil
 	}
 
@@ -289,9 +285,24 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 		}
 
 		if all {
-			err := hub.RemoveMany(it.name, "", all, purge, force)
+			items, err := hub.GetInstalledItems(it.name)
 			if err != nil {
 				return err
+			}
+
+			removed := 0
+			for _, item := range items {
+				didRemove, err := hub.RemoveItem(it.name, item.Name, purge, force)
+				if err != nil {
+					return err
+				}
+				if didRemove {
+					removed++
+				}
+			}
+			log.Infof("Removed %d %s", removed, it.name)
+			if removed > 0 {
+				log.Infof(ReloadMessage())
 			}
 
 			return nil
@@ -301,6 +312,7 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 			return fmt.Errorf("specify at least one %s to remove or '--all'", it.singular)
 		}
 
+		removed := 0
 		for _, name := range args {
 			if !force {
 				item := hub.GetItem(it.name, name)
@@ -315,10 +327,18 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 				}
 			}
 
-			err := hub.RemoveMany(it.name, name, all, purge, force)
+			didRemove, err := hub.RemoveItem(it.name, name, purge, force)
 			if err != nil {
 				return err
 			}
+
+			if didRemove {
+				log.Infof("Removed %s", name)
+				removed++
+			}
+		}
+		if removed > 0 {
+			log.Infof(ReloadMessage())
 		}
 
 		return nil
@@ -388,6 +408,9 @@ func itemsUpgradeRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 				}
 			}
 			log.Infof("Updated %d %s", updated, it.name)
+			if updated > 0 {
+				log.Infof(ReloadMessage())
+			}
 
 			return nil
 		}
@@ -396,6 +419,7 @@ func itemsUpgradeRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 			return fmt.Errorf("specify at least one %s to upgrade or '--all'", it.singular)
 		}
 
+		updated := 0
 		for _, name := range args {
 			didUpdate, err := hub.UpgradeItem(it.name, name, force, hubURLTemplate, branch)
 			if err != nil {
@@ -403,7 +427,11 @@ func itemsUpgradeRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 			}
 			if didUpdate {
 				log.Infof("Updated %s", name)
+				updated++
 			}
+		}
+		if updated > 0 {
+			log.Infof(ReloadMessage())
 		}
 
 		return nil

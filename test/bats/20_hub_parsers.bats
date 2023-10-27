@@ -20,7 +20,7 @@ setup() {
     load "../lib/setup.sh"
     load "../lib/bats-file/load.bash"
     ./instance-data load
-    hub_uninstall_all
+    hub_purge_all
     # XXX: remove all "content" fields from the index, to make sure
     # XXX: we don't rely on it in any way
     hub_min=$(jq <"$HUB_DIR/.index.json" 'del(..|.content?) | del(..|.long_description?) | del(..|.deprecated?) | del (..|.labels?)')
@@ -228,18 +228,20 @@ teardown() {
     assert_output "0"
 }
 
-@test "cscli parsers remove [parser]..." {
+@test "foo cscli parsers remove [parser]..." {
     rune -1 cscli parsers remove
     assert_stderr --partial "specify at least one parser to remove or '--all'"
-
     rune -1 cscli parsers remove blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in parsers"
 
-    # XXX: we can however remove a real item if it's not installed, or already removed
     rune -0 cscli parsers remove crowdsecurity/whitelists
+    assert_stderr --partial 'removing crowdsecurity/whitelists: not downloaded -- no removal required'
 
-    # XXX: have the --force ignore uninstalled items
-    # XXX: maybe also with --purge
+    rune -0 cscli parsers install crowdsecurity/whitelists --download-only
+    rune -0 cscli parsers remove crowdsecurity/whitelists
+    assert_stderr --partial 'removing crowdsecurity/whitelists: already uninstalled'
+    rune -0 cscli parsers remove crowdsecurity/whitelists --purge
+    assert_stderr --partial 'Removed source file [crowdsecurity/whitelists]'
 
     # install, then remove, check files
     rune -0 cscli parsers install crowdsecurity/whitelists

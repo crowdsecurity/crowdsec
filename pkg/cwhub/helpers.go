@@ -62,53 +62,37 @@ func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly
 	return nil
 }
 
-// RemoveItem removes one - or all - the items from the hub
-func (h *Hub) RemoveMany(itemType string, name string, all bool, purge bool, forceAction bool) error {
-	if name != "" {
-		item := h.GetItem(itemType, name)
-		if item == nil {
-			return fmt.Errorf("can't find '%s' in %s", name, itemType)
-		}
+// RemoveItem disables one item, optionally removing the downloaded content
+func (h *Hub) RemoveItem(itemType string, name string, purge bool, forceAction bool) (bool, error) {
+	removed := false
 
-		err := h.DisableItem(item, purge, forceAction)
-
-		if err != nil {
-			return fmt.Errorf("unable to disable %s: %w", item.Name, err)
-		}
-
-		if err = h.AddItem(*item); err != nil {
-			return fmt.Errorf("unable to add %s: %w", item.Name, err)
-		}
-
-		return nil
+	item := h.GetItem(itemType, name)
+	if item == nil {
+		return false, fmt.Errorf("can't find '%s' in %s", name, itemType)
 	}
 
-	if !all {
-		return fmt.Errorf("removing item: no item specified")
+	if !item.Downloaded {
+		log.Infof("removing %s: not downloaded -- no removal required", item.Name)
+		return false, nil
 	}
 
-	disabled := 0
-
-	// remove all
-	for _, v := range h.GetItemMap(itemType) {
-		if !v.Installed {
-			continue
-		}
-
-		err := h.DisableItem(&v, purge, forceAction)
-		if err != nil {
-			return fmt.Errorf("unable to disable %s: %w", v.Name, err)
-		}
-
-		if err := h.AddItem(v); err != nil {
-			return fmt.Errorf("unable to add %s: %w", v.Name, err)
-		}
-		disabled++
+	if !item.Installed && !purge {
+		log.Infof("removing %s: already uninstalled", item.Name)
+		return false, nil
 	}
 
-	log.Infof("Disabled %d items", disabled)
+	if err := h.DisableItem(item, purge, forceAction); err != nil {
+		return false, fmt.Errorf("unable to disable %s: %w", item.Name, err)
+	}
 
-	return nil
+	// XXX: should take the value from DisableItem
+	removed = true
+
+	if err := h.AddItem(*item); err != nil {
+		return false, fmt.Errorf("unable to refresh item state %s: %w", item.Name, err)
+	}
+
+	return removed, nil
 }
 
 // UpgradeItem upgrades an item from the hub
@@ -161,7 +145,7 @@ func (h *Hub) UpgradeItem(itemType string, name string, force bool, hubURLTempla
 	}
 
 	if err := h.AddItem(*item); err != nil {
-		return false, fmt.Errorf("unable to add %s: %w", item.Name, err)
+		return false, fmt.Errorf("unable to refresh item state %s: %w", item.Name, err)
 	}
 
 	return updated, nil

@@ -20,7 +20,7 @@ setup() {
     load "../lib/setup.sh"
     load "../lib/bats-file/load.bash"
     ./instance-data load
-    hub_uninstall_all
+    hub_purge_all
     hub_min=$(jq <"$HUB_DIR/.index.json" 'del(..|.content?) | del(..|.long_description?) | del(..|.deprecated?) | del (..|.labels?)')
     echo "$hub_min" >"$HUB_DIR/.index.json"
 }
@@ -226,12 +226,17 @@ teardown() {
 @test "cscli scenarios remove [scenario]..." {
     rune -1 cscli scenarios remove
     assert_stderr --partial "specify at least one scenario to remove or '--all'"
-
     rune -1 cscli scenarios remove blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in scenarios"
 
-    # XXX: we can however remove a real item if it's not installed, or already removed
     rune -0 cscli scenarios remove crowdsecurity/ssh-bf
+    assert_stderr --partial 'removing crowdsecurity/ssh-bf: not downloaded -- no removal required'
+
+    rune -0 cscli scenarios install crowdsecurity/ssh-bf --download-only
+    rune -0 cscli scenarios remove crowdsecurity/ssh-bf
+    assert_stderr --partial 'removing crowdsecurity/ssh-bf: already uninstalled'
+    rune -0 cscli scenarios remove crowdsecurity/ssh-bf --purge
+    assert_stderr --partial 'Removed source file [crowdsecurity/ssh-bf]'
 
     # install, then remove, check files
     rune -0 cscli scenarios install crowdsecurity/ssh-bf

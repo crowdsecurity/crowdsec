@@ -71,8 +71,9 @@ func TestUpgradeItemInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 	require.True(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
 	assertCollectionDepsInstalled(t, "crowdsecurity/test_collection")
 
-	err := hub.RemoveMany(SCENARIOS, "crowdsecurity/foobar_scenario", false, false, false)
+	didRemove, err := hub.RemoveItem(SCENARIOS, "crowdsecurity/foobar_scenario", false, false)
 	require.NoError(t, err)
+	require.True(t, didRemove)
 
 	hub = getHubOrFail(t, hub.cfg)
 	// scenario referenced by collection  was deleted hence, collection should be tainted
@@ -121,8 +122,9 @@ func TestUpgradeItemNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *te
 	require.True(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
 	assertCollectionDepsInstalled(t, "crowdsecurity/test_collection")
 
-	err := hub.RemoveMany(SCENARIOS, "crowdsecurity/foobar_scenario", false, false, false)
+	didRemove, err := hub.RemoveItem(SCENARIOS, "crowdsecurity/foobar_scenario", false, false)
 	require.NoError(t, err)
+	require.True(t, didRemove)
 
 	hub = getHubOrFail(t, hub.cfg)
 	// scenario referenced by collection  was deleted hence, collection should be tainted
