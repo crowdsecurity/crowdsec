@@ -92,6 +92,13 @@ func (r *WaapRunner) processRequest(tx experimental.FullTransaction, request *wa
 	}()
 
 	request.Tx.ProcessConnection(request.RemoteAddr, 0, "", 0)
+
+	for k, v := range request.Args {
+		for _, vv := range v {
+			request.Tx.AddGetRequestArgument(k, vv)
+		}
+	}
+
 	request.Tx.ProcessURI(request.URI, request.Method, request.Proto) //TODO: The doc mentions that GET args needs to be added, but we never call AddArguments ?
 
 	for k, vr := range request.Headers {

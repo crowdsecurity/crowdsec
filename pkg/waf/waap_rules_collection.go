@@ -31,8 +31,22 @@ type WaapCollectionConfig struct {
 	SecLangFilesRules []string               `yaml:"seclang_files_rules"`
 	SecLangRules      []string               `yaml:"seclang_rules"`
 	Rules             []waap_rule.CustomRule `yaml:"rules"`
-	Data              interface{}            `yaml:"data"` //Ignore it
+
+	Data    interface{} `yaml:"data"` //Ignore it
+	hash    string      `yaml:"-"`
+	version string      `yaml:"-"`
 }
+
+type RulesDetails struct {
+	LogLevel log.Level
+	Hash     string
+	Version  string
+	Name     string
+}
+
+// Should it be a global ?
+// Is using the id is a good idea ? might be too specific to coraza and not easily reusable
+var WaapRulesDetails = make(map[int]RulesDetails)
 
 func LoadCollection(collection string) (WaapCollection, error) {
 
@@ -70,6 +84,10 @@ func LoadCollection(collection string) (WaapCollection, error) {
 			log.Warnf("unexpected type %s instead of %s for file %s", rule.Type, WAAP_RULE, hubWafRuleItem.LocalPath)
 			continue
 		}
+
+		rule.hash = hubWafRuleItem.LocalHash
+		rule.version = hubWafRuleItem.Version
+
 		log.Infof("Adding %s to waap rules", rule.Name)
 		// if rule.Debug {
 		// 	log.Infof("Enabling debug for collection %s", rule.Name)
@@ -122,13 +140,24 @@ func LoadCollection(collection string) (WaapCollection, error) {
 
 	if loadedRule.Rules != nil {
 		for _, rule := range loadedRule.Rules {
-			strRule, err := rule.Convert(waap_rule.ModsecurityRuleType, loadedRule.Name)
+			strRule, ruleId, err := rule.Convert(waap_rule.ModsecurityRuleType, loadedRule.Name)
 			if err != nil {
 				log.Errorf("unable to convert rule %s : %s", rule.Name, err)
 				return WaapCollection{}, err
 			}
 			log.Infof("Adding rule %s", strRule)
 			waapCol.Rules = append(waapCol.Rules, strRule)
+
+			if _, ok := WaapRulesDetails[int(ruleId)]; !ok {
+				WaapRulesDetails[int(ruleId)] = RulesDetails{
+					LogLevel: log.InfoLevel,
+					Hash:     loadedRule.hash,
+					Version:  loadedRule.version,
+					Name:     loadedRule.Name,
+				}
+			} else {
+				log.Warnf("conflicting id %d for rule %s !", ruleId, rule.Name)
+			}
 		}
 	}
 

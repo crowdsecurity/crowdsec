@@ -11,6 +11,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
@@ -196,6 +197,21 @@ func (r *WaapRunner) AccumulateTxToEvent(evt *types.Event, req waf.ParsedRequest
 		}
 		WafRuleHits.With(prometheus.Labels{"rule_id": fmt.Sprintf("%d", rule.Rule().ID()), "type": kind}).Inc()
 
+		spew.Dump(waf.WaapRulesDetails)
+
+		name := "NOT_SET"
+		version := "NOT_SET"
+		hash := "NOT_SET"
+
+		if details, ok := waf.WaapRulesDetails[rule.Rule().ID()]; ok {
+			//Only set them for custom rules, not for rules written in seclang
+			name = details.Name
+			version = details.Version
+			hash = details.Hash
+
+			r.logger.Debugf("custom rule for event, setting name: %s, version: %s, hash: %s", name, version, hash)
+		}
+
 		corazaRule := map[string]interface{}{
 			"id":         rule.Rule().ID(),
 			"uri":        evt.Parsed["uri"],
@@ -210,9 +226,9 @@ func (r *WaapRunner) AccumulateTxToEvent(evt *types.Event, req waf.ParsedRequest
 			"accuracy":   rule.Rule().Accuracy(),
 			"msg":        rule.Message(),
 			"severity":   rule.Rule().Severity().String(),
-			"name":       "FIXFIXFIXFIXFIX",
-			"hash":       "FIXIFIX",
-			"version":    "FIXFIXFIX",
+			"name":       name,
+			"hash":       hash,
+			"version":    version,
 		}
 		evt.Waap.MatchedRules = append(evt.Waap.MatchedRules, corazaRule)
 	}
