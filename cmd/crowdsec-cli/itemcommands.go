@@ -379,9 +379,8 @@ func itemsUpgradeRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 
 			updated := 0
 			for _, item := range items {
-				println(item.Name)
 				didUpdate, err := hub.UpgradeItem(it.name, item.Name, force, hubURLTemplate, branch)
-				if ; err != nil {
+				if err != nil {
 					return err
 				}
 				if didUpdate {
