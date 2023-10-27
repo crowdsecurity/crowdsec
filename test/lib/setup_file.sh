@@ -240,15 +240,27 @@ export -f assert_stderr_line
 
 # remove all installed items and data
 hub_purge_all() {
+    local CONFIG_DIR
     CONFIG_DIR=$(dirname "$CONFIG_YAML")
     rm -rf "$CONFIG_DIR"/collections/* "$CONFIG_DIR"/parsers/*/* "$CONFIG_DIR"/scenarios/* "$CONFIG_DIR"/postoverflows/*
     rm -rf "$CONFIG_DIR"/hub/collections/* "$CONFIG_DIR"/hub/parsers/*/* "$CONFIG_DIR"/hub/scenarios/* "$CONFIG_DIR"/hub/postoverflows/*
+    local DATA_DIR
     DATA_DIR=$(config_get .config_paths.data_dir)
     # should remove everything except the db (find $DATA_DIR -not -name "crowdsec.db*" -delete),
     # but don't play with fire if there is a misconfiguration
     rm -rfv "$DATA_DIR"/GeoLite*
 }
 export -f hub_purge_all
+
+# remove unused data from the index, to make sure we don't rely on it in any way
+hub_strip_index() {
+    local INDEX
+    INDEX=$(config_get .config_paths.index_path)
+    local hub_min
+    hub_min=$(jq <"$INDEX" 'del(..|.content?) | del(..|.long_description?) | del(..|.deprecated?) | del (..|.labels?)')
+    echo "$hub_min" >"$INDEX"
+}
+export -f hub_strip_index
 
 # remove color and style sequences from stdin
 plaintext() {
