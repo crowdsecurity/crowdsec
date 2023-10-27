@@ -269,9 +269,6 @@ func (w *WaapSource) waapHandler(rw http.ResponseWriter, r *http.Request) {
 
 	waapResponse := w.WaapRuntime.GenerateResponse(response.InBandInterrupt)
 
-	log.Infof("resp %+v", response)
-	log.Infof("waap resp %+v", waapResponse)
-
 	rw.WriteHeader(waapResponse.HTTPStatus)
 	body, err := json.Marshal(BodyResponse{Action: waapResponse.Action})
 	if err != nil {
