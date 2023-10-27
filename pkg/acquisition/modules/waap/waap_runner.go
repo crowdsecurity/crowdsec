@@ -142,7 +142,7 @@ func (r *WaapRunner) processRequest(tx experimental.FullTransaction, request *wa
 	}
 
 	if in != nil {
-		r.logger.Infof("rules matched for body : %d", in.RuleID)
+		r.logger.Debugf("rules matched for body : %d", in.RuleID)
 		return nil
 	}
 
@@ -169,7 +169,7 @@ func (r *WaapRunner) Run(t *tomb.Tomb) error {
 			r.logger.Infof("Waf Runner is dying")
 			return nil
 		case request := <-r.inChan:
-			r.logger.Infof("Requests handled by runner %s", request.UUID)
+			r.logger.Debugf("Requests handled by runner %s", request.UUID)
 			r.WaapRuntime.ClearResponse()
 
 			request.IsInBand = true
