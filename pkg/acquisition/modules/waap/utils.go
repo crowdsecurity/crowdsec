@@ -46,7 +46,6 @@ func WaapEventGeneration(inEvt types.Event) (types.Event, error) {
 			Value: string(valueByte),
 		}
 		alert.Meta = append(alert.Meta, &meta)
-		log.Infof("adding Meta - %s = %s", key, inEvt.Parsed[key])
 	}
 	alert.EventsCount = ptr.Of(int32(1))
 	alert.Labels = []string{"waf"} //don't know what to do about this
