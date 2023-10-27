@@ -77,6 +77,8 @@ func (e *crzLogEvent) Int(key string, i int) dbg.Event {
 			} else {
 				return e
 			}
+		} else {
+			return e
 		}
 	}
 	//e.logger.Info("int")
