@@ -88,11 +88,11 @@ func EventFromRequest(r waf.ParsedRequest) (types.Event, error) {
 	evt.Line = types.Line{
 		Time: time.Now(),
 		//should we add some info like listen addr/port/path ?
-		Labels:  map[string]string{"type": "coraza-waf"},
+		Labels:  map[string]string{"type": "coraza-waap"},
 		Process: true,
-		Module:  "waf",
-		Src:     "waf",
-		Raw:     "dummy-waf-data", //we discard empty Line.Raw items :)
+		Module:  "waap",
+		Src:     "waap",
+		Raw:     "dummy-waap-data", //we discard empty Line.Raw items :)
 	}
 	evt.Waap = types.WaapEvent{}
 
@@ -143,6 +143,9 @@ func (r *WaapRunner) AccumulateTxToEvent(evt *types.Event, req waf.ParsedRequest
 
 	if evt.Meta == nil {
 		evt.Meta = map[string]string{}
+	}
+	if evt.Parsed == nil {
+		evt.Parsed = map[string]string{}
 	}
 	if req.IsInBand {
 		evt.Meta["waap_interrupted"] = "true"
