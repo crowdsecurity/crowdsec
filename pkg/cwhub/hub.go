@@ -15,7 +15,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
-const HubIndexFile = ".index.json"
+// const HubIndexFile = ".index.json"
 
 // Hub represents the runtime status of the hub (parsed items, etc.)
 type Hub struct {
@@ -78,12 +78,12 @@ func InitHub(cfg *csconfig.HubCfg) (*Hub, error) {
 
 // InitHubUpdate is like InitHub but downloads and updates the index instead of reading from the disk
 // It is used to inizialize the hub when there is no index file yet
-func InitHubUpdate(cfg *csconfig.HubCfg) (*Hub, error) {
+func InitHubUpdate(cfg *csconfig.HubCfg, urlTemplate, branch, remotePath string) (*Hub, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("no configuration found for hub")
 	}
 
-	bidx, err := DownloadIndex(cfg.HubIndexFile)
+	bidx, err := DownloadIndex(cfg.HubIndexFile, urlTemplate, branch, remotePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download index: %w", err)
 	}
@@ -108,10 +108,11 @@ func InitHubUpdate(cfg *csconfig.HubCfg) (*Hub, error) {
 }
 
 // DownloadIndex downloads the latest version of the index and returns the content
-func DownloadIndex(indexPath string) ([]byte, error) {
-	log.Debugf("fetching index from branch %s (%s)", HubBranch, fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile))
+func DownloadIndex(localPath, hubURLTemplate, branch, remotePath string) ([]byte, error) {
+	url := fmt.Sprintf(hubURLTemplate, branch, remotePath)
+	log.Debugf("fetching index from branch %s (%s)", branch, url)
 
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile), nil)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build request for hub index: %w", err)
 	}
@@ -135,17 +136,17 @@ func DownloadIndex(indexPath string) ([]byte, error) {
 		return nil, fmt.Errorf("failed to read request answer for hub index: %w", err)
 	}
 
-	oldContent, err := os.ReadFile(indexPath)
+	oldContent, err := os.ReadFile(localPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			log.Warningf("failed to read hub index: %s", err)
 		}
 	} else if bytes.Equal(body, oldContent) {
 		log.Info("hub index is up to date")
-		// write it anyway, can't hurt
+		return body, nil
 	}
 
-	file, err := os.OpenFile(indexPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+	file, err := os.OpenFile(localPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 
 	if err != nil {
 		return nil, fmt.Errorf("while opening hub index file: %w", err)
@@ -157,7 +158,7 @@ func DownloadIndex(indexPath string) ([]byte, error) {
 		return nil, fmt.Errorf("while writing hub index file: %w", err)
 	}
 
-	log.Infof("Wrote new %d bytes index to %s", wsize, indexPath)
+	log.Infof("Wrote index to %s, %d bytes", localPath, wsize)
 
 	return body, nil
 }
@@ -209,7 +210,7 @@ func ParseIndex(buff []byte) (HubItems, error) {
 }
 
 // ItemStats returns total counts of the hub items
-func (h Hub) ItemStats() []string {
+func (h *Hub) ItemStats() []string {
 	loaded := ""
 	for _, itemType := range ItemTypes {
 		// ensure the order is always the same

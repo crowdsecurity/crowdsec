@@ -6,10 +6,10 @@ import (
 	"os"
 	"os/exec"
 
+	goccyyaml "github.com/goccy/go-yaml"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
-	goccyyaml "github.com/goccy/go-yaml"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/setup"
@@ -298,12 +298,14 @@ func runSetupInstallHub(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	branch := chooseHubBranch()
+
 	input, err := os.ReadFile(fromFile)
 	if err != nil {
 		return fmt.Errorf("while reading file %s: %w", fromFile, err)
 	}
 
-	if err = setup.InstallHubItems(csConfig, input, dryRun); err != nil {
+	if err = setup.InstallHubItems(csConfig, input, dryRun, hubURLTemplate, branch); err != nil {
 		return err
 	}
 

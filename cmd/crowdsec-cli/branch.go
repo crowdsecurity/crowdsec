@@ -1,4 +1,4 @@
-package cwhub
+package main
 
 // Set the appropriate hub branch according to config settings and crowdsec version
 
@@ -43,17 +43,4 @@ func chooseHubBranch() string {
 		"added to Crowdsec Hub after CrowdSec %s", latest)
 
 	return csVersion
-}
-
-// SetHubBranch sets the package variable that points to the hub branch.
-func SetHubBranch() {
-	// a branch is already set, or specified from the flags
-	if HubBranch != "" {
-		return
-	}
-
-	// use the branch corresponding to the crowdsec version
-	HubBranch = chooseHubBranch()
-
-	log.Debugf("Using branch '%s' for the hub", HubBranch)
 }

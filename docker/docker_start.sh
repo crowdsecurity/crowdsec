@@ -327,22 +327,22 @@ fi
 ## Remove collections, parsers, scenarios & postoverflows
 if [ "$DISABLE_COLLECTIONS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean collections remove "$DISABLE_COLLECTIONS"
+    cscli_if_clean collections remove "$DISABLE_COLLECTIONS" --force
 fi
 
 if [ "$DISABLE_PARSERS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean parsers remove "$DISABLE_PARSERS"
+    cscli_if_clean parsers remove "$DISABLE_PARSERS" --force
 fi
 
 if [ "$DISABLE_SCENARIOS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean scenarios remove "$DISABLE_SCENARIOS"
+    cscli_if_clean scenarios remove "$DISABLE_SCENARIOS" --force
 fi
 
 if [ "$DISABLE_POSTOVERFLOWS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean postoverflows remove "$DISABLE_POSTOVERFLOWS"
+    cscli_if_clean postoverflows remove "$DISABLE_POSTOVERFLOWS" --force
 fi
 
 ## Register bouncers via env

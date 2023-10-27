@@ -17,7 +17,7 @@ func TestUpgradeConfigNewScenarioInCollection(t *testing.T) {
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
 
-	require.NoError(t, hub.InstallItem("crowdsecurity/test_collection", COLLECTIONS, false, false))
+	require.NoError(t, hub.InstallItem("crowdsecurity/test_collection", COLLECTIONS, false, false, mockURLTemplate, "master"))
 
 	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
 	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
@@ -33,7 +33,7 @@ func TestUpgradeConfigNewScenarioInCollection(t *testing.T) {
 	// collection receives an update. It now adds new scenario "crowdsecurity/barfoo_scenario"
 	pushUpdateToCollectionInHub()
 
-	hub, err := InitHubUpdate(hub.cfg)
+	hub, err := InitHubUpdate(hub.cfg, mockURLTemplate, "master", ".index.json")
 	require.NoError(t, err, "failed to download index: %s", err)
 
 	hub = getHubOrFail(t, hub.cfg)
@@ -43,7 +43,7 @@ func TestUpgradeConfigNewScenarioInCollection(t *testing.T) {
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].UpToDate)
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Tainted)
 
-	err = hub.UpgradeConfig(COLLECTIONS, "crowdsecurity/test_collection", false)
+	err = hub.UpgradeConfig(COLLECTIONS, "crowdsecurity/test_collection", false, mockURLTemplate, "master")
 	require.NoError(t, err)
 	assertCollectionDepsInstalled(t, "crowdsecurity/test_collection")
 
@@ -61,7 +61,7 @@ func TestUpgradeConfigInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
 	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
 
-	require.NoError(t, hub.InstallItem("crowdsecurity/test_collection", COLLECTIONS, false, false))
+	require.NoError(t, hub.InstallItem("crowdsecurity/test_collection", COLLECTIONS, false, false, mockURLTemplate, "master"))
 
 	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
 	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
@@ -81,10 +81,10 @@ func TestUpgradeConfigInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
 	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].UpToDate)
 
-	hub, err = InitHubUpdate(hub.cfg)
+	hub, err = InitHubUpdate(hub.cfg, mockURLTemplate, "master", ".index.json")
 	require.NoError(t, err, "failed to download index: %s", err)
 
-	err = hub.UpgradeConfig(COLLECTIONS, "crowdsecurity/test_collection", false)
+	err = hub.UpgradeConfig(COLLECTIONS, "crowdsecurity/test_collection", false, mockURLTemplate, "master")
 	require.NoError(t, err)
 
 	hub = getHubOrFail(t, hub.cfg)
@@ -110,7 +110,7 @@ func TestUpgradeConfigNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
 	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
 
-	require.NoError(t, hub.InstallItem("crowdsecurity/test_collection", COLLECTIONS, false, false))
+	require.NoError(t, hub.InstallItem("crowdsecurity/test_collection", COLLECTIONS, false, false, mockURLTemplate, "master"))
 
 	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
 	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
@@ -136,13 +136,13 @@ func TestUpgradeConfigNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *
 	// we just removed. Nor should it install the newly added scenario
 	pushUpdateToCollectionInHub()
 
-	hub, err = InitHubUpdate(hub.cfg)
+	hub, err = InitHubUpdate(hub.cfg, mockURLTemplate, "master", ".index.json")
 	require.NoError(t, err, "failed to download index: %s", err)
 
 	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
 	hub = getHubOrFail(t, hub.cfg)
 
-	err = hub.UpgradeConfig(COLLECTIONS, "crowdsecurity/test_collection", false)
+	err = hub.UpgradeConfig(COLLECTIONS, "crowdsecurity/test_collection", false, mockURLTemplate, "master")
 	require.NoError(t, err)
 
 	hub = getHubOrFail(t, hub.cfg)

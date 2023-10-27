@@ -106,7 +106,7 @@ func (h *Hub) getItemInfo(path string) (itemFileInfo, bool, error) {
 
 	log.Tracef("stage:%s ftype:%s", ret.stage, ret.ftype)
 	// log.Infof("%s -> name:%s stage:%s", path, fname, stage)
-	
+
 	if ret.stage == SCENARIOS {
 		ret.ftype = SCENARIOS
 		ret.stage = ""
@@ -392,6 +392,12 @@ func (h *Hub) SyncDir(dir string) ([]string, error) {
 		cpath, err := filepath.Abs(fmt.Sprintf("%s/%s", dir, scan))
 		if err != nil {
 			log.Errorf("failed %s : %s", cpath, err)
+		}
+
+		// explicit check for non existing directory, avoid spamming log.Debug
+		if _, err := os.Stat(cpath); os.IsNotExist(err) {
+			log.Tracef("directory %s doesn't exist, skipping", cpath)
+			continue
 		}
 
 		err = filepath.WalkDir(cpath, h.itemVisit)

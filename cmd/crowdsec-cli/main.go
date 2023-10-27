@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/fatih/color"
@@ -12,9 +11,9 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
+	"slices"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
@@ -66,9 +65,10 @@ func initConfig() {
 		log.Fatalf("missing 'cscli' configuration in '%s', exiting", ConfigFilePath)
 	}
 
-	if cwhub.HubBranch == "" && csConfig.Cscli.HubBranch != "" {
-		cwhub.HubBranch = csConfig.Cscli.HubBranch
+	if hubBranch == "" && csConfig.Cscli.HubBranch != "" {
+		hubBranch = csConfig.Cscli.HubBranch
 	}
+
 	if OutputFormat != "" {
 		csConfig.Cscli.Output = OutputFormat
 		if OutputFormat != "json" && OutputFormat != "raw" && OutputFormat != "human" {
@@ -197,7 +197,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.PersistentFlags().BoolVar(&err_lvl, "error", false, "Set logging to error")
 	rootCmd.PersistentFlags().BoolVar(&trace_lvl, "trace", false, "Set logging to trace")
 
-	rootCmd.PersistentFlags().StringVar(&cwhub.HubBranch, "branch", "", "Override hub branch on github")
+	rootCmd.PersistentFlags().StringVar(&hubBranch, "branch", "", "Override hub branch on github")
 	if err := rootCmd.PersistentFlags().MarkHidden("branch"); err != nil {
 		log.Fatalf("failed to hide flag: %s", err)
 	}

@@ -46,13 +46,11 @@ func decodeSetup(input []byte, fancyErrors bool) (Setup, error) {
 }
 
 // InstallHubItems installs the objects recommended in a setup file.
-func InstallHubItems(csConfig *csconfig.Config, input []byte, dryRun bool) error {
+func InstallHubItems(csConfig *csconfig.Config, input []byte, dryRun bool, hubURLTemplate, branch string) error {
 	setupEnvelope, err := decodeSetup(input, false)
 	if err != nil {
 		return err
 	}
-
-	cwhub.SetHubBranch()
 
 	hub, err := cwhub.InitHub(csConfig.Hub)
 	if err != nil {
@@ -76,7 +74,7 @@ func InstallHubItems(csConfig *csconfig.Config, input []byte, dryRun bool) error
 					continue
 				}
 
-				if err := hub.InstallItem(collection, cwhub.COLLECTIONS, forceAction, downloadOnly); err != nil {
+				if err := hub.InstallItem(collection, cwhub.COLLECTIONS, forceAction, downloadOnly, hubURLTemplate, branch); err != nil {
 					return fmt.Errorf("while installing collection %s: %w", collection, err)
 				}
 			}
@@ -90,7 +88,7 @@ func InstallHubItems(csConfig *csconfig.Config, input []byte, dryRun bool) error
 					continue
 				}
 
-				if err := hub.InstallItem(parser, cwhub.PARSERS, forceAction, downloadOnly); err != nil {
+				if err := hub.InstallItem(parser, cwhub.PARSERS, forceAction, downloadOnly, hubURLTemplate, branch); err != nil {
 					return fmt.Errorf("while installing parser %s: %w", parser, err)
 				}
 			}
@@ -104,7 +102,7 @@ func InstallHubItems(csConfig *csconfig.Config, input []byte, dryRun bool) error
 					continue
 				}
 
-				if err := hub.InstallItem(scenario, cwhub.SCENARIOS, forceAction, downloadOnly); err != nil {
+				if err := hub.InstallItem(scenario, cwhub.SCENARIOS, forceAction, downloadOnly, hubURLTemplate, branch); err != nil {
 					return fmt.Errorf("while installing scenario %s: %w", scenario, err)
 				}
 			}
@@ -118,7 +116,7 @@ func InstallHubItems(csConfig *csconfig.Config, input []byte, dryRun bool) error
 					continue
 				}
 
-				if err := hub.InstallItem(postoverflow, cwhub.POSTOVERFLOWS, forceAction, downloadOnly); err != nil {
+				if err := hub.InstallItem(postoverflow, cwhub.POSTOVERFLOWS, forceAction, downloadOnly, hubURLTemplate, branch); err != nil {
 					return fmt.Errorf("while installing postoverflow %s: %w", postoverflow, err)
 				}
 			}

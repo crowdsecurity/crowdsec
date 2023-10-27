@@ -216,6 +216,8 @@ func itemsInstallRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 			return err
 		}
 
+		branch := chooseHubBranch()
+
 		for _, name := range args {
 			t := hub.GetItem(it.name, name)
 			if t == nil {
@@ -225,7 +227,7 @@ func itemsInstallRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 				continue
 			}
 
-			if err := hub.InstallItem(name, it.name, force, downloadOnly); err != nil {
+			if err := hub.InstallItem(name, it.name, force, downloadOnly, hubURLTemplate, branch); err != nil {
 				if !ignoreError {
 					return fmt.Errorf("error while installing '%s': %w", name, err)
 				}
@@ -367,8 +369,10 @@ func itemsUpgradeRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 			return err
 		}
 
+		branch := chooseHubBranch()
+
 		if all {
-			if err := hub.UpgradeConfig(it.name, "", force); err != nil {
+			if err := hub.UpgradeConfig(it.name, "", force, hubURLTemplate, branch); err != nil {
 				return err
 			}
 			return nil
@@ -379,7 +383,7 @@ func itemsUpgradeRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 		}
 
 		for _, name := range args {
-			if err := hub.UpgradeConfig(it.name, name, force); err != nil {
+			if err := hub.UpgradeConfig(it.name, name, force, hubURLTemplate, branch); err != nil {
 				return err
 			}
 		}

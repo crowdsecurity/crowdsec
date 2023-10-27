@@ -19,7 +19,7 @@ import (
 )
 
 // InstallItem installs an item from the hub
-func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly bool) error {
+func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly bool, hubURLTemplate, branch string) error {
 	item := h.GetItem(itemType, name)
 	if item == nil {
 		return fmt.Errorf("unable to retrieve item: %s", name)
@@ -33,7 +33,7 @@ func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly
 		}
 	}
 
-	err := h.DownloadLatest(item, force, true)
+	err := h.DownloadLatest(item, force, true, hubURLTemplate, branch)
 	if err != nil {
 		return fmt.Errorf("while downloading %s: %w", item.Name, err)
 	}
@@ -111,7 +111,7 @@ func (h *Hub) RemoveMany(itemType string, name string, all bool, purge bool, for
 }
 
 // UpgradeConfig upgrades an item from the hub
-func (h *Hub) UpgradeConfig(itemType string, name string, force bool) error {
+func (h *Hub) UpgradeConfig(itemType string, name string, force bool, hubURLTemplate, branch string) error {
 	updated := 0
 	found := false
 
@@ -144,7 +144,7 @@ func (h *Hub) UpgradeConfig(itemType string, name string, force bool) error {
 			}
 		}
 
-		if err := h.DownloadLatest(&v, force, true); err != nil {
+		if err := h.DownloadLatest(&v, force, true, hubURLTemplate, branch); err != nil {
 			return fmt.Errorf("%s: download failed: %w", v.Name, err)
 		}
 
@@ -185,7 +185,7 @@ func (h *Hub) UpgradeConfig(itemType string, name string, force bool) error {
 }
 
 // DownloadLatest will download the latest version of Item to the tdir directory
-func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) error {
+func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool, hubURLTemplate, branch string) error {
 	var err error
 
 	log.Debugf("Downloading %s %s", target.Type, target.Name)
@@ -196,7 +196,7 @@ func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) erro
 			return nil
 		}
 
-		return h.DownloadItem(target, overwrite)
+		return h.DownloadItem(target, overwrite, hubURLTemplate, branch)
 	}
 
 	// collection
@@ -216,7 +216,7 @@ func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) erro
 		if sub.Type == COLLECTIONS {
 			log.Tracef("collection, recurse")
 
-			err = h.DownloadLatest(&val, overwrite, updateOnly)
+			err = h.DownloadLatest(&val, overwrite, updateOnly, hubURLTemplate, branch)
 			if err != nil {
 				return fmt.Errorf("while downloading %s: %w", val.Name, err)
 			}
@@ -224,7 +224,7 @@ func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) erro
 
 		downloaded := val.Downloaded
 
-		err = h.DownloadItem(&val, overwrite)
+		err = h.DownloadItem(&val, overwrite, hubURLTemplate, branch)
 		if err != nil {
 			return fmt.Errorf("while downloading %s: %w", val.Name, err)
 		}
@@ -240,7 +240,7 @@ func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) erro
 		h.Items[sub.Type][sub.Name] = val
 	}
 
-	err = h.DownloadItem(target, overwrite)
+	err = h.DownloadItem(target, overwrite, hubURLTemplate, branch)
 	if err != nil {
 		return fmt.Errorf("failed to download item: %w", err)
 	}
@@ -248,7 +248,8 @@ func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) erro
 	return nil
 }
 
-func (h *Hub) DownloadItem(target *Item, overwrite bool) error {
+func (h *Hub) DownloadItem(target *Item, overwrite bool, hubURLTemplate, branch string) error {
+	url := fmt.Sprintf(hubURLTemplate, branch, target.RemotePath)
 	tdir := h.cfg.HubDir
 
 	// if user didn't --force, don't overwrite local, tainted, up-to-date files
@@ -264,7 +265,7 @@ func (h *Hub) DownloadItem(target *Item, overwrite bool) error {
 		}
 	}
 
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf(RawFileURLTemplate, HubBranch, target.RemotePath), nil)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return fmt.Errorf("while downloading %s: %w", req.URL.String(), err)
 	}
