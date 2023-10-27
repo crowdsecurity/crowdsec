@@ -5,6 +5,7 @@ set -u
 
 setup_file() {
     load "../lib/setup_file.sh"
+    ./instance-data load
     HUB_DIR=$(config_get '.config_paths.hub_dir')
     export HUB_DIR
     CONFIG_DIR=$(config_get '.config_paths.config_dir')
@@ -258,8 +259,8 @@ teardown() {
     assert_output "0"
 }
 
-@test "cscli parsers remove [parser]... --force" {
-    # remove a parser that belongs to a collection
+@test "cscli collections remove [collections]... --force" {
+    # remove a collections that belongs to a collection
     rune -0 cscli collections install crowdsecurity/linux
     rune -0 cscli collections remove crowdsecurity/sshd
     assert_stderr --partial "crowdsecurity/sshd belongs to collections: [crowdsecurity/linux]"
@@ -278,17 +279,16 @@ teardown() {
     rune -0 cscli collections upgrade crowdsecurity/sshd
     assert_stderr --partial "can't find 'crowdsecurity/sshd' in collections"
 
-    # hash of an empty file
-    sha256_empty="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    # hash of the string "v0.0"
+    sha256_0_0="dfebecf42784a31aa3d009dbcec0c657154a034b45f49cf22a895373f6dbf63d"
 
-    # add version 0.0 to the hub
-    new_hub=$(jq --arg DIGEST "$sha256_empty" <"$HUB_DIR/.index.json" '. * {collections:{"crowdsecurity/sshd":{"versions":{"0.0":{"digest":$DIGEST, "deprecated": false}}}}}')
+    # add version 0.0 to all collections
+    new_hub=$(jq --arg DIGEST "$sha256_0_0" <"$HUB_DIR/.index.json" '.collections |= with_entries(.value.versions["0.0"] = {"digest": $DIGEST, "deprecated": false})')
     echo "$new_hub" >"$HUB_DIR/.index.json"
  
     rune -0 cscli collections install crowdsecurity/sshd
 
-    # bring the file to v0.0
-    truncate -s 0 "$CONFIG_DIR/collections/sshd.yaml"
+    echo "v0.0" > "$CONFIG_DIR/collections/sshd.yaml"
     rune -0 cscli collections inspect crowdsecurity/sshd -o json
     rune -0 jq -e '.local_version=="0.0"' <(output)
 
@@ -312,16 +312,20 @@ teardown() {
 
     # multiple items
     rune -0 cscli collections install crowdsecurity/smb
-    echo "dirty" >"$CONFIG_DIR/collections/sshd.yaml"
-    echo "dirty" >"$CONFIG_DIR/collections/smb.yaml"
+    echo "v0.0" >"$CONFIG_DIR/collections/sshd.yaml"
+    echo "v0.0" >"$CONFIG_DIR/collections/smb.yaml"
     rune -0 cscli collections list -o json
-    rune -0 jq -e '[.collections[].local_version]==["?","?"]' <(output)
+    rune -0 jq -e '[.collections[].local_version]==["0.0","0.0"]' <(output)
     rune -0 cscli collections upgrade crowdsecurity/sshd crowdsecurity/smb
-    rune -0 jq -e '[.collections[].local_version]==[.collections[].version]' <(output)
+    rune -0 cscli collections list -o json
+    rune -0 jq -e 'any(.collections[].local_version; .=="0.0") | not' <(output)
 
     # upgrade all
-    echo "dirty" >"$CONFIG_DIR/collections/sshd.yaml"
-    echo "dirty" >"$CONFIG_DIR/collections/smb.yaml"
+    echo "v0.0" >"$CONFIG_DIR/collections/sshd.yaml"
+    echo "v0.0" >"$CONFIG_DIR/collections/smb.yaml"
+    rune -0 cscli collections list -o json
+    rune -0 jq -e '[.collections[].local_version]==["0.0","0.0"]' <(output)
     rune -0 cscli collections upgrade --all
-    rune -0 jq -e '[.collections[].local_version]==[.collections[].version]' <(output)
+    rune -0 cscli collections list -o json
+    rune -0 jq -e 'any(.collections[].local_version; .=="0.0") | not' <(output)
 }

@@ -5,6 +5,7 @@ set -u
 
 setup_file() {
     load "../lib/setup_file.sh"
+    ./instance-data load
     HUB_DIR=$(config_get '.config_paths.hub_dir')
     export HUB_DIR
     CONFIG_DIR=$(config_get '.config_paths.config_dir')
@@ -260,8 +261,8 @@ teardown() {
     assert_output "0"
 }
 
-@test "cscli postoverflows remove [parser]... --force" {
-    # remove a parser that belongs to a collection
+@test "cscli postoverflows remove [postoverflow]... --force" {
+    # remove a postoverflow that belongs to a collection
     rune -0 cscli collections install crowdsecurity/auditd
     rune -0 cscli postoverflows remove crowdsecurity/auditd-whitelisted-process
     assert_stderr --partial "crowdsecurity/auditd-whitelisted-process belongs to collections: [crowdsecurity/auditd]"
@@ -280,17 +281,16 @@ teardown() {
     rune -0 cscli postoverflows upgrade crowdsecurity/rdns
     assert_stderr --partial "can't find 'crowdsecurity/rdns' in postoverflows"
 
-    # hash of an empty file
-    sha256_empty="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    # hash of the string "v0.0"
+    sha256_0_0="dfebecf42784a31aa3d009dbcec0c657154a034b45f49cf22a895373f6dbf63d"
 
-    # add version 0.0 to the hub
-    new_hub=$(jq --arg DIGEST "$sha256_empty" <"$HUB_DIR/.index.json" '. * {postoverflows:{"crowdsecurity/rdns":{"versions":{"0.0":{"digest":$DIGEST, "deprecated": false}}}}}')
+    # add version 0.0 to all postoverflows
+    new_hub=$(jq --arg DIGEST "$sha256_0_0" <"$HUB_DIR/.index.json" '.postoverflows |= with_entries(.value.versions["0.0"] = {"digest": $DIGEST, "deprecated": false})')
     echo "$new_hub" >"$HUB_DIR/.index.json"
  
     rune -0 cscli postoverflows install crowdsecurity/rdns
 
-    # bring the file to v0.0
-    truncate -s 0 "$CONFIG_DIR/postoverflows/s00-enrich/rdns.yaml"
+    echo "v0.0" > "$CONFIG_DIR/postoverflows/s00-enrich/rdns.yaml"
     rune -0 cscli postoverflows inspect crowdsecurity/rdns -o json
     rune -0 jq -e '.local_version=="0.0"' <(output)
 
@@ -314,16 +314,20 @@ teardown() {
 
     # multiple items
     rune -0 cscli postoverflows install crowdsecurity/cdn-whitelist
-    echo "dirty" >"$CONFIG_DIR/postoverflows/s00-enrich/rdns.yaml"
-    echo "dirty" >"$CONFIG_DIR/postoverflows/s01-whitelist/cdn-whitelist.yaml"
+    echo "v0.0" >"$CONFIG_DIR/postoverflows/s00-enrich/rdns.yaml"
+    echo "v0.0" >"$CONFIG_DIR/postoverflows/s01-whitelist/cdn-whitelist.yaml"
     rune -0 cscli postoverflows list -o json
-    rune -0 jq -e '[.postoverflows[].local_version]==["?","?"]' <(output)
+    rune -0 jq -e '[.postoverflows[].local_version]==["0.0","0.0"]' <(output)
     rune -0 cscli postoverflows upgrade crowdsecurity/rdns crowdsecurity/cdn-whitelist
-    rune -0 jq -e '[.postoverflows[].local_version]==[.postoverflows[].version]' <(output)
+    rune -0 cscli postoverflows list -o json
+    rune -0 jq -e 'any(.postoverflows[].local_version; .=="0.0") | not' <(output)
 
     # upgrade all
-    echo "dirty" >"$CONFIG_DIR/postoverflows/s00-enrich/rdns.yaml"
-    echo "dirty" >"$CONFIG_DIR/postoverflows/s01-whitelist/cdn-whitelist.yaml"
+    echo "v0.0" >"$CONFIG_DIR/postoverflows/s00-enrich/rdns.yaml"
+    echo "v0.0" >"$CONFIG_DIR/postoverflows/s01-whitelist/cdn-whitelist.yaml"
+    rune -0 cscli postoverflows list -o json
+    rune -0 jq -e '[.postoverflows[].local_version]==["0.0","0.0"]' <(output)
     rune -0 cscli postoverflows upgrade --all
-    rune -0 jq -e '[.postoverflows[].local_version]==[.postoverflows[].version]' <(output)
+    rune -0 cscli postoverflows list -o json
+    rune -0 jq -e 'any(.postoverflows[].local_version; .=="0.0") | not' <(output)
 }
