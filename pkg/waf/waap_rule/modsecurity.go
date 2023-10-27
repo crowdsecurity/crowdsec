@@ -7,6 +7,7 @@ import (
 )
 
 type ModsecurityRule struct {
+	id uint32
 }
 
 var zonesMap map[string]string = map[string]string{
@@ -42,18 +43,19 @@ var matchMap map[string]string = map[string]string{
 	"le":              "@le",
 }
 
-func (m ModsecurityRule) Build(rule *CustomRule, waapRuleName string) (string, error) {
+func (m *ModsecurityRule) Build(rule *CustomRule, waapRuleName string) (string, uint32, error) {
 
-	rules, err := m.buildRules(rule, waapRuleName, false)
+	rules, err := m.buildRules(rule, waapRuleName, false, 0)
 
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 
-	return strings.Join(rules, "\n"), nil
+	//We return the id of the first generated rule, as it's the interesting one in case of chain or skip
+	return strings.Join(rules, "\n"), m.id, nil
 }
 
-func (m ModsecurityRule) generateRuleID(rule *CustomRule, waapRuleName string) uint32 {
+func (m *ModsecurityRule) generateRuleID(rule *CustomRule, waapRuleName string) uint32 {
 	h := fnv.New32a()
 	h.Write([]byte(waapRuleName))
 	h.Write([]byte(rule.Match.Type))
@@ -64,17 +66,21 @@ func (m ModsecurityRule) generateRuleID(rule *CustomRule, waapRuleName string) u
 	for _, transform := range rule.Transform {
 		h.Write([]byte(transform))
 	}
-	return h.Sum32()
+	id := h.Sum32()
+	if m.id == 0 {
+		m.id = id
+	}
+	return id
 }
 
-func (m ModsecurityRule) buildRules(rule *CustomRule, waapRuleName string, and bool) ([]string, error) {
+func (m *ModsecurityRule) buildRules(rule *CustomRule, waapRuleName string, and bool, toSkip int) ([]string, error) {
 	ret := make([]string, 0)
 
 	if rule.And != nil {
 		for c, andRule := range rule.And {
 			subName := fmt.Sprintf("%s_and_%d", waapRuleName, c)
-			lastRule := c == len(rule.And)-1
-			rules, err := m.buildRules(&andRule, subName, !lastRule)
+			lastRule := c == len(rule.And)-1 // || len(rule.Or) == 0
+			rules, err := m.buildRules(&andRule, subName, !lastRule, 0)
 			if err != nil {
 				return nil, err
 			}
@@ -85,7 +91,8 @@ func (m ModsecurityRule) buildRules(rule *CustomRule, waapRuleName string, and b
 	if rule.Or != nil {
 		for c, orRule := range rule.Or {
 			subName := fmt.Sprintf("%s_or_%d", waapRuleName, c)
-			rules, err := m.buildRules(&orRule, subName, false)
+			skip := len(rule.Or) - c - 1
+			rules, err := m.buildRules(&orRule, subName, false, skip)
 			if err != nil {
 				return nil, err
 			}
@@ -143,6 +150,10 @@ func (m ModsecurityRule) buildRules(rule *CustomRule, waapRuleName string, and b
 
 	if and {
 		r.WriteString(",chain")
+	}
+
+	if toSkip > 0 {
+		r.WriteString(fmt.Sprintf(",skip:%d", toSkip))
 	}
 
 	r.WriteByte('"')

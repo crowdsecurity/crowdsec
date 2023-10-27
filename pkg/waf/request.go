@@ -64,6 +64,7 @@ type ParsedRequest struct {
 	Host             string
 	ClientIP         string
 	URI              string
+	Args             url.Values
 	ClientHost       string
 	Headers          http.Header
 	URL              *url.URL
@@ -117,18 +118,24 @@ func NewParsedRequestFromRequest(r *http.Request) (ParsedRequest, error) {
 	delete(r.Header, URIHeaderName)
 	delete(r.Header, VerbHeaderName)
 
+	parsedURL, err := url.Parse(clientURI)
+	if err != nil {
+		return ParsedRequest{}, fmt.Errorf("unable to parse url '%s': %s", clientURI, err)
+	}
+
 	return ParsedRequest{
 		RemoteAddr:       r.RemoteAddr,
 		UUID:             uuid.New().String(),
 		ClientHost:       clientHost,
 		ClientIP:         clientIP,
-		URI:              clientURI,
+		URI:              parsedURL.Path,
 		Method:           clientMethod,
 		Host:             r.Host,
 		Headers:          r.Header,
 		URL:              r.URL,
 		Proto:            r.Proto,
 		Body:             body,
+		Args:             parsedURL.Query(), //TODO: Check if there's not potential bypass as it excludes malformed args
 		TransferEncoding: r.TransferEncoding,
 		ResponseChannel:  make(chan WaapTempResponse),
 	}, nil

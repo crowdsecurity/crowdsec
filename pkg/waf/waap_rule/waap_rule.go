@@ -42,24 +42,25 @@ type CustomRule struct {
 	Or        []CustomRule `yaml:"or,omitempty"`
 }
 
-func (v *CustomRule) Convert(ruleType string, waapRuleName string) (string, error) {
+func (v *CustomRule) Convert(ruleType string, waapRuleName string) (string, uint32, error) {
 
 	if v.Zones == nil && v.And == nil && v.Or == nil {
-		return "", fmt.Errorf("no zones defined")
+		return "", 0, fmt.Errorf("no zones defined")
 	}
 
 	if v.Match.Type == "" && v.And == nil && v.Or == nil {
-		return "", fmt.Errorf("no match type defined")
+		return "", 0, fmt.Errorf("no match type defined")
 	}
 
 	if v.Match.Value == "" && v.And == nil && v.Or == nil {
-		return "", fmt.Errorf("no match value defined")
+		return "", 0, fmt.Errorf("no match value defined")
 	}
 
 	switch ruleType {
 	case ModsecurityRuleType:
-		return ModsecurityRule{}.Build(v, waapRuleName)
+		r := ModsecurityRule{}
+		return r.Build(v, waapRuleName)
 	default:
-		return "", fmt.Errorf("unknown rule format '%s'", ruleType)
+		return "", 0, fmt.Errorf("unknown rule format '%s'", ruleType)
 	}
 }
