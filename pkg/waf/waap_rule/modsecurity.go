@@ -7,7 +7,7 @@ import (
 )
 
 type ModsecurityRule struct {
-	id uint32
+	ids []uint32
 }
 
 var zonesMap map[string]string = map[string]string{
@@ -43,16 +43,16 @@ var matchMap map[string]string = map[string]string{
 	"le":              "@le",
 }
 
-func (m *ModsecurityRule) Build(rule *CustomRule, waapRuleName string) (string, uint32, error) {
+func (m *ModsecurityRule) Build(rule *CustomRule, waapRuleName string) (string, []uint32, error) {
 
 	rules, err := m.buildRules(rule, waapRuleName, false, 0)
 
 	if err != nil {
-		return "", 0, err
+		return "", nil, err
 	}
 
 	//We return the id of the first generated rule, as it's the interesting one in case of chain or skip
-	return strings.Join(rules, "\n"), m.id, nil
+	return strings.Join(rules, "\n"), m.ids, nil
 }
 
 func (m *ModsecurityRule) generateRuleID(rule *CustomRule, waapRuleName string) uint32 {
@@ -67,9 +67,7 @@ func (m *ModsecurityRule) generateRuleID(rule *CustomRule, waapRuleName string) 
 		h.Write([]byte(transform))
 	}
 	id := h.Sum32()
-	if m.id == 0 {
-		m.id = id
-	}
+	m.ids = append(m.ids, id)
 	return id
 }
 

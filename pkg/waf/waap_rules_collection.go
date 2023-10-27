@@ -140,7 +140,7 @@ func LoadCollection(collection string) (WaapCollection, error) {
 
 	if loadedRule.Rules != nil {
 		for _, rule := range loadedRule.Rules {
-			strRule, ruleId, err := rule.Convert(waap_rule.ModsecurityRuleType, loadedRule.Name)
+			strRule, rulesId, err := rule.Convert(waap_rule.ModsecurityRuleType, loadedRule.Name)
 			if err != nil {
 				log.Errorf("unable to convert rule %s : %s", rule.Name, err)
 				return WaapCollection{}, err
@@ -148,15 +148,20 @@ func LoadCollection(collection string) (WaapCollection, error) {
 			log.Infof("Adding rule %s", strRule)
 			waapCol.Rules = append(waapCol.Rules, strRule)
 
-			if _, ok := WaapRulesDetails[int(ruleId)]; !ok {
-				WaapRulesDetails[int(ruleId)] = RulesDetails{
+			//We only take the first id, as it's the one of the "main" rule
+			if _, ok := WaapRulesDetails[int(rulesId[0])]; !ok {
+				WaapRulesDetails[int(rulesId[0])] = RulesDetails{
 					LogLevel: log.InfoLevel,
 					Hash:     loadedRule.hash,
 					Version:  loadedRule.version,
 					Name:     loadedRule.Name,
 				}
 			} else {
-				log.Warnf("conflicting id %d for rule %s !", ruleId, rule.Name)
+				log.Warnf("conflicting id %d for rule %s !", rulesId[0], rule.Name)
+			}
+
+			for _, id := range rulesId {
+				SetRuleDebug(int(id), loadedRule.Debug)
 			}
 		}
 	}
