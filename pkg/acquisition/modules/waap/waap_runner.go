@@ -43,7 +43,7 @@ func (r *WaapRunner) Init(datadir string) error {
 	runnerLogger := r.logger.Dup()
 
 	//setting up inband engine
-	inbandCfg := coraza.NewWAFConfig().WithDirectives(inBandRules).WithRootFS(fs).WithDebugLogger(NewCrzLogger(runnerLogger))
+	inbandCfg := coraza.NewWAFConfig().WithDirectives(inBandRules).WithRootFS(fs).WithDebugLogger(waf.NewCrzLogger(runnerLogger))
 	if !r.WaapRuntime.Config.InbandOptions.DisableBodyInspection {
 		inbandCfg = inbandCfg.WithRequestBodyAccess()
 	} else {
@@ -58,7 +58,7 @@ func (r *WaapRunner) Init(datadir string) error {
 	}
 
 	//setting up outband engine
-	outbandCfg := coraza.NewWAFConfig().WithDirectives(outOfBandRules).WithRootFS(fs).WithDebugLogger(NewCrzLogger(runnerLogger))
+	outbandCfg := coraza.NewWAFConfig().WithDirectives(outOfBandRules).WithRootFS(fs).WithDebugLogger(waf.NewCrzLogger(runnerLogger))
 	if !r.WaapRuntime.Config.OutOfBandOptions.DisableBodyInspection {
 		outbandCfg = outbandCfg.WithRequestBodyAccess()
 	} else {
