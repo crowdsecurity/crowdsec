@@ -76,6 +76,8 @@ teardown() {
     rune -0 cscli collections list -o raw -a
     rune -0 grep -vc 'name,status,version,description' <(output)
     assert_output "$expected"
+
+    # XXX: check alphabetical order in human, json, raw
 }
 
 
@@ -160,6 +162,7 @@ teardown() {
 @test "cscli collections inspect [collection]..." {
     rune -1 cscli collections inspect
     assert_stderr --partial 'requires at least 1 arg(s), only received 0'
+    # required for metrics
     ./instance-crowdsec start
 
     rune -1 cscli collections inspect blahblah/blahblah
@@ -270,14 +273,13 @@ teardown() {
 @test "cscli collections upgrade [collection]..." {
     rune -1 cscli collections upgrade
     assert_stderr --partial "specify at least one collection to upgrade or '--all'"
-
-    # XXX: should this return 1 instead of log.Error?
-    rune -0 cscli collections upgrade blahblah/blahblah
+    rune -1 cscli collections upgrade blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in collections"
-
-    # XXX: same message if the item exists but is not installed, this is confusing
-    rune -0 cscli collections upgrade crowdsecurity/sshd
-    assert_stderr --partial "can't find 'crowdsecurity/sshd' in collections"
+    rune -1 cscli collections upgrade crowdsecurity/exim
+    assert_stderr --partial "can't upgrade crowdsecurity/exim: not installed"
+    rune -0 cscli collections install crowdsecurity/exim --download-only
+    rune -1 cscli collections upgrade crowdsecurity/exim
+    assert_stderr --partial "can't upgrade crowdsecurity/exim: downloaded but not installed"
 
     # hash of the string "v0.0"
     sha256_0_0="dfebecf42784a31aa3d009dbcec0c657154a034b45f49cf22a895373f6dbf63d"

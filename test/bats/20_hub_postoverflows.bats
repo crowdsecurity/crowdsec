@@ -76,6 +76,8 @@ teardown() {
     rune -0 cscli postoverflows list -o raw -a
     rune -0 grep -vc 'name,status,version,description' <(output)
     assert_output "$expected"
+
+    # XXX: check alphabetical order in human, json, raw
 }
 
 
@@ -160,6 +162,7 @@ teardown() {
 @test "cscli postoverflows inspect [scenario]..." {
     rune -1 cscli postoverflows inspect
     assert_stderr --partial 'requires at least 1 arg(s), only received 0'
+    # required for metrics
     ./instance-crowdsec start
 
     rune -1 cscli postoverflows inspect blahblah/blahblah
@@ -272,14 +275,13 @@ teardown() {
 @test "cscli postoverflows upgrade [postoverflow]..." {
     rune -1 cscli postoverflows upgrade
     assert_stderr --partial "specify at least one postoverflow to upgrade or '--all'"
-
-    # XXX: should this return 1 instead of log.Error?
-    rune -0 cscli postoverflows upgrade blahblah/blahblah
+    rune -1 cscli postoverflows upgrade blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in postoverflows"
-
-    # XXX: same message if the item exists but is not installed, this is confusing
-    rune -0 cscli postoverflows upgrade crowdsecurity/rdns
-    assert_stderr --partial "can't find 'crowdsecurity/rdns' in postoverflows"
+    rune -1 cscli postoverflows upgrade crowdsecurity/discord-crawler-whitelist
+    assert_stderr --partial "can't upgrade crowdsecurity/discord-crawler-whitelist: not installed"
+    rune -0 cscli postoverflows install crowdsecurity/discord-crawler-whitelist --download-only
+    rune -1 cscli postoverflows upgrade crowdsecurity/discord-crawler-whitelist
+    assert_stderr --partial "can't upgrade crowdsecurity/discord-crawler-whitelist: downloaded but not installed"
 
     # hash of the string "v0.0"
     sha256_0_0="dfebecf42784a31aa3d009dbcec0c657154a034b45f49cf22a895373f6dbf63d"

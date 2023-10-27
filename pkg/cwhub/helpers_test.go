@@ -10,7 +10,7 @@ import (
 
 // Download index, install collection. Add scenario to collection (hub-side), update index, upgrade collection
 // We expect the new scenario to be installed
-func TestUpgradeConfigNewScenarioInCollection(t *testing.T) {
+func TestUpgradeItemNewScenarioInCollection(t *testing.T) {
 	hub := envSetup(t)
 
 	// fresh install of collection
@@ -43,8 +43,9 @@ func TestUpgradeConfigNewScenarioInCollection(t *testing.T) {
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].UpToDate)
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Tainted)
 
-	err = hub.UpgradeConfig(COLLECTIONS, "crowdsecurity/test_collection", false, mockURLTemplate, "master")
+	didUpdate, err := hub.UpgradeItem(COLLECTIONS, "crowdsecurity/test_collection", false, mockURLTemplate, "master")
 	require.NoError(t, err)
+	require.True(t, didUpdate)
 	assertCollectionDepsInstalled(t, "crowdsecurity/test_collection")
 
 	require.True(t, hub.Items[SCENARIOS]["crowdsecurity/barfoo_scenario"].Downloaded)
@@ -53,7 +54,7 @@ func TestUpgradeConfigNewScenarioInCollection(t *testing.T) {
 
 // Install a collection, disable a scenario.
 // Upgrade should install should not enable/download the disabled scenario.
-func TestUpgradeConfigInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
+func TestUpgradeItemInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 	hub := envSetup(t)
 
 	// fresh install of collection
@@ -84,8 +85,9 @@ func TestUpgradeConfigInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 	hub, err = InitHubUpdate(hub.cfg, mockURLTemplate, "master", ".index.json")
 	require.NoError(t, err, "failed to download index: %s", err)
 
-	err = hub.UpgradeConfig(COLLECTIONS, "crowdsecurity/test_collection", false, mockURLTemplate, "master")
+	didUpdate, err := hub.UpgradeItem(COLLECTIONS, "crowdsecurity/test_collection", false, mockURLTemplate, "master")
 	require.NoError(t, err)
+	require.True(t, didUpdate)
 
 	hub = getHubOrFail(t, hub.cfg)
 	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
@@ -102,7 +104,7 @@ func getHubOrFail(t *testing.T, hubCfg *csconfig.HubCfg) *Hub {
 // Install a collection. Disable a referenced scenario. Publish new version of collection with new scenario
 // Upgrade should not enable/download the disabled scenario.
 // Upgrade should install and enable the newly added scenario.
-func TestUpgradeConfigNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *testing.T) {
+func TestUpgradeItemNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *testing.T) {
 	hub := envSetup(t)
 
 	// fresh install of collection
@@ -142,8 +144,9 @@ func TestUpgradeConfigNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *
 	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
 	hub = getHubOrFail(t, hub.cfg)
 
-	err = hub.UpgradeConfig(COLLECTIONS, "crowdsecurity/test_collection", false, mockURLTemplate, "master")
+	didUpdate, err := hub.UpgradeItem(COLLECTIONS, "crowdsecurity/test_collection", false, mockURLTemplate, "master")
 	require.NoError(t, err)
+	require.True(t, didUpdate)
 
 	hub = getHubOrFail(t, hub.cfg)
 	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)

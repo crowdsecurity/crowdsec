@@ -372,9 +372,24 @@ func itemsUpgradeRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 		branch := chooseHubBranch()
 
 		if all {
-			if err := hub.UpgradeConfig(it.name, "", force, hubURLTemplate, branch); err != nil {
+			items, err := hub.GetInstalledItems(it.name)
+			if err != nil {
 				return err
 			}
+
+			updated := 0
+			for _, item := range items {
+				println(item.Name)
+				didUpdate, err := hub.UpgradeItem(it.name, item.Name, force, hubURLTemplate, branch)
+				if ; err != nil {
+					return err
+				}
+				if didUpdate {
+					updated++
+				}
+			}
+			log.Infof("Updated %d %s", updated, it.name)
+
 			return nil
 		}
 
@@ -383,8 +398,12 @@ func itemsUpgradeRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 		}
 
 		for _, name := range args {
-			if err := hub.UpgradeConfig(it.name, name, force, hubURLTemplate, branch); err != nil {
+			didUpdate, err := hub.UpgradeItem(it.name, name, force, hubURLTemplate, branch)
+			if err != nil {
 				return err
+			}
+			if didUpdate {
+				log.Infof("Updated %s", name)
 			}
 		}
 

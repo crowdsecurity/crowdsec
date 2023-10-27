@@ -111,78 +111,60 @@ func (h *Hub) RemoveMany(itemType string, name string, all bool, purge bool, for
 	return nil
 }
 
-// UpgradeConfig upgrades an item from the hub
-func (h *Hub) UpgradeConfig(itemType string, name string, force bool, hubURLTemplate, branch string) error {
-	updated := 0
-	found := false
+// UpgradeItem upgrades an item from the hub
+func (h *Hub) UpgradeItem(itemType string, name string, force bool, hubURLTemplate, branch string) (bool, error) {
+	updated := false
 
-	for _, v := range h.GetItemMap(itemType) {
-		if name != "" && name != v.Name {
-			continue
+	item := h.GetItem(itemType, name)
+	if item == nil {
+		return false, fmt.Errorf("can't find '%s' in %s", name, itemType)
+	}
+
+	if !item.Downloaded {
+		return false, fmt.Errorf("can't upgrade %s: not installed", item.Name)
+	}
+
+	if !item.Installed {
+		return false, fmt.Errorf("can't upgrade %s: downloaded but not installed", item.Name)
+	}
+
+	if item.UpToDate {
+		log.Infof("%s: up-to-date", item.Name)
+
+		if err := h.DownloadDataIfNeeded(*item, force); err != nil {
+			return false, fmt.Errorf("%s: download failed: %w", item.Name, err)
 		}
 
-		if !v.Installed {
-			log.Tracef("skip %s, not installed", v.Name)
-			continue
-		}
-
-		if !v.Downloaded {
-			log.Warningf("%s: not downloaded, please install.", v.Name)
-			continue
-		}
-
-		found = true
-
-		if v.UpToDate {
-			log.Infof("%s: up-to-date", v.Name)
-
-			if err := h.DownloadDataIfNeeded(v, force); err != nil {
-				return fmt.Errorf("%s: download failed: %w", v.Name, err)
-			}
-
-			if !force {
-				continue
-			}
-		}
-
-		if err := h.DownloadLatest(&v, force, true, hubURLTemplate, branch); err != nil {
-			return fmt.Errorf("%s: download failed: %w", v.Name, err)
-		}
-
-		if !v.UpToDate {
-			if v.Tainted {
-				log.Infof("%v %s is tainted, --force to overwrite", emoji.Warning, v.Name)
-			} else if v.Local {
-				log.Infof("%v %s is local", emoji.Prohibited, v.Name)
-			}
-		} else {
-			// this is used while scripting to know if the hub has been upgraded
-			// and a configuration reload is required
-			fmt.Printf("updated %s\n", v.Name)
-			log.Infof("%v %s : updated", emoji.Package, v.Name)
-			updated++
-		}
-
-		if err := h.AddItem(v); err != nil {
-			return fmt.Errorf("unable to add %s: %w", v.Name, err)
+		if !force {
+			// no upgrade needed
+			return false, nil
 		}
 	}
 
-	if !found && name == "" {
-		log.Infof("No %s installed, nothing to upgrade", itemType)
-	} else if !found {
-		log.Errorf("can't find '%s' in %s", name, itemType)
-	} else if updated == 0 && found {
-		if name == "" {
-			log.Infof("All %s are already up-to-date", itemType)
-		} else {
-			log.Infof("Item '%s' is up-to-date", name)
-		}
-	} else if updated != 0 {
-		log.Infof("Upgraded %d items", updated)
+	if err := h.DownloadLatest(item, force, true, hubURLTemplate, branch); err != nil {
+		return false, fmt.Errorf("%s: download failed: %w", item.Name, err)
 	}
 
-	return nil
+	if !item.UpToDate {
+		if item.Tainted {
+			log.Infof("%v %s is tainted, --force to overwrite", emoji.Warning, item.Name)
+		} else if item.Local {
+			log.Infof("%v %s is local", emoji.Prohibited, item.Name)
+		}
+	} else {
+		// a check on stdout is used while scripting to know if the hub has been upgraded
+		// and a configuration reload is required
+		// TODO: use a better way to communicate this
+		fmt.Printf("updated %s\n", item.Name)
+		log.Infof("%v %s: updated", emoji.Package, item.Name)
+		updated = true
+	}
+
+	if err := h.AddItem(*item); err != nil {
+		return false, fmt.Errorf("unable to add %s: %w", item.Name, err)
+	}
+
+	return updated, nil
 }
 
 // DownloadLatest will download the latest version of Item to the tdir directory

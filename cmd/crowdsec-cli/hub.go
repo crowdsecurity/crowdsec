@@ -169,24 +169,24 @@ func runHubUpgrade(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	log.Infof("Upgrading collections")
-	if err := hub.UpgradeConfig(cwhub.COLLECTIONS, "", force, hubURLTemplate, branch); err != nil {
-		return err
-	}
+	for _, itemType := range cwhub.ItemTypes {
+		items, err := hub.GetInstalledItems(itemType)
+		if err != nil {
+			return err
+		}
 
-	log.Infof("Upgrading parsers")
-	if err := hub.UpgradeConfig(cwhub.PARSERS, "", force, hubURLTemplate, branch); err != nil {
-		return err
-	}
-
-	log.Infof("Upgrading scenarios")
-	if err := hub.UpgradeConfig(cwhub.SCENARIOS, "", force, hubURLTemplate, branch); err != nil {
-		return err
-	}
-
-	log.Infof("Upgrading postoverflows")
-	if err := hub.UpgradeConfig(cwhub.POSTOVERFLOWS, "", force, hubURLTemplate, branch); err != nil {
-		return err
+		updated := 0
+		log.Infof("Upgrading %s", itemType)
+		for _, item := range items {
+			didUpdate, err := hub.UpgradeItem(itemType, item.Name, force, hubURLTemplate, branch)
+			if err != nil {
+				return err
+			}
+			if didUpdate {
+				updated++
+			}
+		}
+		log.Infof("Upgraded %d %s", updated, itemType)
 	}
 
 	return nil

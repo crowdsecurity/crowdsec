@@ -78,6 +78,8 @@ teardown() {
     rune -0 cscli parsers list -o raw -a
     rune -0 grep -vc 'name,status,version,description' <(output)
     assert_output "$expected"
+
+    # XXX: check alphabetical order in human, json, raw
 }
 
 @test "cscli parsers list [parser]..." {
@@ -165,6 +167,7 @@ teardown() {
 @test "cscli parsers inspect [parser]..." {
     rune -1 cscli parsers inspect
     assert_stderr --partial 'requires at least 1 arg(s), only received 0'
+    # required for metrics
     ./instance-crowdsec start
 
     rune -1 cscli parsers inspect blahblah/blahblah
@@ -280,14 +283,13 @@ teardown() {
 @test "cscli parsers upgrade [parser]..." {
     rune -1 cscli parsers upgrade
     assert_stderr --partial "specify at least one parser to upgrade or '--all'"
-
-    # XXX: should this return 1 instead of log.Error?
-    rune -0 cscli parsers upgrade blahblah/blahblah
+    rune -1 cscli parsers upgrade blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in parsers"
-
-    # XXX: same message if the item exists but is not installed, this is confusing
-    rune -0 cscli parsers upgrade crowdsecurity/whitelists
-    assert_stderr --partial "can't find 'crowdsecurity/whitelists' in parsers"
+    rune -1 cscli parsers upgrade crowdsecurity/pam-logs
+    assert_stderr --partial "can't upgrade crowdsecurity/pam-logs: not installed"
+    rune -0 cscli parsers install crowdsecurity/pam-logs --download-only
+    rune -1 cscli parsers upgrade crowdsecurity/pam-logs
+    assert_stderr --partial "can't upgrade crowdsecurity/pam-logs: downloaded but not installed"
 
     # hash of the string "v0.0"
     sha256_0_0="dfebecf42784a31aa3d009dbcec0c657154a034b45f49cf22a895373f6dbf63d"
@@ -339,5 +341,3 @@ teardown() {
     rune -0 cscli parsers list -o json
     rune -0 jq -e 'any(.parsers[].local_version; .=="0.0") | not' <(output)
 }
-
-# TODO test download-only
