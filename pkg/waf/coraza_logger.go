@@ -1,4 +1,4 @@
-package wafacquisition
+package waf
 
 import (
 	"fmt"
@@ -7,6 +7,19 @@ import (
 	dbg "github.com/crowdsecurity/coraza/v3/debuglog"
 	log "github.com/sirupsen/logrus"
 )
+
+var DebugRules map[int]bool = map[int]bool{}
+
+func SetRuleDebug(id int, debug bool) {
+	DebugRules[id] = debug
+}
+
+func GetRuleDebug(id int) bool {
+	if val, ok := DebugRules[id]; ok {
+		return val
+	}
+	return false
+}
 
 // type ContextField func(Event) Event
 
@@ -56,7 +69,15 @@ func (e *crzLogEvent) Bool(key string, b bool) dbg.Event {
 
 func (e *crzLogEvent) Int(key string, i int) dbg.Event {
 	if e.muted {
-		return e
+		if key == "rule_id" {
+			log.Warningf("is rule_id %d in debug mode -> %t", i, GetRuleDebug(i))
+			if GetRuleDebug(i) {
+				e.muted = false
+				e.fields = map[string]interface{}{}
+			} else {
+				return e
+			}
+		}
 	}
 	//e.logger.Info("int")
 	e.fields[key] = i
@@ -136,7 +157,7 @@ func (c crzLogger) Trace() dbg.Event {
 func (c crzLogger) Debug() dbg.Event {
 	if c.logLevel < log.DebugLevel {
 		//c.logger.Infof("ignoring debug directive -> %s", c.logLevel.String())
-		return &crzLogEvent{muted: true}
+		return &crzLogEvent{muted: true, logger: c.logger}
 
 	}
 
