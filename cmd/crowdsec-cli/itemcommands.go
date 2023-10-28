@@ -480,8 +480,17 @@ func itemsInspectRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 			return err
 		}
 
+		hub, err := cwhub.GetHub()
+		if err != nil {
+			return err
+		}
+
 		for _, name := range args {
-			if err = InspectItem(name, it.name, noMetrics); err != nil {
+			item := hub.GetItem(it.name, name)
+			if item == nil {
+				return fmt.Errorf("can't find '%s' in %s", name, it.name)
+			}
+			if err = InspectItem(hub, item, noMetrics); err != nil {
 				return err
 			}
 		}

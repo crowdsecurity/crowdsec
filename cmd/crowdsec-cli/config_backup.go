@@ -42,7 +42,7 @@ func backupHub(hub *cwhub.Hub, dirPath string) error {
 			}
 
 			//for the local/tainted ones, we backup the full file
-			if v.Tainted || v.Local || !v.UpToDate {
+			if v.Tainted || v.IsLocal() || !v.UpToDate {
 				//we need to backup stages for parsers
 				if itemType == cwhub.PARSERS || itemType == cwhub.POSTOVERFLOWS {
 					fstagedir := fmt.Sprintf("%s%s", itemDirectory, v.Stage)
@@ -50,7 +50,7 @@ func backupHub(hub *cwhub.Hub, dirPath string) error {
 						return fmt.Errorf("error while creating stage dir %s : %s", fstagedir, err)
 					}
 				}
-				clog.Debugf("[%s] : backuping file (tainted:%t local:%t up-to-date:%t)", k, v.Tainted, v.Local, v.UpToDate)
+				clog.Debugf("[%s] : backuping file (tainted:%t local:%t up-to-date:%t)", k, v.Tainted, v.IsLocal(), v.UpToDate)
 				tfile := fmt.Sprintf("%s%s/%s", itemDirectory, v.Stage, v.FileName)
 				if err = CopyFile(v.LocalPath, tfile); err != nil {
 					return fmt.Errorf("failed copy %s %s to %s : %s", itemType, v.LocalPath, tfile, err)

@@ -132,7 +132,7 @@ func (h *Hub) UpgradeItem(itemType string, name string, force bool, hubURLTempla
 	if !item.UpToDate {
 		if item.Tainted {
 			log.Infof("%v %s is tainted, --force to overwrite", emoji.Warning, item.Name)
-		} else if item.Local {
+		} else if item.IsLocal() {
 			log.Infof("%v %s is local", emoji.Prohibited, item.Name)
 		}
 	} else {

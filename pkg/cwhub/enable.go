@@ -24,7 +24,7 @@ func (h *Hub) EnableItem(target *Item) error {
 			return fmt.Errorf("%s is tainted, won't enable unless --force", target.Name)
 		}
 
-		if target.Local {
+		if target.IsLocal() {
 			return fmt.Errorf("%s is local, won't enable", target.Name)
 		}
 
@@ -117,7 +117,7 @@ func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
 		return nil
 	}
 
-	if target.Local {
+	if target.IsLocal() {
 		return fmt.Errorf("%s isn't managed by hub. Please delete manually", target.Name)
 	}
 
@@ -128,11 +128,11 @@ func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
 	// for a COLLECTIONS, disable sub-items
 	if target.Type == COLLECTIONS {
 		for _, sub := range target.SubItems() {
-		       	val, ok := h.Items[sub.Type][sub.Name]
+			val, ok := h.Items[sub.Type][sub.Name]
 			if !ok {
-		       		log.Errorf("Referred %s %s in collection %s doesn't exist.", sub.Type, sub.Name, target.Name)
+				log.Errorf("Referred %s %s in collection %s doesn't exist.", sub.Type, sub.Name, target.Name)
 				continue
-		       	}
+			}
 
 			// check if the item doesn't belong to another collection before removing it
 			toRemove := true

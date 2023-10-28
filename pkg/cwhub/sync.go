@@ -191,7 +191,6 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 			Stage:     info.stage,
 			Installed: true,
 			Type:      info.ftype,
-			Local:     true,
 			LocalPath: path,
 			UpToDate:  true,
 			FileName:  fileName,
