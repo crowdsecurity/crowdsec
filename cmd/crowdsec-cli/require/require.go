@@ -86,7 +86,7 @@ func Hub(c *csconfig.Config, remote *cwhub.RemoteHubCfg) (*cwhub.Hub, error) {
 		return nil, fmt.Errorf("you must configure cli before interacting with hub")
 	}
 
-	hub, err := cwhub.InitHub(local, remote)
+	hub, err := cwhub.NewHub(local, remote, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read Hub index: '%w'. Run 'sudo cscli hub update' to download the index again", err)
 	}

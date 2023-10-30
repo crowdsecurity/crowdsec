@@ -391,7 +391,7 @@ func (t *HubTestItem) InstallHub() error {
 	}
 
 	// load installed hub
-	hub, err := cwhub.InitHub(t.RuntimeHubConfig, nil)
+	hub, err := cwhub.NewHub(t.RuntimeHubConfig, nil, false)
 	if err != nil {
 		log.Fatal(err)
 	}

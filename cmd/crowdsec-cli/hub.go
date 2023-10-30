@@ -94,16 +94,16 @@ func runHubUpdate(cmd *cobra.Command, args []string) error {
 	remote := require.RemoteHub(csConfig)
 
 	// don't use require.Hub because if there is no index file, it would fail
-	hub, err := cwhub.InitHubUpdate(local, remote)
+	hub, err := cwhub.NewHub(local, remote, true)
 	if err != nil {
 		// XXX: this should be done when downloading items, too
 		// but what is the fallback to master actually solving?
 		if !errors.Is(err, cwhub.ErrIndexNotFound) {
-			return fmt.Errorf("failed to get Hub index : %w", err)
+			return fmt.Errorf("failed to get Hub index: %w", err)
 		}
 		log.Warnf("Could not find index file for branch '%s', using 'master'", remote.Branch)
 		remote.Branch = "master"
-		if hub, err = cwhub.InitHubUpdate(local, remote); err != nil {
+		if hub, err = cwhub.NewHub(local, remote, true); err != nil {
 			return fmt.Errorf("failed to get Hub index after retry: %w", err)
 		}
 	}

@@ -36,10 +36,10 @@ func TestUpgradeItemNewScenarioInCollection(t *testing.T) {
 	remote := &RemoteHubCfg{
 		URLTemplate: mockURLTemplate,
 		Branch:      "master",
-		IndexPath: ".index.json",
+		IndexPath:   ".index.json",
 	}
 
-	hub, err := InitHubUpdate(hub.local, remote)
+	hub, err := NewHub(hub.local, remote, true)
 	require.NoError(t, err, "failed to download index: %s", err)
 
 	hub = getHubOrFail(t, hub.local, remote)
@@ -84,7 +84,7 @@ func TestUpgradeItemInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 	remote := &RemoteHubCfg{
 		URLTemplate: mockURLTemplate,
 		Branch:      "master",
-		IndexPath: ".index.json",
+		IndexPath:   ".index.json",
 	}
 
 	hub = getHubOrFail(t, hub.local, remote)
@@ -95,7 +95,7 @@ func TestUpgradeItemInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
 	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].UpToDate)
 
-	hub, err = InitHubUpdate(hub.local, remote)
+	hub, err = NewHub(hub.local, remote, true)
 	require.NoError(t, err, "failed to download index: %s", err)
 
 	didUpdate, err := hub.UpgradeItem(COLLECTIONS, "crowdsecurity/test_collection", false)
@@ -108,7 +108,7 @@ func TestUpgradeItemInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 
 // getHubOrFail refreshes the hub state (load index, sync) and returns the singleton, or fails the test
 func getHubOrFail(t *testing.T, local *csconfig.LocalHubCfg, remote *RemoteHubCfg) *Hub {
-	hub, err := InitHub(local, remote)
+	hub, err := NewHub(local, remote, false)
 	require.NoError(t, err, "failed to load hub index")
 
 	return hub
@@ -141,7 +141,7 @@ func TestUpgradeItemNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *te
 	remote := &RemoteHubCfg{
 		URLTemplate: mockURLTemplate,
 		Branch:      "master",
-		IndexPath: ".index.json",
+		IndexPath:   ".index.json",
 	}
 
 	hub = getHubOrFail(t, hub.local, remote)
@@ -158,7 +158,7 @@ func TestUpgradeItemNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *te
 	// we just removed. Nor should it install the newly added scenario
 	pushUpdateToCollectionInHub()
 
-	hub, err = InitHubUpdate(hub.local, remote)
+	hub, err = NewHub(hub.local, remote, true)
 	require.NoError(t, err, "failed to download index: %s", err)
 
 	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
