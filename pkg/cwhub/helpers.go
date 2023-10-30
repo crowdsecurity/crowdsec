@@ -13,29 +13,29 @@ import (
 )
 
 // pick a hub branch corresponding to the current crowdsec version.
-func chooseHubBranch() (string, error) {
+func chooseHubBranch() string {
 	latest, err := cwversion.Latest()
 	if err != nil {
 		log.Warningf("Unable to retrieve latest crowdsec version: %s, defaulting to master", err)
 		//lint:ignore nilerr
-		return "master", nil // ignore
+		return "master"
 	}
 
 	csVersion := cwversion.VersionStrip()
 	if csVersion == latest {
 		log.Debugf("current version is equal to latest (%s)", csVersion)
-		return "master", nil
+		return "master"
 	}
 
 	// if current version is greater than the latest we are in pre-release
 	if semver.Compare(csVersion, latest) == 1 {
 		log.Debugf("Your current crowdsec version seems to be a pre-release (%s)", csVersion)
-		return "master", nil
+		return "master"
 	}
 
 	if csVersion == "" {
 		log.Warning("Crowdsec version is not set, using master branch for the hub")
-		return "master", nil
+		return "master"
 	}
 
 	log.Warnf("Crowdsec is not the latest version. "+
@@ -45,35 +45,28 @@ func chooseHubBranch() (string, error) {
 	log.Warnf("As a result, you will not be able to use parsers/scenarios/collections "+
 		"added to Crowdsec Hub after CrowdSec %s", latest)
 
-	return csVersion, nil
+	return csVersion
 }
 
 // SetHubBranch sets the package variable that points to the hub branch.
-func SetHubBranch() error {
+func SetHubBranch() {
 	// a branch is already set, or specified from the flags
 	if HubBranch != "" {
-		return nil
+		return
 	}
 
 	// use the branch corresponding to the crowdsec version
-	branch, err := chooseHubBranch()
-	if err != nil {
-		return err
-	}
+	HubBranch = chooseHubBranch()
 
-	HubBranch = branch
 	log.Debugf("Using branch '%s' for the hub", HubBranch)
-
-	return nil
 }
 
 func InstallItem(csConfig *csconfig.Config, name string, obtype string, force bool, downloadOnly bool) error {
-	it := GetItem(obtype, name)
-	if it == nil {
+	item := GetItem(obtype, name)
+	if item == nil {
 		return fmt.Errorf("unable to retrieve item: %s", name)
 	}
 
-	item := *it
 	if downloadOnly && item.Downloaded && item.UpToDate {
 		log.Warningf("%s is already downloaded and up-to-date", item.Name)
 
@@ -82,12 +75,12 @@ func InstallItem(csConfig *csconfig.Config, name string, obtype string, force bo
 		}
 	}
 
-	item, err := DownloadLatest(csConfig.Hub, item, force, true)
+	err := DownloadLatest(csConfig.Hub, item, force, true)
 	if err != nil {
 		return fmt.Errorf("while downloading %s: %w", item.Name, err)
 	}
 
-	if err := AddItem(obtype, item); err != nil {
+	if err = AddItem(obtype, *item); err != nil {
 		return fmt.Errorf("while adding %s: %w", item.Name, err)
 	}
 
@@ -96,12 +89,12 @@ func InstallItem(csConfig *csconfig.Config, name string, obtype string, force bo
 		return nil
 	}
 
-	item, err = EnableItem(csConfig.Hub, item)
+	err = EnableItem(csConfig.Hub, item)
 	if err != nil {
 		return fmt.Errorf("while enabling %s: %w", item.Name, err)
 	}
 
-	if err := AddItem(obtype, item); err != nil {
+	if err := AddItem(obtype, *item); err != nil {
 		return fmt.Errorf("while adding %s: %w", item.Name, err)
 	}
 
@@ -112,25 +105,19 @@ func InstallItem(csConfig *csconfig.Config, name string, obtype string, force bo
 
 // XXX this must return errors instead of log.Fatal
 func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all bool, purge bool, forceAction bool) {
-	var (
-		err      error
-		disabled int
-	)
-
 	if name != "" {
-		it := GetItem(itemType, name)
-		if it == nil {
+		item := GetItem(itemType, name)
+		if item == nil {
 			log.Fatalf("unable to retrieve: %s", name)
 		}
 
-		item := *it
-		item, err = DisableItem(csConfig.Hub, item, purge, forceAction)
+		err := DisableItem(csConfig.Hub, item, purge, forceAction)
 
 		if err != nil {
 			log.Fatalf("unable to disable %s : %v", item.Name, err)
 		}
 
-		if err := AddItem(itemType, item); err != nil {
+		if err = AddItem(itemType, *item); err != nil {
 			log.Fatalf("unable to add %s: %v", item.Name, err)
 		}
 
@@ -141,13 +128,15 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 		log.Fatal("removing item: no item specified")
 	}
 
+	disabled := 0
+
 	// remove all
 	for _, v := range GetItemMap(itemType) {
 		if !v.Installed {
 			continue
 		}
 
-		v, err = DisableItem(csConfig.Hub, v, purge, forceAction)
+		err := DisableItem(csConfig.Hub, &v, purge, forceAction)
 		if err != nil {
 			log.Fatalf("unable to disable %s : %v", v.Name, err)
 		}
@@ -162,11 +151,8 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 }
 
 func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, force bool) {
-	var (
-		err     error
-		updated int
-		found   bool
-	)
+	updated := 0
+	found := false
 
 	for _, v := range GetItemMap(itemType) {
 		if name != "" && name != v.Name {
@@ -188,7 +174,7 @@ func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, forc
 		if v.UpToDate {
 			log.Infof("%s : up-to-date", v.Name)
 
-			if err = DownloadDataIfNeeded(csConfig.Hub, v, force); err != nil {
+			if err := DownloadDataIfNeeded(csConfig.Hub, v, force); err != nil {
 				log.Fatalf("%s : download failed : %v", v.Name, err)
 			}
 
@@ -197,8 +183,7 @@ func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, forc
 			}
 		}
 
-		v, err = DownloadLatest(csConfig.Hub, v, force, true)
-		if err != nil {
+		if err := DownloadLatest(csConfig.Hub, &v, force, true); err != nil {
 			log.Fatalf("%s : download failed : %v", v.Name, err)
 		}
 

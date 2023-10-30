@@ -17,7 +17,7 @@ func listHubItemTable(out io.Writer, title string, statuses []cwhub.ItemHubStatu
 	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
 
 	for _, status := range statuses {
-		t.AddRow(status.Name, status.UTF8_Status, status.LocalVersion, status.LocalPath)
+		t.AddRow(status.Name, status.UTF8Status, status.LocalVersion, status.LocalPath)
 	}
 	renderTableTitle(out, title)
 	t.Render()
