@@ -16,7 +16,7 @@ import (
 func (h *Hub) EnableItem(target *Item) error {
 	var err error
 
-	parentDir := filepath.Clean(h.cfg.InstallDir + "/" + target.Type + "/" + target.Stage + "/")
+	parentDir := filepath.Clean(h.local.InstallDir + "/" + target.Type + "/" + target.Stage + "/")
 
 	// create directories if needed
 	if target.Installed {
@@ -65,7 +65,7 @@ func (h *Hub) EnableItem(target *Item) error {
 	}
 
 	// hub.ConfigDir + target.RemotePath
-	srcPath, err := filepath.Abs(h.cfg.HubDir + "/" + target.RemotePath)
+	srcPath, err := filepath.Abs(h.local.HubDir + "/" + target.RemotePath)
 	if err != nil {
 		return fmt.Errorf("while getting source path: %w", err)
 	}
@@ -87,7 +87,7 @@ func (h *Hub) EnableItem(target *Item) error {
 }
 
 func (h *Hub) purgeItem(target Item) (Item, error) {
-	itempath := h.cfg.HubDir + "/" + target.RemotePath
+	itempath := h.local.HubDir + "/" + target.RemotePath
 
 	// disable hub file
 	if err := os.Remove(itempath); err != nil {
@@ -155,7 +155,7 @@ func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
 		}
 	}
 
-	syml, err := filepath.Abs(h.cfg.InstallDir + "/" + target.Type + "/" + target.Stage + "/" + target.FileName)
+	syml, err := filepath.Abs(h.local.InstallDir + "/" + target.Type + "/" + target.Stage + "/" + target.FileName)
 	if err != nil {
 		return err
 	}
@@ -178,7 +178,7 @@ func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
 			return fmt.Errorf("while reading symlink: %w", err)
 		}
 
-		absPath, err := filepath.Abs(h.cfg.HubDir + "/" + target.RemotePath)
+		absPath, err := filepath.Abs(h.local.HubDir + "/" + target.RemotePath)
 		if err != nil {
 			return fmt.Errorf("while abs path: %w", err)
 		}

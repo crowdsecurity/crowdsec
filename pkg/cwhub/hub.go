@@ -17,10 +17,17 @@ import (
 
 // const HubIndexFile = ".index.json"
 
-// Hub represents the runtime status of the hub (parsed items, etc.)
+// RemoteHubCfg contains where to find the remote hub, which branch etc.
+type RemoteHubCfg struct {
+	Branch      string
+	URLTemplate string
+	IndexPath   string
+}
+
 type Hub struct {
 	Items          HubItems
-	cfg            *csconfig.HubCfg
+	local          *csconfig.LocalHubCfg
+	remote         *RemoteHubCfg
 	skippedLocal   int
 	skippedTainted int
 }
@@ -32,6 +39,7 @@ var (
 
 // GetHub returns the hub singleton
 // it returns an error if it's not initialized to avoid nil dereference
+// XXX: convenience function that we should get rid of at some point
 func GetHub() (*Hub, error) {
 	if theHub == nil {
 		return nil, fmt.Errorf("hub not initialized")
@@ -41,14 +49,14 @@ func GetHub() (*Hub, error) {
 }
 
 // InitHub initializes the Hub, syncs the local state and returns the singleton for immediate use
-func InitHub(cfg *csconfig.HubCfg) (*Hub, error) {
-	if cfg == nil {
-		return nil, fmt.Errorf("no configuration found for hub")
+func InitHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg) (*Hub, error) {
+	if local == nil {
+		return nil, fmt.Errorf("no hub configuration found")
 	}
 
-	log.Debugf("loading hub idx %s", cfg.HubIndexFile)
+	log.Debugf("loading hub idx %s", local.HubIndexFile)
 
-	bidx, err := os.ReadFile(cfg.HubIndexFile)
+	bidx, err := os.ReadFile(local.HubIndexFile)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read index file: %w", err)
 	}
@@ -64,8 +72,9 @@ func InitHub(cfg *csconfig.HubCfg) (*Hub, error) {
 	}
 
 	theHub = &Hub{
-		Items: ret,
-		cfg:   cfg,
+		Items:  ret,
+		local:  local,
+		remote: remote,
 	}
 
 	_, err = theHub.LocalSync()
@@ -78,12 +87,12 @@ func InitHub(cfg *csconfig.HubCfg) (*Hub, error) {
 
 // InitHubUpdate is like InitHub but downloads and updates the index instead of reading from the disk
 // It is used to inizialize the hub when there is no index file yet
-func InitHubUpdate(cfg *csconfig.HubCfg, urlTemplate, branch, remotePath string) (*Hub, error) {
-	if cfg == nil {
+func InitHubUpdate(local *csconfig.LocalHubCfg, remote *RemoteHubCfg) (*Hub, error) {
+	if local == nil {
 		return nil, fmt.Errorf("no configuration found for hub")
 	}
 
-	bidx, err := DownloadIndex(cfg.HubIndexFile, urlTemplate, branch, remotePath)
+	bidx, err := remote.DownloadIndex(local.HubIndexFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to download index: %w", err)
 	}
@@ -96,8 +105,9 @@ func InitHubUpdate(cfg *csconfig.HubCfg, urlTemplate, branch, remotePath string)
 	}
 
 	theHub = &Hub{
-		Items: ret,
-		cfg:   cfg,
+		Items:  ret,
+		local:  local,
+		remote: remote,
 	}
 
 	if _, err := theHub.LocalSync(); err != nil {
@@ -107,10 +117,20 @@ func InitHubUpdate(cfg *csconfig.HubCfg, urlTemplate, branch, remotePath string)
 	return theHub, nil
 }
 
+func (r RemoteHubCfg) urlTo(remotePath string) (string, error) {
+	if fmt.Sprintf(r.URLTemplate, "%s", "%s") != r.URLTemplate {
+		return "", fmt.Errorf("invalid URL template '%s'", r.URLTemplate)
+	}
+
+	return fmt.Sprintf(r.URLTemplate, r.Branch, remotePath), nil
+}
+
 // DownloadIndex downloads the latest version of the index and returns the content
-func DownloadIndex(localPath, hubURLTemplate, branch, remotePath string) ([]byte, error) {
-	url := fmt.Sprintf(hubURLTemplate, branch, remotePath)
-	log.Debugf("fetching index from branch %s (%s)", branch, url)
+func (r RemoteHubCfg) DownloadIndex(localPath string) ([]byte, error) {
+	url, err := r.urlTo(r.IndexPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build hub index request: %w", err)
+	}
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {

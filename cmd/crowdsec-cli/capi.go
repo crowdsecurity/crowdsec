@@ -151,7 +151,7 @@ func NewCapiStatusCmd() *cobra.Command {
 				return fmt.Errorf("parsing api url ('%s'): %w", csConfig.API.Server.OnlineClient.Credentials.URL, err)
 			}
 
-			hub, err := require.Hub(csConfig)
+			hub, err := require.Hub(csConfig, nil)
 			if err != nil {
 				return err
 			}

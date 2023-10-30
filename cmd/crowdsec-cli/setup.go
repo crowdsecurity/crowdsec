@@ -13,6 +13,8 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/setup"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 // NewSetupCmd defines the "cscli setup" command.
@@ -298,14 +300,17 @@ func runSetupInstallHub(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	branch := chooseHubBranch()
-
 	input, err := os.ReadFile(fromFile)
 	if err != nil {
 		return fmt.Errorf("while reading file %s: %w", fromFile, err)
 	}
 
-	if err = setup.InstallHubItems(csConfig, input, dryRun, hubURLTemplate, branch); err != nil {
+	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig))
+	if err != nil {
+		return err
+	}
+
+	if err = setup.InstallHubItems(hub, input, dryRun); err != nil {
 		return err
 	}
 

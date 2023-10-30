@@ -64,12 +64,29 @@ func Notifications(c *csconfig.Config) error {
 	return nil
 }
 
-func Hub(c *csconfig.Config) (*cwhub.Hub, error) {
-	if c.Hub == nil {
+// RemoteHub returns the configuration required to download hub index and items: url, branch, etc.
+func RemoteHub(c *csconfig.Config) *cwhub.RemoteHubCfg {
+	// set branch in config, and log if necessary
+	branch := HubBranch(c)
+	remote := &cwhub.RemoteHubCfg {
+		Branch: branch,
+		URLTemplate: "https://hub-cdn.crowdsec.net/%s/%s",
+		IndexPath: ".index.json",
+	}
+
+	return remote
+}
+
+// Hub initializes the hub. If a remote configuration is provided, it can be used to download the index and items.
+// If no remote parameter is provided, the hub can only be used for local operations.
+func Hub(c *csconfig.Config, remote *cwhub.RemoteHubCfg) (*cwhub.Hub, error) {
+	local := c.Hub
+
+	if local == nil {
 		return nil, fmt.Errorf("you must configure cli before interacting with hub")
 	}
 
-	hub, err := cwhub.InitHub(c.Hub)
+	hub, err := cwhub.InitHub(local, remote)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read Hub index: '%w'. Run 'sudo cscli hub update' to download the index again", err)
 	}

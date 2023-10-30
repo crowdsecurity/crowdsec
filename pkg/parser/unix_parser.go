@@ -57,16 +57,13 @@ func Init(c map[string]interface{}) (*UnixParserCtx, error) {
 
 // Return new parsers
 // nodes and povfwnodes are already initialized in parser.LoadStages
-func NewParsers() *Parsers {
+func NewParsers(hub *cwhub.Hub) *Parsers {
 	parsers := &Parsers{
 		Ctx:             &UnixParserCtx{},
 		Povfwctx:        &UnixParserCtx{},
 		StageFiles:      make([]Stagefile, 0),
 		PovfwStageFiles: make([]Stagefile, 0),
 	}
-
-	// XXX: handle error
-	hub, _ := cwhub.GetHub()
 
 	for _, itemType := range []string{cwhub.PARSERS, cwhub.POSTOVERFLOWS} {
 		for _, hubParserItem := range hub.GetItemMap(itemType) {

@@ -65,8 +65,8 @@ func (h *Hub) getItemInfo(path string) (itemFileInfo, bool, error) {
 	ret := itemFileInfo{}
 	inhub := false
 
-	hubDir := h.cfg.HubDir
-	installDir := h.cfg.InstallDir
+	hubDir := h.local.HubDir
+	installDir := h.local.InstallDir
 
 	subs := strings.Split(path, string(os.PathSeparator))
 
@@ -229,7 +229,7 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 				continue
 			}
 
-			if path == h.cfg.HubDir+"/"+item.RemotePath {
+			if path == h.local.HubDir+"/"+item.RemotePath {
 				log.Tracef("marking %s as downloaded", item.Name)
 				item.Downloaded = true
 			}
@@ -391,11 +391,11 @@ func (h *Hub) SyncDir(dir string) ([]string, error) {
 	for _, scan := range ItemTypes {
 		cpath, err := filepath.Abs(fmt.Sprintf("%s/%s", dir, scan))
 		if err != nil {
-			log.Errorf("failed %s : %s", cpath, err)
+			log.Errorf("failed %s: %s", cpath, err)
 		}
 
 		// explicit check for non existing directory, avoid spamming log.Debug
-		if _, err := os.Stat(cpath); os.IsNotExist(err) {
+		if _, err = os.Stat(cpath); os.IsNotExist(err) {
 			log.Tracef("directory %s doesn't exist, skipping", cpath)
 			continue
 		}
@@ -435,14 +435,14 @@ func (h *Hub) LocalSync() ([]string, error) {
 	h.skippedLocal = 0
 	h.skippedTainted = 0
 
-	warnings, err := h.SyncDir(h.cfg.InstallDir)
+	warnings, err := h.SyncDir(h.local.InstallDir)
 	if err != nil {
-		return warnings, fmt.Errorf("failed to scan %s: %w", h.cfg.InstallDir, err)
+		return warnings, fmt.Errorf("failed to scan %s: %w", h.local.InstallDir, err)
 	}
 
-	_, err = h.SyncDir(h.cfg.HubDir)
+	_, err = h.SyncDir(h.local.HubDir)
 	if err != nil {
-		return warnings, fmt.Errorf("failed to scan %s: %w", h.cfg.HubDir, err)
+		return warnings, fmt.Errorf("failed to scan %s: %w", h.local.HubDir, err)
 	}
 
 	return warnings, nil

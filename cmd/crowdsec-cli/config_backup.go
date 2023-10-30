@@ -13,10 +13,14 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
-func backupHub(hub *cwhub.Hub, dirPath string) error {
-	var err error
+func backupHub(dirPath string) error {
 	var itemDirectory string
 	var upstreamParsers []string
+
+	hub, err := require.Hub(csConfig, nil)
+	if err != nil {
+		return err
+	}
 
 	for _, itemType := range cwhub.ItemTypes {
 		clog := log.WithFields(log.Fields{
@@ -28,7 +32,7 @@ func backupHub(hub *cwhub.Hub, dirPath string) error {
 			continue
 		}
 		itemDirectory = fmt.Sprintf("%s/%s/", dirPath, itemType)
-		if err := os.MkdirAll(itemDirectory, os.ModePerm); err != nil {
+		if err = os.MkdirAll(itemDirectory, os.ModePerm); err != nil {
 			return fmt.Errorf("error while creating %s : %s", itemDirectory, err)
 		}
 		upstreamParsers = []string{}
@@ -46,11 +50,11 @@ func backupHub(hub *cwhub.Hub, dirPath string) error {
 				//we need to backup stages for parsers
 				if itemType == cwhub.PARSERS || itemType == cwhub.POSTOVERFLOWS {
 					fstagedir := fmt.Sprintf("%s%s", itemDirectory, v.Stage)
-					if err := os.MkdirAll(fstagedir, os.ModePerm); err != nil {
+					if err = os.MkdirAll(fstagedir, os.ModePerm); err != nil {
 						return fmt.Errorf("error while creating stage dir %s : %s", fstagedir, err)
 					}
 				}
-				clog.Debugf("[%s] : backuping file (tainted:%t local:%t up-to-date:%t)", k, v.Tainted, v.IsLocal(), v.UpToDate)
+				clog.Debugf("[%s]: backing up file (tainted:%t local:%t up-to-date:%t)", k, v.Tainted, v.IsLocal(), v.UpToDate)
 				tfile := fmt.Sprintf("%s%s/%s", itemDirectory, v.Stage, v.FileName)
 				if err = CopyFile(v.LocalPath, tfile); err != nil {
 					return fmt.Errorf("failed copy %s %s to %s : %s", itemType, v.LocalPath, tfile, err)
@@ -100,7 +104,7 @@ func backupConfigToDirectory(dirPath string) error {
 
 	/*if parent directory doesn't exist, bail out. create final dir with Mkdir*/
 	parentDir := filepath.Dir(dirPath)
-	if _, err := os.Stat(parentDir); err != nil {
+	if _, err = os.Stat(parentDir); err != nil {
 		return fmt.Errorf("while checking parent directory %s existence: %w", parentDir, err)
 	}
 
@@ -189,12 +193,7 @@ func backupConfigToDirectory(dirPath string) error {
 		log.Infof("Saved profiles to %s", backupProfiles)
 	}
 
-	hub, err := cwhub.GetHub()
-	if err != nil {
-		return err
-	}
-
-	if err = backupHub(hub, dirPath); err != nil {
+	if err = backupHub(dirPath); err != nil {
 		return fmt.Errorf("failed to backup hub config: %s", err)
 	}
 
@@ -202,10 +201,6 @@ func backupConfigToDirectory(dirPath string) error {
 }
 
 func runConfigBackup(cmd *cobra.Command, args []string) error {
-	if _, err := require.Hub(csConfig); err != nil {
-		return err
-	}
-
 	if err := backupConfigToDirectory(args[0]); err != nil {
 		return fmt.Errorf("failed to backup config: %w", err)
 	}

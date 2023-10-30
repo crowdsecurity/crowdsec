@@ -6,16 +6,15 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"slices"
 	"sort"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
+	"slices"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
-
 
 func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly bool) ([]string, error) {
 	itemNames := hub.GetItemNames(itemType)
@@ -50,14 +49,8 @@ func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 	return itemNames, nil
 }
 
-
-func ListItems(out io.Writer, itemTypes []string, args []string, showType bool, showHeader bool, all bool) error {
+func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string, showType bool, showHeader bool, all bool) error {
 	var err error
-
-	hub, err := cwhub.GetHub()
-	if err != nil {
-		return err
-	}
 
 	items := make(map[string][]string)
 	for _, itemType := range itemTypes {
@@ -65,10 +58,10 @@ func ListItems(out io.Writer, itemTypes []string, args []string, showType bool, 
 			return err
 		}
 	}
-		
+
 	if csConfig.Cscli.Output == "human" {
 		for _, itemType := range itemTypes {
-			listHubItemTable(out, "\n"+strings.ToUpper(itemType), itemType, items[itemType])
+			listHubItemTable(hub, out, "\n"+strings.ToUpper(itemType), itemType, items[itemType])
 		}
 	} else if csConfig.Cscli.Output == "json" {
 		type itemHubStatus struct {

@@ -29,13 +29,10 @@ func Suggest(itemType string, baseItem string, suggestItem string, score int, ig
 	}
 }
 
-func GetDistance(itemType string, itemName string) (*cwhub.Item, int) {
+func GetDistance(hub *cwhub.Hub, itemType string, itemName string) (*cwhub.Item, int) {
 	allItems := make([]string, 0)
 	nearestScore := 100
 	nearestItem := &cwhub.Item{}
-
-	// XXX: handle error
-	hub, _ := cwhub.GetHub()
 
 	hubItems := hub.GetItemMap(itemType)
 	for _, item := range hubItems {
@@ -53,7 +50,7 @@ func GetDistance(itemType string, itemName string) (*cwhub.Item, int) {
 }
 
 func compAllItems(itemType string, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	hub, err := require.Hub(csConfig)
+	hub, err := require.Hub(csConfig, nil)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault
 	}
@@ -70,7 +67,7 @@ func compAllItems(itemType string, args []string, toComplete string) ([]string, 
 }
 
 func compInstalledItems(itemType string, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	hub, err := require.Hub(csConfig)
+	hub, err := require.Hub(csConfig, nil)
 	if err != nil {
 		return nil, cobra.ShellCompDirectiveDefault
 	}

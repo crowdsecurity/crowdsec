@@ -12,13 +12,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-const (
-	hubURLTemplate  = "https://hub-cdn.crowdsec.net/%s/%s"
-	remoteIndexPath = ".index.json"
-)
-
-var hubBranch = ""
-
 func NewHubCmd() *cobra.Command {
 	var cmdHub = &cobra.Command{
 		Use:   "hub [action]",
@@ -56,7 +49,7 @@ func runHubList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	hub, err := require.Hub(csConfig)
+	hub, err := require.Hub(csConfig, nil)
 	if err != nil {
 		return err
 	}
@@ -71,7 +64,7 @@ func runHubList(cmd *cobra.Command, args []string) error {
 		log.Info(line)
 	}
 
-	err = ListItems(color.Output, []string{
+	err = ListItems(hub, color.Output, []string{
 		cwhub.COLLECTIONS, cwhub.PARSERS, cwhub.SCENARIOS, cwhub.POSTOVERFLOWS,
 	}, nil, true, false, all)
 	if err != nil {
@@ -97,23 +90,20 @@ func NewHubListCmd() *cobra.Command {
 }
 
 func runHubUpdate(cmd *cobra.Command, args []string) error {
+	local := csConfig.Hub
+	remote := require.RemoteHub(csConfig)
+
 	// don't use require.Hub because if there is no index file, it would fail
-
-	branch := hubBranch
-	if branch == "" {
-		branch = chooseHubBranch()
-	}
-
-	log.Debugf("Using branch '%s' for the hub", branch)
-
-	hub, err := cwhub.InitHubUpdate(csConfig.Hub, hubURLTemplate, branch, remoteIndexPath)
+	hub, err := cwhub.InitHubUpdate(local, remote)
 	if err != nil {
+		// XXX: this should be done when downloading items, too
+		// but what is the fallback to master actually solving?
 		if !errors.Is(err, cwhub.ErrIndexNotFound) {
 			return fmt.Errorf("failed to get Hub index : %w", err)
 		}
-		log.Warnf("Could not find index file for branch '%s', using 'master'", branch)
-		branch = "master"
-		if hub, err = cwhub.InitHubUpdate(csConfig.Hub, hubURLTemplate, branch, remoteIndexPath); err != nil {
+		log.Warnf("Could not find index file for branch '%s', using 'master'", remote.Branch)
+		remote.Branch = "master"
+		if hub, err = cwhub.InitHubUpdate(local, remote); err != nil {
 			return fmt.Errorf("failed to get Hub index after retry: %w", err)
 		}
 	}
@@ -132,7 +122,7 @@ func NewHubUpdateCmd() *cobra.Command {
 		Use:   "update",
 		Short: "Download the latest index (catalog of available configurations)",
 		Long: `
-Fetches the [.index.json](https://github.com/crowdsecurity/hub/blob/master/.index.json) file from hub, containing the list of available configs.
+Fetches the .index.json file from the hub, containing the list of available configs.
 `,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
@@ -157,14 +147,7 @@ func runHubUpgrade(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	branch := hubBranch
-	if branch == "" {
-		branch = chooseHubBranch()
-	}
-
-	log.Debugf("Using branch '%s' for the hub", branch)
-
-	hub, err := require.Hub(csConfig)
+	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig))
 	if err != nil {
 		return err
 	}
@@ -178,7 +161,7 @@ func runHubUpgrade(cmd *cobra.Command, args []string) error {
 		updated := 0
 		log.Infof("Upgrading %s", itemType)
 		for _, item := range items {
-			didUpdate, err := hub.UpgradeItem(itemType, item.Name, force, hubURLTemplate, branch)
+			didUpdate, err := hub.UpgradeItem(itemType, item.Name, force)
 			if err != nil {
 				return err
 			}

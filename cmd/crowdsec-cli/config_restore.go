@@ -22,21 +22,16 @@ type OldAPICfg struct {
 }
 
 // it's a rip of the cli version, but in silent-mode
-func silentInstallItem(name, obtype, hubURLTemplate, branch string) (string, error) {
-	hub, err := cwhub.GetHub()
-	if err != nil {
-		return "", err
-	}
-
+func silentInstallItem(hub *cwhub.Hub, name, obtype string) (string, error) {
 	var item = hub.GetItem(obtype, name)
 	if item == nil {
 		return "", fmt.Errorf("error retrieving item")
 	}
-	err = hub.DownloadLatest(item, false, false, hubURLTemplate, branch)
+	err := hub.DownloadLatest(item, false, false)
 	if err != nil {
 		return "", fmt.Errorf("error while downloading %s : %v", item.Name, err)
 	}
-	if err := hub.AddItem(*item); err != nil {
+	if err = hub.AddItem(*item); err != nil {
 		return "", err
 	}
 
@@ -51,9 +46,10 @@ func silentInstallItem(name, obtype, hubURLTemplate, branch string) (string, err
 }
 
 func restoreHub(dirPath string) error {
-	var err error
-
-	branch := chooseHubBranch()
+	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig))
+	if err != nil {
+		return err
+	}
 
 	for _, itype := range cwhub.ItemTypes {
 		itemDirectory := fmt.Sprintf("%s/%s/", dirPath, itype)
@@ -73,7 +69,7 @@ func restoreHub(dirPath string) error {
 			return fmt.Errorf("error unmarshaling %s : %s", upstreamListFN, err)
 		}
 		for _, toinstall := range upstreamList {
-			label, err := silentInstallItem(toinstall, itype, hubURLTemplate, branch)
+			label, err := silentInstallItem(hub, toinstall, itype)
 			if err != nil {
 				log.Errorf("Error while installing %s : %s", toinstall, err)
 			} else if label != "" {
@@ -294,10 +290,6 @@ func runConfigRestore(cmd *cobra.Command, args []string) error {
 
 	oldBackup, err := flags.GetBool("old-backup")
 	if err != nil {
-		return err
-	}
-
-	if _, err := require.Hub(csConfig); err != nil {
 		return err
 	}
 
