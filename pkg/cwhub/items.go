@@ -1,6 +1,7 @@
 package cwhub
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/enescakir/emoji"
@@ -49,11 +50,10 @@ type Item struct {
 	LocalPath    string `json:"local_path,omitempty" yaml:"local_path,omitempty"` // the local path relative to ${CFG_DIR}
 	LocalVersion string `json:"local_version,omitempty"`
 	LocalHash    string `json:"local_hash,omitempty"` // the local meow
-	Installed    bool   `json:"installed,omitempty"`
+	Installed    bool   `json:"installed,omitempty"`  // XXX: should we remove omitempty from bool fields?
 	Downloaded   bool   `json:"downloaded,omitempty"`
 	UpToDate     bool   `json:"up_to_date,omitempty"`
 	Tainted      bool   `json:"tainted,omitempty"` // has it been locally modified?
-	Local        bool   `json:"local,omitempty"`   // if it's a non versioned control one
 
 	// if it's a collection, it can have sub items
 	Parsers       []string `json:"parsers,omitempty"       yaml:"parsers,omitempty"`
@@ -62,35 +62,73 @@ type Item struct {
 	Collections   []string `json:"collections,omitempty"   yaml:"collections,omitempty"`
 }
 
-
 type SubItem struct {
 	Type string
 	Name string
 }
 
+func (i *Item) IsLocal() bool {
+	return i.Installed && !i.Downloaded
+}
+
+// MarshalJSON is used to add the "local" field to the json output
+// (i.e. with cscli ... inspect -o json)
+// It must not use a pointer receiver
+func (i Item) MarshalJSON() ([]byte, error) {
+	type Alias Item
+	return json.Marshal(&struct {
+		Alias
+		Local bool `json:"local"` // XXX: omitempty?
+	}{
+		Alias: Alias(i),
+		Local: i.IsLocal(),
+	})
+}
+
+// MarshalYAML is used to add the "local" field to the yaml output
+// (i.e. with cscli ... inspect -o raw)
+// It must not use a pointer receiver
+func (i Item) MarshalYAML() (interface{}, error) {
+	type Alias Item
+	return &struct {
+		Alias `yaml:",inline"`
+		Local bool `yaml:"local"`
+	}{
+		Alias: Alias(i),
+		Local: i.IsLocal(),
+	}, nil
+}
+
+// SubItems returns the list of sub items for a given item (typically a collection)
 func (i *Item) SubItems() []SubItem {
 	sub := make([]SubItem,
-		len(i.Parsers) +
-		len(i.PostOverflows) +
-		len(i.Scenarios) +
-		len(i.Collections))
+		len(i.Parsers)+
+			len(i.PostOverflows)+
+			len(i.Scenarios)+
+			len(i.Collections))
+
 	n := 0
+
 	for _, name := range i.Parsers {
 		sub[n] = SubItem{Type: PARSERS, Name: name}
 		n++
 	}
+
 	for _, name := range i.PostOverflows {
 		sub[n] = SubItem{Type: POSTOVERFLOWS, Name: name}
 		n++
 	}
+
 	for _, name := range i.Scenarios {
 		sub[n] = SubItem{Type: SCENARIOS, Name: name}
 		n++
 	}
+
 	for _, name := range i.Collections {
 		sub[n] = SubItem{Type: COLLECTIONS, Name: name}
 		n++
 	}
+
 	return sub
 }
 
@@ -106,7 +144,7 @@ func (i *Item) Status() (string, emoji.Emoji) {
 	}
 
 	managed := true
-	if i.Local {
+	if i.IsLocal() {
 		managed = false
 		status += ",local"
 	}
@@ -115,7 +153,7 @@ func (i *Item) Status() (string, emoji.Emoji) {
 	if i.Tainted {
 		warning = true
 		status += ",tainted"
-	} else if !i.UpToDate && !i.Local {
+	} else if !i.UpToDate && !i.IsLocal() {
 		warning = true
 		status += ",update-available"
 	}
@@ -201,7 +239,7 @@ func (h *Hub) AddItem(item Item) error {
 func (h *Hub) GetInstalledItems(itemType string) ([]Item, error) {
 	items, ok := h.Items[itemType]
 	if !ok {
-		return nil, fmt.Errorf("no %s in hubIdx", itemType)
+		return nil, fmt.Errorf("no %s in the hub index", itemType)
 	}
 
 	retItems := make([]Item, 0)

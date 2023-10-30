@@ -37,13 +37,15 @@ func itemKey(itemPath string) (string, error) {
 	return fmt.Sprintf("%s/%s", author, fname), nil
 }
 
-// GetItemByPath retrieves the item from hubIdx based on the path. To achieve this it will resolve symlink to find associated hub item.
+// GetItemByPath retrieves the item from the hub index based on its path.
+// To achieve this it resolves a symlink to find the associated hub item.
 func (h *Hub) GetItemByPath(itemType string, itemPath string) (*Item, error) {
 	itemKey, err := itemKey(itemPath)
 	if err != nil {
 		return nil, err
 	}
 
+	// XXX: use GetItem()
 	m := h.GetItemMap(itemType)
 	if m == nil {
 		return nil, fmt.Errorf("item type %s doesn't exist", itemType)

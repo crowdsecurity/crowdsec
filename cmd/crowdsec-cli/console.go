@@ -71,7 +71,7 @@ After running this command your will need to validate the enrollment in the weba
 				return fmt.Errorf("could not parse CAPI URL: %s", err)
 			}
 
-			hub, err := require.Hub(csConfig)
+			hub, err := require.Hub(csConfig, nil)
 			if err != nil {
 				return err
 			}

@@ -32,23 +32,23 @@ func testHub(t *testing.T, update bool) *Hub {
 	tmpDir, err := os.MkdirTemp("", "testhub")
 	require.NoError(t, err)
 
-	hubCfg := &csconfig.HubCfg{
+	local := &csconfig.LocalHubCfg{
 		HubDir:         filepath.Join(tmpDir, "crowdsec", "hub"),
 		HubIndexFile:   filepath.Join(tmpDir, "crowdsec", "hub", ".index.json"),
 		InstallDir:     filepath.Join(tmpDir, "crowdsec"),
 		InstallDataDir: filepath.Join(tmpDir, "installed-data"),
 	}
 
-	err = os.MkdirAll(hubCfg.HubDir, 0o700)
+	err = os.MkdirAll(local.HubDir, 0o700)
 	require.NoError(t, err)
 
-	err = os.MkdirAll(hubCfg.InstallDir, 0o700)
+	err = os.MkdirAll(local.InstallDir, 0o700)
 	require.NoError(t, err)
 
-	err = os.MkdirAll(hubCfg.InstallDataDir, 0o700)
+	err = os.MkdirAll(local.InstallDataDir, 0o700)
 	require.NoError(t, err)
 
-	index, err := os.Create(hubCfg.HubIndexFile)
+	index, err := os.Create(local.HubIndexFile)
 	require.NoError(t, err)
 
 	_, err = index.WriteString(`{}`)
@@ -62,11 +62,17 @@ func testHub(t *testing.T, update bool) *Hub {
 
 	var hub *Hub
 
+	remote := &RemoteHubCfg{
+		Branch: "master",
+		URLTemplate: mockURLTemplate,
+		IndexPath: ".index.json",
+	}
+
 	if update {
-		hub, err = InitHubUpdate(hubCfg, mockURLTemplate, "master", ".index.json")
+		hub, err = InitHubUpdate(local, remote)
 		require.NoError(t, err)
 	} else {
-		hub, err = InitHub(hubCfg)
+		hub, err = InitHub(local, remote)
 		require.NoError(t, err)
 	}
 

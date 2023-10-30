@@ -5,6 +5,7 @@ set -u
 
 setup_file() {
     load "../lib/setup_file.sh"
+    ./instance-data load
     HUB_DIR=$(config_get '.config_paths.hub_dir')
     export HUB_DIR
     CONFIG_DIR=$(config_get '.config_paths.config_dir')
@@ -19,11 +20,8 @@ setup() {
     load "../lib/setup.sh"
     load "../lib/bats-file/load.bash"
     ./instance-data load
-    hub_uninstall_all
-    # XXX: remove all "content" fields from the index, to make sure
-    # XXX: we don't rely on it in any way
-    hub_min=$(jq <"$HUB_DIR/.index.json" 'del(..|.content?) | del(..|.long_description?) | del(..|.deprecated?) | del (..|.labels?)')
-    echo "$hub_min" >"$HUB_DIR/.index.json"
+    hub_purge_all
+    hub_strip_index
 }
 
 teardown() {
@@ -77,6 +75,8 @@ teardown() {
     rune -0 cscli parsers list -o raw -a
     rune -0 grep -vc 'name,status,version,description' <(output)
     assert_output "$expected"
+
+    # XXX: check alphabetical order in human, json, raw
 }
 
 @test "cscli parsers list [parser]..." {
@@ -164,6 +164,7 @@ teardown() {
 @test "cscli parsers inspect [parser]..." {
     rune -1 cscli parsers inspect
     assert_stderr --partial 'requires at least 1 arg(s), only received 0'
+    # required for metrics
     ./instance-crowdsec start
 
     rune -1 cscli parsers inspect blahblah/blahblah
@@ -224,18 +225,20 @@ teardown() {
     assert_output "0"
 }
 
-@test "cscli parsers remove [parser]..." {
+@test "foo cscli parsers remove [parser]..." {
     rune -1 cscli parsers remove
     assert_stderr --partial "specify at least one parser to remove or '--all'"
-
     rune -1 cscli parsers remove blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in parsers"
 
-    # XXX: we can however remove a real item if it's not installed, or already removed
     rune -0 cscli parsers remove crowdsecurity/whitelists
+    assert_stderr --partial 'removing crowdsecurity/whitelists: not downloaded -- no removal required'
 
-    # XXX: have the --force ignore uninstalled items
-    # XXX: maybe also with --purge
+    rune -0 cscli parsers install crowdsecurity/whitelists --download-only
+    rune -0 cscli parsers remove crowdsecurity/whitelists
+    assert_stderr --partial 'removing crowdsecurity/whitelists: already uninstalled'
+    rune -0 cscli parsers remove crowdsecurity/whitelists --purge
+    assert_stderr --partial 'Removed source file [crowdsecurity/whitelists]'
 
     # install, then remove, check files
     rune -0 cscli parsers install crowdsecurity/whitelists
@@ -279,26 +282,24 @@ teardown() {
 @test "cscli parsers upgrade [parser]..." {
     rune -1 cscli parsers upgrade
     assert_stderr --partial "specify at least one parser to upgrade or '--all'"
-
-    # XXX: should this return 1 instead of log.Error?
-    rune -0 cscli parsers upgrade blahblah/blahblah
+    rune -1 cscli parsers upgrade blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in parsers"
+    rune -1 cscli parsers upgrade crowdsecurity/pam-logs
+    assert_stderr --partial "can't upgrade crowdsecurity/pam-logs: not installed"
+    rune -0 cscli parsers install crowdsecurity/pam-logs --download-only
+    rune -1 cscli parsers upgrade crowdsecurity/pam-logs
+    assert_stderr --partial "can't upgrade crowdsecurity/pam-logs: downloaded but not installed"
 
-    # XXX: same message if the item exists but is not installed, this is confusing
-    rune -0 cscli parsers upgrade crowdsecurity/whitelists
-    assert_stderr --partial "can't find 'crowdsecurity/whitelists' in parsers"
+    # hash of the string "v0.0"
+    sha256_0_0="dfebecf42784a31aa3d009dbcec0c657154a034b45f49cf22a895373f6dbf63d"
 
-    # hash of an empty file
-    sha256_empty="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-
-    # add version 0.0 to the hub
-    new_hub=$(jq --arg DIGEST "$sha256_empty" <"$HUB_DIR/.index.json" '. * {parsers:{"crowdsecurity/whitelists":{"versions":{"0.0":{"digest":$DIGEST, "deprecated": false}}}}}')
+    # add version 0.0 to all parsers
+    new_hub=$(jq --arg DIGEST "$sha256_0_0" <"$HUB_DIR/.index.json" '.parsers |= with_entries(.value.versions["0.0"] = {"digest": $DIGEST, "deprecated": false})')
     echo "$new_hub" >"$HUB_DIR/.index.json"
  
     rune -0 cscli parsers install crowdsecurity/whitelists
 
-    # bring the file to v0.0
-    truncate -s 0 "$CONFIG_DIR/parsers/s02-enrich/whitelists.yaml"
+    echo "v0.0" > "$CONFIG_DIR/parsers/s02-enrich/whitelists.yaml"
     rune -0 cscli parsers inspect crowdsecurity/whitelists -o json
     rune -0 jq -e '.local_version=="0.0"' <(output)
 
@@ -322,104 +323,20 @@ teardown() {
 
     # multiple items
     rune -0 cscli parsers install crowdsecurity/windows-auth
-    echo "dirty" >"$CONFIG_DIR/parsers/s02-enrich/whitelists.yaml"
-    echo "dirty" >"$CONFIG_DIR/parsers/s01-parse/windows-auth.yaml"
+    echo "v0.0" >"$CONFIG_DIR/parsers/s02-enrich/whitelists.yaml"
+    echo "v0.0" >"$CONFIG_DIR/parsers/s01-parse/windows-auth.yaml"
     rune -0 cscli parsers list -o json
-    rune -0 jq -e '[.parsers[].local_version]==["?","?"]' <(output)
+    rune -0 jq -e '[.parsers[].local_version]==["0.0","0.0"]' <(output)
     rune -0 cscli parsers upgrade crowdsecurity/whitelists crowdsecurity/windows-auth
-    rune -0 jq -e '[.parsers[].local_version]==[.parsers[].version]' <(output)
+    rune -0 cscli parsers list -o json
+    rune -0 jq -e 'any(.parsers[].local_version; .=="0.0") | not' <(output)
 
     # upgrade all
-    echo "dirty" >"$CONFIG_DIR/parsers/s02-enrich/whitelists.yaml"
-    echo "dirty" >"$CONFIG_DIR/parsers/s01-parse/windows-auth.yaml"
+    echo "v0.0" >"$CONFIG_DIR/parsers/s02-enrich/whitelists.yaml"
+    echo "v0.0" >"$CONFIG_DIR/parsers/s01-parse/windows-auth.yaml"
+    rune -0 cscli parsers list -o json
+    rune -0 jq -e '[.parsers[].local_version]==["0.0","0.0"]' <(output)
     rune -0 cscli parsers upgrade --all
-    rune -0 jq -e '[.parsers[].local_version]==[.parsers[].version]' <(output)
+    rune -0 cscli parsers list -o json
+    rune -0 jq -e 'any(.parsers[].local_version; .=="0.0") | not' <(output)
 }
-
-
-
-#@test "must use --force to remove a collection that belongs to another, which becomes tainted" {
-#    # we expect no error since we may have multiple collections, some removed and some not
-#    rune -0 cscli collections remove crowdsecurity/sshd
-#    assert_stderr --partial "crowdsecurity/sshd belongs to other collections"
-#    assert_stderr --partial "[crowdsecurity/linux]"
-#
-#    rune -0 cscli collections remove crowdsecurity/sshd --force
-#    assert_stderr --partial "Removed symlink [crowdsecurity/sshd]"
-#    rune -0 cscli collections inspect crowdsecurity/linux -o json
-#    rune -0 jq -r '.tainted' <(output)
-#    assert_output "true"
-#}
-#
-#@test "can remove a collection" {
-#    rune -0 cscli collections remove crowdsecurity/linux
-#    assert_stderr --partial "Removed"
-#    assert_stderr --regexp   ".*for the new configuration to be effective."
-#    rune -0 cscli collections inspect crowdsecurity/linux -o human --no-metrics
-#    assert_line 'installed: false'
-#}
-#
-#@test "collections delete is an alias for collections remove" {
-#    rune -0 cscli collections delete crowdsecurity/linux
-#    assert_stderr --partial "Removed"
-#    assert_stderr --regexp   ".*for the new configuration to be effective."
-#}
-#
-#@test "removing a collection that does not exist is noop" {
-#    rune -0 cscli collections remove crowdsecurity/apache2
-#    refute_stderr --partial "Removed"
-#    assert_stderr --regexp   ".*for the new configuration to be effective."
-#}
-#
-#@test "can remove a removed collection" {
-#    rune -0 cscli collections install crowdsecurity/mysql
-#    rune -0 cscli collections remove crowdsecurity/mysql
-#    assert_stderr --partial "Removed"
-#    rune -0 cscli collections remove crowdsecurity/mysql
-#    refute_stderr --partial "Removed"
-#}
-#
-#@test "can remove all collections" {
-#    # we may have this too, from package installs
-#    rune cscli parsers delete crowdsecurity/whitelists
-#    rune -0 cscli collections remove --all
-#    assert_stderr --partial "Removed symlink [crowdsecurity/sshd]"
-#    assert_stderr --partial "Removed symlink [crowdsecurity/linux]"
-#    rune -0 cscli hub list -o json
-#    assert_json '{collections:[],parsers:[],postoverflows:[],scenarios:[]}'
-#    rune -0 cscli collections remove --all
-#    assert_stderr --partial 'Disabled 0 items'
-#}
-#
-#@test "a taint bubbles up to the top collection" {
-#    coll=crowdsecurity/nginx
-#    subcoll=crowdsecurity/base-http-scenarios
-#    scenario=crowdsecurity/http-crawl-non_statics
-#
-#    # install a collection with dependencies
-#    rune -0 cscli collections install "$coll"
-#
-#    # the collection, subcollection and scenario are installed and not tainted
-#    # we have to default to false because tainted is (as of 1.4.6) returned
-#    # only when true
-#    rune -0 cscli collections inspect "$coll" -o json
-#    rune -0 jq -e '(.installed,.tainted|false)==(true,false)' <(output)
-#    rune -0 cscli collections inspect "$subcoll" -o json
-#    rune -0 jq -e '(.installed,.tainted|false)==(true,false)' <(output)
-#    rune -0 cscli scenarios inspect "$scenario" -o json
-#    rune -0 jq -e '(.installed,.tainted|false)==(true,false)' <(output)
-#
-#    # we taint the scenario
-#    HUB_DIR=$(config_get '.config_paths.hub_dir')
-#    yq e '.description="I am tainted"' -i "$HUB_DIR/scenarios/$scenario.yaml"
-#
-#    # the collection, subcollection and scenario are now tainted
-#    rune -0 cscli scenarios inspect "$scenario" -o json
-#    rune -0 jq -e '(.installed,.tainted)==(true,true)' <(output)
-#    rune -0 cscli collections inspect "$subcoll" -o json
-#    rune -0 jq -e '(.installed,.tainted)==(true,true)' <(output)
-#    rune -0 cscli collections inspect "$coll" -o json
-#    rune -0 jq -e '(.installed,.tainted)==(true,true)' <(output)
-#}
-#
-## TODO test download-only

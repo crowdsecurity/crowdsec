@@ -38,7 +38,7 @@ func runLapiStatus(cmd *cobra.Command, args []string) error {
 		log.Fatalf("parsing api url ('%s'): %s", apiurl, err)
 	}
 
-	hub, err := require.Hub(csConfig)
+	hub, err := require.Hub(csConfig, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -339,12 +339,12 @@ cscli lapi context detect crowdsecurity/sshd-logs
 				log.Fatalf("Failed to init expr helpers : %s", err)
 			}
 
-			_, err = require.Hub(csConfig)
+			hub, err := require.Hub(csConfig, nil)
 			if err != nil {
 				log.Fatal(err)
 			}
 
-			csParsers := parser.NewParsers()
+			csParsers := parser.NewParsers(hub)
 			if csParsers, err = parser.LoadParsers(csConfig, csParsers); err != nil {
 				log.Fatalf("unable to load parsers: %s", err)
 			}

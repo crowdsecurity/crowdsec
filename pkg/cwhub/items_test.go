@@ -22,19 +22,19 @@ func TestItemStatus(t *testing.T) {
 
 		item.Installed = true
 		item.UpToDate = false
-		item.Local = false
 		item.Tainted = false
+		item.Downloaded = true
 
 		txt, _ := item.Status()
 		require.Equal(t, "enabled,update-available", txt)
 
-		item.Installed = false
+		item.Installed = true
 		item.UpToDate = false
-		item.Local = true
 		item.Tainted = false
+		item.Downloaded = false
 
 		txt, _ = item.Status()
-		require.Equal(t, "disabled,local", txt)
+		require.Equal(t, "enabled,local", txt)
 	}
 
 	stats := hub.ItemStats()

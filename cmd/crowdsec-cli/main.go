@@ -30,6 +30,9 @@ var OutputColor string
 
 var mergedConfig string
 
+// flagBranch overrides the value in csConfig.Cscli.HubBranch
+var flagBranch = ""
+
 func initConfig() {
 	var err error
 	if trace_lvl {
@@ -65,8 +68,8 @@ func initConfig() {
 		log.Fatalf("missing 'cscli' configuration in '%s', exiting", ConfigFilePath)
 	}
 
-	if hubBranch == "" && csConfig.Cscli.HubBranch != "" {
-		hubBranch = csConfig.Cscli.HubBranch
+	if flagBranch != "" {
+		csConfig.Cscli.HubBranch = flagBranch
 	}
 
 	if OutputFormat != "" {
@@ -197,7 +200,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.PersistentFlags().BoolVar(&err_lvl, "error", false, "Set logging to error")
 	rootCmd.PersistentFlags().BoolVar(&trace_lvl, "trace", false, "Set logging to trace")
 
-	rootCmd.PersistentFlags().StringVar(&hubBranch, "branch", "", "Override hub branch on github")
+	rootCmd.PersistentFlags().StringVar(&flagBranch, "branch", "", "Override hub branch on github")
 	if err := rootCmd.PersistentFlags().MarkHidden("branch"); err != nil {
 		log.Fatalf("failed to hide flag: %s", err)
 	}

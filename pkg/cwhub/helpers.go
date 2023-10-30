@@ -7,6 +7,7 @@ package cwhub
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,7 +20,7 @@ import (
 )
 
 // InstallItem installs an item from the hub
-func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly bool, hubURLTemplate, branch string) error {
+func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly bool) error {
 	item := h.GetItem(itemType, name)
 	if item == nil {
 		return fmt.Errorf("unable to retrieve item: %s", name)
@@ -33,7 +34,7 @@ func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly
 		}
 	}
 
-	err := h.DownloadLatest(item, force, true, hubURLTemplate, branch)
+	err := h.DownloadLatest(item, force, true)
 	if err != nil {
 		return fmt.Errorf("while downloading %s: %w", item.Name, err)
 	}
@@ -43,7 +44,7 @@ func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly
 	}
 
 	if downloadOnly {
-		log.Infof("Downloaded %s to %s", item.Name, filepath.Join(h.cfg.HubDir, item.RemotePath))
+		log.Infof("Downloaded %s to %s", item.Name, filepath.Join(h.local.HubDir, item.RemotePath))
 		return nil
 	}
 
@@ -61,131 +62,97 @@ func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly
 	return nil
 }
 
-// RemoveItem removes one - or all - the items from the hub
-func (h *Hub) RemoveMany(itemType string, name string, all bool, purge bool, forceAction bool) error {
-	if name != "" {
-		item := h.GetItem(itemType, name)
-		if item == nil {
-			return fmt.Errorf("can't find '%s' in %s", name, itemType)
-		}
+// RemoveItem disables one item, optionally removing the downloaded content
+func (h *Hub) RemoveItem(itemType string, name string, purge bool, forceAction bool) (bool, error) {
+	removed := false
 
-		err := h.DisableItem(item, purge, forceAction)
-
-		if err != nil {
-			return fmt.Errorf("unable to disable %s: %w", item.Name, err)
-		}
-
-		if err = h.AddItem(*item); err != nil {
-			return fmt.Errorf("unable to add %s: %w", item.Name, err)
-		}
-
-		return nil
+	item := h.GetItem(itemType, name)
+	if item == nil {
+		return false, fmt.Errorf("can't find '%s' in %s", name, itemType)
 	}
 
-	if !all {
-		return fmt.Errorf("removing item: no item specified")
+	if !item.Downloaded {
+		log.Infof("removing %s: not downloaded -- no removal required", item.Name)
+		return false, nil
 	}
 
-	disabled := 0
-
-	// remove all
-	for _, v := range h.GetItemMap(itemType) {
-		if !v.Installed {
-			continue
-		}
-
-		err := h.DisableItem(&v, purge, forceAction)
-		if err != nil {
-			return fmt.Errorf("unable to disable %s: %w", v.Name, err)
-		}
-
-		if err := h.AddItem(v); err != nil {
-			return fmt.Errorf("unable to add %s: %w", v.Name, err)
-		}
-		disabled++
+	if !item.Installed && !purge {
+		log.Infof("removing %s: already uninstalled", item.Name)
+		return false, nil
 	}
 
-	log.Infof("Disabled %d items", disabled)
+	if err := h.DisableItem(item, purge, forceAction); err != nil {
+		return false, fmt.Errorf("unable to disable %s: %w", item.Name, err)
+	}
 
-	return nil
+	// XXX: should take the value from DisableItem
+	removed = true
+
+	if err := h.AddItem(*item); err != nil {
+		return false, fmt.Errorf("unable to refresh item state %s: %w", item.Name, err)
+	}
+
+	return removed, nil
 }
 
-// UpgradeConfig upgrades an item from the hub
-func (h *Hub) UpgradeConfig(itemType string, name string, force bool, hubURLTemplate, branch string) error {
-	updated := 0
-	found := false
+// UpgradeItem upgrades an item from the hub
+func (h *Hub) UpgradeItem(itemType string, name string, force bool) (bool, error) {
+	updated := false
 
-	for _, v := range h.GetItemMap(itemType) {
-		if name != "" && name != v.Name {
-			continue
+	item := h.GetItem(itemType, name)
+	if item == nil {
+		return false, fmt.Errorf("can't find '%s' in %s", name, itemType)
+	}
+
+	if !item.Downloaded {
+		return false, fmt.Errorf("can't upgrade %s: not installed", item.Name)
+	}
+
+	if !item.Installed {
+		return false, fmt.Errorf("can't upgrade %s: downloaded but not installed", item.Name)
+	}
+
+	if item.UpToDate {
+		log.Infof("%s: up-to-date", item.Name)
+
+		if err := h.DownloadDataIfNeeded(*item, force); err != nil {
+			return false, fmt.Errorf("%s: download failed: %w", item.Name, err)
 		}
 
-		if !v.Installed {
-			log.Tracef("skip %s, not installed", v.Name)
-			continue
-		}
-
-		if !v.Downloaded {
-			log.Warningf("%s: not downloaded, please install.", v.Name)
-			continue
-		}
-
-		found = true
-
-		if v.UpToDate {
-			log.Infof("%s: up-to-date", v.Name)
-
-			if err := h.DownloadDataIfNeeded(v, force); err != nil {
-				return fmt.Errorf("%s: download failed: %w", v.Name, err)
-			}
-
-			if !force {
-				continue
-			}
-		}
-
-		if err := h.DownloadLatest(&v, force, true, hubURLTemplate, branch); err != nil {
-			return fmt.Errorf("%s: download failed: %w", v.Name, err)
-		}
-
-		if !v.UpToDate {
-			if v.Tainted {
-				log.Infof("%v %s is tainted, --force to overwrite", emoji.Warning, v.Name)
-			} else if v.Local {
-				log.Infof("%v %s is local", emoji.Prohibited, v.Name)
-			}
-		} else {
-			// this is used while scripting to know if the hub has been upgraded
-			// and a configuration reload is required
-			fmt.Printf("updated %s\n", v.Name)
-			log.Infof("%v %s : updated", emoji.Package, v.Name)
-			updated++
-		}
-
-		if err := h.AddItem(v); err != nil {
-			return fmt.Errorf("unable to add %s: %w", v.Name, err)
+		if !force {
+			// no upgrade needed
+			return false, nil
 		}
 	}
 
-	if !found && name == "" {
-		log.Infof("No %s installed, nothing to upgrade", itemType)
-	} else if !found {
-		log.Errorf("can't find '%s' in %s", name, itemType)
-	} else if updated == 0 && found {
-		if name == "" {
-			log.Infof("All %s are already up-to-date", itemType)
-		} else {
-			log.Infof("Item '%s' is up-to-date", name)
-		}
-	} else if updated != 0 {
-		log.Infof("Upgraded %d items", updated)
+	if err := h.DownloadLatest(item, force, true); err != nil {
+		return false, fmt.Errorf("%s: download failed: %w", item.Name, err)
 	}
 
-	return nil
+	if !item.UpToDate {
+		if item.Tainted {
+			log.Infof("%v %s is tainted, --force to overwrite", emoji.Warning, item.Name)
+		} else if item.IsLocal() {
+			log.Infof("%v %s is local", emoji.Prohibited, item.Name)
+		}
+	} else {
+		// a check on stdout is used while scripting to know if the hub has been upgraded
+		// and a configuration reload is required
+		// TODO: use a better way to communicate this
+		fmt.Printf("updated %s\n", item.Name)
+		log.Infof("%v %s: updated", emoji.Package, item.Name)
+		updated = true
+	}
+
+	if err := h.AddItem(*item); err != nil {
+		return false, fmt.Errorf("unable to refresh item state %s: %w", item.Name, err)
+	}
+
+	return updated, nil
 }
 
 // DownloadLatest will download the latest version of Item to the tdir directory
-func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool, hubURLTemplate, branch string) error {
+func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) error {
 	var err error
 
 	log.Debugf("Downloading %s %s", target.Type, target.Name)
@@ -196,7 +163,7 @@ func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool, hubU
 			return nil
 		}
 
-		return h.DownloadItem(target, overwrite, hubURLTemplate, branch)
+		return h.DownloadItem(target, overwrite)
 	}
 
 	// collection
@@ -216,7 +183,7 @@ func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool, hubU
 		if sub.Type == COLLECTIONS {
 			log.Tracef("collection, recurse")
 
-			err = h.DownloadLatest(&val, overwrite, updateOnly, hubURLTemplate, branch)
+			err = h.DownloadLatest(&val, overwrite, updateOnly)
 			if err != nil {
 				return fmt.Errorf("while downloading %s: %w", val.Name, err)
 			}
@@ -224,7 +191,7 @@ func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool, hubU
 
 		downloaded := val.Downloaded
 
-		err = h.DownloadItem(&val, overwrite, hubURLTemplate, branch)
+		err = h.DownloadItem(&val, overwrite)
 		if err != nil {
 			return fmt.Errorf("while downloading %s: %w", val.Name, err)
 		}
@@ -240,7 +207,7 @@ func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool, hubU
 		h.Items[sub.Type][sub.Name] = val
 	}
 
-	err = h.DownloadItem(target, overwrite, hubURLTemplate, branch)
+	err = h.DownloadItem(target, overwrite)
 	if err != nil {
 		return fmt.Errorf("failed to download item: %w", err)
 	}
@@ -248,9 +215,13 @@ func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool, hubU
 	return nil
 }
 
-func (h *Hub) DownloadItem(target *Item, overwrite bool, hubURLTemplate, branch string) error {
-	url := fmt.Sprintf(hubURLTemplate, branch, target.RemotePath)
-	tdir := h.cfg.HubDir
+func (h *Hub) DownloadItem(target *Item, overwrite bool) error {
+	url, err := h.remote.urlTo(target.RemotePath)
+	if err != nil {
+		return fmt.Errorf("failed to build hub item request: %w", err)
+	}
+
+	tdir := h.local.HubDir
 
 	// if user didn't --force, don't overwrite local, tainted, up-to-date files
 	if !overwrite {
@@ -291,7 +262,7 @@ func (h *Hub) DownloadItem(target *Item, overwrite bool, hubURLTemplate, branch 
 		return fmt.Errorf("while hashing %s: %w", target.Name, err)
 	}
 
-	meow := fmt.Sprintf("%x", hash.Sum(nil))
+	meow := hex.EncodeToString(hash.Sum(nil))
 	if meow != target.Versions[target.Version].Digest {
 		log.Errorf("Downloaded version doesn't match index, please 'hub update'")
 		log.Debugf("got %s, expected %s", meow, target.Versions[target.Version].Digest)
@@ -347,7 +318,7 @@ func (h *Hub) DownloadItem(target *Item, overwrite bool, hubURLTemplate, branch 
 	target.Tainted = false
 	target.UpToDate = true
 
-	if err = downloadData(h.cfg.InstallDataDir, overwrite, bytes.NewReader(body)); err != nil {
+	if err = downloadData(h.local.InstallDataDir, overwrite, bytes.NewReader(body)); err != nil {
 		return fmt.Errorf("while downloading data for %s: %w", target.FileName, err)
 	}
 
@@ -358,7 +329,7 @@ func (h *Hub) DownloadItem(target *Item, overwrite bool, hubURLTemplate, branch 
 
 // DownloadDataIfNeeded downloads the data files for an item
 func (h *Hub) DownloadDataIfNeeded(target Item, force bool) error {
-	itemFilePath := fmt.Sprintf("%s/%s/%s/%s", h.cfg.InstallDir, target.Type, target.Stage, target.FileName)
+	itemFilePath := fmt.Sprintf("%s/%s/%s/%s", h.local.InstallDir, target.Type, target.Stage, target.FileName)
 
 	itemFile, err := os.Open(itemFilePath)
 	if err != nil {
@@ -367,7 +338,7 @@ func (h *Hub) DownloadDataIfNeeded(target Item, force bool) error {
 
 	defer itemFile.Close()
 
-	if err = downloadData(h.cfg.InstallDataDir, force, itemFile); err != nil {
+	if err = downloadData(h.local.InstallDataDir, force, itemFile); err != nil {
 		return fmt.Errorf("while downloading data for %s: %w", itemFilePath, err)
 	}
 

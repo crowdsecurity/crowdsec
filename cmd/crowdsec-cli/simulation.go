@@ -145,7 +145,7 @@ func NewSimulationEnableCmd() *cobra.Command {
 		Example:           `cscli simulation enable`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			hub, err := require.Hub(csConfig)
+			hub, err := require.Hub(csConfig, nil)
 			if err != nil {
 				log.Fatal(err)
 			}

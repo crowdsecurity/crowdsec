@@ -16,7 +16,7 @@ import (
 func (h *Hub) EnableItem(target *Item) error {
 	var err error
 
-	parentDir := filepath.Clean(h.cfg.InstallDir + "/" + target.Type + "/" + target.Stage + "/")
+	parentDir := filepath.Clean(h.local.InstallDir + "/" + target.Type + "/" + target.Stage + "/")
 
 	// create directories if needed
 	if target.Installed {
@@ -24,7 +24,7 @@ func (h *Hub) EnableItem(target *Item) error {
 			return fmt.Errorf("%s is tainted, won't enable unless --force", target.Name)
 		}
 
-		if target.Local {
+		if target.IsLocal() {
 			return fmt.Errorf("%s is local, won't enable", target.Name)
 		}
 
@@ -65,7 +65,7 @@ func (h *Hub) EnableItem(target *Item) error {
 	}
 
 	// hub.ConfigDir + target.RemotePath
-	srcPath, err := filepath.Abs(h.cfg.HubDir + "/" + target.RemotePath)
+	srcPath, err := filepath.Abs(h.local.HubDir + "/" + target.RemotePath)
 	if err != nil {
 		return fmt.Errorf("while getting source path: %w", err)
 	}
@@ -87,7 +87,7 @@ func (h *Hub) EnableItem(target *Item) error {
 }
 
 func (h *Hub) purgeItem(target Item) (Item, error) {
-	itempath := h.cfg.HubDir + "/" + target.RemotePath
+	itempath := h.local.HubDir + "/" + target.RemotePath
 
 	// disable hub file
 	if err := os.Remove(itempath); err != nil {
@@ -117,7 +117,7 @@ func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
 		return nil
 	}
 
-	if target.Local {
+	if target.IsLocal() {
 		return fmt.Errorf("%s isn't managed by hub. Please delete manually", target.Name)
 	}
 
@@ -128,11 +128,11 @@ func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
 	// for a COLLECTIONS, disable sub-items
 	if target.Type == COLLECTIONS {
 		for _, sub := range target.SubItems() {
-		       	val, ok := h.Items[sub.Type][sub.Name]
+			val, ok := h.Items[sub.Type][sub.Name]
 			if !ok {
-		       		log.Errorf("Referred %s %s in collection %s doesn't exist.", sub.Type, sub.Name, target.Name)
+				log.Errorf("Referred %s %s in collection %s doesn't exist.", sub.Type, sub.Name, target.Name)
 				continue
-		       	}
+			}
 
 			// check if the item doesn't belong to another collection before removing it
 			toRemove := true
@@ -155,7 +155,7 @@ func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
 		}
 	}
 
-	syml, err := filepath.Abs(h.cfg.InstallDir + "/" + target.Type + "/" + target.Stage + "/" + target.FileName)
+	syml, err := filepath.Abs(h.local.InstallDir + "/" + target.Type + "/" + target.Stage + "/" + target.FileName)
 	if err != nil {
 		return err
 	}
@@ -178,7 +178,7 @@ func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
 			return fmt.Errorf("while reading symlink: %w", err)
 		}
 
-		absPath, err := filepath.Abs(h.cfg.HubDir + "/" + target.RemotePath)
+		absPath, err := filepath.Abs(h.local.HubDir + "/" + target.RemotePath)
 		if err != nil {
 			return fmt.Errorf("while abs path: %w", err)
 		}

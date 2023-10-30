@@ -10,7 +10,6 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/coalesce"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 type cmdHelp struct {
@@ -168,19 +167,6 @@ func NewItemsCmd(typeName string) *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{it.singular},
 		DisableAutoGenTag: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if _, err := require.Hub(csConfig); err != nil {
-				return err
-			}
-
-			return nil
-		},
-		PersistentPostRun: func(cmd *cobra.Command, args []string) {
-			if cmd.Name() == "inspect" || cmd.Name() == "list" {
-				return
-			}
-			log.Infof(ReloadMessage())
-		},
 	}
 
 	cmd.AddCommand(NewItemsInstallCmd(typeName))
@@ -211,29 +197,29 @@ func itemsInstallRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 			return err
 		}
 
-		hub, err := cwhub.GetHub()
+		hub, err := require.Hub(csConfig, require.RemoteHub(csConfig))
 		if err != nil {
 			return err
 		}
 
-		branch := chooseHubBranch()
-
 		for _, name := range args {
 			t := hub.GetItem(it.name, name)
 			if t == nil {
-				nearestItem, score := GetDistance(it.name, name)
+				nearestItem, score := GetDistance(hub, it.name, name)
 				Suggest(it.name, name, nearestItem.Name, score, ignoreError)
 
 				continue
 			}
 
-			if err := hub.InstallItem(name, it.name, force, downloadOnly, hubURLTemplate, branch); err != nil {
+			if err := hub.InstallItem(name, it.name, force, downloadOnly); err != nil {
 				if !ignoreError {
 					return fmt.Errorf("error while installing '%s': %w", name, err)
 				}
 				log.Errorf("Error while installing '%s': %s", name, err)
 			}
 		}
+		// XXX: only reload if we installed something
+		log.Infof(ReloadMessage())
 		return nil
 	}
 
@@ -283,15 +269,30 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 			return err
 		}
 
-		hub, err := cwhub.GetHub()
+		hub, err := require.Hub(csConfig, nil)
 		if err != nil {
 			return err
 		}
 
 		if all {
-			err := hub.RemoveMany(it.name, "", all, purge, force)
+			items, err := hub.GetInstalledItems(it.name)
 			if err != nil {
 				return err
+			}
+
+			removed := 0
+			for _, item := range items {
+				didRemove, err := hub.RemoveItem(it.name, item.Name, purge, force)
+				if err != nil {
+					return err
+				}
+				if didRemove {
+					removed++
+				}
+			}
+			log.Infof("Removed %d %s", removed, it.name)
+			if removed > 0 {
+				log.Infof(ReloadMessage())
 			}
 
 			return nil
@@ -301,6 +302,7 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 			return fmt.Errorf("specify at least one %s to remove or '--all'", it.singular)
 		}
 
+		removed := 0
 		for _, name := range args {
 			if !force {
 				item := hub.GetItem(it.name, name)
@@ -315,10 +317,18 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 				}
 			}
 
-			err := hub.RemoveMany(it.name, name, all, purge, force)
+			didRemove, err := hub.RemoveItem(it.name, name, purge, force)
 			if err != nil {
 				return err
 			}
+
+			if didRemove {
+				log.Infof("Removed %s", name)
+				removed++
+			}
+		}
+		if removed > 0 {
+			log.Infof(ReloadMessage())
 		}
 
 		return nil
@@ -364,17 +374,32 @@ func itemsUpgradeRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 			return err
 		}
 
-		hub, err := cwhub.GetHub()
+		hub, err := require.Hub(csConfig, require.RemoteHub(csConfig))
 		if err != nil {
 			return err
 		}
 
-		branch := chooseHubBranch()
-
 		if all {
-			if err := hub.UpgradeConfig(it.name, "", force, hubURLTemplate, branch); err != nil {
+			items, err := hub.GetInstalledItems(it.name)
+			if err != nil {
 				return err
 			}
+
+			updated := 0
+			for _, item := range items {
+				didUpdate, err := hub.UpgradeItem(it.name, item.Name, force)
+				if err != nil {
+					return err
+				}
+				if didUpdate {
+					updated++
+				}
+			}
+			log.Infof("Updated %d %s", updated, it.name)
+			if updated > 0 {
+				log.Infof(ReloadMessage())
+			}
+
 			return nil
 		}
 
@@ -382,10 +407,19 @@ func itemsUpgradeRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 			return fmt.Errorf("specify at least one %s to upgrade or '--all'", it.singular)
 		}
 
+		updated := 0
 		for _, name := range args {
-			if err := hub.UpgradeConfig(it.name, name, force, hubURLTemplate, branch); err != nil {
+			didUpdate, err := hub.UpgradeItem(it.name, name, force)
+			if err != nil {
 				return err
 			}
+			if didUpdate {
+				log.Infof("Updated %s", name)
+				updated++
+			}
+		}
+		if updated > 0 {
+			log.Infof(ReloadMessage())
 		}
 
 		return nil
@@ -434,8 +468,17 @@ func itemsInspectRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 			return err
 		}
 
+		hub, err := require.Hub(csConfig, nil)
+		if err != nil {
+			return err
+		}
+
 		for _, name := range args {
-			if err = InspectItem(name, it.name, noMetrics); err != nil {
+			item := hub.GetItem(it.name, name)
+			if item == nil {
+				return fmt.Errorf("can't find '%s' in %s", name, it.name)
+			}
+			if err = InspectItem(hub, item, noMetrics); err != nil {
 				return err
 			}
 		}
@@ -478,7 +521,12 @@ func itemsListRunner(it hubItemType) func(cmd *cobra.Command, args []string) err
 			return err
 		}
 
-		if err = ListItems(color.Output, []string{it.name}, args, false, true, all); err != nil {
+		hub, err := require.Hub(csConfig, nil)
+		if err != nil {
+			return err
+		}
+
+		if err = ListItems(hub, color.Output, []string{it.name}, args, false, true, all); err != nil {
 			return err
 		}
 

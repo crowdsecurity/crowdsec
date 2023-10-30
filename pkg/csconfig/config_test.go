@@ -15,10 +15,10 @@ func TestNormalLoad(t *testing.T) {
 	require.NoError(t, err)
 
 	_, _, err = NewConfig("./testdata/xxx.yaml", false, false, false)
-	assert.EqualError(t, err, "while reading yaml file: open ./testdata/xxx.yaml: "+cstest.FileNotFoundMessage)
+	require.EqualError(t, err, "while reading yaml file: open ./testdata/xxx.yaml: "+cstest.FileNotFoundMessage)
 
 	_, _, err = NewConfig("./testdata/simulation.yaml", false, false, false)
-	assert.EqualError(t, err, "./testdata/simulation.yaml: yaml: unmarshal errors:\n  line 1: field simulation not found in type csconfig.Config")
+	require.EqualError(t, err, "./testdata/simulation.yaml: yaml: unmarshal errors:\n  line 1: field simulation not found in type csconfig.Config")
 }
 
 func TestNewCrowdSecConfig(t *testing.T) {

@@ -5,6 +5,7 @@ set -u
 
 setup_file() {
     load "../lib/setup_file.sh"
+    ./instance-data load
     HUB_DIR=$(config_get '.config_paths.hub_dir')
     export HUB_DIR
     CONFIG_DIR=$(config_get '.config_paths.config_dir')
@@ -19,9 +20,8 @@ setup() {
     load "../lib/setup.sh"
     load "../lib/bats-file/load.bash"
     ./instance-data load
-    hub_uninstall_all
-    hub_min=$(jq <"$HUB_DIR/.index.json" 'del(..|.content?) | del(..|.long_description?) | del(..|.deprecated?) | del (..|.labels?)')
-    echo "$hub_min" >"$HUB_DIR/.index.json"
+    hub_purge_all
+    hub_strip_index
 }
 
 teardown() {
@@ -75,6 +75,8 @@ teardown() {
     rune -0 cscli collections list -o raw -a
     rune -0 grep -vc 'name,status,version,description' <(output)
     assert_output "$expected"
+
+    # XXX: check alphabetical order in human, json, raw
 }
 
 
@@ -159,6 +161,7 @@ teardown() {
 @test "cscli collections inspect [collection]..." {
     rune -1 cscli collections inspect
     assert_stderr --partial 'requires at least 1 arg(s), only received 0'
+    # required for metrics
     ./instance-crowdsec start
 
     rune -1 cscli collections inspect blahblah/blahblah
@@ -220,12 +223,17 @@ teardown() {
 @test "cscli collections remove [collection]..." {
     rune -1 cscli collections remove
     assert_stderr --partial "specify at least one collection to remove or '--all'"
-
     rune -1 cscli collections remove blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in collections"
 
-    # XXX: we can however remove a real item if it's not installed, or already removed
     rune -0 cscli collections remove crowdsecurity/sshd
+    assert_stderr --partial 'removing crowdsecurity/sshd: not downloaded -- no removal required'
+
+    rune -0 cscli collections install crowdsecurity/sshd --download-only
+    rune -0 cscli collections remove crowdsecurity/sshd
+    assert_stderr --partial 'removing crowdsecurity/sshd: already uninstalled'
+    rune -0 cscli collections remove crowdsecurity/sshd --purge
+    assert_stderr --partial 'Removed source file [crowdsecurity/sshd]'
 
     # install, then remove, check files
     rune -0 cscli collections install crowdsecurity/sshd
@@ -258,8 +266,8 @@ teardown() {
     assert_output "0"
 }
 
-@test "cscli parsers remove [parser]... --force" {
-    # remove a parser that belongs to a collection
+@test "cscli collections remove [collections]... --force" {
+    # remove a collections that belongs to a collection
     rune -0 cscli collections install crowdsecurity/linux
     rune -0 cscli collections remove crowdsecurity/sshd
     assert_stderr --partial "crowdsecurity/sshd belongs to collections: [crowdsecurity/linux]"
@@ -269,26 +277,24 @@ teardown() {
 @test "cscli collections upgrade [collection]..." {
     rune -1 cscli collections upgrade
     assert_stderr --partial "specify at least one collection to upgrade or '--all'"
-
-    # XXX: should this return 1 instead of log.Error?
-    rune -0 cscli collections upgrade blahblah/blahblah
+    rune -1 cscli collections upgrade blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in collections"
+    rune -1 cscli collections upgrade crowdsecurity/exim
+    assert_stderr --partial "can't upgrade crowdsecurity/exim: not installed"
+    rune -0 cscli collections install crowdsecurity/exim --download-only
+    rune -1 cscli collections upgrade crowdsecurity/exim
+    assert_stderr --partial "can't upgrade crowdsecurity/exim: downloaded but not installed"
 
-    # XXX: same message if the item exists but is not installed, this is confusing
-    rune -0 cscli collections upgrade crowdsecurity/sshd
-    assert_stderr --partial "can't find 'crowdsecurity/sshd' in collections"
+    # hash of the string "v0.0"
+    sha256_0_0="dfebecf42784a31aa3d009dbcec0c657154a034b45f49cf22a895373f6dbf63d"
 
-    # hash of an empty file
-    sha256_empty="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-
-    # add version 0.0 to the hub
-    new_hub=$(jq --arg DIGEST "$sha256_empty" <"$HUB_DIR/.index.json" '. * {collections:{"crowdsecurity/sshd":{"versions":{"0.0":{"digest":$DIGEST, "deprecated": false}}}}}')
+    # add version 0.0 to all collections
+    new_hub=$(jq --arg DIGEST "$sha256_0_0" <"$HUB_DIR/.index.json" '.collections |= with_entries(.value.versions["0.0"] = {"digest": $DIGEST, "deprecated": false})')
     echo "$new_hub" >"$HUB_DIR/.index.json"
  
     rune -0 cscli collections install crowdsecurity/sshd
 
-    # bring the file to v0.0
-    truncate -s 0 "$CONFIG_DIR/collections/sshd.yaml"
+    echo "v0.0" > "$CONFIG_DIR/collections/sshd.yaml"
     rune -0 cscli collections inspect crowdsecurity/sshd -o json
     rune -0 jq -e '.local_version=="0.0"' <(output)
 
@@ -312,16 +318,20 @@ teardown() {
 
     # multiple items
     rune -0 cscli collections install crowdsecurity/smb
-    echo "dirty" >"$CONFIG_DIR/collections/sshd.yaml"
-    echo "dirty" >"$CONFIG_DIR/collections/smb.yaml"
+    echo "v0.0" >"$CONFIG_DIR/collections/sshd.yaml"
+    echo "v0.0" >"$CONFIG_DIR/collections/smb.yaml"
     rune -0 cscli collections list -o json
-    rune -0 jq -e '[.collections[].local_version]==["?","?"]' <(output)
+    rune -0 jq -e '[.collections[].local_version]==["0.0","0.0"]' <(output)
     rune -0 cscli collections upgrade crowdsecurity/sshd crowdsecurity/smb
-    rune -0 jq -e '[.collections[].local_version]==[.collections[].version]' <(output)
+    rune -0 cscli collections list -o json
+    rune -0 jq -e 'any(.collections[].local_version; .=="0.0") | not' <(output)
 
     # upgrade all
-    echo "dirty" >"$CONFIG_DIR/collections/sshd.yaml"
-    echo "dirty" >"$CONFIG_DIR/collections/smb.yaml"
+    echo "v0.0" >"$CONFIG_DIR/collections/sshd.yaml"
+    echo "v0.0" >"$CONFIG_DIR/collections/smb.yaml"
+    rune -0 cscli collections list -o json
+    rune -0 jq -e '[.collections[].local_version]==["0.0","0.0"]' <(output)
     rune -0 cscli collections upgrade --all
-    rune -0 jq -e '[.collections[].local_version]==[.collections[].version]' <(output)
+    rune -0 cscli collections list -o json
+    rune -0 jq -e 'any(.collections[].local_version; .=="0.0") | not' <(output)
 }
