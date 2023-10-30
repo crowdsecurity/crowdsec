@@ -22,7 +22,6 @@ func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 
 	notExist := []string{}
 	if len(args) > 0 {
-		installedOnly = false
 		for _, arg := range args {
 			if !slices.Contains(itemNames, arg) {
 				notExist = append(notExist, arg)
@@ -36,6 +35,7 @@ func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 
 	if len(args) > 0 {
 		itemNames = args
+		installedOnly = false
 	}
 
 	if installedOnly {

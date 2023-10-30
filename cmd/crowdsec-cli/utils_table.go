@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"strconv"
 
 	"github.com/aquasecurity/table"
 	"github.com/enescakir/emoji"
@@ -35,11 +36,11 @@ func scenarioMetricsTable(out io.Writer, itemName string, metrics map[string]int
 	t.SetHeaders("Current Count", "Overflows", "Instantiated", "Poured", "Expired")
 
 	t.AddRow(
-		fmt.Sprintf("%d", metrics["curr_count"]),
-		fmt.Sprintf("%d", metrics["overflow"]),
-		fmt.Sprintf("%d", metrics["instantiation"]),
-		fmt.Sprintf("%d", metrics["pour"]),
-		fmt.Sprintf("%d", metrics["underflow"]),
+		strconv.Itoa(metrics["curr_count"]),
+		strconv.Itoa(metrics["overflow"]),
+		strconv.Itoa(metrics["instantiation"]),
+		strconv.Itoa(metrics["pour"]),
+		strconv.Itoa(metrics["underflow"]),
 	)
 
 	renderTableTitle(out, fmt.Sprintf("\n - (Scenario) %s:", itemName))
@@ -47,23 +48,25 @@ func scenarioMetricsTable(out io.Writer, itemName string, metrics map[string]int
 }
 
 func parserMetricsTable(out io.Writer, itemName string, metrics map[string]map[string]int) {
-	skip := true
 	t := newTable(out)
 	t.SetHeaders("Parsers", "Hits", "Parsed", "Unparsed")
+
+	// don't show table if no hits
+	showTable := false
 
 	for source, stats := range metrics {
 		if stats["hits"] > 0 {
 			t.AddRow(
 				source,
-				fmt.Sprintf("%d", stats["hits"]),
-				fmt.Sprintf("%d", stats["parsed"]),
-				fmt.Sprintf("%d", stats["unparsed"]),
+				strconv.Itoa(stats["hits"]),
+				strconv.Itoa(stats["parsed"]),
+				strconv.Itoa(stats["unparsed"]),
 			)
-			skip = false
+			showTable = true
 		}
 	}
 
-	if !skip {
+	if showTable {
 		renderTableTitle(out, fmt.Sprintf("\n - (Parser) %s:", itemName))
 		t.Render()
 	}
