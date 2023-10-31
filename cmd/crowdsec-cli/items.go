@@ -50,20 +50,22 @@ func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 }
 
 func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string, showType bool, showHeader bool, all bool) error {
-	var err error
-
 	items := make(map[string][]string)
 	for _, itemType := range itemTypes {
-		if items[itemType], err = selectItems(hub, itemType, args, !all); err != nil {
+		selected, err := selectItems(hub, itemType, args, !all)
+		if err != nil {
 			return err
 		}
+		sort.Strings(selected)
+		items[itemType] = selected
 	}
 
-	if csConfig.Cscli.Output == "human" {
+	switch csConfig.Cscli.Output {
+	case "human":
 		for _, itemType := range itemTypes {
 			listHubItemTable(hub, out, "\n"+strings.ToUpper(itemType), itemType, items[itemType])
 		}
-	} else if csConfig.Cscli.Output == "json" {
+	case "json":
 		type itemHubStatus struct {
 			Name         string `json:"name"`
 			LocalVersion string `json:"local_version"`
@@ -89,15 +91,13 @@ func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string,
 					UTF8Status:   fmt.Sprintf("%v  %s", emo, status),
 				}
 			}
-			h := hubStatus[itemType]
-			sort.Slice(h, func(i, j int) bool { return h[i].Name < h[j].Name })
 		}
 		x, err := json.MarshalIndent(hubStatus, "", " ")
 		if err != nil {
 			log.Fatalf("failed to unmarshal")
 		}
 		out.Write(x)
-	} else if csConfig.Cscli.Output == "raw" {
+	case "raw":
 		csvwriter := csv.NewWriter(out)
 		if showHeader {
 			header := []string{"name", "status", "version", "description"}
@@ -132,7 +132,10 @@ func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string,
 			}
 		}
 		csvwriter.Flush()
+	default:
+		return fmt.Errorf("unknown output format '%s'", csConfig.Cscli.Output)
 	}
+
 	return nil
 }
 
