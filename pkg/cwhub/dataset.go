@@ -32,19 +32,20 @@ func downloadFile(url string, destPath string) error {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("got HTTP status '%s' from %s", resp.Status, url)
+	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("download response 'HTTP %d' : %s", resp.StatusCode, string(body))
 	}
 
 	file, err := os.OpenFile(destPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
 	_, err = file.Write(body)
 	if err != nil {
