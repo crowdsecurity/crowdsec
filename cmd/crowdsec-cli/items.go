@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 	"slices"
 
@@ -94,7 +93,7 @@ func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string,
 		}
 		x, err := json.MarshalIndent(hubStatus, "", " ")
 		if err != nil {
-			log.Fatalf("failed to unmarshal")
+			return fmt.Errorf("failed to unmarshal: %w", err)
 		}
 		out.Write(x)
 	case "raw":
@@ -106,7 +105,7 @@ func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string,
 			}
 			err := csvwriter.Write(header)
 			if err != nil {
-				log.Fatalf("failed to write header: %s", err)
+				return fmt.Errorf("failed to write header: %s", err)
 			}
 		}
 		for _, itemType := range itemTypes {
@@ -127,7 +126,7 @@ func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string,
 				}
 				err := csvwriter.Write(row)
 				if err != nil {
-					log.Fatalf("failed to write raw output : %s", err)
+					return fmt.Errorf("failed to write raw output: %s", err)
 				}
 			}
 		}
