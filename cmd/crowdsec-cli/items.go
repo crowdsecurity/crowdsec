@@ -19,6 +19,7 @@ func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 	itemNames := hub.GetItemNames(itemType)
 
 	notExist := []string{}
+
 	if len(args) > 0 {
 		for _, arg := range args {
 			if !slices.Contains(itemNames, arg) {
@@ -98,6 +99,7 @@ func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string,
 		out.Write(x)
 	case "raw":
 		csvwriter := csv.NewWriter(out)
+
 		if showHeader {
 			header := []string{"name", "status", "version", "description"}
 			if showType {
@@ -124,8 +126,7 @@ func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string,
 				if showType {
 					row = append(row, itemType)
 				}
-				err := csvwriter.Write(row)
-				if err != nil {
+				if err := csvwriter.Write(row); err != nil {
 					return fmt.Errorf("failed to write raw output: %s", err)
 				}
 			}
@@ -138,34 +139,26 @@ func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string,
 	return nil
 }
 
-func InspectItem(hub *cwhub.Hub, item *cwhub.Item, noMetrics bool) error {
-	var (
-		b   []byte
-		err error
-	)
-
+func InspectItem(hub *cwhub.Hub, item *cwhub.Item, showMetrics bool) error {
 	switch csConfig.Cscli.Output {
 	case "human", "raw":
 		enc := yaml.NewEncoder(os.Stdout)
 		enc.SetIndent(2)
-		err = enc.Encode(item)
-		if err != nil {
+		if err := enc.Encode(item); err != nil {
 			return fmt.Errorf("unable to encode item: %s", err)
 		}
 	case "json":
-		b, err = json.MarshalIndent(*item, "", "  ")
+		b, err := json.MarshalIndent(*item, "", "  ")
 		if err != nil {
 			return fmt.Errorf("unable to marshal item: %s", err)
 		}
-		fmt.Printf("%s", string(b))
+		fmt.Print(string(b))
 	}
 
-	if noMetrics || csConfig.Cscli.Output == "json" || csConfig.Cscli.Output == "raw" {
-		return nil
+	if csConfig.Cscli.Output == "human" && showMetrics {
+		fmt.Printf("\nCurrent metrics: \n")
+		ShowMetrics(hub, item)
 	}
-
-	fmt.Printf("\nCurrent metrics: \n")
-	ShowMetrics(hub, item)
 
 	return nil
 }
