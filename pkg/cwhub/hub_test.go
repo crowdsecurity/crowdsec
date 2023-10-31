@@ -13,13 +13,13 @@ import (
 func TestInitHubUpdate(t *testing.T) {
 	hub := envSetup(t)
 
-	remote := &RemoteHubCfg {
+	remote := &RemoteHubCfg{
 		URLTemplate: mockURLTemplate,
-		Branch: "master",
-		IndexPath: ".index.json",
+		Branch:      "master",
+		IndexPath:   ".index.json",
 	}
 
-	_, err := InitHubUpdate(hub.local, remote)
+	_, err := NewHub(hub.local, remote, true)
 	require.NoError(t, err)
 
 	_, err = GetHub()
@@ -39,43 +39,37 @@ func TestDownloadIndex(t *testing.T) {
 
 	hub := envSetup(t)
 
-	hub.remote = &RemoteHubCfg {
+	hub.remote = &RemoteHubCfg{
 		URLTemplate: "x",
-		Branch: "",
-		IndexPath: "",
+		Branch:      "",
+		IndexPath:   "",
 	}
 
-	ret, err := hub.remote.DownloadIndex(tmpIndex.Name())
+	err = hub.remote.DownloadIndex(tmpIndex.Name())
 	cstest.RequireErrorContains(t, err, "failed to build hub index request: invalid URL template 'x'")
-
-	fmt.Printf("->%+v", ret)
 
 	// bad domain
 	fmt.Println("Test 'bad domain'")
 
-	hub.remote = &RemoteHubCfg {
+	hub.remote = &RemoteHubCfg{
 		URLTemplate: "https://baddomain/%s/%s",
-		Branch: "master",
-		IndexPath: ".index.json",
+		Branch:      "master",
+		IndexPath:   ".index.json",
 	}
 
-	ret, err = hub.remote.DownloadIndex(tmpIndex.Name())
-// XXX: this is not failing
-//	cstest.RequireErrorContains(t, err, "failed http request for hub index: Get")
-
-	fmt.Printf("->%+v", ret)
+	err = hub.remote.DownloadIndex(tmpIndex.Name())
+	// XXX: this is not failing
+	//	cstest.RequireErrorContains(t, err, "failed http request for hub index: Get")
 
 	// bad target path
 	fmt.Println("Test 'bad target path'")
 
-	hub.remote = &RemoteHubCfg {
+	hub.remote = &RemoteHubCfg{
 		URLTemplate: mockURLTemplate,
-		Branch: "master",
-		IndexPath: ".index.json",
+		Branch:      "master",
+		IndexPath:   ".index.json",
 	}
 
-	ret, err = hub.remote.DownloadIndex("/does/not/exist/index.json")
+	err = hub.remote.DownloadIndex("/does/not/exist/index.json")
 	cstest.RequireErrorContains(t, err, "while opening hub index file: open /does/not/exist/index.json:")
-
-	fmt.Printf("->%+v", ret)
 }

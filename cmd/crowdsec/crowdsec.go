@@ -23,7 +23,7 @@ import (
 func initCrowdsec(cConfig *csconfig.Config) (*parser.Parsers, error) {
 	var err error
 
-	hub, err := cwhub.InitHub(cConfig.Hub, nil)
+	hub, err := cwhub.NewHub(cConfig.Hub, nil, false)
 	if err != nil {
 		return nil, fmt.Errorf("while loading hub index: %w", err)
 	}

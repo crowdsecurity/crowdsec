@@ -63,18 +63,13 @@ func testHub(t *testing.T, update bool) *Hub {
 	var hub *Hub
 
 	remote := &RemoteHubCfg{
-		Branch: "master",
+		Branch:      "master",
 		URLTemplate: mockURLTemplate,
-		IndexPath: ".index.json",
+		IndexPath:   ".index.json",
 	}
 
-	if update {
-		hub, err = InitHubUpdate(local, remote)
-		require.NoError(t, err)
-	} else {
-		hub, err = InitHub(local, remote)
-		require.NoError(t, err)
-	}
+	hub, err = NewHub(local, remote, update)
+	require.NoError(t, err)
 
 	return hub
 }

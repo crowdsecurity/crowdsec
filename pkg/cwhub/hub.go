@@ -1,12 +1,9 @@
 package cwhub
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"strings"
 
@@ -14,15 +11,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
-
-// const HubIndexFile = ".index.json"
-
-// RemoteHubCfg contains where to find the remote hub, which branch etc.
-type RemoteHubCfg struct {
-	Branch      string
-	URLTemplate string
-	IndexPath   string
-}
 
 type Hub struct {
 	Items          HubItems
@@ -48,10 +36,18 @@ func GetHub() (*Hub, error) {
 	return theHub, nil
 }
 
-// InitHub initializes the Hub, syncs the local state and returns the singleton for immediate use
-func InitHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg) (*Hub, error) {
+// NewHub returns a new Hub instance with local and (optionally) remote configuration, and syncs the local state
+// It also downloads the index if downloadIndex is true
+func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, downloadIndex bool) (*Hub, error) {
 	if local == nil {
 		return nil, fmt.Errorf("no hub configuration found")
+	}
+
+	if downloadIndex {
+		err := remote.DownloadIndex(local.HubIndexFile)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	log.Debugf("loading hub idx %s", local.HubIndexFile)
@@ -64,7 +60,7 @@ func InitHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg) (*Hub, error) {
 	ret, err := ParseIndex(bidx)
 	if err != nil {
 		if !errors.Is(err, ErrMissingReference) {
-			return nil, fmt.Errorf("unable to load existing index: %w", err)
+			return nil, fmt.Errorf("failed to load index: %w", err)
 		}
 
 		// XXX: why the error check if we bail out anyway?
@@ -79,108 +75,10 @@ func InitHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg) (*Hub, error) {
 
 	_, err = theHub.LocalSync()
 	if err != nil {
-		return nil, fmt.Errorf("failed to sync Hub index with local deployment : %w", err)
+		return nil, fmt.Errorf("failed to sync hub index: %w", err)
 	}
 
 	return theHub, nil
-}
-
-// InitHubUpdate is like InitHub but downloads and updates the index instead of reading from the disk
-// It is used to inizialize the hub when there is no index file yet
-func InitHubUpdate(local *csconfig.LocalHubCfg, remote *RemoteHubCfg) (*Hub, error) {
-	if local == nil {
-		return nil, fmt.Errorf("no configuration found for hub")
-	}
-
-	bidx, err := remote.DownloadIndex(local.HubIndexFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to download index: %w", err)
-	}
-
-	ret, err := ParseIndex(bidx)
-	if err != nil {
-		if !errors.Is(err, ErrMissingReference) {
-			return nil, fmt.Errorf("failed to read index: %w", err)
-		}
-	}
-
-	theHub = &Hub{
-		Items:  ret,
-		local:  local,
-		remote: remote,
-	}
-
-	if _, err := theHub.LocalSync(); err != nil {
-		return nil, fmt.Errorf("failed to sync: %w", err)
-	}
-
-	return theHub, nil
-}
-
-func (r RemoteHubCfg) urlTo(remotePath string) (string, error) {
-	if fmt.Sprintf(r.URLTemplate, "%s", "%s") != r.URLTemplate {
-		return "", fmt.Errorf("invalid URL template '%s'", r.URLTemplate)
-	}
-
-	return fmt.Sprintf(r.URLTemplate, r.Branch, remotePath), nil
-}
-
-// DownloadIndex downloads the latest version of the index and returns the content
-func (r RemoteHubCfg) DownloadIndex(localPath string) ([]byte, error) {
-	url, err := r.urlTo(r.IndexPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build hub index request: %w", err)
-	}
-
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build request for hub index: %w", err)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed http request for hub index: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode == http.StatusNotFound {
-			return nil, ErrIndexNotFound
-		}
-
-		return nil, fmt.Errorf("bad http code %d while requesting %s", resp.StatusCode, req.URL.String())
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read request answer for hub index: %w", err)
-	}
-
-	oldContent, err := os.ReadFile(localPath)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			log.Warningf("failed to read hub index: %s", err)
-		}
-	} else if bytes.Equal(body, oldContent) {
-		log.Info("hub index is up to date")
-		return body, nil
-	}
-
-	file, err := os.OpenFile(localPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
-
-	if err != nil {
-		return nil, fmt.Errorf("while opening hub index file: %w", err)
-	}
-	defer file.Close()
-
-	wsize, err := file.Write(body)
-	if err != nil {
-		return nil, fmt.Errorf("while writing hub index file: %w", err)
-	}
-
-	log.Infof("Wrote index to %s, %d bytes", localPath, wsize)
-
-	return body, nil
 }
 
 // ParseIndex takes the content of an index file and returns the map of associated parsers/scenarios/collections
