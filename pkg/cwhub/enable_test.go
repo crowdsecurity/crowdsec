@@ -72,7 +72,7 @@ func testDisable(hub *Hub, t *testing.T, item Item) {
 	// Local sync and check status
 	warns, err := hub.LocalSync()
 	require.NoError(t, err, "failed to run localSync")
-	require.Empty(t, warns, "unexpected warnings : %+v", warns)
+	require.Empty(t, warns, "unexpected warnings: %+v", warns)
 
 	assert.False(t, hub.Items[item.Type][item.Name].Tainted, "%s should not be tainted anymore", item.Name)
 	assert.False(t, hub.Items[item.Type][item.Name].Installed, "%s should not be installed anymore", item.Name)
@@ -85,7 +85,7 @@ func testDisable(hub *Hub, t *testing.T, item Item) {
 	// Local sync and check status
 	warns, err = hub.LocalSync()
 	require.NoError(t, err, "failed to run localSync")
-	require.Empty(t, warns, "unexpected warnings : %+v", warns)
+	require.Empty(t, warns, "unexpected warnings: %+v", warns)
 
 	assert.False(t, hub.Items[item.Type][item.Name].Installed, "%s should not be installed anymore", item.Name)
 	assert.False(t, hub.Items[item.Type][item.Name].Downloaded, "%s should not be downloaded", item.Name)

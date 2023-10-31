@@ -3,9 +3,3 @@
 // This includes retrieving the index, the items to install (parsers, scenarios, data files...)
 // and managing the dependencies and taints.
 package cwhub
-
-import (
-	"errors"
-)
-
-var ErrMissingReference = errors.New("Reference(s) missing in collection")

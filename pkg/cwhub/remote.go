@@ -17,9 +17,6 @@ type RemoteHubCfg struct {
 	IndexPath   string
 }
 
-// ErrNilRemoteHub is returned when the remote hub configuration is not provided to the NewHub constructor. All attempts to download index or items will return this error.
-var ErrNilRemoteHub = fmt.Errorf("remote hub configuration is not provided. Please report this issue to the developers")
-
 func (r *RemoteHubCfg) urlTo(remotePath string) (string, error) {
 	if r == nil {
 		return "", ErrNilRemoteHub

@@ -15,7 +15,7 @@ func TestItemStatus(t *testing.T) {
 	x := hub.GetItemMap(COLLECTIONS)
 	require.NotEmpty(t, x)
 
-	// Get item : good and bad
+	// Get item: good and bad
 	for k := range x {
 		item := hub.GetItem(COLLECTIONS, k)
 		require.NotNil(t, item)
@@ -52,7 +52,7 @@ func TestGetters(t *testing.T) {
 	x := hub.GetItemMap(COLLECTIONS)
 	require.NotEmpty(t, x)
 
-	// Get item : good and bad
+	// Get item: good and bad
 	for k := range x {
 		empty := hub.GetItem(COLLECTIONS, k+"nope")
 		require.Nil(t, empty)

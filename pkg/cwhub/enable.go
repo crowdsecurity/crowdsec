@@ -76,7 +76,7 @@ func (h *Hub) EnableItem(target *Item) error {
 		return fmt.Errorf("while creating symlink from %s to %s: %w", srcPath, dstPath, err)
 	}
 
-	log.Infof("Enabled %s : %s", target.Type, target.Name)
+	log.Infof("Enabled %s: %s", target.Type, target.Name)
 	target.Installed = true
 	h.Items[target.Type][target.Name] = *target
 
@@ -100,6 +100,7 @@ func (h *Hub) purgeItem(target Item) (Item, error) {
 
 // DisableItem to disable an item managed by the hub, removes the symlink if purge is true
 func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
+	// XXX: should return the number of disabled/purged items to inform the upper layer whether to reload or not
 	var err error
 
 	// already disabled, noop unless purge
@@ -160,7 +161,7 @@ func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
 	if os.IsNotExist(err) {
 		// we only accept to "delete" non existing items if it's a forced purge
 		if !purge && !force {
-			return fmt.Errorf("can't delete %s : %s doesn't exist", target.Name, syml)
+			return fmt.Errorf("can't delete %s: %s doesn't exist", target.Name, syml)
 		}
 	} else {
 		// if it's managed by hub, it's a symlink to csconfig.GConfig.hub.HubDir / ...
@@ -189,7 +190,7 @@ func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
 			return fmt.Errorf("while removing symlink: %w", err)
 		}
 
-		log.Infof("Removed symlink [%s] : %s", target.Name, syml)
+		log.Infof("Removed symlink [%s]: %s", target.Name, syml)
 	}
 
 	target.Installed = false

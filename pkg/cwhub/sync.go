@@ -81,7 +81,7 @@ func (h *Hub) getItemInfo(path string) (itemFileInfo, bool, error) {
 		//.../hub/scenarios/crowdsec/ssh_bf.yaml
 		//.../hub/profiles/crowdsec/linux.yaml
 		if len(subs) < 4 {
-			return itemFileInfo{}, false, fmt.Errorf("path is too short : %s (%d)", path, len(subs))
+			return itemFileInfo{}, false, fmt.Errorf("path is too short: %s (%d)", path, len(subs))
 		}
 
 		ret.fname = subs[len(subs)-1]
@@ -205,7 +205,7 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 	match := false
 
 	for name, item := range h.Items[info.ftype] {
-		log.Tracef("check [%s] vs [%s] : %s", info.fname, item.RemotePath, info.ftype+"/"+info.stage+"/"+info.fname+".yaml")
+		log.Tracef("check [%s] vs [%s]: %s", info.fname, item.RemotePath, info.ftype+"/"+info.stage+"/"+info.fname+".yaml")
 
 		if info.fname != item.FileName {
 			log.Tracef("%s != %s (filename)", info.fname, item.FileName)
@@ -241,7 +241,7 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 
 		sha, err := getSHA256(path)
 		if err != nil {
-			log.Fatalf("Failed to get sha of %s : %v", path, err)
+			log.Fatalf("Failed to get sha of %s: %v", path, err)
 		}
 
 		// let's reverse sort the versions to deal with hash collisions (#154)
@@ -424,7 +424,7 @@ func (h *Hub) SyncDir(dir string) ([]string, error) {
 			warnings = append(warnings, fmt.Sprintf("collection %s is in the future (currently:%s, latest:%s)", item.Name, item.LocalVersion, item.Version))
 		}
 
-		log.Debugf("installed (%s) - status:%d | installed:%s | latest : %s | full : %+v", item.Name, vs, item.LocalVersion, item.Version, item.Versions)
+		log.Debugf("installed (%s) - status: %d | installed: %s | latest: %s | full: %+v", item.Name, vs, item.LocalVersion, item.Version, item.Versions)
 	}
 
 	return warnings, nil

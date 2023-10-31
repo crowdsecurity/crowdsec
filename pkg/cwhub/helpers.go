@@ -34,6 +34,7 @@ func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly
 		}
 	}
 
+	// XXX: confusing semantic between force and updateOnly?
 	if err := h.DownloadLatest(item, force, true); err != nil {
 		return fmt.Errorf("while downloading %s: %w", item.Name, err)
 	}
@@ -43,9 +44,12 @@ func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly
 	}
 
 	if downloadOnly {
+		// XXX: should get the path from DownloadLatest
 		log.Infof("Downloaded %s to %s", item.Name, filepath.Join(h.local.HubDir, item.RemotePath))
 		return nil
 	}
+
+	// XXX: should we stop here if the item is already installed?
 
 	if err := h.EnableItem(item); err != nil {
 		return fmt.Errorf("while enabling %s: %w", item.Name, err)
@@ -151,11 +155,12 @@ func (h *Hub) UpgradeItem(itemType string, name string, force bool) (bool, error
 
 // DownloadLatest will download the latest version of Item to the tdir directory
 func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) error {
+	// XXX: should return the path of the downloaded file (taken from DownloadItem)
 	log.Debugf("Downloading %s %s", target.Type, target.Name)
 
 	if target.Type != COLLECTIONS {
 		if !target.Installed && updateOnly && target.Downloaded {
-			log.Debugf("skipping upgrade of %s : not installed", target.Name)
+			log.Debugf("skipping upgrade of %s: not installed", target.Name)
 			return nil
 		}
 
@@ -170,11 +175,11 @@ func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) erro
 		}
 
 		if !val.Installed && updateOnly && val.Downloaded {
-			log.Debugf("skipping upgrade of %s : not installed", target.Name)
+			log.Debugf("skipping upgrade of %s: not installed", target.Name)
 			continue
 		}
 
-		log.Debugf("Download %s sub-item : %s %s (%t -> %t)", target.Name, sub.Type, sub.Name, target.Installed, updateOnly)
+		log.Debugf("Download %s sub-item: %s %s (%t -> %t)", target.Name, sub.Type, sub.Name, target.Installed, updateOnly)
 
 		// recurse as it's a collection
 		if sub.Type == COLLECTIONS {
@@ -220,13 +225,13 @@ func (h *Hub) DownloadItem(target *Item, overwrite bool) error {
 	// if user didn't --force, don't overwrite local, tainted, up-to-date files
 	if !overwrite {
 		if target.Tainted {
-			log.Debugf("%s : tainted, not updated", target.Name)
+			log.Debugf("%s: tainted, not updated", target.Name)
 			return nil
 		}
 
 		if target.UpToDate {
 			//  We still have to check if data files are present
-			log.Debugf("%s : up-to-date, not updated", target.Name)
+			log.Debugf("%s: up-to-date, not updated", target.Name)
 		}
 	}
 
@@ -289,10 +294,10 @@ func (h *Hub) DownloadItem(target *Item, overwrite bool) error {
 
 	// check actual file
 	if _, err = os.Stat(finalPath); !os.IsNotExist(err) {
-		log.Warningf("%s : overwrite", target.Name)
+		log.Warningf("%s: overwrite", target.Name)
 		log.Debugf("target: %s/%s", tdir, target.RemotePath)
 	} else {
-		log.Infof("%s : OK", target.Name)
+		log.Infof("%s: OK", target.Name)
 	}
 
 	f, err := os.OpenFile(tdir+"/"+target.RemotePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)

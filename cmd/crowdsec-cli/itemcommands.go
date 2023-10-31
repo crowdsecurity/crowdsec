@@ -284,6 +284,7 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 			}
 
 			removed := 0
+
 			for _, item := range items {
 				didRemove, err := hub.RemoveItem(it.name, item.Name, purge, force)
 				if err != nil {
@@ -293,6 +294,7 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 					removed++
 				}
 			}
+
 			log.Infof("Removed %d %s", removed, it.name)
 			if removed > 0 {
 				log.Infof(ReloadMessage())
