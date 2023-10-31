@@ -43,6 +43,13 @@ var matchMap map[string]string = map[string]string{
 	"le":              "@le",
 }
 
+var bodyTypeMatch map[string]string = map[string]string{
+	"json":       "JSON",
+	"xml":        "XML",
+	"multipart":  "MULTIPART",
+	"urlencoded": "URLENCODED",
+}
+
 func (m *ModsecurityRule) Build(rule *CustomRule, waapRuleName string) (string, []uint32, error) {
 
 	rules, err := m.buildRules(rule, waapRuleName, false, 0)
@@ -143,6 +150,14 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, waapRuleName string, and 
 			} else {
 				return nil, fmt.Errorf("unknown transform '%s'", transform)
 			}
+		}
+	}
+
+	if rule.BodyType != "" {
+		if mappedBodyType, ok := bodyTypeMatch[rule.BodyType]; ok {
+			r.WriteString(fmt.Sprintf(",ctl:requestBodyProcessor=%s", mappedBodyType))
+		} else {
+			return nil, fmt.Errorf("unknown body type '%s'", rule.BodyType)
 		}
 	}
 

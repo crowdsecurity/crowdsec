@@ -40,6 +40,7 @@ type CustomRule struct {
 	Transform []string     `yaml:"transform"` //t:lowercase, t:uppercase, etc
 	And       []CustomRule `yaml:"and,omitempty"`
 	Or        []CustomRule `yaml:"or,omitempty"`
+	BodyType  string       `yaml:"body_type,omitempty"`
 }
 
 func (v *CustomRule) Convert(ruleType string, waapRuleName string) (string, []uint32, error) {
