@@ -58,6 +58,7 @@ func TestDownloadIndex(t *testing.T) {
 	}
 
 	err = hub.remote.DownloadIndex(tmpIndex.Name())
+	require.NoError(t, err)
 	// XXX: this is not failing
 	//	cstest.RequireErrorContains(t, err, "failed http request for hub index: Get")
 
