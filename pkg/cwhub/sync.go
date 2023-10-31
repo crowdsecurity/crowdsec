@@ -115,7 +115,7 @@ func (h *Hub) getItemInfo(path string) (itemFileInfo, bool, error) {
 		ret.ftype = COLLECTIONS
 		ret.stage = ""
 	} else if ret.ftype != PARSERS && ret.ftype != POSTOVERFLOWS {
-		// its a PARSER / POSTOVERFLOW with a stage
+		// it's a PARSER / POSTOVERFLOW with a stage
 		return itemFileInfo{}, inhub, fmt.Errorf("unknown configuration type for file '%s'", path)
 	}
 
@@ -245,6 +245,7 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 		}
 
 		// let's reverse sort the versions to deal with hash collisions (#154)
+		// XXX: we sure, lexical sorting?
 		versions := make([]string, 0, len(item.Versions))
 		for k := range item.Versions {
 			versions = append(versions, k)
@@ -253,8 +254,7 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 		sort.Sort(sort.Reverse(sort.StringSlice(versions)))
 
 		for _, version := range versions {
-			val := item.Versions[version]
-			if sha != val.Digest {
+			if item.Versions[version].Digest != sha {
 				// log.Infof("matching filenames, wrong hash %s != %s -- %s", sha, val.Digest, spew.Sdump(v))
 				continue
 			}
@@ -287,6 +287,7 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 			log.Tracef("got tainted match for %s: %s", item.Name, path)
 
 			h.skippedTainted++
+
 			// the file and the stage is right, but the hash is wrong, it has been tainted by user
 			if !inhub {
 				item.LocalPath = path
@@ -400,8 +401,7 @@ func (h *Hub) SyncDir(dir string) ([]string, error) {
 			continue
 		}
 
-		err = filepath.WalkDir(cpath, h.itemVisit)
-		if err != nil {
+		if err = filepath.WalkDir(cpath, h.itemVisit); err != nil {
 			return warnings, err
 		}
 	}
@@ -440,8 +440,7 @@ func (h *Hub) LocalSync() ([]string, error) {
 		return warnings, fmt.Errorf("failed to scan %s: %w", h.local.InstallDir, err)
 	}
 
-	_, err = h.SyncDir(h.local.HubDir)
-	if err != nil {
+	if _, err = h.SyncDir(h.local.HubDir); err != nil {
 		return warnings, fmt.Errorf("failed to scan %s: %w", h.local.HubDir, err)
 	}
 

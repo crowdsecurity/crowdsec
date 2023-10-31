@@ -34,12 +34,11 @@ func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly
 		}
 	}
 
-	err := h.DownloadLatest(item, force, true)
-	if err != nil {
+	if err := h.DownloadLatest(item, force, true); err != nil {
 		return fmt.Errorf("while downloading %s: %w", item.Name, err)
 	}
 
-	if err = h.AddItem(*item); err != nil {
+	if err := h.AddItem(*item); err != nil {
 		return fmt.Errorf("while adding %s: %w", item.Name, err)
 	}
 
@@ -48,8 +47,7 @@ func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly
 		return nil
 	}
 
-	err = h.EnableItem(item)
-	if err != nil {
+	if err := h.EnableItem(item); err != nil {
 		return fmt.Errorf("while enabling %s: %w", item.Name, err)
 	}
 
@@ -153,8 +151,6 @@ func (h *Hub) UpgradeItem(itemType string, name string, force bool) (bool, error
 
 // DownloadLatest will download the latest version of Item to the tdir directory
 func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) error {
-	var err error
-
 	log.Debugf("Downloading %s %s", target.Type, target.Name)
 
 	if target.Type != COLLECTIONS {
@@ -179,27 +175,26 @@ func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) erro
 		}
 
 		log.Debugf("Download %s sub-item : %s %s (%t -> %t)", target.Name, sub.Type, sub.Name, target.Installed, updateOnly)
-		//recurse as it's a collection
+
+		// recurse as it's a collection
 		if sub.Type == COLLECTIONS {
 			log.Tracef("collection, recurse")
 
-			err = h.DownloadLatest(&val, overwrite, updateOnly)
-			if err != nil {
+			if err := h.DownloadLatest(&val, overwrite, updateOnly); err != nil {
 				return fmt.Errorf("while downloading %s: %w", val.Name, err)
 			}
 		}
 
 		downloaded := val.Downloaded
 
-		err = h.DownloadItem(&val, overwrite)
-		if err != nil {
+		if err := h.DownloadItem(&val, overwrite); err != nil {
 			return fmt.Errorf("while downloading %s: %w", val.Name, err)
 		}
 
 		// We need to enable an item when it has been added to a collection since latest release of the collection.
 		// We check if val.Downloaded is false because maybe the item has been disabled by the user.
 		if !val.Installed && !downloaded {
-			if err = h.EnableItem(&val); err != nil {
+			if err := h.EnableItem(&val); err != nil {
 				return fmt.Errorf("enabling '%s': %w", val.Name, err)
 			}
 		}
@@ -207,8 +202,7 @@ func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) erro
 		h.Items[sub.Type][sub.Name] = val
 	}
 
-	err = h.DownloadItem(target, overwrite)
-	if err != nil {
+	if err := h.DownloadItem(target, overwrite); err != nil {
 		return fmt.Errorf("failed to download item: %w", err)
 	}
 
@@ -245,12 +239,11 @@ func (h *Hub) DownloadItem(target *Item, overwrite bool) error {
 	if err != nil {
 		return fmt.Errorf("while downloading %s: %w", req.URL.String(), err)
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("bad http code %d for %s", resp.StatusCode, req.URL.String())
 	}
-
-	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

@@ -14,8 +14,6 @@ import (
 // creates symlink between actual config file at hub.HubDir and hub.ConfigDir
 // Handles collections recursively
 func (h *Hub) EnableItem(target *Item) error {
-	var err error
-
 	parentDir := filepath.Clean(h.local.InstallDir + "/" + target.Type + "/" + target.Stage + "/")
 
 	// create directories if needed
@@ -35,7 +33,7 @@ func (h *Hub) EnableItem(target *Item) error {
 		}
 	}
 
-	if _, err = os.Stat(parentDir); os.IsNotExist(err) {
+	if _, err := os.Stat(parentDir); os.IsNotExist(err) {
 		log.Infof("%s doesn't exist, create", parentDir)
 
 		if err = os.MkdirAll(parentDir, os.ModePerm); err != nil {
@@ -51,15 +49,14 @@ func (h *Hub) EnableItem(target *Item) error {
 				return fmt.Errorf("required %s %s of %s doesn't exist, abort", sub.Type, sub.Name, target.Name)
 			}
 
-			err = h.EnableItem(&val)
-			if err != nil {
+			if err := h.EnableItem(&val); err != nil {
 				return fmt.Errorf("while installing %s: %w", sub.Name, err)
 			}
 		}
 	}
 
 	// check if file already exists where it should in configdir (eg /etc/crowdsec/collections/)
-	if _, err = os.Lstat(parentDir + "/" + target.FileName); !os.IsNotExist(err) {
+	if _, err := os.Lstat(parentDir + "/" + target.FileName); !os.IsNotExist(err) {
 		log.Infof("%s already exists.", parentDir+"/"+target.FileName)
 		return nil
 	}
@@ -145,8 +142,7 @@ func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
 			}
 
 			if toRemove {
-				err = h.DisableItem(&val, purge, force)
-				if err != nil {
+				if err = h.DisableItem(&val, purge, force); err != nil {
 					return fmt.Errorf("while disabling %s: %w", sub.Name, err)
 				}
 			} else {

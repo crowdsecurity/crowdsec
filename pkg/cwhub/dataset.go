@@ -52,8 +52,7 @@ func downloadFile(url string, destPath string) error {
 		return err
 	}
 
-	err = file.Sync()
-	if err != nil {
+	if err = file.Sync(); err != nil {
 		return err
 	}
 
@@ -65,8 +64,7 @@ func GetData(data []*types.DataSource, dataDir string) error {
 		destPath := filepath.Join(dataDir, dataS.DestPath)
 		log.Infof("downloading data '%s' in '%s'", dataS.SourceURL, destPath)
 
-		err := downloadFile(dataS.SourceURL, destPath)
-		if err != nil {
+		if err := downloadFile(dataS.SourceURL, destPath); err != nil {
 			return err
 		}
 	}
@@ -76,15 +74,12 @@ func GetData(data []*types.DataSource, dataDir string) error {
 
 // downloadData downloads the data files for an item
 func downloadData(dataFolder string, force bool, reader io.Reader) error {
-	var err error
-
 	dec := yaml.NewDecoder(reader)
 
 	for {
 		data := &DataSet{}
 
-		err = dec.Decode(data)
-		if err != nil {
+		if err := dec.Decode(data); err != nil {
 			if errors.Is(err, io.EOF) {
 				break
 			}
@@ -95,14 +90,13 @@ func downloadData(dataFolder string, force bool, reader io.Reader) error {
 		download := false
 
 		for _, dataS := range data.Data {
-			if _, err = os.Stat(filepath.Join(dataFolder, dataS.DestPath)); os.IsNotExist(err) {
+			if _, err := os.Stat(filepath.Join(dataFolder, dataS.DestPath)); os.IsNotExist(err) {
 				download = true
 			}
 		}
 
 		if download || force {
-			err = GetData(data.Data, dataFolder)
-			if err != nil {
+			if err := GetData(data.Data, dataFolder); err != nil {
 				return fmt.Errorf("while getting data: %w", err)
 			}
 		}

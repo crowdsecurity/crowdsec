@@ -59,7 +59,7 @@ func (r *RemoteHubCfg) DownloadIndex(localPath string) error {
 			return ErrIndexNotFound
 		}
 
-		return fmt.Errorf("bad http code %d while requesting %s", resp.StatusCode, req.URL.String())
+		return fmt.Errorf("bad http code %d for %s", resp.StatusCode, req.URL.String())
 	}
 
 	body, err := io.ReadAll(resp.Body)
