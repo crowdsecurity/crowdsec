@@ -76,6 +76,7 @@ func (i *Item) IsLocal() bool {
 // It must not use a pointer receiver
 func (i Item) MarshalJSON() ([]byte, error) {
 	type Alias Item
+
 	return json.Marshal(&struct {
 		Alias
 		Local bool `json:"local"` // XXX: omitempty?
@@ -90,6 +91,7 @@ func (i Item) MarshalJSON() ([]byte, error) {
 // It must not use a pointer receiver
 func (i Item) MarshalYAML() (interface{}, error) {
 	type Alias Item
+
 	return &struct {
 		Alias `yaml:",inline"`
 		Local bool `yaml:"local"`

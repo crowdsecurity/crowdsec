@@ -14,8 +14,6 @@ import (
 // creates symlink between actual config file at hub.HubDir and hub.ConfigDir
 // Handles collections recursively
 func (h *Hub) EnableItem(target *Item) error {
-	var err error
-
 	parentDir := filepath.Clean(h.local.InstallDir + "/" + target.Type + "/" + target.Stage + "/")
 
 	// create directories if needed
@@ -35,7 +33,7 @@ func (h *Hub) EnableItem(target *Item) error {
 		}
 	}
 
-	if _, err = os.Stat(parentDir); os.IsNotExist(err) {
+	if _, err := os.Stat(parentDir); os.IsNotExist(err) {
 		log.Infof("%s doesn't exist, create", parentDir)
 
 		if err = os.MkdirAll(parentDir, os.ModePerm); err != nil {
@@ -51,15 +49,14 @@ func (h *Hub) EnableItem(target *Item) error {
 				return fmt.Errorf("required %s %s of %s doesn't exist, abort", sub.Type, sub.Name, target.Name)
 			}
 
-			err = h.EnableItem(&val)
-			if err != nil {
+			if err := h.EnableItem(&val); err != nil {
 				return fmt.Errorf("while installing %s: %w", sub.Name, err)
 			}
 		}
 	}
 
 	// check if file already exists where it should in configdir (eg /etc/crowdsec/collections/)
-	if _, err = os.Lstat(parentDir + "/" + target.FileName); !os.IsNotExist(err) {
+	if _, err := os.Lstat(parentDir + "/" + target.FileName); !os.IsNotExist(err) {
 		log.Infof("%s already exists.", parentDir+"/"+target.FileName)
 		return nil
 	}
@@ -79,7 +76,7 @@ func (h *Hub) EnableItem(target *Item) error {
 		return fmt.Errorf("while creating symlink from %s to %s: %w", srcPath, dstPath, err)
 	}
 
-	log.Infof("Enabled %s : %s", target.Type, target.Name)
+	log.Infof("Enabled %s: %s", target.Type, target.Name)
 	target.Installed = true
 	h.Items[target.Type][target.Name] = *target
 
@@ -103,6 +100,7 @@ func (h *Hub) purgeItem(target Item) (Item, error) {
 
 // DisableItem to disable an item managed by the hub, removes the symlink if purge is true
 func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
+	// XXX: should return the number of disabled/purged items to inform the upper layer whether to reload or not
 	var err error
 
 	// already disabled, noop unless purge
@@ -145,8 +143,7 @@ func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
 			}
 
 			if toRemove {
-				err = h.DisableItem(&val, purge, force)
-				if err != nil {
+				if err = h.DisableItem(&val, purge, force); err != nil {
 					return fmt.Errorf("while disabling %s: %w", sub.Name, err)
 				}
 			} else {
@@ -164,7 +161,7 @@ func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
 	if os.IsNotExist(err) {
 		// we only accept to "delete" non existing items if it's a forced purge
 		if !purge && !force {
-			return fmt.Errorf("can't delete %s : %s doesn't exist", target.Name, syml)
+			return fmt.Errorf("can't delete %s: %s doesn't exist", target.Name, syml)
 		}
 	} else {
 		// if it's managed by hub, it's a symlink to csconfig.GConfig.hub.HubDir / ...
@@ -193,7 +190,7 @@ func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
 			return fmt.Errorf("while removing symlink: %w", err)
 		}
 
-		log.Infof("Removed symlink [%s] : %s", target.Name, syml)
+		log.Infof("Removed symlink [%s]: %s", target.Name, syml)
 	}
 
 	target.Installed = false

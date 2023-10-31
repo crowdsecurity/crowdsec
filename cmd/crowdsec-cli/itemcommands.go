@@ -203,11 +203,13 @@ func itemsInstallRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 		}
 
 		for _, name := range args {
-			t := hub.GetItem(it.name, name)
-			if t == nil {
-				nearestItem, score := GetDistance(hub, it.name, name)
-				Suggest(it.name, name, nearestItem.Name, score, ignoreError)
+			if hub.GetItem(it.name, name) == nil {
+				msg := SuggestNearestMessage(hub, it.name, name)
+				if !ignoreError {
+					return fmt.Errorf(msg)
+				}
 
+				log.Errorf(msg)
 				continue
 			}
 
@@ -218,6 +220,7 @@ func itemsInstallRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 				log.Errorf("Error while installing '%s': %s", name, err)
 			}
 		}
+
 		// XXX: only reload if we installed something
 		log.Infof(ReloadMessage())
 		return nil
@@ -281,6 +284,7 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 			}
 
 			removed := 0
+
 			for _, item := range items {
 				didRemove, err := hub.RemoveItem(it.name, item.Name, purge, force)
 				if err != nil {
@@ -290,6 +294,7 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 					removed++
 				}
 			}
+
 			log.Infof("Removed %d %s", removed, it.name)
 			if removed > 0 {
 				log.Infof(ReloadMessage())
@@ -478,7 +483,7 @@ func itemsInspectRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 			if item == nil {
 				return fmt.Errorf("can't find '%s' in %s", name, it.name)
 			}
-			if err = InspectItem(hub, item, noMetrics); err != nil {
+			if err = InspectItem(hub, item, !noMetrics); err != nil {
 				return err
 			}
 		}

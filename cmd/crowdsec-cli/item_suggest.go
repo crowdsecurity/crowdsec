@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/agext/levenshtein"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"slices"
 
@@ -15,38 +14,26 @@ import (
 
 const MaxDistance = 7
 
-func Suggest(itemType string, baseItem string, suggestItem string, score int, ignoreErr bool) {
-	errMsg := ""
-	if score < MaxDistance {
-		errMsg = fmt.Sprintf("can't find '%s' in %s, did you mean %s?", baseItem, itemType, suggestItem)
-	} else {
-		errMsg = fmt.Sprintf("can't find '%s' in %s", baseItem, itemType)
-	}
-	if ignoreErr {
-		log.Error(errMsg)
-	} else {
-		log.Fatalf(errMsg)
-	}
-}
+// SuggestNearestMessage returns a message with the most similar item name, if one is found
+func SuggestNearestMessage(hub *cwhub.Hub, itemType string, itemName string) string {
+	score := 100
+	nearest := ""
 
-func GetDistance(hub *cwhub.Hub, itemType string, itemName string) (*cwhub.Item, int) {
-	allItems := make([]string, 0)
-	nearestScore := 100
-	nearestItem := &cwhub.Item{}
-
-	hubItems := hub.GetItemMap(itemType)
-	for _, item := range hubItems {
-		allItems = append(allItems, item.Name)
-	}
-
-	for _, s := range allItems {
-		d := levenshtein.Distance(itemName, s, nil)
-		if d < nearestScore {
-			nearestScore = d
-			nearestItem = hub.GetItem(itemType, s)
+	for _, item := range hub.GetItemMap(itemType) {
+		d := levenshtein.Distance(itemName, item.Name, nil)
+		if d < score {
+			score = d
+			nearest = item.Name
 		}
 	}
-	return nearestItem, nearestScore
+
+	msg := fmt.Sprintf("can't find '%s' in %s", itemName, itemType)
+
+	if score < MaxDistance {
+		msg += fmt.Sprintf(", did you mean '%s'?", nearest)
+	}
+
+	return msg
 }
 
 func compAllItems(itemType string, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -56,13 +43,15 @@ func compAllItems(itemType string, args []string, toComplete string) ([]string, 
 	}
 
 	comp := make([]string, 0)
-	hubItems := hub.GetItemMap(itemType)
-	for _, item := range hubItems {
+
+	for _, item := range hub.GetItemMap(itemType) {
 		if !slices.Contains(args, item.Name) && strings.Contains(item.Name, toComplete) {
 			comp = append(comp, item.Name)
 		}
 	}
+
 	cobra.CompDebugln(fmt.Sprintf("%s: %+v", itemType, comp), true)
+
 	return comp, cobra.ShellCompDirectiveNoFileComp
 }
 
