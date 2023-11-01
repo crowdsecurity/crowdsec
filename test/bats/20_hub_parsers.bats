@@ -133,7 +133,7 @@ teardown() {
 
     # autocorrect
     rune -1 cscli parsers install crowdsecurity/sshd-logz
-    assert_stderr --partial "can't find 'crowdsecurity/sshd-logz' in parsers, did you mean crowdsecurity/sshd-logs?"
+    assert_stderr --partial "can't find 'crowdsecurity/sshd-logz' in parsers, did you mean 'crowdsecurity/sshd-logs'?"
 
     # install multiple
     rune -0 cscli parsers install crowdsecurity/pgsql-logs crowdsecurity/postfix-logs

@@ -132,7 +132,7 @@ teardown() {
 
     # autocorrect
     rune -1 cscli collections install crowdsecurity/ssshd
-    assert_stderr --partial "can't find 'crowdsecurity/ssshd' in collections, did you mean crowdsecurity/sshd?"
+    assert_stderr --partial "can't find 'crowdsecurity/ssshd' in collections, did you mean 'crowdsecurity/sshd'?"
 
     # install multiple
     rune -0 cscli collections install crowdsecurity/sshd crowdsecurity/smb
