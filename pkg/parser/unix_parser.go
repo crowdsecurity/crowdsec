@@ -57,19 +57,24 @@ func Init(c map[string]interface{}) (*UnixParserCtx, error) {
 
 // Return new parsers
 // nodes and povfwnodes are already initialized in parser.LoadStages
-func NewParsers() *Parsers {
+func NewParsers() (*Parsers, error) {
+	var err error
 	parsers := &Parsers{
 		Ctx:             &UnixParserCtx{},
 		Povfwctx:        &UnixParserCtx{},
 		StageFiles:      make([]Stagefile, 0),
 		PovfwStageFiles: make([]Stagefile, 0),
 	}
+	var atLeastOneFirstStage bool
 	for _, itemType := range []string{cwhub.PARSERS, cwhub.PARSERS_OVFLW} {
 		for _, hubParserItem := range cwhub.GetItemMap(itemType) {
 			if hubParserItem.Installed {
 				stagefile := Stagefile{
 					Filename: hubParserItem.LocalPath,
 					Stage:    hubParserItem.Stage,
+				}
+				if hubParserItem.Stage == "s00-raw" && !atLeastOneFirstStage {
+					atLeastOneFirstStage = true
 				}
 				if itemType == cwhub.PARSERS {
 					parsers.StageFiles = append(parsers.StageFiles, stagefile)
@@ -90,8 +95,10 @@ func NewParsers() *Parsers {
 			return parsers.PovfwStageFiles[i].Filename < parsers.PovfwStageFiles[j].Filename
 		})
 	}
-
-	return parsers
+	if !atLeastOneFirstStage {
+		err = fmt.Errorf("no s00 stage parser loaded, exiting")
+	}
+	return parsers, err
 }
 
 func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {

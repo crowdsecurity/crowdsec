@@ -343,7 +343,10 @@ cscli lapi context detect crowdsecurity/sshd-logs
 				log.Fatalf("Failed to load hub index : %s", err)
 			}
 
-			csParsers := parser.NewParsers()
+			csParsers, err := parser.NewParsers()
+			if err != nil {
+				log.Fatalf("unable to load parsers: %s", err)
+			}
 			if csParsers, err = parser.LoadParsers(csConfig, csParsers); err != nil {
 				log.Fatalf("unable to load parsers: %s", err)
 			}
