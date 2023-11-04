@@ -1,7 +1,6 @@
 package cwhub
 
-// Enable/disable items already installed (no downloading here)
-// This file is not named install.go to avoid confusion with the functions in helpers.go
+// Enable/disable items already downloaded
 
 import (
 	"fmt"
@@ -11,7 +10,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// creates symlink between actual config file at hub.HubDir and hub.ConfigDir
+// EnableItem creates a symlink between actual config file at hub.HubDir and hub.ConfigDir
 // Handles collections recursively
 func (h *Hub) EnableItem(target *Item) error {
 	parentDir := filepath.Clean(h.local.InstallDir + "/" + target.Type + "/" + target.Stage + "/")
