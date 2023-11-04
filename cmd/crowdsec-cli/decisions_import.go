@@ -232,7 +232,7 @@ func NewDecisionsImportCmd() *cobra.Command {
 		Short: "Import decisions from a file or pipe",
 		Long: "expected format:\n" +
 			"csv  : any of duration,reason,scope,type,value, with a header line\n" +
-			`json : {"duration" : "24h", "reason" : "my_scenario", "scope" : "ip", "type" : "ban", "value" : "x.y.z.z"}`,
+			"json :" + "`{" + `"duration" : "24h", "reason" : "my_scenario", "scope" : "ip", "type" : "ban", "value" : "x.y.z.z"` + "}`",
 		DisableAutoGenTag: true,
 		Example: `decisions.csv:
 duration,scope,value
