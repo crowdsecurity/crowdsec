@@ -103,10 +103,6 @@ func ParseIndex(buff []byte) (HubItems, error) {
 			item.FileName = x[len(x)-1]
 			RawIndex[itemType][name] = item
 
-			if itemType != COLLECTIONS {
-				continue
-			}
-
 			// if it's a collection, check its sub-items are present
 			// XXX should be done later
 			for _, sub := range item.SubItems() {
@@ -130,11 +126,6 @@ func (h *Hub) ItemStats() []string {
 	loaded := ""
 
 	for _, itemType := range ItemTypes {
-		// ensure the order is always the same
-		if h.Items[itemType] == nil {
-			continue
-		}
-
 		if len(h.Items[itemType]) == 0 {
 			continue
 		}

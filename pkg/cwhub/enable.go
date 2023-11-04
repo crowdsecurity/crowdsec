@@ -41,16 +41,14 @@ func (h *Hub) EnableItem(target *Item) error {
 	}
 
 	// install sub-items if it's a collection
-	if target.Type == COLLECTIONS {
-		for _, sub := range target.SubItems() {
-			val, ok := h.Items[sub.Type][sub.Name]
-			if !ok {
-				return fmt.Errorf("required %s %s of %s doesn't exist, abort", sub.Type, sub.Name, target.Name)
-			}
+	for _, sub := range target.SubItems() {
+		val, ok := h.Items[sub.Type][sub.Name]
+		if !ok {
+			return fmt.Errorf("required %s %s of %s doesn't exist, abort", sub.Type, sub.Name, target.Name)
+		}
 
-			if err := h.EnableItem(&val); err != nil {
-				return fmt.Errorf("while installing %s: %w", sub.Name, err)
-			}
+		if err := h.EnableItem(&val); err != nil {
+			return fmt.Errorf("while installing %s: %w", sub.Name, err)
 		}
 	}
 
@@ -122,32 +120,30 @@ func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
 		return fmt.Errorf("%s is tainted, use '--force' to overwrite", target.Name)
 	}
 
-	// for a COLLECTIONS, disable sub-items
-	if target.Type == COLLECTIONS {
-		for _, sub := range target.SubItems() {
-			val, ok := h.Items[sub.Type][sub.Name]
-			if !ok {
-				log.Errorf("Referred %s %s in collection %s doesn't exist.", sub.Type, sub.Name, target.Name)
-				continue
-			}
+	// disable sub-items if any - it's a collection
+	for _, sub := range target.SubItems() {
+		val, ok := h.Items[sub.Type][sub.Name]
+		if !ok {
+			log.Errorf("Referred %s %s in collection %s doesn't exist.", sub.Type, sub.Name, target.Name)
+			continue
+		}
 
-			// check if the item doesn't belong to another collection before removing it
-			toRemove := true
+		// check if the item doesn't belong to another collection before removing it
+		toRemove := true
 
-			for _, collection := range val.BelongsToCollections {
-				if collection != target.Name {
-					toRemove = false
-					break
-				}
+		for _, collection := range val.BelongsToCollections {
+			if collection != target.Name {
+				toRemove = false
+				break
 			}
+		}
 
-			if toRemove {
-				if err = h.DisableItem(&val, purge, force); err != nil {
-					return fmt.Errorf("while disabling %s: %w", sub.Name, err)
-				}
-			} else {
-				log.Infof("%s was not removed because it belongs to another collection", val.Name)
+		if toRemove {
+			if err = h.DisableItem(&val, purge, force); err != nil {
+				return fmt.Errorf("while disabling %s: %w", sub.Name, err)
 			}
+		} else {
+			log.Infof("%s was not removed because it belongs to another collection", val.Name)
 		}
 	}
 
