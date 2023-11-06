@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
+
+	"slices"
 
 	"github.com/fatih/color"
 	cc "github.com/ivanpirog/coloredcobra"
@@ -14,7 +15,6 @@ import (
 	"github.com/spf13/cobra/doc"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
@@ -30,6 +30,9 @@ var OutputFormat string
 var OutputColor string
 
 var mergedConfig string
+
+// flagBranch overrides the value in csConfig.Cscli.HubBranch
+var flagBranch = ""
 
 func initConfig() {
 	var err error
@@ -66,9 +69,10 @@ func initConfig() {
 		log.Fatalf("missing 'cscli' configuration in '%s', exiting", ConfigFilePath)
 	}
 
-	if cwhub.HubBranch == "" && csConfig.Cscli.HubBranch != "" {
-		cwhub.HubBranch = csConfig.Cscli.HubBranch
+	if flagBranch != "" {
+		csConfig.Cscli.HubBranch = flagBranch
 	}
+
 	if OutputFormat != "" {
 		csConfig.Cscli.Output = OutputFormat
 		if OutputFormat != "json" && OutputFormat != "raw" && OutputFormat != "human" {
@@ -197,7 +201,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.PersistentFlags().BoolVar(&err_lvl, "error", false, "Set logging to error")
 	rootCmd.PersistentFlags().BoolVar(&trace_lvl, "trace", false, "Set logging to trace")
 
-	rootCmd.PersistentFlags().StringVar(&cwhub.HubBranch, "branch", "", "Override hub branch on github")
+	rootCmd.PersistentFlags().StringVar(&flagBranch, "branch", "", "Override hub branch on github")
 	if err := rootCmd.PersistentFlags().MarkHidden("branch"); err != nil {
 		log.Fatalf("failed to hide flag: %s", err)
 	}
@@ -234,10 +238,6 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewSimulationCmds())
 	rootCmd.AddCommand(NewBouncersCmd())
 	rootCmd.AddCommand(NewMachinesCmd())
-	rootCmd.AddCommand(NewParsersCmd())
-	rootCmd.AddCommand(NewScenariosCmd())
-	rootCmd.AddCommand(NewCollectionsCmd())
-	rootCmd.AddCommand(NewPostOverflowsCmd())
 	rootCmd.AddCommand(NewCapiCmd())
 	rootCmd.AddCommand(NewLapiCmd())
 	rootCmd.AddCommand(NewCompletionCmd())
@@ -246,8 +246,12 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewHubTestCmd())
 	rootCmd.AddCommand(NewNotificationsCmd())
 	rootCmd.AddCommand(NewSupportCmd())
-	rootCmd.AddCommand(NewWaapRulesCmd())
-	rootCmd.AddCommand(NewWaapConfigsCmd())
+	rootCmd.AddCommand(NewWaapRulesCmd())   // Keep it like this for now, we'll switch later to the generic implementation
+	rootCmd.AddCommand(NewWaapConfigsCmd()) // Keep it like this for now, we'll switch later to the generic implementation
+	rootCmd.AddCommand(NewItemsCmd("collections"))
+	rootCmd.AddCommand(NewItemsCmd("parsers"))
+	rootCmd.AddCommand(NewItemsCmd("scenarios"))
+	rootCmd.AddCommand(NewItemsCmd("postoverflows"))
 
 	if fflag.CscliSetup.IsEnabled() {
 		rootCmd.AddCommand(NewSetupCmd())

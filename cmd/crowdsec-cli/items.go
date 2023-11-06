@@ -5,23 +5,22 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"slices"
+	"os"
 	"sort"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
+	"slices"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
-
 
 func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly bool) ([]string, error) {
 	itemNames := hub.GetItemNames(itemType)
 
 	notExist := []string{}
+
 	if len(args) > 0 {
-		installedOnly = false
 		for _, arg := range args {
 			if !slices.Contains(itemNames, arg) {
 				notExist = append(notExist, arg)
@@ -35,6 +34,7 @@ func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 
 	if len(args) > 0 {
 		itemNames = args
+		installedOnly = false
 	}
 
 	if installedOnly {
@@ -49,27 +49,23 @@ func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 	return itemNames, nil
 }
 
-
-func ListItems(out io.Writer, itemTypes []string, args []string, showType bool, showHeader bool, all bool) error {
-	var err error
-
-	hub, err := cwhub.GetHub()
-	if err != nil {
-		return err
-	}
-
+func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string, showType bool, showHeader bool, all bool) error {
 	items := make(map[string][]string)
 	for _, itemType := range itemTypes {
-		if items[itemType], err = selectItems(hub, itemType, args, !all); err != nil {
+		selected, err := selectItems(hub, itemType, args, !all)
+		if err != nil {
 			return err
 		}
+		sort.Strings(selected)
+		items[itemType] = selected
 	}
-		
-	if csConfig.Cscli.Output == "human" {
+
+	switch csConfig.Cscli.Output {
+	case "human":
 		for _, itemType := range itemTypes {
-			listHubItemTable(out, "\n"+strings.ToUpper(itemType), itemType, items[itemType])
+			listHubItemTable(hub, out, "\n"+strings.ToUpper(itemType), itemType, items[itemType])
 		}
-	} else if csConfig.Cscli.Output == "json" {
+	case "json":
 		type itemHubStatus struct {
 			Name         string `json:"name"`
 			LocalVersion string `json:"local_version"`
@@ -95,16 +91,15 @@ func ListItems(out io.Writer, itemTypes []string, args []string, showType bool, 
 					UTF8Status:   fmt.Sprintf("%v  %s", emo, status),
 				}
 			}
-			h := hubStatus[itemType]
-			sort.Slice(h, func(i, j int) bool { return h[i].Name < h[j].Name })
 		}
 		x, err := json.MarshalIndent(hubStatus, "", " ")
 		if err != nil {
-			log.Fatalf("failed to unmarshal")
+			return fmt.Errorf("failed to unmarshal: %w", err)
 		}
 		out.Write(x)
-	} else if csConfig.Cscli.Output == "raw" {
+	case "raw":
 		csvwriter := csv.NewWriter(out)
+
 		if showHeader {
 			header := []string{"name", "status", "version", "description"}
 			if showType {
@@ -112,9 +107,8 @@ func ListItems(out io.Writer, itemTypes []string, args []string, showType bool, 
 			}
 			err := csvwriter.Write(header)
 			if err != nil {
-				log.Fatalf("failed to write header: %s", err)
+				return fmt.Errorf("failed to write header: %s", err)
 			}
-
 		}
 		for _, itemType := range itemTypes {
 			for _, itemName := range items[itemType] {
@@ -132,51 +126,39 @@ func ListItems(out io.Writer, itemTypes []string, args []string, showType bool, 
 				if showType {
 					row = append(row, itemType)
 				}
-				err := csvwriter.Write(row)
-				if err != nil {
-					log.Fatalf("failed to write raw output : %s", err)
+				if err := csvwriter.Write(row); err != nil {
+					return fmt.Errorf("failed to write raw output: %s", err)
 				}
 			}
 		}
 		csvwriter.Flush()
+	default:
+		return fmt.Errorf("unknown output format '%s'", csConfig.Cscli.Output)
 	}
+
 	return nil
 }
 
-func InspectItem(name string, itemType string, noMetrics bool) error {
-	hub, err := cwhub.GetHub()
-	if err != nil {
-		return err
-	}
-
-	hubItem := hub.GetItem(itemType, name)
-	if hubItem == nil {
-		return fmt.Errorf("can't find '%s' in %s", name, itemType)
-	}
-
-	var b   []byte
-
+func InspectItem(hub *cwhub.Hub, item *cwhub.Item, showMetrics bool) error {
 	switch csConfig.Cscli.Output {
 	case "human", "raw":
-		b, err = yaml.Marshal(*hubItem)
-		if err != nil {
-			return fmt.Errorf("unable to marshal item: %s", err)
+		enc := yaml.NewEncoder(os.Stdout)
+		enc.SetIndent(2)
+		if err := enc.Encode(item); err != nil {
+			return fmt.Errorf("unable to encode item: %s", err)
 		}
 	case "json":
-		b, err = json.MarshalIndent(*hubItem, "", " ")
+		b, err := json.MarshalIndent(*item, "", "  ")
 		if err != nil {
 			return fmt.Errorf("unable to marshal item: %s", err)
 		}
+		fmt.Print(string(b))
 	}
 
-	fmt.Printf("%s", string(b))
-
-	if noMetrics || csConfig.Cscli.Output == "json" || csConfig.Cscli.Output == "raw" {
-		return nil
+	if csConfig.Cscli.Output == "human" && showMetrics {
+		fmt.Printf("\nCurrent metrics: \n")
+		ShowMetrics(hub, item)
 	}
-
-	fmt.Printf("\nCurrent metrics: \n")
-	ShowMetrics(hub, hubItem)
 
 	return nil
 }

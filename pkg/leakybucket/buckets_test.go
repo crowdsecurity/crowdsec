@@ -38,14 +38,14 @@ func TestBucket(t *testing.T) {
 
 	testdata := "./tests"
 
-	hubCfg := &csconfig.HubCfg{
+	hubCfg := &csconfig.LocalHubCfg{
 		HubDir: filepath.Join(testdata, "hub"),
 		HubIndexFile: filepath.Join(testdata, "hub", "index.json"),
 	}
 
-	_, err := cwhub.InitHub(hubCfg)
+	_, err := cwhub.NewHub(hubCfg, nil, false)
 	if err != nil {
-		t.Fatalf("failed to init hub : %s", err)
+		t.Fatalf("failed to init hub: %s", err)
 	}
 
 	err = exprhelpers.Init(nil)

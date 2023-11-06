@@ -57,12 +57,12 @@ teardown() {
 
 @test "crowdsec - default logging configuration (empty/missing common section)" {
     config_set '.common={}'
-    rune -124 timeout 1s "${CROWDSEC}"
+    rune -124 timeout 2s "${CROWDSEC}"
     refute_output
     assert_stderr --partial "Starting processing data"
 
     config_set 'del(.common)'
-    rune -124 timeout 1s "${CROWDSEC}"
+    rune -124 timeout 2s "${CROWDSEC}"
     refute_output
     assert_stderr --partial "Starting processing data"
 }

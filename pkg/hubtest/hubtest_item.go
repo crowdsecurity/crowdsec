@@ -39,7 +39,7 @@ type HubTestItem struct {
 	RuntimeConfigFilePath     string
 	RuntimeProfileFilePath    string
 	RuntimeSimulationFilePath string
-	RuntimeHubConfig          *csconfig.HubCfg
+	RuntimeHubConfig          *csconfig.LocalHubCfg
 
 	ResultsPath          string
 	ParserResultFile     string
@@ -117,7 +117,7 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 		ParserResultFile:          filepath.Join(resultPath, ParserResultFileName),
 		ScenarioResultFile:        filepath.Join(resultPath, ScenarioResultFileName),
 		BucketPourResultFile:      filepath.Join(resultPath, BucketPourResultFileName),
-		RuntimeHubConfig: &csconfig.HubCfg{
+		RuntimeHubConfig: &csconfig.LocalHubCfg{
 			HubDir:         runtimeHubFolder,
 			HubIndexFile:   hubTest.HubIndexFile,
 			InstallDir:     runtimeFolder,
@@ -391,7 +391,7 @@ func (t *HubTestItem) InstallHub() error {
 	}
 
 	// load installed hub
-	hub, err := cwhub.InitHub(t.RuntimeHubConfig)
+	hub, err := cwhub.NewHub(t.RuntimeHubConfig, nil, false)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -451,51 +451,51 @@ func (t *HubTestItem) Run() error {
 	}
 
 	// create runtime folder
-	if err := os.MkdirAll(t.RuntimePath, os.ModePerm); err != nil {
+	if err = os.MkdirAll(t.RuntimePath, os.ModePerm); err != nil {
 		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimePath, err)
 	}
 
 	// create runtime data folder
-	if err := os.MkdirAll(t.RuntimeDataPath, os.ModePerm); err != nil {
+	if err = os.MkdirAll(t.RuntimeDataPath, os.ModePerm); err != nil {
 		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimeDataPath, err)
 	}
 
 	// create runtime hub folder
-	if err := os.MkdirAll(t.RuntimeHubPath, os.ModePerm); err != nil {
+	if err = os.MkdirAll(t.RuntimeHubPath, os.ModePerm); err != nil {
 		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimeHubPath, err)
 	}
 
-	if err := Copy(t.HubIndexFile, filepath.Join(t.RuntimeHubPath, ".index.json")); err != nil {
+	if err = Copy(t.HubIndexFile, filepath.Join(t.RuntimeHubPath, ".index.json")); err != nil {
 		return fmt.Errorf("unable to copy .index.json file in '%s': %s", filepath.Join(t.RuntimeHubPath, ".index.json"), err)
 	}
 
 	// create results folder
-	if err := os.MkdirAll(t.ResultsPath, os.ModePerm); err != nil {
+	if err = os.MkdirAll(t.ResultsPath, os.ModePerm); err != nil {
 		return fmt.Errorf("unable to create folder '%s': %+v", t.ResultsPath, err)
 	}
 
 	// copy template config file to runtime folder
-	if err := Copy(t.TemplateConfigPath, t.RuntimeConfigFilePath); err != nil {
+	if err = Copy(t.TemplateConfigPath, t.RuntimeConfigFilePath); err != nil {
 		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateConfigPath, t.RuntimeConfigFilePath, err)
 	}
 
 	// copy template profile file to runtime folder
-	if err := Copy(t.TemplateProfilePath, t.RuntimeProfileFilePath); err != nil {
+	if err = Copy(t.TemplateProfilePath, t.RuntimeProfileFilePath); err != nil {
 		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateProfilePath, t.RuntimeProfileFilePath, err)
 	}
 
 	// copy template simulation file to runtime folder
-	if err := Copy(t.TemplateSimulationPath, t.RuntimeSimulationFilePath); err != nil {
+	if err = Copy(t.TemplateSimulationPath, t.RuntimeSimulationFilePath); err != nil {
 		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateSimulationPath, t.RuntimeSimulationFilePath, err)
 	}
 
 	// copy template patterns folder to runtime folder
-	if err := CopyDir(crowdsecPatternsFolder, t.RuntimePatternsPath); err != nil {
+	if err = CopyDir(crowdsecPatternsFolder, t.RuntimePatternsPath); err != nil {
 		return fmt.Errorf("unable to copy 'patterns' from '%s' to '%s': %s", crowdsecPatternsFolder, t.RuntimePatternsPath, err)
 	}
 
 	// install the hub in the runtime folder
-	if err := t.InstallHub(); err != nil {
+	if err = t.InstallHub(); err != nil {
 		return fmt.Errorf("unable to install hub in '%s': %s", t.RuntimeHubPath, err)
 	}
 
@@ -503,7 +503,7 @@ func (t *HubTestItem) Run() error {
 	logType := t.Config.LogType
 	dsn := fmt.Sprintf("file://%s", logFile)
 
-	if err := os.Chdir(testPath); err != nil {
+	if err = os.Chdir(testPath); err != nil {
 		return fmt.Errorf("can't 'cd' to '%s': %s", testPath, err)
 	}
 

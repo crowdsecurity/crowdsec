@@ -33,7 +33,6 @@ cscli hub upgrade`,
 			return nil
 		},
 	}
-	cmdHub.PersistentFlags().StringVarP(&cwhub.HubBranch, "branch", "b", "", "Use given branch from hub")
 
 	cmdHub.AddCommand(NewHubListCmd())
 	cmdHub.AddCommand(NewHubUpdateCmd())
@@ -50,7 +49,7 @@ func runHubList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	hub, err := require.Hub(csConfig)
+	hub, err := require.Hub(csConfig, nil)
 	if err != nil {
 		return err
 	}
@@ -61,11 +60,11 @@ func runHubList(cmd *cobra.Command, args []string) error {
 		log.Info(v)
 	}
 
-	cwhub.DisplaySummary()
+	for line := range hub.ItemStats() {
+		log.Info(line)
+	}
 
-	err = ListItems(color.Output, []string{
-		cwhub.COLLECTIONS, cwhub.PARSERS, cwhub.SCENARIOS, cwhub.POSTOVERFLOWS,
-	}, nil, true, false, all)
+	err = ListItems(hub, color.Output, cwhub.ItemTypes, nil, true, false, all)
 	if err != nil {
 		return err
 	}
@@ -79,7 +78,7 @@ func NewHubListCmd() *cobra.Command {
 		Short:             "List all installed configurations",
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE: 	    runHubList,
+		RunE:              runHubList,
 	}
 
 	flags := cmdHubList.Flags()
@@ -89,18 +88,20 @@ func NewHubListCmd() *cobra.Command {
 }
 
 func runHubUpdate(cmd *cobra.Command, args []string) error {
-	cwhub.SetHubBranch()
+	local := csConfig.Hub
+	remote := require.RemoteHub(csConfig)
 
 	// don't use require.Hub because if there is no index file, it would fail
-
-	hub, err := cwhub.InitHubUpdate(csConfig.Hub)
+	hub, err := cwhub.NewHub(local, remote, true)
 	if err != nil {
+		// XXX: this should be done when downloading items, too
+		// but what is the fallback to master actually solving?
 		if !errors.Is(err, cwhub.ErrIndexNotFound) {
-			return fmt.Errorf("failed to get Hub index : %w", err)
+			return fmt.Errorf("failed to get Hub index: %w", err)
 		}
-		log.Warnf("Could not find index file for branch '%s', using 'master'", cwhub.HubBranch)
-		cwhub.HubBranch = "master"
-		if hub, err = cwhub.InitHubUpdate(csConfig.Hub); err != nil {
+		log.Warnf("Could not find index file for branch '%s', using 'master'", remote.Branch)
+		remote.Branch = "master"
+		if hub, err = cwhub.NewHub(local, remote, true); err != nil {
 			return fmt.Errorf("failed to get Hub index after retry: %w", err)
 		}
 	}
@@ -119,7 +120,7 @@ func NewHubUpdateCmd() *cobra.Command {
 		Use:   "update",
 		Short: "Download the latest index (catalog of available configurations)",
 		Long: `
-Fetches the [.index.json](https://github.com/crowdsecurity/hub/blob/master/.index.json) file from hub, containing the list of available configs.
+Fetches the .index.json file from the hub, containing the list of available configs.
 `,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
@@ -144,29 +145,29 @@ func runHubUpgrade(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	hub, err := require.Hub(csConfig)
+	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig))
 	if err != nil {
 		return err
 	}
 
-	log.Infof("Upgrading collections")
-	if err := hub.UpgradeConfig(cwhub.COLLECTIONS, "", force); err != nil {
-		return err
-	}
+	for _, itemType := range cwhub.ItemTypes {
+		items, err := hub.GetInstalledItems(itemType)
+		if err != nil {
+			return err
+		}
 
-	log.Infof("Upgrading parsers")
-	if err := hub.UpgradeConfig(cwhub.PARSERS, "", force); err != nil {
-		return err
-	}
-
-	log.Infof("Upgrading scenarios")
-	if err := hub.UpgradeConfig(cwhub.SCENARIOS, "", force); err != nil {
-		return err
-	}
-
-	log.Infof("Upgrading postoverflows")
-	if err := hub.UpgradeConfig(cwhub.POSTOVERFLOWS, "", force); err != nil {
-		return err
+		updated := 0
+		log.Infof("Upgrading %s", itemType)
+		for _, item := range items {
+			didUpdate, err := hub.UpgradeItem(itemType, item.Name, force)
+			if err != nil {
+				return err
+			}
+			if didUpdate {
+				updated++
+			}
+		}
+		log.Infof("Upgraded %d %s", updated, itemType)
 	}
 
 	return nil
@@ -185,8 +186,6 @@ Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if 
 			if csConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
-
-			cwhub.SetHubBranch()
 
 			return nil
 		},

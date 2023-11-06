@@ -10,7 +10,6 @@ import (
 	goccyyaml "github.com/goccy/go-yaml"
 	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
@@ -46,17 +45,10 @@ func decodeSetup(input []byte, fancyErrors bool) (Setup, error) {
 }
 
 // InstallHubItems installs the objects recommended in a setup file.
-func InstallHubItems(csConfig *csconfig.Config, input []byte, dryRun bool) error {
+func InstallHubItems(hub *cwhub.Hub, input []byte, dryRun bool) error {
 	setupEnvelope, err := decodeSetup(input, false)
 	if err != nil {
 		return err
-	}
-
-	cwhub.SetHubBranch()
-
-	hub, err := cwhub.InitHub(csConfig.Hub)
-	if err != nil {
-		return fmt.Errorf("getting hub index: %w", err)
 	}
 
 	for _, setupItem := range setupEnvelope.Setup {

@@ -22,7 +22,7 @@ func Copy(src string, dst string) error {
 		return err
 	}
 
-	err = os.WriteFile(dst, content, 0644)
+	err = os.WriteFile(dst, content, 0o644)
 	if err != nil {
 		return err
 	}

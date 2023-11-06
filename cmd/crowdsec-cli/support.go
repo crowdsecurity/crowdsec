@@ -128,10 +128,10 @@ func collectOSInfo() ([]byte, error) {
 	return w.Bytes(), nil
 }
 
-func collectHubItems(itemType string) []byte {
+func collectHubItems(hub *cwhub.Hub, itemType string) []byte {
 	out := bytes.NewBuffer(nil)
 	log.Infof("Collecting %s list", itemType)
-	if err := ListItems(out, []string{itemType}, []string{}, false, true, false); err != nil {
+	if err := ListItems(hub, out, []string{itemType}, []string{}, false, true, false); err != nil {
 		log.Warnf("could not collect %s list: %s", itemType, err)
 	}
 	return out.Bytes()
@@ -293,7 +293,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				skipAgent = true
 			}
 
-			hub, err := require.Hub(csConfig)
+			hub, err := require.Hub(csConfig, nil)
 			if err != nil {
 				log.Warn("Could not init hub, running on LAPI ? Hub related information will not be collected")
 				skipHub = true
@@ -332,10 +332,10 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			infos[SUPPORT_CROWDSEC_CONFIG_PATH] = collectCrowdsecConfig()
 
 			if !skipHub {
-				infos[SUPPORT_PARSERS_PATH] = collectHubItems(cwhub.PARSERS)
-				infos[SUPPORT_SCENARIOS_PATH] = collectHubItems(cwhub.SCENARIOS)
-				infos[SUPPORT_POSTOVERFLOWS_PATH] = collectHubItems(cwhub.POSTOVERFLOWS)
-				infos[SUPPORT_COLLECTIONS_PATH] = collectHubItems(cwhub.COLLECTIONS)
+				infos[SUPPORT_PARSERS_PATH] = collectHubItems(hub, cwhub.PARSERS)
+				infos[SUPPORT_SCENARIOS_PATH] = collectHubItems(hub, cwhub.SCENARIOS)
+				infos[SUPPORT_POSTOVERFLOWS_PATH] = collectHubItems(hub, cwhub.POSTOVERFLOWS)
+				infos[SUPPORT_COLLECTIONS_PATH] = collectHubItems(hub, cwhub.COLLECTIONS)
 			}
 
 			if !skipDB {

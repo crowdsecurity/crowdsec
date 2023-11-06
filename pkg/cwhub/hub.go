@@ -2,7 +2,9 @@ package cwhub
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -10,37 +12,22 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
-const (
-	HubIndexFile = ".index.json"
-
-	// managed item types
-	COLLECTIONS   = "collections"
-	PARSERS       = "parsers"
-	POSTOVERFLOWS = "postoverflows"
-	SCENARIOS     = "scenarios"
-	WAAP_RULES    = "waap-rules"
-	WAAP_CONFIGS  = "waap-configs"
-)
-
-var (
-	// XXX: The order is important, as it is used to range over sub-items in collections
-	ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, WAAP_RULES, WAAP_CONFIGS, COLLECTIONS}
-)
-
-type HubItems map[string]map[string]Item
-
-// Hub represents the runtime status of the hub (parsed items, etc.)
 type Hub struct {
 	Items          HubItems
-	cfg            *csconfig.HubCfg
+	local          *csconfig.LocalHubCfg
+	remote         *RemoteHubCfg
 	skippedLocal   int
 	skippedTainted int
 }
 
-var theHub *Hub
+var (
+	theHub           *Hub
+	ErrIndexNotFound = fmt.Errorf("index not found")
+)
 
 // GetHub returns the hub singleton
 // it returns an error if it's not initialized to avoid nil dereference
+// XXX: convenience function that we should get rid of at some point
 func GetHub() (*Hub, error) {
 	if theHub == nil {
 		return nil, fmt.Errorf("hub not initialized")
@@ -49,36 +36,54 @@ func GetHub() (*Hub, error) {
 	return theHub, nil
 }
 
-func (h Hub) GetDataDir() string {
-	return h.cfg.InstallDataDir
+func (h *Hub) GetDataDir() string {
+	return h.local.InstallDataDir
 }
 
-// displaySummary prints a total count of the hub items
-func (h Hub) displaySummary() {
-	msg := "Loaded: "
-	for itemType := range h.Items {
-		msg += fmt.Sprintf("%d %s, ", len(h.Items[itemType]), itemType)
+// NewHub returns a new Hub instance with local and (optionally) remote configuration, and syncs the local state
+// It also downloads the index if downloadIndex is true
+func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, downloadIndex bool) (*Hub, error) {
+	if local == nil {
+		return nil, fmt.Errorf("no hub configuration found")
 	}
-	log.Info(strings.Trim(msg, ", "))
 
-	if h.skippedLocal > 0 || h.skippedTainted > 0 {
-		log.Infof("unmanaged items: %d local, %d tainted", h.skippedLocal, h.skippedTainted)
+	if downloadIndex {
+		if err := remote.DownloadIndex(local.HubIndexFile); err != nil {
+			return nil, err
+		}
 	}
-}
 
-// DisplaySummary prints a total count of the hub items.
-// It is a wrapper around HubIndex.displaySummary() to avoid exporting the hub singleton
-// XXX: to be removed later
-func DisplaySummary() error {
-	hub, err := GetHub()
+	log.Debugf("loading hub idx %s", local.HubIndexFile)
+
+	bidx, err := os.ReadFile(local.HubIndexFile)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("unable to read index file: %w", err)
 	}
-	hub.displaySummary()
-	return nil
+
+	ret, err := ParseIndex(bidx)
+	if err != nil {
+		if !errors.Is(err, ErrMissingReference) {
+			return nil, fmt.Errorf("failed to load index: %w", err)
+		}
+
+		// XXX: why the error check if we bail out anyway?
+		return nil, err
+	}
+
+	theHub = &Hub{
+		Items:  ret,
+		local:  local,
+		remote: remote,
+	}
+
+	if _, err = theHub.LocalSync(); err != nil {
+		return nil, fmt.Errorf("failed to sync hub index: %w", err)
+	}
+
+	return theHub, nil
 }
 
-// ParseIndex takes the content of a .index.json file and returns the map of associated parsers/scenarios/collections
+// ParseIndex takes the content of an index file and returns the map of associated parsers/scenarios/collections
 func ParseIndex(buff []byte) (HubItems, error) {
 	var (
 		RawIndex     HubItems
@@ -108,13 +113,10 @@ func ParseIndex(buff []byte) (HubItems, error) {
 
 			// if it's a collection, check its sub-items are present
 			// XXX should be done later
-			for idx, ptr := range [][]string{item.Parsers, item.PostOverflows, item.Scenarios, item.WaapRules, item.WaapConfigs, item.Collections} {
-				ptrtype := ItemTypes[idx]
-				for _, p := range ptr {
-					if _, ok := RawIndex[ptrtype][p]; !ok {
-						log.Errorf("Referred %s %s in collection %s doesn't exist.", ptrtype, p, item.Name)
-						missingItems = append(missingItems, p)
-					}
+			for _, sub := range item.SubItems() {
+				if _, ok := RawIndex[sub.Type][sub.Name]; !ok {
+					log.Errorf("Referred %s %s in collection %s doesn't exist.", sub.Type, sub.Name, item.Name)
+					missingItems = append(missingItems, sub.Name)
 				}
 			}
 		}
@@ -125,4 +127,38 @@ func ParseIndex(buff []byte) (HubItems, error) {
 	}
 
 	return RawIndex, nil
+}
+
+// ItemStats returns total counts of the hub items
+func (h *Hub) ItemStats() []string {
+	loaded := ""
+
+	for _, itemType := range ItemTypes {
+		// ensure the order is always the same
+		if h.Items[itemType] == nil {
+			continue
+		}
+
+		if len(h.Items[itemType]) == 0 {
+			continue
+		}
+
+		loaded += fmt.Sprintf("%d %s, ", len(h.Items[itemType]), itemType)
+	}
+
+	loaded = strings.Trim(loaded, ", ")
+	if loaded == "" {
+		// empty hub
+		loaded = "0 items"
+	}
+
+	ret := []string{
+		fmt.Sprintf("Loaded: %s", loaded),
+	}
+
+	if h.skippedLocal > 0 || h.skippedTainted > 0 {
+		ret = append(ret, fmt.Sprintf("Unmanaged items: %d local, %d tainted", h.skippedLocal, h.skippedTainted))
+	}
+
+	return ret
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
+// XXX: this should not need hub?
 func ShowMetrics(hub *cwhub.Hub, hubItem *cwhub.Item) {
 	switch hubItem.Type {
 	case cwhub.PARSERS:

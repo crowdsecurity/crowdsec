@@ -23,13 +23,13 @@ import (
 func initCrowdsec(cConfig *csconfig.Config) (*parser.Parsers, error) {
 	var err error
 
-	hub, err := cwhub.InitHub(cConfig.Hub)
+	hub, err := cwhub.NewHub(cConfig.Hub, nil, false)
 	if err != nil {
 		return nil, fmt.Errorf("while loading hub index: %w", err)
 	}
 
 	// Start loading configs
-	csParsers := parser.NewParsers()
+	csParsers := parser.NewParsers(hub)
 	if csParsers, err = parser.LoadParsers(cConfig, csParsers); err != nil {
 		return nil, fmt.Errorf("while loading parsers: %w", err)
 	}

@@ -1,9 +1,6 @@
 package main
 
 import (
-	"fmt"
-
-	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -25,7 +22,7 @@ cscli waap-rules remove crowdsecurity/crs
 		Aliases:           []string{"waap-rule"},
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if _, err := require.Hub(csConfig); err != nil {
+			if _, err := require.Hub(csConfig, require.RemoteHub(csConfig)); err != nil {
 				return err
 			}
 
@@ -48,49 +45,6 @@ cscli waap-rules remove crowdsecurity/crs
 	return cmdWaapRules
 }
 
-func runWaapRulesInstall(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
-
-	downloadOnly, err := flags.GetBool("download-only")
-	if err != nil {
-		return err
-	}
-
-	force, err := flags.GetBool("force")
-	if err != nil {
-		return err
-	}
-
-	ignoreError, err := flags.GetBool("ignore")
-	if err != nil {
-		return err
-	}
-
-	hub, err := cwhub.GetHub()
-	if err != nil {
-		return err
-	}
-
-	for _, name := range args {
-		t := hub.GetItem(cwhub.WAAP_RULES, name)
-		if t == nil {
-			nearestItem, score := GetDistance(cwhub.WAAP_RULES, name)
-			Suggest(cwhub.WAAP_RULES, name, nearestItem.Name, score, ignoreError)
-
-			continue
-		}
-
-		if err := hub.InstallItem(name, cwhub.WAAP_RULES, force, downloadOnly); err != nil {
-			if !ignoreError {
-				return fmt.Errorf("error while installing '%s': %w", name, err)
-			}
-			log.Errorf("Error while installing '%s': %s", name, err)
-		}
-	}
-
-	return nil
-}
-
 func NewCmdWaapRulesInstall() *cobra.Command {
 	cmdWaapRulesInstall := &cobra.Command{
 		Use:               "install <waap-rule>...",
@@ -102,7 +56,7 @@ func NewCmdWaapRulesInstall() *cobra.Command {
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compAllItems(cwhub.WAAP_RULES, args, toComplete)
 		},
-		RunE: runWaapRulesInstall,
+		RunE: itemsInstallRunner(hubItemTypes[cwhub.WAAP_RULES]),
 	}
 
 	flags := cmdWaapRulesInstall.Flags()
@@ -111,52 +65,6 @@ func NewCmdWaapRulesInstall() *cobra.Command {
 	flags.Bool("ignore", false, "Ignore errors when installing multiple waap rules")
 
 	return cmdWaapRulesInstall
-}
-
-func runWaapRulesRemove(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
-
-	purge, err := flags.GetBool("purge")
-	if err != nil {
-		return err
-	}
-
-	force, err := flags.GetBool("force")
-	if err != nil {
-		return err
-	}
-
-	all, err := flags.GetBool("all")
-	if err != nil {
-		return err
-	}
-
-	hub, err := cwhub.GetHub()
-	if err != nil {
-		return err
-	}
-
-	if all {
-		err := hub.RemoveMany(cwhub.WAAP_RULES, "", all, purge, force)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}
-
-	if len(args) == 0 {
-		return fmt.Errorf("specify at least one waap rule to remove or '--all'")
-	}
-
-	for _, name := range args {
-		err := hub.RemoveMany(cwhub.WAAP_RULES, name, all, purge, force)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func NewCmdWaapRulesRemove() *cobra.Command {
@@ -170,7 +78,7 @@ func NewCmdWaapRulesRemove() *cobra.Command {
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cwhub.WAAP_RULES, args, toComplete)
 		},
-		RunE: runWaapRulesRemove,
+		RunE: itemsRemoveRunner(hubItemTypes[cwhub.WAAP_RULES]),
 	}
 
 	flags := cmdWaapRulesRemove.Flags()
@@ -179,44 +87,6 @@ func NewCmdWaapRulesRemove() *cobra.Command {
 	flags.Bool("all", false, "Remove all the waap rules")
 
 	return cmdWaapRulesRemove
-}
-
-func runWaapRulesUpgrade(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
-
-	force, err := flags.GetBool("force")
-	if err != nil {
-		return err
-	}
-
-	all, err := flags.GetBool("all")
-	if err != nil {
-		return err
-	}
-
-	hub, err := cwhub.GetHub()
-	if err != nil {
-		return err
-	}
-
-	if all {
-		if err := hub.UpgradeConfig(cwhub.WAAP_RULES, "", force); err != nil {
-			return err
-		}
-		return nil
-	}
-
-	if len(args) == 0 {
-		return fmt.Errorf("specify at least one waap rule to upgrade or '--all'")
-	}
-
-	for _, name := range args {
-		if err := hub.UpgradeConfig(cwhub.WAAP_RULES, name, force); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func NewCmdWaapRulesUpgrade() *cobra.Command {
@@ -229,7 +99,7 @@ func NewCmdWaapRulesUpgrade() *cobra.Command {
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cwhub.WAAP_RULES, args, toComplete)
 		},
-		RunE: runWaapRulesUpgrade,
+		RunE: itemsUpgradeRunner(hubItemTypes[cwhub.WAAP_RULES]),
 	}
 
 	flags := cmdWaapRulesUpgrade.Flags()
@@ -239,33 +109,8 @@ func NewCmdWaapRulesUpgrade() *cobra.Command {
 	return cmdWaapRulesUpgrade
 }
 
-func runWaapRulesInspect(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
-
-	url, err := flags.GetString("url")
-	if err != nil {
-		return err
-	}
-
-	if url != "" {
-		csConfig.Cscli.PrometheusUrl = url
-	}
-
-	noMetrics, err := flags.GetBool("no-metrics")
-	if err != nil {
-		return err
-	}
-
-	for _, name := range args {
-		if err = InspectItem(name, cwhub.WAAP_RULES, noMetrics); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func NewCmdWaapRulesInspect() *cobra.Command {
+	//FIXME; show the "compiled" rule
 	cmdWaapRulesInspect := &cobra.Command{
 		Use:               "inspect <waap-rule>",
 		Short:             "Inspect a waap rule",
@@ -276,7 +121,7 @@ func NewCmdWaapRulesInspect() *cobra.Command {
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cwhub.WAAP_RULES, args, toComplete)
 		},
-		RunE: runWaapRulesInspect,
+		RunE: itemsInspectRunner(hubItemTypes[cwhub.WAAP_RULES]),
 	}
 
 	flags := cmdWaapRulesInspect.Flags()
@@ -284,21 +129,6 @@ func NewCmdWaapRulesInspect() *cobra.Command {
 	flags.Bool("no-metrics", false, "Don't show metrics (when cscli.output=human)")
 
 	return cmdWaapRulesInspect
-}
-
-func runWaapRulesList(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
-
-	all, err := flags.GetBool("all")
-	if err != nil {
-		return err
-	}
-
-	if err = ListItems(color.Output, []string{cwhub.WAAP_RULES}, args, false, true, all); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func NewCmdWaapRulesList() *cobra.Command {
@@ -310,7 +140,7 @@ func NewCmdWaapRulesList() *cobra.Command {
 cscli waap-rules list -a
 cscli waap-rules list crowdsecurity/crs`,
 		DisableAutoGenTag: true,
-		RunE:              runWaapRulesList,
+		RunE:              itemsListRunner(hubItemTypes[cwhub.WAAP_RULES]),
 	}
 
 	flags := cmdWaapRulesList.Flags()
