@@ -132,7 +132,7 @@ teardown() {
 
     # autocorrect
     rune -1 cscli postoverflows install crowdsecurity/rdnf
-    assert_stderr --partial "can't find 'crowdsecurity/rdnf' in postoverflows, did you mean crowdsecurity/rdns?"
+    assert_stderr --partial "can't find 'crowdsecurity/rdnf' in postoverflows, did you mean 'crowdsecurity/rdns'?"
 
     # install multiple
     rune -0 cscli postoverflows install crowdsecurity/rdns crowdsecurity/cdn-whitelist

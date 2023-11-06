@@ -98,14 +98,16 @@ func ParseIndex(buff []byte) (HubItems, error) {
 
 		for name, item := range RawIndex[itemType] {
 			item.Name = name
+
+			// if the item has no (redundant) author, take it from the json key
+			if item.Author == "" && strings.Contains(name, "/") {
+				item.Author = strings.Split(name, "/")[0]
+			}
+
 			item.Type = itemType
 			x := strings.Split(item.RemotePath, "/")
 			item.FileName = x[len(x)-1]
 			RawIndex[itemType][name] = item
-
-			if itemType != COLLECTIONS {
-				continue
-			}
 
 			// if it's a collection, check its sub-items are present
 			// XXX should be done later
@@ -130,11 +132,6 @@ func (h *Hub) ItemStats() []string {
 	loaded := ""
 
 	for _, itemType := range ItemTypes {
-		// ensure the order is always the same
-		if h.Items[itemType] == nil {
-			continue
-		}
-
 		if len(h.Items[itemType]) == 0 {
 			continue
 		}

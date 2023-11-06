@@ -133,7 +133,7 @@ teardown() {
 
     # autocorrect
     rune -1 cscli scenarios install crowdsecurity/ssh-tf
-    assert_stderr --partial "can't find 'crowdsecurity/ssh-tf' in scenarios, did you mean crowdsecurity/ssh-bf?"
+    assert_stderr --partial "can't find 'crowdsecurity/ssh-tf' in scenarios, did you mean 'crowdsecurity/ssh-bf'?"
 
     # install multiple
     rune -0 cscli scenarios install crowdsecurity/ssh-bf crowdsecurity/telnet-bf

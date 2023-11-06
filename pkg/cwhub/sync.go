@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
+	"slices"
 )
 
 func isYAMLFileName(path string) bool {
@@ -255,7 +256,6 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 
 		for _, version := range versions {
 			if item.Versions[version].Digest != sha {
-				// log.Infof("matching filenames, wrong hash %s != %s -- %s", sha, val.Digest, spew.Sdump(v))
 				continue
 			}
 
@@ -365,15 +365,7 @@ func (h *Hub) CollectDepsCheck(v *Item) error {
 			return fmt.Errorf("outdated %s %s", sub.Type, sub.Name)
 		}
 
-		skip := false
-
-		for idx := range subItem.BelongsToCollections {
-			if subItem.BelongsToCollections[idx] == v.Name {
-				skip = true
-			}
-		}
-
-		if !skip {
+		if !slices.Contains(subItem.BelongsToCollections, v.Name) {
 			subItem.BelongsToCollections = append(subItem.BelongsToCollections, v.Name)
 		}
 
