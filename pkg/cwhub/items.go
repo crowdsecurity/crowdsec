@@ -16,7 +16,7 @@ const (
 	SCENARIOS     = "scenarios"
 )
 
-// XXX: The order is important, as it is used to range over sub-items in collections
+// The order is important, as it is used to range over sub-items in collections
 var ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, COLLECTIONS}
 
 type HubItems map[string]map[string]Item

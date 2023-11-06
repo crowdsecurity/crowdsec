@@ -256,7 +256,6 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 
 		for _, version := range versions {
 			if item.Versions[version].Digest != sha {
-				// log.Infof("matching filenames, wrong hash %s != %s -- %s", sha, val.Digest, spew.Sdump(v))
 				continue
 			}
 

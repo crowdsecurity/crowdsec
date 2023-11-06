@@ -12,6 +12,7 @@ import (
 
 // EnableItem creates a symlink between actual config file at hub.HubDir and hub.ConfigDir
 // Handles collections recursively
+// XXX: called from config_restore otherwise no need to export
 func (h *Hub) EnableItem(target *Item) error {
 	parentDir := filepath.Clean(h.local.InstallDir + "/" + target.Type + "/" + target.Stage + "/")
 
