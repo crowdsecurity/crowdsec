@@ -2,7 +2,6 @@ package cwhub
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -20,10 +19,7 @@ type Hub struct {
 	skippedTainted int
 }
 
-var (
-	theHub           *Hub
-	ErrIndexNotFound = fmt.Errorf("index not found")
-)
+var theHub *Hub
 
 // GetHub returns the hub singleton
 // it returns an error if it's not initialized to avoid nil dereference
@@ -56,20 +52,13 @@ func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, downloadIndex boo
 		return nil, fmt.Errorf("unable to read index file: %w", err)
 	}
 
-	ret, err := ParseIndex(bidx)
-	if err != nil {
-		if !errors.Is(err, ErrMissingReference) {
-			return nil, fmt.Errorf("failed to load index: %w", err)
-		}
-
-		// XXX: why the error check if we bail out anyway?
-		return nil, err
-	}
-
 	theHub = &Hub{
-		Items:  ret,
 		local:  local,
 		remote: remote,
+	}
+
+	if err := theHub.ParseIndex(bidx); err != nil {
+		return nil, fmt.Errorf("failed to load index: %w", err)
 	}
 
 	if _, err = theHub.LocalSync(); err != nil {
@@ -79,24 +68,19 @@ func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, downloadIndex boo
 	return theHub, nil
 }
 
-// ParseIndex takes the content of an index file and returns the map of associated parsers/scenarios/collections
-func ParseIndex(buff []byte) (HubItems, error) {
-	var (
-		RawIndex     HubItems
-		missingItems []string
-	)
-
-	if err := json.Unmarshal(buff, &RawIndex); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal index: %w", err)
+// ParseIndex takes the content of an index file and fills the map of associated parsers/scenarios/collections
+func (h *Hub) ParseIndex(buff []byte) error {
+	if err := json.Unmarshal(buff, &h.Items); err != nil {
+		return fmt.Errorf("failed to unmarshal index: %w", err)
 	}
 
 	log.Debugf("%d item types in hub index", len(ItemTypes))
 
 	// Iterate over the different types to complete the struct
 	for _, itemType := range ItemTypes {
-		log.Tracef("%s: %d items", itemType, len(RawIndex[itemType]))
+		log.Tracef("%s: %d items", itemType, len(h.Items[itemType]))
 
-		for name, item := range RawIndex[itemType] {
+		for name, item := range h.Items[itemType] {
 			item.Name = name
 
 			// if the item has no (redundant) author, take it from the json key
@@ -107,24 +91,19 @@ func ParseIndex(buff []byte) (HubItems, error) {
 			item.Type = itemType
 			x := strings.Split(item.RemotePath, "/")
 			item.FileName = x[len(x)-1]
-			RawIndex[itemType][name] = item
+			h.Items[itemType][name] = item
 
 			// if it's a collection, check its sub-items are present
 			// XXX should be done later
 			for _, sub := range item.SubItems() {
-				if _, ok := RawIndex[sub.Type][sub.Name]; !ok {
+				if _, ok := h.Items[sub.Type][sub.Name]; !ok {
 					log.Errorf("Referred %s %s in collection %s doesn't exist.", sub.Type, sub.Name, item.Name)
-					missingItems = append(missingItems, sub.Name)
 				}
 			}
 		}
 	}
 
-	if len(missingItems) > 0 {
-		return RawIndex, fmt.Errorf("%q: %w", missingItems, ErrMissingReference)
-	}
-
-	return RawIndex, nil
+	return nil
 }
 
 // ItemStats returns total counts of the hub items

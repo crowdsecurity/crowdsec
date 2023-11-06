@@ -234,6 +234,7 @@ func (h *Hub) AddItem(item Item) error {
 		}
 	}
 
+	// XXX: can this happen?
 	return fmt.Errorf("ItemType %s is unknown", item.Type)
 }
 

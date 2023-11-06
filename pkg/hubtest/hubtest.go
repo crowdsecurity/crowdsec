@@ -61,9 +61,10 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest,
 		return HubTest{}, fmt.Errorf("unable to read index file: %s", err)
 	}
 
+	hub := &cwhub.Hub{}
+
 	// load hub index
-	hubIndex, err := cwhub.ParseIndex(bidx)
-	if err != nil {
+	if err = hub.ParseIndex(bidx); err != nil {
 		return HubTest{}, fmt.Errorf("unable to load hub index file: %s", err)
 	}
 
@@ -80,7 +81,7 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest,
 		TemplateConfigPath:     templateConfigFilePath,
 		TemplateProfilePath:    templateProfilePath,
 		TemplateSimulationPath: templateSimulationPath,
-		HubIndex:               &cwhub.Hub{Items: hubIndex},
+		HubIndex:               hub,
 	}, nil
 }
 
