@@ -429,6 +429,10 @@ func (h *Hub) SyncDir(dir string) ([]string, error) {
 			continue
 		}
 
+		// XXX: tainted scenario and tainted collection give two very different messages in "cscli hub list"
+		// XXX: INFO[07-11-2023 23:12:49] dependency of crowdsecurity/sshd: tainted scenarios crowdsecurity/ssh-bf, tainted 
+		// XXX: INFO[07-11-2023 23:12:49] update for collection crowdsecurity/linux available (currently:?, latest:0.2)
+
 		vs := item.versionStatus()
 		switch vs {
 		case 0: // latest

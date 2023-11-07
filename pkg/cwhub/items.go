@@ -178,8 +178,13 @@ func (i *Item) Status() (string, emoji.Emoji) {
 
 // versionStatus: semver requires 'v' prefix
 func (i *Item) versionStatus() int {
-	// version strings are already validated while syncing, ignore errors
-	local, _ := semver.NewVersion(i.LocalVersion)
+	local, err := semver.NewVersion(i.LocalVersion)
+	if err != nil {
+		// invalid, tainted
+		return +1
+	}
+
+	// hub versions are already validated while syncing, ignore errors
 	latest, _ := semver.NewVersion(i.Version)
 
 	if local.LessThan(latest) {
