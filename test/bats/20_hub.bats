@@ -62,6 +62,14 @@ teardown() {
     assert_output --partial 'crowdsecurity/linux'
 }
 
+@test "missing reference in hub index" {
+    new_hub=$(jq <"$HUB_DIR/.index.json" 'del(.parsers."crowdsecurity/smb-logs") | del (.scenarios."crowdsecurity/mysql-bf")')
+    echo "$new_hub" >"$HUB_DIR/.index.json"
+    rune -0 cscli hub list --error
+    assert_stderr --partial "Referred parsers crowdsecurity/smb-logs in collection crowdsecurity/smb doesn't exist."
+    assert_stderr --partial "Referred scenarios crowdsecurity/mysql-bf in collection crowdsecurity/mysql doesn't exist."
+}
+
 @test "cscli hub update" {
     #XXX: todo
     :

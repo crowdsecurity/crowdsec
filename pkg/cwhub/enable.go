@@ -123,6 +123,7 @@ func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
 
 	// disable sub-items if any - it's a collection
 	for _, sub := range target.SubItems() {
+		// XXX: we do this already when syncing, do we really need to do consistency checks here and there?
 		val, ok := h.Items[sub.Type][sub.Name]
 		if !ok {
 			log.Errorf("Referred %s %s in collection %s doesn't exist.", sub.Type, sub.Name, target.Name)
