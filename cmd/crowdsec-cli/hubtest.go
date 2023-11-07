@@ -429,8 +429,8 @@ func NewHubTestCoverageCmd() *cobra.Command {
 				return fmt.Errorf("unable to load all tests: %+v", err)
 			}
 			var err error
-			scenarioCoverage := []hubtest.ScenarioCoverage{}
-			parserCoverage := []hubtest.ParserCoverage{}
+			scenarioCoverage := []hubtest.Coverage{}
+			parserCoverage := []hubtest.Coverage{}
 			scenarioCoveragePercent := 0
 			parserCoveragePercent := 0
 

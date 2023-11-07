@@ -41,7 +41,7 @@ func hubTestListTable(out io.Writer, tests []*hubtest.HubTestItem) {
 	t.Render()
 }
 
-func hubTestParserCoverageTable(out io.Writer, coverage []hubtest.ParserCoverage) {
+func hubTestParserCoverageTable(out io.Writer, coverage []hubtest.Coverage) {
 	t := newLightTable(out)
 	t.SetHeaders("Parser", "Status", "Number of tests")
 	t.SetHeaderAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
@@ -55,13 +55,13 @@ func hubTestParserCoverageTable(out io.Writer, coverage []hubtest.ParserCoverage
 			status = emoji.GreenCircle.String()
 			parserTested++
 		}
-		t.AddRow(test.Parser, status, fmt.Sprintf("%d times (across %d tests)", test.TestsCount, len(test.PresentIn)))
+		t.AddRow(test.Name, status, fmt.Sprintf("%d times (across %d tests)", test.TestsCount, len(test.PresentIn)))
 	}
 
 	t.Render()
 }
 
-func hubTestScenarioCoverageTable(out io.Writer, coverage []hubtest.ScenarioCoverage) {
+func hubTestScenarioCoverageTable(out io.Writer, coverage []hubtest.Coverage) {
 	t := newLightTable(out)
 	t.SetHeaders("Scenario", "Status", "Number of tests")
 	t.SetHeaderAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
@@ -75,7 +75,7 @@ func hubTestScenarioCoverageTable(out io.Writer, coverage []hubtest.ScenarioCove
 			status = emoji.GreenCircle.String()
 			parserTested++
 		}
-		t.AddRow(test.Scenario, status, fmt.Sprintf("%d times (across %d tests)", test.TestsCount, len(test.PresentIn)))
+		t.AddRow(test.Name, status, fmt.Sprintf("%d times (across %d tests)", test.TestsCount, len(test.PresentIn)))
 	}
 
 	t.Render()

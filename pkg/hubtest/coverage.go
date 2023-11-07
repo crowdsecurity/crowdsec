@@ -13,30 +13,24 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-type ParserCoverage struct {
-	Parser     string
+type Coverage struct {
+	Name       string
 	TestsCount int
 	PresentIn  map[string]bool //poorman's set
 }
 
-type ScenarioCoverage struct {
-	Scenario   string
-	TestsCount int
-	PresentIn  map[string]bool
-}
-
-func (h *HubTest) GetParsersCoverage() ([]ParserCoverage, error) {
+func (h *HubTest) GetParsersCoverage() ([]Coverage, error) {
 	if _, ok := h.HubIndex.Items[cwhub.PARSERS]; !ok {
 		return nil, fmt.Errorf("no parsers in hub index")
 	}
 
 	// populate from hub, iterate in alphabetical order
 	pkeys := sortedMapKeys(h.HubIndex.Items[cwhub.PARSERS])
-	coverage := make([]ParserCoverage, len(pkeys))
+	coverage := make([]Coverage, len(pkeys))
 
 	for i, name := range pkeys {
-		coverage[i] = ParserCoverage{
-			Parser:     name,
+		coverage[i] = Coverage{
+			Name:       name,
 			TestsCount: 0,
 			PresentIn:  make(map[string]bool),
 		}
@@ -70,14 +64,14 @@ func (h *HubTest) GetParsersCoverage() ([]ParserCoverage, error) {
 			capturedParser := match[sidx]
 
 			for idx, pcover := range coverage {
-				if pcover.Parser == capturedParser {
+				if pcover.Name == capturedParser {
 					coverage[idx].TestsCount++
 					coverage[idx].PresentIn[assert] = true
 
 					continue
 				}
 
-				parserNameSplit := strings.Split(pcover.Parser, "/")
+				parserNameSplit := strings.Split(pcover.Name, "/")
 				parserNameOnly := parserNameSplit[len(parserNameSplit)-1]
 
 				if parserNameOnly == capturedParser {
@@ -112,18 +106,18 @@ func (h *HubTest) GetParsersCoverage() ([]ParserCoverage, error) {
 	return coverage, nil
 }
 
-func (h *HubTest) GetScenariosCoverage() ([]ScenarioCoverage, error) {
+func (h *HubTest) GetScenariosCoverage() ([]Coverage, error) {
 	if _, ok := h.HubIndex.Items[cwhub.SCENARIOS]; !ok {
 		return nil, fmt.Errorf("no scenarios in hub index")
 	}
 
 	// populate from hub, iterate in alphabetical order
 	pkeys := sortedMapKeys(h.HubIndex.Items[cwhub.SCENARIOS])
-	coverage := make([]ScenarioCoverage, len(pkeys))
+	coverage := make([]Coverage, len(pkeys))
 
 	for i, name := range pkeys {
-		coverage[i] = ScenarioCoverage{
-			Scenario:   name,
+		coverage[i] = Coverage{
+			Name:       name,
 			TestsCount: 0,
 			PresentIn:  make(map[string]bool),
 		}
@@ -157,14 +151,14 @@ func (h *HubTest) GetScenariosCoverage() ([]ScenarioCoverage, error) {
 			scannerName := match[sidx]
 
 			for idx, pcover := range coverage {
-				if pcover.Scenario == scannerName {
+				if pcover.Name == scannerName {
 					coverage[idx].TestsCount++
 					coverage[idx].PresentIn[assert] = true
 
 					continue
 				}
 
-				scenarioNameSplit := strings.Split(pcover.Scenario, "/")
+				scenarioNameSplit := strings.Split(pcover.Name, "/")
 				scenarioNameOnly := scenarioNameSplit[len(scenarioNameSplit)-1]
 
 				if scenarioNameOnly == scannerName {
@@ -174,7 +168,7 @@ func (h *HubTest) GetScenariosCoverage() ([]ScenarioCoverage, error) {
 					continue
 				}
 
-				fixedProbingWord := strings.ReplaceAll(pcover.Scenario, "probbing", "probing")
+				fixedProbingWord := strings.ReplaceAll(pcover.Name, "probbing", "probing")
 				fixedProbingAssert := strings.ReplaceAll(scannerName, "probbing", "probing")
 
 				if fixedProbingWord == fixedProbingAssert {
@@ -184,7 +178,7 @@ func (h *HubTest) GetScenariosCoverage() ([]ScenarioCoverage, error) {
 					continue
 				}
 
-				if fmt.Sprintf("%s-detection", pcover.Scenario) == scannerName {
+				if fmt.Sprintf("%s-detection", pcover.Name) == scannerName {
 					coverage[idx].TestsCount++
 					coverage[idx].PresentIn[assert] = true
 
