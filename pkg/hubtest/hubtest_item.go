@@ -7,11 +7,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
 )
 
 type HubTestItemConfig struct {
@@ -87,10 +88,12 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 
 	// read test configuration file
 	configFileData := &HubTestItemConfig{}
+
 	yamlFile, err := os.ReadFile(configFilePath)
 	if err != nil {
 		log.Printf("no config file found in '%s': %v", testPath, err)
 	}
+
 	err = yaml.Unmarshal(yamlFile, configFileData)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal: %v", err)
@@ -101,6 +104,7 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 
 	scenarioAssertFilePath := filepath.Join(testPath, ScenarioAssertFileName)
 	ScenarioAssert := NewScenarioAssert(scenarioAssertFilePath)
+
 	return &HubTestItem{
 		Name:                      name,
 		Path:                      testPath,
@@ -143,12 +147,15 @@ func (t *HubTestItem) InstallHub() error {
 		if parser == "" {
 			continue
 		}
+
 		var parserDirDest string
+
 		if hubParser, ok := t.HubIndex.Items[cwhub.PARSERS][parser]; ok {
 			parserSource, err := filepath.Abs(filepath.Join(t.HubPath, hubParser.RemotePath))
 			if err != nil {
 				return fmt.Errorf("can't get absolute path of '%s': %s", parserSource, err)
 			}
+
 			parserFileName := filepath.Base(parserSource)
 
 			// runtime/hub/parsers/s00-raw/crowdsecurity/
@@ -160,6 +167,7 @@ func (t *HubTestItem) InstallHub() error {
 			if err := os.MkdirAll(hubDirParserDest, os.ModePerm); err != nil {
 				return fmt.Errorf("unable to create folder '%s': %s", hubDirParserDest, err)
 			}
+
 			if err := os.MkdirAll(parserDirDest, os.ModePerm); err != nil {
 				return fmt.Errorf("unable to create folder '%s': %s", parserDirDest, err)
 			}
@@ -227,12 +235,15 @@ func (t *HubTestItem) InstallHub() error {
 		if scenario == "" {
 			continue
 		}
+
 		var scenarioDirDest string
+
 		if hubScenario, ok := t.HubIndex.Items[cwhub.SCENARIOS][scenario]; ok {
 			scenarioSource, err := filepath.Abs(filepath.Join(t.HubPath, hubScenario.RemotePath))
 			if err != nil {
 				return fmt.Errorf("can't get absolute path to: %s", scenarioSource)
 			}
+
 			scenarioFileName := filepath.Base(scenarioSource)
 
 			// runtime/hub/scenarios/crowdsecurity/
@@ -244,6 +255,7 @@ func (t *HubTestItem) InstallHub() error {
 			if err := os.MkdirAll(hubDirScenarioDest, os.ModePerm); err != nil {
 				return fmt.Errorf("unable to create folder '%s': %s", hubDirScenarioDest, err)
 			}
+
 			if err := os.MkdirAll(scenarioDirDest, os.ModePerm); err != nil {
 				return fmt.Errorf("unable to create folder '%s': %s", scenarioDirDest, err)
 			}
@@ -296,12 +308,15 @@ func (t *HubTestItem) InstallHub() error {
 		if postoverflow == "" {
 			continue
 		}
+
 		var postoverflowDirDest string
+
 		if hubPostOverflow, ok := t.HubIndex.Items[cwhub.POSTOVERFLOWS][postoverflow]; ok {
 			postoverflowSource, err := filepath.Abs(filepath.Join(t.HubPath, hubPostOverflow.RemotePath))
 			if err != nil {
 				return fmt.Errorf("can't get absolute path of '%s': %s", postoverflowSource, err)
 			}
+
 			postoverflowFileName := filepath.Base(postoverflowSource)
 
 			// runtime/hub/postoverflows/s00-enrich/crowdsecurity/
@@ -313,6 +328,7 @@ func (t *HubTestItem) InstallHub() error {
 			if err := os.MkdirAll(hubDirPostoverflowDest, os.ModePerm); err != nil {
 				return fmt.Errorf("unable to create folder '%s': %s", hubDirPostoverflowDest, err)
 			}
+
 			if err := os.MkdirAll(postoverflowDirDest, os.ModePerm); err != nil {
 				return fmt.Errorf("unable to create folder '%s': %s", postoverflowDirDest, err)
 			}
@@ -380,10 +396,12 @@ func (t *HubTestItem) InstallHub() error {
 			Filter:  "1==1",
 			Statics: t.Config.OverrideStatics,
 		}
+
 		b, err := yaml.Marshal(n)
 		if err != nil {
 			return fmt.Errorf("unable to marshal overrides: %s", err)
 		}
+
 		tgtFilename := fmt.Sprintf("%s/parsers/s00-raw/00_overrides.yaml", t.RuntimePath)
 		if err := os.WriteFile(tgtFilename, b, os.ModePerm); err != nil {
 			return fmt.Errorf("unable to write overrides to '%s': %s", tgtFilename, err)
@@ -403,6 +421,7 @@ func (t *HubTestItem) InstallHub() error {
 			if err := hub.DownloadDataIfNeeded(item, true); err != nil {
 				return fmt.Errorf("unable to download data for parser '%s': %+v", parserName, err)
 			}
+
 			log.Debugf("parser '%s' installed successfully in runtime environment", parserName)
 		}
 	}
@@ -414,6 +433,7 @@ func (t *HubTestItem) InstallHub() error {
 			if err := hub.DownloadDataIfNeeded(item, true); err != nil {
 				return fmt.Errorf("unable to download data for parser '%s': %+v", scenarioName, err)
 			}
+
 			log.Debugf("scenario '%s' installed successfully in runtime environment", scenarioName)
 		}
 	}
@@ -425,6 +445,7 @@ func (t *HubTestItem) InstallHub() error {
 			if err := hub.DownloadDataIfNeeded(item, true); err != nil {
 				return fmt.Errorf("unable to download data for parser '%s': %+v", postoverflowName, err)
 			}
+
 			log.Debugf("postoverflow '%s' installed successfully in runtime environment", postoverflowName)
 		}
 	}
@@ -511,6 +532,7 @@ func (t *HubTestItem) Run() error {
 	if err != nil {
 		return fmt.Errorf("unable to stat log file '%s': %s", logFile, err)
 	}
+
 	if logFileStat.Size() == 0 {
 		return fmt.Errorf("log file '%s' is empty, please fill it with log", logFile)
 	}
@@ -518,6 +540,7 @@ func (t *HubTestItem) Run() error {
 	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--auto"}
 	cscliRegisterCmd := exec.Command(t.CscliPath, cmdArgs...)
 	log.Debugf("%s", cscliRegisterCmd.String())
+
 	output, err := cscliRegisterCmd.CombinedOutput()
 	if err != nil {
 		if !strings.Contains(string(output), "unable to create machine: user 'testMachine': user already exist") {
@@ -527,16 +550,20 @@ func (t *HubTestItem) Run() error {
 	}
 
 	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", t.ResultsPath, "-order-event"}
+
 	for labelKey, labelValue := range t.Config.Labels {
 		arg := fmt.Sprintf("%s:%s", labelKey, labelValue)
 		cmdArgs = append(cmdArgs, "-label", arg)
 	}
+
 	crowdsecCmd := exec.Command(t.CrowdSecPath, cmdArgs...)
 	log.Debugf("%s", crowdsecCmd.String())
 	output, err = crowdsecCmd.CombinedOutput()
+
 	if log.GetLevel() >= log.DebugLevel || err != nil {
 		fmt.Println(string(output))
 	}
+
 	if err != nil {
 		return fmt.Errorf("fail to run '%s' for test '%s': %v", crowdsecCmd.String(), t.Name, err)
 	}
@@ -553,8 +580,10 @@ func (t *HubTestItem) Run() error {
 			if err != nil {
 				return err
 			}
+
 			parserAssertFile.Close()
 		}
+
 		assertFileStat, err := os.Stat(t.ParserAssert.File)
 		if err != nil {
 			return fmt.Errorf("error while stats '%s': %s", t.ParserAssert.File, err)
@@ -565,6 +594,7 @@ func (t *HubTestItem) Run() error {
 			if err != nil {
 				return fmt.Errorf("couldn't generate assertion: %s", err)
 			}
+
 			t.ParserAssert.AutoGenAssertData = assertData
 			t.ParserAssert.AutoGenAssert = true
 		} else {
@@ -576,12 +606,15 @@ func (t *HubTestItem) Run() error {
 
 	// assert scenarios
 	nbScenario := 0
+
 	for _, scenario := range t.Config.Scenarios {
 		if scenario == "" {
 			continue
 		}
+
 		nbScenario += 1
 	}
+
 	if nbScenario > 0 {
 		_, err := os.Stat(t.ScenarioAssert.File)
 		if os.IsNotExist(err) {
@@ -589,8 +622,10 @@ func (t *HubTestItem) Run() error {
 			if err != nil {
 				return err
 			}
+
 			scenarioAssertFile.Close()
 		}
+
 		assertFileStat, err := os.Stat(t.ScenarioAssert.File)
 		if err != nil {
 			return fmt.Errorf("error while stats '%s': %s", t.ScenarioAssert.File, err)
@@ -601,6 +636,7 @@ func (t *HubTestItem) Run() error {
 			if err != nil {
 				return fmt.Errorf("couldn't generate assertion: %s", err)
 			}
+
 			t.ScenarioAssert.AutoGenAssertData = assertData
 			t.ScenarioAssert.AutoGenAssert = true
 		} else {

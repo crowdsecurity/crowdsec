@@ -36,10 +36,12 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest,
 	if err != nil {
 		return HubTest{}, fmt.Errorf("can't get absolute path of hub: %+v", err)
 	}
+
 	// we can't use hubtest without the hub
 	if _, err := os.Stat(hubPath); os.IsNotExist(err) {
 		return HubTest{}, fmt.Errorf("path to hub '%s' doesn't exist, can't run", hubPath)
 	}
+
 	HubTestPath := filepath.Join(hubPath, "./.tests/")
 
 	// we can't use hubtest without crowdsec binary
@@ -59,9 +61,9 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest,
 	hubIndexFile := filepath.Join(hubPath, ".index.json")
 
 	local := &csconfig.LocalHubCfg{
-		HubDir: hubPath,
-		HubIndexFile: hubIndexFile,
-		InstallDir: HubTestPath,
+		HubDir:         hubPath,
+		HubIndexFile:   hubIndexFile,
+		InstallDir:     HubTestPath,
 		InstallDataDir: HubTestPath,
 	}
 
@@ -89,10 +91,12 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest,
 
 func (h *HubTest) LoadTestItem(name string) (*HubTestItem, error) {
 	HubTestItem := &HubTestItem{}
+
 	testItem, err := NewTest(name, h)
 	if err != nil {
 		return HubTestItem, err
 	}
+
 	h.Tests = append(h.Tests, testItem)
 
 	return testItem, nil
@@ -111,5 +115,6 @@ func (h *HubTest) LoadAllTests() error {
 			}
 		}
 	}
+
 	return nil
 }
