@@ -200,6 +200,9 @@ func NewHubTestRunCmd() *cobra.Command {
 				}
 			}
 
+			// set timezone to avoid DST issues
+			os.Setenv("TZ", "UTC")
+
 			for _, test := range HubTest.Tests {
 				if csConfig.Cscli.Output == "human" {
 					log.Infof("Running test '%s'", test.Name)
