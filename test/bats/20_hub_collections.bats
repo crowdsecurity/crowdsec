@@ -79,26 +79,35 @@ teardown() {
     # XXX: check alphabetical order in human, json, raw
 }
 
-
 @test "cscli collections list [collection]..." {
+    # non-existent
+    rune -1 cscli collections install foo/bar
+    assert_stderr --partial "can't find 'foo/bar' in collections"
+
+    # not installed
+    rune -0 cscli collections list crowdsecurity/smb
+    assert_output --regexp 'crowdsecurity/smb.*disabled'
+
+    # install two items
     rune -0 cscli collections install crowdsecurity/sshd crowdsecurity/smb
 
-    # list one item
+    # list an installed item
     rune -0 cscli collections list crowdsecurity/sshd
-    assert_output --partial "crowdsecurity/sshd"
+    assert_output --regexp "crowdsecurity/sshd"
     refute_output --partial "crowdsecurity/smb"
 
-    # list multiple items
-    rune -0 cscli collections list crowdsecurity/sshd crowdsecurity/smb
+    # list multiple installed and non installed items
+    rune -0 cscli collections list crowdsecurity/sshd crowdsecurity/smb crowdsecurity/nginx
     assert_output --partial "crowdsecurity/sshd"
     assert_output --partial "crowdsecurity/smb"
+    assert_output --partial "crowdsecurity/nginx"
 
     rune -0 cscli collections list crowdsecurity/sshd -o json
     rune -0 jq '.collections | length' <(output)
     assert_output "1"
-    rune -0 cscli collections list crowdsecurity/sshd crowdsecurity/smb -o json
+    rune -0 cscli collections list crowdsecurity/sshd crowdsecurity/smb crowdsecurity/nginx -o json
     rune -0 jq '.collections | length' <(output)
-    assert_output "2"
+    assert_output "3"
 
     rune -0 cscli collections list crowdsecurity/sshd -o raw
     rune -0 grep -vc 'name,status,version,description' <(output)
@@ -106,14 +115,6 @@ teardown() {
     rune -0 cscli collections list crowdsecurity/sshd crowdsecurity/smb -o raw
     rune -0 grep -vc 'name,status,version,description' <(output)
     assert_output "2"
-}
-
-@test "cscli collections list [collection]... (not installed / not existing)" {
-    skip "not implemented yet"
-    # not installed
-    rune -1 cscli collections list crowdsecurity/sshd
-    # not existing
-    rune -1 cscli collections list blahblah/blahblah
 }
 
 @test "cscli collections install [collection]..." {
