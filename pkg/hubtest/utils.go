@@ -12,7 +12,9 @@ func sortedMapKeys[V any](m map[string]V) []string {
 	for k := range m {
 		keys = append(keys, k)
 	}
+
 	sort.Strings(keys)
+
 	return keys
 }
 
@@ -43,16 +45,20 @@ func checkPathNotContained(path string, subpath string) error {
 	}
 
 	current := absSubPath
+
 	for {
 		if current == absPath {
 			return fmt.Errorf("cannot copy a folder onto itself")
 		}
+
 		up := filepath.Dir(current)
 		if current == up {
 			break
 		}
+
 		current = up
 	}
+
 	return nil
 }
 

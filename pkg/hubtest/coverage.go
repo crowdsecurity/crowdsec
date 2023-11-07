@@ -5,173 +5,194 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
-	"sort"
 	"strings"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-type ParserCoverage struct {
-	Parser     string
+type Coverage struct {
+	Name       string
 	TestsCount int
 	PresentIn  map[string]bool //poorman's set
 }
 
-type ScenarioCoverage struct {
-	Scenario   string
-	TestsCount int
-	PresentIn  map[string]bool
-}
-
-func (h *HubTest) GetParsersCoverage() ([]ParserCoverage, error) {
-	var coverage []ParserCoverage
+func (h *HubTest) GetParsersCoverage() ([]Coverage, error) {
 	if _, ok := h.HubIndex.Items[cwhub.PARSERS]; !ok {
-		return coverage, fmt.Errorf("no parsers in hub index")
+		return nil, fmt.Errorf("no parsers in hub index")
 	}
-	//populate from hub, iterate in alphabetical order
-	var pkeys []string
-	for pname := range h.HubIndex.Items[cwhub.PARSERS] {
-		pkeys = append(pkeys, pname)
-	}
-	sort.Strings(pkeys)
-	for _, pname := range pkeys {
-		coverage = append(coverage, ParserCoverage{
-			Parser:     pname,
+
+	// populate from hub, iterate in alphabetical order
+	pkeys := sortedMapKeys(h.HubIndex.Items[cwhub.PARSERS])
+	coverage := make([]Coverage, len(pkeys))
+
+	for i, name := range pkeys {
+		coverage[i] = Coverage{
+			Name:       name,
 			TestsCount: 0,
 			PresentIn:  make(map[string]bool),
-		})
+		}
 	}
 
-	//parser the expressions a-la-oneagain
+	// parser the expressions a-la-oneagain
 	passerts, err := filepath.Glob(".tests/*/parser.assert")
 	if err != nil {
-		return coverage, fmt.Errorf("while find parser asserts : %s", err)
+		return nil, fmt.Errorf("while find parser asserts : %s", err)
 	}
+
 	for _, assert := range passerts {
 		file, err := os.Open(assert)
 		if err != nil {
-			return coverage, fmt.Errorf("while reading %s : %s", assert, err)
+			return nil, fmt.Errorf("while reading %s : %s", assert, err)
 		}
+
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
-			assertLine := regexp.MustCompile(`^results\["[^"]+"\]\["(?P<parser>[^"]+)"\]\[[0-9]+\]\.Evt\..*`)
 			line := scanner.Text()
 			log.Debugf("assert line : %s", line)
-			match := assertLine.FindStringSubmatch(line)
+
+			match := parserResultRE.FindStringSubmatch(line)
 			if len(match) == 0 {
 				log.Debugf("%s doesn't match", line)
 				continue
 			}
-			sidx := assertLine.SubexpIndex("parser")
+
+			sidx := parserResultRE.SubexpIndex("parser")
 			capturedParser := match[sidx]
+
 			for idx, pcover := range coverage {
-				if pcover.Parser == capturedParser {
+				if pcover.Name == capturedParser {
 					coverage[idx].TestsCount++
 					coverage[idx].PresentIn[assert] = true
+
 					continue
 				}
-				parserNameSplit := strings.Split(pcover.Parser, "/")
+
+				parserNameSplit := strings.Split(pcover.Name, "/")
 				parserNameOnly := parserNameSplit[len(parserNameSplit)-1]
+
 				if parserNameOnly == capturedParser {
 					coverage[idx].TestsCount++
 					coverage[idx].PresentIn[assert] = true
+
 					continue
 				}
+
 				capturedParserSplit := strings.Split(capturedParser, "/")
 				capturedParserName := capturedParserSplit[len(capturedParserSplit)-1]
+
 				if capturedParserName == parserNameOnly {
 					coverage[idx].TestsCount++
 					coverage[idx].PresentIn[assert] = true
+
 					continue
 				}
+
 				if capturedParserName == parserNameOnly+"-logs" {
 					coverage[idx].TestsCount++
 					coverage[idx].PresentIn[assert] = true
+
 					continue
 				}
 			}
 		}
+
 		file.Close()
 	}
+
 	return coverage, nil
 }
 
-func (h *HubTest) GetScenariosCoverage() ([]ScenarioCoverage, error) {
-	var coverage []ScenarioCoverage
+func (h *HubTest) GetScenariosCoverage() ([]Coverage, error) {
 	if _, ok := h.HubIndex.Items[cwhub.SCENARIOS]; !ok {
-		return coverage, fmt.Errorf("no scenarios in hub index")
-	}
-	//populate from hub, iterate in alphabetical order
-	var pkeys []string
-	for scenarioName := range h.HubIndex.Items[cwhub.SCENARIOS] {
-		pkeys = append(pkeys, scenarioName)
-	}
-	sort.Strings(pkeys)
-	for _, scenarioName := range pkeys {
-		coverage = append(coverage, ScenarioCoverage{
-			Scenario:   scenarioName,
-			TestsCount: 0,
-			PresentIn:  make(map[string]bool),
-		})
+		return nil, fmt.Errorf("no scenarios in hub index")
 	}
 
-	//parser the expressions a-la-oneagain
+	// populate from hub, iterate in alphabetical order
+	pkeys := sortedMapKeys(h.HubIndex.Items[cwhub.SCENARIOS])
+	coverage := make([]Coverage, len(pkeys))
+
+	for i, name := range pkeys {
+		coverage[i] = Coverage{
+			Name:       name,
+			TestsCount: 0,
+			PresentIn:  make(map[string]bool),
+		}
+	}
+
+	// parser the expressions a-la-oneagain
 	passerts, err := filepath.Glob(".tests/*/scenario.assert")
 	if err != nil {
-		return coverage, fmt.Errorf("while find scenario asserts : %s", err)
+		return nil, fmt.Errorf("while find scenario asserts : %s", err)
 	}
+
+
 	for _, assert := range passerts {
 		file, err := os.Open(assert)
 		if err != nil {
-			return coverage, fmt.Errorf("while reading %s : %s", assert, err)
+			return nil, fmt.Errorf("while reading %s : %s", assert, err)
 		}
+
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
-			assertLine := regexp.MustCompile(`^results\[[0-9]+\].Overflow.Alert.GetScenario\(\) == "(?P<scenario>[^"]+)"`)
 			line := scanner.Text()
 			log.Debugf("assert line : %s", line)
-			match := assertLine.FindStringSubmatch(line)
+			match := scenarioResultRE.FindStringSubmatch(line)
+
 			if len(match) == 0 {
 				log.Debugf("%s doesn't match", line)
 				continue
 			}
-			sidx := assertLine.SubexpIndex("scenario")
-			scanner_name := match[sidx]
+
+			sidx := scenarioResultRE.SubexpIndex("scenario")
+			scannerName := match[sidx]
+
 			for idx, pcover := range coverage {
-				if pcover.Scenario == scanner_name {
+				if pcover.Name == scannerName {
 					coverage[idx].TestsCount++
 					coverage[idx].PresentIn[assert] = true
+
 					continue
 				}
-				scenarioNameSplit := strings.Split(pcover.Scenario, "/")
+
+				scenarioNameSplit := strings.Split(pcover.Name, "/")
 				scenarioNameOnly := scenarioNameSplit[len(scenarioNameSplit)-1]
-				if scenarioNameOnly == scanner_name {
+
+				if scenarioNameOnly == scannerName {
 					coverage[idx].TestsCount++
 					coverage[idx].PresentIn[assert] = true
+
 					continue
 				}
-				fixedProbingWord := strings.ReplaceAll(pcover.Scenario, "probbing", "probing")
-				fixedProbingAssert := strings.ReplaceAll(scanner_name, "probbing", "probing")
+
+				fixedProbingWord := strings.ReplaceAll(pcover.Name, "probbing", "probing")
+				fixedProbingAssert := strings.ReplaceAll(scannerName, "probbing", "probing")
+
 				if fixedProbingWord == fixedProbingAssert {
 					coverage[idx].TestsCount++
 					coverage[idx].PresentIn[assert] = true
+
 					continue
 				}
-				if fmt.Sprintf("%s-detection", pcover.Scenario) == scanner_name {
+
+				if fmt.Sprintf("%s-detection", pcover.Name) == scannerName {
 					coverage[idx].TestsCount++
 					coverage[idx].PresentIn[assert] = true
+
 					continue
 				}
+
 				if fmt.Sprintf("%s-detection", fixedProbingWord) == fixedProbingAssert {
 					coverage[idx].TestsCount++
 					coverage[idx].PresentIn[assert] = true
+
 					continue
 				}
 			}
 		}
 		file.Close()
 	}
+
 	return coverage, nil
 }

@@ -18,9 +18,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
-var (
-	HubTest hubtest.HubTest
-)
+var HubTest hubtest.HubTest
 
 func NewHubTestCmd() *cobra.Command {
 	var hubPath string
@@ -43,6 +41,7 @@ func NewHubTestCmd() *cobra.Command {
 			return nil
 		},
 	}
+
 	cmdHubTest.PersistentFlags().StringVar(&hubPath, "hub", ".", "Path to hub folder")
 	cmdHubTest.PersistentFlags().StringVar(&crowdsecPath, "crowdsec", "crowdsec", "Path to crowdsec")
 	cmdHubTest.PersistentFlags().StringVar(&cscliPath, "cscli", "cscli", "Path to cscli")
@@ -58,7 +57,6 @@ func NewHubTestCmd() *cobra.Command {
 
 	return cmdHubTest
 }
-
 
 func NewHubTestCreateCmd() *cobra.Command {
 	parsers := []string{}
@@ -164,6 +162,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 			return nil
 		},
 	}
+
 	cmdHubTestCreate.PersistentFlags().StringVarP(&logType, "type", "t", "", "Log type of the test")
 	cmdHubTestCreate.Flags().StringSliceVarP(&parsers, "parsers", "p", parsers, "Parsers to add to test")
 	cmdHubTestCreate.Flags().StringSliceVar(&postoverflows, "postoverflows", postoverflows, "Postoverflows to add to test")
@@ -172,7 +171,6 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 
 	return cmdHubTestCreate
 }
-
 
 func NewHubTestRunCmd() *cobra.Command {
 	var noClean bool
@@ -186,7 +184,7 @@ func NewHubTestRunCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !runAll && len(args) == 0 {
 				printHelp(cmd)
-				return fmt.Errorf("Please provide test to run or --all flag")
+				return fmt.Errorf("please provide test to run or --all flag")
 			}
 
 			if runAll {
@@ -201,6 +199,9 @@ func NewHubTestRunCmd() *cobra.Command {
 					}
 				}
 			}
+
+			// set timezone to avoid DST issues
+			os.Setenv("TZ", "UTC")
 
 			for _, test := range HubTest.Tests {
 				if csConfig.Cscli.Output == "human" {
@@ -293,9 +294,11 @@ func NewHubTestRunCmd() *cobra.Command {
 					}
 				}
 			}
-			if csConfig.Cscli.Output == "human" {
+
+			switch csConfig.Cscli.Output {
+			case "human":
 				hubTestResultTable(color.Output, testResult)
-			} else if csConfig.Cscli.Output == "json" {
+			case "json":
 				jsonResult := make(map[string][]string, 0)
 				jsonResult["success"] = make([]string, 0)
 				jsonResult["fail"] = make([]string, 0)
@@ -311,6 +314,8 @@ func NewHubTestRunCmd() *cobra.Command {
 					return fmt.Errorf("unable to json test result: %s", err)
 				}
 				fmt.Println(string(jsonStr))
+			default:
+				return fmt.Errorf("only human/json output modes are supported")
 			}
 
 			if !success {
@@ -320,13 +325,13 @@ func NewHubTestRunCmd() *cobra.Command {
 			return nil
 		},
 	}
+
 	cmdHubTestRun.Flags().BoolVar(&noClean, "no-clean", false, "Don't clean runtime environment if test succeed")
 	cmdHubTestRun.Flags().BoolVar(&forceClean, "clean", false, "Clean runtime environment if test fail")
 	cmdHubTestRun.Flags().BoolVar(&runAll, "all", false, "Run all tests")
 
 	return cmdHubTestRun
 }
-
 
 func NewHubTestCleanCmd() *cobra.Command {
 	var cmdHubTestClean = &cobra.Command{
@@ -351,7 +356,6 @@ func NewHubTestCleanCmd() *cobra.Command {
 
 	return cmdHubTestClean
 }
-
 
 func NewHubTestInfoCmd() *cobra.Command {
 	var cmdHubTestInfo = &cobra.Command{
@@ -380,7 +384,6 @@ func NewHubTestInfoCmd() *cobra.Command {
 
 	return cmdHubTestInfo
 }
-
 
 func NewHubTestListCmd() *cobra.Command {
 	var cmdHubTestList = &cobra.Command{
@@ -412,7 +415,6 @@ func NewHubTestListCmd() *cobra.Command {
 	return cmdHubTestList
 }
 
-
 func NewHubTestCoverageCmd() *cobra.Command {
 	var showParserCov bool
 	var showScenarioCov bool
@@ -427,8 +429,8 @@ func NewHubTestCoverageCmd() *cobra.Command {
 				return fmt.Errorf("unable to load all tests: %+v", err)
 			}
 			var err error
-			scenarioCoverage := []hubtest.ScenarioCoverage{}
-			parserCoverage := []hubtest.ParserCoverage{}
+			scenarioCoverage := []hubtest.Coverage{}
+			parserCoverage := []hubtest.Coverage{}
 			scenarioCoveragePercent := 0
 			parserCoveragePercent := 0
 
@@ -443,7 +445,7 @@ func NewHubTestCoverageCmd() *cobra.Command {
 				parserTested := 0
 				for _, test := range parserCoverage {
 					if test.TestsCount > 0 {
-						parserTested += 1
+						parserTested++
 					}
 				}
 				parserCoveragePercent = int(math.Round((float64(parserTested) / float64(len(parserCoverage)) * 100)))
@@ -454,12 +456,14 @@ func NewHubTestCoverageCmd() *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("while getting scenario coverage: %s", err)
 				}
+
 				scenarioTested := 0
 				for _, test := range scenarioCoverage {
 					if test.TestsCount > 0 {
-						scenarioTested += 1
+						scenarioTested++
 					}
 				}
+
 				scenarioCoveragePercent = int(math.Round((float64(scenarioTested) / float64(len(scenarioCoverage)) * 100)))
 			}
 
@@ -474,7 +478,8 @@ func NewHubTestCoverageCmd() *cobra.Command {
 				os.Exit(0)
 			}
 
-			if csConfig.Cscli.Output == "human" {
+			switch csConfig.Cscli.Output {
+			case "human":
 				if showParserCov || showAll {
 					hubTestParserCoverageTable(color.Output, parserCoverage)
 				}
@@ -489,7 +494,7 @@ func NewHubTestCoverageCmd() *cobra.Command {
 				if showScenarioCov || showAll {
 					fmt.Printf("SCENARIOS  : %d%% of coverage\n", scenarioCoveragePercent)
 				}
-			} else if csConfig.Cscli.Output == "json" {
+			case "json":
 				dump, err := json.MarshalIndent(parserCoverage, "", " ")
 				if err != nil {
 					return err
@@ -500,20 +505,20 @@ func NewHubTestCoverageCmd() *cobra.Command {
 					return err
 				}
 				fmt.Printf("%s", dump)
-			} else {
+			default:
 				return fmt.Errorf("only human/json output modes are supported")
 			}
 
 			return nil
 		},
 	}
+
 	cmdHubTestCoverage.PersistentFlags().BoolVar(&showOnlyPercent, "percent", false, "Show only percentages of coverage")
 	cmdHubTestCoverage.PersistentFlags().BoolVar(&showParserCov, "parsers", false, "Show only parsers coverage")
 	cmdHubTestCoverage.PersistentFlags().BoolVar(&showScenarioCov, "scenarios", false, "Show only scenarios coverage")
 
 	return cmdHubTestCoverage
 }
-
 
 func NewHubTestEvalCmd() *cobra.Command {
 	var evalExpression string
@@ -528,25 +533,28 @@ func NewHubTestEvalCmd() *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("can't load test: %+v", err)
 				}
+
 				err = test.ParserAssert.LoadTest(test.ParserResultFile)
 				if err != nil {
 					return fmt.Errorf("can't load test results from '%s': %+v", test.ParserResultFile, err)
 				}
+
 				output, err := test.ParserAssert.EvalExpression(evalExpression)
 				if err != nil {
 					return err
 				}
+
 				fmt.Print(output)
 			}
 
 			return nil
 		},
 	}
+
 	cmdHubTestEval.PersistentFlags().StringVarP(&evalExpression, "expr", "e", "", "Expression to eval")
 
 	return cmdHubTestEval
 }
-
 
 func NewHubTestExplainCmd() *cobra.Command {
 	var cmdHubTestExplain = &cobra.Command{
@@ -562,24 +570,22 @@ func NewHubTestExplainCmd() *cobra.Command {
 				}
 				err = test.ParserAssert.LoadTest(test.ParserResultFile)
 				if err != nil {
-					err := test.Run()
-					if err != nil {
+					if err = test.Run(); err != nil {
 						return fmt.Errorf("running test '%s' failed: %+v", test.Name, err)
 					}
-					err = test.ParserAssert.LoadTest(test.ParserResultFile)
-					if err != nil {
+
+					if err = test.ParserAssert.LoadTest(test.ParserResultFile); err != nil {
 						return fmt.Errorf("unable to load parser result after run: %s", err)
 					}
 				}
 
 				err = test.ScenarioAssert.LoadTest(test.ScenarioResultFile, test.BucketPourResultFile)
 				if err != nil {
-					err := test.Run()
-					if err != nil {
+					if err = test.Run(); err != nil {
 						return fmt.Errorf("running test '%s' failed: %+v", test.Name, err)
 					}
-					err = test.ScenarioAssert.LoadTest(test.ScenarioResultFile, test.BucketPourResultFile)
-					if err != nil {
+
+					if err = test.ScenarioAssert.LoadTest(test.ScenarioResultFile, test.BucketPourResultFile); err != nil {
 						return fmt.Errorf("unable to load scenario result after run: %s", err)
 					}
 				}
