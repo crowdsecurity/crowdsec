@@ -38,23 +38,16 @@ func itemKey(itemPath string) (string, error) {
 }
 
 // GetItemByPath retrieves the item from the hub index based on its path.
-// To achieve this it resolves a symlink to find the associated hub item.
 func (h *Hub) GetItemByPath(itemType string, itemPath string) (*Item, error) {
 	itemKey, err := itemKey(itemPath)
 	if err != nil {
 		return nil, err
 	}
 
-	// XXX: use GetItem()
-	m := h.GetItemMap(itemType)
-	if m == nil {
-		return nil, fmt.Errorf("item type %s doesn't exist", itemType)
-	}
-
-	v, ok := m[itemKey]
-	if !ok {
+	item := h.GetItem(itemType, itemKey)
+	if item == nil {
 		return nil, fmt.Errorf("%s not found in %s", itemKey, itemType)
 	}
 
-	return &v, nil
+	return item, nil
 }
