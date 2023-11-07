@@ -48,6 +48,7 @@ func hubTestParserCoverageTable(out io.Writer, coverage []hubtest.ParserCoverage
 	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
 
 	parserTested := 0
+
 	for _, test := range coverage {
 		status := emoji.RedCircle.String()
 		if test.TestsCount > 0 {
@@ -67,6 +68,7 @@ func hubTestScenarioCoverageTable(out io.Writer, coverage []hubtest.ScenarioCove
 	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
 
 	parserTested := 0
+
 	for _, test := range coverage {
 		status := emoji.RedCircle.String()
 		if test.TestsCount > 0 {
