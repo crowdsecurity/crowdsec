@@ -29,8 +29,8 @@ func (r *RemoteHubCfg) urlTo(remotePath string) (string, error) {
 	return fmt.Sprintf(r.URLTemplate, r.Branch, remotePath), nil
 }
 
-// DownloadIndex downloads the latest version of the index
-func (r *RemoteHubCfg) DownloadIndex(localPath string) error {
+// downloadIndex downloads the latest version of the index
+func (r *RemoteHubCfg) downloadIndex(localPath string) error {
 	if r == nil {
 		return ErrNilRemoteHub
 	}

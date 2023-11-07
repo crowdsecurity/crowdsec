@@ -40,37 +40,37 @@ func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, downloadIndex boo
 	}
 
 	if downloadIndex {
-		if err := remote.DownloadIndex(local.HubIndexFile); err != nil {
+		if err := remote.downloadIndex(local.HubIndexFile); err != nil {
 			return nil, err
 		}
 	}
 
 	log.Debugf("loading hub idx %s", local.HubIndexFile)
 
-	bidx, err := os.ReadFile(local.HubIndexFile)
-	if err != nil {
-		return nil, fmt.Errorf("unable to read index file: %w", err)
-	}
-
 	theHub = &Hub{
 		local:  local,
 		remote: remote,
 	}
 
-	if err := theHub.ParseIndex(bidx); err != nil {
+	if err := theHub.parseIndex(); err != nil {
 		return nil, fmt.Errorf("failed to load index: %w", err)
 	}
 
-	if _, err = theHub.LocalSync(); err != nil {
+	if _, err := theHub.LocalSync(); err != nil {
 		return nil, fmt.Errorf("failed to sync hub index: %w", err)
 	}
 
 	return theHub, nil
 }
 
-// ParseIndex takes the content of an index file and fills the map of associated parsers/scenarios/collections
-func (h *Hub) ParseIndex(buff []byte) error {
-	if err := json.Unmarshal(buff, &h.Items); err != nil {
+// parseIndex takes the content of an index file and fills the map of associated parsers/scenarios/collections
+func (h *Hub) parseIndex() error {
+	bidx, err := os.ReadFile(h.local.HubIndexFile)
+	if err != nil {
+		return fmt.Errorf("unable to read index file: %w", err)
+	}
+
+	if err := json.Unmarshal(bidx, &h.Items); err != nil {
 		return fmt.Errorf("failed to unmarshal index: %w", err)
 	}
 
@@ -94,7 +94,7 @@ func (h *Hub) ParseIndex(buff []byte) error {
 			h.Items[itemType][name] = item
 
 			// if it's a collection, check its sub-items are present
-			// XXX should be done later
+			// XXX should be done later, maybe report all missing at once?
 			for _, sub := range item.SubItems() {
 				if _, ok := h.Items[sub.Type][sub.Name]; !ok {
 					log.Errorf("Referred %s %s in collection %s doesn't exist.", sub.Type, sub.Name, item.Name)

@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
@@ -56,16 +57,17 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest,
 	}
 
 	hubIndexFile := filepath.Join(hubPath, ".index.json")
-	bidx, err := os.ReadFile(hubIndexFile)
-	if err != nil {
-		return HubTest{}, fmt.Errorf("unable to read index file: %s", err)
+
+	local := &csconfig.LocalHubCfg{
+		HubDir: hubPath,
+		HubIndexFile: hubIndexFile,
+		InstallDir: HubTestPath,
+		InstallDataDir: HubTestPath,
 	}
 
-	hub := &cwhub.Hub{}
-
-	// load hub index
-	if err = hub.ParseIndex(bidx); err != nil {
-		return HubTest{}, fmt.Errorf("unable to load hub index file: %s", err)
+	hub, err := cwhub.NewHub(local, nil, false)
+	if err != nil {
+		return HubTest{}, fmt.Errorf("unable to load hub: %s", err)
 	}
 
 	templateConfigFilePath := filepath.Join(HubTestPath, templateConfigFile)
