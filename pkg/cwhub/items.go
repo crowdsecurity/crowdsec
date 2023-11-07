@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/enescakir/emoji"
-	"golang.org/x/mod/semver"
+	"github.com/Masterminds/semver/v3"
 )
 
 const (
@@ -178,7 +178,19 @@ func (i *Item) Status() (string, emoji.Emoji) {
 
 // versionStatus: semver requires 'v' prefix
 func (i *Item) versionStatus() int {
-	return semver.Compare("v"+i.Version, "v"+i.LocalVersion)
+	// version strings are already validated while syncing, ignore errors
+	local, _ := semver.NewVersion(i.LocalVersion)
+	latest, _ := semver.NewVersion(i.Version)
+
+	if local.LessThan(latest) {
+		return +1
+	}
+
+	if local.Equal(latest) {
+		return 0
+	}
+
+	return -1
 }
 
 // validPath returns true if the (relative) path is allowed for the item

@@ -51,7 +51,9 @@ teardown() {
     truncate -s 0 "$CONFIG_DIR/collections/sshd.yaml"
 
     rune -0 cscli collections inspect crowdsecurity/sshd -o json
-    rune -0 jq -e '.local_version=="1.10"' <(output)
+    # XXX: is this supposed to be tainted or up to date?
+    rune -0 jq -c '[.local_version,.up_to_date,.tainted]' <(output)
+    assert_json '["1.10",null,null]'
 }
 
 @test "hub index with invalid (non semver) version numbers" {
