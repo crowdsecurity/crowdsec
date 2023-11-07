@@ -7,11 +7,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
-	"slices"
+	"github.com/Masterminds/semver/v3"
 )
 
 func isYAMLFileName(path string) bool {
@@ -123,6 +124,28 @@ func (h *Hub) getItemInfo(path string) (itemFileInfo, bool, error) {
 	log.Tracef("CORRECTED [%s] by [%s] in stage [%s] of type [%s]", ret.fname, ret.fauthor, ret.stage, ret.ftype)
 
 	return ret, inhub, nil
+}
+
+// sortedVersions returns the input data, sorted in reverse order by semver
+func sortedVersions(raw []string) ([]string, error) {
+	vs := make([]*semver.Version, len(raw))
+	for i, r := range raw {
+		v, err := semver.NewVersion(r)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", r, err)
+		}
+
+		vs[i] = v
+	}
+
+	sort.Sort(sort.Reverse(semver.Collection(vs)))
+
+	ret := make([]string, len(vs))
+	for i, v := range vs {
+		ret[i] = v.Original()
+	}
+
+	return ret, nil
 }
 
 func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
@@ -246,13 +269,16 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 		}
 
 		// let's reverse sort the versions to deal with hash collisions (#154)
-		// XXX: we sure, lexical sorting?
 		versions := make([]string, 0, len(item.Versions))
 		for k := range item.Versions {
 			versions = append(versions, k)
 		}
 
-		sort.Sort(sort.Reverse(sort.StringSlice(versions)))
+		versions, err = sortedVersions(versions)
+		if err != nil {
+			// XXX: invalid version numbers are caught only for the installed items
+			return fmt.Errorf("while syncing %s %s: %w", info.ftype, info.fname, err)
+		}
 
 		for _, version := range versions {
 			if item.Versions[version].Digest != sha {
