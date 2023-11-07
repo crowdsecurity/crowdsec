@@ -236,26 +236,16 @@ func (p *ParserAssert) AutoGenParserAssert() string {
 	//attempt to autogen parser asserts
 	var ret string
 
-	//sort map keys for consistent ordre
-	var stages []string
-	for stage := range *p.TestData {
-		stages = append(stages, stage)
-	}
-
-	sort.Strings(stages)
-
 	ret += fmt.Sprintf("len(results) == %d\n", len(*p.TestData))
+
+	//sort map keys for consistent order
+	stages := sortedMapKeys(*p.TestData)
 
 	for _, stage := range stages {
 		parsers := (*p.TestData)[stage]
-		//sort map keys for consistent ordre
-		var pnames []string
 
-		for pname := range parsers {
-			pnames = append(pnames, pname)
-		}
-
-		sort.Strings(pnames)
+		//sort map keys for consistent order
+		pnames := sortedMapKeys(parsers)
 
 		for _, parser := range pnames {
 			presults := parsers[parser]
@@ -369,12 +359,8 @@ func LoadParserDump(filepath string) (*ParserResults, error) {
 
 	/* we know that some variables should always be set,
 	let's check if they're present in last parser output of last stage */
-	stages := make([]string, 0, len(pdump))
-	for k := range pdump {
-		stages = append(stages, k)
-	}
 
-	sort.Strings(stages)
+	stages := sortedMapKeys(pdump)
 
 	var lastStage string
 
@@ -484,7 +470,8 @@ func DumpTree(parserResults ParserResults, bucketPour BucketPourInfo, opts DumpO
 		}
 
 		sort.Strings(skeys)
-		//iterate stage
+
+		// iterate stage
 		var prevItem types.Event
 
 		for _, stage := range skeys {
@@ -495,12 +482,7 @@ func DumpTree(parserResults ParserResults, bucketPour BucketPourInfo, opts DumpO
 
 			fmt.Printf("\t%s %s\n", sep, stage)
 
-			pkeys := make([]string, 0, len(parsers))
-			for k := range parsers {
-				pkeys = append(pkeys, k)
-			}
-
-			sort.Strings(pkeys)
+			pkeys := sortedMapKeys(parsers)
 
 			for idx, parser := range pkeys {
 				res := parsers[parser].Success

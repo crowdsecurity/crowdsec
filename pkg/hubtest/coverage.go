@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -27,37 +26,32 @@ type ScenarioCoverage struct {
 }
 
 func (h *HubTest) GetParsersCoverage() ([]ParserCoverage, error) {
-	var coverage []ParserCoverage
 	if _, ok := h.HubIndex.Items[cwhub.PARSERS]; !ok {
-		return coverage, fmt.Errorf("no parsers in hub index")
+		return nil, fmt.Errorf("no parsers in hub index")
 	}
 
 	// populate from hub, iterate in alphabetical order
-	var pkeys []string
-	for pname := range h.HubIndex.Items[cwhub.PARSERS] {
-		pkeys = append(pkeys, pname)
-	}
+	pkeys := sortedMapKeys(h.HubIndex.Items[cwhub.PARSERS])
+	coverage := make([]ParserCoverage, len(pkeys))
 
-	sort.Strings(pkeys)
-
-	for _, pname := range pkeys {
-		coverage = append(coverage, ParserCoverage{
-			Parser:     pname,
+	for i, name := range pkeys {
+		coverage[i] = ParserCoverage{
+			Parser:     name,
 			TestsCount: 0,
 			PresentIn:  make(map[string]bool),
-		})
+		}
 	}
 
 	// parser the expressions a-la-oneagain
 	passerts, err := filepath.Glob(".tests/*/parser.assert")
 	if err != nil {
-		return coverage, fmt.Errorf("while find parser asserts : %s", err)
+		return nil, fmt.Errorf("while find parser asserts : %s", err)
 	}
 
 	for _, assert := range passerts {
 		file, err := os.Open(assert)
 		if err != nil {
-			return coverage, fmt.Errorf("while reading %s : %s", assert, err)
+			return nil, fmt.Errorf("while reading %s : %s", assert, err)
 		}
 
 		scanner := bufio.NewScanner(file)
@@ -111,6 +105,7 @@ func (h *HubTest) GetParsersCoverage() ([]ParserCoverage, error) {
 				}
 			}
 		}
+
 		file.Close()
 	}
 
@@ -118,36 +113,32 @@ func (h *HubTest) GetParsersCoverage() ([]ParserCoverage, error) {
 }
 
 func (h *HubTest) GetScenariosCoverage() ([]ScenarioCoverage, error) {
-	var coverage []ScenarioCoverage
 	if _, ok := h.HubIndex.Items[cwhub.SCENARIOS]; !ok {
-		return coverage, fmt.Errorf("no scenarios in hub index")
-	}
-	//populate from hub, iterate in alphabetical order
-	var pkeys []string
-	for scenarioName := range h.HubIndex.Items[cwhub.SCENARIOS] {
-		pkeys = append(pkeys, scenarioName)
+		return nil, fmt.Errorf("no scenarios in hub index")
 	}
 
-	sort.Strings(pkeys)
+	// populate from hub, iterate in alphabetical order
+	pkeys := sortedMapKeys(h.HubIndex.Items[cwhub.SCENARIOS])
+	coverage := make([]ScenarioCoverage, len(pkeys))
 
-	for _, scenarioName := range pkeys {
-		coverage = append(coverage, ScenarioCoverage{
-			Scenario:   scenarioName,
+	for i, name := range pkeys {
+		coverage[i] = ScenarioCoverage{
+			Scenario:   name,
 			TestsCount: 0,
 			PresentIn:  make(map[string]bool),
-		})
+		}
 	}
 
 	// parser the expressions a-la-oneagain
 	passerts, err := filepath.Glob(".tests/*/scenario.assert")
 	if err != nil {
-		return coverage, fmt.Errorf("while find scenario asserts : %s", err)
+		return nil, fmt.Errorf("while find scenario asserts : %s", err)
 	}
 
 	for _, assert := range passerts {
 		file, err := os.Open(assert)
 		if err != nil {
-			return coverage, fmt.Errorf("while reading %s : %s", assert, err)
+			return nil, fmt.Errorf("while reading %s : %s", assert, err)
 		}
 
 		scanner := bufio.NewScanner(file)

@@ -18,9 +18,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
-var (
-	HubTest hubtest.HubTest
-)
+var HubTest hubtest.HubTest
 
 func NewHubTestCmd() *cobra.Command {
 	var hubPath string
