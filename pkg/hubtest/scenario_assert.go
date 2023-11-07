@@ -94,7 +94,7 @@ func (s *ScenarioAssert) AssertFile(testFile string) error {
 	nbLine := 0
 
 	for scanner.Scan() {
-		nbLine += 1
+		nbLine++
 
 		if scanner.Text() == "" {
 			continue
@@ -105,7 +105,7 @@ func (s *ScenarioAssert) AssertFile(testFile string) error {
 			return fmt.Errorf("unable to run assert '%s': %+v", scanner.Text(), err)
 		}
 
-		s.NbAssert += 1
+		s.NbAssert++
 
 		if !ok {
 			log.Debugf("%s is FALSE", scanner.Text())

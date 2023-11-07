@@ -30,30 +30,28 @@ const (
 )
 
 func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest, error) {
-	var err error
-
-	hubPath, err = filepath.Abs(hubPath)
+	hubPath, err := filepath.Abs(hubPath)
 	if err != nil {
 		return HubTest{}, fmt.Errorf("can't get absolute path of hub: %+v", err)
 	}
 
 	// we can't use hubtest without the hub
-	if _, err := os.Stat(hubPath); os.IsNotExist(err) {
+	if _, err = os.Stat(hubPath); os.IsNotExist(err) {
 		return HubTest{}, fmt.Errorf("path to hub '%s' doesn't exist, can't run", hubPath)
 	}
 
 	HubTestPath := filepath.Join(hubPath, "./.tests/")
 
 	// we can't use hubtest without crowdsec binary
-	if _, err := exec.LookPath(crowdsecPath); err != nil {
-		if _, err := os.Stat(crowdsecPath); os.IsNotExist(err) {
+	if _, err = exec.LookPath(crowdsecPath); err != nil {
+		if _, err = os.Stat(crowdsecPath); os.IsNotExist(err) {
 			return HubTest{}, fmt.Errorf("path to crowdsec binary '%s' doesn't exist or is not in $PATH, can't run", crowdsecPath)
 		}
 	}
 
 	// we can't use hubtest without cscli binary
-	if _, err := exec.LookPath(cscliPath); err != nil {
-		if _, err := os.Stat(cscliPath); os.IsNotExist(err) {
+	if _, err = exec.LookPath(cscliPath); err != nil {
+		if _, err = os.Stat(cscliPath); os.IsNotExist(err) {
 			return HubTest{}, fmt.Errorf("path to cscli binary '%s' doesn't exist or is not in $PATH, can't run", cscliPath)
 		}
 	}

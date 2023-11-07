@@ -100,7 +100,7 @@ func (p *ParserAssert) AssertFile(testFile string) error {
 	nbLine := 0
 
 	for scanner.Scan() {
-		nbLine += 1
+		nbLine++
 
 		if scanner.Text() == "" {
 			continue
@@ -111,7 +111,7 @@ func (p *ParserAssert) AssertFile(testFile string) error {
 			return fmt.Errorf("unable to run assert '%s': %+v", scanner.Text(), err)
 		}
 
-		p.NbAssert += 1
+		p.NbAssert++
 
 		if !ok {
 			log.Debugf("%s is FALSE", scanner.Text())
@@ -412,15 +412,15 @@ type DumpOpts struct {
 	ShowNotOkParsers bool
 }
 
-func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts DumpOpts) {
+func DumpTree(parserResults ParserResults, bucketPour BucketPourInfo, opts DumpOpts) {
 	//note : we can use line -> time as the unique identifier (of acquisition)
 	state := make(map[time.Time]map[string]map[string]ParserResult)
 	assoc := make(map[time.Time]string, 0)
 
-	for stage, parsers := range parser_results {
+	for stage, parsers := range parserResults {
 		for parser, results := range parsers {
-			for _, parser_res := range results {
-				evt := parser_res.Evt
+			for _, parserRes := range results {
+				evt := parserRes.Evt
 				if _, ok := state[evt.Line.Time]; !ok {
 					state[evt.Line.Time] = make(map[string]map[string]ParserResult)
 					assoc[evt.Line.Time] = evt.Line.Raw
@@ -430,12 +430,12 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 					state[evt.Line.Time][stage] = make(map[string]ParserResult)
 				}
 
-				state[evt.Line.Time][stage][parser] = ParserResult{Evt: evt, Success: parser_res.Success}
+				state[evt.Line.Time][stage][parser] = ParserResult{Evt: evt, Success: parserRes.Success}
 			}
 		}
 	}
 
-	for bname, evtlist := range bucket_pour {
+	for bname, evtlist := range bucketPour {
 		for _, evt := range evtlist {
 			if evt.Line.Raw == "" {
 				continue
@@ -485,7 +485,7 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 
 		sort.Strings(skeys)
 		//iterate stage
-		var prev_item types.Event
+		var prevItem types.Event
 
 		for _, stage := range skeys {
 			parsers := state[tstamp][stage]
@@ -518,7 +518,7 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 				detailsDisplay := ""
 
 				if res {
-					changelog, _ := diff.Diff(prev_item, parsers[parser].Evt)
+					changelog, _ := diff.Diff(prevItem, parsers[parser].Evt)
 					for _, change := range changelog {
 						switch change.Type {
 						case "create":
@@ -543,7 +543,7 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 						}
 					}
 
-					prev_item = parsers[parser].Evt
+					prevItem = parsers[parser].Evt
 				}
 
 				if created > 0 {

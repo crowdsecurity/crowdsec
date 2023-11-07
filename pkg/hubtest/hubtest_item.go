@@ -612,7 +612,7 @@ func (t *HubTestItem) Run() error {
 			continue
 		}
 
-		nbScenario += 1
+		nbScenario++
 	}
 
 	if nbScenario > 0 {

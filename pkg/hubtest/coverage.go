@@ -163,10 +163,10 @@ func (h *HubTest) GetScenariosCoverage() ([]ScenarioCoverage, error) {
 			}
 
 			sidx := assertLine.SubexpIndex("scenario")
-			scanner_name := match[sidx]
+			scannerName := match[sidx]
 
 			for idx, pcover := range coverage {
-				if pcover.Scenario == scanner_name {
+				if pcover.Scenario == scannerName {
 					coverage[idx].TestsCount++
 					coverage[idx].PresentIn[assert] = true
 
@@ -176,7 +176,7 @@ func (h *HubTest) GetScenariosCoverage() ([]ScenarioCoverage, error) {
 				scenarioNameSplit := strings.Split(pcover.Scenario, "/")
 				scenarioNameOnly := scenarioNameSplit[len(scenarioNameSplit)-1]
 
-				if scenarioNameOnly == scanner_name {
+				if scenarioNameOnly == scannerName {
 					coverage[idx].TestsCount++
 					coverage[idx].PresentIn[assert] = true
 
@@ -184,7 +184,7 @@ func (h *HubTest) GetScenariosCoverage() ([]ScenarioCoverage, error) {
 				}
 
 				fixedProbingWord := strings.ReplaceAll(pcover.Scenario, "probbing", "probing")
-				fixedProbingAssert := strings.ReplaceAll(scanner_name, "probbing", "probing")
+				fixedProbingAssert := strings.ReplaceAll(scannerName, "probbing", "probing")
 
 				if fixedProbingWord == fixedProbingAssert {
 					coverage[idx].TestsCount++
@@ -193,7 +193,7 @@ func (h *HubTest) GetScenariosCoverage() ([]ScenarioCoverage, error) {
 					continue
 				}
 
-				if fmt.Sprintf("%s-detection", pcover.Scenario) == scanner_name {
+				if fmt.Sprintf("%s-detection", pcover.Scenario) == scannerName {
 					coverage[idx].TestsCount++
 					coverage[idx].PresentIn[assert] = true
 
