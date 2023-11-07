@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -50,17 +49,16 @@ func (h *HubTest) GetParsersCoverage() ([]Coverage, error) {
 
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
-			assertLine := regexp.MustCompile(`^results\["[^"]+"\]\["(?P<parser>[^"]+)"\]\[[0-9]+\]\.Evt\..*`)
 			line := scanner.Text()
 			log.Debugf("assert line : %s", line)
 
-			match := assertLine.FindStringSubmatch(line)
+			match := parserResultRE.FindStringSubmatch(line)
 			if len(match) == 0 {
 				log.Debugf("%s doesn't match", line)
 				continue
 			}
 
-			sidx := assertLine.SubexpIndex("parser")
+			sidx := parserResultRE.SubexpIndex("parser")
 			capturedParser := match[sidx]
 
 			for idx, pcover := range coverage {
@@ -129,6 +127,7 @@ func (h *HubTest) GetScenariosCoverage() ([]Coverage, error) {
 		return nil, fmt.Errorf("while find scenario asserts : %s", err)
 	}
 
+
 	for _, assert := range passerts {
 		file, err := os.Open(assert)
 		if err != nil {
@@ -137,17 +136,16 @@ func (h *HubTest) GetScenariosCoverage() ([]Coverage, error) {
 
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
-			assertLine := regexp.MustCompile(`^results\[[0-9]+\].Overflow.Alert.GetScenario\(\) == "(?P<scenario>[^"]+)"`)
 			line := scanner.Text()
 			log.Debugf("assert line : %s", line)
-			match := assertLine.FindStringSubmatch(line)
+			match := scenarioResultRE.FindStringSubmatch(line)
 
 			if len(match) == 0 {
 				log.Debugf("%s doesn't match", line)
 				continue
 			}
 
-			sidx := assertLine.SubexpIndex("scenario")
+			sidx := scenarioResultRE.SubexpIndex("scenario")
 			scannerName := match[sidx]
 
 			for idx, pcover := range coverage {

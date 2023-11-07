@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -116,7 +115,6 @@ func (s *ScenarioAssert) AssertFile(testFile string) error {
 				Debug:      make(map[string]string),
 			}
 
-			variableRE := regexp.MustCompile(`(?P<variable>[^ ]+) == .*`)
 			match := variableRE.FindStringSubmatch(scanner.Text())
 
 			if len(match) == 0 {
