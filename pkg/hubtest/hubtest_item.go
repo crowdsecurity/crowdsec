@@ -77,8 +77,6 @@ const (
 	BucketPourResultFileName = "bucketpour-dump.yaml"
 )
 
-var crowdsecPatternsFolder = csconfig.DefaultConfigPath("patterns")
-
 func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 	testPath := filepath.Join(hubTest.HubTestPath, name)
 	runtimeFolder := filepath.Join(testPath, "runtime")
@@ -148,8 +146,6 @@ func (t *HubTestItem) InstallHub() error {
 			continue
 		}
 
-		var parserDirDest string
-
 		if hubParser, ok := t.HubIndex.Items[cwhub.PARSERS][parser]; ok {
 			parserSource, err := filepath.Abs(filepath.Join(t.HubPath, hubParser.RemotePath))
 			if err != nil {
@@ -162,7 +158,7 @@ func (t *HubTestItem) InstallHub() error {
 			hubDirParserDest := filepath.Join(t.RuntimeHubPath, filepath.Dir(hubParser.RemotePath))
 
 			// runtime/parsers/s00-raw/
-			parserDirDest = fmt.Sprintf("%s/parsers/%s/", t.RuntimePath, hubParser.Stage)
+			parserDirDest := fmt.Sprintf("%s/parsers/%s/", t.RuntimePath, hubParser.Stage)
 
 			if err := os.MkdirAll(hubDirParserDest, os.ModePerm); err != nil {
 				return fmt.Errorf("unable to create folder '%s': %s", hubDirParserDest, err)
@@ -208,7 +204,7 @@ func (t *HubTestItem) InstallHub() error {
 					//return fmt.Errorf("stage '%s' extracted from '%s' doesn't exist in the hub", customParserStage, hubStagePath)
 				}
 
-				parserDirDest = fmt.Sprintf("%s/parsers/%s/", t.RuntimePath, customParserStage)
+				parserDirDest := fmt.Sprintf("%s/parsers/%s/", t.RuntimePath, customParserStage)
 				if err := os.MkdirAll(parserDirDest, os.ModePerm); err != nil {
 					continue
 					//return fmt.Errorf("unable to create folder '%s': %s", parserDirDest, err)
@@ -236,8 +232,6 @@ func (t *HubTestItem) InstallHub() error {
 			continue
 		}
 
-		var scenarioDirDest string
-
 		if hubScenario, ok := t.HubIndex.Items[cwhub.SCENARIOS][scenario]; ok {
 			scenarioSource, err := filepath.Abs(filepath.Join(t.HubPath, hubScenario.RemotePath))
 			if err != nil {
@@ -250,7 +244,7 @@ func (t *HubTestItem) InstallHub() error {
 			hubDirScenarioDest := filepath.Join(t.RuntimeHubPath, filepath.Dir(hubScenario.RemotePath))
 
 			// runtime/parsers/scenarios/
-			scenarioDirDest = fmt.Sprintf("%s/scenarios/", t.RuntimePath)
+			scenarioDirDest := fmt.Sprintf("%s/scenarios/", t.RuntimePath)
 
 			if err := os.MkdirAll(hubDirScenarioDest, os.ModePerm); err != nil {
 				return fmt.Errorf("unable to create folder '%s': %s", hubDirScenarioDest, err)
@@ -283,7 +277,7 @@ func (t *HubTestItem) InstallHub() error {
 					//return fmt.Errorf("scenarios '%s' doesn't exist in the hub and doesn't appear to be a custom one.", scenario)
 				}
 
-				scenarioDirDest = fmt.Sprintf("%s/scenarios/", t.RuntimePath)
+				scenarioDirDest := fmt.Sprintf("%s/scenarios/", t.RuntimePath)
 				if err := os.MkdirAll(scenarioDirDest, os.ModePerm); err != nil {
 					return fmt.Errorf("unable to create folder '%s': %s", scenarioDirDest, err)
 				}
@@ -309,8 +303,6 @@ func (t *HubTestItem) InstallHub() error {
 			continue
 		}
 
-		var postoverflowDirDest string
-
 		if hubPostOverflow, ok := t.HubIndex.Items[cwhub.POSTOVERFLOWS][postoverflow]; ok {
 			postoverflowSource, err := filepath.Abs(filepath.Join(t.HubPath, hubPostOverflow.RemotePath))
 			if err != nil {
@@ -323,7 +315,7 @@ func (t *HubTestItem) InstallHub() error {
 			hubDirPostoverflowDest := filepath.Join(t.RuntimeHubPath, filepath.Dir(hubPostOverflow.RemotePath))
 
 			// runtime/postoverflows/s00-enrich
-			postoverflowDirDest = fmt.Sprintf("%s/postoverflows/%s/", t.RuntimePath, hubPostOverflow.Stage)
+			postoverflowDirDest := fmt.Sprintf("%s/postoverflows/%s/", t.RuntimePath, hubPostOverflow.Stage)
 
 			if err := os.MkdirAll(hubDirPostoverflowDest, os.ModePerm); err != nil {
 				return fmt.Errorf("unable to create folder '%s': %s", hubDirPostoverflowDest, err)
@@ -369,7 +361,7 @@ func (t *HubTestItem) InstallHub() error {
 					//return fmt.Errorf("stage '%s' from extracted '%s' doesn't exist in the hub", customPostoverflowStage, hubStagePath)
 				}
 
-				postoverflowDirDest = fmt.Sprintf("%s/postoverflows/%s/", t.RuntimePath, customPostoverflowStage)
+				postoverflowDirDest := fmt.Sprintf("%s/postoverflows/%s/", t.RuntimePath, customPostoverflowStage)
 				if err := os.MkdirAll(postoverflowDirDest, os.ModePerm); err != nil {
 					continue
 					//return fmt.Errorf("unable to create folder '%s': %s", postoverflowDirDest, err)
@@ -509,6 +501,8 @@ func (t *HubTestItem) Run() error {
 	if err = Copy(t.TemplateSimulationPath, t.RuntimeSimulationFilePath); err != nil {
 		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateSimulationPath, t.RuntimeSimulationFilePath, err)
 	}
+
+	crowdsecPatternsFolder := csconfig.DefaultConfigPath("patterns")
 
 	// copy template patterns folder to runtime folder
 	if err = CopyDir(crowdsecPatternsFolder, t.RuntimePatternsPath); err != nil {

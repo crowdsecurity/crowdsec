@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/vm"
 	"github.com/enescakir/emoji"
 	"github.com/fatih/color"
 	diff "github.com/r3labs/diff/v2"
@@ -70,9 +69,7 @@ func (p *ParserAssert) AutoGenFromFile(filename string) (string, error) {
 }
 
 func (p *ParserAssert) LoadTest(filename string) error {
-	var err error
 	parserDump, err := LoadParserDump(filename)
-
 	if err != nil {
 		return fmt.Errorf("loading parser dump file: %+v", err)
 	}
@@ -165,17 +162,14 @@ func (p *ParserAssert) AssertFile(testFile string) error {
 }
 
 func (p *ParserAssert) RunExpression(expression string) (interface{}, error) {
-	var err error
 	//debug doesn't make much sense with the ability to evaluate "on the fly"
 	//var debugFilter *exprhelpers.ExprDebugger
-
-	var runtimeFilter *vm.Program
-
 	var output interface{}
 
 	env := map[string]interface{}{"results": *p.TestData}
 
-	if runtimeFilter, err = expr.Compile(expression, exprhelpers.GetExprOptions(env)...); err != nil {
+	runtimeFilter, err := expr.Compile(expression, exprhelpers.GetExprOptions(env)...)
+	if err != nil {
 		log.Errorf("failed to compile '%s' : %s", expression, err)
 		return output, err
 	}
@@ -232,9 +226,7 @@ func Escape(val string) string {
 
 func (p *ParserAssert) AutoGenParserAssert() string {
 	//attempt to autogen parser asserts
-	var ret string
-
-	ret += fmt.Sprintf("len(results) == %d\n", len(*p.TestData))
+	ret := fmt.Sprintf("len(results) == %d\n", len(*p.TestData))
 
 	//sort map keys for consistent order
 	stages := sortedMapKeys(*p.TestData)
@@ -338,8 +330,6 @@ func (p *ParserAssert) buildUnmarshaledAssert(ekey string, eval interface{}) []s
 }
 
 func LoadParserDump(filepath string) (*ParserResults, error) {
-	var pdump ParserResults
-
 	dumpData, err := os.Open(filepath)
 	if err != nil {
 		return nil, err
@@ -350,6 +340,8 @@ func LoadParserDump(filepath string) (*ParserResults, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	pdump := ParserResults{}
 
 	if err := yaml.Unmarshal(results, &pdump); err != nil {
 		return nil, err

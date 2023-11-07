@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/vm"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
@@ -158,16 +157,14 @@ func (s *ScenarioAssert) AssertFile(testFile string) error {
 }
 
 func (s *ScenarioAssert) RunExpression(expression string) (interface{}, error) {
-	var err error
 	//debug doesn't make much sense with the ability to evaluate "on the fly"
 	//var debugFilter *exprhelpers.ExprDebugger
-	var runtimeFilter *vm.Program
-
 	var output interface{}
 
 	env := map[string]interface{}{"results": *s.TestData}
 
-	if runtimeFilter, err = expr.Compile(expression, exprhelpers.GetExprOptions(env)...); err != nil {
+	runtimeFilter, err := expr.Compile(expression, exprhelpers.GetExprOptions(env)...)
+	if err != nil {
 		return nil, err
 	}
 	// if debugFilter, err = exprhelpers.NewDebugger(assert, expr.Env(env)); err != nil {
@@ -217,9 +214,8 @@ func (s *ScenarioAssert) Run(assert string) (bool, error) {
 }
 
 func (s *ScenarioAssert) AutoGenScenarioAssert() string {
-	// attempt to autogen parser asserts
-	var ret string
-	ret += fmt.Sprintf(`len(results) == %d`+"\n", len(*s.TestData))
+	// attempt to autogen scenario asserts
+	ret := fmt.Sprintf(`len(results) == %d`+"\n", len(*s.TestData))
 
 	for eventIndex, event := range *s.TestData {
 		for ipSrc, source := range event.Overflow.Sources {
@@ -257,8 +253,6 @@ func (b BucketResults) Swap(i, j int) {
 }
 
 func LoadBucketPourDump(filepath string) (*BucketPourInfo, error) {
-	var bucketDump BucketPourInfo
-
 	dumpData, err := os.Open(filepath)
 	if err != nil {
 		return nil, err
@@ -269,6 +263,8 @@ func LoadBucketPourDump(filepath string) (*BucketPourInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	var bucketDump BucketPourInfo
 
 	if err := yaml.Unmarshal(results, &bucketDump); err != nil {
 		return nil, err
@@ -278,8 +274,6 @@ func LoadBucketPourDump(filepath string) (*BucketPourInfo, error) {
 }
 
 func LoadScenarioDump(filepath string) (*BucketResults, error) {
-	var bucketDump BucketResults
-
 	dumpData, err := os.Open(filepath)
 	if err != nil {
 		return nil, err
@@ -290,6 +284,8 @@ func LoadScenarioDump(filepath string) (*BucketResults, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	var bucketDump BucketResults
 
 	if err := yaml.Unmarshal(results, &bucketDump); err != nil {
 		return nil, err
