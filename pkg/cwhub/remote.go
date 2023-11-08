@@ -53,7 +53,7 @@ func (r *RemoteHubCfg) downloadIndex(localPath string) error {
 
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusNotFound {
-			return ErrIndexNotFound
+			return IndexNotFoundError{req.URL.String(), r.Branch}
 		}
 
 		return fmt.Errorf("bad http code %d for %s", resp.StatusCode, req.URL.String())

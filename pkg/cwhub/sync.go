@@ -7,12 +7,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"slices"
 	"sort"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/Masterminds/semver/v3"
+	log "github.com/sirupsen/logrus"
+	"slices"
 )
 
 func isYAMLFileName(path string) bool {
@@ -33,7 +33,7 @@ func handleSymlink(path string) (string, error) {
 			return "", fmt.Errorf("failed to unlink %s: %w", path, err)
 		}
 
-		// XXX: is this correct?
+		// ignore this file
 		return "", nil
 	}
 
@@ -197,7 +197,7 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 		log.Tracef("%s points to %s", path, hubpath)
 
 		if hubpath == "" {
-			// XXX: is this correct?
+			// ignore this file
 			return nil
 		}
 	}
@@ -276,7 +276,6 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 
 		versions, err = sortedVersions(versions)
 		if err != nil {
-			// XXX: invalid version numbers are caught only for the installed items
 			return fmt.Errorf("while syncing %s %s: %w", info.ftype, info.fname, err)
 		}
 

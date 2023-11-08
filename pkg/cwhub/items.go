@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/enescakir/emoji"
 	"github.com/Masterminds/semver/v3"
+	"github.com/enescakir/emoji"
 )
 
 const (
