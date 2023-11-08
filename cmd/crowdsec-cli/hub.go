@@ -59,7 +59,7 @@ func runHubList(cmd *cobra.Command, args []string) error {
 		log.Info(v)
 	}
 
-	for line := range hub.ItemStats() {
+	for _, line := range hub.ItemStats() {
 		log.Info(line)
 	}
 
