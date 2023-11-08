@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/enescakir/emoji"
-	"golang.org/x/mod/semver"
 )
 
 const (
@@ -14,6 +14,13 @@ const (
 	PARSERS       = "parsers"
 	POSTOVERFLOWS = "postoverflows"
 	SCENARIOS     = "scenarios"
+)
+
+const (
+	VersionUpToDate = iota
+	VersionUpdateAvailable
+	VersionUnknown
+	VersionFuture
 )
 
 // The order is important, as it is used to range over sub-items in collections
@@ -178,7 +185,23 @@ func (i *Item) Status() (string, emoji.Emoji) {
 
 // versionStatus: semver requires 'v' prefix
 func (i *Item) versionStatus() int {
-	return semver.Compare("v"+i.Version, "v"+i.LocalVersion)
+	local, err := semver.NewVersion(i.LocalVersion)
+	if err != nil {
+		return VersionUnknown
+	}
+
+	// hub versions are already validated while syncing, ignore errors
+	latest, _ := semver.NewVersion(i.Version)
+
+	if local.LessThan(latest) {
+		return VersionUpdateAvailable
+	}
+
+	if local.Equal(latest) {
+		return VersionUpToDate
+	}
+
+	return VersionFuture
 }
 
 // validPath returns true if the (relative) path is allowed for the item

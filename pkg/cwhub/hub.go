@@ -57,7 +57,7 @@ func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, downloadIndex boo
 	}
 
 	if _, err := theHub.LocalSync(); err != nil {
-		return nil, fmt.Errorf("failed to sync hub index: %w", err)
+		return nil, fmt.Errorf("failed to sync items: %w", err)
 	}
 
 	return theHub, nil

@@ -145,7 +145,6 @@ teardown() {
     assert_output --partial 'installed: true'
 }
 
-
 @test "cscli scenarios install [scenario]... (file location and download-only)" {
     # simple install
     rune -0 cscli scenarios install crowdsecurity/ssh-bf --download-only
@@ -158,6 +157,9 @@ teardown() {
     rune -0 cscli scenarios install crowdsecurity/ssh-bf
     assert_file_exists "$CONFIG_DIR/scenarios/ssh-bf.yaml"
 }
+
+# XXX: test install with --force
+# XXX: test install with --ignore
 
 
 @test "cscli scenarios inspect [scenario]..." {

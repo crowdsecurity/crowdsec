@@ -79,41 +79,43 @@ teardown() {
     # XXX: check alphabetical order in human, json, raw
 }
 
-
 @test "cscli postoverflows list [scenario]..." {
+    # non-existent
+    rune -1 cscli postoverflows install foo/bar
+    assert_stderr --partial "can't find 'foo/bar' in postoverflows"
+
+
+    # not installed
+    rune -0 cscli postoverflows list crowdsecurity/rdns
+    assert_output --regexp 'crowdsecurity/rdns.*disabled'
+
+    # install two items
     rune -0 cscli postoverflows install crowdsecurity/rdns crowdsecurity/cdn-whitelist
 
-    # list one item
+    # list an installed item
     rune -0 cscli postoverflows list crowdsecurity/rdns
-    assert_output --partial "crowdsecurity/rdns"
+    assert_output --regexp "crowdsecurity/rdns.*enabled"
     refute_output --partial "crowdsecurity/cdn-whitelist"
 
-    # list multiple items
-    rune -0 cscli postoverflows list crowdsecurity/rdns crowdsecurity/cdn-whitelist
+    # list multiple installed and non installed items
+    rune -0 cscli postoverflows list crowdsecurity/rdns crowdsecurity/cdn-whitelist crowdsecurity/ipv6_to_range
     assert_output --partial "crowdsecurity/rdns"
     assert_output --partial "crowdsecurity/cdn-whitelist"
+    assert_output --partial "crowdsecurity/ipv6_to_range"
 
     rune -0 cscli postoverflows list crowdsecurity/rdns -o json
     rune -0 jq '.postoverflows | length' <(output)
     assert_output "1"
-    rune -0 cscli postoverflows list crowdsecurity/rdns crowdsecurity/cdn-whitelist -o json
+    rune -0 cscli postoverflows list crowdsecurity/rdns crowdsecurity/cdn-whitelist crowdsecurity/ipv6_to_range -o json
     rune -0 jq '.postoverflows | length' <(output)
-    assert_output "2"
+    assert_output "3"
 
     rune -0 cscli postoverflows list crowdsecurity/rdns -o raw
     rune -0 grep -vc 'name,status,version,description' <(output)
     assert_output "1"
-    rune -0 cscli postoverflows list crowdsecurity/rdns crowdsecurity/cdn-whitelist -o raw
+    rune -0 cscli postoverflows list crowdsecurity/rdns crowdsecurity/cdn-whitelist crowdsecurity/ipv6_to_range -o raw
     rune -0 grep -vc 'name,status,version,description' <(output)
-    assert_output "2"
-}
-
-@test "cscli postoverflows list [scenario]... (not installed / not existing)" {
-    skip "not implemented yet"
-    # not installed
-    rune -1 cscli postoverflows list crowdsecurity/rdns
-    # not existing
-    rune -1 cscli postoverflows list blahblah/blahblah
+    assert_output "3"
 }
 
 @test "cscli postoverflows install [scenario]..." {
@@ -157,6 +159,8 @@ teardown() {
     assert_file_exists "$CONFIG_DIR/postoverflows/s00-enrich/rdns.yaml"
 }
 
+# XXX: test install with --force
+# XXX: test install with --ignore
 
 @test "cscli postoverflows inspect [scenario]..." {
     rune -1 cscli postoverflows inspect
