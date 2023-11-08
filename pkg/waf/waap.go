@@ -7,6 +7,7 @@ import (
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
@@ -104,7 +105,7 @@ func (w *WaapRuntimeConfig) ClearResponse() {
 	w.Response.SendEvent = true
 }
 
-func (wc *WaapConfig) Load(file string) error {
+func (wc *WaapConfig) LoadByPath(file string) error {
 
 	wc.Logger.Debugf("loading config %s", file)
 
@@ -144,6 +145,31 @@ func (wc *WaapConfig) Load(file string) error {
 	if wc.DefaultPassAction == "" {
 		wc.DefaultPassAction = "allow"
 	}
+	return nil
+}
+
+func (wc *WaapConfig) Load(configName string) error {
+	hub, err := cwhub.GetHub()
+	if err != nil {
+		return fmt.Errorf("unable to load hub : %s", err)
+	}
+
+	waapConfigs := hub.GetItemMap(cwhub.WAAP_CONFIGS)
+
+	for _, hubWaapConfigItem := range waapConfigs {
+		if !hubWaapConfigItem.Installed {
+			continue
+		}
+		if hubWaapConfigItem.Name != configName {
+			continue
+		}
+		wc.Logger.Infof("loading %s", hubWaapConfigItem.LocalPath)
+		err = wc.LoadByPath(hubWaapConfigItem.LocalPath)
+		if err != nil {
+			return fmt.Errorf("unable to load waap-config %s : %s", hubWaapConfigItem.LocalPath, err)
+		}
+	}
+
 	return nil
 }
 

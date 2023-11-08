@@ -18,6 +18,7 @@ import (
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/waf"
 )
 
 func initCrowdsec(cConfig *csconfig.Config) (*parser.Parsers, error) {
@@ -36,6 +37,10 @@ func initCrowdsec(cConfig *csconfig.Config) (*parser.Parsers, error) {
 
 	if err := LoadBuckets(cConfig, hub); err != nil {
 		return nil, fmt.Errorf("while loading scenarios: %w", err)
+	}
+
+	if err := waf.LoadWaapRules(); err != nil {
+		return nil, fmt.Errorf("while loading waap rules: %w", err)
 	}
 
 	if err := LoadAcquisition(cConfig); err != nil {

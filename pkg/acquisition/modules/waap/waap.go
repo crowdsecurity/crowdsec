@@ -133,9 +133,18 @@ func (w *WaapSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	//let's load the associated waap_config:
 	if w.config.WaapConfigPath != "" {
 		waapCfg := waf.WaapConfig{Logger: w.logger.WithField("component", "waap_config")}
-		err := waapCfg.Load(w.config.WaapConfigPath)
-		if err != nil {
-			return fmt.Errorf("unable to load waap_config : %s", err)
+		if w.config.WaapConfigPath != "" {
+			err := waapCfg.LoadByPath(w.config.WaapConfigPath)
+			if err != nil {
+				return fmt.Errorf("unable to load waap_config : %s", err)
+			}
+		} else if w.config.WaapConfig != "" {
+			err := waapCfg.Load(w.config.WaapConfig)
+			if err != nil {
+				return fmt.Errorf("unable to load waap_config : %s", err)
+			}
+		} else {
+			return fmt.Errorf("no waap_config provided")
 		}
 		w.WaapRuntime, err = waapCfg.Build()
 		if err != nil {
