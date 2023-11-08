@@ -235,24 +235,19 @@ func (h *Hub) DownloadItem(target *Item, overwrite bool) error {
 		}
 	}
 
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	resp, err := http.DefaultClient.Get(url)
 	if err != nil {
-		return fmt.Errorf("while downloading %s: %w", req.URL.String(), err)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("while downloading %s: %w", req.URL.String(), err)
+		return fmt.Errorf("while downloading %s: %w", url, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("bad http code %d for %s", resp.StatusCode, req.URL.String())
+		return fmt.Errorf("bad http code %d for %s", resp.StatusCode, url)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("while reading %s: %w", req.URL.String(), err)
+		return fmt.Errorf("while reading %s: %w", url, err)
 	}
 
 	hash := sha256.New()

@@ -21,12 +21,7 @@ type DataSet struct {
 func downloadFile(url string, destPath string) error {
 	log.Debugf("downloading %s in %s", url, destPath)
 
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return err
-	}
-
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Get(url)
 	if err != nil {
 		return err
 	}
