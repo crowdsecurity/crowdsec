@@ -19,7 +19,7 @@ import (
 )
 
 // XXX: this should not need hub?
-func ShowMetrics(hub *cwhub.Hub, hubItem *cwhub.Item) {
+func ShowMetrics(hub *cwhub.Hub, hubItem *cwhub.Item) error {
 	switch hubItem.Type {
 	case cwhub.PARSERS:
 		metrics := GetParserMetric(csConfig.Cscli.PrometheusUrl, hubItem.Name)
@@ -28,24 +28,27 @@ func ShowMetrics(hub *cwhub.Hub, hubItem *cwhub.Item) {
 		metrics := GetScenarioMetric(csConfig.Cscli.PrometheusUrl, hubItem.Name)
 		scenarioMetricsTable(color.Output, hubItem.Name, metrics)
 	case cwhub.COLLECTIONS:
-		for _, item := range hubItem.Parsers {
-			metrics := GetParserMetric(csConfig.Cscli.PrometheusUrl, item)
-			parserMetricsTable(color.Output, item, metrics)
+		for _, parserName := range hubItem.Parsers {
+			metrics := GetParserMetric(csConfig.Cscli.PrometheusUrl, parserName)
+			parserMetricsTable(color.Output, parserName, metrics)
 		}
-		for _, item := range hubItem.Scenarios {
-			metrics := GetScenarioMetric(csConfig.Cscli.PrometheusUrl, item)
-			scenarioMetricsTable(color.Output, item, metrics)
+		for _, scenarioName := range hubItem.Scenarios {
+			metrics := GetScenarioMetric(csConfig.Cscli.PrometheusUrl, scenarioName)
+			scenarioMetricsTable(color.Output, scenarioName, metrics)
 		}
-		for _, item := range hubItem.Collections {
-			hubItem = hub.GetItem(cwhub.COLLECTIONS, item)
-			if hubItem == nil {
-				log.Fatalf("unable to retrieve item '%s' from collection '%s'", item, hubItem.Name)
+		for _, collName := range hubItem.Collections {
+			subColl := hub.GetItem(cwhub.COLLECTIONS, collName)
+			if subColl == nil {
+				return fmt.Errorf("unable to retrieve sub-collection '%s' from '%s'", collName, hubItem.Name)
 			}
-			ShowMetrics(hub, hubItem)
+			if err := ShowMetrics(hub, subColl); err != nil {
+				return err
+			}
 		}
 	default:
 		log.Errorf("item of type '%s' is unknown", hubItem.Type)
 	}
+	return nil
 }
 
 // GetParserMetric is a complete rip from prom2json
