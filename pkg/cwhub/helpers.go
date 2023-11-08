@@ -247,7 +247,7 @@ func (h *Hub) DownloadItem(target *Item, overwrite bool) error {
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("while reading %s: %w", url, err)
+		return fmt.Errorf("while downloading %s: %w", url, err)
 	}
 
 	hash := sha256.New()

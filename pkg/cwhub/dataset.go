@@ -23,17 +23,17 @@ func downloadFile(url string, destPath string) error {
 
 	resp, err := http.DefaultClient.Get(url)
 	if err != nil {
-		return err
+		return fmt.Errorf("while downloading %s: %w", url, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("got HTTP status '%s' from %s", resp.Status, url)
+		return fmt.Errorf("bad http code %d for %s", resp.StatusCode, url)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return fmt.Errorf("while downloading %s: %w", url, err)
 	}
 
 	file, err := os.OpenFile(destPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
