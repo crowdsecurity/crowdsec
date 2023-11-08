@@ -47,77 +47,86 @@ type RulesDetails struct {
 // Is using the id is a good idea ? might be too specific to coraza and not easily reusable
 var WaapRulesDetails = make(map[int]RulesDetails)
 
-func LoadCollection(collection string) (WaapCollection, error) {
+func LoadCollection(pattern string) ([]WaapCollection, error) {
 
 	hub, err := cwhub.GetHub()
 	if err != nil {
-		return WaapCollection{}, fmt.Errorf("unable to load hub : %s", err)
+		return nil, fmt.Errorf("unable to load hub : %s", err)
 	}
 
-	var loadedRule WaapCollectionConfig
-	var ok bool
+	ret := make([]WaapCollection, 0)
 
-	if loadedRule, ok = waapRules[collection]; !ok {
-		return WaapCollection{}, fmt.Errorf("no waap rules found for collection %s", collection)
-	}
+	for _, waapRule := range waapRules {
 
-	waapCol := WaapCollection{
-		collectionName: loadedRule.Name,
-	}
+		matched, err := filepath.Match(pattern, waapRule.Name)
 
-	if loadedRule.SecLangFilesRules != nil {
-		for _, rulesFile := range loadedRule.SecLangFilesRules {
-			fullPath := filepath.Join(hub.GetDataDir(), rulesFile)
-			c, err := os.ReadFile(fullPath)
-			if err != nil {
-				log.Errorf("unable to read file %s : %s", rulesFile, err)
-				continue
-			}
-			for _, line := range strings.Split(string(c), "\n") {
-				if strings.HasPrefix(line, "#") {
+		if err != nil {
+			log.Errorf("unable to match %s with %s : %s", waapRule.Name, pattern, err)
+			continue
+		}
+
+		if !matched {
+			continue
+		}
+
+		waapCol := WaapCollection{
+			collectionName: waapRule.Name,
+		}
+
+		if waapRule.SecLangFilesRules != nil {
+			for _, rulesFile := range waapRule.SecLangFilesRules {
+				fullPath := filepath.Join(hub.GetDataDir(), rulesFile)
+				c, err := os.ReadFile(fullPath)
+				if err != nil {
+					log.Errorf("unable to read file %s : %s", rulesFile, err)
 					continue
 				}
-				if strings.TrimSpace(line) == "" {
-					continue
+				for _, line := range strings.Split(string(c), "\n") {
+					if strings.HasPrefix(line, "#") {
+						continue
+					}
+					if strings.TrimSpace(line) == "" {
+						continue
+					}
+					waapCol.Rules = append(waapCol.Rules, line)
 				}
-				waapCol.Rules = append(waapCol.Rules, line)
 			}
 		}
-	}
 
-	if loadedRule.SecLangRules != nil {
-		waapCol.Rules = append(waapCol.Rules, loadedRule.SecLangRules...)
-	}
+		if waapRule.SecLangRules != nil {
+			waapCol.Rules = append(waapCol.Rules, waapRule.SecLangRules...)
+		}
 
-	if loadedRule.Rules != nil {
-		for _, rule := range loadedRule.Rules {
-			strRule, rulesId, err := rule.Convert(waap_rule.ModsecurityRuleType, loadedRule.Name)
-			if err != nil {
-				log.Errorf("unable to convert rule %s : %s", rule.Name, err)
-				return WaapCollection{}, err
-			}
-			log.Infof("Adding rule %s", strRule)
-			waapCol.Rules = append(waapCol.Rules, strRule)
-
-			//We only take the first id, as it's the one of the "main" rule
-			if _, ok := WaapRulesDetails[int(rulesId[0])]; !ok {
-				WaapRulesDetails[int(rulesId[0])] = RulesDetails{
-					LogLevel: log.InfoLevel,
-					Hash:     loadedRule.hash,
-					Version:  loadedRule.version,
-					Name:     loadedRule.Name,
+		if waapRule.Rules != nil {
+			for _, rule := range waapRule.Rules {
+				strRule, rulesId, err := rule.Convert(waap_rule.ModsecurityRuleType, waapRule.Name)
+				if err != nil {
+					log.Errorf("unable to convert rule %s : %s", rule.Name, err)
+					return nil, err
 				}
-			} else {
-				log.Warnf("conflicting id %d for rule %s !", rulesId[0], rule.Name)
-			}
+				log.Infof("Adding rule %s", strRule)
+				waapCol.Rules = append(waapCol.Rules, strRule)
 
-			for _, id := range rulesId {
-				SetRuleDebug(int(id), loadedRule.Debug)
+				//We only take the first id, as it's the one of the "main" rule
+				if _, ok := WaapRulesDetails[int(rulesId[0])]; !ok {
+					WaapRulesDetails[int(rulesId[0])] = RulesDetails{
+						LogLevel: log.InfoLevel,
+						Hash:     waapRule.hash,
+						Version:  waapRule.version,
+						Name:     waapRule.Name,
+					}
+				} else {
+					log.Warnf("conflicting id %d for rule %s !", rulesId[0], rule.Name)
+				}
+
+				for _, id := range rulesId {
+					SetRuleDebug(int(id), waapRule.Debug)
+				}
 			}
 		}
+		ret = append(ret, waapCol)
 	}
-
-	return waapCol, nil
+	return ret, nil
 }
 
 func (wcc WaapCollectionConfig) LoadCollection(collection string) (WaapCollection, error) {

@@ -183,21 +183,21 @@ func (wc *WaapConfig) Build() (*WaapRuntimeConfig, error) {
 	//load rules
 	for _, rule := range wc.OutOfBandRules {
 		wc.Logger.Infof("loading outofband rule %s", rule)
-		collection, err := LoadCollection(rule)
+		collections, err := LoadCollection(rule)
 		if err != nil {
 			return nil, fmt.Errorf("unable to load outofband rule %s : %s", rule, err)
 		}
-		ret.OutOfBandRules = append(ret.OutOfBandRules, collection)
+		ret.OutOfBandRules = append(ret.OutOfBandRules, collections...)
 	}
 
 	wc.Logger.Infof("Loaded %d outofband rules", len(ret.OutOfBandRules))
 	for _, rule := range wc.InBandRules {
 		wc.Logger.Infof("loading inband rule %s", rule)
-		collection, err := LoadCollection(rule)
+		collections, err := LoadCollection(rule)
 		if err != nil {
 			return nil, fmt.Errorf("unable to load inband rule %s : %s", rule, err)
 		}
-		ret.InBandRules = append(ret.InBandRules, collection)
+		ret.InBandRules = append(ret.InBandRules, collections...)
 	}
 
 	wc.Logger.Infof("Loaded %d inband rules", len(ret.InBandRules))
