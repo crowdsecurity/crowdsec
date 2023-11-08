@@ -23,6 +23,7 @@ func CAPI(c *csconfig.Config) error {
 	if c.API.Server.OnlineClient == nil {
 		return fmt.Errorf("no configuration for Central API (CAPI) in '%s'", *c.FilePath)
 	}
+
 	return nil
 }
 
@@ -30,6 +31,7 @@ func PAPI(c *csconfig.Config) error {
 	if c.API.Server.OnlineClient.Credentials.PapiURL == "" {
 		return fmt.Errorf("no PAPI URL in configuration")
 	}
+
 	return nil
 }
 
@@ -45,6 +47,7 @@ func DB(c *csconfig.Config) error {
 	if err := c.LoadDBConfig(); err != nil {
 		return fmt.Errorf("this command requires direct database access (must be run on the local API machine): %w", err)
 	}
+
 	return nil
 }
 
@@ -88,7 +91,7 @@ func Hub(c *csconfig.Config, remote *cwhub.RemoteHubCfg) (*cwhub.Hub, error) {
 
 	hub, err := cwhub.NewHub(local, remote, false)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read Hub index: '%w'. Run 'sudo cscli hub update' to download the index again", err)
+		return nil, fmt.Errorf("failed to read Hub index: %w. Run 'sudo cscli hub update' to download the index again", err)
 	}
 
 	return hub, nil

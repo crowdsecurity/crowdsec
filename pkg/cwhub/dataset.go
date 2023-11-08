@@ -15,7 +15,7 @@ import (
 )
 
 type DataSet struct {
-	Data []*types.DataSource `yaml:"data,omitempty"`
+	Data []types.DataSource `yaml:"data,omitempty"`
 }
 
 func downloadFile(url string, destPath string) error {
@@ -59,7 +59,7 @@ func downloadFile(url string, destPath string) error {
 	return nil
 }
 
-func GetData(data []*types.DataSource, dataDir string) error {
+func GetData(data []types.DataSource, dataDir string) error {
 	for _, dataS := range data {
 		destPath := filepath.Join(dataDir, dataS.DestPath)
 		log.Infof("downloading data '%s' in '%s'", dataS.SourceURL, destPath)

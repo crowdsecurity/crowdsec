@@ -22,6 +22,7 @@ type OldAPICfg struct {
 }
 
 // it's a rip of the cli version, but in silent-mode
+// XXX: redundant, should call InstallItem
 func silentInstallItem(hub *cwhub.Hub, name, obtype string) (string, error) {
 	var item = hub.GetItem(obtype, name)
 	if item == nil {

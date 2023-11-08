@@ -29,8 +29,8 @@ func (r *RemoteHubCfg) urlTo(remotePath string) (string, error) {
 	return fmt.Sprintf(r.URLTemplate, r.Branch, remotePath), nil
 }
 
-// DownloadIndex downloads the latest version of the index
-func (r *RemoteHubCfg) DownloadIndex(localPath string) error {
+// downloadIndex downloads the latest version of the index
+func (r *RemoteHubCfg) downloadIndex(localPath string) error {
 	if r == nil {
 		return ErrNilRemoteHub
 	}
@@ -53,7 +53,7 @@ func (r *RemoteHubCfg) DownloadIndex(localPath string) error {
 
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusNotFound {
-			return ErrIndexNotFound
+			return IndexNotFoundError{req.URL.String(), r.Branch}
 		}
 
 		return fmt.Errorf("bad http code %d for %s", resp.StatusCode, req.URL.String())

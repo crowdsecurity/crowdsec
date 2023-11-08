@@ -10,7 +10,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Masterminds/semver/v3"
 	log "github.com/sirupsen/logrus"
+	"slices"
 )
 
 func isYAMLFileName(path string) bool {
@@ -31,7 +33,7 @@ func handleSymlink(path string) (string, error) {
 			return "", fmt.Errorf("failed to unlink %s: %w", path, err)
 		}
 
-		// XXX: is this correct?
+		// ignore this file
 		return "", nil
 	}
 
@@ -130,6 +132,28 @@ func (h *Hub) getItemInfo(path string) (itemFileInfo, bool, error) {
 	return ret, inhub, nil
 }
 
+// sortedVersions returns the input data, sorted in reverse order by semver
+func sortedVersions(raw []string) ([]string, error) {
+	vs := make([]*semver.Version, len(raw))
+	for i, r := range raw {
+		v, err := semver.NewVersion(r)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", r, err)
+		}
+
+		vs[i] = v
+	}
+
+	sort.Sort(sort.Reverse(semver.Collection(vs)))
+
+	ret := make([]string, len(vs))
+	for i, v := range vs {
+		ret[i] = v.Original()
+	}
+
+	return ret, nil
+}
+
 func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 	var (
 		local   bool
@@ -179,7 +203,7 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 		log.Tracef("%s points to %s", path, hubpath)
 
 		if hubpath == "" {
-			// XXX: is this correct?
+			// ignore this file
 			return nil
 		}
 	}
@@ -251,17 +275,18 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 		}
 
 		// let's reverse sort the versions to deal with hash collisions (#154)
-		// XXX: we sure, lexical sorting?
 		versions := make([]string, 0, len(item.Versions))
 		for k := range item.Versions {
 			versions = append(versions, k)
 		}
 
-		sort.Sort(sort.Reverse(sort.StringSlice(versions)))
+		versions, err = sortedVersions(versions)
+		if err != nil {
+			return fmt.Errorf("while syncing %s %s: %w", info.ftype, info.fname, err)
+		}
 
 		for _, version := range versions {
 			if item.Versions[version].Digest != sha {
-				// log.Infof("matching filenames, wrong hash %s != %s -- %s", sha, val.Digest, spew.Sdump(v))
 				continue
 			}
 
@@ -321,7 +346,7 @@ func (h *Hub) CollectDepsCheck(v *Item) error {
 		return nil
 	}
 
-	if v.versionStatus() != 0 { // not up-to-date
+	if v.versionStatus() != VersionUpToDate { // not up-to-date
 		log.Debugf("%s dependencies not checked: not up-to-date", v.Name)
 		return nil
 	}
@@ -371,15 +396,7 @@ func (h *Hub) CollectDepsCheck(v *Item) error {
 			return fmt.Errorf("outdated %s %s", sub.Type, sub.Name)
 		}
 
-		skip := false
-
-		for idx := range subItem.BelongsToCollections {
-			if subItem.BelongsToCollections[idx] == v.Name {
-				skip = true
-			}
-		}
-
-		if !skip {
+		if !slices.Contains(subItem.BelongsToCollections, v.Name) {
 			subItem.BelongsToCollections = append(subItem.BelongsToCollections, v.Name)
 		}
 
@@ -419,15 +436,17 @@ func (h *Hub) SyncDir(dir string) ([]string, error) {
 
 		vs := item.versionStatus()
 		switch vs {
-		case 0: // latest
+		case VersionUpToDate: // latest
 			if err := h.CollectDepsCheck(&item); err != nil {
 				warnings = append(warnings, fmt.Sprintf("dependency of %s: %s", item.Name, err))
 				h.Items[COLLECTIONS][name] = item
 			}
-		case 1: // not up-to-date
+		case VersionUpdateAvailable: // not up-to-date
 			warnings = append(warnings, fmt.Sprintf("update for collection %s available (currently:%s, latest:%s)", item.Name, item.LocalVersion, item.Version))
-		default: // version is higher than the highest available from hub?
+		case VersionFuture:
 			warnings = append(warnings, fmt.Sprintf("collection %s is in the future (currently:%s, latest:%s)", item.Name, item.LocalVersion, item.Version))
+		case VersionUnknown:
+			warnings = append(warnings, fmt.Sprintf("collection %s is tainted (latest:%s)", item.Name, item.Version))
 		}
 
 		log.Debugf("installed (%s) - status: %d | installed: %s | latest: %s | full: %+v", item.Name, vs, item.LocalVersion, item.Version, item.Versions)
