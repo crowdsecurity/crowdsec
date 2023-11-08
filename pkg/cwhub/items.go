@@ -16,6 +16,13 @@ const (
 	SCENARIOS     = "scenarios"
 )
 
+const (
+	VersionUpToDate = iota
+	VersionUpdateAvailable
+	VersionUnknown
+	VersionFuture
+)
+
 // The order is important, as it is used to range over sub-items in collections
 var ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, COLLECTIONS}
 
@@ -180,22 +187,21 @@ func (i *Item) Status() (string, emoji.Emoji) {
 func (i *Item) versionStatus() int {
 	local, err := semver.NewVersion(i.LocalVersion)
 	if err != nil {
-		// invalid, tainted
-		return +1
+		return VersionUnknown
 	}
 
 	// hub versions are already validated while syncing, ignore errors
 	latest, _ := semver.NewVersion(i.Version)
 
 	if local.LessThan(latest) {
-		return +1
+		return VersionUpdateAvailable
 	}
 
 	if local.Equal(latest) {
-		return 0
+		return VersionUpToDate
 	}
 
-	return -1
+	return VersionFuture
 }
 
 // validPath returns true if the (relative) path is allowed for the item

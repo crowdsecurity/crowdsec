@@ -340,7 +340,7 @@ func (h *Hub) CollectDepsCheck(v *Item) error {
 		return nil
 	}
 
-	if v.versionStatus() != 0 { // not up-to-date
+	if v.versionStatus() != VersionUpToDate { // not up-to-date
 		log.Debugf("%s dependencies not checked: not up-to-date", v.Name)
 		return nil
 	}
@@ -428,21 +428,19 @@ func (h *Hub) SyncDir(dir string) ([]string, error) {
 			continue
 		}
 
-		// XXX: tainted scenario and tainted collection give two very different messages in "cscli hub list"
-		// XXX: INFO[07-11-2023 23:12:49] dependency of crowdsecurity/sshd: tainted scenarios crowdsecurity/ssh-bf, tainted 
-		// XXX: INFO[07-11-2023 23:12:49] update for collection crowdsecurity/linux available (currently:?, latest:0.2)
-
 		vs := item.versionStatus()
 		switch vs {
-		case 0: // latest
+		case VersionUpToDate: // latest
 			if err := h.CollectDepsCheck(&item); err != nil {
 				warnings = append(warnings, fmt.Sprintf("dependency of %s: %s", item.Name, err))
 				h.Items[COLLECTIONS][name] = item
 			}
-		case 1: // not up-to-date
+		case VersionUpdateAvailable: // not up-to-date
 			warnings = append(warnings, fmt.Sprintf("update for collection %s available (currently:%s, latest:%s)", item.Name, item.LocalVersion, item.Version))
-		default: // version is higher than the highest available from hub?
+		case VersionFuture:
 			warnings = append(warnings, fmt.Sprintf("collection %s is in the future (currently:%s, latest:%s)", item.Name, item.LocalVersion, item.Version))
+		case VersionUnknown:
+			warnings = append(warnings, fmt.Sprintf("collection %s is tainted (latest:%s)", item.Name, item.Version))
 		}
 
 		log.Debugf("installed (%s) - status: %d | installed: %s | latest: %s | full: %+v", item.Name, vs, item.LocalVersion, item.Version, item.Versions)
