@@ -129,31 +129,26 @@ func (w *WaapSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	}
 
 	w.InChan = make(chan waf.ParsedRequest)
+	waapCfg := waf.WaapConfig{Logger: w.logger.WithField("component", "waap_config")}
 
 	//let's load the associated waap_config:
 	if w.config.WaapConfigPath != "" {
-		waapCfg := waf.WaapConfig{Logger: w.logger.WithField("component", "waap_config")}
-		if w.config.WaapConfigPath != "" {
-			err := waapCfg.LoadByPath(w.config.WaapConfigPath)
-			if err != nil {
-				return fmt.Errorf("unable to load waap_config : %s", err)
-			}
-		} else if w.config.WaapConfig != "" {
-			err := waapCfg.Load(w.config.WaapConfig)
-			if err != nil {
-				return fmt.Errorf("unable to load waap_config : %s", err)
-			}
-		} else {
-			return fmt.Errorf("no waap_config provided")
-		}
-		w.WaapRuntime, err = waapCfg.Build()
+		err := waapCfg.LoadByPath(w.config.WaapConfigPath)
 		if err != nil {
-			return fmt.Errorf("unable to build waap_config : %s", err)
+			return fmt.Errorf("unable to load waap_config : %s", err)
 		}
 	} else if w.config.WaapConfig != "" {
-		return fmt.Errorf("resolution of waap_config not implemented yet")
+		err := waapCfg.Load(w.config.WaapConfig)
+		if err != nil {
+			return fmt.Errorf("unable to load waap_config : %s", err)
+		}
 	} else {
 		return fmt.Errorf("no waap_config provided")
+	}
+
+	w.WaapRuntime, err = waapCfg.Build()
+	if err != nil {
+		return fmt.Errorf("unable to build waap_config : %s", err)
 	}
 
 	err = w.WaapRuntime.ProcessOnLoadRules()

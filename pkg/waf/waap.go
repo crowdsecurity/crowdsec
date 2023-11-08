@@ -168,9 +168,10 @@ func (wc *WaapConfig) Load(configName string) error {
 		if err != nil {
 			return fmt.Errorf("unable to load waap-config %s : %s", hubWaapConfigItem.LocalPath, err)
 		}
+		return nil
 	}
 
-	return nil
+	return fmt.Errorf("no waap-config found for %s", configName)
 }
 
 func (wc *WaapConfig) Build() (*WaapRuntimeConfig, error) {
