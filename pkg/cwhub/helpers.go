@@ -117,7 +117,7 @@ func (h *Hub) UpgradeItem(itemType string, name string, force bool) (bool, error
 	if item.UpToDate {
 		log.Infof("%s: up-to-date", item.Name)
 
-		if err := h.DownloadDataIfNeeded(*item, force); err != nil {
+		if err := item.DownloadDataIfNeeded(force); err != nil {
 			return false, fmt.Errorf("%s: download failed: %w", item.Name, err)
 		}
 
@@ -322,8 +322,8 @@ func (i *Item) download(overwrite bool) error {
 }
 
 // DownloadDataIfNeeded downloads the data files for an item
-func (h *Hub) DownloadDataIfNeeded(target Item, force bool) error {
-	itemFilePath := fmt.Sprintf("%s/%s/%s/%s", h.local.InstallDir, target.Type, target.Stage, target.FileName)
+func (i *Item) DownloadDataIfNeeded(force bool) error {
+	itemFilePath := fmt.Sprintf("%s/%s/%s/%s", i.hub.local.InstallDir, i.Type, i.Stage, i.FileName)
 
 	itemFile, err := os.Open(itemFilePath)
 	if err != nil {
@@ -332,7 +332,7 @@ func (h *Hub) DownloadDataIfNeeded(target Item, force bool) error {
 
 	defer itemFile.Close()
 
-	if err = downloadData(h.local.InstallDataDir, force, itemFile); err != nil {
+	if err = downloadData(i.hub.local.InstallDataDir, force, itemFile); err != nil {
 		return fmt.Errorf("while downloading data for %s: %w", itemFilePath, err)
 	}
 
