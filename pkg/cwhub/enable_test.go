@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testInstall(hub *Hub, t *testing.T, item Item) {
+func testInstall(hub *Hub, t *testing.T, item *Item) {
 	// Install the parser
 	err := item.downloadLatest(false, false)
 	require.NoError(t, err, "failed to download %s", item.Name)
@@ -29,7 +29,7 @@ func testInstall(hub *Hub, t *testing.T, item Item) {
 	assert.True(t, hub.Items[item.Type][item.Name].Installed, "%s should be installed", item.Name)
 }
 
-func testTaint(hub *Hub, t *testing.T, item Item) {
+func testTaint(hub *Hub, t *testing.T, item *Item) {
 	assert.False(t, hub.Items[item.Type][item.Name].Tainted, "%s should not be tainted", item.Name)
 
 	f, err := os.OpenFile(item.LocalPath, os.O_APPEND|os.O_WRONLY, 0600)
@@ -47,11 +47,11 @@ func testTaint(hub *Hub, t *testing.T, item Item) {
 	assert.True(t, hub.Items[item.Type][item.Name].Tainted, "%s should be tainted", item.Name)
 }
 
-func testUpdate(hub *Hub, t *testing.T, item Item) {
+func testUpdate(hub *Hub, t *testing.T, item *Item) {
 	assert.False(t, hub.Items[item.Type][item.Name].UpToDate, "%s should not be up-to-date", item.Name)
 
 	// Update it + check status
-	err := hub.downloadLatest(&item, true, true)
+	err := item.downloadLatest(true, true)
 	require.NoError(t, err, "failed to update %s", item.Name)
 
 	// Local sync and check status
@@ -62,7 +62,7 @@ func testUpdate(hub *Hub, t *testing.T, item Item) {
 	assert.False(t, hub.Items[item.Type][item.Name].Tainted, "%s should not be tainted anymore", item.Name)
 }
 
-func testDisable(hub *Hub, t *testing.T, item Item) {
+func testDisable(hub *Hub, t *testing.T, item *Item) {
 	assert.True(t, hub.Items[item.Type][item.Name].Installed, "%s should be installed", item.Name)
 
 	// Remove

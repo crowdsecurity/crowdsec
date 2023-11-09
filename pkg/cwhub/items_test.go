@@ -4,8 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/crowdsecurity/go-cs-lib/cstest"
 )
 
 func TestItemStatus(t *testing.T) {
@@ -62,14 +60,9 @@ func TestGetters(t *testing.T) {
 
 		// Add item and get it
 		item.Name += "nope"
-		err := hub.AddItem(*item)
-		require.NoError(t, err)
+		hub.Items[item.Type][item.Name] = item
 
 		newitem := hub.GetItem(COLLECTIONS, item.Name)
 		require.NotNil(t, newitem)
-
-		item.Type = "ratata"
-		err = hub.AddItem(*item)
-		cstest.RequireErrorContains(t, err, "ItemType ratata is unknown")
 	}
 }

@@ -19,7 +19,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Install installs an item from the hub, downloading it if needed
+// Install installs the item from the hub, downloading it if needed
 func (i *Item) Install(force bool, downloadOnly bool) error {
 	if downloadOnly && i.Downloaded && i.UpToDate {
 		log.Warningf("%s is already downloaded and up-to-date", i.Name)
@@ -34,10 +34,6 @@ func (i *Item) Install(force bool, downloadOnly bool) error {
 		return fmt.Errorf("while downloading %s: %w", i.Name, err)
 	}
 
-	if err := i.hub.AddItem(*i); err != nil {
-		return fmt.Errorf("while adding %s: %w", i.Name, err)
-	}
-
 	if downloadOnly {
 		// XXX: should get the path from downloadLatest
 		log.Infof("Downloaded %s to %s", i.Name, filepath.Join(i.hub.local.HubDir, i.RemotePath))
@@ -48,10 +44,6 @@ func (i *Item) Install(force bool, downloadOnly bool) error {
 
 	if err := i.enable(); err != nil {
 		return fmt.Errorf("while enabling %s: %w", i.Name, err)
-	}
-
-	if err := i.hub.AddItem(*i); err != nil {
-		return fmt.Errorf("while adding %s: %w", i.Name, err)
 	}
 
 	log.Infof("Enabled %s", i.Name)
@@ -79,10 +71,6 @@ func (i *Item) Remove(purge bool, forceAction bool) (bool, error) {
 
 	// XXX: should take the value from disable()
 	removed = true
-
-	if err := i.hub.AddItem(*i); err != nil {
-		return false, fmt.Errorf("unable to refresh item state %s: %w", i.Name, err)
-	}
 
 	return removed, nil
 }
@@ -129,10 +117,6 @@ func (i *Item) Upgrade(force bool) (bool, error) {
 		fmt.Printf("updated %s\n", i.Name)
 		log.Infof("%v %s: updated", emoji.Package, i.Name)
 		updated = true
-	}
-
-	if err := i.hub.AddItem(*i); err != nil {
-		return false, fmt.Errorf("unable to refresh item state %s: %w", i.Name, err)
 	}
 
 	return updated, nil
@@ -301,12 +285,10 @@ func (i *Item) download(overwrite bool) error {
 		return fmt.Errorf("while downloading data for %s: %w", i.FileName, err)
 	}
 
-	i.hub.Items[i.Type][i.Name] = *i
-
 	return nil
 }
 
-// DownloadDataIfNeeded downloads the data files for an item
+// DownloadDataIfNeeded downloads the data files for the item
 func (i *Item) DownloadDataIfNeeded(force bool) error {
 	itemFilePath := fmt.Sprintf("%s/%s/%s/%s", i.hub.local.InstallDir, i.Type, i.Stage, i.FileName)
 

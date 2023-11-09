@@ -26,8 +26,7 @@ const (
 // The order is important, as it is used to range over sub-items in collections
 var ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, COLLECTIONS}
 
-// XXX: pointers to Item?
-type HubItems map[string]map[string]Item
+type HubItems map[string]map[string]*Item
 
 // ItemVersion is used to detect the version of a given item
 // by comparing the hash of each version to the local file.
@@ -224,7 +223,7 @@ func (i *Item) validPath(dirName, fileName string) bool {
 }
 
 // GetItemMap returns the map of items for a given type
-func (h *Hub) GetItemMap(itemType string) map[string]Item {
+func (h *Hub) GetItemMap(itemType string) map[string]*Item {
 	m, ok := h.Items[itemType]
 	if !ok {
 		return nil
@@ -235,12 +234,7 @@ func (h *Hub) GetItemMap(itemType string) map[string]Item {
 
 // GetItem returns the item from hub based on its type and full name (author/name)
 func (h *Hub) GetItem(itemType string, itemName string) *Item {
-	m, ok := h.GetItemMap(itemType)[itemName]
-	if !ok {
-		return nil
-	}
-
-	return &m
+	return h.GetItemMap(itemType)[itemName]
 }
 
 // GetItemNames returns the list of item (full) names for a given type
@@ -260,27 +254,14 @@ func (h *Hub) GetItemNames(itemType string) []string {
 	return names
 }
 
-// AddItem adds an item to the hub index
-func (h *Hub) AddItem(item Item) error {
-	for _, t := range ItemTypes {
-		if t == item.Type {
-			h.Items[t][item.Name] = item
-			return nil
-		}
-	}
-
-	// XXX: can this happen?
-	return fmt.Errorf("ItemType %s is unknown", item.Type)
-}
-
 // GetInstalledItems returns the list of installed items
-func (h *Hub) GetInstalledItems(itemType string) ([]Item, error) {
+func (h *Hub) GetInstalledItems(itemType string) ([]*Item, error) {
 	items, ok := h.Items[itemType]
 	if !ok {
 		return nil, fmt.Errorf("no %s in the hub index", itemType)
 	}
 
-	retItems := make([]Item, 0)
+	retItems := make([]*Item, 0)
 
 	for _, item := range items {
 		if item.Installed {

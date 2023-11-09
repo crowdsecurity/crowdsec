@@ -209,7 +209,7 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 
 		_, fileName := filepath.Split(path)
 
-		h.Items[info.ftype][info.fname] = Item{
+		h.Items[info.ftype][info.fname] = &Item{
 			hub:       h,
 			Name:      info.fname,
 			Stage:     info.stage,
@@ -361,7 +361,7 @@ func (h *Hub) checkSubItems(v *Item) error {
 			continue
 		}
 
-		if err := h.checkSubItems(&subItem); err != nil {
+		if err := h.checkSubItems(subItem); err != nil {
 			return fmt.Errorf("sub collection %s is broken: %w", subItem.Name, err)
 		}
 
@@ -421,7 +421,7 @@ func (h *Hub) syncDir(dir string) ([]string, error) {
 		vs := item.versionStatus()
 		switch vs {
 		case VersionUpToDate: // latest
-			if err := h.checkSubItems(&item); err != nil {
+			if err := h.checkSubItems(item); err != nil {
 				warnings = append(warnings, fmt.Sprintf("dependency of %s: %s", item.Name, err))
 				h.Items[COLLECTIONS][name] = item
 			}

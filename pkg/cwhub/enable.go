@@ -75,7 +75,6 @@ func (i *Item) enable() error {
 
 	log.Infof("Enabled %s: %s", i.Type, i.Name)
 	i.Installed = true
-	i.hub.Items[i.Type][i.Name] = *i
 
 	return nil
 }
@@ -91,7 +90,6 @@ func (i *Item) purge() error {
 
 	i.Downloaded = false
 	log.Infof("Removed source file [%s]: %s", i.Name, itempath)
-	i.hub.Items[i.Type][i.Name] = *i
 
 	return nil
 }
@@ -198,8 +196,6 @@ func (i *Item) disable(purge bool, force bool) error {
 			return err
 		}
 	}
-
-	i.hub.Items[i.Type][i.Name] = *i
 
 	return nil
 }
