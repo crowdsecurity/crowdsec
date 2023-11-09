@@ -79,7 +79,8 @@ func TestUpgradeItemInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 	require.True(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
 	assertCollectionDepsInstalled(t, "crowdsecurity/test_collection")
 
-	didRemove, err := hub.RemoveItem(SCENARIOS, "crowdsecurity/foobar_scenario", false, false)
+	item = hub.GetItem(SCENARIOS, "crowdsecurity/foobar_scenario")
+	didRemove, err := item.Remove(false, false)
 	require.NoError(t, err)
 	require.True(t, didRemove)
 
@@ -137,7 +138,8 @@ func TestUpgradeItemNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *te
 	require.True(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
 	assertCollectionDepsInstalled(t, "crowdsecurity/test_collection")
 
-	didRemove, err := hub.RemoveItem(SCENARIOS, "crowdsecurity/foobar_scenario", false, false)
+	item = hub.GetItem(SCENARIOS, "crowdsecurity/foobar_scenario")
+	didRemove, err := item.Remove(false, false)
 	require.NoError(t, err)
 	require.True(t, didRemove)
 

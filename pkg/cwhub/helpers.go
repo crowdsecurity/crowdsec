@@ -59,34 +59,29 @@ func (i *Item) Install(force bool, downloadOnly bool) error {
 	return nil
 }
 
-// RemoveItem disables one item, optionally removing the downloaded content
-func (h *Hub) RemoveItem(itemType string, name string, purge bool, forceAction bool) (bool, error) {
+// Remove disables the item, optionally removing the downloaded content
+func (i *Item) Remove(purge bool, forceAction bool) (bool, error) {
 	removed := false
 
-	item := h.GetItem(itemType, name)
-	if item == nil {
-		return false, fmt.Errorf("can't find '%s' in %s", name, itemType)
-	}
-
-	if !item.Downloaded {
-		log.Infof("removing %s: not downloaded -- no removal required", item.Name)
+	if !i.Downloaded {
+		log.Infof("removing %s: not downloaded -- no removal required", i.Name)
 		return false, nil
 	}
 
-	if !item.Installed && !purge {
-		log.Infof("removing %s: already uninstalled", item.Name)
+	if !i.Installed && !purge {
+		log.Infof("removing %s: already uninstalled", i.Name)
 		return false, nil
 	}
 
-	if err := item.disable(purge, forceAction); err != nil {
-		return false, fmt.Errorf("unable to disable %s: %w", item.Name, err)
+	if err := i.disable(purge, forceAction); err != nil {
+		return false, fmt.Errorf("unable to disable %s: %w", i.Name, err)
 	}
 
 	// XXX: should take the value from disable()
 	removed = true
 
-	if err := h.AddItem(*item); err != nil {
-		return false, fmt.Errorf("unable to refresh item state %s: %w", item.Name, err)
+	if err := i.hub.AddItem(*i); err != nil {
+		return false, fmt.Errorf("unable to refresh item state %s: %w", i.Name, err)
 	}
 
 	return removed, nil

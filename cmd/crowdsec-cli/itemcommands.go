@@ -287,7 +287,7 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 			removed := 0
 
 			for _, item := range items {
-				didRemove, err := hub.RemoveItem(it.name, item.Name, purge, force)
+				didRemove, err := item.Remove(purge, force)
 				if err != nil {
 					return err
 				}
@@ -309,27 +309,25 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 		}
 
 		removed := 0
-		for _, name := range args {
-			if !force {
-				item := hub.GetItem(it.name, name)
-				if item == nil {
-					// XXX: this should be in GetItem?
-					return fmt.Errorf("can't find '%s' in %s", name, it.name)
-				}
-				if len(item.BelongsToCollections) > 0 {
-					log.Warningf("%s belongs to collections: %s", name, item.BelongsToCollections)
-					log.Warningf("Run 'sudo cscli %s remove %s --force' if you want to force remove this %s", it.name, name, it.singular)
-					continue
-				}
+		for _, itemName := range args {
+			item := hub.GetItem(it.name, itemName)
+			if item == nil {
+				return fmt.Errorf("can't find '%s' in %s", itemName, it.name)
 			}
 
-			didRemove, err := hub.RemoveItem(it.name, name, purge, force)
+			if !force && len(item.BelongsToCollections) > 0 {
+				log.Warningf("%s belongs to collections: %s", item.Name, item.BelongsToCollections)
+				log.Warningf("Run 'sudo cscli %s remove %s --force' if you want to force remove this %s", item.Type, item.Name, it.singular)
+				continue
+			}
+
+			didRemove, err := item.Remove(purge, force)
 			if err != nil {
 				return err
 			}
 
 			if didRemove {
-				log.Infof("Removed %s", name)
+				log.Infof("Removed %s", item.Name)
 				removed++
 			}
 		}
