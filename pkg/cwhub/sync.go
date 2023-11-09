@@ -439,18 +439,23 @@ func (h *Hub) syncDir(dir string) ([]string, error) {
 }
 
 // Updates the info from HubInit() with the local state
-func (h *Hub) LocalSync() ([]string, error) {
+func (h *Hub) localSync() error {
 	h.skippedLocal = 0
 	h.skippedTainted = 0
+	h.Warnings = []string{}
 
 	warnings, err := h.syncDir(h.local.InstallDir)
 	if err != nil {
-		return warnings, fmt.Errorf("failed to scan %s: %w", h.local.InstallDir, err)
+		return fmt.Errorf("failed to scan %s: %w", h.local.InstallDir, err)
 	}
 
-	if _, err = h.syncDir(h.local.HubDir); err != nil {
-		return warnings, fmt.Errorf("failed to scan %s: %w", h.local.HubDir, err)
+	h.Warnings = append(h.Warnings, warnings...)
+
+	if warnings, err = h.syncDir(h.local.HubDir); err != nil {
+		return fmt.Errorf("failed to scan %s: %w", h.local.HubDir, err)
 	}
 
-	return warnings, nil
+	h.Warnings = append(h.Warnings, warnings...)
+
+	return nil
 }

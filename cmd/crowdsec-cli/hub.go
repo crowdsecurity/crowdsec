@@ -53,9 +53,7 @@ func runHubList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// use LocalSync to get warnings about tainted / outdated items
-	warn, _ := hub.LocalSync()
-	for _, v := range warn {
+	for _, v := range hub.Warnings {
 		log.Info(v)
 	}
 
@@ -96,9 +94,7 @@ func runHubUpdate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to update hub: %w", err)
 	}
 
-	// use LocalSync to get warnings about tainted / outdated items
-	warn, _ := hub.LocalSync()
-	for _, v := range warn {
+	for _, v := range hub.Warnings {
 		log.Info(v)
 	}
 
