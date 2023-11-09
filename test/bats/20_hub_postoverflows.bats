@@ -189,7 +189,7 @@ teardown() {
     rune -0 cscli postoverflows inspect crowdsecurity/rdns -o json
     rune -0 jq -c '[.type, .stage, .name, .author, .path, .installed]' <(output)
     # XXX: .installed is missing -- not false
-    assert_json '["postoverflows","s00-enrich","crowdsecurity/rdns","crowdsecurity","postoverflows/s00-enrich/crowdsecurity/rdns.yaml",null]'
+    assert_json '["postoverflows","s00-enrich","crowdsecurity/rdns","crowdsecurity","postoverflows/s00-enrich/crowdsecurity/rdns.yaml",false]'
 
     # one item, raw
     rune -0 cscli postoverflows inspect crowdsecurity/rdns -o raw
@@ -216,7 +216,7 @@ teardown() {
     # multiple items, json
     rune -0 cscli postoverflows inspect crowdsecurity/rdns crowdsecurity/cdn-whitelist -o json
     rune -0 jq -sc '[.[] | [.type, .stage, .name, .author, .path, .installed]]' <(output)
-    assert_json '[["postoverflows","s00-enrich","crowdsecurity/rdns","crowdsecurity","postoverflows/s00-enrich/crowdsecurity/rdns.yaml",null],["postoverflows","s01-whitelist","crowdsecurity/cdn-whitelist","crowdsecurity","postoverflows/s01-whitelist/crowdsecurity/cdn-whitelist.yaml",null]]'
+    assert_json '[["postoverflows","s00-enrich","crowdsecurity/rdns","crowdsecurity","postoverflows/s00-enrich/crowdsecurity/rdns.yaml",false],["postoverflows","s01-whitelist","crowdsecurity/cdn-whitelist","crowdsecurity","postoverflows/s01-whitelist/crowdsecurity/cdn-whitelist.yaml",false]]'
 
     # multiple items, raw
     rune -0 cscli postoverflows inspect crowdsecurity/rdns crowdsecurity/cdn-whitelist -o raw

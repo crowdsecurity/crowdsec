@@ -33,7 +33,7 @@ type HubItems map[string]map[string]*Item
 // If the item does not match any known version, it is considered tainted.
 type ItemVersion struct {
 	Digest     string `json:"digest,omitempty"`     // meow
-	Deprecated bool   `json:"deprecated,omitempty"` // XXX: do we keep this?
+	Deprecated bool   `json:"deprecated,omitempty"`
 }
 
 // Item represents an object managed in the hub. It can be a parser, scenario, collection..
@@ -60,10 +60,10 @@ type Item struct {
 	LocalPath    string `json:"local_path,omitempty" yaml:"local_path,omitempty"` // the local path relative to ${CFG_DIR}
 	LocalVersion string `json:"local_version,omitempty"`
 	LocalHash    string `json:"local_hash,omitempty"` // the local meow
-	Installed    bool   `json:"installed,omitempty"`  // XXX: should we remove omitempty from bool fields?
-	Downloaded   bool   `json:"downloaded,omitempty"`
-	UpToDate     bool   `json:"up_to_date,omitempty"`
-	Tainted      bool   `json:"tainted,omitempty"` // has it been locally modified?
+	Installed    bool   `json:"installed"`
+	Downloaded   bool   `json:"downloaded"`
+	UpToDate     bool   `json:"up_to_date"`
+	Tainted      bool   `json:"tainted"` // has it been locally modified?
 
 	// if it's a collection, it can have sub items
 	Parsers       []string `json:"parsers,omitempty"       yaml:"parsers,omitempty"`
@@ -97,7 +97,7 @@ func (i Item) MarshalJSON() ([]byte, error) {
 
 	return json.Marshal(&struct {
 		Alias
-		Local bool `json:"local"` // XXX: omitempty?
+		Local bool `json:"local"`
 	}{
 		Alias: Alias(i),
 		Local: i.IsLocal(),

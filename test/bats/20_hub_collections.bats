@@ -185,7 +185,7 @@ teardown() {
     rune -0 cscli collections inspect crowdsecurity/sshd -o json
     rune -0 jq -c '[.type, .name, .author, .path, .installed]' <(output)
     # XXX: .installed is missing -- not false
-    assert_json '["collections","crowdsecurity/sshd","crowdsecurity","collections/crowdsecurity/sshd.yaml",null]'
+    assert_json '["collections","crowdsecurity/sshd","crowdsecurity","collections/crowdsecurity/sshd.yaml",false]'
 
     # one item, raw
     rune -0 cscli collections inspect crowdsecurity/sshd -o raw
@@ -211,7 +211,7 @@ teardown() {
     # multiple items, json
     rune -0 cscli collections inspect crowdsecurity/sshd crowdsecurity/smb -o json
     rune -0 jq -sc '[.[] | [.type, .name, .author, .path, .installed]]' <(output)
-    assert_json '[["collections","crowdsecurity/sshd","crowdsecurity","collections/crowdsecurity/sshd.yaml",null],["collections","crowdsecurity/smb","crowdsecurity","collections/crowdsecurity/smb.yaml",null]]'
+    assert_json '[["collections","crowdsecurity/sshd","crowdsecurity","collections/crowdsecurity/sshd.yaml",false],["collections","crowdsecurity/smb","crowdsecurity","collections/crowdsecurity/smb.yaml",false]]'
 
     # multiple items, raw
     rune -0 cscli collections inspect crowdsecurity/sshd crowdsecurity/smb -o raw
