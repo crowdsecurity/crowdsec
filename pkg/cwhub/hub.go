@@ -82,6 +82,7 @@ func (h *Hub) parseIndex() error {
 		log.Tracef("%s: %d items", itemType, len(h.Items[itemType]))
 
 		for name, item := range h.Items[itemType] {
+			item.hub = h
 			item.Name = name
 
 			// if the item has no (redundant) author, take it from the json key

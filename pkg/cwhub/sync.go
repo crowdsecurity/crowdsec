@@ -210,6 +210,7 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 		_, fileName := filepath.Split(path)
 
 		h.Items[info.ftype][info.fname] = Item{
+			hub:       h,
 			Name:      info.fname,
 			Stage:     info.stage,
 			Installed: true,
