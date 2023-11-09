@@ -155,7 +155,7 @@ func (h *Hub) UpgradeItem(itemType string, name string, force bool) (bool, error
 
 // downloadLatest will download the latest version of Item to the tdir directory
 func (h *Hub) downloadLatest(target *Item, overwrite bool, updateOnly bool) error {
-	// XXX: should return the path of the downloaded file (taken from downloadItem)
+	// XXX: should return the path of the downloaded file (taken from download())
 	log.Debugf("Downloading %s %s", target.Type, target.Name)
 
 	if !target.HasSubItems() {
@@ -165,7 +165,7 @@ func (h *Hub) downloadLatest(target *Item, overwrite bool, updateOnly bool) erro
 		}
 
 		// XXX:
-		return h.downloadItem(target, overwrite)
+		return target.download(overwrite)
 	}
 
 	// collection
@@ -193,7 +193,7 @@ func (h *Hub) downloadLatest(target *Item, overwrite bool, updateOnly bool) erro
 
 		downloaded := val.Downloaded
 
-		if err := h.downloadItem(&val, overwrite); err != nil {
+		if err := val.download(overwrite); err != nil {
 			return fmt.Errorf("while downloading %s: %w", val.Name, err)
 		}
 
@@ -208,31 +208,31 @@ func (h *Hub) downloadLatest(target *Item, overwrite bool, updateOnly bool) erro
 		h.Items[sub.Type][sub.Name] = val
 	}
 
-	if err := h.downloadItem(target, overwrite); err != nil {
+	if err := target.download(overwrite); err != nil {
 		return fmt.Errorf("failed to download item: %w", err)
 	}
 
 	return nil
 }
 
-func (h *Hub) downloadItem(target *Item, overwrite bool) error {
-	url, err := h.remote.urlTo(target.RemotePath)
+func (i *Item) download(overwrite bool) error {
+	url, err := i.hub.remote.urlTo(i.RemotePath)
 	if err != nil {
 		return fmt.Errorf("failed to build hub item request: %w", err)
 	}
 
-	tdir := h.local.HubDir
+	tdir := i.hub.local.HubDir
 
 	// if user didn't --force, don't overwrite local, tainted, up-to-date files
 	if !overwrite {
-		if target.Tainted {
-			log.Debugf("%s: tainted, not updated", target.Name)
+		if i.Tainted {
+			log.Debugf("%s: tainted, not updated", i.Name)
 			return nil
 		}
 
-		if target.UpToDate {
+		if i.UpToDate {
 			//  We still have to check if data files are present
-			log.Debugf("%s: up-to-date, not updated", target.Name)
+			log.Debugf("%s: up-to-date, not updated", i.Name)
 		}
 	}
 
@@ -253,30 +253,30 @@ func (h *Hub) downloadItem(target *Item, overwrite bool) error {
 
 	hash := sha256.New()
 	if _, err = hash.Write(body); err != nil {
-		return fmt.Errorf("while hashing %s: %w", target.Name, err)
+		return fmt.Errorf("while hashing %s: %w", i.Name, err)
 	}
 
 	meow := hex.EncodeToString(hash.Sum(nil))
-	if meow != target.Versions[target.Version].Digest {
+	if meow != i.Versions[i.Version].Digest {
 		log.Errorf("Downloaded version doesn't match index, please 'hub update'")
-		log.Debugf("got %s, expected %s", meow, target.Versions[target.Version].Digest)
+		log.Debugf("got %s, expected %s", meow, i.Versions[i.Version].Digest)
 
-		return fmt.Errorf("invalid download hash for %s", target.Name)
+		return fmt.Errorf("invalid download hash for %s", i.Name)
 	}
 
 	//all good, install
 	//check if parent dir exists
-	tmpdirs := strings.Split(tdir+"/"+target.RemotePath, "/")
+	tmpdirs := strings.Split(tdir+"/"+i.RemotePath, "/")
 	parentDir := strings.Join(tmpdirs[:len(tmpdirs)-1], "/")
 
 	// ensure that target file is within target dir
-	finalPath, err := filepath.Abs(tdir + "/" + target.RemotePath)
+	finalPath, err := filepath.Abs(tdir + "/" + i.RemotePath)
 	if err != nil {
-		return fmt.Errorf("filepath.Abs error on %s: %w", tdir+"/"+target.RemotePath, err)
+		return fmt.Errorf("filepath.Abs error on %s: %w", tdir+"/"+i.RemotePath, err)
 	}
 
 	if !strings.HasPrefix(finalPath, tdir) {
-		return fmt.Errorf("path %s escapes %s, abort", target.RemotePath, tdir)
+		return fmt.Errorf("path %s escapes %s, abort", i.RemotePath, tdir)
 	}
 
 	// check dir
@@ -290,13 +290,13 @@ func (h *Hub) downloadItem(target *Item, overwrite bool) error {
 
 	// check actual file
 	if _, err = os.Stat(finalPath); !os.IsNotExist(err) {
-		log.Warningf("%s: overwrite", target.Name)
-		log.Debugf("target: %s/%s", tdir, target.RemotePath)
+		log.Warningf("%s: overwrite", i.Name)
+		log.Debugf("target: %s/%s", tdir, i.RemotePath)
 	} else {
-		log.Infof("%s: OK", target.Name)
+		log.Infof("%s: OK", i.Name)
 	}
 
-	f, err := os.OpenFile(tdir+"/"+target.RemotePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+	f, err := os.OpenFile(tdir+"/"+i.RemotePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
 	if err != nil {
 		return fmt.Errorf("while opening file: %w", err)
 	}
@@ -308,15 +308,15 @@ func (h *Hub) downloadItem(target *Item, overwrite bool) error {
 		return fmt.Errorf("while writing file: %w", err)
 	}
 
-	target.Downloaded = true
-	target.Tainted = false
-	target.UpToDate = true
+	i.Downloaded = true
+	i.Tainted = false
+	i.UpToDate = true
 
-	if err = downloadData(h.local.InstallDataDir, overwrite, bytes.NewReader(body)); err != nil {
-		return fmt.Errorf("while downloading data for %s: %w", target.FileName, err)
+	if err = downloadData(i.hub.local.InstallDataDir, overwrite, bytes.NewReader(body)); err != nil {
+		return fmt.Errorf("while downloading data for %s: %w", i.FileName, err)
 	}
 
-	h.Items[target.Type][target.Name] = *target
+	i.hub.Items[i.Type][i.Name] = *i
 
 	return nil
 }

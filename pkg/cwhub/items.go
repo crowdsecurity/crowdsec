@@ -26,6 +26,7 @@ const (
 // The order is important, as it is used to range over sub-items in collections
 var ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, COLLECTIONS}
 
+// XXX: pointers to Item?
 type HubItems map[string]map[string]Item
 
 // ItemVersion is used to detect the version of a given item
