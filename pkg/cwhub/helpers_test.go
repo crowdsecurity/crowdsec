@@ -50,7 +50,8 @@ func TestUpgradeItemNewScenarioInCollection(t *testing.T) {
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].UpToDate)
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Tainted)
 
-	didUpdate, err := hub.UpgradeItem(COLLECTIONS, "crowdsecurity/test_collection", false)
+	item = hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
+	didUpdate, err := item.Upgrade(false)
 	require.NoError(t, err)
 	require.True(t, didUpdate)
 	assertCollectionDepsInstalled(t, "crowdsecurity/test_collection")
@@ -101,7 +102,8 @@ func TestUpgradeItemInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 	hub, err = NewHub(hub.local, remote, true)
 	require.NoError(t, err, "failed to download index: %s", err)
 
-	didUpdate, err := hub.UpgradeItem(COLLECTIONS, "crowdsecurity/test_collection", false)
+	item = hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
+	didUpdate, err := item.Upgrade(false)
 	require.NoError(t, err)
 	require.False(t, didUpdate)
 
@@ -169,7 +171,8 @@ func TestUpgradeItemNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *te
 	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
 	hub = getHubOrFail(t, hub.local, remote)
 
-	didUpdate, err := hub.UpgradeItem(COLLECTIONS, "crowdsecurity/test_collection", false)
+	item = hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
+	didUpdate, err := item.Upgrade(false)
 	require.NoError(t, err)
 	require.True(t, didUpdate)
 

@@ -391,7 +391,7 @@ func itemsUpgradeRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 
 			updated := 0
 			for _, item := range items {
-				didUpdate, err := hub.UpgradeItem(it.name, item.Name, force)
+				didUpdate, err := item.Upgrade(force)
 				if err != nil {
 					return err
 				}
@@ -399,7 +399,9 @@ func itemsUpgradeRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 					updated++
 				}
 			}
+
 			log.Infof("Updated %d %s", updated, it.name)
+
 			if updated > 0 {
 				log.Infof(ReloadMessage())
 			}
@@ -412,13 +414,19 @@ func itemsUpgradeRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 		}
 
 		updated := 0
-		for _, name := range args {
-			didUpdate, err := hub.UpgradeItem(it.name, name, force)
+		for _, itemName := range args {
+			item := hub.GetItem(it.name, itemName)
+			if item == nil {
+				return fmt.Errorf("can't find '%s' in %s", itemName, it.name)
+			}
+
+			didUpdate, err := item.Upgrade(force)
 			if err != nil {
 				return err
 			}
+
 			if didUpdate {
-				log.Infof("Updated %s", name)
+				log.Infof("Updated %s", item.Name)
 				updated++
 			}
 		}

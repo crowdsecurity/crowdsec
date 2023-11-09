@@ -87,28 +87,23 @@ func (i *Item) Remove(purge bool, forceAction bool) (bool, error) {
 	return removed, nil
 }
 
-// UpgradeItem upgrades an item from the hub
-func (h *Hub) UpgradeItem(itemType string, name string, force bool) (bool, error) {
+// Upgrade downloads and applies the last version from the hub
+func (i *Item) Upgrade(force bool) (bool, error) {
 	updated := false
 
-	item := h.GetItem(itemType, name)
-	if item == nil {
-		return false, fmt.Errorf("can't find '%s' in %s", name, itemType)
+	if !i.Downloaded {
+		return false, fmt.Errorf("can't upgrade %s: not installed", i.Name)
 	}
 
-	if !item.Downloaded {
-		return false, fmt.Errorf("can't upgrade %s: not installed", item.Name)
+	if !i.Installed {
+		return false, fmt.Errorf("can't upgrade %s: downloaded but not installed", i.Name)
 	}
 
-	if !item.Installed {
-		return false, fmt.Errorf("can't upgrade %s: downloaded but not installed", item.Name)
-	}
+	if i.UpToDate {
+		log.Infof("%s: up-to-date", i.Name)
 
-	if item.UpToDate {
-		log.Infof("%s: up-to-date", item.Name)
-
-		if err := item.DownloadDataIfNeeded(force); err != nil {
-			return false, fmt.Errorf("%s: download failed: %w", item.Name, err)
+		if err := i.DownloadDataIfNeeded(force); err != nil {
+			return false, fmt.Errorf("%s: download failed: %w", i.Name, err)
 		}
 
 		if !force {
@@ -117,27 +112,27 @@ func (h *Hub) UpgradeItem(itemType string, name string, force bool) (bool, error
 		}
 	}
 
-	if err := item.downloadLatest(force, true); err != nil {
-		return false, fmt.Errorf("%s: download failed: %w", item.Name, err)
+	if err := i.downloadLatest(force, true); err != nil {
+		return false, fmt.Errorf("%s: download failed: %w", i.Name, err)
 	}
 
-	if !item.UpToDate {
-		if item.Tainted {
-			log.Infof("%v %s is tainted, --force to overwrite", emoji.Warning, item.Name)
-		} else if item.IsLocal() {
-			log.Infof("%v %s is local", emoji.Prohibited, item.Name)
+	if !i.UpToDate {
+		if i.Tainted {
+			log.Infof("%v %s is tainted, --force to overwrite", emoji.Warning, i.Name)
+		} else if i.IsLocal() {
+			log.Infof("%v %s is local", emoji.Prohibited, i.Name)
 		}
 	} else {
 		// a check on stdout is used while scripting to know if the hub has been upgraded
 		// and a configuration reload is required
 		// TODO: use a better way to communicate this
-		fmt.Printf("updated %s\n", item.Name)
-		log.Infof("%v %s: updated", emoji.Package, item.Name)
+		fmt.Printf("updated %s\n", i.Name)
+		log.Infof("%v %s: updated", emoji.Package, i.Name)
 		updated = true
 	}
 
-	if err := h.AddItem(*item); err != nil {
-		return false, fmt.Errorf("unable to refresh item state %s: %w", item.Name, err)
+	if err := i.hub.AddItem(*i); err != nil {
+		return false, fmt.Errorf("unable to refresh item state %s: %w", i.Name, err)
 	}
 
 	return updated, nil
