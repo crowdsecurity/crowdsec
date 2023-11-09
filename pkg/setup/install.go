@@ -62,15 +62,15 @@ func InstallHubItems(hub *cwhub.Hub, input []byte, dryRun bool) error {
 
 		if len(install.Collections) > 0 {
 			for _, collection := range setupItem.Install.Collections {
+				item := hub.GetItem(cwhub.COLLECTIONS, collection)
+				if item == nil {
+					return fmt.Errorf("collection %s not found", collection)
+				}
+
 				if dryRun {
 					fmt.Println("dry-run: would install collection", collection)
 
 					continue
-				}
-
-				item := hub.GetItem(collection, cwhub.COLLECTIONS)
-				if item == nil {
-					return fmt.Errorf("collection %s not found", collection)
 				}
 
 				if err := item.Install(forceAction, downloadOnly); err != nil {
@@ -87,7 +87,7 @@ func InstallHubItems(hub *cwhub.Hub, input []byte, dryRun bool) error {
 					continue
 				}
 
-				item := hub.GetItem(parser, cwhub.PARSERS)
+				item := hub.GetItem(cwhub.PARSERS, parser)
 				if item == nil {
 					return fmt.Errorf("parser %s not found", parser)
 				}
@@ -106,7 +106,7 @@ func InstallHubItems(hub *cwhub.Hub, input []byte, dryRun bool) error {
 					continue
 				}
 
-				item := hub.GetItem(scenario, cwhub.SCENARIOS)
+				item := hub.GetItem(cwhub.SCENARIOS, scenario)
 				if item == nil {
 					return fmt.Errorf("scenario %s not found", scenario)
 				}
@@ -125,7 +125,7 @@ func InstallHubItems(hub *cwhub.Hub, input []byte, dryRun bool) error {
 					continue
 				}
 
-				item := hub.GetItem(postoverflow, cwhub.POSTOVERFLOWS)
+				item := hub.GetItem(cwhub.POSTOVERFLOWS, postoverflow)
 				if item == nil {
 					return fmt.Errorf("postoverflow %s not found", postoverflow)
 				}
