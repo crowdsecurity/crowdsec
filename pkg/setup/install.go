@@ -62,14 +62,19 @@ func InstallHubItems(hub *cwhub.Hub, input []byte, dryRun bool) error {
 
 		if len(install.Collections) > 0 {
 			for _, collection := range setupItem.Install.Collections {
+				item := hub.GetItem(cwhub.COLLECTIONS, collection)
+				if item == nil {
+					return fmt.Errorf("collection %s not found", collection)
+				}
+
 				if dryRun {
 					fmt.Println("dry-run: would install collection", collection)
 
 					continue
 				}
 
-				if err := hub.InstallItem(collection, cwhub.COLLECTIONS, forceAction, downloadOnly); err != nil {
-					return fmt.Errorf("while installing collection %s: %w", collection, err)
+				if err := item.Install(forceAction, downloadOnly); err != nil {
+					return fmt.Errorf("while installing collection %s: %w", item.Name, err)
 				}
 			}
 		}
@@ -82,8 +87,13 @@ func InstallHubItems(hub *cwhub.Hub, input []byte, dryRun bool) error {
 					continue
 				}
 
-				if err := hub.InstallItem(parser, cwhub.PARSERS, forceAction, downloadOnly); err != nil {
-					return fmt.Errorf("while installing parser %s: %w", parser, err)
+				item := hub.GetItem(cwhub.PARSERS, parser)
+				if item == nil {
+					return fmt.Errorf("parser %s not found", parser)
+				}
+
+				if err := item.Install(forceAction, downloadOnly); err != nil {
+					return fmt.Errorf("while installing parser %s: %w", item.Name, err)
 				}
 			}
 		}
@@ -96,8 +106,13 @@ func InstallHubItems(hub *cwhub.Hub, input []byte, dryRun bool) error {
 					continue
 				}
 
-				if err := hub.InstallItem(scenario, cwhub.SCENARIOS, forceAction, downloadOnly); err != nil {
-					return fmt.Errorf("while installing scenario %s: %w", scenario, err)
+				item := hub.GetItem(cwhub.SCENARIOS, scenario)
+				if item == nil {
+					return fmt.Errorf("scenario %s not found", scenario)
+				}
+
+				if err := item.Install(forceAction, downloadOnly); err != nil {
+					return fmt.Errorf("while installing scenario %s: %w", item.Name, err)
 				}
 			}
 		}
@@ -110,8 +125,13 @@ func InstallHubItems(hub *cwhub.Hub, input []byte, dryRun bool) error {
 					continue
 				}
 
-				if err := hub.InstallItem(postoverflow, cwhub.POSTOVERFLOWS, forceAction, downloadOnly); err != nil {
-					return fmt.Errorf("while installing postoverflow %s: %w", postoverflow, err)
+				item := hub.GetItem(cwhub.POSTOVERFLOWS, postoverflow)
+				if item == nil {
+					return fmt.Errorf("postoverflow %s not found", postoverflow)
+				}
+
+				if err := item.Install(forceAction, downloadOnly); err != nil {
+					return fmt.Errorf("while installing postoverflow %s: %w", item.Name, err)
 				}
 			}
 		}

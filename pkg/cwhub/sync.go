@@ -129,20 +129,20 @@ func (h *Hub) getItemInfo(path string) (itemFileInfo, bool, error) {
 // sortedVersions returns the input data, sorted in reverse order by semver
 func sortedVersions(raw []string) ([]string, error) {
 	vs := make([]*semver.Version, len(raw))
-	for i, r := range raw {
+	for idx, r := range raw {
 		v, err := semver.NewVersion(r)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", r, err)
 		}
 
-		vs[i] = v
+		vs[idx] = v
 	}
 
 	sort.Sort(sort.Reverse(semver.Collection(vs)))
 
 	ret := make([]string, len(vs))
-	for i, v := range vs {
-		ret[i] = v.Original()
+	for idx, v := range vs {
+		ret[idx] = v.Original()
 	}
 
 	return ret, nil
@@ -209,7 +209,8 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 
 		_, fileName := filepath.Split(path)
 
-		h.Items[info.ftype][info.fname] = Item{
+		h.Items[info.ftype][info.fname] = &Item{
+			hub:       h,
 			Name:      info.fname,
 			Stage:     info.stage,
 			Installed: true,
@@ -360,7 +361,11 @@ func (h *Hub) checkSubItems(v *Item) error {
 			continue
 		}
 
-		if err := h.checkSubItems(&subItem); err != nil {
+		if err := h.checkSubItems(subItem); err != nil {
+			if subItem.Tainted {
+				v.Tainted = true
+			}
+
 			return fmt.Errorf("sub collection %s is broken: %w", subItem.Name, err)
 		}
 
@@ -382,8 +387,6 @@ func (h *Hub) checkSubItems(v *Item) error {
 		if !slices.Contains(subItem.BelongsToCollections, v.Name) {
 			subItem.BelongsToCollections = append(subItem.BelongsToCollections, v.Name)
 		}
-
-		h.Items[sub.Type][sub.Name] = subItem
 
 		log.Tracef("checking for %s - tainted:%t uptodate:%t", sub.Name, v.Tainted, v.UpToDate)
 	}
@@ -412,7 +415,7 @@ func (h *Hub) syncDir(dir string) ([]string, error) {
 		}
 	}
 
-	for name, item := range h.Items[COLLECTIONS] {
+	for _, item := range h.Items[COLLECTIONS] {
 		if !item.Installed {
 			continue
 		}
@@ -420,9 +423,8 @@ func (h *Hub) syncDir(dir string) ([]string, error) {
 		vs := item.versionStatus()
 		switch vs {
 		case VersionUpToDate: // latest
-			if err := h.checkSubItems(&item); err != nil {
+			if err := h.checkSubItems(item); err != nil {
 				warnings = append(warnings, fmt.Sprintf("dependency of %s: %s", item.Name, err))
-				h.Items[COLLECTIONS][name] = item
 			}
 		case VersionUpdateAvailable: // not up-to-date
 			warnings = append(warnings, fmt.Sprintf("update for collection %s available (currently:%s, latest:%s)", item.Name, item.LocalVersion, item.Version))
