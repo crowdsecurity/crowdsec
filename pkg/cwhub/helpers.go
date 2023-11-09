@@ -127,17 +127,6 @@ func (i *Item) downloadLatest(overwrite bool, updateOnly bool) error {
 	// XXX: should return the path of the downloaded file (taken from download())
 	log.Debugf("Downloading %s %s", i.Type, i.Name)
 
-	if !i.HasSubItems() {
-		if !i.Installed && updateOnly && i.Downloaded {
-			log.Debugf("skipping upgrade of %s: not installed", i.Name)
-			return nil
-		}
-
-		// XXX:
-		return i.download(overwrite)
-	}
-
-	// collection
 	for _, sub := range i.SubItems() {
 		val, ok := i.hub.Items[sub.Type][sub.Name]
 		if !ok {
@@ -173,6 +162,11 @@ func (i *Item) downloadLatest(overwrite bool, updateOnly bool) error {
 				return fmt.Errorf("enabling '%s': %w", val.Name, err)
 			}
 		}
+	}
+
+	if !i.Installed && updateOnly && i.Downloaded {
+		log.Debugf("skipping upgrade of %s: not installed", i.Name)
+		return nil
 	}
 
 	if err := i.download(overwrite); err != nil {
