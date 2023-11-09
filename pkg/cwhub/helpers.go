@@ -83,11 +83,11 @@ func (h *Hub) RemoveItem(itemType string, name string, purge bool, forceAction b
 		return false, nil
 	}
 
-	if err := h.disableItem(item, purge, forceAction); err != nil {
+	if err := item.disable(purge, forceAction); err != nil {
 		return false, fmt.Errorf("unable to disable %s: %w", item.Name, err)
 	}
 
-	// XXX: should take the value from disableItem
+	// XXX: should take the value from disable()
 	removed = true
 
 	if err := h.AddItem(*item); err != nil {
