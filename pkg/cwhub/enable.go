@@ -95,8 +95,8 @@ func (h *Hub) purgeItem(target Item) (Item, error) {
 	return target, nil
 }
 
-// DisableItem to disable an item managed by the hub, removes the symlink if purge is true
-func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
+// disableItem to disable an item managed by the hub, removes the symlink if purge is true
+func (h *Hub) disableItem(target *Item, purge bool, force bool) error {
 	// XXX: should return the number of disabled/purged items to inform the upper layer whether to reload or not
 	var err error
 
@@ -140,7 +140,7 @@ func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
 		}
 
 		if toRemove {
-			if err = h.DisableItem(&val, purge, force); err != nil {
+			if err = h.disableItem(&val, purge, force); err != nil {
 				return fmt.Errorf("while disabling %s: %w", sub.Name, err)
 			}
 		} else {
