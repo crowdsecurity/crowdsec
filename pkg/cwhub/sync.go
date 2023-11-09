@@ -324,7 +324,6 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 			item.LocalHash = sha
 		}
 
-		item.Hub = h
 		h.Items[info.ftype][name] = item
 
 		return nil
