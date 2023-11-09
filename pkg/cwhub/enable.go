@@ -10,24 +10,24 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// enableItem creates a symlink between actual config file at hub.HubDir and hub.ConfigDir
+// enable creates a symlink between actual config file at hub.HubDir and hub.ConfigDir
 // Handles collections recursively
-func (h *Hub) enableItem(target *Item) error {
-	parentDir := filepath.Clean(h.local.InstallDir + "/" + target.Type + "/" + target.Stage + "/")
+func (i *Item) enable() error {
+	parentDir := filepath.Clean(i.hub.local.InstallDir + "/" + i.Type + "/" + i.Stage + "/")
 
 	// create directories if needed
-	if target.Installed {
-		if target.Tainted {
-			return fmt.Errorf("%s is tainted, won't enable unless --force", target.Name)
+	if i.Installed {
+		if i.Tainted {
+			return fmt.Errorf("%s is tainted, won't enable unless --force", i.Name)
 		}
 
-		if target.IsLocal() {
-			return fmt.Errorf("%s is local, won't enable", target.Name)
+		if i.IsLocal() {
+			return fmt.Errorf("%s is local, won't enable", i.Name)
 		}
 
 		// if it's a collection, check sub-items even if the collection file itself is up-to-date
-		if target.UpToDate && !target.HasSubItems() {
-			log.Tracef("%s is installed and up-to-date, skip.", target.Name)
+		if i.UpToDate && !i.HasSubItems() {
+			log.Tracef("%s is installed and up-to-date, skip.", i.Name)
 			return nil
 		}
 	}
@@ -41,30 +41,30 @@ func (h *Hub) enableItem(target *Item) error {
 	}
 
 	// install sub-items if any
-	for _, sub := range target.SubItems() {
-		val, ok := h.Items[sub.Type][sub.Name]
+	for _, sub := range i.SubItems() {
+		val, ok := i.hub.Items[sub.Type][sub.Name]
 		if !ok {
-			return fmt.Errorf("required %s %s of %s doesn't exist, abort", sub.Type, sub.Name, target.Name)
+			return fmt.Errorf("required %s %s of %s doesn't exist, abort", sub.Type, sub.Name, i.Name)
 		}
 
-		if err := h.enableItem(&val); err != nil {
+		if err := val.enable(); err != nil {
 			return fmt.Errorf("while installing %s: %w", sub.Name, err)
 		}
 	}
 
 	// check if file already exists where it should in configdir (eg /etc/crowdsec/collections/)
-	if _, err := os.Lstat(parentDir + "/" + target.FileName); !os.IsNotExist(err) {
-		log.Infof("%s already exists.", parentDir+"/"+target.FileName)
+	if _, err := os.Lstat(parentDir + "/" + i.FileName); !os.IsNotExist(err) {
+		log.Infof("%s already exists.", parentDir+"/"+i.FileName)
 		return nil
 	}
 
 	// hub.ConfigDir + target.RemotePath
-	srcPath, err := filepath.Abs(h.local.HubDir + "/" + target.RemotePath)
+	srcPath, err := filepath.Abs(i.hub.local.HubDir + "/" + i.RemotePath)
 	if err != nil {
 		return fmt.Errorf("while getting source path: %w", err)
 	}
 
-	dstPath, err := filepath.Abs(parentDir + "/" + target.FileName)
+	dstPath, err := filepath.Abs(parentDir + "/" + i.FileName)
 	if err != nil {
 		return fmt.Errorf("while getting destination path: %w", err)
 	}
@@ -73,9 +73,9 @@ func (h *Hub) enableItem(target *Item) error {
 		return fmt.Errorf("while creating symlink from %s to %s: %w", srcPath, dstPath, err)
 	}
 
-	log.Infof("Enabled %s: %s", target.Type, target.Name)
-	target.Installed = true
-	h.Items[target.Type][target.Name] = *target
+	log.Infof("Enabled %s: %s", i.Type, i.Name)
+	i.Installed = true
+	i.hub.Items[i.Type][i.Name] = *i
 
 	return nil
 }
