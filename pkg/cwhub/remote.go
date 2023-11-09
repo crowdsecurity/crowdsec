@@ -22,6 +22,7 @@ func (r *RemoteHubCfg) urlTo(remotePath string) (string, error) {
 		return "", ErrNilRemoteHub
 	}
 
+	// the template must contain two string placeholders
 	if fmt.Sprintf(r.URLTemplate, "%s", "%s") != r.URLTemplate {
 		return "", fmt.Errorf("invalid URL template '%s'", r.URLTemplate)
 	}
@@ -70,7 +71,6 @@ func (r *RemoteHubCfg) downloadIndex(localPath string) error {
 	}
 
 	file, err := os.OpenFile(localPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
-
 	if err != nil {
 		return fmt.Errorf("while opening hub index file: %w", err)
 	}

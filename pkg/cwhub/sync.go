@@ -129,6 +129,7 @@ func (h *Hub) getItemInfo(path string) (itemFileInfo, bool, error) {
 // sortedVersions returns the input data, sorted in reverse order by semver
 func sortedVersions(raw []string) ([]string, error) {
 	vs := make([]*semver.Version, len(raw))
+
 	for idx, r := range raw {
 		v, err := semver.NewVersion(r)
 		if err != nil {

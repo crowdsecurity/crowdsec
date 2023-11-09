@@ -102,8 +102,7 @@ func (i *Item) disable(purge bool, force bool) error {
 	// already disabled, noop unless purge
 	if !i.Installed {
 		if purge {
-			err = i.purge()
-			if err != nil {
+			if err = i.purge(); err != nil {
 				return err
 			}
 		}
@@ -191,8 +190,7 @@ func (i *Item) disable(purge bool, force bool) error {
 	i.Installed = false
 
 	if purge {
-		err = i.purge()
-		if err != nil {
+		if err = i.purge(); err != nil {
 			return err
 		}
 	}

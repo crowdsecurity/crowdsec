@@ -18,7 +18,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-// XXX: this should not need hub?
 func ShowMetrics(hub *cwhub.Hub, hubItem *cwhub.Item) error {
 	switch hubItem.Type {
 	case cwhub.PARSERS:
@@ -32,10 +31,12 @@ func ShowMetrics(hub *cwhub.Hub, hubItem *cwhub.Item) error {
 			metrics := GetParserMetric(csConfig.Cscli.PrometheusUrl, parserName)
 			parserMetricsTable(color.Output, parserName, metrics)
 		}
+
 		for _, scenarioName := range hubItem.Scenarios {
 			metrics := GetScenarioMetric(csConfig.Cscli.PrometheusUrl, scenarioName)
 			scenarioMetricsTable(color.Output, scenarioName, metrics)
 		}
+
 		for _, collName := range hubItem.Collections {
 			subColl := hub.GetItem(cwhub.COLLECTIONS, collName)
 			if subColl == nil {
