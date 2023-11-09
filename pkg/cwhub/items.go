@@ -38,6 +38,9 @@ type ItemVersion struct {
 
 // Item represents an object managed in the hub. It can be a parser, scenario, collection..
 type Item struct {
+	// backpointer to access other items (esp. sub items, parent collections)
+	Hub *Hub `json:"-" yaml:"-"`
+
 	// descriptive info
 	Type                 string   `json:"type,omitempty"                   yaml:"type,omitempty"`                   // can be any of the ItemTypes
 	Stage                string   `json:"stage,omitempty"                  yaml:"stage,omitempty"`                  // Stage for parser|postoverflow: s00-raw/s01-...
@@ -72,6 +75,14 @@ type Item struct {
 type SubItem struct {
 	Type string
 	Name string
+}
+
+func (i *Item) HasSubItems() bool {
+	return i.Type == COLLECTIONS
+}
+
+func (i *SubItem) HasSubItems() bool {
+	return i.Type == COLLECTIONS
 }
 
 func (i *Item) IsLocal() bool {

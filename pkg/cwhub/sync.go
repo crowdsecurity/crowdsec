@@ -206,7 +206,6 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 	if local && !inhub {
 		log.Tracef("%s is a local file, skip", path)
 		h.skippedLocal++
-		//	log.Infof("local scenario, skip.")
 
 		_, fileName := filepath.Split(path)
 
@@ -325,6 +324,7 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 			item.LocalHash = sha
 		}
 
+		item.Hub = h
 		h.Items[info.ftype][name] = item
 
 		return nil
@@ -335,17 +335,18 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 	return nil
 }
 
-func (h *Hub) CollectDepsCheck(v *Item) error {
-	if v.Type != COLLECTIONS {
+// checkSubItems checks for the presence, taint and version state of sub-items
+func (h *Hub) checkSubItems(v *Item) error {
+	if !v.HasSubItems() {
 		return nil
 	}
 
-	if v.versionStatus() != VersionUpToDate { // not up-to-date
+	if v.versionStatus() != VersionUpToDate {
 		log.Debugf("%s dependencies not checked: not up-to-date", v.Name)
 		return nil
 	}
 
-	// if it's a collection, ensure all the items are installed, or tag it as tainted
+	// ensure all the sub-items are installed, or tag the parent as tainted
 	log.Tracef("checking submembers of %s installed:%t", v.Name, v.Installed)
 
 	for _, sub := range v.SubItems() {
@@ -360,21 +361,10 @@ func (h *Hub) CollectDepsCheck(v *Item) error {
 			continue
 		}
 
-		if subItem.Type == COLLECTIONS {
-			log.Tracef("collec, recurse.")
-
-			if err := h.CollectDepsCheck(&subItem); err != nil {
-				if subItem.Tainted {
-					v.Tainted = true
-				}
-
-				return fmt.Errorf("sub collection %s is broken: %w", subItem.Name, err)
-			}
-
-			h.Items[sub.Type][sub.Name] = subItem
+		if err := h.checkSubItems(&subItem); err != nil {
+			return fmt.Errorf("sub collection %s is broken: %w", subItem.Name, err)
 		}
 
-		// propagate the state of sub-items to set
 		if subItem.Tainted {
 			v.Tainted = true
 			return fmt.Errorf("tainted %s %s, tainted", sub.Type, sub.Name)
@@ -431,7 +421,7 @@ func (h *Hub) SyncDir(dir string) ([]string, error) {
 		vs := item.versionStatus()
 		switch vs {
 		case VersionUpToDate: // latest
-			if err := h.CollectDepsCheck(&item); err != nil {
+			if err := h.checkSubItems(&item); err != nil {
 				warnings = append(warnings, fmt.Sprintf("dependency of %s: %s", item.Name, err))
 				h.Items[COLLECTIONS][name] = item
 			}
