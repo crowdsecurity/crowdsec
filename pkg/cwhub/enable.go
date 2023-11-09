@@ -10,10 +10,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// EnableItem creates a symlink between actual config file at hub.HubDir and hub.ConfigDir
+// enableItem creates a symlink between actual config file at hub.HubDir and hub.ConfigDir
 // Handles collections recursively
-// XXX: called from config_restore otherwise no need to export
-func (h *Hub) EnableItem(target *Item) error {
+func (h *Hub) enableItem(target *Item) error {
 	parentDir := filepath.Clean(h.local.InstallDir + "/" + target.Type + "/" + target.Stage + "/")
 
 	// create directories if needed
@@ -48,7 +47,7 @@ func (h *Hub) EnableItem(target *Item) error {
 			return fmt.Errorf("required %s %s of %s doesn't exist, abort", sub.Type, sub.Name, target.Name)
 		}
 
-		if err := h.EnableItem(&val); err != nil {
+		if err := h.enableItem(&val); err != nil {
 			return fmt.Errorf("while installing %s: %w", sub.Name, err)
 		}
 	}

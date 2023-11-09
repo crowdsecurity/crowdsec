@@ -20,7 +20,7 @@ func testInstall(hub *Hub, t *testing.T, item Item) {
 	assert.False(t, hub.Items[item.Type][item.Name].Installed, "%s should not be installed", item.Name)
 	assert.False(t, hub.Items[item.Type][item.Name].Tainted, "%s should not be tainted", item.Name)
 
-	err = hub.EnableItem(&item)
+	err = hub.enableItem(&item)
 	require.NoError(t, err, "failed to enable %s", item.Name)
 
 	_, err = hub.LocalSync()

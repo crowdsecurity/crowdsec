@@ -51,7 +51,7 @@ func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly
 
 	// XXX: should we stop here if the item is already installed?
 
-	if err := h.EnableItem(item); err != nil {
+	if err := h.enableItem(item); err != nil {
 		return fmt.Errorf("while enabling %s: %w", item.Name, err)
 	}
 
@@ -200,7 +200,7 @@ func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) erro
 		// We need to enable an item when it has been added to a collection since latest release of the collection.
 		// We check if val.Downloaded is false because maybe the item has been disabled by the user.
 		if !val.Installed && !downloaded {
-			if err := h.EnableItem(&val); err != nil {
+			if err := h.enableItem(&val); err != nil {
 				return fmt.Errorf("enabling '%s': %w", val.Name, err)
 			}
 		}
