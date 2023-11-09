@@ -180,7 +180,7 @@ func assertCollectionDepsInstalled(t *testing.T, collection string) {
 	require.NoError(t, err)
 
 	c := hub.Items[COLLECTIONS][collection]
-	require.NoError(t, hub.CollectDepsCheck(&c))
+	require.NoError(t, hub.checkSubItems(&c))
 }
 
 func pushUpdateToCollectionInHub() {

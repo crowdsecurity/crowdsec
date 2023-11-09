@@ -74,6 +74,14 @@ type SubItem struct {
 	Name string
 }
 
+func (i *Item) HasSubItems() bool {
+	return i.Type == COLLECTIONS
+}
+
+func (i *SubItem) HasSubItems() bool {
+	return i.Type == COLLECTIONS
+}
+
 func (i *Item) IsLocal() bool {
 	return i.Installed && !i.Downloaded
 }

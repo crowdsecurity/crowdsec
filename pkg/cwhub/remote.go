@@ -40,12 +40,7 @@ func (r *RemoteHubCfg) downloadIndex(localPath string) error {
 		return fmt.Errorf("failed to build hub index request: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return fmt.Errorf("failed to build request for hub index: %w", err)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := http.DefaultClient.Get(url)
 	if err != nil {
 		return fmt.Errorf("failed http request for hub index: %w", err)
 	}
@@ -53,10 +48,10 @@ func (r *RemoteHubCfg) downloadIndex(localPath string) error {
 
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusNotFound {
-			return IndexNotFoundError{req.URL.String(), r.Branch}
+			return IndexNotFoundError{url, r.Branch}
 		}
 
-		return fmt.Errorf("bad http code %d for %s", resp.StatusCode, req.URL.String())
+		return fmt.Errorf("bad http code %d for %s", resp.StatusCode, url)
 	}
 
 	body, err := io.ReadAll(resp.Body)

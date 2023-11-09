@@ -158,12 +158,13 @@ func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) erro
 	// XXX: should return the path of the downloaded file (taken from DownloadItem)
 	log.Debugf("Downloading %s %s", target.Type, target.Name)
 
-	if target.Type != COLLECTIONS {
+	if !target.HasSubItems() {
 		if !target.Installed && updateOnly && target.Downloaded {
 			log.Debugf("skipping upgrade of %s: not installed", target.Name)
 			return nil
 		}
 
+		// XXX:
 		return h.DownloadItem(target, overwrite)
 	}
 
@@ -182,7 +183,7 @@ func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) erro
 		log.Debugf("Download %s sub-item: %s %s (%t -> %t)", target.Name, sub.Type, sub.Name, target.Installed, updateOnly)
 
 		// recurse as it's a collection
-		if sub.Type == COLLECTIONS {
+		if sub.HasSubItems() {
 			log.Tracef("collection, recurse")
 
 			if err := h.DownloadLatest(&val, overwrite, updateOnly); err != nil {
@@ -235,24 +236,19 @@ func (h *Hub) DownloadItem(target *Item, overwrite bool) error {
 		}
 	}
 
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+	resp, err := http.DefaultClient.Get(url)
 	if err != nil {
-		return fmt.Errorf("while downloading %s: %w", req.URL.String(), err)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("while downloading %s: %w", req.URL.String(), err)
+		return fmt.Errorf("while downloading %s: %w", url, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("bad http code %d for %s", resp.StatusCode, req.URL.String())
+		return fmt.Errorf("bad http code %d for %s", resp.StatusCode, url)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("while reading %s: %w", req.URL.String(), err)
+		return fmt.Errorf("while downloading %s: %w", url, err)
 	}
 
 	hash := sha256.New()
