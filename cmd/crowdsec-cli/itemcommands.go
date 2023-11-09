@@ -203,7 +203,8 @@ func itemsInstallRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 		}
 
 		for _, name := range args {
-			if hub.GetItem(it.name, name) == nil {
+			item := hub.GetItem(it.name, name)
+			if item == nil {
 				msg := SuggestNearestMessage(hub, it.name, name)
 				if !ignoreError {
 					return fmt.Errorf(msg)
@@ -213,11 +214,11 @@ func itemsInstallRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 				continue
 			}
 
-			if err := hub.InstallItem(name, it.name, force, downloadOnly); err != nil {
+			if err := item.Install(force, downloadOnly); err != nil {
 				if !ignoreError {
-					return fmt.Errorf("error while installing '%s': %w", name, err)
+					return fmt.Errorf("error while installing '%s': %w", item.Name, err)
 				}
-				log.Errorf("Error while installing '%s': %s", name, err)
+				log.Errorf("Error while installing '%s': %s", item.Name, err)
 			}
 		}
 

@@ -19,15 +19,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// InstallItem installs an item from the hub
-func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly bool) error {
-	item := h.GetItem(itemType, name)
-	if item == nil {
-		return fmt.Errorf("unable to retrieve item: %s", name)
-	}
-
-	if downloadOnly && item.Downloaded && item.UpToDate {
-		log.Warningf("%s is already downloaded and up-to-date", item.Name)
+// Install installs an item from the hub, downloading it if needed
+func (i *Item) Install(force bool, downloadOnly bool) error {
+	if downloadOnly && i.Downloaded && i.UpToDate {
+		log.Warningf("%s is already downloaded and up-to-date", i.Name)
 
 		if !force {
 			return nil
@@ -35,31 +30,31 @@ func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly
 	}
 
 	// XXX: confusing semantic between force and updateOnly?
-	if err := item.downloadLatest(force, true); err != nil {
-		return fmt.Errorf("while downloading %s: %w", item.Name, err)
+	if err := i.downloadLatest(force, true); err != nil {
+		return fmt.Errorf("while downloading %s: %w", i.Name, err)
 	}
 
-	if err := h.AddItem(*item); err != nil {
-		return fmt.Errorf("while adding %s: %w", item.Name, err)
+	if err := i.hub.AddItem(*i); err != nil {
+		return fmt.Errorf("while adding %s: %w", i.Name, err)
 	}
 
 	if downloadOnly {
 		// XXX: should get the path from downloadLatest
-		log.Infof("Downloaded %s to %s", item.Name, filepath.Join(h.local.HubDir, item.RemotePath))
+		log.Infof("Downloaded %s to %s", i.Name, filepath.Join(i.hub.local.HubDir, i.RemotePath))
 		return nil
 	}
 
 	// XXX: should we stop here if the item is already installed?
 
-	if err := item.enable(); err != nil {
-		return fmt.Errorf("while enabling %s: %w", item.Name, err)
+	if err := i.enable(); err != nil {
+		return fmt.Errorf("while enabling %s: %w", i.Name, err)
 	}
 
-	if err := h.AddItem(*item); err != nil {
-		return fmt.Errorf("while adding %s: %w", item.Name, err)
+	if err := i.hub.AddItem(*i); err != nil {
+		return fmt.Errorf("while adding %s: %w", i.Name, err)
 	}
 
-	log.Infof("Enabled %s", item.Name)
+	log.Infof("Enabled %s", i.Name)
 
 	return nil
 }

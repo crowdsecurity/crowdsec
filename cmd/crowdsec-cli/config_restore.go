@@ -45,7 +45,12 @@ func restoreHub(dirPath string) error {
 			return fmt.Errorf("error unmarshaling %s : %s", upstreamListFN, err)
 		}
 		for _, toinstall := range upstreamList {
-			err := hub.InstallItem(toinstall, itype, false, false)
+			item := hub.GetItem(itype, toinstall)
+			if item == nil {
+				log.Errorf("Item %s/%s not found in hub", itype, toinstall)
+				continue
+			}
+			err := item.Install(false, false)
 			if err != nil {
 				log.Errorf("Error while installing %s : %s", toinstall, err)
 			}

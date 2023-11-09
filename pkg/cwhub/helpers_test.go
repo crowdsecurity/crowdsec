@@ -17,7 +17,8 @@ func TestUpgradeItemNewScenarioInCollection(t *testing.T) {
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
 
-	require.NoError(t, hub.InstallItem("crowdsecurity/test_collection", COLLECTIONS, false, false))
+	item := hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
+	require.NoError(t, item.Install(false, false))
 
 	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
 	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
@@ -68,7 +69,8 @@ func TestUpgradeItemInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
 	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
 
-	require.NoError(t, hub.InstallItem("crowdsecurity/test_collection", COLLECTIONS, false, false))
+	item := hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
+	require.NoError(t, item.Install(false, false))
 
 	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
 	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
@@ -125,7 +127,8 @@ func TestUpgradeItemNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *te
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
 	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
 
-	require.NoError(t, hub.InstallItem("crowdsecurity/test_collection", COLLECTIONS, false, false))
+	item := hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
+	require.NoError(t, item.Install(false, false))
 
 	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
 	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
