@@ -155,7 +155,7 @@ func (h *Hub) UpgradeItem(itemType string, name string, force bool) (bool, error
 
 // downloadLatest will download the latest version of Item to the tdir directory
 func (h *Hub) downloadLatest(target *Item, overwrite bool, updateOnly bool) error {
-	// XXX: should return the path of the downloaded file (taken from DownloadItem)
+	// XXX: should return the path of the downloaded file (taken from downloadItem)
 	log.Debugf("Downloading %s %s", target.Type, target.Name)
 
 	if !target.HasSubItems() {
@@ -165,7 +165,7 @@ func (h *Hub) downloadLatest(target *Item, overwrite bool, updateOnly bool) erro
 		}
 
 		// XXX:
-		return h.DownloadItem(target, overwrite)
+		return h.downloadItem(target, overwrite)
 	}
 
 	// collection
@@ -193,7 +193,7 @@ func (h *Hub) downloadLatest(target *Item, overwrite bool, updateOnly bool) erro
 
 		downloaded := val.Downloaded
 
-		if err := h.DownloadItem(&val, overwrite); err != nil {
+		if err := h.downloadItem(&val, overwrite); err != nil {
 			return fmt.Errorf("while downloading %s: %w", val.Name, err)
 		}
 
@@ -208,14 +208,14 @@ func (h *Hub) downloadLatest(target *Item, overwrite bool, updateOnly bool) erro
 		h.Items[sub.Type][sub.Name] = val
 	}
 
-	if err := h.DownloadItem(target, overwrite); err != nil {
+	if err := h.downloadItem(target, overwrite); err != nil {
 		return fmt.Errorf("failed to download item: %w", err)
 	}
 
 	return nil
 }
 
-func (h *Hub) DownloadItem(target *Item, overwrite bool) error {
+func (h *Hub) downloadItem(target *Item, overwrite bool) error {
 	url, err := h.remote.urlTo(target.RemotePath)
 	if err != nil {
 		return fmt.Errorf("failed to build hub item request: %w", err)
