@@ -181,7 +181,7 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 	}
 
 	/*
-		we can encounter 'collections' in the form of a symlink :
+		we can encounter 'collections' in the form of a symlink:
 		/etc/crowdsec/.../collections/linux.yaml -> ~/.hub/hub/collections/.../linux.yaml
 		when the collection is installed, both files are created
 	*/
@@ -351,42 +351,37 @@ func (h *Hub) checkSubItems(v *Item) error {
 	log.Tracef("checking submembers of %s installed:%t", v.Name, v.Installed)
 
 	for _, sub := range v.SubItems() {
-		subItem, ok := h.Items[sub.Type][sub.Name]
-		if !ok {
-			return fmt.Errorf("referred %s %s in collection %s doesn't exist", sub.Type, sub.Name, v.Name)
-		}
-
-		log.Tracef("check %s installed:%t", subItem.Name, subItem.Installed)
+		log.Tracef("check %s installed:%t", sub.Name, sub.Installed)
 
 		if !v.Installed {
 			continue
 		}
 
-		if err := h.checkSubItems(subItem); err != nil {
-			if subItem.Tainted {
+		if err := h.checkSubItems(sub); err != nil {
+			if sub.Tainted {
 				v.Tainted = true
 			}
 
-			return fmt.Errorf("sub collection %s is broken: %w", subItem.Name, err)
+			return fmt.Errorf("sub collection %s is broken: %w", sub.Name, err)
 		}
 
-		if subItem.Tainted {
+		if sub.Tainted {
 			v.Tainted = true
 			return fmt.Errorf("tainted %s %s, tainted", sub.Type, sub.Name)
 		}
 
-		if !subItem.Installed && v.Installed {
+		if !sub.Installed && v.Installed {
 			v.Tainted = true
 			return fmt.Errorf("missing %s %s, tainted", sub.Type, sub.Name)
 		}
 
-		if !subItem.UpToDate {
+		if !sub.UpToDate {
 			v.UpToDate = false
 			return fmt.Errorf("outdated %s %s", sub.Type, sub.Name)
 		}
 
-		if !slices.Contains(subItem.BelongsToCollections, v.Name) {
-			subItem.BelongsToCollections = append(subItem.BelongsToCollections, v.Name)
+		if !slices.Contains(sub.BelongsToCollections, v.Name) {
+			sub.BelongsToCollections = append(sub.BelongsToCollections, v.Name)
 		}
 
 		log.Tracef("checking for %s - tainted:%t uptodate:%t", sub.Name, v.Tainted, v.UpToDate)

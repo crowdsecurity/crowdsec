@@ -6,6 +6,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/enescakir/emoji"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -32,7 +33,7 @@ type HubItems map[string]map[string]*Item
 // by comparing the hash of each version to the local file.
 // If the item does not match any known version, it is considered tainted.
 type ItemVersion struct {
-	Digest     string `json:"digest,omitempty"`     // meow
+	Digest     string `json:"digest,omitempty"` // meow
 	Deprecated bool   `json:"deprecated,omitempty"`
 }
 
@@ -72,16 +73,7 @@ type Item struct {
 	Collections   []string `json:"collections,omitempty"   yaml:"collections,omitempty"`
 }
 
-type SubItem struct {
-	Type string
-	Name string
-}
-
 func (i *Item) HasSubItems() bool {
-	return i.Type == COLLECTIONS
-}
-
-func (i *SubItem) HasSubItems() bool {
 	return i.Type == COLLECTIONS
 }
 
@@ -119,37 +111,77 @@ func (i Item) MarshalYAML() (interface{}, error) {
 	}, nil
 }
 
-// SubItems returns the list of sub items for a given item (typically a collection)
-func (i *Item) SubItems() []SubItem {
-	sub := make([]SubItem,
-		len(i.Parsers)+
-			len(i.PostOverflows)+
-			len(i.Scenarios)+
-			len(i.Collections))
-
-	n := 0
+// SubItems returns a slice of sub-item pointers, excluding the ones that were not found
+func (i *Item) SubItems() []*Item {
+	sub := make([]*Item, 0)
 
 	for _, name := range i.Parsers {
-		sub[n] = SubItem{Type: PARSERS, Name: name}
-		n++
+		s := i.hub.GetItem(PARSERS, name)
+		if s == nil {
+			continue
+		}
+
+		sub = append(sub, s)
 	}
 
 	for _, name := range i.PostOverflows {
-		sub[n] = SubItem{Type: POSTOVERFLOWS, Name: name}
-		n++
+		s := i.hub.GetItem(POSTOVERFLOWS, name)
+		if s == nil {
+			continue
+		}
+
+		sub = append(sub, s)
 	}
 
 	for _, name := range i.Scenarios {
-		sub[n] = SubItem{Type: SCENARIOS, Name: name}
-		n++
+		s := i.hub.GetItem(SCENARIOS, name)
+		if s == nil {
+			continue
+		}
+
+		sub = append(sub, s)
 	}
 
 	for _, name := range i.Collections {
-		sub[n] = SubItem{Type: COLLECTIONS, Name: name}
-		n++
+		s := i.hub.GetItem(COLLECTIONS, name)
+		if s == nil {
+			continue
+		}
+
+		sub = append(sub, s)
 	}
 
 	return sub
+}
+
+func (i *Item) logMissingSubItems() {
+	if !i.HasSubItems() {
+		return
+	}
+
+	for _, subName := range i.Parsers {
+		if i.hub.GetItem(PARSERS, subName) == nil {
+			log.Errorf("can't find %s in %s, required by %s", subName, PARSERS, i.Name)
+		}
+	}
+
+	for _, subName := range i.Scenarios {
+		if i.hub.GetItem(SCENARIOS, subName) == nil {
+			log.Errorf("can't find %s in %s, required by %s", subName, SCENARIOS, i.Name)
+		}
+	}
+
+	for _, subName := range i.PostOverflows {
+		if i.hub.GetItem(POSTOVERFLOWS, subName) == nil {
+			log.Errorf("can't find %s in %s, required by %s", subName, POSTOVERFLOWS, i.Name)
+		}
+	}
+
+	for _, subName := range i.Collections {
+		if i.hub.GetItem(COLLECTIONS, subName) == nil {
+			log.Errorf("can't find %s in %s, required by %s", subName, COLLECTIONS, i.Name)
+		}
+	}
 }
 
 // Status returns the status of the item as a string and an emoji

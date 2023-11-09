@@ -42,12 +42,7 @@ func (i *Item) enable() error {
 
 	// install sub-items if any
 	for _, sub := range i.SubItems() {
-		val, ok := i.hub.Items[sub.Type][sub.Name]
-		if !ok {
-			return fmt.Errorf("required %s %s of %s doesn't exist, abort", sub.Type, sub.Name, i.Name)
-		}
-
-		if err := val.enable(); err != nil {
+		if err := sub.enable(); err != nil {
 			return fmt.Errorf("while installing %s: %w", sub.Name, err)
 		}
 	}
@@ -120,29 +115,22 @@ func (i *Item) disable(purge bool, force bool) error {
 
 	// disable sub-items if any - it's a collection
 	for _, sub := range i.SubItems() {
-		// XXX: we do this already when syncing, do we really need to do consistency checks here and there?
-		val, ok := i.hub.Items[sub.Type][sub.Name]
-		if !ok {
-			log.Errorf("Referred %s %s in collection %s doesn't exist.", sub.Type, sub.Name, i.Name)
-			continue
-		}
-
 		// check if the item doesn't belong to another collection before removing it
-		toRemove := true
+		removeSub := true
 
-		for _, collection := range val.BelongsToCollections {
+		for _, collection := range sub.BelongsToCollections {
 			if collection != i.Name {
-				toRemove = false
+				removeSub = false
 				break
 			}
 		}
 
-		if toRemove {
-			if err = val.disable(purge, force); err != nil {
+		if removeSub {
+			if err = sub.disable(purge, force); err != nil {
 				return fmt.Errorf("while disabling %s: %w", sub.Name, err)
 			}
 		} else {
-			log.Infof("%s was not removed because it belongs to another collection", val.Name)
+			log.Infof("%s was not removed because it belongs to another collection", sub.Name)
 		}
 	}
 

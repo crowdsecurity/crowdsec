@@ -94,13 +94,7 @@ func (h *Hub) parseIndex() error {
 			x := strings.Split(item.RemotePath, "/")
 			item.FileName = x[len(x)-1]
 
-			// if it's a collection, check its sub-items are present
-			// XXX should be done later, maybe report all missing at once?
-			for _, sub := range item.SubItems() {
-				if _, ok := h.Items[sub.Type][sub.Name]; !ok {
-					log.Errorf("Referred %s %s in collection %s doesn't exist.", sub.Type, sub.Name, item.Name)
-				}
-			}
+			item.logMissingSubItems()
 		}
 	}
 

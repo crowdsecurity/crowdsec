@@ -128,12 +128,7 @@ func (i *Item) downloadLatest(overwrite bool, updateOnly bool) error {
 	log.Debugf("Downloading %s %s", i.Type, i.Name)
 
 	for _, sub := range i.SubItems() {
-		val, ok := i.hub.Items[sub.Type][sub.Name]
-		if !ok {
-			return fmt.Errorf("required %s %s of %s doesn't exist, abort", sub.Type, sub.Name, i.Name)
-		}
-
-		if !val.Installed && updateOnly && val.Downloaded {
+		if !sub.Installed && updateOnly && sub.Downloaded {
 			log.Debugf("skipping upgrade of %s: not installed", i.Name)
 			continue
 		}
@@ -144,22 +139,22 @@ func (i *Item) downloadLatest(overwrite bool, updateOnly bool) error {
 		if sub.HasSubItems() {
 			log.Tracef("collection, recurse")
 
-			if err := val.downloadLatest(overwrite, updateOnly); err != nil {
-				return fmt.Errorf("while downloading %s: %w", val.Name, err)
+			if err := sub.downloadLatest(overwrite, updateOnly); err != nil {
+				return fmt.Errorf("while downloading %s: %w", sub.Name, err)
 			}
 		}
 
-		downloaded := val.Downloaded
+		downloaded := sub.Downloaded
 
-		if err := val.download(overwrite); err != nil {
-			return fmt.Errorf("while downloading %s: %w", val.Name, err)
+		if err := sub.download(overwrite); err != nil {
+			return fmt.Errorf("while downloading %s: %w", sub.Name, err)
 		}
 
 		// We need to enable an item when it has been added to a collection since latest release of the collection.
 		// We check if val.Downloaded is false because maybe the item has been disabled by the user.
-		if !val.Installed && !downloaded {
-			if err := val.enable(); err != nil {
-				return fmt.Errorf("enabling '%s': %w", val.Name, err)
+		if !sub.Installed && !downloaded {
+			if err := sub.enable(); err != nil {
+				return fmt.Errorf("enabling '%s': %w", sub.Name, err)
 			}
 		}
 	}
