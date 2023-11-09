@@ -299,8 +299,8 @@ func (h *Hub) GetInstalledItemsAsString(itemType string) ([]string, error) {
 
 	retStr := make([]string, len(items))
 
-	for i, it := range items {
-		retStr[i] = it.Name
+	for idx, it := range items {
+		retStr[idx] = it.Name
 	}
 
 	return retStr, nil
