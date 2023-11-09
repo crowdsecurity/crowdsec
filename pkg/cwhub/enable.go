@@ -80,19 +80,19 @@ func (i *Item) enable() error {
 	return nil
 }
 
-func (h *Hub) purgeItem(target Item) (Item, error) {
-	itempath := h.local.HubDir + "/" + target.RemotePath
+func (i *Item) purge() error {
+	itempath := i.hub.local.HubDir + "/" + i.RemotePath
 
 	// disable hub file
 	if err := os.Remove(itempath); err != nil {
-		return target, fmt.Errorf("while removing file: %w", err)
+		return fmt.Errorf("while removing file: %w", err)
 	}
 
-	target.Downloaded = false
-	log.Infof("Removed source file [%s]: %s", target.Name, itempath)
-	h.Items[target.Type][target.Name] = target
+	i.Downloaded = false
+	log.Infof("Removed source file [%s]: %s", i.Name, itempath)
+	i.hub.Items[i.Type][i.Name] = *i
 
-	return target, nil
+	return nil
 }
 
 // disableItem to disable an item managed by the hub, removes the symlink if purge is true
@@ -103,7 +103,7 @@ func (h *Hub) disableItem(target *Item, purge bool, force bool) error {
 	// already disabled, noop unless purge
 	if !target.Installed {
 		if purge {
-			*target, err = h.purgeItem(*target)
+			err = target.purge()
 			if err != nil {
 				return err
 			}
@@ -192,7 +192,7 @@ func (h *Hub) disableItem(target *Item, purge bool, force bool) error {
 	target.Installed = false
 
 	if purge {
-		*target, err = h.purgeItem(*target)
+		err = target.purge()
 		if err != nil {
 			return err
 		}
