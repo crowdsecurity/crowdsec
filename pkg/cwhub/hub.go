@@ -93,7 +93,6 @@ func (h *Hub) parseIndex() error {
 			item.Type = itemType
 			x := strings.Split(item.RemotePath, "/")
 			item.FileName = x[len(x)-1]
-			h.Items[itemType][name] = item
 
 			// if it's a collection, check its sub-items are present
 			// XXX should be done later, maybe report all missing at once?

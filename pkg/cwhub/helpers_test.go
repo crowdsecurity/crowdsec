@@ -26,8 +26,7 @@ func TestUpgradeItemNewScenarioInCollection(t *testing.T) {
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Tainted)
 
 	// This is the scenario that gets added in next version of collection
-	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/barfoo_scenario"].Downloaded)
-	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/barfoo_scenario"].Installed)
+	require.Nil(t, hub.Items[SCENARIOS]["crowdsecurity/barfoo_scenario"])
 
 	assertCollectionDepsInstalled(t, "crowdsecurity/test_collection")
 

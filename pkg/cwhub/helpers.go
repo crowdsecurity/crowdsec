@@ -173,8 +173,6 @@ func (i *Item) downloadLatest(overwrite bool, updateOnly bool) error {
 				return fmt.Errorf("enabling '%s': %w", val.Name, err)
 			}
 		}
-
-		i.hub.Items[sub.Type][sub.Name] = val
 	}
 
 	if err := i.download(overwrite); err != nil {

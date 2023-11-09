@@ -362,6 +362,10 @@ func (h *Hub) checkSubItems(v *Item) error {
 		}
 
 		if err := h.checkSubItems(subItem); err != nil {
+			if subItem.Tainted {
+				v.Tainted = true
+			}
+
 			return fmt.Errorf("sub collection %s is broken: %w", subItem.Name, err)
 		}
 
@@ -383,8 +387,6 @@ func (h *Hub) checkSubItems(v *Item) error {
 		if !slices.Contains(subItem.BelongsToCollections, v.Name) {
 			subItem.BelongsToCollections = append(subItem.BelongsToCollections, v.Name)
 		}
-
-		h.Items[sub.Type][sub.Name] = subItem
 
 		log.Tracef("checking for %s - tainted:%t uptodate:%t", sub.Name, v.Tainted, v.UpToDate)
 	}
@@ -413,7 +415,7 @@ func (h *Hub) syncDir(dir string) ([]string, error) {
 		}
 	}
 
-	for name, item := range h.Items[COLLECTIONS] {
+	for _, item := range h.Items[COLLECTIONS] {
 		if !item.Installed {
 			continue
 		}
@@ -423,7 +425,6 @@ func (h *Hub) syncDir(dir string) ([]string, error) {
 		case VersionUpToDate: // latest
 			if err := h.checkSubItems(item); err != nil {
 				warnings = append(warnings, fmt.Sprintf("dependency of %s: %s", item.Name, err))
-				h.Items[COLLECTIONS][name] = item
 			}
 		case VersionUpdateAvailable: // not up-to-date
 			warnings = append(warnings, fmt.Sprintf("update for collection %s available (currently:%s, latest:%s)", item.Name, item.LocalVersion, item.Version))

@@ -224,12 +224,7 @@ func (i *Item) validPath(dirName, fileName string) bool {
 
 // GetItemMap returns the map of items for a given type
 func (h *Hub) GetItemMap(itemType string) map[string]*Item {
-	m, ok := h.Items[itemType]
-	if !ok {
-		return nil
-	}
-
-	return m
+	return h.Items[itemType]
 }
 
 // GetItem returns the item from hub based on its type and full name (author/name)
