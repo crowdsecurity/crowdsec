@@ -10,10 +10,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// EnableItem creates a symlink between actual config file at hub.HubDir and hub.ConfigDir
+// enableItem creates a symlink between actual config file at hub.HubDir and hub.ConfigDir
 // Handles collections recursively
-// XXX: called from config_restore otherwise no need to export
-func (h *Hub) EnableItem(target *Item) error {
+func (h *Hub) enableItem(target *Item) error {
 	parentDir := filepath.Clean(h.local.InstallDir + "/" + target.Type + "/" + target.Stage + "/")
 
 	// create directories if needed
@@ -48,7 +47,7 @@ func (h *Hub) EnableItem(target *Item) error {
 			return fmt.Errorf("required %s %s of %s doesn't exist, abort", sub.Type, sub.Name, target.Name)
 		}
 
-		if err := h.EnableItem(&val); err != nil {
+		if err := h.enableItem(&val); err != nil {
 			return fmt.Errorf("while installing %s: %w", sub.Name, err)
 		}
 	}
@@ -96,8 +95,8 @@ func (h *Hub) purgeItem(target Item) (Item, error) {
 	return target, nil
 }
 
-// DisableItem to disable an item managed by the hub, removes the symlink if purge is true
-func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
+// disableItem to disable an item managed by the hub, removes the symlink if purge is true
+func (h *Hub) disableItem(target *Item, purge bool, force bool) error {
 	// XXX: should return the number of disabled/purged items to inform the upper layer whether to reload or not
 	var err error
 
@@ -141,7 +140,7 @@ func (h *Hub) DisableItem(target *Item, purge bool, force bool) error {
 		}
 
 		if toRemove {
-			if err = h.DisableItem(&val, purge, force); err != nil {
+			if err = h.disableItem(&val, purge, force); err != nil {
 				return fmt.Errorf("while disabling %s: %w", sub.Name, err)
 			}
 		} else {

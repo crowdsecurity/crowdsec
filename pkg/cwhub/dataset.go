@@ -54,7 +54,7 @@ func downloadFile(url string, destPath string) error {
 	return nil
 }
 
-func GetData(data []types.DataSource, dataDir string) error {
+func getData(data []types.DataSource, dataDir string) error {
 	for _, dataS := range data {
 		destPath := filepath.Join(dataDir, dataS.DestPath)
 		log.Infof("downloading data '%s' in '%s'", dataS.SourceURL, destPath)
@@ -91,7 +91,7 @@ func downloadData(dataFolder string, force bool, reader io.Reader) error {
 		}
 
 		if download || force {
-			if err := GetData(data.Data, dataFolder); err != nil {
+			if err := getData(data.Data, dataFolder); err != nil {
 				return fmt.Errorf("while getting data: %w", err)
 			}
 		}

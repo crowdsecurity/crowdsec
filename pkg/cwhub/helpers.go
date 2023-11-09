@@ -35,7 +35,7 @@ func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly
 	}
 
 	// XXX: confusing semantic between force and updateOnly?
-	if err := h.DownloadLatest(item, force, true); err != nil {
+	if err := h.downloadLatest(item, force, true); err != nil {
 		return fmt.Errorf("while downloading %s: %w", item.Name, err)
 	}
 
@@ -44,14 +44,14 @@ func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly
 	}
 
 	if downloadOnly {
-		// XXX: should get the path from DownloadLatest
+		// XXX: should get the path from downloadLatest
 		log.Infof("Downloaded %s to %s", item.Name, filepath.Join(h.local.HubDir, item.RemotePath))
 		return nil
 	}
 
 	// XXX: should we stop here if the item is already installed?
 
-	if err := h.EnableItem(item); err != nil {
+	if err := h.enableItem(item); err != nil {
 		return fmt.Errorf("while enabling %s: %w", item.Name, err)
 	}
 
@@ -83,11 +83,11 @@ func (h *Hub) RemoveItem(itemType string, name string, purge bool, forceAction b
 		return false, nil
 	}
 
-	if err := h.DisableItem(item, purge, forceAction); err != nil {
+	if err := h.disableItem(item, purge, forceAction); err != nil {
 		return false, fmt.Errorf("unable to disable %s: %w", item.Name, err)
 	}
 
-	// XXX: should take the value from DisableItem
+	// XXX: should take the value from disableItem
 	removed = true
 
 	if err := h.AddItem(*item); err != nil {
@@ -127,7 +127,7 @@ func (h *Hub) UpgradeItem(itemType string, name string, force bool) (bool, error
 		}
 	}
 
-	if err := h.DownloadLatest(item, force, true); err != nil {
+	if err := h.downloadLatest(item, force, true); err != nil {
 		return false, fmt.Errorf("%s: download failed: %w", item.Name, err)
 	}
 
@@ -153,9 +153,9 @@ func (h *Hub) UpgradeItem(itemType string, name string, force bool) (bool, error
 	return updated, nil
 }
 
-// DownloadLatest will download the latest version of Item to the tdir directory
-func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) error {
-	// XXX: should return the path of the downloaded file (taken from DownloadItem)
+// downloadLatest will download the latest version of Item to the tdir directory
+func (h *Hub) downloadLatest(target *Item, overwrite bool, updateOnly bool) error {
+	// XXX: should return the path of the downloaded file (taken from downloadItem)
 	log.Debugf("Downloading %s %s", target.Type, target.Name)
 
 	if !target.HasSubItems() {
@@ -165,7 +165,7 @@ func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) erro
 		}
 
 		// XXX:
-		return h.DownloadItem(target, overwrite)
+		return h.downloadItem(target, overwrite)
 	}
 
 	// collection
@@ -186,21 +186,21 @@ func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) erro
 		if sub.HasSubItems() {
 			log.Tracef("collection, recurse")
 
-			if err := h.DownloadLatest(&val, overwrite, updateOnly); err != nil {
+			if err := h.downloadLatest(&val, overwrite, updateOnly); err != nil {
 				return fmt.Errorf("while downloading %s: %w", val.Name, err)
 			}
 		}
 
 		downloaded := val.Downloaded
 
-		if err := h.DownloadItem(&val, overwrite); err != nil {
+		if err := h.downloadItem(&val, overwrite); err != nil {
 			return fmt.Errorf("while downloading %s: %w", val.Name, err)
 		}
 
 		// We need to enable an item when it has been added to a collection since latest release of the collection.
 		// We check if val.Downloaded is false because maybe the item has been disabled by the user.
 		if !val.Installed && !downloaded {
-			if err := h.EnableItem(&val); err != nil {
+			if err := h.enableItem(&val); err != nil {
 				return fmt.Errorf("enabling '%s': %w", val.Name, err)
 			}
 		}
@@ -208,14 +208,14 @@ func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) erro
 		h.Items[sub.Type][sub.Name] = val
 	}
 
-	if err := h.DownloadItem(target, overwrite); err != nil {
+	if err := h.downloadItem(target, overwrite); err != nil {
 		return fmt.Errorf("failed to download item: %w", err)
 	}
 
 	return nil
 }
 
-func (h *Hub) DownloadItem(target *Item, overwrite bool) error {
+func (h *Hub) downloadItem(target *Item, overwrite bool) error {
 	url, err := h.remote.urlTo(target.RemotePath)
 	if err != nil {
 		return fmt.Errorf("failed to build hub item request: %w", err)

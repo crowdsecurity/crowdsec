@@ -17,6 +17,7 @@ type Hub struct {
 	remote         *RemoteHubCfg
 	skippedLocal   int
 	skippedTainted int
+	Warnings       []string
 }
 
 var theHub *Hub
@@ -56,7 +57,7 @@ func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, downloadIndex boo
 		return nil, fmt.Errorf("failed to load index: %w", err)
 	}
 
-	if _, err := theHub.LocalSync(); err != nil {
+	if err := theHub.localSync(); err != nil {
 		return nil, fmt.Errorf("failed to sync items: %w", err)
 	}
 

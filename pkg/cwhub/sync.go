@@ -391,7 +391,7 @@ func (h *Hub) checkSubItems(v *Item) error {
 	return nil
 }
 
-func (h *Hub) SyncDir(dir string) ([]string, error) {
+func (h *Hub) syncDir(dir string) ([]string, error) {
 	warnings := []string{}
 
 	// For each, scan PARSERS, POSTOVERFLOWS, SCENARIOS and COLLECTIONS last
@@ -439,18 +439,23 @@ func (h *Hub) SyncDir(dir string) ([]string, error) {
 }
 
 // Updates the info from HubInit() with the local state
-func (h *Hub) LocalSync() ([]string, error) {
+func (h *Hub) localSync() error {
 	h.skippedLocal = 0
 	h.skippedTainted = 0
+	h.Warnings = []string{}
 
-	warnings, err := h.SyncDir(h.local.InstallDir)
+	warnings, err := h.syncDir(h.local.InstallDir)
 	if err != nil {
-		return warnings, fmt.Errorf("failed to scan %s: %w", h.local.InstallDir, err)
+		return fmt.Errorf("failed to scan %s: %w", h.local.InstallDir, err)
 	}
 
-	if _, err = h.SyncDir(h.local.HubDir); err != nil {
-		return warnings, fmt.Errorf("failed to scan %s: %w", h.local.HubDir, err)
+	h.Warnings = append(h.Warnings, warnings...)
+
+	if warnings, err = h.syncDir(h.local.HubDir); err != nil {
+		return fmt.Errorf("failed to scan %s: %w", h.local.HubDir, err)
 	}
 
-	return warnings, nil
+	h.Warnings = append(h.Warnings, warnings...)
+
+	return nil
 }
