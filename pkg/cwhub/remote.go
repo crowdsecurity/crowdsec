@@ -70,7 +70,7 @@ func (r *RemoteHubCfg) downloadIndex(localPath string) error {
 		return nil
 	}
 
-	file, err := os.OpenFile(localPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+	file, err := os.Create(localPath)
 	if err != nil {
 		return fmt.Errorf("while opening hub index file: %w", err)
 	}

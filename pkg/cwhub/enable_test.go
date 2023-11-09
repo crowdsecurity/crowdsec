@@ -32,13 +32,10 @@ func testInstall(hub *Hub, t *testing.T, item *Item) {
 func testTaint(hub *Hub, t *testing.T, item *Item) {
 	assert.False(t, hub.Items[item.Type][item.Name].Tainted, "%s should not be tainted", item.Name)
 
-	f, err := os.OpenFile(item.LocalPath, os.O_APPEND|os.O_WRONLY, 0600)
-	require.NoError(t, err, "failed to open %s (%s)", item.LocalPath, item.Name)
-
-	defer f.Close()
-
-	_, err = f.WriteString("tainted")
-	require.NoError(t, err, "failed to write to %s (%s)", item.LocalPath, item.Name)
+	// truncate the file
+	f, err := os.Create(item.LocalPath)
+	require.NoError(t, err)
+	f.Close()
 
 	// Local sync and check status
 	err = hub.localSync()

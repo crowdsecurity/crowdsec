@@ -252,11 +252,10 @@ func (i *Item) download(overwrite bool) error {
 		log.Infof("%s: OK", i.Name)
 	}
 
-	f, err := os.OpenFile(tdir+"/"+i.RemotePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+	f, err := os.Create(tdir + "/" + i.RemotePath)
 	if err != nil {
 		return fmt.Errorf("while opening file: %w", err)
 	}
-
 	defer f.Close()
 
 	_, err = f.Write(body)

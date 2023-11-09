@@ -167,7 +167,6 @@ func (i *Item) disable(purge bool, force bool) error {
 			return fmt.Errorf("%s isn't managed by hub", i.Name)
 		}
 
-		// remove the symlink
 		if err = os.Remove(syml); err != nil {
 			return fmt.Errorf("while removing symlink: %w", err)
 		}

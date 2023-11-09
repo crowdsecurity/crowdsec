@@ -31,18 +31,13 @@ func downloadFile(url string, destPath string) error {
 		return fmt.Errorf("bad http code %d for %s", resp.StatusCode, url)
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("while downloading %s: %w", url, err)
-	}
-
-	file, err := os.OpenFile(destPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
+	file, err := os.Create(destPath)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	_, err = file.Write(body)
+	_, err = io.Copy(file, resp.Body)
 	if err != nil {
 		return err
 	}
