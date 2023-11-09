@@ -10,7 +10,7 @@ import (
 
 func testInstall(hub *Hub, t *testing.T, item Item) {
 	// Install the parser
-	err := hub.downloadLatest(&item, false, false)
+	err := item.downloadLatest(false, false)
 	require.NoError(t, err, "failed to download %s", item.Name)
 
 	err = hub.localSync()

@@ -35,7 +35,7 @@ func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly
 	}
 
 	// XXX: confusing semantic between force and updateOnly?
-	if err := h.downloadLatest(item, force, true); err != nil {
+	if err := item.downloadLatest(force, true); err != nil {
 		return fmt.Errorf("while downloading %s: %w", item.Name, err)
 	}
 
@@ -127,7 +127,7 @@ func (h *Hub) UpgradeItem(itemType string, name string, force bool) (bool, error
 		}
 	}
 
-	if err := h.downloadLatest(item, force, true); err != nil {
+	if err := item.downloadLatest(force, true); err != nil {
 		return false, fmt.Errorf("%s: download failed: %w", item.Name, err)
 	}
 
@@ -154,39 +154,39 @@ func (h *Hub) UpgradeItem(itemType string, name string, force bool) (bool, error
 }
 
 // downloadLatest will download the latest version of Item to the tdir directory
-func (h *Hub) downloadLatest(target *Item, overwrite bool, updateOnly bool) error {
+func (i *Item) downloadLatest(overwrite bool, updateOnly bool) error {
 	// XXX: should return the path of the downloaded file (taken from download())
-	log.Debugf("Downloading %s %s", target.Type, target.Name)
+	log.Debugf("Downloading %s %s", i.Type, i.Name)
 
-	if !target.HasSubItems() {
-		if !target.Installed && updateOnly && target.Downloaded {
-			log.Debugf("skipping upgrade of %s: not installed", target.Name)
+	if !i.HasSubItems() {
+		if !i.Installed && updateOnly && i.Downloaded {
+			log.Debugf("skipping upgrade of %s: not installed", i.Name)
 			return nil
 		}
 
 		// XXX:
-		return target.download(overwrite)
+		return i.download(overwrite)
 	}
 
 	// collection
-	for _, sub := range target.SubItems() {
-		val, ok := h.Items[sub.Type][sub.Name]
+	for _, sub := range i.SubItems() {
+		val, ok := i.hub.Items[sub.Type][sub.Name]
 		if !ok {
-			return fmt.Errorf("required %s %s of %s doesn't exist, abort", sub.Type, sub.Name, target.Name)
+			return fmt.Errorf("required %s %s of %s doesn't exist, abort", sub.Type, sub.Name, i.Name)
 		}
 
 		if !val.Installed && updateOnly && val.Downloaded {
-			log.Debugf("skipping upgrade of %s: not installed", target.Name)
+			log.Debugf("skipping upgrade of %s: not installed", i.Name)
 			continue
 		}
 
-		log.Debugf("Download %s sub-item: %s %s (%t -> %t)", target.Name, sub.Type, sub.Name, target.Installed, updateOnly)
+		log.Debugf("Download %s sub-item: %s %s (%t -> %t)", i.Name, sub.Type, sub.Name, i.Installed, updateOnly)
 
 		// recurse as it's a collection
 		if sub.HasSubItems() {
 			log.Tracef("collection, recurse")
 
-			if err := h.downloadLatest(&val, overwrite, updateOnly); err != nil {
+			if err := val.downloadLatest(overwrite, updateOnly); err != nil {
 				return fmt.Errorf("while downloading %s: %w", val.Name, err)
 			}
 		}
@@ -205,10 +205,10 @@ func (h *Hub) downloadLatest(target *Item, overwrite bool, updateOnly bool) erro
 			}
 		}
 
-		h.Items[sub.Type][sub.Name] = val
+		i.hub.Items[sub.Type][sub.Name] = val
 	}
 
-	if err := target.download(overwrite); err != nil {
+	if err := i.download(overwrite); err != nil {
 		return fmt.Errorf("failed to download item: %w", err)
 	}
 
