@@ -35,7 +35,7 @@ func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly
 	}
 
 	// XXX: confusing semantic between force and updateOnly?
-	if err := h.DownloadLatest(item, force, true); err != nil {
+	if err := h.downloadLatest(item, force, true); err != nil {
 		return fmt.Errorf("while downloading %s: %w", item.Name, err)
 	}
 
@@ -44,7 +44,7 @@ func (h *Hub) InstallItem(name string, itemType string, force bool, downloadOnly
 	}
 
 	if downloadOnly {
-		// XXX: should get the path from DownloadLatest
+		// XXX: should get the path from downloadLatest
 		log.Infof("Downloaded %s to %s", item.Name, filepath.Join(h.local.HubDir, item.RemotePath))
 		return nil
 	}
@@ -127,7 +127,7 @@ func (h *Hub) UpgradeItem(itemType string, name string, force bool) (bool, error
 		}
 	}
 
-	if err := h.DownloadLatest(item, force, true); err != nil {
+	if err := h.downloadLatest(item, force, true); err != nil {
 		return false, fmt.Errorf("%s: download failed: %w", item.Name, err)
 	}
 
@@ -153,8 +153,8 @@ func (h *Hub) UpgradeItem(itemType string, name string, force bool) (bool, error
 	return updated, nil
 }
 
-// DownloadLatest will download the latest version of Item to the tdir directory
-func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) error {
+// downloadLatest will download the latest version of Item to the tdir directory
+func (h *Hub) downloadLatest(target *Item, overwrite bool, updateOnly bool) error {
 	// XXX: should return the path of the downloaded file (taken from DownloadItem)
 	log.Debugf("Downloading %s %s", target.Type, target.Name)
 
@@ -186,7 +186,7 @@ func (h *Hub) DownloadLatest(target *Item, overwrite bool, updateOnly bool) erro
 		if sub.HasSubItems() {
 			log.Tracef("collection, recurse")
 
-			if err := h.DownloadLatest(&val, overwrite, updateOnly); err != nil {
+			if err := h.downloadLatest(&val, overwrite, updateOnly); err != nil {
 				return fmt.Errorf("while downloading %s: %w", val.Name, err)
 			}
 		}
