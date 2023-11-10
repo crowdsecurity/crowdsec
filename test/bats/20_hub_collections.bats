@@ -8,6 +8,8 @@ setup_file() {
     ./instance-data load
     HUB_DIR=$(config_get '.config_paths.hub_dir')
     export HUB_DIR
+    INDEX_PATH=$(config_get '.config_paths.index_path')
+    export INDEX_PATH
     CONFIG_DIR=$(config_get '.config_paths.config_dir')
     export CONFIG_DIR
 }
@@ -62,7 +64,7 @@ teardown() {
 }
 
 @test "cscli collections list -a" {
-    expected=$(jq <"$HUB_DIR/.index.json" -r '.collections | length')
+    expected=$(jq <"$INDEX_PATH" -r '.collections | length')
 
     rune -0 cscli collections list -a
     rune -0 grep -c disabled <(output)
@@ -290,8 +292,8 @@ teardown() {
     sha256_0_0="dfebecf42784a31aa3d009dbcec0c657154a034b45f49cf22a895373f6dbf63d"
 
     # add version 0.0 to all collections
-    new_hub=$(jq --arg DIGEST "$sha256_0_0" <"$HUB_DIR/.index.json" '.collections |= with_entries(.value.versions["0.0"] = {"digest": $DIGEST, "deprecated": false})')
-    echo "$new_hub" >"$HUB_DIR/.index.json"
+    new_hub=$(jq --arg DIGEST "$sha256_0_0" <"$INDEX_PATH" '.collections |= with_entries(.value.versions["0.0"] = {"digest": $DIGEST, "deprecated": false})')
+    echo "$new_hub" >"$INDEX_PATH"
  
     rune -0 cscli collections install crowdsecurity/sshd
 
