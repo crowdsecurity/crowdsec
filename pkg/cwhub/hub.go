@@ -20,17 +20,8 @@ type Hub struct {
 	Warnings       []string
 }
 
-var theHub *Hub
-
-// GetHub returns the hub singleton
-// it returns an error if it's not initialized to avoid nil dereference
-// XXX: convenience function that we should get rid of at some point
-func GetHub() (*Hub, error) {
-	if theHub == nil {
-		return nil, fmt.Errorf("hub not initialized")
-	}
-
-	return theHub, nil
+func (h *Hub) GetDataDir() string {
+	return h.local.InstallDataDir
 }
 
 // NewHub returns a new Hub instance with local and (optionally) remote configuration, and syncs the local state
@@ -48,20 +39,20 @@ func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, downloadIndex boo
 
 	log.Debugf("loading hub idx %s", local.HubIndexFile)
 
-	theHub = &Hub{
+	hub := &Hub{
 		local:  local,
 		remote: remote,
 	}
 
-	if err := theHub.parseIndex(); err != nil {
+	if err := hub.parseIndex(); err != nil {
 		return nil, fmt.Errorf("failed to load index: %w", err)
 	}
 
-	if err := theHub.localSync(); err != nil {
+	if err := hub.localSync(); err != nil {
 		return nil, fmt.Errorf("failed to sync items: %w", err)
 	}
 
-	return theHub, nil
+	return hub, nil
 }
 
 // parseIndex takes the content of an index file and fills the map of associated parsers/scenarios/collections

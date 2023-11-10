@@ -62,18 +62,14 @@ func PushAlerts(alerts []types.RuntimeAlert, client *apiclient.ApiClient) error 
 var bucketOverflows []types.Event
 
 func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky.Buckets,
-	postOverflowCTX parser.UnixParserCtx, postOverflowNodes []parser.Node, apiConfig csconfig.ApiCredentialsCfg) error {
+	postOverflowCTX parser.UnixParserCtx, postOverflowNodes []parser.Node,
+	apiConfig csconfig.ApiCredentialsCfg, hub *cwhub.Hub) error {
 
 	var err error
 	ticker := time.NewTicker(1 * time.Second)
 
 	var cache []types.RuntimeAlert
 	var cacheMutex sync.Mutex
-
-	hub, err := cwhub.GetHub()
-	if err != nil {
-		return err
-	}
 
 	scenarios, err := hub.GetInstalledItemsAsString(cwhub.SCENARIOS)
 	if err != nil {
