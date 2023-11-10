@@ -21,8 +21,6 @@ func (c *Config) loadCSCLI() error {
 		c.Cscli = &CscliCfg{}
 	}
 
-	// XXX: HubBranch default should be set here and fed to HubCfg?
-
 	if c.Prometheus.ListenAddr != "" && c.Prometheus.ListenPort != 0 {
 		c.Cscli.PrometheusUrl = fmt.Sprintf("http://%s:%d/metrics", c.Prometheus.ListenAddr, c.Prometheus.ListenPort)
 	}

@@ -127,24 +127,8 @@ func (i *Item) downloadLatest(overwrite bool, updateOnly bool) error {
 	// XXX: should return the path of the downloaded file (taken from download())
 	log.Debugf("Downloading %s %s", i.Type, i.Name)
 
-	if !i.HasSubItems() {
-		if !i.Installed && updateOnly && i.Downloaded {
-			log.Debugf("skipping upgrade of %s: not installed", i.Name)
-			return nil
-		}
-
-		// XXX:
-		return i.download(overwrite)
-	}
-
-	// collection
 	for _, sub := range i.SubItems() {
-		val, ok := i.hub.Items[sub.Type][sub.Name]
-		if !ok {
-			return fmt.Errorf("required %s %s of %s doesn't exist, abort", sub.Type, sub.Name, i.Name)
-		}
-
-		if !val.Installed && updateOnly && val.Downloaded {
+		if !sub.Installed && updateOnly && sub.Downloaded {
 			log.Debugf("skipping upgrade of %s: not installed", i.Name)
 			continue
 		}
@@ -155,24 +139,29 @@ func (i *Item) downloadLatest(overwrite bool, updateOnly bool) error {
 		if sub.HasSubItems() {
 			log.Tracef("collection, recurse")
 
-			if err := val.downloadLatest(overwrite, updateOnly); err != nil {
-				return fmt.Errorf("while downloading %s: %w", val.Name, err)
+			if err := sub.downloadLatest(overwrite, updateOnly); err != nil {
+				return fmt.Errorf("while downloading %s: %w", sub.Name, err)
 			}
 		}
 
-		downloaded := val.Downloaded
+		downloaded := sub.Downloaded
 
-		if err := val.download(overwrite); err != nil {
-			return fmt.Errorf("while downloading %s: %w", val.Name, err)
+		if err := sub.download(overwrite); err != nil {
+			return fmt.Errorf("while downloading %s: %w", sub.Name, err)
 		}
 
 		// We need to enable an item when it has been added to a collection since latest release of the collection.
-		// We check if val.Downloaded is false because maybe the item has been disabled by the user.
-		if !val.Installed && !downloaded {
-			if err := val.enable(); err != nil {
-				return fmt.Errorf("enabling '%s': %w", val.Name, err)
+		// We check if sub.Downloaded is false because maybe the item has been disabled by the user.
+		if !sub.Installed && !downloaded {
+			if err := sub.enable(); err != nil {
+				return fmt.Errorf("enabling '%s': %w", sub.Name, err)
 			}
 		}
+	}
+
+	if !i.Installed && updateOnly && i.Downloaded {
+		log.Debugf("skipping upgrade of %s: not installed", i.Name)
+		return nil
 	}
 
 	if err := i.download(overwrite); err != nil {
@@ -203,7 +192,7 @@ func (i *Item) download(overwrite bool) error {
 		}
 	}
 
-	resp, err := http.DefaultClient.Get(url)
+	resp, err := hubClient.Get(url)
 	if err != nil {
 		return fmt.Errorf("while downloading %s: %w", url, err)
 	}
@@ -263,11 +252,10 @@ func (i *Item) download(overwrite bool) error {
 		log.Infof("%s: OK", i.Name)
 	}
 
-	f, err := os.OpenFile(tdir+"/"+i.RemotePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
+	f, err := os.Create(tdir + "/" + i.RemotePath)
 	if err != nil {
 		return fmt.Errorf("while opening file: %w", err)
 	}
-
 	defer f.Close()
 
 	_, err = f.Write(body)

@@ -187,8 +187,7 @@ teardown() {
     # one item, json
     rune -0 cscli parsers inspect crowdsecurity/sshd-logs -o json
     rune -0 jq -c '[.type, .stage, .name, .author, .path, .installed]' <(output)
-    # XXX: .installed is missing -- not false
-    assert_json '["parsers","s01-parse","crowdsecurity/sshd-logs","crowdsecurity","parsers/s01-parse/crowdsecurity/sshd-logs.yaml",null]'
+    assert_json '["parsers","s01-parse","crowdsecurity/sshd-logs","crowdsecurity","parsers/s01-parse/crowdsecurity/sshd-logs.yaml",false]'
 
     # one item, raw
     rune -0 cscli parsers inspect crowdsecurity/sshd-logs -o raw
@@ -215,7 +214,7 @@ teardown() {
     # multiple items, json
     rune -0 cscli parsers inspect crowdsecurity/sshd-logs crowdsecurity/whitelists -o json
     rune -0 jq -sc '[.[] | [.type, .stage, .name, .author, .path, .installed]]' <(output)
-    assert_json '[["parsers","s01-parse","crowdsecurity/sshd-logs","crowdsecurity","parsers/s01-parse/crowdsecurity/sshd-logs.yaml",null],["parsers","s02-enrich","crowdsecurity/whitelists","crowdsecurity","parsers/s02-enrich/crowdsecurity/whitelists.yaml",null]]'
+    assert_json '[["parsers","s01-parse","crowdsecurity/sshd-logs","crowdsecurity","parsers/s01-parse/crowdsecurity/sshd-logs.yaml",false],["parsers","s02-enrich","crowdsecurity/whitelists","crowdsecurity","parsers/s02-enrich/crowdsecurity/whitelists.yaml",false]]'
 
     # multiple items, raw
     rune -0 cscli parsers inspect crowdsecurity/sshd-logs crowdsecurity/whitelists -o raw

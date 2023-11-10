@@ -18,8 +18,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-// XXX: this should not need hub?
-func ShowMetrics(hub *cwhub.Hub, hubItem *cwhub.Item) error {
+func ShowMetrics(hubItem *cwhub.Item) error {
 	switch hubItem.Type {
 	case cwhub.PARSERS:
 		metrics := GetParserMetric(csConfig.Cscli.PrometheusUrl, hubItem.Name)
@@ -28,25 +27,13 @@ func ShowMetrics(hub *cwhub.Hub, hubItem *cwhub.Item) error {
 		metrics := GetScenarioMetric(csConfig.Cscli.PrometheusUrl, hubItem.Name)
 		scenarioMetricsTable(color.Output, hubItem.Name, metrics)
 	case cwhub.COLLECTIONS:
-		for _, parserName := range hubItem.Parsers {
-			metrics := GetParserMetric(csConfig.Cscli.PrometheusUrl, parserName)
-			parserMetricsTable(color.Output, parserName, metrics)
-		}
-		for _, scenarioName := range hubItem.Scenarios {
-			metrics := GetScenarioMetric(csConfig.Cscli.PrometheusUrl, scenarioName)
-			scenarioMetricsTable(color.Output, scenarioName, metrics)
-		}
-		for _, collName := range hubItem.Collections {
-			subColl := hub.GetItem(cwhub.COLLECTIONS, collName)
-			if subColl == nil {
-				return fmt.Errorf("unable to retrieve sub-collection '%s' from '%s'", collName, hubItem.Name)
-			}
-			if err := ShowMetrics(hub, subColl); err != nil {
+		for _, sub := range hubItem.SubItems() {
+			if err := ShowMetrics(sub); err != nil {
 				return err
 			}
 		}
 	default:
-		log.Errorf("item of type '%s' is unknown", hubItem.Type)
+		// no metrics for this item type
 	}
 	return nil
 }

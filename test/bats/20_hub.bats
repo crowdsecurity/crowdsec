@@ -66,8 +66,8 @@ teardown() {
     new_hub=$(jq <"$HUB_DIR/.index.json" 'del(.parsers."crowdsecurity/smb-logs") | del (.scenarios."crowdsecurity/mysql-bf")')
     echo "$new_hub" >"$HUB_DIR/.index.json"
     rune -0 cscli hub list --error
-    assert_stderr --partial "Referred parsers crowdsecurity/smb-logs in collection crowdsecurity/smb doesn't exist."
-    assert_stderr --partial "Referred scenarios crowdsecurity/mysql-bf in collection crowdsecurity/mysql doesn't exist."
+    assert_stderr --partial "can't find crowdsecurity/smb-logs in parsers, required by crowdsecurity/smb"
+    assert_stderr --partial "can't find crowdsecurity/mysql-bf in scenarios, required by crowdsecurity/mysql"
 }
 
 @test "cscli hub update" {

@@ -187,8 +187,7 @@ teardown() {
     # one item, json
     rune -0 cscli scenarios inspect crowdsecurity/ssh-bf -o json
     rune -0 jq -c '[.type, .name, .author, .path, .installed]' <(output)
-    # XXX: .installed is missing -- not false
-    assert_json '["scenarios","crowdsecurity/ssh-bf","crowdsecurity","scenarios/crowdsecurity/ssh-bf.yaml",null]'
+    assert_json '["scenarios","crowdsecurity/ssh-bf","crowdsecurity","scenarios/crowdsecurity/ssh-bf.yaml",false]'
 
     # one item, raw
     rune -0 cscli scenarios inspect crowdsecurity/ssh-bf -o raw
@@ -214,7 +213,7 @@ teardown() {
     # multiple items, json
     rune -0 cscli scenarios inspect crowdsecurity/ssh-bf crowdsecurity/telnet-bf -o json
     rune -0 jq -sc '[.[] | [.type, .name, .author, .path, .installed]]' <(output)
-    assert_json '[["scenarios","crowdsecurity/ssh-bf","crowdsecurity","scenarios/crowdsecurity/ssh-bf.yaml",null],["scenarios","crowdsecurity/telnet-bf","crowdsecurity","scenarios/crowdsecurity/telnet-bf.yaml",null]]'
+    assert_json '[["scenarios","crowdsecurity/ssh-bf","crowdsecurity","scenarios/crowdsecurity/ssh-bf.yaml",false],["scenarios","crowdsecurity/telnet-bf","crowdsecurity","scenarios/crowdsecurity/telnet-bf.yaml",false]]'
 
     # multiple items, raw
     rune -0 cscli scenarios inspect crowdsecurity/ssh-bf crowdsecurity/telnet-bf -o raw

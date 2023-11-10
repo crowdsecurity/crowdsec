@@ -53,7 +53,7 @@ teardown() {
     rune -0 cscli collections inspect crowdsecurity/sshd -o json
     # XXX: is this supposed to be tainted or up to date?
     rune -0 jq -c '[.local_version,.up_to_date,.tainted]' <(output)
-    assert_json '["1.10",null,null]'
+    assert_json '["1.10",false,false]'
 }
 
 @test "hub index with invalid (non semver) version numbers" {

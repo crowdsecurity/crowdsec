@@ -211,6 +211,7 @@ func itemsInstallRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 				}
 
 				log.Errorf(msg)
+
 				continue
 			}
 
@@ -309,6 +310,7 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 		}
 
 		removed := 0
+
 		for _, itemName := range args {
 			item := hub.GetItem(it.name, itemName)
 			if item == nil {
@@ -318,6 +320,7 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 			if !force && len(item.BelongsToCollections) > 0 {
 				log.Warningf("%s belongs to collections: %s", item.Name, item.BelongsToCollections)
 				log.Warningf("Run 'sudo cscli %s remove %s --force' if you want to force remove this %s", item.Type, item.Name, it.singular)
+
 				continue
 			}
 
@@ -390,6 +393,7 @@ func itemsUpgradeRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 			}
 
 			updated := 0
+
 			for _, item := range items {
 				didUpdate, err := item.Upgrade(force)
 				if err != nil {
@@ -414,6 +418,7 @@ func itemsUpgradeRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 		}
 
 		updated := 0
+
 		for _, itemName := range args {
 			item := hub.GetItem(it.name, itemName)
 			if item == nil {
