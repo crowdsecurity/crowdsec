@@ -3,3 +3,12 @@
 // This includes retrieving the index, the items to install (parsers, scenarios, data files...)
 // and managing the dependencies and taints.
 package cwhub
+
+import (
+	"net/http"
+	"time"
+)
+
+var hubClient = &http.Client{
+	Timeout: 10 * time.Second,
+}

@@ -136,7 +136,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 			}
 
 			configFilePath := filepath.Join(testPath, "config.yaml")
-			fd, err := os.OpenFile(configFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+			fd, err := os.Create(configFilePath)
 			if err != nil {
 				return fmt.Errorf("open: %s", err)
 			}

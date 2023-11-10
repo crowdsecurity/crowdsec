@@ -6,6 +6,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/enescakir/emoji"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -28,18 +29,21 @@ const (
 // The order is important, as it is used to range over sub-items in collections
 var ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, WAAP_CONFIGS, WAAP_RULES, COLLECTIONS}
 
-type HubItems map[string]map[string]Item
+type HubItems map[string]map[string]*Item
 
 // ItemVersion is used to detect the version of a given item
 // by comparing the hash of each version to the local file.
 // If the item does not match any known version, it is considered tainted.
 type ItemVersion struct {
-	Digest     string `json:"digest,omitempty"`     // meow
-	Deprecated bool   `json:"deprecated,omitempty"` // XXX: do we keep this?
+	Digest     string `json:"digest,omitempty"` // meow
+	Deprecated bool   `json:"deprecated,omitempty"`
 }
 
 // Item represents an object managed in the hub. It can be a parser, scenario, collection..
 type Item struct {
+	// back pointer to the hub, to retrieve subitems and call install/remove methods
+	hub *Hub
+
 	// descriptive info
 	Type                 string   `json:"type,omitempty"                   yaml:"type,omitempty"`                   // can be any of the ItemTypes
 	Stage                string   `json:"stage,omitempty"                  yaml:"stage,omitempty"`                  // Stage for parser|postoverflow: s00-raw/s01-...
@@ -59,10 +63,10 @@ type Item struct {
 	LocalPath    string `json:"local_path,omitempty" yaml:"local_path,omitempty"` // the local path relative to ${CFG_DIR}
 	LocalVersion string `json:"local_version,omitempty"`
 	LocalHash    string `json:"local_hash,omitempty"` // the local meow
-	Installed    bool   `json:"installed,omitempty"`  // XXX: should we remove omitempty from bool fields?
-	Downloaded   bool   `json:"downloaded,omitempty"`
-	UpToDate     bool   `json:"up_to_date,omitempty"`
-	Tainted      bool   `json:"tainted,omitempty"` // has it been locally modified?
+	Installed    bool   `json:"installed"`
+	Downloaded   bool   `json:"downloaded"`
+	UpToDate     bool   `json:"up_to_date"`
+	Tainted      bool   `json:"tainted"` // has it been locally modified?
 
 	// if it's a collection, it can have sub items
 	Parsers       []string `json:"parsers,omitempty"       yaml:"parsers,omitempty"`
@@ -73,9 +77,8 @@ type Item struct {
 	WaapRules     []string `json:"waap_rules,omitempty"   yaml:"waap_rules,omitempty"`
 }
 
-type SubItem struct {
-	Type string
-	Name string
+func (i *Item) HasSubItems() bool {
+	return i.Type == COLLECTIONS
 }
 
 func (i *Item) IsLocal() bool {
@@ -90,7 +93,7 @@ func (i Item) MarshalJSON() ([]byte, error) {
 
 	return json.Marshal(&struct {
 		Alias
-		Local bool `json:"local"` // XXX: omitempty?
+		Local bool `json:"local"`
 	}{
 		Alias: Alias(i),
 		Local: i.IsLocal(),
@@ -112,49 +115,95 @@ func (i Item) MarshalYAML() (interface{}, error) {
 	}, nil
 }
 
-// SubItems returns the list of sub items for a given item (typically a collection)
-func (i *Item) SubItems() []SubItem {
-	sub := make([]SubItem,
-		len(i.Parsers)+
-			len(i.PostOverflows)+
-			len(i.Scenarios)+
-			len(i.Collections)+
-			len(i.WaapConfigs)+
-			len(i.WaapRules))
-
-	n := 0
+// SubItems returns a slice of sub-item pointers, excluding the ones that were not found
+func (i *Item) SubItems() []*Item {
+	sub := make([]*Item, 0)
 
 	for _, name := range i.Parsers {
-		sub[n] = SubItem{Type: PARSERS, Name: name}
-		n++
+		s := i.hub.GetItem(PARSERS, name)
+		if s == nil {
+			continue
+		}
+
+		sub = append(sub, s)
 	}
 
 	for _, name := range i.PostOverflows {
-		sub[n] = SubItem{Type: POSTOVERFLOWS, Name: name}
-		n++
+		s := i.hub.GetItem(POSTOVERFLOWS, name)
+		if s == nil {
+			continue
+		}
+
+		sub = append(sub, s)
 	}
 
 	for _, name := range i.Scenarios {
-		sub[n] = SubItem{Type: SCENARIOS, Name: name}
-		n++
+		s := i.hub.GetItem(SCENARIOS, name)
+		if s == nil {
+			continue
+		}
+
+		sub = append(sub, s)
 	}
 
 	for _, name := range i.WaapConfigs {
-		sub[n] = SubItem{Type: WAAP_CONFIGS, Name: name}
-		n++
+		s := i.hub.GetItem(WAAP_CONFIGS, name)
+		if s == nil {
+			continue
+		}
+
+		sub = append(sub, s)
 	}
 
 	for _, name := range i.WaapRules {
-		sub[n] = SubItem{Type: WAAP_RULES, Name: name}
-		n++
+		s := i.hub.GetItem(WAAP_RULES, name)
+		if s == nil {
+			continue
+		}
+
+		sub = append(sub, s)
 	}
 
 	for _, name := range i.Collections {
-		sub[n] = SubItem{Type: COLLECTIONS, Name: name}
-		n++
+		s := i.hub.GetItem(COLLECTIONS, name)
+		if s == nil {
+			continue
+		}
+
+		sub = append(sub, s)
 	}
 
 	return sub
+}
+
+func (i *Item) logMissingSubItems() {
+	if !i.HasSubItems() {
+		return
+	}
+
+	for _, subName := range i.Parsers {
+		if i.hub.GetItem(PARSERS, subName) == nil {
+			log.Errorf("can't find %s in %s, required by %s", subName, PARSERS, i.Name)
+		}
+	}
+
+	for _, subName := range i.Scenarios {
+		if i.hub.GetItem(SCENARIOS, subName) == nil {
+			log.Errorf("can't find %s in %s, required by %s", subName, SCENARIOS, i.Name)
+		}
+	}
+
+	for _, subName := range i.PostOverflows {
+		if i.hub.GetItem(POSTOVERFLOWS, subName) == nil {
+			log.Errorf("can't find %s in %s, required by %s", subName, POSTOVERFLOWS, i.Name)
+		}
+	}
+
+	for _, subName := range i.Collections {
+		if i.hub.GetItem(COLLECTIONS, subName) == nil {
+			log.Errorf("can't find %s in %s, required by %s", subName, COLLECTIONS, i.Name)
+		}
+	}
 }
 
 // Status returns the status of the item as a string and an emoji
@@ -228,23 +277,13 @@ func (i *Item) validPath(dirName, fileName string) bool {
 }
 
 // GetItemMap returns the map of items for a given type
-func (h *Hub) GetItemMap(itemType string) map[string]Item {
-	m, ok := h.Items[itemType]
-	if !ok {
-		return nil
-	}
-
-	return m
+func (h *Hub) GetItemMap(itemType string) map[string]*Item {
+	return h.Items[itemType]
 }
 
 // GetItem returns the item from hub based on its type and full name (author/name)
 func (h *Hub) GetItem(itemType string, itemName string) *Item {
-	m, ok := h.GetItemMap(itemType)[itemName]
-	if !ok {
-		return nil
-	}
-
-	return &m
+	return h.GetItemMap(itemType)[itemName]
 }
 
 // GetItemNames returns the list of item (full) names for a given type
@@ -264,27 +303,14 @@ func (h *Hub) GetItemNames(itemType string) []string {
 	return names
 }
 
-// AddItem adds an item to the hub index
-func (h *Hub) AddItem(item Item) error {
-	for _, t := range ItemTypes {
-		if t == item.Type {
-			h.Items[t][item.Name] = item
-			return nil
-		}
-	}
-
-	// XXX: can this happen?
-	return fmt.Errorf("ItemType %s is unknown", item.Type)
-}
-
 // GetInstalledItems returns the list of installed items
-func (h *Hub) GetInstalledItems(itemType string) ([]Item, error) {
+func (h *Hub) GetInstalledItems(itemType string) ([]*Item, error) {
 	items, ok := h.Items[itemType]
 	if !ok {
 		return nil, fmt.Errorf("no %s in the hub index", itemType)
 	}
 
-	retItems := make([]Item, 0)
+	retItems := make([]*Item, 0)
 
 	for _, item := range items {
 		if item.Installed {
@@ -304,8 +330,8 @@ func (h *Hub) GetInstalledItemsAsString(itemType string) ([]string, error) {
 
 	retStr := make([]string, len(items))
 
-	for i, it := range items {
-		retStr[i] = it.Name
+	for idx, it := range items {
+		retStr[idx] = it.Name
 	}
 
 	return retStr, nil

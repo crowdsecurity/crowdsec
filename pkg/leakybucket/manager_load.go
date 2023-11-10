@@ -179,16 +179,11 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 	return nil
 }
 
-func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, dataDir string, files []string, tomb *tomb.Tomb, buckets *Buckets, orderEvent bool) ([]BucketFactory, chan types.Event, error) {
+func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []string, tomb *tomb.Tomb, buckets *Buckets, orderEvent bool) ([]BucketFactory, chan types.Event, error) {
 	var (
 		ret      = []BucketFactory{}
 		response chan types.Event
 	)
-
-	hub, err := cwhub.GetHub()
-	if err != nil {
-		return nil, nil, err
-	}
 
 	response = make(chan types.Event, 1)
 	for _, f := range files {
@@ -217,7 +212,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, dataDir string, files []str
 				log.Tracef("End of yaml file")
 				break
 			}
-			bucketFactory.DataDir = dataDir
+			bucketFactory.DataDir = hub.GetDataDir()
 			//check empty
 			if bucketFactory.Name == "" {
 				log.Errorf("Won't load nameless bucket")

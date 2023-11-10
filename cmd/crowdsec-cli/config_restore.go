@@ -21,31 +21,6 @@ type OldAPICfg struct {
 	Password  string `json:"password"`
 }
 
-// it's a rip of the cli version, but in silent-mode
-// XXX: redundant, should call InstallItem
-func silentInstallItem(hub *cwhub.Hub, name, obtype string) (string, error) {
-	var item = hub.GetItem(obtype, name)
-	if item == nil {
-		return "", fmt.Errorf("error retrieving item")
-	}
-	err := hub.DownloadLatest(item, false, false)
-	if err != nil {
-		return "", fmt.Errorf("error while downloading %s : %v", item.Name, err)
-	}
-	if err = hub.AddItem(*item); err != nil {
-		return "", err
-	}
-
-	err = hub.EnableItem(item)
-	if err != nil {
-		return "", fmt.Errorf("error while enabling %s : %v", item.Name, err)
-	}
-	if err := hub.AddItem(*item); err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("Enabled %s", item.Name), nil
-}
-
 func restoreHub(dirPath string) error {
 	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig))
 	if err != nil {
@@ -70,13 +45,14 @@ func restoreHub(dirPath string) error {
 			return fmt.Errorf("error unmarshaling %s : %s", upstreamListFN, err)
 		}
 		for _, toinstall := range upstreamList {
-			label, err := silentInstallItem(hub, toinstall, itype)
+			item := hub.GetItem(itype, toinstall)
+			if item == nil {
+				log.Errorf("Item %s/%s not found in hub", itype, toinstall)
+				continue
+			}
+			err := item.Install(false, false)
 			if err != nil {
 				log.Errorf("Error while installing %s : %s", toinstall, err)
-			} else if label != "" {
-				log.Infof("Installed %s : %s", toinstall, label)
-			} else {
-				log.Printf("Installed %s : ok", toinstall)
 			}
 		}
 

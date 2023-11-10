@@ -17,7 +17,8 @@ func TestUpgradeItemNewScenarioInCollection(t *testing.T) {
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
 
-	require.NoError(t, hub.InstallItem("crowdsecurity/test_collection", COLLECTIONS, false, false))
+	item := hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
+	require.NoError(t, item.Install(false, false))
 
 	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
 	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
@@ -25,10 +26,9 @@ func TestUpgradeItemNewScenarioInCollection(t *testing.T) {
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Tainted)
 
 	// This is the scenario that gets added in next version of collection
-	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/barfoo_scenario"].Downloaded)
-	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/barfoo_scenario"].Installed)
+	require.Nil(t, hub.Items[SCENARIOS]["crowdsecurity/barfoo_scenario"])
 
-	assertCollectionDepsInstalled(t, "crowdsecurity/test_collection")
+	assertCollectionDepsInstalled(t, hub, "crowdsecurity/test_collection")
 
 	// collection receives an update. It now adds new scenario "crowdsecurity/barfoo_scenario"
 	pushUpdateToCollectionInHub()
@@ -49,10 +49,11 @@ func TestUpgradeItemNewScenarioInCollection(t *testing.T) {
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].UpToDate)
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Tainted)
 
-	didUpdate, err := hub.UpgradeItem(COLLECTIONS, "crowdsecurity/test_collection", false)
+	item = hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
+	didUpdate, err := item.Upgrade(false)
 	require.NoError(t, err)
 	require.True(t, didUpdate)
-	assertCollectionDepsInstalled(t, "crowdsecurity/test_collection")
+	assertCollectionDepsInstalled(t, hub, "crowdsecurity/test_collection")
 
 	require.True(t, hub.Items[SCENARIOS]["crowdsecurity/barfoo_scenario"].Downloaded)
 	require.True(t, hub.Items[SCENARIOS]["crowdsecurity/barfoo_scenario"].Installed)
@@ -68,16 +69,18 @@ func TestUpgradeItemInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
 	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
 
-	require.NoError(t, hub.InstallItem("crowdsecurity/test_collection", COLLECTIONS, false, false))
+	item := hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
+	require.NoError(t, item.Install(false, false))
 
 	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
 	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
 	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].UpToDate)
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Tainted)
 	require.True(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
-	assertCollectionDepsInstalled(t, "crowdsecurity/test_collection")
+	assertCollectionDepsInstalled(t, hub, "crowdsecurity/test_collection")
 
-	didRemove, err := hub.RemoveItem(SCENARIOS, "crowdsecurity/foobar_scenario", false, false)
+	item = hub.GetItem(SCENARIOS, "crowdsecurity/foobar_scenario")
+	didRemove, err := item.Remove(false, false)
 	require.NoError(t, err)
 	require.True(t, didRemove)
 
@@ -98,7 +101,8 @@ func TestUpgradeItemInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 	hub, err = NewHub(hub.local, remote, true)
 	require.NoError(t, err, "failed to download index: %s", err)
 
-	didUpdate, err := hub.UpgradeItem(COLLECTIONS, "crowdsecurity/test_collection", false)
+	item = hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
+	didUpdate, err := item.Upgrade(false)
 	require.NoError(t, err)
 	require.False(t, didUpdate)
 
@@ -125,16 +129,18 @@ func TestUpgradeItemNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *te
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
 	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
 
-	require.NoError(t, hub.InstallItem("crowdsecurity/test_collection", COLLECTIONS, false, false))
+	item := hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
+	require.NoError(t, item.Install(false, false))
 
 	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
 	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
 	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].UpToDate)
 	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].Tainted)
 	require.True(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
-	assertCollectionDepsInstalled(t, "crowdsecurity/test_collection")
+	assertCollectionDepsInstalled(t, hub, "crowdsecurity/test_collection")
 
-	didRemove, err := hub.RemoveItem(SCENARIOS, "crowdsecurity/foobar_scenario", false, false)
+	item = hub.GetItem(SCENARIOS, "crowdsecurity/foobar_scenario")
+	didRemove, err := item.Remove(false, false)
 	require.NoError(t, err)
 	require.True(t, didRemove)
 
@@ -164,7 +170,8 @@ func TestUpgradeItemNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *te
 	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
 	hub = getHubOrFail(t, hub.local, remote)
 
-	didUpdate, err := hub.UpgradeItem(COLLECTIONS, "crowdsecurity/test_collection", false)
+	item = hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
+	didUpdate, err := item.Upgrade(false)
 	require.NoError(t, err)
 	require.True(t, didUpdate)
 
@@ -173,14 +180,11 @@ func TestUpgradeItemNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *te
 	require.True(t, hub.Items[SCENARIOS]["crowdsecurity/barfoo_scenario"].Installed)
 }
 
-func assertCollectionDepsInstalled(t *testing.T, collection string) {
+func assertCollectionDepsInstalled(t *testing.T, hub *Hub, collection string) {
 	t.Helper()
 
-	hub, err := GetHub()
-	require.NoError(t, err)
-
 	c := hub.Items[COLLECTIONS][collection]
-	require.NoError(t, hub.CollectDepsCheck(&c))
+	require.NoError(t, hub.checkSubItems(c))
 }
 
 func pushUpdateToCollectionInHub() {

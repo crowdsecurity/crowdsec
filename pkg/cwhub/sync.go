@@ -135,20 +135,21 @@ func (h *Hub) getItemInfo(path string) (itemFileInfo, bool, error) {
 // sortedVersions returns the input data, sorted in reverse order by semver
 func sortedVersions(raw []string) ([]string, error) {
 	vs := make([]*semver.Version, len(raw))
-	for i, r := range raw {
+
+	for idx, r := range raw {
 		v, err := semver.NewVersion(r)
 		if err != nil {
 			return nil, fmt.Errorf("%s: %w", r, err)
 		}
 
-		vs[i] = v
+		vs[idx] = v
 	}
 
 	sort.Sort(sort.Reverse(semver.Collection(vs)))
 
 	ret := make([]string, len(vs))
-	for i, v := range vs {
-		ret[i] = v.Original()
+	for idx, v := range vs {
+		ret[idx] = v.Original()
 	}
 
 	return ret, nil
@@ -186,7 +187,7 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 	}
 
 	/*
-		we can encounter 'collections' in the form of a symlink :
+		we can encounter 'collections' in the form of a symlink:
 		/etc/crowdsec/.../collections/linux.yaml -> ~/.hub/hub/collections/.../linux.yaml
 		when the collection is installed, both files are created
 	*/
@@ -212,11 +213,11 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 	if local && !inhub {
 		log.Tracef("%s is a local file, skip", path)
 		h.skippedLocal++
-		//	log.Infof("local scenario, skip.")
 
 		_, fileName := filepath.Split(path)
 
-		h.Items[info.ftype][info.fname] = Item{
+		h.Items[info.ftype][info.fname] = &Item{
+			hub:       h,
 			Name:      info.fname,
 			Stage:     info.stage,
 			Installed: true,
@@ -341,66 +342,53 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 	return nil
 }
 
-func (h *Hub) CollectDepsCheck(v *Item) error {
-	if v.Type != COLLECTIONS {
+// checkSubItems checks for the presence, taint and version state of sub-items
+func (h *Hub) checkSubItems(v *Item) error {
+	if !v.HasSubItems() {
 		return nil
 	}
 
-	if v.versionStatus() != VersionUpToDate { // not up-to-date
+	if v.versionStatus() != VersionUpToDate {
 		log.Debugf("%s dependencies not checked: not up-to-date", v.Name)
 		return nil
 	}
 
-	// if it's a collection, ensure all the items are installed, or tag it as tainted
+	// ensure all the sub-items are installed, or tag the parent as tainted
 	log.Tracef("checking submembers of %s installed:%t", v.Name, v.Installed)
 
 	for _, sub := range v.SubItems() {
-		subItem, ok := h.Items[sub.Type][sub.Name]
-		if !ok {
-			return fmt.Errorf("referred %s %s in collection %s doesn't exist", sub.Type, sub.Name, v.Name)
-		}
-
-		log.Tracef("check %s installed:%t", subItem.Name, subItem.Installed)
+		log.Tracef("check %s installed:%t", sub.Name, sub.Installed)
 
 		if !v.Installed {
 			continue
 		}
 
-		if subItem.Type == COLLECTIONS {
-			log.Tracef("collec, recurse.")
-
-			if err := h.CollectDepsCheck(&subItem); err != nil {
-				if subItem.Tainted {
-					v.Tainted = true
-				}
-
-				return fmt.Errorf("sub collection %s is broken: %w", subItem.Name, err)
+		if err := h.checkSubItems(sub); err != nil {
+			if sub.Tainted {
+				v.Tainted = true
 			}
 
-			h.Items[sub.Type][sub.Name] = subItem
+			return fmt.Errorf("sub collection %s is broken: %w", sub.Name, err)
 		}
 
-		// propagate the state of sub-items to set
-		if subItem.Tainted {
+		if sub.Tainted {
 			v.Tainted = true
 			return fmt.Errorf("tainted %s %s, tainted", sub.Type, sub.Name)
 		}
 
-		if !subItem.Installed && v.Installed {
+		if !sub.Installed && v.Installed {
 			v.Tainted = true
 			return fmt.Errorf("missing %s %s, tainted", sub.Type, sub.Name)
 		}
 
-		if !subItem.UpToDate {
+		if !sub.UpToDate {
 			v.UpToDate = false
 			return fmt.Errorf("outdated %s %s", sub.Type, sub.Name)
 		}
 
-		if !slices.Contains(subItem.BelongsToCollections, v.Name) {
-			subItem.BelongsToCollections = append(subItem.BelongsToCollections, v.Name)
+		if !slices.Contains(sub.BelongsToCollections, v.Name) {
+			sub.BelongsToCollections = append(sub.BelongsToCollections, v.Name)
 		}
-
-		h.Items[sub.Type][sub.Name] = subItem
 
 		log.Tracef("checking for %s - tainted:%t uptodate:%t", sub.Name, v.Tainted, v.UpToDate)
 	}
@@ -408,7 +396,7 @@ func (h *Hub) CollectDepsCheck(v *Item) error {
 	return nil
 }
 
-func (h *Hub) SyncDir(dir string) ([]string, error) {
+func (h *Hub) syncDir(dir string) ([]string, error) {
 	warnings := []string{}
 
 	// For each, scan PARSERS, POSTOVERFLOWS, SCENARIOS and COLLECTIONS last
@@ -429,7 +417,7 @@ func (h *Hub) SyncDir(dir string) ([]string, error) {
 		}
 	}
 
-	for name, item := range h.Items[COLLECTIONS] {
+	for _, item := range h.Items[COLLECTIONS] {
 		if !item.Installed {
 			continue
 		}
@@ -437,9 +425,8 @@ func (h *Hub) SyncDir(dir string) ([]string, error) {
 		vs := item.versionStatus()
 		switch vs {
 		case VersionUpToDate: // latest
-			if err := h.CollectDepsCheck(&item); err != nil {
+			if err := h.checkSubItems(item); err != nil {
 				warnings = append(warnings, fmt.Sprintf("dependency of %s: %s", item.Name, err))
-				h.Items[COLLECTIONS][name] = item
 			}
 		case VersionUpdateAvailable: // not up-to-date
 			warnings = append(warnings, fmt.Sprintf("update for collection %s available (currently:%s, latest:%s)", item.Name, item.LocalVersion, item.Version))
@@ -456,18 +443,23 @@ func (h *Hub) SyncDir(dir string) ([]string, error) {
 }
 
 // Updates the info from HubInit() with the local state
-func (h *Hub) LocalSync() ([]string, error) {
+func (h *Hub) localSync() error {
 	h.skippedLocal = 0
 	h.skippedTainted = 0
+	h.Warnings = []string{}
 
-	warnings, err := h.SyncDir(h.local.InstallDir)
+	warnings, err := h.syncDir(h.local.InstallDir)
 	if err != nil {
-		return warnings, fmt.Errorf("failed to scan %s: %w", h.local.InstallDir, err)
+		return fmt.Errorf("failed to scan %s: %w", h.local.InstallDir, err)
 	}
 
-	if _, err = h.SyncDir(h.local.HubDir); err != nil {
-		return warnings, fmt.Errorf("failed to scan %s: %w", h.local.HubDir, err)
+	h.Warnings = append(h.Warnings, warnings...)
+
+	if warnings, err = h.syncDir(h.local.HubDir); err != nil {
+		return fmt.Errorf("failed to scan %s: %w", h.local.HubDir, err)
 	}
 
-	return warnings, nil
+	h.Warnings = append(h.Warnings, warnings...)
+
+	return nil
 }

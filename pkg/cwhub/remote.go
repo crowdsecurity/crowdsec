@@ -22,6 +22,7 @@ func (r *RemoteHubCfg) urlTo(remotePath string) (string, error) {
 		return "", ErrNilRemoteHub
 	}
 
+	// the template must contain two string placeholders
 	if fmt.Sprintf(r.URLTemplate, "%s", "%s") != r.URLTemplate {
 		return "", fmt.Errorf("invalid URL template '%s'", r.URLTemplate)
 	}
@@ -40,12 +41,7 @@ func (r *RemoteHubCfg) downloadIndex(localPath string) error {
 		return fmt.Errorf("failed to build hub index request: %w", err)
 	}
 
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return fmt.Errorf("failed to build request for hub index: %w", err)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := hubClient.Get(url)
 	if err != nil {
 		return fmt.Errorf("failed http request for hub index: %w", err)
 	}
@@ -53,10 +49,10 @@ func (r *RemoteHubCfg) downloadIndex(localPath string) error {
 
 	if resp.StatusCode != http.StatusOK {
 		if resp.StatusCode == http.StatusNotFound {
-			return IndexNotFoundError{req.URL.String(), r.Branch}
+			return IndexNotFoundError{url, r.Branch}
 		}
 
-		return fmt.Errorf("bad http code %d for %s", resp.StatusCode, req.URL.String())
+		return fmt.Errorf("bad http code %d for %s", resp.StatusCode, url)
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -74,8 +70,7 @@ func (r *RemoteHubCfg) downloadIndex(localPath string) error {
 		return nil
 	}
 
-	file, err := os.OpenFile(localPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o644)
-
+	file, err := os.Create(localPath)
 	if err != nil {
 		return fmt.Errorf("while opening hub index file: %w", err)
 	}

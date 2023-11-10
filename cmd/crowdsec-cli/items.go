@@ -157,7 +157,7 @@ func InspectItem(hub *cwhub.Hub, item *cwhub.Item, showMetrics bool) error {
 
 	if csConfig.Cscli.Output == "human" && showMetrics {
 		fmt.Printf("\nCurrent metrics: \n")
-		if err := ShowMetrics(hub, item); err != nil {
+		if err := ShowMetrics(item); err != nil {
 			return err
 		}
 	}

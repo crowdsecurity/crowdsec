@@ -17,19 +17,7 @@ type Hub struct {
 	remote         *RemoteHubCfg
 	skippedLocal   int
 	skippedTainted int
-}
-
-var theHub *Hub
-
-// GetHub returns the hub singleton
-// it returns an error if it's not initialized to avoid nil dereference
-// XXX: convenience function that we should get rid of at some point
-func GetHub() (*Hub, error) {
-	if theHub == nil {
-		return nil, fmt.Errorf("hub not initialized")
-	}
-
-	return theHub, nil
+	Warnings       []string
 }
 
 func (h *Hub) GetDataDir() string {
@@ -51,20 +39,20 @@ func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, downloadIndex boo
 
 	log.Debugf("loading hub idx %s", local.HubIndexFile)
 
-	theHub = &Hub{
+	hub := &Hub{
 		local:  local,
 		remote: remote,
 	}
 
-	if err := theHub.parseIndex(); err != nil {
+	if err := hub.parseIndex(); err != nil {
 		return nil, fmt.Errorf("failed to load index: %w", err)
 	}
 
-	if _, err := theHub.LocalSync(); err != nil {
+	if err := hub.localSync(); err != nil {
 		return nil, fmt.Errorf("failed to sync items: %w", err)
 	}
 
-	return theHub, nil
+	return hub, nil
 }
 
 // parseIndex takes the content of an index file and fills the map of associated parsers/scenarios/collections
@@ -85,6 +73,7 @@ func (h *Hub) parseIndex() error {
 		log.Tracef("%s: %d items", itemType, len(h.Items[itemType]))
 
 		for name, item := range h.Items[itemType] {
+			item.hub = h
 			item.Name = name
 
 			// if the item has no (redundant) author, take it from the json key
@@ -95,15 +84,8 @@ func (h *Hub) parseIndex() error {
 			item.Type = itemType
 			x := strings.Split(item.RemotePath, "/")
 			item.FileName = x[len(x)-1]
-			h.Items[itemType][name] = item
 
-			// if it's a collection, check its sub-items are present
-			// XXX should be done later, maybe report all missing at once?
-			for _, sub := range item.SubItems() {
-				if _, ok := h.Items[sub.Type][sub.Name]; !ok {
-					log.Errorf("Referred %s %s in collection %s doesn't exist.", sub.Type, sub.Name, item.Name)
-				}
-			}
+			item.logMissingSubItems()
 		}
 	}
 

@@ -24,13 +24,6 @@ cscli hub update
 cscli hub upgrade`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if csConfig.Cscli == nil {
-				return fmt.Errorf("you must configure cli before interacting with hub")
-			}
-
-			return nil
-		},
 	}
 
 	cmdHub.AddCommand(NewHubListCmd())
@@ -53,13 +46,11 @@ func runHubList(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// use LocalSync to get warnings about tainted / outdated items
-	warn, _ := hub.LocalSync()
-	for _, v := range warn {
+	for _, v := range hub.Warnings {
 		log.Info(v)
 	}
 
-	for line := range hub.ItemStats() {
+	for _, line := range hub.ItemStats() {
 		log.Info(line)
 	}
 
@@ -96,9 +87,7 @@ func runHubUpdate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to update hub: %w", err)
 	}
 
-	// use LocalSync to get warnings about tainted / outdated items
-	warn, _ := hub.LocalSync()
-	for _, v := range warn {
+	for _, v := range hub.Warnings {
 		log.Info(v)
 	}
 
@@ -114,14 +103,7 @@ Fetches the .index.json file from the hub, containing the list of available conf
 `,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if csConfig.Cscli == nil {
-				return fmt.Errorf("you must configure cli before interacting with hub")
-			}
-
-			return nil
-		},
-		RunE: runHubUpdate,
+		RunE:              runHubUpdate,
 	}
 
 	return cmdHubUpdate
@@ -149,7 +131,7 @@ func runHubUpgrade(cmd *cobra.Command, args []string) error {
 		updated := 0
 		log.Infof("Upgrading %s", itemType)
 		for _, item := range items {
-			didUpdate, err := hub.UpgradeItem(itemType, item.Name, force)
+			didUpdate, err := item.Upgrade(force)
 			if err != nil {
 				return err
 			}
@@ -172,14 +154,7 @@ Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if 
 `,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if csConfig.Cscli == nil {
-				return fmt.Errorf("you must configure cli before interacting with hub")
-			}
-
-			return nil
-		},
-		RunE: runHubUpgrade,
+		RunE:              runHubUpgrade,
 	}
 
 	flags := cmdHubUpgrade.Flags()

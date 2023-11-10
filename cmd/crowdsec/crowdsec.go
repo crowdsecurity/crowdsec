@@ -21,13 +21,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
 )
 
-func initCrowdsec(cConfig *csconfig.Config) (*parser.Parsers, error) {
+func initCrowdsec(cConfig *csconfig.Config, hub *cwhub.Hub) (*parser.Parsers, error) {
 	var err error
-
-	hub, err := cwhub.NewHub(cConfig.Hub, nil, false)
-	if err != nil {
-		return nil, fmt.Errorf("while loading hub index: %w", err)
-	}
 
 	// Start loading configs
 	csParsers := parser.NewParsers(hub)
@@ -49,7 +44,7 @@ func initCrowdsec(cConfig *csconfig.Config) (*parser.Parsers, error) {
 	return csParsers, nil
 }
 
-func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers) error {
+func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.Hub) error {
 	inputEventChan = make(chan types.Event)
 	inputLineChan = make(chan types.Event)
 
@@ -104,7 +99,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers) error {
 		for i := 0; i < cConfig.Crowdsec.OutputRoutinesCount; i++ {
 			outputsTomb.Go(func() error {
 				defer trace.CatchPanic("crowdsec/runOutput")
-				if err := runOutput(inputEventChan, outputEventChan, buckets, *parsers.Povfwctx, parsers.Povfwnodes, *cConfig.API.Client.Credentials); err != nil {
+				if err := runOutput(inputEventChan, outputEventChan, buckets, *parsers.Povfwctx, parsers.Povfwnodes, *cConfig.API.Client.Credentials, hub); err != nil {
 					log.Fatalf("starting outputs error : %s", err)
 					return err
 				}
@@ -136,7 +131,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers) error {
 	return nil
 }
 
-func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config, agentReady chan bool) {
+func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config, hub *cwhub.Hub, agentReady chan bool) {
 	crowdsecTomb.Go(func() error {
 		defer trace.CatchPanic("crowdsec/serveCrowdsec")
 		go func() {
@@ -144,7 +139,7 @@ func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config, agentReady
 			// this logs every time, even at config reload
 			log.Debugf("running agent after %s ms", time.Since(crowdsecT0))
 			agentReady <- true
-			if err := runCrowdsec(cConfig, parsers); err != nil {
+			if err := runCrowdsec(cConfig, parsers, hub); err != nil {
 				log.Fatalf("unable to start crowdsec routines: %s", err)
 			}
 		}()

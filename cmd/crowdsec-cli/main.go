@@ -65,10 +65,6 @@ func initConfig() {
 		log.Debugf("Enabled feature flags: %s", fflist)
 	}
 
-	if csConfig.Cscli == nil {
-		log.Fatalf("missing 'cscli' configuration in '%s', exiting", ConfigFilePath)
-	}
-
 	if flagBranch != "" {
 		csConfig.Cscli.HubBranch = flagBranch
 	}
