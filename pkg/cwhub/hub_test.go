@@ -21,9 +21,6 @@ func TestInitHubUpdate(t *testing.T) {
 
 	_, err := NewHub(hub.local, remote, true)
 	require.NoError(t, err)
-
-	_, err = GetHub()
-	require.NoError(t, err)
 }
 
 func TestDownloadIndex(t *testing.T) {

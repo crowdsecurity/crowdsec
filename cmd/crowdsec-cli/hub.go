@@ -24,13 +24,6 @@ cscli hub update
 cscli hub upgrade`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if csConfig.Cscli == nil {
-				return fmt.Errorf("you must configure cli before interacting with hub")
-			}
-
-			return nil
-		},
 	}
 
 	cmdHub.AddCommand(NewHubListCmd())
@@ -110,14 +103,7 @@ Fetches the .index.json file from the hub, containing the list of available conf
 `,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if csConfig.Cscli == nil {
-				return fmt.Errorf("you must configure cli before interacting with hub")
-			}
-
-			return nil
-		},
-		RunE: runHubUpdate,
+		RunE:              runHubUpdate,
 	}
 
 	return cmdHubUpdate
@@ -168,14 +154,7 @@ Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if 
 `,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if csConfig.Cscli == nil {
-				return fmt.Errorf("you must configure cli before interacting with hub")
-			}
-
-			return nil
-		},
-		RunE: runHubUpgrade,
+		RunE:              runHubUpgrade,
 	}
 
 	flags := cmdHubUpgrade.Flags()

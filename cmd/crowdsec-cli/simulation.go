@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
-	"slices"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
+	"slices"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -111,9 +111,6 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadSimulation(); err != nil {
 				log.Fatal(err)
-			}
-			if csConfig.Cscli == nil {
-				return fmt.Errorf("you must configure cli before using simulation")
 			}
 			if csConfig.Cscli.SimulationConfig == nil {
 				return fmt.Errorf("no simulation configured")

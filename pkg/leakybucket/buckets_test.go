@@ -41,9 +41,10 @@ func TestBucket(t *testing.T) {
 	hubCfg := &csconfig.LocalHubCfg{
 		HubDir: filepath.Join(testdata, "hub"),
 		HubIndexFile: filepath.Join(testdata, "hub", "index.json"),
+		InstallDataDir: testdata,
 	}
 
-	_, err := cwhub.NewHub(hubCfg, nil, false)
+	hub, err := cwhub.NewHub(hubCfg, nil, false)
 	if err != nil {
 		t.Fatalf("failed to init hub: %s", err)
 	}
@@ -54,7 +55,7 @@ func TestBucket(t *testing.T) {
 	}
 
 	if envSetting != "" {
-		if err := testOneBucket(t, envSetting, tomb); err != nil {
+		if err := testOneBucket(t, hub, envSetting, tomb); err != nil {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
 		}
 	} else {
@@ -72,7 +73,7 @@ func TestBucket(t *testing.T) {
 			tomb.Go(func() error {
 				wg.Add(1)
 				defer wg.Done()
-				if err := testOneBucket(t, fname, tomb); err != nil {
+				if err := testOneBucket(t, hub, fname, tomb); err != nil {
 					t.Fatalf("Test '%s' failed : %s", fname, err)
 				}
 				return nil
@@ -94,7 +95,7 @@ func watchTomb(tomb *tomb.Tomb) {
 	}
 }
 
-func testOneBucket(t *testing.T, dir string, tomb *tomb.Tomb) error {
+func testOneBucket(t *testing.T, hub *cwhub.Hub, dir string, tomb *tomb.Tomb) error {
 
 	var (
 		holders []BucketFactory
@@ -131,7 +132,7 @@ func testOneBucket(t *testing.T, dir string, tomb *tomb.Tomb) error {
 	}
 
 	cscfg := &csconfig.CrowdsecServiceCfg{}
-	holders, response, err := LoadBuckets(cscfg, "tests", files, tomb, buckets, false)
+	holders, response, err := LoadBuckets(cscfg, hub, files, tomb, buckets, false)
 	if err != nil {
 		t.Fatalf("failed loading bucket : %s", err)
 	}
