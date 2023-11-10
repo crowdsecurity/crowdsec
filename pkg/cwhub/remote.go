@@ -41,7 +41,7 @@ func (r *RemoteHubCfg) downloadIndex(localPath string) error {
 		return fmt.Errorf("failed to build hub index request: %w", err)
 	}
 
-	resp, err := http.DefaultClient.Get(url)
+	resp, err := hubClient.Get(url)
 	if err != nil {
 		return fmt.Errorf("failed http request for hub index: %w", err)
 	}

@@ -151,7 +151,7 @@ func (i *Item) downloadLatest(overwrite bool, updateOnly bool) error {
 		}
 
 		// We need to enable an item when it has been added to a collection since latest release of the collection.
-		// We check if val.Downloaded is false because maybe the item has been disabled by the user.
+		// We check if sub.Downloaded is false because maybe the item has been disabled by the user.
 		if !sub.Installed && !downloaded {
 			if err := sub.enable(); err != nil {
 				return fmt.Errorf("enabling '%s': %w", sub.Name, err)
@@ -192,7 +192,7 @@ func (i *Item) download(overwrite bool) error {
 		}
 	}
 
-	resp, err := http.DefaultClient.Get(url)
+	resp, err := hubClient.Get(url)
 	if err != nil {
 		return fmt.Errorf("while downloading %s: %w", url, err)
 	}

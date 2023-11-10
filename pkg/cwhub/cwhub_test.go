@@ -79,14 +79,14 @@ func envSetup(t *testing.T) *Hub {
 	setResponseByPath()
 	log.SetLevel(log.DebugLevel)
 
-	defaultTransport := http.DefaultClient.Transport
+	defaultTransport := hubClient.Transport
 
 	t.Cleanup(func() {
-		http.DefaultClient.Transport = defaultTransport
+		hubClient.Transport = defaultTransport
 	})
 
 	// Mock the http client
-	http.DefaultClient.Transport = newMockTransport()
+	hubClient.Transport = newMockTransport()
 
 	hub := testHub(t, true)
 

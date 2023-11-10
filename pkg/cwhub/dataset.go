@@ -21,7 +21,7 @@ type DataSet struct {
 func downloadFile(url string, destPath string) error {
 	log.Debugf("downloading %s in %s", url, destPath)
 
-	resp, err := http.DefaultClient.Get(url)
+	resp, err := hubClient.Get(url)
 	if err != nil {
 		return fmt.Errorf("while downloading %s: %w", url, err)
 	}
