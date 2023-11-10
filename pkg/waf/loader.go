@@ -11,11 +11,11 @@ import (
 
 var waapRules map[string]WaapCollectionConfig = make(map[string]WaapCollectionConfig) //FIXME: would probably be better to have a struct for this
 
-func LoadWaapRules() error {
-	hub, err := cwhub.GetHub()
-	if err != nil {
-		return fmt.Errorf("unable to load hub : %s", err)
-	}
+var hub *cwhub.Hub //FIXME: this is a temporary hack to make the hub available in the package
+
+func LoadWaapRules(hubInstance *cwhub.Hub) error {
+
+	hub = hubInstance
 
 	for _, hubWafRuleItem := range hub.GetItemMap(cwhub.WAAP_RULES) {
 		//log.Infof("loading %s", hubWafRuleItem.LocalPath)

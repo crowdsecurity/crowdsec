@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
 	"github.com/crowdsecurity/go-cs-lib/trace"
@@ -159,12 +158,6 @@ func (w *WaapSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 
 	w.WaapRunners = make([]WaapRunner, w.config.Routines)
 
-	hub, err := cwhub.GetHub()
-
-	if err != nil {
-		return fmt.Errorf("unable to load hub : %s", err)
-	}
-
 	for nbRoutine := 0; nbRoutine < w.config.Routines; nbRoutine++ {
 
 		wafUUID := uuid.New().String()
@@ -178,7 +171,7 @@ func (w *WaapSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 			}),
 			WaapRuntime: &wrt,
 		}
-		err := runner.Init(hub.GetDataDir())
+		err := runner.Init(waapCfg.GetDataDir())
 		if err != nil {
 			return fmt.Errorf("unable to initialize runner : %s", err)
 		}

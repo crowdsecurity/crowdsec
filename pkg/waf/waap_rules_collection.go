@@ -1,13 +1,11 @@
 package waf
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	corazatypes "github.com/crowdsecurity/coraza/v3/types"
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/waf/waap_rule"
 
 	log "github.com/sirupsen/logrus"
@@ -48,12 +46,6 @@ type RulesDetails struct {
 var WaapRulesDetails = make(map[int]RulesDetails)
 
 func LoadCollection(pattern string) ([]WaapCollection, error) {
-
-	hub, err := cwhub.GetHub()
-	if err != nil {
-		return nil, fmt.Errorf("unable to load hub : %s", err)
-	}
-
 	ret := make([]WaapCollection, 0)
 
 	for _, waapRule := range waapRules {

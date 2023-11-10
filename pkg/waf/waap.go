@@ -149,11 +149,6 @@ func (wc *WaapConfig) LoadByPath(file string) error {
 }
 
 func (wc *WaapConfig) Load(configName string) error {
-	hub, err := cwhub.GetHub()
-	if err != nil {
-		return fmt.Errorf("unable to load hub : %s", err)
-	}
-
 	waapConfigs := hub.GetItemMap(cwhub.WAAP_CONFIGS)
 
 	for _, hubWaapConfigItem := range waapConfigs {
@@ -164,7 +159,7 @@ func (wc *WaapConfig) Load(configName string) error {
 			continue
 		}
 		wc.Logger.Infof("loading %s", hubWaapConfigItem.LocalPath)
-		err = wc.LoadByPath(hubWaapConfigItem.LocalPath)
+		err := wc.LoadByPath(hubWaapConfigItem.LocalPath)
 		if err != nil {
 			return fmt.Errorf("unable to load waap-config %s : %s", hubWaapConfigItem.LocalPath, err)
 		}
@@ -172,6 +167,10 @@ func (wc *WaapConfig) Load(configName string) error {
 	}
 
 	return fmt.Errorf("no waap-config found for %s", configName)
+}
+
+func (wc *WaapConfig) GetDataDir() string {
+	return hub.GetDataDir()
 }
 
 func (wc *WaapConfig) Build() (*WaapRuntimeConfig, error) {

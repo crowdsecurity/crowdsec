@@ -34,7 +34,7 @@ func initCrowdsec(cConfig *csconfig.Config, hub *cwhub.Hub) (*parser.Parsers, er
 		return nil, fmt.Errorf("while loading scenarios: %w", err)
 	}
 
-	if err := waf.LoadWaapRules(); err != nil {
+	if err := waf.LoadWaapRules(hub); err != nil {
 		return nil, fmt.Errorf("while loading waap rules: %w", err)
 	}
 
