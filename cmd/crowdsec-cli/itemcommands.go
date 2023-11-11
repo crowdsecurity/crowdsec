@@ -61,7 +61,9 @@ cscli parsers remove crowdsecurity/caddy-logs crowdsecurity/sshd-logs
 		listHelp: cmdHelp{
 			example: `cscli parsers list
 cscli parsers list -a
-cscli parsers list crowdsecurity/caddy-logs crowdsecurity/sshd-logs`,
+cscli parsers list crowdsecurity/caddy-logs crowdsecurity/sshd-logs
+
+List only enabled parsers unless "-a" or names are specified.`,
 		},
 	},
 	"postoverflows": {
@@ -91,7 +93,9 @@ cscli postoverflows remove crowdsecurity/cdn-whitelist crowdsecurity/rdns
 		listHelp: cmdHelp{
 			example: `cscli postoverflows list
 cscli postoverflows list -a
-cscli postoverflows list crowdsecurity/cdn-whitelist crowdsecurity/rdns`,
+cscli postoverflows list crowdsecurity/cdn-whitelist crowdsecurity/rdns
+
+List only enabled postoverflows unless "-a" or names are specified.`,
 		},
 	},
 	"scenarios": {
@@ -121,7 +125,9 @@ cscli scenarios remove crowdsecurity/ssh-bf crowdsecurity/http-probing
 		listHelp: cmdHelp{
 			example: `cscli scenarios list
 cscli scenarios list -a
-cscli scenarios list crowdsecurity/ssh-bf crowdsecurity/http-probing`,
+cscli scenarios list crowdsecurity/ssh-bf crowdsecurity/http-probing
+
+List only enabled scenarios unless "-a" or names are specified.`,
 		},
 	},
 	"collections": {
@@ -151,7 +157,9 @@ cscli collections remove crowdsecurity/http-cve crowdsecurity/iptables
 		listHelp: cmdHelp{
 			example: `cscli collections list
 cscli collections list -a
-cscli collections list crowdsecurity/http-cve crowdsecurity/iptables`,
+cscli collections list crowdsecurity/http-cve crowdsecurity/iptables
+
+List only enabled collections unless "-a" or names are specified.`,
 		},
 	},
 }
