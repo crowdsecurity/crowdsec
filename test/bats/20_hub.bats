@@ -20,7 +20,6 @@ setup() {
     load "../lib/setup.sh"
     load "../lib/bats-file/load.bash"
     ./instance-data load
-    hub_purge_all
     hub_strip_index
 }
 
@@ -31,6 +30,8 @@ teardown() {
 #----------
 
 @test "cscli hub list" {
+    hub_purge_all
+
     # no items
     rune -0 cscli hub list
     assert_output --regexp ".*PARSERS.*POSTOVERFLOWS.*SCENARIOS.*COLLECTIONS.*"
@@ -49,17 +50,17 @@ teardown() {
     rune -0 cscli hub list -o raw
     assert_output --partial 'crowdsecurity/whitelists'
     assert_output --partial 'crowdsecurity/telnet-bf'
-    refute_output --partial 'crowdsecurity/linux'
+    refute_output --partial 'crowdsecurity/iptables'
 
     # all items
     rune -0 cscli hub list -a
-    assert_output --regexp ".*PARSERS.*crowdsecurity/whitelists.*POSTOVERFLOWS.*SCENARIOS.*crowdsecurity/telnet-bf.*COLLECTIONS.*crowdsecurity/linux.*"
+    assert_output --regexp ".*PARSERS.*crowdsecurity/whitelists.*POSTOVERFLOWS.*SCENARIOS.*crowdsecurity/telnet-bf.*COLLECTIONS.*crowdsecurity/iptables.*"
     rune -0 cscli hub list -a -o json
     rune -0 jq -e '(.parsers | length > 1) and (.scenarios | length > 1)' <(output)
     rune -0 cscli hub list -a -o raw
     assert_output --partial 'crowdsecurity/whitelists'
     assert_output --partial 'crowdsecurity/telnet-bf'
-    assert_output --partial 'crowdsecurity/linux'
+    assert_output --partial 'crowdsecurity/iptables'
 }
 
 @test "missing reference in hub index" {

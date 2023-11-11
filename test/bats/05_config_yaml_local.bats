@@ -127,6 +127,9 @@ teardown() {
     ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
     echo -e "---\nfilename: ${tmpfile}\nlabels:\n  type: syslog\n" >>"${ACQUIS_YAML}"
 
+    rune -0 cscli collections install crowdsecurity/sshd
+    rune -0 cscli parsers install crowdsecurity/syslog-logs
+
     ./instance-crowdsec start
     sleep .5
     fake_log >>"${tmpfile}"

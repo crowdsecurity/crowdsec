@@ -22,7 +22,6 @@ setup() {
     load "../lib/setup.sh"
     load "../lib/bats-file/load.bash"
     ./instance-data load
-    hub_purge_all
     hub_strip_index
 }
 
@@ -33,6 +32,8 @@ teardown() {
 #----------
 
 @test "cscli postoverflows list" {
+    hub_purge_all
+
     # no items
     rune -0 cscli postoverflows list
     assert_output --partial "POSTOVERFLOWS"
@@ -234,6 +235,7 @@ teardown() {
     rune -1 cscli postoverflows remove blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in postoverflows"
 
+    rune -0 cscli postoverflows remove crowdsecurity/rdns --purge
     rune -0 cscli postoverflows remove crowdsecurity/rdns
     assert_stderr --partial 'removing crowdsecurity/rdns: not downloaded -- no removal required'
 
@@ -287,6 +289,7 @@ teardown() {
     assert_stderr --partial "specify at least one postoverflow to upgrade or '--all'"
     rune -1 cscli postoverflows upgrade blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in postoverflows"
+    rune -0 cscli postoverflows remove crowdsecurity/discord-crawler-whitelist --purge
     rune -1 cscli postoverflows upgrade crowdsecurity/discord-crawler-whitelist
     assert_stderr --partial "can't upgrade crowdsecurity/discord-crawler-whitelist: not installed"
     rune -0 cscli postoverflows install crowdsecurity/discord-crawler-whitelist --download-only

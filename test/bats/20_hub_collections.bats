@@ -22,7 +22,6 @@ setup() {
     load "../lib/setup.sh"
     load "../lib/bats-file/load.bash"
     ./instance-data load
-    hub_purge_all
     hub_strip_index
 }
 
@@ -33,6 +32,8 @@ teardown() {
 #----------
 
 @test "cscli collections list" {
+    hub_purge_all
+
     # no items
     rune -0 cscli collections list
     assert_output --partial "COLLECTIONS"
@@ -229,6 +230,7 @@ teardown() {
     rune -1 cscli collections remove blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in collections"
 
+    rune -0 cscli collections remove crowdsecurity/sshd --purge
     rune -0 cscli collections remove crowdsecurity/sshd
     assert_stderr --partial 'removing crowdsecurity/sshd: not downloaded -- no removal required'
 
@@ -282,6 +284,7 @@ teardown() {
     assert_stderr --partial "specify at least one collection to upgrade or '--all'"
     rune -1 cscli collections upgrade blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in collections"
+    rune -0 cscli collections remove crowdsecurity/exim --purge
     rune -1 cscli collections upgrade crowdsecurity/exim
     assert_stderr --partial "can't upgrade crowdsecurity/exim: not installed"
     rune -0 cscli collections install crowdsecurity/exim --download-only

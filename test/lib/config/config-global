@@ -63,7 +63,7 @@ make_init_data() {
 
     [[ "${DB_BACKEND}" == "sqlite" ]] || ${CSCLI} machines add --auto
 
-    mkdir -p "${LOCAL_INIT_DIR}"
+    mkdir -p "$LOCAL_INIT_DIR"
 
     ./instance-db dump "${LOCAL_INIT_DIR}/database"
 

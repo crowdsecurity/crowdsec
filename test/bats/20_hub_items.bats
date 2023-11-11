@@ -6,6 +6,8 @@ set -u
 setup_file() {
     load "../lib/setup_file.sh"
     ./instance-data load
+    HUB_DIR=$(config_get '.config_paths.hub_dir')
+    export HUB_DIR
     INDEX_PATH=$(config_get '.config_paths.index_path')
     export INDEX_PATH
     CONFIG_DIR=$(config_get '.config_paths.config_dir')
@@ -20,7 +22,6 @@ setup() {
     load "../lib/setup.sh"
     load "../lib/bats-file/load.bash"
     ./instance-data load
-    hub_purge_all
     hub_strip_index
 }
 
@@ -57,6 +58,8 @@ teardown() {
 }
 
 @test "hub index with invalid (non semver) version numbers" {
+    rune -0 cscli collections remove crowdsecurity/sshd --purge
+
     new_hub=$( \
         jq <"$INDEX_PATH" \
         '. * {collections:{"crowdsecurity/sshd":{"versions":{"1.2.3.4":{"digest":"foo", "deprecated": false}}}}}' \
@@ -64,9 +67,9 @@ teardown() {
     echo "$new_hub" >"$INDEX_PATH"
  
     rune -0 cscli collections install crowdsecurity/sshd
-
-    rune -1 cscli collections inspect crowdsecurity/sshd --no-metrics
+    rune -1 cscli collections inspect crowdsecurity/sshd --no-metrics -o json
     # XXX: we are on the verbose side here...
-    assert_stderr --partial "failed to read Hub index: failed to sync items: failed to scan $CONFIG_DIR: while syncing collections sshd.yaml: 1.2.3.4: Invalid Semantic Version"
+    rune -0 jq -r ".msg" <(stderr)
+    assert_output "failed to read Hub index: failed to sync items: failed to scan $CONFIG_DIR: while syncing collections sshd.yaml: 1.2.3.4: Invalid Semantic Version. Run 'sudo cscli hub update' to download the index again"
 }
 

@@ -22,7 +22,6 @@ setup() {
     load "../lib/setup.sh"
     load "../lib/bats-file/load.bash"
     ./instance-data load
-    hub_purge_all
     hub_strip_index
 }
 
@@ -33,6 +32,8 @@ teardown() {
 #----------
 
 @test "cscli scenarios list" {
+    hub_purge_all
+
     # no items
     rune -0 cscli scenarios list
     assert_output --partial "SCENARIOS"
@@ -231,6 +232,7 @@ teardown() {
     rune -1 cscli scenarios remove blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in scenarios"
 
+    rune -0 cscli scenarios remove crowdsecurity/ssh-bf --purge
     rune -0 cscli scenarios remove crowdsecurity/ssh-bf
     assert_stderr --partial 'removing crowdsecurity/ssh-bf: not downloaded -- no removal required'
 
@@ -284,6 +286,7 @@ teardown() {
     assert_stderr --partial "specify at least one scenario to upgrade or '--all'"
     rune -1 cscli scenarios upgrade blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in scenarios"
+    rune -0 cscli scenarios remove crowdsecurity/vsftpd-bf --purge
     rune -1 cscli scenarios upgrade crowdsecurity/vsftpd-bf
     assert_stderr --partial "can't upgrade crowdsecurity/vsftpd-bf: not installed"
     rune -0 cscli scenarios install crowdsecurity/vsftpd-bf --download-only
