@@ -10,5 +10,5 @@ import (
 )
 
 var hubClient = &http.Client{
-	Timeout: 10 * time.Second,
+	Timeout: 20 * time.Second,
 }
