@@ -74,6 +74,7 @@ func RemoteHub(c *csconfig.Config) *cwhub.RemoteHubCfg {
 	remote := &cwhub.RemoteHubCfg {
 		Branch: branch,
 		URLTemplate: "https://hub-cdn.crowdsec.net/%s/%s",
+		// URLTemplate: "http://localhost:8000/crowdsecurity/%s/hub/%s",
 		IndexPath: ".index.json",
 	}
 

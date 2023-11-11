@@ -12,7 +12,7 @@ import (
 )
 
 func NewHubCmd() *cobra.Command {
-	var cmdHub = &cobra.Command{
+	cmdHub := &cobra.Command{
 		Use:   "hub [action]",
 		Short: "Manage hub index",
 		Long: `Hub management
@@ -63,7 +63,7 @@ func runHubList(cmd *cobra.Command, args []string) error {
 }
 
 func NewHubListCmd() *cobra.Command {
-	var cmdHubList = &cobra.Command{
+	cmdHubList := &cobra.Command{
 		Use:               "list [-a]",
 		Short:             "List all installed configurations",
 		Args:              cobra.ExactArgs(0),
@@ -95,7 +95,7 @@ func runHubUpdate(cmd *cobra.Command, args []string) error {
 }
 
 func NewHubUpdateCmd() *cobra.Command {
-	var cmdHubUpdate = &cobra.Command{
+	cmdHubUpdate := &cobra.Command{
 		Use:   "update",
 		Short: "Download the latest index (catalog of available configurations)",
 		Long: `
@@ -129,6 +129,7 @@ func runHubUpgrade(cmd *cobra.Command, args []string) error {
 		}
 
 		updated := 0
+
 		log.Infof("Upgrading %s", itemType)
 		for _, item := range items {
 			didUpdate, err := item.Upgrade(force)
@@ -146,7 +147,7 @@ func runHubUpgrade(cmd *cobra.Command, args []string) error {
 }
 
 func NewHubUpgradeCmd() *cobra.Command {
-	var cmdHubUpgrade = &cobra.Command{
+	cmdHubUpgrade := &cobra.Command{
 		Use:   "upgrade",
 		Short: "Upgrade all configurations to their latest version",
 		Long: `

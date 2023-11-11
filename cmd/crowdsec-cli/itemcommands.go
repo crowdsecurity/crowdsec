@@ -288,7 +288,12 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 		}
 
 		if all {
-			items, err := hub.GetInstalledItems(it.name)
+			getter := hub.GetInstalledItems
+			if (purge) {
+				getter = hub.GetAllItems
+			}
+
+			items, err := getter(it.name)
 			if err != nil {
 				return err
 			}
