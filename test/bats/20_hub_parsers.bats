@@ -32,6 +32,8 @@ teardown() {
 #----------
 
 @test "cscli parsers list" {
+    hub_purge_all
+
     # no items
     rune -0 cscli parsers list
     assert_output --partial "PARSERS"
@@ -221,7 +223,7 @@ teardown() {
     rune -0 cscli parsers inspect crowdsecurity/sshd-logs crowdsecurity/whitelists -o raw
     assert_output --partial 'crowdsecurity/sshd-logs'
     assert_output --partial 'crowdsecurity/whitelists'
-    run -1 grep -c 'Current metrics:' <(output)
+    rune -1 grep -c 'Current metrics:' <(output)
     assert_output "0"
 }
 
@@ -231,15 +233,22 @@ teardown() {
     rune -1 cscli parsers remove blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in parsers"
 
-    rune -0 cscli parsers remove crowdsecurity/whitelists --purge
-    rune -0 cscli parsers remove crowdsecurity/whitelists
-    assert_stderr --partial 'removing crowdsecurity/whitelists: not downloaded -- no removal required'
-
     rune -0 cscli parsers install crowdsecurity/whitelists --download-only
     rune -0 cscli parsers remove crowdsecurity/whitelists
-    assert_stderr --partial 'removing crowdsecurity/whitelists: already uninstalled'
+    assert_stderr --partial "removing crowdsecurity/whitelists: not installed -- no need to remove"
+
+    rune -0 cscli parsers install crowdsecurity/whitelists
+    rune -0 cscli parsers remove crowdsecurity/whitelists
+    assert_stderr --partial "Removed crowdsecurity/whitelists"
+
     rune -0 cscli parsers remove crowdsecurity/whitelists --purge
     assert_stderr --partial 'Removed source file [crowdsecurity/whitelists]'
+
+    rune -0 cscli parsers remove crowdsecurity/whitelists
+    assert_stderr --partial "removing crowdsecurity/whitelists: not installed -- no need to remove"
+
+    rune -0 cscli parsers remove crowdsecurity/whitelists --purge
+    assert_stderr --partial 'removing crowdsecurity/whitelists: not downloaded -- no need to remove'
 
     # install, then remove, check files
     rune -0 cscli parsers install crowdsecurity/whitelists

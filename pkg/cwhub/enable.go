@@ -76,10 +76,19 @@ func (i *Item) enable() error {
 
 // purge removes the actual config file that was downloaded
 func (i *Item) purge() error {
+	if !i.Downloaded {
+		log.Infof("removing %s: not downloaded -- no need to remove", i.Name)
+		return nil
+	}
+
 	itempath := i.hub.local.HubDir + "/" + i.RemotePath
 
 	// disable hub file
 	if err := os.Remove(itempath); err != nil {
+		if os.IsNotExist(err) {
+			log.Debugf("%s doesn't exist, no need to remove", itempath)
+			return nil
+		}
 		return fmt.Errorf("while removing file: %w", err)
 	}
 
@@ -93,17 +102,6 @@ func (i *Item) purge() error {
 func (i *Item) disable(purge bool, force bool) error {
 	// XXX: should return the number of disabled/purged items to inform the upper layer whether to reload or not
 	var err error
-
-	// already disabled, noop unless purge
-	if !i.Installed {
-		if purge {
-			if err = i.purge(); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	}
 
 	if i.IsLocal() {
 		return fmt.Errorf("%s isn't managed by hub. Please delete manually", i.Name)
@@ -132,6 +130,11 @@ func (i *Item) disable(purge bool, force bool) error {
 		} else {
 			log.Infof("%s was not removed because it belongs to another collection", sub.Name)
 		}
+	}
+
+	if !i.Installed && !purge {
+		log.Infof("removing %s: not installed -- no need to remove", i.Name)
+		return nil
 	}
 
 	syml, err := filepath.Abs(i.hub.local.InstallDir + "/" + i.Type + "/" + i.Stage + "/" + i.FileName)
@@ -168,6 +171,10 @@ func (i *Item) disable(purge bool, force bool) error {
 		}
 
 		if err = os.Remove(syml); err != nil {
+			if os.IsNotExist(err) {
+				log.Debugf("%s doesn't exist, no need to remove", syml)
+				return nil
+			}
 			return fmt.Errorf("while removing symlink: %w", err)
 		}
 
