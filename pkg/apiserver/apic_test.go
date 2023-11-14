@@ -669,7 +669,7 @@ func TestAPICWhitelists(t *testing.T) {
 	require.NoError(t, err)
 
 	api.apiClient = apic
-	err = api.PullTop(false)
+	err = api.PullTop(false, nil)
 	require.NoError(t, err)
 
 	assertTotalDecisionCount(t, api.dbClient, 5) //2 from FIRE + 2 from bl + 1 existing
@@ -800,7 +800,7 @@ func TestAPICPullTop(t *testing.T) {
 	require.NoError(t, err)
 
 	api.apiClient = apic
-	err = api.PullTop(false)
+	err = api.PullTop(false, nil)
 	require.NoError(t, err)
 
 	assertTotalDecisionCount(t, api.dbClient, 5)
@@ -882,7 +882,7 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 	require.NoError(t, err)
 
 	api.apiClient = apic
-	err = api.PullTop(false)
+	err = api.PullTop(false, nil)
 	require.NoError(t, err)
 
 	blocklistConfigItemName := "blocklist:blocklist1:last_pull"
@@ -895,7 +895,7 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 		assert.NotEqual(t, "", req.Header.Get("If-Modified-Since"))
 		return httpmock.NewStringResponse(304, ""), nil
 	})
-	err = api.PullTop(false)
+	err = api.PullTop(false, nil)
 	require.NoError(t, err)
 	secondLastPullTimestamp, err := api.dbClient.GetConfigItem(blocklistConfigItemName)
 	require.NoError(t, err)
@@ -969,7 +969,66 @@ func TestAPICPullTopBLCacheForceCall(t *testing.T) {
 	require.NoError(t, err)
 
 	api.apiClient = apic
-	err = api.PullTop(false)
+	err = api.PullTop(false, nil)
+	require.NoError(t, err)
+}
+
+func TestAPICPullTopBLOnlyForceCall(t *testing.T) {
+	api := getAPIC(t)
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+	// create a decision about to expire. It should force fetch
+	alertInstance := api.dbClient.Ent.Alert.
+		Create().
+		SetScenario("update list").
+		SetSourceScope("list:blocklist1").
+		SetSourceValue("list:blocklist1").
+		SaveX(context.Background())
+
+	api.dbClient.Ent.Decision.Create().
+		SetOrigin(types.ListOrigin).
+		SetType("ban").
+		SetValue("9.9.9.9").
+		SetScope("Ip").
+		SetScenario("blocklist1").
+		SetUntil(time.Now().Add(time.Hour)).
+		SetOwnerID(alertInstance.ID).
+		ExecX(context.Background())
+
+	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/api/decisions/stream?blocklists_only=blocklist1%2Cblocklist2&startup=true", httpmock.NewBytesResponder(
+		200, jsonMarshalX(
+			modelscapi.GetDecisionsStreamResponse{
+				Links: &modelscapi.GetDecisionsStreamResponseLinks{
+					Blocklists: []*modelscapi.BlocklistLink{
+						{
+							URL:         ptr.Of("http://api.crowdsec.net/blocklist1"),
+							Name:        ptr.Of("blocklist1"),
+							Scope:       ptr.Of("Ip"),
+							Remediation: ptr.Of("ban"),
+							Duration:    ptr.Of("24h"),
+						},
+					},
+				},
+			},
+		),
+	))
+	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/blocklist1", func(req *http.Request) (*http.Response, error) {
+		assert.Equal(t, "", req.Header.Get("If-Modified-Since"))
+		return httpmock.NewStringResponse(304, ""), nil
+	})
+	url, err := url.ParseRequestURI("http://api.crowdsec.net/")
+	require.NoError(t, err)
+
+	apic, err := apiclient.NewDefaultClient(
+		url,
+		"/api",
+		fmt.Sprintf("crowdsec/%s", version.String()),
+		nil,
+	)
+	require.NoError(t, err)
+
+	api.apiClient = apic
+	err = api.PullTop(false, []string{"blocklist1", "blocklist2"})
 	require.NoError(t, err)
 }
 
