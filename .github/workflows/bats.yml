@@ -15,12 +15,14 @@ on:
   push:
     branches:
       - master
+      - hub-1.5.6
       - releases/**
     paths-ignore:
       - "README.md"
   pull_request:
     branches:
       - master
+      - hub-1.5.6
       - releases/**
     paths-ignore:
       - "README.md"
