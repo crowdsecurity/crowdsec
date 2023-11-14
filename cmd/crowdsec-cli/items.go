@@ -114,9 +114,6 @@ func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string,
 			for _, itemName := range items[itemType] {
 				item := hub.GetItem(itemType, itemName)
 				status, _ := item.Status()
-				if item.LocalVersion == "" {
-					item.LocalVersion = "n/a"
-				}
 				row := []string{
 					item.Name,
 					status,
