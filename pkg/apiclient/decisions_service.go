@@ -35,6 +35,7 @@ type DecisionsStreamOpts struct {
 	ScenariosContaining    string `url:"scenarios_containing,omitempty"`
 	ScenariosNotContaining string `url:"scenarios_not_containing,omitempty"`
 	Origins                string `url:"origins,omitempty"`
+	BlocklistsOnly         string `url:"blocklists_only,omitempty"`
 }
 
 func (o *DecisionsStreamOpts) addQueryParamsToURL(url string) (string, error) {

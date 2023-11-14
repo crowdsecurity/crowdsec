@@ -19,6 +19,10 @@ type deleteDecisions struct {
 	Decisions []string `json:"decisions"`
 }
 
+type forcePull struct {
+	Blocklists []string `json:"blocklists"`
+}
+
 func DecisionCmd(message *Message, p *Papi, sync bool) error {
 	switch message.Header.OperationCmd {
 	case "delete":
@@ -144,8 +148,26 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 		log.Infof("Received reauth command from PAPI, resetting token")
 		p.apiClient.GetClient().Transport.(*apiclient.JWTTransport).ResetToken()
 	case "force_pull":
-		log.Infof("Received force_pull command from PAPI, pulling community and 3rd-party blocklists")
-		err := p.apic.PullTop(true)
+		data, err := json.Marshal(message.Data)
+		if err != nil {
+			return err
+		}
+		forcePullMsg := forcePull{
+			Blocklists: make([]string, 0),
+		}
+		if err := json.Unmarshal(data, &forcePullMsg); err != nil {
+			return fmt.Errorf("message for '%s' contains bad data format: %s", message.Header.OperationType, err)
+		}
+		var blocklistIds []string
+		if forcePullMsg.Blocklists == nil || len(forcePullMsg.Blocklists) == 0 {
+			blocklistIds = nil
+			log.Infof("Received force_pull command from PAPI, pulling community and 3rd-party blocklists")
+		} else {
+			blocklistIds = forcePullMsg.Blocklists
+			log.Infof("Received force_pull command from PAPI, pulling blocklists")
+		}
+
+		err = p.apic.PullTop(true, blocklistIds)
 		if err != nil {
 			return fmt.Errorf("failed to force pull operation: %s", err)
 		}
