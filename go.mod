@@ -77,11 +77,10 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	github.com/wasilibs/go-re2 v1.3.0
-	golang.org/x/crypto v0.10.0
-	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1
 	github.com/xhit/go-simple-mail/v2 v2.16.0
+	golang.org/x/crypto v0.15.0
 	golang.org/x/mod v0.11.0
-	golang.org/x/sys v0.10.0
+	golang.org/x/sys v0.14.0
 	google.golang.org/grpc v1.56.1
 	google.golang.org/protobuf v1.30.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
@@ -90,7 +89,7 @@ require (
 )
 
 require (
-	github.com/crowdsecurity/coraza/v3 v3.0.0-20230727080316-2348f4b3045f
+	github.com/crowdsecurity/coraza/v3 v3.0.0-20231114091225-b0f8bc435a75
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/apiserver v0.27.3
 )
@@ -186,7 +185,7 @@ require (
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tetratelabs/wazero v1.2.1 // indirect
-	github.com/tidwall/gjson v1.14.4 // indirect
+	github.com/tidwall/gjson v1.17.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
@@ -199,10 +198,10 @@ require (
 	github.com/zclconf/go-cty v1.8.0 // indirect
 	go.mongodb.org/mongo-driver v1.9.4 // indirect
 	golang.org/x/arch v0.3.0 // indirect
-	golang.org/x/net v0.11.0 // indirect
-	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/term v0.10.0 // indirect
-	golang.org/x/text v0.11.0 // indirect
+	golang.org/x/net v0.18.0 // indirect
+	golang.org/x/sync v0.5.0 // indirect
+	golang.org/x/term v0.14.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.2.0 // indirect
 	golang.org/x/tools v0.8.1-0.20230428195545-5283a0178901 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
