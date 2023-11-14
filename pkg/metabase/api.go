@@ -79,7 +79,7 @@ func (h *MBClient) Do(method string, route string, body interface{}) (interface{
 	return Success, Error, err
 }
 
-// Set set headers as key:value
+// Set headers as key:value
 func (h *MBClient) Set(key string, value string) {
 	h.CTX = h.CTX.Set(key, value)
 }

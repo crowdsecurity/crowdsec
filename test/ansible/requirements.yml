@@ -8,7 +8,8 @@ roles:
     name: geerlingguy.postgresql
   # these should be included as dependencies of crowdsecurity.testing, but sometime are not
   - src: geerlingguy.repo-epel
-  - src: gantsign.golang
+  - src: gantsign.ansible-role-golang
+    name: gantsign.golang
 
 collections:
   - name: ansible.posix

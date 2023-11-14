@@ -45,7 +45,7 @@ func backupHub(dirPath string) error {
 				continue
 			}
 
-			//for the local/tainted ones, we backup the full file
+			//for the local/tainted ones, we back up the full file
 			if v.Tainted || v.IsLocal() || !v.UpToDate {
 				//we need to backup stages for parsers
 				if itemType == cwhub.PARSERS || itemType == cwhub.POSTOVERFLOWS {
