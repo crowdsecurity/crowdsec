@@ -291,6 +291,7 @@ func (h *Hub) GetAllItems(itemType string) ([]*Item, error) {
 	ret := make([]*Item, len(items))
 
 	idx := 0
+
 	for _, item := range items {
 		ret[idx] = item
 		idx++

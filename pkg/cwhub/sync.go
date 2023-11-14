@@ -150,10 +150,8 @@ func sortedVersions(raw []string) ([]string, error) {
 }
 
 func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
-	var (
-		local   bool
-		hubpath string
-	)
+	local := false
+	hubpath := ""
 
 	if err != nil {
 		log.Debugf("while syncing hub dir: %s", err)
