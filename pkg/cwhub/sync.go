@@ -396,6 +396,7 @@ func (h *Hub) syncDir(dir string) ([]string, error) {
 		cpath, err := filepath.Abs(fmt.Sprintf("%s/%s", dir, scan))
 		if err != nil {
 			log.Errorf("failed %s: %s", cpath, err)
+			continue
 		}
 
 		// explicit check for non existing directory, avoid spamming log.Debug
