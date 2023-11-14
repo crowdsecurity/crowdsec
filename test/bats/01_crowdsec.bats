@@ -24,28 +24,22 @@ teardown() {
 #----------
 
 @test "crowdsec (usage)" {
-    rune -0 timeout 2s "${CROWDSEC}" -h
-    assert_stderr_line --regexp "Usage of .*:"
-
-    rune -0 timeout 2s "${CROWDSEC}" --help
-    assert_stderr_line --regexp "Usage of .*:"
+    rune -0 wait-for --out "Usage of " "${CROWDSEC}" -h
+    rune -0 wait-for --out "Usage of " "${CROWDSEC}" --help
 }
 
 @test "crowdsec (unknown flag)" {
-    rune -2 timeout 2s "${CROWDSEC}" --foobar
-    assert_stderr_line "flag provided but not defined: -foobar"
-    assert_stderr_line --regexp "Usage of .*"
+    rune -0 wait-for --err "flag provided but not defined: -foobar" "$CROWDSEC" --foobar
 }
 
 @test "crowdsec (unknown argument)" {
-    rune -2 timeout 2s "${CROWDSEC}" trololo
-    assert_stderr_line "argument provided but not defined: trololo"
-    assert_stderr_line --regexp "Usage of .*"
+    rune -0 wait-for --err "argument provided but not defined: trololo" "${CROWDSEC}" trololo
 }
 
 @test "crowdsec (no api and no agent)" {
-    rune -1 timeout 2s "${CROWDSEC}" -no-api -no-cs
-    assert_stderr_line --partial "You must run at least the API Server or crowdsec"
+    rune -0 wait-for \
+        --err "You must run at least the API Server or crowdsec" \
+        "${CROWDSEC}" -no-api -no-cs
 }
 
 @test "crowdsec - print error on exit" {
@@ -57,18 +51,20 @@ teardown() {
 
 @test "crowdsec - default logging configuration (empty/missing common section)" {
     config_set '.common={}'
-    rune -124 timeout 2s "${CROWDSEC}"
+    rune -0 wait-for \
+        --err "Starting processing data" \
+        "${CROWDSEC}"
     refute_output
-    assert_stderr --partial "Starting processing data"
 
     config_set 'del(.common)'
-    rune -124 timeout 2s "${CROWDSEC}"
+    rune -0 wait-for \
+        --err "Starting processing data" \
+        "${CROWDSEC}"
     refute_output
-    assert_stderr --partial "Starting processing data"
 }
 
 @test "CS_LAPI_SECRET not strong enough" {
-    CS_LAPI_SECRET=foo rune -1 timeout 2s "${CROWDSEC}"
+    CS_LAPI_SECRET=foo rune -1 wait-for "${CROWDSEC}"
     assert_stderr --partial "api server init: unable to run local API: controller init: CS_LAPI_SECRET not strong enough"
 }
 
@@ -138,8 +134,8 @@ teardown() {
     ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
     rm -f "$ACQUIS_YAML"
 
-    rune -1 timeout 2s "${CROWDSEC}"
-    assert_stderr_line --partial "acquis.yaml: no such file or directory"
+    rune -1 wait-for "${CROWDSEC}"
+    assert_stderr --partial "acquis.yaml: no such file or directory"
 }
 
 @test "crowdsec (error if acquisition_path is not defined and acquisition_dir is empty)" {
@@ -151,7 +147,7 @@ teardown() {
     rm -f "$ACQUIS_DIR"
 
     config_set '.common.log_media="stdout"'
-    rune -1 timeout 2s "${CROWDSEC}"
+    rune -1 wait-for "${CROWDSEC}"
     # check warning
     assert_stderr --partial "no acquisition file found"
     assert_stderr --partial "crowdsec init: while loading acquisition config: no datasource enabled"
@@ -167,13 +163,15 @@ teardown() {
     config_set '.crowdsec_service.acquisition_dir=""'
 
     config_set '.common.log_media="stdout"'
-    rune -1 timeout 2s "${CROWDSEC}"
+    rune -1 wait-for "${CROWDSEC}"
     # check warning
     assert_stderr --partial "no acquisition_path or acquisition_dir specified"
     assert_stderr --partial "crowdsec init: while loading acquisition config: no datasource enabled"
 }
 
 @test "crowdsec (no error if acquisition_path is empty string but acquisition_dir is not empty)" {
+    config_set '.common.log_media="stdout"'
+
     ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
     config_set '.crowdsec_service.acquisition_path=""'
 
@@ -181,13 +179,15 @@ teardown() {
     mkdir -p "$ACQUIS_DIR"
     mv "$ACQUIS_YAML" "$ACQUIS_DIR"/foo.yaml
 
-    rune -124 timeout 2s "${CROWDSEC}"
+    rune -0 wait-for \
+        --err "Starting processing data" \
+        "${CROWDSEC}"
 
     # now, if foo.yaml is empty instead, there won't be valid datasources.
 
     cat /dev/null >"$ACQUIS_DIR"/foo.yaml
 
-    rune -1 timeout 2s "${CROWDSEC}"
+    rune -1 wait-for "${CROWDSEC}"
     assert_stderr --partial "crowdsec init: while loading acquisition config: no datasource enabled"
 }
 
@@ -212,9 +212,10 @@ teardown() {
 	  type: syslog
 	EOT
 
-    rune -124 timeout 2s env PATH='' "${CROWDSEC}"
     #shellcheck disable=SC2016
-    assert_stderr --partial 'datasource '\''journalctl'\'' is not available: exec: "journalctl": executable file not found in $PATH'
+    rune -0 wait-for \
+        --err 'datasource '\''journalctl'\'' is not available: exec: "journalctl": executable file not found in ' \
+        env PATH='' "${CROWDSEC}"
 
     # if all datasources are disabled, crowdsec should exit
 
@@ -222,7 +223,7 @@ teardown() {
     rm -f "$ACQUIS_YAML"
     config_set '.crowdsec_service.acquisition_path=""'
 
-    rune -1 timeout 2s env PATH='' "${CROWDSEC}"
+    rune -1 wait-for env PATH='' "${CROWDSEC}"
     assert_stderr --partial "crowdsec init: while loading acquisition config: no datasource enabled"
 }
 

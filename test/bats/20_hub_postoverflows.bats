@@ -191,7 +191,6 @@ teardown() {
     # one item, json
     rune -0 cscli postoverflows inspect crowdsecurity/rdns -o json
     rune -0 jq -c '[.type, .stage, .name, .author, .path, .installed]' <(output)
-    # XXX: .installed is missing -- not false
     assert_json '["postoverflows","s00-enrich","crowdsecurity/rdns","crowdsecurity","postoverflows/s00-enrich/crowdsecurity/rdns.yaml",false]'
 
     # one item, raw
@@ -235,15 +234,22 @@ teardown() {
     rune -1 cscli postoverflows remove blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in postoverflows"
 
-    rune -0 cscli postoverflows remove crowdsecurity/rdns --purge
-    rune -0 cscli postoverflows remove crowdsecurity/rdns
-    assert_stderr --partial 'removing crowdsecurity/rdns: not downloaded -- no removal required'
-
     rune -0 cscli postoverflows install crowdsecurity/rdns --download-only
     rune -0 cscli postoverflows remove crowdsecurity/rdns
-    assert_stderr --partial 'removing crowdsecurity/rdns: already uninstalled'
+    assert_stderr --partial "removing crowdsecurity/rdns: not installed -- no need to remove"
+
+    rune -0 cscli postoverflows install crowdsecurity/rdns
+    rune -0 cscli postoverflows remove crowdsecurity/rdns
+    assert_stderr --partial 'Removed crowdsecurity/rdns'
+
     rune -0 cscli postoverflows remove crowdsecurity/rdns --purge
     assert_stderr --partial 'Removed source file [crowdsecurity/rdns]'
+
+    rune -0 cscli postoverflows remove crowdsecurity/rdns
+    assert_stderr --partial 'removing crowdsecurity/rdns: not installed -- no need to remove'
+
+    rune -0 cscli postoverflows remove crowdsecurity/rdns --purge
+    assert_stderr --partial 'removing crowdsecurity/rdns: not downloaded -- no need to remove'
 
     # install, then remove, check files
     rune -0 cscli postoverflows install crowdsecurity/rdns

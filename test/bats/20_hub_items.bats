@@ -70,6 +70,27 @@ teardown() {
     rune -1 cscli collections inspect crowdsecurity/sshd --no-metrics -o json
     # XXX: we are on the verbose side here...
     rune -0 jq -r ".msg" <(stderr)
-    assert_output "failed to read Hub index: failed to sync items: failed to scan $CONFIG_DIR: while syncing collections sshd.yaml: 1.2.3.4: Invalid Semantic Version. Run 'sudo cscli hub update' to download the index again"
+    assert_output --regexp "failed to read Hub index: failed to sync items: failed to scan .*: while syncing collections sshd.yaml: 1.2.3.4: Invalid Semantic Version. Run 'sudo cscli hub update' to download the index again"
 }
 
+@test "removing or purging an item already removed by hand" {
+    rune -0 cscli parsers install crowdsecurity/syslog-logs
+    rune -0 cscli parsers inspect crowdsecurity/syslog-logs -o json
+    rune -0 jq -r '.local_path' <(output)
+    rune -0 rm "$(output)"
+
+    rune -0 cscli parsers remove crowdsecurity/syslog-logs --debug
+    assert_stderr --partial "Removed crowdsecurity/syslog-logs"
+
+    rune -0 cscli parsers inspect crowdsecurity/syslog-logs -o json
+    rune -0 jq -r '.path' <(output)
+    rune -0 rm "$HUB_DIR/$(output)"
+
+    rune -0 cscli parsers remove crowdsecurity/syslog-logs --purge
+    assert_stderr --partial "removing crowdsecurity/syslog-logs: not downloaded -- no need to remove"
+
+    rune -0 cscli parsers remove crowdsecurity/linux --all --error --purge --force
+    rune -0 cscli collections remove crowdsecurity/linux --all --error --purge --force
+    refute_output
+    refute_stderr
+}

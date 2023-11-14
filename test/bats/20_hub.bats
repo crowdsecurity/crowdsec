@@ -72,16 +72,32 @@ teardown() {
 }
 
 @test "cscli hub update" {
-    #XXX: todo
-    :
+    rm -f "$INDEX_PATH"
+    rune -0 cscli hub update
+    assert_stderr --partial "Wrote index to $INDEX_PATH"
+    rune -0 cscli hub update
+    assert_stderr --partial "hub index is up to date"
 }
 
 @test "cscli hub upgrade" {
-    #XXX: todo
-    :
-}
+    rune -0 cscli hub upgrade
+    assert_stderr --partial "Upgrading parsers"
+    assert_stderr --partial "Upgraded 0 parsers"
+    assert_stderr --partial "Upgrading postoverflows"
+    assert_stderr --partial "Upgraded 0 postoverflows"
+    assert_stderr --partial "Upgrading scenarios"
+    assert_stderr --partial "Upgraded 0 scenarios"
+    assert_stderr --partial "Upgrading collections"
+    assert_stderr --partial "Upgraded 0 collections"
 
-@test "cscli hub upgrade --force" {
-    #XXX: todo
-    :
+    rune -0 cscli parsers install crowdsecurity/syslog-logs
+    rune -0 cscli hub upgrade
+    assert_stderr --partial "crowdsecurity/syslog-logs: up-to-date"
+
+    rune -0 cscli hub upgrade --force
+    assert_stderr --partial "crowdsecurity/syslog-logs: overwrite"
+    assert_stderr --partial "crowdsecurity/syslog-logs: updated"
+    assert_stderr --partial "Upgraded 1 parsers"
+    # this is used by the cron script to know if the hub was updated
+    assert_output --partial "updated crowdsecurity/syslog-logs"
 }

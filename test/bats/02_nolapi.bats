@@ -24,21 +24,23 @@ teardown() {
 #----------
 
 @test "test without -no-api flag" {
-    rune -124 timeout 2s "${CROWDSEC}"
-    # from `man timeout`: If  the  command  times  out,  and --preserve-status is not set, then exit with status 124.
+    config_set '.common.log_media="stdout"'
+    rune -0 wait-for \
+        --err "CrowdSec Local API listening" \
+        "${CROWDSEC}"
 }
 
 @test "crowdsec should not run without LAPI (-no-api flag)" {
-    # really needs 4 secs on slow boxes
-    rune -1 timeout 4s "${CROWDSEC}" -no-api
+    config_set '.common.log_media="stdout"'
+    rune -1 wait-for "${CROWDSEC}" -no-api
 }
 
 @test "crowdsec should not run without LAPI (no api.server in configuration file)" {
     config_disable_lapi
     config_log_stderr
-    # really needs 4 secs on slow boxes
-    rune -1 timeout 4s "${CROWDSEC}"
-    assert_stderr --partial "crowdsec local API is disabled"
+    rune -0 wait-for \
+        --err "crowdsec local API is disabled" \
+        "${CROWDSEC}"
 }
 
 @test "capi status shouldn't be ok without api.server" {

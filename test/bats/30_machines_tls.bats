@@ -78,15 +78,17 @@ teardown() {
 @test "missing key_file" {
     config_set '.api.server.tls.key_file=""'
 
-    rune -1 timeout 2s "${CROWDSEC}"
-    assert_stderr --partial "missing TLS key file"
+    rune -0 wait-for \
+        --err "missing TLS key file" \
+        "${CROWDSEC}"
 }
 
 @test "missing cert_file" {
     config_set '.api.server.tls.cert_file=""'
 
-    rune -1 timeout 2s "${CROWDSEC}"
-    assert_stderr --partial "missing TLS cert file"
+    rune -0 wait-for \
+        --err "missing TLS cert file" \
+        "${CROWDSEC}"
 }
 
 @test "invalid OU for agent" {

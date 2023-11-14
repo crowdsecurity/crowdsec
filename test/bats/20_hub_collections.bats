@@ -187,7 +187,6 @@ teardown() {
     # one item, json
     rune -0 cscli collections inspect crowdsecurity/sshd -o json
     rune -0 jq -c '[.type, .name, .author, .path, .installed]' <(output)
-    # XXX: .installed is missing -- not false
     assert_json '["collections","crowdsecurity/sshd","crowdsecurity","collections/crowdsecurity/sshd.yaml",false]'
 
     # one item, raw
@@ -220,7 +219,7 @@ teardown() {
     rune -0 cscli collections inspect crowdsecurity/sshd crowdsecurity/smb -o raw
     assert_output --partial 'crowdsecurity/sshd'
     assert_output --partial 'crowdsecurity/smb'
-    run -1 grep -c 'Current metrics:' <(output)
+    rune -1 grep -c 'Current metrics:' <(output)
     assert_output "0"
 }
 
@@ -230,15 +229,22 @@ teardown() {
     rune -1 cscli collections remove blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in collections"
 
-    rune -0 cscli collections remove crowdsecurity/sshd --purge
-    rune -0 cscli collections remove crowdsecurity/sshd
-    assert_stderr --partial 'removing crowdsecurity/sshd: not downloaded -- no removal required'
-
     rune -0 cscli collections install crowdsecurity/sshd --download-only
     rune -0 cscli collections remove crowdsecurity/sshd
-    assert_stderr --partial 'removing crowdsecurity/sshd: already uninstalled'
+    assert_stderr --partial 'removing crowdsecurity/sshd: not installed -- no need to remove'
+
+    rune -0 cscli collections install crowdsecurity/sshd
+    rune -0 cscli collections remove crowdsecurity/sshd
+    assert_stderr --partial 'Removed crowdsecurity/sshd'
+
     rune -0 cscli collections remove crowdsecurity/sshd --purge
     assert_stderr --partial 'Removed source file [crowdsecurity/sshd]'
+
+    rune -0 cscli collections remove crowdsecurity/sshd
+    assert_stderr --partial 'removing crowdsecurity/sshd: not installed -- no need to remove'
+
+    rune -0 cscli collections remove crowdsecurity/sshd --purge
+    assert_stderr --partial 'removing crowdsecurity/sshd: not downloaded -- no need to remove'
 
     # install, then remove, check files
     rune -0 cscli collections install crowdsecurity/sshd

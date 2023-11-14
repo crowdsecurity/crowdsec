@@ -298,6 +298,7 @@ func (h *Hub) GetAllItems(itemType string) ([]*Item, error) {
 
 	return ret, nil
 }
+
 // GetInstalledItems returns the list of installed items
 func (h *Hub) GetInstalledItems(itemType string) ([]*Item, error) {
 	items, ok := h.Items[itemType]

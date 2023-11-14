@@ -20,6 +20,7 @@ eval "$(debug)"
 # Allow tests to use relative paths for helper scripts.
 # shellcheck disable=SC2164
 cd "${TEST_DIR}"
+export PATH="${TEST_DIR}/bin:${PATH}"
 
 # complain if there's a crowdsec running system-wide or leftover from a previous test
 ./bin/assert-crowdsec-not-running

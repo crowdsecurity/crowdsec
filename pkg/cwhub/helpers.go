@@ -55,16 +55,6 @@ func (i *Item) Install(force bool, downloadOnly bool) error {
 func (i *Item) Remove(purge bool, forceAction bool) (bool, error) {
 	removed := false
 
-	if !i.Downloaded {
-		log.Infof("removing %s: not downloaded -- no removal required", i.Name)
-		return false, nil
-	}
-
-	if !i.Installed && !purge {
-		log.Infof("removing %s: already uninstalled", i.Name)
-		return false, nil
-	}
-
 	if err := i.disable(purge, forceAction); err != nil {
 		return false, fmt.Errorf("unable to disable %s: %w", i.Name, err)
 	}
