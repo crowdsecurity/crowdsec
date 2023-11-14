@@ -8,6 +8,8 @@ setup_file() {
     ./instance-data load
     HUB_DIR=$(config_get '.config_paths.hub_dir')
     export HUB_DIR
+    INDEX_PATH=$(config_get '.config_paths.index_path')
+    export INDEX_PATH
     CONFIG_DIR=$(config_get '.config_paths.config_dir')
     export CONFIG_DIR
 }
@@ -20,7 +22,6 @@ setup() {
     load "../lib/setup.sh"
     load "../lib/bats-file/load.bash"
     ./instance-data load
-    hub_purge_all
     hub_strip_index
 }
 
@@ -62,7 +63,7 @@ teardown() {
 }
 
 @test "cscli parsers list -a" {
-    expected=$(jq <"$HUB_DIR/.index.json" -r '.parsers | length')
+    expected=$(jq <"$INDEX_PATH" -r '.parsers | length')
 
     rune -0 cscli parsers list -a
     rune -0 grep -c disabled <(output)
@@ -224,12 +225,13 @@ teardown() {
     assert_output "0"
 }
 
-@test "foo cscli parsers remove [parser]..." {
+@test "cscli parsers remove [parser]..." {
     rune -1 cscli parsers remove
     assert_stderr --partial "specify at least one parser to remove or '--all'"
     rune -1 cscli parsers remove blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in parsers"
 
+    rune -0 cscli parsers remove crowdsecurity/whitelists --purge
     rune -0 cscli parsers remove crowdsecurity/whitelists
     assert_stderr --partial 'removing crowdsecurity/whitelists: not downloaded -- no removal required'
 
@@ -272,7 +274,7 @@ teardown() {
 
 @test "cscli parsers remove [parser]... --force" {
     # remove a parser that belongs to a collection
-    rune -0 cscli collections install crowdsecurity/linux
+    rune -0 cscli collections install crowdsecurity/sshd
     rune -0 cscli parsers remove crowdsecurity/sshd-logs
     assert_stderr --partial "crowdsecurity/sshd-logs belongs to collections: [crowdsecurity/sshd]"
     assert_stderr --partial "Run 'sudo cscli parsers remove crowdsecurity/sshd-logs --force' if you want to force remove this parser"
@@ -283,6 +285,7 @@ teardown() {
     assert_stderr --partial "specify at least one parser to upgrade or '--all'"
     rune -1 cscli parsers upgrade blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in parsers"
+    rune -0 cscli parsers remove crowdsecurity/pam-logs --purge
     rune -1 cscli parsers upgrade crowdsecurity/pam-logs
     assert_stderr --partial "can't upgrade crowdsecurity/pam-logs: not installed"
     rune -0 cscli parsers install crowdsecurity/pam-logs --download-only
@@ -293,8 +296,8 @@ teardown() {
     sha256_0_0="dfebecf42784a31aa3d009dbcec0c657154a034b45f49cf22a895373f6dbf63d"
 
     # add version 0.0 to all parsers
-    new_hub=$(jq --arg DIGEST "$sha256_0_0" <"$HUB_DIR/.index.json" '.parsers |= with_entries(.value.versions["0.0"] = {"digest": $DIGEST, "deprecated": false})')
-    echo "$new_hub" >"$HUB_DIR/.index.json"
+    new_hub=$(jq --arg DIGEST "$sha256_0_0" <"$INDEX_PATH" '.parsers |= with_entries(.value.versions["0.0"] = {"digest": $DIGEST, "deprecated": false})')
+    echo "$new_hub" >"$INDEX_PATH"
  
     rune -0 cscli parsers install crowdsecurity/whitelists
 

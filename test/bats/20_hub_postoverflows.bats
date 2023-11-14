@@ -8,6 +8,8 @@ setup_file() {
     ./instance-data load
     HUB_DIR=$(config_get '.config_paths.hub_dir')
     export HUB_DIR
+    INDEX_PATH=$(config_get '.config_paths.index_path')
+    export INDEX_PATH
     CONFIG_DIR=$(config_get '.config_paths.config_dir')
     export CONFIG_DIR
 }
@@ -20,7 +22,6 @@ setup() {
     load "../lib/setup.sh"
     load "../lib/bats-file/load.bash"
     ./instance-data load
-    hub_purge_all
     hub_strip_index
 }
 
@@ -31,6 +32,8 @@ teardown() {
 #----------
 
 @test "cscli postoverflows list" {
+    hub_purge_all
+
     # no items
     rune -0 cscli postoverflows list
     assert_output --partial "POSTOVERFLOWS"
@@ -62,7 +65,7 @@ teardown() {
 }
 
 @test "cscli postoverflows list -a" {
-    expected=$(jq <"$HUB_DIR/.index.json" -r '.postoverflows | length')
+    expected=$(jq <"$INDEX_PATH" -r '.postoverflows | length')
 
     rune -0 cscli postoverflows list -a
     rune -0 grep -c disabled <(output)
@@ -232,6 +235,7 @@ teardown() {
     rune -1 cscli postoverflows remove blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in postoverflows"
 
+    rune -0 cscli postoverflows remove crowdsecurity/rdns --purge
     rune -0 cscli postoverflows remove crowdsecurity/rdns
     assert_stderr --partial 'removing crowdsecurity/rdns: not downloaded -- no removal required'
 
@@ -285,6 +289,7 @@ teardown() {
     assert_stderr --partial "specify at least one postoverflow to upgrade or '--all'"
     rune -1 cscli postoverflows upgrade blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in postoverflows"
+    rune -0 cscli postoverflows remove crowdsecurity/discord-crawler-whitelist --purge
     rune -1 cscli postoverflows upgrade crowdsecurity/discord-crawler-whitelist
     assert_stderr --partial "can't upgrade crowdsecurity/discord-crawler-whitelist: not installed"
     rune -0 cscli postoverflows install crowdsecurity/discord-crawler-whitelist --download-only
@@ -295,8 +300,8 @@ teardown() {
     sha256_0_0="dfebecf42784a31aa3d009dbcec0c657154a034b45f49cf22a895373f6dbf63d"
 
     # add version 0.0 to all postoverflows
-    new_hub=$(jq --arg DIGEST "$sha256_0_0" <"$HUB_DIR/.index.json" '.postoverflows |= with_entries(.value.versions["0.0"] = {"digest": $DIGEST, "deprecated": false})')
-    echo "$new_hub" >"$HUB_DIR/.index.json"
+    new_hub=$(jq --arg DIGEST "$sha256_0_0" <"$INDEX_PATH" '.postoverflows |= with_entries(.value.versions["0.0"] = {"digest": $DIGEST, "deprecated": false})')
+    echo "$new_hub" >"$INDEX_PATH"
  
     rune -0 cscli postoverflows install crowdsecurity/rdns
 

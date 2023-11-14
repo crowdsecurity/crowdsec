@@ -281,6 +281,23 @@ func (h *Hub) GetItemNames(itemType string) []string {
 	return names
 }
 
+// GetAllItems returns a slice of all the items, installed or not
+func (h *Hub) GetAllItems(itemType string) ([]*Item, error) {
+	items, ok := h.Items[itemType]
+	if !ok {
+		return nil, fmt.Errorf("no %s in the hub index", itemType)
+	}
+
+	ret := make([]*Item, len(items))
+
+	idx := 0
+	for _, item := range items {
+		ret[idx] = item
+		idx++
+	}
+
+	return ret, nil
+}
 // GetInstalledItems returns the list of installed items
 func (h *Hub) GetInstalledItems(itemType string) ([]*Item, error) {
 	items, ok := h.Items[itemType]

@@ -8,6 +8,8 @@ setup_file() {
     ./instance-data load
     HUB_DIR=$(config_get '.config_paths.hub_dir')
     export HUB_DIR
+    INDEX_PATH=$(config_get '.config_paths.index_path')
+    export INDEX_PATH
     CONFIG_DIR=$(config_get '.config_paths.config_dir')
     export CONFIG_DIR
 }
@@ -20,7 +22,6 @@ setup() {
     load "../lib/setup.sh"
     load "../lib/bats-file/load.bash"
     ./instance-data load
-    hub_purge_all
     hub_strip_index
 }
 
@@ -41,10 +42,10 @@ teardown() {
     # in a lexical vs semver sort. CrowdSec should report the latest version
 
     new_hub=$( \
-        jq --arg DIGEST "$sha256_empty" <"$HUB_DIR/.index.json" \
+        jq --arg DIGEST "$sha256_empty" <"$INDEX_PATH" \
         '. * {collections:{"crowdsecurity/sshd":{"versions":{"1.2":{"digest":$DIGEST, "deprecated": false}, "1.10": {"digest":$DIGEST, "deprecated": false}}}}}' \
     )
-    echo "$new_hub" >"$HUB_DIR/.index.json"
+    echo "$new_hub" >"$INDEX_PATH"
  
     rune -0 cscli collections install crowdsecurity/sshd
 
@@ -57,16 +58,18 @@ teardown() {
 }
 
 @test "hub index with invalid (non semver) version numbers" {
+    rune -0 cscli collections remove crowdsecurity/sshd --purge
+
     new_hub=$( \
-        jq <"$HUB_DIR/.index.json" \
+        jq <"$INDEX_PATH" \
         '. * {collections:{"crowdsecurity/sshd":{"versions":{"1.2.3.4":{"digest":"foo", "deprecated": false}}}}}' \
     )
-    echo "$new_hub" >"$HUB_DIR/.index.json"
+    echo "$new_hub" >"$INDEX_PATH"
  
     rune -0 cscli collections install crowdsecurity/sshd
-
-    rune -1 cscli collections inspect crowdsecurity/sshd --no-metrics
+    rune -1 cscli collections inspect crowdsecurity/sshd --no-metrics -o json
     # XXX: we are on the verbose side here...
-    assert_stderr --partial "failed to read Hub index: failed to sync items: failed to scan $CONFIG_DIR: while syncing collections sshd.yaml: 1.2.3.4: Invalid Semantic Version"
+    rune -0 jq -r ".msg" <(stderr)
+    assert_output "failed to read Hub index: failed to sync items: failed to scan $CONFIG_DIR: while syncing collections sshd.yaml: 1.2.3.4: Invalid Semantic Version. Run 'sudo cscli hub update' to download the index again"
 }
 

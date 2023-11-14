@@ -22,7 +22,7 @@ import (
 // Install installs the item from the hub, downloading it if needed
 func (i *Item) Install(force bool, downloadOnly bool) error {
 	if downloadOnly && i.Downloaded && i.UpToDate {
-		log.Warningf("%s is already downloaded and up-to-date", i.Name)
+		log.Infof("%s is already downloaded and up-to-date", i.Name)
 
 		if !force {
 			return nil

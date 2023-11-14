@@ -369,6 +369,11 @@ func LoadParserDump(filepath string) (*ParserResults, error) {
 	}
 
 	sort.Strings(parsers)
+
+	if len(parsers) == 0 {
+		return nil, fmt.Errorf("no parser found. Please install the appropriate parser and retry")
+	}
+
 	lastParser := parsers[len(parsers)-1]
 
 	for idx, result := range pdump[lastStage][lastParser] {
