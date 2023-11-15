@@ -39,6 +39,7 @@ func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 
 	if installedOnly {
 		installed := []string{}
+
 		for _, item := range itemNames {
 			if hub.GetItem(itemType, item).Installed {
 				installed = append(installed, item)
@@ -51,12 +52,13 @@ func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 
 func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string, showType bool, showHeader bool, all bool) error {
 	items := make(map[string][]string)
+
 	for _, itemType := range itemTypes {
 		selected, err := selectItems(hub, itemType, args, !all)
 		if err != nil {
 			return err
 		}
-		sort.Strings(selected)
+		sort.Slice(selected, func(i, j int) bool { return strings.ToLower(selected[i]) < strings.ToLower(selected[j]) })
 		items[itemType] = selected
 	}
 
@@ -79,6 +81,7 @@ func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string,
 		for _, itemType := range itemTypes {
 			// empty slice in case there are no items of this type
 			hubStatus[itemType] = make([]itemHubStatus, len(items[itemType]))
+
 			for i, itemName := range items[itemType] {
 				item := hub.GetItem(itemType, itemName)
 				status, emo := item.Status()
@@ -110,9 +113,15 @@ func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string,
 				return fmt.Errorf("failed to write header: %s", err)
 			}
 		}
+
 		for _, itemType := range itemTypes {
-			for _, itemName := range items[itemType] {
-				item := hub.GetItem(itemType, itemName)
+			sorted := make([]*cwhub.Item, len(items[itemType]))
+			for idx, itemName := range items[itemType] {
+				sorted[idx] = hub.GetItem(itemType, itemName)
+			}
+			cwhub.SortItemSlice(sorted)
+
+			for _, item := range sorted {
 				status, _ := item.Status()
 				row := []string{
 					item.Name,

@@ -3,6 +3,8 @@ package cwhub
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/enescakir/emoji"
@@ -332,4 +334,11 @@ func (h *Hub) GetInstalledItemsAsString(itemType string) ([]string, error) {
 	}
 
 	return retStr, nil
+}
+
+// SortItemSlice sorts a slice of items by name, case insensitive
+func SortItemSlice(items []*Item) {
+	sort.Slice(items, func(i, j int) bool {
+	        return strings.ToLower(items[i].Name) < strings.ToLower(items[j].Name)
+	})
 }
