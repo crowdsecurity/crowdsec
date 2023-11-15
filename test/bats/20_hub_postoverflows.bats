@@ -120,7 +120,7 @@ teardown() {
     assert_output "3"
 }
 
-@test "cscli postoverflows install [postoverflow]..." {
+@test "cscli postoverflows install" {
     rune -1 cscli postoverflows install
     assert_stderr --partial 'requires at least 1 arg(s), only received 0'
 
@@ -148,7 +148,7 @@ teardown() {
     assert_output --partial 'installed: true'
 }
 
-@test "cscli postoverflows install [postoverflow]... (file location and download-only)" {
+@test "cscli postoverflows install (file location and download-only)" {
     rune -0 cscli postoverflows install crowdsecurity/rdns --download-only
     rune -0 cscli postoverflows inspect crowdsecurity/rdns --no-metrics
     assert_output --partial 'crowdsecurity/rdns'
@@ -162,7 +162,7 @@ teardown() {
     assert_file_exists "$CONFIG_DIR/postoverflows/s00-enrich/rdns.yaml"
 }
 
-@test "cscli postoverflows install [postoverflow]... --force (tainted)" {
+@test "cscli postoverflows install --force (tainted)" {
     rune -0 cscli postoverflows install crowdsecurity/rdns
     echo "dirty" >"$CONFIG_DIR/postoverflows/s00-enrich/rdns.yaml"
 
@@ -174,7 +174,7 @@ teardown() {
     assert_stderr --partial "Enabled crowdsecurity/rdns"
 }
 
-@test "cscli postoverflow install [postoverflow]... --ignore (skip on errors)" {
+@test "cscli postoverflow install --ignore (skip on errors)" {
     rune -1 cscli postoverflows install foo/bar crowdsecurity/rdns
     assert_stderr --partial "can't find 'foo/bar' in postoverflows"
     refute_stderr --partial "Enabled postoverflows: crowdsecurity/rdns"
@@ -184,7 +184,7 @@ teardown() {
     assert_stderr --partial "Enabled postoverflows: crowdsecurity/rdns"
 }
 
-@test "cscli postoverflows inspect [postoverflow]..." {
+@test "cscli postoverflows inspect" {
     rune -1 cscli postoverflows inspect
     assert_stderr --partial 'requires at least 1 arg(s), only received 0'
     # required for metrics
@@ -247,7 +247,7 @@ teardown() {
     assert_output "0"
 }
 
-@test "cscli postoverflows remove [postoverflow]..." {
+@test "cscli postoverflows remove" {
     rune -1 cscli postoverflows remove
     assert_stderr --partial "specify at least one postoverflow to remove or '--all'"
     rune -1 cscli postoverflows remove blahblah/blahblah
@@ -301,7 +301,7 @@ teardown() {
     assert_output "0"
 }
 
-@test "cscli postoverflows remove [postoverflow]... --force" {
+@test "cscli postoverflows remove --force" {
     # remove a postoverflow that belongs to a collection
     rune -0 cscli collections install crowdsecurity/auditd
     rune -0 cscli postoverflows remove crowdsecurity/auditd-whitelisted-process
@@ -309,7 +309,7 @@ teardown() {
     assert_stderr --partial "Run 'sudo cscli postoverflows remove crowdsecurity/auditd-whitelisted-process --force' if you want to force remove this postoverflow"
 }
 
-@test "cscli postoverflows upgrade [postoverflow]..." {
+@test "cscli postoverflows upgrade" {
     rune -1 cscli postoverflows upgrade
     assert_stderr --partial "specify at least one postoverflow to upgrade or '--all'"
     rune -1 cscli postoverflows upgrade blahblah/blahblah

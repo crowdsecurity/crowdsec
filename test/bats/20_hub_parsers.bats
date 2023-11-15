@@ -120,7 +120,7 @@ teardown() {
     assert_output "3"
 }
 
-@test "cscli parsers install [parser]..." {
+@test "cscli parsers install" {
     rune -1 cscli parsers install
     assert_stderr --partial 'requires at least 1 arg(s), only received 0'
 
@@ -148,7 +148,7 @@ teardown() {
     assert_output --partial 'installed: true'
 }
 
-@test "cscli parsers install [parser]... (file location and download-only)" {
+@test "cscli parsers install (file location and download-only)" {
     rune -0 cscli parsers install crowdsecurity/whitelists --download-only
     rune -0 cscli parsers inspect crowdsecurity/whitelists --no-metrics
     assert_output --partial 'crowdsecurity/whitelists'
@@ -162,7 +162,7 @@ teardown() {
     assert_file_exists "$CONFIG_DIR/parsers/s02-enrich/whitelists.yaml"
 }
 
-@test "cscli parsers install [parser]... --force (tainted)" {
+@test "cscli parsers install --force (tainted)" {
     rune -0 cscli parsers install crowdsecurity/whitelists
     echo "dirty" >"$CONFIG_DIR/parsers/s02-enrich/whitelists.yaml"
 
@@ -174,7 +174,7 @@ teardown() {
     assert_stderr --partial "Enabled crowdsecurity/whitelists"
 }
 
-@test "cscli parsers install [parser]... --ignore (skip on errors)" {
+@test "cscli parsers install --ignore (skip on errors)" {
     rune -1 cscli parsers install foo/bar crowdsecurity/whitelists
     assert_stderr --partial "can't find 'foo/bar' in parsers"
     refute_stderr --partial "Enabled parsers: crowdsecurity/whitelists"
@@ -184,7 +184,7 @@ teardown() {
     assert_stderr --partial "Enabled parsers: crowdsecurity/whitelists"
 }
 
-@test "cscli parsers inspect [parser]..." {
+@test "cscli parsers inspect" {
     rune -1 cscli parsers inspect
     assert_stderr --partial 'requires at least 1 arg(s), only received 0'
     # required for metrics
@@ -247,7 +247,7 @@ teardown() {
     assert_output "0"
 }
 
-@test "cscli parsers remove [parser]..." {
+@test "cscli parsers remove" {
     rune -1 cscli parsers remove
     assert_stderr --partial "specify at least one parser to remove or '--all'"
     rune -1 cscli parsers remove blahblah/blahblah
@@ -301,7 +301,7 @@ teardown() {
     assert_output "0"
 }
 
-@test "cscli parsers remove [parser]... --force" {
+@test "cscli parsers remove --force" {
     # remove a parser that belongs to a collection
     rune -0 cscli collections install crowdsecurity/sshd
     rune -0 cscli parsers remove crowdsecurity/sshd-logs
@@ -309,7 +309,7 @@ teardown() {
     assert_stderr --partial "Run 'sudo cscli parsers remove crowdsecurity/sshd-logs --force' if you want to force remove this parser"
 }
 
-@test "cscli parsers upgrade [parser]..." {
+@test "cscli parsers upgrade" {
     rune -1 cscli parsers upgrade
     assert_stderr --partial "specify at least one parser to upgrade or '--all'"
     rune -1 cscli parsers upgrade blahblah/blahblah

@@ -120,7 +120,7 @@ teardown() {
     assert_output "3"
 }
 
-@test "cscli scenarios install [scenario]..." {
+@test "cscli scenarios install" {
     rune -1 cscli scenarios install
     assert_stderr --partial 'requires at least 1 arg(s), only received 0'
 
@@ -148,7 +148,7 @@ teardown() {
     assert_output --partial 'installed: true'
 }
 
-@test "cscli scenarios install [scenario]... (file location and download-only)" {
+@test "cscli scenarios install (file location and download-only)" {
     # simple install
     rune -0 cscli scenarios install crowdsecurity/ssh-bf --download-only
     rune -0 cscli scenarios inspect crowdsecurity/ssh-bf --no-metrics
@@ -163,7 +163,7 @@ teardown() {
     assert_file_exists "$CONFIG_DIR/scenarios/ssh-bf.yaml"
 }
 
-@test "cscli scenarios install [scenario]... --force (tainted)" {
+@test "cscli scenarios install --force (tainted)" {
     rune -0 cscli scenarios install crowdsecurity/ssh-bf
     echo "dirty" >"$CONFIG_DIR/scenarios/ssh-bf.yaml"
 
@@ -175,7 +175,7 @@ teardown() {
     assert_stderr --partial "Enabled crowdsecurity/ssh-bf"
 }
 
-@test "cscli scenarios install [scenario]... --ignore (skip on errors)" {
+@test "cscli scenarios install --ignore (skip on errors)" {
     rune -1 cscli scenarios install foo/bar crowdsecurity/ssh-bf
     assert_stderr --partial "can't find 'foo/bar' in scenarios"
     refute_stderr --partial "Enabled scenarios: crowdsecurity/ssh-bf"
@@ -185,7 +185,7 @@ teardown() {
     assert_stderr --partial "Enabled scenarios: crowdsecurity/ssh-bf"
 }
 
-@test "cscli scenarios inspect [scenario]..." {
+@test "cscli scenarios inspect" {
     rune -1 cscli scenarios inspect
     assert_stderr --partial 'requires at least 1 arg(s), only received 0'
     # required for metrics
@@ -246,7 +246,7 @@ teardown() {
     assert_output "0"
 }
 
-@test "cscli scenarios remove [scenario]..." {
+@test "cscli scenarios remove" {
     rune -1 cscli scenarios remove
     assert_stderr --partial "specify at least one scenario to remove or '--all'"
     rune -1 cscli scenarios remove blahblah/blahblah
@@ -300,7 +300,7 @@ teardown() {
     assert_output "0"
 }
 
-@test "cscli scenarios remove [scenario]... --force" {
+@test "cscli scenarios remove --force" {
     # remove a scenario that belongs to a collection
     rune -0 cscli collections install crowdsecurity/sshd
     rune -0 cscli scenarios remove crowdsecurity/ssh-bf
@@ -308,7 +308,7 @@ teardown() {
     assert_stderr --partial "Run 'sudo cscli scenarios remove crowdsecurity/ssh-bf --force' if you want to force remove this scenario"
 }
 
-@test "cscli scenarios upgrade [scenario]..." {
+@test "cscli scenarios upgrade" {
     rune -1 cscli scenarios upgrade
     assert_stderr --partial "specify at least one scenario to upgrade or '--all'"
     rune -1 cscli scenarios upgrade blahblah/blahblah

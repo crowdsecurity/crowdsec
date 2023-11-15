@@ -120,7 +120,7 @@ teardown() {
     assert_output "2"
 }
 
-@test "cscli collections install [collection]..." {
+@test "cscli collections install" {
     rune -1 cscli collections install
     assert_stderr --partial 'requires at least 1 arg(s), only received 0'
 
@@ -148,7 +148,7 @@ teardown() {
     assert_output --partial 'installed: true'
 }
 
-@test "cscli collections install [collection]... (file location and download-only)" {
+@test "cscli collections install (file location and download-only)" {
     rune -0 cscli collections install crowdsecurity/linux --download-only
     rune -0 cscli collections inspect crowdsecurity/linux --no-metrics
     assert_output --partial 'crowdsecurity/linux'
@@ -162,7 +162,7 @@ teardown() {
     assert_file_exists "$CONFIG_DIR/collections/linux.yaml"
 }
 
-@test "cscli collections install [collection]... --force (tainted)" {
+@test "cscli collections install --force (tainted)" {
     rune -0 cscli collections install crowdsecurity/sshd
     echo "dirty" >"$CONFIG_DIR/collections/sshd.yaml"
 
@@ -174,7 +174,7 @@ teardown() {
     assert_stderr --partial "Enabled crowdsecurity/sshd"
 }
 
-@test "cscli collections install [collections]... --ignore (skip on errors)" {
+@test "cscli collections install --ignore (skip on errors)" {
     rune -1 cscli collections install foo/bar crowdsecurity/sshd
     assert_stderr --partial "can't find 'foo/bar' in collections"
     refute_stderr --partial "Enabled collections: crowdsecurity/sshd"
@@ -184,7 +184,7 @@ teardown() {
     assert_stderr --partial "Enabled collections: crowdsecurity/sshd"
 }
 
-@test "cscli collections inspect [collection]..." {
+@test "cscli collections inspect" {
     rune -1 cscli collections inspect
     assert_stderr --partial 'requires at least 1 arg(s), only received 0'
     # required for metrics
@@ -245,7 +245,7 @@ teardown() {
     assert_output "0"
 }
 
-@test "cscli collections remove [collection]..." {
+@test "cscli collections remove" {
     rune -1 cscli collections remove
     assert_stderr --partial "specify at least one collection to remove or '--all'"
     rune -1 cscli collections remove blahblah/blahblah
@@ -299,7 +299,7 @@ teardown() {
     assert_output "0"
 }
 
-@test "cscli collections remove [collections]... --force" {
+@test "cscli collections remove --force" {
     # remove a collections that belongs to a collection
     rune -0 cscli collections install crowdsecurity/linux
     rune -0 cscli collections remove crowdsecurity/sshd
@@ -307,7 +307,7 @@ teardown() {
     assert_stderr --partial "Run 'sudo cscli collections remove crowdsecurity/sshd --force' if you want to force remove this collection"
 }
 
-@test "cscli collections upgrade [collection]..." {
+@test "cscli collections upgrade" {
     rune -1 cscli collections upgrade
     assert_stderr --partial "specify at least one collection to upgrade or '--all'"
     rune -1 cscli collections upgrade blahblah/blahblah
