@@ -13,6 +13,7 @@ teardown_file() {
 
 setup() {
     load "../lib/setup.sh"
+    load "../lib/bats-file/load.bash"
     ./instance-data load
     ./instance-crowdsec start
 }
@@ -46,11 +47,12 @@ teardown() {
     rune -0 yq -o json . <(output)
     assert_json '{login: "testmachine2", password: "testpassword", url: "http://127.0.0.1:8080"}'
 
-    tempfile="${BATS_TEST_DIRNAME}/testmachine.yml"
+    tempfile="${BATS_TEST_TMPDIR}/testmachine.yml"
     rune -0 cscli machines add testmachine3 --password testpassword -f "${tempfile}"
     assert_stderr --partial "API credentials dumped to '${tempfile}'"
     rune -0 yq -o json . < "$tempfile"
     assert_json '{login: "testmachine3", password: "testpassword", url: "http://127.0.0.1:8080"}'
+    assert_file_permission 600 "$tempfile"
 }
 
 @test "add a new machine and delete it" {

@@ -290,7 +290,7 @@ func runMachinesAdd(cmd *cobra.Command, args []string) error {
 	if dumpFile == "" {
 		fmt.Printf("%s\n", string(apiConfigDump))
 	} else {
-		err = os.WriteFile(dumpFile, apiConfigDump, 0644)
+		err = os.WriteFile(dumpFile, apiConfigDump, 0o600)
 		if err != nil {
 			return fmt.Errorf("writing api credentials to '%s': %s", dumpFile, err)
 		}
