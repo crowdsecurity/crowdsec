@@ -53,11 +53,11 @@ func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 	return items, nil
 }
 
-func listItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, items map[string][]*cwhub.Item) error {
+func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item) error {
 	switch csConfig.Cscli.Output {
 	case "human":
 		for _, itemType := range itemTypes {
-			listHubItemTable(hub, out, "\n"+strings.ToUpper(itemType), itemType, items[itemType])
+			listHubItemTable(out, "\n"+strings.ToUpper(itemType), items[itemType])
 		}
 	case "json":
 		type itemHubStatus struct {
