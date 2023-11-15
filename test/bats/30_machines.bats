@@ -33,6 +33,26 @@ teardown() {
     assert_output '[1,"githubciXXXXXXXXXXXXXXXXXXXXXXXX",true]'
 }
 
+@test "adding a machines prints credentials (to stdout by default)" {
+    rune -0 cscli machines add testmachine --password testpassword
+    rune -0 yq -o json . <(output)
+    assert_json '{login: "testmachine", password: "testpassword", url: "http://127.0.0.1:8080"}'
+
+    rune -1 cscli machines add testmachine --password testpassword
+    assert_stderr --partial "unable to create machine: user 'testmachine': user already exist"
+
+    # the "-" name as stdout still works
+    rune -0 cscli machines add testmachine2 --password testpassword -f -
+    rune -0 yq -o json . <(output)
+    assert_json '{login: "testmachine2", password: "testpassword", url: "http://127.0.0.1:8080"}'
+
+    tempfile="${BATS_TEST_DIRNAME}/testmachine.yml"
+    rune -0 cscli machines add testmachine3 --password testpassword -f "${tempfile}"
+    assert_stderr --partial "API credentials dumped to '${tempfile}'"
+    rune -0 yq -o json . < "$tempfile"
+    assert_json '{login: "testmachine3", password: "testpassword", url: "http://127.0.0.1:8080"}'
+}
+
 @test "add a new machine and delete it" {
     rune -0 cscli machines add -a -f /dev/null CiTestMachine -o human
     assert_stderr --partial "Machine 'CiTestMachine' successfully added to the local API"

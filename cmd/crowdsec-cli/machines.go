@@ -43,6 +43,7 @@ func generatePassword(length int) string {
 	charsetLength := len(charset)
 
 	buf := make([]byte, length)
+
 	for i := 0; i < length; i++ {
 		rInt, err := saferand.Int(saferand.Reader, big.NewInt(int64(charsetLength)))
 		if err != nil {
@@ -180,7 +181,7 @@ cscli machines add MyTestMachine --password MyPassword
 
 	flags := cmdMachinesAdd.Flags()
 	flags.StringP("password", "p", "", "machine password to login to the API")
-	flags.StringP("file", "f", "", "output file destination (defaults to "+csconfig.DefaultConfigPath("local_api_credentials.yaml")+")")
+	flags.StringP("file", "f", "-", "output file destination (defaults to stdout)")
 	flags.StringP("url", "u", "", "URL of the local API")
 	flags.BoolP("interactive", "i", false, "interfactive mode to enter the password")
 	flags.BoolP("auto", "a", false, "automatically generate password (and username if not provided)")
@@ -190,7 +191,6 @@ cscli machines add MyTestMachine --password MyPassword
 }
 
 func runMachinesAdd(cmd *cobra.Command, args []string) error {
-	var dumpFile string
 	var err error
 
 	flags := cmd.Flags()
@@ -200,9 +200,13 @@ func runMachinesAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	outputFile, err := flags.GetString("file")
+	dumpFile, err := flags.GetString("file")
 	if err != nil {
 		return err
+	}
+
+	if dumpFile == "-" {
+		dumpFile = ""
 	}
 
 	apiURL, err := flags.GetString("url")
@@ -241,13 +245,6 @@ func runMachinesAdd(cmd *cobra.Command, args []string) error {
 		machineID = args[0]
 	}
 
-	/*check if file already exists*/
-	if outputFile != "" {
-		dumpFile = outputFile
-	} else if csConfig.API.Client != nil && csConfig.API.Client.CredentialsFilePath != "" {
-		dumpFile = csConfig.API.Client.CredentialsFilePath
-	}
-
 	// create a password if it's not specified by user
 	if machinePassword == "" && !interactive {
 		if !autoAdd {
@@ -267,6 +264,9 @@ func runMachinesAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to create machine: %s", err)
 	}
 	log.Infof("Machine '%s' successfully added to the local API", machineID)
+	if dumpFile == "" {
+		log.Infof("You need to copy the following lines to local_api_credentials.yaml on the new machine (make sure to restrict the file permissions)")
+	}
 
 	if apiURL == "" {
 		if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil && csConfig.API.Client.Credentials.URL != "" {
@@ -286,14 +286,15 @@ func runMachinesAdd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("unable to marshal api credentials: %s", err)
 	}
-	if dumpFile != "" && dumpFile != "-" {
+
+	if dumpFile == "" {
+		fmt.Printf("%s\n", string(apiConfigDump))
+	} else {
 		err = os.WriteFile(dumpFile, apiConfigDump, 0644)
 		if err != nil {
-			return fmt.Errorf("write api credentials in '%s' failed: %s", dumpFile, err)
+			return fmt.Errorf("writing api credentials to '%s': %s", dumpFile, err)
 		}
-		log.Printf("API credentials dumped to '%s'", dumpFile)
-	} else {
-		fmt.Printf("%s\n", string(apiConfigDump))
+		log.Infof("API credentials dumped to '%s'", dumpFile)
 	}
 
 	return nil
