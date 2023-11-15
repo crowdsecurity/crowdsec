@@ -158,12 +158,32 @@ teardown() {
     assert_file_not_exists "$CONFIG_DIR/scenarios/ssh-bf.yaml"
 
     rune -0 cscli scenarios install crowdsecurity/ssh-bf
+    rune -0 cscli scenarios inspect crowdsecurity/ssh-bf --no-metrics
+    assert_output --partial 'installed: true'
     assert_file_exists "$CONFIG_DIR/scenarios/ssh-bf.yaml"
 }
 
-# XXX: test install with --force
-# XXX: test install with --ignore
+@test "cscli scenarios install [scenario]... --force (tainted)" {
+    rune -0 cscli scenarios install crowdsecurity/ssh-bf
+    echo "dirty" >"$CONFIG_DIR/scenarios/ssh-bf.yaml"
 
+    rune -1 cscli scenarios install crowdsecurity/ssh-bf
+    assert_stderr --partial "error while installing 'crowdsecurity/ssh-bf': while enabling crowdsecurity/ssh-bf: crowdsecurity/ssh-bf is tainted, won't enable unless --force"
+
+    rune -0 cscli scenarios install crowdsecurity/ssh-bf --force
+    assert_stderr --partial "crowdsecurity/ssh-bf: overwrite"
+    assert_stderr --partial "Enabled crowdsecurity/ssh-bf"
+}
+
+@test "cscli scenarios install [scenario]... --ignore (skip on errors)" {
+    rune -1 cscli scenarios install foo/bar crowdsecurity/ssh-bf
+    assert_stderr --partial "can't find 'foo/bar' in scenarios"
+    refute_stderr --partial "Enabled scenarios: crowdsecurity/ssh-bf"
+
+    rune -0 cscli scenarios install foo/bar crowdsecurity/ssh-bf --ignore
+    assert_stderr --partial "can't find 'foo/bar' in scenarios"
+    assert_stderr --partial "Enabled scenarios: crowdsecurity/ssh-bf"
+}
 
 @test "cscli scenarios inspect [scenario]..." {
     rune -1 cscli scenarios inspect

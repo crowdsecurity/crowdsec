@@ -149,7 +149,6 @@ teardown() {
 }
 
 @test "cscli parsers install [parser]... (file location and download-only)" {
-    # simple install
     rune -0 cscli parsers install crowdsecurity/whitelists --download-only
     rune -0 cscli parsers inspect crowdsecurity/whitelists --no-metrics
     assert_output --partial 'crowdsecurity/whitelists'
@@ -158,11 +157,32 @@ teardown() {
     assert_file_not_exists "$CONFIG_DIR/parsers/s02-enrich/whitelists.yaml"
 
     rune -0 cscli parsers install crowdsecurity/whitelists
+    rune -0 cscli parsers inspect crowdsecurity/whitelists --no-metrics
+    assert_output --partial 'installed: true'
     assert_file_exists "$CONFIG_DIR/parsers/s02-enrich/whitelists.yaml"
 }
 
-# XXX: test install with --force
-# XXX: test install with --ignore
+@test "cscli parsers install [parser]... --force (tainted)" {
+    rune -0 cscli parsers install crowdsecurity/whitelists
+    echo "dirty" >"$CONFIG_DIR/parsers/s02-enrich/whitelists.yaml"
+
+    rune -1 cscli parsers install crowdsecurity/whitelists
+    assert_stderr --partial "error while installing 'crowdsecurity/whitelists': while enabling crowdsecurity/whitelists: crowdsecurity/whitelists is tainted, won't enable unless --force"
+
+    rune -0 cscli parsers install crowdsecurity/whitelists --force
+    assert_stderr --partial "crowdsecurity/whitelists: overwrite"
+    assert_stderr --partial "Enabled crowdsecurity/whitelists"
+}
+
+@test "cscli parsers install [parser]... --ignore (skip on errors)" {
+    rune -1 cscli parsers install foo/bar crowdsecurity/whitelists
+    assert_stderr --partial "can't find 'foo/bar' in parsers"
+    refute_stderr --partial "Enabled parsers: crowdsecurity/whitelists"
+
+    rune -0 cscli parsers install foo/bar crowdsecurity/whitelists --ignore
+    assert_stderr --partial "can't find 'foo/bar' in parsers"
+    assert_stderr --partial "Enabled parsers: crowdsecurity/whitelists"
+}
 
 @test "cscli parsers inspect [parser]..." {
     rune -1 cscli parsers inspect
@@ -195,8 +215,8 @@ teardown() {
     # one item, raw
     rune -0 cscli parsers inspect crowdsecurity/sshd-logs -o raw
     assert_line 'type: parsers'
-    assert_line 'stage: s01-parse'
     assert_line 'name: crowdsecurity/sshd-logs'
+    assert_line 'stage: s01-parse'
     assert_line 'author: crowdsecurity'
     assert_line 'remote_path: parsers/s01-parse/crowdsecurity/sshd-logs.yaml'
     assert_line 'installed: false'

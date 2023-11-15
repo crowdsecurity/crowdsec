@@ -149,7 +149,6 @@ teardown() {
 }
 
 @test "cscli collections install [collection]... (file location and download-only)" {
-    # simple install
     rune -0 cscli collections install crowdsecurity/linux --download-only
     rune -0 cscli collections inspect crowdsecurity/linux --no-metrics
     assert_output --partial 'crowdsecurity/linux'
@@ -158,9 +157,32 @@ teardown() {
     assert_file_not_exists "$CONFIG_DIR/collections/linux.yaml"
 
     rune -0 cscli collections install crowdsecurity/linux
+    rune -0 cscli collections inspect crowdsecurity/linux --no-metrics
+    assert_output --partial 'installed: true'
     assert_file_exists "$CONFIG_DIR/collections/linux.yaml"
 }
 
+@test "cscli collections install [collection]... --force (tainted)" {
+    rune -0 cscli collections install crowdsecurity/sshd
+    echo "dirty" >"$CONFIG_DIR/collections/sshd.yaml"
+
+    rune -1 cscli collections install crowdsecurity/sshd
+    assert_stderr --partial "error while installing 'crowdsecurity/sshd': while enabling crowdsecurity/sshd: crowdsecurity/sshd is tainted, won't enable unless --force"
+
+    rune -0 cscli collections install crowdsecurity/sshd --force
+    assert_stderr --partial "crowdsecurity/sshd: overwrite"
+    assert_stderr --partial "Enabled crowdsecurity/sshd"
+}
+
+@test "cscli collections install [collections]... --ignore (skip on errors)" {
+    rune -1 cscli collections install foo/bar crowdsecurity/sshd
+    assert_stderr --partial "can't find 'foo/bar' in collections"
+    refute_stderr --partial "Enabled collections: crowdsecurity/sshd"
+
+    rune -0 cscli collections install foo/bar crowdsecurity/sshd --ignore
+    assert_stderr --partial "can't find 'foo/bar' in collections"
+    assert_stderr --partial "Enabled collections: crowdsecurity/sshd"
+}
 
 @test "cscli collections inspect [collection]..." {
     rune -1 cscli collections inspect
