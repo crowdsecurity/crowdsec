@@ -62,7 +62,7 @@ teardown() {
 
     # and now smb is tainted!
     rune -0 cscli collections inspect crowdsecurity/smb -o json
-    rune -0 jq -e '.tainted//false==true' <(output)
+    rune -0 jq -e '.tainted==true' <(output)
     rune -0 cscli collections remove crowdsecurity/smb --force
 
     # empty
@@ -74,12 +74,18 @@ teardown() {
 
     # taint on sshd means smb is tainted as well
     rune -0 cscli collections inspect crowdsecurity/smb -o json
-    jq -e '.tainted//false==false' <(output)
+    rune -0 jq -e '.tainted==false' <(output)
     echo "dirty" >"$CONFIG_DIR/collections/sshd.yaml"
     rune -0 cscli collections inspect crowdsecurity/smb -o json
-    jq -e '.tainted//false==true' <(output)
+    rune -0 jq -e '.tainted==true' <(output)
 
     # now we can't remove smb without --force
     rune -1 cscli collections remove crowdsecurity/smb
     assert_stderr --partial "unable to disable crowdsecurity/smb: crowdsecurity/smb is tainted, use '--force' to overwrite"
+
+    rune -0 cscli collections install crowdsecurity/wireguard baudneo/gotify
+    rune -0 cscli collections remove crowdsecurity/wireguard
+    assert_stderr --partial "crowdsecurity/syslog-logs was not removed because it belongs to another collection"
+    rune -0 cscli collections inspect crowdsecurity/wireguard -o json
+    rune -0 jq -e '.installed==false' <(output)
 }
