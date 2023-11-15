@@ -29,6 +29,8 @@ type WaapCollectionConfig struct {
 	SecLangRules      []string               `yaml:"seclang_rules"`
 	Rules             []waap_rule.CustomRule `yaml:"rules"`
 
+	Labels map[string]interface{} `yaml:"labels"` //Labels is K:V list aiming at providing context the overflow
+
 	Data    interface{} `yaml:"data"` //Ignore it
 	hash    string      `yaml:"-"`
 	version string      `yaml:"-"`
