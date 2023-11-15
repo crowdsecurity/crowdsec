@@ -16,7 +16,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func WaapEventGeneration(inEvt types.Event) (types.Event, error) {
+func WaapEventGeneration(inEvt types.Event) (*types.Event, error) {
+	//if the request didnd't trigger inband rules, we don't want to generate an event to LAPI/CAPI
+	if !inEvt.Waap.HasInBandMatches {
+		return nil, nil
+	}
 	evt := types.Event{}
 	evt.Type = types.WAAP
 	evt.Process = true
@@ -62,7 +66,7 @@ func WaapEventGeneration(inEvt types.Event) (types.Event, error) {
 
 	evt.Overflow.APIAlerts = []models.Alert{alert}
 	evt.Overflow.Alert = &alert
-	return evt, nil
+	return &evt, nil
 }
 
 func EventFromRequest(r waf.ParsedRequest) (types.Event, error) {
@@ -193,7 +197,11 @@ func (r *WaapRunner) AccumulateTxToEvent(evt *types.Event, req waf.ParsedRequest
 		kind := "outofband"
 		if req.IsInBand {
 			kind = "inband"
+			evt.Waap.HasInBandMatches = true
+		} else {
+			evt.Waap.HasOutBandMatches = true
 		}
+
 		WafRuleHits.With(prometheus.Labels{"rule_id": fmt.Sprintf("%d", rule.Rule().ID()), "type": kind}).Inc()
 
 		spew.Dump(waf.WaapRulesDetails)

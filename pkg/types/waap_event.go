@@ -20,6 +20,7 @@ len(evt.Waf.ByTagRx("*CVE*").ByConfidence("high").ByAction("block")) > 1
 type MatchedRules []map[string]interface{}
 
 type WaapEvent struct {
+	HasInBandMatches, HasOutBandMatches bool
 	MatchedRules
 	Vars map[string]string
 }

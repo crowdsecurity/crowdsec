@@ -253,8 +253,8 @@ func (r *WaapRunner) Run(t *tomb.Tomb) error {
 			waapOvlfw, err := WaapEventGeneration(evt)
 			if err != nil {
 				r.logger.Errorf("unable to generate waap event : %s", err)
-			} else {
-				r.outChan <- waapOvlfw
+			} else if waapOvlfw != nil {
+				r.outChan <- *waapOvlfw
 			}
 		}
 	}
