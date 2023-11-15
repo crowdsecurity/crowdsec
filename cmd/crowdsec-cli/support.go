@@ -129,9 +129,18 @@ func collectOSInfo() ([]byte, error) {
 }
 
 func collectHubItems(hub *cwhub.Hub, itemType string) []byte {
+	var err error
+
 	out := bytes.NewBuffer(nil)
 	log.Infof("Collecting %s list", itemType)
-	if err := ListItems(hub, out, []string{itemType}, []string{}, false, true, false); err != nil {
+
+	items := make(map[string][]*cwhub.Item)
+
+	if items[itemType], err = selectItems(hub, itemType, nil, true); err != nil {
+		log.Warnf("could not collect %s list: %s", itemType, err)
+	}
+
+	if err := listItems(hub, out, []string{itemType}, items, false, true); err != nil {
 		log.Warnf("could not collect %s list: %s", itemType, err)
 	}
 	return out.Bytes()

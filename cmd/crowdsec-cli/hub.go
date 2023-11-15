@@ -54,7 +54,16 @@ func runHubList(cmd *cobra.Command, args []string) error {
 		log.Info(line)
 	}
 
-	err = ListItems(hub, color.Output, cwhub.ItemTypes, nil, true, false, all)
+	items := make(map[string][]*cwhub.Item)
+
+	for _, itemType := range cwhub.ItemTypes {
+		items[itemType], err = selectItems(hub, itemType, nil, !all)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = listItems(hub, color.Output, cwhub.ItemTypes, items, true, false)
 	if err != nil {
 		return err
 	}

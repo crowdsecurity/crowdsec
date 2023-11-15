@@ -53,19 +53,7 @@ func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 	return items, nil
 }
 
-// XXX: too complex, should be two functions (itemtypes array and args are not used together)
-func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string, showType bool, showHeader bool, all bool) error {
-	items := make(map[string][]*cwhub.Item)
-
-	for _, itemType := range itemTypes {
-		selected, err := selectItems(hub, itemType, args, !all)
-		if err != nil {
-			return err
-		}
-
-		items[itemType] = selected
-	}
-
+func listItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, items map[string][]*cwhub.Item, showType bool, showHeader bool) error {
 	switch csConfig.Cscli.Output {
 	case "human":
 		for _, itemType := range itemTypes {

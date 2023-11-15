@@ -10,6 +10,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/coalesce"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 type cmdHelp struct {
@@ -556,7 +557,14 @@ func itemsListRunner(it hubItemType) func(cmd *cobra.Command, args []string) err
 			return err
 		}
 
-		if err = ListItems(hub, color.Output, []string{it.name}, args, false, true, all); err != nil {
+		items := make(map[string][]*cwhub.Item)
+
+		items[it.name], err = selectItems(hub, it.name, args, !all)
+		if err != nil {
+			return err
+		}
+
+		if err = listItems(hub, color.Output, []string{it.name}, items, false, true); err != nil {
 			return err
 		}
 
