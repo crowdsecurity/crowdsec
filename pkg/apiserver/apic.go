@@ -213,7 +213,7 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 	}
 
 	// The watcher will be authenticated by the RoundTripper the first time it will call CAPI
-	// Explicit authentication will provoke an useless supplementary call to CAPI
+	// Explicit authentication will provoke a useless supplementary call to CAPI
 	scenarios, err := ret.FetchScenariosListFromDB()
 	if err != nil {
 		return ret, fmt.Errorf("get scenario in db: %w", err)

@@ -572,7 +572,7 @@ func TestAPICWhitelists(t *testing.T) {
 					&modelscapi.GetDecisionsStreamResponseDeletedItem{
 						Decisions: []string{
 							"9.9.9.9", // This is already present in DB
-							"9.1.9.9", // This not present in DB
+							"9.1.9.9", // This is not present in DB
 						},
 						Scope: ptr.Of("Ip"),
 					}, // This is already present in DB
@@ -734,7 +734,7 @@ func TestAPICPullTop(t *testing.T) {
 					&modelscapi.GetDecisionsStreamResponseDeletedItem{
 						Decisions: []string{
 							"9.9.9.9", // This is already present in DB
-							"9.1.9.9", // This not present in DB
+							"9.1.9.9", // This is not present in DB
 						},
 						Scope: ptr.Of("Ip"),
 					}, // This is already present in DB
