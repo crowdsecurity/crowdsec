@@ -89,6 +89,7 @@ func (i *Item) purge() error {
 			log.Debugf("%s doesn't exist, no need to remove", itempath)
 			return nil
 		}
+
 		return fmt.Errorf("while removing file: %w", err)
 	}
 
@@ -101,8 +102,6 @@ func (i *Item) purge() error {
 // disable removes the symlink to the downloaded content, also removes the content if purge is true
 func (i *Item) disable(purge bool, force bool) error {
 	// XXX: should return the number of disabled/purged items to inform the upper layer whether to reload or not
-	var err error
-
 	if i.IsLocal() {
 		return fmt.Errorf("%s isn't managed by hub. Please delete manually", i.Name)
 	}
@@ -124,7 +123,7 @@ func (i *Item) disable(purge bool, force bool) error {
 		}
 
 		if removeSub {
-			if err = sub.disable(purge, force); err != nil {
+			if err := sub.disable(purge, force); err != nil {
 				return fmt.Errorf("while disabling %s: %w", sub.Name, err)
 			}
 		} else {
@@ -170,7 +169,7 @@ func (i *Item) disable(purge bool, force bool) error {
 			return fmt.Errorf("%s isn't managed by hub", i.Name)
 		}
 
-		if err = os.Remove(syml); err != nil {
+		if err := os.Remove(syml); err != nil {
 			if os.IsNotExist(err) {
 				log.Debugf("%s doesn't exist, no need to remove", syml)
 				return nil
@@ -184,7 +183,7 @@ func (i *Item) disable(purge bool, force bool) error {
 	i.Installed = false
 
 	if purge {
-		if err = i.purge(); err != nil {
+		if err := i.purge(); err != nil {
 			return err
 		}
 	}
