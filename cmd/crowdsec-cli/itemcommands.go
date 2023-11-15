@@ -508,7 +508,7 @@ func itemsInspectRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 			if item == nil {
 				return fmt.Errorf("can't find '%s' in %s", name, it.name)
 			}
-			if err = InspectItem(hub, item, !noMetrics); err != nil {
+			if err = InspectItem(item, !noMetrics); err != nil {
 				return err
 			}
 		}

@@ -142,7 +142,7 @@ func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string,
 	return nil
 }
 
-func InspectItem(hub *cwhub.Hub, item *cwhub.Item, showMetrics bool) error {
+func InspectItem(item *cwhub.Item, showMetrics bool) error {
 	switch csConfig.Cscli.Output {
 	case "human", "raw":
 		enc := yaml.NewEncoder(os.Stdout)
