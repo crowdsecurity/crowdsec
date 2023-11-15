@@ -53,7 +53,7 @@ func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 	return items, nil
 }
 
-func listItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, items map[string][]*cwhub.Item, showType bool, showHeader bool) error {
+func listItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, items map[string][]*cwhub.Item) error {
 	switch csConfig.Cscli.Output {
 	case "human":
 		for _, itemType := range itemTypes {
@@ -86,23 +86,23 @@ func listItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, items map[stri
 				}
 			}
 		}
+
 		x, err := json.MarshalIndent(hubStatus, "", " ")
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal: %w", err)
 		}
+
 		out.Write(x)
 	case "raw":
 		csvwriter := csv.NewWriter(out)
 
-		if showHeader {
-			header := []string{"name", "status", "version", "description"}
-			if showType {
-				header = append(header, "type")
-			}
-			err := csvwriter.Write(header)
-			if err != nil {
-				return fmt.Errorf("failed to write header: %s", err)
-			}
+		header := []string{"name", "status", "version", "description"}
+		if len(itemTypes) > 1 {
+			header = append(header, "type")
+		}
+
+		if err := csvwriter.Write(header); err != nil {
+			return fmt.Errorf("failed to write header: %s", err)
 		}
 
 		for _, itemType := range itemTypes {
@@ -114,7 +114,7 @@ func listItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, items map[stri
 					item.LocalVersion,
 					item.Description,
 				}
-				if showType {
+				if len(itemTypes) > 1 {
 					row = append(row, itemType)
 				}
 				if err := csvwriter.Write(row); err != nil {

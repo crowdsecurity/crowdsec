@@ -564,7 +564,7 @@ func itemsListRunner(it hubItemType) func(cmd *cobra.Command, args []string) err
 			return err
 		}
 
-		if err = listItems(hub, color.Output, []string{it.name}, items, false, true); err != nil {
+		if err = listItems(hub, color.Output, []string{it.name}, items); err != nil {
 			return err
 		}
 
