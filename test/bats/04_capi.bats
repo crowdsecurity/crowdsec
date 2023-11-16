@@ -22,6 +22,10 @@ setup() {
 @test "cscli capi status" {
     config_enable_capi
     rune -0 cscli capi register --schmilblick githubciXXXXXXXXXXXXXXXXXXXXXXXX
+    rune -1 cscli capi status
+    assert_stderr --partial "no scenarios installed, abort"
+
+    rune -0 cscli scenarios install crowdsecurity/ssh-bf
     rune -0 cscli capi status
     assert_stderr --partial "Loaded credentials from"
     assert_stderr --partial "Trying to authenticate with username"

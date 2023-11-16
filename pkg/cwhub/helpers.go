@@ -17,12 +17,13 @@ import (
 
 	"github.com/enescakir/emoji"
 	log "github.com/sirupsen/logrus"
+	"slices"
 )
 
 // Install installs the item from the hub, downloading it if needed
 func (i *Item) Install(force bool, downloadOnly bool) error {
 	if downloadOnly && i.Downloaded && i.UpToDate {
-		log.Warningf("%s is already downloaded and up-to-date", i.Name)
+		log.Infof("%s is already downloaded and up-to-date", i.Name)
 
 		if !force {
 			return nil
@@ -51,22 +52,70 @@ func (i *Item) Install(force bool, downloadOnly bool) error {
 	return nil
 }
 
-// Remove disables the item, optionally removing the downloaded content
-func (i *Item) Remove(purge bool, forceAction bool) (bool, error) {
-	removed := false
+// allDependencies return a list of all dependencies and sub-dependencies of the item
+func (i *Item) allDependencies() []*Item {
+	var deps []*Item
 
-	if !i.Downloaded {
-		log.Infof("removing %s: not downloaded -- no removal required", i.Name)
-		return false, nil
+	for _, dep := range i.SubItems() {
+		if dep == i {
+			log.Errorf("circular dependency detected: %s depends on %s", dep.Name, i.Name)
+			continue
+		}
+
+		deps = append(deps, dep.allDependencies()...)
+	}
+
+	return append(deps, i)
+}
+
+// Remove disables the item, optionally removing the downloaded content
+func (i *Item) Remove(purge bool, force bool) (bool, error) {
+	if i.IsLocal() {
+		return false, fmt.Errorf("%s isn't managed by hub. Please delete manually", i.Name)
+	}
+
+	if i.Tainted && !force {
+		return false, fmt.Errorf("%s is tainted, use '--force' to remove", i.Name)
 	}
 
 	if !i.Installed && !purge {
-		log.Infof("removing %s: already uninstalled", i.Name)
+		log.Infof("removing %s: not installed -- no need to remove", i.Name)
 		return false, nil
 	}
 
-	if err := i.disable(purge, forceAction); err != nil {
-		return false, fmt.Errorf("unable to disable %s: %w", i.Name, err)
+	removed := false
+
+	allDeps := i.allDependencies()
+
+	for _, sub := range i.SubItems() {
+		if !sub.Installed {
+			continue
+		}
+
+		// if the other collection(s) are direct or indirect dependencies of the current one, it's good to go
+		// log parent collections
+		for _, subParent := range sub.parentCollections() {
+			if subParent == i {
+				continue
+			}
+
+			if !slices.Contains(allDeps, subParent) {
+				log.Infof("%s was not removed because it also belongs to %s", sub.Name, subParent.Name)
+				continue
+			}
+		}
+
+		subRemoved, err := sub.Remove(purge, force)
+		if err != nil {
+			return false, fmt.Errorf("unable to disable %s: %w", i.Name, err)
+		}
+
+		removed = removed || subRemoved
+	}
+
+	err := i.disable(purge, force)
+	if err != nil {
+		return false, fmt.Errorf("while removing %s: %w", i.Name, err)
 	}
 
 	// XXX: should take the value from disable()
@@ -171,14 +220,46 @@ func (i *Item) downloadLatest(overwrite bool, updateOnly bool) error {
 	return nil
 }
 
-func (i *Item) download(overwrite bool) error {
+// fetch downloads the item from the hub, verifies the hash and returns the body
+func (i *Item) fetch() ([]byte, error) {
 	url, err := i.hub.remote.urlTo(i.RemotePath)
 	if err != nil {
-		return fmt.Errorf("failed to build hub item request: %w", err)
+		return nil, fmt.Errorf("failed to build hub item request: %w", err)
 	}
 
-	tdir := i.hub.local.HubDir
+	resp, err := hubClient.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("while downloading %s: %w", url, err)
+	}
+	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("bad http code %d for %s", resp.StatusCode, url)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("while downloading %s: %w", url, err)
+	}
+
+	hash := sha256.New()
+	if _, err = hash.Write(body); err != nil {
+		return nil, fmt.Errorf("while hashing %s: %w", i.Name, err)
+	}
+
+	meow := hex.EncodeToString(hash.Sum(nil))
+	if meow != i.Versions[i.Version].Digest {
+		log.Errorf("Downloaded version doesn't match index, please 'hub update'")
+		log.Debugf("got %s, expected %s", meow, i.Versions[i.Version].Digest)
+
+		return nil, fmt.Errorf("invalid download hash for %s", i.Name)
+	}
+
+	return body, nil
+}
+
+// download downloads the item from the hub and writes it to the hub directory
+func (i *Item) download(overwrite bool) error {
 	// if user didn't --force, don't overwrite local, tainted, up-to-date files
 	if !overwrite {
 		if i.Tainted {
@@ -192,56 +273,29 @@ func (i *Item) download(overwrite bool) error {
 		}
 	}
 
-	resp, err := hubClient.Get(url)
+	body, err := i.fetch()
 	if err != nil {
-		return fmt.Errorf("while downloading %s: %w", url, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("bad http code %d for %s", resp.StatusCode, url)
+		return err
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("while downloading %s: %w", url, err)
-	}
-
-	hash := sha256.New()
-	if _, err = hash.Write(body); err != nil {
-		return fmt.Errorf("while hashing %s: %w", i.Name, err)
-	}
-
-	meow := hex.EncodeToString(hash.Sum(nil))
-	if meow != i.Versions[i.Version].Digest {
-		log.Errorf("Downloaded version doesn't match index, please 'hub update'")
-		log.Debugf("got %s, expected %s", meow, i.Versions[i.Version].Digest)
-
-		return fmt.Errorf("invalid download hash for %s", i.Name)
-	}
+	tdir := i.hub.local.HubDir
 
 	//all good, install
-	//check if parent dir exists
-	tmpdirs := strings.Split(tdir+"/"+i.RemotePath, "/")
-	parentDir := strings.Join(tmpdirs[:len(tmpdirs)-1], "/")
 
-	// ensure that target file is within target dir
-	finalPath, err := filepath.Abs(tdir + "/" + i.RemotePath)
+	finalPath, err := filepath.Abs(filepath.Join(tdir, i.RemotePath))
 	if err != nil {
-		return fmt.Errorf("filepath.Abs error on %s: %w", tdir+"/"+i.RemotePath, err)
+		return err
 	}
 
+	// ensure that target file is within target dir
 	if !strings.HasPrefix(finalPath, tdir) {
 		return fmt.Errorf("path %s escapes %s, abort", i.RemotePath, tdir)
 	}
 
-	// check dir
-	if _, err = os.Stat(parentDir); os.IsNotExist(err) {
-		log.Debugf("%s doesn't exist, create", parentDir)
+	parentDir := filepath.Dir(finalPath)
 
-		if err = os.MkdirAll(parentDir, os.ModePerm); err != nil {
-			return fmt.Errorf("while creating parent directories: %w", err)
-		}
+	if err = os.MkdirAll(parentDir, os.ModePerm); err != nil {
+		return fmt.Errorf("while creating %s: %w", parentDir, err)
 	}
 
 	// check actual file
@@ -252,15 +306,8 @@ func (i *Item) download(overwrite bool) error {
 		log.Infof("%s: OK", i.Name)
 	}
 
-	f, err := os.Create(tdir + "/" + i.RemotePath)
-	if err != nil {
-		return fmt.Errorf("while opening file: %w", err)
-	}
-	defer f.Close()
-
-	_, err = f.Write(body)
-	if err != nil {
-		return fmt.Errorf("while writing file: %w", err)
+	if err = os.WriteFile(finalPath, body, 0o644); err != nil {
+		return fmt.Errorf("while writing %s: %w", finalPath, err)
 	}
 
 	i.Downloaded = true

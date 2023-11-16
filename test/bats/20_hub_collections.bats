@@ -8,6 +8,8 @@ setup_file() {
     ./instance-data load
     HUB_DIR=$(config_get '.config_paths.hub_dir')
     export HUB_DIR
+    INDEX_PATH=$(config_get '.config_paths.index_path')
+    export INDEX_PATH
     CONFIG_DIR=$(config_get '.config_paths.config_dir')
     export CONFIG_DIR
 }
@@ -20,7 +22,6 @@ setup() {
     load "../lib/setup.sh"
     load "../lib/bats-file/load.bash"
     ./instance-data load
-    hub_purge_all
     hub_strip_index
 }
 
@@ -31,6 +32,8 @@ teardown() {
 #----------
 
 @test "cscli collections list" {
+    hub_purge_all
+
     # no items
     rune -0 cscli collections list
     assert_output --partial "COLLECTIONS"
@@ -62,7 +65,7 @@ teardown() {
 }
 
 @test "cscli collections list -a" {
-    expected=$(jq <"$HUB_DIR/.index.json" -r '.collections | length')
+    expected=$(jq <"$INDEX_PATH" -r '.collections | length')
 
     rune -0 cscli collections list -a
     rune -0 grep -c disabled <(output)
@@ -76,7 +79,17 @@ teardown() {
     rune -0 grep -vc 'name,status,version,description' <(output)
     assert_output "$expected"
 
-    # XXX: check alphabetical order in human, json, raw
+    # the list should be the same in all formats, and sorted (not case sensitive)
+
+    list_raw=$(cscli collections list -o raw -a | tail -n +2 | cut -d, -f1)
+    list_human=$(cscli collections list -o human -a | tail -n +6 | head -n -1 | cut -d' ' -f2)
+    list_json=$(cscli collections list -o json -a | jq -r '.collections[].name')
+
+    rune -0 sort -f <<<"$list_raw"
+    assert_output "$list_raw"
+
+    assert_equal "$list_raw" "$list_json"
+    assert_equal "$list_raw" "$list_human"
 }
 
 @test "cscli collections list [collection]..." {
@@ -117,7 +130,7 @@ teardown() {
     assert_output "2"
 }
 
-@test "cscli collections install [collection]..." {
+@test "cscli collections install" {
     rune -1 cscli collections install
     assert_stderr --partial 'requires at least 1 arg(s), only received 0'
 
@@ -145,8 +158,7 @@ teardown() {
     assert_output --partial 'installed: true'
 }
 
-@test "cscli collections install [collection]... (file location and download-only)" {
-    # simple install
+@test "cscli collections install (file location and download-only)" {
     rune -0 cscli collections install crowdsecurity/linux --download-only
     rune -0 cscli collections inspect crowdsecurity/linux --no-metrics
     assert_output --partial 'crowdsecurity/linux'
@@ -155,11 +167,34 @@ teardown() {
     assert_file_not_exists "$CONFIG_DIR/collections/linux.yaml"
 
     rune -0 cscli collections install crowdsecurity/linux
+    rune -0 cscli collections inspect crowdsecurity/linux --no-metrics
+    assert_output --partial 'installed: true'
     assert_file_exists "$CONFIG_DIR/collections/linux.yaml"
 }
 
+@test "cscli collections install --force (tainted)" {
+    rune -0 cscli collections install crowdsecurity/sshd
+    echo "dirty" >"$CONFIG_DIR/collections/sshd.yaml"
 
-@test "cscli collections inspect [collection]..." {
+    rune -1 cscli collections install crowdsecurity/sshd
+    assert_stderr --partial "error while installing 'crowdsecurity/sshd': while enabling crowdsecurity/sshd: crowdsecurity/sshd is tainted, won't enable unless --force"
+
+    rune -0 cscli collections install crowdsecurity/sshd --force
+    assert_stderr --partial "crowdsecurity/sshd: overwrite"
+    assert_stderr --partial "Enabled crowdsecurity/sshd"
+}
+
+@test "cscli collections install --ignore (skip on errors)" {
+    rune -1 cscli collections install foo/bar crowdsecurity/sshd
+    assert_stderr --partial "can't find 'foo/bar' in collections"
+    refute_stderr --partial "Enabled collections: crowdsecurity/sshd"
+
+    rune -0 cscli collections install foo/bar crowdsecurity/sshd --ignore
+    assert_stderr --partial "can't find 'foo/bar' in collections"
+    assert_stderr --partial "Enabled collections: crowdsecurity/sshd"
+}
+
+@test "cscli collections inspect" {
     rune -1 cscli collections inspect
     assert_stderr --partial 'requires at least 1 arg(s), only received 0'
     # required for metrics
@@ -184,7 +219,6 @@ teardown() {
     # one item, json
     rune -0 cscli collections inspect crowdsecurity/sshd -o json
     rune -0 jq -c '[.type, .name, .author, .path, .installed]' <(output)
-    # XXX: .installed is missing -- not false
     assert_json '["collections","crowdsecurity/sshd","crowdsecurity","collections/crowdsecurity/sshd.yaml",false]'
 
     # one item, raw
@@ -217,24 +251,32 @@ teardown() {
     rune -0 cscli collections inspect crowdsecurity/sshd crowdsecurity/smb -o raw
     assert_output --partial 'crowdsecurity/sshd'
     assert_output --partial 'crowdsecurity/smb'
-    run -1 grep -c 'Current metrics:' <(output)
+    rune -1 grep -c 'Current metrics:' <(output)
     assert_output "0"
 }
 
-@test "cscli collections remove [collection]..." {
+@test "cscli collections remove" {
     rune -1 cscli collections remove
     assert_stderr --partial "specify at least one collection to remove or '--all'"
     rune -1 cscli collections remove blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in collections"
 
-    rune -0 cscli collections remove crowdsecurity/sshd
-    assert_stderr --partial 'removing crowdsecurity/sshd: not downloaded -- no removal required'
-
     rune -0 cscli collections install crowdsecurity/sshd --download-only
     rune -0 cscli collections remove crowdsecurity/sshd
-    assert_stderr --partial 'removing crowdsecurity/sshd: already uninstalled'
+    assert_stderr --partial 'removing crowdsecurity/sshd: not installed -- no need to remove'
+
+    rune -0 cscli collections install crowdsecurity/sshd
+    rune -0 cscli collections remove crowdsecurity/sshd
+    assert_stderr --partial 'Removed crowdsecurity/sshd'
+
     rune -0 cscli collections remove crowdsecurity/sshd --purge
     assert_stderr --partial 'Removed source file [crowdsecurity/sshd]'
+
+    rune -0 cscli collections remove crowdsecurity/sshd
+    assert_stderr --partial 'removing crowdsecurity/sshd: not installed -- no need to remove'
+
+    rune -0 cscli collections remove crowdsecurity/sshd --purge
+    assert_stderr --partial 'removing crowdsecurity/sshd: not downloaded -- no need to remove'
 
     # install, then remove, check files
     rune -0 cscli collections install crowdsecurity/sshd
@@ -267,7 +309,7 @@ teardown() {
     assert_output "0"
 }
 
-@test "cscli collections remove [collections]... --force" {
+@test "cscli collections remove --force" {
     # remove a collections that belongs to a collection
     rune -0 cscli collections install crowdsecurity/linux
     rune -0 cscli collections remove crowdsecurity/sshd
@@ -275,11 +317,12 @@ teardown() {
     assert_stderr --partial "Run 'sudo cscli collections remove crowdsecurity/sshd --force' if you want to force remove this collection"
 }
 
-@test "cscli collections upgrade [collection]..." {
+@test "cscli collections upgrade" {
     rune -1 cscli collections upgrade
     assert_stderr --partial "specify at least one collection to upgrade or '--all'"
     rune -1 cscli collections upgrade blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in collections"
+    rune -0 cscli collections remove crowdsecurity/exim --purge
     rune -1 cscli collections upgrade crowdsecurity/exim
     assert_stderr --partial "can't upgrade crowdsecurity/exim: not installed"
     rune -0 cscli collections install crowdsecurity/exim --download-only
@@ -290,8 +333,8 @@ teardown() {
     sha256_0_0="dfebecf42784a31aa3d009dbcec0c657154a034b45f49cf22a895373f6dbf63d"
 
     # add version 0.0 to all collections
-    new_hub=$(jq --arg DIGEST "$sha256_0_0" <"$HUB_DIR/.index.json" '.collections |= with_entries(.value.versions["0.0"] = {"digest": $DIGEST, "deprecated": false})')
-    echo "$new_hub" >"$HUB_DIR/.index.json"
+    new_hub=$(jq --arg DIGEST "$sha256_0_0" <"$INDEX_PATH" '.collections |= with_entries(.value.versions["0.0"] = {"digest": $DIGEST, "deprecated": false})')
+    echo "$new_hub" >"$INDEX_PATH"
  
     rune -0 cscli collections install crowdsecurity/sshd
 

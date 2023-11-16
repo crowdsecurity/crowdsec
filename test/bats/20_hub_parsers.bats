@@ -8,6 +8,8 @@ setup_file() {
     ./instance-data load
     HUB_DIR=$(config_get '.config_paths.hub_dir')
     export HUB_DIR
+    INDEX_PATH=$(config_get '.config_paths.index_path')
+    export INDEX_PATH
     CONFIG_DIR=$(config_get '.config_paths.config_dir')
     export CONFIG_DIR
 }
@@ -20,7 +22,6 @@ setup() {
     load "../lib/setup.sh"
     load "../lib/bats-file/load.bash"
     ./instance-data load
-    hub_purge_all
     hub_strip_index
 }
 
@@ -31,6 +32,8 @@ teardown() {
 #----------
 
 @test "cscli parsers list" {
+    hub_purge_all
+
     # no items
     rune -0 cscli parsers list
     assert_output --partial "PARSERS"
@@ -62,7 +65,7 @@ teardown() {
 }
 
 @test "cscli parsers list -a" {
-    expected=$(jq <"$HUB_DIR/.index.json" -r '.parsers | length')
+    expected=$(jq <"$INDEX_PATH" -r '.parsers | length')
 
     rune -0 cscli parsers list -a
     rune -0 grep -c disabled <(output)
@@ -76,7 +79,17 @@ teardown() {
     rune -0 grep -vc 'name,status,version,description' <(output)
     assert_output "$expected"
 
-    # XXX: check alphabetical order in human, json, raw
+    # the list should be the same in all formats, and sorted (not case sensitive)
+
+    list_raw=$(cscli parsers list -o raw -a | tail -n +2 | cut -d, -f1)
+    list_human=$(cscli parsers list -o human -a | tail -n +6 | head -n -1 | cut -d' ' -f2)
+    list_json=$(cscli parsers list -o json -a | jq -r '.parsers[].name')
+
+    rune -0 sort -f <<<"$list_raw"
+    assert_output "$list_raw"
+
+    assert_equal "$list_raw" "$list_json"
+    assert_equal "$list_raw" "$list_human"
 }
 
 @test "cscli parsers list [parser]..." {
@@ -117,7 +130,7 @@ teardown() {
     assert_output "3"
 }
 
-@test "cscli parsers install [parser]..." {
+@test "cscli parsers install" {
     rune -1 cscli parsers install
     assert_stderr --partial 'requires at least 1 arg(s), only received 0'
 
@@ -145,8 +158,7 @@ teardown() {
     assert_output --partial 'installed: true'
 }
 
-@test "cscli parsers install [parser]... (file location and download-only)" {
-    # simple install
+@test "cscli parsers install (file location and download-only)" {
     rune -0 cscli parsers install crowdsecurity/whitelists --download-only
     rune -0 cscli parsers inspect crowdsecurity/whitelists --no-metrics
     assert_output --partial 'crowdsecurity/whitelists'
@@ -155,13 +167,34 @@ teardown() {
     assert_file_not_exists "$CONFIG_DIR/parsers/s02-enrich/whitelists.yaml"
 
     rune -0 cscli parsers install crowdsecurity/whitelists
+    rune -0 cscli parsers inspect crowdsecurity/whitelists --no-metrics
+    assert_output --partial 'installed: true'
     assert_file_exists "$CONFIG_DIR/parsers/s02-enrich/whitelists.yaml"
 }
 
-# XXX: test install with --force
-# XXX: test install with --ignore
+@test "cscli parsers install --force (tainted)" {
+    rune -0 cscli parsers install crowdsecurity/whitelists
+    echo "dirty" >"$CONFIG_DIR/parsers/s02-enrich/whitelists.yaml"
 
-@test "cscli parsers inspect [parser]..." {
+    rune -1 cscli parsers install crowdsecurity/whitelists
+    assert_stderr --partial "error while installing 'crowdsecurity/whitelists': while enabling crowdsecurity/whitelists: crowdsecurity/whitelists is tainted, won't enable unless --force"
+
+    rune -0 cscli parsers install crowdsecurity/whitelists --force
+    assert_stderr --partial "crowdsecurity/whitelists: overwrite"
+    assert_stderr --partial "Enabled crowdsecurity/whitelists"
+}
+
+@test "cscli parsers install --ignore (skip on errors)" {
+    rune -1 cscli parsers install foo/bar crowdsecurity/whitelists
+    assert_stderr --partial "can't find 'foo/bar' in parsers"
+    refute_stderr --partial "Enabled parsers: crowdsecurity/whitelists"
+
+    rune -0 cscli parsers install foo/bar crowdsecurity/whitelists --ignore
+    assert_stderr --partial "can't find 'foo/bar' in parsers"
+    assert_stderr --partial "Enabled parsers: crowdsecurity/whitelists"
+}
+
+@test "cscli parsers inspect" {
     rune -1 cscli parsers inspect
     assert_stderr --partial 'requires at least 1 arg(s), only received 0'
     # required for metrics
@@ -192,8 +225,8 @@ teardown() {
     # one item, raw
     rune -0 cscli parsers inspect crowdsecurity/sshd-logs -o raw
     assert_line 'type: parsers'
-    assert_line 'stage: s01-parse'
     assert_line 'name: crowdsecurity/sshd-logs'
+    assert_line 'stage: s01-parse'
     assert_line 'author: crowdsecurity'
     assert_line 'remote_path: parsers/s01-parse/crowdsecurity/sshd-logs.yaml'
     assert_line 'installed: false'
@@ -220,24 +253,32 @@ teardown() {
     rune -0 cscli parsers inspect crowdsecurity/sshd-logs crowdsecurity/whitelists -o raw
     assert_output --partial 'crowdsecurity/sshd-logs'
     assert_output --partial 'crowdsecurity/whitelists'
-    run -1 grep -c 'Current metrics:' <(output)
+    rune -1 grep -c 'Current metrics:' <(output)
     assert_output "0"
 }
 
-@test "foo cscli parsers remove [parser]..." {
+@test "cscli parsers remove" {
     rune -1 cscli parsers remove
     assert_stderr --partial "specify at least one parser to remove or '--all'"
     rune -1 cscli parsers remove blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in parsers"
 
-    rune -0 cscli parsers remove crowdsecurity/whitelists
-    assert_stderr --partial 'removing crowdsecurity/whitelists: not downloaded -- no removal required'
-
     rune -0 cscli parsers install crowdsecurity/whitelists --download-only
     rune -0 cscli parsers remove crowdsecurity/whitelists
-    assert_stderr --partial 'removing crowdsecurity/whitelists: already uninstalled'
+    assert_stderr --partial "removing crowdsecurity/whitelists: not installed -- no need to remove"
+
+    rune -0 cscli parsers install crowdsecurity/whitelists
+    rune -0 cscli parsers remove crowdsecurity/whitelists
+    assert_stderr --partial "Removed crowdsecurity/whitelists"
+
     rune -0 cscli parsers remove crowdsecurity/whitelists --purge
     assert_stderr --partial 'Removed source file [crowdsecurity/whitelists]'
+
+    rune -0 cscli parsers remove crowdsecurity/whitelists
+    assert_stderr --partial "removing crowdsecurity/whitelists: not installed -- no need to remove"
+
+    rune -0 cscli parsers remove crowdsecurity/whitelists --purge
+    assert_stderr --partial 'removing crowdsecurity/whitelists: not downloaded -- no need to remove'
 
     # install, then remove, check files
     rune -0 cscli parsers install crowdsecurity/whitelists
@@ -270,19 +311,20 @@ teardown() {
     assert_output "0"
 }
 
-@test "cscli parsers remove [parser]... --force" {
+@test "cscli parsers remove --force" {
     # remove a parser that belongs to a collection
-    rune -0 cscli collections install crowdsecurity/linux
+    rune -0 cscli collections install crowdsecurity/sshd
     rune -0 cscli parsers remove crowdsecurity/sshd-logs
     assert_stderr --partial "crowdsecurity/sshd-logs belongs to collections: [crowdsecurity/sshd]"
     assert_stderr --partial "Run 'sudo cscli parsers remove crowdsecurity/sshd-logs --force' if you want to force remove this parser"
 }
 
-@test "cscli parsers upgrade [parser]..." {
+@test "cscli parsers upgrade" {
     rune -1 cscli parsers upgrade
     assert_stderr --partial "specify at least one parser to upgrade or '--all'"
     rune -1 cscli parsers upgrade blahblah/blahblah
     assert_stderr --partial "can't find 'blahblah/blahblah' in parsers"
+    rune -0 cscli parsers remove crowdsecurity/pam-logs --purge
     rune -1 cscli parsers upgrade crowdsecurity/pam-logs
     assert_stderr --partial "can't upgrade crowdsecurity/pam-logs: not installed"
     rune -0 cscli parsers install crowdsecurity/pam-logs --download-only
@@ -293,8 +335,8 @@ teardown() {
     sha256_0_0="dfebecf42784a31aa3d009dbcec0c657154a034b45f49cf22a895373f6dbf63d"
 
     # add version 0.0 to all parsers
-    new_hub=$(jq --arg DIGEST "$sha256_0_0" <"$HUB_DIR/.index.json" '.parsers |= with_entries(.value.versions["0.0"] = {"digest": $DIGEST, "deprecated": false})')
-    echo "$new_hub" >"$HUB_DIR/.index.json"
+    new_hub=$(jq --arg DIGEST "$sha256_0_0" <"$INDEX_PATH" '.parsers |= with_entries(.value.versions["0.0"] = {"digest": $DIGEST, "deprecated": false})')
+    echo "$new_hub" >"$INDEX_PATH"
  
     rune -0 cscli parsers install crowdsecurity/whitelists
 

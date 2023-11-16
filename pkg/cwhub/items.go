@@ -3,6 +3,8 @@ package cwhub
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/enescakir/emoji"
@@ -206,6 +208,21 @@ func (i *Item) logMissingSubItems() {
 	}
 }
 
+func (i *Item) parentCollections() []*Item {
+	ret := make([]*Item, 0)
+
+	for _, parentName := range i.BelongsToCollections {
+		parent := i.hub.GetItem(COLLECTIONS, parentName)
+		if parent == nil {
+			continue
+		}
+
+		ret = append(ret, parent)
+	}
+
+	return ret
+}
+
 // Status returns the status of the item as a string and an emoji
 // ie. "enabled,update-available" and emoji.Warning
 func (i *Item) Status() (string, emoji.Emoji) {
@@ -270,7 +287,7 @@ func (i *Item) versionStatus() int {
 }
 
 // validPath returns true if the (relative) path is allowed for the item
-// dirNmae: the directory name (ie. crowdsecurity)
+// dirNname: the directory name (ie. crowdsecurity)
 // fileName: the filename (ie. apache2-logs.yaml)
 func (i *Item) validPath(dirName, fileName string) bool {
 	return (dirName+"/"+fileName == i.Name+".yaml") || (dirName+"/"+fileName == i.Name+".yml")
@@ -301,6 +318,25 @@ func (h *Hub) GetItemNames(itemType string) []string {
 	}
 
 	return names
+}
+
+// GetAllItems returns a slice of all the items, installed or not
+func (h *Hub) GetAllItems(itemType string) ([]*Item, error) {
+	items, ok := h.Items[itemType]
+	if !ok {
+		return nil, fmt.Errorf("no %s in the hub index", itemType)
+	}
+
+	ret := make([]*Item, len(items))
+
+	idx := 0
+
+	for _, item := range items {
+		ret[idx] = item
+		idx++
+	}
+
+	return ret, nil
 }
 
 // GetInstalledItems returns the list of installed items
@@ -335,4 +371,11 @@ func (h *Hub) GetInstalledItemsAsString(itemType string) ([]string, error) {
 	}
 
 	return retStr, nil
+}
+
+// SortItemSlice sorts a slice of items by name, case insensitive
+func SortItemSlice(items []*Item) {
+	sort.Slice(items, func(i, j int) bool {
+		return strings.ToLower(items[i].Name) < strings.ToLower(items[j].Name)
+	})
 }

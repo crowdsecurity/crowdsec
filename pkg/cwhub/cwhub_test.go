@@ -48,19 +48,12 @@ func testHub(t *testing.T, update bool) *Hub {
 	err = os.MkdirAll(local.InstallDataDir, 0o700)
 	require.NoError(t, err)
 
-	index, err := os.Create(local.HubIndexFile)
+	err = os.WriteFile(local.HubIndexFile, []byte("{}"), 0o644)
 	require.NoError(t, err)
-
-	_, err = index.WriteString(`{}`)
-	require.NoError(t, err)
-
-	index.Close()
 
 	t.Cleanup(func() {
 		os.RemoveAll(tmpDir)
 	})
-
-	var hub *Hub
 
 	remote := &RemoteHubCfg{
 		Branch:      "master",
@@ -68,7 +61,7 @@ func testHub(t *testing.T, update bool) *Hub {
 		IndexPath:   ".index.json",
 	}
 
-	hub, err = NewHub(local, remote, update)
+	hub, err := NewHub(local, remote, update)
 	require.NoError(t, err)
 
 	return hub

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sort"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -15,7 +14,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly bool) ([]string, error) {
+// selectItems returns a slice of items of a given type, selected by name and sorted by case-insensitive name
+func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly bool) ([]*cwhub.Item, error) {
 	itemNames := hub.GetItemNames(itemType)
 
 	notExist := []string{}
@@ -37,33 +37,27 @@ func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 		installedOnly = false
 	}
 
-	if installedOnly {
-		installed := []string{}
-		for _, item := range itemNames {
-			if hub.GetItem(itemType, item).Installed {
-				installed = append(installed, item)
-			}
+	items := make([]*cwhub.Item, 0, len(itemNames))
+
+	for _, itemName := range itemNames {
+		item := hub.GetItem(itemType, itemName)
+		if installedOnly && !item.Installed {
+			continue
 		}
-		return installed, nil
+
+		items = append(items, item)
 	}
-	return itemNames, nil
+
+	cwhub.SortItemSlice(items)
+
+	return items, nil
 }
 
-func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string, showType bool, showHeader bool, all bool) error {
-	items := make(map[string][]string)
-	for _, itemType := range itemTypes {
-		selected, err := selectItems(hub, itemType, args, !all)
-		if err != nil {
-			return err
-		}
-		sort.Strings(selected)
-		items[itemType] = selected
-	}
-
+func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item) error {
 	switch csConfig.Cscli.Output {
 	case "human":
 		for _, itemType := range itemTypes {
-			listHubItemTable(hub, out, "\n"+strings.ToUpper(itemType), itemType, items[itemType])
+			listHubItemTable(out, "\n"+strings.ToUpper(itemType), items[itemType])
 		}
 	case "json":
 		type itemHubStatus struct {
@@ -79,8 +73,8 @@ func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string,
 		for _, itemType := range itemTypes {
 			// empty slice in case there are no items of this type
 			hubStatus[itemType] = make([]itemHubStatus, len(items[itemType]))
-			for i, itemName := range items[itemType] {
-				item := hub.GetItem(itemType, itemName)
+
+			for i, item := range items[itemType] {
 				status, emo := item.Status()
 				hubStatus[itemType][i] = itemHubStatus{
 					Name:         item.Name,
@@ -92,38 +86,35 @@ func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string,
 				}
 			}
 		}
+
 		x, err := json.MarshalIndent(hubStatus, "", " ")
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal: %w", err)
 		}
+
 		out.Write(x)
 	case "raw":
 		csvwriter := csv.NewWriter(out)
 
-		if showHeader {
-			header := []string{"name", "status", "version", "description"}
-			if showType {
-				header = append(header, "type")
-			}
-			err := csvwriter.Write(header)
-			if err != nil {
-				return fmt.Errorf("failed to write header: %s", err)
-			}
+		header := []string{"name", "status", "version", "description"}
+		if len(itemTypes) > 1 {
+			header = append(header, "type")
 		}
+
+		if err := csvwriter.Write(header); err != nil {
+			return fmt.Errorf("failed to write header: %s", err)
+		}
+
 		for _, itemType := range itemTypes {
-			for _, itemName := range items[itemType] {
-				item := hub.GetItem(itemType, itemName)
+			for _, item := range items[itemType] {
 				status, _ := item.Status()
-				if item.LocalVersion == "" {
-					item.LocalVersion = "n/a"
-				}
 				row := []string{
 					item.Name,
 					status,
 					item.LocalVersion,
 					item.Description,
 				}
-				if showType {
+				if len(itemTypes) > 1 {
 					row = append(row, itemType)
 				}
 				if err := csvwriter.Write(row); err != nil {
@@ -139,7 +130,7 @@ func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string,
 	return nil
 }
 
-func InspectItem(hub *cwhub.Hub, item *cwhub.Item, showMetrics bool) error {
+func InspectItem(item *cwhub.Item, showMetrics bool) error {
 	switch csConfig.Cscli.Output {
 	case "human", "raw":
 		enc := yaml.NewEncoder(os.Stdout)

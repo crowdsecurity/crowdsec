@@ -16,11 +16,13 @@ on:
   push:
     branches:
       - master
+      - hub-1.5.6
       - releases/**
   pull_request:
     # The branches below must be a subset of the branches above
     branches:
       - master
+      - hub-1.5.6
       - releases/**
   schedule:
     - cron: '15 16 * * 2'

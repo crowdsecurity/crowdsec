@@ -10,6 +10,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/coalesce"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 type cmdHelp struct {
@@ -61,7 +62,9 @@ cscli parsers remove crowdsecurity/caddy-logs crowdsecurity/sshd-logs
 		listHelp: cmdHelp{
 			example: `cscli parsers list
 cscli parsers list -a
-cscli parsers list crowdsecurity/caddy-logs crowdsecurity/sshd-logs`,
+cscli parsers list crowdsecurity/caddy-logs crowdsecurity/sshd-logs
+
+List only enabled parsers unless "-a" or names are specified.`,
 		},
 	},
 	"postoverflows": {
@@ -91,7 +94,9 @@ cscli postoverflows remove crowdsecurity/cdn-whitelist crowdsecurity/rdns
 		listHelp: cmdHelp{
 			example: `cscli postoverflows list
 cscli postoverflows list -a
-cscli postoverflows list crowdsecurity/cdn-whitelist crowdsecurity/rdns`,
+cscli postoverflows list crowdsecurity/cdn-whitelist crowdsecurity/rdns
+
+List only enabled postoverflows unless "-a" or names are specified.`,
 		},
 	},
 	"scenarios": {
@@ -121,7 +126,9 @@ cscli scenarios remove crowdsecurity/ssh-bf crowdsecurity/http-probing
 		listHelp: cmdHelp{
 			example: `cscli scenarios list
 cscli scenarios list -a
-cscli scenarios list crowdsecurity/ssh-bf crowdsecurity/http-probing`,
+cscli scenarios list crowdsecurity/ssh-bf crowdsecurity/http-probing
+
+List only enabled scenarios unless "-a" or names are specified.`,
 		},
 	},
 	"waap-rules": {
@@ -211,7 +218,9 @@ cscli collections remove crowdsecurity/http-cve crowdsecurity/iptables
 		listHelp: cmdHelp{
 			example: `cscli collections list
 cscli collections list -a
-cscli collections list crowdsecurity/http-cve crowdsecurity/iptables`,
+cscli collections list crowdsecurity/http-cve crowdsecurity/iptables
+
+List only enabled collections unless "-a" or names are specified.`,
 		},
 	},
 }
@@ -340,7 +349,12 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 		}
 
 		if all {
-			items, err := hub.GetInstalledItems(it.name)
+			getter := hub.GetInstalledItems
+			if purge {
+				getter = hub.GetAllItems
+			}
+
+			items, err := getter(it.name)
 			if err != nil {
 				return err
 			}
@@ -555,7 +569,7 @@ func itemsInspectRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 			if item == nil {
 				return fmt.Errorf("can't find '%s' in %s", name, it.name)
 			}
-			if err = InspectItem(hub, item, !noMetrics); err != nil {
+			if err = InspectItem(item, !noMetrics); err != nil {
 				return err
 			}
 		}
@@ -603,7 +617,14 @@ func itemsListRunner(it hubItemType) func(cmd *cobra.Command, args []string) err
 			return err
 		}
 
-		if err = ListItems(hub, color.Output, []string{it.name}, args, false, true, all); err != nil {
+		items := make(map[string][]*cwhub.Item)
+
+		items[it.name], err = selectItems(hub, it.name, args, !all)
+		if err != nil {
+			return err
+		}
+
+		if err = listItems(color.Output, []string{it.name}, items); err != nil {
 			return err
 		}
 

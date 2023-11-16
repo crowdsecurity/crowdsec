@@ -507,18 +507,16 @@ update-notifier-motd.timer              enabled enabled
 
 @test "cscli setup install-hub (dry run)" {
     # it's not installed
-    rune -0 cscli collections list -o json
-    rune -0 jq -r '.collections[].name' <(output)
-    refute_line "crowdsecurity/apache2"
+    rune -0 cscli collections inspect crowdsecurity/apache2 -o json
+    rune -0 jq -e '.installed == false' <(output)
 
     # we install it
     rune -0 cscli setup install-hub /dev/stdin --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/apache2"]}}]}'
     assert_output 'dry-run: would install collection crowdsecurity/apache2'
 
     # still not installed
-    rune -0 cscli collections list -o json
-    rune -0 jq -r '.collections[].name' <(output)
-    refute_line "crowdsecurity/apache2"
+    rune -0 cscli collections inspect crowdsecurity/apache2 -o json
+    rune -0 jq -e '.installed == false' <(output)
 
     # same with dependencies
     rune -0 cscli collections remove --all
@@ -528,18 +526,16 @@ update-notifier-motd.timer              enabled enabled
 
 @test "cscli setup install-hub (dry run: install multiple collections)" {
     # it's not installed
-    rune -0 cscli collections list -o json
-    rune -0 jq -r '.collections[].name' <(output)
-    refute_line "crowdsecurity/apache2"
+    rune -0 cscli collections inspect crowdsecurity/apache2 -o json
+    rune -0 jq -e '.installed == false' <(output)
 
     # we install it
     rune -0 cscli setup install-hub /dev/stdin --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/apache2"]}}]}'
     assert_output 'dry-run: would install collection crowdsecurity/apache2'
 
     # still not installed
-    rune -0 cscli collections list -o json
-    rune -0 jq -r '.collections[].name' <(output)
-    refute_line "crowdsecurity/apache2"
+    rune -0 cscli collections inspect crowdsecurity/apache2 -o json
+    rune -0 jq -e '.installed == false' <(output)
 }
 
 @test "cscli setup install-hub (dry run: install multiple collections, parsers, scenarios, postoverflows)" {
