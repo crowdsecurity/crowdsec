@@ -80,7 +80,7 @@ teardown() {
     rune -0 rm "$(output)"
 
     rune -0 cscli parsers remove crowdsecurity/syslog-logs --debug
-    assert_stderr --partial "Removed crowdsecurity/syslog-logs"
+    assert_stderr --partial "removing crowdsecurity/syslog-logs: not installed -- no need to remove"
 
     rune -0 cscli parsers inspect crowdsecurity/syslog-logs -o json
     rune -0 jq -r '.path' <(output)

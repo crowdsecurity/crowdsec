@@ -146,35 +146,10 @@ func (i *Item) removeInstallLink() error {
 // disable removes the symlink to the downloaded content, also removes the content if purge is true
 func (i *Item) disable(purge bool, force bool) error {
 	// XXX: should return the number of disabled/purged items to inform the upper layer whether to reload or not
-	if i.IsLocal() {
-		return fmt.Errorf("%s isn't managed by hub. Please delete manually", i.Name)
-	}
-
-	if i.Tainted && !force {
-		return fmt.Errorf("%s is tainted, use '--force' to overwrite", i.Name)
-	}
-
-	for _, sub := range i.SubItems() {
-		// TODO XXX: if the other collection(s) are direct or indirect dependencies of the current one, it's good to go
-		if len(sub.BelongsToCollections) > 1 {
-			log.Infof("%s was not removed because it belongs to another collection", sub.Name)
-			continue
-		}
-
-		if err := sub.disable(purge, force); err != nil {
-			return fmt.Errorf("while disabling %s: %w", sub.Name, err)
-		}
-	}
-
-	if !i.Installed && !purge {
-		log.Infof("removing %s: not installed -- no need to remove", i.Name)
-		return nil
-	}
-
 	err := i.removeInstallLink()
 	if os.IsNotExist(err) {
 		if !purge && !force {
-			return fmt.Errorf("can't disable %s: %s doesn't exist", i.Name, i.installLink())
+			return fmt.Errorf("link %s does not exist (override with --force or --purge)", i.installLink())
 		}
 	} else if err != nil {
 		return err

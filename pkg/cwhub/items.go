@@ -186,6 +186,21 @@ func (i *Item) logMissingSubItems() {
 	}
 }
 
+func (i *Item) parentCollections() []*Item {
+	ret := make([]*Item, 0)
+
+	for _, parentName := range i.BelongsToCollections {
+		parent := i.hub.GetItem(COLLECTIONS, parentName)
+		if parent == nil {
+			continue
+		}
+
+		ret = append(ret, parent)
+	}
+
+	return ret
+}
+
 // Status returns the status of the item as a string and an emoji
 // ie. "enabled,update-available" and emoji.Warning
 func (i *Item) Status() (string, emoji.Emoji) {

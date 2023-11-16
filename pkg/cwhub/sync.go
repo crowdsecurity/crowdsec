@@ -393,6 +393,8 @@ func (h *Hub) syncDir(dir string) ([]string, error) {
 
 	// For each, scan PARSERS, POSTOVERFLOWS, SCENARIOS and COLLECTIONS last
 	for _, scan := range ItemTypes {
+		// cpath: top-level item directory, either downloaded or installed items.
+		// i.e. /etc/crowdsec/parsers, /etc/crowdsec/hub/parsers, ...
 		cpath, err := filepath.Abs(fmt.Sprintf("%s/%s", dir, scan))
 		if err != nil {
 			log.Errorf("failed %s: %s", cpath, err)

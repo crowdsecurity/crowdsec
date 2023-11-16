@@ -17,6 +17,7 @@ import (
 
 	"github.com/enescakir/emoji"
 	log "github.com/sirupsen/logrus"
+	"slices"
 )
 
 // Install installs the item from the hub, downloading it if needed
@@ -51,12 +52,70 @@ func (i *Item) Install(force bool, downloadOnly bool) error {
 	return nil
 }
 
+// allDependencies return a list of all dependencies and sub-dependencies of the item
+func (i *Item) allDependencies() []*Item {
+	var deps []*Item
+
+	for _, dep := range i.SubItems() {
+		if dep == i {
+			log.Errorf("circular dependency detected: %s depends on %s", dep.Name, i.Name)
+			continue
+		}
+
+		deps = append(deps, dep.allDependencies()...)
+	}
+
+	return append(deps, i)
+}
+
 // Remove disables the item, optionally removing the downloaded content
-func (i *Item) Remove(purge bool, forceAction bool) (bool, error) {
+func (i *Item) Remove(purge bool, force bool) (bool, error) {
+	if i.IsLocal() {
+		return false, fmt.Errorf("%s isn't managed by hub. Please delete manually", i.Name)
+	}
+
+	if i.Tainted && !force {
+		return false, fmt.Errorf("%s is tainted, use '--force' to remove", i.Name)
+	}
+
+	if !i.Installed && !purge {
+		log.Infof("removing %s: not installed -- no need to remove", i.Name)
+		return false, nil
+	}
+
 	removed := false
 
-	if err := i.disable(purge, forceAction); err != nil {
-		return false, fmt.Errorf("unable to disable %s: %w", i.Name, err)
+	allDeps := i.allDependencies()
+
+	for _, sub := range i.SubItems() {
+		if !sub.Installed {
+			continue
+		}
+
+		// if the other collection(s) are direct or indirect dependencies of the current one, it's good to go
+		// log parent collections
+		for _, subParent := range sub.parentCollections() {
+			if subParent == i {
+				continue
+			}
+
+			if !slices.Contains(allDeps, subParent) {
+				log.Infof("%s was not removed because it also belongs to %s", sub.Name, subParent.Name)
+				continue
+			}
+		}
+
+		subRemoved, err := sub.Remove(purge, force)
+		if err != nil {
+			return false, fmt.Errorf("unable to disable %s: %w", i.Name, err)
+		}
+
+		removed = removed || subRemoved
+	}
+
+	err := i.disable(purge, force)
+	if err != nil {
+		return false, fmt.Errorf("while removing %s: %w", i.Name, err)
 	}
 
 	// XXX: should take the value from disable()

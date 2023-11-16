@@ -81,11 +81,34 @@ teardown() {
 
     # now we can't remove smb without --force
     rune -1 cscli collections remove crowdsecurity/smb
-    assert_stderr --partial "unable to disable crowdsecurity/smb: crowdsecurity/smb is tainted, use '--force' to overwrite"
+    assert_stderr --partial "crowdsecurity/smb is tainted, use '--force' to remove"
+}
 
+@test "cscli collections (dependencies II: the revenge)" {
     rune -0 cscli collections install crowdsecurity/wireguard baudneo/gotify
     rune -0 cscli collections remove crowdsecurity/wireguard
-    assert_stderr --partial "crowdsecurity/syslog-logs was not removed because it belongs to another collection"
+    assert_stderr --partial "crowdsecurity/syslog-logs was not removed because it also belongs to baudneo/gotify"
     rune -0 cscli collections inspect crowdsecurity/wireguard -o json
     rune -0 jq -e '.installed==false' <(output)
+}
+
+@test "cscli collections (dependencies III: origins)" {
+    # it is perfectly fine to remove an item belonging to a collection that we are removing anyway
+
+    # inject a dependency: sshd requires the syslog-logs parsers, but linux does too
+    hub_dep=$(jq <"$INDEX_PATH" '. * {collections:{"crowdsecurity/sshd":{parsers:["crowdsecurity/syslog-logs"]}}}')
+    echo "$hub_dep" >"$INDEX_PATH"
+
+    # verify that installing sshd brings syslog-logs
+    rune -0 cscli collections install crowdsecurity/sshd
+    rune -0 cscli parsers inspect crowdsecurity/syslog-logs -o json
+    rune -0 jq -e '.installed==true' <(output)
+
+    rune -0 cscli collections install crowdsecurity/linux
+
+    # removing linux should remove syslog-logs even though sshd depends on it
+    rune -0 cscli collections remove crowdsecurity/linux
+    refute_stderr --partial "crowdsecurity/syslog-logs was not removed"
+    rune -0 cscli parsers list -o json
+    rune -0 jq -e '.parsers | length == 0' <(output)
 }
