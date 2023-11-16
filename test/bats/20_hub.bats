@@ -38,7 +38,7 @@ teardown() {
     rune -0 cscli hub list -o json
     assert_json '{parsers:[],scenarios:[],collections:[],postoverflows:[]}'
     rune -0 cscli hub list -o raw
-    refute_output
+    assert_output 'name,status,version,description,type'
 
     # some items
     rune -0 cscli parsers install crowdsecurity/whitelists

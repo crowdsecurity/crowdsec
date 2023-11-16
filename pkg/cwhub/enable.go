@@ -110,24 +110,14 @@ func (i *Item) disable(purge bool, force bool) error {
 		return fmt.Errorf("%s is tainted, use '--force' to overwrite", i.Name)
 	}
 
-	// disable sub-items if any - it's a collection
 	for _, sub := range i.SubItems() {
-		// check if the item doesn't belong to another collection before removing it
-		removeSub := true
-
-		for _, collection := range sub.BelongsToCollections {
-			if collection != i.Name {
-				removeSub = false
-				break
-			}
+		if len(sub.BelongsToCollections) > 1 {
+			log.Infof("%s was not removed because it belongs to another collection", sub.Name)
+			continue
 		}
 
-		if removeSub {
-			if err := sub.disable(purge, force); err != nil {
-				return fmt.Errorf("while disabling %s: %w", sub.Name, err)
-			}
-		} else {
-			log.Infof("%s was not removed because it belongs to another collection", sub.Name)
+		if err := sub.disable(purge, force); err != nil {
+			return fmt.Errorf("while disabling %s: %w", sub.Name, err)
 		}
 	}
 

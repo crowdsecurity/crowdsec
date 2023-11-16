@@ -11,7 +11,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func listHubItemTable(hub *cwhub.Hub, out io.Writer, title string, itemType string, items []*cwhub.Item) {
+func listHubItemTable(out io.Writer, title string, items []*cwhub.Item) {
 	t := newLightTable(out)
 	t.SetHeaders("Name", fmt.Sprintf("%v Status", emoji.Package), "Version", "Local Path")
 	t.SetHeaderAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)

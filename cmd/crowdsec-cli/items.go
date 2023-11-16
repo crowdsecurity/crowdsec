@@ -53,23 +53,11 @@ func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 	return items, nil
 }
 
-// XXX: too complex, should be two functions (itemtypes array and args are not used together)
-func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string, showType bool, showHeader bool, all bool) error {
-	items := make(map[string][]*cwhub.Item)
-
-	for _, itemType := range itemTypes {
-		selected, err := selectItems(hub, itemType, args, !all)
-		if err != nil {
-			return err
-		}
-
-		items[itemType] = selected
-	}
-
+func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item) error {
 	switch csConfig.Cscli.Output {
 	case "human":
 		for _, itemType := range itemTypes {
-			listHubItemTable(hub, out, "\n"+strings.ToUpper(itemType), itemType, items[itemType])
+			listHubItemTable(out, "\n"+strings.ToUpper(itemType), items[itemType])
 		}
 	case "json":
 		type itemHubStatus struct {
@@ -98,23 +86,23 @@ func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string,
 				}
 			}
 		}
+
 		x, err := json.MarshalIndent(hubStatus, "", " ")
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal: %w", err)
 		}
+
 		out.Write(x)
 	case "raw":
 		csvwriter := csv.NewWriter(out)
 
-		if showHeader {
-			header := []string{"name", "status", "version", "description"}
-			if showType {
-				header = append(header, "type")
-			}
-			err := csvwriter.Write(header)
-			if err != nil {
-				return fmt.Errorf("failed to write header: %s", err)
-			}
+		header := []string{"name", "status", "version", "description"}
+		if len(itemTypes) > 1 {
+			header = append(header, "type")
+		}
+
+		if err := csvwriter.Write(header); err != nil {
+			return fmt.Errorf("failed to write header: %s", err)
 		}
 
 		for _, itemType := range itemTypes {
@@ -126,7 +114,7 @@ func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string,
 					item.LocalVersion,
 					item.Description,
 				}
-				if showType {
+				if len(itemTypes) > 1 {
 					row = append(row, itemType)
 				}
 				if err := csvwriter.Write(row); err != nil {
@@ -142,7 +130,7 @@ func ListItems(hub *cwhub.Hub, out io.Writer, itemTypes []string, args []string,
 	return nil
 }
 
-func InspectItem(hub *cwhub.Hub, item *cwhub.Item, showMetrics bool) error {
+func InspectItem(item *cwhub.Item, showMetrics bool) error {
 	switch csConfig.Cscli.Output {
 	case "human", "raw":
 		enc := yaml.NewEncoder(os.Stdout)
