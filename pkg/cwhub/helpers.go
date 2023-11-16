@@ -161,14 +161,46 @@ func (i *Item) downloadLatest(overwrite bool, updateOnly bool) error {
 	return nil
 }
 
-func (i *Item) download(overwrite bool) error {
+// fetch downloads the item from the hub, verifies the hash and returns the body
+func (i *Item) fetch() ([]byte, error) {
 	url, err := i.hub.remote.urlTo(i.RemotePath)
 	if err != nil {
-		return fmt.Errorf("failed to build hub item request: %w", err)
+		return nil, fmt.Errorf("failed to build hub item request: %w", err)
 	}
 
-	tdir := i.hub.local.HubDir
+	resp, err := hubClient.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("while downloading %s: %w", url, err)
+	}
+	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("bad http code %d for %s", resp.StatusCode, url)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("while downloading %s: %w", url, err)
+	}
+
+	hash := sha256.New()
+	if _, err = hash.Write(body); err != nil {
+		return nil, fmt.Errorf("while hashing %s: %w", i.Name, err)
+	}
+
+	meow := hex.EncodeToString(hash.Sum(nil))
+	if meow != i.Versions[i.Version].Digest {
+		log.Errorf("Downloaded version doesn't match index, please 'hub update'")
+		log.Debugf("got %s, expected %s", meow, i.Versions[i.Version].Digest)
+
+		return nil, fmt.Errorf("invalid download hash for %s", i.Name)
+	}
+
+	return body, nil
+}
+
+// download downloads the item from the hub and writes it to the hub directory
+func (i *Item) download(overwrite bool) error {
 	// if user didn't --force, don't overwrite local, tainted, up-to-date files
 	if !overwrite {
 		if i.Tainted {
@@ -182,56 +214,29 @@ func (i *Item) download(overwrite bool) error {
 		}
 	}
 
-	resp, err := hubClient.Get(url)
+	body, err := i.fetch()
 	if err != nil {
-		return fmt.Errorf("while downloading %s: %w", url, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("bad http code %d for %s", resp.StatusCode, url)
+		return err
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("while downloading %s: %w", url, err)
-	}
-
-	hash := sha256.New()
-	if _, err = hash.Write(body); err != nil {
-		return fmt.Errorf("while hashing %s: %w", i.Name, err)
-	}
-
-	meow := hex.EncodeToString(hash.Sum(nil))
-	if meow != i.Versions[i.Version].Digest {
-		log.Errorf("Downloaded version doesn't match index, please 'hub update'")
-		log.Debugf("got %s, expected %s", meow, i.Versions[i.Version].Digest)
-
-		return fmt.Errorf("invalid download hash for %s", i.Name)
-	}
+	tdir := i.hub.local.HubDir
 
 	//all good, install
-	//check if parent dir exists
-	tmpdirs := strings.Split(tdir+"/"+i.RemotePath, "/")
-	parentDir := strings.Join(tmpdirs[:len(tmpdirs)-1], "/")
 
-	// ensure that target file is within target dir
-	finalPath, err := filepath.Abs(tdir + "/" + i.RemotePath)
+	finalPath, err := filepath.Abs(filepath.Join(tdir, i.RemotePath))
 	if err != nil {
-		return fmt.Errorf("filepath.Abs error on %s: %w", tdir+"/"+i.RemotePath, err)
+		return err
 	}
 
+	// ensure that target file is within target dir
 	if !strings.HasPrefix(finalPath, tdir) {
 		return fmt.Errorf("path %s escapes %s, abort", i.RemotePath, tdir)
 	}
 
-	// check dir
-	if _, err = os.Stat(parentDir); os.IsNotExist(err) {
-		log.Debugf("%s doesn't exist, create", parentDir)
+	parentDir := filepath.Dir(finalPath)
 
-		if err = os.MkdirAll(parentDir, os.ModePerm); err != nil {
-			return fmt.Errorf("while creating parent directories: %w", err)
-		}
+	if err = os.MkdirAll(parentDir, os.ModePerm); err != nil {
+		return fmt.Errorf("while creating %s: %w", parentDir, err)
 	}
 
 	// check actual file
