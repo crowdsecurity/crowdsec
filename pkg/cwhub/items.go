@@ -75,8 +75,8 @@ type Item struct {
 	PostOverflows []string `json:"postoverflows,omitempty" yaml:"postoverflows,omitempty"`
 	Scenarios     []string `json:"scenarios,omitempty"     yaml:"scenarios,omitempty"`
 	Collections   []string `json:"collections,omitempty"   yaml:"collections,omitempty"`
-	WaapConfigs   []string `json:"waap_configs,omitempty"   yaml:"waap_configs,omitempty"`
-	WaapRules     []string `json:"waap_rules,omitempty"   yaml:"waap_rules,omitempty"`
+	WaapConfigs   []string `json:"waap-configs,omitempty"   yaml:"waap-configs,omitempty"`
+	WaapRules     []string `json:"waap-rules,omitempty"   yaml:"waap-rules,omitempty"`
 }
 
 func (i *Item) HasSubItems() bool {
