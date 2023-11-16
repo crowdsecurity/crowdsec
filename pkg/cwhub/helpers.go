@@ -52,7 +52,7 @@ func (i *Item) Install(force bool, downloadOnly bool) error {
 	return nil
 }
 
-// allDependencies return a list of all dependencies and sub-dependencies of the item
+// allDependencies returns a list of all (direct or indirect) dependencies of the item
 func (i *Item) allDependencies() []*Item {
 	var deps []*Item
 
@@ -171,7 +171,7 @@ func (i *Item) Upgrade(force bool) (bool, error) {
 	return updated, nil
 }
 
-// downloadLatest will download the latest version of Item to the tdir directory
+// downloadLatest downloads the latest version of the item to the hub directory
 func (i *Item) downloadLatest(overwrite bool, updateOnly bool) error {
 	// XXX: should return the path of the downloaded file (taken from download())
 	log.Debugf("Downloading %s %s", i.Type, i.Name)
@@ -314,7 +314,7 @@ func (i *Item) download(overwrite bool) error {
 	i.Tainted = false
 	i.UpToDate = true
 
-	if err = downloadData(i.hub.local.InstallDataDir, overwrite, bytes.NewReader(body)); err != nil {
+	if err = downloadDataSet(i.hub.local.InstallDataDir, overwrite, bytes.NewReader(body)); err != nil {
 		return fmt.Errorf("while downloading data for %s: %w", i.FileName, err)
 	}
 
@@ -332,7 +332,7 @@ func (i *Item) DownloadDataIfNeeded(force bool) error {
 
 	defer itemFile.Close()
 
-	if err = downloadData(i.hub.local.InstallDataDir, force, itemFile); err != nil {
+	if err = downloadDataSet(i.hub.local.InstallDataDir, force, itemFile); err != nil {
 		return fmt.Errorf("while downloading data for %s: %w", itemFilePath, err)
 	}
 

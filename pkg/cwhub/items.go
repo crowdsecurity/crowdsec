@@ -186,6 +186,7 @@ func (i *Item) logMissingSubItems() {
 	}
 }
 
+// parentCollections returns the list of items (collections) that have this item as a direct dependency
 func (i *Item) parentCollections() []*Item {
 	ret := make([]*Item, 0)
 
@@ -281,8 +282,8 @@ func (h *Hub) GetItem(itemType string, itemName string) *Item {
 	return h.GetItemMap(itemType)[itemName]
 }
 
-// GetItemNames returns the list of item (full) names for a given type
-// ie. for parsers: crowdsecurity/apache2 crowdsecurity/nginx
+// GetItemNames returns the list of (full) item names for a given type
+// ie. for collections: crowdsecurity/apache2 crowdsecurity/nginx
 // The names can be used to retrieve the item with GetItem()
 func (h *Hub) GetItemNames(itemType string) []string {
 	m := h.GetItemMap(itemType)

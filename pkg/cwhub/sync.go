@@ -19,7 +19,8 @@ func isYAMLFileName(path string) bool {
 	return strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml")
 }
 
-func handleSymlink(path string) (string, error) {
+// followSymlink follows a symlink and returns the target path, or removes the link if invalid
+func followSymlink(path string) (string, error) {
 	hubpath, err := os.Readlink(path)
 	if err != nil {
 		return "", fmt.Errorf("unable to read symlink of %s", path)
@@ -63,6 +64,7 @@ type itemFileInfo struct {
 	fauthor string
 }
 
+// getItemInfo collects item metadata (name, type, stage, author) from a path
 func (h *Hub) getItemInfo(path string) (itemFileInfo, bool, error) {
 	ret := itemFileInfo{}
 	inhub := false
@@ -108,7 +110,6 @@ func (h *Hub) getItemInfo(path string) (itemFileInfo, bool, error) {
 	}
 
 	log.Tracef("stage:%s ftype:%s", ret.stage, ret.ftype)
-	// log.Infof("%s -> name:%s stage:%s", path, fname, stage)
 
 	if ret.stage == SCENARIOS {
 		ret.ftype = SCENARIOS
@@ -126,7 +127,7 @@ func (h *Hub) getItemInfo(path string) (itemFileInfo, bool, error) {
 	return ret, inhub, nil
 }
 
-// sortedVersions returns the input data, sorted in reverse order by semver
+// sortedVersions returns the input data, sorted in reverse order (new, old) by semver
 func sortedVersions(raw []string) ([]string, error) {
 	vs := make([]*semver.Version, len(raw))
 
@@ -189,7 +190,7 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 
 		log.Tracef("%s isn't a symlink", path)
 	} else {
-		hubpath, err = handleSymlink(path)
+		hubpath, err = followSymlink(path)
 		if err != nil {
 			return err
 		}
@@ -388,6 +389,7 @@ func (h *Hub) checkSubItems(v *Item) error {
 	return nil
 }
 
+// syncDir scans a directory for items, and updates the Hub state accordingly
 func (h *Hub) syncDir(dir string) ([]string, error) {
 	warnings := []string{}
 
@@ -437,7 +439,7 @@ func (h *Hub) syncDir(dir string) ([]string, error) {
 	return warnings, nil
 }
 
-// Updates the info from HubInit() with the local state
+// localSync updates the hub state with downloaded, installed and local items
 func (h *Hub) localSync() error {
 	h.skippedLocal = 0
 	h.skippedTainted = 0
