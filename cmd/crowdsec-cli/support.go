@@ -174,7 +174,7 @@ func collectAPIStatus(login string, password string, endpoint string, prefix str
 	if err != nil {
 		return []byte(fmt.Sprintf("cannot parse API URL: %s", err))
 	}
-	scenarios, err := hub.GetInstalledItemsAsString(cwhub.SCENARIOS)
+	scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
 	if err != nil {
 		return []byte(fmt.Sprintf("could not collect scenarios: %s", err))
 	}

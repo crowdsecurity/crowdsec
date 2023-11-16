@@ -335,8 +335,8 @@ func (h *Hub) GetInstalledItems(itemType string) ([]*Item, error) {
 	return retItems, nil
 }
 
-// GetInstalledItemsAsString returns the names of the installed items
-func (h *Hub) GetInstalledItemsAsString(itemType string) ([]string, error) {
+// GetInstalledItemNames returns the names of the installed items
+func (h *Hub) GetInstalledItemNames(itemType string) ([]string, error) {
 	items, err := h.GetInstalledItems(itemType)
 	if err != nil {
 		return nil, err

@@ -43,7 +43,7 @@ func runLapiStatus(cmd *cobra.Command, args []string) error {
 		log.Fatal(err)
 	}
 
-	scenarios, err := hub.GetInstalledItemsAsString(cwhub.SCENARIOS)
+	scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
 	if err != nil {
 		log.Fatalf("failed to get scenarios : %s", err)
 	}
