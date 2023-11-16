@@ -69,5 +69,5 @@ func TestDownloadIndex(t *testing.T) {
 	}
 
 	err = hub.remote.downloadIndex("/does/not/exist/index.json")
-	cstest.RequireErrorContains(t, err, "while opening hub index file: open /does/not/exist/index.json:")
+	cstest.RequireErrorContains(t, err, "failed to write hub index: open /does/not/exist/index.json:")
 }
