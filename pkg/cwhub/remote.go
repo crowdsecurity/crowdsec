@@ -70,18 +70,11 @@ func (r *RemoteHubCfg) downloadIndex(localPath string) error {
 		return nil
 	}
 
-	file, err := os.Create(localPath)
-	if err != nil {
-		return fmt.Errorf("while opening hub index file: %w", err)
-	}
-	defer file.Close()
-
-	wsize, err := file.Write(body)
-	if err != nil {
-		return fmt.Errorf("while writing hub index file: %w", err)
+	if err = os.WriteFile(localPath, body, 0o644); err != nil {
+		return fmt.Errorf("failed to write hub index: %w", err)
 	}
 
-	log.Infof("Wrote index to %s, %d bytes", localPath, wsize)
+	log.Infof("Wrote index to %s, %d bytes", localPath, len(body))
 
 	return nil
 }

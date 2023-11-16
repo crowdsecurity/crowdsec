@@ -250,7 +250,7 @@ func (i *Item) versionStatus() int {
 }
 
 // validPath returns true if the (relative) path is allowed for the item
-// dirNmae: the directory name (ie. crowdsecurity)
+// dirNname: the directory name (ie. crowdsecurity)
 // fileName: the filename (ie. apache2-logs.yaml)
 func (i *Item) validPath(dirName, fileName string) bool {
 	return (dirName+"/"+fileName == i.Name+".yaml") || (dirName+"/"+fileName == i.Name+".yml")
