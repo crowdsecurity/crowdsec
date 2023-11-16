@@ -5,6 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sync"
+	"time"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -23,16 +27,21 @@ const (
 	OutOfBand = "outofband"
 )
 
+var (
+	DefaultAuthCacheDuration = (1 * time.Minute)
+)
+
 // configuration structure of the acquis for the Waap
 type WaapSourceConfig struct {
-	ListenAddr                        string `yaml:"listen_addr"`
-	ListenPort                        int    `yaml:"listen_port"`
-	CertFilePath                      string `yaml:"cert_file"`
-	KeyFilePath                       string `yaml:"key_file"`
-	Path                              string `yaml:"path"`
-	Routines                          int    `yaml:"routines"`
-	WaapConfig                        string `yaml:"waap_config"`
-	WaapConfigPath                    string `yaml:"waap_config_path"`
+	ListenAddr                        string         `yaml:"listen_addr"`
+	ListenPort                        int            `yaml:"listen_port"`
+	CertFilePath                      string         `yaml:"cert_file"`
+	KeyFilePath                       string         `yaml:"key_file"`
+	Path                              string         `yaml:"path"`
+	Routines                          int            `yaml:"routines"`
+	WaapConfig                        string         `yaml:"waap_config"`
+	WaapConfigPath                    string         `yaml:"waap_config_path"`
+	AuthCacheDuration                 *time.Duration `yaml:"auth_cache_duration"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -46,10 +55,36 @@ type WaapSource struct {
 	outChan     chan types.Event
 	InChan      chan waf.ParsedRequest
 	WaapRuntime *waf.WaapRuntimeConfig
-
 	WaapConfigs map[string]waf.WaapConfig
-
+	lapiURL     string
+	AuthCache   AuthCache
 	WaapRunners []WaapRunner //one for each go-routine
+}
+
+// Struct to handle cache of authentication
+type AuthCache struct {
+	APIKeys map[string]time.Time
+	mu      sync.RWMutex
+}
+
+func NewAuthCache() AuthCache {
+	return AuthCache{
+		APIKeys: make(map[string]time.Time, 0),
+		mu:      sync.RWMutex{},
+	}
+}
+
+func (ac *AuthCache) Set(apiKey string, expiration time.Time) {
+	ac.mu.Lock()
+	ac.APIKeys[apiKey] = expiration
+	ac.mu.Unlock()
+}
+
+func (ac *AuthCache) Get(apiKey string) (time.Time, bool) {
+	ac.mu.RLock()
+	expiration, exists := ac.APIKeys[apiKey]
+	ac.mu.RUnlock()
+	return expiration, exists
 }
 
 // @tko + @sbl : we might want to get rid of that or improve it
@@ -97,6 +132,11 @@ func (wc *WaapSource) UnmarshalConfig(yamlConfig []byte) error {
 	if wc.config.WaapConfig == "" && wc.config.WaapConfigPath == "" {
 		return fmt.Errorf("waap_config or waap_config_path must be set")
 	}
+
+	csConfig := csconfig.GetConfig()
+	wc.lapiURL = fmt.Sprintf("%sv1/decisions/stream", csConfig.API.Client.Credentials.URL)
+	wc.AuthCache = NewAuthCache()
+
 	return nil
 }
 
@@ -117,6 +157,11 @@ func (w *WaapSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	w.logger.Logger.SetLevel(*w.config.LogLevel)
 
 	w.logger.Tracef("WAF configuration: %+v", w.config)
+
+	if w.config.AuthCacheDuration == nil {
+		w.config.AuthCacheDuration = &DefaultAuthCacheDuration
+		w.logger.Infof("Cache duration for auth not set, using default: %v", *w.config.AuthCacheDuration)
+	}
 
 	w.addr = fmt.Sprintf("%s:%d", w.config.ListenAddr, w.config.ListenPort)
 
@@ -251,8 +296,44 @@ func (w *WaapSource) Dump() interface{} {
 	return w
 }
 
+func (w *WaapSource) IsAuth(apiKey string) bool {
+	client := &http.Client{}
+	req, err := http.NewRequest("HEAD", w.lapiURL, nil)
+	if err != nil {
+		fmt.Println("Error creating request:", err)
+		return false
+	}
+	req.Header.Add("X-Api-Key", apiKey)
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println("Error performing request:", err)
+		return false
+	}
+	defer resp.Body.Close()
+
+	return resp.StatusCode == http.StatusOK
+
+}
+
 // should this be in the runner ?
 func (w *WaapSource) waapHandler(rw http.ResponseWriter, r *http.Request) {
+	apiKey := r.Header.Get(waf.APIKeyHeaderName)
+	if apiKey == "" {
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	expiration, exists := w.AuthCache.Get(apiKey)
+	// if the apiKey is not in cache or has expired, just recheck the auth
+	if !exists || time.Now().After(expiration) {
+		if !w.IsAuth(apiKey) {
+			rw.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		// apiKey is valid, store it in cache
+		w.AuthCache.Set(apiKey, time.Now().Add(*w.config.AuthCacheDuration))
+	}
+
 	// parse the request only once
 	parsedRequest, err := waf.NewParsedRequestFromRequest(r)
 	if err != nil {
@@ -260,6 +341,7 @@ func (w *WaapSource) waapHandler(rw http.ResponseWriter, r *http.Request) {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
 	w.InChan <- parsedRequest
 
 	response := <-parsedRequest.ResponseChannel

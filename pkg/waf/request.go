@@ -11,10 +11,11 @@ import (
 )
 
 const (
-	URIHeaderName  = "X-Crowdsec-Waf-Uri"
-	VerbHeaderName = "X-Crowdsec-Waf-Verb"
-	HostHeaderName = "X-Crowdsec-Waf-Host"
-	IPHeaderName   = "X-Crowdsec-Waf-Ip"
+	URIHeaderName    = "X-Crowdsec-Waf-Uri"
+	VerbHeaderName   = "X-Crowdsec-Waf-Verb"
+	HostHeaderName   = "X-Crowdsec-Waf-Host"
+	IPHeaderName     = "X-Crowdsec-Waf-Ip"
+	APIKeyHeaderName = "X-Crowdsec-Waf-Api-Key"
 )
 
 // type ResponseRequest struct {
