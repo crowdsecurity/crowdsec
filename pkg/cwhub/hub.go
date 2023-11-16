@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -82,8 +83,7 @@ func (h *Hub) parseIndex() error {
 			}
 
 			item.Type = itemType
-			x := strings.Split(item.RemotePath, "/")
-			item.FileName = x[len(x)-1]
+			item.FileName = path.Base(item.RemotePath)
 
 			item.logMissingSubItems()
 		}
