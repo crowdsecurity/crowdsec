@@ -355,7 +355,7 @@ done
 
 if [ "$ENABLE_CONSOLE_MANAGEMENT" ] != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean console enable console_management
+    cscli console enable console_management
 fi
 
 ## Register bouncers via secrets (Swarm only)
