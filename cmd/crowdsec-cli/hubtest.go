@@ -128,7 +128,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 			configFileData := &hubtest.HubTestItemConfig{
 				Parsers:       parsers,
 				Scenarios:     scenarios,
-				PostOVerflows: postoverflows,
+				PostOverflows: postoverflows,
 				LogFile:       logFileName,
 				LogType:       logType,
 				IgnoreParsers: ignoreParsers,
