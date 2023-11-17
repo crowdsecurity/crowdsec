@@ -1,11 +1,14 @@
 package hubtest
 
 import (
+	"errors"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -16,14 +19,17 @@ import (
 )
 
 type HubTestItemConfig struct {
-	Parsers         []string            `yaml:"parsers"`
-	Scenarios       []string            `yaml:"scenarios"`
-	PostOVerflows   []string            `yaml:"postoverflows"`
-	LogFile         string              `yaml:"log_file"`
-	LogType         string              `yaml:"log_type"`
-	Labels          map[string]string   `yaml:"labels"`
-	IgnoreParsers   bool                `yaml:"ignore_parsers"`   // if we test a scenario, we don't want to assert on Parser
-	OverrideStatics []parser.ExtraField `yaml:"override_statics"` //Allow to override statics. Executed before s00
+	Parsers               []string            `yaml:"parsers"`
+	Scenarios             []string            `yaml:"scenarios"`
+	PostOverflows         []string            `yaml:"postoverflows"`
+	WaapRules             []string            `yaml:"waap-rules"`
+	NucleiTemplate        string              `yaml:"nuclei_template"`
+	ExpectedNucleiFailure bool                `yaml:"expect_failure"`
+	LogFile               string              `yaml:"log_file"`
+	LogType               string              `yaml:"log_type"`
+	Labels                map[string]string   `yaml:"labels"`
+	IgnoreParsers         bool                `yaml:"ignore_parsers"`   // if we test a scenario, we don't want to assert on Parser
+	OverrideStatics       []parser.ExtraField `yaml:"override_statics"` //Allow to override statics. Executed before s00
 }
 
 type HubTestItem struct {
@@ -40,6 +46,7 @@ type HubTestItem struct {
 	RuntimeConfigFilePath     string
 	RuntimeProfileFilePath    string
 	RuntimeSimulationFilePath string
+	RuntimeAcquisFilePath     string
 	RuntimeHubConfig          *csconfig.LocalHubCfg
 
 	ResultsPath          string
@@ -47,13 +54,15 @@ type HubTestItem struct {
 	ScenarioResultFile   string
 	BucketPourResultFile string
 
-	HubPath                string
-	HubTestPath            string
-	HubIndexFile           string
-	TemplateConfigPath     string
-	TemplateProfilePath    string
-	TemplateSimulationPath string
-	HubIndex               *cwhub.Hub
+	HubPath                 string
+	HubTestPath             string
+	HubIndexFile            string
+	TemplateConfigPath      string
+	TemplateProfilePath     string
+	TemplateSimulationPath  string
+	TemplateAcquisPath      string
+	TemplateWaapProfilePath string
+	HubIndex                *cwhub.Hub
 
 	Config *HubTestItemConfig
 
@@ -115,6 +124,7 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 		RuntimeConfigFilePath:     filepath.Join(runtimeFolder, "config.yaml"),
 		RuntimeProfileFilePath:    filepath.Join(runtimeFolder, "profiles.yaml"),
 		RuntimeSimulationFilePath: filepath.Join(runtimeFolder, "simulation.yaml"),
+		RuntimeAcquisFilePath:     filepath.Join(runtimeFolder, "acquis.yaml"),
 		ResultsPath:               resultPath,
 		ParserResultFile:          filepath.Join(resultPath, ParserResultFileName),
 		ScenarioResultFile:        filepath.Join(resultPath, ScenarioResultFileName),
@@ -125,17 +135,19 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 			InstallDir:     runtimeFolder,
 			InstallDataDir: filepath.Join(runtimeFolder, "data"),
 		},
-		Config:                 configFileData,
-		HubPath:                hubTest.HubPath,
-		HubTestPath:            hubTest.HubTestPath,
-		HubIndexFile:           hubTest.HubIndexFile,
-		TemplateConfigPath:     hubTest.TemplateConfigPath,
-		TemplateProfilePath:    hubTest.TemplateProfilePath,
-		TemplateSimulationPath: hubTest.TemplateSimulationPath,
-		HubIndex:               hubTest.HubIndex,
-		ScenarioAssert:         ScenarioAssert,
-		ParserAssert:           ParserAssert,
-		CustomItemsLocation:    []string{hubTest.HubPath, testPath},
+		Config:                  configFileData,
+		HubPath:                 hubTest.HubPath,
+		HubTestPath:             hubTest.HubTestPath,
+		HubIndexFile:            hubTest.HubIndexFile,
+		TemplateConfigPath:      hubTest.TemplateConfigPath,
+		TemplateProfilePath:     hubTest.TemplateProfilePath,
+		TemplateSimulationPath:  hubTest.TemplateSimulationPath,
+		TemplateAcquisPath:      hubTest.TemplateAcquisPath,
+		TemplateWaapProfilePath: hubTest.TemplateWaapProfilePath,
+		HubIndex:                hubTest.HubIndex,
+		ScenarioAssert:          ScenarioAssert,
+		ParserAssert:            ParserAssert,
+		CustomItemsLocation:     []string{hubTest.HubPath, testPath},
 	}, nil
 }
 
@@ -297,8 +309,81 @@ func (t *HubTestItem) InstallHub() error {
 		}
 	}
 
+	// install waaprules in runtime environment
+	for _, waaprule := range t.Config.WaapRules {
+		log.Infof("adding rule '%s'", waaprule)
+		if waaprule == "" {
+			continue
+		}
+
+		if hubWaapRule, ok := t.HubIndex.Items[cwhub.WAAP_RULES][waaprule]; ok {
+			waapRuleSource, err := filepath.Abs(filepath.Join(t.HubPath, hubWaapRule.RemotePath))
+			if err != nil {
+				return fmt.Errorf("can't get absolute path of '%s': %s", waapRuleSource, err)
+			}
+
+			waapRuleFilename := filepath.Base(waapRuleSource)
+
+			// runtime/hub/waap-rules/author/waap-rule
+			hubDirWaapRuleDest := filepath.Join(t.RuntimeHubPath, filepath.Dir(hubWaapRule.RemotePath))
+
+			// runtime/waap-rules/
+			waapRuleDirDest := fmt.Sprintf("%s/waap-rules/", t.RuntimePath)
+
+			if err := os.MkdirAll(hubDirWaapRuleDest, os.ModePerm); err != nil {
+				return fmt.Errorf("unable to create folder '%s': %s", hubDirWaapRuleDest, err)
+			}
+
+			if err := os.MkdirAll(waapRuleDirDest, os.ModePerm); err != nil {
+				return fmt.Errorf("unable to create folder '%s': %s", waapRuleDirDest, err)
+			}
+
+			// runtime/hub/waap-rules/crowdsecurity/rule.yaml
+			hubDirWaapRulePath := filepath.Join(waapRuleDirDest, waapRuleFilename)
+			if err := Copy(waapRuleSource, hubDirWaapRulePath); err != nil {
+				return fmt.Errorf("unable to copy '%s' to '%s': %s", waapRuleSource, hubDirWaapRulePath, err)
+			}
+
+			// runtime/waap-rules/rule.yaml
+			waapRulePath := filepath.Join(waapRuleDirDest, waapRuleFilename)
+			if err := os.Symlink(hubDirWaapRulePath, waapRulePath); err != nil {
+				if !os.IsExist(err) {
+					return fmt.Errorf("unable to symlink waap-rule '%s' to '%s': %s", hubDirWaapRulePath, waapRulePath, err)
+				}
+			}
+		} else {
+			customWaapRuleExist := false
+			for _, customPath := range t.CustomItemsLocation {
+				// we check if its a custom waap-rule
+				customWaapRulePath := filepath.Join(customPath, waaprule)
+				if _, err := os.Stat(customWaapRulePath); os.IsNotExist(err) {
+					continue
+				}
+				customWaapRulePathSplit := strings.Split(customWaapRulePath, "/")
+				customWappRuleName := customWaapRulePathSplit[len(customWaapRulePathSplit)-1]
+
+				waapRuleDirDest := fmt.Sprintf("%s/waap-rules/", t.RuntimePath)
+				if err := os.MkdirAll(waapRuleDirDest, os.ModePerm); err != nil {
+					return fmt.Errorf("unable to create folder '%s': %s", waapRuleDirDest, err)
+				}
+
+				// runtime/waap-rules/
+				customWaapRuleDest := fmt.Sprintf("%s/waap-rules/%s", t.RuntimePath, customWappRuleName)
+				// if path to postoverflow exist, copy it
+				if err := Copy(customWaapRulePath, customWaapRuleDest); err != nil {
+					continue
+				}
+				customWaapRuleExist = true
+				break
+			}
+			if !customWaapRuleExist {
+				return fmt.Errorf("couldn't find custom waap-rule '%s' in the following location: %+v", waaprule, t.CustomItemsLocation)
+			}
+		}
+	}
+
 	// install postoverflows in runtime environment
-	for _, postoverflow := range t.Config.PostOVerflows {
+	for _, postoverflow := range t.Config.PostOverflows {
 		if postoverflow == "" {
 			continue
 		}
@@ -449,69 +534,104 @@ func (t *HubTestItem) Clean() error {
 	return os.RemoveAll(t.RuntimePath)
 }
 
-func (t *HubTestItem) Run() error {
-	t.Success = false
-	t.ErrorsList = make([]string, 0)
+func (t *HubTestItem) RunWithNucleiTemplate() error {
 
 	testPath := filepath.Join(t.HubTestPath, t.Name)
 	if _, err := os.Stat(testPath); os.IsNotExist(err) {
 		return fmt.Errorf("test '%s' doesn't exist in '%s', exiting", t.Name, t.HubTestPath)
 	}
 
-	currentDir, err := os.Getwd()
+	if err := os.Chdir(testPath); err != nil {
+		return fmt.Errorf("can't 'cd' to '%s': %s", testPath, err)
+	}
+
+	//machine add
+	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--auto"}
+	cscliRegisterCmd := exec.Command(t.CscliPath, cmdArgs...)
+
+	output, err := cscliRegisterCmd.CombinedOutput()
+	if err != nil {
+		if !strings.Contains(string(output), "unable to create machine: user 'testMachine': user already exist") {
+			fmt.Println(string(output))
+			return fmt.Errorf("fail to run '%s' for test '%s': %v", cscliRegisterCmd.String(), t.Name, err)
+		}
+	}
+
+	//hardcode bouncer key
+	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "bouncers", "add", "waaptests", "-k", "this_is_a_bad_password"}
+	cscliBouncerCmd := exec.Command(t.CscliPath, cmdArgs...)
+
+	output, err = cscliBouncerCmd.CombinedOutput()
+	if err != nil {
+		if !strings.Contains(string(output), "unable to create bouncer: bouncer waaptests already exists") {
+			fmt.Println(string(output))
+			return fmt.Errorf("fail to run '%s' for test '%s': %v", cscliRegisterCmd.String(), t.Name, err)
+		}
+	}
+
+	//start crowdsec service
+	cmdArgs = []string{"-c", t.RuntimeConfigFilePath}
+	crowdsecDaemon := exec.Command(t.CrowdSecPath, cmdArgs...)
+
+	crowdsecDaemon.Start()
+
+	//wait for the waap port to be available
+
+	start := time.Now()
+
+	for {
+		conn, err := net.Dial("tcp", "127.0.0.1:4241")
+		if err == nil {
+			log.Debugf("waap is up after %s", time.Since(start))
+			conn.Close()
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+		if time.Since(start) > 10*time.Second {
+			log.Fatalf("took more than 10s for waap to be available, abort")
+		}
+	}
+
+	nucleiConfig := NucleiConfig{
+		Path:      "nuclei",
+		OutputDir: testPath,
+		CmdLineOptions: []string{"-ev", //allow variables from environment
+			"-nc",    //no colors in output
+			"-dresp", //dump response
+			"-j",     //json output
+		},
+	}
+
+	err = nucleiConfig.RunNucleiTemplate(t.Name, t.Config.NucleiTemplate, "http://127.0.0.1:80/")
+
+	if t.Config.ExpectedNucleiFailure {
+		if err != nil && errors.Is(err, NucleiTemplateFail) {
+			log.Infof("WAAP test %s failed as expected", t.Name)
+			t.Success = true
+		} else {
+			log.Errorf("WAAP test %s failed:  %s", t.Name, err)
+		}
+	} else {
+		if err == nil {
+			log.Infof("WAAP test %s succeeded", t.Name)
+			t.Success = true
+		} else {
+			log.Errorf("WAAP test %s failed:  %s", t.Name, err)
+		}
+	}
+	crowdsecDaemon.Process.Kill()
+	return nil
+}
+
+func (t *HubTestItem) RunWithLogFile() error {
+	testPath := filepath.Join(t.HubTestPath, t.Name)
+	if _, err := os.Stat(testPath); os.IsNotExist(err) {
+		return fmt.Errorf("test '%s' doesn't exist in '%s', exiting", t.Name, t.HubTestPath)
+	}
+
+	currentDir, err := os.Getwd() //xx
 	if err != nil {
 		return fmt.Errorf("can't get current directory: %+v", err)
-	}
-
-	// create runtime folder
-	if err = os.MkdirAll(t.RuntimePath, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimePath, err)
-	}
-
-	// create runtime data folder
-	if err = os.MkdirAll(t.RuntimeDataPath, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimeDataPath, err)
-	}
-
-	// create runtime hub folder
-	if err = os.MkdirAll(t.RuntimeHubPath, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimeHubPath, err)
-	}
-
-	if err = Copy(t.HubIndexFile, filepath.Join(t.RuntimeHubPath, ".index.json")); err != nil {
-		return fmt.Errorf("unable to copy .index.json file in '%s': %s", filepath.Join(t.RuntimeHubPath, ".index.json"), err)
-	}
-
-	// create results folder
-	if err = os.MkdirAll(t.ResultsPath, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %+v", t.ResultsPath, err)
-	}
-
-	// copy template config file to runtime folder
-	if err = Copy(t.TemplateConfigPath, t.RuntimeConfigFilePath); err != nil {
-		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateConfigPath, t.RuntimeConfigFilePath, err)
-	}
-
-	// copy template profile file to runtime folder
-	if err = Copy(t.TemplateProfilePath, t.RuntimeProfileFilePath); err != nil {
-		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateProfilePath, t.RuntimeProfileFilePath, err)
-	}
-
-	// copy template simulation file to runtime folder
-	if err = Copy(t.TemplateSimulationPath, t.RuntimeSimulationFilePath); err != nil {
-		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateSimulationPath, t.RuntimeSimulationFilePath, err)
-	}
-
-	crowdsecPatternsFolder := csconfig.DefaultConfigPath("patterns")
-
-	// copy template patterns folder to runtime folder
-	if err = CopyDir(crowdsecPatternsFolder, t.RuntimePatternsPath); err != nil {
-		return fmt.Errorf("unable to copy 'patterns' from '%s' to '%s': %s", crowdsecPatternsFolder, t.RuntimePatternsPath, err)
-	}
-
-	// install the hub in the runtime folder
-	if err = t.InstallHub(); err != nil {
-		return fmt.Errorf("unable to install hub in '%s': %s", t.RuntimeHubPath, err)
 	}
 
 	logFile := t.Config.LogFile
@@ -649,4 +769,89 @@ func (t *HubTestItem) Run() error {
 	}
 
 	return nil
+}
+
+func (t *HubTestItem) Run() error {
+	var err error
+	t.Success = false
+	t.ErrorsList = make([]string, 0)
+
+	// create runtime folder
+	if err = os.MkdirAll(t.RuntimePath, os.ModePerm); err != nil {
+		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimePath, err)
+	}
+
+	// create runtime data folder
+	if err = os.MkdirAll(t.RuntimeDataPath, os.ModePerm); err != nil {
+		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimeDataPath, err)
+	}
+
+	// create runtime hub folder
+	if err = os.MkdirAll(t.RuntimeHubPath, os.ModePerm); err != nil {
+		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimeHubPath, err)
+	}
+
+	if err = Copy(t.HubIndexFile, filepath.Join(t.RuntimeHubPath, ".index.json")); err != nil {
+		return fmt.Errorf("unable to copy .index.json file in '%s': %s", filepath.Join(t.RuntimeHubPath, ".index.json"), err)
+	}
+
+	// create results folder
+	if err = os.MkdirAll(t.ResultsPath, os.ModePerm); err != nil {
+		return fmt.Errorf("unable to create folder '%s': %+v", t.ResultsPath, err)
+	}
+
+	// copy template config file to runtime folder
+	if err = Copy(t.TemplateConfigPath, t.RuntimeConfigFilePath); err != nil {
+		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateConfigPath, t.RuntimeConfigFilePath, err)
+	}
+
+	// copy template profile file to runtime folder
+	if err = Copy(t.TemplateProfilePath, t.RuntimeProfileFilePath); err != nil {
+		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateProfilePath, t.RuntimeProfileFilePath, err)
+	}
+
+	// copy template simulation file to runtime folder
+	if err = Copy(t.TemplateSimulationPath, t.RuntimeSimulationFilePath); err != nil {
+		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateSimulationPath, t.RuntimeSimulationFilePath, err)
+	}
+
+	crowdsecPatternsFolder := csconfig.DefaultConfigPath("patterns")
+
+	// copy template patterns folder to runtime folder
+	if err = CopyDir(crowdsecPatternsFolder, t.RuntimePatternsPath); err != nil {
+		return fmt.Errorf("unable to copy 'patterns' from '%s' to '%s': %s", crowdsecPatternsFolder, t.RuntimePatternsPath, err)
+	}
+
+	// create the waap-configs dir
+	if err = os.MkdirAll(filepath.Join(t.RuntimePath, "waap-configs"), os.ModePerm); err != nil {
+		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimePath, err)
+	}
+
+	// copy the waap-config file and acquis *only* if nuclei template is set -> it means we're testing waap
+	if t.Config.NucleiTemplate != "" {
+		// copy template acquis file to runtime folder
+		log.Infof("copying %s to %s", t.TemplateAcquisPath, t.RuntimeAcquisFilePath)
+		if err = Copy(t.TemplateAcquisPath, t.RuntimeAcquisFilePath); err != nil {
+			return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateAcquisPath, t.RuntimeAcquisFilePath, err)
+		}
+
+		log.Infof("copying %s to %s", t.TemplateWaapProfilePath, filepath.Join(t.RuntimePath, "waap-configs", "config.yaml"))
+		// copy template waap-config file to runtime folder
+		if err = Copy(t.TemplateWaapProfilePath, filepath.Join(t.RuntimePath, "waap-configs", "config.yaml")); err != nil {
+			return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateWaapProfilePath, filepath.Join(t.RuntimePath, "waap-configs", "config.yaml"), err)
+		}
+	}
+
+	// install the hub in the runtime folder
+	if err = t.InstallHub(); err != nil {
+		return fmt.Errorf("unable to install hub in '%s': %s", t.RuntimeHubPath, err)
+	}
+
+	if t.Config.LogFile != "" {
+		return t.RunWithLogFile()
+	} else if t.Config.NucleiTemplate != "" {
+		return t.RunWithNucleiTemplate()
+	} else {
+		return fmt.Errorf("log file or nuclei template must be set in '%s'", t.Name)
+	}
 }
