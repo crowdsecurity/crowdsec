@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	corazatypes "github.com/crowdsecurity/coraza/v3/types"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/waf/waap_rule"
 
 	log "github.com/sirupsen/logrus"
@@ -52,14 +53,14 @@ func LoadCollection(pattern string) ([]WaapCollection, error) {
 
 	for _, waapRule := range waapRules {
 
-		matched, err := filepath.Match(pattern, waapRule.Name)
+		matched, err := exprhelpers.Match(pattern, waapRule.Name)
 
 		if err != nil {
 			log.Errorf("unable to match %s with %s : %s", waapRule.Name, pattern, err)
 			continue
 		}
 
-		if !matched {
+		if !matched.(bool) {
 			continue
 		}
 
