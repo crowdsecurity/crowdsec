@@ -11,22 +11,26 @@ import (
 )
 
 type HubTest struct {
-	CrowdSecPath           string
-	CscliPath              string
-	HubPath                string
-	HubTestPath            string
-	HubIndexFile           string
-	TemplateConfigPath     string
-	TemplateProfilePath    string
-	TemplateSimulationPath string
-	HubIndex               *cwhub.Hub
-	Tests                  []*HubTestItem
+	CrowdSecPath            string
+	CscliPath               string
+	HubPath                 string
+	HubTestPath             string
+	HubIndexFile            string
+	TemplateConfigPath      string
+	TemplateProfilePath     string
+	TemplateSimulationPath  string
+	TemplateAcquisPath      string
+	TemplateWaapProfilePath string
+	HubIndex                *cwhub.Hub
+	Tests                   []*HubTestItem
 }
 
 const (
-	templateConfigFile     = "template_config.yaml"
-	templateSimulationFile = "template_simulation.yaml"
-	templateProfileFile    = "template_profiles.yaml"
+	templateConfigFile      = "template_config.yaml"
+	templateSimulationFile  = "template_simulation.yaml"
+	templateProfileFile     = "template_profiles.yaml"
+	templateAcquisFile      = "template_acquis.yaml"
+	templateWaapProfilePath = "template_waap-profile.yaml"
 )
 
 func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest, error) {
@@ -70,20 +74,18 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest,
 		return HubTest{}, fmt.Errorf("unable to load hub: %s", err)
 	}
 
-	templateConfigFilePath := filepath.Join(HubTestPath, templateConfigFile)
-	templateProfilePath := filepath.Join(HubTestPath, templateProfileFile)
-	templateSimulationPath := filepath.Join(HubTestPath, templateSimulationFile)
-
 	return HubTest{
-		CrowdSecPath:           crowdsecPath,
-		CscliPath:              cscliPath,
-		HubPath:                hubPath,
-		HubTestPath:            HubTestPath,
-		HubIndexFile:           hubIndexFile,
-		TemplateConfigPath:     templateConfigFilePath,
-		TemplateProfilePath:    templateProfilePath,
-		TemplateSimulationPath: templateSimulationPath,
-		HubIndex:               hub,
+		CrowdSecPath:            crowdsecPath,
+		CscliPath:               cscliPath,
+		HubPath:                 hubPath,
+		HubTestPath:             HubTestPath,
+		HubIndexFile:            hubIndexFile,
+		TemplateConfigPath:      filepath.Join(HubTestPath, templateConfigFile),
+		TemplateProfilePath:     filepath.Join(HubTestPath, templateProfileFile),
+		TemplateSimulationPath:  filepath.Join(HubTestPath, templateSimulationFile),
+		TemplateWaapProfilePath: filepath.Join(HubTestPath, templateWaapProfilePath),
+		TemplateAcquisPath:      filepath.Join(HubTestPath, templateAcquisFile),
+		HubIndex:                hub,
 	}, nil
 }
 
