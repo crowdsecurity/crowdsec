@@ -19,22 +19,18 @@ func isYAMLFileName(path string) bool {
 	return strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml")
 }
 
-// followSymlink follows a symlink and returns the target path, or removes the link if invalid
-func followSymlink(path string) (string, error) {
+// linkTarget returns the target of a symlink, or empty string if it's dangling
+func linkTarget(path string) (string, error) {
 	hubpath, err := os.Readlink(path)
 	if err != nil {
-		return "", fmt.Errorf("unable to read symlink of %s", path)
+		return "", fmt.Errorf("unable to read symlink: %s", path)
 	}
-	// the symlink target doesn't exist, user might have removed ~/.hub/hub/...yaml without deleting /etc/crowdsec/....yaml
+
+	log.Tracef("symlink %s -> %s", path, hubpath)
+
 	_, err = os.Lstat(hubpath)
 	if os.IsNotExist(err) {
-		log.Infof("%s is a symlink to %s that doesn't exist, deleting symlink", path, hubpath)
-		// remove the symlink
-		if err = os.Remove(path); err != nil {
-			return "", fmt.Errorf("failed to unlink %s: %w", path, err)
-		}
-
-		// ignore this file
+		log.Infof("link target does not exist: %s -> %s", path, hubpath)
 		return "", nil
 	}
 
@@ -58,16 +54,15 @@ func getSHA256(filepath string) (string, error) {
 }
 
 type itemFileInfo struct {
+	inhub   bool
 	fname   string
 	stage   string
 	ftype   string
 	fauthor string
 }
 
-// getItemInfo collects item metadata (name, type, stage, author) from a path
-func (h *Hub) getItemInfo(path string) (itemFileInfo, bool, error) {
-	ret := itemFileInfo{}
-	inhub := false
+func (h *Hub) getItemFileInfo(path string) (*itemFileInfo, error) {
+	var ret *itemFileInfo
 
 	hubDir := h.local.HubDir
 	installDir := h.local.InstallDir
@@ -80,33 +75,38 @@ func (h *Hub) getItemInfo(path string) (itemFileInfo, bool, error) {
 	if strings.HasPrefix(path, hubDir) {
 		log.Tracef("in hub dir")
 
-		inhub = true
 		//.../hub/parsers/s00-raw/crowdsec/skip-pretag.yaml
 		//.../hub/scenarios/crowdsec/ssh_bf.yaml
 		//.../hub/profiles/crowdsec/linux.yaml
 		if len(subs) < 4 {
-			return itemFileInfo{}, false, fmt.Errorf("path is too short: %s (%d)", path, len(subs))
+			return nil, fmt.Errorf("path is too short: %s (%d)", path, len(subs))
 		}
 
-		ret.fname = subs[len(subs)-1]
-		ret.fauthor = subs[len(subs)-2]
-		ret.stage = subs[len(subs)-3]
-		ret.ftype = subs[len(subs)-4]
+		ret = &itemFileInfo{
+			inhub:   true,
+			fname:   subs[len(subs)-1],
+			fauthor: subs[len(subs)-2],
+			stage:   subs[len(subs)-3],
+			ftype:   subs[len(subs)-4],
+		}
 	} else if strings.HasPrefix(path, installDir) { // we're in install /etc/crowdsec/<type>/...
 		log.Tracef("in install dir")
 		if len(subs) < 3 {
-			return itemFileInfo{}, false, fmt.Errorf("path is too short: %s (%d)", path, len(subs))
+			return nil, fmt.Errorf("path is too short: %s (%d)", path, len(subs))
 		}
 		///.../config/parser/stage/file.yaml
 		///.../config/postoverflow/stage/file.yaml
 		///.../config/scenarios/scenar.yaml
 		///.../config/collections/linux.yaml //file is empty
-		ret.fname = subs[len(subs)-1]
-		ret.stage = subs[len(subs)-2]
-		ret.ftype = subs[len(subs)-3]
-		ret.fauthor = ""
+		ret = &itemFileInfo{
+			inhub:   false,
+			fname:   subs[len(subs)-1],
+			stage:   subs[len(subs)-2],
+			ftype:   subs[len(subs)-3],
+			fauthor: "",
+		}
 	} else {
-		return itemFileInfo{}, false, fmt.Errorf("file '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubDir, installDir)
+		return nil, fmt.Errorf("file '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubDir, installDir)
 	}
 
 	log.Tracef("stage:%s ftype:%s", ret.stage, ret.ftype)
@@ -119,12 +119,12 @@ func (h *Hub) getItemInfo(path string) (itemFileInfo, bool, error) {
 		ret.stage = ""
 	} else if ret.ftype != PARSERS && ret.ftype != POSTOVERFLOWS {
 		// it's a PARSER / POSTOVERFLOW with a stage
-		return itemFileInfo{}, inhub, fmt.Errorf("unknown configuration type for file '%s'", path)
+		return nil, fmt.Errorf("unknown configuration type for file '%s'", path)
 	}
 
 	log.Tracef("CORRECTED [%s] by [%s] in stage [%s] of type [%s]", ret.fname, ret.fauthor, ret.stage, ret.ftype)
 
-	return ret, inhub, nil
+	return ret, nil
 }
 
 // sortedVersions returns the input data, sorted in reverse order (new, old) by semver
@@ -150,8 +150,22 @@ func sortedVersions(raw []string) ([]string, error) {
 	return ret, nil
 }
 
+func newLocalItem(h *Hub, path string, info *itemFileInfo) *Item {
+	_, fileName := filepath.Split(path)
+
+	return &Item{
+		hub:       h,
+		Name:      info.fname,
+		Stage:     info.stage,
+		Installed: true,
+		Type:      info.ftype,
+		LocalPath: path,
+		UpToDate:  true,
+		FileName:  fileName,
+	}
+}
+
 func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
-	local := false
 	hubpath := ""
 
 	if err != nil {
@@ -160,6 +174,7 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 		return nil
 	}
 
+	// only happens if the current working directory was removed (!)
 	path, err = filepath.Abs(path)
 	if err != nil {
 		return err
@@ -170,77 +185,53 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 		return nil
 	}
 
+	// we only care about .yaml, .yml
 	if !isYAMLFileName(f.Name()) {
 		return nil
 	}
 
-	info, inhub, err := h.getItemInfo(path)
+	info, err := h.getItemFileInfo(path)
 	if err != nil {
 		return err
 	}
 
-	/*
-		we can encounter 'collections' in the form of a symlink:
-		/etc/crowdsec/.../collections/linux.yaml -> ~/.hub/hub/collections/.../linux.yaml
-		when the collection is installed, both files are created
-	*/
 	// non symlinks are local user files or hub files
 	if f.Type()&os.ModeSymlink == 0 {
-		local = true
+		log.Tracef("%s is not a symlink", path)
 
-		log.Tracef("%s isn't a symlink", path)
+		if !info.inhub {
+			log.Tracef("%s is a local file, skip", path)
+			h.Items[info.ftype][info.fname] = newLocalItem(h, path, info)
+
+			return nil
+		}
 	} else {
-		hubpath, err = followSymlink(path)
+		hubpath, err = linkTarget(path)
 		if err != nil {
 			return err
 		}
-		log.Tracef("%s points to %s", path, hubpath)
 
 		if hubpath == "" {
-			// ignore this file
+			// target does not exist, the user might have removed the file
+			// or switched to a hub branch without it
 			return nil
 		}
-	}
-
-	// if it's not a symlink and not in hub, it's a local file, don't bother
-	if local && !inhub {
-		log.Tracef("%s is a local file, skip", path)
-		h.skippedLocal++
-
-		_, fileName := filepath.Split(path)
-
-		h.Items[info.ftype][info.fname] = &Item{
-			hub:       h,
-			Name:      info.fname,
-			Stage:     info.stage,
-			Installed: true,
-			Type:      info.ftype,
-			LocalPath: path,
-			UpToDate:  true,
-			FileName:  fileName,
-		}
-
-		return nil
 	}
 
 	// try to find which configuration item it is
 	log.Tracef("check [%s] of %s", info.fname, info.ftype)
 
 	for name, item := range h.Items[info.ftype] {
-		log.Tracef("check [%s] vs [%s]: %s", info.fname, item.RemotePath, info.ftype+"/"+info.stage+"/"+info.fname+".yaml")
-
 		if info.fname != item.FileName {
-			log.Tracef("%s != %s (filename)", info.fname, item.FileName)
 			continue
 		}
 
-		// wrong stage
 		if item.Stage != info.stage {
 			continue
 		}
 
 		// if we are walking hub dir, just mark present files as downloaded
-		if inhub {
+		if info.inhub {
 			// wrong author
 			if info.fauthor != item.Author {
 				continue
@@ -261,13 +252,9 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 			continue
 		}
 
-		tainted, err := item.setVersionState(path, inhub)
+		err := item.setVersionState(path, info.inhub)
 		if err != nil {
 			return err
-		}
-
-		if tainted {
-			h.skippedTainted++
 		}
 
 		h.Items[info.ftype][name] = item
@@ -335,9 +322,7 @@ func (h *Hub) checkSubItems(v *Item) error {
 }
 
 // syncDir scans a directory for items, and updates the Hub state accordingly
-func (h *Hub) syncDir(dir string) ([]string, error) {
-	warnings := []string{}
-
+func (h *Hub) syncDir(dir string) error {
 	// For each, scan PARSERS, POSTOVERFLOWS, SCENARIOS and COLLECTIONS last
 	for _, scan := range ItemTypes {
 		// cpath: top-level item directory, either downloaded or installed items.
@@ -355,9 +340,25 @@ func (h *Hub) syncDir(dir string) ([]string, error) {
 		}
 
 		if err = filepath.WalkDir(cpath, h.itemVisit); err != nil {
-			return warnings, err
+			return err
 		}
 	}
+
+	return nil
+}
+
+// localSync updates the hub state with downloaded, installed and local items
+func (h *Hub) localSync() error {
+	err := h.syncDir(h.local.InstallDir)
+	if err != nil {
+		return fmt.Errorf("failed to scan %s: %w", h.local.InstallDir, err)
+	}
+
+	if err = h.syncDir(h.local.HubDir); err != nil {
+		return fmt.Errorf("failed to scan %s: %w", h.local.HubDir, err)
+	}
+
+	warnings := make([]string, 0)
 
 	for _, item := range h.Items[COLLECTIONS] {
 		if !item.Installed {
@@ -381,37 +382,17 @@ func (h *Hub) syncDir(dir string) ([]string, error) {
 		log.Debugf("installed (%s) - status: %d | installed: %s | latest: %s | full: %+v", item.Name, vs, item.LocalVersion, item.Version, item.Versions)
 	}
 
-	return warnings, nil
-}
-
-// localSync updates the hub state with downloaded, installed and local items
-func (h *Hub) localSync() error {
-	h.skippedLocal = 0
-	h.skippedTainted = 0
-	h.Warnings = []string{}
-
-	warnings, err := h.syncDir(h.local.InstallDir)
-	if err != nil {
-		return fmt.Errorf("failed to scan %s: %w", h.local.InstallDir, err)
-	}
-
-	h.Warnings = append(h.Warnings, warnings...)
-
-	if warnings, err = h.syncDir(h.local.HubDir); err != nil {
-		return fmt.Errorf("failed to scan %s: %w", h.local.HubDir, err)
-	}
-
-	h.Warnings = append(h.Warnings, warnings...)
+	h.Warnings = warnings
 
 	return nil
 }
 
-func (i *Item) setVersionState(path string, inhub bool) (bool, error) {
+func (i *Item) setVersionState(path string, inhub bool) error {
 	var err error
 
 	i.LocalHash, err = getSHA256(path)
 	if err != nil {
-		return false, fmt.Errorf("failed to get sha256 of %s: %w", path, err)
+		return fmt.Errorf("failed to get sha256 of %s: %w", path, err)
 	}
 
 	// let's reverse sort the versions to deal with hash collisions (#154)
@@ -422,7 +403,7 @@ func (i *Item) setVersionState(path string, inhub bool) (bool, error) {
 
 	versions, err = sortedVersions(versions)
 	if err != nil {
-		return false, fmt.Errorf("while syncing %s %s: %w", i.Type, i.FileName, err)
+		return fmt.Errorf("while syncing %s %s: %w", i.Type, i.FileName, err)
 	}
 
 	i.LocalVersion = "?"
@@ -446,7 +427,7 @@ func (i *Item) setVersionState(path string, inhub bool) (bool, error) {
 		i.UpToDate = false
 		i.Tainted = true
 
-		return true, nil
+		return nil
 	}
 
 	// we got an exact match, update struct
@@ -466,5 +447,5 @@ func (i *Item) setVersionState(path string, inhub bool) (bool, error) {
 		i.UpToDate = true
 	}
 
-	return false, nil
+	return nil
 }
