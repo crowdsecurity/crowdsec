@@ -201,6 +201,18 @@ func (i *Item) logMissingSubItems() {
 		}
 	}
 
+	for _, subName := range i.WaapConfigs {
+		if i.hub.GetItem(WAAP_CONFIGS, subName) == nil {
+			log.Errorf("can't find %s in %s, required by %s", subName, WAAP_CONFIGS, i.Name)
+		}
+	}
+
+	for _, subName := range i.WaapRules {
+		if i.hub.GetItem(WAAP_RULES, subName) == nil {
+			log.Errorf("can't find %s in %s, required by %s", subName, WAAP_RULES, i.Name)
+		}
+	}
+
 	for _, subName := range i.Collections {
 		if i.hub.GetItem(COLLECTIONS, subName) == nil {
 			log.Errorf("can't find %s in %s, required by %s", subName, COLLECTIONS, i.Name)
