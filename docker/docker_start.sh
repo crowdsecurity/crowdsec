@@ -353,7 +353,7 @@ for BOUNCER in $(compgen -A variable | grep -i BOUNCER_KEY); do
     fi
 done
 
-if [ "$ENABLE_CONSOLE_MANAGEMENT" ] != "" ]; then
+if [ "$ENABLE_CONSOLE_MANAGEMENT" != "" ]; then
     # shellcheck disable=SC2086
     cscli console enable console_management
 fi
