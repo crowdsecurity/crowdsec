@@ -255,13 +255,10 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewHubTestCmd())
 	rootCmd.AddCommand(NewNotificationsCmd())
 	rootCmd.AddCommand(NewSupportCmd())
+	rootCmd.AddCommand(NewPapiCmd())
 
 	if fflag.CscliSetup.IsEnabled() {
 		rootCmd.AddCommand(NewSetupCmd())
-	}
-
-	if fflag.PapiClient.IsEnabled() {
-		rootCmd.AddCommand(NewPapiCmd())
 	}
 
 	if err := rootCmd.Execute(); err != nil {

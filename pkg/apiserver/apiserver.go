@@ -29,7 +29,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
-	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -220,17 +219,15 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		log.Infof("CAPI manager configured successfully")
 		isMachineEnrolled = isEnrolled(apiClient.apiClient)
 		controller.AlertsAddChan = apiClient.AlertsAddChan
-		if fflag.PapiClient.IsEnabled() {
-			if isMachineEnrolled {
-				log.Infof("Machine is enrolled in the console, Loading PAPI Client")
-				papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
-				if err != nil {
-					return &APIServer{}, err
-				}
-				controller.DecisionDeleteChan = papiClient.Channels.DeleteDecisionChannel
-			} else {
-				log.Errorf("Machine is not enrolled in the console, can't synchronize with the console")
+		if isMachineEnrolled {
+			log.Infof("Machine is enrolled in the console, Loading PAPI Client")
+			papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
+			if err != nil {
+				return &APIServer{}, err
 			}
+			controller.DecisionDeleteChan = papiClient.Channels.DeleteDecisionChannel
+		} else {
+			log.Errorf("Machine is not enrolled in the console, can't synchronize with the console")
 		}
 	} else {
 		apiClient = nil
@@ -357,31 +354,29 @@ func (s *APIServer) Run(apiReady chan bool) error {
 
 		//csConfig.API.Server.ConsoleConfig.ShareCustomScenarios
 		if s.isEnrolled {
-			if fflag.PapiClient.IsEnabled() {
-				if s.consoleConfig.ConsoleManagement != nil && *s.consoleConfig.ConsoleManagement {
-					if s.papi.URL != "" {
-						log.Infof("Starting PAPI decision receiver")
-						s.papi.pullTomb.Go(func() error {
-							if err := s.papi.Pull(); err != nil {
-								log.Errorf("papi pull: %s", err)
-								return err
-							}
-							return nil
-						})
+			if s.consoleConfig.ConsoleManagement != nil && *s.consoleConfig.ConsoleManagement {
+				if s.papi.URL != "" {
+					log.Infof("Starting PAPI decision receiver")
+					s.papi.pullTomb.Go(func() error {
+						if err := s.papi.Pull(); err != nil {
+							log.Errorf("papi pull: %s", err)
+							return err
+						}
+						return nil
+					})
 
-						s.papi.syncTomb.Go(func() error {
-							if err := s.papi.SyncDecisions(); err != nil {
-								log.Errorf("capi decisions sync: %s", err)
-								return err
-							}
-							return nil
-						})
-					} else {
-						log.Warnf("papi_url is not set in online_api_credentials.yaml, can't synchronize with the console. Run cscli console enable console_management to add it.")
-					}
+					s.papi.syncTomb.Go(func() error {
+						if err := s.papi.SyncDecisions(); err != nil {
+							log.Errorf("capi decisions sync: %s", err)
+							return err
+						}
+						return nil
+					})
 				} else {
-					log.Warningf("Machine is not allowed to synchronize decisions, you can enable it with `cscli console enable console_management`")
+					log.Warnf("papi_url is not set in online_api_credentials.yaml, can't synchronize with the console. Run cscli console enable console_management to add it.")
 				}
+			} else {
+				log.Warningf("Machine is not allowed to synchronize decisions, you can enable it with `cscli console enable console_management`")
 			}
 		}
 
