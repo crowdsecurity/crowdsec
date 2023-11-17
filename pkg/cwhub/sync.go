@@ -226,8 +226,6 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 	// try to find which configuration item it is
 	log.Tracef("check [%s] of %s", info.fname, info.ftype)
 
-	match := false
-
 	for name, item := range h.Items[info.ftype] {
 		log.Tracef("check [%s] vs [%s]: %s", info.fname, item.RemotePath, info.ftype+"/"+info.stage+"/"+info.fname+".yaml")
 
@@ -263,66 +261,13 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 			continue
 		}
 
-		sha, err := getSHA256(path)
+		tainted, err := item.setVersionState(path, inhub)
 		if err != nil {
-			log.Fatalf("Failed to get sha of %s: %v", path, err)
+			return err
 		}
 
-		// let's reverse sort the versions to deal with hash collisions (#154)
-		versions := make([]string, 0, len(item.Versions))
-		for k := range item.Versions {
-			versions = append(versions, k)
-		}
-
-		versions, err = sortedVersions(versions)
-		if err != nil {
-			return fmt.Errorf("while syncing %s %s: %w", info.ftype, info.fname, err)
-		}
-
-		for _, version := range versions {
-			if item.Versions[version].Digest != sha {
-				continue
-			}
-
-			// we got an exact match, update struct
-
-			item.Downloaded = true
-			item.LocalHash = sha
-
-			if !inhub {
-				log.Tracef("found exact match for %s, version is %s, latest is %s", item.Name, version, item.Version)
-				item.LocalPath = path
-				item.LocalVersion = version
-				item.Tainted = false
-				// if we're walking the hub, present file doesn't means installed file
-				item.Installed = true
-			}
-
-			if version == item.Version {
-				log.Tracef("%s is up-to-date", item.Name)
-				item.UpToDate = true
-			}
-
-			match = true
-
-			break
-		}
-
-		if !match {
-			log.Tracef("got tainted match for %s: %s", item.Name, path)
-
+		if tainted {
 			h.skippedTainted++
-
-			// the file and the stage is right, but the hash is wrong, it has been tainted by user
-			if !inhub {
-				item.LocalPath = path
-				item.Installed = true
-			}
-
-			item.UpToDate = false
-			item.LocalVersion = "?"
-			item.Tainted = true
-			item.LocalHash = sha
 		}
 
 		h.Items[info.ftype][name] = item
@@ -459,4 +404,67 @@ func (h *Hub) localSync() error {
 	h.Warnings = append(h.Warnings, warnings...)
 
 	return nil
+}
+
+func (i *Item) setVersionState(path string, inhub bool) (bool, error) {
+	var err error
+
+	i.LocalHash, err = getSHA256(path)
+	if err != nil {
+		return false, fmt.Errorf("failed to get sha256 of %s: %w", path, err)
+	}
+
+	// let's reverse sort the versions to deal with hash collisions (#154)
+	versions := make([]string, 0, len(i.Versions))
+	for k := range i.Versions {
+		versions = append(versions, k)
+	}
+
+	versions, err = sortedVersions(versions)
+	if err != nil {
+		return false, fmt.Errorf("while syncing %s %s: %w", i.Type, i.FileName, err)
+	}
+
+	i.LocalVersion = "?"
+
+	for _, version := range versions {
+		if i.Versions[version].Digest == i.LocalHash {
+			i.LocalVersion = version
+			break
+		}
+	}
+
+	if i.LocalVersion == "?" {
+		log.Tracef("got tainted match for %s: %s", i.Name, path)
+
+		// the file and the stage is right, but the hash is wrong, it has been tainted by user
+		if !inhub {
+			i.LocalPath = path
+			i.Installed = true
+		}
+
+		i.UpToDate = false
+		i.Tainted = true
+
+		return true, nil
+	}
+
+	// we got an exact match, update struct
+
+	i.Downloaded = true
+
+	if !inhub {
+		log.Tracef("found exact match for %s, version is %s, latest is %s", i.Name, i.LocalVersion, i.Version)
+		i.LocalPath = path
+		i.Tainted = false
+		// if we're walking the hub, present file doesn't means installed file
+		i.Installed = true
+	}
+
+	if i.LocalVersion == i.Version {
+		log.Tracef("%s is up-to-date", i.Name)
+		i.UpToDate = true
+	}
+
+	return false, nil
 }
