@@ -53,14 +53,21 @@ func LoadCollection(pattern string) ([]WaapCollection, error) {
 
 	for _, waapRule := range waapRules {
 
-		matched, err := exprhelpers.Match(pattern, waapRule.Name)
+		tmpMatch, err := exprhelpers.Match(pattern, waapRule.Name)
 
 		if err != nil {
 			log.Errorf("unable to match %s with %s : %s", waapRule.Name, pattern, err)
 			continue
 		}
 
-		if !matched.(bool) {
+		matched, ok := tmpMatch.(bool)
+
+		if !ok {
+			log.Errorf("unable to match %s with %s : %s", waapRule.Name, pattern, err)
+			continue
+		}
+
+		if !matched {
 			continue
 		}
 
