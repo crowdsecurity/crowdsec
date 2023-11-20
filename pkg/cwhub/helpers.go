@@ -53,19 +53,45 @@ func (i *Item) Install(force bool, downloadOnly bool) error {
 }
 
 // allDependencies returns a list of all (direct or indirect) dependencies of the item
-func (i *Item) allDependencies() []*Item {
-	var deps []*Item
+func (i *Item) allDependencies() ([]*Item, error) {
+	var collectSubItems func(item *Item, visited map[*Item]bool, result *[]*Item) error
 
-	for _, dep := range i.SubItems() {
-		if dep == i {
-			log.Errorf("circular dependency detected: %s depends on %s", dep.Name, i.Name)
-			continue
+	collectSubItems = func(item *Item, visited map[*Item]bool, result *[]*Item) error {
+		if item == nil {
+			return nil
 		}
 
-		deps = append(deps, dep.allDependencies()...)
+		if visited[item] {
+			return nil
+		}
+
+		visited[item] = true
+
+		for _, subItem := range item.SubItems() {
+			if subItem == i {
+				return fmt.Errorf("circular dependency detected: %s depends on %s", item.Name, i.Name)
+			}
+
+			*result = append(*result, subItem)
+
+			err := collectSubItems(subItem, visited, result)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
 	}
 
-	return append(deps, i)
+	ret := []*Item{}
+	visited := map[*Item]bool{}
+
+	err := collectSubItems(i, visited, &ret)
+	if err != nil {
+		return nil, err
+	}
+
+	return ret, nil
 }
 
 // Remove disables the item, optionally removing the downloaded content
@@ -85,15 +111,18 @@ func (i *Item) Remove(purge bool, force bool) (bool, error) {
 
 	removed := false
 
-	allDeps := i.allDependencies()
+	allDeps, err := i.allDependencies()
+	if err != nil {
+		return false, err
+	}
 
 	for _, sub := range i.SubItems() {
 		if !sub.Installed {
 			continue
 		}
 
-		// if the other collection(s) are direct or indirect dependencies of the current one, it's good to go
-		// log parent collections
+		// if the sub depends on a collection that is not a direct or indirect dependency
+		// of the current item, it is not removed
 		for _, subParent := range sub.parentCollections() {
 			if subParent == i {
 				continue
@@ -113,8 +142,7 @@ func (i *Item) Remove(purge bool, force bool) (bool, error) {
 		removed = removed || subRemoved
 	}
 
-	err := i.disable(purge, force)
-	if err != nil {
+	if err = i.disable(purge, force); err != nil {
 		return false, fmt.Errorf("while removing %s: %w", i.Name, err)
 	}
 

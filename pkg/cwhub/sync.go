@@ -180,13 +180,8 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 		return err
 	}
 
-	// we only care about files
-	if f == nil || f.IsDir() {
-		return nil
-	}
-
-	// we only care about .yaml, .yml
-	if !isYAMLFileName(f.Name()) {
+	// we only care about YAML files
+	if f == nil || f.IsDir() || !isYAMLFileName(f.Name()) {
 		return nil
 	}
 
@@ -298,11 +293,13 @@ func (h *Hub) checkSubItems(v *Item) error {
 
 		if sub.Tainted {
 			v.Tainted = true
+			// XXX: improve msg
 			return fmt.Errorf("tainted %s %s, tainted", sub.Type, sub.Name)
 		}
 
 		if !sub.Installed && v.Installed {
 			v.Tainted = true
+			// XXX: improve msg
 			return fmt.Errorf("missing %s %s, tainted", sub.Type, sub.Name)
 		}
 
@@ -361,6 +358,10 @@ func (h *Hub) localSync() error {
 	warnings := make([]string, 0)
 
 	for _, item := range h.Items[COLLECTIONS] {
+		if _, err := item.allDependencies(); err != nil {
+			return err
+		}
+
 		if !item.Installed {
 			continue
 		}
@@ -418,7 +419,6 @@ func (i *Item) setVersionState(path string, inhub bool) error {
 	if i.LocalVersion == "?" {
 		log.Tracef("got tainted match for %s: %s", i.Name, path)
 
-		// the file and the stage is right, but the hash is wrong, it has been tainted by user
 		if !inhub {
 			i.LocalPath = path
 			i.Installed = true
