@@ -248,7 +248,7 @@ func (i *Item) downloadLatest(overwrite bool, updateOnly bool) error {
 	return nil
 }
 
-// fetch downloads the item from the hub, verifies the hash and returns the body
+// fetch downloads the item from the hub, verifies the hash and returns the content
 func (i *Item) fetch() ([]byte, error) {
 	url, err := i.hub.remote.urlTo(i.RemotePath)
 	if err != nil {
