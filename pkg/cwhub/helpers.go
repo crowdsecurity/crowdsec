@@ -123,7 +123,11 @@ func (i *Item) Remove(purge bool, force bool) (bool, error) {
 
 		// if the sub depends on a collection that is not a direct or indirect dependency
 		// of the current item, it is not removed
-		for _, subParent := range sub.parentCollections() {
+		for _, subParent := range sub.ParentCollections() {
+			if !purge && !subParent.State.Installed {
+				continue
+			}
+
 			if subParent == i {
 				continue
 			}

@@ -264,6 +264,19 @@ func NewItemsInstallCmd(typeName string) *cobra.Command {
 	return cmd
 }
 
+// return the names of the installed parents of an item, used to check if we can remove it
+func istalledParentNames(item *cwhub.Item) []string {
+	ret := make([]string, 0)
+
+	for _, parent := range item.ParentCollections() {
+		if parent.State.Installed {
+			ret = append(ret, parent.Name)
+		}
+	}
+
+	return ret
+}
+
 func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) error {
 	run := func(cmd *cobra.Command, args []string) error {
 		flags := cmd.Flags()
@@ -331,10 +344,11 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 				return fmt.Errorf("can't find '%s' in %s", itemName, it.name)
 			}
 
-			if !force && len(item.State.BelongsToCollections) > 0 {
-				log.Warningf("%s belongs to collections: %s", item.Name, item.State.BelongsToCollections)
-				log.Warningf("Run 'sudo cscli %s remove %s --force' if you want to force remove this %s", item.Type, item.Name, it.singular)
+			parents := istalledParentNames(item)
 
+			if !force && len(parents) > 0 {
+				log.Warningf("%s belongs to collections: %s", item.Name, parents)
+				log.Warningf("Run 'sudo cscli %s remove %s --force' if you want to force remove this %s", item.Type, item.Name, it.singular)
 				continue
 			}
 

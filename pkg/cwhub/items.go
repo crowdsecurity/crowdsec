@@ -211,8 +211,8 @@ func (i *Item) logMissingSubItems() {
 	}
 }
 
-// parentCollections returns the list of items (collections) that have this item as a direct dependency
-func (i *Item) parentCollections() []*Item {
+// ParentCollections returns the list of items (collections) that have this item as a direct dependency
+func (i *Item) ParentCollections() []*Item {
 	ret := make([]*Item, 0)
 
 	for _, parentName := range i.State.BelongsToCollections {
