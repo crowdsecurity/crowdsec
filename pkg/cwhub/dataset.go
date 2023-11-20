@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -67,7 +66,10 @@ func downloadDataSet(dataFolder string, force bool, reader io.Reader) error {
 		}
 
 		for _, dataS := range data.Data {
-			destPath := filepath.Join(dataFolder, dataS.DestPath)
+			destPath, err := safePath(dataFolder, dataS.DestPath)
+			if err != nil {
+				return err
+			}
 
 			if _, err := os.Stat(destPath); os.IsNotExist(err) || force {
 				log.Infof("downloading data '%s' in '%s'", dataS.SourceURL, destPath)

@@ -10,7 +10,7 @@ import (
 
 func testInstall(hub *Hub, t *testing.T, item *Item) {
 	// Install the parser
-	err := item.downloadLatest(false, false)
+	_, err := item.downloadLatest(false, false)
 	require.NoError(t, err, "failed to download %s", item.Name)
 
 	err = hub.localSync()
@@ -48,7 +48,7 @@ func testUpdate(hub *Hub, t *testing.T, item *Item) {
 	assert.False(t, hub.Items[item.Type][item.Name].UpToDate, "%s should not be up-to-date", item.Name)
 
 	// Update it + check status
-	err := item.downloadLatest(true, true)
+	_, err := item.downloadLatest(true, true)
 	require.NoError(t, err, "failed to update %s", item.Name)
 
 	// Local sync and check status

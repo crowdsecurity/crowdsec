@@ -137,7 +137,7 @@ func (h *Hub) updateIndex() error {
 	if err != nil {
 		return err
 	}
-	
+
 	oldContent, err := os.ReadFile(h.local.HubIndexFile)
 	if err != nil {
 		if !os.IsNotExist(err) {

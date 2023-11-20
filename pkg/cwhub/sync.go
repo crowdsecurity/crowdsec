@@ -237,7 +237,12 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 				continue
 			}
 
-			if path == h.local.HubDir+"/"+item.RemotePath {
+			src, err := item.downloadPath()
+			if err != nil {
+				return err
+			}
+
+			if path == src {
 				log.Tracef("marking %s as downloaded", item.Name)
 				item.Downloaded = true
 			}
