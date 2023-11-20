@@ -36,7 +36,10 @@ func TestItemStatus(t *testing.T) {
 	}
 
 	stats := hub.ItemStats()
-	require.Equal(t, []string{"Loaded: 2 parsers, 1 scenarios, 3 collections"}, stats)
+	require.Equal(t, []string{
+		"Loaded: 2 parsers, 1 scenarios, 3 collections",
+		"Unmanaged items: 3 local, 0 tainted",
+	}, stats)
 }
 
 func TestGetters(t *testing.T) {

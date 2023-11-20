@@ -156,7 +156,7 @@ func NewCapiStatusCmd() *cobra.Command {
 				return err
 			}
 
-			scenarios, err := hub.GetInstalledItemsAsString(cwhub.SCENARIOS)
+			scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
 			if err != nil {
 				return fmt.Errorf("failed to get scenarios: %w", err)
 			}

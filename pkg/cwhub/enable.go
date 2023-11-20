@@ -10,14 +10,15 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// installLink returns the location of the symlink to the actual config file (eg. /etc/crowdsec/collections/xyz.yaml)
-func (i *Item) installLink() string {
+// installLink returns the location of the symlink to the downloaded config file
+// (eg. /etc/crowdsec/collections/xyz.yaml)
+func (i *Item) installLinkPath() string {
 	return filepath.Join(i.hub.local.InstallDir, i.Type, i.Stage, i.FileName)
 }
 
 // makeLink creates a symlink between the actual config file at hub.HubDir and hub.ConfigDir
 func (i *Item) createInstallLink() error {
-	dest, err := filepath.Abs(i.installLink())
+	dest, err := filepath.Abs(i.installLinkPath())
 	if err != nil {
 		return err
 	}
@@ -102,8 +103,9 @@ func (i *Item) purge() error {
 	return nil
 }
 
+// removeInstallLink removes the symlink to the downloaded content
 func (i *Item) removeInstallLink() error {
-	syml, err := filepath.Abs(i.installLink())
+	syml, err := filepath.Abs(i.installLinkPath())
 	if err != nil {
 		return err
 	}
@@ -143,13 +145,13 @@ func (i *Item) removeInstallLink() error {
 	return nil
 }
 
-// disable removes the symlink to the downloaded content, also removes the content if purge is true
+// disable removes the install link, and optionally the downloaded content
 func (i *Item) disable(purge bool, force bool) error {
 	// XXX: should return the number of disabled/purged items to inform the upper layer whether to reload or not
 	err := i.removeInstallLink()
 	if os.IsNotExist(err) {
 		if !purge && !force {
-			return fmt.Errorf("link %s does not exist (override with --force or --purge)", i.installLink())
+			return fmt.Errorf("link %s does not exist (override with --force or --purge)", i.installLinkPath())
 		}
 	} else if err != nil {
 		return err

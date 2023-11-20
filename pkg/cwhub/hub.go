@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -12,12 +13,10 @@ import (
 )
 
 type Hub struct {
-	Items          HubItems
-	local          *csconfig.LocalHubCfg
-	remote         *RemoteHubCfg
-	skippedLocal   int
-	skippedTainted int
-	Warnings       []string
+	Items    HubItems
+	local    *csconfig.LocalHubCfg
+	remote   *RemoteHubCfg
+	Warnings []string
 }
 
 func (h *Hub) GetDataDir() string {
@@ -82,8 +81,7 @@ func (h *Hub) parseIndex() error {
 			}
 
 			item.Type = itemType
-			x := strings.Split(item.RemotePath, "/")
-			item.FileName = x[len(x)-1]
+			item.FileName = path.Base(item.RemotePath)
 
 			item.logMissingSubItems()
 		}
@@ -95,6 +93,8 @@ func (h *Hub) parseIndex() error {
 // ItemStats returns total counts of the hub items
 func (h *Hub) ItemStats() []string {
 	loaded := ""
+	local := 0
+	tainted := 0
 
 	for _, itemType := range ItemTypes {
 		if len(h.Items[itemType]) == 0 {
@@ -102,11 +102,20 @@ func (h *Hub) ItemStats() []string {
 		}
 
 		loaded += fmt.Sprintf("%d %s, ", len(h.Items[itemType]), itemType)
+
+		for _, item := range h.Items[itemType] {
+			if item.IsLocal() {
+				local++
+			}
+
+			if item.Tainted {
+				tainted++
+			}
+		}
 	}
 
 	loaded = strings.Trim(loaded, ", ")
 	if loaded == "" {
-		// empty hub
 		loaded = "0 items"
 	}
 
@@ -114,8 +123,8 @@ func (h *Hub) ItemStats() []string {
 		fmt.Sprintf("Loaded: %s", loaded),
 	}
 
-	if h.skippedLocal > 0 || h.skippedTainted > 0 {
-		ret = append(ret, fmt.Sprintf("Unmanaged items: %d local, %d tainted", h.skippedLocal, h.skippedTainted))
+	if local > 0 || tainted > 0 {
+		ret = append(ret, fmt.Sprintf("Unmanaged items: %d local, %d tainted", local, tainted))
 	}
 
 	return ret

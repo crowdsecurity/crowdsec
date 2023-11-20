@@ -17,6 +17,7 @@ type RemoteHubCfg struct {
 	IndexPath   string
 }
 
+// urlTo builds the URL to download a file from the remote hub
 func (r *RemoteHubCfg) urlTo(remotePath string) (string, error) {
 	if r == nil {
 		return "", ErrNilRemoteHub

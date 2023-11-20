@@ -18,6 +18,7 @@ type DataSet struct {
 	Data []types.DataSource `yaml:"data,omitempty"`
 }
 
+// downloadFile downloads a file and writes it to disk, with no hash verification
 func downloadFile(url string, destPath string) error {
 	log.Debugf("downloading %s in %s", url, destPath)
 
@@ -37,6 +38,7 @@ func downloadFile(url string, destPath string) error {
 	}
 	defer file.Close()
 
+	// avoid reading the whole file in memory
 	_, err = io.Copy(file, resp.Body)
 	if err != nil {
 		return err
@@ -49,8 +51,8 @@ func downloadFile(url string, destPath string) error {
 	return nil
 }
 
-// downloadData downloads the data files for an item
-func downloadData(dataFolder string, force bool, reader io.Reader) error {
+// downloadDataSet downloads all the data files for an item
+func downloadDataSet(dataFolder string, force bool, reader io.Reader) error {
 	dec := yaml.NewDecoder(reader)
 
 	for {
