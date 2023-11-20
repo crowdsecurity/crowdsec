@@ -81,8 +81,8 @@ func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 		files []string
 	)
 	for _, hubScenarioItem := range hub.GetItemMap(cwhub.SCENARIOS) {
-		if hubScenarioItem.Installed {
-			files = append(files, hubScenarioItem.LocalPath)
+		if hubScenarioItem.State.Installed {
+			files = append(files, hubScenarioItem.State.LocalPath)
 		}
 	}
 	buckets = leakybucket.NewBuckets()

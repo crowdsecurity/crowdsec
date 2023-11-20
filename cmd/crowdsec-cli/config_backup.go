@@ -40,13 +40,13 @@ func backupHub(dirPath string) error {
 			clog = clog.WithFields(log.Fields{
 				"file": v.Name,
 			})
-			if !v.Installed { //only backup installed ones
+			if !v.State.Installed { //only backup installed ones
 				clog.Debugf("[%s] : not installed", k)
 				continue
 			}
 
 			//for the local/tainted ones, we back up the full file
-			if v.Tainted || v.IsLocal() || !v.UpToDate {
+			if v.State.Tainted || v.IsLocal() || !v.State.UpToDate {
 				//we need to backup stages for parsers
 				if itemType == cwhub.PARSERS || itemType == cwhub.POSTOVERFLOWS {
 					fstagedir := fmt.Sprintf("%s%s", itemDirectory, v.Stage)
@@ -54,16 +54,16 @@ func backupHub(dirPath string) error {
 						return fmt.Errorf("error while creating stage dir %s : %s", fstagedir, err)
 					}
 				}
-				clog.Debugf("[%s]: backing up file (tainted:%t local:%t up-to-date:%t)", k, v.Tainted, v.IsLocal(), v.UpToDate)
+				clog.Debugf("[%s]: backing up file (tainted:%t local:%t up-to-date:%t)", k, v.State.Tainted, v.IsLocal(), v.State.UpToDate)
 				tfile := fmt.Sprintf("%s%s/%s", itemDirectory, v.Stage, v.FileName)
-				if err = CopyFile(v.LocalPath, tfile); err != nil {
-					return fmt.Errorf("failed copy %s %s to %s : %s", itemType, v.LocalPath, tfile, err)
+				if err = CopyFile(v.State.LocalPath, tfile); err != nil {
+					return fmt.Errorf("failed copy %s %s to %s : %s", itemType, v.State.LocalPath, tfile, err)
 				}
-				clog.Infof("local/tainted saved %s to %s", v.LocalPath, tfile)
+				clog.Infof("local/tainted saved %s to %s", v.State.LocalPath, tfile)
 				continue
 			}
-			clog.Debugf("[%s] : from hub, just backup name (up-to-date:%t)", k, v.UpToDate)
-			clog.Infof("saving, version:%s, up-to-date:%t", v.Version, v.UpToDate)
+			clog.Debugf("[%s] : from hub, just backup name (up-to-date:%t)", k, v.State.UpToDate)
+			clog.Infof("saving, version:%s, up-to-date:%t", v.Version, v.State.UpToDate)
 			upstreamParsers = append(upstreamParsers, v.Name)
 		}
 		//write the upstream items

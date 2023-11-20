@@ -12,7 +12,6 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	log "github.com/sirupsen/logrus"
-	"slices"
 )
 
 func isYAMLFileName(path string) bool {
@@ -154,14 +153,16 @@ func newLocalItem(h *Hub, path string, info *itemFileInfo) *Item {
 	_, fileName := filepath.Split(path)
 
 	return &Item{
-		hub:       h,
-		Name:      info.fname,
-		Stage:     info.stage,
-		Installed: true,
-		Type:      info.ftype,
-		LocalPath: path,
-		UpToDate:  true,
-		FileName:  fileName,
+		hub:      h,
+		Name:     info.fname,
+		Stage:    info.stage,
+		Type:     info.ftype,
+		FileName: fileName,
+		State: ItemState{
+			LocalPath: path,
+			Installed: true,
+			UpToDate:  true,
+		},
 	}
 }
 
@@ -244,7 +245,7 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 
 			if path == src {
 				log.Tracef("marking %s as downloaded", item.Name)
-				item.Downloaded = true
+				item.State.Downloaded = true
 			}
 		} else if !hasPathSuffix(hubpath, item.RemotePath) {
 			// wrong file
@@ -279,45 +280,41 @@ func (h *Hub) checkSubItems(v *Item) error {
 	}
 
 	// ensure all the sub-items are installed, or tag the parent as tainted
-	log.Tracef("checking submembers of %s installed:%t", v.Name, v.Installed)
+	log.Tracef("checking submembers of %s installed:%t", v.Name, v.State.Installed)
 
 	for _, sub := range v.SubItems() {
-		log.Tracef("check %s installed:%t", sub.Name, sub.Installed)
+		log.Tracef("check %s installed:%t", sub.Name, sub.State.Installed)
 
-		if !v.Installed {
+		if !v.State.Installed {
 			continue
 		}
 
 		if err := h.checkSubItems(sub); err != nil {
-			if sub.Tainted {
-				v.Tainted = true
+			if sub.State.Tainted {
+				v.State.Tainted = true
 			}
 
 			return fmt.Errorf("sub collection %s is broken: %w", sub.Name, err)
 		}
 
-		if sub.Tainted {
-			v.Tainted = true
+		if sub.State.Tainted {
+			v.State.Tainted = true
 			// XXX: improve msg
 			return fmt.Errorf("tainted %s %s, tainted", sub.Type, sub.Name)
 		}
 
-		if !sub.Installed && v.Installed {
-			v.Tainted = true
+		if !sub.State.Installed && v.State.Installed {
+			v.State.Tainted = true
 			// XXX: improve msg
 			return fmt.Errorf("missing %s %s, tainted", sub.Type, sub.Name)
 		}
 
-		if !sub.UpToDate {
-			v.UpToDate = false
+		if !sub.State.UpToDate {
+			v.State.UpToDate = false
 			return fmt.Errorf("outdated %s %s", sub.Type, sub.Name)
 		}
 
-		if !slices.Contains(sub.BelongsToCollections, v.Name) {
-			sub.BelongsToCollections = append(sub.BelongsToCollections, v.Name)
-		}
-
-		log.Tracef("checking for %s - tainted:%t uptodate:%t", sub.Name, v.Tainted, v.UpToDate)
+		log.Tracef("checking for %s - tainted:%t uptodate:%t", sub.Name, v.State.Tainted, v.State.UpToDate)
 	}
 
 	return nil
@@ -363,11 +360,18 @@ func (h *Hub) localSync() error {
 	warnings := make([]string, 0)
 
 	for _, item := range h.Items[COLLECTIONS] {
-		if _, err := item.allDependencies(); err != nil {
+		// check for cyclic dependencies
+		subs, err := item.allDependencies()
+		if err != nil {
 			return err
 		}
 
-		if !item.Installed {
+		// populate the sub- and sub-sub-items with the collection they belong to
+		for _, sub := range subs {
+			sub.State.BelongsToCollections = append(sub.State.BelongsToCollections, item.Name)
+		}
+
+		if !item.State.Installed {
 			continue
 		}
 
@@ -378,14 +382,14 @@ func (h *Hub) localSync() error {
 				warnings = append(warnings, fmt.Sprintf("dependency of %s: %s", item.Name, err))
 			}
 		case VersionUpdateAvailable: // not up-to-date
-			warnings = append(warnings, fmt.Sprintf("update for collection %s available (currently:%s, latest:%s)", item.Name, item.LocalVersion, item.Version))
+			warnings = append(warnings, fmt.Sprintf("update for collection %s available (currently:%s, latest:%s)", item.Name, item.State.LocalVersion, item.Version))
 		case VersionFuture:
-			warnings = append(warnings, fmt.Sprintf("collection %s is in the future (currently:%s, latest:%s)", item.Name, item.LocalVersion, item.Version))
+			warnings = append(warnings, fmt.Sprintf("collection %s is in the future (currently:%s, latest:%s)", item.Name, item.State.LocalVersion, item.Version))
 		case VersionUnknown:
 			warnings = append(warnings, fmt.Sprintf("collection %s is tainted (latest:%s)", item.Name, item.Version))
 		}
 
-		log.Debugf("installed (%s) - status: %d | installed: %s | latest: %s | full: %+v", item.Name, vs, item.LocalVersion, item.Version, item.Versions)
+		log.Debugf("installed (%s) - status: %d | installed: %s | latest: %s | full: %+v", item.Name, vs, item.State.LocalVersion, item.Version, item.Versions)
 	}
 
 	h.Warnings = warnings
@@ -396,7 +400,7 @@ func (h *Hub) localSync() error {
 func (i *Item) setVersionState(path string, inhub bool) error {
 	var err error
 
-	i.LocalHash, err = getSHA256(path)
+	i.State.LocalHash, err = getSHA256(path)
 	if err != nil {
 		return fmt.Errorf("failed to get sha256 of %s: %w", path, err)
 	}
@@ -412,44 +416,44 @@ func (i *Item) setVersionState(path string, inhub bool) error {
 		return fmt.Errorf("while syncing %s %s: %w", i.Type, i.FileName, err)
 	}
 
-	i.LocalVersion = "?"
+	i.State.LocalVersion = "?"
 
 	for _, version := range versions {
-		if i.Versions[version].Digest == i.LocalHash {
-			i.LocalVersion = version
+		if i.Versions[version].Digest == i.State.LocalHash {
+			i.State.LocalVersion = version
 			break
 		}
 	}
 
-	if i.LocalVersion == "?" {
+	if i.State.LocalVersion == "?" {
 		log.Tracef("got tainted match for %s: %s", i.Name, path)
 
 		if !inhub {
-			i.LocalPath = path
-			i.Installed = true
+			i.State.LocalPath = path
+			i.State.Installed = true
 		}
 
-		i.UpToDate = false
-		i.Tainted = true
+		i.State.UpToDate = false
+		i.State.Tainted = true
 
 		return nil
 	}
 
 	// we got an exact match, update struct
 
-	i.Downloaded = true
+	i.State.Downloaded = true
 
 	if !inhub {
-		log.Tracef("found exact match for %s, version is %s, latest is %s", i.Name, i.LocalVersion, i.Version)
-		i.LocalPath = path
-		i.Tainted = false
+		log.Tracef("found exact match for %s, version is %s, latest is %s", i.Name, i.State.LocalVersion, i.Version)
+		i.State.LocalPath = path
+		i.State.Tainted = false
 		// if we're walking the hub, present file doesn't means installed file
-		i.Installed = true
+		i.State.Installed = true
 	}
 
-	if i.LocalVersion == i.Version {
+	if i.State.LocalVersion == i.Version {
 		log.Tracef("%s is up-to-date", i.Name)
-		i.UpToDate = true
+		i.State.UpToDate = true
 	}
 
 	return nil

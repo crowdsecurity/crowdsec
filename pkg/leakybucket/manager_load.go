@@ -243,8 +243,8 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []str
 					bucketFactory.Simulated = cscfg.SimulationConfig.IsSimulated(hubItem.Name)
 				}
 				if hubItem != nil {
-					bucketFactory.ScenarioVersion = hubItem.LocalVersion
-					bucketFactory.hash = hubItem.LocalHash
+					bucketFactory.ScenarioVersion = hubItem.State.LocalVersion
+					bucketFactory.hash = hubItem.State.LocalHash
 				} else {
 					log.Errorf("scenario %s (%s) couldn't be find in hub (ignore if in unit tests)", bucketFactory.Name, bucketFactory.Filename)
 				}

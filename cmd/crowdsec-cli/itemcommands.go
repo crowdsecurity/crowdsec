@@ -331,8 +331,8 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 				return fmt.Errorf("can't find '%s' in %s", itemName, it.name)
 			}
 
-			if !force && len(item.BelongsToCollections) > 0 {
-				log.Warningf("%s belongs to collections: %s", item.Name, item.BelongsToCollections)
+			if !force && len(item.State.BelongsToCollections) > 0 {
+				log.Warningf("%s belongs to collections: %s", item.Name, item.State.BelongsToCollections)
 				log.Warningf("Run 'sudo cscli %s remove %s --force' if you want to force remove this %s", item.Type, item.Name, it.singular)
 
 				continue

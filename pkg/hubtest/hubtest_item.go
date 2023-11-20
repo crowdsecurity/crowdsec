@@ -409,7 +409,7 @@ func (t *HubTestItem) InstallHub() error {
 	// install data for parsers if needed
 	ret := hub.GetItemMap(cwhub.PARSERS)
 	for parserName, item := range ret {
-		if item.Installed {
+		if item.State.Installed {
 			if err := item.DownloadDataIfNeeded(true); err != nil {
 				return fmt.Errorf("unable to download data for parser '%s': %+v", parserName, err)
 			}
@@ -421,7 +421,7 @@ func (t *HubTestItem) InstallHub() error {
 	// install data for scenarios if needed
 	ret = hub.GetItemMap(cwhub.SCENARIOS)
 	for scenarioName, item := range ret {
-		if item.Installed {
+		if item.State.Installed {
 			if err := item.DownloadDataIfNeeded(true); err != nil {
 				return fmt.Errorf("unable to download data for parser '%s': %+v", scenarioName, err)
 			}
@@ -433,7 +433,7 @@ func (t *HubTestItem) InstallHub() error {
 	// install data for postoverflows if needed
 	ret = hub.GetItemMap(cwhub.POSTOVERFLOWS)
 	for postoverflowName, item := range ret {
-		if item.Installed {
+		if item.State.Installed {
 			if err := item.DownloadDataIfNeeded(true); err != nil {
 				return fmt.Errorf("unable to download data for parser '%s': %+v", postoverflowName, err)
 			}

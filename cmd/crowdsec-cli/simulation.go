@@ -154,7 +154,7 @@ func NewSimulationEnableCmd() *cobra.Command {
 						log.Errorf("'%s' doesn't exist or is not a scenario", scenario)
 						continue
 					}
-					if !item.Installed {
+					if !item.State.Installed {
 						log.Warningf("'%s' isn't enabled", scenario)
 					}
 					isExcluded := slices.Contains(csConfig.Cscli.SimulationConfig.Exclusions, scenario)
