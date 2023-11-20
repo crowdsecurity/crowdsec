@@ -10,10 +10,16 @@ import (
 	"sort"
 	"strings"
 
+	"slices"
+
 	"github.com/Masterminds/semver/v3"
 	log "github.com/sirupsen/logrus"
-	"slices"
+	"gopkg.in/yaml.v3"
 )
+
+type localItem struct {
+	Name string `yaml:"name"`
+}
 
 func isYAMLFileName(path string) bool {
 	return strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml")
@@ -208,9 +214,22 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 
 		_, fileName := filepath.Split(path)
 
+		item := localItem{}
+		itemContent, err := os.ReadFile(path)
+
+		if err != nil {
+			return fmt.Errorf("failed to read %s: %w", path, err)
+		}
+
+		err = yaml.Unmarshal(itemContent, &item)
+
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal %s: %w", path, err)
+		}
+
 		h.Items[info.ftype][info.fname] = &Item{
 			hub:       h,
-			Name:      info.fname,
+			Name:      item.Name,
 			Stage:     info.stage,
 			Installed: true,
 			Type:      info.ftype,
