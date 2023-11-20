@@ -10,15 +10,33 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// installLink returns the location of the symlink to the downloaded config file
+// installPath returns the location of the symlink to the item in the hub, or the path of the item itself if it's local
 // (eg. /etc/crowdsec/collections/xyz.yaml)
-func (i *Item) installLinkPath() string {
-	return filepath.Join(i.hub.local.InstallDir, i.Type, i.Stage, i.FileName)
+// raises an error if the path goes outside of the install dir
+func (i *Item) installPath() (string, error) {
+	p := i.Type
+	if i.Stage != "" {
+		p = filepath.Join(p, i.Stage)
+	}
+
+	return safePath(i.hub.local.InstallDir, filepath.Join(p, i.FileName))
+}
+
+// downloadPath returns the location of the actual config file in the hub
+// (eg. /etc/crowdsec/hub/collections/author/xyz.yaml)
+// raises an error if the path goes outside of the hub dir
+func (i *Item) downloadPath() (string, error) {
+	ret, err := safePath(i.hub.local.HubDir, i.RemotePath)
+	if err != nil {
+		return "", err
+	}
+
+	return ret, nil
 }
 
 // makeLink creates a symlink between the actual config file at hub.HubDir and hub.ConfigDir
 func (i *Item) createInstallLink() error {
-	dest, err := filepath.Abs(i.installLinkPath())
+	dest, err := i.installPath()
 	if err != nil {
 		return err
 	}
@@ -33,7 +51,7 @@ func (i *Item) createInstallLink() error {
 		return nil
 	}
 
-	src, err := filepath.Abs(filepath.Join(i.hub.local.HubDir, i.RemotePath))
+	src, err := i.downloadPath()
 	if err != nil {
 		return err
 	}
@@ -86,7 +104,10 @@ func (i *Item) purge() error {
 		return nil
 	}
 
-	src := filepath.Join(i.hub.local.HubDir, i.RemotePath)
+	src, err := i.downloadPath()
+	if err != nil {
+		return err
+	}
 
 	if err := os.Remove(src); err != nil {
 		if os.IsNotExist(err) {
@@ -105,7 +126,7 @@ func (i *Item) purge() error {
 
 // removeInstallLink removes the symlink to the downloaded content
 func (i *Item) removeInstallLink() error {
-	syml, err := filepath.Abs(i.installLinkPath())
+	syml, err := i.installPath()
 	if err != nil {
 		return err
 	}
@@ -126,7 +147,7 @@ func (i *Item) removeInstallLink() error {
 		return fmt.Errorf("while reading symlink: %w", err)
 	}
 
-	src, err := filepath.Abs(i.hub.local.HubDir + "/" + i.RemotePath)
+	src, err := i.downloadPath()
 	if err != nil {
 		return err
 	}
@@ -151,7 +172,8 @@ func (i *Item) disable(purge bool, force bool) error {
 	err := i.removeInstallLink()
 	if os.IsNotExist(err) {
 		if !purge && !force {
-			return fmt.Errorf("link %s does not exist (override with --force or --purge)", i.installLinkPath())
+			link, _ := i.installPath()
+			return fmt.Errorf("link %s does not exist (override with --force or --purge)", link)
 		}
 	} else if err != nil {
 		return err

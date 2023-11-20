@@ -1,6 +1,7 @@
 package cwhub
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -24,24 +25,24 @@ func (h *Hub) GetDataDir() string {
 }
 
 // NewHub returns a new Hub instance with local and (optionally) remote configuration, and syncs the local state
-// It also downloads the index if downloadIndex is true
-func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, downloadIndex bool) (*Hub, error) {
+// It also downloads the index if updateIndex is true
+func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, updateIndex bool) (*Hub, error) {
 	if local == nil {
 		return nil, fmt.Errorf("no hub configuration found")
 	}
-
-	if downloadIndex {
-		if err := remote.downloadIndex(local.HubIndexFile); err != nil {
-			return nil, err
-		}
-	}
-
-	log.Debugf("loading hub idx %s", local.HubIndexFile)
 
 	hub := &Hub{
 		local:  local,
 		remote: remote,
 	}
+
+	if updateIndex {
+		if err := hub.updateIndex(); err != nil {
+			return nil, err
+		}
+	}
+
+	log.Debugf("loading hub idx %s", local.HubIndexFile)
 
 	if err := hub.parseIndex(); err != nil {
 		return nil, fmt.Errorf("failed to load index: %w", err)
@@ -128,4 +129,30 @@ func (h *Hub) ItemStats() []string {
 	}
 
 	return ret
+}
+
+// updateIndex downloads the latest version of the index and writes it to disk if it changed
+func (h *Hub) updateIndex() error {
+	body, err := h.remote.fetchIndex()
+	if err != nil {
+		return err
+	}
+
+	oldContent, err := os.ReadFile(h.local.HubIndexFile)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			log.Warningf("failed to read hub index: %s", err)
+		}
+	} else if bytes.Equal(body, oldContent) {
+		log.Info("hub index is up to date")
+		return nil
+	}
+
+	if err = os.WriteFile(h.local.HubIndexFile, body, 0o644); err != nil {
+		return fmt.Errorf("failed to write hub index: %w", err)
+	}
+
+	log.Infof("Wrote index to %s, %d bytes", h.local.HubIndexFile, len(body))
+
+	return nil
 }
