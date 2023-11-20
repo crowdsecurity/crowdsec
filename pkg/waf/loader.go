@@ -1,7 +1,6 @@
 package waf
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -53,7 +52,7 @@ func LoadWaapRules(hubInstance *cwhub.Hub) error {
 	}
 
 	if len(waapRules) == 0 {
-		return fmt.Errorf("no waap rules found in hub")
+		log.Debugf("No waap rules found")
 	}
 	return nil
 }

@@ -827,8 +827,8 @@ func (t *HubTestItem) Run() error {
 		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimePath, err)
 	}
 
-	// copy the waap-config file and acquis *only* if nuclei template is set -> it means we're testing waap
-	if t.Config.NucleiTemplate != "" {
+	//if it's a waap rule test, we need acquis and waap profile
+	if len(t.Config.WaapRules) > 0 {
 		// copy template acquis file to runtime folder
 		log.Infof("copying %s to %s", t.TemplateAcquisPath, t.RuntimeAcquisFilePath)
 		if err = Copy(t.TemplateAcquisPath, t.RuntimeAcquisFilePath); err != nil {
@@ -839,6 +839,10 @@ func (t *HubTestItem) Run() error {
 		// copy template waap-config file to runtime folder
 		if err = Copy(t.TemplateWaapProfilePath, filepath.Join(t.RuntimePath, "waap-configs", "config.yaml")); err != nil {
 			return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateWaapProfilePath, filepath.Join(t.RuntimePath, "waap-configs", "config.yaml"), err)
+		}
+	} else { //otherwise we drop a blank acquis file
+		if err = os.WriteFile(t.RuntimeAcquisFilePath, []byte(""), os.ModePerm); err != nil {
+			return fmt.Errorf("unable to write blank acquis file '%s': %s", t.RuntimeAcquisFilePath, err)
 		}
 	}
 
