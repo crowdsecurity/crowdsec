@@ -297,16 +297,20 @@ func (w *WaapSource) Dump() interface{} {
 }
 
 func (w *WaapSource) IsAuth(apiKey string) bool {
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: 200 * time.Millisecond,
+	}
+
 	req, err := http.NewRequest("HEAD", w.lapiURL, nil)
 	if err != nil {
-		fmt.Println("Error creating request:", err)
+		log.Errorf("Error creating request: %s", err)
 		return false
 	}
+
 	req.Header.Add("X-Api-Key", apiKey)
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Println("Error performing request:", err)
+		log.Errorf("Error performing request: %s", err)
 		return false
 	}
 	defer resp.Body.Close()
