@@ -21,7 +21,7 @@ import (
 
 // Install installs the item from the hub, downloading it if needed
 func (i *Item) Install(force bool, downloadOnly bool) error {
-	if downloadOnly && i.Downloaded && i.UpToDate {
+	if downloadOnly && i.State.Downloaded && i.State.UpToDate {
 		log.Infof("%s is already downloaded and up-to-date", i.Name)
 
 		if !force {
@@ -100,11 +100,11 @@ func (i *Item) Remove(purge bool, force bool) (bool, error) {
 		return false, fmt.Errorf("%s isn't managed by hub. Please delete manually", i.Name)
 	}
 
-	if i.Tainted && !force {
+	if i.State.Tainted && !force {
 		return false, fmt.Errorf("%s is tainted, use '--force' to remove", i.Name)
 	}
 
-	if !i.Installed && !purge {
+	if !i.State.Installed && !purge {
 		log.Infof("removing %s: not installed -- no need to remove", i.Name)
 		return false, nil
 	}
@@ -117,13 +117,17 @@ func (i *Item) Remove(purge bool, force bool) (bool, error) {
 	}
 
 	for _, sub := range i.SubItems() {
-		if !sub.Installed {
+		if !sub.State.Installed {
 			continue
 		}
 
 		// if the sub depends on a collection that is not a direct or indirect dependency
 		// of the current item, it is not removed
-		for _, subParent := range sub.parentCollections() {
+		for _, subParent := range sub.ParentCollections() {
+			if !purge && !subParent.State.Installed {
+				continue
+			}
+
 			if subParent == i {
 				continue
 			}
@@ -156,15 +160,15 @@ func (i *Item) Remove(purge bool, force bool) (bool, error) {
 func (i *Item) Upgrade(force bool) (bool, error) {
 	updated := false
 
-	if !i.Downloaded {
+	if !i.State.Downloaded {
 		return false, fmt.Errorf("can't upgrade %s: not installed", i.Name)
 	}
 
-	if !i.Installed {
+	if !i.State.Installed {
 		return false, fmt.Errorf("can't upgrade %s: downloaded but not installed", i.Name)
 	}
 
-	if i.UpToDate {
+	if i.State.UpToDate {
 		log.Infof("%s: up-to-date", i.Name)
 
 		if err := i.DownloadDataIfNeeded(force); err != nil {
@@ -181,8 +185,8 @@ func (i *Item) Upgrade(force bool) (bool, error) {
 		return false, fmt.Errorf("%s: download failed: %w", i.Name, err)
 	}
 
-	if !i.UpToDate {
-		if i.Tainted {
+	if !i.State.UpToDate {
+		if i.State.Tainted {
 			log.Infof("%v %s is tainted, --force to overwrite", emoji.Warning, i.Name)
 		} else if i.IsLocal() {
 			log.Infof("%v %s is local", emoji.Prohibited, i.Name)
@@ -205,12 +209,12 @@ func (i *Item) downloadLatest(overwrite bool, updateOnly bool) (string, error) {
 	log.Debugf("Downloading %s %s", i.Type, i.Name)
 
 	for _, sub := range i.SubItems() {
-		if !sub.Installed && updateOnly && sub.Downloaded {
+		if !sub.State.Installed && updateOnly && sub.State.Downloaded {
 			log.Debugf("skipping upgrade of %s: not installed", i.Name)
 			continue
 		}
 
-		log.Debugf("Download %s sub-item: %s %s (%t -> %t)", i.Name, sub.Type, sub.Name, i.Installed, updateOnly)
+		log.Debugf("Download %s sub-item: %s %s (%t -> %t)", i.Name, sub.Type, sub.Name, i.State.Installed, updateOnly)
 
 		// recurse as it's a collection
 		if sub.HasSubItems() {
@@ -221,7 +225,7 @@ func (i *Item) downloadLatest(overwrite bool, updateOnly bool) (string, error) {
 			}
 		}
 
-		downloaded := sub.Downloaded
+		downloaded := sub.State.Downloaded
 
 		if _, err := sub.download(overwrite); err != nil {
 			return "", fmt.Errorf("while downloading %s: %w", sub.Name, err)
@@ -229,14 +233,14 @@ func (i *Item) downloadLatest(overwrite bool, updateOnly bool) (string, error) {
 
 		// We need to enable an item when it has been added to a collection since latest release of the collection.
 		// We check if sub.Downloaded is false because maybe the item has been disabled by the user.
-		if !sub.Installed && !downloaded {
+		if !sub.State.Installed && !downloaded {
 			if err := sub.enable(); err != nil {
 				return "", fmt.Errorf("enabling '%s': %w", sub.Name, err)
 			}
 		}
 	}
 
-	if !i.Installed && updateOnly && i.Downloaded {
+	if !i.State.Installed && updateOnly && i.State.Downloaded {
 		log.Debugf("skipping upgrade of %s: not installed", i.Name)
 		return "", nil
 	}
@@ -291,12 +295,12 @@ func (i *Item) fetch() ([]byte, error) {
 func (i *Item) download(overwrite bool) (string, error) {
 	// if user didn't --force, don't overwrite local, tainted, up-to-date files
 	if !overwrite {
-		if i.Tainted {
+		if i.State.Tainted {
 			log.Debugf("%s: tainted, not updated", i.Name)
 			return "", nil
 		}
 
-		if i.UpToDate {
+		if i.State.UpToDate {
 			//  We still have to check if data files are present
 			log.Debugf("%s: up-to-date, not updated", i.Name)
 		}
@@ -333,9 +337,9 @@ func (i *Item) download(overwrite bool) (string, error) {
 		return "", fmt.Errorf("while writing %s: %w", finalPath, err)
 	}
 
-	i.Downloaded = true
-	i.Tainted = false
-	i.UpToDate = true
+	i.State.Downloaded = true
+	i.State.Tainted = false
+	i.State.UpToDate = true
 
 	if err = downloadDataSet(i.hub.local.InstallDataDir, overwrite, bytes.NewReader(body)); err != nil {
 		return "", fmt.Errorf("while downloading data for %s: %w", i.FileName, err)

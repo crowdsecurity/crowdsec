@@ -18,18 +18,18 @@ func TestItemStatus(t *testing.T) {
 		item := hub.GetItem(COLLECTIONS, k)
 		require.NotNil(t, item)
 
-		item.Installed = true
-		item.UpToDate = false
-		item.Tainted = false
-		item.Downloaded = true
+		item.State.Installed = true
+		item.State.UpToDate = false
+		item.State.Tainted = false
+		item.State.Downloaded = true
 
 		txt, _ := item.Status()
 		require.Equal(t, "enabled,update-available", txt)
 
-		item.Installed = true
-		item.UpToDate = false
-		item.Tainted = false
-		item.Downloaded = false
+		item.State.Installed = true
+		item.State.UpToDate = false
+		item.State.Tainted = false
+		item.State.Downloaded = false
 
 		txt, _ = item.Status()
 		require.Equal(t, "enabled,local", txt)

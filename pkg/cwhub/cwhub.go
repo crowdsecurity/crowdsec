@@ -16,7 +16,7 @@ var hubClient = &http.Client{
 	Timeout: 120 * time.Second,
 }
 
-// safePath returns an error if the given file path would escape the base directory.
+// safePath returns a joined path and ensures that it does not escape the base directory.
 func safePath(dir, filePath string) (string, error) {
 	absBaseDir, err := filepath.Abs(filepath.Clean(dir))
 	if err != nil {

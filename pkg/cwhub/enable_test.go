@@ -16,9 +16,9 @@ func testInstall(hub *Hub, t *testing.T, item *Item) {
 	err = hub.localSync()
 	require.NoError(t, err, "failed to run localSync")
 
-	assert.True(t, hub.Items[item.Type][item.Name].UpToDate, "%s should be up-to-date", item.Name)
-	assert.False(t, hub.Items[item.Type][item.Name].Installed, "%s should not be installed", item.Name)
-	assert.False(t, hub.Items[item.Type][item.Name].Tainted, "%s should not be tainted", item.Name)
+	assert.True(t, hub.Items[item.Type][item.Name].State.UpToDate, "%s should be up-to-date", item.Name)
+	assert.False(t, hub.Items[item.Type][item.Name].State.Installed, "%s should not be installed", item.Name)
+	assert.False(t, hub.Items[item.Type][item.Name].State.Tainted, "%s should not be tainted", item.Name)
 
 	err = item.enable()
 	require.NoError(t, err, "failed to enable %s", item.Name)
@@ -26,14 +26,14 @@ func testInstall(hub *Hub, t *testing.T, item *Item) {
 	err = hub.localSync()
 	require.NoError(t, err, "failed to run localSync")
 
-	assert.True(t, hub.Items[item.Type][item.Name].Installed, "%s should be installed", item.Name)
+	assert.True(t, hub.Items[item.Type][item.Name].State.Installed, "%s should be installed", item.Name)
 }
 
 func testTaint(hub *Hub, t *testing.T, item *Item) {
-	assert.False(t, hub.Items[item.Type][item.Name].Tainted, "%s should not be tainted", item.Name)
+	assert.False(t, hub.Items[item.Type][item.Name].State.Tainted, "%s should not be tainted", item.Name)
 
 	// truncate the file
-	f, err := os.Create(item.LocalPath)
+	f, err := os.Create(item.State.LocalPath)
 	require.NoError(t, err)
 	f.Close()
 
@@ -41,11 +41,11 @@ func testTaint(hub *Hub, t *testing.T, item *Item) {
 	err = hub.localSync()
 	require.NoError(t, err, "failed to run localSync")
 
-	assert.True(t, hub.Items[item.Type][item.Name].Tainted, "%s should be tainted", item.Name)
+	assert.True(t, hub.Items[item.Type][item.Name].State.Tainted, "%s should be tainted", item.Name)
 }
 
 func testUpdate(hub *Hub, t *testing.T, item *Item) {
-	assert.False(t, hub.Items[item.Type][item.Name].UpToDate, "%s should not be up-to-date", item.Name)
+	assert.False(t, hub.Items[item.Type][item.Name].State.UpToDate, "%s should not be up-to-date", item.Name)
 
 	// Update it + check status
 	_, err := item.downloadLatest(true, true)
@@ -55,12 +55,12 @@ func testUpdate(hub *Hub, t *testing.T, item *Item) {
 	err = hub.localSync()
 	require.NoError(t, err, "failed to run localSync")
 
-	assert.True(t, hub.Items[item.Type][item.Name].UpToDate, "%s should be up-to-date", item.Name)
-	assert.False(t, hub.Items[item.Type][item.Name].Tainted, "%s should not be tainted anymore", item.Name)
+	assert.True(t, hub.Items[item.Type][item.Name].State.UpToDate, "%s should be up-to-date", item.Name)
+	assert.False(t, hub.Items[item.Type][item.Name].State.Tainted, "%s should not be tainted anymore", item.Name)
 }
 
 func testDisable(hub *Hub, t *testing.T, item *Item) {
-	assert.True(t, hub.Items[item.Type][item.Name].Installed, "%s should be installed", item.Name)
+	assert.True(t, hub.Items[item.Type][item.Name].State.Installed, "%s should be installed", item.Name)
 
 	// Remove
 	err := item.disable(false, false)
@@ -71,9 +71,9 @@ func testDisable(hub *Hub, t *testing.T, item *Item) {
 	require.NoError(t, err, "failed to run localSync")
 	require.Empty(t, hub.Warnings)
 
-	assert.False(t, hub.Items[item.Type][item.Name].Tainted, "%s should not be tainted anymore", item.Name)
-	assert.False(t, hub.Items[item.Type][item.Name].Installed, "%s should not be installed anymore", item.Name)
-	assert.True(t, hub.Items[item.Type][item.Name].Downloaded, "%s should still be downloaded", item.Name)
+	assert.False(t, hub.Items[item.Type][item.Name].State.Tainted, "%s should not be tainted anymore", item.Name)
+	assert.False(t, hub.Items[item.Type][item.Name].State.Installed, "%s should not be installed anymore", item.Name)
+	assert.True(t, hub.Items[item.Type][item.Name].State.Downloaded, "%s should still be downloaded", item.Name)
 
 	// Purge
 	err = item.disable(true, false)
@@ -84,8 +84,8 @@ func testDisable(hub *Hub, t *testing.T, item *Item) {
 	require.NoError(t, err, "failed to run localSync")
 	require.Empty(t, hub.Warnings)
 
-	assert.False(t, hub.Items[item.Type][item.Name].Installed, "%s should not be installed anymore", item.Name)
-	assert.False(t, hub.Items[item.Type][item.Name].Downloaded, "%s should not be downloaded", item.Name)
+	assert.False(t, hub.Items[item.Type][item.Name].State.Installed, "%s should not be installed anymore", item.Name)
+	assert.False(t, hub.Items[item.Type][item.Name].State.Downloaded, "%s should not be downloaded", item.Name)
 }
 
 func TestInstallParser(t *testing.T) {

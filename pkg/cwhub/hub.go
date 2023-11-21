@@ -109,7 +109,7 @@ func (h *Hub) ItemStats() []string {
 				local++
 			}
 
-			if item.Tainted {
+			if item.State.Tainted {
 				tainted++
 			}
 		}

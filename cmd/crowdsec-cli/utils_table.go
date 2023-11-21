@@ -19,7 +19,7 @@ func listHubItemTable(out io.Writer, title string, items []*cwhub.Item) {
 
 	for _, item := range items {
 		status, emo := item.Status()
-		t.AddRow(item.Name, fmt.Sprintf("%v  %s", emo, status), item.LocalVersion, item.LocalPath)
+		t.AddRow(item.Name, fmt.Sprintf("%v  %s", emo, status), item.State.LocalVersion, item.State.LocalPath)
 	}
 	renderTableTitle(out, title)
 	t.Render()

@@ -67,9 +67,9 @@ func NewParsers(hub *cwhub.Hub) *Parsers {
 
 	for _, itemType := range []string{cwhub.PARSERS, cwhub.POSTOVERFLOWS} {
 		for _, hubParserItem := range hub.GetItemMap(itemType) {
-			if hubParserItem.Installed {
+			if hubParserItem.State.Installed {
 				stagefile := Stagefile{
-					Filename: hubParserItem.LocalPath,
+					Filename: hubParserItem.State.LocalPath,
 					Stage:    hubParserItem.Stage,
 				}
 				if itemType == cwhub.PARSERS {

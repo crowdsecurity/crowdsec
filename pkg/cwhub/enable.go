@@ -65,8 +65,8 @@ func (i *Item) createInstallLink() error {
 
 // enable enables the item by creating a symlink to the downloaded content, and also enables sub-items
 func (i *Item) enable() error {
-	if i.Installed {
-		if i.Tainted {
+	if i.State.Installed {
+		if i.State.Tainted {
 			return fmt.Errorf("%s is tainted, won't enable unless --force", i.Name)
 		}
 
@@ -75,7 +75,7 @@ func (i *Item) enable() error {
 		}
 
 		// if it's a collection, check sub-items even if the collection file itself is up-to-date
-		if i.UpToDate && !i.HasSubItems() {
+		if i.State.UpToDate && !i.HasSubItems() {
 			log.Tracef("%s is installed and up-to-date, skip.", i.Name)
 			return nil
 		}
@@ -92,14 +92,14 @@ func (i *Item) enable() error {
 	}
 
 	log.Infof("Enabled %s: %s", i.Type, i.Name)
-	i.Installed = true
+	i.State.Installed = true
 
 	return nil
 }
 
 // purge removes the actual config file that was downloaded
 func (i *Item) purge() error {
-	if !i.Downloaded {
+	if !i.State.Downloaded {
 		log.Infof("removing %s: not downloaded -- no need to remove", i.Name)
 		return nil
 	}
@@ -118,7 +118,7 @@ func (i *Item) purge() error {
 		return fmt.Errorf("while removing file: %w", err)
 	}
 
-	i.Downloaded = false
+	i.State.Downloaded = false
 	log.Infof("Removed source file [%s]: %s", i.Name, src)
 
 	return nil
@@ -179,7 +179,7 @@ func (i *Item) disable(purge bool, force bool) error {
 		return err
 	}
 
-	i.Installed = false
+	i.State.Installed = false
 
 	if purge {
 		if err := i.purge(); err != nil {
