@@ -19,17 +19,17 @@ import (
 )
 
 type HubTestItemConfig struct {
-	Parsers               []string            `yaml:"parsers"`
-	Scenarios             []string            `yaml:"scenarios"`
-	PostOverflows         []string            `yaml:"postoverflows"`
-	WaapRules             []string            `yaml:"waap-rules"`
-	NucleiTemplate        string              `yaml:"nuclei_template"`
-	ExpectedNucleiFailure bool                `yaml:"expect_failure"`
-	LogFile               string              `yaml:"log_file"`
-	LogType               string              `yaml:"log_type"`
-	Labels                map[string]string   `yaml:"labels"`
-	IgnoreParsers         bool                `yaml:"ignore_parsers"`   // if we test a scenario, we don't want to assert on Parser
-	OverrideStatics       []parser.ExtraField `yaml:"override_statics"` //Allow to override statics. Executed before s00
+	Parsers               []string            `yaml:"parsers,omitempty"`
+	Scenarios             []string            `yaml:"scenarios,omitempty"`
+	PostOverflows         []string            `yaml:"postoverflows,omitempty"`
+	WaapRules             []string            `yaml:"waap-rules,omitempty"`
+	NucleiTemplate        string              `yaml:"nuclei_template,omitempty"`
+	ExpectedNucleiFailure bool                `yaml:"expect_failure,omitempty"`
+	LogFile               string              `yaml:"log_file,omitempty"`
+	LogType               string              `yaml:"log_type,omitempty"`
+	Labels                map[string]string   `yaml:"labels,omitempty"`
+	IgnoreParsers         bool                `yaml:"ignore_parsers,omitempty"`   // if we test a scenario, we don't want to assert on Parser
+	OverrideStatics       []parser.ExtraField `yaml:"override_statics,omitempty"` //Allow to override statics. Executed before s00
 }
 
 type HubTestItem struct {

@@ -14,7 +14,8 @@ type HubTest struct {
 	CrowdSecPath            string
 	CscliPath               string
 	HubPath                 string
-	HubTestPath             string
+	HubTestPath             string //generic parser/scenario tests .tests
+	HubWaapTestPath         string //dir specific to waap tests .waap-tests
 	HubIndexFile            string
 	TemplateConfigPath      string
 	TemplateProfilePath     string
@@ -33,7 +34,7 @@ const (
 	templateWaapProfilePath = "template_waap-profile.yaml"
 )
 
-func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest, error) {
+func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isWaapTest bool) (HubTest, error) {
 	hubPath, err := filepath.Abs(hubPath)
 	if err != nil {
 		return HubTest{}, fmt.Errorf("can't get absolute path of hub: %+v", err)
@@ -43,9 +44,6 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest,
 	if _, err = os.Stat(hubPath); os.IsNotExist(err) {
 		return HubTest{}, fmt.Errorf("path to hub '%s' doesn't exist, can't run", hubPath)
 	}
-
-	HubTestPath := filepath.Join(hubPath, "./.tests/")
-
 	// we can't use hubtest without crowdsec binary
 	if _, err = exec.LookPath(crowdsecPath); err != nil {
 		if _, err = os.Stat(crowdsecPath); os.IsNotExist(err) {
@@ -59,6 +57,39 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest,
 			return HubTest{}, fmt.Errorf("path to cscli binary '%s' doesn't exist or is not in $PATH, can't run", cscliPath)
 		}
 	}
+
+	if isWaapTest {
+		HubTestPath := filepath.Join(hubPath, "./.waap-tests/")
+		hubIndexFile := filepath.Join(hubPath, ".index.json")
+
+		local := &csconfig.LocalHubCfg{
+			HubDir:         hubPath,
+			HubIndexFile:   hubIndexFile,
+			InstallDir:     HubTestPath,
+			InstallDataDir: HubTestPath,
+		}
+
+		hub, err := cwhub.NewHub(local, nil, false)
+		if err != nil {
+			return HubTest{}, fmt.Errorf("unable to load hub: %s", err)
+		}
+
+		return HubTest{
+			CrowdSecPath:            crowdsecPath,
+			CscliPath:               cscliPath,
+			HubPath:                 hubPath,
+			HubTestPath:             HubTestPath,
+			HubIndexFile:            hubIndexFile,
+			TemplateConfigPath:      filepath.Join(HubTestPath, templateConfigFile),
+			TemplateProfilePath:     filepath.Join(HubTestPath, templateProfileFile),
+			TemplateSimulationPath:  filepath.Join(HubTestPath, templateSimulationFile),
+			TemplateWaapProfilePath: filepath.Join(HubTestPath, templateWaapProfilePath),
+			TemplateAcquisPath:      filepath.Join(HubTestPath, templateAcquisFile),
+			HubIndex:                hub,
+		}, nil
+	}
+
+	HubTestPath := filepath.Join(hubPath, "./.tests/")
 
 	hubIndexFile := filepath.Join(hubPath, ".index.json")
 
@@ -75,17 +106,15 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest,
 	}
 
 	return HubTest{
-		CrowdSecPath:            crowdsecPath,
-		CscliPath:               cscliPath,
-		HubPath:                 hubPath,
-		HubTestPath:             HubTestPath,
-		HubIndexFile:            hubIndexFile,
-		TemplateConfigPath:      filepath.Join(HubTestPath, templateConfigFile),
-		TemplateProfilePath:     filepath.Join(HubTestPath, templateProfileFile),
-		TemplateSimulationPath:  filepath.Join(HubTestPath, templateSimulationFile),
-		TemplateWaapProfilePath: filepath.Join(HubTestPath, templateWaapProfilePath),
-		TemplateAcquisPath:      filepath.Join(HubTestPath, templateAcquisFile),
-		HubIndex:                hub,
+		CrowdSecPath:           crowdsecPath,
+		CscliPath:              cscliPath,
+		HubPath:                hubPath,
+		HubTestPath:            HubTestPath,
+		HubIndexFile:           hubIndexFile,
+		TemplateConfigPath:     filepath.Join(HubTestPath, templateConfigFile),
+		TemplateProfilePath:    filepath.Join(HubTestPath, templateProfileFile),
+		TemplateSimulationPath: filepath.Join(HubTestPath, templateSimulationFile),
+		HubIndex:               hub,
 	}, nil
 }
 
