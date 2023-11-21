@@ -52,6 +52,7 @@ func getSHA256(filepath string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
+// information used to create a new Item, from a file path
 type itemFileInfo struct {
 	inhub   bool
 	fname   string
@@ -346,6 +347,15 @@ func (h *Hub) syncDir(dir string) error {
 	return nil
 }
 
+// insert a string in a sorted slice, case insensitive, and return the new slice
+func insertInOrderNoCase(sl []string, value string) []string {
+	i := sort.Search(len(sl), func(i int) bool {
+		return strings.ToLower(sl[i]) >= strings.ToLower(value)
+	})
+
+	return append(sl[:i], append([]string{value}, sl[i:]...)...)
+}
+
 // localSync updates the hub state with downloaded, installed and local items
 func (h *Hub) localSync() error {
 	err := h.syncDir(h.local.InstallDir)
@@ -366,9 +376,9 @@ func (h *Hub) localSync() error {
 			return err
 		}
 
-		// populate the sub- and sub-sub-items with the collection they belong to
+		// populate the sub- and sub-sub-items with the collections they belong to
 		for _, sub := range subs {
-			sub.State.BelongsToCollections = append(sub.State.BelongsToCollections, item.Name)
+			sub.State.BelongsToCollections = insertInOrderNoCase(sub.State.BelongsToCollections, item.Name)
 		}
 
 		if !item.State.Installed {
