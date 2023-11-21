@@ -11,8 +11,8 @@ import (
 )
 
 // installPath returns the location of the symlink to the item in the hub, or the path of the item itself if it's local
-// (eg. /etc/crowdsec/collections/xyz.yaml)
-// raises an error if the path goes outside of the install dir
+// (eg. /etc/crowdsec/collections/xyz.yaml).
+// Raises an error if the path goes outside of the install dir.
 func (i *Item) installPath() (string, error) {
 	p := i.Type
 	if i.Stage != "" {
@@ -23,8 +23,8 @@ func (i *Item) installPath() (string, error) {
 }
 
 // downloadPath returns the location of the actual config file in the hub
-// (eg. /etc/crowdsec/hub/collections/author/xyz.yaml)
-// raises an error if the path goes outside of the hub dir
+// (eg. /etc/crowdsec/hub/collections/author/xyz.yaml).
+// Raises an error if the path goes outside of the hub dir.
 func (i *Item) downloadPath() (string, error) {
 	ret, err := safePath(i.hub.local.HubDir, i.RemotePath)
 	if err != nil {
@@ -34,7 +34,7 @@ func (i *Item) downloadPath() (string, error) {
 	return ret, nil
 }
 
-// makeLink creates a symlink between the actual config file at hub.HubDir and hub.ConfigDir
+// makeLink creates a symlink between the actual config file at hub.HubDir and hub.ConfigDir.
 func (i *Item) createInstallLink() error {
 	dest, err := i.installPath()
 	if err != nil {
@@ -63,7 +63,7 @@ func (i *Item) createInstallLink() error {
 	return nil
 }
 
-// enable enables the item by creating a symlink to the downloaded content, and also enables sub-items
+// enable enables the item by creating a symlink to the downloaded content, and also enables sub-items.
 func (i *Item) enable() error {
 	if i.State.Installed {
 		if i.State.Tainted {
@@ -97,7 +97,7 @@ func (i *Item) enable() error {
 	return nil
 }
 
-// purge removes the actual config file that was downloaded
+// purge removes the actual config file that was downloaded.
 func (i *Item) purge() error {
 	if !i.State.Downloaded {
 		log.Infof("removing %s: not downloaded -- no need to remove", i.Name)
@@ -124,7 +124,7 @@ func (i *Item) purge() error {
 	return nil
 }
 
-// removeInstallLink removes the symlink to the downloaded content
+// removeInstallLink removes the symlink to the downloaded content.
 func (i *Item) removeInstallLink() error {
 	syml, err := i.installPath()
 	if err != nil {
@@ -166,7 +166,7 @@ func (i *Item) removeInstallLink() error {
 	return nil
 }
 
-// disable removes the install link, and optionally the downloaded content
+// disable removes the install link, and optionally the downloaded content.
 func (i *Item) disable(purge bool, force bool) error {
 	// XXX: should return the number of disabled/purged items to inform the upper layer whether to reload or not
 	err := i.removeInstallLink()

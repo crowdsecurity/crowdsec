@@ -18,7 +18,7 @@ func isYAMLFileName(path string) bool {
 	return strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml")
 }
 
-// linkTarget returns the target of a symlink, or empty string if it's dangling
+// linkTarget returns the target of a symlink, or empty string if it's dangling.
 func linkTarget(path string) (string, error) {
 	hubpath, err := os.Readlink(path)
 	if err != nil {
@@ -52,7 +52,7 @@ func getSHA256(filepath string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// information used to create a new Item, from a file path
+// information used to create a new Item, from a file path.
 type itemFileInfo struct {
 	inhub   bool
 	fname   string
@@ -127,7 +127,7 @@ func (h *Hub) getItemFileInfo(path string) (*itemFileInfo, error) {
 	return ret, nil
 }
 
-// sortedVersions returns the input data, sorted in reverse order (new, old) by semver
+// sortedVersions returns the input data, sorted in reverse order (new, old) by semver.
 func sortedVersions(raw []string) ([]string, error) {
 	vs := make([]*semver.Version, len(raw))
 
@@ -269,13 +269,13 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 	return nil
 }
 
-// checkSubItems checks for the presence, taint and version state of sub-items
+// checkSubItems checks for the presence, taint and version state of sub-items.
 func (h *Hub) checkSubItems(v *Item) error {
 	if !v.HasSubItems() {
 		return nil
 	}
 
-	if v.versionStatus() != VersionUpToDate {
+	if v.versionStatus() != versionUpToDate {
 		log.Debugf("%s dependencies not checked: not up-to-date", v.Name)
 		return nil
 	}
@@ -321,7 +321,7 @@ func (h *Hub) checkSubItems(v *Item) error {
 	return nil
 }
 
-// syncDir scans a directory for items, and updates the Hub state accordingly
+// syncDir scans a directory for items, and updates the Hub state accordingly.
 func (h *Hub) syncDir(dir string) error {
 	// For each, scan PARSERS, POSTOVERFLOWS, SCENARIOS and COLLECTIONS last
 	for _, scan := range ItemTypes {
@@ -347,7 +347,7 @@ func (h *Hub) syncDir(dir string) error {
 	return nil
 }
 
-// insert a string in a sorted slice, case insensitive, and return the new slice
+// insert a string in a sorted slice, case insensitive, and return the new slice.
 func insertInOrderNoCase(sl []string, value string) []string {
 	i := sort.Search(len(sl), func(i int) bool {
 		return strings.ToLower(sl[i]) >= strings.ToLower(value)
@@ -356,7 +356,7 @@ func insertInOrderNoCase(sl []string, value string) []string {
 	return append(sl[:i], append([]string{value}, sl[i:]...)...)
 }
 
-// localSync updates the hub state with downloaded, installed and local items
+// localSync updates the hub state with downloaded, installed and local items.
 func (h *Hub) localSync() error {
 	err := h.syncDir(h.local.InstallDir)
 	if err != nil {
@@ -387,15 +387,15 @@ func (h *Hub) localSync() error {
 
 		vs := item.versionStatus()
 		switch vs {
-		case VersionUpToDate: // latest
+		case versionUpToDate: // latest
 			if err := h.checkSubItems(item); err != nil {
 				warnings = append(warnings, fmt.Sprintf("dependency of %s: %s", item.Name, err))
 			}
-		case VersionUpdateAvailable: // not up-to-date
+		case versionUpdateAvailable: // not up-to-date
 			warnings = append(warnings, fmt.Sprintf("update for collection %s available (currently:%s, latest:%s)", item.Name, item.State.LocalVersion, item.Version))
-		case VersionFuture:
+		case versionFuture:
 			warnings = append(warnings, fmt.Sprintf("collection %s is in the future (currently:%s, latest:%s)", item.Name, item.State.LocalVersion, item.Version))
-		case VersionUnknown:
+		case versionUnknown:
 			warnings = append(warnings, fmt.Sprintf("collection %s is tainted (latest:%s)", item.Name, item.Version))
 		}
 

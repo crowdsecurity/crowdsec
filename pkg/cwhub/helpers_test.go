@@ -8,8 +8,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
-// Download index, install collection. Add scenario to collection (hub-side), update index, upgrade collection
-// We expect the new scenario to be installed
+// Download index, install collection. Add scenario to collection (hub-side), update index, upgrade collection.
+// We expect the new scenario to be installed.
 func TestUpgradeItemNewScenarioInCollection(t *testing.T) {
 	hub := envSetup(t)
 
@@ -110,7 +110,7 @@ func TestUpgradeItemInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].State.Installed)
 }
 
-// getHubOrFail refreshes the hub state (load index, sync) and returns the singleton, or fails the test
+// getHubOrFail refreshes the hub state (load index, sync) and returns the singleton, or fails the test.
 func getHubOrFail(t *testing.T, local *csconfig.LocalHubCfg, remote *RemoteHubCfg) *Hub {
 	hub, err := NewHub(local, remote, false)
 	require.NoError(t, err, "failed to load hub index")

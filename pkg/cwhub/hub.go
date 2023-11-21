@@ -13,19 +13,22 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
+// Hub is the main structure for the package.
 type Hub struct {
-	Items    HubItems
+	Items    HubItems	// Items read from HubDir and InstallDir
 	local    *csconfig.LocalHubCfg
 	remote   *RemoteHubCfg
-	Warnings []string
+	Warnings []string	// Warnings encountered during sync
 }
 
+// GetDataDir returns the data directory, where data sets are installed.
 func (h *Hub) GetDataDir() string {
 	return h.local.InstallDataDir
 }
 
-// NewHub returns a new Hub instance with local and (optionally) remote configuration, and syncs the local state
-// It also downloads the index if updateIndex is true
+// NewHub returns a new Hub instance with local and (optionally) remote configuration, and syncs the local state.
+// If updateIndex is true, the local index file is updated from the remote before reading the state of the items.
+// All download operations (including updateIndex) return ErrNilRemoteHub if the remote configuration is not set.
 func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, updateIndex bool) (*Hub, error) {
 	if local == nil {
 		return nil, fmt.Errorf("no hub configuration found")
@@ -55,7 +58,7 @@ func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, updateIndex bool)
 	return hub, nil
 }
 
-// parseIndex takes the content of an index file and fills the map of associated parsers/scenarios/collections
+// parseIndex takes the content of an index file and fills the map of associated parsers/scenarios/collections.
 func (h *Hub) parseIndex() error {
 	bidx, err := os.ReadFile(h.local.HubIndexFile)
 	if err != nil {
@@ -91,7 +94,7 @@ func (h *Hub) parseIndex() error {
 	return nil
 }
 
-// ItemStats returns total counts of the hub items
+// ItemStats returns total counts of the hub items, including local and tainted.
 func (h *Hub) ItemStats() []string {
 	loaded := ""
 	local := 0
@@ -131,7 +134,7 @@ func (h *Hub) ItemStats() []string {
 	return ret
 }
 
-// updateIndex downloads the latest version of the index and writes it to disk if it changed
+// updateIndex downloads the latest version of the index and writes it to disk if it changed.
 func (h *Hub) updateIndex() error {
 	body, err := h.remote.fetchIndex()
 	if err != nil {
