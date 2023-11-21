@@ -107,3 +107,25 @@ teardown() {
     refute_output
     refute_stderr
 }
+
+@test "a local item's name defaults to its filename" {
+    rune -0 mkdir -p "$CONFIG_DIR/collections"
+    rune -0 touch "$CONFIG_DIR/collections/foobar.yaml"
+    rune -0 cscli collections list -o json
+    rune -0 jq -r '.[][].name' <(output)
+    assert_output "foobar.yaml"
+    rune -0 cscli collections list foobar.yaml
+    rune -0 cscli collections inspect foobar.yaml -o json
+    rune -0 jq -e '.installed==true' <(output)
+}
+
+@test "a local item can provide its own name" {
+    rune -0 mkdir -p "$CONFIG_DIR/collections"
+    echo "name: hi-its-me" > "$CONFIG_DIR/collections/foobar.yaml"
+    rune -0 cscli collections list -o json
+    rune -0 jq -r '.[][].name' <(output)
+    assert_output "hi-its-me"
+    rune -0 cscli collections list hi-its-me
+    rune -0 cscli collections inspect hi-its-me -o json
+    rune -0 jq -e '.installed==true' <(output)
+}

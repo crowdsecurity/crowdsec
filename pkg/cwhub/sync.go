@@ -12,6 +12,7 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v3"
 )
 
 func isYAMLFileName(path string) bool {
@@ -150,10 +151,14 @@ func sortedVersions(raw []string) ([]string, error) {
 	return ret, nil
 }
 
-func newLocalItem(h *Hub, path string, info *itemFileInfo) *Item {
+func newLocalItem(h *Hub, path string, info *itemFileInfo) (*Item, error) {
+	type localItemName struct {
+		Name string `yaml:"name"`
+	}
+
 	_, fileName := filepath.Split(path)
 
-	return &Item{
+	item := &Item{
 		hub:      h,
 		Name:     info.fname,
 		Stage:    info.stage,
@@ -165,6 +170,25 @@ func newLocalItem(h *Hub, path string, info *itemFileInfo) *Item {
 			UpToDate:  true,
 		},
 	}
+
+	// try to read the name from the file
+	itemName := localItemName{}
+
+	itemContent, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read %s: %w", path, err)
+	}
+
+	err = yaml.Unmarshal(itemContent, &itemName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal %s: %w", path, err)
+	}
+
+	if itemName.Name != "" {
+		item.Name = itemName.Name
+	}
+
+	return item, nil
 }
 
 func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
@@ -198,7 +222,11 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 
 		if !info.inhub {
 			log.Tracef("%s is a local file, skip", path)
-			h.Items[info.ftype][info.fname] = newLocalItem(h, path, info)
+			item, err := newLocalItem(h, path, info)
+			if err != nil {
+				return err
+			}
+			h.Items[info.ftype][item.Name] = item
 
 			return nil
 		}
