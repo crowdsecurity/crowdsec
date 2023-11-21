@@ -20,10 +20,10 @@ const (
 )
 
 const (
-	versionUpToDate = iota	// the latest version from index is installed
-	versionUpdateAvailable	// not installed, or lower than latest
-	versionUnknown		// local file with no version, or invalid version number
-	versionFuture		// local version is higher latest, but is included in the index: should not happen
+	versionUpToDate        = iota // the latest version from index is installed
+	versionUpdateAvailable        // not installed, or lower than latest
+	versionUnknown                // local file with no version, or invalid version number
+	versionFuture                 // local version is higher latest, but is included in the index: should not happen
 )
 
 var (
@@ -56,14 +56,14 @@ type ItemState struct {
 
 // Item is created from an index file and enriched with local info.
 type Item struct {
-	hub *Hub	// back pointer to the hub, to retrieve other items and call install/remove methods
+	hub *Hub // back pointer to the hub, to retrieve other items and call install/remove methods
 
 	State ItemState `json:"-" yaml:"-"` // local state, not stored in the index
 
-	Type        string   `json:"type,omitempty"                   yaml:"type,omitempty"`        // one of the ItemTypes
-	Stage       string   `json:"stage,omitempty"                  yaml:"stage,omitempty"`       // Stage for parser|postoverflow: s00-raw/s01-...
-	Name        string   `json:"name,omitempty"`                                                // usually "author/name"
-	FileName    string   `json:"file_name,omitempty"`                                           // eg. apache2-logs.yaml
+	Type        string   `json:"type,omitempty"                   yaml:"type,omitempty"`  // one of the ItemTypes
+	Stage       string   `json:"stage,omitempty"                  yaml:"stage,omitempty"` // Stage for parser|postoverflow: s00-raw/s01-...
+	Name        string   `json:"name,omitempty"`                                          // usually "author/name"
+	FileName    string   `json:"file_name,omitempty"`                                     // eg. apache2-logs.yaml
 	Description string   `json:"description,omitempty"            yaml:"description,omitempty"`
 	Author      string   `json:"author,omitempty"`
 	References  []string `json:"references,omitempty"             yaml:"references,omitempty"`

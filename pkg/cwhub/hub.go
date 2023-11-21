@@ -15,10 +15,10 @@ import (
 
 // Hub is the main structure for the package.
 type Hub struct {
-	Items    HubItems	// Items read from HubDir and InstallDir
+	Items    HubItems // Items read from HubDir and InstallDir
 	local    *csconfig.LocalHubCfg
 	remote   *RemoteHubCfg
-	Warnings []string	// Warnings encountered during sync
+	Warnings []string // Warnings encountered during sync
 }
 
 // GetDataDir returns the data directory, where data sets are installed.
