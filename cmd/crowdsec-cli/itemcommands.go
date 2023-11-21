@@ -328,7 +328,7 @@ func NewItemsInstallCmd(typeName string) *cobra.Command {
 func istalledParentNames(item *cwhub.Item) []string {
 	ret := make([]string, 0)
 
-	for _, parent := range item.ParentCollections() {
+	for _, parent := range item.AncestorCollections() {
 		if parent.State.Installed {
 			ret = append(ret, parent.Name)
 		}

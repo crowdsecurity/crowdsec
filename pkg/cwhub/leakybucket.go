@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-// itemKey extracts the map key of an item (i.e. author/name) from its pathname. Follows a symlink if necessary
+// itemKey extracts the map key of an item (i.e. author/name) from its pathname. Follows a symlink if necessary.
 func itemKey(itemPath string) (string, error) {
 	f, err := os.Lstat(itemPath)
 	if err != nil {
@@ -37,7 +37,7 @@ func itemKey(itemPath string) (string, error) {
 	return fmt.Sprintf("%s/%s", author, fname), nil
 }
 
-// GetItemByPath retrieves the item from the hub index based on its path.
+// GetItemByPath retrieves an item from the hub index based on its local path.
 func (h *Hub) GetItemByPath(itemType string, itemPath string) (*Item, error) {
 	itemKey, err := itemKey(itemPath)
 	if err != nil {
