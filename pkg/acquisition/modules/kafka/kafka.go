@@ -79,7 +79,7 @@ func (k *KafkaSource) UnmarshalConfig(yamlConfig []byte) error {
 		k.Config.Mode = configuration.TAIL_MODE
 	}
 
-	k.logger.Debugf("Successfully unmarshaled kafka configuration : %+v", k.Config)
+	k.logger.Debugf("successfully unmarshaled kafka configuration : %+v", k.Config)
 
 	return err
 }
@@ -87,7 +87,7 @@ func (k *KafkaSource) UnmarshalConfig(yamlConfig []byte) error {
 func (k *KafkaSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	k.logger = logger
 
-	k.logger.Debugf("Start configuring %s source", dataSourceName)
+	k.logger.Debugf("start configuring %s source", dataSourceName)
 
 	err := k.UnmarshalConfig(yamlConfig)
 	if err != nil {
@@ -108,7 +108,7 @@ func (k *KafkaSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		return fmt.Errorf("cannot create %s reader", dataSourceName)
 	}
 
-	k.logger.Debugf("Successfully configured %s source", dataSourceName)
+	k.logger.Debugf("successfully configured %s source", dataSourceName)
 
 	return nil
 }
@@ -149,7 +149,7 @@ func (k *KafkaSource) ReadMessage(out chan types.Event) error {
 	// Start processing from latest Offset
 	k.Reader.SetOffsetAt(context.Background(), time.Now())
 	for {
-		k.logger.Tracef("Reading message from topic '%s'", k.Config.Topic)
+		k.logger.Tracef("reading message from topic '%s'", k.Config.Topic)
 		m, err := k.Reader.ReadMessage(context.Background())
 		if err != nil {
 			if err == io.EOF {
@@ -165,7 +165,7 @@ func (k *KafkaSource) ReadMessage(out chan types.Event) error {
 			Process: true,
 			Module:  k.GetName(),
 		}
-		k.logger.Tracef("Line with message read from topic '%s': %+v", k.Config.Topic, l)
+		k.logger.Tracef("line with message read from topic '%s': %+v", k.Config.Topic, l)
 		linesRead.With(prometheus.Labels{"topic": k.Config.Topic}).Inc()
 		var evt types.Event
 
@@ -179,7 +179,7 @@ func (k *KafkaSource) ReadMessage(out chan types.Event) error {
 }
 
 func (k *KafkaSource) RunReader(out chan types.Event, t *tomb.Tomb) error {
-	k.logger.Debugf("Starting %s datasource reader goroutine with configuration %+v", dataSourceName, k.Config)
+	k.logger.Debugf("starting %s datasource reader goroutine with configuration %+v", dataSourceName, k.Config)
 	t.Go(func() error {
 		return k.ReadMessage(out)
 	})
