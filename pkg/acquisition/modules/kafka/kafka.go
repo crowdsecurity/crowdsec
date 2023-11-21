@@ -99,7 +99,7 @@ func (k *KafkaSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		return fmt.Errorf("cannot create %s dialer: %w", dataSourceName, err)
 	}
 
-	k.Reader, err = k.Config.NewReader(dialer)
+	k.Reader, err = k.Config.NewReader(dialer, k.logger)
 	if err != nil {
 		return fmt.Errorf("cannote create %s reader: %w", dataSourceName, err)
 	}
@@ -262,11 +262,13 @@ func (kc *KafkaConfiguration) NewDialer() (*kafka.Dialer, error) {
 	return dialer, nil
 }
 
-func (kc *KafkaConfiguration) NewReader(dialer *kafka.Dialer) (*kafka.Reader, error) {
+func (kc *KafkaConfiguration) NewReader(dialer *kafka.Dialer, logger *log.Entry) (*kafka.Reader, error) {
 	rConf := kafka.ReaderConfig{
-		Brokers: kc.Brokers,
-		Topic:   kc.Topic,
-		Dialer:  dialer,
+		Brokers:     kc.Brokers,
+		Topic:       kc.Topic,
+		Dialer:      dialer,
+		Logger:      kafka.LoggerFunc(logger.Debugf),
+		ErrorLogger: kafka.LoggerFunc(logger.Errorf),
 	}
 	if kc.GroupID != "" {
 		rConf.GroupID = kc.GroupID
