@@ -108,6 +108,24 @@ teardown() {
     refute_stderr
 }
 
+@test "a local item is not tainted" {
+    # not from cscli... inspect
+    rune -0 mkdir -p "$CONFIG_DIR/collections"
+    rune -0 touch "$CONFIG_DIR/collections/foobar.yaml"
+    rune -0 cscli collections inspect foobar.yaml -o json
+    rune -0 jq -e '.tainted==false' <(output)
+
+    rune -0 cscli collections install crowdsecurity/sshd
+    rune -0 truncate -s0 "$CONFIG_DIR/collections/sshd.yaml"
+    rune -0 cscli collections inspect crowdsecurity/sshd -o json
+    rune -0 jq -e '.tainted==true' <(output)
+
+    # and not from hub update
+    rune -0 cscli hub update
+    assert_stderr --partial "collection crowdsecurity/sshd is tainted"
+    refute_stderr --partial "collection foobar.yaml is tainted"
+}
+
 @test "a local item's name defaults to its filename" {
     rune -0 mkdir -p "$CONFIG_DIR/collections"
     rune -0 touch "$CONFIG_DIR/collections/foobar.yaml"
