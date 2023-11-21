@@ -58,7 +58,7 @@ type ItemState struct {
 type Item struct {
 	hub *Hub	// back pointer to the hub, to retrieve other items and call install/remove methods
 
-	State ItemState // local (deployed) info
+	State ItemState `json:"-" yaml:"-"` // local state, not stored in the index
 
 	Type        string   `json:"type,omitempty"                   yaml:"type,omitempty"`        // one of the ItemTypes
 	Stage       string   `json:"stage,omitempty"                  yaml:"stage,omitempty"`       // Stage for parser|postoverflow: s00-raw/s01-...
