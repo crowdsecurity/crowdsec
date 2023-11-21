@@ -1,9 +1,11 @@
 package cwhub
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -12,12 +14,10 @@ import (
 )
 
 type Hub struct {
-	Items          HubItems
-	local          *csconfig.LocalHubCfg
-	remote         *RemoteHubCfg
-	skippedLocal   int
-	skippedTainted int
-	Warnings       []string
+	Items    HubItems
+	local    *csconfig.LocalHubCfg
+	remote   *RemoteHubCfg
+	Warnings []string
 }
 
 func (h *Hub) GetDataDir() string {
@@ -25,24 +25,24 @@ func (h *Hub) GetDataDir() string {
 }
 
 // NewHub returns a new Hub instance with local and (optionally) remote configuration, and syncs the local state
-// It also downloads the index if downloadIndex is true
-func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, downloadIndex bool) (*Hub, error) {
+// It also downloads the index if updateIndex is true
+func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, updateIndex bool) (*Hub, error) {
 	if local == nil {
 		return nil, fmt.Errorf("no hub configuration found")
 	}
-
-	if downloadIndex {
-		if err := remote.downloadIndex(local.HubIndexFile); err != nil {
-			return nil, err
-		}
-	}
-
-	log.Debugf("loading hub idx %s", local.HubIndexFile)
 
 	hub := &Hub{
 		local:  local,
 		remote: remote,
 	}
+
+	if updateIndex {
+		if err := hub.updateIndex(); err != nil {
+			return nil, err
+		}
+	}
+
+	log.Debugf("loading hub idx %s", local.HubIndexFile)
 
 	if err := hub.parseIndex(); err != nil {
 		return nil, fmt.Errorf("failed to load index: %w", err)
@@ -82,8 +82,7 @@ func (h *Hub) parseIndex() error {
 			}
 
 			item.Type = itemType
-			x := strings.Split(item.RemotePath, "/")
-			item.FileName = x[len(x)-1]
+			item.FileName = path.Base(item.RemotePath)
 
 			item.logMissingSubItems()
 		}
@@ -95,6 +94,8 @@ func (h *Hub) parseIndex() error {
 // ItemStats returns total counts of the hub items
 func (h *Hub) ItemStats() []string {
 	loaded := ""
+	local := 0
+	tainted := 0
 
 	for _, itemType := range ItemTypes {
 		if len(h.Items[itemType]) == 0 {
@@ -102,11 +103,20 @@ func (h *Hub) ItemStats() []string {
 		}
 
 		loaded += fmt.Sprintf("%d %s, ", len(h.Items[itemType]), itemType)
+
+		for _, item := range h.Items[itemType] {
+			if item.IsLocal() {
+				local++
+			}
+
+			if item.State.Tainted {
+				tainted++
+			}
+		}
 	}
 
 	loaded = strings.Trim(loaded, ", ")
 	if loaded == "" {
-		// empty hub
 		loaded = "0 items"
 	}
 
@@ -114,9 +124,35 @@ func (h *Hub) ItemStats() []string {
 		fmt.Sprintf("Loaded: %s", loaded),
 	}
 
-	if h.skippedLocal > 0 || h.skippedTainted > 0 {
-		ret = append(ret, fmt.Sprintf("Unmanaged items: %d local, %d tainted", h.skippedLocal, h.skippedTainted))
+	if local > 0 || tainted > 0 {
+		ret = append(ret, fmt.Sprintf("Unmanaged items: %d local, %d tainted", local, tainted))
 	}
 
 	return ret
+}
+
+// updateIndex downloads the latest version of the index and writes it to disk if it changed
+func (h *Hub) updateIndex() error {
+	body, err := h.remote.fetchIndex()
+	if err != nil {
+		return err
+	}
+
+	oldContent, err := os.ReadFile(h.local.HubIndexFile)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			log.Warningf("failed to read hub index: %s", err)
+		}
+	} else if bytes.Equal(body, oldContent) {
+		log.Info("hub index is up to date")
+		return nil
+	}
+
+	if err = os.WriteFile(h.local.HubIndexFile, body, 0o644); err != nil {
+		return fmt.Errorf("failed to write hub index: %w", err)
+	}
+
+	log.Infof("Wrote index to %s, %d bytes", h.local.HubIndexFile, len(body))
+
+	return nil
 }

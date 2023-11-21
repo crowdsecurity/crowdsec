@@ -18,14 +18,14 @@ func LoadWaapRules(hubInstance *cwhub.Hub) error {
 
 	for _, hubWafRuleItem := range hub.GetItemMap(cwhub.WAAP_RULES) {
 		//log.Infof("loading %s", hubWafRuleItem.LocalPath)
-		if !hubWafRuleItem.Installed {
+		if !hubWafRuleItem.State.Installed {
 			continue
 		}
 
-		content, err := os.ReadFile(hubWafRuleItem.LocalPath)
+		content, err := os.ReadFile(hubWafRuleItem.State.LocalPath)
 
 		if err != nil {
-			log.Warnf("unable to read file %s : %s", hubWafRuleItem.LocalPath, err)
+			log.Warnf("unable to read file %s : %s", hubWafRuleItem.State.LocalPath, err)
 			continue
 		}
 
@@ -34,16 +34,16 @@ func LoadWaapRules(hubInstance *cwhub.Hub) error {
 		err = yaml.UnmarshalStrict(content, &rule)
 
 		if err != nil {
-			log.Warnf("unable to unmarshal file %s : %s", hubWafRuleItem.LocalPath, err)
+			log.Warnf("unable to unmarshal file %s : %s", hubWafRuleItem.State.LocalPath, err)
 			continue
 		}
 
 		if rule.Type != WAAP_RULE {
-			log.Warnf("unexpected type %s instead of %s for file %s", rule.Type, WAAP_RULE, hubWafRuleItem.LocalPath)
+			log.Warnf("unexpected type %s instead of %s for file %s", rule.Type, WAAP_RULE, hubWafRuleItem.State.LocalPath)
 			continue
 		}
 
-		rule.hash = hubWafRuleItem.LocalHash
+		rule.hash = hubWafRuleItem.State.LocalHash
 		rule.version = hubWafRuleItem.Version
 
 		log.Infof("Adding %s to waap rules", rule.Name)

@@ -10,14 +10,33 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// installLink returns the location of the symlink to the actual config file (eg. /etc/crowdsec/collections/xyz.yaml)
-func (i *Item) installLink() string {
-	return filepath.Join(i.hub.local.InstallDir, i.Type, i.Stage, i.FileName)
+// installPath returns the location of the symlink to the item in the hub, or the path of the item itself if it's local
+// (eg. /etc/crowdsec/collections/xyz.yaml)
+// raises an error if the path goes outside of the install dir
+func (i *Item) installPath() (string, error) {
+	p := i.Type
+	if i.Stage != "" {
+		p = filepath.Join(p, i.Stage)
+	}
+
+	return safePath(i.hub.local.InstallDir, filepath.Join(p, i.FileName))
+}
+
+// downloadPath returns the location of the actual config file in the hub
+// (eg. /etc/crowdsec/hub/collections/author/xyz.yaml)
+// raises an error if the path goes outside of the hub dir
+func (i *Item) downloadPath() (string, error) {
+	ret, err := safePath(i.hub.local.HubDir, i.RemotePath)
+	if err != nil {
+		return "", err
+	}
+
+	return ret, nil
 }
 
 // makeLink creates a symlink between the actual config file at hub.HubDir and hub.ConfigDir
 func (i *Item) createInstallLink() error {
-	dest, err := filepath.Abs(i.installLink())
+	dest, err := i.installPath()
 	if err != nil {
 		return err
 	}
@@ -32,7 +51,7 @@ func (i *Item) createInstallLink() error {
 		return nil
 	}
 
-	src, err := filepath.Abs(filepath.Join(i.hub.local.HubDir, i.RemotePath))
+	src, err := i.downloadPath()
 	if err != nil {
 		return err
 	}
@@ -46,8 +65,8 @@ func (i *Item) createInstallLink() error {
 
 // enable enables the item by creating a symlink to the downloaded content, and also enables sub-items
 func (i *Item) enable() error {
-	if i.Installed {
-		if i.Tainted {
+	if i.State.Installed {
+		if i.State.Tainted {
 			return fmt.Errorf("%s is tainted, won't enable unless --force", i.Name)
 		}
 
@@ -56,7 +75,7 @@ func (i *Item) enable() error {
 		}
 
 		// if it's a collection, check sub-items even if the collection file itself is up-to-date
-		if i.UpToDate && !i.HasSubItems() {
+		if i.State.UpToDate && !i.HasSubItems() {
 			log.Tracef("%s is installed and up-to-date, skip.", i.Name)
 			return nil
 		}
@@ -73,19 +92,22 @@ func (i *Item) enable() error {
 	}
 
 	log.Infof("Enabled %s: %s", i.Type, i.Name)
-	i.Installed = true
+	i.State.Installed = true
 
 	return nil
 }
 
 // purge removes the actual config file that was downloaded
 func (i *Item) purge() error {
-	if !i.Downloaded {
+	if !i.State.Downloaded {
 		log.Infof("removing %s: not downloaded -- no need to remove", i.Name)
 		return nil
 	}
 
-	src := filepath.Join(i.hub.local.HubDir, i.RemotePath)
+	src, err := i.downloadPath()
+	if err != nil {
+		return err
+	}
 
 	if err := os.Remove(src); err != nil {
 		if os.IsNotExist(err) {
@@ -96,14 +118,15 @@ func (i *Item) purge() error {
 		return fmt.Errorf("while removing file: %w", err)
 	}
 
-	i.Downloaded = false
+	i.State.Downloaded = false
 	log.Infof("Removed source file [%s]: %s", i.Name, src)
 
 	return nil
 }
 
+// removeInstallLink removes the symlink to the downloaded content
 func (i *Item) removeInstallLink() error {
-	syml, err := filepath.Abs(i.installLink())
+	syml, err := i.installPath()
 	if err != nil {
 		return err
 	}
@@ -124,7 +147,7 @@ func (i *Item) removeInstallLink() error {
 		return fmt.Errorf("while reading symlink: %w", err)
 	}
 
-	src, err := filepath.Abs(i.hub.local.HubDir + "/" + i.RemotePath)
+	src, err := i.downloadPath()
 	if err != nil {
 		return err
 	}
@@ -143,19 +166,20 @@ func (i *Item) removeInstallLink() error {
 	return nil
 }
 
-// disable removes the symlink to the downloaded content, also removes the content if purge is true
+// disable removes the install link, and optionally the downloaded content
 func (i *Item) disable(purge bool, force bool) error {
 	// XXX: should return the number of disabled/purged items to inform the upper layer whether to reload or not
 	err := i.removeInstallLink()
 	if os.IsNotExist(err) {
 		if !purge && !force {
-			return fmt.Errorf("link %s does not exist (override with --force or --purge)", i.installLink())
+			link, _ := i.installPath()
+			return fmt.Errorf("link %s does not exist (override with --force or --purge)", link)
 		}
 	} else if err != nil {
 		return err
 	}
 
-	i.Installed = false
+	i.State.Installed = false
 
 	if purge {
 		if err := i.purge(); err != nil {

@@ -57,6 +57,19 @@ teardown() {
     assert_json '["1.10",false,false]'
 }
 
+@test "do not unmarshal state attributes" {
+    new_hub=$( \
+        jq <"$INDEX_PATH" \
+        '. * {parsers:{"crowdsecurity/syslog-logs":{"tainted":true, "installed":true, "local":true}}}'
+    )
+    echo "$new_hub" >"$INDEX_PATH"
+
+    rune -0 cscli parsers inspect crowdsecurity/syslog-logs --no-metrics
+    assert_output --partial 'tainted: false'
+    assert_output --partial 'installed: false'
+    assert_output --partial 'local: false'
+}
+
 @test "hub index with invalid (non semver) version numbers" {
     rune -0 cscli collections remove crowdsecurity/sshd --purge
 

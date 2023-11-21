@@ -41,34 +41,40 @@ type ItemVersion struct {
 	Deprecated bool   `json:"deprecated,omitempty"`
 }
 
+// ItemState is used to keep the local state (i.e. at runtime) of an item
+// This data is not stored in the index, but is displayed in the output of "cscli ... inspect"
+type ItemState struct {
+	LocalPath            string   `json:"local_path,omitempty" yaml:"local_path,omitempty"` // the local path relative to ${CFG_DIR}
+	LocalVersion         string   `json:"local_version,omitempty"`
+	LocalHash            string   `json:"local_hash,omitempty"` // the local meow
+	Installed            bool     `json:"installed"`
+	Downloaded           bool     `json:"downloaded"`
+	UpToDate             bool     `json:"up_to_date"`
+	Tainted              bool     `json:"tainted"`                                                                  // has it been locally modified?
+	BelongsToCollections []string `json:"belongs_to_collections,omitempty" yaml:"belongs_to_collections,omitempty"` // parent collection if any
+}
+
 // Item represents an object managed in the hub. It can be a parser, scenario, collection..
 type Item struct {
 	// back pointer to the hub, to retrieve subitems and call install/remove methods
 	hub *Hub
 
+	// local (deployed) info
+	State ItemState
+
 	// descriptive info
-	Type                 string   `json:"type,omitempty"                   yaml:"type,omitempty"`                   // can be any of the ItemTypes
-	Stage                string   `json:"stage,omitempty"                  yaml:"stage,omitempty"`                  // Stage for parser|postoverflow: s00-raw/s01-...
-	Name                 string   `json:"name,omitempty"`                                                           // as seen in .index.json, usually "author/name"
-	FileName             string   `json:"file_name,omitempty"`                                                      // the filename, ie. apache2-logs.yaml
-	Description          string   `json:"description,omitempty"            yaml:"description,omitempty"`            // as seen in .index.json
-	Author               string   `json:"author,omitempty"`                                                         // as seen in .index.json
-	References           []string `json:"references,omitempty"             yaml:"references,omitempty"`             // as seen in .index.json
-	BelongsToCollections []string `json:"belongs_to_collections,omitempty" yaml:"belongs_to_collections,omitempty"` // parent collection if any
+	Type        string   `json:"type,omitempty"                   yaml:"type,omitempty"`        // can be any of the ItemTypes
+	Stage       string   `json:"stage,omitempty"                  yaml:"stage,omitempty"`       // Stage for parser|postoverflow: s00-raw/s01-...
+	Name        string   `json:"name,omitempty"`                                                // as seen in .index.json, usually "author/name"
+	FileName    string   `json:"file_name,omitempty"`                                           // the filename, ie. apache2-logs.yaml
+	Description string   `json:"description,omitempty"            yaml:"description,omitempty"` // as seen in .index.json
+	Author      string   `json:"author,omitempty"`                                              // as seen in .index.json
+	References  []string `json:"references,omitempty"             yaml:"references,omitempty"`  // as seen in .index.json
 
 	// remote (hub) info
 	RemotePath string                 `json:"path,omitempty"      yaml:"remote_path,omitempty"` // the path relative to (git | hub API) ie. /parsers/stage/author/file.yaml
 	Version    string                 `json:"version,omitempty"`                                // the last version
 	Versions   map[string]ItemVersion `json:"versions,omitempty"  yaml:"-"`                     // the list of existing versions
-
-	// local (deployed) info
-	LocalPath    string `json:"local_path,omitempty" yaml:"local_path,omitempty"` // the local path relative to ${CFG_DIR}
-	LocalVersion string `json:"local_version,omitempty"`
-	LocalHash    string `json:"local_hash,omitempty"` // the local meow
-	Installed    bool   `json:"installed"`
-	Downloaded   bool   `json:"downloaded"`
-	UpToDate     bool   `json:"up_to_date"`
-	Tainted      bool   `json:"tainted"` // has it been locally modified?
 
 	// if it's a collection, it can have sub items
 	Parsers       []string `json:"parsers,omitempty"       yaml:"parsers,omitempty"`
@@ -84,7 +90,7 @@ func (i *Item) HasSubItems() bool {
 }
 
 func (i *Item) IsLocal() bool {
-	return i.Installed && !i.Downloaded
+	return i.State.Installed && !i.State.Downloaded
 }
 
 // MarshalJSON is used to add the "local" field to the json output
@@ -95,10 +101,27 @@ func (i Item) MarshalJSON() ([]byte, error) {
 
 	return json.Marshal(&struct {
 		Alias
-		Local bool `json:"local"`
+		// we have to repeat the fields here, json will have inline support in v2
+		LocalPath            string   `json:"local_path,omitempty"`
+		LocalVersion         string   `json:"local_version,omitempty"`
+		LocalHash            string   `json:"local_hash,omitempty"`
+		Installed            bool     `json:"installed"`
+		Downloaded           bool     `json:"downloaded"`
+		UpToDate             bool     `json:"up_to_date"`
+		Tainted              bool     `json:"tainted"`
+		Local                bool     `json:"local"`
+		BelongsToCollections []string `json:"belongs_to_collections,omitempty"`
 	}{
-		Alias: Alias(i),
-		Local: i.IsLocal(),
+		Alias:                Alias(i),
+		LocalPath:            i.State.LocalPath,
+		LocalVersion:         i.State.LocalVersion,
+		LocalHash:            i.State.LocalHash,
+		Installed:            i.State.Installed,
+		Downloaded:           i.State.Downloaded,
+		UpToDate:             i.State.UpToDate,
+		Tainted:              i.State.Tainted,
+		BelongsToCollections: i.State.BelongsToCollections,
+		Local:                i.IsLocal(),
 	})
 }
 
@@ -110,9 +133,11 @@ func (i Item) MarshalYAML() (interface{}, error) {
 
 	return &struct {
 		Alias `yaml:",inline"`
-		Local bool `yaml:"local"`
+		State ItemState `yaml:",inline"`
+		Local bool      `yaml:"local"`
 	}{
 		Alias: Alias(i),
+		State: i.State,
 		Local: i.IsLocal(),
 	}, nil
 }
@@ -220,10 +245,11 @@ func (i *Item) logMissingSubItems() {
 	}
 }
 
-func (i *Item) parentCollections() []*Item {
+// ParentCollections returns the list of items (collections) that have this item as a direct dependency
+func (i *Item) ParentCollections() []*Item {
 	ret := make([]*Item, 0)
 
-	for _, parentName := range i.BelongsToCollections {
+	for _, parentName := range i.State.BelongsToCollections {
 		parent := i.hub.GetItem(COLLECTIONS, parentName)
 		if parent == nil {
 			continue
@@ -241,7 +267,7 @@ func (i *Item) Status() (string, emoji.Emoji) {
 	status := "disabled"
 	ok := false
 
-	if i.Installed {
+	if i.State.Installed {
 		ok = true
 		status = "enabled"
 	}
@@ -253,10 +279,10 @@ func (i *Item) Status() (string, emoji.Emoji) {
 	}
 
 	warning := false
-	if i.Tainted {
+	if i.State.Tainted {
 		warning = true
 		status += ",tainted"
-	} else if !i.UpToDate && !i.IsLocal() {
+	} else if !i.State.UpToDate && !i.IsLocal() {
 		warning = true
 		status += ",update-available"
 	}
@@ -266,7 +292,7 @@ func (i *Item) Status() (string, emoji.Emoji) {
 	switch {
 	case !managed:
 		emo = emoji.House
-	case !i.Installed:
+	case !i.State.Installed:
 		emo = emoji.Prohibited
 	case warning:
 		emo = emoji.Warning
@@ -279,7 +305,7 @@ func (i *Item) Status() (string, emoji.Emoji) {
 
 // versionStatus: semver requires 'v' prefix
 func (i *Item) versionStatus() int {
-	local, err := semver.NewVersion(i.LocalVersion)
+	local, err := semver.NewVersion(i.State.LocalVersion)
 	if err != nil {
 		return VersionUnknown
 	}
@@ -315,8 +341,8 @@ func (h *Hub) GetItem(itemType string, itemName string) *Item {
 	return h.GetItemMap(itemType)[itemName]
 }
 
-// GetItemNames returns the list of item (full) names for a given type
-// ie. for parsers: crowdsecurity/apache2 crowdsecurity/nginx
+// GetItemNames returns the list of (full) item names for a given type
+// ie. for collections: crowdsecurity/apache2 crowdsecurity/nginx
 // The names can be used to retrieve the item with GetItem()
 func (h *Hub) GetItemNames(itemType string) []string {
 	m := h.GetItemMap(itemType)
@@ -361,7 +387,7 @@ func (h *Hub) GetInstalledItems(itemType string) ([]*Item, error) {
 	retItems := make([]*Item, 0)
 
 	for _, item := range items {
-		if item.Installed {
+		if item.State.Installed {
 			retItems = append(retItems, item)
 		}
 	}
@@ -369,8 +395,8 @@ func (h *Hub) GetInstalledItems(itemType string) ([]*Item, error) {
 	return retItems, nil
 }
 
-// GetInstalledItemsAsString returns the names of the installed items
-func (h *Hub) GetInstalledItemsAsString(itemType string) ([]string, error) {
+// GetInstalledItemNames returns the names of the installed items
+func (h *Hub) GetInstalledItemNames(itemType string) ([]string, error) {
 	items, err := h.GetInstalledItems(itemType)
 	if err != nil {
 		return nil, err

@@ -23,7 +23,7 @@ func TestInitHubUpdate(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestDownloadIndex(t *testing.T) {
+func TestUpdateIndex(t *testing.T) {
 	// bad url template
 	fmt.Println("Test 'bad URL'")
 
@@ -42,7 +42,9 @@ func TestDownloadIndex(t *testing.T) {
 		IndexPath:   "",
 	}
 
-	err = hub.remote.downloadIndex(tmpIndex.Name())
+	hub.local.HubIndexFile = tmpIndex.Name()
+
+	err = hub.updateIndex()
 	cstest.RequireErrorContains(t, err, "failed to build hub index request: invalid URL template 'x'")
 
 	// bad domain
@@ -54,7 +56,7 @@ func TestDownloadIndex(t *testing.T) {
 		IndexPath:   ".index.json",
 	}
 
-	err = hub.remote.downloadIndex(tmpIndex.Name())
+	err = hub.updateIndex()
 	require.NoError(t, err)
 	// XXX: this is not failing
 	//	cstest.RequireErrorContains(t, err, "failed http request for hub index: Get")
@@ -68,6 +70,8 @@ func TestDownloadIndex(t *testing.T) {
 		IndexPath:   ".index.json",
 	}
 
-	err = hub.remote.downloadIndex("/does/not/exist/index.json")
+	hub.local.HubIndexFile = "/does/not/exist/index.json"
+
+	err = hub.updateIndex()
 	cstest.RequireErrorContains(t, err, "failed to write hub index: open /does/not/exist/index.json:")
 }

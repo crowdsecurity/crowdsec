@@ -41,7 +41,7 @@ func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 
 	for _, itemName := range itemNames {
 		item := hub.GetItem(itemType, itemName)
-		if installedOnly && !item.Installed {
+		if installedOnly && !item.State.Installed {
 			continue
 		}
 
@@ -78,8 +78,8 @@ func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item
 				status, emo := item.Status()
 				hubStatus[itemType][i] = itemHubStatus{
 					Name:         item.Name,
-					LocalVersion: item.LocalVersion,
-					LocalPath:    item.LocalPath,
+					LocalVersion: item.State.LocalVersion,
+					LocalPath:    item.State.LocalPath,
 					Description:  item.Description,
 					Status:       status,
 					UTF8Status:   fmt.Sprintf("%v  %s", emo, status),
@@ -111,7 +111,7 @@ func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item
 				row := []string{
 					item.Name,
 					status,
-					item.LocalVersion,
+					item.State.LocalVersion,
 					item.Description,
 				}
 				if len(itemTypes) > 1 {

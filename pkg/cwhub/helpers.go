@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/enescakir/emoji"
 	log "github.com/sirupsen/logrus"
@@ -22,7 +21,7 @@ import (
 
 // Install installs the item from the hub, downloading it if needed
 func (i *Item) Install(force bool, downloadOnly bool) error {
-	if downloadOnly && i.Downloaded && i.UpToDate {
+	if downloadOnly && i.State.Downloaded && i.State.UpToDate {
 		log.Infof("%s is already downloaded and up-to-date", i.Name)
 
 		if !force {
@@ -31,13 +30,14 @@ func (i *Item) Install(force bool, downloadOnly bool) error {
 	}
 
 	// XXX: confusing semantic between force and updateOnly?
-	if err := i.downloadLatest(force, true); err != nil {
+	filePath, err := i.downloadLatest(force, true)
+	if err != nil {
 		return fmt.Errorf("while downloading %s: %w", i.Name, err)
 	}
 
 	if downloadOnly {
 		// XXX: should get the path from downloadLatest
-		log.Infof("Downloaded %s to %s", i.Name, filepath.Join(i.hub.local.HubDir, i.RemotePath))
+		log.Infof("Downloaded %s to %s", i.Name, filePath)
 		return nil
 	}
 
@@ -52,20 +52,46 @@ func (i *Item) Install(force bool, downloadOnly bool) error {
 	return nil
 }
 
-// allDependencies return a list of all dependencies and sub-dependencies of the item
-func (i *Item) allDependencies() []*Item {
-	var deps []*Item
+// allDependencies returns a list of all (direct or indirect) dependencies of the item
+func (i *Item) allDependencies() ([]*Item, error) {
+	var collectSubItems func(item *Item, visited map[*Item]bool, result *[]*Item) error
 
-	for _, dep := range i.SubItems() {
-		if dep == i {
-			log.Errorf("circular dependency detected: %s depends on %s", dep.Name, i.Name)
-			continue
+	collectSubItems = func(item *Item, visited map[*Item]bool, result *[]*Item) error {
+		if item == nil {
+			return nil
 		}
 
-		deps = append(deps, dep.allDependencies()...)
+		if visited[item] {
+			return nil
+		}
+
+		visited[item] = true
+
+		for _, subItem := range item.SubItems() {
+			if subItem == i {
+				return fmt.Errorf("circular dependency detected: %s depends on %s", item.Name, i.Name)
+			}
+
+			*result = append(*result, subItem)
+
+			err := collectSubItems(subItem, visited, result)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
 	}
 
-	return append(deps, i)
+	ret := []*Item{}
+	visited := map[*Item]bool{}
+
+	err := collectSubItems(i, visited, &ret)
+	if err != nil {
+		return nil, err
+	}
+
+	return ret, nil
 }
 
 // Remove disables the item, optionally removing the downloaded content
@@ -74,27 +100,34 @@ func (i *Item) Remove(purge bool, force bool) (bool, error) {
 		return false, fmt.Errorf("%s isn't managed by hub. Please delete manually", i.Name)
 	}
 
-	if i.Tainted && !force {
+	if i.State.Tainted && !force {
 		return false, fmt.Errorf("%s is tainted, use '--force' to remove", i.Name)
 	}
 
-	if !i.Installed && !purge {
+	if !i.State.Installed && !purge {
 		log.Infof("removing %s: not installed -- no need to remove", i.Name)
 		return false, nil
 	}
 
 	removed := false
 
-	allDeps := i.allDependencies()
+	allDeps, err := i.allDependencies()
+	if err != nil {
+		return false, err
+	}
 
 	for _, sub := range i.SubItems() {
-		if !sub.Installed {
+		if !sub.State.Installed {
 			continue
 		}
 
-		// if the other collection(s) are direct or indirect dependencies of the current one, it's good to go
-		// log parent collections
-		for _, subParent := range sub.parentCollections() {
+		// if the sub depends on a collection that is not a direct or indirect dependency
+		// of the current item, it is not removed
+		for _, subParent := range sub.ParentCollections() {
+			if !purge && !subParent.State.Installed {
+				continue
+			}
+
 			if subParent == i {
 				continue
 			}
@@ -113,8 +146,7 @@ func (i *Item) Remove(purge bool, force bool) (bool, error) {
 		removed = removed || subRemoved
 	}
 
-	err := i.disable(purge, force)
-	if err != nil {
+	if err = i.disable(purge, force); err != nil {
 		return false, fmt.Errorf("while removing %s: %w", i.Name, err)
 	}
 
@@ -128,15 +160,15 @@ func (i *Item) Remove(purge bool, force bool) (bool, error) {
 func (i *Item) Upgrade(force bool) (bool, error) {
 	updated := false
 
-	if !i.Downloaded {
+	if !i.State.Downloaded {
 		return false, fmt.Errorf("can't upgrade %s: not installed", i.Name)
 	}
 
-	if !i.Installed {
+	if !i.State.Installed {
 		return false, fmt.Errorf("can't upgrade %s: downloaded but not installed", i.Name)
 	}
 
-	if i.UpToDate {
+	if i.State.UpToDate {
 		log.Infof("%s: up-to-date", i.Name)
 
 		if err := i.DownloadDataIfNeeded(force); err != nil {
@@ -149,12 +181,12 @@ func (i *Item) Upgrade(force bool) (bool, error) {
 		}
 	}
 
-	if err := i.downloadLatest(force, true); err != nil {
+	if _, err := i.downloadLatest(force, true); err != nil {
 		return false, fmt.Errorf("%s: download failed: %w", i.Name, err)
 	}
 
-	if !i.UpToDate {
-		if i.Tainted {
+	if !i.State.UpToDate {
+		if i.State.Tainted {
 			log.Infof("%v %s is tainted, --force to overwrite", emoji.Warning, i.Name)
 		} else if i.IsLocal() {
 			log.Infof("%v %s is local", emoji.Prohibited, i.Name)
@@ -171,56 +203,57 @@ func (i *Item) Upgrade(force bool) (bool, error) {
 	return updated, nil
 }
 
-// downloadLatest will download the latest version of Item to the tdir directory
-func (i *Item) downloadLatest(overwrite bool, updateOnly bool) error {
+// downloadLatest downloads the latest version of the item to the hub directory
+func (i *Item) downloadLatest(overwrite bool, updateOnly bool) (string, error) {
 	// XXX: should return the path of the downloaded file (taken from download())
 	log.Debugf("Downloading %s %s", i.Type, i.Name)
 
 	for _, sub := range i.SubItems() {
-		if !sub.Installed && updateOnly && sub.Downloaded {
+		if !sub.State.Installed && updateOnly && sub.State.Downloaded {
 			log.Debugf("skipping upgrade of %s: not installed", i.Name)
 			continue
 		}
 
-		log.Debugf("Download %s sub-item: %s %s (%t -> %t)", i.Name, sub.Type, sub.Name, i.Installed, updateOnly)
+		log.Debugf("Download %s sub-item: %s %s (%t -> %t)", i.Name, sub.Type, sub.Name, i.State.Installed, updateOnly)
 
 		// recurse as it's a collection
 		if sub.HasSubItems() {
 			log.Tracef("collection, recurse")
 
-			if err := sub.downloadLatest(overwrite, updateOnly); err != nil {
-				return fmt.Errorf("while downloading %s: %w", sub.Name, err)
+			if _, err := sub.downloadLatest(overwrite, updateOnly); err != nil {
+				return "", fmt.Errorf("while downloading %s: %w", sub.Name, err)
 			}
 		}
 
-		downloaded := sub.Downloaded
+		downloaded := sub.State.Downloaded
 
-		if err := sub.download(overwrite); err != nil {
-			return fmt.Errorf("while downloading %s: %w", sub.Name, err)
+		if _, err := sub.download(overwrite); err != nil {
+			return "", fmt.Errorf("while downloading %s: %w", sub.Name, err)
 		}
 
 		// We need to enable an item when it has been added to a collection since latest release of the collection.
 		// We check if sub.Downloaded is false because maybe the item has been disabled by the user.
-		if !sub.Installed && !downloaded {
+		if !sub.State.Installed && !downloaded {
 			if err := sub.enable(); err != nil {
-				return fmt.Errorf("enabling '%s': %w", sub.Name, err)
+				return "", fmt.Errorf("enabling '%s': %w", sub.Name, err)
 			}
 		}
 	}
 
-	if !i.Installed && updateOnly && i.Downloaded {
+	if !i.State.Installed && updateOnly && i.State.Downloaded {
 		log.Debugf("skipping upgrade of %s: not installed", i.Name)
-		return nil
+		return "", nil
 	}
 
-	if err := i.download(overwrite); err != nil {
-		return fmt.Errorf("failed to download item: %w", err)
+	ret, err := i.download(overwrite)
+	if err != nil {
+		return "", fmt.Errorf("failed to download item: %w", err)
 	}
 
-	return nil
+	return ret, nil
 }
 
-// fetch downloads the item from the hub, verifies the hash and returns the body
+// fetch downloads the item from the hub, verifies the hash and returns the content
 func (i *Item) fetch() ([]byte, error) {
 	url, err := i.hub.remote.urlTo(i.RemotePath)
 	if err != nil {
@@ -259,15 +292,15 @@ func (i *Item) fetch() ([]byte, error) {
 }
 
 // download downloads the item from the hub and writes it to the hub directory
-func (i *Item) download(overwrite bool) error {
+func (i *Item) download(overwrite bool) (string, error) {
 	// if user didn't --force, don't overwrite local, tainted, up-to-date files
 	if !overwrite {
-		if i.Tainted {
+		if i.State.Tainted {
 			log.Debugf("%s: tainted, not updated", i.Name)
-			return nil
+			return "", nil
 		}
 
-		if i.UpToDate {
+		if i.State.UpToDate {
 			//  We still have to check if data files are present
 			log.Debugf("%s: up-to-date, not updated", i.Name)
 		}
@@ -275,55 +308,52 @@ func (i *Item) download(overwrite bool) error {
 
 	body, err := i.fetch()
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	tdir := i.hub.local.HubDir
-
-	//all good, install
-
-	finalPath, err := filepath.Abs(filepath.Join(tdir, i.RemotePath))
-	if err != nil {
-		return err
-	}
+	// all good, install
 
 	// ensure that target file is within target dir
-	if !strings.HasPrefix(finalPath, tdir) {
-		return fmt.Errorf("path %s escapes %s, abort", i.RemotePath, tdir)
+	finalPath, err := i.downloadPath()
+	if err != nil {
+		return "", err
 	}
 
 	parentDir := filepath.Dir(finalPath)
 
 	if err = os.MkdirAll(parentDir, os.ModePerm); err != nil {
-		return fmt.Errorf("while creating %s: %w", parentDir, err)
+		return "", fmt.Errorf("while creating %s: %w", parentDir, err)
 	}
 
 	// check actual file
 	if _, err = os.Stat(finalPath); !os.IsNotExist(err) {
 		log.Warningf("%s: overwrite", i.Name)
-		log.Debugf("target: %s/%s", tdir, i.RemotePath)
+		log.Debugf("target: %s", finalPath)
 	} else {
 		log.Infof("%s: OK", i.Name)
 	}
 
 	if err = os.WriteFile(finalPath, body, 0o644); err != nil {
-		return fmt.Errorf("while writing %s: %w", finalPath, err)
+		return "", fmt.Errorf("while writing %s: %w", finalPath, err)
 	}
 
-	i.Downloaded = true
-	i.Tainted = false
-	i.UpToDate = true
+	i.State.Downloaded = true
+	i.State.Tainted = false
+	i.State.UpToDate = true
 
-	if err = downloadData(i.hub.local.InstallDataDir, overwrite, bytes.NewReader(body)); err != nil {
-		return fmt.Errorf("while downloading data for %s: %w", i.FileName, err)
+	if err = downloadDataSet(i.hub.local.InstallDataDir, overwrite, bytes.NewReader(body)); err != nil {
+		return "", fmt.Errorf("while downloading data for %s: %w", i.FileName, err)
 	}
 
-	return nil
+	return finalPath, nil
 }
 
 // DownloadDataIfNeeded downloads the data files for the item
 func (i *Item) DownloadDataIfNeeded(force bool) error {
-	itemFilePath := fmt.Sprintf("%s/%s/%s/%s", i.hub.local.InstallDir, i.Type, i.Stage, i.FileName)
+	itemFilePath, err := i.installPath()
+	if err != nil {
+		return err
+	}
 
 	itemFile, err := os.Open(itemFilePath)
 	if err != nil {
@@ -332,7 +362,7 @@ func (i *Item) DownloadDataIfNeeded(force bool) error {
 
 	defer itemFile.Close()
 
-	if err = downloadData(i.hub.local.InstallDataDir, force, itemFile); err != nil {
+	if err = downloadDataSet(i.hub.local.InstallDataDir, force, itemFile); err != nil {
 		return fmt.Errorf("while downloading data for %s: %w", itemFilePath, err)
 	}
 

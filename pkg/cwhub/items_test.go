@@ -18,25 +18,28 @@ func TestItemStatus(t *testing.T) {
 		item := hub.GetItem(COLLECTIONS, k)
 		require.NotNil(t, item)
 
-		item.Installed = true
-		item.UpToDate = false
-		item.Tainted = false
-		item.Downloaded = true
+		item.State.Installed = true
+		item.State.UpToDate = false
+		item.State.Tainted = false
+		item.State.Downloaded = true
 
 		txt, _ := item.Status()
 		require.Equal(t, "enabled,update-available", txt)
 
-		item.Installed = true
-		item.UpToDate = false
-		item.Tainted = false
-		item.Downloaded = false
+		item.State.Installed = true
+		item.State.UpToDate = false
+		item.State.Tainted = false
+		item.State.Downloaded = false
 
 		txt, _ = item.Status()
 		require.Equal(t, "enabled,local", txt)
 	}
 
 	stats := hub.ItemStats()
-	require.Equal(t, []string{"Loaded: 2 parsers, 1 scenarios, 3 collections"}, stats)
+	require.Equal(t, []string{
+		"Loaded: 2 parsers, 1 scenarios, 3 collections",
+		"Unmanaged items: 3 local, 0 tainted",
+	}, stats)
 }
 
 func TestGetters(t *testing.T) {

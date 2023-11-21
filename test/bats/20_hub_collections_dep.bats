@@ -112,3 +112,13 @@ teardown() {
     rune -0 cscli parsers list -o json
     rune -0 jq -e '.parsers | length == 0' <(output)
 }
+
+@test "cscli collections (dependencies IV: looper)" {
+    hub_dep=$(jq <"$INDEX_PATH" '. * {collections:{"crowdsecurity/sshd":{collections:["crowdsecurity/linux"]}}}')
+    echo "$hub_dep" >"$INDEX_PATH"
+
+    rune -1 cscli hub list
+    assert_stderr --partial "circular dependency detected"
+    rune -1 wait-for "${CROWDSEC}"
+    assert_stderr --partial "circular dependency detected"
+}

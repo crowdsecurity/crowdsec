@@ -152,16 +152,16 @@ func (wc *WaapConfig) Load(configName string) error {
 	waapConfigs := hub.GetItemMap(cwhub.WAAP_CONFIGS)
 
 	for _, hubWaapConfigItem := range waapConfigs {
-		if !hubWaapConfigItem.Installed {
+		if !hubWaapConfigItem.State.Installed {
 			continue
 		}
 		if hubWaapConfigItem.Name != configName {
 			continue
 		}
-		wc.Logger.Infof("loading %s", hubWaapConfigItem.LocalPath)
-		err := wc.LoadByPath(hubWaapConfigItem.LocalPath)
+		wc.Logger.Infof("loading %s", hubWaapConfigItem.State.LocalPath)
+		err := wc.LoadByPath(hubWaapConfigItem.State.LocalPath)
 		if err != nil {
-			return fmt.Errorf("unable to load waap-config %s : %s", hubWaapConfigItem.LocalPath, err)
+			return fmt.Errorf("unable to load waap-config %s : %s", hubWaapConfigItem.State.LocalPath, err)
 		}
 		return nil
 	}
