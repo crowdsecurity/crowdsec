@@ -107,3 +107,43 @@ teardown() {
     refute_output
     refute_stderr
 }
+
+@test "a local item is not tainted" {
+    # not from cscli... inspect
+    rune -0 mkdir -p "$CONFIG_DIR/collections"
+    rune -0 touch "$CONFIG_DIR/collections/foobar.yaml"
+    rune -0 cscli collections inspect foobar.yaml -o json
+    rune -0 jq -e '.tainted==false' <(output)
+
+    rune -0 cscli collections install crowdsecurity/sshd
+    rune -0 truncate -s0 "$CONFIG_DIR/collections/sshd.yaml"
+    rune -0 cscli collections inspect crowdsecurity/sshd -o json
+    rune -0 jq -e '.tainted==true' <(output)
+
+    # and not from hub update
+    rune -0 cscli hub update
+    assert_stderr --partial "collection crowdsecurity/sshd is tainted"
+    refute_stderr --partial "collection foobar.yaml is tainted"
+}
+
+@test "a local item's name defaults to its filename" {
+    rune -0 mkdir -p "$CONFIG_DIR/collections"
+    rune -0 touch "$CONFIG_DIR/collections/foobar.yaml"
+    rune -0 cscli collections list -o json
+    rune -0 jq -r '.[][].name' <(output)
+    assert_output "foobar.yaml"
+    rune -0 cscli collections list foobar.yaml
+    rune -0 cscli collections inspect foobar.yaml -o json
+    rune -0 jq -e '.installed==true' <(output)
+}
+
+@test "a local item can provide its own name" {
+    rune -0 mkdir -p "$CONFIG_DIR/collections"
+    echo "name: hi-its-me" > "$CONFIG_DIR/collections/foobar.yaml"
+    rune -0 cscli collections list -o json
+    rune -0 jq -r '.[][].name' <(output)
+    assert_output "hi-its-me"
+    rune -0 cscli collections list hi-its-me
+    rune -0 cscli collections inspect hi-its-me -o json
+    rune -0 jq -e '.installed==true' <(output)
+}

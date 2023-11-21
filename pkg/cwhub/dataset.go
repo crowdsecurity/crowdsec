@@ -13,11 +13,12 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+// The DataSet is a list of data sources required by an item (built from the data: section in the yaml).
 type DataSet struct {
 	Data []types.DataSource `yaml:"data,omitempty"`
 }
 
-// downloadFile downloads a file and writes it to disk, with no hash verification
+// downloadFile downloads a file and writes it to disk, with no hash verification.
 func downloadFile(url string, destPath string) error {
 	log.Debugf("downloading %s in %s", url, destPath)
 
@@ -50,7 +51,7 @@ func downloadFile(url string, destPath string) error {
 	return nil
 }
 
-// downloadDataSet downloads all the data files for an item
+// downloadDataSet downloads all the data files for an item.
 func downloadDataSet(dataFolder string, force bool, reader io.Reader) error {
 	dec := yaml.NewDecoder(reader)
 

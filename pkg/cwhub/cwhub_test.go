@@ -27,7 +27,7 @@ const mockURLTemplate = "https://hub-cdn.crowdsec.net/%s/%s"
 
 var responseByPath map[string]string
 
-// testHub initializes a temporary hub with an empty json file, optionally updating it
+// testHub initializes a temporary hub with an empty json file, optionally updating it.
 func testHub(t *testing.T, update bool) *Hub {
 	tmpDir, err := os.MkdirTemp("", "testhub")
 	require.NoError(t, err)
@@ -67,7 +67,7 @@ func testHub(t *testing.T, update bool) *Hub {
 	return hub
 }
 
-// envSetup initializes the temporary hub and mocks the http client
+// envSetup initializes the temporary hub and mocks the http client.
 func envSetup(t *testing.T) *Hub {
 	setResponseByPath()
 	log.SetLevel(log.DebugLevel)
@@ -92,7 +92,7 @@ func newMockTransport() http.RoundTripper {
 	return &mockTransport{}
 }
 
-// Implement http.RoundTripper
+// Implement http.RoundTripper.
 func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Create mocked http.Response
 	response := &http.Response{

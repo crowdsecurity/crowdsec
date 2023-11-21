@@ -19,7 +19,7 @@ import (
 	"slices"
 )
 
-// Install installs the item from the hub, downloading it if needed
+// Install installs the item from the hub, downloading it if needed.
 func (i *Item) Install(force bool, downloadOnly bool) error {
 	if downloadOnly && i.State.Downloaded && i.State.UpToDate {
 		log.Infof("%s is already downloaded and up-to-date", i.Name)
@@ -52,7 +52,7 @@ func (i *Item) Install(force bool, downloadOnly bool) error {
 	return nil
 }
 
-// allDependencies returns a list of all (direct or indirect) dependencies of the item
+// allDependencies returns a list of all (direct or indirect) dependencies of the item.
 func (i *Item) allDependencies() ([]*Item, error) {
 	var collectSubItems func(item *Item, visited map[*Item]bool, result *[]*Item) error
 
@@ -94,7 +94,7 @@ func (i *Item) allDependencies() ([]*Item, error) {
 	return ret, nil
 }
 
-// Remove disables the item, optionally removing the downloaded content
+// Remove disables the item, optionally removing the downloaded content.
 func (i *Item) Remove(purge bool, force bool) (bool, error) {
 	if i.IsLocal() {
 		return false, fmt.Errorf("%s isn't managed by hub. Please delete manually", i.Name)
@@ -123,7 +123,7 @@ func (i *Item) Remove(purge bool, force bool) (bool, error) {
 
 		// if the sub depends on a collection that is not a direct or indirect dependency
 		// of the current item, it is not removed
-		for _, subParent := range sub.ParentCollections() {
+		for _, subParent := range sub.AncestorCollections() {
 			if !purge && !subParent.State.Installed {
 				continue
 			}
@@ -156,7 +156,7 @@ func (i *Item) Remove(purge bool, force bool) (bool, error) {
 	return removed, nil
 }
 
-// Upgrade downloads and applies the last version from the hub
+// Upgrade downloads and applies the last version of the item from the hub.
 func (i *Item) Upgrade(force bool) (bool, error) {
 	updated := false
 
@@ -203,7 +203,7 @@ func (i *Item) Upgrade(force bool) (bool, error) {
 	return updated, nil
 }
 
-// downloadLatest downloads the latest version of the item to the hub directory
+// downloadLatest downloads the latest version of the item to the hub directory.
 func (i *Item) downloadLatest(overwrite bool, updateOnly bool) (string, error) {
 	// XXX: should return the path of the downloaded file (taken from download())
 	log.Debugf("Downloading %s %s", i.Type, i.Name)
@@ -253,7 +253,7 @@ func (i *Item) downloadLatest(overwrite bool, updateOnly bool) (string, error) {
 	return ret, nil
 }
 
-// fetch downloads the item from the hub, verifies the hash and returns the content
+// fetch downloads the item from the hub, verifies the hash and returns the content.
 func (i *Item) fetch() ([]byte, error) {
 	url, err := i.hub.remote.urlTo(i.RemotePath)
 	if err != nil {
@@ -291,7 +291,7 @@ func (i *Item) fetch() ([]byte, error) {
 	return body, nil
 }
 
-// download downloads the item from the hub and writes it to the hub directory
+// download downloads the item from the hub and writes it to the hub directory.
 func (i *Item) download(overwrite bool) (string, error) {
 	// if user didn't --force, don't overwrite local, tainted, up-to-date files
 	if !overwrite {
@@ -348,7 +348,7 @@ func (i *Item) download(overwrite bool) (string, error) {
 	return finalPath, nil
 }
 
-// DownloadDataIfNeeded downloads the data files for the item
+// DownloadDataIfNeeded downloads the data set for the item.
 func (i *Item) DownloadDataIfNeeded(force bool) error {
 	itemFilePath, err := i.installPath()
 	if err != nil {

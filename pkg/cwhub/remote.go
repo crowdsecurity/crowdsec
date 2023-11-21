@@ -6,14 +6,14 @@ import (
 	"net/http"
 )
 
-// RemoteHubCfg contains where to find the remote hub, which branch etc.
+// RemoteHubCfg is used to retrieve index and items from the remote hub.
 type RemoteHubCfg struct {
 	Branch      string
 	URLTemplate string
 	IndexPath   string
 }
 
-// urlTo builds the URL to download a file from the remote hub
+// urlTo builds the URL to download a file from the remote hub.
 func (r *RemoteHubCfg) urlTo(remotePath string) (string, error) {
 	if r == nil {
 		return "", ErrNilRemoteHub
@@ -27,7 +27,7 @@ func (r *RemoteHubCfg) urlTo(remotePath string) (string, error) {
 	return fmt.Sprintf(r.URLTemplate, r.Branch, remotePath), nil
 }
 
-// fetchIndex downloads the index from the hub and returns the content
+// fetchIndex downloads the index from the hub and returns the content.
 func (r *RemoteHubCfg) fetchIndex() ([]byte, error) {
 	if r == nil {
 		return nil, ErrNilRemoteHub
