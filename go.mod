@@ -82,7 +82,7 @@ require (
 	golang.org/x/crypto v0.9.0
 	golang.org/x/mod v0.11.0
 	golang.org/x/sys v0.9.0
-	google.golang.org/grpc v1.56.1
+	google.golang.org/grpc v1.56.3
 	google.golang.org/protobuf v1.30.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637
