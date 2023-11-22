@@ -37,6 +37,7 @@ type KafkaConfiguration struct {
 	Brokers                           []string   `yaml:"brokers"`
 	Topic                             string     `yaml:"topic"`
 	GroupID                           string     `yaml:"group_id"`
+	Partition                         int        `yaml:"partition"`
 	Timeout                           string     `yaml:"timeout"`
 	TLS                               *TLSConfig `yaml:"tls"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
@@ -271,8 +272,15 @@ func (kc *KafkaConfiguration) NewReader(dialer *kafka.Dialer, logger *log.Entry)
 		Logger:      kafka.LoggerFunc(logger.Debugf),
 		ErrorLogger: kafka.LoggerFunc(logger.Errorf),
 	}
+	if kc.GroupID != "" && kc.Partition != 0 {
+		return &kafka.Reader{}, fmt.Errorf("cannot specify both group_id and partition")
+	}
 	if kc.GroupID != "" {
 		rConf.GroupID = kc.GroupID
+	} else if kc.Partition != 0 {
+		rConf.Partition = kc.Partition
+	} else {
+		logger.Warnf("no group_id specified, crowdsec will only read from the 1st partition of the topic")
 	}
 	if err := rConf.Validate(); err != nil {
 		return &kafka.Reader{}, fmt.Errorf("while validating reader configuration: %w", err)
