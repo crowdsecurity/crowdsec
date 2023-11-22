@@ -322,7 +322,10 @@ func (w *WaapSource) IsAuth(apiKey string) bool {
 // should this be in the runner ?
 func (w *WaapSource) waapHandler(rw http.ResponseWriter, r *http.Request) {
 	apiKey := r.Header.Get(waf.APIKeyHeaderName)
+	clientIP := r.Header.Get(waf.IPHeaderName)
+	remoteIP := r.RemoteAddr
 	if apiKey == "" {
+		w.logger.Errorf("Unauthorized request from '%s' (real IP = %s)", remoteIP, clientIP)
 		rw.WriteHeader(http.StatusUnauthorized)
 		return
 	}
@@ -331,8 +334,6 @@ func (w *WaapSource) waapHandler(rw http.ResponseWriter, r *http.Request) {
 	if !exists || time.Now().After(expiration) {
 		if !w.IsAuth(apiKey) {
 			rw.WriteHeader(http.StatusUnauthorized)
-			clientIP := r.Header.Get(waf.IPHeaderName)
-			remoteIP := r.RemoteAddr
 			w.logger.Errorf("Unauthorized request from '%s' (real IP = %s)", remoteIP, clientIP)
 			return
 		}
