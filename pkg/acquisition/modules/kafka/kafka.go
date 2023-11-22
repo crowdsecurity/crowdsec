@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -153,7 +154,7 @@ func (k *KafkaSource) ReadMessage(out chan types.Event) error {
 		k.logger.Tracef("reading message from topic '%s'", k.Config.Topic)
 		m, err := k.Reader.ReadMessage(context.Background())
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				return nil
 			}
 			k.logger.Errorln(fmt.Errorf("while reading %s message: %w", dataSourceName, err))
