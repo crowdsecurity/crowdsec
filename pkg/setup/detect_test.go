@@ -992,7 +992,7 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				    datasource:
 				      source: loki`,
 			expected:    setup.Setup{Setup: []setup.ServiceSetup{}},
-			expectedErr: "invalid datasource for foobar: Loki query is mandatory",
+			expectedErr: "invalid datasource for foobar: loki query is mandatory",
 		},
 	}
 
