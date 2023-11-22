@@ -7,15 +7,75 @@ import (
 	"path/filepath"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/waf/waap_rule"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
 type Coverage struct {
 	Name       string
 	TestsCount int
 	PresentIn  map[string]bool //poorman's set
+}
+
+func (h *HubTest) GetWaapCoverage() ([]Coverage, error) {
+	if _, ok := h.HubIndex.Items[cwhub.WAAP_RULES]; !ok {
+		return nil, fmt.Errorf("no waap rules in hub index")
+	}
+
+	// populate from hub, iterate in alphabetical order
+	pkeys := sortedMapKeys(h.HubIndex.Items[cwhub.WAAP_RULES])
+	coverage := make([]Coverage, len(pkeys))
+
+	for i, name := range pkeys {
+		coverage[i] = Coverage{
+			Name:       name,
+			TestsCount: 0,
+			PresentIn:  make(map[string]bool),
+		}
+	}
+
+	// parser the expressions a-la-oneagain
+	waapTestConfigs, err := filepath.Glob(".waap-tests/*/config.yaml")
+	if err != nil {
+		return nil, fmt.Errorf("while find waap-tests config: %s", err)
+	}
+
+	for _, waapTestConfigPath := range waapTestConfigs {
+		configFileData := &HubTestItemConfig{}
+		yamlFile, err := os.ReadFile(waapTestConfigPath)
+		if err != nil {
+			log.Printf("unable to open waap test config file '%s': %s", waapTestConfigPath, err)
+			continue
+		}
+		err = yaml.Unmarshal(yamlFile, configFileData)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshal: %v", err)
+		}
+
+		for _, waapRulesFile := range configFileData.WaapRules {
+			waapRuleData := &waap_rule.CustomRule{}
+			yamlFile, err := os.ReadFile(waapRulesFile)
+			if err != nil {
+				log.Printf("unable to open waap rule '%s': %s", waapRulesFile, err)
+			}
+			err = yaml.Unmarshal(yamlFile, waapRuleData)
+			if err != nil {
+				return nil, fmt.Errorf("unmarshal: %v", err)
+			}
+			waapRuleName := waapRuleData.Name
+
+			for idx, cov := range coverage {
+				if cov.Name == waapRuleName {
+					coverage[idx].TestsCount++
+					coverage[idx].PresentIn[waapTestConfigPath] = true
+				}
+			}
+		}
+	}
+
+	return coverage, nil
 }
 
 func (h *HubTest) GetParsersCoverage() ([]Coverage, error) {
@@ -126,7 +186,6 @@ func (h *HubTest) GetScenariosCoverage() ([]Coverage, error) {
 	if err != nil {
 		return nil, fmt.Errorf("while find scenario asserts : %s", err)
 	}
-
 
 	for _, assert := range passerts {
 		file, err := os.Open(assert)

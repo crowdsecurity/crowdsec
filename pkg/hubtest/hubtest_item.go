@@ -3,12 +3,11 @@ package hubtest
 import (
 	"errors"
 	"fmt"
-	"net"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -84,6 +83,11 @@ const (
 	ScenarioResultFileName = "bucket-dump.yaml"
 
 	BucketPourResultFileName = "bucketpour-dump.yaml"
+
+	TestBouncerApiKey = "this_is_a_bad_password"
+
+	DefaultNucleiTarget = "http://127.0.0.1:80/"
+	DefaultWaapHost     = "127.0.0.1:4241"
 )
 
 func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
@@ -558,7 +562,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	}
 
 	//hardcode bouncer key
-	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "bouncers", "add", "waaptests", "-k", "this_is_a_bad_password"}
+	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "bouncers", "add", "waaptests", "-k", TestBouncerApiKey}
 	cscliBouncerCmd := exec.Command(t.CscliPath, cmdArgs...)
 
 	output, err = cscliBouncerCmd.CombinedOutput()
@@ -576,25 +580,20 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	crowdsecDaemon.Start()
 
 	//wait for the waap port to be available
+	if _, err := IsAlive(DefaultWaapHost); err != nil {
+		return fmt.Errorf("Waap is down: %s", err)
+	}
 
-	start := time.Now()
-
-	for {
-		conn, err := net.Dial("tcp", "127.0.0.1:4241")
-		if err == nil {
-			log.Debugf("waap is up after %s", time.Since(start))
-			conn.Close()
-			break
-		}
-		time.Sleep(500 * time.Millisecond)
-		if time.Since(start) > 10*time.Second {
-			log.Fatalf("took more than 10s for waap to be available, abort")
-		}
+	// check if the target is available
+	nucleiTargetParsedURL, err := url.Parse(DefaultNucleiTarget)
+	nucleiTargetHost := nucleiTargetParsedURL.Host
+	if _, err := IsAlive(nucleiTargetHost); err != nil {
+		return fmt.Errorf("Target is down: %s", err)
 	}
 
 	nucleiConfig := NucleiConfig{
 		Path:      "nuclei",
-		OutputDir: testPath,
+		OutputDir: t.RuntimePath,
 		CmdLineOptions: []string{"-ev", //allow variables from environment
 			"-nc",    //no colors in output
 			"-dresp", //dump response
@@ -602,7 +601,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 		},
 	}
 
-	err = nucleiConfig.RunNucleiTemplate(t.Name, t.Config.NucleiTemplate, "http://127.0.0.1:80/")
+	err = nucleiConfig.RunNucleiTemplate(t.Name, t.Config.NucleiTemplate, DefaultNucleiTarget)
 
 	if t.Config.ExpectedNucleiFailure {
 		if err != nil && errors.Is(err, NucleiTemplateFail) {

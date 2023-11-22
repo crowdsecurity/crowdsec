@@ -452,6 +452,7 @@ func NewHubTestCoverageCmd() *cobra.Command {
 	var showParserCov bool
 	var showScenarioCov bool
 	var showOnlyPercent bool
+	var showWaapCov bool
 
 	var cmdHubTestCoverage = &cobra.Command{
 		Use:               "coverage",
@@ -465,11 +466,13 @@ func NewHubTestCoverageCmd() *cobra.Command {
 			var err error
 			scenarioCoverage := []hubtest.Coverage{}
 			parserCoverage := []hubtest.Coverage{}
+			waapRuleCoverage := []hubtest.Coverage{}
 			scenarioCoveragePercent := 0
 			parserCoveragePercent := 0
+			waapRuleCoveragePercent := 0
 
 			// if both are false (flag by default), show both
-			showAll := !showScenarioCov && !showParserCov
+			showAll := !showScenarioCov && !showParserCov && !showWaapCov
 
 			if showParserCov || showAll {
 				parserCoverage, err = HubTest.GetParsersCoverage()
@@ -501,13 +504,30 @@ func NewHubTestCoverageCmd() *cobra.Command {
 				scenarioCoveragePercent = int(math.Round((float64(scenarioTested) / float64(len(scenarioCoverage)) * 100)))
 			}
 
+			if showWaapCov || showAll {
+				waapRuleCoverage, err = HubTest.GetWaapCoverage()
+				if err != nil {
+					return fmt.Errorf("while getting scenario coverage: %s", err)
+				}
+
+				waapRuleTested := 0
+				for _, test := range waapRuleCoverage {
+					if test.TestsCount > 0 {
+						waapRuleTested++
+					}
+				}
+				waapRuleCoveragePercent = int(math.Round((float64(waapRuleTested) / float64(len(waapRuleCoverage)) * 100)))
+			}
+
 			if showOnlyPercent {
 				if showAll {
-					fmt.Printf("parsers=%d%%\nscenarios=%d%%", parserCoveragePercent, scenarioCoveragePercent)
+					fmt.Printf("parsers=%d%%\nscenarios=%d%%\nwaap_rules=%d%%", parserCoveragePercent, scenarioCoveragePercent, waapRuleCoveragePercent)
 				} else if showParserCov {
 					fmt.Printf("parsers=%d%%", parserCoveragePercent)
 				} else if showScenarioCov {
 					fmt.Printf("scenarios=%d%%", scenarioCoveragePercent)
+				} else if showWaapCov {
+					fmt.Printf("waap_rules=%d%%", waapRuleCoveragePercent)
 				}
 				os.Exit(0)
 			}
@@ -521,12 +541,20 @@ func NewHubTestCoverageCmd() *cobra.Command {
 				if showScenarioCov || showAll {
 					hubTestScenarioCoverageTable(color.Output, scenarioCoverage)
 				}
+
+				if showWaapCov || showAll {
+					hubTestWaapRuleCoverageTable(color.Output, waapRuleCoverage)
+				}
+
 				fmt.Println()
 				if showParserCov || showAll {
 					fmt.Printf("PARSERS    : %d%% of coverage\n", parserCoveragePercent)
 				}
 				if showScenarioCov || showAll {
 					fmt.Printf("SCENARIOS  : %d%% of coverage\n", scenarioCoveragePercent)
+				}
+				if showWaapCov || showAll {
+					fmt.Printf("WAAP RULES  : %d%% of coverage\n", waapRuleCoveragePercent)
 				}
 			case "json":
 				dump, err := json.MarshalIndent(parserCoverage, "", " ")
@@ -535,6 +563,11 @@ func NewHubTestCoverageCmd() *cobra.Command {
 				}
 				fmt.Printf("%s", dump)
 				dump, err = json.MarshalIndent(scenarioCoverage, "", " ")
+				if err != nil {
+					return err
+				}
+				fmt.Printf("%s", dump)
+				dump, err = json.MarshalIndent(waapRuleCoverage, "", " ")
 				if err != nil {
 					return err
 				}
@@ -550,6 +583,7 @@ func NewHubTestCoverageCmd() *cobra.Command {
 	cmdHubTestCoverage.PersistentFlags().BoolVar(&showOnlyPercent, "percent", false, "Show only percentages of coverage")
 	cmdHubTestCoverage.PersistentFlags().BoolVar(&showParserCov, "parsers", false, "Show only parsers coverage")
 	cmdHubTestCoverage.PersistentFlags().BoolVar(&showScenarioCov, "scenarios", false, "Show only scenarios coverage")
+	cmdHubTestCoverage.PersistentFlags().BoolVar(&showWaapCov, "waap", false, "Show only waap coverage")
 
 	return cmdHubTestCoverage
 }

@@ -20,38 +20,43 @@ type NucleiConfig struct {
 
 var NucleiTemplateFail = errors.New("Nuclei template failed")
 
-func (ts *NucleiConfig) RunNucleiTemplate(test_name string, template_path string, target string) error {
+func (nc *NucleiConfig) RunNucleiTemplate(testName string, templatePath string, target string) error {
 	tstamp := time.Now().Unix()
-	//template_path is the full path to the template, we just want the name ie. "sqli-random-test"
-	tmp := strings.Split(template_path, "/")
+	//templatePath is the full path to the template, we just want the name ie. "sqli-random-test"
+	tmp := strings.Split(templatePath, "/")
 	template := strings.Split(tmp[len(tmp)-1], ".")[0]
 
-	output_prefix := fmt.Sprintf("%s/%s_%s-%d", ts.OutputDir, test_name, template, tstamp)
+	outputPrefix := fmt.Sprintf("%s/%s_%s-%d", nc.OutputDir, testName, template, tstamp)
 
 	args := []string{
 		"-u", target,
-		"-t", template_path,
-		"-o", output_prefix + ".json",
+		"-t", templatePath,
+		"-o", outputPrefix + ".json",
 	}
-	args = append(args, ts.CmdLineOptions...)
-	cmd := exec.Command(ts.Path, args...)
+	args = append(args, nc.CmdLineOptions...)
+	cmd := exec.Command(nc.Path, args...)
 
 	var out bytes.Buffer
-	var out_err bytes.Buffer
+	var outErr bytes.Buffer
+
 	cmd.Stdout = &out
-	cmd.Stderr = &out_err
+	cmd.Stderr = &outErr
+
 	err := cmd.Run()
-	if err := os.WriteFile(output_prefix+"_stdout.txt", out.Bytes(), 0644); err != nil {
+
+	if err := os.WriteFile(outputPrefix+"_stdout.txt", out.Bytes(), 0644); err != nil {
 		log.Warningf("Error writing stdout: %s", err)
 	}
-	if err := os.WriteFile(output_prefix+"_stderr.txt", out_err.Bytes(), 0644); err != nil {
+
+	if err := os.WriteFile(outputPrefix+"_stderr.txt", outErr.Bytes(), 0644); err != nil {
 		log.Warningf("Error writing stderr: %s", err)
 	}
+
 	if err != nil {
 		log.Warningf("Error running nuclei: %s", err)
-		log.Warningf("Stdout saved to %s", output_prefix+"_stdout.txt")
-		log.Warningf("Stderr saved to %s", output_prefix+"_stderr.txt")
-		log.Warningf("Nuclei generated output saved to %s", output_prefix+".json")
+		log.Warningf("Stdout saved to %s", outputPrefix+"_stdout.txt")
+		log.Warningf("Stderr saved to %s", outputPrefix+"_stderr.txt")
+		log.Warningf("Nuclei generated output saved to %s", outputPrefix+".json")
 		return err
 	} else if len(out.String()) == 0 {
 		//No stdout means no finding, it means our test failed
