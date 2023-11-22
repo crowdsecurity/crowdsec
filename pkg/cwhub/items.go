@@ -37,16 +37,16 @@ type HubItems map[string]map[string]*Item
 // by comparing the hash of each version to the local file.
 // If the item does not match any known version, it is considered tainted (modified).
 type ItemVersion struct {
-	Digest     string `json:"digest,omitempty"` // meow
-	Deprecated bool   `json:"deprecated,omitempty"`
+	Digest     string `json:"digest,omitempty" yaml:"digest,omitempty"`
+	Deprecated bool   `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
 }
 
 // ItemState is used to keep the local state (i.e. at runtime) of an item.
 // This data is not stored in the index, but is displayed with "cscli ... inspect".
 type ItemState struct {
 	LocalPath            string   `json:"local_path,omitempty" yaml:"local_path,omitempty"`
-	LocalVersion         string   `json:"local_version,omitempty"`
-	LocalHash            string   `json:"local_hash,omitempty"`
+	LocalVersion         string   `json:"local_version,omitempty" yaml:"local_version,omitempty"`
+	LocalHash            string   `json:"local_hash,omitempty" yaml:"local_hash,omitempty"`
 	Installed            bool     `json:"installed"`
 	Downloaded           bool     `json:"downloaded"`
 	UpToDate             bool     `json:"up_to_date"`
@@ -60,23 +60,24 @@ type Item struct {
 
 	State ItemState `json:"-" yaml:"-"` // local state, not stored in the index
 
-	Type        string   `json:"type,omitempty"                   yaml:"type,omitempty"`  // one of the ItemTypes
-	Stage       string   `json:"stage,omitempty"                  yaml:"stage,omitempty"` // Stage for parser|postoverflow: s00-raw/s01-...
-	Name        string   `json:"name,omitempty"`                                          // usually "author/name"
-	FileName    string   `json:"file_name,omitempty"`                                     // eg. apache2-logs.yaml
-	Description string   `json:"description,omitempty"            yaml:"description,omitempty"`
-	Author      string   `json:"author,omitempty"`
-	References  []string `json:"references,omitempty"             yaml:"references,omitempty"`
+	Type        string   `json:"type,omitempty" yaml:"type,omitempty"`           // one of the ItemTypes
+	Stage       string   `json:"stage,omitempty" yaml:"stage,omitempty"`         // Stage for parser|postoverflow: s00-raw/s01-...
+	Name        string   `json:"name,omitempty" yaml:"name,omitempty"`           // usually "author/name"
+	FileName    string   `json:"file_name,omitempty" yaml:"file_name,omitempty"` // eg. apache2-logs.yaml
+	Description string   `json:"description,omitempty" yaml:"description,omitempty"`
+	Author      string   `json:"author,omitempty" yaml:"author,omitempty"`
+	References  []string `json:"references,omitempty" yaml:"references,omitempty"`
 
-	RemotePath string                 `json:"path,omitempty"      yaml:"remote_path,omitempty"` // path relative to the base URL eg. /parsers/stage/author/file.yaml
-	Version    string                 `json:"version,omitempty"`                                // the last available version
-	Versions   map[string]ItemVersion `json:"versions,omitempty"  yaml:"-"`                     // all the known versions
+	// XXX: this is the only field where the json/yaml names are different
+	RemotePath string                 `json:"path,omitempty" yaml:"remote_path,omitempty"`       // path relative to the base URL eg. /parsers/stage/author/file.yaml
+	Version    string                 `json:"version,omitempty" yaml:"version,omitempty"` // the last available version
+	Versions   map[string]ItemVersion `json:"versions,omitempty"  yaml:"-"`               // all the known versions
 
 	// if it's a collection, it can have sub items
-	Parsers       []string `json:"parsers,omitempty"       yaml:"parsers,omitempty"`
+	Parsers       []string `json:"parsers,omitempty" yaml:"parsers,omitempty"`
 	PostOverflows []string `json:"postoverflows,omitempty" yaml:"postoverflows,omitempty"`
-	Scenarios     []string `json:"scenarios,omitempty"     yaml:"scenarios,omitempty"`
-	Collections   []string `json:"collections,omitempty"   yaml:"collections,omitempty"`
+	Scenarios     []string `json:"scenarios,omitempty" yaml:"scenarios,omitempty"`
+	Collections   []string `json:"collections,omitempty" yaml:"collections,omitempty"`
 }
 
 // HasSubItems returns true if items of this type can have sub-items. Currently only collections.
