@@ -242,12 +242,12 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewHubTestCmd())
 	rootCmd.AddCommand(NewNotificationsCmd())
 	rootCmd.AddCommand(NewSupportCmd())
-	rootCmd.AddCommand(NewWaapRulesCmd())   // Keep it like this for now, we'll switch later to the generic implementation
-	rootCmd.AddCommand(NewWaapConfigsCmd()) // Keep it like this for now, we'll switch later to the generic implementation
+	rootCmd.AddCommand(NewWaapRulesCmd()) // Keep it like this for now, we'll switch later to the generic implementation
 	rootCmd.AddCommand(NewItemsCmd("collections"))
 	rootCmd.AddCommand(NewItemsCmd("parsers"))
 	rootCmd.AddCommand(NewItemsCmd("scenarios"))
 	rootCmd.AddCommand(NewItemsCmd("postoverflows"))
+	rootCmd.AddCommand(NewItemsCmd("waap-configs"))
 
 	if fflag.CscliSetup.IsEnabled() {
 		rootCmd.AddCommand(NewSetupCmd())
