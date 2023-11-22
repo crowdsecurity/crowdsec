@@ -1,11 +1,19 @@
 package main
 
 import (
+	"fmt"
+	"os"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/waf"
+	"github.com/crowdsecurity/crowdsec/pkg/waf/waap_rule"
 )
 
 func NewWaapRulesCmd() *cobra.Command {
@@ -109,6 +117,41 @@ func NewCmdWaapRulesUpgrade() *cobra.Command {
 	return cmdWaapRulesUpgrade
 }
 
+func WaapRulesInspectRunner(itemType hubItemType) func(cmd *cobra.Command, args []string) error {
+	return func(cmd *cobra.Command, args []string) error {
+		f := itemsInspectRunner(hubItemTypes[cwhub.WAAP_RULES])
+		if err := f(cmd, args); err != nil {
+			return err
+		}
+		if csConfig.Cscli.Output == "human" {
+			hub, _ := require.Hub(csConfig, nil)
+			for _, name := range args {
+				hubItem := hub.GetItem(itemType.name, name)
+				waapRule := waf.WaapCollectionConfig{}
+				yamlContent, err := os.ReadFile(hubItem.State.LocalPath)
+				if err != nil {
+					return fmt.Errorf("unable to read file %s : %s", hubItem.State.LocalPath, err)
+				}
+				if err := yaml.Unmarshal(yamlContent, &waapRule); err != nil {
+					return fmt.Errorf("unable to unmarshal yaml file %s : %s", hubItem.State.LocalPath, err)
+				}
+
+				for _, ruleType := range waap_rule.SupportedTypes() {
+					fmt.Printf("\n%s format:\n", cases.Title(language.Und, cases.NoLower).String(ruleType))
+					for _, rule := range waapRule.Rules {
+						convertedRule, _, err := rule.Convert(ruleType, waapRule.Name)
+						if err != nil {
+							return fmt.Errorf("unable to convert rule %s : %s", rule.Name, err)
+						}
+						fmt.Println(convertedRule)
+					}
+				}
+			}
+		}
+		return nil
+	}
+}
+
 func NewCmdWaapRulesInspect() *cobra.Command {
 	//FIXME; show the "compiled" rule
 	cmdWaapRulesInspect := &cobra.Command{
@@ -121,7 +164,7 @@ func NewCmdWaapRulesInspect() *cobra.Command {
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cwhub.WAAP_RULES, args, toComplete)
 		},
-		RunE: itemsInspectRunner(hubItemTypes[cwhub.WAAP_RULES]),
+		RunE: WaapRulesInspectRunner(hubItemTypes[cwhub.WAAP_RULES]),
 	}
 
 	flags := cmdWaapRulesInspect.Flags()
