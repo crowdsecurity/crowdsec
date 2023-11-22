@@ -331,6 +331,9 @@ func (w *WaapSource) waapHandler(rw http.ResponseWriter, r *http.Request) {
 	if !exists || time.Now().After(expiration) {
 		if !w.IsAuth(apiKey) {
 			rw.WriteHeader(http.StatusUnauthorized)
+			clientIP := r.Header.Get(waf.IPHeaderName)
+			remoteIP := r.RemoteAddr
+			w.logger.Errorf("Unauthorized request from '%s' (real IP = %s)", remoteIP, clientIP)
 			return
 		}
 
