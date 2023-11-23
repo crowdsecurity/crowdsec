@@ -47,7 +47,8 @@ RUN apt-get update && \
     iproute2 \
     ca-certificates \
     bash \
-    tzdata && \
+    tzdata \
+    rsync && \
     mkdir -p /staging/etc/crowdsec && \
     mkdir -p /staging/etc/crowdsec/acquis.d && \
     mkdir -p /staging/var/lib/crowdsec && \
