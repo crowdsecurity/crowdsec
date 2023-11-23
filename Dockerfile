@@ -1,5 +1,5 @@
 # vim: set ft=dockerfile:
-ARG GOVERSION=1.21.1
+ARG GOVERSION=1.21.4
 
 FROM golang:${GOVERSION}-alpine AS build
 
@@ -32,7 +32,7 @@ RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=1 && \
 
 FROM alpine:latest as slim
 
-RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community tzdata bash && \
+RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community tzdata bash rsync && \
     mkdir -p /staging/etc/crowdsec && \
     mkdir -p /staging/etc/crowdsec/acquis.d && \
     mkdir -p /staging/var/lib/crowdsec && \

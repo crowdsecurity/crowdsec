@@ -297,7 +297,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		evt := deepcopy.Copy(parsed)
 		BucketPourCache["OK"] = append(BucketPourCache["OK"], evt.(types.Event))
 	}
-
+	parserEnv := map[string]interface{}{"evt": &parsed}
 	//find the relevant holders (scenarios)
 	for idx := 0; idx < len(holders); idx++ {
 		//for idx, holder := range holders {
@@ -318,6 +318,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 				holders[idx].logger.Errorf("unexpected non-bool return : %T", output)
 				holders[idx].logger.Fatalf("Filter issue")
 			}
+
 			if !condition {
 				holders[idx].logger.Debugf("Event leaving node : ko (filter mismatch)")
 				continue

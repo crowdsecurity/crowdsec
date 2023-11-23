@@ -30,13 +30,14 @@ type Leaky struct {
 	//the limiter is what holds the proper "leaky aspect", it determines when/if we can pour objects
 	Limiter         rate.RateLimiter `json:"-"`
 	SerializedState rate.Lstate
-	//Queue is used to held the cache of objects in the bucket, it is used to know 'how many' objects we have in buffer.
+
+	//Queue is used to hold the cache of objects in the bucket, it is used to know 'how many' objects we have in buffer.
 	Queue *types.Queue
 	//Leaky buckets are receiving message through a chan
 	In chan *types.Event `json:"-"`
 	//Leaky buckets are pushing their overflows through a chan
 	Out chan *types.Queue `json:"-"`
-	// shared for all buckets (the idea is to kill this afterwards)
+	// shared for all buckets (the idea is to kill this afterward)
 	AllOut chan types.Event `json:"-"`
 	//max capacity (for burst)
 	Capacity int
@@ -332,7 +333,7 @@ func LeakRoutine(leaky *Leaky) error {
 
 			}
 			if leaky.logger.Level >= log.TraceLevel {
-				/*don't sdump if it's not going to printed, it's expensive*/
+				/*don't sdump if it's not going to be printed, it's expensive*/
 				leaky.logger.Tracef("Overflow event: %s", spew.Sdump(types.Event{Overflow: alert}))
 			}
 
