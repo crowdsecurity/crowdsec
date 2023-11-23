@@ -323,24 +323,23 @@ func (h *Hub) checkSubItems(v *Item) error {
 				v.State.Tainted = true
 			}
 
-			return fmt.Errorf("sub collection %s is broken: %w", sub.Name, err)
+			// XXX: this could spam the log for nested collections?
+			return fmt.Errorf("dependency of %s: sub collection %s is broken: %w", v.Name, sub.Name, err)
 		}
 
 		if sub.State.Tainted {
 			v.State.Tainted = true
-			// XXX: improve msg
-			return fmt.Errorf("tainted %s %s, tainted", sub.Type, sub.Name)
+			return fmt.Errorf("%s is tainted because %s:%s is tainted", v.Name, sub.Type, sub.Name)
 		}
 
 		if !sub.State.Installed && v.State.Installed {
 			v.State.Tainted = true
-			// XXX: improve msg
-			return fmt.Errorf("missing %s %s, tainted", sub.Type, sub.Name)
+			return fmt.Errorf("%s is tainted because %s:%s is missing", v.Name, sub.Type, sub.Name)
 		}
 
 		if !sub.State.UpToDate {
 			v.State.UpToDate = false
-			return fmt.Errorf("outdated %s %s", sub.Type, sub.Name)
+			return fmt.Errorf("dependency of %s: outdated %s:%s", v.Name, sub.Type, sub.Name)
 		}
 
 		log.Tracef("checking for %s - tainted:%t uptodate:%t", sub.Name, v.State.Tainted, v.State.UpToDate)
@@ -417,7 +416,7 @@ func (h *Hub) localSync() error {
 		switch vs {
 		case versionUpToDate: // latest
 			if err := h.checkSubItems(item); err != nil {
-				warnings = append(warnings, fmt.Sprintf("dependency of %s: %s", item.Name, err))
+				warnings = append(warnings, err.Error())
 			}
 		case versionUpdateAvailable: // not up-to-date
 			warnings = append(warnings, fmt.Sprintf("update for collection %s available (currently:%s, latest:%s)", item.Name, item.State.LocalVersion, item.Version))

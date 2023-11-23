@@ -36,7 +36,6 @@ func (i *Item) Install(force bool, downloadOnly bool) error {
 	}
 
 	if downloadOnly {
-		// XXX: should get the path from downloadLatest
 		log.Infof("Downloaded %s to %s", i.Name, filePath)
 		return nil
 	}
@@ -205,7 +204,6 @@ func (i *Item) Upgrade(force bool) (bool, error) {
 
 // downloadLatest downloads the latest version of the item to the hub directory.
 func (i *Item) downloadLatest(overwrite bool, updateOnly bool) (string, error) {
-	// XXX: should return the path of the downloaded file (taken from download())
 	log.Debugf("Downloading %s %s", i.Type, i.Name)
 
 	for _, sub := range i.SubItems() {
