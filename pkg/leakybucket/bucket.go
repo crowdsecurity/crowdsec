@@ -30,7 +30,6 @@ type Leaky struct {
 	//the limiter is what holds the proper "leaky aspect", it determines when/if we can pour objects
 	Limiter         rate.RateLimiter `json:"-"`
 	SerializedState rate.Lstate
-
 	//Queue is used to hold the cache of objects in the bucket, it is used to know 'how many' objects we have in buffer.
 	Queue *types.Queue
 	//Leaky buckets are receiving message through a chan

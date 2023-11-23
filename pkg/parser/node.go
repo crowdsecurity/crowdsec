@@ -176,7 +176,6 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		// Previous code returned nil if there was an error, so we keep this behavior
 		return false, nil //nolint:nilerr
 	}
-
 	if isWhitelisted && !p.Whitelisted {
 		p.Whitelisted = true
 		p.WhitelistReason = n.Whitelist.Reason
@@ -550,7 +549,6 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	whitelistValid, err := n.CompileWLs()
 	if err != nil {
 		return err
-
 	}
 	valid = valid || whitelistValid
 
