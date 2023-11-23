@@ -238,7 +238,7 @@ func (wc *WaapConfig) Build() (*WaapRuntimeConfig, error) {
 }
 
 func (w *WaapRuntimeConfig) ProcessOnLoadRules() error {
-	for _, rule := range w.CompiledOnMatch {
+	for _, rule := range w.CompiledOnLoad {
 		if rule.FilterExpr != nil {
 			output, err := expr.Run(rule.FilterExpr, GetHookEnv(w, ParsedRequest{}))
 			if err != nil {
@@ -286,14 +286,7 @@ func (w *WaapRuntimeConfig) ProcessOnMatchRules(request ParsedRequest) error {
 			}
 		}
 		for _, applyExpr := range rule.ApplyExpr {
-			_, err := expr.Run(applyExpr, map[string]interface{}{
-				// "req":                   request,
-				// "RemoveInbandRuleByID":  w.RemoveInbandRuleByID,
-				// "RemoveOutbandRuleByID": w.RemoveOutbandRuleByID,
-				// "SetAction":             response.SetAction,
-				// "SetRemediationByID":    response.SetRemediationByID,
-				// "CancelEvent":           response.CancelEvent,
-			})
+			_, err := expr.Run(applyExpr, GetHookEnv(w, request))
 			if err != nil {
 				log.Errorf("unable to apply filter: %s", err)
 				continue
