@@ -110,6 +110,18 @@ jobs:
           --health-timeout 10s
           --health-retries 5
 
+      loki:
+        image: grafana/loki:2.8.0
+        ports:
+          - "3100:3100"
+        options: >-
+          --name=loki1
+          --health-cmd "wget -q -O -  http://localhost:3100/ready | grep 'ready'"
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 5
+          --health-start-period 30s
+
     steps:
 
     - name: Check out CrowdSec repository
