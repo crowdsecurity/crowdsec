@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -37,6 +38,7 @@ type KafkaConfiguration struct {
 	Brokers                           []string   `yaml:"brokers"`
 	Topic                             string     `yaml:"topic"`
 	GroupID                           string     `yaml:"group_id"`
+	Partition                         int        `yaml:"partition"`
 	Timeout                           string     `yaml:"timeout"`
 	TLS                               *TLSConfig `yaml:"tls"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
@@ -152,7 +154,7 @@ func (k *KafkaSource) ReadMessage(out chan types.Event) error {
 		k.logger.Tracef("reading message from topic '%s'", k.Config.Topic)
 		m, err := k.Reader.ReadMessage(context.Background())
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				return nil
 			}
 			k.logger.Errorln(fmt.Errorf("while reading %s message: %w", dataSourceName, err))
@@ -271,8 +273,15 @@ func (kc *KafkaConfiguration) NewReader(dialer *kafka.Dialer, logger *log.Entry)
 		Logger:      kafka.LoggerFunc(logger.Debugf),
 		ErrorLogger: kafka.LoggerFunc(logger.Errorf),
 	}
+	if kc.GroupID != "" && kc.Partition != 0 {
+		return &kafka.Reader{}, fmt.Errorf("cannot specify both group_id and partition")
+	}
 	if kc.GroupID != "" {
 		rConf.GroupID = kc.GroupID
+	} else if kc.Partition != 0 {
+		rConf.Partition = kc.Partition
+	} else {
+		logger.Warnf("no group_id specified, crowdsec will only read from the 1st partition of the topic")
 	}
 	if err := rConf.Validate(); err != nil {
 		return &kafka.Reader{}, fmt.Errorf("while validating reader configuration: %w", err)
