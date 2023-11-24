@@ -9,7 +9,7 @@ go 1.21
 require (
 	entgo.io/ent v0.12.4
 	github.com/AlecAivazis/survey/v2 v2.3.7
-	github.com/Masterminds/semver/v3 v3.1.1
+	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/Masterminds/sprig/v3 v3.2.2
 	github.com/agext/levenshtein v1.2.1
 	github.com/alexliesenfeld/health v0.5.1
