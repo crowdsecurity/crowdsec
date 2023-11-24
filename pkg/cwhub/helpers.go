@@ -122,6 +122,14 @@ func (i *Item) Remove(purge bool, force bool) (bool, error) {
 				continue
 			}
 
+			// the ancestor that would block the removal of the sub item is also an ancestor
+			// of the item we are removing, so we don't want false warnings
+			// (e.g. crowdsecurity/sshd-logs was not removed because it also belongs to crowdsecurity/linux,
+			// while we are removing crowdsecurity/sshd)
+			if slices.Contains(i.AncestorCollections(), subParent) {
+				continue
+			}
+
 			if subParent == i {
 				continue
 			}
