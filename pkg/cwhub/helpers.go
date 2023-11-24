@@ -191,7 +191,7 @@ func (i *Item) Upgrade(force bool) (bool, error) {
 
 	if !i.State.UpToDate {
 		if i.State.Tainted {
-			log.Infof("%v %s is tainted, --force to overwrite", emoji.Warning, i.Name)
+			log.Warningf("%v %s is tainted, --force to overwrite", emoji.Warning, i.Name)
 		} else if i.IsLocal() {
 			log.Infof("%v %s is local", emoji.Prohibited, i.Name)
 		}
