@@ -2,7 +2,6 @@ common:
   daemonize: true
   log_media: stdout
   log_level: info
-  working_dir: .
 config_paths:
   config_dir: ./config
   data_dir: ./data/   

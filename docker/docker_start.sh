@@ -101,19 +101,23 @@ register_bouncer() {
 # $2 can be install, remove, upgrade
 # $3 is a list of object names separated by space
 cscli_if_clean() {
+    local itemtype="$1"
+    local action="$2"
+    local objs=$3
+    shift 3
     # loop over all objects
-    for obj in $3; do
-        if cscli "$1" inspect "$obj" -o json | yq -e '.tainted // false' >/dev/null 2>&1; then
-            echo "Object $1/$obj is tainted, skipping"
+    for obj in $objs; do
+        if cscli "$itemtype" inspect "$obj" -o json | yq -e '.tainted // false' >/dev/null 2>&1; then
+            echo "Object $itemtype/$obj is tainted, skipping"
         else
 #            # Too verbose? Only show errors if not in debug mode
 #            if [ "$DEBUG" != "true" ]; then
 #                error_only=--error
 #            fi
             error_only=""
-            echo "Running: cscli $error_only $1 $2 \"$obj\""
+            echo "Running: cscli $error_only $itemtype $action \"$obj\" $*"
             # shellcheck disable=SC2086
-            cscli $error_only "$1" "$2" "$obj"
+            cscli $error_only "$itemtype" "$action" "$obj" "$@"
         fi
     done
 }
@@ -327,22 +331,22 @@ fi
 ## Remove collections, parsers, scenarios & postoverflows
 if [ "$DISABLE_COLLECTIONS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean collections remove "$DISABLE_COLLECTIONS"
+    cscli_if_clean collections remove "$DISABLE_COLLECTIONS" --force
 fi
 
 if [ "$DISABLE_PARSERS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean parsers remove "$DISABLE_PARSERS"
+    cscli_if_clean parsers remove "$DISABLE_PARSERS" --force
 fi
 
 if [ "$DISABLE_SCENARIOS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean scenarios remove "$DISABLE_SCENARIOS"
+    cscli_if_clean scenarios remove "$DISABLE_SCENARIOS" --force
 fi
 
 if [ "$DISABLE_POSTOVERFLOWS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean postoverflows remove "$DISABLE_POSTOVERFLOWS"
+    cscli_if_clean postoverflows remove "$DISABLE_POSTOVERFLOWS" --force
 fi
 
 ## Register bouncers via env

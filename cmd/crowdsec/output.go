@@ -62,7 +62,8 @@ func PushAlerts(alerts []types.RuntimeAlert, client *apiclient.ApiClient) error 
 var bucketOverflows []types.Event
 
 func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky.Buckets,
-	postOverflowCTX parser.UnixParserCtx, postOverflowNodes []parser.Node, apiConfig csconfig.ApiCredentialsCfg) error {
+	postOverflowCTX parser.UnixParserCtx, postOverflowNodes []parser.Node,
+	apiConfig csconfig.ApiCredentialsCfg, hub *cwhub.Hub) error {
 
 	var err error
 	ticker := time.NewTicker(1 * time.Second)
@@ -70,7 +71,7 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	var cache []types.RuntimeAlert
 	var cacheMutex sync.Mutex
 
-	scenarios, err := cwhub.GetInstalledItemsAsString(cwhub.SCENARIOS)
+	scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
 	if err != nil {
 		return fmt.Errorf("loading list of installed hub scenarios: %w", err)
 	}
@@ -93,7 +94,7 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 		URL:            apiURL,
 		PapiURL:        papiURL,
 		VersionPrefix:  "v1",
-		UpdateScenario: func() ([]string, error) {return cwhub.GetInstalledItemsAsString(cwhub.SCENARIOS)},
+		UpdateScenario: func() ([]string, error) {return hub.GetInstalledItemNames(cwhub.SCENARIOS)},
 	})
 	if err != nil {
 		return fmt.Errorf("new client api: %w", err)

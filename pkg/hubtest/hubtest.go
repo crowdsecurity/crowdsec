@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
@@ -18,7 +19,7 @@ type HubTest struct {
 	TemplateConfigPath     string
 	TemplateProfilePath    string
 	TemplateSimulationPath string
-	HubIndex               *HubIndex
+	HubIndex               *cwhub.Hub
 	Tests                  []*HubTestItem
 }
 
@@ -29,42 +30,44 @@ const (
 )
 
 func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest, error) {
-	var err error
-
-	hubPath, err = filepath.Abs(hubPath)
+	hubPath, err := filepath.Abs(hubPath)
 	if err != nil {
 		return HubTest{}, fmt.Errorf("can't get absolute path of hub: %+v", err)
 	}
+
 	// we can't use hubtest without the hub
-	if _, err := os.Stat(hubPath); os.IsNotExist(err) {
+	if _, err = os.Stat(hubPath); os.IsNotExist(err) {
 		return HubTest{}, fmt.Errorf("path to hub '%s' doesn't exist, can't run", hubPath)
 	}
+
 	HubTestPath := filepath.Join(hubPath, "./.tests/")
 
 	// we can't use hubtest without crowdsec binary
-	if _, err := exec.LookPath(crowdsecPath); err != nil {
-		if _, err := os.Stat(crowdsecPath); os.IsNotExist(err) {
+	if _, err = exec.LookPath(crowdsecPath); err != nil {
+		if _, err = os.Stat(crowdsecPath); os.IsNotExist(err) {
 			return HubTest{}, fmt.Errorf("path to crowdsec binary '%s' doesn't exist or is not in $PATH, can't run", crowdsecPath)
 		}
 	}
 
 	// we can't use hubtest without cscli binary
-	if _, err := exec.LookPath(cscliPath); err != nil {
-		if _, err := os.Stat(cscliPath); os.IsNotExist(err) {
+	if _, err = exec.LookPath(cscliPath); err != nil {
+		if _, err = os.Stat(cscliPath); os.IsNotExist(err) {
 			return HubTest{}, fmt.Errorf("path to cscli binary '%s' doesn't exist or is not in $PATH, can't run", cscliPath)
 		}
 	}
 
 	hubIndexFile := filepath.Join(hubPath, ".index.json")
-	bidx, err := os.ReadFile(hubIndexFile)
-	if err != nil {
-		return HubTest{}, fmt.Errorf("unable to read index file: %s", err)
+
+	local := &csconfig.LocalHubCfg{
+		HubDir:         hubPath,
+		HubIndexFile:   hubIndexFile,
+		InstallDir:     HubTestPath,
+		InstallDataDir: HubTestPath,
 	}
 
-	// load hub index
-	hubIndex, err := cwhub.LoadPkgIndex(bidx)
+	hub, err := cwhub.NewHub(local, nil, false)
 	if err != nil {
-		return HubTest{}, fmt.Errorf("unable to load hub index file: %s", err)
+		return HubTest{}, fmt.Errorf("unable to load hub: %s", err)
 	}
 
 	templateConfigFilePath := filepath.Join(HubTestPath, templateConfigFile)
@@ -80,16 +83,18 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest,
 		TemplateConfigPath:     templateConfigFilePath,
 		TemplateProfilePath:    templateProfilePath,
 		TemplateSimulationPath: templateSimulationPath,
-		HubIndex:               &HubIndex{Data: hubIndex},
+		HubIndex:               hub,
 	}, nil
 }
 
 func (h *HubTest) LoadTestItem(name string) (*HubTestItem, error) {
 	HubTestItem := &HubTestItem{}
+
 	testItem, err := NewTest(name, h)
 	if err != nil {
 		return HubTestItem, err
 	}
+
 	h.Tests = append(h.Tests, testItem)
 
 	return testItem, nil
@@ -108,5 +113,6 @@ func (h *HubTest) LoadAllTests() error {
 			}
 		}
 	}
+
 	return nil
 }
