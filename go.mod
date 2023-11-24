@@ -12,7 +12,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/agext/levenshtein v1.2.1
-	github.com/alexliesenfeld/health v0.5.1
+	github.com/alexliesenfeld/health v0.8.0
 	github.com/antonmedv/expr v1.15.3
 	github.com/appleboy/gin-jwt/v2 v2.8.0
 	github.com/aquasecurity/table v1.8.0
