@@ -397,7 +397,7 @@ func (h *Hub) localSync() error {
 
 	for _, item := range h.Items[COLLECTIONS] {
 		// check for cyclic dependencies
-		subs, err := item.allDependencies()
+		subs, err := item.descendants()
 		if err != nil {
 			return err
 		}

@@ -209,8 +209,8 @@ func (i *Item) logMissingSubItems() {
 	}
 }
 
-// AncestorCollections returns a slice of items (collections) that have this item as a direct or indirect dependency.
-func (i *Item) AncestorCollections() []*Item {
+// Ancestors returns a slice of items (typically collections) that have this item as a direct or indirect dependency.
+func (i *Item) Ancestors() []*Item {
 	ret := make([]*Item, 0)
 
 	for _, parentName := range i.State.BelongsToCollections {

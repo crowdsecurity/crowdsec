@@ -46,8 +46,8 @@ func (i *Item) Install(force bool, downloadOnly bool) error {
 	return nil
 }
 
-// allDependencies returns a list of all (direct or indirect) dependencies of the item.
-func (i *Item) allDependencies() ([]*Item, error) {
+// descendants returns a list of all (direct or indirect) dependencies of the item.
+func (i *Item) descendants() ([]*Item, error) {
 	var collectSubItems func(item *Item, visited map[*Item]bool, result *[]*Item) error
 
 	collectSubItems = func(item *Item, visited map[*Item]bool, result *[]*Item) error {
@@ -105,10 +105,12 @@ func (i *Item) Remove(purge bool, force bool) (bool, error) {
 
 	removed := false
 
-	allDeps, err := i.allDependencies()
+	descendants, err := i.descendants()
 	if err != nil {
 		return false, err
 	}
+
+	ancestors := i.Ancestors()
 
 	for _, sub := range i.SubItems() {
 		if !sub.State.Installed {
@@ -117,7 +119,7 @@ func (i *Item) Remove(purge bool, force bool) (bool, error) {
 
 		// if the sub depends on a collection that is not a direct or indirect dependency
 		// of the current item, it is not removed
-		for _, subParent := range sub.AncestorCollections() {
+		for _, subParent := range sub.Ancestors() {
 			if !purge && !subParent.State.Installed {
 				continue
 			}
@@ -126,15 +128,16 @@ func (i *Item) Remove(purge bool, force bool) (bool, error) {
 			// of the item we are removing, so we don't want false warnings
 			// (e.g. crowdsecurity/sshd-logs was not removed because it also belongs to crowdsecurity/linux,
 			// while we are removing crowdsecurity/sshd)
-			if slices.Contains(i.AncestorCollections(), subParent) {
+			if slices.Contains(ancestors, subParent) {
 				continue
 			}
 
+			// the sub-item belongs to the item we are removing, but we already knew that
 			if subParent == i {
 				continue
 			}
 
-			if !slices.Contains(allDeps, subParent) {
+			if !slices.Contains(descendants, subParent) {
 				log.Infof("%s was not removed because it also belongs to %s", sub.Name, subParent.Name)
 				continue
 			}
