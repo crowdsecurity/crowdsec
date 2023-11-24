@@ -97,7 +97,6 @@ func NewCapiRegisterCmd() *cobra.Command {
 				Password: password.String(),
 				URL:      types.CAPIBaseURL,
 			}
-			apiCfg.PapiURL = types.PAPIBaseURL
 			apiConfigDump, err := yaml.Marshal(apiCfg)
 			if err != nil {
 				return fmt.Errorf("unable to marshal api credentials: %w", err)
