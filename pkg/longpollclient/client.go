@@ -191,28 +191,35 @@ func (c *LongPollClient) PullOnce(since time.Time) ([]Event, error) {
 	if err != nil {
 		return nil, err
 	}
+	//XX : fix
 	defer resp.Body.Close()
 	decoder := json.NewDecoder(resp.Body)
-	var pollResp pollResponse
-	err = decoder.Decode(&pollResp)
-	if err != nil {
-		if err == io.EOF {
-			c.logger.Debugf("server closed connection")
-			return nil, nil
+	evts := []Event{}
+	for {
+		var pollResp pollResponse
+		err = decoder.Decode(&pollResp)
+		if err != nil {
+			if err == io.EOF {
+				c.logger.Debugf("server closed connection")
+				break
+			}
+			log.Errorf("error decoding poll response: %v", err)
+			break
 		}
-		return nil, fmt.Errorf("error decoding poll response: %v", err)
-	}
 
-	c.logger.Tracef("got response: %+v", pollResp)
+		c.logger.Tracef("got response: %+v", pollResp)
 
-	if len(pollResp.ErrorMessage) > 0 {
-		if pollResp.ErrorMessage == timeoutMessage {
-			c.logger.Debugf("got timeout message")
-			return nil, nil
+		if len(pollResp.ErrorMessage) > 0 {
+			if pollResp.ErrorMessage == timeoutMessage {
+				c.logger.Debugf("got timeout message")
+				break
+			}
+			log.Errorf("longpoll API error message: %s", pollResp.ErrorMessage)
+			break
 		}
-		return nil, fmt.Errorf("longpoll API error message: %s", pollResp.ErrorMessage)
+		evts = append(evts, pollResp.Events...)
 	}
-	return pollResp.Events, nil
+	return evts, nil
 }
 
 func NewLongPollClient(config LongPollClientConfig) (*LongPollClient, error) {
