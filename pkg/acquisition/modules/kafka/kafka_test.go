@@ -58,6 +58,16 @@ brokers:
 topic: crowdsec`,
 			expectedErr: "",
 		},
+		{
+			config: `
+source: kafka
+brokers:
+  - localhost:9092
+topic: crowdsec
+partition: 1
+group_id: crowdsec`,
+			expectedErr: "cannote create kafka reader: cannot specify both group_id and partition",
+		},
 	}
 
 	subLogger := log.WithFields(log.Fields{

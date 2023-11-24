@@ -31,7 +31,7 @@ jobs:
 
   # Jobs for Postgres (and sometimes MySQL) can have failing tests on GitHub
   # CI, but they pass when run on devs' machines or in the release checks. We
-  # disable them here by default. Remove the if..false to enable them.
+  # disable them here by default. Remove if...false to enable them.
 
   mariadb:
     uses: ./.github/workflows/bats-mysql.yml

@@ -1,13 +1,12 @@
-package leakybucket
+package types
 
 import (
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 )
 
 // Queue holds a limited size queue
 type Queue struct {
-	Queue []types.Event
+	Queue []Event
 	L     int //capacity
 }
 
@@ -15,12 +14,12 @@ type Queue struct {
 func NewQueue(l int) *Queue {
 	if l == -1 {
 		return &Queue{
-			Queue: make([]types.Event, 0),
+			Queue: make([]Event, 0),
 			L:     int(^uint(0) >> 1), // max integer value, architecture independent
 		}
 	}
 	q := &Queue{
-		Queue: make([]types.Event, 0, l),
+		Queue: make([]Event, 0, l),
 		L:     l,
 	}
 	log.WithFields(log.Fields{"Capacity": q.L}).Debugf("Creating queue")
@@ -29,7 +28,7 @@ func NewQueue(l int) *Queue {
 
 // Add an event in the queue. If it has already l elements, the first
 // element is dropped before adding the new m element
-func (q *Queue) Add(m types.Event) {
+func (q *Queue) Add(m Event) {
 	for len(q.Queue) > q.L { //we allow to add one element more than the true capacity
 		q.Queue = q.Queue[1:]
 	}
@@ -37,6 +36,6 @@ func (q *Queue) Add(m types.Event) {
 }
 
 // GetQueue returns the entire queue
-func (q *Queue) GetQueue() []types.Event {
+func (q *Queue) GetQueue() []Event {
 	return q.Queue
 }
