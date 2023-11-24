@@ -75,7 +75,7 @@ func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item
 			hubStatus[itemType] = make([]itemHubStatus, len(items[itemType]))
 
 			for i, item := range items[itemType] {
-				status, emo := item.Status()
+				status, emo := item.InstallStatus()
 				hubStatus[itemType][i] = itemHubStatus{
 					Name:         item.Name,
 					LocalVersion: item.State.LocalVersion,
@@ -107,7 +107,7 @@ func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item
 
 		for _, itemType := range itemTypes {
 			for _, item := range items[itemType] {
-				status, _ := item.Status()
+				status, _ := item.InstallStatus()
 				row := []string{
 					item.Name,
 					status,

@@ -226,9 +226,9 @@ func (i *Item) AncestorCollections() []*Item {
 	return ret
 }
 
-// Status returns the status of the item as a string and an emoji
+// InstallStatus returns the status of the item as a string and an emoji
 // (eg. "enabled,update-available" and emoji.Warning).
-func (i *Item) Status() (string, emoji.Emoji) {
+func (i *Item) InstallStatus() (string, emoji.Emoji) {
 	status := "disabled"
 	ok := false
 
