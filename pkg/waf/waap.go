@@ -47,6 +47,7 @@ type WaapTempResponse struct {
 	Action             string //allow, deny, captcha, log
 	HTTPResponseCode   int
 	SendEvent          bool //do we send an internal event on rule match
+	SendAlert          bool //do we send an alert on rule match
 }
 
 type WaapSubEngineOpts struct {
@@ -240,7 +241,7 @@ func (wc *WaapConfig) Build() (*WaapRuntimeConfig, error) {
 func (w *WaapRuntimeConfig) ProcessOnLoadRules() error {
 	for _, rule := range w.CompiledOnLoad {
 		if rule.FilterExpr != nil {
-			output, err := expr.Run(rule.FilterExpr, GetHookEnv(w, ParsedRequest{}))
+			output, err := expr.Run(rule.FilterExpr, GetOnLoadEnv(w))
 			if err != nil {
 				return fmt.Errorf("unable to run filter %s : %w", rule.Filter, err)
 			}
@@ -256,7 +257,7 @@ func (w *WaapRuntimeConfig) ProcessOnLoadRules() error {
 			}
 		}
 		for _, applyExpr := range rule.ApplyExpr {
-			_, err := expr.Run(applyExpr, GetHookEnv(w, ParsedRequest{}))
+			_, err := expr.Run(applyExpr, GetOnLoadEnv(w))
 			if err != nil {
 				log.Errorf("unable to apply filter: %s", err)
 				continue
@@ -270,7 +271,7 @@ func (w *WaapRuntimeConfig) ProcessOnMatchRules(request ParsedRequest) error {
 
 	for _, rule := range w.CompiledOnMatch {
 		if rule.FilterExpr != nil {
-			output, err := expr.Run(rule.FilterExpr, GetHookEnv(w, request))
+			output, err := expr.Run(rule.FilterExpr, GetOnMatchEnv(w, request))
 			if err != nil {
 				return fmt.Errorf("unable to run filter %s : %w", rule.Filter, err)
 			}
@@ -286,7 +287,7 @@ func (w *WaapRuntimeConfig) ProcessOnMatchRules(request ParsedRequest) error {
 			}
 		}
 		for _, applyExpr := range rule.ApplyExpr {
-			_, err := expr.Run(applyExpr, GetHookEnv(w, request))
+			_, err := expr.Run(applyExpr, GetOnMatchEnv(w, request))
 			if err != nil {
 				log.Errorf("unable to apply filter: %s", err)
 				continue
@@ -299,7 +300,7 @@ func (w *WaapRuntimeConfig) ProcessOnMatchRules(request ParsedRequest) error {
 func (w *WaapRuntimeConfig) ProcessPreEvalRules(request ParsedRequest) error {
 	for _, rule := range w.CompiledPreEval {
 		if rule.FilterExpr != nil {
-			output, err := expr.Run(rule.FilterExpr, GetHookEnv(w, request))
+			output, err := expr.Run(rule.FilterExpr, GetPreEvalEnv(w, request))
 			if err != nil {
 				return fmt.Errorf("unable to run filter %s : %w", rule.Filter, err)
 			}
@@ -316,7 +317,7 @@ func (w *WaapRuntimeConfig) ProcessPreEvalRules(request ParsedRequest) error {
 		}
 		// here means there is no filter or the filter matched
 		for _, applyExpr := range rule.ApplyExpr {
-			_, err := expr.Run(applyExpr, GetHookEnv(w, request))
+			_, err := expr.Run(applyExpr, GetPreEvalEnv(w, request))
 			if err != nil {
 				log.Errorf("unable to apply filter: %s", err)
 				continue
@@ -335,31 +336,80 @@ add the helpers to:
 
 */
 
-func (w *WaapRuntimeConfig) RemoveInbandRuleByID(id int) error {
-	return w.InBandTx.RemoveRuleByIDWithError(id)
+// func (w *WaapRuntimeConfig) RemoveInbandRuleByID(id int) error {
+func (w *WaapRuntimeConfig) RemoveInbandRuleByID(params ...any) (any, error) {
+	id := params[0].(int)
+	_ = w.InBandTx.RemoveRuleByIDWithError(id)
+	return nil, nil
 }
 
-func (w *WaapRuntimeConfig) CancelEvent() error {
+func (w *WaapRuntimeConfig) CancelEvent(params ...any) (any, error) {
 	w.Response.SendEvent = false
-	return nil
+	return nil, nil
 }
 
-func (w *WaapRuntimeConfig) SetActionByTag(tag string, action string) error {
+// func (w *WaapRuntimeConfig) DisableInBandRuleByID(id int) error {
+func (w *WaapRuntimeConfig) DisableInBandRuleByID(params ...any) (any, error) {
 	panic("not implemented")
-	return nil
+	return nil, nil
 }
 
-func (w *WaapRuntimeConfig) SetActionByID(id int, action string) error {
+// func (w *WaapRuntimeConfig) DisableInBandRuleByTag(id int) error {
+func (w *WaapRuntimeConfig) DisableInBandRuleByTag(params ...any) (any, error) {
 	panic("not implemented")
-	return nil
+	return nil, nil
 }
 
-func (w *WaapRuntimeConfig) RemoveOutbandRuleByID(id int) error {
-	return w.OutOfBandTx.RemoveRuleByIDWithError(id)
+// func (w *WaapRuntimeConfig) DisableOutBandRuleByID(tag string) error {
+func (w *WaapRuntimeConfig) DisableOutBandRuleByID(params ...any) (any, error) {
+	panic("not implemented")
+	return nil, nil
 }
 
-func (w *WaapRuntimeConfig) SetAction(action string) error {
+// func (w *WaapRuntimeConfig) DisableOutBandRuleByTag(tag string) error {
+func (w *WaapRuntimeConfig) DisableOutBandRuleByTag(params ...any) (any, error) {
+	panic("not implemented")
+	return nil, nil
+}
+
+func (w *WaapRuntimeConfig) SendEvent(params ...any) (any, error) {
+	w.Response.SendEvent = true
+	return nil, nil
+}
+
+func (w *WaapRuntimeConfig) SendAlert(params ...any) (any, error) {
+	w.Response.SendAlert = true
+	return nil, nil
+}
+
+func (w *WaapRuntimeConfig) CancelAlert(params ...any) (any, error) {
+	w.Response.SendAlert = false
+	return nil, nil
+}
+
+// func (w *WaapRuntimeConfig) SetActionByTag(tag string, action string) error {
+func (w *WaapRuntimeConfig) SetActionByTag(params ...any) (any, error) {
+	panic("not implemented")
+	return nil, nil
+}
+
+// func (w *WaapRuntimeConfig) SetActionByID(id int, action string) error {
+func (w *WaapRuntimeConfig) SetActionByID(params ...any) (any, error) {
+	panic("not implemented")
+	return nil, nil
+}
+
+// func (w *WaapRuntimeConfig) RemoveOutbandRuleByID(id int) error {
+func (w *WaapRuntimeConfig) RemoveOutbandRuleByID(params ...any) (any, error) {
+	id := params[0].(int)
+	_ = w.OutOfBandTx.RemoveRuleByIDWithError(id)
+	return nil, nil
+}
+
+// func (w *WaapRuntimeConfig) SetAction(action string) error {
+func (w *WaapRuntimeConfig) SetAction(params ...any) (any, error) {
 	//log.Infof("setting to %s", action)
+	action := params[0].(string)
 	switch action {
 	case "allow":
 		w.Response.Action = action
@@ -375,15 +425,17 @@ func (w *WaapRuntimeConfig) SetAction(action string) error {
 		w.Response.Action = action
 		w.Response.HTTPResponseCode = w.Config.BlockedHTTPCode
 	default:
-		return fmt.Errorf("unknown action %s", action)
+		return nil, fmt.Errorf("unknown action %s", action)
 	}
-	return nil
+	return nil, nil
 
 }
 
-func (w *WaapRuntimeConfig) SetHTTPCode(code int) error {
+// func (w *WaapRuntimeConfig) SetHTTPCode(code int) error {
+func (w *WaapRuntimeConfig) SetHTTPCode(params ...any) (any, error) {
+	code := params[0].(int)
 	w.Response.HTTPResponseCode = code
-	return nil
+	return nil, nil
 }
 
 type BodyResponse struct {

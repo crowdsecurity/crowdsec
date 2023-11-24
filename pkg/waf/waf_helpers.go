@@ -30,3 +30,37 @@ func GetExprWAFOptions(ctx map[string]interface{}) []expr.Option {
 	}
 	return baseHelpers
 }
+
+func GetOnLoadEnv(w *WaapRuntimeConfig) map[string]interface{} {
+	return map[string]interface{}{
+		"DisableInBandRuleByID":   w.DisableInBandRuleByID,
+		"DisableOutBandRuleByID":  w.DisableOutBandRuleByID,
+		"DisableInBandRuleByTag":  w.DisableInBandRuleByTag,
+		"DisableOutBandRuleByTag": w.DisableOutBandRuleByTag,
+	}
+}
+
+func GetPreEvalEnv(w *WaapRuntimeConfig, request ParsedRequest) map[string]interface{} {
+	return map[string]interface{}{
+		"IsInBand":              request.IsInBand,
+		"IsOutBand":             request.IsOutBand,
+		"RemoveInBandRuleByID":  w.RemoveInbandRuleByID,
+		"RemoveOutBandRuleByID": w.RemoveOutbandRuleByID,
+		"SetRemediationByTag":   w.SetActionByTag,
+		"SetRemdiationByID":     w.SetActionByID,
+	}
+}
+
+func GetOnMatchEnv(w *WaapRuntimeConfig, request ParsedRequest) map[string]interface{} {
+	return map[string]interface{}{
+		"req":            request,
+		"IsInBand":       request.IsInBand,
+		"IsOutBand":      request.IsOutBand,
+		"SetRemediation": w.SetAction,
+		"SetReturnCode":  w.SetHTTPCode,
+		"CancelEvent":    w.CancelEvent,
+		"SendEvent":      w.SendEvent,
+		"CancelAlert":    w.CancelAlert,
+		"SendAlert":      w.SendAlert,
+	}
+}

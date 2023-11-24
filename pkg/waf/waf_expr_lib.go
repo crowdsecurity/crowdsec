@@ -8,6 +8,12 @@ type exprCustomFunc struct {
 	signature []interface{}
 }
 
+var onLoadExprFuncs = []exprCustomFunc{}
+
+var preEvalExprFuncs = []exprCustomFunc{}
+
+var onMatchExprFuncs = []exprCustomFunc{}
+
 var exprFuncs = []exprCustomFunc{
 	/*{
 		name:     "SetRulesToInband",
