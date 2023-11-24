@@ -232,7 +232,6 @@ func itemsInstallRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 			}
 		}
 
-		// XXX: only reload if we installed something
 		log.Infof(ReloadMessage())
 		return nil
 	}

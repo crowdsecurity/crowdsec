@@ -168,7 +168,6 @@ func (i *Item) removeInstallLink() error {
 
 // disable removes the install link, and optionally the downloaded content.
 func (i *Item) disable(purge bool, force bool) error {
-	// XXX: should return the number of disabled/purged items to inform the upper layer whether to reload or not
 	err := i.removeInstallLink()
 	if os.IsNotExist(err) {
 		if !purge && !force {

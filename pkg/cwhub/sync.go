@@ -323,7 +323,6 @@ func (i *Item) checkSubItemVersions() error {
 				i.State.Tainted = true
 			}
 
-			// XXX: this could spam the log for nested collections?
 			return fmt.Errorf("dependency of %s: sub collection %s is broken: %w", i.Name, sub.Name, err)
 		}
 

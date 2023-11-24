@@ -144,7 +144,6 @@ func (i *Item) Remove(purge bool, force bool) (bool, error) {
 		return false, fmt.Errorf("while removing %s: %w", i.Name, err)
 	}
 
-	// XXX: should take the value from disable()
 	removed = true
 
 	return removed, nil
