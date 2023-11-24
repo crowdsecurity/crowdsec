@@ -109,6 +109,8 @@ teardown() {
     # removing linux should remove syslog-logs even though sshd depends on it
     rune -0 cscli collections remove crowdsecurity/linux
     refute_stderr --partial "crowdsecurity/syslog-logs was not removed"
+    # we must also consider indirect dependencies
+    refute_stderr --partial "crowdsecurity/ssh-bf was not removed"
     rune -0 cscli parsers list -o json
     rune -0 jq -e '.parsers | length == 0' <(output)
 }

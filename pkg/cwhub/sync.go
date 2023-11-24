@@ -297,53 +297,51 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 	return nil
 }
 
-// checkSubItems checks for the presence, taint and version state of sub-items.
-func (h *Hub) checkSubItems(v *Item) error {
-	if !v.HasSubItems() {
+// checkSubItemVersions checks for the presence, taint and version state of sub-items.
+func (i *Item) checkSubItemVersions() error {
+	if !i.HasSubItems() {
 		return nil
 	}
 
-	if v.versionStatus() != versionUpToDate {
-		log.Debugf("%s dependencies not checked: not up-to-date", v.Name)
+	if i.versionStatus() != versionUpToDate {
+		log.Debugf("%s dependencies not checked: not up-to-date", i.Name)
 		return nil
 	}
 
 	// ensure all the sub-items are installed, or tag the parent as tainted
-	log.Tracef("checking submembers of %s installed:%t", v.Name, v.State.Installed)
+	log.Tracef("checking submembers of %s installed:%t", i.Name, i.State.Installed)
 
-	for _, sub := range v.SubItems() {
+	for _, sub := range i.SubItems() {
 		log.Tracef("check %s installed:%t", sub.Name, sub.State.Installed)
 
-		if !v.State.Installed {
+		if !i.State.Installed {
 			continue
 		}
 
-		if err := h.checkSubItems(sub); err != nil {
+		if err := sub.checkSubItemVersions(); err != nil {
 			if sub.State.Tainted {
-				v.State.Tainted = true
+				i.State.Tainted = true
 			}
 
-			return fmt.Errorf("sub collection %s is broken: %w", sub.Name, err)
+			return fmt.Errorf("dependency of %s: sub collection %s is broken: %w", i.Name, sub.Name, err)
 		}
 
 		if sub.State.Tainted {
-			v.State.Tainted = true
-			// XXX: improve msg
-			return fmt.Errorf("tainted %s %s, tainted", sub.Type, sub.Name)
+			i.State.Tainted = true
+			return fmt.Errorf("%s is tainted because %s:%s is tainted", i.Name, sub.Type, sub.Name)
 		}
 
-		if !sub.State.Installed && v.State.Installed {
-			v.State.Tainted = true
-			// XXX: improve msg
-			return fmt.Errorf("missing %s %s, tainted", sub.Type, sub.Name)
+		if !sub.State.Installed && i.State.Installed {
+			i.State.Tainted = true
+			return fmt.Errorf("%s is tainted because %s:%s is missing", i.Name, sub.Type, sub.Name)
 		}
 
 		if !sub.State.UpToDate {
-			v.State.UpToDate = false
-			return fmt.Errorf("outdated %s %s", sub.Type, sub.Name)
+			i.State.UpToDate = false
+			return fmt.Errorf("dependency of %s: outdated %s:%s", i.Name, sub.Type, sub.Name)
 		}
 
-		log.Tracef("checking for %s - tainted:%t uptodate:%t", sub.Name, v.State.Tainted, v.State.UpToDate)
+		log.Tracef("checking for %s - tainted:%t uptodate:%t", sub.Name, i.State.Tainted, i.State.UpToDate)
 	}
 
 	return nil
@@ -399,7 +397,7 @@ func (h *Hub) localSync() error {
 
 	for _, item := range h.Items[COLLECTIONS] {
 		// check for cyclic dependencies
-		subs, err := item.allDependencies()
+		subs, err := item.descendants()
 		if err != nil {
 			return err
 		}
@@ -416,8 +414,8 @@ func (h *Hub) localSync() error {
 		vs := item.versionStatus()
 		switch vs {
 		case versionUpToDate: // latest
-			if err := h.checkSubItems(item); err != nil {
-				warnings = append(warnings, fmt.Sprintf("dependency of %s: %s", item.Name, err))
+			if err := item.checkSubItemVersions(); err != nil {
+				warnings = append(warnings, err.Error())
 			}
 		case versionUpdateAvailable: // not up-to-date
 			warnings = append(warnings, fmt.Sprintf("update for collection %s available (currently:%s, latest:%s)", item.Name, item.State.LocalVersion, item.Version))

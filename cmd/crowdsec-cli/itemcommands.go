@@ -232,7 +232,6 @@ func itemsInstallRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 			}
 		}
 
-		// XXX: only reload if we installed something
 		log.Infof(ReloadMessage())
 		return nil
 	}
@@ -268,7 +267,7 @@ func NewItemsInstallCmd(typeName string) *cobra.Command {
 func istalledParentNames(item *cwhub.Item) []string {
 	ret := make([]string, 0)
 
-	for _, parent := range item.AncestorCollections() {
+	for _, parent := range item.Ancestors() {
 		if parent.State.Installed {
 			ret = append(ret, parent.Name)
 		}

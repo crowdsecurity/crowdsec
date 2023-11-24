@@ -113,12 +113,12 @@ teardown() {
     rune -0 mkdir -p "$CONFIG_DIR/collections"
     rune -0 touch "$CONFIG_DIR/collections/foobar.yaml"
     rune -0 cscli collections inspect foobar.yaml -o json
-    rune -0 jq -e '.tainted==false' <(output)
+    rune -0 jq -e '[.tainted,.local==false,true]' <(output)
 
     rune -0 cscli collections install crowdsecurity/sshd
     rune -0 truncate -s0 "$CONFIG_DIR/collections/sshd.yaml"
     rune -0 cscli collections inspect crowdsecurity/sshd -o json
-    rune -0 jq -e '.tainted==true' <(output)
+    rune -0 jq -e '[.tainted,.local==true,false]' <(output)
 
     # and not from hub update
     rune -0 cscli hub update
@@ -134,7 +134,7 @@ teardown() {
     assert_output "foobar.yaml"
     rune -0 cscli collections list foobar.yaml
     rune -0 cscli collections inspect foobar.yaml -o json
-    rune -0 jq -e '.installed==true' <(output)
+    rune -0 jq -e '[.installed,.local==true,true]' <(output)
 }
 
 @test "a local item can provide its own name" {
@@ -145,5 +145,5 @@ teardown() {
     assert_output "hi-its-me"
     rune -0 cscli collections list hi-its-me
     rune -0 cscli collections inspect hi-its-me -o json
-    rune -0 jq -e '.installed==true' <(output)
+    rune -0 jq -e '[.installed,.local]==[true,true]' <(output)
 }
