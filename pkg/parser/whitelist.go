@@ -6,7 +6,6 @@ import (
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
-
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -22,8 +21,7 @@ type Whitelist struct {
 }
 
 type ExprWhitelist struct {
-	Filter       *vm.Program
-	ExprDebugger *exprhelpers.ExprDebugger // used to debug expression by printing the content of each variable of the expression
+	Filter *vm.Program
 }
 
 func (n *Node) ContainsWLs() bool {
@@ -79,7 +77,8 @@ func (n *Node) CheckExprWL(cachedExprEnv map[string]interface{}) (bool, error) {
 		if isWhitelisted {
 			break
 		}
-		output, err := expr.Run(e.Filter, cachedExprEnv)
+
+		output, err := exprhelpers.Run(e.Filter, cachedExprEnv, n.Logger, n.Debug)
 		if err != nil {
 			n.Logger.Warningf("failed to run whitelist expr : %v", err)
 			n.Logger.Debug("Event leaving node : ko")
@@ -87,9 +86,6 @@ func (n *Node) CheckExprWL(cachedExprEnv map[string]interface{}) (bool, error) {
 		}
 		switch out := output.(type) {
 		case bool:
-			if n.Debug {
-				e.ExprDebugger.Run(n.Logger, out, cachedExprEnv)
-			}
 			if out {
 				n.Logger.Debugf("Event is whitelisted by expr, reason [%s]", n.Whitelist.Reason)
 				isWhitelisted = true
@@ -123,11 +119,6 @@ func (n *Node) CompileWLs() (bool, error) {
 		if err != nil {
 			return false, fmt.Errorf("unable to compile whitelist expression '%s' : %v", filter, err)
 		}
-		expression.ExprDebugger, err = exprhelpers.NewDebugger(filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
-		if err != nil {
-			n.Logger.Errorf("unable to build debug filter for '%s' : %s", filter, err)
-		}
-
 		n.Whitelist.B_Exprs = append(n.Whitelist.B_Exprs, expression)
 		n.Logger.Debugf("adding expression %s to whitelists", filter)
 	}
