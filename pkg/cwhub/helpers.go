@@ -2,8 +2,6 @@ package cwhub
 
 // Install, upgrade and remove items from the hub to the local configuration
 
-// XXX: this file could use a better name
-
 import (
 	"bytes"
 	"crypto/sha256"
@@ -29,7 +27,6 @@ func (i *Item) Install(force bool, downloadOnly bool) error {
 		}
 	}
 
-	// XXX: confusing semantic between force and updateOnly?
 	filePath, err := i.downloadLatest(force, true)
 	if err != nil {
 		return fmt.Errorf("while downloading %s: %w", i.Name, err)
@@ -39,8 +36,6 @@ func (i *Item) Install(force bool, downloadOnly bool) error {
 		log.Infof("Downloaded %s to %s", i.Name, filePath)
 		return nil
 	}
-
-	// XXX: should we stop here if the item is already installed?
 
 	if err := i.enable(); err != nil {
 		return fmt.Errorf("while enabling %s: %w", i.Name, err)
