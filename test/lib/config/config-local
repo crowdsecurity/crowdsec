@@ -101,6 +101,50 @@ config_generate() {
     ' ../config/config.yaml >"${CONFIG_DIR}/config.yaml"
 }
 
+preload_hub_items() {
+    # pre-download everything but don't install anything
+    # each test can install what it needs
+
+    echo "Purging existing hub..."
+
+    "$CSCLI" parsers delete --all --error --purge --force
+    "$CSCLI" scenarios delete --all --error --purge --force
+    "$CSCLI" postoverflows delete --all --error --purge --force
+    "$CSCLI" collections delete --all --error --purge --force
+
+    echo "Pre-downloading hub content..."
+
+    #shellcheck disable=SC2046
+    "$CSCLI" collections install \
+        $("$CSCLI" collections list -a -o json | jq -r '.collections[].name') \
+        --download-only \
+        --error
+
+    #shellcheck disable=SC2046
+    "$CSCLI" parsers install \
+        $("$CSCLI" parsers list -a -o json | jq -r '.parsers[].name') \
+        --download-only \
+        --error
+
+    #shellcheck disable=SC2046
+    "$CSCLI" scenarios install \
+        $("$CSCLI" scenarios list -a -o json | jq -r '.scenarios[].name') \
+        --download-only \
+        --error
+
+    #shellcheck disable=SC2046
+    "$CSCLI" postoverflows install \
+        $("$CSCLI" postoverflows list -a -o json | jq -r '.postoverflows[].name') \
+        --download-only \
+        --error
+
+    # XXX: download-only works only for collections, not for parsers, scenarios, postoverflows.
+    # so we have to delete the links manually, and leave the downloaded files in place
+
+    "$CSCLI" parsers delete --all --error
+    "$CSCLI" scenarios delete --all --error
+    "$CSCLI" postoverflows delete --all --error
+}
 
 make_init_data() {
     ./bin/assert-crowdsec-not-running || die "Cannot create fixture data."
@@ -118,9 +162,8 @@ make_init_data() {
 
     "$CSCLI" --warning machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto
     "$CSCLI" --warning hub update
-    "$CSCLI" --warning collections install crowdsecurity/linux
-    # the whitelists are installed by the deb & rpm packages, so we test with the same config
-    "$CSCLI" --warning parsers install crowdsecurity/whitelists
+
+    preload_hub_items
 
     mkdir -p "$LOCAL_INIT_DIR"
 

@@ -110,6 +110,37 @@ teardown() {
     assert_json '["http://127.0.0.1:8080/","githubciXXXXXXXXXXXXXXXXXXXXXXXX"]'
 }
 
+@test "cscli - required configuration paths" {
+    config=$(cat "${CONFIG_YAML}")
+    configdir=$(config_get '.config_paths.config_dir')
+
+    # required configuration paths with no defaults
+
+    config_set 'del(.config_paths)'
+    rune -1 cscli hub list
+    assert_stderr --partial 'no configuration paths provided'
+    echo "$config" > "${CONFIG_YAML}"
+
+    config_set 'del(.config_paths.data_dir)'
+    rune -1 cscli hub list
+    assert_stderr --partial "please provide a data directory with the 'data_dir' directive in the 'config_paths' section"
+    echo "$config" > "${CONFIG_YAML}"
+
+    # defaults
+
+    config_set 'del(.config_paths.hub_dir)'
+    rune -0 cscli hub list
+    rune -0 cscli config show --key Config.ConfigPaths.HubDir
+    assert_output "$configdir/hub"
+    echo "$config" > "${CONFIG_YAML}"
+
+    config_set 'del(.config_paths.index_path)'
+    rune -0 cscli hub list
+    rune -0 cscli config show --key Config.ConfigPaths.HubIndexFile
+    assert_output "$configdir/hub/.index.json"
+    echo "$config" > "${CONFIG_YAML}"
+}
+
 @test "cscli config show-yaml" {
     rune -0 cscli config show-yaml
     rune -0 yq .common.log_level <(output)
@@ -245,50 +276,23 @@ teardown() {
     assert_output --partial "# bash completion for cscli"
 }
 
-@test "cscli hub list" {
-    # we check for the presence of some objects. There may be others when we
-    # use $PACKAGE_TESTING, so the order is not important.
-
-    rune -0 cscli hub list -o human
-    assert_line --regexp '^ crowdsecurity/linux'
-    assert_line --regexp '^ crowdsecurity/sshd'
-    assert_line --regexp '^ crowdsecurity/dateparse-enrich'
-    assert_line --regexp '^ crowdsecurity/geoip-enrich'
-    assert_line --regexp '^ crowdsecurity/sshd-logs'
-    assert_line --regexp '^ crowdsecurity/syslog-logs'
-    assert_line --regexp '^ crowdsecurity/ssh-bf'
-    assert_line --regexp '^ crowdsecurity/ssh-slow-bf'
-
-    rune -0 cscli hub list -o raw
-    assert_line --regexp '^crowdsecurity/linux,enabled,[0-9]+\.[0-9]+,core linux support : syslog\+geoip\+ssh,collections$'
-    assert_line --regexp '^crowdsecurity/sshd,enabled,[0-9]+\.[0-9]+,sshd support : parser and brute-force detection,collections$'
-    assert_line --regexp '^crowdsecurity/dateparse-enrich,enabled,[0-9]+\.[0-9]+,,parsers$'
-    assert_line --regexp '^crowdsecurity/geoip-enrich,enabled,[0-9]+\.[0-9]+,"Populate event with geoloc info : as, country, coords, source range.",parsers$'
-    assert_line --regexp '^crowdsecurity/sshd-logs,enabled,[0-9]+\.[0-9]+,Parse openSSH logs,parsers$'
-    assert_line --regexp '^crowdsecurity/syslog-logs,enabled,[0-9]+\.[0-9]+,,parsers$'
-    assert_line --regexp '^crowdsecurity/ssh-bf,enabled,[0-9]+\.[0-9]+,Detect ssh bruteforce,scenarios$'
-    assert_line --regexp '^crowdsecurity/ssh-slow-bf,enabled,[0-9]+\.[0-9]+,Detect slow ssh bruteforce,scenarios$'
-
-    rune -0 cscli hub list -o json
-    rune -0 jq -r '.collections[].name, .parsers[].name, .scenarios[].name' <(output)
-    assert_line 'crowdsecurity/linux'
-    assert_line 'crowdsecurity/sshd'
-    assert_line 'crowdsecurity/dateparse-enrich'
-    assert_line 'crowdsecurity/geoip-enrich'
-    assert_line 'crowdsecurity/sshd-logs'
-    assert_line 'crowdsecurity/syslog-logs'
-    assert_line 'crowdsecurity/ssh-bf'
-    assert_line 'crowdsecurity/ssh-slow-bf'
-}
-
 @test "cscli support dump (smoke test)" {
     rune -0 cscli support dump -f "$BATS_TEST_TMPDIR"/dump.zip
     assert_file_exists "$BATS_TEST_TMPDIR"/dump.zip
 }
 
 @test "cscli explain" {
-    rune -0 cscli explain --log "Sep 19 18:33:22 scw-d95986 sshd[24347]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=1.2.3.4" --type syslog --crowdsec "$CROWDSEC"
+    line="Sep 19 18:33:22 scw-d95986 sshd[24347]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=1.2.3.4"
+
+    rune -0 cscli parsers install crowdsecurity/syslog-logs
+    rune -0 cscli collections install crowdsecurity/sshd
+
+    rune -0 cscli explain --log "$line" --type syslog --only-successful-parsers --crowdsec "$CROWDSEC"
     assert_output - <"$BATS_TEST_DIRNAME"/testdata/explain/explain-log.txt
+
+    rune -0 cscli parsers remove --all --purge
+    rune -1 cscli explain --log "$line" --type syslog --crowdsec "$CROWDSEC"
+    assert_stderr --partial "unable to load parser dump result: no parser found. Please install the appropriate parser and retry"
 }
 
 @test 'Allow variable expansion and literal $ characters in passwords' {

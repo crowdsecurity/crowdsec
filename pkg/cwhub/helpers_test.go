@@ -4,157 +4,187 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
-// Download index, install collection. Add scenario to collection (hub-side), update index, upgrade collection
-// We expect the new scenario to be installed
-func TestUpgradeConfigNewScenarioInCollection(t *testing.T) {
-	cfg := envSetup(t)
-	defer envTearDown(cfg)
+// Download index, install collection. Add scenario to collection (hub-side), update index, upgrade collection.
+// We expect the new scenario to be installed.
+func TestUpgradeItemNewScenarioInCollection(t *testing.T) {
+	hub := envSetup(t)
 
 	// fresh install of collection
-	getHubIdxOrFail(t)
+	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.Downloaded)
+	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.Installed)
 
-	require.False(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
-	require.False(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
+	item := hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
+	require.NoError(t, item.Install(false, false))
 
-	require.NoError(t, InstallItem(cfg, "crowdsecurity/test_collection", COLLECTIONS, false, false))
-
-	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
-	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
-	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].UpToDate)
-	require.False(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Tainted)
+	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.Downloaded)
+	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.Installed)
+	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.UpToDate)
+	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.Tainted)
 
 	// This is the scenario that gets added in next version of collection
-	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/barfoo_scenario"].Downloaded)
-	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/barfoo_scenario"].Installed)
+	require.Nil(t, hub.Items[SCENARIOS]["crowdsecurity/barfoo_scenario"])
 
-	assertCollectionDepsInstalled(t, "crowdsecurity/test_collection")
+	assertCollectionDepsInstalled(t, hub, "crowdsecurity/test_collection")
 
 	// collection receives an update. It now adds new scenario "crowdsecurity/barfoo_scenario"
 	pushUpdateToCollectionInHub()
 
-	if err := UpdateHubIdx(cfg.Hub); err != nil {
-		t.Fatalf("failed to download index : %s", err)
+	remote := &RemoteHubCfg{
+		URLTemplate: mockURLTemplate,
+		Branch:      "master",
+		IndexPath:   ".index.json",
 	}
 
-	getHubIdxOrFail(t)
+	hub, err := NewHub(hub.local, remote, true)
+	require.NoError(t, err, "failed to download index: %s", err)
 
-	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
-	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
-	require.False(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].UpToDate)
-	require.False(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Tainted)
+	hub = getHubOrFail(t, hub.local, remote)
 
-	UpgradeConfig(cfg, COLLECTIONS, "crowdsecurity/test_collection", false)
-	assertCollectionDepsInstalled(t, "crowdsecurity/test_collection")
+	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.Downloaded)
+	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.Installed)
+	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.UpToDate)
+	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.Tainted)
 
-	require.True(t, hubIdx[SCENARIOS]["crowdsecurity/barfoo_scenario"].Downloaded)
-	require.True(t, hubIdx[SCENARIOS]["crowdsecurity/barfoo_scenario"].Installed)
+	item = hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
+	didUpdate, err := item.Upgrade(false)
+	require.NoError(t, err)
+	require.True(t, didUpdate)
+	assertCollectionDepsInstalled(t, hub, "crowdsecurity/test_collection")
+
+	require.True(t, hub.Items[SCENARIOS]["crowdsecurity/barfoo_scenario"].State.Downloaded)
+	require.True(t, hub.Items[SCENARIOS]["crowdsecurity/barfoo_scenario"].State.Installed)
 }
 
 // Install a collection, disable a scenario.
 // Upgrade should install should not enable/download the disabled scenario.
-func TestUpgradeConfigInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
-	cfg := envSetup(t)
-	defer envTearDown(cfg)
+func TestUpgradeItemInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
+	hub := envSetup(t)
 
 	// fresh install of collection
-	getHubIdxOrFail(t)
+	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.Downloaded)
+	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.Installed)
+	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].State.Installed)
 
-	require.False(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
-	require.False(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
-	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
+	item := hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
+	require.NoError(t, item.Install(false, false))
 
-	require.NoError(t, InstallItem(cfg, "crowdsecurity/test_collection", COLLECTIONS, false, false))
+	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.Downloaded)
+	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.Installed)
+	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.UpToDate)
+	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.Tainted)
+	require.True(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].State.Installed)
+	assertCollectionDepsInstalled(t, hub, "crowdsecurity/test_collection")
 
-	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
-	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
-	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].UpToDate)
-	require.False(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Tainted)
-	require.True(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
-	assertCollectionDepsInstalled(t, "crowdsecurity/test_collection")
+	item = hub.GetItem(SCENARIOS, "crowdsecurity/foobar_scenario")
+	didRemove, err := item.Remove(false, false)
+	require.NoError(t, err)
+	require.True(t, didRemove)
 
-	RemoveMany(cfg, SCENARIOS, "crowdsecurity/foobar_scenario", false, false, false)
-	getHubIdxOrFail(t)
-	// scenario referenced by collection  was deleted hence, collection should be tainted
-	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
-	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Tainted)
-	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
-	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
-	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].UpToDate)
-
-	if err := UpdateHubIdx(cfg.Hub); err != nil {
-		t.Fatalf("failed to download index : %s", err)
+	remote := &RemoteHubCfg{
+		URLTemplate: mockURLTemplate,
+		Branch:      "master",
+		IndexPath:   ".index.json",
 	}
 
-	UpgradeConfig(cfg, COLLECTIONS, "crowdsecurity/test_collection", false)
+	hub = getHubOrFail(t, hub.local, remote)
+	// scenario referenced by collection  was deleted hence, collection should be tainted
+	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].State.Installed)
+	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.Tainted)
+	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.Downloaded)
+	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.Installed)
+	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.UpToDate)
 
-	getHubIdxOrFail(t)
-	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
+	hub, err = NewHub(hub.local, remote, true)
+	require.NoError(t, err, "failed to download index: %s", err)
+
+	item = hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
+	didUpdate, err := item.Upgrade(false)
+	require.NoError(t, err)
+	require.False(t, didUpdate)
+
+	hub = getHubOrFail(t, hub.local, remote)
+	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].State.Installed)
 }
 
-func getHubIdxOrFail(t *testing.T) {
-	if err := GetHubIdx(getTestCfg().Hub); err != nil {
-		t.Fatalf("failed to load hub index")
-	}
+// getHubOrFail refreshes the hub state (load index, sync) and returns the singleton, or fails the test.
+func getHubOrFail(t *testing.T, local *csconfig.LocalHubCfg, remote *RemoteHubCfg) *Hub {
+	hub, err := NewHub(local, remote, false)
+	require.NoError(t, err, "failed to load hub index")
+
+	return hub
 }
 
 // Install a collection. Disable a referenced scenario. Publish new version of collection with new scenario
 // Upgrade should not enable/download the disabled scenario.
 // Upgrade should install and enable the newly added scenario.
-func TestUpgradeConfigNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *testing.T) {
-	cfg := envSetup(t)
-	defer envTearDown(cfg)
+func TestUpgradeItemNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *testing.T) {
+	hub := envSetup(t)
 
 	// fresh install of collection
-	getHubIdxOrFail(t)
+	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.Downloaded)
+	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.Installed)
+	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].State.Installed)
 
-	require.False(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
-	require.False(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
-	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
+	item := hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
+	require.NoError(t, item.Install(false, false))
 
-	require.NoError(t, InstallItem(cfg, "crowdsecurity/test_collection", COLLECTIONS, false, false))
+	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.Downloaded)
+	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.Installed)
+	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.UpToDate)
+	require.False(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.Tainted)
+	require.True(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].State.Installed)
+	assertCollectionDepsInstalled(t, hub, "crowdsecurity/test_collection")
 
-	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
-	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
-	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].UpToDate)
-	require.False(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Tainted)
-	require.True(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
-	assertCollectionDepsInstalled(t, "crowdsecurity/test_collection")
+	item = hub.GetItem(SCENARIOS, "crowdsecurity/foobar_scenario")
+	didRemove, err := item.Remove(false, false)
+	require.NoError(t, err)
+	require.True(t, didRemove)
 
-	RemoveMany(cfg, SCENARIOS, "crowdsecurity/foobar_scenario", false, false, false)
-	getHubIdxOrFail(t)
+	remote := &RemoteHubCfg{
+		URLTemplate: mockURLTemplate,
+		Branch:      "master",
+		IndexPath:   ".index.json",
+	}
+
+	hub = getHubOrFail(t, hub.local, remote)
 	// scenario referenced by collection  was deleted hence, collection should be tainted
-	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
-	require.True(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Downloaded) // this fails
-	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Tainted)
-	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
-	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
-	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].UpToDate)
+	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].State.Installed)
+	require.True(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].State.Downloaded) // this fails
+	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.Tainted)
+	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.Downloaded)
+	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.Installed)
+	require.True(t, hub.Items[COLLECTIONS]["crowdsecurity/test_collection"].State.UpToDate)
 
 	// collection receives an update. It now adds new scenario "crowdsecurity/barfoo_scenario"
 	// we now attempt to upgrade the collection, however it shouldn't install the foobar_scenario
 	// we just removed. Nor should it install the newly added scenario
 	pushUpdateToCollectionInHub()
 
-	if err := UpdateHubIdx(cfg.Hub); err != nil {
-		t.Fatalf("failed to download index : %s", err)
-	}
+	hub, err = NewHub(hub.local, remote, true)
+	require.NoError(t, err, "failed to download index: %s", err)
 
-	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
-	getHubIdxOrFail(t)
+	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].State.Installed)
+	hub = getHubOrFail(t, hub.local, remote)
 
-	UpgradeConfig(cfg, COLLECTIONS, "crowdsecurity/test_collection", false)
-	getHubIdxOrFail(t)
-	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
-	require.True(t, hubIdx[SCENARIOS]["crowdsecurity/barfoo_scenario"].Installed)
+	item = hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
+	didUpdate, err := item.Upgrade(false)
+	require.NoError(t, err)
+	require.True(t, didUpdate)
+
+	hub = getHubOrFail(t, hub.local, remote)
+	require.False(t, hub.Items[SCENARIOS]["crowdsecurity/foobar_scenario"].State.Installed)
+	require.True(t, hub.Items[SCENARIOS]["crowdsecurity/barfoo_scenario"].State.Installed)
 }
 
-func assertCollectionDepsInstalled(t *testing.T, collection string) {
+func assertCollectionDepsInstalled(t *testing.T, hub *Hub, collection string) {
 	t.Helper()
 
-	c := hubIdx[COLLECTIONS][collection]
-	require.NoError(t, CollecDepsCheck(&c))
+	c := hub.Items[COLLECTIONS][collection]
+	require.NoError(t, c.checkSubItemVersions())
 }
 
 func pushUpdateToCollectionInHub() {
