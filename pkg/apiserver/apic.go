@@ -7,7 +7,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -17,6 +16,7 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
+	"slices"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/trace"
@@ -383,10 +383,10 @@ func (a *apic) CAPIPullIsOld() (bool, error) {
 }
 
 func (a *apic) HandleDeletedDecisions(deletedDecisions []*models.Decision, delete_counters map[string]map[string]int) (int, error) {
-	var nbDeleted int
+	nbDeleted := 0
 	for _, decision := range deletedDecisions {
 		filter := map[string][]string{
-			"value": {*decision.Value},
+			"value":  {*decision.Value},
 			"origin": {*decision.Origin},
 		}
 		if strings.ToLower(*decision.Scope) != "ip" {
@@ -414,7 +414,7 @@ func (a *apic) HandleDeletedDecisionsV3(deletedDecisions []*modelscapi.GetDecisi
 		scope := decisions.Scope
 		for _, decision := range decisions.Decisions {
 			filter := map[string][]string{
-				"value": {decision},
+				"value":  {decision},
 				"origin": {types.CAPIOrigin},
 			}
 			if strings.ToLower(*scope) != "ip" {
@@ -485,7 +485,7 @@ func createAlertForDecision(decision *models.Decision) *models.Alert {
 	case types.ListOrigin:
 		scenario = *decision.Scenario
 		scope = types.ListOrigin
- 	default:
+	default:
 		// XXX: this or nil?
 		scenario = ""
 		scope = ""
@@ -497,17 +497,17 @@ func createAlertForDecision(decision *models.Decision) *models.Alert {
 			Scope: ptr.Of(scope),
 			Value: ptr.Of(""),
 		},
-		Scenario: ptr.Of(scenario),
-		Message: ptr.Of(""),
-		StartAt: ptr.Of(time.Now().UTC().Format(time.RFC3339)),
-		StopAt: ptr.Of(time.Now().UTC().Format(time.RFC3339)),
-		Capacity: ptr.Of(int32(0)),
-		Simulated: ptr.Of(false),
-		EventsCount: ptr.Of(int32(0)),
-		Leakspeed: ptr.Of(""),
-		ScenarioHash: ptr.Of(""),
+		Scenario:        ptr.Of(scenario),
+		Message:         ptr.Of(""),
+		StartAt:         ptr.Of(time.Now().UTC().Format(time.RFC3339)),
+		StopAt:          ptr.Of(time.Now().UTC().Format(time.RFC3339)),
+		Capacity:        ptr.Of(int32(0)),
+		Simulated:       ptr.Of(false),
+		EventsCount:     ptr.Of(int32(0)),
+		Leakspeed:       ptr.Of(""),
+		ScenarioHash:    ptr.Of(""),
 		ScenarioVersion: ptr.Of(""),
-		MachineID: database.CapiMachineID,
+		MachineID:       database.CapiMachineID,
 	}
 }
 

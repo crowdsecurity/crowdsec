@@ -25,7 +25,6 @@ type DecisionsByScenario struct {
 }
 
 func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, error) {
-
 	var err error
 	var start_ip, start_sfx, end_ip, end_sfx int64
 	var ip_sz int
@@ -551,8 +550,8 @@ func (c *Client) BulkDeleteDecisions(decisionsToDelete []*ent.Decision, softDele
 	const bulkSize = 256 //scientifically proven to be the best value for bulk delete
 
 	var (
-		nbUpdates int
-		err       error
+		nbUpdates    int
+		err          error
 		totalUpdates = 0
 	)
 
@@ -574,7 +573,7 @@ func (c *Client) BulkDeleteDecisions(decisionsToDelete []*ent.Decision, softDele
 				decision.IDIn(chunk...),
 			).Exec(c.CTX)
 			if err != nil {
-		        	return totalUpdates, fmt.Errorf("hard delete decisions with provided filter: %w", err)
+				return totalUpdates, fmt.Errorf("hard delete decisions with provided filter: %w", err)
 			}
 		}
 		totalUpdates += nbUpdates
@@ -588,7 +587,7 @@ func (c *Client) SoftDeleteDecisionByID(decisionID int) (int, []*ent.Decision, e
 	toUpdate, err := c.Ent.Decision.Query().Where(decision.IDEQ(decisionID)).All(c.CTX)
 
 	// XXX: do we want 500 or 404 here?
-	if err != nil || len(toUpdate) == 0{
+	if err != nil || len(toUpdate) == 0 {
 		c.Log.Warningf("SoftDeleteDecisionByID : %v (nb soft deleted: %d)", err, len(toUpdate))
 		return 0, nil, errors.Wrapf(DeleteFail, "decision with id '%d' doesn't exist", decisionID)
 	}
