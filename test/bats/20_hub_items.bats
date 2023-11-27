@@ -147,3 +147,13 @@ teardown() {
     rune -0 cscli collections inspect hi-its-me -o json
     rune -0 jq -e '[.installed,.local]==[true,true]' <(output)
 }
+
+@test "a local item cannot be removed by cscli" {
+    rune -0 mkdir -p "$CONFIG_DIR/collections"
+    rune -0 touch "$CONFIG_DIR/collections/foobar.yaml"
+    rune -1 cscli collections remove foobar.yaml
+    assert_stderr --partial "foobar.yaml isn't managed by hub. Please delete manually"
+    rune -1 cscli collections remove foobar.yaml --force
+    assert_stderr --partial "foobar.yaml isn't managed by hub. Please delete manually"
+}
+
