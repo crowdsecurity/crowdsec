@@ -214,7 +214,7 @@ func itemsInstallRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 		for _, name := range args {
 			item := hub.GetItem(it.name, name)
 			if item == nil {
-				msg := SuggestNearestMessage(hub, it.name, name)
+				msg := suggestNearestMessage(hub, it.name, name)
 				if !ignoreError {
 					return fmt.Errorf(msg)
 				}

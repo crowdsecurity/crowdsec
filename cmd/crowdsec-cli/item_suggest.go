@@ -12,10 +12,10 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-const MaxDistance = 7
+// suggestNearestMessage returns a message with the most similar item name, if one is found
+func suggestNearestMessage(hub *cwhub.Hub, itemType string, itemName string) string {
+	const maxDistance = 7
 
-// SuggestNearestMessage returns a message with the most similar item name, if one is found
-func SuggestNearestMessage(hub *cwhub.Hub, itemType string, itemName string) string {
 	score := 100
 	nearest := ""
 
@@ -29,7 +29,7 @@ func SuggestNearestMessage(hub *cwhub.Hub, itemType string, itemName string) str
 
 	msg := fmt.Sprintf("can't find '%s' in %s", itemName, itemType)
 
-	if score < MaxDistance {
+	if score < maxDistance {
 		msg += fmt.Sprintf(", did you mean '%s'?", nearest)
 	}
 
