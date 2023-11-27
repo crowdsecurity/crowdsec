@@ -49,6 +49,7 @@ type RulesDetails struct {
 var WaapRulesDetails = make(map[int]RulesDetails)
 
 func LoadCollection(pattern string) ([]WaapCollection, error) {
+	//FIXME: have a proper logger here, inheriting from waap-config to have consistent log levels
 	ret := make([]WaapCollection, 0)
 
 	for _, waapRule := range waapRules {
@@ -106,7 +107,7 @@ func LoadCollection(pattern string) ([]WaapCollection, error) {
 					log.Errorf("unable to convert rule %s : %s", rule.Name, err)
 					return nil, err
 				}
-				log.Infof("Adding rule %s", strRule)
+				log.Debugf("Adding rule %s", strRule)
 				waapCol.Rules = append(waapCol.Rules, strRule)
 
 				//We only take the first id, as it's the one of the "main" rule

@@ -11,7 +11,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
@@ -203,8 +202,6 @@ func (r *WaapRunner) AccumulateTxToEvent(evt *types.Event, req waf.ParsedRequest
 		}
 
 		WafRuleHits.With(prometheus.Labels{"rule_id": fmt.Sprintf("%d", rule.Rule().ID()), "type": kind}).Inc()
-
-		spew.Dump(waf.WaapRulesDetails)
 
 		name := "NOT_SET"
 		version := "NOT_SET"
