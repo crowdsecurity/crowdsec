@@ -14,11 +14,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/antonmedv/expr"
 	"github.com/mohae/deepcopy"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -117,7 +117,7 @@ func (n *Node) ProcessStatics(statics []ExtraField, event *types.Event) error {
 		if static.Value != "" {
 			value = static.Value
 		} else if static.RunTimeValue != nil {
-			output, err := expr.Run(static.RunTimeValue, map[string]interface{}{"evt": event})
+			output, err := exprhelpers.Run(static.RunTimeValue, map[string]interface{}{"evt": event}, clog, n.Debug)
 			if err != nil {
 				clog.Warningf("failed to run RunTimeValue : %v", err)
 				continue

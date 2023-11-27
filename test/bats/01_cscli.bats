@@ -110,6 +110,37 @@ teardown() {
     assert_json '["http://127.0.0.1:8080/","githubciXXXXXXXXXXXXXXXXXXXXXXXX"]'
 }
 
+@test "cscli - required configuration paths" {
+    config=$(cat "${CONFIG_YAML}")
+    configdir=$(config_get '.config_paths.config_dir')
+
+    # required configuration paths with no defaults
+
+    config_set 'del(.config_paths)'
+    rune -1 cscli hub list
+    assert_stderr --partial 'no configuration paths provided'
+    echo "$config" > "${CONFIG_YAML}"
+
+    config_set 'del(.config_paths.data_dir)'
+    rune -1 cscli hub list
+    assert_stderr --partial "please provide a data directory with the 'data_dir' directive in the 'config_paths' section"
+    echo "$config" > "${CONFIG_YAML}"
+
+    # defaults
+
+    config_set 'del(.config_paths.hub_dir)'
+    rune -0 cscli hub list
+    rune -0 cscli config show --key Config.ConfigPaths.HubDir
+    assert_output "$configdir/hub"
+    echo "$config" > "${CONFIG_YAML}"
+
+    config_set 'del(.config_paths.index_path)'
+    rune -0 cscli hub list
+    rune -0 cscli config show --key Config.ConfigPaths.HubIndexFile
+    assert_output "$configdir/hub/.index.json"
+    echo "$config" > "${CONFIG_YAML}"
+}
+
 @test "cscli config show-yaml" {
     rune -0 cscli config show-yaml
     rune -0 yq .common.log_level <(output)
@@ -243,35 +274,6 @@ teardown() {
     rm "${CONFIG_YAML}"
     rune -0 cscli completion bash
     assert_output --partial "# bash completion for cscli"
-}
-
-@test "cscli hub list" {
-    # we check for the presence of some objects. There may be others when we
-    # use $PACKAGE_TESTING, so the order is not important.
-
-    rune -0 cscli parsers install crowdsecurity/whitelists
-    rune -0 cscli scenarios install crowdsecurity/asterisk_user_enum
-    rune -0 cscli collections install crowdsecurity/sshd
-    rune -0 cscli postoverflows install crowdsecurity/rdns
-
-    rune -0 cscli hub list -o human
-    assert_line --regexp '^ crowdsecurity/whitelists'
-    assert_line --regexp '^ crowdsecurity/asterisk_user_enum'
-    assert_line --regexp '^ crowdsecurity/sshd'
-    assert_line --regexp '^ crowdsecurity/rdns'
-
-    rune -0 cscli hub list -o raw
-    assert_line --regexp '^crowdsecurity/whitelists,enabled,.*'
-    assert_line --regexp '^crowdsecurity/asterisk_user_enum,enabled,.*'
-    assert_line --regexp '^crowdsecurity/sshd,enabled,.*'
-    assert_line --regexp '^crowdsecurity/rdns,enabled,.*'
-
-    rune -0 cscli hub list -o json
-    rune -0 jq -r '.collections[].name, .parsers[].name, .scenarios[].name, .postoverflows[].name' <(output)
-    assert_line 'crowdsecurity/whitelists'
-    assert_line 'crowdsecurity/asterisk_user_enum'
-    assert_line 'crowdsecurity/sshd'
-    assert_line 'crowdsecurity/rdns'
 }
 
 @test "cscli support dump (smoke test)" {

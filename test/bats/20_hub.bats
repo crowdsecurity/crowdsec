@@ -71,6 +71,24 @@ teardown() {
     assert_stderr --partial "can't find crowdsecurity/mysql-bf in scenarios, required by crowdsecurity/mysql"
 }
 
+@test "loading hub reports tainted items (subitem is tainted)" {
+    rune -0 cscli collections install crowdsecurity/sshd
+    rune -0 cscli hub list
+    refute_stderr --partial "tainted"
+    rune -0 truncate -s0 "$CONFIG_DIR/parsers/s01-parse/sshd-logs.yaml"
+    rune -0 cscli hub list
+    assert_stderr --partial "crowdsecurity/sshd is tainted because parsers:crowdsecurity/sshd-logs is tainted"
+}
+
+@test "loading hub reports tainted items (subitem is not installed)" {
+    rune -0 cscli collections install crowdsecurity/sshd
+    rune -0 cscli hub list
+    refute_stderr --partial "tainted"
+    rune -0 rm "$CONFIG_DIR/parsers/s01-parse/sshd-logs.yaml"
+    rune -0 cscli hub list
+    assert_stderr --partial "crowdsecurity/sshd is tainted because parsers:crowdsecurity/sshd-logs is missing"
+}
+
 @test "cscli hub update" {
     rm -f "$INDEX_PATH"
     rune -0 cscli hub update

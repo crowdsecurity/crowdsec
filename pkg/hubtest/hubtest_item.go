@@ -633,6 +633,57 @@ func (t *HubTestItem) RunWithLogFile() error {
 		return fmt.Errorf("can't get current directory: %+v", err)
 	}
 
+	// create runtime folder
+	if err = os.MkdirAll(t.RuntimePath, os.ModePerm); err != nil {
+		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimePath, err)
+	}
+
+	// create runtime data folder
+	if err = os.MkdirAll(t.RuntimeDataPath, os.ModePerm); err != nil {
+		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimeDataPath, err)
+	}
+
+	// create runtime hub folder
+	if err = os.MkdirAll(t.RuntimeHubPath, os.ModePerm); err != nil {
+		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimeHubPath, err)
+	}
+
+	if err = Copy(t.HubIndexFile, filepath.Join(t.RuntimeHubPath, ".index.json")); err != nil {
+		return fmt.Errorf("unable to copy .index.json file in '%s': %s", filepath.Join(t.RuntimeHubPath, ".index.json"), err)
+	}
+
+	// create results folder
+	if err = os.MkdirAll(t.ResultsPath, os.ModePerm); err != nil {
+		return fmt.Errorf("unable to create folder '%s': %+v", t.ResultsPath, err)
+	}
+
+	// copy template config file to runtime folder
+	if err = Copy(t.TemplateConfigPath, t.RuntimeConfigFilePath); err != nil {
+		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateConfigPath, t.RuntimeConfigFilePath, err)
+	}
+
+	// copy template profile file to runtime folder
+	if err = Copy(t.TemplateProfilePath, t.RuntimeProfileFilePath); err != nil {
+		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateProfilePath, t.RuntimeProfileFilePath, err)
+	}
+
+	// copy template simulation file to runtime folder
+	if err = Copy(t.TemplateSimulationPath, t.RuntimeSimulationFilePath); err != nil {
+		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateSimulationPath, t.RuntimeSimulationFilePath, err)
+	}
+
+	crowdsecPatternsFolder := csconfig.DefaultConfigPath("patterns")
+
+	// copy template patterns folder to runtime folder
+	if err = CopyDir(crowdsecPatternsFolder, t.RuntimePatternsPath); err != nil {
+		return fmt.Errorf("unable to copy 'patterns' from '%s' to '%s': %s", crowdsecPatternsFolder, t.RuntimePatternsPath, err)
+	}
+
+	// install the hub in the runtime folder
+	if err = t.InstallHub(); err != nil {
+		return fmt.Errorf("unable to install hub in '%s': %s", t.RuntimeHubPath, err)
+	}
+
 	logFile := t.Config.LogFile
 	logType := t.Config.LogType
 	dsn := fmt.Sprintf("file://%s", logFile)

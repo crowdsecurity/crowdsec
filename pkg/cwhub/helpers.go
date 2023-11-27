@@ -2,8 +2,6 @@ package cwhub
 
 // Install, upgrade and remove items from the hub to the local configuration
 
-// XXX: this file could use a better name
-
 import (
 	"bytes"
 	"crypto/sha256"
@@ -29,19 +27,15 @@ func (i *Item) Install(force bool, downloadOnly bool) error {
 		}
 	}
 
-	// XXX: confusing semantic between force and updateOnly?
 	filePath, err := i.downloadLatest(force, true)
 	if err != nil {
 		return fmt.Errorf("while downloading %s: %w", i.Name, err)
 	}
 
 	if downloadOnly {
-		// XXX: should get the path from downloadLatest
 		log.Infof("Downloaded %s to %s", i.Name, filePath)
 		return nil
 	}
-
-	// XXX: should we stop here if the item is already installed?
 
 	if err := i.enable(); err != nil {
 		return fmt.Errorf("while enabling %s: %w", i.Name, err)
@@ -52,8 +46,8 @@ func (i *Item) Install(force bool, downloadOnly bool) error {
 	return nil
 }
 
-// allDependencies returns a list of all (direct or indirect) dependencies of the item.
-func (i *Item) allDependencies() ([]*Item, error) {
+// descendants returns a list of all (direct or indirect) dependencies of the item.
+func (i *Item) descendants() ([]*Item, error) {
 	var collectSubItems func(item *Item, visited map[*Item]bool, result *[]*Item) error
 
 	collectSubItems = func(item *Item, visited map[*Item]bool, result *[]*Item) error {
@@ -111,10 +105,12 @@ func (i *Item) Remove(purge bool, force bool) (bool, error) {
 
 	removed := false
 
-	allDeps, err := i.allDependencies()
+	descendants, err := i.descendants()
 	if err != nil {
 		return false, err
 	}
+
+	ancestors := i.Ancestors()
 
 	for _, sub := range i.SubItems() {
 		if !sub.State.Installed {
@@ -123,16 +119,25 @@ func (i *Item) Remove(purge bool, force bool) (bool, error) {
 
 		// if the sub depends on a collection that is not a direct or indirect dependency
 		// of the current item, it is not removed
-		for _, subParent := range sub.AncestorCollections() {
+		for _, subParent := range sub.Ancestors() {
 			if !purge && !subParent.State.Installed {
 				continue
 			}
 
+			// the ancestor that would block the removal of the sub item is also an ancestor
+			// of the item we are removing, so we don't want false warnings
+			// (e.g. crowdsecurity/sshd-logs was not removed because it also belongs to crowdsecurity/linux,
+			// while we are removing crowdsecurity/sshd)
+			if slices.Contains(ancestors, subParent) {
+				continue
+			}
+
+			// the sub-item belongs to the item we are removing, but we already knew that
 			if subParent == i {
 				continue
 			}
 
-			if !slices.Contains(allDeps, subParent) {
+			if !slices.Contains(descendants, subParent) {
 				log.Infof("%s was not removed because it also belongs to %s", sub.Name, subParent.Name)
 				continue
 			}
@@ -150,7 +155,6 @@ func (i *Item) Remove(purge bool, force bool) (bool, error) {
 		return false, fmt.Errorf("while removing %s: %w", i.Name, err)
 	}
 
-	// XXX: should take the value from disable()
 	removed = true
 
 	return removed, nil
@@ -187,7 +191,7 @@ func (i *Item) Upgrade(force bool) (bool, error) {
 
 	if !i.State.UpToDate {
 		if i.State.Tainted {
-			log.Infof("%v %s is tainted, --force to overwrite", emoji.Warning, i.Name)
+			log.Warningf("%v %s is tainted, --force to overwrite", emoji.Warning, i.Name)
 		} else if i.IsLocal() {
 			log.Infof("%v %s is local", emoji.Prohibited, i.Name)
 		}
@@ -205,7 +209,6 @@ func (i *Item) Upgrade(force bool) (bool, error) {
 
 // downloadLatest downloads the latest version of the item to the hub directory.
 func (i *Item) downloadLatest(overwrite bool, updateOnly bool) (string, error) {
-	// XXX: should return the path of the downloaded file (taken from download())
 	log.Debugf("Downloading %s %s", i.Type, i.Name)
 
 	for _, sub := range i.SubItems() {
