@@ -3,8 +3,7 @@ package cwhub
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
-	"strings"
+	"path/filepath"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/enescakir/emoji"
@@ -77,6 +76,30 @@ type Item struct {
 	PostOverflows []string `json:"postoverflows,omitempty" yaml:"postoverflows,omitempty"`
 	Scenarios     []string `json:"scenarios,omitempty" yaml:"scenarios,omitempty"`
 	Collections   []string `json:"collections,omitempty" yaml:"collections,omitempty"`
+}
+
+// installPath returns the location of the symlink to the item in the hub, or the path of the item itself if it's local
+// (eg. /etc/crowdsec/collections/xyz.yaml).
+// Raises an error if the path goes outside of the install dir.
+func (i *Item) installPath() (string, error) {
+	p := i.Type
+	if i.Stage != "" {
+		p = filepath.Join(p, i.Stage)
+	}
+
+	return safePath(i.hub.local.InstallDir, filepath.Join(p, i.FileName))
+}
+
+// downloadPath returns the location of the actual config file in the hub
+// (eg. /etc/crowdsec/hub/collections/author/xyz.yaml).
+// Raises an error if the path goes outside of the hub dir.
+func (i *Item) downloadPath() (string, error) {
+	ret, err := safePath(i.hub.local.HubDir, i.RemotePath)
+	if err != nil {
+		return "", err
+	}
+
+	return ret, nil
 }
 
 // HasSubItems returns true if items of this type can have sub-items. Currently only collections.
@@ -225,6 +248,48 @@ func (i *Item) Ancestors() []*Item {
 	return ret
 }
 
+// descendants returns a list of all (direct or indirect) dependencies of the item.
+func (i *Item) descendants() ([]*Item, error) {
+	var collectSubItems func(item *Item, visited map[*Item]bool, result *[]*Item) error
+
+	collectSubItems = func(item *Item, visited map[*Item]bool, result *[]*Item) error {
+		if item == nil {
+			return nil
+		}
+
+		if visited[item] {
+			return nil
+		}
+
+		visited[item] = true
+
+		for _, subItem := range item.SubItems() {
+			if subItem == i {
+				return fmt.Errorf("circular dependency detected: %s depends on %s", item.Name, i.Name)
+			}
+
+			*result = append(*result, subItem)
+
+			err := collectSubItems(subItem, visited, result)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
+
+	ret := []*Item{}
+	visited := map[*Item]bool{}
+
+	err := collectSubItems(i, visited, &ret)
+	if err != nil {
+		return nil, err
+	}
+
+	return ret, nil
+}
+
 // InstallStatus returns the status of the item as a string and an emoji
 // (eg. "enabled,update-available" and emoji.Warning).
 func (i *Item) InstallStatus() (string, emoji.Emoji) {
@@ -294,90 +359,4 @@ func (i *Item) versionStatus() int {
 // fileName: the filename (ie. apache2-logs.yaml).
 func (i *Item) validPath(dirName, fileName string) bool {
 	return (dirName+"/"+fileName == i.Name+".yaml") || (dirName+"/"+fileName == i.Name+".yml")
-}
-
-// GetItemMap returns the map of items for a given type.
-func (h *Hub) GetItemMap(itemType string) map[string]*Item {
-	return h.Items[itemType]
-}
-
-// GetItem returns an item from hub based on its type and full name (author/name).
-func (h *Hub) GetItem(itemType string, itemName string) *Item {
-	return h.GetItemMap(itemType)[itemName]
-}
-
-// GetItemNames returns a slice of (full) item names for a given type
-// (eg. for collections: crowdsecurity/apache2 crowdsecurity/nginx).
-func (h *Hub) GetItemNames(itemType string) []string {
-	m := h.GetItemMap(itemType)
-	if m == nil {
-		return nil
-	}
-
-	names := make([]string, 0, len(m))
-	for k := range m {
-		names = append(names, k)
-	}
-
-	return names
-}
-
-// GetAllItems returns a slice of all the items of a given type, installed or not.
-func (h *Hub) GetAllItems(itemType string) ([]*Item, error) {
-	items, ok := h.Items[itemType]
-	if !ok {
-		return nil, fmt.Errorf("no %s in the hub index", itemType)
-	}
-
-	ret := make([]*Item, len(items))
-
-	idx := 0
-
-	for _, item := range items {
-		ret[idx] = item
-		idx++
-	}
-
-	return ret, nil
-}
-
-// GetInstalledItems returns a slice of the installed items of a given type.
-func (h *Hub) GetInstalledItems(itemType string) ([]*Item, error) {
-	items, ok := h.Items[itemType]
-	if !ok {
-		return nil, fmt.Errorf("no %s in the hub index", itemType)
-	}
-
-	retItems := make([]*Item, 0)
-
-	for _, item := range items {
-		if item.State.Installed {
-			retItems = append(retItems, item)
-		}
-	}
-
-	return retItems, nil
-}
-
-// GetInstalledItemNames returns the names of the installed items of a given type.
-func (h *Hub) GetInstalledItemNames(itemType string) ([]string, error) {
-	items, err := h.GetInstalledItems(itemType)
-	if err != nil {
-		return nil, err
-	}
-
-	retStr := make([]string, len(items))
-
-	for idx, it := range items {
-		retStr[idx] = it.Name
-	}
-
-	return retStr, nil
-}
-
-// SortItemSlice sorts a slice of items by name, case insensitive.
-func SortItemSlice(items []*Item) {
-	sort.Slice(items, func(i, j int) bool {
-		return strings.ToLower(items[i].Name) < strings.ToLower(items[j].Name)
-	})
 }
