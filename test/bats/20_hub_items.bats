@@ -157,3 +157,12 @@ teardown() {
     assert_stderr --partial "foobar.yaml isn't managed by hub. Please delete manually"
 }
 
+@test "a dangling link is reported with a warning" {
+    rune -0 mkdir -p "$CONFIG_DIR/collections"
+    rune -0 ln -s /this/does/not/exist.yaml "$CONFIG_DIR/collections/foobar.yaml"
+    rune -0 cscli hub list
+    assert_stderr --partial "link target does not exist: $CONFIG_DIR/collections/foobar.yaml -> /this/does/not/exist.yaml"
+    rune -0 cscli hub list -o json
+    rune -0 jq '.collections' <(output)
+    assert_json '[]'
+}
