@@ -296,6 +296,9 @@ func (i *Item) fetch() ([]byte, error) {
 
 // download downloads the item from the hub and writes it to the hub directory.
 func (i *Item) download(overwrite bool) (string, error) {
+	if i.IsLocal() {
+		return "", fmt.Errorf("%s is local, can't download", i.Name)
+	}
 	// if user didn't --force, don't overwrite local, tainted, up-to-date files
 	if !overwrite {
 		if i.State.Tainted {

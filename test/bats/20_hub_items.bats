@@ -148,6 +148,15 @@ teardown() {
     rune -0 jq -e '[.installed,.local]==[true,true]' <(output)
 }
 
+@test "a local item cannot be downloaded by cscli" {
+    rune -0 mkdir -p "$CONFIG_DIR/collections"
+    rune -0 touch "$CONFIG_DIR/collections/foobar.yaml"
+    rune -1 cscli collections install foobar.yaml
+    assert_stderr --partial "failed to download item: foobar.yaml is local, can't download"
+    rune -1 cscli collections install foobar.yaml --force
+    assert_stderr --partial "failed to download item: foobar.yaml is local, can't download"
+}
+
 @test "a local item cannot be removed by cscli" {
     rune -0 mkdir -p "$CONFIG_DIR/collections"
     rune -0 touch "$CONFIG_DIR/collections/foobar.yaml"
