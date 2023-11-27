@@ -164,7 +164,7 @@ func (r *WaapRunner) ProcessInBandRules(request *waf.ParsedRequest) error {
 }
 
 func (r *WaapRunner) ProcessOutOfBandRules(request *waf.ParsedRequest) error {
-	tx := waf.NewExtendedTransaction(r.WaapInbandEngine, request.UUID)
+	tx := waf.NewExtendedTransaction(r.WaapOutbandEngine, request.UUID)
 	r.WaapRuntime.OutOfBandTx = tx
 	err := r.processRequest(tx, request)
 	return err

@@ -92,6 +92,7 @@ type WaapRuntimeConfig struct {
 	Response    WaapTempResponse
 	//should we store matched rules here ?
 
+	Logger *log.Entry
 }
 
 type WaapConfig struct {
@@ -191,7 +192,7 @@ func (wc *WaapConfig) GetDataDir() string {
 }
 
 func (wc *WaapConfig) Build() (*WaapRuntimeConfig, error) {
-	ret := &WaapRuntimeConfig{}
+	ret := &WaapRuntimeConfig{Logger: wc.Logger.WithField("component", "waap_runtime_config")}
 	ret.Name = wc.Name
 	ret.Config = wc
 	ret.DefaultRemediation = wc.DefaultRemediation
@@ -355,6 +356,7 @@ add the helpers to:
 // func (w *WaapRuntimeConfig) RemoveInbandRuleByID(id int) error {
 func (w *WaapRuntimeConfig) RemoveInbandRuleByID(params ...any) (any, error) {
 	id := params[0].(int)
+	w.Logger.Debugf("removing inband rule %d", id)
 	_ = w.InBandTx.RemoveRuleByIDWithError(id)
 	return nil, nil
 }
@@ -362,11 +364,13 @@ func (w *WaapRuntimeConfig) RemoveInbandRuleByID(params ...any) (any, error) {
 // func (w *WaapRuntimeConfig) RemoveOutbandRuleByID(id int) error {
 func (w *WaapRuntimeConfig) RemoveOutbandRuleByID(params ...any) (any, error) {
 	id := params[0].(int)
+	w.Logger.Debugf("removing outband rule %d", id)
 	_ = w.OutOfBandTx.RemoveRuleByIDWithError(id)
 	return nil, nil
 }
 
 func (w *WaapRuntimeConfig) CancelEvent(params ...any) (any, error) {
+	w.Logger.Debugf("canceling event")
 	w.Response.SendEvent = false
 	return nil, nil
 }
@@ -396,16 +400,19 @@ func (w *WaapRuntimeConfig) DisableOutBandRuleByTag(params ...any) (any, error) 
 }
 
 func (w *WaapRuntimeConfig) SendEvent(params ...any) (any, error) {
+	w.Logger.Debugf("sending event")
 	w.Response.SendEvent = true
 	return nil, nil
 }
 
 func (w *WaapRuntimeConfig) SendAlert(params ...any) (any, error) {
+	w.Logger.Debugf("sending alert")
 	w.Response.SendAlert = true
 	return nil, nil
 }
 
 func (w *WaapRuntimeConfig) CancelAlert(params ...any) (any, error) {
+	w.Logger.Debugf("canceling alert")
 	w.Response.SendAlert = false
 	return nil, nil
 }
@@ -426,6 +433,7 @@ func (w *WaapRuntimeConfig) SetActionByID(params ...any) (any, error) {
 func (w *WaapRuntimeConfig) SetAction(params ...any) (any, error) {
 	//log.Infof("setting to %s", action)
 	action := params[0].(string)
+	w.Logger.Debugf("setting action to %s", action)
 	switch action {
 	case "allow":
 		w.Response.Action = action
@@ -450,6 +458,7 @@ func (w *WaapRuntimeConfig) SetAction(params ...any) (any, error) {
 // func (w *WaapRuntimeConfig) SetHTTPCode(code int) error {
 func (w *WaapRuntimeConfig) SetHTTPCode(params ...any) (any, error) {
 	code := params[0].(int)
+	w.Logger.Debugf("setting http code to %d", code)
 	w.Response.HTTPResponseCode = code
 	return nil, nil
 }
@@ -467,8 +476,16 @@ func (w *WaapRuntimeConfig) GenerateResponse(interrupted bool) BodyResponse {
 		resp.HTTPStatus = w.Config.PassedHTTPCode
 		return resp
 	}
-	resp.Action = w.Config.DefaultRemediation
-	resp.HTTPStatus = w.Config.BlockedHTTPCode
+	resp.Action = w.Response.Action
+	if resp.Action == "" {
+		resp.Action = w.Config.DefaultRemediation
+	}
+	w.Logger.Debugf("action is %s", resp.Action)
 
+	resp.HTTPStatus = w.Response.HTTPResponseCode
+	if resp.HTTPStatus == 0 {
+		resp.HTTPStatus = w.Config.BlockedHTTPCode
+	}
+	w.Logger.Debugf("http status is %d", resp.HTTPStatus)
 	return resp
 }
