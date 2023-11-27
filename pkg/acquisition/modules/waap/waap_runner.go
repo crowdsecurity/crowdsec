@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/coraza/v3"
-	"github.com/crowdsecurity/coraza/v3/experimental"
 	corazatypes "github.com/crowdsecurity/coraza/v3/types"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/crowdsec/pkg/waf"
@@ -77,7 +76,7 @@ func (r *WaapRunner) Init(datadir string) error {
 	return nil
 }
 
-func (r *WaapRunner) processRequest(tx experimental.FullTransaction, request *waf.ParsedRequest) error {
+func (r *WaapRunner) processRequest(tx waf.ExtendedTransaction, request *waf.ParsedRequest) error {
 	var in *corazatypes.Interruption
 	var err error
 	request.Tx = tx
@@ -92,7 +91,14 @@ func (r *WaapRunner) processRequest(tx experimental.FullTransaction, request *wa
 		//We don't close the transaction here, as it will reset coraza internal state and break variable tracking
 	}()
 
-	request.Tx.ProcessConnection(request.RemoteAddr, 0, "", 0)
+	//pre eval (expr) rules
+	err = r.WaapRuntime.ProcessPreEvalRules(request)
+	if err != nil {
+		r.logger.Errorf("unable to process PreEval rules: %s", err)
+		//FIXME: should we abort here ?
+	}
+
+	request.Tx.Tx.ProcessConnection(request.RemoteAddr, 0, "", 0)
 
 	for k, v := range request.Args {
 		for _, vv := range v {
@@ -151,14 +157,16 @@ func (r *WaapRunner) processRequest(tx experimental.FullTransaction, request *wa
 }
 
 func (r *WaapRunner) ProcessInBandRules(request *waf.ParsedRequest) error {
-	tx := r.WaapInbandEngine.NewTransactionWithID(request.UUID)
-	err := r.processRequest(tx.(experimental.FullTransaction), request)
+	tx := waf.NewExtendedTransaction(r.WaapInbandEngine, request.UUID)
+	r.WaapRuntime.InBandTx = tx
+	err := r.processRequest(tx, request)
 	return err
 }
 
 func (r *WaapRunner) ProcessOutOfBandRules(request *waf.ParsedRequest) error {
-	tx := r.WaapOutbandEngine.NewTransactionWithID(request.UUID)
-	err := r.processRequest(tx.(experimental.FullTransaction), request)
+	tx := waf.NewExtendedTransaction(r.WaapInbandEngine, request.UUID)
+	r.WaapRuntime.OutOfBandTx = tx
+	err := r.processRequest(tx, request)
 	return err
 }
 
@@ -180,14 +188,8 @@ func (r *WaapRunner) Run(t *tomb.Tomb) error {
 			//to measure the time spent in the WAF
 			startParsing := time.Now()
 
-			//pre eval (expr) rules
-			err := r.WaapRuntime.ProcessPreEvalRules(request)
-			if err != nil {
-				r.logger.Errorf("unable to process PreEval rules: %s", err)
-				continue
-			}
 			//inband WAAP rules
-			err = r.ProcessInBandRules(&request)
+			err := r.ProcessInBandRules(&request)
 			if err != nil {
 				r.logger.Errorf("unable to process InBand rules: %s", err)
 				continue
@@ -206,7 +208,7 @@ func (r *WaapRunner) Run(t *tomb.Tomb) error {
 				r.logger.Debugf("inband rules matched : %d", in.RuleID)
 				r.WaapRuntime.Response.InBandInterrupt = true
 
-				err = r.WaapRuntime.ProcessOnMatchRules(request)
+				err = r.WaapRuntime.ProcessOnMatchRules(&request)
 				if err != nil {
 					r.logger.Errorf("unable to process OnMatch rules: %s", err)
 					continue
@@ -236,7 +238,7 @@ func (r *WaapRunner) Run(t *tomb.Tomb) error {
 			if in := request.Tx.Interruption(); in != nil {
 				r.logger.Debugf("outband rules matched : %d", in.RuleID)
 				r.WaapRuntime.Response.OutOfBandInterrupt = true
-				err = r.WaapRuntime.ProcessOnMatchRules(request)
+				err = r.WaapRuntime.ProcessOnMatchRules(&request)
 				if err != nil {
 					r.logger.Errorf("unable to process OnMatch rules: %s", err)
 					continue

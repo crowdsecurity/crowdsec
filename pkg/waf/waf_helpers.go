@@ -32,6 +32,7 @@ func GetExprWAFOptions(ctx map[string]interface{}) []expr.Option {
 }
 
 func GetOnLoadEnv(w *WaapRuntimeConfig) map[string]interface{} {
+	//FIXME: use expr.Function instead of this
 	return map[string]interface{}{
 		"DisableInBandRuleByID":   w.DisableInBandRuleByID,
 		"DisableOutBandRuleByID":  w.DisableOutBandRuleByID,
@@ -40,7 +41,8 @@ func GetOnLoadEnv(w *WaapRuntimeConfig) map[string]interface{} {
 	}
 }
 
-func GetPreEvalEnv(w *WaapRuntimeConfig, request ParsedRequest) map[string]interface{} {
+func GetPreEvalEnv(w *WaapRuntimeConfig, request *ParsedRequest) map[string]interface{} {
+	//FIXME: use expr.Function instead of this
 	return map[string]interface{}{
 		"IsInBand":              request.IsInBand,
 		"IsOutBand":             request.IsOutBand,
@@ -51,7 +53,8 @@ func GetPreEvalEnv(w *WaapRuntimeConfig, request ParsedRequest) map[string]inter
 	}
 }
 
-func GetOnMatchEnv(w *WaapRuntimeConfig, request ParsedRequest) map[string]interface{} {
+func GetOnMatchEnv(w *WaapRuntimeConfig, request *ParsedRequest) map[string]interface{} {
+	//FIXME: use expr.Function instead of this
 	return map[string]interface{}{
 		"req":            request,
 		"IsInBand":       request.IsInBand,

@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/crowdsecurity/coraza/v3/experimental"
 	"github.com/google/uuid"
 )
 
@@ -74,7 +73,7 @@ type ParsedRequest struct {
 	Body             []byte
 	TransferEncoding []string
 	UUID             string
-	Tx               experimental.FullTransaction
+	Tx               ExtendedTransaction
 	ResponseChannel  chan WaapTempResponse
 	IsInBand         bool
 	IsOutBand        bool

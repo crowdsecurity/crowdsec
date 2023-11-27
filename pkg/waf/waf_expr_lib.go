@@ -8,7 +8,26 @@ type exprCustomFunc struct {
 	signature []interface{}
 }
 
-var onLoadExprFuncs = []exprCustomFunc{}
+/*
+func GetOnLoadEnv(w *WaapRuntimeConfig) map[string]interface{} {
+	return map[string]interface{}{
+		"DisableInBandRuleByID":   w.DisableInBandRuleByID,
+		"DisableOutBandRuleByID":  w.DisableOutBandRuleByID,
+		"DisableInBandRuleByTag":  w.DisableInBandRuleByTag,
+		"DisableOutBandRuleByTag": w.DisableOutBandRuleByTag,
+	}
+}
+*/
+
+/*var onLoadExprFuncs = []exprCustomFunc{
+	{
+		name:     "DisableInBandRuleByID",
+		function: w.DisableInBandRuleByID,
+		signature: []interface{}{
+			new(func(int) error),
+		},
+	},
+}*/
 
 var preEvalExprFuncs = []exprCustomFunc{}
 

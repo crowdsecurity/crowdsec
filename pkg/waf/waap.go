@@ -21,18 +21,34 @@ type Hook struct {
 	ApplyExpr []*vm.Program `yaml:"-"`
 }
 
-// @tko : todo - debug mode
-func (h *Hook) Build() error {
+const (
+	hookOnLoad = iota
+	hookPreEval
+	hookOnMatch
+)
 
+// @tko : todo - debug mode
+func (h *Hook) Build(hookStage int) error {
+
+	ctx := map[string]interface{}{}
+	switch hookStage {
+	case hookOnLoad:
+		ctx = GetOnLoadEnv(&WaapRuntimeConfig{})
+	case hookPreEval:
+		ctx = GetPreEvalEnv(&WaapRuntimeConfig{}, &ParsedRequest{})
+	case hookOnMatch:
+		ctx = GetOnMatchEnv(&WaapRuntimeConfig{}, &ParsedRequest{})
+	}
+	opts := GetExprWAFOptions(ctx)
 	if h.Filter != "" {
-		program, err := expr.Compile(h.Filter) //FIXME: opts
+		program, err := expr.Compile(h.Filter, opts...) //FIXME: opts
 		if err != nil {
 			return fmt.Errorf("unable to compile filter %s : %w", h.Filter, err)
 		}
 		h.FilterExpr = program
 	}
 	for _, apply := range h.Apply {
-		program, err := expr.Compile(apply, GetExprWAFOptions(GetHookEnv(&WaapRuntimeConfig{}, ParsedRequest{}))...)
+		program, err := expr.Compile(apply, opts...)
 		if err != nil {
 			return fmt.Errorf("unable to compile apply %s : %w", apply, err)
 		}
@@ -204,7 +220,7 @@ func (wc *WaapConfig) Build() (*WaapRuntimeConfig, error) {
 
 	//load hooks
 	for _, hook := range wc.OnLoad {
-		err := hook.Build()
+		err := hook.Build(hookOnLoad)
 		if err != nil {
 			return nil, fmt.Errorf("unable to build on_load hook : %s", err)
 		}
@@ -212,7 +228,7 @@ func (wc *WaapConfig) Build() (*WaapRuntimeConfig, error) {
 	}
 
 	for _, hook := range wc.PreEval {
-		err := hook.Build()
+		err := hook.Build(hookPreEval)
 		if err != nil {
 			return nil, fmt.Errorf("unable to build pre_eval hook : %s", err)
 		}
@@ -220,7 +236,7 @@ func (wc *WaapConfig) Build() (*WaapRuntimeConfig, error) {
 	}
 
 	for _, hook := range wc.OnMatch {
-		err := hook.Build()
+		err := hook.Build(hookOnMatch)
 		if err != nil {
 			return nil, fmt.Errorf("unable to build on_match hook : %s", err)
 		}
@@ -243,7 +259,7 @@ func (w *WaapRuntimeConfig) ProcessOnLoadRules() error {
 		if rule.FilterExpr != nil {
 			output, err := expr.Run(rule.FilterExpr, GetOnLoadEnv(w))
 			if err != nil {
-				return fmt.Errorf("unable to run filter %s : %w", rule.Filter, err)
+				return fmt.Errorf("unable to run waap on_load filter %s : %w", rule.Filter, err)
 			}
 			switch t := output.(type) {
 			case bool:
@@ -259,7 +275,7 @@ func (w *WaapRuntimeConfig) ProcessOnLoadRules() error {
 		for _, applyExpr := range rule.ApplyExpr {
 			_, err := expr.Run(applyExpr, GetOnLoadEnv(w))
 			if err != nil {
-				log.Errorf("unable to apply filter: %s", err)
+				log.Errorf("unable to apply waap on_load expr: %s", err)
 				continue
 			}
 		}
@@ -267,13 +283,13 @@ func (w *WaapRuntimeConfig) ProcessOnLoadRules() error {
 	return nil
 }
 
-func (w *WaapRuntimeConfig) ProcessOnMatchRules(request ParsedRequest) error {
+func (w *WaapRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest) error {
 
 	for _, rule := range w.CompiledOnMatch {
 		if rule.FilterExpr != nil {
 			output, err := expr.Run(rule.FilterExpr, GetOnMatchEnv(w, request))
 			if err != nil {
-				return fmt.Errorf("unable to run filter %s : %w", rule.Filter, err)
+				return fmt.Errorf("unable to run waap on_match filter %s : %w", rule.Filter, err)
 			}
 			switch t := output.(type) {
 			case bool:
@@ -289,7 +305,7 @@ func (w *WaapRuntimeConfig) ProcessOnMatchRules(request ParsedRequest) error {
 		for _, applyExpr := range rule.ApplyExpr {
 			_, err := expr.Run(applyExpr, GetOnMatchEnv(w, request))
 			if err != nil {
-				log.Errorf("unable to apply filter: %s", err)
+				log.Errorf("unable to apply waap on_match expr: %s", err)
 				continue
 			}
 		}
@@ -297,12 +313,12 @@ func (w *WaapRuntimeConfig) ProcessOnMatchRules(request ParsedRequest) error {
 	return nil
 }
 
-func (w *WaapRuntimeConfig) ProcessPreEvalRules(request ParsedRequest) error {
+func (w *WaapRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error {
 	for _, rule := range w.CompiledPreEval {
 		if rule.FilterExpr != nil {
 			output, err := expr.Run(rule.FilterExpr, GetPreEvalEnv(w, request))
 			if err != nil {
-				return fmt.Errorf("unable to run filter %s : %w", rule.Filter, err)
+				return fmt.Errorf("unable to run waap pre_eval filter %s : %w", rule.Filter, err)
 			}
 			switch t := output.(type) {
 			case bool:
@@ -319,7 +335,7 @@ func (w *WaapRuntimeConfig) ProcessPreEvalRules(request ParsedRequest) error {
 		for _, applyExpr := range rule.ApplyExpr {
 			_, err := expr.Run(applyExpr, GetPreEvalEnv(w, request))
 			if err != nil {
-				log.Errorf("unable to apply filter: %s", err)
+				log.Errorf("unable to apply waap pre_eval expr: %s", err)
 				continue
 			}
 		}
@@ -340,6 +356,13 @@ add the helpers to:
 func (w *WaapRuntimeConfig) RemoveInbandRuleByID(params ...any) (any, error) {
 	id := params[0].(int)
 	_ = w.InBandTx.RemoveRuleByIDWithError(id)
+	return nil, nil
+}
+
+// func (w *WaapRuntimeConfig) RemoveOutbandRuleByID(id int) error {
+func (w *WaapRuntimeConfig) RemoveOutbandRuleByID(params ...any) (any, error) {
+	id := params[0].(int)
+	_ = w.OutOfBandTx.RemoveRuleByIDWithError(id)
 	return nil, nil
 }
 
@@ -396,13 +419,6 @@ func (w *WaapRuntimeConfig) SetActionByTag(params ...any) (any, error) {
 // func (w *WaapRuntimeConfig) SetActionByID(id int, action string) error {
 func (w *WaapRuntimeConfig) SetActionByID(params ...any) (any, error) {
 	panic("not implemented")
-	return nil, nil
-}
-
-// func (w *WaapRuntimeConfig) RemoveOutbandRuleByID(id int) error {
-func (w *WaapRuntimeConfig) RemoveOutbandRuleByID(params ...any) (any, error) {
-	id := params[0].(int)
-	_ = w.OutOfBandTx.RemoveRuleByIDWithError(id)
 	return nil, nil
 }
 
