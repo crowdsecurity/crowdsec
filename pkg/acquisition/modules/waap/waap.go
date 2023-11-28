@@ -133,6 +133,10 @@ func (wc *WaapSource) UnmarshalConfig(yamlConfig []byte) error {
 		return fmt.Errorf("waap_config or waap_config_path must be set")
 	}
 
+	if wc.config.Name == "" {
+		wc.config.Name = fmt.Sprintf("%s:%d%s", wc.config.ListenAddr, wc.config.ListenPort, wc.config.Path)
+	}
+
 	csConfig := csconfig.GetConfig()
 	wc.lapiURL = fmt.Sprintf("%sv1/decisions/stream", csConfig.API.Client.Credentials.URL)
 	wc.AuthCache = NewAuthCache()
@@ -349,10 +353,16 @@ func (w *WaapSource) waapHandler(rw http.ResponseWriter, r *http.Request) {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	parsedRequest.WaapEngine = w.config.Name
+
+	WafReqCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "waap_engine": parsedRequest.WaapEngine}).Inc()
 
 	w.InChan <- parsedRequest
 
 	response := <-parsedRequest.ResponseChannel
+	if response.InBandInterrupt {
+		WafBlockCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "waap_engine": parsedRequest.WaapEngine}).Inc()
+	}
 
 	waapResponse := w.WaapRuntime.GenerateResponse(response.InBandInterrupt)
 

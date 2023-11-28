@@ -63,6 +63,8 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 	lapi_machine_stats := map[string]map[string]map[string]int{}
 	lapi_bouncer_stats := map[string]map[string]map[string]int{}
 	decisions_stats := map[string]map[string]map[string]int{}
+	waap_engine_stats := map[string]map[string]int{}
+	waap_rule_stats := map[string]map[string]map[string]int{}
 	alerts_stats := map[string]int{}
 	stash_stats := map[string]struct {
 		Type  string
@@ -226,10 +228,30 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 					Type  string
 					Count int
 				}{Type: mtype, Count: ival}
+			case "cs_waf_reqs_total":
+				if _, ok := waap_engine_stats[metric.Labels["waap_engine"]]; !ok {
+					waap_engine_stats[metric.Labels["waap_engine"]] = make(map[string]int, 0)
+				}
+				waap_engine_stats[metric.Labels["waap_engine"]]["processed"] = ival
+			case "cs_waf_block_total":
+				if _, ok := waap_engine_stats[metric.Labels["waap_engine"]]; !ok {
+					waap_engine_stats[metric.Labels["waap_engine"]] = make(map[string]int, 0)
+				}
+				waap_engine_stats[metric.Labels["waap_engine"]]["blocked"] = ival
+			case "cs_waf_rule_hits":
+				waapEngine := metric.Labels["waap_engine"]
+				ruleID := metric.Labels["rule_id"]
+				if _, ok := waap_rule_stats[waapEngine]; !ok {
+					waap_rule_stats[waapEngine] = make(map[string]map[string]int, 0)
+				}
+				if _, ok := waap_rule_stats[waapEngine][ruleID]; !ok {
+					waap_rule_stats[waapEngine][ruleID] = make(map[string]int, 0)
+				}
+				waap_rule_stats[waapEngine][ruleID]["processed"] = ival
 			default:
+				log.Infof("unknown: %+v", fam.Name)
 				continue
 			}
-
 		}
 	}
 
@@ -244,6 +266,8 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 		decisionStatsTable(out, decisions_stats)
 		alertStatsTable(out, alerts_stats)
 		stashStatsTable(out, stash_stats)
+		waapMetricsToTable(out, waap_engine_stats)
+		waapRulesToTable(out, waap_rule_stats)
 		return nil
 	}
 
@@ -282,7 +306,6 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 
 var noUnit bool
 
-
 func runMetrics(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
@@ -314,7 +337,6 @@ func runMetrics(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-
 func NewMetricsCmd() *cobra.Command {
 	cmdMetrics := &cobra.Command{
 		Use:               "metrics",
@@ -322,7 +344,7 @@ func NewMetricsCmd() *cobra.Command {
 		Long:              `Fetch metrics from the prometheus server and display them in a human-friendly way`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE: runMetrics,
+		RunE:              runMetrics,
 	}
 
 	flags := cmdMetrics.PersistentFlags()

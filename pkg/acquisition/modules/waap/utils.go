@@ -201,7 +201,8 @@ func (r *WaapRunner) AccumulateTxToEvent(evt *types.Event, req waf.ParsedRequest
 			evt.Waap.HasOutBandMatches = true
 		}
 
-		WafRuleHits.With(prometheus.Labels{"rule_id": fmt.Sprintf("%d", rule.Rule().ID()), "type": kind}).Inc()
+		// TODO: Fetch the Name of the rule when possible
+		WafRuleHits.With(prometheus.Labels{"rule_id": fmt.Sprintf("%d", rule.Rule().ID()), "type": kind, "source": req.RemoteAddrNormalized, "waap_engine": req.WaapEngine}).Inc()
 
 		name := "NOT_SET"
 		version := "NOT_SET"

@@ -90,7 +90,7 @@ func bucketStatsTable(out io.Writer, stats map[string]map[string]int) {
 	keys := []string{"curr_count", "overflow", "instantiation", "pour", "underflow"}
 
 	if numRows, err := metricsToTable(t, stats, keys); err != nil {
-		log.Warningf("while collecting acquis stats: %s", err)
+		log.Warningf("while collecting bucket stats: %s", err)
 	} else if numRows > 0 {
 		renderTableTitle(out, "\nBucket Metrics:")
 		t.Render()
@@ -113,6 +113,37 @@ func acquisStatsTable(out io.Writer, stats map[string]map[string]int) {
 	}
 }
 
+func waapMetricsToTable(out io.Writer, metrics map[string]map[string]int) {
+	t := newTable(out)
+	t.SetRowLines(false)
+	t.SetHeaders("WAF Engine", "Processed", "Blocked")
+	t.SetAlignment(table.AlignLeft, table.AlignLeft)
+	keys := []string{"processed", "blocked"}
+	if numRows, err := metricsToTable(t, metrics, keys); err != nil {
+		log.Warningf("while collecting waap stats: %s", err)
+	} else if numRows > 0 {
+		renderTableTitle(out, "\nWaap Metrics:")
+		t.Render()
+	}
+}
+
+func waapRulesToTable(out io.Writer, metrics map[string]map[string]map[string]int) {
+	for waapEngine, waapEngineRulesStats := range metrics {
+		t := newTable(out)
+		t.SetRowLines(false)
+		t.SetHeaders("Rule ID", "Processed")
+		t.SetAlignment(table.AlignLeft, table.AlignLeft)
+		keys := []string{"processed"}
+		if numRows, err := metricsToTable(t, waapEngineRulesStats, keys); err != nil {
+			log.Warningf("while collecting waap stats: %s", err)
+		} else if numRows > 0 {
+			renderTableTitle(out, fmt.Sprintf("\nWaap '%s' Rules Metrics:", waapEngine))
+			t.Render()
+		}
+	}
+
+}
+
 func parserStatsTable(out io.Writer, stats map[string]map[string]int) {
 	t := newTable(out)
 	t.SetRowLines(false)
@@ -122,7 +153,7 @@ func parserStatsTable(out io.Writer, stats map[string]map[string]int) {
 	keys := []string{"hits", "parsed", "unparsed"}
 
 	if numRows, err := metricsToTable(t, stats, keys); err != nil {
-		log.Warningf("while collecting acquis stats: %s", err)
+		log.Warningf("while collecting parsers stats: %s", err)
 	} else if numRows > 0 {
 		renderTableTitle(out, "\nParser Metrics:")
 		t.Render()

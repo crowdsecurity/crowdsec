@@ -184,7 +184,6 @@ func (r *WaapRunner) Run(t *tomb.Tomb) error {
 			request.IsInBand = true
 			request.IsOutBand = false
 
-			WafReqCounter.With(prometheus.Labels{"source": request.RemoteAddr}).Inc()
 			//to measure the time spent in the WAF
 			startParsing := time.Now()
 

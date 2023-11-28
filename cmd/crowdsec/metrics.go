@@ -164,6 +164,7 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 			leaky.BucketsCurrentCount,
 			cache.CacheMetrics, exprhelpers.RegexpCacheMetrics,
 			waap.WafGlobalParsingHistogram, waap.WafReqCounter, waap.WafRuleHits,
+			waap.WafBlockCounter,
 		)
 	} else {
 		log.Infof("Loading prometheus collectors")
@@ -174,7 +175,7 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 			leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstantiation, leaky.BucketsOverflow, leaky.BucketsCurrentCount,
 			globalActiveDecisions, globalAlerts,
 			cache.CacheMetrics, exprhelpers.RegexpCacheMetrics,
-			waap.WafGlobalParsingHistogram, waap.WafInbandParsingHistogram, waap.WafOutbandParsingHistogram, waap.WafReqCounter, waap.WafRuleHits,
+			waap.WafGlobalParsingHistogram, waap.WafInbandParsingHistogram, waap.WafOutbandParsingHistogram, waap.WafReqCounter, waap.WafRuleHits, waap.WafBlockCounter,
 		)
 
 	}

@@ -3,10 +3,13 @@ package waf
 import (
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 
+
 	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -60,23 +63,25 @@ const (
 // }
 
 type ParsedRequest struct {
-	RemoteAddr       string
-	Host             string
-	ClientIP         string
-	URI              string
-	Args             url.Values
-	ClientHost       string
-	Headers          http.Header
-	URL              *url.URL
-	Method           string
-	Proto            string
-	Body             []byte
-	TransferEncoding []string
-	UUID             string
-	Tx               ExtendedTransaction
-	ResponseChannel  chan WaapTempResponse
-	IsInBand         bool
-	IsOutBand        bool
+	RemoteAddr           string
+	Host                 string
+	ClientIP             string
+	URI                  string
+	Args                 url.Values
+	ClientHost           string
+	Headers              http.Header
+	URL                  *url.URL
+	Method               string
+	Proto                string
+	Body                 []byte
+	TransferEncoding     []string
+	UUID                 string
+	Tx                   ExtendedTransaction
+	ResponseChannel      chan WaapTempResponse
+	IsInBand             bool
+	IsOutBand            bool
+	WaapEngine           string
+	RemoteAddrNormalized string
 }
 
 // Generate a ParsedRequest from a http.Request. ParsedRequest can be consumed by the Waap Engine
@@ -123,20 +128,35 @@ func NewParsedRequestFromRequest(r *http.Request) (ParsedRequest, error) {
 		return ParsedRequest{}, fmt.Errorf("unable to parse url '%s': %s", clientURI, err)
 	}
 
+	RemoteAddrNormalized := ""
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		log.Errorf("Invalid waap remote IP source %v: %s", r.RemoteAddr, err.Error())
+		RemoteAddrNormalized = r.RemoteAddr
+	} else {
+		ip := net.ParseIP(host)
+		if ip == nil {
+			log.Errorf("Invalid waap remote IP address source %v: %s", r.RemoteAddr, err.Error())
+			RemoteAddrNormalized = r.RemoteAddr
+		}
+		RemoteAddrNormalized = ip.String()
+	}
+
 	return ParsedRequest{
-		RemoteAddr:       r.RemoteAddr,
-		UUID:             uuid.New().String(),
-		ClientHost:       clientHost,
-		ClientIP:         clientIP,
-		URI:              parsedURL.Path,
-		Method:           clientMethod,
-		Host:             r.Host,
-		Headers:          r.Header,
-		URL:              r.URL,
-		Proto:            r.Proto,
-		Body:             body,
-		Args:             parsedURL.Query(), //TODO: Check if there's not potential bypass as it excludes malformed args
-		TransferEncoding: r.TransferEncoding,
-		ResponseChannel:  make(chan WaapTempResponse),
+		RemoteAddr:           r.RemoteAddr,
+		UUID:                 uuid.New().String(),
+		ClientHost:           clientHost,
+		ClientIP:             clientIP,
+		URI:                  parsedURL.Path,
+		Method:               clientMethod,
+		Host:                 r.Host,
+		Headers:              r.Header,
+		URL:                  r.URL,
+		Proto:                r.Proto,
+		Body:                 body,
+		Args:                 parsedURL.Query(), //TODO: Check if there's not potential bypass as it excludes malformed args
+		TransferEncoding:     r.TransferEncoding,
+		ResponseChannel:      make(chan WaapTempResponse),
+		RemoteAddrNormalized: RemoteAddrNormalized,
 	}, nil
 }
