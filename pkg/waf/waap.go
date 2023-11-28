@@ -468,21 +468,21 @@ type BodyResponse struct {
 	HTTPStatus int    `json:"http_status"`
 }
 
-func (w *WaapRuntimeConfig) GenerateResponse(interrupted bool) BodyResponse {
+func (w *WaapRuntimeConfig) GenerateResponse(response WaapTempResponse) BodyResponse {
 	resp := BodyResponse{}
 	//if there is no interrupt, we should allow with default code
-	if !interrupted {
+	if !response.InBandInterrupt {
 		resp.Action = w.Config.DefaultPassAction
 		resp.HTTPStatus = w.Config.PassedHTTPCode
 		return resp
 	}
-	resp.Action = w.Response.Action
+	resp.Action = response.Action
 	if resp.Action == "" {
 		resp.Action = w.Config.DefaultRemediation
 	}
 	w.Logger.Debugf("action is %s", resp.Action)
 
-	resp.HTTPStatus = w.Response.HTTPResponseCode
+	resp.HTTPStatus = response.HTTPResponseCode
 	if resp.HTTPStatus == 0 {
 		resp.HTTPStatus = w.Config.BlockedHTTPCode
 	}

@@ -213,6 +213,7 @@ func (r *WaapRunner) Run(t *tomb.Tomb) error {
 					continue
 				}
 			}
+
 			elapsed := time.Since(startParsing)
 			WafInbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddr}).Observe(elapsed.Seconds())
 
@@ -220,6 +221,9 @@ func (r *WaapRunner) Run(t *tomb.Tomb) error {
 			//@tko : this should move in the WaapRuntimeConfig as it knows what to do with the interruption and the expected remediation
 
 			// send back the result to the HTTP handler for the InBand part
+
+			r.logger.Infof("Response: %+v", r.WaapRuntime.Response)
+
 			request.ResponseChannel <- r.WaapRuntime.Response
 
 			request.IsInBand = false
