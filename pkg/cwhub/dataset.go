@@ -80,7 +80,7 @@ func needsUpdate(destPath string, url string) bool {
 	}
 
 	// update if local file is older than this
-	shelfLife := 3 * 24 * time.Hour
+	shelfLife := 7 * 24 * time.Hour
 
 	lastModify := fileInfo.ModTime()
 
