@@ -10,7 +10,6 @@ import (
 	goccyyaml "github.com/goccy/go-yaml"
 	"gopkg.in/yaml.v3"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
@@ -46,22 +45,10 @@ func decodeSetup(input []byte, fancyErrors bool) (Setup, error) {
 }
 
 // InstallHubItems installs the objects recommended in a setup file.
-func InstallHubItems(csConfig *csconfig.Config, input []byte, dryRun bool) error {
+func InstallHubItems(hub *cwhub.Hub, input []byte, dryRun bool) error {
 	setupEnvelope, err := decodeSetup(input, false)
 	if err != nil {
 		return err
-	}
-
-	if err := csConfig.LoadHub(); err != nil {
-		return fmt.Errorf("loading hub: %w", err)
-	}
-
-	if err := cwhub.SetHubBranch(); err != nil {
-		return fmt.Errorf("setting hub branch: %w", err)
-	}
-
-	if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-		return fmt.Errorf("getting hub index: %w", err)
 	}
 
 	for _, setupItem := range setupEnvelope.Setup {
@@ -75,14 +62,19 @@ func InstallHubItems(csConfig *csconfig.Config, input []byte, dryRun bool) error
 
 		if len(install.Collections) > 0 {
 			for _, collection := range setupItem.Install.Collections {
+				item := hub.GetItem(cwhub.COLLECTIONS, collection)
+				if item == nil {
+					return fmt.Errorf("collection %s not found", collection)
+				}
+
 				if dryRun {
 					fmt.Println("dry-run: would install collection", collection)
 
 					continue
 				}
 
-				if err := cwhub.InstallItem(csConfig, collection, cwhub.COLLECTIONS, forceAction, downloadOnly); err != nil {
-					return fmt.Errorf("while installing collection %s: %w", collection, err)
+				if err := item.Install(forceAction, downloadOnly); err != nil {
+					return fmt.Errorf("while installing collection %s: %w", item.Name, err)
 				}
 			}
 		}
@@ -95,8 +87,13 @@ func InstallHubItems(csConfig *csconfig.Config, input []byte, dryRun bool) error
 					continue
 				}
 
-				if err := cwhub.InstallItem(csConfig, parser, cwhub.PARSERS, forceAction, downloadOnly); err != nil {
-					return fmt.Errorf("while installing parser %s: %w", parser, err)
+				item := hub.GetItem(cwhub.PARSERS, parser)
+				if item == nil {
+					return fmt.Errorf("parser %s not found", parser)
+				}
+
+				if err := item.Install(forceAction, downloadOnly); err != nil {
+					return fmt.Errorf("while installing parser %s: %w", item.Name, err)
 				}
 			}
 		}
@@ -109,8 +106,13 @@ func InstallHubItems(csConfig *csconfig.Config, input []byte, dryRun bool) error
 					continue
 				}
 
-				if err := cwhub.InstallItem(csConfig, scenario, cwhub.SCENARIOS, forceAction, downloadOnly); err != nil {
-					return fmt.Errorf("while installing scenario %s: %w", scenario, err)
+				item := hub.GetItem(cwhub.SCENARIOS, scenario)
+				if item == nil {
+					return fmt.Errorf("scenario %s not found", scenario)
+				}
+
+				if err := item.Install(forceAction, downloadOnly); err != nil {
+					return fmt.Errorf("while installing scenario %s: %w", item.Name, err)
 				}
 			}
 		}
@@ -123,8 +125,13 @@ func InstallHubItems(csConfig *csconfig.Config, input []byte, dryRun bool) error
 					continue
 				}
 
-				if err := cwhub.InstallItem(csConfig, postoverflow, cwhub.PARSERS_OVFLW, forceAction, downloadOnly); err != nil {
-					return fmt.Errorf("while installing postoverflow %s: %w", postoverflow, err)
+				item := hub.GetItem(cwhub.POSTOVERFLOWS, postoverflow)
+				if item == nil {
+					return fmt.Errorf("postoverflow %s not found", postoverflow)
+				}
+
+				if err := item.Install(forceAction, downloadOnly); err != nil {
+					return fmt.Errorf("while installing postoverflow %s: %w", item.Name, err)
 				}
 			}
 		}

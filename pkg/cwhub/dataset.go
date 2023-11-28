@@ -1,68 +1,84 @@
 package cwhub
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+// The DataSet is a list of data sources required by an item (built from the data: section in the yaml).
 type DataSet struct {
-	Data []*types.DataSource `yaml:"data,omitempty"`
+	Data []types.DataSource `yaml:"data,omitempty"`
 }
 
+// downloadFile downloads a file and writes it to disk, with no hash verification.
 func downloadFile(url string, destPath string) error {
 	log.Debugf("downloading %s in %s", url, destPath)
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return err
-	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := hubClient.Get(url)
 	if err != nil {
-		return err
+		return fmt.Errorf("while downloading %s: %w", url, err)
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("download response 'HTTP %d' : %s", resp.StatusCode, string(body))
+		return fmt.Errorf("bad http code %d for %s", resp.StatusCode, url)
 	}
 
-	file, err := os.OpenFile(destPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	file, err := os.Create(destPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// avoid reading the whole file in memory
+	_, err = io.Copy(file, resp.Body)
 	if err != nil {
 		return err
 	}
 
-	_, err = file.Write(body)
-	if err != nil {
-		return err
-	}
-
-	err = file.Sync()
-	if err != nil {
+	if err = file.Sync(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func GetData(data []*types.DataSource, dataDir string) error {
-	for _, dataS := range data {
-		destPath := filepath.Join(dataDir, dataS.DestPath)
-		log.Infof("downloading data '%s' in '%s'", dataS.SourceURL, destPath)
-		err := downloadFile(dataS.SourceURL, destPath)
-		if err != nil {
-			return err
+// downloadDataSet downloads all the data files for an item.
+func downloadDataSet(dataFolder string, force bool, reader io.Reader) error {
+	dec := yaml.NewDecoder(reader)
+
+	for {
+		data := &DataSet{}
+
+		if err := dec.Decode(data); err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+
+			return fmt.Errorf("while reading file: %w", err)
+		}
+
+		for _, dataS := range data.Data {
+			destPath, err := safePath(dataFolder, dataS.DestPath)
+			if err != nil {
+				return err
+			}
+
+			if _, err := os.Stat(destPath); os.IsNotExist(err) || force {
+				log.Infof("downloading data '%s' in '%s'", dataS.SourceURL, destPath)
+
+				if err := downloadFile(dataS.SourceURL, destPath); err != nil {
+					return fmt.Errorf("while getting data: %w", err)
+				}
+			}
 		}
 	}
 

@@ -71,16 +71,12 @@ After running this command your will need to validate the enrollment in the weba
 				return fmt.Errorf("could not parse CAPI URL: %s", err)
 			}
 
-			if err := csConfig.LoadHub(); err != nil {
+			hub, err := require.Hub(csConfig, nil)
+			if err != nil {
 				return err
 			}
 
-			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-				log.Info("Run 'sudo cscli hub update' to get the hub index")
-				return fmt.Errorf("failed to load hub index: %s", err)
-			}
-
-			scenarios, err := cwhub.GetInstalledScenariosAsString()
+			scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
 			if err != nil {
 				return fmt.Errorf("failed to get installed scenarios: %s", err)
 			}
@@ -234,6 +230,24 @@ Disable given information push to the central API.`,
 	return cmdConsole
 }
 
+func dumpConsoleConfig(c *csconfig.LocalApiServerCfg) error {
+	out, err := yaml.Marshal(c.ConsoleConfig)
+	if err != nil {
+		return fmt.Errorf("while marshaling ConsoleConfig (for %s): %w", c.ConsoleConfigPath, err)
+	}
+
+	if c.ConsoleConfigPath == "" {
+		c.ConsoleConfigPath = csconfig.DefaultConsoleConfigFilePath
+		log.Debugf("Empty console_path, defaulting to %s", c.ConsoleConfigPath)
+	}
+
+	if err := os.WriteFile(c.ConsoleConfigPath, out, 0600); err != nil {
+		return fmt.Errorf("while dumping console config to %s: %w", c.ConsoleConfigPath, err)
+	}
+
+	return nil
+}
+
 func SetConsoleOpts(args []string, wanted bool) error {
 	for _, arg := range args {
 		switch arg {
@@ -331,7 +345,7 @@ func SetConsoleOpts(args []string, wanted bool) error {
 		}
 	}
 
-	if err := csConfig.API.Server.DumpConsoleConfig(); err != nil {
+	if err := dumpConsoleConfig(csConfig.API.Server); err != nil {
 		return fmt.Errorf("failed writing console config: %s", err)
 	}
 
