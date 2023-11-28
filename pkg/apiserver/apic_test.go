@@ -309,30 +309,30 @@ func TestAPICGetMetrics(t *testing.T) {
 				Bouncers: []*models.MetricsBouncerInfo{
 					{
 						CustomName: "1",
-						LastPull:   time.Time{}.String(),
+						LastPull:   time.Time{}.Format(time.RFC3339),
 					}, {
 						CustomName: "2",
-						LastPull:   time.Time{}.String(),
+						LastPull:   time.Time{}.Format(time.RFC3339),
 					}, {
 						CustomName: "3",
-						LastPull:   time.Time{}.String(),
+						LastPull:   time.Time{}.Format(time.RFC3339),
 					},
 				},
 				Machines: []*models.MetricsAgentInfo{
 					{
 						Name:       "a",
-						LastPush:   time.Time{}.String(),
-						LastUpdate: time.Time{}.String(),
+						LastPush:   time.Time{}.Format(time.RFC3339),
+						LastUpdate: time.Time{}.Format(time.RFC3339),
 					},
 					{
 						Name:       "b",
-						LastPush:   time.Time{}.String(),
-						LastUpdate: time.Time{}.String(),
+						LastPush:   time.Time{}.Format(time.RFC3339),
+						LastUpdate: time.Time{}.Format(time.RFC3339),
 					},
 					{
 						Name:       "c",
-						LastPush:   time.Time{}.String(),
-						LastUpdate: time.Time{}.String(),
+						LastPush:   time.Time{}.Format(time.RFC3339),
+						LastUpdate: time.Time{}.Format(time.RFC3339),
 					},
 				},
 			},
