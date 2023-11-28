@@ -119,3 +119,10 @@ teardown() {
     # this is used by the cron script to know if the hub was updated
     assert_output --partial "updated crowdsecurity/syslog-logs"
 }
+
+@test "cscli hub upgrade (with local items)" {
+    mkdir -p "$CONFIG_DIR/collections"
+    touch "$CONFIG_DIR/collections/foo.yaml"
+    rune -0 cscli hub upgrade
+    assert_stderr --partial "not upgrading foo.yaml: local item"
+}

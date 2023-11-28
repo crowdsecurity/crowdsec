@@ -20,6 +20,11 @@ import (
 func (i *Item) Upgrade(force bool) (bool, error) {
 	updated := false
 
+	if i.IsLocal() {
+		log.Infof("not upgrading %s: local item", i.Name)
+		return false, nil
+	}
+
 	if !i.State.Downloaded {
 		return false, fmt.Errorf("can't upgrade %s: not installed", i.Name)
 	}
@@ -48,8 +53,6 @@ func (i *Item) Upgrade(force bool) (bool, error) {
 	if !i.State.UpToDate {
 		if i.State.Tainted {
 			log.Warningf("%v %s is tainted, --force to overwrite", emoji.Warning, i.Name)
-		} else if i.IsLocal() {
-			log.Infof("%v %s is local", emoji.Prohibited, i.Name)
 		}
 	} else {
 		// a check on stdout is used while scripting to know if the hub has been upgraded
