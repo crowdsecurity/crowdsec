@@ -9,11 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/antonmedv/expr"
 	"github.com/mohae/deepcopy"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -297,7 +297,6 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		evt := deepcopy.Copy(parsed)
 		BucketPourCache["OK"] = append(BucketPourCache["OK"], evt.(types.Event))
 	}
-
 	//find the relevant holders (scenarios)
 	for idx := 0; idx < len(holders); idx++ {
 		//for idx, holder := range holders {
@@ -305,7 +304,10 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		//evaluate bucket's condition
 		if holders[idx].RunTimeFilter != nil {
 			holders[idx].logger.Tracef("event against holder %d/%d", idx, len(holders))
-			output, err := expr.Run(holders[idx].RunTimeFilter, map[string]interface{}{"evt": &parsed})
+			output, err := exprhelpers.Run(holders[idx].RunTimeFilter,
+				map[string]interface{}{"evt": &parsed},
+				holders[idx].logger,
+				holders[idx].Debug)
 			if err != nil {
 				holders[idx].logger.Errorf("failed parsing : %v", err)
 				return false, fmt.Errorf("leaky failed : %s", err)
@@ -314,10 +316,6 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			if condition, ok = output.(bool); !ok {
 				holders[idx].logger.Errorf("unexpected non-bool return : %T", output)
 				holders[idx].logger.Fatalf("Filter issue")
-			}
-
-			if holders[idx].Debug {
-				holders[idx].ExprDebugger.Run(holders[idx].logger, condition, map[string]interface{}{"evt": &parsed})
 			}
 			if !condition {
 				holders[idx].logger.Debugf("Event leaving node : ko (filter mismatch)")
@@ -328,7 +326,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		//groupby determines the partition key for the specific bucket
 		var groupby string
 		if holders[idx].RunTimeGroupBy != nil {
-			tmpGroupBy, err := expr.Run(holders[idx].RunTimeGroupBy, map[string]interface{}{"evt": &parsed})
+			tmpGroupBy, err := exprhelpers.Run(holders[idx].RunTimeGroupBy, map[string]interface{}{"evt": &parsed}, holders[idx].logger, holders[idx].Debug)
 			if err != nil {
 				holders[idx].logger.Errorf("failed groupby : %v", err)
 				return false, errors.New("leaky failed :/")

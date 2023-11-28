@@ -5,17 +5,18 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/version"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -36,15 +37,13 @@ func runLapiStatus(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		log.Fatalf("parsing api url ('%s'): %s", apiurl, err)
 	}
-	if err := csConfig.LoadHub(); err != nil {
+
+	hub, err := require.Hub(csConfig, nil)
+	if err != nil {
 		log.Fatal(err)
 	}
 
-	if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-		log.Info("Run 'sudo cscli hub update' to get the hub index")
-		log.Fatalf("Failed to load hub index : %s", err)
-	}
-	scenarios, err := cwhub.GetInstalledScenariosAsString()
+	scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
 	if err != nil {
 		log.Fatalf("failed to get scenarios : %s", err)
 	}
@@ -216,6 +215,29 @@ func NewLapiCmd() *cobra.Command {
 	return cmdLapi
 }
 
+func AddContext(key string, values []string) error {
+	if err := alertcontext.ValidateContextExpr(key, values); err != nil {
+		return fmt.Errorf("invalid context configuration :%s", err)
+	}
+	if _, ok := csConfig.Crowdsec.ContextToSend[key]; !ok {
+		csConfig.Crowdsec.ContextToSend[key] = make([]string, 0)
+		log.Infof("key '%s' added", key)
+	}
+	data := csConfig.Crowdsec.ContextToSend[key]
+	for _, val := range values {
+		if !slices.Contains(data, val) {
+			log.Infof("value '%s' added to key '%s'", val, key)
+			data = append(data, val)
+		}
+		csConfig.Crowdsec.ContextToSend[key] = data
+	}
+	if err := csConfig.Crowdsec.DumpContextConfigFile(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func NewLapiContextCmd() *cobra.Command {
 	cmdContext := &cobra.Command{
 		Use:               "context [command]",
@@ -246,32 +268,29 @@ func NewLapiContextCmd() *cobra.Command {
 		Short: "Add context to send with alerts. You must specify the output key with the expr value you want",
 		Example: `cscli lapi context add --key source_ip --value evt.Meta.source_ip
 cscli lapi context add --key file_source --value evt.Line.Src
+cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user 
 		`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := alertcontext.ValidateContextExpr(keyToAdd, valuesToAdd); err != nil {
-				log.Fatalf("invalid context configuration :%s", err)
-			}
-			if _, ok := csConfig.Crowdsec.ContextToSend[keyToAdd]; !ok {
-				csConfig.Crowdsec.ContextToSend[keyToAdd] = make([]string, 0)
-				log.Infof("key '%s' added", keyToAdd)
-			}
-			data := csConfig.Crowdsec.ContextToSend[keyToAdd]
-			for _, val := range valuesToAdd {
-				if !slices.Contains(data, val) {
-					log.Infof("value '%s' added to key '%s'", val, keyToAdd)
-					data = append(data, val)
+			if keyToAdd != "" {
+				if err := AddContext(keyToAdd, valuesToAdd); err != nil {
+					log.Fatalf(err.Error())
 				}
-				csConfig.Crowdsec.ContextToSend[keyToAdd] = data
+				return
 			}
-			if err := csConfig.Crowdsec.DumpContextConfigFile(); err != nil {
-				log.Fatalf(err.Error())
+
+			for _, v := range valuesToAdd {
+				keySlice := strings.Split(v, ".")
+				key := keySlice[len(keySlice)-1]
+				value := []string{v}
+				if err := AddContext(key, value); err != nil {
+					log.Fatalf(err.Error())
+				}
 			}
 		},
 	}
 	cmdContextAdd.Flags().StringVarP(&keyToAdd, "key", "k", "", "The key of the different values to send")
 	cmdContextAdd.Flags().StringSliceVar(&valuesToAdd, "value", []string{}, "The expr fields to associate with the key")
-	cmdContextAdd.MarkFlagRequired("key")
 	cmdContextAdd.MarkFlagRequired("value")
 	cmdContext.AddCommand(cmdContextAdd)
 
@@ -320,12 +339,12 @@ cscli lapi context detect crowdsecurity/sshd-logs
 				log.Fatalf("Failed to init expr helpers : %s", err)
 			}
 
-			// Populate cwhub package tools
-			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-				log.Fatalf("Failed to load hub index : %s", err)
+			hub, err := require.Hub(csConfig, nil)
+			if err != nil {
+				log.Fatal(err)
 			}
 
-			csParsers := parser.NewParsers()
+			csParsers := parser.NewParsers(hub)
 			if csParsers, err = parser.LoadParsers(csConfig, csParsers); err != nil {
 				log.Fatalf("unable to load parsers: %s", err)
 			}

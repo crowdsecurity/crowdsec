@@ -77,3 +77,8 @@ services:
       interval: 10s
       retries: 5
       timeout: 10s
+
+  loki:
+    image: grafana/loki:2.8.0
+    ports:
+      - "3100:3100"

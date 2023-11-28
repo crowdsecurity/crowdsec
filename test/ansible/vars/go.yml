@@ -1,5 +1,5 @@
 # vim: set ft=yaml.ansible:
 ---
 
-golang_version: "1.20.6"
+golang_version: "1.21.4"
 golang_install_dir: "/opt/go/{{ golang_version }}"

@@ -57,24 +57,25 @@ func Init(c map[string]interface{}) (*UnixParserCtx, error) {
 
 // Return new parsers
 // nodes and povfwnodes are already initialized in parser.LoadStages
-func NewParsers() *Parsers {
+func NewParsers(hub *cwhub.Hub) *Parsers {
 	parsers := &Parsers{
 		Ctx:             &UnixParserCtx{},
 		Povfwctx:        &UnixParserCtx{},
 		StageFiles:      make([]Stagefile, 0),
 		PovfwStageFiles: make([]Stagefile, 0),
 	}
-	for _, itemType := range []string{cwhub.PARSERS, cwhub.PARSERS_OVFLW} {
-		for _, hubParserItem := range cwhub.GetItemMap(itemType) {
-			if hubParserItem.Installed {
+
+	for _, itemType := range []string{cwhub.PARSERS, cwhub.POSTOVERFLOWS} {
+		for _, hubParserItem := range hub.GetItemMap(itemType) {
+			if hubParserItem.State.Installed {
 				stagefile := Stagefile{
-					Filename: hubParserItem.LocalPath,
+					Filename: hubParserItem.State.LocalPath,
 					Stage:    hubParserItem.Stage,
 				}
 				if itemType == cwhub.PARSERS {
 					parsers.StageFiles = append(parsers.StageFiles, stagefile)
 				}
-				if itemType == cwhub.PARSERS_OVFLW {
+				if itemType == cwhub.POSTOVERFLOWS {
 					parsers.PovfwStageFiles = append(parsers.PovfwStageFiles, stagefile)
 				}
 			}
@@ -97,16 +98,16 @@ func NewParsers() *Parsers {
 func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 	var err error
 
-	patternsDir := filepath.Join(cConfig.Crowdsec.ConfigDir, "patterns/")
+	patternsDir := filepath.Join(cConfig.ConfigPaths.ConfigDir, "patterns/")
 	log.Infof("Loading grok library %s", patternsDir)
 	/* load base regexps for two grok parsers */
 	parsers.Ctx, err = Init(map[string]interface{}{"patterns": patternsDir,
-		"data": cConfig.Crowdsec.DataDir})
+		"data": cConfig.ConfigPaths.DataDir})
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load parser patterns : %v", err)
 	}
 	parsers.Povfwctx, err = Init(map[string]interface{}{"patterns": patternsDir,
-		"data": cConfig.Crowdsec.DataDir})
+		"data": cConfig.ConfigPaths.DataDir})
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load postovflw parser patterns : %v", err)
 	}
@@ -116,7 +117,7 @@ func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 	*/
 	log.Infof("Loading enrich plugins")
 
-	parsers.EnricherCtx, err = Loadplugin(cConfig.Crowdsec.DataDir)
+	parsers.EnricherCtx, err = Loadplugin(cConfig.ConfigPaths.DataDir)
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load enrich plugin : %v", err)
 	}
@@ -148,6 +149,12 @@ func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 		parsers.Ctx.Profiling = true
 		parsers.Povfwctx.Profiling = true
 	}
-
+	/*
+		Reset CTX grok to reduce memory footprint after we compile all the patterns
+	*/
+	parsers.Ctx.Grok = grokky.Host{}
+	parsers.Povfwctx.Grok = grokky.Host{}
+	parsers.StageFiles = []Stagefile{}
+	parsers.PovfwStageFiles = []Stagefile{}
 	return parsers, nil
 }

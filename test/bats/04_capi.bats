@@ -22,6 +22,10 @@ setup() {
 @test "cscli capi status" {
     config_enable_capi
     rune -0 cscli capi register --schmilblick githubciXXXXXXXXXXXXXXXXXXXXXXXX
+    rune -1 cscli capi status
+    assert_stderr --partial "no scenarios installed, abort"
+
+    rune -0 cscli scenarios install crowdsecurity/ssh-bf
     rune -0 cscli capi status
     assert_stderr --partial "Loaded credentials from"
     assert_stderr --partial "Trying to authenticate with username"
@@ -34,7 +38,7 @@ setup() {
     ./instance-crowdsec start
     for ((i=0; i<15; i++)); do
         sleep 2
-        [[ $(cscli alerts list -a -o json 2>/dev/null || cscli alerts list -o json) != "null" ]] && break
+        [[ $(cscli alerts list -a -o json) != "[]" ]] && break
     done
 
     rune -0 cscli alerts list -a -o json
@@ -45,7 +49,7 @@ setup() {
 @test "we have exactly one machine, localhost" {
     rune -0 cscli machines list -o json
     rune -0 jq -c '[. | length, .[0].machineId[0:32], .[0].isValidated, .[0].ipAddress]' <(output)
-    assert_output '[1,"githubciXXXXXXXXXXXXXXXXXXXXXXXX",true,"127.0.0.1"]'
+    assert_json '[1,"githubciXXXXXXXXXXXXXXXXXXXXXXXX",true,"127.0.0.1"]'
 }
 
 @test "no agent: capi status should be ok" {

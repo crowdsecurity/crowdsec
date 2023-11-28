@@ -7,6 +7,8 @@ setup_file() {
     load "../lib/setup_file.sh"
     ./instance-data load
     HUB_DIR=$(config_get '.config_paths.hub_dir')
+    # remove trailing slash if any (like in default config.yaml from package)
+    HUB_DIR=${HUB_DIR%/}
     export HUB_DIR
     DETECT_YAML="${HUB_DIR}/detect.yaml"
     export DETECT_YAML
@@ -68,7 +70,11 @@ teardown() {
     assert_line --partial "--skip-service strings      ignore a service, don't recommend hub/datasources (can be repeated)"
 
     rune -1 cscli setup detect --detect-config /path/does/not/exist
-    assert_stderr --partial "detecting services: while reading file: open /path/does/not/exist: no such file or directory"
+    assert_stderr --partial "open /path/does/not/exist: no such file or directory"
+
+    # - is stdin
+    rune -1 cscli setup detect --detect-config - <<< "{}"
+    assert_stderr --partial "detecting services: missing version tag (must be 1.0)"
 
     # rm -f "${HUB_DIR}/detect.yaml"
 }
@@ -142,7 +148,7 @@ teardown() {
 	EOT
 
     rune -1 cscli setup detect --list-supported-services --detect-config "$tempfile"
-    assert_stderr --partial "while parsing ${tempfile}: yaml: unmarshal errors:"
+    assert_stderr --partial "yaml: unmarshal errors:"
 
     rm -f "$tempfile"
 }
@@ -501,46 +507,49 @@ update-notifier-motd.timer              enabled enabled
 
 @test "cscli setup install-hub (dry run)" {
     # it's not installed
-    rune -0 cscli collections list -o json
-    rune -0 jq -r '.collections[].name' <(output)
-    refute_line "crowdsecurity/apache2"
+    rune -0 cscli collections inspect crowdsecurity/apache2 -o json
+    rune -0 jq -e '.installed == false' <(output)
 
     # we install it
     rune -0 cscli setup install-hub /dev/stdin --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/apache2"]}}]}'
     assert_output 'dry-run: would install collection crowdsecurity/apache2'
 
     # still not installed
-    rune -0 cscli collections list -o json
-    rune -0 jq -r '.collections[].name' <(output)
-    refute_line "crowdsecurity/apache2"
+    rune -0 cscli collections inspect crowdsecurity/apache2 -o json
+    rune -0 jq -e '.installed == false' <(output)
+
+    # same with dependencies
+    rune -0 cscli collections remove --all
+    rune -0 cscli setup install-hub /dev/stdin --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/linux"]}}]}'
+    assert_output 'dry-run: would install collection crowdsecurity/linux'
 }
 
 @test "cscli setup install-hub (dry run: install multiple collections)" {
     # it's not installed
-    rune -0 cscli collections list -o json
-    rune -0 jq -r '.collections[].name' <(output)
-    refute_line "crowdsecurity/apache2"
+    rune -0 cscli collections inspect crowdsecurity/apache2 -o json
+    rune -0 jq -e '.installed == false' <(output)
 
     # we install it
     rune -0 cscli setup install-hub /dev/stdin --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/apache2"]}}]}'
     assert_output 'dry-run: would install collection crowdsecurity/apache2'
 
     # still not installed
-    rune -0 cscli collections list -o json
-    rune -0 jq -r '.collections[].name' <(output)
-    refute_line "crowdsecurity/apache2"
+    rune -0 cscli collections inspect crowdsecurity/apache2 -o json
+    rune -0 jq -e '.installed == false' <(output)
 }
 
 @test "cscli setup install-hub (dry run: install multiple collections, parsers, scenarios, postoverflows)" {
-    rune -0 cscli setup install-hub /dev/stdin --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/foo","johndoe/bar"],"parsers":["crowdsecurity/fooparser","johndoe/barparser"],"scenarios":["crowdsecurity/fooscenario","johndoe/barscenario"],"postoverflows":["crowdsecurity/foopo","johndoe/barpo"]}}]}'
-    assert_line 'dry-run: would install collection crowdsecurity/foo'
-    assert_line 'dry-run: would install collection johndoe/bar'
-    assert_line 'dry-run: would install parser crowdsecurity/fooparser'
-    assert_line 'dry-run: would install parser johndoe/barparser'
-    assert_line 'dry-run: would install scenario crowdsecurity/fooscenario'
-    assert_line 'dry-run: would install scenario johndoe/barscenario'
-    assert_line 'dry-run: would install postoverflow crowdsecurity/foopo'
-    assert_line 'dry-run: would install postoverflow johndoe/barpo'
+    rune -0 cscli setup install-hub /dev/stdin --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/aws-console","crowdsecurity/caddy"],"parsers":["crowdsecurity/asterisk-logs"],"scenarios":["crowdsecurity/smb-fs"],"postoverflows":["crowdsecurity/cdn-whitelist","crowdsecurity/rdns"]}}]}'
+    assert_line 'dry-run: would install collection crowdsecurity/aws-console'
+    assert_line 'dry-run: would install collection crowdsecurity/caddy'
+    assert_line 'dry-run: would install parser crowdsecurity/asterisk-logs'
+    assert_line 'dry-run: would install scenario crowdsecurity/smb-fs'
+    assert_line 'dry-run: would install postoverflow crowdsecurity/cdn-whitelist'
+    assert_line 'dry-run: would install postoverflow crowdsecurity/rdns'
+
+    rune -1 cscli setup install-hub /dev/stdin --dry-run <<< '{"setup":[{"install":{"collections":["crowdsecurity/foo"]}}]}'
+    assert_stderr --partial 'collection crowdsecurity/foo not found'
+
 }
 
 @test "cscli setup datasources" {

@@ -284,8 +284,20 @@ var noUnit bool
 
 
 func runMetrics(cmd *cobra.Command, args []string) error {
-	if err := csConfig.LoadPrometheus(); err != nil {
-		return fmt.Errorf("failed to load prometheus config: %w", err)
+	flags := cmd.Flags()
+
+	url, err := flags.GetString("url")
+	if err != nil {
+		return err
+	}
+
+	if url != "" {
+		csConfig.Cscli.PrometheusUrl = url
+	}
+
+	noUnit, err = flags.GetBool("no-unit")
+	if err != nil {
+		return err
 	}
 
 	if csConfig.Prometheus == nil {
@@ -296,17 +308,8 @@ func runMetrics(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("prometheus is not enabled, can't show metrics")
 	}
 
-	if prometheusURL == "" {
-		prometheusURL = csConfig.Cscli.PrometheusUrl
-	}
-
-	if prometheusURL == "" {
-		return fmt.Errorf("no prometheus url, please specify in %s or via -u", *csConfig.FilePath)
-	}
-
-	err := FormatPrometheusMetrics(color.Output, prometheusURL+"/metrics", csConfig.Cscli.Output)
-	if err != nil {
-		return fmt.Errorf("could not fetch prometheus metrics: %w", err)
+	if err = FormatPrometheusMetrics(color.Output, csConfig.Cscli.PrometheusUrl, csConfig.Cscli.Output); err != nil {
+		return err
 	}
 	return nil
 }
@@ -321,8 +324,10 @@ func NewMetricsCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		RunE: runMetrics,
 	}
-	cmdMetrics.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "", "Prometheus url (http://<ip>:<port>/metrics)")
-	cmdMetrics.PersistentFlags().BoolVar(&noUnit, "no-unit", false, "Show the real number instead of formatted with units")
+
+	flags := cmdMetrics.PersistentFlags()
+	flags.StringP("url", "u", "", "Prometheus url (http://<ip>:<port>/metrics)")
+	flags.Bool("no-unit", false, "Show the real number instead of formatted with units")
 
 	return cmdMetrics
 }

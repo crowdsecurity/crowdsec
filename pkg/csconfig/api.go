@@ -3,7 +3,9 @@ package csconfig
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"strings"
@@ -56,7 +58,6 @@ type CTICfg struct {
 }
 
 func (a *CTICfg) Load() error {
-
 	if a.Key == nil {
 		*a.Enabled = false
 	}
@@ -285,10 +286,6 @@ func (c *Config) LoadAPIServer() error {
 		log.Infof("loaded capi whitelist from %s: %d IPs, %d CIDRs", c.API.Server.CapiWhitelistsPath, len(c.API.Server.CapiWhitelists.Ips), len(c.API.Server.CapiWhitelists.Cidrs))
 	}
 
-	if err := c.LoadCommon(); err != nil {
-		return fmt.Errorf("loading common configuration: %s", err)
-	}
-
 	c.API.Server.LogDir = c.Common.LogDir
 	c.API.Server.LogMedia = c.Common.LogMedia
 	c.API.Server.CompressLogs = c.Common.CompressLogs
@@ -331,40 +328,59 @@ type capiWhitelists struct {
 	Cidrs []string `yaml:"cidrs"`
 }
 
+func parseCapiWhitelists(fd io.Reader) (*CapiWhitelist, error) {
+	fromCfg := capiWhitelists{}
+
+	decoder := yaml.NewDecoder(fd)
+	if err := decoder.Decode(&fromCfg); err != nil {
+		if errors.Is(err, io.EOF) {
+			return nil, fmt.Errorf("empty file")
+		}
+		return nil, err
+	}
+	ret := &CapiWhitelist{
+		Ips:   make([]net.IP, len(fromCfg.Ips)),
+		Cidrs: make([]*net.IPNet, len(fromCfg.Cidrs)),
+	}
+	for idx, v := range fromCfg.Ips {
+		ip := net.ParseIP(v)
+		if ip == nil {
+			return nil, fmt.Errorf("invalid IP address: %s", v)
+		}
+		ret.Ips[idx] = ip
+	}
+	for idx, v := range fromCfg.Cidrs {
+		_, tnet, err := net.ParseCIDR(v)
+		if err != nil {
+			return nil, err
+		}
+		ret.Cidrs[idx] = tnet
+	}
+
+	return ret, nil
+}
+
 func (s *LocalApiServerCfg) LoadCapiWhitelists() error {
 	if s.CapiWhitelistsPath == "" {
 		return nil
 	}
+
 	if _, err := os.Stat(s.CapiWhitelistsPath); os.IsNotExist(err) {
 		return fmt.Errorf("capi whitelist file '%s' does not exist", s.CapiWhitelistsPath)
 	}
+
 	fd, err := os.Open(s.CapiWhitelistsPath)
 	if err != nil {
-		return fmt.Errorf("unable to open capi whitelist file '%s': %s", s.CapiWhitelistsPath, err)
+		return fmt.Errorf("while opening capi whitelist file: %s", err)
 	}
-
-	var fromCfg capiWhitelists
-	s.CapiWhitelists = &CapiWhitelist{}
 
 	defer fd.Close()
-	decoder := yaml.NewDecoder(fd)
-	if err := decoder.Decode(&fromCfg); err != nil {
-		return fmt.Errorf("while parsing capi whitelist file '%s': %s", s.CapiWhitelistsPath, err)
+
+	s.CapiWhitelists, err = parseCapiWhitelists(fd)
+	if err != nil {
+		return fmt.Errorf("while parsing capi whitelist file '%s': %w", s.CapiWhitelistsPath, err)
 	}
-	for _, v := range fromCfg.Ips {
-		ip := net.ParseIP(v)
-		if ip == nil {
-			return fmt.Errorf("unable to parse ip whitelist '%s'", v)
-		}
-		s.CapiWhitelists.Ips = append(s.CapiWhitelists.Ips, ip)
-	}
-	for _, v := range fromCfg.Cidrs {
-		_, tnet, err := net.ParseCIDR(v)
-		if err != nil {
-			return fmt.Errorf("unable to parse cidr whitelist '%s' : %v", v, err)
-		}
-		s.CapiWhitelists.Cidrs = append(s.CapiWhitelists.Cidrs, tnet)
-	}
+
 	return nil
 }
 

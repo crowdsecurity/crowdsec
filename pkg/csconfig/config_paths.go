@@ -15,7 +15,7 @@ type ConfigurationPaths struct {
 	NotificationDir    string `yaml:"notification_dir,omitempty"`
 }
 
-func (c *Config) LoadConfigurationPaths() error {
+func (c *Config) loadConfigurationPaths() error {
 	var err error
 	if c.ConfigPaths == nil {
 		return fmt.Errorf("no configuration paths provided")

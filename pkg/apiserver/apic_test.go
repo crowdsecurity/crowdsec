@@ -572,7 +572,7 @@ func TestAPICWhitelists(t *testing.T) {
 					&modelscapi.GetDecisionsStreamResponseDeletedItem{
 						Decisions: []string{
 							"9.9.9.9", // This is already present in DB
-							"9.1.9.9", // This not present in DB
+							"9.1.9.9", // This is not present in DB
 						},
 						Scope: ptr.Of("Ip"),
 					}, // This is already present in DB
@@ -689,7 +689,7 @@ func TestAPICWhitelists(t *testing.T) {
 		alertScenario[alert.SourceScope]++
 	}
 	assert.Equal(t, 3, len(alertScenario))
-	assert.Equal(t, 1, alertScenario[SCOPE_CAPI_ALIAS_ALIAS])
+	assert.Equal(t, 1, alertScenario[types.CommunityBlocklistPullSourceScope])
 	assert.Equal(t, 1, alertScenario["lists:blocklist1"])
 	assert.Equal(t, 1, alertScenario["lists:blocklist2"])
 
@@ -734,7 +734,7 @@ func TestAPICPullTop(t *testing.T) {
 					&modelscapi.GetDecisionsStreamResponseDeletedItem{
 						Decisions: []string{
 							"9.9.9.9", // This is already present in DB
-							"9.1.9.9", // This not present in DB
+							"9.1.9.9", // This is not present in DB
 						},
 						Scope: ptr.Of("Ip"),
 					}, // This is already present in DB
@@ -818,7 +818,7 @@ func TestAPICPullTop(t *testing.T) {
 		alertScenario[alert.SourceScope]++
 	}
 	assert.Equal(t, 3, len(alertScenario))
-	assert.Equal(t, 1, alertScenario[SCOPE_CAPI_ALIAS_ALIAS])
+	assert.Equal(t, 1, alertScenario[types.CommunityBlocklistPullSourceScope])
 	assert.Equal(t, 1, alertScenario["lists:blocklist1"])
 	assert.Equal(t, 1, alertScenario["lists:blocklist2"])
 

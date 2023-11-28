@@ -28,7 +28,7 @@ func NewOverflowFilter(g *BucketFactory) (*OverflowFilter, error) {
 	u := OverflowFilter{}
 	u.Filter = g.OverflowFilter
 
-	u.FilterRuntime, err = expr.Compile(u.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &Queue{}, "signal": &types.RuntimeAlert{}, "leaky": &Leaky{}})...)
+	u.FilterRuntime, err = expr.Compile(u.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"queue": &types.Queue{}, "signal": &types.RuntimeAlert{}, "leaky": &Leaky{}})...)
 	if err != nil {
 		g.logger.Errorf("Unable to compile filter : %v", err)
 		return nil, fmt.Errorf("unable to compile filter : %v", err)
@@ -36,10 +36,10 @@ func NewOverflowFilter(g *BucketFactory) (*OverflowFilter, error) {
 	return &u, nil
 }
 
-func (u *OverflowFilter) OnBucketOverflow(Bucket *BucketFactory) func(*Leaky, types.RuntimeAlert, *Queue) (types.RuntimeAlert, *Queue) {
-	return func(l *Leaky, s types.RuntimeAlert, q *Queue) (types.RuntimeAlert, *Queue) {
-		el, err := expr.Run(u.FilterRuntime, map[string]interface{}{
-			"queue": q, "signal": s, "leaky": l})
+func (u *OverflowFilter) OnBucketOverflow(Bucket *BucketFactory) func(*Leaky, types.RuntimeAlert, *types.Queue) (types.RuntimeAlert, *types.Queue) {
+	return func(l *Leaky, s types.RuntimeAlert, q *types.Queue) (types.RuntimeAlert, *types.Queue) {
+		el, err := exprhelpers.Run(u.FilterRuntime, map[string]interface{}{
+			"queue": q, "signal": s, "leaky": l}, l.logger, Bucket.Debug)
 		if err != nil {
 			l.logger.Errorf("Failed running overflow filter: %s", err)
 			return s, q

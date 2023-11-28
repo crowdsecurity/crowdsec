@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -37,6 +38,7 @@ type KafkaConfiguration struct {
 	Brokers                           []string   `yaml:"brokers"`
 	Topic                             string     `yaml:"topic"`
 	GroupID                           string     `yaml:"group_id"`
+	Partition                         int        `yaml:"partition"`
 	Timeout                           string     `yaml:"timeout"`
 	TLS                               *TLSConfig `yaml:"tls"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
@@ -79,11 +81,15 @@ func (k *KafkaSource) UnmarshalConfig(yamlConfig []byte) error {
 		k.Config.Mode = configuration.TAIL_MODE
 	}
 
+	k.logger.Debugf("successfully unmarshaled kafka configuration : %+v", k.Config)
+
 	return err
 }
 
 func (k *KafkaSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	k.logger = logger
+
+	k.logger.Debugf("start configuring %s source", dataSourceName)
 
 	err := k.UnmarshalConfig(yamlConfig)
 	if err != nil {
@@ -95,7 +101,7 @@ func (k *KafkaSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		return fmt.Errorf("cannot create %s dialer: %w", dataSourceName, err)
 	}
 
-	k.Reader, err = k.Config.NewReader(dialer)
+	k.Reader, err = k.Config.NewReader(dialer, k.logger)
 	if err != nil {
 		return fmt.Errorf("cannote create %s reader: %w", dataSourceName, err)
 	}
@@ -103,6 +109,8 @@ func (k *KafkaSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	if k.Reader == nil {
 		return fmt.Errorf("cannot create %s reader", dataSourceName)
 	}
+
+	k.logger.Debugf("successfully configured %s source", dataSourceName)
 
 	return nil
 }
@@ -143,13 +151,16 @@ func (k *KafkaSource) ReadMessage(out chan types.Event) error {
 	// Start processing from latest Offset
 	k.Reader.SetOffsetAt(context.Background(), time.Now())
 	for {
+		k.logger.Tracef("reading message from topic '%s'", k.Config.Topic)
 		m, err := k.Reader.ReadMessage(context.Background())
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				return nil
 			}
 			k.logger.Errorln(fmt.Errorf("while reading %s message: %w", dataSourceName, err))
+			continue
 		}
+		k.logger.Tracef("got message: %s", string(m.Value))
 		l := types.Line{
 			Raw:     string(m.Value),
 			Labels:  k.Config.Labels,
@@ -158,6 +169,7 @@ func (k *KafkaSource) ReadMessage(out chan types.Event) error {
 			Process: true,
 			Module:  k.GetName(),
 		}
+		k.logger.Tracef("line with message read from topic '%s': %+v", k.Config.Topic, l)
 		linesRead.With(prometheus.Labels{"topic": k.Config.Topic}).Inc()
 		var evt types.Event
 
@@ -171,6 +183,7 @@ func (k *KafkaSource) ReadMessage(out chan types.Event) error {
 }
 
 func (k *KafkaSource) RunReader(out chan types.Event, t *tomb.Tomb) error {
+	k.logger.Debugf("starting %s datasource reader goroutine with configuration %+v", dataSourceName, k.Config)
 	t.Go(func() error {
 		return k.ReadMessage(out)
 	})
@@ -188,7 +201,7 @@ func (k *KafkaSource) RunReader(out chan types.Event, t *tomb.Tomb) error {
 }
 
 func (k *KafkaSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
-	k.logger.Infof("start reader on topic '%s'", k.Config.Topic)
+	k.logger.Infof("start reader on brokers '%+v' with topic '%s'", k.Config.Brokers, k.Config.Topic)
 
 	t.Go(func() error {
 		defer trace.CatchPanic("crowdsec/acquis/kafka/live")
@@ -223,7 +236,6 @@ func (kc *KafkaConfiguration) NewTLSConfig() (*tls.Config, error) {
 	caCertPool.AppendCertsFromPEM(caCert)
 	tlsConfig.RootCAs = caCertPool
 
-	tlsConfig.BuildNameToCertificate()
 	return &tlsConfig, err
 }
 
@@ -253,14 +265,23 @@ func (kc *KafkaConfiguration) NewDialer() (*kafka.Dialer, error) {
 	return dialer, nil
 }
 
-func (kc *KafkaConfiguration) NewReader(dialer *kafka.Dialer) (*kafka.Reader, error) {
+func (kc *KafkaConfiguration) NewReader(dialer *kafka.Dialer, logger *log.Entry) (*kafka.Reader, error) {
 	rConf := kafka.ReaderConfig{
-		Brokers: kc.Brokers,
-		Topic:   kc.Topic,
-		Dialer:  dialer,
+		Brokers:     kc.Brokers,
+		Topic:       kc.Topic,
+		Dialer:      dialer,
+		Logger:      kafka.LoggerFunc(logger.Debugf),
+		ErrorLogger: kafka.LoggerFunc(logger.Errorf),
+	}
+	if kc.GroupID != "" && kc.Partition != 0 {
+		return &kafka.Reader{}, fmt.Errorf("cannot specify both group_id and partition")
 	}
 	if kc.GroupID != "" {
 		rConf.GroupID = kc.GroupID
+	} else if kc.Partition != 0 {
+		rConf.Partition = kc.Partition
+	} else {
+		logger.Warnf("no group_id specified, crowdsec will only read from the 1st partition of the topic")
 	}
 	if err := rConf.Validate(); err != nil {
 		return &kafka.Reader{}, fmt.Errorf("while validating reader configuration: %w", err)

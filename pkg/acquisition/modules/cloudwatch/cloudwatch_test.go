@@ -199,7 +199,7 @@ stream_regexp: test_bad[0-9]+`),
 			},
 			expectedResLen: 0,
 		},
-		// require a group name that does exist and contains a stream in which we gonna put events
+		// require a group name that does exist and contains a stream in which we are going to put events
 		{
 			name: "group_exists_stream_exists_has_events",
 			config: []byte(`

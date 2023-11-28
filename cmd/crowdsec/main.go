@@ -75,20 +75,20 @@ type Flags struct {
 
 type labelsMap map[string]string
 
-func LoadBuckets(cConfig *csconfig.Config) error {
+func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 	var (
 		err   error
 		files []string
 	)
-	for _, hubScenarioItem := range cwhub.GetItemMap(cwhub.SCENARIOS) {
-		if hubScenarioItem.Installed {
-			files = append(files, hubScenarioItem.LocalPath)
+	for _, hubScenarioItem := range hub.GetItemMap(cwhub.SCENARIOS) {
+		if hubScenarioItem.State.Installed {
+			files = append(files, hubScenarioItem.State.LocalPath)
 		}
 	}
 	buckets = leakybucket.NewBuckets()
 
 	log.Infof("Loading %d scenario files", len(files))
-	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, files, &bucketsTomb, buckets, flags.OrderEvent)
+	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, hub, files, &bucketsTomb, buckets, flags.OrderEvent)
 
 	if err != nil {
 		return fmt.Errorf("scenario loading failed: %v", err)
@@ -138,11 +138,13 @@ func (l *labelsMap) String() string {
 }
 
 func (l labelsMap) Set(label string) error {
-	split := strings.Split(label, ":")
-	if len(split) != 2 {
-		return errors.Wrapf(errors.New("Bad Format"), "for Label '%s'", label)
+	for _, pair := range strings.Split(label, ",") {
+		split := strings.Split(pair, ":")
+		if len(split) != 2 {
+			return fmt.Errorf("invalid format for label '%s', must be key:value", pair)
+		}
+		l[split[0]] = split[1]
 	}
-	l[split[0]] = split[1]
 	return nil
 }
 
@@ -210,11 +212,7 @@ func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
 func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*csconfig.Config, error) {
 	cConfig, _, err := csconfig.NewConfig(configFile, disableAgent, disableAPI, quiet)
 	if err != nil {
-		return nil, err
-	}
-
-	if (cConfig.Common == nil || *cConfig.Common == csconfig.CommonCfg{}) {
-		return nil, fmt.Errorf("unable to load configuration: common section is empty")
+		return nil, fmt.Errorf("while loading configuration file: %w", err)
 	}
 
 	cConfig.Common.LogLevel = newLogLevel(cConfig.Common.LogLevel, flags)
@@ -224,11 +222,6 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		parser.DumpFolder = dumpFolder
 		leakybucket.BucketPourTrack = true
 		dumpStates = true
-	}
-
-	// Configuration paths are dependency to load crowdsec configuration
-	if err := cConfig.LoadConfigurationPaths(); err != nil {
-		return nil, err
 	}
 
 	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
