@@ -140,12 +140,13 @@ jobs:
         go install github.com/kyoh86/richgo@v0.3.10
         set -o pipefail
         make build BUILD_STATIC=1
-        make go-acc | richgo testfilter
+        make go-acc | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
 
     - name: Run tests again, dynamic
       run: |
         make clean build
-        make go-acc | richgo testfilter
+        set -o pipefail
+        make go-acc | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
 
     - name: Upload unit coverage to Codecov
       uses: codecov/codecov-action@v3
