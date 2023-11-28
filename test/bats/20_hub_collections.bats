@@ -208,7 +208,7 @@ teardown() {
     assert_line 'type: collections'
     assert_line 'name: crowdsecurity/sshd'
     assert_line 'author: crowdsecurity'
-    assert_line 'remote_path: collections/crowdsecurity/sshd.yaml'
+    assert_line 'path: collections/crowdsecurity/sshd.yaml'
     assert_line 'installed: false'
     refute_line --partial 'Current metrics:'
 
@@ -226,7 +226,7 @@ teardown() {
     assert_line 'type: collections'
     assert_line 'name: crowdsecurity/sshd'
     assert_line 'author: crowdsecurity'
-    assert_line 'remote_path: collections/crowdsecurity/sshd.yaml'
+    assert_line 'path: collections/crowdsecurity/sshd.yaml'
     assert_line 'installed: false'
     refute_line --partial 'Current metrics:'
 

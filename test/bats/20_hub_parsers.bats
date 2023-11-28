@@ -209,7 +209,7 @@ teardown() {
     assert_line 'stage: s01-parse'
     assert_line 'name: crowdsecurity/sshd-logs'
     assert_line 'author: crowdsecurity'
-    assert_line 'remote_path: parsers/s01-parse/crowdsecurity/sshd-logs.yaml'
+    assert_line 'path: parsers/s01-parse/crowdsecurity/sshd-logs.yaml'
     assert_line 'installed: false'
     refute_line --partial 'Current metrics:'
 
@@ -228,7 +228,7 @@ teardown() {
     assert_line 'name: crowdsecurity/sshd-logs'
     assert_line 'stage: s01-parse'
     assert_line 'author: crowdsecurity'
-    assert_line 'remote_path: parsers/s01-parse/crowdsecurity/sshd-logs.yaml'
+    assert_line 'path: parsers/s01-parse/crowdsecurity/sshd-logs.yaml'
     assert_line 'installed: false'
     refute_line --partial 'Current metrics:'
 

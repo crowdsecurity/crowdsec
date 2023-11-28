@@ -209,7 +209,7 @@ teardown() {
     assert_line 'type: scenarios'
     assert_line 'name: crowdsecurity/ssh-bf'
     assert_line 'author: crowdsecurity'
-    assert_line 'remote_path: scenarios/crowdsecurity/ssh-bf.yaml'
+    assert_line 'path: scenarios/crowdsecurity/ssh-bf.yaml'
     assert_line 'installed: false'
     refute_line --partial 'Current metrics:'
 
@@ -227,7 +227,7 @@ teardown() {
     assert_line 'type: scenarios'
     assert_line 'name: crowdsecurity/ssh-bf'
     assert_line 'author: crowdsecurity'
-    assert_line 'remote_path: scenarios/crowdsecurity/ssh-bf.yaml'
+    assert_line 'path: scenarios/crowdsecurity/ssh-bf.yaml'
     assert_line 'installed: false'
     refute_line --partial 'Current metrics:'
 

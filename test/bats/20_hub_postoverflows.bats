@@ -209,7 +209,7 @@ teardown() {
     assert_line 'stage: s00-enrich'
     assert_line 'name: crowdsecurity/rdns'
     assert_line 'author: crowdsecurity'
-    assert_line 'remote_path: postoverflows/s00-enrich/crowdsecurity/rdns.yaml'
+    assert_line 'path: postoverflows/s00-enrich/crowdsecurity/rdns.yaml'
     assert_line 'installed: false'
     refute_line --partial 'Current metrics:'
 
@@ -228,7 +228,7 @@ teardown() {
     assert_line 'name: crowdsecurity/rdns'
     assert_line 'stage: s00-enrich'
     assert_line 'author: crowdsecurity'
-    assert_line 'remote_path: postoverflows/s00-enrich/crowdsecurity/rdns.yaml'
+    assert_line 'path: postoverflows/s00-enrich/crowdsecurity/rdns.yaml'
     assert_line 'installed: false'
     refute_line --partial 'Current metrics:'
 
