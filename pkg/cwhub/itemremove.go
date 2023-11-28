@@ -61,7 +61,8 @@ func (i *Item) disable(purge bool, force bool) error {
 // Remove disables the item, optionally removing the downloaded content.
 func (i *Item) Remove(purge bool, force bool) (bool, error) {
 	if i.IsLocal() {
-		return false, fmt.Errorf("%s isn't managed by hub. Please delete manually", i.Name)
+		log.Warningf("%s is a local item, please delete manually", i.Name)
+		return false, nil
 	}
 
 	if i.State.Tainted && !force {

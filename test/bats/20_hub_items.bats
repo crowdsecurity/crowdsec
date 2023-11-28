@@ -160,10 +160,16 @@ teardown() {
 @test "a local item cannot be removed by cscli" {
     rune -0 mkdir -p "$CONFIG_DIR/collections"
     rune -0 touch "$CONFIG_DIR/collections/foobar.yaml"
-    rune -1 cscli collections remove foobar.yaml
-    assert_stderr --partial "foobar.yaml isn't managed by hub. Please delete manually"
-    rune -1 cscli collections remove foobar.yaml --force
-    assert_stderr --partial "foobar.yaml isn't managed by hub. Please delete manually"
+    rune -0 cscli collections remove foobar.yaml
+    assert_stderr --partial "foobar.yaml is a local item, please delete manually"
+    rune -0 cscli collections remove foobar.yaml --purge
+    assert_stderr --partial "foobar.yaml is a local item, please delete manually"
+    rune -0 cscli collections remove foobar.yaml --force
+    assert_stderr --partial "foobar.yaml is a local item, please delete manually"
+    rune -0 cscli collections remove --all
+    assert_stderr --partial "foobar.yaml is a local item, please delete manually"
+    rune -0 cscli collections remove --all --purge
+    assert_stderr --partial "foobar.yaml is a local item, please delete manually"
 }
 
 @test "a dangling link is reported with a warning" {
