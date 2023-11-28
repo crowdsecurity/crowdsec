@@ -48,7 +48,7 @@ var WafBlockCounter = prometheus.NewCounterVec(
 var WafRuleHits = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_waf_rule_hits",
-		Help: "Count of triggered rule, by rule_id and type (inband/outofband).",
+		Help: "Count of triggered rule, by rule_name, type (inband/outofband), waap_engine and source",
 	},
-	[]string{"rule_id", "type", "waap_engine", "source"},
+	[]string{"rule_name", "type", "waap_engine", "source"},
 )

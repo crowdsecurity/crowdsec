@@ -201,21 +201,21 @@ func (r *WaapRunner) AccumulateTxToEvent(evt *types.Event, req waf.ParsedRequest
 			evt.Waap.HasOutBandMatches = true
 		}
 
-		// TODO: Fetch the Name of the rule when possible
-		WafRuleHits.With(prometheus.Labels{"rule_id": fmt.Sprintf("%d", rule.Rule().ID()), "type": kind, "source": req.RemoteAddrNormalized, "waap_engine": req.WaapEngine}).Inc()
-
 		name := "NOT_SET"
 		version := "NOT_SET"
 		hash := "NOT_SET"
+		ruleNameProm := fmt.Sprintf("%d", rule.Rule().ID())
 
 		if details, ok := waf.WaapRulesDetails[rule.Rule().ID()]; ok {
 			//Only set them for custom rules, not for rules written in seclang
 			name = details.Name
 			version = details.Version
 			hash = details.Hash
-
+			ruleNameProm = details.Name
 			r.logger.Debugf("custom rule for event, setting name: %s, version: %s, hash: %s", name, version, hash)
 		}
+
+		WafRuleHits.With(prometheus.Labels{"rule_name": ruleNameProm, "type": kind, "source": req.RemoteAddrNormalized, "waap_engine": req.WaapEngine}).Inc()
 
 		corazaRule := map[string]interface{}{
 			"id":         rule.Rule().ID(),

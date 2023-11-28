@@ -240,7 +240,7 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 				waap_engine_stats[metric.Labels["waap_engine"]]["blocked"] = ival
 			case "cs_waf_rule_hits":
 				waapEngine := metric.Labels["waap_engine"]
-				ruleID := metric.Labels["rule_id"]
+				ruleID := metric.Labels["rule_name"]
 				if _, ok := waap_rule_stats[waapEngine]; !ok {
 					waap_rule_stats[waapEngine] = make(map[string]map[string]int, 0)
 				}
