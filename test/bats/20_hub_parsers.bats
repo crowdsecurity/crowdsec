@@ -277,8 +277,9 @@ teardown() {
     rune -0 cscli parsers remove crowdsecurity/whitelists
     assert_stderr --partial "removing crowdsecurity/whitelists: not installed -- no need to remove"
 
-    rune -0 cscli parsers remove crowdsecurity/whitelists --purge
+    rune -0 cscli parsers remove crowdsecurity/whitelists --purge --debug
     assert_stderr --partial 'removing crowdsecurity/whitelists: not downloaded -- no need to remove'
+    refute_stderr --partial 'Removed source file [crowdsecurity/whitelists]'
 
     # install, then remove, check files
     rune -0 cscli parsers install crowdsecurity/whitelists

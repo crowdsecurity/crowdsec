@@ -276,8 +276,9 @@ teardown() {
     rune -0 cscli scenarios remove crowdsecurity/ssh-bf
     assert_stderr --partial "removing crowdsecurity/ssh-bf: not installed -- no need to remove"
 
-    rune -0 cscli scenarios remove crowdsecurity/ssh-bf --purge
+    rune -0 cscli scenarios remove crowdsecurity/ssh-bf --purge --debug
     assert_stderr --partial 'removing crowdsecurity/ssh-bf: not downloaded -- no need to remove'
+    refute_stderr --partial 'Removed source file [crowdsecurity/ssh-bf]'
 
     # install, then remove, check files
     rune -0 cscli scenarios install crowdsecurity/ssh-bf

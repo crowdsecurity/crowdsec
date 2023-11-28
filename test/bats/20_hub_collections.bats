@@ -275,8 +275,9 @@ teardown() {
     rune -0 cscli collections remove crowdsecurity/sshd
     assert_stderr --partial 'removing crowdsecurity/sshd: not installed -- no need to remove'
 
-    rune -0 cscli collections remove crowdsecurity/sshd --purge
+    rune -0 cscli collections remove crowdsecurity/sshd --purge --debug
     assert_stderr --partial 'removing crowdsecurity/sshd: not downloaded -- no need to remove'
+    refute_stderr --partial 'Removed source file [crowdsecurity/sshd]'
 
     # install, then remove, check files
     rune -0 cscli collections install crowdsecurity/sshd

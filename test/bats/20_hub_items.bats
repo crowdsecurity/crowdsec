@@ -99,7 +99,7 @@ teardown() {
     rune -0 jq -r '.path' <(output)
     rune -0 rm "$HUB_DIR/$(output)"
 
-    rune -0 cscli parsers remove crowdsecurity/syslog-logs --purge
+    rune -0 cscli parsers remove crowdsecurity/syslog-logs --purge --debug
     assert_stderr --partial "removing crowdsecurity/syslog-logs: not downloaded -- no need to remove"
 
     rune -0 cscli parsers remove crowdsecurity/linux --all --error --purge --force

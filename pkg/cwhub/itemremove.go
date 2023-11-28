@@ -9,53 +9,59 @@ import (
 )
 
 // purge removes the actual config file that was downloaded.
-func (i *Item) purge() error {
+func (i *Item) purge() (bool, error) {
 	if !i.State.Downloaded {
-		log.Infof("removing %s: not downloaded -- no need to remove", i.Name)
-		return nil
+		log.Debugf("removing %s: not downloaded -- no need to remove", i.Name)
+		return false, nil
 	}
 
 	src, err := i.downloadPath()
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if err := os.Remove(src); err != nil {
 		if os.IsNotExist(err) {
 			log.Debugf("%s doesn't exist, no need to remove", src)
-			return nil
+			return false, nil
 		}
 
-		return fmt.Errorf("while removing file: %w", err)
+		return false, fmt.Errorf("while removing file: %w", err)
 	}
 
 	i.State.Downloaded = false
 	log.Infof("Removed source file [%s]: %s", i.Name, src)
 
-	return nil
+	return true, nil
 }
 
 // disable removes the install link, and optionally the downloaded content.
-func (i *Item) disable(purge bool, force bool) error {
+func (i *Item) disable(purge bool, force bool) (bool, error) {
+	didRemove := true
+
 	err := i.removeInstallLink()
 	if os.IsNotExist(err) {
 		if !purge && !force {
 			link, _ := i.installPath()
-			return fmt.Errorf("link %s does not exist (override with --force or --purge)", link)
+			return false, fmt.Errorf("link %s does not exist (override with --force or --purge)", link)
 		}
+		didRemove = false
 	} else if err != nil {
-		return err
+		return false, err
 	}
 
 	i.State.Installed = false
 
+	didPurge := false
 	if purge {
-		if err := i.purge(); err != nil {
-			return err
+		if didPurge, err = i.purge(); err != nil {
+			return didRemove, err
 		}
 	}
 
-	return nil
+	ret := didRemove || didPurge
+
+	return ret, nil
 }
 
 // Remove disables the item, optionally removing the downloaded content.
@@ -122,11 +128,12 @@ func (i *Item) Remove(purge bool, force bool) (bool, error) {
 		removed = removed || subRemoved
 	}
 
-	if err = i.disable(purge, force); err != nil {
+	didDisable, err := i.disable(purge, force)
+	if err != nil {
 		return false, fmt.Errorf("while removing %s: %w", i.Name, err)
 	}
 
-	removed = true
+	removed = removed || didDisable
 
 	return removed, nil
 }

@@ -67,9 +67,9 @@ type Item struct {
 	Author      string   `json:"author,omitempty" yaml:"author,omitempty"`
 	References  []string `json:"references,omitempty" yaml:"references,omitempty"`
 
-	RemotePath string                 `json:"path,omitempty" yaml:"path,omitempty"` // path relative to the base URL eg. /parsers/stage/author/file.yaml
-	Version    string                 `json:"version,omitempty" yaml:"version,omitempty"`  // the last available version
-	Versions   map[string]ItemVersion `json:"versions,omitempty"  yaml:"-"`                // all the known versions
+	RemotePath string                 `json:"path,omitempty" yaml:"path,omitempty"`       // path relative to the base URL eg. /parsers/stage/author/file.yaml
+	Version    string                 `json:"version,omitempty" yaml:"version,omitempty"` // the last available version
+	Versions   map[string]ItemVersion `json:"versions,omitempty"  yaml:"-"`               // all the known versions
 
 	// if it's a collection, it can have sub items
 	Parsers       []string `json:"parsers,omitempty" yaml:"parsers,omitempty"`

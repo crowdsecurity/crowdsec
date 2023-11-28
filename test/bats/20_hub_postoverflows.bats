@@ -277,8 +277,9 @@ teardown() {
     rune -0 cscli postoverflows remove crowdsecurity/rdns
     assert_stderr --partial 'removing crowdsecurity/rdns: not installed -- no need to remove'
 
-    rune -0 cscli postoverflows remove crowdsecurity/rdns --purge
+    rune -0 cscli postoverflows remove crowdsecurity/rdns --purge --debug
     assert_stderr --partial 'removing crowdsecurity/rdns: not downloaded -- no need to remove'
+    refute_stderr --partial 'Removed source file [crowdsecurity/rdns]'
 
     # install, then remove, check files
     rune -0 cscli postoverflows install crowdsecurity/rdns

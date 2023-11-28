@@ -319,6 +319,7 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 					return err
 				}
 				if didRemove {
+					log.Infof("Removed %s", item.Name)
 					removed++
 				}
 			}
@@ -361,6 +362,8 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 				removed++
 			}
 		}
+
+		log.Infof("Removed %d %s", removed, it.name)
 		if removed > 0 {
 			log.Infof(ReloadMessage())
 		}
