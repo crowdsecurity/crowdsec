@@ -131,11 +131,11 @@ func waapRulesToTable(out io.Writer, metrics map[string]map[string]map[string]in
 	for waapEngine, waapEngineRulesStats := range metrics {
 		t := newTable(out)
 		t.SetRowLines(false)
-		t.SetHeaders("Rule ID", "Processed")
+		t.SetHeaders("Rule ID", "Triggered")
 		t.SetAlignment(table.AlignLeft, table.AlignLeft)
-		keys := []string{"processed"}
+		keys := []string{"triggered"}
 		if numRows, err := metricsToTable(t, waapEngineRulesStats, keys); err != nil {
-			log.Warningf("while collecting waap stats: %s", err)
+			log.Warningf("while collecting waap rules stats: %s", err)
 		} else if numRows > 0 {
 			renderTableTitle(out, fmt.Sprintf("\nWaap '%s' Rules Metrics:", waapEngine))
 			t.Render()

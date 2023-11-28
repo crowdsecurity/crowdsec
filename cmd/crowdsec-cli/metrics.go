@@ -247,7 +247,7 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 				if _, ok := waap_rule_stats[waapEngine][ruleID]; !ok {
 					waap_rule_stats[waapEngine][ruleID] = make(map[string]int, 0)
 				}
-				waap_rule_stats[waapEngine][ruleID]["processed"] = ival
+				waap_rule_stats[waapEngine][ruleID]["triggered"] = ival
 			default:
 				log.Infof("unknown: %+v", fam.Name)
 				continue
