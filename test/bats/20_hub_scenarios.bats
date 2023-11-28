@@ -209,7 +209,7 @@ teardown() {
     assert_line 'type: scenarios'
     assert_line 'name: crowdsecurity/ssh-bf'
     assert_line 'author: crowdsecurity'
-    assert_line 'remote_path: scenarios/crowdsecurity/ssh-bf.yaml'
+    assert_line 'path: scenarios/crowdsecurity/ssh-bf.yaml'
     assert_line 'installed: false'
     refute_line --partial 'Current metrics:'
 
@@ -227,7 +227,7 @@ teardown() {
     assert_line 'type: scenarios'
     assert_line 'name: crowdsecurity/ssh-bf'
     assert_line 'author: crowdsecurity'
-    assert_line 'remote_path: scenarios/crowdsecurity/ssh-bf.yaml'
+    assert_line 'path: scenarios/crowdsecurity/ssh-bf.yaml'
     assert_line 'installed: false'
     refute_line --partial 'Current metrics:'
 
@@ -276,8 +276,9 @@ teardown() {
     rune -0 cscli scenarios remove crowdsecurity/ssh-bf
     assert_stderr --partial "removing crowdsecurity/ssh-bf: not installed -- no need to remove"
 
-    rune -0 cscli scenarios remove crowdsecurity/ssh-bf --purge
+    rune -0 cscli scenarios remove crowdsecurity/ssh-bf --purge --debug
     assert_stderr --partial 'removing crowdsecurity/ssh-bf: not downloaded -- no need to remove'
+    refute_stderr --partial 'Removed source file [crowdsecurity/ssh-bf]'
 
     # install, then remove, check files
     rune -0 cscli scenarios install crowdsecurity/ssh-bf

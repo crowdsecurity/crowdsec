@@ -159,3 +159,82 @@ func (h *Hub) updateIndex() error {
 
 	return nil
 }
+
+// GetItemMap returns the map of items for a given type.
+func (h *Hub) GetItemMap(itemType string) map[string]*Item {
+	return h.Items[itemType]
+}
+
+// GetItem returns an item from hub based on its type and full name (author/name).
+func (h *Hub) GetItem(itemType string, itemName string) *Item {
+	return h.GetItemMap(itemType)[itemName]
+}
+
+// GetItemNames returns a slice of (full) item names for a given type
+// (eg. for collections: crowdsecurity/apache2 crowdsecurity/nginx).
+func (h *Hub) GetItemNames(itemType string) []string {
+	m := h.GetItemMap(itemType)
+	if m == nil {
+		return nil
+	}
+
+	names := make([]string, 0, len(m))
+	for k := range m {
+		names = append(names, k)
+	}
+
+	return names
+}
+
+// GetAllItems returns a slice of all the items of a given type, installed or not.
+func (h *Hub) GetAllItems(itemType string) ([]*Item, error) {
+	items, ok := h.Items[itemType]
+	if !ok {
+		return nil, fmt.Errorf("no %s in the hub index", itemType)
+	}
+
+	ret := make([]*Item, len(items))
+
+	idx := 0
+
+	for _, item := range items {
+		ret[idx] = item
+		idx++
+	}
+
+	return ret, nil
+}
+
+// GetInstalledItems returns a slice of the installed items of a given type.
+func (h *Hub) GetInstalledItems(itemType string) ([]*Item, error) {
+	items, ok := h.Items[itemType]
+	if !ok {
+		return nil, fmt.Errorf("no %s in the hub index", itemType)
+	}
+
+	retItems := make([]*Item, 0)
+
+	for _, item := range items {
+		if item.State.Installed {
+			retItems = append(retItems, item)
+		}
+	}
+
+	return retItems, nil
+}
+
+// GetInstalledItemNames returns the names of the installed items of a given type.
+func (h *Hub) GetInstalledItemNames(itemType string) ([]string, error) {
+	items, err := h.GetInstalledItems(itemType)
+	if err != nil {
+		return nil, err
+	}
+
+	retStr := make([]string, len(items))
+
+	for idx, it := range items {
+		retStr[idx] = it.Name
+	}
+
+	return retStr, nil
+}

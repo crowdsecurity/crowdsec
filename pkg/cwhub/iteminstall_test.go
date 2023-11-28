@@ -63,7 +63,7 @@ func testDisable(hub *Hub, t *testing.T, item *Item) {
 	assert.True(t, hub.Items[item.Type][item.Name].State.Installed, "%s should be installed", item.Name)
 
 	// Remove
-	err := item.disable(false, false)
+	_, err := item.disable(false, false)
 	require.NoError(t, err, "failed to disable %s", item.Name)
 
 	// Local sync and check status
@@ -76,7 +76,7 @@ func testDisable(hub *Hub, t *testing.T, item *Item) {
 	assert.True(t, hub.Items[item.Type][item.Name].State.Downloaded, "%s should still be downloaded", item.Name)
 
 	// Purge
-	err = item.disable(true, false)
+	_, err = item.disable(true, false)
 	require.NoError(t, err, "failed to purge %s", item.Name)
 
 	// Local sync and check status

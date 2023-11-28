@@ -30,7 +30,7 @@ func linkTarget(path string) (string, error) {
 
 	_, err = os.Lstat(hubpath)
 	if os.IsNotExist(err) {
-		log.Infof("link target does not exist: %s -> %s", path, hubpath)
+		log.Warningf("link target does not exist: %s -> %s", path, hubpath)
 		return "", nil
 	}
 

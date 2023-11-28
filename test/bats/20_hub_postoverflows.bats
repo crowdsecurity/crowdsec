@@ -209,7 +209,7 @@ teardown() {
     assert_line 'stage: s00-enrich'
     assert_line 'name: crowdsecurity/rdns'
     assert_line 'author: crowdsecurity'
-    assert_line 'remote_path: postoverflows/s00-enrich/crowdsecurity/rdns.yaml'
+    assert_line 'path: postoverflows/s00-enrich/crowdsecurity/rdns.yaml'
     assert_line 'installed: false'
     refute_line --partial 'Current metrics:'
 
@@ -228,7 +228,7 @@ teardown() {
     assert_line 'name: crowdsecurity/rdns'
     assert_line 'stage: s00-enrich'
     assert_line 'author: crowdsecurity'
-    assert_line 'remote_path: postoverflows/s00-enrich/crowdsecurity/rdns.yaml'
+    assert_line 'path: postoverflows/s00-enrich/crowdsecurity/rdns.yaml'
     assert_line 'installed: false'
     refute_line --partial 'Current metrics:'
 
@@ -277,8 +277,9 @@ teardown() {
     rune -0 cscli postoverflows remove crowdsecurity/rdns
     assert_stderr --partial 'removing crowdsecurity/rdns: not installed -- no need to remove'
 
-    rune -0 cscli postoverflows remove crowdsecurity/rdns --purge
+    rune -0 cscli postoverflows remove crowdsecurity/rdns --purge --debug
     assert_stderr --partial 'removing crowdsecurity/rdns: not downloaded -- no need to remove'
+    refute_stderr --partial 'Removed source file [crowdsecurity/rdns]'
 
     # install, then remove, check files
     rune -0 cscli postoverflows install crowdsecurity/rdns

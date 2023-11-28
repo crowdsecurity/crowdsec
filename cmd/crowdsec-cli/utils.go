@@ -13,14 +13,12 @@ import (
 )
 
 func printHelp(cmd *cobra.Command) {
-	err := cmd.Help()
-	if err != nil {
+	if err := cmd.Help(); err != nil {
 		log.Fatalf("unable to print help(): %s", err)
 	}
 }
 
 func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *string) error {
-
 	/*if a range is provided, change the scope*/
 	if *ipRange != "" {
 		_, _, err := net.ParseCIDR(*ipRange)
@@ -50,7 +48,6 @@ func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *
 }
 
 func getDBClient() (*database.Client, error) {
-	var err error
 	if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
 		return nil, err
 	}

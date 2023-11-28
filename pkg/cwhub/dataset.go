@@ -6,9 +6,10 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"time"
 
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -51,6 +52,62 @@ func downloadFile(url string, destPath string) error {
 	return nil
 }
 
+// needsUpdate checks if a data file has to be downloaded (or updated).
+// if the local file doesn't exist, update.
+// if the remote is newer than the local file, update.
+// if the remote has no modification date, but local file has been modified > a week ago, update.
+func needsUpdate(destPath string, url string) bool {
+	fileInfo, err := os.Stat(destPath)
+	switch {
+	case os.IsNotExist(err):
+		return true
+	case err != nil:
+		log.Errorf("while getting %s: %s", destPath, err)
+		return true
+	}
+
+	resp, err := hubClient.Head(url)
+	if err != nil {
+		log.Errorf("while getting %s: %s", url, err)
+		// Head failed, Get would likely fail too -> no update
+		return false
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Errorf("bad http code %d for %s", resp.StatusCode, url)
+		return false
+	}
+
+	// update if local file is older than this
+	shelfLife := 7 * 24 * time.Hour
+
+	lastModify := fileInfo.ModTime()
+
+	localIsOld := lastModify.Add(shelfLife).Before(time.Now())
+
+	remoteLastModified := resp.Header.Get("Last-Modified")
+	if remoteLastModified == "" {
+		if localIsOld {
+			log.Infof("no last modified date for %s, but local file is older than %s", url, shelfLife)
+		}
+		return localIsOld
+	}
+
+	lastAvailable, err := time.Parse(time.RFC1123, remoteLastModified)
+	if err != nil {
+		log.Warningf("while parsing last modified date for %s: %s", url, err)
+		return localIsOld
+	}
+
+	if lastModify.Before(lastAvailable) {
+		log.Infof("new version available, updating %s", destPath)
+		return true
+	}
+
+	return false
+}
+
 // downloadDataSet downloads all the data files for an item.
 func downloadDataSet(dataFolder string, force bool, reader io.Reader) error {
 	dec := yaml.NewDecoder(reader)
@@ -72,9 +129,7 @@ func downloadDataSet(dataFolder string, force bool, reader io.Reader) error {
 				return err
 			}
 
-			if _, err := os.Stat(destPath); os.IsNotExist(err) || force {
-				log.Infof("downloading data '%s' in '%s'", dataS.SourceURL, destPath)
-
+			if force || needsUpdate(destPath, dataS.SourceURL) {
 				if err := downloadFile(dataS.SourceURL, destPath); err != nil {
 					return fmt.Errorf("while getting data: %w", err)
 				}
