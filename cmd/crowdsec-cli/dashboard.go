@@ -369,40 +369,33 @@ func disclaimer(forceYes *bool) error {
 }
 
 func checkGroups(forceYes *bool) (*user.Group, error) {
-	groupExist := false
 	dockerGroup, err := user.LookupGroup(crowdsecGroup)
 	if err == nil {
-		groupExist = true
+		return dockerGroup, nil
 	}
-	if !groupExist {
-		if !*forceYes {
-			var answer bool
-			prompt := &survey.Confirm{
-				Message: fmt.Sprintf("For metabase docker to be able to access SQLite file we need to add a new group called '%s' to the system, is it ok for you ?", crowdsecGroup),
-				Default: true,
-			}
-			if err := survey.AskOne(prompt, &answer); err != nil {
-				return dockerGroup, fmt.Errorf("unable to ask to question: %s", err)
-			}
-			if !answer {
-				return dockerGroup, fmt.Errorf("unable to continue without creating '%s' group", crowdsecGroup)
-			}
+	if !*forceYes {
+		var answer bool
+		prompt := &survey.Confirm{
+			Message: fmt.Sprintf("For metabase docker to be able to access SQLite file we need to add a new group called '%s' to the system, is it ok for you ?", crowdsecGroup),
+			Default: true,
 		}
-		groupAddCmd, err := exec.LookPath("groupadd")
-		if err != nil {
-			return dockerGroup, fmt.Errorf("unable to find 'groupadd' command, can't continue")
+		if err := survey.AskOne(prompt, &answer); err != nil {
+			return dockerGroup, fmt.Errorf("unable to ask to question: %s", err)
 		}
+		if !answer {
+			return dockerGroup, fmt.Errorf("unable to continue without creating '%s' group", crowdsecGroup)
+		}
+	}
+	groupAddCmd, err := exec.LookPath("groupadd")
+	if err != nil {
+		return dockerGroup, fmt.Errorf("unable to find 'groupadd' command, can't continue")
+	}
 
-		groupAdd := &exec.Cmd{Path: groupAddCmd, Args: []string{groupAddCmd, crowdsecGroup}}
-		if err := groupAdd.Run(); err != nil {
-			return dockerGroup, fmt.Errorf("unable to add group '%s': %s", dockerGroup, err)
-		}
-		dockerGroup, err = user.LookupGroup(crowdsecGroup)
-		if err != nil {
-			return dockerGroup, fmt.Errorf("unable to lookup '%s' group: %+v", dockerGroup, err)
-		}
+	groupAdd := &exec.Cmd{Path: groupAddCmd, Args: []string{groupAddCmd, crowdsecGroup}}
+	if err := groupAdd.Run(); err != nil {
+		return dockerGroup, fmt.Errorf("unable to add group '%s': %s", dockerGroup, err)
 	}
-	return dockerGroup, nil
+	return user.LookupGroup(crowdsecGroup)
 }
 
 func chownDatabase(gid string) error {
