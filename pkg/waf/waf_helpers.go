@@ -34,10 +34,10 @@ func GetExprWAFOptions(ctx map[string]interface{}) []expr.Option {
 func GetOnLoadEnv(w *WaapRuntimeConfig) map[string]interface{} {
 	//FIXME: use expr.Function instead of this
 	return map[string]interface{}{
-		"DisableInBandRuleByID":   w.DisableInBandRuleByID,
-		"DisableOutBandRuleByID":  w.DisableOutBandRuleByID,
-		"DisableInBandRuleByTag":  w.DisableInBandRuleByTag,
-		"DisableOutBandRuleByTag": w.DisableOutBandRuleByTag,
+		"RemoveInBandRuleByID":   w.DisableInBandRuleByID,
+		"RemoveOutBandRuleByID":  w.DisableOutBandRuleByID,
+		"RemoveInBandRuleByTag":  w.DisableInBandRuleByTag,
+		"RemoveOutBandRuleByTag": w.DisableOutBandRuleByTag,
 	}
 }
 

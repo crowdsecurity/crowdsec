@@ -52,7 +52,7 @@ var bodyTypeMatch map[string]string = map[string]string{
 
 func (m *ModsecurityRule) Build(rule *CustomRule, waapRuleName string) (string, []uint32, error) {
 
-	rules, err := m.buildRules(rule, waapRuleName, false, 0)
+	rules, err := m.buildRules(rule, waapRuleName, false, 0, 0)
 
 	if err != nil {
 		return "", nil, err
@@ -62,11 +62,12 @@ func (m *ModsecurityRule) Build(rule *CustomRule, waapRuleName string) (string, 
 	return strings.Join(rules, "\n"), m.ids, nil
 }
 
-func (m *ModsecurityRule) generateRuleID(rule *CustomRule, waapRuleName string) uint32 {
+func (m *ModsecurityRule) generateRuleID(rule *CustomRule, waapRuleName string, depth int) uint32 {
 	h := fnv.New32a()
 	h.Write([]byte(waapRuleName))
 	h.Write([]byte(rule.Match.Type))
 	h.Write([]byte(rule.Match.Value))
+	h.Write([]byte(fmt.Sprintf("%d", depth)))
 	for _, zone := range rule.Zones {
 		h.Write([]byte(zone))
 	}
@@ -78,14 +79,15 @@ func (m *ModsecurityRule) generateRuleID(rule *CustomRule, waapRuleName string) 
 	return id
 }
 
-func (m *ModsecurityRule) buildRules(rule *CustomRule, waapRuleName string, and bool, toSkip int) ([]string, error) {
+func (m *ModsecurityRule) buildRules(rule *CustomRule, waapRuleName string, and bool, toSkip int, depth int) ([]string, error) {
 	ret := make([]string, 0)
 
 	if rule.And != nil {
 		for c, andRule := range rule.And {
-			subName := fmt.Sprintf("%s_and_%d", waapRuleName, c)
+			depth++
+			//subName := fmt.Sprintf("%s_and_%d", waapRuleName, c)
 			lastRule := c == len(rule.And)-1 // || len(rule.Or) == 0
-			rules, err := m.buildRules(&andRule, subName, !lastRule, 0)
+			rules, err := m.buildRules(&andRule, waapRuleName, !lastRule, 0, depth)
 			if err != nil {
 				return nil, err
 			}
@@ -95,9 +97,10 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, waapRuleName string, and 
 
 	if rule.Or != nil {
 		for c, orRule := range rule.Or {
-			subName := fmt.Sprintf("%s_or_%d", waapRuleName, c)
+			depth++
+			//subName := fmt.Sprintf("%s_or_%d", waapRuleName, c)
 			skip := len(rule.Or) - c - 1
-			rules, err := m.buildRules(&orRule, subName, false, skip)
+			rules, err := m.buildRules(&orRule, waapRuleName, false, skip, depth)
 			if err != nil {
 				return nil, err
 			}
@@ -140,7 +143,7 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, waapRuleName string, and 
 	}
 
 	//Should phase:2 be configurable?
-	r.WriteString(fmt.Sprintf(` "id:%d,phase:2,deny,log,msg:'%s'`, m.generateRuleID(rule, waapRuleName), waapRuleName))
+	r.WriteString(fmt.Sprintf(` "id:%d,phase:2,deny,log,msg:'%s',tag:'crowdsec-%s'`, m.generateRuleID(rule, waapRuleName, depth), waapRuleName, waapRuleName))
 
 	if rule.Transform != nil {
 		for _, transform := range rule.Transform {
