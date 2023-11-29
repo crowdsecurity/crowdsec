@@ -178,7 +178,7 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 				return fmt.Errorf("failed to force pull operation: %s", err)
 			}
 		} else {
-			log.Infof("Received force_pull command from PAPI, pulling blocklist %+v", forcePullMsg.Blocklist)
+			log.Infof("Received force_pull command from PAPI, pulling blocklist %s", forcePullMsg.Blocklist.Name)
 			err = p.apic.PullBlocklist(&modelscapi.BlocklistLink{
 				Name:        &forcePullMsg.Blocklist.Name,
 				URL:         &forcePullMsg.Blocklist.Url,
