@@ -11,12 +11,30 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/modelscapi"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type deleteDecisions struct {
 	UUID      string   `json:"uuid"`
 	Decisions []string `json:"decisions"`
+}
+
+type blocklistLink struct {
+	// blocklist name
+	Name string `json:"name"`
+	// blocklist url
+	Url string `json:"url"`
+	// blocklist remediation
+	Remediation string `json:"remediation"`
+	// blocklist scope
+	Scope string `json:"scope,omitempty"`
+	// blocklist duration
+	Duration string `json:"duration,omitempty"`
+}
+
+type forcePull struct {
+	Blocklist *blocklistLink `json:"blocklist,omitempty"`
 }
 
 func DecisionCmd(message *Message, p *Papi, sync bool) error {
@@ -144,11 +162,35 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 		log.Infof("Received reauth command from PAPI, resetting token")
 		p.apiClient.GetClient().Transport.(*apiclient.JWTTransport).ResetToken()
 	case "force_pull":
-		log.Infof("Received force_pull command from PAPI, pulling community and 3rd-party blocklists")
-		err := p.apic.PullTop(true)
+		data, err := json.Marshal(message.Data)
 		if err != nil {
-			return fmt.Errorf("failed to force pull operation: %s", err)
+			return err
 		}
+		forcePullMsg := forcePull{}
+		if err := json.Unmarshal(data, &forcePullMsg); err != nil {
+			return fmt.Errorf("message for '%s' contains bad data format: %s", message.Header.OperationType, err)
+		}
+
+		if forcePullMsg.Blocklist == nil {
+			log.Infof("Received force_pull command from PAPI, pulling community and 3rd-party blocklists")
+			err = p.apic.PullTop(true)
+			if err != nil {
+				return fmt.Errorf("failed to force pull operation: %s", err)
+			}
+		} else {
+			log.Infof("Received force_pull command from PAPI, pulling blocklist %s", forcePullMsg.Blocklist.Name)
+			err = p.apic.PullBlocklist(&modelscapi.BlocklistLink{
+				Name:        &forcePullMsg.Blocklist.Name,
+				URL:         &forcePullMsg.Blocklist.Url,
+				Remediation: &forcePullMsg.Blocklist.Remediation,
+				Scope:       &forcePullMsg.Blocklist.Scope,
+				Duration:    &forcePullMsg.Blocklist.Duration,
+			}, true)
+			if err != nil {
+				return fmt.Errorf("failed to force pull operation: %s", err)
+			}
+		}
+
 	default:
 		return fmt.Errorf("unknown command '%s' for operation type '%s'", message.Header.OperationCmd, message.Header.OperationType)
 	}
