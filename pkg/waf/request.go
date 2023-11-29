@@ -7,17 +7,16 @@ import (
 	"net/http"
 	"net/url"
 
-
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 )
 
 const (
-	URIHeaderName    = "X-Crowdsec-Waf-Uri"
-	VerbHeaderName   = "X-Crowdsec-Waf-Verb"
-	HostHeaderName   = "X-Crowdsec-Waf-Host"
-	IPHeaderName     = "X-Crowdsec-Waf-Ip"
-	APIKeyHeaderName = "X-Crowdsec-Waf-Api-Key"
+	URIHeaderName    = "X-Crowdsec-Waap-Uri"
+	VerbHeaderName   = "X-Crowdsec-Waap-Verb"
+	HostHeaderName   = "X-Crowdsec-Waap-Host"
+	IPHeaderName     = "X-Crowdsec-Waap-Ip"
+	APIKeyHeaderName = "X-Crowdsec-Waap-Api-Key"
 )
 
 // type ResponseRequest struct {
