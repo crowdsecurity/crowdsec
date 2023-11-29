@@ -43,6 +43,7 @@ func generatePassword(length int) string {
 	charsetLength := len(charset)
 
 	buf := make([]byte, length)
+
 	for i := 0; i < length; i++ {
 		rInt, err := saferand.Int(saferand.Reader, big.NewInt(int64(charsetLength)))
 		if err != nil {
@@ -190,7 +191,6 @@ cscli machines add MyTestMachine --password MyPassword
 }
 
 func runMachinesAdd(cmd *cobra.Command, args []string) error {
-	var dumpFile string
 	var err error
 
 	flags := cmd.Flags()
@@ -200,7 +200,7 @@ func runMachinesAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	outputFile, err := flags.GetString("file")
+	dumpFile, err := flags.GetString("file")
 	if err != nil {
 		return err
 	}
@@ -242,17 +242,28 @@ func runMachinesAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	/*check if file already exists*/
-	if outputFile != "" {
-		dumpFile = outputFile
-	} else if csConfig.API.Client != nil && csConfig.API.Client.CredentialsFilePath != "" {
-		dumpFile = csConfig.API.Client.CredentialsFilePath
+	if dumpFile == "" && csConfig.API.Client != nil && csConfig.API.Client.CredentialsFilePath != "" {
+		credFile := csConfig.API.Client.CredentialsFilePath
+		// use the default only if the file does not exist
+		_, err := os.Stat(credFile)
+		switch {
+		case os.IsNotExist(err):
+			dumpFile = csConfig.API.Client.CredentialsFilePath
+		case err != nil:
+			return fmt.Errorf("unable to stat '%s': %s", credFile, err)
+		default:
+			return fmt.Errorf(`credentials file '%s' already exists, please remove it or specify a different file with -f ("-f -" for standard output)`, credFile)
+		}
+	}
+
+	if dumpFile == "" {
+		return fmt.Errorf(`please specify a file to dump credentials to, with -f ("-f -" for standard output)`)
 	}
 
 	// create a password if it's not specified by user
 	if machinePassword == "" && !interactive {
 		if !autoAdd {
-			printHelp(cmd)
-			return nil
+			return fmt.Errorf("please specify a password with --password or use --auto")
 		}
 		machinePassword = generatePassword(passwordLength)
 	} else if machinePassword == "" && interactive {
@@ -291,7 +302,7 @@ func runMachinesAdd(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("write api credentials in '%s' failed: %s", dumpFile, err)
 		}
-		log.Printf("API credentials dumped to '%s'", dumpFile)
+		log.Printf("API credentials written to '%s'", dumpFile)
 	} else {
 		fmt.Printf("%s\n", string(apiConfigDump))
 	}

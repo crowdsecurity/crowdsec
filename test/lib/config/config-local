@@ -115,7 +115,7 @@ make_init_data() {
     ./instance-db config-yaml
     ./instance-db setup
 
-    "$CSCLI" --warning machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto
+    "$CSCLI" --warning machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto -f "$($CSCLI config show --key Config.API.Client.CredentialsFilePath)"
     "$CSCLI" --warning hub update
 
     ./bin/preload-hub-items

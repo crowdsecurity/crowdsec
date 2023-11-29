@@ -66,7 +66,7 @@ make_init_data() {
 
     ./bin/preload-hub-items
 
-    [[ "${DB_BACKEND}" == "sqlite" ]] || ${CSCLI} machines add --auto
+    [[ "${DB_BACKEND}" == "sqlite" ]] || ${CSCLI} machines add --auto -f "$($CSCLI config show --key Config.API.Client.CredentialsFilePath)"
 
     mkdir -p "$LOCAL_INIT_DIR"
 
