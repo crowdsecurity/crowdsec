@@ -320,10 +320,12 @@ config.yaml) each time the container is run.
 | `PARSERS`               | | Parsers to install, separated by space |
 | `SCENARIOS`             | | Scenarios to install, separated by space |
 | `POSTOVERFLOWS`         | | Postoverflows to install, separated by space |
+| `CONTEXTS`              | | Context files to install, separated by space |
 | `DISABLE_COLLECTIONS`   | | Collections to remove, separated by space: `-e DISABLE_COLLECTIONS="crowdsecurity/linux crowdsecurity/nginx"` |
 | `DISABLE_PARSERS`       | | Parsers to remove, separated by space |
 | `DISABLE_SCENARIOS`     | | Scenarios to remove, separated by space |
 | `DISABLE_POSTOVERFLOWS` | | Postoverflows to remove, separated by space |
+| `DISABLE_CONTEXTS`      | | Context files to remove, separated by space |
 |                         | | |
 | __Log verbosity__       | | |
 | `LEVEL_INFO`            | false | Force INFO level for the container log |

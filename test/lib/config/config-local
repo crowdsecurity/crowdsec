@@ -107,43 +107,31 @@ preload_hub_items() {
 
     echo "Purging existing hub..."
 
-    "$CSCLI" parsers delete --all --error --purge --force
-    "$CSCLI" scenarios delete --all --error --purge --force
-    "$CSCLI" postoverflows delete --all --error --purge --force
-    "$CSCLI" collections delete --all --error --purge --force
+    ITEMTYPES="parsers scenarios postoverflows contexts collections"
+
+    for itemtype in $ITEMTYPES; do
+        "$CSCLI" "${itemtype}" delete --all --error --purge --force
+    done
 
     echo "Pre-downloading hub content..."
 
-    #shellcheck disable=SC2046
-    "$CSCLI" collections install \
-        $("$CSCLI" collections list -a -o json | jq -r '.collections[].name') \
-        --download-only \
-        --error
-
-    #shellcheck disable=SC2046
-    "$CSCLI" parsers install \
-        $("$CSCLI" parsers list -a -o json | jq -r '.parsers[].name') \
-        --download-only \
-        --error
-
-    #shellcheck disable=SC2046
-    "$CSCLI" scenarios install \
-        $("$CSCLI" scenarios list -a -o json | jq -r '.scenarios[].name') \
-        --download-only \
-        --error
-
-    #shellcheck disable=SC2046
-    "$CSCLI" postoverflows install \
-        $("$CSCLI" postoverflows list -a -o json | jq -r '.postoverflows[].name') \
-        --download-only \
-        --error
+    for itemtype in $ITEMTYPES; do
+        ALL_ITEMS=$("$CSCLI" "$itemtype" list -a -o json | jq --arg itemtype "$itemtype" -r '.[$itemtype][].name')
+        if [[ -n "${ALL_ITEMS}" ]]; then
+            #shellcheck disable=SC2086
+            "$CSCLI" "$itemtype" install \
+                $ALL_ITEMS \
+                --download-only \
+                --error
+        fi
+    done
 
     # XXX: download-only works only for collections, not for parsers, scenarios, postoverflows.
     # so we have to delete the links manually, and leave the downloaded files in place
 
-    "$CSCLI" parsers delete --all --error
-    "$CSCLI" scenarios delete --all --error
-    "$CSCLI" postoverflows delete --all --error
+    for itemtype in $ITEMTYPES; do
+        "$CSCLI" "$itemtype" delete --all --error
+    done
 }
 
 make_init_data() {

@@ -34,9 +34,9 @@ teardown() {
 
     # no items
     rune -0 cscli hub list
-    assert_output --regexp ".*PARSERS.*POSTOVERFLOWS.*SCENARIOS.*COLLECTIONS.*"
+    assert_output --regexp ".*PARSERS.*POSTOVERFLOWS.*SCENARIOS.*CONTEXTS.*COLLECTIONS.*"
     rune -0 cscli hub list -o json
-    assert_json '{parsers:[],scenarios:[],collections:[],postoverflows:[]}'
+    assert_json '{parsers:[],scenarios:[],collections:[],contexts:[],postoverflows:[]}'
     rune -0 cscli hub list -o raw
     assert_output 'name,status,version,description,type'
 
@@ -44,7 +44,7 @@ teardown() {
     rune -0 cscli parsers install crowdsecurity/whitelists
     rune -0 cscli scenarios install crowdsecurity/telnet-bf
     rune -0 cscli hub list
-    assert_output --regexp ".*PARSERS.*crowdsecurity/whitelists.*POSTOVERFLOWS.*SCENARIOS.*crowdsecurity/telnet-bf.*COLLECTIONS.*"
+    assert_output --regexp ".*PARSERS.*crowdsecurity/whitelists.*POSTOVERFLOWS.*SCENARIOS.*crowdsecurity/telnet-bf.*CONTEXTS.*COLLECTIONS.*"
     rune -0 cscli hub list -o json
     rune -0 jq -e '(.parsers | length == 1) and (.scenarios | length == 1)' <(output)
     rune -0 cscli hub list -o raw
@@ -54,7 +54,7 @@ teardown() {
 
     # all items
     rune -0 cscli hub list -a
-    assert_output --regexp ".*PARSERS.*crowdsecurity/whitelists.*POSTOVERFLOWS.*SCENARIOS.*crowdsecurity/telnet-bf.*COLLECTIONS.*crowdsecurity/iptables.*"
+    assert_output --regexp ".*PARSERS.*crowdsecurity/whitelists.*POSTOVERFLOWS.*SCENARIOS.*crowdsecurity/telnet-bf.*CONTEXTS.*COLLECTIONS.*crowdsecurity/iptables.*"
     rune -0 cscli hub list -a -o json
     rune -0 jq -e '(.parsers | length > 1) and (.scenarios | length > 1)' <(output)
     rune -0 cscli hub list -a -o raw
@@ -105,6 +105,8 @@ teardown() {
     assert_stderr --partial "Upgraded 0 postoverflows"
     assert_stderr --partial "Upgrading scenarios"
     assert_stderr --partial "Upgraded 0 scenarios"
+    assert_stderr --partial "Upgrading context"
+    assert_stderr --partial "Upgraded 0 context"
     assert_stderr --partial "Upgrading collections"
     assert_stderr --partial "Upgraded 0 collections"
 
@@ -125,4 +127,18 @@ teardown() {
     touch "$CONFIG_DIR/collections/foo.yaml"
     rune -0 cscli hub upgrade
     assert_stderr --partial "not upgrading foo.yaml: local item"
+}
+
+@test "cscli hub types" {
+    rune -0 cscli hub types -o raw
+    assert_line "parsers"
+    assert_line "postoverflows"
+    assert_line "scenarios"
+    assert_line "contexts"
+    assert_line "collections"
+    rune -0 cscli hub types -o human
+    rune -0 yq -o json <(output)
+    assert_json '["parsers","postoverflows","scenarios","contexts","collections"]'
+    rune -0 cscli hub types -o json
+    assert_json '["parsers","postoverflows","scenarios","contexts","collections"]'
 }

@@ -112,14 +112,10 @@ func (h *Hub) getItemFileInfo(path string) (*itemFileInfo, error) {
 
 	log.Tracef("stage:%s ftype:%s", ret.stage, ret.ftype)
 
-	if ret.stage == SCENARIOS {
-		ret.ftype = SCENARIOS
-		ret.stage = ""
-	} else if ret.stage == COLLECTIONS {
-		ret.ftype = COLLECTIONS
+	if ret.stage == SCENARIOS || ret.stage == CONTEXTS || ret.stage == COLLECTIONS {
+		ret.ftype = ret.stage
 		ret.stage = ""
 	} else if ret.ftype != PARSERS && ret.ftype != POSTOVERFLOWS {
-		// it's a PARSER / POSTOVERFLOW with a stage
 		return nil, fmt.Errorf("unknown configuration type for file '%s'", path)
 	}
 
@@ -349,7 +345,7 @@ func (i *Item) checkSubItemVersions() error {
 
 // syncDir scans a directory for items, and updates the Hub state accordingly.
 func (h *Hub) syncDir(dir string) error {
-	// For each, scan PARSERS, POSTOVERFLOWS, SCENARIOS and COLLECTIONS last
+	// For each, scan PARSERS, POSTOVERFLOWS... and COLLECTIONS last
 	for _, scan := range ItemTypes {
 		// cpath: top-level item directory, either downloaded or installed items.
 		// i.e. /etc/crowdsec/parsers, /etc/crowdsec/hub/parsers, ...

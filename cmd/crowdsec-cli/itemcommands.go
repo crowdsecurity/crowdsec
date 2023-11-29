@@ -36,7 +36,7 @@ type hubItemType struct {
 
 var hubItemTypes = map[string]hubItemType{
 	"parsers": {
-		name:      "parsers",
+		name:      cwhub.PARSERS,
 		singular:  "parser",
 		oneOrMore: "parser(s)",
 		help: cmdHelp{
@@ -68,7 +68,7 @@ List only enabled parsers unless "-a" or names are specified.`,
 		},
 	},
 	"postoverflows": {
-		name:      "postoverflows",
+		name:      cwhub.POSTOVERFLOWS,
 		singular:  "postoverflow",
 		oneOrMore: "postoverflow(s)",
 		help: cmdHelp{
@@ -100,7 +100,7 @@ List only enabled postoverflows unless "-a" or names are specified.`,
 		},
 	},
 	"scenarios": {
-		name:      "scenarios",
+		name:      cwhub.SCENARIOS,
 		singular:  "scenario",
 		oneOrMore: "scenario(s)",
 		help: cmdHelp{
@@ -132,7 +132,7 @@ List only enabled scenarios unless "-a" or names are specified.`,
 		},
 	},
 	"collections": {
-		name:      "collections",
+		name:      cwhub.COLLECTIONS,
 		singular:  "collection",
 		oneOrMore: "collection(s)",
 		help: cmdHelp{
@@ -161,6 +161,38 @@ cscli collections list -a
 cscli collections list crowdsecurity/http-cve crowdsecurity/iptables
 
 List only enabled collections unless "-a" or names are specified.`,
+		},
+	},
+	"contexts": {
+		name:      cwhub.CONTEXTS,
+		singular:  "context",
+		oneOrMore: "context(s)",
+		help: cmdHelp{
+			example: `cscli contexts list -a
+cscli contexts install crowdsecurity/???? crowdsecurity/????
+cscli contexts inspect crowdsecurity/???? crowdsecurity/????
+cscli contexts upgrade crowdsecurity/???? crowdsecurity/????
+cscli contexts remove crowdsecurity/???? crowdsecurity/????
+`,
+		},
+		installHelp: cmdHelp{
+			example: `cscli contexts install crowdsecurity/???? crowdsecurity/????`,
+		},
+		removeHelp: cmdHelp{
+			example: `cscli contexts remove crowdsecurity/???? crowdsecurity/????`,
+		},
+		upgradeHelp: cmdHelp{
+			example: `cscli contexts upgrade crowdsecurity/???? crowdsecurity/????`,
+		},
+		inspectHelp: cmdHelp{
+			example: `cscli contexts inspect crowdsecurity/???? crowdsecurity/????`,
+		},
+		listHelp: cmdHelp{
+			example: `cscli contexts list
+cscli contexts list -a
+cscli contexts list crowdsecurity/???? crowdsecurity/????
+
+List only enabled contexts unless "-a" or names are specified.`,
 		},
 	},
 }

@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -29,6 +31,7 @@ cscli hub upgrade`,
 	cmdHub.AddCommand(NewHubListCmd())
 	cmdHub.AddCommand(NewHubUpdateCmd())
 	cmdHub.AddCommand(NewHubUpgradeCmd())
+	cmdHub.AddCommand(NewHubTypesCmd())
 
 	return cmdHub
 }
@@ -171,4 +174,41 @@ Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if 
 	flags.Bool("force", false, "Force upgrade: overwrite tainted and outdated files")
 
 	return cmdHubUpgrade
+}
+
+func runHubTypes(cmd *cobra.Command, args []string) error {
+	switch csConfig.Cscli.Output {
+	case "human":
+		s, err := yaml.Marshal(cwhub.ItemTypes)
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(s))
+	case "json":
+		jsonStr, err := json.Marshal(cwhub.ItemTypes)
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(jsonStr))
+	case "raw":
+		for _, itemType := range cwhub.ItemTypes {
+			fmt.Println(itemType)
+		}
+	}
+	return nil
+}
+
+func NewHubTypesCmd() *cobra.Command {
+	cmdHubTypes := &cobra.Command{
+		Use:   "types",
+		Short: "List supported item types",
+		Long: `
+List the types of supported hub items.
+`,
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
+		RunE:              runHubTypes,
+	}
+
+	return cmdHubTypes
 }

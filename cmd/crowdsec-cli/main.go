@@ -92,7 +92,7 @@ func initConfig() {
 }
 
 var validArgs = []string{
-	"scenarios", "parsers", "collections", "capi", "lapi", "postoverflows", "machines",
+	"scenarios", "parsers", "collections", "capi", "contexts", "lapi", "postoverflows", "machines",
 	"metrics", "bouncers", "alerts", "decisions", "simulation", "hub", "dashboard",
 	"config", "completion", "version", "console", "notifications", "support",
 }
@@ -244,6 +244,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewItemsCmd("parsers"))
 	rootCmd.AddCommand(NewItemsCmd("scenarios"))
 	rootCmd.AddCommand(NewItemsCmd("postoverflows"))
+	rootCmd.AddCommand(NewItemsCmd("contexts"))
 
 	if fflag.CscliSetup.IsEnabled() {
 		rootCmd.AddCommand(NewSetupCmd())

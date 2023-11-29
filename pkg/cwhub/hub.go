@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
+	"slices"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
@@ -188,10 +189,11 @@ func (h *Hub) GetItemNames(itemType string) []string {
 
 // GetAllItems returns a slice of all the items of a given type, installed or not.
 func (h *Hub) GetAllItems(itemType string) ([]*Item, error) {
-	items, ok := h.Items[itemType]
-	if !ok {
-		return nil, fmt.Errorf("no %s in the hub index", itemType)
+	if !slices.Contains(ItemTypes, itemType) {
+		return nil, fmt.Errorf("invalid item type %s", itemType)
 	}
+
+	items := h.Items[itemType]
 
 	ret := make([]*Item, len(items))
 
@@ -207,10 +209,11 @@ func (h *Hub) GetAllItems(itemType string) ([]*Item, error) {
 
 // GetInstalledItems returns a slice of the installed items of a given type.
 func (h *Hub) GetInstalledItems(itemType string) ([]*Item, error) {
-	items, ok := h.Items[itemType]
-	if !ok {
-		return nil, fmt.Errorf("no %s in the hub index", itemType)
+	if !slices.Contains(ItemTypes, itemType) {
+		return nil, fmt.Errorf("invalid item type %s", itemType)
 	}
+
+	items := h.Items[itemType]
 
 	retItems := make([]*Item, 0)
 
