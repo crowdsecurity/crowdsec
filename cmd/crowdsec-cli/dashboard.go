@@ -136,6 +136,9 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			if err != nil {
 				return err
 			}
+			if err = chownDatabase(dockerGroup.Gid); err != nil {
+				return err
+			}
 			mb, err := metabase.SetupMetabase(csConfig.API.Server.DbConfig, metabaseListenAddress, metabaseListenPort, metabaseUser, metabasePassword, metabaseDbPath, dockerGroup.Gid, metabaseContainerID, metabaseImage)
 			if err != nil {
 				return err
@@ -399,12 +402,28 @@ func checkGroups(forceYes *bool) (*user.Group, error) {
 			return dockerGroup, fmt.Errorf("unable to lookup '%s' group: %+v", dockerGroup, err)
 		}
 	}
-	intID, err := strconv.Atoi(dockerGroup.Gid)
+	return dockerGroup, nil
+}
+
+func chownDatabase(gid string) error {
+	intID, err := strconv.Atoi(gid)
 	if err != nil {
-		return dockerGroup, fmt.Errorf("unable to convert group ID to int: %s", err)
+		return fmt.Errorf("unable to convert group ID to int: %s", err)
 	}
 	if err := os.Chown(csConfig.DbConfig.DbPath, 0, intID); err != nil {
-		return dockerGroup, fmt.Errorf("unable to chown sqlite db file '%s': %s", csConfig.DbConfig.DbPath, err)
+		return fmt.Errorf("unable to chown sqlite db file '%s': %s", csConfig.DbConfig.DbPath, err)
 	}
-	return dockerGroup, nil
+	if csConfig.DbConfig.Type == "sqlite" && csConfig.DbConfig.UseWal != nil && *csConfig.DbConfig.UseWal {
+		if _, err := os.Stat(csConfig.DbConfig.DbPath + "-wal"); !os.IsNotExist(err) {
+			if err := os.Chown(csConfig.DbConfig.DbPath+"-wal", 0, intID); err != nil {
+				return fmt.Errorf("unable to chown sqlite db file '%s': %s", csConfig.DbConfig.DbPath+"-wal", err)
+			}
+		}
+		if _, err := os.Stat(csConfig.DbConfig.DbPath + "-shm"); !os.IsNotExist(err) {
+			if err := os.Chown(csConfig.DbConfig.DbPath+"-shm", 0, intID); err != nil {
+				return fmt.Errorf("unable to chown sqlite db file '%s': %s", csConfig.DbConfig.DbPath+"-shm", err)
+			}
+		}
+	}
+	return nil
 }
