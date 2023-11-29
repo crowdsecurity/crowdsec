@@ -68,7 +68,7 @@ func WaapEventGeneration(inEvt types.Event) (*types.Event, error) {
 	return &evt, nil
 }
 
-func EventFromRequest(r waf.ParsedRequest) (types.Event, error) {
+func EventFromRequest(r *waf.ParsedRequest) (types.Event, error) {
 	evt := types.Event{}
 	//we might want to change this based on in-band vs out-of-band ?
 	evt.Type = types.LOG
@@ -81,7 +81,7 @@ func EventFromRequest(r waf.ParsedRequest) (types.Event, error) {
 		"target_uri":  r.URI,
 		"method":      r.Method,
 		"req_uuid":    r.Tx.ID(),
-		"source":      "coraza",
+		"source":      "crowdsec-waap",
 
 		//TBD:
 		//http_status
@@ -91,7 +91,7 @@ func EventFromRequest(r waf.ParsedRequest) (types.Event, error) {
 	evt.Line = types.Line{
 		Time: time.Now(),
 		//should we add some info like listen addr/port/path ?
-		Labels:  map[string]string{"type": "coraza-waap"},
+		Labels:  map[string]string{"type": "crowdsec-waap"},
 		Process: true,
 		Module:  "waap",
 		Src:     "waap",
@@ -130,7 +130,7 @@ func LogWaapEvent(evt *types.Event, logger *log.Entry) {
 
 }
 
-func (r *WaapRunner) AccumulateTxToEvent(evt *types.Event, req waf.ParsedRequest) error {
+func (r *WaapRunner) AccumulateTxToEvent(evt *types.Event, req *waf.ParsedRequest) error {
 
 	if evt == nil {
 		//an error was already emitted, let's not spam the logs

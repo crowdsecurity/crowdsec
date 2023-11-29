@@ -170,6 +170,124 @@ func (r *WaapRunner) ProcessOutOfBandRules(request *waf.ParsedRequest) error {
 	return err
 }
 
+func (r *WaapRunner) handleInBandInterrupt(request *waf.ParsedRequest) {
+	//create the associated event for crowdsec itself
+	evt, err := EventFromRequest(request)
+	if err != nil {
+		//let's not interrupt the pipeline for this
+		r.logger.Errorf("unable to create event from request : %s", err)
+	}
+	err = r.AccumulateTxToEvent(&evt, request)
+	if err != nil {
+		r.logger.Errorf("unable to accumulate tx to event : %s", err)
+	}
+	if in := request.Tx.Interruption(); in != nil {
+		r.logger.Debugf("inband rules matched : %d", in.RuleID)
+		r.WaapRuntime.Response.InBandInterrupt = true
+
+		err = r.WaapRuntime.ProcessOnMatchRules(request)
+		if err != nil {
+			r.logger.Errorf("unable to process OnMatch rules: %s", err)
+			return
+		}
+		// Should the in band match trigger an event ?
+		if r.WaapRuntime.Response.SendEvent {
+			r.outChan <- evt
+		}
+
+		// Should the in band match trigger an overflow ?
+		if r.WaapRuntime.Response.SendAlert {
+			waapOvlfw, err := WaapEventGeneration(evt)
+			if err != nil {
+				r.logger.Errorf("unable to generate waap event : %s", err)
+				return
+			}
+			r.outChan <- *waapOvlfw
+		}
+	}
+}
+
+func (r *WaapRunner) handleOutBandInterrupt(request *waf.ParsedRequest) {
+	evt, err := EventFromRequest(request)
+	if err != nil {
+		//let's not interrupt the pipeline for this
+		r.logger.Errorf("unable to create event from request : %s", err)
+	}
+	err = r.AccumulateTxToEvent(&evt, request)
+	if err != nil {
+		r.logger.Errorf("unable to accumulate tx to event : %s", err)
+	}
+	if in := request.Tx.Interruption(); in != nil {
+		r.logger.Debugf("inband rules matched : %d", in.RuleID)
+		r.WaapRuntime.Response.OutOfBandInterrupt = true
+
+		err = r.WaapRuntime.ProcessOnMatchRules(request)
+		if err != nil {
+			r.logger.Errorf("unable to process OnMatch rules: %s", err)
+			return
+		}
+		// Should the match trigger an event ?
+		if r.WaapRuntime.Response.SendEvent {
+			r.outChan <- evt
+		}
+
+		// Should the match trigger an overflow ?
+		if r.WaapRuntime.Response.SendAlert {
+			waapOvlfw, err := WaapEventGeneration(evt)
+			if err != nil {
+				r.logger.Errorf("unable to generate waap event : %s", err)
+				return
+			}
+			r.outChan <- *waapOvlfw
+		}
+	}
+}
+
+func (r *WaapRunner) handleRequest(request *waf.ParsedRequest) {
+	r.logger.Debugf("Requests handled by runner %s", request.UUID)
+	r.WaapRuntime.ClearResponse()
+
+	request.IsInBand = true
+	request.IsOutBand = false
+
+	//to measure the time spent in the WAF
+	startParsing := time.Now()
+
+	//inband WAAP rules
+	err := r.ProcessInBandRules(request)
+	if err != nil {
+		r.logger.Errorf("unable to process InBand rules: %s", err)
+		return
+	}
+
+	if request.Tx.IsInterrupted() {
+		r.handleInBandInterrupt(request)
+	}
+
+	elapsed := time.Since(startParsing)
+	WafInbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddr}).Observe(elapsed.Seconds())
+
+	// send back the result to the HTTP handler for the InBand part
+	request.ResponseChannel <- r.WaapRuntime.Response
+
+	//Now let's process the out of band rules
+
+	request.IsInBand = false
+	request.IsOutBand = true
+	r.WaapRuntime.Response.SendAlert = false
+	r.WaapRuntime.Response.SendEvent = true
+
+	err = r.ProcessOutOfBandRules(request)
+	if err != nil {
+		r.logger.Errorf("unable to process OutOfBand rules: %s", err)
+		return
+	}
+
+	if request.Tx.IsInterrupted() {
+		r.handleOutBandInterrupt(request)
+	}
+}
+
 func (r *WaapRunner) Run(t *tomb.Tomb) error {
 	r.logger.Infof("Waap Runner ready to process event")
 	for {
@@ -178,89 +296,7 @@ func (r *WaapRunner) Run(t *tomb.Tomb) error {
 			r.logger.Infof("Waf Runner is dying")
 			return nil
 		case request := <-r.inChan:
-			r.logger.Debugf("Requests handled by runner %s", request.UUID)
-			r.WaapRuntime.ClearResponse()
-
-			request.IsInBand = true
-			request.IsOutBand = false
-
-			//to measure the time spent in the WAF
-			startParsing := time.Now()
-
-			//inband WAAP rules
-			err := r.ProcessInBandRules(&request)
-			if err != nil {
-				r.logger.Errorf("unable to process InBand rules: %s", err)
-				continue
-			}
-			//create the associated event for crowdsec itself
-			evt, err := EventFromRequest(request)
-			if err != nil {
-				//let's not interrupt the pipeline for this
-				r.logger.Errorf("unable to create event from request : %s", err)
-			}
-			err = r.AccumulateTxToEvent(&evt, request)
-			if err != nil {
-				r.logger.Errorf("unable to accumulate tx to event : %s", err)
-			}
-			if in := request.Tx.Interruption(); in != nil {
-				r.logger.Debugf("inband rules matched : %d", in.RuleID)
-				r.WaapRuntime.Response.InBandInterrupt = true
-
-				err = r.WaapRuntime.ProcessOnMatchRules(&request)
-				if err != nil {
-					r.logger.Errorf("unable to process OnMatch rules: %s", err)
-					continue
-				}
-			}
-
-			elapsed := time.Since(startParsing)
-			WafInbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddr}).Observe(elapsed.Seconds())
-
-			//generate reponse for the remediation component, based on the WAAP config + inband rules evaluation
-			//@tko : this should move in the WaapRuntimeConfig as it knows what to do with the interruption and the expected remediation
-
-			// send back the result to the HTTP handler for the InBand part
-
-			r.logger.Infof("Response: %+v", r.WaapRuntime.Response)
-
-			request.ResponseChannel <- r.WaapRuntime.Response
-
-			request.IsInBand = false
-			request.IsOutBand = true
-
-			err = r.ProcessOutOfBandRules(&request)
-			if err != nil {
-				r.logger.Errorf("unable to process OutOfBand rules: %s", err)
-				continue
-			}
-			err = r.AccumulateTxToEvent(&evt, request)
-			if err != nil {
-				r.logger.Errorf("unable to accumulate tx to event : %s", err)
-			}
-			if in := request.Tx.Interruption(); in != nil {
-				r.logger.Debugf("outband rules matched : %d", in.RuleID)
-				r.WaapRuntime.Response.OutOfBandInterrupt = true
-				err = r.WaapRuntime.ProcessOnMatchRules(&request)
-				if err != nil {
-					r.logger.Errorf("unable to process OnMatch rules: %s", err)
-					continue
-				}
-			}
-
-			if !evt.Process {
-				continue
-			}
-
-			//we generate two events: one that is going to be picked up by the acquisition pipeline (parsers, scenarios etc.)
-			//and a second one that will go straight to LAPI
-			r.outChan <- evt
-			waapOvlfw, err := WaapEventGeneration(evt)
-			if err != nil {
-				r.logger.Errorf("unable to generate waap event : %s", err)
-			} else if waapOvlfw != nil {
-				r.outChan <- *waapOvlfw
-			}
+			r.handleRequest(&request)
 		}
 	}
 }
