@@ -441,13 +441,11 @@ func (w *WaapRuntimeConfig) SetAction(params ...any) (any, error) {
 		//@tko how should we handle this ? it seems bouncer only understand bans, but it might be misleading ?
 	case "deny", "ban", "block":
 		w.Response.Action = "ban"
-		w.Response.HTTPResponseCode = w.Config.BlockedHTTPCode
 	case "log":
 		w.Response.Action = action
 		w.Response.HTTPResponseCode = w.Config.PassedHTTPCode
 	case "captcha":
 		w.Response.Action = action
-		w.Response.HTTPResponseCode = w.Config.BlockedHTTPCode
 	default:
 		return nil, fmt.Errorf("unknown action %s", action)
 	}
