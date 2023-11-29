@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+
+set -eu
+
+# shellcheck disable=SC1007
+THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck disable=SC1091
+. "${THIS_DIR}/../.environment.sh"
+
+# pre-download everything but don't install anything
+
+echo -n "Purging existing hub..."
+
+types=$("$CSCLI" hub types -o raw)
+
+for itemtype in $types; do
+    "$CSCLI" "${itemtype}" delete --all --error --purge --force
+done
+
+echo " done."
+
+echo -n "Pre-downloading Hub content..."
+
+for itemtype in $types; do
+    ALL_ITEMS=$("$CSCLI" "$itemtype" list -a -o json | jq --arg itemtype "$itemtype" -r '.[$itemtype][].name')
+    if [[ -n "${ALL_ITEMS}" ]]; then
+        #shellcheck disable=SC2086
+        "$CSCLI" "$itemtype" install \
+            $ALL_ITEMS \
+            --download-only \
+            --error
+    fi
+done
+
+# XXX: download-only works only for collections, not for parsers, scenarios, postoverflows.
+# so we have to delete the links manually, and leave the downloaded files in place
+
+for itemtype in $types; do
+    "$CSCLI" "$itemtype" delete --all --error
+done
+
+echo " done."

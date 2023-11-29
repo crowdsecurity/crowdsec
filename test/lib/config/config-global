@@ -54,38 +54,6 @@ remove_init_data() {
 
 # we need a separate function for initializing config when testing package
 # because we want to test the configuration as well
-preload_hub_items() {
-    # pre-download everything but don't install anything
-    # each test can install what it needs
-
-    echo "Purging existing hub..."
-
-    ITEMTYPES="parsers scenarios postoverflows contexts collections"
-
-    for itemtype in $ITEMTYPES; do
-        "$CSCLI" "${itemtype}" delete --all --error --purge --force
-    done
-
-    echo "Pre-downloading hub content..."
-
-    for itemtype in $ITEMTYPES; do
-        ALL_ITEMS=$("$CSCLI" "$itemtype" list -a -o json | jq --arg itemtype "$itemtype" -r '.[$itemtype][].name')
-        if [[ -n "${ALL_ITEMS}" ]]; then
-            #shellcheck disable=SC2086
-            "$CSCLI" "$itemtype" install \
-                $ALL_ITEMS \
-                --download-only \
-                --error
-        fi
-    done
-
-    # XXX: download-only works only for collections, not for parsers, scenarios, postoverflows.
-    # so we have to delete the links manually, and leave the downloaded files in place
-
-    for itemtype in $ITEMTYPES; do
-        "$CSCLI" "$itemtype" delete --all --error
-    done
-}
 
 make_init_data() {
     ./bin/assert-crowdsec-not-running || die "Cannot create fixture data."
@@ -96,7 +64,7 @@ make_init_data() {
     # when installed packages are always using sqlite, so no need to regenerate
     # local credz for sqlite
 
-    preload_hub_items
+    ./bin/preload-hub-items
 
     [[ "${DB_BACKEND}" == "sqlite" ]] || ${CSCLI} machines add --auto
 
@@ -132,7 +100,6 @@ load_init_data() {
 
     ./instance-db restore "${LOCAL_INIT_DIR}/database"
 }
-
 
 # ---------------------------
 
