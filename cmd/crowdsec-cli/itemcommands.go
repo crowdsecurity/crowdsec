@@ -274,7 +274,7 @@ func itemsInstallRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 		for _, name := range args {
 			item := hub.GetItem(it.name, name)
 			if item == nil {
-				msg := SuggestNearestMessage(hub, it.name, name)
+				msg := suggestNearestMessage(hub, it.name, name)
 				if !ignoreError {
 					return fmt.Errorf(msg)
 				}
@@ -379,6 +379,7 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 					return err
 				}
 				if didRemove {
+					log.Infof("Removed %s", item.Name)
 					removed++
 				}
 			}
@@ -421,6 +422,8 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 				removed++
 			}
 		}
+
+		log.Infof("Removed %d %s", removed, it.name)
 		if removed > 0 {
 			log.Infof(ReloadMessage())
 		}
