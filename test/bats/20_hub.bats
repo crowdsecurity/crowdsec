@@ -126,3 +126,16 @@ teardown() {
     rune -0 cscli hub upgrade
     assert_stderr --partial "not upgrading foo.yaml: local item"
 }
+
+@test "cscli hub types" {
+    rune -0 cscli hub types -o raw
+    assert_line "parsers"
+    assert_line "postoverflows"
+    assert_line "scenarios"
+    assert_line "collections"
+    rune -0 cscli hub types -o human
+    rune -0 yq -o json <(output)
+    assert_json '["parsers","postoverflows","scenarios","collections"]'
+    rune -0 cscli hub types -o json
+    assert_json '["parsers","postoverflows","scenarios","collections"]'
+}

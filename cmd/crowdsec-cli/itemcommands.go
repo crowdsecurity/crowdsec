@@ -36,7 +36,7 @@ type hubItemType struct {
 
 var hubItemTypes = map[string]hubItemType{
 	"parsers": {
-		name:      "parsers",
+		name:      cwhub.PARSERS,
 		singular:  "parser",
 		oneOrMore: "parser(s)",
 		help: cmdHelp{
@@ -68,7 +68,7 @@ List only enabled parsers unless "-a" or names are specified.`,
 		},
 	},
 	"postoverflows": {
-		name:      "postoverflows",
+		name:      cwhub.POSTOVERFLOWS,
 		singular:  "postoverflow",
 		oneOrMore: "postoverflow(s)",
 		help: cmdHelp{
@@ -100,7 +100,7 @@ List only enabled postoverflows unless "-a" or names are specified.`,
 		},
 	},
 	"scenarios": {
-		name:      "scenarios",
+		name:      cwhub.SCENARIOS,
 		singular:  "scenario",
 		oneOrMore: "scenario(s)",
 		help: cmdHelp{
@@ -132,7 +132,7 @@ List only enabled scenarios unless "-a" or names are specified.`,
 		},
 	},
 	"collections": {
-		name:      "collections",
+		name:      cwhub.COLLECTIONS,
 		singular:  "collection",
 		oneOrMore: "collection(s)",
 		help: cmdHelp{
