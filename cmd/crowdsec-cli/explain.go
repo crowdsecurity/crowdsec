@@ -203,16 +203,14 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 		`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			err := runExplain(cmd, args)
-			if err != nil {
-				log.Error(err)
-			}
 			if _, err := os.Stat(dir); !os.IsNotExist(err) {
 				if err := os.RemoveAll(dir); err != nil {
 					log.Errorf("unable to delete temporary directory '%s': %s", dir, err)
 				}
 			}
+			return err
 		},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			flags := cmd.Flags()
