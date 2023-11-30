@@ -28,13 +28,12 @@ func GetLineCountForFile(filepath string) (int, error) {
 	fs := bufio.NewReader(f)
 	for {
 		input, err := fs.ReadBytes('\n')
+		if len(input) > 1 {
+			lc++
+		}
 		if err != nil && err == io.EOF {
 			break
 		}
-		if len(input) <= 1 {
-			continue
-		}
-		lc++
 	}
 	return lc, nil
 }
@@ -120,7 +119,7 @@ func runExplain(cmd *cobra.Command, args []string) error {
 		}
 
 		if logLine != "" {
-			_, err = f.WriteString(logLine + "\n")
+			_, err = f.WriteString(logLine)
 			if err != nil {
 				return err
 			}
