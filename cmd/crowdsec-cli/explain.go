@@ -89,19 +89,6 @@ func runExplain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fileInfo, _ := os.Stdin.Stat()
-
-	if logType == "" || (logLine == "" && logFile == "" && dsn == "") {
-		printHelp(cmd)
-		fmt.Println()
-		fmt.Printf("Please provide --type flag\n")
-		os.Exit(1)
-	}
-
-	if logFile == "-" && ((fileInfo.Mode() & os.ModeCharDevice) == os.ModeCharDevice) {
-		return fmt.Errorf("the option -f - is intended to work with pipes")
-	}
-
 	var f *os.File
 
 	// using empty string fallback to /tmp
@@ -216,12 +203,53 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 		`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE:              runExplain,
-		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
+		Run: func(cmd *cobra.Command, args []string) {
+			err := runExplain(cmd, args)
+			if err != nil {
+				log.Error(err)
+			}
 			if _, err := os.Stat(dir); !os.IsNotExist(err) {
 				if err := os.RemoveAll(dir); err != nil {
-					return fmt.Errorf("unable to delete temporary directory '%s': %s", dir, err)
+					log.Errorf("unable to delete temporary directory '%s': %s", dir, err)
 				}
+			}
+		},
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			flags := cmd.Flags()
+
+			logFile, err := flags.GetString("file")
+			if err != nil {
+				return err
+			}
+
+			dsn, err := flags.GetString("dsn")
+			if err != nil {
+				return err
+			}
+
+			logLine, err := flags.GetString("log")
+			if err != nil {
+				return err
+			}
+
+			logType, err := flags.GetString("type")
+			if err != nil {
+				return err
+			}
+
+			if logLine == "" && logFile == "" && dsn == "" {
+				printHelp(cmd)
+				fmt.Println()
+				return fmt.Errorf("please provide --log, --file or --dsn flag")
+			}
+			if logType == "" {
+				printHelp(cmd)
+				fmt.Println()
+				return fmt.Errorf("please provide --type flag")
+			}
+			fileInfo, _ := os.Stdin.Stat()
+			if logFile == "-" && ((fileInfo.Mode() & os.ModeCharDevice) == os.ModeCharDevice) {
+				return fmt.Errorf("the option -f - is intended to work with pipes")
 			}
 			return nil
 		},
