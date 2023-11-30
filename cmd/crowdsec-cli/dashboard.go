@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"unicode"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -403,14 +404,18 @@ func chownDatabase(gid string) error {
 	if err != nil {
 		return fmt.Errorf("unable to convert group ID to int: %s", err)
 	}
-	if err := os.Chown(csConfig.DbConfig.DbPath, 0, intID); err != nil {
-		return fmt.Errorf("unable to chown sqlite db file '%s': %s", csConfig.DbConfig.DbPath, err)
+	if stat, err := os.Stat(csConfig.DbConfig.DbPath); !os.IsNotExist(err) {
+		info := stat.Sys()
+		if err := os.Chown(csConfig.DbConfig.DbPath, int(info.(*syscall.Stat_t).Uid), intID); err != nil {
+			return fmt.Errorf("unable to chown sqlite db file '%s': %s", csConfig.DbConfig.DbPath, err)
+		}
 	}
 	if csConfig.DbConfig.Type == "sqlite" && csConfig.DbConfig.UseWal != nil && *csConfig.DbConfig.UseWal {
 		for _, ext := range []string{"-wal", "-shm"} {
 			file := csConfig.DbConfig.DbPath + ext
-			if _, err := os.Stat(file); !os.IsNotExist(err) {
-				if err := os.Chown(file, 0, intID); err != nil {
+			if stat, err := os.Stat(file); !os.IsNotExist(err) {
+				info := stat.Sys()
+				if err := os.Chown(file, int(info.(*syscall.Stat_t).Uid), intID); err != nil {
 					return fmt.Errorf("unable to chown sqlite db file '%s': %s", file, err)
 				}
 			}
