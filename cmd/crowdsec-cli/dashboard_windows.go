@@ -9,8 +9,8 @@ func NewDashboardCmd() *cobra.Command {
 	var cmdDashboard = &cobra.Command{
 		Use:               "dashboard",
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) error {
-			log.Infof("Dashboard command is disabled on windows")
+		Run: func(cmd *cobra.Command, args []string) {
+			log.Info("Dashboard command is disabled on windows")
 		},
 	}
 
