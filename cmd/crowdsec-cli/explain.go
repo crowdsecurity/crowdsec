@@ -121,16 +121,15 @@ func runExplain(cmd *cobra.Command, args []string) error {
 				if err != nil && err == io.EOF {
 					break
 				}
-				if len(input) <= 1 {
-					continue
+				if len(input) > 1 {
+					_, err = f.Write(input)
 				}
-				_, err = f.Write(input)
-				if err != nil {
+				if err != nil || len(input) <= 1 {
 					errCount++
 				}
 			}
 			if errCount > 0 {
-				log.Warnf("Failed to write %d lines to tmp file", errCount)
+				log.Warnf("Failed to write %d lines to %s", errCount, tmpFile)
 			}
 		}
 		f.Close()
@@ -148,12 +147,12 @@ func runExplain(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		log.Debug("line count: ", lineCount)
+		log.Debugf("file %s has %d lines", absolutePath, lineCount)
 		if lineCount == 0 {
 			return fmt.Errorf("the log file is empty: %s", absolutePath)
 		}
 		if lineCount > 100 {
-			log.Warnf("The log file contains %d lines. This may take a lot of resources.", lineCount)
+			log.Warnf("%s contains %d lines. This may take a lot of resources.", absolutePath, lineCount)
 		}
 	}
 
