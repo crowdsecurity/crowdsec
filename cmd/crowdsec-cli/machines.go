@@ -220,7 +220,7 @@ func runMachinesAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	forceAdd, err := flags.GetBool("force")
+	force, err := flags.GetBool("force")
 	if err != nil {
 		return err
 	}
@@ -247,12 +247,12 @@ func runMachinesAdd(cmd *cobra.Command, args []string) error {
 		// use the default only if the file does not exist
 		_, err := os.Stat(credFile)
 		switch {
-		case os.IsNotExist(err):
+		case os.IsNotExist(err) || force:
 			dumpFile = csConfig.API.Client.CredentialsFilePath
 		case err != nil:
 			return fmt.Errorf("unable to stat '%s': %s", credFile, err)
 		default:
-			return fmt.Errorf(`credentials file '%s' already exists, please remove it or specify a different file with -f ("-f -" for standard output)`, credFile)
+			return fmt.Errorf(`credentials file '%s' already exists: please remove it, use "--force" or specify a different file with "-f" ("-f -" for standard output)`, credFile)
 		}
 	}
 
@@ -273,7 +273,7 @@ func runMachinesAdd(cmd *cobra.Command, args []string) error {
 		survey.AskOne(qs, &machinePassword)
 	}
 	password := strfmt.Password(machinePassword)
-	_, err = dbClient.CreateMachine(&machineID, &password, "", true, forceAdd, types.PasswordAuthType)
+	_, err = dbClient.CreateMachine(&machineID, &password, "", true, force, types.PasswordAuthType)
 	if err != nil {
 		return fmt.Errorf("unable to create machine: %s", err)
 	}

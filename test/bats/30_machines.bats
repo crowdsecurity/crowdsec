@@ -29,11 +29,12 @@ teardown() {
     assert_output '[1,"githubciXXXXXXXXXXXXXXXXXXXXXXXX",true]'
 }
 
-@test "don't overwrite local credentials" {
-    rune -1 cscli machines add -a
-    local_credentials=$(config_get '.api.client.credentials_path')
-    assert_stderr --partial "credentials file '$local_credentials' already exists, please remove it or specify a different file with -f"
-    refute_output
+@test "don't overwrite local credentials by default" {
+    rune -1 cscli machines add local -a -o json
+    rune -0 jq -r '.msg' <(stderr)
+    assert_output --partial 'already exists: please remove it, use "--force" or specify a different file with "-f"'
+    rune -0 cscli machines add local -a --force
+    assert_stderr --partial "Machine 'local' successfully added to the local API"
 }
 
 @test "add a new machine and delete it" {
