@@ -407,14 +407,12 @@ func chownDatabase(gid string) error {
 		return fmt.Errorf("unable to chown sqlite db file '%s': %s", csConfig.DbConfig.DbPath, err)
 	}
 	if csConfig.DbConfig.Type == "sqlite" && csConfig.DbConfig.UseWal != nil && *csConfig.DbConfig.UseWal {
-		if _, err := os.Stat(csConfig.DbConfig.DbPath + "-wal"); !os.IsNotExist(err) {
-			if err := os.Chown(csConfig.DbConfig.DbPath+"-wal", 0, intID); err != nil {
-				return fmt.Errorf("unable to chown sqlite db file '%s': %s", csConfig.DbConfig.DbPath+"-wal", err)
-			}
-		}
-		if _, err := os.Stat(csConfig.DbConfig.DbPath + "-shm"); !os.IsNotExist(err) {
-			if err := os.Chown(csConfig.DbConfig.DbPath+"-shm", 0, intID); err != nil {
-				return fmt.Errorf("unable to chown sqlite db file '%s': %s", csConfig.DbConfig.DbPath+"-shm", err)
+		for _, ext := range []string{"-wal", "-shm"} {
+			file := csConfig.DbConfig.DbPath + ext
+			if _, err := os.Stat(file); !os.IsNotExist(err) {
+				if err := os.Chown(file, 0, intID); err != nil {
+					return fmt.Errorf("unable to chown sqlite db file '%s': %s", file, err)
+				}
 			}
 		}
 	}
