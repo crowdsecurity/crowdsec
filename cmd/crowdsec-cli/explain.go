@@ -14,10 +14,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
-var (
-	dir string
-)
-
 func GetLineCountForFile(filepath string) (int, error) {
 	f, err := os.Open(filepath)
 	if err != nil {
@@ -92,10 +88,17 @@ func runExplain(cmd *cobra.Command, args []string) error {
 	var f *os.File
 
 	// using empty string fallback to /tmp
-	dir, err = os.MkdirTemp("", "cscli_explain")
+	dir, err := os.MkdirTemp("", "cscli_explain")
 	if err != nil {
 		return fmt.Errorf("couldn't create a temporary directory to store cscli explain result: %s", err)
 	}
+	defer func() {
+		if _, err := os.Stat(dir); !os.IsNotExist(err) {
+			if err := os.RemoveAll(dir); err != nil {
+				log.Errorf("unable to delete temporary directory '%s': %s", dir, err)
+			}
+		}
+	}()
 	tmpFile := ""
 	// we create a  temporary log file if a log line/stdin has been provided
 	if logLine != "" || logFile == "-" {
@@ -203,15 +206,7 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 		`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			err := runExplain(cmd, args)
-			if _, err := os.Stat(dir); !os.IsNotExist(err) {
-				if err := os.RemoveAll(dir); err != nil {
-					log.Errorf("unable to delete temporary directory '%s': %s", dir, err)
-				}
-			}
-			return err
-		},
+		RunE:              runExplain,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			flags := cmd.Flags()
 
