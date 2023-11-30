@@ -21,8 +21,15 @@ func GetLineCountForFile(filepath string) (int, error) {
 	}
 	defer f.Close()
 	lc := 0
-	fs := bufio.NewScanner(f)
-	for fs.Scan() {
+	fs := bufio.NewReader(f)
+	for {
+		input, err := fs.ReadBytes('\n')
+		if err != nil && err == io.EOF {
+			break
+		}
+		if len(input) <= 1 {
+			continue
+		}
 		lc++
 	}
 	return lc, nil
@@ -121,6 +128,9 @@ func runExplain(cmd *cobra.Command, args []string) error {
 				if err != nil && err == io.EOF {
 					break
 				}
+				if len(input) <= 1 {
+					continue
+				}
 				_, err = f.Write(input)
 				if err != nil {
 					errCount++
@@ -144,6 +154,10 @@ func runExplain(cmd *cobra.Command, args []string) error {
 		lineCount, err := GetLineCountForFile(absolutePath)
 		if err != nil {
 			return err
+		}
+		log.Debug("line count: ", lineCount)
+		if lineCount == 0 {
+			return fmt.Errorf("the log file is empty: %s", absolutePath)
 		}
 		if lineCount > 100 {
 			log.Warnf("The log file contains %d lines. This may take a lot of resources.", lineCount)
