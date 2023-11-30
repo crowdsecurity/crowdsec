@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"slices"
 	"sort"
 	"strings"
 
@@ -14,6 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
+	"slices"
 
 	"github.com/crowdsecurity/go-cs-lib/version"
 
@@ -27,11 +27,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 )
 
-var LAPIURLPrefix string = "v1"
+const LAPIURLPrefix = "v1"
 
 func runLapiStatus(cmd *cobra.Command, args []string) error {
-	var err error
-
 	password := strfmt.Password(csConfig.API.Client.Credentials.Password)
 	apiurl, err := url.Parse(csConfig.API.Client.Credentials.URL)
 	login := csConfig.API.Client.Credentials.Login
@@ -61,21 +59,20 @@ func runLapiStatus(cmd *cobra.Command, args []string) error {
 		Password:  &password,
 		Scenarios: scenarios,
 	}
+
 	log.Infof("Loaded credentials from %s", csConfig.API.Client.CredentialsFilePath)
 	log.Infof("Trying to authenticate with username %s on %s", login, apiurl)
+
 	_, _, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
 	if err != nil {
 		return fmt.Errorf("failed to authenticate to Local API (LAPI): %w", err)
-	} else {
-		log.Infof("You can successfully interact with Local API (LAPI)")
 	}
 
+	log.Infof("You can successfully interact with Local API (LAPI)")
 	return nil
 }
 
 func runLapiRegister(cmd *cobra.Command, args []string) error {
-	var err error
-
 	flags := cmd.Flags()
 
 	apiURL, err := flags.GetString("url")
@@ -101,11 +98,10 @@ func runLapiRegister(cmd *cobra.Command, args []string) error {
 	}
 	password := strfmt.Password(generatePassword(passwordLength))
 	if apiURL == "" {
-		if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil && csConfig.API.Client.Credentials.URL != "" {
-			apiURL = csConfig.API.Client.Credentials.URL
-		} else {
+		if csConfig.API.Client == nil || csConfig.API.Client.Credentials == nil || csConfig.API.Client.Credentials.URL == "" {
 			return fmt.Errorf("no Local API URL. Please provide it in your configuration or with the -u parameter")
 		}
+		apiURL = csConfig.API.Client.Credentials.URL
 	}
 	/*URL needs to end with /, but user doesn't care*/
 	if !strings.HasSuffix(apiURL, "/") {
@@ -196,7 +192,7 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 }
 
 func NewLapiCmd() *cobra.Command {
-	var cmdLapi = &cobra.Command{
+	cmdLapi := &cobra.Command{
 		Use:               "lapi [action]",
 		Short:             "Manage interaction with Local API (LAPI)",
 		Args:              cobra.MinimumNArgs(1),
@@ -222,6 +218,7 @@ func AddContext(key string, values []string) error {
 	}
 	if _, ok := csConfig.Crowdsec.ContextToSend[key]; !ok {
 		csConfig.Crowdsec.ContextToSend[key] = make([]string, 0)
+
 		log.Infof("key '%s' added", key)
 	}
 	data := csConfig.Crowdsec.ContextToSend[key]
@@ -248,11 +245,11 @@ func NewLapiContextCmd() *cobra.Command {
 			if err := csConfig.LoadCrowdsec(); err != nil {
 				fileNotFoundMessage := fmt.Sprintf("failed to open context file: open %s: no such file or directory", csConfig.Crowdsec.ConsoleContextPath)
 				if err.Error() != fileNotFoundMessage {
-					return fmt.Errorf("unable to start CrowdSec Agent: %w", err)
+					return fmt.Errorf("unable to start CrowdSec agent: %w", err)
 				}
 			}
 			if csConfig.DisableAgent {
-				return errors.New("Agent is disabled and lapi context can only be used on the agent")
+				return errors.New("agent is disabled and lapi context can only be used on the agent")
 			}
 
 			return nil
@@ -328,8 +325,6 @@ cscli lapi context detect crowdsecurity/sshd-logs
 		`,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-
 			if !detectAll && len(args) == 0 {
 				log.Infof("Please provide parsers to detect or --all flag.")
 				printHelp(cmd)
@@ -338,8 +333,7 @@ cscli lapi context detect crowdsecurity/sshd-logs
 			// to avoid all the log.Info from the loaders functions
 			log.SetLevel(log.ErrorLevel)
 
-			err = exprhelpers.Init(nil)
-			if err != nil {
+			if err := exprhelpers.Init(nil); err != nil {
 				return fmt.Errorf("failed to init expr helpers: %w", err)
 			}
 
@@ -370,7 +364,6 @@ cscli lapi context detect crowdsecurity/sshd-logs
 						fieldByParsers[node.Name] = append(fieldByParsers[node.Name], field)
 					}
 				}
-
 			}
 
 			fmt.Printf("Acquisition :\n\n")
@@ -466,6 +459,7 @@ cscli lapi context delete --value evt.Line.Src
 
 func detectStaticField(GrokStatics []parser.ExtraField) []string {
 	ret := make([]string, 0)
+
 	for _, static := range GrokStatics {
 		if static.Parsed != "" {
 			fieldName := fmt.Sprintf("evt.Parsed.%s", static.Parsed)
@@ -494,7 +488,8 @@ func detectStaticField(GrokStatics []parser.ExtraField) []string {
 }
 
 func detectNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
-	var ret = make([]string, 0)
+	ret := make([]string, 0)
+
 	if node.Grok.RunTimeRegexp != nil {
 		for _, capturedField := range node.Grok.RunTimeRegexp.Names() {
 			fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
