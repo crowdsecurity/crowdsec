@@ -14,6 +14,10 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
+var (
+	dir string
+)
+
 func GetLineCountForFile(filepath string) (int, error) {
 	f, err := os.Open(filepath)
 	if err != nil {
@@ -102,7 +106,7 @@ func runExplain(cmd *cobra.Command, args []string) error {
 	var f *os.File
 
 	// using empty string fallback to /tmp
-	dir, err := os.MkdirTemp("", "cscli_explain")
+	dir, err = os.MkdirTemp("", "cscli_explain")
 	if err != nil {
 		return fmt.Errorf("couldn't create a temporary directory to store cscli explain result: %s", err)
 	}
@@ -180,12 +184,6 @@ func runExplain(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("fail to run crowdsec for test: %v", err)
 	}
 
-	// rm the temporary log file if only a log line/stdin was provided
-	if tmpFile != "" {
-		if err := os.Remove(tmpFile); err != nil {
-			return fmt.Errorf("unable to remove tmp log file '%s': %+v", tmpFile, err)
-		}
-	}
 	parserDumpFile := filepath.Join(dir, hubtest.ParserResultFileName)
 	bucketStateDumpFile := filepath.Join(dir, hubtest.BucketPourResultFileName)
 
@@ -200,10 +198,6 @@ func runExplain(cmd *cobra.Command, args []string) error {
 	}
 
 	hubtest.DumpTree(*parserDump, *bucketStateDump, opts)
-
-	if err := os.RemoveAll(dir); err != nil {
-		return fmt.Errorf("unable to delete temporary directory '%s': %s", dir, err)
-	}
 
 	return nil
 }
@@ -224,6 +218,14 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		RunE:              runExplain,
+		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
+			if _, err := os.Stat(dir); !os.IsNotExist(err) {
+				if err := os.RemoveAll(dir); err != nil {
+					return fmt.Errorf("unable to delete temporary directory '%s': %s", dir, err)
+				}
+			}
+			return nil
+		},
 	}
 
 	flags := cmdExplain.Flags()
