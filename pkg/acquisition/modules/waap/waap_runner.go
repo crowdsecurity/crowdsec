@@ -184,6 +184,8 @@ func (r *WaapRunner) handleInBandInterrupt(request *waf.ParsedRequest) {
 	if in := request.Tx.Interruption(); in != nil {
 		r.logger.Debugf("inband rules matched : %d", in.RuleID)
 		r.WaapRuntime.Response.InBandInterrupt = true
+		r.WaapRuntime.Response.HTTPResponseCode = r.WaapRuntime.Config.BlockedHTTPCode
+		r.WaapRuntime.Response.Action = r.WaapRuntime.DefaultRemediation
 
 		err = r.WaapRuntime.ProcessOnMatchRules(request)
 		if err != nil {
