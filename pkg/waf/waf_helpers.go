@@ -49,7 +49,7 @@ func GetPreEvalEnv(w *WaapRuntimeConfig, request *ParsedRequest) map[string]inte
 		"RemoveInBandRuleByID":  w.RemoveInbandRuleByID,
 		"RemoveOutBandRuleByID": w.RemoveOutbandRuleByID,
 		"SetRemediationByTag":   w.SetActionByTag,
-		"SetRemdiationByID":     w.SetActionByID,
+		"SetRemediationByID":    w.SetActionByID,
 	}
 }
 
