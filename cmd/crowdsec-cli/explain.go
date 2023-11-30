@@ -120,7 +120,7 @@ func runExplain(cmd *cobra.Command, args []string) error {
 		}
 
 		if logLine != "" {
-			_, err = f.WriteString(logLine)
+			_, err = f.WriteString(logLine + "\n")
 			if err != nil {
 				return err
 			}
