@@ -113,7 +113,7 @@ func (wc *WaapSource) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	if wc.config.Path == "" {
-		return fmt.Errorf("path cannot be empty")
+		wc.config.Path = "/"
 	}
 
 	if wc.config.Path[0] != '/' {

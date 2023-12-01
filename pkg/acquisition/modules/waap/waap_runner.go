@@ -187,7 +187,7 @@ func (r *WaapRunner) handleInBandInterrupt(request *waf.ParsedRequest) {
 		r.WaapRuntime.Response.HTTPResponseCode = r.WaapRuntime.Config.BlockedHTTPCode
 		r.WaapRuntime.Response.Action = r.WaapRuntime.DefaultRemediation
 
-		err = r.WaapRuntime.ProcessOnMatchRules(request)
+		err = r.WaapRuntime.ProcessOnMatchRules(request, evt)
 		if err != nil {
 			r.logger.Errorf("unable to process OnMatch rules: %s", err)
 			return
@@ -223,7 +223,7 @@ func (r *WaapRunner) handleOutBandInterrupt(request *waf.ParsedRequest) {
 		r.logger.Debugf("inband rules matched : %d", in.RuleID)
 		r.WaapRuntime.Response.OutOfBandInterrupt = true
 
-		err = r.WaapRuntime.ProcessOnMatchRules(request)
+		err = r.WaapRuntime.ProcessOnMatchRules(request, evt)
 		if err != nil {
 			r.logger.Errorf("unable to process OnMatch rules: %s", err)
 			return
