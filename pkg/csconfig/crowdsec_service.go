@@ -1,7 +1,6 @@
 package csconfig
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -137,53 +136,21 @@ func (c *Config) LoadCrowdsec() error {
 		return fmt.Errorf("loading api client: %s", err)
 	}
 
-	if c.Crowdsec.ConsoleContextPath != "" {
-		// if it's provided, it must exist
-		if _, err = os.Stat(c.Crowdsec.ConsoleContextPath); err != nil {
-			return fmt.Errorf("while checking console_context_path: %w", err)
-		}
-	} else {
-		c.Crowdsec.ConsoleContextPath = filepath.Join(c.ConfigPaths.ConfigDir, "console", "context.yaml")
-	}
-
-	c.Crowdsec.ContextToSend, err = buildContextToSend(c)
-	if err != nil {
-		return err
-	}
-
 	return nil
-}
-
-func buildContextToSend(c *Config) (map[string][]string, error) {
-	ret := make(map[string][]string, 0)
-
-	log.Tracef("loading console context from %s", c.Crowdsec.ConsoleContextPath)
-	content, err := os.ReadFile(c.Crowdsec.ConsoleContextPath)
-	if err != nil && !os.IsNotExist(err) {
-		return nil, fmt.Errorf("failed to open context file: %s", err)
-	}
-
-	err = yaml.Unmarshal(content, ret)
-	if err != nil {
-		return nil, fmt.Errorf("while loading context from %s: %s", c.Crowdsec.ConsoleContextPath, err)
-	}
-
-	feedback, err := json.Marshal(ret)
-	if err != nil {
-		return nil, fmt.Errorf("marshaling console context: %s", err)
-	}
-
-	log.Debugf("console context to send: %s", feedback)
-
-	return ret, nil
 }
 
 func (c *CrowdsecServiceCfg) DumpContextConfigFile() error {
 	var out []byte
 	var err error
 
+	// XXX: MakeDirs
+
 	if out, err = yaml.Marshal(c.ContextToSend); err != nil {
 		return fmt.Errorf("while marshaling ConsoleConfig (for %s): %w", c.ConsoleContextPath, err)
+	}
+
+	if err = os.MkdirAll(filepath.Dir(c.ConsoleContextPath), 0700); err != nil {
+		return fmt.Errorf("while creating directories for %s: %w", c.ConsoleContextPath, err)
 	}
 
 	if err := os.WriteFile(c.ConsoleContextPath, out, 0600); err != nil {

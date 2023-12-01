@@ -270,6 +270,15 @@ cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user
 		`,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			hub, err := require.Hub(csConfig, nil)
+			if err != nil {
+				return err
+			}
+
+			if err = alertcontext.LoadConsoleContext(csConfig, hub); err != nil {
+				return fmt.Errorf("while loading context: %w", err)
+			}
+
 			if keyToAdd != "" {
 				if err := AddContext(keyToAdd, valuesToAdd); err != nil {
 					return err
@@ -299,6 +308,15 @@ cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user
 		Short:             "List context to send with alerts",
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			hub, err := require.Hub(csConfig, nil)
+			if err != nil {
+				return err
+			}
+
+			if err = alertcontext.LoadConsoleContext(csConfig, hub); err != nil {
+				return fmt.Errorf("while loading context: %w", err)
+			}
+
 			if len(csConfig.Crowdsec.ContextToSend) == 0 {
 				fmt.Println("No context found on this agent. You can use 'cscli lapi context add' to add context to your alerts.")
 				return nil
@@ -309,7 +327,7 @@ cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user
 				return fmt.Errorf("unable to show context status: %w", err)
 			}
 
-			fmt.Println(string(dump))
+			fmt.Print(string(dump))
 
 			return nil
 		},
@@ -413,6 +431,12 @@ cscli lapi context delete --value evt.Line.Src
 		`,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// pass a nil hub to load only from console/context.yaml
+
+			if err := alertcontext.LoadConsoleContext(csConfig, nil); err != nil {
+				return fmt.Errorf("while loading context: %w", err)
+			}
+
 			if len(keysToDelete) == 0 && len(valuesToDelete) == 0 {
 				return errors.New("please provide at least a key or a value to delete")
 			}
