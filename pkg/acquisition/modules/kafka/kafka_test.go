@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/cstest"
+	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -57,6 +57,16 @@ brokers:
   - localhost:9092
 topic: crowdsec`,
 			expectedErr: "",
+		},
+		{
+			config: `
+source: kafka
+brokers:
+  - localhost:9092
+topic: crowdsec
+partition: 1
+group_id: crowdsec`,
+			expectedErr: "cannote create kafka reader: cannot specify both group_id and partition",
 		},
 	}
 

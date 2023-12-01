@@ -18,8 +18,9 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+	"github.com/crowdsecurity/go-cs-lib/version"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
@@ -57,10 +58,6 @@ func stripAnsiString(str string) string {
 
 func collectMetrics() ([]byte, []byte, error) {
 	log.Info("Collecting prometheus metrics")
-	err := csConfig.LoadPrometheus()
-	if err != nil {
-		return nil, nil, err
-	}
 
 	if csConfig.Cscli.PrometheusUrl == "" {
 		log.Warn("No Prometheus URL configured, metrics will not be collected")
@@ -68,13 +65,13 @@ func collectMetrics() ([]byte, []byte, error) {
 	}
 
 	humanMetrics := bytes.NewBuffer(nil)
-	err = FormatPrometheusMetrics(humanMetrics, csConfig.Cscli.PrometheusUrl+"/metrics", "human")
+	err := FormatPrometheusMetrics(humanMetrics, csConfig.Cscli.PrometheusUrl, "human")
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not fetch promtheus metrics: %s", err)
 	}
 
-	req, err := http.NewRequest(http.MethodGet, csConfig.Cscli.PrometheusUrl+"/metrics", nil)
+	req, err := http.NewRequest(http.MethodGet, csConfig.Cscli.PrometheusUrl, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not create requests to prometheus endpoint: %s", err)
 	}
@@ -131,28 +128,21 @@ func collectOSInfo() ([]byte, error) {
 	return w.Bytes(), nil
 }
 
-func initHub() error {
-	if err := csConfig.LoadHub(); err != nil {
-		return fmt.Errorf("cannot load hub: %s", err)
-	}
-	if csConfig.Hub == nil {
-		return fmt.Errorf("hub not configured")
-	}
+func collectHubItems(hub *cwhub.Hub, itemType string) []byte {
+	var err error
 
-	if err := cwhub.SetHubBranch(); err != nil {
-		return fmt.Errorf("cannot set hub branch: %s", err)
-	}
-
-	if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-		return fmt.Errorf("no hub index found: %s", err)
-	}
-	return nil
-}
-
-func collectHubItems(itemType string) []byte {
 	out := bytes.NewBuffer(nil)
 	log.Infof("Collecting %s list", itemType)
-	ListItems(out, []string{itemType}, []string{}, false, true, all)
+
+	items := make(map[string][]*cwhub.Item)
+
+	if items[itemType], err = selectItems(hub, itemType, nil, true); err != nil {
+		log.Warnf("could not collect %s list: %s", itemType, err)
+	}
+
+	if err := listItems(out, []string{itemType}, items); err != nil {
+		log.Warnf("could not collect %s list: %s", itemType, err)
+	}
 	return out.Bytes()
 }
 
@@ -174,7 +164,7 @@ func collectAgents(dbClient *database.Client) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-func collectAPIStatus(login string, password string, endpoint string, prefix string) []byte {
+func collectAPIStatus(login string, password string, endpoint string, prefix string, hub *cwhub.Hub) []byte {
 	if csConfig.API.Client == nil || csConfig.API.Client.Credentials == nil {
 		return []byte("No agent credentials found, are we LAPI ?")
 	}
@@ -184,7 +174,7 @@ func collectAPIStatus(login string, password string, endpoint string, prefix str
 	if err != nil {
 		return []byte(fmt.Sprintf("cannot parse API URL: %s", err))
 	}
-	scenarios, err := cwhub.GetInstalledScenariosAsString()
+	scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
 	if err != nil {
 		return []byte(fmt.Sprintf("could not collect scenarios: %s", err))
 	}
@@ -312,7 +302,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				skipAgent = true
 			}
 
-			err = initHub()
+			hub, err := require.Hub(csConfig, nil)
 			if err != nil {
 				log.Warn("Could not init hub, running on LAPI ? Hub related information will not be collected")
 				skipHub = true
@@ -351,10 +341,10 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			infos[SUPPORT_CROWDSEC_CONFIG_PATH] = collectCrowdsecConfig()
 
 			if !skipHub {
-				infos[SUPPORT_PARSERS_PATH] = collectHubItems(cwhub.PARSERS)
-				infos[SUPPORT_SCENARIOS_PATH] = collectHubItems(cwhub.SCENARIOS)
-				infos[SUPPORT_POSTOVERFLOWS_PATH] = collectHubItems(cwhub.PARSERS_OVFLW)
-				infos[SUPPORT_COLLECTIONS_PATH] = collectHubItems(cwhub.COLLECTIONS)
+				infos[SUPPORT_PARSERS_PATH] = collectHubItems(hub, cwhub.PARSERS)
+				infos[SUPPORT_SCENARIOS_PATH] = collectHubItems(hub, cwhub.SCENARIOS)
+				infos[SUPPORT_POSTOVERFLOWS_PATH] = collectHubItems(hub, cwhub.POSTOVERFLOWS)
+				infos[SUPPORT_COLLECTIONS_PATH] = collectHubItems(hub, cwhub.COLLECTIONS)
 			}
 
 			if !skipDB {
@@ -376,7 +366,8 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				infos[SUPPORT_CAPI_STATUS_PATH] = collectAPIStatus(csConfig.API.Server.OnlineClient.Credentials.Login,
 					csConfig.API.Server.OnlineClient.Credentials.Password,
 					csConfig.API.Server.OnlineClient.Credentials.URL,
-					CAPIURLPrefix)
+					CAPIURLPrefix,
+					hub)
 			}
 
 			if !skipLAPI {
@@ -384,7 +375,8 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				infos[SUPPORT_LAPI_STATUS_PATH] = collectAPIStatus(csConfig.API.Client.Credentials.Login,
 					csConfig.API.Client.Credentials.Password,
 					csConfig.API.Client.Credentials.URL,
-					LAPIURLPrefix)
+					LAPIURLPrefix,
+					hub)
 				infos[SUPPORT_CROWDSEC_PROFILE_PATH] = collectCrowdsecProfile()
 			}
 

@@ -4,10 +4,11 @@ import (
 	"bufio"
 	"encoding/base64"
 	"fmt"
+	"math"
 	"net"
 	"net/url"
 	"os"
-	"path"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -23,7 +24,7 @@ import (
 	"github.com/umahmood/haversine"
 	"github.com/wasilibs/go-re2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -54,6 +55,16 @@ var exprFunctionOptions []expr.Option
 var keyValuePattern = regexp.MustCompile(`(?P<key>[^=\s]+)=(?:"(?P<quoted_value>[^"\\]*(?:\\.[^"\\]*)*)"|(?P<value>[^=\s]+)|\s*)`)
 
 func GetExprOptions(ctx map[string]interface{}) []expr.Option {
+	if len(exprFunctionOptions) == 0 {
+		exprFunctionOptions = []expr.Option{}
+		for _, function := range exprFuncs {
+			exprFunctionOptions = append(exprFunctionOptions,
+				expr.Function(function.name,
+					function.function,
+					function.signature...,
+				))
+		}
+	}
 	ret := []expr.Option{}
 	ret = append(ret, exprFunctionOptions...)
 	ret = append(ret, expr.Env(ctx))
@@ -65,15 +76,6 @@ func Init(databaseClient *database.Client) error {
 	dataFileRegex = make(map[string][]*regexp.Regexp)
 	dataFileRe2 = make(map[string][]*re2.Regexp)
 	dbClient = databaseClient
-
-	exprFunctionOptions = []expr.Option{}
-	for _, function := range exprFuncs {
-		exprFunctionOptions = append(exprFunctionOptions,
-			expr.Function(function.name,
-				function.function,
-				function.signature...,
-			))
-	}
 
 	return nil
 }
@@ -128,20 +130,26 @@ func UpdateRegexpCacheMetrics() {
 
 func FileInit(fileFolder string, filename string, fileType string) error {
 	log.Debugf("init (folder:%s) (file:%s) (type:%s)", fileFolder, filename, fileType)
-	filepath := path.Join(fileFolder, filename)
+	if fileType == "" {
+		log.Debugf("ignored file %s%s because no type specified", fileFolder, filename)
+		return nil
+	}
+	ok, err := existsInFileMaps(filename, fileType)
+	if ok {
+		log.Debugf("ignored file %s%s because already loaded", fileFolder, filename)
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	filepath := filepath.Join(fileFolder, filename)
 	file, err := os.Open(filepath)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	if fileType == "" {
-		log.Debugf("ignored file %s%s because no type specified", fileFolder, filename)
-		return nil
-	}
-	if _, ok := dataFile[filename]; !ok {
-		dataFile[filename] = []string{}
-	}
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		if strings.HasPrefix(scanner.Text(), "#") { // allow comments
@@ -154,13 +162,11 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		case "regex", "regexp":
 			if fflag.Re2RegexpInfileSupport.IsEnabled() {
 				dataFileRe2[filename] = append(dataFileRe2[filename], re2.MustCompile(scanner.Text()))
-			} else {
-				dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
+				continue
 			}
+			dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
 		case "string":
 			dataFile[filename] = append(dataFile[filename], scanner.Text())
-		default:
-			return fmt.Errorf("unknown data type '%s' for : '%s'", fileType, filename)
 		}
 	}
 
@@ -168,6 +174,24 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		return err
 	}
 	return nil
+}
+
+func existsInFileMaps(filename string, ftype string) (bool, error) {
+	ok := false
+	var err error
+	switch ftype {
+	case "regex", "regexp":
+		if fflag.Re2RegexpInfileSupport.IsEnabled() {
+			_, ok = dataFileRe2[filename]
+		} else {
+			_, ok = dataFileRegex[filename]
+		}
+	case "string":
+		_, ok = dataFile[filename]
+	default:
+		err = fmt.Errorf("unknown data type '%s' for : '%s'", ftype, filename)
+	}
+	return ok, err
 }
 
 //Expr helpers
@@ -587,6 +611,16 @@ func Match(params ...any) (any, error) {
 		return Match(pattern[1:], name[1:])
 	}
 	return matched, nil
+}
+
+func FloatApproxEqual(params ...any) (any, error) {
+	float1 := params[0].(float64)
+	float2 := params[1].(float64)
+
+	if math.Abs(float1-float2) < 1e-6 {
+		return true, nil
+	}
+	return false, nil
 }
 
 func B64Decode(params ...any) (any, error) {

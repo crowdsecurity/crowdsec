@@ -12,6 +12,11 @@ fake_log() {
 setup_file() {
     load "../lib/setup_file.sh"
     ./instance-data load
+
+    cscli collections install crowdsecurity/sshd --error
+    cscli parsers install crowdsecurity/syslog-logs --error
+    cscli parsers install crowdsecurity/dateparse-enrich --error
+
     ./instance-crowdsec start
 }
 
@@ -54,7 +59,7 @@ setup() {
     rune -0 cscli simulation enable crowdsecurity/ssh-bf
     fake_log | "${CROWDSEC}" -dsn file:///dev/fd/0 -type syslog -no-api
     rune -0 cscli decisions list --no-simu -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "global simulation, listing non-simulated: expect no decision" {
@@ -62,5 +67,5 @@ setup() {
     rune -0 cscli simulation enable --global
     fake_log | "${CROWDSEC}" -dsn file:///dev/fd/0 -type syslog -no-api
     rune -0 cscli decisions list --no-simu -o json
-    assert_output 'null'
+    assert_json '[]'
 }

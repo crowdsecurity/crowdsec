@@ -12,8 +12,21 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
+
+func GetLineCountForFile(filepath string) (int, error) {
+	f, err := os.Open(filepath)
+	if err != nil {
+		return 0, err
+	}
+	defer f.Close()
+	lc := 0
+	fs := bufio.NewScanner(f)
+	for fs.Scan() {
+		lc++
+	}
+	return lc, nil
+}
 
 func runExplain(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
@@ -57,6 +70,11 @@ func runExplain(cmd *cobra.Command, args []string) error {
 	}
 
 	crowdsec, err := flags.GetString("crowdsec")
+	if err != nil {
+		return err
+	}
+
+	labels, err := flags.GetString("labels")
 	if err != nil {
 		return err
 	}
@@ -123,9 +141,12 @@ func runExplain(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("unable to get absolute path of '%s', exiting", logFile)
 		}
 		dsn = fmt.Sprintf("file://%s", absolutePath)
-		lineCount := types.GetLineCountForFile(absolutePath)
+		lineCount, err := GetLineCountForFile(absolutePath)
+		if err != nil {
+			return err
+		}
 		if lineCount > 100 {
-			log.Warnf("log file contains %d lines. This may take lot of resources.", lineCount)
+			log.Warnf("The log file contains %d lines. This may take a lot of resources.", lineCount)
 		}
 	}
 
@@ -134,6 +155,10 @@ func runExplain(cmd *cobra.Command, args []string) error {
 	}
 
 	cmdArgs := []string{"-c", ConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", dir, "-no-api"}
+	if labels != "" {
+		log.Debugf("adding labels %s", labels)
+		cmdArgs = append(cmdArgs, "-label", labels)
+	}
 	crowdsecCmd := exec.Command(crowdsec, cmdArgs...)
 	output, err := crowdsecCmd.CombinedOutput()
 	if err != nil {
@@ -193,6 +218,7 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 	flags.StringP("dsn", "d", "", "DSN to test")
 	flags.StringP("log", "l", "", "Log line to test")
 	flags.StringP("type", "t", "", "Type of the acquisition to test")
+	flags.String("labels", "", "Additional labels to add to the acquisition format (key:value,key2:value2)")
 	flags.BoolP("verbose", "v", false, "Display individual changes")
 	flags.Bool("failures", false, "Only show failed lines")
 	flags.Bool("only-successful-parsers", false, "Only show successful parsers")

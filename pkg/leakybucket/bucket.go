@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/time/rate"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -30,13 +30,13 @@ type Leaky struct {
 	//the limiter is what holds the proper "leaky aspect", it determines when/if we can pour objects
 	Limiter         rate.RateLimiter `json:"-"`
 	SerializedState rate.Lstate
-	//Queue is used to held the cache of objects in the bucket, it is used to know 'how many' objects we have in buffer.
-	Queue *Queue
+	//Queue is used to hold the cache of objects in the bucket, it is used to know 'how many' objects we have in buffer.
+	Queue *types.Queue
 	//Leaky buckets are receiving message through a chan
 	In chan *types.Event `json:"-"`
 	//Leaky buckets are pushing their overflows through a chan
-	Out chan *Queue `json:"-"`
-	// shared for all buckets (the idea is to kill this afterwards)
+	Out chan *types.Queue `json:"-"`
+	// shared for all buckets (the idea is to kill this afterward)
 	AllOut chan types.Event `json:"-"`
 	//max capacity (for burst)
 	Capacity int
@@ -70,6 +70,7 @@ type Leaky struct {
 	wgPour              *sync.WaitGroup
 	wgDumpState         *sync.WaitGroup
 	mutex               *sync.Mutex //used only for TIMEMACHINE mode to allow garbage collection without races
+	orderEvent          bool
 }
 
 var BucketsPour = prometheus.NewCounterVec(
@@ -158,9 +159,9 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		Name:            bucketFactory.Name,
 		Limiter:         limiter,
 		Uuid:            seed.Generate(),
-		Queue:           NewQueue(Qsize),
+		Queue:           types.NewQueue(Qsize),
 		CacheSize:       bucketFactory.CacheSize,
-		Out:             make(chan *Queue, 1),
+		Out:             make(chan *types.Queue, 1),
 		Suicide:         make(chan bool, 1),
 		AllOut:          bucketFactory.ret,
 		Capacity:        bucketFactory.Capacity,
@@ -178,6 +179,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		wgPour:          bucketFactory.wgPour,
 		wgDumpState:     bucketFactory.wgDumpState,
 		mutex:           &sync.Mutex{},
+		orderEvent:      bucketFactory.orderEvent,
 	}
 	if l.BucketConfig.Capacity > 0 && l.BucketConfig.leakspeed != time.Duration(0) {
 		l.Duration = time.Duration(l.BucketConfig.Capacity+1) * l.BucketConfig.leakspeed
@@ -214,7 +216,7 @@ func LeakRoutine(leaky *Leaky) error {
 	defer BucketsCurrentCount.With(prometheus.Labels{"name": leaky.Name}).Dec()
 
 	/*todo : we create a logger at runtime while we want leakroutine to be up asap, might not be a good idea*/
-	leaky.logger = leaky.BucketConfig.logger.WithFields(log.Fields{"capacity": leaky.Capacity, "partition": leaky.Mapkey, "bucket_id": leaky.Uuid})
+	leaky.logger = leaky.BucketConfig.logger.WithFields(log.Fields{"partition": leaky.Mapkey, "bucket_id": leaky.Uuid})
 
 	//We copy the processors, as they are coming from the BucketFactory, and thus are shared between buckets
 	//If we don't copy, processors using local cache (such as Uniq) are subject to race conditions
@@ -245,6 +247,9 @@ func LeakRoutine(leaky *Leaky) error {
 				msg = processor.OnBucketPour(leaky.BucketConfig)(*msg, leaky)
 				// if &msg == nil we stop processing
 				if msg == nil {
+					if leaky.orderEvent {
+						orderEvent[leaky.Mapkey].Done()
+					}
 					goto End
 				}
 			}
@@ -258,6 +263,9 @@ func LeakRoutine(leaky *Leaky) error {
 			for _, processor := range processors {
 				msg = processor.AfterBucketPour(leaky.BucketConfig)(*msg, leaky)
 				if msg == nil {
+					if leaky.orderEvent {
+						orderEvent[leaky.Mapkey].Done()
+					}
 					goto End
 				}
 			}
@@ -277,7 +285,10 @@ func LeakRoutine(leaky *Leaky) error {
 				}
 			}
 			firstEvent = false
-		/*we overflowed*/
+			/*we overflowed*/
+			if leaky.orderEvent {
+				orderEvent[leaky.Mapkey].Done()
+			}
 		case ofw := <-leaky.Out:
 			leaky.overflow(ofw)
 			return nil
@@ -321,7 +332,7 @@ func LeakRoutine(leaky *Leaky) error {
 
 			}
 			if leaky.logger.Level >= log.TraceLevel {
-				/*don't sdump if it's not going to printed, it's expensive*/
+				/*don't sdump if it's not going to be printed, it's expensive*/
 				leaky.logger.Tracef("Overflow event: %s", spew.Sdump(types.Event{Overflow: alert}))
 			}
 
@@ -363,7 +374,7 @@ func Pour(leaky *Leaky, msg types.Event) {
 	}
 }
 
-func (leaky *Leaky) overflow(ofw *Queue) {
+func (leaky *Leaky) overflow(ofw *types.Queue) {
 	close(leaky.Signal)
 	alert, err := NewAlert(leaky, ofw)
 	if err != nil {

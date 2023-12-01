@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 )
@@ -26,15 +26,15 @@ func TestAPICSendMetrics(t *testing.T) {
 	}{
 		{
 			name:            "basic",
-			duration:        time.Millisecond * 30,
-			metricsInterval: time.Millisecond * 5,
+			duration:        time.Millisecond * 60,
+			metricsInterval: time.Millisecond * 10,
 			expectedCalls:   5,
 			setUp:           func(api *apic) {},
 		},
 		{
 			name:            "with some metrics",
-			duration:        time.Millisecond * 30,
-			metricsInterval: time.Millisecond * 5,
+			duration:        time.Millisecond * 60,
+			metricsInterval: time.Millisecond * 10,
 			expectedCalls:   5,
 			setUp: func(api *apic) {
 				api.dbClient.Ent.Machine.Delete().ExecX(context.Background())

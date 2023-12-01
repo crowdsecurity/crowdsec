@@ -15,12 +15,12 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/exp/slices"
 	"gopkg.in/tomb.v2"
+	"slices"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
-	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
-	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
+	"github.com/crowdsecurity/go-cs-lib/trace"
+	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -42,8 +42,6 @@ const (
 	metricsIntervalDefault = time.Minute * 30
 	metricsIntervalDelta   = time.Minute * 15
 )
-
-var SCOPE_CAPI_ALIAS_ALIAS string = "crowdsecurity/community-blocklist" //we don't use "CAPI" directly, to make it less confusing for the user
 
 type apic struct {
 	// when changing the intervals in tests, always set *First too
@@ -215,7 +213,7 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 	}
 
 	// The watcher will be authenticated by the RoundTripper the first time it will call CAPI
-	// Explicit authentication will provoke an useless supplementary call to CAPI
+	// Explicit authentication will provoke a useless supplementary call to CAPI
 	scenarios, err := ret.FetchScenariosListFromDB()
 	if err != nil {
 		return ret, fmt.Errorf("get scenario in db: %w", err)
@@ -385,19 +383,16 @@ func (a *apic) CAPIPullIsOld() (bool, error) {
 }
 
 func (a *apic) HandleDeletedDecisions(deletedDecisions []*models.Decision, delete_counters map[string]map[string]int) (int, error) {
-	var filter map[string][]string
-	var nbDeleted int
+	nbDeleted := 0
 	for _, decision := range deletedDecisions {
-		if strings.ToLower(*decision.Scope) == "ip" {
-			filter = make(map[string][]string, 1)
-			filter["value"] = []string{*decision.Value}
-		} else {
-			filter = make(map[string][]string, 3)
-			filter["value"] = []string{*decision.Value}
+		filter := map[string][]string{
+			"value":  {*decision.Value},
+			"origin": {*decision.Origin},
+		}
+		if strings.ToLower(*decision.Scope) != "ip" {
 			filter["type"] = []string{*decision.Type}
 			filter["scopes"] = []string{*decision.Scope}
 		}
-		filter["origin"] = []string{*decision.Origin}
 
 		dbCliRet, _, err := a.dbClient.SoftDeleteDecisionsWithFilter(filter)
 		if err != nil {
@@ -414,20 +409,17 @@ func (a *apic) HandleDeletedDecisions(deletedDecisions []*models.Decision, delet
 }
 
 func (a *apic) HandleDeletedDecisionsV3(deletedDecisions []*modelscapi.GetDecisionsStreamResponseDeletedItem, delete_counters map[string]map[string]int) (int, error) {
-	var filter map[string][]string
 	var nbDeleted int
 	for _, decisions := range deletedDecisions {
 		scope := decisions.Scope
 		for _, decision := range decisions.Decisions {
-			if strings.ToLower(*scope) == "ip" {
-				filter = make(map[string][]string, 1)
-				filter["value"] = []string{decision}
-			} else {
-				filter = make(map[string][]string, 2)
-				filter["value"] = []string{decision}
+			filter := map[string][]string{
+				"value":  {decision},
+				"origin": {types.CAPIOrigin},
+			}
+			if strings.ToLower(*scope) != "ip" {
 				filter["scopes"] = []string{*scope}
 			}
-			filter["origin"] = []string{types.CAPIOrigin}
 
 			dbCliRet, _, err := a.dbClient.SoftDeleteDecisionsWithFilter(filter)
 			if err != nil {
@@ -481,30 +473,42 @@ func createAlertsForDecisions(decisions []*models.Decision) []*models.Alert {
 }
 
 func createAlertForDecision(decision *models.Decision) *models.Alert {
-	newAlert := &models.Alert{}
-	newAlert.Source = &models.Source{}
-	newAlert.Source.Scope = ptr.Of("")
-	if *decision.Origin == types.CAPIOrigin { //to make things more user friendly, we replace CAPI with community-blocklist
-		newAlert.Scenario = ptr.Of(types.CAPIOrigin)
-		newAlert.Source.Scope = ptr.Of(types.CAPIOrigin)
-	} else if *decision.Origin == types.ListOrigin {
-		newAlert.Scenario = ptr.Of(*decision.Scenario)
-		newAlert.Source.Scope = ptr.Of(types.ListOrigin)
-	} else {
+	var (
+		scenario string
+		scope    string
+	)
+
+	switch *decision.Origin {
+	case types.CAPIOrigin:
+		scenario = types.CAPIOrigin
+		scope = types.CAPIOrigin
+	case types.ListOrigin:
+		scenario = *decision.Scenario
+		scope = types.ListOrigin
+	default:
+		// XXX: this or nil?
+		scenario = ""
+		scope = ""
 		log.Warningf("unknown origin %s", *decision.Origin)
 	}
-	newAlert.Message = ptr.Of("")
-	newAlert.Source.Value = ptr.Of("")
-	newAlert.StartAt = ptr.Of(time.Now().UTC().Format(time.RFC3339))
-	newAlert.StopAt = ptr.Of(time.Now().UTC().Format(time.RFC3339))
-	newAlert.Capacity = ptr.Of(int32(0))
-	newAlert.Simulated = ptr.Of(false)
-	newAlert.EventsCount = ptr.Of(int32(0))
-	newAlert.Leakspeed = ptr.Of("")
-	newAlert.ScenarioHash = ptr.Of("")
-	newAlert.ScenarioVersion = ptr.Of("")
-	newAlert.MachineID = database.CapiMachineID
-	return newAlert
+
+	return &models.Alert{
+		Source: &models.Source{
+			Scope: ptr.Of(scope),
+			Value: ptr.Of(""),
+		},
+		Scenario:        ptr.Of(scenario),
+		Message:         ptr.Of(""),
+		StartAt:         ptr.Of(time.Now().UTC().Format(time.RFC3339)),
+		StopAt:          ptr.Of(time.Now().UTC().Format(time.RFC3339)),
+		Capacity:        ptr.Of(int32(0)),
+		Simulated:       ptr.Of(false),
+		EventsCount:     ptr.Of(int32(0)),
+		Leakspeed:       ptr.Of(""),
+		ScenarioHash:    ptr.Of(""),
+		ScenarioVersion: ptr.Of(""),
+		MachineID:       database.CapiMachineID,
+	}
 }
 
 // This function takes in list of parent alerts and decisions and then pairs them up.
@@ -614,65 +618,74 @@ func (a *apic) PullTop(forcePull bool) error {
 	}
 
 	// update blocklists
-	if err := a.UpdateBlocklists(data.Links, add_counters); err != nil {
+	if err := a.UpdateBlocklists(data.Links, add_counters, forcePull); err != nil {
 		return fmt.Errorf("while updating blocklists: %w", err)
 	}
 	return nil
 }
 
+// we receive a link to a blocklist, we pull the content of the blocklist and we create one alert
+func (a *apic) PullBlocklist(blocklist *modelscapi.BlocklistLink, forcePull bool) error {
+	add_counters, _ := makeAddAndDeleteCounters()
+	if err := a.UpdateBlocklists(&modelscapi.GetDecisionsStreamResponseLinks{
+		Blocklists: []*modelscapi.BlocklistLink{blocklist},
+	}, add_counters, forcePull); err != nil {
+		return fmt.Errorf("while pulling blocklist: %w", err)
+	}
+	return nil
+}
+
+// if decisions is whitelisted: return representation of the whitelist ip or cidr
+// if not whitelisted: empty string
+func (a *apic) whitelistedBy(decision *models.Decision) string {
+	if decision.Value == nil {
+		return ""
+	}
+	ipval := net.ParseIP(*decision.Value)
+	for _, cidr := range a.whitelists.Cidrs {
+		if cidr.Contains(ipval) {
+			return cidr.String()
+		}
+	}
+	for _, ip := range a.whitelists.Ips {
+		if ip != nil && ip.Equal(ipval) {
+			return ip.String()
+		}
+	}
+	return ""
+}
+
 func (a *apic) ApplyApicWhitelists(decisions []*models.Decision) []*models.Decision {
-	if a.whitelists == nil {
+	if a.whitelists == nil || len(a.whitelists.Cidrs) == 0 && len(a.whitelists.Ips) == 0 {
 		return decisions
 	}
 	//deal with CAPI whitelists for fire. We want to avoid having a second list, so we shrink in place
 	outIdx := 0
 	for _, decision := range decisions {
-		if decision.Value == nil {
+		whitelister := a.whitelistedBy(decision)
+		if whitelister != "" {
+			log.Infof("%s from %s is whitelisted by %s", *decision.Value, *decision.Scenario, whitelister)
 			continue
 		}
-		skip := false
-		ipval := net.ParseIP(*decision.Value)
-		for _, cidr := range a.whitelists.Cidrs {
-			if skip {
-				break
-			}
-			if cidr.Contains(ipval) {
-				log.Infof("%s from %s is whitelisted by %s", *decision.Value, *decision.Scenario, cidr.String())
-				skip = true
-			}
-		}
-		for _, ip := range a.whitelists.Ips {
-			if skip {
-				break
-			}
-			if ip != nil && ip.Equal(ipval) {
-				log.Infof("%s from %s is whitelisted by %s", *decision.Value, *decision.Scenario, ip.String())
-				skip = true
-			}
-		}
-		if !skip {
-			decisions[outIdx] = decision
-			outIdx++
-		}
-
+		decisions[outIdx] = decision
+		outIdx++
 	}
 	//shrink the list, those are deleted items
-	decisions = decisions[:outIdx]
-	return decisions
+	return decisions[:outIdx]
 }
 
 func (a *apic) SaveAlerts(alertsFromCapi []*models.Alert, add_counters map[string]map[string]int, delete_counters map[string]map[string]int) error {
-	for idx, alert := range alertsFromCapi {
-		alertsFromCapi[idx] = setAlertScenario(add_counters, delete_counters, alert)
-		log.Debugf("%s has %d decisions", *alertsFromCapi[idx].Source.Scope, len(alertsFromCapi[idx].Decisions))
+	for _, alert := range alertsFromCapi {
+		setAlertScenario(alert, add_counters, delete_counters)
+		log.Debugf("%s has %d decisions", *alert.Source.Scope, len(alert.Decisions))
 		if a.dbClient.Type == "sqlite" && (a.dbClient.WalMode == nil || !*a.dbClient.WalMode) {
 			log.Warningf("sqlite is not using WAL mode, LAPI might become unresponsive when inserting the community blocklist")
 		}
-		alertID, inserted, deleted, err := a.dbClient.UpdateCommunityBlocklist(alertsFromCapi[idx])
+		alertID, inserted, deleted, err := a.dbClient.UpdateCommunityBlocklist(alert)
 		if err != nil {
-			return fmt.Errorf("while saving alert from %s: %w", *alertsFromCapi[idx].Source.Scope, err)
+			return fmt.Errorf("while saving alert from %s: %w", *alert.Source.Scope, err)
 		}
-		log.Printf("%s : added %d entries, deleted %d entries (alert:%d)", *alertsFromCapi[idx].Source.Scope, inserted, deleted, alertID)
+		log.Printf("%s : added %d entries, deleted %d entries (alert:%d)", *alert.Source.Scope, inserted, deleted, alertID)
 	}
 
 	return nil
@@ -708,7 +721,65 @@ func (a *apic) ShouldForcePullBlocklist(blocklist *modelscapi.BlocklistLink) (bo
 	return false, nil
 }
 
-func (a *apic) UpdateBlocklists(links *modelscapi.GetDecisionsStreamResponseLinks, add_counters map[string]map[string]int) error {
+func (a *apic) updateBlocklist(client *apiclient.ApiClient, blocklist *modelscapi.BlocklistLink, add_counters map[string]map[string]int, forcePull bool) error {
+	if blocklist.Scope == nil {
+		log.Warningf("blocklist has no scope")
+		return nil
+	}
+	if blocklist.Duration == nil {
+		log.Warningf("blocklist has no duration")
+		return nil
+	}
+	if !forcePull {
+		_forcePull, err := a.ShouldForcePullBlocklist(blocklist)
+		if err != nil {
+			return fmt.Errorf("while checking if we should force pull blocklist %s: %w", *blocklist.Name, err)
+		}
+		forcePull = _forcePull
+	}
+	blocklistConfigItemName := fmt.Sprintf("blocklist:%s:last_pull", *blocklist.Name)
+	var lastPullTimestamp *string
+	var err error
+	if !forcePull {
+		lastPullTimestamp, err = a.dbClient.GetConfigItem(blocklistConfigItemName)
+		if err != nil {
+			return fmt.Errorf("while getting last pull timestamp for blocklist %s: %w", *blocklist.Name, err)
+		}
+	}
+	decisions, hasChanged, err := client.Decisions.GetDecisionsFromBlocklist(context.Background(), blocklist, lastPullTimestamp)
+	if err != nil {
+		return fmt.Errorf("while getting decisions from blocklist %s: %w", *blocklist.Name, err)
+	}
+	if !hasChanged {
+		if lastPullTimestamp == nil {
+			log.Infof("blocklist %s hasn't been modified or there was an error reading it, skipping", *blocklist.Name)
+		} else {
+			log.Infof("blocklist %s hasn't been modified since %s, skipping", *blocklist.Name, *lastPullTimestamp)
+		}
+		return nil
+	}
+	err = a.dbClient.SetConfigItem(blocklistConfigItemName, time.Now().UTC().Format(http.TimeFormat))
+	if err != nil {
+		return fmt.Errorf("while setting last pull timestamp for blocklist %s: %w", *blocklist.Name, err)
+	}
+	if len(decisions) == 0 {
+		log.Infof("blocklist %s has no decisions", *blocklist.Name)
+		return nil
+	}
+	//apply APIC specific whitelists
+	decisions = a.ApplyApicWhitelists(decisions)
+	alert := createAlertForDecision(decisions[0])
+	alertsFromCapi := []*models.Alert{alert}
+	alertsFromCapi = fillAlertsWithDecisions(alertsFromCapi, decisions, add_counters)
+
+	err = a.SaveAlerts(alertsFromCapi, add_counters, nil)
+	if err != nil {
+		return fmt.Errorf("while saving alert from blocklist %s: %w", *blocklist.Name, err)
+	}
+	return nil
+}
+
+func (a *apic) UpdateBlocklists(links *modelscapi.GetDecisionsStreamResponseLinks, add_counters map[string]map[string]int, forcePull bool) error {
 	if links == nil {
 		return nil
 	}
@@ -722,69 +793,21 @@ func (a *apic) UpdateBlocklists(links *modelscapi.GetDecisionsStreamResponseLink
 		return fmt.Errorf("while creating default client: %w", err)
 	}
 	for _, blocklist := range links.Blocklists {
-		if blocklist.Scope == nil {
-			log.Warningf("blocklist has no scope")
-			continue
-		}
-		if blocklist.Duration == nil {
-			log.Warningf("blocklist has no duration")
-			continue
-		}
-		forcePull, err := a.ShouldForcePullBlocklist(blocklist)
-		if err != nil {
-			return fmt.Errorf("while checking if we should force pull blocklist %s: %w", *blocklist.Name, err)
-		}
-		blocklistConfigItemName := fmt.Sprintf("blocklist:%s:last_pull", *blocklist.Name)
-		var lastPullTimestamp *string
-		if !forcePull {
-			lastPullTimestamp, err = a.dbClient.GetConfigItem(blocklistConfigItemName)
-			if err != nil {
-				return fmt.Errorf("while getting last pull timestamp for blocklist %s: %w", *blocklist.Name, err)
-			}
-		}
-		decisions, has_changed, err := defaultClient.Decisions.GetDecisionsFromBlocklist(context.Background(), blocklist, lastPullTimestamp)
-		if err != nil {
-			return fmt.Errorf("while getting decisions from blocklist %s: %w", *blocklist.Name, err)
-		}
-		if !has_changed {
-			if lastPullTimestamp == nil {
-				log.Infof("blocklist %s hasn't been modified or there was an error reading it, skipping", *blocklist.Name)
-			} else {
-				log.Infof("blocklist %s hasn't been modified since %s, skipping", *blocklist.Name, *lastPullTimestamp)
-			}
-			continue
-		}
-		err = a.dbClient.SetConfigItem(blocklistConfigItemName, time.Now().UTC().Format(http.TimeFormat))
-		if err != nil {
-			return fmt.Errorf("while setting last pull timestamp for blocklist %s: %w", *blocklist.Name, err)
-		}
-		if len(decisions) == 0 {
-			log.Infof("blocklist %s has no decisions", *blocklist.Name)
-			continue
-		}
-		//apply APIC specific whitelists
-		decisions = a.ApplyApicWhitelists(decisions)
-		alert := createAlertForDecision(decisions[0])
-		alertsFromCapi := []*models.Alert{alert}
-		alertsFromCapi = fillAlertsWithDecisions(alertsFromCapi, decisions, add_counters)
-
-		err = a.SaveAlerts(alertsFromCapi, add_counters, nil)
-		if err != nil {
-			return fmt.Errorf("while saving alert from blocklist %s: %w", *blocklist.Name, err)
+		if err := a.updateBlocklist(defaultClient, blocklist, add_counters, forcePull); err != nil {
+			return err
 		}
 	}
 	return nil
 }
 
-func setAlertScenario(add_counters map[string]map[string]int, delete_counters map[string]map[string]int, alert *models.Alert) *models.Alert {
+func setAlertScenario(alert *models.Alert, add_counters map[string]map[string]int, delete_counters map[string]map[string]int) {
 	if *alert.Source.Scope == types.CAPIOrigin {
-		*alert.Source.Scope = SCOPE_CAPI_ALIAS_ALIAS
+		*alert.Source.Scope = types.CommunityBlocklistPullSourceScope
 		alert.Scenario = ptr.Of(fmt.Sprintf("update : +%d/-%d IPs", add_counters[types.CAPIOrigin]["all"], delete_counters[types.CAPIOrigin]["all"]))
 	} else if *alert.Source.Scope == types.ListOrigin {
 		*alert.Source.Scope = fmt.Sprintf("%s:%s", types.ListOrigin, *alert.Scenario)
 		alert.Scenario = ptr.Of(fmt.Sprintf("update : +%d/-%d IPs", add_counters[types.ListOrigin][*alert.Scenario], delete_counters[types.ListOrigin][*alert.Scenario]))
 	}
-	return alert
 }
 
 func (a *apic) Pull() error {

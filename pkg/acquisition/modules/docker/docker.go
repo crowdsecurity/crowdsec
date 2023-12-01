@@ -392,14 +392,14 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*Containe
 	}
 
 	for _, cont := range d.compiledContainerID {
-		if matched := cont.Match([]byte(container.ID)); matched {
+		if matched := cont.MatchString(container.ID); matched {
 			return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: d.Config.Labels, Tty: d.getContainerTTY(container.ID)}, true
 		}
 	}
 
 	for _, cont := range d.compiledContainerName {
 		for _, name := range container.Names {
-			if matched := cont.Match([]byte(name)); matched {
+			if matched := cont.MatchString(name); matched {
 				return &ContainerConfig{ID: container.ID, Name: name, Labels: d.Config.Labels, Tty: d.getContainerTTY(container.ID)}, true
 			}
 		}
