@@ -9,13 +9,14 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
+	"slices"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
 // Hub is the main structure for the package.
 type Hub struct {
-	Items    HubItems // Items read from HubDir and InstallDir
+	items    HubItems // Items read from HubDir and InstallDir
 	local    *csconfig.LocalHubCfg
 	remote   *RemoteHubCfg
 	Warnings []string // Warnings encountered during sync
@@ -65,7 +66,7 @@ func (h *Hub) parseIndex() error {
 		return fmt.Errorf("unable to read index file: %w", err)
 	}
 
-	if err := json.Unmarshal(bidx, &h.Items); err != nil {
+	if err := json.Unmarshal(bidx, &h.items); err != nil {
 		return fmt.Errorf("failed to unmarshal index: %w", err)
 	}
 
@@ -73,9 +74,9 @@ func (h *Hub) parseIndex() error {
 
 	// Iterate over the different types to complete the struct
 	for _, itemType := range ItemTypes {
-		log.Tracef("%s: %d items", itemType, len(h.Items[itemType]))
+		log.Tracef("%s: %d items", itemType, len(h.GetItemMap(itemType)))
 
-		for name, item := range h.Items[itemType] {
+		for name, item := range h.GetItemMap(itemType) {
 			item.hub = h
 			item.Name = name
 
@@ -101,13 +102,13 @@ func (h *Hub) ItemStats() []string {
 	tainted := 0
 
 	for _, itemType := range ItemTypes {
-		if len(h.Items[itemType]) == 0 {
+		if len(h.GetItemMap(itemType)) == 0 {
 			continue
 		}
 
-		loaded += fmt.Sprintf("%d %s, ", len(h.Items[itemType]), itemType)
+		loaded += fmt.Sprintf("%d %s, ", len(h.GetItemMap(itemType)), itemType)
 
-		for _, item := range h.Items[itemType] {
+		for _, item := range h.GetItemMap(itemType) {
 			if item.IsLocal() {
 				local++
 			}
@@ -160,9 +161,17 @@ func (h *Hub) updateIndex() error {
 	return nil
 }
 
+func (h *Hub) addItem(item *Item) {
+	if h.items[item.Type] == nil {
+		h.items[item.Type] = make(map[string]*Item)
+	}
+
+	h.items[item.Type][item.Name] = item
+}
+
 // GetItemMap returns the map of items for a given type.
 func (h *Hub) GetItemMap(itemType string) map[string]*Item {
-	return h.Items[itemType]
+	return h.items[itemType]
 }
 
 // GetItem returns an item from hub based on its type and full name (author/name).
@@ -188,10 +197,11 @@ func (h *Hub) GetItemNames(itemType string) []string {
 
 // GetAllItems returns a slice of all the items of a given type, installed or not.
 func (h *Hub) GetAllItems(itemType string) ([]*Item, error) {
-	items, ok := h.Items[itemType]
-	if !ok {
-		return nil, fmt.Errorf("no %s in the hub index", itemType)
+	if !slices.Contains(ItemTypes, itemType) {
+		return nil, fmt.Errorf("invalid item type %s", itemType)
 	}
+
+	items := h.items[itemType]
 
 	ret := make([]*Item, len(items))
 
@@ -207,10 +217,11 @@ func (h *Hub) GetAllItems(itemType string) ([]*Item, error) {
 
 // GetInstalledItems returns a slice of the installed items of a given type.
 func (h *Hub) GetInstalledItems(itemType string) ([]*Item, error) {
-	items, ok := h.Items[itemType]
-	if !ok {
-		return nil, fmt.Errorf("no %s in the hub index", itemType)
+	if !slices.Contains(ItemTypes, itemType) {
+		return nil, fmt.Errorf("invalid item type %s", itemType)
 	}
+
+	items := h.items[itemType]
 
 	retItems := make([]*Item, 0)
 
