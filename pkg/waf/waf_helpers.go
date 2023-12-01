@@ -65,5 +65,6 @@ func GetOnMatchEnv(w *WaapRuntimeConfig, request *ParsedRequest) map[string]inte
 		"SendEvent":      w.SendEvent,
 		"CancelAlert":    w.CancelAlert,
 		"SendAlert":      w.SendAlert,
+		"DumpRequest":    request.DumpRequest,
 	}
 }
