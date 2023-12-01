@@ -23,7 +23,6 @@ type CrowdsecServiceCfg struct {
 	BucketsRoutinesCount      int               `yaml:"buckets_routines"`
 	OutputRoutinesCount       int               `yaml:"output_routines"`
 	SimulationConfig          *SimulationConfig `yaml:"-"`
-	LintOnly                  bool              `yaml:"-"`                          // if set to true, exit after loading configs
 	BucketStateFile           string            `yaml:"state_input_file,omitempty"` // if we need to unserialize buckets at start
 	BucketStateDumpDir        string            `yaml:"state_output_dir,omitempty"` // if we need to unserialize buckets on shutdown
 	BucketsGCEnabled          bool              `yaml:"-"`                          // we need to garbage collect buckets when in forensic mode
