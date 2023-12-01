@@ -29,6 +29,17 @@ teardown() {
 
 #----------
 
+@test "detect available context" {
+    rune -0 cscli lapi context detect -a
+    rune -0 yq -o json <(output)
+    assert_json '{"Acquisition":["evt.Line.Module","evt.Line.Raw","evt.Line.Src"]}'
+
+    rune -0 cscli parsers install crowdsecurity/dateparse-enrich
+    rune -0 cscli lapi context detect crowdsecurity/dateparse-enrich
+    rune -0 yq -o json '.crowdsecurity/dateparse-enrich' <(output)
+    assert_json '["evt.MarshaledTime","evt.Meta.timestamp"]'
+}
+
 @test "attempt to load from default context file, ignore if missing" {
     rune -0 rm -f "$CONTEXT_YAML"
     rune -0 "$CROWDSEC" -t --trace
@@ -36,7 +47,7 @@ teardown() {
 }
 
 @test "error if context file is explicitly set but does not exist" {
-    config_set ".crowdsec_service.console_context_path=\"$CONTEXT_YAML\""
+    config_set ".crowdsec_service.console_context_path=strenv(CONTEXT_YAML)"
     rune -0 rm -f "$CONTEXT_YAML"
     rune -1 "$CROWDSEC" -t
     assert_stderr --partial "while checking console_context_path: stat $CONTEXT_YAML: no such file or directory"
@@ -45,11 +56,40 @@ teardown() {
 @test "context file is bad" {
     echo "bad yaml" > "$CONTEXT_YAML"
     rune -1 "$CROWDSEC" -t
-    assert_stderr --partial "while loading context from $CONTEXT_YAML: yaml: unmarshal errors"
+    assert_stderr --partial "while loading context: $CONTEXT_YAML: yaml: unmarshal errors"
 }
 
 @test "context file is good" {
     echo '{"source_ip":["evt.Parsed.source_ip"]}' > "$CONTEXT_YAML"
     rune -0 "$CROWDSEC" -t --debug
     assert_stderr --partial 'console context to send: {"source_ip":["evt.Parsed.source_ip"]}'
+}
+
+@test "context file is from hub (local item)" {
+    mkdir -p "$CONFIG_DIR/contexts"
+    config_set "del(.crowdsec_service.console_context_path)"
+    echo '{"context":{"source_ip":["evt.Parsed.source_ip"]}}' > "$CONFIG_DIR/contexts/foobar.yaml"
+    rune -0 "$CROWDSEC" -t --trace
+    assert_stderr --partial "loading console context from $CONFIG_DIR/contexts/foobar.yaml"
+    assert_stderr --partial 'console context to send: {"source_ip":["evt.Parsed.source_ip"]}'
+}
+
+@test "merge multiple contexts" {
+    mkdir -p "$CONFIG_DIR/contexts"
+    echo '{"context":{"one":["evt.Parsed.source_ip"]}}' > "$CONFIG_DIR/contexts/one.yaml"
+    echo '{"context":{"two":["evt.Parsed.source_ip"]}}' > "$CONFIG_DIR/contexts/two.yaml"
+    rune -0 "$CROWDSEC" -t --trace
+    assert_stderr --partial "loading console context from $CONFIG_DIR/contexts/one.yaml"
+    assert_stderr --partial "loading console context from $CONFIG_DIR/contexts/two.yaml"
+    assert_stderr --partial 'console context to send: {"one":["evt.Parsed.source_ip"],"two":["evt.Parsed.source_ip"]}'
+}
+
+@test "merge contexts from hub and context.yaml file" {
+    mkdir -p "$CONFIG_DIR/contexts"
+    echo '{"context":{"one":["evt.Parsed.source_ip"]}}' > "$CONFIG_DIR/contexts/one.yaml"
+    echo '{"one":["evt.Parsed.source_ip_2"]}' > "$CONFIG_DIR/console/context.yaml"
+    rune -0 "$CROWDSEC" -t --trace
+    assert_stderr --partial "loading console context from $CONFIG_DIR/contexts/one.yaml"
+    assert_stderr --partial "loading console context from $CONFIG_DIR/console/context.yaml"
+    assert_stderr --partial 'console context to send: {"one":["evt.Parsed.source_ip","evt.Parsed.source_ip_2"]}'
 }
