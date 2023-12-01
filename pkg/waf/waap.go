@@ -120,7 +120,7 @@ func (w *WaapRuntimeConfig) ClearResponse() {
 	log.Debugf("-> %p", w.Config)
 	w.Response.Action = w.Config.DefaultPassAction
 	w.Response.HTTPResponseCode = w.Config.PassedHTTPCode
-	w.Response.SendEvent = false
+	w.Response.SendEvent = true
 	w.Response.SendAlert = true
 }
 
