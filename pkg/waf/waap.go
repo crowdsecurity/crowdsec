@@ -8,6 +8,7 @@ import (
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
@@ -37,7 +38,7 @@ func (h *Hook) Build(hookStage int) error {
 	case hookPreEval:
 		ctx = GetPreEvalEnv(&WaapRuntimeConfig{}, &ParsedRequest{})
 	case hookOnMatch:
-		ctx = GetOnMatchEnv(&WaapRuntimeConfig{}, &ParsedRequest{})
+		ctx = GetOnMatchEnv(&WaapRuntimeConfig{}, &ParsedRequest{}, types.Event{})
 	}
 	opts := GetExprWAFOptions(ctx)
 	if h.Filter != "" {
@@ -285,11 +286,11 @@ func (w *WaapRuntimeConfig) ProcessOnLoadRules() error {
 	return nil
 }
 
-func (w *WaapRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest) error {
+func (w *WaapRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest, evt types.Event) error {
 
 	for _, rule := range w.CompiledOnMatch {
 		if rule.FilterExpr != nil {
-			output, err := expr.Run(rule.FilterExpr, GetOnMatchEnv(w, request))
+			output, err := expr.Run(rule.FilterExpr, GetOnMatchEnv(w, request, evt))
 			if err != nil {
 				return fmt.Errorf("unable to run waap on_match filter %s : %w", rule.Filter, err)
 			}
@@ -305,7 +306,7 @@ func (w *WaapRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest) error {
 			}
 		}
 		for _, applyExpr := range rule.ApplyExpr {
-			_, err := expr.Run(applyExpr, GetOnMatchEnv(w, request))
+			_, err := expr.Run(applyExpr, GetOnMatchEnv(w, request, evt))
 			if err != nil {
 				log.Errorf("unable to apply waap on_match expr: %s", err)
 				continue

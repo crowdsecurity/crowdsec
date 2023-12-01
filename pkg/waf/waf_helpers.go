@@ -3,6 +3,7 @@ package waf
 import (
 	"github.com/antonmedv/expr"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var exprFunctionOptions []expr.Option
@@ -53,9 +54,10 @@ func GetPreEvalEnv(w *WaapRuntimeConfig, request *ParsedRequest) map[string]inte
 	}
 }
 
-func GetOnMatchEnv(w *WaapRuntimeConfig, request *ParsedRequest) map[string]interface{} {
+func GetOnMatchEnv(w *WaapRuntimeConfig, request *ParsedRequest, evt types.Event) map[string]interface{} {
 	//FIXME: use expr.Function instead of this
 	return map[string]interface{}{
+		"evt":            evt,
 		"req":            request,
 		"IsInBand":       request.IsInBand,
 		"IsOutBand":      request.IsOutBand,
