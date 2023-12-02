@@ -75,14 +75,15 @@ func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item
 			hubStatus[itemType] = make([]itemHubStatus, len(items[itemType]))
 
 			for i, item := range items[itemType] {
-				status, emo := item.InstallStatus()
+				status := item.State.Text()
+				status_emo := item.State.Emoji()
 				hubStatus[itemType][i] = itemHubStatus{
 					Name:         item.Name,
 					LocalVersion: item.State.LocalVersion,
 					LocalPath:    item.State.LocalPath,
 					Description:  item.Description,
 					Status:       status,
-					UTF8Status:   fmt.Sprintf("%v  %s", emo, status),
+					UTF8Status:   fmt.Sprintf("%v  %s", status_emo, status),
 				}
 			}
 		}
@@ -107,10 +108,9 @@ func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item
 
 		for _, itemType := range itemTypes {
 			for _, item := range items[itemType] {
-				status, _ := item.InstallStatus()
 				row := []string{
 					item.Name,
-					status,
+					item.State.Text(),
 					item.State.LocalVersion,
 					item.Description,
 				}
