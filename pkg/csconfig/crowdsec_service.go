@@ -11,8 +11,6 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
-var DataDir string // FIXME: find a better way to pass this to the waf
-
 // CrowdsecServiceCfg contains the location of parsers/scenarios/... and acquisition files
 type CrowdsecServiceCfg struct {
 	Enable                    *bool             `yaml:"enable"`

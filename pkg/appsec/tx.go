@@ -1,4 +1,4 @@
-package waf
+package appsec
 
 import (
 	"github.com/crowdsecurity/coraza/v3"

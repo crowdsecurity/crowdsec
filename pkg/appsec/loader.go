@@ -1,4 +1,4 @@
-package waf
+package appsec
 
 import (
 	"os"
@@ -17,7 +17,6 @@ func LoadAppsecRules(hubInstance *cwhub.Hub) error {
 	hub = hubInstance
 
 	for _, hubAppsecRuleItem := range hub.GetItemMap(cwhub.APPSEC_RULES) {
-		//log.Infof("loading %s", hubWafRuleItem.LocalPath)
 		if !hubAppsecRuleItem.State.Installed {
 			continue
 		}

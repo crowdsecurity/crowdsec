@@ -13,12 +13,12 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/crowdsecurity/crowdsec/pkg/waf"
 )
 
 func initCrowdsec(cConfig *csconfig.Config, hub *cwhub.Hub) (*parser.Parsers, error) {
@@ -34,7 +34,7 @@ func initCrowdsec(cConfig *csconfig.Config, hub *cwhub.Hub) (*parser.Parsers, er
 		return nil, fmt.Errorf("while loading scenarios: %w", err)
 	}
 
-	if err := waf.LoadAppsecRules(hub); err != nil {
+	if err := appsec.LoadAppsecRules(hub); err != nil {
 		return nil, fmt.Errorf("while loading appsec rules: %w", err)
 	}
 

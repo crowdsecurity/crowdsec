@@ -1,4 +1,4 @@
-package waap_rule
+package appsec_rule
 
 const (
 	ModsecurityRuleType = "modsecurity"

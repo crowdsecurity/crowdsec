@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/waf/waap_rule"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
@@ -55,7 +55,7 @@ func (h *HubTest) GetAppsecCoverage() ([]Coverage, error) {
 		}
 
 		for _, appsecRulesFile := range configFileData.AppsecRules {
-			appsecRuleData := &waap_rule.CustomRule{}
+			appsecRuleData := &appsec_rule.CustomRule{}
 			yamlFile, err := os.ReadFile(appsecRulesFile)
 			if err != nil {
 				log.Printf("unable to open appsec rule '%s': %s", appsecRulesFile, err)

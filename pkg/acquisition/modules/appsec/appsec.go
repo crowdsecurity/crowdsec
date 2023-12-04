@@ -11,8 +11,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/crowdsecurity/crowdsec/pkg/waf"
 	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -52,9 +52,9 @@ type AppsecSource struct {
 	server        *http.Server
 	addr          string
 	outChan       chan types.Event
-	InChan        chan waf.ParsedRequest
-	AppsecRuntime *waf.AppsecRuntimeConfig
-	AppsecConfigs map[string]waf.AppsecConfig
+	InChan        chan appsec.ParsedRequest
+	AppsecRuntime *appsec.AppsecRuntimeConfig
+	AppsecConfigs map[string]appsec.AppsecConfig
 	lapiURL       string
 	AuthCache     AuthCache
 	AppsecRunners []AppsecRunner //one for each go-routine
@@ -119,7 +119,7 @@ func (wc *AppsecSource) UnmarshalConfig(yamlConfig []byte) error {
 		wc.config.Mode = configuration.TAIL_MODE
 	}
 
-	// always have at least one waf routine
+	// always have at least one appsec routine
 	if wc.config.Routines == 0 {
 		wc.config.Routines = 1
 	}
@@ -150,12 +150,12 @@ func (w *AppsecSource) GetAggregMetrics() []prometheus.Collector {
 func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	err := w.UnmarshalConfig(yamlConfig)
 	if err != nil {
-		return errors.Wrap(err, "unable to parse waf configuration")
+		return errors.Wrap(err, "unable to parse appsec configuration")
 	}
 	w.logger = logger
 	w.logger.Logger.SetLevel(*w.config.LogLevel)
 
-	w.logger.Tracef("WAF configuration: %+v", w.config)
+	w.logger.Tracef("Appsec configuration: %+v", w.config)
 
 	if w.config.AuthCacheDuration == nil {
 		w.config.AuthCacheDuration = &DefaultAuthCacheDuration
@@ -169,8 +169,8 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		Handler: w.mux,
 	}
 
-	w.InChan = make(chan waf.ParsedRequest)
-	appsecCfg := waf.AppsecConfig{Logger: w.logger.WithField("component", "appsec_config")}
+	w.InChan = make(chan appsec.ParsedRequest)
+	appsecCfg := appsec.AppsecConfig{Logger: w.logger.WithField("component", "appsec_config")}
 
 	//let's load the associated appsec_config:
 	if w.config.AppsecConfigPath != "" {
@@ -317,8 +317,8 @@ func (w *AppsecSource) IsAuth(apiKey string) bool {
 
 // should this be in the runner ?
 func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
-	apiKey := r.Header.Get(waf.APIKeyHeaderName)
-	clientIP := r.Header.Get(waf.IPHeaderName)
+	apiKey := r.Header.Get(appsec.APIKeyHeaderName)
+	clientIP := r.Header.Get(appsec.IPHeaderName)
 	remoteIP := r.RemoteAddr
 	if apiKey == "" {
 		w.logger.Errorf("Unauthorized request from '%s' (real IP = %s)", remoteIP, clientIP)
@@ -339,7 +339,7 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	// parse the request only once
-	parsedRequest, err := waf.NewParsedRequestFromRequest(r)
+	parsedRequest, err := appsec.NewParsedRequestFromRequest(r)
 	if err != nil {
 		log.Errorf("%s", err)
 		rw.WriteHeader(http.StatusInternalServerError)

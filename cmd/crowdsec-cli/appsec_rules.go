@@ -11,9 +11,9 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/waf"
-	"github.com/crowdsecurity/crowdsec/pkg/waf/waap_rule"
 )
 
 func NewAppsecRulesCmd() *cobra.Command {
@@ -127,7 +127,7 @@ func AppsecRulesInspectRunner(itemType hubItemType) func(cmd *cobra.Command, arg
 			hub, _ := require.Hub(csConfig, nil)
 			for _, name := range args {
 				hubItem := hub.GetItem(itemType.name, name)
-				appsecRule := waf.AppsecCollectionConfig{}
+				appsecRule := appsec.AppsecCollectionConfig{}
 				yamlContent, err := os.ReadFile(hubItem.State.LocalPath)
 				if err != nil {
 					return fmt.Errorf("unable to read file %s : %s", hubItem.State.LocalPath, err)
@@ -136,7 +136,7 @@ func AppsecRulesInspectRunner(itemType hubItemType) func(cmd *cobra.Command, arg
 					return fmt.Errorf("unable to unmarshal yaml file %s : %s", hubItem.State.LocalPath, err)
 				}
 
-				for _, ruleType := range waap_rule.SupportedTypes() {
+				for _, ruleType := range appsec_rule.SupportedTypes() {
 					fmt.Printf("\n%s format:\n", cases.Title(language.Und, cases.NoLower).String(ruleType))
 					for _, rule := range appsecRule.Rules {
 						convertedRule, _, err := rule.Convert(ruleType, appsecRule.Name)

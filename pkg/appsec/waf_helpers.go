@@ -1,4 +1,4 @@
-package waf
+package appsec
 
 import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"

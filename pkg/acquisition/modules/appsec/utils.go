@@ -7,9 +7,9 @@ import (
 
 	"github.com/crowdsecurity/coraza/v3/collection"
 	"github.com/crowdsecurity/coraza/v3/types/variables"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/crowdsecurity/crowdsec/pkg/waf"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -51,7 +51,7 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 		alert.Meta = append(alert.Meta, &meta)
 	}
 	alert.EventsCount = ptr.Of(int32(1))
-	alert.Labels = []string{"waf"} //don't know what to do about this
+	alert.Labels = []string{"appsec"} //don't know what to do about this
 	alert.Leakspeed = ptr.Of("")
 	msg := fmt.Sprintf("Application Security Engine alert: %s", inEvt.Waap.MatchedRules.GetName())
 	alert.Message = &msg
@@ -68,7 +68,7 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 	return &evt, nil
 }
 
-func EventFromRequest(r *waf.ParsedRequest) (types.Event, error) {
+func EventFromRequest(r *appsec.ParsedRequest) (types.Event, error) {
 	evt := types.Event{}
 	//we might want to change this based on in-band vs out-of-band ?
 	evt.Type = types.LOG
@@ -91,11 +91,11 @@ func EventFromRequest(r *waf.ParsedRequest) (types.Event, error) {
 	evt.Line = types.Line{
 		Time: time.Now(),
 		//should we add some info like listen addr/port/path ?
-		Labels:  map[string]string{"type": "crowdsec-waap"}, //FIXME: use the labels from the acquis
+		Labels:  map[string]string{"type": "crowdsec-appsec"}, //FIXME: use the labels from the acquis
 		Process: true,
 		Module:  "appsec",
 		Src:     "appsec",
-		Raw:     "dummy-waap-data", //we discard empty Line.Raw items :)
+		Raw:     "dummy-appsec-data", //we discard empty Line.Raw items :)
 	}
 	evt.Waap = types.AppsecEvent{}
 
@@ -110,19 +110,19 @@ func LogAppsecEvent(evt *types.Event, logger *log.Entry) {
 
 	if evt.Meta["waap_interrupted"] == "true" {
 		logger.WithFields(log.Fields{
-			"module":     "waf",
+			"module":     "appsec",
 			"source":     evt.Parsed["source_ip"],
 			"target_uri": req,
 		}).Infof("%s blocked on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Waap.MatchedRules), evt.Waap.GetRuleIDs())
 	} else if evt.Parsed["outofband_interrupted"] == "true" {
 		logger.WithFields(log.Fields{
-			"module":     "waf",
+			"module":     "appsec",
 			"source":     evt.Parsed["source_ip"],
 			"target_uri": req,
 		}).Infof("%s out-of-band blocking rules on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Waap.MatchedRules), evt.Waap.GetRuleIDs())
 	} else {
 		logger.WithFields(log.Fields{
-			"module":     "waf",
+			"module":     "appsec",
 			"source":     evt.Parsed["source_ip"],
 			"target_uri": req,
 		}).Debugf("%s triggered non-blocking rules on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Waap.MatchedRules), evt.Waap.GetRuleIDs())
@@ -130,7 +130,7 @@ func LogAppsecEvent(evt *types.Event, logger *log.Entry) {
 
 }
 
-func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *waf.ParsedRequest) error {
+func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedRequest) error {
 
 	if evt == nil {
 		//an error was already emitted, let's not spam the logs
@@ -206,7 +206,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *waf.ParsedRequ
 		hash := "NOT_SET"
 		ruleNameProm := fmt.Sprintf("%d", rule.Rule().ID())
 
-		if details, ok := waf.AppsecRulesDetails[rule.Rule().ID()]; ok {
+		if details, ok := appsec.AppsecRulesDetails[rule.Rule().ID()]; ok {
 			//Only set them for custom rules, not for rules written in seclang
 			name = details.Name
 			version = details.Version

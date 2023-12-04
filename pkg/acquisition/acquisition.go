@@ -77,7 +77,7 @@ var AcquisitionSources = map[string]func() DataSource{
 	"k8s-audit":   func() DataSource { return &k8sauditacquisition.KubernetesAuditSource{} },
 	"loki":        func() DataSource { return &lokiacquisition.LokiSource{} },
 	"s3":          func() DataSource { return &s3acquisition.S3Source{} },
-	"waf":         func() DataSource { return &appsecacquisition.AppsecSource{} },
+	"appsec":      func() DataSource { return &appsecacquisition.AppsecSource{} },
 }
 
 var transformRuntimes = map[string]*vm.Program{}

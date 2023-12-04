@@ -1,12 +1,12 @@
-package waf
+package appsec
 
 import (
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/waf/waap_rule"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -20,13 +20,13 @@ var APPSEC_RULE = "appsec-rule"
 
 // to be filled w/ seb update
 type AppsecCollectionConfig struct {
-	Type              string                 `yaml:"type"`
-	Name              string                 `yaml:"name"`
-	Debug             bool                   `yaml:"debug"`
-	Description       string                 `yaml:"description"`
-	SecLangFilesRules []string               `yaml:"seclang_files_rules"`
-	SecLangRules      []string               `yaml:"seclang_rules"`
-	Rules             []waap_rule.CustomRule `yaml:"rules"`
+	Type              string                   `yaml:"type"`
+	Name              string                   `yaml:"name"`
+	Debug             bool                     `yaml:"debug"`
+	Description       string                   `yaml:"description"`
+	SecLangFilesRules []string                 `yaml:"seclang_files_rules"`
+	SecLangRules      []string                 `yaml:"seclang_rules"`
+	Rules             []appsec_rule.CustomRule `yaml:"rules"`
 
 	Labels map[string]interface{} `yaml:"labels"` //Labels is K:V list aiming at providing context the overflow
 
@@ -47,7 +47,7 @@ type RulesDetails struct {
 var AppsecRulesDetails = make(map[int]RulesDetails)
 
 func LoadCollection(pattern string) ([]AppsecCollection, error) {
-	//FIXME: have a proper logger here, inheriting from waap-config to have consistent log levels
+	//FIXME: have a proper logger here, inheriting from appsec-config to have consistent log levels
 	ret := make([]AppsecCollection, 0)
 
 	for _, appsecRule := range appsecRules {
@@ -100,7 +100,7 @@ func LoadCollection(pattern string) ([]AppsecCollection, error) {
 
 		if appsecRule.Rules != nil {
 			for _, rule := range appsecRule.Rules {
-				strRule, rulesId, err := rule.Convert(waap_rule.ModsecurityRuleType, appsecRule.Name)
+				strRule, rulesId, err := rule.Convert(appsec_rule.ModsecurityRuleType, appsecRule.Name)
 				if err != nil {
 					log.Errorf("unable to convert rule %s : %s", rule.Name, err)
 					return nil, err

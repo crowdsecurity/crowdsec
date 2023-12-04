@@ -1,4 +1,4 @@
-package waf
+package appsec
 
 import (
 	"fmt"

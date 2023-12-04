@@ -8,8 +8,8 @@ import (
 
 	"github.com/crowdsecurity/coraza/v3"
 	corazatypes "github.com/crowdsecurity/coraza/v3/types"
+	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/crowdsecurity/crowdsec/pkg/waf"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
@@ -18,9 +18,9 @@ import (
 // that's the runtime structure of the Application security engine as seen from the acquis
 type AppsecRunner struct {
 	outChan             chan types.Event
-	inChan              chan waf.ParsedRequest
+	inChan              chan appsec.ParsedRequest
 	UUID                string
-	AppsecRuntime       *waf.AppsecRuntimeConfig //this holds the actual appsec runtime config, rules, remediations, hooks etc.
+	AppsecRuntime       *appsec.AppsecRuntimeConfig //this holds the actual appsec runtime config, rules, remediations, hooks etc.
 	AppsecInbandEngine  coraza.WAF
 	AppsecOutbandEngine coraza.WAF
 	logger              *log.Entry
@@ -44,7 +44,7 @@ func (r *AppsecRunner) Init(datadir string) error {
 	outBandLogger := r.logger.Dup().WithField("band", "outband")
 
 	//setting up inband engine
-	inbandCfg := coraza.NewWAFConfig().WithDirectives(inBandRules).WithRootFS(fs).WithDebugLogger(waf.NewCrzLogger(inBandLogger))
+	inbandCfg := coraza.NewWAFConfig().WithDirectives(inBandRules).WithRootFS(fs).WithDebugLogger(appsec.NewCrzLogger(inBandLogger))
 	if !r.AppsecRuntime.Config.InbandOptions.DisableBodyInspection {
 		inbandCfg = inbandCfg.WithRequestBodyAccess()
 	} else {
@@ -59,7 +59,7 @@ func (r *AppsecRunner) Init(datadir string) error {
 	}
 
 	//setting up outband engine
-	outbandCfg := coraza.NewWAFConfig().WithDirectives(outOfBandRules).WithRootFS(fs).WithDebugLogger(waf.NewCrzLogger(outBandLogger))
+	outbandCfg := coraza.NewWAFConfig().WithDirectives(outOfBandRules).WithRootFS(fs).WithDebugLogger(appsec.NewCrzLogger(outBandLogger))
 	if !r.AppsecRuntime.Config.OutOfBandOptions.DisableBodyInspection {
 		outbandCfg = outbandCfg.WithRequestBodyAccess()
 	} else {
@@ -101,7 +101,7 @@ func (r *AppsecRunner) Init(datadir string) error {
 	return nil
 }
 
-func (r *AppsecRunner) processRequest(tx waf.ExtendedTransaction, request *waf.ParsedRequest) error {
+func (r *AppsecRunner) processRequest(tx appsec.ExtendedTransaction, request *appsec.ParsedRequest) error {
 	var in *corazatypes.Interruption
 	var err error
 	request.Tx = tx
@@ -185,21 +185,21 @@ func (r *AppsecRunner) processRequest(tx waf.ExtendedTransaction, request *waf.P
 	return nil
 }
 
-func (r *AppsecRunner) ProcessInBandRules(request *waf.ParsedRequest) error {
-	tx := waf.NewExtendedTransaction(r.AppsecInbandEngine, request.UUID)
+func (r *AppsecRunner) ProcessInBandRules(request *appsec.ParsedRequest) error {
+	tx := appsec.NewExtendedTransaction(r.AppsecInbandEngine, request.UUID)
 	r.AppsecRuntime.InBandTx = tx
 	err := r.processRequest(tx, request)
 	return err
 }
 
-func (r *AppsecRunner) ProcessOutOfBandRules(request *waf.ParsedRequest) error {
-	tx := waf.NewExtendedTransaction(r.AppsecOutbandEngine, request.UUID)
+func (r *AppsecRunner) ProcessOutOfBandRules(request *appsec.ParsedRequest) error {
+	tx := appsec.NewExtendedTransaction(r.AppsecOutbandEngine, request.UUID)
 	r.AppsecRuntime.OutOfBandTx = tx
 	err := r.processRequest(tx, request)
 	return err
 }
 
-func (r *AppsecRunner) handleInBandInterrupt(request *waf.ParsedRequest) {
+func (r *AppsecRunner) handleInBandInterrupt(request *appsec.ParsedRequest) {
 	//create the associated event for crowdsec itself
 	evt, err := EventFromRequest(request)
 	if err != nil {
@@ -248,7 +248,7 @@ func (r *AppsecRunner) handleInBandInterrupt(request *waf.ParsedRequest) {
 	}
 }
 
-func (r *AppsecRunner) handleOutBandInterrupt(request *waf.ParsedRequest) {
+func (r *AppsecRunner) handleOutBandInterrupt(request *appsec.ParsedRequest) {
 	evt, err := EventFromRequest(request)
 	if err != nil {
 		//let's not interrupt the pipeline for this
@@ -284,7 +284,7 @@ func (r *AppsecRunner) handleOutBandInterrupt(request *waf.ParsedRequest) {
 	}
 }
 
-func (r *AppsecRunner) handleRequest(request *waf.ParsedRequest) {
+func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 	r.logger.Debugf("Requests handled by runner %s", request.UUID)
 	r.AppsecRuntime.ClearResponse()
 
@@ -334,7 +334,7 @@ func (r *AppsecRunner) Run(t *tomb.Tomb) error {
 	for {
 		select {
 		case <-t.Dying():
-			r.logger.Infof("Waf Runner is dying")
+			r.logger.Infof("Appsec Runner is dying")
 			return nil
 		case request := <-r.inChan:
 			r.handleRequest(&request)

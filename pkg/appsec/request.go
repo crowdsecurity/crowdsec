@@ -1,4 +1,4 @@
-package waf
+package appsec
 
 import (
 	"encoding/json"
@@ -266,7 +266,7 @@ func (r *ReqDumpFilter) ToJSON() error {
 	return nil
 }
 
-// Generate a ParsedRequest from a http.Request. ParsedRequest can be consumed by the Waap Engine
+// Generate a ParsedRequest from a http.Request. ParsedRequest can be consumed by the App security Engine
 func NewParsedRequestFromRequest(r *http.Request) (ParsedRequest, error) {
 	var err error
 	body := make([]byte, 0)

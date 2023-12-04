@@ -1,4 +1,4 @@
-package waap_rule
+package appsec_rule
 
 import (
 	"fmt"
@@ -43,7 +43,7 @@ type CustomRule struct {
 	BodyType  string       `yaml:"body_type,omitempty"`
 }
 
-func (v *CustomRule) Convert(ruleType string, waapRuleName string) (string, []uint32, error) {
+func (v *CustomRule) Convert(ruleType string, appsecRuleName string) (string, []uint32, error) {
 
 	if v.Zones == nil && v.And == nil && v.Or == nil {
 		return "", nil, fmt.Errorf("no zones defined")
@@ -60,7 +60,7 @@ func (v *CustomRule) Convert(ruleType string, waapRuleName string) (string, []ui
 	switch ruleType {
 	case ModsecurityRuleType:
 		r := ModsecurityRule{}
-		return r.Build(v, waapRuleName)
+		return r.Build(v, appsecRuleName)
 	default:
 		return "", nil, fmt.Errorf("unknown rule format '%s'", ruleType)
 	}
