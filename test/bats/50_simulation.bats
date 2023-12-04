@@ -12,6 +12,11 @@ fake_log() {
 setup_file() {
     load "../lib/setup_file.sh"
     ./instance-data load
+
+    cscli collections install crowdsecurity/sshd --error
+    cscli parsers install crowdsecurity/syslog-logs --error
+    cscli parsers install crowdsecurity/dateparse-enrich --error
+
     ./instance-crowdsec start
 }
 

@@ -2,7 +2,6 @@ package csconfig
 
 import (
 	"fmt"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,12 +11,6 @@ import (
 )
 
 func TestSimulationLoading(t *testing.T) {
-	testXXFullPath, err := filepath.Abs("./testdata/xxx.yaml")
-	require.NoError(t, err)
-
-	badYamlFullPath, err := filepath.Abs("./testdata/config.yaml")
-	require.NoError(t, err)
-
 	tests := []struct {
 		name        string
 		input       *Config
@@ -56,7 +49,7 @@ func TestSimulationLoading(t *testing.T) {
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
 			},
-			expectedErr: fmt.Sprintf("while reading yaml file: open %s: %s", testXXFullPath, cstest.FileNotFoundMessage),
+			expectedErr: fmt.Sprintf("while reading yaml file: open ./testdata/xxx.yaml: %s", cstest.FileNotFoundMessage),
 		},
 		{
 			name: "basic bad file content",
@@ -67,7 +60,7 @@ func TestSimulationLoading(t *testing.T) {
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
 			},
-			expectedErr: fmt.Sprintf("while unmarshaling simulation file '%s' : yaml: unmarshal errors", badYamlFullPath),
+			expectedErr: "while unmarshaling simulation file './testdata/config.yaml' : yaml: unmarshal errors",
 		},
 		{
 			name: "basic bad file content",
@@ -78,7 +71,7 @@ func TestSimulationLoading(t *testing.T) {
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
 			},
-			expectedErr: fmt.Sprintf("while unmarshaling simulation file '%s' : yaml: unmarshal errors", badYamlFullPath),
+			expectedErr: "while unmarshaling simulation file './testdata/config.yaml' : yaml: unmarshal errors",
 		},
 	}
 

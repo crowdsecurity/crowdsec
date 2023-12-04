@@ -26,8 +26,8 @@ func (a *apic) GetMetrics() (*models.Metrics, error) {
 		machinesInfo[i] = &models.MetricsAgentInfo{
 			Version:    machine.Version,
 			Name:       machine.MachineId,
-			LastUpdate: machine.UpdatedAt.String(),
-			LastPush:   ptr.OrEmpty(machine.LastPush).String(),
+			LastUpdate: machine.UpdatedAt.Format(time.RFC3339),
+			LastPush:   ptr.OrEmpty(machine.LastPush).Format(time.RFC3339),
 		}
 	}
 
@@ -43,7 +43,7 @@ func (a *apic) GetMetrics() (*models.Metrics, error) {
 			Version:    bouncer.Version,
 			CustomName: bouncer.Name,
 			Name:       bouncer.Type,
-			LastPull:   bouncer.LastPull.String(),
+			LastPull:   bouncer.LastPull.Format(time.RFC3339),
 		}
 	}
 
@@ -81,7 +81,7 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 	const checkInt = 20 * time.Second
 
 	// intervals must always be > 0
-	metInts := []time.Duration{1*time.Millisecond, a.metricsIntervalFirst, a.metricsInterval}
+	metInts := []time.Duration{1 * time.Millisecond, a.metricsIntervalFirst, a.metricsInterval}
 
 	log.Infof("Start sending metrics to CrowdSec Central API (interval: %s once, then %s)",
 		metInts[1].Round(time.Second), metInts[2])
@@ -123,7 +123,7 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 			reloadMachineIDs()
 			if !slices.Equal(oldIDs, machineIDs) {
 				log.Infof("capi metrics: machines changed, immediate send")
-				metTicker.Reset(1*time.Millisecond)
+				metTicker.Reset(1 * time.Millisecond)
 			}
 		case <-metTicker.C:
 			metTicker.Stop()
