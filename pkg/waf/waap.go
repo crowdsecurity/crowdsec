@@ -184,7 +184,7 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 }
 
 func (wc *AppsecConfig) Load(configName string) error {
-	appsecConfigs := hub.GetItemMap(cwhub.WAAP_CONFIGS)
+	appsecConfigs := hub.GetItemMap(cwhub.APPSEC_CONFIGS)
 
 	for _, hubAppsecConfigItem := range appsecConfigs {
 		if !hubAppsecConfigItem.State.Installed {

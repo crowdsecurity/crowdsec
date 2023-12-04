@@ -175,7 +175,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *waf.ParsedRequ
 			if variable.Value() == "" {
 				continue
 			}
-			for _, collectionToKeep := range r.WaapRuntime.CompiledVariablesTracking {
+			for _, collectionToKeep := range r.AppsecRuntime.CompiledVariablesTracking {
 				match := collectionToKeep.MatchString(key)
 				if match {
 					evt.Waap.Vars[key] = variable.Value()
@@ -215,7 +215,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *waf.ParsedRequ
 			r.logger.Debugf("custom rule for event, setting name: %s, version: %s, hash: %s", name, version, hash)
 		}
 
-		AppsecRuleHits.With(prometheus.Labels{"rule_name": ruleNameProm, "type": kind, "source": req.RemoteAddrNormalized, "appsec_engine": req.WaapEngine}).Inc()
+		AppsecRuleHits.With(prometheus.Labels{"rule_name": ruleNameProm, "type": kind, "source": req.RemoteAddrNormalized, "appsec_engine": req.AppsecEngine}).Inc()
 
 		corazaRule := map[string]interface{}{
 			"id":         rule.Rule().ID(),

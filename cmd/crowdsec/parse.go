@@ -22,7 +22,7 @@ LOOP:
 			if !event.Process {
 				continue
 			}
-			/*Waap is going to generate 2 events:
+			/*Application security engine is going to generate 2 events:
 			- one that is treated as a log and can go to scenarios
 			- another one that will go directly to LAPI*/
 			if event.Type == types.APPSEC {

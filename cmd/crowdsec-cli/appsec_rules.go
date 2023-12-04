@@ -62,9 +62,9 @@ func NewCmdAppsecRulesInstall() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compAllItems(cwhub.WAAP_RULES, args, toComplete)
+			return compAllItems(cwhub.APPSEC_RULES, args, toComplete)
 		},
-		RunE: itemsInstallRunner(hubItemTypes[cwhub.WAAP_RULES]),
+		RunE: itemsInstallRunner(hubItemTypes[cwhub.APPSEC_RULES]),
 	}
 
 	flags := cmdAppsecRulesInstall.Flags()
@@ -84,9 +84,9 @@ func NewCmdAppsecRulesRemove() *cobra.Command {
 		Aliases:           []string{"delete"},
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compInstalledItems(cwhub.WAAP_RULES, args, toComplete)
+			return compInstalledItems(cwhub.APPSEC_RULES, args, toComplete)
 		},
-		RunE: itemsRemoveRunner(hubItemTypes[cwhub.WAAP_RULES]),
+		RunE: itemsRemoveRunner(hubItemTypes[cwhub.APPSEC_RULES]),
 	}
 
 	flags := cmdAppsecRulesRemove.Flags()
@@ -105,9 +105,9 @@ func NewCmdAppsecRulesUpgrade() *cobra.Command {
 		Example:           `cscli appsec-rules upgrade crowdsecurity/crs`,
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compInstalledItems(cwhub.WAAP_RULES, args, toComplete)
+			return compInstalledItems(cwhub.APPSEC_RULES, args, toComplete)
 		},
-		RunE: itemsUpgradeRunner(hubItemTypes[cwhub.WAAP_RULES]),
+		RunE: itemsUpgradeRunner(hubItemTypes[cwhub.APPSEC_RULES]),
 	}
 
 	flags := cmdAppsecRulesUpgrade.Flags()
@@ -119,7 +119,7 @@ func NewCmdAppsecRulesUpgrade() *cobra.Command {
 
 func AppsecRulesInspectRunner(itemType hubItemType) func(cmd *cobra.Command, args []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		f := itemsInspectRunner(hubItemTypes[cwhub.WAAP_RULES])
+		f := itemsInspectRunner(hubItemTypes[cwhub.APPSEC_RULES])
 		if err := f(cmd, args); err != nil {
 			return err
 		}
@@ -161,9 +161,9 @@ func NewCmdAppsecRulesInspect() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compInstalledItems(cwhub.WAAP_RULES, args, toComplete)
+			return compInstalledItems(cwhub.APPSEC_RULES, args, toComplete)
 		},
-		RunE: AppsecRulesInspectRunner(hubItemTypes[cwhub.WAAP_RULES]),
+		RunE: AppsecRulesInspectRunner(hubItemTypes[cwhub.APPSEC_RULES]),
 	}
 
 	flags := cmdAppsecRulesInspect.Flags()
@@ -182,7 +182,7 @@ func NewCmdAppsecRulesList() *cobra.Command {
 cscli appsec-rules list -a
 cscli appsec-rules list crowdsecurity/crs`,
 		DisableAutoGenTag: true,
-		RunE:              itemsListRunner(hubItemTypes[cwhub.WAAP_RULES]),
+		RunE:              itemsListRunner(hubItemTypes[cwhub.APPSEC_RULES]),
 	}
 
 	flags := cmdAppsecRulesList.Flags()

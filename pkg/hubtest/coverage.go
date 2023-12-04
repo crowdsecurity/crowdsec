@@ -19,13 +19,13 @@ type Coverage struct {
 	PresentIn  map[string]bool //poorman's set
 }
 
-func (h *HubTest) GetWaapCoverage() ([]Coverage, error) {
-	if len(h.HubIndex.GetItemMap(cwhub.WAAP_RULES)) == 0 {
-		return nil, fmt.Errorf("no waap rules in hub index")
+func (h *HubTest) GetAppsecCoverage() ([]Coverage, error) {
+	if len(h.HubIndex.GetItemMap(cwhub.APPSEC_RULES)) == 0 {
+		return nil, fmt.Errorf("no appsec rules in hub index")
 	}
 
 	// populate from hub, iterate in alphabetical order
-	pkeys := sortedMapKeys(h.HubIndex.GetItemMap(cwhub.WAAP_RULES))
+	pkeys := sortedMapKeys(h.HubIndex.GetItemMap(cwhub.APPSEC_RULES))
 	coverage := make([]Coverage, len(pkeys))
 
 	for i, name := range pkeys {
@@ -37,16 +37,16 @@ func (h *HubTest) GetWaapCoverage() ([]Coverage, error) {
 	}
 
 	// parser the expressions a-la-oneagain
-	waapTestConfigs, err := filepath.Glob(".waap-tests/*/config.yaml")
+	appsecTestConfigs, err := filepath.Glob(".appsec-tests/*/config.yaml")
 	if err != nil {
-		return nil, fmt.Errorf("while find waap-tests config: %s", err)
+		return nil, fmt.Errorf("while find appsec-tests config: %s", err)
 	}
 
-	for _, waapTestConfigPath := range waapTestConfigs {
+	for _, appsecTestConfigPath := range appsecTestConfigs {
 		configFileData := &HubTestItemConfig{}
-		yamlFile, err := os.ReadFile(waapTestConfigPath)
+		yamlFile, err := os.ReadFile(appsecTestConfigPath)
 		if err != nil {
-			log.Printf("unable to open waap test config file '%s': %s", waapTestConfigPath, err)
+			log.Printf("unable to open appsec test config file '%s': %s", appsecTestConfigPath, err)
 			continue
 		}
 		err = yaml.Unmarshal(yamlFile, configFileData)
@@ -54,22 +54,22 @@ func (h *HubTest) GetWaapCoverage() ([]Coverage, error) {
 			return nil, fmt.Errorf("unmarshal: %v", err)
 		}
 
-		for _, waapRulesFile := range configFileData.WaapRules {
-			waapRuleData := &waap_rule.CustomRule{}
-			yamlFile, err := os.ReadFile(waapRulesFile)
+		for _, appsecRulesFile := range configFileData.AppsecRules {
+			appsecRuleData := &waap_rule.CustomRule{}
+			yamlFile, err := os.ReadFile(appsecRulesFile)
 			if err != nil {
-				log.Printf("unable to open waap rule '%s': %s", waapRulesFile, err)
+				log.Printf("unable to open appsec rule '%s': %s", appsecRulesFile, err)
 			}
-			err = yaml.Unmarshal(yamlFile, waapRuleData)
+			err = yaml.Unmarshal(yamlFile, appsecRuleData)
 			if err != nil {
 				return nil, fmt.Errorf("unmarshal: %v", err)
 			}
-			waapRuleName := waapRuleData.Name
+			appsecRuleName := appsecRuleData.Name
 
 			for idx, cov := range coverage {
-				if cov.Name == waapRuleName {
+				if cov.Name == appsecRuleName {
 					coverage[idx].TestsCount++
-					coverage[idx].PresentIn[waapTestConfigPath] = true
+					coverage[idx].PresentIn[appsecTestConfigPath] = true
 				}
 			}
 		}

@@ -15,15 +15,15 @@ import (
 	"gopkg.in/tomb.v2"
 )
 
-// that's the runtime structure of the WAAP as seen from the acquis
+// that's the runtime structure of the Application security engine as seen from the acquis
 type AppsecRunner struct {
-	outChan           chan types.Event
-	inChan            chan waf.ParsedRequest
-	UUID              string
-	WaapRuntime       *waf.AppsecRuntimeConfig //this holds the actual waap runtime config, rules, remediations, hooks etc.
-	WaapInbandEngine  coraza.WAF
-	WaapOutbandEngine coraza.WAF
-	logger            *log.Entry
+	outChan             chan types.Event
+	inChan              chan waf.ParsedRequest
+	UUID                string
+	AppsecRuntime       *waf.AppsecRuntimeConfig //this holds the actual appsec runtime config, rules, remediations, hooks etc.
+	AppsecInbandEngine  coraza.WAF
+	AppsecOutbandEngine coraza.WAF
+	logger              *log.Entry
 }
 
 func (r *AppsecRunner) Init(datadir string) error {
@@ -33,11 +33,11 @@ func (r *AppsecRunner) Init(datadir string) error {
 	inBandRules := ""
 	outOfBandRules := ""
 
-	for _, collection := range r.WaapRuntime.InBandRules {
+	for _, collection := range r.AppsecRuntime.InBandRules {
 		inBandRules += collection.String()
 	}
 
-	for _, collection := range r.WaapRuntime.OutOfBandRules {
+	for _, collection := range r.AppsecRuntime.OutOfBandRules {
 		outOfBandRules += collection.String()
 	}
 	inBandLogger := r.logger.Dup().WithField("band", "inband")
@@ -45,52 +45,52 @@ func (r *AppsecRunner) Init(datadir string) error {
 
 	//setting up inband engine
 	inbandCfg := coraza.NewWAFConfig().WithDirectives(inBandRules).WithRootFS(fs).WithDebugLogger(waf.NewCrzLogger(inBandLogger))
-	if !r.WaapRuntime.Config.InbandOptions.DisableBodyInspection {
+	if !r.AppsecRuntime.Config.InbandOptions.DisableBodyInspection {
 		inbandCfg = inbandCfg.WithRequestBodyAccess()
 	} else {
 		log.Warningf("Disabling body inspection, Inband rules will not be able to match on body's content.")
 	}
-	if r.WaapRuntime.Config.InbandOptions.RequestBodyInMemoryLimit != nil {
-		inbandCfg = inbandCfg.WithRequestBodyInMemoryLimit(*r.WaapRuntime.Config.InbandOptions.RequestBodyInMemoryLimit)
+	if r.AppsecRuntime.Config.InbandOptions.RequestBodyInMemoryLimit != nil {
+		inbandCfg = inbandCfg.WithRequestBodyInMemoryLimit(*r.AppsecRuntime.Config.InbandOptions.RequestBodyInMemoryLimit)
 	}
-	r.WaapInbandEngine, err = coraza.NewWAF(inbandCfg)
+	r.AppsecInbandEngine, err = coraza.NewWAF(inbandCfg)
 	if err != nil {
 		return fmt.Errorf("unable to initialize inband engine : %w", err)
 	}
 
 	//setting up outband engine
 	outbandCfg := coraza.NewWAFConfig().WithDirectives(outOfBandRules).WithRootFS(fs).WithDebugLogger(waf.NewCrzLogger(outBandLogger))
-	if !r.WaapRuntime.Config.OutOfBandOptions.DisableBodyInspection {
+	if !r.AppsecRuntime.Config.OutOfBandOptions.DisableBodyInspection {
 		outbandCfg = outbandCfg.WithRequestBodyAccess()
 	} else {
 		log.Warningf("Disabling body inspection, Out of band rules will not be able to match on body's content.")
 	}
-	if r.WaapRuntime.Config.OutOfBandOptions.RequestBodyInMemoryLimit != nil {
-		outbandCfg = outbandCfg.WithRequestBodyInMemoryLimit(*r.WaapRuntime.Config.OutOfBandOptions.RequestBodyInMemoryLimit)
+	if r.AppsecRuntime.Config.OutOfBandOptions.RequestBodyInMemoryLimit != nil {
+		outbandCfg = outbandCfg.WithRequestBodyInMemoryLimit(*r.AppsecRuntime.Config.OutOfBandOptions.RequestBodyInMemoryLimit)
 	}
-	r.WaapOutbandEngine, err = coraza.NewWAF(outbandCfg)
+	r.AppsecOutbandEngine, err = coraza.NewWAF(outbandCfg)
 
-	if r.WaapRuntime.DisabledInBandRulesTags != nil {
-		for _, tag := range r.WaapRuntime.DisabledInBandRulesTags {
-			r.WaapInbandEngine.GetRuleGroup().DeleteByTag(tag)
+	if r.AppsecRuntime.DisabledInBandRulesTags != nil {
+		for _, tag := range r.AppsecRuntime.DisabledInBandRulesTags {
+			r.AppsecInbandEngine.GetRuleGroup().DeleteByTag(tag)
 		}
 	}
 
-	if r.WaapRuntime.DisabledOutOfBandRulesTags != nil {
-		for _, tag := range r.WaapRuntime.DisabledOutOfBandRulesTags {
-			r.WaapOutbandEngine.GetRuleGroup().DeleteByTag(tag)
+	if r.AppsecRuntime.DisabledOutOfBandRulesTags != nil {
+		for _, tag := range r.AppsecRuntime.DisabledOutOfBandRulesTags {
+			r.AppsecOutbandEngine.GetRuleGroup().DeleteByTag(tag)
 		}
 	}
 
-	if r.WaapRuntime.DisabledInBandRuleIds != nil {
-		for _, id := range r.WaapRuntime.DisabledInBandRuleIds {
-			r.WaapInbandEngine.GetRuleGroup().DeleteByID(id)
+	if r.AppsecRuntime.DisabledInBandRuleIds != nil {
+		for _, id := range r.AppsecRuntime.DisabledInBandRuleIds {
+			r.AppsecInbandEngine.GetRuleGroup().DeleteByID(id)
 		}
 	}
 
-	if r.WaapRuntime.DisabledOutOfBandRuleIds != nil {
-		for _, id := range r.WaapRuntime.DisabledOutOfBandRuleIds {
-			r.WaapOutbandEngine.GetRuleGroup().DeleteByID(id)
+	if r.AppsecRuntime.DisabledOutOfBandRuleIds != nil {
+		for _, id := range r.AppsecRuntime.DisabledOutOfBandRuleIds {
+			r.AppsecOutbandEngine.GetRuleGroup().DeleteByID(id)
 		}
 	}
 
@@ -117,7 +117,7 @@ func (r *AppsecRunner) processRequest(tx waf.ExtendedTransaction, request *waf.P
 	}()
 
 	//pre eval (expr) rules
-	err = r.WaapRuntime.ProcessPreEvalRules(request)
+	err = r.AppsecRuntime.ProcessPreEvalRules(request)
 	if err != nil {
 		r.logger.Errorf("unable to process PreEval rules: %s", err)
 		//FIXME: should we abort here ?
@@ -177,7 +177,7 @@ func (r *AppsecRunner) processRequest(tx waf.ExtendedTransaction, request *waf.P
 		r.logger.Debugf("rules matched for body : %d", in.RuleID)
 	}
 
-	err = r.WaapRuntime.ProcessPostEvalRules(request)
+	err = r.AppsecRuntime.ProcessPostEvalRules(request)
 	if err != nil {
 		r.logger.Errorf("unable to process PostEval rules: %s", err)
 	}
@@ -186,15 +186,15 @@ func (r *AppsecRunner) processRequest(tx waf.ExtendedTransaction, request *waf.P
 }
 
 func (r *AppsecRunner) ProcessInBandRules(request *waf.ParsedRequest) error {
-	tx := waf.NewExtendedTransaction(r.WaapInbandEngine, request.UUID)
-	r.WaapRuntime.InBandTx = tx
+	tx := waf.NewExtendedTransaction(r.AppsecInbandEngine, request.UUID)
+	r.AppsecRuntime.InBandTx = tx
 	err := r.processRequest(tx, request)
 	return err
 }
 
 func (r *AppsecRunner) ProcessOutOfBandRules(request *waf.ParsedRequest) error {
-	tx := waf.NewExtendedTransaction(r.WaapOutbandEngine, request.UUID)
-	r.WaapRuntime.OutOfBandTx = tx
+	tx := waf.NewExtendedTransaction(r.AppsecOutbandEngine, request.UUID)
+	r.AppsecRuntime.OutOfBandTx = tx
 	err := r.processRequest(tx, request)
 	return err
 }
@@ -212,32 +212,32 @@ func (r *AppsecRunner) handleInBandInterrupt(request *waf.ParsedRequest) {
 	}
 	if in := request.Tx.Interruption(); in != nil {
 		r.logger.Debugf("inband rules matched : %d", in.RuleID)
-		r.WaapRuntime.Response.InBandInterrupt = true
-		r.WaapRuntime.Response.HTTPResponseCode = r.WaapRuntime.Config.BlockedHTTPCode
-		r.WaapRuntime.Response.Action = r.WaapRuntime.DefaultRemediation
+		r.AppsecRuntime.Response.InBandInterrupt = true
+		r.AppsecRuntime.Response.HTTPResponseCode = r.AppsecRuntime.Config.BlockedHTTPCode
+		r.AppsecRuntime.Response.Action = r.AppsecRuntime.DefaultRemediation
 
-		if _, ok := r.WaapRuntime.RemediationById[in.RuleID]; ok {
-			r.WaapRuntime.Response.Action = r.WaapRuntime.RemediationById[in.RuleID]
+		if _, ok := r.AppsecRuntime.RemediationById[in.RuleID]; ok {
+			r.AppsecRuntime.Response.Action = r.AppsecRuntime.RemediationById[in.RuleID]
 		}
 
-		for tag, remediation := range r.WaapRuntime.RemediationByTag {
+		for tag, remediation := range r.AppsecRuntime.RemediationByTag {
 			if slices.Contains[[]string, string](in.Tags, tag) {
-				r.WaapRuntime.Response.Action = remediation
+				r.AppsecRuntime.Response.Action = remediation
 			}
 		}
 
-		err = r.WaapRuntime.ProcessOnMatchRules(request, evt)
+		err = r.AppsecRuntime.ProcessOnMatchRules(request, evt)
 		if err != nil {
 			r.logger.Errorf("unable to process OnMatch rules: %s", err)
 			return
 		}
 		// Should the in band match trigger an event ?
-		if r.WaapRuntime.Response.SendEvent {
+		if r.AppsecRuntime.Response.SendEvent {
 			r.outChan <- evt
 		}
 
 		// Should the in band match trigger an overflow ?
-		if r.WaapRuntime.Response.SendAlert {
+		if r.AppsecRuntime.Response.SendAlert {
 			appsecOvlfw, err := AppsecEventGeneration(evt)
 			if err != nil {
 				r.logger.Errorf("unable to generate appsec event : %s", err)
@@ -260,23 +260,23 @@ func (r *AppsecRunner) handleOutBandInterrupt(request *waf.ParsedRequest) {
 	}
 	if in := request.Tx.Interruption(); in != nil {
 		r.logger.Debugf("inband rules matched : %d", in.RuleID)
-		r.WaapRuntime.Response.OutOfBandInterrupt = true
+		r.AppsecRuntime.Response.OutOfBandInterrupt = true
 
-		err = r.WaapRuntime.ProcessOnMatchRules(request, evt)
+		err = r.AppsecRuntime.ProcessOnMatchRules(request, evt)
 		if err != nil {
 			r.logger.Errorf("unable to process OnMatch rules: %s", err)
 			return
 		}
 		// Should the match trigger an event ?
-		if r.WaapRuntime.Response.SendEvent {
+		if r.AppsecRuntime.Response.SendEvent {
 			r.outChan <- evt
 		}
 
 		// Should the match trigger an overflow ?
-		if r.WaapRuntime.Response.SendAlert {
+		if r.AppsecRuntime.Response.SendAlert {
 			appsecOvlfw, err := AppsecEventGeneration(evt)
 			if err != nil {
-				r.logger.Errorf("unable to generate waap event : %s", err)
+				r.logger.Errorf("unable to generate appsec event : %s", err)
 				return
 			}
 			r.outChan <- *appsecOvlfw
@@ -286,7 +286,7 @@ func (r *AppsecRunner) handleOutBandInterrupt(request *waf.ParsedRequest) {
 
 func (r *AppsecRunner) handleRequest(request *waf.ParsedRequest) {
 	r.logger.Debugf("Requests handled by runner %s", request.UUID)
-	r.WaapRuntime.ClearResponse()
+	r.AppsecRuntime.ClearResponse()
 
 	request.IsInBand = true
 	request.IsOutBand = false
@@ -294,7 +294,7 @@ func (r *AppsecRunner) handleRequest(request *waf.ParsedRequest) {
 	//to measure the time spent in the Application Security Engine
 	startParsing := time.Now()
 
-	//inband WAAP rules
+	//inband appsec rules
 	err := r.ProcessInBandRules(request)
 	if err != nil {
 		r.logger.Errorf("unable to process InBand rules: %s", err)
@@ -309,14 +309,14 @@ func (r *AppsecRunner) handleRequest(request *waf.ParsedRequest) {
 	AppsecInbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddr}).Observe(elapsed.Seconds())
 
 	// send back the result to the HTTP handler for the InBand part
-	request.ResponseChannel <- r.WaapRuntime.Response
+	request.ResponseChannel <- r.AppsecRuntime.Response
 
 	//Now let's process the out of band rules
 
 	request.IsInBand = false
 	request.IsOutBand = true
-	r.WaapRuntime.Response.SendAlert = false
-	r.WaapRuntime.Response.SendEvent = true
+	r.AppsecRuntime.Response.SendAlert = false
+	r.AppsecRuntime.Response.SendEvent = true
 
 	err = r.ProcessOutOfBandRules(request)
 	if err != nil {
@@ -330,7 +330,7 @@ func (r *AppsecRunner) handleRequest(request *waf.ParsedRequest) {
 }
 
 func (r *AppsecRunner) Run(t *tomb.Tomb) error {
-	r.logger.Infof("Waap Runner ready to process event")
+	r.logger.Infof("Appsec Runner ready to process event")
 	for {
 		select {
 		case <-t.Dying():

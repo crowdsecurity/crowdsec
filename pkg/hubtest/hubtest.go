@@ -11,30 +11,30 @@ import (
 )
 
 type HubTest struct {
-	CrowdSecPath            string
-	CscliPath               string
-	HubPath                 string
-	HubTestPath             string //generic parser/scenario tests .tests
-	HubWaapTestPath         string //dir specific to waap tests .waap-tests
-	HubIndexFile            string
-	TemplateConfigPath      string
-	TemplateProfilePath     string
-	TemplateSimulationPath  string
-	TemplateAcquisPath      string
-	TemplateWaapProfilePath string
-	HubIndex                *cwhub.Hub
-	Tests                   []*HubTestItem
+	CrowdSecPath              string
+	CscliPath                 string
+	HubPath                   string
+	HubTestPath               string //generic parser/scenario tests .tests
+	HubAppsecTestPath         string //dir specific to appsec tests .appsec-tests
+	HubIndexFile              string
+	TemplateConfigPath        string
+	TemplateProfilePath       string
+	TemplateSimulationPath    string
+	TemplateAcquisPath        string
+	TemplateAppsecProfilePath string
+	HubIndex                  *cwhub.Hub
+	Tests                     []*HubTestItem
 }
 
 const (
-	templateConfigFile      = "template_config.yaml"
-	templateSimulationFile  = "template_simulation.yaml"
-	templateProfileFile     = "template_profiles.yaml"
-	templateAcquisFile      = "template_acquis.yaml"
-	templateWaapProfilePath = "template_waap-profile.yaml"
+	templateConfigFile        = "template_config.yaml"
+	templateSimulationFile    = "template_simulation.yaml"
+	templateProfileFile       = "template_profiles.yaml"
+	templateAcquisFile        = "template_acquis.yaml"
+	templateAppsecProfilePath = "template_appsec-profile.yaml"
 )
 
-func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isWaapTest bool) (HubTest, error) {
+func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecTest bool) (HubTest, error) {
 	hubPath, err := filepath.Abs(hubPath)
 	if err != nil {
 		return HubTest{}, fmt.Errorf("can't get absolute path of hub: %+v", err)
@@ -58,8 +58,8 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isWaapTes
 		}
 	}
 
-	if isWaapTest {
-		HubTestPath := filepath.Join(hubPath, "./.waap-tests/")
+	if isAppsecTest {
+		HubTestPath := filepath.Join(hubPath, "./.appsec-tests/")
 		hubIndexFile := filepath.Join(hubPath, ".index.json")
 
 		local := &csconfig.LocalHubCfg{
@@ -75,17 +75,17 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isWaapTes
 		}
 
 		return HubTest{
-			CrowdSecPath:            crowdsecPath,
-			CscliPath:               cscliPath,
-			HubPath:                 hubPath,
-			HubTestPath:             HubTestPath,
-			HubIndexFile:            hubIndexFile,
-			TemplateConfigPath:      filepath.Join(HubTestPath, templateConfigFile),
-			TemplateProfilePath:     filepath.Join(HubTestPath, templateProfileFile),
-			TemplateSimulationPath:  filepath.Join(HubTestPath, templateSimulationFile),
-			TemplateWaapProfilePath: filepath.Join(HubTestPath, templateWaapProfilePath),
-			TemplateAcquisPath:      filepath.Join(HubTestPath, templateAcquisFile),
-			HubIndex:                hub,
+			CrowdSecPath:              crowdsecPath,
+			CscliPath:                 cscliPath,
+			HubPath:                   hubPath,
+			HubTestPath:               HubTestPath,
+			HubIndexFile:              hubIndexFile,
+			TemplateConfigPath:        filepath.Join(HubTestPath, templateConfigFile),
+			TemplateProfilePath:       filepath.Join(HubTestPath, templateProfileFile),
+			TemplateSimulationPath:    filepath.Join(HubTestPath, templateSimulationFile),
+			TemplateAppsecProfilePath: filepath.Join(HubTestPath, templateAppsecProfilePath),
+			TemplateAcquisPath:        filepath.Join(HubTestPath, templateAcquisFile),
+			HubIndex:                  hub,
 		}, nil
 	}
 

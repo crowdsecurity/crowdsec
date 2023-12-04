@@ -31,7 +31,7 @@ var (
 	DefaultAuthCacheDuration = (1 * time.Minute)
 )
 
-// configuration structure of the acquis for the Waap
+// configuration structure of the acquis for the application security engine
 type AppsecSourceConfig struct {
 	ListenAddr                        string         `yaml:"listen_addr"`
 	CertFilePath                      string         `yaml:"cert_file"`
@@ -44,7 +44,7 @@ type AppsecSourceConfig struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
-// runtime structure of WaapSourceConfig
+// runtime structure of AppsecSourceConfig
 type AppsecSource struct {
 	config        AppsecSourceConfig
 	logger        *log.Entry
@@ -210,7 +210,7 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 			logger: w.logger.WithFields(log.Fields{
 				"uuid": appsecRunnerUUID,
 			}),
-			WaapRuntime: &wrt,
+			AppsecRuntime: &wrt,
 		}
 		err := runner.Init(appsecCfg.GetDataDir())
 		if err != nil {
@@ -345,15 +345,15 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	parsedRequest.WaapEngine = w.config.Name
+	parsedRequest.AppsecEngine = w.config.Name
 
-	AppsecReqCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "appsec_engine": parsedRequest.WaapEngine}).Inc()
+	AppsecReqCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "appsec_engine": parsedRequest.AppsecEngine}).Inc()
 
 	w.InChan <- parsedRequest
 
 	response := <-parsedRequest.ResponseChannel
 	if response.InBandInterrupt {
-		AppsecBlockCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "appsec_engine": parsedRequest.WaapEngine}).Inc()
+		AppsecBlockCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "appsec_engine": parsedRequest.AppsecEngine}).Inc()
 	}
 
 	appsecResponse := w.AppsecRuntime.GenerateResponse(response)

@@ -15,11 +15,11 @@ import (
 )
 
 const (
-	URIHeaderName    = "X-Crowdsec-Waap-Uri"
-	VerbHeaderName   = "X-Crowdsec-Waap-Verb"
-	HostHeaderName   = "X-Crowdsec-Waap-Host"
-	IPHeaderName     = "X-Crowdsec-Waap-Ip"
-	APIKeyHeaderName = "X-Crowdsec-Waap-Api-Key"
+	URIHeaderName    = "X-Crowdsec-Appsec-Uri"
+	VerbHeaderName   = "X-Crowdsec-Appsec-Verb"
+	HostHeaderName   = "X-Crowdsec-Appsec-Host"
+	IPHeaderName     = "X-Crowdsec-Appsec-Ip"
+	APIKeyHeaderName = "X-Crowdsec-Appsec-Api-Key"
 )
 
 type ParsedRequest struct {
@@ -40,7 +40,7 @@ type ParsedRequest struct {
 	ResponseChannel      chan AppsecTempResponse `json:"-"`
 	IsInBand             bool                    `json:"-"`
 	IsOutBand            bool                    `json:"-"`
-	WaapEngine           string                  `json:"waap_engine,omitempty"`
+	AppsecEngine         string                  `json:"appsec_engine,omitempty"`
 	RemoteAddrNormalized string                  `json:"normalized_remote_addr,omitempty"`
 }
 
@@ -313,12 +313,12 @@ func NewParsedRequestFromRequest(r *http.Request) (ParsedRequest, error) {
 	remoteAddrNormalized := ""
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
-		log.Errorf("Invalid waap remote IP source %v: %s", r.RemoteAddr, err.Error())
+		log.Errorf("Invalid appsec remote IP source %v: %s", r.RemoteAddr, err.Error())
 		remoteAddrNormalized = r.RemoteAddr
 	} else {
 		ip := net.ParseIP(host)
 		if ip == nil {
-			log.Errorf("Invalid waap remote IP address source %v: %s", r.RemoteAddr, err.Error())
+			log.Errorf("Invalid appsec remote IP address source %v: %s", r.RemoteAddr, err.Error())
 			remoteAddrNormalized = r.RemoteAddr
 		} else {
 			remoteAddrNormalized = ip.String()

@@ -19,9 +19,9 @@ import (
 )
 
 var HubTest hubtest.HubTest
-var HubWaapTests hubtest.HubTest
+var HubAppsecTests hubtest.HubTest
 var hubPtr *hubtest.HubTest
-var isWaapTest bool
+var isAppsecTest bool
 
 func NewHubTestCmd() *cobra.Command {
 	var hubPath string
@@ -41,14 +41,14 @@ func NewHubTestCmd() *cobra.Command {
 				return fmt.Errorf("unable to load hubtest: %+v", err)
 			}
 
-			HubWaapTests, err = hubtest.NewHubTest(hubPath, crowdsecPath, cscliPath, true)
+			HubAppsecTests, err = hubtest.NewHubTest(hubPath, crowdsecPath, cscliPath, true)
 			if err != nil {
-				return fmt.Errorf("unable to load waap specific hubtest: %+v", err)
+				return fmt.Errorf("unable to load appsec specific hubtest: %+v", err)
 			}
-			/*commands will use the hubPtr, will point to the default hubTest object, or the one dedicated to WAAP tests*/
+			/*commands will use the hubPtr, will point to the default hubTest object, or the one dedicated to appsec tests*/
 			hubPtr = &HubTest
-			if isWaapTest {
-				hubPtr = &HubWaapTests
+			if isAppsecTest {
+				hubPtr = &HubAppsecTests
 			}
 			return nil
 		},
@@ -57,7 +57,7 @@ func NewHubTestCmd() *cobra.Command {
 	cmdHubTest.PersistentFlags().StringVar(&hubPath, "hub", ".", "Path to hub folder")
 	cmdHubTest.PersistentFlags().StringVar(&crowdsecPath, "crowdsec", "crowdsec", "Path to crowdsec")
 	cmdHubTest.PersistentFlags().StringVar(&cscliPath, "cscli", "cscli", "Path to cscli")
-	cmdHubTest.PersistentFlags().BoolVar(&isWaapTest, "waap", false, "Command relates to WAAP tests")
+	cmdHubTest.PersistentFlags().BoolVar(&isAppsecTest, "appsec", false, "Command relates to appsec tests")
 
 	cmdHubTest.AddCommand(NewHubTestCreateCmd())
 	cmdHubTest.AddCommand(NewHubTestRunCmd())
@@ -105,7 +105,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 			configFilePath := filepath.Join(testPath, "config.yaml")
 
 			configFileData := &hubtest.HubTestItemConfig{}
-			if logType == "waap" {
+			if logType == "appsec" {
 				//create empty nuclei template file
 				nucleiFileName := fmt.Sprintf("%s.yaml", testName)
 				nucleiFilePath := filepath.Join(testPath, nucleiFileName)
@@ -114,7 +114,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 					return err
 				}
 				nucleiFile.Close()
-				configFileData.WaapRules = []string{"your_rule_here.yaml"}
+				configFileData.AppsecRules = []string{"your_rule_here.yaml"}
 				configFileData.NucleiTemplate = nucleiFileName
 				fmt.Println()
 				fmt.Printf("  Test name                   :  %s\n", testName)
@@ -246,7 +246,7 @@ func NewHubTestRunCmd() *cobra.Command {
 			success := true
 			testResult := make(map[string]bool)
 			for _, test := range hubPtr.Tests {
-				if test.AutoGen && !isWaapTest {
+				if test.AutoGen && !isAppsecTest {
 					if test.ParserAssert.AutoGenAssert {
 						log.Warningf("Assert file '%s' is empty, generating assertion:", test.ParserAssert.File)
 						fmt.Println()
@@ -400,9 +400,9 @@ func NewHubTestInfoCmd() *cobra.Command {
 				fmt.Println()
 				fmt.Printf("  Test name                   :  %s\n", test.Name)
 				fmt.Printf("  Test path                   :  %s\n", test.Path)
-				if isWaapTest {
+				if isAppsecTest {
 					fmt.Printf("  Nuclei Template             :  %s\n", test.Config.NucleiTemplate)
-					fmt.Printf("  Waap Rules                  :  %s\n", strings.Join(test.Config.WaapRules, ", "))
+					fmt.Printf("  Appsec Rules                  :  %s\n", strings.Join(test.Config.AppsecRules, ", "))
 				} else {
 					fmt.Printf("  Log file                    :  %s\n", filepath.Join(test.Path, test.Config.LogFile))
 					fmt.Printf("  Parser assertion file       :  %s\n", filepath.Join(test.Path, hubtest.ParserAssertFileName))
@@ -452,27 +452,27 @@ func NewHubTestCoverageCmd() *cobra.Command {
 	var showParserCov bool
 	var showScenarioCov bool
 	var showOnlyPercent bool
-	var showWaapCov bool
+	var showAppsecCov bool
 
 	var cmdHubTestCoverage = &cobra.Command{
 		Use:               "coverage",
 		Short:             "coverage",
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			//for this one we explictely don't do for Waap
+			//for this one we explicitly don't do for appsec
 			if err := HubTest.LoadAllTests(); err != nil {
 				return fmt.Errorf("unable to load all tests: %+v", err)
 			}
 			var err error
 			scenarioCoverage := []hubtest.Coverage{}
 			parserCoverage := []hubtest.Coverage{}
-			waapRuleCoverage := []hubtest.Coverage{}
+			appsecRuleCoverage := []hubtest.Coverage{}
 			scenarioCoveragePercent := 0
 			parserCoveragePercent := 0
-			waapRuleCoveragePercent := 0
+			appsecRuleCoveragePercent := 0
 
 			// if both are false (flag by default), show both
-			showAll := !showScenarioCov && !showParserCov && !showWaapCov
+			showAll := !showScenarioCov && !showParserCov && !showAppsecCov
 
 			if showParserCov || showAll {
 				parserCoverage, err = HubTest.GetParsersCoverage()
@@ -504,30 +504,30 @@ func NewHubTestCoverageCmd() *cobra.Command {
 				scenarioCoveragePercent = int(math.Round((float64(scenarioTested) / float64(len(scenarioCoverage)) * 100)))
 			}
 
-			if showWaapCov || showAll {
-				waapRuleCoverage, err = HubTest.GetWaapCoverage()
+			if showAppsecCov || showAll {
+				appsecRuleCoverage, err = HubTest.GetAppsecCoverage()
 				if err != nil {
 					return fmt.Errorf("while getting scenario coverage: %s", err)
 				}
 
-				waapRuleTested := 0
-				for _, test := range waapRuleCoverage {
+				appsecRuleTested := 0
+				for _, test := range appsecRuleCoverage {
 					if test.TestsCount > 0 {
-						waapRuleTested++
+						appsecRuleTested++
 					}
 				}
-				waapRuleCoveragePercent = int(math.Round((float64(waapRuleTested) / float64(len(waapRuleCoverage)) * 100)))
+				appsecRuleCoveragePercent = int(math.Round((float64(appsecRuleTested) / float64(len(appsecRuleCoverage)) * 100)))
 			}
 
 			if showOnlyPercent {
 				if showAll {
-					fmt.Printf("parsers=%d%%\nscenarios=%d%%\nwaap_rules=%d%%", parserCoveragePercent, scenarioCoveragePercent, waapRuleCoveragePercent)
+					fmt.Printf("parsers=%d%%\nscenarios=%d%%\nappsec_rules=%d%%", parserCoveragePercent, scenarioCoveragePercent, appsecRuleCoveragePercent)
 				} else if showParserCov {
 					fmt.Printf("parsers=%d%%", parserCoveragePercent)
 				} else if showScenarioCov {
 					fmt.Printf("scenarios=%d%%", scenarioCoveragePercent)
-				} else if showWaapCov {
-					fmt.Printf("waap_rules=%d%%", waapRuleCoveragePercent)
+				} else if showAppsecCov {
+					fmt.Printf("appsec_rules=%d%%", appsecRuleCoveragePercent)
 				}
 				os.Exit(0)
 			}
@@ -542,8 +542,8 @@ func NewHubTestCoverageCmd() *cobra.Command {
 					hubTestScenarioCoverageTable(color.Output, scenarioCoverage)
 				}
 
-				if showWaapCov || showAll {
-					hubTestWaapRuleCoverageTable(color.Output, waapRuleCoverage)
+				if showAppsecCov || showAll {
+					hubTestAppsecRuleCoverageTable(color.Output, appsecRuleCoverage)
 				}
 
 				fmt.Println()
@@ -553,8 +553,8 @@ func NewHubTestCoverageCmd() *cobra.Command {
 				if showScenarioCov || showAll {
 					fmt.Printf("SCENARIOS  : %d%% of coverage\n", scenarioCoveragePercent)
 				}
-				if showWaapCov || showAll {
-					fmt.Printf("WAAP RULES  : %d%% of coverage\n", waapRuleCoveragePercent)
+				if showAppsecCov || showAll {
+					fmt.Printf("APPSEC RULES  : %d%% of coverage\n", appsecRuleCoveragePercent)
 				}
 			case "json":
 				dump, err := json.MarshalIndent(parserCoverage, "", " ")
@@ -567,7 +567,7 @@ func NewHubTestCoverageCmd() *cobra.Command {
 					return err
 				}
 				fmt.Printf("%s", dump)
-				dump, err = json.MarshalIndent(waapRuleCoverage, "", " ")
+				dump, err = json.MarshalIndent(appsecRuleCoverage, "", " ")
 				if err != nil {
 					return err
 				}
@@ -583,7 +583,7 @@ func NewHubTestCoverageCmd() *cobra.Command {
 	cmdHubTestCoverage.PersistentFlags().BoolVar(&showOnlyPercent, "percent", false, "Show only percentages of coverage")
 	cmdHubTestCoverage.PersistentFlags().BoolVar(&showParserCov, "parsers", false, "Show only parsers coverage")
 	cmdHubTestCoverage.PersistentFlags().BoolVar(&showScenarioCov, "scenarios", false, "Show only scenarios coverage")
-	cmdHubTestCoverage.PersistentFlags().BoolVar(&showWaapCov, "waap", false, "Show only waap coverage")
+	cmdHubTestCoverage.PersistentFlags().BoolVar(&showAppsecCov, "appsec", false, "Show only appsec coverage")
 
 	return cmdHubTestCoverage
 }

@@ -61,9 +61,9 @@ func hubTestParserCoverageTable(out io.Writer, coverage []hubtest.Coverage) {
 	t.Render()
 }
 
-func hubTestWaapRuleCoverageTable(out io.Writer, coverage []hubtest.Coverage) {
+func hubTestAppsecRuleCoverageTable(out io.Writer, coverage []hubtest.Coverage) {
 	t := newLightTable(out)
-	t.SetHeaders("Waap Rule", "Status", "Number of tests")
+	t.SetHeaders("Appsec Rule", "Status", "Number of tests")
 	t.SetHeaderAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
 	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
 

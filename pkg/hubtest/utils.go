@@ -116,7 +116,7 @@ func IsAlive(target string) (bool, error) {
 	for {
 		conn, err := net.Dial("tcp", target)
 		if err == nil {
-			log.Debugf("waap is up after %s", time.Since(start))
+			log.Debugf("appsec is up after %s", time.Since(start))
 			conn.Close()
 			return true, nil
 		}

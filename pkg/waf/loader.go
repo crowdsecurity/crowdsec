@@ -16,7 +16,7 @@ func LoadAppsecRules(hubInstance *cwhub.Hub) error {
 
 	hub = hubInstance
 
-	for _, hubAppsecRuleItem := range hub.GetItemMap(cwhub.WAAP_RULES) {
+	for _, hubAppsecRuleItem := range hub.GetItemMap(cwhub.APPSEC_RULES) {
 		//log.Infof("loading %s", hubWafRuleItem.LocalPath)
 		if !hubAppsecRuleItem.State.Installed {
 			continue
@@ -38,8 +38,8 @@ func LoadAppsecRules(hubInstance *cwhub.Hub) error {
 			continue
 		}
 
-		if rule.Type != WAAP_RULE {
-			log.Warnf("unexpected type %s instead of %s for file %s", rule.Type, WAAP_RULE, hubAppsecRuleItem.State.LocalPath)
+		if rule.Type != cwhub.APPSEC_RULES {
+			log.Warnf("unexpected type %s instead of %s for file %s", rule.Type, cwhub.APPSEC_RULES, hubAppsecRuleItem.State.LocalPath)
 			continue
 		}
 

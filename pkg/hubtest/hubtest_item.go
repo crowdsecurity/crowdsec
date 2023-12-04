@@ -21,7 +21,7 @@ type HubTestItemConfig struct {
 	Parsers               []string            `yaml:"parsers,omitempty"`
 	Scenarios             []string            `yaml:"scenarios,omitempty"`
 	PostOverflows         []string            `yaml:"postoverflows,omitempty"`
-	WaapRules             []string            `yaml:"waap-rules,omitempty"`
+	AppsecRules           []string            `yaml:"appsec-rules,omitempty"`
 	NucleiTemplate        string              `yaml:"nuclei_template,omitempty"`
 	ExpectedNucleiFailure bool                `yaml:"expect_failure,omitempty"`
 	LogFile               string              `yaml:"log_file,omitempty"`
@@ -53,15 +53,15 @@ type HubTestItem struct {
 	ScenarioResultFile   string
 	BucketPourResultFile string
 
-	HubPath                 string
-	HubTestPath             string
-	HubIndexFile            string
-	TemplateConfigPath      string
-	TemplateProfilePath     string
-	TemplateSimulationPath  string
-	TemplateAcquisPath      string
-	TemplateWaapProfilePath string
-	HubIndex                *cwhub.Hub
+	HubPath                   string
+	HubTestPath               string
+	HubIndexFile              string
+	TemplateConfigPath        string
+	TemplateProfilePath       string
+	TemplateSimulationPath    string
+	TemplateAcquisPath        string
+	TemplateAppsecProfilePath string
+	HubIndex                  *cwhub.Hub
 
 	Config *HubTestItemConfig
 
@@ -87,7 +87,7 @@ const (
 	TestBouncerApiKey = "this_is_a_bad_password"
 
 	DefaultNucleiTarget = "http://127.0.0.1:80/"
-	DefaultWaapHost     = "127.0.0.1:4241"
+	DefaultAppsecHost   = "127.0.0.1:4241"
 )
 
 func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
@@ -139,19 +139,19 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 			InstallDir:     runtimeFolder,
 			InstallDataDir: filepath.Join(runtimeFolder, "data"),
 		},
-		Config:                  configFileData,
-		HubPath:                 hubTest.HubPath,
-		HubTestPath:             hubTest.HubTestPath,
-		HubIndexFile:            hubTest.HubIndexFile,
-		TemplateConfigPath:      hubTest.TemplateConfigPath,
-		TemplateProfilePath:     hubTest.TemplateProfilePath,
-		TemplateSimulationPath:  hubTest.TemplateSimulationPath,
-		TemplateAcquisPath:      hubTest.TemplateAcquisPath,
-		TemplateWaapProfilePath: hubTest.TemplateWaapProfilePath,
-		HubIndex:                hubTest.HubIndex,
-		ScenarioAssert:          ScenarioAssert,
-		ParserAssert:            ParserAssert,
-		CustomItemsLocation:     []string{hubTest.HubPath, testPath},
+		Config:                    configFileData,
+		HubPath:                   hubTest.HubPath,
+		HubTestPath:               hubTest.HubTestPath,
+		HubIndexFile:              hubTest.HubIndexFile,
+		TemplateConfigPath:        hubTest.TemplateConfigPath,
+		TemplateProfilePath:       hubTest.TemplateProfilePath,
+		TemplateSimulationPath:    hubTest.TemplateSimulationPath,
+		TemplateAcquisPath:        hubTest.TemplateAcquisPath,
+		TemplateAppsecProfilePath: hubTest.TemplateAppsecProfilePath,
+		HubIndex:                  hubTest.HubIndex,
+		ScenarioAssert:            ScenarioAssert,
+		ParserAssert:              ParserAssert,
+		CustomItemsLocation:       []string{hubTest.HubPath, testPath},
 	}, nil
 }
 
@@ -313,75 +313,75 @@ func (t *HubTestItem) InstallHub() error {
 		}
 	}
 
-	// install waaprules in runtime environment
-	for _, waaprule := range t.Config.WaapRules {
-		log.Infof("adding rule '%s'", waaprule)
-		if waaprule == "" {
+	// install appsec-rules in runtime environment
+	for _, appsecrule := range t.Config.AppsecRules {
+		log.Infof("adding rule '%s'", appsecrule)
+		if appsecrule == "" {
 			continue
 		}
 
-		if hubWaapRule, ok := t.HubIndex.GetItemMap(cwhub.WAAP_RULES)[waaprule]; ok {
-			waapRuleSource, err := filepath.Abs(filepath.Join(t.HubPath, hubWaapRule.RemotePath))
+		if hubAppsecRule, ok := t.HubIndex.GetItemMap(cwhub.APPSEC_RULES)[appsecrule]; ok {
+			appsecRuleSource, err := filepath.Abs(filepath.Join(t.HubPath, hubAppsecRule.RemotePath))
 			if err != nil {
-				return fmt.Errorf("can't get absolute path of '%s': %s", waapRuleSource, err)
+				return fmt.Errorf("can't get absolute path of '%s': %s", appsecRuleSource, err)
 			}
 
-			waapRuleFilename := filepath.Base(waapRuleSource)
+			appsecRuleFilename := filepath.Base(appsecRuleSource)
 
-			// runtime/hub/waap-rules/author/waap-rule
-			hubDirWaapRuleDest := filepath.Join(t.RuntimeHubPath, filepath.Dir(hubWaapRule.RemotePath))
+			// runtime/hub/appsec-rules/author/appsec-rule
+			hubDirAppsecRuleDest := filepath.Join(t.RuntimeHubPath, filepath.Dir(hubAppsecRule.RemotePath))
 
-			// runtime/waap-rules/
-			waapRuleDirDest := fmt.Sprintf("%s/waap-rules/", t.RuntimePath)
+			// runtime/appsec-rules/
+			appsecRuleDirDest := fmt.Sprintf("%s/appsec-rules/", t.RuntimePath)
 
-			if err := os.MkdirAll(hubDirWaapRuleDest, os.ModePerm); err != nil {
-				return fmt.Errorf("unable to create folder '%s': %s", hubDirWaapRuleDest, err)
+			if err := os.MkdirAll(hubDirAppsecRuleDest, os.ModePerm); err != nil {
+				return fmt.Errorf("unable to create folder '%s': %s", hubDirAppsecRuleDest, err)
 			}
 
-			if err := os.MkdirAll(waapRuleDirDest, os.ModePerm); err != nil {
-				return fmt.Errorf("unable to create folder '%s': %s", waapRuleDirDest, err)
+			if err := os.MkdirAll(appsecRuleDirDest, os.ModePerm); err != nil {
+				return fmt.Errorf("unable to create folder '%s': %s", appsecRuleDirDest, err)
 			}
 
-			// runtime/hub/waap-rules/crowdsecurity/rule.yaml
-			hubDirWaapRulePath := filepath.Join(waapRuleDirDest, waapRuleFilename)
-			if err := Copy(waapRuleSource, hubDirWaapRulePath); err != nil {
-				return fmt.Errorf("unable to copy '%s' to '%s': %s", waapRuleSource, hubDirWaapRulePath, err)
+			// runtime/hub/appsec-rules/crowdsecurity/rule.yaml
+			hubDirAppsecRulePath := filepath.Join(appsecRuleDirDest, appsecRuleFilename)
+			if err := Copy(appsecRuleSource, hubDirAppsecRulePath); err != nil {
+				return fmt.Errorf("unable to copy '%s' to '%s': %s", appsecRuleSource, hubDirAppsecRulePath, err)
 			}
 
-			// runtime/waap-rules/rule.yaml
-			waapRulePath := filepath.Join(waapRuleDirDest, waapRuleFilename)
-			if err := os.Symlink(hubDirWaapRulePath, waapRulePath); err != nil {
+			// runtime/appsec-rules/rule.yaml
+			appsecRulePath := filepath.Join(appsecRuleDirDest, appsecRuleFilename)
+			if err := os.Symlink(hubDirAppsecRulePath, appsecRulePath); err != nil {
 				if !os.IsExist(err) {
-					return fmt.Errorf("unable to symlink waap-rule '%s' to '%s': %s", hubDirWaapRulePath, waapRulePath, err)
+					return fmt.Errorf("unable to symlink appsec-rule '%s' to '%s': %s", hubDirAppsecRulePath, appsecRulePath, err)
 				}
 			}
 		} else {
-			customWaapRuleExist := false
+			customAppsecRuleExist := false
 			for _, customPath := range t.CustomItemsLocation {
-				// we check if its a custom waap-rule
-				customWaapRulePath := filepath.Join(customPath, waaprule)
-				if _, err := os.Stat(customWaapRulePath); os.IsNotExist(err) {
+				// we check if its a custom appsec-rule
+				customAppsecRulePath := filepath.Join(customPath, appsecrule)
+				if _, err := os.Stat(customAppsecRulePath); os.IsNotExist(err) {
 					continue
 				}
-				customWaapRulePathSplit := strings.Split(customWaapRulePath, "/")
-				customWappRuleName := customWaapRulePathSplit[len(customWaapRulePathSplit)-1]
+				customAppsecRulePathSplit := strings.Split(customAppsecRulePath, "/")
+				customAppsecRuleName := customAppsecRulePathSplit[len(customAppsecRulePathSplit)-1]
 
-				waapRuleDirDest := fmt.Sprintf("%s/waap-rules/", t.RuntimePath)
-				if err := os.MkdirAll(waapRuleDirDest, os.ModePerm); err != nil {
-					return fmt.Errorf("unable to create folder '%s': %s", waapRuleDirDest, err)
+				appsecRuleDirDest := fmt.Sprintf("%s/appsec-rules/", t.RuntimePath)
+				if err := os.MkdirAll(appsecRuleDirDest, os.ModePerm); err != nil {
+					return fmt.Errorf("unable to create folder '%s': %s", appsecRuleDirDest, err)
 				}
 
-				// runtime/waap-rules/
-				customWaapRuleDest := fmt.Sprintf("%s/waap-rules/%s", t.RuntimePath, customWappRuleName)
+				// runtime/appsec-rules/
+				customAppsecRuleDest := fmt.Sprintf("%s/appsec-rules/%s", t.RuntimePath, customAppsecRuleName)
 				// if path to postoverflow exist, copy it
-				if err := Copy(customWaapRulePath, customWaapRuleDest); err != nil {
+				if err := Copy(customAppsecRulePath, customAppsecRuleDest); err != nil {
 					continue
 				}
-				customWaapRuleExist = true
+				customAppsecRuleExist = true
 				break
 			}
-			if !customWaapRuleExist {
-				return fmt.Errorf("couldn't find custom waap-rule '%s' in the following location: %+v", waaprule, t.CustomItemsLocation)
+			if !customAppsecRuleExist {
+				return fmt.Errorf("couldn't find custom appsec-rule '%s' in the following location: %+v", appsecrule, t.CustomItemsLocation)
 			}
 		}
 	}
@@ -562,12 +562,12 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	}
 
 	//hardcode bouncer key
-	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "bouncers", "add", "waaptests", "-k", TestBouncerApiKey}
+	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "bouncers", "add", "appsectests", "-k", TestBouncerApiKey}
 	cscliBouncerCmd := exec.Command(t.CscliPath, cmdArgs...)
 
 	output, err = cscliBouncerCmd.CombinedOutput()
 	if err != nil {
-		if !strings.Contains(string(output), "unable to create bouncer: bouncer waaptests already exists") {
+		if !strings.Contains(string(output), "unable to create bouncer: bouncer appsectests already exists") {
 			fmt.Println(string(output))
 			return fmt.Errorf("fail to run '%s' for test '%s': %v", cscliRegisterCmd.String(), t.Name, err)
 		}
@@ -579,9 +579,9 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 
 	crowdsecDaemon.Start()
 
-	//wait for the waap port to be available
-	if _, err := IsAlive(DefaultWaapHost); err != nil {
-		return fmt.Errorf("waap is down: %s", err)
+	//wait for the appsec port to be available
+	if _, err := IsAlive(DefaultAppsecHost); err != nil {
+		return fmt.Errorf("appsec is down: %s", err)
 	}
 
 	// check if the target is available
@@ -608,17 +608,17 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 
 	if t.Config.ExpectedNucleiFailure {
 		if err != nil && errors.Is(err, NucleiTemplateFail) {
-			log.Infof("WAAP test %s failed as expected", t.Name)
+			log.Infof("Appsec test %s failed as expected", t.Name)
 			t.Success = true
 		} else {
-			log.Errorf("WAAP test %s failed:  %s", t.Name, err)
+			log.Errorf("Appsec test %s failed:  %s", t.Name, err)
 		}
 	} else {
 		if err == nil {
-			log.Infof("WAAP test %s succeeded", t.Name)
+			log.Infof("Appsec test %s succeeded", t.Name)
 			t.Success = true
 		} else {
-			log.Errorf("WAAP test %s failed:  %s", t.Name, err)
+			log.Errorf("Appsec test %s failed:  %s", t.Name, err)
 		}
 	}
 	crowdsecDaemon.Process.Kill()
@@ -875,23 +875,23 @@ func (t *HubTestItem) Run() error {
 		return fmt.Errorf("unable to copy 'patterns' from '%s' to '%s': %s", crowdsecPatternsFolder, t.RuntimePatternsPath, err)
 	}
 
-	// create the waap-configs dir
-	if err = os.MkdirAll(filepath.Join(t.RuntimePath, "waap-configs"), os.ModePerm); err != nil {
+	// create the appsec-configs dir
+	if err = os.MkdirAll(filepath.Join(t.RuntimePath, "appsec-configs"), os.ModePerm); err != nil {
 		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimePath, err)
 	}
 
-	//if it's a waap rule test, we need acquis and waap profile
-	if len(t.Config.WaapRules) > 0 {
+	//if it's an appsec rule test, we need acquis and appsec profile
+	if len(t.Config.AppsecRules) > 0 {
 		// copy template acquis file to runtime folder
 		log.Infof("copying %s to %s", t.TemplateAcquisPath, t.RuntimeAcquisFilePath)
 		if err = Copy(t.TemplateAcquisPath, t.RuntimeAcquisFilePath); err != nil {
 			return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateAcquisPath, t.RuntimeAcquisFilePath, err)
 		}
 
-		log.Infof("copying %s to %s", t.TemplateWaapProfilePath, filepath.Join(t.RuntimePath, "waap-configs", "config.yaml"))
-		// copy template waap-config file to runtime folder
-		if err = Copy(t.TemplateWaapProfilePath, filepath.Join(t.RuntimePath, "waap-configs", "config.yaml")); err != nil {
-			return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateWaapProfilePath, filepath.Join(t.RuntimePath, "waap-configs", "config.yaml"), err)
+		log.Infof("copying %s to %s", t.TemplateAppsecProfilePath, filepath.Join(t.RuntimePath, "appsec-configs", "config.yaml"))
+		// copy template appsec-config file to runtime folder
+		if err = Copy(t.TemplateAppsecProfilePath, filepath.Join(t.RuntimePath, "appsec-configs", "config.yaml")); err != nil {
+			return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateAppsecProfilePath, filepath.Join(t.RuntimePath, "appsec-configs", "config.yaml"), err)
 		}
 	} else { //otherwise we drop a blank acquis file
 		if err = os.WriteFile(t.RuntimeAcquisFilePath, []byte(""), os.ModePerm); err != nil {

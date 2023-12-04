@@ -16,7 +16,7 @@ type AppsecCollection struct {
 	Rules          []string
 }
 
-var WAAP_RULE = "waap-rule"
+var APPSEC_RULE = "appsec-rule"
 
 // to be filled w/ seb update
 type AppsecCollectionConfig struct {

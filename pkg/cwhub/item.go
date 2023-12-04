@@ -12,12 +12,12 @@ import (
 
 const (
 	// managed item types.
-	COLLECTIONS   = "collections"
-	PARSERS       = "parsers"
-	POSTOVERFLOWS = "postoverflows"
-	SCENARIOS     = "scenarios"
-	WAAP_CONFIGS  = "waap-configs"
-	WAAP_RULES    = "waap-rules"
+	COLLECTIONS    = "collections"
+	PARSERS        = "parsers"
+	POSTOVERFLOWS  = "postoverflows"
+	SCENARIOS      = "scenarios"
+	APPSEC_CONFIGS = "appsec-configs"
+	APPSEC_RULES   = "appsec-rules"
 )
 
 const (
@@ -29,7 +29,7 @@ const (
 
 var (
 	// The order is important, as it is used to range over sub-items in collections.
-	ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, WAAP_CONFIGS, WAAP_RULES, COLLECTIONS}
+	ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, APPSEC_CONFIGS, APPSEC_RULES, COLLECTIONS}
 )
 
 type HubItems map[string]map[string]*Item
@@ -78,8 +78,8 @@ type Item struct {
 	PostOverflows []string `json:"postoverflows,omitempty" yaml:"postoverflows,omitempty"`
 	Scenarios     []string `json:"scenarios,omitempty" yaml:"scenarios,omitempty"`
 	Collections   []string `json:"collections,omitempty" yaml:"collections,omitempty"`
-	WaapConfigs   []string `json:"waap-configs,omitempty"   yaml:"waap-configs,omitempty"`
-	WaapRules     []string `json:"waap-rules,omitempty"   yaml:"waap-rules,omitempty"`
+	AppsecConfigs []string `json:"appsec-configs,omitempty"   yaml:"appsec-configs,omitempty"`
+	AppsecRules   []string `json:"appsec-rules,omitempty"   yaml:"appsec-rules,omitempty"`
 }
 
 // installPath returns the location of the symlink to the item in the hub, or the path of the item itself if it's local
@@ -194,8 +194,8 @@ func (i *Item) SubItems() []*Item {
 		sub = append(sub, s)
 	}
 
-	for _, name := range i.WaapConfigs {
-		s := i.hub.GetItem(WAAP_CONFIGS, name)
+	for _, name := range i.AppsecConfigs {
+		s := i.hub.GetItem(APPSEC_CONFIGS, name)
 		if s == nil {
 			continue
 		}
@@ -203,8 +203,8 @@ func (i *Item) SubItems() []*Item {
 		sub = append(sub, s)
 	}
 
-	for _, name := range i.WaapRules {
-		s := i.hub.GetItem(WAAP_RULES, name)
+	for _, name := range i.AppsecRules {
+		s := i.hub.GetItem(APPSEC_RULES, name)
 		if s == nil {
 			continue
 		}
@@ -247,15 +247,15 @@ func (i *Item) logMissingSubItems() {
 		}
 	}
 
-	for _, subName := range i.WaapConfigs {
-		if i.hub.GetItem(WAAP_CONFIGS, subName) == nil {
-			log.Errorf("can't find %s in %s, required by %s", subName, WAAP_CONFIGS, i.Name)
+	for _, subName := range i.AppsecConfigs {
+		if i.hub.GetItem(APPSEC_CONFIGS, subName) == nil {
+			log.Errorf("can't find %s in %s, required by %s", subName, APPSEC_CONFIGS, i.Name)
 		}
 	}
 
-	for _, subName := range i.WaapRules {
-		if i.hub.GetItem(WAAP_RULES, subName) == nil {
-			log.Errorf("can't find %s in %s, required by %s", subName, WAAP_RULES, i.Name)
+	for _, subName := range i.AppsecRules {
+		if i.hub.GetItem(APPSEC_RULES, subName) == nil {
+			log.Errorf("can't find %s in %s, required by %s", subName, APPSEC_RULES, i.Name)
 		}
 	}
 

@@ -118,11 +118,11 @@ func (h *Hub) getItemFileInfo(path string) (*itemFileInfo, error) {
 	} else if ret.stage == COLLECTIONS {
 		ret.ftype = COLLECTIONS
 		ret.stage = ""
-	} else if ret.stage == WAAP_RULES {
-		ret.ftype = WAAP_RULES
+	} else if ret.stage == APPSEC_RULES {
+		ret.ftype = APPSEC_RULES
 		ret.stage = ""
-	} else if ret.stage == WAAP_CONFIGS {
-		ret.ftype = WAAP_CONFIGS
+	} else if ret.stage == APPSEC_CONFIGS {
+		ret.ftype = APPSEC_CONFIGS
 		ret.stage = ""
 	} else if ret.ftype != PARSERS && ret.ftype != POSTOVERFLOWS {
 		// it's a PARSER / POSTOVERFLOW with a stage
