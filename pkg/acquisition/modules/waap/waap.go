@@ -34,7 +34,6 @@ var (
 // configuration structure of the acquis for the Waap
 type WaapSourceConfig struct {
 	ListenAddr                        string         `yaml:"listen_addr"`
-	ListenPort                        int            `yaml:"listen_port"`
 	CertFilePath                      string         `yaml:"cert_file"`
 	KeyFilePath                       string         `yaml:"key_file"`
 	Path                              string         `yaml:"path"`
@@ -105,11 +104,7 @@ func (wc *WaapSource) UnmarshalConfig(yamlConfig []byte) error {
 		wc.config.LogLevel = level
 	}
 	if wc.config.ListenAddr == "" {
-		return fmt.Errorf("listen_addr cannot be empty")
-	}
-
-	if wc.config.ListenPort == 0 {
-		return fmt.Errorf("listen_port cannot be empty")
+		wc.config.ListenAddr = "127.0.0.1:7422"
 	}
 
 	if wc.config.Path == "" {
@@ -134,7 +129,7 @@ func (wc *WaapSource) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	if wc.config.Name == "" {
-		wc.config.Name = fmt.Sprintf("%s:%d%s", wc.config.ListenAddr, wc.config.ListenPort, wc.config.Path)
+		wc.config.Name = fmt.Sprintf("%s%s", wc.config.ListenAddr, wc.config.Path)
 	}
 
 	csConfig := csconfig.GetConfig()
@@ -167,12 +162,10 @@ func (w *WaapSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		w.logger.Infof("Cache duration for auth not set, using default: %v", *w.config.AuthCacheDuration)
 	}
 
-	w.addr = fmt.Sprintf("%s:%d", w.config.ListenAddr, w.config.ListenPort)
-
 	w.mux = http.NewServeMux()
 
 	w.server = &http.Server{
-		Addr:    w.addr,
+		Addr:    w.config.ListenAddr,
 		Handler: w.mux,
 	}
 
@@ -266,7 +259,7 @@ func (w *WaapSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 			})
 		}
 
-		w.logger.Infof("Starting WAF server on %s:%d%s", w.config.ListenAddr, w.config.ListenPort, w.config.Path)
+		w.logger.Infof("Starting WAF server on %s%s", w.config.ListenAddr, w.config.Path)
 		t.Go(func() error {
 			var err error
 			if w.config.CertFilePath != "" && w.config.KeyFilePath != "" {
@@ -281,7 +274,7 @@ func (w *WaapSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 			return nil
 		})
 		<-t.Dying()
-		w.logger.Infof("Stopping WAF server on %s:%d%s", w.config.ListenAddr, w.config.ListenPort, w.config.Path)
+		w.logger.Infof("Stopping WAF server on %s%s", w.config.ListenAddr, w.config.Path)
 		w.server.Shutdown(context.TODO())
 		return nil
 	})
