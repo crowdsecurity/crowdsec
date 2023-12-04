@@ -101,7 +101,6 @@ config_generate() {
     ' ../config/config.yaml >"${CONFIG_DIR}/config.yaml"
 }
 
-
 make_init_data() {
     ./bin/assert-crowdsec-not-running || die "Cannot create fixture data."
 
@@ -118,9 +117,8 @@ make_init_data() {
 
     "$CSCLI" --warning machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto
     "$CSCLI" --warning hub update
-    "$CSCLI" --warning collections install crowdsecurity/linux
-    # the whitelists are installed by the deb & rpm packages, so we test with the same config
-    "$CSCLI" --warning parsers install crowdsecurity/whitelists
+
+    ./bin/preload-hub-items
 
     mkdir -p "$LOCAL_INIT_DIR"
 
@@ -153,7 +151,6 @@ load_init_data() {
 
     ./instance-db restore "${LOCAL_INIT_DIR}/database"
 }
-
 
 # ---------------------------
 

@@ -309,30 +309,30 @@ func TestAPICGetMetrics(t *testing.T) {
 				Bouncers: []*models.MetricsBouncerInfo{
 					{
 						CustomName: "1",
-						LastPull:   time.Time{}.String(),
+						LastPull:   time.Time{}.Format(time.RFC3339),
 					}, {
 						CustomName: "2",
-						LastPull:   time.Time{}.String(),
+						LastPull:   time.Time{}.Format(time.RFC3339),
 					}, {
 						CustomName: "3",
-						LastPull:   time.Time{}.String(),
+						LastPull:   time.Time{}.Format(time.RFC3339),
 					},
 				},
 				Machines: []*models.MetricsAgentInfo{
 					{
 						Name:       "a",
-						LastPush:   time.Time{}.String(),
-						LastUpdate: time.Time{}.String(),
+						LastPush:   time.Time{}.Format(time.RFC3339),
+						LastUpdate: time.Time{}.Format(time.RFC3339),
 					},
 					{
 						Name:       "b",
-						LastPush:   time.Time{}.String(),
-						LastUpdate: time.Time{}.String(),
+						LastPush:   time.Time{}.Format(time.RFC3339),
+						LastUpdate: time.Time{}.Format(time.RFC3339),
 					},
 					{
 						Name:       "c",
-						LastPush:   time.Time{}.String(),
-						LastUpdate: time.Time{}.String(),
+						LastPush:   time.Time{}.Format(time.RFC3339),
+						LastUpdate: time.Time{}.Format(time.RFC3339),
 					},
 				},
 			},
@@ -572,7 +572,7 @@ func TestAPICWhitelists(t *testing.T) {
 					&modelscapi.GetDecisionsStreamResponseDeletedItem{
 						Decisions: []string{
 							"9.9.9.9", // This is already present in DB
-							"9.1.9.9", // This not present in DB
+							"9.1.9.9", // This is not present in DB
 						},
 						Scope: ptr.Of("Ip"),
 					}, // This is already present in DB
@@ -734,7 +734,7 @@ func TestAPICPullTop(t *testing.T) {
 					&modelscapi.GetDecisionsStreamResponseDeletedItem{
 						Decisions: []string{
 							"9.9.9.9", // This is already present in DB
-							"9.1.9.9", // This not present in DB
+							"9.1.9.9", // This is not present in DB
 						},
 						Scope: ptr.Of("Ip"),
 					}, // This is already present in DB
@@ -970,6 +970,37 @@ func TestAPICPullTopBLCacheForceCall(t *testing.T) {
 
 	api.apiClient = apic
 	err = api.PullTop(false)
+	require.NoError(t, err)
+}
+
+func TestAPICPullBlocklistCall(t *testing.T) {
+	api := getAPIC(t)
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+
+	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/blocklist1", func(req *http.Request) (*http.Response, error) {
+		assert.Equal(t, "", req.Header.Get("If-Modified-Since"))
+		return httpmock.NewStringResponse(200, "1.2.3.4"), nil
+	})
+	url, err := url.ParseRequestURI("http://api.crowdsec.net/")
+	require.NoError(t, err)
+
+	apic, err := apiclient.NewDefaultClient(
+		url,
+		"/api",
+		fmt.Sprintf("crowdsec/%s", version.String()),
+		nil,
+	)
+	require.NoError(t, err)
+
+	api.apiClient = apic
+	err = api.PullBlocklist(&modelscapi.BlocklistLink{
+		URL:         ptr.Of("http://api.crowdsec.net/blocklist1"),
+		Name:        ptr.Of("blocklist1"),
+		Scope:       ptr.Of("Ip"),
+		Remediation: ptr.Of("ban"),
+		Duration:    ptr.Of("24h"),
+	}, true)
 	require.NoError(t, err)
 }
 

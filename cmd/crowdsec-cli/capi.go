@@ -151,11 +151,12 @@ func NewCapiStatusCmd() *cobra.Command {
 				return fmt.Errorf("parsing api url ('%s'): %w", csConfig.API.Server.OnlineClient.Credentials.URL, err)
 			}
 
-			if err := require.Hub(csConfig); err != nil {
+			hub, err := require.Hub(csConfig, nil)
+			if err != nil {
 				return err
 			}
 
-			scenarios, err := cwhub.GetInstalledItemsAsString(cwhub.SCENARIOS)
+			scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
 			if err != nil {
 				return fmt.Errorf("failed to get scenarios: %w", err)
 			}

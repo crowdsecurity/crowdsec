@@ -3,7 +3,6 @@ package csconfig
 import (
 	"net"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -142,9 +141,6 @@ func TestLoadAPIServer(t *testing.T) {
 	err := tmpLAPI.LoadProfiles()
 	require.NoError(t, err)
 
-	LogDirFullPath, err := filepath.Abs("./testdata")
-	require.NoError(t, err)
-
 	logLevel := log.InfoLevel
 	config := &Config{}
 	fcontent, err := os.ReadFile("./testdata/config.yaml")
@@ -179,7 +175,7 @@ func TestLoadAPIServer(t *testing.T) {
 					DbPath: "./testdata/test.db",
 				},
 				Common: &CommonCfg{
-					LogDir:   "./testdata/",
+					LogDir:   "./testdata",
 					LogMedia: "stdout",
 				},
 				DisableAPI: false,
@@ -202,7 +198,7 @@ func TestLoadAPIServer(t *testing.T) {
 					ShareContext:          ptr.Of(false),
 					ConsoleManagement:     ptr.Of(false),
 				},
-				LogDir:   LogDirFullPath,
+				LogDir:   "./testdata",
 				LogMedia: "stdout",
 				OnlineClient: &OnlineApiClientCfg{
 					CredentialsFilePath: "./testdata/online-api-secrets.yaml",

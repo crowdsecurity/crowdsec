@@ -13,6 +13,11 @@ setup_file() {
     load "../lib/setup_file.sh"
     # we reset config and data, but run the daemon only in the tests that need it
     ./instance-data load
+
+    cscli collections install crowdsecurity/sshd --error
+    cscli parsers install crowdsecurity/syslog-logs --error
+    cscli parsers install crowdsecurity/dateparse-enrich --error
+
 }
 
 teardown_file() {

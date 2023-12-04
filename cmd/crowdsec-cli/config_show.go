@@ -82,7 +82,6 @@ Crowdsec{{if and .Crowdsec.Enable (not (ValueBool .Crowdsec.Enable))}} (disabled
 cscli:
   - Output                  : {{.Cscli.Output}}
   - Hub Branch              : {{.Cscli.HubBranch}}
-  - Hub Folder              : {{.Cscli.HubDir}}
 {{- end }}
 
 {{- if .API }}
