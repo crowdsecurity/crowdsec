@@ -82,6 +82,10 @@ func (m *ModsecurityRule) generateRuleID(rule *CustomRule, waapRuleName string, 
 func (m *ModsecurityRule) buildRules(rule *CustomRule, waapRuleName string, and bool, toSkip int, depth int) ([]string, error) {
 	ret := make([]string, 0)
 
+	if len(rule.And) != 0 && len(rule.Or) != 0 {
+		return nil, fmt.Errorf("cannot have both 'and' and 'or' in the same rule")
+	}
+
 	if rule.And != nil {
 		for c, andRule := range rule.And {
 			depth++
