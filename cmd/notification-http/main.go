@@ -68,7 +68,7 @@ func getCertPool(caPath string) (*x509.CertPool, error) {
 	return cp, nil
 }
 
-func getAPIClient(tlsVerify bool, url, caPath, certPath, keyPath string) (*http.Client, error) {
+func getTLSClient(tlsVerify bool, caPath, certPath, keyPath string) (*http.Client, error) {
 	var client *http.Client
 
 	caCertPool, err := getCertPool(caPath)
@@ -149,7 +149,7 @@ func (s *HTTPPlugin) Configure(ctx context.Context, config *protobufs.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	d.Client, err = getAPIClient(d.SkipTLSVerification, d.URL, d.CAPath, d.CertPath, d.KeyPath)
+	d.Client, err = getTLSClient(d.SkipTLSVerification, d.CAPath, d.CertPath, d.KeyPath)
 	if err != nil {
 		return nil, err
 	}
