@@ -1,4 +1,4 @@
-package wafacquisition
+package appsecacquisition
 
 import (
 	"encoding/json"
@@ -15,13 +15,13 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func WaapEventGeneration(inEvt types.Event) (*types.Event, error) {
+func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 	//if the request didnd't trigger inband rules, we don't want to generate an event to LAPI/CAPI
 	if !inEvt.Waap.HasInBandMatches {
 		return nil, nil
 	}
 	evt := types.Event{}
-	evt.Type = types.WAAP
+	evt.Type = types.APPSEC
 	evt.Process = true
 	source := models.Source{
 		Value: ptr.Of(inEvt.Parsed["source_ip"]),
@@ -53,7 +53,7 @@ func WaapEventGeneration(inEvt types.Event) (*types.Event, error) {
 	alert.EventsCount = ptr.Of(int32(1))
 	alert.Labels = []string{"waf"} //don't know what to do about this
 	alert.Leakspeed = ptr.Of("")
-	msg := fmt.Sprintf("WAF alert: %s", inEvt.Waap.MatchedRules.GetName())
+	msg := fmt.Sprintf("Application Security Engine alert: %s", inEvt.Waap.MatchedRules.GetName())
 	alert.Message = &msg
 	alert.Scenario = ptr.Of(inEvt.Waap.MatchedRules.GetName())           // @sbl : should we be able to do inEvt.Waap.MatchedRules.GetHash()
 	alert.ScenarioHash = ptr.Of(inEvt.Waap.MatchedRules.GetHash())       // @sbl : should we be able to do inEvt.Waap.MatchedRules.GetHash()
@@ -91,18 +91,18 @@ func EventFromRequest(r *waf.ParsedRequest) (types.Event, error) {
 	evt.Line = types.Line{
 		Time: time.Now(),
 		//should we add some info like listen addr/port/path ?
-		Labels:  map[string]string{"type": "crowdsec-waap"},
+		Labels:  map[string]string{"type": "crowdsec-waap"}, //FIXME: use the labels from the acquis
 		Process: true,
-		Module:  "waap",
-		Src:     "waap",
+		Module:  "appsec",
+		Src:     "appsec",
 		Raw:     "dummy-waap-data", //we discard empty Line.Raw items :)
 	}
-	evt.Waap = types.WaapEvent{}
+	evt.Waap = types.AppsecEvent{}
 
 	return evt, nil
 }
 
-func LogWaapEvent(evt *types.Event, logger *log.Entry) {
+func LogAppsecEvent(evt *types.Event, logger *log.Entry) {
 	req := evt.Parsed["target_uri"]
 	if len(req) > 12 {
 		req = req[:10] + ".."
@@ -125,12 +125,12 @@ func LogWaapEvent(evt *types.Event, logger *log.Entry) {
 			"module":     "waf",
 			"source":     evt.Parsed["source_ip"],
 			"target_uri": req,
-		}).Debugf("%s triggerd non-blocking rules on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Waap.MatchedRules), evt.Waap.GetRuleIDs())
+		}).Debugf("%s triggered non-blocking rules on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Waap.MatchedRules), evt.Waap.GetRuleIDs())
 	}
 
 }
 
-func (r *WaapRunner) AccumulateTxToEvent(evt *types.Event, req *waf.ParsedRequest) error {
+func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *waf.ParsedRequest) error {
 
 	if evt == nil {
 		//an error was already emitted, let's not spam the logs
@@ -215,7 +215,7 @@ func (r *WaapRunner) AccumulateTxToEvent(evt *types.Event, req *waf.ParsedReques
 			r.logger.Debugf("custom rule for event, setting name: %s, version: %s, hash: %s", name, version, hash)
 		}
 
-		WafRuleHits.With(prometheus.Labels{"rule_name": ruleNameProm, "type": kind, "source": req.RemoteAddrNormalized, "waap_engine": req.WaapEngine}).Inc()
+		AppsecRuleHits.With(prometheus.Labels{"rule_name": ruleNameProm, "type": kind, "source": req.RemoteAddrNormalized, "appsec_engine": req.WaapEngine}).Inc()
 
 		corazaRule := map[string]interface{}{
 			"id":         rule.Rule().ID(),

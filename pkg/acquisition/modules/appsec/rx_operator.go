@@ -1,4 +1,4 @@
-package wafacquisition
+package appsecacquisition
 
 import (
 	"fmt"

@@ -1,4 +1,4 @@
-package wafacquisition
+package appsecacquisition
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ import (
 )
 
 // that's the runtime structure of the WAAP as seen from the acquis
-type WaapRunner struct {
+type AppsecRunner struct {
 	outChan           chan types.Event
 	inChan            chan waf.ParsedRequest
 	UUID              string
@@ -26,7 +26,7 @@ type WaapRunner struct {
 	logger            *log.Entry
 }
 
-func (r *WaapRunner) Init(datadir string) error {
+func (r *AppsecRunner) Init(datadir string) error {
 	var err error
 	fs := os.DirFS(datadir)
 
@@ -101,7 +101,7 @@ func (r *WaapRunner) Init(datadir string) error {
 	return nil
 }
 
-func (r *WaapRunner) processRequest(tx waf.ExtendedTransaction, request *waf.ParsedRequest) error {
+func (r *AppsecRunner) processRequest(tx waf.ExtendedTransaction, request *waf.ParsedRequest) error {
 	var in *corazatypes.Interruption
 	var err error
 	request.Tx = tx
@@ -185,21 +185,21 @@ func (r *WaapRunner) processRequest(tx waf.ExtendedTransaction, request *waf.Par
 	return nil
 }
 
-func (r *WaapRunner) ProcessInBandRules(request *waf.ParsedRequest) error {
+func (r *AppsecRunner) ProcessInBandRules(request *waf.ParsedRequest) error {
 	tx := waf.NewExtendedTransaction(r.WaapInbandEngine, request.UUID)
 	r.WaapRuntime.InBandTx = tx
 	err := r.processRequest(tx, request)
 	return err
 }
 
-func (r *WaapRunner) ProcessOutOfBandRules(request *waf.ParsedRequest) error {
+func (r *AppsecRunner) ProcessOutOfBandRules(request *waf.ParsedRequest) error {
 	tx := waf.NewExtendedTransaction(r.WaapOutbandEngine, request.UUID)
 	r.WaapRuntime.OutOfBandTx = tx
 	err := r.processRequest(tx, request)
 	return err
 }
 
-func (r *WaapRunner) handleInBandInterrupt(request *waf.ParsedRequest) {
+func (r *AppsecRunner) handleInBandInterrupt(request *waf.ParsedRequest) {
 	//create the associated event for crowdsec itself
 	evt, err := EventFromRequest(request)
 	if err != nil {
@@ -238,17 +238,17 @@ func (r *WaapRunner) handleInBandInterrupt(request *waf.ParsedRequest) {
 
 		// Should the in band match trigger an overflow ?
 		if r.WaapRuntime.Response.SendAlert {
-			waapOvlfw, err := WaapEventGeneration(evt)
+			appsecOvlfw, err := AppsecEventGeneration(evt)
 			if err != nil {
-				r.logger.Errorf("unable to generate waap event : %s", err)
+				r.logger.Errorf("unable to generate appsec event : %s", err)
 				return
 			}
-			r.outChan <- *waapOvlfw
+			r.outChan <- *appsecOvlfw
 		}
 	}
 }
 
-func (r *WaapRunner) handleOutBandInterrupt(request *waf.ParsedRequest) {
+func (r *AppsecRunner) handleOutBandInterrupt(request *waf.ParsedRequest) {
 	evt, err := EventFromRequest(request)
 	if err != nil {
 		//let's not interrupt the pipeline for this
@@ -274,24 +274,24 @@ func (r *WaapRunner) handleOutBandInterrupt(request *waf.ParsedRequest) {
 
 		// Should the match trigger an overflow ?
 		if r.WaapRuntime.Response.SendAlert {
-			waapOvlfw, err := WaapEventGeneration(evt)
+			appsecOvlfw, err := AppsecEventGeneration(evt)
 			if err != nil {
 				r.logger.Errorf("unable to generate waap event : %s", err)
 				return
 			}
-			r.outChan <- *waapOvlfw
+			r.outChan <- *appsecOvlfw
 		}
 	}
 }
 
-func (r *WaapRunner) handleRequest(request *waf.ParsedRequest) {
+func (r *AppsecRunner) handleRequest(request *waf.ParsedRequest) {
 	r.logger.Debugf("Requests handled by runner %s", request.UUID)
 	r.WaapRuntime.ClearResponse()
 
 	request.IsInBand = true
 	request.IsOutBand = false
 
-	//to measure the time spent in the WAF
+	//to measure the time spent in the Application Security Engine
 	startParsing := time.Now()
 
 	//inband WAAP rules
@@ -306,7 +306,7 @@ func (r *WaapRunner) handleRequest(request *waf.ParsedRequest) {
 	}
 
 	elapsed := time.Since(startParsing)
-	WafInbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddr}).Observe(elapsed.Seconds())
+	AppsecInbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddr}).Observe(elapsed.Seconds())
 
 	// send back the result to the HTTP handler for the InBand part
 	request.ResponseChannel <- r.WaapRuntime.Response
@@ -329,7 +329,7 @@ func (r *WaapRunner) handleRequest(request *waf.ParsedRequest) {
 	}
 }
 
-func (r *WaapRunner) Run(t *tomb.Tomb) error {
+func (r *AppsecRunner) Run(t *tomb.Tomb) error {
 	r.logger.Infof("Waap Runner ready to process event")
 	for {
 		select {

@@ -1,4 +1,4 @@
-package wafacquisition
+package appsecacquisition
 
 import (
 	"context"
@@ -32,32 +32,32 @@ var (
 )
 
 // configuration structure of the acquis for the Waap
-type WaapSourceConfig struct {
+type AppsecSourceConfig struct {
 	ListenAddr                        string         `yaml:"listen_addr"`
 	CertFilePath                      string         `yaml:"cert_file"`
 	KeyFilePath                       string         `yaml:"key_file"`
 	Path                              string         `yaml:"path"`
 	Routines                          int            `yaml:"routines"`
-	WaapConfig                        string         `yaml:"waap_config"`
-	WaapConfigPath                    string         `yaml:"waap_config_path"`
+	AppsecConfig                      string         `yaml:"appsec_config"`
+	AppsecConfigPath                  string         `yaml:"appsec_config_path"`
 	AuthCacheDuration                 *time.Duration `yaml:"auth_cache_duration"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
 // runtime structure of WaapSourceConfig
-type WaapSource struct {
-	config      WaapSourceConfig
-	logger      *log.Entry
-	mux         *http.ServeMux
-	server      *http.Server
-	addr        string
-	outChan     chan types.Event
-	InChan      chan waf.ParsedRequest
-	WaapRuntime *waf.WaapRuntimeConfig
-	WaapConfigs map[string]waf.WaapConfig
-	lapiURL     string
-	AuthCache   AuthCache
-	WaapRunners []WaapRunner //one for each go-routine
+type AppsecSource struct {
+	config        AppsecSourceConfig
+	logger        *log.Entry
+	mux           *http.ServeMux
+	server        *http.Server
+	addr          string
+	outChan       chan types.Event
+	InChan        chan waf.ParsedRequest
+	AppsecRuntime *waf.WaapRuntimeConfig
+	AppsecConfigs map[string]waf.WaapConfig
+	lapiURL       string
+	AuthCache     AuthCache
+	AppsecRunners []AppsecRunner //one for each go-routine
 }
 
 // Struct to handle cache of authentication
@@ -91,11 +91,11 @@ type BodyResponse struct {
 	Action string `json:"action"`
 }
 
-func (wc *WaapSource) UnmarshalConfig(yamlConfig []byte) error {
+func (wc *AppsecSource) UnmarshalConfig(yamlConfig []byte) error {
 
 	err := yaml.UnmarshalStrict(yamlConfig, &wc.config)
 	if err != nil {
-		return errors.Wrap(err, "Cannot parse waf configuration")
+		return errors.Wrap(err, "Cannot parse appsec configuration")
 	}
 
 	if wc.config.LogLevel == nil {
@@ -124,8 +124,8 @@ func (wc *WaapSource) UnmarshalConfig(yamlConfig []byte) error {
 		wc.config.Routines = 1
 	}
 
-	if wc.config.WaapConfig == "" && wc.config.WaapConfigPath == "" {
-		return fmt.Errorf("waap_config or waap_config_path must be set")
+	if wc.config.AppsecConfig == "" && wc.config.AppsecConfigPath == "" {
+		return fmt.Errorf("appsec_config or appsec_config_path must be set")
 	}
 
 	if wc.config.Name == "" {
@@ -139,15 +139,15 @@ func (wc *WaapSource) UnmarshalConfig(yamlConfig []byte) error {
 	return nil
 }
 
-func (w *WaapSource) GetMetrics() []prometheus.Collector {
+func (w *AppsecSource) GetMetrics() []prometheus.Collector {
 	return nil
 }
 
-func (w *WaapSource) GetAggregMetrics() []prometheus.Collector {
+func (w *AppsecSource) GetAggregMetrics() []prometheus.Collector {
 	return nil
 }
 
-func (w *WaapSource) Configure(yamlConfig []byte, logger *log.Entry) error {
+func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	err := w.UnmarshalConfig(yamlConfig)
 	if err != nil {
 		return errors.Wrap(err, "unable to parse waf configuration")
@@ -170,96 +170,95 @@ func (w *WaapSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	}
 
 	w.InChan = make(chan waf.ParsedRequest)
-	waapCfg := waf.WaapConfig{Logger: w.logger.WithField("component", "waap_config")}
+	appsecCfg := waf.WaapConfig{Logger: w.logger.WithField("component", "appsec_config")}
 
-	//let's load the associated waap_config:
-	if w.config.WaapConfigPath != "" {
-		err := waapCfg.LoadByPath(w.config.WaapConfigPath)
+	//let's load the associated appsec_config:
+	if w.config.AppsecConfigPath != "" {
+		err := appsecCfg.LoadByPath(w.config.AppsecConfigPath)
 		if err != nil {
-			return fmt.Errorf("unable to load waap_config : %s", err)
+			return fmt.Errorf("unable to load appsec_config : %s", err)
 		}
-	} else if w.config.WaapConfig != "" {
-		err := waapCfg.Load(w.config.WaapConfig)
+	} else if w.config.AppsecConfig != "" {
+		err := appsecCfg.Load(w.config.AppsecConfig)
 		if err != nil {
-			return fmt.Errorf("unable to load waap_config : %s", err)
+			return fmt.Errorf("unable to load appsec_config : %s", err)
 		}
 	} else {
-		return fmt.Errorf("no waap_config provided")
+		return fmt.Errorf("no appsec_config provided")
 	}
 
-	w.WaapRuntime, err = waapCfg.Build()
+	w.AppsecRuntime, err = appsecCfg.Build()
 	if err != nil {
-		return fmt.Errorf("unable to build waap_config : %s", err)
+		return fmt.Errorf("unable to build appsec_config : %s", err)
 	}
 
-	err = w.WaapRuntime.ProcessOnLoadRules()
+	err = w.AppsecRuntime.ProcessOnLoadRules()
 
 	if err != nil {
 		return fmt.Errorf("unable to process on load rules : %s", err)
 	}
 
-	w.WaapRunners = make([]WaapRunner, w.config.Routines)
+	w.AppsecRunners = make([]AppsecRunner, w.config.Routines)
 
 	for nbRoutine := 0; nbRoutine < w.config.Routines; nbRoutine++ {
-
-		wafUUID := uuid.New().String()
-		//we copy WaapRutime for each runner
-		wrt := *w.WaapRuntime
-		runner := WaapRunner{
+		appsecRunnerUUID := uuid.New().String()
+		//we copy AppsecRutime for each runner
+		wrt := *w.AppsecRuntime
+		runner := AppsecRunner{
 			inChan: w.InChan,
-			UUID:   wafUUID,
+			UUID:   appsecRunnerUUID,
 			logger: w.logger.WithFields(log.Fields{
-				"uuid": wafUUID,
+				"uuid": appsecRunnerUUID,
 			}),
 			WaapRuntime: &wrt,
 		}
-		err := runner.Init(waapCfg.GetDataDir())
+		err := runner.Init(appsecCfg.GetDataDir())
 		if err != nil {
 			return fmt.Errorf("unable to initialize runner : %s", err)
 		}
-		w.WaapRunners[nbRoutine] = runner
+		w.AppsecRunners[nbRoutine] = runner
 	}
 
-	w.logger.Infof("Created %d waf runners", len(w.WaapRunners))
+	w.logger.Infof("Created %d appsec runners", len(w.AppsecRunners))
 
 	//We don´t use the wrapper provided by coraza because we want to fully control what happens when a rule match to send the information in crowdsec
-	w.mux.HandleFunc(w.config.Path, w.waapHandler)
+	w.mux.HandleFunc(w.config.Path, w.appsecHandler)
 
 	return nil
 }
 
-func (w *WaapSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
-	return fmt.Errorf("WAF datasource does not support command line acquisition")
+func (w *AppsecSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry, uuid string) error {
+	return fmt.Errorf("AppSec datasource does not support command line acquisition")
 }
 
-func (w *WaapSource) GetMode() string {
+func (w *AppsecSource) GetMode() string {
 	return w.config.Mode
 }
 
-func (w *WaapSource) GetName() string {
-	return "waf"
+func (w *AppsecSource) GetName() string {
+	return "appsec"
 }
 
-func (w *WaapSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
-	return fmt.Errorf("WAF datasource does not support command line acquisition")
+func (w *AppsecSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+	return fmt.Errorf("AppSec datasource does not support command line acquisition")
 }
 
-func (w *WaapSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (w *AppsecSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	w.outChan = out
 	t.Go(func() error {
-		defer trace.CatchPanic("crowdsec/acquis/waf/live")
+		defer trace.CatchPanic("crowdsec/acquis/appsec/live")
 
-		w.logger.Infof("%d waf runner to start", len(w.WaapRunners))
-		for _, runner := range w.WaapRunners {
+		w.logger.Infof("%d appsec runner to start", len(w.AppsecRunners))
+		for _, runner := range w.AppsecRunners {
 			runner := runner
 			runner.outChan = out
 			t.Go(func() error {
-				defer trace.CatchPanic("crowdsec/acquis/waf/live/runner")
+				defer trace.CatchPanic("crowdsec/acquis/appsec/live/runner")
 				return runner.Run(t)
 			})
 		}
 
-		w.logger.Infof("Starting WAF server on %s%s", w.config.ListenAddr, w.config.Path)
+		w.logger.Infof("Starting Appsec server on %s%s", w.config.ListenAddr, w.config.Path)
 		t.Go(func() error {
 			var err error
 			if w.config.CertFilePath != "" && w.config.KeyFilePath != "" {
@@ -269,31 +268,31 @@ func (w *WaapSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 			}
 
 			if err != nil && err != http.ErrServerClosed {
-				return errors.Wrap(err, "WAF server failed")
+				return errors.Wrap(err, "Appsec server failed")
 			}
 			return nil
 		})
 		<-t.Dying()
-		w.logger.Infof("Stopping WAF server on %s%s", w.config.ListenAddr, w.config.Path)
+		w.logger.Infof("Stopping Appsec server on %s%s", w.config.ListenAddr, w.config.Path)
 		w.server.Shutdown(context.TODO())
 		return nil
 	})
 	return nil
 }
 
-func (w *WaapSource) CanRun() error {
+func (w *AppsecSource) CanRun() error {
 	return nil
 }
 
-func (w *WaapSource) GetUuid() string {
+func (w *AppsecSource) GetUuid() string {
 	return w.config.UniqueId
 }
 
-func (w *WaapSource) Dump() interface{} {
+func (w *AppsecSource) Dump() interface{} {
 	return w
 }
 
-func (w *WaapSource) IsAuth(apiKey string) bool {
+func (w *AppsecSource) IsAuth(apiKey string) bool {
 	client := &http.Client{
 		Timeout: 200 * time.Millisecond,
 	}
@@ -317,7 +316,7 @@ func (w *WaapSource) IsAuth(apiKey string) bool {
 }
 
 // should this be in the runner ?
-func (w *WaapSource) waapHandler(rw http.ResponseWriter, r *http.Request) {
+func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	apiKey := r.Header.Get(waf.APIKeyHeaderName)
 	clientIP := r.Header.Get(waf.IPHeaderName)
 	remoteIP := r.RemoteAddr
@@ -348,19 +347,19 @@ func (w *WaapSource) waapHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 	parsedRequest.WaapEngine = w.config.Name
 
-	WafReqCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "waap_engine": parsedRequest.WaapEngine}).Inc()
+	AppsecReqCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "appsec_engine": parsedRequest.WaapEngine}).Inc()
 
 	w.InChan <- parsedRequest
 
 	response := <-parsedRequest.ResponseChannel
 	if response.InBandInterrupt {
-		WafBlockCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "waap_engine": parsedRequest.WaapEngine}).Inc()
+		AppsecBlockCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "appsec_engine": parsedRequest.WaapEngine}).Inc()
 	}
 
-	waapResponse := w.WaapRuntime.GenerateResponse(response)
+	appsecResponse := w.AppsecRuntime.GenerateResponse(response)
 
-	rw.WriteHeader(waapResponse.HTTPStatus)
-	body, err := json.Marshal(BodyResponse{Action: waapResponse.Action})
+	rw.WriteHeader(appsecResponse.HTTPStatus)
+	body, err := json.Marshal(BodyResponse{Action: appsecResponse.Action})
 	if err != nil {
 		log.Errorf("unable to marshal response: %s", err)
 		rw.WriteHeader(http.StatusInternalServerError)
