@@ -249,7 +249,7 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 				}
 				appsec_rule_stats[appsecEngine][ruleID]["triggered"] = ival
 			default:
-				log.Infof("unknown: %+v", fam.Name)
+				log.Debugf("unknown: %+v", fam.Name)
 				continue
 			}
 		}
