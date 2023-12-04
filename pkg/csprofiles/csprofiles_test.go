@@ -99,7 +99,8 @@ func TestNewProfile(t *testing.T) {
 			},
 			expectedNbProfile: 1,
 		},
-      name: "filter ok and notification_filter ok",
+		{
+			name: "filter ok and notification_filter ok",
 			profileCfg: &csconfig.ProfileCfg{
 				Filters: []string{
 					"1==1",

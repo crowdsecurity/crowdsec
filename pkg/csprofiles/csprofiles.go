@@ -16,14 +16,11 @@ import (
 )
 
 type Runtime struct {
-	RuntimeFilters             []*vm.Program               `json:"-" yaml:"-"`
-	DebugFilters               []*exprhelpers.ExprDebugger `json:"-" yaml:"-"`
-	RuntimeDurationExpr        *vm.Program                 `json:"-" yaml:"-"`
-	RuntimeNotificationFilters []*vm.Program               `json:"-" yaml:"-"`
-	DebugDurationExpr          *exprhelpers.ExprDebugger   `json:"-" yaml:"-"`
-	DebugNotificationFilters   []*exprhelpers.ExprDebugger `json:"-" yaml:"-"`
-	Cfg                        *csconfig.ProfileCfg        `json:"-" yaml:"-"`
-	Logger                     *log.Entry                  `json:"-" yaml:"-"`
+	RuntimeFilters             []*vm.Program        `json:"-" yaml:"-"`
+	RuntimeDurationExpr        *vm.Program          `json:"-" yaml:"-"`
+	RuntimeNotificationFilters []*vm.Program        `json:"-" yaml:"-"`
+	Cfg                        *csconfig.ProfileCfg `json:"-" yaml:"-"`
+	Logger                     *log.Entry           `json:"-" yaml:"-"`
 }
 
 var defaultDuration = "4h"
@@ -34,7 +31,6 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 
 	for _, profile := range profilesCfg {
 		var runtimeFilter, runtimeDurationExpr, runtimeNotificationFilter *vm.Program
-		var debugFilter, debugDurationExpr, debugNotificationExpr *exprhelpers.ExprDebugger
 		runtime := &Runtime{}
 		xlog := log.New()
 		if err := types.ConfigureLogger(xlog); err != nil {
@@ -48,8 +44,6 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 
 		runtime.RuntimeFilters = make([]*vm.Program, len(profile.Filters))
 		runtime.RuntimeNotificationFilters = make([]*vm.Program, len(profile.NotificationFilters))
-		runtime.DebugFilters = make([]*exprhelpers.ExprDebugger, len(profile.Filters))
-		runtime.DebugNotificationFilters = make([]*exprhelpers.ExprDebugger, len(profile.NotificationFilters))
 		runtime.Cfg = profile
 		if runtime.Cfg.OnSuccess != "" && runtime.Cfg.OnSuccess != "continue" && runtime.Cfg.OnSuccess != "break" {
 			return []*Runtime{}, fmt.Errorf("invalid 'on_success' for '%s': %s", profile.Name, runtime.Cfg.OnSuccess)
@@ -73,12 +67,6 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 				return []*Runtime{}, errors.Wrapf(err, "error compiling notification_filter of '%s'", profile.Name)
 			}
 			runtime.RuntimeNotificationFilters[nIdx] = runtimeNotificationFilter
-			if profile.Debug != nil && *profile.Debug {
-				if debugNotificationExpr, err = exprhelpers.NewDebugger(expression, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
-					log.Debugf("Error compiling debug filter of %s : %s", profile.Name, err)
-				}
-				runtime.DebugNotificationFilters[nIdx] = debugNotificationExpr
-			}
 		}
 		if profile.DurationExpr != "" {
 			if runtimeDurationExpr, err = expr.Compile(profile.DurationExpr, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
@@ -199,20 +187,17 @@ func (Profile *Runtime) EvaluateProfile(Alert *models.Alert) ([]*models.Decision
 				if err != nil {
 					return nil, matched, notification, errors.Wrapf(err, "while generating decision from profile %s", Profile.Cfg.Name)
 				}
-				for nfIdx, notification_expression := range Profile.RuntimeNotificationFilters {
+				for nfIdx, runtime := range Profile.RuntimeNotificationFilters {
 					if !notification {
 						break
 					}
-					notification_output, err := expr.Run(notification_expression, map[string]interface{}{"Alert": Alert})
+					notification_output, err := exprhelpers.Run(runtime, map[string]interface{}{"Alert": Alert}, Profile.Logger, debugProfile)
 					if err != nil {
 						Profile.Logger.Warningf("failed to run notification expr : %v", err)
 						return nil, matched, notification, errors.Wrapf(err, "while running expression %s", Profile.Cfg.NotificationFilters[nfIdx])
 					}
 					switch notification_out := notification_output.(type) {
 					case bool:
-						if Profile.Cfg.Debug != nil && *Profile.Cfg.Debug {
-							Profile.DebugNotificationFilters[nfIdx].Run(Profile.Logger, notification_out, map[string]interface{}{"Alert": Alert})
-						}
 						notification = notification_out
 					default:
 						return nil, matched, notification, fmt.Errorf("unexpected type %t (%v) while running '%s'", notification_output, notification_output, Profile.Cfg.NotificationFilters[nfIdx])
