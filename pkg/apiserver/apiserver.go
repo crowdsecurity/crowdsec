@@ -238,6 +238,10 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		controller.DecisionDeleteChan = nil
 	}
 
+	if apiClient.credentials.DisableSharingSignals {
+		controller.AlertsAddChan = nil
+	}
+
 	if trustedIPs, err := config.GetTrustedIPs(); err == nil {
 		controller.TrustedIPs = trustedIPs
 	} else {
@@ -339,21 +343,35 @@ func (s *APIServer) Run(apiReady chan bool) error {
 	}
 
 	if s.apic != nil {
-		s.apic.pushTomb.Go(func() error {
-			if err := s.apic.Push(); err != nil {
-				log.Errorf("capi push: %s", err)
-				return err
-			}
-			return nil
-		})
+		if s.apic.credentials.DisableSharingSignals {
+			log.Info("capi push: disabled sharing signals")
+		}
+		if !s.apic.credentials.DisableSharingSignals {
+			s.apic.pushTomb.Go(func() error {
+				if err := s.apic.Push(); err != nil {
+					log.Errorf("capi push: %s", err)
+					return err
+				}
+				return nil
+			})
+		}
 
-		s.apic.pullTomb.Go(func() error {
-			if err := s.apic.Pull(); err != nil {
-				log.Errorf("capi pull: %s", err)
-				return err
-			}
-			return nil
-		})
+		if s.apic.credentials.DisableReceivingBlocklists {
+			log.Info("capi pull: disabled receiving blocklist (includes third party lists)")
+		}
+		if !s.apic.credentials.DisableReceivingBlocklists {
+			s.apic.pullTomb.Go(func() error {
+				if err := s.apic.Pull(); err != nil {
+					log.Errorf("capi pull: %s", err)
+					return err
+				}
+				return nil
+			})
+		}
+
+		if s.apic.credentials.DisableSharingSignals && !s.apic.credentials.DisableReceivingBlocklists && !s.isEnrolled {
+			log.Warn("capi: instance is not enrolled in console. combination of disabled sharing signals and enabled receiving blocklists will result in limited community blocklist")
+		}
 
 		//csConfig.API.Server.ConsoleConfig.ShareCustomScenarios
 		if s.isEnrolled {

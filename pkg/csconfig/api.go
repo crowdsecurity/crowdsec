@@ -27,13 +27,15 @@ type APICfg struct {
 }
 
 type ApiCredentialsCfg struct {
-	PapiURL    string `yaml:"papi_url,omitempty" json:"papi_url,omitempty"`
-	URL        string `yaml:"url,omitempty" json:"url,omitempty"`
-	Login      string `yaml:"login,omitempty" json:"login,omitempty"`
-	Password   string `yaml:"password,omitempty" json:"-"`
-	CACertPath string `yaml:"ca_cert_path,omitempty"`
-	KeyPath    string `yaml:"key_path,omitempty"`
-	CertPath   string `yaml:"cert_path,omitempty"`
+	PapiURL                    string `yaml:"papi_url,omitempty" json:"papi_url,omitempty"`
+	URL                        string `yaml:"url,omitempty" json:"url,omitempty"`
+	Login                      string `yaml:"login,omitempty" json:"login,omitempty"`
+	Password                   string `yaml:"password,omitempty" json:"-"`
+	CACertPath                 string `yaml:"ca_cert_path,omitempty"`
+	KeyPath                    string `yaml:"key_path,omitempty"`
+	CertPath                   string `yaml:"cert_path,omitempty"`
+	DisableSharingSignals      bool   `yaml:"disable_share_signals"`
+	DisableReceivingBlocklists bool   `yaml:"disable_receiving_blocklists"`
 }
 
 /*global api config (for lapi->oapi)*/
@@ -89,6 +91,7 @@ func (o *OnlineApiClientCfg) Load() error {
 	if err != nil {
 		return fmt.Errorf("failed unmarshaling api server credentials configuration file '%s': %w", o.CredentialsFilePath, err)
 	}
+
 	if o.Credentials.Login == "" || o.Credentials.Password == "" || o.Credentials.URL == "" {
 		log.Warningf("can't load CAPI credentials from '%s' (missing field)", o.CredentialsFilePath)
 		o.Credentials = nil
