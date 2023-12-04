@@ -103,11 +103,11 @@ type WaapRuntimeConfig struct {
 	Logger *log.Entry
 
 	//Set by on_load to ignore some rules on loading
-	disabledInBandRuleIds   []int
-	disabledInBandRulesTags []string //Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
+	DisabledInBandRuleIds   []int
+	DisabledInBandRulesTags []string //Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
 
-	disabledOutOfBandRuleIds   []int
-	disabledOutOfBandRulesTags []string //Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
+	DisabledOutOfBandRuleIds   []int
+	DisabledOutOfBandRulesTags []string //Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
 }
 
 type WaapConfig struct {
@@ -434,7 +434,7 @@ func (w *WaapRuntimeConfig) CancelEvent(params ...any) (any, error) {
 // func (w *WaapRuntimeConfig) DisableInBandRuleByID(id int) error {
 // Disable a rule at load time, meaning it will not run for any request
 func (w *WaapRuntimeConfig) DisableInBandRuleByID(params ...any) (any, error) {
-	w.disabledInBandRuleIds = append(w.disabledInBandRuleIds, params[0].(int))
+	w.DisabledInBandRuleIds = append(w.DisabledInBandRuleIds, params[0].(int))
 	return nil, nil
 }
 
@@ -442,21 +442,21 @@ func (w *WaapRuntimeConfig) DisableInBandRuleByID(params ...any) (any, error) {
 // Disable a rule at load time, meaning it will not run for any request
 func (w *WaapRuntimeConfig) DisableInBandRuleByName(params ...any) (any, error) {
 	tagValue := fmt.Sprintf("crowdsec-%s", params[0].(string))
-	w.disabledInBandRulesTags = append(w.disabledInBandRulesTags, tagValue)
+	w.DisabledInBandRulesTags = append(w.DisabledInBandRulesTags, tagValue)
 	return nil, nil
 }
 
 // func (w *WaapRuntimeConfig) DisableInBandRuleByTag(tag string) error {
 // Disable a rule at load time, meaning it will not run for any request
 func (w *WaapRuntimeConfig) DisableInBandRuleByTag(params ...any) (any, error) {
-	w.disabledInBandRulesTags = append(w.disabledInBandRulesTags, params[0].(string))
+	w.DisabledInBandRulesTags = append(w.DisabledInBandRulesTags, params[0].(string))
 	return nil, nil
 }
 
 // func (w *WaapRuntimeConfig) DisableOutBandRuleByID(id int) error {
 // Disable a rule at load time, meaning it will not run for any request
 func (w *WaapRuntimeConfig) DisableOutBandRuleByID(params ...any) (any, error) {
-	w.disabledOutOfBandRuleIds = append(w.disabledOutOfBandRuleIds, params[0].(int))
+	w.DisabledOutOfBandRuleIds = append(w.DisabledOutOfBandRuleIds, params[0].(int))
 	return nil, nil
 }
 
@@ -464,14 +464,14 @@ func (w *WaapRuntimeConfig) DisableOutBandRuleByID(params ...any) (any, error) {
 // Disable a rule at load time, meaning it will not run for any request
 func (w *WaapRuntimeConfig) DisableOutBandRuleByName(params ...any) (any, error) {
 	tagValue := fmt.Sprintf("crowdsec-%s", params[0].(string))
-	w.disabledOutOfBandRulesTags = append(w.disabledOutOfBandRulesTags, tagValue)
+	w.DisabledOutOfBandRulesTags = append(w.DisabledOutOfBandRulesTags, tagValue)
 	return nil, nil
 }
 
 // func (w *WaapRuntimeConfig) DisableOutBandRuleByTag(tag string) error {
 // Disable a rule at load time, meaning it will not run for any request
 func (w *WaapRuntimeConfig) DisableOutBandRuleByTag(params ...any) (any, error) {
-	w.disabledOutOfBandRulesTags = append(w.disabledOutOfBandRulesTags, params[0].(string))
+	w.DisabledOutOfBandRulesTags = append(w.DisabledOutOfBandRulesTags, params[0].(string))
 	return nil, nil
 }
 

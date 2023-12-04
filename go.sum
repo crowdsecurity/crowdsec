@@ -102,6 +102,10 @@ github.com/crowdsecurity/coraza/v3 v3.0.0-20231114091225-b0f8bc435a75 h1:Kp1sY2P
 github.com/crowdsecurity/coraza/v3 v3.0.0-20231114091225-b0f8bc435a75/go.mod h1:jNww1Y9SujXQc89zDR+XOb70bkC7mZ6ep7iKhUBBsiI=
 github.com/crowdsecurity/coraza/v3 v3.0.0-20231204125126-35deffad7734 h1:THMSMkBW/DLG5NvMAr/Mdg/eQOrEnMJ9Y+UdFG4yV8k=
 github.com/crowdsecurity/coraza/v3 v3.0.0-20231204125126-35deffad7734/go.mod h1:jNww1Y9SujXQc89zDR+XOb70bkC7mZ6ep7iKhUBBsiI=
+github.com/crowdsecurity/coraza/v3 v3.0.0-20231204135226-6c45fc2dedf9 h1:vFJiYtKOW5DwGQ9gxQi8+XDNc+YvuXXsJyWXXuiOn+M=
+github.com/crowdsecurity/coraza/v3 v3.0.0-20231204135226-6c45fc2dedf9/go.mod h1:jNww1Y9SujXQc89zDR+XOb70bkC7mZ6ep7iKhUBBsiI=
+github.com/crowdsecurity/coraza/v3 v3.0.0-20231204135508-23eef9bf7f39 h1:vY0KZvoS4Xl9IfGucBA4l1CV1auRPPJtjZSTz/Rl6iQ=
+github.com/crowdsecurity/coraza/v3 v3.0.0-20231204135508-23eef9bf7f39/go.mod h1:jNww1Y9SujXQc89zDR+XOb70bkC7mZ6ep7iKhUBBsiI=
 github.com/crowdsecurity/dlog v0.0.0-20170105205344-4fb5f8204f26 h1:r97WNVC30Uen+7WnLs4xDScS/Ex988+id2k6mDf8psU=
 github.com/crowdsecurity/dlog v0.0.0-20170105205344-4fb5f8204f26/go.mod h1:zpv7r+7KXwgVUZnUNjyP22zc/D7LKjyoY02weH2RBbk=
 github.com/crowdsecurity/go-cs-lib v0.0.5 h1:eVLW+BRj3ZYn0xt5/xmgzfbbB8EBo32gM4+WpQQk2e8=

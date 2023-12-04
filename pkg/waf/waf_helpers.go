@@ -22,13 +22,15 @@ func GetExprWAFOptions(ctx map[string]interface{}) []expr.Option {
 func GetOnLoadEnv(w *WaapRuntimeConfig) map[string]interface{} {
 	//FIXME: use expr.Function instead of this
 	return map[string]interface{}{
-		"RemoveInBandRuleByID":   w.DisableInBandRuleByID,
-		"RemoveOutBandRuleByID":  w.DisableOutBandRuleByID,
-		"RemoveInBandRuleByTag":  w.DisableInBandRuleByTag,
-		"RemoveOutBandRuleByTag": w.DisableOutBandRuleByTag,
-		"SetRemediationByTag":    w.SetActionByTag,
-		"SetRemediationByID":     w.SetActionByID,
-		"SetRemediationByName":   w.SetActionByName,
+		"RemoveInBandRuleByID":    w.DisableInBandRuleByID,
+		"RemoveOutBandRuleByID":   w.DisableOutBandRuleByID,
+		"RemoveInBandRuleByName":  w.DisableInBandRuleByName,
+		"RemoveInBandRuleByTag":   w.DisableInBandRuleByTag,
+		"RemoveOutBandRuleByTag":  w.DisableOutBandRuleByTag,
+		"RemoveOutBandRuleByName": w.DisableOutBandRuleByName,
+		"SetRemediationByTag":     w.SetActionByTag,
+		"SetRemediationByID":      w.SetActionByID,
+		"SetRemediationByName":    w.SetActionByName,
 	}
 }
 

@@ -70,6 +70,30 @@ func (r *WaapRunner) Init(datadir string) error {
 	}
 	r.WaapOutbandEngine, err = coraza.NewWAF(outbandCfg)
 
+	if r.WaapRuntime.DisabledInBandRulesTags != nil {
+		for _, tag := range r.WaapRuntime.DisabledInBandRulesTags {
+			r.WaapInbandEngine.GetRuleGroup().DeleteByTag(tag)
+		}
+	}
+
+	if r.WaapRuntime.DisabledOutOfBandRulesTags != nil {
+		for _, tag := range r.WaapRuntime.DisabledOutOfBandRulesTags {
+			r.WaapOutbandEngine.GetRuleGroup().DeleteByTag(tag)
+		}
+	}
+
+	if r.WaapRuntime.DisabledInBandRuleIds != nil {
+		for _, id := range r.WaapRuntime.DisabledInBandRuleIds {
+			r.WaapInbandEngine.GetRuleGroup().DeleteByID(id)
+		}
+	}
+
+	if r.WaapRuntime.DisabledOutOfBandRuleIds != nil {
+		for _, id := range r.WaapRuntime.DisabledOutOfBandRuleIds {
+			r.WaapOutbandEngine.GetRuleGroup().DeleteByID(id)
+		}
+	}
+
 	if err != nil {
 		return fmt.Errorf("unable to initialize outband engine : %w", err)
 	}
