@@ -425,6 +425,38 @@ func (w *WaapRuntimeConfig) RemoveOutbandRuleByID(params ...any) (any, error) {
 	return nil, nil
 }
 
+// func (w *WaapRuntimeConfig) RemoveInbandRuleByTag(tag string) error {
+func (w *WaapRuntimeConfig) RemoveInbandRuleByTag(params ...any) (any, error) {
+	tag := params[0].(string)
+	w.Logger.Debugf("removing inband rule with tag %s", tag)
+	_ = w.InBandTx.RemoveRuleByTagWithError(tag)
+	return nil, nil
+}
+
+// func (w *WaapRuntimeConfig) RemoveOutbandRuleByTag(tag string) error {
+func (w *WaapRuntimeConfig) RemoveOutbandRuleByTag(params ...any) (any, error) {
+	tag := params[0].(string)
+	w.Logger.Debugf("removing outband rule with tag %s", tag)
+	_ = w.OutOfBandTx.RemoveRuleByTagWithError(tag)
+	return nil, nil
+}
+
+// func (w *WaapRuntimeConfig) RemoveInbandRuleByName(name string) error {
+func (w *WaapRuntimeConfig) RemoveInbandRuleByName(params ...any) (any, error) {
+	tag := fmt.Sprintf("crowdsec-%s", params[0].(string))
+	w.Logger.Debugf("removing inband rule %s", tag)
+	_ = w.InBandTx.RemoveRuleByTagWithError(tag)
+	return nil, nil
+}
+
+// func (w *WaapRuntimeConfig) RemoveOutbandRuleByName(name string) error {
+func (w *WaapRuntimeConfig) RemoveOutbandRuleByName(params ...any) (any, error) {
+	tag := fmt.Sprintf("crowdsec-%s", params[0].(string))
+	w.Logger.Debugf("removing outband rule %s", tag)
+	_ = w.OutOfBandTx.RemoveRuleByTagWithError(tag)
+	return nil, nil
+}
+
 func (w *WaapRuntimeConfig) CancelEvent(params ...any) (any, error) {
 	w.Logger.Debugf("canceling event")
 	w.Response.SendEvent = false

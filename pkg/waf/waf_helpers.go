@@ -23,9 +23,9 @@ func GetOnLoadEnv(w *WaapRuntimeConfig) map[string]interface{} {
 	//FIXME: use expr.Function instead of this
 	return map[string]interface{}{
 		"RemoveInBandRuleByID":    w.DisableInBandRuleByID,
-		"RemoveOutBandRuleByID":   w.DisableOutBandRuleByID,
-		"RemoveInBandRuleByName":  w.DisableInBandRuleByName,
 		"RemoveInBandRuleByTag":   w.DisableInBandRuleByTag,
+		"RemoveInBandRuleByName":  w.DisableInBandRuleByName,
+		"RemoveOutBandRuleByID":   w.DisableOutBandRuleByID,
 		"RemoveOutBandRuleByTag":  w.DisableOutBandRuleByTag,
 		"RemoveOutBandRuleByName": w.DisableOutBandRuleByName,
 		"SetRemediationByTag":     w.SetActionByTag,
@@ -37,13 +37,17 @@ func GetOnLoadEnv(w *WaapRuntimeConfig) map[string]interface{} {
 func GetPreEvalEnv(w *WaapRuntimeConfig, request *ParsedRequest) map[string]interface{} {
 	//FIXME: use expr.Function instead of this
 	return map[string]interface{}{
-		"IsInBand":              request.IsInBand,
-		"IsOutBand":             request.IsOutBand,
-		"RemoveInBandRuleByID":  w.RemoveInbandRuleByID,
-		"RemoveOutBandRuleByID": w.RemoveOutbandRuleByID,
-		"SetRemediationByTag":   w.SetActionByTag,
-		"SetRemediationByID":    w.SetActionByID,
-		"SetRemediationByName":  w.SetActionByName,
+		"IsInBand":                request.IsInBand,
+		"IsOutBand":               request.IsOutBand,
+		"RemoveInBandRuleByID":    w.RemoveInbandRuleByID,
+		"RemoveInBandRuleByName":  w.RemoveInbandRuleByName,
+		"RemoveInBandRuleByTag":   w.RemoveInbandRuleByTag,
+		"RemoveOutBandRuleByID":   w.RemoveOutbandRuleByID,
+		"RemoveOutBandRuleByTag":  w.RemoveOutbandRuleByTag,
+		"RemoveOutBandRuleByName": w.RemoveOutbandRuleByName,
+		"SetRemediationByTag":     w.SetActionByTag,
+		"SetRemediationByID":      w.SetActionByID,
+		"SetRemediationByName":    w.SetActionByName,
 	}
 }
 

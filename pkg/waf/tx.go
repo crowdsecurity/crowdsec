@@ -27,6 +27,11 @@ func (t *ExtendedTransaction) RemoveRuleByIDWithError(id int) error {
 	return nil
 }
 
+func (t *ExtendedTransaction) RemoveRuleByTagWithError(tag string) error {
+	t.Tx.RemoveRuleByTag(tag)
+	return nil
+}
+
 func (t *ExtendedTransaction) IsRuleEngineOff() bool {
 	return t.Tx.IsRuleEngineOff()
 }
