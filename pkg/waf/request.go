@@ -1,11 +1,14 @@
 package waf
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"regexp"
 
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -19,68 +22,248 @@ const (
 	APIKeyHeaderName = "X-Crowdsec-Waap-Api-Key"
 )
 
-// type ResponseRequest struct {
-// 	UUID         string
-// 	Tx           corazatypes.Transaction
-// 	Interruption *corazatypes.Interruption
-// 	Err          error
-// 	SendEvents   bool
-// }
-
-// func NewResponseRequest(Tx experimental.FullTransaction, in *corazatypes.Interruption, UUID string, err error) ResponseRequest {
-// 	return ResponseRequest{
-// 		UUID:         UUID,
-// 		Tx:           Tx,
-// 		Interruption: in,
-// 		Err:          err,
-// 		SendEvents:   true,
-// 	}
-// }
-
-// func (r *ResponseRequest) SetRemediation(remediation string) error {
-// 	if r.Interruption == nil {
-// 		return nil
-// 	}
-// 	r.Interruption.Action = remediation
-// 	return nil
-// }
-
-// func (r *ResponseRequest) SetRemediationByID(ID int, remediation string) error {
-// 	if r.Interruption == nil {
-// 		return nil
-// 	}
-// 	if r.Interruption.RuleID == ID {
-// 		r.Interruption.Action = remediation
-// 	}
-// 	return nil
-// }
-
-// func (r *ResponseRequest) CancelEvent() error {
-// 	// true by default
-// 	r.SendEvents = false
-// 	return nil
-// }
-
 type ParsedRequest struct {
-	RemoteAddr           string
-	Host                 string
-	ClientIP             string
-	URI                  string
-	Args                 url.Values
-	ClientHost           string
-	Headers              http.Header
-	URL                  *url.URL
-	Method               string
-	Proto                string
-	Body                 []byte
-	TransferEncoding     []string
-	UUID                 string
-	Tx                   ExtendedTransaction
-	ResponseChannel      chan WaapTempResponse
-	IsInBand             bool
-	IsOutBand            bool
-	WaapEngine           string
-	RemoteAddrNormalized string
+	RemoteAddr           string                `json:"remote_addr,omitempty"`
+	Host                 string                `json:"host,omitempty"`
+	ClientIP             string                `json:"client_ip,omitempty"`
+	URI                  string                `json:"uri,omitempty"`
+	Args                 url.Values            `json:"args,omitempty"`
+	ClientHost           string                `json:"client_host,omitempty"`
+	Headers              http.Header           `json:"headers,omitempty"`
+	URL                  *url.URL              `json:"url,omitempty"`
+	Method               string                `json:"method,omitempty"`
+	Proto                string                `json:"proto,omitempty"`
+	Body                 []byte                `json:"body,omitempty"`
+	TransferEncoding     []string              `json:"transfer_encoding,omitempty"`
+	UUID                 string                `json:"uuid,omitempty"`
+	Tx                   ExtendedTransaction   `json:"transaction,omitempty"`
+	ResponseChannel      chan WaapTempResponse `json:"-"`
+	IsInBand             bool                  `json:"-"`
+	IsOutBand            bool                  `json:"-"`
+	WaapEngine           string                `json:"waap_engine,omitempty"`
+	RemoteAddrNormalized string                `json:"normalized_remote_addr,omitempty"`
+}
+
+type ReqDumpFilter struct {
+	req                   *ParsedRequest
+	HeadersContentFilters []string
+	HeadersNameFilters    []string
+	HeadersDrop           bool
+
+	BodyDrop bool
+	//BodyContentFilters []string TBD
+
+	ArgsContentFilters []string
+	ArgsNameFilters    []string
+	ArgsDrop           bool
+}
+
+func (r *ParsedRequest) DumpRequest(params ...any) *ReqDumpFilter {
+	filter := ReqDumpFilter{}
+	filter.BodyDrop = true
+	filter.HeadersNameFilters = []string{"cookie", "authorization"}
+	filter.req = r
+	return &filter
+}
+
+// clear filters
+func (r *ReqDumpFilter) NoFilters() *ReqDumpFilter {
+	r2 := ReqDumpFilter{}
+	r2.req = r.req
+	return &r2
+}
+
+func (r *ReqDumpFilter) WithEmptyHeadersFilters() *ReqDumpFilter {
+	r.HeadersContentFilters = []string{}
+	return r
+}
+
+func (r *ReqDumpFilter) WithHeadersContentFilters(filter string) *ReqDumpFilter {
+	r.HeadersContentFilters = append(r.HeadersContentFilters, filter)
+	return r
+}
+
+func (r *ReqDumpFilter) WithHeadersNameFilter(filter string) *ReqDumpFilter {
+	r.HeadersNameFilters = append(r.HeadersNameFilters, filter)
+	return r
+}
+
+func (r *ReqDumpFilter) WithNoHeaders() *ReqDumpFilter {
+	r.HeadersDrop = true
+	return r
+}
+
+func (r *ReqDumpFilter) WithHeaders() *ReqDumpFilter {
+	r.HeadersDrop = false
+	r.HeadersNameFilters = []string{}
+	return r
+}
+
+func (r *ReqDumpFilter) WithBody() *ReqDumpFilter {
+	r.BodyDrop = false
+	return r
+}
+
+func (r *ReqDumpFilter) WithNoBody() *ReqDumpFilter {
+	r.BodyDrop = true
+	return r
+}
+
+func (r *ReqDumpFilter) WithEmptyArgsFilters() *ReqDumpFilter {
+	r.ArgsContentFilters = []string{}
+	return r
+}
+
+func (r *ReqDumpFilter) WithArgsContentFilters(filter string) *ReqDumpFilter {
+	r.ArgsContentFilters = append(r.ArgsContentFilters, filter)
+	return r
+}
+
+func (r *ReqDumpFilter) WithArgsNameFilter(filter string) *ReqDumpFilter {
+	r.ArgsNameFilters = append(r.ArgsNameFilters, filter)
+	return r
+}
+
+func (r *ReqDumpFilter) FilterBody(out *ParsedRequest) error {
+	if r.BodyDrop {
+		return nil
+	}
+	out.Body = r.req.Body
+	return nil
+}
+
+func (r *ReqDumpFilter) FilterArgs(out *ParsedRequest) error {
+	if r.ArgsDrop {
+		return nil
+	}
+	if len(r.ArgsContentFilters) == 0 && len(r.ArgsNameFilters) == 0 {
+		out.Args = r.req.Args
+		return nil
+	}
+	out.Args = make(url.Values)
+	for k, vals := range r.req.Args {
+		reject := false
+		//exclude by match on name
+		for _, filter := range r.ArgsNameFilters {
+			ok, err := regexp.MatchString("(?i)"+filter, k)
+			if err != nil {
+				log.Debugf("error while matching string '%s' with '%s': %s", filter, k, err)
+				continue
+			}
+			if ok {
+				reject = true
+				break
+			}
+		}
+
+		for _, v := range vals {
+			//exclude by content
+			for _, filter := range r.ArgsContentFilters {
+				ok, err := regexp.MatchString("(?i)"+filter, v)
+				if err != nil {
+					log.Debugf("error while matching string '%s' with '%s': %s", filter, v, err)
+					continue
+				}
+				if ok {
+					reject = true
+					break
+				}
+
+			}
+		}
+		//if it was not rejected, let's add it
+		if !reject {
+			out.Args[k] = vals
+		}
+	}
+	return nil
+}
+
+func (r *ReqDumpFilter) FilterHeaders(out *ParsedRequest) error {
+	if r.HeadersDrop {
+		return nil
+	}
+
+	if len(r.HeadersContentFilters) == 0 && len(r.HeadersNameFilters) == 0 {
+		out.Headers = r.req.Headers
+		return nil
+	}
+
+	out.Headers = make(http.Header)
+	for k, vals := range r.req.Headers {
+		reject := false
+		//exclude by match on name
+		for _, filter := range r.HeadersNameFilters {
+			ok, err := regexp.MatchString("(?i)"+filter, k)
+			if err != nil {
+				log.Debugf("error while matching string '%s' with '%s': %s", filter, k, err)
+				continue
+			}
+			if ok {
+				reject = true
+				break
+			}
+		}
+
+		for _, v := range vals {
+			//exclude by content
+			for _, filter := range r.HeadersContentFilters {
+				ok, err := regexp.MatchString("(?i)"+filter, v)
+				if err != nil {
+					log.Debugf("error while matching string '%s' with '%s': %s", filter, v, err)
+					continue
+				}
+				if ok {
+					reject = true
+					break
+				}
+
+			}
+		}
+		//if it was not rejected, let's add it
+		if !reject {
+			out.Headers[k] = vals
+		}
+	}
+	return nil
+}
+
+func (r *ReqDumpFilter) GetFilteredRequest() *ParsedRequest {
+	//if there are no filters, we return the original request
+	if len(r.HeadersContentFilters) == 0 &&
+		len(r.HeadersNameFilters) == 0 &&
+		len(r.ArgsContentFilters) == 0 &&
+		len(r.ArgsNameFilters) == 0 &&
+		!r.BodyDrop && !r.HeadersDrop && !r.ArgsDrop {
+		log.Warningf("no filters, returning original request")
+		return r.req
+	}
+
+	r2 := ParsedRequest{}
+	r.FilterHeaders(&r2)
+	r.FilterBody(&r2)
+	r.FilterArgs(&r2)
+	return &r2
+}
+
+func (r *ReqDumpFilter) ToJSON() error {
+	fd, err := os.CreateTemp("/tmp/", "crowdsec_req_dump_*.json")
+	if err != nil {
+		return fmt.Errorf("while creating temp file: %w", err)
+	}
+	defer fd.Close()
+	enc := json.NewEncoder(fd)
+	enc.SetIndent("", "  ")
+
+	req := r.GetFilteredRequest()
+
+	log.Warningf("dumping : %+v", req)
+
+	if err := enc.Encode(req); err != nil {
+		return fmt.Errorf("while encoding request: %w", err)
+	}
+	log.Warningf("request dumped to %s", fd.Name())
+	return nil
 }
 
 // Generate a ParsedRequest from a http.Request. ParsedRequest can be consumed by the Waap Engine
