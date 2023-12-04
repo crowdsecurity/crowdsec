@@ -364,8 +364,6 @@ func (w *WaapSource) waapHandler(rw http.ResponseWriter, r *http.Request) {
 		WafBlockCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "waap_engine": parsedRequest.WaapEngine}).Inc()
 	}
 
-	w.logger.Infof("Response: %+v", response)
-
 	waapResponse := w.WaapRuntime.GenerateResponse(response)
 
 	rw.WriteHeader(waapResponse.HTTPStatus)

@@ -1,26 +1,10 @@
 package waf
 
 import (
-	"github.com/antonmedv/expr"
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-func GetExprWAFOptions(ctx map[string]interface{}) []expr.Option {
-	baseHelpers := exprhelpers.GetExprOptions(ctx)
-
-	for _, function := range exprFuncs {
-		baseHelpers = append(baseHelpers,
-			expr.Function(function.name,
-				function.function,
-				function.signature...,
-			))
-	}
-	return baseHelpers
-}
-
 func GetOnLoadEnv(w *WaapRuntimeConfig) map[string]interface{} {
-	//FIXME: use expr.Function instead of this
 	return map[string]interface{}{
 		"RemoveInBandRuleByID":    w.DisableInBandRuleByID,
 		"RemoveInBandRuleByTag":   w.DisableInBandRuleByTag,
@@ -35,7 +19,6 @@ func GetOnLoadEnv(w *WaapRuntimeConfig) map[string]interface{} {
 }
 
 func GetPreEvalEnv(w *WaapRuntimeConfig, request *ParsedRequest) map[string]interface{} {
-	//FIXME: use expr.Function instead of this
 	return map[string]interface{}{
 		"IsInBand":                request.IsInBand,
 		"IsOutBand":               request.IsOutBand,
@@ -52,7 +35,6 @@ func GetPreEvalEnv(w *WaapRuntimeConfig, request *ParsedRequest) map[string]inte
 }
 
 func GetPostEvalEnv(w *WaapRuntimeConfig, request *ParsedRequest) map[string]interface{} {
-	//FIXME: use expr.Function instead of this
 	return map[string]interface{}{
 		"IsInBand":    request.IsInBand,
 		"IsOutBand":   request.IsOutBand,
@@ -61,7 +43,6 @@ func GetPostEvalEnv(w *WaapRuntimeConfig, request *ParsedRequest) map[string]int
 }
 
 func GetOnMatchEnv(w *WaapRuntimeConfig, request *ParsedRequest, evt types.Event) map[string]interface{} {
-	//FIXME: use expr.Function instead of this
 	return map[string]interface{}{
 		"evt":            evt,
 		"req":            request,

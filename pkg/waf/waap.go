@@ -44,7 +44,7 @@ func (h *Hook) Build(hookStage int) error {
 	case hookOnMatch:
 		ctx = GetOnMatchEnv(&WaapRuntimeConfig{}, &ParsedRequest{}, types.Event{})
 	}
-	opts := GetExprWAFOptions(ctx)
+	opts := exprhelpers.GetExprOptions(ctx)
 	if h.Filter != "" {
 		program, err := expr.Compile(h.Filter, opts...) //FIXME: opts
 		if err != nil {
@@ -401,170 +401,130 @@ func (w *WaapRuntimeConfig) ProcessPostEvalRules(request *ParsedRequest) error {
 	return nil
 }
 
-/* @sbl / @tko
-add the helpers to:
- - remove by id-range
- - remove by tag
- - set remediation by tag/id-range
-
-*/
-
-// func (w *WaapRuntimeConfig) RemoveInbandRuleByID(id int) error {
-func (w *WaapRuntimeConfig) RemoveInbandRuleByID(params ...any) (any, error) {
-	id := params[0].(int)
+func (w *WaapRuntimeConfig) RemoveInbandRuleByID(id int) error {
 	w.Logger.Debugf("removing inband rule %d", id)
-	_ = w.InBandTx.RemoveRuleByIDWithError(id)
-	return nil, nil
+	return w.InBandTx.RemoveRuleByIDWithError(id)
 }
 
-// func (w *WaapRuntimeConfig) RemoveOutbandRuleByID(id int) error {
-func (w *WaapRuntimeConfig) RemoveOutbandRuleByID(params ...any) (any, error) {
-	id := params[0].(int)
+func (w *WaapRuntimeConfig) RemoveOutbandRuleByID(id int) error {
 	w.Logger.Debugf("removing outband rule %d", id)
-	_ = w.OutOfBandTx.RemoveRuleByIDWithError(id)
-	return nil, nil
+	return w.OutOfBandTx.RemoveRuleByIDWithError(id)
 }
 
-// func (w *WaapRuntimeConfig) RemoveInbandRuleByTag(tag string) error {
-func (w *WaapRuntimeConfig) RemoveInbandRuleByTag(params ...any) (any, error) {
-	tag := params[0].(string)
+func (w *WaapRuntimeConfig) RemoveInbandRuleByTag(tag string) error {
 	w.Logger.Debugf("removing inband rule with tag %s", tag)
-	_ = w.InBandTx.RemoveRuleByTagWithError(tag)
-	return nil, nil
+	return w.InBandTx.RemoveRuleByTagWithError(tag)
 }
 
-// func (w *WaapRuntimeConfig) RemoveOutbandRuleByTag(tag string) error {
-func (w *WaapRuntimeConfig) RemoveOutbandRuleByTag(params ...any) (any, error) {
-	tag := params[0].(string)
+func (w *WaapRuntimeConfig) RemoveOutbandRuleByTag(tag string) error {
 	w.Logger.Debugf("removing outband rule with tag %s", tag)
-	_ = w.OutOfBandTx.RemoveRuleByTagWithError(tag)
-	return nil, nil
+	return w.OutOfBandTx.RemoveRuleByTagWithError(tag)
 }
 
-// func (w *WaapRuntimeConfig) RemoveInbandRuleByName(name string) error {
-func (w *WaapRuntimeConfig) RemoveInbandRuleByName(params ...any) (any, error) {
-	tag := fmt.Sprintf("crowdsec-%s", params[0].(string))
+func (w *WaapRuntimeConfig) RemoveInbandRuleByName(name string) error {
+	tag := fmt.Sprintf("crowdsec-%s", name)
 	w.Logger.Debugf("removing inband rule %s", tag)
-	_ = w.InBandTx.RemoveRuleByTagWithError(tag)
-	return nil, nil
+	return w.InBandTx.RemoveRuleByTagWithError(tag)
 }
 
-// func (w *WaapRuntimeConfig) RemoveOutbandRuleByName(name string) error {
-func (w *WaapRuntimeConfig) RemoveOutbandRuleByName(params ...any) (any, error) {
-	tag := fmt.Sprintf("crowdsec-%s", params[0].(string))
+func (w *WaapRuntimeConfig) RemoveOutbandRuleByName(name string) error {
+	tag := fmt.Sprintf("crowdsec-%s", name)
 	w.Logger.Debugf("removing outband rule %s", tag)
-	_ = w.OutOfBandTx.RemoveRuleByTagWithError(tag)
-	return nil, nil
+	return w.OutOfBandTx.RemoveRuleByTagWithError(tag)
 }
 
-func (w *WaapRuntimeConfig) CancelEvent(params ...any) (any, error) {
+func (w *WaapRuntimeConfig) CancelEvent() error {
 	w.Logger.Debugf("canceling event")
 	w.Response.SendEvent = false
-	return nil, nil
+	return nil
 }
 
-// func (w *WaapRuntimeConfig) DisableInBandRuleByID(id int) error {
 // Disable a rule at load time, meaning it will not run for any request
-func (w *WaapRuntimeConfig) DisableInBandRuleByID(params ...any) (any, error) {
-	w.DisabledInBandRuleIds = append(w.DisabledInBandRuleIds, params[0].(int))
-	return nil, nil
+func (w *WaapRuntimeConfig) DisableInBandRuleByID(id int) error {
+	w.DisabledInBandRuleIds = append(w.DisabledInBandRuleIds, id)
+	return nil
 }
 
-// func (w *WaapRuntimeConfig) DisableInBandRuleByName(name string) error {
 // Disable a rule at load time, meaning it will not run for any request
-func (w *WaapRuntimeConfig) DisableInBandRuleByName(params ...any) (any, error) {
-	tagValue := fmt.Sprintf("crowdsec-%s", params[0].(string))
+func (w *WaapRuntimeConfig) DisableInBandRuleByName(name string) error {
+	tagValue := fmt.Sprintf("crowdsec-%s", name)
 	w.DisabledInBandRulesTags = append(w.DisabledInBandRulesTags, tagValue)
-	return nil, nil
+	return nil
 }
 
-// func (w *WaapRuntimeConfig) DisableInBandRuleByTag(tag string) error {
 // Disable a rule at load time, meaning it will not run for any request
-func (w *WaapRuntimeConfig) DisableInBandRuleByTag(params ...any) (any, error) {
-	w.DisabledInBandRulesTags = append(w.DisabledInBandRulesTags, params[0].(string))
-	return nil, nil
+func (w *WaapRuntimeConfig) DisableInBandRuleByTag(tag string) error {
+	w.DisabledInBandRulesTags = append(w.DisabledInBandRulesTags, tag)
+	return nil
 }
 
-// func (w *WaapRuntimeConfig) DisableOutBandRuleByID(id int) error {
 // Disable a rule at load time, meaning it will not run for any request
-func (w *WaapRuntimeConfig) DisableOutBandRuleByID(params ...any) (any, error) {
-	w.DisabledOutOfBandRuleIds = append(w.DisabledOutOfBandRuleIds, params[0].(int))
-	return nil, nil
+func (w *WaapRuntimeConfig) DisableOutBandRuleByID(id int) error {
+	w.DisabledOutOfBandRuleIds = append(w.DisabledOutOfBandRuleIds, id)
+	return nil
 }
 
-// func (w *WaapRuntimeConfig) DisableOutBandRuleByName(name string) error {
 // Disable a rule at load time, meaning it will not run for any request
-func (w *WaapRuntimeConfig) DisableOutBandRuleByName(params ...any) (any, error) {
-	tagValue := fmt.Sprintf("crowdsec-%s", params[0].(string))
+func (w *WaapRuntimeConfig) DisableOutBandRuleByName(name string) error {
+	tagValue := fmt.Sprintf("crowdsec-%s", name)
 	w.DisabledOutOfBandRulesTags = append(w.DisabledOutOfBandRulesTags, tagValue)
-	return nil, nil
+	return nil
 }
 
-// func (w *WaapRuntimeConfig) DisableOutBandRuleByTag(tag string) error {
 // Disable a rule at load time, meaning it will not run for any request
-func (w *WaapRuntimeConfig) DisableOutBandRuleByTag(params ...any) (any, error) {
-	w.DisabledOutOfBandRulesTags = append(w.DisabledOutOfBandRulesTags, params[0].(string))
-	return nil, nil
+func (w *WaapRuntimeConfig) DisableOutBandRuleByTag(tag string) error {
+	w.DisabledOutOfBandRulesTags = append(w.DisabledOutOfBandRulesTags, tag)
+	return nil
 }
 
-func (w *WaapRuntimeConfig) SendEvent(params ...any) (any, error) {
+func (w *WaapRuntimeConfig) SendEvent() error {
 	w.Logger.Debugf("sending event")
 	w.Response.SendEvent = true
-	return nil, nil
+	return nil
 }
 
-func (w *WaapRuntimeConfig) SendAlert(params ...any) (any, error) {
+func (w *WaapRuntimeConfig) SendAlert() error {
 	w.Logger.Debugf("sending alert")
 	w.Response.SendAlert = true
-	return nil, nil
+	return nil
 }
 
-func (w *WaapRuntimeConfig) CancelAlert(params ...any) (any, error) {
+func (w *WaapRuntimeConfig) CancelAlert() error {
 	w.Logger.Debugf("canceling alert")
 	w.Response.SendAlert = false
-	return nil, nil
+	return nil
 }
 
-// func (w *WaapRuntimeConfig) SetActionByTag(tag string, action string) error {
-func (w *WaapRuntimeConfig) SetActionByTag(params ...any) (any, error) {
+func (w *WaapRuntimeConfig) SetActionByTag(tag string, action string) error {
 	if w.RemediationByTag == nil {
 		w.RemediationByTag = make(map[string]string)
 	}
-	tag := params[0].(string)
-	action := params[1].(string)
 	w.Logger.Debugf("setting action of %s to %s", tag, action)
 	w.RemediationByTag[tag] = action
-	return nil, nil
+	return nil
 }
 
-// func (w *WaapRuntimeConfig) SetActionByID(id int, action string) error {
-func (w *WaapRuntimeConfig) SetActionByID(params ...any) (any, error) {
+func (w *WaapRuntimeConfig) SetActionByID(id int, action string) error {
 	if w.RemediationById == nil {
 		w.RemediationById = make(map[int]string)
 	}
-	id := params[0].(int)
-	action := params[1].(string)
 	w.Logger.Debugf("setting action of %d to %s", id, action)
 	w.RemediationById[id] = action
-	return nil, nil
+	return nil
 }
 
-// func (w *WaapRuntimeConfig) SetActionByID(name string, action string) error {
-func (w *WaapRuntimeConfig) SetActionByName(params ...any) (any, error) {
+func (w *WaapRuntimeConfig) SetActionByName(name string, action string) error {
 	if w.RemediationByTag == nil {
 		w.RemediationByTag = make(map[string]string)
 	}
-	tag := fmt.Sprintf("crowdsec-%s", params[0].(string))
-	action := params[1].(string)
+	tag := fmt.Sprintf("crowdsec-%s", name)
 	w.Logger.Debugf("setting action of %s to %s", tag, action)
 	w.RemediationByTag[tag] = action
-	return nil, nil
+	return nil
 }
 
-// func (w *WaapRuntimeConfig) SetAction(action string) error {
-func (w *WaapRuntimeConfig) SetAction(params ...any) (any, error) {
+func (w *WaapRuntimeConfig) SetAction(action string) error {
 	//log.Infof("setting to %s", action)
-	action := params[0].(string)
 	w.Logger.Debugf("setting action to %s", action)
 	switch action {
 	case "allow":
@@ -579,18 +539,15 @@ func (w *WaapRuntimeConfig) SetAction(params ...any) (any, error) {
 	case "captcha":
 		w.Response.Action = action
 	default:
-		return nil, fmt.Errorf("unknown action %s", action)
+		return fmt.Errorf("unknown action %s", action)
 	}
-	return nil, nil
-
+	return nil
 }
 
-// func (w *WaapRuntimeConfig) SetHTTPCode(code int) error {
-func (w *WaapRuntimeConfig) SetHTTPCode(params ...any) (any, error) {
-	code := params[0].(int)
+func (w *WaapRuntimeConfig) SetHTTPCode(code int) error {
 	w.Logger.Debugf("setting http code to %d", code)
 	w.Response.HTTPResponseCode = code
-	return nil, nil
+	return nil
 }
 
 type BodyResponse struct {
