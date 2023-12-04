@@ -6,438 +6,438 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
 )
 
-type exprCustomFunc struct {
-	name      string
-	function  func(params ...any) (any, error)
-	signature []interface{}
+type ExprCustomFunc struct {
+	Name      string
+	Function  func(params ...any) (any, error)
+	Signature []interface{}
 }
 
-var exprFuncs = []exprCustomFunc{
+var exprFuncs = []ExprCustomFunc{
 	{
-		name:     "CrowdsecCTI",
-		function: CrowdsecCTI,
-		signature: []interface{}{
+		Name:     "CrowdsecCTI",
+		Function: CrowdsecCTI,
+		Signature: []interface{}{
 			new(func(string) (*cticlient.SmokeItem, error)),
 		},
 	},
 	{
-		name:      "Flatten",
-		function:  Flatten,
-		signature: []interface{}{},
+		Name:      "Flatten",
+		Function:  Flatten,
+		Signature: []interface{}{},
 	},
 	{
-		name:      "Distinct",
-		function:  Distinct,
-		signature: []interface{}{},
+		Name:      "Distinct",
+		Function:  Distinct,
+		Signature: []interface{}{},
 	},
 	{
-		name:      "FlattenDistinct",
-		function:  FlattenDistinct,
-		signature: []interface{}{},
+		Name:      "FlattenDistinct",
+		Function:  FlattenDistinct,
+		Signature: []interface{}{},
 	},
 	{
-		name:     "Distance",
-		function: Distance,
-		signature: []interface{}{
+		Name:     "Distance",
+		Function: Distance,
+		Signature: []interface{}{
 			new(func(string, string, string, string) (float64, error)),
 		},
 	},
 	{
-		name:     "GetFromStash",
-		function: GetFromStash,
-		signature: []interface{}{
+		Name:     "GetFromStash",
+		Function: GetFromStash,
+		Signature: []interface{}{
 			new(func(string, string) (string, error)),
 		},
 	},
 	{
-		name:     "Atof",
-		function: Atof,
-		signature: []interface{}{
+		Name:     "Atof",
+		Function: Atof,
+		Signature: []interface{}{
 			new(func(string) float64),
 		},
 	},
 	{
-		name:     "JsonExtract",
-		function: JsonExtract,
-		signature: []interface{}{
+		Name:     "JsonExtract",
+		Function: JsonExtract,
+		Signature: []interface{}{
 			new(func(string, string) string),
 		},
 	},
 	{
-		name:     "JsonExtractUnescape",
-		function: JsonExtractUnescape,
-		signature: []interface{}{
+		Name:     "JsonExtractUnescape",
+		Function: JsonExtractUnescape,
+		Signature: []interface{}{
 			new(func(string, ...string) string),
 		},
 	},
 	{
-		name:     "JsonExtractLib",
-		function: JsonExtractLib,
-		signature: []interface{}{
+		Name:     "JsonExtractLib",
+		Function: JsonExtractLib,
+		Signature: []interface{}{
 			new(func(string, ...string) string),
 		},
 	},
 	{
-		name:     "JsonExtractSlice",
-		function: JsonExtractSlice,
-		signature: []interface{}{
+		Name:     "JsonExtractSlice",
+		Function: JsonExtractSlice,
+		Signature: []interface{}{
 			new(func(string, string) []interface{}),
 		},
 	},
 	{
-		name:     "JsonExtractObject",
-		function: JsonExtractObject,
-		signature: []interface{}{
+		Name:     "JsonExtractObject",
+		Function: JsonExtractObject,
+		Signature: []interface{}{
 			new(func(string, string) map[string]interface{}),
 		},
 	},
 	{
-		name:     "ToJsonString",
-		function: ToJson,
-		signature: []interface{}{
+		Name:     "ToJsonString",
+		Function: ToJson,
+		Signature: []interface{}{
 			new(func(interface{}) string),
 		},
 	},
 	{
-		name:     "File",
-		function: File,
-		signature: []interface{}{
+		Name:     "File",
+		Function: File,
+		Signature: []interface{}{
 			new(func(string) []string),
 		},
 	},
 	{
-		name:     "RegexpInFile",
-		function: RegexpInFile,
-		signature: []interface{}{
+		Name:     "RegexpInFile",
+		Function: RegexpInFile,
+		Signature: []interface{}{
 			new(func(string, string) bool),
 		},
 	},
 	{
-		name:     "Upper",
-		function: Upper,
-		signature: []interface{}{
+		Name:     "Upper",
+		Function: Upper,
+		Signature: []interface{}{
 			new(func(string) string),
 		},
 	},
 	{
-		name:     "Lower",
-		function: Lower,
-		signature: []interface{}{
+		Name:     "Lower",
+		Function: Lower,
+		Signature: []interface{}{
 			new(func(string) string),
 		},
 	},
 	{
-		name:     "IpInRange",
-		function: IpInRange,
-		signature: []interface{}{
+		Name:     "IpInRange",
+		Function: IpInRange,
+		Signature: []interface{}{
 			new(func(string, string) bool),
 		},
 	},
 	{
-		name:     "TimeNow",
-		function: TimeNow,
-		signature: []interface{}{
+		Name:     "TimeNow",
+		Function: TimeNow,
+		Signature: []interface{}{
 			new(func() string),
 		},
 	},
 	{
-		name:     "ParseUri",
-		function: ParseUri,
-		signature: []interface{}{
+		Name:     "ParseUri",
+		Function: ParseUri,
+		Signature: []interface{}{
 			new(func(string) map[string][]string),
 		},
 	},
 	{
-		name:     "PathUnescape",
-		function: PathUnescape,
-		signature: []interface{}{
+		Name:     "PathUnescape",
+		Function: PathUnescape,
+		Signature: []interface{}{
 			new(func(string) string),
 		},
 	},
 	{
-		name:     "QueryUnescape",
-		function: QueryUnescape,
-		signature: []interface{}{
+		Name:     "QueryUnescape",
+		Function: QueryUnescape,
+		Signature: []interface{}{
 			new(func(string) string),
 		},
 	},
 	{
-		name:     "PathEscape",
-		function: PathEscape,
-		signature: []interface{}{
+		Name:     "PathEscape",
+		Function: PathEscape,
+		Signature: []interface{}{
 			new(func(string) string),
 		},
 	},
 	{
-		name:     "QueryEscape",
-		function: QueryEscape,
-		signature: []interface{}{
+		Name:     "QueryEscape",
+		Function: QueryEscape,
+		Signature: []interface{}{
 			new(func(string) string),
 		},
 	},
 	{
-		name:     "XMLGetAttributeValue",
-		function: XMLGetAttributeValue,
-		signature: []interface{}{
+		Name:     "XMLGetAttributeValue",
+		Function: XMLGetAttributeValue,
+		Signature: []interface{}{
 			new(func(string, string, string) string),
 		},
 	},
 	{
-		name:     "XMLGetNodeValue",
-		function: XMLGetNodeValue,
-		signature: []interface{}{
+		Name:     "XMLGetNodeValue",
+		Function: XMLGetNodeValue,
+		Signature: []interface{}{
 			new(func(string, string) string),
 		},
 	},
 	{
-		name:     "IpToRange",
-		function: IpToRange,
-		signature: []interface{}{
+		Name:     "IpToRange",
+		Function: IpToRange,
+		Signature: []interface{}{
 			new(func(string, string) string),
 		},
 	},
 	{
-		name:     "IsIPV6",
-		function: IsIPV6,
-		signature: []interface{}{
+		Name:     "IsIPV6",
+		Function: IsIPV6,
+		Signature: []interface{}{
 			new(func(string) bool),
 		},
 	},
 	{
-		name:     "IsIPV4",
-		function: IsIPV4,
-		signature: []interface{}{
+		Name:     "IsIPV4",
+		Function: IsIPV4,
+		Signature: []interface{}{
 			new(func(string) bool),
 		},
 	},
 	{
-		name:     "IsIP",
-		function: IsIP,
-		signature: []interface{}{
+		Name:     "IsIP",
+		Function: IsIP,
+		Signature: []interface{}{
 			new(func(string) bool),
 		},
 	},
 	{
-		name:     "LookupHost",
-		function: LookupHost,
-		signature: []interface{}{
+		Name:     "LookupHost",
+		Function: LookupHost,
+		Signature: []interface{}{
 			new(func(string) []string),
 		},
 	},
 	{
-		name:     "GetDecisionsCount",
-		function: GetDecisionsCount,
-		signature: []interface{}{
+		Name:     "GetDecisionsCount",
+		Function: GetDecisionsCount,
+		Signature: []interface{}{
 			new(func(string) int),
 		},
 	},
 	{
-		name:     "GetDecisionsSinceCount",
-		function: GetDecisionsSinceCount,
-		signature: []interface{}{
+		Name:     "GetDecisionsSinceCount",
+		Function: GetDecisionsSinceCount,
+		Signature: []interface{}{
 			new(func(string, string) int),
 		},
 	},
 	{
-		name:     "Sprintf",
-		function: Sprintf,
-		signature: []interface{}{
+		Name:     "Sprintf",
+		Function: Sprintf,
+		Signature: []interface{}{
 			new(func(string, ...interface{}) string),
 		},
 	},
 	{
-		name:     "ParseUnix",
-		function: ParseUnix,
-		signature: []interface{}{
+		Name:     "ParseUnix",
+		Function: ParseUnix,
+		Signature: []interface{}{
 			new(func(string) string),
 		},
 	},
 	{
-		name:     "SetInStash", //FIXME: signature will probably blow everything up
-		function: SetInStash,
-		signature: []interface{}{
+		Name:     "SetInStash", //FIXME: signature will probably blow everything up
+		Function: SetInStash,
+		Signature: []interface{}{
 			new(func(string, string, string, *time.Duration) error),
 		},
 	},
 	{
-		name:     "Fields",
-		function: Fields,
-		signature: []interface{}{
+		Name:     "Fields",
+		Function: Fields,
+		Signature: []interface{}{
 			new(func(string) []string),
 		},
 	},
 	{
-		name:     "Index",
-		function: Index,
-		signature: []interface{}{
+		Name:     "Index",
+		Function: Index,
+		Signature: []interface{}{
 			new(func(string, string) int),
 		},
 	},
 	{
-		name:     "IndexAny",
-		function: IndexAny,
-		signature: []interface{}{
+		Name:     "IndexAny",
+		Function: IndexAny,
+		Signature: []interface{}{
 			new(func(string, string) int),
 		},
 	},
 	{
-		name:     "Join",
-		function: Join,
-		signature: []interface{}{
+		Name:     "Join",
+		Function: Join,
+		Signature: []interface{}{
 			new(func([]string, string) string),
 		},
 	},
 	{
-		name:     "Split",
-		function: Split,
-		signature: []interface{}{
+		Name:     "Split",
+		Function: Split,
+		Signature: []interface{}{
 			new(func(string, string) []string),
 		},
 	},
 	{
-		name:     "SplitAfter",
-		function: SplitAfter,
-		signature: []interface{}{
+		Name:     "SplitAfter",
+		Function: SplitAfter,
+		Signature: []interface{}{
 			new(func(string, string) []string),
 		},
 	},
 	{
-		name:     "SplitAfterN",
-		function: SplitAfterN,
-		signature: []interface{}{
+		Name:     "SplitAfterN",
+		Function: SplitAfterN,
+		Signature: []interface{}{
 			new(func(string, string, int) []string),
 		},
 	},
 	{
-		name:     "SplitN",
-		function: SplitN,
-		signature: []interface{}{
+		Name:     "SplitN",
+		Function: SplitN,
+		Signature: []interface{}{
 			new(func(string, string, int) []string),
 		},
 	},
 	{
-		name:     "Replace",
-		function: Replace,
-		signature: []interface{}{
+		Name:     "Replace",
+		Function: Replace,
+		Signature: []interface{}{
 			new(func(string, string, string, int) string),
 		},
 	},
 	{
-		name:     "ReplaceAll",
-		function: ReplaceAll,
-		signature: []interface{}{
+		Name:     "ReplaceAll",
+		Function: ReplaceAll,
+		Signature: []interface{}{
 			new(func(string, string, string) string),
 		},
 	},
 	{
-		name:     "Trim",
-		function: Trim,
-		signature: []interface{}{
+		Name:     "Trim",
+		Function: Trim,
+		Signature: []interface{}{
 			new(func(string, string) string),
 		},
 	},
 	{
-		name:     "TrimLeft",
-		function: TrimLeft,
-		signature: []interface{}{
+		Name:     "TrimLeft",
+		Function: TrimLeft,
+		Signature: []interface{}{
 			new(func(string, string) string),
 		},
 	},
 	{
-		name:     "TrimRight",
-		function: TrimRight,
-		signature: []interface{}{
+		Name:     "TrimRight",
+		Function: TrimRight,
+		Signature: []interface{}{
 			new(func(string, string) string),
 		},
 	},
 	{
-		name:     "TrimSpace",
-		function: TrimSpace,
-		signature: []interface{}{
+		Name:     "TrimSpace",
+		Function: TrimSpace,
+		Signature: []interface{}{
 			new(func(string) string),
 		},
 	},
 	{
-		name:     "TrimPrefix",
-		function: TrimPrefix,
-		signature: []interface{}{
+		Name:     "TrimPrefix",
+		Function: TrimPrefix,
+		Signature: []interface{}{
 			new(func(string, string) string),
 		},
 	},
 	{
-		name:     "TrimSuffix",
-		function: TrimSuffix,
-		signature: []interface{}{
+		Name:     "TrimSuffix",
+		Function: TrimSuffix,
+		Signature: []interface{}{
 			new(func(string, string) string),
 		},
 	},
 	{
-		name:     "Get",
-		function: Get,
-		signature: []interface{}{
+		Name:     "Get",
+		Function: Get,
+		Signature: []interface{}{
 			new(func([]string, int) string),
 		},
 	},
 	{
-		name:     "ToString",
-		function: ToString,
-		signature: []interface{}{
+		Name:     "ToString",
+		Function: ToString,
+		Signature: []interface{}{
 			new(func(interface{}) string),
 		},
 	},
 	{
-		name:     "Match",
-		function: Match,
-		signature: []interface{}{
+		Name:     "Match",
+		Function: Match,
+		Signature: []interface{}{
 			new(func(string, string) bool),
 		},
 	},
 	{
-		name:     "KeyExists",
-		function: KeyExists,
-		signature: []interface{}{
+		Name:     "KeyExists",
+		Function: KeyExists,
+		Signature: []interface{}{
 			new(func(string, map[string]any) bool),
 		},
 	},
 	{
-		name:     "LogInfo",
-		function: LogInfo,
-		signature: []interface{}{
+		Name:     "LogInfo",
+		Function: LogInfo,
+		Signature: []interface{}{
 			new(func(string, ...interface{}) bool),
 		},
 	},
 	{
-		name:     "B64Decode",
-		function: B64Decode,
-		signature: []interface{}{
+		Name:     "B64Decode",
+		Function: B64Decode,
+		Signature: []interface{}{
 			new(func(string) string),
 		},
 	},
 	{
-		name:     "UnmarshalJSON",
-		function: UnmarshalJSON,
-		signature: []interface{}{
+		Name:     "UnmarshalJSON",
+		Function: UnmarshalJSON,
+		Signature: []interface{}{
 			new(func(string, map[string]interface{}, string) error),
 		},
 	},
 	{
-		name:     "ParseKV",
-		function: ParseKV,
-		signature: []interface{}{
+		Name:     "ParseKV",
+		Function: ParseKV,
+		Signature: []interface{}{
 			new(func(string, map[string]interface{}, string) error),
 		},
 	},
 	{
-		name:     "Hostname",
-		function: Hostname,
-		signature: []interface{}{
+		Name:     "Hostname",
+		Function: Hostname,
+		Signature: []interface{}{
 			new(func() (string, error)),
 		},
 	},
 	{
-		name:     "FloatApproxEqual",
-		function: FloatApproxEqual,
-		signature: []interface{}{
+		Name:     "FloatApproxEqual",
+		Function: FloatApproxEqual,
+		Signature: []interface{}{
 			new(func(float64, float64) bool),
 		},
 	},

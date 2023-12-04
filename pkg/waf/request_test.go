@@ -161,7 +161,8 @@ func TestBodyDumper(t *testing.T) {
 	for idx, test := range tests {
 
 		t.Run(test.name, func(t *testing.T) {
-			orig_dr := test.req.DumpRequest()
+			tmp_dr, _ := test.req.DumpRequest()
+			orig_dr := tmp_dr.(*ReqDumpFilter)
 			result := test.filter(orig_dr).GetFilteredRequest()
 
 			if len(result.Body) != len(test.expect.Body) {
