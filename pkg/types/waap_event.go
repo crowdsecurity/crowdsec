@@ -8,7 +8,7 @@ import (
 
 /*
  1. If user triggered a rule that is for a CVE, that has high confidence and that is blocking, ban
- 2. If user triggered 3 distinct rules with medium confidence accross 3 different requests, ban
+ 2. If user triggered 3 distinct rules with medium confidence across 3 different requests, ban
 
 
 any(evt.Waf.ByTag("CVE"), {.confidence == "high" && .action == "block"})

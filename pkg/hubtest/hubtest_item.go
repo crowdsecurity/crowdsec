@@ -581,14 +581,17 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 
 	//wait for the waap port to be available
 	if _, err := IsAlive(DefaultWaapHost); err != nil {
-		return fmt.Errorf("Waap is down: %s", err)
+		return fmt.Errorf("waap is down: %s", err)
 	}
 
 	// check if the target is available
 	nucleiTargetParsedURL, err := url.Parse(DefaultNucleiTarget)
+	if err != nil {
+		return fmt.Errorf("unable to parse target '%s': %s", DefaultNucleiTarget, err)
+	}
 	nucleiTargetHost := nucleiTargetParsedURL.Host
 	if _, err := IsAlive(nucleiTargetHost); err != nil {
-		return fmt.Errorf("Target is down: %s", err)
+		return fmt.Errorf("target is down: %s", err)
 	}
 
 	nucleiConfig := NucleiConfig{

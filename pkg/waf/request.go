@@ -281,22 +281,22 @@ func NewParsedRequestFromRequest(r *http.Request) (ParsedRequest, error) {
 	// the real source of the request is set in 'x-client-ip'
 	clientIP := r.Header.Get(IPHeaderName)
 	if clientIP == "" {
-		return ParsedRequest{}, fmt.Errorf("Missing '%s' header", IPHeaderName)
+		return ParsedRequest{}, fmt.Errorf("missing '%s' header", IPHeaderName)
 	}
 	// the real target Host of the request is set in 'x-client-host'
 	clientHost := r.Header.Get(HostHeaderName)
 	if clientHost == "" {
-		return ParsedRequest{}, fmt.Errorf("Missing '%s' header", HostHeaderName)
+		return ParsedRequest{}, fmt.Errorf("missing '%s' header", HostHeaderName)
 	}
 	// the real URI of the request is set in 'x-client-uri'
 	clientURI := r.Header.Get(URIHeaderName)
 	if clientURI == "" {
-		return ParsedRequest{}, fmt.Errorf("Missing '%s' header", URIHeaderName)
+		return ParsedRequest{}, fmt.Errorf("missing '%s' header", URIHeaderName)
 	}
 	// the real VERB of the request is set in 'x-client-uri'
 	clientMethod := r.Header.Get(VerbHeaderName)
 	if clientMethod == "" {
-		return ParsedRequest{}, fmt.Errorf("Missing '%s' header", VerbHeaderName)
+		return ParsedRequest{}, fmt.Errorf("missing '%s' header", VerbHeaderName)
 	}
 
 	// delete those headers before coraza process the request
@@ -310,18 +310,19 @@ func NewParsedRequestFromRequest(r *http.Request) (ParsedRequest, error) {
 		return ParsedRequest{}, fmt.Errorf("unable to parse url '%s': %s", clientURI, err)
 	}
 
-	RemoteAddrNormalized := ""
+	remoteAddrNormalized := ""
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		log.Errorf("Invalid waap remote IP source %v: %s", r.RemoteAddr, err.Error())
-		RemoteAddrNormalized = r.RemoteAddr
+		remoteAddrNormalized = r.RemoteAddr
 	} else {
 		ip := net.ParseIP(host)
 		if ip == nil {
 			log.Errorf("Invalid waap remote IP address source %v: %s", r.RemoteAddr, err.Error())
-			RemoteAddrNormalized = r.RemoteAddr
+			remoteAddrNormalized = r.RemoteAddr
+		} else {
+			remoteAddrNormalized = ip.String()
 		}
-		RemoteAddrNormalized = ip.String()
 	}
 
 	return ParsedRequest{
@@ -339,6 +340,6 @@ func NewParsedRequestFromRequest(r *http.Request) (ParsedRequest, error) {
 		Args:                 parsedURL.Query(), //TODO: Check if there's not potential bypass as it excludes malformed args
 		TransferEncoding:     r.TransferEncoding,
 		ResponseChannel:      make(chan WaapTempResponse),
-		RemoteAddrNormalized: RemoteAddrNormalized,
+		RemoteAddrNormalized: remoteAddrNormalized,
 	}, nil
 }

@@ -112,10 +112,7 @@ func (e *crzLogEvent) Stringer(key string, val fmt.Stringer) dbg.Event {
 }
 
 func (e crzLogEvent) IsEnabled() bool {
-	if e.muted {
-		return false
-	}
-	return true
+	return !e.muted
 }
 
 type crzLogger struct {
