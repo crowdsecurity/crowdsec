@@ -26,6 +26,7 @@ type Hook struct {
 const (
 	hookOnLoad = iota
 	hookPreEval
+	hookPostEval
 	hookOnMatch
 )
 
@@ -38,6 +39,8 @@ func (h *Hook) Build(hookStage int) error {
 		ctx = GetOnLoadEnv(&WaapRuntimeConfig{})
 	case hookPreEval:
 		ctx = GetPreEvalEnv(&WaapRuntimeConfig{}, &ParsedRequest{})
+	case hookPostEval:
+		ctx = GetPostEvalEnv(&WaapRuntimeConfig{}, &ParsedRequest{})
 	case hookOnMatch:
 		ctx = GetOnMatchEnv(&WaapRuntimeConfig{}, &ParsedRequest{}, types.Event{})
 	}
@@ -83,6 +86,7 @@ type WaapRuntimeConfig struct {
 	DefaultRemediation        string
 	CompiledOnLoad            []Hook
 	CompiledPreEval           []Hook
+	CompiledPostEval          []Hook
 	CompiledOnMatch           []Hook
 	CompiledVariablesTracking []*regexp.Regexp
 	Config                    *WaapConfig
@@ -107,6 +111,7 @@ type WaapConfig struct {
 	PassedHTTPCode     int               `yaml:"passed_http_code"`
 	OnLoad             []Hook            `yaml:"on_load"`
 	PreEval            []Hook            `yaml:"pre_eval"`
+	PostEval           []Hook            `yaml:"post_eval"`
 	OnMatch            []Hook            `yaml:"on_match"`
 	VariablesTracking  []string          `yaml:"variables_tracking"`
 	InbandOptions      WaapSubEngineOpts `yaml:"inband_options"`
@@ -239,6 +244,14 @@ func (wc *WaapConfig) Build() (*WaapRuntimeConfig, error) {
 		ret.CompiledPreEval = append(ret.CompiledPreEval, hook)
 	}
 
+	for _, hook := range wc.PostEval {
+		err := hook.Build(hookPostEval)
+		if err != nil {
+			return nil, fmt.Errorf("unable to build post_eval hook : %s", err)
+		}
+		ret.CompiledPostEval = append(ret.CompiledPostEval, hook)
+	}
+
 	for _, hook := range wc.OnMatch {
 		err := hook.Build(hookOnMatch)
 		if err != nil {
@@ -268,7 +281,7 @@ func (w *WaapRuntimeConfig) ProcessOnLoadRules() error {
 			switch t := output.(type) {
 			case bool:
 				if !t {
-					log.Infof("filter didnt match")
+					log.Debugf("filter didnt match")
 					continue
 				}
 			default:
@@ -298,7 +311,7 @@ func (w *WaapRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest, evt type
 			switch t := output.(type) {
 			case bool:
 				if !t {
-					log.Infof("filter didnt match")
+					log.Debugf("filter didnt match")
 					continue
 				}
 			default:
@@ -327,7 +340,7 @@ func (w *WaapRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error {
 			switch t := output.(type) {
 			case bool:
 				if !t {
-					log.Infof("filter didnt match")
+					log.Debugf("filter didnt match")
 					continue
 				}
 			default:
@@ -340,6 +353,37 @@ func (w *WaapRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error {
 			_, err := exprhelpers.Run(applyExpr, GetPreEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				log.Errorf("unable to apply waap pre_eval expr: %s", err)
+				continue
+			}
+		}
+	}
+
+	return nil
+}
+
+func (w *WaapRuntimeConfig) ProcessPostEvalRules(request *ParsedRequest) error {
+	for _, rule := range w.CompiledPostEval {
+		if rule.FilterExpr != nil {
+			output, err := exprhelpers.Run(rule.FilterExpr, GetPostEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
+			if err != nil {
+				return fmt.Errorf("unable to run waap post_eval filter %s : %w", rule.Filter, err)
+			}
+			switch t := output.(type) {
+			case bool:
+				if !t {
+					log.Debugf("filter didnt match")
+					continue
+				}
+			default:
+				log.Errorf("Filter must return a boolean, can't filter")
+				continue
+			}
+		}
+		// here means there is no filter or the filter matched
+		for _, applyExpr := range rule.ApplyExpr {
+			_, err := exprhelpers.Run(applyExpr, GetPostEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
+			if err != nil {
+				log.Errorf("unable to apply waap post_eval expr: %s", err)
 				continue
 			}
 		}

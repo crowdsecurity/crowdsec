@@ -54,6 +54,15 @@ func GetPreEvalEnv(w *WaapRuntimeConfig, request *ParsedRequest) map[string]inte
 	}
 }
 
+func GetPostEvalEnv(w *WaapRuntimeConfig, request *ParsedRequest) map[string]interface{} {
+	//FIXME: use expr.Function instead of this
+	return map[string]interface{}{
+		"IsInBand":    request.IsInBand,
+		"IsOutBand":   request.IsOutBand,
+		"DumpRequest": request.DumpRequest,
+	}
+}
+
 func GetOnMatchEnv(w *WaapRuntimeConfig, request *ParsedRequest, evt types.Event) map[string]interface{} {
 	//FIXME: use expr.Function instead of this
 	return map[string]interface{}{

@@ -106,7 +106,7 @@ func (r *WaapRunner) processRequest(tx waf.ExtendedTransaction, request *waf.Par
 		}
 	}
 
-	request.Tx.ProcessURI(request.URI, request.Method, request.Proto) //TODO: The doc mentions that GET args needs to be added, but we never call AddArguments ?
+	request.Tx.ProcessURI(request.URI, request.Method, request.Proto)
 
 	for k, vr := range request.Headers {
 		for _, v := range vr {
@@ -150,7 +150,11 @@ func (r *WaapRunner) processRequest(tx waf.ExtendedTransaction, request *waf.Par
 
 	if in != nil {
 		r.logger.Debugf("rules matched for body : %d", in.RuleID)
-		return nil
+	}
+
+	err = r.WaapRuntime.ProcessPostEvalRules(request)
+	if err != nil {
+		r.logger.Errorf("unable to process PostEval rules: %s", err)
 	}
 
 	return nil
