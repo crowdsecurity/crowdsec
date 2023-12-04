@@ -53,8 +53,8 @@ type AppsecSource struct {
 	addr          string
 	outChan       chan types.Event
 	InChan        chan waf.ParsedRequest
-	AppsecRuntime *waf.WaapRuntimeConfig
-	AppsecConfigs map[string]waf.WaapConfig
+	AppsecRuntime *waf.AppsecRuntimeConfig
+	AppsecConfigs map[string]waf.AppsecConfig
 	lapiURL       string
 	AuthCache     AuthCache
 	AppsecRunners []AppsecRunner //one for each go-routine
@@ -170,7 +170,7 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	}
 
 	w.InChan = make(chan waf.ParsedRequest)
-	appsecCfg := waf.WaapConfig{Logger: w.logger.WithField("component", "appsec_config")}
+	appsecCfg := waf.AppsecConfig{Logger: w.logger.WithField("component", "appsec_config")}
 
 	//let's load the associated appsec_config:
 	if w.config.AppsecConfigPath != "" {

@@ -131,64 +131,64 @@ cscli scenarios list crowdsecurity/ssh-bf crowdsecurity/http-probing
 List only enabled scenarios unless "-a" or names are specified.`,
 		},
 	},
-	"waap-rules": {
-		name:      "waap-rules",
-		singular:  "waap-rule",
-		oneOrMore: "waap-rule(s)",
+	"appsec-rules": {
+		name:      "appsec-rules",
+		singular:  "appsec-rule",
+		oneOrMore: "appsec-rule(s)",
 		help: cmdHelp{
-			example: `cscli waap-rules list -a
-cscli waap-rules install crowdsecurity/crs
-cscli waap-rules inspect crowdsecurity/crs
-cscli waap-rules upgrade crowdsecurity/crs
-cscli waap-rules remove crowdsecurity/crs
+			example: `cscli appsec-rules list -a
+cscli appsec-rules install crowdsecurity/crs
+cscli appsec-rules inspect crowdsecurity/crs
+cscli appsec-rules upgrade crowdsecurity/crs
+cscli appsec-rules remove crowdsecurity/crs
 `,
 		},
 		installHelp: cmdHelp{
-			example: `cscli waap-rules install crowdsecurity/crs`,
+			example: `cscli appsec-rules install crowdsecurity/crs`,
 		},
 		removeHelp: cmdHelp{
-			example: `cscli waap-rules remove crowdsecurity/crs`,
+			example: `cscli appsec-rules remove crowdsecurity/crs`,
 		},
 		upgradeHelp: cmdHelp{
-			example: `cscli waap-rules upgrade crowdsecurity/crs`,
+			example: `cscli appsec-rules upgrade crowdsecurity/crs`,
 		},
 		inspectHelp: cmdHelp{
-			example: `cscli waap-rules inspect crowdsecurity/crs`,
+			example: `cscli appsec-rules inspect crowdsecurity/crs`,
 		},
 		listHelp: cmdHelp{
-			example: `cscli waap-rules list
-cscli waap-rules list -a
-cscli waap-rules list crowdsecurity/crs`,
+			example: `cscli appsec-rules list
+cscli appsec-rules list -a
+cscli appsec-rules list crowdsecurity/crs`,
 		},
 	},
-	"waap-configs": {
-		name:      "waap-configs",
-		singular:  "waap-config",
-		oneOrMore: "waap-config(s)",
+	"appsec-configs": {
+		name:      "appsec-configs",
+		singular:  "appsec-config",
+		oneOrMore: "appsec-config(s)",
 		help: cmdHelp{
-			example: `cscli waap-configs list -a
-cscli waap-configs install crowdsecurity/vpatch
-cscli waap-configs inspect crowdsecurity/vpatch
-cscli waap-configs upgrade crowdsecurity/vpatch
-cscli waap-configs remove crowdsecurity/vpatch
+			example: `cscli appsec-configs list -a
+cscli appsec-configs install crowdsecurity/vpatch
+cscli appsec-configs inspect crowdsecurity/vpatch
+cscli appsec-configs upgrade crowdsecurity/vpatch
+cscli appsec-configs remove crowdsecurity/vpatch
 `,
 		},
 		installHelp: cmdHelp{
-			example: `cscli waap-configs install crowdsecurity/vpatch`,
+			example: `cscli appsec-configs install crowdsecurity/vpatch`,
 		},
 		removeHelp: cmdHelp{
-			example: `cscli waap-configs remove crowdsecurity/vpatch`,
+			example: `cscli appsec-configs remove crowdsecurity/vpatch`,
 		},
 		upgradeHelp: cmdHelp{
-			example: `cscli waap-configs upgrade crowdsecurity/vpatch`,
+			example: `cscli appsec-configs upgrade crowdsecurity/vpatch`,
 		},
 		inspectHelp: cmdHelp{
-			example: `cscli waap-configs inspect crowdsecurity/vpatch`,
+			example: `cscli appsec-configs inspect crowdsecurity/vpatch`,
 		},
 		listHelp: cmdHelp{
-			example: `cscli waap-configs list
-cscli waap-configs list -a
-cscli waap-configs list crowdsecurity/vpatch`,
+			example: `cscli appsec-configs list
+cscli appsec-configs list -a
+cscli appsec-configs list crowdsecurity/vpatch`,
 		},
 	},
 	"collections": {
