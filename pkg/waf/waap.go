@@ -34,26 +34,19 @@ const (
 func (h *Hook) Build(hookStage int) error {
 
 	ctx := map[string]interface{}{}
-	opts := []expr.Option{}
 	switch hookStage {
 	case hookOnLoad:
-		opts = GetOnLoadEnv(ctx, &WaapRuntimeConfig{})
+		ctx = GetOnLoadEnv(&WaapRuntimeConfig{})
 	case hookPreEval:
-		ctx["IsInBand"] = true
-		ctx["IsOutBand"] = true
-		opts = GetPreEvalEnv(ctx, &WaapRuntimeConfig{}, &ParsedRequest{})
+		ctx = GetPreEvalEnv(&WaapRuntimeConfig{}, &ParsedRequest{})
 	case hookPostEval:
-		ctx["IsInBand"] = true
-		ctx["IsOutBand"] = true
-		opts = GetPostEvalEnv(ctx, &WaapRuntimeConfig{}, &ParsedRequest{})
+		ctx = GetPostEvalEnv(&WaapRuntimeConfig{}, &ParsedRequest{})
 	case hookOnMatch:
-		ctx["evt"] = types.Event{}
-		ctx["IsInBand"] = true
-		ctx["IsOutBand"] = true
-		opts = GetOnMatchEnv(ctx, &WaapRuntimeConfig{}, &ParsedRequest{})
+		ctx = GetOnMatchEnv(&WaapRuntimeConfig{}, &ParsedRequest{}, types.Event{})
 	}
+	opts := GetExprWAFOptions(ctx)
 	if h.Filter != "" {
-		program, err := expr.Compile(h.Filter, opts...)
+		program, err := expr.Compile(h.Filter, opts...) //FIXME: opts
 		if err != nil {
 			return fmt.Errorf("unable to compile filter %s : %w", h.Filter, err)
 		}
@@ -290,7 +283,7 @@ func (wc *WaapConfig) Build() (*WaapRuntimeConfig, error) {
 func (w *WaapRuntimeConfig) ProcessOnLoadRules() error {
 	for _, rule := range w.CompiledOnLoad {
 		if rule.FilterExpr != nil {
-			output, err := exprhelpers.Run(rule.FilterExpr, map[string]interface{}{}, w.Logger, w.Logger.Level >= log.DebugLevel)
+			output, err := exprhelpers.Run(rule.FilterExpr, GetOnLoadEnv(w), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				return fmt.Errorf("unable to run waap on_load filter %s : %w", rule.Filter, err)
 			}
@@ -306,7 +299,7 @@ func (w *WaapRuntimeConfig) ProcessOnLoadRules() error {
 			}
 		}
 		for _, applyExpr := range rule.ApplyExpr {
-			_, err := exprhelpers.Run(applyExpr, map[string]interface{}{}, w.Logger, w.Logger.Level >= log.DebugLevel)
+			_, err := exprhelpers.Run(applyExpr, GetOnLoadEnv(w), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				log.Errorf("unable to apply waap on_load expr: %s", err)
 				continue
@@ -317,14 +310,10 @@ func (w *WaapRuntimeConfig) ProcessOnLoadRules() error {
 }
 
 func (w *WaapRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest, evt types.Event) error {
-	ctx := map[string]interface{}{
-		"evt":       evt,
-		"IsInBand":  request.IsInBand,
-		"IsOutBand": request.IsOutBand,
-	}
+
 	for _, rule := range w.CompiledOnMatch {
 		if rule.FilterExpr != nil {
-			output, err := exprhelpers.Run(rule.FilterExpr, ctx, w.Logger, w.Logger.Level >= log.DebugLevel)
+			output, err := exprhelpers.Run(rule.FilterExpr, GetOnMatchEnv(w, request, evt), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				return fmt.Errorf("unable to run waap on_match filter %s : %w", rule.Filter, err)
 			}
@@ -340,7 +329,7 @@ func (w *WaapRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest, evt type
 			}
 		}
 		for _, applyExpr := range rule.ApplyExpr {
-			_, err := exprhelpers.Run(applyExpr, ctx, w.Logger, w.Logger.Level >= log.DebugLevel)
+			_, err := exprhelpers.Run(applyExpr, GetOnMatchEnv(w, request, evt), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				log.Errorf("unable to apply waap on_match expr: %s", err)
 				continue
@@ -351,13 +340,9 @@ func (w *WaapRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest, evt type
 }
 
 func (w *WaapRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error {
-	ctx := map[string]interface{}{
-		"IsInBand":  request.IsInBand,
-		"IsOutBand": request.IsOutBand,
-	}
 	for _, rule := range w.CompiledPreEval {
 		if rule.FilterExpr != nil {
-			output, err := exprhelpers.Run(rule.FilterExpr, GetPreEvalEnv(ctx, w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
+			output, err := exprhelpers.Run(rule.FilterExpr, GetPreEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				return fmt.Errorf("unable to run waap pre_eval filter %s : %w", rule.Filter, err)
 			}
@@ -374,7 +359,7 @@ func (w *WaapRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error {
 		}
 		// here means there is no filter or the filter matched
 		for _, applyExpr := range rule.ApplyExpr {
-			_, err := exprhelpers.Run(applyExpr, ctx, w.Logger, w.Logger.Level >= log.DebugLevel)
+			_, err := exprhelpers.Run(applyExpr, GetPreEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				log.Errorf("unable to apply waap pre_eval expr: %s", err)
 				continue
@@ -386,13 +371,9 @@ func (w *WaapRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error {
 }
 
 func (w *WaapRuntimeConfig) ProcessPostEvalRules(request *ParsedRequest) error {
-	ctx := map[string]interface{}{
-		"IsInBand":  request.IsInBand,
-		"IsOutBand": request.IsOutBand,
-	}
 	for _, rule := range w.CompiledPostEval {
 		if rule.FilterExpr != nil {
-			output, err := exprhelpers.Run(rule.FilterExpr, ctx, w.Logger, w.Logger.Level >= log.DebugLevel)
+			output, err := exprhelpers.Run(rule.FilterExpr, GetPostEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				return fmt.Errorf("unable to run waap post_eval filter %s : %w", rule.Filter, err)
 			}
@@ -409,7 +390,7 @@ func (w *WaapRuntimeConfig) ProcessPostEvalRules(request *ParsedRequest) error {
 		}
 		// here means there is no filter or the filter matched
 		for _, applyExpr := range rule.ApplyExpr {
-			_, err := exprhelpers.Run(applyExpr, ctx, w.Logger, w.Logger.Level >= log.DebugLevel)
+			_, err := exprhelpers.Run(applyExpr, GetPostEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				log.Errorf("unable to apply waap post_eval expr: %s", err)
 				continue
@@ -570,7 +551,6 @@ func (w *WaapRuntimeConfig) SetActionByID(params ...any) (any, error) {
 
 // func (w *WaapRuntimeConfig) SetActionByID(name string, action string) error {
 func (w *WaapRuntimeConfig) SetActionByName(params ...any) (any, error) {
-	fmt.Printf("%v+\n", w)
 	if w.RemediationByTag == nil {
 		w.RemediationByTag = make(map[string]string)
 	}

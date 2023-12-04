@@ -60,9 +60,9 @@ func GetExprOptions(ctx map[string]interface{}) []expr.Option {
 		exprFunctionOptions = []expr.Option{}
 		for _, function := range exprFuncs {
 			exprFunctionOptions = append(exprFunctionOptions,
-				expr.Function(function.Name,
-					function.Function,
-					function.Signature...,
+				expr.Function(function.name,
+					function.function,
+					function.signature...,
 				))
 		}
 	}

@@ -58,12 +58,12 @@ type ReqDumpFilter struct {
 	ArgsDrop           bool
 }
 
-func (r *ParsedRequest) DumpRequest(params ...any) (any, error) {
+func (r *ParsedRequest) DumpRequest(params ...any) *ReqDumpFilter {
 	filter := ReqDumpFilter{}
 	filter.BodyDrop = true
 	filter.HeadersNameFilters = []string{"cookie", "authorization"}
 	filter.req = r
-	return &filter, nil
+	return &filter
 }
 
 // clear filters
