@@ -84,6 +84,8 @@ type WaapRuntimeConfig struct {
 	InBandRules []WaapCollection
 
 	DefaultRemediation        string
+	RemediationByTag          map[string]string //Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
+	RemediationById           map[int]string
 	CompiledOnLoad            []Hook
 	CompiledPreEval           []Hook
 	CompiledPostEval          []Hook
@@ -99,6 +101,13 @@ type WaapRuntimeConfig struct {
 	//should we store matched rules here ?
 
 	Logger *log.Entry
+
+	//Set by on_load to ignore some rules on loading
+	disabledInBandRuleIds   []int
+	disabledInBandRulesTags []string //Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
+
+	disabledOutOfBandRuleIds   []int
+	disabledOutOfBandRulesTags []string //Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
 }
 
 type WaapConfig struct {
@@ -423,26 +432,46 @@ func (w *WaapRuntimeConfig) CancelEvent(params ...any) (any, error) {
 }
 
 // func (w *WaapRuntimeConfig) DisableInBandRuleByID(id int) error {
+// Disable a rule at load time, meaning it will not run for any request
 func (w *WaapRuntimeConfig) DisableInBandRuleByID(params ...any) (any, error) {
-	panic("not implemented")
+	w.disabledInBandRuleIds = append(w.disabledInBandRuleIds, params[0].(int))
 	return nil, nil
 }
 
-// func (w *WaapRuntimeConfig) DisableInBandRuleByTag(id int) error {
+// func (w *WaapRuntimeConfig) DisableInBandRuleByName(name string) error {
+// Disable a rule at load time, meaning it will not run for any request
+func (w *WaapRuntimeConfig) DisableInBandRuleByName(params ...any) (any, error) {
+	tagValue := fmt.Sprintf("crowdsec-%s", params[0].(string))
+	w.disabledInBandRulesTags = append(w.disabledInBandRulesTags, tagValue)
+	return nil, nil
+}
+
+// func (w *WaapRuntimeConfig) DisableInBandRuleByTag(tag string) error {
+// Disable a rule at load time, meaning it will not run for any request
 func (w *WaapRuntimeConfig) DisableInBandRuleByTag(params ...any) (any, error) {
-	panic("not implemented")
+	w.disabledInBandRulesTags = append(w.disabledInBandRulesTags, params[0].(string))
 	return nil, nil
 }
 
-// func (w *WaapRuntimeConfig) DisableOutBandRuleByID(tag string) error {
+// func (w *WaapRuntimeConfig) DisableOutBandRuleByID(id int) error {
+// Disable a rule at load time, meaning it will not run for any request
 func (w *WaapRuntimeConfig) DisableOutBandRuleByID(params ...any) (any, error) {
-	panic("not implemented")
+	w.disabledOutOfBandRuleIds = append(w.disabledOutOfBandRuleIds, params[0].(int))
+	return nil, nil
+}
+
+// func (w *WaapRuntimeConfig) DisableOutBandRuleByName(name string) error {
+// Disable a rule at load time, meaning it will not run for any request
+func (w *WaapRuntimeConfig) DisableOutBandRuleByName(params ...any) (any, error) {
+	tagValue := fmt.Sprintf("crowdsec-%s", params[0].(string))
+	w.disabledOutOfBandRulesTags = append(w.disabledOutOfBandRulesTags, tagValue)
 	return nil, nil
 }
 
 // func (w *WaapRuntimeConfig) DisableOutBandRuleByTag(tag string) error {
+// Disable a rule at load time, meaning it will not run for any request
 func (w *WaapRuntimeConfig) DisableOutBandRuleByTag(params ...any) (any, error) {
-	panic("not implemented")
+	w.disabledOutOfBandRulesTags = append(w.disabledOutOfBandRulesTags, params[0].(string))
 	return nil, nil
 }
 
@@ -466,13 +495,37 @@ func (w *WaapRuntimeConfig) CancelAlert(params ...any) (any, error) {
 
 // func (w *WaapRuntimeConfig) SetActionByTag(tag string, action string) error {
 func (w *WaapRuntimeConfig) SetActionByTag(params ...any) (any, error) {
-	panic("not implemented")
+	if w.RemediationByTag == nil {
+		w.RemediationByTag = make(map[string]string)
+	}
+	tag := params[0].(string)
+	action := params[1].(string)
+	w.Logger.Debugf("setting action of %s to %s", tag, action)
+	w.RemediationByTag[tag] = action
 	return nil, nil
 }
 
 // func (w *WaapRuntimeConfig) SetActionByID(id int, action string) error {
 func (w *WaapRuntimeConfig) SetActionByID(params ...any) (any, error) {
-	panic("not implemented")
+	if w.RemediationById == nil {
+		w.RemediationById = make(map[int]string)
+	}
+	id := params[0].(int)
+	action := params[1].(string)
+	w.Logger.Debugf("setting action of %d to %s", id, action)
+	w.RemediationById[id] = action
+	return nil, nil
+}
+
+// func (w *WaapRuntimeConfig) SetActionByID(name string, action string) error {
+func (w *WaapRuntimeConfig) SetActionByName(params ...any) (any, error) {
+	if w.RemediationByTag == nil {
+		w.RemediationByTag = make(map[string]string)
+	}
+	tag := fmt.Sprintf("crowdsec-%s", params[0].(string))
+	action := params[1].(string)
+	w.Logger.Debugf("setting action of %s to %s", tag, action)
+	w.RemediationByTag[tag] = action
 	return nil, nil
 }
 

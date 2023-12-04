@@ -79,9 +79,9 @@ require (
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	github.com/wasilibs/go-re2 v1.3.0
 	github.com/xhit/go-simple-mail/v2 v2.16.0
-	golang.org/x/crypto v0.15.0
+	golang.org/x/crypto v0.16.0
 	golang.org/x/mod v0.11.0
-	golang.org/x/sys v0.14.0
+	golang.org/x/sys v0.15.0
 	google.golang.org/grpc v1.56.3
 	google.golang.org/protobuf v1.31.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
@@ -90,7 +90,7 @@ require (
 )
 
 require (
-	github.com/crowdsecurity/coraza/v3 v3.0.0-20231114091225-b0f8bc435a75
+	github.com/crowdsecurity/coraza/v3 v3.0.0-20231204125126-35deffad7734
 	golang.org/x/text v0.14.0
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.0
@@ -200,9 +200,9 @@ require (
 	github.com/zclconf/go-cty v1.8.0 // indirect
 	go.mongodb.org/mongo-driver v1.9.4 // indirect
 	golang.org/x/arch v0.3.0 // indirect
-	golang.org/x/net v0.18.0 // indirect
+	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/sync v0.5.0 // indirect
-	golang.org/x/term v0.14.0 // indirect
+	golang.org/x/term v0.15.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.8.1-0.20230428195545-5283a0178901 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect

@@ -3,6 +3,7 @@ package wafacquisition
 import (
 	"fmt"
 	"os"
+	"slices"
 	"time"
 
 	"github.com/crowdsecurity/coraza/v3"
@@ -190,6 +191,16 @@ func (r *WaapRunner) handleInBandInterrupt(request *waf.ParsedRequest) {
 		r.WaapRuntime.Response.InBandInterrupt = true
 		r.WaapRuntime.Response.HTTPResponseCode = r.WaapRuntime.Config.BlockedHTTPCode
 		r.WaapRuntime.Response.Action = r.WaapRuntime.DefaultRemediation
+
+		if _, ok := r.WaapRuntime.RemediationById[in.RuleID]; ok {
+			r.WaapRuntime.Response.Action = r.WaapRuntime.RemediationById[in.RuleID]
+		}
+
+		for tag, remediation := range r.WaapRuntime.RemediationByTag {
+			if slices.Contains[[]string, string](in.Tags, tag) {
+				r.WaapRuntime.Response.Action = remediation
+			}
+		}
 
 		err = r.WaapRuntime.ProcessOnMatchRules(request, evt)
 		if err != nil {

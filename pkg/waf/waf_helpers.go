@@ -26,6 +26,9 @@ func GetOnLoadEnv(w *WaapRuntimeConfig) map[string]interface{} {
 		"RemoveOutBandRuleByID":  w.DisableOutBandRuleByID,
 		"RemoveInBandRuleByTag":  w.DisableInBandRuleByTag,
 		"RemoveOutBandRuleByTag": w.DisableOutBandRuleByTag,
+		"SetRemediationByTag":    w.SetActionByTag,
+		"SetRemediationByID":     w.SetActionByID,
+		"SetRemediationByName":   w.SetActionByName,
 	}
 }
 
@@ -38,6 +41,7 @@ func GetPreEvalEnv(w *WaapRuntimeConfig, request *ParsedRequest) map[string]inte
 		"RemoveOutBandRuleByID": w.RemoveOutbandRuleByID,
 		"SetRemediationByTag":   w.SetActionByTag,
 		"SetRemediationByID":    w.SetActionByID,
+		"SetRemediationByName":  w.SetActionByName,
 	}
 }
 
