@@ -37,11 +37,6 @@ func LoadAppsecRules(hubInstance *cwhub.Hub) error {
 			continue
 		}
 
-		if rule.Type != cwhub.APPSEC_RULES {
-			log.Warnf("unexpected type %s instead of %s for file %s", rule.Type, cwhub.APPSEC_RULES, hubAppsecRuleItem.State.LocalPath)
-			continue
-		}
-
 		rule.hash = hubAppsecRuleItem.State.LocalHash
 		rule.version = hubAppsecRuleItem.Version
 
