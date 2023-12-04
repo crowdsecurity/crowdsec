@@ -79,12 +79,12 @@ func (h *HubTest) GetWaapCoverage() ([]Coverage, error) {
 }
 
 func (h *HubTest) GetParsersCoverage() ([]Coverage, error) {
-	if _, ok := h.HubIndex.Items[cwhub.PARSERS]; !ok {
+	if len(h.HubIndex.GetItemMap(cwhub.PARSERS)) == 0 {
 		return nil, fmt.Errorf("no parsers in hub index")
 	}
 
 	// populate from hub, iterate in alphabetical order
-	pkeys := sortedMapKeys(h.HubIndex.Items[cwhub.PARSERS])
+	pkeys := sortedMapKeys(h.HubIndex.GetItemMap(cwhub.PARSERS))
 	coverage := make([]Coverage, len(pkeys))
 
 	for i, name := range pkeys {
@@ -165,12 +165,12 @@ func (h *HubTest) GetParsersCoverage() ([]Coverage, error) {
 }
 
 func (h *HubTest) GetScenariosCoverage() ([]Coverage, error) {
-	if _, ok := h.HubIndex.Items[cwhub.SCENARIOS]; !ok {
+	if len(h.HubIndex.GetItemMap(cwhub.SCENARIOS)) == 0  {
 		return nil, fmt.Errorf("no scenarios in hub index")
 	}
 
 	// populate from hub, iterate in alphabetical order
-	pkeys := sortedMapKeys(h.HubIndex.Items[cwhub.SCENARIOS])
+	pkeys := sortedMapKeys(h.HubIndex.GetItemMap(cwhub.SCENARIOS))
 	coverage := make([]Coverage, len(pkeys))
 
 	for i, name := range pkeys {

@@ -63,7 +63,7 @@ func TestGetters(t *testing.T) {
 
 		// Add item and get it
 		item.Name += "nope"
-		hub.Items[item.Type][item.Name] = item
+		hub.addItem(item)
 
 		newitem := hub.GetItem(COLLECTIONS, item.Name)
 		require.NotNil(t, newitem)

@@ -162,7 +162,7 @@ func (t *HubTestItem) InstallHub() error {
 			continue
 		}
 
-		if hubParser, ok := t.HubIndex.Items[cwhub.PARSERS][parser]; ok {
+		if hubParser := t.HubIndex.GetItem(cwhub.PARSERS, parser); hubParser != nil {
 			parserSource, err := filepath.Abs(filepath.Join(t.HubPath, hubParser.RemotePath))
 			if err != nil {
 				return fmt.Errorf("can't get absolute path of '%s': %s", parserSource, err)
@@ -248,7 +248,7 @@ func (t *HubTestItem) InstallHub() error {
 			continue
 		}
 
-		if hubScenario, ok := t.HubIndex.Items[cwhub.SCENARIOS][scenario]; ok {
+		if hubScenario := t.HubIndex.GetItem(cwhub.SCENARIOS, scenario); hubScenario != nil {
 			scenarioSource, err := filepath.Abs(filepath.Join(t.HubPath, hubScenario.RemotePath))
 			if err != nil {
 				return fmt.Errorf("can't get absolute path to: %s", scenarioSource)
@@ -392,7 +392,7 @@ func (t *HubTestItem) InstallHub() error {
 			continue
 		}
 
-		if hubPostOverflow, ok := t.HubIndex.Items[cwhub.POSTOVERFLOWS][postoverflow]; ok {
+		if hubPostOverflow := t.HubIndex.GetItem(cwhub.POSTOVERFLOWS, postoverflow); hubPostOverflow != nil {
 			postoverflowSource, err := filepath.Abs(filepath.Join(t.HubPath, hubPostOverflow.RemotePath))
 			if err != nil {
 				return fmt.Errorf("can't get absolute path of '%s': %s", postoverflowSource, err)
