@@ -36,7 +36,7 @@ func (e *crzLogEvent) Msg(msg string) {
 	}
 
 	/*this is a hack. As we want to have per-level rule debug but it's not allowed by coraza/modsec, if a rule ID is flagged to be in debug mode, the
-	.Int("rule_id", <ID>) call will set the log_level of the event to debug. However, given the logger is global to the waap-runner,
+	.Int("rule_id", <ID>) call will set the log_level of the event to debug. However, given the logger is global to the appsec-runner,
 	we are switching forth and back the log level of the logger*/
 	oldLvl := e.logger.Logger.GetLevel()
 

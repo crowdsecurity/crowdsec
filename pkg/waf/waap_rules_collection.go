@@ -5,15 +5,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	corazatypes "github.com/crowdsecurity/coraza/v3/types"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/waf/waap_rule"
 
 	log "github.com/sirupsen/logrus"
 )
 
-// to be filled w/ seb update
-type WaapCollection struct {
+type AppsecCollection struct {
 	collectionName string
 	Rules          []string
 }
@@ -21,7 +19,7 @@ type WaapCollection struct {
 var WAAP_RULE = "waap-rule"
 
 // to be filled w/ seb update
-type WaapCollectionConfig struct {
+type AppsecCollectionConfig struct {
 	Type              string                 `yaml:"type"`
 	Name              string                 `yaml:"name"`
 	Debug             bool                   `yaml:"debug"`
@@ -46,25 +44,25 @@ type RulesDetails struct {
 
 // Should it be a global ?
 // Is using the id is a good idea ? might be too specific to coraza and not easily reusable
-var WaapRulesDetails = make(map[int]RulesDetails)
+var AppsecRulesDetails = make(map[int]RulesDetails)
 
-func LoadCollection(pattern string) ([]WaapCollection, error) {
+func LoadCollection(pattern string) ([]AppsecCollection, error) {
 	//FIXME: have a proper logger here, inheriting from waap-config to have consistent log levels
-	ret := make([]WaapCollection, 0)
+	ret := make([]AppsecCollection, 0)
 
-	for _, waapRule := range waapRules {
+	for _, appsecRule := range appsecRules {
 
-		tmpMatch, err := exprhelpers.Match(pattern, waapRule.Name)
+		tmpMatch, err := exprhelpers.Match(pattern, appsecRule.Name)
 
 		if err != nil {
-			log.Errorf("unable to match %s with %s : %s", waapRule.Name, pattern, err)
+			log.Errorf("unable to match %s with %s : %s", appsecRule.Name, pattern, err)
 			continue
 		}
 
 		matched, ok := tmpMatch.(bool)
 
 		if !ok {
-			log.Errorf("unable to match %s with %s : %s", waapRule.Name, pattern, err)
+			log.Errorf("unable to match %s with %s : %s", appsecRule.Name, pattern, err)
 			continue
 		}
 
@@ -72,12 +70,12 @@ func LoadCollection(pattern string) ([]WaapCollection, error) {
 			continue
 		}
 
-		waapCol := WaapCollection{
-			collectionName: waapRule.Name,
+		appsecCol := AppsecCollection{
+			collectionName: appsecRule.Name,
 		}
 
-		if waapRule.SecLangFilesRules != nil {
-			for _, rulesFile := range waapRule.SecLangFilesRules {
+		if appsecRule.SecLangFilesRules != nil {
+			for _, rulesFile := range appsecRule.SecLangFilesRules {
 				fullPath := filepath.Join(hub.GetDataDir(), rulesFile)
 				c, err := os.ReadFile(fullPath)
 				if err != nil {
@@ -91,64 +89,48 @@ func LoadCollection(pattern string) ([]WaapCollection, error) {
 					if strings.TrimSpace(line) == "" {
 						continue
 					}
-					waapCol.Rules = append(waapCol.Rules, line)
+					appsecCol.Rules = append(appsecCol.Rules, line)
 				}
 			}
 		}
 
-		if waapRule.SecLangRules != nil {
-			waapCol.Rules = append(waapCol.Rules, waapRule.SecLangRules...)
+		if appsecRule.SecLangRules != nil {
+			appsecCol.Rules = append(appsecCol.Rules, appsecRule.SecLangRules...)
 		}
 
-		if waapRule.Rules != nil {
-			for _, rule := range waapRule.Rules {
-				strRule, rulesId, err := rule.Convert(waap_rule.ModsecurityRuleType, waapRule.Name)
+		if appsecRule.Rules != nil {
+			for _, rule := range appsecRule.Rules {
+				strRule, rulesId, err := rule.Convert(waap_rule.ModsecurityRuleType, appsecRule.Name)
 				if err != nil {
 					log.Errorf("unable to convert rule %s : %s", rule.Name, err)
 					return nil, err
 				}
 				log.Debugf("Adding rule %s", strRule)
-				waapCol.Rules = append(waapCol.Rules, strRule)
+				appsecCol.Rules = append(appsecCol.Rules, strRule)
 
 				//We only take the first id, as it's the one of the "main" rule
-				if _, ok := WaapRulesDetails[int(rulesId[0])]; !ok {
-					WaapRulesDetails[int(rulesId[0])] = RulesDetails{
+				if _, ok := AppsecRulesDetails[int(rulesId[0])]; !ok {
+					AppsecRulesDetails[int(rulesId[0])] = RulesDetails{
 						LogLevel: log.InfoLevel,
-						Hash:     waapRule.hash,
-						Version:  waapRule.version,
-						Name:     waapRule.Name,
+						Hash:     appsecRule.hash,
+						Version:  appsecRule.version,
+						Name:     appsecRule.Name,
 					}
 				} else {
 					log.Warnf("conflicting id %d for rule %s !", rulesId[0], rule.Name)
 				}
 
 				for _, id := range rulesId {
-					SetRuleDebug(int(id), waapRule.Debug)
+					SetRuleDebug(int(id), appsecRule.Debug)
 				}
 			}
 		}
-		ret = append(ret, waapCol)
+		ret = append(ret, appsecCol)
 	}
 	return ret, nil
 }
 
-func (wcc WaapCollectionConfig) LoadCollection(collection string) (WaapCollection, error) {
-	return WaapCollection{}, nil
-}
-
-func (w WaapCollection) Check() error {
-	return nil
-}
-
-func (w WaapCollection) Eval(req ParsedRequest) (*corazatypes.Interruption, error) {
-	return nil, nil
-}
-
-func (w WaapCollection) GetDisplayName() string {
-	return w.collectionName
-}
-
-func (w WaapCollection) String() string {
+func (w AppsecCollection) String() string {
 	ret := ""
 	for _, rule := range w.Rules {
 		ret += rule + "\n"

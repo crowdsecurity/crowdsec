@@ -127,7 +127,7 @@ func WaapRulesInspectRunner(itemType hubItemType) func(cmd *cobra.Command, args 
 			hub, _ := require.Hub(csConfig, nil)
 			for _, name := range args {
 				hubItem := hub.GetItem(itemType.name, name)
-				waapRule := waf.WaapCollectionConfig{}
+				waapRule := waf.AppsecCollectionConfig{}
 				yamlContent, err := os.ReadFile(hubItem.State.LocalPath)
 				if err != nil {
 					return fmt.Errorf("unable to read file %s : %s", hubItem.State.LocalPath, err)

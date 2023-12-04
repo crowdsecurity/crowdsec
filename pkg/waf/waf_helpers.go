@@ -4,7 +4,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-func GetOnLoadEnv(w *WaapRuntimeConfig) map[string]interface{} {
+func GetOnLoadEnv(w *AppsecRuntimeConfig) map[string]interface{} {
 	return map[string]interface{}{
 		"RemoveInBandRuleByID":    w.DisableInBandRuleByID,
 		"RemoveInBandRuleByTag":   w.DisableInBandRuleByTag,
@@ -18,7 +18,7 @@ func GetOnLoadEnv(w *WaapRuntimeConfig) map[string]interface{} {
 	}
 }
 
-func GetPreEvalEnv(w *WaapRuntimeConfig, request *ParsedRequest) map[string]interface{} {
+func GetPreEvalEnv(w *AppsecRuntimeConfig, request *ParsedRequest) map[string]interface{} {
 	return map[string]interface{}{
 		"IsInBand":                request.IsInBand,
 		"IsOutBand":               request.IsOutBand,
@@ -34,7 +34,7 @@ func GetPreEvalEnv(w *WaapRuntimeConfig, request *ParsedRequest) map[string]inte
 	}
 }
 
-func GetPostEvalEnv(w *WaapRuntimeConfig, request *ParsedRequest) map[string]interface{} {
+func GetPostEvalEnv(w *AppsecRuntimeConfig, request *ParsedRequest) map[string]interface{} {
 	return map[string]interface{}{
 		"IsInBand":    request.IsInBand,
 		"IsOutBand":   request.IsOutBand,
@@ -42,7 +42,7 @@ func GetPostEvalEnv(w *WaapRuntimeConfig, request *ParsedRequest) map[string]int
 	}
 }
 
-func GetOnMatchEnv(w *WaapRuntimeConfig, request *ParsedRequest, evt types.Event) map[string]interface{} {
+func GetOnMatchEnv(w *AppsecRuntimeConfig, request *ParsedRequest, evt types.Event) map[string]interface{} {
 	return map[string]interface{}{
 		"evt":            evt,
 		"req":            request,

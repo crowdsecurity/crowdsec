@@ -20,7 +20,7 @@ type AppsecRunner struct {
 	outChan           chan types.Event
 	inChan            chan waf.ParsedRequest
 	UUID              string
-	WaapRuntime       *waf.WaapRuntimeConfig //this holds the actual waap runtime config, rules, remediations, hooks etc.
+	WaapRuntime       *waf.AppsecRuntimeConfig //this holds the actual waap runtime config, rules, remediations, hooks etc.
 	WaapInbandEngine  coraza.WAF
 	WaapOutbandEngine coraza.WAF
 	logger            *log.Entry

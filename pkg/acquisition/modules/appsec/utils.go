@@ -206,7 +206,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *waf.ParsedRequ
 		hash := "NOT_SET"
 		ruleNameProm := fmt.Sprintf("%d", rule.Rule().ID())
 
-		if details, ok := waf.WaapRulesDetails[rule.Rule().ID()]; ok {
+		if details, ok := waf.AppsecRulesDetails[rule.Rule().ID()]; ok {
 			//Only set them for custom rules, not for rules written in seclang
 			name = details.Name
 			version = details.Version

@@ -36,13 +36,13 @@ func (h *Hook) Build(hookStage int) error {
 	ctx := map[string]interface{}{}
 	switch hookStage {
 	case hookOnLoad:
-		ctx = GetOnLoadEnv(&WaapRuntimeConfig{})
+		ctx = GetOnLoadEnv(&AppsecRuntimeConfig{})
 	case hookPreEval:
-		ctx = GetPreEvalEnv(&WaapRuntimeConfig{}, &ParsedRequest{})
+		ctx = GetPreEvalEnv(&AppsecRuntimeConfig{}, &ParsedRequest{})
 	case hookPostEval:
-		ctx = GetPostEvalEnv(&WaapRuntimeConfig{}, &ParsedRequest{})
+		ctx = GetPostEvalEnv(&AppsecRuntimeConfig{}, &ParsedRequest{})
 	case hookOnMatch:
-		ctx = GetOnMatchEnv(&WaapRuntimeConfig{}, &ParsedRequest{}, types.Event{})
+		ctx = GetOnMatchEnv(&AppsecRuntimeConfig{}, &ParsedRequest{}, types.Event{})
 	}
 	opts := exprhelpers.GetExprOptions(ctx)
 	if h.Filter != "" {
@@ -62,7 +62,7 @@ func (h *Hook) Build(hookStage int) error {
 	return nil
 }
 
-type WaapTempResponse struct {
+type AppsecTempResponse struct {
 	InBandInterrupt    bool
 	OutOfBandInterrupt bool
 	Action             string //allow, deny, captcha, log
@@ -71,17 +71,17 @@ type WaapTempResponse struct {
 	SendAlert          bool //do we send an alert on rule match
 }
 
-type WaapSubEngineOpts struct {
+type AppsecSubEngineOpts struct {
 	DisableBodyInspection    bool `yaml:"disable_body_inspection"`
 	RequestBodyInMemoryLimit *int `yaml:"request_body_in_memory_limit"`
 }
 
-// runtime version of WaapConfig
-type WaapRuntimeConfig struct {
+// runtime version of AppsecConfig
+type AppsecRuntimeConfig struct {
 	Name           string
-	OutOfBandRules []WaapCollection
+	OutOfBandRules []AppsecCollection
 
-	InBandRules []WaapCollection
+	InBandRules []AppsecCollection
 
 	DefaultRemediation        string
 	RemediationByTag          map[string]string //Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
@@ -91,13 +91,13 @@ type WaapRuntimeConfig struct {
 	CompiledPostEval          []Hook
 	CompiledOnMatch           []Hook
 	CompiledVariablesTracking []*regexp.Regexp
-	Config                    *WaapConfig
+	Config                    *AppsecConfig
 	//CorazaLogger              debuglog.Logger
 
 	//those are ephemeral, created/destroyed with every req
 	OutOfBandTx ExtendedTransaction //is it a good idea ?
 	InBandTx    ExtendedTransaction //is it a good idea ?
-	Response    WaapTempResponse
+	Response    AppsecTempResponse
 	//should we store matched rules here ?
 
 	Logger *log.Entry
@@ -110,29 +110,29 @@ type WaapRuntimeConfig struct {
 	DisabledOutOfBandRulesTags []string //Also used for ByName, as the name (for modsec rules) is a tag crowdsec-NAME
 }
 
-type WaapConfig struct {
-	Name               string            `yaml:"name"`
-	OutOfBandRules     []string          `yaml:"outofband_rules"`
-	InBandRules        []string          `yaml:"inband_rules"`
-	DefaultRemediation string            `yaml:"default_remediation"`
-	DefaultPassAction  string            `yaml:"default_pass_action"`
-	BlockedHTTPCode    int               `yaml:"blocked_http_code"`
-	PassedHTTPCode     int               `yaml:"passed_http_code"`
-	OnLoad             []Hook            `yaml:"on_load"`
-	PreEval            []Hook            `yaml:"pre_eval"`
-	PostEval           []Hook            `yaml:"post_eval"`
-	OnMatch            []Hook            `yaml:"on_match"`
-	VariablesTracking  []string          `yaml:"variables_tracking"`
-	InbandOptions      WaapSubEngineOpts `yaml:"inband_options"`
-	OutOfBandOptions   WaapSubEngineOpts `yaml:"outofband_options"`
+type AppsecConfig struct {
+	Name               string              `yaml:"name"`
+	OutOfBandRules     []string            `yaml:"outofband_rules"`
+	InBandRules        []string            `yaml:"inband_rules"`
+	DefaultRemediation string              `yaml:"default_remediation"`
+	DefaultPassAction  string              `yaml:"default_pass_action"`
+	BlockedHTTPCode    int                 `yaml:"blocked_http_code"`
+	PassedHTTPCode     int                 `yaml:"passed_http_code"`
+	OnLoad             []Hook              `yaml:"on_load"`
+	PreEval            []Hook              `yaml:"pre_eval"`
+	PostEval           []Hook              `yaml:"post_eval"`
+	OnMatch            []Hook              `yaml:"on_match"`
+	VariablesTracking  []string            `yaml:"variables_tracking"`
+	InbandOptions      AppsecSubEngineOpts `yaml:"inband_options"`
+	OutOfBandOptions   AppsecSubEngineOpts `yaml:"outofband_options"`
 
 	LogLevel *log.Level `yaml:"log_level"`
 	Logger   *log.Entry `yaml:"-"`
 }
 
-func (w *WaapRuntimeConfig) ClearResponse() {
+func (w *AppsecRuntimeConfig) ClearResponse() {
 	log.Debugf("#-> %p", w)
-	w.Response = WaapTempResponse{}
+	w.Response = AppsecTempResponse{}
 	log.Debugf("-> %p", w.Config)
 	w.Response.Action = w.Config.DefaultPassAction
 	w.Response.HTTPResponseCode = w.Config.PassedHTTPCode
@@ -140,7 +140,7 @@ func (w *WaapRuntimeConfig) ClearResponse() {
 	w.Response.SendAlert = true
 }
 
-func (wc *WaapConfig) LoadByPath(file string) error {
+func (wc *AppsecConfig) LoadByPath(file string) error {
 
 	wc.Logger.Debugf("loading config %s", file)
 
@@ -183,33 +183,33 @@ func (wc *WaapConfig) LoadByPath(file string) error {
 	return nil
 }
 
-func (wc *WaapConfig) Load(configName string) error {
-	waapConfigs := hub.GetItemMap(cwhub.WAAP_CONFIGS)
+func (wc *AppsecConfig) Load(configName string) error {
+	appsecConfigs := hub.GetItemMap(cwhub.WAAP_CONFIGS)
 
-	for _, hubWaapConfigItem := range waapConfigs {
-		if !hubWaapConfigItem.State.Installed {
+	for _, hubAppsecConfigItem := range appsecConfigs {
+		if !hubAppsecConfigItem.State.Installed {
 			continue
 		}
-		if hubWaapConfigItem.Name != configName {
+		if hubAppsecConfigItem.Name != configName {
 			continue
 		}
-		wc.Logger.Infof("loading %s", hubWaapConfigItem.State.LocalPath)
-		err := wc.LoadByPath(hubWaapConfigItem.State.LocalPath)
+		wc.Logger.Infof("loading %s", hubAppsecConfigItem.State.LocalPath)
+		err := wc.LoadByPath(hubAppsecConfigItem.State.LocalPath)
 		if err != nil {
-			return fmt.Errorf("unable to load waap-config %s : %s", hubWaapConfigItem.State.LocalPath, err)
+			return fmt.Errorf("unable to load appsec-config %s : %s", hubAppsecConfigItem.State.LocalPath, err)
 		}
 		return nil
 	}
 
-	return fmt.Errorf("no waap-config found for %s", configName)
+	return fmt.Errorf("no appsec-config found for %s", configName)
 }
 
-func (wc *WaapConfig) GetDataDir() string {
+func (wc *AppsecConfig) GetDataDir() string {
 	return hub.GetDataDir()
 }
 
-func (wc *WaapConfig) Build() (*WaapRuntimeConfig, error) {
-	ret := &WaapRuntimeConfig{Logger: wc.Logger.WithField("component", "waap_runtime_config")}
+func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
+	ret := &AppsecRuntimeConfig{Logger: wc.Logger.WithField("component", "appsec_runtime_config")}
 	ret.Name = wc.Name
 	ret.Config = wc
 	ret.DefaultRemediation = wc.DefaultRemediation
@@ -280,12 +280,12 @@ func (wc *WaapConfig) Build() (*WaapRuntimeConfig, error) {
 	return ret, nil
 }
 
-func (w *WaapRuntimeConfig) ProcessOnLoadRules() error {
+func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
 	for _, rule := range w.CompiledOnLoad {
 		if rule.FilterExpr != nil {
 			output, err := exprhelpers.Run(rule.FilterExpr, GetOnLoadEnv(w), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
-				return fmt.Errorf("unable to run waap on_load filter %s : %w", rule.Filter, err)
+				return fmt.Errorf("unable to run appsec on_load filter %s : %w", rule.Filter, err)
 			}
 			switch t := output.(type) {
 			case bool:
@@ -301,7 +301,7 @@ func (w *WaapRuntimeConfig) ProcessOnLoadRules() error {
 		for _, applyExpr := range rule.ApplyExpr {
 			_, err := exprhelpers.Run(applyExpr, GetOnLoadEnv(w), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
-				log.Errorf("unable to apply waap on_load expr: %s", err)
+				log.Errorf("unable to apply appsec on_load expr: %s", err)
 				continue
 			}
 		}
@@ -309,13 +309,13 @@ func (w *WaapRuntimeConfig) ProcessOnLoadRules() error {
 	return nil
 }
 
-func (w *WaapRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest, evt types.Event) error {
+func (w *AppsecRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest, evt types.Event) error {
 
 	for _, rule := range w.CompiledOnMatch {
 		if rule.FilterExpr != nil {
 			output, err := exprhelpers.Run(rule.FilterExpr, GetOnMatchEnv(w, request, evt), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
-				return fmt.Errorf("unable to run waap on_match filter %s : %w", rule.Filter, err)
+				return fmt.Errorf("unable to run appsec on_match filter %s : %w", rule.Filter, err)
 			}
 			switch t := output.(type) {
 			case bool:
@@ -331,7 +331,7 @@ func (w *WaapRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest, evt type
 		for _, applyExpr := range rule.ApplyExpr {
 			_, err := exprhelpers.Run(applyExpr, GetOnMatchEnv(w, request, evt), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
-				log.Errorf("unable to apply waap on_match expr: %s", err)
+				log.Errorf("unable to apply appsec on_match expr: %s", err)
 				continue
 			}
 		}
@@ -339,12 +339,12 @@ func (w *WaapRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest, evt type
 	return nil
 }
 
-func (w *WaapRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error {
+func (w *AppsecRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error {
 	for _, rule := range w.CompiledPreEval {
 		if rule.FilterExpr != nil {
 			output, err := exprhelpers.Run(rule.FilterExpr, GetPreEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
-				return fmt.Errorf("unable to run waap pre_eval filter %s : %w", rule.Filter, err)
+				return fmt.Errorf("unable to run appsec pre_eval filter %s : %w", rule.Filter, err)
 			}
 			switch t := output.(type) {
 			case bool:
@@ -361,7 +361,7 @@ func (w *WaapRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error {
 		for _, applyExpr := range rule.ApplyExpr {
 			_, err := exprhelpers.Run(applyExpr, GetPreEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
-				log.Errorf("unable to apply waap pre_eval expr: %s", err)
+				log.Errorf("unable to apply appsec pre_eval expr: %s", err)
 				continue
 			}
 		}
@@ -370,12 +370,12 @@ func (w *WaapRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error {
 	return nil
 }
 
-func (w *WaapRuntimeConfig) ProcessPostEvalRules(request *ParsedRequest) error {
+func (w *AppsecRuntimeConfig) ProcessPostEvalRules(request *ParsedRequest) error {
 	for _, rule := range w.CompiledPostEval {
 		if rule.FilterExpr != nil {
 			output, err := exprhelpers.Run(rule.FilterExpr, GetPostEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
-				return fmt.Errorf("unable to run waap post_eval filter %s : %w", rule.Filter, err)
+				return fmt.Errorf("unable to run appsec post_eval filter %s : %w", rule.Filter, err)
 			}
 			switch t := output.(type) {
 			case bool:
@@ -392,7 +392,7 @@ func (w *WaapRuntimeConfig) ProcessPostEvalRules(request *ParsedRequest) error {
 		for _, applyExpr := range rule.ApplyExpr {
 			_, err := exprhelpers.Run(applyExpr, GetPostEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
-				log.Errorf("unable to apply waap post_eval expr: %s", err)
+				log.Errorf("unable to apply appsec post_eval expr: %s", err)
 				continue
 			}
 		}
@@ -401,101 +401,101 @@ func (w *WaapRuntimeConfig) ProcessPostEvalRules(request *ParsedRequest) error {
 	return nil
 }
 
-func (w *WaapRuntimeConfig) RemoveInbandRuleByID(id int) error {
+func (w *AppsecRuntimeConfig) RemoveInbandRuleByID(id int) error {
 	w.Logger.Debugf("removing inband rule %d", id)
 	return w.InBandTx.RemoveRuleByIDWithError(id)
 }
 
-func (w *WaapRuntimeConfig) RemoveOutbandRuleByID(id int) error {
+func (w *AppsecRuntimeConfig) RemoveOutbandRuleByID(id int) error {
 	w.Logger.Debugf("removing outband rule %d", id)
 	return w.OutOfBandTx.RemoveRuleByIDWithError(id)
 }
 
-func (w *WaapRuntimeConfig) RemoveInbandRuleByTag(tag string) error {
+func (w *AppsecRuntimeConfig) RemoveInbandRuleByTag(tag string) error {
 	w.Logger.Debugf("removing inband rule with tag %s", tag)
 	return w.InBandTx.RemoveRuleByTagWithError(tag)
 }
 
-func (w *WaapRuntimeConfig) RemoveOutbandRuleByTag(tag string) error {
+func (w *AppsecRuntimeConfig) RemoveOutbandRuleByTag(tag string) error {
 	w.Logger.Debugf("removing outband rule with tag %s", tag)
 	return w.OutOfBandTx.RemoveRuleByTagWithError(tag)
 }
 
-func (w *WaapRuntimeConfig) RemoveInbandRuleByName(name string) error {
+func (w *AppsecRuntimeConfig) RemoveInbandRuleByName(name string) error {
 	tag := fmt.Sprintf("crowdsec-%s", name)
 	w.Logger.Debugf("removing inband rule %s", tag)
 	return w.InBandTx.RemoveRuleByTagWithError(tag)
 }
 
-func (w *WaapRuntimeConfig) RemoveOutbandRuleByName(name string) error {
+func (w *AppsecRuntimeConfig) RemoveOutbandRuleByName(name string) error {
 	tag := fmt.Sprintf("crowdsec-%s", name)
 	w.Logger.Debugf("removing outband rule %s", tag)
 	return w.OutOfBandTx.RemoveRuleByTagWithError(tag)
 }
 
-func (w *WaapRuntimeConfig) CancelEvent() error {
+func (w *AppsecRuntimeConfig) CancelEvent() error {
 	w.Logger.Debugf("canceling event")
 	w.Response.SendEvent = false
 	return nil
 }
 
 // Disable a rule at load time, meaning it will not run for any request
-func (w *WaapRuntimeConfig) DisableInBandRuleByID(id int) error {
+func (w *AppsecRuntimeConfig) DisableInBandRuleByID(id int) error {
 	w.DisabledInBandRuleIds = append(w.DisabledInBandRuleIds, id)
 	return nil
 }
 
 // Disable a rule at load time, meaning it will not run for any request
-func (w *WaapRuntimeConfig) DisableInBandRuleByName(name string) error {
+func (w *AppsecRuntimeConfig) DisableInBandRuleByName(name string) error {
 	tagValue := fmt.Sprintf("crowdsec-%s", name)
 	w.DisabledInBandRulesTags = append(w.DisabledInBandRulesTags, tagValue)
 	return nil
 }
 
 // Disable a rule at load time, meaning it will not run for any request
-func (w *WaapRuntimeConfig) DisableInBandRuleByTag(tag string) error {
+func (w *AppsecRuntimeConfig) DisableInBandRuleByTag(tag string) error {
 	w.DisabledInBandRulesTags = append(w.DisabledInBandRulesTags, tag)
 	return nil
 }
 
 // Disable a rule at load time, meaning it will not run for any request
-func (w *WaapRuntimeConfig) DisableOutBandRuleByID(id int) error {
+func (w *AppsecRuntimeConfig) DisableOutBandRuleByID(id int) error {
 	w.DisabledOutOfBandRuleIds = append(w.DisabledOutOfBandRuleIds, id)
 	return nil
 }
 
 // Disable a rule at load time, meaning it will not run for any request
-func (w *WaapRuntimeConfig) DisableOutBandRuleByName(name string) error {
+func (w *AppsecRuntimeConfig) DisableOutBandRuleByName(name string) error {
 	tagValue := fmt.Sprintf("crowdsec-%s", name)
 	w.DisabledOutOfBandRulesTags = append(w.DisabledOutOfBandRulesTags, tagValue)
 	return nil
 }
 
 // Disable a rule at load time, meaning it will not run for any request
-func (w *WaapRuntimeConfig) DisableOutBandRuleByTag(tag string) error {
+func (w *AppsecRuntimeConfig) DisableOutBandRuleByTag(tag string) error {
 	w.DisabledOutOfBandRulesTags = append(w.DisabledOutOfBandRulesTags, tag)
 	return nil
 }
 
-func (w *WaapRuntimeConfig) SendEvent() error {
+func (w *AppsecRuntimeConfig) SendEvent() error {
 	w.Logger.Debugf("sending event")
 	w.Response.SendEvent = true
 	return nil
 }
 
-func (w *WaapRuntimeConfig) SendAlert() error {
+func (w *AppsecRuntimeConfig) SendAlert() error {
 	w.Logger.Debugf("sending alert")
 	w.Response.SendAlert = true
 	return nil
 }
 
-func (w *WaapRuntimeConfig) CancelAlert() error {
+func (w *AppsecRuntimeConfig) CancelAlert() error {
 	w.Logger.Debugf("canceling alert")
 	w.Response.SendAlert = false
 	return nil
 }
 
-func (w *WaapRuntimeConfig) SetActionByTag(tag string, action string) error {
+func (w *AppsecRuntimeConfig) SetActionByTag(tag string, action string) error {
 	if w.RemediationByTag == nil {
 		w.RemediationByTag = make(map[string]string)
 	}
@@ -504,7 +504,7 @@ func (w *WaapRuntimeConfig) SetActionByTag(tag string, action string) error {
 	return nil
 }
 
-func (w *WaapRuntimeConfig) SetActionByID(id int, action string) error {
+func (w *AppsecRuntimeConfig) SetActionByID(id int, action string) error {
 	if w.RemediationById == nil {
 		w.RemediationById = make(map[int]string)
 	}
@@ -513,7 +513,7 @@ func (w *WaapRuntimeConfig) SetActionByID(id int, action string) error {
 	return nil
 }
 
-func (w *WaapRuntimeConfig) SetActionByName(name string, action string) error {
+func (w *AppsecRuntimeConfig) SetActionByName(name string, action string) error {
 	if w.RemediationByTag == nil {
 		w.RemediationByTag = make(map[string]string)
 	}
@@ -523,7 +523,7 @@ func (w *WaapRuntimeConfig) SetActionByName(name string, action string) error {
 	return nil
 }
 
-func (w *WaapRuntimeConfig) SetAction(action string) error {
+func (w *AppsecRuntimeConfig) SetAction(action string) error {
 	//log.Infof("setting to %s", action)
 	w.Logger.Debugf("setting action to %s", action)
 	switch action {
@@ -544,7 +544,7 @@ func (w *WaapRuntimeConfig) SetAction(action string) error {
 	return nil
 }
 
-func (w *WaapRuntimeConfig) SetHTTPCode(code int) error {
+func (w *AppsecRuntimeConfig) SetHTTPCode(code int) error {
 	w.Logger.Debugf("setting http code to %d", code)
 	w.Response.HTTPResponseCode = code
 	return nil
@@ -555,7 +555,7 @@ type BodyResponse struct {
 	HTTPStatus int    `json:"http_status"`
 }
 
-func (w *WaapRuntimeConfig) GenerateResponse(response WaapTempResponse) BodyResponse {
+func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse) BodyResponse {
 	resp := BodyResponse{}
 	//if there is no interrupt, we should allow with default code
 	if !response.InBandInterrupt {

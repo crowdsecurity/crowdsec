@@ -23,25 +23,25 @@ const (
 )
 
 type ParsedRequest struct {
-	RemoteAddr           string                `json:"remote_addr,omitempty"`
-	Host                 string                `json:"host,omitempty"`
-	ClientIP             string                `json:"client_ip,omitempty"`
-	URI                  string                `json:"uri,omitempty"`
-	Args                 url.Values            `json:"args,omitempty"`
-	ClientHost           string                `json:"client_host,omitempty"`
-	Headers              http.Header           `json:"headers,omitempty"`
-	URL                  *url.URL              `json:"url,omitempty"`
-	Method               string                `json:"method,omitempty"`
-	Proto                string                `json:"proto,omitempty"`
-	Body                 []byte                `json:"body,omitempty"`
-	TransferEncoding     []string              `json:"transfer_encoding,omitempty"`
-	UUID                 string                `json:"uuid,omitempty"`
-	Tx                   ExtendedTransaction   `json:"transaction,omitempty"`
-	ResponseChannel      chan WaapTempResponse `json:"-"`
-	IsInBand             bool                  `json:"-"`
-	IsOutBand            bool                  `json:"-"`
-	WaapEngine           string                `json:"waap_engine,omitempty"`
-	RemoteAddrNormalized string                `json:"normalized_remote_addr,omitempty"`
+	RemoteAddr           string                  `json:"remote_addr,omitempty"`
+	Host                 string                  `json:"host,omitempty"`
+	ClientIP             string                  `json:"client_ip,omitempty"`
+	URI                  string                  `json:"uri,omitempty"`
+	Args                 url.Values              `json:"args,omitempty"`
+	ClientHost           string                  `json:"client_host,omitempty"`
+	Headers              http.Header             `json:"headers,omitempty"`
+	URL                  *url.URL                `json:"url,omitempty"`
+	Method               string                  `json:"method,omitempty"`
+	Proto                string                  `json:"proto,omitempty"`
+	Body                 []byte                  `json:"body,omitempty"`
+	TransferEncoding     []string                `json:"transfer_encoding,omitempty"`
+	UUID                 string                  `json:"uuid,omitempty"`
+	Tx                   ExtendedTransaction     `json:"transaction,omitempty"`
+	ResponseChannel      chan AppsecTempResponse `json:"-"`
+	IsInBand             bool                    `json:"-"`
+	IsOutBand            bool                    `json:"-"`
+	WaapEngine           string                  `json:"waap_engine,omitempty"`
+	RemoteAddrNormalized string                  `json:"normalized_remote_addr,omitempty"`
 }
 
 type ReqDumpFilter struct {
@@ -339,7 +339,7 @@ func NewParsedRequestFromRequest(r *http.Request) (ParsedRequest, error) {
 		Body:                 body,
 		Args:                 parsedURL.Query(), //TODO: Check if there's not potential bypass as it excludes malformed args
 		TransferEncoding:     r.TransferEncoding,
-		ResponseChannel:      make(chan WaapTempResponse),
+		ResponseChannel:      make(chan AppsecTempResponse),
 		RemoteAddrNormalized: remoteAddrNormalized,
 	}, nil
 }
