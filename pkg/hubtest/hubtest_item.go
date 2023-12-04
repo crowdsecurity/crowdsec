@@ -320,7 +320,7 @@ func (t *HubTestItem) InstallHub() error {
 			continue
 		}
 
-		if hubWaapRule, ok := t.HubIndex.Items[cwhub.WAAP_RULES][waaprule]; ok {
+		if hubWaapRule, ok := t.HubIndex.GetItemMap(cwhub.WAAP_RULES)[waaprule]; ok {
 			waapRuleSource, err := filepath.Abs(filepath.Join(t.HubPath, hubWaapRule.RemotePath))
 			if err != nil {
 				return fmt.Errorf("can't get absolute path of '%s': %s", waapRuleSource, err)
