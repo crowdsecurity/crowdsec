@@ -618,8 +618,19 @@ func (a *apic) PullTop(forcePull bool) error {
 	}
 
 	// update blocklists
-	if err := a.UpdateBlocklists(data.Links, add_counters); err != nil {
+	if err := a.UpdateBlocklists(data.Links, add_counters, forcePull); err != nil {
 		return fmt.Errorf("while updating blocklists: %w", err)
+	}
+	return nil
+}
+
+// we receive a link to a blocklist, we pull the content of the blocklist and we create one alert
+func (a *apic) PullBlocklist(blocklist *modelscapi.BlocklistLink, forcePull bool) error {
+	add_counters, _ := makeAddAndDeleteCounters()
+	if err := a.UpdateBlocklists(&modelscapi.GetDecisionsStreamResponseLinks{
+		Blocklists: []*modelscapi.BlocklistLink{blocklist},
+	}, add_counters, forcePull); err != nil {
+		return fmt.Errorf("while pulling blocklist: %w", err)
 	}
 	return nil
 }
@@ -710,7 +721,7 @@ func (a *apic) ShouldForcePullBlocklist(blocklist *modelscapi.BlocklistLink) (bo
 	return false, nil
 }
 
-func (a *apic) updateBlocklist(client *apiclient.ApiClient, blocklist *modelscapi.BlocklistLink, add_counters map[string]map[string]int) error {
+func (a *apic) updateBlocklist(client *apiclient.ApiClient, blocklist *modelscapi.BlocklistLink, add_counters map[string]map[string]int, forcePull bool) error {
 	if blocklist.Scope == nil {
 		log.Warningf("blocklist has no scope")
 		return nil
@@ -719,12 +730,16 @@ func (a *apic) updateBlocklist(client *apiclient.ApiClient, blocklist *modelscap
 		log.Warningf("blocklist has no duration")
 		return nil
 	}
-	forcePull, err := a.ShouldForcePullBlocklist(blocklist)
-	if err != nil {
-		return fmt.Errorf("while checking if we should force pull blocklist %s: %w", *blocklist.Name, err)
+	if !forcePull {
+		_forcePull, err := a.ShouldForcePullBlocklist(blocklist)
+		if err != nil {
+			return fmt.Errorf("while checking if we should force pull blocklist %s: %w", *blocklist.Name, err)
+		}
+		forcePull = _forcePull
 	}
 	blocklistConfigItemName := fmt.Sprintf("blocklist:%s:last_pull", *blocklist.Name)
 	var lastPullTimestamp *string
+	var err error
 	if !forcePull {
 		lastPullTimestamp, err = a.dbClient.GetConfigItem(blocklistConfigItemName)
 		if err != nil {
@@ -764,7 +779,7 @@ func (a *apic) updateBlocklist(client *apiclient.ApiClient, blocklist *modelscap
 	return nil
 }
 
-func (a *apic) UpdateBlocklists(links *modelscapi.GetDecisionsStreamResponseLinks, add_counters map[string]map[string]int) error {
+func (a *apic) UpdateBlocklists(links *modelscapi.GetDecisionsStreamResponseLinks, add_counters map[string]map[string]int, forcePull bool) error {
 	if links == nil {
 		return nil
 	}
@@ -778,7 +793,7 @@ func (a *apic) UpdateBlocklists(links *modelscapi.GetDecisionsStreamResponseLink
 		return fmt.Errorf("while creating default client: %w", err)
 	}
 	for _, blocklist := range links.Blocklists {
-		if err := a.updateBlocklist(defaultClient, blocklist, add_counters); err != nil {
+		if err := a.updateBlocklist(defaultClient, blocklist, add_counters, forcePull); err != nil {
 			return err
 		}
 	}

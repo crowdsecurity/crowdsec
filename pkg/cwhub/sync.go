@@ -30,7 +30,7 @@ func linkTarget(path string) (string, error) {
 
 	_, err = os.Lstat(hubpath)
 	if os.IsNotExist(err) {
-		log.Infof("link target does not exist: %s -> %s", path, hubpath)
+		log.Warningf("link target does not exist: %s -> %s", path, hubpath)
 		return "", nil
 	}
 
@@ -226,7 +226,7 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 			if err != nil {
 				return err
 			}
-			h.Items[info.ftype][item.Name] = item
+			h.addItem(item)
 
 			return nil
 		}
@@ -246,7 +246,7 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 	// try to find which configuration item it is
 	log.Tracef("check [%s] of %s", info.fname, info.ftype)
 
-	for name, item := range h.Items[info.ftype] {
+	for _, item := range h.GetItemMap(info.ftype) {
 		if info.fname != item.FileName {
 			continue
 		}
@@ -286,8 +286,6 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-
-		h.Items[info.ftype][name] = item
 
 		return nil
 	}
@@ -395,7 +393,7 @@ func (h *Hub) localSync() error {
 
 	warnings := make([]string, 0)
 
-	for _, item := range h.Items[COLLECTIONS] {
+	for _, item := range h.GetItemMap(COLLECTIONS) {
 		// check for cyclic dependencies
 		subs, err := item.descendants()
 		if err != nil {

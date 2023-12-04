@@ -36,7 +36,7 @@ type hubItemType struct {
 
 var hubItemTypes = map[string]hubItemType{
 	"parsers": {
-		name:      "parsers",
+		name:      cwhub.PARSERS,
 		singular:  "parser",
 		oneOrMore: "parser(s)",
 		help: cmdHelp{
@@ -68,7 +68,7 @@ List only enabled parsers unless "-a" or names are specified.`,
 		},
 	},
 	"postoverflows": {
-		name:      "postoverflows",
+		name:      cwhub.POSTOVERFLOWS,
 		singular:  "postoverflow",
 		oneOrMore: "postoverflow(s)",
 		help: cmdHelp{
@@ -100,7 +100,7 @@ List only enabled postoverflows unless "-a" or names are specified.`,
 		},
 	},
 	"scenarios": {
-		name:      "scenarios",
+		name:      cwhub.SCENARIOS,
 		singular:  "scenario",
 		oneOrMore: "scenario(s)",
 		help: cmdHelp{
@@ -132,7 +132,7 @@ List only enabled scenarios unless "-a" or names are specified.`,
 		},
 	},
 	"collections": {
-		name:      "collections",
+		name:      cwhub.COLLECTIONS,
 		singular:  "collection",
 		oneOrMore: "collection(s)",
 		help: cmdHelp{
@@ -214,7 +214,7 @@ func itemsInstallRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 		for _, name := range args {
 			item := hub.GetItem(it.name, name)
 			if item == nil {
-				msg := SuggestNearestMessage(hub, it.name, name)
+				msg := suggestNearestMessage(hub, it.name, name)
 				if !ignoreError {
 					return fmt.Errorf(msg)
 				}
@@ -319,6 +319,7 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 					return err
 				}
 				if didRemove {
+					log.Infof("Removed %s", item.Name)
 					removed++
 				}
 			}
@@ -361,6 +362,8 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 				removed++
 			}
 		}
+
+		log.Infof("Removed %d %s", removed, it.name)
 		if removed > 0 {
 			log.Infof(ReloadMessage())
 		}

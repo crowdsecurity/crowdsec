@@ -99,7 +99,7 @@ teardown() {
     rune -0 jq -r '.path' <(output)
     rune -0 rm "$HUB_DIR/$(output)"
 
-    rune -0 cscli parsers remove crowdsecurity/syslog-logs --purge
+    rune -0 cscli parsers remove crowdsecurity/syslog-logs --purge --debug
     assert_stderr --partial "removing crowdsecurity/syslog-logs: not downloaded -- no need to remove"
 
     rune -0 cscli parsers remove crowdsecurity/linux --all --error --purge --force
@@ -146,4 +146,38 @@ teardown() {
     rune -0 cscli collections list hi-its-me
     rune -0 cscli collections inspect hi-its-me -o json
     rune -0 jq -e '[.installed,.local]==[true,true]' <(output)
+}
+
+@test "a local item cannot be downloaded by cscli" {
+    rune -0 mkdir -p "$CONFIG_DIR/collections"
+    rune -0 touch "$CONFIG_DIR/collections/foobar.yaml"
+    rune -1 cscli collections install foobar.yaml
+    assert_stderr --partial "failed to download item: foobar.yaml is local, can't download"
+    rune -1 cscli collections install foobar.yaml --force
+    assert_stderr --partial "failed to download item: foobar.yaml is local, can't download"
+}
+
+@test "a local item cannot be removed by cscli" {
+    rune -0 mkdir -p "$CONFIG_DIR/collections"
+    rune -0 touch "$CONFIG_DIR/collections/foobar.yaml"
+    rune -0 cscli collections remove foobar.yaml
+    assert_stderr --partial "foobar.yaml is a local item, please delete manually"
+    rune -0 cscli collections remove foobar.yaml --purge
+    assert_stderr --partial "foobar.yaml is a local item, please delete manually"
+    rune -0 cscli collections remove foobar.yaml --force
+    assert_stderr --partial "foobar.yaml is a local item, please delete manually"
+    rune -0 cscli collections remove --all
+    assert_stderr --partial "foobar.yaml is a local item, please delete manually"
+    rune -0 cscli collections remove --all --purge
+    assert_stderr --partial "foobar.yaml is a local item, please delete manually"
+}
+
+@test "a dangling link is reported with a warning" {
+    rune -0 mkdir -p "$CONFIG_DIR/collections"
+    rune -0 ln -s /this/does/not/exist.yaml "$CONFIG_DIR/collections/foobar.yaml"
+    rune -0 cscli hub list
+    assert_stderr --partial "link target does not exist: $CONFIG_DIR/collections/foobar.yaml -> /this/does/not/exist.yaml"
+    rune -0 cscli hub list -o json
+    rune -0 jq '.collections' <(output)
+    assert_json '[]'
 }
