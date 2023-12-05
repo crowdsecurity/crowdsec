@@ -605,13 +605,20 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	}
 
 	err = nucleiConfig.RunNucleiTemplate(t.Name, t.Config.NucleiTemplate, DefaultNucleiTarget)
-
+	crowdsecLogFile := fmt.Sprintf("%s/log/crowdsec.log", nucleiConfig.OutputDir)
 	if t.Config.ExpectedNucleiFailure {
 		if err != nil && errors.Is(err, NucleiTemplateFail) {
 			log.Infof("Appsec test %s failed as expected", t.Name)
 			t.Success = true
 		} else {
 			log.Errorf("Appsec test %s failed:  %s", t.Name, err)
+			crowdsecLog, err := os.ReadFile(crowdsecLogFile)
+			if err != nil {
+				log.Errorf("unable to read crowdsec log file '%s': %s", crowdsecLogFile, err)
+			} else {
+				log.Errorf("crowdsec log file '%s'", crowdsecLogFile)
+				log.Errorf("%s", string(crowdsecLog))
+			}
 		}
 	} else {
 		if err == nil {
@@ -619,6 +626,13 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 			t.Success = true
 		} else {
 			log.Errorf("Appsec test %s failed:  %s", t.Name, err)
+			crowdsecLog, err := os.ReadFile(crowdsecLogFile)
+			if err != nil {
+				log.Errorf("unable to read crowdsec log file '%s': %s", crowdsecLogFile, err)
+			} else {
+				log.Errorf("crowdsec log file '%s'", crowdsecLogFile)
+				log.Errorf("%s", string(crowdsecLog))
+			}
 		}
 	}
 	crowdsecDaemon.Process.Kill()
