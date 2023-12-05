@@ -55,7 +55,6 @@ func initConfig() {
 			log.Fatal(err)
 		}
 	} else {
-		// XXX: check all the defaults
 		csConfig = csconfig.NewDefaultConfig()
 	}
 
