@@ -36,7 +36,7 @@ teardown() {
     rune -0 cscli hub list
     assert_output "No items to display"
     rune -0 cscli hub list -o json
-    assert_json '{appsec-configs:[],appsec-rules:[],parsers:[],scenarios:[],collections:[],postoverflows:[]}'
+    assert_json '{"appsec-configs":[],"appsec-rules":[],parsers:[],scenarios:[],collections:[],postoverflows:[]}'
     rune -0 cscli hub list -o raw
     assert_output 'name,status,version,description,type'
 
@@ -137,7 +137,7 @@ teardown() {
     assert_line "collections"
     rune -0 cscli hub types -o human
     rune -0 yq -o json <(output)
-    assert_json '["appsec-configs","appsec-rules","parsers","postoverflows","scenarios","collections"]'
+    assert_json '["parsers","postoverflows","scenarios","appsec-configs","appsec-rules","collections"]'
     rune -0 cscli hub types -o json
-    assert_json '["appsec-configs","appsec-rules","parsers","postoverflows","scenarios","collections"]'
+    assert_json '["parsers","postoverflows","scenarios","appsec-configs","appsec-rules","collections"]'
 }
