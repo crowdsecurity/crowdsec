@@ -94,6 +94,9 @@ func (r *AppsecRunner) Init(datadir string) error {
 		}
 	}
 
+	r.logger.Tracef("Loaded inband rules: %+v", r.AppsecInbandEngine.GetRuleGroup().GetRules())
+	r.logger.Tracef("Loaded outband rules: %+v", r.AppsecOutbandEngine.GetRuleGroup().GetRules())
+
 	if err != nil {
 		return fmt.Errorf("unable to initialize outband engine : %w", err)
 	}
@@ -193,6 +196,7 @@ func (r *AppsecRunner) ProcessInBandRules(request *appsec.ParsedRequest) error {
 }
 
 func (r *AppsecRunner) ProcessOutOfBandRules(request *appsec.ParsedRequest) error {
+	r.logger.Infof("Processing out of band rules")
 	tx := appsec.NewExtendedTransaction(r.AppsecOutbandEngine, request.UUID)
 	r.AppsecRuntime.OutOfBandTx = tx
 	err := r.processRequest(tx, request)

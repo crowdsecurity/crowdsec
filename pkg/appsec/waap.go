@@ -214,10 +214,11 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 	ret.Config = wc
 	ret.DefaultRemediation = wc.DefaultRemediation
 
+	wc.Logger.Tracef("Loading config %+v", wc)
 	//load rules
 	for _, rule := range wc.OutOfBandRules {
 		wc.Logger.Infof("loading outofband rule %s", rule)
-		collections, err := LoadCollection(rule)
+		collections, err := LoadCollection(rule, wc.Logger.WithField("component", "appsec_collection_loader"))
 		if err != nil {
 			return nil, fmt.Errorf("unable to load outofband rule %s : %s", rule, err)
 		}
@@ -227,7 +228,7 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 	wc.Logger.Infof("Loaded %d outofband rules", len(ret.OutOfBandRules))
 	for _, rule := range wc.InBandRules {
 		wc.Logger.Infof("loading inband rule %s", rule)
-		collections, err := LoadCollection(rule)
+		collections, err := LoadCollection(rule, wc.Logger.WithField("component", "appsec_collection_loader"))
 		if err != nil {
 			return nil, fmt.Errorf("unable to load inband rule %s : %s", rule, err)
 		}

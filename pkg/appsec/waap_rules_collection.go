@@ -46,8 +46,7 @@ type RulesDetails struct {
 // Is using the id is a good idea ? might be too specific to coraza and not easily reusable
 var AppsecRulesDetails = make(map[int]RulesDetails)
 
-func LoadCollection(pattern string) ([]AppsecCollection, error) {
-	//FIXME: have a proper logger here, inheriting from appsec-config to have consistent log levels
+func LoadCollection(pattern string, logger *log.Entry) ([]AppsecCollection, error) {
 	ret := make([]AppsecCollection, 0)
 
 	for _, appsecRule := range appsecRules {
@@ -55,14 +54,14 @@ func LoadCollection(pattern string) ([]AppsecCollection, error) {
 		tmpMatch, err := exprhelpers.Match(pattern, appsecRule.Name)
 
 		if err != nil {
-			log.Errorf("unable to match %s with %s : %s", appsecRule.Name, pattern, err)
+			logger.Errorf("unable to match %s with %s : %s", appsecRule.Name, pattern, err)
 			continue
 		}
 
 		matched, ok := tmpMatch.(bool)
 
 		if !ok {
-			log.Errorf("unable to match %s with %s : %s", appsecRule.Name, pattern, err)
+			logger.Errorf("unable to match %s with %s : %s", appsecRule.Name, pattern, err)
 			continue
 		}
 
@@ -76,10 +75,11 @@ func LoadCollection(pattern string) ([]AppsecCollection, error) {
 
 		if appsecRule.SecLangFilesRules != nil {
 			for _, rulesFile := range appsecRule.SecLangFilesRules {
+				logger.Debugf("Adding rules from %s", rulesFile)
 				fullPath := filepath.Join(hub.GetDataDir(), rulesFile)
 				c, err := os.ReadFile(fullPath)
 				if err != nil {
-					log.Errorf("unable to read file %s : %s", rulesFile, err)
+					logger.Errorf("unable to read file %s : %s", rulesFile, err)
 					continue
 				}
 				for _, line := range strings.Split(string(c), "\n") {
@@ -95,6 +95,7 @@ func LoadCollection(pattern string) ([]AppsecCollection, error) {
 		}
 
 		if appsecRule.SecLangRules != nil {
+			logger.Tracef("Adding inline rules %+v", appsecRule.SecLangRules)
 			appsecCol.Rules = append(appsecCol.Rules, appsecRule.SecLangRules...)
 		}
 
@@ -102,10 +103,10 @@ func LoadCollection(pattern string) ([]AppsecCollection, error) {
 			for _, rule := range appsecRule.Rules {
 				strRule, rulesId, err := rule.Convert(appsec_rule.ModsecurityRuleType, appsecRule.Name)
 				if err != nil {
-					log.Errorf("unable to convert rule %s : %s", rule.Name, err)
+					logger.Errorf("unable to convert rule %s : %s", rule.Name, err)
 					return nil, err
 				}
-				log.Debugf("Adding rule %s", strRule)
+				logger.Debugf("Adding rule %s", strRule)
 				appsecCol.Rules = append(appsecCol.Rules, strRule)
 
 				//We only take the first id, as it's the one of the "main" rule
@@ -117,7 +118,7 @@ func LoadCollection(pattern string) ([]AppsecCollection, error) {
 						Name:     appsecRule.Name,
 					}
 				} else {
-					log.Warnf("conflicting id %d for rule %s !", rulesId[0], rule.Name)
+					logger.Warnf("conflicting id %d for rule %s !", rulesId[0], rule.Name)
 				}
 
 				for _, id := range rulesId {
