@@ -130,103 +130,102 @@ func (w MatchedRules) Kinds() []string {
 
 // filters
 func (w MatchedRules) ByID(id int) MatchedRules {
-	waap := MatchedRules{}
+	ret := MatchedRules{}
 
 	for _, rule := range w {
 		if rule["id"] == id {
-			waap = append(waap, rule)
+			ret = append(ret, rule)
 		}
 	}
-	return waap
+	return ret
 }
 
 func (w MatchedRules) ByKind(kind string) MatchedRules {
-	waap := MatchedRules{}
+	ret := MatchedRules{}
 	for _, rule := range w {
 		if rule["kind"] == kind {
-			waap = append(waap, rule)
+			ret = append(ret, rule)
 		}
 	}
-	return waap
+	return ret
 }
 
 func (w MatchedRules) ByTags(match []string) MatchedRules {
-	waap := MatchedRules{}
+	ret := MatchedRules{}
 	for _, rule := range w {
 		for _, tag := range rule["tags"].([]string) {
 			for _, match_tag := range match {
 				if tag == match_tag {
-					waap = append(waap, rule)
+					ret = append(ret, rule)
 					break
 				}
 			}
 		}
 	}
-	return waap
+	return ret
 }
 
 func (w MatchedRules) ByTag(match string) MatchedRules {
-	waap := MatchedRules{}
+	ret := MatchedRules{}
 	for _, rule := range w {
 		for _, tag := range rule["tags"].([]string) {
 			if tag == match {
-				waap = append(waap, rule)
+				ret = append(ret, rule)
 				break
 			}
 		}
 	}
-	return waap
+	return ret
 }
 
 func (w MatchedRules) ByTagRx(rx string) MatchedRules {
-	waap := MatchedRules{}
+	ret := MatchedRules{}
 	re := regexp.MustCompile(rx)
 	if re == nil {
-		return waap
+		return ret
 	}
 	for _, rule := range w {
 		for _, tag := range rule["tags"].([]string) {
-			log.Infof("ByTagRx: %s = %s -> %t", rx, tag, re.MatchString(tag))
+			log.Debugf("ByTagRx: %s = %s -> %t", rx, tag, re.MatchString(tag))
 			if re.MatchString(tag) {
-				waap = append(waap, rule)
+				ret = append(ret, rule)
 				break
 			}
 		}
 	}
-	return waap
+	return ret
 }
 
 func (w MatchedRules) ByDisruptiveness(is bool) MatchedRules {
-	log.Infof("%s", w)
-	wap := MatchedRules{}
+	ret := MatchedRules{}
 	for _, rule := range w {
 		if rule["disruptive"] == is {
-			wap = append(wap, rule)
+			ret = append(ret, rule)
 		}
 	}
-	log.Infof("ByDisruptiveness(%t) -> %d", is, len(wap))
+	log.Debugf("ByDisruptiveness(%t) -> %d", is, len(ret))
 
-	return wap
+	return ret
 }
 
 func (w MatchedRules) BySeverity(severity string) MatchedRules {
-	wap := MatchedRules{}
+	ret := MatchedRules{}
 	for _, rule := range w {
 		if rule["severity"] == severity {
-			wap = append(wap, rule)
+			ret = append(ret, rule)
 		}
 	}
-	log.Infof("BySeverity(%s) -> %d", severity, len(wap))
-	return wap
+	log.Debugf("BySeverity(%s) -> %d", severity, len(ret))
+	return ret
 }
 
 func (w MatchedRules) ByAccuracy(accuracy string) MatchedRules {
-	wap := MatchedRules{}
+	ret := MatchedRules{}
 	for _, rule := range w {
 		if rule["accuracy"] == accuracy {
-			wap = append(wap, rule)
+			ret = append(ret, rule)
 		}
 	}
-	log.Infof("ByAccuracy(%s) -> %d", accuracy, len(wap))
-	return wap
+	log.Debugf("ByAccuracy(%s) -> %d", accuracy, len(ret))
+	return ret
 }

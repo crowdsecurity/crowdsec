@@ -17,7 +17,7 @@ import (
 
 func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 	//if the request didnd't trigger inband rules, we don't want to generate an event to LAPI/CAPI
-	if !inEvt.Waap.HasInBandMatches {
+	if !inEvt.Appsec.HasInBandMatches {
 		return nil, nil
 	}
 	evt := types.Event{}
@@ -53,11 +53,11 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 	alert.EventsCount = ptr.Of(int32(1))
 	alert.Labels = []string{"appsec"} //don't know what to do about this
 	alert.Leakspeed = ptr.Of("")
-	msg := fmt.Sprintf("Application Security Engine alert: %s", inEvt.Waap.MatchedRules.GetName())
+	msg := fmt.Sprintf("Application Security Engine alert: %s", inEvt.Appsec.MatchedRules.GetName())
 	alert.Message = &msg
-	alert.Scenario = ptr.Of(inEvt.Waap.MatchedRules.GetName())           // @sbl : should we be able to do inEvt.Waap.MatchedRules.GetHash()
-	alert.ScenarioHash = ptr.Of(inEvt.Waap.MatchedRules.GetHash())       // @sbl : should we be able to do inEvt.Waap.MatchedRules.GetHash()
-	alert.ScenarioVersion = ptr.Of(inEvt.Waap.MatchedRules.GetVersion()) // @sbl : should we be able to do inEvt.Waap.MatchedRules.GetVersion()
+	alert.Scenario = ptr.Of(inEvt.Appsec.MatchedRules.GetName())
+	alert.ScenarioHash = ptr.Of(inEvt.Appsec.MatchedRules.GetHash())
+	alert.ScenarioVersion = ptr.Of(inEvt.Appsec.MatchedRules.GetVersion())
 	alert.Simulated = ptr.Of(false)
 	alert.Source = &source
 	alert.StartAt = ptr.Of(time.Now().UTC().Format(time.RFC3339))
@@ -81,7 +81,7 @@ func EventFromRequest(r *appsec.ParsedRequest) (types.Event, error) {
 		"target_uri":  r.URI,
 		"method":      r.Method,
 		"req_uuid":    r.Tx.ID(),
-		"source":      "crowdsec-waap",
+		"source":      "crowdsec-appsec",
 
 		//TBD:
 		//http_status
@@ -97,7 +97,7 @@ func EventFromRequest(r *appsec.ParsedRequest) (types.Event, error) {
 		Src:     "appsec",
 		Raw:     "dummy-appsec-data", //we discard empty Line.Raw items :)
 	}
-	evt.Waap = types.AppsecEvent{}
+	evt.Appsec = types.AppsecEvent{}
 
 	return evt, nil
 }
@@ -108,24 +108,24 @@ func LogAppsecEvent(evt *types.Event, logger *log.Entry) {
 		req = req[:10] + ".."
 	}
 
-	if evt.Meta["waap_interrupted"] == "true" {
+	if evt.Meta["appsec_interrupted"] == "true" {
 		logger.WithFields(log.Fields{
 			"module":     "appsec",
 			"source":     evt.Parsed["source_ip"],
 			"target_uri": req,
-		}).Infof("%s blocked on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Waap.MatchedRules), evt.Waap.GetRuleIDs())
+		}).Infof("%s blocked on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Appsec.MatchedRules), evt.Appsec.GetRuleIDs())
 	} else if evt.Parsed["outofband_interrupted"] == "true" {
 		logger.WithFields(log.Fields{
 			"module":     "appsec",
 			"source":     evt.Parsed["source_ip"],
 			"target_uri": req,
-		}).Infof("%s out-of-band blocking rules on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Waap.MatchedRules), evt.Waap.GetRuleIDs())
+		}).Infof("%s out-of-band blocking rules on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Appsec.MatchedRules), evt.Appsec.GetRuleIDs())
 	} else {
 		logger.WithFields(log.Fields{
 			"module":     "appsec",
 			"source":     evt.Parsed["source_ip"],
 			"target_uri": req,
-		}).Debugf("%s triggered non-blocking rules on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Waap.MatchedRules), evt.Waap.GetRuleIDs())
+		}).Debugf("%s triggered non-blocking rules on %s (%d rules) [%v]", evt.Parsed["source_ip"], req, len(evt.Appsec.MatchedRules), evt.Appsec.GetRuleIDs())
 	}
 
 }
@@ -151,8 +151,8 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 		evt.Parsed = map[string]string{}
 	}
 	if req.IsInBand {
-		evt.Meta["waap_interrupted"] = "true"
-		evt.Meta["waap_action"] = req.Tx.Interruption().Action
+		evt.Meta["appsec_interrupted"] = "true"
+		evt.Meta["appsec_action"] = req.Tx.Interruption().Action
 		evt.Parsed["inband_interrupted"] = "true"
 		evt.Parsed["inband_action"] = req.Tx.Interruption().Action
 	} else {
@@ -160,8 +160,8 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 		evt.Parsed["outofband_action"] = req.Tx.Interruption().Action
 	}
 
-	if evt.Waap.Vars == nil {
-		evt.Waap.Vars = map[string]string{}
+	if evt.Appsec.Vars == nil {
+		evt.Appsec.Vars = map[string]string{}
 	}
 
 	req.Tx.Variables().All(func(v variables.RuleVariable, col collection.Collection) bool {
@@ -178,7 +178,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 			for _, collectionToKeep := range r.AppsecRuntime.CompiledVariablesTracking {
 				match := collectionToKeep.MatchString(key)
 				if match {
-					evt.Waap.Vars[key] = variable.Value()
+					evt.Appsec.Vars[key] = variable.Value()
 					r.logger.Debugf("%s.%s = %s", variable.Variable().Name(), variable.Key(), variable.Value())
 				} else {
 					r.logger.Debugf("%s.%s != %s (%s) (not kept)", variable.Variable().Name(), variable.Key(), collectionToKeep, variable.Value())
@@ -196,9 +196,9 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 		kind := "outofband"
 		if req.IsInBand {
 			kind = "inband"
-			evt.Waap.HasInBandMatches = true
+			evt.Appsec.HasInBandMatches = true
 		} else {
-			evt.Waap.HasOutBandMatches = true
+			evt.Appsec.HasOutBandMatches = true
 		}
 
 		name := "NOT_SET"
@@ -235,7 +235,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 			"hash":       hash,
 			"version":    version,
 		}
-		evt.Waap.MatchedRules = append(evt.Waap.MatchedRules, corazaRule)
+		evt.Appsec.MatchedRules = append(evt.Appsec.MatchedRules, corazaRule)
 	}
 
 	return nil
