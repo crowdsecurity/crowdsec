@@ -97,11 +97,6 @@ func (wc *AppsecSource) UnmarshalConfig(yamlConfig []byte) error {
 		return errors.Wrap(err, "Cannot parse appsec configuration")
 	}
 
-	if wc.config.LogLevel == nil {
-		level := new(log.Level)
-		*level = log.InfoLevel
-		wc.config.LogLevel = level
-	}
 	if wc.config.ListenAddr == "" {
 		wc.config.ListenAddr = "127.0.0.1:7422"
 	}
@@ -152,7 +147,6 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		return errors.Wrap(err, "unable to parse appsec configuration")
 	}
 	w.logger = logger
-	w.logger.Logger.SetLevel(*w.config.LogLevel)
 
 	w.logger.Tracef("Appsec configuration: %+v", w.config)
 
@@ -222,7 +216,6 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 
 	//We don´t use the wrapper provided by coraza because we want to fully control what happens when a rule match to send the information in crowdsec
 	w.mux.HandleFunc(w.config.Path, w.appsecHandler)
-
 	return nil
 }
 
@@ -316,6 +309,9 @@ func (w *AppsecSource) IsAuth(apiKey string) bool {
 
 // should this be in the runner ?
 func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
+
+	w.logger.Debugf("Received request from '%s' on %s", r.RemoteAddr, r.URL.Path)
+
 	apiKey := r.Header.Get(appsec.APIKeyHeaderName)
 	clientIP := r.Header.Get(appsec.IPHeaderName)
 	remoteIP := r.RemoteAddr

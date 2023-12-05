@@ -157,10 +157,10 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 		return fmt.Errorf("name cannot be empty")
 	}
 	if wc.LogLevel == nil {
-		lvl := log.InfoLevel
+		lvl := wc.Logger.Logger.GetLevel()
 		wc.LogLevel = &lvl
 	}
-	wc.Logger = wc.Logger.WithField("name", wc.Name)
+	wc.Logger = wc.Logger.Dup().WithField("name", wc.Name)
 	wc.Logger.Logger.SetLevel(*wc.LogLevel)
 	if wc.DefaultRemediation == "" {
 		return fmt.Errorf("default_remediation cannot be empty")
