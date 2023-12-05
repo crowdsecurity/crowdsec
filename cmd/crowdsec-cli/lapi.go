@@ -499,9 +499,8 @@ func detectNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 
 	if node.Grok.RegexpName != "" {
 		grokCompiled, err := parserCTX.Grok.Get(node.Grok.RegexpName)
-		if err != nil {
-			log.Warningf("Can't get subgrok: %s", err)
-		} else {
+		// ignore error (parser does not exist?)
+		if err == nil {
 			for _, capturedField := range grokCompiled.Names() {
 				fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
 				if !slices.Contains(ret, fieldName) {
@@ -546,9 +545,8 @@ func detectSubNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 		}
 		if subnode.Grok.RegexpName != "" {
 			grokCompiled, err := parserCTX.Grok.Get(subnode.Grok.RegexpName)
-			if err != nil {
-				log.Warningf("Can't get subgrok: %s", err)
-			} else {
+			if err == nil {
+				// ignore error (parser does not exist?)
 				for _, capturedField := range grokCompiled.Names() {
 					fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
 					if !slices.Contains(ret, fieldName) {
