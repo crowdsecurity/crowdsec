@@ -12,7 +12,6 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
-	appsec "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/appsec"
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -163,8 +162,6 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 			v1.LapiRouteHits,
 			leaky.BucketsCurrentCount,
 			cache.CacheMetrics, exprhelpers.RegexpCacheMetrics,
-			appsec.AppsecGlobalParsingHistogram, appsec.AppsecReqCounter, appsec.AppsecRuleHits,
-			appsec.AppsecBlockCounter,
 		)
 	} else {
 		log.Infof("Loading prometheus collectors")
@@ -175,7 +172,6 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 			leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstantiation, leaky.BucketsOverflow, leaky.BucketsCurrentCount,
 			globalActiveDecisions, globalAlerts,
 			cache.CacheMetrics, exprhelpers.RegexpCacheMetrics,
-			appsec.AppsecGlobalParsingHistogram, appsec.AppsecInbandParsingHistogram, appsec.AppsecOutbandParsingHistogram, appsec.AppsecReqCounter, appsec.AppsecRuleHits, appsec.AppsecBlockCounter,
 		)
 
 	}

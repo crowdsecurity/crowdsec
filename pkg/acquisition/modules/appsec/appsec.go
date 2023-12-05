@@ -139,11 +139,11 @@ func (wc *AppsecSource) UnmarshalConfig(yamlConfig []byte) error {
 }
 
 func (w *AppsecSource) GetMetrics() []prometheus.Collector {
-	return nil
+	return []prometheus.Collector{AppsecReqCounter, AppsecBlockCounter, AppsecRuleHits, AppsecOutbandParsingHistogram, AppsecInbandParsingHistogram, AppsecGlobalParsingHistogram}
 }
 
 func (w *AppsecSource) GetAggregMetrics() []prometheus.Collector {
-	return nil
+	return []prometheus.Collector{AppsecReqCounter, AppsecBlockCounter, AppsecRuleHits, AppsecOutbandParsingHistogram, AppsecInbandParsingHistogram, AppsecGlobalParsingHistogram}
 }
 
 func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry) error {
