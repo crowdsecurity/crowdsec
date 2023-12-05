@@ -53,11 +53,19 @@ func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 	return items, nil
 }
 
-func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item) error {
+func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item, omitIfEmpty bool) error {
 	switch csConfig.Cscli.Output {
 	case "human":
+		nothingToDisplay := true
 		for _, itemType := range itemTypes {
+			if omitIfEmpty && len(items[itemType]) == 0 {
+				continue
+			}
 			listHubItemTable(out, "\n"+strings.ToUpper(itemType), items[itemType])
+			nothingToDisplay = false
+		}
+		if nothingToDisplay {
+			fmt.Println("No items to display")
 		}
 	case "json":
 		type itemHubStatus struct {
