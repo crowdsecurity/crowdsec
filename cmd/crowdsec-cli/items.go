@@ -53,11 +53,19 @@ func selectItems(hub *cwhub.Hub, itemType string, args []string, installedOnly b
 	return items, nil
 }
 
-func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item) error {
+func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item, omitIfEmpty bool) error {
 	switch csConfig.Cscli.Output {
 	case "human":
+		nothingToDisplay := true
 		for _, itemType := range itemTypes {
+			if omitIfEmpty && len(items[itemType]) == 0 {
+				continue
+			}
 			listHubItemTable(out, "\n"+strings.ToUpper(itemType), items[itemType])
+			nothingToDisplay = false
+		}
+		if nothingToDisplay {
+			fmt.Println("No items to display")
 		}
 	case "json":
 		type itemHubStatus struct {
@@ -75,14 +83,15 @@ func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item
 			hubStatus[itemType] = make([]itemHubStatus, len(items[itemType]))
 
 			for i, item := range items[itemType] {
-				status, emo := item.InstallStatus()
+				status := item.State.Text()
+				status_emo := item.State.Emoji()
 				hubStatus[itemType][i] = itemHubStatus{
 					Name:         item.Name,
 					LocalVersion: item.State.LocalVersion,
 					LocalPath:    item.State.LocalPath,
 					Description:  item.Description,
 					Status:       status,
-					UTF8Status:   fmt.Sprintf("%v  %s", emo, status),
+					UTF8Status:   fmt.Sprintf("%v  %s", status_emo, status),
 				}
 			}
 		}
@@ -107,10 +116,9 @@ func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item
 
 		for _, itemType := range itemTypes {
 			for _, item := range items[itemType] {
-				status, _ := item.InstallStatus()
 				row := []string{
 					item.Name,
-					status,
+					item.State.Text(),
 					item.State.LocalVersion,
 					item.Description,
 				}

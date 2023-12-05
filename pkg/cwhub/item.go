@@ -53,6 +53,48 @@ type ItemState struct {
 	BelongsToCollections []string `json:"belongs_to_collections,omitempty" yaml:"belongs_to_collections,omitempty"`
 }
 
+// IsLocal returns true if the item has been create by a user (not downloaded from the hub).
+func (s *ItemState) IsLocal() bool {
+	return s.Installed && !s.Downloaded
+}
+
+// Text returns the status of the item as a string (eg. "enabled,update-available").
+func (s *ItemState) Text() string {
+	ret := "disabled"
+
+	if s.Installed {
+		ret = "enabled"
+	}
+
+	if s.IsLocal() {
+		ret += ",local"
+	}
+
+	if s.Tainted {
+		ret += ",tainted"
+	} else if !s.UpToDate && !s.IsLocal() {
+		ret += ",update-available"
+	}
+
+	return ret
+}
+
+// Emoji returns the status of the item as an emoji (eg. emoji.Warning).
+func (s *ItemState) Emoji() emoji.Emoji {
+	switch {
+	case s.IsLocal():
+		return emoji.House
+	case !s.Installed:
+		return emoji.Prohibited
+	case s.Tainted || (!s.UpToDate && !s.IsLocal()):
+		return emoji.Warning
+	case s.Installed:
+		return emoji.CheckMark
+	default:
+		return emoji.QuestionMark
+	}
+}
+
 // Item is created from an index file and enriched with local info.
 type Item struct {
 	hub *Hub // back pointer to the hub, to retrieve other items and call install/remove methods
@@ -107,11 +149,6 @@ func (i *Item) HasSubItems() bool {
 	return i.Type == COLLECTIONS
 }
 
-// IsLocal returns true if the item has been create by a user (not downloaded from the hub).
-func (i *Item) IsLocal() bool {
-	return i.State.Installed && !i.State.Downloaded
-}
-
 // MarshalJSON is used to prepare the output for "cscli ... inspect -o json".
 // It must not use a pointer receiver.
 func (i Item) MarshalJSON() ([]byte, error) {
@@ -139,7 +176,7 @@ func (i Item) MarshalJSON() ([]byte, error) {
 		UpToDate:             i.State.UpToDate,
 		Tainted:              i.State.Tainted,
 		BelongsToCollections: i.State.BelongsToCollections,
-		Local:                i.IsLocal(),
+		Local:                i.State.IsLocal(),
 	})
 }
 
@@ -155,7 +192,7 @@ func (i Item) MarshalYAML() (interface{}, error) {
 	}{
 		Alias: Alias(i),
 		State: i.State,
-		Local: i.IsLocal(),
+		Local: i.State.IsLocal(),
 	}, nil
 }
 
@@ -288,48 +325,6 @@ func (i *Item) descendants() ([]*Item, error) {
 	}
 
 	return ret, nil
-}
-
-// InstallStatus returns the status of the item as a string and an emoji
-// (eg. "enabled,update-available" and emoji.Warning).
-func (i *Item) InstallStatus() (string, emoji.Emoji) {
-	status := "disabled"
-	ok := false
-
-	if i.State.Installed {
-		ok = true
-		status = "enabled"
-	}
-
-	managed := true
-	if i.IsLocal() {
-		managed = false
-		status += ",local"
-	}
-
-	warning := false
-	if i.State.Tainted {
-		warning = true
-		status += ",tainted"
-	} else if !i.State.UpToDate && !i.IsLocal() {
-		warning = true
-		status += ",update-available"
-	}
-
-	emo := emoji.QuestionMark
-
-	switch {
-	case !managed:
-		emo = emoji.House
-	case !i.State.Installed:
-		emo = emoji.Prohibited
-	case warning:
-		emo = emoji.Warning
-	case ok:
-		emo = emoji.CheckMark
-	}
-
-	return status, emo
 }
 
 // versionStatus returns the status of the item version compared to the hub version.

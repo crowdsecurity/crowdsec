@@ -20,7 +20,7 @@ import (
 func (i *Item) Upgrade(force bool) (bool, error) {
 	updated := false
 
-	if i.IsLocal() {
+	if i.State.IsLocal() {
 		log.Infof("not upgrading %s: local item", i.Name)
 		return false, nil
 	}
@@ -155,7 +155,7 @@ func (i *Item) fetch() ([]byte, error) {
 
 // download downloads the item from the hub and writes it to the hub directory.
 func (i *Item) download(overwrite bool) (string, error) {
-	if i.IsLocal() {
+	if i.State.IsLocal() {
 		return "", fmt.Errorf("%s is local, can't download", i.Name)
 	}
 	// if user didn't --force, don't overwrite local, tainted, up-to-date files

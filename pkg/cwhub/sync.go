@@ -420,7 +420,7 @@ func (h *Hub) localSync() error {
 		case versionFuture:
 			warnings = append(warnings, fmt.Sprintf("collection %s is in the future (currently:%s, latest:%s)", item.Name, item.State.LocalVersion, item.Version))
 		case versionUnknown:
-			if !item.IsLocal() {
+			if !item.State.IsLocal() {
 				warnings = append(warnings, fmt.Sprintf("collection %s is tainted (latest:%s)", item.Name, item.Version))
 			}
 		}
