@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"runtime"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -92,14 +91,6 @@ func (c *Container) Create() error {
 		Image: c.Image,
 		Tty:   true,
 		Env:   env,
-	}
-	os := runtime.GOOS
-	switch os {
-	case "linux":
-	case "windows", "darwin":
-		return fmt.Errorf("mac and windows are not supported yet")
-	default:
-		return fmt.Errorf("OS '%s' is not supported", os)
 	}
 
 	log.Infof("creating container '%s'", c.Name)

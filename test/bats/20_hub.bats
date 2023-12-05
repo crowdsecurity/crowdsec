@@ -34,17 +34,19 @@ teardown() {
 
     # no items
     rune -0 cscli hub list
-    assert_output --regexp "APPSEC-CONFIGS.*APPSEC-RULES.*PARSERS.*POSTOVERFLOWS.*SCENARIOS.*COLLECTIONS.*"
+    assert_output "No items to display"
     rune -0 cscli hub list -o json
     assert_json '{appsec-configs:[],appsec-rules:[],parsers:[],scenarios:[],collections:[],postoverflows:[]}'
     rune -0 cscli hub list -o raw
     assert_output 'name,status,version,description,type'
 
-    # some items
+    # some items: with output=human, show only non-empty tables
     rune -0 cscli parsers install crowdsecurity/whitelists
     rune -0 cscli scenarios install crowdsecurity/telnet-bf
     rune -0 cscli hub list
-    assert_output --regexp ".*PARSERS.*crowdsecurity/whitelists.*POSTOVERFLOWS.*SCENARIOS.*crowdsecurity/telnet-bf.*COLLECTIONS.*"
+    assert_output --regexp ".*PARSERS.*crowdsecurity/whitelists.*SCENARIOS.*crowdsecurity/telnet-bf.*"
+    refute_output --partial 'POSTOVERFLOWS'
+    refute_output --partial 'COLLECTIONS'
     rune -0 cscli hub list -o json
     rune -0 jq -e '(.parsers | length == 1) and (.scenarios | length == 1)' <(output)
     rune -0 cscli hub list -o raw

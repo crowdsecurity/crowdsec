@@ -61,12 +61,12 @@ make_init_data() {
     ./instance-db config-yaml
     ./instance-db setup
 
+    ./bin/preload-hub-items
+
     # when installed packages are always using sqlite, so no need to regenerate
     # local credz for sqlite
 
-    ./bin/preload-hub-items
-
-    [[ "${DB_BACKEND}" == "sqlite" ]] || ${CSCLI} machines add --auto
+    [[ "${DB_BACKEND}" == "sqlite" ]] || ${CSCLI} machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto --force
 
     mkdir -p "$LOCAL_INIT_DIR"
 

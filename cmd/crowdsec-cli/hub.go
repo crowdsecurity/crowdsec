@@ -66,7 +66,7 @@ func runHubList(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	err = listItems(color.Output, cwhub.ItemTypes, items)
+	err = listItems(color.Output, cwhub.ItemTypes, items, true)
 	if err != nil {
 		return err
 	}
