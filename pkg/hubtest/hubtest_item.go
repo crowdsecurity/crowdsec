@@ -617,7 +617,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 				log.Errorf("unable to read crowdsec log file '%s': %s", crowdsecLogFile, err)
 			} else {
 				log.Errorf("crowdsec log file '%s'", crowdsecLogFile)
-				fmt.Printf("%s\n", string(crowdsecLog))
+				log.Errorf("%s\n", string(crowdsecLog))
 			}
 		}
 	} else {
@@ -631,7 +631,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 				log.Errorf("unable to read crowdsec log file '%s': %s", crowdsecLogFile, err)
 			} else {
 				log.Errorf("crowdsec log file '%s'", crowdsecLogFile)
-				fmt.Printf("%s\n", string(crowdsecLog))
+				log.Errorf("%s\n", string(crowdsecLog))
 			}
 		}
 	}
