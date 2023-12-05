@@ -14,7 +14,7 @@ func NewMiddlewares(dbClient *database.Client) (*Middlewares, error) {
 
 	ret.JWT, err = NewJWT(dbClient)
 	if err != nil {
-		return &Middlewares{}, err
+		return nil, err
 	}
 
 	ret.APIKey = NewAPIKey(dbClient)

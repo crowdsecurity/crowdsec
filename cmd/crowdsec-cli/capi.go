@@ -110,7 +110,7 @@ func NewCapiRegisterCmd() *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("write api credentials in '%s' failed: %w", dumpFile, err)
 				}
-				log.Printf("Central API credentials dumped to '%s'", dumpFile)
+				log.Printf("Central API credentials written to '%s'", dumpFile)
 			} else {
 				fmt.Printf("%s\n", string(apiConfigDump))
 			}

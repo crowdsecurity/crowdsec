@@ -58,13 +58,12 @@ func (s *HTTPPlugin) Notify(ctx context.Context, notification *protobufs.Notific
 	if err != nil {
 		return nil, err
 	}
-
 	for headerName, headerValue := range cfg.Headers {
 		logger.Debug(fmt.Sprintf("adding header %s: %s", headerName, headerValue))
 		request.Header.Add(headerName, headerValue)
 	}
 	logger.Debug(fmt.Sprintf("making HTTP %s call to %s with body %s", cfg.Method, cfg.URL, notification.Text))
-	resp, err := client.Do(request)
+	resp, err := client.Do(request.WithContext(ctx))
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to make HTTP request : %s", err))
 		return nil, err
