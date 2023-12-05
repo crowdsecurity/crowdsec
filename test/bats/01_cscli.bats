@@ -108,6 +108,20 @@ teardown() {
     rune -0 cscli config show -o json
     rune -0 jq -c '.API.Client.Credentials | [.url,.login[0:32]]' <(output)
     assert_json '["http://127.0.0.1:8080/","githubciXXXXXXXXXXXXXXXXXXXXXXXX"]'
+
+    # pointer to boolean
+
+    rune -0 cscli config show --key Config.API.Client.InsecureSkipVerify
+    assert_output "&false"
+
+    # complex type
+    rune -0 cscli config show --key Config.PluginConfig
+    assert_output - <<-EOT
+	&csconfig.PluginCfg{
+	  User: "nobody",
+	  Group: "nogroup",
+	}
+	EOT
 }
 
 @test "cscli - required configuration paths" {
