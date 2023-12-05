@@ -50,7 +50,6 @@ type AppsecSource struct {
 	logger        *log.Entry
 	mux           *http.ServeMux
 	server        *http.Server
-	addr          string
 	outChan       chan types.Event
 	InChan        chan appsec.ParsedRequest
 	AppsecRuntime *appsec.AppsecRuntimeConfig
