@@ -433,7 +433,7 @@ func (s *S3Source) readFile(bucket string, key string) error {
 			l.Time = time.Now().UTC()
 			l.Process = true
 			l.Module = s.GetName()
-			l.Src = bucket + "/" + key
+			l.Src = bucket
 			var evt types.Event
 			if !s.Config.UseTimeMachine {
 				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: types.LIVE}
