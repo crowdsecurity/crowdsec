@@ -21,9 +21,15 @@ func GetLineCountForFile(filepath string) (int, error) {
 	}
 	defer f.Close()
 	lc := 0
-	fs := bufio.NewScanner(f)
-	for fs.Scan() {
-		lc++
+	fs := bufio.NewReader(f)
+	for {
+		input, err := fs.ReadBytes('\n')
+		if len(input) > 1 {
+			lc++
+		}
+		if err != nil && err == io.EOF {
+			break
+		}
 	}
 	return lc, nil
 }
@@ -79,19 +85,6 @@ func runExplain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fileInfo, _ := os.Stdin.Stat()
-
-	if logType == "" || (logLine == "" && logFile == "" && dsn == "") {
-		printHelp(cmd)
-		fmt.Println()
-		fmt.Printf("Please provide --type flag\n")
-		os.Exit(1)
-	}
-
-	if logFile == "-" && ((fileInfo.Mode() & os.ModeCharDevice) == os.ModeCharDevice) {
-		return fmt.Errorf("the option -f - is intended to work with pipes")
-	}
-
 	var f *os.File
 
 	// using empty string fallback to /tmp
@@ -99,6 +92,13 @@ func runExplain(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("couldn't create a temporary directory to store cscli explain result: %s", err)
 	}
+	defer func() {
+		if _, err := os.Stat(dir); !os.IsNotExist(err) {
+			if err := os.RemoveAll(dir); err != nil {
+				log.Errorf("unable to delete temporary directory '%s': %s", dir, err)
+			}
+		}
+	}()
 	tmpFile := ""
 	// we create a  temporary log file if a log line/stdin has been provided
 	if logLine != "" || logFile == "-" {
@@ -121,13 +121,15 @@ func runExplain(cmd *cobra.Command, args []string) error {
 				if err != nil && err == io.EOF {
 					break
 				}
-				_, err = f.Write(input)
-				if err != nil {
+				if len(input) > 1 {
+					_, err = f.Write(input)
+				}
+				if err != nil || len(input) <= 1 {
 					errCount++
 				}
 			}
 			if errCount > 0 {
-				log.Warnf("Failed to write %d lines to tmp file", errCount)
+				log.Warnf("Failed to write %d lines to %s", errCount, tmpFile)
 			}
 		}
 		f.Close()
@@ -145,8 +147,12 @@ func runExplain(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		log.Debugf("file %s has %d lines", absolutePath, lineCount)
+		if lineCount == 0 {
+			return fmt.Errorf("the log file is empty: %s", absolutePath)
+		}
 		if lineCount > 100 {
-			log.Warnf("The log file contains %d lines. This may take a lot of resources.", lineCount)
+			log.Warnf("%s contains %d lines. This may take a lot of resources.", absolutePath, lineCount)
 		}
 	}
 
@@ -166,12 +172,6 @@ func runExplain(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("fail to run crowdsec for test: %v", err)
 	}
 
-	// rm the temporary log file if only a log line/stdin was provided
-	if tmpFile != "" {
-		if err := os.Remove(tmpFile); err != nil {
-			return fmt.Errorf("unable to remove tmp log file '%s': %+v", tmpFile, err)
-		}
-	}
 	parserDumpFile := filepath.Join(dir, hubtest.ParserResultFileName)
 	bucketStateDumpFile := filepath.Join(dir, hubtest.BucketPourResultFileName)
 
@@ -186,10 +186,6 @@ func runExplain(cmd *cobra.Command, args []string) error {
 	}
 
 	hubtest.DumpTree(*parserDump, *bucketStateDump, opts)
-
-	if err := os.RemoveAll(dir); err != nil {
-		return fmt.Errorf("unable to delete temporary directory '%s': %s", dir, err)
-	}
 
 	return nil
 }
@@ -210,6 +206,45 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		RunE:              runExplain,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			flags := cmd.Flags()
+
+			logFile, err := flags.GetString("file")
+			if err != nil {
+				return err
+			}
+
+			dsn, err := flags.GetString("dsn")
+			if err != nil {
+				return err
+			}
+
+			logLine, err := flags.GetString("log")
+			if err != nil {
+				return err
+			}
+
+			logType, err := flags.GetString("type")
+			if err != nil {
+				return err
+			}
+
+			if logLine == "" && logFile == "" && dsn == "" {
+				printHelp(cmd)
+				fmt.Println()
+				return fmt.Errorf("please provide --log, --file or --dsn flag")
+			}
+			if logType == "" {
+				printHelp(cmd)
+				fmt.Println()
+				return fmt.Errorf("please provide --type flag")
+			}
+			fileInfo, _ := os.Stdin.Stat()
+			if logFile == "-" && ((fileInfo.Mode() & os.ModeCharDevice) == os.ModeCharDevice) {
+				return fmt.Errorf("the option -f - is intended to work with pipes")
+			}
+			return nil
+		},
 	}
 
 	flags := cmdExplain.Flags()

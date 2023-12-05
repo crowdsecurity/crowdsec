@@ -19,8 +19,8 @@ const CapiListsMachineID = types.ListOrigin
 func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipAddress string, isValidated bool, force bool, authType string) (*ent.Machine, error) {
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
 	if err != nil {
-		c.Log.Warningf("CreateMachine : %s", err)
-		return nil, errors.Wrap(HashError, "")
+		c.Log.Warningf("CreateMachine: %s", err)
+		return nil, HashError
 	}
 
 	machineExist, err := c.Ent.Machine.
@@ -78,7 +78,7 @@ func (c *Client) QueryMachineByID(machineID string) (*ent.Machine, error) {
 func (c *Client) ListMachines() ([]*ent.Machine, error) {
 	machines, err := c.Ent.Machine.Query().All(c.CTX)
 	if err != nil {
-		return []*ent.Machine{}, errors.Wrapf(QueryFail, "listing machines: %s", err)
+		return nil, errors.Wrapf(QueryFail, "listing machines: %s", err)
 	}
 	return machines, nil
 }
@@ -101,7 +101,7 @@ func (c *Client) QueryPendingMachine() ([]*ent.Machine, error) {
 	machines, err = c.Ent.Machine.Query().Where(machine.IsValidatedEQ(false)).All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("QueryPendingMachine : %s", err)
-		return []*ent.Machine{}, errors.Wrapf(QueryFail, "querying pending machines: %s", err)
+		return nil, errors.Wrapf(QueryFail, "querying pending machines: %s", err)
 	}
 	return machines, nil
 }
@@ -190,12 +190,13 @@ func (c *Client) IsMachineRegistered(machineID string) (bool, error) {
 		return true, nil
 	}
 	if len(exist) > 1 {
-		return false, fmt.Errorf("More than one item with the same machineID in database")
+		return false, fmt.Errorf("more than one item with the same machineID in database")
 	}
 
 	return false, nil
 
 }
+
 func (c *Client) QueryLastValidatedHeartbeatLT(t time.Time) ([]*ent.Machine, error) {
 	return c.Ent.Machine.Query().Where(machine.LastHeartbeatLT(t), machine.IsValidatedEQ(true)).All(c.CTX)
 }

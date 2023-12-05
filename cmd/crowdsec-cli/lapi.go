@@ -150,11 +150,11 @@ func runLapiRegister(cmd *cobra.Command, args []string) error {
 		log.Fatalf("unable to marshal api credentials: %s", err)
 	}
 	if dumpFile != "" {
-		err = os.WriteFile(dumpFile, apiConfigDump, 0644)
+		err = os.WriteFile(dumpFile, apiConfigDump, 0o600)
 		if err != nil {
 			log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
 		}
-		log.Printf("Local API credentials dumped to '%s'", dumpFile)
+		log.Printf("Local API credentials written to '%s'", dumpFile)
 	} else {
 		fmt.Printf("%s\n", string(apiConfigDump))
 	}
