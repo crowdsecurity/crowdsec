@@ -109,7 +109,7 @@ func (h *Hub) ItemStats() []string {
 		loaded += fmt.Sprintf("%d %s, ", len(h.GetItemMap(itemType)), itemType)
 
 		for _, item := range h.GetItemMap(itemType) {
-			if item.IsLocal() {
+			if item.State.IsLocal() {
 				local++
 			}
 

@@ -262,10 +262,6 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		return nil, errors.New("You must run at least the API Server or crowdsec")
 	}
 
-	if flags.TestMode && !cConfig.DisableAgent {
-		cConfig.Crowdsec.LintOnly = true
-	}
-
 	if flags.OneShotDSN != "" && flags.SingleFileType == "" {
 		return nil, errors.New("-dsn requires a -type argument")
 	}
