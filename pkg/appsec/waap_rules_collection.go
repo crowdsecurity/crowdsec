@@ -1,6 +1,7 @@
 package appsec
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -127,6 +128,9 @@ func LoadCollection(pattern string, logger *log.Entry) ([]AppsecCollection, erro
 			}
 		}
 		ret = append(ret, appsecCol)
+	}
+	if len(ret) == 0 {
+		return nil, fmt.Errorf("no appsec-rules found for pattern %s", pattern)
 	}
 	return ret, nil
 }
