@@ -202,7 +202,7 @@ if isfalse "$DISABLE_LOCAL_API"; then
             # if the db is persistent but the credentials are not, we need to
             # delete the old machine to generate new credentials
             cscli machines delete "$CUSTOM_HOSTNAME" >/dev/null 2>&1 || true
-            cscli machines add "$CUSTOM_HOSTNAME" --auto
+            cscli machines add "$CUSTOM_HOSTNAME" --auto --force
         fi
     fi
 
