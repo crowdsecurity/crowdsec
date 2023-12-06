@@ -91,7 +91,7 @@ require (
 )
 
 require (
-	github.com/crowdsecurity/coraza/v3 v3.0.0-20231204135508-23eef9bf7f39
+	github.com/crowdsecurity/coraza/v3 v3.0.0-20231206171741-c5b03c916879
 	golang.org/x/text v0.14.0
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.0
