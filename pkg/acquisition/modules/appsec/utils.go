@@ -34,8 +34,8 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 
 	alert := models.Alert{}
 	alert.Capacity = ptr.Of(int32(1))
-	alert.Events = make([]*models.Event, 0) //@tko -> URI, method, UA, param name
-	alert.Meta = make(models.Meta, 0)       //@tko -> URI, method, UA, param name
+	alert.Events = make([]*models.Event, 0)
+	alert.Meta = make(models.Meta, 0)
 	for _, key := range []string{"target_uri", "method"} {
 
 		valueByte, err := json.Marshal([]string{inEvt.Parsed[key]})
@@ -46,6 +46,31 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 
 		meta := models.MetaItems0{
 			Key:   key,
+			Value: string(valueByte),
+		}
+		alert.Meta = append(alert.Meta, &meta)
+	}
+	matchedZones := inEvt.Appsec.GetMatchedZones()
+	if matchedZones != nil {
+		valueByte, err := json.Marshal(matchedZones)
+		if err != nil {
+			log.Debugf("unable to serialize key matched_zones")
+		} else {
+			meta := models.MetaItems0{
+				Key:   "matched_zones",
+				Value: string(valueByte),
+			}
+			alert.Meta = append(alert.Meta, &meta)
+		}
+	}
+	for _, key := range evt.Appsec.MatchedRules.GetMatchedZones() {
+		valueByte, err := json.Marshal([]string{key})
+		if err != nil {
+			log.Debugf("unable to serialize key %s", key)
+			continue
+		}
+		meta := models.MetaItems0{
+			Key:   "matched_zones",
 			Value: string(valueByte),
 		}
 		alert.Meta = append(alert.Meta, &meta)
@@ -216,23 +241,34 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 
 		AppsecRuleHits.With(prometheus.Labels{"rule_name": ruleNameProm, "type": kind, "source": req.RemoteAddrNormalized, "appsec_engine": req.AppsecEngine}).Inc()
 
+		matchedZones := make([]string, 0)
+		for _, matchData := range rule.MatchedDatas() {
+			zone := matchData.Variable().Name()
+			varName := matchData.Key()
+			if varName != "" {
+				zone += "." + varName
+			}
+			matchedZones = append(matchedZones, zone)
+		}
+
 		corazaRule := map[string]interface{}{
-			"id":         rule.Rule().ID(),
-			"uri":        evt.Parsed["uri"],
-			"rule_type":  kind,
-			"method":     evt.Parsed["method"],
-			"disruptive": rule.Disruptive(),
-			"tags":       rule.Rule().Tags(),
-			"file":       rule.Rule().File(),
-			"file_line":  rule.Rule().Line(),
-			"revision":   rule.Rule().Revision(),
-			"secmark":    rule.Rule().SecMark(),
-			"accuracy":   rule.Rule().Accuracy(),
-			"msg":        rule.Message(),
-			"severity":   rule.Rule().Severity().String(),
-			"name":       name,
-			"hash":       hash,
-			"version":    version,
+			"id":            rule.Rule().ID(),
+			"uri":           evt.Parsed["uri"],
+			"rule_type":     kind,
+			"method":        evt.Parsed["method"],
+			"disruptive":    rule.Disruptive(),
+			"tags":          rule.Rule().Tags(),
+			"file":          rule.Rule().File(),
+			"file_line":     rule.Rule().Line(),
+			"revision":      rule.Rule().Revision(),
+			"secmark":       rule.Rule().SecMark(),
+			"accuracy":      rule.Rule().Accuracy(),
+			"msg":           rule.Message(),
+			"severity":      rule.Rule().Severity().String(),
+			"name":          name,
+			"hash":          hash,
+			"version":       version,
+			"matched_zones": matchedZones,
 		}
 		evt.Appsec.MatchedRules = append(evt.Appsec.MatchedRules, corazaRule)
 	}

@@ -128,6 +128,15 @@ func (w MatchedRules) Kinds() []string {
 	return ret
 }
 
+func (w MatchedRules) GetMatchedZones() []string {
+	ret := make([]string, 0)
+
+	for _, rule := range w {
+		ret = append(ret, rule["matched_zones"].([]string)...)
+	}
+	return ret
+}
+
 // filters
 func (w MatchedRules) ByID(id int) MatchedRules {
 	ret := MatchedRules{}
