@@ -238,70 +238,64 @@ func NewItemsCmd(typeName string) *cobra.Command {
 		DisableAutoGenTag: true,
 	}
 
-	cmd.AddCommand(NewItemsInstallCmd(typeName))
-	cmd.AddCommand(NewItemsRemoveCmd(typeName))
-	cmd.AddCommand(NewItemsUpgradeCmd(typeName))
-	cmd.AddCommand(NewItemsInspectCmd(typeName))
-	cmd.AddCommand(NewItemsListCmd(typeName))
+	cmd.AddCommand(it.NewInstallCmd())
+	cmd.AddCommand(it.NewRemoveCmd())
+	cmd.AddCommand(it.NewUpgradeCmd())
+	cmd.AddCommand(it.NewInspectCmd())
+	cmd.AddCommand(it.NewListCmd())
 
 	return cmd
 }
 
-func itemsInstallRunner(it hubItemType) func(cmd *cobra.Command, args []string) error {
-	run := func(cmd *cobra.Command, args []string) error {
-		flags := cmd.Flags()
+func (it hubItemType) Install(cmd *cobra.Command, args []string) error {
+	flags := cmd.Flags()
 
-		downloadOnly, err := flags.GetBool("download-only")
-		if err != nil {
-			return err
-		}
-
-		force, err := flags.GetBool("force")
-		if err != nil {
-			return err
-		}
-
-		ignoreError, err := flags.GetBool("ignore")
-		if err != nil {
-			return err
-		}
-
-		hub, err := require.Hub(csConfig, require.RemoteHub(csConfig))
-		if err != nil {
-			return err
-		}
-
-		for _, name := range args {
-			item := hub.GetItem(it.name, name)
-			if item == nil {
-				msg := suggestNearestMessage(hub, it.name, name)
-				if !ignoreError {
-					return fmt.Errorf(msg)
-				}
-
-				log.Errorf(msg)
-
-				continue
-			}
-
-			if err := item.Install(force, downloadOnly); err != nil {
-				if !ignoreError {
-					return fmt.Errorf("error while installing '%s': %w", item.Name, err)
-				}
-				log.Errorf("Error while installing '%s': %s", item.Name, err)
-			}
-		}
-
-		log.Infof(ReloadMessage())
-		return nil
+	downloadOnly, err := flags.GetBool("download-only")
+	if err != nil {
+		return err
 	}
 
-	return run
+	force, err := flags.GetBool("force")
+	if err != nil {
+		return err
+	}
+
+	ignoreError, err := flags.GetBool("ignore")
+	if err != nil {
+		return err
+	}
+
+	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig))
+	if err != nil {
+		return err
+	}
+
+	for _, name := range args {
+		item := hub.GetItem(it.name, name)
+		if item == nil {
+			msg := suggestNearestMessage(hub, it.name, name)
+			if !ignoreError {
+				return fmt.Errorf(msg)
+			}
+
+			log.Errorf(msg)
+
+			continue
+		}
+
+		if err := item.Install(force, downloadOnly); err != nil {
+			if !ignoreError {
+				return fmt.Errorf("error while installing '%s': %w", item.Name, err)
+			}
+			log.Errorf("Error while installing '%s': %s", item.Name, err)
+		}
+	}
+
+	log.Infof(ReloadMessage())
+	return nil
 }
 
-func NewItemsInstallCmd(typeName string) *cobra.Command {
-	it := hubItemTypes[typeName]
-
+func (it hubItemType) NewInstallCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               coalesce.String(it.installHelp.use, "install [item]..."),
 		Short:             coalesce.String(it.installHelp.short, fmt.Sprintf("Install given %s", it.oneOrMore)),
@@ -310,9 +304,9 @@ func NewItemsInstallCmd(typeName string) *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compAllItems(typeName, args, toComplete)
+			return compAllItems(it.name, args, toComplete)
 		},
-		RunE: itemsInstallRunner(it),
+		RunE: it.Install,
 	}
 
 	flags := cmd.Flags()
@@ -336,87 +330,47 @@ func istalledParentNames(item *cwhub.Item) []string {
 	return ret
 }
 
-func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) error {
-	run := func(cmd *cobra.Command, args []string) error {
-		flags := cmd.Flags()
+func (it hubItemType) Remove(cmd *cobra.Command, args []string) error {
+	flags := cmd.Flags()
 
-		purge, err := flags.GetBool("purge")
+	purge, err := flags.GetBool("purge")
+	if err != nil {
+		return err
+	}
+
+	force, err := flags.GetBool("force")
+	if err != nil {
+		return err
+	}
+
+	all, err := flags.GetBool("all")
+	if err != nil {
+		return err
+	}
+
+	hub, err := require.Hub(csConfig, nil)
+	if err != nil {
+		return err
+	}
+
+	if all {
+		getter := hub.GetInstalledItems
+		if purge {
+			getter = hub.GetAllItems
+		}
+
+		items, err := getter(it.name)
 		if err != nil {
 			return err
-		}
-
-		force, err := flags.GetBool("force")
-		if err != nil {
-			return err
-		}
-
-		all, err := flags.GetBool("all")
-		if err != nil {
-			return err
-		}
-
-		hub, err := require.Hub(csConfig, nil)
-		if err != nil {
-			return err
-		}
-
-		if all {
-			getter := hub.GetInstalledItems
-			if purge {
-				getter = hub.GetAllItems
-			}
-
-			items, err := getter(it.name)
-			if err != nil {
-				return err
-			}
-
-			removed := 0
-
-			for _, item := range items {
-				didRemove, err := item.Remove(purge, force)
-				if err != nil {
-					return err
-				}
-				if didRemove {
-					log.Infof("Removed %s", item.Name)
-					removed++
-				}
-			}
-
-			log.Infof("Removed %d %s", removed, it.name)
-			if removed > 0 {
-				log.Infof(ReloadMessage())
-			}
-
-			return nil
-		}
-
-		if len(args) == 0 {
-			return fmt.Errorf("specify at least one %s to remove or '--all'", it.singular)
 		}
 
 		removed := 0
 
-		for _, itemName := range args {
-			item := hub.GetItem(it.name, itemName)
-			if item == nil {
-				return fmt.Errorf("can't find '%s' in %s", itemName, it.name)
-			}
-
-			parents := istalledParentNames(item)
-
-			if !force && len(parents) > 0 {
-				log.Warningf("%s belongs to collections: %s", item.Name, parents)
-				log.Warningf("Run 'sudo cscli %s remove %s --force' if you want to force remove this %s", item.Type, item.Name, it.singular)
-				continue
-			}
-
+		for _, item := range items {
 			didRemove, err := item.Remove(purge, force)
 			if err != nil {
 				return err
 			}
-
 			if didRemove {
 				log.Infof("Removed %s", item.Name)
 				removed++
@@ -430,12 +384,47 @@ func itemsRemoveRunner(it hubItemType) func(cmd *cobra.Command, args []string) e
 
 		return nil
 	}
-	return run
+
+	if len(args) == 0 {
+		return fmt.Errorf("specify at least one %s to remove or '--all'", it.singular)
+	}
+
+	removed := 0
+
+	for _, itemName := range args {
+		item := hub.GetItem(it.name, itemName)
+		if item == nil {
+			return fmt.Errorf("can't find '%s' in %s", itemName, it.name)
+		}
+
+		parents := istalledParentNames(item)
+
+		if !force && len(parents) > 0 {
+			log.Warningf("%s belongs to collections: %s", item.Name, parents)
+			log.Warningf("Run 'sudo cscli %s remove %s --force' if you want to force remove this %s", item.Type, item.Name, it.singular)
+			continue
+		}
+
+		didRemove, err := item.Remove(purge, force)
+		if err != nil {
+			return err
+		}
+
+		if didRemove {
+			log.Infof("Removed %s", item.Name)
+			removed++
+		}
+	}
+
+	log.Infof("Removed %d %s", removed, it.name)
+	if removed > 0 {
+		log.Infof(ReloadMessage())
+	}
+
+	return nil
 }
 
-func NewItemsRemoveCmd(typeName string) *cobra.Command {
-	it := hubItemTypes[typeName]
-
+func (it hubItemType) NewRemoveCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               coalesce.String(it.removeHelp.use, "remove [item]..."),
 		Short:             coalesce.String(it.removeHelp.short, fmt.Sprintf("Remove given %s", it.oneOrMore)),
@@ -446,7 +435,7 @@ func NewItemsRemoveCmd(typeName string) *cobra.Command {
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(it.name, args, toComplete)
 		},
-		RunE: itemsRemoveRunner(it),
+		RunE: it.Remove,
 	}
 
 	flags := cmd.Flags()
@@ -457,74 +446,44 @@ func NewItemsRemoveCmd(typeName string) *cobra.Command {
 	return cmd
 }
 
-func itemsUpgradeRunner(it hubItemType) func(cmd *cobra.Command, args []string) error {
-	run := func(cmd *cobra.Command, args []string) error {
-		flags := cmd.Flags()
+func (it hubItemType) Upgrade(cmd *cobra.Command, args []string) error {
+	flags := cmd.Flags()
 
-		force, err := flags.GetBool("force")
+	force, err := flags.GetBool("force")
+	if err != nil {
+		return err
+	}
+
+	all, err := flags.GetBool("all")
+	if err != nil {
+		return err
+	}
+
+	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig))
+	if err != nil {
+		return err
+	}
+
+	if all {
+		items, err := hub.GetInstalledItems(it.name)
 		if err != nil {
 			return err
-		}
-
-		all, err := flags.GetBool("all")
-		if err != nil {
-			return err
-		}
-
-		hub, err := require.Hub(csConfig, require.RemoteHub(csConfig))
-		if err != nil {
-			return err
-		}
-
-		if all {
-			items, err := hub.GetInstalledItems(it.name)
-			if err != nil {
-				return err
-			}
-
-			updated := 0
-
-			for _, item := range items {
-				didUpdate, err := item.Upgrade(force)
-				if err != nil {
-					return err
-				}
-				if didUpdate {
-					updated++
-				}
-			}
-
-			log.Infof("Updated %d %s", updated, it.name)
-
-			if updated > 0 {
-				log.Infof(ReloadMessage())
-			}
-
-			return nil
-		}
-
-		if len(args) == 0 {
-			return fmt.Errorf("specify at least one %s to upgrade or '--all'", it.singular)
 		}
 
 		updated := 0
 
-		for _, itemName := range args {
-			item := hub.GetItem(it.name, itemName)
-			if item == nil {
-				return fmt.Errorf("can't find '%s' in %s", itemName, it.name)
-			}
-
+		for _, item := range items {
 			didUpdate, err := item.Upgrade(force)
 			if err != nil {
 				return err
 			}
-
 			if didUpdate {
-				log.Infof("Updated %s", item.Name)
 				updated++
 			}
 		}
+
+		log.Infof("Updated %d %s", updated, it.name)
+
 		if updated > 0 {
 			log.Infof(ReloadMessage())
 		}
@@ -532,12 +491,36 @@ func itemsUpgradeRunner(it hubItemType) func(cmd *cobra.Command, args []string) 
 		return nil
 	}
 
-	return run
+	if len(args) == 0 {
+		return fmt.Errorf("specify at least one %s to upgrade or '--all'", it.singular)
+	}
+
+	updated := 0
+
+	for _, itemName := range args {
+		item := hub.GetItem(it.name, itemName)
+		if item == nil {
+			return fmt.Errorf("can't find '%s' in %s", itemName, it.name)
+		}
+
+		didUpdate, err := item.Upgrade(force)
+		if err != nil {
+			return err
+		}
+
+		if didUpdate {
+			log.Infof("Updated %s", item.Name)
+			updated++
+		}
+	}
+	if updated > 0 {
+		log.Infof(ReloadMessage())
+	}
+
+	return nil
 }
 
-func NewItemsUpgradeCmd(typeName string) *cobra.Command {
-	it := hubItemTypes[typeName]
-
+func (it hubItemType) NewUpgradeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               coalesce.String(it.upgradeHelp.use, "upgrade [item]..."),
 		Short:             coalesce.String(it.upgradeHelp.short, fmt.Sprintf("Upgrade given %s", it.oneOrMore)),
@@ -547,7 +530,7 @@ func NewItemsUpgradeCmd(typeName string) *cobra.Command {
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(it.name, args, toComplete)
 		},
-		RunE: itemsUpgradeRunner(it),
+		RunE: it.Upgrade,
 	}
 
 	flags := cmd.Flags()
@@ -557,48 +540,42 @@ func NewItemsUpgradeCmd(typeName string) *cobra.Command {
 	return cmd
 }
 
-func itemsInspectRunner(it hubItemType) func(cmd *cobra.Command, args []string) error {
-	run := func(cmd *cobra.Command, args []string) error {
-		flags := cmd.Flags()
+func (it hubItemType) Inspect(cmd *cobra.Command, args []string) error {
+	flags := cmd.Flags()
 
-		url, err := flags.GetString("url")
-		if err != nil {
-			return err
-		}
-
-		if url != "" {
-			csConfig.Cscli.PrometheusUrl = url
-		}
-
-		noMetrics, err := flags.GetBool("no-metrics")
-		if err != nil {
-			return err
-		}
-
-		hub, err := require.Hub(csConfig, nil)
-		if err != nil {
-			return err
-		}
-
-		for _, name := range args {
-			item := hub.GetItem(it.name, name)
-			if item == nil {
-				return fmt.Errorf("can't find '%s' in %s", name, it.name)
-			}
-			if err = InspectItem(item, !noMetrics); err != nil {
-				return err
-			}
-		}
-
-		return nil
+	url, err := flags.GetString("url")
+	if err != nil {
+		return err
 	}
 
-	return run
+	if url != "" {
+		csConfig.Cscli.PrometheusUrl = url
+	}
+
+	noMetrics, err := flags.GetBool("no-metrics")
+	if err != nil {
+		return err
+	}
+
+	hub, err := require.Hub(csConfig, nil)
+	if err != nil {
+		return err
+	}
+
+	for _, name := range args {
+		item := hub.GetItem(it.name, name)
+		if item == nil {
+			return fmt.Errorf("can't find '%s' in %s", name, it.name)
+		}
+		if err = InspectItem(item, !noMetrics); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
-func NewItemsInspectCmd(typeName string) *cobra.Command {
-	it := hubItemTypes[typeName]
-
+func (it hubItemType) NewInspectCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               coalesce.String(it.inspectHelp.use, "inspect [item]..."),
 		Short:             coalesce.String(it.inspectHelp.short, fmt.Sprintf("Inspect given %s", it.oneOrMore)),
@@ -609,7 +586,7 @@ func NewItemsInspectCmd(typeName string) *cobra.Command {
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(it.name, args, toComplete)
 		},
-		RunE: itemsInspectRunner(it),
+		RunE: it.Inspect,
 	}
 
 	flags := cmd.Flags()
@@ -619,47 +596,41 @@ func NewItemsInspectCmd(typeName string) *cobra.Command {
 	return cmd
 }
 
-func itemsListRunner(it hubItemType) func(cmd *cobra.Command, args []string) error {
-	run := func(cmd *cobra.Command, args []string) error {
-		flags := cmd.Flags()
+func (it hubItemType) List(cmd *cobra.Command, args []string) error {
+	flags := cmd.Flags()
 
-		all, err := flags.GetBool("all")
-		if err != nil {
-			return err
-		}
-
-		hub, err := require.Hub(csConfig, nil)
-		if err != nil {
-			return err
-		}
-
-		items := make(map[string][]*cwhub.Item)
-
-		items[it.name], err = selectItems(hub, it.name, args, !all)
-		if err != nil {
-			return err
-		}
-
-		if err = listItems(color.Output, []string{it.name}, items, false); err != nil {
-			return err
-		}
-
-		return nil
+	all, err := flags.GetBool("all")
+	if err != nil {
+		return err
 	}
 
-	return run
+	hub, err := require.Hub(csConfig, nil)
+	if err != nil {
+		return err
+	}
+
+	items := make(map[string][]*cwhub.Item)
+
+	items[it.name], err = selectItems(hub, it.name, args, !all)
+	if err != nil {
+		return err
+	}
+
+	if err = listItems(color.Output, []string{it.name}, items, false); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func NewItemsListCmd(typeName string) *cobra.Command {
-	it := hubItemTypes[typeName]
-
+func (it hubItemType) NewListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               coalesce.String(it.listHelp.use, "list [item... | -a]"),
 		Short:             coalesce.String(it.listHelp.short, fmt.Sprintf("List %s", it.oneOrMore)),
 		Long:              coalesce.String(it.listHelp.long, fmt.Sprintf("List of installed/available/specified %s", it.name)),
 		Example:           it.listHelp.example,
 		DisableAutoGenTag: true,
-		RunE:              itemsListRunner(it),
+		RunE:              it.List,
 	}
 
 	flags := cmd.Flags()
