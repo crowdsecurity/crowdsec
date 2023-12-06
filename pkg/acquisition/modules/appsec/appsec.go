@@ -90,45 +90,45 @@ type BodyResponse struct {
 	Action string `json:"action"`
 }
 
-func (wc *AppsecSource) UnmarshalConfig(yamlConfig []byte) error {
+func (w *AppsecSource) UnmarshalConfig(yamlConfig []byte) error {
 
-	err := yaml.UnmarshalStrict(yamlConfig, &wc.config)
+	err := yaml.UnmarshalStrict(yamlConfig, &w.config)
 	if err != nil {
 		return errors.Wrap(err, "Cannot parse appsec configuration")
 	}
 
-	if wc.config.ListenAddr == "" {
-		wc.config.ListenAddr = "127.0.0.1:7422"
+	if w.config.ListenAddr == "" {
+		w.config.ListenAddr = "127.0.0.1:7422"
 	}
 
-	if wc.config.Path == "" {
-		wc.config.Path = "/"
+	if w.config.Path == "" {
+		w.config.Path = "/"
 	}
 
-	if wc.config.Path[0] != '/' {
-		wc.config.Path = "/" + wc.config.Path
+	if w.config.Path[0] != '/' {
+		w.config.Path = "/" + w.config.Path
 	}
 
-	if wc.config.Mode == "" {
-		wc.config.Mode = configuration.TAIL_MODE
+	if w.config.Mode == "" {
+		w.config.Mode = configuration.TAIL_MODE
 	}
 
 	// always have at least one appsec routine
-	if wc.config.Routines == 0 {
-		wc.config.Routines = 1
+	if w.config.Routines == 0 {
+		w.config.Routines = 1
 	}
 
-	if wc.config.AppsecConfig == "" && wc.config.AppsecConfigPath == "" {
+	if w.config.AppsecConfig == "" && w.config.AppsecConfigPath == "" {
 		return fmt.Errorf("appsec_config or appsec_config_path must be set")
 	}
 
-	if wc.config.Name == "" {
-		wc.config.Name = fmt.Sprintf("%s%s", wc.config.ListenAddr, wc.config.Path)
+	if w.config.Name == "" {
+		w.config.Name = fmt.Sprintf("%s%s", w.config.ListenAddr, w.config.Path)
 	}
 
 	csConfig := csconfig.GetConfig()
-	wc.lapiURL = fmt.Sprintf("%sv1/decisions/stream", csConfig.API.Client.Credentials.URL)
-	wc.AuthCache = NewAuthCache()
+	w.lapiURL = fmt.Sprintf("%sv1/decisions/stream", csConfig.API.Client.Credentials.URL)
+	w.AuthCache = NewAuthCache()
 
 	return nil
 }
@@ -204,6 +204,7 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 				"uuid": appsecRunnerUUID,
 			}),
 			AppsecRuntime: &wrt,
+			Labels:        w.config.Labels,
 		}
 		err := runner.Init(appsecCfg.GetDataDir())
 		if err != nil {
