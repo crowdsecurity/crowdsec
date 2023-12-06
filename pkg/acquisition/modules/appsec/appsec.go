@@ -197,11 +197,12 @@ func (w *AppsecSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 		appsecRunnerUUID := uuid.New().String()
 		//we copy AppsecRutime for each runner
 		wrt := *w.AppsecRuntime
+		wrt.Logger = w.logger.Dup().WithField("runner_uuid", appsecRunnerUUID)
 		runner := AppsecRunner{
 			inChan: w.InChan,
 			UUID:   appsecRunnerUUID,
 			logger: w.logger.WithFields(log.Fields{
-				"uuid": appsecRunnerUUID,
+				"runner_uuid": appsecRunnerUUID,
 			}),
 			AppsecRuntime: &wrt,
 			Labels:        w.config.Labels,
@@ -310,7 +311,6 @@ func (w *AppsecSource) IsAuth(apiKey string) bool {
 
 // should this be in the runner ?
 func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
-
 	w.logger.Debugf("Received request from '%s' on %s", r.RemoteAddr, r.URL.Path)
 
 	apiKey := r.Header.Get(appsec.APIKeyHeaderName)
@@ -343,6 +343,11 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 	parsedRequest.AppsecEngine = w.config.Name
 
+	logger := w.logger.WithFields(log.Fields{
+		"request_uuid": parsedRequest.UUID,
+		"client_ip":    parsedRequest.ClientIP,
+	})
+
 	AppsecReqCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "appsec_engine": parsedRequest.AppsecEngine}).Inc()
 
 	w.InChan <- parsedRequest
@@ -352,12 +357,12 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 		AppsecBlockCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "appsec_engine": parsedRequest.AppsecEngine}).Inc()
 	}
 
-	appsecResponse := w.AppsecRuntime.GenerateResponse(response)
+	appsecResponse := w.AppsecRuntime.GenerateResponse(response, logger)
 
 	rw.WriteHeader(appsecResponse.HTTPStatus)
 	body, err := json.Marshal(BodyResponse{Action: appsecResponse.Action})
 	if err != nil {
-		log.Errorf("unable to marshal response: %s", err)
+		logger.Errorf("unable to marshal response: %s", err)
 		rw.WriteHeader(http.StatusInternalServerError)
 	} else {
 		rw.Write(body)

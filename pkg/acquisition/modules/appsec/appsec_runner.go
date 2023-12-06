@@ -290,7 +290,9 @@ func (r *AppsecRunner) handleOutBandInterrupt(request *appsec.ParsedRequest) {
 }
 
 func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
-	r.logger.Debugf("Requests handled by runner %s", request.UUID)
+	r.AppsecRuntime.Logger = r.AppsecRuntime.Logger.WithField("request_uuid", request.UUID)
+	logger := r.logger.WithField("request_uuid", request.UUID)
+	logger.Debug("Request received in runner")
 	r.AppsecRuntime.ClearResponse()
 
 	request.IsInBand = true
@@ -302,7 +304,7 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 	//inband appsec rules
 	err := r.ProcessInBandRules(request)
 	if err != nil {
-		r.logger.Errorf("unable to process InBand rules: %s", err)
+		logger.Errorf("unable to process InBand rules: %s", err)
 		return
 	}
 
@@ -325,7 +327,7 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 
 	err = r.ProcessOutOfBandRules(request)
 	if err != nil {
-		r.logger.Errorf("unable to process OutOfBand rules: %s", err)
+		logger.Errorf("unable to process OutOfBand rules: %s", err)
 		return
 	}
 

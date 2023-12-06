@@ -556,7 +556,7 @@ type BodyResponse struct {
 	HTTPStatus int    `json:"http_status"`
 }
 
-func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse) BodyResponse {
+func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logger *log.Entry) BodyResponse {
 	resp := BodyResponse{}
 	//if there is no interrupt, we should allow with default code
 	if !response.InBandInterrupt {
@@ -568,12 +568,12 @@ func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse) Body
 	if resp.Action == "" {
 		resp.Action = w.Config.DefaultRemediation
 	}
-	w.Logger.Debugf("action is %s", resp.Action)
+	logger.Debugf("action is %s", resp.Action)
 
 	resp.HTTPStatus = response.HTTPResponseCode
 	if resp.HTTPStatus == 0 {
 		resp.HTTPStatus = w.Config.BlockedHTTPCode
 	}
-	w.Logger.Debugf("http status is %d", resp.HTTPStatus)
+	logger.Debugf("http status is %d", resp.HTTPStatus)
 	return resp
 }
