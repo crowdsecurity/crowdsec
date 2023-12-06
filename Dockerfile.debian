@@ -1,5 +1,5 @@
 # vim: set ft=dockerfile:
-ARG GOVERSION=1.21.4
+ARG GOVERSION=1.21.5
 
 FROM golang:${GOVERSION}-bookworm AS build
 
