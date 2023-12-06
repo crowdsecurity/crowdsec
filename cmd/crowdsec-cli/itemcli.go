@@ -13,7 +13,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-type cmdHelp struct {
+type cliHelp struct {
 	// Example is required, the others have a default value
 	// generated from the item type
 	use     string
@@ -22,212 +22,20 @@ type cmdHelp struct {
 	example string
 }
 
-type hubItemType struct {
-	name        string // plural, as used in the hub index
-	singular    string
-	oneOrMore   string // parenthetical pluralizaion: "parser(s)"
-	help        cmdHelp
-	installHelp cmdHelp
-	removeHelp  cmdHelp
-	upgradeHelp cmdHelp
-	inspectHelp cmdHelp
-	listHelp    cmdHelp
+type itemCLI struct {
+	name          string // plural, as used in the hub index
+	singular      string
+	oneOrMore     string // parenthetical pluralizaion: "parser(s)"
+	help          cliHelp
+	installHelp   cliHelp
+	removeHelp    cliHelp
+	upgradeHelp   cliHelp
+	inspectHelp   cliHelp
+	inspectDetail func(item *cwhub.Item) error
+	listHelp      cliHelp
 }
 
-var hubItemTypes = map[string]hubItemType{
-	"parsers": {
-		name:      cwhub.PARSERS,
-		singular:  "parser",
-		oneOrMore: "parser(s)",
-		help: cmdHelp{
-			example: `cscli parsers list -a
-cscli parsers install crowdsecurity/caddy-logs crowdsecurity/sshd-logs
-cscli parsers inspect crowdsecurity/caddy-logs crowdsecurity/sshd-logs
-cscli parsers upgrade crowdsecurity/caddy-logs crowdsecurity/sshd-logs
-cscli parsers remove crowdsecurity/caddy-logs crowdsecurity/sshd-logs
-`,
-		},
-		installHelp: cmdHelp{
-			example: `cscli parsers install crowdsecurity/caddy-logs crowdsecurity/sshd-logs`,
-		},
-		removeHelp: cmdHelp{
-			example: `cscli parsers remove crowdsecurity/caddy-logs crowdsecurity/sshd-logs`,
-		},
-		upgradeHelp: cmdHelp{
-			example: `cscli parsers upgrade crowdsecurity/caddy-logs crowdsecurity/sshd-logs`,
-		},
-		inspectHelp: cmdHelp{
-			example: `cscli parsers inspect crowdsecurity/httpd-logs crowdsecurity/sshd-logs`,
-		},
-		listHelp: cmdHelp{
-			example: `cscli parsers list
-cscli parsers list -a
-cscli parsers list crowdsecurity/caddy-logs crowdsecurity/sshd-logs
-
-List only enabled parsers unless "-a" or names are specified.`,
-		},
-	},
-	"postoverflows": {
-		name:      cwhub.POSTOVERFLOWS,
-		singular:  "postoverflow",
-		oneOrMore: "postoverflow(s)",
-		help: cmdHelp{
-			example: `cscli postoverflows list -a
-cscli postoverflows install crowdsecurity/cdn-whitelist crowdsecurity/rdns
-cscli postoverflows inspect crowdsecurity/cdn-whitelist crowdsecurity/rdns
-cscli postoverflows upgrade crowdsecurity/cdn-whitelist crowdsecurity/rdns
-cscli postoverflows remove crowdsecurity/cdn-whitelist crowdsecurity/rdns
-`,
-		},
-		installHelp: cmdHelp{
-			example: `cscli postoverflows install crowdsecurity/cdn-whitelist crowdsecurity/rdns`,
-		},
-		removeHelp: cmdHelp{
-			example: `cscli postoverflows remove crowdsecurity/cdn-whitelist crowdsecurity/rdns`,
-		},
-		upgradeHelp: cmdHelp{
-			example: `cscli postoverflows upgrade crowdsecurity/cdn-whitelist crowdsecurity/rdns`,
-		},
-		inspectHelp: cmdHelp{
-			example: `cscli postoverflows inspect crowdsecurity/cdn-whitelist crowdsecurity/rdns`,
-		},
-		listHelp: cmdHelp{
-			example: `cscli postoverflows list
-cscli postoverflows list -a
-cscli postoverflows list crowdsecurity/cdn-whitelist crowdsecurity/rdns
-
-List only enabled postoverflows unless "-a" or names are specified.`,
-		},
-	},
-	"scenarios": {
-		name:      cwhub.SCENARIOS,
-		singular:  "scenario",
-		oneOrMore: "scenario(s)",
-		help: cmdHelp{
-			example: `cscli scenarios list -a
-cscli scenarios install crowdsecurity/ssh-bf crowdsecurity/http-probing
-cscli scenarios inspect crowdsecurity/ssh-bf crowdsecurity/http-probing
-cscli scenarios upgrade crowdsecurity/ssh-bf crowdsecurity/http-probing
-cscli scenarios remove crowdsecurity/ssh-bf crowdsecurity/http-probing
-`,
-		},
-		installHelp: cmdHelp{
-			example: `cscli scenarios install crowdsecurity/ssh-bf crowdsecurity/http-probing`,
-		},
-		removeHelp: cmdHelp{
-			example: `cscli scenarios remove crowdsecurity/ssh-bf crowdsecurity/http-probing`,
-		},
-		upgradeHelp: cmdHelp{
-			example: `cscli scenarios upgrade crowdsecurity/ssh-bf crowdsecurity/http-probing`,
-		},
-		inspectHelp: cmdHelp{
-			example: `cscli scenarios inspect crowdsecurity/ssh-bf crowdsecurity/http-probing`,
-		},
-		listHelp: cmdHelp{
-			example: `cscli scenarios list
-cscli scenarios list -a
-cscli scenarios list crowdsecurity/ssh-bf crowdsecurity/http-probing
-
-List only enabled scenarios unless "-a" or names are specified.`,
-		},
-	},
-	"appsec-rules": {
-		name:      "appsec-rules",
-		singular:  "appsec-rule",
-		oneOrMore: "appsec-rule(s)",
-		help: cmdHelp{
-			example: `cscli appsec-rules list -a
-cscli appsec-rules install crowdsecurity/crs
-cscli appsec-rules inspect crowdsecurity/crs
-cscli appsec-rules upgrade crowdsecurity/crs
-cscli appsec-rules remove crowdsecurity/crs
-`,
-		},
-		installHelp: cmdHelp{
-			example: `cscli appsec-rules install crowdsecurity/crs`,
-		},
-		removeHelp: cmdHelp{
-			example: `cscli appsec-rules remove crowdsecurity/crs`,
-		},
-		upgradeHelp: cmdHelp{
-			example: `cscli appsec-rules upgrade crowdsecurity/crs`,
-		},
-		inspectHelp: cmdHelp{
-			example: `cscli appsec-rules inspect crowdsecurity/crs`,
-		},
-		listHelp: cmdHelp{
-			example: `cscli appsec-rules list
-cscli appsec-rules list -a
-cscli appsec-rules list crowdsecurity/crs`,
-		},
-	},
-	"appsec-configs": {
-		name:      "appsec-configs",
-		singular:  "appsec-config",
-		oneOrMore: "appsec-config(s)",
-		help: cmdHelp{
-			example: `cscli appsec-configs list -a
-cscli appsec-configs install crowdsecurity/vpatch
-cscli appsec-configs inspect crowdsecurity/vpatch
-cscli appsec-configs upgrade crowdsecurity/vpatch
-cscli appsec-configs remove crowdsecurity/vpatch
-`,
-		},
-		installHelp: cmdHelp{
-			example: `cscli appsec-configs install crowdsecurity/vpatch`,
-		},
-		removeHelp: cmdHelp{
-			example: `cscli appsec-configs remove crowdsecurity/vpatch`,
-		},
-		upgradeHelp: cmdHelp{
-			example: `cscli appsec-configs upgrade crowdsecurity/vpatch`,
-		},
-		inspectHelp: cmdHelp{
-			example: `cscli appsec-configs inspect crowdsecurity/vpatch`,
-		},
-		listHelp: cmdHelp{
-			example: `cscli appsec-configs list
-cscli appsec-configs list -a
-cscli appsec-configs list crowdsecurity/vpatch`,
-		},
-	},
-	"collections": {
-		name:      cwhub.COLLECTIONS,
-		singular:  "collection",
-		oneOrMore: "collection(s)",
-		help: cmdHelp{
-			example: `cscli collections list -a
-cscli collections install crowdsecurity/http-cve crowdsecurity/iptables
-cscli collections inspect crowdsecurity/http-cve crowdsecurity/iptables
-cscli collections upgrade crowdsecurity/http-cve crowdsecurity/iptables
-cscli collections remove crowdsecurity/http-cve crowdsecurity/iptables
-`,
-		},
-		installHelp: cmdHelp{
-			example: `cscli collections install crowdsecurity/http-cve crowdsecurity/iptables`,
-		},
-		removeHelp: cmdHelp{
-			example: `cscli collections remove crowdsecurity/http-cve crowdsecurity/iptables`,
-		},
-		upgradeHelp: cmdHelp{
-			example: `cscli collections upgrade crowdsecurity/http-cve crowdsecurity/iptables`,
-		},
-		inspectHelp: cmdHelp{
-			example: `cscli collections inspect crowdsecurity/http-cve crowdsecurity/iptables`,
-		},
-		listHelp: cmdHelp{
-			example: `cscli collections list
-cscli collections list -a
-cscli collections list crowdsecurity/http-cve crowdsecurity/iptables
-
-List only enabled collections unless "-a" or names are specified.`,
-		},
-	},
-}
-
-func NewItemsCmd(typeName string) *cobra.Command {
-	it := hubItemTypes[typeName]
-
+func (it itemCLI) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               coalesce.String(it.help.use, fmt.Sprintf("%s <action> [item]...", it.name)),
 		Short:             coalesce.String(it.help.short, fmt.Sprintf("Manage hub %s", it.name)),
@@ -247,7 +55,7 @@ func NewItemsCmd(typeName string) *cobra.Command {
 	return cmd
 }
 
-func (it hubItemType) Install(cmd *cobra.Command, args []string) error {
+func (it itemCLI) Install(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
 	downloadOnly, err := flags.GetBool("download-only")
@@ -295,7 +103,7 @@ func (it hubItemType) Install(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (it hubItemType) NewInstallCmd() *cobra.Command {
+func (it itemCLI) NewInstallCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               coalesce.String(it.installHelp.use, "install [item]..."),
 		Short:             coalesce.String(it.installHelp.short, fmt.Sprintf("Install given %s", it.oneOrMore)),
@@ -330,7 +138,7 @@ func istalledParentNames(item *cwhub.Item) []string {
 	return ret
 }
 
-func (it hubItemType) Remove(cmd *cobra.Command, args []string) error {
+func (it itemCLI) Remove(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
 	purge, err := flags.GetBool("purge")
@@ -424,7 +232,7 @@ func (it hubItemType) Remove(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (it hubItemType) NewRemoveCmd() *cobra.Command {
+func (it itemCLI) NewRemoveCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               coalesce.String(it.removeHelp.use, "remove [item]..."),
 		Short:             coalesce.String(it.removeHelp.short, fmt.Sprintf("Remove given %s", it.oneOrMore)),
@@ -446,7 +254,7 @@ func (it hubItemType) NewRemoveCmd() *cobra.Command {
 	return cmd
 }
 
-func (it hubItemType) Upgrade(cmd *cobra.Command, args []string) error {
+func (it itemCLI) Upgrade(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
 	force, err := flags.GetBool("force")
@@ -520,7 +328,7 @@ func (it hubItemType) Upgrade(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (it hubItemType) NewUpgradeCmd() *cobra.Command {
+func (it itemCLI) NewUpgradeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               coalesce.String(it.upgradeHelp.use, "upgrade [item]..."),
 		Short:             coalesce.String(it.upgradeHelp.short, fmt.Sprintf("Upgrade given %s", it.oneOrMore)),
@@ -540,7 +348,7 @@ func (it hubItemType) NewUpgradeCmd() *cobra.Command {
 	return cmd
 }
 
-func (it hubItemType) Inspect(cmd *cobra.Command, args []string) error {
+func (it itemCLI) Inspect(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
 	url, err := flags.GetString("url")
@@ -570,12 +378,18 @@ func (it hubItemType) Inspect(cmd *cobra.Command, args []string) error {
 		if err = InspectItem(item, !noMetrics); err != nil {
 			return err
 		}
+
+		if it.inspectDetail != nil {
+			if err = it.inspectDetail(item); err != nil {
+				return err
+			}
+		}
 	}
 
 	return nil
 }
 
-func (it hubItemType) NewInspectCmd() *cobra.Command {
+func (it itemCLI) NewInspectCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               coalesce.String(it.inspectHelp.use, "inspect [item]..."),
 		Short:             coalesce.String(it.inspectHelp.short, fmt.Sprintf("Inspect given %s", it.oneOrMore)),
@@ -596,7 +410,7 @@ func (it hubItemType) NewInspectCmd() *cobra.Command {
 	return cmd
 }
 
-func (it hubItemType) List(cmd *cobra.Command, args []string) error {
+func (it itemCLI) List(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
 	all, err := flags.GetBool("all")
@@ -623,7 +437,7 @@ func (it hubItemType) List(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (it hubItemType) NewListCmd() *cobra.Command {
+func (it itemCLI) NewListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               coalesce.String(it.listHelp.use, "list [item... | -a]"),
 		Short:             coalesce.String(it.listHelp.short, fmt.Sprintf("List %s", it.oneOrMore)),
