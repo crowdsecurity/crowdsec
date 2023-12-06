@@ -23,6 +23,7 @@ type AppsecRunner struct {
 	AppsecRuntime       *appsec.AppsecRuntimeConfig //this holds the actual appsec runtime config, rules, remediations, hooks etc.
 	AppsecInbandEngine  coraza.WAF
 	AppsecOutbandEngine coraza.WAF
+	Labels              map[string]string
 	logger              *log.Entry
 }
 
@@ -205,7 +206,7 @@ func (r *AppsecRunner) ProcessOutOfBandRules(request *appsec.ParsedRequest) erro
 
 func (r *AppsecRunner) handleInBandInterrupt(request *appsec.ParsedRequest) {
 	//create the associated event for crowdsec itself
-	evt, err := EventFromRequest(request)
+	evt, err := EventFromRequest(request, r.Labels)
 	if err != nil {
 		//let's not interrupt the pipeline for this
 		r.logger.Errorf("unable to create event from request : %s", err)
@@ -253,7 +254,7 @@ func (r *AppsecRunner) handleInBandInterrupt(request *appsec.ParsedRequest) {
 }
 
 func (r *AppsecRunner) handleOutBandInterrupt(request *appsec.ParsedRequest) {
-	evt, err := EventFromRequest(request)
+	evt, err := EventFromRequest(request, r.Labels)
 	if err != nil {
 		//let's not interrupt the pipeline for this
 		r.logger.Errorf("unable to create event from request : %s", err)
