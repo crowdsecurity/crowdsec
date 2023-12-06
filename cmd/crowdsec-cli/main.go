@@ -225,7 +225,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.PersistentFlags().SortFlags = false
 
 	rootCmd.AddCommand(NewConfigCmd())
-	rootCmd.AddCommand(NewHubCmd())
+	rootCmd.AddCommand(NewCLIHub().NewCommand())
 	rootCmd.AddCommand(NewMetricsCmd())
 	rootCmd.AddCommand(NewDashboardCmd())
 	rootCmd.AddCommand(NewDecisionsCmd())

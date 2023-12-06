@@ -13,8 +13,14 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func NewHubCmd() *cobra.Command {
-	cmdHub := &cobra.Command{
+type cliHub struct{}
+
+func NewCLIHub() *cliHub {
+	return &cliHub{}
+}
+
+func (cli cliHub) NewCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "hub [action]",
 		Short: "Manage hub index",
 		Long: `Hub management
@@ -28,15 +34,15 @@ cscli hub upgrade`,
 		DisableAutoGenTag: true,
 	}
 
-	cmdHub.AddCommand(NewHubListCmd())
-	cmdHub.AddCommand(NewHubUpdateCmd())
-	cmdHub.AddCommand(NewHubUpgradeCmd())
-	cmdHub.AddCommand(NewHubTypesCmd())
+	cmd.AddCommand(cli.NewListCmd())
+	cmd.AddCommand(cli.NewUpdateCmd())
+	cmd.AddCommand(cli.NewUpgradeCmd())
+	cmd.AddCommand(cli.NewTypesCmd())
 
-	return cmdHub
+	return cmd
 }
 
-func runHubList(cmd *cobra.Command, args []string) error {
+func (cli cliHub) list(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
 	all, err := flags.GetBool("all")
@@ -74,22 +80,22 @@ func runHubList(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func NewHubListCmd() *cobra.Command {
-	cmdHubList := &cobra.Command{
+func (cli cliHub) NewListCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "list [-a]",
 		Short:             "List all installed configurations",
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE:              runHubList,
+		RunE:              cli.list,
 	}
 
-	flags := cmdHubList.Flags()
+	flags := cmd.Flags()
 	flags.BoolP("all", "a", false, "List disabled items as well")
 
-	return cmdHubList
+	return cmd
 }
 
-func runHubUpdate(cmd *cobra.Command, args []string) error {
+func (cli cliHub) update(cmd *cobra.Command, args []string) error {
 	local := csConfig.Hub
 	remote := require.RemoteHub(csConfig)
 
@@ -106,8 +112,8 @@ func runHubUpdate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func NewHubUpdateCmd() *cobra.Command {
-	cmdHubUpdate := &cobra.Command{
+func (cli cliHub) NewUpdateCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "update",
 		Short: "Download the latest index (catalog of available configurations)",
 		Long: `
@@ -115,13 +121,13 @@ Fetches the .index.json file from the hub, containing the list of available conf
 `,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE:              runHubUpdate,
+		RunE:              cli.update,
 	}
 
-	return cmdHubUpdate
+	return cmd
 }
 
-func runHubUpgrade(cmd *cobra.Command, args []string) error {
+func (cli cliHub) upgrade(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
 	force, err := flags.GetBool("force")
@@ -158,8 +164,8 @@ func runHubUpgrade(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func NewHubUpgradeCmd() *cobra.Command {
-	cmdHubUpgrade := &cobra.Command{
+func (cli cliHub) NewUpgradeCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "upgrade",
 		Short: "Upgrade all configurations to their latest version",
 		Long: `
@@ -167,16 +173,16 @@ Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if 
 `,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE:              runHubUpgrade,
+		RunE:              cli.upgrade,
 	}
 
-	flags := cmdHubUpgrade.Flags()
+	flags := cmd.Flags()
 	flags.Bool("force", false, "Force upgrade: overwrite tainted and outdated files")
 
-	return cmdHubUpgrade
+	return cmd
 }
 
-func runHubTypes(cmd *cobra.Command, args []string) error {
+func (cli cliHub) types(cmd *cobra.Command, args []string) error {
 	switch csConfig.Cscli.Output {
 	case "human":
 		s, err := yaml.Marshal(cwhub.ItemTypes)
@@ -198,8 +204,8 @@ func runHubTypes(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func NewHubTypesCmd() *cobra.Command {
-	cmdHubTypes := &cobra.Command{
+func (cli cliHub) NewTypesCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "types",
 		Short: "List supported item types",
 		Long: `
@@ -207,8 +213,8 @@ List the types of supported hub items.
 `,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE:              runHubTypes,
+		RunE:              cli.types,
 	}
 
-	return cmdHubTypes
+	return cmd
 }
