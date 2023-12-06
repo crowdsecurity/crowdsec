@@ -51,7 +51,6 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 		alert.Meta = append(alert.Meta, &meta)
 	}
 	alert.EventsCount = ptr.Of(int32(1))
-	alert.Labels = []string{"appsec"} //don't know what to do about this
 	alert.Leakspeed = ptr.Of("")
 	alert.Scenario = ptr.Of(inEvt.Appsec.MatchedRules.GetName())
 	alert.ScenarioHash = ptr.Of(inEvt.Appsec.MatchedRules.GetHash())
