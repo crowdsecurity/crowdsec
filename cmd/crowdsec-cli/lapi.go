@@ -421,61 +421,10 @@ cscli lapi context detect crowdsecurity/sshd-logs
 	cmdContextDetect.Flags().BoolVarP(&detectAll, "all", "a", false, "Detect evt field for all installed parser")
 	cmdContext.AddCommand(cmdContextDetect)
 
-	var keysToDelete []string
-	var valuesToDelete []string
 	cmdContextDelete := &cobra.Command{
 		Use:   "delete",
-		Short: "Delete context to send with alerts",
-		Example: `cscli lapi context delete --key source_ip
-cscli lapi context delete --value evt.Line.Src
-		`,
-		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			// pass a nil hub to load only from console/context.yaml
-
-			if err := alertcontext.LoadConsoleContext(csConfig, nil); err != nil {
-				return fmt.Errorf("while loading context: %w", err)
-			}
-
-			if len(keysToDelete) == 0 && len(valuesToDelete) == 0 {
-				return errors.New("please provide at least a key or a value to delete")
-			}
-
-			for _, key := range keysToDelete {
-				if _, ok := csConfig.Crowdsec.ContextToSend[key]; ok {
-					delete(csConfig.Crowdsec.ContextToSend, key)
-					log.Infof("key '%s' has been removed", key)
-				} else {
-					log.Warningf("key '%s' doesn't exist", key)
-				}
-			}
-
-			for _, value := range valuesToDelete {
-				valueFound := false
-				for key, context := range csConfig.Crowdsec.ContextToSend {
-					if slices.Contains(context, value) {
-						valueFound = true
-						csConfig.Crowdsec.ContextToSend[key] = removeFromSlice(value, context)
-						log.Infof("value '%s' has been removed from key '%s'", value, key)
-					}
-					if len(csConfig.Crowdsec.ContextToSend[key]) == 0 {
-						delete(csConfig.Crowdsec.ContextToSend, key)
-					}
-				}
-				if !valueFound {
-					log.Warningf("value '%s' not found", value)
-				}
-			}
-
-			if err := csConfig.Crowdsec.DumpContextConfigFile(); err != nil {
-				return err
-			}
-
-			return nil
-		},
+		Deprecated: "please manually edit the context file.",
 	}
-	cmdContextDelete.Flags().StringSliceVarP(&keysToDelete, "key", "k", []string{}, "The keys to delete")
-	cmdContextDelete.Flags().StringSliceVar(&valuesToDelete, "value", []string{}, "The expr fields to delete")
 	cmdContext.AddCommand(cmdContextDelete)
 
 	return cmdContext
