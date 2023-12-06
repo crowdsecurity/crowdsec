@@ -197,7 +197,7 @@ func (r *AppsecRunner) ProcessInBandRules(request *appsec.ParsedRequest) error {
 }
 
 func (r *AppsecRunner) ProcessOutOfBandRules(request *appsec.ParsedRequest) error {
-	r.logger.Infof("Processing out of band rules")
+	r.logger.Debugf("Processing out of band rules")
 	tx := appsec.NewExtendedTransaction(r.AppsecOutbandEngine, request.UUID)
 	r.AppsecRuntime.OutOfBandTx = tx
 	err := r.processRequest(tx, request)

@@ -53,16 +53,16 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 	alert.EventsCount = ptr.Of(int32(1))
 	alert.Labels = []string{"appsec"} //don't know what to do about this
 	alert.Leakspeed = ptr.Of("")
-	msg := fmt.Sprintf("Application Security Engine alert: %s", inEvt.Appsec.MatchedRules.GetName())
-	alert.Message = &msg
 	alert.Scenario = ptr.Of(inEvt.Appsec.MatchedRules.GetName())
 	alert.ScenarioHash = ptr.Of(inEvt.Appsec.MatchedRules.GetHash())
 	alert.ScenarioVersion = ptr.Of(inEvt.Appsec.MatchedRules.GetVersion())
 	alert.Simulated = ptr.Of(false)
 	alert.Source = &source
+	msg := fmt.Sprintf("AppSec block: %s from %s (%s)", inEvt.Appsec.MatchedRules.GetName(),
+		alert.Source.IP, inEvt.Parsed["remediation_cmpt_ip"])
+	alert.Message = &msg
 	alert.StartAt = ptr.Of(time.Now().UTC().Format(time.RFC3339))
 	alert.StopAt = ptr.Of(time.Now().UTC().Format(time.RFC3339))
-
 	evt.Overflow.APIAlerts = []models.Alert{alert}
 	evt.Overflow.Alert = &alert
 	return &evt, nil
@@ -76,13 +76,13 @@ func EventFromRequest(r *appsec.ParsedRequest, labels map[string]string) (types.
 	//def needs fixing
 	evt.Stage = "s00-raw"
 	evt.Parsed = map[string]string{
-		"source_ip":   r.ClientIP,
-		"target_host": r.Host,
-		"target_uri":  r.URI,
-		"method":      r.Method,
-		"req_uuid":    r.Tx.ID(),
-		"source":      "crowdsec-appsec",
-
+		"source_ip":           r.ClientIP,
+		"target_host":         r.Host,
+		"target_uri":          r.URI,
+		"method":              r.Method,
+		"req_uuid":            r.Tx.ID(),
+		"source":              "crowdsec-appsec",
+		"remediation_cmpt_ip": r.RemoteAddrNormalized,
 		//TBD:
 		//http_status
 		//user_agent
