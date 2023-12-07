@@ -346,7 +346,7 @@ func (i *Item) checkSubItemVersions() error {
 
 // syncDir scans a directory for items, and updates the Hub state accordingly.
 func (h *Hub) syncDir(dir string) error {
-	// For each, scan PARSERS, POSTOVERFLOWS, SCENARIOS and COLLECTIONS last
+	// For each, scan PARSERS, POSTOVERFLOWS... and COLLECTIONS last
 	for _, scan := range ItemTypes {
 		// cpath: top-level item directory, either downloaded or installed items.
 		// i.e. /etc/crowdsec/parsers, /etc/crowdsec/hub/parsers, ...

@@ -37,6 +37,7 @@ const (
 	SUPPORT_OS_INFO_PATH                 = "osinfo.txt"
 	SUPPORT_PARSERS_PATH                 = "hub/parsers.txt"
 	SUPPORT_SCENARIOS_PATH               = "hub/scenarios.txt"
+	SUPPORT_CONTEXTS_PATH                = "hub/scenarios.txt"
 	SUPPORT_COLLECTIONS_PATH             = "hub/collections.txt"
 	SUPPORT_POSTOVERFLOWS_PATH           = "hub/postoverflows.txt"
 	SUPPORT_BOUNCERS_PATH                = "lapi/bouncers.txt"
@@ -272,6 +273,7 @@ func (cli cliSupport) NewDumpCmd() *cobra.Command {
 - Installed parsers list
 - Installed scenarios list
 - Installed postoverflows list
+- Installed context list
 - Bouncers list
 - Machines list
 - CAPI status
@@ -321,6 +323,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				infos[SUPPORT_PARSERS_PATH] = []byte(err.Error())
 				infos[SUPPORT_SCENARIOS_PATH] = []byte(err.Error())
 				infos[SUPPORT_POSTOVERFLOWS_PATH] = []byte(err.Error())
+				infos[SUPPORT_CONTEXTS_PATH] = []byte(err.Error())
 				infos[SUPPORT_COLLECTIONS_PATH] = []byte(err.Error())
 			}
 
@@ -356,6 +359,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				infos[SUPPORT_PARSERS_PATH] = collectHubItems(hub, cwhub.PARSERS)
 				infos[SUPPORT_SCENARIOS_PATH] = collectHubItems(hub, cwhub.SCENARIOS)
 				infos[SUPPORT_POSTOVERFLOWS_PATH] = collectHubItems(hub, cwhub.POSTOVERFLOWS)
+				infos[SUPPORT_CONTEXTS_PATH] = collectHubItems(hub, cwhub.POSTOVERFLOWS)
 				infos[SUPPORT_COLLECTIONS_PATH] = collectHubItems(hub, cwhub.COLLECTIONS)
 			}
 
