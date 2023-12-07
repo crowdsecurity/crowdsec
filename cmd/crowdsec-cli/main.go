@@ -237,7 +237,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewLapiCmd())
 	rootCmd.AddCommand(NewCompletionCmd())
 	rootCmd.AddCommand(NewConsoleCmd())
-	rootCmd.AddCommand(NewExplainCmd())
+	rootCmd.AddCommand(NewCLIExplain().NewCommand())
 	rootCmd.AddCommand(NewHubTestCmd())
 	rootCmd.AddCommand(NewCLINotifications().NewCommand())
 	rootCmd.AddCommand(NewCLISupport().NewCommand())
