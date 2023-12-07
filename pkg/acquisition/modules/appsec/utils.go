@@ -225,9 +225,9 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 			evt.Appsec.HasOutBandMatches = true
 		}
 
-		name := "NOT_SET"
-		version := "NOT_SET"
-		hash := "NOT_SET"
+		name := ""
+		version := ""
+		hash := ""
 		ruleNameProm := fmt.Sprintf("%d", rule.Rule().ID())
 
 		if details, ok := appsec.AppsecRulesDetails[rule.Rule().ID()]; ok {
@@ -237,6 +237,8 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 			hash = details.Hash
 			ruleNameProm = details.Name
 			r.logger.Debugf("custom rule for event, setting name: %s, version: %s, hash: %s", name, version, hash)
+		} else {
+			name = fmt.Sprintf("native_rule:%d", rule.Rule().ID())
 		}
 
 		AppsecRuleHits.With(prometheus.Labels{"rule_name": ruleNameProm, "type": kind, "source": req.RemoteAddrNormalized, "appsec_engine": req.AppsecEngine}).Inc()
