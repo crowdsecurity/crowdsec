@@ -6,12 +6,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"slices"
+
 	"github.com/fatih/color"
 	cc "github.com/ivanpirog/coloredcobra"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
-	"slices"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
@@ -240,10 +241,13 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewHubTestCmd())
 	rootCmd.AddCommand(NewNotificationsCmd())
 	rootCmd.AddCommand(NewSupportCmd())
-	rootCmd.AddCommand(NewItemsCmd("collections"))
-	rootCmd.AddCommand(NewItemsCmd("parsers"))
-	rootCmd.AddCommand(NewItemsCmd("scenarios"))
-	rootCmd.AddCommand(NewItemsCmd("postoverflows"))
+
+	rootCmd.AddCommand(NewCollectionCLI().NewCommand())
+	rootCmd.AddCommand(NewParserCLI().NewCommand())
+	rootCmd.AddCommand(NewScenarioCLI().NewCommand())
+	rootCmd.AddCommand(NewPostOverflowCLI().NewCommand())
+	rootCmd.AddCommand(NewAppsecConfigCLI().NewCommand())
+	rootCmd.AddCommand(NewAppsecRuleCLI().NewCommand())
 
 	if fflag.CscliSetup.IsEnabled() {
 		rootCmd.AddCommand(NewSetupCmd())

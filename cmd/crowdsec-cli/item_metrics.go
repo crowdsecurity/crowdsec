@@ -32,6 +32,8 @@ func ShowMetrics(hubItem *cwhub.Item) error {
 				return err
 			}
 		}
+	case cwhub.APPSEC_RULES:
+		log.Error("FIXME: not implemented yet")
 	default:
 		// no metrics for this item type
 	}

@@ -12,10 +12,12 @@ import (
 
 const (
 	// managed item types.
-	COLLECTIONS   = "collections"
-	PARSERS       = "parsers"
-	POSTOVERFLOWS = "postoverflows"
-	SCENARIOS     = "scenarios"
+	COLLECTIONS    = "collections"
+	PARSERS        = "parsers"
+	POSTOVERFLOWS  = "postoverflows"
+	SCENARIOS      = "scenarios"
+	APPSEC_CONFIGS = "appsec-configs"
+	APPSEC_RULES   = "appsec-rules"
 )
 
 const (
@@ -27,7 +29,7 @@ const (
 
 var (
 	// The order is important, as it is used to range over sub-items in collections.
-	ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, COLLECTIONS}
+	ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, APPSEC_CONFIGS, APPSEC_RULES, COLLECTIONS}
 )
 
 type HubItems map[string]map[string]*Item
@@ -118,6 +120,8 @@ type Item struct {
 	PostOverflows []string `json:"postoverflows,omitempty" yaml:"postoverflows,omitempty"`
 	Scenarios     []string `json:"scenarios,omitempty" yaml:"scenarios,omitempty"`
 	Collections   []string `json:"collections,omitempty" yaml:"collections,omitempty"`
+	AppsecConfigs []string `json:"appsec-configs,omitempty"   yaml:"appsec-configs,omitempty"`
+	AppsecRules   []string `json:"appsec-rules,omitempty"   yaml:"appsec-rules,omitempty"`
 }
 
 // installPath returns the location of the symlink to the item in the hub, or the path of the item itself if it's local
@@ -227,6 +231,24 @@ func (i *Item) SubItems() []*Item {
 		sub = append(sub, s)
 	}
 
+	for _, name := range i.AppsecConfigs {
+		s := i.hub.GetItem(APPSEC_CONFIGS, name)
+		if s == nil {
+			continue
+		}
+
+		sub = append(sub, s)
+	}
+
+	for _, name := range i.AppsecRules {
+		s := i.hub.GetItem(APPSEC_RULES, name)
+		if s == nil {
+			continue
+		}
+
+		sub = append(sub, s)
+	}
+
 	for _, name := range i.Collections {
 		s := i.hub.GetItem(COLLECTIONS, name)
 		if s == nil {
@@ -259,6 +281,18 @@ func (i *Item) logMissingSubItems() {
 	for _, subName := range i.PostOverflows {
 		if i.hub.GetItem(POSTOVERFLOWS, subName) == nil {
 			log.Errorf("can't find %s in %s, required by %s", subName, POSTOVERFLOWS, i.Name)
+		}
+	}
+
+	for _, subName := range i.AppsecConfigs {
+		if i.hub.GetItem(APPSEC_CONFIGS, subName) == nil {
+			log.Errorf("can't find %s in %s, required by %s", subName, APPSEC_CONFIGS, i.Name)
+		}
+	}
+
+	for _, subName := range i.AppsecRules {
+		if i.hub.GetItem(APPSEC_RULES, subName) == nil {
+			log.Errorf("can't find %s in %s, required by %s", subName, APPSEC_RULES, i.Name)
 		}
 	}
 

@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -112,15 +113,13 @@ func (h *Hub) getItemFileInfo(path string) (*itemFileInfo, error) {
 
 	log.Tracef("stage:%s ftype:%s", ret.stage, ret.ftype)
 
-	if ret.stage == SCENARIOS {
-		ret.ftype = SCENARIOS
+	if ret.ftype != PARSERS && ret.ftype != POSTOVERFLOWS {
+		if !slices.Contains(ItemTypes, ret.stage) {
+			return nil, fmt.Errorf("unknown configuration type for file '%s'", path)
+		}
+
+		ret.ftype = ret.stage
 		ret.stage = ""
-	} else if ret.stage == COLLECTIONS {
-		ret.ftype = COLLECTIONS
-		ret.stage = ""
-	} else if ret.ftype != PARSERS && ret.ftype != POSTOVERFLOWS {
-		// it's a PARSER / POSTOVERFLOW with a stage
-		return nil, fmt.Errorf("unknown configuration type for file '%s'", path)
 	}
 
 	log.Tracef("CORRECTED [%s] by [%s] in stage [%s] of type [%s]", ret.fname, ret.fauthor, ret.stage, ret.ftype)
