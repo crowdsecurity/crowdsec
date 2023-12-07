@@ -93,9 +93,10 @@ func initConfig() {
 }
 
 var validArgs = []string{
-	"scenarios", "parsers", "collections", "capi", "contexts", "lapi", "postoverflows", "machines",
-	"metrics", "bouncers", "alerts", "decisions", "simulation", "hub", "dashboard",
-	"config", "completion", "version", "console", "notifications", "support",
+	"alerts", "appsec-configs", "appsec-rules", "bouncers", "capi", "collections",
+	"completion", "config", "console", "contexts", "dashboard", "decisions", "explain",
+	"hub", "hubtest", "lapi", "machines", "metrics", "notifications", "parsers",
+	"postoverflows", "scenarios", "simulation", "support", "version",
 }
 
 func prepender(filename string) string {
