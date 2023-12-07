@@ -225,22 +225,22 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.PersistentFlags().SortFlags = false
 
 	rootCmd.AddCommand(NewConfigCmd())
-	rootCmd.AddCommand(NewHubCmd())
+	rootCmd.AddCommand(NewCLIHub().NewCommand())
 	rootCmd.AddCommand(NewMetricsCmd())
 	rootCmd.AddCommand(NewDashboardCmd())
 	rootCmd.AddCommand(NewDecisionsCmd())
 	rootCmd.AddCommand(NewAlertsCmd())
 	rootCmd.AddCommand(NewSimulationCmds())
-	rootCmd.AddCommand(NewBouncersCmd())
-	rootCmd.AddCommand(NewMachinesCmd())
+	rootCmd.AddCommand(NewCLIBouncers().NewCommand())
+	rootCmd.AddCommand(NewCLIMachines().NewCommand())
 	rootCmd.AddCommand(NewCapiCmd())
 	rootCmd.AddCommand(NewLapiCmd())
 	rootCmd.AddCommand(NewCompletionCmd())
 	rootCmd.AddCommand(NewConsoleCmd())
-	rootCmd.AddCommand(NewExplainCmd())
+	rootCmd.AddCommand(NewCLIExplain().NewCommand())
 	rootCmd.AddCommand(NewHubTestCmd())
-	rootCmd.AddCommand(NewNotificationsCmd())
-	rootCmd.AddCommand(NewSupportCmd())
+	rootCmd.AddCommand(NewCLINotifications().NewCommand())
+	rootCmd.AddCommand(NewCLISupport().NewCommand())
 
 	rootCmd.AddCommand(NewCollectionCLI().NewCommand())
 	rootCmd.AddCommand(NewParserCLI().NewCommand())
@@ -255,7 +255,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	}
 
 	if fflag.PapiClient.IsEnabled() {
-		rootCmd.AddCommand(NewPapiCmd())
+		rootCmd.AddCommand(NewCLIPapi().NewCommand())
 	}
 
 	if err := rootCmd.Execute(); err != nil {

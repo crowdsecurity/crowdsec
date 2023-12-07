@@ -238,8 +238,14 @@ func collectAcquisitionConfig() map[string][]byte {
 	return ret
 }
 
-func NewSupportCmd() *cobra.Command {
-	var cmdSupport = &cobra.Command{
+type cliSupport struct {}
+
+func NewCLISupport() *cliSupport {
+	return &cliSupport{}
+}
+
+func (cli cliSupport) NewCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "support [action]",
 		Short:             "Provide commands to help during support",
 		Args:              cobra.MinimumNArgs(1),
@@ -249,9 +255,15 @@ func NewSupportCmd() *cobra.Command {
 		},
 	}
 
+	cmd.AddCommand(cli.NewDumpCmd())
+
+	return cmd
+}
+
+func (cli cliSupport) NewDumpCmd() *cobra.Command {
 	var outFile string
 
-	cmdDump := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "dump",
 		Short: "Dump all your configuration to a zip file for easier support",
 		Long: `Dump the following informations:
@@ -419,8 +431,8 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			log.Infof("Written zip file to %s", outFile)
 		},
 	}
-	cmdDump.Flags().StringVarP(&outFile, "outFile", "f", "", "File to dump the information to")
-	cmdSupport.AddCommand(cmdDump)
 
-	return cmdSupport
+	cmd.Flags().StringVarP(&outFile, "outFile", "f", "", "File to dump the information to")
+
+	return cmd
 }
