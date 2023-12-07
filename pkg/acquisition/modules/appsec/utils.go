@@ -63,18 +63,7 @@ func AppsecEventGeneration(inEvt types.Event) (*types.Event, error) {
 			alert.Meta = append(alert.Meta, &meta)
 		}
 	}
-	for _, key := range evt.Appsec.MatchedRules.GetMatchedZones() {
-		valueByte, err := json.Marshal([]string{key})
-		if err != nil {
-			log.Debugf("unable to serialize key %s", key)
-			continue
-		}
-		meta := models.MetaItems0{
-			Key:   "matched_zones",
-			Value: string(valueByte),
-		}
-		alert.Meta = append(alert.Meta, &meta)
-	}
+
 	alert.EventsCount = ptr.Of(int32(1))
 	alert.Leakspeed = ptr.Of("")
 	alert.Scenario = ptr.Of(inEvt.Appsec.MatchedRules.GetName())
