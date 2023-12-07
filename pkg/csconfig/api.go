@@ -111,10 +111,8 @@ func (l *LocalApiClientCfg) Load() error {
 		return fmt.Errorf("no credentials or URL found in api client configuration '%s'", l.CredentialsFilePath)
 	}
 
-	if l.Credentials != nil && l.Credentials.URL != "" {
-		if !strings.HasSuffix(l.Credentials.URL, "/") {
-			l.Credentials.URL += "/"
-		}
+	if !strings.HasSuffix(l.Credentials.URL, "/") {
+		l.Credentials.URL += "/"
 	}
 
 	if l.Credentials.Login != "" && (l.Credentials.CertPath != "" || l.Credentials.KeyPath != "") {
@@ -156,9 +154,9 @@ func (l *LocalApiClientCfg) Load() error {
 	return nil
 }
 
-func (lapiCfg *LocalApiServerCfg) GetTrustedIPs() ([]net.IPNet, error) {
+func (c *LocalApiServerCfg) GetTrustedIPs() ([]net.IPNet, error) {
 	trustedIPs := make([]net.IPNet, 0)
-	for _, ip := range lapiCfg.TrustedIPs {
+	for _, ip := range c.TrustedIPs {
 		cidr := toValidCIDR(ip)
 		_, ipNet, err := net.ParseCIDR(cidr)
 		if err != nil {
@@ -210,6 +208,16 @@ type LocalApiServerCfg struct {
 	DisableRemoteLapiRegistration bool                `yaml:"disable_remote_lapi_registration,omitempty"`
 	CapiWhitelistsPath            string              `yaml:"capi_whitelists_path,omitempty"`
 	CapiWhitelists                *CapiWhitelist      `yaml:"-"`
+}
+
+func (c *LocalApiServerCfg) IsUnixSocket() bool {
+	return strings.HasPrefix(c.ListenURI, "/")
+}
+func (c *LocalApiServerCfg) ClientUrl() string {
+	if c.IsUnixSocket() {
+		return c.ListenURI
+	}
+	return fmt.Sprintf("http://%s", c.ListenURI)
 }
 
 type TLSCfg struct {
