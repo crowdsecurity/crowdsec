@@ -254,7 +254,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	}
 
 	if fflag.PapiClient.IsEnabled() {
-		rootCmd.AddCommand(NewPapiCmd())
+		rootCmd.AddCommand(NewCLIPapi().NewCommand())
 	}
 
 	if err := rootCmd.Execute(); err != nil {
