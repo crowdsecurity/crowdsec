@@ -34,7 +34,85 @@ func GetLineCountForFile(filepath string) (int, error) {
 	return lc, nil
 }
 
-func runExplain(cmd *cobra.Command, args []string) error {
+type cliExplain struct {}
+
+func NewCLIExplain() *cliExplain {
+	return &cliExplain{}
+}
+
+func (cli cliExplain) NewCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "explain",
+		Short: "Explain log pipeline",
+		Long: `
+Explain log pipeline 
+		`,
+		Example: `
+cscli explain --file ./myfile.log --type nginx 
+cscli explain --log "Sep 19 18:33:22 scw-d95986 sshd[24347]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=1.2.3.4" --type syslog
+cscli explain --dsn "file://myfile.log" --type nginx
+tail -n 5 myfile.log | cscli explain --type nginx -f -
+		`,
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
+		RunE:              cli.run,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			flags := cmd.Flags()
+
+			logFile, err := flags.GetString("file")
+			if err != nil {
+				return err
+			}
+
+			dsn, err := flags.GetString("dsn")
+			if err != nil {
+				return err
+			}
+
+			logLine, err := flags.GetString("log")
+			if err != nil {
+				return err
+			}
+
+			logType, err := flags.GetString("type")
+			if err != nil {
+				return err
+			}
+
+			if logLine == "" && logFile == "" && dsn == "" {
+				printHelp(cmd)
+				fmt.Println()
+				return fmt.Errorf("please provide --log, --file or --dsn flag")
+			}
+			if logType == "" {
+				printHelp(cmd)
+				fmt.Println()
+				return fmt.Errorf("please provide --type flag")
+			}
+			fileInfo, _ := os.Stdin.Stat()
+			if logFile == "-" && ((fileInfo.Mode() & os.ModeCharDevice) == os.ModeCharDevice) {
+				return fmt.Errorf("the option -f - is intended to work with pipes")
+			}
+			return nil
+		},
+	}
+
+	flags := cmd.Flags()
+
+	flags.StringP("file", "f", "", "Log file to test")
+	flags.StringP("dsn", "d", "", "DSN to test")
+	flags.StringP("log", "l", "", "Log line to test")
+	flags.StringP("type", "t", "", "Type of the acquisition to test")
+	flags.String("labels", "", "Additional labels to add to the acquisition format (key:value,key2:value2)")
+	flags.BoolP("verbose", "v", false, "Display individual changes")
+	flags.Bool("failures", false, "Only show failed lines")
+	flags.Bool("only-successful-parsers", false, "Only show successful parsers")
+	flags.String("crowdsec", "crowdsec", "Path to crowdsec")
+
+	return cmd
+}
+
+func (cli cliExplain) run(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
 	logFile, err := flags.GetString("file")
@@ -188,76 +266,4 @@ func runExplain(cmd *cobra.Command, args []string) error {
 	hubtest.DumpTree(*parserDump, *bucketStateDump, opts)
 
 	return nil
-}
-
-func NewExplainCmd() *cobra.Command {
-	cmdExplain := &cobra.Command{
-		Use:   "explain",
-		Short: "Explain log pipeline",
-		Long: `
-Explain log pipeline 
-		`,
-		Example: `
-cscli explain --file ./myfile.log --type nginx 
-cscli explain --log "Sep 19 18:33:22 scw-d95986 sshd[24347]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=1.2.3.4" --type syslog
-cscli explain --dsn "file://myfile.log" --type nginx
-tail -n 5 myfile.log | cscli explain --type nginx -f -
-		`,
-		Args:              cobra.ExactArgs(0),
-		DisableAutoGenTag: true,
-		RunE:              runExplain,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			flags := cmd.Flags()
-
-			logFile, err := flags.GetString("file")
-			if err != nil {
-				return err
-			}
-
-			dsn, err := flags.GetString("dsn")
-			if err != nil {
-				return err
-			}
-
-			logLine, err := flags.GetString("log")
-			if err != nil {
-				return err
-			}
-
-			logType, err := flags.GetString("type")
-			if err != nil {
-				return err
-			}
-
-			if logLine == "" && logFile == "" && dsn == "" {
-				printHelp(cmd)
-				fmt.Println()
-				return fmt.Errorf("please provide --log, --file or --dsn flag")
-			}
-			if logType == "" {
-				printHelp(cmd)
-				fmt.Println()
-				return fmt.Errorf("please provide --type flag")
-			}
-			fileInfo, _ := os.Stdin.Stat()
-			if logFile == "-" && ((fileInfo.Mode() & os.ModeCharDevice) == os.ModeCharDevice) {
-				return fmt.Errorf("the option -f - is intended to work with pipes")
-			}
-			return nil
-		},
-	}
-
-	flags := cmdExplain.Flags()
-
-	flags.StringP("file", "f", "", "Log file to test")
-	flags.StringP("dsn", "d", "", "DSN to test")
-	flags.StringP("log", "l", "", "Log line to test")
-	flags.StringP("type", "t", "", "Type of the acquisition to test")
-	flags.String("labels", "", "Additional labels to add to the acquisition format (key:value,key2:value2)")
-	flags.BoolP("verbose", "v", false, "Display individual changes")
-	flags.Bool("failures", false, "Only show failed lines")
-	flags.Bool("only-successful-parsers", false, "Only show successful parsers")
-	flags.String("crowdsec", "crowdsec", "Path to crowdsec")
-
-	return cmdExplain
 }

@@ -39,8 +39,15 @@ type NotificationsCfg struct {
 	ids      []uint
 }
 
-func NewNotificationsCmd() *cobra.Command {
-	var cmdNotifications = &cobra.Command{
+
+type cliNotifications struct {}
+
+func NewCLINotifications() *cliNotifications {
+	return &cliNotifications{}
+}
+
+func (cli cliNotifications) NewCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "notifications [action]",
 		Short:             "Helper for notification plugin configuration",
 		Long:              "To list/inspect/test notification template",
@@ -62,12 +69,12 @@ func NewNotificationsCmd() *cobra.Command {
 		},
 	}
 
-	cmdNotifications.AddCommand(NewNotificationsListCmd())
-	cmdNotifications.AddCommand(NewNotificationsInspectCmd())
-	cmdNotifications.AddCommand(NewNotificationsReinjectCmd())
-	cmdNotifications.AddCommand(NewNotificationsTestCmd())
+	cmd.AddCommand(cli.NewListCmd())
+	cmd.AddCommand(cli.NewInspectCmd())
+	cmd.AddCommand(cli.NewReinjectCmd())
+	cmd.AddCommand(cli.NewTestCmd())
 
-	return cmdNotifications
+	return cmd
 }
 
 func getPluginConfigs() (map[string]csplugin.PluginConfig, error) {
@@ -141,8 +148,8 @@ func getProfilesConfigs() (map[string]NotificationsCfg, error) {
 	return ncfgs, nil
 }
 
-func NewNotificationsListCmd() *cobra.Command {
-	var cmdNotificationsList = &cobra.Command{
+func (cli cliNotifications) NewListCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "list",
 		Short:             "list active notifications plugins",
 		Long:              `list active notifications plugins`,
@@ -185,11 +192,11 @@ func NewNotificationsListCmd() *cobra.Command {
 		},
 	}
 
-	return cmdNotificationsList
+	return cmd
 }
 
-func NewNotificationsInspectCmd() *cobra.Command {
-	var cmdNotificationsInspect = &cobra.Command{
+func (cli cliNotifications) NewInspectCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "inspect",
 		Short:             "Inspect active notifications plugin configuration",
 		Long:              `Inspect active notifications plugin and show configuration`,
@@ -230,16 +237,16 @@ func NewNotificationsInspectCmd() *cobra.Command {
 		},
 	}
 
-	return cmdNotificationsInspect
+	return cmd
 }
 
-func NewNotificationsTestCmd() *cobra.Command {
+func (cli cliNotifications) NewTestCmd() *cobra.Command {
 	var (
 		pluginBroker  csplugin.PluginBroker
 		pluginTomb    tomb.Tomb
 		alertOverride string
 	)
-	var cmdNotificationsTest = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:               "test [plugin name]",
 		Short:             "send a generic test alert to notification plugin",
 		Long:              `send a generic test alert to a notification plugin to test configuration even if is not active`,
@@ -313,16 +320,16 @@ func NewNotificationsTestCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmdNotificationsTest.Flags().StringVarP(&alertOverride, "alert", "a", "", "JSON string used to override alert fields in the generic alert (see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
+	cmd.Flags().StringVarP(&alertOverride, "alert", "a", "", "JSON string used to override alert fields in the generic alert (see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
 
-	return cmdNotificationsTest
+	return cmd
 }
 
-func NewNotificationsReinjectCmd() *cobra.Command {
+func (cli cliNotifications) NewReinjectCmd() *cobra.Command {
 	var alertOverride string
 	var alert *models.Alert
 
-	var cmdNotificationsReinject = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "reinject",
 		Short: "reinject an alert into profiles to trigger notifications",
 		Long:  `reinject an alert into profiles to be evaluated by the filter and sent to matched notifications plugins`,
@@ -401,9 +408,9 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 			return nil
 		},
 	}
-	cmdNotificationsReinject.Flags().StringVarP(&alertOverride, "alert", "a", "", "JSON string used to override alert fields in the reinjected alert (see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
+	cmd.Flags().StringVarP(&alertOverride, "alert", "a", "", "JSON string used to override alert fields in the reinjected alert (see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object)")
 
-	return cmdNotificationsReinject
+	return cmd
 }
 
 func FetchAlertFromArgString(toParse string) (*models.Alert, error) {
