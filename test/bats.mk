@@ -83,7 +83,7 @@ bats-build: bats-environment
 
 # Create a reusable package with initial configuration + data
 bats-fixture: bats-check-requirements bats-update-tools
-	@echo "Creating functional test fixture..."
+	@echo "Creating functional test fixture."
 	@$(TEST_DIR)/instance-data make
 
 # Remove the local crowdsec installation and the fixture config + data

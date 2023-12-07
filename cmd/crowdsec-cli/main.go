@@ -93,7 +93,7 @@ func initConfig() {
 }
 
 var validArgs = []string{
-	"scenarios", "parsers", "collections", "capi", "lapi", "postoverflows", "machines",
+	"scenarios", "parsers", "collections", "capi", "contexts", "lapi", "postoverflows", "machines",
 	"metrics", "bouncers", "alerts", "decisions", "simulation", "hub", "dashboard",
 	"config", "completion", "version", "console", "notifications", "support",
 }
@@ -246,6 +246,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewParserCLI().NewCommand())
 	rootCmd.AddCommand(NewScenarioCLI().NewCommand())
 	rootCmd.AddCommand(NewPostOverflowCLI().NewCommand())
+	rootCmd.AddCommand(NewContextCLI().NewCommand())
 	rootCmd.AddCommand(NewAppsecConfigCLI().NewCommand())
 	rootCmd.AddCommand(NewAppsecRuleCLI().NewCommand())
 
