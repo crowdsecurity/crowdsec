@@ -240,7 +240,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewExplainCmd())
 	rootCmd.AddCommand(NewHubTestCmd())
 	rootCmd.AddCommand(NewCLINotifications().NewCommand())
-	rootCmd.AddCommand(NewSupportCmd())
+	rootCmd.AddCommand(NewCLISupport().NewCommand())
 
 	rootCmd.AddCommand(NewCollectionCLI().NewCommand())
 	rootCmd.AddCommand(NewParserCLI().NewCommand())
