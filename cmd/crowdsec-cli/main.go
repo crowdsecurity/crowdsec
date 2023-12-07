@@ -231,7 +231,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewDecisionsCmd())
 	rootCmd.AddCommand(NewAlertsCmd())
 	rootCmd.AddCommand(NewSimulationCmds())
-	rootCmd.AddCommand(NewBouncersCmd())
+	rootCmd.AddCommand(NewCLIBouncers().NewCommand())
 	rootCmd.AddCommand(NewMachinesCmd())
 	rootCmd.AddCommand(NewCapiCmd())
 	rootCmd.AddCommand(NewLapiCmd())

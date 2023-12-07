@@ -60,8 +60,46 @@ func getBouncers(out io.Writer, dbClient *database.Client) error {
 	return nil
 }
 
-func NewBouncersListCmd() *cobra.Command {
-	cmdBouncersList := &cobra.Command{
+type cliBouncers struct {}
+
+func NewCLIBouncers() *cliBouncers {
+	return &cliBouncers{}
+}
+
+func (cli cliBouncers) NewCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "bouncers [action]",
+		Short: "Manage bouncers [requires local API]",
+		Long: `To list/add/delete/prune bouncers.
+Note: This command requires database direct access, so is intended to be run on Local API/master.
+`,
+		Args:              cobra.MinimumNArgs(1),
+		Aliases:           []string{"bouncer"},
+		DisableAutoGenTag: true,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			var err error
+			if err = require.LAPI(csConfig); err != nil {
+				return err
+			}
+
+			dbClient, err = database.NewClient(csConfig.DbConfig)
+			if err != nil {
+				return fmt.Errorf("unable to create new database client: %s", err)
+			}
+			return nil
+		},
+	}
+
+	cmd.AddCommand(cli.NewListCmd())
+	cmd.AddCommand(cli.NewAddCmd())
+	cmd.AddCommand(cli.NewDeleteCmd())
+	cmd.AddCommand(cli.NewPruneCmd())
+
+	return cmd
+}
+
+func (cli cliBouncers) NewListCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "list",
 		Short:             "list all bouncers within the database",
 		Example:           `cscli bouncers list`,
@@ -76,10 +114,10 @@ func NewBouncersListCmd() *cobra.Command {
 		},
 	}
 
-	return cmdBouncersList
+	return cmd
 }
 
-func runBouncersAdd(cmd *cobra.Command, args []string) error {
+func (cli cliBouncers) add(cmd *cobra.Command, args []string) error {
 	keyLength := 32
 
 	flags := cmd.Flags()
@@ -125,26 +163,26 @@ func runBouncersAdd(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func NewBouncersAddCmd() *cobra.Command {
-	cmdBouncersAdd := &cobra.Command{
+func (cli cliBouncers) NewAddCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "add MyBouncerName",
 		Short: "add a single bouncer to the database",
 		Example: `cscli bouncers add MyBouncerName
 cscli bouncers add MyBouncerName --key <random-key>`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE:              runBouncersAdd,
+		RunE:              cli.add,
 	}
 
-	flags := cmdBouncersAdd.Flags()
+	flags := cmd.Flags()
 	flags.StringP("length", "l", "", "length of the api key")
 	flags.MarkDeprecated("length", "use --key instead")
 	flags.StringP("key", "k", "", "api key for the bouncer")
 
-	return cmdBouncersAdd
+	return cmd
 }
 
-func runBouncersDelete(cmd *cobra.Command, args []string) error {
+func (cli cliBouncers) delete(cmd *cobra.Command, args []string) error {
 	for _, bouncerID := range args {
 		err := dbClient.DeleteBouncer(bouncerID)
 		if err != nil {
@@ -156,8 +194,8 @@ func runBouncersDelete(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func NewBouncersDeleteCmd() *cobra.Command {
-	cmdBouncersDelete := &cobra.Command{
+func (cli cliBouncers) NewDeleteCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "delete MyBouncerName",
 		Short:             "delete bouncer(s) from the database",
 		Args:              cobra.MinimumNArgs(1),
@@ -182,15 +220,15 @@ func NewBouncersDeleteCmd() *cobra.Command {
 			}
 			return ret, cobra.ShellCompDirectiveNoFileComp
 		},
-		RunE: runBouncersDelete,
+		RunE: cli.delete,
 	}
 
-	return cmdBouncersDelete
+	return cmd
 }
 
-func NewBouncersPruneCmd() *cobra.Command {
+func (cli cliBouncers) NewPruneCmd() *cobra.Command {
 	var parsedDuration time.Duration
-	cmdBouncersPrune := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:               "prune",
 		Short:             "prune multiple bouncers from the database",
 		Args:              cobra.NoArgs,
@@ -253,39 +291,7 @@ cscli bouncers prune -d 60m --force`,
 			return nil
 		},
 	}
-	cmdBouncersPrune.Flags().StringP("duration", "d", "60m", "duration of time since last pull")
-	cmdBouncersPrune.Flags().Bool("force", false, "force prune without asking for confirmation")
-	return cmdBouncersPrune
-}
-
-func NewBouncersCmd() *cobra.Command {
-	var cmdBouncers = &cobra.Command{
-		Use:   "bouncers [action]",
-		Short: "Manage bouncers [requires local API]",
-		Long: `To list/add/delete/prune bouncers.
-Note: This command requires database direct access, so is intended to be run on Local API/master.
-`,
-		Args:              cobra.MinimumNArgs(1),
-		Aliases:           []string{"bouncer"},
-		DisableAutoGenTag: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-			if err = require.LAPI(csConfig); err != nil {
-				return err
-			}
-
-			dbClient, err = database.NewClient(csConfig.DbConfig)
-			if err != nil {
-				return fmt.Errorf("unable to create new database client: %s", err)
-			}
-			return nil
-		},
-	}
-
-	cmdBouncers.AddCommand(NewBouncersListCmd())
-	cmdBouncers.AddCommand(NewBouncersAddCmd())
-	cmdBouncers.AddCommand(NewBouncersDeleteCmd())
-	cmdBouncers.AddCommand(NewBouncersPruneCmd())
-
-	return cmdBouncers
+	cmd.Flags().StringP("duration", "d", "60m", "duration of time since last pull")
+	cmd.Flags().Bool("force", false, "force prune without asking for confirmation")
+	return cmd
 }
