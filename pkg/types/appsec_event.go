@@ -2,6 +2,7 @@ package types
 
 import (
 	"regexp"
+	"slices"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -132,7 +133,11 @@ func (w MatchedRules) GetMatchedZones() []string {
 	ret := make([]string, 0)
 
 	for _, rule := range w {
-		ret = append(ret, rule["matched_zones"].([]string)...)
+		for _, zone := range rule["matched_zones"].([]string) {
+			if !slices.Contains(ret, zone) {
+				ret = append(ret, zone)
+			}
+		}
 	}
 	return ret
 }
