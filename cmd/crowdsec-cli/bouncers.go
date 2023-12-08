@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"slices"
 	"strings"
 	"time"
 
@@ -13,12 +12,12 @@ import (
 	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"slices"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 func getBouncers(out io.Writer, dbClient *database.Client) error {
@@ -26,16 +25,18 @@ func getBouncers(out io.Writer, dbClient *database.Client) error {
 	if err != nil {
 		return fmt.Errorf("unable to list bouncers: %s", err)
 	}
-	if csConfig.Cscli.Output == "human" {
+
+	switch csConfig.Cscli.Output {
+	case "human":
 		getBouncersTable(out, bouncers)
-	} else if csConfig.Cscli.Output == "json" {
+	case "json":
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
 		if err := enc.Encode(bouncers); err != nil {
 			return fmt.Errorf("failed to unmarshal: %w", err)
 		}
 		return nil
-	} else if csConfig.Cscli.Output == "raw" {
+	case "raw":
 		csvwriter := csv.NewWriter(out)
 		err := csvwriter.Write([]string{"name", "ip", "revoked", "last_pull", "type", "version", "auth_type"})
 		if err != nil {
@@ -55,11 +56,50 @@ func getBouncers(out io.Writer, dbClient *database.Client) error {
 		}
 		csvwriter.Flush()
 	}
+
 	return nil
 }
 
-func NewBouncersListCmd() *cobra.Command {
-	cmdBouncersList := &cobra.Command{
+type cliBouncers struct {}
+
+func NewCLIBouncers() *cliBouncers {
+	return &cliBouncers{}
+}
+
+func (cli cliBouncers) NewCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "bouncers [action]",
+		Short: "Manage bouncers [requires local API]",
+		Long: `To list/add/delete/prune bouncers.
+Note: This command requires database direct access, so is intended to be run on Local API/master.
+`,
+		Args:              cobra.MinimumNArgs(1),
+		Aliases:           []string{"bouncer"},
+		DisableAutoGenTag: true,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			var err error
+			if err = require.LAPI(csConfig); err != nil {
+				return err
+			}
+
+			dbClient, err = database.NewClient(csConfig.DbConfig)
+			if err != nil {
+				return fmt.Errorf("unable to create new database client: %s", err)
+			}
+			return nil
+		},
+	}
+
+	cmd.AddCommand(cli.NewListCmd())
+	cmd.AddCommand(cli.NewAddCmd())
+	cmd.AddCommand(cli.NewDeleteCmd())
+	cmd.AddCommand(cli.NewPruneCmd())
+
+	return cmd
+}
+
+func (cli cliBouncers) NewListCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "list",
 		Short:             "list all bouncers within the database",
 		Example:           `cscli bouncers list`,
@@ -74,16 +114,13 @@ func NewBouncersListCmd() *cobra.Command {
 		},
 	}
 
-	return cmdBouncersList
+	return cmd
 }
 
-func runBouncersAdd(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
+func (cli cliBouncers) add(cmd *cobra.Command, args []string) error {
+	keyLength := 32
 
-	keyLength, err := flags.GetInt("length")
-	if err != nil {
-		return err
-	}
+	flags := cmd.Flags()
 
 	key, err := flags.GetString("key")
 	if err != nil {
@@ -108,13 +145,14 @@ func runBouncersAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to create bouncer: %s", err)
 	}
 
-	if csConfig.Cscli.Output == "human" {
+	switch csConfig.Cscli.Output {
+	case "human":
 		fmt.Printf("API key for '%s':\n\n", keyName)
 		fmt.Printf("   %s\n\n", apiKey)
 		fmt.Print("Please keep this key since you will not be able to retrieve it!\n")
-	} else if csConfig.Cscli.Output == "raw" {
+	case "raw":
 		fmt.Printf("%s", apiKey)
-	} else if csConfig.Cscli.Output == "json" {
+	case "json":
 		j, err := json.Marshal(apiKey)
 		if err != nil {
 			return fmt.Errorf("unable to marshal api key")
@@ -125,27 +163,26 @@ func runBouncersAdd(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func NewBouncersAddCmd() *cobra.Command {
-	cmdBouncersAdd := &cobra.Command{
-		Use:   "add MyBouncerName [--length 16]",
+func (cli cliBouncers) NewAddCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "add MyBouncerName",
 		Short: "add a single bouncer to the database",
 		Example: `cscli bouncers add MyBouncerName
-cscli bouncers add MyBouncerName -l 24
-cscli bouncers add MyBouncerName -k <random-key>`,
+cscli bouncers add MyBouncerName --key <random-key>`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE:              runBouncersAdd,
+		RunE:              cli.add,
 	}
 
-	flags := cmdBouncersAdd.Flags()
-
-	flags.IntP("length", "l", 16, "length of the api key")
+	flags := cmd.Flags()
+	flags.StringP("length", "l", "", "length of the api key")
+	flags.MarkDeprecated("length", "use --key instead")
 	flags.StringP("key", "k", "", "api key for the bouncer")
 
-	return cmdBouncersAdd
+	return cmd
 }
 
-func runBouncersDelete(cmd *cobra.Command, args []string) error {
+func (cli cliBouncers) delete(cmd *cobra.Command, args []string) error {
 	for _, bouncerID := range args {
 		err := dbClient.DeleteBouncer(bouncerID)
 		if err != nil {
@@ -157,8 +194,8 @@ func runBouncersDelete(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func NewBouncersDeleteCmd() *cobra.Command {
-	cmdBouncersDelete := &cobra.Command{
+func (cli cliBouncers) NewDeleteCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "delete MyBouncerName",
 		Short:             "delete bouncer(s) from the database",
 		Args:              cobra.MinimumNArgs(1),
@@ -183,15 +220,15 @@ func NewBouncersDeleteCmd() *cobra.Command {
 			}
 			return ret, cobra.ShellCompDirectiveNoFileComp
 		},
-		RunE: runBouncersDelete,
+		RunE: cli.delete,
 	}
 
-	return cmdBouncersDelete
+	return cmd
 }
 
-func NewBouncersPruneCmd() *cobra.Command {
+func (cli cliBouncers) NewPruneCmd() *cobra.Command {
 	var parsedDuration time.Duration
-	cmdBouncersPrune := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:               "prune",
 		Short:             "prune multiple bouncers from the database",
 		Args:              cobra.NoArgs,
@@ -254,39 +291,7 @@ cscli bouncers prune -d 60m --force`,
 			return nil
 		},
 	}
-	cmdBouncersPrune.Flags().StringP("duration", "d", "60m", "duration of time since last pull")
-	cmdBouncersPrune.Flags().Bool("force", false, "force prune without asking for confirmation")
-	return cmdBouncersPrune
-}
-
-func NewBouncersCmd() *cobra.Command {
-	var cmdBouncers = &cobra.Command{
-		Use:   "bouncers [action]",
-		Short: "Manage bouncers [requires local API]",
-		Long: `To list/add/delete/prune bouncers.
-Note: This command requires database direct access, so is intended to be run on Local API/master.
-`,
-		Args:              cobra.MinimumNArgs(1),
-		Aliases:           []string{"bouncer"},
-		DisableAutoGenTag: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-			if err = require.LAPI(csConfig); err != nil {
-				return err
-			}
-
-			dbClient, err = database.NewClient(csConfig.DbConfig)
-			if err != nil {
-				return fmt.Errorf("unable to create new database client: %s", err)
-			}
-			return nil
-		},
-	}
-
-	cmdBouncers.AddCommand(NewBouncersListCmd())
-	cmdBouncers.AddCommand(NewBouncersAddCmd())
-	cmdBouncers.AddCommand(NewBouncersDeleteCmd())
-	cmdBouncers.AddCommand(NewBouncersPruneCmd())
-
-	return cmdBouncers
+	cmd.Flags().StringP("duration", "d", "60m", "duration of time since last pull")
+	cmd.Flags().Bool("force", false, "force prune without asking for confirmation")
+	return cmd
 }

@@ -6,70 +6,104 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 type HubTest struct {
-	CrowdSecPath           string
-	CscliPath              string
-	HubPath                string
-	HubTestPath            string
-	HubIndexFile           string
-	TemplateConfigPath     string
-	TemplateProfilePath    string
-	TemplateSimulationPath string
-	HubIndex               *HubIndex
-	Tests                  []*HubTestItem
+	CrowdSecPath              string
+	CscliPath                 string
+	HubPath                   string
+	HubTestPath               string //generic parser/scenario tests .tests
+	HubAppsecTestPath         string //dir specific to appsec tests .appsec-tests
+	HubIndexFile              string
+	TemplateConfigPath        string
+	TemplateProfilePath       string
+	TemplateSimulationPath    string
+	TemplateAcquisPath        string
+	TemplateAppsecProfilePath string
+	HubIndex                  *cwhub.Hub
+	Tests                     []*HubTestItem
 }
 
 const (
-	templateConfigFile     = "template_config.yaml"
-	templateSimulationFile = "template_simulation.yaml"
-	templateProfileFile    = "template_profiles.yaml"
+	templateConfigFile        = "template_config.yaml"
+	templateSimulationFile    = "template_simulation.yaml"
+	templateProfileFile       = "template_profiles.yaml"
+	templateAcquisFile        = "template_acquis.yaml"
+	templateAppsecProfilePath = "template_appsec-profile.yaml"
 )
 
-func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest, error) {
-	var err error
-
-	hubPath, err = filepath.Abs(hubPath)
+func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecTest bool) (HubTest, error) {
+	hubPath, err := filepath.Abs(hubPath)
 	if err != nil {
 		return HubTest{}, fmt.Errorf("can't get absolute path of hub: %+v", err)
 	}
+
 	// we can't use hubtest without the hub
-	if _, err := os.Stat(hubPath); os.IsNotExist(err) {
+	if _, err = os.Stat(hubPath); os.IsNotExist(err) {
 		return HubTest{}, fmt.Errorf("path to hub '%s' doesn't exist, can't run", hubPath)
 	}
-	HubTestPath := filepath.Join(hubPath, "./.tests/")
-
 	// we can't use hubtest without crowdsec binary
-	if _, err := exec.LookPath(crowdsecPath); err != nil {
-		if _, err := os.Stat(crowdsecPath); os.IsNotExist(err) {
+	if _, err = exec.LookPath(crowdsecPath); err != nil {
+		if _, err = os.Stat(crowdsecPath); os.IsNotExist(err) {
 			return HubTest{}, fmt.Errorf("path to crowdsec binary '%s' doesn't exist or is not in $PATH, can't run", crowdsecPath)
 		}
 	}
 
 	// we can't use hubtest without cscli binary
-	if _, err := exec.LookPath(cscliPath); err != nil {
-		if _, err := os.Stat(cscliPath); os.IsNotExist(err) {
+	if _, err = exec.LookPath(cscliPath); err != nil {
+		if _, err = os.Stat(cscliPath); os.IsNotExist(err) {
 			return HubTest{}, fmt.Errorf("path to cscli binary '%s' doesn't exist or is not in $PATH, can't run", cscliPath)
 		}
 	}
 
+	if isAppsecTest {
+		HubTestPath := filepath.Join(hubPath, "./.appsec-tests/")
+		hubIndexFile := filepath.Join(hubPath, ".index.json")
+
+		local := &csconfig.LocalHubCfg{
+			HubDir:         hubPath,
+			HubIndexFile:   hubIndexFile,
+			InstallDir:     HubTestPath,
+			InstallDataDir: HubTestPath,
+		}
+
+		hub, err := cwhub.NewHub(local, nil, false)
+		if err != nil {
+			return HubTest{}, fmt.Errorf("unable to load hub: %s", err)
+		}
+
+		return HubTest{
+			CrowdSecPath:              crowdsecPath,
+			CscliPath:                 cscliPath,
+			HubPath:                   hubPath,
+			HubTestPath:               HubTestPath,
+			HubIndexFile:              hubIndexFile,
+			TemplateConfigPath:        filepath.Join(HubTestPath, templateConfigFile),
+			TemplateProfilePath:       filepath.Join(HubTestPath, templateProfileFile),
+			TemplateSimulationPath:    filepath.Join(HubTestPath, templateSimulationFile),
+			TemplateAppsecProfilePath: filepath.Join(HubTestPath, templateAppsecProfilePath),
+			TemplateAcquisPath:        filepath.Join(HubTestPath, templateAcquisFile),
+			HubIndex:                  hub,
+		}, nil
+	}
+
+	HubTestPath := filepath.Join(hubPath, "./.tests/")
+
 	hubIndexFile := filepath.Join(hubPath, ".index.json")
-	bidx, err := os.ReadFile(hubIndexFile)
-	if err != nil {
-		return HubTest{}, fmt.Errorf("unable to read index file: %s", err)
+
+	local := &csconfig.LocalHubCfg{
+		HubDir:         hubPath,
+		HubIndexFile:   hubIndexFile,
+		InstallDir:     HubTestPath,
+		InstallDataDir: HubTestPath,
 	}
 
-	// load hub index
-	hubIndex, err := cwhub.LoadPkgIndex(bidx)
+	hub, err := cwhub.NewHub(local, nil, false)
 	if err != nil {
-		return HubTest{}, fmt.Errorf("unable to load hub index file: %s", err)
+		return HubTest{}, fmt.Errorf("unable to load hub: %s", err)
 	}
-
-	templateConfigFilePath := filepath.Join(HubTestPath, templateConfigFile)
-	templateProfilePath := filepath.Join(HubTestPath, templateProfileFile)
-	templateSimulationPath := filepath.Join(HubTestPath, templateSimulationFile)
 
 	return HubTest{
 		CrowdSecPath:           crowdsecPath,
@@ -77,19 +111,21 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest,
 		HubPath:                hubPath,
 		HubTestPath:            HubTestPath,
 		HubIndexFile:           hubIndexFile,
-		TemplateConfigPath:     templateConfigFilePath,
-		TemplateProfilePath:    templateProfilePath,
-		TemplateSimulationPath: templateSimulationPath,
-		HubIndex:               &HubIndex{Data: hubIndex},
+		TemplateConfigPath:     filepath.Join(HubTestPath, templateConfigFile),
+		TemplateProfilePath:    filepath.Join(HubTestPath, templateProfileFile),
+		TemplateSimulationPath: filepath.Join(HubTestPath, templateSimulationFile),
+		HubIndex:               hub,
 	}, nil
 }
 
 func (h *HubTest) LoadTestItem(name string) (*HubTestItem, error) {
 	HubTestItem := &HubTestItem{}
+
 	testItem, err := NewTest(name, h)
 	if err != nil {
 		return HubTestItem, err
 	}
+
 	h.Tests = append(h.Tests, testItem)
 
 	return testItem, nil
@@ -108,5 +144,6 @@ func (h *HubTest) LoadAllTests() error {
 			}
 		}
 	}
+
 	return nil
 }

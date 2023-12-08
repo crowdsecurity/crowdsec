@@ -102,11 +102,11 @@ func NewCapiRegisterCmd() *cobra.Command {
 				return fmt.Errorf("unable to marshal api credentials: %w", err)
 			}
 			if dumpFile != "" {
-				err = os.WriteFile(dumpFile, apiConfigDump, 0600)
+				err = os.WriteFile(dumpFile, apiConfigDump, 0o600)
 				if err != nil {
 					return fmt.Errorf("write api credentials in '%s' failed: %w", dumpFile, err)
 				}
-				log.Printf("Central API credentials dumped to '%s'", dumpFile)
+				log.Printf("Central API credentials written to '%s'", dumpFile)
 			} else {
 				fmt.Printf("%s\n", string(apiConfigDump))
 			}
@@ -147,11 +147,12 @@ func NewCapiStatusCmd() *cobra.Command {
 				return fmt.Errorf("parsing api url ('%s'): %w", csConfig.API.Server.OnlineClient.Credentials.URL, err)
 			}
 
-			if err := require.Hub(csConfig); err != nil {
+			hub, err := require.Hub(csConfig, nil)
+			if err != nil {
 				return err
 			}
 
-			scenarios, err := cwhub.GetInstalledItemsAsString(cwhub.SCENARIOS)
+			scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
 			if err != nil {
 				return fmt.Errorf("failed to get scenarios: %w", err)
 			}

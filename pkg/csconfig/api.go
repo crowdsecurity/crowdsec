@@ -286,10 +286,6 @@ func (c *Config) LoadAPIServer() error {
 		log.Infof("loaded capi whitelist from %s: %d IPs, %d CIDRs", c.API.Server.CapiWhitelistsPath, len(c.API.Server.CapiWhitelists.Ips), len(c.API.Server.CapiWhitelists.Cidrs))
 	}
 
-	if err := c.LoadCommon(); err != nil {
-		return fmt.Errorf("loading common configuration: %s", err)
-	}
-
 	c.API.Server.LogDir = c.Common.LogDir
 	c.API.Server.LogMedia = c.Common.LogMedia
 	c.API.Server.CompressLogs = c.Common.CompressLogs

@@ -105,13 +105,13 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	var flushScheduler *gocron.Scheduler
 	dbClient, err := database.NewClient(config.DbConfig)
 	if err != nil {
-		return &APIServer{}, fmt.Errorf("unable to init database client: %w", err)
+		return nil, fmt.Errorf("unable to init database client: %w", err)
 	}
 
 	if config.DbConfig.Flush != nil {
 		flushScheduler, err = dbClient.StartFlushScheduler(config.DbConfig.Flush)
 		if err != nil {
-			return &APIServer{}, err
+			return nil, err
 		}
 	}
 
@@ -128,7 +128,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	if config.TrustedProxies != nil && config.UseForwardedForHeaders {
 		if err := router.SetTrustedProxies(*config.TrustedProxies); err != nil {
-			return &APIServer{}, fmt.Errorf("while setting trusted_proxies: %w", err)
+			return nil, fmt.Errorf("while setting trusted_proxies: %w", err)
 		}
 		router.ForwardedByClientIP = true
 	} else {
@@ -214,7 +214,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		log.Printf("Loading CAPI manager")
 		apiClient, err = NewAPIC(config.OnlineClient, dbClient, config.ConsoleConfig, config.CapiWhitelists)
 		if err != nil {
-			return &APIServer{}, err
+			return nil, err
 		}
 		log.Infof("CAPI manager configured successfully")
 		isMachineEnrolled = isEnrolled(apiClient.apiClient)
@@ -223,7 +223,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 			log.Infof("Machine is enrolled in the console, Loading PAPI Client")
 			papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
 			if err != nil {
-				return &APIServer{}, err
+				return nil, err
 			}
 			controller.DecisionDeleteChan = papiClient.Channels.DeleteDecisionChannel
 		} else {
@@ -238,7 +238,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	if trustedIPs, err := config.GetTrustedIPs(); err == nil {
 		controller.TrustedIPs = trustedIPs
 	} else {
-		return &APIServer{}, err
+		return nil, err
 	}
 
 	return &APIServer{

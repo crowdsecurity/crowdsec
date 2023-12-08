@@ -21,44 +21,11 @@ type OldAPICfg struct {
 	Password  string `json:"password"`
 }
 
-// it's a rip of the cli version, but in silent-mode
-func silentInstallItem(name string, obtype string) (string, error) {
-	var item = cwhub.GetItem(obtype, name)
-	if item == nil {
-		return "", fmt.Errorf("error retrieving item")
-	}
-	if downloadOnly && item.Downloaded && item.UpToDate {
-		return fmt.Sprintf("%s is already downloaded and up-to-date", item.Name), nil
-	}
-	err := cwhub.DownloadLatest(csConfig.Hub, item, forceAction, false)
-	if err != nil {
-		return "", fmt.Errorf("error while downloading %s : %v", item.Name, err)
-	}
-	if err := cwhub.AddItem(obtype, *item); err != nil {
-		return "", err
-	}
-
-	if downloadOnly {
-		return fmt.Sprintf("Downloaded %s to %s", item.Name, csConfig.Cscli.HubDir+"/"+item.RemotePath), nil
-	}
-	err = cwhub.EnableItem(csConfig.Hub, item)
-	if err != nil {
-		return "", fmt.Errorf("error while enabling %s : %v", item.Name, err)
-	}
-	if err := cwhub.AddItem(obtype, *item); err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("Enabled %s", item.Name), nil
-}
-
 func restoreHub(dirPath string) error {
-	var err error
-
-	if err := csConfig.LoadHub(); err != nil {
+	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig))
+	if err != nil {
 		return err
 	}
-
-	cwhub.SetHubBranch()
 
 	for _, itype := range cwhub.ItemTypes {
 		itemDirectory := fmt.Sprintf("%s/%s/", dirPath, itype)
@@ -78,13 +45,14 @@ func restoreHub(dirPath string) error {
 			return fmt.Errorf("error unmarshaling %s : %s", upstreamListFN, err)
 		}
 		for _, toinstall := range upstreamList {
-			label, err := silentInstallItem(toinstall, itype)
+			item := hub.GetItem(itype, toinstall)
+			if item == nil {
+				log.Errorf("Item %s/%s not found in hub", itype, toinstall)
+				continue
+			}
+			err := item.Install(false, false)
 			if err != nil {
 				log.Errorf("Error while installing %s : %s", toinstall, err)
-			} else if label != "" {
-				log.Infof("Installed %s : %s", toinstall, label)
-			} else {
-				log.Printf("Installed %s : ok", toinstall)
 			}
 		}
 
@@ -98,7 +66,7 @@ func restoreHub(dirPath string) error {
 			if file.Name() == fmt.Sprintf("upstream-%s.json", itype) {
 				continue
 			}
-			if itype == cwhub.PARSERS || itype == cwhub.PARSERS_OVFLW {
+			if itype == cwhub.PARSERS || itype == cwhub.POSTOVERFLOWS {
 				//we expect a stage here
 				if !file.IsDir() {
 					continue
@@ -215,7 +183,7 @@ func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
 			if csConfig.API.Server.OnlineClient != nil && csConfig.API.Server.OnlineClient.CredentialsFilePath != "" {
 				apiConfigDumpFile = csConfig.API.Server.OnlineClient.CredentialsFilePath
 			}
-			err = os.WriteFile(apiConfigDumpFile, apiConfigDump, 0o644)
+			err = os.WriteFile(apiConfigDumpFile, apiConfigDump, 0o600)
 			if err != nil {
 				return fmt.Errorf("write api credentials in '%s' failed: %s", apiConfigDumpFile, err)
 			}
@@ -299,10 +267,6 @@ func runConfigRestore(cmd *cobra.Command, args []string) error {
 
 	oldBackup, err := flags.GetBool("old-backup")
 	if err != nil {
-		return err
-	}
-
-	if err := require.Hub(csConfig); err != nil {
 		return err
 	}
 

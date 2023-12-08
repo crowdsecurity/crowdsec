@@ -70,11 +70,12 @@ After running this command your will need to validate the enrollment in the weba
 				return fmt.Errorf("could not parse CAPI URL: %s", err)
 			}
 
-			if err := require.Hub(csConfig); err != nil {
+			hub, err := require.Hub(csConfig, nil)
+			if err != nil {
 				return err
 			}
 
-			scenarios, err := cwhub.GetInstalledItemsAsString(cwhub.SCENARIOS)
+			scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
 			if err != nil {
 				return fmt.Errorf("failed to get installed scenarios: %s", err)
 			}
@@ -239,7 +240,7 @@ func dumpConsoleConfig(c *csconfig.LocalApiServerCfg) error {
 		log.Debugf("Empty console_path, defaulting to %s", c.ConsoleConfigPath)
 	}
 
-	if err := os.WriteFile(c.ConsoleConfigPath, out, 0600); err != nil {
+	if err := os.WriteFile(c.ConsoleConfigPath, out, 0o600); err != nil {
 		return fmt.Errorf("while dumping console config to %s: %w", c.ConsoleConfigPath, err)
 	}
 
@@ -277,7 +278,7 @@ func SetConsoleOpts(args []string, wanted bool) error {
 						return fmt.Errorf("cannot marshal credentials: %s", err)
 					}
 					log.Infof("Updating credentials file: %s", csConfig.API.Server.OnlineClient.CredentialsFilePath)
-					err = os.WriteFile(csConfig.API.Server.OnlineClient.CredentialsFilePath, fileContent, 0600)
+					err = os.WriteFile(csConfig.API.Server.OnlineClient.CredentialsFilePath, fileContent, 0o600)
 					if err != nil {
 						return fmt.Errorf("cannot write credentials file: %s", err)
 					}

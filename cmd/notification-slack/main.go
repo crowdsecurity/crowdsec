@@ -38,10 +38,9 @@ func (n *Notify) Notify(ctx context.Context, notification *protobufs.Notificatio
 	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
 		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
 	}
-
 	logger.Info(fmt.Sprintf("found notify signal for %s config", notification.Name))
 	logger.Debug(fmt.Sprintf("posting to %s webhook, message %s", cfg.Webhook, notification.Text))
-	err := slack.PostWebhook(n.ConfigByName[notification.Name].Webhook, &slack.WebhookMessage{
+	err := slack.PostWebhookContext(ctx, n.ConfigByName[notification.Name].Webhook, &slack.WebhookMessage{
 		Text: notification.Text,
 	})
 	if err != nil {

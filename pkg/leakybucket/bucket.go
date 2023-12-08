@@ -31,11 +31,11 @@ type Leaky struct {
 	Limiter         rate.RateLimiter `json:"-"`
 	SerializedState rate.Lstate
 	//Queue is used to hold the cache of objects in the bucket, it is used to know 'how many' objects we have in buffer.
-	Queue *Queue
+	Queue *types.Queue
 	//Leaky buckets are receiving message through a chan
 	In chan *types.Event `json:"-"`
 	//Leaky buckets are pushing their overflows through a chan
-	Out chan *Queue `json:"-"`
+	Out chan *types.Queue `json:"-"`
 	// shared for all buckets (the idea is to kill this afterward)
 	AllOut chan types.Event `json:"-"`
 	//max capacity (for burst)
@@ -159,9 +159,9 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		Name:            bucketFactory.Name,
 		Limiter:         limiter,
 		Uuid:            seed.Generate(),
-		Queue:           NewQueue(Qsize),
+		Queue:           types.NewQueue(Qsize),
 		CacheSize:       bucketFactory.CacheSize,
-		Out:             make(chan *Queue, 1),
+		Out:             make(chan *types.Queue, 1),
 		Suicide:         make(chan bool, 1),
 		AllOut:          bucketFactory.ret,
 		Capacity:        bucketFactory.Capacity,
@@ -374,7 +374,7 @@ func Pour(leaky *Leaky, msg types.Event) {
 	}
 }
 
-func (leaky *Leaky) overflow(ofw *Queue) {
+func (leaky *Leaky) overflow(ofw *types.Queue) {
 	close(leaky.Signal)
 	alert, err := NewAlert(leaky, ofw)
 	if err != nil {

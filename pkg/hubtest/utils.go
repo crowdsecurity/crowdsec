@@ -2,9 +2,13 @@ package hubtest
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"sort"
+	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func sortedMapKeys[V any](m map[string]V) []string {
@@ -12,7 +16,9 @@ func sortedMapKeys[V any](m map[string]V) []string {
 	for k := range m {
 		keys = append(keys, k)
 	}
+
 	sort.Strings(keys)
+
 	return keys
 }
 
@@ -22,7 +28,7 @@ func Copy(src string, dst string) error {
 		return err
 	}
 
-	err = os.WriteFile(dst, content, 0644)
+	err = os.WriteFile(dst, content, 0o644)
 	if err != nil {
 		return err
 	}
@@ -43,16 +49,20 @@ func checkPathNotContained(path string, subpath string) error {
 	}
 
 	current := absSubPath
+
 	for {
 		if current == absPath {
 			return fmt.Errorf("cannot copy a folder onto itself")
 		}
+
 		up := filepath.Dir(current)
 		if current == up {
 			break
 		}
+
 		current = up
 	}
+
 	return nil
 }
 
@@ -99,4 +109,20 @@ func CopyDir(src string, dest string) error {
 	}
 
 	return nil
+}
+
+func IsAlive(target string) (bool, error) {
+	start := time.Now()
+	for {
+		conn, err := net.Dial("tcp", target)
+		if err == nil {
+			log.Debugf("appsec is up after %s", time.Since(start))
+			conn.Close()
+			return true, nil
+		}
+		time.Sleep(500 * time.Millisecond)
+		if time.Since(start) > 10*time.Second {
+			return false, fmt.Errorf("took more than 10s for %s to be available", target)
+		}
+	}
 }

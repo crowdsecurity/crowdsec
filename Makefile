@@ -232,8 +232,7 @@ test: testenv goversion
 # run the tests with localstack and coverage
 .PHONY: go-acc
 go-acc: testenv goversion
-	go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models -- $(LD_OPTS) | \
-		sed 's/ *coverage:.*of statements in.*//'
+	go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models -- $(LD_OPTS)
 
 # mock AWS services
 .PHONY: localstack

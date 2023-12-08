@@ -37,6 +37,7 @@ const (
 	SUPPORT_OS_INFO_PATH                 = "osinfo.txt"
 	SUPPORT_PARSERS_PATH                 = "hub/parsers.txt"
 	SUPPORT_SCENARIOS_PATH               = "hub/scenarios.txt"
+	SUPPORT_CONTEXTS_PATH                = "hub/scenarios.txt"
 	SUPPORT_COLLECTIONS_PATH             = "hub/collections.txt"
 	SUPPORT_POSTOVERFLOWS_PATH           = "hub/postoverflows.txt"
 	SUPPORT_BOUNCERS_PATH                = "lapi/bouncers.txt"
@@ -58,10 +59,6 @@ func stripAnsiString(str string) string {
 
 func collectMetrics() ([]byte, []byte, error) {
 	log.Info("Collecting prometheus metrics")
-	err := csConfig.LoadPrometheus()
-	if err != nil {
-		return nil, nil, err
-	}
 
 	if csConfig.Cscli.PrometheusUrl == "" {
 		log.Warn("No Prometheus URL configured, metrics will not be collected")
@@ -69,13 +66,13 @@ func collectMetrics() ([]byte, []byte, error) {
 	}
 
 	humanMetrics := bytes.NewBuffer(nil)
-	err = FormatPrometheusMetrics(humanMetrics, csConfig.Cscli.PrometheusUrl+"/metrics", "human")
+	err := FormatPrometheusMetrics(humanMetrics, csConfig.Cscli.PrometheusUrl, "human")
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not fetch promtheus metrics: %s", err)
 	}
 
-	req, err := http.NewRequest(http.MethodGet, csConfig.Cscli.PrometheusUrl+"/metrics", nil)
+	req, err := http.NewRequest(http.MethodGet, csConfig.Cscli.PrometheusUrl, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not create requests to prometheus endpoint: %s", err)
 	}
@@ -132,10 +129,21 @@ func collectOSInfo() ([]byte, error) {
 	return w.Bytes(), nil
 }
 
-func collectHubItems(itemType string) []byte {
+func collectHubItems(hub *cwhub.Hub, itemType string) []byte {
+	var err error
+
 	out := bytes.NewBuffer(nil)
 	log.Infof("Collecting %s list", itemType)
-	ListItems(out, []string{itemType}, []string{}, false, true, all)
+
+	items := make(map[string][]*cwhub.Item)
+
+	if items[itemType], err = selectItems(hub, itemType, nil, true); err != nil {
+		log.Warnf("could not collect %s list: %s", itemType, err)
+	}
+
+	if err := listItems(out, []string{itemType}, items, false); err != nil {
+		log.Warnf("could not collect %s list: %s", itemType, err)
+	}
 	return out.Bytes()
 }
 
@@ -157,7 +165,7 @@ func collectAgents(dbClient *database.Client) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-func collectAPIStatus(login string, password string, endpoint string, prefix string) []byte {
+func collectAPIStatus(login string, password string, endpoint string, prefix string, hub *cwhub.Hub) []byte {
 	if csConfig.API.Client == nil || csConfig.API.Client.Credentials == nil {
 		return []byte("No agent credentials found, are we LAPI ?")
 	}
@@ -167,7 +175,7 @@ func collectAPIStatus(login string, password string, endpoint string, prefix str
 	if err != nil {
 		return []byte(fmt.Sprintf("cannot parse API URL: %s", err))
 	}
-	scenarios, err := cwhub.GetInstalledItemsAsString(cwhub.SCENARIOS)
+	scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
 	if err != nil {
 		return []byte(fmt.Sprintf("could not collect scenarios: %s", err))
 	}
@@ -230,8 +238,14 @@ func collectAcquisitionConfig() map[string][]byte {
 	return ret
 }
 
-func NewSupportCmd() *cobra.Command {
-	var cmdSupport = &cobra.Command{
+type cliSupport struct {}
+
+func NewCLISupport() *cliSupport {
+	return &cliSupport{}
+}
+
+func (cli cliSupport) NewCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "support [action]",
 		Short:             "Provide commands to help during support",
 		Args:              cobra.MinimumNArgs(1),
@@ -241,9 +255,15 @@ func NewSupportCmd() *cobra.Command {
 		},
 	}
 
+	cmd.AddCommand(cli.NewDumpCmd())
+
+	return cmd
+}
+
+func (cli cliSupport) NewDumpCmd() *cobra.Command {
 	var outFile string
 
-	cmdDump := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "dump",
 		Short: "Dump all your configuration to a zip file for easier support",
 		Long: `Dump the following informations:
@@ -253,6 +273,7 @@ func NewSupportCmd() *cobra.Command {
 - Installed parsers list
 - Installed scenarios list
 - Installed postoverflows list
+- Installed context list
 - Bouncers list
 - Machines list
 - CAPI status
@@ -295,12 +316,14 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				skipAgent = true
 			}
 
-			if err := require.Hub(csConfig); err != nil {
+			hub, err := require.Hub(csConfig, nil)
+			if err != nil {
 				log.Warn("Could not init hub, running on LAPI ? Hub related information will not be collected")
 				skipHub = true
 				infos[SUPPORT_PARSERS_PATH] = []byte(err.Error())
 				infos[SUPPORT_SCENARIOS_PATH] = []byte(err.Error())
 				infos[SUPPORT_POSTOVERFLOWS_PATH] = []byte(err.Error())
+				infos[SUPPORT_CONTEXTS_PATH] = []byte(err.Error())
 				infos[SUPPORT_COLLECTIONS_PATH] = []byte(err.Error())
 			}
 
@@ -333,10 +356,11 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			infos[SUPPORT_CROWDSEC_CONFIG_PATH] = collectCrowdsecConfig()
 
 			if !skipHub {
-				infos[SUPPORT_PARSERS_PATH] = collectHubItems(cwhub.PARSERS)
-				infos[SUPPORT_SCENARIOS_PATH] = collectHubItems(cwhub.SCENARIOS)
-				infos[SUPPORT_POSTOVERFLOWS_PATH] = collectHubItems(cwhub.PARSERS_OVFLW)
-				infos[SUPPORT_COLLECTIONS_PATH] = collectHubItems(cwhub.COLLECTIONS)
+				infos[SUPPORT_PARSERS_PATH] = collectHubItems(hub, cwhub.PARSERS)
+				infos[SUPPORT_SCENARIOS_PATH] = collectHubItems(hub, cwhub.SCENARIOS)
+				infos[SUPPORT_POSTOVERFLOWS_PATH] = collectHubItems(hub, cwhub.POSTOVERFLOWS)
+				infos[SUPPORT_CONTEXTS_PATH] = collectHubItems(hub, cwhub.POSTOVERFLOWS)
+				infos[SUPPORT_COLLECTIONS_PATH] = collectHubItems(hub, cwhub.COLLECTIONS)
 			}
 
 			if !skipDB {
@@ -358,7 +382,8 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				infos[SUPPORT_CAPI_STATUS_PATH] = collectAPIStatus(csConfig.API.Server.OnlineClient.Credentials.Login,
 					csConfig.API.Server.OnlineClient.Credentials.Password,
 					csConfig.API.Server.OnlineClient.Credentials.URL,
-					CAPIURLPrefix)
+					CAPIURLPrefix,
+					hub)
 			}
 
 			if !skipLAPI {
@@ -366,7 +391,8 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				infos[SUPPORT_LAPI_STATUS_PATH] = collectAPIStatus(csConfig.API.Client.Credentials.Login,
 					csConfig.API.Client.Credentials.Password,
 					csConfig.API.Client.Credentials.URL,
-					LAPIURLPrefix)
+					LAPIURLPrefix,
+					hub)
 				infos[SUPPORT_CROWDSEC_PROFILE_PATH] = collectCrowdsecProfile()
 			}
 
@@ -397,7 +423,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				log.Fatalf("could not finalize zip file: %s", err)
 			}
 
-			err = os.WriteFile(outFile, w.Bytes(), 0600)
+			err = os.WriteFile(outFile, w.Bytes(), 0o600)
 			if err != nil {
 				log.Fatalf("could not write zip file to %s: %s", outFile, err)
 			}
@@ -405,8 +431,8 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			log.Infof("Written zip file to %s", outFile)
 		},
 	}
-	cmdDump.Flags().StringVarP(&outFile, "outFile", "f", "", "File to dump the information to")
-	cmdSupport.AddCommand(cmdDump)
 
-	return cmdSupport
+	cmd.Flags().StringVarP(&outFile, "outFile", "f", "", "File to dump the information to")
+
+	return cmd
 }

@@ -192,7 +192,7 @@ func (pb *PluginBroker) loadConfig(path string) error {
 			return err
 		}
 		for _, pluginConfig := range pluginConfigs {
-			setRequiredFields(&pluginConfig)
+			SetRequiredFields(&pluginConfig)
 			if _, ok := pb.pluginConfigByName[pluginConfig.Name]; ok {
 				log.Warningf("notification '%s' is defined multiple times", pluginConfig.Name)
 			}
@@ -376,7 +376,7 @@ func ParsePluginConfigFile(path string) ([]PluginConfig, error) {
 	return parsedConfigs, nil
 }
 
-func setRequiredFields(pluginCfg *PluginConfig) {
+func SetRequiredFields(pluginCfg *PluginConfig) {
 	if pluginCfg.MaxRetry == 0 {
 		pluginCfg.MaxRetry++
 	}

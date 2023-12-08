@@ -18,6 +18,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	appsecacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/appsec"
 	cloudwatchacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/cloudwatch"
 	dockeracquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/docker"
 	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
@@ -25,6 +26,7 @@ import (
 	kafkaacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kafka"
 	kinesisacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kinesis"
 	k8sauditacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kubernetesaudit"
+	lokiacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki"
 	s3acquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/s3"
 	syslogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog"
 	wineventlogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/wineventlog"
@@ -36,7 +38,7 @@ import (
 
 type DataSourceUnavailableError struct {
 	Name string
-	Err error
+	Err  error
 }
 
 func (e *DataSourceUnavailableError) Error() string {
@@ -46,7 +48,6 @@ func (e *DataSourceUnavailableError) Error() string {
 func (e *DataSourceUnavailableError) Unwrap() error {
 	return e.Err
 }
-
 
 // The interface each datasource must implement
 type DataSource interface {
@@ -74,7 +75,9 @@ var AcquisitionSources = map[string]func() DataSource{
 	"wineventlog": func() DataSource { return &wineventlogacquisition.WinEventLogSource{} },
 	"kafka":       func() DataSource { return &kafkaacquisition.KafkaSource{} },
 	"k8s-audit":   func() DataSource { return &k8sauditacquisition.KubernetesAuditSource{} },
+	"loki":        func() DataSource { return &lokiacquisition.LokiSource{} },
 	"s3":          func() DataSource { return &s3acquisition.S3Source{} },
+	"appsec":      func() DataSource { return &appsecacquisition.AppsecSource{} },
 }
 
 var transformRuntimes = map[string]*vm.Program{}

@@ -1,5 +1,5 @@
 # vim: set ft=dockerfile:
-ARG GOVERSION=1.21.4
+ARG GOVERSION=1.21.5
 
 FROM golang:${GOVERSION}-bookworm AS build
 
@@ -47,7 +47,8 @@ RUN apt-get update && \
     iproute2 \
     ca-certificates \
     bash \
-    tzdata && \
+    tzdata \
+    rsync && \
     mkdir -p /staging/etc/crowdsec && \
     mkdir -p /staging/etc/crowdsec/acquis.d && \
     mkdir -p /staging/var/lib/crowdsec && \

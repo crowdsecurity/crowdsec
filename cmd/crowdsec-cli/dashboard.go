@@ -1,3 +1,5 @@
+//go:build linux
+
 package main
 
 import (
@@ -9,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"unicode"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -134,6 +137,9 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			}
 			dockerGroup, err := checkGroups(&forceYes)
 			if err != nil {
+				return err
+			}
+			if err = chownDatabase(dockerGroup.Gid); err != nil {
 				return err
 			}
 			mb, err := metabase.SetupMetabase(csConfig.API.Server.DbConfig, metabaseListenAddress, metabaseListenPort, metabaseUser, metabasePassword, metabaseDbPath, dockerGroup.Gid, metabaseContainerID, metabaseImage)
@@ -366,45 +372,56 @@ func disclaimer(forceYes *bool) error {
 }
 
 func checkGroups(forceYes *bool) (*user.Group, error) {
-	groupExist := false
 	dockerGroup, err := user.LookupGroup(crowdsecGroup)
 	if err == nil {
-		groupExist = true
+		return dockerGroup, nil
 	}
-	if !groupExist {
-		if !*forceYes {
-			var answer bool
-			prompt := &survey.Confirm{
-				Message: fmt.Sprintf("For metabase docker to be able to access SQLite file we need to add a new group called '%s' to the system, is it ok for you ?", crowdsecGroup),
-				Default: true,
-			}
-			if err := survey.AskOne(prompt, &answer); err != nil {
-				return dockerGroup, fmt.Errorf("unable to ask to question: %s", err)
-			}
-			if !answer {
-				return dockerGroup, fmt.Errorf("unable to continue without creating '%s' group", crowdsecGroup)
-			}
+	if !*forceYes {
+		var answer bool
+		prompt := &survey.Confirm{
+			Message: fmt.Sprintf("For metabase docker to be able to access SQLite file we need to add a new group called '%s' to the system, is it ok for you ?", crowdsecGroup),
+			Default: true,
 		}
-		groupAddCmd, err := exec.LookPath("groupadd")
-		if err != nil {
-			return dockerGroup, fmt.Errorf("unable to find 'groupadd' command, can't continue")
+		if err := survey.AskOne(prompt, &answer); err != nil {
+			return dockerGroup, fmt.Errorf("unable to ask to question: %s", err)
 		}
-
-		groupAdd := &exec.Cmd{Path: groupAddCmd, Args: []string{groupAddCmd, crowdsecGroup}}
-		if err := groupAdd.Run(); err != nil {
-			return dockerGroup, fmt.Errorf("unable to add group '%s': %s", dockerGroup, err)
-		}
-		dockerGroup, err = user.LookupGroup(crowdsecGroup)
-		if err != nil {
-			return dockerGroup, fmt.Errorf("unable to lookup '%s' group: %+v", dockerGroup, err)
+		if !answer {
+			return dockerGroup, fmt.Errorf("unable to continue without creating '%s' group", crowdsecGroup)
 		}
 	}
-	intID, err := strconv.Atoi(dockerGroup.Gid)
+	groupAddCmd, err := exec.LookPath("groupadd")
 	if err != nil {
-		return dockerGroup, fmt.Errorf("unable to convert group ID to int: %s", err)
+		return dockerGroup, fmt.Errorf("unable to find 'groupadd' command, can't continue")
 	}
-	if err := os.Chown(csConfig.DbConfig.DbPath, 0, intID); err != nil {
-		return dockerGroup, fmt.Errorf("unable to chown sqlite db file '%s': %s", csConfig.DbConfig.DbPath, err)
+
+	groupAdd := &exec.Cmd{Path: groupAddCmd, Args: []string{groupAddCmd, crowdsecGroup}}
+	if err := groupAdd.Run(); err != nil {
+		return dockerGroup, fmt.Errorf("unable to add group '%s': %s", dockerGroup, err)
 	}
-	return dockerGroup, nil
+	return user.LookupGroup(crowdsecGroup)
+}
+
+func chownDatabase(gid string) error {
+	intID, err := strconv.Atoi(gid)
+	if err != nil {
+		return fmt.Errorf("unable to convert group ID to int: %s", err)
+	}
+	if stat, err := os.Stat(csConfig.DbConfig.DbPath); !os.IsNotExist(err) {
+		info := stat.Sys()
+		if err := os.Chown(csConfig.DbConfig.DbPath, int(info.(*syscall.Stat_t).Uid), intID); err != nil {
+			return fmt.Errorf("unable to chown sqlite db file '%s': %s", csConfig.DbConfig.DbPath, err)
+		}
+	}
+	if csConfig.DbConfig.Type == "sqlite" && csConfig.DbConfig.UseWal != nil && *csConfig.DbConfig.UseWal {
+		for _, ext := range []string{"-wal", "-shm"} {
+			file := csConfig.DbConfig.DbPath + ext
+			if stat, err := os.Stat(file); !os.IsNotExist(err) {
+				info := stat.Sys()
+				if err := os.Chown(file, int(info.(*syscall.Stat_t).Uid), intID); err != nil {
+					return fmt.Errorf("unable to chown sqlite db file '%s': %s", file, err)
+				}
+			}
+		}
+	}
+	return nil
 }

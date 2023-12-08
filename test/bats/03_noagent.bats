@@ -23,20 +23,25 @@ teardown() {
 #----------
 
 @test "with agent: test without -no-cs flag" {
-    rune -124 timeout 2s "${CROWDSEC}"
-    # from `man timeout`: If  the  command  times  out,  and --preserve-status is not set, then exit with status 124.
+    config_set '.common.log_media="stdout"'
+    rune -0 wait-for \
+        --err "Starting processing data" \
+        "${CROWDSEC}"
 }
 
 @test "no agent: crowdsec LAPI should run (-no-cs flag)" {
-    rune -124 timeout 2s "${CROWDSEC}" -no-cs
+    config_set '.common.log_media="stdout"'
+    rune -0 wait-for \
+        --err "CrowdSec Local API listening" \
+        "${CROWDSEC}" -no-cs
 }
 
 @test "no agent: crowdsec LAPI should run (no crowdsec_service in configuration file)" {
     config_disable_agent
     config_log_stderr
-    rune -124 timeout 2s "${CROWDSEC}"
-
-    assert_stderr --partial "crowdsec agent is disabled"
+    rune -0 wait-for \
+        --err "crowdsec agent is disabled" \
+        "${CROWDSEC}"
 }
 
 @test "no agent: cscli config show" {
