@@ -414,6 +414,8 @@ install_crowdsec() {
     mkdir -p "${CROWDSEC_CONFIG_PATH}/postoverflows" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/collections" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/patterns" || exit
+    mkdir -p "${CROWDSEC_CONFIG_PATH}/appsec-configs" || exit
+    mkdir -p "${CROWDSEC_CONFIG_PATH}/appsec-rules" || exit
     mkdir -p "${CROWDSEC_CONSOLE_DIR}" || exit
 
     #tmp
