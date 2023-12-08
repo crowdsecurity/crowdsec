@@ -36,6 +36,8 @@ func (nc *NucleiConfig) RunNucleiTemplate(testName string, templatePath string, 
 	args = append(args, nc.CmdLineOptions...)
 	cmd := exec.Command(nc.Path, args...)
 
+	log.Debugf("Running Nuclei command: '%s'", cmd.String())
+
 	var out bytes.Buffer
 	var outErr bytes.Buffer
 
@@ -59,6 +61,11 @@ func (nc *NucleiConfig) RunNucleiTemplate(testName string, templatePath string, 
 		log.Warningf("Nuclei generated output saved to %s", outputPrefix+".json")
 		return err
 	} else if len(out.String()) == 0 {
+		fmt.Println(out.String())
+		fmt.Println(outErr.String())
+		log.Warningf("Stdout saved to %s", outputPrefix+"_stdout.txt")
+		log.Warningf("Stderr saved to %s", outputPrefix+"_stderr.txt")
+		log.Warningf("Nuclei generated output saved to %s", outputPrefix+".json")
 		//No stdout means no finding, it means our test failed
 		return NucleiTemplateFail
 	}

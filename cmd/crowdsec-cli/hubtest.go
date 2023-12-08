@@ -130,7 +130,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				fmt.Println()
 				fmt.Printf("  Test name                   :  %s\n", testName)
 				fmt.Printf("  Test path                   :  %s\n", testPath)
-				fmt.Printf("  Nuclei Template             :  %s\n", nucleiFileName)
+				fmt.Printf("  Nuclei Template             :  %s\n", nucleiFilePath)
 			} else {
 				// create empty log file
 				logFileName := fmt.Sprintf("%s.log", testName)
