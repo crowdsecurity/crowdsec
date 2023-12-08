@@ -332,7 +332,7 @@ func (cli cliMachines) add(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to marshal api credentials: %s", err)
 	}
 	if dumpFile != "" && dumpFile != "-" {
-		err = os.WriteFile(dumpFile, apiConfigDump, 0644)
+		err = os.WriteFile(dumpFile, apiConfigDump, 0o600)
 		if err != nil {
 			return fmt.Errorf("write api credentials in '%s' failed: %s", dumpFile, err)
 		}
