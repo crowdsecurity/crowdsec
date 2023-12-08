@@ -143,7 +143,7 @@
       <CustomAction Id="FixPermissionsCreds" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="check" Impersonate="no" />
       <SetProperty Id="FixPermissionsNotif" Value="&quot;icacls.exe&quot; C:\ProgramData\CrowdSec\config\notifications\*.yaml /inheritance:r /grant:r *S-1-5-32-544:(F)" Sequence="execute" Before="FixPermissionsNotif" />
       <CustomAction Id="FixPermissionsNotif" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="check" Impersonate="no" />
-      <SetProperty Id="RegisterMachine" Value="&quot;[INSTALLDIR]\cscli.exe&quot; machines add -a" Sequence="execute" Before="RegisterMachine" />
+      <SetProperty Id="RegisterMachine" Value="&quot;[INSTALLDIR]\cscli.exe&quot; machines add -a -f" Sequence="execute" Before="RegisterMachine" />
       <CustomAction Id="RegisterMachine" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="ignore" Impersonate="no" />
       <SetProperty Id="RegisterCAPI" Value="&quot;[INSTALLDIR]\cscli.exe&quot; capi register" Sequence="execute" Before="RegisterMachine" />
       <CustomAction Id="RegisterCAPI" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="ignore" Impersonate="no" />
