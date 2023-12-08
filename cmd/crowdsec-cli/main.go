@@ -231,7 +231,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewCLIDashboard().NewCommand())
 	rootCmd.AddCommand(NewCLIDecisions().NewCommand())
 	rootCmd.AddCommand(NewCLIAlerts().NewCommand())
-	rootCmd.AddCommand(NewSimulationCmds())
+	rootCmd.AddCommand(NewCLISimulation().NewCommand())
 	rootCmd.AddCommand(NewCLIBouncers().NewCommand())
 	rootCmd.AddCommand(NewCLIMachines().NewCommand())
 	rootCmd.AddCommand(NewCLICapi().NewCommand())
