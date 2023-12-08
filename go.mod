@@ -16,8 +16,8 @@ require (
 	github.com/antonmedv/expr v1.15.3
 	github.com/appleboy/gin-jwt/v2 v2.8.0
 	github.com/aquasecurity/table v1.8.0
-	github.com/aws/aws-lambda-go v1.38.0
-	github.com/aws/aws-sdk-go v1.42.25
+	github.com/aws/aws-lambda-go v1.41.0
+	github.com/aws/aws-sdk-go v1.48.15
 	github.com/beevik/etree v1.1.0
 	github.com/blackfireio/osinfo v1.0.3
 	github.com/bluele/gcache v0.0.2
