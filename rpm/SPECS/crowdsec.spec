@@ -171,7 +171,7 @@ if [ $1 == 1 ]; then
         cscli capi register
     fi
     if [ ! -f "%{_sysconfdir}/crowdsec/local_api_credentials.yaml" ] ; then
-        cscli machines add -a
+        cscli machines add -a --force
     fi
 
     cscli hub update
