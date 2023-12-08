@@ -58,7 +58,7 @@ if [ "$1" = configure ]; then
             db_get crowdsec/capi
             CAPI=$RET
 
-            cscli machines add -a
+            [ -s /etc/crowdsec/local_api_credentials.yaml ] || cscli machines add -a --force
 
             if [ "$CAPI" = true ]; then
                 cscli capi register
