@@ -234,7 +234,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewSimulationCmds())
 	rootCmd.AddCommand(NewCLIBouncers().NewCommand())
 	rootCmd.AddCommand(NewCLIMachines().NewCommand())
-	rootCmd.AddCommand(NewCapiCmd())
+	rootCmd.AddCommand(NewCLICapi().NewCommand())
 	rootCmd.AddCommand(NewLapiCmd())
 	rootCmd.AddCommand(NewCompletionCmd())
 	rootCmd.AddCommand(NewConsoleCmd())

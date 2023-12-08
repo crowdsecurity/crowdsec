@@ -13,20 +13,27 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/version"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
-const CAPIBaseURL string = "https://api.crowdsec.net/"
-const CAPIURLPrefix = "v3"
+const (
+	CAPIBaseURL   = "https://api.crowdsec.net/"
+	CAPIURLPrefix = "v3"
+)
 
-func NewCapiCmd() *cobra.Command {
-	var cmdCapi = &cobra.Command{
+type cliCapi struct{}
+
+func NewCLICapi() *cliCapi {
+	return &cliCapi{}
+}
+
+func (cli cliCapi) NewCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:               "capi [action]",
 		Short:             "Manage interaction with Central API (CAPI)",
 		Args:              cobra.MinimumNArgs(1),
@@ -44,17 +51,17 @@ func NewCapiCmd() *cobra.Command {
 		},
 	}
 
-	cmdCapi.AddCommand(NewCapiRegisterCmd())
-	cmdCapi.AddCommand(NewCapiStatusCmd())
+	cmd.AddCommand(cli.NewRegisterCmd())
+	cmd.AddCommand(cli.NewStatusCmd())
 
-	return cmdCapi
+	return cmd
 }
 
-func NewCapiRegisterCmd() *cobra.Command {
+func (cli cliCapi) NewRegisterCmd() *cobra.Command {
 	var capiUserPrefix string
 	var outputFile string
 
-	var cmdCapiRegister = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:               "register",
 		Short:             "Register to Central API (CAPI)",
 		Args:              cobra.MinimumNArgs(0),
@@ -116,17 +123,18 @@ func NewCapiRegisterCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmdCapiRegister.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
-	cmdCapiRegister.Flags().StringVar(&capiUserPrefix, "schmilblick", "", "set a schmilblick (use in tests only)")
-	if err := cmdCapiRegister.Flags().MarkHidden("schmilblick"); err != nil {
+
+	cmd.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
+	cmd.Flags().StringVar(&capiUserPrefix, "schmilblick", "", "set a schmilblick (use in tests only)")
+	if err := cmd.Flags().MarkHidden("schmilblick"); err != nil {
 		log.Fatalf("failed to hide flag: %s", err)
 	}
 
-	return cmdCapiRegister
+	return cmd
 }
 
-func NewCapiStatusCmd() *cobra.Command {
-	var cmdCapiStatus = &cobra.Command{
+func (cli cliCapi) NewStatusCmd() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:               "status",
 		Short:             "Check status with the Central API (CAPI)",
 		Args:              cobra.MinimumNArgs(0),
@@ -185,5 +193,5 @@ func NewCapiStatusCmd() *cobra.Command {
 		},
 	}
 
-	return cmdCapiStatus
+	return cmd
 }
