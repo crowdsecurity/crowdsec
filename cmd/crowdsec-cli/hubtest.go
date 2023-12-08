@@ -94,6 +94,10 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				return fmt.Errorf("test '%s' already exists in '%s', exiting", testName, testPath)
 			}
 
+			if isAppsecTest {
+				logType = "appsec"
+			}
+
 			if logType == "" {
 				return fmt.Errorf("please provide a type (--type) for the test")
 			}
