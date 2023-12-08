@@ -8,8 +8,6 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
-
-	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
 
 const (
@@ -66,9 +64,7 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 		c.ConsoleConfig.ShareManualDecisions = ptr.Of(false)
 	}
 
-	if !fflag.PapiClient.IsEnabled() {
-		c.ConsoleConfig.ConsoleManagement = ptr.Of(false)
-	} else if c.ConsoleConfig.ConsoleManagement == nil {
+	if c.ConsoleConfig.ConsoleManagement == nil {
 		log.Debugf("no console_management found, setting to false")
 		c.ConsoleConfig.ConsoleManagement = ptr.Of(false)
 	}
