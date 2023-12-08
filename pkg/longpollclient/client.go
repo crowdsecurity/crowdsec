@@ -191,7 +191,6 @@ func (c *LongPollClient) PullOnce(since time.Time) ([]Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	//XX : fix
 	defer resp.Body.Close()
 	decoder := json.NewDecoder(resp.Body)
 	evts := []Event{}
