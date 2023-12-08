@@ -298,8 +298,9 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 	request.IsInBand = true
 	request.IsOutBand = false
 
-	//to measure the time spent in the Application Security Engine
-	startParsing := time.Now()
+	//to measure the time spent in the Application Security Engine for InBand rules
+	startInBandParsing := time.Now()
+	startGlobalParsing := time.Now()
 
 	//inband appsec rules
 	err := r.ProcessInBandRules(request)
@@ -308,12 +309,13 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 		return
 	}
 
+	// time spent to process in band rules
+	inBandParsingElapsed := time.Since(startInBandParsing)
+	AppsecInbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized}).Observe(inBandParsingElapsed.Seconds())
+
 	if request.Tx.IsInterrupted() {
 		r.handleInBandInterrupt(request)
 	}
-
-	elapsed := time.Since(startParsing)
-	AppsecInbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddr}).Observe(elapsed.Seconds())
 
 	// send back the result to the HTTP handler for the InBand part
 	request.ResponseChannel <- r.AppsecRuntime.Response
@@ -325,11 +327,22 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 	r.AppsecRuntime.Response.SendAlert = false
 	r.AppsecRuntime.Response.SendEvent = true
 
+	//to measure the time spent in the Application Security Engine for OutOfBand rules
+	startOutOfBandParsing := time.Now()
+
 	err = r.ProcessOutOfBandRules(request)
 	if err != nil {
 		logger.Errorf("unable to process OutOfBand rules: %s", err)
 		return
 	}
+
+	// time spent to process out of band rules
+	outOfBandParsingElapsed := time.Since(startOutOfBandParsing)
+	AppsecOutbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized}).Observe(outOfBandParsingElapsed.Seconds())
+
+	// time spent to process inband AND out of band rules
+	globalParsingElapsed := time.Since(startGlobalParsing)
+	AppsecGlobalParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized}).Observe(globalParsingElapsed.Seconds())
 
 	if request.Tx.IsInterrupted() {
 		r.handleOutBandInterrupt(request)

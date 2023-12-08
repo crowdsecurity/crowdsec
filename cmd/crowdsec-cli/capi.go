@@ -106,7 +106,7 @@ func NewCapiRegisterCmd() *cobra.Command {
 				return fmt.Errorf("unable to marshal api credentials: %w", err)
 			}
 			if dumpFile != "" {
-				err = os.WriteFile(dumpFile, apiConfigDump, 0600)
+				err = os.WriteFile(dumpFile, apiConfigDump, 0o600)
 				if err != nil {
 					return fmt.Errorf("write api credentials in '%s' failed: %w", dumpFile, err)
 				}

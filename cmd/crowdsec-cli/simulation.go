@@ -48,7 +48,7 @@ func dumpSimulationFile() error {
 	if err != nil {
 		return fmt.Errorf("unable to marshal simulation configuration: %s", err)
 	}
-	err = os.WriteFile(csConfig.ConfigPaths.SimulationFilePath, newConfigSim, 0644)
+	err = os.WriteFile(csConfig.ConfigPaths.SimulationFilePath, newConfigSim, 0o644)
 	if err != nil {
 		return fmt.Errorf("write simulation config in '%s' failed: %s", csConfig.ConfigPaths.SimulationFilePath, err)
 	}
@@ -66,7 +66,7 @@ func disableGlobalSimulation() error {
 	if err != nil {
 		return fmt.Errorf("unable to marshal new simulation configuration: %s", err)
 	}
-	err = os.WriteFile(csConfig.ConfigPaths.SimulationFilePath, newConfigSim, 0644)
+	err = os.WriteFile(csConfig.ConfigPaths.SimulationFilePath, newConfigSim, 0o644)
 	if err != nil {
 		return fmt.Errorf("unable to write new simulation config in '%s' : %s", csConfig.ConfigPaths.SimulationFilePath, err)
 	}
