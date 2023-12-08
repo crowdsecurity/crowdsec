@@ -228,7 +228,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewConfigCmd())
 	rootCmd.AddCommand(NewCLIHub().NewCommand())
 	rootCmd.AddCommand(NewMetricsCmd())
-	rootCmd.AddCommand(NewDashboardCmd())
+	rootCmd.AddCommand(NewCLIDashboard().NewCommand())
 	rootCmd.AddCommand(NewDecisionsCmd())
 	rootCmd.AddCommand(NewAlertsCmd())
 	rootCmd.AddCommand(NewSimulationCmds())
