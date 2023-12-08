@@ -171,7 +171,7 @@ if [ $1 == 1 ]; then
         install -m 600 /dev/null %{_sysconfdir}/crowdsec/online_api_credentials.yaml
         install -m 600 /dev/null %{_sysconfdir}/crowdsec/local_api_credentials.yaml
         cscli capi register
-        cscli machines add -a
+        [ -s "%{_sysconfdir}/crowdsec/local_api_credentials.yaml" ] || cscli machines add -a
     fi
     if [ ! -f "%{_sysconfdir}/crowdsec/online_api_credentials.yaml" ] ; then
         touch %{_sysconfdir}/crowdsec/online_api_credentials.yaml
