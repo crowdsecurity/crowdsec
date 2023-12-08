@@ -123,7 +123,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				if ntpl == nil {
 					return fmt.Errorf("unable to parse nuclei template")
 				}
-				ntpl.ExecuteTemplate(nucleiFile, "nuclei", struct{ TestName string }{TestName: "testName"})
+				ntpl.ExecuteTemplate(nucleiFile, "nuclei", struct{ TestName string }{TestName: testName})
 				nucleiFile.Close()
 				configFileData.AppsecRules = []string{"your_rule_here.yaml"}
 				configFileData.NucleiTemplate = nucleiFileName
