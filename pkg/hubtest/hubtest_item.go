@@ -550,7 +550,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	}
 
 	//machine add
-	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--auto"}
+	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--force", "--auto"}
 	cscliRegisterCmd := exec.Command(t.CscliPath, cmdArgs...)
 
 	output, err := cscliRegisterCmd.CombinedOutput()
