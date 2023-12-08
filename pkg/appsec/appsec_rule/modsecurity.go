@@ -32,7 +32,7 @@ var transformMap map[string]string = map[string]string{
 
 var matchMap map[string]string = map[string]string{
 	"regex":           "@rx",
-	"equal":           "@streq",
+	"equals":          "@streq",
 	"startsWith":      "@beginsWith",
 	"endsWith":        "@endsWith",
 	"contains":        "@contains",
