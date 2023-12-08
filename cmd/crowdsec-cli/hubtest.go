@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/enescakir/emoji"
@@ -113,10 +114,16 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				//create empty nuclei template file
 				nucleiFileName := fmt.Sprintf("%s.yaml", testName)
 				nucleiFilePath := filepath.Join(testPath, nucleiFileName)
-				nucleiFile, err := os.Create(nucleiFilePath)
+				nucleiFile, err := os.OpenFile(nucleiFilePath, os.O_RDWR|os.O_CREATE, 0755)
 				if err != nil {
 					return err
 				}
+
+				ntpl := template.Must(template.New("nuclei").Parse(hubtest.TemplateNucleiFile))
+				if ntpl == nil {
+					return fmt.Errorf("unable to parse nuclei template")
+				}
+				ntpl.ExecuteTemplate(nucleiFile, "nuclei", struct{ TestName string }{TestName: "testName"})
 				nucleiFile.Close()
 				configFileData.AppsecRules = []string{"your_rule_here.yaml"}
 				configFileData.NucleiTemplate = nucleiFileName
