@@ -20,6 +20,7 @@ var zonesMap map[string]string = map[string]string{
 	"METHOD":          "REQUEST_METHOD",
 	"PROTOCOL":        "REQUEST_PROTOCOL",
 	"URI":             "REQUEST_URI",
+	"RAW_BODY":        "REQUEST_BODY",
 }
 
 var transformMap map[string]string = map[string]string{
