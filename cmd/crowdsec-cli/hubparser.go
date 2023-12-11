@@ -4,8 +4,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func NewParserCLI() *itemCLI {
-	return &itemCLI{
+func NewCLIParser() *cliItem {
+	return &cliItem{
 		name:      cwhub.PARSERS,
 		singular:  "parser",
 		oneOrMore: "parser(s)",

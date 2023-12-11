@@ -22,7 +22,7 @@ type cliHelp struct {
 	example string
 }
 
-type itemCLI struct {
+type cliItem struct {
 	name          string // plural, as used in the hub index
 	singular      string
 	oneOrMore     string // parenthetical pluralizaion: "parser(s)"
@@ -35,7 +35,7 @@ type itemCLI struct {
 	listHelp      cliHelp
 }
 
-func (it itemCLI) NewCommand() *cobra.Command {
+func (it cliItem) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               coalesce.String(it.help.use, fmt.Sprintf("%s <action> [item]...", it.name)),
 		Short:             coalesce.String(it.help.short, fmt.Sprintf("Manage hub %s", it.name)),
@@ -55,7 +55,7 @@ func (it itemCLI) NewCommand() *cobra.Command {
 	return cmd
 }
 
-func (it itemCLI) Install(cmd *cobra.Command, args []string) error {
+func (it cliItem) Install(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
 	downloadOnly, err := flags.GetBool("download-only")
@@ -103,7 +103,7 @@ func (it itemCLI) Install(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (it itemCLI) NewInstallCmd() *cobra.Command {
+func (it cliItem) NewInstallCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               coalesce.String(it.installHelp.use, "install [item]..."),
 		Short:             coalesce.String(it.installHelp.short, fmt.Sprintf("Install given %s", it.oneOrMore)),
@@ -138,7 +138,7 @@ func istalledParentNames(item *cwhub.Item) []string {
 	return ret
 }
 
-func (it itemCLI) Remove(cmd *cobra.Command, args []string) error {
+func (it cliItem) Remove(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
 	purge, err := flags.GetBool("purge")
@@ -232,7 +232,7 @@ func (it itemCLI) Remove(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (it itemCLI) NewRemoveCmd() *cobra.Command {
+func (it cliItem) NewRemoveCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               coalesce.String(it.removeHelp.use, "remove [item]..."),
 		Short:             coalesce.String(it.removeHelp.short, fmt.Sprintf("Remove given %s", it.oneOrMore)),
@@ -254,7 +254,7 @@ func (it itemCLI) NewRemoveCmd() *cobra.Command {
 	return cmd
 }
 
-func (it itemCLI) Upgrade(cmd *cobra.Command, args []string) error {
+func (it cliItem) Upgrade(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
 	force, err := flags.GetBool("force")
@@ -328,7 +328,7 @@ func (it itemCLI) Upgrade(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (it itemCLI) NewUpgradeCmd() *cobra.Command {
+func (it cliItem) NewUpgradeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               coalesce.String(it.upgradeHelp.use, "upgrade [item]..."),
 		Short:             coalesce.String(it.upgradeHelp.short, fmt.Sprintf("Upgrade given %s", it.oneOrMore)),
@@ -348,7 +348,7 @@ func (it itemCLI) NewUpgradeCmd() *cobra.Command {
 	return cmd
 }
 
-func (it itemCLI) Inspect(cmd *cobra.Command, args []string) error {
+func (it cliItem) Inspect(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
 	url, err := flags.GetString("url")
@@ -389,7 +389,7 @@ func (it itemCLI) Inspect(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (it itemCLI) NewInspectCmd() *cobra.Command {
+func (it cliItem) NewInspectCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               coalesce.String(it.inspectHelp.use, "inspect [item]..."),
 		Short:             coalesce.String(it.inspectHelp.short, fmt.Sprintf("Inspect given %s", it.oneOrMore)),
@@ -410,7 +410,7 @@ func (it itemCLI) NewInspectCmd() *cobra.Command {
 	return cmd
 }
 
-func (it itemCLI) List(cmd *cobra.Command, args []string) error {
+func (it cliItem) List(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
 	all, err := flags.GetBool("all")
@@ -437,7 +437,7 @@ func (it itemCLI) List(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (it itemCLI) NewListCmd() *cobra.Command {
+func (it cliItem) NewListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               coalesce.String(it.listHelp.use, "list [item... | -a]"),
 		Short:             coalesce.String(it.listHelp.short, fmt.Sprintf("List %s", it.oneOrMore)),
