@@ -4,8 +4,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func NewContextCLI() *itemCLI {
-	return &itemCLI{
+func NewCLIContext() *cliItem {
+	return &cliItem{
 		name:      cwhub.CONTEXTS,
 		singular:  "context",
 		oneOrMore: "context(s)",

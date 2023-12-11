@@ -23,12 +23,18 @@ var HubAppsecTests hubtest.HubTest
 var hubPtr *hubtest.HubTest
 var isAppsecTest bool
 
-func NewHubTestCmd() *cobra.Command {
+type cliHubTest struct{}
+
+func NewCLIHubTest() *cliHubTest {
+	return &cliHubTest{}
+}
+
+func (cli cliHubTest) NewCommand() *cobra.Command {
 	var hubPath string
 	var crowdsecPath string
 	var cscliPath string
 
-	var cmdHubTest = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:               "hubtest",
 		Short:             "Run functional tests on hub configurations",
 		Long:              "Run functional tests on hub configurations (parsers, scenarios, collections...)",
@@ -54,24 +60,24 @@ func NewHubTestCmd() *cobra.Command {
 		},
 	}
 
-	cmdHubTest.PersistentFlags().StringVar(&hubPath, "hub", ".", "Path to hub folder")
-	cmdHubTest.PersistentFlags().StringVar(&crowdsecPath, "crowdsec", "crowdsec", "Path to crowdsec")
-	cmdHubTest.PersistentFlags().StringVar(&cscliPath, "cscli", "cscli", "Path to cscli")
-	cmdHubTest.PersistentFlags().BoolVar(&isAppsecTest, "appsec", false, "Command relates to appsec tests")
+	cmd.PersistentFlags().StringVar(&hubPath, "hub", ".", "Path to hub folder")
+	cmd.PersistentFlags().StringVar(&crowdsecPath, "crowdsec", "crowdsec", "Path to crowdsec")
+	cmd.PersistentFlags().StringVar(&cscliPath, "cscli", "cscli", "Path to cscli")
+	cmd.PersistentFlags().BoolVar(&isAppsecTest, "appsec", false, "Command relates to appsec tests")
 
-	cmdHubTest.AddCommand(NewHubTestCreateCmd())
-	cmdHubTest.AddCommand(NewHubTestRunCmd())
-	cmdHubTest.AddCommand(NewHubTestCleanCmd())
-	cmdHubTest.AddCommand(NewHubTestInfoCmd())
-	cmdHubTest.AddCommand(NewHubTestListCmd())
-	cmdHubTest.AddCommand(NewHubTestCoverageCmd())
-	cmdHubTest.AddCommand(NewHubTestEvalCmd())
-	cmdHubTest.AddCommand(NewHubTestExplainCmd())
+	cmd.AddCommand(cli.NewCreateCmd())
+	cmd.AddCommand(cli.NewRunCmd())
+	cmd.AddCommand(cli.NewCleanCmd())
+	cmd.AddCommand(cli.NewInfoCmd())
+	cmd.AddCommand(cli.NewListCmd())
+	cmd.AddCommand(cli.NewCoverageCmd())
+	cmd.AddCommand(cli.NewEvalCmd())
+	cmd.AddCommand(cli.NewExplainCmd())
 
-	return cmdHubTest
+	return cmd
 }
 
-func NewHubTestCreateCmd() *cobra.Command {
+func (cli cliHubTest) NewCreateCmd() *cobra.Command {
 	parsers := []string{}
 	postoverflows := []string{}
 	scenarios := []string{}
@@ -79,7 +85,7 @@ func NewHubTestCreateCmd() *cobra.Command {
 	var labels map[string]string
 	var logType string
 
-	var cmdHubTestCreate = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "create [test_name]",
 		Example: `cscli hubtest create my-awesome-test --type syslog
@@ -191,21 +197,21 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 		},
 	}
 
-	cmdHubTestCreate.PersistentFlags().StringVarP(&logType, "type", "t", "", "Log type of the test")
-	cmdHubTestCreate.Flags().StringSliceVarP(&parsers, "parsers", "p", parsers, "Parsers to add to test")
-	cmdHubTestCreate.Flags().StringSliceVar(&postoverflows, "postoverflows", postoverflows, "Postoverflows to add to test")
-	cmdHubTestCreate.Flags().StringSliceVarP(&scenarios, "scenarios", "s", scenarios, "Scenarios to add to test")
-	cmdHubTestCreate.PersistentFlags().BoolVar(&ignoreParsers, "ignore-parsers", false, "Don't run test on parsers")
+	cmd.PersistentFlags().StringVarP(&logType, "type", "t", "", "Log type of the test")
+	cmd.Flags().StringSliceVarP(&parsers, "parsers", "p", parsers, "Parsers to add to test")
+	cmd.Flags().StringSliceVar(&postoverflows, "postoverflows", postoverflows, "Postoverflows to add to test")
+	cmd.Flags().StringSliceVarP(&scenarios, "scenarios", "s", scenarios, "Scenarios to add to test")
+	cmd.PersistentFlags().BoolVar(&ignoreParsers, "ignore-parsers", false, "Don't run test on parsers")
 
-	return cmdHubTestCreate
+	return cmd
 }
 
-func NewHubTestRunCmd() *cobra.Command {
+func (cli cliHubTest) NewRunCmd() *cobra.Command {
 	var noClean bool
 	var runAll bool
 	var forceClean bool
 
-	var cmdHubTestRun = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:               "run",
 		Short:             "run [test_name]",
 		DisableAutoGenTag: true,
@@ -353,15 +359,15 @@ func NewHubTestRunCmd() *cobra.Command {
 		},
 	}
 
-	cmdHubTestRun.Flags().BoolVar(&noClean, "no-clean", false, "Don't clean runtime environment if test succeed")
-	cmdHubTestRun.Flags().BoolVar(&forceClean, "clean", false, "Clean runtime environment if test fail")
-	cmdHubTestRun.Flags().BoolVar(&runAll, "all", false, "Run all tests")
+	cmd.Flags().BoolVar(&noClean, "no-clean", false, "Don't clean runtime environment if test succeed")
+	cmd.Flags().BoolVar(&forceClean, "clean", false, "Clean runtime environment if test fail")
+	cmd.Flags().BoolVar(&runAll, "all", false, "Run all tests")
 
-	return cmdHubTestRun
+	return cmd
 }
 
-func NewHubTestCleanCmd() *cobra.Command {
-	var cmdHubTestClean = &cobra.Command{
+func (cli cliHubTest) NewCleanCmd() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:               "clean",
 		Short:             "clean [test_name]",
 		Args:              cobra.MinimumNArgs(1),
@@ -381,17 +387,16 @@ func NewHubTestCleanCmd() *cobra.Command {
 		},
 	}
 
-	return cmdHubTestClean
+	return cmd
 }
 
-func NewHubTestInfoCmd() *cobra.Command {
-	var cmdHubTestInfo = &cobra.Command{
+func (cli cliHubTest) NewInfoCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "info",
 		Short:             "info [test_name]",
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-
 			for _, testName := range args {
 				test, err := hubPtr.LoadTestItem(testName)
 				if err != nil {
@@ -415,11 +420,11 @@ func NewHubTestInfoCmd() *cobra.Command {
 		},
 	}
 
-	return cmdHubTestInfo
+	return cmd
 }
 
-func NewHubTestListCmd() *cobra.Command {
-	var cmdHubTestList = &cobra.Command{
+func (cli cliHubTest) NewListCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "list",
 		Short:             "list",
 		DisableAutoGenTag: true,
@@ -445,16 +450,16 @@ func NewHubTestListCmd() *cobra.Command {
 		},
 	}
 
-	return cmdHubTestList
+	return cmd
 }
 
-func NewHubTestCoverageCmd() *cobra.Command {
+func (cli cliHubTest) NewCoverageCmd() *cobra.Command {
 	var showParserCov bool
 	var showScenarioCov bool
 	var showOnlyPercent bool
 	var showAppsecCov bool
 
-	var cmdHubTestCoverage = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:               "coverage",
 		Short:             "coverage",
 		DisableAutoGenTag: true,
@@ -580,17 +585,18 @@ func NewHubTestCoverageCmd() *cobra.Command {
 		},
 	}
 
-	cmdHubTestCoverage.PersistentFlags().BoolVar(&showOnlyPercent, "percent", false, "Show only percentages of coverage")
-	cmdHubTestCoverage.PersistentFlags().BoolVar(&showParserCov, "parsers", false, "Show only parsers coverage")
-	cmdHubTestCoverage.PersistentFlags().BoolVar(&showScenarioCov, "scenarios", false, "Show only scenarios coverage")
-	cmdHubTestCoverage.PersistentFlags().BoolVar(&showAppsecCov, "appsec", false, "Show only appsec coverage")
+	cmd.PersistentFlags().BoolVar(&showOnlyPercent, "percent", false, "Show only percentages of coverage")
+	cmd.PersistentFlags().BoolVar(&showParserCov, "parsers", false, "Show only parsers coverage")
+	cmd.PersistentFlags().BoolVar(&showScenarioCov, "scenarios", false, "Show only scenarios coverage")
+	cmd.PersistentFlags().BoolVar(&showAppsecCov, "appsec", false, "Show only appsec coverage")
 
-	return cmdHubTestCoverage
+	return cmd
 }
 
-func NewHubTestEvalCmd() *cobra.Command {
+func (cli cliHubTest) NewEvalCmd() *cobra.Command {
 	var evalExpression string
-	var cmdHubTestEval = &cobra.Command{
+
+	cmd := &cobra.Command{
 		Use:               "eval",
 		Short:             "eval [test_name]",
 		Args:              cobra.ExactArgs(1),
@@ -619,13 +625,13 @@ func NewHubTestEvalCmd() *cobra.Command {
 		},
 	}
 
-	cmdHubTestEval.PersistentFlags().StringVarP(&evalExpression, "expr", "e", "", "Expression to eval")
+	cmd.PersistentFlags().StringVarP(&evalExpression, "expr", "e", "", "Expression to eval")
 
-	return cmdHubTestEval
+	return cmd
 }
 
-func NewHubTestExplainCmd() *cobra.Command {
-	var cmdHubTestExplain = &cobra.Command{
+func (cli cliHubTest) NewExplainCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "explain",
 		Short:             "explain [test_name]",
 		Args:              cobra.ExactArgs(1),
@@ -665,5 +671,5 @@ func NewHubTestExplainCmd() *cobra.Command {
 		},
 	}
 
-	return cmdHubTestExplain
+	return cmd
 }
