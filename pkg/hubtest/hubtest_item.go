@@ -540,6 +540,8 @@ func (t *HubTestItem) Clean() error {
 
 func (t *HubTestItem) RunWithNucleiTemplate() error {
 
+	crowdsecLogFile := fmt.Sprintf("%s/log/crowdsec.log", t.RuntimePath)
+
 	testPath := filepath.Join(t.HubTestPath, t.Name)
 	if _, err := os.Stat(testPath); os.IsNotExist(err) {
 		return fmt.Errorf("test '%s' doesn't exist in '%s', exiting", t.Name, t.HubTestPath)
@@ -581,6 +583,13 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 
 	//wait for the appsec port to be available
 	if _, err := IsAlive(DefaultAppsecHost); err != nil {
+		crowdsecLog, err2 := os.ReadFile(crowdsecLogFile)
+		if err2 != nil {
+			log.Errorf("unable to read crowdsec log file '%s': %s", crowdsecLogFile, err)
+		} else {
+			log.Errorf("crowdsec log file '%s'", crowdsecLogFile)
+			log.Errorf("%s\n", string(crowdsecLog))
+		}
 		return fmt.Errorf("appsec is down: %s", err)
 	}
 
@@ -605,7 +614,6 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	}
 
 	err = nucleiConfig.RunNucleiTemplate(t.Name, t.Config.NucleiTemplate, DefaultNucleiTarget)
-	crowdsecLogFile := fmt.Sprintf("%s/log/crowdsec.log", nucleiConfig.OutputDir)
 	if t.Config.ExpectedNucleiFailure {
 		if err != nil && errors.Is(err, NucleiTemplateFail) {
 			log.Infof("Appsec test %s failed as expected", t.Name)
