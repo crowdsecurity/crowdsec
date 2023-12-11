@@ -61,8 +61,6 @@ func (nc *NucleiConfig) RunNucleiTemplate(testName string, templatePath string, 
 		log.Warningf("Nuclei generated output saved to %s", outputPrefix+".json")
 		return err
 	} else if len(out.String()) == 0 {
-		fmt.Println(out.String())
-		fmt.Println(outErr.String())
 		log.Warningf("Stdout saved to %s", outputPrefix+"_stdout.txt")
 		log.Warningf("Stderr saved to %s", outputPrefix+"_stderr.txt")
 		log.Warningf("Nuclei generated output saved to %s", outputPrefix+".json")
