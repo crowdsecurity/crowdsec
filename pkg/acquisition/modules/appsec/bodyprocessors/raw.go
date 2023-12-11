@@ -2,6 +2,7 @@ package bodyprocessors
 
 import (
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/crowdsecurity/coraza/v3/experimental/plugins"
@@ -21,7 +22,10 @@ func (*rawBodyProcessor) ProcessRequest(reader io.Reader, v plugintypes.Transact
 		return err
 	}
 
-	v.RequestBody().(setterInterface).Set(buf.String())
+	b := buf.String()
+
+	v.RequestBody().(setterInterface).Set(b)
+	v.RequestBodyLength().(setterInterface).Set(strconv.Itoa(len(b)))
 	return nil
 }
 
