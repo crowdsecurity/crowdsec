@@ -40,8 +40,6 @@ var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 	JSONFormat: true,
 })
 
-// Copied from go-cs-bouncer
-// Maybe we should add these helpers to https://github.com/crowdsecurity/go-cs-lib
 func getCertPool(caPath string) (*x509.CertPool, error) {
 	cp, err := x509.SystemCertPool()
 	if err != nil {
@@ -53,7 +51,7 @@ func getCertPool(caPath string) (*x509.CertPool, error) {
 	}
 
 	if caPath == "" {
-		return cp, nil //nolint: nilnil
+		return cp, nil
 	}
 
 	logger.Info(fmt.Sprintf("Using CA cert '%s'", caPath))
