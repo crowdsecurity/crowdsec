@@ -41,8 +41,8 @@ var matchMap map[string]string = map[string]string{
 	"libinjectionXSS": "@detectXSS",
 	"gt":              "@gt",
 	"lt":              "@lt",
-	"ge":              "@ge",
-	"le":              "@le",
+	"gte":             "@ge",
+	"lte":             "@le",
 }
 
 var bodyTypeMatch map[string]string = map[string]string{
