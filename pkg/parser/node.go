@@ -214,6 +214,10 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 			switch out := output.(type) {
 			case string:
 				gstr = out
+			case int:
+				gstr = fmt.Sprintf("%d", out)
+			case float64, float32:
+				gstr = fmt.Sprintf("%f", out)
 			default:
 				clog.Errorf("unexpected return type for RunTimeValue : %T", output)
 			}

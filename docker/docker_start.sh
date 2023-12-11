@@ -202,7 +202,7 @@ if isfalse "$DISABLE_LOCAL_API"; then
             # if the db is persistent but the credentials are not, we need to
             # delete the old machine to generate new credentials
             cscli machines delete "$CUSTOM_HOSTNAME" >/dev/null 2>&1 || true
-            cscli machines add "$CUSTOM_HOSTNAME" --auto
+            cscli machines add "$CUSTOM_HOSTNAME" --auto --force
         fi
     fi
 
@@ -300,7 +300,7 @@ fi
 
 conf_set_if "$PLUGIN_DIR" '.config_paths.plugin_dir = strenv(PLUGIN_DIR)'
 
-## Install collections, parsers, scenarios & postoverflows
+## Install hub items
 cscli hub update
 
 cscli_if_clean collections upgrade crowdsecurity/linux
@@ -328,6 +328,11 @@ if [ "$POSTOVERFLOWS" != "" ]; then
     cscli_if_clean postoverflows install "$(difference "$POSTOVERFLOWS" "$DISABLE_POSTOVERFLOWS")"
 fi
 
+if [ "$CONTEXTS" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean contexts install "$(difference "$CONTEXTS" "$DISABLE_CONTEXTS")"
+fi
+
 ## Remove collections, parsers, scenarios & postoverflows
 if [ "$DISABLE_COLLECTIONS" != "" ]; then
     # shellcheck disable=SC2086
@@ -347,6 +352,11 @@ fi
 if [ "$DISABLE_POSTOVERFLOWS" != "" ]; then
     # shellcheck disable=SC2086
     cscli_if_clean postoverflows remove "$DISABLE_POSTOVERFLOWS" --force
+fi
+
+if [ "$DISABLE_CONTEXTS" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean contexts remove "$DISABLE_CONTEXTS" --force
 fi
 
 ## Register bouncers via env

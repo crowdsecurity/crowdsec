@@ -46,7 +46,7 @@ func backupHub(dirPath string) error {
 			}
 
 			//for the local/tainted ones, we back up the full file
-			if v.State.Tainted || v.IsLocal() || !v.State.UpToDate {
+			if v.State.Tainted || v.State.IsLocal() || !v.State.UpToDate {
 				//we need to backup stages for parsers
 				if itemType == cwhub.PARSERS || itemType == cwhub.POSTOVERFLOWS {
 					fstagedir := fmt.Sprintf("%s%s", itemDirectory, v.Stage)
@@ -54,7 +54,7 @@ func backupHub(dirPath string) error {
 						return fmt.Errorf("error while creating stage dir %s : %s", fstagedir, err)
 					}
 				}
-				clog.Debugf("[%s]: backing up file (tainted:%t local:%t up-to-date:%t)", k, v.State.Tainted, v.IsLocal(), v.State.UpToDate)
+				clog.Debugf("[%s]: backing up file (tainted:%t local:%t up-to-date:%t)", k, v.State.Tainted, v.State.IsLocal(), v.State.UpToDate)
 				tfile := fmt.Sprintf("%s%s/%s", itemDirectory, v.Stage, v.FileName)
 				if err = CopyFile(v.State.LocalPath, tfile); err != nil {
 					return fmt.Errorf("failed copy %s %s to %s : %s", itemType, v.State.LocalPath, tfile, err)
@@ -72,7 +72,7 @@ func backupHub(dirPath string) error {
 		if err != nil {
 			return fmt.Errorf("failed marshaling upstream parsers : %s", err)
 		}
-		err = os.WriteFile(upstreamParsersFname, upstreamParsersContent, 0644)
+		err = os.WriteFile(upstreamParsersFname, upstreamParsersContent, 0o644)
 		if err != nil {
 			return fmt.Errorf("unable to write to %s %s : %s", itemType, upstreamParsersFname, err)
 		}

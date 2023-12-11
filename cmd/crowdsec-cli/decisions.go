@@ -102,8 +102,15 @@ func DecisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error
 	return nil
 }
 
-func NewDecisionsCmd() *cobra.Command {
-	var cmdDecisions = &cobra.Command{
+
+type cliDecisions struct {}
+
+func NewCLIDecisions() *cliDecisions {
+	return &cliDecisions{}
+}
+
+func (cli cliDecisions) NewCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:     "decisions [action]",
 		Short:   "Manage decisions",
 		Long:    `Add/List/Delete/Import decisions from LAPI`,
@@ -135,15 +142,15 @@ func NewDecisionsCmd() *cobra.Command {
 		},
 	}
 
-	cmdDecisions.AddCommand(NewDecisionsListCmd())
-	cmdDecisions.AddCommand(NewDecisionsAddCmd())
-	cmdDecisions.AddCommand(NewDecisionsDeleteCmd())
-	cmdDecisions.AddCommand(NewDecisionsImportCmd())
+	cmd.AddCommand(cli.NewListCmd())
+	cmd.AddCommand(cli.NewAddCmd())
+	cmd.AddCommand(cli.NewDeleteCmd())
+	cmd.AddCommand(cli.NewImportCmd())
 
-	return cmdDecisions
+	return cmd
 }
 
-func NewDecisionsListCmd() *cobra.Command {
+func (cli cliDecisions) NewListCmd() *cobra.Command {
 	var filter = apiclient.AlertsListOpts{
 		ValueEquals:    new(string),
 		ScopeEquals:    new(string),
@@ -161,7 +168,7 @@ func NewDecisionsListCmd() *cobra.Command {
 	contained := new(bool)
 	var printMachine bool
 
-	var cmdDecisionsList = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "list [options]",
 		Short: "List decisions from LAPI",
 		Example: `cscli decisions list -i 1.2.3.4
@@ -251,26 +258,26 @@ cscli decisions list -t ban
 			return nil
 		},
 	}
-	cmdDecisionsList.Flags().SortFlags = false
-	cmdDecisionsList.Flags().BoolVarP(filter.IncludeCAPI, "all", "a", false, "Include decisions from Central API")
-	cmdDecisionsList.Flags().StringVar(filter.Since, "since", "", "restrict to alerts newer than since (ie. 4h, 30d)")
-	cmdDecisionsList.Flags().StringVar(filter.Until, "until", "", "restrict to alerts older than until (ie. 4h, 30d)")
-	cmdDecisionsList.Flags().StringVarP(filter.TypeEquals, "type", "t", "", "restrict to this decision type (ie. ban,captcha)")
-	cmdDecisionsList.Flags().StringVar(filter.ScopeEquals, "scope", "", "restrict to this scope (ie. ip,range,session)")
-	cmdDecisionsList.Flags().StringVar(filter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
-	cmdDecisionsList.Flags().StringVarP(filter.ValueEquals, "value", "v", "", "restrict to this value (ie. 1.2.3.4,userName)")
-	cmdDecisionsList.Flags().StringVarP(filter.ScenarioEquals, "scenario", "s", "", "restrict to this scenario (ie. crowdsecurity/ssh-bf)")
-	cmdDecisionsList.Flags().StringVarP(filter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
-	cmdDecisionsList.Flags().StringVarP(filter.RangeEquals, "range", "r", "", "restrict to alerts from this source range (shorthand for --scope range --value <RANGE>)")
-	cmdDecisionsList.Flags().IntVarP(filter.Limit, "limit", "l", 100, "number of alerts to get (use 0 to remove the limit)")
-	cmdDecisionsList.Flags().BoolVar(NoSimu, "no-simu", false, "exclude decisions in simulation mode")
-	cmdDecisionsList.Flags().BoolVarP(&printMachine, "machine", "m", false, "print machines that triggered decisions")
-	cmdDecisionsList.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
+	cmd.Flags().SortFlags = false
+	cmd.Flags().BoolVarP(filter.IncludeCAPI, "all", "a", false, "Include decisions from Central API")
+	cmd.Flags().StringVar(filter.Since, "since", "", "restrict to alerts newer than since (ie. 4h, 30d)")
+	cmd.Flags().StringVar(filter.Until, "until", "", "restrict to alerts older than until (ie. 4h, 30d)")
+	cmd.Flags().StringVarP(filter.TypeEquals, "type", "t", "", "restrict to this decision type (ie. ban,captcha)")
+	cmd.Flags().StringVar(filter.ScopeEquals, "scope", "", "restrict to this scope (ie. ip,range,session)")
+	cmd.Flags().StringVar(filter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
+	cmd.Flags().StringVarP(filter.ValueEquals, "value", "v", "", "restrict to this value (ie. 1.2.3.4,userName)")
+	cmd.Flags().StringVarP(filter.ScenarioEquals, "scenario", "s", "", "restrict to this scenario (ie. crowdsecurity/ssh-bf)")
+	cmd.Flags().StringVarP(filter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
+	cmd.Flags().StringVarP(filter.RangeEquals, "range", "r", "", "restrict to alerts from this source range (shorthand for --scope range --value <RANGE>)")
+	cmd.Flags().IntVarP(filter.Limit, "limit", "l", 100, "number of alerts to get (use 0 to remove the limit)")
+	cmd.Flags().BoolVar(NoSimu, "no-simu", false, "exclude decisions in simulation mode")
+	cmd.Flags().BoolVarP(&printMachine, "machine", "m", false, "print machines that triggered decisions")
+	cmd.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
 
-	return cmdDecisionsList
+	return cmd
 }
 
-func NewDecisionsAddCmd() *cobra.Command {
+func (cli cliDecisions) NewAddCmd() *cobra.Command {
 	var (
 		addIP       string
 		addRange    string
@@ -281,7 +288,7 @@ func NewDecisionsAddCmd() *cobra.Command {
 		addType     string
 	)
 
-	var cmdDecisionsAdd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "add [options]",
 		Short: "Add decision to LAPI",
 		Example: `cscli decisions add --ip 1.2.3.4
@@ -369,19 +376,19 @@ cscli decisions add --scope username --value foobar
 		},
 	}
 
-	cmdDecisionsAdd.Flags().SortFlags = false
-	cmdDecisionsAdd.Flags().StringVarP(&addIP, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
-	cmdDecisionsAdd.Flags().StringVarP(&addRange, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
-	cmdDecisionsAdd.Flags().StringVarP(&addDuration, "duration", "d", "4h", "Decision duration (ie. 1h,4h,30m)")
-	cmdDecisionsAdd.Flags().StringVarP(&addValue, "value", "v", "", "The value (ie. --scope username --value foobar)")
-	cmdDecisionsAdd.Flags().StringVar(&addScope, "scope", types.Ip, "Decision scope (ie. ip,range,username)")
-	cmdDecisionsAdd.Flags().StringVarP(&addReason, "reason", "R", "", "Decision reason (ie. scenario-name)")
-	cmdDecisionsAdd.Flags().StringVarP(&addType, "type", "t", "ban", "Decision type (ie. ban,captcha,throttle)")
+	cmd.Flags().SortFlags = false
+	cmd.Flags().StringVarP(&addIP, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
+	cmd.Flags().StringVarP(&addRange, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
+	cmd.Flags().StringVarP(&addDuration, "duration", "d", "4h", "Decision duration (ie. 1h,4h,30m)")
+	cmd.Flags().StringVarP(&addValue, "value", "v", "", "The value (ie. --scope username --value foobar)")
+	cmd.Flags().StringVar(&addScope, "scope", types.Ip, "Decision scope (ie. ip,range,username)")
+	cmd.Flags().StringVarP(&addReason, "reason", "R", "", "Decision reason (ie. scenario-name)")
+	cmd.Flags().StringVarP(&addType, "type", "t", "ban", "Decision type (ie. ban,captcha,throttle)")
 
-	return cmdDecisionsAdd
+	return cmd
 }
 
-func NewDecisionsDeleteCmd() *cobra.Command {
+func (cli cliDecisions) NewDeleteCmd() *cobra.Command {
 	var delFilter = apiclient.DecisionsDeleteOpts{
 		ScopeEquals:    new(string),
 		ValueEquals:    new(string),
@@ -395,7 +402,7 @@ func NewDecisionsDeleteCmd() *cobra.Command {
 	var delDecisionAll bool
 	contained := new(bool)
 
-	var cmdDecisionsDelete = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:               "delete [options]",
 		Short:             "Delete decisions",
 		DisableAutoGenTag: true,
@@ -472,17 +479,17 @@ cscli decisions delete --type captcha
 		},
 	}
 
-	cmdDecisionsDelete.Flags().SortFlags = false
-	cmdDecisionsDelete.Flags().StringVarP(delFilter.IPEquals, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
-	cmdDecisionsDelete.Flags().StringVarP(delFilter.RangeEquals, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
-	cmdDecisionsDelete.Flags().StringVarP(delFilter.TypeEquals, "type", "t", "", "the decision type (ie. ban,captcha)")
-	cmdDecisionsDelete.Flags().StringVarP(delFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
-	cmdDecisionsDelete.Flags().StringVarP(delFilter.ScenarioEquals, "scenario", "s", "", "the scenario name (ie. crowdsecurity/ssh-bf)")
-	cmdDecisionsDelete.Flags().StringVar(delFilter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
+	cmd.Flags().SortFlags = false
+	cmd.Flags().StringVarP(delFilter.IPEquals, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
+	cmd.Flags().StringVarP(delFilter.RangeEquals, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
+	cmd.Flags().StringVarP(delFilter.TypeEquals, "type", "t", "", "the decision type (ie. ban,captcha)")
+	cmd.Flags().StringVarP(delFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
+	cmd.Flags().StringVarP(delFilter.ScenarioEquals, "scenario", "s", "", "the scenario name (ie. crowdsecurity/ssh-bf)")
+	cmd.Flags().StringVar(delFilter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
 
-	cmdDecisionsDelete.Flags().StringVar(&delDecisionId, "id", "", "decision id")
-	cmdDecisionsDelete.Flags().BoolVar(&delDecisionAll, "all", false, "delete all decisions")
-	cmdDecisionsDelete.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
+	cmd.Flags().StringVar(&delDecisionId, "id", "", "decision id")
+	cmd.Flags().BoolVar(&delDecisionAll, "all", false, "delete all decisions")
+	cmd.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
 
-	return cmdDecisionsDelete
+	return cmd
 }

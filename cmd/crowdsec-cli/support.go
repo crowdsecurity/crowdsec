@@ -37,6 +37,7 @@ const (
 	SUPPORT_OS_INFO_PATH                 = "osinfo.txt"
 	SUPPORT_PARSERS_PATH                 = "hub/parsers.txt"
 	SUPPORT_SCENARIOS_PATH               = "hub/scenarios.txt"
+	SUPPORT_CONTEXTS_PATH                = "hub/scenarios.txt"
 	SUPPORT_COLLECTIONS_PATH             = "hub/collections.txt"
 	SUPPORT_POSTOVERFLOWS_PATH           = "hub/postoverflows.txt"
 	SUPPORT_BOUNCERS_PATH                = "lapi/bouncers.txt"
@@ -140,7 +141,7 @@ func collectHubItems(hub *cwhub.Hub, itemType string) []byte {
 		log.Warnf("could not collect %s list: %s", itemType, err)
 	}
 
-	if err := listItems(out, []string{itemType}, items); err != nil {
+	if err := listItems(out, []string{itemType}, items, false); err != nil {
 		log.Warnf("could not collect %s list: %s", itemType, err)
 	}
 	return out.Bytes()
@@ -237,8 +238,14 @@ func collectAcquisitionConfig() map[string][]byte {
 	return ret
 }
 
-func NewSupportCmd() *cobra.Command {
-	var cmdSupport = &cobra.Command{
+type cliSupport struct {}
+
+func NewCLISupport() *cliSupport {
+	return &cliSupport{}
+}
+
+func (cli cliSupport) NewCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "support [action]",
 		Short:             "Provide commands to help during support",
 		Args:              cobra.MinimumNArgs(1),
@@ -248,9 +255,15 @@ func NewSupportCmd() *cobra.Command {
 		},
 	}
 
+	cmd.AddCommand(cli.NewDumpCmd())
+
+	return cmd
+}
+
+func (cli cliSupport) NewDumpCmd() *cobra.Command {
 	var outFile string
 
-	cmdDump := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "dump",
 		Short: "Dump all your configuration to a zip file for easier support",
 		Long: `Dump the following informations:
@@ -260,6 +273,7 @@ func NewSupportCmd() *cobra.Command {
 - Installed parsers list
 - Installed scenarios list
 - Installed postoverflows list
+- Installed context list
 - Bouncers list
 - Machines list
 - CAPI status
@@ -309,6 +323,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				infos[SUPPORT_PARSERS_PATH] = []byte(err.Error())
 				infos[SUPPORT_SCENARIOS_PATH] = []byte(err.Error())
 				infos[SUPPORT_POSTOVERFLOWS_PATH] = []byte(err.Error())
+				infos[SUPPORT_CONTEXTS_PATH] = []byte(err.Error())
 				infos[SUPPORT_COLLECTIONS_PATH] = []byte(err.Error())
 			}
 
@@ -344,6 +359,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				infos[SUPPORT_PARSERS_PATH] = collectHubItems(hub, cwhub.PARSERS)
 				infos[SUPPORT_SCENARIOS_PATH] = collectHubItems(hub, cwhub.SCENARIOS)
 				infos[SUPPORT_POSTOVERFLOWS_PATH] = collectHubItems(hub, cwhub.POSTOVERFLOWS)
+				infos[SUPPORT_CONTEXTS_PATH] = collectHubItems(hub, cwhub.POSTOVERFLOWS)
 				infos[SUPPORT_COLLECTIONS_PATH] = collectHubItems(hub, cwhub.COLLECTIONS)
 			}
 
@@ -407,7 +423,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				log.Fatalf("could not finalize zip file: %s", err)
 			}
 
-			err = os.WriteFile(outFile, w.Bytes(), 0600)
+			err = os.WriteFile(outFile, w.Bytes(), 0o600)
 			if err != nil {
 				log.Fatalf("could not write zip file to %s: %s", outFile, err)
 			}
@@ -415,8 +431,8 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			log.Infof("Written zip file to %s", outFile)
 		},
 	}
-	cmdDump.Flags().StringVarP(&outFile, "outFile", "f", "", "File to dump the information to")
-	cmdSupport.AddCommand(cmdDump)
 
-	return cmdSupport
+	cmd.Flags().StringVarP(&outFile, "outFile", "f", "", "File to dump the information to")
+
+	return cmd
 }

@@ -61,6 +61,26 @@ func hubTestParserCoverageTable(out io.Writer, coverage []hubtest.Coverage) {
 	t.Render()
 }
 
+func hubTestAppsecRuleCoverageTable(out io.Writer, coverage []hubtest.Coverage) {
+	t := newLightTable(out)
+	t.SetHeaders("Appsec Rule", "Status", "Number of tests")
+	t.SetHeaderAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
+	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
+
+	parserTested := 0
+
+	for _, test := range coverage {
+		status := emoji.RedCircle.String()
+		if test.TestsCount > 0 {
+			status = emoji.GreenCircle.String()
+			parserTested++
+		}
+		t.AddRow(test.Name, status, fmt.Sprintf("%d times (across %d tests)", test.TestsCount, len(test.PresentIn)))
+	}
+
+	t.Render()
+}
+
 func hubTestScenarioCoverageTable(out io.Writer, coverage []hubtest.Coverage) {
 	t := newLightTable(out)
 	t.SetHeaders("Scenario", "Status", "Number of tests")

@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -112,15 +113,13 @@ func (h *Hub) getItemFileInfo(path string) (*itemFileInfo, error) {
 
 	log.Tracef("stage:%s ftype:%s", ret.stage, ret.ftype)
 
-	if ret.stage == SCENARIOS {
-		ret.ftype = SCENARIOS
+	if ret.ftype != PARSERS && ret.ftype != POSTOVERFLOWS {
+		if !slices.Contains(ItemTypes, ret.stage) {
+			return nil, fmt.Errorf("unknown configuration type for file '%s'", path)
+		}
+
+		ret.ftype = ret.stage
 		ret.stage = ""
-	} else if ret.stage == COLLECTIONS {
-		ret.ftype = COLLECTIONS
-		ret.stage = ""
-	} else if ret.ftype != PARSERS && ret.ftype != POSTOVERFLOWS {
-		// it's a PARSER / POSTOVERFLOW with a stage
-		return nil, fmt.Errorf("unknown configuration type for file '%s'", path)
 	}
 
 	log.Tracef("CORRECTED [%s] by [%s] in stage [%s] of type [%s]", ret.fname, ret.fauthor, ret.stage, ret.ftype)
@@ -347,7 +346,7 @@ func (i *Item) checkSubItemVersions() error {
 
 // syncDir scans a directory for items, and updates the Hub state accordingly.
 func (h *Hub) syncDir(dir string) error {
-	// For each, scan PARSERS, POSTOVERFLOWS, SCENARIOS and COLLECTIONS last
+	// For each, scan PARSERS, POSTOVERFLOWS... and COLLECTIONS last
 	for _, scan := range ItemTypes {
 		// cpath: top-level item directory, either downloaded or installed items.
 		// i.e. /etc/crowdsec/parsers, /etc/crowdsec/hub/parsers, ...
@@ -420,7 +419,7 @@ func (h *Hub) localSync() error {
 		case versionFuture:
 			warnings = append(warnings, fmt.Sprintf("collection %s is in the future (currently:%s, latest:%s)", item.Name, item.State.LocalVersion, item.Version))
 		case versionUnknown:
-			if !item.IsLocal() {
+			if !item.State.IsLocal() {
 				warnings = append(warnings, fmt.Sprintf("collection %s is tainted (latest:%s)", item.Name, item.Version))
 			}
 		}

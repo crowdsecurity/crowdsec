@@ -12,10 +12,13 @@ import (
 
 const (
 	// managed item types.
-	COLLECTIONS   = "collections"
-	PARSERS       = "parsers"
-	POSTOVERFLOWS = "postoverflows"
-	SCENARIOS     = "scenarios"
+	COLLECTIONS    = "collections"
+	PARSERS        = "parsers"
+	POSTOVERFLOWS  = "postoverflows"
+	SCENARIOS      = "scenarios"
+	CONTEXTS       = "contexts"
+	APPSEC_CONFIGS = "appsec-configs"
+	APPSEC_RULES   = "appsec-rules"
 )
 
 const (
@@ -27,7 +30,7 @@ const (
 
 var (
 	// The order is important, as it is used to range over sub-items in collections.
-	ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, COLLECTIONS}
+	ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, CONTEXTS, APPSEC_CONFIGS, APPSEC_RULES, COLLECTIONS}
 )
 
 type HubItems map[string]map[string]*Item
@@ -53,6 +56,48 @@ type ItemState struct {
 	BelongsToCollections []string `json:"belongs_to_collections,omitempty" yaml:"belongs_to_collections,omitempty"`
 }
 
+// IsLocal returns true if the item has been create by a user (not downloaded from the hub).
+func (s *ItemState) IsLocal() bool {
+	return s.Installed && !s.Downloaded
+}
+
+// Text returns the status of the item as a string (eg. "enabled,update-available").
+func (s *ItemState) Text() string {
+	ret := "disabled"
+
+	if s.Installed {
+		ret = "enabled"
+	}
+
+	if s.IsLocal() {
+		ret += ",local"
+	}
+
+	if s.Tainted {
+		ret += ",tainted"
+	} else if !s.UpToDate && !s.IsLocal() {
+		ret += ",update-available"
+	}
+
+	return ret
+}
+
+// Emoji returns the status of the item as an emoji (eg. emoji.Warning).
+func (s *ItemState) Emoji() emoji.Emoji {
+	switch {
+	case s.IsLocal():
+		return emoji.House
+	case !s.Installed:
+		return emoji.Prohibited
+	case s.Tainted || (!s.UpToDate && !s.IsLocal()):
+		return emoji.Warning
+	case s.Installed:
+		return emoji.CheckMark
+	default:
+		return emoji.QuestionMark
+	}
+}
+
 // Item is created from an index file and enriched with local info.
 type Item struct {
 	hub *Hub // back pointer to the hub, to retrieve other items and call install/remove methods
@@ -76,6 +121,9 @@ type Item struct {
 	PostOverflows []string `json:"postoverflows,omitempty" yaml:"postoverflows,omitempty"`
 	Scenarios     []string `json:"scenarios,omitempty" yaml:"scenarios,omitempty"`
 	Collections   []string `json:"collections,omitempty" yaml:"collections,omitempty"`
+	Contexts      []string `json:"contexts,omitempty" yaml:"contexts,omitempty"`
+	AppsecConfigs []string `json:"appsec-configs,omitempty"   yaml:"appsec-configs,omitempty"`
+	AppsecRules   []string `json:"appsec-rules,omitempty"   yaml:"appsec-rules,omitempty"`
 }
 
 // installPath returns the location of the symlink to the item in the hub, or the path of the item itself if it's local
@@ -107,11 +155,6 @@ func (i *Item) HasSubItems() bool {
 	return i.Type == COLLECTIONS
 }
 
-// IsLocal returns true if the item has been create by a user (not downloaded from the hub).
-func (i *Item) IsLocal() bool {
-	return i.State.Installed && !i.State.Downloaded
-}
-
 // MarshalJSON is used to prepare the output for "cscli ... inspect -o json".
 // It must not use a pointer receiver.
 func (i Item) MarshalJSON() ([]byte, error) {
@@ -139,7 +182,7 @@ func (i Item) MarshalJSON() ([]byte, error) {
 		UpToDate:             i.State.UpToDate,
 		Tainted:              i.State.Tainted,
 		BelongsToCollections: i.State.BelongsToCollections,
-		Local:                i.IsLocal(),
+		Local:                i.State.IsLocal(),
 	})
 }
 
@@ -155,7 +198,7 @@ func (i Item) MarshalYAML() (interface{}, error) {
 	}{
 		Alias: Alias(i),
 		State: i.State,
-		Local: i.IsLocal(),
+		Local: i.State.IsLocal(),
 	}, nil
 }
 
@@ -183,6 +226,33 @@ func (i *Item) SubItems() []*Item {
 
 	for _, name := range i.Scenarios {
 		s := i.hub.GetItem(SCENARIOS, name)
+		if s == nil {
+			continue
+		}
+
+		sub = append(sub, s)
+	}
+
+	for _, name := range i.Contexts {
+		s := i.hub.GetItem(CONTEXTS, name)
+		if s == nil {
+			continue
+		}
+
+		sub = append(sub, s)
+	}
+
+	for _, name := range i.AppsecConfigs {
+		s := i.hub.GetItem(APPSEC_CONFIGS, name)
+		if s == nil {
+			continue
+		}
+
+		sub = append(sub, s)
+	}
+
+	for _, name := range i.AppsecRules {
+		s := i.hub.GetItem(APPSEC_RULES, name)
 		if s == nil {
 			continue
 		}
@@ -222,6 +292,24 @@ func (i *Item) logMissingSubItems() {
 	for _, subName := range i.PostOverflows {
 		if i.hub.GetItem(POSTOVERFLOWS, subName) == nil {
 			log.Errorf("can't find %s in %s, required by %s", subName, POSTOVERFLOWS, i.Name)
+		}
+	}
+
+	for _, subName := range i.Contexts {
+		if i.hub.GetItem(CONTEXTS, subName) == nil {
+			log.Errorf("can't find %s in %s, required by %s", subName, CONTEXTS, i.Name)
+		}
+	}
+
+	for _, subName := range i.AppsecConfigs {
+		if i.hub.GetItem(APPSEC_CONFIGS, subName) == nil {
+			log.Errorf("can't find %s in %s, required by %s", subName, APPSEC_CONFIGS, i.Name)
+		}
+	}
+
+	for _, subName := range i.AppsecRules {
+		if i.hub.GetItem(APPSEC_RULES, subName) == nil {
+			log.Errorf("can't find %s in %s, required by %s", subName, APPSEC_RULES, i.Name)
 		}
 	}
 
@@ -288,48 +376,6 @@ func (i *Item) descendants() ([]*Item, error) {
 	}
 
 	return ret, nil
-}
-
-// InstallStatus returns the status of the item as a string and an emoji
-// (eg. "enabled,update-available" and emoji.Warning).
-func (i *Item) InstallStatus() (string, emoji.Emoji) {
-	status := "disabled"
-	ok := false
-
-	if i.State.Installed {
-		ok = true
-		status = "enabled"
-	}
-
-	managed := true
-	if i.IsLocal() {
-		managed = false
-		status += ",local"
-	}
-
-	warning := false
-	if i.State.Tainted {
-		warning = true
-		status += ",tainted"
-	} else if !i.State.UpToDate && !i.IsLocal() {
-		warning = true
-		status += ",update-available"
-	}
-
-	emo := emoji.QuestionMark
-
-	switch {
-	case !managed:
-		emo = emoji.House
-	case !i.State.Installed:
-		emo = emoji.Prohibited
-	case warning:
-		emo = emoji.Warning
-	case ok:
-		emo = emoji.CheckMark
-	}
-
-	return status, emo
 }
 
 // versionStatus returns the status of the item version compared to the hub version.

@@ -22,6 +22,13 @@ LOOP:
 			if !event.Process {
 				continue
 			}
+			/*Application security engine is going to generate 2 events:
+			- one that is treated as a log and can go to scenarios
+			- another one that will go directly to LAPI*/
+			if event.Type == types.APPSEC {
+				outputEventChan <- event
+				continue
+			}
 			if event.Line.Module == "" {
 				log.Errorf("empty event.Line.Module field, the acquisition module must set it ! : %+v", event.Line)
 				continue

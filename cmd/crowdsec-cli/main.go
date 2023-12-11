@@ -6,12 +6,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"slices"
+
 	"github.com/fatih/color"
 	cc "github.com/ivanpirog/coloredcobra"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
-	"slices"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
@@ -92,9 +93,10 @@ func initConfig() {
 }
 
 var validArgs = []string{
-	"scenarios", "parsers", "collections", "capi", "lapi", "postoverflows", "machines",
-	"metrics", "bouncers", "alerts", "decisions", "simulation", "hub", "dashboard",
-	"config", "completion", "version", "console", "notifications", "support",
+	"alerts", "appsec-configs", "appsec-rules", "bouncers", "capi", "collections",
+	"completion", "config", "console", "contexts", "dashboard", "decisions", "explain",
+	"hub", "hubtest", "lapi", "machines", "metrics", "notifications", "parsers",
+	"postoverflows", "scenarios", "simulation", "support", "version",
 }
 
 func prepender(filename string) string {
@@ -224,33 +226,37 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.PersistentFlags().SortFlags = false
 
 	rootCmd.AddCommand(NewConfigCmd())
-	rootCmd.AddCommand(NewHubCmd())
+	rootCmd.AddCommand(NewCLIHub().NewCommand())
 	rootCmd.AddCommand(NewMetricsCmd())
-	rootCmd.AddCommand(NewDashboardCmd())
-	rootCmd.AddCommand(NewDecisionsCmd())
-	rootCmd.AddCommand(NewAlertsCmd())
-	rootCmd.AddCommand(NewSimulationCmds())
-	rootCmd.AddCommand(NewBouncersCmd())
-	rootCmd.AddCommand(NewMachinesCmd())
-	rootCmd.AddCommand(NewCapiCmd())
+	rootCmd.AddCommand(NewCLIDashboard().NewCommand())
+	rootCmd.AddCommand(NewCLIDecisions().NewCommand())
+	rootCmd.AddCommand(NewCLIAlerts().NewCommand())
+	rootCmd.AddCommand(NewCLISimulation().NewCommand())
+	rootCmd.AddCommand(NewCLIBouncers().NewCommand())
+	rootCmd.AddCommand(NewCLIMachines().NewCommand())
+	rootCmd.AddCommand(NewCLICapi().NewCommand())
 	rootCmd.AddCommand(NewLapiCmd())
 	rootCmd.AddCommand(NewCompletionCmd())
 	rootCmd.AddCommand(NewConsoleCmd())
-	rootCmd.AddCommand(NewExplainCmd())
-	rootCmd.AddCommand(NewHubTestCmd())
-	rootCmd.AddCommand(NewNotificationsCmd())
-	rootCmd.AddCommand(NewSupportCmd())
-	rootCmd.AddCommand(NewItemsCmd("collections"))
-	rootCmd.AddCommand(NewItemsCmd("parsers"))
-	rootCmd.AddCommand(NewItemsCmd("scenarios"))
-	rootCmd.AddCommand(NewItemsCmd("postoverflows"))
+	rootCmd.AddCommand(NewCLIExplain().NewCommand())
+	rootCmd.AddCommand(NewCLIHubTest().NewCommand())
+	rootCmd.AddCommand(NewCLINotifications().NewCommand())
+	rootCmd.AddCommand(NewCLISupport().NewCommand())
+	rootCmd.AddCommand(NewCLIPapi().NewCommand())
+	rootCmd.AddCommand(NewCLICollection().NewCommand())
+	rootCmd.AddCommand(NewCLIParser().NewCommand())
+	rootCmd.AddCommand(NewCLIScenario().NewCommand())
+	rootCmd.AddCommand(NewCLIPostOverflow().NewCommand())
+	rootCmd.AddCommand(NewCLIContext().NewCommand())
+	rootCmd.AddCommand(NewCLIAppsecConfig().NewCommand())
+	rootCmd.AddCommand(NewCLIAppsecRule().NewCommand())
 
 	if fflag.CscliSetup.IsEnabled() {
 		rootCmd.AddCommand(NewSetupCmd())
 	}
 
 	if fflag.PapiClient.IsEnabled() {
-		rootCmd.AddCommand(NewPapiCmd())
+		rootCmd.AddCommand(NewCLIPapi().NewCommand())
 	}
 
 	if err := rootCmd.Execute(); err != nil {

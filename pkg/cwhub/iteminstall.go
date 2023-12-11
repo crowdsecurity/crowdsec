@@ -13,7 +13,7 @@ func (i *Item) enable() error {
 			return fmt.Errorf("%s is tainted, won't enable unless --force", i.Name)
 		}
 
-		if i.IsLocal() {
+		if i.State.IsLocal() {
 			return fmt.Errorf("%s is local, won't enable", i.Name)
 		}
 

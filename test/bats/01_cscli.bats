@@ -108,6 +108,20 @@ teardown() {
     rune -0 cscli config show -o json
     rune -0 jq -c '.API.Client.Credentials | [.url,.login[0:32]]' <(output)
     assert_json '["http://127.0.0.1:8080/","githubciXXXXXXXXXXXXXXXXXXXXXXXX"]'
+
+    # pointer to boolean
+
+    rune -0 cscli config show --key Config.API.Client.InsecureSkipVerify
+    assert_output "&false"
+
+    # complex type
+    rune -0 cscli config show --key Config.PluginConfig
+    assert_output - <<-EOT
+	&csconfig.PluginCfg{
+	  User: "nobody",
+	  Group: "nogroup",
+	}
+	EOT
 }
 
 @test "cscli - required configuration paths" {
@@ -238,19 +252,20 @@ teardown() {
 
 @test "cscli - malformed LAPI url" {
     LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
-    config_set "${LOCAL_API_CREDENTIALS}" '.url="https://127.0.0.1:-80"'
+    config_set "${LOCAL_API_CREDENTIALS}" '.url="http://127.0.0.1:-80"'
 
-    rune -1 cscli lapi status
-    assert_stderr --partial 'parsing api url'
-    assert_stderr --partial 'invalid port \":-80\" after host'
+    rune -1 cscli lapi status -o json
+    rune -0 jq -r '.msg' <(stderr)
+    assert_output 'parsing api url: parse "http://127.0.0.1:-80/": invalid port ":-80" after host'
+}
 
-    rune -1 cscli alerts list
-    assert_stderr --partial 'parsing api url'
-    assert_stderr --partial 'invalid port \":-80\" after host'
+@test "cscli - bad LAPI password" {
+    LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
+    config_set "${LOCAL_API_CREDENTIALS}" '.password="meh"'
 
-    rune -1 cscli decisions list
-    assert_stderr --partial 'parsing api url'
-    assert_stderr --partial 'invalid port \":-80\" after host'
+    rune -1 cscli lapi status -o json
+    rune -0 jq -r '.msg' <(stderr)
+    assert_output 'failed to authenticate to Local API (LAPI): API error: incorrect Username or Password'
 }
 
 @test "cscli metrics" {

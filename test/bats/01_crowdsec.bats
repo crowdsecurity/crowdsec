@@ -227,3 +227,18 @@ teardown() {
     assert_stderr --partial "crowdsec init: while loading acquisition config: no datasource enabled"
 }
 
+@test "crowdsec -t (error in acquisition file)" {
+    # we can verify the acquisition configuration without running crowdsec
+    ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
+    config_set "$ACQUIS_YAML" 'del(.filenames)'
+
+    # if filenames are missing, it won't be able to detect source type
+    config_set "$ACQUIS_YAML" '.source="file"'
+    rune -1 wait-for "${CROWDSEC}"
+    assert_stderr --partial "failed to configure datasource file: no filename or filenames configuration provided"
+
+    config_set "$ACQUIS_YAML" '.filenames=["file.log"]'
+    config_set "$ACQUIS_YAML" '.meh=3'
+    rune -1 wait-for "${CROWDSEC}"
+    assert_stderr --partial "field meh not found in type fileacquisition.FileConfiguration"
+}

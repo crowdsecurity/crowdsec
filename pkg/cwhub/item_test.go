@@ -23,7 +23,7 @@ func TestItemStatus(t *testing.T) {
 		item.State.Tainted = false
 		item.State.Downloaded = true
 
-		txt, _ := item.InstallStatus()
+		txt := item.State.Text()
 		require.Equal(t, "enabled,update-available", txt)
 
 		item.State.Installed = true
@@ -31,7 +31,7 @@ func TestItemStatus(t *testing.T) {
 		item.State.Tainted = false
 		item.State.Downloaded = false
 
-		txt, _ = item.InstallStatus()
+		txt = item.State.Text()
 		require.Equal(t, "enabled,local", txt)
 	}
 
