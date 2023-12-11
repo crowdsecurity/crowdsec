@@ -101,19 +101,23 @@ register_bouncer() {
 # $2 can be install, remove, upgrade
 # $3 is a list of object names separated by space
 cscli_if_clean() {
+    local itemtype="$1"
+    local action="$2"
+    local objs=$3
+    shift 3
     # loop over all objects
-    for obj in $3; do
-        if cscli "$1" inspect "$obj" -o json | yq -e '.tainted // false' >/dev/null 2>&1; then
-            echo "Object $1/$obj is tainted, skipping"
+    for obj in $objs; do
+        if cscli "$itemtype" inspect "$obj" -o json | yq -e '.tainted // false' >/dev/null 2>&1; then
+            echo "Object $itemtype/$obj is tainted, skipping"
         else
 #            # Too verbose? Only show errors if not in debug mode
 #            if [ "$DEBUG" != "true" ]; then
 #                error_only=--error
 #            fi
             error_only=""
-            echo "Running: cscli $error_only $1 $2 \"$obj\""
+            echo "Running: cscli $error_only $itemtype $action \"$obj\" $*"
             # shellcheck disable=SC2086
-            cscli $error_only "$1" "$2" "$obj"
+            cscli $error_only "$itemtype" "$action" "$obj" "$@"
         fi
     done
 }
@@ -174,7 +178,7 @@ if [ ! -e "/etc/crowdsec/local_api_credentials.yaml" ] && [ ! -e "/etc/crowdsec/
         mkdir -p /etc/crowdsec/
         # if you change this, check that it still works
         # under alpine and k8s, with and without tls
-        cp -an /staging/etc/crowdsec/* /etc/crowdsec/
+        rsync -av --ignore-existing /staging/etc/crowdsec/* /etc/crowdsec
     fi
 fi
 
@@ -198,7 +202,7 @@ if isfalse "$DISABLE_LOCAL_API"; then
             # if the db is persistent but the credentials are not, we need to
             # delete the old machine to generate new credentials
             cscli machines delete "$CUSTOM_HOSTNAME" >/dev/null 2>&1 || true
-            cscli machines add "$CUSTOM_HOSTNAME" --auto
+            cscli machines add "$CUSTOM_HOSTNAME" --auto --force
         fi
     fi
 
@@ -243,7 +247,7 @@ if istrue "$DISABLE_ONLINE_API"; then
 fi
 
 # registration to online API for signal push
-if isfalse "$DISABLE_ONLINE_API" ; then
+if isfalse "$DISABLE_LOCAL_API" && isfalse "$DISABLE_ONLINE_API" ; then
     CONFIG_DIR=$(conf_get '.config_paths.config_dir')
     export CONFIG_DIR
     config_exists=$(conf_get '.api.server.online_client | has("credentials_path")')
@@ -255,7 +259,7 @@ if isfalse "$DISABLE_ONLINE_API" ; then
 fi
 
 # Enroll instance if enroll key is provided
-if isfalse "$DISABLE_ONLINE_API" && [ "$ENROLL_KEY" != "" ]; then
+if isfalse "$DISABLE_LOCAL_API" && isfalse "$DISABLE_ONLINE_API" && [ "$ENROLL_KEY" != "" ]; then
     enroll_args=""
     if [ "$ENROLL_INSTANCE_NAME" != "" ]; then
         enroll_args="--name $ENROLL_INSTANCE_NAME"
@@ -273,13 +277,14 @@ fi
 # crowdsec sqlite database permissions
 if [ "$GID" != "" ]; then
     if istrue "$(conf_get '.db_config.type == "sqlite"')"; then
-        chown ":$GID" "$(conf_get '.db_config.db_path')"
-        echo "sqlite database permissions updated"
+        # don't fail if the db is not there yet
+        chown -f ":$GID" "$(conf_get '.db_config.db_path')" 2>/dev/null \
+            && echo "sqlite database permissions updated" \
+            || true
     fi
 fi
 
-# XXX only with LAPI
-if istrue "$USE_TLS"; then
+if isfalse "$DISABLE_LOCAL_API" && istrue "$USE_TLS"; then
     agents_allowed_yaml=$(csv2yaml "$AGENTS_ALLOWED_OU")
     export agents_allowed_yaml
     bouncers_allowed_yaml=$(csv2yaml "$BOUNCERS_ALLOWED_OU")
@@ -295,7 +300,7 @@ fi
 
 conf_set_if "$PLUGIN_DIR" '.config_paths.plugin_dir = strenv(PLUGIN_DIR)'
 
-## Install collections, parsers, scenarios & postoverflows
+## Install hub items
 cscli hub update
 
 cscli_if_clean collections upgrade crowdsecurity/linux
@@ -323,25 +328,35 @@ if [ "$POSTOVERFLOWS" != "" ]; then
     cscli_if_clean postoverflows install "$(difference "$POSTOVERFLOWS" "$DISABLE_POSTOVERFLOWS")"
 fi
 
+if [ "$CONTEXTS" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean contexts install "$(difference "$CONTEXTS" "$DISABLE_CONTEXTS")"
+fi
+
 ## Remove collections, parsers, scenarios & postoverflows
 if [ "$DISABLE_COLLECTIONS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean collections remove "$DISABLE_COLLECTIONS"
+    cscli_if_clean collections remove "$DISABLE_COLLECTIONS" --force
 fi
 
 if [ "$DISABLE_PARSERS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean parsers remove "$DISABLE_PARSERS"
+    cscli_if_clean parsers remove "$DISABLE_PARSERS" --force
 fi
 
 if [ "$DISABLE_SCENARIOS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean scenarios remove "$DISABLE_SCENARIOS"
+    cscli_if_clean scenarios remove "$DISABLE_SCENARIOS" --force
 fi
 
 if [ "$DISABLE_POSTOVERFLOWS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean postoverflows remove "$DISABLE_POSTOVERFLOWS"
+    cscli_if_clean postoverflows remove "$DISABLE_POSTOVERFLOWS" --force
+fi
+
+if [ "$DISABLE_CONTEXTS" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean contexts remove "$DISABLE_CONTEXTS" --force
 fi
 
 ## Register bouncers via env
@@ -358,7 +373,7 @@ shopt -s nullglob extglob
 for BOUNCER in /run/secrets/@(bouncer_key|BOUNCER_KEY)* ; do
     KEY=$(cat "${BOUNCER}")
     NAME=$(echo "${BOUNCER}" | awk -F "/" '{printf $NF}' | cut -d_  -f2-)
-    if [[ -n $KEY ]] && [[ -n $NAME ]]; then    
+    if [[ -n $KEY ]] && [[ -n $NAME ]]; then
         register_bouncer "$NAME" "$KEY"
     fi
 done
@@ -368,6 +383,12 @@ shopt -u nullglob extglob
 
 conf_set_if "$CAPI_WHITELISTS_PATH" '.api.server.capi_whitelists_path = strenv(CAPI_WHITELISTS_PATH)'
 conf_set_if "$METRICS_PORT" '.prometheus.listen_port=env(METRICS_PORT)'
+
+if istrue "$DISABLE_LOCAL_API"; then
+    conf_set '.api.server.enable=false'
+else
+    conf_set '.api.server.enable=true'
+fi
 
 ARGS=""
 if [ "$CONFIG_FILE" != "" ]; then
@@ -388,10 +409,6 @@ fi
 
 if istrue "$DISABLE_AGENT"; then
     ARGS="$ARGS -no-cs"
-fi
-
-if istrue "$DISABLE_LOCAL_API"; then
-    ARGS="$ARGS -no-api"
 fi
 
 if istrue "$LEVEL_TRACE"; then

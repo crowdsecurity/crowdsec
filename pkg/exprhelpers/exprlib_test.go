@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/cstest"
-	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
+	"github.com/crowdsecurity/go-cs-lib/cstest"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -97,18 +97,11 @@ func TestVisitor(t *testing.T) {
 	}
 
 	log.SetLevel(log.DebugLevel)
-	clog := log.WithFields(log.Fields{
-		"type": "test",
-	})
 
 	for _, test := range tests {
 		compiledFilter, err := expr.Compile(test.filter, GetExprOptions(test.env)...)
 		if err != nil && test.err == nil {
 			log.Fatalf("compile: %s", err)
-		}
-		debugFilter, err := NewDebugger(test.filter, GetExprOptions(test.env)...)
-		if err != nil && test.err == nil {
-			log.Fatalf("debug: %s", err)
 		}
 
 		if compiledFilter != nil {
@@ -121,9 +114,6 @@ func TestVisitor(t *testing.T) {
 			}
 		}
 
-		if debugFilter != nil {
-			debugFilter.Run(clog, test.result, test.env)
-		}
 	}
 }
 

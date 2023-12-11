@@ -3,7 +3,6 @@ package parser
 import (
 	"errors"
 	"fmt"
-	"net"
 	"strings"
 	"time"
 
@@ -43,9 +42,8 @@ type Node struct {
 	rn        string //this is only for us in debug, a random generated name for each node
 	//Filter is executed at runtime (with current log line as context)
 	//and must succeed or node is exited
-	Filter        string                    `yaml:"filter,omitempty"`
-	RunTimeFilter *vm.Program               `yaml:"-" json:"-"` //the actual compiled filter
-	ExprDebugger  *exprhelpers.ExprDebugger `yaml:"-" json:"-"` //used to debug expression by printing the content of each variable of the expression
+	Filter        string      `yaml:"filter,omitempty"`
+	RunTimeFilter *vm.Program `yaml:"-" json:"-"` //the actual compiled filter
 	//If node has leafs, execute all of them until one asks for a 'break'
 	LeavesNodes []Node `yaml:"nodes,omitempty"`
 	//Flag used to describe when to 'break' or return an 'error'
@@ -142,7 +140,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	clog.Tracef("Event entering node")
 	if n.RunTimeFilter != nil {
 		//Evaluate node's filter
-		output, err := expr.Run(n.RunTimeFilter, cachedExprEnv)
+		output, err := exprhelpers.Run(n.RunTimeFilter, cachedExprEnv, clog, n.Debug)
 		if err != nil {
 			clog.Warningf("failed to run filter : %v", err)
 			clog.Debugf("Event leaving node : ko")
@@ -151,9 +149,6 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 
 		switch out := output.(type) {
 		case bool:
-			if n.Debug {
-				n.ExprDebugger.Run(clog, out, cachedExprEnv)
-			}
 			if !out {
 				clog.Debugf("Event leaving node : ko (failed filter)")
 				return false, nil
@@ -172,78 +167,23 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	if n.Name != "" {
 		NodesHits.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name}).Inc()
 	}
-	isWhitelisted := false
-	hasWhitelist := false
-	var srcs []net.IP
-	/*overflow and log don't hold the source ip in the same field, should be changed */
-	/* perform whitelist checks for ips, cidr accordingly */
-	/* TODO move whitelist elsewhere */
-	if p.Type == types.LOG {
-		if _, ok := p.Meta["source_ip"]; ok {
-			srcs = append(srcs, net.ParseIP(p.Meta["source_ip"]))
-		}
-	} else if p.Type == types.OVFLW {
-		for k := range p.Overflow.Sources {
-			srcs = append(srcs, net.ParseIP(k))
-		}
+	exprErr := error(nil)
+	isWhitelisted := n.CheckIPsWL(p.ParseIPSources())
+	if !isWhitelisted {
+		isWhitelisted, exprErr = n.CheckExprWL(cachedExprEnv)
 	}
-	for _, src := range srcs {
-		if isWhitelisted {
-			break
-		}
-		for _, v := range n.Whitelist.B_Ips {
-			if v.Equal(src) {
-				clog.Debugf("Event from [%s] is whitelisted by IP (%s), reason [%s]", src, v, n.Whitelist.Reason)
-				isWhitelisted = true
-			} else {
-				clog.Tracef("whitelist: %s is not eq [%s]", src, v)
-			}
-			hasWhitelist = true
-		}
-		for _, v := range n.Whitelist.B_Cidrs {
-			if v.Contains(src) {
-				clog.Debugf("Event from [%s] is whitelisted by CIDR (%s), reason [%s]", src, v, n.Whitelist.Reason)
-				isWhitelisted = true
-			} else {
-				clog.Tracef("whitelist: %s not in [%s]", src, v)
-			}
-			hasWhitelist = true
-		}
+	if exprErr != nil {
+		// Previous code returned nil if there was an error, so we keep this behavior
+		return false, nil //nolint:nilerr
 	}
-
-	if isWhitelisted {
+	if isWhitelisted && !p.Whitelisted {
 		p.Whitelisted = true
-	}
-	/* run whitelist expression tests anyway */
-	for eidx, e := range n.Whitelist.B_Exprs {
-		output, err := expr.Run(e.Filter, cachedExprEnv)
-		if err != nil {
-			clog.Warningf("failed to run whitelist expr : %v", err)
-			clog.Debug("Event leaving node : ko")
-			return false, nil
-		}
-		switch out := output.(type) {
-		case bool:
-			if n.Debug {
-				e.ExprDebugger.Run(clog, out, cachedExprEnv)
-			}
-			if out {
-				clog.Debugf("Event is whitelisted by expr, reason [%s]", n.Whitelist.Reason)
-				p.Whitelisted = true
-				isWhitelisted = true
-			}
-			hasWhitelist = true
-		default:
-			log.Errorf("unexpected type %t (%v) while running '%s'", output, output, n.Whitelist.Exprs[eidx])
-		}
-	}
-	if isWhitelisted {
 		p.WhitelistReason = n.Whitelist.Reason
 		/*huglily wipe the ban order if the event is whitelisted and it's an overflow */
 		if p.Type == types.OVFLW { /*don't do this at home kids */
 			ips := []string{}
-			for _, src := range srcs {
-				ips = append(ips, src.String())
+			for k := range p.Overflow.Sources {
+				ips = append(ips, k)
 			}
 			clog.Infof("Ban for %s whitelisted, reason [%s]", strings.Join(ips, ","), n.Whitelist.Reason)
 			p.Overflow.Whitelisted = true
@@ -266,7 +206,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 				NodeState = false
 			}
 		} else if n.Grok.RunTimeValue != nil {
-			output, err := expr.Run(n.Grok.RunTimeValue, cachedExprEnv)
+			output, err := exprhelpers.Run(n.Grok.RunTimeValue, cachedExprEnv, clog, n.Debug)
 			if err != nil {
 				clog.Warningf("failed to run RunTimeValue : %v", err)
 				NodeState = false
@@ -274,6 +214,10 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 			switch out := output.(type) {
 			case string:
 				gstr = out
+			case int:
+				gstr = fmt.Sprintf("%d", out)
+			case float64, float32:
+				gstr = fmt.Sprintf("%f", out)
 			default:
 				clog.Errorf("unexpected return type for RunTimeValue : %T", output)
 			}
@@ -325,7 +269,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 				continue
 			}
 			//collect the data
-			output, err := expr.Run(stash.ValueExpression, cachedExprEnv)
+			output, err := exprhelpers.Run(stash.ValueExpression, cachedExprEnv, clog, n.Debug)
 			if err != nil {
 				clog.Warningf("Error while running stash val expression : %v", err)
 			}
@@ -339,7 +283,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 			}
 
 			//collect the key
-			output, err = expr.Run(stash.KeyExpression, cachedExprEnv)
+			output, err = exprhelpers.Run(stash.KeyExpression, cachedExprEnv, clog, n.Debug)
 			if err != nil {
 				clog.Warningf("Error while running stash key expression : %v", err)
 			}
@@ -398,9 +342,10 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 	}
 
 	/*
-		This is to apply statics when the node *has* whitelists that successfully matched the node.
+		This is to apply statics when the node either was whitelisted, or is not a whitelist (it has no expr/ips wl)
+		It is overconvoluted and should be simplified
 	*/
-	if len(n.Statics) > 0 && (isWhitelisted || !hasWhitelist) {
+	if len(n.Statics) > 0 && (isWhitelisted || !n.ContainsWLs()) {
 		clog.Debugf("+ Processing %d statics", len(n.Statics))
 		// if all else is good in whitelist, process node's statics
 		err := n.ProcessStatics(n.Statics, p)
@@ -475,14 +420,6 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		if err != nil {
 			return fmt.Errorf("compilation of '%s' failed: %v", n.Filter, err)
 		}
-
-		if n.Debug {
-			n.ExprDebugger, err = exprhelpers.NewDebugger(n.Filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
-			if err != nil {
-				log.Errorf("unable to build debug filter for '%s' : %s", n.Filter, err)
-			}
-		}
-
 	}
 
 	/* handle pattern_syntax and groks */
@@ -613,36 +550,11 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	}
 
 	/* compile whitelists if present */
-	for _, v := range n.Whitelist.Ips {
-		n.Whitelist.B_Ips = append(n.Whitelist.B_Ips, net.ParseIP(v))
-		n.Logger.Debugf("adding ip %s to whitelists", net.ParseIP(v))
-		valid = true
+	whitelistValid, err := n.CompileWLs()
+	if err != nil {
+		return err
 	}
-
-	for _, v := range n.Whitelist.Cidrs {
-		_, tnet, err := net.ParseCIDR(v)
-		if err != nil {
-			n.Logger.Fatalf("Unable to parse cidr whitelist '%s' : %v.", v, err)
-		}
-		n.Whitelist.B_Cidrs = append(n.Whitelist.B_Cidrs, tnet)
-		n.Logger.Debugf("adding cidr %s to whitelists", tnet)
-		valid = true
-	}
-
-	for _, filter := range n.Whitelist.Exprs {
-		expression := &ExprWhitelist{}
-		expression.Filter, err = expr.Compile(filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
-		if err != nil {
-			n.Logger.Fatalf("Unable to compile whitelist expression '%s' : %v.", filter, err)
-		}
-		expression.ExprDebugger, err = exprhelpers.NewDebugger(filter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
-		if err != nil {
-			log.Errorf("unable to build debug filter for '%s' : %s", filter, err)
-		}
-		n.Whitelist.B_Exprs = append(n.Whitelist.B_Exprs, expression)
-		n.Logger.Debugf("adding expression %s to whitelists", filter)
-		valid = true
-	}
+	valid = valid || whitelistValid
 
 	if !valid {
 		/* node is empty, error force return */

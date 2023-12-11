@@ -9,8 +9,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
-	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+	"github.com/crowdsecurity/go-cs-lib/trace"
+	"github.com/crowdsecurity/go-cs-lib/version"
 
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
@@ -151,14 +151,6 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 	if !config.Enabled {
 		return
 	}
-	if config.ListenAddr == "" {
-		log.Warning("prometheus is enabled, but the listen address is empty, using '127.0.0.1'")
-		config.ListenAddr = "127.0.0.1"
-	}
-	if config.ListenPort == 0 {
-		log.Warning("prometheus is enabled, but the listen port is empty, using '6060'")
-		config.ListenPort = 6060
-	}
 
 	// Registering prometheus
 	// If in aggregated mode, do not register events associated with a source, to keep the cardinality low
@@ -169,7 +161,8 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 			leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstantiation, leaky.BucketsOverflow,
 			v1.LapiRouteHits,
 			leaky.BucketsCurrentCount,
-			cache.CacheMetrics, exprhelpers.RegexpCacheMetrics)
+			cache.CacheMetrics, exprhelpers.RegexpCacheMetrics,
+		)
 	} else {
 		log.Infof("Loading prometheus collectors")
 		prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
@@ -178,7 +171,8 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 			v1.LapiRouteHits, v1.LapiMachineHits, v1.LapiBouncerHits, v1.LapiNilDecisions, v1.LapiNonNilDecisions, v1.LapiResponseTime,
 			leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstantiation, leaky.BucketsOverflow, leaky.BucketsCurrentCount,
 			globalActiveDecisions, globalAlerts,
-			cache.CacheMetrics, exprhelpers.RegexpCacheMetrics)
+			cache.CacheMetrics, exprhelpers.RegexpCacheMetrics,
+		)
 
 	}
 }

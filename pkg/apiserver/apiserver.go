@@ -21,7 +21,7 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
@@ -29,7 +29,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
-	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -107,13 +106,13 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	var flushScheduler *gocron.Scheduler
 	dbClient, err := database.NewClient(config.DbConfig)
 	if err != nil {
-		return &APIServer{}, fmt.Errorf("unable to init database client: %w", err)
+		return nil, fmt.Errorf("unable to init database client: %w", err)
 	}
 
 	if config.DbConfig.Flush != nil {
 		flushScheduler, err = dbClient.StartFlushScheduler(config.DbConfig.Flush)
 		if err != nil {
-			return &APIServer{}, err
+			return nil, err
 		}
 	}
 
@@ -130,7 +129,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	if config.TrustedProxies != nil && config.UseForwardedForHeaders {
 		if err := router.SetTrustedProxies(*config.TrustedProxies); err != nil {
-			return &APIServer{}, fmt.Errorf("while setting trusted_proxies: %w", err)
+			return nil, fmt.Errorf("while setting trusted_proxies: %w", err)
 		}
 		router.ForwardedByClientIP = true
 	} else {
@@ -216,22 +215,20 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		log.Printf("Loading CAPI manager")
 		apiClient, err = NewAPIC(config.OnlineClient, dbClient, config.ConsoleConfig, config.CapiWhitelists)
 		if err != nil {
-			return &APIServer{}, err
+			return nil, err
 		}
 		log.Infof("CAPI manager configured successfully")
 		isMachineEnrolled = isEnrolled(apiClient.apiClient)
 		controller.AlertsAddChan = apiClient.AlertsAddChan
-		if fflag.PapiClient.IsEnabled() {
-			if isMachineEnrolled {
-				log.Infof("Machine is enrolled in the console, Loading PAPI Client")
-				papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
-				if err != nil {
-					return &APIServer{}, err
-				}
-				controller.DecisionDeleteChan = papiClient.Channels.DeleteDecisionChannel
-			} else {
-				log.Errorf("Machine is not enrolled in the console, can't synchronize with the console")
+		if isMachineEnrolled {
+			log.Infof("Machine is enrolled in the console, Loading PAPI Client")
+			papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
+			if err != nil {
+				return nil, err
 			}
+			controller.DecisionDeleteChan = papiClient.Channels.DeleteDecisionChannel
+		} else {
+			log.Errorf("Machine is not enrolled in the console, can't synchronize with the console")
 		}
 	} else {
 		apiClient = nil
@@ -242,7 +239,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	if trustedIPs, err := config.GetTrustedIPs(); err == nil {
 		controller.TrustedIPs = trustedIPs
 	} else {
-		return &APIServer{}, err
+		return nil, err
 	}
 
 	return &APIServer{
@@ -359,31 +356,29 @@ func (s *APIServer) Run(apiReady chan bool) error {
 
 		//csConfig.API.Server.ConsoleConfig.ShareCustomScenarios
 		if s.isEnrolled {
-			if fflag.PapiClient.IsEnabled() {
-				if s.consoleConfig.ConsoleManagement != nil && *s.consoleConfig.ConsoleManagement {
-					if s.papi.URL != "" {
-						log.Infof("Starting PAPI decision receiver")
-						s.papi.pullTomb.Go(func() error {
-							if err := s.papi.Pull(); err != nil {
-								log.Errorf("papi pull: %s", err)
-								return err
-							}
-							return nil
-						})
+			if s.consoleConfig.ConsoleManagement != nil && *s.consoleConfig.ConsoleManagement {
+				if s.papi.URL != "" {
+					log.Infof("Starting PAPI decision receiver")
+					s.papi.pullTomb.Go(func() error {
+						if err := s.papi.Pull(); err != nil {
+							log.Errorf("papi pull: %s", err)
+							return err
+						}
+						return nil
+					})
 
-						s.papi.syncTomb.Go(func() error {
-							if err := s.papi.SyncDecisions(); err != nil {
-								log.Errorf("capi decisions sync: %s", err)
-								return err
-							}
-							return nil
-						})
-					} else {
-						log.Warnf("papi_url is not set in online_api_credentials.yaml, can't synchronize with the console. Run cscli console enable console_management to add it.")
-					}
+					s.papi.syncTomb.Go(func() error {
+						if err := s.papi.SyncDecisions(); err != nil {
+							log.Errorf("capi decisions sync: %s", err)
+							return err
+						}
+						return nil
+					})
 				} else {
-					log.Warningf("Machine is not allowed to synchronize decisions, you can enable it with `cscli console enable console_management`")
+					log.Warnf("papi_url is not set in online_api_credentials.yaml, can't synchronize with the console. Run cscli console enable console_management to add it.")
 				}
+			} else {
+				log.Warningf("Machine is not allowed to synchronize decisions, you can enable it with `cscli console enable console_management`")
 			}
 		}
 

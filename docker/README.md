@@ -19,11 +19,7 @@ All the following images are available on Docker Hub for the architectures
 
  - `crowdsecurity/crowdsec:{version}`
 
-Recommended for production usage. Also available on GitHub (ghcr.io).
-
- - `crowdsecurity/crowdsec:dev`
-
-The latest stable release.
+Latest stable release recommended for production usage. Also available on GitHub (ghcr.io).
 
  - `crowdsecurity/crowdsec:dev`
 
@@ -190,6 +186,14 @@ It is not recommended anymore to bind-mount the full config.yaml file and you sh
 
 If you want to use the [notification system](https://docs.crowdsec.net/docs/notification_plugins/intro), you have to use the full image (not slim) and mount at least a custom `profiles.yaml` and a notification configuration to `/etc/crowdsec/notifications`
 
+```shell
+docker run -d \
+    -v ./profiles.yaml:/etc/crowdsec/profiles.yaml \
+    -v ./http_notification.yaml:/etc/crowdsec/notifications/http_notification.yaml \
+    -p 8080:8080 -p 6060:6060 \
+    --name crowdsec crowdsecurity/crowdsec
+```
+
 # Deployment use cases
 
 Crowdsec is composed of an `agent` that parses logs and creates `alerts`, and a
@@ -316,10 +320,12 @@ config.yaml) each time the container is run.
 | `PARSERS`               | | Parsers to install, separated by space |
 | `SCENARIOS`             | | Scenarios to install, separated by space |
 | `POSTOVERFLOWS`         | | Postoverflows to install, separated by space |
+| `CONTEXTS`              | | Context files to install, separated by space |
 | `DISABLE_COLLECTIONS`   | | Collections to remove, separated by space: `-e DISABLE_COLLECTIONS="crowdsecurity/linux crowdsecurity/nginx"` |
 | `DISABLE_PARSERS`       | | Parsers to remove, separated by space |
 | `DISABLE_SCENARIOS`     | | Scenarios to remove, separated by space |
 | `DISABLE_POSTOVERFLOWS` | | Postoverflows to remove, separated by space |
+| `DISABLE_POSTOVERFLOWS` | | Context files to remove, separated by space |
 |                         | | |
 | __Log verbosity__       | | |
 | `LEVEL_INFO`            | false | Force INFO level for the container log |

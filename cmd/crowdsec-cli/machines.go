@@ -8,6 +8,7 @@ import (
 	"io"
 	"math/big"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -17,7 +18,6 @@ import (
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/machineid"
@@ -26,11 +26,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
-var (
-	passwordLength = 64
-)
+const passwordLength = 64
 
 func generatePassword(length int) string {
 	upper := "ABCDEFGHIJKLMNOPQRSTUVWXY"
@@ -41,6 +41,7 @@ func generatePassword(length int) string {
 	charsetLength := len(charset)
 
 	buf := make([]byte, length)
+
 	for i := 0; i < length; i++ {
 		rInt, err := saferand.Int(saferand.Reader, big.NewInt(int64(charsetLength)))
 		if err != nil {
@@ -141,23 +142,52 @@ func getAgents(out io.Writer, dbClient *database.Client) error {
 	return nil
 }
 
-func NewMachinesListCmd() *cobra.Command {
-	cmdMachinesList := &cobra.Command{
-		Use:               "list",
-		Short:             "List machines",
-		Long:              `List `,
-		Example:           `cscli machines list`,
-		Args:              cobra.MaximumNArgs(1),
+type cliMachines struct {}
+
+func NewCLIMachines() *cliMachines {
+	return &cliMachines{}
+}
+
+func (cli cliMachines) NewCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "machines [action]",
+		Short: "Manage local API machines [requires local API]",
+		Long: `To list/add/delete/validate/prune machines.
+Note: This command requires database direct access, so is intended to be run on the local API machine.
+`,
+		Example:           `cscli machines [action]`,
 		DisableAutoGenTag: true,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
+		Aliases:           []string{"machine"},
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			var err error
+			if err := require.LAPI(csConfig); err != nil {
+				return err
+			}
 			dbClient, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {
 				return fmt.Errorf("unable to create new database client: %s", err)
 			}
-
 			return nil
 		},
+	}
+
+	cmd.AddCommand(cli.NewListCmd())
+	cmd.AddCommand(cli.NewAddCmd())
+	cmd.AddCommand(cli.NewDeleteCmd())
+	cmd.AddCommand(cli.NewValidateCmd())
+	cmd.AddCommand(cli.NewPruneCmd())
+
+	return cmd
+}
+
+func (cli cliMachines) NewListCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:               "list",
+		Short:             "list all machines in the database",
+		Long:              `list all machines in the database with their status and last heartbeat`,
+		Example:           `cscli machines list`,
+		Args:              cobra.NoArgs,
+		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			err := getAgents(color.Output, dbClient)
 			if err != nil {
@@ -168,13 +198,13 @@ func NewMachinesListCmd() *cobra.Command {
 		},
 	}
 
-	return cmdMachinesList
+	return cmd
 }
 
-func NewMachinesAddCmd() *cobra.Command {
-	cmdMachinesAdd := &cobra.Command{
+func (cli cliMachines) NewAddCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "add",
-		Short:             "add machine to the database.",
+		Short:             "add a single machine to the database",
 		DisableAutoGenTag: true,
 		Long:              `Register a new machine in the database. cscli should be on the same machine as LAPI.`,
 		Example: `
@@ -182,19 +212,10 @@ cscli machines add --auto
 cscli machines add MyTestMachine --auto
 cscli machines add MyTestMachine --password MyPassword
 `,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-			dbClient, err = database.NewClient(csConfig.DbConfig)
-			if err != nil {
-				return fmt.Errorf("unable to create new database client: %s", err)
-			}
-
-			return nil
-		},
-		RunE: runMachinesAdd,
+		RunE: cli.add,
 	}
 
-	flags := cmdMachinesAdd.Flags()
+	flags := cmd.Flags()
 	flags.StringP("password", "p", "", "machine password to login to the API")
 	flags.StringP("file", "f", "", "output file destination (defaults to "+csconfig.DefaultConfigPath("local_api_credentials.yaml")+")")
 	flags.StringP("url", "u", "", "URL of the local API")
@@ -202,13 +223,10 @@ cscli machines add MyTestMachine --password MyPassword
 	flags.BoolP("auto", "a", false, "automatically generate password (and username if not provided)")
 	flags.Bool("force", false, "will force add the machine if it already exist")
 
-	return cmdMachinesAdd
+	return cmd
 }
 
-func runMachinesAdd(cmd *cobra.Command, args []string) error {
-	var dumpFile string
-	var err error
-
+func (cli cliMachines) add(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
 	machinePassword, err := flags.GetString("password")
@@ -216,7 +234,7 @@ func runMachinesAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	outputFile, err := flags.GetString("file")
+	dumpFile, err := flags.GetString("file")
 	if err != nil {
 		return err
 	}
@@ -236,7 +254,7 @@ func runMachinesAdd(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	forceAdd, err := flags.GetBool("force")
+	force, err := flags.GetBool("force")
 	if err != nil {
 		return err
 	}
@@ -258,17 +276,28 @@ func runMachinesAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	/*check if file already exists*/
-	if outputFile != "" {
-		dumpFile = outputFile
-	} else if csConfig.API.Client != nil && csConfig.API.Client.CredentialsFilePath != "" {
-		dumpFile = csConfig.API.Client.CredentialsFilePath
+	if dumpFile == "" && csConfig.API.Client != nil && csConfig.API.Client.CredentialsFilePath != "" {
+		credFile := csConfig.API.Client.CredentialsFilePath
+		// use the default only if the file does not exist
+		_, err := os.Stat(credFile)
+		switch {
+		case os.IsNotExist(err) || force:
+			dumpFile = csConfig.API.Client.CredentialsFilePath
+		case err != nil:
+			return fmt.Errorf("unable to stat '%s': %s", credFile, err)
+		default:
+			return fmt.Errorf(`credentials file '%s' already exists: please remove it, use "--force" or specify a different file with "-f" ("-f -" for standard output)`, credFile)
+		}
+	}
+
+	if dumpFile == "" {
+		return fmt.Errorf(`please specify a file to dump credentials to, with -f ("-f -" for standard output)`)
 	}
 
 	// create a password if it's not specified by user
 	if machinePassword == "" && !interactive {
 		if !autoAdd {
-			printHelp(cmd)
-			return nil
+			return fmt.Errorf("please specify a password with --password or use --auto")
 		}
 		machinePassword = generatePassword(passwordLength)
 	} else if machinePassword == "" && interactive {
@@ -278,7 +307,7 @@ func runMachinesAdd(cmd *cobra.Command, args []string) error {
 		survey.AskOne(qs, &machinePassword)
 	}
 	password := strfmt.Password(machinePassword)
-	_, err = dbClient.CreateMachine(&machineID, &password, "", true, forceAdd, types.PasswordAuthType)
+	_, err = dbClient.CreateMachine(&machineID, &password, "", true, force, types.PasswordAuthType)
 	if err != nil {
 		return fmt.Errorf("unable to create machine: %s", err)
 	}
@@ -303,11 +332,11 @@ func runMachinesAdd(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unable to marshal api credentials: %s", err)
 	}
 	if dumpFile != "" && dumpFile != "-" {
-		err = os.WriteFile(dumpFile, apiConfigDump, 0644)
+		err = os.WriteFile(dumpFile, apiConfigDump, 0o600)
 		if err != nil {
 			return fmt.Errorf("write api credentials in '%s' failed: %s", dumpFile, err)
 		}
-		log.Printf("API credentials dumped to '%s'", dumpFile)
+		log.Printf("API credentials written to '%s'", dumpFile)
 	} else {
 		fmt.Printf("%s\n", string(apiConfigDump))
 	}
@@ -315,29 +344,15 @@ func runMachinesAdd(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func NewMachinesDeleteCmd() *cobra.Command {
-	cmdMachinesDelete := &cobra.Command{
+func (cli cliMachines) NewDeleteCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "delete [machine_name]...",
-		Short:             "delete machines",
+		Short:             "delete machine(s) by name",
 		Example:           `cscli machines delete "machine1" "machine2"`,
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"remove"},
 		DisableAutoGenTag: true,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-			dbClient, err = database.NewClient(csConfig.DbConfig)
-			if err != nil {
-				return fmt.Errorf("unable to create new database client: %s", err)
-			}
-			return nil
-		},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			var err error
-			dbClient, err = getDBClient()
-			if err != nil {
-				cobra.CompError("unable to create new database client: " + err.Error())
-				return nil, cobra.ShellCompDirectiveNoFileComp
-			}
 			machines, err := dbClient.ListMachines()
 			if err != nil {
 				cobra.CompError("unable to list machines " + err.Error())
@@ -350,13 +365,13 @@ func NewMachinesDeleteCmd() *cobra.Command {
 			}
 			return ret, cobra.ShellCompDirectiveNoFileComp
 		},
-		RunE: runMachinesDelete,
+		RunE: cli.delete,
 	}
 
-	return cmdMachinesDelete
+	return cmd
 }
 
-func runMachinesDelete(cmd *cobra.Command, args []string) error {
+func (cli cliMachines) delete(cmd *cobra.Command, args []string) error {
 	for _, machineID := range args {
 		err := dbClient.DeleteWatcher(machineID)
 		if err != nil {
@@ -369,23 +384,94 @@ func runMachinesDelete(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func NewMachinesValidateCmd() *cobra.Command {
-	cmdMachinesValidate := &cobra.Command{
+func (cli cliMachines) NewPruneCmd() *cobra.Command {
+	var parsedDuration time.Duration
+	cmd := &cobra.Command{
+		Use:   "prune",
+		Short: "prune multiple machines from the database",
+		Long:  `prune multiple machines that are not validated or have not connected to the local API in a given duration.`,
+		Example: `cscli machines prune
+cscli machines prune --duration 1h
+cscli machines prune --not-validated-only --force`,
+		Args:              cobra.NoArgs,
+		DisableAutoGenTag: true,
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			dur, _ := cmd.Flags().GetString("duration")
+			var err error
+			parsedDuration, err = time.ParseDuration(fmt.Sprintf("-%s", dur))
+			if err != nil {
+				return fmt.Errorf("unable to parse duration '%s': %s", dur, err)
+			}
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			notValidOnly, _ := cmd.Flags().GetBool("not-validated-only")
+			force, _ := cmd.Flags().GetBool("force")
+			if parsedDuration >= 0-60*time.Second && !notValidOnly {
+				var answer bool
+				prompt := &survey.Confirm{
+					Message: "The duration you provided is less than or equal 60 seconds this can break installations do you want to continue ?",
+					Default: false,
+				}
+				if err := survey.AskOne(prompt, &answer); err != nil {
+					return fmt.Errorf("unable to ask about prune check: %s", err)
+				}
+				if !answer {
+					fmt.Println("user aborted prune no changes were made")
+					return nil
+				}
+			}
+			machines := make([]*ent.Machine, 0)
+			if pending, err := dbClient.QueryPendingMachine(); err == nil {
+				machines = append(machines, pending...)
+			}
+			if !notValidOnly {
+				if pending, err := dbClient.QueryLastValidatedHeartbeatLT(time.Now().UTC().Add(parsedDuration)); err == nil {
+					machines = append(machines, pending...)
+				}
+			}
+			if len(machines) == 0 {
+				fmt.Println("no machines to prune")
+				return nil
+			}
+			getAgentsTable(color.Output, machines)
+			if !force {
+				var answer bool
+				prompt := &survey.Confirm{
+					Message: "You are about to PERMANENTLY remove the above machines from the database these will NOT be recoverable, continue ?",
+					Default: false,
+				}
+				if err := survey.AskOne(prompt, &answer); err != nil {
+					return fmt.Errorf("unable to ask about prune check: %s", err)
+				}
+				if !answer {
+					fmt.Println("user aborted prune no changes were made")
+					return nil
+				}
+			}
+			nbDeleted, err := dbClient.BulkDeleteWatchers(machines)
+			if err != nil {
+				return fmt.Errorf("unable to prune machines: %s", err)
+			}
+			fmt.Printf("successfully delete %d machines\n", nbDeleted)
+			return nil
+		},
+	}
+	cmd.Flags().StringP("duration", "d", "10m", "duration of time since validated machine last heartbeat")
+	cmd.Flags().Bool("not-validated-only", false, "only prune machines that are not validated")
+	cmd.Flags().Bool("force", false, "force prune without asking for confirmation")
+
+	return cmd
+}
+
+func (cli cliMachines) NewValidateCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "validate",
 		Short:             "validate a machine to access the local API",
 		Long:              `validate a machine to access the local API.`,
 		Example:           `cscli machines validate "machine_name"`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-			dbClient, err = database.NewClient(csConfig.DbConfig)
-			if err != nil {
-				return fmt.Errorf("unable to create new database client: %s", err)
-			}
-
-			return nil
-		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			machineID := args[0]
 			if err := dbClient.ValidateMachine(machineID); err != nil {
@@ -397,35 +483,5 @@ func NewMachinesValidateCmd() *cobra.Command {
 		},
 	}
 
-	return cmdMachinesValidate
-}
-
-func NewMachinesCmd() *cobra.Command {
-	var cmdMachines = &cobra.Command{
-		Use:   "machines [action]",
-		Short: "Manage local API machines [requires local API]",
-		Long: `To list/add/delete/validate machines.
-Note: This command requires database direct access, so is intended to be run on the local API machine.
-`,
-		Example:           `cscli machines [action]`,
-		DisableAutoGenTag: true,
-		Aliases:           []string{"machine"},
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
-				if err != nil {
-					log.Errorf("local api : %s", err)
-				}
-				return fmt.Errorf("local API is disabled, please run this command on the local API machine")
-			}
-
-			return nil
-		},
-	}
-
-	cmdMachines.AddCommand(NewMachinesListCmd())
-	cmdMachines.AddCommand(NewMachinesAddCmd())
-	cmdMachines.AddCommand(NewMachinesDeleteCmd())
-	cmdMachines.AddCommand(NewMachinesValidateCmd())
-
-	return cmdMachines
+	return cmd
 }

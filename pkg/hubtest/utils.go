@@ -2,20 +2,37 @@ package hubtest
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
+	"sort"
+	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
-func Copy(sourceFile string, destinationFile string) error {
-	input, err := os.ReadFile(sourceFile)
+func sortedMapKeys[V any](m map[string]V) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	return keys
+}
+
+func Copy(src string, dst string) error {
+	content, err := os.ReadFile(src)
 	if err != nil {
 		return err
 	}
 
-	err = os.WriteFile(destinationFile, input, 0644)
+	err = os.WriteFile(dst, content, 0o644)
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -32,16 +49,20 @@ func checkPathNotContained(path string, subpath string) error {
 	}
 
 	current := absSubPath
+
 	for {
 		if current == absPath {
 			return fmt.Errorf("cannot copy a folder onto itself")
 		}
+
 		up := filepath.Dir(current)
 		if current == up {
 			break
 		}
+
 		current = up
 	}
+
 	return nil
 }
 
@@ -60,6 +81,7 @@ func CopyDir(src string, dest string) error {
 	if err != nil {
 		return err
 	}
+
 	if !file.IsDir() {
 		return fmt.Errorf("Source " + file.Name() + " is not a directory!")
 	}
@@ -75,33 +97,32 @@ func CopyDir(src string, dest string) error {
 	}
 
 	for _, f := range files {
-
 		if f.IsDir() {
-
-			err = CopyDir(src+"/"+f.Name(), dest+"/"+f.Name())
-			if err != nil {
+			if err = CopyDir(filepath.Join(src, f.Name()), filepath.Join(dest, f.Name())); err != nil {
 				return err
 			}
-
+		} else {
+			if err = Copy(filepath.Join(src, f.Name()), filepath.Join(dest, f.Name())); err != nil {
+				return err
+			}
 		}
-
-		if !f.IsDir() {
-
-			content, err := os.ReadFile(src + "/" + f.Name())
-			if err != nil {
-				return err
-
-			}
-
-			err = os.WriteFile(dest+"/"+f.Name(), content, 0755)
-			if err != nil {
-				return err
-
-			}
-
-		}
-
 	}
 
 	return nil
+}
+
+func IsAlive(target string) (bool, error) {
+	start := time.Now()
+	for {
+		conn, err := net.Dial("tcp", target)
+		if err == nil {
+			log.Debugf("appsec is up after %s", time.Since(start))
+			conn.Close()
+			return true, nil
+		}
+		time.Sleep(500 * time.Millisecond)
+		if time.Since(start) > 10*time.Second {
+			return false, fmt.Errorf("took more than 10s for %s to be available", target)
+		}
+	}
 }

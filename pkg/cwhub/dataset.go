@@ -1,68 +1,139 @@
 package cwhub
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
-	"path"
+	"time"
 
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
+// The DataSet is a list of data sources required by an item (built from the data: section in the yaml).
 type DataSet struct {
-	Data []*types.DataSource `yaml:"data,omitempty"`
+	Data []types.DataSource `yaml:"data,omitempty"`
 }
 
+// downloadFile downloads a file and writes it to disk, with no hash verification.
 func downloadFile(url string, destPath string) error {
 	log.Debugf("downloading %s in %s", url, destPath)
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return err
-	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := hubClient.Get(url)
 	if err != nil {
-		return err
+		return fmt.Errorf("while downloading %s: %w", url, err)
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("download response 'HTTP %d' : %s", resp.StatusCode, string(body))
+		return fmt.Errorf("bad http code %d for %s", resp.StatusCode, url)
 	}
 
-	file, err := os.OpenFile(destPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	file, err := os.Create(destPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// avoid reading the whole file in memory
+	_, err = io.Copy(file, resp.Body)
 	if err != nil {
 		return err
 	}
 
-	_, err = file.WriteString(string(body))
-	if err != nil {
-		return err
-	}
-
-	err = file.Sync()
-	if err != nil {
+	if err = file.Sync(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func GetData(data []*types.DataSource, dataDir string) error {
-	for _, dataS := range data {
-		destPath := path.Join(dataDir, dataS.DestPath)
-		log.Infof("downloading data '%s' in '%s'", dataS.SourceURL, destPath)
-		err := downloadFile(dataS.SourceURL, destPath)
-		if err != nil {
-			return err
+// needsUpdate checks if a data file has to be downloaded (or updated).
+// if the local file doesn't exist, update.
+// if the remote is newer than the local file, update.
+// if the remote has no modification date, but local file has been modified > a week ago, update.
+func needsUpdate(destPath string, url string) bool {
+	fileInfo, err := os.Stat(destPath)
+	switch {
+	case os.IsNotExist(err):
+		return true
+	case err != nil:
+		log.Errorf("while getting %s: %s", destPath, err)
+		return true
+	}
+
+	resp, err := hubClient.Head(url)
+	if err != nil {
+		log.Errorf("while getting %s: %s", url, err)
+		// Head failed, Get would likely fail too -> no update
+		return false
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		log.Errorf("bad http code %d for %s", resp.StatusCode, url)
+		return false
+	}
+
+	// update if local file is older than this
+	shelfLife := 7 * 24 * time.Hour
+
+	lastModify := fileInfo.ModTime()
+
+	localIsOld := lastModify.Add(shelfLife).Before(time.Now())
+
+	remoteLastModified := resp.Header.Get("Last-Modified")
+	if remoteLastModified == "" {
+		if localIsOld {
+			log.Infof("no last modified date for %s, but local file is older than %s", url, shelfLife)
+		}
+		return localIsOld
+	}
+
+	lastAvailable, err := time.Parse(time.RFC1123, remoteLastModified)
+	if err != nil {
+		log.Warningf("while parsing last modified date for %s: %s", url, err)
+		return localIsOld
+	}
+
+	if lastModify.Before(lastAvailable) {
+		log.Infof("new version available, updating %s", destPath)
+		return true
+	}
+
+	return false
+}
+
+// downloadDataSet downloads all the data files for an item.
+func downloadDataSet(dataFolder string, force bool, reader io.Reader) error {
+	dec := yaml.NewDecoder(reader)
+
+	for {
+		data := &DataSet{}
+
+		if err := dec.Decode(data); err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+
+			return fmt.Errorf("while reading file: %w", err)
+		}
+
+		for _, dataS := range data.Data {
+			destPath, err := safePath(dataFolder, dataS.DestPath)
+			if err != nil {
+				return err
+			}
+
+			if force || needsUpdate(destPath, dataS.SourceURL) {
+				if err := downloadFile(dataS.SourceURL, destPath); err != nil {
+					return fmt.Errorf("while getting data: %w", err)
+				}
+			}
 		}
 	}
 

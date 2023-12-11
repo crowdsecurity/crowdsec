@@ -3,19 +3,18 @@ package main
 import (
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
+
+	"slices"
 
 	"github.com/fatih/color"
 	cc "github.com/ivanpirog/coloredcobra"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
-	"golang.org/x/exp/slices"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
@@ -30,14 +29,10 @@ var dbClient *database.Client
 var OutputFormat string
 var OutputColor string
 
-var downloadOnly bool
-var forceAction bool
-var purge bool
-var all bool
-
-var prometheusURL string
-
 var mergedConfig string
+
+// flagBranch overrides the value in csConfig.Cscli.HubBranch
+var flagBranch = ""
 
 func initConfig() {
 	var err error
@@ -54,12 +49,9 @@ func initConfig() {
 	}
 
 	if !slices.Contains(NoNeedConfig, os.Args[1]) {
+		log.Debugf("Using %s as configuration file", ConfigFilePath)
 		csConfig, mergedConfig, err = csconfig.NewConfig(ConfigFilePath, false, false, true)
 		if err != nil {
-			log.Fatal(err)
-		}
-		log.Debugf("Using %s as configuration file", ConfigFilePath)
-		if err := csConfig.LoadCSCLI(); err != nil {
 			log.Fatal(err)
 		}
 	} else {
@@ -72,13 +64,10 @@ func initConfig() {
 		log.Debugf("Enabled feature flags: %s", fflist)
 	}
 
-	if csConfig.Cscli == nil {
-		log.Fatalf("missing 'cscli' configuration in '%s', exiting", ConfigFilePath)
+	if flagBranch != "" {
+		csConfig.Cscli.HubBranch = flagBranch
 	}
 
-	if cwhub.HubBranch == "" && csConfig.Cscli.HubBranch != "" {
-		cwhub.HubBranch = csConfig.Cscli.HubBranch
-	}
 	if OutputFormat != "" {
 		csConfig.Cscli.Output = OutputFormat
 		if OutputFormat != "json" && OutputFormat != "raw" && OutputFormat != "human" {
@@ -104,9 +93,10 @@ func initConfig() {
 }
 
 var validArgs = []string{
-	"scenarios", "parsers", "collections", "capi", "lapi", "postoverflows", "machines",
-	"metrics", "bouncers", "alerts", "decisions", "simulation", "hub", "dashboard",
-	"config", "completion", "version", "console", "notifications", "support",
+	"alerts", "appsec-configs", "appsec-rules", "bouncers", "capi", "collections",
+	"completion", "config", "console", "contexts", "dashboard", "decisions", "explain",
+	"hub", "hubtest", "lapi", "machines", "metrics", "notifications", "parsers",
+	"postoverflows", "scenarios", "simulation", "support", "version",
 }
 
 func prepender(filename string) string {
@@ -116,7 +106,7 @@ title: %s
 ---
 `
 	name := filepath.Base(filename)
-	base := strings.TrimSuffix(name, path.Ext(name))
+	base := strings.TrimSuffix(name, filepath.Ext(name))
 	return fmt.Sprintf(header, base, strings.ReplaceAll(base, "_", " "))
 }
 
@@ -135,7 +125,7 @@ var (
 
 func main() {
 	// set the formatter asap and worry about level later
-	logFormatter := &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true}
+	logFormatter := &log.TextFormatter{TimestampFormat: "2006-01-02 15:04:05", FullTimestamp: true}
 	log.SetFormatter(logFormatter)
 
 	if err := fflag.RegisterAllFeatures(); err != nil {
@@ -189,7 +179,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	/*usage*/
 	var cmdVersion = &cobra.Command{
 		Use:               "version",
-		Short:             "Display version and exit.",
+		Short:             "Display version",
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -199,15 +189,15 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(cmdVersion)
 
 	rootCmd.PersistentFlags().StringVarP(&ConfigFilePath, "config", "c", csconfig.DefaultConfigPath("config.yaml"), "path to crowdsec config file")
-	rootCmd.PersistentFlags().StringVarP(&OutputFormat, "output", "o", "", "Output format: human, json, raw.")
-	rootCmd.PersistentFlags().StringVarP(&OutputColor, "color", "", "auto", "Output color: yes, no, auto.")
-	rootCmd.PersistentFlags().BoolVar(&dbg_lvl, "debug", false, "Set logging to debug.")
-	rootCmd.PersistentFlags().BoolVar(&nfo_lvl, "info", false, "Set logging to info.")
-	rootCmd.PersistentFlags().BoolVar(&wrn_lvl, "warning", false, "Set logging to warning.")
-	rootCmd.PersistentFlags().BoolVar(&err_lvl, "error", false, "Set logging to error.")
-	rootCmd.PersistentFlags().BoolVar(&trace_lvl, "trace", false, "Set logging to trace.")
+	rootCmd.PersistentFlags().StringVarP(&OutputFormat, "output", "o", "", "Output format: human, json, raw")
+	rootCmd.PersistentFlags().StringVarP(&OutputColor, "color", "", "auto", "Output color: yes, no, auto")
+	rootCmd.PersistentFlags().BoolVar(&dbg_lvl, "debug", false, "Set logging to debug")
+	rootCmd.PersistentFlags().BoolVar(&nfo_lvl, "info", false, "Set logging to info")
+	rootCmd.PersistentFlags().BoolVar(&wrn_lvl, "warning", false, "Set logging to warning")
+	rootCmd.PersistentFlags().BoolVar(&err_lvl, "error", false, "Set logging to error")
+	rootCmd.PersistentFlags().BoolVar(&trace_lvl, "trace", false, "Set logging to trace")
 
-	rootCmd.PersistentFlags().StringVar(&cwhub.HubBranch, "branch", "", "Override hub branch on github")
+	rootCmd.PersistentFlags().StringVar(&flagBranch, "branch", "", "Override hub branch on github")
 	if err := rootCmd.PersistentFlags().MarkHidden("branch"); err != nil {
 		log.Fatalf("failed to hide flag: %s", err)
 	}
@@ -236,33 +226,37 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.PersistentFlags().SortFlags = false
 
 	rootCmd.AddCommand(NewConfigCmd())
-	rootCmd.AddCommand(NewHubCmd())
+	rootCmd.AddCommand(NewCLIHub().NewCommand())
 	rootCmd.AddCommand(NewMetricsCmd())
-	rootCmd.AddCommand(NewDashboardCmd())
-	rootCmd.AddCommand(NewDecisionsCmd())
-	rootCmd.AddCommand(NewAlertsCmd())
-	rootCmd.AddCommand(NewSimulationCmds())
-	rootCmd.AddCommand(NewBouncersCmd())
-	rootCmd.AddCommand(NewMachinesCmd())
-	rootCmd.AddCommand(NewParsersCmd())
-	rootCmd.AddCommand(NewScenariosCmd())
-	rootCmd.AddCommand(NewCollectionsCmd())
-	rootCmd.AddCommand(NewPostOverflowsCmd())
-	rootCmd.AddCommand(NewCapiCmd())
+	rootCmd.AddCommand(NewCLIDashboard().NewCommand())
+	rootCmd.AddCommand(NewCLIDecisions().NewCommand())
+	rootCmd.AddCommand(NewCLIAlerts().NewCommand())
+	rootCmd.AddCommand(NewCLISimulation().NewCommand())
+	rootCmd.AddCommand(NewCLIBouncers().NewCommand())
+	rootCmd.AddCommand(NewCLIMachines().NewCommand())
+	rootCmd.AddCommand(NewCLICapi().NewCommand())
 	rootCmd.AddCommand(NewLapiCmd())
 	rootCmd.AddCommand(NewCompletionCmd())
 	rootCmd.AddCommand(NewConsoleCmd())
-	rootCmd.AddCommand(NewExplainCmd())
-	rootCmd.AddCommand(NewHubTestCmd())
-	rootCmd.AddCommand(NewNotificationsCmd())
-	rootCmd.AddCommand(NewSupportCmd())
+	rootCmd.AddCommand(NewCLIExplain().NewCommand())
+	rootCmd.AddCommand(NewCLIHubTest().NewCommand())
+	rootCmd.AddCommand(NewCLINotifications().NewCommand())
+	rootCmd.AddCommand(NewCLISupport().NewCommand())
+	rootCmd.AddCommand(NewCLIPapi().NewCommand())
+	rootCmd.AddCommand(NewCLICollection().NewCommand())
+	rootCmd.AddCommand(NewCLIParser().NewCommand())
+	rootCmd.AddCommand(NewCLIScenario().NewCommand())
+	rootCmd.AddCommand(NewCLIPostOverflow().NewCommand())
+	rootCmd.AddCommand(NewCLIContext().NewCommand())
+	rootCmd.AddCommand(NewCLIAppsecConfig().NewCommand())
+	rootCmd.AddCommand(NewCLIAppsecRule().NewCommand())
 
 	if fflag.CscliSetup.IsEnabled() {
 		rootCmd.AddCommand(NewSetupCmd())
 	}
 
 	if fflag.PapiClient.IsEnabled() {
-		rootCmd.AddCommand(NewPapiCmd())
+		rootCmd.AddCommand(NewCLIPapi().NewCommand())
 	}
 
 	if err := rootCmd.Execute(); err != nil {

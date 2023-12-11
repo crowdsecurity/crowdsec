@@ -17,6 +17,7 @@ const ConsoleOrigin = "console"
 const CscliImportOrigin = "cscli-import"
 const ListOrigin = "lists"
 const CAPIOrigin = "CAPI"
+const CommunityBlocklistPullSourceScope = "crowdsecurity/community-blocklist"
 
 const DecisionTypeBan = "ban"
 

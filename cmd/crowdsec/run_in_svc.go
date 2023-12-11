@@ -1,5 +1,4 @@
-//go:build linux || freebsd || netbsd || openbsd || solaris || !windows
-// +build linux freebsd netbsd openbsd solaris !windows
+//go:build !windows
 
 package main
 
@@ -10,8 +9,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/writer"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
-	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+	"github.com/crowdsecurity/go-cs-lib/trace"
+	"github.com/crowdsecurity/go-cs-lib/version"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"

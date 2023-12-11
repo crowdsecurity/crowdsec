@@ -7,9 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
-
-	"github.com/crowdsecurity/crowdsec/pkg/fflag"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
 const (
@@ -66,9 +64,7 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 		c.ConsoleConfig.ShareManualDecisions = ptr.Of(false)
 	}
 
-	if !fflag.PapiClient.IsEnabled() {
-		c.ConsoleConfig.ConsoleManagement = ptr.Of(false)
-	} else if c.ConsoleConfig.ConsoleManagement == nil {
+	if c.ConsoleConfig.ConsoleManagement == nil {
 		log.Debugf("no console_management found, setting to false")
 		c.ConsoleConfig.ConsoleManagement = ptr.Of(false)
 	}
@@ -79,26 +75,6 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 	}
 
 	log.Debugf("Console configuration '%s' loaded successfully", c.ConsoleConfigPath)
-
-	return nil
-}
-
-func (c *LocalApiServerCfg) DumpConsoleConfig() error {
-	var out []byte
-	var err error
-
-	if out, err = yaml.Marshal(c.ConsoleConfig); err != nil {
-		return fmt.Errorf("while marshaling ConsoleConfig (for %s): %w", c.ConsoleConfigPath, err)
-	}
-	if c.ConsoleConfigPath == "" {
-		c.ConsoleConfigPath = DefaultConsoleConfigFilePath
-		log.Debugf("Empty console_path, defaulting to %s", c.ConsoleConfigPath)
-
-	}
-
-	if err := os.WriteFile(c.ConsoleConfigPath, out, 0600); err != nil {
-		return fmt.Errorf("while dumping console config to %s: %w", c.ConsoleConfigPath, err)
-	}
 
 	return nil
 }

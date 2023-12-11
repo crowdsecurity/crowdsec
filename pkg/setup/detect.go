@@ -3,6 +3,7 @@ package setup
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"sort"
@@ -86,19 +87,19 @@ func validateDataSource(opaqueDS DataSourceItem) error {
 	return nil
 }
 
-func readDetectConfig(file string) (DetectConfig, error) {
+func readDetectConfig(fin io.Reader) (DetectConfig, error) {
 	var dc DetectConfig
 
-	yamlBytes, err := os.ReadFile(file)
+	yamlBytes, err := io.ReadAll(fin)
 	if err != nil {
-		return DetectConfig{}, fmt.Errorf("while reading file: %w", err)
+		return DetectConfig{}, err
 	}
 
 	dec := yaml.NewDecoder(bytes.NewBuffer(yamlBytes))
 	dec.KnownFields(true)
 
 	if err = dec.Decode(&dc); err != nil {
-		return DetectConfig{}, fmt.Errorf("while parsing %s: %w", file, err)
+		return DetectConfig{}, err
 	}
 
 	switch dc.Version {
@@ -107,7 +108,7 @@ func readDetectConfig(file string) (DetectConfig, error) {
 	case "1.0":
 		// all is well
 	default:
-		return DetectConfig{}, fmt.Errorf("unsupported version tag '%s' (must be 1.0)", dc.Version)
+		return DetectConfig{}, fmt.Errorf("invalid version tag '%s' (must be 1.0)", dc.Version)
 	}
 
 	for name, svc := range dc.Detect {
@@ -457,15 +458,13 @@ type DetectOptions struct {
 // Detect performs the service detection from a given configuration.
 // It outputs a setup file that can be used as input to "cscli setup install-hub"
 // or "cscli setup datasources".
-func Detect(serviceDetectionFile string, opts DetectOptions) (Setup, error) {
+func Detect(detectReader io.Reader, opts DetectOptions) (Setup, error) {
 	ret := Setup{}
 
 	// explicitly initialize to avoid json mashaling an empty slice as "null"
 	ret.Setup = make([]ServiceSetup, 0)
 
-	log.Tracef("Reading detection rules: %s", serviceDetectionFile)
-
-	sc, err := readDetectConfig(serviceDetectionFile)
+	sc, err := readDetectConfig(detectReader)
 	if err != nil {
 		return ret, err
 	}
@@ -559,8 +558,8 @@ func Detect(serviceDetectionFile string, opts DetectOptions) (Setup, error) {
 }
 
 // ListSupported parses the configuration file and outputs a list of the supported services.
-func ListSupported(serviceDetectionFile string) ([]string, error) {
-	dc, err := readDetectConfig(serviceDetectionFile)
+func ListSupported(detectConfig io.Reader) ([]string, error) {
+	dc, err := readDetectConfig(detectConfig)
 	if err != nil {
 		return nil, err
 	}

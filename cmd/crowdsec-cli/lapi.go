@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -11,11 +12,12 @@ import (
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v2"
+	"slices"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+	"github.com/crowdsecurity/go-cs-lib/version"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/alertcontext"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -25,28 +27,24 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 )
 
-var LAPIURLPrefix string = "v1"
+const LAPIURLPrefix = "v1"
 
 func runLapiStatus(cmd *cobra.Command, args []string) error {
-	var err error
-
 	password := strfmt.Password(csConfig.API.Client.Credentials.Password)
 	apiurl, err := url.Parse(csConfig.API.Client.Credentials.URL)
 	login := csConfig.API.Client.Credentials.Login
 	if err != nil {
-		log.Fatalf("parsing api url ('%s'): %s", apiurl, err)
-	}
-	if err := csConfig.LoadHub(); err != nil {
-		log.Fatal(err)
+		return fmt.Errorf("parsing api url: %w", err)
 	}
 
-	if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-		log.Info("Run 'sudo cscli hub update' to get the hub index")
-		log.Fatalf("Failed to load hub index : %s", err)
-	}
-	scenarios, err := cwhub.GetInstalledScenariosAsString()
+	hub, err := require.Hub(csConfig, nil)
 	if err != nil {
-		log.Fatalf("failed to get scenarios : %s", err)
+		return err
+	}
+
+	scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
+	if err != nil {
+		return fmt.Errorf("failed to get scenarios: %w", err)
 	}
 
 	Client, err = apiclient.NewDefaultClient(apiurl,
@@ -54,28 +52,27 @@ func runLapiStatus(cmd *cobra.Command, args []string) error {
 		fmt.Sprintf("crowdsec/%s", version.String()),
 		nil)
 	if err != nil {
-		log.Fatalf("init default client: %s", err)
+		return fmt.Errorf("init default client: %w", err)
 	}
 	t := models.WatcherAuthRequest{
 		MachineID: &login,
 		Password:  &password,
 		Scenarios: scenarios,
 	}
+
 	log.Infof("Loaded credentials from %s", csConfig.API.Client.CredentialsFilePath)
 	log.Infof("Trying to authenticate with username %s on %s", login, apiurl)
+
 	_, _, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
 	if err != nil {
-		log.Fatalf("Failed to authenticate to Local API (LAPI) : %s", err)
-	} else {
-		log.Infof("You can successfully interact with Local API (LAPI)")
+		return fmt.Errorf("failed to authenticate to Local API (LAPI): %w", err)
 	}
 
+	log.Infof("You can successfully interact with Local API (LAPI)")
 	return nil
 }
 
 func runLapiRegister(cmd *cobra.Command, args []string) error {
-	var err error
-
 	flags := cmd.Flags()
 
 	apiURL, err := flags.GetString("url")
@@ -96,13 +93,13 @@ func runLapiRegister(cmd *cobra.Command, args []string) error {
 	if lapiUser == "" {
 		lapiUser, err = generateID("")
 		if err != nil {
-			log.Fatalf("unable to generate machine id: %s", err)
+			return fmt.Errorf("unable to generate machine id: %w", err)
 		}
 	}
 	password := strfmt.Password(generatePassword(passwordLength))
-	apiurl, err := prepareApiURl(csConfig.API.Client, apiURL)
+	apiurl, err := prepareApiURL(csConfig.API.Client, apiURL)
 	if err != nil {
-		log.Fatalf("parsing api url: %s", err)
+		return fmt.Errorf("parsing api url: %w", err)
 	}
 	_, err = apiclient.RegisterClient(&apiclient.Config{
 		MachineID:     lapiUser,
@@ -113,7 +110,7 @@ func runLapiRegister(cmd *cobra.Command, args []string) error {
 	}, nil)
 
 	if err != nil {
-		log.Fatalf("api client register: %s", err)
+		return fmt.Errorf("api client register: %w", err)
 	}
 
 	log.Printf("Successfully registered to Local API (LAPI)")
@@ -133,14 +130,14 @@ func runLapiRegister(cmd *cobra.Command, args []string) error {
 	}
 	apiConfigDump, err := yaml.Marshal(apiCfg)
 	if err != nil {
-		log.Fatalf("unable to marshal api credentials: %s", err)
+		return fmt.Errorf("unable to marshal api credentials: %w", err)
 	}
 	if dumpFile != "" {
-		err = os.WriteFile(dumpFile, apiConfigDump, 0644)
+		err = os.WriteFile(dumpFile, apiConfigDump, 0o600)
 		if err != nil {
-			log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
+			return fmt.Errorf("write api credentials to '%s' failed: %w", dumpFile, err)
 		}
-		log.Printf("Local API credentials dumped to '%s'", dumpFile)
+		log.Printf("Local API credentials written to '%s'", dumpFile)
 	} else {
 		fmt.Printf("%s\n", string(apiConfigDump))
 	}
@@ -149,13 +146,12 @@ func runLapiRegister(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func prepareApiURl(clientConfig *csconfig.LocalApiClientCfg, apiURL string) (*url.URL, error) {
+func prepareApiURL(clientConfig *csconfig.LocalApiClientCfg, apiURL string) (*url.URL, error) {
 	if apiURL == "" {
-		if clientConfig != nil && clientConfig.Credentials != nil && clientConfig.Credentials.URL != "" {
-			apiURL = clientConfig.Credentials.URL
-		} else {
-			return nil, fmt.Errorf("No Local API URL. Please provide it in your configuration or with the -u parameter")
+		if clientConfig == nil || clientConfig.Credentials == nil || clientConfig.Credentials.URL == "" {
+			return nil, fmt.Errorf("no Local API URL. Please provide it in your configuration or with the -u parameter")
 		}
+		apiURL = clientConfig.Credentials.URL
 	}
 
 	if !strings.HasSuffix(apiURL, "/") {
@@ -184,7 +180,7 @@ func NewLapiRegisterCmd() *cobra.Command {
 	cmdLapiRegister := &cobra.Command{
 		Use:   "register",
 		Short: "Register a machine to Local API (LAPI)",
-		Long: `Register you machine to the Local API (LAPI).
+		Long: `Register your machine to the Local API (LAPI).
 Keep in mind the machine needs to be validated by an administrator on LAPI side to be effective.`,
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
@@ -200,7 +196,7 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 }
 
 func NewLapiCmd() *cobra.Command {
-	var cmdLapi = &cobra.Command{
+	cmdLapi := &cobra.Command{
 		Use:               "lapi [action]",
 		Short:             "Manage interaction with Local API (LAPI)",
 		Args:              cobra.MinimumNArgs(1),
@@ -220,6 +216,30 @@ func NewLapiCmd() *cobra.Command {
 	return cmdLapi
 }
 
+func AddContext(key string, values []string) error {
+	if err := alertcontext.ValidateContextExpr(key, values); err != nil {
+		return fmt.Errorf("invalid context configuration :%s", err)
+	}
+	if _, ok := csConfig.Crowdsec.ContextToSend[key]; !ok {
+		csConfig.Crowdsec.ContextToSend[key] = make([]string, 0)
+
+		log.Infof("key '%s' added", key)
+	}
+	data := csConfig.Crowdsec.ContextToSend[key]
+	for _, val := range values {
+		if !slices.Contains(data, val) {
+			log.Infof("value '%s' added to key '%s'", val, key)
+			data = append(data, val)
+		}
+		csConfig.Crowdsec.ContextToSend[key] = data
+	}
+	if err := csConfig.Crowdsec.DumpContextConfigFile(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func NewLapiContextCmd() *cobra.Command {
 	cmdContext := &cobra.Command{
 		Use:               "context [command]",
@@ -229,11 +249,11 @@ func NewLapiContextCmd() *cobra.Command {
 			if err := csConfig.LoadCrowdsec(); err != nil {
 				fileNotFoundMessage := fmt.Sprintf("failed to open context file: open %s: no such file or directory", csConfig.Crowdsec.ConsoleContextPath)
 				if err.Error() != fileNotFoundMessage {
-					log.Fatalf("Unable to load CrowdSec Agent: %s", err)
+					return fmt.Errorf("unable to start CrowdSec agent: %w", err)
 				}
 			}
 			if csConfig.DisableAgent {
-				log.Fatalf("Agent is disabled and lapi context can only be used on the agent")
+				return errors.New("agent is disabled and lapi context can only be used on the agent")
 			}
 
 			return nil
@@ -250,32 +270,40 @@ func NewLapiContextCmd() *cobra.Command {
 		Short: "Add context to send with alerts. You must specify the output key with the expr value you want",
 		Example: `cscli lapi context add --key source_ip --value evt.Meta.source_ip
 cscli lapi context add --key file_source --value evt.Line.Src
+cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user 
 		`,
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
-			if err := alertcontext.ValidateContextExpr(keyToAdd, valuesToAdd); err != nil {
-				log.Fatalf("invalid context configuration :%s", err)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			hub, err := require.Hub(csConfig, nil)
+			if err != nil {
+				return err
 			}
-			if _, ok := csConfig.Crowdsec.ContextToSend[keyToAdd]; !ok {
-				csConfig.Crowdsec.ContextToSend[keyToAdd] = make([]string, 0)
-				log.Infof("key '%s' added", keyToAdd)
+
+			if err = alertcontext.LoadConsoleContext(csConfig, hub); err != nil {
+				return fmt.Errorf("while loading context: %w", err)
 			}
-			data := csConfig.Crowdsec.ContextToSend[keyToAdd]
-			for _, val := range valuesToAdd {
-				if !slices.Contains(data, val) {
-					log.Infof("value '%s' added to key '%s'", val, keyToAdd)
-					data = append(data, val)
+
+			if keyToAdd != "" {
+				if err := AddContext(keyToAdd, valuesToAdd); err != nil {
+					return err
 				}
-				csConfig.Crowdsec.ContextToSend[keyToAdd] = data
+				return nil
 			}
-			if err := csConfig.Crowdsec.DumpContextConfigFile(); err != nil {
-				log.Fatalf(err.Error())
+
+			for _, v := range valuesToAdd {
+				keySlice := strings.Split(v, ".")
+				key := keySlice[len(keySlice)-1]
+				value := []string{v}
+				if err := AddContext(key, value); err != nil {
+					return err
+				}
 			}
+
+			return nil
 		},
 	}
 	cmdContextAdd.Flags().StringVarP(&keyToAdd, "key", "k", "", "The key of the different values to send")
 	cmdContextAdd.Flags().StringSliceVar(&valuesToAdd, "value", []string{}, "The expr fields to associate with the key")
-	cmdContextAdd.MarkFlagRequired("key")
 	cmdContextAdd.MarkFlagRequired("value")
 	cmdContext.AddCommand(cmdContextAdd)
 
@@ -283,19 +311,29 @@ cscli lapi context add --key file_source --value evt.Line.Src
 		Use:               "status",
 		Short:             "List context to send with alerts",
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
+			hub, err := require.Hub(csConfig, nil)
+			if err != nil {
+				return err
+			}
+
+			if err = alertcontext.LoadConsoleContext(csConfig, hub); err != nil {
+				return fmt.Errorf("while loading context: %w", err)
+			}
+
 			if len(csConfig.Crowdsec.ContextToSend) == 0 {
 				fmt.Println("No context found on this agent. You can use 'cscli lapi context add' to add context to your alerts.")
-				return
+				return nil
 			}
 
 			dump, err := yaml.Marshal(csConfig.Crowdsec.ContextToSend)
 			if err != nil {
-				log.Fatalf("unable to show context status: %s", err)
+				return fmt.Errorf("unable to show context status: %w", err)
 			}
 
-			fmt.Println(string(dump))
+			fmt.Print(string(dump))
 
+			return nil
 		},
 	}
 	cmdContext.AddCommand(cmdContextStatus)
@@ -308,30 +346,27 @@ cscli lapi context add --key file_source --value evt.Line.Src
 cscli lapi context detect crowdsecurity/sshd-logs
 		`,
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
-			var err error
-
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if !detectAll && len(args) == 0 {
 				log.Infof("Please provide parsers to detect or --all flag.")
 				printHelp(cmd)
 			}
 
 			// to avoid all the log.Info from the loaders functions
-			log.SetLevel(log.ErrorLevel)
+			log.SetLevel(log.WarnLevel)
 
-			err = exprhelpers.Init(nil)
+			if err := exprhelpers.Init(nil); err != nil {
+				return fmt.Errorf("failed to init expr helpers: %w", err)
+			}
+
+			hub, err := require.Hub(csConfig, nil)
 			if err != nil {
-				log.Fatalf("Failed to init expr helpers : %s", err)
+				return err
 			}
 
-			// Populate cwhub package tools
-			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-				log.Fatalf("Failed to load hub index : %s", err)
-			}
-
-			csParsers := parser.NewParsers()
+			csParsers := parser.NewParsers(hub)
 			if csParsers, err = parser.LoadParsers(csConfig, csParsers); err != nil {
-				log.Fatalf("unable to load parsers: %s", err)
+				return fmt.Errorf("unable to load parsers: %w", err)
 			}
 
 			fieldByParsers := make(map[string][]string)
@@ -351,7 +386,6 @@ cscli lapi context detect crowdsecurity/sshd-logs
 						fieldByParsers[node.Name] = append(fieldByParsers[node.Name], field)
 					}
 				}
-
 			}
 
 			fmt.Printf("Acquisition :\n\n")
@@ -384,59 +418,17 @@ cscli lapi context detect crowdsecurity/sshd-logs
 					log.Errorf("parser '%s' not found, can't detect fields", parserNotFound)
 				}
 			}
+
+			return nil
 		},
 	}
 	cmdContextDetect.Flags().BoolVarP(&detectAll, "all", "a", false, "Detect evt field for all installed parser")
 	cmdContext.AddCommand(cmdContextDetect)
 
-	var keysToDelete []string
-	var valuesToDelete []string
 	cmdContextDelete := &cobra.Command{
 		Use:   "delete",
-		Short: "Delete context to send with alerts",
-		Example: `cscli lapi context delete --key source_ip
-cscli lapi context delete --value evt.Line.Src
-		`,
-		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
-			if len(keysToDelete) == 0 && len(valuesToDelete) == 0 {
-				log.Fatalf("please provide at least a key or a value to delete")
-			}
-
-			for _, key := range keysToDelete {
-				if _, ok := csConfig.Crowdsec.ContextToSend[key]; ok {
-					delete(csConfig.Crowdsec.ContextToSend, key)
-					log.Infof("key '%s' has been removed", key)
-				} else {
-					log.Warningf("key '%s' doesn't exist", key)
-				}
-			}
-
-			for _, value := range valuesToDelete {
-				valueFound := false
-				for key, context := range csConfig.Crowdsec.ContextToSend {
-					if slices.Contains(context, value) {
-						valueFound = true
-						csConfig.Crowdsec.ContextToSend[key] = removeFromSlice(value, context)
-						log.Infof("value '%s' has been removed from key '%s'", value, key)
-					}
-					if len(csConfig.Crowdsec.ContextToSend[key]) == 0 {
-						delete(csConfig.Crowdsec.ContextToSend, key)
-					}
-				}
-				if !valueFound {
-					log.Warningf("value '%s' not found", value)
-				}
-			}
-
-			if err := csConfig.Crowdsec.DumpContextConfigFile(); err != nil {
-				log.Fatalf(err.Error())
-			}
-
-		},
+		Deprecated: "please manually edit the context file.",
 	}
-	cmdContextDelete.Flags().StringSliceVarP(&keysToDelete, "key", "k", []string{}, "The keys to delete")
-	cmdContextDelete.Flags().StringSliceVar(&valuesToDelete, "value", []string{}, "The expr fields to delete")
 	cmdContext.AddCommand(cmdContextDelete)
 
 	return cmdContext
@@ -444,6 +436,7 @@ cscli lapi context delete --value evt.Line.Src
 
 func detectStaticField(GrokStatics []parser.ExtraField) []string {
 	ret := make([]string, 0)
+
 	for _, static := range GrokStatics {
 		if static.Parsed != "" {
 			fieldName := fmt.Sprintf("evt.Parsed.%s", static.Parsed)
@@ -472,7 +465,8 @@ func detectStaticField(GrokStatics []parser.ExtraField) []string {
 }
 
 func detectNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
-	var ret = make([]string, 0)
+	ret := make([]string, 0)
+
 	if node.Grok.RunTimeRegexp != nil {
 		for _, capturedField := range node.Grok.RunTimeRegexp.Names() {
 			fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
@@ -484,13 +478,13 @@ func detectNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 
 	if node.Grok.RegexpName != "" {
 		grokCompiled, err := parserCTX.Grok.Get(node.Grok.RegexpName)
-		if err != nil {
-			log.Warningf("Can't get subgrok: %s", err)
-		}
-		for _, capturedField := range grokCompiled.Names() {
-			fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
-			if !slices.Contains(ret, fieldName) {
-				ret = append(ret, fieldName)
+		// ignore error (parser does not exist?)
+		if err == nil {
+			for _, capturedField := range grokCompiled.Names() {
+				fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
+				if !slices.Contains(ret, fieldName) {
+					ret = append(ret, fieldName)
+				}
 			}
 		}
 	}
@@ -530,13 +524,13 @@ func detectSubNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 		}
 		if subnode.Grok.RegexpName != "" {
 			grokCompiled, err := parserCTX.Grok.Get(subnode.Grok.RegexpName)
-			if err != nil {
-				log.Warningf("Can't get subgrok: %s", err)
-			}
-			for _, capturedField := range grokCompiled.Names() {
-				fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
-				if !slices.Contains(ret, fieldName) {
-					ret = append(ret, fieldName)
+			if err == nil {
+				// ignore error (parser does not exist?)
+				for _, capturedField := range grokCompiled.Names() {
+					fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
+					if !slices.Contains(ret, fieldName) {
+						ret = append(ret, fieldName)
+					}
 				}
 			}
 		}

@@ -1,47 +1,54 @@
 package main
 
 import (
-	"fmt"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
-func NewPapiCmd() *cobra.Command {
-	var cmdLapi = &cobra.Command{
+type cliPapi struct {}
+
+func NewCLIPapi() *cliPapi {
+	return &cliPapi{}
+}
+
+func (cli cliPapi) NewCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:               "papi [action]",
 		Short:             "Manage interaction with Polling API (PAPI)",
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
-				return fmt.Errorf("Local API is disabled, please run this command on the local API machine: %w", err)
+			if err := require.LAPI(csConfig); err != nil {
+				return err
 			}
-			if csConfig.API.Server.OnlineClient == nil {
-				log.Fatalf("no configuration for Central API in '%s'", *csConfig.FilePath)
+			if err := require.CAPI(csConfig); err != nil {
+				return err
 			}
-			if csConfig.API.Server.OnlineClient.Credentials.PapiURL == "" {
-				log.Fatalf("no PAPI URL in configuration")
+			if err := require.PAPI(csConfig); err != nil {
+				return err
 			}
 			return nil
 		},
 	}
 
-	cmdLapi.AddCommand(NewPapiStatusCmd())
-	cmdLapi.AddCommand(NewPapiSyncCmd())
+	cmd.AddCommand(cli.NewStatusCmd())
+	cmd.AddCommand(cli.NewSyncCmd())
 
-	return cmdLapi
+	return cmd
 }
 
-func NewPapiStatusCmd() *cobra.Command {
-	cmdCapiStatus := &cobra.Command{
+func (cli cliPapi) NewStatusCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "status",
 		Short:             "Get status of the Polling API",
 		Args:              cobra.MinimumNArgs(0),
@@ -86,11 +93,11 @@ func NewPapiStatusCmd() *cobra.Command {
 		},
 	}
 
-	return cmdCapiStatus
+	return cmd
 }
 
-func NewPapiSyncCmd() *cobra.Command {
-	cmdCapiSync := &cobra.Command{
+func (cli cliPapi) NewSyncCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "sync",
 		Short:             "Sync with the Polling API, pulling all non-expired orders for the instance",
 		Args:              cobra.MinimumNArgs(0),
@@ -134,5 +141,5 @@ func NewPapiSyncCmd() *cobra.Command {
 		},
 	}
 
-	return cmdCapiSync
+	return cmd
 }

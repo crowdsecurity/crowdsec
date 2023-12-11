@@ -11,7 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+	"github.com/crowdsecurity/go-cs-lib/cstest"
+	"github.com/crowdsecurity/go-cs-lib/version"
 
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -295,8 +296,8 @@ func TestWithWrongDBConfig(t *testing.T) {
 	config.API.Server.DbConfig.Type = "test"
 	apiServer, err := NewServer(config.API.Server)
 
-	assert.Equal(t, apiServer, &APIServer{})
-	assert.Equal(t, "unable to init database client: unknown database type 'test'", err.Error())
+	cstest.RequireErrorContains(t, err, "unable to init database client: unknown database type 'test'")
+	assert.Nil(t, apiServer)
 }
 
 func TestWithWrongFlushConfig(t *testing.T) {
@@ -305,8 +306,8 @@ func TestWithWrongFlushConfig(t *testing.T) {
 	config.API.Server.DbConfig.Flush.MaxItems = &maxItems
 	apiServer, err := NewServer(config.API.Server)
 
-	assert.Equal(t, apiServer, &APIServer{})
-	assert.Equal(t, "max_items can't be zero or negative number", err.Error())
+	cstest.RequireErrorContains(t, err, "max_items can't be zero or negative number")
+	assert.Nil(t, apiServer)
 }
 
 func TestUnknownPath(t *testing.T) {

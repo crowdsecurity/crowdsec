@@ -90,7 +90,7 @@ func bucketStatsTable(out io.Writer, stats map[string]map[string]int) {
 	keys := []string{"curr_count", "overflow", "instantiation", "pour", "underflow"}
 
 	if numRows, err := metricsToTable(t, stats, keys); err != nil {
-		log.Warningf("while collecting acquis stats: %s", err)
+		log.Warningf("while collecting bucket stats: %s", err)
 	} else if numRows > 0 {
 		renderTableTitle(out, "\nBucket Metrics:")
 		t.Render()
@@ -113,6 +113,37 @@ func acquisStatsTable(out io.Writer, stats map[string]map[string]int) {
 	}
 }
 
+func appsecMetricsToTable(out io.Writer, metrics map[string]map[string]int) {
+	t := newTable(out)
+	t.SetRowLines(false)
+	t.SetHeaders("Appsec Engine", "Processed", "Blocked")
+	t.SetAlignment(table.AlignLeft, table.AlignLeft)
+	keys := []string{"processed", "blocked"}
+	if numRows, err := metricsToTable(t, metrics, keys); err != nil {
+		log.Warningf("while collecting appsec stats: %s", err)
+	} else if numRows > 0 {
+		renderTableTitle(out, "\nAppsec Metrics:")
+		t.Render()
+	}
+}
+
+func appsecRulesToTable(out io.Writer, metrics map[string]map[string]map[string]int) {
+	for appsecEngine, appsecEngineRulesStats := range metrics {
+		t := newTable(out)
+		t.SetRowLines(false)
+		t.SetHeaders("Rule ID", "Triggered")
+		t.SetAlignment(table.AlignLeft, table.AlignLeft)
+		keys := []string{"triggered"}
+		if numRows, err := metricsToTable(t, appsecEngineRulesStats, keys); err != nil {
+			log.Warningf("while collecting appsec rules stats: %s", err)
+		} else if numRows > 0 {
+			renderTableTitle(out, fmt.Sprintf("\nAppsec '%s' Rules Metrics:", appsecEngine))
+			t.Render()
+		}
+	}
+
+}
+
 func parserStatsTable(out io.Writer, stats map[string]map[string]int) {
 	t := newTable(out)
 	t.SetRowLines(false)
@@ -122,7 +153,7 @@ func parserStatsTable(out io.Writer, stats map[string]map[string]int) {
 	keys := []string{"hits", "parsed", "unparsed"}
 
 	if numRows, err := metricsToTable(t, stats, keys); err != nil {
-		log.Warningf("while collecting acquis stats: %s", err)
+		log.Warningf("while collecting parsers stats: %s", err)
 	} else if numRows > 0 {
 		renderTableTitle(out, "\nParser Metrics:")
 		t.Render()
@@ -199,7 +230,7 @@ func lapiStatsTable(out io.Writer, stats map[string]map[string]int) {
 	}
 
 	if numRows > 0 {
-		renderTableTitle(out, "\nLocal Api Metrics:")
+		renderTableTitle(out, "\nLocal API Metrics:")
 		t.Render()
 	}
 }
@@ -213,7 +244,7 @@ func lapiMachineStatsTable(out io.Writer, stats map[string]map[string]map[string
 	numRows := lapiMetricsToTable(t, stats)
 
 	if numRows > 0 {
-		renderTableTitle(out, "\nLocal Api Machines Metrics:")
+		renderTableTitle(out, "\nLocal API Machines Metrics:")
 		t.Render()
 	}
 }
@@ -227,7 +258,7 @@ func lapiBouncerStatsTable(out io.Writer, stats map[string]map[string]map[string
 	numRows := lapiMetricsToTable(t, stats)
 
 	if numRows > 0 {
-		renderTableTitle(out, "\nLocal Api Bouncers Metrics:")
+		renderTableTitle(out, "\nLocal API Bouncers Metrics:")
 		t.Render()
 	}
 }
@@ -253,7 +284,7 @@ func lapiDecisionStatsTable(out io.Writer, stats map[string]struct {
 	}
 
 	if numRows > 0 {
-		renderTableTitle(out, "\nLocal Api Bouncers Decisions:")
+		renderTableTitle(out, "\nLocal API Bouncers Decisions:")
 		t.Render()
 	}
 }
@@ -280,7 +311,7 @@ func decisionStatsTable(out io.Writer, stats map[string]map[string]map[string]in
 	}
 
 	if numRows > 0 {
-		renderTableTitle(out, "\nLocal Api Decisions:")
+		renderTableTitle(out, "\nLocal API Decisions:")
 		t.Render()
 	}
 }
@@ -301,7 +332,7 @@ func alertStatsTable(out io.Writer, stats map[string]int) {
 	}
 
 	if numRows > 0 {
-		renderTableTitle(out, "\nLocal Api Alerts:")
+		renderTableTitle(out, "\nLocal API Alerts:")
 		t.Render()
 	}
 }

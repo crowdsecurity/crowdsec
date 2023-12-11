@@ -3,7 +3,9 @@ package csconfig
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"strings"
@@ -12,8 +14,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
-	"github.com/crowdsecurity/go-cs-lib/pkg/yamlpatch"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
+	"github.com/crowdsecurity/go-cs-lib/yamlpatch"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 )
@@ -56,7 +58,6 @@ type CTICfg struct {
 }
 
 func (a *CTICfg) Load() error {
-
 	if a.Key == nil {
 		*a.Enabled = false
 	}
@@ -110,8 +111,10 @@ func (l *LocalApiClientCfg) Load() error {
 		return fmt.Errorf("no credentials or URL found in api client configuration '%s'", l.CredentialsFilePath)
 	}
 
-	if !strings.HasSuffix(l.Credentials.URL, "/") {
-		l.Credentials.URL += "/"
+	if l.Credentials != nil && l.Credentials.URL != "" {
+		if !strings.HasSuffix(l.Credentials.URL, "/") {
+			l.Credentials.URL += "/"
+		}
 	}
 
 	if l.Credentials.Login != "" && (l.Credentials.CertPath != "" || l.Credentials.KeyPath != "") {
@@ -212,6 +215,7 @@ type LocalApiServerCfg struct {
 func (c *LocalApiServerCfg) IsUnixSocket() bool {
 	return strings.HasPrefix(c.ListenURI, "/")
 }
+
 func (c *LocalApiServerCfg) ClientUrl() string {
 	if c.IsUnixSocket() {
 		return c.ListenURI
@@ -242,6 +246,21 @@ func (c *Config) LoadAPIServer() error {
 		return nil
 	}
 
+	if c.API.Server.Enable == nil {
+		// if the option is not present, it is enabled by default
+		c.API.Server.Enable = ptr.Of(true)
+	}
+
+	if !*c.API.Server.Enable {
+		log.Warning("crowdsec local API is disabled because 'enable' is set to false")
+		c.DisableAPI = true
+		return nil
+	}
+
+	if c.DisableAPI {
+		return nil
+	}
+
 	//inherit log level from common, then api->server
 	var logLevel log.Level
 	if c.API.Server.LogLevel != nil {
@@ -261,9 +280,11 @@ func (c *Config) LoadAPIServer() error {
 			return fmt.Errorf("loading online client credentials: %w", err)
 		}
 	}
+
 	if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
 		log.Printf("push and pull to Central API disabled")
 	}
+
 	if err := c.LoadDBConfig(); err != nil {
 		return err
 	}
@@ -276,53 +297,31 @@ func (c *Config) LoadAPIServer() error {
 		log.Infof("loaded capi whitelist from %s: %d IPs, %d CIDRs", c.API.Server.CapiWhitelistsPath, len(c.API.Server.CapiWhitelists.Ips), len(c.API.Server.CapiWhitelists.Cidrs))
 	}
 
-	if c.API.Server.Enable == nil {
-		// if the option is not present, it is enabled by default
-		c.API.Server.Enable = ptr.Of(true)
-	}
-
-	if !*c.API.Server.Enable {
-		log.Warning("crowdsec local API is disabled because 'enable' is set to false")
-		c.DisableAPI = true
-		return nil
-	}
-
-	if c.DisableAPI {
-		return nil
-	}
-
-	if err := c.LoadCommon(); err != nil {
-		return fmt.Errorf("loading common configuration: %s", err)
-	}
 	c.API.Server.LogDir = c.Common.LogDir
 	c.API.Server.LogMedia = c.Common.LogMedia
 	c.API.Server.CompressLogs = c.Common.CompressLogs
 	c.API.Server.LogMaxSize = c.Common.LogMaxSize
 	c.API.Server.LogMaxAge = c.Common.LogMaxAge
 	c.API.Server.LogMaxFiles = c.Common.LogMaxFiles
+
 	if c.API.Server.UseForwardedForHeaders && c.API.Server.TrustedProxies == nil {
 		c.API.Server.TrustedProxies = &[]string{"0.0.0.0/0"}
 	}
+
 	if c.API.Server.TrustedProxies != nil {
 		c.API.Server.UseForwardedForHeaders = true
 	}
+
 	if err := c.API.Server.LoadProfiles(); err != nil {
 		return fmt.Errorf("while loading profiles for LAPI: %w", err)
 	}
+
 	if c.API.Server.ConsoleConfigPath == "" {
 		c.API.Server.ConsoleConfigPath = DefaultConsoleConfigFilePath
 	}
+
 	if err := c.API.Server.LoadConsoleConfig(); err != nil {
 		return fmt.Errorf("while loading console options: %w", err)
-	}
-
-	if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
-		if err := c.API.Server.OnlineClient.Load(); err != nil {
-			return fmt.Errorf("loading online client credentials: %w", err)
-		}
-	}
-	if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
-		log.Printf("push and pull to Central API disabled")
 	}
 
 	if c.API.CTI != nil {
@@ -340,40 +339,59 @@ type capiWhitelists struct {
 	Cidrs []string `yaml:"cidrs"`
 }
 
+func parseCapiWhitelists(fd io.Reader) (*CapiWhitelist, error) {
+	fromCfg := capiWhitelists{}
+
+	decoder := yaml.NewDecoder(fd)
+	if err := decoder.Decode(&fromCfg); err != nil {
+		if errors.Is(err, io.EOF) {
+			return nil, fmt.Errorf("empty file")
+		}
+		return nil, err
+	}
+	ret := &CapiWhitelist{
+		Ips:   make([]net.IP, len(fromCfg.Ips)),
+		Cidrs: make([]*net.IPNet, len(fromCfg.Cidrs)),
+	}
+	for idx, v := range fromCfg.Ips {
+		ip := net.ParseIP(v)
+		if ip == nil {
+			return nil, fmt.Errorf("invalid IP address: %s", v)
+		}
+		ret.Ips[idx] = ip
+	}
+	for idx, v := range fromCfg.Cidrs {
+		_, tnet, err := net.ParseCIDR(v)
+		if err != nil {
+			return nil, err
+		}
+		ret.Cidrs[idx] = tnet
+	}
+
+	return ret, nil
+}
+
 func (c *LocalApiServerCfg) LoadCapiWhitelists() error {
 	if c.CapiWhitelistsPath == "" {
 		return nil
 	}
+
 	if _, err := os.Stat(c.CapiWhitelistsPath); os.IsNotExist(err) {
 		return fmt.Errorf("capi whitelist file '%s' does not exist", c.CapiWhitelistsPath)
 	}
+
 	fd, err := os.Open(c.CapiWhitelistsPath)
 	if err != nil {
-		return fmt.Errorf("unable to open capi whitelist file '%s': %s", c.CapiWhitelistsPath, err)
+		return fmt.Errorf("while opening capi whitelist file: %s", err)
 	}
-
-	var fromCfg capiWhitelists
-	c.CapiWhitelists = &CapiWhitelist{}
 
 	defer fd.Close()
-	decoder := yaml.NewDecoder(fd)
-	if err := decoder.Decode(&fromCfg); err != nil {
-		return fmt.Errorf("while parsing capi whitelist file '%s': %s", c.CapiWhitelistsPath, err)
+
+	c.CapiWhitelists, err = parseCapiWhitelists(fd)
+	if err != nil {
+		return fmt.Errorf("while parsing capi whitelist file '%s': %w", c.CapiWhitelistsPath, err)
 	}
-	for _, v := range fromCfg.Ips {
-		ip := net.ParseIP(v)
-		if ip == nil {
-			return fmt.Errorf("unable to parse ip whitelist '%s'", v)
-		}
-		c.CapiWhitelists.Ips = append(c.CapiWhitelists.Ips, ip)
-	}
-	for _, v := range fromCfg.Cidrs {
-		_, tnet, err := net.ParseCIDR(v)
-		if err != nil {
-			return fmt.Errorf("unable to parse cidr whitelist '%s' : %v", v, err)
-		}
-		c.CapiWhitelists.Cidrs = append(c.CapiWhitelists.Cidrs, tnet)
-	}
+
 	return nil
 }
 

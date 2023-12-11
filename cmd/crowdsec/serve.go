@@ -10,10 +10,11 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/csdaemon"
-	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+	"github.com/crowdsecurity/go-cs-lib/csdaemon"
+	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
@@ -76,7 +77,12 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 	}
 
 	if !cConfig.DisableAgent {
-		csParsers, err := initCrowdsec(cConfig)
+		hub, err := cwhub.NewHub(cConfig.Hub, nil, false)
+		if err != nil {
+			return nil, fmt.Errorf("while loading hub index: %w", err)
+		}
+
+		csParsers, err := initCrowdsec(cConfig, hub)
 		if err != nil {
 			return nil, fmt.Errorf("unable to init crowdsec: %w", err)
 		}
@@ -93,7 +99,7 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 		}
 
 		agentReady := make(chan bool, 1)
-		serveCrowdsec(csParsers, cConfig, agentReady)
+		serveCrowdsec(csParsers, cConfig, hub, agentReady)
 	}
 
 	log.Printf("Reload is finished")
@@ -141,12 +147,24 @@ func ShutdownCrowdsecRoutines() error {
 	time.Sleep(1 * time.Second) // ugly workaround for now
 	outputsTomb.Kill(nil)
 
-	if err := outputsTomb.Wait(); err != nil {
-		log.Warningf("Ouputs returned error : %s", err)
-		reterr = err
+	done := make(chan error, 1)
+	go func() {
+		done <- outputsTomb.Wait()
+	}()
+
+	// wait for outputs to finish, max 3 seconds
+	select {
+	case err := <-done:
+		if err != nil {
+			log.Warningf("Outputs returned error : %s", err)
+			reterr = err
+		}
+		log.Debugf("outputs are done")
+	case <-time.After(3 * time.Second):
+		// this can happen if outputs are stuck in a http retry loop
+		log.Warningf("Outputs didn't finish in time, some events may have not been flushed")
 	}
 
-	log.Debugf("outputs are done")
 	// He's dead, Jim.
 	crowdsecTomb.Kill(nil)
 
@@ -330,21 +348,26 @@ func Serve(cConfig *csconfig.Config, apiReady chan bool, agentReady chan bool) e
 	}
 
 	if !cConfig.DisableAgent {
-		csParsers, err := initCrowdsec(cConfig)
+		hub, err := cwhub.NewHub(cConfig.Hub, nil, false)
+		if err != nil {
+			return fmt.Errorf("while loading hub index: %w", err)
+		}
+
+		csParsers, err := initCrowdsec(cConfig, hub)
 		if err != nil {
 			return fmt.Errorf("crowdsec init: %w", err)
 		}
 
 		// if it's just linting, we're done
 		if !flags.TestMode {
-			serveCrowdsec(csParsers, cConfig, agentReady)
+			serveCrowdsec(csParsers, cConfig, hub, agentReady)
 		}
 	} else {
 		agentReady <- true
 	}
 
 	if flags.TestMode {
-		log.Infof("test done")
+		log.Infof("Configuration test done")
 		pluginBroker.Kill()
 		os.Exit(0)
 	}
