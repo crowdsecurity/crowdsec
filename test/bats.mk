@@ -68,8 +68,8 @@ bats-check-requirements:
 
 # Install/update some of the tools required to run the tests
 bats-update-tools:
-	# yq v4.34.1
-	GOBIN=$(TEST_DIR)/tools go install github.com/mikefarah/yq/v4@5ef537f3fd1a9437aa3ee44c32c6459a126efdc4
+	# yq v4.40.4
+	GOBIN=$(TEST_DIR)/tools go install github.com/mikefarah/yq/v4@1c3d55106075bd37df197b4bc03cb4a413fdb903
 	# cfssl v1.6.4
 	GOBIN=$(TEST_DIR)/tools go install github.com/cloudflare/cfssl/cmd/cfssl@b4d0d877cac528f63db39dfb62d5c96cd3a32a0b
 	GOBIN=$(TEST_DIR)/tools go install github.com/cloudflare/cfssl/cmd/cfssljson@b4d0d877cac528f63db39dfb62d5c96cd3a32a0b
