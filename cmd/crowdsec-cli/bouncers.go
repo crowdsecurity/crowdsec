@@ -127,18 +127,16 @@ func (cli cliBouncers) add(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// args[0] is guaranteed to exist by cobra
 	keyName := args[0]
 	var apiKey string
 
-	if keyName == "" {
-		return fmt.Errorf("please provide a name for the api key")
-	}
 	apiKey = key
 	if key == "" {
 		apiKey, err = middlewares.GenerateAPIKey(keyLength)
-	}
-	if err != nil {
-		return fmt.Errorf("unable to generate api key: %s", err)
+		if err != nil {
+			return fmt.Errorf("unable to generate api key: %s", err)
+		}
 	}
 	_, err = dbClient.CreateBouncer(keyName, "", middlewares.HashSHA512(apiKey), types.ApiKeyAuthType)
 	if err != nil {
