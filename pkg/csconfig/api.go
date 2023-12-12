@@ -243,11 +243,14 @@ func (c *Config) LoadAPIServer() error {
 	if !*c.API.Server.Enable {
 		log.Warning("crowdsec local API is disabled because 'enable' is set to false")
 		c.DisableAPI = true
-		return nil
 	}
 
 	if c.DisableAPI {
 		return nil
+	}
+
+	if c.API.Server.ListenURI == "" {
+		return fmt.Errorf("no listen_uri specified")
 	}
 
 	//inherit log level from common, then api->server

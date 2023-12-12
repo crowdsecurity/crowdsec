@@ -386,31 +386,59 @@ func (s *APIServer) Run(apiReady chan bool) error {
 		})
 	}
 
-	s.httpServerTomb.Go(func() error {
-		go func() {
-			apiReady <- true
-			log.Infof("CrowdSec Local API listening on %s", s.URL)
-			if s.TLS != nil && (s.TLS.CertFilePath != "" || s.TLS.KeyFilePath != "") {
-				if s.TLS.KeyFilePath == "" {
-					log.Fatalf("while serving local API: %v", errors.New("missing TLS key file"))
-				} else if s.TLS.CertFilePath == "" {
-					log.Fatalf("while serving local API: %v", errors.New("missing TLS cert file"))
-				}
-
-				if err := s.httpServer.ListenAndServeTLS(s.TLS.CertFilePath, s.TLS.KeyFilePath); err != nil {
-					log.Fatalf("while serving local API: %v", err)
-				}
-			} else {
-				if err := s.httpServer.ListenAndServe(); err != http.ErrServerClosed {
-					log.Fatalf("while serving local API: %v", err)
-				}
-			}
-		}()
-		<-s.httpServerTomb.Dying()
-		return nil
-	})
+	s.httpServerTomb.Go(func() error {s.listenAndServeURL(apiReady); return nil})
 
 	return nil
+}
+
+// listenAndServeURL starts the http server and blocks until it's closed
+// it also updates the URL field with the actual address the server is listening on
+// it's meant to be run in a separate goroutine
+func (s *APIServer) listenAndServeURL(apiReady chan bool) {
+	serverError := make(chan error, 1)
+	go func() {
+		listener, err := net.Listen("tcp", s.URL)
+		if err != nil {
+			serverError <- fmt.Errorf("listening on %s: %w", s.URL, err)
+			return
+		}
+
+		s.URL = listener.Addr().String()
+		log.Infof("CrowdSec Local API listening on %s", s.URL)
+		apiReady <- true
+
+		if s.TLS != nil && (s.TLS.CertFilePath != "" || s.TLS.KeyFilePath != "") {
+			if s.TLS.KeyFilePath == "" {
+				serverError <- errors.New("missing TLS key file")
+				return
+			} else if s.TLS.CertFilePath == "" {
+				serverError <- errors.New("missing TLS cert file")
+				return
+			}
+
+			err = s.httpServer.ServeTLS(listener, s.TLS.CertFilePath, s.TLS.KeyFilePath)
+		} else {
+			err = s.httpServer.Serve(listener)
+		}
+
+		if err != nil && err != http.ErrServerClosed {
+			serverError <- fmt.Errorf("while serving local API: %w", err)
+			return
+		}
+	}()
+
+	select {
+	case err := <-serverError:
+		log.Fatalf("while starting API server: %s", err)
+	case <-s.httpServerTomb.Dying():
+		log.Infof("Shutting down API server")
+		// do we need a graceful shutdown here?
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := s.httpServer.Shutdown(ctx); err != nil {
+			log.Errorf("while shutting down http server: %s", err)
+		}
+	}
 }
 
 func (s *APIServer) Close() {
