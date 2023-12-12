@@ -435,30 +435,37 @@ func (s *APIServer) InitController() error {
 	if err != nil {
 		return fmt.Errorf("controller init: %w", err)
 	}
-	if s.TLS != nil {
-		cacheExpiration := time.Hour
-		if s.TLS.CacheExpiration != nil {
-			cacheExpiration = *s.TLS.CacheExpiration
-		}
 
-		s.controller.HandlerV1.Middlewares.JWT.TlsAuth, err = v1.NewTLSAuth(s.TLS.AllowedAgentsOU, s.TLS.CRLPath,
-			cacheExpiration,
-			log.WithFields(log.Fields{
-				"component": "tls-auth",
-				"type":      "agent",
-			}))
-		if err != nil {
-			return fmt.Errorf("while creating TLS auth for agents: %w", err)
-		}
-		s.controller.HandlerV1.Middlewares.APIKey.TlsAuth, err = v1.NewTLSAuth(s.TLS.AllowedBouncersOU, s.TLS.CRLPath,
-			cacheExpiration,
-			log.WithFields(log.Fields{
-				"component": "tls-auth",
-				"type":      "bouncer",
-			}))
-		if err != nil {
-			return fmt.Errorf("while creating TLS auth for bouncers: %w", err)
-		}
+	if s.TLS == nil {
+		return nil
 	}
-	return err
+
+	// TLS is configured: create the TLSAuth middleware for agents and bouncers
+
+	cacheExpiration := time.Hour
+	if s.TLS.CacheExpiration != nil {
+		cacheExpiration = *s.TLS.CacheExpiration
+	}
+
+	s.controller.HandlerV1.Middlewares.JWT.TlsAuth, err = v1.NewTLSAuth(s.TLS.AllowedAgentsOU, s.TLS.CRLPath,
+		cacheExpiration,
+		log.WithFields(log.Fields{
+			"component": "tls-auth",
+			"type":      "agent",
+		}))
+	if err != nil {
+		return fmt.Errorf("while creating TLS auth for agents: %w", err)
+	}
+
+	s.controller.HandlerV1.Middlewares.APIKey.TlsAuth, err = v1.NewTLSAuth(s.TLS.AllowedBouncersOU, s.TLS.CRLPath,
+		cacheExpiration,
+		log.WithFields(log.Fields{
+			"component": "tls-auth",
+			"type":      "bouncer",
+		}))
+	if err != nil {
+		return fmt.Errorf("while creating TLS auth for bouncers: %w", err)
+	}
+
+	return nil
 }
