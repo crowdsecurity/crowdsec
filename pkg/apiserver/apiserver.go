@@ -2,8 +2,6 @@ package apiserver
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"io"
 	"net"
@@ -270,51 +268,14 @@ func (s *APIServer) Router() (*gin.Engine, error) {
 	return s.router, nil
 }
 
-func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
-	var caCertPool *x509.CertPool
-
-	if s.TLS == nil {
-		return &tls.Config{}, nil
-	}
-
-	clientAuthType, err := s.TLS.GetAuthType()
-	if err != nil {
-		return nil, err
-	}
-
-	if s.TLS.CACertPath != "" {
-		if clientAuthType > tls.RequestClientCert {
-			log.Infof("(tls) Client Auth Type set to %s", clientAuthType.String())
-			caCert, err := os.ReadFile(s.TLS.CACertPath)
-			if err != nil {
-				return nil, fmt.Errorf("while opening cert file: %w", err)
-			}
-			caCertPool, err = x509.SystemCertPool()
-			if err != nil {
-				log.Warnf("Error loading system CA certificates: %s", err)
-			}
-			if caCertPool == nil {
-				caCertPool = x509.NewCertPool()
-			}
-
-			caCertPool.AppendCertsFromPEM(caCert)
-		}
-	}
-
-	return &tls.Config{
-		ServerName: s.TLS.ServerName, //should it be removed ?
-		ClientAuth: clientAuthType,
-		ClientCAs:  caCertPool,
-		MinVersion: tls.VersionTLS12, // TLS versions below 1.2 are considered insecure - see https://www.rfc-editor.org/rfc/rfc7525.txt for details
-	}, nil
-}
-
 func (s *APIServer) Run(apiReady chan bool) error {
 	defer trace.CatchPanic("lapi/runServer")
-	tlsCfg, err := s.GetTLSConfig()
+
+	tlsCfg, err := s.TLS.GetTLSConfig()
 	if err != nil {
 		return fmt.Errorf("while creating TLS config: %w", err)
 	}
+
 	s.httpServer = &http.Server{
 		Addr:      s.URL,
 		Handler:   s.router,

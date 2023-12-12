@@ -248,6 +248,46 @@ func (t *TLSCfg) GetAuthType() (tls.ClientAuthType, error) {
 	}
 }
 
+func (t *TLSCfg) GetTLSConfig() (*tls.Config, error) {
+	if t == nil {
+		return &tls.Config{}, nil
+	}
+
+	clientAuthType, err := t.GetAuthType()
+	if err != nil {
+		return nil, err
+	}
+
+	caCertPool, err := x509.SystemCertPool()
+	if err != nil {
+		log.Warnf("Error loading system CA certificates: %s", err)
+	}
+
+	if caCertPool == nil {
+		caCertPool = x509.NewCertPool()
+	}
+
+	// the > condition below is a weird way to say "if a client certificate is required"
+	// see https://pkg.go.dev/crypto/tls#ClientAuthType
+	if clientAuthType > tls.RequestClientCert && t.CACertPath != "" {
+		log.Infof("(tls) Client Auth Type set to %s", clientAuthType.String())
+
+		caCert, err := os.ReadFile(t.CACertPath)
+		if err != nil {
+			return nil, fmt.Errorf("while opening cert file: %w", err)
+		}
+
+		caCertPool.AppendCertsFromPEM(caCert)
+	}
+
+	return &tls.Config{
+		ServerName: t.ServerName, //should it be removed ?
+		ClientAuth: clientAuthType,
+		ClientCAs:  caCertPool,
+		MinVersion: tls.VersionTLS12, // TLS versions below 1.2 are considered insecure - see https://www.rfc-editor.org/rfc/rfc7525.txt for details
+	}, nil
+}
+
 func (c *Config) LoadAPIServer() error {
 	if c.DisableAPI {
 		log.Warning("crowdsec local API is disabled from flag")
