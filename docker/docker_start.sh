@@ -368,6 +368,11 @@ for BOUNCER in $(compgen -A variable | grep -i BOUNCER_KEY); do
     fi
 done
 
+if [ "$ENABLE_CONSOLE_MANAGEMENT" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli console enable console_management
+fi
+
 ## Register bouncers via secrets (Swarm only)
 shopt -s nullglob extglob
 for BOUNCER in /run/secrets/@(bouncer_key|BOUNCER_KEY)* ; do
