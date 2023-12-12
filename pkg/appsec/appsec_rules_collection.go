@@ -104,7 +104,7 @@ func LoadCollection(pattern string, logger *log.Entry) ([]AppsecCollection, erro
 			for _, rule := range appsecRule.Rules {
 				strRule, rulesId, err := rule.Convert(appsec_rule.ModsecurityRuleType, appsecRule.Name)
 				if err != nil {
-					logger.Errorf("unable to convert rule %s : %s", rule.Name, err)
+					logger.Errorf("unable to convert rule %s : %s", appsecRule.Name, err)
 					return nil, err
 				}
 				logger.Debugf("Adding rule %s", strRule)
