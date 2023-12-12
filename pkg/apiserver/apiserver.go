@@ -32,9 +32,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var (
-	keyLength = 32
-)
+const keyLength = 32
 
 type APIServer struct {
 	URL            string
@@ -52,14 +50,15 @@ type APIServer struct {
 	isEnrolled     bool
 }
 
-// RecoveryWithWriter returns a middleware for a given writer that recovers from any panics and writes a 500 if there was one.
+// CustomRecoveryWithWriter returns a middleware for a writer that recovers from any panics and writes a 500 if there was one.
 func CustomRecoveryWithWriter() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
 			if err := recover(); err != nil {
 				// Check for a broken connection, as it is not really a
 				// condition that warrants a panic stack trace.
-				var brokenPipe bool
+				brokenPipe := false
+
 				if ne, ok := err.(*net.OpError); ok {
 					if se, ok := ne.Err.(*os.SyscallError); ok {
 						if strings.Contains(strings.ToLower(se.Error()), "broken pipe") || strings.Contains(strings.ToLower(se.Error()), "connection reset by peer") {
@@ -101,6 +100,8 @@ func CustomRecoveryWithWriter() gin.HandlerFunc {
 	}
 }
 
+// NewServer creates a LAPI server.
+// It sets up a gin router, a database client, and a controller.
 func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	var flushScheduler *gocron.Scheduler
 	dbClient, err := database.NewClient(config.DbConfig)
@@ -123,22 +124,23 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	if log.GetLevel() < log.DebugLevel {
 		gin.SetMode(gin.ReleaseMode)
 	}
+
 	log.Debugf("starting router, logging to %s", logFile)
 	router := gin.New()
 
+	router.ForwardedByClientIP = false
+
 	if config.TrustedProxies != nil && config.UseForwardedForHeaders {
-		if err := router.SetTrustedProxies(*config.TrustedProxies); err != nil {
+		if err = router.SetTrustedProxies(*config.TrustedProxies); err != nil {
 			return nil, fmt.Errorf("while setting trusted_proxies: %w", err)
 		}
 		router.ForwardedByClientIP = true
-	} else {
-		router.ForwardedByClientIP = false
 	}
 
 	/*The logger that will be used by handlers*/
 	clog := log.New()
 
-	if err := types.ConfigureLogger(clog); err != nil {
+	if err = types.ConfigureLogger(clog); err != nil {
 		return nil, fmt.Errorf("while configuring gin logger: %w", err)
 	}
 	if config.LogLevel != nil {
@@ -206,9 +208,14 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		DisableRemoteLapiRegistration: config.DisableRemoteLapiRegistration,
 	}
 
-	var apiClient *apic
-	var papiClient *Papi
-	var isMachineEnrolled = false
+	var (
+		apiClient         *apic
+		papiClient        *Papi
+		isMachineEnrolled = false
+	)
+
+	controller.AlertsAddChan = nil
+	controller.DecisionDeleteChan = nil
 
 	if config.OnlineClient != nil && config.OnlineClient.Credentials != nil {
 		log.Printf("Loading CAPI manager")
@@ -216,6 +223,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		if err != nil {
 			return nil, err
 		}
+
 		log.Infof("CAPI manager configured successfully")
 		isMachineEnrolled = isEnrolled(apiClient.apiClient)
 		controller.AlertsAddChan = apiClient.AlertsAddChan
@@ -229,17 +237,14 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		} else {
 			log.Errorf("Machine is not enrolled in the console, can't synchronize with the console")
 		}
-	} else {
-		apiClient = nil
-		controller.AlertsAddChan = nil
-		controller.DecisionDeleteChan = nil
 	}
 
-	if trustedIPs, err := config.GetTrustedIPs(); err == nil {
-		controller.TrustedIPs = trustedIPs
-	} else {
+	trustedIPs, err := config.GetTrustedIPs()
+	if err != nil {
 		return nil, err
 	}
+
+	controller.TrustedIPs = trustedIPs
 
 	return &APIServer{
 		URL:            config.ListenURI,
@@ -255,7 +260,6 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		consoleConfig:  config.ConsoleConfig,
 		isEnrolled:     isMachineEnrolled,
 	}, nil
-
 }
 
 func isEnrolled(client *apiclient.ApiClient) bool {
@@ -278,8 +282,6 @@ func (s *APIServer) Router() (*gin.Engine, error) {
 }
 
 func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
-	var caCert []byte
-	var err error
 	var caCertPool *x509.CertPool
 
 	if s.TLS == nil {
@@ -294,7 +296,7 @@ func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
 	if s.TLS.CACertPath != "" {
 		if clientAuthType > tls.RequestClientCert {
 			log.Infof("(tls) Client Auth Type set to %s", clientAuthType.String())
-			caCert, err = os.ReadFile(s.TLS.CACertPath)
+			caCert, err := os.ReadFile(s.TLS.CACertPath)
 			if err != nil {
 				return nil, fmt.Errorf("while opening cert file: %w", err)
 			}
@@ -305,6 +307,7 @@ func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
 			if caCertPool == nil {
 				caCertPool = x509.NewCertPool()
 			}
+
 			caCertPool.AppendCertsFromPEM(caCert)
 		}
 	}
@@ -380,7 +383,7 @@ func (s *APIServer) Run(apiReady chan bool) error {
 		})
 	}
 
-	s.httpServerTomb.Go(func() error {s.listenAndServeURL(apiReady); return nil})
+	s.httpServerTomb.Go(func() error { s.listenAndServeURL(apiReady); return nil })
 
 	return nil
 }
@@ -390,6 +393,7 @@ func (s *APIServer) Run(apiReady chan bool) error {
 // it's meant to be run in a separate goroutine
 func (s *APIServer) listenAndServeURL(apiReady chan bool) {
 	serverError := make(chan error, 1)
+
 	go func() {
 		listener, err := net.Listen("tcp", s.URL)
 		if err != nil {
@@ -442,6 +446,7 @@ func (s *APIServer) Close() {
 	if s.papi != nil {
 		s.papi.Shutdown() // papi also uses the dbClient
 	}
+
 	s.dbClient.Ent.Close()
 	if s.flushScheduler != nil {
 		s.flushScheduler.Stop()
@@ -463,6 +468,7 @@ func (s *APIServer) Shutdown() error {
 	if pipe, ok := gin.DefaultWriter.(*io.PipeWriter); ok {
 		pipe.Close()
 	}
+
 	s.httpServerTomb.Kill(nil)
 	if err := s.httpServerTomb.Wait(); err != nil {
 		return fmt.Errorf("while waiting on httpServerTomb: %w", err)
@@ -475,18 +481,16 @@ func (s *APIServer) AttachPluginBroker(broker *csplugin.PluginBroker) {
 }
 
 func (s *APIServer) InitController() error {
-
 	err := s.controller.Init()
 	if err != nil {
 		return fmt.Errorf("controller init: %w", err)
 	}
 	if s.TLS != nil {
-		var cacheExpiration time.Duration
+		cacheExpiration := time.Hour
 		if s.TLS.CacheExpiration != nil {
 			cacheExpiration = *s.TLS.CacheExpiration
-		} else {
-			cacheExpiration = time.Hour
 		}
+
 		s.controller.HandlerV1.Middlewares.JWT.TlsAuth, err = v1.NewTLSAuth(s.TLS.AllowedAgentsOU, s.TLS.CRLPath,
 			cacheExpiration,
 			log.WithFields(log.Fields{
