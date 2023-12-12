@@ -101,6 +101,56 @@ func CustomRecoveryWithWriter() gin.HandlerFunc {
 	}
 }
 
+// XXX: could be a method of LocalApiServerCfg
+func newGinLogger(config *csconfig.LocalApiServerCfg) (*log.Logger, string, error) {
+	clog := log.New()
+
+	if err := types.ConfigureLogger(clog); err != nil {
+		return nil, "", fmt.Errorf("while configuring gin logger: %w", err)
+	}
+
+	if config.LogLevel != nil {
+		clog.SetLevel(*config.LogLevel)
+	}
+
+	if config.LogMedia != "file" {
+		return clog, "", nil
+	}
+
+	// Log rotation
+
+	logFile := filepath.Join(config.LogDir, "crowdsec_api.log")
+	log.Debugf("starting router, logging to %s", logFile)
+
+	logger := &lumberjack.Logger{
+		Filename:   logFile,
+		MaxSize:    500, //megabytes
+		MaxBackups: 3,
+		MaxAge:     28,   //days
+		Compress:   true, //disabled by default
+	}
+
+	if config.LogMaxSize != 0 {
+		logger.MaxSize = config.LogMaxSize
+	}
+
+	if config.LogMaxFiles != 0 {
+		logger.MaxBackups = config.LogMaxFiles
+	}
+
+	if config.LogMaxAge != 0 {
+		logger.MaxAge = config.LogMaxAge
+	}
+
+	if config.CompressLogs != nil {
+		logger.Compress = *config.CompressLogs
+	}
+
+	clog.SetOutput(logger)
+
+	return clog, logFile, nil
+}
+
 // NewServer creates a LAPI server.
 // It sets up a gin router, a database client, and a controller.
 func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
@@ -117,16 +167,10 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		}
 	}
 
-	logFile := ""
-	if config.LogMedia == "file" {
-		logFile = filepath.Join(config.LogDir, "crowdsec_api.log")
-	}
-
 	if log.GetLevel() < log.DebugLevel {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	log.Debugf("starting router, logging to %s", logFile)
 	router := gin.New()
 
 	router.ForwardedByClientIP = false
@@ -138,43 +182,10 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		router.ForwardedByClientIP = true
 	}
 
-	/*The logger that will be used by handlers*/
-	clog := log.New()
-
-	if err = types.ConfigureLogger(clog); err != nil {
-		return nil, fmt.Errorf("while configuring gin logger: %w", err)
-	}
-	if config.LogLevel != nil {
-		clog.SetLevel(*config.LogLevel)
-	}
-
-	/*Configure logs*/
-	if logFile != "" {
-		_maxsize := 500
-		if config.LogMaxSize != 0 {
-			_maxsize = config.LogMaxSize
-		}
-		_maxfiles := 3
-		if config.LogMaxFiles != 0 {
-			_maxfiles = config.LogMaxFiles
-		}
-		_maxage := 28
-		if config.LogMaxAge != 0 {
-			_maxage = config.LogMaxAge
-		}
-		_compress := true
-		if config.CompressLogs != nil {
-			_compress = *config.CompressLogs
-		}
-
-		LogOutput := &lumberjack.Logger{
-			Filename:   logFile,
-			MaxSize:    _maxsize, //megabytes
-			MaxBackups: _maxfiles,
-			MaxAge:     _maxage,   //days
-			Compress:   _compress, //disabled by default
-		}
-		clog.SetOutput(LogOutput)
+	// The logger that will be used by handlers
+	clog, logFile, err := newGinLogger(config)
+	if err != nil {
+		return nil, err
 	}
 
 	gin.DefaultErrorWriter = clog.WriterLevel(log.ErrorLevel)
