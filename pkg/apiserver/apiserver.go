@@ -15,7 +15,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-co-op/gocron"
-	"github.com/golang-jwt/jwt/v4"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -23,7 +22,6 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
-	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -225,9 +223,10 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		}
 
 		log.Infof("CAPI manager configured successfully")
-		isMachineEnrolled = isEnrolled(apiClient.apiClient)
 		controller.AlertsAddChan = apiClient.AlertsAddChan
-		if isMachineEnrolled {
+		if apiClient.apiClient.IsEnrolled() {
+			isMachineEnrolled = true
+
 			log.Infof("Machine is enrolled in the console, Loading PAPI Client")
 			papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
 			if err != nil {
@@ -260,21 +259,6 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		consoleConfig:  config.ConsoleConfig,
 		isEnrolled:     isMachineEnrolled,
 	}, nil
-}
-
-func isEnrolled(client *apiclient.ApiClient) bool {
-	apiHTTPClient := client.GetClient()
-	jwtTransport := apiHTTPClient.Transport.(*apiclient.JWTTransport)
-	tokenStr := jwtTransport.Token
-
-	token, _ := jwt.Parse(tokenStr, nil)
-	if token == nil {
-		return false
-	}
-	claims := token.Claims.(jwt.MapClaims)
-	_, ok := claims["organization_id"]
-
-	return ok
 }
 
 func (s *APIServer) Router() (*gin.Engine, error) {

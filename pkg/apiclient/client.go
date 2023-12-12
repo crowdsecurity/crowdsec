@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/golang-jwt/jwt/v4"
+
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
@@ -41,6 +43,21 @@ type ApiClient struct {
 
 func (a *ApiClient) GetClient() *http.Client {
 	return a.client
+}
+
+func (a *ApiClient) IsEnrolled() bool {
+	jwtTransport := a.client.Transport.(*JWTTransport)
+	tokenStr := jwtTransport.Token
+
+	token, _ := jwt.Parse(tokenStr, nil)
+	if token == nil {
+		return false
+	}
+
+	claims := token.Claims.(jwt.MapClaims)
+	_, ok := claims["organization_id"]
+
+	return ok
 }
 
 type service struct {
