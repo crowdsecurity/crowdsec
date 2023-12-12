@@ -224,6 +224,30 @@ type TLSCfg struct {
 	CacheExpiration    *time.Duration `yaml:"cache_expiration,omitempty"`
 }
 
+func (t *TLSCfg) GetAuthType() (tls.ClientAuthType, error) {
+	if t.ClientVerification == "" {
+		// sounds like a sane default: verify client cert if given, but don't make it mandatory
+		return tls.VerifyClientCertIfGiven, nil
+	}
+
+	switch t.ClientVerification {
+	case "NoClientCert":
+		return tls.NoClientCert, nil
+	case "RequestClientCert":
+		log.Warn("RequestClientCert is insecure, please use VerifyClientCertIfGiven or RequireAndVerifyClientCert instead")
+		return tls.RequestClientCert, nil
+	case "RequireAnyClientCert":
+		log.Warn("RequireAnyClientCert is insecure, please use VerifyClientCertIfGiven or RequireAndVerifyClientCert instead")
+		return tls.RequireAnyClientCert, nil
+	case "VerifyClientCertIfGiven":
+		return tls.VerifyClientCertIfGiven, nil
+	case "RequireAndVerifyClientCert":
+		return tls.RequireAndVerifyClientCert, nil
+	default:
+		return 0, fmt.Errorf("unknown TLS client_verification value: %s", t.ClientVerification)
+	}
+}
+
 func (c *Config) LoadAPIServer() error {
 	if c.DisableAPI {
 		log.Warning("crowdsec local API is disabled from flag")

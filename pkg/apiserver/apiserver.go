@@ -281,20 +281,14 @@ func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
 	var caCert []byte
 	var err error
 	var caCertPool *x509.CertPool
-	var clientAuthType tls.ClientAuthType
 
 	if s.TLS == nil {
 		return &tls.Config{}, nil
 	}
 
-	if s.TLS.ClientVerification == "" {
-		//sounds like a sane default : verify client cert if given, but don't make it mandatory
-		clientAuthType = tls.VerifyClientCertIfGiven
-	} else {
-		clientAuthType, err = getTLSAuthType(s.TLS.ClientVerification)
-		if err != nil {
-			return nil, err
-		}
+	clientAuthType, err := s.TLS.GetAuthType()
+	if err != nil {
+		return nil, err
 	}
 
 	if s.TLS.CACertPath != "" {
