@@ -107,16 +107,18 @@ func getAgents(out io.Writer, dbClient *database.Client) error {
 	if err != nil {
 		return fmt.Errorf("unable to list machines: %s", err)
 	}
-	if csConfig.Cscli.Output == "human" {
+
+	switch csConfig.Cscli.Output {
+	case "human":
 		getAgentsTable(out, machines)
-	} else if csConfig.Cscli.Output == "json" {
+	case "json":
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
 		if err := enc.Encode(machines); err != nil {
 			return fmt.Errorf("failed to marshal")
 		}
 		return nil
-	} else if csConfig.Cscli.Output == "raw" {
+	case "raw":
 		csvwriter := csv.NewWriter(out)
 		err := csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version", "auth_type", "last_heartbeat"})
 		if err != nil {
@@ -136,8 +138,8 @@ func getAgents(out io.Writer, dbClient *database.Client) error {
 			}
 		}
 		csvwriter.Flush()
-	} else {
-		log.Errorf("unknown output '%s'", csConfig.Cscli.Output)
+	default:
+		return fmt.Errorf("unknown output '%s'", csConfig.Cscli.Output)
 	}
 	return nil
 }
@@ -280,6 +282,7 @@ func (cli cliMachines) add(cmd *cobra.Command, args []string) error {
 		credFile := csConfig.API.Client.CredentialsFilePath
 		// use the default only if the file does not exist
 		_, err := os.Stat(credFile)
+
 		switch {
 		case os.IsNotExist(err) || force:
 			dumpFile = csConfig.API.Client.CredentialsFilePath
