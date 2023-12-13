@@ -37,6 +37,7 @@ var (
 	_ plugintypes.BodyProcessor = &rawBodyProcessor{}
 )
 
+//nolint:gochecknoinits //Coraza recommends to use init() for registering plugins
 func init() {
 	plugins.RegisterBodyProcessor("raw", func() plugintypes.BodyProcessor {
 		return &rawBodyProcessor{}
