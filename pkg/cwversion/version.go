@@ -26,9 +26,18 @@ const (
 	Constraint_acquis   = ">= 1.0, < 2.0"
 )
 
+func versionWithTag() string {
+	ret := version.Version
+
+	if !strings.HasSuffix(ret, version.Tag) {
+		ret += fmt.Sprintf("-%s", version.Tag)
+	}
+
+	return ret
+}
+
 func ShowStr() string {
-	ret := ""
-	ret += fmt.Sprintf("version: %s-%s\n", version.Version, version.Tag)
+	ret := fmt.Sprintf("version: %s", versionWithTag())
 	ret += fmt.Sprintf("Codename: %s\n", Codename)
 	ret += fmt.Sprintf("BuildDate: %s\n", version.BuildDate)
 	ret += fmt.Sprintf("GoVersion: %s\n", version.GoVersion)
@@ -38,7 +47,7 @@ func ShowStr() string {
 }
 
 func Show() {
-	log.Printf("version: %s-%s", version.Version, version.Tag)
+	log.Printf("version: %s", versionWithTag())
 	log.Printf("Codename: %s", Codename)
 	log.Printf("BuildDate: %s", version.BuildDate)
 	log.Printf("GoVersion: %s", version.GoVersion)
