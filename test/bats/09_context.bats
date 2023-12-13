@@ -62,7 +62,8 @@ teardown() {
 @test "context file is good" {
     echo '{"source_ip":["evt.Parsed.source_ip"]}' > "$CONTEXT_YAML"
     rune -0 "$CROWDSEC" -t --debug
-    assert_stderr --partial 'console context to send: {"source_ip":["evt.Parsed.source_ip"]}'
+    # the log content may have quotes escaped or not, depending on tty detection
+    assert_stderr --regexp 'console context to send: .*source_ip.*evt.Parsed.source_ip'
 }
 
 @test "context file is from hub (local item)" {
@@ -71,7 +72,7 @@ teardown() {
     echo '{"context":{"source_ip":["evt.Parsed.source_ip"]}}' > "$CONFIG_DIR/contexts/foobar.yaml"
     rune -0 "$CROWDSEC" -t --trace
     assert_stderr --partial "loading console context from $CONFIG_DIR/contexts/foobar.yaml"
-    assert_stderr --partial 'console context to send: {"source_ip":["evt.Parsed.source_ip"]}'
+    assert_stderr --regexp 'console context to send: .*source_ip.*evt.Parsed.source_ip'
 }
 
 @test "merge multiple contexts" {
@@ -81,7 +82,7 @@ teardown() {
     rune -0 "$CROWDSEC" -t --trace
     assert_stderr --partial "loading console context from $CONFIG_DIR/contexts/one.yaml"
     assert_stderr --partial "loading console context from $CONFIG_DIR/contexts/two.yaml"
-    assert_stderr --partial 'console context to send: {"one":["evt.Parsed.source_ip"],"two":["evt.Parsed.source_ip"]}'
+    assert_stderr --regexp 'console context to send: .*one.*evt.Parsed.source_ip.*two.*evt.Parsed.source_ip'
 }
 
 @test "merge contexts from hub and context.yaml file" {
@@ -91,5 +92,5 @@ teardown() {
     rune -0 "$CROWDSEC" -t --trace
     assert_stderr --partial "loading console context from $CONFIG_DIR/contexts/one.yaml"
     assert_stderr --partial "loading console context from $CONFIG_DIR/console/context.yaml"
-    assert_stderr --partial 'console context to send: {"one":["evt.Parsed.source_ip","evt.Parsed.source_ip_2"]}'
+    assert_stderr --regexp 'console context to send: .*one.*evt.Parsed.source_ip.*evt.Parsed.source_ip_2'
 }

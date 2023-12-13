@@ -4,8 +4,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func NewScenarioCLI() *itemCLI {
-	return &itemCLI{
+func NewCLIScenario() *cliItem {
+	return &cliItem{
 		name:      cwhub.SCENARIOS,
 		singular:  "scenario",
 		oneOrMore: "scenario(s)",

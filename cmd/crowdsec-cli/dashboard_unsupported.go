@@ -9,8 +9,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewDashboardCmd() *cobra.Command {
-	var cmdDashboard = &cobra.Command{
+type cliDashboard struct{}
+
+func NewCLIDashboard() *cliDashboard {
+	return &cliDashboard{}
+}
+
+func (cli cliDashboard) NewCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "dashboard",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -18,5 +24,5 @@ func NewDashboardCmd() *cobra.Command {
 		},
 	}
 
-	return cmdDashboard
+	return cmd
 }

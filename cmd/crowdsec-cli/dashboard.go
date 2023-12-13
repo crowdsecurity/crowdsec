@@ -43,9 +43,15 @@ var (
 	// information needed to set up a random password on user's behalf
 )
 
-func NewDashboardCmd() *cobra.Command {
+type cliDashboard struct{}
+
+func NewCLIDashboard() *cliDashboard {
+	return &cliDashboard{}
+}
+
+func (cli cliDashboard) NewCommand() *cobra.Command {
 	/* ---- UPDATE COMMAND */
-	var cmdDashboard = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "dashboard [command]",
 		Short: "Manage your metabase dashboard container [requires local API]",
 		Long: `Install/Start/Stop/Remove a metabase container exposing dashboard and metrics.
@@ -93,19 +99,19 @@ cscli dashboard remove
 		},
 	}
 
-	cmdDashboard.AddCommand(NewDashboardSetupCmd())
-	cmdDashboard.AddCommand(NewDashboardStartCmd())
-	cmdDashboard.AddCommand(NewDashboardStopCmd())
-	cmdDashboard.AddCommand(NewDashboardShowPasswordCmd())
-	cmdDashboard.AddCommand(NewDashboardRemoveCmd())
+	cmd.AddCommand(cli.NewSetupCmd())
+	cmd.AddCommand(cli.NewStartCmd())
+	cmd.AddCommand(cli.NewStopCmd())
+	cmd.AddCommand(cli.NewShowPasswordCmd())
+	cmd.AddCommand(cli.NewRemoveCmd())
 
-	return cmdDashboard
+	return cmd
 }
 
-func NewDashboardSetupCmd() *cobra.Command {
+func (cli cliDashboard) NewSetupCmd() *cobra.Command {
 	var force bool
 
-	var cmdDashSetup = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:               "setup",
 		Short:             "Setup a metabase container.",
 		Long:              `Perform a metabase docker setup, download standard dashboards, create a fresh user and start the container`,
@@ -158,20 +164,20 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			return nil
 		},
 	}
-	cmdDashSetup.Flags().BoolVarP(&force, "force", "f", false, "Force setup : override existing files")
-	cmdDashSetup.Flags().StringVarP(&metabaseDbPath, "dir", "d", "", "Shared directory with metabase container")
-	cmdDashSetup.Flags().StringVarP(&metabaseListenAddress, "listen", "l", metabaseListenAddress, "Listen address of container")
-	cmdDashSetup.Flags().StringVar(&metabaseImage, "metabase-image", metabaseImage, "Metabase image to use")
-	cmdDashSetup.Flags().StringVarP(&metabaseListenPort, "port", "p", metabaseListenPort, "Listen port of container")
-	cmdDashSetup.Flags().BoolVarP(&forceYes, "yes", "y", false, "force  yes")
-	//cmdDashSetup.Flags().StringVarP(&metabaseUser, "user", "u", "crowdsec@crowdsec.net", "metabase user")
-	cmdDashSetup.Flags().StringVar(&metabasePassword, "password", "", "metabase password")
+	cmd.Flags().BoolVarP(&force, "force", "f", false, "Force setup : override existing files")
+	cmd.Flags().StringVarP(&metabaseDbPath, "dir", "d", "", "Shared directory with metabase container")
+	cmd.Flags().StringVarP(&metabaseListenAddress, "listen", "l", metabaseListenAddress, "Listen address of container")
+	cmd.Flags().StringVar(&metabaseImage, "metabase-image", metabaseImage, "Metabase image to use")
+	cmd.Flags().StringVarP(&metabaseListenPort, "port", "p", metabaseListenPort, "Listen port of container")
+	cmd.Flags().BoolVarP(&forceYes, "yes", "y", false, "force  yes")
+	//cmd.Flags().StringVarP(&metabaseUser, "user", "u", "crowdsec@crowdsec.net", "metabase user")
+	cmd.Flags().StringVar(&metabasePassword, "password", "", "metabase password")
 
-	return cmdDashSetup
+	return cmd
 }
 
-func NewDashboardStartCmd() *cobra.Command {
-	var cmdDashStart = &cobra.Command{
+func (cli cliDashboard) NewStartCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "start",
 		Short:             "Start the metabase container.",
 		Long:              `Stats the metabase container using docker.`,
@@ -194,12 +200,12 @@ func NewDashboardStartCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmdDashStart.Flags().BoolVarP(&forceYes, "yes", "y", false, "force  yes")
-	return cmdDashStart
+	cmd.Flags().BoolVarP(&forceYes, "yes", "y", false, "force  yes")
+	return cmd
 }
 
-func NewDashboardStopCmd() *cobra.Command {
-	var cmdDashStop = &cobra.Command{
+func (cli cliDashboard) NewStopCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "stop",
 		Short:             "Stops the metabase container.",
 		Long:              `Stops the metabase container using docker.`,
@@ -212,11 +218,11 @@ func NewDashboardStopCmd() *cobra.Command {
 			return nil
 		},
 	}
-	return cmdDashStop
+	return cmd
 }
 
-func NewDashboardShowPasswordCmd() *cobra.Command {
-	var cmdDashShowPassword = &cobra.Command{Use: "show-password",
+func (cli cliDashboard) NewShowPasswordCmd() *cobra.Command {
+	cmd := &cobra.Command{Use: "show-password",
 		Short:             "displays password of metabase.",
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
@@ -229,13 +235,13 @@ func NewDashboardShowPasswordCmd() *cobra.Command {
 			return nil
 		},
 	}
-	return cmdDashShowPassword
+	return cmd
 }
 
-func NewDashboardRemoveCmd() *cobra.Command {
+func (cli cliDashboard) NewRemoveCmd() *cobra.Command {
 	var force bool
 
-	var cmdDashRemove = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:               "remove",
 		Short:             "removes the metabase container.",
 		Long:              `removes the metabase container using docker.`,
@@ -300,17 +306,19 @@ cscli dashboard remove --force
 			return nil
 		},
 	}
-	cmdDashRemove.Flags().BoolVarP(&force, "force", "f", false, "Remove also the metabase image")
-	cmdDashRemove.Flags().BoolVarP(&forceYes, "yes", "y", false, "force  yes")
+	cmd.Flags().BoolVarP(&force, "force", "f", false, "Remove also the metabase image")
+	cmd.Flags().BoolVarP(&forceYes, "yes", "y", false, "force  yes")
 
-	return cmdDashRemove
+	return cmd
 }
 
 func passwordIsValid(password string) bool {
 	hasDigit := false
+
 	for _, j := range password {
 		if unicode.IsDigit(j) {
 			hasDigit = true
+
 			break
 		}
 	}
@@ -319,7 +327,6 @@ func passwordIsValid(password string) bool {
 		return false
 	}
 	return true
-
 }
 
 func checkSystemMemory(forceYes *bool) error {

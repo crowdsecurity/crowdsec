@@ -20,7 +20,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
@@ -189,11 +188,11 @@ Disable given information push to the central API.`,
 			case "json":
 				c := csConfig.API.Server.ConsoleConfig
 				out := map[string](*bool){
-					csconfig.SEND_MANUAL_SCENARIOS: c.ShareManualDecisions,
-					csconfig.SEND_CUSTOM_SCENARIOS: c.ShareCustomScenarios,
+					csconfig.SEND_MANUAL_SCENARIOS:  c.ShareManualDecisions,
+					csconfig.SEND_CUSTOM_SCENARIOS:  c.ShareCustomScenarios,
 					csconfig.SEND_TAINTED_SCENARIOS: c.ShareTaintedScenarios,
-					csconfig.SEND_CONTEXT: c.ShareContext,
-					csconfig.CONSOLE_MANAGEMENT: c.ConsoleManagement,
+					csconfig.SEND_CONTEXT:           c.ShareContext,
+					csconfig.CONSOLE_MANAGEMENT:     c.ConsoleManagement,
 				}
 				data, err := json.MarshalIndent(out, "", "  ")
 				if err != nil {
@@ -241,7 +240,7 @@ func dumpConsoleConfig(c *csconfig.LocalApiServerCfg) error {
 		log.Debugf("Empty console_path, defaulting to %s", c.ConsoleConfigPath)
 	}
 
-	if err := os.WriteFile(c.ConsoleConfigPath, out, 0600); err != nil {
+	if err := os.WriteFile(c.ConsoleConfigPath, out, 0o600); err != nil {
 		return fmt.Errorf("while dumping console config to %s: %w", c.ConsoleConfigPath, err)
 	}
 
@@ -252,9 +251,6 @@ func SetConsoleOpts(args []string, wanted bool) error {
 	for _, arg := range args {
 		switch arg {
 		case csconfig.CONSOLE_MANAGEMENT:
-			if !fflag.PapiClient.IsEnabled() {
-				continue
-			}
 			/*for each flag check if it's already set before setting it*/
 			if csConfig.API.Server.ConsoleConfig.ConsoleManagement != nil {
 				if *csConfig.API.Server.ConsoleConfig.ConsoleManagement == wanted {
@@ -282,7 +278,7 @@ func SetConsoleOpts(args []string, wanted bool) error {
 						return fmt.Errorf("cannot marshal credentials: %s", err)
 					}
 					log.Infof("Updating credentials file: %s", csConfig.API.Server.OnlineClient.CredentialsFilePath)
-					err = os.WriteFile(csConfig.API.Server.OnlineClient.CredentialsFilePath, fileContent, 0600)
+					err = os.WriteFile(csConfig.API.Server.OnlineClient.CredentialsFilePath, fileContent, 0o600)
 					if err != nil {
 						return fmt.Errorf("cannot write credentials file: %s", err)
 					}

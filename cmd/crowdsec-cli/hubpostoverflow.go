@@ -4,8 +4,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func NewPostOverflowCLI() *itemCLI {
-	return &itemCLI{
+func NewCLIPostOverflow() *cliItem {
+	return &cliItem{
 		name:      cwhub.POSTOVERFLOWS,
 		singular:  "postoverflow",
 		oneOrMore: "postoverflow(s)",

@@ -54,10 +54,18 @@ remove_init_data() {
 
 # we need a separate function for initializing config when testing package
 # because we want to test the configuration as well
+config_prepare() {
+    # remove trailing slash from CONFIG_DIR
+    # since it's assumed to be missing during the tests
+    yq e -i '
+        .config_paths.config_dir |= sub("/$", "")
+    ' "${CONFIG_DIR}/config.yaml"
+}
 
 make_init_data() {
     ./bin/assert-crowdsec-not-running || die "Cannot create fixture data."
 
+    config_prepare
     ./instance-db config-yaml
     ./instance-db setup
 

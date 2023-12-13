@@ -13,8 +13,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func NewAppsecConfigCLI() *itemCLI {
-	return &itemCLI{
+func NewCLIAppsecConfig() *cliItem {
+	return &cliItem{
 		name:      cwhub.APPSEC_CONFIGS,
 		singular:  "appsec-config",
 		oneOrMore: "appsec-config(s)",
@@ -46,7 +46,7 @@ cscli appsec-configs list crowdsecurity/vpatch`,
 	}
 }
 
-func NewAppsecRuleCLI() *itemCLI {
+func NewCLIAppsecRule() *cliItem {
 	inspectDetail := func(item *cwhub.Item) error {
 		appsecRule := appsec.AppsecCollectionConfig{}
 		yamlContent, err := os.ReadFile(item.State.LocalPath)
@@ -71,7 +71,7 @@ func NewAppsecRuleCLI() *itemCLI {
 		return nil
 	}
 
-	return &itemCLI{
+	return &cliItem{
 		name:      "appsec-rules",
 		singular:  "appsec-rule",
 		oneOrMore: "appsec-rule(s)",

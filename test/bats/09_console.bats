@@ -72,9 +72,8 @@ setup() {
     assert_stderr --partial "manual already set to true"
     assert_stderr --partial "tainted already set to true"
     assert_stderr --partial "context already set to true"
-    assert_stderr --partial "All features have been enabled successfully"
-    CROWDSEC_FEATURE_PAPI_CLIENT=true rune -0 cscli console enable --all --debug
     assert_stderr --partial "console_management set to true"
+    assert_stderr --partial "All features have been enabled successfully"
     rune -1 cscli console enable tralala
     assert_stderr --partial "unknown flag tralala"
 }
@@ -94,9 +93,8 @@ setup() {
     assert_stderr --partial "manual already set to false"
     assert_stderr --partial "tainted already set to false"
     assert_stderr --partial "context already set to false"
-    assert_stderr --partial "All features have been disabled"
-    CROWDSEC_FEATURE_PAPI_CLIENT=true rune -0 cscli console disable --all --debug
     assert_stderr --partial "console_management already set to false"
+    assert_stderr --partial "All features have been disabled"
     rune -1 cscli console disable tralala
     assert_stderr --partial "unknown flag tralala"
 }

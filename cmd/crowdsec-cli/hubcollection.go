@@ -4,8 +4,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func NewCollectionCLI() *itemCLI {
-	return &itemCLI{
+func NewCLICollection() *cliItem {
+	return &cliItem{
 		name:      cwhub.COLLECTIONS,
 		singular:  "collection",
 		oneOrMore: "collection(s)",
