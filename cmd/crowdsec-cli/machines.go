@@ -8,7 +8,6 @@ import (
 	"io"
 	"math/big"
 	"os"
-	"slices"
 	"strings"
 	"time"
 
@@ -19,15 +18,15 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
+	"slices"
 
 	"github.com/crowdsecurity/machineid"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 const passwordLength = 64
@@ -63,9 +62,9 @@ func generateIDPrefix() (string, error) {
 	}
 	log.Debugf("failed to get machine-id with usual files: %s", err)
 
-	bId, err := uuid.NewRandom()
+	bID, err := uuid.NewRandom()
 	if err == nil {
-		return bId.String(), nil
+		return bID.String(), nil
 	}
 	return "", fmt.Errorf("generating machine id: %w", err)
 }
@@ -142,7 +141,7 @@ func getAgents(out io.Writer, dbClient *database.Client) error {
 	return nil
 }
 
-type cliMachines struct {}
+type cliMachines struct{}
 
 func NewCLIMachines() *cliMachines {
 	return &cliMachines{}
@@ -160,7 +159,7 @@ Note: This command requires database direct access, so is intended to be run on 
 		Aliases:           []string{"machine"},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			var err error
-			if err := require.LAPI(csConfig); err != nil {
+			if err = require.LAPI(csConfig); err != nil {
 				return err
 			}
 			dbClient, err = database.NewClient(csConfig.DbConfig)
@@ -279,7 +278,7 @@ func (cli cliMachines) add(cmd *cobra.Command, args []string) error {
 	if dumpFile == "" && csConfig.API.Client != nil && csConfig.API.Client.CredentialsFilePath != "" {
 		credFile := csConfig.API.Client.CredentialsFilePath
 		// use the default only if the file does not exist
-		_, err := os.Stat(credFile)
+		_, err = os.Stat(credFile)
 
 		switch {
 		case os.IsNotExist(err) || force:
