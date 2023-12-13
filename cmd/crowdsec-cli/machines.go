@@ -125,11 +125,9 @@ func getAgents(out io.Writer, dbClient *database.Client) error {
 			return fmt.Errorf("failed to write header: %s", err)
 		}
 		for _, m := range machines {
-			var validated string
+			validated := "false"
 			if m.IsValidated {
 				validated = "true"
-			} else {
-				validated = "false"
 			}
 			hb, _ := getLastHeartbeat(m)
 			err := csvwriter.Write([]string{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, hb})
