@@ -312,7 +312,7 @@ func (cli cliMachines) add(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("unable to create machine: %s", err)
 	}
-	log.Infof("Machine '%s' successfully added to the local API", machineID)
+	fmt.Printf("Machine '%s' successfully added to the local API.\n", machineID)
 
 	if apiURL == "" {
 		if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil && csConfig.API.Client.Credentials.URL != "" {
@@ -337,7 +337,7 @@ func (cli cliMachines) add(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("write api credentials in '%s' failed: %s", dumpFile, err)
 		}
-		log.Printf("API credentials written to '%s'", dumpFile)
+		fmt.Printf("API credentials written to '%s'.\n", dumpFile)
 	} else {
 		fmt.Printf("%s\n", string(apiConfigDump))
 	}
