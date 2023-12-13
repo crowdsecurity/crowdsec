@@ -34,13 +34,13 @@ teardown() {
     rune -0 jq -r '.msg' <(stderr)
     assert_output --partial 'already exists: please remove it, use "--force" or specify a different file with "-f"'
     rune -0 cscli machines add local -a --force
-    assert_stderr --partial "Machine 'local' successfully added to the local API"
+    assert_output --partial "Machine 'local' successfully added to the local API."
 }
 
 @test "add a new machine and delete it" {
     rune -0 cscli machines add -a -f /dev/null CiTestMachine -o human
-    assert_stderr --partial "Machine 'CiTestMachine' successfully added to the local API"
-    assert_stderr --partial "API credentials written to '/dev/null'"
+    assert_output --partial "Machine 'CiTestMachine' successfully added to the local API"
+    assert_output --partial "API credentials written to '/dev/null'"
 
     # we now have two machines
     rune -0 cscli machines list -o json

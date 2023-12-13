@@ -1,5 +1,5 @@
 if [ "$1" = "remove" ]; then
-   cscli dashboard remove -f -y || true
+   cscli dashboard remove -f -y --error || echo "Ignore the above error if you never installed the local dashboard."
    systemctl stop crowdsec
    systemctl disable crowdsec
 fi
