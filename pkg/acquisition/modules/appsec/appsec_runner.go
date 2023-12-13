@@ -13,6 +13,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
+
+	_ "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/appsec/bodyprocessors"
 )
 
 // that's the runtime structure of the Application security engine as seen from the acquis
@@ -190,6 +192,9 @@ func (r *AppsecRunner) processRequest(tx appsec.ExtendedTransaction, request *ap
 }
 
 func (r *AppsecRunner) ProcessInBandRules(request *appsec.ParsedRequest) error {
+	if len(r.AppsecRuntime.InBandRules) == 0 {
+		return nil
+	}
 	tx := appsec.NewExtendedTransaction(r.AppsecInbandEngine, request.UUID)
 	r.AppsecRuntime.InBandTx = tx
 	err := r.processRequest(tx, request)
@@ -197,7 +202,9 @@ func (r *AppsecRunner) ProcessInBandRules(request *appsec.ParsedRequest) error {
 }
 
 func (r *AppsecRunner) ProcessOutOfBandRules(request *appsec.ParsedRequest) error {
-	r.logger.Debugf("Processing out of band rules")
+	if len(r.AppsecRuntime.OutOfBandRules) == 0 {
+		return nil
+	}
 	tx := appsec.NewExtendedTransaction(r.AppsecOutbandEngine, request.UUID)
 	r.AppsecRuntime.OutOfBandTx = tx
 	err := r.processRequest(tx, request)

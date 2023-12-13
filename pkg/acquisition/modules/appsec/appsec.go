@@ -337,7 +337,7 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	// parse the request only once
 	parsedRequest, err := appsec.NewParsedRequestFromRequest(r)
 	if err != nil {
-		log.Errorf("%s", err)
+		w.logger.Errorf("%s", err)
 		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -358,7 +358,7 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	appsecResponse := w.AppsecRuntime.GenerateResponse(response, logger)
-
+	logger.Debugf("Response: %+v", appsecResponse)
 	rw.WriteHeader(appsecResponse.HTTPStatus)
 	body, err := json.Marshal(BodyResponse{Action: appsecResponse.Action})
 	if err != nil {

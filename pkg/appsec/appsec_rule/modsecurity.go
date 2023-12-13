@@ -15,10 +15,12 @@ var zonesMap map[string]string = map[string]string{
 	"ARGS_NAMES":      "ARGS_GET_NAMES",
 	"BODY_ARGS":       "ARGS_POST",
 	"BODY_ARGS_NAMES": "ARGS_POST_NAMES",
+	"HEADERS_NAMES":   "REQUEST_HEADERS_NAMES",
 	"HEADERS":         "REQUEST_HEADERS",
 	"METHOD":          "REQUEST_METHOD",
 	"PROTOCOL":        "REQUEST_PROTOCOL",
 	"URI":             "REQUEST_URI",
+	"RAW_BODY":        "REQUEST_BODY",
 }
 
 var transformMap map[string]string = map[string]string{
@@ -31,7 +33,7 @@ var transformMap map[string]string = map[string]string{
 
 var matchMap map[string]string = map[string]string{
 	"regex":           "@rx",
-	"equal":           "@streq",
+	"equals":          "@streq",
 	"startsWith":      "@beginsWith",
 	"endsWith":        "@endsWith",
 	"contains":        "@contains",
@@ -39,8 +41,8 @@ var matchMap map[string]string = map[string]string{
 	"libinjectionXSS": "@detectXSS",
 	"gt":              "@gt",
 	"lt":              "@lt",
-	"ge":              "@ge",
-	"le":              "@le",
+	"gte":             "@ge",
+	"lte":             "@le",
 }
 
 var bodyTypeMatch map[string]string = map[string]string{

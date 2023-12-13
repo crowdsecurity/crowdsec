@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/enescakir/emoji"
@@ -100,6 +101,10 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				return fmt.Errorf("test '%s' already exists in '%s', exiting", testName, testPath)
 			}
 
+			if isAppsecTest {
+				logType = "appsec"
+			}
+
 			if logType == "" {
 				return fmt.Errorf("please provide a type (--type) for the test")
 			}
@@ -115,17 +120,24 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				//create empty nuclei template file
 				nucleiFileName := fmt.Sprintf("%s.yaml", testName)
 				nucleiFilePath := filepath.Join(testPath, nucleiFileName)
-				nucleiFile, err := os.Create(nucleiFilePath)
+				nucleiFile, err := os.OpenFile(nucleiFilePath, os.O_RDWR|os.O_CREATE, 0755)
 				if err != nil {
 					return err
 				}
+
+				ntpl := template.Must(template.New("nuclei").Parse(hubtest.TemplateNucleiFile))
+				if ntpl == nil {
+					return fmt.Errorf("unable to parse nuclei template")
+				}
+				ntpl.ExecuteTemplate(nucleiFile, "nuclei", struct{ TestName string }{TestName: testName})
 				nucleiFile.Close()
-				configFileData.AppsecRules = []string{"your_rule_here.yaml"}
+				configFileData.AppsecRules = []string{"./appsec-rules/<author>/your_rule_here.yaml"}
 				configFileData.NucleiTemplate = nucleiFileName
 				fmt.Println()
 				fmt.Printf("  Test name                   :  %s\n", testName)
 				fmt.Printf("  Test path                   :  %s\n", testPath)
-				fmt.Printf("  Nuclei Template             :  %s\n", nucleiFileName)
+				fmt.Printf("  Config File                 :  %s\n", configFilePath)
+				fmt.Printf("  Nuclei Template             :  %s\n", nucleiFilePath)
 			} else {
 				// create empty log file
 				logFileName := fmt.Sprintf("%s.log", testName)

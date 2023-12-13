@@ -32,6 +32,27 @@ const (
 	templateProfileFile       = "template_profiles.yaml"
 	templateAcquisFile        = "template_acquis.yaml"
 	templateAppsecProfilePath = "template_appsec-profile.yaml"
+	TemplateNucleiFile        = `id: {{.TestName}}
+info:
+  name: {{.TestName}}
+  author: crowdsec
+  severity: info
+  description: {{.TestName}} testing
+  tags: appsec-testing
+http:
+#this is a dummy request, edit the request(s) to match your needs
+  - raw:
+    - |
+      GET /test HTTP/1.1
+      Host: {{"{{"}}Hostname{{"}}"}}
+
+    cookie-reuse: true
+#test will fail because we won't match http status 
+    matchers:
+    - type: status
+      status:
+       - 403
+`
 )
 
 func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecTest bool) (HubTest, error) {
