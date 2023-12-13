@@ -6,13 +6,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"slices"
-
 	"github.com/fatih/color"
 	cc "github.com/ivanpirog/coloredcobra"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
+	"slices"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
@@ -36,6 +35,7 @@ var flagBranch = ""
 
 func initConfig() {
 	var err error
+
 	if trace_lvl {
 		log.SetLevel(log.TraceLevel)
 	} else if dbg_lvl {
@@ -70,6 +70,7 @@ func initConfig() {
 
 	if OutputFormat != "" {
 		csConfig.Cscli.Output = OutputFormat
+
 		if OutputFormat != "json" && OutputFormat != "raw" && OutputFormat != "human" {
 			log.Fatalf("output format %s unknown", OutputFormat)
 		}
@@ -86,12 +87,14 @@ func initConfig() {
 
 	if OutputColor != "" {
 		csConfig.Cscli.Color = OutputColor
+
 		if OutputColor != "yes" && OutputColor != "no" && OutputColor != "auto" {
 			log.Fatalf("output color %s unknown", OutputColor)
 		}
 	}
 }
 
+// list of valid subcommands for the shell completion
 var validArgs = []string{
 	"alerts", "appsec-configs", "appsec-rules", "bouncers", "capi", "collections",
 	"completion", "config", "console", "contexts", "dashboard", "decisions", "explain",
@@ -114,14 +117,12 @@ func linkHandler(name string) string {
 	return fmt.Sprintf("/cscli/%s", name)
 }
 
-var (
-	NoNeedConfig = []string{
-		"help",
-		"completion",
-		"version",
-		"hubtest",
-	}
-)
+var NoNeedConfig = []string{
+	"help",
+	"completion",
+	"version",
+	"hubtest",
+}
 
 func main() {
 	// set the formatter asap and worry about level later
@@ -136,7 +137,7 @@ func main() {
 		log.Fatalf("failed to set feature flags from env: %s", err)
 	}
 
-	var rootCmd = &cobra.Command{
+	rootCmd := &cobra.Command{
 		Use:   "cscli",
 		Short: "cscli allows you to manage crowdsec",
 		Long: `cscli is the main command to interact with your crowdsec service, scenarios & db.
@@ -162,30 +163,32 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	})
 	rootCmd.SetOut(color.Output)
 
-	var cmdDocGen = &cobra.Command{
+	cmdDocGen := &cobra.Command{
 		Use:               "doc",
 		Short:             "Generate the documentation in `./doc/`. Directory must exist.",
 		Args:              cobra.ExactArgs(0),
 		Hidden:            true,
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			if err := doc.GenMarkdownTreeCustom(rootCmd, "./doc/", prepender, linkHandler); err != nil {
-				return fmt.Errorf("Failed to generate cobra doc: %s", err)
+				return fmt.Errorf("failed to generate cobra doc: %s", err)
 			}
 			return nil
 		},
 	}
+
 	rootCmd.AddCommand(cmdDocGen)
-	/*usage*/
-	var cmdVersion = &cobra.Command{
+
+	cmdVersion := &cobra.Command{
 		Use:               "version",
 		Short:             "Display version",
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, _ []string) {
 			cwversion.Show()
 		},
 	}
+
 	rootCmd.AddCommand(cmdVersion)
 
 	rootCmd.PersistentFlags().StringVarP(&ConfigFilePath, "config", "c", csconfig.DefaultConfigPath("config.yaml"), "path to crowdsec config file")

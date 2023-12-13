@@ -9,13 +9,13 @@ import (
 	"strings"
 
 	goversion "github.com/hashicorp/go-version"
-	
+
 	"github.com/crowdsecurity/go-cs-lib/version"
 )
 
 var (
-	Codename            string                  // = "SoumSoum"
-	System              = runtime.GOOS          // = "linux"
+	Codename            string         // = "SoumSoum"
+	System              = runtime.GOOS // = "linux"
 	Constraint_parser   = ">= 1.0, <= 2.0"
 	Constraint_scenario = ">= 1.0, < 3.0"
 	Constraint_api      = "v1"
@@ -30,6 +30,7 @@ func ShowStr() string {
 	ret += fmt.Sprintf("BuildDate: %s\n", version.BuildDate)
 	ret += fmt.Sprintf("GoVersion: %s\n", version.GoVersion)
 	ret += fmt.Sprintf("Platform: %s\n", System)
+
 	return ret
 }
 
@@ -53,6 +54,7 @@ func VersionStr() string {
 func VersionStrip() string {
 	version := strings.Split(version.Version, "~")
 	version = strings.Split(version[0], "-")
+
 	return version[0]
 }
 
@@ -61,13 +63,16 @@ func Satisfies(strvers string, constraint string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("failed to parse '%s' : %v", strvers, err)
 	}
+
 	constraints, err := goversion.NewConstraint(constraint)
 	if err != nil {
 		return false, fmt.Errorf("failed to parse constraint '%s'", constraint)
 	}
+
 	if !constraints.Check(vers) {
 		return false, nil
 	}
+
 	return true, nil
 }
 
@@ -85,6 +90,7 @@ func Latest() (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	if _, ok := latest["name"]; !ok {
 		return "", fmt.Errorf("unable to find latest release name from github api: %+v", latest)
 	}
