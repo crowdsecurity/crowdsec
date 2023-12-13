@@ -95,33 +95,33 @@ rm -rf -- "$BACKUP_DIR"
 
 log_info() {
     msg=$1
-    date=$(date +%x:%X)
+    date=$(date "+%Y-%m-%d %H:%M:%S")
     echo -e "${BLUE}INFO${NC}[${date}] crowdsec_wizard: ${msg}"
 }
 
 log_fatal() {
     msg=$1
-    date=$(date +%x:%X)
+    date=$(date "+%Y-%m-%d %H:%M:%S")
     echo -e "${RED}FATA${NC}[${date}] crowdsec_wizard: ${msg}" 1>&2 
     exit 1
 }
 
 log_warn() {
     msg=$1
-    date=$(date +%x:%X)
+    date=$(date "+%Y-%m-%d %H:%M:%S")
     echo -e "${ORANGE}WARN${NC}[${date}] crowdsec_wizard: ${msg}"
 }
 
 log_err() {
     msg=$1
-    date=$(date +%x:%X)
+    date=$(date "+%Y-%m-%d %H:%M:%S")
     echo -e "${RED}ERR${NC}[${date}] crowdsec_wizard: ${msg}" 1>&2
 }
 
 log_dbg() {
     if [[ ${DEBUG_MODE} == "true" ]]; then
         msg=$1
-        date=$(date +%x:%X)
+        date=$(date "+%Y-%m-%d %H:%M:%S")
         echo -e "[${date}][${YELLOW}DBG${NC}] crowdsec_wizard: ${msg}" 1>&2
     fi
 }

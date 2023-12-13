@@ -8,7 +8,6 @@ import (
 	"io"
 	"math/big"
 	"os"
-	"slices"
 	"strings"
 	"time"
 
@@ -18,16 +17,16 @@ import (
 	"github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
+	"slices"
 
 	"github.com/crowdsecurity/machineid"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 const passwordLength = 64
@@ -63,9 +62,9 @@ func generateIDPrefix() (string, error) {
 	}
 	log.Debugf("failed to get machine-id with usual files: %s", err)
 
-	bId, err := uuid.NewRandom()
+	bID, err := uuid.NewRandom()
 	if err == nil {
-		return bId.String(), nil
+		return bID.String(), nil
 	}
 	return "", fmt.Errorf("generating machine id: %w", err)
 }
@@ -107,27 +106,27 @@ func getAgents(out io.Writer, dbClient *database.Client) error {
 	if err != nil {
 		return fmt.Errorf("unable to list machines: %s", err)
 	}
-	if csConfig.Cscli.Output == "human" {
+
+	switch csConfig.Cscli.Output {
+	case "human":
 		getAgentsTable(out, machines)
-	} else if csConfig.Cscli.Output == "json" {
+	case "json":
 		enc := json.NewEncoder(out)
 		enc.SetIndent("", "  ")
 		if err := enc.Encode(machines); err != nil {
 			return fmt.Errorf("failed to marshal")
 		}
 		return nil
-	} else if csConfig.Cscli.Output == "raw" {
+	case "raw":
 		csvwriter := csv.NewWriter(out)
 		err := csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version", "auth_type", "last_heartbeat"})
 		if err != nil {
 			return fmt.Errorf("failed to write header: %s", err)
 		}
 		for _, m := range machines {
-			var validated string
+			validated := "false"
 			if m.IsValidated {
 				validated = "true"
-			} else {
-				validated = "false"
 			}
 			hb, _ := getLastHeartbeat(m)
 			err := csvwriter.Write([]string{m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, hb})
@@ -136,13 +135,13 @@ func getAgents(out io.Writer, dbClient *database.Client) error {
 			}
 		}
 		csvwriter.Flush()
-	} else {
-		log.Errorf("unknown output '%s'", csConfig.Cscli.Output)
+	default:
+		return fmt.Errorf("unknown output '%s'", csConfig.Cscli.Output)
 	}
 	return nil
 }
 
-type cliMachines struct {}
+type cliMachines struct{}
 
 func NewCLIMachines() *cliMachines {
 	return &cliMachines{}
@@ -158,9 +157,9 @@ Note: This command requires database direct access, so is intended to be run on 
 		Example:           `cscli machines [action]`,
 		DisableAutoGenTag: true,
 		Aliases:           []string{"machine"},
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			var err error
-			if err := require.LAPI(csConfig); err != nil {
+			if err = require.LAPI(csConfig); err != nil {
 				return err
 			}
 			dbClient, err = database.NewClient(csConfig.DbConfig)
@@ -188,7 +187,7 @@ func (cli cliMachines) NewListCmd() *cobra.Command {
 		Example:           `cscli machines list`,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			err := getAgents(color.Output, dbClient)
 			if err != nil {
 				return fmt.Errorf("unable to list machines: %s", err)
@@ -279,7 +278,8 @@ func (cli cliMachines) add(cmd *cobra.Command, args []string) error {
 	if dumpFile == "" && csConfig.API.Client != nil && csConfig.API.Client.CredentialsFilePath != "" {
 		credFile := csConfig.API.Client.CredentialsFilePath
 		// use the default only if the file does not exist
-		_, err := os.Stat(credFile)
+		_, err = os.Stat(credFile)
+
 		switch {
 		case os.IsNotExist(err) || force:
 			dumpFile = csConfig.API.Client.CredentialsFilePath
@@ -311,7 +311,7 @@ func (cli cliMachines) add(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("unable to create machine: %s", err)
 	}
-	log.Infof("Machine '%s' successfully added to the local API", machineID)
+	fmt.Printf("Machine '%s' successfully added to the local API.\n", machineID)
 
 	if apiURL == "" {
 		if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil && csConfig.API.Client.Credentials.URL != "" {
@@ -336,7 +336,7 @@ func (cli cliMachines) add(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("write api credentials in '%s' failed: %s", dumpFile, err)
 		}
-		log.Printf("API credentials written to '%s'", dumpFile)
+		fmt.Printf("API credentials written to '%s'.\n", dumpFile)
 	} else {
 		fmt.Printf("%s\n", string(apiConfigDump))
 	}
@@ -352,7 +352,7 @@ func (cli cliMachines) NewDeleteCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"remove"},
 		DisableAutoGenTag: true,
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			machines, err := dbClient.ListMachines()
 			if err != nil {
 				cobra.CompError("unable to list machines " + err.Error())
@@ -371,7 +371,7 @@ func (cli cliMachines) NewDeleteCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli cliMachines) delete(cmd *cobra.Command, args []string) error {
+func (cli cliMachines) delete(_ *cobra.Command, args []string) error {
 	for _, machineID := range args {
 		err := dbClient.DeleteWatcher(machineID)
 		if err != nil {
@@ -395,7 +395,7 @@ cscli machines prune --duration 1h
 cscli machines prune --not-validated-only --force`,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
+		PreRunE: func(cmd *cobra.Command, _ []string) error {
 			dur, _ := cmd.Flags().GetString("duration")
 			var err error
 			parsedDuration, err = time.ParseDuration(fmt.Sprintf("-%s", dur))
@@ -404,7 +404,7 @@ cscli machines prune --not-validated-only --force`,
 			}
 			return nil
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			notValidOnly, _ := cmd.Flags().GetBool("not-validated-only")
 			force, _ := cmd.Flags().GetBool("force")
 			if parsedDuration >= 0-60*time.Second && !notValidOnly {
@@ -472,7 +472,7 @@ func (cli cliMachines) NewValidateCmd() *cobra.Command {
 		Example:           `cscli machines validate "machine_name"`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			machineID := args[0]
 			if err := dbClient.ValidateMachine(machineID); err != nil {
 				return fmt.Errorf("unable to validate machine '%s': %s", machineID, err)
