@@ -334,7 +334,7 @@ teardown() {
     cd "$BATS_TEST_TMPDIR"
     rune -1 cscli doc
     refute_output
-    assert_stderr --regexp 'Failed to generate cobra doc: open doc/.*: no such file or directory'
+    assert_stderr --regexp 'failed to generate cobra doc: open doc/.*: no such file or directory'
 
     mkdir -p doc
     rune -0 cscli doc
