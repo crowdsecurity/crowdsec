@@ -15,7 +15,6 @@ import (
 type HeartBeatService service
 
 func (h *HeartBeatService) Ping(ctx context.Context) (bool, *Response, error) {
-
 	u := fmt.Sprintf("%s/heartbeat", h.client.URLPrefix)
 
 	req, err := h.client.NewRequest(http.MethodGet, u, nil)

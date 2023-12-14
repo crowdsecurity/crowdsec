@@ -2,10 +2,10 @@ package apiserver
 
 import (
 	"context"
-	"slices"
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"slices"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/trace"
@@ -66,6 +66,7 @@ func (a *apic) fetchMachineIDs() ([]string, error) {
 	}
 	// sorted slices are required for the slices.Equal comparison
 	slices.Sort(ret)
+
 	return ret, nil
 }
 
@@ -91,6 +92,7 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 		if count < len(metInts)-1 {
 			count++
 		}
+
 		return metInts[count]
 	}
 
@@ -100,8 +102,10 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 		ids, err := a.fetchMachineIDs()
 		if err != nil {
 			log.Debugf("unable to get machines (%s), will retry", err)
+
 			return
 		}
+
 		machineIDs = ids
 	}
 
@@ -117,16 +121,20 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 		case <-stop:
 			checkTicker.Stop()
 			metTicker.Stop()
+
 			return
 		case <-checkTicker.C:
 			oldIDs := machineIDs
+
 			reloadMachineIDs()
+
 			if !slices.Equal(oldIDs, machineIDs) {
 				log.Infof("capi metrics: machines changed, immediate send")
 				metTicker.Reset(1 * time.Millisecond)
 			}
 		case <-metTicker.C:
 			metTicker.Stop()
+
 			metrics, err := a.GetMetrics()
 			if err != nil {
 				log.Errorf("unable to get metrics (%s)", err)
@@ -134,17 +142,20 @@ func (a *apic) SendMetrics(stop chan (bool)) {
 			// metrics are nil if they could not be retrieved
 			if metrics != nil {
 				log.Info("capi metrics: sending")
+
 				_, _, err = a.apiClient.Metrics.Add(context.Background(), metrics)
 				if err != nil {
 					log.Errorf("capi metrics: failed: %s", err)
 				}
 			}
+
 			metTicker.Reset(nextMetInt())
 		case <-a.metricsTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			checkTicker.Stop()
 			metTicker.Stop()
 			a.pullTomb.Kill(nil)
 			a.pushTomb.Kill(nil)
+
 			return
 		}
 	}

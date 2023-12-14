@@ -15,7 +15,7 @@ setup() {
     load "../lib/setup.sh"
     load "../lib/bats-file/load.bash"
     ./instance-data load
-    ./instance-crowdsec start
+    # don't run crowdsec here, not all tests require a running instance
 }
 
 teardown() {
@@ -204,6 +204,7 @@ teardown() {
 }
 
 @test "cscli lapi status" {
+    rune -0 ./instance-crowdsec start
     rune -0 cscli lapi status
 
     assert_stderr --partial "Loaded credentials from"
@@ -260,6 +261,7 @@ teardown() {
 }
 
 @test "cscli - bad LAPI password" {
+    rune -0 ./instance-crowdsec start
     LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
     config_set "${LOCAL_API_CREDENTIALS}" '.password="meh"'
 
@@ -269,6 +271,7 @@ teardown() {
 }
 
 @test "cscli metrics" {
+    rune -0 ./instance-crowdsec start
     rune -0 cscli lapi status
     rune -0 cscli metrics
     assert_output --partial "Route"
@@ -297,6 +300,7 @@ teardown() {
 }
 
 @test "cscli explain" {
+    rune -0 ./instance-crowdsec start
     line="Sep 19 18:33:22 scw-d95986 sshd[24347]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=1.2.3.4"
 
     rune -0 cscli parsers install crowdsecurity/syslog-logs

@@ -35,8 +35,11 @@ var LapiBouncerHits = prometheus.NewCounterVec(
 	[]string{"bouncer", "route", "method"},
 )
 
-/* keep track of the number of calls (per bouncer) that lead to nil/non-nil responses.
-while it's not exact, it's a good way to know - when you have a rutpure bouncer - what is the rate of ok/ko answers you got from lapi*/
+/*
+	keep track of the number of calls (per bouncer) that lead to nil/non-nil responses.
+
+while it's not exact, it's a good way to know - when you have a rutpure bouncer - what is the rate of ok/ko answers you got from lapi
+*/
 var LapiNilDecisions = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_lapi_decisions_ko_total",

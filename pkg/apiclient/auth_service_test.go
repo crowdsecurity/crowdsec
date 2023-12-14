@@ -35,6 +35,7 @@ func getLoginsForMockErrorCases() map[string]int {
 
 func initBasicMuxMock(t *testing.T, mux *http.ServeMux, path string) {
 	loginsForMockErrorCases := getLoginsForMockErrorCases()
+
 	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
 		buf := new(bytes.Buffer)
@@ -71,7 +72,6 @@ func initBasicMuxMock(t *testing.T, mux *http.ServeMux, path string) {
  * 400, 409, 500 => Error
  */
 func TestWatcherRegister(t *testing.T) {
-
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -79,6 +79,7 @@ func TestWatcherRegister(t *testing.T) {
 	//body: models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password}
 	initBasicMuxMock(t, mux, "/watchers")
 	log.Printf("URL is %s", urlx)
+
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
 		t.Fatalf("parsing api url: %s", apiURL)
@@ -92,16 +93,19 @@ func TestWatcherRegister(t *testing.T) {
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	}
+
 	client, err := RegisterClient(&clientconfig, &http.Client{})
 	if client == nil || err != nil {
 		t.Fatalf("while registering client : %s", err)
 	}
+
 	log.Printf("->%T", client)
 
 	// Testing error handling on Registration (400, 409, 500): should retrieve an error
 	errorCodesToTest := [3]int{http.StatusBadRequest, http.StatusConflict, http.StatusInternalServerError}
 	for _, errorCodeToTest := range errorCodesToTest {
 		clientconfig.MachineID = fmt.Sprintf("login_%d", errorCodeToTest)
+
 		client, err = RegisterClient(&clientconfig, &http.Client{})
 		if client != nil || err == nil {
 			t.Fatalf("The RegisterClient function should have returned an error for the response code %d", errorCodeToTest)
@@ -112,7 +116,6 @@ func TestWatcherRegister(t *testing.T) {
 }
 
 func TestWatcherAuth(t *testing.T) {
-
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -121,6 +124,7 @@ func TestWatcherAuth(t *testing.T) {
 
 	initBasicMuxMock(t, mux, "/watchers/login")
 	log.Printf("URL is %s", urlx)
+
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
 		t.Fatalf("parsing api url: %s", apiURL)
@@ -169,6 +173,7 @@ func TestWatcherAuth(t *testing.T) {
 
 		if err == nil {
 			resp.Response.Body.Close()
+
 			bodyBytes, err := io.ReadAll(resp.Response.Body)
 			if err != nil {
 				t.Fatalf("error while reading body: %s", err.Error())
@@ -176,14 +181,13 @@ func TestWatcherAuth(t *testing.T) {
 
 			log.Printf(string(bodyBytes))
 			t.Fatalf("The AuthenticateWatcher function should have returned an error for the response code %d", errorCodeToTest)
-		} else {
-			log.Printf("The AuthenticateWatcher function handled the error code %d as expected \n\r", errorCodeToTest)
 		}
+
+		log.Printf("The AuthenticateWatcher function handled the error code %d as expected \n\r", errorCodeToTest)
 	}
 }
 
 func TestWatcherUnregister(t *testing.T) {
-
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -192,7 +196,7 @@ func TestWatcherUnregister(t *testing.T) {
 
 	mux.HandleFunc("/watchers", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "DELETE")
-		assert.Equal(t, r.ContentLength, int64(0))
+		assert.Equal(t, int64(0), r.ContentLength)
 		w.WriteHeader(http.StatusOK)
 	})
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
@@ -211,10 +215,12 @@ func TestWatcherUnregister(t *testing.T) {
 	})
 
 	log.Printf("URL is %s", urlx)
+
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
 		t.Fatalf("parsing api url: %s", apiURL)
 	}
+
 	mycfg := &Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
@@ -228,10 +234,12 @@ func TestWatcherUnregister(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new api client: %s", err)
 	}
+
 	_, err = client.Auth.UnregisterWatcher(context.Background())
 	if err != nil {
 		t.Fatalf("while registering client : %s", err)
 	}
+
 	log.Printf("->%T", client)
 }
 
@@ -264,6 +272,7 @@ func TestWatcherEnroll(t *testing.T) {
 		fmt.Fprintf(w, `{"code":200,"expire":"2029-11-30T14:14:24+01:00","token":"toto"}`)
 	})
 	log.Printf("URL is %s", urlx)
+
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
 		t.Fatalf("parsing api url: %s", apiURL)

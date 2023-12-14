@@ -18,7 +18,7 @@ func TestApiAuth(t *testing.T) {
 	mux.HandleFunc("/decisions", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
 		if r.Header.Get("X-Api-Key") == "ixu" {
-			assert.Equal(t, r.URL.RawQuery, "ip=1.2.3.4")
+			assert.Equal(t, "ip=1.2.3.4", r.URL.RawQuery)
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(`null`))
 		} else {
@@ -66,9 +66,11 @@ func TestApiAuth(t *testing.T) {
 	_, resp, err = newcli.Decisions.List(context.Background(), alert)
 
 	log.Infof("--> %s", err)
+
 	if resp.Response.StatusCode != http.StatusForbidden {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
 	}
+
 	assert.Contains(t, err.Error(), "API error: access forbidden")
 	//ko empty token
 	auth = &APIKeyTransport{}
@@ -82,5 +84,4 @@ func TestApiAuth(t *testing.T) {
 
 	log.Infof("--> %s", err)
 	assert.Contains(t, err.Error(), "APIKey is empty")
-
 }

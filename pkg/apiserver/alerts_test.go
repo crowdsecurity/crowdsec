@@ -9,13 +9,13 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/gin-gonic/gin"
-
-	log "github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/assert"
 )
 
 type LAPI struct {
@@ -57,6 +57,7 @@ func (l *LAPI) RecordResponse(verb string, url string, body *strings.Reader, aut
 	if err != nil {
 		l.t.Fatal(err)
 	}
+
 	if authType == "apikey" {
 		req.Header.Add("X-Api-Key", l.bouncerKey)
 	} else if authType == "password" {
@@ -64,7 +65,9 @@ func (l *LAPI) RecordResponse(verb string, url string, body *strings.Reader, aut
 	} else {
 		l.t.Fatal("auth type not supported")
 	}
+
 	l.router.ServeHTTP(w, req)
+
 	return w
 }
 
@@ -78,6 +81,7 @@ func InitMachineTest(t *testing.T) (*gin.Engine, models.WatcherAuthResponse, csc
 	if err != nil {
 		return nil, models.WatcherAuthResponse{}, config, err
 	}
+
 	return router, loginResp, config, nil
 }
 
@@ -150,7 +154,6 @@ func TestCreateAlert(t *testing.T) {
 }
 
 func TestCreateAlertChannels(t *testing.T) {
-
 	apiServer, config, err := NewAPIServer(t)
 	if err != nil {
 		log.Fatalln(err)
@@ -164,18 +167,22 @@ func TestCreateAlertChannels(t *testing.T) {
 	}
 	lapi := LAPI{router: apiServer.router, loginResp: loginResp}
 
-	var pd csplugin.ProfileAlert
-	var wg sync.WaitGroup
+	var (
+		pd csplugin.ProfileAlert
+		wg sync.WaitGroup
+	)
 
 	wg.Add(1)
+
 	go func() {
 		pd = <-apiServer.controller.PluginChannel
+
 		wg.Done()
 	}()
 
 	go lapi.InsertAlertFromFile("./tests/alert_ssh-bf.json")
 	wg.Wait()
-	assert.Equal(t, len(pd.Alert.Decisions), 1)
+	assert.Len(t, pd.Alert.Decisions, 1)
 	apiServer.Close()
 }
 
@@ -345,7 +352,6 @@ func TestAlertListFilters(t *testing.T) {
 	w = lapi.RecordResponse("GET", "/v1/alerts?has_active_decision=ratatqata", emptyBody, "password")
 	assert.Equal(t, 500, w.Code)
 	assert.Equal(t, `{"message":"'ratatqata' is not a boolean: strconv.ParseBool: parsing \"ratatqata\": invalid syntax: unable to parse type"}`, w.Body.String())
-
 }
 
 func TestAlertBulkInsert(t *testing.T) {
@@ -393,7 +399,6 @@ func TestCreateAlertErrors(t *testing.T) {
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", lapi.loginResp.Token+"s"))
 	lapi.router.ServeHTTP(w, req)
 	assert.Equal(t, 401, w.Code)
-
 }
 
 func TestDeleteAlert(t *testing.T) {
@@ -506,5 +511,4 @@ func TestDeleteAlertTrustedIPS(t *testing.T) {
 
 	lapi.InsertAlertFromFile("./tests/alert_sample.json")
 	assertAlertDeletedFromIP("127.0.0.1")
-
 }

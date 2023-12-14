@@ -8,18 +8,19 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/gin-gonic/gin"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
 	APIKeyHeader      = "X-Api-Key"
 	bouncerContextKey = "bouncer_info"
 	// max allowed by bcrypt 72 = 54 bytes in base64
-	dummyAPIKeySize   = 54
+	dummyAPIKeySize = 54
 )
 
 type APIKey struct {

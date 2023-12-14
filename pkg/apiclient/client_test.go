@@ -40,6 +40,7 @@ func setupWithPrefix(urlPrefix string) (mux *http.ServeMux, serverURL string, te
 
 func testMethod(t *testing.T, r *http.Request, want string) {
 	t.Helper()
+
 	if got := r.Method; got != want {
 		t.Errorf("Request method: %v, want %v", got, want)
 	}
@@ -77,6 +78,7 @@ func TestNewClientOk(t *testing.T) {
 	if err != nil {
 		t.Fatalf("test Unable to list alerts : %+v", err)
 	}
+
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Fatalf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusCreated)
 	}
@@ -126,6 +128,7 @@ func TestNewDefaultClient(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new api client: %s", err)
 	}
+
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte(`{"code": 401, "message" : "brr"}`))
@@ -157,6 +160,7 @@ func TestNewClientRegisterKO(t *testing.T) {
 func TestNewClientRegisterOK(t *testing.T) {
 	log.SetLevel(log.TraceLevel)
 	mux, urlx, teardown := setup()
+
 	defer teardown()
 
 	/*mock login*/
@@ -180,12 +184,14 @@ func TestNewClientRegisterOK(t *testing.T) {
 	if err != nil {
 		t.Fatalf("while registering client : %s", err)
 	}
+
 	log.Printf("->%T", client)
 }
 
 func TestNewClientBadAnswer(t *testing.T) {
 	log.SetLevel(log.TraceLevel)
 	mux, urlx, teardown := setup()
+
 	defer teardown()
 
 	/*mock login*/

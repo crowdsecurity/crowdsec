@@ -26,10 +26,12 @@ func TestAlertsListAsMachine(t *testing.T) {
 		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
 	})
 	log.Printf("URL is %s", urlx)
+
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
+
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
@@ -199,6 +201,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 	if err != nil {
 		log.Errorf("test Unable to list alerts : %+v", err)
 	}
+
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
 	}
@@ -209,14 +212,17 @@ func TestAlertsListAsMachine(t *testing.T) {
 	//this one doesn't
 	filter := AlertsListOpts{IPEquals: new(string)}
 	*filter.IPEquals = "1.2.3.4"
+
 	alerts, resp, err = client.Alerts.List(context.Background(), filter)
 	if err != nil {
 		log.Errorf("test Unable to list alerts : %+v", err)
 	}
+
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
 	}
-	assert.Equal(t, 0, len(*alerts))
+
+	assert.Empty(t, *alerts)
 }
 
 func TestAlertsGetAsMachine(t *testing.T) {
@@ -228,10 +234,12 @@ func TestAlertsGetAsMachine(t *testing.T) {
 		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
 	})
 	log.Printf("URL is %s", urlx)
+
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
+
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
@@ -390,6 +398,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 
 	alerts, resp, err := client.Alerts.GetByID(context.Background(), 1)
 	require.NoError(t, err)
+
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
 	}
@@ -401,7 +410,6 @@ func TestAlertsGetAsMachine(t *testing.T) {
 	//fail
 	_, _, err = client.Alerts.GetByID(context.Background(), 2)
 	assert.Contains(t, fmt.Sprintf("%s", err), "API error: object not found")
-
 }
 
 func TestAlertsCreateAsMachine(t *testing.T) {
@@ -418,10 +426,12 @@ func TestAlertsCreateAsMachine(t *testing.T) {
 		w.Write([]byte(`["3"]`))
 	})
 	log.Printf("URL is %s", urlx)
+
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
+
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
@@ -435,13 +445,17 @@ func TestAlertsCreateAsMachine(t *testing.T) {
 	}
 
 	defer teardown()
+
 	alert := models.AddAlertsRequest{}
 	alerts, resp, err := client.Alerts.Add(context.Background(), alert)
 	require.NoError(t, err)
+
 	expected := &models.AddAlertsResponse{"3"}
+
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
 	}
+
 	if !reflect.DeepEqual(*alerts, *expected) {
 		t.Errorf("client.Alerts.List returned %+v, want %+v", resp, expected)
 	}
@@ -457,15 +471,17 @@ func TestAlertsDeleteAsMachine(t *testing.T) {
 	})
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "DELETE")
-		assert.Equal(t, r.URL.RawQuery, "ip=1.2.3.4")
+		assert.Equal(t, "ip=1.2.3.4", r.URL.RawQuery)
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"message":"0 deleted alerts"}`))
 	})
 	log.Printf("URL is %s", urlx)
+
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
+
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
@@ -479,15 +495,18 @@ func TestAlertsDeleteAsMachine(t *testing.T) {
 	}
 
 	defer teardown()
+
 	alert := AlertsDeleteOpts{IPEquals: new(string)}
 	*alert.IPEquals = "1.2.3.4"
 	alerts, resp, err := client.Alerts.Delete(context.Background(), alert)
 	require.NoError(t, err)
 
 	expected := &models.DeleteAlertsResponse{NbDeleted: ""}
+
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
 	}
+
 	if !reflect.DeepEqual(*alerts, *expected) {
 		t.Errorf("client.Alerts.List returned %+v, want %+v", resp, expected)
 	}

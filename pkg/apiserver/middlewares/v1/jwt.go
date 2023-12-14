@@ -10,15 +10,16 @@ import (
 	"time"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
+	"github.com/gin-gonic/gin"
+	"github.com/go-openapi/strfmt"
+	log "github.com/sirupsen/logrus"
+	"golang.org/x/crypto/bcrypt"
+
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/gin-gonic/gin"
-	"github.com/go-openapi/strfmt"
-	log "github.com/sirupsen/logrus"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var identityKey = "id"
@@ -46,15 +47,11 @@ func IdentityHandler(c *gin.Context) interface{} {
 	}
 }
 
-
-
 type authInput struct {
-	machineID string
-	clientMachine *ent.Machine
+	machineID      string
+	clientMachine  *ent.Machine
 	scenariosInput []string
 }
-
-
 
 func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 	ret := authInput{}
@@ -123,8 +120,6 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 	return &ret, nil
 }
 
-
-
 func (j *JWT) authPlain(c *gin.Context) (*authInput, error) {
 	var loginInput models.WatcherAuthRequest
 	var err error
@@ -168,7 +163,6 @@ func (j *JWT) authPlain(c *gin.Context) (*authInput, error) {
 
 	return &ret, nil
 }
-
 
 func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	var err error

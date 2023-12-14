@@ -28,8 +28,8 @@ func TestDecisionsList(t *testing.T) {
 	mux.HandleFunc("/decisions", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
 		if r.URL.RawQuery == "ip=1.2.3.4" {
-			assert.Equal(t, r.URL.RawQuery, "ip=1.2.3.4")
-			assert.Equal(t, r.Header.Get("X-Api-Key"), "ixu")
+			assert.Equal(t, "ip=1.2.3.4", r.URL.RawQuery)
+			assert.Equal(t, "ixu", r.Header.Get("X-Api-Key"))
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(`[{"duration":"3h59m55.756182786s","id":4,"origin":"cscli","scenario":"manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'","scope":"Ip","type":"ban","value":"1.2.3.4"}]`))
 		} else {
@@ -83,6 +83,7 @@ func TestDecisionsList(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new api client: %s", err)
 	}
+
 	if !reflect.DeepEqual(*decisions, *expected) {
 		t.Fatalf("returned %+v, want %+v", resp, expected)
 	}
@@ -96,8 +97,8 @@ func TestDecisionsList(t *testing.T) {
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
 	}
-	assert.Equal(t, len(*decisions), 0)
 
+	assert.Empty(t, *decisions)
 }
 
 func TestDecisionsStream(t *testing.T) {
@@ -107,8 +108,7 @@ func TestDecisionsStream(t *testing.T) {
 	defer teardown()
 
 	mux.HandleFunc("/decisions/stream", func(w http.ResponseWriter, r *http.Request) {
-
-		assert.Equal(t, r.Header.Get("X-Api-Key"), "ixu")
+		assert.Equal(t, "ixu", r.Header.Get("X-Api-Key"))
 		testMethod(t, r, http.MethodGet)
 		if r.Method == http.MethodGet {
 			if r.URL.RawQuery == "startup=true" {
@@ -121,7 +121,7 @@ func TestDecisionsStream(t *testing.T) {
 		}
 	})
 	mux.HandleFunc("/decisions", func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, r.Header.Get("X-Api-Key"), "ixu")
+		assert.Equal(t, "ixu", r.Header.Get("X-Api-Key"))
 		testMethod(t, r, http.MethodDelete)
 		if r.Method == http.MethodDelete {
 			w.WriteHeader(http.StatusOK)
@@ -173,6 +173,7 @@ func TestDecisionsStream(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new api client: %s", err)
 	}
+
 	if !reflect.DeepEqual(*decisions, *expected) {
 		t.Fatalf("returned %+v, want %+v", resp, expected)
 	}
@@ -184,8 +185,9 @@ func TestDecisionsStream(t *testing.T) {
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
 	}
-	assert.Equal(t, 0, len(decisions.New))
-	assert.Equal(t, 0, len(decisions.Deleted))
+
+	assert.Empty(t, decisions.New)
+	assert.Empty(t, decisions.Deleted)
 
 	//delete stream
 	resp, err = newcli.Decisions.StopStream(context.Background())
@@ -203,8 +205,7 @@ func TestDecisionsStreamV3Compatibility(t *testing.T) {
 	defer teardown()
 
 	mux.HandleFunc("/decisions/stream", func(w http.ResponseWriter, r *http.Request) {
-
-		assert.Equal(t, r.Header.Get("X-Api-Key"), "ixu")
+		assert.Equal(t, "ixu", r.Header.Get("X-Api-Key"))
 		testMethod(t, r, http.MethodGet)
 		if r.Method == http.MethodGet {
 			if r.URL.RawQuery == "startup=true" {
@@ -275,6 +276,7 @@ func TestDecisionsStreamV3Compatibility(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new api client: %s", err)
 	}
+
 	if !reflect.DeepEqual(*decisions, *expected) {
 		t.Fatalf("returned %+v, want %+v", resp, expected)
 	}
@@ -287,8 +289,7 @@ func TestDecisionsStreamV3(t *testing.T) {
 	defer teardown()
 
 	mux.HandleFunc("/decisions/stream", func(w http.ResponseWriter, r *http.Request) {
-
-		assert.Equal(t, r.Header.Get("X-Api-Key"), "ixu")
+		assert.Equal(t, "ixu", r.Header.Get("X-Api-Key"))
 		testMethod(t, r, http.MethodGet)
 		if r.Method == http.MethodGet {
 			w.WriteHeader(http.StatusOK)
@@ -368,6 +369,7 @@ func TestDecisionsStreamV3(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new api client: %s", err)
 	}
+
 	if !reflect.DeepEqual(*decisions, *expected) {
 		t.Fatalf("returned %+v, want %+v", resp, expected)
 	}
@@ -451,6 +453,7 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new api client: %s", err)
 	}
+
 	if !reflect.DeepEqual(decisions, expected) {
 		t.Fatalf("returned %+v, want %+v", decisions, expected)
 	}
@@ -484,7 +487,7 @@ func TestDeleteDecisions(t *testing.T) {
 	})
 	mux.HandleFunc("/decisions", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "DELETE")
-		assert.Equal(t, r.URL.RawQuery, "ip=1.2.3.4")
+		assert.Equal(t, "ip=1.2.3.4", r.URL.RawQuery)
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"nbDeleted":"1"}`))
 		//w.Write([]byte(`{"message":"0 deleted alerts"}`))
@@ -512,6 +515,7 @@ func TestDeleteDecisions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected err : %s", err)
 	}
+
 	assert.Equal(t, "1", deleted.NbDeleted)
 
 	defer teardown()
@@ -519,6 +523,7 @@ func TestDeleteDecisions(t *testing.T) {
 
 func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 	baseURLString := "http://localhost:8080/v1/decisions/stream"
+
 	type fields struct {
 		Startup                bool
 		Scopes                 string
@@ -553,6 +558,7 @@ func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 			want: baseURLString + "?scenarios_containing=ssh&scenarios_not_containing=bf&scopes=ip%2Crange&startup=true",
 		},
 	}
+
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
