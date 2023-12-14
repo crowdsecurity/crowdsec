@@ -269,7 +269,11 @@ func (r *ReqDumpFilter) ToJSON() error {
 // Generate a ParsedRequest from a http.Request. ParsedRequest can be consumed by the App security Engine
 func NewParsedRequestFromRequest(r *http.Request) (ParsedRequest, error) {
 	var err error
-	body := make([]byte, r.ContentLength)
+	contentLength := r.ContentLength
+	if contentLength < 0 {
+		contentLength = 0
+	}
+	body := make([]byte, contentLength)
 
 	if r.Body != nil {
 		_, err = io.ReadFull(r.Body, body)
