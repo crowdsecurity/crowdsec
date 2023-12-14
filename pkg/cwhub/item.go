@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"slices"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/enescakir/emoji"
@@ -406,4 +407,32 @@ func (i *Item) versionStatus() int {
 // fileName: the filename (ie. apache2-logs.yaml).
 func (i *Item) validPath(dirName, fileName string) bool {
 	return (dirName+"/"+fileName == i.Name+".yaml") || (dirName+"/"+fileName == i.Name+".yml")
+}
+
+// addTaint marks the item as tainted, and propagates the taint to the ancestors.
+// sub: the sub-item that caused the taint. May be the item itself!
+func (i *Item) addTaint(sub *Item) {
+	i.State.Tainted = true
+	taintedBy := sub.Type + ":" + sub.Name
+
+	idx, ok := slices.BinarySearch(i.State.TaintedBy, taintedBy)
+	if ok {
+		return
+	}
+
+	// insert the taintedBy in the slice
+
+	i.State.TaintedBy = append(i.State.TaintedBy, "")
+
+	copy(i.State.TaintedBy[idx+1:], i.State.TaintedBy[idx:])
+
+	i.State.TaintedBy[idx] = taintedBy
+
+	log.Debugf("%s is tainted by %s", i.Name, taintedBy)
+
+	// propagate the taint to the ancestors
+	
+	for _, ancestor := range i.Ancestors() {
+		ancestor.addTaint(sub)
+	}
 }

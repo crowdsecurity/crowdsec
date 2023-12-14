@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 
 	"github.com/enescakir/emoji"
+	"github.com/sergi/go-diff/diffmatchpatch"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -232,4 +233,25 @@ func (i *Item) DownloadDataIfNeeded(force bool) error {
 	}
 
 	return nil
+}
+
+// DIff returns the diff between the local version and the latest remote version.
+func (i *Item) Diff() (string, error) {
+	latestContent, err := i.fetch()
+	if err != nil {
+		return "", err
+	}
+
+	localContent, err := os.ReadFile(i.State.LocalPath)
+	if err != nil {
+		return "", fmt.Errorf("while reading %s: %w", i.State.LocalPath, err)
+	}
+
+	dmp := diffmatchpatch.New()
+	diffs := dmp.DiffMain(string(localContent), string(latestContent), false)
+
+	patch := dmp.PatchMake(string(localContent) , diffs)
+	unifiedDiff := dmp.PatchToText(patch)
+
+	return unifiedDiff, nil
 }

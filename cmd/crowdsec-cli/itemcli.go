@@ -360,12 +360,23 @@ func (it cliItem) Inspect(cmd *cobra.Command, args []string) error {
 		csConfig.Cscli.PrometheusUrl = url
 	}
 
+	diff, err := flags.GetBool("diff")
+	if err != nil {
+		return err
+	}
+
 	noMetrics, err := flags.GetBool("no-metrics")
 	if err != nil {
 		return err
 	}
 
-	hub, err := require.Hub(csConfig, nil)
+	remote := (*cwhub.RemoteHubCfg)(nil)
+
+	if diff {
+		remote = require.RemoteHub(csConfig)
+	}
+
+	hub, err := require.Hub(csConfig, remote)
 	if err != nil {
 		return err
 	}
@@ -375,6 +386,12 @@ func (it cliItem) Inspect(cmd *cobra.Command, args []string) error {
 		if item == nil {
 			return fmt.Errorf("can't find '%s' in %s", name, it.name)
 		}
+
+		if diff {
+			fmt.Println(item.Diff())
+			continue
+		}
+
 		if err = InspectItem(item, !noMetrics); err != nil {
 			return err
 		}
@@ -405,6 +422,7 @@ func (it cliItem) NewInspectCmd() *cobra.Command {
 
 	flags := cmd.Flags()
 	flags.StringP("url", "u", "", "Prometheus url")
+	flags.Bool("diff", false, "Show diff with latest version (for tainted items)")
 	flags.Bool("no-metrics", false, "Don't show metrics (when cscli.output=human)")
 
 	return cmd

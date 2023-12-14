@@ -92,6 +92,7 @@ require (
 
 require (
 	github.com/crowdsecurity/coraza/v3 v3.0.0-20231213144607-41d5358da94f
+	github.com/sergi/go-diff v1.3.1
 	golang.org/x/text v0.14.0
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.0

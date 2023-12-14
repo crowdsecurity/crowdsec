@@ -221,10 +221,12 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 
 		if !info.inhub {
 			log.Tracef("%s is a local file, skip", path)
+
 			item, err := newLocalItem(h, path, info)
 			if err != nil {
 				return err
 			}
+
 			h.addItem(item)
 
 			return nil
@@ -317,22 +319,21 @@ func (i *Item) checkSubItemVersions() error {
 
 		if err := sub.checkSubItemVersions(); err != nil {
 			if sub.State.Tainted {
-				i.State.Tainted = true
-				i.State.TaintedBy = append(i.State.TaintedBy, sub.Type + ":" + sub.Name)
+				i.addTaint(sub)
 			}
 
 			return fmt.Errorf("dependency of %s: sub collection %s is broken: %w", i.Name, sub.Name, err)
 		}
 
 		if sub.State.Tainted {
-			i.State.Tainted = true
-			i.State.TaintedBy = append(i.State.TaintedBy, sub.Type + ":" + sub.Name)
+			i.addTaint(sub)
+
 			return fmt.Errorf("%s is tainted because %s:%s is tainted", i.Name, sub.Type, sub.Name)
 		}
 
 		if !sub.State.Installed && i.State.Installed {
-			i.State.Tainted = true
-			i.State.TaintedBy = append(i.State.TaintedBy, sub.Type + ":" + sub.Name)
+			i.addTaint(sub)
+
 			return fmt.Errorf("%s is tainted because %s:%s is missing", i.Name, sub.Type, sub.Name)
 		}
 
@@ -472,8 +473,7 @@ func (i *Item) setVersionState(path string, inhub bool) error {
 		}
 
 		i.State.UpToDate = false
-		i.State.Tainted = true
-		i.State.TaintedBy = append(i.State.TaintedBy, i.Type + ":" + i.Name)
+		i.addTaint(i)
 
 		return nil
 	}
