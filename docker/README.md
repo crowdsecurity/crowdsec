@@ -327,7 +327,6 @@ config.yaml) each time the container is run.
 | `DISABLE_PARSERS`       | | Parsers to remove, separated by space |
 | `DISABLE_SCENARIOS`     | | Scenarios to remove, separated by space |
 | `DISABLE_POSTOVERFLOWS` | | Postoverflows to remove, separated by space |
-| `DISABLE_POSTOVERFLOWS` | | Context files to remove, separated by space |
 | `DISABLE_CONTEXTS`      | | Context files to remove, separated by space |
 | `DISABLE_APPSEC_CONFIGS`| | Appsec configs files to remove, separated by space |
 | `DISABLE_APPSEC_RULES`  | | Appsec rules files to remove, separated by space |
