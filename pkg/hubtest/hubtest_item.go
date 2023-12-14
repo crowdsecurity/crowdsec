@@ -73,6 +73,8 @@ type HubTestItem struct {
 	ScenarioAssert *ScenarioAssert
 
 	CustomItemsLocation []string
+
+	NucleiTargetHost string
 }
 
 const (
@@ -152,6 +154,7 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 		ScenarioAssert:            ScenarioAssert,
 		ParserAssert:              ParserAssert,
 		CustomItemsLocation:       []string{hubTest.HubPath, testPath},
+		NucleiTargetHost:          hubTest.NucleiTargetHost,
 	}, nil
 }
 
@@ -594,9 +597,9 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	}
 
 	// check if the target is available
-	nucleiTargetParsedURL, err := url.Parse(DefaultNucleiTarget)
+	nucleiTargetParsedURL, err := url.Parse(t.NucleiTargetHost)
 	if err != nil {
-		return fmt.Errorf("unable to parse target '%s': %s", DefaultNucleiTarget, err)
+		return fmt.Errorf("unable to parse target '%s': %s", t.NucleiTargetHost, err)
 	}
 	nucleiTargetHost := nucleiTargetParsedURL.Host
 	if _, err := IsAlive(nucleiTargetHost); err != nil {
@@ -613,7 +616,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 		},
 	}
 
-	err = nucleiConfig.RunNucleiTemplate(t.Name, t.Config.NucleiTemplate, DefaultNucleiTarget)
+	err = nucleiConfig.RunNucleiTemplate(t.Name, t.Config.NucleiTemplate, t.NucleiTargetHost)
 	if t.Config.ExpectedNucleiFailure {
 		if err != nil && errors.Is(err, NucleiTemplateFail) {
 			log.Infof("Appsec test %s failed as expected", t.Name)

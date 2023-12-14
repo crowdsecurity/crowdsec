@@ -46,7 +46,7 @@ COPY --from=build /go/src/crowdsec/docker/docker_start.sh /
 COPY --from=build /go/src/crowdsec/docker/config.yaml /staging/etc/crowdsec/config.yaml
 RUN yq -n '.url="http://0.0.0.0:8080"' | install -m 0600 /dev/stdin /staging/etc/crowdsec/local_api_credentials.yaml
 
-ENTRYPOINT /bin/bash docker_start.sh
+ENTRYPOINT /bin/bash /docker_start.sh
 
 FROM slim as plugins
 
