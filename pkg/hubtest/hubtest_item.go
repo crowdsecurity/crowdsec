@@ -75,6 +75,7 @@ type HubTestItem struct {
 	CustomItemsLocation []string
 
 	NucleiTargetHost string
+	AppSecHost       string
 }
 
 const (
@@ -155,6 +156,7 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 		ParserAssert:              ParserAssert,
 		CustomItemsLocation:       []string{hubTest.HubPath, testPath},
 		NucleiTargetHost:          hubTest.NucleiTargetHost,
+		AppSecHost:                hubTest.AppSecHost,
 	}, nil
 }
 
@@ -585,7 +587,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	crowdsecDaemon.Start()
 
 	//wait for the appsec port to be available
-	if _, err := IsAlive(DefaultAppsecHost); err != nil {
+	if _, err := IsAlive(t.AppSecHost); err != nil {
 		crowdsecLog, err2 := os.ReadFile(crowdsecLogFile)
 		if err2 != nil {
 			log.Errorf("unable to read crowdsec log file '%s': %s", crowdsecLogFile, err)
@@ -618,7 +620,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 
 	err = nucleiConfig.RunNucleiTemplate(t.Name, t.Config.NucleiTemplate, t.NucleiTargetHost)
 	if t.Config.ExpectedNucleiFailure {
-		if err != nil && errors.Is(err, NucleiTemplateFail) {
+		if err != nil && errors.Is(err, ErrNucleiTemplateFail) {
 			log.Infof("Appsec test %s failed as expected", t.Name)
 			t.Success = true
 		} else {

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -18,16 +17,13 @@ type NucleiConfig struct {
 	CmdLineOptions []string `yaml:"cmdline_options"`
 }
 
-var NucleiTemplateFail = errors.New("Nuclei template failed")
+var ErrNucleiTemplateFail = errors.New("nuclei template failed")
 
 func (nc *NucleiConfig) RunNucleiTemplate(testName string, templatePath string, target string) error {
 	tstamp := time.Now().Unix()
-	//templatePath is the full path to the template, we just want the name ie. "sqli-random-test"
-	tmp := strings.Split(templatePath, "/")
-	template := strings.Split(tmp[len(tmp)-1], ".")[0]
 
-	outputPrefix := fmt.Sprintf("%s/%s_%s-%d", nc.OutputDir, testName, template, tstamp)
-
+	outputPrefix := fmt.Sprintf("%s/%s-%d", nc.OutputDir, testName, tstamp)
+	// CVE-2023-34362_CVE-2023-34362-1702562399_stderr.txt
 	args := []string{
 		"-u", target,
 		"-t", templatePath,
@@ -65,7 +61,7 @@ func (nc *NucleiConfig) RunNucleiTemplate(testName string, templatePath string, 
 		log.Warningf("Stderr saved to %s", outputPrefix+"_stderr.txt")
 		log.Warningf("Nuclei generated output saved to %s", outputPrefix+".json")
 		//No stdout means no finding, it means our test failed
-		return NucleiTemplateFail
+		return ErrNucleiTemplateFail
 	}
 	return nil
 }
