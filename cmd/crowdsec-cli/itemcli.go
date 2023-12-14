@@ -388,7 +388,13 @@ func (it cliItem) Inspect(cmd *cobra.Command, args []string) error {
 		}
 
 		if diff {
-			fmt.Println(item.Diff())
+			patch, err := item.Diff()
+			if err != nil {
+				return err
+			}
+
+			fmt.Println(patch)
+
 			continue
 		}
 

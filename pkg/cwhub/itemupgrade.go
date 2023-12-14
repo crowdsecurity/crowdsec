@@ -12,8 +12,11 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/hexops/gotextdiff"
+	"github.com/hexops/gotextdiff/myers"
+	"github.com/hexops/gotextdiff/span"
 	"github.com/enescakir/emoji"
-	"github.com/sergi/go-diff/diffmatchpatch"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -247,11 +250,14 @@ func (i *Item) Diff() (string, error) {
 		return "", fmt.Errorf("while reading %s: %w", i.State.LocalPath, err)
 	}
 
-	dmp := diffmatchpatch.New()
-	diffs := dmp.DiffMain(string(localContent), string(latestContent), false)
+	edits := myers.ComputeEdits(span.URIFromPath(i.State.LocalPath), string(localContent), string(latestContent))
 
-	patch := dmp.PatchMake(string(localContent) , diffs)
-	unifiedDiff := dmp.PatchToText(patch)
+	remoteURL, err := i.hub.remote.urlTo(i.RemotePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to build hub item request: %w", err)
+	}
 
-	return unifiedDiff, nil
+	diff := gotextdiff.ToUnified(i.State.LocalPath, remoteURL, string(localContent), edits)
+
+	return fmt.Sprintf("%s", diff), nil
 }

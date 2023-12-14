@@ -92,7 +92,7 @@ require (
 
 require (
 	github.com/crowdsecurity/coraza/v3 v3.0.0-20231213144607-41d5358da94f
-	github.com/sergi/go-diff v1.3.1
+	github.com/hexops/gotextdiff v1.0.3
 	golang.org/x/text v0.14.0
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.0
@@ -184,6 +184,7 @@ require (
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
+	github.com/sergi/go-diff v1.3.1 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
