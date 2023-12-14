@@ -49,7 +49,6 @@ func TestCreateMachine(t *testing.T) {
 
 	assert.Equal(t, 201, w.Code)
 	assert.Equal(t, "", w.Body.String())
-
 }
 
 func TestCreateMachineWithForwardedFor(t *testing.T) {
@@ -78,6 +77,7 @@ func TestCreateMachineWithForwardedFor(t *testing.T) {
 	if err != nil {
 		log.Fatalf("Could not get machine IP : %s", err)
 	}
+
 	assert.Equal(t, "1.1.1.1", ip)
 }
 
@@ -165,5 +165,4 @@ func TestCreateMachineAlreadyExist(t *testing.T) {
 
 	assert.Equal(t, 403, w.Code)
 	assert.Equal(t, "{\"message\":\"user 'test': user already exist\"}", w.Body.String())
-
 }

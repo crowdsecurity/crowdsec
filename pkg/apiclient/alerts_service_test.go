@@ -216,7 +216,8 @@ func TestAlertsListAsMachine(t *testing.T) {
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
 	}
-	assert.Equal(t, 0, len(*alerts))
+
+	assert.Empty(t, *alerts)
 }
 
 func TestAlertsGetAsMachine(t *testing.T) {
@@ -401,7 +402,6 @@ func TestAlertsGetAsMachine(t *testing.T) {
 	//fail
 	_, _, err = client.Alerts.GetByID(context.Background(), 2)
 	assert.Contains(t, fmt.Sprintf("%s", err), "API error: object not found")
-
 }
 
 func TestAlertsCreateAsMachine(t *testing.T) {
@@ -457,7 +457,7 @@ func TestAlertsDeleteAsMachine(t *testing.T) {
 	})
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "DELETE")
-		assert.Equal(t, r.URL.RawQuery, "ip=1.2.3.4")
+		assert.Equal(t, "ip=1.2.3.4", r.URL.RawQuery)
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"message":"0 deleted alerts"}`))
 	})
@@ -485,6 +485,7 @@ func TestAlertsDeleteAsMachine(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := &models.DeleteAlertsResponse{NbDeleted: ""}
+
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
 	}

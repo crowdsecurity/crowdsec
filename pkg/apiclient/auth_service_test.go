@@ -35,6 +35,7 @@ func getLoginsForMockErrorCases() map[string]int {
 
 func initBasicMuxMock(t *testing.T, mux *http.ServeMux, path string) {
 	loginsForMockErrorCases := getLoginsForMockErrorCases()
+
 	mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
 		buf := new(bytes.Buffer)
@@ -71,7 +72,6 @@ func initBasicMuxMock(t *testing.T, mux *http.ServeMux, path string) {
  * 400, 409, 500 => Error
  */
 func TestWatcherRegister(t *testing.T) {
-
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -96,6 +96,7 @@ func TestWatcherRegister(t *testing.T) {
 	if client == nil || err != nil {
 		t.Fatalf("while registering client : %s", err)
 	}
+
 	log.Printf("->%T", client)
 
 	// Testing error handling on Registration (400, 409, 500): should retrieve an error
@@ -112,7 +113,6 @@ func TestWatcherRegister(t *testing.T) {
 }
 
 func TestWatcherAuth(t *testing.T) {
-
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -183,7 +183,6 @@ func TestWatcherAuth(t *testing.T) {
 }
 
 func TestWatcherUnregister(t *testing.T) {
-
 	log.SetLevel(log.DebugLevel)
 
 	mux, urlx, teardown := setup()
@@ -192,7 +191,7 @@ func TestWatcherUnregister(t *testing.T) {
 
 	mux.HandleFunc("/watchers", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "DELETE")
-		assert.Equal(t, r.ContentLength, int64(0))
+		assert.Equal(t, int64(0), r.ContentLength)
 		w.WriteHeader(http.StatusOK)
 	})
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
@@ -232,6 +231,7 @@ func TestWatcherUnregister(t *testing.T) {
 	if err != nil {
 		t.Fatalf("while registering client : %s", err)
 	}
+
 	log.Printf("->%T", client)
 }
 

@@ -46,6 +46,7 @@ func LoadTestConfig(t *testing.T) csconfig.Config {
 	}
 
 	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
+
 	t.Cleanup(func() { os.RemoveAll(tempDir) })
 
 	dbconfig := csconfig.DatabaseCfg{
@@ -70,6 +71,7 @@ func LoadTestConfig(t *testing.T) csconfig.Config {
 	if err := config.API.Server.LoadProfiles(); err != nil {
 		log.Fatalf("failed to load profiles: %s", err)
 	}
+
 	return config
 }
 
@@ -81,6 +83,7 @@ func LoadTestConfigForwardedFor(t *testing.T) csconfig.Config {
 	}
 
 	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
+
 	t.Cleanup(func() { os.RemoveAll(tempDir) })
 
 	dbconfig := csconfig.DatabaseCfg{
@@ -107,18 +110,22 @@ func LoadTestConfigForwardedFor(t *testing.T) csconfig.Config {
 	if err := config.API.Server.LoadProfiles(); err != nil {
 		log.Fatalf("failed to load profiles: %s", err)
 	}
+
 	return config
 }
 
 func NewAPIServer(t *testing.T) (*APIServer, csconfig.Config, error) {
 	config := LoadTestConfig(t)
+
 	os.Remove("./ent")
 	apiServer, err := NewServer(config.API.Server)
 	if err != nil {
 		return nil, config, fmt.Errorf("unable to run local API: %s", err)
 	}
+
 	log.Printf("Creating new API server")
 	gin.SetMode(gin.TestMode)
+
 	return apiServer, config, nil
 }
 
@@ -135,6 +142,7 @@ func NewAPITest(t *testing.T) (*gin.Engine, csconfig.Config, error) {
 	if err != nil {
 		return nil, config, fmt.Errorf("unable to run local API: %s", err)
 	}
+
 	return router, config, nil
 }
 
@@ -150,12 +158,14 @@ func NewAPITestForwardedFor(t *testing.T) (*gin.Engine, csconfig.Config, error) 
 	if err != nil {
 		return nil, config, fmt.Errorf("unable to run local API: %s", err)
 	}
+
 	log.Printf("Creating new API server")
 	gin.SetMode(gin.TestMode)
 	router, err := apiServer.Router()
 	if err != nil {
 		return nil, config, fmt.Errorf("unable to run local API: %s", err)
 	}
+
 	return router, config, nil
 }
 
@@ -164,9 +174,11 @@ func ValidateMachine(machineID string, config *csconfig.DatabaseCfg) error {
 	if err != nil {
 		return fmt.Errorf("unable to create new database client: %s", err)
 	}
+
 	if err := dbClient.ValidateMachine(machineID); err != nil {
 		return fmt.Errorf("unable to validate machine: %s", err)
 	}
+
 	return nil
 }
 
@@ -179,23 +191,24 @@ func GetMachineIP(machineID string, config *csconfig.DatabaseCfg) (string, error
 	if err != nil {
 		return "", fmt.Errorf("Unable to list machines: %s", err)
 	}
+
 	for _, machine := range machines {
 		if machine.MachineId == machineID {
 			return machine.IpAddress, nil
 		}
 	}
+
 	return "", nil
 }
 
 func GetAlertReaderFromFile(path string) *strings.Reader {
-
 	alertContentBytes, err := os.ReadFile(path)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	alerts := make([]*models.Alert, 0)
-	if err := json.Unmarshal(alertContentBytes, &alerts); err != nil {
+	if err = json.Unmarshal(alertContentBytes, &alerts); err != nil {
 		log.Fatal(err)
 	}
 
@@ -208,12 +221,13 @@ func GetAlertReaderFromFile(path string) *strings.Reader {
 	if err != nil {
 		log.Fatal(err)
 	}
-	return strings.NewReader(string(alertContent))
 
+	return strings.NewReader(string(alertContent))
 }
 
 func readDecisionsGetResp(resp *httptest.ResponseRecorder) ([]*models.Decision, int, error) {
 	var response []*models.Decision
+
 	if resp == nil {
 		return nil, 0, errors.New("response is nil")
 	}
@@ -221,11 +235,13 @@ func readDecisionsGetResp(resp *httptest.ResponseRecorder) ([]*models.Decision, 
 	if err != nil {
 		return nil, resp.Code, err
 	}
+
 	return response, resp.Code, nil
 }
 
 func readDecisionsErrorResp(resp *httptest.ResponseRecorder) (map[string]string, int, error) {
 	var response map[string]string
+
 	if resp == nil {
 		return nil, 0, errors.New("response is nil")
 	}
@@ -233,11 +249,13 @@ func readDecisionsErrorResp(resp *httptest.ResponseRecorder) (map[string]string,
 	if err != nil {
 		return nil, resp.Code, err
 	}
+
 	return response, resp.Code, nil
 }
 
 func readDecisionsDeleteResp(resp *httptest.ResponseRecorder) (*models.DeleteDecisionResponse, int, error) {
 	var response models.DeleteDecisionResponse
+
 	if resp == nil {
 		return nil, 0, errors.New("response is nil")
 	}
@@ -245,11 +263,13 @@ func readDecisionsDeleteResp(resp *httptest.ResponseRecorder) (*models.DeleteDec
 	if err != nil {
 		return nil, resp.Code, err
 	}
+
 	return &response, resp.Code, nil
 }
 
 func readDecisionsStreamResp(resp *httptest.ResponseRecorder) (map[string][]*models.Decision, int, error) {
 	response := make(map[string][]*models.Decision)
+
 	if resp == nil {
 		return nil, 0, errors.New("response is nil")
 	}
@@ -257,6 +277,7 @@ func readDecisionsStreamResp(resp *httptest.ResponseRecorder) (map[string][]*mod
 	if err != nil {
 		return nil, resp.Code, err
 	}
+
 	return response, resp.Code, nil
 }
 
@@ -271,6 +292,7 @@ func CreateTestMachine(router *gin.Engine) (string, error) {
 	req, _ := http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
 	req.Header.Set("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
+
 	return body, nil
 }
 
@@ -322,7 +344,6 @@ func TestUnknownPath(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 404, w.Code)
-
 }
 
 /*
@@ -348,6 +369,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	}
 
 	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
+
 	t.Cleanup(func() { os.RemoveAll(tempDir) })
 
 	dbconfig := csconfig.DatabaseCfg{
@@ -374,6 +396,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create api : %s", err)
 	}
+
 	if api == nil {
 		t.Fatalf("failed to create api #2 is nbill")
 	}
@@ -397,11 +420,9 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 			t.Fatalf("expected %s in %s", expectedStr, string(data))
 		}
 	}
-
 }
 
 func TestLoggingErrorToFileConfig(t *testing.T) {
-
 	/*declare settings*/
 	maxAge := "1h"
 	flushConfig := csconfig.FlushDBCfg{
@@ -409,6 +430,7 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	}
 
 	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
+
 	t.Cleanup(func() { os.RemoveAll(tempDir) })
 
 	dbconfig := csconfig.DatabaseCfg{
@@ -434,6 +456,7 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create api : %s", err)
 	}
+
 	if api == nil {
 		t.Fatalf("failed to create api #2 is nbill")
 	}

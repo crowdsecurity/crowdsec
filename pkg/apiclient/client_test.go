@@ -126,6 +126,7 @@ func TestNewDefaultClient(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new api client: %s", err)
 	}
+
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte(`{"code": 401, "message" : "brr"}`))
@@ -157,6 +158,7 @@ func TestNewClientRegisterKO(t *testing.T) {
 func TestNewClientRegisterOK(t *testing.T) {
 	log.SetLevel(log.TraceLevel)
 	mux, urlx, teardown := setup()
+
 	defer teardown()
 
 	/*mock login*/
@@ -180,12 +182,14 @@ func TestNewClientRegisterOK(t *testing.T) {
 	if err != nil {
 		t.Fatalf("while registering client : %s", err)
 	}
+
 	log.Printf("->%T", client)
 }
 
 func TestNewClientBadAnswer(t *testing.T) {
 	log.SetLevel(log.TraceLevel)
 	mux, urlx, teardown := setup()
+
 	defer teardown()
 
 	/*mock login*/
