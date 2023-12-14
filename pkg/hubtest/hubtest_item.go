@@ -318,7 +318,7 @@ func (t *HubTestItem) InstallHub() error {
 
 	// install appsec-rules in runtime environment
 	for _, appsecrule := range t.Config.AppsecRules {
-		log.Infof("adding rule '%s'", appsecrule)
+		log.Debugf("adding rule '%s'", appsecrule)
 		if appsecrule == "" {
 			continue
 		}
