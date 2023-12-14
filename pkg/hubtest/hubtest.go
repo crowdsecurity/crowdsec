@@ -22,8 +22,11 @@ type HubTest struct {
 	TemplateSimulationPath    string
 	TemplateAcquisPath        string
 	TemplateAppsecProfilePath string
-	HubIndex                  *cwhub.Hub
-	Tests                     []*HubTestItem
+	NucleiTargetHost          string
+	AppSecHost                string
+
+	HubIndex *cwhub.Hub
+	Tests    []*HubTestItem
 }
 
 const (
@@ -106,6 +109,8 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecT
 			TemplateSimulationPath:    filepath.Join(HubTestPath, templateSimulationFile),
 			TemplateAppsecProfilePath: filepath.Join(HubTestPath, templateAppsecProfilePath),
 			TemplateAcquisPath:        filepath.Join(HubTestPath, templateAcquisFile),
+			NucleiTargetHost:          DefaultNucleiTarget,
+			AppSecHost:                DefaultAppsecHost,
 			HubIndex:                  hub,
 		}, nil
 	}

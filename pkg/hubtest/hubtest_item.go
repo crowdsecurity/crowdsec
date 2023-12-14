@@ -73,6 +73,9 @@ type HubTestItem struct {
 	ScenarioAssert *ScenarioAssert
 
 	CustomItemsLocation []string
+
+	NucleiTargetHost string
+	AppSecHost       string
 }
 
 const (
@@ -152,6 +155,8 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 		ScenarioAssert:            ScenarioAssert,
 		ParserAssert:              ParserAssert,
 		CustomItemsLocation:       []string{hubTest.HubPath, testPath},
+		NucleiTargetHost:          hubTest.NucleiTargetHost,
+		AppSecHost:                hubTest.AppSecHost,
 	}, nil
 }
 
@@ -315,7 +320,7 @@ func (t *HubTestItem) InstallHub() error {
 
 	// install appsec-rules in runtime environment
 	for _, appsecrule := range t.Config.AppsecRules {
-		log.Infof("adding rule '%s'", appsecrule)
+		log.Debugf("adding rule '%s'", appsecrule)
 		if appsecrule == "" {
 			continue
 		}
@@ -582,7 +587,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	crowdsecDaemon.Start()
 
 	//wait for the appsec port to be available
-	if _, err := IsAlive(DefaultAppsecHost); err != nil {
+	if _, err := IsAlive(t.AppSecHost); err != nil {
 		crowdsecLog, err2 := os.ReadFile(crowdsecLogFile)
 		if err2 != nil {
 			log.Errorf("unable to read crowdsec log file '%s': %s", crowdsecLogFile, err)
@@ -594,9 +599,9 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	}
 
 	// check if the target is available
-	nucleiTargetParsedURL, err := url.Parse(DefaultNucleiTarget)
+	nucleiTargetParsedURL, err := url.Parse(t.NucleiTargetHost)
 	if err != nil {
-		return fmt.Errorf("unable to parse target '%s': %s", DefaultNucleiTarget, err)
+		return fmt.Errorf("unable to parse target '%s': %s", t.NucleiTargetHost, err)
 	}
 	nucleiTargetHost := nucleiTargetParsedURL.Host
 	if _, err := IsAlive(nucleiTargetHost); err != nil {
@@ -613,9 +618,9 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 		},
 	}
 
-	err = nucleiConfig.RunNucleiTemplate(t.Name, t.Config.NucleiTemplate, DefaultNucleiTarget)
+	err = nucleiConfig.RunNucleiTemplate(t.Name, t.Config.NucleiTemplate, t.NucleiTargetHost)
 	if t.Config.ExpectedNucleiFailure {
-		if err != nil && errors.Is(err, NucleiTemplateFail) {
+		if err != nil && errors.Is(err, ErrNucleiTemplateFail) {
 			log.Infof("Appsec test %s failed as expected", t.Name)
 			t.Success = true
 		} else {
@@ -905,12 +910,12 @@ func (t *HubTestItem) Run() error {
 	//if it's an appsec rule test, we need acquis and appsec profile
 	if len(t.Config.AppsecRules) > 0 {
 		// copy template acquis file to runtime folder
-		log.Infof("copying %s to %s", t.TemplateAcquisPath, t.RuntimeAcquisFilePath)
+		log.Debugf("copying %s to %s", t.TemplateAcquisPath, t.RuntimeAcquisFilePath)
 		if err = Copy(t.TemplateAcquisPath, t.RuntimeAcquisFilePath); err != nil {
 			return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateAcquisPath, t.RuntimeAcquisFilePath, err)
 		}
 
-		log.Infof("copying %s to %s", t.TemplateAppsecProfilePath, filepath.Join(t.RuntimePath, "appsec-configs", "config.yaml"))
+		log.Debugf("copying %s to %s", t.TemplateAppsecProfilePath, filepath.Join(t.RuntimePath, "appsec-configs", "config.yaml"))
 		// copy template appsec-config file to runtime folder
 		if err = Copy(t.TemplateAppsecProfilePath, filepath.Join(t.RuntimePath, "appsec-configs", "config.yaml")); err != nil {
 			return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateAppsecProfilePath, filepath.Join(t.RuntimePath, "appsec-configs", "config.yaml"), err)

@@ -222,7 +222,8 @@ func (cli cliHubTest) NewRunCmd() *cobra.Command {
 	var noClean bool
 	var runAll bool
 	var forceClean bool
-
+	var NucleiTargetHost string
+	var AppSecHost string
 	var cmd = &cobra.Command{
 		Use:               "run",
 		Short:             "run [test_name]",
@@ -232,7 +233,8 @@ func (cli cliHubTest) NewRunCmd() *cobra.Command {
 				printHelp(cmd)
 				return fmt.Errorf("please provide test to run or --all flag")
 			}
-
+			hubPtr.NucleiTargetHost = NucleiTargetHost
+			hubPtr.AppSecHost = AppSecHost
 			if runAll {
 				if err := hubPtr.LoadAllTests(); err != nil {
 					return fmt.Errorf("unable to load all tests: %+v", err)
@@ -373,6 +375,8 @@ func (cli cliHubTest) NewRunCmd() *cobra.Command {
 
 	cmd.Flags().BoolVar(&noClean, "no-clean", false, "Don't clean runtime environment if test succeed")
 	cmd.Flags().BoolVar(&forceClean, "clean", false, "Clean runtime environment if test fail")
+	cmd.Flags().StringVar(&NucleiTargetHost, "target", hubtest.DefaultNucleiTarget, "Target for AppSec Test")
+	cmd.Flags().StringVar(&AppSecHost, "host", hubtest.DefaultAppsecHost, "Address to expose AppSec for hubtest")
 	cmd.Flags().BoolVar(&runAll, "all", false, "Run all tests")
 
 	return cmd
