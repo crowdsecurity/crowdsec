@@ -333,6 +333,16 @@ if [ "$CONTEXTS" != "" ]; then
     cscli_if_clean contexts install "$(difference "$CONTEXTS" "$DISABLE_CONTEXTS")"
 fi
 
+if [ "$APPSEC_CONFIGS" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean appsec-configs install "$(difference "$APPSEC_CONFIGS" "$DISABLE_APPSEC_CONFIGS")"
+fi
+
+if [ "$APPSEC_RULES" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean appsec-rules install "$(difference "$APPSEC_RULES" "$DISABLE_APPSEC_RULES")"
+fi
+
 ## Remove collections, parsers, scenarios & postoverflows
 if [ "$DISABLE_COLLECTIONS" != "" ]; then
     # shellcheck disable=SC2086
@@ -357,6 +367,16 @@ fi
 if [ "$DISABLE_CONTEXTS" != "" ]; then
     # shellcheck disable=SC2086
     cscli_if_clean contexts remove "$DISABLE_CONTEXTS" --force
+fi
+
+if [ "$DISABLE_APPSEC_CONFIGS" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean appsec-configs remove "$DISABLE_APPSEC_CONFIGS" --force
+fi
+
+if [ "$DISABLE_APPSEC_RULES" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean appsec-rules remove "$DISABLE_APPSEC_RULES" --force
 fi
 
 ## Register bouncers via env
