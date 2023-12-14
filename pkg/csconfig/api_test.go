@@ -219,7 +219,9 @@ func TestLoadAPIServer(t *testing.T) {
 			input: &Config{
 				Self: []byte(configData),
 				API: &APICfg{
-					Server: &LocalApiServerCfg{},
+					Server: &LocalApiServerCfg{
+						ListenURI: "http://crowdsec.api",
+					},
 				},
 				Common: &CommonCfg{
 					LogDir:   "./testdata/",
