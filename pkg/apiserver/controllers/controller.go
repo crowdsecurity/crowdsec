@@ -6,13 +6,14 @@ import (
 	"net/http"
 
 	"github.com/alexliesenfeld/health"
+	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
+
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/gin-gonic/gin"
-	log "github.com/sirupsen/logrus"
 )
 
 type Controller struct {

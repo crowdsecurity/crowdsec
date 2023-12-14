@@ -40,6 +40,7 @@ func setupWithPrefix(urlPrefix string) (mux *http.ServeMux, serverURL string, te
 
 func testMethod(t *testing.T, r *http.Request, want string) {
 	t.Helper()
+
 	if got := r.Method; got != want {
 		t.Errorf("Request method: %v, want %v", got, want)
 	}
@@ -77,6 +78,7 @@ func TestNewClientOk(t *testing.T) {
 	if err != nil {
 		t.Fatalf("test Unable to list alerts : %+v", err)
 	}
+
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Fatalf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusCreated)
 	}

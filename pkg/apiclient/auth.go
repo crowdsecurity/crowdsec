@@ -41,10 +41,13 @@ func (t *APIKeyTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// specification of http.RoundTripper.
 	req = cloneRequest(req)
 	req.Header.Add("X-Api-Key", t.APIKey)
+
 	if t.UserAgent != "" {
 		req.Header.Add("User-Agent", t.UserAgent)
 	}
+
 	log.Debugf("req-api: %s %s", req.Method, req.URL.String())
+
 	if log.GetLevel() >= log.TraceLevel {
 		dump, _ := httputil.DumpRequest(req, true)
 		log.Tracef("auth-api request: %s", string(dump))
@@ -55,6 +58,7 @@ func (t *APIKeyTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		log.Errorf("auth-api: auth with api key failed return nil response, error: %s", err)
 		return resp, err
 	}
+
 	if log.GetLevel() >= log.TraceLevel {
 		dump, _ := httputil.DumpResponse(resp, true)
 		log.Tracef("auth-api response: %s", string(dump))
@@ -73,6 +77,7 @@ func (t *APIKeyTransport) transport() http.RoundTripper {
 	if t.Transport != nil {
 		return t.Transport
 	}
+
 	return http.DefaultTransport
 }
 
@@ -90,15 +95,19 @@ func (r retryRoundTripper) ShouldRetry(statusCode int) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
 func (r retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	var resp *http.Response
-	var err error
+	var (
+		resp *http.Response
+		err  error
+	)
 
 	backoff := 0
 	maxAttempts := r.maxAttempts
+
 	if fflag.DisableHttpRetryBackoff.IsEnabled() {
 		maxAttempts = 1
 	}
@@ -108,6 +117,7 @@ func (r retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 			if r.withBackOff {
 				backoff += 10 + rand.Intn(20)
 			}
+
 			log.Infof("retrying in %d seconds (attempt %d of %d)", backoff, i+1, r.maxAttempts)
 			select {
 			case <-req.Context().Done():
@@ -115,22 +125,28 @@ func (r retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 			case <-time.After(time.Duration(backoff) * time.Second):
 			}
 		}
+
 		if r.onBeforeRequest != nil {
 			r.onBeforeRequest(i)
 		}
+
 		clonedReq := cloneRequest(req)
 		resp, err = r.next.RoundTrip(clonedReq)
+
 		if err != nil {
 			left := maxAttempts - i - 1
 			if left > 0 {
 				log.Errorf("error while performing request: %s; %d retries left", err, left)
 			}
+
 			continue
 		}
+
 		if !r.ShouldRetry(resp.StatusCode) {
 			return resp, nil
 		}
 	}
+
 	return resp, err
 }
 
@@ -157,6 +173,7 @@ func (t *JWTTransport) refreshJwtToken() error {
 		if err != nil {
 			return fmt.Errorf("can't update scenario list: %s", err)
 		}
+
 		log.Debugf("scenarios list updated for '%s'", *t.MachineID)
 	}
 
@@ -175,14 +192,18 @@ func (t *JWTTransport) refreshJwtToken() error {
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(false)
 	err = enc.Encode(auth)
+
 	if err != nil {
 		return fmt.Errorf("could not encode jwt auth body: %w", err)
 	}
+
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s%s/watchers/login", t.URL, t.VersionPrefix), buf)
 	if err != nil {
 		return fmt.Errorf("could not create request: %w", err)
 	}
+
 	req.Header.Add("Content-Type", "application/json")
+
 	client := &http.Client{
 		Transport: &retryRoundTripper{
 			next:             http.DefaultTransport,
@@ -191,9 +212,11 @@ func (t *JWTTransport) refreshJwtToken() error {
 			retryStatusCodes: []int{http.StatusTooManyRequests, http.StatusServiceUnavailable, http.StatusGatewayTimeout, http.StatusInternalServerError},
 		},
 	}
+
 	if t.UserAgent != "" {
 		req.Header.Add("User-Agent", t.UserAgent)
 	}
+
 	if log.GetLevel() >= log.TraceLevel {
 		dump, _ := httputil.DumpRequest(req, true)
 		log.Tracef("auth-jwt request: %s", string(dump))
@@ -205,6 +228,7 @@ func (t *JWTTransport) refreshJwtToken() error {
 	if err != nil {
 		return fmt.Errorf("could not get jwt token: %w", err)
 	}
+
 	log.Debugf("auth-jwt : http %d", resp.StatusCode)
 
 	if log.GetLevel() >= log.TraceLevel {
@@ -226,12 +250,15 @@ func (t *JWTTransport) refreshJwtToken() error {
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 		return fmt.Errorf("unable to decode response: %w", err)
 	}
+
 	if err := t.Expiration.UnmarshalText([]byte(response.Expire)); err != nil {
 		return fmt.Errorf("unable to parse jwt expiration: %w", err)
 	}
+
 	t.Token = response.Token
 
 	log.Debugf("token %s will expire on %s", t.Token, t.Expiration.String())
+
 	return nil
 }
 
@@ -267,6 +294,7 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		dump, _ := httputil.DumpResponse(resp, true)
 		log.Tracef("resp-jwt: %s (err:%v)", string(dump), err)
 	}
+
 	if err != nil {
 		/*we had an error (network error for example, or 401 because token is refused), reset the token ?*/
 		t.Token = ""
@@ -333,9 +361,12 @@ func cloneRequest(r *http.Request) *http.Request {
 
 	if r.Body != nil {
 		var b bytes.Buffer
+
 		b.ReadFrom(r.Body)
+
 		r.Body = io.NopCloser(&b)
 		r2.Body = io.NopCloser(bytes.NewReader(b.Bytes()))
 	}
+
 	return r2
 }

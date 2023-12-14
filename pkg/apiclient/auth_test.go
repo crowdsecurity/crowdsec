@@ -66,6 +66,7 @@ func TestApiAuth(t *testing.T) {
 	_, resp, err = newcli.Decisions.List(context.Background(), alert)
 
 	log.Infof("--> %s", err)
+
 	if resp.Response.StatusCode != http.StatusForbidden {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
 	}

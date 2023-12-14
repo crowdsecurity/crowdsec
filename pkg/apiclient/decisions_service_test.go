@@ -83,6 +83,7 @@ func TestDecisionsList(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new api client: %s", err)
 	}
+
 	if !reflect.DeepEqual(*decisions, *expected) {
 		t.Fatalf("returned %+v, want %+v", resp, expected)
 	}
@@ -172,6 +173,7 @@ func TestDecisionsStream(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new api client: %s", err)
 	}
+
 	if !reflect.DeepEqual(*decisions, *expected) {
 		t.Fatalf("returned %+v, want %+v", resp, expected)
 	}
@@ -274,6 +276,7 @@ func TestDecisionsStreamV3Compatibility(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new api client: %s", err)
 	}
+
 	if !reflect.DeepEqual(*decisions, *expected) {
 		t.Fatalf("returned %+v, want %+v", resp, expected)
 	}
@@ -366,6 +369,7 @@ func TestDecisionsStreamV3(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new api client: %s", err)
 	}
+
 	if !reflect.DeepEqual(*decisions, *expected) {
 		t.Fatalf("returned %+v, want %+v", resp, expected)
 	}
@@ -449,6 +453,7 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 	if err != nil {
 		t.Fatalf("new api client: %s", err)
 	}
+
 	if !reflect.DeepEqual(decisions, expected) {
 		t.Fatalf("returned %+v, want %+v", decisions, expected)
 	}

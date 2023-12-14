@@ -11,21 +11,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
+	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
-	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/go-openapi/strfmt"
-	"github.com/pkg/errors"
-
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
-	"github.com/gin-gonic/gin"
-
-	log "github.com/sirupsen/logrus"
-	"github.com/stretchr/testify/assert"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 var testMachineID = "test"
@@ -301,10 +300,12 @@ func CreateTestBouncer(config *csconfig.DatabaseCfg) (string, error) {
 	if err != nil {
 		log.Fatalf("unable to create new database client: %s", err)
 	}
+
 	apiKey, err := middlewares.GenerateAPIKey(keyLength)
 	if err != nil {
 		return "", fmt.Errorf("unable to generate api key: %s", err)
 	}
+
 	_, err = dbClient.CreateBouncer("test", "127.0.0.1", middlewares.HashSHA512(apiKey), types.ApiKeyAuthType)
 	if err != nil {
 		return "", fmt.Errorf("unable to create blocker: %s", err)
@@ -392,6 +393,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	if err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs, false); err != nil {
 		t.Fatal(err)
 	}
+
 	api, err := NewServer(&cfg)
 	if err != nil {
 		t.Fatalf("failed to create api : %s", err)

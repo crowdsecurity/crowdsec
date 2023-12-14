@@ -74,6 +74,7 @@ func recoverFromPanic(c *gin.Context) {
 			errHandlerComplete    = errors.New("http2: request body closed due to handler exiting")
 			errStreamClosed       = errors.New("http2: stream closed")
 		)
+
 		if errors.Is(strErr, errClientDisconnected) ||
 			errors.Is(strErr, errClosedBody) ||
 			errors.Is(strErr, errHandlerComplete) ||
@@ -155,6 +156,7 @@ func newGinLogger(config *csconfig.LocalApiServerCfg) (*log.Logger, string, erro
 // It sets up a gin router, a database client, and a controller.
 func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	var flushScheduler *gocron.Scheduler
+
 	dbClient, err := database.NewClient(config.DbConfig)
 	if err != nil {
 		return nil, fmt.Errorf("unable to init database client: %w", err)
@@ -179,6 +181,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		if err = router.SetTrustedProxies(*config.TrustedProxies); err != nil {
 			return nil, fmt.Errorf("while setting trusted_proxies: %w", err)
 		}
+
 		router.ForwardedByClientIP = true
 	}
 
@@ -231,21 +234,26 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	if config.OnlineClient != nil && config.OnlineClient.Credentials != nil {
 		log.Printf("Loading CAPI manager")
+
 		apiClient, err = NewAPIC(config.OnlineClient, dbClient, config.ConsoleConfig, config.CapiWhitelists)
 		if err != nil {
 			return nil, err
 		}
 
 		log.Infof("CAPI manager configured successfully")
+
 		controller.AlertsAddChan = apiClient.AlertsAddChan
+
 		if apiClient.apiClient.IsEnrolled() {
 			isMachineEnrolled = true
 
 			log.Infof("Machine is enrolled in the console, Loading PAPI Client")
+
 			papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
 			if err != nil {
 				return nil, err
 			}
+
 			controller.DecisionDeleteChan = papiClient.Channels.DeleteDecisionChannel
 		} else {
 			log.Errorf("Machine is not enrolled in the console, can't synchronize with the console")
@@ -394,6 +402,7 @@ func (s *APIServer) listenAndServeURL(apiReady chan bool) {
 		// do we need a graceful shutdown here?
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
+
 		if err := s.httpServer.Shutdown(ctx); err != nil {
 			log.Errorf("while shutting down http server: %s", err)
 		}
@@ -404,11 +413,13 @@ func (s *APIServer) Close() {
 	if s.apic != nil {
 		s.apic.Shutdown() // stop apic first since it use dbClient
 	}
+
 	if s.papi != nil {
 		s.papi.Shutdown() // papi also uses the dbClient
 	}
 
 	s.dbClient.Ent.Close()
+
 	if s.flushScheduler != nil {
 		s.flushScheduler.Stop()
 	}
@@ -416,6 +427,7 @@ func (s *APIServer) Close() {
 
 func (s *APIServer) Shutdown() error {
 	s.Close()
+
 	if s.httpServer != nil {
 		if err := s.httpServer.Shutdown(context.TODO()); err != nil {
 			return err
@@ -426,14 +438,17 @@ func (s *APIServer) Shutdown() error {
 	if pipe, ok := gin.DefaultErrorWriter.(*io.PipeWriter); ok {
 		pipe.Close()
 	}
+
 	if pipe, ok := gin.DefaultWriter.(*io.PipeWriter); ok {
 		pipe.Close()
 	}
 
 	s.httpServerTomb.Kill(nil)
+
 	if err := s.httpServerTomb.Wait(); err != nil {
 		return fmt.Errorf("while waiting on httpServerTomb: %w", err)
 	}
+
 	return nil
 }
 

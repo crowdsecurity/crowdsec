@@ -14,6 +14,7 @@ func (s *MetricsService) Add(ctx context.Context, metrics *models.Metrics) (inte
 	var response interface{}
 
 	u := fmt.Sprintf("%s/metrics/", s.client.URLPrefix)
+
 	req, err := s.client.NewRequest(http.MethodPost, u, &metrics)
 	if err != nil {
 		return nil, nil, err
@@ -23,5 +24,6 @@ func (s *MetricsService) Add(ctx context.Context, metrics *models.Metrics) (inte
 	if err != nil {
 		return nil, resp, err
 	}
+
 	return &response, resp, nil
 }

@@ -21,6 +21,7 @@ func TestNewRequestInvalid(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parsing api url: %s", apiURL)
 	}
+
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
@@ -54,6 +55,7 @@ func TestNewRequestTimeout(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parsing api url: %s", apiURL)
 	}
+
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
