@@ -908,12 +908,12 @@ func (t *HubTestItem) Run() error {
 	//if it's an appsec rule test, we need acquis and appsec profile
 	if len(t.Config.AppsecRules) > 0 {
 		// copy template acquis file to runtime folder
-		log.Infof("copying %s to %s", t.TemplateAcquisPath, t.RuntimeAcquisFilePath)
+		log.Debugf("copying %s to %s", t.TemplateAcquisPath, t.RuntimeAcquisFilePath)
 		if err = Copy(t.TemplateAcquisPath, t.RuntimeAcquisFilePath); err != nil {
 			return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateAcquisPath, t.RuntimeAcquisFilePath, err)
 		}
 
-		log.Infof("copying %s to %s", t.TemplateAppsecProfilePath, filepath.Join(t.RuntimePath, "appsec-configs", "config.yaml"))
+		log.Debugf("copying %s to %s", t.TemplateAppsecProfilePath, filepath.Join(t.RuntimePath, "appsec-configs", "config.yaml"))
 		// copy template appsec-config file to runtime folder
 		if err = Copy(t.TemplateAppsecProfilePath, filepath.Join(t.RuntimePath, "appsec-configs", "config.yaml")); err != nil {
 			return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateAppsecProfilePath, filepath.Join(t.RuntimePath, "appsec-configs", "config.yaml"), err)
