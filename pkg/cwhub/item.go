@@ -53,6 +53,7 @@ type ItemState struct {
 	Downloaded           bool     `json:"downloaded"`
 	UpToDate             bool     `json:"up_to_date"`
 	Tainted              bool     `json:"tainted"`
+	TaintedBy            []string `json:"tainted_by,omitempty" yaml:"tainted_by,omitempty"`
 	BelongsToCollections []string `json:"belongs_to_collections,omitempty" yaml:"belongs_to_collections,omitempty"`
 }
 
