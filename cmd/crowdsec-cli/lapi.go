@@ -245,7 +245,7 @@ func NewLapiContextCmd() *cobra.Command {
 			if err := csConfig.LoadCrowdsec(); err != nil {
 				fileNotFoundMessage := fmt.Sprintf("failed to open context file: open %s: no such file or directory", csConfig.Crowdsec.ConsoleContextPath)
 				if err.Error() != fileNotFoundMessage {
-					return fmt.Errorf("unable to start CrowdSec agent: %w", err)
+					return fmt.Errorf("unable to load CrowdSec agent configuration: %w", err)
 				}
 			}
 			if csConfig.DisableAgent {
@@ -423,7 +423,15 @@ cscli lapi context detect crowdsecurity/sshd-logs
 
 	cmdContextDelete := &cobra.Command{
 		Use:   "delete",
-		Deprecated: "please manually edit the context file.",
+		DisableAutoGenTag: true,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			filePath := csConfig.Crowdsec.ConsoleContextPath
+			if filePath == "" {
+				filePath = "the context file"
+			}
+			fmt.Printf("Command \"delete\" is deprecated, please manually edit %s.", filePath)
+			return nil
+		},
 	}
 	cmdContext.AddCommand(cmdContextDelete)
 
