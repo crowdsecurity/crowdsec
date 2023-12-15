@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"errors"
 	"time"
 
 	"github.com/bluele/gcache"
@@ -104,7 +105,7 @@ func GetKey(cacheName string, key string) (string, error) {
 		if name == cacheName {
 			if value, err := Caches[i].Get(key); err != nil {
 				//do not warn or log if key not found
-				if err == gcache.KeyNotFoundError {
+				if errors.Is(err, gcache.KeyNotFoundError) {
 					return "", nil
 				}
 				CacheConfig[i].Logger.Warningf("While getting key %s in cache %s: %s", key, cacheName, err)
