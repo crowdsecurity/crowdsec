@@ -34,8 +34,7 @@ func ShowMetrics(hubItem *cwhub.Item) error {
 		}
 	case cwhub.APPSEC_RULES:
 		log.Error("FIXME: not implemented yet")
-	default:
-		// no metrics for this item type
+	default: // no metrics for this item type
 	}
 	return nil
 }
@@ -222,6 +221,7 @@ var ranges = []unit{
 
 func formatNumber(num int) string {
 	goodUnit := unit{}
+
 	for _, u := range ranges {
 		if int64(num) >= u.value {
 			goodUnit = u
@@ -234,5 +234,6 @@ func formatNumber(num int) string {
 	}
 
 	res := math.Round(float64(num)/float64(goodUnit.value)*100) / 100
+
 	return fmt.Sprintf("%.2f%s", res, goodUnit.symbol)
 }

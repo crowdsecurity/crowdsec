@@ -41,7 +41,7 @@ func (cli cliHubTest) NewCommand() *cobra.Command {
 		Long:              "Run functional tests on hub configurations (parsers, scenarios, collections...)",
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			var err error
 			HubTest, err = hubtest.NewHubTest(hubPath, crowdsecPath, cscliPath, false)
 			if err != nil {
@@ -94,7 +94,7 @@ cscli hubtest create my-nginx-custom-test --type nginx
 cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios crowdsecurity/http-probing`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			testName := args[0]
 			testPath := filepath.Join(hubPtr.HubTestPath, testName)
 			if _, err := os.Stat(testPath); os.IsExist(err) {
@@ -262,7 +262,7 @@ func (cli cliHubTest) NewRunCmd() *cobra.Command {
 
 			return nil
 		},
-		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
+		PersistentPostRunE: func(_ *cobra.Command, _ []string) error {
 			success := true
 			testResult := make(map[string]bool)
 			for _, test := range hubPtr.Tests {
@@ -388,7 +388,7 @@ func (cli cliHubTest) NewCleanCmd() *cobra.Command {
 		Short:             "clean [test_name]",
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			for _, testName := range args {
 				test, err := hubPtr.LoadTestItem(testName)
 				if err != nil {
@@ -412,7 +412,7 @@ func (cli cliHubTest) NewInfoCmd() *cobra.Command {
 		Short:             "info [test_name]",
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			for _, testName := range args {
 				test, err := hubPtr.LoadTestItem(testName)
 				if err != nil {
@@ -444,7 +444,7 @@ func (cli cliHubTest) NewListCmd() *cobra.Command {
 		Use:               "list",
 		Short:             "list",
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			if err := hubPtr.LoadAllTests(); err != nil {
 				return fmt.Errorf("unable to load all tests: %s", err)
 			}
@@ -479,7 +479,7 @@ func (cli cliHubTest) NewCoverageCmd() *cobra.Command {
 		Use:               "coverage",
 		Short:             "coverage",
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			//for this one we explicitly don't do for appsec
 			if err := HubTest.LoadAllTests(); err != nil {
 				return fmt.Errorf("unable to load all tests: %+v", err)
@@ -617,7 +617,7 @@ func (cli cliHubTest) NewEvalCmd() *cobra.Command {
 		Short:             "eval [test_name]",
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			for _, testName := range args {
 				test, err := hubPtr.LoadTestItem(testName)
 				if err != nil {
@@ -652,7 +652,7 @@ func (cli cliHubTest) NewExplainCmd() *cobra.Command {
 		Short:             "explain [test_name]",
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			for _, testName := range args {
 				test, err := HubTest.LoadTestItem(testName)
 				if err != nil {
