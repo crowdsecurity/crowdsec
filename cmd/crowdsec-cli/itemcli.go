@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/fatih/color"
 	"github.com/hexops/gotextdiff"
@@ -398,12 +399,7 @@ func (cli cliItem) Inspect(cmd *cobra.Command, args []string) error {
 		}
 
 		if diff {
-			patch, err := cli.itemDiff(item, rev)
-			if err != nil {
-				return err
-			}
-
-			fmt.Println(patch)
+			fmt.Println(cli.whyTainted(hub, item, rev))
 
 			continue
 		}
@@ -507,9 +503,10 @@ func (cli cliItem) NewListCmd() *cobra.Command {
 	return cmd
 }
 
+// return the diff between the installed version and the latest version
 func (cli cliItem) itemDiff(item *cwhub.Item, reverse bool) (string, error) {
 	if !item.State.Installed {
-		return "", fmt.Errorf("'%s:%s' is not installed", item.Type, item.Name)
+		return "", fmt.Errorf("'%s' is not installed", item.FQName())
 	}
 
 	latestContent, remoteURL, err := item.FetchLatest()
@@ -535,4 +532,45 @@ func (cli cliItem) itemDiff(item *cwhub.Item, reverse bool) (string, error) {
 	diff := gotextdiff.ToUnified(file1, file2, content1, edits)
 
 	return fmt.Sprintf("%s", diff), nil
+}
+
+func (cli cliItem) whyTainted(hub *cwhub.Hub, item *cwhub.Item, reverse bool) string {
+	if !item.State.Installed {
+		return fmt.Sprintf("# %s is not installed", item.FQName())
+	}
+
+	if !item.State.Tainted {
+		return fmt.Sprintf("# %s is not tainted", item.FQName())
+	}
+
+	if len(item.State.TaintedBy) == 0 {
+		return fmt.Sprintf("# %s is tainted but we don't know why. please report this as a bug", item.FQName())
+	}
+
+	ret := []string{
+		fmt.Sprintf("# Let's see why %s is tainted.", item.FQName()),
+	}
+
+	for _, fqsub := range item.State.TaintedBy {
+		ret = append(ret, fmt.Sprintf("\n-> %s\n", fqsub))
+
+		sub, err := hub.GetItemFQ(fqsub)
+		if err != nil {
+			ret = append(ret, err.Error())
+		}
+
+		diff, err := cli.itemDiff(sub, reverse)
+		if err != nil {
+			ret = append(ret, err.Error())
+		}
+
+		if diff != "" {
+			ret = append(ret, diff)
+		} else if len(sub.State.TaintedBy) > 0 {
+			taintList := strings.Join(sub.State.TaintedBy, ", ")
+			ret = append(ret, fmt.Sprintf("# %s is tainted by %s", sub.FQName(), taintList))
+		}
+	}
+
+	return strings.Join(ret, "\n")
 }

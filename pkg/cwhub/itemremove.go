@@ -45,14 +45,15 @@ func (i *Item) disable(purge bool, force bool) (bool, error) {
 			link, _ := i.installPath()
 			return false, fmt.Errorf("link %s does not exist (override with --force or --purge)", link)
 		}
+
 		didRemove = false
 	} else if err != nil {
 		return false, err
 	}
 
 	i.State.Installed = false
-
 	didPurge := false
+
 	if purge {
 		if didPurge, err = i.purge(); err != nil {
 			return didRemove, err

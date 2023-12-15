@@ -297,14 +297,16 @@ func (h *Hub) itemVisit(path string, f os.DirEntry, err error) error {
 }
 
 // checkSubItemVersions checks for the presence, taint and version state of sub-items.
-func (i *Item) checkSubItemVersions() error {
+func (i *Item) checkSubItemVersions() []string {
+	warn := make([]string, 0)
+
 	if !i.HasSubItems() {
-		return nil
+		return warn
 	}
 
 	if i.versionStatus() != versionUpToDate {
 		log.Debugf("%s dependencies not checked: not up-to-date", i.Name)
-		return nil
+		return warn
 	}
 
 	// ensure all the sub-items are installed, or tag the parent as tainted
@@ -317,35 +319,42 @@ func (i *Item) checkSubItemVersions() error {
 			continue
 		}
 
-		if err := sub.checkSubItemVersions(); err != nil {
+		if w := sub.checkSubItemVersions(); len(w) > 0 {
 			if sub.State.Tainted {
 				i.addTaint(sub)
+				warn = append(warn, fmt.Sprintf("%s is tainted by %s", i.Name, sub.FQName()))
 			}
 
-			return fmt.Errorf("dependency of %s: sub collection %s is broken: %w", i.Name, sub.Name, err)
+			warn = append(warn, w...)
+
+			continue
 		}
 
 		if sub.State.Tainted {
 			i.addTaint(sub)
+			warn = append(warn, fmt.Sprintf("%s is tainted by %s", i.Name, sub.FQName()))
 
-			return fmt.Errorf("%s is tainted by %s:%s", i.Name, sub.Type, sub.Name)
+			continue
 		}
 
 		if !sub.State.Installed && i.State.Installed {
 			i.addTaint(sub)
+			warn = append(warn, fmt.Sprintf("%s is tainted by missing %s", i.Name, sub.FQName()))
 
-			return fmt.Errorf("%s is tainted by missing %s:%s", i.Name, sub.Type, sub.Name)
+			continue
 		}
 
 		if !sub.State.UpToDate {
 			i.State.UpToDate = false
-			return fmt.Errorf("dependency of %s: outdated %s:%s", i.Name, sub.Type, sub.Name)
+			warn = append(warn, fmt.Sprintf("%s is tainted by outdated %s", i.Name, sub.FQName()))
+
+			continue
 		}
 
 		log.Tracef("checking for %s - tainted:%t uptodate:%t", sub.Name, i.State.Tainted, i.State.UpToDate)
 	}
 
-	return nil
+	return warn
 }
 
 // syncDir scans a directory for items, and updates the Hub state accordingly.
@@ -383,6 +392,23 @@ func insertInOrderNoCase(sl []string, value string) []string {
 	return append(sl[:i], append([]string{value}, sl[i:]...)...)
 }
 
+func removeDuplicates(sl []string) []string {
+	seen := make(map[string]struct{}, len(sl))
+	j := 0
+
+	for _, v := range sl {
+		if _, ok := seen[v]; ok {
+			continue
+		}
+
+		seen[v] = struct{}{}
+		sl[j] = v
+		j++
+	}
+
+	return sl[:j]
+}
+
 // localSync updates the hub state with downloaded, installed and local items.
 func (h *Hub) localSync() error {
 	err := h.syncDir(h.local.InstallDir)
@@ -415,8 +441,8 @@ func (h *Hub) localSync() error {
 		vs := item.versionStatus()
 		switch vs {
 		case versionUpToDate: // latest
-			if err := item.checkSubItemVersions(); err != nil {
-				warnings = append(warnings, err.Error())
+			if w := item.checkSubItemVersions(); len(w) > 0 {
+				warnings = append(warnings, w...)
 			}
 		case versionUpdateAvailable: // not up-to-date
 			warnings = append(warnings, fmt.Sprintf("update for collection %s available (currently:%s, latest:%s)", item.Name, item.State.LocalVersion, item.Version))
@@ -424,14 +450,14 @@ func (h *Hub) localSync() error {
 			warnings = append(warnings, fmt.Sprintf("collection %s is in the future (currently:%s, latest:%s)", item.Name, item.State.LocalVersion, item.Version))
 		case versionUnknown:
 			if !item.State.IsLocal() {
-				warnings = append(warnings, fmt.Sprintf("collection %s is tainted (latest:%s)", item.Name, item.Version))
+				warnings = append(warnings, fmt.Sprintf("collection %s is tainted by local changes (latest:%s)", item.Name, item.Version))
 			}
 		}
 
 		log.Debugf("installed (%s) - status: %d | installed: %s | latest: %s | full: %+v", item.Name, vs, item.State.LocalVersion, item.Version, item.Versions)
 	}
 
-	h.Warnings = warnings
+	h.Warnings = removeDuplicates(warnings)
 
 	return nil
 }

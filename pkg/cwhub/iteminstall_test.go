@@ -106,6 +106,7 @@ func TestInstallParser(t *testing.T) {
 		testTaint(hub, t, it)
 		testUpdate(hub, t, it)
 		testDisable(hub, t, it)
+
 		break
 	}
 }
@@ -128,6 +129,7 @@ func TestInstallCollection(t *testing.T) {
 		testTaint(hub, t, it)
 		testUpdate(hub, t, it)
 		testDisable(hub, t, it)
+
 		break
 	}
 }

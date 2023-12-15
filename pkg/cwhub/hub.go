@@ -179,6 +179,28 @@ func (h *Hub) GetItem(itemType string, itemName string) *Item {
 	return h.GetItemMap(itemType)[itemName]
 }
 
+// GetItemFQ returns an item from hub based on its type and name (type:author/name).
+func (h *Hub) GetItemFQ(itemFQName string) (*Item, error) {
+	// type and name are separated by a colon
+	parts := strings.Split(itemFQName, ":")
+
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid item name %s", itemFQName)
+	}
+
+	m := h.GetItemMap(parts[0])
+	if m == nil {
+		return nil, fmt.Errorf("invalid item type %s", parts[0])
+	}
+
+	i := m[parts[1]]
+	if i == nil {
+		return nil, fmt.Errorf("item %s not found", parts[1])
+	}
+
+	return i, nil
+}
+
 // GetItemNames returns a slice of (full) item names for a given type
 // (eg. for collections: crowdsecurity/apache2 crowdsecurity/nginx).
 func (h *Hub) GetItemNames(itemType string) []string {

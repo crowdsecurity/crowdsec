@@ -409,11 +409,16 @@ func (i *Item) validPath(dirName, fileName string) bool {
 	return (dirName+"/"+fileName == i.Name+".yaml") || (dirName+"/"+fileName == i.Name+".yml")
 }
 
+// FQName returns the fully qualified name of the item (ie. parsers:crowdsecurity/apache2-logs).
+func (i *Item) FQName () string {
+	return fmt.Sprintf("%s:%s", i.Type, i.Name)
+}
+
 // addTaint marks the item as tainted, and propagates the taint to the ancestors.
 // sub: the sub-item that caused the taint. May be the item itself!
 func (i *Item) addTaint(sub *Item) {
 	i.State.Tainted = true
-	taintedBy := sub.Type + ":" + sub.Name
+	taintedBy := sub.FQName()
 
 	idx, ok := slices.BinarySearch(i.State.TaintedBy, taintedBy)
 	if ok {
