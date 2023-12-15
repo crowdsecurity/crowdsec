@@ -328,13 +328,13 @@ func (i *Item) checkSubItemVersions() error {
 		if sub.State.Tainted {
 			i.addTaint(sub)
 
-			return fmt.Errorf("%s is tainted because %s:%s is tainted", i.Name, sub.Type, sub.Name)
+			return fmt.Errorf("%s is tainted by %s:%s", i.Name, sub.Type, sub.Name)
 		}
 
 		if !sub.State.Installed && i.State.Installed {
 			i.addTaint(sub)
 
-			return fmt.Errorf("%s is tainted because %s:%s is missing", i.Name, sub.Type, sub.Name)
+			return fmt.Errorf("%s is tainted by missing %s:%s", i.Name, sub.Type, sub.Name)
 		}
 
 		if !sub.State.UpToDate {

@@ -83,7 +83,7 @@ teardown() {
     refute_stderr --partial "tainted"
     rune -0 truncate -s0 "$CONFIG_DIR/parsers/s01-parse/sshd-logs.yaml"
     rune -0 cscli hub list
-    assert_stderr --partial "crowdsecurity/sshd is tainted because parsers:crowdsecurity/sshd-logs is tainted"
+    assert_stderr --partial "crowdsecurity/sshd is tainted by parsers:crowdsecurity/sshd-logs"
 }
 
 @test "loading hub reports tainted items (subitem is not installed)" {
@@ -92,7 +92,7 @@ teardown() {
     refute_stderr --partial "tainted"
     rune -0 rm "$CONFIG_DIR/parsers/s01-parse/sshd-logs.yaml"
     rune -0 cscli hub list
-    assert_stderr --partial "crowdsecurity/sshd is tainted because parsers:crowdsecurity/sshd-logs is missing"
+    assert_stderr --partial "crowdsecurity/sshd is tainted by missing parsers:crowdsecurity/sshd-logs"
 }
 
 @test "cscli hub update" {
