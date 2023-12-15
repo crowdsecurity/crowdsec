@@ -370,6 +370,11 @@ func (cli cliItem) Inspect(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	rev, err := flags.GetBool("rev")
+	if err != nil {
+		return err
+	}
+
 	noMetrics, err := flags.GetBool("no-metrics")
 	if err != nil {
 		return err
@@ -393,7 +398,7 @@ func (cli cliItem) Inspect(cmd *cobra.Command, args []string) error {
 		}
 
 		if diff {
-			patch, err := cli.itemDiff(item)
+			patch, err := cli.itemDiff(item, rev)
 			if err != nil {
 				return err
 			}
@@ -428,12 +433,32 @@ func (cli cliItem) NewInspectCmd() *cobra.Command {
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cli.name, args, toComplete)
 		},
+		PreRunE: func(cmd *cobra.Command, _ []string) error {
+			flags := cmd.Flags()
+
+			diff, err := flags.GetBool("diff")
+			if err != nil {
+				return err
+			}
+
+			rev, err := flags.GetBool("rev")
+			if err != nil {
+				return err
+			}
+
+			if rev && !diff {
+				return fmt.Errorf("--rev can only be used with --diff")
+			}
+
+			return nil
+		},
 		RunE: cli.Inspect,
 	}
 
 	flags := cmd.Flags()
 	flags.StringP("url", "u", "", "Prometheus url")
 	flags.Bool("diff", false, "Show diff with latest version (for tainted items)")
+	flags.Bool("rev", false, "Reverse diff output")
 	flags.Bool("no-metrics", false, "Don't show metrics (when cscli.output=human)")
 
 	return cmd
@@ -482,7 +507,7 @@ func (cli cliItem) NewListCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli cliItem) itemDiff(item *cwhub.Item) (string, error) {
+func (cli cliItem) itemDiff(item *cwhub.Item, reverse bool) (string, error) {
 	if !item.State.Installed {
 		return "", fmt.Errorf("'%s:%s' is not installed", item.Type, item.Name)
 	}
@@ -497,9 +522,17 @@ func (cli cliItem) itemDiff(item *cwhub.Item) (string, error) {
 		return "", fmt.Errorf("while reading %s: %w", item.State.LocalPath, err)
 	}
 
-	edits := myers.ComputeEdits(span.URIFromPath(item.State.LocalPath), string(localContent), string(latestContent))
+	file1 := item.State.LocalPath
+	file2 := remoteURL
+	content1 := string(localContent)
+	content2 := string(latestContent)
+	if reverse {
+		file1, file2 = file2, file1
+		content1, content2 = content2, content1
+	}
 
-	diff := gotextdiff.ToUnified(item.State.LocalPath, remoteURL, string(localContent), edits)
+	edits := myers.ComputeEdits(span.URIFromPath(file1), content1, content2)
+	diff := gotextdiff.ToUnified(file1, file2, content1, edits)
 
 	return fmt.Sprintf("%s", diff), nil
 }
