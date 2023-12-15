@@ -49,16 +49,19 @@ cscli appsec-configs list crowdsecurity/vpatch`,
 func NewCLIAppsecRule() *cliItem {
 	inspectDetail := func(item *cwhub.Item) error {
 		appsecRule := appsec.AppsecCollectionConfig{}
+
 		yamlContent, err := os.ReadFile(item.State.LocalPath)
 		if err != nil {
 			return fmt.Errorf("unable to read file %s : %s", item.State.LocalPath, err)
 		}
+
 		if err := yaml.Unmarshal(yamlContent, &appsecRule); err != nil {
 			return fmt.Errorf("unable to unmarshal yaml file %s : %s", item.State.LocalPath, err)
 		}
 
 		for _, ruleType := range appsec_rule.SupportedTypes() {
 			fmt.Printf("\n%s format:\n", cases.Title(language.Und, cases.NoLower).String(ruleType))
+
 			for _, rule := range appsecRule.Rules {
 				convertedRule, _, err := rule.Convert(ruleType, appsecRule.Name)
 				if err != nil {

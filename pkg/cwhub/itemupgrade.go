@@ -115,31 +115,31 @@ func (i *Item) downloadLatest(overwrite bool, updateOnly bool) (string, error) {
 	return ret, nil
 }
 
-// fetch downloads the item from the hub, verifies the hash and returns the content.
-func (i *Item) fetch() ([]byte, error) {
+// FetchLatest downloads the latest item from the hub, verifies the hash and returns the content and the used url.
+func (i *Item) FetchLatest() ([]byte, string, error) {
 	url, err := i.hub.remote.urlTo(i.RemotePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build hub item request: %w", err)
+		return nil, "", fmt.Errorf("failed to build request: %w", err)
 	}
 
 	resp, err := hubClient.Get(url)
 	if err != nil {
-		return nil, fmt.Errorf("while downloading %s: %w", url, err)
+		return nil, "", err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("bad http code %d for %s", resp.StatusCode, url)
+		return nil, "", fmt.Errorf("bad http code %d", resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("while downloading %s: %w", url, err)
+		return nil, "", err
 	}
 
 	hash := sha256.New()
 	if _, err = hash.Write(body); err != nil {
-		return nil, fmt.Errorf("while hashing %s: %w", i.Name, err)
+		return nil, "", fmt.Errorf("while hashing %s: %w", i.Name, err)
 	}
 
 	meow := hex.EncodeToString(hash.Sum(nil))
@@ -147,10 +147,10 @@ func (i *Item) fetch() ([]byte, error) {
 		log.Errorf("Downloaded version doesn't match index, please 'hub update'")
 		log.Debugf("got %s, expected %s", meow, i.Versions[i.Version].Digest)
 
-		return nil, fmt.Errorf("invalid download hash for %s", i.Name)
+		return nil, "", fmt.Errorf("invalid download hash for %s", i.Name)
 	}
 
-	return body, nil
+	return body, url, nil
 }
 
 // download downloads the item from the hub and writes it to the hub directory.
@@ -171,9 +171,9 @@ func (i *Item) download(overwrite bool) (string, error) {
 		}
 	}
 
-	body, err := i.fetch()
+	body, url, err := i.FetchLatest()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("while downloading %s: %w", url, err)
 	}
 
 	// all good, install

@@ -57,6 +57,7 @@ func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item
 	switch csConfig.Cscli.Output {
 	case "human":
 		nothingToDisplay := true
+
 		for _, itemType := range itemTypes {
 			if omitIfEmpty && len(items[itemType]) == 0 {
 				continue
@@ -64,6 +65,7 @@ func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item
 			listHubItemTable(out, "\n"+strings.ToUpper(itemType), items[itemType])
 			nothingToDisplay = false
 		}
+
 		if nothingToDisplay {
 			fmt.Println("No items to display")
 		}
@@ -84,14 +86,14 @@ func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item
 
 			for i, item := range items[itemType] {
 				status := item.State.Text()
-				status_emo := item.State.Emoji()
+				statusEmo := item.State.Emoji()
 				hubStatus[itemType][i] = itemHubStatus{
 					Name:         item.Name,
 					LocalVersion: item.State.LocalVersion,
 					LocalPath:    item.State.LocalPath,
 					Description:  item.Description,
 					Status:       status,
-					UTF8Status:   fmt.Sprintf("%v  %s", status_emo, status),
+					UTF8Status:   fmt.Sprintf("%v  %s", statusEmo, status),
 				}
 			}
 		}

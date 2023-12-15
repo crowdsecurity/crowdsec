@@ -149,6 +149,7 @@ func (cli cliHub) upgrade(cmd *cobra.Command, args []string) error {
 		updated := 0
 
 		log.Infof("Upgrading %s", itemType)
+
 		for _, item := range items {
 			didUpdate, err := item.Upgrade(force)
 			if err != nil {
@@ -158,6 +159,7 @@ func (cli cliHub) upgrade(cmd *cobra.Command, args []string) error {
 				updated++
 			}
 		}
+
 		log.Infof("Upgraded %d %s", updated, itemType)
 	}
 

@@ -8,6 +8,7 @@ import (
 	"github.com/Masterminds/semver/v3"
 	"github.com/enescakir/emoji"
 	log "github.com/sirupsen/logrus"
+	"slices"
 )
 
 const (
@@ -53,6 +54,7 @@ type ItemState struct {
 	Downloaded           bool     `json:"downloaded"`
 	UpToDate             bool     `json:"up_to_date"`
 	Tainted              bool     `json:"tainted"`
+	TaintedBy            []string `json:"tainted_by,omitempty" yaml:"tainted_by,omitempty"`
 	BelongsToCollections []string `json:"belongs_to_collections,omitempty" yaml:"belongs_to_collections,omitempty"`
 }
 
@@ -405,4 +407,37 @@ func (i *Item) versionStatus() int {
 // fileName: the filename (ie. apache2-logs.yaml).
 func (i *Item) validPath(dirName, fileName string) bool {
 	return (dirName+"/"+fileName == i.Name+".yaml") || (dirName+"/"+fileName == i.Name+".yml")
+}
+
+// FQName returns the fully qualified name of the item (ie. parsers:crowdsecurity/apache2-logs).
+func (i *Item) FQName () string {
+	return fmt.Sprintf("%s:%s", i.Type, i.Name)
+}
+
+// addTaint marks the item as tainted, and propagates the taint to the ancestors.
+// sub: the sub-item that caused the taint. May be the item itself!
+func (i *Item) addTaint(sub *Item) {
+	i.State.Tainted = true
+	taintedBy := sub.FQName()
+
+	idx, ok := slices.BinarySearch(i.State.TaintedBy, taintedBy)
+	if ok {
+		return
+	}
+
+	// insert the taintedBy in the slice
+
+	i.State.TaintedBy = append(i.State.TaintedBy, "")
+
+	copy(i.State.TaintedBy[idx+1:], i.State.TaintedBy[idx:])
+
+	i.State.TaintedBy[idx] = taintedBy
+
+	log.Debugf("%s is tainted by %s", i.Name, taintedBy)
+
+	// propagate the taint to the ancestors
+
+	for _, ancestor := range i.Ancestors() {
+		ancestor.addTaint(sub)
+	}
 }

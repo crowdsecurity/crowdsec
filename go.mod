@@ -24,6 +24,7 @@ require (
 	github.com/buger/jsonparser v1.1.1
 	github.com/c-robinson/iplib v1.0.3
 	github.com/cespare/xxhash/v2 v2.2.0
+	github.com/crowdsecurity/coraza/v3 v3.0.0-20231213144607-41d5358da94f
 	github.com/crowdsecurity/dlog v0.0.0-20170105205344-4fb5f8204f26
 	github.com/crowdsecurity/go-cs-lib v0.0.5
 	github.com/crowdsecurity/grokky v0.2.1
@@ -53,6 +54,7 @@ require (
 	github.com/hashicorp/go-hclog v1.5.0
 	github.com/hashicorp/go-plugin v1.4.10
 	github.com/hashicorp/go-version v1.2.1
+	github.com/hexops/gotextdiff v1.0.3
 	github.com/ivanpirog/coloredcobra v1.0.1
 	github.com/jackc/pgx/v4 v4.14.1
 	github.com/jarcoal/httpmock v1.1.0
@@ -83,16 +85,12 @@ require (
 	golang.org/x/crypto v0.16.0
 	golang.org/x/mod v0.11.0
 	golang.org/x/sys v0.15.0
+	golang.org/x/text v0.14.0
 	google.golang.org/grpc v1.56.3
 	google.golang.org/protobuf v1.31.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637
 	gopkg.in/yaml.v2 v2.4.0
-)
-
-require (
-	github.com/crowdsecurity/coraza/v3 v3.0.0-20231213144607-41d5358da94f
-	golang.org/x/text v0.14.0
 	gopkg.in/yaml.v3 v3.0.1
 	gotest.tools/v3 v3.5.0
 	k8s.io/apiserver v0.28.4
@@ -183,6 +181,7 @@ require (
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
+	github.com/sergi/go-diff v1.3.1 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/shopspring/decimal v1.2.0 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
