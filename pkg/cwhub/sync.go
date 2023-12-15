@@ -7,13 +7,13 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"slices"
 	"sort"
 	"strings"
 
 	"github.com/Masterminds/semver/v3"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
+	"slices"
 )
 
 func isYAMLFileName(path string) bool {

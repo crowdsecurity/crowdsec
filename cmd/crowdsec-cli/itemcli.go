@@ -2,8 +2,12 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/fatih/color"
+	"github.com/hexops/gotextdiff"
+	"github.com/hexops/gotextdiff/myers"
+	"github.com/hexops/gotextdiff/span"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -210,6 +214,7 @@ func (it cliItem) Remove(cmd *cobra.Command, args []string) error {
 		if !force && len(parents) > 0 {
 			log.Warningf("%s belongs to collections: %s", item.Name, parents)
 			log.Warningf("Run 'sudo cscli %s remove %s --force' if you want to force remove this %s", item.Type, item.Name, it.singular)
+
 			continue
 		}
 
@@ -388,7 +393,7 @@ func (it cliItem) Inspect(cmd *cobra.Command, args []string) error {
 		}
 
 		if diff {
-			patch, err := item.Diff()
+			patch, err := it.itemDiff(item)
 			if err != nil {
 				return err
 			}
@@ -475,4 +480,26 @@ func (it cliItem) NewListCmd() *cobra.Command {
 	flags.BoolP("all", "a", false, "List disabled items as well")
 
 	return cmd
+}
+
+func (it cliItem) itemDiff(item *cwhub.Item) (string, error) {
+	if !item.State.Installed {
+		return "", fmt.Errorf("'%s:%s' is not installed", item.Type, item.Name)
+	}
+
+	latestContent, remoteURL, err := item.FetchLatest()
+	if err != nil {
+		return "", err
+	}
+
+	localContent, err := os.ReadFile(item.State.LocalPath)
+	if err != nil {
+		return "", fmt.Errorf("while reading %s: %w", item.State.LocalPath, err)
+	}
+
+	edits := myers.ComputeEdits(span.URIFromPath(item.State.LocalPath), string(localContent), string(latestContent))
+
+	diff := gotextdiff.ToUnified(item.State.LocalPath, remoteURL, string(localContent), edits)
+
+	return fmt.Sprintf("%s", diff), nil
 }

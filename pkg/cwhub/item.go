@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
-	"slices"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/enescakir/emoji"
 	log "github.com/sirupsen/logrus"
+	"slices"
 )
 
 const (
@@ -431,7 +431,7 @@ func (i *Item) addTaint(sub *Item) {
 	log.Debugf("%s is tainted by %s", i.Name, taintedBy)
 
 	// propagate the taint to the ancestors
-	
+
 	for _, ancestor := range i.Ancestors() {
 		ancestor.addTaint(sub)
 	}
