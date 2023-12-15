@@ -39,27 +39,27 @@ type cliItem struct {
 	listHelp      cliHelp
 }
 
-func (it cliItem) NewCommand() *cobra.Command {
+func (cli cliItem) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               coalesce.String(it.help.use, fmt.Sprintf("%s <action> [item]...", it.name)),
-		Short:             coalesce.String(it.help.short, fmt.Sprintf("Manage hub %s", it.name)),
-		Long:              it.help.long,
-		Example:           it.help.example,
+		Use:               coalesce.String(cli.help.use, fmt.Sprintf("%s <action> [item]...", cli.name)),
+		Short:             coalesce.String(cli.help.short, fmt.Sprintf("Manage hub %s", cli.name)),
+		Long:              cli.help.long,
+		Example:           cli.help.example,
 		Args:              cobra.MinimumNArgs(1),
-		Aliases:           []string{it.singular},
+		Aliases:           []string{cli.singular},
 		DisableAutoGenTag: true,
 	}
 
-	cmd.AddCommand(it.NewInstallCmd())
-	cmd.AddCommand(it.NewRemoveCmd())
-	cmd.AddCommand(it.NewUpgradeCmd())
-	cmd.AddCommand(it.NewInspectCmd())
-	cmd.AddCommand(it.NewListCmd())
+	cmd.AddCommand(cli.NewInstallCmd())
+	cmd.AddCommand(cli.NewRemoveCmd())
+	cmd.AddCommand(cli.NewUpgradeCmd())
+	cmd.AddCommand(cli.NewInspectCmd())
+	cmd.AddCommand(cli.NewListCmd())
 
 	return cmd
 }
 
-func (it cliItem) Install(cmd *cobra.Command, args []string) error {
+func (cli cliItem) Install(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
 	downloadOnly, err := flags.GetBool("download-only")
@@ -83,9 +83,9 @@ func (it cliItem) Install(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, name := range args {
-		item := hub.GetItem(it.name, name)
+		item := hub.GetItem(cli.name, name)
 		if item == nil {
-			msg := suggestNearestMessage(hub, it.name, name)
+			msg := suggestNearestMessage(hub, cli.name, name)
 			if !ignoreError {
 				return fmt.Errorf(msg)
 			}
@@ -107,24 +107,24 @@ func (it cliItem) Install(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (it cliItem) NewInstallCmd() *cobra.Command {
+func (cli cliItem) NewInstallCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               coalesce.String(it.installHelp.use, "install [item]..."),
-		Short:             coalesce.String(it.installHelp.short, fmt.Sprintf("Install given %s", it.oneOrMore)),
-		Long:              coalesce.String(it.installHelp.long, fmt.Sprintf("Fetch and install one or more %s from the hub", it.name)),
-		Example:           it.installHelp.example,
+		Use:               coalesce.String(cli.installHelp.use, "install [item]..."),
+		Short:             coalesce.String(cli.installHelp.short, fmt.Sprintf("Install given %s", cli.oneOrMore)),
+		Long:              coalesce.String(cli.installHelp.long, fmt.Sprintf("Fetch and install one or more %s from the hub", cli.name)),
+		Example:           cli.installHelp.example,
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compAllItems(it.name, args, toComplete)
+			return compAllItems(cli.name, args, toComplete)
 		},
-		RunE: it.Install,
+		RunE: cli.Install,
 	}
 
 	flags := cmd.Flags()
 	flags.BoolP("download-only", "d", false, "Only download packages, don't enable")
 	flags.Bool("force", false, "Force install: overwrite tainted and outdated files")
-	flags.Bool("ignore", false, fmt.Sprintf("Ignore errors when installing multiple %s", it.name))
+	flags.Bool("ignore", false, fmt.Sprintf("Ignore errors when installing multiple %s", cli.name))
 
 	return cmd
 }
@@ -142,7 +142,7 @@ func istalledParentNames(item *cwhub.Item) []string {
 	return ret
 }
 
-func (it cliItem) Remove(cmd *cobra.Command, args []string) error {
+func (cli cliItem) Remove(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
 	purge, err := flags.GetBool("purge")
@@ -171,7 +171,7 @@ func (it cliItem) Remove(cmd *cobra.Command, args []string) error {
 			getter = hub.GetAllItems
 		}
 
-		items, err := getter(it.name)
+		items, err := getter(cli.name)
 		if err != nil {
 			return err
 		}
@@ -189,7 +189,7 @@ func (it cliItem) Remove(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		log.Infof("Removed %d %s", removed, it.name)
+		log.Infof("Removed %d %s", removed, cli.name)
 		if removed > 0 {
 			log.Infof(ReloadMessage())
 		}
@@ -198,22 +198,22 @@ func (it cliItem) Remove(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(args) == 0 {
-		return fmt.Errorf("specify at least one %s to remove or '--all'", it.singular)
+		return fmt.Errorf("specify at least one %s to remove or '--all'", cli.singular)
 	}
 
 	removed := 0
 
 	for _, itemName := range args {
-		item := hub.GetItem(it.name, itemName)
+		item := hub.GetItem(cli.name, itemName)
 		if item == nil {
-			return fmt.Errorf("can't find '%s' in %s", itemName, it.name)
+			return fmt.Errorf("can't find '%s' in %s", itemName, cli.name)
 		}
 
 		parents := istalledParentNames(item)
 
 		if !force && len(parents) > 0 {
 			log.Warningf("%s belongs to collections: %s", item.Name, parents)
-			log.Warningf("Run 'sudo cscli %s remove %s --force' if you want to force remove this %s", item.Type, item.Name, it.singular)
+			log.Warningf("Run 'sudo cscli %s remove %s --force' if you want to force remove this %s", item.Type, item.Name, cli.singular)
 
 			continue
 		}
@@ -229,7 +229,7 @@ func (it cliItem) Remove(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	log.Infof("Removed %d %s", removed, it.name)
+	log.Infof("Removed %d %s", removed, cli.name)
 	if removed > 0 {
 		log.Infof(ReloadMessage())
 	}
@@ -237,29 +237,29 @@ func (it cliItem) Remove(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (it cliItem) NewRemoveCmd() *cobra.Command {
+func (cli cliItem) NewRemoveCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               coalesce.String(it.removeHelp.use, "remove [item]..."),
-		Short:             coalesce.String(it.removeHelp.short, fmt.Sprintf("Remove given %s", it.oneOrMore)),
-		Long:              coalesce.String(it.removeHelp.long, fmt.Sprintf("Remove one or more %s", it.name)),
-		Example:           it.removeHelp.example,
+		Use:               coalesce.String(cli.removeHelp.use, "remove [item]..."),
+		Short:             coalesce.String(cli.removeHelp.short, fmt.Sprintf("Remove given %s", cli.oneOrMore)),
+		Long:              coalesce.String(cli.removeHelp.long, fmt.Sprintf("Remove one or more %s", cli.name)),
+		Example:           cli.removeHelp.example,
 		Aliases:           []string{"delete"},
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compInstalledItems(it.name, args, toComplete)
+			return compInstalledItems(cli.name, args, toComplete)
 		},
-		RunE: it.Remove,
+		RunE: cli.Remove,
 	}
 
 	flags := cmd.Flags()
 	flags.Bool("purge", false, "Delete source file too")
 	flags.Bool("force", false, "Force remove: remove tainted and outdated files")
-	flags.Bool("all", false, fmt.Sprintf("Remove all the %s", it.name))
+	flags.Bool("all", false, fmt.Sprintf("Remove all the %s", cli.name))
 
 	return cmd
 }
 
-func (it cliItem) Upgrade(cmd *cobra.Command, args []string) error {
+func (cli cliItem) Upgrade(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
 	force, err := flags.GetBool("force")
@@ -278,7 +278,7 @@ func (it cliItem) Upgrade(cmd *cobra.Command, args []string) error {
 	}
 
 	if all {
-		items, err := hub.GetInstalledItems(it.name)
+		items, err := hub.GetInstalledItems(cli.name)
 		if err != nil {
 			return err
 		}
@@ -295,7 +295,7 @@ func (it cliItem) Upgrade(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		log.Infof("Updated %d %s", updated, it.name)
+		log.Infof("Updated %d %s", updated, cli.name)
 
 		if updated > 0 {
 			log.Infof(ReloadMessage())
@@ -305,15 +305,15 @@ func (it cliItem) Upgrade(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(args) == 0 {
-		return fmt.Errorf("specify at least one %s to upgrade or '--all'", it.singular)
+		return fmt.Errorf("specify at least one %s to upgrade or '--all'", cli.singular)
 	}
 
 	updated := 0
 
 	for _, itemName := range args {
-		item := hub.GetItem(it.name, itemName)
+		item := hub.GetItem(cli.name, itemName)
 		if item == nil {
-			return fmt.Errorf("can't find '%s' in %s", itemName, it.name)
+			return fmt.Errorf("can't find '%s' in %s", itemName, cli.name)
 		}
 
 		didUpdate, err := item.Upgrade(force)
@@ -333,27 +333,27 @@ func (it cliItem) Upgrade(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (it cliItem) NewUpgradeCmd() *cobra.Command {
+func (cli cliItem) NewUpgradeCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               coalesce.String(it.upgradeHelp.use, "upgrade [item]..."),
-		Short:             coalesce.String(it.upgradeHelp.short, fmt.Sprintf("Upgrade given %s", it.oneOrMore)),
-		Long:              coalesce.String(it.upgradeHelp.long, fmt.Sprintf("Fetch and upgrade one or more %s from the hub", it.name)),
-		Example:           it.upgradeHelp.example,
+		Use:               coalesce.String(cli.upgradeHelp.use, "upgrade [item]..."),
+		Short:             coalesce.String(cli.upgradeHelp.short, fmt.Sprintf("Upgrade given %s", cli.oneOrMore)),
+		Long:              coalesce.String(cli.upgradeHelp.long, fmt.Sprintf("Fetch and upgrade one or more %s from the hub", cli.name)),
+		Example:           cli.upgradeHelp.example,
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compInstalledItems(it.name, args, toComplete)
+			return compInstalledItems(cli.name, args, toComplete)
 		},
-		RunE: it.Upgrade,
+		RunE: cli.Upgrade,
 	}
 
 	flags := cmd.Flags()
-	flags.BoolP("all", "a", false, fmt.Sprintf("Upgrade all the %s", it.name))
+	flags.BoolP("all", "a", false, fmt.Sprintf("Upgrade all the %s", cli.name))
 	flags.Bool("force", false, "Force upgrade: overwrite tainted and outdated files")
 
 	return cmd
 }
 
-func (it cliItem) Inspect(cmd *cobra.Command, args []string) error {
+func (cli cliItem) Inspect(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
 	url, err := flags.GetString("url")
@@ -387,13 +387,13 @@ func (it cliItem) Inspect(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, name := range args {
-		item := hub.GetItem(it.name, name)
+		item := hub.GetItem(cli.name, name)
 		if item == nil {
-			return fmt.Errorf("can't find '%s' in %s", name, it.name)
+			return fmt.Errorf("can't find '%s' in %s", name, cli.name)
 		}
 
 		if diff {
-			patch, err := it.itemDiff(item)
+			patch, err := cli.itemDiff(item)
 			if err != nil {
 				return err
 			}
@@ -407,8 +407,8 @@ func (it cliItem) Inspect(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		if it.inspectDetail != nil {
-			if err = it.inspectDetail(item); err != nil {
+		if cli.inspectDetail != nil {
+			if err = cli.inspectDetail(item); err != nil {
 				return err
 			}
 		}
@@ -417,18 +417,18 @@ func (it cliItem) Inspect(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (it cliItem) NewInspectCmd() *cobra.Command {
+func (cli cliItem) NewInspectCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               coalesce.String(it.inspectHelp.use, "inspect [item]..."),
-		Short:             coalesce.String(it.inspectHelp.short, fmt.Sprintf("Inspect given %s", it.oneOrMore)),
-		Long:              coalesce.String(it.inspectHelp.long, fmt.Sprintf("Inspect the state of one or more %s", it.name)),
-		Example:           it.inspectHelp.example,
+		Use:               coalesce.String(cli.inspectHelp.use, "inspect [item]..."),
+		Short:             coalesce.String(cli.inspectHelp.short, fmt.Sprintf("Inspect given %s", cli.oneOrMore)),
+		Long:              coalesce.String(cli.inspectHelp.long, fmt.Sprintf("Inspect the state of one or more %s", cli.name)),
+		Example:           cli.inspectHelp.example,
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			return compInstalledItems(it.name, args, toComplete)
+			return compInstalledItems(cli.name, args, toComplete)
 		},
-		RunE: it.Inspect,
+		RunE: cli.Inspect,
 	}
 
 	flags := cmd.Flags()
@@ -439,7 +439,7 @@ func (it cliItem) NewInspectCmd() *cobra.Command {
 	return cmd
 }
 
-func (it cliItem) List(cmd *cobra.Command, args []string) error {
+func (cli cliItem) List(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
 	all, err := flags.GetBool("all")
@@ -454,26 +454,26 @@ func (it cliItem) List(cmd *cobra.Command, args []string) error {
 
 	items := make(map[string][]*cwhub.Item)
 
-	items[it.name], err = selectItems(hub, it.name, args, !all)
+	items[cli.name], err = selectItems(hub, cli.name, args, !all)
 	if err != nil {
 		return err
 	}
 
-	if err = listItems(color.Output, []string{it.name}, items, false); err != nil {
+	if err = listItems(color.Output, []string{cli.name}, items, false); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (it cliItem) NewListCmd() *cobra.Command {
+func (cli cliItem) NewListCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               coalesce.String(it.listHelp.use, "list [item... | -a]"),
-		Short:             coalesce.String(it.listHelp.short, fmt.Sprintf("List %s", it.oneOrMore)),
-		Long:              coalesce.String(it.listHelp.long, fmt.Sprintf("List of installed/available/specified %s", it.name)),
-		Example:           it.listHelp.example,
+		Use:               coalesce.String(cli.listHelp.use, "list [item... | -a]"),
+		Short:             coalesce.String(cli.listHelp.short, fmt.Sprintf("List %s", cli.oneOrMore)),
+		Long:              coalesce.String(cli.listHelp.long, fmt.Sprintf("List of installed/available/specified %s", cli.name)),
+		Example:           cli.listHelp.example,
 		DisableAutoGenTag: true,
-		RunE:              it.List,
+		RunE:              cli.List,
 	}
 
 	flags := cmd.Flags()
@@ -482,7 +482,7 @@ func (it cliItem) NewListCmd() *cobra.Command {
 	return cmd
 }
 
-func (it cliItem) itemDiff(item *cwhub.Item) (string, error) {
+func (cli cliItem) itemDiff(item *cwhub.Item) (string, error) {
 	if !item.State.Installed {
 		return "", fmt.Errorf("'%s:%s' is not installed", item.Type, item.Name)
 	}
