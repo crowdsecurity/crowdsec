@@ -15,7 +15,7 @@ jobs:
   build:
     strategy:
       matrix:
-        go-version: ["1.21.5"]
+        test-file: ["hub-1.bats", "hub-2.bats", "hub-3.bats"]
 
     name: "Build + tests"
     runs-on: ubuntu-latest
@@ -33,10 +33,10 @@ jobs:
         fetch-depth: 0
         submodules: true
 
-    - name: "Set up Go ${{ matrix.go-version }}"
+    - name: "Set up Go"
       uses: actions/setup-go@v4
       with:
-        go-version: ${{ matrix.go-version }}
+        go-version: "1.21.5"
 
     - name: "Install bats dependencies"
       env:
@@ -48,7 +48,9 @@ jobs:
       run: make bats-clean bats-build bats-fixture BUILD_STATIC=1
 
     - name: "Run hub tests"
-      run: make bats-test-hub
+      run: |
+          ./test/bin/generate-hub-tests
+          ./test/run-tests test/dyn-bats/${{ matrix.test-file }}
 
     - name: "Collect hub coverage"
       run: ./test/bin/collect-hub-coverage >> $GITHUB_ENV

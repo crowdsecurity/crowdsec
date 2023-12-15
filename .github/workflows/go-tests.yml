@@ -32,10 +32,6 @@ env:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        go-version: ["1.21.5"]
-
     name: "Build + tests"
     runs-on: ubuntu-latest
     services:
@@ -128,10 +124,10 @@ jobs:
         fetch-depth: 0
         submodules: false
 
-    - name: "Set up Go ${{ matrix.go-version }}"
+    - name: "Set up Go"
       uses: actions/setup-go@v4
       with:
-        go-version: ${{ matrix.go-version }}
+        go-version: "1.21.5"
 
     - name: Build and run tests, static
       run: |

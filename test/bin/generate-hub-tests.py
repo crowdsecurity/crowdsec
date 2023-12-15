@@ -51,7 +51,7 @@ def main():
 
     with open(hubtests_json) as f:
         j = json.load(f)
-        chunk_size = 100
+        chunk_size = len(j) // 3 + 1
         n = 1
         for i in range(0, len(j), chunk_size):
             chunk = j[i:i + chunk_size]
