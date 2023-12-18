@@ -2,6 +2,7 @@ package longpollclient
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -112,7 +113,7 @@ func (c *LongPollClient) poll() error {
 			var pollResp pollResponse
 			err = decoder.Decode(&pollResp)
 			if err != nil {
-				if err == io.EOF {
+				if errors.Is(err, io.EOF) {
 					logger.Debugf("server closed connection")
 					return nil
 				}
@@ -158,7 +159,7 @@ func (c *LongPollClient) pollEvents() error {
 			err := c.poll()
 			if err != nil {
 				c.logger.Errorf("failed to poll: %s", err)
-				if err == errUnauthorized {
+				if errors.Is(err, errUnauthorized) {
 					c.t.Kill(err)
 					close(c.c)
 					return err
@@ -198,7 +199,7 @@ func (c *LongPollClient) PullOnce(since time.Time) ([]Event, error) {
 		var pollResp pollResponse
 		err = decoder.Decode(&pollResp)
 		if err != nil {
-			if err == io.EOF {
+			if errors.Is(err, io.EOF) {
 				c.logger.Debugf("server closed connection")
 				break
 			}

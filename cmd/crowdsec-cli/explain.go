@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -196,7 +197,7 @@ func (cli cliExplain) run(cmd *cobra.Command, args []string) error {
 			errCount := 0
 			for {
 				input, err := reader.ReadBytes('\n')
-				if err != nil && err == io.EOF {
+				if err != nil && errors.Is(err, io.EOF) {
 					break
 				}
 				if len(input) > 1 {

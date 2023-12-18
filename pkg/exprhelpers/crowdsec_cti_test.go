@@ -3,6 +3,7 @@ package exprhelpers
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"strings"
@@ -108,7 +109,7 @@ func smokeHandler(req *http.Request) *http.Response {
 
 func TestNillClient(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
-	if err := InitCrowdsecCTI(ptr.Of(""), nil, nil, nil); err != cticlient.ErrDisabled {
+	if err := InitCrowdsecCTI(ptr.Of(""), nil, nil, nil); !errors.Is(err, cticlient.ErrDisabled) {
 		t.Fatalf("failed to init CTI : %s", err)
 	}
 	item, err := CrowdsecCTI("1.2.3.4")
