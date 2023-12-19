@@ -180,9 +180,9 @@ if [ $1 == 1 ]; then
     CSCLI_BIN_INSTALLED="/usr/bin/cscli" SILENT=true install_collection
 
     echo "Get started with CrowdSec:"
-    echo " * detailed guides are available in our documentation: https://docs.crowdsec.net"
-    echo " * community-driven configuration items are available at the Hub: https://hub.crowdsec.net"
-    echo " * Gain insights into your use of CrowdSec with the help of the console"
+    echo " * Detailed guides are available in our documentation: https://docs.crowdsec.net"
+    echo " * Configuration items created by the community can be found at the Hub: https://hub.crowdsec.net"
+    echo " * Gain insights into your use of CrowdSec with the help of the console https://app.crowdsec.net"
 
 #upgrade
 elif [ $1 == 2 ] && [ -d /var/lib/crowdsec/backup ]; then
