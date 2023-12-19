@@ -61,7 +61,7 @@ func testHub(t *testing.T, update bool) *Hub {
 		IndexPath:   ".index.json",
 	}
 
-	hub, err := NewHub(local, remote, update)
+	hub, err := NewHub(local, remote, update, log.StandardLogger())
 	require.NoError(t, err)
 
 	return hub

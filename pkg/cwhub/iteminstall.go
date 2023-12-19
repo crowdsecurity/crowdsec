@@ -2,8 +2,6 @@ package cwhub
 
 import (
 	"fmt"
-
-	log "github.com/sirupsen/logrus"
 )
 
 // enable enables the item by creating a symlink to the downloaded content, and also enables sub-items.
@@ -19,7 +17,7 @@ func (i *Item) enable() error {
 
 		// if it's a collection, check sub-items even if the collection file itself is up-to-date
 		if i.State.UpToDate && !i.HasSubItems() {
-			log.Tracef("%s is installed and up-to-date, skip.", i.Name)
+			i.hub.logger.Tracef("%s is installed and up-to-date, skip.", i.Name)
 			return nil
 		}
 	}
@@ -34,7 +32,7 @@ func (i *Item) enable() error {
 		return err
 	}
 
-	log.Infof("Enabled %s: %s", i.Type, i.Name)
+	i.hub.logger.Infof("Enabled %s: %s", i.Type, i.Name)
 	i.State.Installed = true
 
 	return nil
@@ -43,7 +41,7 @@ func (i *Item) enable() error {
 // Install installs the item from the hub, downloading it if needed.
 func (i *Item) Install(force bool, downloadOnly bool) error {
 	if downloadOnly && i.State.Downloaded && i.State.UpToDate {
-		log.Infof("%s is already downloaded and up-to-date", i.Name)
+		i.hub.logger.Infof("%s is already downloaded and up-to-date", i.Name)
 
 		if !force {
 			return nil
@@ -56,7 +54,7 @@ func (i *Item) Install(force bool, downloadOnly bool) error {
 	}
 
 	if downloadOnly {
-		log.Infof("Downloaded %s to %s", i.Name, filePath)
+		i.hub.logger.Infof("Downloaded %s to %s", i.Name, filePath)
 		return nil
 	}
 
@@ -64,7 +62,7 @@ func (i *Item) Install(force bool, downloadOnly bool) error {
 		return fmt.Errorf("while enabling %s: %w", i.Name, err)
 	}
 
-	log.Infof("Enabled %s", i.Name)
+	i.hub.logger.Infof("Enabled %s", i.Name)
 
 	return nil
 }

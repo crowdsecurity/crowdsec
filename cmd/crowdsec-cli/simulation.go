@@ -13,7 +13,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-type cliSimulation struct {}
+type cliSimulation struct{}
 
 func NewCLISimulation() *cliSimulation {
 	return &cliSimulation{}
@@ -61,7 +61,7 @@ func (cli cliSimulation) NewEnableCmd() *cobra.Command {
 		Example:           `cscli simulation enable`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			hub, err := require.Hub(csConfig, nil)
+			hub, err := require.Hub(csConfig, nil, nil)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -267,4 +267,3 @@ func simulationStatus() error {
 	}
 	return nil
 }
-

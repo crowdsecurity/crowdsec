@@ -22,7 +22,7 @@ type OldAPICfg struct {
 }
 
 func restoreHub(dirPath string) error {
-	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig))
+	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig), nil)
 	if err != nil {
 		return err
 	}

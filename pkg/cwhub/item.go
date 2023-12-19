@@ -7,7 +7,6 @@ import (
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/enescakir/emoji"
-	log "github.com/sirupsen/logrus"
 	"slices"
 )
 
@@ -281,43 +280,43 @@ func (i *Item) logMissingSubItems() {
 
 	for _, subName := range i.Parsers {
 		if i.hub.GetItem(PARSERS, subName) == nil {
-			log.Errorf("can't find %s in %s, required by %s", subName, PARSERS, i.Name)
+			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, PARSERS, i.Name)
 		}
 	}
 
 	for _, subName := range i.Scenarios {
 		if i.hub.GetItem(SCENARIOS, subName) == nil {
-			log.Errorf("can't find %s in %s, required by %s", subName, SCENARIOS, i.Name)
+			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, SCENARIOS, i.Name)
 		}
 	}
 
 	for _, subName := range i.PostOverflows {
 		if i.hub.GetItem(POSTOVERFLOWS, subName) == nil {
-			log.Errorf("can't find %s in %s, required by %s", subName, POSTOVERFLOWS, i.Name)
+			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, POSTOVERFLOWS, i.Name)
 		}
 	}
 
 	for _, subName := range i.Contexts {
 		if i.hub.GetItem(CONTEXTS, subName) == nil {
-			log.Errorf("can't find %s in %s, required by %s", subName, CONTEXTS, i.Name)
+			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, CONTEXTS, i.Name)
 		}
 	}
 
 	for _, subName := range i.AppsecConfigs {
 		if i.hub.GetItem(APPSEC_CONFIGS, subName) == nil {
-			log.Errorf("can't find %s in %s, required by %s", subName, APPSEC_CONFIGS, i.Name)
+			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, APPSEC_CONFIGS, i.Name)
 		}
 	}
 
 	for _, subName := range i.AppsecRules {
 		if i.hub.GetItem(APPSEC_RULES, subName) == nil {
-			log.Errorf("can't find %s in %s, required by %s", subName, APPSEC_RULES, i.Name)
+			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, APPSEC_RULES, i.Name)
 		}
 	}
 
 	for _, subName := range i.Collections {
 		if i.hub.GetItem(COLLECTIONS, subName) == nil {
-			log.Errorf("can't find %s in %s, required by %s", subName, COLLECTIONS, i.Name)
+			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, COLLECTIONS, i.Name)
 		}
 	}
 }
@@ -410,7 +409,7 @@ func (i *Item) validPath(dirName, fileName string) bool {
 }
 
 // FQName returns the fully qualified name of the item (ie. parsers:crowdsecurity/apache2-logs).
-func (i *Item) FQName () string {
+func (i *Item) FQName() string {
 	return fmt.Sprintf("%s:%s", i.Type, i.Name)
 }
 
@@ -433,7 +432,7 @@ func (i *Item) addTaint(sub *Item) {
 
 	i.State.TaintedBy[idx] = taintedBy
 
-	log.Debugf("%s is tainted by %s", i.Name, taintedBy)
+	i.hub.logger.Debugf("%s is tainted by %s", i.Name, taintedBy)
 
 	// propagate the taint to the ancestors
 

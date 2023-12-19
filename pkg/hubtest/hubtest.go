@@ -93,7 +93,7 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecT
 			InstallDataDir: HubTestPath,
 		}
 
-		hub, err := cwhub.NewHub(local, nil, false)
+		hub, err := cwhub.NewHub(local, nil, false, nil)
 		if err != nil {
 			return HubTest{}, fmt.Errorf("unable to load hub: %s", err)
 		}
@@ -126,7 +126,7 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string, isAppsecT
 		InstallDataDir: HubTestPath,
 	}
 
-	hub, err := cwhub.NewHub(local, nil, false)
+	hub, err := cwhub.NewHub(local, nil, false, nil)
 	if err != nil {
 		return HubTest{}, fmt.Errorf("unable to load hub: %s", err)
 	}

@@ -37,7 +37,7 @@ func runLapiStatus(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("parsing api url: %w", err)
 	}
 
-	hub, err := require.Hub(csConfig, nil)
+	hub, err := require.Hub(csConfig, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -270,7 +270,7 @@ cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user
 		`,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			hub, err := require.Hub(csConfig, nil)
+			hub, err := require.Hub(csConfig, nil, nil)
 			if err != nil {
 				return err
 			}
@@ -308,7 +308,7 @@ cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user
 		Short:             "List context to send with alerts",
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			hub, err := require.Hub(csConfig, nil)
+			hub, err := require.Hub(csConfig, nil, nil)
 			if err != nil {
 				return err
 			}
@@ -355,7 +355,7 @@ cscli lapi context detect crowdsecurity/sshd-logs
 				return fmt.Errorf("failed to init expr helpers: %w", err)
 			}
 
-			hub, err := require.Hub(csConfig, nil)
+			hub, err := require.Hub(csConfig, nil, nil)
 			if err != nil {
 				return err
 			}
@@ -422,7 +422,7 @@ cscli lapi context detect crowdsecurity/sshd-logs
 	cmdContext.AddCommand(cmdContextDetect)
 
 	cmdContextDelete := &cobra.Command{
-		Use:   "delete",
+		Use:               "delete",
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			filePath := csConfig.Crowdsec.ConsoleContextPath

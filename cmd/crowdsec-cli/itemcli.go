@@ -78,7 +78,7 @@ func (cli cliItem) Install(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig))
+	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig), log.StandardLogger())
 	if err != nil {
 		return err
 	}
@@ -161,7 +161,7 @@ func (cli cliItem) Remove(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	hub, err := require.Hub(csConfig, nil)
+	hub, err := require.Hub(csConfig, nil, log.StandardLogger())
 	if err != nil {
 		return err
 	}
@@ -273,7 +273,7 @@ func (cli cliItem) Upgrade(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig))
+	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig), log.StandardLogger())
 	if err != nil {
 		return err
 	}
@@ -387,7 +387,7 @@ func (cli cliItem) Inspect(cmd *cobra.Command, args []string) error {
 		remote = require.RemoteHub(csConfig)
 	}
 
-	hub, err := require.Hub(csConfig, remote)
+	hub, err := require.Hub(csConfig, remote, log.StandardLogger())
 	if err != nil {
 		return err
 	}
@@ -468,7 +468,7 @@ func (cli cliItem) List(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	hub, err := require.Hub(csConfig, nil)
+	hub, err := require.Hub(csConfig, nil, log.StandardLogger())
 	if err != nil {
 		return err
 	}

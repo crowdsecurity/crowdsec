@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	log "github.com/sirupsen/logrus"
 	"slices"
 )
 
 // purge removes the actual config file that was downloaded.
 func (i *Item) purge() (bool, error) {
 	if !i.State.Downloaded {
-		log.Debugf("removing %s: not downloaded -- no need to remove", i.Name)
+		i.hub.logger.Debugf("removing %s: not downloaded -- no need to remove", i.Name)
 		return false, nil
 	}
 
@@ -22,7 +21,7 @@ func (i *Item) purge() (bool, error) {
 
 	if err := os.Remove(src); err != nil {
 		if os.IsNotExist(err) {
-			log.Debugf("%s doesn't exist, no need to remove", src)
+			i.hub.logger.Debugf("%s doesn't exist, no need to remove", src)
 			return false, nil
 		}
 
@@ -30,7 +29,7 @@ func (i *Item) purge() (bool, error) {
 	}
 
 	i.State.Downloaded = false
-	log.Infof("Removed source file [%s]: %s", i.Name, src)
+	i.hub.logger.Infof("Removed source file [%s]: %s", i.Name, src)
 
 	return true, nil
 }
@@ -68,7 +67,7 @@ func (i *Item) disable(purge bool, force bool) (bool, error) {
 // Remove disables the item, optionally removing the downloaded content.
 func (i *Item) Remove(purge bool, force bool) (bool, error) {
 	if i.State.IsLocal() {
-		log.Warningf("%s is a local item, please delete manually", i.Name)
+		i.hub.logger.Warningf("%s is a local item, please delete manually", i.Name)
 		return false, nil
 	}
 
@@ -77,7 +76,7 @@ func (i *Item) Remove(purge bool, force bool) (bool, error) {
 	}
 
 	if !i.State.Installed && !purge {
-		log.Infof("removing %s: not installed -- no need to remove", i.Name)
+		i.hub.logger.Infof("removing %s: not installed -- no need to remove", i.Name)
 		return false, nil
 	}
 
@@ -116,7 +115,7 @@ func (i *Item) Remove(purge bool, force bool) (bool, error) {
 			}
 
 			if !slices.Contains(descendants, subParent) {
-				log.Infof("%s was not removed because it also belongs to %s", sub.Name, subParent.Name)
+				i.hub.logger.Infof("%s was not removed because it also belongs to %s", sub.Name, subParent.Name)
 				continue
 			}
 		}

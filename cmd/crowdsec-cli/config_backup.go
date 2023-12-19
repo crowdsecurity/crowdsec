@@ -9,15 +9,15 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 func backupHub(dirPath string) error {
 	var itemDirectory string
 	var upstreamParsers []string
 
-	hub, err := require.Hub(csConfig, nil)
+	hub, err := require.Hub(csConfig, nil, nil)
 	if err != nil {
 		return err
 	}

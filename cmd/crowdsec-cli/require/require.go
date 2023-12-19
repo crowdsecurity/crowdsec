@@ -2,6 +2,9 @@ package require
 
 import (
 	"fmt"
+	"io"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -71,8 +74,8 @@ func Notifications(c *csconfig.Config) error {
 func RemoteHub(c *csconfig.Config) *cwhub.RemoteHubCfg {
 	// set branch in config, and log if necessary
 	branch := HubBranch(c)
-	remote := &cwhub.RemoteHubCfg {
-		Branch: branch,
+	remote := &cwhub.RemoteHubCfg{
+		Branch:      branch,
 		URLTemplate: "https://hub-cdn.crowdsec.net/%s/%s",
 		// URLTemplate: "http://localhost:8000/crowdsecurity/%s/hub/%s",
 		IndexPath: ".index.json",
@@ -83,14 +86,19 @@ func RemoteHub(c *csconfig.Config) *cwhub.RemoteHubCfg {
 
 // Hub initializes the hub. If a remote configuration is provided, it can be used to download the index and items.
 // If no remote parameter is provided, the hub can only be used for local operations.
-func Hub(c *csconfig.Config, remote *cwhub.RemoteHubCfg) (*cwhub.Hub, error) {
+func Hub(c *csconfig.Config, remote *cwhub.RemoteHubCfg, logger *logrus.Logger) (*cwhub.Hub, error) {
 	local := c.Hub
 
 	if local == nil {
 		return nil, fmt.Errorf("you must configure cli before interacting with hub")
 	}
 
-	hub, err := cwhub.NewHub(local, remote, false)
+	if logger == nil {
+		logger = logrus.New()
+		logger.SetOutput(io.Discard)
+	}
+
+	hub, err := cwhub.NewHub(local, remote, false, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read Hub index: %w. Run 'sudo cscli hub update' to download the index again", err)
 	}

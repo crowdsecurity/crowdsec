@@ -77,7 +77,7 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 	}
 
 	if !cConfig.DisableAgent {
-		hub, err := cwhub.NewHub(cConfig.Hub, nil, false)
+		hub, err := cwhub.NewHub(cConfig.Hub, nil, false, log.StandardLogger())
 		if err != nil {
 			return nil, fmt.Errorf("while loading hub index: %w", err)
 		}
@@ -348,7 +348,7 @@ func Serve(cConfig *csconfig.Config, apiReady chan bool, agentReady chan bool) e
 	}
 
 	if !cConfig.DisableAgent {
-		hub, err := cwhub.NewHub(cConfig.Hub, nil, false)
+		hub, err := cwhub.NewHub(cConfig.Hub, nil, false, log.StandardLogger())
 		if err != nil {
 			return fmt.Errorf("while loading hub index: %w", err)
 		}

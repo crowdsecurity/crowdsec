@@ -14,15 +14,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/tomb.v2"
+	yaml "gopkg.in/yaml.v2"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/davecgh/go-spew/spew"
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
-	yaml "gopkg.in/yaml.v2"
 )
 
 type TestFile struct {
@@ -39,12 +40,12 @@ func TestBucket(t *testing.T) {
 	testdata := "./tests"
 
 	hubCfg := &csconfig.LocalHubCfg{
-		HubDir: filepath.Join(testdata, "hub"),
-		HubIndexFile: filepath.Join(testdata, "hub", "index.json"),
+		HubDir:         filepath.Join(testdata, "hub"),
+		HubIndexFile:   filepath.Join(testdata, "hub", "index.json"),
 		InstallDataDir: testdata,
 	}
 
-	hub, err := cwhub.NewHub(hubCfg, nil, false)
+	hub, err := cwhub.NewHub(hubCfg, nil, false, nil)
 	if err != nil {
 		t.Fatalf("failed to init hub: %s", err)
 	}
