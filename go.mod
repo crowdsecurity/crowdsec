@@ -82,7 +82,7 @@ require (
 	github.com/umahmood/haversine v0.0.0-20151105152445-808ab04add26
 	github.com/wasilibs/go-re2 v1.3.0
 	github.com/xhit/go-simple-mail/v2 v2.16.0
-	golang.org/x/crypto v0.16.0
+	golang.org/x/crypto v0.17.0
 	golang.org/x/mod v0.11.0
 	golang.org/x/sys v0.15.0
 	golang.org/x/text v0.14.0
