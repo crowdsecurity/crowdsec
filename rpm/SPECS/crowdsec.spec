@@ -182,7 +182,7 @@ if [ $1 == 1 ]; then
     echo "Get started with CrowdSec:"
     echo " * detailed guides are available in our documentation: https://docs.crowdsec.net"
     echo " * community-driven configuration items are available at the Hub: https://hub.crowdsec.net"
-    echo " * Get insight of your CrowdSec usage thanks to the console: https://app.crowdsec.net"
+    echo " * Gain insights into your use of CrowdSec with the help of the console"
 
 #upgrade
 elif [ $1 == 2 ] && [ -d /var/lib/crowdsec/backup ]; then
