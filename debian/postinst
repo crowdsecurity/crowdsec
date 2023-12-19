@@ -91,7 +91,7 @@ if [ "$1" = configure ]; then
     systemctl --quiet is-enabled crowdsec || systemctl unmask crowdsec && systemctl enable crowdsec
 
     API=$(cscli config show --key "Config.API.Server")
-    if [ "$API" = "<nil>" ] ; then
+    if [ "$API" = "nil" ] ; then
         LAPI=false
     else
         PORT=$(cscli config show --key "Config.API.Server.ListenURI"|cut -d ":" -f2)

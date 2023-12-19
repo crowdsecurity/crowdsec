@@ -199,7 +199,7 @@ fi
 
 if [ $1 == 1 ]; then
     API=$(cscli config show --key "Config.API.Server")
-    if [ "$API" = "<nil>" ] ; then
+    if [ "$API" = "nil" ] ; then
         LAPI=false
     else
         PORT=$(cscli config show --key "Config.API.Server.ListenURI"|cut -d ":" -f2)
