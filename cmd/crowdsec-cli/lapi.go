@@ -422,7 +422,7 @@ cscli lapi context detect crowdsecurity/sshd-logs
 	cmdContext.AddCommand(cmdContextDetect)
 
 	cmdContextDelete := &cobra.Command{
-		Use:   "delete",
+		Use:               "delete",
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
 			filePath := csConfig.Crowdsec.ConsoleContextPath

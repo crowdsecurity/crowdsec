@@ -238,7 +238,7 @@ func collectAcquisitionConfig() map[string][]byte {
 	return ret
 }
 
-type cliSupport struct {}
+type cliSupport struct{}
 
 func NewCLISupport() *cliSupport {
 	return &cliSupport{}

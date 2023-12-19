@@ -13,7 +13,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-type cliSimulation struct {}
+type cliSimulation struct{}
 
 func NewCLISimulation() *cliSimulation {
 	return &cliSimulation{}
@@ -267,4 +267,3 @@ func simulationStatus() error {
 	}
 	return nil
 }
-

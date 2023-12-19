@@ -10,8 +10,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sirupsen/logrus"
 	"github.com/Masterminds/semver/v3"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 	"slices"
 )

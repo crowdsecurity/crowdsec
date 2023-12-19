@@ -8,8 +8,8 @@ import (
 	"os"
 	"time"
 
-	"gopkg.in/yaml.v3"
 	"github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )

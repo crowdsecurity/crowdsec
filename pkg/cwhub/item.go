@@ -409,7 +409,7 @@ func (i *Item) validPath(dirName, fileName string) bool {
 }
 
 // FQName returns the fully qualified name of the item (ie. parsers:crowdsecurity/apache2-logs).
-func (i *Item) FQName () string {
+func (i *Item) FQName() string {
 	return fmt.Sprintf("%s:%s", i.Type, i.Name)
 }
 
