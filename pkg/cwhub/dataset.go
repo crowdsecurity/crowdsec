@@ -8,8 +8,8 @@ import (
 	"os"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
+	"github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -21,8 +21,6 @@ type DataSet struct {
 
 // downloadFile downloads a file and writes it to disk, with no hash verification.
 func downloadFile(url string, destPath string) error {
-	log.Debugf("downloading %s in %s", url, destPath)
-
 	resp, err := hubClient.Get(url)
 	if err != nil {
 		return fmt.Errorf("while downloading %s: %w", url, err)
@@ -56,26 +54,26 @@ func downloadFile(url string, destPath string) error {
 // if the local file doesn't exist, update.
 // if the remote is newer than the local file, update.
 // if the remote has no modification date, but local file has been modified > a week ago, update.
-func needsUpdate(destPath string, url string) bool {
+func needsUpdate(destPath string, url string, logger *logrus.Logger) bool {
 	fileInfo, err := os.Stat(destPath)
 	switch {
 	case os.IsNotExist(err):
 		return true
 	case err != nil:
-		log.Errorf("while getting %s: %s", destPath, err)
+		logger.Errorf("while getting %s: %s", destPath, err)
 		return true
 	}
 
 	resp, err := hubClient.Head(url)
 	if err != nil {
-		log.Errorf("while getting %s: %s", url, err)
+		logger.Errorf("while getting %s: %s", url, err)
 		// Head failed, Get would likely fail too -> no update
 		return false
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Errorf("bad http code %d for %s", resp.StatusCode, url)
+		logger.Errorf("bad http code %d for %s", resp.StatusCode, url)
 		return false
 	}
 
@@ -89,19 +87,19 @@ func needsUpdate(destPath string, url string) bool {
 	remoteLastModified := resp.Header.Get("Last-Modified")
 	if remoteLastModified == "" {
 		if localIsOld {
-			log.Infof("no last modified date for %s, but local file is older than %s", url, shelfLife)
+			logger.Infof("no last modified date for %s, but local file is older than %s", url, shelfLife)
 		}
 		return localIsOld
 	}
 
 	lastAvailable, err := time.Parse(time.RFC1123, remoteLastModified)
 	if err != nil {
-		log.Warningf("while parsing last modified date for %s: %s", url, err)
+		logger.Warningf("while parsing last modified date for %s: %s", url, err)
 		return localIsOld
 	}
 
 	if lastModify.Before(lastAvailable) {
-		log.Infof("new version available, updating %s", destPath)
+		logger.Infof("new version available, updating %s", destPath)
 		return true
 	}
 
@@ -109,7 +107,7 @@ func needsUpdate(destPath string, url string) bool {
 }
 
 // downloadDataSet downloads all the data files for an item.
-func downloadDataSet(dataFolder string, force bool, reader io.Reader) error {
+func downloadDataSet(dataFolder string, force bool, reader io.Reader, logger *logrus.Logger) error {
 	dec := yaml.NewDecoder(reader)
 
 	for {
@@ -129,7 +127,8 @@ func downloadDataSet(dataFolder string, force bool, reader io.Reader) error {
 				return err
 			}
 
-			if force || needsUpdate(destPath, dataS.SourceURL) {
+			if force || needsUpdate(destPath, dataS.SourceURL, logger) {
+				logger.Debugf("downloading %s in %s", dataS.SourceURL, destPath)
 				if err := downloadFile(dataS.SourceURL, destPath); err != nil {
 					return fmt.Errorf("while getting data: %w", err)
 				}

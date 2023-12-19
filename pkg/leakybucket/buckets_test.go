@@ -44,7 +44,7 @@ func TestBucket(t *testing.T) {
 		InstallDataDir: testdata,
 	}
 
-	hub, err := cwhub.NewHub(hubCfg, nil, false)
+	hub, err := cwhub.NewHub(hubCfg, nil, false, nil)
 	if err != nil {
 		t.Fatalf("failed to init hub: %s", err)
 	}

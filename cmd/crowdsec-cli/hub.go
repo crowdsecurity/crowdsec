@@ -50,7 +50,7 @@ func (cli cliHub) list(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	hub, err := require.Hub(csConfig, nil)
+	hub, err := require.Hub(csConfig, nil, log.StandardLogger())
 	if err != nil {
 		return err
 	}
@@ -100,7 +100,7 @@ func (cli cliHub) update(cmd *cobra.Command, args []string) error {
 	remote := require.RemoteHub(csConfig)
 
 	// don't use require.Hub because if there is no index file, it would fail
-	hub, err := cwhub.NewHub(local, remote, true)
+	hub, err := cwhub.NewHub(local, remote, true, log.StandardLogger())
 	if err != nil {
 		return fmt.Errorf("failed to update hub: %w", err)
 	}
@@ -135,7 +135,7 @@ func (cli cliHub) upgrade(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig))
+	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig), log.StandardLogger())
 	if err != nil {
 		return err
 	}

@@ -316,7 +316,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				skipAgent = true
 			}
 
-			hub, err := require.Hub(csConfig, nil)
+			hub, err := require.Hub(csConfig, nil, nil)
 			if err != nil {
 				log.Warn("Could not init hub, running on LAPI ? Hub related information will not be collected")
 				skipHub = true
