@@ -102,6 +102,13 @@ if [ "$1" = configure ]; then
         echo "Not attempting to start crowdsec, port ${PORT} is already used or lapi was disabled"
         echo "This port is configured through /etc/crowdsec/config.yaml and /etc/crowdsec/local_api_credentials.yaml"
     fi
+
+    echo "Get started with CrowdSec:"
+    echo " * detailed guides are available in our documentation: https://docs.crowdsec.net"
+    echo " * community-driven configuration items are available at the Hub: https://hub.crowdsec.net"
+    echo " * Get insight of your CrowdSec usage thanks to the console: https://app.crowdsec.net"
+
+
 fi
 
 echo "You can always run the configuration again interactively by using '/usr/share/crowdsec/wizard.sh -c'"
