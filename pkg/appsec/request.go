@@ -247,7 +247,7 @@ func (r *ReqDumpFilter) GetFilteredRequest() *ParsedRequest {
 }
 
 func (r *ReqDumpFilter) ToJSON() error {
-	fd, err := os.CreateTemp("/tmp/", "crowdsec_req_dump_*.json")
+	fd, err := os.CreateTemp("", "crowdsec_req_dump_*.json")
 	if err != nil {
 		return fmt.Errorf("while creating temp file: %w", err)
 	}
