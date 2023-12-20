@@ -318,6 +318,7 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 
 	// time spent to process in band rules
 	inBandParsingElapsed := time.Since(startInBandParsing)
+	logger.Infof("Addind inband elapsed: %+v", inBandParsingElapsed.Seconds())
 	AppsecInbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized}).Observe(inBandParsingElapsed.Seconds())
 
 	if request.Tx.IsInterrupted() {
@@ -350,6 +351,8 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 	// time spent to process inband AND out of band rules
 	globalParsingElapsed := time.Since(startGlobalParsing)
 	AppsecGlobalParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized}).Observe(globalParsingElapsed.Seconds())
+
+	logger.Infof("Addind global elapsed: %+v", globalParsingElapsed.Seconds())
 
 	if request.Tx.IsInterrupted() {
 		r.handleOutBandInterrupt(request)
