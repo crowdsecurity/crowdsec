@@ -78,7 +78,7 @@ func (r *ReqDumpFilter) WithEmptyHeadersFilters() *ReqDumpFilter {
 	return r
 }
 
-func (r *ReqDumpFilter) WithHeadersContentFilters(filter string) *ReqDumpFilter {
+func (r *ReqDumpFilter) WithHeadersContentFilter(filter string) *ReqDumpFilter {
 	r.HeadersContentFilters = append(r.HeadersContentFilters, filter)
 	return r
 }
