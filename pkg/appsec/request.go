@@ -114,7 +114,7 @@ func (r *ReqDumpFilter) WithEmptyArgsFilters() *ReqDumpFilter {
 	return r
 }
 
-func (r *ReqDumpFilter) WithArgsContentFilters(filter string) *ReqDumpFilter {
+func (r *ReqDumpFilter) WithArgsContentFilter(filter string) *ReqDumpFilter {
 	r.ArgsContentFilters = append(r.ArgsContentFilters, filter)
 	return r
 }
