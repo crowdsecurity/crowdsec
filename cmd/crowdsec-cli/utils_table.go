@@ -25,6 +25,19 @@ func listHubItemTable(out io.Writer, title string, items []*cwhub.Item) {
 	t.Render()
 }
 
+func appsecMetricsTable(out io.Writer, itemName string, metrics map[string]int) {
+	t := newTable(out)
+	t.SetHeaders("Inband Hits", "Outband Hits")
+
+	t.AddRow(
+		strconv.Itoa(metrics["inband_hits"]),
+		strconv.Itoa(metrics["outband_hits"]),
+	)
+
+	renderTableTitle(out, fmt.Sprintf("\n - (AppSec Rule) %s:", itemName))
+	t.Render()
+}
+
 func scenarioMetricsTable(out io.Writer, itemName string, metrics map[string]int) {
 	if metrics["instantiation"] == 0 {
 		return

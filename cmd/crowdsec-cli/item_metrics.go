@@ -33,7 +33,8 @@ func ShowMetrics(hubItem *cwhub.Item) error {
 			}
 		}
 	case cwhub.APPSEC_RULES:
-		log.Error("FIXME: not implemented yet")
+		metrics := GetAppsecRuleMetric(csConfig.Cscli.PrometheusUrl, hubItem.Name)
+		appsecMetricsTable(color.Output, hubItem.Name, metrics)
 	default: // no metrics for this item type
 	}
 	return nil
@@ -168,6 +169,63 @@ func GetScenarioMetric(url string, itemName string) map[string]int {
 				stats["pour"] += ival
 			case "cs_bucket_underflowed_total":
 				stats["underflow"] += ival
+			default:
+				continue
+			}
+		}
+	}
+	return stats
+}
+
+func GetAppsecRuleMetric(url string, itemName string) map[string]int {
+	stats := make(map[string]int)
+
+	stats["inband_hits"] = 0
+	stats["outband_hits"] = 0
+
+	results := GetPrometheusMetric(url)
+	for idx, fam := range results {
+		if !strings.HasPrefix(fam.Name, "cs_") {
+			continue
+		}
+		log.Tracef("round %d", idx)
+		for _, m := range fam.Metrics {
+			metric, ok := m.(prom2json.Metric)
+			if !ok {
+				log.Debugf("failed to convert metric to prom2json.Metric")
+				continue
+			}
+			name, ok := metric.Labels["rule_name"]
+			if !ok {
+				log.Debugf("no rule_name in Metric %v", metric.Labels)
+			}
+			if name != itemName {
+				continue
+			}
+
+			band, ok := metric.Labels["type"]
+			if !ok {
+				log.Debugf("no type in Metric %v", metric.Labels)
+			}
+
+			value := m.(prom2json.Metric).Value
+			fval, err := strconv.ParseFloat(value, 32)
+			if err != nil {
+				log.Errorf("Unexpected int value %s : %s", value, err)
+				continue
+			}
+			ival := int(fval)
+
+			switch fam.Name {
+			case "cs_appsec_rule_hits":
+				switch band {
+				case "inband":
+					stats["inband_hits"] += ival
+				case "outband":
+					stats["outband_hits"] += ival
+				default:
+					continue
+				}
 			default:
 				continue
 			}
