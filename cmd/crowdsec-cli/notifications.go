@@ -39,8 +39,7 @@ type NotificationsCfg struct {
 	ids      []uint
 }
 
-
-type cliNotifications struct {}
+type cliNotifications struct{}
 
 func NewCLINotifications() *cliNotifications {
 	return &cliNotifications{}
@@ -56,9 +55,6 @@ func (cli cliNotifications) NewCommand() *cobra.Command {
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := require.LAPI(csConfig); err != nil {
-				return err
-			}
-			if err := require.Profiles(csConfig); err != nil {
 				return err
 			}
 			if err := require.Notifications(csConfig); err != nil {
@@ -110,39 +106,28 @@ func getProfilesConfigs() (map[string]NotificationsCfg, error) {
 		return nil, err
 	}
 	ncfgs := map[string]NotificationsCfg{}
+	for _, pc := range pcfgs {
+		ncfgs[pc.Name] = NotificationsCfg{
+			Config: pc,
+		}
+	}
 	profiles, err := csprofiles.NewProfile(csConfig.API.Server.Profiles)
 	if err != nil {
 		return nil, fmt.Errorf("while extracting profiles from configuration: %w", err)
 	}
 	for profileID, profile := range profiles {
-	loop:
 		for _, notif := range profile.Cfg.Notifications {
-			for name, pc := range pcfgs {
-				if notif == name {
-					if _, ok := ncfgs[pc.Name]; !ok {
-						ncfgs[pc.Name] = NotificationsCfg{
-							Config:   pc,
-							Profiles: []*csconfig.ProfileCfg{profile.Cfg},
-							ids:      []uint{uint(profileID)},
-						}
-						continue loop
-					}
-					tmp := ncfgs[pc.Name]
-					for _, pr := range tmp.Profiles {
-						var profiles []*csconfig.ProfileCfg
-						if pr.Name == profile.Cfg.Name {
-							continue
-						}
-						profiles = append(tmp.Profiles, profile.Cfg)
-						ids := append(tmp.ids, uint(profileID))
-						ncfgs[pc.Name] = NotificationsCfg{
-							Config:   tmp.Config,
-							Profiles: profiles,
-							ids:      ids,
-						}
-					}
-				}
+			pc, ok := pcfgs[notif]
+			if !ok {
+				return nil, fmt.Errorf("notification plugin '%s' does not exist", notif)
 			}
+			tmp, ok := ncfgs[pc.Name]
+			if !ok {
+				return nil, fmt.Errorf("notification plugin '%s' does not exist", pc.Name)
+			}
+			tmp.Profiles = append(tmp.Profiles, profile.Cfg)
+			tmp.ids = append(tmp.ids, uint(profileID))
+			ncfgs[pc.Name] = tmp
 		}
 	}
 	return ncfgs, nil

@@ -27,7 +27,6 @@ var defaultDuration = "4h"
 func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 	var err error
 	profilesRuntime := make([]*Runtime, 0)
-
 	for _, profile := range profilesCfg {
 		var runtimeFilter, runtimeDurationExpr *vm.Program
 		runtime := &Runtime{}
