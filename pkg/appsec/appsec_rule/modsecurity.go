@@ -21,6 +21,7 @@ var zonesMap map[string]string = map[string]string{
 	"PROTOCOL":        "REQUEST_PROTOCOL",
 	"URI":             "REQUEST_URI",
 	"RAW_BODY":        "REQUEST_BODY",
+	"FILENAMES":       "FILES",
 }
 
 var transformMap map[string]string = map[string]string{

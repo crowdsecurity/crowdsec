@@ -63,7 +63,7 @@ func TestBodyDumper(t *testing.T) {
 				Headers: map[string][]string{"test1": {"toto"}},
 			},
 			filter: func(r *ReqDumpFilter) *ReqDumpFilter {
-				return r.WithHeadersContentFilters("tata")
+				return r.WithHeadersContentFilter("tata")
 			},
 		},
 		{
@@ -153,7 +153,7 @@ func TestBodyDumper(t *testing.T) {
 				Args: map[string][]string{"test": {"lol"}},
 			},
 			filter: func(r *ReqDumpFilter) *ReqDumpFilter {
-				return r.WithArgsContentFilters("toto")
+				return r.WithArgsContentFilter("toto")
 			},
 		},
 	}

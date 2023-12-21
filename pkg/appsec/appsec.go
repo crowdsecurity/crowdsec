@@ -30,7 +30,6 @@ const (
 	hookOnMatch
 )
 
-// @tko : todo - debug mode
 func (h *Hook) Build(hookStage int) error {
 
 	ctx := map[string]interface{}{}

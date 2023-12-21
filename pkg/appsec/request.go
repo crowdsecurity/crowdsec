@@ -78,7 +78,7 @@ func (r *ReqDumpFilter) WithEmptyHeadersFilters() *ReqDumpFilter {
 	return r
 }
 
-func (r *ReqDumpFilter) WithHeadersContentFilters(filter string) *ReqDumpFilter {
+func (r *ReqDumpFilter) WithHeadersContentFilter(filter string) *ReqDumpFilter {
 	r.HeadersContentFilters = append(r.HeadersContentFilters, filter)
 	return r
 }
@@ -114,7 +114,7 @@ func (r *ReqDumpFilter) WithEmptyArgsFilters() *ReqDumpFilter {
 	return r
 }
 
-func (r *ReqDumpFilter) WithArgsContentFilters(filter string) *ReqDumpFilter {
+func (r *ReqDumpFilter) WithArgsContentFilter(filter string) *ReqDumpFilter {
 	r.ArgsContentFilters = append(r.ArgsContentFilters, filter)
 	return r
 }
@@ -247,7 +247,7 @@ func (r *ReqDumpFilter) GetFilteredRequest() *ParsedRequest {
 }
 
 func (r *ReqDumpFilter) ToJSON() error {
-	fd, err := os.CreateTemp("/tmp/", "crowdsec_req_dump_*.json")
+	fd, err := os.CreateTemp("", "crowdsec_req_dump_*.json")
 	if err != nil {
 		return fmt.Errorf("while creating temp file: %w", err)
 	}
