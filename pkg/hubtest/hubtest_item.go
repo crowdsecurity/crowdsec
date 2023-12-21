@@ -89,7 +89,7 @@ const (
 
 	TestBouncerApiKey = "this_is_a_bad_password"
 
-	DefaultNucleiTarget = "http://127.0.0.1:80/"
+	DefaultNucleiTarget = "http://127.0.0.1:7822/"
 	DefaultAppsecHost   = "127.0.0.1:4241"
 )
 
