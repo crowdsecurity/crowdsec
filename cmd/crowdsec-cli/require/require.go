@@ -54,14 +54,6 @@ func DB(c *csconfig.Config) error {
 	return nil
 }
 
-func Profiles(c *csconfig.Config) error {
-	if err := c.API.Server.LoadProfiles(); err != nil {
-		return fmt.Errorf("while loading profiles: %w", err)
-	}
-
-	return nil
-}
-
 func Notifications(c *csconfig.Config) error {
 	if c.ConfigPaths.NotificationDir == "" {
 		return fmt.Errorf("config_paths.notification_dir is not set in crowdsec config")
