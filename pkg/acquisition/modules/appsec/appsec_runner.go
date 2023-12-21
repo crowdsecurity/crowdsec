@@ -192,11 +192,11 @@ func (r *AppsecRunner) processRequest(tx appsec.ExtendedTransaction, request *ap
 }
 
 func (r *AppsecRunner) ProcessInBandRules(request *appsec.ParsedRequest) error {
+	tx := appsec.NewExtendedTransaction(r.AppsecInbandEngine, request.UUID)
+	r.AppsecRuntime.InBandTx = tx
 	if len(r.AppsecRuntime.InBandRules) == 0 {
 		return nil
 	}
-	tx := appsec.NewExtendedTransaction(r.AppsecInbandEngine, request.UUID)
-	r.AppsecRuntime.InBandTx = tx
 	err := r.processRequest(tx, request)
 	return err
 }
