@@ -335,28 +335,31 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 	r.AppsecRuntime.Response.SendAlert = false
 	r.AppsecRuntime.Response.SendEvent = true
 
-	//to measure the time spent in the Application Security Engine for OutOfBand rules
-	startOutOfBandParsing := time.Now()
+	//FIXME: This is a bit of a hack to avoid confusion with the transaction if we do not have any inband rules.
+	//We should probably have different transaction (or even different request object) for inband and out of band rules
+	if len(r.AppsecRuntime.OutOfBandRules) > 0 {
+		//to measure the time spent in the Application Security Engine for OutOfBand rules
+		startOutOfBandParsing := time.Now()
 
-	err = r.ProcessOutOfBandRules(request)
-	if err != nil {
-		logger.Errorf("unable to process OutOfBand rules: %s", err)
-		return
+		err = r.ProcessOutOfBandRules(request)
+		if err != nil {
+			logger.Errorf("unable to process OutOfBand rules: %s", err)
+			return
+		}
+
+		// time spent to process out of band rules
+		outOfBandParsingElapsed := time.Since(startOutOfBandParsing)
+		AppsecOutbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized}).Observe(outOfBandParsingElapsed.Seconds())
+		if request.Tx.IsInterrupted() {
+			r.handleOutBandInterrupt(request)
+		}
 	}
-
-	// time spent to process out of band rules
-	outOfBandParsingElapsed := time.Since(startOutOfBandParsing)
-	AppsecOutbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(outOfBandParsingElapsed.Seconds())
-
 	// time spent to process inband AND out of band rules
 	globalParsingElapsed := time.Since(startGlobalParsing)
 	AppsecGlobalParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(globalParsingElapsed.Seconds())
 
 	logger.Infof("Addind global elapsed: %+v", globalParsingElapsed.Seconds())
 
-	if request.Tx.IsInterrupted() {
-		r.handleOutBandInterrupt(request)
-	}
 }
 
 func (r *AppsecRunner) Run(t *tomb.Tomb) error {
