@@ -110,7 +110,6 @@ func (r *AppsecRunner) Init(datadir string) error {
 func (r *AppsecRunner) processRequest(tx appsec.ExtendedTransaction, request *appsec.ParsedRequest) error {
 	var in *corazatypes.Interruption
 	var err error
-	request.Tx = tx
 
 	if request.Tx.IsRuleEngineOff() {
 		r.logger.Debugf("rule engine is off, skipping")
@@ -129,7 +128,7 @@ func (r *AppsecRunner) processRequest(tx appsec.ExtendedTransaction, request *ap
 		//FIXME: should we abort here ?
 	}
 
-	request.Tx.Tx.ProcessConnection(request.RemoteAddr, 0, "", 0)
+	request.Tx.ProcessConnection(request.RemoteAddr, 0, "", 0)
 
 	for k, v := range request.Args {
 		for _, vv := range v {
@@ -194,6 +193,7 @@ func (r *AppsecRunner) processRequest(tx appsec.ExtendedTransaction, request *ap
 func (r *AppsecRunner) ProcessInBandRules(request *appsec.ParsedRequest) error {
 	tx := appsec.NewExtendedTransaction(r.AppsecInbandEngine, request.UUID)
 	r.AppsecRuntime.InBandTx = tx
+	request.Tx = tx
 	if len(r.AppsecRuntime.InBandRules) == 0 {
 		return nil
 	}
@@ -202,11 +202,12 @@ func (r *AppsecRunner) ProcessInBandRules(request *appsec.ParsedRequest) error {
 }
 
 func (r *AppsecRunner) ProcessOutOfBandRules(request *appsec.ParsedRequest) error {
+	tx := appsec.NewExtendedTransaction(r.AppsecOutbandEngine, request.UUID)
+	r.AppsecRuntime.OutOfBandTx = tx
+	request.Tx = tx
 	if len(r.AppsecRuntime.OutOfBandRules) == 0 {
 		return nil
 	}
-	tx := appsec.NewExtendedTransaction(r.AppsecOutbandEngine, request.UUID)
-	r.AppsecRuntime.OutOfBandTx = tx
 	err := r.processRequest(tx, request)
 	return err
 }
@@ -348,7 +349,7 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 
 		// time spent to process out of band rules
 		outOfBandParsingElapsed := time.Since(startOutOfBandParsing)
-		AppsecOutbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized}).Observe(outOfBandParsingElapsed.Seconds())
+		AppsecOutbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(outOfBandParsingElapsed.Seconds())
 		if request.Tx.IsInterrupted() {
 			r.handleOutBandInterrupt(request)
 		}
