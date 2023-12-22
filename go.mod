@@ -24,7 +24,7 @@ require (
 	github.com/buger/jsonparser v1.1.1
 	github.com/c-robinson/iplib v1.0.3
 	github.com/cespare/xxhash/v2 v2.2.0
-	github.com/crowdsecurity/coraza/v3 v3.0.0-20231213144607-41d5358da94f
+	github.com/crowdsecurity/coraza/v3 v3.0.0-20231222120354-e66cc5fc4531
 	github.com/crowdsecurity/dlog v0.0.0-20170105205344-4fb5f8204f26
 	github.com/crowdsecurity/go-cs-lib v0.0.5
 	github.com/crowdsecurity/grokky v0.2.1
