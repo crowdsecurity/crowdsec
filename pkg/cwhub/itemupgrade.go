@@ -101,7 +101,7 @@ func (i *Item) downloadLatest(overwrite bool, updateOnly bool) (string, error) {
 		}
 	}
 
-	if !i.State.Installed && updateOnly && i.State.Downloaded {
+	if !i.State.Installed && updateOnly && i.State.Downloaded && !overwrite {
 		i.hub.logger.Debugf("skipping upgrade of %s: not installed", i.Name)
 		return "", nil
 	}
