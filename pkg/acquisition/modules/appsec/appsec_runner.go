@@ -349,7 +349,7 @@ func (r *AppsecRunner) handleRequest(request *appsec.ParsedRequest) {
 
 		// time spent to process out of band rules
 		outOfBandParsingElapsed := time.Since(startOutOfBandParsing)
-		AppsecOutbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized}).Observe(outOfBandParsingElapsed.Seconds())
+		AppsecOutbandParsingHistogram.With(prometheus.Labels{"source": request.RemoteAddrNormalized, "appsec_engine": request.AppsecEngine}).Observe(outOfBandParsingElapsed.Seconds())
 		if request.Tx.IsInterrupted() {
 			r.handleOutBandInterrupt(request)
 		}
