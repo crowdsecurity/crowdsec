@@ -57,6 +57,7 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx EnricherCtx) (
 		if err != nil {
 			return nil, fmt.Errorf("can't access parsing configuration file %s : %s", stageFile.Filename, err)
 		}
+		defer yamlFile.Close()
 		//process the yaml
 		dec := yaml.NewDecoder(yamlFile)
 		dec.SetStrict(true)

@@ -198,6 +198,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []str
 			log.Errorf("Can't access leaky configuration file %s", f)
 			return nil, nil, err
 		}
+		defer bucketConfigurationFile.Close()
 		dec := yaml.NewDecoder(bucketConfigurationFile)
 		dec.SetStrict(true)
 		for {
