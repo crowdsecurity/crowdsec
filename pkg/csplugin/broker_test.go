@@ -31,6 +31,7 @@ func (s *PluginSuite) permissionSetter(perm os.FileMode) func(*testing.T) {
 
 func (s *PluginSuite) readconfig() PluginConfig {
 	var config PluginConfig
+
 	t := s.T()
 
 	orig, err := os.ReadFile(s.pluginConfig)
@@ -142,6 +143,7 @@ func (s *PluginSuite) TestBrokerInit() {
 
 func (s *PluginSuite) TestBrokerNoThreshold() {
 	var alerts []models.Alert
+
 	DefaultEmptyTicker = 50 * time.Millisecond
 
 	t := s.T()
@@ -154,6 +156,7 @@ func (s *PluginSuite) TestBrokerNoThreshold() {
 
 	// send one item, it should be processed right now
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
 	time.Sleep(200 * time.Millisecond)
 
 	// we expect one now
@@ -170,6 +173,7 @@ func (s *PluginSuite) TestBrokerNoThreshold() {
 	// and another one
 	log.Printf("second send")
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
 	time.Sleep(200 * time.Millisecond)
 
 	// we expect one again, as we cleaned the file
@@ -204,6 +208,7 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_TimeFirst() {
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
 	time.Sleep(500 * time.Millisecond)
 	// because of group threshold, we shouldn't have data yet
 	assert.NoFileExists(t, "./out")
@@ -239,11 +244,13 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_CountFirst() {
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
 	time.Sleep(100 * time.Millisecond)
 
 	// because of group threshold, we shouldn't have data yet
 	assert.NoFileExists(t, "./out")
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
 	time.Sleep(100 * time.Millisecond)
 
 	// and now we should
@@ -277,6 +284,7 @@ func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
 	time.Sleep(time.Second)
 
 	// because of group threshold, we shouldn't have data yet
@@ -284,6 +292,7 @@ func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
 	time.Sleep(time.Second)
 
 	// and now we should
@@ -326,6 +335,7 @@ func (s *PluginSuite) TestBrokerRunTimeThreshold() {
 
 	// send data
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
 	time.Sleep(200 * time.Millisecond)
 
 	// we shouldn't have data yet

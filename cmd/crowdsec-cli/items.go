@@ -63,7 +63,9 @@ func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item
 			if omitIfEmpty && len(items[itemType]) == 0 {
 				continue
 			}
+
 			listHubItemTable(out, "\n"+strings.ToUpper(itemType), items[itemType])
+
 			nothingToDisplay = false
 		}
 
@@ -128,11 +130,13 @@ func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item
 				if len(itemTypes) > 1 {
 					row = append(row, itemType)
 				}
+
 				if err := csvwriter.Write(row); err != nil {
 					return fmt.Errorf("failed to write raw output: %s", err)
 				}
 			}
 		}
+
 		csvwriter.Flush()
 	default:
 		return fmt.Errorf("unknown output format '%s'", csConfig.Cscli.Output)
@@ -146,6 +150,7 @@ func InspectItem(item *cwhub.Item, showMetrics bool) error {
 	case "human", "raw":
 		enc := yaml.NewEncoder(os.Stdout)
 		enc.SetIndent(2)
+
 		if err := enc.Encode(item); err != nil {
 			return fmt.Errorf("unable to encode item: %s", err)
 		}
@@ -154,6 +159,7 @@ func InspectItem(item *cwhub.Item, showMetrics bool) error {
 		if err != nil {
 			return fmt.Errorf("unable to marshal item: %s", err)
 		}
+
 		fmt.Print(string(b))
 	}
 
@@ -169,6 +175,7 @@ func InspectItem(item *cwhub.Item, showMetrics bool) error {
 
 	if showMetrics {
 		fmt.Printf("\nCurrent metrics: \n")
+
 		if err := ShowMetrics(item); err != nil {
 			return err
 		}
