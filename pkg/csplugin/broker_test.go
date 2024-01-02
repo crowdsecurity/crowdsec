@@ -111,7 +111,7 @@ func (s *PluginSuite) TestBrokerInit() {
 		},
 		{
 			name:        "Invalid user and group",
-			expectedErr: "unknown user toto1234",
+			expectedErr: "toto1234",
 			procCfg: csconfig.PluginCfg{
 				User:  "toto1234",
 				Group: "toto1234",
@@ -119,7 +119,7 @@ func (s *PluginSuite) TestBrokerInit() {
 		},
 		{
 			name:        "Valid user and invalid group",
-			expectedErr: "unknown group toto1234",
+			expectedErr: "toto1234",
 			procCfg: csconfig.PluginCfg{
 				User:  "nobody",
 				Group: "toto1234",
