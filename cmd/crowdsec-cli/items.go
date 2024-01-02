@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -156,7 +157,17 @@ func InspectItem(item *cwhub.Item, showMetrics bool) error {
 		fmt.Print(string(b))
 	}
 
-	if csConfig.Cscli.Output == "human" && showMetrics {
+	if csConfig.Cscli.Output != "human" {
+		return nil
+	}
+
+	if item.State.Tainted {
+		fmt.Println()
+		fmt.Printf(`This item is tainted. Use "%s %s inspect --diff %s" to see why.`, filepath.Base(os.Args[0]), item.Type, item.Name)
+		fmt.Println()
+	}
+
+	if showMetrics {
 		fmt.Printf("\nCurrent metrics: \n")
 		if err := ShowMetrics(item); err != nil {
 			return err
