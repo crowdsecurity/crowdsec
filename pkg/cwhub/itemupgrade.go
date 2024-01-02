@@ -154,9 +154,17 @@ func (i *Item) FetchLatest() ([]byte, string, error) {
 
 // download downloads the item from the hub and writes it to the hub directory.
 func (i *Item) download(overwrite bool) (string, error) {
-	if i.State.IsLocal() {
-		return "", fmt.Errorf("%s is local, can't download", i.Name)
+	// ensure that target file is within target dir
+	finalPath, err := i.downloadPath()
+	if err != nil {
+		return "", err
 	}
+
+	if i.State.IsLocal() {
+		i.hub.logger.Warningf("%s is local, can't download", i.Name)
+		return finalPath, nil
+	}
+
 	// if user didn't --force, don't overwrite local, tainted, up-to-date files
 	if !overwrite {
 		if i.State.Tainted {
@@ -176,12 +184,6 @@ func (i *Item) download(overwrite bool) (string, error) {
 	}
 
 	// all good, install
-
-	// ensure that target file is within target dir
-	finalPath, err := i.downloadPath()
-	if err != nil {
-		return "", err
-	}
 
 	parentDir := filepath.Dir(finalPath)
 
