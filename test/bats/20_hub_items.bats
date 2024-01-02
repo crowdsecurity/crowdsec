@@ -152,9 +152,9 @@ teardown() {
     rune -0 mkdir -p "$CONFIG_DIR/collections"
     rune -0 touch "$CONFIG_DIR/collections/foobar.yaml"
     rune -1 cscli collections install foobar.yaml
-    assert_stderr --partial "failed to download item: foobar.yaml is local, can't download"
+    assert_stderr --partial "foobar.yaml is local, can't download"
     rune -1 cscli collections install foobar.yaml --force
-    assert_stderr --partial "failed to download item: foobar.yaml is local, can't download"
+    assert_stderr --partial "foobar.yaml is local, can't download"
 }
 
 @test "a local item cannot be removed by cscli" {
