@@ -335,7 +335,7 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	// parse the request only once
-	parsedRequest, err := appsec.NewParsedRequestFromRequest(r)
+	parsedRequest, err := appsec.NewParsedRequestFromRequest(r, w.logger)
 	if err != nil {
 		w.logger.Errorf("%s", err)
 		rw.WriteHeader(http.StatusInternalServerError)
