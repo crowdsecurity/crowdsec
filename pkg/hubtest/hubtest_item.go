@@ -731,7 +731,7 @@ func (t *HubTestItem) RunWithLogFile() error {
 		return fmt.Errorf("log file '%s' is empty, please fill it with log", logFile)
 	}
 
-	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--auto"}
+	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--force", "--auto"}
 	cscliRegisterCmd := exec.Command(t.CscliPath, cmdArgs...)
 	log.Debugf("%s", cscliRegisterCmd.String())
 
