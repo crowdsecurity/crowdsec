@@ -100,7 +100,7 @@ After running this command your will need to validate the enrollment in the weba
 				return nil
 			}
 
-			if err := SetConsoleOpts([]string{csconfig.SEND_MANUAL_SCENARIOS, csconfig.SEND_TAINTED_SCENARIOS}, true); err != nil {
+			if err := SetConsoleOpts([]string{csconfig.SEND_MANUAL_SCENARIOS, csconfig.SEND_TAINTED_SCENARIOS, csconfig.SEND_CONTEXT}, true); err != nil {
 				return err
 			}
 
