@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"reflect"
 	"testing"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/crowdsecurity/go-cs-lib/cstest"
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
@@ -38,10 +38,9 @@ func TestDecisionsList(t *testing.T) {
 			//no results
 		}
 	})
+
 	apiURL, err := url.Parse(urlx + "/")
-	if err != nil {
-		t.Fatalf("parsing api url: %s", apiURL)
-	}
+	require.NoError(t, err)
 
 	//ok answer
 	auth := &APIKeyTransport{
@@ -49,55 +48,32 @@ func TestDecisionsList(t *testing.T) {
 	}
 
 	newcli, err := NewDefaultClient(apiURL, "v1", "toto", auth.Client())
-	if err != nil {
-		t.Fatalf("new api client: %s", err)
-	}
+	require.NoError(t, err)
 
-	tduration := "3h59m55.756182786s"
-	torigin := "cscli"
-	tscenario := "manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'"
-	tscope := "Ip"
-	ttype := "ban"
-	tvalue := "1.2.3.4"
 	expected := &models.GetDecisionsResponse{
 		&models.Decision{
-			Duration: &tduration,
+			Duration: ptr.Of("3h59m55.756182786s"),
 			ID:       4,
-			Origin:   &torigin,
-			Scenario: &tscenario,
-			Scope:    &tscope,
-			Type:     &ttype,
-			Value:    &tvalue,
+			Origin:   ptr.Of("cscli"),
+			Scenario: ptr.Of("manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'"),
+			Scope:    ptr.Of("Ip"),
+			Type:     ptr.Of("ban"),
+			Value:    ptr.Of("1.2.3.4"),
 		},
 	}
 
-	//OK decisions
-	decisionsFilter := DecisionsListOpts{IPEquals: new(string)}
-	*decisionsFilter.IPEquals = "1.2.3.4"
+	// OK decisions
+	decisionsFilter := DecisionsListOpts{IPEquals: ptr.Of("1.2.3.4")}
 	decisions, resp, err := newcli.Decisions.List(context.Background(), decisionsFilter)
-
-	if resp.Response.StatusCode != http.StatusOK {
-		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
-	}
-
-	if err != nil {
-		t.Fatalf("new api client: %s", err)
-	}
-
-	if !reflect.DeepEqual(*decisions, *expected) {
-		t.Fatalf("returned %+v, want %+v", resp, expected)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
+	assert.Equal(t, *expected, *decisions)
 
 	//Empty return
-	decisionsFilter = DecisionsListOpts{IPEquals: new(string)}
-	*decisionsFilter.IPEquals = "1.2.3.5"
+	decisionsFilter = DecisionsListOpts{IPEquals: ptr.Of("1.2.3.5")}
 	decisions, resp, err = newcli.Decisions.List(context.Background(), decisionsFilter)
 	require.NoError(t, err)
-
-	if resp.Response.StatusCode != http.StatusOK {
-		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
-	}
-
+	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
 	assert.Empty(t, *decisions)
 }
 
@@ -120,6 +96,7 @@ func TestDecisionsStream(t *testing.T) {
 			}
 		}
 	})
+
 	mux.HandleFunc("/decisions", func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "ixu", r.Header.Get("X-Api-Key"))
 		testMethod(t, r, http.MethodDelete)
@@ -129,9 +106,7 @@ func TestDecisionsStream(t *testing.T) {
 	})
 
 	apiURL, err := url.Parse(urlx + "/")
-	if err != nil {
-		t.Fatalf("parsing api url: %s", apiURL)
-	}
+	require.NoError(t, err)
 
 	//ok answer
 	auth := &APIKeyTransport{
@@ -139,63 +114,38 @@ func TestDecisionsStream(t *testing.T) {
 	}
 
 	newcli, err := NewDefaultClient(apiURL, "v1", "toto", auth.Client())
-	if err != nil {
-		t.Fatalf("new api client: %s", err)
-	}
+	require.NoError(t, err)
 
-	tduration := "3h59m55.756182786s"
-	torigin := "cscli"
-	tscenario := "manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'"
-	tscope := "Ip"
-	ttype := "ban"
-	tvalue := "1.2.3.4"
 	expected := &models.DecisionsStreamResponse{
 		New: models.GetDecisionsResponse{
 			&models.Decision{
-				Duration: &tduration,
+				Duration: ptr.Of("3h59m55.756182786s"),
 				ID:       4,
-				Origin:   &torigin,
-				Scenario: &tscenario,
-				Scope:    &tscope,
-				Type:     &ttype,
-				Value:    &tvalue,
+				Origin:   ptr.Of("cscli"),
+				Scenario: ptr.Of("manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'"),
+				Scope:    ptr.Of("Ip"),
+				Type:     ptr.Of("ban"),
+				Value:    ptr.Of("1.2.3.4"),
 			},
 		},
 	}
 
 	decisions, resp, err := newcli.Decisions.GetStream(context.Background(), DecisionsStreamOpts{Startup: true})
 	require.NoError(t, err)
-
-	if resp.Response.StatusCode != http.StatusOK {
-		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
-	}
-
-	if err != nil {
-		t.Fatalf("new api client: %s", err)
-	}
-
-	if !reflect.DeepEqual(*decisions, *expected) {
-		t.Fatalf("returned %+v, want %+v", resp, expected)
-	}
+	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
+	assert.Equal(t, *expected, *decisions)
 
 	//and second call, we get empty lists
 	decisions, resp, err = newcli.Decisions.GetStream(context.Background(), DecisionsStreamOpts{Startup: false})
 	require.NoError(t, err)
-
-	if resp.Response.StatusCode != http.StatusOK {
-		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
-	}
-
+	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
 	assert.Empty(t, decisions.New)
 	assert.Empty(t, decisions.Deleted)
 
 	//delete stream
 	resp, err = newcli.Decisions.StopStream(context.Background())
 	require.NoError(t, err)
-
-	if resp.Response.StatusCode != http.StatusOK {
-		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
-	}
+	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
 }
 
 func TestDecisionsStreamV3Compatibility(t *testing.T) {
@@ -219,9 +169,7 @@ func TestDecisionsStreamV3Compatibility(t *testing.T) {
 	})
 
 	apiURL, err := url.Parse(urlx + "/")
-	if err != nil {
-		t.Fatalf("parsing api url: %s", apiURL)
-	}
+	require.NoError(t, err)
 
 	//ok answer
 	auth := &APIKeyTransport{
@@ -229,38 +177,30 @@ func TestDecisionsStreamV3Compatibility(t *testing.T) {
 	}
 
 	newcli, err := NewDefaultClient(apiURL, "v3", "toto", auth.Client())
-	if err != nil {
-		t.Fatalf("new api client: %s", err)
-	}
+	require.NoError(t, err)
 
-	tduration := "3h59m55.756182786s"
 	torigin := "CAPI"
-	tscenario := "manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'"
 	tscope := "ip"
 	ttype := "ban"
-	tvalue := "1.2.3.4"
-	tvalue1 := "1.2.3.5"
-	tscenarioDeleted := "deleted"
-	tdurationDeleted := "1h"
 	expected := &models.DecisionsStreamResponse{
 		New: models.GetDecisionsResponse{
 			&models.Decision{
-				Duration: &tduration,
+				Duration: ptr.Of("3h59m55.756182786s"),
 				Origin:   &torigin,
-				Scenario: &tscenario,
+				Scenario: ptr.Of("manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'"),
 				Scope:    &tscope,
 				Type:     &ttype,
-				Value:    &tvalue,
+				Value:    ptr.Of("1.2.3.4"),
 			},
 		},
 		Deleted: models.GetDecisionsResponse{
 			&models.Decision{
-				Duration: &tdurationDeleted,
+				Duration: ptr.Of("1h"),
 				Origin:   &torigin,
-				Scenario: &tscenarioDeleted,
+				Scenario: ptr.Of("deleted"),
 				Scope:    &tscope,
 				Type:     &ttype,
-				Value:    &tvalue1,
+				Value:    ptr.Of("1.2.3.5"),
 			},
 		},
 	}
@@ -268,18 +208,8 @@ func TestDecisionsStreamV3Compatibility(t *testing.T) {
 	// GetStream is supposed to consume v3 payload and return v2 response
 	decisions, resp, err := newcli.Decisions.GetStream(context.Background(), DecisionsStreamOpts{Startup: true})
 	require.NoError(t, err)
-
-	if resp.Response.StatusCode != http.StatusOK {
-		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
-	}
-
-	if err != nil {
-		t.Fatalf("new api client: %s", err)
-	}
-
-	if !reflect.DeepEqual(*decisions, *expected) {
-		t.Fatalf("returned %+v, want %+v", resp, expected)
-	}
+	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
+	assert.Equal(t, *expected, *decisions)
 }
 
 func TestDecisionsStreamV3(t *testing.T) {
@@ -300,9 +230,7 @@ func TestDecisionsStreamV3(t *testing.T) {
 	})
 
 	apiURL, err := url.Parse(urlx + "/")
-	if err != nil {
-		t.Fatalf("parsing api url: %s", apiURL)
-	}
+	require.NoError(t, err)
 
 	//ok answer
 	auth := &APIKeyTransport{
@@ -310,30 +238,19 @@ func TestDecisionsStreamV3(t *testing.T) {
 	}
 
 	newcli, err := NewDefaultClient(apiURL, "v3", "toto", auth.Client())
-	if err != nil {
-		t.Fatalf("new api client: %s", err)
-	}
+	require.NoError(t, err)
 
-	tduration := "3h59m55.756182786s"
-	tscenario := "manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'"
 	tscope := "ip"
-	tvalue := "1.2.3.4"
-	tvalue1 := "1.2.3.5"
-	tdurationBlocklist := "24h"
-	tnameBlocklist := "blocklist1"
-	tremediationBlocklist := "ban"
-	tscopeBlocklist := "ip"
-	turlBlocklist := "/v3/blocklist"
 	expected := &modelscapi.GetDecisionsStreamResponse{
 		New: modelscapi.GetDecisionsStreamResponseNew{
 			&modelscapi.GetDecisionsStreamResponseNewItem{
 				Decisions: []*modelscapi.GetDecisionsStreamResponseNewItemDecisionsItems0{
 					{
-						Duration: &tduration,
-						Value:    &tvalue,
+						Duration: ptr.Of("3h59m55.756182786s"),
+						Value:    ptr.Of("1.2.3.4"),
 					},
 				},
-				Scenario: &tscenario,
+				Scenario: ptr.Of("manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'"),
 				Scope:    &tscope,
 			},
 		},
@@ -341,18 +258,18 @@ func TestDecisionsStreamV3(t *testing.T) {
 			&modelscapi.GetDecisionsStreamResponseDeletedItem{
 				Scope: &tscope,
 				Decisions: []string{
-					tvalue1,
+					"1.2.3.5",
 				},
 			},
 		},
 		Links: &modelscapi.GetDecisionsStreamResponseLinks{
 			Blocklists: []*modelscapi.BlocklistLink{
 				{
-					Duration:    &tdurationBlocklist,
-					Name:        &tnameBlocklist,
-					Remediation: &tremediationBlocklist,
-					Scope:       &tscopeBlocklist,
-					URL:         &turlBlocklist,
+					Duration:    ptr.Of("24h"),
+					Name:        ptr.Of("blocklist1"),
+					Remediation: ptr.Of("ban"),
+					Scope:       ptr.Of("ip"),
+					URL:         ptr.Of("/v3/blocklist"),
 				},
 			},
 		},
@@ -361,18 +278,8 @@ func TestDecisionsStreamV3(t *testing.T) {
 	// GetStream is supposed to consume v3 payload and return v2 response
 	decisions, resp, err := newcli.Decisions.GetStreamV3(context.Background(), DecisionsStreamOpts{Startup: true})
 	require.NoError(t, err)
-
-	if resp.Response.StatusCode != http.StatusOK {
-		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
-	}
-
-	if err != nil {
-		t.Fatalf("new api client: %s", err)
-	}
-
-	if !reflect.DeepEqual(*decisions, *expected) {
-		t.Fatalf("returned %+v, want %+v", resp, expected)
-	}
+	assert.Equal(t, http.StatusOK, resp.Response.StatusCode)
+	assert.Equal(t, *expected, *decisions)
 }
 
 func TestDecisionsFromBlocklist(t *testing.T) {
@@ -383,10 +290,13 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 
 	mux.HandleFunc("/blocklist", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, http.MethodGet)
+
 		if r.Header.Get("If-Modified-Since") == "Sun, 01 Jan 2023 01:01:01 GMT" {
 			w.WriteHeader(http.StatusNotModified)
+
 			return
 		}
+
 		if r.Method == http.MethodGet {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("1.2.3.4\r\n1.2.3.5"))
@@ -394,9 +304,7 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 	})
 
 	apiURL, err := url.Parse(urlx + "/")
-	if err != nil {
-		t.Fatalf("parsing api url: %s", apiURL)
-	}
+	require.NoError(t, err)
 
 	//ok answer
 	auth := &APIKeyTransport{
@@ -404,12 +312,8 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 	}
 
 	newcli, err := NewDefaultClient(apiURL, "v3", "toto", auth.Client())
-	if err != nil {
-		t.Fatalf("new api client: %s", err)
-	}
+	require.NoError(t, err)
 
-	tvalue1 := "1.2.3.4"
-	tvalue2 := "1.2.3.5"
 	tdurationBlocklist := "24h"
 	tnameBlocklist := "blocklist1"
 	tremediationBlocklist := "ban"
@@ -419,7 +323,7 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 	expected := []*models.Decision{
 		{
 			Duration: &tdurationBlocklist,
-			Value:    &tvalue1,
+			Value:    ptr.Of("1.2.3.4"),
 			Scenario: &tnameBlocklist,
 			Scope:    &tscopeBlocklist,
 			Type:     &tremediationBlocklist,
@@ -427,7 +331,7 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 		},
 		{
 			Duration: &tdurationBlocklist,
-			Value:    &tvalue2,
+			Value:    ptr.Of("1.2.3.5"),
 			Scenario: &tnameBlocklist,
 			Scope:    &tscopeBlocklist,
 			Type:     &tremediationBlocklist,
@@ -450,13 +354,7 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 	log.Infof("expected : %s, %s, %s, %s, %s", *expected[0].Value, *expected[0].Duration, *expected[0].Scenario, *expected[0].Scope, *expected[0].Type)
 	log.Infof("decisions: %s, %s, %s, %s, %s", *decisions[1].Value, *decisions[1].Duration, *decisions[1].Scenario, *decisions[1].Scope, *decisions[1].Type)
 
-	if err != nil {
-		t.Fatalf("new api client: %s", err)
-	}
-
-	if !reflect.DeepEqual(decisions, expected) {
-		t.Fatalf("returned %+v, want %+v", decisions, expected)
-	}
+	assert.Equal(t, expected, decisions)
 
 	// test cache control
 	_, isModified, err = newcli.Decisions.GetDecisionsFromBlocklist(context.Background(), &modelscapi.BlocklistLink{
@@ -466,8 +364,10 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 		Name:        &tnameBlocklist,
 		Duration:    &tdurationBlocklist,
 	}, ptr.Of("Sun, 01 Jan 2023 01:01:01 GMT"))
+
 	require.NoError(t, err)
 	assert.False(t, isModified)
+
 	_, isModified, err = newcli.Decisions.GetDecisionsFromBlocklist(context.Background(), &modelscapi.BlocklistLink{
 		URL:         &turlBlocklist,
 		Scope:       &tscopeBlocklist,
@@ -475,6 +375,7 @@ func TestDecisionsFromBlocklist(t *testing.T) {
 		Name:        &tnameBlocklist,
 		Duration:    &tdurationBlocklist,
 	}, ptr.Of("Mon, 02 Jan 2023 01:01:01 GMT"))
+
 	require.NoError(t, err)
 	assert.True(t, isModified)
 }
@@ -485,6 +386,7 @@ func TestDeleteDecisions(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
 	})
+
 	mux.HandleFunc("/decisions", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "DELETE")
 		assert.Equal(t, "ip=1.2.3.4", r.URL.RawQuery)
@@ -492,11 +394,12 @@ func TestDeleteDecisions(t *testing.T) {
 		w.Write([]byte(`{"nbDeleted":"1"}`))
 		//w.Write([]byte(`{"message":"0 deleted alerts"}`))
 	})
+
 	log.Printf("URL is %s", urlx)
+
 	apiURL, err := url.Parse(urlx + "/")
-	if err != nil {
-		t.Fatalf("parsing api url: %s", apiURL)
-	}
+	require.NoError(t, err)
+
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
@@ -504,18 +407,13 @@ func TestDeleteDecisions(t *testing.T) {
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-
-	if err != nil {
-		t.Fatalf("new api client: %s", err)
-	}
+	require.NoError(t, err)
 
 	filters := DecisionsDeleteOpts{IPEquals: new(string)}
 	*filters.IPEquals = "1.2.3.4"
-	deleted, _, err := client.Decisions.Delete(context.Background(), filters)
-	if err != nil {
-		t.Fatalf("unexpected err : %s", err)
-	}
 
+	deleted, _, err := client.Decisions.Delete(context.Background(), filters)
+	require.NoError(t, err)
 	assert.Equal(t, "1", deleted.NbDeleted)
 
 	defer teardown()
@@ -530,22 +428,23 @@ func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 		ScenariosContaining    string
 		ScenariosNotContaining string
 	}
+
 	tests := []struct {
-		name    string
-		fields  fields
-		want    string
-		wantErr bool
+		name        string
+		fields      fields
+		expected    string
+		expectedErr string
 	}{
 		{
-			name: "no filter",
-			want: baseURLString + "?",
+			name:     "no filter",
+			expected: baseURLString + "?",
 		},
 		{
 			name: "startup=true",
 			fields: fields{
 				Startup: true,
 			},
-			want: baseURLString + "?startup=true",
+			expected: baseURLString + "?startup=true",
 		},
 		{
 			name: "set all params",
@@ -555,7 +454,7 @@ func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 				ScenariosContaining:    "ssh",
 				ScenariosNotContaining: "bf",
 			},
-			want: baseURLString + "?scenarios_containing=ssh&scenarios_not_containing=bf&scopes=ip%2Crange&startup=true",
+			expected: baseURLString + "?scenarios_containing=ssh&scenarios_not_containing=bf&scopes=ip%2Crange&startup=true",
 		},
 	}
 
@@ -568,25 +467,20 @@ func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
 				ScenariosContaining:    tt.fields.ScenariosContaining,
 				ScenariosNotContaining: tt.fields.ScenariosNotContaining,
 			}
+
 			got, err := o.addQueryParamsToURL(baseURLString)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("DecisionsStreamOpts.addQueryParamsToURL() error = %v, wantErr %v", err, tt.wantErr)
+			cstest.RequireErrorContains(t, err, tt.expectedErr)
+			if tt.expectedErr != "" {
 				return
 			}
 
 			gotURL, err := url.Parse(got)
-			if err != nil {
-				t.Errorf("DecisionsStreamOpts.addQueryParamsToURL() got error while parsing URL: %s", err)
-			}
+			require.NoError(t, err)
 
-			expectedURL, err := url.Parse(tt.want)
-			if err != nil {
-				t.Errorf("DecisionsStreamOpts.addQueryParamsToURL() got error while parsing URL: %s", err)
-			}
+			expectedURL, err := url.Parse(tt.expected)
+			require.NoError(t, err)
 
-			if *gotURL != *expectedURL {
-				t.Errorf("DecisionsStreamOpts.addQueryParamsToURL() = %v, want %v", *gotURL, *expectedURL)
-			}
+			assert.Equal(t, *expectedURL, *gotURL)
 		})
 	}
 }
