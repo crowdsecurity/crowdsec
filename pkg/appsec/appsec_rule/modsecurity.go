@@ -44,6 +44,7 @@ var matchMap map[string]string = map[string]string{
 	"lt":              "@lt",
 	"gte":             "@ge",
 	"lte":             "@le",
+	"eq":              "@eq",
 }
 
 var bodyTypeMatch map[string]string = map[string]string{
@@ -141,7 +142,11 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 
 	if rule.Match.Type != "" {
 		if match, ok := matchMap[rule.Match.Type]; ok {
-			r.WriteString(fmt.Sprintf(`"%s %s"`, match, rule.Match.Value))
+			prefix := ""
+			if rule.Match.Not {
+				prefix = "!"
+			}
+			r.WriteString(fmt.Sprintf(`"%s%s %s"`, prefix, match, rule.Match.Value))
 		} else {
 			return nil, fmt.Errorf("unknown match type '%s'", rule.Match.Type)
 		}
