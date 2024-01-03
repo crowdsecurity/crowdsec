@@ -44,6 +44,7 @@ var matchMap map[string]string = map[string]string{
 	"lt":              "@lt",
 	"gte":             "@ge",
 	"lte":             "@le",
+	"eq":              "@eq",
 }
 
 var bodyTypeMatch map[string]string = map[string]string{
