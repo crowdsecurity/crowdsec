@@ -568,6 +568,10 @@ func (cli cliItem) whyTainted(hub *cwhub.Hub, item *cwhub.Item, reverse bool) st
 			ret = append(ret, diff)
 		} else if len(sub.State.TaintedBy) > 0 {
 			taintList := strings.Join(sub.State.TaintedBy, ", ")
+			if sub.FQName() == taintList {
+				// hack: avoid message "item is tainted by itself"
+				continue
+			}
 			ret = append(ret, fmt.Sprintf("# %s is tainted by %s", sub.FQName(), taintList))
 		}
 	}
