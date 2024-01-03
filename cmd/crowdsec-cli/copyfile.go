@@ -18,20 +18,25 @@ func copyFileContents(src, dst string) (err error) {
 		return
 	}
 	defer in.Close()
+
 	out, err := os.Create(dst)
 	if err != nil {
 		return
 	}
+
 	defer func() {
 		cerr := out.Close()
 		if err == nil {
 			err = cerr
 		}
 	}()
+
 	if _, err = io.Copy(out, in); err != nil {
 		return
 	}
+
 	err = out.Sync()
+
 	return
 }
 
@@ -40,6 +45,7 @@ func CopyFile(sourceSymLink, destinationFile string) (err error) {
 	sourceFile, err := filepath.EvalSymlinks(sourceSymLink)
 	if err != nil {
 		log.Infof("Not a symlink : %s", err)
+
 		sourceFile = sourceSymLink
 	}
 
@@ -47,11 +53,13 @@ func CopyFile(sourceSymLink, destinationFile string) (err error) {
 	if err != nil {
 		return
 	}
+
 	if !sourceFileStat.Mode().IsRegular() {
 		// cannot copy non-regular files (e.g., directories,
 		// symlinks, devices, etc.)
 		return fmt.Errorf("copyFile: non-regular source file %s (%q)", sourceFileStat.Name(), sourceFileStat.Mode().String())
 	}
+
 	destinationFileStat, err := os.Stat(destinationFile)
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -65,9 +73,11 @@ func CopyFile(sourceSymLink, destinationFile string) (err error) {
 			return
 		}
 	}
+
 	if err = os.Link(sourceFile, destinationFile); err != nil {
 		err = copyFileContents(sourceFile, destinationFile)
 	}
+
 	return
 }
 

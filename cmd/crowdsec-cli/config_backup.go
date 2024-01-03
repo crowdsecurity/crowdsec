@@ -14,9 +14,6 @@ import (
 )
 
 func backupHub(dirPath string) error {
-	var itemDirectory string
-	var upstreamParsers []string
-
 	hub, err := require.Hub(csConfig, nil, nil)
 	if err != nil {
 		return err
@@ -26,16 +23,20 @@ func backupHub(dirPath string) error {
 		clog := log.WithFields(log.Fields{
 			"type": itemType,
 		})
+
 		itemMap := hub.GetItemMap(itemType)
 		if itemMap == nil {
 			clog.Infof("No %s to backup.", itemType)
 			continue
 		}
-		itemDirectory = fmt.Sprintf("%s/%s/", dirPath, itemType)
+
+		itemDirectory := fmt.Sprintf("%s/%s/", dirPath, itemType)
 		if err = os.MkdirAll(itemDirectory, os.ModePerm); err != nil {
 			return fmt.Errorf("error while creating %s : %s", itemDirectory, err)
 		}
-		upstreamParsers = []string{}
+
+		upstreamParsers := []string{}
+
 		for k, v := range itemMap {
 			clog = clog.WithFields(log.Fields{
 				"file": v.Name,
@@ -54,28 +55,36 @@ func backupHub(dirPath string) error {
 						return fmt.Errorf("error while creating stage dir %s : %s", fstagedir, err)
 					}
 				}
+
 				clog.Debugf("[%s]: backing up file (tainted:%t local:%t up-to-date:%t)", k, v.State.Tainted, v.State.IsLocal(), v.State.UpToDate)
+
 				tfile := fmt.Sprintf("%s%s/%s", itemDirectory, v.Stage, v.FileName)
 				if err = CopyFile(v.State.LocalPath, tfile); err != nil {
 					return fmt.Errorf("failed copy %s %s to %s : %s", itemType, v.State.LocalPath, tfile, err)
 				}
+
 				clog.Infof("local/tainted saved %s to %s", v.State.LocalPath, tfile)
+
 				continue
 			}
+
 			clog.Debugf("[%s] : from hub, just backup name (up-to-date:%t)", k, v.State.UpToDate)
 			clog.Infof("saving, version:%s, up-to-date:%t", v.Version, v.State.UpToDate)
 			upstreamParsers = append(upstreamParsers, v.Name)
 		}
 		//write the upstream items
 		upstreamParsersFname := fmt.Sprintf("%s/upstream-%s.json", itemDirectory, itemType)
+
 		upstreamParsersContent, err := json.MarshalIndent(upstreamParsers, "", " ")
 		if err != nil {
 			return fmt.Errorf("failed marshaling upstream parsers : %s", err)
 		}
+
 		err = os.WriteFile(upstreamParsersFname, upstreamParsersContent, 0o644)
 		if err != nil {
 			return fmt.Errorf("unable to write to %s %s : %s", itemType, upstreamParsersFname, err)
 		}
+
 		clog.Infof("Wrote %d entries for %s to %s", len(upstreamParsers), itemType, upstreamParsersFname)
 	}
 
