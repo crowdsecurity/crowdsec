@@ -321,6 +321,7 @@ func (t *HubTestItem) InstallHub() error {
 	// install appsec-rules in runtime environment
 	for _, appsecrule := range t.Config.AppsecRules {
 		log.Debugf("adding rule '%s'", appsecrule)
+
 		if appsecrule == "" {
 			continue
 		}
@@ -544,7 +545,6 @@ func (t *HubTestItem) Clean() error {
 }
 
 func (t *HubTestItem) RunWithNucleiTemplate() error {
-
 	crowdsecLogFile := fmt.Sprintf("%s/log/crowdsec.log", t.RuntimePath)
 
 	testPath := filepath.Join(t.HubTestPath, t.Name)
@@ -595,6 +595,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 			log.Errorf("crowdsec log file '%s'", crowdsecLogFile)
 			log.Errorf("%s\n", string(crowdsecLog))
 		}
+
 		return fmt.Errorf("appsec is down: %s", err)
 	}
 
@@ -603,6 +604,7 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 	if err != nil {
 		return fmt.Errorf("unable to parse target '%s': %s", t.NucleiTargetHost, err)
 	}
+
 	nucleiTargetHost := nucleiTargetParsedURL.Host
 	if _, err := IsAlive(nucleiTargetHost); err != nil {
 		return fmt.Errorf("target is down: %s", err)
@@ -648,7 +650,9 @@ func (t *HubTestItem) RunWithNucleiTemplate() error {
 			}
 		}
 	}
+
 	crowdsecDaemon.Process.Kill()
+
 	return nil
 }
 
@@ -731,7 +735,7 @@ func (t *HubTestItem) RunWithLogFile() error {
 		return fmt.Errorf("log file '%s' is empty, please fill it with log", logFile)
 	}
 
-	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--auto"}
+	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--force", "--auto"}
 	cscliRegisterCmd := exec.Command(t.CscliPath, cmdArgs...)
 	log.Debugf("%s", cscliRegisterCmd.String())
 
@@ -853,6 +857,7 @@ func (t *HubTestItem) RunWithLogFile() error {
 
 func (t *HubTestItem) Run() error {
 	var err error
+
 	t.Success = false
 	t.ErrorsList = make([]string, 0)
 
@@ -911,6 +916,7 @@ func (t *HubTestItem) Run() error {
 	if len(t.Config.AppsecRules) > 0 {
 		// copy template acquis file to runtime folder
 		log.Debugf("copying %s to %s", t.TemplateAcquisPath, t.RuntimeAcquisFilePath)
+
 		if err = Copy(t.TemplateAcquisPath, t.RuntimeAcquisFilePath); err != nil {
 			return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateAcquisPath, t.RuntimeAcquisFilePath, err)
 		}

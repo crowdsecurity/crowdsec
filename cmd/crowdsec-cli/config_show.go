@@ -24,6 +24,7 @@ func showConfigKey(key string) error {
 	opts := []expr.Option{}
 	opts = append(opts, exprhelpers.GetExprOptions(map[string]interface{}{})...)
 	opts = append(opts, expr.Env(Env{}))
+
 	program, err := expr.Compile(key, opts...)
 	if err != nil {
 		return err
@@ -52,6 +53,7 @@ func showConfigKey(key string) error {
 
 		fmt.Printf("%s\n", string(data))
 	}
+
 	return nil
 }
 
@@ -211,6 +213,7 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		err = tmp.Execute(os.Stdout, csConfig)
 		if err != nil {
 			return err
@@ -230,6 +233,7 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 
 		fmt.Printf("%s\n", string(data))
 	}
+
 	return nil
 }
 
