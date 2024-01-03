@@ -181,3 +181,15 @@ teardown() {
     rune -0 jq '.collections' <(output)
     assert_json '[]'
 }
+
+@test "tainted hub file, not enabled, install --force should repair" {
+    rune -0 cscli scenarios install crowdsecurity/ssh-bf
+    rune -0 cscli scenarios inspect crowdsecurity/ssh-bf -o json
+    local_path="$(jq -r '.local_path' <(output))"
+    echo >> "$local_path"
+    rm "$local_path"
+    rune -0 cscli scenarios install crowdsecurity/ssh-bf --force
+    rune -0 cscli scenarios inspect crowdsecurity/ssh-bf -o json
+    rune -0 jq -c '.tainted' <(output)
+    assert_output 'false'
+}
