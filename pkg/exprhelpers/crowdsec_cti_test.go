@@ -79,6 +79,7 @@ func smokeHandler(req *http.Request) *http.Response {
 	}
 
 	requestedIP := strings.Split(req.URL.Path, "/")[3]
+
 	sample, ok := sampledata[requestedIP]
 	if !ok {
 		return &http.Response{
@@ -110,9 +111,11 @@ func smokeHandler(req *http.Request) *http.Response {
 
 func TestNillClient(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
+
 	if err := InitCrowdsecCTI(ptr.Of(""), nil, nil, nil); !errors.Is(err, cticlient.ErrDisabled) {
 		t.Fatalf("failed to init CTI : %s", err)
 	}
+
 	item, err := CrowdsecCTI("1.2.3.4")
 	assert.Equal(t, err, cticlient.ErrDisabled)
 	assert.Equal(t, item, &cticlient.SmokeItem{})
@@ -120,6 +123,7 @@ func TestNillClient(t *testing.T) {
 
 func TestInvalidAuth(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
+
 	if err := InitCrowdsecCTI(ptr.Of("asdasd"), nil, nil, nil); err != nil {
 		t.Fatalf("failed to init CTI : %s", err)
 	}
@@ -146,6 +150,7 @@ func TestInvalidAuth(t *testing.T) {
 
 func TestNoKey(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
+
 	err := InitCrowdsecCTI(nil, nil, nil, nil)
 	require.ErrorIs(t, err, cticlient.ErrDisabled)
 	//Replace the client created by InitCrowdsecCTI with one that uses a custom transport
@@ -161,6 +166,7 @@ func TestNoKey(t *testing.T) {
 
 func TestCache(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
+
 	cacheDuration := 1 * time.Second
 	if err := InitCrowdsecCTI(ptr.Of(validApiKey), &cacheDuration, nil, nil); err != nil {
 		t.Fatalf("failed to init CTI : %s", err)

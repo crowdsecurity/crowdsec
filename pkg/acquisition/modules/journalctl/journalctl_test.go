@@ -21,6 +21,7 @@ func TestBadConfiguration(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
+
 	tests := []struct {
 		config      string
 		expectedErr string
@@ -48,6 +49,7 @@ journalctl_filter:
 	subLogger := log.WithFields(log.Fields{
 		"type": "journalctl",
 	})
+
 	for _, test := range tests {
 		f := JournalCtlSource{}
 		err := f.Configure([]byte(test.config), subLogger)
@@ -59,6 +61,7 @@ func TestConfigureDSN(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
+
 	tests := []struct {
 		dsn         string
 		expectedErr string
@@ -92,9 +95,11 @@ func TestConfigureDSN(t *testing.T) {
 			expectedErr: "",
 		},
 	}
+
 	subLogger := log.WithFields(log.Fields{
 		"type": "journalctl",
 	})
+
 	for _, test := range tests {
 		f := JournalCtlSource{}
 		err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
@@ -106,6 +111,7 @@ func TestOneShot(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
+
 	tests := []struct {
 		config         string
 		expectedErr    string
@@ -137,9 +143,12 @@ journalctl_filter:
 		},
 	}
 	for _, ts := range tests {
-		var logger *log.Logger
-		var subLogger *log.Entry
-		var hook *test.Hook
+		var (
+			logger *log.Logger
+			subLogger *log.Entry
+			hook *test.Hook
+		)
+
 		if ts.expectedOutput != "" {
 			logger, hook = test.NewNullLogger()
 			logger.SetLevel(ts.logLevel)
@@ -151,15 +160,19 @@ journalctl_filter:
 				"type": "journalctl",
 			})
 		}
+
 		tomb := tomb.Tomb{}
 		out := make(chan types.Event, 100)
 		j := JournalCtlSource{}
+
 		err := j.Configure([]byte(ts.config), subLogger)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
+
 		err = j.OneShotAcquisition(out, &tomb)
 		cstest.AssertErrorContains(t, err, ts.expectedErr)
+
 		if err != nil {
 			continue
 		}
@@ -172,6 +185,7 @@ journalctl_filter:
 			if hook.LastEntry() == nil {
 				t.Fatalf("Expected log output '%s' but got nothing !", ts.expectedOutput)
 			}
+
 			assert.Contains(t, hook.LastEntry().Message, ts.expectedOutput)
 			hook.Reset()
 		}
@@ -182,6 +196,7 @@ func TestStreaming(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping test on windows")
 	}
+
 	tests := []struct {
 		config         string
 		expectedErr    string
@@ -202,9 +217,12 @@ journalctl_filter:
 		},
 	}
 	for _, ts := range tests {
-		var logger *log.Logger
-		var subLogger *log.Entry
-		var hook *test.Hook
+		var (
+			logger *log.Logger
+			subLogger *log.Entry
+			hook *test.Hook
+		)
+
 		if ts.expectedOutput != "" {
 			logger, hook = test.NewNullLogger()
 			logger.SetLevel(ts.logLevel)
@@ -216,14 +234,18 @@ journalctl_filter:
 				"type": "journalctl",
 			})
 		}
+
 		tomb := tomb.Tomb{}
 		out := make(chan types.Event)
 		j := JournalCtlSource{}
+
 		err := j.Configure([]byte(ts.config), subLogger)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
+
 		actualLines := 0
+
 		if ts.expectedLines != 0 {
 			go func() {
 			READLOOP:
@@ -240,6 +262,7 @@ journalctl_filter:
 
 		err = j.StreamingAcquisition(out, &tomb)
 		cstest.AssertErrorContains(t, err, ts.expectedErr)
+
 		if err != nil {
 			continue
 		}
@@ -248,16 +271,20 @@ journalctl_filter:
 			time.Sleep(1 * time.Second)
 			assert.Equal(t, ts.expectedLines, actualLines)
 		}
+
 		tomb.Kill(nil)
 		tomb.Wait()
+
 		output, _ := exec.Command("pgrep", "-x", "journalctl").CombinedOutput()
 		if string(output) != "" {
 			t.Fatalf("Found a journalctl process after killing the tomb !")
 		}
+
 		if ts.expectedOutput != "" {
 			if hook.LastEntry() == nil {
 				t.Fatalf("Expected log output '%s' but got nothing !", ts.expectedOutput)
 			}
+
 			assert.Contains(t, hook.LastEntry().Message, ts.expectedOutput)
 			hook.Reset()
 		}
@@ -270,5 +297,6 @@ func TestMain(m *testing.M) {
 		fullPath := filepath.Join(currentDir, "test_files")
 		os.Setenv("PATH", fullPath+":"+os.Getenv("PATH"))
 	}
+
 	os.Exit(m.Run())
 }

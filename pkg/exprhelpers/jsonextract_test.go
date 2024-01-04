@@ -63,8 +63,8 @@ func TestJsonExtract(t *testing.T) {
 			assert.Equal(t, test.expectResult, out)
 		})
 	}
-
 }
+
 func TestJsonExtractUnescape(t *testing.T) {
 	if err := Init(nil); err != nil {
 		log.Fatal(err)
@@ -235,6 +235,7 @@ func TestJsonExtractObject(t *testing.T) {
 func TestToJson(t *testing.T) {
 	err := Init(nil)
 	require.NoError(t, err)
+
 	tests := []struct {
 		name         string
 		obj          interface{}
@@ -310,6 +311,7 @@ func TestToJson(t *testing.T) {
 func TestUnmarshalJSON(t *testing.T) {
 	err := Init(nil)
 	require.NoError(t, err)
+
 	tests := []struct {
 		name         string
 		json         string
@@ -368,5 +370,4 @@ func TestUnmarshalJSON(t *testing.T) {
 			assert.Equal(t, test.expectResult, outMap["a"])
 		})
 	}
-
 }

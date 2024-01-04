@@ -31,7 +31,6 @@ func TestNewAlertContext(t *testing.T) {
 		fmt.Printf("Running test '%s'\n", test.name)
 		err := NewAlertContext(test.contextToSend, test.valueLength)
 		require.ErrorIs(t, err, test.expectedErr)
-
 	}
 }
 

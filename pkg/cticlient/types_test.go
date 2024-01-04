@@ -88,6 +88,7 @@ func getSampleSmokeItem() SmokeItem {
 			},
 		},
 	}
+
 	return emptyItem
 }
 

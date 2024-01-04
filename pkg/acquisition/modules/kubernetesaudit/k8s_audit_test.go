@@ -96,7 +96,6 @@ webhook_path: /k8s-audit`,
 			require.NoError(t, err)
 		})
 	}
-
 }
 
 func TestHandler(t *testing.T) {

@@ -37,25 +37,30 @@ func (f RoundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
 // wip
 func fireHandler(req *http.Request) *http.Response {
 	var err error
+
 	apiKey := req.Header.Get("x-api-key")
 	if apiKey != validApiKey {
 		log.Warningf("invalid api key: %s", apiKey)
+
 		return &http.Response{
 			StatusCode: http.StatusForbidden,
 			Body:       nil,
 			Header:     make(http.Header),
 		}
 	}
+
 	//unmarshal data
 	if fireResponses == nil {
 		page1, err := os.ReadFile("tests/fire-page1.json")
 		if err != nil {
 			panic("can't read file")
 		}
+
 		page2, err := os.ReadFile("tests/fire-page2.json")
 		if err != nil {
 			panic("can't read file")
 		}
+
 		fireResponses = []string{string(page1), string(page2)}
 	}
 	//let's assume we have two valid pages.
@@ -71,6 +76,7 @@ func fireHandler(req *http.Request) *http.Response {
 	//how to react if you give a page number that is too big ?
 	if page > len(fireResponses) {
 		log.Warningf(" page too big %d vs %d", page, len(fireResponses))
+
 		emptyResponse := `{
 			"_links": {
 			  "first": {
@@ -83,8 +89,10 @@ func fireHandler(req *http.Request) *http.Response {
 			"items": []
 		  }
 		  `
+
 		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(emptyResponse))}
 	}
+
 	reader := io.NopCloser(strings.NewReader(fireResponses[page-1]))
 	//we should care about limit too
 	return &http.Response{
@@ -107,6 +115,7 @@ func smokeHandler(req *http.Request) *http.Response {
 	}
 
 	requestedIP := strings.Split(req.URL.Path, "/")[3]
+
 	response, ok := smokeResponses[requestedIP]
 	if !ok {
 		return &http.Response{
@@ -136,6 +145,7 @@ func rateLimitedHandler(req *http.Request) *http.Response {
 			Header:     make(http.Header),
 		}
 	}
+
 	return &http.Response{
 		StatusCode: http.StatusTooManyRequests,
 		Body:       nil,
@@ -152,7 +162,9 @@ func searchHandler(req *http.Request) *http.Response {
 			Header:     make(http.Header),
 		}
 	}
+
 	url, _ := url.Parse(req.URL.String())
+
 	ipsParam := url.Query().Get("ips")
 	if ipsParam == "" {
 		return &http.Response{
@@ -164,6 +176,7 @@ func searchHandler(req *http.Request) *http.Response {
 
 	totalIps := 0
 	notFound := 0
+
 	ips := strings.Split(ipsParam, ",")
 	for _, ip := range ips {
 		_, ok := smokeResponses[ip]
@@ -173,12 +186,15 @@ func searchHandler(req *http.Request) *http.Response {
 			notFound++
 		}
 	}
+
 	response := fmt.Sprintf(`{"total": %d, "not_found": %d, "items": [`, totalIps, notFound)
 	for _, ip := range ips {
 		response += smokeResponses[ip]
 	}
+
 	response += "]}"
 	reader := io.NopCloser(strings.NewReader(response))
+
 	return &http.Response{
 		StatusCode: http.StatusOK,
 		Body:       reader,
@@ -230,7 +246,6 @@ func TestFirePaginator(t *testing.T) {
 	items, err = paginator.Next()
 	require.NoError(t, err)
 	assert.Empty(t, items)
-
 }
 
 func TestBadSmokeAuth(t *testing.T) {
@@ -245,6 +260,7 @@ func TestSmokeInfoValidIP(t *testing.T) {
 	ctiClient := NewCrowdsecCTIClient(WithAPIKey(validApiKey), WithHTTPClient(&http.Client{
 		Transport: RoundTripFunc(smokeHandler),
 	}))
+
 	resp, err := ctiClient.GetIPInfo("1.1.1.1")
 	if err != nil {
 		t.Fatalf("failed to get ip info: %s", err)
@@ -258,6 +274,7 @@ func TestSmokeUnknownIP(t *testing.T) {
 	ctiClient := NewCrowdsecCTIClient(WithAPIKey(validApiKey), WithHTTPClient(&http.Client{
 		Transport: RoundTripFunc(smokeHandler),
 	}))
+
 	resp, err := ctiClient.GetIPInfo("42.42.42.42")
 	if err != nil {
 		t.Fatalf("failed to get ip info: %s", err)
@@ -278,10 +295,12 @@ func TestSearchIPs(t *testing.T) {
 	ctiClient := NewCrowdsecCTIClient(WithAPIKey(validApiKey), WithHTTPClient(&http.Client{
 		Transport: RoundTripFunc(searchHandler),
 	}))
+
 	resp, err := ctiClient.SearchIPs([]string{"1.1.1.1", "42.42.42.42"})
 	if err != nil {
 		t.Fatalf("failed to search ips: %s", err)
 	}
+
 	assert.Equal(t, 1, resp.Total)
 	assert.Equal(t, 1, resp.NotFound)
 	assert.Len(t, resp.Items, 1)

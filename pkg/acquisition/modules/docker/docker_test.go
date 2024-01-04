@@ -57,6 +57,7 @@ container_name:
 	subLogger := log.WithFields(log.Fields{
 		"type": "docker",
 	})
+
 	for _, test := range tests {
 		f := DockerSource{}
 		err := f.Configure([]byte(test.config), subLogger)
@@ -66,12 +67,15 @@ container_name:
 
 func TestConfigureDSN(t *testing.T) {
 	log.Infof("Test 'TestConfigureDSN'")
+
 	var dockerHost string
+
 	if runtime.GOOS == "windows" {
 		dockerHost = "npipe:////./pipe/docker_engine"
 	} else {
 		dockerHost = "unix:///var/run/podman/podman.sock"
 	}
+
 	tests := []struct {
 		name        string
 		dsn         string
@@ -106,6 +110,7 @@ func TestConfigureDSN(t *testing.T) {
 	subLogger := log.WithFields(log.Fields{
 		"type": "docker",
 	})
+
 	for _, test := range tests {
 		f := DockerSource{}
 		err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger, "")
@@ -156,8 +161,11 @@ container_name_regexp:
 	}
 
 	for _, ts := range tests {
-		var logger *log.Logger
-		var subLogger *log.Entry
+		var (
+			logger *log.Logger
+			subLogger *log.Entry
+		)
+
 		if ts.expectedOutput != "" {
 			logger.SetLevel(ts.logLevel)
 			subLogger = logger.WithFields(log.Fields{
@@ -173,10 +181,12 @@ container_name_regexp:
 		dockerTomb := tomb.Tomb{}
 		out := make(chan types.Event)
 		dockerSource := DockerSource{}
+
 		err := dockerSource.Configure([]byte(ts.config), subLogger)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
+
 		dockerSource.Client = new(mockDockerCli)
 		actualLines := 0
 		readerTomb := &tomb.Tomb{}
@@ -204,21 +214,23 @@ container_name_regexp:
 		if err := readerTomb.Wait(); err != nil {
 			t.Fatal(err)
 		}
+
 		if ts.expectedLines != 0 {
 			assert.Equal(t, ts.expectedLines, actualLines)
 		}
+
 		err = streamTomb.Wait()
 		if err != nil {
 			t.Fatalf("docker acquisition error: %s", err)
 		}
 	}
-
 }
 
 func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerTypes.ContainerListOptions) ([]dockerTypes.Container, error) {
 	if readLogs == true {
 		return []dockerTypes.Container{}, nil
 	}
+
 	containers := make([]dockerTypes.Container, 0)
 	container := &dockerTypes.Container{
 		ID:    "12456",
@@ -233,16 +245,20 @@ func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, o
 	if readLogs == true {
 		return io.NopCloser(strings.NewReader("")), nil
 	}
+
 	readLogs = true
 	data := []string{"docker\n", "test\n", "1234\n"}
 	ret := ""
+
 	for _, line := range data {
 		startLineByte := make([]byte, 8)
 		binary.LittleEndian.PutUint32(startLineByte, 1) //stdout stream
 		binary.BigEndian.PutUint32(startLineByte[4:], uint32(len(line)))
 		ret += fmt.Sprintf("%s%s", startLineByte, line)
 	}
+
 	r := io.NopCloser(strings.NewReader(ret)) // r type is io.ReadCloser
+
 	return r, nil
 }
 
@@ -252,6 +268,7 @@ func (cli *mockDockerCli) ContainerInspect(ctx context.Context, c string) (docke
 			Tty: false,
 		},
 	}
+
 	return r, nil
 }
 
@@ -285,8 +302,11 @@ func TestOneShot(t *testing.T) {
 	}
 
 	for _, ts := range tests {
-		var subLogger *log.Entry
-		var logger *log.Logger
+		var (
+			subLogger *log.Entry
+			logger *log.Logger
+		)
+
 		if ts.expectedOutput != "" {
 			logger.SetLevel(ts.logLevel)
 			subLogger = logger.WithFields(log.Fields{
@@ -307,6 +327,7 @@ func TestOneShot(t *testing.T) {
 		if err := dockerClient.ConfigureByDSN(ts.dsn, labels, subLogger, ""); err != nil {
 			t.Fatalf("unable to configure dsn '%s': %s", ts.dsn, err)
 		}
+
 		dockerClient.Client = new(mockDockerCli)
 		out := make(chan types.Event, 100)
 		tomb := tomb.Tomb{}
@@ -318,5 +339,4 @@ func TestOneShot(t *testing.T) {
 			assert.Len(t, out, ts.expectedLines)
 		}
 	}
-
 }
