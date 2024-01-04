@@ -259,10 +259,6 @@ issues:
     #
 
     - linters:
-        - testifylint
-      text: "float-compare: use assert.InEpsilon .*or InDelta.*"
-
-    - linters:
         - errorlint
       text: "non-wrapping format verb for fmt.Errorf. Use `%w` to format errors"
 
