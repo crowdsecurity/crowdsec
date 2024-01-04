@@ -353,7 +353,7 @@ func TestUnitFound(t *testing.T) {
 	installed, err := env.UnitFound("crowdsec-setup-detect.service")
 	require.NoError(err)
 
-	require.Equal(true, installed)
+	require.True(installed)
 }
 
 // TODO apply rules to filter a list of Service structs

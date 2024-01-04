@@ -248,10 +248,6 @@ issues:
 
     - linters:
         - testifylint
-      text: "bool-compare: use require.True"
-
-    - linters:
-        - testifylint
       text: "require-error: for error assertions use require"
 
     - linters:
