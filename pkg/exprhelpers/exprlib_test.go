@@ -339,14 +339,14 @@ func TestFileInit(t *testing.T) {
 			if _, ok := dataFile[test.filename]; !ok {
 				t.Fatalf("test '%s' : NOK", test.name)
 			}
-			if isOk := assert.Equal(t, test.result, len(dataFile[test.filename])); !isOk {
+			if isOk := assert.Len(t, dataFile[test.filename], test.result); !isOk {
 				t.Fatalf("test '%s' : NOK", test.name)
 			}
 		} else if test.types == "regex" {
 			if _, ok := dataFileRegex[test.filename]; !ok {
 				t.Fatalf("test '%s' : NOK", test.name)
 			}
-			if isOk := assert.Equal(t, test.result, len(dataFileRegex[test.filename])); !isOk {
+			if isOk := assert.Len(t, dataFileRegex[test.filename], test.result); !isOk {
 				t.Fatalf("test '%s' : NOK", test.name)
 			}
 		} else {

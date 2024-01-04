@@ -165,7 +165,7 @@ journalctl_filter:
 		}
 
 		if ts.expectedLines != 0 {
-			assert.Equal(t, ts.expectedLines, len(out))
+			assert.Len(t, out, ts.expectedLines)
 		}
 
 		if ts.expectedOutput != "" {

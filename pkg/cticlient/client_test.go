@@ -199,17 +199,17 @@ func TestFireOk(t *testing.T) {
 	}))
 	data, err := cticlient.Fire(FireParams{})
 	assert.Equal(t, err, nil)
-	assert.Equal(t, len(data.Items), 3)
+	assert.Len(t, data.Items, 3)
 	assert.Equal(t, "1.2.3.4", data.Items[0].Ip)
 	//page 1 is the default
 	data, err = cticlient.Fire(FireParams{Page: ptr.Of(1)})
 	assert.Equal(t, err, nil)
-	assert.Equal(t, len(data.Items), 3)
+	assert.Len(t, data.Items, 3)
 	assert.Equal(t, "1.2.3.4", data.Items[0].Ip)
 	//page 2
 	data, err = cticlient.Fire(FireParams{Page: ptr.Of(2)})
 	assert.Equal(t, err, nil)
-	assert.Equal(t, len(data.Items), 3)
+	assert.Len(t, data.Items, 3)
 	assert.Equal(t, "4.2.3.4", data.Items[0].Ip)
 }
 
@@ -220,11 +220,11 @@ func TestFirePaginator(t *testing.T) {
 	paginator := NewFirePaginator(cticlient, FireParams{})
 	items, err := paginator.Next()
 	assert.Equal(t, err, nil)
-	assert.Equal(t, len(items), 3)
+	assert.Len(t, items, 3)
 	assert.Equal(t, "1.2.3.4", items[0].Ip)
 	items, err = paginator.Next()
 	assert.Equal(t, err, nil)
-	assert.Equal(t, len(items), 3)
+	assert.Len(t, items, 3)
 	assert.Equal(t, "4.2.3.4", items[0].Ip)
 	items, err = paginator.Next()
 	assert.Equal(t, err, nil)
@@ -283,7 +283,7 @@ func TestSearchIPs(t *testing.T) {
 	}
 	assert.Equal(t, 1, resp.Total)
 	assert.Equal(t, 1, resp.NotFound)
-	assert.Equal(t, 1, len(resp.Items))
+	assert.Len(t, resp.Items, 1)
 	assert.Equal(t, "1.1.1.1", resp.Items[0].Ip)
 }
 

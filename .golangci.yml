@@ -244,10 +244,6 @@ issues:
 
     - linters:
         - testifylint
-      text: "len: use assert.Len"
-
-    - linters:
-        - testifylint
       text: "require-error: for error assertions use require"
 
     - linters:

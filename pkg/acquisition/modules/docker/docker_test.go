@@ -315,7 +315,7 @@ func TestOneShot(t *testing.T) {
 
 		// else we do the check before actualLines is incremented ...
 		if ts.expectedLines != 0 {
-			assert.Equal(t, ts.expectedLines, len(out))
+			assert.Len(t, out, ts.expectedLines)
 		}
 	}
 
