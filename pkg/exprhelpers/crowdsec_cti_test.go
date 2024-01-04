@@ -129,7 +129,7 @@ func TestInvalidAuth(t *testing.T) {
 
 	item, err := CrowdsecCTI("1.2.3.4")
 	assert.Equal(t, item, &cticlient.SmokeItem{})
-	assert.Equal(t, CTIApiEnabled, false)
+	assert.False(t, CTIApiEnabled)
 	assert.Equal(t, err, cticlient.ErrUnauthorized)
 
 	//CTI is now disabled, all requests should return empty
@@ -139,7 +139,7 @@ func TestInvalidAuth(t *testing.T) {
 
 	item, err = CrowdsecCTI("1.2.3.4")
 	assert.Equal(t, item, &cticlient.SmokeItem{})
-	assert.Equal(t, CTIApiEnabled, false)
+	assert.False(t, CTIApiEnabled)
 	assert.Equal(t, err, cticlient.ErrDisabled)
 }
 
@@ -154,7 +154,7 @@ func TestNoKey(t *testing.T) {
 
 	item, err := CrowdsecCTI("1.2.3.4")
 	assert.Equal(t, item, &cticlient.SmokeItem{})
-	assert.Equal(t, CTIApiEnabled, false)
+	assert.False(t, CTIApiEnabled)
 	assert.Equal(t, err, cticlient.ErrDisabled)
 }
 

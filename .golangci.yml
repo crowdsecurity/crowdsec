@@ -244,10 +244,6 @@ issues:
 
     - linters:
         - testifylint
-      text: "bool-compare: use assert.False"
-
-    - linters:
-        - testifylint
       text: "len: use assert.Len"
 
     - linters:

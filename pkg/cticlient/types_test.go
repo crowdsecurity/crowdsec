@@ -96,10 +96,10 @@ func TestBasicSmokeItem(t *testing.T) {
 	assert.Equal(t, []string{"ssh:bruteforce"}, item.GetAttackDetails())
 	assert.Equal(t, []string{"ssh:bruteforce"}, item.GetBehaviors())
 	assert.Equal(t, 0.1, item.GetMaliciousnessScore())
-	assert.Equal(t, false, item.IsPartOfCommunityBlocklist())
+	assert.False(t, item.IsPartOfCommunityBlocklist())
 	assert.Equal(t, 3, item.GetBackgroundNoiseScore())
 	assert.Equal(t, []string{}, item.GetFalsePositives())
-	assert.Equal(t, false, item.IsFalsePositive())
+	assert.False(t, item.IsFalsePositive())
 }
 
 func TestEmptySmokeItem(t *testing.T) {
@@ -107,8 +107,8 @@ func TestEmptySmokeItem(t *testing.T) {
 	assert.Equal(t, []string{}, item.GetAttackDetails())
 	assert.Equal(t, []string{}, item.GetBehaviors())
 	assert.Equal(t, 0.0, item.GetMaliciousnessScore())
-	assert.Equal(t, false, item.IsPartOfCommunityBlocklist())
+	assert.False(t, item.IsPartOfCommunityBlocklist())
 	assert.Equal(t, 0, item.GetBackgroundNoiseScore())
 	assert.Equal(t, []string{}, item.GetFalsePositives())
-	assert.Equal(t, false, item.IsFalsePositive())
+	assert.False(t, item.IsFalsePositive())
 }
