@@ -12,6 +12,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
@@ -190,7 +191,7 @@ func TestBadFireAuth(t *testing.T) {
 		Transport: RoundTripFunc(fireHandler),
 	}))
 	_, err := ctiClient.Fire(FireParams{})
-	assert.EqualError(t, err, ErrUnauthorized.Error())
+	require.EqualError(t, err, ErrUnauthorized.Error())
 }
 
 func TestFireOk(t *testing.T) {
@@ -198,17 +199,17 @@ func TestFireOk(t *testing.T) {
 		Transport: RoundTripFunc(fireHandler),
 	}))
 	data, err := cticlient.Fire(FireParams{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, data.Items, 3)
 	assert.Equal(t, "1.2.3.4", data.Items[0].Ip)
 	//page 1 is the default
 	data, err = cticlient.Fire(FireParams{Page: ptr.Of(1)})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, data.Items, 3)
 	assert.Equal(t, "1.2.3.4", data.Items[0].Ip)
 	//page 2
 	data, err = cticlient.Fire(FireParams{Page: ptr.Of(2)})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, data.Items, 3)
 	assert.Equal(t, "4.2.3.4", data.Items[0].Ip)
 }
@@ -219,15 +220,15 @@ func TestFirePaginator(t *testing.T) {
 	}))
 	paginator := NewFirePaginator(cticlient, FireParams{})
 	items, err := paginator.Next()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, items, 3)
 	assert.Equal(t, "1.2.3.4", items[0].Ip)
 	items, err = paginator.Next()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, items, 3)
 	assert.Equal(t, "4.2.3.4", items[0].Ip)
 	items, err = paginator.Next()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Empty(t, items)
 
 }
@@ -237,7 +238,7 @@ func TestBadSmokeAuth(t *testing.T) {
 		Transport: RoundTripFunc(smokeHandler),
 	}))
 	_, err := ctiClient.GetIPInfo("1.1.1.1")
-	assert.EqualError(t, err, ErrUnauthorized.Error())
+	require.EqualError(t, err, ErrUnauthorized.Error())
 }
 
 func TestSmokeInfoValidIP(t *testing.T) {
@@ -270,7 +271,7 @@ func TestRateLimit(t *testing.T) {
 		Transport: RoundTripFunc(rateLimitedHandler),
 	}))
 	_, err := ctiClient.GetIPInfo("1.1.1.1")
-	assert.EqualError(t, err, ErrLimit.Error())
+	require.EqualError(t, err, ErrLimit.Error())
 }
 
 func TestSearchIPs(t *testing.T) {

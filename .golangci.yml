@@ -243,10 +243,6 @@ issues:
     # Will fix, trivial - just beware of merge conflicts
 
     - linters:
-        - testifylint
-      text: "require-error: for error assertions use require"
-
-    - linters:
         - perfsprint
       text: "fmt.Sprintf can be replaced .*"
 
