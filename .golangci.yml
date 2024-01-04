@@ -248,10 +248,6 @@ issues:
 
     - linters:
         - testifylint
-      text: "error-nil: use assert.NoError"
-
-    - linters:
-        - testifylint
       text: "error-nil: use assert.Error"
 
     - linters:
