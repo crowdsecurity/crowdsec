@@ -244,10 +244,6 @@ issues:
 
     - linters:
         - testifylint
-      text: "expected-actual: need to reverse actual and expected values"
-
-    - linters:
-        - testifylint
       text: "bool-compare: use assert.False"
 
     - linters:

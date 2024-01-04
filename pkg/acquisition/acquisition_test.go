@@ -185,22 +185,22 @@ wowo: ajsajasjas
 			switch tc.TestName {
 			case "basic_valid_config":
 				mock := (*ds).Dump().(*MockSource)
-				assert.Equal(t, mock.Toto, "test_value1")
-				assert.Equal(t, mock.Mode, "cat")
-				assert.Equal(t, mock.logger.Logger.Level, log.InfoLevel)
-				assert.Equal(t, mock.Labels, map[string]string{"test": "foobar"})
+				assert.Equal(t, "test_value1", mock.Toto)
+				assert.Equal(t, "cat", mock.Mode)
+				assert.Equal(t, log.InfoLevel, mock.logger.Logger.Level)
+				assert.Equal(t, map[string]string{"test": "foobar"}, mock.Labels)
 			case "basic_debug_config":
 				mock := (*ds).Dump().(*MockSource)
-				assert.Equal(t, mock.Toto, "test_value1")
-				assert.Equal(t, mock.Mode, "cat")
-				assert.Equal(t, mock.logger.Logger.Level, log.DebugLevel)
-				assert.Equal(t, mock.Labels, map[string]string{"test": "foobar"})
+				assert.Equal(t, "test_value1", mock.Toto)
+				assert.Equal(t, "cat", mock.Mode)
+				assert.Equal(t, log.DebugLevel, mock.logger.Logger.Level)
+				assert.Equal(t, map[string]string{"test": "foobar"}, mock.Labels)
 			case "basic_tailmode_config":
 				mock := (*ds).Dump().(*MockSource)
-				assert.Equal(t, mock.Toto, "test_value1")
-				assert.Equal(t, mock.Mode, "tail")
-				assert.Equal(t, mock.logger.Logger.Level, log.DebugLevel)
-				assert.Equal(t, mock.Labels, map[string]string{"test": "foobar"})
+				assert.Equal(t, "test_value1", mock.Toto)
+				assert.Equal(t, "tail", mock.Mode)
+				assert.Equal(t, log.DebugLevel, mock.logger.Logger.Level)
+				assert.Equal(t, map[string]string{"test": "foobar"}, mock.Labels)
 			}
 		})
 	}

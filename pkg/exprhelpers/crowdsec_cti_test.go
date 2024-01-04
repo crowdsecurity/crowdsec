@@ -173,7 +173,7 @@ func TestCache(t *testing.T) {
 	ctiResp := item.(*cticlient.SmokeItem)
 	assert.Equal(t, "1.2.3.4", ctiResp.Ip)
 	assert.Equal(t, CTIApiEnabled, true)
-	assert.Equal(t, CTICache.Len(true), 1)
+	assert.Equal(t, 1, CTICache.Len(true))
 	assert.Equal(t, err, nil)
 
 	item, err = CrowdsecCTI("1.2.3.4")
@@ -181,19 +181,18 @@ func TestCache(t *testing.T) {
 
 	assert.Equal(t, "1.2.3.4", ctiResp.Ip)
 	assert.Equal(t, CTIApiEnabled, true)
-	assert.Equal(t, CTICache.Len(true), 1)
+	assert.Equal(t, 1, CTICache.Len(true))
 	assert.Equal(t, err, nil)
 
 	time.Sleep(2 * time.Second)
 
-	assert.Equal(t, CTICache.Len(true), 0)
+	assert.Equal(t, 0, CTICache.Len(true))
 
 	item, err = CrowdsecCTI("1.2.3.4")
 	ctiResp = item.(*cticlient.SmokeItem)
 
 	assert.Equal(t, "1.2.3.4", ctiResp.Ip)
 	assert.Equal(t, CTIApiEnabled, true)
-	assert.Equal(t, CTICache.Len(true), 1)
+	assert.Equal(t, 1, CTICache.Len(true))
 	assert.Equal(t, err, nil)
-
 }
