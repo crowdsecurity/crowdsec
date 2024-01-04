@@ -9,6 +9,13 @@ run:
     - pkg/yamlpatch/merge_test.go
 
 linters-settings:
+  gci:
+    sections:
+     - standard
+     - default
+     - prefix(github.com/crowdsecurity)
+     - prefix(github.com/crowdsecurity/crowdsec)
+
   gocyclo:
     min-complexity: 30
 
