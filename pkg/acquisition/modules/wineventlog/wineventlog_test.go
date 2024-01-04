@@ -221,9 +221,8 @@ event_ids:
 			}
 		}
 		if test.expectedLines == nil {
-			assert.Equal(t, 0, len(linesRead))
+			assert.Empty(t, linesRead)
 		} else {
-			assert.Equal(t, len(test.expectedLines), len(linesRead))
 			assert.Equal(t, test.expectedLines, linesRead)
 		}
 		to.Kill(nil)

@@ -247,10 +247,6 @@ issues:
       text: "require-error: for error assertions use require"
 
     - linters:
-        - testifylint
-      text: "empty: use assert.Empty"
-
-    - linters:
         - perfsprint
       text: "fmt.Sprintf can be replaced .*"
 

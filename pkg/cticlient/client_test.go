@@ -228,7 +228,7 @@ func TestFirePaginator(t *testing.T) {
 	assert.Equal(t, "4.2.3.4", items[0].Ip)
 	items, err = paginator.Next()
 	assert.NoError(t, err)
-	assert.Equal(t, len(items), 0)
+	assert.Empty(t, items)
 
 }
 
