@@ -7,15 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCreateMachine(t *testing.T) {
-	router, _, err := NewAPITest(t)
-	if err != nil {
-		log.Fatalf("unable to run local API: %s", err)
-	}
+	router, _ := NewAPITest(t)
 
 	// Create machine with invalid format
 	w := httptest.NewRecorder()
@@ -24,22 +21,21 @@ func TestCreateMachine(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 400, w.Code)
-	assert.Equal(t, "{\"message\":\"invalid character 'e' in literal true (expecting 'r')\"}", w.Body.String())
+	assert.Equal(t, `{"message":"invalid character 'e' in literal true (expecting 'r')"}`, w.Body.String())
 
 	// Create machine with invalid input
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader("{\"test\": \"test\"}"))
+	req, _ = http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(`{"test": "test"}`))
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 500, w.Code)
-	assert.Equal(t, "{\"message\":\"validation failure list:\\nmachine_id in body is required\\npassword in body is required\"}", w.Body.String())
+	assert.Equal(t, `{"message":"validation failure list:\nmachine_id in body is required\npassword in body is required"}`, w.Body.String())
 
 	// Create machine
 	b, err := json.Marshal(MachineTest)
-	if err != nil {
-		log.Fatal("unable to marshal MachineTest")
-	}
+	require.NoError(t, err)
+
 	body := string(b)
 
 	w = httptest.NewRecorder()
@@ -52,16 +48,12 @@ func TestCreateMachine(t *testing.T) {
 }
 
 func TestCreateMachineWithForwardedFor(t *testing.T) {
-	router, config, err := NewAPITestForwardedFor(t)
-	if err != nil {
-		log.Fatalf("unable to run local API: %s", err)
-	}
+	router, config := NewAPITestForwardedFor(t)
 	router.TrustedPlatform = "X-Real-IP"
 	// Create machine
 	b, err := json.Marshal(MachineTest)
-	if err != nil {
-		log.Fatal("unable to marshal MachineTest")
-	}
+	require.NoError(t, err)
+
 	body := string(b)
 
 	w := httptest.NewRecorder()
@@ -73,25 +65,18 @@ func TestCreateMachineWithForwardedFor(t *testing.T) {
 	assert.Equal(t, 201, w.Code)
 	assert.Equal(t, "", w.Body.String())
 
-	ip, err := GetMachineIP(*MachineTest.MachineID, config.API.Server.DbConfig)
-	if err != nil {
-		log.Fatalf("Could not get machine IP : %s", err)
-	}
+	ip := GetMachineIP(t, *MachineTest.MachineID, config.API.Server.DbConfig)
 
 	assert.Equal(t, "1.1.1.1", ip)
 }
 
 func TestCreateMachineWithForwardedForNoConfig(t *testing.T) {
-	router, config, err := NewAPITest(t)
-	if err != nil {
-		log.Fatalf("unable to run local API: %s", err)
-	}
+	router, config := NewAPITest(t)
 
 	// Create machine
 	b, err := json.Marshal(MachineTest)
-	if err != nil {
-		log.Fatal("unable to marshal MachineTest")
-	}
+	require.NoError(t, err)
+
 	body := string(b)
 
 	w := httptest.NewRecorder()
@@ -103,26 +88,20 @@ func TestCreateMachineWithForwardedForNoConfig(t *testing.T) {
 	assert.Equal(t, 201, w.Code)
 	assert.Equal(t, "", w.Body.String())
 
-	ip, err := GetMachineIP(*MachineTest.MachineID, config.API.Server.DbConfig)
-	if err != nil {
-		log.Fatalf("Could not get machine IP : %s", err)
-	}
+	ip := GetMachineIP(t, *MachineTest.MachineID, config.API.Server.DbConfig)
+
 	//For some reason, the IP is empty when running tests
 	//if no forwarded-for headers are present
 	assert.Equal(t, "", ip)
 }
 
 func TestCreateMachineWithoutForwardedFor(t *testing.T) {
-	router, config, err := NewAPITestForwardedFor(t)
-	if err != nil {
-		log.Fatalf("unable to run local API: %s", err)
-	}
+	router, config := NewAPITestForwardedFor(t)
 
 	// Create machine
 	b, err := json.Marshal(MachineTest)
-	if err != nil {
-		log.Fatal("unable to marshal MachineTest")
-	}
+	require.NoError(t, err)
+
 	body := string(b)
 
 	w := httptest.NewRecorder()
@@ -133,25 +112,17 @@ func TestCreateMachineWithoutForwardedFor(t *testing.T) {
 	assert.Equal(t, 201, w.Code)
 	assert.Equal(t, "", w.Body.String())
 
-	ip, err := GetMachineIP(*MachineTest.MachineID, config.API.Server.DbConfig)
-	if err != nil {
-		log.Fatalf("Could not get machine IP : %s", err)
-	}
+	ip := GetMachineIP(t, *MachineTest.MachineID, config.API.Server.DbConfig)
+
 	//For some reason, the IP is empty when running tests
 	//if no forwarded-for headers are present
 	assert.Equal(t, "", ip)
 }
 
 func TestCreateMachineAlreadyExist(t *testing.T) {
-	router, _, err := NewAPITest(t)
-	if err != nil {
-		log.Fatalf("unable to run local API: %s", err)
-	}
+	router, _ := NewAPITest(t)
 
-	body, err := CreateTestMachine(router)
-	if err != nil {
-		log.Fatalln(err)
-	}
+	body := CreateTestMachine(t, router)
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodPost, "/v1/watchers", strings.NewReader(body))
@@ -164,5 +135,5 @@ func TestCreateMachineAlreadyExist(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 403, w.Code)
-	assert.Equal(t, "{\"message\":\"user 'test': user already exist\"}", w.Body.String())
+	assert.Equal(t, `{"message":"user 'test': user already exist"}`, w.Body.String())
 }

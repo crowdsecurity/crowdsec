@@ -8,19 +8,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	"github.com/crowdsecurity/go-cs-lib/cstest"
 	"github.com/crowdsecurity/go-cs-lib/version"
 )
 
 func TestNewRequestInvalid(t *testing.T) {
 	mux, urlx, teardown := setup()
 	defer teardown()
+
 	//missing slash in uri
 	apiURL, err := url.Parse(urlx)
-	if err != nil {
-		t.Fatalf("parsing api url: %s", apiURL)
-	}
+	require.NoError(t, err)
 
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
@@ -29,9 +29,8 @@ func TestNewRequestInvalid(t *testing.T) {
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-	if err != nil {
-		t.Fatalf("new api client: %s", err)
-	}
+	require.NoError(t, err)
+
 	/*mock login*/
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -44,17 +43,16 @@ func TestNewRequestInvalid(t *testing.T) {
 	})
 
 	_, _, err = client.Alerts.List(context.Background(), AlertsListOpts{})
-	assert.Contains(t, err.Error(), `building request: BaseURL must have a trailing slash, but `)
+	cstest.RequireErrorContains(t, err, "building request: BaseURL must have a trailing slash, but ")
 }
 
 func TestNewRequestTimeout(t *testing.T) {
 	mux, urlx, teardown := setup()
 	defer teardown()
-	//missing slash in uri
+
+	// missing slash in uri
 	apiURL, err := url.Parse(urlx + "/")
-	if err != nil {
-		t.Fatalf("parsing api url: %s", apiURL)
-	}
+	require.NoError(t, err)
 
 	client, err := NewClient(&Config{
 		MachineID:     "test_login",
@@ -63,9 +61,8 @@ func TestNewRequestTimeout(t *testing.T) {
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	})
-	if err != nil {
-		t.Fatalf("new api client: %s", err)
-	}
+	require.NoError(t, err)
+
 	/*mock login*/
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(2 * time.Second)
@@ -75,5 +72,5 @@ func TestNewRequestTimeout(t *testing.T) {
 	defer cancel()
 
 	_, _, err = client.Alerts.List(ctx, AlertsListOpts{})
-	assert.Contains(t, err.Error(), `performing request: context deadline exceeded`)
+	cstest.RequireErrorMessage(t, err, "performing request: context deadline exceeded")
 }
