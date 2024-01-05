@@ -73,6 +73,9 @@ func NewCLIAppsecRule() *cliItem {
 				}
 				fmt.Println(convertedRule)
 			}
+			for _, rule := range appsecRule.SecLangRules {
+				fmt.Println(rule)
+			}
 		}
 
 		return nil
