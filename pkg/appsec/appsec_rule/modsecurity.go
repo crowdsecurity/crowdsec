@@ -32,10 +32,6 @@ var transformMap map[string]string = map[string]string{
 	"length":    "t:length",
 }
 
-var transformMapSpecial map[string]string = map[string]string{
-	"count": "x", //make it a func
-}
-
 var matchMap map[string]string = map[string]string{
 	"regex":           "@rx",
 	"equals":          "@streq",
@@ -134,7 +130,6 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 			case "count":
 				zone_prefix = "&"
 				rule.Transform[tidx] = ""
-				break
 			}
 		}
 	}
