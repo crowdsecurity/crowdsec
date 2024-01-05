@@ -32,6 +32,10 @@ var transformMap map[string]string = map[string]string{
 	"length":    "t:length",
 }
 
+var transformMapSpecial map[string]string = map[string]string{
+	"count": "x", //make it a func
+}
+
 var matchMap map[string]string = map[string]string{
 	"regex":           "@rx",
 	"equals":          "@streq",
@@ -122,6 +126,18 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 		return ret, nil
 	}
 
+	zone_prefix := ""
+	variable_prefix := ""
+	if rule.Transform != nil {
+		for tidx, transform := range rule.Transform {
+			switch transform {
+			case "count":
+				zone_prefix = "&"
+				rule.Transform[tidx] = ""
+				break
+			}
+		}
+	}
 	for idx, zone := range rule.Zones {
 		mappedZone, ok := zonesMap[zone]
 		if !ok {
@@ -134,7 +150,7 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 				if idx > 0 || j > 0 {
 					r.WriteByte('|')
 				}
-				r.WriteString(fmt.Sprintf("%s:%s", mappedZone, variable))
+				r.WriteString(fmt.Sprintf("%s%s:%s%s", zone_prefix, mappedZone, variable_prefix, variable))
 			}
 		}
 	}
@@ -157,6 +173,9 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 
 	if rule.Transform != nil {
 		for _, transform := range rule.Transform {
+			if transform == "" {
+				continue
+			}
 			r.WriteByte(',')
 			if mappedTransform, ok := transformMap[transform]; ok {
 				r.WriteString(mappedTransform)
