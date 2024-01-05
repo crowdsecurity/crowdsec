@@ -70,7 +70,7 @@ func (s *PluginSuite) TestBrokerRun() {
 	t := s.T()
 
 	pb, err := s.InitBroker(nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
@@ -94,11 +94,11 @@ func (s *PluginSuite) TestBrokerRun() {
 	// two notifications, one alert each
 
 	err = decoder.Decode(&alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 1)
 
 	err = decoder.Decode(&alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 1)
 
 	err = decoder.Decode(&alerts)
