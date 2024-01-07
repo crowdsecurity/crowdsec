@@ -44,15 +44,15 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 		runtime.RuntimeFilters = make([]*vm.Program, len(profile.Filters))
 		runtime.Cfg = profile
 		if runtime.Cfg.OnSuccess != "" && runtime.Cfg.OnSuccess != "continue" && runtime.Cfg.OnSuccess != "break" {
-			return []*Runtime{}, fmt.Errorf("invalid 'on_success' for '%s': %s", profile.Name, runtime.Cfg.OnSuccess)
+			return nil, fmt.Errorf("invalid 'on_success' for '%s': %s", profile.Name, runtime.Cfg.OnSuccess)
 		}
 		if runtime.Cfg.OnFailure != "" && runtime.Cfg.OnFailure != "continue" && runtime.Cfg.OnFailure != "break" && runtime.Cfg.OnFailure != "apply" {
-			return []*Runtime{}, fmt.Errorf("invalid 'on_failure' for '%s' : %s", profile.Name, runtime.Cfg.OnFailure)
+			return nil, fmt.Errorf("invalid 'on_failure' for '%s' : %s", profile.Name, runtime.Cfg.OnFailure)
 		}
 		for fIdx, filter := range profile.Filters {
 
 			if runtimeFilter, err = expr.Compile(filter, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
-				return []*Runtime{}, errors.Wrapf(err, "error compiling filter of '%s'", profile.Name)
+				return nil, errors.Wrapf(err, "error compiling filter of '%s'", profile.Name)
 			}
 			runtime.RuntimeFilters[fIdx] = runtimeFilter
 			if profile.Debug != nil && *profile.Debug {
@@ -62,7 +62,7 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 
 		if profile.DurationExpr != "" {
 			if runtimeDurationExpr, err = expr.Compile(profile.DurationExpr, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
-				return []*Runtime{}, errors.Wrapf(err, "error compiling duration_expr of %s", profile.Name)
+				return nil, errors.Wrapf(err, "error compiling duration_expr of %s", profile.Name)
 			}
 			runtime.RuntimeDurationExpr = runtimeDurationExpr
 		}
@@ -77,7 +77,7 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 					duration = defaultDuration
 				}
 				if _, err := time.ParseDuration(duration); err != nil {
-					return []*Runtime{}, errors.Wrapf(err, "error parsing duration '%s' of %s", duration, profile.Name)
+					return nil, errors.Wrapf(err, "error parsing duration '%s' of %s", duration, profile.Name)
 				}
 			}
 		}
