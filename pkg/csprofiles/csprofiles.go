@@ -21,7 +21,7 @@ type Runtime struct {
 	Logger              *log.Entry           `json:"-" yaml:"-"`
 }
 
-var defaultDuration = "4h"
+const defaultDuration = "4h"
 
 func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 	var err error
