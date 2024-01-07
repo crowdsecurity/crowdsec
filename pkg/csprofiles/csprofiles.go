@@ -6,7 +6,6 @@ import (
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -52,7 +51,7 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 		for fIdx, filter := range profile.Filters {
 
 			if runtimeFilter, err = expr.Compile(filter, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
-				return nil, errors.Wrapf(err, "error compiling filter of '%s'", profile.Name)
+				return nil, fmt.Errorf("error compiling filter of '%s': %w", profile.Name, err)
 			}
 			runtime.RuntimeFilters[fIdx] = runtimeFilter
 			if profile.Debug != nil && *profile.Debug {
@@ -62,7 +61,7 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 
 		if profile.DurationExpr != "" {
 			if runtimeDurationExpr, err = expr.Compile(profile.DurationExpr, exprhelpers.GetExprOptions(map[string]interface{}{"Alert": &models.Alert{}})...); err != nil {
-				return nil, errors.Wrapf(err, "error compiling duration_expr of %s", profile.Name)
+				return nil, fmt.Errorf("error compiling duration_expr of %s: %w", profile.Name, err)
 			}
 			runtime.RuntimeDurationExpr = runtimeDurationExpr
 		}
@@ -77,7 +76,7 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 					duration = defaultDuration
 				}
 				if _, err := time.ParseDuration(duration); err != nil {
-					return nil, errors.Wrapf(err, "error parsing duration '%s' of %s", duration, profile.Name)
+					return nil, fmt.Errorf("error parsing duration '%s' of %s: %w", duration, profile.Name, err)
 				}
 			}
 		}
@@ -166,8 +165,8 @@ func (Profile *Runtime) EvaluateProfile(Alert *models.Alert) ([]*models.Decision
 		}
 		output, err := exprhelpers.Run(expression, map[string]interface{}{"Alert": Alert}, Profile.Logger, debugProfile)
 		if err != nil {
-			Profile.Logger.Warningf("failed to run profile expr for %s : %v", Profile.Cfg.Name, err)
-			return nil, matched, errors.Wrapf(err, "while running expression %s", Profile.Cfg.Filters[eIdx])
+			Profile.Logger.Warningf("failed to run profile expr for %s: %v", Profile.Cfg.Name, err)
+			return nil, matched, fmt.Errorf("while running expression %s: %w", Profile.Cfg.Filters[eIdx], err)
 		}
 		switch out := output.(type) {
 		case bool:
@@ -176,7 +175,7 @@ func (Profile *Runtime) EvaluateProfile(Alert *models.Alert) ([]*models.Decision
 				/*the expression matched, create the associated decision*/
 				subdecisions, err := Profile.GenerateDecisionFromProfile(Alert)
 				if err != nil {
-					return nil, matched, errors.Wrapf(err, "while generating decision from profile %s", Profile.Cfg.Name)
+					return nil, matched, fmt.Errorf("while generating decision from profile %s: %w", Profile.Cfg.Name, err)
 				}
 
 				decisions = append(decisions, subdecisions...)
