@@ -73,7 +73,7 @@ func NewCLIAppsecRule() *cliItem {
 				fmt.Println(convertedRule)
 			}
 
-			switch ruleType {
+			switch ruleType { //nolint:gocritic
 			case appsec_rule.ModsecurityRuleType:
 				for _, rule := range appsecRule.SecLangRules {
 					fmt.Println(rule)
