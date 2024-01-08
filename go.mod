@@ -24,7 +24,7 @@ require (
 	github.com/buger/jsonparser v1.1.1
 	github.com/c-robinson/iplib v1.0.3
 	github.com/cespare/xxhash/v2 v2.2.0
-	github.com/crowdsecurity/coraza/v3 v3.0.0-20231213144607-41d5358da94f
+	github.com/crowdsecurity/coraza/v3 v3.0.0-20240108124027-a62b8d8e5607
 	github.com/crowdsecurity/dlog v0.0.0-20170105205344-4fb5f8204f26
 	github.com/crowdsecurity/go-cs-lib v0.0.5
 	github.com/crowdsecurity/grokky v0.2.1
@@ -201,7 +201,7 @@ require (
 	go.mongodb.org/mongo-driver v1.9.4 // indirect
 	golang.org/x/arch v0.3.0 // indirect
 	golang.org/x/net v0.19.0 // indirect
-	golang.org/x/sync v0.5.0 // indirect
+	golang.org/x/sync v0.6.0 // indirect
 	golang.org/x/term v0.15.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	golang.org/x/tools v0.8.1-0.20230428195545-5283a0178901 // indirect
