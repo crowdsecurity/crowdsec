@@ -2,12 +2,13 @@ package main
 
 import (
 	"os"
+	"slices"
+	"time"
 
 	"github.com/fatih/color"
 	cc "github.com/ivanpirog/coloredcobra"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"slices"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -107,7 +108,7 @@ var NoNeedConfig = []string{
 
 func main() {
 	// set the formatter asap and worry about level later
-	logFormatter := &log.TextFormatter{TimestampFormat: "2006-01-02 15:04:05", FullTimestamp: true}
+	logFormatter := &log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true}
 	log.SetFormatter(logFormatter)
 
 	if err := fflag.RegisterAllFeatures(); err != nil {
