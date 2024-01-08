@@ -65,7 +65,6 @@ func NewCLIAppsecRule() *cliItem {
 
 		for _, ruleType := range appsec_rule.SupportedTypes() {
 			fmt.Printf("\n%s format:\n", cases.Title(language.Und, cases.NoLower).String(ruleType))
-
 			for _, rule := range appsecRule.Rules {
 				convertedRule, _, err := rule.Convert(ruleType, appsecRule.Name)
 				if err != nil {
@@ -73,8 +72,12 @@ func NewCLIAppsecRule() *cliItem {
 				}
 				fmt.Println(convertedRule)
 			}
-			for _, rule := range appsecRule.SecLangRules {
-				fmt.Println(rule)
+
+			switch ruleType {
+			case appsec_rule.ModsecurityRuleType:
+				for _, rule := range appsecRule.SecLangRules {
+					fmt.Println(rule)
+				}
 			}
 		}
 
