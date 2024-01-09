@@ -163,7 +163,7 @@ teardown() {
 	whatever
 	EOT
     assert_stderr --partial 'Parsing values'
-    assert_stderr --partial 'creating alert decisions: whatever: invalid ip address / range'
+    assert_stderr --partial 'http code 500, invalid body: unexpected end of JSON input'
 
     #----------
     # Batch
