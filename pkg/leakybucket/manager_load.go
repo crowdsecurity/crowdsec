@@ -225,7 +225,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, hub *cwhub.Hub, files []str
 			}
 			ok, err := cwversion.Satisfies(bucketFactory.FormatVersion, cwversion.Constraint_scenario)
 			if err != nil {
-				log.Fatalf("Failed to check version : %s", err)
+				return nil, nil, fmt.Errorf("failed to check version : %s", err)
 			}
 			if !ok {
 				log.Errorf("can't load %s : %s doesn't satisfy scenario format %s, skip", bucketFactory.Name, bucketFactory.FormatVersion, cwversion.Constraint_scenario)
