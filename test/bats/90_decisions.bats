@@ -151,6 +151,7 @@ teardown() {
     assert_stderr --partial 'Parsing values'
     assert_stderr --partial 'Imported 3 decisions'
 
+    # leading or trailing spaces are ignored
     rune -0 cscli decisions import -i - --format values <<-EOT
 	  10.2.3.4  
 	10.2.3.5   
