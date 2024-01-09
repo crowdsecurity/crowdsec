@@ -6,20 +6,14 @@ import (
 	"strings"
 	"testing"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAPIKey(t *testing.T) {
-	router, config, err := NewAPITest(t)
-	if err != nil {
-		log.Fatalf("unable to run local API: %s", err)
-	}
+	router, config := NewAPITest(t)
 
-	APIKey, err := CreateTestBouncer(config.API.Server.DbConfig)
-	if err != nil {
-		log.Fatal(err)
-	}
+	APIKey := CreateTestBouncer(t, config.API.Server.DbConfig)
+
 	// Login with empty token
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/v1/decisions", strings.NewReader(""))
@@ -27,7 +21,7 @@ func TestAPIKey(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 403, w.Code)
-	assert.Equal(t, "{\"message\":\"access forbidden\"}", w.Body.String())
+	assert.Equal(t, `{"message":"access forbidden"}`, w.Body.String())
 
 	// Login with invalid token
 	w = httptest.NewRecorder()
@@ -37,7 +31,7 @@ func TestAPIKey(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 403, w.Code)
-	assert.Equal(t, "{\"message\":\"access forbidden\"}", w.Body.String())
+	assert.Equal(t, `{"message":"access forbidden"}`, w.Body.String())
 
 	// Login with valid token
 	w = httptest.NewRecorder()

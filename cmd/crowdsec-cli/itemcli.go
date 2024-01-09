@@ -100,11 +100,13 @@ func (cli cliItem) Install(cmd *cobra.Command, args []string) error {
 			if !ignoreError {
 				return fmt.Errorf("error while installing '%s': %w", item.Name, err)
 			}
+
 			log.Errorf("Error while installing '%s': %s", item.Name, err)
 		}
 	}
 
 	log.Infof(ReloadMessage())
+
 	return nil
 }
 
@@ -184,6 +186,7 @@ func (cli cliItem) Remove(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
+
 			if didRemove {
 				log.Infof("Removed %s", item.Name)
 				removed++
@@ -191,6 +194,7 @@ func (cli cliItem) Remove(cmd *cobra.Command, args []string) error {
 		}
 
 		log.Infof("Removed %d %s", removed, cli.name)
+
 		if removed > 0 {
 			log.Infof(ReloadMessage())
 		}
@@ -231,6 +235,7 @@ func (cli cliItem) Remove(cmd *cobra.Command, args []string) error {
 	}
 
 	log.Infof("Removed %d %s", removed, cli.name)
+
 	if removed > 0 {
 		log.Infof(ReloadMessage())
 	}
@@ -291,6 +296,7 @@ func (cli cliItem) Upgrade(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
+
 			if didUpdate {
 				updated++
 			}
@@ -327,6 +333,7 @@ func (cli cliItem) Upgrade(cmd *cobra.Command, args []string) error {
 			updated++
 		}
 	}
+
 	if updated > 0 {
 		log.Infof(ReloadMessage())
 	}
@@ -523,6 +530,7 @@ func (cli cliItem) itemDiff(item *cwhub.Item, reverse bool) (string, error) {
 	file2 := remoteURL
 	content1 := string(localContent)
 	content2 := string(latestContent)
+
 	if reverse {
 		file1, file2 = file2, file1
 		content1, content2 = content2, content1

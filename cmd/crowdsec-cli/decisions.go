@@ -33,27 +33,35 @@ func DecisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error
 	for aIdx := 0; aIdx < len(*alerts); aIdx++ {
 		alertItem := (*alerts)[aIdx]
 		newDecisions := make([]*models.Decision, 0)
+
 		for _, decisionItem := range alertItem.Decisions {
 			spamKey := fmt.Sprintf("%t:%s:%s:%s", *decisionItem.Simulated, *decisionItem.Type, *decisionItem.Scope, *decisionItem.Value)
 			if _, ok := spamLimit[spamKey]; ok {
 				skipped++
 				continue
 			}
+
 			spamLimit[spamKey] = true
+
 			newDecisions = append(newDecisions, decisionItem)
 		}
+
 		alertItem.Decisions = newDecisions
 	}
+
 	if csConfig.Cscli.Output == "raw" {
 		csvwriter := csv.NewWriter(os.Stdout)
 		header := []string{"id", "source", "ip", "reason", "action", "country", "as", "events_count", "expiration", "simulated", "alert_id"}
+
 		if printMachine {
 			header = append(header, "machine")
 		}
+
 		err := csvwriter.Write(header)
 		if err != nil {
 			return err
 		}
+
 		for _, alertItem := range *alerts {
 			for _, decisionItem := range alertItem.Decisions {
 				raw := []string{
@@ -79,6 +87,7 @@ func DecisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error
 				}
 			}
 		}
+
 		csvwriter.Flush()
 	} else if csConfig.Cscli.Output == "json" {
 		if *alerts == nil {
@@ -99,6 +108,7 @@ func DecisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error
 			fmt.Printf("%d duplicated entries skipped\n", skipped)
 		}
 	}
+
 	return nil
 }
 
@@ -119,7 +129,7 @@ func (cli cliDecisions) NewCommand() *cobra.Command {
 		/*TBD example*/
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			if err := csConfig.LoadAPIClient(); err != nil {
 				return fmt.Errorf("loading api client: %w", err)
 			}
@@ -164,8 +174,10 @@ func (cli cliDecisions) NewListCmd() *cobra.Command {
 		IncludeCAPI:    new(bool),
 		Limit:          new(int),
 	}
+
 	NoSimu := new(bool)
 	contained := new(bool)
+
 	var printMachine bool
 
 	cmd := &cobra.Command{
@@ -178,7 +190,7 @@ cscli decisions list -t ban
 `,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			var err error
 			/*take care of shorthand options*/
 			if err = manageCliDecisionAlerts(filter.IPEquals, filter.RangeEquals, filter.ScopeEquals, filter.ValueEquals); err != nil {
@@ -299,7 +311,7 @@ cscli decisions add --scope username --value foobar
 		/*TBD : fix long and example*/
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(cmd *cobra.Command, _ []string) error {
 			var err error
 			alerts := models.AddAlertsRequest{}
 			origin := types.CscliOrigin
@@ -325,7 +337,7 @@ cscli decisions add --scope username --value foobar
 				addScope = types.Range
 			} else if addValue == "" {
 				printHelp(cmd)
-				return fmt.Errorf("Missing arguments, a value is required (--ip, --range or --scope and --value)")
+				return fmt.Errorf("missing arguments, a value is required (--ip, --range or --scope and --value)")
 			}
 
 			if addReason == "" {
@@ -398,8 +410,11 @@ func (cli cliDecisions) NewDeleteCmd() *cobra.Command {
 		ScenarioEquals: new(string),
 		OriginEquals:   new(string),
 	}
-	var delDecisionId string
+
+	var delDecisionID string
+
 	var delDecisionAll bool
+
 	contained := new(bool)
 
 	cmd := &cobra.Command{
@@ -413,21 +428,21 @@ cscli decisions delete --id 42
 cscli decisions delete --type captcha
 `,
 		/*TBD : refaire le Long/Example*/
-		PreRunE: func(cmd *cobra.Command, args []string) error {
+		PreRunE: func(cmd *cobra.Command, _ []string) error {
 			if delDecisionAll {
 				return nil
 			}
 			if *delFilter.ScopeEquals == "" && *delFilter.ValueEquals == "" &&
 				*delFilter.TypeEquals == "" && *delFilter.IPEquals == "" &&
 				*delFilter.RangeEquals == "" && *delFilter.ScenarioEquals == "" &&
-				*delFilter.OriginEquals == "" && delDecisionId == "" {
+				*delFilter.OriginEquals == "" && delDecisionID == "" {
 				cmd.Usage()
 				return fmt.Errorf("at least one filter or --all must be specified")
 			}
 
 			return nil
 		},
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			var err error
 			var decisions *models.DeleteDecisionResponse
 
@@ -460,18 +475,18 @@ cscli decisions delete --type captcha
 				delFilter.Contains = new(bool)
 			}
 
-			if delDecisionId == "" {
+			if delDecisionID == "" {
 				decisions, _, err = Client.Decisions.Delete(context.Background(), delFilter)
 				if err != nil {
-					return fmt.Errorf("Unable to delete decisions: %v", err)
+					return fmt.Errorf("unable to delete decisions: %v", err)
 				}
 			} else {
-				if _, err = strconv.Atoi(delDecisionId); err != nil {
-					return fmt.Errorf("id '%s' is not an integer: %v", delDecisionId, err)
+				if _, err = strconv.Atoi(delDecisionID); err != nil {
+					return fmt.Errorf("id '%s' is not an integer: %v", delDecisionID, err)
 				}
-				decisions, _, err = Client.Decisions.DeleteOne(context.Background(), delDecisionId)
+				decisions, _, err = Client.Decisions.DeleteOne(context.Background(), delDecisionID)
 				if err != nil {
-					return fmt.Errorf("Unable to delete decision: %v", err)
+					return fmt.Errorf("unable to delete decision: %v", err)
 				}
 			}
 			log.Infof("%s decision(s) deleted", decisions.NbDeleted)
@@ -487,7 +502,7 @@ cscli decisions delete --type captcha
 	cmd.Flags().StringVarP(delFilter.ScenarioEquals, "scenario", "s", "", "the scenario name (ie. crowdsecurity/ssh-bf)")
 	cmd.Flags().StringVar(delFilter.OriginEquals, "origin", "", fmt.Sprintf("the value to match for the specified origin (%s ...)", strings.Join(types.GetOrigins(), ",")))
 
-	cmd.Flags().StringVar(&delDecisionId, "id", "", "decision id")
+	cmd.Flags().StringVar(&delDecisionID, "id", "", "decision id")
 	cmd.Flags().BoolVar(&delDecisionAll, "all", false, "delete all decisions")
 	cmd.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
 

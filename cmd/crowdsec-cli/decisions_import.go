@@ -37,21 +37,25 @@ func parseDecisionList(content []byte, format string) ([]decisionRaw, error) {
 	switch format {
 	case "values":
 		log.Infof("Parsing values")
+
 		scanner := bufio.NewScanner(bytes.NewReader(content))
 		for scanner.Scan() {
 			value := strings.TrimSpace(scanner.Text())
 			ret = append(ret, decisionRaw{Value: value})
 		}
+
 		if err := scanner.Err(); err != nil {
 			return nil, fmt.Errorf("unable to parse values: '%s'", err)
 		}
 	case "json":
 		log.Infof("Parsing json")
+
 		if err := json.Unmarshal(content, &ret); err != nil {
 			return nil, err
 		}
 	case "csv":
 		log.Infof("Parsing csv")
+
 		if err := csvutil.Unmarshal(content, &ret); err != nil {
 			return nil, fmt.Errorf("unable to parse csv: '%s'", err)
 		}
@@ -75,6 +79,7 @@ func (cli cliDecisions) runImport(cmd *cobra.Command, args []string) error  {
 	if err != nil {
 		return err
 	}
+
 	if defaultDuration == "" {
 		return fmt.Errorf("--duration cannot be empty")
 	}
@@ -83,6 +88,7 @@ func (cli cliDecisions) runImport(cmd *cobra.Command, args []string) error  {
 	if err != nil {
 		return err
 	}
+
 	if defaultScope == "" {
 		return fmt.Errorf("--scope cannot be empty")
 	}
@@ -91,6 +97,7 @@ func (cli cliDecisions) runImport(cmd *cobra.Command, args []string) error  {
 	if err != nil {
 		return err
 	}
+
 	if defaultReason == "" {
 		return fmt.Errorf("--reason cannot be empty")
 	}
@@ -99,6 +106,7 @@ func (cli cliDecisions) runImport(cmd *cobra.Command, args []string) error  {
 	if err != nil {
 		return err
 	}
+
 	if defaultType == "" {
 		return fmt.Errorf("--type cannot be empty")
 	}
@@ -152,6 +160,7 @@ func (cli cliDecisions) runImport(cmd *cobra.Command, args []string) error  {
 	}
 
 	decisions := make([]*models.Decision, len(decisionsListRaw))
+
 	for i, d := range decisionsListRaw {
 		if d.Value == "" {
 			return fmt.Errorf("item %d: missing 'value'", i)
@@ -222,6 +231,7 @@ func (cli cliDecisions) runImport(cmd *cobra.Command, args []string) error  {
 	}
 
 	log.Infof("Imported %d decisions", len(decisions))
+
 	return nil
 }
 

@@ -76,6 +76,15 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 		return fmt.Errorf("loading list of installed hub scenarios: %w", err)
 	}
 
+	appsecRules, err := hub.GetInstalledItemNames(cwhub.APPSEC_RULES)
+	if err != nil {
+		return fmt.Errorf("loading list of installed hub appsec rules: %w", err)
+	}
+
+	installedScenariosAndAppsecRules := make([]string, 0, len(scenarios)+len(appsecRules))
+	installedScenariosAndAppsecRules = append(installedScenariosAndAppsecRules, scenarios...)
+	installedScenariosAndAppsecRules = append(installedScenariosAndAppsecRules, appsecRules...)
+
 	apiURL, err := url.Parse(apiConfig.URL)
 	if err != nil {
 		return fmt.Errorf("parsing api url ('%s'): %w", apiConfig.URL, err)
@@ -87,14 +96,27 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	password := strfmt.Password(apiConfig.Password)
 
 	Client, err := apiclient.NewClient(&apiclient.Config{
-		MachineID:      apiConfig.Login,
-		Password:       password,
-		Scenarios:      scenarios,
-		UserAgent:      fmt.Sprintf("crowdsec/%s", version.String()),
-		URL:            apiURL,
-		PapiURL:        papiURL,
-		VersionPrefix:  "v1",
-		UpdateScenario: func() ([]string, error) {return hub.GetInstalledItemNames(cwhub.SCENARIOS)},
+		MachineID:     apiConfig.Login,
+		Password:      password,
+		Scenarios:     installedScenariosAndAppsecRules,
+		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
+		URL:           apiURL,
+		PapiURL:       papiURL,
+		VersionPrefix: "v1",
+		UpdateScenario: func() ([]string, error) {
+			scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
+			if err != nil {
+				return nil, err
+			}
+			appsecRules, err := hub.GetInstalledItemNames(cwhub.APPSEC_RULES)
+			if err != nil {
+				return nil, err
+			}
+			ret := make([]string, 0, len(scenarios)+len(appsecRules))
+			ret = append(ret, scenarios...)
+			ret = append(ret, appsecRules...)
+			return ret, nil
+		},
 	})
 	if err != nil {
 		return fmt.Errorf("new client api: %w", err)
@@ -102,7 +124,7 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	authResp, _, err := Client.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
 		MachineID: &apiConfig.Login,
 		Password:  &password,
-		Scenarios: scenarios,
+		Scenarios: installedScenariosAndAppsecRules,
 	})
 	if err != nil {
 		return fmt.Errorf("authenticate watcher (%s): %w", apiConfig.Login, err)

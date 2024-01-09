@@ -262,6 +262,7 @@ func SetConsoleOpts(args []string, wanted bool) error {
 				log.Infof("%s set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
 				csConfig.API.Server.ConsoleConfig.ConsoleManagement = ptr.Of(wanted)
 			}
+
 			if csConfig.API.Server.OnlineClient.Credentials != nil {
 				changed := false
 				if wanted && csConfig.API.Server.OnlineClient.Credentials.PapiURL == "" {
@@ -271,12 +272,15 @@ func SetConsoleOpts(args []string, wanted bool) error {
 					changed = true
 					csConfig.API.Server.OnlineClient.Credentials.PapiURL = ""
 				}
+
 				if changed {
 					fileContent, err := yaml.Marshal(csConfig.API.Server.OnlineClient.Credentials)
 					if err != nil {
 						return fmt.Errorf("cannot marshal credentials: %s", err)
 					}
+
 					log.Infof("Updating credentials file: %s", csConfig.API.Server.OnlineClient.CredentialsFilePath)
+
 					err = os.WriteFile(csConfig.API.Server.OnlineClient.CredentialsFilePath, fileContent, 0o600)
 					if err != nil {
 						return fmt.Errorf("cannot write credentials file: %s", err)

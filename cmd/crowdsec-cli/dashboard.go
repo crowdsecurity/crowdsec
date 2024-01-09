@@ -201,6 +201,7 @@ func (cli cliDashboard) NewStartCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVarP(&forceYes, "yes", "y", false, "force  yes")
+
 	return cmd
 }
 
@@ -218,6 +219,7 @@ func (cli cliDashboard) NewStopCmd() *cobra.Command {
 			return nil
 		},
 	}
+
 	return cmd
 }
 
@@ -235,6 +237,7 @@ func (cli cliDashboard) NewShowPasswordCmd() *cobra.Command {
 			return nil
 		},
 	}
+
 	return cmd
 }
 
@@ -326,6 +329,7 @@ func passwordIsValid(password string) bool {
 	if !hasDigit || len(password) < 6 {
 		return false
 	}
+
 	return true
 }
 
@@ -334,8 +338,10 @@ func checkSystemMemory(forceYes *bool) error {
 	if totMem >= uint64(math.Pow(2, 30)) {
 		return nil
 	}
+
 	if !*forceYes {
 		var answer bool
+
 		prompt := &survey.Confirm{
 			Message: "Metabase requires 1-2GB of RAM, your system is below this requirement continue ?",
 			Default: true,
@@ -343,12 +349,16 @@ func checkSystemMemory(forceYes *bool) error {
 		if err := survey.AskOne(prompt, &answer); err != nil {
 			return fmt.Errorf("unable to ask about RAM check: %s", err)
 		}
+
 		if !answer {
 			return fmt.Errorf("user stated no to continue")
 		}
+
 		return nil
 	}
+
 	log.Warn("Metabase requires 1-2GB of RAM, your system is below this requirement")
+
 	return nil
 }
 
@@ -356,25 +366,32 @@ func warnIfNotLoopback(addr string) {
 	if addr == "127.0.0.1" || addr == "::1" {
 		return
 	}
+
 	log.Warnf("You are potentially exposing your metabase port to the internet (addr: %s), please consider using a reverse proxy", addr)
 }
 
 func disclaimer(forceYes *bool) error {
 	if !*forceYes {
 		var answer bool
+
 		prompt := &survey.Confirm{
 			Message: "CrowdSec takes no responsibility for the security of your metabase instance. Do you accept these responsibilities ?",
 			Default: true,
 		}
+
 		if err := survey.AskOne(prompt, &answer); err != nil {
 			return fmt.Errorf("unable to ask to question: %s", err)
 		}
+
 		if !answer {
 			return fmt.Errorf("user stated no to responsibilities")
 		}
+
 		return nil
 	}
+
 	log.Warn("CrowdSec takes no responsibility for the security of your metabase instance. You used force yes, so you accept this disclaimer")
+
 	return nil
 }
 
@@ -383,19 +400,24 @@ func checkGroups(forceYes *bool) (*user.Group, error) {
 	if err == nil {
 		return dockerGroup, nil
 	}
+
 	if !*forceYes {
 		var answer bool
+
 		prompt := &survey.Confirm{
 			Message: fmt.Sprintf("For metabase docker to be able to access SQLite file we need to add a new group called '%s' to the system, is it ok for you ?", crowdsecGroup),
 			Default: true,
 		}
+
 		if err := survey.AskOne(prompt, &answer); err != nil {
 			return dockerGroup, fmt.Errorf("unable to ask to question: %s", err)
 		}
+
 		if !answer {
 			return dockerGroup, fmt.Errorf("unable to continue without creating '%s' group", crowdsecGroup)
 		}
 	}
+
 	groupAddCmd, err := exec.LookPath("groupadd")
 	if err != nil {
 		return dockerGroup, fmt.Errorf("unable to find 'groupadd' command, can't continue")
@@ -405,6 +427,7 @@ func checkGroups(forceYes *bool) (*user.Group, error) {
 	if err := groupAdd.Run(); err != nil {
 		return dockerGroup, fmt.Errorf("unable to add group '%s': %s", dockerGroup, err)
 	}
+
 	return user.LookupGroup(crowdsecGroup)
 }
 
@@ -413,12 +436,14 @@ func chownDatabase(gid string) error {
 	if err != nil {
 		return fmt.Errorf("unable to convert group ID to int: %s", err)
 	}
+
 	if stat, err := os.Stat(csConfig.DbConfig.DbPath); !os.IsNotExist(err) {
 		info := stat.Sys()
 		if err := os.Chown(csConfig.DbConfig.DbPath, int(info.(*syscall.Stat_t).Uid), intID); err != nil {
 			return fmt.Errorf("unable to chown sqlite db file '%s': %s", csConfig.DbConfig.DbPath, err)
 		}
 	}
+
 	if csConfig.DbConfig.Type == "sqlite" && csConfig.DbConfig.UseWal != nil && *csConfig.DbConfig.UseWal {
 		for _, ext := range []string{"-wal", "-shm"} {
 			file := csConfig.DbConfig.DbPath + ext
@@ -430,5 +455,6 @@ func chownDatabase(gid string) error {
 			}
 		}
 	}
+
 	return nil
 }

@@ -32,6 +32,7 @@ func mergeContext(dest map[string][]string, src map[string][]string) error {
 		if _, ok := dest[k]; !ok {
 			dest[k] = make([]string, 0)
 		}
+
 		for _, s := range v {
 			if !slices.Contains(dest[k], s) {
 				dest[k] = append(dest[k], s)
@@ -46,6 +47,7 @@ func mergeContext(dest map[string][]string, src map[string][]string) error {
 func addContextFromItem(toSend map[string][]string, item *cwhub.Item) error {
 	filePath := item.State.LocalPath
 	log.Tracef("loading console context from %s", filePath)
+
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return err
@@ -70,6 +72,7 @@ func addContextFromItem(toSend map[string][]string, item *cwhub.Item) error {
 // addContextFromFile merges the context from a file into the context to send to the console.
 func addContextFromFile(toSend map[string][]string, filePath string) error {
 	log.Tracef("loading console context from %s", filePath)
+
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return err

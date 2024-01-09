@@ -19,6 +19,22 @@ func TestVPatchRuleString(t *testing.T) {
 			expected: `SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:2203944045,phase:2,deny,log,msg:'Base Rule',tag:'crowdsec-Base Rule',t:lowercase"`,
 		},
 		{
+			name: "Base Rule #2",
+			rule: CustomRule{
+				Zones: []string{"METHOD"},
+				Match: match{Type: "startsWith", Value: "toto"},
+			},
+			expected: `SecRule REQUEST_METHOD "@beginsWith toto" "id:2759779019,phase:2,deny,log,msg:'Base Rule #2',tag:'crowdsec-Base Rule #2'"`,
+		},
+		{
+			name: "Base Negative Rule",
+			rule: CustomRule{
+				Zones: []string{"METHOD"},
+				Match: match{Type: "startsWith", Value: "toto", Not: true},
+			},
+			expected: `SecRule REQUEST_METHOD "!@beginsWith toto" "id:3966251995,phase:2,deny,log,msg:'Base Negative Rule',tag:'crowdsec-Base Negative Rule'"`,
+		},
+		{
 			name: "Multiple Zones",
 			rule: CustomRule{
 				Zones:     []string{"ARGS", "BODY_ARGS"},
