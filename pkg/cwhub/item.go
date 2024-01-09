@@ -440,3 +440,15 @@ func (i *Item) addTaint(sub *Item) {
 		ancestor.addTaint(sub)
 	}
 }
+
+// latestHash() returns the hash of the latest version of the item.
+// if it's missing, the index file has been manually modified or corrupted.
+func (i *Item) latestHash() string {
+	for k, v := range i.Versions {
+		if k == i.Version {
+			return v.Digest
+		}
+	}
+
+	return ""
+}
