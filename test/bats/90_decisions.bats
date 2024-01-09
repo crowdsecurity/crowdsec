@@ -16,7 +16,12 @@ teardown_file() {
 
 setup() {
     load "../lib/setup.sh"
+    load "../lib/bats-file/load.bash"
     ./instance-data load
+    # config_set '.api.server.log_level="trace"'
+    # config_set '.common.log_level="trace"'
+    LOGFILE=$(config_get '.common.log_dir')/crowdsec.log
+    export LOGFILE
     ./instance-crowdsec start
 }
 
@@ -160,11 +165,13 @@ teardown() {
     assert_stderr --partial 'Parsing values'
     assert_stderr --partial 'Imported 3 decisions'
 
+    truncate -s 0 "${LOGFILE}"
     rune -1 cscli decisions import -i - --format values <<-EOT
 	whatever
 	EOT
     assert_stderr --partial 'Parsing values'
-    assert_stderr --partial 'http code 500, invalid body: unexpected end of JSON input'
+    assert_stderr --partial 'http code 500, no error message'
+    assert_file_contains "$LOGFILE" "invalid addr/range 'whatever': invalid address"
 
     #----------
     # Batch
