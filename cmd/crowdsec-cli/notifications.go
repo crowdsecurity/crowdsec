@@ -362,12 +362,16 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 			}
 
 			for id, profile := range profiles {
-				_, matched, err := profile.EvaluateProfile(alert)
+				_, matched, notification, err := profile.EvaluateProfile(alert)
 				if err != nil {
 					return fmt.Errorf("can't evaluate profile %s: %w", profile.Cfg.Name, err)
 				}
 				if !matched {
 					log.Infof("The profile %s didn't match", profile.Cfg.Name)
+					continue
+				}
+				if !notification {
+					log.Infof("The profile %s matched, but it doesn't pass notification filters", profile.Cfg.Name)
 					continue
 				}
 				log.Infof("The profile %s matched, sending to its configured notification plugins", profile.Cfg.Name)
