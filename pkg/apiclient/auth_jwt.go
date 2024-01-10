@@ -130,26 +130,39 @@ func (t *JWTTransport) refreshJwtToken() error {
 	return nil
 }
 
-// RoundTrip implements the RoundTripper interface.
-func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	// In a few occasions several goroutines will execute refreshJwtToken concurrently which is useless and will cause overload on CAPI
-	// we use a mutex to avoid this
-	// We also bypass the refresh if we are requesting the login endpoint, as it does not require a token, and it leads to do 2 requests instead of one (refresh + actual login request)
-	t.refreshTokenMutex.Lock()
-	if req.URL.Path != "/"+t.VersionPrefix+"/watchers/login" && (t.Token == "" || t.Expiration.Add(-time.Minute).Before(time.Now().UTC())) {
-		if err := t.refreshJwtToken(); err != nil {
-			t.refreshTokenMutex.Unlock()
+func (t *JWTTransport) needsTokenRefresh() bool {
+	return t.Token == "" || t.Expiration.Add(-time.Minute).Before(time.Now().UTC())
+}
 
-			return nil, err
+// prepareRequest adds the necessary headers to authenticate the request.
+func (t *JWTTransport) prepareRequest(req *http.Request) error {
+	// In a few occasions several goroutines will execute refreshJwtToken concurrently which is useless
+	// and will cause overload on CAPI. We use a mutex to avoid this.
+	t.refreshTokenMutex.Lock()
+	defer t.refreshTokenMutex.Unlock()
+
+	// We bypass the refresh if we are requesting the login endpoint, as it does not require a token,
+	// and it leads to do 2 requests instead of one (refresh + actual login request).
+	if req.URL.Path != "/"+t.VersionPrefix+"/watchers/login" && t.needsTokenRefresh() {
+		if err := t.refreshJwtToken(); err != nil {
+			return err
 		}
 	}
-	t.refreshTokenMutex.Unlock()
 
 	if t.UserAgent != "" {
 		req.Header.Add("User-Agent", t.UserAgent)
 	}
 
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", t.Token))
+
+	return nil
+}
+
+// RoundTrip implements the RoundTripper interface.
+func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if err := t.prepareRequest(req); err != nil {
+		return nil, err
+	}
 
 	if log.GetLevel() >= log.TraceLevel {
 		//requestToDump := cloneRequest(req)
@@ -189,7 +202,8 @@ func (t *JWTTransport) ResetToken() {
 	t.refreshTokenMutex.Unlock()
 }
 
-// transport() returns a round tripper that retries once when the status is unauthorized, and 5 times when the infrastructure is overloaded.
+// transport() returns a round tripper that retries once when the status is unauthorized,
+// and 5 times when the infrastructure is overloaded.
 func (t *JWTTransport) transport() http.RoundTripper {
 	transport := t.Transport
 	if transport == nil {
