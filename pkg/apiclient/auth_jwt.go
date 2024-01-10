@@ -134,8 +134,10 @@ func (t *JWTTransport) needsTokenRefresh() bool {
 	return t.Token == "" || t.Expiration.Add(-time.Minute).Before(time.Now().UTC())
 }
 
-// prepareRequest adds the necessary headers to authenticate the request.
-func (t *JWTTransport) prepareRequest(req *http.Request) error {
+// prepareRequest returns a copy of the  request with the necessary authentication headers.
+func (t *JWTTransport) prepareRequest(req *http.Request) (*http.Request, error) {
+	req = cloneRequest(req)
+
 	// In a few occasions several goroutines will execute refreshJwtToken concurrently which is useless
 	// and will cause overload on CAPI. We use a mutex to avoid this.
 	t.refreshTokenMutex.Lock()
@@ -145,7 +147,7 @@ func (t *JWTTransport) prepareRequest(req *http.Request) error {
 	// and it leads to do 2 requests instead of one (refresh + actual login request).
 	if req.URL.Path != "/"+t.VersionPrefix+"/watchers/login" && t.needsTokenRefresh() {
 		if err := t.refreshJwtToken(); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
@@ -155,12 +157,13 @@ func (t *JWTTransport) prepareRequest(req *http.Request) error {
 
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", t.Token))
 
-	return nil
+	return req, nil
 }
 
 // RoundTrip implements the RoundTripper interface.
 func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	if err := t.prepareRequest(req); err != nil {
+	req, err := t.prepareRequest(req)
+	if err != nil {
 		return nil, err
 	}
 
@@ -179,7 +182,7 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 	if err != nil {
 		// we had an error (network error for example, or 401 because token is refused), reset the token?
-		t.Token = ""
+		t.ResetToken()
 
 		return resp, fmt.Errorf("performing jwt auth: %w", err)
 	}

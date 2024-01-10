@@ -539,7 +539,6 @@ func createAlertForDecision(decision *models.Decision) *models.Alert {
 		scenario = *decision.Scenario
 		scope = types.ListOrigin
 	default:
-		// XXX: this or nil?
 		scenario = ""
 		scope = ""
 
