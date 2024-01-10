@@ -74,6 +74,7 @@ func NewClient(config *Config) (*ApiClient, error) {
 		VersionPrefix:  config.VersionPrefix,
 		UpdateScenario: config.UpdateScenario,
 	}
+
 	tlsconfig := tls.Config{InsecureSkipVerify: InsecureSkipVerify}
 	tlsconfig.RootCAs = CaCertPool
 
@@ -180,8 +181,7 @@ func (e *ErrorResponse) Error() string {
 }
 
 func newResponse(r *http.Response) *Response {
-	response := &Response{Response: r}
-	return response
+	return &Response{Response: r}
 }
 
 func CheckResponse(r *http.Response) error {
