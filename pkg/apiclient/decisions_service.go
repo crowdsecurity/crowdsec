@@ -183,7 +183,8 @@ func (s *DecisionsService) GetDecisionsFromBlocklist(ctx context.Context, blockl
 
 	req = req.WithContext(ctx)
 	log.Debugf("[URL] %s %s", req.Method, req.URL)
-	// we dont use client_http Do method because we need the reader and is not provided. We would be forced to use Pipe and goroutine, etc
+	// we don't use client_http Do method because we need the reader and is not provided.
+	// We would be forced to use Pipe and goroutine, etc
 	resp, err := client.Do(req)
 	if resp != nil && resp.Body != nil {
 		defer resp.Body.Close()
@@ -216,6 +217,7 @@ func (s *DecisionsService) GetDecisionsFromBlocklist(ctx context.Context, blockl
 
 	if resp.StatusCode != http.StatusOK {
 		log.Debugf("Received nok status code %d for blocklist %s", resp.StatusCode, *blocklist.URL)
+
 		return nil, false, nil
 	}
 

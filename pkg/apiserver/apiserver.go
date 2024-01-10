@@ -307,6 +307,7 @@ func (s *APIServer) Run(apiReady chan bool) error {
 				log.Errorf("capi push: %s", err)
 				return err
 			}
+
 			return nil
 		})
 
@@ -315,6 +316,7 @@ func (s *APIServer) Run(apiReady chan bool) error {
 				log.Errorf("capi pull: %s", err)
 				return err
 			}
+
 			return nil
 		})
 
@@ -328,6 +330,7 @@ func (s *APIServer) Run(apiReady chan bool) error {
 							log.Errorf("papi pull: %s", err)
 							return err
 						}
+
 						return nil
 					})
 
@@ -336,6 +339,7 @@ func (s *APIServer) Run(apiReady chan bool) error {
 							log.Errorf("capi decisions sync: %s", err)
 							return err
 						}
+
 						return nil
 					})
 				} else {

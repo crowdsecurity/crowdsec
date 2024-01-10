@@ -3,6 +3,7 @@ package apiclient
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -13,7 +14,6 @@ import (
 	"time"
 
 	"github.com/go-openapi/strfmt"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
@@ -52,10 +52,12 @@ func (t *APIKeyTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		dump, _ := httputil.DumpRequest(req, true)
 		log.Tracef("auth-api request: %s", string(dump))
 	}
+
 	// Make the HTTP request.
 	resp, err := t.transport().RoundTrip(req)
 	if err != nil {
 		log.Errorf("auth-api: auth with api key failed return nil response, error: %s", err)
+
 		return resp, err
 	}
 
@@ -115,10 +117,12 @@ func (r retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 	for i := 0; i < maxAttempts; i++ {
 		if i > 0 {
 			if r.withBackOff {
+				//nolint:gosec
 				backoff += 10 + rand.Intn(20)
 			}
 
 			log.Infof("retrying in %d seconds (attempt %d of %d)", backoff, i+1, r.maxAttempts)
+
 			select {
 			case <-req.Context().Done():
 				return resp, req.Context().Err()
@@ -134,8 +138,7 @@ func (r retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 		resp, err = r.next.RoundTrip(clonedReq)
 
 		if err != nil {
-			left := maxAttempts - i - 1
-			if left > 0 {
+			if left := maxAttempts - i - 1; left > 0 {
 				log.Errorf("error while performing request: %s; %d retries left", err, left)
 			}
 
@@ -177,7 +180,7 @@ func (t *JWTTransport) refreshJwtToken() error {
 		log.Debugf("scenarios list updated for '%s'", *t.MachineID)
 	}
 
-	var auth = models.WatcherAuthRequest{
+	auth := models.WatcherAuthRequest{
 		MachineID: t.MachineID,
 		Password:  t.Password,
 		Scenarios: t.Scenarios,
@@ -264,13 +267,14 @@ func (t *JWTTransport) refreshJwtToken() error {
 
 // RoundTrip implements the RoundTripper interface.
 func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	// in a few occasions several goroutines will execute refreshJwtToken concurrently which is useless and will cause overload on CAPI
+	// In a few occasions several goroutines will execute refreshJwtToken concurrently which is useless and will cause overload on CAPI
 	// we use a mutex to avoid this
-	//We also bypass the refresh if we are requesting the login endpoint, as it does not require a token, and it leads to do 2 requests instead of one (refresh + actual login request)
+	// We also bypass the refresh if we are requesting the login endpoint, as it does not require a token, and it leads to do 2 requests instead of one (refresh + actual login request)
 	t.refreshTokenMutex.Lock()
 	if req.URL.Path != "/"+t.VersionPrefix+"/watchers/login" && (t.Token == "" || t.Expiration.Add(-time.Minute).Before(time.Now().UTC())) {
 		if err := t.refreshJwtToken(); err != nil {
 			t.refreshTokenMutex.Unlock()
+
 			return nil, err
 		}
 	}
@@ -296,8 +300,9 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	if err != nil {
-		/*we had an error (network error for example, or 401 because token is refused), reset the token ?*/
+		// we had an error (network error for example, or 401 because token is refused), reset the token ?
 		t.Token = ""
+
 		return resp, fmt.Errorf("performing jwt auth: %w", err)
 	}
 
@@ -355,6 +360,7 @@ func cloneRequest(r *http.Request) *http.Request {
 	*r2 = *r
 	// deep copy of the Header
 	r2.Header = make(http.Header, len(r.Header))
+
 	for k, s := range r.Header {
 		r2.Header[k] = append([]string(nil), s...)
 	}
