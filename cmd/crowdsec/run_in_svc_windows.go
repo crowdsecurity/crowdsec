@@ -20,6 +20,10 @@ func StartRunSvc() error {
 
 	defer trace.CatchPanic("crowdsec/StartRunSvc")
 
+	//Always try to stop CPU profiling to avoid passing flags around
+	//It's a noop if profiling is not enabled
+	defer pprof.StopCPUProfile()
+
 	isRunninginService, err := svc.IsWindowsService()
 	if err != nil {
 		return fmt.Errorf("failed to determine if we are running in windows service mode: %w", err)
@@ -66,10 +70,6 @@ func WindowsRun() error {
 	if err != nil {
 		return err
 	}
-
-	//Always try to stop CPU profiling to avoid passing flags around
-	//It's a noop if profiling is not enabled
-	defer pprof.StopCPUProfile()
 
 	log.Infof("Crowdsec %s", version.String())
 
