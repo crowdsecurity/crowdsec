@@ -38,11 +38,13 @@ func (h *HeartBeatService) StartHeartBeat(ctx context.Context, t *tomb.Tomb) {
 			select {
 			case <-hbTimer.C:
 				log.Debug("heartbeat: sending heartbeat")
+
 				ok, resp, err := h.Ping(ctx)
 				if err != nil {
 					log.Errorf("heartbeat error : %s", err)
 					continue
 				}
+
 				resp.Response.Body.Close()
 				if resp.Response.StatusCode != http.StatusOK {
 					log.Errorf("heartbeat unexpected return code : %d", resp.Response.StatusCode)

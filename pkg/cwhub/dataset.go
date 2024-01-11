@@ -56,6 +56,7 @@ func downloadFile(url string, destPath string) error {
 // if the remote has no modification date, but local file has been modified > a week ago, update.
 func needsUpdate(destPath string, url string, logger *logrus.Logger) bool {
 	fileInfo, err := os.Stat(destPath)
+
 	switch {
 	case os.IsNotExist(err):
 		return true
@@ -89,6 +90,7 @@ func needsUpdate(destPath string, url string, logger *logrus.Logger) bool {
 		if localIsOld {
 			logger.Infof("no last modified date for %s, but local file is older than %s", url, shelfLife)
 		}
+
 		return localIsOld
 	}
 
@@ -129,6 +131,7 @@ func downloadDataSet(dataFolder string, force bool, reader io.Reader, logger *lo
 
 			if force || needsUpdate(destPath, dataS.SourceURL, logger) {
 				logger.Debugf("downloading %s in %s", dataS.SourceURL, destPath)
+
 				if err := downloadFile(dataS.SourceURL, destPath); err != nil {
 					return fmt.Errorf("while getting data: %w", err)
 				}

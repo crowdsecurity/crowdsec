@@ -155,6 +155,7 @@ func (cli cliHub) upgrade(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
+
 			if didUpdate {
 				updated++
 			}
@@ -191,18 +192,21 @@ func (cli cliHub) types(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		fmt.Print(string(s))
 	case "json":
 		jsonStr, err := json.Marshal(cwhub.ItemTypes)
 		if err != nil {
 			return err
 		}
+
 		fmt.Println(string(jsonStr))
 	case "raw":
 		for _, itemType := range cwhub.ItemTypes {
 			fmt.Println(itemType)
 		}
 	}
+
 	return nil
 }
 

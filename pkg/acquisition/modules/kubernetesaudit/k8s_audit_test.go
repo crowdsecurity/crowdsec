@@ -9,6 +9,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/tomb.v2"
 )
 
@@ -78,24 +79,23 @@ webhook_path: /k8s-audit`,
 
 			err := f.UnmarshalConfig([]byte(test.config))
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			err = f.Configure([]byte(test.config), subLogger)
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			f.StreamingAcquisition(out, tb)
 
 			time.Sleep(1 * time.Second)
 			tb.Kill(nil)
 			err = tb.Wait()
 			if test.expectedErr != "" {
-				assert.ErrorContains(t, err, test.expectedErr)
+				require.ErrorContains(t, err, test.expectedErr)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 		})
 	}
-
 }
 
 func TestHandler(t *testing.T) {
@@ -252,10 +252,10 @@ webhook_path: /k8s-audit`,
 
 			f := KubernetesAuditSource{}
 			err := f.UnmarshalConfig([]byte(test.config))
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			err = f.Configure([]byte(test.config), subLogger)
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			req := httptest.NewRequest(test.method, "/k8s-audit", strings.NewReader(test.body))
 			w := httptest.NewRecorder()
@@ -268,11 +268,11 @@ webhook_path: /k8s-audit`,
 
 			assert.Equal(t, test.expectedStatusCode, res.StatusCode)
 			//time.Sleep(1 * time.Second)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			tb.Kill(nil)
 			err = tb.Wait()
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			assert.Equal(t, test.eventCount, eventCount)
 		})

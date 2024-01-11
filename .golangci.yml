@@ -243,52 +243,12 @@ issues:
     # Will fix, trivial - just beware of merge conflicts
 
     - linters:
-        - testifylint
-      text: "expected-actual: need to reverse actual and expected values"
-
-    - linters:
-        - testifylint
-      text: "bool-compare: use assert.False"
-
-    - linters:
-        - testifylint
-      text: "len: use assert.Len"
-
-    - linters:
-        - testifylint
-      text: "bool-compare: use assert.True"
-
-    - linters:
-        - testifylint
-      text: "bool-compare: use require.True"
-
-    - linters:
-        - testifylint
-      text: "require-error: for error assertions use require"
-
-    - linters:
-        - testifylint
-      text: "error-nil: use assert.NoError"
-
-    - linters:
-        - testifylint
-      text: "error-nil: use assert.Error"
-
-    - linters:
-        - testifylint
-      text: "empty: use assert.Empty"
-
-    - linters:
         - perfsprint
       text: "fmt.Sprintf can be replaced .*"
 
     #
     # Will fix, easy but some neurons required
     #
-
-    - linters:
-        - testifylint
-      text: "float-compare: use assert.InEpsilon .*or InDelta.*"
 
     - linters:
         - errorlint

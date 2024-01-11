@@ -7,6 +7,7 @@ import (
 
 	"github.com/antonmedv/expr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestJsonExtract(t *testing.T) {
@@ -56,14 +57,14 @@ func TestJsonExtract(t *testing.T) {
 				"target": test.targetField,
 			}
 			vm, err := expr.Compile(test.expr, GetExprOptions(env)...)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			out, err := expr.Run(vm, env)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.expectResult, out)
 		})
 	}
-
 }
+
 func TestJsonExtractUnescape(t *testing.T) {
 	if err := Init(nil); err != nil {
 		log.Fatal(err)
@@ -104,9 +105,9 @@ func TestJsonExtractUnescape(t *testing.T) {
 				"target": test.targetField,
 			}
 			vm, err := expr.Compile(test.expr, GetExprOptions(env)...)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			out, err := expr.Run(vm, env)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.expectResult, out)
 		})
 	}
@@ -167,9 +168,9 @@ func TestJsonExtractSlice(t *testing.T) {
 				"target": test.targetField,
 			}
 			vm, err := expr.Compile(test.expr, GetExprOptions(env)...)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			out, err := expr.Run(vm, env)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.expectResult, out)
 		})
 	}
@@ -223,9 +224,9 @@ func TestJsonExtractObject(t *testing.T) {
 				"target": test.targetField,
 			}
 			vm, err := expr.Compile(test.expr, GetExprOptions(env)...)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			out, err := expr.Run(vm, env)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.expectResult, out)
 		})
 	}
@@ -233,7 +234,8 @@ func TestJsonExtractObject(t *testing.T) {
 
 func TestToJson(t *testing.T) {
 	err := Init(nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
+
 	tests := []struct {
 		name         string
 		obj          interface{}
@@ -298,9 +300,9 @@ func TestToJson(t *testing.T) {
 				"obj": test.obj,
 			}
 			vm, err := expr.Compile(test.expr, GetExprOptions(env)...)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			out, err := expr.Run(vm, env)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.expectResult, out)
 		})
 	}
@@ -308,7 +310,8 @@ func TestToJson(t *testing.T) {
 
 func TestUnmarshalJSON(t *testing.T) {
 	err := Init(nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
+
 	tests := []struct {
 		name         string
 		json         string
@@ -361,11 +364,10 @@ func TestUnmarshalJSON(t *testing.T) {
 				"out":  outMap,
 			}
 			vm, err := expr.Compile(test.expr, GetExprOptions(env)...)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			_, err = expr.Run(vm, env)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.expectResult, outMap["a"])
 		})
 	}
-
 }
