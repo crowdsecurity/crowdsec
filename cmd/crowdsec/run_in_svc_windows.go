@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"runtime/pprof"
 
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/windows/svc"
@@ -65,6 +66,10 @@ func WindowsRun() error {
 	if err != nil {
 		return err
 	}
+
+	//Always try to stop CPU profiling to avoid passing flags around
+	//It's a noop if profiling is not enabled
+	defer pprof.StopCPUProfile()
 
 	log.Infof("Crowdsec %s", version.String())
 
