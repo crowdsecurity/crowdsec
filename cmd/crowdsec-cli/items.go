@@ -7,10 +7,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"gopkg.in/yaml.v3"
-	"slices"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )

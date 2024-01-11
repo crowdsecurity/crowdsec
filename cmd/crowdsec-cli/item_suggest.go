@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/agext/levenshtein"
 	"github.com/spf13/cobra"
-	"slices"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
