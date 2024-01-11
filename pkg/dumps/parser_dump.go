@@ -2,14 +2,19 @@ package dumps
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/go-cs-lib/maptools"
 	"github.com/enescakir/emoji"
 	"github.com/fatih/color"
 	diff "github.com/r3labs/diff/v2"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
 type ParserResult struct {
@@ -24,6 +29,64 @@ type DumpOpts struct {
 	Details          bool
 	SkipOk           bool
 	ShowNotOkParsers bool
+}
+
+func LoadParserDump(filepath string) (*ParserResults, error) {
+	dumpData, err := os.Open(filepath)
+	if err != nil {
+		return nil, err
+	}
+	defer dumpData.Close()
+
+	results, err := io.ReadAll(dumpData)
+	if err != nil {
+		return nil, err
+	}
+
+	pdump := ParserResults{}
+
+	if err := yaml.Unmarshal(results, &pdump); err != nil {
+		return nil, err
+	}
+
+	/* we know that some variables should always be set,
+	let's check if they're present in last parser output of last stage */
+
+	stages := maptools.SortedKeys(pdump)
+
+	var lastStage string
+
+	//Loop over stages to find last successful one with at least one parser
+	for i := len(stages) - 2; i >= 0; i-- {
+		if len(pdump[stages[i]]) != 0 {
+			lastStage = stages[i]
+			break
+		}
+	}
+
+	parsers := make([]string, 0, len(pdump[lastStage]))
+
+	for k := range pdump[lastStage] {
+		parsers = append(parsers, k)
+	}
+
+	sort.Strings(parsers)
+
+	if len(parsers) == 0 {
+		return nil, fmt.Errorf("no parser found. Please install the appropriate parser and retry")
+	}
+
+	lastParser := parsers[len(parsers)-1]
+
+	for idx, result := range pdump[lastStage][lastParser] {
+		if result.Evt.StrTime == "" {
+			log.Warningf("Line %d/%d is missing evt.StrTime. It is most likely a mistake as it will prevent your logs to be processed in time-machine/forensic mode.", idx, len(pdump[lastStage][lastParser]))
+		} else {
+			log.Debugf("Line %d/%d has evt.StrTime set to '%s'", idx, len(pdump[lastStage][lastParser]), result.Evt.StrTime)
+		}
+	}
+
+	return &pdump, nil
 }
 
 func DumpTree(parserResults ParserResults, bucketPour BucketPourInfo, opts DumpOpts) {
@@ -119,8 +182,6 @@ func DumpTree(parserResults ParserResults, bucketPour BucketPourInfo, opts DumpO
 			presep := "|"
 
 			fmt.Printf("\t%s %s\n", sep, stage)
-
-			//pkeys := sortedMapKeys(parsers)
 
 			for idx, parser := range parser_order[stage] {
 				res := parsers[parser].Success

@@ -3,9 +3,7 @@ package hubtest
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"os"
-	"sort"
 	"strings"
 
 	"github.com/antonmedv/expr"
@@ -14,6 +12,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/dumps"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/go-cs-lib/maptools"
 )
 
 type AssertFail struct {
@@ -58,7 +57,7 @@ func (p *ParserAssert) AutoGenFromFile(filename string) (string, error) {
 }
 
 func (p *ParserAssert) LoadTest(filename string) error {
-	parserDump, err := LoadParserDump(filename)
+	parserDump, err := dumps.LoadParserDump(filename)
 	if err != nil {
 		return fmt.Errorf("loading parser dump file: %+v", err)
 	}
@@ -218,13 +217,13 @@ func (p *ParserAssert) AutoGenParserAssert() string {
 	ret := fmt.Sprintf("len(results) == %d\n", len(*p.TestData))
 
 	//sort map keys for consistent order
-	stages := sortedMapKeys(*p.TestData)
+	stages := maptools.SortedKeys(*p.TestData)
 
 	for _, stage := range stages {
 		parsers := (*p.TestData)[stage]
 
 		//sort map keys for consistent order
-		pnames := sortedMapKeys(parsers)
+		pnames := maptools.SortedKeys(parsers)
 
 		for _, parser := range pnames {
 			presults := parsers[parser]
@@ -237,7 +236,7 @@ func (p *ParserAssert) AutoGenParserAssert() string {
 					continue
 				}
 
-				for _, pkey := range sortedMapKeys(result.Evt.Parsed) {
+				for _, pkey := range maptools.SortedKeys(result.Evt.Parsed) {
 					pval := result.Evt.Parsed[pkey]
 					if pval == "" {
 						continue
@@ -246,7 +245,7 @@ func (p *ParserAssert) AutoGenParserAssert() string {
 					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Parsed["%s"] == "%s"`+"\n", stage, parser, pidx, pkey, Escape(pval))
 				}
 
-				for _, mkey := range sortedMapKeys(result.Evt.Meta) {
+				for _, mkey := range maptools.SortedKeys(result.Evt.Meta) {
 					mval := result.Evt.Meta[mkey]
 					if mval == "" {
 						continue
@@ -255,7 +254,7 @@ func (p *ParserAssert) AutoGenParserAssert() string {
 					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Meta["%s"] == "%s"`+"\n", stage, parser, pidx, mkey, Escape(mval))
 				}
 
-				for _, ekey := range sortedMapKeys(result.Evt.Enriched) {
+				for _, ekey := range maptools.SortedKeys(result.Evt.Enriched) {
 					eval := result.Evt.Enriched[ekey]
 					if eval == "" {
 						continue
@@ -264,7 +263,7 @@ func (p *ParserAssert) AutoGenParserAssert() string {
 					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Enriched["%s"] == "%s"`+"\n", stage, parser, pidx, ekey, Escape(eval))
 				}
 
-				for _, ukey := range sortedMapKeys(result.Evt.Unmarshaled) {
+				for _, ukey := range maptools.SortedKeys(result.Evt.Unmarshaled) {
 					uval := result.Evt.Unmarshaled[ukey]
 					if uval == "" {
 						continue
@@ -316,62 +315,4 @@ func (p *ParserAssert) buildUnmarshaledAssert(ekey string, eval interface{}) []s
 	}
 
 	return ret
-}
-
-func LoadParserDump(filepath string) (*dumps.ParserResults, error) {
-	dumpData, err := os.Open(filepath)
-	if err != nil {
-		return nil, err
-	}
-	defer dumpData.Close()
-
-	results, err := io.ReadAll(dumpData)
-	if err != nil {
-		return nil, err
-	}
-
-	pdump := dumps.ParserResults{}
-
-	if err := yaml.Unmarshal(results, &pdump); err != nil {
-		return nil, err
-	}
-
-	/* we know that some variables should always be set,
-	let's check if they're present in last parser output of last stage */
-
-	stages := sortedMapKeys(pdump)
-
-	var lastStage string
-
-	//Loop over stages to find last successful one with at least one parser
-	for i := len(stages) - 2; i >= 0; i-- {
-		if len(pdump[stages[i]]) != 0 {
-			lastStage = stages[i]
-			break
-		}
-	}
-
-	parsers := make([]string, 0, len(pdump[lastStage]))
-
-	for k := range pdump[lastStage] {
-		parsers = append(parsers, k)
-	}
-
-	sort.Strings(parsers)
-
-	if len(parsers) == 0 {
-		return nil, fmt.Errorf("no parser found. Please install the appropriate parser and retry")
-	}
-
-	lastParser := parsers[len(parsers)-1]
-
-	for idx, result := range pdump[lastStage][lastParser] {
-		if result.Evt.StrTime == "" {
-			log.Warningf("Line %d/%d is missing evt.StrTime. It is most likely a mistake as it will prevent your logs to be processed in time-machine/forensic mode.", idx, len(pdump[lastStage][lastParser]))
-		} else {
-			log.Debugf("Line %d/%d has evt.StrTime set to '%s'", idx, len(pdump[lastStage][lastParser]), result.Evt.StrTime)
-		}
-	}
-
-	return &pdump, nil
 }

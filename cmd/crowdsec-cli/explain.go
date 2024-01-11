@@ -264,7 +264,7 @@ func (cli cliExplain) run(cmd *cobra.Command, args []string) error {
 	parserDumpFile := filepath.Join(dir, hubtest.ParserResultFileName)
 	bucketStateDumpFile := filepath.Join(dir, hubtest.BucketPourResultFileName)
 
-	parserDump, err := hubtest.LoadParserDump(parserDumpFile)
+	parserDump, err := dumps.LoadParserDump(parserDumpFile)
 	if err != nil {
 		return fmt.Errorf("unable to load parser dump result: %s", err)
 	}
