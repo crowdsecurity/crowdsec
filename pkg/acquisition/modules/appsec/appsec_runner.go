@@ -272,7 +272,7 @@ func (r *AppsecRunner) handleOutBandInterrupt(request *appsec.ParsedRequest) {
 		r.logger.Errorf("unable to accumulate tx to event : %s", err)
 	}
 	if in := request.Tx.Interruption(); in != nil {
-		r.logger.Debugf("inband rules matched : %d", in.RuleID)
+		r.logger.Debugf("outband rules matched : %d", in.RuleID)
 		r.AppsecRuntime.Response.OutOfBandInterrupt = true
 
 		err = r.AppsecRuntime.ProcessOnMatchRules(request, evt)
