@@ -172,19 +172,19 @@ func (cli cliExplain) run(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("couldn't create a temporary directory to store cscli explain result: %s", err)
 	}
-	defer func() {
-		clean, err := flags.GetBool("no-clean")
-		if err != nil {
-			log.Errorf("unable to get --no-clean flag: %s", err)
-		}
-		if !clean {
+	clean, err := flags.GetBool("no-clean")
+	if err != nil {
+		log.Errorf("unable to get --no-clean flag: %s", err)
+	}
+	if !clean {
+		defer func() {
 			if _, err := os.Stat(dir); !os.IsNotExist(err) {
 				if err := os.RemoveAll(dir); err != nil {
 					log.Errorf("unable to delete temporary directory '%s': %s", dir, err)
 				}
 			}
-		}
-	}()
+		}()
+	}
 	tmpFile := ""
 	// we create a  temporary log file if a log line/stdin has been provided
 	if logLine != "" || logFile == "-" {
