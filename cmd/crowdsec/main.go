@@ -238,6 +238,8 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		return nil, err
 	}
 
+	primalHook.Enabled = (cConfig.Common.LogMedia != "stdout")
+
 	if err := csconfig.LoadFeatureFlagsFile(configFile, log.StandardLogger()); err != nil {
 		return nil, err
 	}
@@ -308,6 +310,8 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 var crowdsecT0 time.Time
 
 func main() {
+	log.AddHook(primalHook)
+
 	if err := fflag.RegisterAllFeatures(); err != nil {
 		log.Fatalf("failed to register features: %s", err)
 	}
