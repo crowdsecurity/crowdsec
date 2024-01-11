@@ -123,6 +123,9 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 	}
 
 	for idx, zone := range rule.Zones {
+		if idx > 0 {
+			r.WriteByte('|')
+		}
 		mappedZone, ok := zonesMap[zone]
 		if !ok {
 			return nil, fmt.Errorf("unknown zone '%s'", zone)
@@ -131,7 +134,7 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 			r.WriteString(mappedZone)
 		} else {
 			for j, variable := range rule.Variables {
-				if idx > 0 || j > 0 {
+				if j > 0 {
 					r.WriteByte('|')
 				}
 				r.WriteString(fmt.Sprintf("%s:%s", mappedZone, variable))
