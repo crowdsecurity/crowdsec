@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime/pprof"
 	"syscall"
 	"time"
 
@@ -244,6 +245,10 @@ func HandleSignals(cConfig *csconfig.Config) error {
 		os.Interrupt)
 
 	exitChan := make(chan error)
+
+	//Always try to stop CPU profiling to avoid passing flags around
+	//It's a noop if profiling is not enabled
+	defer pprof.StopCPUProfile()
 
 	go func() {
 		defer trace.CatchPanic("crowdsec/HandleSignals")

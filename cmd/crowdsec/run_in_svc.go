@@ -5,6 +5,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime/pprof"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/writer"
@@ -23,6 +24,10 @@ func StartRunSvc() error {
 	)
 
 	defer trace.CatchPanic("crowdsec/StartRunSvc")
+
+	//Always try to stop CPU profiling to avoid passing flags around
+	//It's a noop if profiling is not enabled
+	defer pprof.StopCPUProfile()
 
 	// Set a default logger with level=fatal on stderr,
 	// in addition to the one we configure afterwards

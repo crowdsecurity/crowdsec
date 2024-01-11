@@ -6,6 +6,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"runtime"
+	"runtime/pprof"
 	"strings"
 	"time"
 
@@ -71,6 +72,7 @@ type Flags struct {
 	DisableCAPI    bool
 	Transform      string
 	OrderEvent     bool
+	CpuProfile     string
 }
 
 type labelsMap map[string]string
@@ -172,6 +174,7 @@ func (f *Flags) Parse() {
 		flag.StringVar(&f.WinSvc, "winsvc", "", "Windows service Action: Install, Remove etc..")
 	}
 	flag.StringVar(&dumpFolder, "dump-data", "", "dump parsers/buckets raw outputs")
+	flag.StringVar(&f.CpuProfile, "cpu-profile", "", "write cpu profile to file")
 	flag.Parse()
 }
 
@@ -336,6 +339,19 @@ func main() {
 	if flags.PrintVersion {
 		cwversion.Show()
 		os.Exit(0)
+	}
+
+	if flags.CpuProfile != "" {
+		f, err := os.Create(flags.CpuProfile)
+		if err != nil {
+			log.Fatalf("could not create CPU profile: %s", err)
+		}
+		log.Infof("CPU profile will be written to %s", flags.CpuProfile)
+		defer f.Close()
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatalf("could not start CPU profile: %s", err)
+		}
+		defer pprof.StopCPUProfile()
 	}
 
 	err := StartRunSvc()
