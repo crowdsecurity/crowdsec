@@ -347,10 +347,11 @@ func main() {
 			log.Fatalf("could not create CPU profile: %s", err)
 		}
 		log.Infof("CPU profile will be written to %s", flags.CpuProfile)
-		defer f.Close()
 		if err := pprof.StartCPUProfile(f); err != nil {
+			f.Close()
 			log.Fatalf("could not start CPU profile: %s", err)
 		}
+		defer f.Close()
 		defer pprof.StopCPUProfile()
 	}
 
