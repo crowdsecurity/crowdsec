@@ -44,6 +44,7 @@ func runConfigFeatureFlags(cmd *cobra.Command, args []string) error {
 		if feat.State == fflag.RetiredState {
 			fmt.Printf("\n  %s %s", magenta("RETIRED"), feat.DeprecationMsg)
 		}
+
 		fmt.Println()
 	}
 
@@ -58,10 +59,12 @@ func runConfigFeatureFlags(cmd *cobra.Command, args []string) error {
 			retired = append(retired, feat)
 			continue
 		}
+
 		if feat.IsEnabled() {
 			enabled = append(enabled, feat)
 			continue
 		}
+
 		disabled = append(disabled, feat)
 	}
 

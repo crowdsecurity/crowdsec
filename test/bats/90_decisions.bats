@@ -29,11 +29,11 @@ teardown() {
 @test "'decisions add' requires parameters" {
     rune -1 cscli decisions add
     assert_line "Usage:"
-    assert_stderr --partial "Missing arguments, a value is required (--ip, --range or --scope and --value)"
+    assert_stderr --partial "missing arguments, a value is required (--ip, --range or --scope and --value)"
 
     rune -1 cscli decisions add -o json
     rune -0 jq -c '[ .level, .msg]' <(stderr | grep "^{")
-    assert_output '["fatal","Missing arguments, a value is required (--ip, --range or --scope and --value)"]'
+    assert_output '["fatal","missing arguments, a value is required (--ip, --range or --scope and --value)"]'
 }
 
 @test "cscli decisions list, with and without --machine" {

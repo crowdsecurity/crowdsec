@@ -22,7 +22,6 @@ import (
 )
 
 func FormatOneAlert(alert *ent.Alert) *models.Alert {
-	var outputAlert models.Alert
 	startAt := alert.StartedAt.String()
 	StopAt := alert.StoppedAt.String()
 
@@ -31,7 +30,7 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 		machineID = alert.Edges.Owner.MachineId
 	}
 
-	outputAlert = models.Alert{
+	outputAlert := models.Alert{
 		ID:              int64(alert.ID),
 		MachineID:       machineID,
 		CreatedAt:       alert.CreatedAt.Format(time.RFC3339),
@@ -58,23 +57,27 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 			Longitude: alert.SourceLongitude,
 		},
 	}
+
 	for _, eventItem := range alert.Edges.Events {
 		var Metas models.Meta
 		timestamp := eventItem.Time.String()
 		if err := json.Unmarshal([]byte(eventItem.Serialized), &Metas); err != nil {
 			log.Errorf("unable to unmarshall events meta '%s' : %s", eventItem.Serialized, err)
 		}
+
 		outputAlert.Events = append(outputAlert.Events, &models.Event{
 			Timestamp: &timestamp,
 			Meta:      Metas,
 		})
 	}
+
 	for _, metaItem := range alert.Edges.Metas {
 		outputAlert.Meta = append(outputAlert.Meta, &models.MetaItems0{
 			Key:   metaItem.Key,
 			Value: metaItem.Value,
 		})
 	}
+
 	for _, decisionItem := range alert.Edges.Decisions {
 		duration := decisionItem.Until.Sub(time.Now().UTC()).String()
 		outputAlert.Decisions = append(outputAlert.Decisions, &models.Decision{
@@ -88,6 +91,7 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 			ID:        int64(decisionItem.ID),
 		})
 	}
+
 	return &outputAlert
 }
 
@@ -97,6 +101,7 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 	for _, alertItem := range result {
 		data = append(data, FormatOneAlert(alertItem))
 	}
+
 	return data
 }
 
@@ -107,6 +112,7 @@ func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uin
 			select {
 			case c.PluginChannel <- csplugin.ProfileAlert{ProfileID: profileID, Alert: alert}:
 				log.Debugf("alert sent to Plugin channel")
+
 				break RETRY
 			default:
 				log.Warningf("Cannot send alert to Plugin channel (try: %d)", try)
@@ -133,7 +139,6 @@ func normalizeScope(scope string) string {
 
 // CreateAlert writes the alerts received in the body to the database
 func (c *Controller) CreateAlert(gctx *gin.Context) {
-
 	var input models.AddAlertsRequest
 
 	claims := jwt.ExtractClaims(gctx)
@@ -144,13 +149,16 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		gctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
+
 	if err := input.Validate(strfmt.Default); err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
 	}
+
 	stopFlush := false
+
 	for _, alert := range input {
-		//normalize scope for alert.Source and decisions
+		// normalize scope for alert.Source and decisions
 		if alert.Source.Scope != nil {
 			*alert.Source.Scope = normalizeScope(*alert.Source.Scope)
 		}
@@ -161,15 +169,16 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		}
 
 		alert.MachineID = machineID
-		//generate uuid here for alert
+		// generate uuid here for alert
 		alert.UUID = uuid.NewString()
 
-		//if coming from cscli, alert already has decisions
+		// if coming from cscli, alert already has decisions
 		if len(alert.Decisions) != 0 {
 			//alert already has a decision (cscli decisions add etc.), generate uuid here
 			for _, decision := range alert.Decisions {
 				decision.UUID = uuid.NewString()
 			}
+
 			for pIdx, profile := range c.Profiles {
 				_, matched, err := profile.EvaluateProfile(alert)
 				if err != nil {

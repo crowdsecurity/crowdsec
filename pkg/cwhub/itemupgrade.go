@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -82,14 +83,14 @@ func (i *Item) downloadLatest(overwrite bool, updateOnly bool) (string, error) {
 			i.hub.logger.Tracef("collection, recurse")
 
 			if _, err := sub.downloadLatest(overwrite, updateOnly); err != nil {
-				return "", fmt.Errorf("while downloading %s: %w", sub.Name, err)
+				return "", err
 			}
 		}
 
 		downloaded := sub.State.Downloaded
 
 		if _, err := sub.download(overwrite); err != nil {
-			return "", fmt.Errorf("while downloading %s: %w", sub.Name, err)
+			return "", err
 		}
 
 		// We need to enable an item when it has been added to a collection since latest release of the collection.
@@ -101,14 +102,14 @@ func (i *Item) downloadLatest(overwrite bool, updateOnly bool) (string, error) {
 		}
 	}
 
-	if !i.State.Installed && updateOnly && i.State.Downloaded {
+	if !i.State.Installed && updateOnly && i.State.Downloaded && !overwrite {
 		i.hub.logger.Debugf("skipping upgrade of %s: not installed", i.Name)
 		return "", nil
 	}
 
 	ret, err := i.download(overwrite)
 	if err != nil {
-		return "", fmt.Errorf("failed to download item: %w", err)
+		return "", err
 	}
 
 	return ret, nil
@@ -116,6 +117,10 @@ func (i *Item) downloadLatest(overwrite bool, updateOnly bool) (string, error) {
 
 // FetchLatest downloads the latest item from the hub, verifies the hash and returns the content and the used url.
 func (i *Item) FetchLatest() ([]byte, string, error) {
+	if i.latestHash() == "" {
+		return nil, "", errors.New("latest hash missing from index")
+	}
+
 	url, err := i.hub.remote.urlTo(i.RemotePath)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to build request: %w", err)
@@ -146,7 +151,7 @@ func (i *Item) FetchLatest() ([]byte, string, error) {
 		i.hub.logger.Errorf("Downloaded version doesn't match index, please 'hub update'")
 		i.hub.logger.Debugf("got %s, expected %s", meow, i.Versions[i.Version].Digest)
 
-		return nil, "", fmt.Errorf("invalid download hash for %s", i.Name)
+		return nil, "", fmt.Errorf("invalid download hash")
 	}
 
 	return body, url, nil
@@ -154,9 +159,17 @@ func (i *Item) FetchLatest() ([]byte, string, error) {
 
 // download downloads the item from the hub and writes it to the hub directory.
 func (i *Item) download(overwrite bool) (string, error) {
-	if i.State.IsLocal() {
-		return "", fmt.Errorf("%s is local, can't download", i.Name)
+	// ensure that target file is within target dir
+	finalPath, err := i.downloadPath()
+	if err != nil {
+		return "", err
 	}
+
+	if i.State.IsLocal() {
+		i.hub.logger.Warningf("%s is local, can't download", i.Name)
+		return finalPath, nil
+	}
+
 	// if user didn't --force, don't overwrite local, tainted, up-to-date files
 	if !overwrite {
 		if i.State.Tainted {
@@ -172,16 +185,15 @@ func (i *Item) download(overwrite bool) (string, error) {
 
 	body, url, err := i.FetchLatest()
 	if err != nil {
-		return "", fmt.Errorf("while downloading %s: %w", url, err)
+		what := i.Name
+		if url != "" {
+			what += " from " + url
+		}
+
+		return "", fmt.Errorf("while downloading %s: %w", what, err)
 	}
 
 	// all good, install
-
-	// ensure that target file is within target dir
-	finalPath, err := i.downloadPath()
-	if err != nil {
-		return "", err
-	}
 
 	parentDir := filepath.Dir(finalPath)
 

@@ -11,6 +11,7 @@ import (
 	"regexp"
 
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -267,7 +268,7 @@ func (r *ReqDumpFilter) ToJSON() error {
 }
 
 // Generate a ParsedRequest from a http.Request. ParsedRequest can be consumed by the App security Engine
-func NewParsedRequestFromRequest(r *http.Request) (ParsedRequest, error) {
+func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedRequest, error) {
 	var err error
 	contentLength := r.ContentLength
 	if contentLength < 0 {
@@ -282,25 +283,22 @@ func NewParsedRequestFromRequest(r *http.Request) (ParsedRequest, error) {
 		}
 	}
 
-	// the real source of the request is set in 'x-client-ip'
 	clientIP := r.Header.Get(IPHeaderName)
 	if clientIP == "" {
 		return ParsedRequest{}, fmt.Errorf("missing '%s' header", IPHeaderName)
 	}
-	// the real target Host of the request is set in 'x-client-host'
-	clientHost := r.Header.Get(HostHeaderName)
-	if clientHost == "" {
-		return ParsedRequest{}, fmt.Errorf("missing '%s' header", HostHeaderName)
-	}
-	// the real URI of the request is set in 'x-client-uri'
+
 	clientURI := r.Header.Get(URIHeaderName)
 	if clientURI == "" {
 		return ParsedRequest{}, fmt.Errorf("missing '%s' header", URIHeaderName)
 	}
-	// the real VERB of the request is set in 'x-client-uri'
 	clientMethod := r.Header.Get(VerbHeaderName)
 	if clientMethod == "" {
 		return ParsedRequest{}, fmt.Errorf("missing '%s' header", VerbHeaderName)
+	}
+	clientHost := r.Header.Get(HostHeaderName)
+	if clientHost == "" { //this might be empty
+		logger.Debugf("missing '%s' header", HostHeaderName)
 	}
 
 	// delete those headers before coraza process the request
