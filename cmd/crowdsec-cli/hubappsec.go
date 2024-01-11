@@ -48,10 +48,11 @@ cscli appsec-configs list crowdsecurity/vpatch`,
 
 func NewCLIAppsecRule() *cliItem {
 	inspectDetail := func(item *cwhub.Item) error {
-		//Only show the converted rules in human mode
+		// Only show the converted rules in human mode
 		if csConfig.Cscli.Output != "human" {
 			return nil
 		}
+
 		appsecRule := appsec.AppsecCollectionConfig{}
 
 		yamlContent, err := os.ReadFile(item.State.LocalPath)
@@ -65,11 +66,13 @@ func NewCLIAppsecRule() *cliItem {
 
 		for _, ruleType := range appsec_rule.SupportedTypes() {
 			fmt.Printf("\n%s format:\n", cases.Title(language.Und, cases.NoLower).String(ruleType))
+
 			for _, rule := range appsecRule.Rules {
 				convertedRule, _, err := rule.Convert(ruleType, appsecRule.Name)
 				if err != nil {
 					return fmt.Errorf("unable to convert rule %s : %s", rule.Name, err)
 				}
+
 				fmt.Println(convertedRule)
 			}
 
