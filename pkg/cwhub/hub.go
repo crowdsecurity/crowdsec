@@ -7,10 +7,10 @@ import (
 	"io"
 	"os"
 	"path"
+	"slices"
 	"strings"
 
 	"github.com/sirupsen/logrus"
-	"slices"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
@@ -97,6 +97,10 @@ func (h *Hub) parseIndex() error {
 			item.FileName = path.Base(item.RemotePath)
 
 			item.logMissingSubItems()
+
+			if item.latestHash() == "" {
+				h.logger.Errorf("invalid hub item %s: latest version missing from index", item.FQName())
+			}
 		}
 	}
 

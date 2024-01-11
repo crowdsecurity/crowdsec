@@ -12,7 +12,6 @@ import (
 // We expect the new scenario to be installed.
 func TestUpgradeItemNewScenarioInCollection(t *testing.T) {
 	hub := envSetup(t)
-
 	item := hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
 
 	// fresh install of collection
@@ -65,7 +64,6 @@ func TestUpgradeItemNewScenarioInCollection(t *testing.T) {
 // Upgrade should install should not enable/download the disabled scenario.
 func TestUpgradeItemInDisabledScenarioShouldNotBeInstalled(t *testing.T) {
 	hub := envSetup(t)
-
 	item := hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
 
 	// fresh install of collection
@@ -127,7 +125,6 @@ func getHubOrFail(t *testing.T, local *csconfig.LocalHubCfg, remote *RemoteHubCf
 // Upgrade should install and enable the newly added scenario.
 func TestUpgradeItemNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *testing.T) {
 	hub := envSetup(t)
-
 	item := hub.GetItem(COLLECTIONS, "crowdsecurity/test_collection")
 
 	// fresh install of collection

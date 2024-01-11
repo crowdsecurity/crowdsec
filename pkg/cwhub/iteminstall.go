@@ -50,7 +50,7 @@ func (i *Item) Install(force bool, downloadOnly bool) error {
 
 	filePath, err := i.downloadLatest(force, true)
 	if err != nil {
-		return fmt.Errorf("while downloading %s: %w", i.Name, err)
+		return err
 	}
 
 	if downloadOnly {
