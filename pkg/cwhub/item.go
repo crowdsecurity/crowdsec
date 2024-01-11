@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"slices"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/enescakir/emoji"
-	"slices"
 )
 
 const (

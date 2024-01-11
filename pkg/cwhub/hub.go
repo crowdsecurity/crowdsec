@@ -7,10 +7,10 @@ import (
 	"io"
 	"os"
 	"path"
+	"slices"
 	"strings"
 
 	"github.com/sirupsen/logrus"
-	"slices"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )

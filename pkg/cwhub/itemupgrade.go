@@ -189,6 +189,7 @@ func (i *Item) download(overwrite bool) (string, error) {
 		if url != "" {
 			what += " from " + url
 		}
+
 		return "", fmt.Errorf("while downloading %s: %w", what, err)
 	}
 

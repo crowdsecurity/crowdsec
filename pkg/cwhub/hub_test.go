@@ -12,7 +12,6 @@ import (
 
 func TestInitHubUpdate(t *testing.T) {
 	hub := envSetup(t)
-
 	remote := &RemoteHubCfg{
 		URLTemplate: mockURLTemplate,
 		Branch:      "master",
