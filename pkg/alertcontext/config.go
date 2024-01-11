@@ -2,7 +2,9 @@ package alertcontext
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -25,7 +27,7 @@ type HubItemWrapper struct {
 // mergeContext adds the context from src to dest.
 func mergeContext(dest map[string][]string, src map[string][]string) error {
 	if len(src) == 0 {
-		return fmt.Errorf("no context data to merge")
+		return errors.New("no context data to merge")
 	}
 
 	for k, v := range src {
@@ -87,7 +89,7 @@ func addContextFromFile(toSend map[string][]string, filePath string) error {
 
 	err = mergeContext(toSend, newContext)
 	if err != nil {
-		log.Warningf("while merging context from %s: %s", filePath, err)
+		return err
 	}
 
 	return nil
@@ -125,8 +127,10 @@ func LoadConsoleContext(c *csconfig.Config, hub *cwhub.Hub) error {
 	}
 
 	if err := addContextFromFile(c.Crowdsec.ContextToSend, c.Crowdsec.ConsoleContextPath); err != nil {
-		if !ignoreMissing || !os.IsNotExist(err) {
+		if !errors.Is(err, fs.ErrNotExist) {
 			return err
+		} else if !ignoreMissing {
+			log.Warningf("while merging context from %s: %s", c.Crowdsec.ConsoleContextPath, err)
 		}
 	}
 
