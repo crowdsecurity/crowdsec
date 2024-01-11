@@ -685,7 +685,7 @@ main() {
         log_info "installing crowdsec"
         install_crowdsec
         log_dbg "configuring ${CSCLI_BIN_INSTALLED}"
-        ${CSCLI_BIN_INSTALLED} hub update > /dev/null 2>&1 || (log_err "fail to update crowdsec hub. exiting" && exit 1)
+        ${CSCLI_BIN_INSTALLED} hub update --error || (log_err "fail to update crowdsec hub. exiting" && exit 1)
 
         # detect running services
         detect_services
