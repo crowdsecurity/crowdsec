@@ -12,6 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/crowdsec/pkg/dumps"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -24,11 +25,10 @@ type ScenarioAssert struct {
 	Fails             []AssertFail
 	Success           bool
 	TestData          *BucketResults
-	PourData          *BucketPourInfo
+	PourData          *dumps.BucketPourInfo
 }
 
 type BucketResults []types.Event
-type BucketPourInfo map[string][]types.Event
 
 func NewScenarioAssert(file string) *ScenarioAssert {
 	ScenarioAssert := &ScenarioAssert{
@@ -38,7 +38,7 @@ func NewScenarioAssert(file string) *ScenarioAssert {
 		Fails:         make([]AssertFail, 0),
 		AutoGenAssert: false,
 		TestData:      &BucketResults{},
-		PourData:      &BucketPourInfo{},
+		PourData:      &dumps.BucketPourInfo{},
 	}
 
 	return ScenarioAssert
@@ -64,7 +64,7 @@ func (s *ScenarioAssert) LoadTest(filename string, bucketpour string) error {
 	s.TestData = bucketDump
 
 	if bucketpour != "" {
-		pourDump, err := LoadBucketPourDump(bucketpour)
+		pourDump, err := dumps.LoadBucketPourDump(bucketpour)
 		if err != nil {
 			return fmt.Errorf("loading bucket pour dump file '%s': %+v", filename, err)
 		}
@@ -250,27 +250,6 @@ func (b BucketResults) Less(i, j int) bool {
 
 func (b BucketResults) Swap(i, j int) {
 	b[i], b[j] = b[j], b[i]
-}
-
-func LoadBucketPourDump(filepath string) (*BucketPourInfo, error) {
-	dumpData, err := os.Open(filepath)
-	if err != nil {
-		return nil, err
-	}
-	defer dumpData.Close()
-
-	results, err := io.ReadAll(dumpData)
-	if err != nil {
-		return nil, err
-	}
-
-	var bucketDump BucketPourInfo
-
-	if err := yaml.Unmarshal(results, &bucketDump); err != nil {
-		return nil, err
-	}
-
-	return &bucketDump, nil
 }
 
 func LoadScenarioDump(filepath string) (*BucketResults, error) {
