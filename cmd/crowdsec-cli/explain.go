@@ -35,7 +35,7 @@ func GetLineCountForFile(filepath string) (int, error) {
 	return lc, nil
 }
 
-type cliExplain struct {}
+type cliExplain struct{}
 
 func NewCLIExplain() *cliExplain {
 	return &cliExplain{}
@@ -109,6 +109,7 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 	flags.Bool("failures", false, "Only show failed lines")
 	flags.Bool("only-successful-parsers", false, "Only show successful parsers")
 	flags.String("crowdsec", "crowdsec", "Path to crowdsec")
+	flags.Bool("no-clean", false, "Don't clean the output directory")
 
 	return cmd
 }
@@ -172,9 +173,15 @@ func (cli cliExplain) run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("couldn't create a temporary directory to store cscli explain result: %s", err)
 	}
 	defer func() {
-		if _, err := os.Stat(dir); !os.IsNotExist(err) {
-			if err := os.RemoveAll(dir); err != nil {
-				log.Errorf("unable to delete temporary directory '%s': %s", dir, err)
+		clean, err := flags.GetBool("no-clean")
+		if err != nil {
+			log.Errorf("unable to get --no-clean flag: %s", err)
+		}
+		if !clean {
+			if _, err := os.Stat(dir); !os.IsNotExist(err) {
+				if err := os.RemoveAll(dir); err != nil {
+					log.Errorf("unable to delete temporary directory '%s': %s", dir, err)
+				}
 			}
 		}
 	}()
