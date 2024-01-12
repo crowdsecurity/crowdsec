@@ -116,7 +116,7 @@ func TestLoadOnlineApiClientCfg(t *testing.T) {
 				CredentialsFilePath: "./testdata/nonexist_online-api-secrets.yaml",
 			},
 			expected:    &ApiCredentialsCfg{},
-			expectedErr: "failed to read api server credentials",
+			expectedErr: "open ./testdata/nonexist_online-api-secrets.yaml: " + cstest.FileNotFoundMessage,
 		},
 	}
 

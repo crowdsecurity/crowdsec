@@ -134,18 +134,14 @@ func (cli cliCapi) NewRegisterCmd() *cobra.Command {
 }
 
 func (cli cliCapi) NewStatusCmd() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:               "status",
 		Short:             "Check status with the Central API (CAPI)",
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if csConfig.API.Server.OnlineClient == nil {
-				return fmt.Errorf("please provide credentials for the Central API (CAPI) in '%s'", csConfig.API.Server.OnlineClient.CredentialsFilePath)
-			}
-
-			if csConfig.API.Server.OnlineClient.Credentials == nil {
-				return fmt.Errorf("no credentials for Central API (CAPI) in '%s'", csConfig.API.Server.OnlineClient.CredentialsFilePath)
+		RunE: func(_ *cobra.Command, _ []string) error {
+			if err := require.CAPIRegistered(csConfig); err != nil {
+				return err
 			}
 
 			password := strfmt.Password(csConfig.API.Server.OnlineClient.Credentials.Password)

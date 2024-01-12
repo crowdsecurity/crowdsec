@@ -83,14 +83,23 @@ func (o *OnlineApiClientCfg) Load() error {
 	o.Credentials = new(ApiCredentialsCfg)
 	fcontent, err := os.ReadFile(o.CredentialsFilePath)
 	if err != nil {
-		return fmt.Errorf("failed to read api server credentials configuration file '%s': %w", o.CredentialsFilePath, err)
+		return err
 	}
+
 	err = yaml.UnmarshalStrict(fcontent, o.Credentials)
 	if err != nil {
 		return fmt.Errorf("failed unmarshaling api server credentials configuration file '%s': %w", o.CredentialsFilePath, err)
 	}
-	if o.Credentials.Login == "" || o.Credentials.Password == "" || o.Credentials.URL == "" {
-		log.Warningf("can't load CAPI credentials from '%s' (missing field)", o.CredentialsFilePath)
+
+	switch {
+	case o.Credentials.Login == "":
+		log.Warningf("can't load CAPI credentials from '%s' (missing login field)", o.CredentialsFilePath)
+		o.Credentials = nil
+	case o.Credentials.Password == "":
+		log.Warningf("can't load CAPI credentials from '%s' (missing password field)", o.CredentialsFilePath)
+		o.Credentials = nil
+	case o.Credentials.URL == "":
+		log.Warningf("can't load CAPI credentials from '%s' (missing url field)", o.CredentialsFilePath)
 		o.Credentials = nil
 	}
 
