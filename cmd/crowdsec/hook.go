@@ -19,9 +19,12 @@ func (hook *ConditionalHook) Fire(entry *log.Entry) error {
 		if err != nil {
 			return err
 		}
+
 		_, err = hook.Writer.Write([]byte(line))
+
 		return err
 	}
+
 	return nil
 }
 

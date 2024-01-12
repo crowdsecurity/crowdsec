@@ -34,6 +34,7 @@ func StartRunSvc() error {
 	// Enable profiling early
 	if cConfig.Prometheus != nil {
 		var dbClient *database.Client
+
 		var err error
 
 		if cConfig.DbConfig != nil {
@@ -43,8 +44,11 @@ func StartRunSvc() error {
 				return fmt.Errorf("unable to create database client: %s", err)
 			}
 		}
+
 		registerPrometheus(cConfig.Prometheus)
+
 		go servePrometheus(cConfig.Prometheus, dbClient, apiReady, agentReady)
 	}
+
 	return Serve(cConfig, apiReady, agentReady)
 }
