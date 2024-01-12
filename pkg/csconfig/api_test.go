@@ -254,6 +254,7 @@ func TestLoadAPIServer(t *testing.T) {
 func mustParseCIDRNet(t *testing.T, s string) *net.IPNet {
 	_, ipNet, err := net.ParseCIDR(s)
 	require.NoError(t, err)
+
 	return ipNet
 }
 
