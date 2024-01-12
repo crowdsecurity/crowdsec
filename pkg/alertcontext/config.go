@@ -16,6 +16,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
+var ErrNoContextData = errors.New("no context to send")
+
 // this file is here to avoid circular dependencies between the configuration and the hub
 
 // HubItemWrapper is a wrapper around a hub item to unmarshal only the context part
@@ -27,7 +29,7 @@ type HubItemWrapper struct {
 // mergeContext adds the context from src to dest.
 func mergeContext(dest map[string][]string, src map[string][]string) error {
 	if len(src) == 0 {
-		return errors.New("no context data to merge")
+		return ErrNoContextData
 	}
 
 	for k, v := range src {
@@ -88,7 +90,8 @@ func addContextFromFile(toSend map[string][]string, filePath string) error {
 	}
 
 	err = mergeContext(toSend, newContext)
-	if err != nil {
+	if err != nil && !errors.Is(err, ErrNoContextData) {
+		// having an empty console/context.yaml is not an error
 		return err
 	}
 
