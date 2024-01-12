@@ -126,8 +126,7 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 	variable_prefix := ""
 	if rule.Transform != nil {
 		for tidx, transform := range rule.Transform {
-			switch transform {
-			case "count":
+			if transform == "count" {
 				zone_prefix = "&"
 				rule.Transform[tidx] = ""
 			}
