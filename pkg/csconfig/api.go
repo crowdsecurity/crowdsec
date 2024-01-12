@@ -356,10 +356,6 @@ func (s *LocalApiServerCfg) LoadCapiWhitelists() error {
 		return nil
 	}
 
-	if _, err := os.Stat(s.CapiWhitelistsPath); os.IsNotExist(err) {
-		return fmt.Errorf("capi whitelist file '%s' does not exist", s.CapiWhitelistsPath)
-	}
-
 	fd, err := os.Open(s.CapiWhitelistsPath)
 	if err != nil {
 		return fmt.Errorf("while opening capi whitelist file: %s", err)
