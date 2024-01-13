@@ -30,6 +30,7 @@ type appsecRuleTest struct {
 	name             string
 	expected_load_ok bool
 	inband_rules     []appsec_rule.CustomRule
+	outofband_rules  []appsec_rule.CustomRule
 	on_load          []appsec.Hook
 	pre_eval         []appsec.Hook
 	post_eval        []appsec.Hook
@@ -38,63 +39,15 @@ type appsecRuleTest struct {
 	output_asserts   func(events []types.Event, responses []appsec.AppsecTempResponse)
 }
 
-func TestAppsec(t *testing.T) {
-
+func TestAppsecPreEvalHooks(t *testing.T) {
+	/*
+	 [x] basic working hook
+	 [x] basic failing hook
+	 [ ] test the "OnSuccess" feature
+	 [ ] test multiple competing hooks
+	 [ ] test the variety of helpers
+	*/
 	tests := []appsecRuleTest{
-		{
-			name:             "Basic matching rule",
-			expected_load_ok: true,
-			inband_rules: []appsec_rule.CustomRule{
-				{
-					Name:      "rule1",
-					Zones:     []string{"ARGS"},
-					Variables: []string{"foo"},
-					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
-					Transform: []string{"lowercase"},
-				},
-			},
-			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"toto"}},
-			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, len(events), 2, "Expected 2 event")
-				require.Equal(t, events[0].Type, types.LOG, "Expected log event")
-				require.Equal(t, events[0].Appsec.HasInBandMatches, true, "Expected inband match")
-				require.Equal(t, len(events[0].Appsec.MatchedRules), 1, "Expected 1 rule match")
-				require.Equal(t, events[0].Appsec.MatchedRules[0]["msg"], "rule1", " rule name")
-				require.Equal(t, events[1].Type, types.APPSEC, "Expected appsec event")
-				require.Equal(t, len(responses), 1, "Expected 1 response")
-				require.Equal(t, responses[0].InBandInterrupt, true, "Expected deny action")
-			},
-		},
-		{
-			name:             "Basic non-matching rule",
-			expected_load_ok: true,
-			inband_rules: []appsec_rule.CustomRule{
-				{
-					Name:      "rule1",
-					Zones:     []string{"ARGS"},
-					Variables: []string{"foo"},
-					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
-					Transform: []string{"lowercase"},
-				},
-			},
-			input_request: appsec.ParsedRequest{
-				RemoteAddr: "1.2.3.4",
-				Method:     "GET",
-				URI:        "/urllll",
-				Args:       url.Values{"foo": []string{"tutu"}},
-			},
-			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, 0, len(events))
-				require.Equal(t, 1, len(responses))
-				require.Equal(t, responses[0].InBandInterrupt, false)
-				require.Equal(t, responses[0].OutOfBandInterrupt, false)
-			},
-		},
 		{
 			name:             "Basic on_load hook to disable rule",
 			expected_load_ok: true,
@@ -163,6 +116,71 @@ func TestAppsec(t *testing.T) {
 		})
 	}
 }
+func TestAppsecRuleMatches(t *testing.T) {
+
+	tests := []appsecRuleTest{
+		{
+			name:             "Basic matching rule",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
+				require.Equal(t, len(events), 2, "Expected 2 event")
+				require.Equal(t, events[0].Type, types.LOG, "Expected log event")
+				require.Equal(t, events[0].Appsec.HasInBandMatches, true, "Expected inband match")
+				require.Equal(t, len(events[0].Appsec.MatchedRules), 1, "Expected 1 rule match")
+				require.Equal(t, events[0].Appsec.MatchedRules[0]["msg"], "rule1", " rule name")
+				require.Equal(t, events[1].Type, types.APPSEC, "Expected appsec event")
+				require.Equal(t, len(responses), 1, "Expected 1 response")
+				require.Equal(t, responses[0].InBandInterrupt, true, "Expected deny action")
+			},
+		},
+		{
+			name:             "Basic non-matching rule",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"tutu"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
+				require.Equal(t, 0, len(events))
+				require.Equal(t, 1, len(responses))
+				require.Equal(t, responses[0].InBandInterrupt, false)
+				require.Equal(t, responses[0].OutOfBandInterrupt, false)
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			loadAppSecEngine(test, t)
+		})
+	}
+}
 
 func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 	if testing.Verbose() {
@@ -171,6 +189,7 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 		log.SetLevel(log.WarnLevel)
 	}
 	inbandRules := []string{}
+	outofbandRules := []string{}
 	InChan := make(chan appsec.ParsedRequest)
 	OutChan := make(chan types.Event)
 
@@ -185,6 +204,13 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 		inbandRules = append(inbandRules, strRule)
 
 	}
+	for ridx, rule := range test.outofband_rules {
+		strRule, _, err := rule.Convert(appsec_rule.ModsecurityRuleType, rule.Name)
+		if err != nil {
+			t.Fatalf("failed compilation of rule %d/%d of %s : %s", ridx, len(test.outofband_rules), test.name, err)
+		}
+		outofbandRules = append(outofbandRules, strRule)
+	}
 
 	appsecCfg := appsec.AppsecConfig{Logger: logger, OnLoad: test.on_load, PreEval: test.pre_eval, PostEval: test.post_eval, OnMatch: test.on_match}
 	AppsecRuntime, err := appsecCfg.Build()
@@ -192,6 +218,7 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 		t.Fatalf("unable to build appsec runtime : %s", err)
 	}
 	AppsecRuntime.InBandRules = []appsec.AppsecCollection{{Rules: inbandRules}}
+	AppsecRuntime.OutOfBandRules = []appsec.AppsecCollection{{Rules: outofbandRules}}
 	appsecRunnerUUID := uuid.New().String()
 	//we copy AppsecRutime for each runner
 	wrt := *AppsecRuntime
