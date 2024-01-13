@@ -3,6 +3,7 @@ package appsecacquisition
 import (
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/appsec"
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
@@ -29,6 +30,10 @@ type appsecRuleTest struct {
 	name             string
 	expected_load_ok bool
 	inband_rules     []appsec_rule.CustomRule
+	on_load          []appsec.Hook
+	pre_eval         []appsec.Hook
+	post_eval        []appsec.Hook
+	on_match         []appsec.Hook
 	input_request    appsec.ParsedRequest
 	output_asserts   func(events []types.Event, responses []appsec.AppsecTempResponse)
 }
@@ -65,6 +70,91 @@ func TestAppsec(t *testing.T) {
 				require.Equal(t, responses[0].InBandInterrupt, true, "Expected deny action")
 			},
 		},
+		{
+			name:             "Basic non-matching rule",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"tutu"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
+				require.Equal(t, 0, len(events))
+				require.Equal(t, 1, len(responses))
+				require.Equal(t, responses[0].InBandInterrupt, false)
+				require.Equal(t, responses[0].OutOfBandInterrupt, false)
+			},
+		},
+		{
+			name:             "Basic on_load hook to disable rule",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			pre_eval: []appsec.Hook{
+				{Filter: "1 ==1", Apply: []string{"RemoveInBandRuleByName('rule1')"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
+				require.Equal(t, len(events), 0, "expect no event")
+				require.Equal(t, len(responses), 1, "expect response")
+				require.Equal(t, responses[0].InBandInterrupt, false, "expect no inband interrupt")
+				require.Equal(t, responses[0].OutOfBandInterrupt, false, "expect no outband interrupt")
+			},
+		},
+		{
+			name:             "Basic on_load fails to disable rule",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			pre_eval: []appsec.Hook{
+				{Filter: "1 ==2", Apply: []string{"RemoveInBandRuleByName('rule1')"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
+				require.Equal(t, len(events), 2, "Expected 2 event")
+				require.Equal(t, events[0].Type, types.LOG, "Expected log event")
+				require.Equal(t, events[0].Appsec.HasInBandMatches, true, "Expected inband match")
+				require.Equal(t, len(events[0].Appsec.MatchedRules), 1, "Expected 1 rule match")
+				require.Equal(t, events[0].Appsec.MatchedRules[0]["msg"], "rule1", " rule name")
+				require.Equal(t, events[1].Type, types.APPSEC, "Expected appsec event")
+				require.Equal(t, len(responses), 1, "expect response")
+				require.Equal(t, responses[0].InBandInterrupt, true, "expect no inband interrupt")
+			},
+		},
 	}
 
 	for _, test := range tests {
@@ -76,7 +166,7 @@ func TestAppsec(t *testing.T) {
 
 func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 	if testing.Verbose() {
-		log.SetLevel(log.InfoLevel)
+		log.SetLevel(log.TraceLevel)
 	} else {
 		log.SetLevel(log.WarnLevel)
 	}
@@ -86,6 +176,7 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 
 	logger := log.WithFields(log.Fields{"test": test.name})
 
+	//build rules
 	for ridx, rule := range test.inband_rules {
 		strRule, _, err := rule.Convert(appsec_rule.ModsecurityRuleType, rule.Name)
 		if err != nil {
@@ -94,7 +185,8 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 		inbandRules = append(inbandRules, strRule)
 
 	}
-	appsecCfg := appsec.AppsecConfig{Logger: logger}
+
+	appsecCfg := appsec.AppsecConfig{Logger: logger, OnLoad: test.on_load, PreEval: test.pre_eval, PostEval: test.post_eval, OnMatch: test.on_match}
 	AppsecRuntime, err := appsecCfg.Build()
 	if err != nil {
 		t.Fatalf("unable to build appsec runtime : %s", err)
@@ -138,7 +230,7 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 	}()
 
 	runner.handleRequest(&input)
-
+	time.Sleep(50 * time.Millisecond)
 	log.Infof("events : %s", spew.Sdump(OutputEvents))
 	log.Infof("responses : %s", spew.Sdump(OutputResponses))
 	test.output_asserts(OutputEvents, OutputResponses)
