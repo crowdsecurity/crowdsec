@@ -1,5 +1,6 @@
 # vim: set ft=dockerfile:
 ARG GOVERSION=1.21.5
+ARG BUILD_VERSION
 
 FROM golang:${GOVERSION}-bookworm AS build
 
@@ -10,6 +11,7 @@ ENV DEBCONF_NOWARNINGS="yes"
 
 # We like to choose the release of re2 to use, the debian version is usually older.
 ENV RE2_VERSION=2023-03-01
+ENV BUILD_VERSION=${BUILD_VERSION}
 
 # wizard.sh requires GNU coreutils
 RUN apt-get update && \
