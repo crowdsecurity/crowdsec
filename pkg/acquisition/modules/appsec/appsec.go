@@ -100,7 +100,7 @@ func (w *AppsecSource) UnmarshalConfig(yamlConfig []byte) error {
 		return errors.Wrap(err, "Cannot parse appsec configuration")
 	}
 
-	if w.config.ListenAddr == "" && w.config.ListenSocket != "" {
+	if w.config.ListenAddr == "" && w.config.ListenSocket == "" {
 		w.config.ListenAddr = "127.0.0.1:7422"
 	}
 
