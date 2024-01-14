@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -34,6 +36,7 @@ var (
 // configuration structure of the acquis for the application security engine
 type AppsecSourceConfig struct {
 	ListenAddr                        string         `yaml:"listen_addr"`
+	ListenSocket                      string         `yaml:"listen_socket"`
 	CertFilePath                      string         `yaml:"cert_file"`
 	KeyFilePath                       string         `yaml:"key_file"`
 	Path                              string         `yaml:"path"`
@@ -97,7 +100,7 @@ func (w *AppsecSource) UnmarshalConfig(yamlConfig []byte) error {
 		return errors.Wrap(err, "Cannot parse appsec configuration")
 	}
 
-	if w.config.ListenAddr == "" {
+	if w.config.ListenAddr == "" && w.config.ListenSocket != "" {
 		w.config.ListenAddr = "127.0.0.1:7422"
 	}
 
@@ -123,7 +126,12 @@ func (w *AppsecSource) UnmarshalConfig(yamlConfig []byte) error {
 	}
 
 	if w.config.Name == "" {
-		w.config.Name = fmt.Sprintf("%s%s", w.config.ListenAddr, w.config.Path)
+		if w.config.ListenSocket != "" && w.config.ListenAddr == "" {
+			w.config.Name = w.config.ListenSocket
+		}
+		if w.config.ListenSocket == "" {
+			w.config.Name = fmt.Sprintf("%s%s", w.config.ListenAddr, w.config.Path)
+		}
 	}
 
 	csConfig := csconfig.GetConfig()
@@ -251,23 +259,38 @@ func (w *AppsecSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) 
 				return runner.Run(t)
 			})
 		}
-
-		w.logger.Infof("Starting Appsec server on %s%s", w.config.ListenAddr, w.config.Path)
+		t.Go(func() error {
+			if w.config.ListenSocket != "" {
+				w.logger.Infof("creating unix socket %s", w.config.ListenSocket)
+				_ = os.RemoveAll(w.config.ListenSocket)
+				listener, err := net.Listen("unix", w.config.ListenSocket)
+				if err != nil {
+					return errors.Wrap(err, "Appsec server failed")
+				}
+				if err = w.server.Serve(listener); err != http.ErrServerClosed {
+					return errors.Wrap(err, "Appsec server failed")
+				}
+			}
+			return nil
+		})
 		t.Go(func() error {
 			var err error
-			if w.config.CertFilePath != "" && w.config.KeyFilePath != "" {
-				err = w.server.ListenAndServeTLS(w.config.CertFilePath, w.config.KeyFilePath)
-			} else {
-				err = w.server.ListenAndServe()
-			}
+			if w.config.ListenAddr != "" {
+				w.logger.Infof("creating TCP server on %s", w.config.ListenAddr)
+				if w.config.CertFilePath != "" && w.config.KeyFilePath != "" {
+					err = w.server.ListenAndServeTLS(w.config.CertFilePath, w.config.KeyFilePath)
+				} else {
+					err = w.server.ListenAndServe()
+				}
 
-			if err != nil && err != http.ErrServerClosed {
-				return errors.Wrap(err, "Appsec server failed")
+				if err != nil && err != http.ErrServerClosed {
+					return errors.Wrap(err, "Appsec server failed")
+				}
 			}
 			return nil
 		})
 		<-t.Dying()
-		w.logger.Infof("Stopping Appsec server on %s%s", w.config.ListenAddr, w.config.Path)
+		w.logger.Info("Shutting down Appsec server")
 		w.server.Shutdown(context.TODO())
 		return nil
 	})
