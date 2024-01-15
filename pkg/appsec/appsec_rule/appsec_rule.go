@@ -28,6 +28,7 @@ rules:
 type match struct {
 	Type  string `yaml:"type"`
 	Value string `yaml:"value"`
+	Not   bool   `yaml:"not,omitempty"`
 }
 
 type CustomRule struct {
@@ -40,7 +41,8 @@ type CustomRule struct {
 	Transform []string     `yaml:"transform"` //t:lowercase, t:uppercase, etc
 	And       []CustomRule `yaml:"and,omitempty"`
 	Or        []CustomRule `yaml:"or,omitempty"`
-	BodyType  string       `yaml:"body_type,omitempty"`
+
+	BodyType string `yaml:"body_type,omitempty"`
 }
 
 func (v *CustomRule) Convert(ruleType string, appsecRuleName string) (string, []uint32, error) {

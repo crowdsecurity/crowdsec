@@ -19,7 +19,35 @@ setup() {
 
 #----------
 
+@test "cscli capi status: fails without credentials" {
+    config_enable_capi
+    ONLINE_API_CREDENTIALS_YAML="$(config_get '.api.server.online_client.credentials_path')"
+    # bogus values, won't be used
+    echo '{"login":"login","password":"password","url":"url"}' > "${ONLINE_API_CREDENTIALS_YAML}"
+
+    config_set "$ONLINE_API_CREDENTIALS_YAML" 'del(.url)'
+    rune -1 cscli capi status
+    assert_stderr --partial "can't load CAPI credentials from '$ONLINE_API_CREDENTIALS_YAML' (missing url field)"
+
+    config_set "$ONLINE_API_CREDENTIALS_YAML" 'del(.password)'
+    rune -1 cscli capi status
+    assert_stderr --partial "can't load CAPI credentials from '$ONLINE_API_CREDENTIALS_YAML' (missing password field)"
+
+    config_set "$ONLINE_API_CREDENTIALS_YAML" 'del(.login)'
+    rune -1 cscli capi status
+    assert_stderr --partial "can't load CAPI credentials from '$ONLINE_API_CREDENTIALS_YAML' (missing login field)"
+
+    rm "${ONLINE_API_CREDENTIALS_YAML}"
+    rune -1 cscli capi status
+    assert_stderr --partial "failed to load Local API: loading online client credentials: open ${ONLINE_API_CREDENTIALS_YAML}: no such file or directory"
+
+    config_set 'del(.api.server.online_client)'
+    rune -1 cscli capi status
+    assert_stderr --partial "no configuration for Central API (CAPI) in '$CONFIG_YAML'"
+}
+
 @test "cscli capi status" {
+    ./instance-data load
     config_enable_capi
     rune -0 cscli capi register --schmilblick githubciXXXXXXXXXXXXXXXXXXXXXXXX
     rune -1 cscli capi status
@@ -58,13 +86,6 @@ setup() {
     ./instance-crowdsec start
     rune -0 cscli capi status
     assert_stderr --partial "You can successfully interact with Central API (CAPI)"
-}
-
-@test "cscli capi status: fails without credentials" {
-    ONLINE_API_CREDENTIALS_YAML="$(config_get '.api.server.online_client.credentials_path')"
-    rm "${ONLINE_API_CREDENTIALS_YAML}"
-    rune -1 cscli capi status
-    assert_stderr --partial "failed to load Local API: loading online client credentials: failed to read api server credentials configuration file '${ONLINE_API_CREDENTIALS_YAML}': open ${ONLINE_API_CREDENTIALS_YAML}: no such file or directory"
 }
 
 @test "capi register must be run from lapi" {

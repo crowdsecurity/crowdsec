@@ -149,7 +149,7 @@ func (s *PluginSuite) TestBrokerNoThreshold() {
 	t := s.T()
 
 	pb, err := s.InitBroker(nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
@@ -182,7 +182,7 @@ func (s *PluginSuite) TestBrokerNoThreshold() {
 
 	err = json.Unmarshal(content, &alerts)
 	log.Printf("content-> %s", content)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 1)
 }
 
@@ -199,7 +199,7 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_TimeFirst() {
 	s.writeconfig(cfg)
 
 	pb, err := s.InitBroker(nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
@@ -215,11 +215,11 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_TimeFirst() {
 	time.Sleep(1 * time.Second)
 	// after 1 seconds, we should have data
 	content, err := os.ReadFile("./out")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var alerts []models.Alert
 	err = json.Unmarshal(content, &alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 3)
 }
 
@@ -235,7 +235,7 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_CountFirst() {
 	s.writeconfig(cfg)
 
 	pb, err := s.InitBroker(nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
@@ -259,7 +259,7 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_CountFirst() {
 
 	var alerts []models.Alert
 	err = json.Unmarshal(content, &alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 4)
 }
 
@@ -275,7 +275,7 @@ func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 	s.writeconfig(cfg)
 
 	pb, err := s.InitBroker(nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
@@ -306,11 +306,11 @@ func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 	// two notifications, one with 4 alerts, one with 2 alerts
 
 	err = decoder.Decode(&alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 4)
 
 	err = decoder.Decode(&alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 2)
 
 	err = decoder.Decode(&alerts)
@@ -328,7 +328,7 @@ func (s *PluginSuite) TestBrokerRunTimeThreshold() {
 	s.writeconfig(cfg)
 
 	pb, err := s.InitBroker(nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
@@ -348,7 +348,7 @@ func (s *PluginSuite) TestBrokerRunTimeThreshold() {
 
 	var alerts []models.Alert
 	err = json.Unmarshal(content, &alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 1)
 }
 
@@ -358,7 +358,7 @@ func (s *PluginSuite) TestBrokerRunSimple() {
 	t := s.T()
 
 	pb, err := s.InitBroker(nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
@@ -382,11 +382,11 @@ func (s *PluginSuite) TestBrokerRunSimple() {
 	// two notifications, one alert each
 
 	err = decoder.Decode(&alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 1)
 
 	err = decoder.Decode(&alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 1)
 
 	err = decoder.Decode(&alerts)

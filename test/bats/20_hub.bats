@@ -69,6 +69,16 @@ teardown() {
     assert_output --partial 'crowdsecurity/iptables'
 }
 
+@test "cscli hub list (invalid index)" {
+    new_hub=$(jq <"$INDEX_PATH" '."appsec-rules"."crowdsecurity/vpatch-laravel-debug-mode".version="999"')
+    echo "$new_hub" >"$INDEX_PATH"
+    rune -0 cscli hub list --error
+    assert_stderr --partial "invalid hub item appsec-rules:crowdsecurity/vpatch-laravel-debug-mode: latest version missing from index"
+
+    rune -1 cscli appsec-rules install crowdsecurity/vpatch-laravel-debug-mode --force
+    assert_stderr --partial "error while installing 'crowdsecurity/vpatch-laravel-debug-mode': while downloading crowdsecurity/vpatch-laravel-debug-mode: latest hash missing from index"
+}
+
 @test "missing reference in hub index" {
     new_hub=$(jq <"$INDEX_PATH" 'del(.parsers."crowdsecurity/smb-logs") | del (.scenarios."crowdsecurity/mysql-bf")')
     echo "$new_hub" >"$INDEX_PATH"

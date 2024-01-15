@@ -55,6 +55,7 @@ func serveHealth() http.HandlerFunc {
 		// no caching required
 		health.WithDisabledCache(),
 	)
+
 	return health.NewHandler(checker)
 }
 
@@ -76,6 +77,7 @@ func (c *Controller) NewV1() error {
 	if err != nil {
 		return err
 	}
+
 	c.Router.GET("/health", gin.WrapF(serveHealth()))
 	c.Router.Use(v1.PrometheusMiddleware())
 	c.Router.HandleMethodNotAllowed = true
@@ -104,7 +106,6 @@ func (c *Controller) NewV1() error {
 		jwtAuth.DELETE("/decisions", c.HandlerV1.DeleteDecisions)
 		jwtAuth.DELETE("/decisions/:decision_id", c.HandlerV1.DeleteDecisionById)
 		jwtAuth.GET("/heartbeat", c.HandlerV1.HeartBeat)
-
 	}
 
 	apiKeyAuth := groupV1.Group("")

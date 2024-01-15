@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
@@ -78,6 +79,7 @@ func smokeHandler(req *http.Request) *http.Response {
 	}
 
 	requestedIP := strings.Split(req.URL.Path, "/")[3]
+
 	sample, ok := sampledata[requestedIP]
 	if !ok {
 		return &http.Response{
@@ -109,9 +111,11 @@ func smokeHandler(req *http.Request) *http.Response {
 
 func TestNillClient(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
+
 	if err := InitCrowdsecCTI(ptr.Of(""), nil, nil, nil); !errors.Is(err, cticlient.ErrDisabled) {
 		t.Fatalf("failed to init CTI : %s", err)
 	}
+
 	item, err := CrowdsecCTI("1.2.3.4")
 	assert.Equal(t, err, cticlient.ErrDisabled)
 	assert.Equal(t, item, &cticlient.SmokeItem{})
@@ -119,6 +123,7 @@ func TestNillClient(t *testing.T) {
 
 func TestInvalidAuth(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
+
 	if err := InitCrowdsecCTI(ptr.Of("asdasd"), nil, nil, nil); err != nil {
 		t.Fatalf("failed to init CTI : %s", err)
 	}
@@ -129,7 +134,7 @@ func TestInvalidAuth(t *testing.T) {
 
 	item, err := CrowdsecCTI("1.2.3.4")
 	assert.Equal(t, item, &cticlient.SmokeItem{})
-	assert.Equal(t, CTIApiEnabled, false)
+	assert.False(t, CTIApiEnabled)
 	assert.Equal(t, err, cticlient.ErrUnauthorized)
 
 	//CTI is now disabled, all requests should return empty
@@ -139,14 +144,15 @@ func TestInvalidAuth(t *testing.T) {
 
 	item, err = CrowdsecCTI("1.2.3.4")
 	assert.Equal(t, item, &cticlient.SmokeItem{})
-	assert.Equal(t, CTIApiEnabled, false)
+	assert.False(t, CTIApiEnabled)
 	assert.Equal(t, err, cticlient.ErrDisabled)
 }
 
 func TestNoKey(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
+
 	err := InitCrowdsecCTI(nil, nil, nil, nil)
-	assert.ErrorIs(t, err, cticlient.ErrDisabled)
+	require.ErrorIs(t, err, cticlient.ErrDisabled)
 	//Replace the client created by InitCrowdsecCTI with one that uses a custom transport
 	ctiClient = cticlient.NewCrowdsecCTIClient(cticlient.WithAPIKey("asdasd"), cticlient.WithHTTPClient(&http.Client{
 		Transport: RoundTripFunc(smokeHandler),
@@ -154,12 +160,13 @@ func TestNoKey(t *testing.T) {
 
 	item, err := CrowdsecCTI("1.2.3.4")
 	assert.Equal(t, item, &cticlient.SmokeItem{})
-	assert.Equal(t, CTIApiEnabled, false)
+	assert.False(t, CTIApiEnabled)
 	assert.Equal(t, err, cticlient.ErrDisabled)
 }
 
 func TestCache(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
+
 	cacheDuration := 1 * time.Second
 	if err := InitCrowdsecCTI(ptr.Of(validApiKey), &cacheDuration, nil, nil); err != nil {
 		t.Fatalf("failed to init CTI : %s", err)
@@ -172,28 +179,27 @@ func TestCache(t *testing.T) {
 	item, err := CrowdsecCTI("1.2.3.4")
 	ctiResp := item.(*cticlient.SmokeItem)
 	assert.Equal(t, "1.2.3.4", ctiResp.Ip)
-	assert.Equal(t, CTIApiEnabled, true)
-	assert.Equal(t, CTICache.Len(true), 1)
-	assert.Equal(t, err, nil)
+	assert.True(t, CTIApiEnabled)
+	assert.Equal(t, 1, CTICache.Len(true))
+	require.NoError(t, err)
 
 	item, err = CrowdsecCTI("1.2.3.4")
 	ctiResp = item.(*cticlient.SmokeItem)
 
 	assert.Equal(t, "1.2.3.4", ctiResp.Ip)
-	assert.Equal(t, CTIApiEnabled, true)
-	assert.Equal(t, CTICache.Len(true), 1)
-	assert.Equal(t, err, nil)
+	assert.True(t, CTIApiEnabled)
+	assert.Equal(t, 1, CTICache.Len(true))
+	require.NoError(t, err)
 
 	time.Sleep(2 * time.Second)
 
-	assert.Equal(t, CTICache.Len(true), 0)
+	assert.Equal(t, 0, CTICache.Len(true))
 
 	item, err = CrowdsecCTI("1.2.3.4")
 	ctiResp = item.(*cticlient.SmokeItem)
 
 	assert.Equal(t, "1.2.3.4", ctiResp.Ip)
-	assert.Equal(t, CTIApiEnabled, true)
-	assert.Equal(t, CTICache.Len(true), 1)
-	assert.Equal(t, err, nil)
-
+	assert.True(t, CTIApiEnabled)
+	assert.Equal(t, 1, CTICache.Len(true))
+	require.NoError(t, err)
 }
