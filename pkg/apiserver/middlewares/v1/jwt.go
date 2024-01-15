@@ -43,6 +43,7 @@ func PayloadFunc(data interface{}) jwt.MapClaims {
 func IdentityHandler(c *gin.Context) interface{} {
 	claims := jwt.ExtractClaims(c)
 	machineID := claims[identityKey].(string)
+
 	return &models.WatcherAuthRequest{
 		MachineID: &machineID,
 	}
@@ -93,9 +94,12 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 				"ip": c.ClientIP(),
 				"cn": extractedCN,
 			}).Errorf("error generating password: %s", err)
+
 			return nil, fmt.Errorf("error generating password")
 		}
+
 		password := strfmt.Password(pwd)
+
 		ret.clientMachine, err = j.DbClient.CreateMachine(&ret.machineID, &password, "", true, true, types.TlsAuthType)
 		if err != nil {
 			return nil, fmt.Errorf("while creating machine entry for %s: %w", ret.machineID, err)
@@ -114,27 +118,33 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 	}{
 		Scenarios: []string{},
 	}
+
 	err = c.ShouldBindJSON(&loginInput)
 	if err != nil {
 		return nil, fmt.Errorf("missing scenarios list in login request for TLS auth: %w", err)
 	}
+
 	ret.scenariosInput = loginInput.Scenarios
 
 	return &ret, nil
 }
 
 func (j *JWT) authPlain(c *gin.Context) (*authInput, error) {
-	var loginInput models.WatcherAuthRequest
-	var err error
+	var (
+		loginInput models.WatcherAuthRequest
+		err        error
+	)
 
 	ret := authInput{}
 
 	if err = c.ShouldBindJSON(&loginInput); err != nil {
 		return nil, fmt.Errorf("missing: %w", err)
 	}
+
 	if err = loginInput.Validate(strfmt.Default); err != nil {
 		return nil, err
 	}
+
 	ret.machineID = *loginInput.MachineID
 	password := *loginInput.Password
 	ret.scenariosInput = loginInput.Scenarios
@@ -168,8 +178,10 @@ func (j *JWT) authPlain(c *gin.Context) (*authInput, error) {
 }
 
 func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
-	var err error
-	var auth *authInput
+	var (
+		err  error
+		auth *authInput
+	)
 
 	if c.Request.TLS != nil && len(c.Request.TLS.PeerCertificates) > 0 {
 		auth, err = j.authTLS(c)
@@ -193,6 +205,7 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 				scenarios += "," + scenario
 			}
 		}
+
 		err = j.DbClient.UpdateMachineScenarios(scenarios, auth.clientMachine.ID)
 		if err != nil {
 			log.Errorf("Failed to update scenarios list for '%s': %s\n", auth.machineID, err)
@@ -210,6 +223,7 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 
 	if auth.clientMachine.IpAddress != c.ClientIP() && auth.clientMachine.IpAddress != "" {
 		log.Warningf("new IP address detected for machine '%s': %s (old: %s)", auth.clientMachine.MachineId, c.ClientIP(), auth.clientMachine.IpAddress)
+
 		err = j.DbClient.UpdateMachineIP(c.ClientIP(), auth.clientMachine.ID)
 		if err != nil {
 			log.Errorf("Failed to update ip address for '%s': %s\n", auth.clientMachine.MachineId, err)
@@ -228,10 +242,10 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 		log.Errorf("bad user agent from : %s", c.ClientIP())
 		return nil, jwt.ErrFailedAuthentication
 	}
+
 	return &models.WatcherAuthRequest{
 		MachineID: &auth.machineID,
 	}, nil
-
 }
 
 func Authorizator(data interface{}, c *gin.Context) bool {

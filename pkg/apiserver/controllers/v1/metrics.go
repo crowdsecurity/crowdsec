@@ -115,6 +115,7 @@ func PrometheusBouncersMiddleware() gin.HandlerFunc {
 func PrometheusMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		startTime := time.Now()
+
 		LapiRouteHits.With(prometheus.Labels{
 			"route":  c.Request.URL.Path,
 			"method": c.Request.Method}).Inc()

@@ -651,6 +651,7 @@ func (a *apic) PullTop(forcePull bool) error {
 	}
 
 	addCounters, deleteCounters := makeAddAndDeleteCounters()
+
 	// process deleted decisions
 	nbDeleted, err := a.HandleDeletedDecisionsV3(data.Deleted, deleteCounters)
 	if err != nil {

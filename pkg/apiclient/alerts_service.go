@@ -56,7 +56,7 @@ func (s *AlertsService) Add(ctx context.Context, alerts models.AddAlertsRequest)
 		return nil, nil, err
 	}
 
-	var addedIds models.AddAlertsResponse
+	addedIds := models.AddAlertsResponse{}
 
 	resp, err := s.client.Do(ctx, req, &addedIds)
 	if err != nil {

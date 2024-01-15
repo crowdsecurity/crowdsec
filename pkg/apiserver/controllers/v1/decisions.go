@@ -38,9 +38,10 @@ func FormatDecisions(decisions []*ent.Decision) []*models.Decision {
 }
 
 func (c *Controller) GetDecision(gctx *gin.Context) {
-	var err error
-	var results []*models.Decision
-	var data []*ent.Decision
+	var (
+		results []*models.Decision
+		data    []*ent.Decision
+	)
 
 	bouncerInfo, err := getBouncerFromContext(gctx)
 	if err != nil {
@@ -89,6 +90,7 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 
 		return
 	}
+
 	nbDeleted, deletedFromDB, err := c.DBClient.SoftDeleteDecisionByID(decisionID)
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
@@ -351,10 +353,13 @@ func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *en
 	if err != nil {
 		log.Errorf("unable to query expired decision for '%s' : %v", bouncerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+
 		return err
 	}
+
 	ret["deleted"] = FormatDecisions(data)
 	gctx.JSON(http.StatusOK, ret)
+
 	return nil
 }
 
@@ -362,9 +367,11 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 	var err error
 
 	streamStartTime := time.Now().UTC()
+
 	bouncerInfo, err := getBouncerFromContext(gctx)
 	if err != nil {
 		gctx.JSON(http.StatusUnauthorized, gin.H{"message": "not allowed"})
+
 		return
 	}
 
@@ -372,6 +379,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 		//For HEAD, just return as the bouncer won't get a body anyway, so no need to query the db
 		//We also don't update the last pull time, as it would mess with the delta sent on the next request (if done without startup=true)
 		gctx.String(http.StatusOK, "")
+
 		return
 	}
 
