@@ -119,6 +119,11 @@ func (r *AppsecRunner) processRequest(tx appsec.ExtendedTransaction, request *ap
 	defer func() {
 		request.Tx.ProcessLogging()
 		//We don't close the transaction here, as it will reset coraza internal state and break variable tracking
+
+		err := r.AppsecRuntime.ProcessPostEvalRules(request)
+		if err != nil {
+			r.logger.Errorf("unable to process PostEval rules: %s", err)
+		}
 	}()
 
 	//pre eval (expr) rules
@@ -180,11 +185,6 @@ func (r *AppsecRunner) processRequest(tx appsec.ExtendedTransaction, request *ap
 
 	if in != nil {
 		r.logger.Debugf("rules matched for body : %d", in.RuleID)
-	}
-
-	err = r.AppsecRuntime.ProcessPostEvalRules(request)
-	if err != nil {
-		r.logger.Errorf("unable to process PostEval rules: %s", err)
 	}
 
 	return nil
