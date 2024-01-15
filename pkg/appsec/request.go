@@ -43,6 +43,7 @@ type ParsedRequest struct {
 	IsOutBand            bool                    `json:"-"`
 	AppsecEngine         string                  `json:"appsec_engine,omitempty"`
 	RemoteAddrNormalized string                  `json:"normalized_remote_addr,omitempty"`
+	OriginalHTTPRequest  *http.Request           `json:"-"`
 }
 
 type ReqDumpFilter struct {
@@ -343,5 +344,6 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 		TransferEncoding:     r.TransferEncoding,
 		ResponseChannel:      make(chan AppsecTempResponse),
 		RemoteAddrNormalized: remoteAddrNormalized,
+		OriginalHTTPRequest:  r,
 	}, nil
 }

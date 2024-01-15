@@ -22,6 +22,7 @@ func GetPreEvalEnv(w *AppsecRuntimeConfig, request *ParsedRequest) map[string]in
 	return map[string]interface{}{
 		"IsInBand":                request.IsInBand,
 		"IsOutBand":               request.IsOutBand,
+		"req":                     request.OriginalHTTPRequest,
 		"RemoveInBandRuleByID":    w.RemoveInbandRuleByID,
 		"RemoveInBandRuleByName":  w.RemoveInbandRuleByName,
 		"RemoveInBandRuleByTag":   w.RemoveInbandRuleByTag,
@@ -39,13 +40,14 @@ func GetPostEvalEnv(w *AppsecRuntimeConfig, request *ParsedRequest) map[string]i
 		"IsInBand":    request.IsInBand,
 		"IsOutBand":   request.IsOutBand,
 		"DumpRequest": request.DumpRequest,
+		"req":         request.OriginalHTTPRequest,
 	}
 }
 
 func GetOnMatchEnv(w *AppsecRuntimeConfig, request *ParsedRequest, evt types.Event) map[string]interface{} {
 	return map[string]interface{}{
 		"evt":            evt,
-		"req":            request,
+		"req":            request.OriginalHTTPRequest,
 		"IsInBand":       request.IsInBand,
 		"IsOutBand":      request.IsOutBand,
 		"SetRemediation": w.SetAction,
