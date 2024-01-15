@@ -166,7 +166,8 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 			}
 		}
 
-		if bouncer.IPAddress != c.ClientIP() && bouncer.IPAddress != "" {
+		//Don't update IP on HEAD request, as it's used by the appsec to check the validity of the API key provided
+		if bouncer.IPAddress != c.ClientIP() && bouncer.IPAddress != "" && c.Request.Method != http.MethodHead {
 			log.Warningf("new IP address detected for bouncer '%s': %s (old: %s)", bouncer.Name, c.ClientIP(), bouncer.IPAddress)
 			if err := a.DbClient.UpdateBouncerIP(c.ClientIP(), bouncer.ID); err != nil {
 				logger.Errorf("Failed to update ip address for '%s': %s\n", bouncer.Name, err)
