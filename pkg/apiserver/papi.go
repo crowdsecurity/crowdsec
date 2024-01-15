@@ -87,17 +87,17 @@ type PapiPermCheckSuccess struct {
 }
 
 func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig, logLevel log.Level) (*Papi, error) {
-
 	logger := log.New()
 	if err := types.ConfigureLogger(logger); err != nil {
-		return &Papi{}, fmt.Errorf("creating papi logger: %s", err)
+		return &Papi{}, fmt.Errorf("creating papi logger: %w", err)
 	}
+
 	logger.SetLevel(logLevel)
 
-	papiUrl := *apic.apiClient.PapiURL
-	papiUrl.Path = fmt.Sprintf("%s%s", types.PAPIVersion, types.PAPIPollUrl)
+	papiURL := *apic.apiClient.PapiURL
+	papiURL.Path = fmt.Sprintf("%s%s", types.PAPIVersion, types.PAPIPollUrl)
 	longPollClient, err := longpollclient.NewLongPollClient(longpollclient.LongPollClientConfig{
-		Url:        papiUrl,
+		Url:        papiURL,
 		Logger:     logger,
 		HttpClient: apic.apiClient.GetClient(),
 	})
@@ -132,55 +132,64 @@ func NewPAPI(apic *apic, dbClient *database.Client, consoleConfig *csconfig.Cons
 func (p *Papi) handleEvent(event longpollclient.Event, sync bool) error {
 	logger := p.Logger.WithField("request-id", event.RequestId)
 	logger.Debugf("message received: %+v", event.Data)
+
 	message := &Message{}
 	if err := json.Unmarshal([]byte(event.Data), message); err != nil {
-		return fmt.Errorf("polling papi message format is not compatible: %+v: %s", event.Data, err)
+		return fmt.Errorf("polling papi message format is not compatible: %+v: %w", event.Data, err)
 	}
+
 	if message.Header == nil {
 		return fmt.Errorf("no header in message, skipping")
 	}
+
 	if message.Header.Source == nil {
 		return fmt.Errorf("no source user in header message, skipping")
 	}
 
 	if operationFunc, ok := operationMap[message.Header.OperationType]; ok {
 		logger.Debugf("Calling operation '%s'", message.Header.OperationType)
-		err := operationFunc(message, p, sync)
-		if err != nil {
-			return fmt.Errorf("'%s %s failed: %s", message.Header.OperationType, message.Header.OperationCmd, err)
+
+		if err := operationFunc(message, p, sync); err != nil {
+			return fmt.Errorf("'%s %s failed: %w", message.Header.OperationType, message.Header.OperationCmd, err)
 		}
 	} else {
 		return fmt.Errorf("operation '%s' unknown, continue", message.Header.OperationType)
 	}
+
 	return nil
 }
 
 func (p *Papi) GetPermissions() (PapiPermCheckSuccess, error) {
 	httpClient := p.apiClient.GetClient()
-	papiCheckUrl := fmt.Sprintf("%s%s%s", p.URL, types.PAPIVersion, types.PAPIPermissionsUrl)
-	req, err := http.NewRequest(http.MethodGet, papiCheckUrl, nil)
+	papiCheckURL := fmt.Sprintf("%s%s%s", p.URL, types.PAPIVersion, types.PAPIPermissionsUrl)
+
+	req, err := http.NewRequest(http.MethodGet, papiCheckURL, nil)
 	if err != nil {
-		return PapiPermCheckSuccess{}, fmt.Errorf("failed to create request : %s", err)
+		return PapiPermCheckSuccess{}, fmt.Errorf("failed to create request: %w", err)
 	}
+
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		log.Fatalf("failed to get response : %s", err)
+		// XXX: fatal?
+		log.Fatalf("failed to get response: %s", err)
 	}
 
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		errResp := PapiPermCheckError{}
-		err = json.NewDecoder(resp.Body).Decode(&errResp)
-		if err != nil {
-			return PapiPermCheckSuccess{}, fmt.Errorf("failed to decode response : %s", err)
+		if err = json.NewDecoder(resp.Body).Decode(&errResp); err != nil {
+			return PapiPermCheckSuccess{}, fmt.Errorf("failed to decode response: %w", err)
 		}
+
 		return PapiPermCheckSuccess{}, fmt.Errorf("unable to query PAPI : %s (%d)", errResp.Error, resp.StatusCode)
 	}
+
 	respBody := PapiPermCheckSuccess{}
-	err = json.NewDecoder(resp.Body).Decode(&respBody)
-	if err != nil {
-		return PapiPermCheckSuccess{}, fmt.Errorf("failed to decode response : %s", err)
+	if err = json.NewDecoder(resp.Body).Decode(&respBody); err != nil {
+		return PapiPermCheckSuccess{}, fmt.Errorf("failed to decode response: %w", err)
 	}
+
 	return respBody, nil
 }
 

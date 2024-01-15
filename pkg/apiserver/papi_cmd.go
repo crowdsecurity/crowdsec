@@ -176,16 +176,17 @@ func ManagementCmd(message *Message, p *Papi, sync bool) error {
 		if err != nil {
 			return err
 		}
+
 		forcePullMsg := forcePull{}
 		if err := json.Unmarshal(data, &forcePullMsg); err != nil {
-			return fmt.Errorf("message for '%s' contains bad data format: %s", message.Header.OperationType, err)
+			return fmt.Errorf("message for '%s' contains bad data format: %w", message.Header.OperationType, err)
 		}
 
 		if forcePullMsg.Blocklist == nil {
 			log.Infof("Received force_pull command from PAPI, pulling community and 3rd-party blocklists")
-			err = p.apic.PullTop(true)
-			if err != nil {
-				return fmt.Errorf("failed to force pull operation: %s", err)
+
+			if err = p.apic.PullTop(true); err != nil {
+				return fmt.Errorf("failed to force pull operation: %w", err)
 			}
 		} else {
 			log.Infof("Received force_pull command from PAPI, pulling blocklist %s", forcePullMsg.Blocklist.Name)

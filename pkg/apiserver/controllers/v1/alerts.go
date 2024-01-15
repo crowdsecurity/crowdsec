@@ -328,8 +328,7 @@ func (c *Controller) DeleteAlertByID(gctx *gin.Context) {
 		return
 	}
 
-	decisionIDStr := gctx.Param("alert_id")
-	decisionID, err := strconv.Atoi(decisionIDStr)
+	decisionID, err := strconv.Atoi(gctx.Param("alert_id"))
 	if err != nil {
 		gctx.JSON(http.StatusBadRequest, gin.H{"message": "alert_id must be valid integer"})
 		return

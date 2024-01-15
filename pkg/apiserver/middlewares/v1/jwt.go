@@ -276,25 +276,21 @@ func randomSecret() ([]byte, error) {
 }
 
 func NewJWT(dbClient *database.Client) (*JWT, error) {
-	// Get secret from environment variable "SECRET"
-	var (
-		secret []byte
-		err    error
-	)
+	var err error
 
 	// Please be aware that brute force HS256 is possible.
 	// PLEASE choose a STRONG secret
 	secretString := os.Getenv("CS_LAPI_SECRET")
-	secret = []byte(secretString)
+	secret := []byte(secretString)
 
 	switch l := len(secret); {
 	case l == 0:
 		secret, err = randomSecret()
 		if err != nil {
-			return &JWT{}, err
+			return nil, err
 		}
 	case l < 64:
-		return &JWT{}, errors.New("CS_LAPI_SECRET not strong enough")
+		return nil, errors.New("CS_LAPI_SECRET not strong enough")
 	}
 
 	jwtMiddleware := &JWT{
@@ -318,13 +314,14 @@ func NewJWT(dbClient *database.Client) (*JWT, error) {
 		TimeFunc:        time.Now,
 	})
 	if err != nil {
-		return &JWT{}, err
+		return nil, err
 	}
 
 	errInit := ret.MiddlewareInit()
 	if errInit != nil {
-		return &JWT{}, fmt.Errorf("authMiddleware.MiddlewareInit() Error:" + errInit.Error())
+		return nil, fmt.Errorf("authMiddleware.MiddlewareInit() Error:" + errInit.Error())
 	}
+
 	jwtMiddleware.Middleware = ret
 
 	return jwtMiddleware, nil

@@ -2,7 +2,6 @@ package v1
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -138,22 +137,25 @@ func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFun
 	// respBuffer := bytes.NewBuffer([]byte{})
 	limit := 30000 //FIXME : make it configurable
 	needComma := false
-	lastId := 0
+	lastID := 0
 
-	limitStr := fmt.Sprintf("%d", limit)
+	limitStr := strconv.Itoa(limit)
 	filters["limit"] = []string{limitStr}
+
 	for {
-		if lastId > 0 {
-			lastIdStr := fmt.Sprintf("%d", lastId)
-			filters["id_gt"] = []string{lastIdStr}
+		if lastID > 0 {
+			lastIDStr := strconv.Itoa(lastID)
+			filters["id_gt"] = []string{lastIDStr}
 		}
 
 		data, err := dbFunc(filters)
 		if err != nil {
 			return err
 		}
+
 		if len(data) > 0 {
-			lastId = data[len(data)-1].ID
+			lastID = data[len(data)-1].ID
+
 			results := FormatDecisions(data)
 			for _, decision := range results {
 				decisionJSON, _ := json.Marshal(decision)
@@ -175,7 +177,9 @@ func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFun
 				//respBuffer.Reset()
 			}
 		}
-		log.Debugf("startup: %d decisions returned (limit: %d, lastid: %d)", len(data), limit, lastId)
+
+		log.Debugf("startup: %d decisions returned (limit: %d, lastid: %d)", len(data), limit, lastID)
+
 		if len(data) < limit {
 			gctx.Writer.Flush()
 
@@ -190,22 +194,23 @@ func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPul
 	//respBuffer := bytes.NewBuffer([]byte{})
 	limit := 30000 //FIXME : make it configurable
 	needComma := false
-	lastId := 0
+	lastID := 0
 
-	limitStr := fmt.Sprintf("%d", limit)
-	filters["limit"] = []string{limitStr}
+	filters["limit"] = []string{strconv.Itoa(limit)}
+
 	for {
-		if lastId > 0 {
-			lastIdStr := fmt.Sprintf("%d", lastId)
-			filters["id_gt"] = []string{lastIdStr}
+		if lastID > 0 {
+			filters["id_gt"] = []string{strconv.Itoa(lastID)}
 		}
 
 		data, err := dbFunc(lastPull, filters)
 		if err != nil {
 			return err
 		}
+
 		if len(data) > 0 {
-			lastId = data[len(data)-1].ID
+			lastID = data[len(data)-1].ID
+
 			results := FormatDecisions(data)
 			for _, decision := range results {
 				decisionJSON, _ := json.Marshal(decision)
@@ -227,7 +232,9 @@ func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPul
 				//respBuffer.Reset()
 			}
 		}
-		log.Debugf("startup: %d decisions returned (limit: %d, lastid: %d)", len(data), limit, lastId)
+
+		log.Debugf("startup: %d decisions returned (limit: %d, lastid: %d)", len(data), limit, lastID)
+
 		if len(data) < limit {
 			gctx.Writer.Flush()
 

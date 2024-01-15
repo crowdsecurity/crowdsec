@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/sha512"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"strings"
@@ -53,7 +54,7 @@ func HashSHA512(str string) string {
 	hashedKey := sha512.New()
 	hashedKey.Write([]byte(str))
 
-	hashStr := fmt.Sprintf("%x", hashedKey.Sum(nil))
+	hashStr := hex.EncodeToString(hashedKey.Sum(nil))
 
 	return hashStr
 }
