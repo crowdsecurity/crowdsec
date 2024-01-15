@@ -161,24 +161,6 @@ func (wc *AppsecConfig) LoadByPath(file string) error {
 	}
 	wc.Logger = wc.Logger.Dup().WithField("name", wc.Name)
 	wc.Logger.Logger.SetLevel(*wc.LogLevel)
-	if wc.DefaultRemediation == "" {
-		return fmt.Errorf("default_remediation cannot be empty")
-	}
-	switch wc.DefaultRemediation {
-	case "ban", "captcha", "log":
-		//those are the officially supported remediation(s)
-	default:
-		wc.Logger.Warningf("default '%s' remediation of %s is none of [ban,captcha,log] ensure bouncer compatbility!", wc.DefaultRemediation, file)
-	}
-	if wc.BlockedHTTPCode == 0 {
-		wc.BlockedHTTPCode = 403
-	}
-	if wc.PassedHTTPCode == 0 {
-		wc.PassedHTTPCode = 200
-	}
-	if wc.DefaultPassAction == "" {
-		wc.DefaultPassAction = "allow"
-	}
 	return nil
 }
 
@@ -209,6 +191,24 @@ func (wc *AppsecConfig) GetDataDir() string {
 
 func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 	ret := &AppsecRuntimeConfig{Logger: wc.Logger.WithField("component", "appsec_runtime_config")}
+	//set the defaults
+	switch wc.DefaultRemediation {
+	case "":
+		wc.DefaultRemediation = "ban"
+	case "ban", "captcha", "log":
+		//those are the officially supported remediation(s)
+	default:
+		wc.Logger.Warningf("default '%s' remediation of %s is none of [ban,captcha,log] ensure bouncer compatbility!", wc.DefaultRemediation, wc.Name)
+	}
+	if wc.BlockedHTTPCode == 0 {
+		wc.BlockedHTTPCode = 403
+	}
+	if wc.PassedHTTPCode == 0 {
+		wc.PassedHTTPCode = 200
+	}
+	if wc.DefaultPassAction == "" {
+		wc.DefaultPassAction = "allow"
+	}
 	ret.Name = wc.Name
 	ret.Config = wc
 	ret.DefaultRemediation = wc.DefaultRemediation
@@ -340,6 +340,7 @@ func (w *AppsecRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest, evt ty
 }
 
 func (w *AppsecRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error {
+	log.Debugf("processing %d pre_eval rules", len(w.CompiledPreEval))
 	for _, rule := range w.CompiledPreEval {
 		if rule.FilterExpr != nil {
 			output, err := exprhelpers.Run(rule.FilterExpr, GetPreEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
