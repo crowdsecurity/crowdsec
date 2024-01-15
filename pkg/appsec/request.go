@@ -277,52 +277,49 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 		contentLength = 0
 	}
 
-	originalHTTPRequest := r.Clone(r.Context())
 	body := make([]byte, contentLength)
-
 	if r.Body != nil {
 		_, err = io.ReadFull(r.Body, body)
 		if err != nil {
 			return ParsedRequest{}, fmt.Errorf("unable to read body: %s", err)
 		}
 		r.Body.Close()
-
 		// reset the original body back as it's been read, i'm not sure its needed?
 		r.Body = io.NopCloser(bytes.NewBuffer(body))
-
-		// we set the body in the original HTTP request
-		originalHTTPRequest.Body = io.NopCloser(bytes.NewBuffer(body))
 	}
 
 	clientIP := r.Header.Get(IPHeaderName)
 	if clientIP == "" {
 		return ParsedRequest{}, fmt.Errorf("missing '%s' header", IPHeaderName)
 	}
-	originalHTTPRequest.RemoteAddr = clientIP
 
 	clientURI := r.Header.Get(URIHeaderName)
 	if clientURI == "" {
 		return ParsedRequest{}, fmt.Errorf("missing '%s' header", URIHeaderName)
 	}
-	originalHTTPRequest.RequestURI = clientURI
 
 	clientMethod := r.Header.Get(VerbHeaderName)
 	if clientMethod == "" {
 		return ParsedRequest{}, fmt.Errorf("missing '%s' header", VerbHeaderName)
 	}
-	originalHTTPRequest.Method = clientMethod
 
 	clientHost := r.Header.Get(HostHeaderName)
 	if clientHost == "" { //this might be empty
 		logger.Debugf("missing '%s' header", HostHeaderName)
 	}
-	originalHTTPRequest.Host = clientHost
 
 	// delete those headers before coraza process the request
 	delete(r.Header, IPHeaderName)
 	delete(r.Header, HostHeaderName)
 	delete(r.Header, URIHeaderName)
 	delete(r.Header, VerbHeaderName)
+
+	originalHTTPRequest := r.Clone(r.Context())
+	originalHTTPRequest.Body = io.NopCloser(bytes.NewBuffer(body))
+	originalHTTPRequest.RemoteAddr = clientIP
+	originalHTTPRequest.RequestURI = clientURI
+	originalHTTPRequest.Method = clientMethod
+	originalHTTPRequest.Host = clientHost
 
 	parsedURL, err := url.Parse(clientURI)
 	if err != nil {
