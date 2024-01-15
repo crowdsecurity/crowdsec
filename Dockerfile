@@ -1,5 +1,6 @@
 # vim: set ft=dockerfile:
-ARG GOVERSION=1.21.5
+ARG GOVERSION=1.21.6
+ARG BUILD_VERSION
 
 FROM golang:${GOVERSION}-alpine3.18 AS build
 
@@ -7,6 +8,7 @@ WORKDIR /go/src/crowdsec
 
 # We like to choose the release of re2 to use, and Alpine does not ship a static version anyway.
 ENV RE2_VERSION=2023-03-01
+ENV BUILD_VERSION=${BUILD_VERSION}
 
 # wizard.sh requires GNU coreutils
 RUN apk add --no-cache git g++ gcc libc-dev make bash gettext binutils-gold coreutils pkgconfig && \
