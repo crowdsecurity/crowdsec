@@ -39,6 +39,74 @@ type appsecRuleTest struct {
 	output_asserts   func(events []types.Event, responses []appsec.AppsecTempResponse)
 }
 
+func TestAppsecOnMatchHooks(t *testing.T) {
+	tests := []appsecRuleTest{
+		{
+			name:             "Basic on_load hook to disable rule",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			on_match: []appsec.Hook{
+				{Filter: "IsInBand == true", Apply: []string{"SetReturnCode(413)"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
+				require.Equal(t, 2, len(events), "expect no event")
+				require.Equal(t, types.LOG, events[0].Type, "Expected log event")
+				require.Equal(t, types.APPSEC, events[1].Type, "Expected appsec event")
+				require.Equal(t, 1, len(responses), "expect response")
+				require.Equal(t, 413, responses[0].HTTPResponseCode, "http return code should be 413")
+			},
+		},
+		{
+			name:             "Basic on_load hook to disable rule",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			on_match: []appsec.Hook{
+				{Filter: "IsInBand == false", Apply: []string{"SetReturnCode(413)"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
+				require.Equal(t, 2, len(events), "expect no event")
+				require.Equal(t, types.LOG, events[0].Type, "Expected log event")
+				require.Equal(t, types.APPSEC, events[1].Type, "Expected appsec event")
+				require.Equal(t, 1, len(responses), "expect response")
+				require.Equal(t, 403, responses[0].HTTPResponseCode, "http return code should be 403")
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			loadAppSecEngine(test, t)
+		})
+	}
+}
+
 func TestAppsecPreEvalHooks(t *testing.T) {
 	/*
 	 [x] basic working hook
@@ -70,10 +138,10 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:       url.Values{"foo": []string{"toto"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, len(events), 0, "expect no event")
-				require.Equal(t, len(responses), 1, "expect response")
-				require.Equal(t, responses[0].InBandInterrupt, false, "expect no inband interrupt")
-				require.Equal(t, responses[0].OutOfBandInterrupt, false, "expect no outband interrupt")
+				require.Equal(t, 0, len(events), "expect no event")
+				require.Equal(t, 1, len(responses), "expect response")
+				require.Equal(t, false, responses[0].InBandInterrupt, "expect no inband interrupt")
+				require.Equal(t, false, responses[0].OutOfBandInterrupt, "expect no outband interrupt")
 			},
 		},
 		{
@@ -98,14 +166,14 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:       url.Values{"foo": []string{"toto"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, len(events), 2, "Expected 2 event")
-				require.Equal(t, events[0].Type, types.LOG, "Expected log event")
-				require.Equal(t, events[0].Appsec.HasInBandMatches, true, "Expected inband match")
-				require.Equal(t, len(events[0].Appsec.MatchedRules), 1, "Expected 1 rule match")
-				require.Equal(t, events[0].Appsec.MatchedRules[0]["msg"], "rule1", " rule name")
-				require.Equal(t, events[1].Type, types.APPSEC, "Expected appsec event")
-				require.Equal(t, len(responses), 1, "expect response")
-				require.Equal(t, responses[0].InBandInterrupt, true, "expect no inband interrupt")
+				require.Equal(t, 2, len(events), "Expected 2 event")
+				require.Equal(t, types.LOG, events[0].Type, "Expected log event")
+				require.Equal(t, true, events[0].Appsec.HasInBandMatches, "Expected inband match")
+				require.Equal(t, 1, len(events[0].Appsec.MatchedRules), "Expected 1 rule match")
+				require.Equal(t, "rule1", events[0].Appsec.MatchedRules[0]["msg"], " rule name")
+				require.Equal(t, types.APPSEC, events[1].Type, "Expected appsec event")
+				require.Equal(t, 1, len(responses), "expect response")
+				require.Equal(t, true, responses[0].InBandInterrupt, "expect no inband interrupt")
 			},
 		},
 	}
@@ -118,6 +186,12 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 }
 func TestAppsecRuleMatches(t *testing.T) {
 
+	/*
+		[x] basic matching rule
+		[x] basic non-matching rule
+		[ ] test the transformation
+		[ ] ?
+	*/
 	tests := []appsecRuleTest{
 		{
 			name:             "Basic matching rule",
@@ -138,14 +212,14 @@ func TestAppsecRuleMatches(t *testing.T) {
 				Args:       url.Values{"foo": []string{"toto"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, len(events), 2, "Expected 2 event")
-				require.Equal(t, events[0].Type, types.LOG, "Expected log event")
-				require.Equal(t, events[0].Appsec.HasInBandMatches, true, "Expected inband match")
-				require.Equal(t, len(events[0].Appsec.MatchedRules), 1, "Expected 1 rule match")
-				require.Equal(t, events[0].Appsec.MatchedRules[0]["msg"], "rule1", " rule name")
-				require.Equal(t, events[1].Type, types.APPSEC, "Expected appsec event")
-				require.Equal(t, len(responses), 1, "Expected 1 response")
-				require.Equal(t, responses[0].InBandInterrupt, true, "Expected deny action")
+				require.Equal(t, 2, len(events), "Expected 2 event")
+				require.Equal(t, types.LOG, events[0].Type, "Expected log event")
+				require.Equal(t, true, events[0].Appsec.HasInBandMatches, "Expected inband match")
+				require.Equal(t, 1, len(events[0].Appsec.MatchedRules), "Expected 1 rule match")
+				require.Equal(t, "rule1", events[0].Appsec.MatchedRules[0]["msg"], " rule name")
+				require.Equal(t, types.APPSEC, events[1].Type, "Expected appsec event")
+				require.Equal(t, 1, len(responses), "Expected 1 response")
+				require.Equal(t, true, responses[0].InBandInterrupt, "Expected deny action")
 			},
 		},
 		{
@@ -169,8 +243,8 @@ func TestAppsecRuleMatches(t *testing.T) {
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
 				require.Equal(t, 0, len(events))
 				require.Equal(t, 1, len(responses))
-				require.Equal(t, responses[0].InBandInterrupt, false)
-				require.Equal(t, responses[0].OutOfBandInterrupt, false)
+				require.Equal(t, false, responses[0].InBandInterrupt)
+				require.Equal(t, false, responses[0].OutOfBandInterrupt)
 			},
 		},
 	}
