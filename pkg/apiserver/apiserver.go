@@ -43,7 +43,6 @@ type APIServer struct {
 	papi           *Papi
 	httpServerTomb tomb.Tomb
 	consoleConfig  *csconfig.ConsoleConfig
-	isEnrolled     bool
 }
 
 func recoverFromPanic(c *gin.Context) {
@@ -226,7 +225,6 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	var (
 		apiClient         *apic
 		papiClient        *Papi
-		isMachineEnrolled = false
 	)
 
 	controller.AlertsAddChan = nil
@@ -245,8 +243,6 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		controller.AlertsAddChan = apiClient.AlertsAddChan
 
 		if apiClient.apiClient.IsEnrolled() {
-			isMachineEnrolled = true
-
 			log.Infof("Machine is enrolled in the console, Loading PAPI Client")
 
 			papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
@@ -279,7 +275,6 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		papi:           papiClient,
 		httpServerTomb: tomb.Tomb{},
 		consoleConfig:  config.ConsoleConfig,
-		isEnrolled:     isMachineEnrolled,
 	}, nil
 }
 
@@ -321,7 +316,7 @@ func (s *APIServer) Run(apiReady chan bool) error {
 		})
 
 		//csConfig.API.Server.ConsoleConfig.ShareCustomScenarios
-		if s.isEnrolled {
+		if s.apic.apiClient.IsEnrolled() {
 			if s.consoleConfig.ConsoleManagement != nil && *s.consoleConfig.ConsoleManagement {
 				if s.papi.URL != "" {
 					log.Infof("Starting PAPI decision receiver")
