@@ -33,6 +33,7 @@ func FormatDecisions(decisions []*ent.Decision) []*models.Decision {
 		}
 		results = append(results, &decision)
 	}
+
 	return results
 }
 
@@ -44,12 +45,14 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 	bouncerInfo, err := getBouncerFromContext(gctx)
 	if err != nil {
 		gctx.JSON(http.StatusUnauthorized, gin.H{"message": "not allowed"})
+
 		return
 	}
 
 	data, err = c.DBClient.QueryDecisionWithFilter(gctx.Request.URL.Query())
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
+
 		return
 	}
 
@@ -64,6 +67,7 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 
 	if gctx.Request.Method == http.MethodHead {
 		gctx.String(http.StatusOK, "")
+
 		return
 	}
 
@@ -77,20 +81,22 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 }
 
 func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
-	var err error
-
 	decisionIDStr := gctx.Param("decision_id")
+
 	decisionID, err := strconv.Atoi(decisionIDStr)
 	if err != nil {
 		gctx.JSON(http.StatusBadRequest, gin.H{"message": "decision_id must be valid integer"})
+
 		return
 	}
 	nbDeleted, deletedFromDB, err := c.DBClient.SoftDeleteDecisionByID(decisionID)
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
+
 		return
 	}
-	//transform deleted decisions to be sendable to capi
+
+	// transform deleted decisions to be sendable to capi
 	deletedDecisions := FormatDecisions(deletedFromDB)
 
 	if c.DecisionDeleteChan != nil {
@@ -105,13 +111,14 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 }
 
 func (c *Controller) DeleteDecisions(gctx *gin.Context) {
-	var err error
 	nbDeleted, deletedFromDB, err := c.DBClient.SoftDeleteDecisionsWithFilter(gctx.Request.URL.Query())
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
+
 		return
 	}
-	//transform deleted decisions to be sendable to capi
+
+	// transform deleted decisions to be sendable to capi
 	deletedDecisions := FormatDecisions(deletedFromDB)
 
 	if c.DecisionDeleteChan != nil {
@@ -121,6 +128,7 @@ func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 	deleteDecisionResp := models.DeleteDecisionResponse{
 		NbDeleted: nbDeleted,
 	}
+
 	gctx.JSON(http.StatusOK, deleteDecisionResp)
 }
 
@@ -147,6 +155,7 @@ func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFun
 			results := FormatDecisions(data)
 			for _, decision := range results {
 				decisionJSON, _ := json.Marshal(decision)
+
 				if needComma {
 					//respBuffer.Write([]byte(","))
 					gctx.Writer.Write([]byte(","))
@@ -158,6 +167,7 @@ func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFun
 				_, err := gctx.Writer.Write(decisionJSON)
 				if err != nil {
 					gctx.Writer.Flush()
+
 					return err
 				}
 				//respBuffer.Reset()
@@ -166,9 +176,11 @@ func writeStartupDecisions(gctx *gin.Context, filters map[string][]string, dbFun
 		log.Debugf("startup: %d decisions returned (limit: %d, lastid: %d)", len(data), limit, lastId)
 		if len(data) < limit {
 			gctx.Writer.Flush()
+
 			break
 		}
 	}
+
 	return nil
 }
 
@@ -195,6 +207,7 @@ func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPul
 			results := FormatDecisions(data)
 			for _, decision := range results {
 				decisionJSON, _ := json.Marshal(decision)
+
 				if needComma {
 					//respBuffer.Write([]byte(","))
 					gctx.Writer.Write([]byte(","))
@@ -206,6 +219,7 @@ func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPul
 				_, err := gctx.Writer.Write(decisionJSON)
 				if err != nil {
 					gctx.Writer.Flush()
+
 					return err
 				}
 				//respBuffer.Reset()
@@ -214,9 +228,11 @@ func writeDeltaDecisions(gctx *gin.Context, filters map[string][]string, lastPul
 		log.Debugf("startup: %d decisions returned (limit: %d, lastid: %d)", len(data), limit, lastId)
 		if len(data) < limit {
 			gctx.Writer.Flush()
+
 			break
 		}
 	}
+
 	return nil
 }
 
@@ -230,14 +246,13 @@ func (c *Controller) StreamDecisionChunked(gctx *gin.Context, bouncerInfo *ent.B
 
 	// if the blocker just started, return all decisions
 	if val, ok := gctx.Request.URL.Query()["startup"]; ok && val[0] == "true" {
-		//Active decisions
-
+		// Active decisions
 		err := writeStartupDecisions(gctx, filters, c.DBClient.QueryAllDecisionsWithFilters)
-
 		if err != nil {
 			log.Errorf("failed sending new decisions for startup: %v", err)
 			gctx.Writer.Write([]byte(`], "deleted": []}`))
 			gctx.Writer.Flush()
+
 			return err
 		}
 
@@ -248,6 +263,7 @@ func (c *Controller) StreamDecisionChunked(gctx *gin.Context, bouncerInfo *ent.B
 			log.Errorf("failed sending expired decisions for startup: %v", err)
 			gctx.Writer.Write([]byte(`]}`))
 			gctx.Writer.Flush()
+
 			return err
 		}
 
@@ -259,6 +275,7 @@ func (c *Controller) StreamDecisionChunked(gctx *gin.Context, bouncerInfo *ent.B
 			log.Errorf("failed sending new decisions for delta: %v", err)
 			gctx.Writer.Write([]byte(`], "deleted": []}`))
 			gctx.Writer.Flush()
+
 			return err
 		}
 
@@ -270,18 +287,21 @@ func (c *Controller) StreamDecisionChunked(gctx *gin.Context, bouncerInfo *ent.B
 			log.Errorf("failed sending expired decisions for delta: %v", err)
 			gctx.Writer.Write([]byte(`]}`))
 			gctx.Writer.Flush()
+
 			return err
 		}
 
 		gctx.Writer.Write([]byte(`]}`))
 		gctx.Writer.Flush()
 	}
+
 	return nil
 }
 
 func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *ent.Bouncer, streamStartTime time.Time, filters map[string][]string) error {
 	var data []*ent.Decision
 	var err error
+
 	ret := make(map[string][]*models.Decision, 0)
 	ret["new"] = []*models.Decision{}
 	ret["deleted"] = []*models.Decision{}
@@ -292,6 +312,7 @@ func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *en
 			if err != nil {
 				log.Errorf("failed querying decisions: %v", err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+
 				return err
 			}
 			//data = KeepLongestDecision(data)
@@ -302,11 +323,14 @@ func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *en
 			if err != nil {
 				log.Errorf("unable to query expired decision for '%s' : %v", bouncerInfo.Name, err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+
 				return err
 			}
+
 			ret["deleted"] = FormatDecisions(data)
 
 			gctx.JSON(http.StatusOK, ret)
+
 			return nil
 		}
 	}
@@ -316,6 +340,7 @@ func (c *Controller) StreamDecisionNonChunked(gctx *gin.Context, bouncerInfo *en
 	if err != nil {
 		log.Errorf("unable to query new decision for '%s' : %v", bouncerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+
 		return err
 	}
 	//data = KeepLongestDecision(data)

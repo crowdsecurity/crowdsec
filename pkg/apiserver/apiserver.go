@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-co-op/gocron"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/tomb.v2"
@@ -382,7 +382,9 @@ func (s *APIServer) listenAndServeURL(apiReady chan bool) {
 			if s.TLS.KeyFilePath == "" {
 				serverError <- errors.New("missing TLS key file")
 				return
-			} else if s.TLS.CertFilePath == "" {
+			}
+
+			if s.TLS.CertFilePath == "" {
 				serverError <- errors.New("missing TLS cert file")
 				return
 			}

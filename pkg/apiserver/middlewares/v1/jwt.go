@@ -36,14 +36,15 @@ func PayloadFunc(data interface{}) jwt.MapClaims {
 			identityKey: &value.MachineID,
 		}
 	}
+
 	return jwt.MapClaims{}
 }
 
 func IdentityHandler(c *gin.Context) interface{} {
 	claims := jwt.ExtractClaims(c)
-	machineId := claims[identityKey].(string)
+	machineID := claims[identityKey].(string)
 	return &models.WatcherAuthRequest{
-		MachineID: &machineId,
+		MachineID: &machineID,
 	}
 }
 
@@ -67,6 +68,7 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 		log.Error(err)
 		c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 		c.Abort()
+
 		return nil, fmt.Errorf("while trying to validate client cert: %w", err)
 	}
 
@@ -77,6 +79,7 @@ func (j *JWT) authTLS(c *gin.Context) (*authInput, error) {
 	}
 
 	ret.machineID = fmt.Sprintf("%s@%s", extractedCN, c.ClientIP())
+
 	ret.clientMachine, err = j.DbClient.Ent.Machine.Query().
 		Where(machine.MachineId(ret.machineID)).
 		First(j.DbClient.CTX)
