@@ -203,7 +203,6 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 		}
 
 		c.Set(bouncerContextKey, bouncer)
-
 		c.Next()
 	}
 }
