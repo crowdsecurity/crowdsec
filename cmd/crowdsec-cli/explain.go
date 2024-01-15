@@ -12,6 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/pkg/dumps"
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
@@ -35,7 +36,7 @@ func GetLineCountForFile(filepath string) (int, error) {
 	return lc, nil
 }
 
-type cliExplain struct {}
+type cliExplain struct{}
 
 func NewCLIExplain() *cliExplain {
 	return &cliExplain{}
@@ -109,6 +110,7 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 	flags.Bool("failures", false, "Only show failed lines")
 	flags.Bool("only-successful-parsers", false, "Only show successful parsers")
 	flags.String("crowdsec", "crowdsec", "Path to crowdsec")
+	flags.Bool("no-clean", false, "Don't clean runtime environment after tests")
 
 	return cmd
 }
@@ -136,9 +138,14 @@ func (cli cliExplain) run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	opts := hubtest.DumpOpts{}
+	opts := dumps.DumpOpts{}
 
 	opts.Details, err = flags.GetBool("verbose")
+	if err != nil {
+		return err
+	}
+
+	no_clean, err := flags.GetBool("no-clean")
 	if err != nil {
 		return err
 	}
@@ -172,6 +179,9 @@ func (cli cliExplain) run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("couldn't create a temporary directory to store cscli explain result: %s", err)
 	}
 	defer func() {
+		if no_clean {
+			return
+		}
 		if _, err := os.Stat(dir); !os.IsNotExist(err) {
 			if err := os.RemoveAll(dir); err != nil {
 				log.Errorf("unable to delete temporary directory '%s': %s", dir, err)
@@ -254,17 +264,17 @@ func (cli cliExplain) run(cmd *cobra.Command, args []string) error {
 	parserDumpFile := filepath.Join(dir, hubtest.ParserResultFileName)
 	bucketStateDumpFile := filepath.Join(dir, hubtest.BucketPourResultFileName)
 
-	parserDump, err := hubtest.LoadParserDump(parserDumpFile)
+	parserDump, err := dumps.LoadParserDump(parserDumpFile)
 	if err != nil {
 		return fmt.Errorf("unable to load parser dump result: %s", err)
 	}
 
-	bucketStateDump, err := hubtest.LoadBucketPourDump(bucketStateDumpFile)
+	bucketStateDump, err := dumps.LoadBucketPourDump(bucketStateDumpFile)
 	if err != nil {
 		return fmt.Errorf("unable to load bucket dump result: %s", err)
 	}
 
-	hubtest.DumpTree(*parserDump, *bucketStateDump, opts)
+	dumps.DumpTree(*parserDump, *bucketStateDump, opts)
 
 	return nil
 }
