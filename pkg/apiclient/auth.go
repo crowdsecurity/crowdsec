@@ -125,7 +125,7 @@ func (r retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 
 			select {
 			case <-req.Context().Done():
-				return resp, req.Context().Err()
+				return nil, req.Context().Err()
 			case <-time.After(time.Duration(backoff) * time.Second):
 			}
 		}
@@ -135,8 +135,8 @@ func (r retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) 
 		}
 
 		clonedReq := cloneRequest(req)
-		resp, err = r.next.RoundTrip(clonedReq)
 
+		resp, err = r.next.RoundTrip(clonedReq)
 		if err != nil {
 			if left := maxAttempts - i - 1; left > 0 {
 				log.Errorf("error while performing request: %s; %d retries left", err, left)
@@ -171,10 +171,11 @@ type JWTTransport struct {
 
 func (t *JWTTransport) refreshJwtToken() error {
 	var err error
+
 	if t.UpdateScenario != nil {
 		t.Scenarios, err = t.UpdateScenario()
 		if err != nil {
-			return fmt.Errorf("can't update scenario list: %s", err)
+			return fmt.Errorf("can't update scenario list: %w", err)
 		}
 
 		log.Debugf("scenarios list updated for '%s'", *t.MachineID)
@@ -185,8 +186,6 @@ func (t *JWTTransport) refreshJwtToken() error {
 		Password:  t.Password,
 		Scenarios: t.Scenarios,
 	}
-
-	var response models.WatcherAuthResponse
 
 	/*
 		we don't use the main client, so let's build the body
@@ -250,6 +249,8 @@ func (t *JWTTransport) refreshJwtToken() error {
 		}
 	}
 
+	var response models.WatcherAuthResponse
+
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 		return fmt.Errorf("unable to decode response: %w", err)
 	}
@@ -300,7 +301,7 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	if err != nil {
-		// we had an error (network error for example, or 401 because token is refused), reset the token ?
+		// we had an error (network error for example, or 401 because token is refused), reset the token?
 		t.Token = ""
 
 		return resp, fmt.Errorf("performing jwt auth: %w", err)
@@ -324,14 +325,13 @@ func (t *JWTTransport) ResetToken() {
 	t.refreshTokenMutex.Unlock()
 }
 
+// transport() returns a round tripper that retries once when the status is unauthorized, and 5 times when the infrastructure is overloaded.
 func (t *JWTTransport) transport() http.RoundTripper {
-	var transport http.RoundTripper
-	if t.Transport != nil {
-		transport = t.Transport
-	} else {
+	transport := t.Transport
+	if transport == nil {
 		transport = http.DefaultTransport
 	}
-	// a round tripper that retries once when the status is unauthorized and 5 times when infrastructure is overloaded
+
 	return &retryRoundTripper{
 		next: &retryRoundTripper{
 			next:             transport,

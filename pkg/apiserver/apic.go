@@ -2,21 +2,21 @@ package apiserver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/go-openapi/strfmt"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
-	"slices"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/trace"
@@ -652,11 +652,12 @@ func (a *apic) PullTop(forcePull bool) error {
 
 	addCounters, deleteCounters := makeAddAndDeleteCounters()
 	// process deleted decisions
-	if nbDeleted, err := a.HandleDeletedDecisionsV3(data.Deleted, deleteCounters); err != nil {
+	nbDeleted, err := a.HandleDeletedDecisionsV3(data.Deleted, deleteCounters)
+	if err != nil {
 		return err
-	} else {
-		log.Printf("capi/community-blocklist : %d explicit deletions", nbDeleted)
 	}
+
+	log.Printf("capi/community-blocklist : %d explicit deletions", nbDeleted)
 
 	if len(data.New) == 0 {
 		log.Infof("capi/community-blocklist : received 0 new entries (expected if you just installed crowdsec)")

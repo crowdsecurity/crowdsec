@@ -93,6 +93,7 @@ func PrometheusMachinesMiddleware() gin.HandlerFunc {
 					"method":  c.Request.Method}).Inc()
 			}
 		}
+
 		c.Next()
 	}
 }
@@ -106,6 +107,7 @@ func PrometheusBouncersMiddleware() gin.HandlerFunc {
 				"route":   c.Request.URL.Path,
 				"method":  c.Request.Method}).Inc()
 		}
+
 		c.Next()
 	}
 }
@@ -117,6 +119,7 @@ func PrometheusMiddleware() gin.HandlerFunc {
 			"route":  c.Request.URL.Path,
 			"method": c.Request.Method}).Inc()
 		c.Next()
+
 		elapsed := time.Since(startTime)
 		LapiResponseTime.With(prometheus.Labels{"method": c.Request.Method, "endpoint": c.Request.URL.Path}).Observe(elapsed.Seconds())
 	}

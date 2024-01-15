@@ -8,7 +8,6 @@ import (
 )
 
 func (c *Controller) HeartBeat(gctx *gin.Context) {
-
 	claims := jwt.ExtractClaims(gctx)
 	// TBD: use defined rather than hardcoded key to find back owner
 	machineID := claims["id"].(string)
@@ -17,5 +16,6 @@ func (c *Controller) HeartBeat(gctx *gin.Context) {
 		c.HandleDBErrors(gctx, err)
 		return
 	}
+
 	gctx.Status(http.StatusOK)
 }
