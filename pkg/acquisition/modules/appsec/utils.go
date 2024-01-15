@@ -202,8 +202,8 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 	})
 
 	for _, rule := range req.Tx.MatchedRules() {
-		if rule.Message() == "" {
-			r.logger.Tracef("discarding rule %d", rule.Rule().ID())
+		if rule.Message() == "" || rule.DisruptiveAction() == "pass" || rule.DisruptiveAction() == "allow" {
+			r.logger.Tracef("discarding rule %d (action: %s)", rule.Rule().ID(), rule.DisruptiveAction())
 			continue
 		}
 		kind := "outofband"
