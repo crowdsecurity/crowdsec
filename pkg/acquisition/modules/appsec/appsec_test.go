@@ -54,10 +54,10 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				Args:       url.Values{"foo": []string{"toto"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, 2, len(events), "expect no event")
+				require.Len(t, events, 2, "expect no event")
 				require.Equal(t, types.LOG, events[0].Type, "Expected log event")
 				require.Equal(t, types.APPSEC, events[1].Type, "Expected appsec event")
-				require.Equal(t, 1, len(responses), "expect response")
+				require.Len(t, responses, 1, "expect response")
 				require.Equal(t, 403, responses[0].HTTPResponseCode, "http return code should be 403")
 				require.Equal(t, "ban", responses[0].Action, "expect ban")
 
@@ -85,10 +85,10 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				Args:       url.Values{"foo": []string{"toto"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, 2, len(events), "expect no event")
+				require.Len(t, events, 2, "expect no event")
 				require.Equal(t, types.LOG, events[0].Type, "Expected log event")
 				require.Equal(t, types.APPSEC, events[1].Type, "Expected appsec event")
-				require.Equal(t, 1, len(responses), "expect response")
+				require.Len(t, responses, 1, "expect response")
 				require.Equal(t, 413, responses[0].HTTPResponseCode, "http return code should be 413")
 				require.Equal(t, "ban", responses[0].Action, "expect ban")
 			},
@@ -115,10 +115,10 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				Args:       url.Values{"foo": []string{"toto"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, 2, len(events), "expect no event")
+				require.Len(t, events, 2, "expect no event")
 				require.Equal(t, types.LOG, events[0].Type, "Expected log event")
 				require.Equal(t, types.APPSEC, events[1].Type, "Expected appsec event")
-				require.Equal(t, 1, len(responses), "expect response")
+				require.Len(t, responses, 1, "expect response")
 				require.Equal(t, "log", responses[0].Action, "expect log")
 			},
 		},
@@ -144,10 +144,10 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				Args:       url.Values{"foo": []string{"toto"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, 2, len(events), "expect no event")
+				require.Len(t, events, 2, "expect no event")
 				require.Equal(t, types.LOG, events[0].Type, "Expected log event")
 				require.Equal(t, types.APPSEC, events[1].Type, "Expected appsec event")
-				require.Equal(t, 1, len(responses), "expect response")
+				require.Len(t, responses, 1, "expect response")
 				require.Equal(t, "allow", responses[0].Action, "expect log")
 			},
 		},
@@ -173,7 +173,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				Args:       url.Values{"foo": []string{"toto"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, 1, len(responses), "expect response")
+				require.Len(t, responses, 1, "expect response")
 				//note: SetAction normalizes deny, ban and block to ban
 				require.Equal(t, "ban", responses[0].Action, "expect ban")
 			},
@@ -200,7 +200,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				Args:       url.Values{"foo": []string{"toto"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, 1, len(responses), "expect response")
+				require.Len(t, responses, 1, "expect response")
 				//note: SetAction normalizes deny, ban and block to ban
 				require.Equal(t, "captcha", responses[0].Action, "expect captcha")
 			},
@@ -227,10 +227,10 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				Args:       url.Values{"foo": []string{"toto"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, 2, len(events), "expect no event")
+				require.Len(t, events, 2, "expect no event")
 				require.Equal(t, types.LOG, events[0].Type, "Expected log event")
 				require.Equal(t, types.APPSEC, events[1].Type, "Expected appsec event")
-				require.Equal(t, 1, len(responses), "expect response")
+				require.Len(t, responses, 1, "expect response")
 				require.Equal(t, "foobar", responses[0].Action, "expect log")
 			},
 		},
@@ -256,9 +256,9 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				Args:       url.Values{"foo": []string{"toto"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, 1, len(events), "expect no event")
+				require.Len(t, events, 1, "expect no event")
 				require.Equal(t, types.LOG, events[0].Type, "Expected appsec event")
-				require.Equal(t, 1, len(responses), "expect response")
+				require.Len(t, responses, 1, "expect response")
 				require.Equal(t, "ban", responses[0].Action, "expect foobar")
 			},
 		},
@@ -284,9 +284,9 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				Args:       url.Values{"foo": []string{"toto"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, 1, len(events), "expect no event")
+				require.Len(t, events, 1, "expect no event")
 				require.Equal(t, types.APPSEC, events[0].Type, "Expected appsec event")
-				require.Equal(t, 1, len(responses), "expect response")
+				require.Len(t, responses, 1, "expect response")
 				require.Equal(t, "ban", responses[0].Action, "expect foobar")
 			},
 		},
@@ -329,10 +329,10 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:       url.Values{"foo": []string{"toto"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, 0, len(events), "expect no event")
-				require.Equal(t, 1, len(responses), "expect response")
-				require.Equal(t, false, responses[0].InBandInterrupt, "expect no inband interrupt")
-				require.Equal(t, false, responses[0].OutOfBandInterrupt, "expect no outband interrupt")
+				require.Empty(t, events, "expect no event")
+				require.Len(t, responses, 1, "expect response")
+				require.False(t, responses[0].InBandInterrupt, "expect no inband interrupt")
+				require.False(t, responses[0].OutOfBandInterrupt, "expect no outband interrupt")
 			},
 		},
 		{
@@ -357,14 +357,14 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:       url.Values{"foo": []string{"toto"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, 2, len(events), "Expected 2 event")
+				require.Len(t, events, 2, "Expected 2 event")
 				require.Equal(t, types.LOG, events[0].Type, "Expected log event")
-				require.Equal(t, true, events[0].Appsec.HasInBandMatches, "Expected inband match")
-				require.Equal(t, 1, len(events[0].Appsec.MatchedRules), "Expected 1 rule match")
+				require.True(t, events[0].Appsec.HasInBandMatches, "Expected inband match")
+				require.Len(t, events[0].Appsec.MatchedRules, 1, "Expected 1 rule match")
 				require.Equal(t, "rule1", events[0].Appsec.MatchedRules[0]["msg"], " rule name")
 				require.Equal(t, types.APPSEC, events[1].Type, "Expected appsec event")
-				require.Equal(t, 1, len(responses), "expect response")
-				require.Equal(t, true, responses[0].InBandInterrupt, "expect no inband interrupt")
+				require.Len(t, responses, 1, "expect response")
+				require.True(t, responses[0].InBandInterrupt, "expect no inband interrupt")
 			},
 		},
 		{
@@ -389,10 +389,10 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:       url.Values{"foo": []string{"toto"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, 0, len(events), "expect no event")
-				require.Equal(t, 1, len(responses), "expect response")
-				require.Equal(t, false, responses[0].InBandInterrupt, "expect no inband interrupt")
-				require.Equal(t, false, responses[0].OutOfBandInterrupt, "expect no outband interrupt")
+				require.Empty(t, events, "expect no event")
+				require.Len(t, responses, 1, "expect response")
+				require.False(t, responses[0].InBandInterrupt, "expect no inband interrupt")
+				require.False(t, responses[0].OutOfBandInterrupt, "expect no outband interrupt")
 			},
 		},
 		{
@@ -417,10 +417,10 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:       url.Values{"foo": []string{"toto"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, 0, len(events), "expect no event")
-				require.Equal(t, 1, len(responses), "expect response")
-				require.Equal(t, false, responses[0].InBandInterrupt, "expect no inband interrupt")
-				require.Equal(t, false, responses[0].OutOfBandInterrupt, "expect no outband interrupt")
+				require.Empty(t, events, "expect no event")
+				require.Len(t, responses, 1, "expect response")
+				require.False(t, responses[0].InBandInterrupt, "expect no inband interrupt")
+				require.False(t, responses[0].OutOfBandInterrupt, "expect no outband interrupt")
 			},
 		},
 		{
@@ -445,10 +445,10 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:       url.Values{"foo": []string{"toto"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, 0, len(events), "expect no event")
-				require.Equal(t, 1, len(responses), "expect response")
-				require.Equal(t, false, responses[0].InBandInterrupt, "expect no inband interrupt")
-				require.Equal(t, false, responses[0].OutOfBandInterrupt, "expect no outband interrupt")
+				require.Empty(t, events, "expect no event")
+				require.Len(t, responses, 1, "expect response")
+				require.False(t, responses[0].InBandInterrupt, "expect no inband interrupt")
+				require.False(t, responses[0].OutOfBandInterrupt, "expect no outband interrupt")
 			},
 		},
 		{
@@ -470,16 +470,16 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:       url.Values{"foo": []string{"toto"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, 1, len(events), "expect no event")
+				require.Len(t, events, 1, "expect no event")
 				require.Equal(t, types.LOG, events[0].Type, "Expected appsec event")
-				require.Equal(t, true, events[0].Appsec.HasOutBandMatches, "Expected oob event")
-				require.Equal(t, false, events[0].Appsec.HasInBandMatches, "Expected oob event")
-				require.Equal(t, 1, len(events[0].Appsec.MatchedRules), "Expected 1 rule match")
+				require.True(t, events[0].Appsec.HasOutBandMatches, "Expected oob event")
+				require.False(t, events[0].Appsec.HasInBandMatches, "Expected oob event")
+				require.Len(t, events[0].Appsec.MatchedRules, 1, "Expected 1 rule match")
 				require.Equal(t, "rulez", events[0].Appsec.MatchedRules[0]["msg"], " rule name")
 				//maybe surprising, but response won't mention OOB event, as it's sent as soon as the inband phase is over.
-				require.Equal(t, 1, len(responses), "expect response")
-				require.Equal(t, false, responses[0].InBandInterrupt, "expect no inband interrupt")
-				require.Equal(t, false, responses[0].OutOfBandInterrupt, "expect no outband interrupt")
+				require.Len(t, responses, 1, "expect response")
+				require.False(t, responses[0].InBandInterrupt, "expect no inband interrupt")
+				require.False(t, responses[0].OutOfBandInterrupt, "expect no outband interrupt")
 			},
 		},
 		{
@@ -504,8 +504,8 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:       url.Values{"foo": []string{"toto"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, 2, len(events), "expect no event")
-				require.Equal(t, 1, len(responses), "expect response")
+				require.Len(t, events, 2, "expect no event")
+				require.Len(t, responses, 1, "expect response")
 				require.Equal(t, "foobar", responses[0].Action, "action")
 			},
 		},
@@ -531,8 +531,8 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:       url.Values{"foo": []string{"toto"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, 2, len(events), "expect no event")
-				require.Equal(t, 1, len(responses), "expect response")
+				require.Len(t, events, 2, "expect no event")
+				require.Len(t, responses, 1, "expect response")
 				require.Equal(t, "foobar", responses[0].Action, "action")
 			},
 		},
@@ -558,8 +558,8 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				Args:       url.Values{"foo": []string{"toto"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, 2, len(events), "expect no event")
-				require.Equal(t, 1, len(responses), "expect response")
+				require.Len(t, events, 2, "expect no event")
+				require.Len(t, responses, 1, "expect response")
 				require.Equal(t, "foobar", responses[0].Action, "action")
 			},
 		},
@@ -599,14 +599,14 @@ func TestAppsecRuleMatches(t *testing.T) {
 				Args:       url.Values{"foo": []string{"toto"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, 2, len(events), "Expected 2 event")
+				require.Len(t, events, 2, "Expected 2 event")
 				require.Equal(t, types.LOG, events[0].Type, "Expected log event")
-				require.Equal(t, true, events[0].Appsec.HasInBandMatches, "Expected inband match")
-				require.Equal(t, 1, len(events[0].Appsec.MatchedRules), "Expected 1 rule match")
+				require.True(t, events[0].Appsec.HasInBandMatches, "Expected inband match")
+				require.Len(t, events[0].Appsec.MatchedRules, 1, "Expected 1 rule match")
 				require.Equal(t, "rule1", events[0].Appsec.MatchedRules[0]["msg"], " rule name")
 				require.Equal(t, types.APPSEC, events[1].Type, "Expected appsec event")
-				require.Equal(t, 1, len(responses), "Expected 1 response")
-				require.Equal(t, true, responses[0].InBandInterrupt, "Expected deny action")
+				require.Len(t, responses, 1, "Expected 1 response")
+				require.True(t, responses[0].InBandInterrupt, "Expected deny action")
 			},
 		},
 		{
@@ -628,10 +628,10 @@ func TestAppsecRuleMatches(t *testing.T) {
 				Args:       url.Values{"foo": []string{"tutu"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
-				require.Equal(t, 0, len(events))
-				require.Equal(t, 1, len(responses))
-				require.Equal(t, false, responses[0].InBandInterrupt)
-				require.Equal(t, false, responses[0].OutOfBandInterrupt)
+				require.Empty(t, events)
+				require.Len(t, responses, 1)
+				require.False(t, responses[0].InBandInterrupt)
+				require.False(t, responses[0].OutOfBandInterrupt)
 			},
 		},
 	}
