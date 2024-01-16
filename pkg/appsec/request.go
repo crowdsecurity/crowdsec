@@ -276,18 +276,16 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 	if contentLength < 0 {
 		contentLength = 0
 	}
-
 	body := make([]byte, contentLength)
 	if r.Body != nil {
 		_, err = io.ReadFull(r.Body, body)
 		if err != nil {
 			return ParsedRequest{}, fmt.Errorf("unable to read body: %s", err)
 		}
-		r.Body.Close()
 		// reset the original body back as it's been read, i'm not sure its needed?
 		r.Body = io.NopCloser(bytes.NewBuffer(body))
-	}
 
+	}
 	clientIP := r.Header.Get(IPHeaderName)
 	if clientIP == "" {
 		return ParsedRequest{}, fmt.Errorf("missing '%s' header", IPHeaderName)
