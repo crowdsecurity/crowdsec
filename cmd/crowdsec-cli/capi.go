@@ -38,7 +38,7 @@ func (cli cliCapi) NewCommand() *cobra.Command {
 		Short:             "Manage interaction with Central API (CAPI)",
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			if err := require.LAPI(csConfig); err != nil {
 				return err
 			}
@@ -58,15 +58,17 @@ func (cli cliCapi) NewCommand() *cobra.Command {
 }
 
 func (cli cliCapi) NewRegisterCmd() *cobra.Command {
-	var capiUserPrefix string
-	var outputFile string
+	var (
+		capiUserPrefix string
+		outputFile string
+	)
 
 	var cmd = &cobra.Command{
 		Use:               "register",
 		Short:             "Register to Central API (CAPI)",
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			var err error
 			capiUser, err := generateID(capiUserPrefix)
 			if err != nil {
@@ -115,7 +117,7 @@ func (cli cliCapi) NewRegisterCmd() *cobra.Command {
 				}
 				log.Printf("Central API credentials written to '%s'", dumpFile)
 			} else {
-				fmt.Printf("%s\n", string(apiConfigDump))
+				fmt.Println(string(apiConfigDump))
 			}
 
 			log.Warning(ReloadMessage())
@@ -126,6 +128,7 @@ func (cli cliCapi) NewRegisterCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
 	cmd.Flags().StringVar(&capiUserPrefix, "schmilblick", "", "set a schmilblick (use in tests only)")
+
 	if err := cmd.Flags().MarkHidden("schmilblick"); err != nil {
 		log.Fatalf("failed to hide flag: %s", err)
 	}
@@ -134,18 +137,14 @@ func (cli cliCapi) NewRegisterCmd() *cobra.Command {
 }
 
 func (cli cliCapi) NewStatusCmd() *cobra.Command {
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:               "status",
 		Short:             "Check status with the Central API (CAPI)",
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if csConfig.API.Server.OnlineClient == nil {
-				return fmt.Errorf("please provide credentials for the Central API (CAPI) in '%s'", csConfig.API.Server.OnlineClient.CredentialsFilePath)
-			}
-
-			if csConfig.API.Server.OnlineClient.Credentials == nil {
-				return fmt.Errorf("no credentials for Central API (CAPI) in '%s'", csConfig.API.Server.OnlineClient.CredentialsFilePath)
+		RunE: func(_ *cobra.Command, _ []string) error {
+			if err := require.CAPIRegistered(csConfig); err != nil {
+				return err
 			}
 
 			password := strfmt.Password(csConfig.API.Server.OnlineClient.Credentials.Password)

@@ -119,6 +119,11 @@ func (r *AppsecRunner) processRequest(tx appsec.ExtendedTransaction, request *ap
 	defer func() {
 		request.Tx.ProcessLogging()
 		//We don't close the transaction here, as it will reset coraza internal state and break variable tracking
+
+		err := r.AppsecRuntime.ProcessPostEvalRules(request)
+		if err != nil {
+			r.logger.Errorf("unable to process PostEval rules: %s", err)
+		}
 	}()
 
 	//pre eval (expr) rules
@@ -180,11 +185,6 @@ func (r *AppsecRunner) processRequest(tx appsec.ExtendedTransaction, request *ap
 
 	if in != nil {
 		r.logger.Debugf("rules matched for body : %d", in.RuleID)
-	}
-
-	err = r.AppsecRuntime.ProcessPostEvalRules(request)
-	if err != nil {
-		r.logger.Errorf("unable to process PostEval rules: %s", err)
 	}
 
 	return nil
@@ -272,7 +272,7 @@ func (r *AppsecRunner) handleOutBandInterrupt(request *appsec.ParsedRequest) {
 		r.logger.Errorf("unable to accumulate tx to event : %s", err)
 	}
 	if in := request.Tx.Interruption(); in != nil {
-		r.logger.Debugf("inband rules matched : %d", in.RuleID)
+		r.logger.Debugf("outband rules matched : %d", in.RuleID)
 		r.AppsecRuntime.Response.OutOfBandInterrupt = true
 
 		err = r.AppsecRuntime.ProcessOnMatchRules(request, evt)

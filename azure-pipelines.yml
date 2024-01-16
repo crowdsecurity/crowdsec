@@ -25,9 +25,9 @@ stages:
               custom: 'tool'
               arguments: 'install --global SignClient --version 1.3.155'
           - task: GoTool@0
-            displayName: "Install Go 1.20"
+            displayName: "Install Go"
             inputs:
-                version: '1.21.5'
+                version: '1.21.6'
 
           - pwsh: |
               choco install -y make

@@ -9,6 +9,16 @@ func TestVPatchRuleString(t *testing.T) {
 		expected string
 	}{
 		{
+			name: "Collection count",
+			rule: CustomRule{
+				Zones:     []string{"ARGS"},
+				Variables: []string{"foo"},
+				Match:     match{Type: "eq", Value: "1"},
+				Transform: []string{"count"},
+			},
+			expected: `SecRule &ARGS_GET:foo "@eq 1" "id:853070236,phase:2,deny,log,msg:'Collection count',tag:'crowdsec-Collection count'"`,
+		},
+		{
 			name: "Base Rule",
 			rule: CustomRule{
 				Zones:     []string{"ARGS"},

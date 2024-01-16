@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-co-op/gocron"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/tomb.v2"
@@ -43,7 +43,6 @@ type APIServer struct {
 	papi           *Papi
 	httpServerTomb tomb.Tomb
 	consoleConfig  *csconfig.ConsoleConfig
-	isEnrolled     bool
 }
 
 func recoverFromPanic(c *gin.Context) {
@@ -226,7 +225,6 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	var (
 		apiClient         *apic
 		papiClient        *Papi
-		isMachineEnrolled = false
 	)
 
 	controller.AlertsAddChan = nil
@@ -245,16 +243,16 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		controller.AlertsAddChan = apiClient.AlertsAddChan
 
 		if apiClient.apiClient.IsEnrolled() {
-			isMachineEnrolled = true
-
 			log.Infof("Machine is enrolled in the console, Loading PAPI Client")
 
-			papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
-			if err != nil {
-				return nil, err
-			}
+			if config.ConsoleConfig.IsPAPIEnabled() {
+				papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
+				if err != nil {
+					return nil, err
+				}
 
-			controller.DecisionDeleteChan = papiClient.Channels.DeleteDecisionChannel
+				controller.DecisionDeleteChan = papiClient.Channels.DeleteDecisionChannel
+			}
 		} else {
 			log.Errorf("Machine is not enrolled in the console, can't synchronize with the console")
 		}
@@ -279,7 +277,6 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		papi:           papiClient,
 		httpServerTomb: tomb.Tomb{},
 		consoleConfig:  config.ConsoleConfig,
-		isEnrolled:     isMachineEnrolled,
 	}, nil
 }
 
@@ -321,8 +318,8 @@ func (s *APIServer) Run(apiReady chan bool) error {
 		})
 
 		//csConfig.API.Server.ConsoleConfig.ShareCustomScenarios
-		if s.isEnrolled {
-			if s.consoleConfig.ConsoleManagement != nil && *s.consoleConfig.ConsoleManagement {
+		if s.apic.apiClient.IsEnrolled() {
+			if s.consoleConfig.IsPAPIEnabled() {
 				if s.papi.URL != "" {
 					log.Infof("Starting PAPI decision receiver")
 					s.papi.pullTomb.Go(func() error {
@@ -382,7 +379,9 @@ func (s *APIServer) listenAndServeURL(apiReady chan bool) {
 			if s.TLS.KeyFilePath == "" {
 				serverError <- errors.New("missing TLS key file")
 				return
-			} else if s.TLS.CertFilePath == "" {
+			}
+
+			if s.TLS.CertFilePath == "" {
 				serverError <- errors.New("missing TLS cert file")
 				return
 			}

@@ -2,7 +2,9 @@ package alertcontext
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -13,6 +15,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
+
+var ErrNoContextData = errors.New("no context to send")
 
 // this file is here to avoid circular dependencies between the configuration and the hub
 
@@ -25,7 +29,7 @@ type HubItemWrapper struct {
 // mergeContext adds the context from src to dest.
 func mergeContext(dest map[string][]string, src map[string][]string) error {
 	if len(src) == 0 {
-		return fmt.Errorf("no context data to merge")
+		return ErrNoContextData
 	}
 
 	for k, v := range src {
@@ -86,8 +90,9 @@ func addContextFromFile(toSend map[string][]string, filePath string) error {
 	}
 
 	err = mergeContext(toSend, newContext)
-	if err != nil {
-		log.Warningf("while merging context from %s: %s", filePath, err)
+	if err != nil && !errors.Is(err, ErrNoContextData) {
+		// having an empty console/context.yaml is not an error
+		return err
 	}
 
 	return nil
@@ -125,8 +130,10 @@ func LoadConsoleContext(c *csconfig.Config, hub *cwhub.Hub) error {
 	}
 
 	if err := addContextFromFile(c.Crowdsec.ContextToSend, c.Crowdsec.ConsoleContextPath); err != nil {
-		if !ignoreMissing || !os.IsNotExist(err) {
+		if !errors.Is(err, fs.ErrNotExist) {
 			return err
+		} else if !ignoreMissing {
+			log.Warningf("while merging context from %s: %s", c.Crowdsec.ConsoleContextPath, err)
 		}
 	}
 
