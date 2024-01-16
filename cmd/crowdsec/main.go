@@ -372,7 +372,7 @@ func main() {
 	err := StartRunSvc()
 	if err != nil {
 		pprof.StopCPUProfile()
-		log.Fatal(err)
+		log.Fatal(err) //nolint:gocritic // Disable warning for the defer pprof.StopCPUProfile() call
 	}
 
 	os.Exit(0)
