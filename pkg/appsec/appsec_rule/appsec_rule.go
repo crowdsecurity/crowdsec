@@ -25,7 +25,7 @@ rules:
 
 */
 
-type match struct {
+type Match struct {
 	Type  string `yaml:"type"`
 	Value string `yaml:"value"`
 	Not   bool   `yaml:"not,omitempty"`
@@ -37,7 +37,7 @@ type CustomRule struct {
 	Zones     []string `yaml:"zones"`
 	Variables []string `yaml:"variables"`
 
-	Match     match        `yaml:"match"`
+	Match     Match        `yaml:"match"`
 	Transform []string     `yaml:"transform"` //t:lowercase, t:uppercase, etc
 	And       []CustomRule `yaml:"and,omitempty"`
 	Or        []CustomRule `yaml:"or,omitempty"`
