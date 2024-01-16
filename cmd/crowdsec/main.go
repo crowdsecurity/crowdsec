@@ -357,6 +357,7 @@ func main() {
 
 	err := StartRunSvc()
 	if err != nil {
+		pprof.StopCPUProfile()
 		log.Fatal(err)
 	}
 	os.Exit(0)
