@@ -81,7 +81,7 @@ pull_request:
             failure: Missing kind label to generate release automatically.
 
     - prefix: area
-      list: [ "agent", "local-api", "cscli", "security", "configuration"]
+      list: [ "agent", "local-api", "cscli", "security", "configuration", "appsec"]
       multiple: true
       needs:
         comment: |
@@ -89,6 +89,7 @@ pull_request:
           * `/area agent`
           * `/area local-api`
           * `/area cscli`
+          * `/area appsec`
           * `/area security`
           * `/area configuration`
 
