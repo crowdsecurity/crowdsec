@@ -13,7 +13,7 @@ func TestVPatchRuleString(t *testing.T) {
 			rule: CustomRule{
 				Zones:     []string{"ARGS"},
 				Variables: []string{"foo"},
-				Match:     Match{Type: "regex", Value: "[^a-zA-Z0-9]"},
+				Match:     MatchRule{Type: "regex", Value: "[^a-zA-Z]"},
 				Transform: []string{"lowercase"},
 			},
 			expected: `SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:2203944045,phase:2,deny,log,msg:'Base Rule',tag:'crowdsec-Base Rule',t:lowercase"`,
@@ -23,7 +23,7 @@ func TestVPatchRuleString(t *testing.T) {
 			rule: CustomRule{
 				Zones:     []string{"ARGS"},
 				Variables: []string{"foo", "bar"},
-				Match:     Match{Type: "regex", Value: "[^a-zA-Z]"},
+				Match:     MatchRule{Type: "regex", Value: "[^a-zA-Z]"},
 				Transform: []string{"lowercase"},
 			},
 			expected: `SecRule ARGS_GET:foo|ARGS_GET:bar "@rx [^a-zA-Z]" "id:385719930,phase:2,deny,log,msg:'One zone, multi var',tag:'crowdsec-One zone, multi var',t:lowercase"`,
@@ -32,7 +32,7 @@ func TestVPatchRuleString(t *testing.T) {
 			name: "Base Rule #2",
 			rule: CustomRule{
 				Zones: []string{"METHOD"},
-				Match: Match{Type: "startsWith", Value: "toto"},
+				Match: MatchRule{Type: "startsWith", Value: "toto"},
 			},
 			expected: `SecRule REQUEST_METHOD "@beginsWith toto" "id:2759779019,phase:2,deny,log,msg:'Base Rule #2',tag:'crowdsec-Base Rule #2'"`,
 		},
@@ -40,7 +40,7 @@ func TestVPatchRuleString(t *testing.T) {
 			name: "Base Negative Rule",
 			rule: CustomRule{
 				Zones: []string{"METHOD"},
-				Match: Match{Type: "startsWith", Value: "toto", Not: true},
+				Match: MatchRule{Type: "startsWith", Value: "toto", Not: true},
 			},
 			expected: `SecRule REQUEST_METHOD "!@beginsWith toto" "id:3966251995,phase:2,deny,log,msg:'Base Negative Rule',tag:'crowdsec-Base Negative Rule'"`,
 		},
@@ -49,7 +49,7 @@ func TestVPatchRuleString(t *testing.T) {
 			rule: CustomRule{
 				Zones:     []string{"ARGS", "BODY_ARGS"},
 				Variables: []string{"foo"},
-				Match:     Match{Type: "regex", Value: "[^a-zA-Z]"},
+				Match:     MatchRule{Type: "regex", Value: "[^a-zA-Z]"},
 				Transform: []string{"lowercase"},
 			},
 			expected: `SecRule ARGS_GET:foo|ARGS_POST:foo "@rx [^a-zA-Z]" "id:3387135861,phase:2,deny,log,msg:'Multiple Zones',tag:'crowdsec-Multiple Zones',t:lowercase"`,
@@ -59,7 +59,7 @@ func TestVPatchRuleString(t *testing.T) {
 			rule: CustomRule{
 				Zones:     []string{"ARGS", "BODY_ARGS"},
 				Variables: []string{"foo", "bar"},
-				Match:     Match{Type: "regex", Value: "[^a-zA-Z]"},
+				Match:     MatchRule{Type: "regex", Value: "[^a-zA-Z]"},
 				Transform: []string{"lowercase"},
 			},
 			expected: `SecRule ARGS_GET:foo|ARGS_GET:bar|ARGS_POST:foo|ARGS_POST:bar "@rx [^a-zA-Z]" "id:1119773585,phase:2,deny,log,msg:'Multiple Zones Multi Var',tag:'crowdsec-Multiple Zones Multi Var',t:lowercase"`,
@@ -68,7 +68,7 @@ func TestVPatchRuleString(t *testing.T) {
 			name: "Multiple Zones No Vars",
 			rule: CustomRule{
 				Zones:     []string{"ARGS", "BODY_ARGS"},
-				Match:     Match{Type: "regex", Value: "[^a-zA-Z]"},
+				Match:     MatchRule{Type: "regex", Value: "[^a-zA-Z]"},
 				Transform: []string{"lowercase"},
 			},
 			expected: `SecRule ARGS_GET|ARGS_POST "@rx [^a-zA-Z]" "id:2020110336,phase:2,deny,log,msg:'Multiple Zones No Vars',tag:'crowdsec-Multiple Zones No Vars',t:lowercase"`,
@@ -81,13 +81,13 @@ func TestVPatchRuleString(t *testing.T) {
 
 						Zones:     []string{"ARGS"},
 						Variables: []string{"foo"},
-						Match:     Match{Type: "regex", Value: "[^a-zA-Z]"},
+						Match:     MatchRule{Type: "regex", Value: "[^a-zA-Z]"},
 						Transform: []string{"lowercase"},
 					},
 					{
 						Zones:     []string{"ARGS"},
 						Variables: []string{"bar"},
-						Match:     Match{Type: "regex", Value: "[^a-zA-Z]"},
+						Match:     MatchRule{Type: "regex", Value: "[^a-zA-Z]"},
 						Transform: []string{"lowercase"},
 					},
 				},
@@ -102,13 +102,13 @@ SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:1865217529,phase:2,deny,log,msg:'Basic 
 					{
 						Zones:     []string{"ARGS"},
 						Variables: []string{"foo"},
-						Match:     Match{Type: "regex", Value: "[^a-zA-Z]"},
+						Match:     MatchRule{Type: "regex", Value: "[^a-zA-Z]"},
 						Transform: []string{"lowercase"},
 					},
 					{
 						Zones:     []string{"ARGS"},
 						Variables: []string{"bar"},
-						Match:     Match{Type: "regex", Value: "[^a-zA-Z]"},
+						Match:     MatchRule{Type: "regex", Value: "[^a-zA-Z]"},
 						Transform: []string{"lowercase"},
 					},
 				},
@@ -123,19 +123,19 @@ SecRule ARGS_GET:bar "@rx [^a-zA-Z]" "id:271441587,phase:2,deny,log,msg:'Basic O
 					{
 						Zones:     []string{"ARGS"},
 						Variables: []string{"foo"},
-						Match:     Match{Type: "regex", Value: "[^a-zA-Z]"},
+						Match:     MatchRule{Type: "regex", Value: "[^a-zA-Z]"},
 						Transform: []string{"lowercase"},
 						Or: []CustomRule{
 							{
 								Zones:     []string{"ARGS"},
 								Variables: []string{"foo"},
-								Match:     Match{Type: "regex", Value: "[^a-zA-Z]"},
+								Match:     MatchRule{Type: "regex", Value: "[^a-zA-Z]"},
 								Transform: []string{"lowercase"},
 							},
 							{
 								Zones:     []string{"ARGS"},
 								Variables: []string{"bar"},
-								Match:     Match{Type: "regex", Value: "[^a-zA-Z]"},
+								Match:     MatchRule{Type: "regex", Value: "[^a-zA-Z]"},
 								Transform: []string{"lowercase"},
 							},
 						},
