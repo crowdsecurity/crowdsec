@@ -13,7 +13,7 @@ func TestVPatchRuleString(t *testing.T) {
 			rule: CustomRule{
 				Zones:     []string{"ARGS"},
 				Variables: []string{"foo"},
-				Match:     Match{Type: "regex", Value: "[^a-zA-Z]"},
+				Match:     Match{Type: "regex", Value: "[^a-zA-Z0-9]"},
 				Transform: []string{"lowercase"},
 			},
 			expected: `SecRule ARGS_GET:foo "@rx [^a-zA-Z]" "id:2203944045,phase:2,deny,log,msg:'Base Rule',tag:'crowdsec-Base Rule',t:lowercase"`,
