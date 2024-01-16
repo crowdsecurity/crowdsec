@@ -39,7 +39,7 @@ func (h *Hook) Build(hookStage int) error {
 	case hookPreEval:
 		ctx = GetPreEvalEnv(&AppsecRuntimeConfig{}, &ParsedRequest{})
 	case hookPostEval:
-		ctx = GetPostEvalEnv(&AppsecRuntimeConfig{}, &ParsedRequest{})
+		ctx = GetPostEvalEnv(&AppsecRuntimeConfig{}, &ParsedRequest{}, false)
 	case hookOnMatch:
 		ctx = GetOnMatchEnv(&AppsecRuntimeConfig{}, &ParsedRequest{}, types.Event{})
 	}
@@ -370,10 +370,10 @@ func (w *AppsecRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error 
 	return nil
 }
 
-func (w *AppsecRuntimeConfig) ProcessPostEvalRules(request *ParsedRequest) error {
+func (w *AppsecRuntimeConfig) ProcessPostEvalRules(request *ParsedRequest, hasMatches bool) error {
 	for _, rule := range w.CompiledPostEval {
 		if rule.FilterExpr != nil {
-			output, err := exprhelpers.Run(rule.FilterExpr, GetPostEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
+			output, err := exprhelpers.Run(rule.FilterExpr, GetPostEvalEnv(w, request, hasMatches), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				return fmt.Errorf("unable to run appsec post_eval filter %s : %w", rule.Filter, err)
 			}
@@ -390,7 +390,7 @@ func (w *AppsecRuntimeConfig) ProcessPostEvalRules(request *ParsedRequest) error
 		}
 		// here means there is no filter or the filter matched
 		for _, applyExpr := range rule.ApplyExpr {
-			_, err := exprhelpers.Run(applyExpr, GetPostEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
+			_, err := exprhelpers.Run(applyExpr, GetPostEvalEnv(w, request, hasMatches), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
 				log.Errorf("unable to apply appsec post_eval expr: %s", err)
 				continue

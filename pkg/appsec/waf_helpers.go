@@ -35,12 +35,13 @@ func GetPreEvalEnv(w *AppsecRuntimeConfig, request *ParsedRequest) map[string]in
 	}
 }
 
-func GetPostEvalEnv(w *AppsecRuntimeConfig, request *ParsedRequest) map[string]interface{} {
+func GetPostEvalEnv(w *AppsecRuntimeConfig, request *ParsedRequest, hasMatches bool) map[string]interface{} {
 	return map[string]interface{}{
 		"IsInBand":    request.IsInBand,
 		"IsOutBand":   request.IsOutBand,
 		"DumpRequest": request.DumpRequest,
 		"req":         request.HTTPRequest,
+		"HasMatches":  hasMatches,
 	}
 }
 
