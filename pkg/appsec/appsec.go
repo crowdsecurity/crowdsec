@@ -540,7 +540,7 @@ func (w *AppsecRuntimeConfig) SetAction(action string) error {
 	case "captcha":
 		w.Response.Action = action
 	default:
-		return fmt.Errorf("unknown action %s", action)
+		w.Response.Action = action
 	}
 	return nil
 }
