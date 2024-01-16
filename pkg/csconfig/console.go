@@ -30,6 +30,13 @@ type ConsoleConfig struct {
 	ShareContext          *bool `yaml:"share_context"`
 }
 
+func (c *ConsoleConfig) IsPAPIEnabled() bool {
+	if c == nil || c.ConsoleManagement == nil {
+		return false
+	}
+	return *c.ConsoleManagement
+}
+
 func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 	c.ConsoleConfig = &ConsoleConfig{}
 	if _, err := os.Stat(c.ConsoleConfigPath); err != nil && os.IsNotExist(err) {

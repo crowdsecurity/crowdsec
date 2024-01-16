@@ -245,12 +245,14 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		if apiClient.apiClient.IsEnrolled() {
 			log.Infof("Machine is enrolled in the console, Loading PAPI Client")
 
-			papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
-			if err != nil {
-				return nil, err
-			}
+			if config.ConsoleConfig.IsPAPIEnabled() {
+				papiClient, err = NewPAPI(apiClient, dbClient, config.ConsoleConfig, *config.PapiLogLevel)
+				if err != nil {
+					return nil, err
+				}
 
-			controller.DecisionDeleteChan = papiClient.Channels.DeleteDecisionChannel
+				controller.DecisionDeleteChan = papiClient.Channels.DeleteDecisionChannel
+			}
 		} else {
 			log.Errorf("Machine is not enrolled in the console, can't synchronize with the console")
 		}
@@ -317,7 +319,7 @@ func (s *APIServer) Run(apiReady chan bool) error {
 
 		//csConfig.API.Server.ConsoleConfig.ShareCustomScenarios
 		if s.apic.apiClient.IsEnrolled() {
-			if s.consoleConfig.ConsoleManagement != nil && *s.consoleConfig.ConsoleManagement {
+			if s.consoleConfig.IsPAPIEnabled() {
 				if s.papi.URL != "" {
 					log.Infof("Starting PAPI decision receiver")
 					s.papi.pullTomb.Go(func() error {
