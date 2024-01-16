@@ -55,8 +55,8 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.LOG, events[0].Type)
-				require.Equal(t, types.APPSEC, events[1].Type)
+				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, types.LOG, events[1].Type)
 				require.Len(t, responses, 1)
 				require.Equal(t, 403, responses[0].HTTPResponseCode)
 				require.Equal(t, "ban", responses[0].Action)
@@ -86,8 +86,8 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.LOG, events[0].Type)
-				require.Equal(t, types.APPSEC, events[1].Type)
+				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, types.LOG, events[1].Type)
 				require.Len(t, responses, 1)
 				require.Equal(t, 413, responses[0].HTTPResponseCode)
 				require.Equal(t, "ban", responses[0].Action)
@@ -116,8 +116,8 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.LOG, events[0].Type)
-				require.Equal(t, types.APPSEC, events[1].Type)
+				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, types.LOG, events[1].Type)
 				require.Len(t, responses, 1)
 				require.Equal(t, "log", responses[0].Action)
 			},
@@ -145,8 +145,8 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.LOG, events[0].Type)
-				require.Equal(t, types.APPSEC, events[1].Type)
+				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, types.LOG, events[1].Type)
 				require.Len(t, responses, 1)
 				require.Equal(t, "allow", responses[0].Action)
 			},
@@ -228,8 +228,8 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.LOG, events[0].Type)
-				require.Equal(t, types.APPSEC, events[1].Type)
+				require.Equal(t, types.APPSEC, events[0].Type)
+				require.Equal(t, types.LOG, events[1].Type)
 				require.Len(t, responses, 1)
 				require.Equal(t, "foobar", responses[0].Action)
 			},
@@ -358,13 +358,16 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.LOG, events[0].Type)
-				require.True(t, events[0].Appsec.HasInBandMatches)
-				require.Len(t, events[0].Appsec.MatchedRules, 1)
-				require.Equal(t, "rule1", events[0].Appsec.MatchedRules[0]["msg"])
-				require.Equal(t, types.APPSEC, events[1].Type)
+				require.Equal(t, types.APPSEC, events[0].Type)
+
+				require.Equal(t, types.LOG, events[1].Type)
+				require.True(t, events[1].Appsec.HasInBandMatches)
+				require.Len(t, events[1].Appsec.MatchedRules, 1)
+				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+
 				require.Len(t, responses, 1)
 				require.True(t, responses[0].InBandInterrupt)
+
 			},
 		},
 		{
@@ -600,11 +603,13 @@ func TestAppsecRuleMatches(t *testing.T) {
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
 				require.Len(t, events, 2)
-				require.Equal(t, types.LOG, events[0].Type)
-				require.True(t, events[0].Appsec.HasInBandMatches)
-				require.Len(t, events[0].Appsec.MatchedRules, 1)
-				require.Equal(t, "rule1", events[0].Appsec.MatchedRules[0]["msg"])
-				require.Equal(t, types.APPSEC, events[1].Type)
+				require.Equal(t, types.APPSEC, events[0].Type)
+
+				require.Equal(t, types.LOG, events[1].Type)
+				require.True(t, events[1].Appsec.HasInBandMatches)
+				require.Len(t, events[1].Appsec.MatchedRules, 1)
+				require.Equal(t, "rule1", events[1].Appsec.MatchedRules[0]["msg"])
+
 				require.Len(t, responses, 1)
 				require.True(t, responses[0].InBandInterrupt)
 			},
