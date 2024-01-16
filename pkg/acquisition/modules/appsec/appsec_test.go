@@ -15,15 +15,9 @@ import (
 )
 
 /*
- Input:
-  - set of rules, directly in yaml ? or using our struct [x] ?
-  - appsec.ParsedRequest
- Process:
-  - Compile rule
-  - Load and start wap
- Expected:
-  - waf starting or error
-  - comparison on generated events (asserts)
+Missing tests (wip):
+ - GenerateResponse
+ - evt.Appsec and it's subobjects and methods
 */
 
 type appsecRuleTest struct {
@@ -42,7 +36,35 @@ type appsecRuleTest struct {
 func TestAppsecOnMatchHooks(t *testing.T) {
 	tests := []appsecRuleTest{
 		{
-			name:             "Basic on_load hook to disable rule",
+			name:             "no rule : check return code",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
+				require.Equal(t, 2, len(events), "expect no event")
+				require.Equal(t, types.LOG, events[0].Type, "Expected log event")
+				require.Equal(t, types.APPSEC, events[1].Type, "Expected appsec event")
+				require.Equal(t, 1, len(responses), "expect response")
+				require.Equal(t, 403, responses[0].HTTPResponseCode, "http return code should be 403")
+				require.Equal(t, "ban", responses[0].Action, "expect ban")
+
+			},
+		},
+		{
+			name:             "on_match: change return code",
 			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
@@ -68,10 +90,11 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				require.Equal(t, types.APPSEC, events[1].Type, "Expected appsec event")
 				require.Equal(t, 1, len(responses), "expect response")
 				require.Equal(t, 413, responses[0].HTTPResponseCode, "http return code should be 413")
+				require.Equal(t, "ban", responses[0].Action, "expect ban")
 			},
 		},
 		{
-			name:             "Basic on_load hook to disable rule",
+			name:             "on_match: change action to another standard one (log)",
 			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
@@ -83,7 +106,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				},
 			},
 			on_match: []appsec.Hook{
-				{Filter: "IsInBand == false", Apply: []string{"SetReturnCode(413)"}},
+				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('log')"}},
 			},
 			input_request: appsec.ParsedRequest{
 				RemoteAddr: "1.2.3.4",
@@ -96,7 +119,175 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				require.Equal(t, types.LOG, events[0].Type, "Expected log event")
 				require.Equal(t, types.APPSEC, events[1].Type, "Expected appsec event")
 				require.Equal(t, 1, len(responses), "expect response")
-				require.Equal(t, 403, responses[0].HTTPResponseCode, "http return code should be 403")
+				require.Equal(t, "log", responses[0].Action, "expect log")
+			},
+		},
+		{
+			name:             "on_match: change action to another standard one (allow)",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			on_match: []appsec.Hook{
+				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('allow')"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
+				require.Equal(t, 2, len(events), "expect no event")
+				require.Equal(t, types.LOG, events[0].Type, "Expected log event")
+				require.Equal(t, types.APPSEC, events[1].Type, "Expected appsec event")
+				require.Equal(t, 1, len(responses), "expect response")
+				require.Equal(t, "allow", responses[0].Action, "expect log")
+			},
+		},
+		{
+			name:             "on_match: change action to another standard one (deny/ban/block)",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			on_match: []appsec.Hook{
+				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('deny')"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
+				require.Equal(t, 1, len(responses), "expect response")
+				//note: SetAction normalizes deny, ban and block to ban
+				require.Equal(t, "ban", responses[0].Action, "expect ban")
+			},
+		},
+		{
+			name:             "on_match: change action to another standard one (captcha)",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			on_match: []appsec.Hook{
+				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('captcha')"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
+				require.Equal(t, 1, len(responses), "expect response")
+				//note: SetAction normalizes deny, ban and block to ban
+				require.Equal(t, "captcha", responses[0].Action, "expect captcha")
+			},
+		},
+		{
+			name:             "on_match: change action to a non standard one",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			on_match: []appsec.Hook{
+				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('foobar')"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
+				require.Equal(t, 2, len(events), "expect no event")
+				require.Equal(t, types.LOG, events[0].Type, "Expected log event")
+				require.Equal(t, types.APPSEC, events[1].Type, "Expected appsec event")
+				require.Equal(t, 1, len(responses), "expect response")
+				require.Equal(t, "foobar", responses[0].Action, "expect log")
+			},
+		},
+		{
+			name:             "on_match: cancel alert",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule42",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			on_match: []appsec.Hook{
+				{Filter: "IsInBand == true && LogInfo('XX -> %s', evt.Appsec.MatchedRules.GetName())", Apply: []string{"CancelAlert()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
+				require.Equal(t, 1, len(events), "expect no event")
+				require.Equal(t, types.LOG, events[0].Type, "Expected appsec event")
+				require.Equal(t, 1, len(responses), "expect response")
+				require.Equal(t, "ban", responses[0].Action, "expect foobar")
+			},
+		},
+		{
+			name:             "on_match: cancel event",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule42",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			on_match: []appsec.Hook{
+				{Filter: "IsInBand == true", Apply: []string{"CancelEvent()"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
+				require.Equal(t, 1, len(events), "expect no event")
+				require.Equal(t, types.APPSEC, events[0].Type, "Expected appsec event")
+				require.Equal(t, 1, len(responses), "expect response")
+				require.Equal(t, "ban", responses[0].Action, "expect foobar")
 			},
 		},
 	}
@@ -117,7 +308,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 	*/
 	tests := []appsecRuleTest{
 		{
-			name:             "Basic on_load hook to disable rule",
+			name:             "Basic on_load hook to disable inband rule",
 			expected_load_ok: true,
 			inband_rules: []appsec_rule.CustomRule{
 				{
@@ -129,7 +320,7 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				},
 			},
 			pre_eval: []appsec.Hook{
-				{Filter: "1 ==1", Apply: []string{"RemoveInBandRuleByName('rule1')"}},
+				{Filter: "1 == 1", Apply: []string{"RemoveInBandRuleByName('rule1')"}},
 			},
 			input_request: appsec.ParsedRequest{
 				RemoteAddr: "1.2.3.4",
@@ -174,6 +365,202 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				require.Equal(t, types.APPSEC, events[1].Type, "Expected appsec event")
 				require.Equal(t, 1, len(responses), "expect response")
 				require.Equal(t, true, responses[0].InBandInterrupt, "expect no inband interrupt")
+			},
+		},
+		{
+			name:             "on_load : disable inband by tag",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rulez",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			pre_eval: []appsec.Hook{
+				{Apply: []string{"RemoveInBandRuleByTag('crowdsec-rulez')"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
+				require.Equal(t, 0, len(events), "expect no event")
+				require.Equal(t, 1, len(responses), "expect response")
+				require.Equal(t, false, responses[0].InBandInterrupt, "expect no inband interrupt")
+				require.Equal(t, false, responses[0].OutOfBandInterrupt, "expect no outband interrupt")
+			},
+		},
+		{
+			name:             "on_load : disable inband by ID",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rulez",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			pre_eval: []appsec.Hook{
+				{Apply: []string{"RemoveInBandRuleByID(1516470898)"}}, //rule ID is generated at runtime. If you change rule, it will break the test (:
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
+				require.Equal(t, 0, len(events), "expect no event")
+				require.Equal(t, 1, len(responses), "expect response")
+				require.Equal(t, false, responses[0].InBandInterrupt, "expect no inband interrupt")
+				require.Equal(t, false, responses[0].OutOfBandInterrupt, "expect no outband interrupt")
+			},
+		},
+		{
+			name:             "on_load : disable inband by name",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rulez",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			pre_eval: []appsec.Hook{
+				{Apply: []string{"RemoveInBandRuleByName('rulez')"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
+				require.Equal(t, 0, len(events), "expect no event")
+				require.Equal(t, 1, len(responses), "expect response")
+				require.Equal(t, false, responses[0].InBandInterrupt, "expect no inband interrupt")
+				require.Equal(t, false, responses[0].OutOfBandInterrupt, "expect no outband interrupt")
+			},
+		},
+		{
+			name:             "on_load : outofband default behavior",
+			expected_load_ok: true,
+			outofband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rulez",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
+				require.Equal(t, 1, len(events), "expect no event")
+				require.Equal(t, types.LOG, events[0].Type, "Expected appsec event")
+				require.Equal(t, true, events[0].Appsec.HasOutBandMatches, "Expected oob event")
+				require.Equal(t, false, events[0].Appsec.HasInBandMatches, "Expected oob event")
+				require.Equal(t, 1, len(events[0].Appsec.MatchedRules), "Expected 1 rule match")
+				require.Equal(t, "rulez", events[0].Appsec.MatchedRules[0]["msg"], " rule name")
+				//maybe surprising, but response won't mention OOB event, as it's sent as soon as the inband phase is over.
+				require.Equal(t, 1, len(responses), "expect response")
+				require.Equal(t, false, responses[0].InBandInterrupt, "expect no inband interrupt")
+				require.Equal(t, false, responses[0].OutOfBandInterrupt, "expect no outband interrupt")
+			},
+		},
+		{
+			name:             "on_load : set remediation by tag",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rulez",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			pre_eval: []appsec.Hook{
+				{Apply: []string{"SetRemediationByTag('crowdsec-rulez', 'foobar')"}}, //rule ID is generated at runtime. If you change rule, it will break the test (:
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
+				require.Equal(t, 2, len(events), "expect no event")
+				require.Equal(t, 1, len(responses), "expect response")
+				require.Equal(t, "foobar", responses[0].Action, "action")
+			},
+		},
+		{
+			name:             "on_load : set remediation by name",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rulez",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			pre_eval: []appsec.Hook{
+				{Apply: []string{"SetRemediationByName('rulez', 'foobar')"}}, //rule ID is generated at runtime. If you change rule, it will break the test (:
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
+				require.Equal(t, 2, len(events), "expect no event")
+				require.Equal(t, 1, len(responses), "expect response")
+				require.Equal(t, "foobar", responses[0].Action, "action")
+			},
+		},
+		{
+			name:             "on_load : set remediation by ID",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rulez",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			pre_eval: []appsec.Hook{
+				{Apply: []string{"SetRemediationByID(1516470898, 'foobar')"}}, //rule ID is generated at runtime. If you change rule, it will break the test (:
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse) {
+				require.Equal(t, 2, len(events), "expect no event")
+				require.Equal(t, 1, len(responses), "expect response")
+				require.Equal(t, "foobar", responses[0].Action, "action")
 			},
 		},
 	}
