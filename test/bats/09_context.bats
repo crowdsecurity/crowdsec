@@ -46,9 +46,21 @@ teardown() {
     assert_stderr --partial "loading console context from $CONTEXT_YAML"
 }
 
+@test "no error if context file is missing but not explicitly set" {
+    config_set "del(.crowdsec_service.console_context_path)"
+    rune -0 rm -f "$CONTEXT_YAML"
+    rune -0 cscli lapi context status --error
+    refute_stderr
+    assert_output --partial "No context found on this agent."
+    rune -0 "$CROWDSEC" -t
+    refute_stderr --partial "no such file or directory"
+}
+
 @test "error if context file is explicitly set but does not exist" {
     config_set ".crowdsec_service.console_context_path=strenv(CONTEXT_YAML)"
     rune -0 rm -f "$CONTEXT_YAML"
+    rune -1 cscli lapi context status --error
+    assert_stderr --partial "context.yaml: no such file or directory"
     rune -1 "$CROWDSEC" -t
     assert_stderr --partial "while checking console_context_path: stat $CONTEXT_YAML: no such file or directory"
 }

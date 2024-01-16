@@ -41,15 +41,16 @@ func (h *HeartBeatService) StartHeartBeat(ctx context.Context, t *tomb.Tomb) {
 
 				ok, resp, err := h.Ping(ctx)
 				if err != nil {
-					log.Errorf("heartbeat error : %s", err)
+					log.Errorf("heartbeat error: %s", err)
 					continue
 				}
 
 				resp.Response.Body.Close()
 				if resp.Response.StatusCode != http.StatusOK {
-					log.Errorf("heartbeat unexpected return code : %d", resp.Response.StatusCode)
+					log.Errorf("heartbeat unexpected return code: %d", resp.Response.StatusCode)
 					continue
 				}
+
 				if !ok {
 					log.Errorf("heartbeat returned false")
 					continue

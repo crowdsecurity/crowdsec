@@ -122,7 +122,20 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 		return ret, nil
 	}
 
+	zone_prefix := ""
+	variable_prefix := ""
+	if rule.Transform != nil {
+		for tidx, transform := range rule.Transform {
+			if transform == "count" {
+				zone_prefix = "&"
+				rule.Transform[tidx] = ""
+			}
+		}
+	}
 	for idx, zone := range rule.Zones {
+		if idx > 0 {
+			r.WriteByte('|')
+		}
 		mappedZone, ok := zonesMap[zone]
 		if !ok {
 			return nil, fmt.Errorf("unknown zone '%s'", zone)
@@ -131,10 +144,10 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 			r.WriteString(mappedZone)
 		} else {
 			for j, variable := range rule.Variables {
-				if idx > 0 || j > 0 {
+				if j > 0 {
 					r.WriteByte('|')
 				}
-				r.WriteString(fmt.Sprintf("%s:%s", mappedZone, variable))
+				r.WriteString(fmt.Sprintf("%s%s:%s%s", zone_prefix, mappedZone, variable_prefix, variable))
 			}
 		}
 	}
@@ -157,6 +170,9 @@ func (m *ModsecurityRule) buildRules(rule *CustomRule, appsecRuleName string, an
 
 	if rule.Transform != nil {
 		for _, transform := range rule.Transform {
+			if transform == "" {
+				continue
+			}
 			r.WriteByte(',')
 			if mappedTransform, ok := transformMap[transform]; ok {
 				r.WriteString(mappedTransform)

@@ -9,6 +9,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/go-cs-lib/maptools"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
@@ -25,7 +26,7 @@ func (h *HubTest) GetAppsecCoverage() ([]Coverage, error) {
 	}
 
 	// populate from hub, iterate in alphabetical order
-	pkeys := sortedMapKeys(h.HubIndex.GetItemMap(cwhub.APPSEC_RULES))
+	pkeys := maptools.SortedKeys(h.HubIndex.GetItemMap(cwhub.APPSEC_RULES))
 	coverage := make([]Coverage, len(pkeys))
 
 	for i, name := range pkeys {
@@ -84,7 +85,7 @@ func (h *HubTest) GetParsersCoverage() ([]Coverage, error) {
 	}
 
 	// populate from hub, iterate in alphabetical order
-	pkeys := sortedMapKeys(h.HubIndex.GetItemMap(cwhub.PARSERS))
+	pkeys := maptools.SortedKeys(h.HubIndex.GetItemMap(cwhub.PARSERS))
 	coverage := make([]Coverage, len(pkeys))
 
 	for i, name := range pkeys {
@@ -170,7 +171,7 @@ func (h *HubTest) GetScenariosCoverage() ([]Coverage, error) {
 	}
 
 	// populate from hub, iterate in alphabetical order
-	pkeys := sortedMapKeys(h.HubIndex.GetItemMap(cwhub.SCENARIOS))
+	pkeys := maptools.SortedKeys(h.HubIndex.GetItemMap(cwhub.SCENARIOS))
 	coverage := make([]Coverage, len(pkeys))
 
 	for i, name := range pkeys {
