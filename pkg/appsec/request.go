@@ -1,6 +1,7 @@
 package appsec
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -43,6 +44,7 @@ type ParsedRequest struct {
 	IsOutBand            bool                    `json:"-"`
 	AppsecEngine         string                  `json:"appsec_engine,omitempty"`
 	RemoteAddrNormalized string                  `json:"normalized_remote_addr,omitempty"`
+	HTTPRequest          *http.Request           `json:"-"`
 }
 
 type ReqDumpFilter struct {
@@ -274,13 +276,16 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 	if contentLength < 0 {
 		contentLength = 0
 	}
-	body := make([]byte, contentLength)
 
+	body := make([]byte, contentLength)
 	if r.Body != nil {
 		_, err = io.ReadFull(r.Body, body)
 		if err != nil {
 			return ParsedRequest{}, fmt.Errorf("unable to read body: %s", err)
 		}
+		r.Body.Close()
+		// reset the original body back as it's been read, i'm not sure its needed?
+		r.Body = io.NopCloser(bytes.NewBuffer(body))
 	}
 
 	clientIP := r.Header.Get(IPHeaderName)
@@ -292,10 +297,12 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 	if clientURI == "" {
 		return ParsedRequest{}, fmt.Errorf("missing '%s' header", URIHeaderName)
 	}
+
 	clientMethod := r.Header.Get(VerbHeaderName)
 	if clientMethod == "" {
 		return ParsedRequest{}, fmt.Errorf("missing '%s' header", VerbHeaderName)
 	}
+
 	clientHost := r.Header.Get(HostHeaderName)
 	if clientHost == "" { //this might be empty
 		logger.Debugf("missing '%s' header", HostHeaderName)
@@ -306,6 +313,13 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 	delete(r.Header, HostHeaderName)
 	delete(r.Header, URIHeaderName)
 	delete(r.Header, VerbHeaderName)
+
+	originalHTTPRequest := r.Clone(r.Context())
+	originalHTTPRequest.Body = io.NopCloser(bytes.NewBuffer(body))
+	originalHTTPRequest.RemoteAddr = clientIP
+	originalHTTPRequest.RequestURI = clientURI
+	originalHTTPRequest.Method = clientMethod
+	originalHTTPRequest.Host = clientHost
 
 	parsedURL, err := url.Parse(clientURI)
 	if err != nil {
@@ -343,5 +357,6 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 		TransferEncoding:     r.TransferEncoding,
 		ResponseChannel:      make(chan AppsecTempResponse),
 		RemoteAddrNormalized: remoteAddrNormalized,
+		HTTPRequest:          originalHTTPRequest,
 	}, nil
 }
