@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"runtime/pprof"
 
 	log "github.com/sirupsen/logrus"
 
@@ -21,6 +22,10 @@ func StartRunSvc() error {
 	)
 
 	defer trace.CatchPanic("crowdsec/StartRunSvc")
+
+	//Always try to stop CPU profiling to avoid passing flags around
+	//It's a noop if profiling is not enabled
+	defer pprof.StopCPUProfile()
 
 	if cConfig, err = LoadConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI, false); err != nil {
 		return err

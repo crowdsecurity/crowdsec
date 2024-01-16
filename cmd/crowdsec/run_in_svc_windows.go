@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"runtime/pprof"
 
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/windows/svc"
@@ -18,6 +19,10 @@ func StartRunSvc() error {
 	const svcDescription = "Crowdsec IPS/IDS"
 
 	defer trace.CatchPanic("crowdsec/StartRunSvc")
+
+	//Always try to stop CPU profiling to avoid passing flags around
+	//It's a noop if profiling is not enabled
+	defer pprof.StopCPUProfile()
 
 	isRunninginService, err := svc.IsWindowsService()
 	if err != nil {
