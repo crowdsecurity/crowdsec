@@ -54,7 +54,7 @@ linters-settings:
       main:
         deny:
           - pkg: "github.com/pkg/errors"
-            desc: "errors.New() is deprecated in favor of fmt.Errorf()"
+            desc: "errors.Wrap() is deprecated in favor of fmt.Errorf()"
 
 linters:
   enable-all: true
@@ -287,7 +287,8 @@ issues:
         - bodyclose
       text: "response body must be closed"
 
-    # named/naked returns are evil
+    # named/naked returns are evil, with a single exception
+    # https://go.dev/wiki/CodeReviewComments#named-result-parameters
     - linters:
         - nonamedreturns
       text: "named return .* with type .* found"
