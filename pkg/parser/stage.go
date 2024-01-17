@@ -57,6 +57,7 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx EnricherCtx) (
 		if err != nil {
 			return nil, fmt.Errorf("can't access parsing configuration file %s : %s", stageFile.Filename, err)
 		}
+		defer yamlFile.Close()
 		//process the yaml
 		dec := yaml.NewDecoder(yamlFile)
 		dec.SetStrict(true)
@@ -70,7 +71,7 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx EnricherCtx) (
 					log.Tracef("End of yaml file")
 					break
 				}
-				log.Fatalf("Error decoding parsing configuration file '%s': %v", stageFile.Filename, err)
+				return nil, fmt.Errorf("error decoding parsing configuration file '%s': %v", stageFile.Filename, err)
 			}
 
 			//check for empty bucket
@@ -85,7 +86,7 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx EnricherCtx) (
 			}
 			ok, err := cwversion.Satisfies(node.FormatVersion, cwversion.Constraint_parser)
 			if err != nil {
-				log.Fatalf("Failed to check version : %s", err)
+				return nil, fmt.Errorf("failed to check version : %s", err)
 			}
 			if !ok {
 				log.Errorf("%s : %s doesn't satisfy parser format %s, skip", node.Name, node.FormatVersion, cwversion.Constraint_parser)
