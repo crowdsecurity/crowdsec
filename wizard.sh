@@ -712,7 +712,7 @@ main() {
         ${CSCLI_BIN_INSTALLED} machines add --force "$(cat /etc/machine-id)" -a -f "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}" || log_fatal "unable to add machine to the local API"
         log_dbg "Crowdsec LAPI registered"
 
-        ${CSCLI_BIN_INSTALLED} capi register || log_fatal "unable to register to the Central API"
+        ${CSCLI_BIN_INSTALLED} capi register --error || log_fatal "unable to register to the Central API"
         log_dbg "Crowdsec CAPI registered"
 
         systemctl enable -q crowdsec >/dev/null || log_fatal "unable to enable crowdsec"
