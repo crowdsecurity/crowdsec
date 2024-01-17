@@ -244,10 +244,6 @@ func (r *AppsecRunner) handleInBandInterrupt(request *appsec.ParsedRequest) {
 			r.logger.Errorf("unable to process OnMatch rules: %s", err)
 			return
 		}
-		// Should the in band match trigger an event ?
-		if r.AppsecRuntime.Response.SendEvent {
-			r.outChan <- evt
-		}
 
 		// Should the in band match trigger an overflow ?
 		if r.AppsecRuntime.Response.SendAlert {
@@ -258,6 +254,12 @@ func (r *AppsecRunner) handleInBandInterrupt(request *appsec.ParsedRequest) {
 			}
 			r.outChan <- *appsecOvlfw
 		}
+
+		// Should the in band match trigger an event ?
+		if r.AppsecRuntime.Response.SendEvent {
+			r.outChan <- evt
+		}
+
 	}
 }
 
