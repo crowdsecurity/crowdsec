@@ -9,88 +9,96 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func (t *HubTestItem) installPostoverflows() error {
-	for _, postoverflow := range t.Config.PostOverflows {
-		if postoverflow == "" {
-			continue
+func (t *HubTestItem) installPostoverflow(postoverflow string) error {
+	if postoverflow == "" {
+		return nil
+	}
+
+	if hubPostOverflow := t.HubIndex.GetItem(cwhub.POSTOVERFLOWS, postoverflow); hubPostOverflow != nil {
+		postoverflowSource, err := filepath.Abs(filepath.Join(t.HubPath, hubPostOverflow.RemotePath))
+		if err != nil {
+			return fmt.Errorf("can't get absolute path of '%s': %s", postoverflowSource, err)
 		}
 
-		if hubPostOverflow := t.HubIndex.GetItem(cwhub.POSTOVERFLOWS, postoverflow); hubPostOverflow != nil {
-			postoverflowSource, err := filepath.Abs(filepath.Join(t.HubPath, hubPostOverflow.RemotePath))
-			if err != nil {
-				return fmt.Errorf("can't get absolute path of '%s': %s", postoverflowSource, err)
+		postoverflowFileName := filepath.Base(postoverflowSource)
+
+		// runtime/hub/postoverflows/s00-enrich/crowdsecurity/
+		hubDirPostoverflowDest := filepath.Join(t.RuntimeHubPath, filepath.Dir(hubPostOverflow.RemotePath))
+
+		// runtime/postoverflows/s00-enrich
+		postoverflowDirDest := fmt.Sprintf("%s/postoverflows/%s/", t.RuntimePath, hubPostOverflow.Stage)
+
+		if err := os.MkdirAll(hubDirPostoverflowDest, os.ModePerm); err != nil {
+			return fmt.Errorf("unable to create folder '%s': %s", hubDirPostoverflowDest, err)
+		}
+
+		if err := os.MkdirAll(postoverflowDirDest, os.ModePerm); err != nil {
+			return fmt.Errorf("unable to create folder '%s': %s", postoverflowDirDest, err)
+		}
+
+		// runtime/hub/postoverflows/s00-enrich/crowdsecurity/rdns.yaml
+		hubDirPostoverflowPath := filepath.Join(hubDirPostoverflowDest, postoverflowFileName)
+		if err := Copy(postoverflowSource, hubDirPostoverflowPath); err != nil {
+			return fmt.Errorf("unable to copy '%s' to '%s': %s", postoverflowSource, hubDirPostoverflowPath, err)
+		}
+
+		// runtime/postoverflows/s00-enrich/rdns.yaml
+		postoverflowDirParserPath := filepath.Join(postoverflowDirDest, postoverflowFileName)
+		if err := os.Symlink(hubDirPostoverflowPath, postoverflowDirParserPath); err != nil {
+			if !os.IsExist(err) {
+				return fmt.Errorf("unable to symlink postoverflow '%s' to '%s': %s", hubDirPostoverflowPath, postoverflowDirParserPath, err)
+			}
+		}
+	} else {
+		customPostoverflowExist := false
+		for _, customPath := range t.CustomItemsLocation {
+			// we check if its a custom postoverflow
+			customPostOverflowPath := filepath.Join(customPath, postoverflow)
+			if _, err := os.Stat(customPostOverflowPath); os.IsNotExist(err) {
+				continue
+				//return fmt.Errorf("postoverflow '%s' doesn't exist in the hub and doesn't appear to be a custom one.", postoverflow)
 			}
 
-			postoverflowFileName := filepath.Base(postoverflowSource)
+			customPostOverflowPathSplit := strings.Split(customPostOverflowPath, "/")
+			customPostoverflowName := customPostOverflowPathSplit[len(customPostOverflowPathSplit)-1]
+			// because path is postoverflows/<stage>/<author>/parser.yaml and we wan't the stage
+			customPostoverflowStage := customPostOverflowPathSplit[len(customPostOverflowPathSplit)-3]
 
-			// runtime/hub/postoverflows/s00-enrich/crowdsecurity/
-			hubDirPostoverflowDest := filepath.Join(t.RuntimeHubPath, filepath.Dir(hubPostOverflow.RemotePath))
+			// check if stage exist
+			hubStagePath := filepath.Join(t.HubPath, fmt.Sprintf("postoverflows/%s", customPostoverflowStage))
 
-			// runtime/postoverflows/s00-enrich
-			postoverflowDirDest := fmt.Sprintf("%s/postoverflows/%s/", t.RuntimePath, hubPostOverflow.Stage)
-
-			if err := os.MkdirAll(hubDirPostoverflowDest, os.ModePerm); err != nil {
-				return fmt.Errorf("unable to create folder '%s': %s", hubDirPostoverflowDest, err)
+			if _, err := os.Stat(hubStagePath); os.IsNotExist(err) {
+				continue
+				//return fmt.Errorf("stage '%s' from extracted '%s' doesn't exist in the hub", customPostoverflowStage, hubStagePath)
 			}
 
+			postoverflowDirDest := fmt.Sprintf("%s/postoverflows/%s/", t.RuntimePath, customPostoverflowStage)
 			if err := os.MkdirAll(postoverflowDirDest, os.ModePerm); err != nil {
-				return fmt.Errorf("unable to create folder '%s': %s", postoverflowDirDest, err)
+				continue
+				//return fmt.Errorf("unable to create folder '%s': %s", postoverflowDirDest, err)
 			}
 
-			// runtime/hub/postoverflows/s00-enrich/crowdsecurity/rdns.yaml
-			hubDirPostoverflowPath := filepath.Join(hubDirPostoverflowDest, postoverflowFileName)
-			if err := Copy(postoverflowSource, hubDirPostoverflowPath); err != nil {
-				return fmt.Errorf("unable to copy '%s' to '%s': %s", postoverflowSource, hubDirPostoverflowPath, err)
+			customPostoverflowDest := filepath.Join(postoverflowDirDest, customPostoverflowName)
+			// if path to postoverflow exist, copy it
+			if err := Copy(customPostOverflowPath, customPostoverflowDest); err != nil {
+				continue
+				//return fmt.Errorf("unable to copy custom parser '%s' to '%s': %s", customPostOverflowPath, customPostoverflowDest, err)
 			}
+			customPostoverflowExist = true
+			break
+		}
+		if !customPostoverflowExist {
+			return fmt.Errorf("couldn't find custom postoverflow '%s' in the following location: %+v", postoverflow, t.CustomItemsLocation)
+		}
+	}
 
-			// runtime/postoverflows/s00-enrich/rdns.yaml
-			postoverflowDirParserPath := filepath.Join(postoverflowDirDest, postoverflowFileName)
-			if err := os.Symlink(hubDirPostoverflowPath, postoverflowDirParserPath); err != nil {
-				if !os.IsExist(err) {
-					return fmt.Errorf("unable to symlink postoverflow '%s' to '%s': %s", hubDirPostoverflowPath, postoverflowDirParserPath, err)
-				}
-			}
-		} else {
-			customPostoverflowExist := false
-			for _, customPath := range t.CustomItemsLocation {
-				// we check if its a custom postoverflow
-				customPostOverflowPath := filepath.Join(customPath, postoverflow)
-				if _, err := os.Stat(customPostOverflowPath); os.IsNotExist(err) {
-					continue
-					//return fmt.Errorf("postoverflow '%s' doesn't exist in the hub and doesn't appear to be a custom one.", postoverflow)
-				}
+	return nil
+}
 
-				customPostOverflowPathSplit := strings.Split(customPostOverflowPath, "/")
-				customPostoverflowName := customPostOverflowPathSplit[len(customPostOverflowPathSplit)-1]
-				// because path is postoverflows/<stage>/<author>/parser.yaml and we wan't the stage
-				customPostoverflowStage := customPostOverflowPathSplit[len(customPostOverflowPathSplit)-3]
-
-				// check if stage exist
-				hubStagePath := filepath.Join(t.HubPath, fmt.Sprintf("postoverflows/%s", customPostoverflowStage))
-
-				if _, err := os.Stat(hubStagePath); os.IsNotExist(err) {
-					continue
-					//return fmt.Errorf("stage '%s' from extracted '%s' doesn't exist in the hub", customPostoverflowStage, hubStagePath)
-				}
-
-				postoverflowDirDest := fmt.Sprintf("%s/postoverflows/%s/", t.RuntimePath, customPostoverflowStage)
-				if err := os.MkdirAll(postoverflowDirDest, os.ModePerm); err != nil {
-					continue
-					//return fmt.Errorf("unable to create folder '%s': %s", postoverflowDirDest, err)
-				}
-
-				customPostoverflowDest := filepath.Join(postoverflowDirDest, customPostoverflowName)
-				// if path to postoverflow exist, copy it
-				if err := Copy(customPostOverflowPath, customPostoverflowDest); err != nil {
-					continue
-					//return fmt.Errorf("unable to copy custom parser '%s' to '%s': %s", customPostOverflowPath, customPostoverflowDest, err)
-				}
-				customPostoverflowExist = true
-				break
-			}
-			if !customPostoverflowExist {
-				return fmt.Errorf("couldn't find custom postoverflow '%s' in the following location: %+v", postoverflow, t.CustomItemsLocation)
-			}
+func (t *HubTestItem) installPostoverflows() error {
+	for _, postoverflow := range t.Config.PostOverflows {
+		if err := t.installPostoverflow(postoverflow); err != nil {
+			return err
 		}
 	}
 
