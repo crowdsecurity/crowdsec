@@ -713,7 +713,6 @@ main() {
         log_dbg "Crowdsec LAPI registered"
 
         ${CSCLI_BIN_INSTALLED} capi register --error || log_fatal "unable to register to the Central API"
-        log_dbg "Crowdsec CAPI registered"
 
         systemctl enable -q crowdsec >/dev/null || log_fatal "unable to enable crowdsec"
         systemctl start crowdsec >/dev/null || log_fatal "unable to start crowdsec"
