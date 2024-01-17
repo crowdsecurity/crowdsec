@@ -130,9 +130,9 @@ detect_services () {
     DETECTED_SERVICES=()
     HMENU=()
     # list systemd services
-    SYSTEMD_SERVICES=`systemctl  --state=enabled list-unit-files '*.service' | cut -d ' ' -f1`
+    SYSTEMD_SERVICES=$(systemctl  --state=enabled list-unit-files '*.service' | cut -d ' ' -f1)
     # raw ps
-    PSAX=`ps ax -o comm=`
+    PSAX=$(ps ax -o comm=)
     for SVC in ${SUPPORTED_SERVICES} ; do
         log_dbg "Checking if service '${SVC}' is running (ps+systemd)"
         for SRC in "${SYSTEMD_SERVICES}" "${PSAX}" ; do
