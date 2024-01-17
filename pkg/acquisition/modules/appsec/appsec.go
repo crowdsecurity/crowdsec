@@ -268,6 +268,8 @@ func (w *AppsecSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) 
 		})
 		<-t.Dying()
 		w.logger.Infof("Stopping Appsec server on %s%s", w.config.ListenAddr, w.config.Path)
+		//xx let's clean up the appsec runners :)
+		appsec.AppsecRulesDetails = make(map[int]appsec.RulesDetails)
 		w.server.Shutdown(context.TODO())
 		return nil
 	})
