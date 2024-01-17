@@ -191,7 +191,6 @@ log_locations[linux]='/var/log/syslog,/var/log/kern.log,/var/log/messages'
 
 # $1 is service name, such those in SUPPORTED_SERVICES
 find_logs_for() {
-    ret=""
     x=${1}
     # we have trailing and starting quotes because of whiptail
     SVC="${x%\"}"
@@ -209,7 +208,7 @@ find_logs_for() {
         # Split /var/log/nginx/*.log into '/var/log/nginx' and '*.log' so we can use find
 	    path=${poss_path%/*}
 	    fname=${poss_path##*/}
-	    candidates=`find "${path}" -type f -mtime -5 -ctime -5 -name "$fname"`
+	    candidates=$(find "${path}" -type f -mtime -5 -ctime -5 -name "$fname" 2>/dev/null)
 	    # We have some candidates, add them
 	    for final_file in ${candidates} ; do
 	        log_dbg "Found logs file for '${SVC}': ${final_file}"
