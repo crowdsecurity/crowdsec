@@ -15,6 +15,7 @@ var hub *cwhub.Hub //FIXME: this is a temporary hack to make the hub available i
 func LoadAppsecRules(hubInstance *cwhub.Hub) error {
 
 	hub = hubInstance
+	appsecRules = make(map[string]AppsecCollectionConfig)
 
 	for _, hubAppsecRuleItem := range hub.GetItemMap(cwhub.APPSEC_RULES) {
 		if !hubAppsecRuleItem.State.Installed {
