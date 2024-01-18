@@ -94,30 +94,10 @@ func (t *HubTestItem) installParserCustom(parser string) error {
 	return nil
 }
 
-func (t *HubTestItem) installParser(parser string) error {
-	if parser == "" {
-		return nil
+func (t *HubTestItem) installParser(name string) error {
+	if item := t.HubIndex.GetItem(cwhub.PARSERS, name); item != nil {
+		return t.installParserItem(item)
 	}
 
-	if hubParser := t.HubIndex.GetItem(cwhub.PARSERS, parser); hubParser != nil {
-		if err := t.installParserItem(hubParser); err != nil {
-			return err
-		}
-	} else {
-		if err := t.installParserCustom(parser); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (t *HubTestItem) installParsers() error {
-	for _, parser := range t.Config.Parsers {
-		if err := t.installParser(parser); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return t.installParserCustom(name)
 }

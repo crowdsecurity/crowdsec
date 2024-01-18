@@ -82,33 +82,12 @@ func (t *HubTestItem) installAppsecRuleCustom(appsecrule string) error {
 	return nil
 }
 
+func (t *HubTestItem) installAppsecRule(name string) error {
+	log.Debugf("adding rule '%s'", name)
 
-func (t *HubTestItem) installAppsecRule(appsecrule string) error {
-	log.Debugf("adding rule '%s'", appsecrule)
-
-	if appsecrule == "" {
-		return nil
+	if item := t.HubIndex.GetItem(cwhub.APPSEC_RULES, name); item != nil {
+		return t.installAppsecRuleItem(item)
 	}
 
-	if hubAppsecRule, ok := t.HubIndex.GetItemMap(cwhub.APPSEC_RULES)[appsecrule]; ok {
-		if err := t.installAppsecRuleItem(hubAppsecRule); err != nil {
-			return err
-		}
-	} else {
-		if err := t.installAppsecRuleCustom(appsecrule); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (t *HubTestItem) installAppsecRules() error {
-	for _, appsecrule := range t.Config.AppsecRules {
-		if err := t.installAppsecRule(appsecrule); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return t.installAppsecRuleCustom(name)
 }

@@ -93,30 +93,10 @@ func (t *HubTestItem) installPostoverflowCustom(postoverflow string) error {
 	return nil
 }
 
-func (t *HubTestItem) installPostoverflow(postoverflow string) error {
-	if postoverflow == "" {
-		return nil
+func (t *HubTestItem) installPostoverflow(name string) error {
+	if hubPostOverflow := t.HubIndex.GetItem(cwhub.POSTOVERFLOWS, name); hubPostOverflow != nil {
+		return t.installPostoverflowItem(hubPostOverflow)
 	}
 
-	if hubPostOverflow := t.HubIndex.GetItem(cwhub.POSTOVERFLOWS, postoverflow); hubPostOverflow != nil {
-		if err := t.installPostoverflowItem(hubPostOverflow); err != nil {
-			return err
-		}
-	} else {
-		if err := t.installPostoverflowCustom(postoverflow); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (t *HubTestItem) installPostoverflows() error {
-	for _, postoverflow := range t.Config.PostOverflows {
-		if err := t.installPostoverflow(postoverflow); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return t.installPostoverflowCustom(name)
 }

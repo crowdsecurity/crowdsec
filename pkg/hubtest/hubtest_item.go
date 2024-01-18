@@ -160,20 +160,34 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 	}, nil
 }
 
+func (t *HubTestItem) installHubItems(names []string, installFunc func(string) error) error {
+	for _, name := range names {
+		if name == "" {
+			continue
+		}
+
+		if err := installFunc(name); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (t *HubTestItem) InstallHub() error {
-	if err := t.installParsers(); err != nil {
+	if err := t.installHubItems(t.Config.Parsers, t.installParser); err != nil {
 		return err
 	}
 
-	if err := t.installScenarios(); err != nil {
+	if err := t.installHubItems(t.Config.Scenarios, t.installScenario); err != nil {
 		return err
 	}
 
-	if err := t.installAppsecRules(); err != nil {
+	if err := t.installHubItems(t.Config.PostOverflows, t.installPostoverflow); err != nil {
 		return err
 	}
 
-	if err := t.installPostoverflows(); err != nil {
+	if err := t.installHubItems(t.Config.AppsecRules, t.installAppsecRule); err != nil {
 		return err
 	}
 

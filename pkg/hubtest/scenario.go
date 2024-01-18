@@ -78,30 +78,10 @@ func (t *HubTestItem) installScenarioCustom(scenario string) error {
 	return nil
 }
 
-func (t *HubTestItem) installScenario(scenario string) error {
-	if scenario == "" {
-		return nil
+func (t *HubTestItem) installScenario(name string) error {
+	if item := t.HubIndex.GetItem(cwhub.SCENARIOS, name); item != nil {
+		return t.installScenarioItem(item)
 	}
 
-	if hubScenario := t.HubIndex.GetItem(cwhub.SCENARIOS, scenario); hubScenario != nil {
-		if err := t.installScenarioItem(hubScenario); err != nil {
-			return err
-		}
-	} else {
-		if err := t.installScenarioCustom(scenario); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (t *HubTestItem) installScenarios() error {
-	for _, scenario := range t.Config.Scenarios {
-		if err := t.installScenario(scenario); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return t.installScenarioCustom(name)
 }
