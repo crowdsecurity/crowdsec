@@ -11,7 +11,7 @@ run:
 linters-settings:
   cyclop:
     # lower this after refactoring
-    max-complexity: 72
+    max-complexity: 66
 
   gci:
     sections:
@@ -22,11 +22,11 @@ linters-settings:
 
   gocognit:
     # lower this after refactoring
-    min-complexity: 182
+    min-complexity: 145
 
   gocyclo:
     # lower this after refactoring
-    min-complexity: 72
+    min-complexity: 64
 
   funlen:
     # Checks the number of lines in a function.
@@ -46,7 +46,7 @@ linters-settings:
 
   maintidx:
     # raise this after refactoring
-    under: 5
+    under: 9
 
   misspell:
     locale: US
