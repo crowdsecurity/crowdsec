@@ -48,50 +48,52 @@ func (t *HubTestItem) installParserItem(hubParser *cwhub.Item) error {
 	return nil
 }
 
+func (t *HubTestItem) installParserCustomFrom(parser string, customPath string) (bool, error) {
+	// we check if its a custom parser
+	customParserPath := filepath.Join(customPath, parser)
+	if _, err := os.Stat(customParserPath); os.IsNotExist(err) {
+		return false, nil
+	}
+
+	customParserPathSplit, customParserName := filepath.Split(customParserPath)
+	// because path is parsers/<stage>/<author>/parser.yaml and we wan't the stage
+	splittedPath := strings.Split(customParserPathSplit, string(os.PathSeparator))
+	customParserStage := splittedPath[len(splittedPath)-3]
+
+	// check if stage exist
+	hubStagePath := filepath.Join(t.HubPath, fmt.Sprintf("parsers/%s", customParserStage))
+
+	if _, err := os.Stat(hubStagePath); os.IsNotExist(err) {
+		return false, fmt.Errorf("stage '%s' extracted from '%s' doesn't exist in the hub", customParserStage, hubStagePath)
+	}
+
+	parserDirDest := fmt.Sprintf("%s/parsers/%s/", t.RuntimePath, customParserStage)
+	if err := os.MkdirAll(parserDirDest, os.ModePerm); err != nil {
+		return false, fmt.Errorf("unable to create folder '%s': %s", parserDirDest, err)
+	}
+
+	customParserDest := filepath.Join(parserDirDest, customParserName)
+	// if path to parser exist, copy it
+	if err := Copy(customParserPath, customParserDest); err != nil {
+		return false, fmt.Errorf("unable to copy custom parser '%s' to '%s': %s", customParserPath, customParserDest, err)
+	}
+
+	return true, nil
+}
+
 func (t *HubTestItem) installParserCustom(parser string) error {
-	customParserExist := false
 	for _, customPath := range t.CustomItemsLocation {
-		// we check if its a custom parser
-		customParserPath := filepath.Join(customPath, parser)
-		if _, err := os.Stat(customParserPath); os.IsNotExist(err) {
-			continue
-			//return fmt.Errorf("parser '%s' doesn't exist in the hub and doesn't appear to be a custom one.", parser)
+		found, err := t.installParserCustomFrom(parser, customPath)
+		if err != nil {
+			return err
 		}
 
-		customParserPathSplit, customParserName := filepath.Split(customParserPath)
-		// because path is parsers/<stage>/<author>/parser.yaml and we wan't the stage
-		splittedPath := strings.Split(customParserPathSplit, string(os.PathSeparator))
-		customParserStage := splittedPath[len(splittedPath)-3]
-
-		// check if stage exist
-		hubStagePath := filepath.Join(t.HubPath, fmt.Sprintf("parsers/%s", customParserStage))
-
-		if _, err := os.Stat(hubStagePath); os.IsNotExist(err) {
-			continue
-			//return fmt.Errorf("stage '%s' extracted from '%s' doesn't exist in the hub", customParserStage, hubStagePath)
+		if found {
+			return nil
 		}
-
-		parserDirDest := fmt.Sprintf("%s/parsers/%s/", t.RuntimePath, customParserStage)
-		if err := os.MkdirAll(parserDirDest, os.ModePerm); err != nil {
-			continue
-			//return fmt.Errorf("unable to create folder '%s': %s", parserDirDest, err)
-		}
-
-		customParserDest := filepath.Join(parserDirDest, customParserName)
-		// if path to parser exist, copy it
-		if err := Copy(customParserPath, customParserDest); err != nil {
-			continue
-			//return fmt.Errorf("unable to copy custom parser '%s' to '%s': %s", customParserPath, customParserDest, err)
-		}
-
-		customParserExist = true
-		break
-	}
-	if !customParserExist {
-		return fmt.Errorf("couldn't find custom parser '%s' in the following location: %+v", parser, t.CustomItemsLocation)
 	}
 
-	return nil
+	return fmt.Errorf("couldn't find custom parser '%s' in the following locations: %+v", parser, t.CustomItemsLocation)
 }
 
 func (t *HubTestItem) installParser(name string) error {

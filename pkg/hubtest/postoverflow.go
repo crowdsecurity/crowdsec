@@ -48,49 +48,53 @@ func (t *HubTestItem) installPostoverflowItem(hubPostOverflow *cwhub.Item) error
 	return nil
 }
 
+func (t *HubTestItem) installPostoverflowCustomFrom(postoverflow string, customPath string) (bool, error) {
+	// we check if its a custom postoverflow
+	customPostOverflowPath := filepath.Join(customPath, postoverflow)
+	if _, err := os.Stat(customPostOverflowPath); os.IsNotExist(err) {
+		return false, nil
+	}
+
+	customPostOverflowPathSplit := strings.Split(customPostOverflowPath, "/")
+	customPostoverflowName := customPostOverflowPathSplit[len(customPostOverflowPathSplit)-1]
+	// because path is postoverflows/<stage>/<author>/parser.yaml and we wan't the stage
+	customPostoverflowStage := customPostOverflowPathSplit[len(customPostOverflowPathSplit)-3]
+
+	// check if stage exist
+	hubStagePath := filepath.Join(t.HubPath, fmt.Sprintf("postoverflows/%s", customPostoverflowStage))
+
+	if _, err := os.Stat(hubStagePath); os.IsNotExist(err) {
+		return false, fmt.Errorf("stage '%s' from extracted '%s' doesn't exist in the hub", customPostoverflowStage, hubStagePath)
+	}
+
+	postoverflowDirDest := fmt.Sprintf("%s/postoverflows/%s/", t.RuntimePath, customPostoverflowStage)
+	if err := os.MkdirAll(postoverflowDirDest, os.ModePerm); err != nil {
+		return false, fmt.Errorf("unable to create folder '%s': %s", postoverflowDirDest, err)
+	}
+
+	customPostoverflowDest := filepath.Join(postoverflowDirDest, customPostoverflowName)
+	// if path to postoverflow exist, copy it
+	if err := Copy(customPostOverflowPath, customPostoverflowDest); err != nil {
+		return false, fmt.Errorf("unable to copy custom parser '%s' to '%s': %s", customPostOverflowPath, customPostoverflowDest, err)
+	}
+
+	return true, nil
+}
+
+
 func (t *HubTestItem) installPostoverflowCustom(postoverflow string) error {
-	customPostoverflowExist := false
 	for _, customPath := range t.CustomItemsLocation {
-		// we check if its a custom postoverflow
-		customPostOverflowPath := filepath.Join(customPath, postoverflow)
-		if _, err := os.Stat(customPostOverflowPath); os.IsNotExist(err) {
-			continue
-			//return fmt.Errorf("postoverflow '%s' doesn't exist in the hub and doesn't appear to be a custom one.", postoverflow)
+		found, err := t.installPostoverflowCustomFrom(postoverflow, customPath)
+		if err != nil {
+			return err
 		}
 
-		customPostOverflowPathSplit := strings.Split(customPostOverflowPath, "/")
-		customPostoverflowName := customPostOverflowPathSplit[len(customPostOverflowPathSplit)-1]
-		// because path is postoverflows/<stage>/<author>/parser.yaml and we wan't the stage
-		customPostoverflowStage := customPostOverflowPathSplit[len(customPostOverflowPathSplit)-3]
-
-		// check if stage exist
-		hubStagePath := filepath.Join(t.HubPath, fmt.Sprintf("postoverflows/%s", customPostoverflowStage))
-
-		if _, err := os.Stat(hubStagePath); os.IsNotExist(err) {
-			continue
-			//return fmt.Errorf("stage '%s' from extracted '%s' doesn't exist in the hub", customPostoverflowStage, hubStagePath)
+		if found {
+			return nil
 		}
-
-		postoverflowDirDest := fmt.Sprintf("%s/postoverflows/%s/", t.RuntimePath, customPostoverflowStage)
-		if err := os.MkdirAll(postoverflowDirDest, os.ModePerm); err != nil {
-			continue
-			//return fmt.Errorf("unable to create folder '%s': %s", postoverflowDirDest, err)
-		}
-
-		customPostoverflowDest := filepath.Join(postoverflowDirDest, customPostoverflowName)
-		// if path to postoverflow exist, copy it
-		if err := Copy(customPostOverflowPath, customPostoverflowDest); err != nil {
-			continue
-			//return fmt.Errorf("unable to copy custom parser '%s' to '%s': %s", customPostOverflowPath, customPostoverflowDest, err)
-		}
-		customPostoverflowExist = true
-		break
-	}
-	if !customPostoverflowExist {
-		return fmt.Errorf("couldn't find custom postoverflow '%s' in the following location: %+v", postoverflow, t.CustomItemsLocation)
 	}
 
-	return nil
+	return fmt.Errorf("couldn't find custom postoverflow '%s' in the following location: %+v", postoverflow, t.CustomItemsLocation)
 }
 
 func (t *HubTestItem) installPostoverflow(name string) error {

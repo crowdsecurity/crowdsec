@@ -47,35 +47,40 @@ func (t *HubTestItem) installScenarioItem(hubScenario *cwhub.Item) error {
 	return nil
 }
 
+func (t *HubTestItem) installScenarioCustomFrom(scenario string, customPath string) (bool, error) {
+	// we check if its a custom scenario
+	customScenarioPath := filepath.Join(customPath, scenario)
+	if _, err := os.Stat(customScenarioPath); os.IsNotExist(err) {
+		return false, nil
+	}
+
+	scenarioDirDest := fmt.Sprintf("%s/scenarios/", t.RuntimePath)
+	if err := os.MkdirAll(scenarioDirDest, os.ModePerm); err != nil {
+		return false, fmt.Errorf("unable to create folder '%s': %s", scenarioDirDest, err)
+	}
+
+	scenarioFileName := filepath.Base(customScenarioPath)
+	scenarioFileDest := filepath.Join(scenarioDirDest, scenarioFileName)
+	if err := Copy(customScenarioPath, scenarioFileDest); err != nil {
+		return false, fmt.Errorf("unable to copy scenario from '%s' to '%s': %s", customScenarioPath, scenarioFileDest, err)
+	}
+
+	return true, nil
+}
+
 func (t *HubTestItem) installScenarioCustom(scenario string) error {
-	customScenarioExist := false
 	for _, customPath := range t.CustomItemsLocation {
-		// we check if its a custom scenario
-		customScenarioPath := filepath.Join(customPath, scenario)
-		if _, err := os.Stat(customScenarioPath); os.IsNotExist(err) {
-			continue
-			//return fmt.Errorf("scenarios '%s' doesn't exist in the hub and doesn't appear to be a custom one.", scenario)
+		found, err := t.installScenarioCustomFrom(scenario, customPath)
+		if err != nil {
+			return err
 		}
 
-		scenarioDirDest := fmt.Sprintf("%s/scenarios/", t.RuntimePath)
-		if err := os.MkdirAll(scenarioDirDest, os.ModePerm); err != nil {
-			return fmt.Errorf("unable to create folder '%s': %s", scenarioDirDest, err)
+		if found {
+			return nil
 		}
-
-		scenarioFileName := filepath.Base(customScenarioPath)
-		scenarioFileDest := filepath.Join(scenarioDirDest, scenarioFileName)
-		if err := Copy(customScenarioPath, scenarioFileDest); err != nil {
-			continue
-			//return fmt.Errorf("unable to copy scenario from '%s' to '%s': %s", customScenarioPath, scenarioFileDest, err)
-		}
-		customScenarioExist = true
-		break
-	}
-	if !customScenarioExist {
-		return fmt.Errorf("couldn't find custom scenario '%s' in the following location: %+v", scenario, t.CustomItemsLocation)
 	}
 
-	return nil
+	return fmt.Errorf("couldn't find custom scenario '%s' in the following location: %+v", scenario, t.CustomItemsLocation)
 }
 
 func (t *HubTestItem) installScenario(name string) error {

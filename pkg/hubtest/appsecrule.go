@@ -50,36 +50,44 @@ func (t *HubTestItem) installAppsecRuleItem(hubAppsecRule *cwhub.Item) error {
 	return nil
 }
 
+func (t *HubTestItem) installAppsecRuleCustomFrom(appsecrule string, customPath string) (bool, error) {
+	// we check if its a custom appsec-rule
+	customAppsecRulePath := filepath.Join(customPath, appsecrule)
+	if _, err := os.Stat(customAppsecRulePath); os.IsNotExist(err) {
+		return false, nil
+	}
+	customAppsecRulePathSplit := strings.Split(customAppsecRulePath, "/")
+	customAppsecRuleName := customAppsecRulePathSplit[len(customAppsecRulePathSplit)-1]
+
+	appsecRuleDirDest := fmt.Sprintf("%s/appsec-rules/", t.RuntimePath)
+	if err := os.MkdirAll(appsecRuleDirDest, os.ModePerm); err != nil {
+		return false, fmt.Errorf("unable to create folder '%s': %s", appsecRuleDirDest, err)
+	}
+
+	// runtime/appsec-rules/
+	customAppsecRuleDest := fmt.Sprintf("%s/appsec-rules/%s", t.RuntimePath, customAppsecRuleName)
+	// if path to postoverflow exist, copy it
+	if err := Copy(customAppsecRulePath, customAppsecRuleDest); err != nil {
+		return false, fmt.Errorf("unable to copy appsec-rule from '%s' to '%s': %s", customAppsecRulePath, customAppsecRuleDest, err)
+	}
+
+	return true, nil
+}
+
+
 func (t *HubTestItem) installAppsecRuleCustom(appsecrule string) error {
-	customAppsecRuleExist := false
 	for _, customPath := range t.CustomItemsLocation {
-		// we check if its a custom appsec-rule
-		customAppsecRulePath := filepath.Join(customPath, appsecrule)
-		if _, err := os.Stat(customAppsecRulePath); os.IsNotExist(err) {
-			continue
-		}
-		customAppsecRulePathSplit := strings.Split(customAppsecRulePath, "/")
-		customAppsecRuleName := customAppsecRulePathSplit[len(customAppsecRulePathSplit)-1]
-
-		appsecRuleDirDest := fmt.Sprintf("%s/appsec-rules/", t.RuntimePath)
-		if err := os.MkdirAll(appsecRuleDirDest, os.ModePerm); err != nil {
-			return fmt.Errorf("unable to create folder '%s': %s", appsecRuleDirDest, err)
+		found, err := t.installAppsecRuleCustomFrom(appsecrule, customPath)
+		if err != nil {
+			return err
 		}
 
-		// runtime/appsec-rules/
-		customAppsecRuleDest := fmt.Sprintf("%s/appsec-rules/%s", t.RuntimePath, customAppsecRuleName)
-		// if path to postoverflow exist, copy it
-		if err := Copy(customAppsecRulePath, customAppsecRuleDest); err != nil {
-			continue
+		if found {
+			return nil
 		}
-		customAppsecRuleExist = true
-		break
-	}
-	if !customAppsecRuleExist {
-		return fmt.Errorf("couldn't find custom appsec-rule '%s' in the following location: %+v", appsecrule, t.CustomItemsLocation)
 	}
 
-	return nil
+	return fmt.Errorf("couldn't find custom appsec-rule '%s' in the following location: %+v", appsecrule, t.CustomItemsLocation)
 }
 
 func (t *HubTestItem) installAppsecRule(name string) error {
