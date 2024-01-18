@@ -130,9 +130,9 @@ detect_services () {
     DETECTED_SERVICES=()
     HMENU=()
     # list systemd services
-    SYSTEMD_SERVICES=`systemctl  --state=enabled list-unit-files '*.service' | cut -d ' ' -f1`
+    SYSTEMD_SERVICES=$(systemctl  --state=enabled list-unit-files '*.service' | cut -d ' ' -f1)
     # raw ps
-    PSAX=`ps ax -o comm=`
+    PSAX=$(ps ax -o comm=)
     for SVC in ${SUPPORTED_SERVICES} ; do
         log_dbg "Checking if service '${SVC}' is running (ps+systemd)"
         for SRC in "${SYSTEMD_SERVICES}" "${PSAX}" ; do
@@ -191,7 +191,6 @@ log_locations[linux]='/var/log/syslog,/var/log/kern.log,/var/log/messages'
 
 # $1 is service name, such those in SUPPORTED_SERVICES
 find_logs_for() {
-    ret=""
     x=${1}
     # we have trailing and starting quotes because of whiptail
     SVC="${x%\"}"
@@ -209,7 +208,7 @@ find_logs_for() {
         # Split /var/log/nginx/*.log into '/var/log/nginx' and '*.log' so we can use find
 	    path=${poss_path%/*}
 	    fname=${poss_path##*/}
-	    candidates=`find "${path}" -type f -mtime -5 -ctime -5 -name "$fname"`
+	    candidates=$(find "${path}" -type f -mtime -5 -ctime -5 -name "$fname" 2>/dev/null)
 	    # We have some candidates, add them
 	    for final_file in ${candidates} ; do
 	        log_dbg "Found logs file for '${SVC}': ${final_file}"
@@ -713,8 +712,7 @@ main() {
         ${CSCLI_BIN_INSTALLED} machines add --force "$(cat /etc/machine-id)" -a -f "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}" || log_fatal "unable to add machine to the local API"
         log_dbg "Crowdsec LAPI registered"
 
-        ${CSCLI_BIN_INSTALLED} capi register || log_fatal "unable to register to the Central API"
-        log_dbg "Crowdsec CAPI registered"
+        ${CSCLI_BIN_INSTALLED} capi register --error || log_fatal "unable to register to the Central API"
 
         systemctl enable -q crowdsec >/dev/null || log_fatal "unable to enable crowdsec"
         systemctl start crowdsec >/dev/null || log_fatal "unable to start crowdsec"
