@@ -116,8 +116,8 @@ teardown() {
 
     # complex type
     rune -0 cscli config show -o json --key Config.PluginConfig
-    assert_output --partial 'User: "nobody"'
-	assertèoutput --partial 'Group: "(nogroup|nobody)"'
+    assert_output --partial '"User": "nobody"'
+	assert_output --regexp '"Group": "(nogroup|nobody)"'
 }
 
 @test "cscli - required configuration paths" {
