@@ -267,7 +267,13 @@ func (w *AppsecSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) 
 				if err != nil {
 					return errors.Wrap(err, "Appsec server failed")
 				}
-				if err = w.server.Serve(listener); err != http.ErrServerClosed {
+				defer listener.Close()
+				if w.config.CertFilePath != "" && w.config.KeyFilePath != "" {
+					err = w.server.ServeTLS(listener, w.config.CertFilePath, w.config.KeyFilePath)
+				} else {
+					err = w.server.Serve(listener)
+				}
+				if err != nil && err != http.ErrServerClosed {
 					return errors.Wrap(err, "Appsec server failed")
 				}
 			}
