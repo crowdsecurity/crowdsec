@@ -18,7 +18,7 @@ installation and run the tests, or run the playbooks separately to iterate while
 
 - run-all.yml: run the other playbooks in the correct order.
 
-- provision-dependencies.yml: install the bats requirements (bash, netcat, cfssl, etc.), compilers, and database.
+- provision-dependencies.yml: install the bats requirements (bash, cfssl, etc.), compilers, and database.
 
 - provision-test-suite.yml: install the tests scripts and bats environment, and the crowdsec sources if we want to build the `crowdsec under test`.
 
