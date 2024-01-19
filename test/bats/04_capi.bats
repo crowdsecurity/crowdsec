@@ -43,7 +43,7 @@ setup() {
 
     config_set 'del(.api.server.online_client)'
     rune -1 cscli capi status
-    assert_stderr --regexp "no configuration for Central API \(CAPI\) in '.?$CONFIG_YAML'"
+    assert_stderr --regexp "no configuration for Central API \(CAPI\) in \'$(echo $CONFIG_YAML|sed s#//#/#g)\'"
 }
 
 @test "cscli capi status" {
