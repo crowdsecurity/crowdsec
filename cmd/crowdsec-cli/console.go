@@ -63,7 +63,7 @@ After running this command your will need to validate the enrollment in the weba
 		cscli console enroll --name [instance_name] --tags [tag_1] --tags [tag_2] YOUR-ENROLL-KEY
 		cscli console enroll --enable context,manual YOUR-ENROLL-KEY
 
-		valid options are : %s (see 'cscli console status' for details)`, strings.Join(csconfig.CONSOLE_CONFIGS, ",")),
+		valid options are : %s,all (see 'cscli console status' for details)`, strings.Join(csconfig.CONSOLE_CONFIGS, ",")),
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -91,6 +91,10 @@ After running this command your will need to validate the enrollment in the weba
 			if len(opts) != 0 {
 				for _, opt := range opts {
 					valid := false
+					if opt == "all" {
+						enable_opts = csconfig.CONSOLE_CONFIGS
+						break
+					}
 					for _, available_opt := range csconfig.CONSOLE_CONFIGS {
 						if opt == available_opt {
 							valid = true
