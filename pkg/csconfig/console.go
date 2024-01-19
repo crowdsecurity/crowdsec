@@ -19,6 +19,13 @@ const (
 )
 
 var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS, SEND_CONTEXT, CONSOLE_MANAGEMENT}
+var CONSOLE_CONFIGS_HELP = map[string]string{
+	SEND_CUSTOM_SCENARIOS:  "Forward alerts from custom scenarios to the console",
+	SEND_MANUAL_SCENARIOS:  "Forward manual decisions to the console",
+	SEND_TAINTED_SCENARIOS: "Forward alerts from tainted scenarios to the console",
+	SEND_CONTEXT:           "Forward context with alerts to the console",
+	CONSOLE_MANAGEMENT:     "Receive decisions from console",
+}
 
 var DefaultConsoleConfigFilePath = DefaultConfigPath("console.yaml")
 
