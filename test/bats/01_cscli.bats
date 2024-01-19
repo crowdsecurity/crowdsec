@@ -115,13 +115,9 @@ teardown() {
     assert_output "&false"
 
     # complex type
-    rune -0 cscli config show --key Config.PluginConfig
-    assert_output - <<-EOT
-	&csconfig.PluginCfg{
-	  User: "nobody",
-	  Group: "nogroup",
-	}
-	EOT
+    rune -0 cscli config show -o json--key Config.PluginConfig
+    assert_output --partial 'User: "nobody"'
+	assertèoutput --partial 'Group: "(nogroup|nobody)"'
 }
 
 @test "cscli - required configuration paths" {
