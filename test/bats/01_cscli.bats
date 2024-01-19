@@ -115,16 +115,16 @@ teardown() {
     assert_output "&false"
 
     # complex type
-    rune -0 cscli config show -o json --key Config.Prometheus
+    rune -0 cscli config show --key Config.Prometheus
     assert_output - <<-EOT
-	    &csconfig.PrometheusCfg{
-          Enabled: true,
-          Level: "full",
-          ListenAddr: "127.0.0.1",
-          ListenPort: 6060,
-        }
-      	EOT
-    }
+	&csconfig.PrometheusCfg{
+	  Enabled: true,
+	  Level: "full",
+	  ListenAddr: "127.0.0.1",
+	  ListenPort: 6060,
+	}
+	EOT
+}
 
 
 @test "cscli - required configuration paths" {
