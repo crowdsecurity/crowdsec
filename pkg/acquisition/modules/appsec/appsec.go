@@ -291,6 +291,8 @@ func (w *AppsecSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) 
 		})
 		<-t.Dying()
 		w.logger.Info("Shutting down Appsec server")
+    //xx let's clean up the appsec runners :)
+    appsec.AppsecRulesDetails = make(map[int]appsec.RulesDetails)
 		w.server.Shutdown(context.TODO())
 		return nil
 	})
@@ -376,14 +378,18 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	w.InChan <- parsedRequest
 
 	response := <-parsedRequest.ResponseChannel
+	statusCode := http.StatusOK
+
 	if response.InBandInterrupt {
+		statusCode = http.StatusForbidden
 		AppsecBlockCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "appsec_engine": parsedRequest.AppsecEngine}).Inc()
 	}
 
 	appsecResponse := w.AppsecRuntime.GenerateResponse(response, logger)
 	logger.Debugf("Response: %+v", appsecResponse)
-	rw.WriteHeader(appsecResponse.HTTPStatus)
-	body, err := json.Marshal(BodyResponse{Action: appsecResponse.Action})
+
+	rw.WriteHeader(statusCode)
+	body, err := json.Marshal(appsecResponse)
 	if err != nil {
 		logger.Errorf("unable to marshal response: %s", err)
 		rw.WriteHeader(http.StatusInternalServerError)

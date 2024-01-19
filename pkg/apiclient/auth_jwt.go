@@ -3,10 +3,8 @@ package apiclient
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -16,142 +14,8 @@ import (
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
-
-type APIKeyTransport struct {
-	APIKey string
-	// Transport is the underlying HTTP transport to use when making requests.
-	// It will default to http.DefaultTransport if nil.
-	Transport     http.RoundTripper
-	URL           *url.URL
-	VersionPrefix string
-	UserAgent     string
-}
-
-// RoundTrip implements the RoundTripper interface.
-func (t *APIKeyTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	if t.APIKey == "" {
-		return nil, errors.New("APIKey is empty")
-	}
-
-	// We must make a copy of the Request so
-	// that we don't modify the Request we were given. This is required by the
-	// specification of http.RoundTripper.
-	req = cloneRequest(req)
-	req.Header.Add("X-Api-Key", t.APIKey)
-
-	if t.UserAgent != "" {
-		req.Header.Add("User-Agent", t.UserAgent)
-	}
-
-	log.Debugf("req-api: %s %s", req.Method, req.URL.String())
-
-	if log.GetLevel() >= log.TraceLevel {
-		dump, _ := httputil.DumpRequest(req, true)
-		log.Tracef("auth-api request: %s", string(dump))
-	}
-
-	// Make the HTTP request.
-	resp, err := t.transport().RoundTrip(req)
-	if err != nil {
-		log.Errorf("auth-api: auth with api key failed return nil response, error: %s", err)
-
-		return resp, err
-	}
-
-	if log.GetLevel() >= log.TraceLevel {
-		dump, _ := httputil.DumpResponse(resp, true)
-		log.Tracef("auth-api response: %s", string(dump))
-	}
-
-	log.Debugf("resp-api: http %d", resp.StatusCode)
-
-	return resp, err
-}
-
-func (t *APIKeyTransport) Client() *http.Client {
-	return &http.Client{Transport: t}
-}
-
-func (t *APIKeyTransport) transport() http.RoundTripper {
-	if t.Transport != nil {
-		return t.Transport
-	}
-
-	return http.DefaultTransport
-}
-
-type retryRoundTripper struct {
-	next             http.RoundTripper
-	maxAttempts      int
-	retryStatusCodes []int
-	withBackOff      bool
-	onBeforeRequest  func(attempt int)
-}
-
-func (r retryRoundTripper) ShouldRetry(statusCode int) bool {
-	for _, code := range r.retryStatusCodes {
-		if code == statusCode {
-			return true
-		}
-	}
-
-	return false
-}
-
-func (r retryRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	var (
-		resp *http.Response
-		err  error
-	)
-
-	backoff := 0
-	maxAttempts := r.maxAttempts
-
-	if fflag.DisableHttpRetryBackoff.IsEnabled() {
-		maxAttempts = 1
-	}
-
-	for i := 0; i < maxAttempts; i++ {
-		if i > 0 {
-			if r.withBackOff {
-				//nolint:gosec
-				backoff += 10 + rand.Intn(20)
-			}
-
-			log.Infof("retrying in %d seconds (attempt %d of %d)", backoff, i+1, r.maxAttempts)
-
-			select {
-			case <-req.Context().Done():
-				return resp, req.Context().Err()
-			case <-time.After(time.Duration(backoff) * time.Second):
-			}
-		}
-
-		if r.onBeforeRequest != nil {
-			r.onBeforeRequest(i)
-		}
-
-		clonedReq := cloneRequest(req)
-		resp, err = r.next.RoundTrip(clonedReq)
-
-		if err != nil {
-			if left := maxAttempts - i - 1; left > 0 {
-				log.Errorf("error while performing request: %s; %d retries left", err, left)
-			}
-
-			continue
-		}
-
-		if !r.ShouldRetry(resp.StatusCode) {
-			return resp, nil
-		}
-	}
-
-	return resp, err
-}
 
 type JWTTransport struct {
 	MachineID     *string
@@ -171,10 +35,11 @@ type JWTTransport struct {
 
 func (t *JWTTransport) refreshJwtToken() error {
 	var err error
+
 	if t.UpdateScenario != nil {
 		t.Scenarios, err = t.UpdateScenario()
 		if err != nil {
-			return fmt.Errorf("can't update scenario list: %s", err)
+			return fmt.Errorf("can't update scenario list: %w", err)
 		}
 
 		log.Debugf("scenarios list updated for '%s'", *t.MachineID)
@@ -185,8 +50,6 @@ func (t *JWTTransport) refreshJwtToken() error {
 		Password:  t.Password,
 		Scenarios: t.Scenarios,
 	}
-
-	var response models.WatcherAuthResponse
 
 	/*
 		we don't use the main client, so let's build the body
@@ -250,6 +113,8 @@ func (t *JWTTransport) refreshJwtToken() error {
 		}
 	}
 
+	var response models.WatcherAuthResponse
+
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 		return fmt.Errorf("unable to decode response: %w", err)
 	}
@@ -300,7 +165,7 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	if err != nil {
-		// we had an error (network error for example, or 401 because token is refused), reset the token ?
+		// we had an error (network error for example, or 401 because token is refused), reset the token?
 		t.Token = ""
 
 		return resp, fmt.Errorf("performing jwt auth: %w", err)
@@ -324,14 +189,13 @@ func (t *JWTTransport) ResetToken() {
 	t.refreshTokenMutex.Unlock()
 }
 
+// transport() returns a round tripper that retries once when the status is unauthorized, and 5 times when the infrastructure is overloaded.
 func (t *JWTTransport) transport() http.RoundTripper {
-	var transport http.RoundTripper
-	if t.Transport != nil {
-		transport = t.Transport
-	} else {
+	transport := t.Transport
+	if transport == nil {
 		transport = http.DefaultTransport
 	}
-	// a round tripper that retries once when the status is unauthorized and 5 times when infrastructure is overloaded
+
 	return &retryRoundTripper{
 		next: &retryRoundTripper{
 			next:             transport,
@@ -350,29 +214,4 @@ func (t *JWTTransport) transport() http.RoundTripper {
 			}
 		},
 	}
-}
-
-// cloneRequest returns a clone of the provided *http.Request. The clone is a
-// shallow copy of the struct and its Header map.
-func cloneRequest(r *http.Request) *http.Request {
-	// shallow copy of the struct
-	r2 := new(http.Request)
-	*r2 = *r
-	// deep copy of the Header
-	r2.Header = make(http.Header, len(r.Header))
-
-	for k, s := range r.Header {
-		r2.Header[k] = append([]string(nil), s...)
-	}
-
-	if r.Body != nil {
-		var b bytes.Buffer
-
-		b.ReadFrom(r.Body)
-
-		r.Body = io.NopCloser(&b)
-		r2.Body = io.NopCloser(bytes.NewReader(b.Bytes()))
-	}
-
-	return r2
 }

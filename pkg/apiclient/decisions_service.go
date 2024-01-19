@@ -3,11 +3,11 @@ package apiclient
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
 	qs "github.com/google/go-querystring/query"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
@@ -61,8 +61,6 @@ type DecisionsDeleteOpts struct {
 
 // to demo query arguments
 func (s *DecisionsService) List(ctx context.Context, opts DecisionsListOpts) (*models.GetDecisionsResponse, *Response, error) {
-	var decisions models.GetDecisionsResponse
-
 	params, err := qs.Values(opts)
 	if err != nil {
 		return nil, nil, err
@@ -75,6 +73,8 @@ func (s *DecisionsService) List(ctx context.Context, opts DecisionsListOpts) (*m
 		return nil, nil, err
 	}
 
+	var decisions models.GetDecisionsResponse
+
 	resp, err := s.client.Do(ctx, req, &decisions)
 	if err != nil {
 		return nil, resp, err
@@ -84,12 +84,12 @@ func (s *DecisionsService) List(ctx context.Context, opts DecisionsListOpts) (*m
 }
 
 func (s *DecisionsService) FetchV2Decisions(ctx context.Context, url string) (*models.DecisionsStreamResponse, *Response, error) {
-	var decisions models.DecisionsStreamResponse
-
 	req, err := s.client.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	var decisions models.DecisionsStreamResponse
 
 	resp, err := s.client.Do(ctx, req, &decisions)
 	if err != nil {
@@ -100,7 +100,7 @@ func (s *DecisionsService) FetchV2Decisions(ctx context.Context, url string) (*m
 }
 
 func (s *DecisionsService) GetDecisionsFromGroups(decisionsGroups []*modelscapi.GetDecisionsStreamResponseNewItem) []*models.Decision {
-	var decisions []*models.Decision
+	decisions := make([]*models.Decision, 0)
 
 	for _, decisionsGroup := range decisionsGroups {
 		partialDecisions := make([]*models.Decision, len(decisionsGroup.Decisions))
@@ -122,11 +122,6 @@ func (s *DecisionsService) GetDecisionsFromGroups(decisionsGroups []*modelscapi.
 }
 
 func (s *DecisionsService) FetchV3Decisions(ctx context.Context, url string) (*models.DecisionsStreamResponse, *Response, error) {
-	var (
-		decisions   modelscapi.GetDecisionsStreamResponse
-		v2Decisions models.DecisionsStreamResponse
-	)
-
 	scenarioDeleted := "deleted"
 	durationDeleted := "1h"
 
@@ -135,11 +130,14 @@ func (s *DecisionsService) FetchV3Decisions(ctx context.Context, url string) (*m
 		return nil, nil, err
 	}
 
+	decisions := modelscapi.GetDecisionsStreamResponse{}
+
 	resp, err := s.client.Do(ctx, req, &decisions)
 	if err != nil {
 		return nil, resp, err
 	}
 
+	v2Decisions := models.DecisionsStreamResponse{}
 	v2Decisions.New = s.GetDecisionsFromGroups(decisions.New)
 
 	for _, decisionsGroup := range decisions.Deleted {
@@ -183,6 +181,7 @@ func (s *DecisionsService) GetDecisionsFromBlocklist(ctx context.Context, blockl
 
 	req = req.WithContext(ctx)
 	log.Debugf("[URL] %s %s", req.Method, req.URL)
+
 	// we don't use client_http Do method because we need the reader and is not provided.
 	// We would be forced to use Pipe and goroutine, etc
 	resp, err := client.Do(req)
@@ -247,11 +246,11 @@ func (s *DecisionsService) GetStream(ctx context.Context, opts DecisionsStreamOp
 		return nil, nil, err
 	}
 
-	if s.client.URLPrefix == "v3" {
-		return s.FetchV3Decisions(ctx, u)
-	} else {
+	if s.client.URLPrefix != "v3" {
 		return s.FetchV2Decisions(ctx, u)
 	}
+
+	return s.FetchV3Decisions(ctx, u)
 }
 
 func (s *DecisionsService) GetStreamV3(ctx context.Context, opts DecisionsStreamOpts) (*modelscapi.GetDecisionsStreamResponse, *Response, error) {
@@ -260,12 +259,12 @@ func (s *DecisionsService) GetStreamV3(ctx context.Context, opts DecisionsStream
 		return nil, nil, err
 	}
 
-	var decisions modelscapi.GetDecisionsStreamResponse
-
 	req, err := s.client.NewRequest(http.MethodGet, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	decisions := modelscapi.GetDecisionsStreamResponse{}
 
 	resp, err := s.client.Do(ctx, req, &decisions)
 	if err != nil {
@@ -292,8 +291,6 @@ func (s *DecisionsService) StopStream(ctx context.Context) (*Response, error) {
 }
 
 func (s *DecisionsService) Delete(ctx context.Context, opts DecisionsDeleteOpts) (*models.DeleteDecisionResponse, *Response, error) {
-	var deleteDecisionResponse models.DeleteDecisionResponse
-
 	params, err := qs.Values(opts)
 	if err != nil {
 		return nil, nil, err
@@ -306,6 +303,8 @@ func (s *DecisionsService) Delete(ctx context.Context, opts DecisionsDeleteOpts)
 		return nil, nil, err
 	}
 
+	deleteDecisionResponse := models.DeleteDecisionResponse{}
+
 	resp, err := s.client.Do(ctx, req, &deleteDecisionResponse)
 	if err != nil {
 		return nil, resp, err
@@ -315,14 +314,14 @@ func (s *DecisionsService) Delete(ctx context.Context, opts DecisionsDeleteOpts)
 }
 
 func (s *DecisionsService) DeleteOne(ctx context.Context, decisionID string) (*models.DeleteDecisionResponse, *Response, error) {
-	var deleteDecisionResponse models.DeleteDecisionResponse
-
 	u := fmt.Sprintf("%s/decisions/%s", s.client.URLPrefix, decisionID)
 
 	req, err := s.client.NewRequest(http.MethodDelete, u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	deleteDecisionResponse := models.DeleteDecisionResponse{}
 
 	resp, err := s.client.Do(ctx, req, &deleteDecisionResponse)
 	if err != nil {

@@ -94,7 +94,7 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 
 	if log.GetLevel() >= log.DebugLevel {
 		for k, v := range resp.Header {
-			log.Debugf("[headers] %s : %s", k, v)
+			log.Debugf("[headers] %s: %s", k, v)
 		}
 
 		dump, err := httputil.DumpResponse(resp, true)

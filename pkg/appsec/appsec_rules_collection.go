@@ -43,7 +43,7 @@ type RulesDetails struct {
 	Name     string
 }
 
-// Should it be a global ?
+// FIXME: this shouldn't be a global
 // Is using the id is a good idea ? might be too specific to coraza and not easily reusable
 var AppsecRulesDetails = make(map[int]RulesDetails)
 

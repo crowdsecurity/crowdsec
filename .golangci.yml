@@ -9,6 +9,10 @@ run:
     - pkg/yamlpatch/merge_test.go
 
 linters-settings:
+  cyclop:
+    # lower this after refactoring
+    max-complexity: 66
+
   gci:
     sections:
      - standard
@@ -16,8 +20,13 @@ linters-settings:
      - prefix(github.com/crowdsecurity)
      - prefix(github.com/crowdsecurity/crowdsec)
 
+  gocognit:
+    # lower this after refactoring
+    min-complexity: 145
+
   gocyclo:
-    min-complexity: 30
+    # lower this after refactoring
+    min-complexity: 64
 
   funlen:
     # Checks the number of lines in a function.
@@ -35,8 +44,16 @@ linters-settings:
   lll:
     line-length: 140
 
+  maintidx:
+    # raise this after refactoring
+    under: 9
+
   misspell:
     locale: US
+
+  nestif:
+    # lower this after refactoring
+    min-complexity: 27
 
   nlreturn:
     block-size: 4
@@ -54,7 +71,7 @@ linters-settings:
       main:
         deny:
           - pkg: "github.com/pkg/errors"
-            desc: "errors.New() is deprecated in favor of fmt.Errorf()"
+            desc: "errors.Wrap() is deprecated in favor of fmt.Errorf()"
 
 linters:
   enable-all: true
@@ -81,6 +98,7 @@ linters:
     # - asciicheck          # Simple linter to check that your code does not contain non-ASCII identifiers
     # - bidichk             # Checks for dangerous unicode character sequences
     # - bodyclose           # checks whether HTTP response body is closed successfully
+    # - cyclop              # checks function and package cyclomatic complexity
     # - decorder            # check declaration order and count of types, constants, variables and functions
     # - depguard            # Go linter that checks if package imports are in a list of acceptable packages
     # - dupword             # checks for duplicate words in the source code
@@ -91,7 +109,9 @@ linters:
     # - funlen              # Tool for detection of long functions
     # - ginkgolinter        # enforces standards of using ginkgo and gomega
     # - gochecknoinits      # Checks that no init functions are present in Go code
+    # - gocognit            # Computes and checks the cognitive complexity of functions
     # - gocritic            # Provides diagnostics that check for bugs, performance and style issues.
+    # - gocyclo             # Computes and checks the cyclomatic complexity of functions
     # - goheader            # Checks is file header matches to pattern
     # - gomoddirectives     # Manage the use of 'replace', 'retract', and 'excludes' directives in go.mod.
     # - gomodguard          # Allow and block list linter for direct Go module dependencies. This is different from depguard where there are different block types for example version constraints and module recommendations.
@@ -103,9 +123,11 @@ linters:
     # - ineffassign         # Detects when assignments to existing variables are not used
     # - interfacebloat      # A linter that checks the number of methods inside an interface.
     # - logrlint            # Check logr arguments.
+    # - maintidx            # maintidx measures the maintainability index of each function.
     # - makezero            # Finds slice declarations with non-zero initial length
     # - misspell            # Finds commonly misspelled English words in comments
     # - nakedret            # Finds naked returns in functions greater than a specified function length
+    # - nestif              # Reports deeply nested if statements
     # - nilerr              # Finds the code that returns nil even if it checks that the error is not nil.
     # - nolintlint          # Reports ill-formed or insufficient nolint directives
     # - nonamedreturns      # Reports all named returns
@@ -171,15 +193,10 @@ linters:
     #
     # Well intended, but not ready for this
     #
-    - cyclop                # checks function and package cyclomatic complexity
     - dupl                  # Tool for code clone detection
     - forcetypeassert       # finds forced type assertions
-    - gocognit              # Computes and checks the cognitive complexity of functions
-    - gocyclo               # Computes and checks the cyclomatic complexity of functions
     - godox                 # Tool for detection of FIXME, TODO and other comment keywords
     - goerr113              # Golang linter to check the errors handling expressions
-    - maintidx              # maintidx measures the maintainability index of each function.
-    - nestif                # Reports deeply nested if statements
     - paralleltest          # paralleltest detects missing usage of t.Parallel() method in your Go test
     - testpackage           # linter that makes you use a separate _test package
 
@@ -287,7 +304,8 @@ issues:
         - bodyclose
       text: "response body must be closed"
 
-    # named/naked returns are evil
+    # named/naked returns are evil, with a single exception
+    # https://go.dev/wiki/CodeReviewComments#named-result-parameters
     - linters:
         - nonamedreturns
       text: "named return .* with type .* found"

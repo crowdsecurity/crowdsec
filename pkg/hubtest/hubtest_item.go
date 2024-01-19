@@ -160,321 +160,35 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 	}, nil
 }
 
+func (t *HubTestItem) installHubItems(names []string, installFunc func(string) error) error {
+	for _, name := range names {
+		if name == "" {
+			continue
+		}
+
+		if err := installFunc(name); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (t *HubTestItem) InstallHub() error {
-	// install parsers in runtime environment
-	for _, parser := range t.Config.Parsers {
-		if parser == "" {
-			continue
-		}
-
-		if hubParser := t.HubIndex.GetItem(cwhub.PARSERS, parser); hubParser != nil {
-			parserSource, err := filepath.Abs(filepath.Join(t.HubPath, hubParser.RemotePath))
-			if err != nil {
-				return fmt.Errorf("can't get absolute path of '%s': %s", parserSource, err)
-			}
-
-			parserFileName := filepath.Base(parserSource)
-
-			// runtime/hub/parsers/s00-raw/crowdsecurity/
-			hubDirParserDest := filepath.Join(t.RuntimeHubPath, filepath.Dir(hubParser.RemotePath))
-
-			// runtime/parsers/s00-raw/
-			parserDirDest := fmt.Sprintf("%s/parsers/%s/", t.RuntimePath, hubParser.Stage)
-
-			if err := os.MkdirAll(hubDirParserDest, os.ModePerm); err != nil {
-				return fmt.Errorf("unable to create folder '%s': %s", hubDirParserDest, err)
-			}
-
-			if err := os.MkdirAll(parserDirDest, os.ModePerm); err != nil {
-				return fmt.Errorf("unable to create folder '%s': %s", parserDirDest, err)
-			}
-
-			// runtime/hub/parsers/s00-raw/crowdsecurity/syslog-logs.yaml
-			hubDirParserPath := filepath.Join(hubDirParserDest, parserFileName)
-			if err := Copy(parserSource, hubDirParserPath); err != nil {
-				return fmt.Errorf("unable to copy '%s' to '%s': %s", parserSource, hubDirParserPath, err)
-			}
-
-			// runtime/parsers/s00-raw/syslog-logs.yaml
-			parserDirParserPath := filepath.Join(parserDirDest, parserFileName)
-			if err := os.Symlink(hubDirParserPath, parserDirParserPath); err != nil {
-				if !os.IsExist(err) {
-					return fmt.Errorf("unable to symlink parser '%s' to '%s': %s", hubDirParserPath, parserDirParserPath, err)
-				}
-			}
-		} else {
-			customParserExist := false
-			for _, customPath := range t.CustomItemsLocation {
-				// we check if its a custom parser
-				customParserPath := filepath.Join(customPath, parser)
-				if _, err := os.Stat(customParserPath); os.IsNotExist(err) {
-					continue
-					//return fmt.Errorf("parser '%s' doesn't exist in the hub and doesn't appear to be a custom one.", parser)
-				}
-
-				customParserPathSplit, customParserName := filepath.Split(customParserPath)
-				// because path is parsers/<stage>/<author>/parser.yaml and we wan't the stage
-				splittedPath := strings.Split(customParserPathSplit, string(os.PathSeparator))
-				customParserStage := splittedPath[len(splittedPath)-3]
-
-				// check if stage exist
-				hubStagePath := filepath.Join(t.HubPath, fmt.Sprintf("parsers/%s", customParserStage))
-
-				if _, err := os.Stat(hubStagePath); os.IsNotExist(err) {
-					continue
-					//return fmt.Errorf("stage '%s' extracted from '%s' doesn't exist in the hub", customParserStage, hubStagePath)
-				}
-
-				parserDirDest := fmt.Sprintf("%s/parsers/%s/", t.RuntimePath, customParserStage)
-				if err := os.MkdirAll(parserDirDest, os.ModePerm); err != nil {
-					continue
-					//return fmt.Errorf("unable to create folder '%s': %s", parserDirDest, err)
-				}
-
-				customParserDest := filepath.Join(parserDirDest, customParserName)
-				// if path to parser exist, copy it
-				if err := Copy(customParserPath, customParserDest); err != nil {
-					continue
-					//return fmt.Errorf("unable to copy custom parser '%s' to '%s': %s", customParserPath, customParserDest, err)
-				}
-
-				customParserExist = true
-				break
-			}
-			if !customParserExist {
-				return fmt.Errorf("couldn't find custom parser '%s' in the following location: %+v", parser, t.CustomItemsLocation)
-			}
-		}
+	if err := t.installHubItems(t.Config.Parsers, t.installParser); err != nil {
+		return err
 	}
 
-	// install scenarios in runtime environment
-	for _, scenario := range t.Config.Scenarios {
-		if scenario == "" {
-			continue
-		}
-
-		if hubScenario := t.HubIndex.GetItem(cwhub.SCENARIOS, scenario); hubScenario != nil {
-			scenarioSource, err := filepath.Abs(filepath.Join(t.HubPath, hubScenario.RemotePath))
-			if err != nil {
-				return fmt.Errorf("can't get absolute path to: %s", scenarioSource)
-			}
-
-			scenarioFileName := filepath.Base(scenarioSource)
-
-			// runtime/hub/scenarios/crowdsecurity/
-			hubDirScenarioDest := filepath.Join(t.RuntimeHubPath, filepath.Dir(hubScenario.RemotePath))
-
-			// runtime/parsers/scenarios/
-			scenarioDirDest := fmt.Sprintf("%s/scenarios/", t.RuntimePath)
-
-			if err := os.MkdirAll(hubDirScenarioDest, os.ModePerm); err != nil {
-				return fmt.Errorf("unable to create folder '%s': %s", hubDirScenarioDest, err)
-			}
-
-			if err := os.MkdirAll(scenarioDirDest, os.ModePerm); err != nil {
-				return fmt.Errorf("unable to create folder '%s': %s", scenarioDirDest, err)
-			}
-
-			// runtime/hub/scenarios/crowdsecurity/ssh-bf.yaml
-			hubDirScenarioPath := filepath.Join(hubDirScenarioDest, scenarioFileName)
-			if err := Copy(scenarioSource, hubDirScenarioPath); err != nil {
-				return fmt.Errorf("unable to copy '%s' to '%s': %s", scenarioSource, hubDirScenarioPath, err)
-			}
-
-			// runtime/scenarios/ssh-bf.yaml
-			scenarioDirParserPath := filepath.Join(scenarioDirDest, scenarioFileName)
-			if err := os.Symlink(hubDirScenarioPath, scenarioDirParserPath); err != nil {
-				if !os.IsExist(err) {
-					return fmt.Errorf("unable to symlink scenario '%s' to '%s': %s", hubDirScenarioPath, scenarioDirParserPath, err)
-				}
-			}
-		} else {
-			customScenarioExist := false
-			for _, customPath := range t.CustomItemsLocation {
-				// we check if its a custom scenario
-				customScenarioPath := filepath.Join(customPath, scenario)
-				if _, err := os.Stat(customScenarioPath); os.IsNotExist(err) {
-					continue
-					//return fmt.Errorf("scenarios '%s' doesn't exist in the hub and doesn't appear to be a custom one.", scenario)
-				}
-
-				scenarioDirDest := fmt.Sprintf("%s/scenarios/", t.RuntimePath)
-				if err := os.MkdirAll(scenarioDirDest, os.ModePerm); err != nil {
-					return fmt.Errorf("unable to create folder '%s': %s", scenarioDirDest, err)
-				}
-
-				scenarioFileName := filepath.Base(customScenarioPath)
-				scenarioFileDest := filepath.Join(scenarioDirDest, scenarioFileName)
-				if err := Copy(customScenarioPath, scenarioFileDest); err != nil {
-					continue
-					//return fmt.Errorf("unable to copy scenario from '%s' to '%s': %s", customScenarioPath, scenarioFileDest, err)
-				}
-				customScenarioExist = true
-				break
-			}
-			if !customScenarioExist {
-				return fmt.Errorf("couldn't find custom scenario '%s' in the following location: %+v", scenario, t.CustomItemsLocation)
-			}
-		}
+	if err := t.installHubItems(t.Config.Scenarios, t.installScenario); err != nil {
+		return err
 	}
 
-	// install appsec-rules in runtime environment
-	for _, appsecrule := range t.Config.AppsecRules {
-		log.Debugf("adding rule '%s'", appsecrule)
-
-		if appsecrule == "" {
-			continue
-		}
-
-		if hubAppsecRule, ok := t.HubIndex.GetItemMap(cwhub.APPSEC_RULES)[appsecrule]; ok {
-			appsecRuleSource, err := filepath.Abs(filepath.Join(t.HubPath, hubAppsecRule.RemotePath))
-			if err != nil {
-				return fmt.Errorf("can't get absolute path of '%s': %s", appsecRuleSource, err)
-			}
-
-			appsecRuleFilename := filepath.Base(appsecRuleSource)
-
-			// runtime/hub/appsec-rules/author/appsec-rule
-			hubDirAppsecRuleDest := filepath.Join(t.RuntimeHubPath, filepath.Dir(hubAppsecRule.RemotePath))
-
-			// runtime/appsec-rules/
-			appsecRuleDirDest := fmt.Sprintf("%s/appsec-rules/", t.RuntimePath)
-
-			if err := os.MkdirAll(hubDirAppsecRuleDest, os.ModePerm); err != nil {
-				return fmt.Errorf("unable to create folder '%s': %s", hubDirAppsecRuleDest, err)
-			}
-
-			if err := os.MkdirAll(appsecRuleDirDest, os.ModePerm); err != nil {
-				return fmt.Errorf("unable to create folder '%s': %s", appsecRuleDirDest, err)
-			}
-
-			// runtime/hub/appsec-rules/crowdsecurity/rule.yaml
-			hubDirAppsecRulePath := filepath.Join(appsecRuleDirDest, appsecRuleFilename)
-			if err := Copy(appsecRuleSource, hubDirAppsecRulePath); err != nil {
-				return fmt.Errorf("unable to copy '%s' to '%s': %s", appsecRuleSource, hubDirAppsecRulePath, err)
-			}
-
-			// runtime/appsec-rules/rule.yaml
-			appsecRulePath := filepath.Join(appsecRuleDirDest, appsecRuleFilename)
-			if err := os.Symlink(hubDirAppsecRulePath, appsecRulePath); err != nil {
-				if !os.IsExist(err) {
-					return fmt.Errorf("unable to symlink appsec-rule '%s' to '%s': %s", hubDirAppsecRulePath, appsecRulePath, err)
-				}
-			}
-		} else {
-			customAppsecRuleExist := false
-			for _, customPath := range t.CustomItemsLocation {
-				// we check if its a custom appsec-rule
-				customAppsecRulePath := filepath.Join(customPath, appsecrule)
-				if _, err := os.Stat(customAppsecRulePath); os.IsNotExist(err) {
-					continue
-				}
-				customAppsecRulePathSplit := strings.Split(customAppsecRulePath, "/")
-				customAppsecRuleName := customAppsecRulePathSplit[len(customAppsecRulePathSplit)-1]
-
-				appsecRuleDirDest := fmt.Sprintf("%s/appsec-rules/", t.RuntimePath)
-				if err := os.MkdirAll(appsecRuleDirDest, os.ModePerm); err != nil {
-					return fmt.Errorf("unable to create folder '%s': %s", appsecRuleDirDest, err)
-				}
-
-				// runtime/appsec-rules/
-				customAppsecRuleDest := fmt.Sprintf("%s/appsec-rules/%s", t.RuntimePath, customAppsecRuleName)
-				// if path to postoverflow exist, copy it
-				if err := Copy(customAppsecRulePath, customAppsecRuleDest); err != nil {
-					continue
-				}
-				customAppsecRuleExist = true
-				break
-			}
-			if !customAppsecRuleExist {
-				return fmt.Errorf("couldn't find custom appsec-rule '%s' in the following location: %+v", appsecrule, t.CustomItemsLocation)
-			}
-		}
+	if err := t.installHubItems(t.Config.PostOverflows, t.installPostoverflow); err != nil {
+		return err
 	}
 
-	// install postoverflows in runtime environment
-	for _, postoverflow := range t.Config.PostOverflows {
-		if postoverflow == "" {
-			continue
-		}
-
-		if hubPostOverflow := t.HubIndex.GetItem(cwhub.POSTOVERFLOWS, postoverflow); hubPostOverflow != nil {
-			postoverflowSource, err := filepath.Abs(filepath.Join(t.HubPath, hubPostOverflow.RemotePath))
-			if err != nil {
-				return fmt.Errorf("can't get absolute path of '%s': %s", postoverflowSource, err)
-			}
-
-			postoverflowFileName := filepath.Base(postoverflowSource)
-
-			// runtime/hub/postoverflows/s00-enrich/crowdsecurity/
-			hubDirPostoverflowDest := filepath.Join(t.RuntimeHubPath, filepath.Dir(hubPostOverflow.RemotePath))
-
-			// runtime/postoverflows/s00-enrich
-			postoverflowDirDest := fmt.Sprintf("%s/postoverflows/%s/", t.RuntimePath, hubPostOverflow.Stage)
-
-			if err := os.MkdirAll(hubDirPostoverflowDest, os.ModePerm); err != nil {
-				return fmt.Errorf("unable to create folder '%s': %s", hubDirPostoverflowDest, err)
-			}
-
-			if err := os.MkdirAll(postoverflowDirDest, os.ModePerm); err != nil {
-				return fmt.Errorf("unable to create folder '%s': %s", postoverflowDirDest, err)
-			}
-
-			// runtime/hub/postoverflows/s00-enrich/crowdsecurity/rdns.yaml
-			hubDirPostoverflowPath := filepath.Join(hubDirPostoverflowDest, postoverflowFileName)
-			if err := Copy(postoverflowSource, hubDirPostoverflowPath); err != nil {
-				return fmt.Errorf("unable to copy '%s' to '%s': %s", postoverflowSource, hubDirPostoverflowPath, err)
-			}
-
-			// runtime/postoverflows/s00-enrich/rdns.yaml
-			postoverflowDirParserPath := filepath.Join(postoverflowDirDest, postoverflowFileName)
-			if err := os.Symlink(hubDirPostoverflowPath, postoverflowDirParserPath); err != nil {
-				if !os.IsExist(err) {
-					return fmt.Errorf("unable to symlink postoverflow '%s' to '%s': %s", hubDirPostoverflowPath, postoverflowDirParserPath, err)
-				}
-			}
-		} else {
-			customPostoverflowExist := false
-			for _, customPath := range t.CustomItemsLocation {
-				// we check if its a custom postoverflow
-				customPostOverflowPath := filepath.Join(customPath, postoverflow)
-				if _, err := os.Stat(customPostOverflowPath); os.IsNotExist(err) {
-					continue
-					//return fmt.Errorf("postoverflow '%s' doesn't exist in the hub and doesn't appear to be a custom one.", postoverflow)
-				}
-
-				customPostOverflowPathSplit := strings.Split(customPostOverflowPath, "/")
-				customPostoverflowName := customPostOverflowPathSplit[len(customPostOverflowPathSplit)-1]
-				// because path is postoverflows/<stage>/<author>/parser.yaml and we wan't the stage
-				customPostoverflowStage := customPostOverflowPathSplit[len(customPostOverflowPathSplit)-3]
-
-				// check if stage exist
-				hubStagePath := filepath.Join(t.HubPath, fmt.Sprintf("postoverflows/%s", customPostoverflowStage))
-
-				if _, err := os.Stat(hubStagePath); os.IsNotExist(err) {
-					continue
-					//return fmt.Errorf("stage '%s' from extracted '%s' doesn't exist in the hub", customPostoverflowStage, hubStagePath)
-				}
-
-				postoverflowDirDest := fmt.Sprintf("%s/postoverflows/%s/", t.RuntimePath, customPostoverflowStage)
-				if err := os.MkdirAll(postoverflowDirDest, os.ModePerm); err != nil {
-					continue
-					//return fmt.Errorf("unable to create folder '%s': %s", postoverflowDirDest, err)
-				}
-
-				customPostoverflowDest := filepath.Join(postoverflowDirDest, customPostoverflowName)
-				// if path to postoverflow exist, copy it
-				if err := Copy(customPostOverflowPath, customPostoverflowDest); err != nil {
-					continue
-					//return fmt.Errorf("unable to copy custom parser '%s' to '%s': %s", customPostOverflowPath, customPostoverflowDest, err)
-				}
-				customPostoverflowExist = true
-				break
-			}
-			if !customPostoverflowExist {
-				return fmt.Errorf("couldn't find custom postoverflow '%s' in the following location: %+v", postoverflow, t.CustomItemsLocation)
-			}
-		}
+	if err := t.installHubItems(t.Config.AppsecRules, t.installAppsecRule); err != nil {
+		return err
 	}
 
 	if len(t.Config.OverrideStatics) > 0 {

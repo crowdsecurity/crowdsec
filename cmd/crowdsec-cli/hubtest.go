@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/crowdsec/pkg/dumps"
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
@@ -679,8 +680,8 @@ func (cli cliHubTest) NewExplainCmd() *cobra.Command {
 						return fmt.Errorf("unable to load scenario result after run: %s", err)
 					}
 				}
-				opts := hubtest.DumpOpts{}
-				hubtest.DumpTree(*test.ParserAssert.TestData, *test.ScenarioAssert.PourData, opts)
+				opts := dumps.DumpOpts{}
+				dumps.DumpTree(*test.ParserAssert.TestData, *test.ScenarioAssert.PourData, opts)
 			}
 
 			return nil

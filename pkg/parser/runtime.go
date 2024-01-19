@@ -18,6 +18,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/pkg/dumps"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -229,14 +230,10 @@ func stageidx(stage string, stages []string) int {
 	return -1
 }
 
-type ParserResult struct {
-	Evt     types.Event
-	Success bool
-}
-
 var ParseDump bool
 var DumpFolder string
-var StageParseCache map[string]map[string][]ParserResult
+
+var StageParseCache dumps.ParserResults
 var StageParseMutex sync.Mutex
 
 func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error) {
@@ -271,9 +268,9 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 	if ParseDump {
 		if StageParseCache == nil {
 			StageParseMutex.Lock()
-			StageParseCache = make(map[string]map[string][]ParserResult)
-			StageParseCache["success"] = make(map[string][]ParserResult)
-			StageParseCache["success"][""] = make([]ParserResult, 0)
+			StageParseCache = make(dumps.ParserResults)
+			StageParseCache["success"] = make(map[string][]dumps.ParserResult)
+			StageParseCache["success"][""] = make([]dumps.ParserResult, 0)
 			StageParseMutex.Unlock()
 		}
 	}
@@ -282,7 +279,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 		if ParseDump {
 			StageParseMutex.Lock()
 			if _, ok := StageParseCache[stage]; !ok {
-				StageParseCache[stage] = make(map[string][]ParserResult)
+				StageParseCache[stage] = make(map[string][]dumps.ParserResult)
 			}
 			StageParseMutex.Unlock()
 		}
@@ -322,13 +319,18 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			}
 			clog.Tracef("node (%s) ret : %v", node.rn, ret)
 			if ParseDump {
+				parserIdxInStage := 0
 				StageParseMutex.Lock()
 				if len(StageParseCache[stage][node.Name]) == 0 {
-					StageParseCache[stage][node.Name] = make([]ParserResult, 0)
+					StageParseCache[stage][node.Name] = make([]dumps.ParserResult, 0)
+					parserIdxInStage = len(StageParseCache[stage])
+				} else {
+					parserIdxInStage = StageParseCache[stage][node.Name][0].Idx
 				}
 				StageParseMutex.Unlock()
+
 				evtcopy := deepcopy.Copy(event)
-				parserInfo := ParserResult{Evt: evtcopy.(types.Event), Success: ret}
+				parserInfo := dumps.ParserResult{Evt: evtcopy.(types.Event), Success: ret, Idx: parserIdxInStage}
 				StageParseMutex.Lock()
 				StageParseCache[stage][node.Name] = append(StageParseCache[stage][node.Name], parserInfo)
 				StageParseMutex.Unlock()
