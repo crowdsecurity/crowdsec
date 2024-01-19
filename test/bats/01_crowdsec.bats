@@ -84,7 +84,7 @@ teardown() {
 
     config_disable_agent
 
-    sleep 5
+    sleep 2
 
     rune -0 kill -HUP "$PID"
 
@@ -107,13 +107,13 @@ teardown() {
     assert_file_contains "$log_old" "Bucket routine exiting"
     assert_file_contains "$log_old" "serve: shutting down api server"
 
-    sleep 5
+    sleep 2
 
     assert_file_exists "$log_new"
 
     for ((i=0; i<10; i++)); do
         sleep 1
-        grep -q "Reload is finished" <"$log_old" && break
+        grep -q "Reload is finished" <"$log_new" && break
     done
 
     echo "waited $i seconds"
