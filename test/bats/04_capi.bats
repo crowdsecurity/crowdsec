@@ -43,7 +43,8 @@ setup() {
 
     config_set 'del(.api.server.online_client)'
     rune -1 cscli capi status
-    assert_stderr --partial "no configuration for Central API (CAPI) in '$CONFIG_YAML'"
+    assert_stderr --partial "no configuration for Central API (CAPI) in "
+    assert_stderr --partial "$CONFIG_YAML'$"
 }
 
 @test "cscli capi status" {
