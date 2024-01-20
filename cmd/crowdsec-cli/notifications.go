@@ -140,8 +140,8 @@ func getProfilesConfigs() (map[string]NotificationsCfg, error) {
 func (cli cliNotifications) NewListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "list",
-		Short:             "list active notifications plugins",
-		Long:              `list active notifications plugins`,
+		Short:             "list notifications plugins",
+		Long:              `list notifications plugins and their status (active or not)`,
 		Example:           `cscli notifications list`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
@@ -187,10 +187,11 @@ func (cli cliNotifications) NewListCmd() *cobra.Command {
 func (cli cliNotifications) NewInspectCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "inspect",
-		Short:             "Inspect active notifications plugin configuration",
-		Long:              `Inspect active notifications plugin and show configuration`,
+		Short:             "Inspect notifications plugin configuration",
+		Long:              `Inspect notifications plugin and show configuration`,
 		Example:           `cscli notifications inspect <plugin_name>`,
 		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: NotificationConfigFilter,
 		DisableAutoGenTag: true,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if args[0] == "" {
@@ -229,6 +230,20 @@ func (cli cliNotifications) NewInspectCmd() *cobra.Command {
 	return cmd
 }
 
+func NotificationConfigFilter(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	ncfgs, err := getProfilesConfigs()
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	var ret []string
+	for k := range ncfgs {
+		if strings.Contains(k, toComplete) && !slices.Contains(args, k) {
+			ret = append(ret, k)
+		}
+	}
+	return ret, cobra.ShellCompDirectiveNoFileComp
+}
+
 func (cli cliNotifications) NewTestCmd() *cobra.Command {
 	var (
 		pluginBroker  csplugin.PluginBroker
@@ -242,19 +257,7 @@ func (cli cliNotifications) NewTestCmd() *cobra.Command {
 		Example:           `cscli notifications test [plugin_name]`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			ncfgs, err := getProfilesConfigs()
-			if err != nil {
-				return nil, cobra.ShellCompDirectiveError
-			}
-			var ret []string
-			for k := range ncfgs {
-				if strings.Contains(k, toComplete) && !slices.Contains(args, k) {
-					ret = append(ret, k)
-				}
-			}
-			return ret, cobra.ShellCompDirectiveNoFileComp
-		},
+		ValidArgsFunction: NotificationConfigFilter,
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			pconfigs, err := getPluginConfigs()
 			if err != nil {
