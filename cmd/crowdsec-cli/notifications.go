@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -241,6 +242,19 @@ func (cli cliNotifications) NewTestCmd() *cobra.Command {
 		Example:           `cscli notifications test [plugin_name]`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			ncfgs, err := getProfilesConfigs()
+			if err != nil {
+				return nil, cobra.ShellCompDirectiveError
+			}
+			var ret []string
+			for k := range ncfgs {
+				if strings.Contains(k, toComplete) && !slices.Contains(args, k) {
+					ret = append(ret, k)
+				}
+			}
+			return ret, cobra.ShellCompDirectiveNoFileComp
+		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			pconfigs, err := getPluginConfigs()
 			if err != nil {
