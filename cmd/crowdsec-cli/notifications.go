@@ -187,7 +187,7 @@ func (cli cliNotifications) NewListCmd() *cobra.Command {
 func (cli cliNotifications) NewInspectCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "inspect",
-		Short:             "Inspect notifications plugin configuration",
+		Short:             "Inspect notifications plugin",
 		Long:              `Inspect notifications plugin and show configuration`,
 		Example:           `cscli notifications inspect <plugin_name>`,
 		Args:              cobra.ExactArgs(1),
