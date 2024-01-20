@@ -193,12 +193,6 @@ func (cli cliNotifications) NewInspectCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: NotificationConfigFilter,
 		DisableAutoGenTag: true,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			if args[0] == "" {
-				return fmt.Errorf("please provide a plugin name to inspect")
-			}
-			return nil
-		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ncfgs, err := getProfilesConfigs()
 			if err != nil {
