@@ -247,7 +247,7 @@ func (cli cliNotifications) NewTestCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "test [plugin name]",
 		Short:             "send a generic test alert to notification plugin",
-		Long:              `send a generic test alert to a notification plugin to test configuration even if is not active`,
+		Long:              `send a generic test alert to a notification plugin even if it is not active in profiles`,
 		Example:           `cscli notifications test [plugin_name]`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
