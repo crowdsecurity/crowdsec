@@ -16,6 +16,7 @@
     - crowdsecurity.testing.pkg_config
     - crowdsecurity.testing.re2
     - crowdsecurity.testing.bats_requirements
+    - crowdsecurity.testing.python
 
 - name: "Install Postgres"
   hosts: all
