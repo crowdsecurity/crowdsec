@@ -310,11 +310,6 @@ issues:
         - nonamedreturns
       text: "named return .* with type .* found"
 
-    # https://github.com/alexkohler/nakedret#purpose
-    - linters:
-        - nakedret
-      text: "naked return in func .* with .* lines of code"
-
     #
     # Will fix,  might be trickier
     #
