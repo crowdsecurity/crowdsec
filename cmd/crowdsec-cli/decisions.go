@@ -127,6 +127,7 @@ func (cli cliDecisions) NewCommand() *cobra.Command {
 		Example: `cscli decisions [action] [filter]`,
 		Aliases: []string{"decision"},
 		/*TBD example*/
+		// XXX: extra arguments are silently ignored
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
