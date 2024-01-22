@@ -38,7 +38,7 @@ type ParsedRequest struct {
 	Body                 []byte                  `json:"body,omitempty"`
 	TransferEncoding     []string                `json:"transfer_encoding,omitempty"`
 	UUID                 string                  `json:"uuid,omitempty"`
-	Tx                   ExtendedTransaction     `json:"transaction,omitempty"`
+	Tx                   ExtendedTransaction     `json:"-"`
 	ResponseChannel      chan AppsecTempResponse `json:"-"`
 	IsInBand             bool                    `json:"-"`
 	IsOutBand            bool                    `json:"-"`
