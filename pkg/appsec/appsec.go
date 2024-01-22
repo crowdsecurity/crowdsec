@@ -130,9 +130,9 @@ type AppsecConfig struct {
 }
 
 func (w *AppsecRuntimeConfig) ClearResponse() {
-	log.Debugf("#-> %p", w)
+	w.Logger.Debugf("#-> %p", w)
 	w.Response = AppsecTempResponse{}
-	log.Debugf("-> %p", w.Config)
+	w.Logger.Debugf("-> %p", w.Config)
 	w.Response.Action = w.Config.DefaultPassAction
 	w.Response.HTTPResponseCode = w.Config.PassedHTTPCode
 	w.Response.SendEvent = true
@@ -290,19 +290,25 @@ func (w *AppsecRuntimeConfig) ProcessOnLoadRules() error {
 			switch t := output.(type) {
 			case bool:
 				if !t {
-					log.Debugf("filter didnt match")
+					w.Logger.Debugf("filter didnt match")
 					continue
 				}
 			default:
-				log.Errorf("Filter must return a boolean, can't filter")
+				w.Logger.Errorf("Filter must return a boolean, can't filter")
 				continue
 			}
 		}
 		for _, applyExpr := range rule.ApplyExpr {
-			_, err := exprhelpers.Run(applyExpr, GetOnLoadEnv(w), w.Logger, w.Logger.Level >= log.DebugLevel)
+			o, err := exprhelpers.Run(applyExpr, GetOnLoadEnv(w), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
-				log.Errorf("unable to apply appsec on_load expr: %s", err)
+				w.Logger.Errorf("unable to apply appsec on_load expr: %s", err)
 				continue
+			}
+			switch t := o.(type) {
+			case error:
+				w.Logger.Errorf("unable to apply appsec on_load expr: %s", t)
+				continue
+			default:
 			}
 		}
 	}
@@ -320,19 +326,25 @@ func (w *AppsecRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest, evt ty
 			switch t := output.(type) {
 			case bool:
 				if !t {
-					log.Debugf("filter didnt match")
+					w.Logger.Debugf("filter didnt match")
 					continue
 				}
 			default:
-				log.Errorf("Filter must return a boolean, can't filter")
+				w.Logger.Errorf("Filter must return a boolean, can't filter")
 				continue
 			}
 		}
 		for _, applyExpr := range rule.ApplyExpr {
-			_, err := exprhelpers.Run(applyExpr, GetOnMatchEnv(w, request, evt), w.Logger, w.Logger.Level >= log.DebugLevel)
+			o, err := exprhelpers.Run(applyExpr, GetOnMatchEnv(w, request, evt), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
-				log.Errorf("unable to apply appsec on_match expr: %s", err)
+				w.Logger.Errorf("unable to apply appsec on_match expr: %s", err)
 				continue
+			}
+			switch t := o.(type) {
+			case error:
+				w.Logger.Errorf("unable to apply appsec on_match expr: %s", t)
+				continue
+			default:
 			}
 		}
 	}
@@ -340,7 +352,7 @@ func (w *AppsecRuntimeConfig) ProcessOnMatchRules(request *ParsedRequest, evt ty
 }
 
 func (w *AppsecRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error {
-	log.Debugf("processing %d pre_eval rules", len(w.CompiledPreEval))
+	w.Logger.Debugf("processing %d pre_eval rules", len(w.CompiledPreEval))
 	for _, rule := range w.CompiledPreEval {
 		if rule.FilterExpr != nil {
 			output, err := exprhelpers.Run(rule.FilterExpr, GetPreEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
@@ -350,20 +362,26 @@ func (w *AppsecRuntimeConfig) ProcessPreEvalRules(request *ParsedRequest) error 
 			switch t := output.(type) {
 			case bool:
 				if !t {
-					log.Debugf("filter didnt match")
+					w.Logger.Debugf("filter didnt match")
 					continue
 				}
 			default:
-				log.Errorf("Filter must return a boolean, can't filter")
+				w.Logger.Errorf("Filter must return a boolean, can't filter")
 				continue
 			}
 		}
 		// here means there is no filter or the filter matched
 		for _, applyExpr := range rule.ApplyExpr {
-			_, err := exprhelpers.Run(applyExpr, GetPreEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
+			o, err := exprhelpers.Run(applyExpr, GetPreEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
 			if err != nil {
-				log.Errorf("unable to apply appsec pre_eval expr: %s", err)
+				w.Logger.Errorf("unable to apply appsec pre_eval expr: %s", err)
 				continue
+			}
+			switch t := o.(type) {
+			case error:
+				w.Logger.Errorf("unable to apply appsec pre_eval expr: %s", t)
+				continue
+			default:
 			}
 		}
 	}
@@ -381,20 +399,28 @@ func (w *AppsecRuntimeConfig) ProcessPostEvalRules(request *ParsedRequest) error
 			switch t := output.(type) {
 			case bool:
 				if !t {
-					log.Debugf("filter didnt match")
+					w.Logger.Debugf("filter didnt match")
 					continue
 				}
 			default:
-				log.Errorf("Filter must return a boolean, can't filter")
+				w.Logger.Errorf("Filter must return a boolean, can't filter")
 				continue
 			}
 		}
 		// here means there is no filter or the filter matched
 		for _, applyExpr := range rule.ApplyExpr {
-			_, err := exprhelpers.Run(applyExpr, GetPostEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
+			o, err := exprhelpers.Run(applyExpr, GetPostEvalEnv(w, request), w.Logger, w.Logger.Level >= log.DebugLevel)
+
 			if err != nil {
-				log.Errorf("unable to apply appsec post_eval expr: %s", err)
+				w.Logger.Errorf("unable to apply appsec post_eval expr: %s", err)
 				continue
+			}
+
+			switch t := o.(type) {
+			case error:
+				w.Logger.Errorf("unable to apply appsec post_eval expr: %s", t)
+				continue
+			default:
 			}
 		}
 	}
