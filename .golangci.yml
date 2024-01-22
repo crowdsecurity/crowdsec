@@ -295,10 +295,6 @@ issues:
         - nosprintfhostport
       text: "host:port in url should be constructed with net.JoinHostPort and not directly with fmt.Sprintf"
 
-    - linters:
-        - wastedassign
-      text: "assigned to .*, but reassigned without using the value"
-
     # https://github.com/timakin/bodyclose
     - linters:
         - bodyclose

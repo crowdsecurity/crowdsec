@@ -77,14 +77,11 @@ func formatAlertSource(alert *models.Alert) string {
 func formatAlertAsString(machineID string, alert *models.Alert) []string {
 	src := formatAlertSource(alert)
 
-	/**/
-	msg := ""
+	msg := "empty scenario"
 	if alert.Scenario != nil && *alert.Scenario != "" {
 		msg = *alert.Scenario
 	} else if alert.Message != nil && *alert.Message != "" {
 		msg = *alert.Message
-	} else {
-		msg = "empty scenario"
 	}
 
 	reason := fmt.Sprintf("%s by %s", msg, src)
@@ -116,7 +113,7 @@ func formatAlertAsString(machineID string, alert *models.Alert) []string {
 			reason = fmt.Sprintf("%s for %d/%d decisions", msg, i+1, len(alert.Decisions))
 		}
 
-		machineIDOrigin := ""
+		var machineIDOrigin string
 		if machineID == "" {
 			machineIDOrigin = *decisionItem.Origin
 		} else {

@@ -107,7 +107,7 @@ func (p *ParserAssert) AssertFile(testFile string) error {
 			}
 
 			match := variableRE.FindStringSubmatch(scanner.Text())
-			variable := ""
+			var variable string
 
 			if len(match) == 0 {
 				log.Infof("Couldn't get variable of line '%s'", scanner.Text())

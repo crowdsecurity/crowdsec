@@ -319,7 +319,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			}
 			clog.Tracef("node (%s) ret : %v", node.rn, ret)
 			if ParseDump {
-				parserIdxInStage := 0
+				var parserIdxInStage int
 				StageParseMutex.Lock()
 				if len(StageParseCache[stage][node.Name]) == 0 {
 					StageParseCache[stage][node.Name] = make([]dumps.ParserResult, 0)

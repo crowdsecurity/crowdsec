@@ -179,11 +179,9 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 
 	req.Tx.Variables().All(func(v variables.RuleVariable, col collection.Collection) bool {
 		for _, variable := range col.FindAll() {
-			key := ""
-			if variable.Key() == "" {
-				key = variable.Variable().Name()
-			} else {
-				key = variable.Variable().Name() + "." + variable.Key()
+			key := variable.Variable().Name()
+			if variable.Key() != "" {
+				key += "." + variable.Key()
 			}
 			if variable.Value() == "" {
 				continue
@@ -214,7 +212,7 @@ func (r *AppsecRunner) AccumulateTxToEvent(evt *types.Event, req *appsec.ParsedR
 			evt.Appsec.HasOutBandMatches = true
 		}
 
-		name := ""
+		var name string
 		version := ""
 		hash := ""
 		ruleNameProm := fmt.Sprintf("%d", rule.Rule().ID())
