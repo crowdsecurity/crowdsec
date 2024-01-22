@@ -209,9 +209,9 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 	//add missing decisions
 	log.Debugf("Adding %d missing decisions to alert %s", len(missingDecisions), foundAlert.UUID)
 
-	decisionBuilders := make([]*ent.DecisionCreate, len(missingDecisions))
+	decisionBuilders := []*ent.DecisionCreate{}
 
-	for i, decisionItem := range missingDecisions {
+	for _, decisionItem := range missingDecisions {
 		var start_ip, start_sfx, end_ip, end_sfx int64
 		var sz int
 
@@ -219,7 +219,8 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 		if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
 			sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decisionItem.Value)
 			if err != nil {
-				return "", errors.Wrapf(InvalidIPOrRange, "invalid addr/range %s : %s", *decisionItem.Value, err)
+				log.Errorf("invalid addr/range '%s': %s", *decisionItem.Value, err)
+				continue
 			}
 		}
 
@@ -254,7 +255,7 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 			SetSimulated(*alertItem.Simulated).
 			SetUUID(decisionItem.UUID)
 
-		decisionBuilders[i] = decisionBuilder
+		decisionBuilders = append(decisionBuilders, decisionBuilder)
 	}
 
 	decisions := []*ent.Decision{}
@@ -486,9 +487,9 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 }
 
 func (c *Client) createDecisionChunk(simulated bool, stopAtTime time.Time, decisions []*models.Decision) ([]*ent.Decision, error) {
-	decisionCreate := make([]*ent.DecisionCreate, len(decisions))
+	decisionCreate := []*ent.DecisionCreate{}
 
-	for i, decisionItem := range decisions {
+	for _, decisionItem := range decisions {
 		var start_ip, start_sfx, end_ip, end_sfx int64
 		var sz int
 
@@ -501,7 +502,8 @@ func (c *Client) createDecisionChunk(simulated bool, stopAtTime time.Time, decis
 		if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
 			sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decisionItem.Value)
 			if err != nil {
-				return nil, fmt.Errorf("%s: %w", *decisionItem.Value, InvalidIPOrRange)
+				log.Errorf("invalid addr/range '%s': %s", *decisionItem.Value, err)
+				continue
 			}
 		}
 
@@ -520,7 +522,11 @@ func (c *Client) createDecisionChunk(simulated bool, stopAtTime time.Time, decis
 			SetSimulated(simulated).
 			SetUUID(decisionItem.UUID)
 
-		decisionCreate[i] = newDecision
+		decisionCreate = append(decisionCreate, newDecision)
+	}
+
+	if len(decisionCreate) == 0 {
+		return nil, nil
 	}
 
 	ret, err := c.Ent.Decision.CreateBulk(decisionCreate...).Save(c.CTX)
@@ -532,10 +538,10 @@ func (c *Client) createDecisionChunk(simulated bool, stopAtTime time.Time, decis
 }
 
 func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts []*models.Alert) ([]string, error) {
-	alertBuilders := make([]*ent.AlertCreate, len(alerts))
-	alertDecisions := make([][]*ent.Decision, len(alerts))
+	alertBuilders := []*ent.AlertCreate{}
+	alertDecisions := [][]*ent.Decision{}
 
-	for i, alertItem := range alerts {
+	for _, alertItem := range alerts {
 		var metas []*ent.Meta
 		var events []*ent.Event
 
@@ -656,6 +662,17 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 			decisions = append(decisions, decisionRet...)
 		}
 
+		discarded := len(alertItem.Decisions) - len(decisions)
+		if discarded > 0 {
+			c.Log.Warningf("discarded %d decisions for %s", discarded, alertItem.UUID)
+		}
+
+		// if all decisions were discarded, discard the alert too
+		if discarded > 0 && len(decisions) == 0 {
+			c.Log.Warningf("dropping alert %s with invalid decisions", alertItem.UUID)
+			continue
+		}
+
 		alertBuilder := c.Ent.Alert.
 			Create().
 			SetScenario(*alertItem.Scenario).
@@ -685,8 +702,13 @@ func (c *Client) createAlertChunk(machineID string, owner *ent.Machine, alerts [
 			alertBuilder.SetOwner(owner)
 		}
 
-		alertBuilders[i] = alertBuilder
-		alertDecisions[i] = decisions
+		alertBuilders = append(alertBuilders, alertBuilder)
+		alertDecisions = append(alertDecisions, decisions)
+	}
+
+	if len(alertBuilders) == 0 {
+		log.Warningf("no alerts to create, discarded?")
+		return nil, nil
 	}
 
 	alertsCreateBulk, err := c.Ent.Alert.CreateBulk(alertBuilders...).Save(c.CTX)
