@@ -260,12 +260,17 @@ func (r *ReqDumpFilter) ToJSON() error {
 
 	req := r.GetFilteredRequest()
 
-	log.Warningf("dumping : %+v", req)
+	log.Tracef("dumping : %+v", req)
 
 	if err := enc.Encode(req); err != nil {
+		//Don't clobber the temp directory with empty files
+		err2 := os.Remove(fd.Name())
+		if err2 != nil {
+			log.Errorf("while removing temp file %s: %s", fd.Name(), err)
+		}
 		return fmt.Errorf("while encoding request: %w", err)
 	}
-	log.Warningf("request dumped to %s", fd.Name())
+	log.Infof("request dumped to %s", fd.Name())
 	return nil
 }
 
