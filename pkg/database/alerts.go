@@ -219,7 +219,6 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 		if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
 			sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decisionItem.Value)
 			if err != nil {
-				// XXX:
 				log.Errorf("invalid addr/range '%s': %s", *decisionItem.Value, err)
 				continue
 			}
