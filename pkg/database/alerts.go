@@ -209,9 +209,9 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 	//add missing decisions
 	log.Debugf("Adding %d missing decisions to alert %s", len(missingDecisions), foundAlert.UUID)
 
-	decisionBuilders := make([]*ent.DecisionCreate, len(missingDecisions))
+	decisionBuilders := []*ent.DecisionCreate{}
 
-	for i, decisionItem := range missingDecisions {
+	for _, decisionItem := range missingDecisions {
 		var start_ip, start_sfx, end_ip, end_sfx int64
 		var sz int
 
@@ -256,7 +256,7 @@ func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) 
 			SetSimulated(*alertItem.Simulated).
 			SetUUID(decisionItem.UUID)
 
-		decisionBuilders[i] = decisionBuilder
+		decisionBuilders = append(decisionBuilders, decisionBuilder)
 	}
 
 	decisions := []*ent.Decision{}
