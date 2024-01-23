@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"io"
 	"slices"
 	"strings"
 	"time"
@@ -32,46 +31,6 @@ func askYesNo(message string, defaultAnswer bool) (bool, error) {
 	}
 
 	return answer, nil
-}
-
-func getBouncers(out io.Writer, db *database.Client) error {
-	bouncers, err := db.ListBouncers()
-	if err != nil {
-		return fmt.Errorf("unable to list bouncers: %s", err)
-	}
-
-	switch csConfig.Cscli.Output {
-	case "human":
-		getBouncersTable(out, bouncers)
-	case "json":
-		enc := json.NewEncoder(out)
-		enc.SetIndent("", "  ")
-		if err := enc.Encode(bouncers); err != nil {
-			return fmt.Errorf("failed to unmarshal: %w", err)
-		}
-		return nil
-	case "raw":
-		csvwriter := csv.NewWriter(out)
-		err := csvwriter.Write([]string{"name", "ip", "revoked", "last_pull", "type", "version", "auth_type"})
-		if err != nil {
-			return fmt.Errorf("failed to write raw header: %w", err)
-		}
-		for _, b := range bouncers {
-			var revoked string
-			if !b.Revoked {
-				revoked = "validated"
-			} else {
-				revoked = "pending"
-			}
-			err := csvwriter.Write([]string{b.Name, b.IPAddress, revoked, b.LastPull.Format(time.RFC3339), b.Type, b.Version, b.AuthType})
-			if err != nil {
-				return fmt.Errorf("failed to write raw: %w", err)
-			}
-		}
-		csvwriter.Flush()
-	}
-
-	return nil
 }
 
 type cliBouncers struct {
@@ -114,6 +73,48 @@ Note: This command requires database direct access, so is intended to be run on 
 	return cmd
 }
 
+func (cli *cliBouncers) list() error {
+	out := color.Output
+
+	bouncers, err := cli.db.ListBouncers()
+	if err != nil {
+		return fmt.Errorf("unable to list bouncers: %s", err)
+	}
+
+	switch csConfig.Cscli.Output {
+	case "human":
+		getBouncersTable(out, bouncers)
+	case "json":
+		enc := json.NewEncoder(out)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(bouncers); err != nil {
+			return fmt.Errorf("failed to unmarshal: %w", err)
+		}
+		return nil
+	case "raw":
+		csvwriter := csv.NewWriter(out)
+		err := csvwriter.Write([]string{"name", "ip", "revoked", "last_pull", "type", "version", "auth_type"})
+		if err != nil {
+			return fmt.Errorf("failed to write raw header: %w", err)
+		}
+		for _, b := range bouncers {
+			var revoked string
+			if !b.Revoked {
+				revoked = "validated"
+			} else {
+				revoked = "pending"
+			}
+			err := csvwriter.Write([]string{b.Name, b.IPAddress, revoked, b.LastPull.Format(time.RFC3339), b.Type, b.Version, b.AuthType})
+			if err != nil {
+				return fmt.Errorf("failed to write raw: %w", err)
+			}
+		}
+		csvwriter.Flush()
+	}
+
+	return nil
+}
+
 func (cli *cliBouncers) newListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "list",
@@ -121,12 +122,8 @@ func (cli *cliBouncers) newListCmd() *cobra.Command {
 		Example:           `cscli bouncers list`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, _ []string) error {
-			err := getBouncers(color.Output, cli.db)
-			if err != nil {
-				return fmt.Errorf("unable to list bouncers: %s", err)
-			}
-			return nil
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.list()
 		},
 	}
 

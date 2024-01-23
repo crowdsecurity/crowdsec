@@ -149,10 +149,11 @@ func collectHubItems(hub *cwhub.Hub, itemType string) []byte {
 
 func collectBouncers(dbClient *database.Client) ([]byte, error) {
 	out := bytes.NewBuffer(nil)
-	err := getBouncers(out, dbClient)
+	bouncers, err := dbClient.ListBouncers()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to list bouncers: %s", err)
 	}
+	getBouncersTable(out, bouncers)
 	return out.Bytes(), nil
 }
 
