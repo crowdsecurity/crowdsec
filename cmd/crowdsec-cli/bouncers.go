@@ -94,7 +94,7 @@ Note: This command requires database direct access, so is intended to be run on 
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			var err error
-			if err = require.LAPI(csConfig); err != nil {
+			if err = require.DB(csConfig); err != nil {
 				return err
 			}
 
