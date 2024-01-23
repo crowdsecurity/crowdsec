@@ -34,8 +34,8 @@ func askYesNo(message string, defaultAnswer bool) (bool, error) {
 	return answer, nil
 }
 
-func getBouncers(out io.Writer, dbClient *database.Client) error {
-	bouncers, err := dbClient.ListBouncers()
+func getBouncers(out io.Writer, db *database.Client) error {
+	bouncers, err := db.ListBouncers()
 	if err != nil {
 		return fmt.Errorf("unable to list bouncers: %s", err)
 	}
@@ -74,7 +74,9 @@ func getBouncers(out io.Writer, dbClient *database.Client) error {
 	return nil
 }
 
-type cliBouncers struct {}
+type cliBouncers struct {
+	db *database.Client
+}
 
 func NewCLIBouncers() *cliBouncers {
 	return &cliBouncers{}
@@ -90,15 +92,15 @@ Note: This command requires database direct access, so is intended to be run on 
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"bouncer"},
 		DisableAutoGenTag: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			var err error
 			if err = require.LAPI(csConfig); err != nil {
 				return err
 			}
 
-			dbClient, err = database.NewClient(csConfig.DbConfig)
+			cli.db, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {
-				return fmt.Errorf("unable to create new database client: %s", err)
+				return fmt.Errorf("can't connect to the database: %s", err)
 			}
 			return nil
 		},
@@ -119,8 +121,8 @@ func (cli *cliBouncers) newListCmd() *cobra.Command {
 		Example:           `cscli bouncers list`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, arg []string) error {
-			err := getBouncers(color.Output, dbClient)
+		RunE: func(_ *cobra.Command, _ []string) error {
+			err := getBouncers(color.Output, cli.db)
 			if err != nil {
 				return fmt.Errorf("unable to list bouncers: %s", err)
 			}
@@ -142,7 +144,7 @@ func (cli *cliBouncers) add(bouncerName string, key string) error {
 			return fmt.Errorf("unable to generate api key: %s", err)
 		}
 	}
-	_, err = dbClient.CreateBouncer(bouncerName, "", middlewares.HashSHA512(key), types.ApiKeyAuthType)
+	_, err = cli.db.CreateBouncer(bouncerName, "", middlewares.HashSHA512(key), types.ApiKeyAuthType)
 	if err != nil {
 		return fmt.Errorf("unable to create bouncer: %s", err)
 	}
@@ -190,12 +192,7 @@ cscli bouncers add MyBouncerName --key <random-key>`,
 
 func (cli *cliBouncers) deleteValid(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	var err error
-	dbClient, err = getDBClient()
-	if err != nil {
-		cobra.CompError("unable to create new database client: " + err.Error())
-		return nil, cobra.ShellCompDirectiveNoFileComp
-	}
-	bouncers, err := dbClient.ListBouncers()
+	bouncers, err := cli.db.ListBouncers()
 	if err != nil {
 		cobra.CompError("unable to list bouncers " + err.Error())
 	}
@@ -210,7 +207,7 @@ func (cli *cliBouncers) deleteValid(cmd *cobra.Command, args []string, toComplet
 
 func (cli *cliBouncers) delete(bouncers []string) error {
 	for _, bouncerID := range bouncers {
-		err := dbClient.DeleteBouncer(bouncerID)
+		err := cli.db.DeleteBouncer(bouncerID)
 		if err != nil {
 			return fmt.Errorf("unable to delete bouncer '%s': %s", bouncerID, err)
 		}
@@ -248,7 +245,7 @@ func (cli *cliBouncers) prune(duration time.Duration, force bool) error {
 		}
 	}
 
-	bouncers, err := dbClient.QueryBouncersLastPulltimeLT(time.Now().UTC().Add(duration))
+	bouncers, err := cli.db.QueryBouncersLastPulltimeLT(time.Now().UTC().Add(duration))
 	if err != nil {
 		return fmt.Errorf("unable to query bouncers: %w", err)
 	}
@@ -271,7 +268,7 @@ func (cli *cliBouncers) prune(duration time.Duration, force bool) error {
 		}
 	}
 
-	deleted, err := dbClient.BulkDeleteBouncers(bouncers)
+	deleted, err := cli.db.BulkDeleteBouncers(bouncers)
 	if err != nil {
 		return fmt.Errorf("unable to prune bouncers: %s", err)
 	}

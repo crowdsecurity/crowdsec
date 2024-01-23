@@ -8,7 +8,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -45,17 +44,6 @@ func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *
 		*scope = types.AS
 	}
 	return nil
-}
-
-func getDBClient() (*database.Client, error) {
-	if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
-		return nil, err
-	}
-	ret, err := database.NewClient(csConfig.DbConfig)
-	if err != nil {
-		return nil, err
-	}
-	return ret, nil
 }
 
 func removeFromSlice(val string, slice []string) []string {
