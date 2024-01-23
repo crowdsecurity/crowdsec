@@ -329,7 +329,7 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 		return ParsedRequest{}, fmt.Errorf("unable to parse url '%s': %s", clientURI, err)
 	}
 
-	remoteAddrNormalized := ""
+	var remoteAddrNormalized string
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		log.Errorf("Invalid appsec remote IP source %v: %s", r.RemoteAddr, err.Error())
@@ -337,7 +337,7 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 	} else {
 		ip := net.ParseIP(host)
 		if ip == nil {
-			log.Errorf("Invalid appsec remote IP address source %v: %s", r.RemoteAddr, err.Error())
+			log.Errorf("Invalid appsec remote IP address source %v", r.RemoteAddr)
 			remoteAddrNormalized = r.RemoteAddr
 		} else {
 			remoteAddrNormalized = ip.String()
