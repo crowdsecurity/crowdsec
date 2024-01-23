@@ -182,6 +182,11 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.Flags().SortFlags = false
 	cmd.PersistentFlags().SortFlags = false
 
+	// we use a getter because the config is not initialized until the Execute() call
+	getconfig := func() *csconfig.Config {
+		return csConfig
+	}
+
 	cmd.AddCommand(NewCLIDoc().NewCommand(cmd))
 	cmd.AddCommand(NewCLIVersion().NewCommand())
 	cmd.AddCommand(NewConfigCmd())
@@ -191,7 +196,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(NewCLIDecisions().NewCommand())
 	cmd.AddCommand(NewCLIAlerts().NewCommand())
 	cmd.AddCommand(NewCLISimulation().NewCommand())
-	cmd.AddCommand(NewCLIBouncers().NewCommand())
+	cmd.AddCommand(NewCLIBouncers(getconfig).NewCommand())
 	cmd.AddCommand(NewCLIMachines().NewCommand())
 	cmd.AddCommand(NewCLICapi().NewCommand())
 	cmd.AddCommand(NewLapiCmd())

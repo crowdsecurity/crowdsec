@@ -15,6 +15,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -35,10 +36,13 @@ func askYesNo(message string, defaultAnswer bool) (bool, error) {
 
 type cliBouncers struct {
 	db *database.Client
+	cfg func() *csconfig.Config
 }
 
-func NewCLIBouncers() *cliBouncers {
-	return &cliBouncers{}
+func NewCLIBouncers(getconfig func() *csconfig.Config) *cliBouncers {
+	return &cliBouncers{
+		cfg: getconfig,
+	}
 }
 
 func (cli *cliBouncers) NewCommand() *cobra.Command {
@@ -53,11 +57,11 @@ Note: This command requires database direct access, so is intended to be run on 
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			var err error
-			if err = require.DB(csConfig); err != nil {
+			if err = require.DB(cli.cfg()); err != nil {
 				return err
 			}
 
-			cli.db, err = database.NewClient(csConfig.DbConfig)
+			cli.db, err = database.NewClient(cli.cfg().DbConfig)
 			if err != nil {
 				return fmt.Errorf("can't connect to the database: %s", err)
 			}
@@ -81,7 +85,7 @@ func (cli *cliBouncers) list() error {
 		return fmt.Errorf("unable to list bouncers: %s", err)
 	}
 
-	switch csConfig.Cscli.Output {
+	switch cli.cfg().Cscli.Output {
 	case "human":
 		getBouncersTable(out, bouncers)
 	case "json":
@@ -146,7 +150,7 @@ func (cli *cliBouncers) add(bouncerName string, key string) error {
 		return fmt.Errorf("unable to create bouncer: %s", err)
 	}
 
-	switch csConfig.Cscli.Output {
+	switch cli.cfg().Cscli.Output {
 	case "human":
 		fmt.Printf("API key for '%s':\n\n", bouncerName)
 		fmt.Printf("   %s\n\n", key)
