@@ -80,7 +80,7 @@ func NewCLIBouncers() *cliBouncers {
 	return &cliBouncers{}
 }
 
-func (cli cliBouncers) NewCommand() *cobra.Command {
+func (cli *cliBouncers) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "bouncers [action]",
 		Short: "Manage bouncers [requires local API]",
@@ -104,15 +104,15 @@ Note: This command requires database direct access, so is intended to be run on 
 		},
 	}
 
-	cmd.AddCommand(cli.NewListCmd())
-	cmd.AddCommand(cli.NewAddCmd())
-	cmd.AddCommand(cli.NewDeleteCmd())
-	cmd.AddCommand(cli.NewPruneCmd())
+	cmd.AddCommand(cli.newListCmd())
+	cmd.AddCommand(cli.newAddCmd())
+	cmd.AddCommand(cli.newDeleteCmd())
+	cmd.AddCommand(cli.newPruneCmd())
 
 	return cmd
 }
 
-func (cli cliBouncers) NewListCmd() *cobra.Command {
+func (cli *cliBouncers) newListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "list",
 		Short:             "list all bouncers within the database",
@@ -131,7 +131,7 @@ func (cli cliBouncers) NewListCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli cliBouncers) add(cmd *cobra.Command, args []string) error {
+func (cli *cliBouncers) add(cmd *cobra.Command, args []string) error {
 	keyLength := 32
 
 	flags := cmd.Flags()
@@ -175,7 +175,7 @@ func (cli cliBouncers) add(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (cli cliBouncers) NewAddCmd() *cobra.Command {
+func (cli *cliBouncers) newAddCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add MyBouncerName",
 		Short: "add a single bouncer to the database",
@@ -194,7 +194,7 @@ cscli bouncers add MyBouncerName --key <random-key>`,
 	return cmd
 }
 
-func (cli cliBouncers) delete(cmd *cobra.Command, args []string) error {
+func (cli *cliBouncers) delete(cmd *cobra.Command, args []string) error {
 	for _, bouncerID := range args {
 		err := dbClient.DeleteBouncer(bouncerID)
 		if err != nil {
@@ -206,7 +206,7 @@ func (cli cliBouncers) delete(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (cli cliBouncers) NewDeleteCmd() *cobra.Command {
+func (cli *cliBouncers) newDeleteCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "delete MyBouncerName",
 		Short:             "delete bouncer(s) from the database",
@@ -238,20 +238,8 @@ func (cli cliBouncers) NewDeleteCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli cliBouncers) prune(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
-
-	dur, err := flags.GetString("duration")
-	if err != nil {
-		return err
-	}
-
-	parsedDuration, err := time.ParseDuration(dur)
-	if err != nil {
-		return fmt.Errorf("unable to parse duration '%s': %s", dur, err)
-	}
-
-	if parsedDuration < 2*time.Minute {
+func (cli *cliBouncers) prune(duration time.Duration, force bool) error {
+	if duration < 2*time.Minute {
 		if yes, err := askYesNo(
 				"The duration you provided is less than 2 minutes. " +
 				"This may remove active bouncers. Continue?", false); err != nil {
@@ -262,7 +250,7 @@ func (cli cliBouncers) prune(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	bouncers, err := dbClient.QueryBouncersLastPulltimeLT(time.Now().UTC().Add(parsedDuration))
+	bouncers, err := dbClient.QueryBouncersLastPulltimeLT(time.Now().UTC().Add(duration))
 	if err != nil {
 		return fmt.Errorf("unable to query bouncers: %w", err)
 	}
@@ -273,11 +261,6 @@ func (cli cliBouncers) prune(cmd *cobra.Command, args []string) error {
 	}
 
 	getBouncersTable(color.Output, bouncers)
-
-	force, err := flags.GetBool("force")
-	if err != nil {
-		return err
-	}
 
 	if !force {
 		if yes, err := askYesNo(
@@ -300,17 +283,28 @@ func (cli cliBouncers) prune(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (cli cliBouncers) NewPruneCmd() *cobra.Command {
+func (cli *cliBouncers) newPruneCmd() *cobra.Command {
+	var (
+		duration time.Duration
+		force    bool
+	)
+
+	defaultDuration := 60 * time.Minute
+
 	cmd := &cobra.Command{
 		Use:               "prune",
 		Short:             "prune multiple bouncers from the database",
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
-		Example: `cscli bouncers prune -d 60m
-cscli bouncers prune -d 60m --force`,
-		RunE: cli.prune,
+		Example: `cscli bouncers prune -d 45m
+cscli bouncers prune -d 45m --force`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.prune(duration, force)
+		},
 	}
-	cmd.Flags().StringP("duration", "d", "60m", "duration of time since last pull")
-	cmd.Flags().Bool("force", false, "force prune without asking for confirmation")
+
+	flags := cmd.Flags()
+	flags.DurationVarP(&duration, "duration", "d", defaultDuration, "duration of time since last pull")
+	flags.BoolVar(&force, "force", false, "force prune without asking for confirmation")
 	return cmd
 }
