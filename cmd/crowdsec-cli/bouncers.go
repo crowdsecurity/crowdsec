@@ -188,8 +188,28 @@ cscli bouncers add MyBouncerName --key <random-key>`,
 	return cmd
 }
 
-func (cli *cliBouncers) delete(cmd *cobra.Command, args []string) error {
-	for _, bouncerID := range args {
+func (cli *cliBouncers) deleteValid(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	var err error
+	dbClient, err = getDBClient()
+	if err != nil {
+		cobra.CompError("unable to create new database client: " + err.Error())
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	bouncers, err := dbClient.ListBouncers()
+	if err != nil {
+		cobra.CompError("unable to list bouncers " + err.Error())
+	}
+	ret := make([]string, 0)
+	for _, bouncer := range bouncers {
+		if strings.Contains(bouncer.Name, toComplete) && !slices.Contains(args, bouncer.Name) {
+			ret = append(ret, bouncer.Name)
+		}
+	}
+	return ret, cobra.ShellCompDirectiveNoFileComp
+}
+
+func (cli *cliBouncers) delete(bouncers []string) error {
+	for _, bouncerID := range bouncers {
 		err := dbClient.DeleteBouncer(bouncerID)
 		if err != nil {
 			return fmt.Errorf("unable to delete bouncer '%s': %s", bouncerID, err)
@@ -207,26 +227,10 @@ func (cli *cliBouncers) newDeleteCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		Aliases:           []string{"remove"},
 		DisableAutoGenTag: true,
-		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			var err error
-			dbClient, err = getDBClient()
-			if err != nil {
-				cobra.CompError("unable to create new database client: " + err.Error())
-				return nil, cobra.ShellCompDirectiveNoFileComp
-			}
-			bouncers, err := dbClient.ListBouncers()
-			if err != nil {
-				cobra.CompError("unable to list bouncers " + err.Error())
-			}
-			ret := make([]string, 0)
-			for _, bouncer := range bouncers {
-				if strings.Contains(bouncer.Name, toComplete) && !slices.Contains(args, bouncer.Name) {
-					ret = append(ret, bouncer.Name)
-				}
-			}
-			return ret, cobra.ShellCompDirectiveNoFileComp
+		ValidArgsFunction: cli.deleteValid,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.delete(args)
 		},
-		RunE: cli.delete,
 	}
 
 	return cmd
