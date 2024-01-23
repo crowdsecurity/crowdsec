@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/fatih/color"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"slices"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
@@ -131,51 +131,43 @@ func (cli *cliBouncers) newListCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliBouncers) add(cmd *cobra.Command, args []string) error {
+func (cli *cliBouncers) add(bouncerName string, key string) error {
+	var err error
+
 	keyLength := 32
 
-	flags := cmd.Flags()
-
-	key, err := flags.GetString("key")
-	if err != nil {
-		return err
-	}
-
-	// args[0] is guaranteed to exist by cobra
-	keyName := args[0]
-	var apiKey string
-
-	apiKey = key
 	if key == "" {
-		apiKey, err = middlewares.GenerateAPIKey(keyLength)
+		key, err = middlewares.GenerateAPIKey(keyLength)
 		if err != nil {
 			return fmt.Errorf("unable to generate api key: %s", err)
 		}
 	}
-	_, err = dbClient.CreateBouncer(keyName, "", middlewares.HashSHA512(apiKey), types.ApiKeyAuthType)
+	_, err = dbClient.CreateBouncer(bouncerName, "", middlewares.HashSHA512(key), types.ApiKeyAuthType)
 	if err != nil {
 		return fmt.Errorf("unable to create bouncer: %s", err)
 	}
 
 	switch csConfig.Cscli.Output {
 	case "human":
-		fmt.Printf("API key for '%s':\n\n", keyName)
-		fmt.Printf("   %s\n\n", apiKey)
+		fmt.Printf("API key for '%s':\n\n", bouncerName)
+		fmt.Printf("   %s\n\n", key)
 		fmt.Print("Please keep this key since you will not be able to retrieve it!\n")
 	case "raw":
-		fmt.Printf("%s", apiKey)
+		fmt.Print(key)
 	case "json":
-		j, err := json.Marshal(apiKey)
+		j, err := json.Marshal(key)
 		if err != nil {
 			return fmt.Errorf("unable to marshal api key")
 		}
-		fmt.Printf("%s", string(j))
+		fmt.Print(string(j))
 	}
 
 	return nil
 }
 
 func (cli *cliBouncers) newAddCmd() *cobra.Command {
+	var key string
+
 	cmd := &cobra.Command{
 		Use:   "add MyBouncerName",
 		Short: "add a single bouncer to the database",
@@ -183,13 +175,15 @@ func (cli *cliBouncers) newAddCmd() *cobra.Command {
 cscli bouncers add MyBouncerName --key <random-key>`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE:              cli.add,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.add(args[0], key)
+		},
 	}
 
 	flags := cmd.Flags()
 	flags.StringP("length", "l", "", "length of the api key")
 	flags.MarkDeprecated("length", "use --key instead")
-	flags.StringP("key", "k", "", "api key for the bouncer")
+	flags.StringVarP(&key, "key", "k", "", "api key for the bouncer")
 
 	return cmd
 }
