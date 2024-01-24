@@ -3,7 +3,7 @@
 # shellcheck disable=SC2292      # allow [ test ] syntax
 # shellcheck disable=SC2310      # allow "if function..." syntax with -e
 
-set -e
+# set -e
 shopt -s inherit_errexit
 
 # match true, TRUE, True, tRuE, etc.
