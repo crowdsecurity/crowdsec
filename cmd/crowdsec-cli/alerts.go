@@ -47,7 +47,7 @@ func DecisionsFromAlert(alert *models.Alert) string {
 	return ret
 }
 
-func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
+func alertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 	switch csConfig.Cscli.Output {
 	case "raw":
 		csvwriter := csv.NewWriter(os.Stdout)
@@ -116,7 +116,7 @@ var alertTemplate = `
 
 `
 
-func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
+func displayOneAlert(alert *models.Alert, withDetail bool) error {
 	tmpl, err := template.New("alert").Parse(alertTemplate)
 	if err != nil {
 		return err
@@ -305,7 +305,7 @@ cscli alerts list --type ban`,
 				return fmt.Errorf("unable to list alerts: %v", err)
 			}
 
-			err = AlertsToTable(alerts, printMachine)
+			err = alertsToTable(alerts, printMachine)
 			if err != nil {
 				return fmt.Errorf("unable to list alerts: %v", err)
 			}
@@ -456,7 +456,7 @@ func (cli cliAlerts) NewInspectCmd() *cobra.Command {
 				}
 				switch csConfig.Cscli.Output {
 				case "human":
-					if err := DisplayOneAlert(alert, details); err != nil {
+					if err := displayOneAlert(alert, details); err != nil {
 						continue
 					}
 				case "json":
