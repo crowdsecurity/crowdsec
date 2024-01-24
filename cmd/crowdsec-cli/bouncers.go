@@ -95,7 +95,7 @@ func (cli *cliBouncers) list() error {
 		enc.SetIndent("", "  ")
 
 		if err := enc.Encode(bouncers); err != nil {
-			return fmt.Errorf("failed to unmarshal: %w", err)
+			return fmt.Errorf("failed to marshal: %w", err)
 		}
 
 		return nil
