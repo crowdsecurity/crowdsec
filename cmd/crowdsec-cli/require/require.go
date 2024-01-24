@@ -11,7 +11,7 @@ import (
 )
 
 func LAPI(c *csconfig.Config) error {
-	if err := c.LoadAPIServer(); err != nil {
+	if err := c.LoadAPIServer(true); err != nil {
 		return fmt.Errorf("failed to load Local API: %w", err)
 	}
 
