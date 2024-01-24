@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 	"time"
@@ -283,7 +284,7 @@ func (cli *cliBouncers) prune(duration time.Duration, force bool) error {
 		return fmt.Errorf("unable to prune bouncers: %s", err)
 	}
 
-	fmt.Printf("Successfully deleted %d bouncers\n", deleted)
+	fmt.Fprintf(os.Stderr, "Successfully deleted %d bouncers\n", deleted)
 
 	return nil
 }

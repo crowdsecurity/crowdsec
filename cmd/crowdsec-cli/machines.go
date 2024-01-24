@@ -223,11 +223,10 @@ func (cli *cliMachines) NewAddCmd() *cobra.Command {
 		Short:             "add a single machine to the database",
 		DisableAutoGenTag: true,
 		Long:              `Register a new machine in the database. cscli should be on the same machine as LAPI.`,
-		Example: `
-cscli machines add --auto
+		Example: `cscli machines add --auto
 cscli machines add MyTestMachine --auto
 cscli machines add MyTestMachine --password MyPassword
-`,
+cscli machines add -f- --auto > /tmp/mycreds.yaml`,
 		RunE: func(_ *cobra.Command, args []string) error {
 			return cli.add(args, machinePassword, dumpFile, apiURL, interactive, autoAdd, force)
 		},
@@ -307,7 +306,7 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 		return fmt.Errorf("unable to create machine: %s", err)
 	}
 
-	fmt.Printf("Machine '%s' successfully added to the local API.\n", machineID)
+	fmt.Fprintf(os.Stderr, "Machine '%s' successfully added to the local API.\n", machineID)
 
 	if apiURL == "" {
 		if clientCfg != nil && clientCfg.Credentials != nil && clientCfg.Credentials.URL != "" {
@@ -335,9 +334,9 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 		if err != nil {
 			return fmt.Errorf("write api credentials in '%s' failed: %s", dumpFile, err)
 		}
-		fmt.Printf("API credentials written to '%s'.\n", dumpFile)
+		fmt.Fprintf(os.Stderr, "API credentials written to '%s'.\n", dumpFile)
 	} else {
-		fmt.Println(string(apiConfigDump))
+		fmt.Print(string(apiConfigDump))
 	}
 
 	return nil
@@ -436,7 +435,7 @@ func (cli *cliMachines) prune(duration time.Duration, notValidOnly bool, force b
 		return fmt.Errorf("unable to prune machines: %s", err)
 	}
 
-	fmt.Printf("successfully delete %d machines\n", deleted)
+	fmt.Fprintf(os.Stderr, "successfully delete %d machines\n", deleted)
 
 	return nil
 }
