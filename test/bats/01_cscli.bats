@@ -115,14 +115,17 @@ teardown() {
     assert_output "&false"
 
     # complex type
-    rune -0 cscli config show --key Config.PluginConfig
+    rune -0 cscli config show --key Config.Prometheus
     assert_output - <<-EOT
-	&csconfig.PluginCfg{
-	  User: "nobody",
-	  Group: "nogroup",
+	&csconfig.PrometheusCfg{
+	  Enabled: true,
+	  Level: "full",
+	  ListenAddr: "127.0.0.1",
+	  ListenPort: 6060,
 	}
 	EOT
 }
+
 
 @test "cscli - required configuration paths" {
     config=$(cat "${CONFIG_YAML}")
