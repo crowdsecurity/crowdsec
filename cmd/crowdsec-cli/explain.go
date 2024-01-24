@@ -188,10 +188,9 @@ func (cli cliExplain) run(cmd *cobra.Command, args []string) error {
 			}
 		}
 	}()
-	tmpFile := ""
 	// we create a  temporary log file if a log line/stdin has been provided
 	if logLine != "" || logFile == "-" {
-		tmpFile = filepath.Join(dir, "cscli_test_tmp.log")
+		tmpFile := filepath.Join(dir, "cscli_test_tmp.log")
 		f, err = os.Create(tmpFile)
 		if err != nil {
 			return err
