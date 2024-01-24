@@ -201,6 +201,15 @@ func (cli *cliMachines) NewListCmd() *cobra.Command {
 }
 
 func (cli *cliMachines) NewAddCmd() *cobra.Command {
+	var (
+		machinePassword    string
+		dumpFile           string
+		apiURL             string
+		interactive        bool
+		autoAdd            bool
+		force              bool
+	)
+
 	cmd := &cobra.Command{
 		Use:               "add",
 		Short:             "add a single machine to the database",
@@ -211,61 +220,34 @@ cscli machines add --auto
 cscli machines add MyTestMachine --auto
 cscli machines add MyTestMachine --password MyPassword
 `,
-		RunE: cli.add,
+		RunE: func(_ *cobra.Command, args []string) error {
+			return cli.add(args, machinePassword, dumpFile, apiURL, interactive, autoAdd, force)
+		},
 	}
 
 	flags := cmd.Flags()
-	flags.StringP("password", "p", "", "machine password to login to the API")
-	flags.StringP("file", "f", "", "output file destination (defaults to "+csconfig.DefaultConfigPath("local_api_credentials.yaml")+")")
-	flags.StringP("url", "u", "", "URL of the local API")
-	flags.BoolP("interactive", "i", false, "interfactive mode to enter the password")
-	flags.BoolP("auto", "a", false, "automatically generate password (and username if not provided)")
-	flags.Bool("force", false, "will force add the machine if it already exist")
+	flags.StringVarP(&machinePassword, "password", "p", "", "machine password to login to the API")
+	flags.StringVarP(&dumpFile, "file", "f", "", "output file destination (defaults to "+csconfig.DefaultConfigPath("local_api_credentials.yaml")+")")
+	flags.StringVarP(&apiURL, "url", "u", "", "URL of the local API")
+	flags.BoolVarP(&interactive, "interactive", "i", false, "interfactive mode to enter the password")
+	flags.BoolVarP(&autoAdd, "auto", "a", false, "automatically generate password (and username if not provided)")
+	flags.BoolVar(&force, "force", false, "will force add the machine if it already exist")
 
 	return cmd
 }
 
-func (cli *cliMachines) add(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
-
-	machinePassword, err := flags.GetString("password")
-	if err != nil {
-		return err
-	}
-
-	dumpFile, err := flags.GetString("file")
-	if err != nil {
-		return err
-	}
-
-	apiURL, err := flags.GetString("url")
-	if err != nil {
-		return err
-	}
-
-	interactive, err := flags.GetBool("interactive")
-	if err != nil {
-		return err
-	}
-
-	autoAdd, err := flags.GetBool("auto")
-	if err != nil {
-		return err
-	}
-
-	force, err := flags.GetBool("force")
-	if err != nil {
-		return err
-	}
-
-	var machineID string
+func (cli *cliMachines) add(args []string, machinePassword string, dumpFile string, apiURL string, interactive bool, autoAdd bool, force bool) error {
+	var (
+		err error
+		machineID string
+	)
 
 	// create machineID if not specified by user
 	if len(args) == 0 {
 		if !autoAdd {
-			printHelp(cmd)
-			return nil
+			return fmt.Errorf("please specify a machine name to add, or use --auto")
 		}
+
 		machineID, err = generateID("")
 		if err != nil {
 			return fmt.Errorf("unable to generate machine id: %s", err)
@@ -302,15 +284,18 @@ func (cli *cliMachines) add(cmd *cobra.Command, args []string) error {
 		machinePassword = generatePassword(passwordLength)
 	} else if machinePassword == "" && interactive {
 		qs := &survey.Password{
-			Message: "Please provide a password for the machine",
+			Message: "Please provide a password for the machine:",
 		}
 		survey.AskOne(qs, &machinePassword)
 	}
+
 	password := strfmt.Password(machinePassword)
+
 	_, err = dbClient.CreateMachine(&machineID, &password, "", true, force, types.PasswordAuthType)
 	if err != nil {
 		return fmt.Errorf("unable to create machine: %s", err)
 	}
+
 	fmt.Printf("Machine '%s' successfully added to the local API.\n", machineID)
 
 	if apiURL == "" {
@@ -322,15 +307,18 @@ func (cli *cliMachines) add(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("unable to dump an api URL. Please provide it in your configuration or with the -u parameter")
 		}
 	}
+
 	apiCfg := csconfig.ApiCredentialsCfg{
 		Login:    machineID,
 		Password: password.String(),
 		URL:      apiURL,
 	}
+
 	apiConfigDump, err := yaml.Marshal(apiCfg)
 	if err != nil {
 		return fmt.Errorf("unable to marshal api credentials: %s", err)
 	}
+
 	if dumpFile != "" && dumpFile != "-" {
 		err = os.WriteFile(dumpFile, apiConfigDump, 0o600)
 		if err != nil {
@@ -338,7 +326,7 @@ func (cli *cliMachines) add(cmd *cobra.Command, args []string) error {
 		}
 		fmt.Printf("API credentials written to '%s'.\n", dumpFile)
 	} else {
-		fmt.Printf("%s\n", string(apiConfigDump))
+		fmt.Println(string(apiConfigDump))
 	}
 
 	return nil
