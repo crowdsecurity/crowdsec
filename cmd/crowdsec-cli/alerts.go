@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
-	"time"
 
 	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
@@ -46,50 +45,6 @@ func DecisionsFromAlert(alert *models.Alert) string {
 		ret += fmt.Sprintf("%s:%d", k, v)
 	}
 	return ret
-}
-
-func DateFromAlert(alert *models.Alert) string {
-	ts, err := time.Parse(time.RFC3339, alert.CreatedAt)
-	if err != nil {
-		log.Infof("while parsing %s with %s : %s", alert.CreatedAt, time.RFC3339, err)
-		return alert.CreatedAt
-	}
-	return ts.Format(time.RFC822)
-}
-
-func SourceFromAlert(alert *models.Alert) string {
-
-	//more than one item, just number and scope
-	if len(alert.Decisions) > 1 {
-		return fmt.Sprintf("%d %ss (%s)", len(alert.Decisions), *alert.Decisions[0].Scope, *alert.Decisions[0].Origin)
-	}
-
-	//fallback on single decision information
-	if len(alert.Decisions) == 1 {
-		return fmt.Sprintf("%s:%s", *alert.Decisions[0].Scope, *alert.Decisions[0].Value)
-	}
-
-	//try to compose a human friendly version
-	if *alert.Source.Value != "" && *alert.Source.Scope != "" {
-		scope := ""
-		scope = fmt.Sprintf("%s:%s", *alert.Source.Scope, *alert.Source.Value)
-		extra := ""
-		if alert.Source.Cn != "" {
-			extra = alert.Source.Cn
-		}
-		if alert.Source.AsNumber != "" {
-			extra += fmt.Sprintf("/%s", alert.Source.AsNumber)
-		}
-		if alert.Source.AsName != "" {
-			extra += fmt.Sprintf("/%s", alert.Source.AsName)
-		}
-
-		if extra != "" {
-			scope += " (" + extra + ")"
-		}
-		return scope
-	}
-	return ""
 }
 
 func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
