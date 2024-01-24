@@ -93,8 +93,8 @@ func SourceFromAlert(alert *models.Alert) string {
 }
 
 func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
-
-	if csConfig.Cscli.Output == "raw" {
+	switch csConfig.Cscli.Output {
+	case "raw":
 		csvwriter := csv.NewWriter(os.Stdout)
 		header := []string{"id", "scope", "value", "reason", "country", "as", "decisions", "created_at"}
 		if printMachine {
@@ -124,7 +124,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 			}
 		}
 		csvwriter.Flush()
-	} else if csConfig.Cscli.Output == "json" {
+	case "json":
 		if *alerts == nil {
 			// avoid returning "null" in json
 			// could be cleaner if we used slice of alerts directly
@@ -132,8 +132,8 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 			return nil
 		}
 		x, _ := json.MarshalIndent(alerts, "", " ")
-		fmt.Printf("%s", string(x))
-	} else if csConfig.Cscli.Output == "human" {
+		fmt.Print(string(x))
+	case "human":
 		if len(*alerts) == 0 {
 			fmt.Println("No active alerts")
 			return nil
