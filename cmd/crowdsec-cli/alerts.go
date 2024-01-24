@@ -161,13 +161,15 @@ func displayOneAlert(alert *models.Alert, withDetail bool) error {
 	return nil
 }
 
-type cliAlerts struct{}
+type cliAlerts struct{
+	client *apiclient.ApiClient
+}
 
 func NewCLIAlerts() *cliAlerts {
 	return &cliAlerts{}
 }
 
-func (cli cliAlerts) NewCommand() *cobra.Command {
+func (cli *cliAlerts) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "alerts [action]",
 		Short:             "Manage alerts",
@@ -183,7 +185,7 @@ func (cli cliAlerts) NewCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("parsing api url %s: %w", apiURL, err)
 			}
-			Client, err = apiclient.NewClient(&apiclient.Config{
+			cli.client, err = apiclient.NewClient(&apiclient.Config{
 				MachineID:     csConfig.API.Client.Credentials.Login,
 				Password:      strfmt.Password(csConfig.API.Client.Credentials.Password),
 				UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
@@ -206,7 +208,7 @@ func (cli cliAlerts) NewCommand() *cobra.Command {
 	return cmd
 }
 
-func (cli cliAlerts) NewListCmd() *cobra.Command {
+func (cli *cliAlerts) NewListCmd() *cobra.Command {
 	var alertListFilter = apiclient.AlertsListOpts{
 		ScopeEquals:    new(string),
 		ValueEquals:    new(string),
@@ -300,7 +302,7 @@ cscli alerts list --type ban`,
 				alertListFilter.Contains = new(bool)
 			}
 
-			alerts, _, err := Client.Alerts.List(context.Background(), alertListFilter)
+			alerts, _, err := cli.client.Alerts.List(context.Background(), alertListFilter)
 			if err != nil {
 				return fmt.Errorf("unable to list alerts: %v", err)
 			}
@@ -331,7 +333,7 @@ cscli alerts list --type ban`,
 	return cmd
 }
 
-func (cli cliAlerts) NewDeleteCmd() *cobra.Command {
+func (cli *cliAlerts) NewDeleteCmd() *cobra.Command {
 	var ActiveDecision *bool
 	var AlertDeleteAll bool
 	var delAlertByID string
@@ -406,12 +408,12 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 
 			var alerts *models.DeleteAlertsResponse
 			if delAlertByID == "" {
-				alerts, _, err = Client.Alerts.Delete(context.Background(), alertDeleteFilter)
+				alerts, _, err = cli.client.Alerts.Delete(context.Background(), alertDeleteFilter)
 				if err != nil {
 					return fmt.Errorf("unable to delete alerts : %v", err)
 				}
 			} else {
-				alerts, _, err = Client.Alerts.DeleteOne(context.Background(), delAlertByID)
+				alerts, _, err = cli.client.Alerts.DeleteOne(context.Background(), delAlertByID)
 				if err != nil {
 					return fmt.Errorf("unable to delete alert: %v", err)
 				}
@@ -433,7 +435,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 	return cmd
 }
 
-func (cli cliAlerts) NewInspectCmd() *cobra.Command {
+func (cli *cliAlerts) NewInspectCmd() *cobra.Command {
 	var details bool
 	cmd := &cobra.Command{
 		Use:               `inspect "alert_id"`,
@@ -450,7 +452,7 @@ func (cli cliAlerts) NewInspectCmd() *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("bad alert id %s", alertID)
 				}
-				alert, _, err := Client.Alerts.GetByID(context.Background(), id)
+				alert, _, err := cli.client.Alerts.GetByID(context.Background(), id)
 				if err != nil {
 					return fmt.Errorf("can't find alert with id %s: %s", alertID, err)
 				}
@@ -483,7 +485,7 @@ func (cli cliAlerts) NewInspectCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli cliAlerts) NewFlushCmd() *cobra.Command {
+func (cli *cliAlerts) NewFlushCmd() *cobra.Command {
 	var maxItems int
 	var maxAge string
 	cmd := &cobra.Command{
@@ -497,12 +499,12 @@ func (cli cliAlerts) NewFlushCmd() *cobra.Command {
 			if err := require.LAPI(csConfig); err != nil {
 				return err
 			}
-			dbClient, err = database.NewClient(csConfig.DbConfig)
+			db, err := database.NewClient(csConfig.DbConfig)
 			if err != nil {
 				return fmt.Errorf("unable to create new database client: %s", err)
 			}
 			log.Info("Flushing alerts. !! This may take a long time !!")
-			err = dbClient.FlushAlerts(maxAge, maxItems)
+			err = db.FlushAlerts(maxAge, maxItems)
 			if err != nil {
 				return fmt.Errorf("unable to flush alerts: %s", err)
 			}
