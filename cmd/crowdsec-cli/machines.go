@@ -147,7 +147,7 @@ func NewCLIMachines() *cliMachines {
 	return &cliMachines{}
 }
 
-func (cli cliMachines) NewCommand() *cobra.Command {
+func (cli *cliMachines) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "machines [action]",
 		Short: "Manage local API machines [requires local API]",
@@ -179,7 +179,7 @@ Note: This command requires database direct access, so is intended to be run on 
 	return cmd
 }
 
-func (cli cliMachines) NewListCmd() *cobra.Command {
+func (cli *cliMachines) NewListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "list",
 		Short:             "list all machines in the database",
@@ -200,7 +200,7 @@ func (cli cliMachines) NewListCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli cliMachines) NewAddCmd() *cobra.Command {
+func (cli *cliMachines) NewAddCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "add",
 		Short:             "add a single machine to the database",
@@ -225,7 +225,7 @@ cscli machines add MyTestMachine --password MyPassword
 	return cmd
 }
 
-func (cli cliMachines) add(cmd *cobra.Command, args []string) error {
+func (cli *cliMachines) add(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
 	machinePassword, err := flags.GetString("password")
@@ -344,35 +344,25 @@ func (cli cliMachines) add(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (cli cliMachines) NewDeleteCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:               "delete [machine_name]...",
-		Short:             "delete machine(s) by name",
-		Example:           `cscli machines delete "machine1" "machine2"`,
-		Args:              cobra.MinimumNArgs(1),
-		Aliases:           []string{"remove"},
-		DisableAutoGenTag: true,
-		ValidArgsFunction: func(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			machines, err := dbClient.ListMachines()
-			if err != nil {
-				cobra.CompError("unable to list machines " + err.Error())
-			}
-			ret := make([]string, 0)
-			for _, machine := range machines {
-				if strings.Contains(machine.MachineId, toComplete) && !slices.Contains(args, machine.MachineId) {
-					ret = append(ret, machine.MachineId)
-				}
-			}
-			return ret, cobra.ShellCompDirectiveNoFileComp
-		},
-		RunE: cli.delete,
+func (cli *cliMachines) deleteValid(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	machines, err := dbClient.ListMachines()
+	if err != nil {
+		cobra.CompError("unable to list machines " + err.Error())
 	}
 
-	return cmd
+	ret := []string{}
+
+	for _, machine := range machines {
+		if strings.Contains(machine.MachineId, toComplete) && !slices.Contains(args, machine.MachineId) {
+			ret = append(ret, machine.MachineId)
+		}
+	}
+
+	return ret, cobra.ShellCompDirectiveNoFileComp
 }
 
-func (cli cliMachines) delete(_ *cobra.Command, args []string) error {
-	for _, machineID := range args {
+func (cli *cliMachines) delete(machines []string) error {
+	for _, machineID := range machines {
 		err := dbClient.DeleteWatcher(machineID)
 		if err != nil {
 			log.Errorf("unable to delete machine '%s': %s", machineID, err)
@@ -384,8 +374,83 @@ func (cli cliMachines) delete(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func (cli cliMachines) NewPruneCmd() *cobra.Command {
-	var parsedDuration time.Duration
+func (cli *cliMachines) NewDeleteCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:               "delete [machine_name]...",
+		Short:             "delete machine(s) by name",
+		Example:           `cscli machines delete "machine1" "machine2"`,
+		Args:              cobra.MinimumNArgs(1),
+		Aliases:           []string{"remove"},
+		DisableAutoGenTag: true,
+		ValidArgsFunction: cli.deleteValid,
+		RunE: func(_ *cobra.Command, args []string) error {
+			return cli.delete(args)
+		},
+	}
+
+	return cmd
+}
+
+func (cli *cliMachines) prune(duration time.Duration, notValidOnly bool, force bool) error {
+	if duration < 2*time.Minute && !notValidOnly {
+		if yes, err := askYesNo(
+				"The duration you provided is less than 2 minutes. " +
+				"This can break installations if the machines are only temporarily disconnected. Continue?", false); err != nil {
+			return err
+		} else if !yes {
+			fmt.Println("User aborted prune. No changes were made.")
+			return nil
+		}
+	}
+
+	machines := []*ent.Machine{}
+	if pending, err := dbClient.QueryPendingMachine(); err == nil {
+		machines = append(machines, pending...)
+	}
+
+	if !notValidOnly {
+		if pending, err := dbClient.QueryLastValidatedHeartbeatLT(time.Now().UTC().Add(duration)); err == nil {
+			machines = append(machines, pending...)
+		}
+	}
+
+	if len(machines) == 0 {
+		fmt.Println("no machines to prune")
+		return nil
+	}
+
+	getAgentsTable(color.Output, machines)
+
+	if !force {
+		if yes, err := askYesNo(
+				"You are about to PERMANENTLY remove the above machines from the database. " +
+				"These will NOT be recoverable. Continue?", false); err != nil {
+			return err
+		} else if !yes {
+			fmt.Println("User aborted prune. No changes were made.")
+			return nil
+		}
+	}
+
+	deleted, err := dbClient.BulkDeleteWatchers(machines)
+	if err != nil {
+		return fmt.Errorf("unable to prune machines: %s", err)
+	}
+
+	fmt.Printf("successfully delete %d machines\n", deleted)
+
+	return nil
+}
+
+func (cli *cliMachines) NewPruneCmd() *cobra.Command {
+	var (
+		duration       time.Duration
+		notValidOnly   bool
+		force          bool
+	)
+
+	const defaultDuration = 10 * time.Minute
+
 	cmd := &cobra.Command{
 		Use:   "prune",
 		Short: "prune multiple machines from the database",
@@ -395,76 +460,29 @@ cscli machines prune --duration 1h
 cscli machines prune --not-validated-only --force`,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
-		PreRunE: func(cmd *cobra.Command, _ []string) error {
-			dur, _ := cmd.Flags().GetString("duration")
-			var err error
-			parsedDuration, err = time.ParseDuration(fmt.Sprintf("-%s", dur))
-			if err != nil {
-				return fmt.Errorf("unable to parse duration '%s': %s", dur, err)
-			}
-			return nil
-		},
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			notValidOnly, _ := cmd.Flags().GetBool("not-validated-only")
-			force, _ := cmd.Flags().GetBool("force")
-			if parsedDuration >= 0-60*time.Second && !notValidOnly {
-				var answer bool
-				prompt := &survey.Confirm{
-					Message: "The duration you provided is less than or equal 60 seconds this can break installations do you want to continue ?",
-					Default: false,
-				}
-				if err := survey.AskOne(prompt, &answer); err != nil {
-					return fmt.Errorf("unable to ask about prune check: %s", err)
-				}
-				if !answer {
-					fmt.Println("user aborted prune no changes were made")
-					return nil
-				}
-			}
-			machines := make([]*ent.Machine, 0)
-			if pending, err := dbClient.QueryPendingMachine(); err == nil {
-				machines = append(machines, pending...)
-			}
-			if !notValidOnly {
-				if pending, err := dbClient.QueryLastValidatedHeartbeatLT(time.Now().UTC().Add(parsedDuration)); err == nil {
-					machines = append(machines, pending...)
-				}
-			}
-			if len(machines) == 0 {
-				fmt.Println("no machines to prune")
-				return nil
-			}
-			getAgentsTable(color.Output, machines)
-			if !force {
-				var answer bool
-				prompt := &survey.Confirm{
-					Message: "You are about to PERMANENTLY remove the above machines from the database these will NOT be recoverable, continue ?",
-					Default: false,
-				}
-				if err := survey.AskOne(prompt, &answer); err != nil {
-					return fmt.Errorf("unable to ask about prune check: %s", err)
-				}
-				if !answer {
-					fmt.Println("user aborted prune no changes were made")
-					return nil
-				}
-			}
-			nbDeleted, err := dbClient.BulkDeleteWatchers(machines)
-			if err != nil {
-				return fmt.Errorf("unable to prune machines: %s", err)
-			}
-			fmt.Printf("successfully delete %d machines\n", nbDeleted)
-			return nil
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return cli.prune(duration, notValidOnly, force)
 		},
 	}
-	cmd.Flags().StringP("duration", "d", "10m", "duration of time since validated machine last heartbeat")
-	cmd.Flags().Bool("not-validated-only", false, "only prune machines that are not validated")
-	cmd.Flags().Bool("force", false, "force prune without asking for confirmation")
+
+	flags := cmd.Flags()
+	flags.DurationVarP(&duration, "duration", "d", defaultDuration, "duration of time since validated machine last heartbeat")
+	flags.BoolVar(&notValidOnly, "not-validated-only", false, "only prune machines that are not validated")
+	flags.BoolVar(&force, "force", false, "force prune without asking for confirmation")
 
 	return cmd
 }
 
-func (cli cliMachines) NewValidateCmd() *cobra.Command {
+func (cli *cliMachines) validate(machineID string) error {
+	if err := dbClient.ValidateMachine(machineID); err != nil {
+		return fmt.Errorf("unable to validate machine '%s': %s", machineID, err)
+	}
+	log.Infof("machine '%s' validated successfully", machineID)
+
+	return nil
+}
+
+func (cli *cliMachines) NewValidateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "validate",
 		Short:             "validate a machine to access the local API",
@@ -472,14 +490,8 @@ func (cli cliMachines) NewValidateCmd() *cobra.Command {
 		Example:           `cscli machines validate "machine_name"`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(_ *cobra.Command, args []string) error {
-			machineID := args[0]
-			if err := dbClient.ValidateMachine(machineID); err != nil {
-				return fmt.Errorf("unable to validate machine '%s': %s", machineID, err)
-			}
-			log.Infof("machine '%s' validated successfully", machineID)
-
-			return nil
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.validate(args[0])
 		},
 	}
 

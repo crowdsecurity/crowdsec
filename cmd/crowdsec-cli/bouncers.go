@@ -198,8 +198,6 @@ cscli bouncers add MyBouncerName --key <random-key>`,
 }
 
 func (cli *cliBouncers) deleteValid(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	var err error
-
 	bouncers, err := cli.db.ListBouncers()
 	if err != nil {
 		cobra.CompError("unable to list bouncers " + err.Error())
@@ -296,7 +294,7 @@ func (cli *cliBouncers) newPruneCmd() *cobra.Command {
 		force    bool
 	)
 
-	defaultDuration := 60 * time.Minute
+	const defaultDuration = 60 * time.Minute
 
 	cmd := &cobra.Command{
 		Use:               "prune",
