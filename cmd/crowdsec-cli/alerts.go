@@ -162,48 +162,47 @@ var alertTemplate = `
 `
 
 func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
-	if csConfig.Cscli.Output == "human" {
-		tmpl, err := template.New("alert").Parse(alertTemplate)
-		if err != nil {
-			return err
-		}
-		err = tmpl.Execute(os.Stdout, alert)
-		if err != nil {
-			return err
-		}
+	tmpl, err := template.New("alert").Parse(alertTemplate)
+	if err != nil {
+		return err
+	}
+	err = tmpl.Execute(os.Stdout, alert)
+	if err != nil {
+		return err
+	}
 
-		alertDecisionsTable(color.Output, alert)
+	alertDecisionsTable(color.Output, alert)
 
-		if len(alert.Meta) > 0 {
-			fmt.Printf("\n - Context  :\n")
-			sort.Slice(alert.Meta, func(i, j int) bool {
-				return alert.Meta[i].Key < alert.Meta[j].Key
-			})
-			table := newTable(color.Output)
-			table.SetRowLines(false)
-			table.SetHeaders("Key", "Value")
-			for _, meta := range alert.Meta {
-				var valSlice []string
-				if err := json.Unmarshal([]byte(meta.Value), &valSlice); err != nil {
-					return fmt.Errorf("unknown context value type '%s' : %s", meta.Value, err)
-				}
-				for _, value := range valSlice {
-					table.AddRow(
-						meta.Key,
-						value,
-					)
-				}
+	if len(alert.Meta) > 0 {
+		fmt.Printf("\n - Context  :\n")
+		sort.Slice(alert.Meta, func(i, j int) bool {
+			return alert.Meta[i].Key < alert.Meta[j].Key
+		})
+		table := newTable(color.Output)
+		table.SetRowLines(false)
+		table.SetHeaders("Key", "Value")
+		for _, meta := range alert.Meta {
+			var valSlice []string
+			if err := json.Unmarshal([]byte(meta.Value), &valSlice); err != nil {
+				return fmt.Errorf("unknown context value type '%s' : %s", meta.Value, err)
 			}
-			table.Render()
-		}
-
-		if withDetail {
-			fmt.Printf("\n - Events  :\n")
-			for _, event := range alert.Events {
-				alertEventTable(color.Output, event)
+			for _, value := range valSlice {
+				table.AddRow(
+					meta.Key,
+					value,
+				)
 			}
+		}
+		table.Render()
+	}
+
+	if withDetail {
+		fmt.Printf("\n - Events  :\n")
+		for _, event := range alert.Events {
+			alertEventTable(color.Output, event)
 		}
 	}
+
 	return nil
 }
 
