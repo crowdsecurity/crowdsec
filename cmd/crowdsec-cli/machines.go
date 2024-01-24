@@ -134,11 +134,11 @@ Note: This command requires database direct access, so is intended to be run on 
 		},
 	}
 
-	cmd.AddCommand(cli.NewListCmd())
-	cmd.AddCommand(cli.NewAddCmd())
-	cmd.AddCommand(cli.NewDeleteCmd())
-	cmd.AddCommand(cli.NewValidateCmd())
-	cmd.AddCommand(cli.NewPruneCmd())
+	cmd.AddCommand(cli.newListCmd())
+	cmd.AddCommand(cli.newAddCmd())
+	cmd.AddCommand(cli.newDeleteCmd())
+	cmd.AddCommand(cli.newValidateCmd())
+	cmd.AddCommand(cli.newPruneCmd())
 
 	return cmd
 }
@@ -192,7 +192,7 @@ func (cli *cliMachines) list() error {
 	return nil
 }
 
-func (cli *cliMachines) NewListCmd() *cobra.Command {
+func (cli *cliMachines) newListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "list",
 		Short:             "list all machines in the database",
@@ -208,7 +208,7 @@ func (cli *cliMachines) NewListCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliMachines) NewAddCmd() *cobra.Command {
+func (cli *cliMachines) newAddCmd() *cobra.Command {
 	var (
 		machinePassword    string
 		dumpFile           string
@@ -372,7 +372,7 @@ func (cli *cliMachines) delete(machines []string) error {
 	return nil
 }
 
-func (cli *cliMachines) NewDeleteCmd() *cobra.Command {
+func (cli *cliMachines) newDeleteCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "delete [machine_name]...",
 		Short:             "delete machine(s) by name",
@@ -440,7 +440,7 @@ func (cli *cliMachines) prune(duration time.Duration, notValidOnly bool, force b
 	return nil
 }
 
-func (cli *cliMachines) NewPruneCmd() *cobra.Command {
+func (cli *cliMachines) newPruneCmd() *cobra.Command {
 	var (
 		duration       time.Duration
 		notValidOnly   bool
@@ -480,7 +480,7 @@ func (cli *cliMachines) validate(machineID string) error {
 	return nil
 }
 
-func (cli *cliMachines) NewValidateCmd() *cobra.Command {
+func (cli *cliMachines) newValidateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "validate",
 		Short:             "validate a machine to access the local API",
