@@ -22,6 +22,7 @@ def test_cscli_lapi(crowdsec, flavor):
         assert "You can successfully interact with Local API (LAPI)" in stdout
 
 
+@pytest.mark.skip(reason="currently broken by hub upgrade")
 def test_flavor_content(crowdsec, flavor):
     """Test flavor contents"""
     with crowdsec(flavor=flavor) as cs:
