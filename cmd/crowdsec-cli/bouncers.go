@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 	"time"
@@ -95,7 +96,7 @@ func (cli *cliBouncers) list() error {
 		enc.SetIndent("", "  ")
 
 		if err := enc.Encode(bouncers); err != nil {
-			return fmt.Errorf("failed to unmarshal: %w", err)
+			return fmt.Errorf("failed to marshal: %w", err)
 		}
 
 		return nil
@@ -198,8 +199,6 @@ cscli bouncers add MyBouncerName --key <random-key>`,
 }
 
 func (cli *cliBouncers) deleteValid(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	var err error
-
 	bouncers, err := cli.db.ListBouncers()
 	if err != nil {
 		cobra.CompError("unable to list bouncers " + err.Error())
@@ -285,7 +284,7 @@ func (cli *cliBouncers) prune(duration time.Duration, force bool) error {
 		return fmt.Errorf("unable to prune bouncers: %s", err)
 	}
 
-	fmt.Printf("Successfully deleted %d bouncers\n", deleted)
+	fmt.Fprintf(os.Stderr, "Successfully deleted %d bouncers\n", deleted)
 
 	return nil
 }
@@ -296,7 +295,7 @@ func (cli *cliBouncers) newPruneCmd() *cobra.Command {
 		force    bool
 	)
 
-	defaultDuration := 60 * time.Minute
+	const defaultDuration = 60 * time.Minute
 
 	cmd := &cobra.Command{
 		Use:               "prune",
