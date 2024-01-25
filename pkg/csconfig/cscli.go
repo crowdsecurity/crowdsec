@@ -17,6 +17,8 @@ type CscliCfg struct {
 	PrometheusUrl      string            `yaml:"prometheus_uri"`
 }
 
+const defaultHubURLTemplate = "https://hub-cdn.crowdsec.net/%s/%s"
+
 func (c *Config) loadCSCLI() error {
 	if c.Cscli == nil {
 		c.Cscli = &CscliCfg{}
@@ -27,7 +29,7 @@ func (c *Config) loadCSCLI() error {
 	}
 
 	if c.Cscli.HubURLTemplate == "" {
-		c.Cscli.HubURLTemplate = "https://hub-cdn.crowdsec.net/%s/%s"
+		c.Cscli.HubURLTemplate = defaultHubURLTemplate
 	}
 
 	return nil
