@@ -66,10 +66,10 @@ func Notifications(c *csconfig.Config) error {
 func RemoteHub(c *csconfig.Config) *cwhub.RemoteHubCfg {
 	// set branch in config, and log if necessary
 	branch := HubBranch(c)
+	urlTemplate := HubURLTemplate(c)
 	remote := &cwhub.RemoteHubCfg{
 		Branch:      branch,
-		URLTemplate: "https://hub-cdn.crowdsec.net/%s/%s",
-		// URLTemplate: "http://localhost:8000/crowdsecurity/%s/hub/%s",
+		URLTemplate: urlTemplate,
 		IndexPath: ".index.json",
 	}
 
