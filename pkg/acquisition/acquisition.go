@@ -6,11 +6,13 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
+	isatty "github.com/mattn/go-isatty"
 	log "github.com/sirupsen/logrus"
 	progressbar "github.com/schollz/progressbar/v3"
 	tomb "gopkg.in/tomb.v2"
@@ -318,20 +320,34 @@ func transform(transformChan chan types.Event, output chan types.Event, AcquisTo
 	}
 }
 
+// injectProgressBar will inject a progress bar in the acquisition pipeline if stderr is a terminal
 func injectProgressBar(output chan types.Event, AcquisTomb *tomb.Tomb) chan types.Event {
+	if !isatty.IsTerminal(os.Stderr.Fd()) && !isatty.IsCygwinTerminal(os.Stderr.Fd()) {
+		return output
+	}
 	ret := make(chan types.Event)
 	go func() {
 		var pb *progressbar.ProgressBar
 		for {
 			select {
 			case <-AcquisTomb.Dying():
+				if pb != nil {
+					pb.Finish()
+				}
 				return
 			case evt := <-ret:
 				if pb == nil {
 					// create the progress bar on first event
-					// to avoid log messages from the acquisition
-					// source breaking the progress bar already displayed
-					pb = progressbar.Default(-1)
+					// to avoid log messages from the acquisition source
+					// breaking the progress bar already displayed
+					pb = progressbar.NewOptions(-1,
+						progressbar.OptionSetWriter(os.Stderr),
+						progressbar.OptionClearOnFinish(),
+						progressbar.OptionShowCount(),
+						progressbar.OptionShowIts(),
+						progressbar.OptionSpinnerType(43),
+						progressbar.OptionThrottle(time.Second/10),
+					)
 				}
 				pb.Add(1)
 				output <- evt
