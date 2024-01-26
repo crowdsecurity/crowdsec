@@ -21,7 +21,7 @@ var ConfigFilePath string
 var csConfig *csconfig.Config
 var dbClient *database.Client
 
-var OutputFormat string
+var outputFormat string
 var OutputColor string
 
 var mergedConfig string
@@ -64,16 +64,18 @@ func initConfig() {
 		csConfig.Cscli.HubBranch = flagBranch
 	}
 
-	if OutputFormat != "" {
-		csConfig.Cscli.Output = OutputFormat
-
-		if OutputFormat != "json" && OutputFormat != "raw" && OutputFormat != "human" {
-			log.Fatalf("output format %s unknown", OutputFormat)
-		}
+	if outputFormat != "" {
+		csConfig.Cscli.Output = outputFormat
 	}
+
 	if csConfig.Cscli.Output == "" {
 		csConfig.Cscli.Output = "human"
 	}
+
+	if csConfig.Cscli.Output != "human" && csConfig.Cscli.Output != "json" && csConfig.Cscli.Output != "raw" {
+		log.Fatalf("output format '%s' not supported: must be one of human, json, raw", csConfig.Cscli.Output)
+	}
+
 	if csConfig.Cscli.Output == "json" {
 		log.SetFormatter(&log.JSONFormatter{})
 		log.SetLevel(log.ErrorLevel)
@@ -146,7 +148,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.SetOut(color.Output)
 
 	cmd.PersistentFlags().StringVarP(&ConfigFilePath, "config", "c", csconfig.DefaultConfigPath("config.yaml"), "path to crowdsec config file")
-	cmd.PersistentFlags().StringVarP(&OutputFormat, "output", "o", "", "Output format: human, json, raw")
+	cmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "", "Output format: human, json, raw")
 	cmd.PersistentFlags().StringVarP(&OutputColor, "color", "", "auto", "Output color: yes, no, auto")
 	cmd.PersistentFlags().BoolVar(&dbg_lvl, "debug", false, "Set logging to debug")
 	cmd.PersistentFlags().BoolVar(&nfo_lvl, "info", false, "Set logging to info")

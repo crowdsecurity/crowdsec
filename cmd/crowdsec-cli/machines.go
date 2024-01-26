@@ -185,8 +185,6 @@ func (cli *cliMachines) list() error {
 		}
 
 		csvwriter.Flush()
-	default:
-		return fmt.Errorf("unknown output '%s'", cli.cfg().Cscli.Output)
 	}
 
 	return nil

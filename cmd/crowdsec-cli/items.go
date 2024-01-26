@@ -138,8 +138,6 @@ func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item
 		}
 
 		csvwriter.Flush()
-	default:
-		return fmt.Errorf("unknown output format '%s'", csConfig.Cscli.Output)
 	}
 
 	return nil
