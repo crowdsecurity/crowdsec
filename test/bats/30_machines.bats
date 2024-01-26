@@ -37,6 +37,11 @@ teardown() {
     assert_stderr --partial "Machine 'local' successfully added to the local API."
 }
 
+@test "passwords have a size limit" {
+    rune -1 cscli machines add local --password "$(printf '%73s' '' | tr ' ' x)"
+    assert_stderr --partial "password too long (max 72 characters)"
+}
+
 @test "add a new machine and delete it" {
     rune -0 cscli machines add -a -f /dev/null CiTestMachine -o human
     assert_stderr --partial "Machine 'CiTestMachine' successfully added to the local API"

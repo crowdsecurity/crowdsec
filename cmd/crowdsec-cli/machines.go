@@ -210,12 +210,12 @@ func (cli *cliMachines) newListCmd() *cobra.Command {
 
 func (cli *cliMachines) newAddCmd() *cobra.Command {
 	var (
-		machinePassword    string
-		dumpFile           string
-		apiURL             string
-		interactive        bool
-		autoAdd            bool
-		force              bool
+		password    MachinePassword
+		dumpFile    string
+		apiURL      string
+		interactive bool
+		autoAdd     bool
+		force       bool
 	)
 
 	cmd := &cobra.Command{
@@ -228,12 +228,12 @@ cscli machines add MyTestMachine --auto
 cscli machines add MyTestMachine --password MyPassword
 cscli machines add -f- --auto > /tmp/mycreds.yaml`,
 		RunE: func(_ *cobra.Command, args []string) error {
-			return cli.add(args, machinePassword, dumpFile, apiURL, interactive, autoAdd, force)
+			return cli.add(args, string(password), dumpFile, apiURL, interactive, autoAdd, force)
 		},
 	}
 
 	flags := cmd.Flags()
-	flags.StringVarP(&machinePassword, "password", "p", "", "machine password to login to the API")
+	flags.VarP(&password, "password", "p", "machine password to login to the API")
 	flags.StringVarP(&dumpFile, "file", "f", "", "output file destination (defaults to "+csconfig.DefaultConfigPath("local_api_credentials.yaml")+")")
 	flags.StringVarP(&apiURL, "url", "u", "", "URL of the local API")
 	flags.BoolVarP(&interactive, "interactive", "i", false, "interfactive mode to enter the password")
