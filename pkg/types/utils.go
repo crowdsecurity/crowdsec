@@ -13,6 +13,20 @@ var logFormatter log.Formatter
 var LogOutput *lumberjack.Logger //io.Writer
 var logLevel log.Level
 
+type CustomFormatter struct {
+    log.TextFormatter
+}
+
+func (f *CustomFormatter) Format(entry *log.Entry) ([]byte, error) {
+    // Clear line escape sequence
+    clearLine := "\r\033[K"
+    result, err := f.TextFormatter.Format(entry)
+    if err != nil {
+        return nil, err
+    }
+    return append([]byte(clearLine), result...), nil
+}
+
 func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, compress *bool, forceColors bool) error {
 	/*Configure logs*/
 	if cfgMode == "file" {
@@ -46,7 +60,7 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 	}
 	logLevel = cfgLevel
 	log.SetLevel(logLevel)
-	logFormatter = &log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true, ForceColors: forceColors}
+	logFormatter = &CustomFormatter{TextFormatter: log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true, ForceColors: forceColors}}
 	log.SetFormatter(logFormatter)
 	return nil
 }
