@@ -75,6 +75,10 @@ type Flags struct {
 	CpuProfile     string
 }
 
+func (f *Flags) haveTimeMachine() bool {
+	return f.OneShotDSN != ""
+}
+
 type labelsMap map[string]string
 
 func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {

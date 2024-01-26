@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
+	progressbar "github.com/schollz/progressbar/v3"
 	tomb "gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
@@ -317,6 +318,29 @@ func transform(transformChan chan types.Event, output chan types.Event, AcquisTo
 	}
 }
 
+func injectProgressBar(output chan types.Event, AcquisTomb *tomb.Tomb) chan types.Event {
+	ret := make(chan types.Event)
+	go func() {
+		var pb *progressbar.ProgressBar
+		for {
+			select {
+			case <-AcquisTomb.Dying():
+				return
+			case evt := <-ret:
+				if pb == nil {
+					// create the progress bar on first event
+					// to avoid log messages from the acquisition
+					// source breaking the progress bar already displayed
+					pb = progressbar.Default(-1)
+				}
+				pb.Add(1)
+				output <- evt
+			}
+		}
+	}()
+	return ret
+}
+
 func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
 	// Don't wait if we have no sources, as it will hang forever
 	if len(sources) == 0 {
@@ -349,7 +373,7 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 			if subsrc.GetMode() == configuration.TAIL_MODE {
 				err = subsrc.StreamingAcquisition(outChan, AcquisTomb)
 			} else {
-				err = subsrc.OneShotAcquisition(outChan, AcquisTomb)
+				err = subsrc.OneShotAcquisition(injectProgressBar(outChan, AcquisTomb), AcquisTomb)
 			}
 			if err != nil {
 				//if one of the acqusition returns an error, we kill the others to properly shutdown
