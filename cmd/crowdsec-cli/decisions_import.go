@@ -243,6 +243,7 @@ func (cli cliDecisions) NewImportCmd() *cobra.Command {
 		Long: "expected format:\n" +
 			"csv  : any of duration,reason,scope,type,value, with a header line\n" +
 			"json :" + "`{" + `"duration" : "24h", "reason" : "my_scenario", "scope" : "ip", "type" : "ban", "value" : "x.y.z.z"` + "}`",
+		Args:	 cobra.NoArgs,
 		DisableAutoGenTag: true,
 		Example: `decisions.csv:
 duration,scope,value

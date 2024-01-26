@@ -16,7 +16,10 @@ teardown_file() {
 
 setup() {
     load "../lib/setup.sh"
+    load "../lib/bats-file/load.bash"
     ./instance-data load
+    LOGFILE=$(config_get '.common.log_dir')/crowdsec.log
+    export LOGFILE
     ./instance-crowdsec start
 }
 
@@ -151,6 +154,7 @@ teardown() {
     assert_stderr --partial 'Parsing values'
     assert_stderr --partial 'Imported 3 decisions'
 
+    # leading or trailing spaces are ignored
     rune -0 cscli decisions import -i - --format values <<-EOT
 	  10.2.3.4  
 	10.2.3.5   
@@ -159,11 +163,39 @@ teardown() {
     assert_stderr --partial 'Parsing values'
     assert_stderr --partial 'Imported 3 decisions'
 
-    rune -1 cscli decisions import -i - --format values <<-EOT
+    # silently discarding (but logging) invalid decisions
+
+    rune -0 cscli alerts delete --all
+    truncate -s 0 "${LOGFILE}"
+
+    rune -0 cscli decisions import -i - --format values <<-EOT
 	whatever
 	EOT
     assert_stderr --partial 'Parsing values'
-    assert_stderr --partial 'creating alert decisions: whatever: invalid ip address / range'
+    assert_stderr --partial 'Imported 1 decisions'
+    assert_file_contains "$LOGFILE" "invalid addr/range 'whatever': invalid address"
+
+    rune -0 cscli decisions list -a -o json
+    assert_json '[]'
+
+    # disarding only some invalid decisions
+
+
+    rune -0 cscli alerts delete --all
+    truncate -s 0 "${LOGFILE}"
+
+    rune -0 cscli decisions import -i - --format values <<-EOT
+        1.2.3.4
+	bad-apple
+        1.2.3.5
+	EOT
+    assert_stderr --partial 'Parsing values'
+    assert_stderr --partial 'Imported 3 decisions'
+    assert_file_contains "$LOGFILE" "invalid addr/range 'bad-apple': invalid address"
+
+    rune -0 cscli decisions list -a -o json
+    rune -0 jq -r '.[0].decisions | length' <(output)
+    assert_output 2
 
     #----------
     # Batch
