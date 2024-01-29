@@ -3,7 +3,7 @@
 # shellcheck disable=SC2292      # allow [ test ] syntax
 # shellcheck disable=SC2310      # allow "if function..." syntax with -e
 
-# set -e
+set -e
 shopt -s inherit_errexit
 
 # match true, TRUE, True, tRuE, etc.
@@ -109,6 +109,8 @@ cscli_if_clean() {
     for obj in $objs; do
         if cscli "$itemtype" inspect "$obj" -o json | yq -e '.tainted // false' >/dev/null 2>&1; then
             echo "Object $itemtype/$obj is tainted, skipping"
+        elif cscli "$itemtype" inspect "$obj" -o json | yq -e '.local // false' >/dev/null 2>&1; then
+            echo "Object $itemtype/$obj is local, skipping"
         else
 #            # Too verbose? Only show errors if not in debug mode
 #            if [ "$DEBUG" != "true" ]; then
@@ -301,8 +303,8 @@ fi
 conf_set_if "$PLUGIN_DIR" '.config_paths.plugin_dir = strenv(PLUGIN_DIR)'
 
 ## Install hub items
-cscli hub update
-cscli hub upgrade
+cscli hub update || true
+cscli hub upgrade || true
 
 cscli_if_clean parsers install crowdsecurity/docker-logs
 cscli_if_clean parsers install crowdsecurity/cri-logs
