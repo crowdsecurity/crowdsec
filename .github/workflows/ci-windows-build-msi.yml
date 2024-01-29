@@ -21,10 +21,6 @@ on:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        go-version: ["1.21.6"]
-
     name: Build
     runs-on: windows-2019
 
@@ -36,10 +32,10 @@ jobs:
         fetch-depth: 0
         submodules: false
 
-    - name: "Set up Go ${{ matrix.go-version }}"
+    - name: "Set up Go"
       uses: actions/setup-go@v5
       with:
-        go-version: ${{ matrix.go-version }}
+        go-version: "1.21.6"
 
     - name: Build
       run: make windows_installer BUILD_RE2_WASM=1

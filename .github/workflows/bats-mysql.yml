@@ -12,10 +12,6 @@ env:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        go-version: ["1.21.6"]
-
     name: "Build + tests"
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -40,10 +36,10 @@ jobs:
         fetch-depth: 0
         submodules: true
 
-    - name: "Set up Go ${{ matrix.go-version }}"
+    - name: "Set up Go"
       uses: actions/setup-go@v5
       with:
-        go-version: ${{ matrix.go-version }}
+        go-version: "1.21.6"
 
     - name: "Install bats dependencies"
       env:
