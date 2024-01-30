@@ -23,7 +23,6 @@ jobs:
     strategy:
       matrix:
         platform: ["linux/amd64", "linux/386", "linux/arm64", "linux/arm/v7", "linux/arm/v6"]
-        slim: [false, true]
 
     uses: ./.github/workflows/publish-docker.yml
     secrets:
@@ -35,7 +34,7 @@ jobs:
       crowdsec_version: ${{ github.event.inputs.crowdsec_version }}
       latest: ${{ github.event.inputs.latest == 'true' }}
       push: ${{ github.event.inputs.push == 'true' }}
-      slim: ${{ matrix.slim }}
+      slim: true
       debian: false
 
   debian:
