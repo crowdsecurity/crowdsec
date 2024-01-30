@@ -54,7 +54,7 @@ jobs:
           DEBIAN=${{ inputs.debian && '-debian' || '' }}
           TAGS="${{ env.DOCKERHUB_IMAGE }}:${VERSION}${DEBIAN},${{ env.GHCR_IMAGE }}:${VERSION}${DEBIAN}"
           if [[ ${{ inputs.latest }} == true ]]; then
-            TAGS=$TAGS,${{ env.DOCKERHUB_IMAGE }}:${DEBIAN},${{ env.GHCR_IMAGE }}:${DEBIAN}
+            TAGS=$TAGS,${{ env.DOCKERHUB_IMAGE }}:latest${DEBIAN},${{ env.GHCR_IMAGE }}:latest${DEBIAN}
           fi
           echo "tags=${TAGS}" >> $GITHUB_OUTPUT
           echo "created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
