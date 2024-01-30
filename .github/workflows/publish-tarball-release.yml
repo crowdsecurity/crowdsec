@@ -1,5 +1,5 @@
 # .github/workflows/build-docker-image.yml
-name: build
+name: Release
 
 on:
   release:

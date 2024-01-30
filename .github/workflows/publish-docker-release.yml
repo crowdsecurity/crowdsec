@@ -4,10 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       image_version:
-        description: Docker Image Version (base tag)
+        description: Docker Image version (base tag, i.e. v1.6.0-2)
         required: true
       crowdsec_version:
-        description: Crowdsec Version (BUILD_VERSION)
+        description: Crowdsec version (BUILD_VERSION)
         required: true
       latest:
         description: Overwrite latest (and slim) tags?
