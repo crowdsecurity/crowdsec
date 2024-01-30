@@ -47,7 +47,7 @@ func CAPIRegistered(c *csconfig.Config) error {
 }
 
 func DB(c *csconfig.Config) error {
-	if err := c.LoadDBConfig(); err != nil {
+	if err := c.LoadDBConfig(true); err != nil {
 		return fmt.Errorf("this command requires direct database access (must be run on the local API machine): %w", err)
 	}
 

@@ -1,8 +1,7 @@
 # vim: set ft=dockerfile:
-ARG GOVERSION=1.21.6
-ARG BUILD_VERSION
+FROM golang:1.21.6-bookworm AS build
 
-FROM golang:${GOVERSION}-bookworm AS build
+ARG BUILD_VERSION
 
 WORKDIR /go/src/crowdsec
 
