@@ -46,9 +46,18 @@ jobs:
     steps:
       -
         name: Prepare
+        id: prep
         run: |
           platform=${{ matrix.platform }}
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+          VERSION=${{ inputs.image_version }}
+          DEBIAN=${{ inputs.debian && '-debian' || '' }}
+          TAGS="${{ env.DOCKERHUB_IMAGE }}:${VERSION}${DEBIAN},${{ GHCR_IMAGE }}:${VERSION}${DEBIAN}"
+          if [[ ${{ inputs.latest }} == true ]]; then
+            TAGS=$TAGS,${{ env.DOCKERHUB_IMAGE }}:${DEBIAN},${{ GHCR_IMAGE }}:${DEBIAN}
+          fi
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+          echo "created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
       -
         name: Checkout
         uses: actions/checkout@v4
@@ -84,7 +93,6 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-
       -
         name: Build and push by digest
         id: build
@@ -93,11 +101,11 @@ jobs:
           context: .
           file: ./Dockerfile${{ inputs.debian && '.debian' || '' }}
           platforms: ${{ matrix.platform }}
-          # tags:
+          tags: ${{ steps.prep.outputs.tags }}
           outputs: type=image,name=${{ env.DOCKERHUB_IMAGE }},push-by-digest=true,name-canonical=true,push=true
           labels: ${{ steps.meta.outputs.labels }} |
             org.opencontainers.image.source=${{ github.event.repository.html_url }}
-            org.opencontainers.image.created=${{ steps.slim.outputs.created }}
+            org.opencontainers.image.created=${{ steps.prep.outputs.created }}
             org.opencontainers.image.revision=${{ github.sha }}
           build-args: |
             BUILD_VERSION=${{ inputs.crowdsec_version }}
