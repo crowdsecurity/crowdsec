@@ -18,6 +18,8 @@ var LogOutput *lumberjack.Logger //io.Writer
 var logLevel log.Level
 
 func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, compress *bool, forceColors bool) error {
+	clearline := false
+
 	switch cfgMode {
 	case "file":
 		_maxsize := 500
@@ -45,18 +47,23 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 			Compress:   _compress,
 		}
 		log.SetOutput(LogOutput)
-		logFormatter = &log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true, ForceColors: forceColors}
 	case "stdout":
 		if cstty.IsTTY(os.Stderr.Fd()) {
-			logFormatter = &cslog.ClearLineFormatter{TextFormatter: log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true, ForceColors: forceColors}}
-		} else {
-			logFormatter = &log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true, ForceColors: forceColors}
+			clearline = true
 		}
 	default:
 		return fmt.Errorf("log mode '%s' unknown", cfgMode)
 	}
 
-	log.SetLevel(cfgLevel)
+	if clearline {
+		logFormatter = &cslog.ClearLineFormatter{TextFormatter: log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true, ForceColors: forceColors}}
+	} else {
+		logFormatter = &log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true, ForceColors: forceColors}
+	}
+
+	// XXX: set logLevel for the other loggers (papi & co)
+	logLevel = cfgLevel
+	log.SetLevel(logLevel)
 	log.SetFormatter(logFormatter)
 
 	return nil
