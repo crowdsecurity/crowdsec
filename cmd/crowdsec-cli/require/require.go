@@ -11,7 +11,7 @@ import (
 )
 
 func LAPI(c *csconfig.Config) error {
-	if err := c.LoadAPIServer(); err != nil {
+	if err := c.LoadAPIServer(true); err != nil {
 		return fmt.Errorf("failed to load Local API: %w", err)
 	}
 
@@ -47,7 +47,7 @@ func CAPIRegistered(c *csconfig.Config) error {
 }
 
 func DB(c *csconfig.Config) error {
-	if err := c.LoadDBConfig(); err != nil {
+	if err := c.LoadDBConfig(true); err != nil {
 		return fmt.Errorf("this command requires direct database access (must be run on the local API machine): %w", err)
 	}
 

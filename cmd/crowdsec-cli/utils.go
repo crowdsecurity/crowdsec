@@ -48,7 +48,7 @@ func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *
 }
 
 func getDBClient() (*database.Client, error) {
-	if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
+	if err := csConfig.LoadAPIServer(true); err != nil || csConfig.DisableAPI {
 		return nil, err
 	}
 	ret, err := database.NewClient(csConfig.DbConfig)
