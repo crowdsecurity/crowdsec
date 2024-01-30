@@ -26,12 +26,12 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
         with:
           config: .github/buildkit.toml
 
       - name: "Build flavor: slim"
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
@@ -43,7 +43,7 @@ jobs:
           cache-to: type=gha,mode=min
 
       - name: "Build flavor: full"
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
@@ -55,7 +55,7 @@ jobs:
           cache-to: type=gha,mode=min
 
       - name: "Build flavor: full (debian)"
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile.debian
