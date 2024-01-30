@@ -236,7 +236,7 @@ type LocalApiServerCfg struct {
 	CapiWhitelists                *CapiWhitelist      `yaml:"-"`
 }
 
-func (c *Config) LoadAPIServer() error {
+func (c *Config) LoadAPIServer(inCli bool) error {
 	if c.DisableAPI {
 		log.Warning("crowdsec local API is disabled from flag")
 	}
@@ -289,7 +289,7 @@ func (c *Config) LoadAPIServer() error {
 		log.Printf("push and pull to Central API disabled")
 	}
 
-	if err := c.LoadDBConfig(); err != nil {
+	if err := c.LoadDBConfig(inCli); err != nil {
 		return err
 	}
 
