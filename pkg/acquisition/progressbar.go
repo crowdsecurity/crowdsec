@@ -4,18 +4,23 @@ import (
 	"os"
 	"time"
 
-	isatty "github.com/mattn/go-isatty"
 	progressbar "github.com/schollz/progressbar/v3"
 	tomb "gopkg.in/tomb.v2"
+
+	"github.com/crowdsecurity/go-cs-lib/cstty"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 // injectProgressBar will inject a progress bar in the acquisition pipeline if stderr is a terminal
 func injectProgressBar(output chan types.Event, acquisTomb *tomb.Tomb) chan types.Event {
-	if !isatty.IsTerminal(os.Stderr.Fd()) && !isatty.IsCygwinTerminal(os.Stderr.Fd()) {
+	// assume we are logging to stderr
+	if !cstty.IsTTY(os.Stderr.Fd()) {
 		return output
 	}
+
+	// windows may need this
+	_ = cstty.EnableVirtualTerminalProcessing(os.Stderr.Fd())
 
 	ret := make(chan types.Event)
 

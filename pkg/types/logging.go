@@ -2,34 +2,24 @@ package types
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
+
+	"github.com/crowdsecurity/go-cs-lib/cslog"
+	"github.com/crowdsecurity/go-cs-lib/cstty"
 )
 
 var logFormatter log.Formatter
 var LogOutput *lumberjack.Logger //io.Writer
 var logLevel log.Level
 
-type CustomFormatter struct {
-    log.TextFormatter
-}
-
-func (f *CustomFormatter) Format(entry *log.Entry) ([]byte, error) {
-	const clearLine = "\r\033[K"
-
-	result, err := f.TextFormatter.Format(entry)
-	if err != nil {
-		return nil, err
-	}
-	return append([]byte(clearLine), result...), nil
-}
-
 func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, compress *bool, forceColors bool) error {
-	/*Configure logs*/
-	if cfgMode == "file" {
+	switch cfgMode {
+	case "file":
 		_maxsize := 500
 		if maxSize != 0 {
 			_maxsize = maxSize
@@ -55,13 +45,20 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 			Compress:   _compress,
 		}
 		log.SetOutput(LogOutput)
-	} else if cfgMode != "stdout" {
+		logFormatter = &log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true, ForceColors: forceColors}
+	case "stdout":
+		if cstty.IsTTY(os.Stderr.Fd()) {
+			logFormatter = &cslog.ClearLineFormatter{TextFormatter: log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true, ForceColors: forceColors}}
+		} else {
+			logFormatter = &log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true, ForceColors: forceColors}
+		}
+	default:
 		return fmt.Errorf("log mode '%s' unknown", cfgMode)
 	}
-	logLevel = cfgLevel
-	log.SetLevel(logLevel)
-	logFormatter = &CustomFormatter{TextFormatter: log.TextFormatter{TimestampFormat: time.RFC3339, FullTimestamp: true, ForceColors: forceColors}}
+
+	log.SetLevel(cfgLevel)
 	log.SetFormatter(logFormatter)
+
 	return nil
 }
 
