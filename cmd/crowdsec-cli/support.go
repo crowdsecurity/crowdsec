@@ -305,7 +305,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				infos[SUPPORT_AGENTS_PATH] = []byte(err.Error())
 			}
 
-			if err := csConfig.LoadAPIServer(); err != nil {
+			if err := csConfig.LoadAPIServer(true); err != nil {
 				log.Warnf("could not load LAPI, skipping CAPI check")
 				skipLAPI = true
 				infos[SUPPORT_CAPI_STATUS_PATH] = []byte(err.Error())
