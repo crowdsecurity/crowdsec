@@ -52,9 +52,9 @@ jobs:
           echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
           VERSION=${{ inputs.image_version }}
           DEBIAN=${{ inputs.debian && '-debian' || '' }}
-          TAGS="${{ env.DOCKERHUB_IMAGE }}:${VERSION}${DEBIAN},${{ GHCR_IMAGE }}:${VERSION}${DEBIAN}"
+          TAGS="${{ env.DOCKERHUB_IMAGE }}:${VERSION}${DEBIAN},${{ env.GHCR_IMAGE }}:${VERSION}${DEBIAN}"
           if [[ ${{ inputs.latest }} == true ]]; then
-            TAGS=$TAGS,${{ env.DOCKERHUB_IMAGE }}:${DEBIAN},${{ GHCR_IMAGE }}:${DEBIAN}
+            TAGS=$TAGS,${{ env.DOCKERHUB_IMAGE }}:${DEBIAN},${{ env.GHCR_IMAGE }}:${DEBIAN}
           fi
           echo "tags=${TAGS}" >> $GITHUB_OUTPUT
           echo "created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
