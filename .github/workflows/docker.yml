@@ -71,6 +71,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.DOCKERHUB_IMAGE }}
+          tags: ${{ steps.prep.outputs.tags }}
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -101,7 +102,7 @@ jobs:
           context: .
           file: ./Dockerfile${{ inputs.debian && '.debian' || '' }}
           platforms: ${{ matrix.platform }}
-          tags: ${{ steps.prep.outputs.tags }}
+          # tags: ${{ steps.prep.outputs.tags }}
           outputs: type=image,name=${{ env.DOCKERHUB_IMAGE }},push-by-digest=true,name-canonical=true,push=true
           labels: ${{ steps.meta.outputs.labels }} |
             org.opencontainers.image.source=${{ github.event.repository.html_url }}
