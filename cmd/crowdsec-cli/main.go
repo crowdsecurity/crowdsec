@@ -29,6 +29,8 @@ var mergedConfig string
 // flagBranch overrides the value in csConfig.Cscli.HubBranch
 var flagBranch = ""
 
+type configGetter func() *csconfig.Config
+
 func initConfig() {
 	var err error
 
@@ -206,7 +208,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(NewCLIHubTest().NewCommand())
 	cmd.AddCommand(NewCLINotifications().NewCommand())
 	cmd.AddCommand(NewCLISupport().NewCommand())
-	cmd.AddCommand(NewCLIPapi().NewCommand())
+	cmd.AddCommand(NewCLIPapi(getconfig).NewCommand())
 	cmd.AddCommand(NewCLICollection().NewCommand())
 	cmd.AddCommand(NewCLIParser().NewCommand())
 	cmd.AddCommand(NewCLIScenario().NewCommand())
@@ -217,10 +219,6 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 
 	if fflag.CscliSetup.IsEnabled() {
 		cmd.AddCommand(NewSetupCmd())
-	}
-
-	if fflag.PapiClient.IsEnabled() {
-		cmd.AddCommand(NewCLIPapi().NewCommand())
 	}
 
 	if err := cmd.Execute(); err != nil {
