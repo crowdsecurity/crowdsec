@@ -29,6 +29,8 @@ var mergedConfig string
 // flagBranch overrides the value in csConfig.Cscli.HubBranch
 var flagBranch = ""
 
+type configGetter func() *csconfig.Config
+
 func initConfig() {
 	var err error
 

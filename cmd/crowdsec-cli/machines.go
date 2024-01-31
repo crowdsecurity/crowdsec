@@ -102,10 +102,10 @@ func getLastHeartbeat(m *ent.Machine) (string, bool) {
 
 type cliMachines struct{
 	db *database.Client
-	cfg func() *csconfig.Config
+	cfg configGetter
 }
 
-func NewCLIMachines(getconfig func() *csconfig.Config) *cliMachines {
+func NewCLIMachines(getconfig configGetter) *cliMachines {
 	return &cliMachines{
 		cfg: getconfig,
 	}

@@ -16,7 +16,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
@@ -38,10 +37,10 @@ func askYesNo(message string, defaultAnswer bool) (bool, error) {
 
 type cliBouncers struct {
 	db *database.Client
-	cfg func() *csconfig.Config
+	cfg configGetter
 }
 
-func NewCLIBouncers(getconfig func() *csconfig.Config) *cliBouncers {
+func NewCLIBouncers(getconfig configGetter) *cliBouncers {
 	return &cliBouncers{
 		cfg: getconfig,
 	}
