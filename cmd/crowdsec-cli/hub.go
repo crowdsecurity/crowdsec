@@ -10,13 +10,18 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-type cliHub struct{}
+type cliHub struct{
+	cfg func() *csconfig.Config
+}
 
-func NewCLIHub() *cliHub {
-	return &cliHub{}
+func NewCLIHub(getconfig func() *csconfig.Config) *cliHub {
+	return &cliHub{
+		cfg: getconfig,
+	}
 }
 
 func (cli cliHub) NewCommand() *cobra.Command {
@@ -50,7 +55,7 @@ func (cli cliHub) list(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	hub, err := require.Hub(csConfig, nil, log.StandardLogger())
+	hub, err := require.Hub(cli.cfg(), nil, log.StandardLogger())
 	if err != nil {
 		return err
 	}
@@ -96,8 +101,8 @@ func (cli cliHub) NewListCmd() *cobra.Command {
 }
 
 func (cli cliHub) update(cmd *cobra.Command, args []string) error {
-	local := csConfig.Hub
-	remote := require.RemoteHub(csConfig)
+	local := cli.cfg().Hub
+	remote := require.RemoteHub(cli.cfg())
 
 	// don't use require.Hub because if there is no index file, it would fail
 	hub, err := cwhub.NewHub(local, remote, true, log.StandardLogger())
@@ -135,7 +140,7 @@ func (cli cliHub) upgrade(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig), log.StandardLogger())
+	hub, err := require.Hub(cli.cfg(), require.RemoteHub(cli.cfg()), log.StandardLogger())
 	if err != nil {
 		return err
 	}
@@ -186,7 +191,7 @@ Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if 
 }
 
 func (cli cliHub) types(cmd *cobra.Command, args []string) error {
-	switch csConfig.Cscli.Output {
+	switch cli.cfg().Cscli.Output {
 	case "human":
 		s, err := yaml.Marshal(cwhub.ItemTypes)
 		if err != nil {
