@@ -149,10 +149,11 @@ func collectHubItems(hub *cwhub.Hub, itemType string) []byte {
 
 func collectBouncers(dbClient *database.Client) ([]byte, error) {
 	out := bytes.NewBuffer(nil)
-	err := getBouncers(out, dbClient)
+	bouncers, err := dbClient.ListBouncers()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to list bouncers: %s", err)
 	}
+	getBouncersTable(out, bouncers)
 	return out.Bytes(), nil
 }
 
@@ -305,7 +306,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				infos[SUPPORT_AGENTS_PATH] = []byte(err.Error())
 			}
 
-			if err := csConfig.LoadAPIServer(); err != nil {
+			if err := csConfig.LoadAPIServer(true); err != nil {
 				log.Warnf("could not load LAPI, skipping CAPI check")
 				skipLAPI = true
 				infos[SUPPORT_CAPI_STATUS_PATH] = []byte(err.Error())

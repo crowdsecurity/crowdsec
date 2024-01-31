@@ -236,7 +236,7 @@ type LocalApiServerCfg struct {
 	CapiWhitelists                *CapiWhitelist      `yaml:"-"`
 }
 
-func (c *Config) LoadAPIServer() error {
+func (c *Config) LoadAPIServer(inCli bool) error {
 	if c.DisableAPI {
 		log.Warning("crowdsec local API is disabled from flag")
 	}
@@ -285,11 +285,11 @@ func (c *Config) LoadAPIServer() error {
 		}
 	}
 
-	if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
+	if (c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil) && !inCli {
 		log.Printf("push and pull to Central API disabled")
 	}
 
-	if err := c.LoadDBConfig(); err != nil {
+	if err := c.LoadDBConfig(inCli); err != nil {
 		return err
 	}
 
@@ -297,7 +297,7 @@ func (c *Config) LoadAPIServer() error {
 		return err
 	}
 
-	if c.API.Server.CapiWhitelistsPath != "" {
+	if c.API.Server.CapiWhitelistsPath != "" && !inCli {
 		log.Infof("loaded capi whitelist from %s: %d IPs, %d CIDRs", c.API.Server.CapiWhitelistsPath, len(c.API.Server.CapiWhitelists.Ips), len(c.API.Server.CapiWhitelists.Cidrs))
 	}
 

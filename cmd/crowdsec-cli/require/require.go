@@ -11,7 +11,7 @@ import (
 )
 
 func LAPI(c *csconfig.Config) error {
-	if err := c.LoadAPIServer(); err != nil {
+	if err := c.LoadAPIServer(true); err != nil {
 		return fmt.Errorf("failed to load Local API: %w", err)
 	}
 
@@ -47,7 +47,7 @@ func CAPIRegistered(c *csconfig.Config) error {
 }
 
 func DB(c *csconfig.Config) error {
-	if err := c.LoadDBConfig(); err != nil {
+	if err := c.LoadDBConfig(true); err != nil {
 		return fmt.Errorf("this command requires direct database access (must be run on the local API machine): %w", err)
 	}
 
@@ -66,10 +66,10 @@ func Notifications(c *csconfig.Config) error {
 func RemoteHub(c *csconfig.Config) *cwhub.RemoteHubCfg {
 	// set branch in config, and log if necessary
 	branch := HubBranch(c)
+	urlTemplate := HubURLTemplate(c)
 	remote := &cwhub.RemoteHubCfg{
 		Branch:      branch,
-		URLTemplate: "https://hub-cdn.crowdsec.net/%s/%s",
-		// URLTemplate: "http://localhost:8000/crowdsecurity/%s/hub/%s",
+		URLTemplate: urlTemplate,
 		IndexPath: ".index.json",
 	}
 
