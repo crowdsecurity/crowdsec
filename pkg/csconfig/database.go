@@ -50,7 +50,7 @@ type FlushDBCfg struct {
 	AgentsGC   *AuthGCCfg `yaml:"agents_autodelete,omitempty"`
 }
 
-func (c *Config) LoadDBConfig() error {
+func (c *Config) LoadDBConfig(inCli bool) error {
 	if c.DbConfig == nil {
 		return fmt.Errorf("no database configuration provided")
 	}
@@ -77,10 +77,8 @@ func (c *Config) LoadDBConfig() error {
 		c.DbConfig.DecisionBulkSize = maxDecisionBulkSize
 	}
 
-	if c.DbConfig.Type == "sqlite" {
-		if c.DbConfig.UseWal == nil {
-			log.Warning("You are using sqlite without WAL, this can have a performance impact. If you do not store the database in a network share, set db_config.use_wal to true. Set explicitly to false to disable this warning.")
-		}
+	if !inCli && c.DbConfig.Type == "sqlite" && c.DbConfig.UseWal == nil {
+		log.Warning("You are using sqlite without WAL, this can have a performance impact. If you do not store the database in a network share, set db_config.use_wal to true. Set explicitly to false to disable this warning.")
 	}
 
 	return nil

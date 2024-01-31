@@ -295,10 +295,6 @@ issues:
         - nosprintfhostport
       text: "host:port in url should be constructed with net.JoinHostPort and not directly with fmt.Sprintf"
 
-    - linters:
-        - wastedassign
-      text: "assigned to .*, but reassigned without using the value"
-
     # https://github.com/timakin/bodyclose
     - linters:
         - bodyclose
@@ -309,11 +305,6 @@ issues:
     - linters:
         - nonamedreturns
       text: "named return .* with type .* found"
-
-    # https://github.com/alexkohler/nakedret#purpose
-    - linters:
-        - nakedret
-      text: "naked return in func .* with .* lines of code"
 
     #
     # Will fix,  might be trickier

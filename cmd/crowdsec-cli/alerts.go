@@ -71,8 +71,7 @@ func SourceFromAlert(alert *models.Alert) string {
 
 	//try to compose a human friendly version
 	if *alert.Source.Value != "" && *alert.Source.Scope != "" {
-		scope := ""
-		scope = fmt.Sprintf("%s:%s", *alert.Source.Scope, *alert.Source.Value)
+		scope := fmt.Sprintf("%s:%s", *alert.Source.Scope, *alert.Source.Value)
 		extra := ""
 		if alert.Source.Cn != "" {
 			extra = alert.Source.Cn

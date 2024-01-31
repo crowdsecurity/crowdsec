@@ -289,7 +289,7 @@ func (c *Config) LoadAPIServer(inCli bool) error {
 		log.Printf("push and pull to Central API disabled")
 	}
 
-	if err := c.LoadDBConfig(); err != nil {
+	if err := c.LoadDBConfig(inCli); err != nil {
 		return err
 	}
 

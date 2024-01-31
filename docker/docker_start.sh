@@ -109,6 +109,8 @@ cscli_if_clean() {
     for obj in $objs; do
         if cscli "$itemtype" inspect "$obj" -o json | yq -e '.tainted // false' >/dev/null 2>&1; then
             echo "Object $itemtype/$obj is tainted, skipping"
+        elif cscli "$itemtype" inspect "$obj" -o json | yq -e '.local // false' >/dev/null 2>&1; then
+            echo "Object $itemtype/$obj is local, skipping"
         else
 #            # Too verbose? Only show errors if not in debug mode
 #            if [ "$DEBUG" != "true" ]; then
@@ -301,10 +303,13 @@ fi
 conf_set_if "$PLUGIN_DIR" '.config_paths.plugin_dir = strenv(PLUGIN_DIR)'
 
 ## Install hub items
-cscli hub update
 
-cscli_if_clean collections upgrade crowdsecurity/linux
-cscli_if_clean parsers upgrade crowdsecurity/whitelists
+cscli hub update || true
+
+if isfalse "$NO_HUB_UPGRADE"; then
+    cscli hub upgrade || true
+fi
+
 cscli_if_clean parsers install crowdsecurity/docker-logs
 cscli_if_clean parsers install crowdsecurity/cri-logs
 

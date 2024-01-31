@@ -1,0 +1,48 @@
+name: (manual) Publish Docker images
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_version:
+        description: Docker Image version (base tag, i.e. v1.6.0-2)
+        required: true
+      crowdsec_version:
+        description: Crowdsec version (BUILD_VERSION)
+        required: true
+      latest:
+        description: Overwrite latest (and slim) tags?
+        default: false
+        required: true
+      push:
+        description: Really push?
+        default: false
+        required: true
+
+jobs:
+  alpine:
+    uses: ./.github/workflows/publish-docker.yml
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+    with:
+      image_version: ${{ github.event.inputs.image_version }}
+      crowdsec_version: ${{ github.event.inputs.crowdsec_version }}
+      latest: ${{ github.event.inputs.latest == 'true' }}
+      push: ${{ github.event.inputs.push == 'true' }}
+      slim: true
+      debian: false
+      platform: "linux/amd64,linux/386,linux/arm64,linux/arm/v7,linux/arm/v6"
+
+  debian:
+    uses: ./.github/workflows/publish-docker.yml
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+    with:
+      image_version: ${{ github.event.inputs.image_version }}
+      crowdsec_version: ${{ github.event.inputs.crowdsec_version }}
+      latest: ${{ github.event.inputs.latest == 'true' }}
+      push: ${{ github.event.inputs.push == 'true' }}
+      slim: false
+      debian: true
+      platform: "linux/amd64,linux/386,linux/arm64"
