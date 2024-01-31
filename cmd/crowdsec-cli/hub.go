@@ -39,10 +39,10 @@ cscli hub upgrade`,
 		DisableAutoGenTag: true,
 	}
 
-	cmd.AddCommand(cli.NewListCmd())
-	cmd.AddCommand(cli.NewUpdateCmd())
-	cmd.AddCommand(cli.NewUpgradeCmd())
-	cmd.AddCommand(cli.NewTypesCmd())
+	cmd.AddCommand(cli.newListCmd())
+	cmd.AddCommand(cli.newUpdateCmd())
+	cmd.AddCommand(cli.newUpgradeCmd())
+	cmd.AddCommand(cli.newTypesCmd())
 
 	return cmd
 }
@@ -85,7 +85,7 @@ func (cli cliHub) list(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (cli cliHub) NewListCmd() *cobra.Command {
+func (cli cliHub) newListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "list [-a]",
 		Short:             "List all installed configurations",
@@ -117,7 +117,7 @@ func (cli cliHub) update(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (cli cliHub) NewUpdateCmd() *cobra.Command {
+func (cli cliHub) newUpdateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update",
 		Short: "Download the latest index (catalog of available configurations)",
@@ -172,7 +172,7 @@ func (cli cliHub) upgrade(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (cli cliHub) NewUpgradeCmd() *cobra.Command {
+func (cli cliHub) newUpgradeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "upgrade",
 		Short: "Upgrade all configurations to their latest version",
@@ -215,7 +215,7 @@ func (cli cliHub) types(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (cli cliHub) NewTypesCmd() *cobra.Command {
+func (cli cliHub) newTypesCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "types",
 		Short: "List supported item types",
