@@ -15,9 +15,9 @@ on:
       - 'README.md'
 
 jobs:
-  test_docker_image:
+  test_flavor:
     strategy:
-      # we could run all the flavors in a single pytest job,
+      # we could test all the flavors in a single pytest job,
       # but let's split them (and the image build) in multiple runners for performance
       matrix:
         # can be slim, full or debian (no debian slim).
