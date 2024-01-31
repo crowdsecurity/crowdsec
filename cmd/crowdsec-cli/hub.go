@@ -10,15 +10,14 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 type cliHub struct{
-	cfg func() *csconfig.Config
+	cfg configGetter
 }
 
-func NewCLIHub(getconfig func() *csconfig.Config) *cliHub {
+func NewCLIHub(getconfig configGetter) *cliHub {
 	return &cliHub{
 		cfg: getconfig,
 	}
