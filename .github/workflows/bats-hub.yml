@@ -1,4 +1,4 @@
-name: Hub tests
+name: (sub) Bats / Hub
 
 on:
   workflow_call:

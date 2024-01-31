@@ -1,4 +1,4 @@
-name: Functional tests (Postgres)
+name: (sub) Bats / Postgres
 
 on:
   workflow_call:

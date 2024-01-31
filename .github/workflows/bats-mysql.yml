@@ -1,4 +1,4 @@
-name: Functional tests (MySQL)
+name: (sub) Bats / MySQL
 
 on:
   workflow_call:

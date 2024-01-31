@@ -1,4 +1,4 @@
-name: Functional tests (sqlite)
+name: (sub) Bats / sqlite + coverage
 
 on:
   workflow_call:
