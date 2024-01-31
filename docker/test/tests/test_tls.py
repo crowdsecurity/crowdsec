@@ -241,7 +241,7 @@ def test_tls_mutual_split_lapi_agent(crowdsec, flavor, certs_dir):
             assert "You can successfully interact with Local API (LAPI)" in stdout
 
 
-def test_tls_client_ou(crowdsec, certs_dir):
+def test_tls_client_ou(crowdsec, flavor, certs_dir):
     """Check behavior of client certificate vs AGENTS_ALLOWED_OU"""
 
     rand = uuid.uuid1()
@@ -270,8 +270,8 @@ def test_tls_client_ou(crowdsec, certs_dir):
         certs_dir(lapi_hostname=lapiname, agent_ou='custom-client-ou'): {'bind': '/etc/ssl/crowdsec', 'mode': 'ro'},
     }
 
-    cs_lapi = crowdsec(name=lapiname, environment=lapi_env, volumes=volumes)
-    cs_agent = crowdsec(name=agentname, environment=agent_env, volumes=volumes)
+    cs_lapi = crowdsec(flavor=flavor, name=lapiname, environment=lapi_env, volumes=volumes)
+    cs_agent = crowdsec(flavor=flavor, name=agentname, environment=agent_env, volumes=volumes)
 
     with cs_lapi as lapi:
         lapi.wait_for_log([
@@ -300,8 +300,8 @@ def test_tls_client_ou(crowdsec, certs_dir):
         certs_dir(lapi_hostname=lapiname, agent_ou='custom-client-ou'): {'bind': '/etc/ssl/crowdsec', 'mode': 'ro'},
     }
 
-    cs_lapi = crowdsec(name=lapiname, environment=lapi_env, volumes=volumes)
-    cs_agent = crowdsec(name=agentname, environment=agent_env, volumes=volumes)
+    cs_lapi = crowdsec(flavor=flavor, name=lapiname, environment=lapi_env, volumes=volumes)
+    cs_agent = crowdsec(flavor=flavor, name=agentname, environment=agent_env, volumes=volumes)
 
     with cs_lapi as lapi:
         lapi.wait_for_log([

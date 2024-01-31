@@ -1,4 +1,4 @@
-name: Publish Docker image on Push to Master
+name: (push-master) Publish latest Docker images
 
 on:
   push:
@@ -6,10 +6,10 @@ on:
     paths:
       - 'pkg/**'
       - 'cmd/**'
-      - 'plugins/**'
+      - 'mk/**'
       - 'docker/docker_start.sh'
       - 'docker/config.yaml'
-      - '.github/workflows/publish_docker-master.yml'
+      - '.github/workflows/publish-docker-master.yml'
       - '.github/workflows/publish-docker.yml'
       - 'Dockerfile'
       - 'Dockerfile.debian'
