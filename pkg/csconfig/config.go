@@ -41,9 +41,9 @@ type Config struct {
 	Hub          *LocalHubCfg        `yaml:"-"`
 }
 
-func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*Config, string, error) {
+func NewConfig(configFile string, disableAgent bool, disableAPI bool, inCli bool) (*Config, string, error) {
 	patcher := yamlpatch.NewPatcher(configFile, ".local")
-	patcher.SetQuiet(quiet)
+	patcher.SetQuiet(inCli)
 	fcontent, err := patcher.MergedPatchContent()
 	if err != nil {
 		return nil, "", err
