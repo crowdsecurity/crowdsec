@@ -25,7 +25,7 @@ import (
 
 var Client *apiclient.ApiClient
 
-func DecisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
+func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 	/*here we cheat a bit : to make it more readable for the user, we dedup some entries*/
 	spamLimit := make(map[string]bool)
 	skipped := 0
@@ -49,7 +49,8 @@ func DecisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error
 		alertItem.Decisions = newDecisions
 	}
 
-	if csConfig.Cscli.Output == "raw" {
+	switch cli.cfg().Cscli.Output {
+	case "raw":
 		csvwriter := csv.NewWriter(os.Stdout)
 		header := []string{"id", "source", "ip", "reason", "action", "country", "as", "events_count", "expiration", "simulated", "alert_id"}
 
@@ -89,7 +90,7 @@ func DecisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error
 		}
 
 		csvwriter.Flush()
-	} else if csConfig.Cscli.Output == "json" {
+	case "json":
 		if *alerts == nil {
 			// avoid returning "null" in `json"
 			// could be cleaner if we used slice of alerts directly
@@ -98,12 +99,12 @@ func DecisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error
 		}
 		x, _ := json.MarshalIndent(alerts, "", " ")
 		fmt.Printf("%s", string(x))
-	} else if csConfig.Cscli.Output == "human" {
+	case "human":
 		if len(*alerts) == 0 {
 			fmt.Println("No active decisions")
 			return nil
 		}
-		decisionsTable(color.Output, alerts, printMachine)
+		cli.decisionsTable(color.Output, alerts, printMachine)
 		if skipped > 0 {
 			fmt.Printf("%d duplicated entries skipped\n", skipped)
 		}
@@ -113,13 +114,17 @@ func DecisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error
 }
 
 
-type cliDecisions struct {}
-
-func NewCLIDecisions() *cliDecisions {
-	return &cliDecisions{}
+type cliDecisions struct {
+	cfg configGetter
 }
 
-func (cli cliDecisions) NewCommand() *cobra.Command {
+func NewCLIDecisions(getconfig configGetter) *cliDecisions {
+	return &cliDecisions{
+		cfg: getconfig,
+	}
+}
+
+func (cli *cliDecisions) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "decisions [action]",
 		Short:   "Manage decisions",
@@ -130,16 +135,17 @@ func (cli cliDecisions) NewCommand() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
-			if err := csConfig.LoadAPIClient(); err != nil {
+			cfg := cli.cfg()
+			if err := cfg.LoadAPIClient(); err != nil {
 				return fmt.Errorf("loading api client: %w", err)
 			}
-			password := strfmt.Password(csConfig.API.Client.Credentials.Password)
-			apiurl, err := url.Parse(csConfig.API.Client.Credentials.URL)
+			password := strfmt.Password(cfg.API.Client.Credentials.Password)
+			apiurl, err := url.Parse(cfg.API.Client.Credentials.URL)
 			if err != nil {
-				return fmt.Errorf("parsing api url %s: %w", csConfig.API.Client.Credentials.URL, err)
+				return fmt.Errorf("parsing api url %s: %w", cfg.API.Client.Credentials.URL, err)
 			}
 			Client, err = apiclient.NewClient(&apiclient.Config{
-				MachineID:     csConfig.API.Client.Credentials.Login,
+				MachineID:     cfg.API.Client.Credentials.Login,
 				Password:      password,
 				UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
 				URL:           apiurl,
@@ -152,15 +158,15 @@ func (cli cliDecisions) NewCommand() *cobra.Command {
 		},
 	}
 
-	cmd.AddCommand(cli.NewListCmd())
-	cmd.AddCommand(cli.NewAddCmd())
-	cmd.AddCommand(cli.NewDeleteCmd())
-	cmd.AddCommand(cli.NewImportCmd())
+	cmd.AddCommand(cli.newListCmd())
+	cmd.AddCommand(cli.newAddCmd())
+	cmd.AddCommand(cli.newDeleteCmd())
+	cmd.AddCommand(cli.newImportCmd())
 
 	return cmd
 }
 
-func (cli cliDecisions) NewListCmd() *cobra.Command {
+func (cli *cliDecisions) newListCmd() *cobra.Command {
 	var filter = apiclient.AlertsListOpts{
 		ValueEquals:    new(string),
 		ScopeEquals:    new(string),
@@ -262,7 +268,7 @@ cscli decisions list -t ban
 				return fmt.Errorf("unable to retrieve decisions: %w", err)
 			}
 
-			err = DecisionsToTable(alerts, printMachine)
+			err = cli.decisionsToTable(alerts, printMachine)
 			if err != nil {
 				return fmt.Errorf("unable to print decisions: %w", err)
 			}
@@ -289,7 +295,7 @@ cscli decisions list -t ban
 	return cmd
 }
 
-func (cli cliDecisions) NewAddCmd() *cobra.Command {
+func (cli *cliDecisions) newAddCmd() *cobra.Command {
 	var (
 		addIP       string
 		addRange    string
@@ -341,7 +347,7 @@ cscli decisions add --scope username --value foobar
 			}
 
 			if addReason == "" {
-				addReason = fmt.Sprintf("manual '%s' from '%s'", addType, csConfig.API.Client.Credentials.Login)
+				addReason = fmt.Sprintf("manual '%s' from '%s'", addType, cli.cfg().API.Client.Credentials.Login)
 			}
 			decision := models.Decision{
 				Duration: &addDuration,
@@ -400,7 +406,7 @@ cscli decisions add --scope username --value foobar
 	return cmd
 }
 
-func (cli cliDecisions) NewDeleteCmd() *cobra.Command {
+func (cli *cliDecisions) newDeleteCmd() *cobra.Command {
 	var delFilter = apiclient.DecisionsDeleteOpts{
 		ScopeEquals:    new(string),
 		ValueEquals:    new(string),

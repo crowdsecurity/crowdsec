@@ -8,7 +8,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-func decisionsTable(out io.Writer, alerts *models.GetAlertsResponse, printMachine bool) {
+func (cli *cliDecisions) decisionsTable(out io.Writer, alerts *models.GetAlertsResponse, printMachine bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	header := []string{"ID", "Source", "Scope:Value", "Reason", "Action", "Country", "AS", "Events", "expiration", "Alert ID"}

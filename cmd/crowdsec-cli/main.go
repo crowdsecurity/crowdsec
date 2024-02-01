@@ -197,7 +197,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(NewCLIHub(getconfig).NewCommand())
 	cmd.AddCommand(NewMetricsCmd())
 	cmd.AddCommand(NewCLIDashboard(getconfig).NewCommand())
-	cmd.AddCommand(NewCLIDecisions().NewCommand())
+	cmd.AddCommand(NewCLIDecisions(getconfig).NewCommand())
 	cmd.AddCommand(NewCLIAlerts().NewCommand())
 	cmd.AddCommand(NewCLISimulation(getconfig).NewCommand())
 	cmd.AddCommand(NewCLIBouncers(getconfig).NewCommand())
