@@ -46,9 +46,22 @@ type metricSection interface {
 
 type metricStore map[string]metricSection
 
-func NewMetricStore(url string) (*metricStore, error) {
-	ms := make(metricStore)
+var metricSections = []string{
+	"acquisition",
+	"buckets",
+	"parsers",
+	"lapi",
+	"lapi_machine",
+	"lapi_bouncer",
+	"lapi_decisions",
+	"decisions",
+	"alerts",
+	"stash",
+	"appsec_engine",
+	"appsec_rule",
+}
 
+func NewMetricStore(url string) (metricStore, error) {
 	mfChan := make(chan *dto.MetricFamily, 1024)
 	errChan := make(chan error, 1)
 
@@ -278,20 +291,20 @@ func NewMetricStore(url string) (*metricStore, error) {
 		}
 	}
 
-	ms["acquisition"] = mAcquis
-	ms["buckets"] = mBucket
-	ms["parsers"] = mParser
-	ms["lapi"] = mLapi
-	ms["lapi_machine"] = mLapiMachine
-	ms["lapi_bouncer"] = mLapiBouncer
-	ms["lapi_decisions"] = mLapiDecision
-	ms["decisions"] = mDecision
-	ms["alerts"] = mAlert
-	ms["stash"] = mStash
-	ms["appsec_engine"] = mAppsecEngine
-	ms["appsec_rule"] = mAppsecRule
-
-	return &ms, nil
+	return metricStore{
+		"acquisition": mAcquis,
+		"buckets": mBucket,
+		"parsers": mParser,
+		"lapi": mLapi,
+		"lapi_machine": mLapiMachine,
+		"lapi_bouncer": mLapiBouncer,
+		"lapi_decisions": mLapiDecision,
+		"decisions": mDecision,
+		"alerts": mAlert,
+		"stash": mStash,
+		"appsec_engine": mAppsecEngine,
+		"appsec_rule": mAppsecRule,
+	}, nil
 }
 
 type cliMetrics struct {
@@ -304,33 +317,31 @@ func NewCLIMetrics(getconfig configGetter) *cliMetrics {
 	}
 }
 
-func (ms *metricStore) Format(out io.Writer, formatType string, noUnit bool) error {
-	if formatType == "human" {
-		(*ms)["acquisition"].Table(out, noUnit)
-		(*ms)["buckets"].Table(out, noUnit)
-		(*ms)["parsers"].Table(out, noUnit)
-		(*ms)["lapi"].Table(out, noUnit)
-		(*ms)["lapi_machine"].Table(out, noUnit)
-		(*ms)["lapi_bouncer"].Table(out, noUnit)
-		(*ms)["lapi_decisions"].Table(out, noUnit)
-		(*ms)["decisions"].Table(out, noUnit)
-		(*ms)["alerts"].Table(out, noUnit)
-		(*ms)["stash"].Table(out, noUnit)
-		(*ms)["appsec_engine"].Table(out, noUnit)
-		(*ms)["appsec_rule"].Table(out, noUnit)
+func (ms metricStore) Format(out io.Writer, sections []string, formatType string, noUnit bool) error {
+	// copy only the sections we want
+	want := map[string]metricSection{}
 
-		return nil
+	if len(sections) == 0 {
+		sections = metricSections
+	}
+
+	for _, section := range sections {
+		want[section] = ms[section]
 	}
 
 	switch formatType {
+	case "human":
+		for section := range want {
+			want[section].Table(out, noUnit)
+		}
 	case "json":
-		x, err := json.MarshalIndent(ms, "", " ")
+		x, err := json.MarshalIndent(want, "", " ")
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal metrics : %v", err)
 		}
 		out.Write(x)
 	case "raw":
-		x, err := yaml.Marshal(ms)
+		x, err := yaml.Marshal(want)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal metrics : %v", err)
 		}
@@ -342,7 +353,7 @@ func (ms *metricStore) Format(out io.Writer, formatType string, noUnit bool) err
 	return nil
 }
 
-func (cli *cliMetrics) run(url string, noUnit bool) error {
+func (cli *cliMetrics) show(sections []string, url string, noUnit bool) error {
 	cfg := cli.cfg()
 
 	if url != "" {
@@ -362,7 +373,7 @@ func (cli *cliMetrics) run(url string, noUnit bool) error {
 		return err
 	}
 
-	if err := ms.Format(color.Output, cfg.Cscli.Output, noUnit); err != nil {
+	if err := ms.Format(color.Output, sections, cfg.Cscli.Output, noUnit); err != nil {
 		return err
 	}
 	return nil
@@ -381,13 +392,58 @@ func (cli *cliMetrics) NewCommand() *cobra.Command {
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return cli.run(url, noUnit)
+			return cli.show(nil, url, noUnit)
 		},
 	}
 
 	flags := cmd.Flags()
 	flags.StringVarP(&url, "url", "u", "", "Prometheus url (http://<ip>:<port>/metrics)")
 	flags.BoolVar(&noUnit, "no-unit", false, "Show the real number instead of formatted with units")
+
+	cmd.AddCommand(cli.newShowCmd())
+	cmd.AddCommand(cli.newListCmd())
+
+	return cmd
+}
+
+func (cli *cliMetrics) newShowCmd() *cobra.Command {
+	var (
+		url string
+		noUnit bool
+	)
+
+	cmd := &cobra.Command{
+		Use:               "show [section]...",
+		Short:             "Display crowdsec prometheus metrics.",
+		Long:              `Fetch metrics from the prometheus server and display them in a human-friendly way`,
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.show(args, url, noUnit)
+		},
+	}
+
+	flags := cmd.Flags()
+	flags.StringVarP(&url, "url", "u", "", "Prometheus url (http://<ip>:<port>/metrics)")
+	flags.BoolVar(&noUnit, "no-unit", false, "Show the real number instead of formatted with units")
+
+	return cmd
+}
+
+func (cli *cliMetrics) newListCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:               "list",
+		Short:             "List available sections for metrics.",
+		Long:              `List available sections for metrics.`,
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			for _, section := range metricSections {
+				fmt.Println(section)
+			}
+			return nil
+		},
+	}
 
 	return cmd
 }
