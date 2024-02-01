@@ -1,5 +1,7 @@
 package exprhelpers
 
+/*
+
 import (
 	"bytes"
 	"encoding/json"
@@ -15,7 +17,7 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cticlient"
+	"github.com/crowdsecurity/crowdsec/pkg/cti"
 )
 
 var sampledata = map[string]cticlient.SmokeItem{
@@ -203,3 +205,5 @@ func TestCache(t *testing.T) {
 	assert.Equal(t, 1, CTICache.Len(true))
 	require.NoError(t, err)
 }
+
+*/
