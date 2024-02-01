@@ -40,18 +40,15 @@ type (
 	}
 )
 
-type cliMetrics struct {
-	cfg configGetter
+type metricSection interface {
+	Table(io.Writer, bool)
 }
 
-func NewCLIMetrics(getconfig configGetter) *cliMetrics {
-	return &cliMetrics{
-		cfg: getconfig,
-	}
-}
+type metricStore map[string]metricSection
 
-// FormatPrometheusMetrics is a complete rip from prom2json
-func FormatPrometheusMetrics(out io.Writer, url string, formatType string, noUnit bool) error {
+func NewMetricStore(url string) (*metricStore, error) {
+	ms := make(metricStore)
+
 	mfChan := make(chan *dto.MetricFamily, 1024)
 	errChan := make(chan error, 1)
 
@@ -78,7 +75,7 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string, noUni
 	}
 
 	if err := <-errChan; err != nil {
-		return err
+		return nil, err
 	}
 
 	log.Debugf("Finished reading prometheus output, %d entries", len(result))
@@ -281,44 +278,59 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string, noUni
 		}
 	}
 
+	ms["acquisition"] = mAcquis
+	ms["buckets"] = mBucket
+	ms["parsers"] = mParser
+	ms["lapi"] = mLapi
+	ms["lapi_machine"] = mLapiMachine
+	ms["lapi_bouncer"] = mLapiBouncer
+	ms["lapi_decisions"] = mLapiDecision
+	ms["decisions"] = mDecision
+	ms["alerts"] = mAlert
+	ms["stash"] = mStash
+	ms["appsec_engine"] = mAppsecEngine
+	ms["appsec_rule"] = mAppsecRule
+
+	return &ms, nil
+}
+
+type cliMetrics struct {
+	cfg configGetter
+}
+
+func NewCLIMetrics(getconfig configGetter) *cliMetrics {
+	return &cliMetrics{
+		cfg: getconfig,
+	}
+}
+
+func (ms *metricStore) Format(out io.Writer, formatType string, noUnit bool) error {
 	if formatType == "human" {
-		mAcquis.table(out, noUnit)
-		mBucket.table(out, noUnit)
-		mParser.table(out, noUnit)
-		mLapi.table(out)
-		mLapiMachine.table(out)
-		mLapiBouncer.table(out)
-		mLapiDecision.table(out)
-		mDecision.table(out)
-		mAlert.table(out)
-		mStash.table(out)
-		mAppsecEngine.table(out, noUnit)
-		mAppsecRule.table(out, noUnit)
+		(*ms)["acquisition"].Table(out, noUnit)
+		(*ms)["buckets"].Table(out, noUnit)
+		(*ms)["parsers"].Table(out, noUnit)
+		(*ms)["lapi"].Table(out, noUnit)
+		(*ms)["lapi_machine"].Table(out, noUnit)
+		(*ms)["lapi_bouncer"].Table(out, noUnit)
+		(*ms)["lapi_decisions"].Table(out, noUnit)
+		(*ms)["decisions"].Table(out, noUnit)
+		(*ms)["alerts"].Table(out, noUnit)
+		(*ms)["stash"].Table(out, noUnit)
+		(*ms)["appsec_engine"].Table(out, noUnit)
+		(*ms)["appsec_rule"].Table(out, noUnit)
+
 		return nil
 	}
 
-	stats := make(map[string]any)
-
-	stats["acquisition"] = mAcquis
-	stats["buckets"] = mBucket
-	stats["parsers"] = mParser
-	stats["lapi"] = mLapi
-	stats["lapi_machine"] = mLapiMachine
-	stats["lapi_bouncer"] = mLapiBouncer
-	stats["lapi_decisions"] = mLapiDecision
-	stats["decisions"] = mDecision
-	stats["alerts"] = mAlert
-	stats["stash"] = mStash
-
 	switch formatType {
 	case "json":
-		x, err := json.MarshalIndent(stats, "", " ")
+		x, err := json.MarshalIndent(ms, "", " ")
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal metrics : %v", err)
 		}
 		out.Write(x)
 	case "raw":
-		x, err := yaml.Marshal(stats)
+		x, err := yaml.Marshal(ms)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal metrics : %v", err)
 		}
@@ -345,7 +357,12 @@ func (cli *cliMetrics) run(url string, noUnit bool) error {
 		return fmt.Errorf("prometheus is not enabled, can't show metrics")
 	}
 
-	if err := FormatPrometheusMetrics(color.Output, cfg.Cscli.PrometheusUrl, cfg.Cscli.Output, noUnit); err != nil {
+	ms, err := NewMetricStore(cfg.Cscli.PrometheusUrl)
+	if err != nil {
+		return err
+	}
+
+	if err := ms.Format(color.Output, cfg.Cscli.Output, noUnit); err != nil {
 		return err
 	}
 	return nil

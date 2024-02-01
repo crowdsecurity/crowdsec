@@ -81,7 +81,7 @@ func metricsToTable(t *table.Table, stats map[string]map[string]int, keys []stri
 	return numRows, nil
 }
 
-func (s statBucket) table(out io.Writer, noUnit bool) {
+func (s statBucket) Table(out io.Writer, noUnit bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Bucket", "Current Count", "Overflows", "Instantiated", "Poured", "Expired")
@@ -97,7 +97,7 @@ func (s statBucket) table(out io.Writer, noUnit bool) {
 	}
 }
 
-func (s statAcquis) table(out io.Writer, noUnit bool) {
+func (s statAcquis) Table(out io.Writer, noUnit bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Source", "Lines read", "Lines parsed", "Lines unparsed", "Lines poured to bucket")
@@ -113,7 +113,7 @@ func (s statAcquis) table(out io.Writer, noUnit bool) {
 	}
 }
 
-func (s statAppsecEngine) table(out io.Writer, noUnit bool) {
+func (s statAppsecEngine) Table(out io.Writer, noUnit bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Appsec Engine", "Processed", "Blocked")
@@ -127,7 +127,7 @@ func (s statAppsecEngine) table(out io.Writer, noUnit bool) {
 	}
 }
 
-func (s statAppsecRule) table(out io.Writer, noUnit bool) {
+func (s statAppsecRule) Table(out io.Writer, noUnit bool) {
 	for appsecEngine, appsecEngineRulesStats := range s {
 		t := newTable(out)
 		t.SetRowLines(false)
@@ -144,7 +144,7 @@ func (s statAppsecRule) table(out io.Writer, noUnit bool) {
 
 }
 
-func (s statParser) table(out io.Writer, noUnit bool) {
+func (s statParser) Table(out io.Writer, noUnit bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Parsers", "Hits", "Parsed", "Unparsed")
@@ -160,7 +160,7 @@ func (s statParser) table(out io.Writer, noUnit bool) {
 	}
 }
 
-func (s statStash) table(out io.Writer) {
+func (s statStash) Table(out io.Writer, noUnit bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Name", "Type", "Items")
@@ -191,7 +191,7 @@ func (s statStash) table(out io.Writer) {
 	}
 }
 
-func (s statLapi) table(out io.Writer) {
+func (s statLapi) Table(out io.Writer, noUnit bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Route", "Method", "Hits")
@@ -231,7 +231,7 @@ func (s statLapi) table(out io.Writer) {
 	}
 }
 
-func (s statLapiMachine) table(out io.Writer) {
+func (s statLapiMachine) Table(out io.Writer, noUnit bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Machine", "Route", "Method", "Hits")
@@ -245,7 +245,7 @@ func (s statLapiMachine) table(out io.Writer) {
 	}
 }
 
-func (s statLapiBouncer) table(out io.Writer) {
+func (s statLapiBouncer) Table(out io.Writer, noUnit bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Bouncer", "Route", "Method", "Hits")
@@ -259,7 +259,7 @@ func (s statLapiBouncer) table(out io.Writer) {
 	}
 }
 
-func (s statLapiDecision) table(out io.Writer) {
+func (s statLapiDecision) Table(out io.Writer, noUnit bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Bouncer", "Empty answers", "Non-empty answers")
@@ -281,7 +281,7 @@ func (s statLapiDecision) table(out io.Writer) {
 	}
 }
 
-func (s statDecision) table(out io.Writer) {
+func (s statDecision) Table(out io.Writer, noUnit bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Reason", "Origin", "Action", "Count")
@@ -308,7 +308,7 @@ func (s statDecision) table(out io.Writer) {
 	}
 }
 
-func (s statAlert) table(out io.Writer) {
+func (s statAlert) Table(out io.Writer, noUnit bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Reason", "Count")
