@@ -43,7 +43,7 @@ func lapiMetricsToTable(t *table.Table, stats map[string]map[string]map[string]i
 	return numRows
 }
 
-func metricsToTable(t *table.Table, stats map[string]map[string]int, keys []string) (int, error) {
+func metricsToTable(t *table.Table, stats map[string]map[string]int, keys []string, noUnit bool) (int, error) {
 	if t == nil {
 		return 0, fmt.Errorf("nil table")
 	}
@@ -81,7 +81,7 @@ func metricsToTable(t *table.Table, stats map[string]map[string]int, keys []stri
 	return numRows, nil
 }
 
-func bucketStatsTable(out io.Writer, stats map[string]map[string]int) {
+func bucketStatsTable(out io.Writer, stats map[string]map[string]int, noUnit bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Bucket", "Current Count", "Overflows", "Instantiated", "Poured", "Expired")
@@ -89,7 +89,7 @@ func bucketStatsTable(out io.Writer, stats map[string]map[string]int) {
 
 	keys := []string{"curr_count", "overflow", "instantiation", "pour", "underflow"}
 
-	if numRows, err := metricsToTable(t, stats, keys); err != nil {
+	if numRows, err := metricsToTable(t, stats, keys, noUnit); err != nil {
 		log.Warningf("while collecting bucket stats: %s", err)
 	} else if numRows > 0 {
 		renderTableTitle(out, "\nBucket Metrics:")
@@ -97,7 +97,7 @@ func bucketStatsTable(out io.Writer, stats map[string]map[string]int) {
 	}
 }
 
-func acquisStatsTable(out io.Writer, stats map[string]map[string]int) {
+func acquisStatsTable(out io.Writer, stats map[string]map[string]int, noUnit bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Source", "Lines read", "Lines parsed", "Lines unparsed", "Lines poured to bucket")
@@ -105,7 +105,7 @@ func acquisStatsTable(out io.Writer, stats map[string]map[string]int) {
 
 	keys := []string{"reads", "parsed", "unparsed", "pour"}
 
-	if numRows, err := metricsToTable(t, stats, keys); err != nil {
+	if numRows, err := metricsToTable(t, stats, keys, noUnit); err != nil {
 		log.Warningf("while collecting acquis stats: %s", err)
 	} else if numRows > 0 {
 		renderTableTitle(out, "\nAcquisition Metrics:")
@@ -113,13 +113,13 @@ func acquisStatsTable(out io.Writer, stats map[string]map[string]int) {
 	}
 }
 
-func appsecMetricsToTable(out io.Writer, metrics map[string]map[string]int) {
+func appsecMetricsToTable(out io.Writer, metrics map[string]map[string]int, noUnit bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Appsec Engine", "Processed", "Blocked")
 	t.SetAlignment(table.AlignLeft, table.AlignLeft)
 	keys := []string{"processed", "blocked"}
-	if numRows, err := metricsToTable(t, metrics, keys); err != nil {
+	if numRows, err := metricsToTable(t, metrics, keys, noUnit); err != nil {
 		log.Warningf("while collecting appsec stats: %s", err)
 	} else if numRows > 0 {
 		renderTableTitle(out, "\nAppsec Metrics:")
@@ -127,14 +127,14 @@ func appsecMetricsToTable(out io.Writer, metrics map[string]map[string]int) {
 	}
 }
 
-func appsecRulesToTable(out io.Writer, metrics map[string]map[string]map[string]int) {
+func appsecRulesToTable(out io.Writer, metrics map[string]map[string]map[string]int, noUnit bool) {
 	for appsecEngine, appsecEngineRulesStats := range metrics {
 		t := newTable(out)
 		t.SetRowLines(false)
 		t.SetHeaders("Rule ID", "Triggered")
 		t.SetAlignment(table.AlignLeft, table.AlignLeft)
 		keys := []string{"triggered"}
-		if numRows, err := metricsToTable(t, appsecEngineRulesStats, keys); err != nil {
+		if numRows, err := metricsToTable(t, appsecEngineRulesStats, keys, noUnit); err != nil {
 			log.Warningf("while collecting appsec rules stats: %s", err)
 		} else if numRows > 0 {
 			renderTableTitle(out, fmt.Sprintf("\nAppsec '%s' Rules Metrics:", appsecEngine))
@@ -144,7 +144,7 @@ func appsecRulesToTable(out io.Writer, metrics map[string]map[string]map[string]
 
 }
 
-func parserStatsTable(out io.Writer, stats map[string]map[string]int) {
+func parserStatsTable(out io.Writer, stats map[string]map[string]int, noUnit bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Parsers", "Hits", "Parsed", "Unparsed")
@@ -152,7 +152,7 @@ func parserStatsTable(out io.Writer, stats map[string]map[string]int) {
 
 	keys := []string{"hits", "parsed", "unparsed"}
 
-	if numRows, err := metricsToTable(t, stats, keys); err != nil {
+	if numRows, err := metricsToTable(t, stats, keys, noUnit); err != nil {
 		log.Warningf("while collecting parsers stats: %s", err)
 	} else if numRows > 0 {
 		renderTableTitle(out, "\nParser Metrics:")
