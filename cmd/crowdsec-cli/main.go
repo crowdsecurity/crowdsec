@@ -157,8 +157,8 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.PersistentFlags().BoolVar(&wrn_lvl, "warning", false, "Set logging to warning")
 	cmd.PersistentFlags().BoolVar(&err_lvl, "error", false, "Set logging to error")
 	cmd.PersistentFlags().BoolVar(&trace_lvl, "trace", false, "Set logging to trace")
-
 	cmd.PersistentFlags().StringVar(&flagBranch, "branch", "", "Override hub branch on github")
+
 	if err := cmd.PersistentFlags().MarkHidden("branch"); err != nil {
 		log.Fatalf("failed to hide flag: %s", err)
 	}

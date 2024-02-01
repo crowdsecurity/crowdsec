@@ -176,7 +176,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 	flags.StringVar(&metabaseImage, "metabase-image", metabaseImage, "Metabase image to use")
 	flags.StringVarP(&metabaseListenPort, "port", "p", metabaseListenPort, "Listen port of container")
 	flags.BoolVarP(&forceYes, "yes", "y", false, "force  yes")
-	//flags.StringVarP(&metabaseUser, "user", "u", "crowdsec@crowdsec.net", "metabase user")
+	// flags.StringVarP(&metabaseUser, "user", "u", "crowdsec@crowdsec.net", "metabase user")
 	flags.StringVar(&metabasePassword, "password", "", "metabase password")
 
 	return cmd
@@ -443,6 +443,7 @@ func checkGroups(forceYes *bool) (*user.Group, error) {
 func (cli *cliDashboard) chownDatabase(gid string) error {
 	cfg := cli.cfg()
 	intID, err := strconv.Atoi(gid)
+
 	if err != nil {
 		return fmt.Errorf("unable to convert group ID to int: %s", err)
 	}

@@ -18,6 +18,7 @@ func (p *MachinePassword) Set(v string) error {
         if len(v) > 72 {
                 return errors.New("password too long (max 72 characters)")
         }
+
         *p = MachinePassword(v)
 
         return nil

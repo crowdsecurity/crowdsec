@@ -97,6 +97,7 @@ func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, prin
 			fmt.Println("[]")
 			return nil
 		}
+
 		x, _ := json.MarshalIndent(alerts, "", " ")
 		fmt.Printf("%s", string(x))
 	case "human":
@@ -104,7 +105,9 @@ func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, prin
 			fmt.Println("No active decisions")
 			return nil
 		}
+
 		cli.decisionsTable(color.Output, alerts, printMachine)
+
 		if skipped > 0 {
 			fmt.Printf("%d duplicated entries skipped\n", skipped)
 		}
@@ -331,7 +334,7 @@ cscli decisions add --scope username --value foobar
 			createdAt := time.Now().UTC().Format(time.RFC3339)
 
 			/*take care of shorthand options*/
-			if err := manageCliDecisionAlerts(&addIP, &addRange, &addScope, &addValue); err != nil {
+			if err = manageCliDecisionAlerts(&addIP, &addRange, &addScope, &addValue); err != nil {
 				return err
 			}
 

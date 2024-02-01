@@ -45,6 +45,7 @@ func generatePassword(length int) string {
 		if err != nil {
 			log.Fatalf("failed getting data from prng for password generation : %s", err)
 		}
+
 		buf[i] = charset[rInt.Int64()]
 	}
 
@@ -59,12 +60,14 @@ func generateIDPrefix() (string, error) {
 	if err == nil {
 		return prefix, nil
 	}
+
 	log.Debugf("failed to get machine-id with usual files: %s", err)
 
 	bID, err := uuid.NewRandom()
 	if err == nil {
 		return bID.String(), nil
 	}
+
 	return "", fmt.Errorf("generating machine id: %w", err)
 }
 
@@ -75,11 +78,14 @@ func generateID(prefix string) (string, error) {
 	if prefix == "" {
 		prefix, err = generateIDPrefix()
 	}
+
 	if err != nil {
 		return "", err
 	}
+
 	prefix = strings.ReplaceAll(prefix, "-", "")[:32]
 	suffix := generatePassword(16)
+
 	return prefix + suffix, nil
 }
 
@@ -289,6 +295,7 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 		if !autoAdd {
 			return fmt.Errorf("please specify a password with --password or use --auto")
 		}
+
 		machinePassword = generatePassword(passwordLength)
 	} else if machinePassword == "" && interactive {
 		qs := &survey.Password{
@@ -328,10 +335,10 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 	}
 
 	if dumpFile != "" && dumpFile != "-" {
-		err = os.WriteFile(dumpFile, apiConfigDump, 0o600)
-		if err != nil {
+		if err = os.WriteFile(dumpFile, apiConfigDump, 0o600); err != nil {
 			return fmt.Errorf("write api credentials in '%s' failed: %s", dumpFile, err)
 		}
+
 		fmt.Fprintf(os.Stderr, "API credentials written to '%s'.\n", dumpFile)
 	} else {
 		fmt.Print(string(apiConfigDump))
@@ -359,11 +366,11 @@ func (cli *cliMachines) deleteValid(cmd *cobra.Command, args []string, toComplet
 
 func (cli *cliMachines) delete(machines []string) error {
 	for _, machineID := range machines {
-		err := cli.db.DeleteWatcher(machineID)
-		if err != nil {
+		if err := cli.db.DeleteWatcher(machineID); err != nil {
 			log.Errorf("unable to delete machine '%s': %s", machineID, err)
 			return nil
 		}
+
 		log.Infof("machine '%s' deleted successfully", machineID)
 	}
 
@@ -473,6 +480,7 @@ func (cli *cliMachines) validate(machineID string) error {
 	if err := cli.db.ValidateMachine(machineID); err != nil {
 		return fmt.Errorf("unable to validate machine '%s': %s", machineID, err)
 	}
+
 	log.Infof("machine '%s' validated successfully", machineID)
 
 	return nil

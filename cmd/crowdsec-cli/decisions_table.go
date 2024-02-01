@@ -11,10 +11,12 @@ import (
 func (cli *cliDecisions) decisionsTable(out io.Writer, alerts *models.GetAlertsResponse, printMachine bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
+
 	header := []string{"ID", "Source", "Scope:Value", "Reason", "Action", "Country", "AS", "Events", "expiration", "Alert ID"}
 	if printMachine {
 		header = append(header, "Machine")
 	}
+
 	t.SetHeaders(header...)
 
 	for _, alertItem := range *alerts {
@@ -22,6 +24,7 @@ func (cli *cliDecisions) decisionsTable(out io.Writer, alerts *models.GetAlertsR
 			if *alertItem.Simulated {
 				*decisionItem.Type = fmt.Sprintf("(simul)%s", *decisionItem.Type)
 			}
+
 			row := []string{
 				strconv.Itoa(int(decisionItem.ID)),
 				*decisionItem.Origin,
@@ -42,5 +45,6 @@ func (cli *cliDecisions) decisionsTable(out io.Writer, alerts *models.GetAlertsR
 			t.AddRow(row...)
 		}
 	}
+
 	t.Render()
 }
