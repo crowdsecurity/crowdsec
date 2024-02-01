@@ -81,7 +81,7 @@ func metricsToTable(t *table.Table, stats map[string]map[string]int, keys []stri
 	return numRows, nil
 }
 
-func bucketStatsTable(out io.Writer, stats map[string]map[string]int, noUnit bool) {
+func (s statBucket) table(out io.Writer, noUnit bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Bucket", "Current Count", "Overflows", "Instantiated", "Poured", "Expired")
@@ -89,7 +89,7 @@ func bucketStatsTable(out io.Writer, stats map[string]map[string]int, noUnit boo
 
 	keys := []string{"curr_count", "overflow", "instantiation", "pour", "underflow"}
 
-	if numRows, err := metricsToTable(t, stats, keys, noUnit); err != nil {
+	if numRows, err := metricsToTable(t, s, keys, noUnit); err != nil {
 		log.Warningf("while collecting bucket stats: %s", err)
 	} else if numRows > 0 {
 		renderTableTitle(out, "\nBucket Metrics:")
@@ -97,7 +97,7 @@ func bucketStatsTable(out io.Writer, stats map[string]map[string]int, noUnit boo
 	}
 }
 
-func acquisStatsTable(out io.Writer, stats map[string]map[string]int, noUnit bool) {
+func (s statAcquis) table(out io.Writer, noUnit bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Source", "Lines read", "Lines parsed", "Lines unparsed", "Lines poured to bucket")
@@ -105,7 +105,7 @@ func acquisStatsTable(out io.Writer, stats map[string]map[string]int, noUnit boo
 
 	keys := []string{"reads", "parsed", "unparsed", "pour"}
 
-	if numRows, err := metricsToTable(t, stats, keys, noUnit); err != nil {
+	if numRows, err := metricsToTable(t, s, keys, noUnit); err != nil {
 		log.Warningf("while collecting acquis stats: %s", err)
 	} else if numRows > 0 {
 		renderTableTitle(out, "\nAcquisition Metrics:")
@@ -113,13 +113,13 @@ func acquisStatsTable(out io.Writer, stats map[string]map[string]int, noUnit boo
 	}
 }
 
-func appsecMetricsToTable(out io.Writer, metrics map[string]map[string]int, noUnit bool) {
+func (s statAppsecEngine) table(out io.Writer, noUnit bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Appsec Engine", "Processed", "Blocked")
 	t.SetAlignment(table.AlignLeft, table.AlignLeft)
 	keys := []string{"processed", "blocked"}
-	if numRows, err := metricsToTable(t, metrics, keys, noUnit); err != nil {
+	if numRows, err := metricsToTable(t, s, keys, noUnit); err != nil {
 		log.Warningf("while collecting appsec stats: %s", err)
 	} else if numRows > 0 {
 		renderTableTitle(out, "\nAppsec Metrics:")
@@ -127,8 +127,8 @@ func appsecMetricsToTable(out io.Writer, metrics map[string]map[string]int, noUn
 	}
 }
 
-func appsecRulesToTable(out io.Writer, metrics map[string]map[string]map[string]int, noUnit bool) {
-	for appsecEngine, appsecEngineRulesStats := range metrics {
+func (s statAppsecRule) table(out io.Writer, noUnit bool) {
+	for appsecEngine, appsecEngineRulesStats := range s {
 		t := newTable(out)
 		t.SetRowLines(false)
 		t.SetHeaders("Rule ID", "Triggered")
@@ -144,7 +144,7 @@ func appsecRulesToTable(out io.Writer, metrics map[string]map[string]map[string]
 
 }
 
-func parserStatsTable(out io.Writer, stats map[string]map[string]int, noUnit bool) {
+func (s statParser) table(out io.Writer, noUnit bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Parsers", "Hits", "Parsed", "Unparsed")
@@ -152,7 +152,7 @@ func parserStatsTable(out io.Writer, stats map[string]map[string]int, noUnit boo
 
 	keys := []string{"hits", "parsed", "unparsed"}
 
-	if numRows, err := metricsToTable(t, stats, keys, noUnit); err != nil {
+	if numRows, err := metricsToTable(t, s, keys, noUnit); err != nil {
 		log.Warningf("while collecting parsers stats: %s", err)
 	} else if numRows > 0 {
 		renderTableTitle(out, "\nParser Metrics:")
@@ -160,11 +160,7 @@ func parserStatsTable(out io.Writer, stats map[string]map[string]int, noUnit boo
 	}
 }
 
-func stashStatsTable(out io.Writer, stats map[string]struct {
-	Type  string
-	Count int
-}) {
-
+func (s statStash) table(out io.Writer) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Name", "Type", "Items")
@@ -172,14 +168,14 @@ func stashStatsTable(out io.Writer, stats map[string]struct {
 
 	// unfortunately, we can't reuse metricsToTable as the structure is too different :/
 	sortedKeys := []string{}
-	for k := range stats {
+	for k := range s {
 		sortedKeys = append(sortedKeys, k)
 	}
 	sort.Strings(sortedKeys)
 
 	numRows := 0
 	for _, alabel := range sortedKeys {
-		astats := stats[alabel]
+		astats := s[alabel]
 
 		row := []string{
 			alabel,
@@ -195,7 +191,7 @@ func stashStatsTable(out io.Writer, stats map[string]struct {
 	}
 }
 
-func lapiStatsTable(out io.Writer, stats map[string]map[string]int) {
+func (s statLapi) table(out io.Writer) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Route", "Method", "Hits")
@@ -203,14 +199,14 @@ func lapiStatsTable(out io.Writer, stats map[string]map[string]int) {
 
 	// unfortunately, we can't reuse metricsToTable as the structure is too different :/
 	sortedKeys := []string{}
-	for k := range stats {
+	for k := range s {
 		sortedKeys = append(sortedKeys, k)
 	}
 	sort.Strings(sortedKeys)
 
 	numRows := 0
 	for _, alabel := range sortedKeys {
-		astats := stats[alabel]
+		astats := s[alabel]
 
 		subKeys := []string{}
 		for skey := range astats {
@@ -235,13 +231,13 @@ func lapiStatsTable(out io.Writer, stats map[string]map[string]int) {
 	}
 }
 
-func lapiMachineStatsTable(out io.Writer, stats map[string]map[string]map[string]int) {
+func (s statLapiMachine) table(out io.Writer) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Machine", "Route", "Method", "Hits")
 	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
 
-	numRows := lapiMetricsToTable(t, stats)
+	numRows := lapiMetricsToTable(t, s)
 
 	if numRows > 0 {
 		renderTableTitle(out, "\nLocal API Machines Metrics:")
@@ -249,13 +245,13 @@ func lapiMachineStatsTable(out io.Writer, stats map[string]map[string]map[string
 	}
 }
 
-func lapiBouncerStatsTable(out io.Writer, stats map[string]map[string]map[string]int) {
+func (s statLapiBouncer) table(out io.Writer) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Bouncer", "Route", "Method", "Hits")
 	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
 
-	numRows := lapiMetricsToTable(t, stats)
+	numRows := lapiMetricsToTable(t, s)
 
 	if numRows > 0 {
 		renderTableTitle(out, "\nLocal API Bouncers Metrics:")
@@ -263,18 +259,14 @@ func lapiBouncerStatsTable(out io.Writer, stats map[string]map[string]map[string
 	}
 }
 
-func lapiDecisionStatsTable(out io.Writer, stats map[string]struct {
-	NonEmpty int
-	Empty    int
-},
-) {
+func (s statLapiDecision) table(out io.Writer) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Bouncer", "Empty answers", "Non-empty answers")
 	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
 
 	numRows := 0
-	for bouncer, hits := range stats {
+	for bouncer, hits := range s {
 		t.AddRow(
 			bouncer,
 			fmt.Sprintf("%d", hits.Empty),
@@ -289,14 +281,14 @@ func lapiDecisionStatsTable(out io.Writer, stats map[string]struct {
 	}
 }
 
-func decisionStatsTable(out io.Writer, stats map[string]map[string]map[string]int) {
+func (s statDecision) table(out io.Writer) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Reason", "Origin", "Action", "Count")
 	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
 
 	numRows := 0
-	for reason, origins := range stats {
+	for reason, origins := range s {
 		for origin, actions := range origins {
 			for action, hits := range actions {
 				t.AddRow(
@@ -316,14 +308,14 @@ func decisionStatsTable(out io.Writer, stats map[string]map[string]map[string]in
 	}
 }
 
-func alertStatsTable(out io.Writer, stats map[string]int) {
+func (s statAlert) table(out io.Writer) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Reason", "Count")
 	t.SetAlignment(table.AlignLeft, table.AlignLeft)
 
 	numRows := 0
-	for scenario, hits := range stats {
+	for scenario, hits := range s {
 		t.AddRow(
 			scenario,
 			fmt.Sprintf("%d", hits),
