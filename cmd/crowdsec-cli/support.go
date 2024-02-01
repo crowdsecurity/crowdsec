@@ -159,10 +159,11 @@ func collectBouncers(dbClient *database.Client) ([]byte, error) {
 
 func collectAgents(dbClient *database.Client) ([]byte, error) {
 	out := bytes.NewBuffer(nil)
-	err := getAgents(out, dbClient)
+	machines, err := dbClient.ListMachines()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to list machines: %s", err)
 	}
+	getAgentsTable(out, machines)
 	return out.Bytes(), nil
 }
 
