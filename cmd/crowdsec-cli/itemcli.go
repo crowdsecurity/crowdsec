@@ -51,33 +51,16 @@ func (cli cliItem) NewCommand() *cobra.Command {
 		DisableAutoGenTag: true,
 	}
 
-	cmd.AddCommand(cli.NewInstallCmd())
-	cmd.AddCommand(cli.NewRemoveCmd())
-	cmd.AddCommand(cli.NewUpgradeCmd())
-	cmd.AddCommand(cli.NewInspectCmd())
-	cmd.AddCommand(cli.NewListCmd())
+	cmd.AddCommand(cli.newInstallCmd())
+	cmd.AddCommand(cli.newRemoveCmd())
+	cmd.AddCommand(cli.newUpgradeCmd())
+	cmd.AddCommand(cli.newInspectCmd())
+	cmd.AddCommand(cli.newListCmd())
 
 	return cmd
 }
 
-func (cli cliItem) Install(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
-
-	downloadOnly, err := flags.GetBool("download-only")
-	if err != nil {
-		return err
-	}
-
-	force, err := flags.GetBool("force")
-	if err != nil {
-		return err
-	}
-
-	ignoreError, err := flags.GetBool("ignore")
-	if err != nil {
-		return err
-	}
-
+func (cli cliItem) install(args []string, downloadOnly bool, force bool, ignoreError bool) error {
 	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig), log.StandardLogger())
 	if err != nil {
 		return err
@@ -110,7 +93,13 @@ func (cli cliItem) Install(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (cli cliItem) NewInstallCmd() *cobra.Command {
+func (cli cliItem) newInstallCmd() *cobra.Command {
+	var (
+		downloadOnly bool
+		force        bool
+		ignoreError  bool
+	)
+
 	cmd := &cobra.Command{
 		Use:               coalesce.String(cli.installHelp.use, "install [item]..."),
 		Short:             coalesce.String(cli.installHelp.short, fmt.Sprintf("Install given %s", cli.oneOrMore)),
@@ -121,13 +110,15 @@ func (cli cliItem) NewInstallCmd() *cobra.Command {
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compAllItems(cli.name, args, toComplete)
 		},
-		RunE: cli.Install,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.install(args, downloadOnly, force, ignoreError)
+		},
 	}
 
 	flags := cmd.Flags()
-	flags.BoolP("download-only", "d", false, "Only download packages, don't enable")
-	flags.Bool("force", false, "Force install: overwrite tainted and outdated files")
-	flags.Bool("ignore", false, fmt.Sprintf("Ignore errors when installing multiple %s", cli.name))
+	flags.BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
+	flags.BoolVar(&force, "force", false, "Force install: overwrite tainted and outdated files")
+	flags.BoolVar(&ignoreError, "ignore", false, fmt.Sprintf("Ignore errors when installing multiple %s", cli.name))
 
 	return cmd
 }
@@ -145,24 +136,7 @@ func istalledParentNames(item *cwhub.Item) []string {
 	return ret
 }
 
-func (cli cliItem) Remove(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
-
-	purge, err := flags.GetBool("purge")
-	if err != nil {
-		return err
-	}
-
-	force, err := flags.GetBool("force")
-	if err != nil {
-		return err
-	}
-
-	all, err := flags.GetBool("all")
-	if err != nil {
-		return err
-	}
-
+func (cli cliItem) remove(args []string, purge bool, force bool, all bool) error {
 	hub, err := require.Hub(csConfig, nil, log.StandardLogger())
 	if err != nil {
 		return err
@@ -243,7 +217,13 @@ func (cli cliItem) Remove(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (cli cliItem) NewRemoveCmd() *cobra.Command {
+func (cli cliItem) newRemoveCmd() *cobra.Command {
+	var (
+		purge bool
+		force bool
+		all   bool
+	)
+
 	cmd := &cobra.Command{
 		Use:               coalesce.String(cli.removeHelp.use, "remove [item]..."),
 		Short:             coalesce.String(cli.removeHelp.short, fmt.Sprintf("Remove given %s", cli.oneOrMore)),
@@ -254,30 +234,20 @@ func (cli cliItem) NewRemoveCmd() *cobra.Command {
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cli.name, args, toComplete)
 		},
-		RunE: cli.Remove,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.remove(args, purge, force, all)
+		},
 	}
 
 	flags := cmd.Flags()
-	flags.Bool("purge", false, "Delete source file too")
-	flags.Bool("force", false, "Force remove: remove tainted and outdated files")
-	flags.Bool("all", false, fmt.Sprintf("Remove all the %s", cli.name))
+	flags.BoolVar(&purge, "purge", false, "Delete source file too")
+	flags.BoolVar(&force, "force", false, "Force remove: remove tainted and outdated files")
+	flags.BoolVar(&all, "all", false, fmt.Sprintf("Remove all the %s", cli.name))
 
 	return cmd
 }
 
-func (cli cliItem) Upgrade(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
-
-	force, err := flags.GetBool("force")
-	if err != nil {
-		return err
-	}
-
-	all, err := flags.GetBool("all")
-	if err != nil {
-		return err
-	}
-
+func (cli cliItem) upgrade(args []string, force bool, all bool) error {
 	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig), log.StandardLogger())
 	if err != nil {
 		return err
@@ -341,7 +311,12 @@ func (cli cliItem) Upgrade(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (cli cliItem) NewUpgradeCmd() *cobra.Command {
+func (cli cliItem) newUpgradeCmd() *cobra.Command {
+	var (
+		all   bool
+		force bool
+	)
+
 	cmd := &cobra.Command{
 		Use:               coalesce.String(cli.upgradeHelp.use, "upgrade [item]..."),
 		Short:             coalesce.String(cli.upgradeHelp.short, fmt.Sprintf("Upgrade given %s", cli.oneOrMore)),
@@ -351,41 +326,25 @@ func (cli cliItem) NewUpgradeCmd() *cobra.Command {
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cli.name, args, toComplete)
 		},
-		RunE: cli.Upgrade,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.upgrade(args, force, all)
+		},
 	}
 
 	flags := cmd.Flags()
-	flags.BoolP("all", "a", false, fmt.Sprintf("Upgrade all the %s", cli.name))
-	flags.Bool("force", false, "Force upgrade: overwrite tainted and outdated files")
+	flags.BoolVarP(&all, "all", "a", false, fmt.Sprintf("Upgrade all the %s", cli.name))
+	flags.BoolVar(&force, "force", false, "Force upgrade: overwrite tainted and outdated files")
 
 	return cmd
 }
 
-func (cli cliItem) Inspect(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
-
-	url, err := flags.GetString("url")
-	if err != nil {
-		return err
+func (cli cliItem) inspect(args []string, url string, diff bool, rev bool, noMetrics bool) error {
+	if rev && !diff {
+		return fmt.Errorf("--rev can only be used with --diff")
 	}
 
 	if url != "" {
 		csConfig.Cscli.PrometheusUrl = url
-	}
-
-	diff, err := flags.GetBool("diff")
-	if err != nil {
-		return err
-	}
-
-	rev, err := flags.GetBool("rev")
-	if err != nil {
-		return err
-	}
-
-	noMetrics, err := flags.GetBool("no-metrics")
-	if err != nil {
-		return err
 	}
 
 	remote := (*cwhub.RemoteHubCfg)(nil)
@@ -411,7 +370,7 @@ func (cli cliItem) Inspect(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		if err = InspectItem(item, !noMetrics); err != nil {
+		if err = inspectItem(item, !noMetrics); err != nil {
 			return err
 		}
 
@@ -425,7 +384,14 @@ func (cli cliItem) Inspect(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (cli cliItem) NewInspectCmd() *cobra.Command {
+func (cli cliItem) newInspectCmd() *cobra.Command {
+	var (
+		url       string
+		diff      bool
+		rev       bool
+		noMetrics bool
+	)
+
 	cmd := &cobra.Command{
 		Use:               coalesce.String(cli.inspectHelp.use, "inspect [item]..."),
 		Short:             coalesce.String(cli.inspectHelp.short, fmt.Sprintf("Inspect given %s", cli.oneOrMore)),
@@ -436,45 +402,21 @@ func (cli cliItem) NewInspectCmd() *cobra.Command {
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			return compInstalledItems(cli.name, args, toComplete)
 		},
-		PreRunE: func(cmd *cobra.Command, _ []string) error {
-			flags := cmd.Flags()
-
-			diff, err := flags.GetBool("diff")
-			if err != nil {
-				return err
-			}
-
-			rev, err := flags.GetBool("rev")
-			if err != nil {
-				return err
-			}
-
-			if rev && !diff {
-				return fmt.Errorf("--rev can only be used with --diff")
-			}
-
-			return nil
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.inspect(args, url, diff, rev, noMetrics)
 		},
-		RunE: cli.Inspect,
 	}
 
 	flags := cmd.Flags()
-	flags.StringP("url", "u", "", "Prometheus url")
-	flags.Bool("diff", false, "Show diff with latest version (for tainted items)")
-	flags.Bool("rev", false, "Reverse diff output")
-	flags.Bool("no-metrics", false, "Don't show metrics (when cscli.output=human)")
+	flags.StringVarP(&url, "url", "u", "", "Prometheus url")
+	flags.BoolVar(&diff, "diff", false, "Show diff with latest version (for tainted items)")
+	flags.BoolVar(&rev, "rev", false, "Reverse diff output")
+	flags.BoolVar(&noMetrics, "no-metrics", false, "Don't show metrics (when cscli.output=human)")
 
 	return cmd
 }
 
-func (cli cliItem) List(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
-
-	all, err := flags.GetBool("all")
-	if err != nil {
-		return err
-	}
-
+func (cli cliItem) list(args []string, all bool) error {
 	hub, err := require.Hub(csConfig, nil, log.StandardLogger())
 	if err != nil {
 		return err
@@ -494,18 +436,22 @@ func (cli cliItem) List(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (cli cliItem) NewListCmd() *cobra.Command {
+func (cli cliItem) newListCmd() *cobra.Command {
+	var all bool
+
 	cmd := &cobra.Command{
 		Use:               coalesce.String(cli.listHelp.use, "list [item... | -a]"),
 		Short:             coalesce.String(cli.listHelp.short, fmt.Sprintf("List %s", cli.oneOrMore)),
 		Long:              coalesce.String(cli.listHelp.long, fmt.Sprintf("List of installed/available/specified %s", cli.name)),
 		Example:           cli.listHelp.example,
 		DisableAutoGenTag: true,
-		RunE:              cli.List,
+		RunE: func(_ *cobra.Command, args []string) error {
+			return cli.list(args, all)
+		},
 	}
 
 	flags := cmd.Flags()
-	flags.BoolP("all", "a", false, "List disabled items as well")
+	flags.BoolVarP(&all, "all", "a", false, "List disabled items as well")
 
 	return cmd
 }

@@ -21,13 +21,15 @@ var ConfigFilePath string
 var csConfig *csconfig.Config
 var dbClient *database.Client
 
-var OutputFormat string
+var outputFormat string
 var OutputColor string
 
 var mergedConfig string
 
 // flagBranch overrides the value in csConfig.Cscli.HubBranch
 var flagBranch = ""
+
+type configGetter func() *csconfig.Config
 
 func initConfig() {
 	var err error
@@ -64,16 +66,18 @@ func initConfig() {
 		csConfig.Cscli.HubBranch = flagBranch
 	}
 
-	if OutputFormat != "" {
-		csConfig.Cscli.Output = OutputFormat
-
-		if OutputFormat != "json" && OutputFormat != "raw" && OutputFormat != "human" {
-			log.Fatalf("output format %s unknown", OutputFormat)
-		}
+	if outputFormat != "" {
+		csConfig.Cscli.Output = outputFormat
 	}
+
 	if csConfig.Cscli.Output == "" {
 		csConfig.Cscli.Output = "human"
 	}
+
+	if csConfig.Cscli.Output != "human" && csConfig.Cscli.Output != "json" && csConfig.Cscli.Output != "raw" {
+		log.Fatalf("output format '%s' not supported: must be one of human, json, raw", csConfig.Cscli.Output)
+	}
+
 	if csConfig.Cscli.Output == "json" {
 		log.SetFormatter(&log.JSONFormatter{})
 		log.SetLevel(log.ErrorLevel)
@@ -146,7 +150,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.SetOut(color.Output)
 
 	cmd.PersistentFlags().StringVarP(&ConfigFilePath, "config", "c", csconfig.DefaultConfigPath("config.yaml"), "path to crowdsec config file")
-	cmd.PersistentFlags().StringVarP(&OutputFormat, "output", "o", "", "Output format: human, json, raw")
+	cmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "", "Output format: human, json, raw")
 	cmd.PersistentFlags().StringVarP(&OutputColor, "color", "", "auto", "Output color: yes, no, auto")
 	cmd.PersistentFlags().BoolVar(&dbg_lvl, "debug", false, "Set logging to debug")
 	cmd.PersistentFlags().BoolVar(&nfo_lvl, "info", false, "Set logging to info")
@@ -182,17 +186,22 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.Flags().SortFlags = false
 	cmd.PersistentFlags().SortFlags = false
 
+	// we use a getter because the config is not initialized until the Execute() call
+	getconfig := func() *csconfig.Config {
+		return csConfig
+	}
+
 	cmd.AddCommand(NewCLIDoc().NewCommand(cmd))
 	cmd.AddCommand(NewCLIVersion().NewCommand())
 	cmd.AddCommand(NewConfigCmd())
-	cmd.AddCommand(NewCLIHub().NewCommand())
+	cmd.AddCommand(NewCLIHub(getconfig).NewCommand())
 	cmd.AddCommand(NewMetricsCmd())
-	cmd.AddCommand(NewCLIDashboard().NewCommand())
+	cmd.AddCommand(NewCLIDashboard(getconfig).NewCommand())
 	cmd.AddCommand(NewCLIDecisions().NewCommand())
 	cmd.AddCommand(NewCLIAlerts().NewCommand())
-	cmd.AddCommand(NewCLISimulation().NewCommand())
-	cmd.AddCommand(NewCLIBouncers().NewCommand())
-	cmd.AddCommand(NewCLIMachines().NewCommand())
+	cmd.AddCommand(NewCLISimulation(getconfig).NewCommand())
+	cmd.AddCommand(NewCLIBouncers(getconfig).NewCommand())
+	cmd.AddCommand(NewCLIMachines(getconfig).NewCommand())
 	cmd.AddCommand(NewCLICapi().NewCommand())
 	cmd.AddCommand(NewLapiCmd())
 	cmd.AddCommand(NewCompletionCmd())
@@ -201,7 +210,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(NewCLIHubTest().NewCommand())
 	cmd.AddCommand(NewCLINotifications().NewCommand())
 	cmd.AddCommand(NewCLISupport().NewCommand())
-	cmd.AddCommand(NewCLIPapi().NewCommand())
+	cmd.AddCommand(NewCLIPapi(getconfig).NewCommand())
 	cmd.AddCommand(NewCLICollection().NewCommand())
 	cmd.AddCommand(NewCLIParser().NewCommand())
 	cmd.AddCommand(NewCLIScenario().NewCommand())
@@ -212,10 +221,6 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 
 	if fflag.CscliSetup.IsEnabled() {
 		cmd.AddCommand(NewSetupCmd())
-	}
-
-	if fflag.PapiClient.IsEnabled() {
-		cmd.AddCommand(NewCLIPapi().NewCommand())
 	}
 
 	if err := cmd.Execute(); err != nil {

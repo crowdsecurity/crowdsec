@@ -285,7 +285,7 @@ func (c *Config) LoadAPIServer(inCli bool) error {
 		}
 	}
 
-	if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
+	if (c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil) && !inCli {
 		log.Printf("push and pull to Central API disabled")
 	}
 
@@ -297,7 +297,7 @@ func (c *Config) LoadAPIServer(inCli bool) error {
 		return err
 	}
 
-	if c.API.Server.CapiWhitelistsPath != "" {
+	if c.API.Server.CapiWhitelistsPath != "" && !inCli {
 		log.Infof("loaded capi whitelist from %s: %d IPs, %d CIDRs", c.API.Server.CapiWhitelistsPath, len(c.API.Server.CapiWhitelists.Ips), len(c.API.Server.CapiWhitelists.Cidrs))
 	}
 

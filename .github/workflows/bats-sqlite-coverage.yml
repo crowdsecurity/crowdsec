@@ -1,4 +1,4 @@
-name: Functional tests (sqlite)
+name: (sub) Bats / sqlite + coverage
 
 on:
   workflow_call:
@@ -9,7 +9,7 @@ env:
 
 jobs:
   build:
-    name: "Build + tests"
+    name: "Functional tests"
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
