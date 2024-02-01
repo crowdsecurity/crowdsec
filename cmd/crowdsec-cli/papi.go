@@ -32,7 +32,7 @@ func (cli *cliPapi) NewCommand() *cobra.Command {
 		Short:             "Manage interaction with Polling API (PAPI)",
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
 			if err := require.LAPI(cfg); err != nil {
 				return err
@@ -59,7 +59,7 @@ func (cli *cliPapi) NewStatusCmd() *cobra.Command {
 		Short:             "Get status of the Polling API",
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			var err error
 			cfg := cli.cfg()
 			dbClient, err = database.NewClient(cfg.DbConfig)
@@ -111,7 +111,7 @@ func (cli *cliPapi) NewSyncCmd() *cobra.Command {
 		Short:             "Sync with the Polling API, pulling all non-expired orders for the instance",
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			var err error
 			cfg := cli.cfg()
 			t := tomb.Tomb{}

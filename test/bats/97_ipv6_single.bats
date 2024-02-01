@@ -19,7 +19,7 @@ teardown_file() {
 
 setup() {
     load "../lib/setup.sh"
-    if is_db_mysql; then sleep 0.3; fi
+    if is_db_mysql; then sleep 0.5; fi
 }
 
 api() {
