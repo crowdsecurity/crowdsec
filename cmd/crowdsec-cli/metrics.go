@@ -19,6 +19,27 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 )
 
+type (
+	statAcquis map[string]map[string]int
+	statParser map[string]map[string]int
+	statBucket map[string]map[string]int
+	statLapi map[string]map[string]int
+	statLapiMachine map[string]map[string]map[string]int
+	statLapiBouncer map[string]map[string]map[string]int
+	statLapiDecision map[string]struct {
+		NonEmpty int
+		Empty    int
+	}
+	statDecision map[string]map[string]map[string]int
+	statAppsecEngine map[string]map[string]int
+	statAppsecRule map[string]map[string]map[string]int
+	statAlert map[string]int
+	statStash map[string]struct {
+		Type  string
+		Count int
+	}
+)
+
 type cliMetrics struct {
 	cfg configGetter
 }
@@ -28,7 +49,6 @@ func NewCLIMetrics(getconfig configGetter) *cliMetrics {
 		cfg: getconfig,
 	}
 }
-
 
 // FormatPrometheusMetrics is a complete rip from prom2json
 func FormatPrometheusMetrics(out io.Writer, url string, formatType string, noUnit bool) error {
@@ -63,24 +83,19 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string, noUni
 
 	log.Debugf("Finished reading prometheus output, %d entries", len(result))
 	/*walk*/
-	lapi_decisions_stats := map[string]struct {
-		NonEmpty int
-		Empty    int
-	}{}
-	acquis_stats := map[string]map[string]int{}
-	parsers_stats := map[string]map[string]int{}
-	buckets_stats := map[string]map[string]int{}
-	lapi_stats := map[string]map[string]int{}
-	lapi_machine_stats := map[string]map[string]map[string]int{}
-	lapi_bouncer_stats := map[string]map[string]map[string]int{}
-	decisions_stats := map[string]map[string]map[string]int{}
-	appsec_engine_stats := map[string]map[string]int{}
-	appsec_rule_stats := map[string]map[string]map[string]int{}
-	alerts_stats := map[string]int{}
-	stash_stats := map[string]struct {
-		Type  string
-		Count int
-	}{}
+
+	mAcquis := statAcquis{}
+	mParser := statParser{}
+	mBucket := statBucket{}
+	mLapi := statLapi{}
+	mLapiMachine := statLapiMachine{}
+	mLapiBouncer := statLapiBouncer{}
+	mLapiDecision := statLapiDecision{}
+	mDecision := statDecision{}
+	mAppsecEngine := statAppsecEngine{}
+	mAppsecRule := statAppsecRule{}
+	mAlert := statAlert{}
+	mStash := statStash{}
 
 	for idx, fam := range result {
 		if !strings.HasPrefix(fam.Name, "cs_") {
@@ -127,138 +142,138 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string, noUni
 			switch fam.Name {
 			/*buckets*/
 			case "cs_bucket_created_total":
-				if _, ok := buckets_stats[name]; !ok {
-					buckets_stats[name] = make(map[string]int)
+				if _, ok := mBucket[name]; !ok {
+					mBucket[name] = make(map[string]int)
 				}
-				buckets_stats[name]["instantiation"] += ival
+				mBucket[name]["instantiation"] += ival
 			case "cs_buckets":
-				if _, ok := buckets_stats[name]; !ok {
-					buckets_stats[name] = make(map[string]int)
+				if _, ok := mBucket[name]; !ok {
+					mBucket[name] = make(map[string]int)
 				}
-				buckets_stats[name]["curr_count"] += ival
+				mBucket[name]["curr_count"] += ival
 			case "cs_bucket_overflowed_total":
-				if _, ok := buckets_stats[name]; !ok {
-					buckets_stats[name] = make(map[string]int)
+				if _, ok := mBucket[name]; !ok {
+					mBucket[name] = make(map[string]int)
 				}
-				buckets_stats[name]["overflow"] += ival
+				mBucket[name]["overflow"] += ival
 			case "cs_bucket_poured_total":
-				if _, ok := buckets_stats[name]; !ok {
-					buckets_stats[name] = make(map[string]int)
+				if _, ok := mBucket[name]; !ok {
+					mBucket[name] = make(map[string]int)
 				}
-				if _, ok := acquis_stats[source]; !ok {
-					acquis_stats[source] = make(map[string]int)
+				if _, ok := mAcquis[source]; !ok {
+					mAcquis[source] = make(map[string]int)
 				}
-				buckets_stats[name]["pour"] += ival
-				acquis_stats[source]["pour"] += ival
+				mBucket[name]["pour"] += ival
+				mAcquis[source]["pour"] += ival
 			case "cs_bucket_underflowed_total":
-				if _, ok := buckets_stats[name]; !ok {
-					buckets_stats[name] = make(map[string]int)
+				if _, ok := mBucket[name]; !ok {
+					mBucket[name] = make(map[string]int)
 				}
-				buckets_stats[name]["underflow"] += ival
+				mBucket[name]["underflow"] += ival
 				/*acquis*/
 			case "cs_parser_hits_total":
-				if _, ok := acquis_stats[source]; !ok {
-					acquis_stats[source] = make(map[string]int)
+				if _, ok := mAcquis[source]; !ok {
+					mAcquis[source] = make(map[string]int)
 				}
-				acquis_stats[source]["reads"] += ival
+				mAcquis[source]["reads"] += ival
 			case "cs_parser_hits_ok_total":
-				if _, ok := acquis_stats[source]; !ok {
-					acquis_stats[source] = make(map[string]int)
+				if _, ok := mAcquis[source]; !ok {
+					mAcquis[source] = make(map[string]int)
 				}
-				acquis_stats[source]["parsed"] += ival
+				mAcquis[source]["parsed"] += ival
 			case "cs_parser_hits_ko_total":
-				if _, ok := acquis_stats[source]; !ok {
-					acquis_stats[source] = make(map[string]int)
+				if _, ok := mAcquis[source]; !ok {
+					mAcquis[source] = make(map[string]int)
 				}
-				acquis_stats[source]["unparsed"] += ival
+				mAcquis[source]["unparsed"] += ival
 			case "cs_node_hits_total":
-				if _, ok := parsers_stats[name]; !ok {
-					parsers_stats[name] = make(map[string]int)
+				if _, ok := mParser[name]; !ok {
+					mParser[name] = make(map[string]int)
 				}
-				parsers_stats[name]["hits"] += ival
+				mParser[name]["hits"] += ival
 			case "cs_node_hits_ok_total":
-				if _, ok := parsers_stats[name]; !ok {
-					parsers_stats[name] = make(map[string]int)
+				if _, ok := mParser[name]; !ok {
+					mParser[name] = make(map[string]int)
 				}
-				parsers_stats[name]["parsed"] += ival
+				mParser[name]["parsed"] += ival
 			case "cs_node_hits_ko_total":
-				if _, ok := parsers_stats[name]; !ok {
-					parsers_stats[name] = make(map[string]int)
+				if _, ok := mParser[name]; !ok {
+					mParser[name] = make(map[string]int)
 				}
-				parsers_stats[name]["unparsed"] += ival
+				mParser[name]["unparsed"] += ival
 			case "cs_lapi_route_requests_total":
-				if _, ok := lapi_stats[route]; !ok {
-					lapi_stats[route] = make(map[string]int)
+				if _, ok := mLapi[route]; !ok {
+					mLapi[route] = make(map[string]int)
 				}
-				lapi_stats[route][method] += ival
+				mLapi[route][method] += ival
 			case "cs_lapi_machine_requests_total":
-				if _, ok := lapi_machine_stats[machine]; !ok {
-					lapi_machine_stats[machine] = make(map[string]map[string]int)
+				if _, ok := mLapiMachine[machine]; !ok {
+					mLapiMachine[machine] = make(map[string]map[string]int)
 				}
-				if _, ok := lapi_machine_stats[machine][route]; !ok {
-					lapi_machine_stats[machine][route] = make(map[string]int)
+				if _, ok := mLapiMachine[machine][route]; !ok {
+					mLapiMachine[machine][route] = make(map[string]int)
 				}
-				lapi_machine_stats[machine][route][method] += ival
+				mLapiMachine[machine][route][method] += ival
 			case "cs_lapi_bouncer_requests_total":
-				if _, ok := lapi_bouncer_stats[bouncer]; !ok {
-					lapi_bouncer_stats[bouncer] = make(map[string]map[string]int)
+				if _, ok := mLapiBouncer[bouncer]; !ok {
+					mLapiBouncer[bouncer] = make(map[string]map[string]int)
 				}
-				if _, ok := lapi_bouncer_stats[bouncer][route]; !ok {
-					lapi_bouncer_stats[bouncer][route] = make(map[string]int)
+				if _, ok := mLapiBouncer[bouncer][route]; !ok {
+					mLapiBouncer[bouncer][route] = make(map[string]int)
 				}
-				lapi_bouncer_stats[bouncer][route][method] += ival
+				mLapiBouncer[bouncer][route][method] += ival
 			case "cs_lapi_decisions_ko_total", "cs_lapi_decisions_ok_total":
-				if _, ok := lapi_decisions_stats[bouncer]; !ok {
-					lapi_decisions_stats[bouncer] = struct {
+				if _, ok := mLapiDecision[bouncer]; !ok {
+					mLapiDecision[bouncer] = struct {
 						NonEmpty int
 						Empty    int
 					}{}
 				}
-				x := lapi_decisions_stats[bouncer]
+				x := mLapiDecision[bouncer]
 				if fam.Name == "cs_lapi_decisions_ko_total" {
 					x.Empty += ival
 				} else if fam.Name == "cs_lapi_decisions_ok_total" {
 					x.NonEmpty += ival
 				}
-				lapi_decisions_stats[bouncer] = x
+				mLapiDecision[bouncer] = x
 			case "cs_active_decisions":
-				if _, ok := decisions_stats[reason]; !ok {
-					decisions_stats[reason] = make(map[string]map[string]int)
+				if _, ok := mDecision[reason]; !ok {
+					mDecision[reason] = make(map[string]map[string]int)
 				}
-				if _, ok := decisions_stats[reason][origin]; !ok {
-					decisions_stats[reason][origin] = make(map[string]int)
+				if _, ok := mDecision[reason][origin]; !ok {
+					mDecision[reason][origin] = make(map[string]int)
 				}
-				decisions_stats[reason][origin][action] += ival
+				mDecision[reason][origin][action] += ival
 			case "cs_alerts":
-				/*if _, ok := alerts_stats[scenario]; !ok {
-					alerts_stats[scenario] = make(map[string]int)
+				/*if _, ok := mAlert[scenario]; !ok {
+					mAlert[scenario] = make(map[string]int)
 				}*/
-				alerts_stats[reason] += ival
+				mAlert[reason] += ival
 			case "cs_cache_size":
-				stash_stats[name] = struct {
+				mStash[name] = struct {
 					Type  string
 					Count int
 				}{Type: mtype, Count: ival}
 			case "cs_appsec_reqs_total":
-				if _, ok := appsec_engine_stats[metric.Labels["appsec_engine"]]; !ok {
-					appsec_engine_stats[metric.Labels["appsec_engine"]] = make(map[string]int, 0)
+				if _, ok := mAppsecEngine[metric.Labels["appsec_engine"]]; !ok {
+					mAppsecEngine[metric.Labels["appsec_engine"]] = make(map[string]int, 0)
 				}
-				appsec_engine_stats[metric.Labels["appsec_engine"]]["processed"] = ival
+				mAppsecEngine[metric.Labels["appsec_engine"]]["processed"] = ival
 			case "cs_appsec_block_total":
-				if _, ok := appsec_engine_stats[metric.Labels["appsec_engine"]]; !ok {
-					appsec_engine_stats[metric.Labels["appsec_engine"]] = make(map[string]int, 0)
+				if _, ok := mAppsecEngine[metric.Labels["appsec_engine"]]; !ok {
+					mAppsecEngine[metric.Labels["appsec_engine"]] = make(map[string]int, 0)
 				}
-				appsec_engine_stats[metric.Labels["appsec_engine"]]["blocked"] = ival
+				mAppsecEngine[metric.Labels["appsec_engine"]]["blocked"] = ival
 			case "cs_appsec_rule_hits":
 				appsecEngine := metric.Labels["appsec_engine"]
 				ruleID := metric.Labels["rule_name"]
-				if _, ok := appsec_rule_stats[appsecEngine]; !ok {
-					appsec_rule_stats[appsecEngine] = make(map[string]map[string]int, 0)
+				if _, ok := mAppsecRule[appsecEngine]; !ok {
+					mAppsecRule[appsecEngine] = make(map[string]map[string]int, 0)
 				}
-				if _, ok := appsec_rule_stats[appsecEngine][ruleID]; !ok {
-					appsec_rule_stats[appsecEngine][ruleID] = make(map[string]int, 0)
+				if _, ok := mAppsecRule[appsecEngine][ruleID]; !ok {
+					mAppsecRule[appsecEngine][ruleID] = make(map[string]int, 0)
 				}
-				appsec_rule_stats[appsecEngine][ruleID]["triggered"] = ival
+				mAppsecRule[appsecEngine][ruleID]["triggered"] = ival
 			default:
 				log.Debugf("unknown: %+v", fam.Name)
 				continue
@@ -267,33 +282,33 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string, noUni
 	}
 
 	if formatType == "human" {
-		acquisStatsTable(out, acquis_stats, noUnit)
-		bucketStatsTable(out, buckets_stats, noUnit)
-		parserStatsTable(out, parsers_stats, noUnit)
-		lapiStatsTable(out, lapi_stats)
-		lapiMachineStatsTable(out, lapi_machine_stats)
-		lapiBouncerStatsTable(out, lapi_bouncer_stats)
-		lapiDecisionStatsTable(out, lapi_decisions_stats)
-		decisionStatsTable(out, decisions_stats)
-		alertStatsTable(out, alerts_stats)
-		stashStatsTable(out, stash_stats)
-		appsecMetricsToTable(out, appsec_engine_stats, noUnit)
-		appsecRulesToTable(out, appsec_rule_stats, noUnit)
+		mAcquis.table(out, noUnit)
+		mBucket.table(out, noUnit)
+		mParser.table(out, noUnit)
+		mLapi.table(out)
+		mLapiMachine.table(out)
+		mLapiBouncer.table(out)
+		mLapiDecision.table(out)
+		mDecision.table(out)
+		mAlert.table(out)
+		mStash.table(out)
+		mAppsecEngine.table(out, noUnit)
+		mAppsecRule.table(out, noUnit)
 		return nil
 	}
 
 	stats := make(map[string]any)
 
-	stats["acquisition"] = acquis_stats
-	stats["buckets"] = buckets_stats
-	stats["parsers"] = parsers_stats
-	stats["lapi"] = lapi_stats
-	stats["lapi_machine"] = lapi_machine_stats
-	stats["lapi_bouncer"] = lapi_bouncer_stats
-	stats["lapi_decisions"] = lapi_decisions_stats
-	stats["decisions"] = decisions_stats
-	stats["alerts"] = alerts_stats
-	stats["stash"] = stash_stats
+	stats["acquisition"] = mAcquis
+	stats["buckets"] = mBucket
+	stats["parsers"] = mParser
+	stats["lapi"] = mLapi
+	stats["lapi_machine"] = mLapiMachine
+	stats["lapi_bouncer"] = mLapiBouncer
+	stats["lapi_decisions"] = mLapiDecision
+	stats["decisions"] = mDecision
+	stats["alerts"] = mAlert
+	stats["stash"] = mStash
 
 	switch formatType {
 	case "json":
