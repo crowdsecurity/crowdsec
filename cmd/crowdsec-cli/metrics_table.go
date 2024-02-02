@@ -7,6 +7,8 @@ import (
 
 	"github.com/aquasecurity/table"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/go-cs-lib/maptools"
 )
 
 func lapiMetricsToTable(t *table.Table, stats map[string]map[string]map[string]int) int {
@@ -47,15 +49,10 @@ func metricsToTable(t *table.Table, stats map[string]map[string]int, keys []stri
 	if t == nil {
 		return 0, fmt.Errorf("nil table")
 	}
-	// sort keys to keep consistent order when printing
-	sortedKeys := []string{}
-	for k := range stats {
-		sortedKeys = append(sortedKeys, k)
-	}
-	sort.Strings(sortedKeys)
 
 	numRows := 0
-	for _, alabel := range sortedKeys {
+
+	for _, alabel := range maptools.SortedKeys(stats) {
 		astats, ok := stats[alabel]
 		if !ok {
 			continue
@@ -81,7 +78,11 @@ func metricsToTable(t *table.Table, stats map[string]map[string]int, keys []stri
 	return numRows, nil
 }
 
-func (s statBucket) Table(out io.Writer, noUnit bool) {
+func (s statBucket) Description() string {
+	return "Bucket Metrics"
+}
+
+func (s statBucket) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Bucket", "Current Count", "Overflows", "Instantiated", "Poured", "Expired")
@@ -91,13 +92,17 @@ func (s statBucket) Table(out io.Writer, noUnit bool) {
 
 	if numRows, err := metricsToTable(t, s, keys, noUnit); err != nil {
 		log.Warningf("while collecting bucket stats: %s", err)
-	} else if numRows > 0 {
-		renderTableTitle(out, "\nBucket Metrics:")
+	} else if numRows > 0 || showEmpty {
+		renderTableTitle(out, "\n" + s.Description() + ":")
 		t.Render()
 	}
 }
 
-func (s statAcquis) Table(out io.Writer, noUnit bool) {
+func (s statAcquis) Description() string {
+	return "Acquisition Metrics"
+}
+
+func (s statAcquis) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Source", "Lines read", "Lines parsed", "Lines unparsed", "Lines poured to bucket")
@@ -107,13 +112,17 @@ func (s statAcquis) Table(out io.Writer, noUnit bool) {
 
 	if numRows, err := metricsToTable(t, s, keys, noUnit); err != nil {
 		log.Warningf("while collecting acquis stats: %s", err)
-	} else if numRows > 0 {
-		renderTableTitle(out, "\nAcquisition Metrics:")
+	} else if numRows > 0 || showEmpty {
+		renderTableTitle(out, "\n" + s.Description() + ":")
 		t.Render()
 	}
 }
 
-func (s statAppsecEngine) Table(out io.Writer, noUnit bool) {
+func (s statAppsecEngine) Description() string {
+	return "Appsec Metrics"
+}
+
+func (s statAppsecEngine) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Appsec Engine", "Processed", "Blocked")
@@ -121,13 +130,17 @@ func (s statAppsecEngine) Table(out io.Writer, noUnit bool) {
 	keys := []string{"processed", "blocked"}
 	if numRows, err := metricsToTable(t, s, keys, noUnit); err != nil {
 		log.Warningf("while collecting appsec stats: %s", err)
-	} else if numRows > 0 {
-		renderTableTitle(out, "\nAppsec Metrics:")
+	} else if numRows > 0 || showEmpty {
+		renderTableTitle(out, "\n" + s.Description() + ":")
 		t.Render()
 	}
 }
 
-func (s statAppsecRule) Table(out io.Writer, noUnit bool) {
+func (s statAppsecRule) Description() string {
+	return "Appsec Rule Metrics"
+}
+
+func (s statAppsecRule) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	for appsecEngine, appsecEngineRulesStats := range s {
 		t := newTable(out)
 		t.SetRowLines(false)
@@ -136,7 +149,7 @@ func (s statAppsecRule) Table(out io.Writer, noUnit bool) {
 		keys := []string{"triggered"}
 		if numRows, err := metricsToTable(t, appsecEngineRulesStats, keys, noUnit); err != nil {
 			log.Warningf("while collecting appsec rules stats: %s", err)
-		} else if numRows > 0 {
+		} else if numRows > 0 || showEmpty{
 			renderTableTitle(out, fmt.Sprintf("\nAppsec '%s' Rules Metrics:", appsecEngine))
 			t.Render()
 		}
@@ -144,7 +157,11 @@ func (s statAppsecRule) Table(out io.Writer, noUnit bool) {
 
 }
 
-func (s statParser) Table(out io.Writer, noUnit bool) {
+func (s statParser) Description() string {
+	return "Parser Metrics"
+}
+
+func (s statParser) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Parsers", "Hits", "Parsed", "Unparsed")
@@ -154,27 +171,26 @@ func (s statParser) Table(out io.Writer, noUnit bool) {
 
 	if numRows, err := metricsToTable(t, s, keys, noUnit); err != nil {
 		log.Warningf("while collecting parsers stats: %s", err)
-	} else if numRows > 0 {
-		renderTableTitle(out, "\nParser Metrics:")
+	} else if numRows > 0 || showEmpty {
+		renderTableTitle(out, "\n" + s.Description() + ":")
 		t.Render()
 	}
 }
 
-func (s statStash) Table(out io.Writer, noUnit bool) {
+func (s statStash) Description() string {
+	return "Parser Stash Metrics"
+}
+
+func (s statStash) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Name", "Type", "Items")
 	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
 
 	// unfortunately, we can't reuse metricsToTable as the structure is too different :/
-	sortedKeys := []string{}
-	for k := range s {
-		sortedKeys = append(sortedKeys, k)
-	}
-	sort.Strings(sortedKeys)
-
 	numRows := 0
-	for _, alabel := range sortedKeys {
+
+	for _, alabel := range maptools.SortedKeys(s) {
 		astats := s[alabel]
 
 		row := []string{
@@ -185,27 +201,26 @@ func (s statStash) Table(out io.Writer, noUnit bool) {
 		t.AddRow(row...)
 		numRows++
 	}
-	if numRows > 0 {
-		renderTableTitle(out, "\nParser Stash Metrics:")
+	if numRows > 0 || showEmpty {
+		renderTableTitle(out, "\n" + s.Description() + ":")
 		t.Render()
 	}
 }
 
-func (s statLapi) Table(out io.Writer, noUnit bool) {
+func (s statLapi) Description() string {
+	return "Local API Metrics"
+}
+
+func (s statLapi) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Route", "Method", "Hits")
 	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
 
 	// unfortunately, we can't reuse metricsToTable as the structure is too different :/
-	sortedKeys := []string{}
-	for k := range s {
-		sortedKeys = append(sortedKeys, k)
-	}
-	sort.Strings(sortedKeys)
-
 	numRows := 0
-	for _, alabel := range sortedKeys {
+
+	for _, alabel := range maptools.SortedKeys(s) {
 		astats := s[alabel]
 
 		subKeys := []string{}
@@ -225,13 +240,17 @@ func (s statLapi) Table(out io.Writer, noUnit bool) {
 		}
 	}
 
-	if numRows > 0 {
-		renderTableTitle(out, "\nLocal API Metrics:")
+	if numRows > 0 || showEmpty {
+		renderTableTitle(out, "\n" + s.Description() + ":")
 		t.Render()
 	}
 }
 
-func (s statLapiMachine) Table(out io.Writer, noUnit bool) {
+func (s statLapiMachine) Description() string {
+	return "Local API Machines Metrics"
+}
+
+func (s statLapiMachine) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Machine", "Route", "Method", "Hits")
@@ -239,13 +258,17 @@ func (s statLapiMachine) Table(out io.Writer, noUnit bool) {
 
 	numRows := lapiMetricsToTable(t, s)
 
-	if numRows > 0 {
-		renderTableTitle(out, "\nLocal API Machines Metrics:")
+	if numRows > 0 || showEmpty{
+		renderTableTitle(out, "\n" + s.Description() + ":")
 		t.Render()
 	}
 }
 
-func (s statLapiBouncer) Table(out io.Writer, noUnit bool) {
+func (s statLapiBouncer) Description() string {
+	return "Local API Bouncers Metrics"
+}
+
+func (s statLapiBouncer) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Bouncer", "Route", "Method", "Hits")
@@ -253,13 +276,17 @@ func (s statLapiBouncer) Table(out io.Writer, noUnit bool) {
 
 	numRows := lapiMetricsToTable(t, s)
 
-	if numRows > 0 {
-		renderTableTitle(out, "\nLocal API Bouncers Metrics:")
+	if numRows > 0 || showEmpty {
+		renderTableTitle(out, "\n" + s.Description() + ":")
 		t.Render()
 	}
 }
 
-func (s statLapiDecision) Table(out io.Writer, noUnit bool) {
+func (s statLapiDecision) Description() string {
+	return "Local API Bouncers Decisions"
+}
+
+func (s statLapiDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Bouncer", "Empty answers", "Non-empty answers")
@@ -275,13 +302,17 @@ func (s statLapiDecision) Table(out io.Writer, noUnit bool) {
 		numRows++
 	}
 
-	if numRows > 0 {
-		renderTableTitle(out, "\nLocal API Bouncers Decisions:")
+	if numRows > 0 || showEmpty{
+		renderTableTitle(out, "\n" + s.Description() + ":")
 		t.Render()
 	}
 }
 
-func (s statDecision) Table(out io.Writer, noUnit bool) {
+func (s statDecision) Description() string {
+	return "Local API Decisions"
+}
+
+func (s statDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Reason", "Origin", "Action", "Count")
@@ -302,13 +333,17 @@ func (s statDecision) Table(out io.Writer, noUnit bool) {
 		}
 	}
 
-	if numRows > 0 {
-		renderTableTitle(out, "\nLocal API Decisions:")
+	if numRows > 0 || showEmpty{
+		renderTableTitle(out, "\n" + s.Description() + ":")
 		t.Render()
 	}
 }
 
-func (s statAlert) Table(out io.Writer, noUnit bool) {
+func (s statAlert) Description() string {
+	return "Local API Alerts"
+}
+
+func (s statAlert) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Reason", "Count")
@@ -323,8 +358,8 @@ func (s statAlert) Table(out io.Writer, noUnit bool) {
 		numRows++
 	}
 
-	if numRows > 0 {
-		renderTableTitle(out, "\nLocal API Alerts:")
+	if numRows > 0 || showEmpty{
+		renderTableTitle(out, "\n" + s.Description() + ":")
 		t.Render()
 	}
 }

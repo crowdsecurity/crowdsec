@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/go-cs-lib/maptools"
 	"github.com/crowdsecurity/go-cs-lib/trace"
 )
 
@@ -41,27 +42,30 @@ type (
 )
 
 type metricSection interface {
-	Table(io.Writer, bool)
+	Table(io.Writer, bool, bool)
+	Description() string
 }
 
 type metricStore map[string]metricSection
 
-var metricSections = []string{
-	"acquisition",
-	"buckets",
-	"parsers",
-	"lapi",
-	"lapi_machine",
-	"lapi_bouncer",
-	"lapi_decisions",
-	"decisions",
-	"alerts",
-	"stash",
-	"appsec_engine",
-	"appsec_rule",
+func NewMetricStore() metricStore {
+	return metricStore{
+		"acquisition": statAcquis{},
+		"buckets": statBucket{},
+		"parsers": statParser{},
+		"lapi": statLapi{},
+		"lapi_machine": statLapiMachine{},
+		"lapi_bouncer": statLapiBouncer{},
+		"lapi_decisions": statLapiDecision{},
+		"decisions": statDecision{},
+		"alerts": statAlert{},
+		"stash": statStash{},
+		"appsec_engine": statAppsecEngine{},
+		"appsec_rule": statAppsecRule{},
+	}
 }
 
-func NewMetricStore(url string) (metricStore, error) {
+func (ms metricStore) Fetch(url string) error {
 	mfChan := make(chan *dto.MetricFamily, 1024)
 	errChan := make(chan error, 1)
 
@@ -76,7 +80,7 @@ func NewMetricStore(url string) (metricStore, error) {
 		defer trace.CatchPanic("crowdsec/ShowPrometheus")
 		err := prom2json.FetchMetricFamilies(url, mfChan, transport)
 		if err != nil {
-			errChan <- fmt.Errorf("failed to fetch prometheus metrics: %w", err)
+			errChan <- fmt.Errorf("failed to fetch metrics: %w", err)
 			return
 		}
 		errChan <- nil
@@ -88,24 +92,24 @@ func NewMetricStore(url string) (metricStore, error) {
 	}
 
 	if err := <-errChan; err != nil {
-		return nil, err
+		return err
 	}
 
-	log.Debugf("Finished reading prometheus output, %d entries", len(result))
+	log.Debugf("Finished reading metrics output, %d entries", len(result))
 	/*walk*/
 
-	mAcquis := statAcquis{}
-	mParser := statParser{}
-	mBucket := statBucket{}
-	mLapi := statLapi{}
-	mLapiMachine := statLapiMachine{}
-	mLapiBouncer := statLapiBouncer{}
-	mLapiDecision := statLapiDecision{}
-	mDecision := statDecision{}
-	mAppsecEngine := statAppsecEngine{}
-	mAppsecRule := statAppsecRule{}
-	mAlert := statAlert{}
-	mStash := statStash{}
+	mAcquis := ms["acquisition"].(statAcquis)
+	mParser := ms["parsers"].(statParser)
+	mBucket := ms["buckets"].(statBucket)
+	mLapi := ms["lapi"].(statLapi)
+	mLapiMachine := ms["lapi_machine"].(statLapiMachine)
+	mLapiBouncer := ms["lapi_bouncer"].(statLapiBouncer)
+	mLapiDecision := ms["lapi_decisions"].(statLapiDecision)
+	mDecision := ms["decisions"].(statDecision)
+	mAppsecEngine := ms["appsec_engine"].(statAppsecEngine)
+	mAppsecRule := ms["appsec_rule"].(statAppsecRule)
+	mAlert := ms["alerts"].(statAlert)
+	mStash := ms["stash"].(statStash)
 
 	for idx, fam := range result {
 		if !strings.HasPrefix(fam.Name, "cs_") {
@@ -291,20 +295,7 @@ func NewMetricStore(url string) (metricStore, error) {
 		}
 	}
 
-	return metricStore{
-		"acquisition": mAcquis,
-		"buckets": mBucket,
-		"parsers": mParser,
-		"lapi": mLapi,
-		"lapi_machine": mLapiMachine,
-		"lapi_bouncer": mLapiBouncer,
-		"lapi_decisions": mLapiDecision,
-		"decisions": mDecision,
-		"alerts": mAlert,
-		"stash": mStash,
-		"appsec_engine": mAppsecEngine,
-		"appsec_rule": mAppsecRule,
-	}, nil
+	return nil
 }
 
 type cliMetrics struct {
@@ -321,8 +312,14 @@ func (ms metricStore) Format(out io.Writer, sections []string, formatType string
 	// copy only the sections we want
 	want := map[string]metricSection{}
 
+	// if explicitly asking for sections, we want to show empty tables
+	showEmpty := len(sections) > 0
+
+	// if no sections are specified, we want all of them
 	if len(sections) == 0 {
-		sections = metricSections
+		for section := range ms {
+			sections = append(sections, section)
+		}
 	}
 
 	for _, section := range sections {
@@ -332,7 +329,7 @@ func (ms metricStore) Format(out io.Writer, sections []string, formatType string
 	switch formatType {
 	case "human":
 		for section := range want {
-			want[section].Table(out, noUnit)
+			want[section].Table(out, noUnit, showEmpty)
 		}
 	case "json":
 		x, err := json.MarshalIndent(want, "", " ")
@@ -368,9 +365,17 @@ func (cli *cliMetrics) show(sections []string, url string, noUnit bool) error {
 		return fmt.Errorf("prometheus is not enabled, can't show metrics")
 	}
 
-	ms, err := NewMetricStore(cfg.Cscli.PrometheusUrl)
-	if err != nil {
+	ms := NewMetricStore()
+
+	if err := ms.Fetch(cfg.Cscli.PrometheusUrl); err != nil {
 		return err
+	}
+
+	// any section that we don't have in the store is an error
+	for _, section := range sections {
+		if _, ok := ms[section]; !ok {
+			return fmt.Errorf("unknown metrics type: %s", section)
+		}
 	}
 
 	if err := ms.Format(color.Output, sections, cfg.Cscli.Output, noUnit); err != nil {
@@ -388,7 +393,15 @@ func (cli *cliMetrics) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "metrics",
 		Short:             "Display crowdsec prometheus metrics.",
-		Long:              `Fetch metrics from the prometheus server and display them in a human-friendly way`,
+		Long:              `Fetch metrics from a Local API server and display them`,
+		Example:	   `# Show all Metrics, skip empty tables (same as "cecli metrics show")
+cscli metrics
+
+# Show only some metrics, connect to a different url
+cscli metrics --url http://lapi.local:6060/metrics show acquisition parsers
+
+# List available metric types
+cscli metrics list`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -406,6 +419,21 @@ func (cli *cliMetrics) NewCommand() *cobra.Command {
 	return cmd
 }
 
+// expandAlias returns a list of sections. The input can be a list of sections or alias.
+func (cli *cliMetrics) expandSectionGroups(args []string) []string {
+	ret := []string{}
+	for _, section := range args {
+		switch section {
+		case "engine":
+			ret = append(ret, "acquisition", "parsers", "buckets", "stash")
+		default:
+			ret = append(ret, section)
+		}
+	}
+
+	return ret
+}
+
 func (cli *cliMetrics) newShowCmd() *cobra.Command {
 	var (
 		url string
@@ -413,34 +441,88 @@ func (cli *cliMetrics) newShowCmd() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:               "show [section]...",
-		Short:             "Display crowdsec prometheus metrics.",
-		Long:              `Fetch metrics from the prometheus server and display them in a human-friendly way`,
-		Args:              cobra.MinimumNArgs(1),
+		Use:               "show",
+		Short:             "Display all or part of the available metrics.",
+		Long:              `Fetch metrics from a Local API server and display them, optionally filtering on specific types.`,
+		Example:	   `# Show all Metrics, skip empty tables
+cscli metrics show
+
+# Show some specific metrics, show empty tables, connect to a different url
+cscli metrics show acquisition parsers buckets stash --url http://lapi.local:6060/metrics
+
+# Show metrics in json format
+cscli metrics show acquisition parsers buckets stash -o json
+
+# Use the "engine" alias to show all engine-related metrics
+cscli metrics show engine`,
+		// Positional args are optional
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
+			args = cli.expandSectionGroups(args)
 			return cli.show(args, url, noUnit)
 		},
 	}
 
 	flags := cmd.Flags()
-	flags.StringVarP(&url, "url", "u", "", "Prometheus url (http://<ip>:<port>/metrics)")
+	flags.StringVarP(&url, "url", "u", "", "Metrics url (http://<ip>:<port>/metrics)")
 	flags.BoolVar(&noUnit, "no-unit", false, "Show the real number instead of formatted with units")
 
 	return cmd
 }
 
+func (cli *cliMetrics) list() error {
+	type metricType struct {
+		Type     string		`json:"type" yaml:"type"`
+		Description string	`json:"description" yaml:"description"`
+	}
+
+	var allMetrics []metricType
+
+	ms := NewMetricStore()
+	for _, section := range maptools.SortedKeys(ms) {
+		allMetrics = append(allMetrics, metricType{
+			Type:        section,
+			Description: ms[section].Description(),
+		})
+	}
+
+	switch cli.cfg().Cscli.Output {
+	case "human":
+		t := newTable(color.Output)
+		t.SetRowLines(false)
+		t.SetHeaders("Type", "Description")
+
+		for _, metric := range allMetrics {
+			t.AddRow(metric.Type, metric.Description)
+		}
+
+		t.Render()
+	case "json":
+		x, err := json.MarshalIndent(allMetrics, "", " ")
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal metrics: %w", err)
+		}
+		fmt.Println(string(x))
+	case "raw":
+		x, err := yaml.Marshal(allMetrics)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal metrics: %w", err)
+		}
+		fmt.Println(string(x))
+	}
+
+	return nil
+}
+
 func (cli *cliMetrics) newListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "list",
-		Short:             "List available sections for metrics.",
-		Long:              `List available sections for metrics.`,
+		Short:             "List available types of metrics.",
+		Long:              `List available types of metrics.`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			for _, section := range metricSections {
-				fmt.Println(section)
-			}
+		RunE: func(_ *cobra.Command, _ []string) error {
+			cli.list()
 			return nil
 		},
 	}

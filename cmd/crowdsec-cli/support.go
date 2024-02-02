@@ -67,12 +67,13 @@ func collectMetrics() ([]byte, []byte, error) {
 
 	humanMetrics := bytes.NewBuffer(nil)
 
-	ms, err := NewMetricStore(csConfig.Cscli.PrometheusUrl)
-	if err != nil {
+	ms := NewMetricStore()
+
+	if err := ms.Fetch(csConfig.Cscli.PrometheusUrl); err != nil {
 		return nil, nil, fmt.Errorf("could not fetch prometheus metrics: %s", err)
 	}
 
-	if err = ms.Format(humanMetrics, nil, "human", false); err != nil {
+	if err := ms.Format(humanMetrics, nil, "human", false); err != nil {
 		return nil, nil, err
 	}
 

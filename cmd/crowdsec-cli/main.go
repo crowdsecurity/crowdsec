@@ -146,6 +146,8 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 		FlagsDataType: cc.White,
 		Flags:         cc.Green,
 		FlagsDescr:    cc.Cyan,
+		NoExtraNewlines: true,
+		NoBottomNewline: true,
 	})
 	cmd.SetOut(color.Output)
 
