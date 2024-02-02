@@ -76,9 +76,10 @@ func collectMetrics() ([]byte, []byte, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not create requests to prometheus endpoint: %s", err)
 	}
-	client := &http.Client{}
-	resp, err := client.Do(req)
 
+	client := &http.Client{}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not get metrics from prometheus endpoint: %s", err)
 	}
@@ -100,17 +101,20 @@ func collectVersion() []byte {
 
 func collectFeatures() []byte {
 	log.Info("Collecting feature flags")
+
 	enabledFeatures := fflag.Crowdsec.GetEnabledFeatures()
 
 	w := bytes.NewBuffer(nil)
 	for _, k := range enabledFeatures {
 		fmt.Fprintf(w, "%s\n", k)
 	}
+
 	return w.Bytes()
 }
 
 func collectOSInfo() ([]byte, error) {
 	log.Info("Collecting OS info")
+
 	info, err := osinfo.GetOSInfo()
 
 	if err != nil {
@@ -133,6 +137,7 @@ func collectHubItems(hub *cwhub.Hub, itemType string) []byte {
 	var err error
 
 	out := bytes.NewBuffer(nil)
+
 	log.Infof("Collecting %s list", itemType)
 
 	items := make(map[string][]*cwhub.Item)
@@ -144,25 +149,33 @@ func collectHubItems(hub *cwhub.Hub, itemType string) []byte {
 	if err := listItems(out, []string{itemType}, items, false); err != nil {
 		log.Warnf("could not collect %s list: %s", itemType, err)
 	}
+
 	return out.Bytes()
 }
 
 func collectBouncers(dbClient *database.Client) ([]byte, error) {
 	out := bytes.NewBuffer(nil)
+
 	bouncers, err := dbClient.ListBouncers()
 	if err != nil {
 		return nil, fmt.Errorf("unable to list bouncers: %s", err)
 	}
+
 	getBouncersTable(out, bouncers)
+
 	return out.Bytes(), nil
 }
 
 func collectAgents(dbClient *database.Client) ([]byte, error) {
 	out := bytes.NewBuffer(nil)
-	err := getAgents(out, dbClient)
+
+	machines, err := dbClient.ListMachines()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to list machines: %s", err)
 	}
+
+	getAgentsTable(out, machines)
+
 	return out.Bytes(), nil
 }
 
@@ -170,12 +183,14 @@ func collectAPIStatus(login string, password string, endpoint string, prefix str
 	if csConfig.API.Client == nil || csConfig.API.Client.Credentials == nil {
 		return []byte("No agent credentials found, are we LAPI ?")
 	}
-	pwd := strfmt.Password(password)
-	apiurl, err := url.Parse(endpoint)
 
+	pwd := strfmt.Password(password)
+
+	apiurl, err := url.Parse(endpoint)
 	if err != nil {
 		return []byte(fmt.Sprintf("cannot parse API URL: %s", err))
 	}
+
 	scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
 	if err != nil {
 		return []byte(fmt.Sprintf("could not collect scenarios: %s", err))
@@ -188,6 +203,7 @@ func collectAPIStatus(login string, password string, endpoint string, prefix str
 	if err != nil {
 		return []byte(fmt.Sprintf("could not init client: %s", err))
 	}
+
 	t := models.WatcherAuthRequest{
 		MachineID: &login,
 		Password:  &pwd,
@@ -204,6 +220,7 @@ func collectAPIStatus(login string, password string, endpoint string, prefix str
 
 func collectCrowdsecConfig() []byte {
 	log.Info("Collecting crowdsec config")
+
 	config, err := os.ReadFile(*csConfig.FilePath)
 	if err != nil {
 		return []byte(fmt.Sprintf("could not read config file: %s", err))
@@ -216,15 +233,18 @@ func collectCrowdsecConfig() []byte {
 
 func collectCrowdsecProfile() []byte {
 	log.Info("Collecting crowdsec profile")
+
 	config, err := os.ReadFile(csConfig.API.Server.ProfilesPath)
 	if err != nil {
 		return []byte(fmt.Sprintf("could not read profile file: %s", err))
 	}
+
 	return config
 }
 
 func collectAcquisitionConfig() map[string][]byte {
 	log.Info("Collecting acquisition config")
+
 	ret := make(map[string][]byte)
 
 	for _, filename := range csConfig.Crowdsec.AcquisitionFiles {
@@ -286,7 +306,7 @@ cscli support dump -f /tmp/crowdsec-support.zip
 `,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, _ []string) {
 			var err error
 			var skipHub, skipDB, skipCAPI, skipLAPI, skipAgent bool
 			infos := map[string][]byte{
@@ -306,13 +326,13 @@ cscli support dump -f /tmp/crowdsec-support.zip
 				infos[SUPPORT_AGENTS_PATH] = []byte(err.Error())
 			}
 
-			if err := csConfig.LoadAPIServer(true); err != nil {
+			if err = csConfig.LoadAPIServer(true); err != nil {
 				log.Warnf("could not load LAPI, skipping CAPI check")
 				skipLAPI = true
 				infos[SUPPORT_CAPI_STATUS_PATH] = []byte(err.Error())
 			}
 
-			if err := csConfig.LoadCrowdsec(); err != nil {
+			if err = csConfig.LoadCrowdsec(); err != nil {
 				log.Warnf("could not load agent config, skipping crowdsec config check")
 				skipAgent = true
 			}
@@ -398,7 +418,6 @@ cscli support dump -f /tmp/crowdsec-support.zip
 			}
 
 			if !skipAgent {
-
 				acquis := collectAcquisitionConfig()
 
 				for filename, content := range acquis {

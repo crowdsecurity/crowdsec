@@ -67,7 +67,7 @@ func parseDecisionList(content []byte, format string) ([]decisionRaw, error) {
 }
 
 
-func (cli cliDecisions) runImport(cmd *cobra.Command, args []string) error  {
+func (cli *cliDecisions) runImport(cmd *cobra.Command, args []string) error  {
 	flags := cmd.Flags()
 
 	input, err := flags.GetString("input")
@@ -236,7 +236,7 @@ func (cli cliDecisions) runImport(cmd *cobra.Command, args []string) error  {
 }
 
 
-func (cli cliDecisions) NewImportCmd() *cobra.Command {
+func (cli *cliDecisions) newImportCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "import [options]",
 		Short: "Import decisions from a file or pipe",
