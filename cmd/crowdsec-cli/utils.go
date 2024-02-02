@@ -25,6 +25,7 @@ func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *
 			return fmt.Errorf("%s isn't a valid range", *ipRange)
 		}
 	}
+
 	if *ip != "" {
 		ipRepr := net.ParseIP(*ip)
 		if ipRepr == nil {
@@ -32,7 +33,7 @@ func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *
 		}
 	}
 
-	//avoid confusion on scope (ip vs Ip and range vs Range)
+	// avoid confusion on scope (ip vs Ip and range vs Range)
 	switch strings.ToLower(*scope) {
 	case "ip":
 		*scope = types.Ip
@@ -43,6 +44,7 @@ func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *
 	case "as":
 		*scope = types.AS
 	}
+
 	return nil
 }
 
