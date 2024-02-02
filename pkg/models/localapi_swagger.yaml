@@ -684,6 +684,36 @@ paths:
             $ref: "#/definitions/ErrorResponse"
       security:
       - JWTAuthorizer: []
+  /usage-metrics:
+    post:
+      description: Post usage metrics from a LP or a bouncer
+      summary: Send usage metrics
+      tags:
+        - bouncers
+        - watchers
+      operationId: usage-metrics
+      produces:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/AllMetrics'
+          description: 'All metrics'
+      responses:
+        '200':
+          description: successful operation
+          schema:
+            $ref: '#/definitions/SuccessResponse'
+          headers: {}
+        '400':
+          description: "400 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      security:
+      - APIKeyAuthorizer: []
+      - JWTAuthorizer: []
 definitions:
   WatcherRegistrationRequest:
     title: WatcherRegistrationRequest
@@ -994,6 +1024,128 @@ definitions:
           type: string
         value:
           type: string
+  RemediationComponentsMetrics:
+    title: RemediationComponentsMetrics
+    type: array
+    maxItems: 1
+    items:
+      allOf:
+        - $ref: '#/definitions/BaseMetrics'
+        - type: object
+          properties: 
+            type:
+              type: string
+              description: type of the remediation component
+  LogProcessorsMetrics:
+    title: LogProcessorsMetrics
+    type: array
+    maxItems: 1
+    items:
+      allOf:
+        - $ref: '#/definitions/BaseMetrics'
+        - type: object
+          properties:
+            console_options:
+              $ref: '#/definitions/ConsoleOptions'
+            datasources:
+              type: object
+              description: Number of datasources per type
+              additionalProperties: 
+                type: integer
+  AllMetrics:
+    title: AllMetrics
+    type: object
+    properties:
+      remediation_components:
+        type: array
+        items:
+          $ref: '#/definitions/RemediationComponentsMetrics'
+        description: remediation components metrics
+      log_processors:
+        type: array
+        items:
+          $ref: '#/definitions/LogProcessorsMetrics'
+        description: log processors metrics
+  BaseMetrics:
+    title: BaseMetrics
+    type: object
+    properties:
+      version:
+        type: string
+        description: version of the remediation component
+      meta:
+        type: object
+        $ref: '#/definitions/MetricsMeta'
+        description: metrics meta
+      os:
+        type: object
+        $ref: '#/definitions/OSversion'
+        description: OS information
+      metrics:
+        type: array
+        items:
+          $ref: '#/definitions/MetricsDetailItem'
+        description: metrics details
+      feature_flags:
+        type: array
+        items: 
+          type: string
+        description: feature flags (expected to be empty for remediation components)
+    required:
+      - version
+      - os
+      - meta
+  OSversion:
+    title: OSversion
+    type: object
+    properties: 
+      name:
+        type: string
+        description: name of the OS
+      version:
+        type: string
+        description: version of the OS
+  MetricsDetailItem:
+    title: MetricsDetailItem
+    type: object
+    properties:
+      name: 
+        type: string
+        description: name of the metric
+      value:
+        type: number
+        description: value of the metric
+      unit:
+        type: string
+        description: unit of the metric
+      labels:
+        $ref: '#/definitions/MetricsLabels'
+        description: labels of the metric
+  MetricsMeta:
+    title: MetricsMeta
+    type: object
+    properties:
+      window_size_seconds:
+        type: integer
+        description: Size, in seconds, of the window used to compute the metric
+      utc_startup_timestamp:
+        type: number
+        description: UTC timestamp of the startup of the software
+      utc_now_timestamp:
+        type: number
+        description: UTC timestamp of the current time
+  MetricsLabels:
+    title: MetricsLabels
+    type: object
+    additionalProperties: 
+      type: string
+      description: label of the metric
+  ConsoleOptions:
+    title: ConsoleOptions
+    type: array
+    items:
+      type: string
+      description: enabled console options
   ErrorResponse:
     type: "object"
     required:
@@ -1007,6 +1159,16 @@ definitions:
         description: "more detail on individual errors"
     title: "error response"
     description: "error response return by the API"
+  SuccessResponse:
+    type: "object"
+    required:
+      - "message"
+    properties:
+      message:
+        type: "string"
+        description: "message"
+    title: "success response"
+    description: "success response return by the API"
 tags:
   - name: bouncers
     description: 'Operations about decisions : bans, captcha, rate-limit etc.'
