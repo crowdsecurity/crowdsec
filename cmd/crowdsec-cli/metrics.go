@@ -19,8 +19,19 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 )
 
+type cliMetrics struct {
+	cfg configGetter
+}
+
+func NewCLIMetrics(getconfig configGetter) *cliMetrics {
+	return &cliMetrics{
+		cfg: getconfig,
+	}
+}
+
+
 // FormatPrometheusMetrics is a complete rip from prom2json
-func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error {
+func FormatPrometheusMetrics(out io.Writer, url string, formatType string, noUnit bool) error {
 	mfChan := make(chan *dto.MetricFamily, 1024)
 	errChan := make(chan error, 1)
 
@@ -256,9 +267,9 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 	}
 
 	if formatType == "human" {
-		acquisStatsTable(out, acquis_stats)
-		bucketStatsTable(out, buckets_stats)
-		parserStatsTable(out, parsers_stats)
+		acquisStatsTable(out, acquis_stats, noUnit)
+		bucketStatsTable(out, buckets_stats, noUnit)
+		parserStatsTable(out, parsers_stats, noUnit)
 		lapiStatsTable(out, lapi_stats)
 		lapiMachineStatsTable(out, lapi_machine_stats)
 		lapiBouncerStatsTable(out, lapi_bouncer_stats)
@@ -266,8 +277,8 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 		decisionStatsTable(out, decisions_stats)
 		alertStatsTable(out, alerts_stats)
 		stashStatsTable(out, stash_stats)
-		appsecMetricsToTable(out, appsec_engine_stats)
-		appsecRulesToTable(out, appsec_rule_stats)
+		appsecMetricsToTable(out, appsec_engine_stats, noUnit)
+		appsecRulesToTable(out, appsec_rule_stats, noUnit)
 		return nil
 	}
 
@@ -304,52 +315,47 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 	return nil
 }
 
-var noUnit bool
-
-func runMetrics(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
-
-	url, err := flags.GetString("url")
-	if err != nil {
-		return err
-	}
+func (cli *cliMetrics) run(url string, noUnit bool) error {
+	cfg := cli.cfg()
 
 	if url != "" {
-		csConfig.Cscli.PrometheusUrl = url
+		cfg.Cscli.PrometheusUrl = url
 	}
 
-	noUnit, err = flags.GetBool("no-unit")
-	if err != nil {
-		return err
-	}
-
-	if csConfig.Prometheus == nil {
+	if cfg.Prometheus == nil {
 		return fmt.Errorf("prometheus section missing, can't show metrics")
 	}
 
-	if !csConfig.Prometheus.Enabled {
+	if !cfg.Prometheus.Enabled {
 		return fmt.Errorf("prometheus is not enabled, can't show metrics")
 	}
 
-	if err = FormatPrometheusMetrics(color.Output, csConfig.Cscli.PrometheusUrl, csConfig.Cscli.Output); err != nil {
+	if err := FormatPrometheusMetrics(color.Output, cfg.Cscli.PrometheusUrl, cfg.Cscli.Output, noUnit); err != nil {
 		return err
 	}
 	return nil
 }
 
-func NewMetricsCmd() *cobra.Command {
-	cmdMetrics := &cobra.Command{
+func (cli *cliMetrics) NewCommand() *cobra.Command {
+	var (
+		url string
+		noUnit bool
+	)
+
+	cmd := &cobra.Command{
 		Use:               "metrics",
 		Short:             "Display crowdsec prometheus metrics.",
 		Long:              `Fetch metrics from the prometheus server and display them in a human-friendly way`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE:              runMetrics,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.run(url, noUnit)
+		},
 	}
 
-	flags := cmdMetrics.PersistentFlags()
-	flags.StringP("url", "u", "", "Prometheus url (http://<ip>:<port>/metrics)")
-	flags.Bool("no-unit", false, "Show the real number instead of formatted with units")
+	flags := cmd.Flags()
+	flags.StringVarP(&url, "url", "u", "", "Prometheus url (http://<ip>:<port>/metrics)")
+	flags.BoolVar(&noUnit, "no-unit", false, "Show the real number instead of formatted with units")
 
-	return cmdMetrics
+	return cmd
 }
