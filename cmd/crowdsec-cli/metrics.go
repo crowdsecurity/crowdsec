@@ -445,20 +445,20 @@ func (cli *cliMetrics) newShowCmd() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:               "show",
+		Use:               "show [type]...",
 		Short:             "Display all or part of the available metrics.",
 		Long:              `Fetch metrics from a Local API server and display them, optionally filtering on specific types.`,
 		Example:	   `# Show all Metrics, skip empty tables
 cscli metrics show
 
+# Use an alias: "engine", "lapi" or "appsec" to show a group of metrics
+cscli metrics show engine
+
 # Show some specific metrics, show empty tables, connect to a different url
 cscli metrics show acquisition parsers buckets stash --url http://lapi.local:6060/metrics
 
 # Show metrics in json format
-cscli metrics show acquisition parsers buckets stash -o json
-
-# Use the "engine" alias to show all engine-related metrics
-cscli metrics show engine`,
+cscli metrics show acquisition parsers buckets stash -o json`,
 		// Positional args are optional
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
