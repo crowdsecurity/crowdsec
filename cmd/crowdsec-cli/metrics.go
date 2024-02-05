@@ -43,7 +43,7 @@ type (
 
 type metricSection interface {
 	Table(io.Writer, bool, bool)
-	Description() string
+	Description() (string, string)
 }
 
 type metricStore map[string]metricSection
@@ -426,6 +426,10 @@ func (cli *cliMetrics) expandSectionGroups(args []string) []string {
 		switch section {
 		case "engine":
 			ret = append(ret, "acquisition", "parsers", "buckets", "stash")
+		case "lapi":
+			ret = append(ret, "alerts", "decisions", "lapi", "lapi_bouncer", "lapi_decisions", "lapi_machine")
+		case "appsec":
+			ret = append(ret, "appsec_engine", "appsec_rule")
 		default:
 			ret = append(ret, section)
 		}
@@ -473,6 +477,7 @@ cscli metrics show engine`,
 func (cli *cliMetrics) list() error {
 	type metricType struct {
 		Type     string		`json:"type" yaml:"type"`
+		Title    string		`json:"title" yaml:"title"`
 		Description string	`json:"description" yaml:"description"`
 	}
 
@@ -480,9 +485,11 @@ func (cli *cliMetrics) list() error {
 
 	ms := NewMetricStore()
 	for _, section := range maptools.SortedKeys(ms) {
+		title, description := ms[section].Description()
 		allMetrics = append(allMetrics, metricType{
 			Type:        section,
-			Description: ms[section].Description(),
+			Title:       title,
+			Description: description,
 		})
 	}
 
@@ -490,10 +497,10 @@ func (cli *cliMetrics) list() error {
 	case "human":
 		t := newTable(color.Output)
 		t.SetRowLines(false)
-		t.SetHeaders("Type", "Description")
+		t.SetHeaders("Type", "Title", "Description")
 
 		for _, metric := range allMetrics {
-			t.AddRow(metric.Type, metric.Description)
+			t.AddRow(metric.Type, metric.Title, metric.Description)
 		}
 
 		t.Render()

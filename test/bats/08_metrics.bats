@@ -80,15 +80,15 @@ teardown() {
 
 @test "cscli metrics list" {
     rune -0 cscli metrics list
-    assert_output --regexp "Type.*Description"
+    assert_output --regexp "Type.*Title.*Description"
 
     rune -0 cscli metrics list -o json
-    rune -0 jq -c '.[] | [.type,.description]' <(output)
+    rune -0 jq -c '.[] | [.type,.title]' <(output)
     assert_line '["acquisition","Acquisition Metrics"]'
 
     rune -0 cscli metrics list -o raw
     assert_line "- type: acquisition"
-    assert_line "  description: Acquisition Metrics"
+    assert_line "  title: Acquisition Metrics"
 }
 
 @test "cscli metrics show" {

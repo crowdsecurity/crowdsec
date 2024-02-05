@@ -78,8 +78,8 @@ func metricsToTable(t *table.Table, stats map[string]map[string]int, keys []stri
 	return numRows, nil
 }
 
-func (s statBucket) Description() string {
-	return "Bucket Metrics"
+func (s statBucket) Description() (string, string) {
+	return "Bucket Metrics", ""
 }
 
 func (s statBucket) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -93,13 +93,16 @@ func (s statBucket) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	if numRows, err := metricsToTable(t, s, keys, noUnit); err != nil {
 		log.Warningf("while collecting bucket stats: %s", err)
 	} else if numRows > 0 || showEmpty {
-		renderTableTitle(out, "\n" + s.Description() + ":")
+		title, _ := s.Description()
+		renderTableTitle(out, "\n" + title + ":")
 		t.Render()
 	}
 }
 
-func (s statAcquis) Description() string {
-	return "Acquisition Metrics"
+func (s statAcquis) Description() (string, string) {
+	return "Acquisition Metrics",
+		`Acquisition indicates the number of lines read, parsed, and unparsed for reach datasource. Zero read lines indicate the datasource is misconfigured or not producing logs. Zero parsed lines indicates the parser(s) didn't work for the produced logs. Keep in mind that crowdsec only "picks" relevant lines, so non-zero parsed lines isn't an issue.`
+
 }
 
 func (s statAcquis) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -113,13 +116,14 @@ func (s statAcquis) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	if numRows, err := metricsToTable(t, s, keys, noUnit); err != nil {
 		log.Warningf("while collecting acquis stats: %s", err)
 	} else if numRows > 0 || showEmpty {
-		renderTableTitle(out, "\n" + s.Description() + ":")
+		title, _ := s.Description()
+		renderTableTitle(out, "\n" + title + ":")
 		t.Render()
 	}
 }
 
-func (s statAppsecEngine) Description() string {
-	return "Appsec Metrics"
+func (s statAppsecEngine) Description() (string, string) {
+	return "Appsec Metrics", ""
 }
 
 func (s statAppsecEngine) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -131,13 +135,14 @@ func (s statAppsecEngine) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	if numRows, err := metricsToTable(t, s, keys, noUnit); err != nil {
 		log.Warningf("while collecting appsec stats: %s", err)
 	} else if numRows > 0 || showEmpty {
-		renderTableTitle(out, "\n" + s.Description() + ":")
+		title, _ := s.Description()
+		renderTableTitle(out, "\n" + title + ":")
 		t.Render()
 	}
 }
 
-func (s statAppsecRule) Description() string {
-	return "Appsec Rule Metrics"
+func (s statAppsecRule) Description() (string, string) {
+	return "Appsec Rule Metrics", ""
 }
 
 func (s statAppsecRule) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -157,8 +162,8 @@ func (s statAppsecRule) Table(out io.Writer, noUnit bool, showEmpty bool) {
 
 }
 
-func (s statParser) Description() string {
-	return "Parser Metrics"
+func (s statParser) Description() (string, string) {
+	return "Parser Metrics", ""
 }
 
 func (s statParser) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -172,13 +177,14 @@ func (s statParser) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	if numRows, err := metricsToTable(t, s, keys, noUnit); err != nil {
 		log.Warningf("while collecting parsers stats: %s", err)
 	} else if numRows > 0 || showEmpty {
-		renderTableTitle(out, "\n" + s.Description() + ":")
+		title, _ := s.Description()
+		renderTableTitle(out, "\n" + title + ":")
 		t.Render()
 	}
 }
 
-func (s statStash) Description() string {
-	return "Parser Stash Metrics"
+func (s statStash) Description() (string, string) {
+	return "Parser Stash Metrics", ""
 }
 
 func (s statStash) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -202,13 +208,14 @@ func (s statStash) Table(out io.Writer, noUnit bool, showEmpty bool) {
 		numRows++
 	}
 	if numRows > 0 || showEmpty {
-		renderTableTitle(out, "\n" + s.Description() + ":")
+		title, _ := s.Description()
+		renderTableTitle(out, "\n" + title + ":")
 		t.Render()
 	}
 }
 
-func (s statLapi) Description() string {
-	return "Local API Metrics"
+func (s statLapi) Description() (string, string) {
+	return "Local API Metrics", ""
 }
 
 func (s statLapi) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -241,13 +248,14 @@ func (s statLapi) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	}
 
 	if numRows > 0 || showEmpty {
-		renderTableTitle(out, "\n" + s.Description() + ":")
+		title, _ := s.Description()
+		renderTableTitle(out, "\n" + title + ":")
 		t.Render()
 	}
 }
 
-func (s statLapiMachine) Description() string {
-	return "Local API Machines Metrics"
+func (s statLapiMachine) Description() (string, string) {
+	return "Local API Machines Metrics", ""
 }
 
 func (s statLapiMachine) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -259,13 +267,14 @@ func (s statLapiMachine) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	numRows := lapiMetricsToTable(t, s)
 
 	if numRows > 0 || showEmpty{
-		renderTableTitle(out, "\n" + s.Description() + ":")
+		title, _ := s.Description()
+		renderTableTitle(out, "\n" + title + ":")
 		t.Render()
 	}
 }
 
-func (s statLapiBouncer) Description() string {
-	return "Local API Bouncers Metrics"
+func (s statLapiBouncer) Description() (string, string) {
+	return "Local API Bouncers Metrics", ""
 }
 
 func (s statLapiBouncer) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -277,13 +286,14 @@ func (s statLapiBouncer) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	numRows := lapiMetricsToTable(t, s)
 
 	if numRows > 0 || showEmpty {
-		renderTableTitle(out, "\n" + s.Description() + ":")
+		title, _ := s.Description()
+		renderTableTitle(out, "\n" + title + ":")
 		t.Render()
 	}
 }
 
-func (s statLapiDecision) Description() string {
-	return "Local API Bouncers Decisions"
+func (s statLapiDecision) Description() (string, string) {
+	return "Local API Bouncers Decisions", ""
 }
 
 func (s statLapiDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -303,13 +313,14 @@ func (s statLapiDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	}
 
 	if numRows > 0 || showEmpty{
-		renderTableTitle(out, "\n" + s.Description() + ":")
+		title, _ := s.Description()
+		renderTableTitle(out, "\n" + title + ":")
 		t.Render()
 	}
 }
 
-func (s statDecision) Description() string {
-	return "Local API Decisions"
+func (s statDecision) Description() (string, string) {
+	return "Local API Decisions", ""
 }
 
 func (s statDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -334,13 +345,14 @@ func (s statDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	}
 
 	if numRows > 0 || showEmpty{
-		renderTableTitle(out, "\n" + s.Description() + ":")
+		title, _ := s.Description()
+		renderTableTitle(out, "\n" + title + ":")
 		t.Render()
 	}
 }
 
-func (s statAlert) Description() string {
-	return "Local API Alerts"
+func (s statAlert) Description() (string, string) {
+	return "Local API Alerts", ""
 }
 
 func (s statAlert) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -359,7 +371,8 @@ func (s statAlert) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	}
 
 	if numRows > 0 || showEmpty{
-		renderTableTitle(out, "\n" + s.Description() + ":")
+		title, _ := s.Description()
+		renderTableTitle(out, "\n" + title + ":")
 		t.Render()
 	}
 }
