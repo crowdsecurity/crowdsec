@@ -155,6 +155,8 @@ func (cli *cliRoot) colorize(cmd *cobra.Command) {
 		FlagsDataType: cc.White,
 		Flags:         cc.Green,
 		FlagsDescr:    cc.Cyan,
+		NoExtraNewlines: true,
+		NoBottomNewline: true,
 	})
 	cmd.SetOut(color.Output)
 }

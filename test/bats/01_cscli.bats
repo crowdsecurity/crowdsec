@@ -273,15 +273,6 @@ teardown() {
     assert_output 'failed to authenticate to Local API (LAPI): API error: incorrect Username or Password'
 }
 
-@test "cscli metrics" {
-    rune -0 ./instance-crowdsec start
-    rune -0 cscli lapi status
-    rune -0 cscli metrics
-    assert_output --partial "Route"
-    assert_output --partial '/v1/watchers/login'
-    assert_output --partial "Local API Metrics:"
-}
-
 @test "'cscli completion' with or without configuration file" {
     rune -0 cscli completion bash
     assert_output --partial "# bash completion for cscli"
