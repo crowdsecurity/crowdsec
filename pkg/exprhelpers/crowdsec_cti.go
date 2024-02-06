@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+//	"github.com/sanity-io/litter"
 	"github.com/bluele/gcache"
 	"github.com/crowdsecurity/crowdsec/pkg/cti"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -111,6 +112,9 @@ func CrowdsecCTI(params ...any) (any, error) {
 	ctx := context.Background()
 	ctiResp, err := ctiClient.GetSmokeIpWithResponse(ctx, ip)
 	ctiLogger.Debugf("request for %s took %v", ip, time.Since(before))
+//	fmt.Printf("response code: %d", ctiResp.HTTPResponse.StatusCode)
+//	litter.Dump(string(ctiResp.Body))
+
 	if err != nil {
 		switch {
 		case ctiResp.HTTPResponse != nil && ctiResp.HTTPResponse.StatusCode == 403:

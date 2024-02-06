@@ -42,6 +42,7 @@ vendor.tgz
 cmd/crowdsec-cli/cscli
 cmd/crowdsec/crowdsec
 cmd/notification-*/notification-*
+cmd/cscti/cscti
 
 # Test cache (downloaded files)
 .cache

@@ -334,6 +334,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 		log.Warningln("Exprhelpers loaded without database client.")
 	}
 
+	// XXX: just pass the CTICfg
 	if cConfig.API.CTI != nil && *cConfig.API.CTI.Enabled {
 		log.Infof("Crowdsec CTI helper enabled")
 
