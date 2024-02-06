@@ -21,21 +21,22 @@ import (
 )
 
 type (
-	statAcquis map[string]map[string]int
-	statParser map[string]map[string]int
-	statBucket map[string]map[string]int
-	statLapi map[string]map[string]int
-	statLapiMachine map[string]map[string]map[string]int
-	statLapiBouncer map[string]map[string]map[string]int
+	statAcquis       map[string]map[string]int
+	statParser       map[string]map[string]int
+	statBucket       map[string]map[string]int
+	statWhitelist    map[string]map[string]map[string]int
+	statLapi         map[string]map[string]int
+	statLapiMachine  map[string]map[string]map[string]int
+	statLapiBouncer  map[string]map[string]map[string]int
 	statLapiDecision map[string]struct {
 		NonEmpty int
 		Empty    int
 	}
-	statDecision map[string]map[string]map[string]int
+	statDecision     map[string]map[string]map[string]int
 	statAppsecEngine map[string]map[string]int
-	statAppsecRule map[string]map[string]map[string]int
-	statAlert map[string]int
-	statStash map[string]struct {
+	statAppsecRule   map[string]map[string]map[string]int
+	statAlert        map[string]int
+	statStash        map[string]struct {
 		Type  string
 		Count int
 	}
@@ -62,6 +63,7 @@ func NewMetricStore() metricStore {
 		"stash":          statStash{},
 		"appsec-engine":  statAppsecEngine{},
 		"appsec-rule":    statAppsecRule{},
+		"whitelists":     statWhitelist{},
 	}
 }
 
@@ -111,6 +113,7 @@ func (ms metricStore) Fetch(url string) error {
 	mAppsecRule := ms["appsec-rule"].(statAppsecRule)
 	mAlert := ms["alerts"].(statAlert)
 	mStash := ms["stash"].(statStash)
+	mWhitelist := ms["whitelists"].(statWhitelist)
 
 	for idx, fam := range result {
 		if !strings.HasPrefix(fam.Name, "cs_") {
@@ -160,7 +163,9 @@ func (ms metricStore) Fetch(url string) error {
 
 			ival := int(fval)
 			switch fam.Name {
-			/*buckets*/
+			//
+			// buckets
+			//
 			case "cs_bucket_created_total":
 				if _, ok := mBucket[name]; !ok {
 					mBucket[name] = make(map[string]int)
@@ -190,7 +195,9 @@ func (ms metricStore) Fetch(url string) error {
 					mBucket[name] = make(map[string]int)
 				}
 				mBucket[name]["underflow"] += ival
-				/*acquis*/
+			//
+			// parsers
+			//
 			case "cs_parser_hits_total":
 				if _, ok := mAcquis[source]; !ok {
 					mAcquis[source] = make(map[string]int)
@@ -221,6 +228,33 @@ func (ms metricStore) Fetch(url string) error {
 					mParser[name] = make(map[string]int)
 				}
 				mParser[name]["unparsed"] += ival
+			//
+			// whitelists
+			//
+			case "cs_node_wl_hits_total":
+				if _, ok := mWhitelist[name]; !ok {
+					mWhitelist[name] = make(map[string]map[string]int)
+				}
+				if _, ok := mWhitelist[name][reason]; !ok {
+					mWhitelist[name][reason] = make(map[string]int)
+				}
+				mWhitelist[name][reason]["hits"] += ival
+			case "cs_node_wl_hits_ok_total":
+				if _, ok := mWhitelist[name]; !ok {
+					mWhitelist[name] = make(map[string]map[string]int)
+				}
+				if _, ok := mWhitelist[name][reason]; !ok {
+					mWhitelist[name][reason] = make(map[string]int)
+				}
+				mWhitelist[name][reason]["whitelisted"] += ival
+				// track as well whitelisted lines at acquis level
+				if _, ok := mAcquis[source]; !ok {
+					mAcquis[source] = make(map[string]int)
+				}
+				mAcquis[source]["whitelisted"] += ival
+			//
+			// lapi
+			//
 			case "cs_lapi_route_requests_total":
 				if _, ok := mLapi[route]; !ok {
 					mLapi[route] = make(map[string]int)
@@ -256,6 +290,9 @@ func (ms metricStore) Fetch(url string) error {
 					x.NonEmpty += ival
 				}
 				mLapiDecision[bouncer] = x
+			//
+			// decisions
+			//
 			case "cs_active_decisions":
 				if _, ok := mDecision[reason]; !ok {
 					mDecision[reason] = make(map[string]map[string]int)
@@ -265,15 +302,18 @@ func (ms metricStore) Fetch(url string) error {
 				}
 				mDecision[reason][origin][action] += ival
 			case "cs_alerts":
-				/*if _, ok := mAlert[scenario]; !ok {
-					mAlert[scenario] = make(map[string]int)
-				}*/
 				mAlert[reason] += ival
+			//
+			// stash
+			//
 			case "cs_cache_size":
 				mStash[name] = struct {
 					Type  string
 					Count int
 				}{Type: mtype, Count: ival}
+			//
+			// appsec
+			//
 			case "cs_appsec_reqs_total":
 				if _, ok := mAppsecEngine[metric.Labels["appsec_engine"]]; !ok {
 					mAppsecEngine[metric.Labels["appsec_engine"]] = make(map[string]int, 0)
@@ -392,15 +432,15 @@ func (cli *cliMetrics) show(sections []string, url string, noUnit bool) error {
 
 func (cli *cliMetrics) NewCommand() *cobra.Command {
 	var (
-		url string
+		url    string
 		noUnit bool
 	)
 
 	cmd := &cobra.Command{
-		Use:               "metrics",
-		Short:             "Display crowdsec prometheus metrics.",
-		Long:              `Fetch metrics from a Local API server and display them`,
-		Example:	   `# Show all Metrics, skip empty tables (same as "cecli metrics show")
+		Use:   "metrics",
+		Short: "Display crowdsec prometheus metrics.",
+		Long:  `Fetch metrics from a Local API server and display them`,
+		Example: `# Show all Metrics, skip empty tables (same as "cecli metrics show")
 cscli metrics
 
 # Show only some metrics, connect to a different url
@@ -431,7 +471,7 @@ func (cli *cliMetrics) expandSectionGroups(args []string) []string {
 	for _, section := range args {
 		switch section {
 		case "engine":
-			ret = append(ret, "acquisition", "parsers", "buckets", "stash")
+			ret = append(ret, "acquisition", "parsers", "buckets", "stash", "whitelists")
 		case "lapi":
 			ret = append(ret, "alerts", "decisions", "lapi", "lapi-bouncer", "lapi-decisions", "lapi-machine")
 		case "appsec":
@@ -446,15 +486,15 @@ func (cli *cliMetrics) expandSectionGroups(args []string) []string {
 
 func (cli *cliMetrics) newShowCmd() *cobra.Command {
 	var (
-		url string
+		url    string
 		noUnit bool
 	)
 
 	cmd := &cobra.Command{
-		Use:               "show [type]...",
-		Short:             "Display all or part of the available metrics.",
-		Long:              `Fetch metrics from a Local API server and display them, optionally filtering on specific types.`,
-		Example:	   `# Show all Metrics, skip empty tables
+		Use:   "show [type]...",
+		Short: "Display all or part of the available metrics.",
+		Long:  `Fetch metrics from a Local API server and display them, optionally filtering on specific types.`,
+		Example: `# Show all Metrics, skip empty tables
 cscli metrics show
 
 # Use an alias: "engine", "lapi" or "appsec" to show a group of metrics
@@ -482,9 +522,9 @@ cscli metrics show acquisition parsers buckets stash -o json`,
 
 func (cli *cliMetrics) list() error {
 	type metricType struct {
-		Type     string		`json:"type" yaml:"type"`
-		Title    string		`json:"title" yaml:"title"`
-		Description string	`json:"description" yaml:"description"`
+		Type        string `json:"type" yaml:"type"`
+		Title       string `json:"title" yaml:"title"`
+		Description string `json:"description" yaml:"description"`
 	}
 
 	var allMetrics []metricType
