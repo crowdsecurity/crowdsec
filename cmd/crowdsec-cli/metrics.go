@@ -78,6 +78,7 @@ func (ms metricStore) Fetch(url string) error {
 	transport.ResponseHeaderTimeout = time.Minute
 	go func() {
 		defer trace.CatchPanic("crowdsec/ShowPrometheus")
+
 		err := prom2json.FetchMetricFamilies(url, mfChan, transport)
 		if err != nil {
 			errChan <- fmt.Errorf("failed to fetch metrics: %w", err)
