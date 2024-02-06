@@ -115,6 +115,13 @@ func (s statBucket) Description() (string, string) {
 		`Measure events in different scenarios. Current count is the number of buckets during metrics collection. Overflows are past event-producing buckets, while Expired are the ones that didn’t receive enough events to Overflow.`
 }
 
+func (s statBucket) Process(bucket, metric string, val int) {
+	if _, ok := s[bucket]; !ok {
+		s[bucket] = make(map[string]int)
+	}
+	s[bucket][metric] += val
+}
+
 func (s statBucket) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
@@ -135,6 +142,13 @@ func (s statBucket) Table(out io.Writer, noUnit bool, showEmpty bool) {
 func (s statAcquis) Description() (string, string) {
 	return "Acquisition Metrics",
 		`Measures the lines read, parsed, and unparsed per datasource. Zero read lines indicate a misconfigured or inactive datasource. Zero parsed lines mean the parser(s) failed. Non-zero parsed lines are fine as crowdsec selects relevant lines.`
+}
+
+func (s statAcquis) Process(source, metric string, val int) {
+	if _, ok := s[source]; !ok {
+		s[source] = make(map[string]int)
+	}
+	s[source][metric] += val
 }
 
 func (s statAcquis) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -159,6 +173,13 @@ func (s statAppsecEngine) Description() (string, string) {
 		`Measures the number of parsed and blocked requests by the AppSec Component.`
 }
 
+func (s statAppsecEngine) Process(appsecEngine, metric string, val int) {
+	if _, ok := s[appsecEngine]; !ok {
+		s[appsecEngine] = make(map[string]int)
+	}
+	s[appsecEngine][metric] += val
+}
+
 func (s statAppsecEngine) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
@@ -177,6 +198,16 @@ func (s statAppsecEngine) Table(out io.Writer, noUnit bool, showEmpty bool) {
 func (s statAppsecRule) Description() (string, string) {
 	return "Appsec Rule Metrics",
 		`Provides “per AppSec Component” information about the number of matches for loaded AppSec Rules.`
+}
+
+func (s statAppsecRule) Process(appsecEngine, appsecRule string, metric string, val int) {
+	if _, ok := s[appsecEngine]; !ok {
+		s[appsecEngine] = make(map[string]map[string]int)
+	}
+	if _, ok := s[appsecEngine][appsecRule]; !ok {
+		s[appsecEngine][appsecRule] = make(map[string]int)
+	}
+	s[appsecEngine][appsecRule][metric] += val
 }
 
 func (s statAppsecRule) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -201,6 +232,16 @@ func (s statWhitelist) Description() (string, string) {
 		`Tracks the number of events processed and possibly whitelisted by each parser whitelist.`
 }
 
+func (s statWhitelist) Process(whitelist, reason, metric string, val int) {
+	if _, ok := s[whitelist]; !ok {
+		s[whitelist] = make(map[string]map[string]int)
+	}
+	if _, ok := s[whitelist][reason]; !ok {
+		s[whitelist][reason] = make(map[string]int)
+	}
+	s[whitelist][reason][metric] += val
+}
+
 func (s statWhitelist) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
@@ -219,6 +260,13 @@ func (s statWhitelist) Table(out io.Writer, noUnit bool, showEmpty bool) {
 func (s statParser) Description() (string, string) {
 	return "Parser Metrics",
 		`Tracks the number of events processed by each parser and indicates success of failure. Zero parsed lines means the parer(s) failed. Non-zero unparsed lines are fine as crowdsec select relevant lines.`
+}
+
+func (s statParser) Process(parser, metric string, val int) {
+	if _, ok := s[parser]; !ok {
+		s[parser] = make(map[string]int)
+	}
+	s[parser][metric] += val
 }
 
 func (s statParser) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -241,6 +289,16 @@ func (s statParser) Table(out io.Writer, noUnit bool, showEmpty bool) {
 func (s statStash) Description() (string, string) {
 	return "Parser Stash Metrics",
 		`Tracks the status of stashes that might be created by various parsers and scenarios.`
+}
+
+func (s statStash) Process(name, mtype string, val int) {
+	s[name] = struct {
+		Type  string
+		Count int
+	}{
+		Type:  mtype,
+		Count: val,
+	}
 }
 
 func (s statStash) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -273,6 +331,13 @@ func (s statStash) Table(out io.Writer, noUnit bool, showEmpty bool) {
 func (s statLapi) Description() (string, string) {
 	return "Local API Metrics",
 		`Monitors the requests made to local API routes.`
+}
+
+func (s statLapi) Process(route, method string, val int) {
+	if _, ok := s[route]; !ok {
+		s[route] = make(map[string]int)
+	}
+	s[route][method] += val
 }
 
 func (s statLapi) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -316,6 +381,16 @@ func (s statLapiMachine) Description() (string, string) {
 		`Tracks the number of calls to the local API from each registered machine.`
 }
 
+func (s statLapiMachine) Process(machine, route, method string, val int) {
+	if _, ok := s[machine]; !ok {
+		s[machine] = make(map[string]map[string]int)
+	}
+	if _, ok := s[machine][route]; !ok {
+		s[machine][route] = make(map[string]int)
+	}
+	s[machine][route][method] += val
+}
+
 func (s statLapiMachine) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
@@ -336,6 +411,16 @@ func (s statLapiBouncer) Description() (string, string) {
 		`Tracks total hits to remediation component related API routes.`
 }
 
+func (s statLapiBouncer) Process(bouncer, route, method string, val int) {
+	if _, ok := s[bouncer]; !ok {
+		s[bouncer] = make(map[string]map[string]int)
+	}
+	if _, ok := s[bouncer][route]; !ok {
+		s[bouncer][route] = make(map[string]int)
+	}
+	s[bouncer][route][method] += val
+}
+
 func (s statLapiBouncer) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
@@ -354,6 +439,23 @@ func (s statLapiBouncer) Table(out io.Writer, noUnit bool, showEmpty bool) {
 func (s statLapiDecision) Description() (string, string) {
 	return "Local API Bouncers Decisions",
 		`Tracks the number of empty/non-empty answers from LAPI to bouncers that are working in "live" mode.`
+}
+
+func (s statLapiDecision) Process(bouncer, fam string, val int) {
+	if _, ok := s[bouncer]; !ok {
+		s[bouncer] = struct {
+			NonEmpty int
+			Empty    int
+		}{}
+	}
+	x := s[bouncer]
+	switch fam {
+	case "cs_lapi_decisions_ko_total":
+		x.Empty += val
+	case "cs_lapi_decisions_ok_total":
+		x.NonEmpty += val
+	}
+	s[bouncer] = x
 }
 
 func (s statLapiDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -382,6 +484,16 @@ func (s statLapiDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
 func (s statDecision) Description() (string, string) {
 	return "Local API Decisions",
 		`Provides information about all currently active decisions. Includes both local (crowdsec) and global decisions (CAPI), and lists subscriptions (lists).`
+}
+
+func (s statDecision) Process(reason, origin, action string, val int) {
+	if _, ok := s[reason]; !ok {
+		s[reason] = make(map[string]map[string]int)
+	}
+	if _, ok := s[reason][origin]; !ok {
+		s[reason][origin] = make(map[string]int)
+	}
+	s[reason][origin][action] += val
 }
 
 func (s statDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -415,6 +527,10 @@ func (s statDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
 func (s statAlert) Description() (string, string) {
 	return "Local API Alerts",
 		`Tracks the total number of past and present alerts for the installed scenarios.`
+}
+
+func (s statAlert) Process(reason string, val int) {
+	s[reason] += val
 }
 
 func (s statAlert) Table(out io.Writer, noUnit bool, showEmpty bool) {

@@ -154,6 +154,9 @@ func (ms metricStore) Fetch(url string) error {
 			origin := metric.Labels["origin"]
 			action := metric.Labels["action"]
 
+			appsecEngine := metric.Labels["appsec_engine"]
+			appsecRule := metric.Labels["rule_name"]
+
 			mtype := metric.Labels["type"]
 
 			fval, err := strconv.ParseFloat(value, 32)
@@ -167,173 +170,72 @@ func (ms metricStore) Fetch(url string) error {
 			// buckets
 			//
 			case "cs_bucket_created_total":
-				if _, ok := mBucket[name]; !ok {
-					mBucket[name] = make(map[string]int)
-				}
-				mBucket[name]["instantiation"] += ival
+				mBucket.Process(name, "instantiation", ival)
 			case "cs_buckets":
-				if _, ok := mBucket[name]; !ok {
-					mBucket[name] = make(map[string]int)
-				}
-				mBucket[name]["curr_count"] += ival
+				mBucket.Process(name, "curr_count", ival)
 			case "cs_bucket_overflowed_total":
-				if _, ok := mBucket[name]; !ok {
-					mBucket[name] = make(map[string]int)
-				}
-				mBucket[name]["overflow"] += ival
+				mBucket.Process(name, "overflow", ival)
 			case "cs_bucket_poured_total":
-				if _, ok := mBucket[name]; !ok {
-					mBucket[name] = make(map[string]int)
-				}
-				if _, ok := mAcquis[source]; !ok {
-					mAcquis[source] = make(map[string]int)
-				}
-				mBucket[name]["pour"] += ival
-				mAcquis[source]["pour"] += ival
+				mBucket.Process(name, "pour", ival)
+				mAcquis.Process(source, "pour", ival)
 			case "cs_bucket_underflowed_total":
-				if _, ok := mBucket[name]; !ok {
-					mBucket[name] = make(map[string]int)
-				}
-				mBucket[name]["underflow"] += ival
+				mBucket.Process(name, "underflow", ival)
 			//
 			// parsers
 			//
 			case "cs_parser_hits_total":
-				if _, ok := mAcquis[source]; !ok {
-					mAcquis[source] = make(map[string]int)
-				}
-				mAcquis[source]["reads"] += ival
+				mAcquis.Process(source, "reads", ival)
 			case "cs_parser_hits_ok_total":
-				if _, ok := mAcquis[source]; !ok {
-					mAcquis[source] = make(map[string]int)
-				}
-				mAcquis[source]["parsed"] += ival
+				mAcquis.Process(source, "parsed", ival)
 			case "cs_parser_hits_ko_total":
-				if _, ok := mAcquis[source]; !ok {
-					mAcquis[source] = make(map[string]int)
-				}
-				mAcquis[source]["unparsed"] += ival
+				mAcquis.Process(source, "unparsed", ival)
 			case "cs_node_hits_total":
-				if _, ok := mParser[name]; !ok {
-					mParser[name] = make(map[string]int)
-				}
-				mParser[name]["hits"] += ival
+				mParser.Process(name, "hits", ival)
 			case "cs_node_hits_ok_total":
-				if _, ok := mParser[name]; !ok {
-					mParser[name] = make(map[string]int)
-				}
-				mParser[name]["parsed"] += ival
+				mParser.Process(name, "parsed", ival)
 			case "cs_node_hits_ko_total":
-				if _, ok := mParser[name]; !ok {
-					mParser[name] = make(map[string]int)
-				}
-				mParser[name]["unparsed"] += ival
+				mParser.Process(name, "unparsed", ival)
 			//
 			// whitelists
 			//
 			case "cs_node_wl_hits_total":
-				if _, ok := mWhitelist[name]; !ok {
-					mWhitelist[name] = make(map[string]map[string]int)
-				}
-				if _, ok := mWhitelist[name][reason]; !ok {
-					mWhitelist[name][reason] = make(map[string]int)
-				}
-				mWhitelist[name][reason]["hits"] += ival
+				mWhitelist.Process(name, reason, "hits", ival)
 			case "cs_node_wl_hits_ok_total":
-				if _, ok := mWhitelist[name]; !ok {
-					mWhitelist[name] = make(map[string]map[string]int)
-				}
-				if _, ok := mWhitelist[name][reason]; !ok {
-					mWhitelist[name][reason] = make(map[string]int)
-				}
-				mWhitelist[name][reason]["whitelisted"] += ival
+				mWhitelist.Process(name, reason, "whitelisted", ival)
 				// track as well whitelisted lines at acquis level
-				if _, ok := mAcquis[source]; !ok {
-					mAcquis[source] = make(map[string]int)
-				}
-				mAcquis[source]["whitelisted"] += ival
+				mAcquis.Process(source, "whitelisted", ival)
 			//
 			// lapi
 			//
 			case "cs_lapi_route_requests_total":
-				if _, ok := mLapi[route]; !ok {
-					mLapi[route] = make(map[string]int)
-				}
-				mLapi[route][method] += ival
+				mLapi.Process(route, method, ival)
 			case "cs_lapi_machine_requests_total":
-				if _, ok := mLapiMachine[machine]; !ok {
-					mLapiMachine[machine] = make(map[string]map[string]int)
-				}
-				if _, ok := mLapiMachine[machine][route]; !ok {
-					mLapiMachine[machine][route] = make(map[string]int)
-				}
-				mLapiMachine[machine][route][method] += ival
+				mLapiMachine.Process(machine, route, method, ival)
 			case "cs_lapi_bouncer_requests_total":
-				if _, ok := mLapiBouncer[bouncer]; !ok {
-					mLapiBouncer[bouncer] = make(map[string]map[string]int)
-				}
-				if _, ok := mLapiBouncer[bouncer][route]; !ok {
-					mLapiBouncer[bouncer][route] = make(map[string]int)
-				}
-				mLapiBouncer[bouncer][route][method] += ival
+				mLapiBouncer.Process(bouncer, route, method, ival)
 			case "cs_lapi_decisions_ko_total", "cs_lapi_decisions_ok_total":
-				if _, ok := mLapiDecision[bouncer]; !ok {
-					mLapiDecision[bouncer] = struct {
-						NonEmpty int
-						Empty    int
-					}{}
-				}
-				x := mLapiDecision[bouncer]
-				if fam.Name == "cs_lapi_decisions_ko_total" {
-					x.Empty += ival
-				} else if fam.Name == "cs_lapi_decisions_ok_total" {
-					x.NonEmpty += ival
-				}
-				mLapiDecision[bouncer] = x
+				mLapiDecision.Process(bouncer, fam.Name, ival)
 			//
 			// decisions
 			//
 			case "cs_active_decisions":
-				if _, ok := mDecision[reason]; !ok {
-					mDecision[reason] = make(map[string]map[string]int)
-				}
-				if _, ok := mDecision[reason][origin]; !ok {
-					mDecision[reason][origin] = make(map[string]int)
-				}
-				mDecision[reason][origin][action] += ival
+				mDecision.Process(reason, origin, action, ival)
 			case "cs_alerts":
-				mAlert[reason] += ival
+				mAlert.Process(reason, ival)
 			//
 			// stash
 			//
 			case "cs_cache_size":
-				mStash[name] = struct {
-					Type  string
-					Count int
-				}{Type: mtype, Count: ival}
+				mStash.Process(name, mtype,ival)
 			//
 			// appsec
 			//
 			case "cs_appsec_reqs_total":
-				if _, ok := mAppsecEngine[metric.Labels["appsec_engine"]]; !ok {
-					mAppsecEngine[metric.Labels["appsec_engine"]] = make(map[string]int, 0)
-				}
-				mAppsecEngine[metric.Labels["appsec_engine"]]["processed"] = ival
+				mAppsecEngine.Process(appsecEngine, "processed", ival)
 			case "cs_appsec_block_total":
-				if _, ok := mAppsecEngine[metric.Labels["appsec_engine"]]; !ok {
-					mAppsecEngine[metric.Labels["appsec_engine"]] = make(map[string]int, 0)
-				}
-				mAppsecEngine[metric.Labels["appsec_engine"]]["blocked"] = ival
+				mAppsecEngine.Process(appsecEngine, "blocked", ival)
 			case "cs_appsec_rule_hits":
-				appsecEngine := metric.Labels["appsec_engine"]
-				ruleID := metric.Labels["rule_name"]
-				if _, ok := mAppsecRule[appsecEngine]; !ok {
-					mAppsecRule[appsecEngine] = make(map[string]map[string]int, 0)
-				}
-				if _, ok := mAppsecRule[appsecEngine][ruleID]; !ok {
-					mAppsecRule[appsecEngine][ruleID] = make(map[string]int, 0)
-				}
-				mAppsecRule[appsecEngine][ruleID]["triggered"] = ival
+				mAppsecRule.Process(appsecEngine, appsecRule, "triggered", ival)
 			default:
 				log.Debugf("unknown: %+v", fam.Name)
 				continue
