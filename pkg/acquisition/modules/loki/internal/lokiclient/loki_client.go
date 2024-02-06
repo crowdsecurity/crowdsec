@@ -316,7 +316,7 @@ func NewLokiClient(config Config) *LokiClient {
 
 // Create a wrapper for http.Get to be able to set headers and auth
 func (lc *LokiClient) Get(url string) (*http.Response, error) {
-	request, err := http.NewRequest("GET", url, nil)
+	request, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
