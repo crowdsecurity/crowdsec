@@ -79,7 +79,8 @@ func metricsToTable(t *table.Table, stats map[string]map[string]int, keys []stri
 }
 
 func (s statBucket) Description() (string, string) {
-	return "Bucket Metrics", ""
+	return "Bucket Metrics",
+		`Measure events in different scenarios. Current count is the number of buckets during metrics collection. Overflows are past event-producing buckets, while Expired are the ones that didn’t receive enough events to Overflow.`
 }
 
 func (s statBucket) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -101,8 +102,7 @@ func (s statBucket) Table(out io.Writer, noUnit bool, showEmpty bool) {
 
 func (s statAcquis) Description() (string, string) {
 	return "Acquisition Metrics",
-		`Acquisition indicates the number of lines read, parsed, and unparsed for reach datasource. Zero read lines indicate the datasource is misconfigured or not producing logs. Zero parsed lines indicates the parser(s) didn't work for the produced logs. Keep in mind that crowdsec only "picks" relevant lines, so non-zero parsed lines isn't an issue.`
-
+		`Measures the lines read, parsed, and unparsed per datasource. Zero read lines indicate a misconfigured or inactive datasource. Zero parsed lines mean the parser(s) failed. Non-zero parsed lines are fine as crowdsec selects relevant lines.`
 }
 
 func (s statAcquis) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -123,7 +123,8 @@ func (s statAcquis) Table(out io.Writer, noUnit bool, showEmpty bool) {
 }
 
 func (s statAppsecEngine) Description() (string, string) {
-	return "Appsec Metrics", ""
+	return "Appsec Metrics",
+		`Measures the number of parsed and blocked requests by the AppSec Component.`
 }
 
 func (s statAppsecEngine) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -142,7 +143,8 @@ func (s statAppsecEngine) Table(out io.Writer, noUnit bool, showEmpty bool) {
 }
 
 func (s statAppsecRule) Description() (string, string) {
-	return "Appsec Rule Metrics", ""
+	return "Appsec Rule Metrics",
+		`Provides “per AppSec Component” information about the number of matches for loaded AppSec Rules.`
 }
 
 func (s statAppsecRule) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -163,7 +165,8 @@ func (s statAppsecRule) Table(out io.Writer, noUnit bool, showEmpty bool) {
 }
 
 func (s statParser) Description() (string, string) {
-	return "Parser Metrics", ""
+	return "Parser Metrics",
+		`Tracks the number of events processed by each parser and indicates success of failure. Zero parsed lines means the parer(s) failed. Non-zero unparsed lines are fine as crowdsec select relevant lines.`
 }
 
 func (s statParser) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -184,7 +187,8 @@ func (s statParser) Table(out io.Writer, noUnit bool, showEmpty bool) {
 }
 
 func (s statStash) Description() (string, string) {
-	return "Parser Stash Metrics", ""
+	return "Parser Stash Metrics",
+		`Tracks the status of stashes that might be created by various parsers and scenarios.`
 }
 
 func (s statStash) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -215,7 +219,8 @@ func (s statStash) Table(out io.Writer, noUnit bool, showEmpty bool) {
 }
 
 func (s statLapi) Description() (string, string) {
-	return "Local API Metrics", ""
+	return "Local API Metrics",
+		`Monitors the requests made to local API routes.`
 }
 
 func (s statLapi) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -255,7 +260,8 @@ func (s statLapi) Table(out io.Writer, noUnit bool, showEmpty bool) {
 }
 
 func (s statLapiMachine) Description() (string, string) {
-	return "Local API Machines Metrics", ""
+	return "Local API Machines Metrics",
+		`Tracks the number of calls to the local API from each registered machine.`
 }
 
 func (s statLapiMachine) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -274,7 +280,8 @@ func (s statLapiMachine) Table(out io.Writer, noUnit bool, showEmpty bool) {
 }
 
 func (s statLapiBouncer) Description() (string, string) {
-	return "Local API Bouncers Metrics", ""
+	return "Local API Bouncers Metrics",
+		`Tracks total hits to remediation component related API routes.`
 }
 
 func (s statLapiBouncer) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -320,7 +327,8 @@ func (s statLapiDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
 }
 
 func (s statDecision) Description() (string, string) {
-	return "Local API Decisions", ""
+	return "Local API Decisions",
+		`Provides information about all currently active decisions. Includes both local (crowdsec) and global decisions (CAPI), and lists subscriptions (lists).`
 }
 
 func (s statDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -352,7 +360,8 @@ func (s statDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
 }
 
 func (s statAlert) Description() (string, string) {
-	return "Local API Alerts", ""
+	return "Local API Alerts",
+		`Tracks the total number of past and present alerts for the installed scenarios.`
 }
 
 func (s statAlert) Table(out io.Writer, noUnit bool, showEmpty bool) {

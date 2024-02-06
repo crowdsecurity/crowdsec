@@ -496,7 +496,7 @@ func (cli *cliMetrics) list() error {
 	switch cli.cfg().Cscli.Output {
 	case "human":
 		t := newTable(color.Output)
-		t.SetRowLines(false)
+		t.SetRowLines(true)
 		t.SetHeaders("Type", "Title", "Description")
 
 		for _, metric := range allMetrics {
