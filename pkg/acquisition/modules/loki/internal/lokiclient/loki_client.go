@@ -116,7 +116,7 @@ func (lc *LokiClient) queryRange(uri string, ctx context.Context, c chan *LokiQu
 		case <-lc.t.Dying():
 			return lc.t.Err()
 		case <-ticker.C:
-			resp, err := http.Get(uri)
+			resp, err := lc.Get(uri)
 			if err != nil {
 				if ok := lc.shouldRetry(); !ok {
 					return errors.Wrapf(err, "error querying range")
@@ -215,7 +215,7 @@ func (lc *LokiClient) Ready(ctx context.Context) error {
 			return lc.t.Err()
 		case <-tick.C:
 			lc.Logger.Debug("Checking if Loki is ready")
-			resp, err := http.Get(url)
+			resp, err := lc.Get(url)
 			if err != nil {
 				lc.Logger.Warnf("Error checking if Loki is ready: %s", err)
 				continue
@@ -312,4 +312,20 @@ func (lc *LokiClient) QueryRange(ctx context.Context, infinite bool) chan *LokiQ
 
 func NewLokiClient(config Config) *LokiClient {
 	return &LokiClient{Logger: log.WithField("component", "lokiclient"), config: config}
+}
+
+// Create a wrapper for http.Get to be able to set headers and auth
+func (lc *LokiClient) Get(url string) (*http.Response, error) {
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range lc.config.Headers {
+		request.Header.Add(k, v)
+	}
+	if lc.config.Username != "" || lc.config.Password != "" {
+		request.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(lc.config.Username+":"+lc.config.Password)))
+	}
+	request.Header.Set("User-Agent", "Crowdsec "+cwversion.VersionStr())
+	return http.DefaultClient.Do(request)
 }
