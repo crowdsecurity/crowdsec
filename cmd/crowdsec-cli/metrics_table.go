@@ -7,6 +7,8 @@ import (
 
 	"github.com/aquasecurity/table"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/crowdsecurity/go-cs-lib/maptools"
 )
 
 func lapiMetricsToTable(t *table.Table, stats map[string]map[string]map[string]int) int {
@@ -47,15 +49,10 @@ func metricsToTable(t *table.Table, stats map[string]map[string]int, keys []stri
 	if t == nil {
 		return 0, fmt.Errorf("nil table")
 	}
-	// sort keys to keep consistent order when printing
-	sortedKeys := []string{}
-	for k := range stats {
-		sortedKeys = append(sortedKeys, k)
-	}
-	sort.Strings(sortedKeys)
 
 	numRows := 0
-	for _, alabel := range sortedKeys {
+
+	for _, alabel := range maptools.SortedKeys(stats) {
 		astats, ok := stats[alabel]
 		if !ok {
 			continue
@@ -81,7 +78,12 @@ func metricsToTable(t *table.Table, stats map[string]map[string]int, keys []stri
 	return numRows, nil
 }
 
-func (s statBucket) table(out io.Writer, noUnit bool) {
+func (s statBucket) Description() (string, string) {
+	return "Bucket Metrics",
+		`Measure events in different scenarios. Current count is the number of buckets during metrics collection. Overflows are past event-producing buckets, while Expired are the ones that didn’t receive enough events to Overflow.`
+}
+
+func (s statBucket) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Bucket", "Current Count", "Overflows", "Instantiated", "Poured", "Expired")
@@ -91,13 +93,19 @@ func (s statBucket) table(out io.Writer, noUnit bool) {
 
 	if numRows, err := metricsToTable(t, s, keys, noUnit); err != nil {
 		log.Warningf("while collecting bucket stats: %s", err)
-	} else if numRows > 0 {
-		renderTableTitle(out, "\nBucket Metrics:")
+	} else if numRows > 0 || showEmpty {
+		title, _ := s.Description()
+		renderTableTitle(out, "\n" + title + ":")
 		t.Render()
 	}
 }
 
-func (s statAcquis) table(out io.Writer, noUnit bool) {
+func (s statAcquis) Description() (string, string) {
+	return "Acquisition Metrics",
+		`Measures the lines read, parsed, and unparsed per datasource. Zero read lines indicate a misconfigured or inactive datasource. Zero parsed lines mean the parser(s) failed. Non-zero parsed lines are fine as crowdsec selects relevant lines.`
+}
+
+func (s statAcquis) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Source", "Lines read", "Lines parsed", "Lines unparsed", "Lines poured to bucket")
@@ -107,13 +115,19 @@ func (s statAcquis) table(out io.Writer, noUnit bool) {
 
 	if numRows, err := metricsToTable(t, s, keys, noUnit); err != nil {
 		log.Warningf("while collecting acquis stats: %s", err)
-	} else if numRows > 0 {
-		renderTableTitle(out, "\nAcquisition Metrics:")
+	} else if numRows > 0 || showEmpty {
+		title, _ := s.Description()
+		renderTableTitle(out, "\n" + title + ":")
 		t.Render()
 	}
 }
 
-func (s statAppsecEngine) table(out io.Writer, noUnit bool) {
+func (s statAppsecEngine) Description() (string, string) {
+	return "Appsec Metrics",
+		`Measures the number of parsed and blocked requests by the AppSec Component.`
+}
+
+func (s statAppsecEngine) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Appsec Engine", "Processed", "Blocked")
@@ -121,13 +135,19 @@ func (s statAppsecEngine) table(out io.Writer, noUnit bool) {
 	keys := []string{"processed", "blocked"}
 	if numRows, err := metricsToTable(t, s, keys, noUnit); err != nil {
 		log.Warningf("while collecting appsec stats: %s", err)
-	} else if numRows > 0 {
-		renderTableTitle(out, "\nAppsec Metrics:")
+	} else if numRows > 0 || showEmpty {
+		title, _ := s.Description()
+		renderTableTitle(out, "\n" + title + ":")
 		t.Render()
 	}
 }
 
-func (s statAppsecRule) table(out io.Writer, noUnit bool) {
+func (s statAppsecRule) Description() (string, string) {
+	return "Appsec Rule Metrics",
+		`Provides “per AppSec Component” information about the number of matches for loaded AppSec Rules.`
+}
+
+func (s statAppsecRule) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	for appsecEngine, appsecEngineRulesStats := range s {
 		t := newTable(out)
 		t.SetRowLines(false)
@@ -136,7 +156,7 @@ func (s statAppsecRule) table(out io.Writer, noUnit bool) {
 		keys := []string{"triggered"}
 		if numRows, err := metricsToTable(t, appsecEngineRulesStats, keys, noUnit); err != nil {
 			log.Warningf("while collecting appsec rules stats: %s", err)
-		} else if numRows > 0 {
+		} else if numRows > 0 || showEmpty{
 			renderTableTitle(out, fmt.Sprintf("\nAppsec '%s' Rules Metrics:", appsecEngine))
 			t.Render()
 		}
@@ -144,7 +164,12 @@ func (s statAppsecRule) table(out io.Writer, noUnit bool) {
 
 }
 
-func (s statParser) table(out io.Writer, noUnit bool) {
+func (s statParser) Description() (string, string) {
+	return "Parser Metrics",
+		`Tracks the number of events processed by each parser and indicates success of failure. Zero parsed lines means the parer(s) failed. Non-zero unparsed lines are fine as crowdsec select relevant lines.`
+}
+
+func (s statParser) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Parsers", "Hits", "Parsed", "Unparsed")
@@ -154,27 +179,28 @@ func (s statParser) table(out io.Writer, noUnit bool) {
 
 	if numRows, err := metricsToTable(t, s, keys, noUnit); err != nil {
 		log.Warningf("while collecting parsers stats: %s", err)
-	} else if numRows > 0 {
-		renderTableTitle(out, "\nParser Metrics:")
+	} else if numRows > 0 || showEmpty {
+		title, _ := s.Description()
+		renderTableTitle(out, "\n" + title + ":")
 		t.Render()
 	}
 }
 
-func (s statStash) table(out io.Writer) {
+func (s statStash) Description() (string, string) {
+	return "Parser Stash Metrics",
+		`Tracks the status of stashes that might be created by various parsers and scenarios.`
+}
+
+func (s statStash) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Name", "Type", "Items")
 	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
 
 	// unfortunately, we can't reuse metricsToTable as the structure is too different :/
-	sortedKeys := []string{}
-	for k := range s {
-		sortedKeys = append(sortedKeys, k)
-	}
-	sort.Strings(sortedKeys)
-
 	numRows := 0
-	for _, alabel := range sortedKeys {
+
+	for _, alabel := range maptools.SortedKeys(s) {
 		astats := s[alabel]
 
 		row := []string{
@@ -185,27 +211,28 @@ func (s statStash) table(out io.Writer) {
 		t.AddRow(row...)
 		numRows++
 	}
-	if numRows > 0 {
-		renderTableTitle(out, "\nParser Stash Metrics:")
+	if numRows > 0 || showEmpty {
+		title, _ := s.Description()
+		renderTableTitle(out, "\n" + title + ":")
 		t.Render()
 	}
 }
 
-func (s statLapi) table(out io.Writer) {
+func (s statLapi) Description() (string, string) {
+	return "Local API Metrics",
+		`Monitors the requests made to local API routes.`
+}
+
+func (s statLapi) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Route", "Method", "Hits")
 	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
 
 	// unfortunately, we can't reuse metricsToTable as the structure is too different :/
-	sortedKeys := []string{}
-	for k := range s {
-		sortedKeys = append(sortedKeys, k)
-	}
-	sort.Strings(sortedKeys)
-
 	numRows := 0
-	for _, alabel := range sortedKeys {
+
+	for _, alabel := range maptools.SortedKeys(s) {
 		astats := s[alabel]
 
 		subKeys := []string{}
@@ -225,13 +252,19 @@ func (s statLapi) table(out io.Writer) {
 		}
 	}
 
-	if numRows > 0 {
-		renderTableTitle(out, "\nLocal API Metrics:")
+	if numRows > 0 || showEmpty {
+		title, _ := s.Description()
+		renderTableTitle(out, "\n" + title + ":")
 		t.Render()
 	}
 }
 
-func (s statLapiMachine) table(out io.Writer) {
+func (s statLapiMachine) Description() (string, string) {
+	return "Local API Machines Metrics",
+		`Tracks the number of calls to the local API from each registered machine.`
+}
+
+func (s statLapiMachine) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Machine", "Route", "Method", "Hits")
@@ -239,13 +272,19 @@ func (s statLapiMachine) table(out io.Writer) {
 
 	numRows := lapiMetricsToTable(t, s)
 
-	if numRows > 0 {
-		renderTableTitle(out, "\nLocal API Machines Metrics:")
+	if numRows > 0 || showEmpty{
+		title, _ := s.Description()
+		renderTableTitle(out, "\n" + title + ":")
 		t.Render()
 	}
 }
 
-func (s statLapiBouncer) table(out io.Writer) {
+func (s statLapiBouncer) Description() (string, string) {
+	return "Local API Bouncers Metrics",
+		`Tracks total hits to remediation component related API routes.`
+}
+
+func (s statLapiBouncer) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Bouncer", "Route", "Method", "Hits")
@@ -253,13 +292,19 @@ func (s statLapiBouncer) table(out io.Writer) {
 
 	numRows := lapiMetricsToTable(t, s)
 
-	if numRows > 0 {
-		renderTableTitle(out, "\nLocal API Bouncers Metrics:")
+	if numRows > 0 || showEmpty {
+		title, _ := s.Description()
+		renderTableTitle(out, "\n" + title + ":")
 		t.Render()
 	}
 }
 
-func (s statLapiDecision) table(out io.Writer) {
+func (s statLapiDecision) Description() (string, string) {
+	return "Local API Bouncers Decisions",
+		`Tracks the number of empty/non-empty answers from LAPI to bouncers that are working in "live" mode.`
+}
+
+func (s statLapiDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Bouncer", "Empty answers", "Non-empty answers")
@@ -275,13 +320,19 @@ func (s statLapiDecision) table(out io.Writer) {
 		numRows++
 	}
 
-	if numRows > 0 {
-		renderTableTitle(out, "\nLocal API Bouncers Decisions:")
+	if numRows > 0 || showEmpty{
+		title, _ := s.Description()
+		renderTableTitle(out, "\n" + title + ":")
 		t.Render()
 	}
 }
 
-func (s statDecision) table(out io.Writer) {
+func (s statDecision) Description() (string, string) {
+	return "Local API Decisions",
+		`Provides information about all currently active decisions. Includes both local (crowdsec) and global decisions (CAPI), and lists subscriptions (lists).`
+}
+
+func (s statDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Reason", "Origin", "Action", "Count")
@@ -302,13 +353,19 @@ func (s statDecision) table(out io.Writer) {
 		}
 	}
 
-	if numRows > 0 {
-		renderTableTitle(out, "\nLocal API Decisions:")
+	if numRows > 0 || showEmpty{
+		title, _ := s.Description()
+		renderTableTitle(out, "\n" + title + ":")
 		t.Render()
 	}
 }
 
-func (s statAlert) table(out io.Writer) {
+func (s statAlert) Description() (string, string) {
+	return "Local API Alerts",
+		`Tracks the total number of past and present alerts for the installed scenarios.`
+}
+
+func (s statAlert) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Reason", "Count")
@@ -323,8 +380,9 @@ func (s statAlert) table(out io.Writer) {
 		numRows++
 	}
 
-	if numRows > 0 {
-		renderTableTitle(out, "\nLocal API Alerts:")
+	if numRows > 0 || showEmpty{
+		title, _ := s.Description()
+		renderTableTitle(out, "\n" + title + ":")
 		t.Render()
 	}
 }
