@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -17,7 +18,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
-	"slices"
 
 	"github.com/crowdsecurity/machineid"
 
@@ -106,14 +106,14 @@ func getLastHeartbeat(m *ent.Machine) (string, bool) {
 	return hb, true
 }
 
-type cliMachines struct{
-	db *database.Client
+type cliMachines struct {
+	db  *database.Client
 	cfg configGetter
 }
 
-func NewCLIMachines(getconfig configGetter) *cliMachines {
+func NewCLIMachines(cfg configGetter) *cliMachines {
 	return &cliMachines{
-		cfg: getconfig,
+		cfg: cfg,
 	}
 }
 
@@ -136,6 +136,7 @@ Note: This command requires database direct access, so is intended to be run on 
 			if err != nil {
 				return fmt.Errorf("unable to create new database client: %s", err)
 			}
+
 			return nil
 		},
 	}
@@ -249,7 +250,7 @@ cscli machines add -f- --auto > /tmp/mycreds.yaml`,
 
 func (cli *cliMachines) add(args []string, machinePassword string, dumpFile string, apiURL string, interactive bool, autoAdd bool, force bool) error {
 	var (
-		err error
+		err       error
 		machineID string
 	)
 
@@ -347,7 +348,7 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 	return nil
 }
 
-func (cli *cliMachines) deleteValid(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func (cli *cliMachines) deleteValid(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	machines, err := cli.db.ListMachines()
 	if err != nil {
 		cobra.CompError("unable to list machines " + err.Error())
@@ -447,9 +448,9 @@ func (cli *cliMachines) prune(duration time.Duration, notValidOnly bool, force b
 
 func (cli *cliMachines) newPruneCmd() *cobra.Command {
 	var (
-		duration       time.Duration
-		notValidOnly   bool
-		force          bool
+		duration     time.Duration
+		notValidOnly bool
+		force        bool
 	)
 
 	const defaultDuration = 10 * time.Minute

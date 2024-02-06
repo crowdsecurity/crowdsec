@@ -10,19 +10,18 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
-
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 type cliPapi struct {
 	cfg configGetter
 }
 
-func NewCLIPapi(getconfig configGetter) *cliPapi {
+func NewCLIPapi(cfg configGetter) *cliPapi {
 	return &cliPapi{
-		cfg: getconfig,
+		cfg: cfg,
 	}
 }
 
@@ -43,6 +42,7 @@ func (cli *cliPapi) NewCommand() *cobra.Command {
 			if err := require.PAPI(cfg); err != nil {
 				return err
 			}
+
 			return nil
 		},
 	}

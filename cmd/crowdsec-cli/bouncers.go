@@ -36,13 +36,13 @@ func askYesNo(message string, defaultAnswer bool) (bool, error) {
 }
 
 type cliBouncers struct {
-	db *database.Client
+	db  *database.Client
 	cfg configGetter
 }
 
-func NewCLIBouncers(getconfig configGetter) *cliBouncers {
+func NewCLIBouncers(cfg configGetter) *cliBouncers {
 	return &cliBouncers{
-		cfg: getconfig,
+		cfg: cfg,
 	}
 }
 
@@ -197,13 +197,13 @@ cscli bouncers add MyBouncerName --key <random-key>`,
 	return cmd
 }
 
-func (cli *cliBouncers) deleteValid(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func (cli *cliBouncers) deleteValid(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	bouncers, err := cli.db.ListBouncers()
 	if err != nil {
 		cobra.CompError("unable to list bouncers " + err.Error())
 	}
 
-	ret :=[]string{}
+	ret := []string{}
 
 	for _, bouncer := range bouncers {
 		if strings.Contains(bouncer.Name, toComplete) && !slices.Contains(args, bouncer.Name) {

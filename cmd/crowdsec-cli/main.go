@@ -24,12 +24,12 @@ type configGetter func() *csconfig.Config
 var mergedConfig string
 
 type cliRoot struct {
-	logTrace bool
-	logDebug bool
-	logInfo bool
-	logWarn bool
-	logErr bool
-	outputColor string
+	logTrace     bool
+	logDebug     bool
+	logInfo      bool
+	logWarn      bool
+	logErr       bool
+	outputColor  string
 	outputFormat string
 	// flagBranch overrides the value in csConfig.Cscli.HubBranch
 	flagBranch string
@@ -76,10 +76,12 @@ func loadConfigFor(command string) (*csconfig.Config, string, error) {
 
 	if !slices.Contains(noNeedConfig, command) {
 		log.Debugf("Using %s as configuration file", ConfigFilePath)
+
 		config, merged, err := csconfig.NewConfig(ConfigFilePath, false, false, true)
 		if err != nil {
 			return nil, "", err
 		}
+
 		return config, merged, nil
 	}
 
@@ -145,16 +147,16 @@ var validArgs = []string{
 
 func (cli *cliRoot) colorize(cmd *cobra.Command) {
 	cc.Init(&cc.Config{
-		RootCmd:       cmd,
-		Headings:      cc.Yellow,
-		Commands:      cc.Green + cc.Bold,
-		CmdShortDescr: cc.Cyan,
-		Example:       cc.Italic,
-		ExecName:      cc.Bold,
-		Aliases:       cc.Bold + cc.Italic,
-		FlagsDataType: cc.White,
-		Flags:         cc.Green,
-		FlagsDescr:    cc.Cyan,
+		RootCmd:         cmd,
+		Headings:        cc.Yellow,
+		Commands:        cc.Green + cc.Bold,
+		CmdShortDescr:   cc.Cyan,
+		Example:         cc.Italic,
+		ExecName:        cc.Bold,
+		Aliases:         cc.Bold + cc.Italic,
+		FlagsDataType:   cc.White,
+		Flags:           cc.Green,
+		FlagsDescr:      cc.Cyan,
 		NoExtraNewlines: true,
 		NoBottomNewline: true,
 	})
