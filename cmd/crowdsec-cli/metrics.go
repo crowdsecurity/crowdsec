@@ -54,14 +54,14 @@ func NewMetricStore() metricStore {
 		"buckets": statBucket{},
 		"parsers": statParser{},
 		"lapi": statLapi{},
-		"lapi_machine": statLapiMachine{},
-		"lapi_bouncer": statLapiBouncer{},
-		"lapi_decisions": statLapiDecision{},
+		"lapi-machine": statLapiMachine{},
+		"lapi-bouncer": statLapiBouncer{},
+		"lapi-decisions": statLapiDecision{},
 		"decisions": statDecision{},
 		"alerts": statAlert{},
 		"stash": statStash{},
-		"appsec_engine": statAppsecEngine{},
-		"appsec_rule": statAppsecRule{},
+		"appsec-engine": statAppsecEngine{},
+		"appsec-rule": statAppsecRule{},
 	}
 }
 
@@ -103,12 +103,12 @@ func (ms metricStore) Fetch(url string) error {
 	mParser := ms["parsers"].(statParser)
 	mBucket := ms["buckets"].(statBucket)
 	mLapi := ms["lapi"].(statLapi)
-	mLapiMachine := ms["lapi_machine"].(statLapiMachine)
-	mLapiBouncer := ms["lapi_bouncer"].(statLapiBouncer)
-	mLapiDecision := ms["lapi_decisions"].(statLapiDecision)
+	mLapiMachine := ms["lapi-machine"].(statLapiMachine)
+	mLapiBouncer := ms["lapi-bouncer"].(statLapiBouncer)
+	mLapiDecision := ms["lapi-decisions"].(statLapiDecision)
 	mDecision := ms["decisions"].(statDecision)
-	mAppsecEngine := ms["appsec_engine"].(statAppsecEngine)
-	mAppsecRule := ms["appsec_rule"].(statAppsecRule)
+	mAppsecEngine := ms["appsec-engine"].(statAppsecEngine)
+	mAppsecRule := ms["appsec-rule"].(statAppsecRule)
 	mAlert := ms["alerts"].(statAlert)
 	mStash := ms["stash"].(statStash)
 
@@ -428,9 +428,9 @@ func (cli *cliMetrics) expandSectionGroups(args []string) []string {
 		case "engine":
 			ret = append(ret, "acquisition", "parsers", "buckets", "stash")
 		case "lapi":
-			ret = append(ret, "alerts", "decisions", "lapi", "lapi_bouncer", "lapi_decisions", "lapi_machine")
+			ret = append(ret, "alerts", "decisions", "lapi", "lapi-bouncer", "lapi-decisions", "lapi-machine")
 		case "appsec":
-			ret = append(ret, "appsec_engine", "appsec_rule")
+			ret = append(ret, "appsec-engine", "appsec-rule")
 		default:
 			ret = append(ret, section)
 		}

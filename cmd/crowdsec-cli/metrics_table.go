@@ -300,7 +300,8 @@ func (s statLapiBouncer) Table(out io.Writer, noUnit bool, showEmpty bool) {
 }
 
 func (s statLapiDecision) Description() (string, string) {
-	return "Local API Bouncers Decisions", ""
+	return "Local API Bouncers Decisions",
+		`Tracks the number of empty/non-empty answers from LAPI to bouncers that are working in "live" mode.`
 }
 
 func (s statLapiDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
