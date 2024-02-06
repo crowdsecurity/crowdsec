@@ -45,6 +45,38 @@ func lapiMetricsToTable(t *table.Table, stats map[string]map[string]map[string]i
 	return numRows
 }
 
+func wlMetricsToTable(t *table.Table, stats map[string]map[string]map[string]int, noUnit bool) (int, error) {
+	if t == nil {
+		return 0, fmt.Errorf("nil table")
+	}
+
+	numRows := 0
+
+	for _, name := range maptools.SortedKeys(stats) {
+		for _, reason := range maptools.SortedKeys(stats[name]) {
+			row := make([]string, 4)
+			row[0] = name
+			row[1] = reason
+			row[2] = "-"
+			row[3] = "-"
+
+			for _, action := range maptools.SortedKeys(stats[name][reason]) {
+				value := stats[name][reason][action]
+				if action == "whitelisted" {
+					row[3] = fmt.Sprintf("%d", value)
+				} else if action == "hits" {
+					row[2] = fmt.Sprintf("%d", value)
+				} else {
+					log.Debugf("unexpected counter '%s' for whitelists = %d", action, value)
+				}
+			}
+			t.AddRow(row...)
+			numRows++
+		}
+	}
+	return numRows, nil
+}
+
 func metricsToTable(t *table.Table, stats map[string]map[string]int, keys []string, noUnit bool) (int, error) {
 	if t == nil {
 		return 0, fmt.Errorf("nil table")
@@ -95,7 +127,7 @@ func (s statBucket) Table(out io.Writer, noUnit bool, showEmpty bool) {
 		log.Warningf("while collecting bucket stats: %s", err)
 	} else if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		renderTableTitle(out, "\n" + title + ":")
+		renderTableTitle(out, "\n"+title+":")
 		t.Render()
 	}
 }
@@ -108,16 +140,16 @@ func (s statAcquis) Description() (string, string) {
 func (s statAcquis) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
-	t.SetHeaders("Source", "Lines read", "Lines parsed", "Lines unparsed", "Lines poured to bucket")
+	t.SetHeaders("Source", "Lines read", "Lines parsed", "Lines unparsed", "Lines poured to bucket", "Lines whitelisted")
 	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
 
-	keys := []string{"reads", "parsed", "unparsed", "pour"}
+	keys := []string{"reads", "parsed", "unparsed", "pour", "whitelisted"}
 
 	if numRows, err := metricsToTable(t, s, keys, noUnit); err != nil {
 		log.Warningf("while collecting acquis stats: %s", err)
 	} else if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		renderTableTitle(out, "\n" + title + ":")
+		renderTableTitle(out, "\n"+title+":")
 		t.Render()
 	}
 }
@@ -137,7 +169,7 @@ func (s statAppsecEngine) Table(out io.Writer, noUnit bool, showEmpty bool) {
 		log.Warningf("while collecting appsec stats: %s", err)
 	} else if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		renderTableTitle(out, "\n" + title + ":")
+		renderTableTitle(out, "\n"+title+":")
 		t.Render()
 	}
 }
@@ -156,12 +188,32 @@ func (s statAppsecRule) Table(out io.Writer, noUnit bool, showEmpty bool) {
 		keys := []string{"triggered"}
 		if numRows, err := metricsToTable(t, appsecEngineRulesStats, keys, noUnit); err != nil {
 			log.Warningf("while collecting appsec rules stats: %s", err)
-		} else if numRows > 0 || showEmpty{
+		} else if numRows > 0 || showEmpty {
 			renderTableTitle(out, fmt.Sprintf("\nAppsec '%s' Rules Metrics:", appsecEngine))
 			t.Render()
 		}
 	}
 
+}
+
+func (s statWhitelist) Description() (string, string) {
+	return "Whitelist Metrics",
+		`Tracks the number of events processed and possibly whitelisted by each parser whitelist.`
+}
+
+func (s statWhitelist) Table(out io.Writer, noUnit bool, showEmpty bool) {
+	t := newTable(out)
+	t.SetRowLines(false)
+	t.SetHeaders("Whitelist", "Reason", "Hits", "Whitelisted")
+	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
+
+	if numRows, err := wlMetricsToTable(t, s, noUnit); err != nil {
+		log.Warningf("while collecting parsers stats: %s", err)
+	} else if numRows > 0 || showEmpty {
+		title, _ := s.Description()
+		renderTableTitle(out, "\n"+title+":")
+		t.Render()
+	}
 }
 
 func (s statParser) Description() (string, string) {
@@ -181,7 +233,7 @@ func (s statParser) Table(out io.Writer, noUnit bool, showEmpty bool) {
 		log.Warningf("while collecting parsers stats: %s", err)
 	} else if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		renderTableTitle(out, "\n" + title + ":")
+		renderTableTitle(out, "\n"+title+":")
 		t.Render()
 	}
 }
@@ -213,7 +265,7 @@ func (s statStash) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	}
 	if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		renderTableTitle(out, "\n" + title + ":")
+		renderTableTitle(out, "\n"+title+":")
 		t.Render()
 	}
 }
@@ -254,7 +306,7 @@ func (s statLapi) Table(out io.Writer, noUnit bool, showEmpty bool) {
 
 	if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		renderTableTitle(out, "\n" + title + ":")
+		renderTableTitle(out, "\n"+title+":")
 		t.Render()
 	}
 }
@@ -272,9 +324,9 @@ func (s statLapiMachine) Table(out io.Writer, noUnit bool, showEmpty bool) {
 
 	numRows := lapiMetricsToTable(t, s)
 
-	if numRows > 0 || showEmpty{
+	if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		renderTableTitle(out, "\n" + title + ":")
+		renderTableTitle(out, "\n"+title+":")
 		t.Render()
 	}
 }
@@ -294,7 +346,7 @@ func (s statLapiBouncer) Table(out io.Writer, noUnit bool, showEmpty bool) {
 
 	if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		renderTableTitle(out, "\n" + title + ":")
+		renderTableTitle(out, "\n"+title+":")
 		t.Render()
 	}
 }
@@ -320,9 +372,9 @@ func (s statLapiDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
 		numRows++
 	}
 
-	if numRows > 0 || showEmpty{
+	if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		renderTableTitle(out, "\n" + title + ":")
+		renderTableTitle(out, "\n"+title+":")
 		t.Render()
 	}
 }
@@ -353,9 +405,9 @@ func (s statDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
 		}
 	}
 
-	if numRows > 0 || showEmpty{
+	if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		renderTableTitle(out, "\n" + title + ":")
+		renderTableTitle(out, "\n"+title+":")
 		t.Render()
 	}
 }
@@ -380,9 +432,9 @@ func (s statAlert) Table(out io.Writer, noUnit bool, showEmpty bool) {
 		numRows++
 	}
 
-	if numRows > 0 || showEmpty{
+	if numRows > 0 || showEmpty {
 		title, _ := s.Description()
-		renderTableTitle(out, "\n" + title + ":")
+		renderTableTitle(out, "\n"+title+":")
 		t.Render()
 	}
 }
