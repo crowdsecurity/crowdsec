@@ -3,23 +3,23 @@ package main
 import (
 	"fmt"
 	"os"
+	"slices"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
-	"slices"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-type cliSimulation struct{
+type cliSimulation struct {
 	cfg configGetter
 }
 
-func NewCLISimulation(getconfig configGetter) *cliSimulation {
+func NewCLISimulation(cfg configGetter) *cliSimulation {
 	return &cliSimulation{
-		cfg: getconfig,
+		cfg: cfg,
 	}
 }
 
@@ -38,6 +38,7 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 			if cli.cfg().Cscli.SimulationConfig == nil {
 				return fmt.Errorf("no simulation configured")
 			}
+
 			return nil
 		},
 		PersistentPostRun: func(cmd *cobra.Command, _ []string) {

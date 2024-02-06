@@ -19,15 +19,14 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/crowdsecurity/crowdsec/pkg/metabase"
-
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
+	"github.com/crowdsecurity/crowdsec/pkg/metabase"
 )
 
 var (
 	metabaseUser         = "crowdsec@crowdsec.net"
 	metabasePassword     string
-	metabaseDbPath       string
+	metabaseDBPath       string
 	metabaseConfigPath   string
 	metabaseConfigFolder = "metabase/"
 	metabaseConfigFile   = "metabase.yaml"
@@ -43,13 +42,13 @@ var (
 	// information needed to set up a random password on user's behalf
 )
 
-type cliDashboard struct{
+type cliDashboard struct {
 	cfg configGetter
 }
 
-func NewCLIDashboard(getconfig configGetter) *cliDashboard {
+func NewCLIDashboard(cfg configGetter) *cliDashboard {
 	return &cliDashboard{
-		cfg: getconfig,
+		cfg: cfg,
 	}
 }
 
@@ -99,6 +98,7 @@ cscli dashboard remove
 					metabaseContainerID = oldContainerID
 				}
 			}
+
 			return nil
 		},
 	}
@@ -127,8 +127,8 @@ cscli dashboard setup --listen 0.0.0.0
 cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
  `,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			if metabaseDbPath == "" {
-				metabaseDbPath = cli.cfg().ConfigPaths.DataDir
+			if metabaseDBPath == "" {
+				metabaseDBPath = cli.cfg().ConfigPaths.DataDir
 			}
 
 			if metabasePassword == "" {
@@ -152,7 +152,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			if err = cli.chownDatabase(dockerGroup.Gid); err != nil {
 				return err
 			}
-			mb, err := metabase.SetupMetabase(cli.cfg().API.Server.DbConfig, metabaseListenAddress, metabaseListenPort, metabaseUser, metabasePassword, metabaseDbPath, dockerGroup.Gid, metabaseContainerID, metabaseImage)
+			mb, err := metabase.SetupMetabase(cli.cfg().API.Server.DbConfig, metabaseListenAddress, metabaseListenPort, metabaseUser, metabasePassword, metabaseDBPath, dockerGroup.Gid, metabaseContainerID, metabaseImage)
 			if err != nil {
 				return err
 			}
@@ -165,13 +165,14 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			fmt.Printf("\tURL       : '%s'\n", mb.Config.ListenURL)
 			fmt.Printf("\tusername  : '%s'\n", mb.Config.Username)
 			fmt.Printf("\tpassword  : '%s'\n", mb.Config.Password)
+
 			return nil
 		},
 	}
 
 	flags := cmd.Flags()
 	flags.BoolVarP(&force, "force", "f", false, "Force setup : override existing files")
-	flags.StringVarP(&metabaseDbPath, "dir", "d", "", "Shared directory with metabase container")
+	flags.StringVarP(&metabaseDBPath, "dir", "d", "", "Shared directory with metabase container")
 	flags.StringVarP(&metabaseListenAddress, "listen", "l", metabaseListenAddress, "Listen address of container")
 	flags.StringVar(&metabaseImage, "metabase-image", metabaseImage, "Metabase image to use")
 	flags.StringVarP(&metabaseListenPort, "port", "p", metabaseListenPort, "Listen port of container")
@@ -203,6 +204,7 @@ func (cli *cliDashboard) newStartCmd() *cobra.Command {
 			}
 			log.Infof("Started metabase")
 			log.Infof("url : http://%s:%s", mb.Config.ListenAddr, mb.Config.ListenPort)
+
 			return nil
 		},
 	}
@@ -241,6 +243,7 @@ func (cli *cliDashboard) newShowPasswordCmd() *cobra.Command {
 				return err
 			}
 			log.Printf("'%s'", m.Config.Password)
+
 			return nil
 		},
 	}
@@ -313,6 +316,7 @@ cscli dashboard remove --force
 					}
 				}
 			}
+
 			return nil
 		},
 	}

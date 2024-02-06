@@ -13,13 +13,13 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-type cliHub struct{
+type cliHub struct {
 	cfg configGetter
 }
 
-func NewCLIHub(getconfig configGetter) *cliHub {
+func NewCLIHub(cfg configGetter) *cliHub {
 	return &cliHub{
-		cfg: getconfig,
+		cfg: cfg,
 	}
 }
 

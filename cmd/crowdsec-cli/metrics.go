@@ -50,18 +50,18 @@ type metricStore map[string]metricSection
 
 func NewMetricStore() metricStore {
 	return metricStore{
-		"acquisition": statAcquis{},
-		"buckets": statBucket{},
-		"parsers": statParser{},
-		"lapi": statLapi{},
-		"lapi-machine": statLapiMachine{},
-		"lapi-bouncer": statLapiBouncer{},
+		"acquisition":    statAcquis{},
+		"buckets":        statBucket{},
+		"parsers":        statParser{},
+		"lapi":           statLapi{},
+		"lapi-machine":   statLapiMachine{},
+		"lapi-bouncer":   statLapiBouncer{},
 		"lapi-decisions": statLapiDecision{},
-		"decisions": statDecision{},
-		"alerts": statAlert{},
-		"stash": statStash{},
-		"appsec-engine": statAppsecEngine{},
-		"appsec-rule": statAppsecRule{},
+		"decisions":      statDecision{},
+		"alerts":         statAlert{},
+		"stash":          statStash{},
+		"appsec-engine":  statAppsecEngine{},
+		"appsec-rule":    statAppsecRule{},
 	}
 }
 
@@ -116,17 +116,21 @@ func (ms metricStore) Fetch(url string) error {
 		if !strings.HasPrefix(fam.Name, "cs_") {
 			continue
 		}
+
 		log.Tracef("round %d", idx)
+
 		for _, m := range fam.Metrics {
 			metric, ok := m.(prom2json.Metric)
 			if !ok {
 				log.Debugf("failed to convert metric to prom2json.Metric")
 				continue
 			}
+
 			name, ok := metric.Labels["name"]
 			if !ok {
 				log.Debugf("no name in Metric %v", metric.Labels)
 			}
+
 			source, ok := metric.Labels["source"]
 			if !ok {
 				log.Debugf("no source in Metric %v for %s", metric.Labels, fam.Name)
@@ -153,6 +157,7 @@ func (ms metricStore) Fetch(url string) error {
 			if err != nil {
 				log.Errorf("Unexpected int value %s : %s", value, err)
 			}
+
 			ival := int(fval)
 			switch fam.Name {
 			/*buckets*/
@@ -303,9 +308,9 @@ type cliMetrics struct {
 	cfg configGetter
 }
 
-func NewCLIMetrics(getconfig configGetter) *cliMetrics {
+func NewCLIMetrics(cfg configGetter) *cliMetrics {
 	return &cliMetrics{
-		cfg: getconfig,
+		cfg: cfg,
 	}
 }
 

@@ -146,7 +146,12 @@ func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
 		// Now we have config.yaml, we should regenerate config struct to have rights paths etc
 		ConfigFilePath = fmt.Sprintf("%s/config.yaml", csConfig.ConfigPaths.ConfigDir)
 
-		initConfig()
+		log.Debug("Reloading configuration")
+
+		csConfig, _, err = loadConfigFor("config")
+		if err != nil {
+			return fmt.Errorf("failed to reload configuration: %s", err)
+		}
 
 		backupCAPICreds := fmt.Sprintf("%s/online_api_credentials.yaml", dirPath)
 		if _, err = os.Stat(backupCAPICreds); err == nil {
@@ -227,7 +232,7 @@ func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
 		}
 	}
 
-	// if there is files in the acquis backup dir, restore them
+	// if there are files in the acquis backup dir, restore them
 	acquisBackupDir := filepath.Join(dirPath, "acquis", "*.yaml")
 	if acquisFiles, err := filepath.Glob(acquisBackupDir); err == nil {
 		for _, acquisFile := range acquisFiles {
