@@ -380,13 +380,13 @@ func (ms metricStore) Format(out io.Writer, sections []string, formatType string
 	case "json":
 		x, err := json.MarshalIndent(want, "", " ")
 		if err != nil {
-			return fmt.Errorf("failed to unmarshal metrics : %v", err)
+			return fmt.Errorf("failed to marshal metrics: %v", err)
 		}
 		out.Write(x)
 	case "raw":
 		x, err := yaml.Marshal(want)
 		if err != nil {
-			return fmt.Errorf("failed to unmarshal metrics : %v", err)
+			return fmt.Errorf("failed to marshal metrics: %v", err)
 		}
 		out.Write(x)
 	default:
@@ -553,13 +553,13 @@ func (cli *cliMetrics) list() error {
 	case "json":
 		x, err := json.MarshalIndent(allMetrics, "", " ")
 		if err != nil {
-			return fmt.Errorf("failed to unmarshal metrics: %w", err)
+			return fmt.Errorf("failed to marshal metric types: %w", err)
 		}
 		fmt.Println(string(x))
 	case "raw":
 		x, err := yaml.Marshal(allMetrics)
 		if err != nil {
-			return fmt.Errorf("failed to unmarshal metrics: %w", err)
+			return fmt.Errorf("failed to marshal metric types: %w", err)
 		}
 		fmt.Println(string(x))
 	}
