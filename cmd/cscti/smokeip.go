@@ -25,8 +25,13 @@ func (cli *cliSmokeIP) smokeip(ip string) error {
 		return ErrorNoAPIKey
 	}
 
+	provider, err := cti.NewAPIKeyProvider(apiKey)
+	if err != nil {
+		return err
+	}
+
 	// create a new CTI client
-	client, err := cti.NewClientWithResponses("https://cti.api.crowdsec.net/v2/", cti.WithRequestEditorFn(cti.APIKeyInserter(apiKey)))
+	client, err := cti.NewClientWithResponses("https://cti.api.crowdsec.net/v2/", cti.WithRequestEditorFn(provider.Intercept))
 	if err != nil {
 		return err
 	}

@@ -22,7 +22,7 @@ func main() {
 	cmd := &cobra.Command{
 		Use: "cscti",
 		Short: "cscti is a tool to query the CrowdSec CTI",
-		ValidArgs: []string{"fire", "smoke", "smoke-ip"},
+		ValidArgs: []string{"smoke-ip"},
 		DisableAutoGenTag: true,
 	}
 
@@ -44,8 +44,6 @@ func main() {
 
 	pflags.StringVarP(&configPath, "config", "c", "", "Path to the configuration file")
 
-	cmd.AddCommand(NewCLIFire().NewCommand())
-	cmd.AddCommand(NewCLISmoke().NewCommand())
 	cmd.AddCommand(NewCLISmokeIP().NewCommand())
 
 	if err := cmd.Execute(); err != nil {
