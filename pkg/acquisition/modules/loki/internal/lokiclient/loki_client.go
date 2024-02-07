@@ -128,6 +128,7 @@ func (lc *LokiClient) queryRange(uri string, ctx context.Context, c chan *LokiQu
 			}
 
 			if resp.StatusCode != http.StatusOK {
+				lc.Logger.Warnf("bad HTTP response code for query range: %d", resp.StatusCode)
 				body, _ := io.ReadAll(resp.Body)
 				resp.Body.Close()
 				if ok := lc.shouldRetry(); !ok {
