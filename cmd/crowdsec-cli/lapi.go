@@ -216,7 +216,7 @@ func (cli *cliLapi) NewCommand() *cobra.Command {
 
 	cmd.AddCommand(cli.newRegisterCmd())
 	cmd.AddCommand(cli.newStatusCmd())
-	cmd.AddCommand(NewLapiContextCmd())
+	cmd.AddCommand(cli.newContextCmd())
 
 	return cmd
 }
@@ -245,32 +245,10 @@ func AddContext(key string, values []string) error {
 	return nil
 }
 
-func NewLapiContextCmd() *cobra.Command {
-	cmdContext := &cobra.Command{
-		Use:               "context [command]",
-		Short:             "Manage context to send with alerts",
-		DisableAutoGenTag: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := csConfig.LoadCrowdsec(); err != nil {
-				fileNotFoundMessage := fmt.Sprintf("failed to open context file: open %s: no such file or directory", csConfig.Crowdsec.ConsoleContextPath)
-				if err.Error() != fileNotFoundMessage {
-					return fmt.Errorf("unable to load CrowdSec agent configuration: %w", err)
-				}
-			}
-			if csConfig.DisableAgent {
-				return errors.New("agent is disabled and lapi context can only be used on the agent")
-			}
-
-			return nil
-		},
-		Run: func(cmd *cobra.Command, args []string) {
-			printHelp(cmd)
-		},
-	}
-
+func (cli *cliLapi) newContextAddCmd() *cobra.Command {
 	var keyToAdd string
 	var valuesToAdd []string
-	cmdContextAdd := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "add",
 		Short: "Add context to send with alerts. You must specify the output key with the expr value you want",
 		Example: `cscli lapi context add --key source_ip --value evt.Meta.source_ip
@@ -279,12 +257,12 @@ cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user
 		`,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			hub, err := require.Hub(csConfig, nil, nil)
+			hub, err := require.Hub(cli.cfg(), nil, nil)
 			if err != nil {
 				return err
 			}
 
-			if err = alertcontext.LoadConsoleContext(csConfig, hub); err != nil {
+			if err = alertcontext.LoadConsoleContext(cli.cfg(), hub); err != nil {
 				return fmt.Errorf("while loading context: %w", err)
 			}
 
@@ -307,10 +285,39 @@ cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user
 			return nil
 		},
 	}
-	cmdContextAdd.Flags().StringVarP(&keyToAdd, "key", "k", "", "The key of the different values to send")
-	cmdContextAdd.Flags().StringSliceVar(&valuesToAdd, "value", []string{}, "The expr fields to associate with the key")
-	cmdContextAdd.MarkFlagRequired("value")
-	cmdContext.AddCommand(cmdContextAdd)
+
+	flags := cmd.Flags()
+	flags.StringVarP(&keyToAdd, "key", "k", "", "The key of the different values to send")
+	flags.StringSliceVar(&valuesToAdd, "value", []string{}, "The expr fields to associate with the key")
+	cmd.MarkFlagRequired("value")
+
+	return cmd
+}
+
+func (cli *cliLapi) newContextCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:               "context [command]",
+		Short:             "Manage context to send with alerts",
+		DisableAutoGenTag: true,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := csConfig.LoadCrowdsec(); err != nil {
+				fileNotFoundMessage := fmt.Sprintf("failed to open context file: open %s: no such file or directory", csConfig.Crowdsec.ConsoleContextPath)
+				if err.Error() != fileNotFoundMessage {
+					return fmt.Errorf("unable to load CrowdSec agent configuration: %w", err)
+				}
+			}
+			if csConfig.DisableAgent {
+				return errors.New("agent is disabled and lapi context can only be used on the agent")
+			}
+
+			return nil
+		},
+		Run: func(cmd *cobra.Command, args []string) {
+			printHelp(cmd)
+		},
+	}
+
+	cmd.AddCommand(cli.newContextAddCmd())
 
 	cmdContextStatus := &cobra.Command{
 		Use:               "status",
@@ -341,7 +348,7 @@ cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user
 			return nil
 		},
 	}
-	cmdContext.AddCommand(cmdContextStatus)
+	cmd.AddCommand(cmdContextStatus)
 
 	var detectAll bool
 	cmdContextDetect := &cobra.Command{
@@ -428,7 +435,7 @@ cscli lapi context detect crowdsecurity/sshd-logs
 		},
 	}
 	cmdContextDetect.Flags().BoolVarP(&detectAll, "all", "a", false, "Detect evt field for all installed parser")
-	cmdContext.AddCommand(cmdContextDetect)
+	cmd.AddCommand(cmdContextDetect)
 
 	cmdContextDelete := &cobra.Command{
 		Use:               "delete",
@@ -442,9 +449,9 @@ cscli lapi context detect crowdsecurity/sshd-logs
 			return nil
 		},
 	}
-	cmdContext.AddCommand(cmdContextDelete)
+	cmd.AddCommand(cmdContextDelete)
 
-	return cmdContext
+	return cmd
 }
 
 func detectStaticField(GrokStatics []parser.ExtraField) []string {
