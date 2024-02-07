@@ -43,7 +43,11 @@ type (
 	}
 )
 
-var ErrMissingConfig = errors.New("prometheus section missing, can't show metrics")
+var (
+	ErrMissingConfig = errors.New("prometheus section missing, can't show metrics")
+	ErrMetricsDisabled = errors.New("prometheus is not enabled, can't show metrics")
+
+)
 
 type metricSection interface {
 	Table(out io.Writer, noUnit bool, showEmpty bool)
@@ -314,7 +318,7 @@ func (cli *cliMetrics) show(sections []string, url string, noUnit bool) error {
 	}
 
 	if !cfg.Prometheus.Enabled {
-		return ErrMissingConfig
+		return ErrMetricsDisabled
 	}
 
 	ms := NewMetricStore()
