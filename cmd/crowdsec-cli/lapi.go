@@ -221,24 +221,25 @@ func (cli *cliLapi) NewCommand() *cobra.Command {
 	return cmd
 }
 
-func AddContext(key string, values []string) error {
+func (cli *cliLapi) addContext(key string, values []string) error {
+	cfg := cli.cfg()
 	if err := alertcontext.ValidateContextExpr(key, values); err != nil {
 		return fmt.Errorf("invalid context configuration :%s", err)
 	}
-	if _, ok := csConfig.Crowdsec.ContextToSend[key]; !ok {
-		csConfig.Crowdsec.ContextToSend[key] = make([]string, 0)
+	if _, ok := cfg.Crowdsec.ContextToSend[key]; !ok {
+		cfg.Crowdsec.ContextToSend[key] = make([]string, 0)
 
 		log.Infof("key '%s' added", key)
 	}
-	data := csConfig.Crowdsec.ContextToSend[key]
+	data := cfg.Crowdsec.ContextToSend[key]
 	for _, val := range values {
 		if !slices.Contains(data, val) {
 			log.Infof("value '%s' added to key '%s'", val, key)
 			data = append(data, val)
 		}
-		csConfig.Crowdsec.ContextToSend[key] = data
+		cfg.Crowdsec.ContextToSend[key] = data
 	}
-	if err := csConfig.Crowdsec.DumpContextConfigFile(); err != nil {
+	if err := cfg.Crowdsec.DumpContextConfigFile(); err != nil {
 		return err
 	}
 
@@ -267,7 +268,7 @@ cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user
 			}
 
 			if keyToAdd != "" {
-				if err := AddContext(keyToAdd, valuesToAdd); err != nil {
+				if err := cli.addContext(keyToAdd, valuesToAdd); err != nil {
 					return err
 				}
 				return nil
@@ -277,7 +278,7 @@ cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user
 				keySlice := strings.Split(v, ".")
 				key := keySlice[len(keySlice)-1]
 				value := []string{v}
-				if err := AddContext(key, value); err != nil {
+				if err := cli.addContext(key, value); err != nil {
 					return err
 				}
 			}
