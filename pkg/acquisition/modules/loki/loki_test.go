@@ -371,30 +371,26 @@ func TestStreamingAcquisition(t *testing.T) {
 	}{
 		{
 			name: "Bad port",
-			config: `
-				mode: tail
-				source: loki
-				url: http://127.0.0.1:3101
-				headers:
-				  x-scope-orgid: "1234"
-				query: >
-				  {server="demo"}
-				`, // No Loki server here
+			config: `mode: tail
+source: loki
+url: "http://127.0.0.1:3101"
+headers:
+  x-scope-orgid: "1234"
+query: >
+  {server="demo"}`, // No Loki server here
 			expectedErr:   "",
 			streamErr:     `loki is not ready: context deadline exceeded`,
 			expectedLines: 0,
 		},
 		{
 			name: "ok",
-			config: `
-mode: tail
+			config: `mode: tail
 source: loki
-url: http://127.0.0.1:3100
+url: "http://127.0.0.1:3100"
 headers:
   x-scope-orgid: "1234"
 query: >
-  {server="demo"}
-`,
+  {server="demo"}`,
 			expectedErr:   "",
 			streamErr:     "",
 			expectedLines: 20,
