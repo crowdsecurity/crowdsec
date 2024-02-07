@@ -131,8 +131,11 @@ func TestInvalidAuth(t *testing.T) {
 
 	var err error
 
+	badProvider, err := cti.NewAPIKeyProvider(badKey)
+	require.NoError(t, err)
+
 	//Replace the client created by InitCrowdsecCTI with one that uses a custom transport
-	ctiClient, err = cti.NewClientWithResponses(CTIUrl+"/v2/", cti.WithRequestEditorFn(cti.APIKeyInserter(badKey)), cti.WithHTTPClient(&http.Client{
+	ctiClient, err = cti.NewClientWithResponses(CTIUrl+"/v2/", cti.WithRequestEditorFn(badProvider.Intercept), cti.WithHTTPClient(&http.Client{
 		Transport: RoundTripFunc(smokeHandler),
 	}))
 	require.NoError(t, err)
@@ -143,8 +146,11 @@ func TestInvalidAuth(t *testing.T) {
 	require.ErrorIs(t, err, cti.ErrUnauthorized)
 	require.Equal(t, &cti.CTIObject{}, item)
 
+	provider, err := cti.NewAPIKeyProvider(validApiKey)
+	require.NoError(t, err)
+
 	//CTI is now disabled, all requests should return empty
-	ctiClient, err = cti.NewClientWithResponses(CTIUrl+"/v2/", cti.WithRequestEditorFn(cti.APIKeyInserter(validApiKey)), cti.WithHTTPClient(&http.Client{
+	ctiClient, err = cti.NewClientWithResponses(CTIUrl+"/v2/", cti.WithRequestEditorFn(provider.Intercept), cti.WithHTTPClient(&http.Client{
 		Transport: RoundTripFunc(smokeHandler),
 	}))
 	require.NoError(t, err)
@@ -160,8 +166,13 @@ func TestNoKey(t *testing.T) {
 
 	err := InitCrowdsecCTI(nil, nil, nil, nil)
 	require.ErrorIs(t, err, cti.ErrDisabled)
+
+
+	provider, err := cti.NewAPIKeyProvider(validApiKey)
+	require.NoError(t, err)
+
 	//Replace the client created by InitCrowdsecCTI with one that uses a custom transport
-	ctiClient, err = cti.NewClientWithResponses(CTIUrl+"/v2/", cti.WithRequestEditorFn(cti.APIKeyInserter(validApiKey)), cti.WithHTTPClient(&http.Client{
+	ctiClient, err = cti.NewClientWithResponses(CTIUrl+"/v2/", cti.WithRequestEditorFn(provider.Intercept), cti.WithHTTPClient(&http.Client{
 		Transport: RoundTripFunc(smokeHandler),
 	}))
 	require.NoError(t, err)
@@ -180,8 +191,12 @@ func TestCache(t *testing.T) {
 	if err := InitCrowdsecCTI(ptr.Of(validApiKey), &cacheDuration, nil, nil); err != nil {
 		t.Fatalf("failed to init CTI : %s", err)
 	}
+
+	provider, err := cti.NewAPIKeyProvider(validApiKey)
+	require.NoError(t, err)
+
 	//Replace the client created by InitCrowdsecCTI with one that uses a custom transport
-	ctiClient, err = cti.NewClientWithResponses(CTIUrl+"/v2/", cti.WithRequestEditorFn(cti.APIKeyInserter(validApiKey)), cti.WithHTTPClient(&http.Client{
+	ctiClient, err = cti.NewClientWithResponses(CTIUrl+"/v2/", cti.WithRequestEditorFn(provider.Intercept), cti.WithHTTPClient(&http.Client{
 		Transport: RoundTripFunc(smokeHandler),
 	}))
 	require.NoError(t, err)

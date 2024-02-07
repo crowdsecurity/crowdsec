@@ -83,7 +83,7 @@ require (
 	github.com/wasilibs/go-re2 v1.3.0
 	github.com/xhit/go-simple-mail/v2 v2.16.0
 	golang.org/x/crypto v0.17.0
-	golang.org/x/mod v0.11.0
+	golang.org/x/mod v0.12.0
 	golang.org/x/sys v0.15.0
 	golang.org/x/text v0.14.0
 	google.golang.org/grpc v1.56.3
@@ -111,6 +111,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
 	github.com/creack/pty v1.1.18 // indirect
+	github.com/deepmap/oapi-codegen v1.16.2 // indirect
 	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.2 // indirect
@@ -157,7 +158,7 @@ require (
 	github.com/magefile/mage v1.15.0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-runewidth v0.0.13 // indirect
+	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
@@ -205,7 +206,7 @@ require (
 	golang.org/x/sync v0.6.0 // indirect
 	golang.org/x/term v0.15.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	golang.org/x/tools v0.8.1-0.20230428195545-5283a0178901 // indirect
+	golang.org/x/tools v0.12.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220411194840-2f41105eb62f // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230525234030-28d5490b6b19 // indirect

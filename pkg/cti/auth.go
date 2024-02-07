@@ -1,14 +1,9 @@
 package cti
 
 import (
-	"context"
-	"net/http"
+        "github.com/deepmap/oapi-codegen/pkg/securityprovider"
 )
 
-func APIKeyInserter(apiKey string) RequestEditorFn {
-	return func(ctx context.Context, req *http.Request) error {
-		req.Header.Add("x-api-key", apiKey)
-		return nil
-	}
+func NewAPIKeyProvider(apiKey string) (*securityprovider.SecurityProviderApiKey, error) {
+	return securityprovider.NewSecurityProviderApiKey("header", "x-api-key", apiKey)
 }
-
