@@ -22,7 +22,7 @@ linters-settings:
 
   gocognit:
     # lower this after refactoring
-    min-complexity: 150
+    min-complexity: 145
 
   gocyclo:
     # lower this after refactoring

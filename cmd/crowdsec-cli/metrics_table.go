@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strconv"
 
 	"github.com/aquasecurity/table"
 	log "github.com/sirupsen/logrus"
@@ -11,17 +12,21 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/maptools"
 )
 
+// ErrNilTable means a nil pointer was passed instead of a table instance. This is a programming error.
+var ErrNilTable = fmt.Errorf("nil table")
+
 func lapiMetricsToTable(t *table.Table, stats map[string]map[string]map[string]int) int {
 	// stats: machine -> route -> method -> count
-
 	// sort keys to keep consistent order when printing
 	machineKeys := []string{}
 	for k := range stats {
 		machineKeys = append(machineKeys, k)
 	}
+
 	sort.Strings(machineKeys)
 
 	numRows := 0
+
 	for _, machine := range machineKeys {
 		// oneRow: route -> method -> count
 		machineRow := stats[machine]
@@ -33,53 +38,60 @@ func lapiMetricsToTable(t *table.Table, stats map[string]map[string]map[string]i
 					methodName,
 				}
 				if count != 0 {
-					row = append(row, fmt.Sprintf("%d", count))
+					row = append(row, strconv.Itoa(count))
 				} else {
 					row = append(row, "-")
 				}
+
 				t.AddRow(row...)
 				numRows++
 			}
 		}
 	}
+
 	return numRows
 }
 
 func wlMetricsToTable(t *table.Table, stats map[string]map[string]map[string]int, noUnit bool) (int, error) {
 	if t == nil {
-		return 0, fmt.Errorf("nil table")
+		return 0, ErrNilTable
 	}
 
 	numRows := 0
 
 	for _, name := range maptools.SortedKeys(stats) {
 		for _, reason := range maptools.SortedKeys(stats[name]) {
-			row := make([]string, 4)
-			row[0] = name
-			row[1] = reason
-			row[2] = "-"
-			row[3] = "-"
+			row := []string{
+				name,
+				reason,
+				"-",
+				"-",
+			}
 
 			for _, action := range maptools.SortedKeys(stats[name][reason]) {
 				value := stats[name][reason][action]
-				if action == "whitelisted" {
-					row[3] = fmt.Sprintf("%d", value)
-				} else if action == "hits" {
-					row[2] = fmt.Sprintf("%d", value)
-				} else {
+
+				switch action {
+				case "whitelisted":
+					row[3] = strconv.Itoa(value)
+				case "hits":
+					row[2] = strconv.Itoa(value)
+				default:
 					log.Debugf("unexpected counter '%s' for whitelists = %d", action, value)
 				}
 			}
+
 			t.AddRow(row...)
 			numRows++
 		}
 	}
+
 	return numRows, nil
 }
 
 func metricsToTable(t *table.Table, stats map[string]map[string]int, keys []string, noUnit bool) (int, error) {
 	if t == nil {
-		return 0, fmt.Errorf("nil table")
+		return 0, ErrNilTable
 	}
 
 	numRows := 0
@@ -89,12 +101,14 @@ func metricsToTable(t *table.Table, stats map[string]map[string]int, keys []stri
 		if !ok {
 			continue
 		}
+
 		row := []string{
 			alabel,
 		}
+
 		for _, sl := range keys {
 			if v, ok := astats[sl]; ok && v != 0 {
-				numberToShow := fmt.Sprintf("%d", v)
+				numberToShow := strconv.Itoa(v)
 				if !noUnit {
 					numberToShow = formatNumber(v)
 				}
@@ -104,15 +118,26 @@ func metricsToTable(t *table.Table, stats map[string]map[string]int, keys []stri
 				row = append(row, "-")
 			}
 		}
+
 		t.AddRow(row...)
 		numRows++
 	}
+
 	return numRows, nil
 }
 
 func (s statBucket) Description() (string, string) {
 	return "Bucket Metrics",
-		`Measure events in different scenarios. Current count is the number of buckets during metrics collection. Overflows are past event-producing buckets, while Expired are the ones that didn’t receive enough events to Overflow.`
+		`Measure events in different scenarios. Current count is the number of buckets during metrics collection. ` +
+			`Overflows are past event-producing buckets, while Expired are the ones that didn’t receive enough events to Overflow.`
+}
+
+func (s statBucket) Process(bucket, metric string, val int) {
+	if _, ok := s[bucket]; !ok {
+		s[bucket] = make(map[string]int)
+	}
+
+	s[bucket][metric] += val
 }
 
 func (s statBucket) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -134,7 +159,18 @@ func (s statBucket) Table(out io.Writer, noUnit bool, showEmpty bool) {
 
 func (s statAcquis) Description() (string, string) {
 	return "Acquisition Metrics",
-		`Measures the lines read, parsed, and unparsed per datasource. Zero read lines indicate a misconfigured or inactive datasource. Zero parsed lines mean the parser(s) failed. Non-zero parsed lines are fine as crowdsec selects relevant lines.`
+		`Measures the lines read, parsed, and unparsed per datasource. ` +
+			`Zero read lines indicate a misconfigured or inactive datasource. ` +
+			`Zero parsed lines mean the parser(s) failed. ` +
+			`Non-zero parsed lines are fine as crowdsec selects relevant lines.`
+}
+
+func (s statAcquis) Process(source, metric string, val int) {
+	if _, ok := s[source]; !ok {
+		s[source] = make(map[string]int)
+	}
+
+	s[source][metric] += val
 }
 
 func (s statAcquis) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -159,12 +195,22 @@ func (s statAppsecEngine) Description() (string, string) {
 		`Measures the number of parsed and blocked requests by the AppSec Component.`
 }
 
+func (s statAppsecEngine) Process(appsecEngine, metric string, val int) {
+	if _, ok := s[appsecEngine]; !ok {
+		s[appsecEngine] = make(map[string]int)
+	}
+
+	s[appsecEngine][metric] += val
+}
+
 func (s statAppsecEngine) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
 	t.SetHeaders("Appsec Engine", "Processed", "Blocked")
 	t.SetAlignment(table.AlignLeft, table.AlignLeft)
+
 	keys := []string{"processed", "blocked"}
+
 	if numRows, err := metricsToTable(t, s, keys, noUnit); err != nil {
 		log.Warningf("while collecting appsec stats: %s", err)
 	} else if numRows > 0 || showEmpty {
@@ -179,13 +225,27 @@ func (s statAppsecRule) Description() (string, string) {
 		`Provides “per AppSec Component” information about the number of matches for loaded AppSec Rules.`
 }
 
+func (s statAppsecRule) Process(appsecEngine, appsecRule string, metric string, val int) {
+	if _, ok := s[appsecEngine]; !ok {
+		s[appsecEngine] = make(map[string]map[string]int)
+	}
+
+	if _, ok := s[appsecEngine][appsecRule]; !ok {
+		s[appsecEngine][appsecRule] = make(map[string]int)
+	}
+
+	s[appsecEngine][appsecRule][metric] += val
+}
+
 func (s statAppsecRule) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	for appsecEngine, appsecEngineRulesStats := range s {
 		t := newTable(out)
 		t.SetRowLines(false)
 		t.SetHeaders("Rule ID", "Triggered")
 		t.SetAlignment(table.AlignLeft, table.AlignLeft)
+
 		keys := []string{"triggered"}
+
 		if numRows, err := metricsToTable(t, appsecEngineRulesStats, keys, noUnit); err != nil {
 			log.Warningf("while collecting appsec rules stats: %s", err)
 		} else if numRows > 0 || showEmpty {
@@ -193,12 +253,23 @@ func (s statAppsecRule) Table(out io.Writer, noUnit bool, showEmpty bool) {
 			t.Render()
 		}
 	}
-
 }
 
 func (s statWhitelist) Description() (string, string) {
 	return "Whitelist Metrics",
 		`Tracks the number of events processed and possibly whitelisted by each parser whitelist.`
+}
+
+func (s statWhitelist) Process(whitelist, reason, metric string, val int) {
+	if _, ok := s[whitelist]; !ok {
+		s[whitelist] = make(map[string]map[string]int)
+	}
+
+	if _, ok := s[whitelist][reason]; !ok {
+		s[whitelist][reason] = make(map[string]int)
+	}
+
+	s[whitelist][reason][metric] += val
 }
 
 func (s statWhitelist) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -218,7 +289,17 @@ func (s statWhitelist) Table(out io.Writer, noUnit bool, showEmpty bool) {
 
 func (s statParser) Description() (string, string) {
 	return "Parser Metrics",
-		`Tracks the number of events processed by each parser and indicates success of failure. Zero parsed lines means the parer(s) failed. Non-zero unparsed lines are fine as crowdsec select relevant lines.`
+		`Tracks the number of events processed by each parser and indicates success of failure. ` +
+			`Zero parsed lines means the parer(s) failed. ` +
+			`Non-zero unparsed lines are fine as crowdsec select relevant lines.`
+}
+
+func (s statParser) Process(parser, metric string, val int) {
+	if _, ok := s[parser]; !ok {
+		s[parser] = make(map[string]int)
+	}
+
+	s[parser][metric] += val
 }
 
 func (s statParser) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -243,6 +324,16 @@ func (s statStash) Description() (string, string) {
 		`Tracks the status of stashes that might be created by various parsers and scenarios.`
 }
 
+func (s statStash) Process(name, mtype string, val int) {
+	s[name] = struct {
+		Type  string
+		Count int
+	}{
+		Type:  mtype,
+		Count: val,
+	}
+}
+
 func (s statStash) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
@@ -258,11 +349,12 @@ func (s statStash) Table(out io.Writer, noUnit bool, showEmpty bool) {
 		row := []string{
 			alabel,
 			astats.Type,
-			fmt.Sprintf("%d", astats.Count),
+			strconv.Itoa(astats.Count),
 		}
 		t.AddRow(row...)
 		numRows++
 	}
+
 	if numRows > 0 || showEmpty {
 		title, _ := s.Description()
 		renderTableTitle(out, "\n"+title+":")
@@ -273,6 +365,14 @@ func (s statStash) Table(out io.Writer, noUnit bool, showEmpty bool) {
 func (s statLapi) Description() (string, string) {
 	return "Local API Metrics",
 		`Monitors the requests made to local API routes.`
+}
+
+func (s statLapi) Process(route, method string, val int) {
+	if _, ok := s[route]; !ok {
+		s[route] = make(map[string]int)
+	}
+
+	s[route][method] += val
 }
 
 func (s statLapi) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -291,13 +391,14 @@ func (s statLapi) Table(out io.Writer, noUnit bool, showEmpty bool) {
 		for skey := range astats {
 			subKeys = append(subKeys, skey)
 		}
+
 		sort.Strings(subKeys)
 
 		for _, sl := range subKeys {
 			row := []string{
 				alabel,
 				sl,
-				fmt.Sprintf("%d", astats[sl]),
+				strconv.Itoa(astats[sl]),
 			}
 			t.AddRow(row...)
 			numRows++
@@ -314,6 +415,18 @@ func (s statLapi) Table(out io.Writer, noUnit bool, showEmpty bool) {
 func (s statLapiMachine) Description() (string, string) {
 	return "Local API Machines Metrics",
 		`Tracks the number of calls to the local API from each registered machine.`
+}
+
+func (s statLapiMachine) Process(machine, route, method string, val int) {
+	if _, ok := s[machine]; !ok {
+		s[machine] = make(map[string]map[string]int)
+	}
+
+	if _, ok := s[machine][route]; !ok {
+		s[machine][route] = make(map[string]int)
+	}
+
+	s[machine][route][method] += val
 }
 
 func (s statLapiMachine) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -336,6 +449,18 @@ func (s statLapiBouncer) Description() (string, string) {
 		`Tracks total hits to remediation component related API routes.`
 }
 
+func (s statLapiBouncer) Process(bouncer, route, method string, val int) {
+	if _, ok := s[bouncer]; !ok {
+		s[bouncer] = make(map[string]map[string]int)
+	}
+
+	if _, ok := s[bouncer][route]; !ok {
+		s[bouncer][route] = make(map[string]int)
+	}
+
+	s[bouncer][route][method] += val
+}
+
 func (s statLapiBouncer) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
@@ -356,6 +481,26 @@ func (s statLapiDecision) Description() (string, string) {
 		`Tracks the number of empty/non-empty answers from LAPI to bouncers that are working in "live" mode.`
 }
 
+func (s statLapiDecision) Process(bouncer, fam string, val int) {
+	if _, ok := s[bouncer]; !ok {
+		s[bouncer] = struct {
+			NonEmpty int
+			Empty    int
+		}{}
+	}
+
+	x := s[bouncer]
+
+	switch fam {
+	case "cs_lapi_decisions_ko_total":
+		x.Empty += val
+	case "cs_lapi_decisions_ok_total":
+		x.NonEmpty += val
+	}
+
+	s[bouncer] = x
+}
+
 func (s statLapiDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
@@ -363,11 +508,12 @@ func (s statLapiDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft)
 
 	numRows := 0
+
 	for bouncer, hits := range s {
 		t.AddRow(
 			bouncer,
-			fmt.Sprintf("%d", hits.Empty),
-			fmt.Sprintf("%d", hits.NonEmpty),
+			strconv.Itoa(hits.Empty),
+			strconv.Itoa(hits.NonEmpty),
 		)
 		numRows++
 	}
@@ -381,7 +527,20 @@ func (s statLapiDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
 
 func (s statDecision) Description() (string, string) {
 	return "Local API Decisions",
-		`Provides information about all currently active decisions. Includes both local (crowdsec) and global decisions (CAPI), and lists subscriptions (lists).`
+		`Provides information about all currently active decisions. ` +
+			`Includes both local (crowdsec) and global decisions (CAPI), and lists subscriptions (lists).`
+}
+
+func (s statDecision) Process(reason, origin, action string, val int) {
+	if _, ok := s[reason]; !ok {
+		s[reason] = make(map[string]map[string]int)
+	}
+
+	if _, ok := s[reason][origin]; !ok {
+		s[reason][origin] = make(map[string]int)
+	}
+
+	s[reason][origin][action] += val
 }
 
 func (s statDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
@@ -391,6 +550,7 @@ func (s statDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
 
 	numRows := 0
+
 	for reason, origins := range s {
 		for origin, actions := range origins {
 			for action, hits := range actions {
@@ -398,7 +558,7 @@ func (s statDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
 					reason,
 					origin,
 					action,
-					fmt.Sprintf("%d", hits),
+					strconv.Itoa(hits),
 				)
 				numRows++
 			}
@@ -417,6 +577,10 @@ func (s statAlert) Description() (string, string) {
 		`Tracks the total number of past and present alerts for the installed scenarios.`
 }
 
+func (s statAlert) Process(reason string, val int) {
+	s[reason] += val
+}
+
 func (s statAlert) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
@@ -424,10 +588,11 @@ func (s statAlert) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t.SetAlignment(table.AlignLeft, table.AlignLeft)
 
 	numRows := 0
+
 	for scenario, hits := range s {
 		t.AddRow(
 			scenario,
-			fmt.Sprintf("%d", hits),
+			strconv.Itoa(hits),
 		)
 		numRows++
 	}
