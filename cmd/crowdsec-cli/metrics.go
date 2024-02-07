@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -42,8 +43,10 @@ type (
 	}
 )
 
+var ErrMissingConfig = errors.New("prometheus section missing, can't show metrics")
+
 type metricSection interface {
-	Table(io.Writer, bool, bool)
+	Table(out io.Writer, noUnit bool, showEmpty bool)
 	Description() (string, string)
 }
 
@@ -165,6 +168,7 @@ func (ms metricStore) Fetch(url string) error {
 			}
 
 			ival := int(fval)
+
 			switch fam.Name {
 			//
 			// buckets
@@ -226,7 +230,7 @@ func (ms metricStore) Fetch(url string) error {
 			// stash
 			//
 			case "cs_cache_size":
-				mStash.Process(name, mtype,ival)
+				mStash.Process(name, mtype, ival)
 			//
 			// appsec
 			//
@@ -282,13 +286,13 @@ func (ms metricStore) Format(out io.Writer, sections []string, formatType string
 	case "json":
 		x, err := json.MarshalIndent(want, "", " ")
 		if err != nil {
-			return fmt.Errorf("failed to marshal metrics: %v", err)
+			return fmt.Errorf("failed to marshal metrics: %w", err)
 		}
 		out.Write(x)
 	case "raw":
 		x, err := yaml.Marshal(want)
 		if err != nil {
-			return fmt.Errorf("failed to marshal metrics: %v", err)
+			return fmt.Errorf("failed to marshal metrics: %w", err)
 		}
 		out.Write(x)
 	default:
@@ -306,11 +310,11 @@ func (cli *cliMetrics) show(sections []string, url string, noUnit bool) error {
 	}
 
 	if cfg.Prometheus == nil {
-		return fmt.Errorf("prometheus section missing, can't show metrics")
+		return ErrMissingConfig
 	}
 
 	if !cfg.Prometheus.Enabled {
-		return fmt.Errorf("prometheus is not enabled, can't show metrics")
+		return ErrMissingConfig
 	}
 
 	ms := NewMetricStore()
@@ -329,6 +333,7 @@ func (cli *cliMetrics) show(sections []string, url string, noUnit bool) error {
 	if err := ms.Format(color.Output, sections, cfg.Cscli.Output, noUnit); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -370,6 +375,7 @@ cscli metrics list`,
 // expandAlias returns a list of sections. The input can be a list of sections or alias.
 func (cli *cliMetrics) expandSectionGroups(args []string) []string {
 	ret := []string{}
+
 	for _, section := range args {
 		switch section {
 		case "engine":
@@ -424,8 +430,8 @@ cscli metrics show acquisition parsers buckets stash -o json`,
 
 func (cli *cliMetrics) list() error {
 	type metricType struct {
-		Type        string `json:"type" yaml:"type"`
-		Title       string `json:"title" yaml:"title"`
+		Type        string `json:"type"        yaml:"type"`
+		Title       string `json:"title"       yaml:"title"`
 		Description string `json:"description" yaml:"description"`
 	}
 
@@ -477,8 +483,7 @@ func (cli *cliMetrics) newListCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			cli.list()
-			return nil
+			return cli.list()
 		},
 	}
 
