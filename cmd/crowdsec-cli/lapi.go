@@ -329,34 +329,9 @@ func (cli *cliLapi) newContextStatusCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli *cliLapi) newContextCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:               "context [command]",
-		Short:             "Manage context to send with alerts",
-		DisableAutoGenTag: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := csConfig.LoadCrowdsec(); err != nil {
-				fileNotFoundMessage := fmt.Sprintf("failed to open context file: open %s: no such file or directory", csConfig.Crowdsec.ConsoleContextPath)
-				if err.Error() != fileNotFoundMessage {
-					return fmt.Errorf("unable to load CrowdSec agent configuration: %w", err)
-				}
-			}
-			if csConfig.DisableAgent {
-				return errors.New("agent is disabled and lapi context can only be used on the agent")
-			}
-
-			return nil
-		},
-		Run: func(cmd *cobra.Command, args []string) {
-			printHelp(cmd)
-		},
-	}
-
-	cmd.AddCommand(cli.newContextAddCmd())
-	cmd.AddCommand(cli.newContextStatusCmd())
-
+func (cli *cliLapi) newContextDetectCmd() *cobra.Command {
 	var detectAll bool
-	cmdContextDetect := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "detect",
 		Short: "Detect available fields from the installed parsers",
 		Example: `cscli lapi context detect --all
@@ -364,6 +339,7 @@ cscli lapi context detect crowdsecurity/sshd-logs
 		`,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg := cli.cfg()
 			if !detectAll && len(args) == 0 {
 				log.Infof("Please provide parsers to detect or --all flag.")
 				printHelp(cmd)
@@ -376,13 +352,13 @@ cscli lapi context detect crowdsecurity/sshd-logs
 				return fmt.Errorf("failed to init expr helpers: %w", err)
 			}
 
-			hub, err := require.Hub(csConfig, nil, nil)
+			hub, err := require.Hub(cfg, nil, nil)
 			if err != nil {
 				return err
 			}
 
 			csParsers := parser.NewParsers(hub)
-			if csParsers, err = parser.LoadParsers(csConfig, csParsers); err != nil {
+			if csParsers, err = parser.LoadParsers(cfg, csParsers); err != nil {
 				return fmt.Errorf("unable to load parsers: %w", err)
 			}
 
@@ -439,14 +415,17 @@ cscli lapi context detect crowdsecurity/sshd-logs
 			return nil
 		},
 	}
-	cmdContextDetect.Flags().BoolVarP(&detectAll, "all", "a", false, "Detect evt field for all installed parser")
-	cmd.AddCommand(cmdContextDetect)
+	cmd.Flags().BoolVarP(&detectAll, "all", "a", false, "Detect evt field for all installed parser")
 
-	cmdContextDelete := &cobra.Command{
+	return cmd
+}
+
+func (cli *cliLapi) newContextDeleteCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "delete",
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			filePath := csConfig.Crowdsec.ConsoleContextPath
+			filePath := cli.cfg().Crowdsec.ConsoleContextPath
 			if filePath == "" {
 				filePath = "the context file"
 			}
@@ -454,7 +433,39 @@ cscli lapi context detect crowdsecurity/sshd-logs
 			return nil
 		},
 	}
-	cmd.AddCommand(cmdContextDelete)
+	return cmd
+}
+
+
+
+func (cli *cliLapi) newContextCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:               "context [command]",
+		Short:             "Manage context to send with alerts",
+		DisableAutoGenTag: true,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			cfg := cli.cfg()
+			if err := cfg.LoadCrowdsec(); err != nil {
+				fileNotFoundMessage := fmt.Sprintf("failed to open context file: open %s: no such file or directory", cfg.Crowdsec.ConsoleContextPath)
+				if err.Error() != fileNotFoundMessage {
+					return fmt.Errorf("unable to load CrowdSec agent configuration: %w", err)
+				}
+			}
+			if cfg.DisableAgent {
+				return errors.New("agent is disabled and lapi context can only be used on the agent")
+			}
+
+			return nil
+		},
+		Run: func(cmd *cobra.Command, args []string) {
+			printHelp(cmd)
+		},
+	}
+
+	cmd.AddCommand(cli.newContextAddCmd())
+	cmd.AddCommand(cli.newContextStatusCmd())
+	cmd.AddCommand(cli.newContextDetectCmd())
+	cmd.AddCommand(cli.newContextDeleteCmd())
 
 	return cmd
 }
