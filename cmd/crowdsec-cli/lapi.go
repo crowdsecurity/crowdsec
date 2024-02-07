@@ -39,15 +39,16 @@ func NewCLILapi(cfg configGetter) *cliLapi {
 	}
 }
 
-func runLapiStatus(cmd *cobra.Command, args []string) error {
-	password := strfmt.Password(csConfig.API.Client.Credentials.Password)
-	apiurl, err := url.Parse(csConfig.API.Client.Credentials.URL)
-	login := csConfig.API.Client.Credentials.Login
+func (cli *cliLapi) status() error {
+	cfg := cli.cfg()
+	password := strfmt.Password(cfg.API.Client.Credentials.Password)
+	apiurl, err := url.Parse(cfg.API.Client.Credentials.URL)
+	login := cfg.API.Client.Credentials.Login
 	if err != nil {
 		return fmt.Errorf("parsing api url: %w", err)
 	}
 
-	hub, err := require.Hub(csConfig, nil, nil)
+	hub, err := require.Hub(cfg, nil, nil)
 	if err != nil {
 		return err
 	}
@@ -70,7 +71,7 @@ func runLapiStatus(cmd *cobra.Command, args []string) error {
 		Scenarios: scenarios,
 	}
 
-	log.Infof("Loaded credentials from %s", csConfig.API.Client.CredentialsFilePath)
+	log.Infof("Loaded credentials from %s", cfg.API.Client.CredentialsFilePath)
 	log.Infof("Trying to authenticate with username %s on %s", login, apiurl)
 
 	_, _, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
@@ -158,13 +159,15 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string) e
 	return nil
 }
 
-func NewLapiStatusCmd() *cobra.Command {
+func (cli *cliLapi) newStatusCmd() *cobra.Command {
 	cmdLapiStatus := &cobra.Command{
 		Use:               "status",
 		Short:             "Check authentication to Local API (LAPI)",
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
-		RunE:              runLapiStatus,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cli.status()
+		},
 	}
 
 	return cmdLapiStatus
@@ -212,7 +215,7 @@ func (cli *cliLapi) NewCommand() *cobra.Command {
 	}
 
 	cmd.AddCommand(cli.newRegisterCmd())
-	cmd.AddCommand(NewLapiStatusCmd())
+	cmd.AddCommand(cli.newStatusCmd())
 	cmd.AddCommand(NewLapiContextCmd())
 
 	return cmd
