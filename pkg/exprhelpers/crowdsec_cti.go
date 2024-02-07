@@ -109,26 +109,28 @@ func CrowdsecCTI(params ...any) (any, error) {
 
 	ctiLogger.Infof("cti call for %s", ip)
 	before := time.Now()
-	ctx := context.Background()
+	ctx := context.Background() // XXX: timeout?
 	ctiResp, err := ctiClient.GetSmokeIpWithResponse(ctx, ip)
 	ctiLogger.Debugf("request for %s took %v", ip, time.Since(before))
-//	fmt.Printf("response code: %d", ctiResp.HTTPResponse.StatusCode)
-//	litter.Dump(string(ctiResp.Body))
 
 	if err != nil {
-		switch {
-		case ctiResp.HTTPResponse != nil && ctiResp.HTTPResponse.StatusCode == 403:
-			CTIApiEnabled = false
-			ctiLogger.Errorf("Invalid API key provided, disabling CTI API")
-			return &cti.CTIObject{}, cti.ErrUnauthorized
-		case ctiResp.HTTPResponse != nil && ctiResp.HTTPResponse.StatusCode == 429:
-			CTIBackOffUntil = time.Now().Add(CTIBackOffDuration)
-			ctiLogger.Errorf("CTI API is throttled, will try again in %s", CTIBackOffDuration)
-			return &cti.CTIObject{}, cti.ErrLimit
-		default:
-			ctiLogger.Warnf("CTI API error : %s", err)
-			return &cti.CTIObject{}, fmt.Errorf("unexpected error : %v", err)
-		}
+		ctiLogger.Warnf("CTI API error: %s", err)
+		return &cti.CTIObject{}, fmt.Errorf("unexpected error: %w", err)
+	}
+
+	switch {
+	case ctiResp.HTTPResponse != nil && ctiResp.HTTPResponse.StatusCode == 403:
+		fmt.Printf("403 error, disabling CTI API\n")
+		CTIApiEnabled = false
+		ctiLogger.Errorf("Invalid API key provided, disabling CTI API")
+		return &cti.CTIObject{}, cti.ErrUnauthorized
+	case ctiResp.HTTPResponse != nil && ctiResp.HTTPResponse.StatusCode == 429:
+		CTIBackOffUntil = time.Now().Add(CTIBackOffDuration)
+		ctiLogger.Errorf("CTI API is throttled, will try again in %s", CTIBackOffDuration)
+		return &cti.CTIObject{}, cti.ErrLimit
+	case ctiResp.HTTPResponse != nil && ctiResp.HTTPResponse.StatusCode != 200:
+		ctiLogger.Warnf("CTI API error: %s", ctiResp.HTTPResponse.Status)
+		return &cti.CTIObject{}, fmt.Errorf("unexpected error: %s", ctiResp.HTTPResponse.Status)
 	}
 
 	if err := CTICache.SetWithExpire(ip, ctiResp, CacheExpiration); err != nil {
@@ -136,7 +138,7 @@ func CrowdsecCTI(params ...any) (any, error) {
 		return &cti.CTIObject{}, cti.ErrUnknown
 	}
 
-	ctiLogger.Tracef("CTI response: %v", *ctiResp)
+	ctiLogger.Tracef("CTI response: %s", ctiResp.Body)
 
 	var ctiObject cti.CTIObject
 	if err := json.Unmarshal(ctiResp.Body, &ctiObject); err != nil {

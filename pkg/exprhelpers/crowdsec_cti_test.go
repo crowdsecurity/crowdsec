@@ -124,24 +124,24 @@ func TestNillClient(t *testing.T) {
 
 func TestInvalidAuth(t *testing.T) {
 	defer ShutdownCrowdsecCTI()
-	if err := InitCrowdsecCTI(ptr.Of("asdasd"), nil, nil, nil); err != nil {
+	badKey := "asdasd"
+	if err := InitCrowdsecCTI(&badKey, nil, nil, nil); err != nil {
 		t.Fatalf("failed to init CTI : %s", err)
 	}
 
 	var err error
 
 	//Replace the client created by InitCrowdsecCTI with one that uses a custom transport
-	ctiClient, err = cti.NewClientWithResponses(CTIUrl+"/v2/", cti.WithRequestEditorFn(cti.APIKeyInserter(validApiKey)), cti.WithHTTPClient(&http.Client{
+	ctiClient, err = cti.NewClientWithResponses(CTIUrl+"/v2/", cti.WithRequestEditorFn(cti.APIKeyInserter(badKey)), cti.WithHTTPClient(&http.Client{
 		Transport: RoundTripFunc(smokeHandler),
 	}))
 	require.NoError(t, err)
 
 	assert.True(t, CTIApiEnabled)
 	item, err := CrowdsecCTI("1.2.3.4")
-//	require.False(t, CTIApiEnabled)
-//	require.ErrorIs(t, err, cti.ErrUnauthorized)
-	require.Equal(t, &cti.CTIObject{Ip: "1.2.3.4"}, item)
-//	require.Equal(t, &cti.CTIObject{}, item)
+	require.False(t, CTIApiEnabled)
+	require.ErrorIs(t, err, cti.ErrUnauthorized)
+	require.Equal(t, &cti.CTIObject{}, item)
 
 	//CTI is now disabled, all requests should return empty
 	ctiClient, err = cti.NewClientWithResponses(CTIUrl+"/v2/", cti.WithRequestEditorFn(cti.APIKeyInserter(validApiKey)), cti.WithHTTPClient(&http.Client{
@@ -150,9 +150,9 @@ func TestInvalidAuth(t *testing.T) {
 	require.NoError(t, err)
 
 	item, err = CrowdsecCTI("1.2.3.4")
-//	assert.Equal(t, item, &cti.CTIObject{})
-//	assert.False(t, CTIApiEnabled)
-//	assert.Equal(t, err, cti.ErrDisabled)
+	assert.Equal(t, item, &cti.CTIObject{})
+	assert.False(t, CTIApiEnabled)
+	assert.Equal(t, err, cti.ErrDisabled)
 }
 
 func TestNoKey(t *testing.T) {
