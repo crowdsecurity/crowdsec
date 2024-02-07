@@ -294,6 +294,41 @@ cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user
 	return cmd
 }
 
+func (cli *cliLapi) newContextStatusCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:               "status",
+		Short:             "List context to send with alerts",
+		DisableAutoGenTag: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg := cli.cfg()
+			hub, err := require.Hub(cfg, nil, nil)
+			if err != nil {
+				return err
+			}
+
+			if err = alertcontext.LoadConsoleContext(cfg, hub); err != nil {
+				return fmt.Errorf("while loading context: %w", err)
+			}
+
+			if len(cfg.Crowdsec.ContextToSend) == 0 {
+				fmt.Println("No context found on this agent. You can use 'cscli lapi context add' to add context to your alerts.")
+				return nil
+			}
+
+			dump, err := yaml.Marshal(cfg.Crowdsec.ContextToSend)
+			if err != nil {
+				return fmt.Errorf("unable to show context status: %w", err)
+			}
+
+			fmt.Print(string(dump))
+
+			return nil
+		},
+	}
+
+	return cmd
+}
+
 func (cli *cliLapi) newContextCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "context [command]",
@@ -318,37 +353,7 @@ func (cli *cliLapi) newContextCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(cli.newContextAddCmd())
-
-	cmdContextStatus := &cobra.Command{
-		Use:               "status",
-		Short:             "List context to send with alerts",
-		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			hub, err := require.Hub(csConfig, nil, nil)
-			if err != nil {
-				return err
-			}
-
-			if err = alertcontext.LoadConsoleContext(csConfig, hub); err != nil {
-				return fmt.Errorf("while loading context: %w", err)
-			}
-
-			if len(csConfig.Crowdsec.ContextToSend) == 0 {
-				fmt.Println("No context found on this agent. You can use 'cscli lapi context add' to add context to your alerts.")
-				return nil
-			}
-
-			dump, err := yaml.Marshal(csConfig.Crowdsec.ContextToSend)
-			if err != nil {
-				return fmt.Errorf("unable to show context status: %w", err)
-			}
-
-			fmt.Print(string(dump))
-
-			return nil
-		},
-	}
-	cmd.AddCommand(cmdContextStatus)
+	cmd.AddCommand(cli.newContextStatusCmd())
 
 	var detectAll bool
 	cmdContextDetect := &cobra.Command{
