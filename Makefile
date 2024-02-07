@@ -168,8 +168,6 @@ gen-cti:  ## Generate CTI client code from the specs
 	oapi-codegen -package cti -generate types -o ./pkg/cti/types.go ./pkg/cti/cti_openapi.yaml
 	@echo "Client generation complete."
 
-
-
 .PHONY: all
 all: clean test build  ## Clean, test and build (requires localstack)
 
@@ -214,7 +212,7 @@ cscli: goversion  ## Build cscli
 	@$(MAKE) -C $(CSCLI_FOLDER) build $(MAKE_FLAGS)
 
 .PHONY: cscti
-cscti: goversion  ## Build cscli
+cscti: goversion  ## Build cscti
 	@$(MAKE) -C $(CSCTI_FOLDER) build $(MAKE_FLAGS)
 
 .PHONY: crowdsec
