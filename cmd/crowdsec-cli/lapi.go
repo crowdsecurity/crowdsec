@@ -29,6 +29,16 @@ import (
 
 const LAPIURLPrefix = "v1"
 
+type cliLapi struct {
+	cfg configGetter
+}
+
+func NewCLILapi(cfg configGetter) *cliLapi {
+	return &cliLapi{
+		cfg: cfg,
+	}
+}
+
 func runLapiStatus(cmd *cobra.Command, args []string) error {
 	password := strfmt.Password(csConfig.API.Client.Credentials.Password)
 	apiurl, err := url.Parse(csConfig.API.Client.Credentials.URL)
@@ -72,23 +82,11 @@ func runLapiStatus(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func runLapiRegister(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
+func (cli *cliLapi) register(apiURL string, outputFile string, machine string) error {
+	var err error
 
-	apiURL, err := flags.GetString("url")
-	if err != nil {
-		return err
-	}
-
-	outputFile, err := flags.GetString("file")
-	if err != nil {
-		return err
-	}
-
-	lapiUser, err := flags.GetString("machine")
-	if err != nil {
-		return err
-	}
+	lapiUser := machine
+	cfg := cli.cfg()
 
 	if lapiUser == "" {
 		lapiUser, err = generateID("")
@@ -98,10 +96,10 @@ func runLapiRegister(cmd *cobra.Command, args []string) error {
 	}
 	password := strfmt.Password(generatePassword(passwordLength))
 	if apiURL == "" {
-		if csConfig.API.Client == nil || csConfig.API.Client.Credentials == nil || csConfig.API.Client.Credentials.URL == "" {
+		if cfg.API.Client == nil || cfg.API.Client.Credentials == nil || cfg.API.Client.Credentials.URL == "" {
 			return fmt.Errorf("no Local API URL. Please provide it in your configuration or with the -u parameter")
 		}
-		apiURL = csConfig.API.Client.Credentials.URL
+		apiURL = cfg.API.Client.Credentials.URL
 	}
 	/*URL needs to end with /, but user doesn't care*/
 	if !strings.HasSuffix(apiURL, "/") {
@@ -132,8 +130,8 @@ func runLapiRegister(cmd *cobra.Command, args []string) error {
 	var dumpFile string
 	if outputFile != "" {
 		dumpFile = outputFile
-	} else if csConfig.API.Client.CredentialsFilePath != "" {
-		dumpFile = csConfig.API.Client.CredentialsFilePath
+	} else if cfg.API.Client.CredentialsFilePath != "" {
+		dumpFile = cfg.API.Client.CredentialsFilePath
 	} else {
 		dumpFile = ""
 	}
@@ -172,44 +170,52 @@ func NewLapiStatusCmd() *cobra.Command {
 	return cmdLapiStatus
 }
 
-func NewLapiRegisterCmd() *cobra.Command {
-	cmdLapiRegister := &cobra.Command{
+func (cli *cliLapi) newRegisterCmd() *cobra.Command {
+	var (
+		apiURL     string
+		outputFile string
+		machine    string
+	)
+
+	cmd := &cobra.Command{
 		Use:   "register",
 		Short: "Register a machine to Local API (LAPI)",
 		Long: `Register your machine to the Local API (LAPI).
 Keep in mind the machine needs to be validated by an administrator on LAPI side to be effective.`,
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
-		RunE:              runLapiRegister,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return cli.register(apiURL, outputFile, machine)
+		},
 	}
 
-	flags := cmdLapiRegister.Flags()
-	flags.StringP("url", "u", "", "URL of the API (ie. http://127.0.0.1)")
-	flags.StringP("file", "f", "", "output file destination")
-	flags.String("machine", "", "Name of the machine to register with")
+	flags := cmd.Flags()
+	flags.StringVarP(&apiURL, "url", "u", "", "URL of the API (ie. http://127.0.0.1)")
+	flags.StringVarP(&outputFile, "file", "f", "", "output file destination")
+	flags.StringVar(&machine, "machine", "", "Name of the machine to register with")
 
-	return cmdLapiRegister
+	return cmd
 }
 
-func NewLapiCmd() *cobra.Command {
-	cmdLapi := &cobra.Command{
+func (cli *cliLapi) NewCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "lapi [action]",
 		Short:             "Manage interaction with Local API (LAPI)",
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := csConfig.LoadAPIClient(); err != nil {
+			if err := cli.cfg().LoadAPIClient(); err != nil {
 				return fmt.Errorf("loading api client: %w", err)
 			}
 			return nil
 		},
 	}
 
-	cmdLapi.AddCommand(NewLapiRegisterCmd())
-	cmdLapi.AddCommand(NewLapiStatusCmd())
-	cmdLapi.AddCommand(NewLapiContextCmd())
+	cmd.AddCommand(cli.newRegisterCmd())
+	cmd.AddCommand(NewLapiStatusCmd())
+	cmd.AddCommand(NewLapiContextCmd())
 
-	return cmdLapi
+	return cmd
 }
 
 func AddContext(key string, values []string) error {
