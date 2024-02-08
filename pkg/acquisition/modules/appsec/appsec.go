@@ -355,14 +355,12 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	w.InChan <- parsedRequest
 
 	response := <-parsedRequest.ResponseChannel
-	statusCode := http.StatusOK
 
 	if response.InBandInterrupt {
-		statusCode = response.RemediationComponentHTTPResponseCode
 		AppsecBlockCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "appsec_engine": parsedRequest.AppsecEngine}).Inc()
 	}
 
-	appsecResponse := w.AppsecRuntime.GenerateResponse(response, logger)
+	statusCode, appsecResponse := w.AppsecRuntime.GenerateResponse(response, logger)
 	logger.Debugf("Response: %+v", appsecResponse)
 
 	rw.WriteHeader(statusCode)
