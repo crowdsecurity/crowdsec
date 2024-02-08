@@ -47,8 +47,8 @@ func DecisionsFromAlert(alert *models.Alert) string {
 	return ret
 }
 
-func alertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
-	switch csConfig.Cscli.Output {
+func (cli *cliAlerts) alertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
+	switch cli.cfg().Cscli.Output {
 	case "raw":
 		csvwriter := csv.NewWriter(os.Stdout)
 		header := []string{"id", "scope", "value", "reason", "country", "as", "decisions", "created_at"}
@@ -116,7 +116,7 @@ var alertTemplate = `
 
 `
 
-func displayOneAlert(alert *models.Alert, withDetail bool) error {
+func (cli *cliAlerts) displayOneAlert(alert *models.Alert, withDetail bool) error {
 	tmpl, err := template.New("alert").Parse(alertTemplate)
 	if err != nil {
 		return err
@@ -163,10 +163,13 @@ func displayOneAlert(alert *models.Alert, withDetail bool) error {
 
 type cliAlerts struct{
 	client *apiclient.ApiClient
+	cfg configGetter
 }
 
-func NewCLIAlerts() *cliAlerts {
-	return &cliAlerts{}
+func NewCLIAlerts(getconfig configGetter) *cliAlerts {
+	return &cliAlerts{
+		cfg: getconfig,
+	}
 }
 
 func (cli *cliAlerts) NewCommand() *cobra.Command {
@@ -176,18 +179,18 @@ func (cli *cliAlerts) NewCommand() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		Aliases:           []string{"alert"},
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-			if err := csConfig.LoadAPIClient(); err != nil {
+		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
+			cfg := cli.cfg()
+			if err := cfg.LoadAPIClient(); err != nil {
 				return fmt.Errorf("loading api client: %w", err)
 			}
-			apiURL, err := url.Parse(csConfig.API.Client.Credentials.URL)
+			apiURL, err := url.Parse(cfg.API.Client.Credentials.URL)
 			if err != nil {
 				return fmt.Errorf("parsing api url %s: %w", apiURL, err)
 			}
 			cli.client, err = apiclient.NewClient(&apiclient.Config{
-				MachineID:     csConfig.API.Client.Credentials.Login,
-				Password:      strfmt.Password(csConfig.API.Client.Credentials.Password),
+				MachineID:     cfg.API.Client.Credentials.Login,
+				Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
 				UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
 				URL:           apiURL,
 				VersionPrefix: "v1",
@@ -307,7 +310,7 @@ cscli alerts list --type ban`,
 				return fmt.Errorf("unable to list alerts: %v", err)
 			}
 
-			err = alertsToTable(alerts, printMachine)
+			err = cli.alertsToTable(alerts, printMachine)
 			if err != nil {
 				return fmt.Errorf("unable to list alerts: %v", err)
 			}
@@ -443,6 +446,7 @@ func (cli *cliAlerts) NewInspectCmd() *cobra.Command {
 		Example:           `cscli alerts inspect 123`,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg := cli.cfg()
 			if len(args) == 0 {
 				printHelp(cmd)
 				return fmt.Errorf("missing alert_id")
@@ -456,9 +460,9 @@ func (cli *cliAlerts) NewInspectCmd() *cobra.Command {
 				if err != nil {
 					return fmt.Errorf("can't find alert with id %s: %s", alertID, err)
 				}
-				switch csConfig.Cscli.Output {
+				switch cfg.Cscli.Output {
 				case "human":
-					if err := displayOneAlert(alert, details); err != nil {
+					if err := cli.displayOneAlert(alert, details); err != nil {
 						continue
 					}
 				case "json":
@@ -495,11 +499,11 @@ func (cli *cliAlerts) NewFlushCmd() *cobra.Command {
 		Example:           `cscli alerts flush --max-items 1000 --max-age 7d`,
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-			if err := require.LAPI(csConfig); err != nil {
+			cfg := cli.cfg()
+			if err := require.LAPI(cfg); err != nil {
 				return err
 			}
-			db, err := database.NewClient(csConfig.DbConfig)
+			db, err := database.NewClient(cfg.DbConfig)
 			if err != nil {
 				return fmt.Errorf("unable to create new database client: %s", err)
 			}
