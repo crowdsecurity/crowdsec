@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
@@ -130,17 +131,29 @@ func (ta *TLSAuth) isCRLRevoked(cert *x509.Certificate) (bool, error) {
 		return false, nil
 	}
 
-	crl, err := x509.ParseCRL(crlContent)
-	if err != nil {
-		ta.logger.Warnf("could not parse CRL file, skipping check: %s", err)
+	crlBinary, rest := pem.Decode(crlContent)
+	if len(rest) > 0 {
+		ta.logger.Warn("CRL file contains more than one PEM block, skipping check")
 		return false, nil
 	}
 
-	if crl.HasExpired(time.Now().UTC()) {
+	crl, err := x509.ParseRevocationList(crlBinary.Bytes)
+	if err != nil {
+		ta.logger.Errorf("could not parse CRL file, skipping check: %s", err)
+		return false, nil
+	}
+
+	now := time.Now().UTC()
+
+	if now.After(crl.NextUpdate) {
 		ta.logger.Warn("CRL has expired, will still validate the cert against it.")
 	}
 
-	for _, revoked := range crl.TBSCertList.RevokedCertificates {
+	if now.Before(crl.ThisUpdate) {
+		ta.logger.Warn("CRL is not yet valid, will still validate the cert against it.")
+	}
+
+	for _, revoked := range crl.RevokedCertificateEntries {
 		if revoked.SerialNumber.Cmp(cert.SerialNumber) == 0 {
 			return true, fmt.Errorf("client certificate is revoked by CRL")
 		}
