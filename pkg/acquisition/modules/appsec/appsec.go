@@ -358,7 +358,7 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 	statusCode := http.StatusOK
 
 	if response.InBandInterrupt {
-		statusCode = http.StatusForbidden
+		statusCode = response.RemediationComponentHTTPResponseCode
 		AppsecBlockCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "appsec_engine": parsedRequest.AppsecEngine}).Inc()
 	}
 

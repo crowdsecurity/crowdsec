@@ -58,7 +58,8 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				require.Equal(t, types.APPSEC, events[0].Type)
 				require.Equal(t, types.LOG, events[1].Type)
 				require.Len(t, responses, 1)
-				require.Equal(t, 403, responses[0].HTTPResponseCode)
+				require.Equal(t, 403, responses[0].RemediationComponentHTTPResponseCode)
+				require.Equal(t, 403, responses[0].UserHTTPResponseCode)
 				require.Equal(t, "ban", responses[0].Action)
 
 			},
@@ -89,7 +90,8 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				require.Equal(t, types.APPSEC, events[0].Type)
 				require.Equal(t, types.LOG, events[1].Type)
 				require.Len(t, responses, 1)
-				require.Equal(t, 413, responses[0].HTTPResponseCode)
+				require.Equal(t, 403, responses[0].RemediationComponentHTTPResponseCode)
+				require.Equal(t, 413, responses[0].UserHTTPResponseCode)
 				require.Equal(t, "ban", responses[0].Action)
 			},
 		},

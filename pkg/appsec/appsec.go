@@ -2,6 +2,7 @@ package appsec
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"regexp"
 
@@ -62,12 +63,13 @@ func (h *Hook) Build(hookStage int) error {
 }
 
 type AppsecTempResponse struct {
-	InBandInterrupt    bool
-	OutOfBandInterrupt bool
-	Action             string //allow, deny, captcha, log
-	HTTPResponseCode   int
-	SendEvent          bool //do we send an internal event on rule match
-	SendAlert          bool //do we send an alert on rule match
+	InBandInterrupt                      bool
+	OutOfBandInterrupt                   bool
+	Action                               string //allow, deny, captcha, log
+	UserHTTPResponseCode                 int    //The response code to send to the user
+	RemediationComponentHTTPResponseCode int    //The response code to send to the remediation component
+	SendEvent                            bool   //do we send an internal event on rule match
+	SendAlert                            bool   //do we send an alert on rule match
 }
 
 type AppsecSubEngineOpts struct {
@@ -134,7 +136,8 @@ func (w *AppsecRuntimeConfig) ClearResponse() {
 	w.Response = AppsecTempResponse{}
 	w.Logger.Debugf("-> %p", w.Config)
 	w.Response.Action = w.Config.DefaultPassAction
-	w.Response.HTTPResponseCode = w.Config.PassedHTTPCode
+	w.Response.RemediationComponentHTTPResponseCode = w.Config.PassedHTTPCode
+	//TODO: set user response code
 	w.Response.SendEvent = true
 	w.Response.SendAlert = true
 }
@@ -201,10 +204,10 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 		wc.Logger.Warningf("default '%s' remediation of %s is none of [ban,captcha,log] ensure bouncer compatbility!", wc.DefaultRemediation, wc.Name)
 	}
 	if wc.BlockedHTTPCode == 0 {
-		wc.BlockedHTTPCode = 403
+		wc.BlockedHTTPCode = http.StatusForbidden
 	}
 	if wc.PassedHTTPCode == 0 {
-		wc.PassedHTTPCode = 200
+		wc.PassedHTTPCode = http.StatusOK
 	}
 	if wc.DefaultPassAction == "" {
 		wc.DefaultPassAction = "allow"
@@ -556,13 +559,15 @@ func (w *AppsecRuntimeConfig) SetAction(action string) error {
 	switch action {
 	case "allow":
 		w.Response.Action = action
-		w.Response.HTTPResponseCode = w.Config.PassedHTTPCode
+		w.Response.RemediationComponentHTTPResponseCode = w.Config.PassedHTTPCode
 		//@tko how should we handle this ? it seems bouncer only understand bans, but it might be misleading ?
 	case "deny", "ban", "block":
 		w.Response.Action = "ban"
+		w.Response.RemediationComponentHTTPResponseCode = w.Config.BlockedHTTPCode
+		w.Response.UserHTTPResponseCode = w.Config.BlockedHTTPCode
 	case "log":
 		w.Response.Action = action
-		w.Response.HTTPResponseCode = w.Config.PassedHTTPCode
+		w.Response.RemediationComponentHTTPResponseCode = w.Config.PassedHTTPCode
 	case "captcha":
 		w.Response.Action = action
 	default:
@@ -573,7 +578,7 @@ func (w *AppsecRuntimeConfig) SetAction(action string) error {
 
 func (w *AppsecRuntimeConfig) SetHTTPCode(code int) error {
 	w.Logger.Debugf("setting http code to %d", code)
-	w.Response.HTTPResponseCode = code
+	w.Response.UserHTTPResponseCode = code
 	return nil
 }
 
@@ -596,7 +601,7 @@ func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logg
 	}
 	logger.Debugf("action is %s", resp.Action)
 
-	resp.HTTPStatus = response.HTTPResponseCode
+	resp.HTTPStatus = response.UserHTTPResponseCode
 	if resp.HTTPStatus == 0 {
 		resp.HTTPStatus = w.Config.BlockedHTTPCode
 	}
