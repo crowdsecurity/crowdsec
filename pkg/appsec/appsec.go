@@ -31,6 +31,12 @@ const (
 	hookOnMatch
 )
 
+const (
+	BanRemediation     = "ban"
+	CaptchaRemediation = "captcha"
+	AllowRemediation   = "allow"
+)
+
 func (h *Hook) Build(hookStage int) error {
 
 	ctx := map[string]interface{}{}
@@ -210,18 +216,18 @@ func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 		wc.UserPassedHTTPCode = http.StatusOK
 	}
 	if wc.DefaultPassAction == "" {
-		wc.DefaultPassAction = "allow"
+		wc.DefaultPassAction = AllowRemediation
 	}
 	if wc.DefaultRemediation == "" {
-		wc.DefaultRemediation = "ban"
+		wc.DefaultRemediation = BanRemediation
 	}
 
 	//set the defaults
 	switch wc.DefaultRemediation {
-	case "ban", "captcha", "allow":
+	case BanRemediation, CaptchaRemediation, AllowRemediation:
 		//those are the officially supported remediation(s)
 	default:
-		wc.Logger.Warningf("default '%s' remediation of %s is none of [ban,captcha,log] ensure bouncer compatbility!", wc.DefaultRemediation, wc.Name)
+		wc.Logger.Warningf("default '%s' remediation of %s is none of [%s,%s,%s] ensure bouncer compatbility!", wc.DefaultRemediation, wc.Name, BanRemediation, CaptchaRemediation, AllowRemediation)
 	}
 
 	ret.Name = wc.Name
@@ -570,11 +576,11 @@ func (w *AppsecRuntimeConfig) SetAction(action string) error {
 	w.Logger.Debugf("setting action to %s", action)
 	w.Response.Action = action
 	switch action {
-	case "allow":
+	case AllowRemediation:
 		w.Response.BouncerHTTPResponseCode = w.Config.BouncerPassedHTTPCode
 		w.Response.UserHTTPResponseCode = w.Config.UserPassedHTTPCode
 		//@tko how should we handle this ? it seems bouncer only understand bans, but it might be misleading ?
-	case "ban", "captcha":
+	case BanRemediation, CaptchaRemediation:
 		w.Response.BouncerHTTPResponseCode = w.Config.BouncerBlockedHTTPCode
 		w.Response.UserHTTPResponseCode = w.Config.UserBlockedHTTPCode
 	}
@@ -607,10 +613,10 @@ func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logg
 		resp.Action = w.Config.DefaultRemediation
 	}
 	switch resp.Action {
-	case "allow":
+	case AllowRemediation:
 		resp.HTTPStatus = w.Config.UserPassedHTTPCode
 		http_status = w.Config.BouncerPassedHTTPCode
-	case "ban", "captcha":
+	case BanRemediation, CaptchaRemediation:
 		resp.HTTPStatus = w.Config.UserBlockedHTTPCode
 		http_status = w.Config.BouncerBlockedHTTPCode
 	default:

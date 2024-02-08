@@ -64,7 +64,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				require.Len(t, responses, 1)
 				require.Equal(t, 403, responses[0].BouncerHTTPResponseCode)
 				require.Equal(t, 403, responses[0].UserHTTPResponseCode)
-				require.Equal(t, "ban", responses[0].Action)
+				require.Equal(t, appsec.BanRemediation, responses[0].Action)
 
 			},
 		},
@@ -96,7 +96,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				require.Len(t, responses, 1)
 				require.Equal(t, 403, responses[0].BouncerHTTPResponseCode)
 				require.Equal(t, 413, responses[0].UserHTTPResponseCode)
-				require.Equal(t, "ban", responses[0].Action)
+				require.Equal(t, appsec.BanRemediation, responses[0].Action)
 			},
 		},
 		{
@@ -154,7 +154,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				require.Equal(t, types.APPSEC, events[0].Type)
 				require.Equal(t, types.LOG, events[1].Type)
 				require.Len(t, responses, 1)
-				require.Equal(t, "allow", responses[0].Action)
+				require.Equal(t, appsec.AllowRemediation, responses[0].Action)
 			},
 		},
 		{
@@ -181,7 +181,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, responses, 1)
 				//note: SetAction normalizes deny, ban and block to ban
-				require.Equal(t, "ban", responses[0].Action)
+				require.Equal(t, appsec.BanRemediation, responses[0].Action)
 			},
 		},
 		{
@@ -208,7 +208,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				require.Len(t, responses, 1)
 				//note: SetAction normalizes deny, ban and block to ban
-				require.Equal(t, "captcha", responses[0].Action)
+				require.Equal(t, appsec.CaptchaRemediation, responses[0].Action)
 			},
 		},
 		{
@@ -265,7 +265,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				require.Len(t, events, 1)
 				require.Equal(t, types.LOG, events[0].Type)
 				require.Len(t, responses, 1)
-				require.Equal(t, "ban", responses[0].Action)
+				require.Equal(t, appsec.BanRemediation, responses[0].Action)
 			},
 		},
 		{
@@ -293,7 +293,7 @@ func TestAppsecOnMatchHooks(t *testing.T) {
 				require.Len(t, events, 1)
 				require.Equal(t, types.APPSEC, events[0].Type)
 				require.Len(t, responses, 1)
-				require.Equal(t, "ban", responses[0].Action)
+				require.Equal(t, appsec.BanRemediation, responses[0].Action)
 			},
 		},
 	}
@@ -666,9 +666,9 @@ func TestAppsecRuleMatches(t *testing.T) {
 			DefaultRemediation: "allow",
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				spew.Dump(responses)
-				require.Equal(t, "allow", responses[0].Action)
+				require.Equal(t, appsec.AllowRemediation, responses[0].Action)
 				require.Equal(t, http.StatusOK, statusCode)
-				require.Equal(t, "allow", appsecResponse.Action)
+				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
 				require.Equal(t, http.StatusOK, appsecResponse.HTTPStatus)
 			},
 		},
@@ -693,9 +693,9 @@ func TestAppsecRuleMatches(t *testing.T) {
 			DefaultRemediation: "captcha",
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				spew.Dump(responses)
-				require.Equal(t, "captcha", responses[0].Action)
+				require.Equal(t, appsec.CaptchaRemediation, responses[0].Action)
 				require.Equal(t, http.StatusForbidden, statusCode)
-				require.Equal(t, "captcha", appsecResponse.Action)
+				require.Equal(t, appsec.CaptchaRemediation, appsecResponse.Action)
 				require.Equal(t, http.StatusForbidden, appsecResponse.HTTPStatus)
 			},
 		},
@@ -720,9 +720,9 @@ func TestAppsecRuleMatches(t *testing.T) {
 			UserBlockedHTTPCode: 418,
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
 				spew.Dump(responses)
-				require.Equal(t, "ban", responses[0].Action)
+				require.Equal(t, appsec.BanRemediation, responses[0].Action)
 				require.Equal(t, http.StatusForbidden, statusCode)
-				require.Equal(t, "ban", appsecResponse.Action)
+				require.Equal(t, appsec.BanRemediation, appsecResponse.Action)
 				require.Equal(t, http.StatusTeapot, appsecResponse.HTTPStatus)
 			},
 		},
