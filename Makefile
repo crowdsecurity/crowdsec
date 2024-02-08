@@ -157,15 +157,15 @@ endif
 	$(info )
 
 
-# To update cti_openapi.yaml:
-# curl https://crowdsecurity.github.io/cti-api/v2/swagger.yaml | npx swagger2openapi -o cti_openapi.yaml /dev/stdin
+# To update openapi.yaml:
+# curl https://crowdsecurity.github.io/cti-api/v2/swagger.yaml > ./pkg/cti/openapi.yaml
 
 .PHONY: gen-cti
 gen-cti:  ## Generate CTI client code from the specs
 	@which oapi-codegen > /dev/null 2>&1 || (echo "oapi-codegen is not installed. You can install it with 'go install github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@latest'" && exit 1)
-	@echo "Generating Go client from Swagger spec..."
-	oapi-codegen -package cti -generate client -o ./pkg/cti/client.go ./pkg/cti/cti_openapi.yaml
-	oapi-codegen -package cti -generate types -o ./pkg/cti/types.go ./pkg/cti/cti_openapi.yaml
+	@echo "Generating Go client from OpenAPI spec..."
+	oapi-codegen -package cti -generate client -o ./pkg/cti/client.go ./pkg/cti/openapi.yaml
+	oapi-codegen -package cti -generate types -o ./pkg/cti/types.go ./pkg/cti/openapi.yaml
 	@echo "Client generation complete."
 
 .PHONY: all

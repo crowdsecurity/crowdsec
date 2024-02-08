@@ -7,6 +7,98 @@ const (
 	Api_keyScopes = "api_key.Scopes"
 )
 
+// Defines values for CTIObjectBackgroundNoise.
+const (
+	CTIObjectBackgroundNoiseHigh   CTIObjectBackgroundNoise = "high"
+	CTIObjectBackgroundNoiseLow    CTIObjectBackgroundNoise = "low"
+	CTIObjectBackgroundNoiseMedium CTIObjectBackgroundNoise = "medium"
+	CTIObjectBackgroundNoiseNone   CTIObjectBackgroundNoise = "none"
+)
+
+// Defines values for CTIObjectIpRange24Reputation.
+const (
+	CTIObjectIpRange24ReputationKnown      CTIObjectIpRange24Reputation = "known"
+	CTIObjectIpRange24ReputationMalicious  CTIObjectIpRange24Reputation = "malicious"
+	CTIObjectIpRange24ReputationSafe       CTIObjectIpRange24Reputation = "safe"
+	CTIObjectIpRange24ReputationSuspicious CTIObjectIpRange24Reputation = "suspicious"
+	CTIObjectIpRange24ReputationUnknown    CTIObjectIpRange24Reputation = "unknown"
+)
+
+// Defines values for CTIObjectIpRange24Score.
+const (
+	CTIObjectIpRange24ScoreN0 CTIObjectIpRange24Score = 0
+	CTIObjectIpRange24ScoreN1 CTIObjectIpRange24Score = 1
+	CTIObjectIpRange24ScoreN2 CTIObjectIpRange24Score = 2
+	CTIObjectIpRange24ScoreN3 CTIObjectIpRange24Score = 3
+	CTIObjectIpRange24ScoreN4 CTIObjectIpRange24Score = 4
+	CTIObjectIpRange24ScoreN5 CTIObjectIpRange24Score = 5
+)
+
+// Defines values for CTIObjectIpRangeScore.
+const (
+	CTIObjectIpRangeScoreN0 CTIObjectIpRangeScore = 0
+	CTIObjectIpRangeScoreN1 CTIObjectIpRangeScore = 1
+	CTIObjectIpRangeScoreN2 CTIObjectIpRangeScore = 2
+	CTIObjectIpRangeScoreN3 CTIObjectIpRangeScore = 3
+	CTIObjectIpRangeScoreN4 CTIObjectIpRangeScore = 4
+	CTIObjectIpRangeScoreN5 CTIObjectIpRangeScore = 5
+)
+
+// Defines values for CTIObjectReputation.
+const (
+	CTIObjectReputationKnown      CTIObjectReputation = "known"
+	CTIObjectReputationMalicious  CTIObjectReputation = "malicious"
+	CTIObjectReputationSafe       CTIObjectReputation = "safe"
+	CTIObjectReputationSuspicious CTIObjectReputation = "suspicious"
+	CTIObjectReputationUnknown    CTIObjectReputation = "unknown"
+)
+
+// Defines values for FireIPCTIResponseBackgroundNoise.
+const (
+	FireIPCTIResponseBackgroundNoiseHigh   FireIPCTIResponseBackgroundNoise = "high"
+	FireIPCTIResponseBackgroundNoiseLow    FireIPCTIResponseBackgroundNoise = "low"
+	FireIPCTIResponseBackgroundNoiseMedium FireIPCTIResponseBackgroundNoise = "medium"
+	FireIPCTIResponseBackgroundNoiseNone   FireIPCTIResponseBackgroundNoise = "none"
+)
+
+// Defines values for FireIPCTIResponseIpRange24Reputation.
+const (
+	FireIPCTIResponseIpRange24ReputationKnown      FireIPCTIResponseIpRange24Reputation = "known"
+	FireIPCTIResponseIpRange24ReputationMalicious  FireIPCTIResponseIpRange24Reputation = "malicious"
+	FireIPCTIResponseIpRange24ReputationSafe       FireIPCTIResponseIpRange24Reputation = "safe"
+	FireIPCTIResponseIpRange24ReputationSuspicious FireIPCTIResponseIpRange24Reputation = "suspicious"
+	FireIPCTIResponseIpRange24ReputationUnknown    FireIPCTIResponseIpRange24Reputation = "unknown"
+)
+
+// Defines values for FireIPCTIResponseIpRange24Score.
+const (
+	FireIPCTIResponseIpRange24ScoreN0 FireIPCTIResponseIpRange24Score = 0
+	FireIPCTIResponseIpRange24ScoreN1 FireIPCTIResponseIpRange24Score = 1
+	FireIPCTIResponseIpRange24ScoreN2 FireIPCTIResponseIpRange24Score = 2
+	FireIPCTIResponseIpRange24ScoreN3 FireIPCTIResponseIpRange24Score = 3
+	FireIPCTIResponseIpRange24ScoreN4 FireIPCTIResponseIpRange24Score = 4
+	FireIPCTIResponseIpRange24ScoreN5 FireIPCTIResponseIpRange24Score = 5
+)
+
+// Defines values for FireIPCTIResponseIpRangeScore.
+const (
+	FireIPCTIResponseIpRangeScoreN0 FireIPCTIResponseIpRangeScore = 0
+	FireIPCTIResponseIpRangeScoreN1 FireIPCTIResponseIpRangeScore = 1
+	FireIPCTIResponseIpRangeScoreN2 FireIPCTIResponseIpRangeScore = 2
+	FireIPCTIResponseIpRangeScoreN3 FireIPCTIResponseIpRangeScore = 3
+	FireIPCTIResponseIpRangeScoreN4 FireIPCTIResponseIpRangeScore = 4
+	FireIPCTIResponseIpRangeScoreN5 FireIPCTIResponseIpRangeScore = 5
+)
+
+// Defines values for FireIPCTIResponseReputation.
+const (
+	FireIPCTIResponseReputationKnown      FireIPCTIResponseReputation = "known"
+	FireIPCTIResponseReputationMalicious  FireIPCTIResponseReputation = "malicious"
+	FireIPCTIResponseReputationSafe       FireIPCTIResponseReputation = "safe"
+	FireIPCTIResponseReputationSuspicious FireIPCTIResponseReputation = "suspicious"
+	FireIPCTIResponseReputationUnknown    FireIPCTIResponseReputation = "unknown"
+)
+
 // Defines values for FireIPCTIResponseState.
 const (
 	Refused   FireIPCTIResponseState = "refused"
@@ -22,7 +114,7 @@ type CTIObject struct {
 	AsNum *float32 `json:"as_num"`
 
 	// AttackDetails A more exhaustive list of the scenarios for which a given IP was reported
-	AttackDetails *[]struct {
+	AttackDetails []struct {
 		// Description Human-friendly descriptions of scenarios
 		Description *string `json:"description,omitempty"`
 
@@ -32,7 +124,10 @@ type CTIObject struct {
 		// Name Name of the scenario (see hub.crowdsec.net)
 		Name       *string   `json:"name,omitempty"`
 		References *[]string `json:"references,omitempty"`
-	} `json:"attack_details,omitempty"`
+	} `json:"attack_details"`
+
+	// BackgroundNoise The background noise level of the IP address
+	BackgroundNoise *CTIObjectBackgroundNoise `json:"background_noise"`
 
 	// BackgroundNoiseScore The background noise score of the IP ranging from 0 to 10 (highly noisy)
 	BackgroundNoiseScore *float32 `json:"background_noise_score"`
@@ -75,7 +170,7 @@ type CTIObject struct {
 	} `json:"classifications"`
 
 	// Cves A list of CVEs reported for this IP.
-	Cves    *[]string `json:"cves,omitempty"`
+	Cves    []string `json:"cves"`
 	History struct {
 		// DaysAge Delta in days between first and last seen timestamps
 		DaysAge *float32 `json:"days_age,omitempty"`
@@ -96,8 +191,17 @@ type CTIObject struct {
 	// IpRange The range to which the IP belongs
 	IpRange *string `json:"ip_range"`
 
+	// IpRange24 The /24 range to which the IP belongs
+	IpRange24 *string `json:"ip_range_24"`
+
+	// IpRange24Reputation The /24 range to which the IP belongs
+	IpRange24Reputation *CTIObjectIpRange24Reputation `json:"ip_range_24_reputation"`
+
+	// IpRange24Score The score of the /24 range (ip_range_24) the IP belongs to. 0 is good/unknown, 5 is worse
+	IpRange24Score *CTIObjectIpRange24Score `json:"ip_range_24_score"`
+
 	// IpRangeScore The score of the range (ip_range) the IP belongs to. 0 is good/unknown, 5 is worse
-	IpRangeScore float32 `json:"ip_range_score"`
+	IpRangeScore CTIObjectIpRangeScore `json:"ip_range_score"`
 
 	// Location Location information about the IP address
 	Location struct {
@@ -115,7 +219,7 @@ type CTIObject struct {
 	} `json:"location"`
 
 	// MitreTechniques A list of Mitre Enterprise Techniques associated with the IP.
-	MitreTechniques *[]struct {
+	MitreTechniques []struct {
 		// Description Description of the Mitre technique
 		Description *string `json:"description,omitempty"`
 
@@ -124,7 +228,7 @@ type CTIObject struct {
 
 		// Name The ID of the Mitre technique"
 		Name *string `json:"name,omitempty"`
-	} `json:"mitre_techniques,omitempty"`
+	} `json:"mitre_techniques"`
 
 	// References A list of the references for which the IP was see
 	References []struct {
@@ -137,6 +241,9 @@ type CTIObject struct {
 		// Name The reference, often in the form "list:list_name"
 		Name *string `json:"name,omitempty"`
 	} `json:"references"`
+
+	// Reputation The reputation of the IP address
+	Reputation CTIObjectReputation `json:"reputation"`
 
 	// ReverseDns Reverse dns lookup of the IP
 	ReverseDns *string `json:"reverse_dns"`
@@ -211,6 +318,21 @@ type CTIObject struct {
 	TargetCountries map[string]interface{} `json:"target_countries"`
 }
 
+// CTIObjectBackgroundNoise The background noise level of the IP address
+type CTIObjectBackgroundNoise string
+
+// CTIObjectIpRange24Reputation The /24 range to which the IP belongs
+type CTIObjectIpRange24Reputation string
+
+// CTIObjectIpRange24Score The score of the /24 range (ip_range_24) the IP belongs to. 0 is good/unknown, 5 is worse
+type CTIObjectIpRange24Score float32
+
+// CTIObjectIpRangeScore The score of the range (ip_range) the IP belongs to. 0 is good/unknown, 5 is worse
+type CTIObjectIpRangeScore float32
+
+// CTIObjectReputation The reputation of the IP address
+type CTIObjectReputation string
+
 // ErrorResponse Error response return by the API
 type ErrorResponse struct {
 	// Errors More details on individual errors
@@ -255,7 +377,7 @@ type FireIPCTIResponse struct {
 	AsNum *float32 `json:"as_num"`
 
 	// AttackDetails A more exhaustive list of the scenarios for which a given IP was reported
-	AttackDetails *[]struct {
+	AttackDetails []struct {
 		// Description Human-friendly descriptions of scenarios
 		Description *string `json:"description,omitempty"`
 
@@ -265,7 +387,10 @@ type FireIPCTIResponse struct {
 		// Name Name of the scenario (see hub.crowdsec.net)
 		Name       *string   `json:"name,omitempty"`
 		References *[]string `json:"references,omitempty"`
-	} `json:"attack_details,omitempty"`
+	} `json:"attack_details"`
+
+	// BackgroundNoise The background noise level of the IP address
+	BackgroundNoise *FireIPCTIResponseBackgroundNoise `json:"background_noise"`
 
 	// BackgroundNoiseScore The background noise score of the IP ranging from 0 to 10 (highly noisy)
 	BackgroundNoiseScore *float32 `json:"background_noise_score"`
@@ -308,7 +433,7 @@ type FireIPCTIResponse struct {
 	} `json:"classifications"`
 
 	// Cves A list of CVEs reported for this IP.
-	Cves *[]string `json:"cves,omitempty"`
+	Cves []string `json:"cves"`
 
 	// Expiration Date at which the IP address expire from the community blocklist
 	Expiration *string `json:"expiration,omitempty"`
@@ -332,8 +457,17 @@ type FireIPCTIResponse struct {
 	// IpRange The range to which the IP belongs
 	IpRange *string `json:"ip_range"`
 
+	// IpRange24 The /24 range to which the IP belongs
+	IpRange24 *string `json:"ip_range_24"`
+
+	// IpRange24Reputation The /24 range to which the IP belongs
+	IpRange24Reputation *FireIPCTIResponseIpRange24Reputation `json:"ip_range_24_reputation"`
+
+	// IpRange24Score The score of the /24 range (ip_range_24) the IP belongs to. 0 is good/unknown, 5 is worse
+	IpRange24Score *FireIPCTIResponseIpRange24Score `json:"ip_range_24_score"`
+
 	// IpRangeScore The score of the range (ip_range) the IP belongs to. 0 is good/unknown, 5 is worse
-	IpRangeScore float32 `json:"ip_range_score"`
+	IpRangeScore FireIPCTIResponseIpRangeScore `json:"ip_range_score"`
 
 	// Location Location information about the IP address
 	Location struct {
@@ -351,7 +485,7 @@ type FireIPCTIResponse struct {
 	} `json:"location"`
 
 	// MitreTechniques A list of Mitre Enterprise Techniques associated with the IP.
-	MitreTechniques *[]struct {
+	MitreTechniques []struct {
 		// Description Description of the Mitre technique
 		Description *string `json:"description,omitempty"`
 
@@ -360,7 +494,7 @@ type FireIPCTIResponse struct {
 
 		// Name The ID of the Mitre technique"
 		Name *string `json:"name,omitempty"`
-	} `json:"mitre_techniques,omitempty"`
+	} `json:"mitre_techniques"`
 
 	// References A list of the references for which the IP was see
 	References []struct {
@@ -373,6 +507,9 @@ type FireIPCTIResponse struct {
 		// Name The reference, often in the form "list:list_name"
 		Name *string `json:"name,omitempty"`
 	} `json:"references"`
+
+	// Reputation The reputation of the IP address
+	Reputation FireIPCTIResponseReputation `json:"reputation"`
 
 	// ReverseDns Reverse dns lookup of the IP
 	ReverseDns *string `json:"reverse_dns"`
@@ -450,6 +587,21 @@ type FireIPCTIResponse struct {
 	TargetCountries map[string]interface{} `json:"target_countries"`
 }
 
+// FireIPCTIResponseBackgroundNoise The background noise level of the IP address
+type FireIPCTIResponseBackgroundNoise string
+
+// FireIPCTIResponseIpRange24Reputation The /24 range to which the IP belongs
+type FireIPCTIResponseIpRange24Reputation string
+
+// FireIPCTIResponseIpRange24Score The score of the /24 range (ip_range_24) the IP belongs to. 0 is good/unknown, 5 is worse
+type FireIPCTIResponseIpRange24Score float32
+
+// FireIPCTIResponseIpRangeScore The score of the range (ip_range) the IP belongs to. 0 is good/unknown, 5 is worse
+type FireIPCTIResponseIpRangeScore float32
+
+// FireIPCTIResponseReputation The reputation of the IP address
+type FireIPCTIResponseReputation string
+
 // FireIPCTIResponseState state of the IP in the community blocklist: validated means IP is currently part of community blocklist, refused means it was part of the community blocklist, but was manually purged (ie. false positive)
 type FireIPCTIResponseState string
 
@@ -467,8 +619,11 @@ type SearchCTIResponse struct {
 
 // GetFireParams defines parameters for GetFire.
 type GetFireParams struct {
-	// Page Number of the page to fetch
+	// Page The page to fetch
 	Page *float32 `form:"page,omitempty" json:"page,omitempty"`
+
+	// Limit The number of items to fetch
+	Limit *float32 `form:"limit,omitempty" json:"limit,omitempty"`
 
 	// Since Filter records updated since - duration in h (hours), d(days), m(minutes) )
 	Since *string `form:"since,omitempty" json:"since,omitempty"`

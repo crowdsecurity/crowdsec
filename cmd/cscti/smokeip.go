@@ -43,13 +43,33 @@ func (cli *cliSmokeIP) smokeip(ip string) error {
 		return err
 	}
 
-	if resp.JSON200 != nil {
-		out, err := json.MarshalIndent(resp.JSON200, "", "  ")
-		if err != nil {
-			return err
-		}
-		fmt.Println(string(out))
+	switch {
+	case resp.JSON404 != nil:
+		return fmt.Errorf("ip not found")
+	case resp.JSON403 != nil:
+		return fmt.Errorf("forbidden")
+	case resp.JSON500 != nil:
+		return fmt.Errorf("internal server error")
+	case resp.JSON429 != nil:
+		return fmt.Errorf("too many requests")
+	case resp.JSON400 != nil:
+		return fmt.Errorf("bad request")
+	case resp.JSON200 == nil:
+		return fmt.Errorf("unexpected error %d", resp.StatusCode())
 	}
+
+	ctiObj := resp.JSON200
+
+	var out []byte
+
+	// re-encode (todo: yaml, human)
+
+	out, err = json.MarshalIndent(ctiObj, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(out))
 
 	return nil
 }

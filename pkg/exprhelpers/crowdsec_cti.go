@@ -54,11 +54,7 @@ func InitCrowdsecCTI(Key *string, TTL *time.Duration, Size *int, LogLevel *log.L
 	subLogger := clog.WithFields(customLog)
 	ctiLogger = subLogger
 	CrowdsecCTIInitCache(*Size, *TTL)
-	provider, err := cti.NewAPIKeyProvider(CTIApiKey)
-	if err != nil {
-		return fmt.Errorf("while creating CTI API key provider: %w", err)
-	}
-	ctiClient, err = cti.NewClientWithResponses("https://cti.api.crowdsec.net/v2/", cti.WithRequestEditorFn(provider.Intercept))
+	ctiClient, err = cti.NewCTIClient(CTIApiKey)
 	if err != nil {
 		return fmt.Errorf("while creating CTI client: %w", err)
 	}

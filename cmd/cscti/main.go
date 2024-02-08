@@ -1,11 +1,16 @@
 package main
 
 import (
+	"errors"
 	"os"
 
 	"github.com/fatih/color"
 	cc "github.com/ivanpirog/coloredcobra"
 	"github.com/spf13/cobra"
+)
+
+var (
+	ErrorNoAPIKey = errors.New("CTI_API_KEY is not set")
 )
 
 type Config struct {
