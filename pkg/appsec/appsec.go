@@ -63,13 +63,13 @@ func (h *Hook) Build(hookStage int) error {
 }
 
 type AppsecTempResponse struct {
-	InBandInterrupt                      bool
-	OutOfBandInterrupt                   bool
-	Action                               string //allow, deny, captcha, log
-	UserHTTPResponseCode                 int    //The response code to send to the user
-	RemediationComponentHTTPResponseCode int    //The response code to send to the remediation component
-	SendEvent                            bool   //do we send an internal event on rule match
-	SendAlert                            bool   //do we send an alert on rule match
+	InBandInterrupt         bool
+	OutOfBandInterrupt      bool
+	Action                  string //allow, deny, captcha, log
+	UserHTTPResponseCode    int    //The response code to send to the user
+	BouncerHTTPResponseCode int    //The response code to send to the remediation component
+	SendEvent               bool   //do we send an internal event on rule match
+	SendAlert               bool   //do we send an alert on rule match
 }
 
 type AppsecSubEngineOpts struct {
@@ -112,32 +112,33 @@ type AppsecRuntimeConfig struct {
 }
 
 type AppsecConfig struct {
-	Name               string              `yaml:"name"`
-	OutOfBandRules     []string            `yaml:"outofband_rules"`
-	InBandRules        []string            `yaml:"inband_rules"`
-	DefaultRemediation string              `yaml:"default_remediation"`
-	DefaultPassAction  string              `yaml:"default_pass_action"`
-	BlockedHTTPCode    int                 `yaml:"blocked_http_code"`
-	PassedHTTPCode     int                 `yaml:"passed_http_code"`
-	OnLoad             []Hook              `yaml:"on_load"`
-	PreEval            []Hook              `yaml:"pre_eval"`
-	PostEval           []Hook              `yaml:"post_eval"`
-	OnMatch            []Hook              `yaml:"on_match"`
-	VariablesTracking  []string            `yaml:"variables_tracking"`
-	InbandOptions      AppsecSubEngineOpts `yaml:"inband_options"`
-	OutOfBandOptions   AppsecSubEngineOpts `yaml:"outofband_options"`
+	Name                   string   `yaml:"name"`
+	OutOfBandRules         []string `yaml:"outofband_rules"`
+	InBandRules            []string `yaml:"inband_rules"`
+	DefaultRemediation     string   `yaml:"default_remediation"`
+	DefaultPassAction      string   `yaml:"default_pass_action"`
+	BouncerBlockedHTTPCode int      `yaml:"blocked_http_code"`      //returned to the bouncer
+	BouncerPassedHTTPCode  int      `yaml:"passed_http_code"`       //returned to the bouncer
+	UserBlockedHTTPCode    int      `yaml:"user_blocked_http_code"` //returned to the user
+	UserPassedHTTPCode     int      `yaml:"user_passed_http_code"`  //returned to the user
+
+	OnLoad            []Hook              `yaml:"on_load"`
+	PreEval           []Hook              `yaml:"pre_eval"`
+	PostEval          []Hook              `yaml:"post_eval"`
+	OnMatch           []Hook              `yaml:"on_match"`
+	VariablesTracking []string            `yaml:"variables_tracking"`
+	InbandOptions     AppsecSubEngineOpts `yaml:"inband_options"`
+	OutOfBandOptions  AppsecSubEngineOpts `yaml:"outofband_options"`
 
 	LogLevel *log.Level `yaml:"log_level"`
 	Logger   *log.Entry `yaml:"-"`
 }
 
 func (w *AppsecRuntimeConfig) ClearResponse() {
-	w.Logger.Debugf("#-> %p", w)
 	w.Response = AppsecTempResponse{}
-	w.Logger.Debugf("-> %p", w.Config)
 	w.Response.Action = w.Config.DefaultPassAction
-	w.Response.RemediationComponentHTTPResponseCode = w.Config.PassedHTTPCode
-	//TODO: set user response code
+	w.Response.BouncerHTTPResponseCode = w.Config.BouncerPassedHTTPCode
+	w.Response.UserHTTPResponseCode = w.Config.UserPassedHTTPCode
 	w.Response.SendEvent = true
 	w.Response.SendAlert = true
 }
@@ -194,24 +195,35 @@ func (wc *AppsecConfig) GetDataDir() string {
 
 func (wc *AppsecConfig) Build() (*AppsecRuntimeConfig, error) {
 	ret := &AppsecRuntimeConfig{Logger: wc.Logger.WithField("component", "appsec_runtime_config")}
-	//set the defaults
-	switch wc.DefaultRemediation {
-	case "":
-		wc.DefaultRemediation = "ban"
-	case "ban", "captcha", "log":
-		//those are the officially supported remediation(s)
-	default:
-		wc.Logger.Warningf("default '%s' remediation of %s is none of [ban,captcha,log] ensure bouncer compatbility!", wc.DefaultRemediation, wc.Name)
+
+	if wc.BouncerBlockedHTTPCode == 0 {
+		wc.BouncerBlockedHTTPCode = http.StatusForbidden
 	}
-	if wc.BlockedHTTPCode == 0 {
-		wc.BlockedHTTPCode = http.StatusForbidden
+	if wc.BouncerPassedHTTPCode == 0 {
+		wc.BouncerPassedHTTPCode = http.StatusOK
 	}
-	if wc.PassedHTTPCode == 0 {
-		wc.PassedHTTPCode = http.StatusOK
+
+	if wc.UserBlockedHTTPCode == 0 {
+		wc.UserBlockedHTTPCode = http.StatusForbidden
+	}
+	if wc.UserPassedHTTPCode == 0 {
+		wc.UserPassedHTTPCode = http.StatusOK
 	}
 	if wc.DefaultPassAction == "" {
 		wc.DefaultPassAction = "allow"
 	}
+	if wc.DefaultRemediation == "" {
+		wc.DefaultRemediation = "ban"
+	}
+
+	//set the defaults
+	switch wc.DefaultRemediation {
+	case "ban", "captcha", "allow":
+		//those are the officially supported remediation(s)
+	default:
+		wc.Logger.Warningf("default '%s' remediation of %s is none of [ban,captcha,log] ensure bouncer compatbility!", wc.DefaultRemediation, wc.Name)
+	}
+
 	ret.Name = wc.Name
 	ret.Config = wc
 	ret.DefaultRemediation = wc.DefaultRemediation
@@ -556,22 +568,15 @@ func (w *AppsecRuntimeConfig) SetActionByName(name string, action string) error 
 func (w *AppsecRuntimeConfig) SetAction(action string) error {
 	//log.Infof("setting to %s", action)
 	w.Logger.Debugf("setting action to %s", action)
+	w.Response.Action = action
 	switch action {
 	case "allow":
-		w.Response.Action = action
-		w.Response.RemediationComponentHTTPResponseCode = w.Config.PassedHTTPCode
+		w.Response.BouncerHTTPResponseCode = w.Config.BouncerPassedHTTPCode
+		w.Response.UserHTTPResponseCode = w.Config.UserPassedHTTPCode
 		//@tko how should we handle this ? it seems bouncer only understand bans, but it might be misleading ?
-	case "deny", "ban", "block":
-		w.Response.Action = "ban"
-		w.Response.RemediationComponentHTTPResponseCode = w.Config.BlockedHTTPCode
-		w.Response.UserHTTPResponseCode = w.Config.BlockedHTTPCode
-	case "log":
-		w.Response.Action = action
-		w.Response.RemediationComponentHTTPResponseCode = w.Config.PassedHTTPCode
-	case "captcha":
-		w.Response.Action = action
-	default:
-		w.Response.Action = action
+	case "ban", "captcha":
+		w.Response.BouncerHTTPResponseCode = w.Config.BouncerBlockedHTTPCode
+		w.Response.UserHTTPResponseCode = w.Config.UserBlockedHTTPCode
 	}
 	return nil
 }
@@ -587,24 +592,31 @@ type BodyResponse struct {
 	HTTPStatus int    `json:"http_status"`
 }
 
-func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logger *log.Entry) BodyResponse {
+func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logger *log.Entry) (int, BodyResponse) {
+	http_status := response.BouncerHTTPResponseCode
 	resp := BodyResponse{}
 	//if there is no interrupt, we should allow with default code
 	if !response.InBandInterrupt {
 		resp.Action = w.Config.DefaultPassAction
-		resp.HTTPStatus = w.Config.PassedHTTPCode
-		return resp
+		resp.HTTPStatus = w.Config.UserPassedHTTPCode
+		return http_status, resp
 	}
+
 	resp.Action = response.Action
 	if resp.Action == "" {
 		resp.Action = w.Config.DefaultRemediation
 	}
-	logger.Debugf("action is %s", resp.Action)
-
-	resp.HTTPStatus = response.UserHTTPResponseCode
-	if resp.HTTPStatus == 0 {
-		resp.HTTPStatus = w.Config.BlockedHTTPCode
+	switch resp.Action {
+	case "allow":
+		resp.HTTPStatus = w.Config.UserPassedHTTPCode
+		http_status = w.Config.BouncerPassedHTTPCode
+	case "ban", "captcha":
+		resp.HTTPStatus = w.Config.UserBlockedHTTPCode
+		http_status = w.Config.BouncerBlockedHTTPCode
+	default:
+		resp.HTTPStatus = w.Config.UserBlockedHTTPCode
+		http_status = w.Config.BouncerBlockedHTTPCode
 	}
-	logger.Debugf("http status is %d", resp.HTTPStatus)
-	return resp
+	logger.Debugf("bouncer http status: %d body action: %s body http status: %d", http_status, resp.Action, resp.HTTPStatus)
+	return http_status, resp
 }

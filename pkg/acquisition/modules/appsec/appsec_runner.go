@@ -226,8 +226,8 @@ func (r *AppsecRunner) handleInBandInterrupt(request *appsec.ParsedRequest) {
 	if in := request.Tx.Interruption(); in != nil {
 		r.logger.Debugf("inband rules matched : %d", in.RuleID)
 		r.AppsecRuntime.Response.InBandInterrupt = true
-		r.AppsecRuntime.Response.RemediationComponentHTTPResponseCode = r.AppsecRuntime.Config.BlockedHTTPCode
-		r.AppsecRuntime.Response.UserHTTPResponseCode = r.AppsecRuntime.Config.BlockedHTTPCode
+		r.AppsecRuntime.Response.BouncerHTTPResponseCode = r.AppsecRuntime.Config.BouncerBlockedHTTPCode
+		r.AppsecRuntime.Response.UserHTTPResponseCode = r.AppsecRuntime.Config.UserBlockedHTTPCode
 		r.AppsecRuntime.Response.Action = r.AppsecRuntime.DefaultRemediation
 
 		if _, ok := r.AppsecRuntime.RemediationById[in.RuleID]; ok {
