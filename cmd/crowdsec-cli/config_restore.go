@@ -16,12 +16,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-type OldAPICfg struct {
-	MachineID string `json:"machine_id"`
-	Password  string `json:"password"`
-}
-
-func restoreHub(dirPath string) error {
+func (cli *cliConfig) restoreHub(dirPath string) error {
 	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig), nil)
 	if err != nil {
 		return err
@@ -130,7 +125,7 @@ func restoreHub(dirPath string) error {
 - Tainted/local/out-of-date scenarios, parsers, postoverflows and collections
 - Acquisition files (acquis.yaml, acquis.d/*.yaml)
 */
-func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
+func (cli *cliConfig) restore(dirPath string, oldBackup bool) error {
 	var err error
 
 	if !oldBackup {
@@ -174,7 +169,11 @@ func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
 			}
 		}
 	} else {
-		var oldAPICfg OldAPICfg
+		var oldAPICfg struct {
+			MachineID string `json:"machine_id"`
+			Password  string `json:"password"`
+		}
+
 		backupOldAPICfg := fmt.Sprintf("%s/api_creds.json", dirPath)
 
 		jsonFile, err := os.Open(backupOldAPICfg)
@@ -272,30 +271,17 @@ func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
 		}
 	}
 
-	if err = restoreHub(dirPath); err != nil {
+	if err = cli.restoreHub(dirPath); err != nil {
 		return fmt.Errorf("failed to restore hub config : %s", err)
 	}
 
 	return nil
 }
 
-func runConfigRestore(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
+func (cli *cliConfig) newRestoreCmd() *cobra.Command {
+	var oldBackup bool
 
-	oldBackup, err := flags.GetBool("old-backup")
-	if err != nil {
-		return err
-	}
-
-	if err := restoreConfigFromDirectory(args[0], oldBackup); err != nil {
-		return fmt.Errorf("failed to restore config from %s: %w", args[0], err)
-	}
-
-	return nil
-}
-
-func NewConfigRestoreCmd() *cobra.Command {
-	cmdConfigRestore := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   `restore "directory"`,
 		Short: `Restore config in backup "directory"`,
 		Long: `Restore the crowdsec configuration from specified backup "directory" including:
@@ -308,11 +294,19 @@ func NewConfigRestoreCmd() *cobra.Command {
 - Backup of API credentials (local API and online API)`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE:              runConfigRestore,
+		RunE:              func(cmd *cobra.Command, args []string) error {
+			dirPath := args[0]
+
+			if err := cli.restore(dirPath, oldBackup); err != nil {
+				return fmt.Errorf("failed to restore config from %s: %w", dirPath, err)
+			}
+
+			return nil
+		},
 	}
 
-	flags := cmdConfigRestore.Flags()
-	flags.BoolP("old-backup", "", false, "To use when you are upgrading crowdsec v0.X to v1.X and you need to restore backup from v0.X")
+	flags := cmd.Flags()
+	flags.BoolVarP(&oldBackup, "old-backup", "", false, "To use when you are upgrading crowdsec v0.X to v1.X and you need to restore backup from v0.X")
 
-	return cmdConfigRestore
+	return cmd
 }
