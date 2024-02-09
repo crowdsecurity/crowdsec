@@ -354,15 +354,17 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 
 	w.InChan <- parsedRequest
 
+	/*
+		response is a copy of w.AppSecRuntime.Response that is safe to use.
+		As OutOfBand might still be running, the original one can be modified
+	*/
 	response := <-parsedRequest.ResponseChannel
-	statusCode := http.StatusOK
 
 	if response.InBandInterrupt {
-		statusCode = http.StatusForbidden
 		AppsecBlockCounter.With(prometheus.Labels{"source": parsedRequest.RemoteAddrNormalized, "appsec_engine": parsedRequest.AppsecEngine}).Inc()
 	}
 
-	appsecResponse := w.AppsecRuntime.GenerateResponse(response, logger)
+	statusCode, appsecResponse := w.AppsecRuntime.GenerateResponse(response, logger)
 	logger.Debugf("Response: %+v", appsecResponse)
 
 	rw.WriteHeader(statusCode)
