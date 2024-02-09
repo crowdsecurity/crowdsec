@@ -6,19 +6,21 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func runConfigShowYAML(cmd *cobra.Command, args []string) error {
+func (cli *cliConfig) showYAML() error {
 	fmt.Println(mergedConfig)
 	return nil
 }
 
-func NewConfigShowYAMLCmd() *cobra.Command {
-	cmdConfigShow := &cobra.Command{
+func (cli *cliConfig) newShowYAMLCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "show-yaml",
 		Short:             "Displays merged config.yaml + config.yaml.local",
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE:              runConfigShowYAML,
+		RunE:              func(_ *cobra.Command, _ []string) error {
+			return cli.showYAML()
+		},
 	}
 
-	return cmdConfigShow
+	return cmd
 }
