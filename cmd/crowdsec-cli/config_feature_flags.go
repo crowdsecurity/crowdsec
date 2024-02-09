@@ -11,14 +11,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
 
-func runConfigFeatureFlags(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
-
-	showRetired, err := flags.GetBool("retired")
-	if err != nil {
-		return err
-	}
-
+func (cli *cliConfig) featureFlags(showRetired bool) error {
 	green := color.New(color.FgGreen).SprintFunc()
 	red := color.New(color.FgRed).SprintFunc()
 	yellow := color.New(color.FgYellow).SprintFunc()
@@ -121,18 +114,22 @@ func runConfigFeatureFlags(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func NewConfigFeatureFlagsCmd() *cobra.Command {
-	cmdConfigFeatureFlags := &cobra.Command{
+func (cli *cliConfig) newFeatureFlagsCmd() *cobra.Command {
+	var showRetired bool
+
+	cmd := &cobra.Command{
 		Use:               "feature-flags",
 		Short:             "Displays feature flag status",
 		Long:              `Displays the supported feature flags and their current status.`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE:              runConfigFeatureFlags,
+		RunE:              func(_ *cobra.Command, _ []string) error {
+			return cli.featureFlags(showRetired)
+		},
 	}
 
-	flags := cmdConfigFeatureFlags.Flags()
-	flags.Bool("retired", false, "Show retired features")
+	flags := cmd.Flags()
+	flags.BoolVar(&showRetired, "retired", false, "Show retired features")
 
-	return cmdConfigFeatureFlags
+	return cmd
 }
