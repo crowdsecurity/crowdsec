@@ -575,15 +575,6 @@ func (w *AppsecRuntimeConfig) SetAction(action string) error {
 	//log.Infof("setting to %s", action)
 	w.Logger.Debugf("setting action to %s", action)
 	w.Response.Action = action
-	switch action {
-	case AllowRemediation:
-		w.Response.BouncerHTTPResponseCode = w.Config.BouncerPassedHTTPCode
-		w.Response.UserHTTPResponseCode = w.Config.UserPassedHTTPCode
-		//@tko how should we handle this ? it seems bouncer only understand bans, but it might be misleading ?
-	case BanRemediation, CaptchaRemediation:
-		w.Response.BouncerHTTPResponseCode = w.Config.BouncerBlockedHTTPCode
-		w.Response.UserHTTPResponseCode = w.Config.UserBlockedHTTPCode
-	}
 	return nil
 }
 
@@ -599,30 +590,22 @@ type BodyResponse struct {
 }
 
 func (w *AppsecRuntimeConfig) GenerateResponse(response AppsecTempResponse, logger *log.Entry) (int, BodyResponse) {
-	http_status := response.BouncerHTTPResponseCode
-	resp := BodyResponse{}
-	//if there is no interrupt, we should allow with default code
-	if !response.InBandInterrupt {
-		resp.Action = w.Config.DefaultPassAction
+	var bouncerStatusCode int
+
+	resp := BodyResponse{Action: response.Action}
+	if response.Action == AllowRemediation {
 		resp.HTTPStatus = w.Config.UserPassedHTTPCode
-		return http_status, resp
+		bouncerStatusCode = w.Config.BouncerPassedHTTPCode
+	} else { //ban, captcha and anything else
+		resp.HTTPStatus = response.UserHTTPResponseCode
+		if resp.HTTPStatus == 0 {
+			resp.HTTPStatus = w.Config.UserBlockedHTTPCode
+		}
+		bouncerStatusCode = response.BouncerHTTPResponseCode
+		if bouncerStatusCode == 0 {
+			bouncerStatusCode = w.Config.BouncerBlockedHTTPCode
+		}
 	}
 
-	resp.Action = response.Action
-	if resp.Action == "" {
-		resp.Action = w.Config.DefaultRemediation
-	}
-	switch resp.Action {
-	case AllowRemediation:
-		resp.HTTPStatus = w.Config.UserPassedHTTPCode
-		http_status = w.Config.BouncerPassedHTTPCode
-	case BanRemediation, CaptchaRemediation:
-		resp.HTTPStatus = w.Config.UserBlockedHTTPCode
-		http_status = w.Config.BouncerBlockedHTTPCode
-	default:
-		resp.HTTPStatus = w.Config.UserBlockedHTTPCode
-		http_status = w.Config.BouncerBlockedHTTPCode
-	}
-	logger.Debugf("bouncer http status: %d body action: %s body http status: %d", http_status, resp.Action, resp.HTTPStatus)
-	return http_status, resp
+	return bouncerStatusCode, resp
 }

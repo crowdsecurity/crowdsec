@@ -354,6 +354,10 @@ func (w *AppsecSource) appsecHandler(rw http.ResponseWriter, r *http.Request) {
 
 	w.InChan <- parsedRequest
 
+	/*
+		response is a copy of w.AppSecRuntime.Response that is safe to use.
+		As OutOfBand might still be running, the original one can be modified
+	*/
 	response := <-parsedRequest.ResponseChannel
 
 	if response.InBandInterrupt {

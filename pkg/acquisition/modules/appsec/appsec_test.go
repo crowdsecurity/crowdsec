@@ -729,8 +729,8 @@ func TestOnMatchRemediationHooks(t *testing.T) {
 
 				log.Errorf("http status : %d", statusCode)
 				require.Equal(t, appsec.CaptchaRemediation, appsecResponse.Action)
-				require.Equal(t, http.StatusForbidden, appsecResponse.HTTPStatus)
-				require.Equal(t, http.StatusTeapot, statusCode)
+				require.Equal(t, http.StatusTeapot, appsecResponse.HTTPStatus)
+				require.Equal(t, http.StatusForbidden, statusCode)
 			},
 		},
 	}
