@@ -132,13 +132,14 @@ teardown() {
     '
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" 'del(.login,.password)'
     ./instance-crowdsec start
+    rune -0 cscli lapi status
     rune -0 cscli machines list -o json
     assert_output '[]'
 }
 
 @test "revoked cert for agent" {
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" '
-         .ca_cert_path=strenv(tmpdir) + "/bundle.pem" |
+        .ca_cert_path=strenv(tmpdir) + "/bundle.pem" |
         .key_path=strenv(tmpdir) + "/agent_revoked-key.pem" |
         .cert_path=strenv(tmpdir) + "/agent_revoked.pem" |
         .url="https://127.0.0.1:8080"
