@@ -7,9 +7,6 @@ on:
         required: true
         type: string
 
-env:
-  PREFIX_TEST_NAMES_WITH_FILE: true
-
 jobs:
   build:
     name: "Functional tests"
@@ -58,7 +55,7 @@ jobs:
         MYSQL_USER: root
 
     - name: "Run tests"
-      run: make bats-test
+      run: ./test/run-tests ./test/bats --formatter $(pwd)/test/lib/color-formatter
       env:
         DB_BACKEND: mysql
         MYSQL_HOST: 127.0.0.1
