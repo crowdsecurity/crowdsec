@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime/pprof"
 	"syscall"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
@@ -76,7 +78,12 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 	}
 
 	if !cConfig.DisableAgent {
-		csParsers, err := initCrowdsec(cConfig)
+		hub, err := cwhub.NewHub(cConfig.Hub, nil, false, log.StandardLogger())
+		if err != nil {
+			return nil, fmt.Errorf("while loading hub index: %w", err)
+		}
+
+		csParsers, err := initCrowdsec(cConfig, hub)
 		if err != nil {
 			return nil, fmt.Errorf("unable to init crowdsec: %w", err)
 		}
@@ -93,7 +100,7 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 		}
 
 		agentReady := make(chan bool, 1)
-		serveCrowdsec(csParsers, cConfig, agentReady)
+		serveCrowdsec(csParsers, cConfig, hub, agentReady)
 	}
 
 	log.Printf("Reload is finished")
@@ -239,6 +246,10 @@ func HandleSignals(cConfig *csconfig.Config) error {
 
 	exitChan := make(chan error)
 
+	//Always try to stop CPU profiling to avoid passing flags around
+	//It's a noop if profiling is not enabled
+	defer pprof.StopCPUProfile()
+
 	go func() {
 		defer trace.CatchPanic("crowdsec/HandleSignals")
 	Loop:
@@ -342,14 +353,19 @@ func Serve(cConfig *csconfig.Config, apiReady chan bool, agentReady chan bool) e
 	}
 
 	if !cConfig.DisableAgent {
-		csParsers, err := initCrowdsec(cConfig)
+		hub, err := cwhub.NewHub(cConfig.Hub, nil, false, log.StandardLogger())
+		if err != nil {
+			return fmt.Errorf("while loading hub index: %w", err)
+		}
+
+		csParsers, err := initCrowdsec(cConfig, hub)
 		if err != nil {
 			return fmt.Errorf("crowdsec init: %w", err)
 		}
 
 		// if it's just linting, we're done
 		if !flags.TestMode {
-			serveCrowdsec(csParsers, cConfig, agentReady)
+			serveCrowdsec(csParsers, cConfig, hub, agentReady)
 		}
 	} else {
 		agentReady <- true

@@ -36,12 +36,6 @@ check_jq() {
     fi
 }
 
-check_nc() {
-    if ! command -v nc >/dev/null; then
-        die "missing required program 'nc' (package 'netcat-openbsd')"
-    fi
-}
-
 check_base64() {
     if ! command -v base64 >/dev/null; then
         die "missing required program 'base64'"
@@ -66,7 +60,6 @@ check_bats_core
 check_curl
 check_daemonizer
 check_jq
-check_nc
 check_base64
 check_python3
 check_pkill

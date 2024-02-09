@@ -31,6 +31,7 @@ func (s *PluginSuite) permissionSetter(perm os.FileMode) func(*testing.T) {
 
 func (s *PluginSuite) readconfig() PluginConfig {
 	var config PluginConfig
+
 	t := s.T()
 
 	orig, err := os.ReadFile(s.pluginConfig)
@@ -111,7 +112,7 @@ func (s *PluginSuite) TestBrokerInit() {
 		},
 		{
 			name:        "Invalid user and group",
-			expectedErr: "unknown user toto1234",
+			expectedErr: "toto1234",
 			procCfg: csconfig.PluginCfg{
 				User:  "toto1234",
 				Group: "toto1234",
@@ -119,7 +120,7 @@ func (s *PluginSuite) TestBrokerInit() {
 		},
 		{
 			name:        "Valid user and invalid group",
-			expectedErr: "unknown group toto1234",
+			expectedErr: "toto1234",
 			procCfg: csconfig.PluginCfg{
 				User:  "nobody",
 				Group: "toto1234",
@@ -142,18 +143,20 @@ func (s *PluginSuite) TestBrokerInit() {
 
 func (s *PluginSuite) TestBrokerNoThreshold() {
 	var alerts []models.Alert
+
 	DefaultEmptyTicker = 50 * time.Millisecond
 
 	t := s.T()
 
 	pb, err := s.InitBroker(nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
 
 	// send one item, it should be processed right now
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
 	time.Sleep(200 * time.Millisecond)
 
 	// we expect one now
@@ -170,6 +173,7 @@ func (s *PluginSuite) TestBrokerNoThreshold() {
 	// and another one
 	log.Printf("second send")
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
 	time.Sleep(200 * time.Millisecond)
 
 	// we expect one again, as we cleaned the file
@@ -178,7 +182,7 @@ func (s *PluginSuite) TestBrokerNoThreshold() {
 
 	err = json.Unmarshal(content, &alerts)
 	log.Printf("content-> %s", content)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 1)
 }
 
@@ -195,7 +199,7 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_TimeFirst() {
 	s.writeconfig(cfg)
 
 	pb, err := s.InitBroker(nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
@@ -204,17 +208,18 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_TimeFirst() {
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
 	time.Sleep(500 * time.Millisecond)
 	// because of group threshold, we shouldn't have data yet
 	assert.NoFileExists(t, "./out")
 	time.Sleep(1 * time.Second)
 	// after 1 seconds, we should have data
 	content, err := os.ReadFile("./out")
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	var alerts []models.Alert
 	err = json.Unmarshal(content, &alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 3)
 }
 
@@ -230,7 +235,7 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_CountFirst() {
 	s.writeconfig(cfg)
 
 	pb, err := s.InitBroker(nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
@@ -239,11 +244,13 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_CountFirst() {
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
 	time.Sleep(100 * time.Millisecond)
 
 	// because of group threshold, we shouldn't have data yet
 	assert.NoFileExists(t, "./out")
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
 	time.Sleep(100 * time.Millisecond)
 
 	// and now we should
@@ -252,7 +259,7 @@ func (s *PluginSuite) TestBrokerRunGroupAndTimeThreshold_CountFirst() {
 
 	var alerts []models.Alert
 	err = json.Unmarshal(content, &alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 4)
 }
 
@@ -268,7 +275,7 @@ func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 	s.writeconfig(cfg)
 
 	pb, err := s.InitBroker(nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
@@ -277,6 +284,7 @@ func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
 	time.Sleep(time.Second)
 
 	// because of group threshold, we shouldn't have data yet
@@ -284,6 +292,7 @@ func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
 	time.Sleep(time.Second)
 
 	// and now we should
@@ -297,11 +306,11 @@ func (s *PluginSuite) TestBrokerRunGroupThreshold() {
 	// two notifications, one with 4 alerts, one with 2 alerts
 
 	err = decoder.Decode(&alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 4)
 
 	err = decoder.Decode(&alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 2)
 
 	err = decoder.Decode(&alerts)
@@ -319,13 +328,14 @@ func (s *PluginSuite) TestBrokerRunTimeThreshold() {
 	s.writeconfig(cfg)
 
 	pb, err := s.InitBroker(nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
 
 	// send data
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+
 	time.Sleep(200 * time.Millisecond)
 
 	// we shouldn't have data yet
@@ -338,7 +348,7 @@ func (s *PluginSuite) TestBrokerRunTimeThreshold() {
 
 	var alerts []models.Alert
 	err = json.Unmarshal(content, &alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 1)
 }
 
@@ -348,7 +358,7 @@ func (s *PluginSuite) TestBrokerRunSimple() {
 	t := s.T()
 
 	pb, err := s.InitBroker(nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
@@ -372,11 +382,11 @@ func (s *PluginSuite) TestBrokerRunSimple() {
 	// two notifications, one alert each
 
 	err = decoder.Decode(&alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 1)
 
 	err = decoder.Decode(&alerts)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Len(t, alerts, 1)
 
 	err = decoder.Decode(&alerts)

@@ -2,13 +2,16 @@ package require
 
 import (
 	"fmt"
+	"io"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
 func LAPI(c *csconfig.Config) error {
-	if err := c.LoadAPIServer(); err != nil {
+	if err := c.LoadAPIServer(true); err != nil {
 		return fmt.Errorf("failed to load Local API: %w", err)
 	}
 
@@ -23,6 +26,7 @@ func CAPI(c *csconfig.Config) error {
 	if c.API.Server.OnlineClient == nil {
 		return fmt.Errorf("no configuration for Central API (CAPI) in '%s'", *c.FilePath)
 	}
+
 	return nil
 }
 
@@ -30,6 +34,7 @@ func PAPI(c *csconfig.Config) error {
 	if c.API.Server.OnlineClient.Credentials.PapiURL == "" {
 		return fmt.Errorf("no PAPI URL in configuration")
 	}
+
 	return nil
 }
 
@@ -42,15 +47,8 @@ func CAPIRegistered(c *csconfig.Config) error {
 }
 
 func DB(c *csconfig.Config) error {
-	if err := c.LoadDBConfig(); err != nil {
+	if err := c.LoadDBConfig(true); err != nil {
 		return fmt.Errorf("this command requires direct database access (must be run on the local API machine): %w", err)
-	}
-	return nil
-}
-
-func Profiles(c *csconfig.Config) error {
-	if err := c.API.Server.LoadProfiles(); err != nil {
-		return fmt.Errorf("while loading profiles: %w", err)
 	}
 
 	return nil
@@ -64,22 +62,38 @@ func Notifications(c *csconfig.Config) error {
 	return nil
 }
 
-func Hub (c *csconfig.Config) error {
-	if err := c.LoadHub(); err != nil {
-		return err
+// RemoteHub returns the configuration required to download hub index and items: url, branch, etc.
+func RemoteHub(c *csconfig.Config) *cwhub.RemoteHubCfg {
+	// set branch in config, and log if necessary
+	branch := HubBranch(c)
+	urlTemplate := HubURLTemplate(c)
+	remote := &cwhub.RemoteHubCfg{
+		Branch:      branch,
+		URLTemplate: urlTemplate,
+		IndexPath: ".index.json",
 	}
 
-	if c.Hub == nil {
-		return fmt.Errorf("you must configure cli before interacting with hub")
+	return remote
+}
+
+// Hub initializes the hub. If a remote configuration is provided, it can be used to download the index and items.
+// If no remote parameter is provided, the hub can only be used for local operations.
+func Hub(c *csconfig.Config, remote *cwhub.RemoteHubCfg, logger *logrus.Logger) (*cwhub.Hub, error) {
+	local := c.Hub
+
+	if local == nil {
+		return nil, fmt.Errorf("you must configure cli before interacting with hub")
 	}
 
-	if err := cwhub.SetHubBranch(); err != nil {
-		return fmt.Errorf("while setting hub branch: %w", err)
+	if logger == nil {
+		logger = logrus.New()
+		logger.SetOutput(io.Discard)
 	}
 
-	if err := cwhub.GetHubIdx(c.Hub); err != nil {
-		return fmt.Errorf("failed to read Hub index: '%w'. Run 'sudo cscli hub update' to download the index again", err)
+	hub, err := cwhub.NewHub(local, remote, false, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read Hub index: %w. Run 'sudo cscli hub update' to download the index again", err)
 	}
 
-	return nil
+	return hub, nil
 }

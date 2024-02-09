@@ -24,23 +24,18 @@ env:
   RICHGO_FORCE_COLOR: 1
   AWS_HOST: localstack
   # these are to mimic aws config
-  AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE
-  AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
   AWS_REGION: us-east-1
-  KINESIS_INITIALIZE_STREAMS: "stream-1-shard:1,stream-2-shards:2"
   CROWDSEC_FEATURE_DISABLE_HTTP_RETRY_BACKOFF: true
 
 jobs:
   build:
-    strategy:
-      matrix:
-        go-version: ["1.21.1"]
-
     name: "Build + tests"
     runs-on: ubuntu-latest
     services:
       localstack:
-        image: localstack/localstack:1.3.0
+        image: localstack/localstack:3.0
         ports:
         - 4566:4566  # Localstack exposes all services on the same port
         env:
@@ -49,7 +44,7 @@ jobs:
           KINESIS_ERROR_PROBABILITY: ""
           DOCKER_HOST: unix:///var/run/docker.sock
           KINESIS_INITIALIZE_STREAMS: ${{ env.KINESIS_INITIALIZE_STREAMS }}
-          HOSTNAME_EXTERNAL: ${{ env.AWS_HOST }}  # Required so that resource urls are provided properly
+          LOCALSTACK_HOST: ${{ env.AWS_HOST }}  # Required so that resource urls are provided properly
           # e.g sqs url will get localhost if we don't set this env to map our service
         options: >-
           --name=localstack
@@ -58,7 +53,7 @@ jobs:
           --health-timeout=5s
           --health-retries=3
       zoo1:
-        image: confluentinc/cp-zookeeper:7.3.0
+        image: confluentinc/cp-zookeeper:7.4.3
         ports:
           - "2181:2181"
         env:
@@ -108,18 +103,35 @@ jobs:
           --health-timeout 10s
           --health-retries 5
 
+      loki:
+        image: grafana/loki:2.9.1
+        ports:
+          - "3100:3100"
+        options: >-
+          --name=loki1
+          --health-cmd "wget -q -O - http://localhost:3100/ready | grep 'ready'"
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 5
+          --health-start-period 30s
+
     steps:
 
     - name: Check out CrowdSec repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
         submodules: false
 
-    - name: "Set up Go ${{ matrix.go-version }}"
-      uses: actions/setup-go@v4
+    - name: "Set up Go"
+      uses: actions/setup-go@v5
       with:
-        go-version: ${{ matrix.go-version }}
+        go-version: "1.21.6"
+
+    - name: Create localstack streams
+      run: |
+          aws --endpoint-url=http://127.0.0.1:4566 --region us-east-1 kinesis create-stream --stream-name stream-1-shard --shard-count 1
+          aws --endpoint-url=http://127.0.0.1:4566 --region us-east-1 kinesis create-stream --stream-name stream-2-shards --shard-count 2
 
     - name: Build and run tests, static
       run: |
@@ -128,12 +140,13 @@ jobs:
         go install github.com/kyoh86/richgo@v0.3.10
         set -o pipefail
         make build BUILD_STATIC=1
-        make go-acc | richgo testfilter
+        make go-acc | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
 
     - name: Run tests again, dynamic
       run: |
         make clean build
-        make go-acc | richgo testfilter
+        set -o pipefail
+        make go-acc | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
 
     - name: Upload unit coverage to Codecov
       uses: codecov/codecov-action@v3
@@ -144,7 +157,7 @@ jobs:
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v3
       with:
-        version: v1.54
+        version: v1.55
         args: --issues-exit-code=1 --timeout 10m
         only-new-issues: false
         # the cache is already managed above, enabling it here

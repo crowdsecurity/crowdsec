@@ -10,13 +10,12 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 )
 
-var DEFAULT_MAX_OPEN_CONNS = 100
-
 const (
+	DEFAULT_MAX_OPEN_CONNS  = 100
 	defaultDecisionBulkSize = 1000
 	// we need an upper bound due to the sqlite limit of 32k variables in a query
 	// we have 15 variables per decision, so 32768/15 = 2184.5333
-	maxDecisionBulkSize     = 2000
+	maxDecisionBulkSize = 2000
 )
 
 type DatabaseCfg struct {
@@ -51,7 +50,7 @@ type FlushDBCfg struct {
 	AgentsGC   *AuthGCCfg `yaml:"agents_autodelete,omitempty"`
 }
 
-func (c *Config) LoadDBConfig() error {
+func (c *Config) LoadDBConfig(inCli bool) error {
 	if c.DbConfig == nil {
 		return fmt.Errorf("no database configuration provided")
 	}
@@ -78,10 +77,8 @@ func (c *Config) LoadDBConfig() error {
 		c.DbConfig.DecisionBulkSize = maxDecisionBulkSize
 	}
 
-	if c.DbConfig.Type == "sqlite" {
-		if c.DbConfig.UseWal == nil {
-			log.Warning("You are using sqlite without WAL, this can have a performance impact. If you do not store the database in a network share, set db_config.use_wal to true. Set explicitly to false to disable this warning.")
-		}
+	if !inCli && c.DbConfig.Type == "sqlite" && c.DbConfig.UseWal == nil {
+		log.Warning("You are using sqlite without WAL, this can have a performance impact. If you do not store the database in a network share, set db_config.use_wal to true. Set explicitly to false to disable this warning.")
 	}
 
 	return nil

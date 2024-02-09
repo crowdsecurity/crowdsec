@@ -6,6 +6,7 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"runtime"
+	"runtime/pprof"
 	"strings"
 	"time"
 
@@ -71,24 +72,27 @@ type Flags struct {
 	DisableCAPI    bool
 	Transform      string
 	OrderEvent     bool
+	CpuProfile     string
 }
 
 type labelsMap map[string]string
 
-func LoadBuckets(cConfig *csconfig.Config) error {
+func LoadBuckets(cConfig *csconfig.Config, hub *cwhub.Hub) error {
 	var (
 		err   error
 		files []string
 	)
-	for _, hubScenarioItem := range cwhub.GetItemMap(cwhub.SCENARIOS) {
-		if hubScenarioItem.Installed {
-			files = append(files, hubScenarioItem.LocalPath)
+
+	for _, hubScenarioItem := range hub.GetItemMap(cwhub.SCENARIOS) {
+		if hubScenarioItem.State.Installed {
+			files = append(files, hubScenarioItem.State.LocalPath)
 		}
 	}
+
 	buckets = leakybucket.NewBuckets()
 
 	log.Infof("Loading %d scenario files", len(files))
-	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, files, &bucketsTomb, buckets, flags.OrderEvent)
+	holders, outputEventChan, err = leakybucket.LoadBuckets(cConfig.Crowdsec, hub, files, &bucketsTomb, buckets, flags.OrderEvent)
 
 	if err != nil {
 		return fmt.Errorf("scenario loading failed: %v", err)
@@ -99,6 +103,7 @@ func LoadBuckets(cConfig *csconfig.Config) error {
 			holders[holderIndex].Profiling = true
 		}
 	}
+
 	return nil
 }
 
@@ -143,8 +148,10 @@ func (l labelsMap) Set(label string) error {
 		if len(split) != 2 {
 			return fmt.Errorf("invalid format for label '%s', must be key:value", pair)
 		}
+
 		l[split[0]] = split[1]
 	}
+
 	return nil
 }
 
@@ -168,10 +175,13 @@ func (f *Flags) Parse() {
 	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
 	flag.BoolVar(&f.DisableCAPI, "no-capi", false, "disable communication with Central API")
 	flag.BoolVar(&f.OrderEvent, "order-event", false, "enforce event ordering with significant performance cost")
+
 	if runtime.GOOS == "windows" {
 		flag.StringVar(&f.WinSvc, "winsvc", "", "Windows service Action: Install, Remove etc..")
 	}
+
 	flag.StringVar(&dumpFolder, "dump-data", "", "dump parsers/buckets raw outputs")
+	flag.StringVar(&f.CpuProfile, "cpu-profile", "", "write cpu profile to file")
 	flag.Parse()
 }
 
@@ -205,6 +215,7 @@ func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
 		// avoid returning a new ptr to the same value
 		return curLevelPtr
 	}
+
 	return &ret
 }
 
@@ -212,11 +223,7 @@ func newLogLevel(curLevelPtr *log.Level, f *Flags) *log.Level {
 func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*csconfig.Config, error) {
 	cConfig, _, err := csconfig.NewConfig(configFile, disableAgent, disableAPI, quiet)
 	if err != nil {
-		return nil, err
-	}
-
-	if (cConfig.Common == nil || *cConfig.Common == csconfig.CommonCfg{}) {
-		return nil, fmt.Errorf("unable to load configuration: common section is empty")
+		return nil, fmt.Errorf("while loading configuration file: %w", err)
 	}
 
 	cConfig.Common.LogLevel = newLogLevel(cConfig.Common.LogLevel, flags)
@@ -226,11 +233,6 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		parser.DumpFolder = dumpFolder
 		leakybucket.BucketPourTrack = true
 		dumpStates = true
-	}
-
-	// Configuration paths are dependency to load crowdsec configuration
-	if err := cConfig.LoadConfigurationPaths(); err != nil {
-		return nil, err
 	}
 
 	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
@@ -247,6 +249,8 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		return nil, err
 	}
 
+	primalHook.Enabled = (cConfig.Common.LogMedia != "stdout")
+
 	if err := csconfig.LoadFeatureFlagsFile(configFile, log.StandardLogger()); err != nil {
 		return nil, err
 	}
@@ -258,7 +262,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 	}
 
 	if !cConfig.DisableAPI {
-		if err := cConfig.LoadAPIServer(); err != nil {
+		if err := cConfig.LoadAPIServer(false); err != nil {
 			return nil, err
 		}
 	}
@@ -269,10 +273,6 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 
 	if cConfig.DisableAPI && cConfig.DisableAgent {
 		return nil, errors.New("You must run at least the API Server or crowdsec")
-	}
-
-	if flags.TestMode && !cConfig.DisableAgent {
-		cConfig.Crowdsec.LintOnly = true
 	}
 
 	if flags.OneShotDSN != "" && flags.SingleFileType == "" {
@@ -295,6 +295,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 		if cConfig.DisableAPI {
 			cConfig.Common.Daemonize = false
 		}
+
 		log.Infof("single file mode : log_media=%s daemonize=%t", cConfig.Common.LogMedia, cConfig.Common.Daemonize)
 	}
 
@@ -304,6 +305,7 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 
 	if cConfig.Common.Daemonize && runtime.GOOS == "windows" {
 		log.Debug("Daemonization is not supported on Windows, disabling")
+
 		cConfig.Common.Daemonize = false
 	}
 
@@ -321,6 +323,8 @@ func LoadConfig(configFile string, disableAgent bool, disableAPI bool, quiet boo
 var crowdsecT0 time.Time
 
 func main() {
+	log.AddHook(primalHook)
+
 	if err := fflag.RegisterAllFeatures(); err != nil {
 		log.Fatalf("failed to register features: %s", err)
 	}
@@ -351,9 +355,25 @@ func main() {
 		os.Exit(0)
 	}
 
+	if flags.CpuProfile != "" {
+		f, err := os.Create(flags.CpuProfile)
+		if err != nil {
+			log.Fatalf("could not create CPU profile: %s", err)
+		}
+		log.Infof("CPU profile will be written to %s", flags.CpuProfile)
+		if err := pprof.StartCPUProfile(f); err != nil {
+			f.Close()
+			log.Fatalf("could not start CPU profile: %s", err)
+		}
+		defer f.Close()
+		defer pprof.StopCPUProfile()
+	}
+
 	err := StartRunSvc()
 	if err != nil {
-		log.Fatal(err)
+		pprof.StopCPUProfile()
+		log.Fatal(err) //nolint:gocritic // Disable warning for the defer pprof.StopCPUProfile() call
 	}
+
 	os.Exit(0)
 }

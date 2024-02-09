@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -9,67 +10,79 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
-
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
-func NewPapiCmd() *cobra.Command {
-	var cmdLapi = &cobra.Command{
+type cliPapi struct {
+	cfg configGetter
+}
+
+func NewCLIPapi(cfg configGetter) *cliPapi {
+	return &cliPapi{
+		cfg: cfg,
+	}
+}
+
+func (cli *cliPapi) NewCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "papi [action]",
 		Short:             "Manage interaction with Polling API (PAPI)",
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := require.LAPI(csConfig); err != nil {
+		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
+			cfg := cli.cfg()
+			if err := require.LAPI(cfg); err != nil {
 				return err
 			}
-			if err := require.CAPI(csConfig); err != nil {
+			if err := require.CAPI(cfg); err != nil {
 				return err
 			}
-			if err := require.PAPI(csConfig); err != nil {
+			if err := require.PAPI(cfg); err != nil {
 				return err
 			}
+
 			return nil
 		},
 	}
 
-	cmdLapi.AddCommand(NewPapiStatusCmd())
-	cmdLapi.AddCommand(NewPapiSyncCmd())
+	cmd.AddCommand(cli.NewStatusCmd())
+	cmd.AddCommand(cli.NewSyncCmd())
 
-	return cmdLapi
+	return cmd
 }
 
-func NewPapiStatusCmd() *cobra.Command {
-	cmdCapiStatus := &cobra.Command{
+func (cli *cliPapi) NewStatusCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "status",
 		Short:             "Get status of the Polling API",
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			var err error
-			dbClient, err = database.NewClient(csConfig.DbConfig)
+			cfg := cli.cfg()
+			dbClient, err = database.NewClient(cfg.DbConfig)
 			if err != nil {
-				log.Fatalf("unable to initialize database client : %s", err)
+				return fmt.Errorf("unable to initialize database client: %s", err)
 			}
 
-			apic, err := apiserver.NewAPIC(csConfig.API.Server.OnlineClient, dbClient, csConfig.API.Server.ConsoleConfig, csConfig.API.Server.CapiWhitelists)
+			apic, err := apiserver.NewAPIC(cfg.API.Server.OnlineClient, dbClient, cfg.API.Server.ConsoleConfig, cfg.API.Server.CapiWhitelists)
 
 			if err != nil {
-				log.Fatalf("unable to initialize API client : %s", err)
+				return fmt.Errorf("unable to initialize API client: %s", err)
 			}
 
-			papi, err := apiserver.NewPAPI(apic, dbClient, csConfig.API.Server.ConsoleConfig, log.GetLevel())
+			papi, err := apiserver.NewPAPI(apic, dbClient, cfg.API.Server.ConsoleConfig, log.GetLevel())
 
 			if err != nil {
-				log.Fatalf("unable to initialize PAPI client : %s", err)
+				return fmt.Errorf("unable to initialize PAPI client: %s", err)
 			}
 
 			perms, err := papi.GetPermissions()
 
 			if err != nil {
-				log.Fatalf("unable to get PAPI permissions: %s", err)
+				return fmt.Errorf("unable to get PAPI permissions: %s", err)
 			}
 			var lastTimestampStr *string
 			lastTimestampStr, err = dbClient.GetConfigItem(apiserver.PapiPullKey)
@@ -84,45 +97,48 @@ func NewPapiStatusCmd() *cobra.Command {
 			for _, sub := range perms.Categories {
 				log.Infof(" - %s", sub)
 			}
+
+			return nil
 		},
 	}
 
-	return cmdCapiStatus
+	return cmd
 }
 
-func NewPapiSyncCmd() *cobra.Command {
-	cmdCapiSync := &cobra.Command{
+func (cli *cliPapi) NewSyncCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "sync",
 		Short:             "Sync with the Polling API, pulling all non-expired orders for the instance",
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			var err error
+			cfg := cli.cfg()
 			t := tomb.Tomb{}
-			dbClient, err = database.NewClient(csConfig.DbConfig)
+
+			dbClient, err = database.NewClient(cfg.DbConfig)
 			if err != nil {
-				log.Fatalf("unable to initialize database client : %s", err)
+				return fmt.Errorf("unable to initialize database client: %s", err)
 			}
 
-			apic, err := apiserver.NewAPIC(csConfig.API.Server.OnlineClient, dbClient, csConfig.API.Server.ConsoleConfig, csConfig.API.Server.CapiWhitelists)
-
+			apic, err := apiserver.NewAPIC(cfg.API.Server.OnlineClient, dbClient, cfg.API.Server.ConsoleConfig, cfg.API.Server.CapiWhitelists)
 			if err != nil {
-				log.Fatalf("unable to initialize API client : %s", err)
+				return fmt.Errorf("unable to initialize API client: %s", err)
 			}
 
 			t.Go(apic.Push)
 
-			papi, err := apiserver.NewPAPI(apic, dbClient, csConfig.API.Server.ConsoleConfig, log.GetLevel())
-
+			papi, err := apiserver.NewPAPI(apic, dbClient, cfg.API.Server.ConsoleConfig, log.GetLevel())
 			if err != nil {
-				log.Fatalf("unable to initialize PAPI client : %s", err)
+				return fmt.Errorf("unable to initialize PAPI client: %s", err)
 			}
+
 			t.Go(papi.SyncDecisions)
 
 			err = papi.PullOnce(time.Time{}, true)
 
 			if err != nil {
-				log.Fatalf("unable to sync decisions: %s", err)
+				return fmt.Errorf("unable to sync decisions: %s", err)
 			}
 
 			log.Infof("Sending acknowledgements to CAPI")
@@ -132,8 +148,9 @@ func NewPapiSyncCmd() *cobra.Command {
 			t.Wait()
 			time.Sleep(5 * time.Second) //FIXME: the push done by apic.Push is run inside a sub goroutine, sleep to make sure it's done
 
+			return nil
 		},
 	}
 
-	return cmdCapiSync
+	return cmd
 }

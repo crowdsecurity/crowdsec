@@ -7,6 +7,7 @@ import (
 	"text/template"
 
 	"github.com/antonmedv/expr"
+	"github.com/sanity-io/litter"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -23,6 +24,7 @@ func showConfigKey(key string) error {
 	opts := []expr.Option{}
 	opts = append(opts, exprhelpers.GetExprOptions(map[string]interface{}{})...)
 	opts = append(opts, expr.Env(Env{}))
+
 	program, err := expr.Compile(key, opts...)
 	if err != nil {
 		return err
@@ -35,13 +37,13 @@ func showConfigKey(key string) error {
 
 	switch csConfig.Cscli.Output {
 	case "human", "raw":
+		// Don't use litter for strings, it adds quotes
+		// that we didn't have before
 		switch output.(type) {
 		case string:
-			fmt.Printf("%s\n", output)
-		case int:
-			fmt.Printf("%d\n", output)
+			fmt.Println(output)
 		default:
-			fmt.Printf("%v\n", output)
+			litter.Dump(output)
 		}
 	case "json":
 		data, err := json.MarshalIndent(output, "", "  ")
@@ -51,6 +53,7 @@ func showConfigKey(key string) error {
 
 		fmt.Printf("%s\n", string(data))
 	}
+
 	return nil
 }
 
@@ -82,7 +85,6 @@ Crowdsec{{if and .Crowdsec.Enable (not (ValueBool .Crowdsec.Enable))}} (disabled
 cscli:
   - Output                  : {{.Cscli.Output}}
   - Hub Branch              : {{.Cscli.HubBranch}}
-  - Hub Folder              : {{.Cscli.HubDir}}
 {{- end }}
 
 {{- if .API }}
@@ -211,6 +213,7 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		err = tmp.Execute(os.Stdout, csConfig)
 		if err != nil {
 			return err
@@ -230,6 +233,7 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 
 		fmt.Printf("%s\n", string(data))
 	}
+
 	return nil
 }
 

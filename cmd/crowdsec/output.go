@@ -62,7 +62,8 @@ func PushAlerts(alerts []types.RuntimeAlert, client *apiclient.ApiClient) error 
 var bucketOverflows []types.Event
 
 func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky.Buckets,
-	postOverflowCTX parser.UnixParserCtx, postOverflowNodes []parser.Node, apiConfig csconfig.ApiCredentialsCfg) error {
+	postOverflowCTX parser.UnixParserCtx, postOverflowNodes []parser.Node,
+	apiConfig csconfig.ApiCredentialsCfg, hub *cwhub.Hub) error {
 
 	var err error
 	ticker := time.NewTicker(1 * time.Second)
@@ -70,10 +71,19 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	var cache []types.RuntimeAlert
 	var cacheMutex sync.Mutex
 
-	scenarios, err := cwhub.GetInstalledItemsAsString(cwhub.SCENARIOS)
+	scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
 	if err != nil {
 		return fmt.Errorf("loading list of installed hub scenarios: %w", err)
 	}
+
+	appsecRules, err := hub.GetInstalledItemNames(cwhub.APPSEC_RULES)
+	if err != nil {
+		return fmt.Errorf("loading list of installed hub appsec rules: %w", err)
+	}
+
+	installedScenariosAndAppsecRules := make([]string, 0, len(scenarios)+len(appsecRules))
+	installedScenariosAndAppsecRules = append(installedScenariosAndAppsecRules, scenarios...)
+	installedScenariosAndAppsecRules = append(installedScenariosAndAppsecRules, appsecRules...)
 
 	apiURL, err := url.Parse(apiConfig.URL)
 	if err != nil {
@@ -86,14 +96,27 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	password := strfmt.Password(apiConfig.Password)
 
 	Client, err := apiclient.NewClient(&apiclient.Config{
-		MachineID:      apiConfig.Login,
-		Password:       password,
-		Scenarios:      scenarios,
-		UserAgent:      fmt.Sprintf("crowdsec/%s", version.String()),
-		URL:            apiURL,
-		PapiURL:        papiURL,
-		VersionPrefix:  "v1",
-		UpdateScenario: func() ([]string, error) {return cwhub.GetInstalledItemsAsString(cwhub.SCENARIOS)},
+		MachineID:     apiConfig.Login,
+		Password:      password,
+		Scenarios:     installedScenariosAndAppsecRules,
+		UserAgent:     fmt.Sprintf("crowdsec/%s", version.String()),
+		URL:           apiURL,
+		PapiURL:       papiURL,
+		VersionPrefix: "v1",
+		UpdateScenario: func() ([]string, error) {
+			scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
+			if err != nil {
+				return nil, err
+			}
+			appsecRules, err := hub.GetInstalledItemNames(cwhub.APPSEC_RULES)
+			if err != nil {
+				return nil, err
+			}
+			ret := make([]string, 0, len(scenarios)+len(appsecRules))
+			ret = append(ret, scenarios...)
+			ret = append(ret, appsecRules...)
+			return ret, nil
+		},
 	})
 	if err != nil {
 		return fmt.Errorf("new client api: %w", err)
@@ -101,7 +124,7 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	authResp, _, err := Client.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
 		MachineID: &apiConfig.Login,
 		Password:  &password,
-		Scenarios: scenarios,
+		Scenarios: installedScenariosAndAppsecRules,
 	})
 	if err != nil {
 		return fmt.Errorf("authenticate watcher (%s): %w", apiConfig.Login, err)
@@ -145,13 +168,6 @@ LOOP:
 			}
 			break LOOP
 		case event := <-overflow:
-			//if the Alert is nil, it's to signal bucket is ready for GC, don't track this
-			if dumpStates && event.Overflow.Alert != nil {
-				if bucketOverflows == nil {
-					bucketOverflows = make([]types.Event, 0)
-				}
-				bucketOverflows = append(bucketOverflows, event)
-			}
 			/*if alert is empty and mapKey is present, the overflow is just to cleanup bucket*/
 			if event.Overflow.Alert == nil && event.Overflow.Mapkey != "" {
 				buckets.Bucket_map.Delete(event.Overflow.Mapkey)
@@ -163,6 +179,14 @@ LOOP:
 				return fmt.Errorf("postoverflow failed : %s", err)
 			}
 			log.Printf("%s", *event.Overflow.Alert.Message)
+			//if the Alert is nil, it's to signal bucket is ready for GC, don't track this
+			//dump after postoveflow processing to avoid missing whitelist info
+			if dumpStates && event.Overflow.Alert != nil {
+				if bucketOverflows == nil {
+					bucketOverflows = make([]types.Event, 0)
+				}
+				bucketOverflows = append(bucketOverflows, event)
+			}
 			if event.Overflow.Whitelisted {
 				log.Printf("[%s] is whitelisted, skip.", *event.Overflow.Alert.Message)
 				continue

@@ -1,4 +1,4 @@
-name: Functional tests (MySQL)
+name: (sub) Bats / MySQL
 
 on:
   workflow_call:
@@ -12,11 +12,7 @@ env:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        go-version: ["1.21.1"]
-
-    name: "Build + tests"
+    name: "Functional tests"
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
@@ -35,21 +31,21 @@ jobs:
           echo githubciXXXXXXXXXXXXXXXXXXXXXXXX | sudo tee /etc/machine-id
 
     - name: "Check out CrowdSec repository"
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
         submodules: true
 
-    - name: "Set up Go ${{ matrix.go-version }}"
-      uses: actions/setup-go@v4
+    - name: "Set up Go"
+      uses: actions/setup-go@v5
       with:
-        go-version: ${{ matrix.go-version }}
+        go-version: "1.21.6"
 
     - name: "Install bats dependencies"
       env:
         GOBIN: /usr/local/bin
       run: |
-        sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential daemonize jq netcat-openbsd libre2-dev
+        sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential daemonize jq libre2-dev
 
     - name: "Build crowdsec and fixture"
       run: |

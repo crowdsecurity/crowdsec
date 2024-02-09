@@ -15,7 +15,6 @@ import (
 type HeartBeatService service
 
 func (h *HeartBeatService) Ping(ctx context.Context) (bool, *Response, error) {
-
 	u := fmt.Sprintf("%s/heartbeat", h.client.URLPrefix)
 
 	req, err := h.client.NewRequest(http.MethodGet, u, nil)
@@ -39,16 +38,19 @@ func (h *HeartBeatService) StartHeartBeat(ctx context.Context, t *tomb.Tomb) {
 			select {
 			case <-hbTimer.C:
 				log.Debug("heartbeat: sending heartbeat")
+
 				ok, resp, err := h.Ping(ctx)
 				if err != nil {
-					log.Errorf("heartbeat error : %s", err)
+					log.Errorf("heartbeat error: %s", err)
 					continue
 				}
+
 				resp.Response.Body.Close()
 				if resp.Response.StatusCode != http.StatusOK {
-					log.Errorf("heartbeat unexpected return code : %d", resp.Response.StatusCode)
+					log.Errorf("heartbeat unexpected return code: %d", resp.Response.StatusCode)
 					continue
 				}
+
 				if !ok {
 					log.Errorf("heartbeat returned false")
 					continue

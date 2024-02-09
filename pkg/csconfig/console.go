@@ -8,8 +8,6 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/ptr"
-
-	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
 
 const (
@@ -21,6 +19,13 @@ const (
 )
 
 var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS, SEND_CONTEXT, CONSOLE_MANAGEMENT}
+var CONSOLE_CONFIGS_HELP = map[string]string{
+	SEND_CUSTOM_SCENARIOS:  "Forward alerts from custom scenarios to the console",
+	SEND_MANUAL_SCENARIOS:  "Forward manual decisions to the console",
+	SEND_TAINTED_SCENARIOS: "Forward alerts from tainted scenarios to the console",
+	SEND_CONTEXT:           "Forward context with alerts to the console",
+	CONSOLE_MANAGEMENT:     "Receive decisions from console",
+}
 
 var DefaultConsoleConfigFilePath = DefaultConfigPath("console.yaml")
 
@@ -30,6 +35,13 @@ type ConsoleConfig struct {
 	ShareCustomScenarios  *bool `yaml:"share_custom"`
 	ConsoleManagement     *bool `yaml:"console_management"`
 	ShareContext          *bool `yaml:"share_context"`
+}
+
+func (c *ConsoleConfig) IsPAPIEnabled() bool {
+	if c == nil || c.ConsoleManagement == nil {
+		return false
+	}
+	return *c.ConsoleManagement
 }
 
 func (c *LocalApiServerCfg) LoadConsoleConfig() error {
@@ -66,9 +78,7 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 		c.ConsoleConfig.ShareManualDecisions = ptr.Of(false)
 	}
 
-	if !fflag.PapiClient.IsEnabled() {
-		c.ConsoleConfig.ConsoleManagement = ptr.Of(false)
-	} else if c.ConsoleConfig.ConsoleManagement == nil {
+	if c.ConsoleConfig.ConsoleManagement == nil {
 		log.Debugf("no console_management found, setting to false")
 		c.ConsoleConfig.ConsoleManagement = ptr.Of(false)
 	}
@@ -79,26 +89,6 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 	}
 
 	log.Debugf("Console configuration '%s' loaded successfully", c.ConsoleConfigPath)
-
-	return nil
-}
-
-func (c *LocalApiServerCfg) DumpConsoleConfig() error {
-	var out []byte
-	var err error
-
-	if out, err = yaml.Marshal(c.ConsoleConfig); err != nil {
-		return fmt.Errorf("while marshaling ConsoleConfig (for %s): %w", c.ConsoleConfigPath, err)
-	}
-	if c.ConsoleConfigPath == "" {
-		c.ConsoleConfigPath = DefaultConsoleConfigFilePath
-		log.Debugf("Empty console_path, defaulting to %s", c.ConsoleConfigPath)
-
-	}
-
-	if err := os.WriteFile(c.ConsoleConfigPath, out, 0600); err != nil {
-		return fmt.Errorf("while dumping console config to %s: %w", c.ConsoleConfigPath, err)
-	}
 
 	return nil
 }

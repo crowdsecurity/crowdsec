@@ -36,6 +36,18 @@ teardown() {
     assert_output '[]'
 }
 
+@test "we can create a bouncer with a known key" {
+    # also test the output formats since we know the key
+    rune -0 cscli bouncers add ciTestBouncer --key "foobarbaz" -o human
+    assert_output --partial 'foobarbaz'
+    rune -0 cscli bouncers delete ciTestBouncer
+    rune -0 cscli bouncers add ciTestBouncer --key "foobarbaz" -o json
+    assert_output '"foobarbaz"'
+    rune -0 cscli bouncers delete ciTestBouncer
+    rune -0 cscli bouncers add ciTestBouncer --key "foobarbaz" -o raw
+    assert_output foobarbaz
+}
+
 @test "we can't add the same bouncer twice" {
     rune -0 cscli bouncers add ciTestBouncer
     rune -1 cscli bouncers add ciTestBouncer -o json

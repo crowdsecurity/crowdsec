@@ -61,6 +61,7 @@ func TestAPICSendMetrics(t *testing.T) {
 
 	httpmock.RegisterResponder("POST", "http://api.crowdsec.net/api/metrics/", httpmock.NewBytesResponder(200, []byte{}))
 	httpmock.Activate()
+
 	defer httpmock.Deactivate()
 
 	for _, tc := range tests {

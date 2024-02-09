@@ -128,11 +128,10 @@ endif
 #--------------------------------------
 
 .PHONY: build
-build: pre-build goversion crowdsec cscli plugins
+build: pre-build goversion crowdsec cscli plugins  ## Build crowdsec, cscli and plugins
 
-# Sanity checks and build information
 .PHONY: pre-build
-pre-build:
+pre-build:  ## Sanity checks and build information
 	$(info Building $(BUILD_VERSION) ($(BUILD_TAG)) $(BUILD_TYPE) for $(GOOS)/$(GOARCH))
 
 ifneq (,$(RE2_FAIL))
@@ -153,14 +152,14 @@ ifeq ($(call bool,$(TEST_COVERAGE)),1)
 	$(info Test coverage collection enabled)
 endif
 
+# intentional, empty line
 	$(info )
 
-
 .PHONY: all
-all: clean test build
+all: clean test build  ## Clean, test and build (requires localstack)
 
 .PHONY: plugins
-plugins:
+plugins:  ## Build notification plugins
 	@$(foreach plugin,$(PLUGINS), \
 		$(MAKE) -C $(PLUGINS_DIR_PREFIX)$(plugin) build $(MAKE_FLAGS); \
 	)
@@ -184,7 +183,7 @@ clean-rpm:
 	@$(RM) -r rpm/SRPMS
 
 .PHONY: clean
-clean: clean-debian clean-rpm testclean
+clean: clean-debian clean-rpm testclean  ## Remove build artifacts
 	@$(MAKE) -C $(CROWDSEC_FOLDER) clean $(MAKE_FLAGS)
 	@$(MAKE) -C $(CSCLI_FOLDER) clean $(MAKE_FLAGS)
 	@$(RM) $(CROWDSEC_BIN) $(WIN_IGNORE_ERR)
@@ -196,21 +195,16 @@ clean: clean-debian clean-rpm testclean
 	)
 
 .PHONY: cscli
-cscli: goversion
+cscli: goversion  ## Build cscli
 	@$(MAKE) -C $(CSCLI_FOLDER) build $(MAKE_FLAGS)
 
 .PHONY: crowdsec
-crowdsec: goversion
+crowdsec: goversion  ## Build crowdsec
 	@$(MAKE) -C $(CROWDSEC_FOLDER) build $(MAKE_FLAGS)
-
-.PHONY: notification-email
-notification-email: goversion
-	@$(MAKE) -C cmd/notification-email build $(MAKE_FLAGS)
-
 
 
 .PHONY: testclean
-testclean: bats-clean
+testclean: bats-clean  ## Remove test artifacts
 	@$(RM) pkg/apiserver/ent $(WIN_IGNORE_ERR)
 	@$(RM) pkg/cwhub/hubdir $(WIN_IGNORE_ERR)
 	@$(RM) pkg/cwhub/install $(WIN_IGNORE_ERR)
@@ -218,42 +212,39 @@ testclean: bats-clean
 
 # for the tests with localstack
 export AWS_ENDPOINT_FORCE=http://localhost:4566
-export AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
-export AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+export AWS_ACCESS_KEY_ID=test
+export AWS_SECRET_ACCESS_KEY=test
 
 testenv:
 	@echo 'NOTE: You need Docker, docker-compose and run "make localstack" in a separate shell ("make localstack-stop" to terminate it)'
 
-# run the tests with localstack
 .PHONY: test
-test: testenv goversion
+test: testenv goversion  ## Run unit tests with localstack
 	$(GOTEST) $(LD_OPTS) ./...
 
-# run the tests with localstack and coverage
 .PHONY: go-acc
-go-acc: testenv goversion
-	go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models -- $(LD_OPTS) | \
-		sed 's/ *coverage:.*of statements in.*//'
+go-acc: testenv goversion  ## Run unit tests with localstack + coverage
+	go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models -- $(LD_OPTS)
 
 # mock AWS services
 .PHONY: localstack
-localstack:
+localstack:  ## Run localstack containers (required for unit testing)
 	docker-compose -f test/localstack/docker-compose.yml up
 
 .PHONY: localstack-stop
-localstack-stop:
+localstack-stop:  ## Stop localstack containers
 	docker-compose -f test/localstack/docker-compose.yml down
 
 # build vendor.tgz to be distributed with the release
 .PHONY: vendor
-vendor: vendor-remove
+vendor: vendor-remove  ## CI only - vendor dependencies and archive them for packaging
 	$(GO) mod vendor
 	tar czf vendor.tgz vendor
 	tar --create --auto-compress --file=$(RELDIR)-vendor.tar.xz vendor
 
 # remove vendor directories and vendor.tgz
 .PHONY: vendor-remove
-vendor-remove:
+vendor-remove:  ## Remove vendor dependencies and archives
 	$(RM) vendor vendor.tgz *-vendor.tar.xz
 
 .PHONY: package
@@ -285,18 +276,15 @@ else
 	@if (Test-Path -Path $(RELDIR)) { echo "$(RELDIR) already exists, abort" ;  exit 1 ; }
 endif
 
-# build a release tarball
 .PHONY: release
-release: check_release build package
+release: check_release build package  ## Build a release tarball
 
-# build the windows installer
 .PHONY: windows_installer
-windows_installer: build
+windows_installer: build  ## Windows - build the installer
 	@.\make_installer.ps1 -version $(BUILD_VERSION)
 
-# build the chocolatey package
 .PHONY: chocolatey
-chocolatey: windows_installer
+chocolatey: windows_installer  ## Windows - build the chocolatey package
 	@.\make_chocolatey.ps1 -version $(BUILD_VERSION)
 
 # Include test/bats.mk only if it exists
@@ -309,3 +297,4 @@ include test/bats.mk
 endif
 
 include mk/goversion.mk
+include mk/help.mk

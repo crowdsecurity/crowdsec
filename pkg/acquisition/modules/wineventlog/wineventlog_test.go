@@ -1,5 +1,4 @@
 //go:build windows
-// +build windows
 
 package wineventlogacquisition
 
@@ -12,6 +11,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/windows/svc/eventlog"
 	"gopkg.in/tomb.v2"
 )
@@ -125,7 +125,7 @@ event_level: bla`,
 			}
 			assert.Contains(t, err.Error(), test.expectedErr)
 		} else {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, test.expectedQuery, q)
 		}
 	}
@@ -222,9 +222,8 @@ event_ids:
 			}
 		}
 		if test.expectedLines == nil {
-			assert.Equal(t, 0, len(linesRead))
+			assert.Empty(t, linesRead)
 		} else {
-			assert.Equal(t, len(test.expectedLines), len(linesRead))
 			assert.Equal(t, test.expectedLines, linesRead)
 		}
 		to.Kill(nil)

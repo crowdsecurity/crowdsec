@@ -6,11 +6,12 @@ import (
 	"os"
 	"os/exec"
 
+	goccyyaml "github.com/goccy/go-yaml"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
-	goccyyaml "github.com/goccy/go-yaml"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/setup"
 )
@@ -303,7 +304,12 @@ func runSetupInstallHub(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("while reading file %s: %w", fromFile, err)
 	}
 
-	if err = setup.InstallHubItems(csConfig, input, dryRun); err != nil {
+	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig), log.StandardLogger())
+	if err != nil {
+		return err
+	}
+
+	if err = setup.InstallHubItems(hub, input, dryRun); err != nil {
 		return err
 	}
 

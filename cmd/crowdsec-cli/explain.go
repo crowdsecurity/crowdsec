@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -11,6 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/pkg/dumps"
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
@@ -21,14 +23,99 @@ func GetLineCountForFile(filepath string) (int, error) {
 	}
 	defer f.Close()
 	lc := 0
-	fs := bufio.NewScanner(f)
-	for fs.Scan() {
-		lc++
+	fs := bufio.NewReader(f)
+	for {
+		input, err := fs.ReadBytes('\n')
+		if len(input) > 1 {
+			lc++
+		}
+		if err != nil && err == io.EOF {
+			break
+		}
 	}
 	return lc, nil
 }
 
-func runExplain(cmd *cobra.Command, args []string) error {
+type cliExplain struct{}
+
+func NewCLIExplain() *cliExplain {
+	return &cliExplain{}
+}
+
+func (cli cliExplain) NewCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "explain",
+		Short: "Explain log pipeline",
+		Long: `
+Explain log pipeline 
+		`,
+		Example: `
+cscli explain --file ./myfile.log --type nginx 
+cscli explain --log "Sep 19 18:33:22 scw-d95986 sshd[24347]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=1.2.3.4" --type syslog
+cscli explain --dsn "file://myfile.log" --type nginx
+tail -n 5 myfile.log | cscli explain --type nginx -f -
+		`,
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
+		RunE:              cli.run,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			flags := cmd.Flags()
+
+			logFile, err := flags.GetString("file")
+			if err != nil {
+				return err
+			}
+
+			dsn, err := flags.GetString("dsn")
+			if err != nil {
+				return err
+			}
+
+			logLine, err := flags.GetString("log")
+			if err != nil {
+				return err
+			}
+
+			logType, err := flags.GetString("type")
+			if err != nil {
+				return err
+			}
+
+			if logLine == "" && logFile == "" && dsn == "" {
+				printHelp(cmd)
+				fmt.Println()
+				return fmt.Errorf("please provide --log, --file or --dsn flag")
+			}
+			if logType == "" {
+				printHelp(cmd)
+				fmt.Println()
+				return fmt.Errorf("please provide --type flag")
+			}
+			fileInfo, _ := os.Stdin.Stat()
+			if logFile == "-" && ((fileInfo.Mode() & os.ModeCharDevice) == os.ModeCharDevice) {
+				return fmt.Errorf("the option -f - is intended to work with pipes")
+			}
+			return nil
+		},
+	}
+
+	flags := cmd.Flags()
+
+	flags.StringP("file", "f", "", "Log file to test")
+	flags.StringP("dsn", "d", "", "DSN to test")
+	flags.StringP("log", "l", "", "Log line to test")
+	flags.StringP("type", "t", "", "Type of the acquisition to test")
+	flags.String("labels", "", "Additional labels to add to the acquisition format (key:value,key2:value2)")
+	flags.BoolP("verbose", "v", false, "Display individual changes")
+	flags.Bool("failures", false, "Only show failed lines")
+	flags.Bool("only-successful-parsers", false, "Only show successful parsers")
+	flags.String("crowdsec", "crowdsec", "Path to crowdsec")
+	flags.Bool("no-clean", false, "Don't clean runtime environment after tests")
+
+	return cmd
+}
+
+func (cli cliExplain) run(cmd *cobra.Command, args []string) error {
 	flags := cmd.Flags()
 
 	logFile, err := flags.GetString("file")
@@ -51,9 +138,14 @@ func runExplain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	opts := hubtest.DumpOpts{}
+	opts := dumps.DumpOpts{}
 
 	opts.Details, err = flags.GetBool("verbose")
+	if err != nil {
+		return err
+	}
+
+	no_clean, err := flags.GetBool("no-clean")
 	if err != nil {
 		return err
 	}
@@ -79,19 +171,6 @@ func runExplain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fileInfo, _ := os.Stdin.Stat()
-
-	if logType == "" || (logLine == "" && logFile == "" && dsn == "") {
-		printHelp(cmd)
-		fmt.Println()
-		fmt.Printf("Please provide --type flag\n")
-		os.Exit(1)
-	}
-
-	if logFile == "-" && ((fileInfo.Mode() & os.ModeCharDevice) == os.ModeCharDevice) {
-		return fmt.Errorf("the option -f - is intended to work with pipes")
-	}
-
 	var f *os.File
 
 	// using empty string fallback to /tmp
@@ -99,10 +178,19 @@ func runExplain(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("couldn't create a temporary directory to store cscli explain result: %s", err)
 	}
-	tmpFile := ""
+	defer func() {
+		if no_clean {
+			return
+		}
+		if _, err := os.Stat(dir); !os.IsNotExist(err) {
+			if err := os.RemoveAll(dir); err != nil {
+				log.Errorf("unable to delete temporary directory '%s': %s", dir, err)
+			}
+		}
+	}()
 	// we create a  temporary log file if a log line/stdin has been provided
 	if logLine != "" || logFile == "-" {
-		tmpFile = filepath.Join(dir, "cscli_test_tmp.log")
+		tmpFile := filepath.Join(dir, "cscli_test_tmp.log")
 		f, err = os.Create(tmpFile)
 		if err != nil {
 			return err
@@ -118,16 +206,18 @@ func runExplain(cmd *cobra.Command, args []string) error {
 			errCount := 0
 			for {
 				input, err := reader.ReadBytes('\n')
-				if err != nil && err == io.EOF {
+				if err != nil && errors.Is(err, io.EOF) {
 					break
 				}
-				_, err = f.Write(input)
-				if err != nil {
+				if len(input) > 1 {
+					_, err = f.Write(input)
+				}
+				if err != nil || len(input) <= 1 {
 					errCount++
 				}
 			}
 			if errCount > 0 {
-				log.Warnf("Failed to write %d lines to tmp file", errCount)
+				log.Warnf("Failed to write %d lines to %s", errCount, tmpFile)
 			}
 		}
 		f.Close()
@@ -145,8 +235,12 @@ func runExplain(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		log.Debugf("file %s has %d lines", absolutePath, lineCount)
+		if lineCount == 0 {
+			return fmt.Errorf("the log file is empty: %s", absolutePath)
+		}
 		if lineCount > 100 {
-			log.Warnf("The log file contains %d lines. This may take a lot of resources.", lineCount)
+			log.Warnf("%s contains %d lines. This may take a lot of resources.", absolutePath, lineCount)
 		}
 	}
 
@@ -166,63 +260,20 @@ func runExplain(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("fail to run crowdsec for test: %v", err)
 	}
 
-	// rm the temporary log file if only a log line/stdin was provided
-	if tmpFile != "" {
-		if err := os.Remove(tmpFile); err != nil {
-			return fmt.Errorf("unable to remove tmp log file '%s': %+v", tmpFile, err)
-		}
-	}
 	parserDumpFile := filepath.Join(dir, hubtest.ParserResultFileName)
 	bucketStateDumpFile := filepath.Join(dir, hubtest.BucketPourResultFileName)
 
-	parserDump, err := hubtest.LoadParserDump(parserDumpFile)
+	parserDump, err := dumps.LoadParserDump(parserDumpFile)
 	if err != nil {
 		return fmt.Errorf("unable to load parser dump result: %s", err)
 	}
 
-	bucketStateDump, err := hubtest.LoadBucketPourDump(bucketStateDumpFile)
+	bucketStateDump, err := dumps.LoadBucketPourDump(bucketStateDumpFile)
 	if err != nil {
 		return fmt.Errorf("unable to load bucket dump result: %s", err)
 	}
 
-	hubtest.DumpTree(*parserDump, *bucketStateDump, opts)
-
-	if err := os.RemoveAll(dir); err != nil {
-		return fmt.Errorf("unable to delete temporary directory '%s': %s", dir, err)
-	}
+	dumps.DumpTree(*parserDump, *bucketStateDump, opts)
 
 	return nil
-}
-
-func NewExplainCmd() *cobra.Command {
-	cmdExplain := &cobra.Command{
-		Use:   "explain",
-		Short: "Explain log pipeline",
-		Long: `
-Explain log pipeline 
-		`,
-		Example: `
-cscli explain --file ./myfile.log --type nginx 
-cscli explain --log "Sep 19 18:33:22 scw-d95986 sshd[24347]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=1.2.3.4" --type syslog
-cscli explain --dsn "file://myfile.log" --type nginx
-tail -n 5 myfile.log | cscli explain --type nginx -f -
-		`,
-		Args:              cobra.ExactArgs(0),
-		DisableAutoGenTag: true,
-		RunE:              runExplain,
-	}
-
-	flags := cmdExplain.Flags()
-
-	flags.StringP("file", "f", "", "Log file to test")
-	flags.StringP("dsn", "d", "", "DSN to test")
-	flags.StringP("log", "l", "", "Log line to test")
-	flags.StringP("type", "t", "", "Type of the acquisition to test")
-	flags.String("labels", "", "Additional labels to add to the acquisition format (key:value,key2:value2)")
-	flags.BoolP("verbose", "v", false, "Display individual changes")
-	flags.Bool("failures", false, "Only show failed lines")
-	flags.Bool("only-successful-parsers", false, "Only show successful parsers")
-	flags.String("crowdsec", "crowdsec", "Path to crowdsec")
-
-	return cmdExplain
 }

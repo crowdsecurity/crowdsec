@@ -205,12 +205,15 @@ func (p *Papi) PullOnce(since time.Time, sync bool) error {
 	reversedEvents := reverse(events) //PAPI sends events in the reverse order, which is not an issue when pulling them in real time, but here we need the correct order
 	eventsCount := len(events)
 	p.Logger.Infof("received %d events", eventsCount)
+
 	for i, event := range reversedEvents {
 		if err := p.handleEvent(event, sync); err != nil {
 			p.Logger.WithField("request-id", event.RequestId).Errorf("failed to handle event: %s", err)
 		}
+
 		p.Logger.Debugf("handled event %d/%d", i, eventsCount)
 	}
+
 	p.Logger.Debugf("finished handling events")
 	//Don't update the timestamp in DB, as a "real" LAPI might be running
 	//Worst case, crowdsec will receive a few duplicated events and will discard them
@@ -223,16 +226,19 @@ func (p *Papi) Pull() error {
 	p.Logger.Infof("Starting Polling API Pull")
 
 	lastTimestamp := time.Time{}
+
 	lastTimestampStr, err := p.DBClient.GetConfigItem(PapiPullKey)
 	if err != nil {
 		p.Logger.Warningf("failed to get last timestamp for papi pull: %s", err)
 	}
+
 	//value doesn't exist, it's first time we're pulling
 	if lastTimestampStr == nil {
 		binTime, err := lastTimestamp.MarshalText()
 		if err != nil {
 			return fmt.Errorf("failed to marshal last timestamp: %w", err)
 		}
+
 		if err := p.DBClient.SetConfigItem(PapiPullKey, string(binTime)); err != nil {
 			p.Logger.Errorf("error setting papi pull last key: %s", err)
 		} else {
@@ -245,10 +251,12 @@ func (p *Papi) Pull() error {
 	}
 
 	p.Logger.Infof("Starting PAPI pull (since:%s)", lastTimestamp)
+
 	for event := range p.Client.Start(lastTimestamp) {
 		logger := p.Logger.WithField("request-id", event.RequestId)
 		//update last timestamp in database
 		newTime := time.Now().UTC()
+
 		binTime, err := newTime.MarshalText()
 		if err != nil {
 			return fmt.Errorf("failed to marshal last timestamp: %w", err)
@@ -262,11 +270,11 @@ func (p *Papi) Pull() error {
 
 		if err := p.DBClient.SetConfigItem(PapiPullKey, string(binTime)); err != nil {
 			return fmt.Errorf("failed to update last timestamp: %w", err)
-		} else {
-			logger.Debugf("set last timestamp to %s", newTime)
 		}
 
+		logger.Debugf("set last timestamp to %s", newTime)
 	}
+
 	return nil
 }
 
@@ -274,6 +282,7 @@ func (p *Papi) SyncDecisions() error {
 	defer trace.CatchPanic("lapi/syncDecisionsToCAPI")
 
 	var cache models.DecisionsDeleteRequest
+
 	ticker := time.NewTicker(p.SyncInterval)
 	p.Logger.Infof("Start decisions sync to CrowdSec Central API (interval: %s)", p.SyncInterval)
 
@@ -281,10 +290,13 @@ func (p *Papi) SyncDecisions() error {
 		select {
 		case <-p.syncTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			p.Logger.Infof("sync decisions tomb is dying, sending cache (%d elements) before exiting", len(cache))
+
 			if len(cache) == 0 {
 				return nil
 			}
+
 			go p.SendDeletedDecisions(&cache)
+
 			return nil
 		case <-ticker.C:
 			if len(cache) > 0 {
@@ -293,15 +305,19 @@ func (p *Papi) SyncDecisions() error {
 				cache = make([]models.DecisionsDeleteRequestItem, 0)
 				p.mu.Unlock()
 				p.Logger.Infof("sync decisions: %d deleted decisions to push", len(cacheCopy))
+
 				go p.SendDeletedDecisions(&cacheCopy)
 			}
 		case deletedDecisions := <-p.Channels.DeleteDecisionChannel:
 			if (p.consoleConfig.ShareManualDecisions != nil && *p.consoleConfig.ShareManualDecisions) || (p.consoleConfig.ConsoleManagement != nil && *p.consoleConfig.ConsoleManagement) {
 				var tmpDecisions []models.DecisionsDeleteRequestItem
+
 				p.Logger.Debugf("%d decisions deletion to add in cache", len(deletedDecisions))
+
 				for _, decision := range deletedDecisions {
 					tmpDecisions = append(tmpDecisions, models.DecisionsDeleteRequestItem(decision.UUID))
 				}
+
 				p.mu.Lock()
 				cache = append(cache, tmpDecisions...)
 				p.mu.Unlock()
@@ -311,33 +327,42 @@ func (p *Papi) SyncDecisions() error {
 }
 
 func (p *Papi) SendDeletedDecisions(cacheOrig *models.DecisionsDeleteRequest) {
-
-	var cache []models.DecisionsDeleteRequestItem = *cacheOrig
-	var send models.DecisionsDeleteRequest
+	var (
+		cache []models.DecisionsDeleteRequestItem = *cacheOrig
+		send models.DecisionsDeleteRequest
+	)
 
 	bulkSize := 50
 	pageStart := 0
 	pageEnd := bulkSize
+
 	for {
 		if pageEnd >= len(cache) {
 			send = cache[pageStart:]
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+
 			defer cancel()
+
 			_, _, err := p.apiClient.DecisionDelete.Add(ctx, &send)
 			if err != nil {
 				p.Logger.Errorf("sending deleted decisions to central API: %s", err)
 				return
 			}
+
 			break
 		}
+
 		send = cache[pageStart:pageEnd]
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+
 		defer cancel()
+
 		_, _, err := p.apiClient.DecisionDelete.Add(ctx, &send)
 		if err != nil {
 			//we log it here as well, because the return value of func might be discarded
 			p.Logger.Errorf("sending deleted decisions to central API: %s", err)
 		}
+
 		pageStart += bulkSize
 		pageEnd += bulkSize
 	}

@@ -18,7 +18,7 @@ installation and run the tests, or run the playbooks separately to iterate while
 
 - run-all.yml: run the other playbooks in the correct order.
 
-- provision-dependencies.yml: install the bats requirements (bash, netcat, cfssl, etc.), compilers, and database.
+- provision-dependencies.yml: install the bats requirements (bash, cfssl, etc.), compilers, and database.
 
 - provision-test-suite.yml: install the tests scripts and bats environment, and the crowdsec sources if we want to build the `crowdsec under test`.
 
@@ -107,7 +107,7 @@ To test with Vagrant, you need to:
   `/var/lib/libvirt/images/*VAGRANT*`
 
 The above steps are automated in the script `./prepare-run` (requires bash
->=4.4). It takes an enviroment file, and optionally a list of directories with
+>=4.4). It takes an environment file, and optionally a list of directories with
 vagrant configurations. With a single parameter, it loops over all the
 directories in alphabetical order, excluding those in the `experimental`
 directory. Watch out for running VMs if you break the loop by hand.

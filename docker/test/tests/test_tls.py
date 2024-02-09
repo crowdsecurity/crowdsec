@@ -23,7 +23,7 @@ def test_missing_key_file(crowdsec, flavor):
 
     with crowdsec(flavor=flavor, environment=env, wait_status=Status.EXITED) as cs:
         # XXX: this message appears twice, is that normal?
-        cs.wait_for_log("*while serving local API: missing TLS key file*")
+        cs.wait_for_log("*while starting API server: missing TLS key file*")
 
 
 def test_missing_cert_file(crowdsec, flavor):
@@ -35,7 +35,7 @@ def test_missing_cert_file(crowdsec, flavor):
     }
 
     with crowdsec(flavor=flavor, environment=env, wait_status=Status.EXITED) as cs:
-        cs.wait_for_log("*while serving local API: missing TLS cert file*")
+        cs.wait_for_log("*while starting API server: missing TLS cert file*")
 
 
 def test_tls_missing_ca(crowdsec, flavor, certs_dir):
@@ -174,7 +174,7 @@ def test_tls_split_lapi_agent(crowdsec, flavor, certs_dir):
     with cs_lapi as lapi:
         lapi.wait_for_log([
             "*(tls) Client Auth Type set to VerifyClientCertIfGiven*",
-            "*CrowdSec Local API listening on 0.0.0.0:8080*"
+            "*CrowdSec Local API listening on *:8080*"
         ])
         # TODO: wait_for_https
         lapi.wait_for_http(8080, '/health', want_status=None)
@@ -225,7 +225,7 @@ def test_tls_mutual_split_lapi_agent(crowdsec, flavor, certs_dir):
     with cs_lapi as lapi:
         lapi.wait_for_log([
             "*(tls) Client Auth Type set to VerifyClientCertIfGiven*",
-            "*CrowdSec Local API listening on 0.0.0.0:8080*"
+            "*CrowdSec Local API listening on *:8080*"
         ])
         # TODO: wait_for_https
         lapi.wait_for_http(8080, '/health', want_status=None)
@@ -241,7 +241,7 @@ def test_tls_mutual_split_lapi_agent(crowdsec, flavor, certs_dir):
             assert "You can successfully interact with Local API (LAPI)" in stdout
 
 
-def test_tls_client_ou(crowdsec, certs_dir):
+def test_tls_client_ou(crowdsec, flavor, certs_dir):
     """Check behavior of client certificate vs AGENTS_ALLOWED_OU"""
 
     rand = uuid.uuid1()
@@ -270,13 +270,13 @@ def test_tls_client_ou(crowdsec, certs_dir):
         certs_dir(lapi_hostname=lapiname, agent_ou='custom-client-ou'): {'bind': '/etc/ssl/crowdsec', 'mode': 'ro'},
     }
 
-    cs_lapi = crowdsec(name=lapiname, environment=lapi_env, volumes=volumes)
-    cs_agent = crowdsec(name=agentname, environment=agent_env, volumes=volumes)
+    cs_lapi = crowdsec(flavor=flavor, name=lapiname, environment=lapi_env, volumes=volumes)
+    cs_agent = crowdsec(flavor=flavor, name=agentname, environment=agent_env, volumes=volumes)
 
     with cs_lapi as lapi:
         lapi.wait_for_log([
             "*(tls) Client Auth Type set to VerifyClientCertIfGiven*",
-            "*CrowdSec Local API listening on 0.0.0.0:8080*"
+            "*CrowdSec Local API listening on *:8080*"
         ])
         # TODO: wait_for_https
         lapi.wait_for_http(8080, '/health', want_status=None)
@@ -300,13 +300,13 @@ def test_tls_client_ou(crowdsec, certs_dir):
         certs_dir(lapi_hostname=lapiname, agent_ou='custom-client-ou'): {'bind': '/etc/ssl/crowdsec', 'mode': 'ro'},
     }
 
-    cs_lapi = crowdsec(name=lapiname, environment=lapi_env, volumes=volumes)
-    cs_agent = crowdsec(name=agentname, environment=agent_env, volumes=volumes)
+    cs_lapi = crowdsec(flavor=flavor, name=lapiname, environment=lapi_env, volumes=volumes)
+    cs_agent = crowdsec(flavor=flavor, name=agentname, environment=agent_env, volumes=volumes)
 
     with cs_lapi as lapi:
         lapi.wait_for_log([
             "*(tls) Client Auth Type set to VerifyClientCertIfGiven*",
-            "*CrowdSec Local API listening on 0.0.0.0:8080*"
+            "*CrowdSec Local API listening on *:8080*"
         ])
         # TODO: wait_for_https
         lapi.wait_for_http(8080, '/health', want_status=None)
