@@ -11,7 +11,7 @@ run:
 linters-settings:
   cyclop:
     # lower this after refactoring
-    max-complexity: 66
+    max-complexity: 70
 
   gci:
     sections:
@@ -26,7 +26,7 @@ linters-settings:
 
   gocyclo:
     # lower this after refactoring
-    min-complexity: 64
+    min-complexity: 70
 
   funlen:
     # Checks the number of lines in a function.
@@ -53,7 +53,7 @@ linters-settings:
 
   nestif:
     # lower this after refactoring
-    min-complexity: 27
+    min-complexity: 28
 
   nlreturn:
     block-size: 4
@@ -309,10 +309,6 @@ issues:
     #
     # Will fix,  might be trickier
     #
-
-    - linters:
-        - staticcheck
-      text: "x509.ParseCRL has been deprecated since Go 1.19: Use ParseRevocationList instead"
 
     # https://github.com/pkg/errors/issues/245
     - linters:

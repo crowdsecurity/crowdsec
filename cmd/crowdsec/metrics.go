@@ -161,7 +161,7 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 			leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstantiation, leaky.BucketsOverflow,
 			v1.LapiRouteHits,
 			leaky.BucketsCurrentCount,
-			cache.CacheMetrics, exprhelpers.RegexpCacheMetrics,
+			cache.CacheMetrics, exprhelpers.RegexpCacheMetrics, parser.NodesWlHitsOk, parser.NodesWlHits,
 		)
 	} else {
 		log.Infof("Loading prometheus collectors")
@@ -170,7 +170,7 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 			globalCsInfo, globalParsingHistogram, globalPourHistogram,
 			v1.LapiRouteHits, v1.LapiMachineHits, v1.LapiBouncerHits, v1.LapiNilDecisions, v1.LapiNonNilDecisions, v1.LapiResponseTime,
 			leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstantiation, leaky.BucketsOverflow, leaky.BucketsCurrentCount,
-			globalActiveDecisions, globalAlerts,
+			globalActiveDecisions, globalAlerts, parser.NodesWlHitsOk, parser.NodesWlHits,
 			cache.CacheMetrics, exprhelpers.RegexpCacheMetrics,
 		)
 

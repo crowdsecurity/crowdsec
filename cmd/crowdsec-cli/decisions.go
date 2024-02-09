@@ -116,14 +116,13 @@ func (cli *cliDecisions) decisionsToTable(alerts *models.GetAlertsResponse, prin
 	return nil
 }
 
-
 type cliDecisions struct {
 	cfg configGetter
 }
 
-func NewCLIDecisions(getconfig configGetter) *cliDecisions {
+func NewCLIDecisions(cfg configGetter) *cliDecisions {
 	return &cliDecisions{
-		cfg: getconfig,
+		cfg: cfg,
 	}
 }
 
@@ -157,6 +156,7 @@ func (cli *cliDecisions) NewCommand() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("creating api client: %w", err)
 			}
+
 			return nil
 		},
 	}
@@ -393,6 +393,7 @@ cscli decisions add --scope username --value foobar
 			}
 
 			log.Info("Decision successfully added")
+
 			return nil
 		},
 	}
@@ -499,6 +500,7 @@ cscli decisions delete --type captcha
 				}
 			}
 			log.Infof("%s decision(s) deleted", decisions.NbDeleted)
+
 			return nil
 		},
 	}

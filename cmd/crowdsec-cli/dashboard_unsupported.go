@@ -13,9 +13,9 @@ type cliDashboard struct{
 	cfg configGetter
 }
 
-func NewCLIDashboard(getconfig configGetter) *cliDashboard {
+func NewCLIDashboard(cfg configGetter) *cliDashboard {
 	return &cliDashboard{
-		cfg: getconfig,
+		cfg: cfg,
 	}
 }
 

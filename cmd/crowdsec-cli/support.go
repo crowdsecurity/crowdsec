@@ -66,10 +66,15 @@ func collectMetrics() ([]byte, []byte, error) {
 	}
 
 	humanMetrics := bytes.NewBuffer(nil)
-	err := FormatPrometheusMetrics(humanMetrics, csConfig.Cscli.PrometheusUrl, "human", false)
 
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not fetch promtheus metrics: %s", err)
+	ms := NewMetricStore()
+
+	if err := ms.Fetch(csConfig.Cscli.PrometheusUrl); err != nil {
+		return nil, nil, fmt.Errorf("could not fetch prometheus metrics: %s", err)
+	}
+
+	if err := ms.Format(humanMetrics, nil, "human", false); err != nil {
+		return nil, nil, err
 	}
 
 	req, err := http.NewRequest(http.MethodGet, csConfig.Cscli.PrometheusUrl, nil)
