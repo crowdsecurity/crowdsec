@@ -231,7 +231,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 
 	cmd.AddCommand(NewCLIDoc().NewCommand(cmd))
 	cmd.AddCommand(NewCLIVersion().NewCommand())
-	cmd.AddCommand(NewConfigCmd())
+	cmd.AddCommand(NewCLIConfig(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLIHub(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLIMetrics(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLIDashboard(cli.cfg).NewCommand())
