@@ -150,7 +150,7 @@ teardown() {
     ./instance-crowdsec start
     rune -1 cscli lapi status
     assert_log --partial "client certificate is revoked by CRL"
-    assert_log --partial "client certificate for localhost is revoked"
+    assert_log --partial "client certificate for CN=localhost OU=[agent-ou] is revoked"
     rune -0 cscli machines list -o json
     assert_output '[]'
 }
