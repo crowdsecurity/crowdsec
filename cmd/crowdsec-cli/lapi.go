@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"slices"
 	"sort"
 	"strings"
 
@@ -13,7 +14,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
-	"slices"
 
 	"github.com/crowdsecurity/go-cs-lib/version"
 
@@ -42,8 +42,9 @@ func NewCLILapi(cfg configGetter) *cliLapi {
 func (cli *cliLapi) status() error {
 	cfg := cli.cfg()
 	password := strfmt.Password(cfg.API.Client.Credentials.Password)
-	apiurl, err := url.Parse(cfg.API.Client.Credentials.URL)
 	login := cfg.API.Client.Credentials.Login
+
+	apiurl, err := url.Parse(cfg.API.Client.Credentials.URL)
 	if err != nil {
 		return fmt.Errorf("parsing api url: %w", err)
 	}
@@ -65,6 +66,7 @@ func (cli *cliLapi) status() error {
 	if err != nil {
 		return fmt.Errorf("init default client: %w", err)
 	}
+
 	t := models.WatcherAuthRequest{
 		MachineID: &login,
 		Password:  &password,
@@ -80,6 +82,7 @@ func (cli *cliLapi) status() error {
 	}
 
 	log.Infof("You can successfully interact with Local API (LAPI)")
+
 	return nil
 }
 
@@ -95,11 +98,14 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string) e
 			return fmt.Errorf("unable to generate machine id: %w", err)
 		}
 	}
+
 	password := strfmt.Password(generatePassword(passwordLength))
+
 	if apiURL == "" {
 		if cfg.API.Client == nil || cfg.API.Client.Credentials == nil || cfg.API.Client.Credentials.URL == "" {
 			return fmt.Errorf("no Local API URL. Please provide it in your configuration or with the -u parameter")
 		}
+
 		apiURL = cfg.API.Client.Credentials.URL
 	}
 	/*URL needs to end with /, but user doesn't care*/
@@ -110,10 +116,12 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string) e
 	if !strings.HasPrefix(apiURL, "http://") && !strings.HasPrefix(apiURL, "https://") {
 		apiURL = "http://" + apiURL
 	}
+
 	apiurl, err := url.Parse(apiURL)
 	if err != nil {
 		return fmt.Errorf("parsing api url: %w", err)
 	}
+
 	_, err = apiclient.RegisterClient(&apiclient.Config{
 		MachineID:     lapiUser,
 		Password:      password,
@@ -129,6 +137,7 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string) e
 	log.Printf("Successfully registered to Local API (LAPI)")
 
 	var dumpFile string
+
 	if outputFile != "" {
 		dumpFile = outputFile
 	} else if cfg.API.Client.CredentialsFilePath != "" {
@@ -136,24 +145,29 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string) e
 	} else {
 		dumpFile = ""
 	}
+
 	apiCfg := csconfig.ApiCredentialsCfg{
 		Login:    lapiUser,
 		Password: password.String(),
 		URL:      apiURL,
 	}
+
 	apiConfigDump, err := yaml.Marshal(apiCfg)
 	if err != nil {
 		return fmt.Errorf("unable to marshal api credentials: %w", err)
 	}
+
 	if dumpFile != "" {
 		err = os.WriteFile(dumpFile, apiConfigDump, 0o600)
 		if err != nil {
 			return fmt.Errorf("write api credentials to '%s' failed: %w", dumpFile, err)
 		}
+
 		log.Printf("Local API credentials written to '%s'", dumpFile)
 	} else {
 		fmt.Printf("%s\n", string(apiConfigDump))
 	}
+
 	log.Warning(ReloadMessage())
 
 	return nil
@@ -206,7 +220,7 @@ func (cli *cliLapi) NewCommand() *cobra.Command {
 		Short:             "Manage interaction with Local API (LAPI)",
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			if err := cli.cfg().LoadAPIClient(); err != nil {
 				return fmt.Errorf("loading api client: %w", err)
 			}
@@ -223,22 +237,28 @@ func (cli *cliLapi) NewCommand() *cobra.Command {
 
 func (cli *cliLapi) addContext(key string, values []string) error {
 	cfg := cli.cfg()
+
 	if err := alertcontext.ValidateContextExpr(key, values); err != nil {
-		return fmt.Errorf("invalid context configuration :%s", err)
+		return fmt.Errorf("invalid context configuration: %w", err)
 	}
+
 	if _, ok := cfg.Crowdsec.ContextToSend[key]; !ok {
 		cfg.Crowdsec.ContextToSend[key] = make([]string, 0)
 
 		log.Infof("key '%s' added", key)
 	}
+
 	data := cfg.Crowdsec.ContextToSend[key]
+
 	for _, val := range values {
 		if !slices.Contains(data, val) {
 			log.Infof("value '%s' added to key '%s'", val, key)
 			data = append(data, val)
 		}
+
 		cfg.Crowdsec.ContextToSend[key] = data
 	}
+
 	if err := cfg.Crowdsec.DumpContextConfigFile(); err != nil {
 		return err
 	}
@@ -247,8 +267,11 @@ func (cli *cliLapi) addContext(key string, values []string) error {
 }
 
 func (cli *cliLapi) newContextAddCmd() *cobra.Command {
-	var keyToAdd string
-	var valuesToAdd []string
+	var (
+		keyToAdd    string
+		valuesToAdd []string
+	)
+
 	cmd := &cobra.Command{
 		Use:   "add",
 		Short: "Add context to send with alerts. You must specify the output key with the expr value you want",
@@ -257,7 +280,7 @@ cscli lapi context add --key file_source --value evt.Line.Src
 cscli lapi context add --value evt.Meta.source_ip --value evt.Meta.target_user 
 		`,
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			hub, err := require.Hub(cli.cfg(), nil, nil)
 			if err != nil {
 				return err
@@ -300,7 +323,7 @@ func (cli *cliLapi) newContextStatusCmd() *cobra.Command {
 		Use:               "status",
 		Short:             "List context to send with alerts",
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
 			hub, err := require.Hub(cfg, nil, nil)
 			if err != nil {
@@ -332,6 +355,7 @@ func (cli *cliLapi) newContextStatusCmd() *cobra.Command {
 
 func (cli *cliLapi) newContextDetectCmd() *cobra.Command {
 	var detectAll bool
+
 	cmd := &cobra.Command{
 		Use:   "detect",
 		Short: "Detect available fields from the installed parsers",
@@ -430,21 +454,21 @@ func (cli *cliLapi) newContextDeleteCmd() *cobra.Command {
 			if filePath == "" {
 				filePath = "the context file"
 			}
-			fmt.Printf("Command \"delete\" is deprecated, please manually edit %s.", filePath)
+			fmt.Printf("Command 'delete' is deprecated, please manually edit %s.", filePath)
+
 			return nil
 		},
 	}
+
 	return cmd
 }
-
-
 
 func (cli *cliLapi) newContextCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "context [command]",
 		Short:             "Manage context to send with alerts",
 		DisableAutoGenTag: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			cfg := cli.cfg()
 			if err := cfg.LoadCrowdsec(); err != nil {
 				fileNotFoundMessage := fmt.Sprintf("failed to open context file: open %s: no such file or directory", cfg.Crowdsec.ConsoleContextPath)
@@ -458,7 +482,7 @@ func (cli *cliLapi) newContextCmd() *cobra.Command {
 
 			return nil
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(cmd *cobra.Command, _ []string) {
 			printHelp(cmd)
 		},
 	}
@@ -471,27 +495,30 @@ func (cli *cliLapi) newContextCmd() *cobra.Command {
 	return cmd
 }
 
-func detectStaticField(GrokStatics []parser.ExtraField) []string {
+func detectStaticField(grokStatics []parser.ExtraField) []string {
 	ret := make([]string, 0)
 
-	for _, static := range GrokStatics {
+	for _, static := range grokStatics {
 		if static.Parsed != "" {
 			fieldName := fmt.Sprintf("evt.Parsed.%s", static.Parsed)
 			if !slices.Contains(ret, fieldName) {
 				ret = append(ret, fieldName)
 			}
 		}
+
 		if static.Meta != "" {
 			fieldName := fmt.Sprintf("evt.Meta.%s", static.Meta)
 			if !slices.Contains(ret, fieldName) {
 				ret = append(ret, fieldName)
 			}
 		}
+
 		if static.TargetByName != "" {
 			fieldName := static.TargetByName
 			if !strings.HasPrefix(fieldName, "evt.") {
 				fieldName = "evt." + fieldName
 			}
+
 			if !slices.Contains(ret, fieldName) {
 				ret = append(ret, fieldName)
 			}
@@ -559,6 +586,7 @@ func detectSubNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
 				}
 			}
 		}
+
 		if subnode.Grok.RegexpName != "" {
 			grokCompiled, err := parserCTX.Grok.Get(subnode.Grok.RegexpName)
 			if err == nil {
