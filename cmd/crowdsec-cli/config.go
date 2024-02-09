@@ -24,7 +24,7 @@ func (cli *cliConfig) NewCommand() *cobra.Command {
 
 	cmd.AddCommand(cli.newShowCmd())
 	cmd.AddCommand(NewConfigShowYAMLCmd())
-	cmd.AddCommand(NewConfigBackupCmd())
+	cmd.AddCommand(cli.newBackupCmd())
 	cmd.AddCommand(NewConfigRestoreCmd())
 	cmd.AddCommand(NewConfigFeatureFlagsCmd())
 

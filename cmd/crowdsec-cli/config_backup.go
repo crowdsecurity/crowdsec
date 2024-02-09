@@ -13,8 +13,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func backupHub(dirPath string) error {
-	hub, err := require.Hub(csConfig, nil, nil)
+func (cli *cliConfig) backupHub(dirPath string) error {
+	hub, err := require.Hub(cli.cfg(), nil, nil)
 	if err != nil {
 		return err
 	}
@@ -102,8 +102,10 @@ func backupHub(dirPath string) error {
 - Tainted/local/out-of-date scenarios, parsers, postoverflows and collections
 - Acquisition files (acquis.yaml, acquis.d/*.yaml)
 */
-func backupConfigToDirectory(dirPath string) error {
+func (cli *cliConfig) backup(dirPath string) error {
 	var err error
+
+	cfg := cli.cfg()
 
 	if dirPath == "" {
 		return fmt.Errorf("directory path can't be empty")
@@ -121,10 +123,10 @@ func backupConfigToDirectory(dirPath string) error {
 		return fmt.Errorf("while creating %s: %w", dirPath, err)
 	}
 
-	if csConfig.ConfigPaths.SimulationFilePath != "" {
+	if cfg.ConfigPaths.SimulationFilePath != "" {
 		backupSimulation := filepath.Join(dirPath, "simulation.yaml")
-		if err = CopyFile(csConfig.ConfigPaths.SimulationFilePath, backupSimulation); err != nil {
-			return fmt.Errorf("failed copy %s to %s: %w", csConfig.ConfigPaths.SimulationFilePath, backupSimulation, err)
+		if err = CopyFile(cfg.ConfigPaths.SimulationFilePath, backupSimulation); err != nil {
+			return fmt.Errorf("failed copy %s to %s: %w", cfg.ConfigPaths.SimulationFilePath, backupSimulation, err)
 		}
 
 		log.Infof("Saved simulation to %s", backupSimulation)
@@ -134,10 +136,10 @@ func backupConfigToDirectory(dirPath string) error {
 	   - backup AcquisitionFilePath
 	   - backup the other files of acquisition directory
 	*/
-	if csConfig.Crowdsec != nil && csConfig.Crowdsec.AcquisitionFilePath != "" {
+	if cfg.Crowdsec != nil && cfg.Crowdsec.AcquisitionFilePath != "" {
 		backupAcquisition := filepath.Join(dirPath, "acquis.yaml")
-		if err = CopyFile(csConfig.Crowdsec.AcquisitionFilePath, backupAcquisition); err != nil {
-			return fmt.Errorf("failed copy %s to %s: %s", csConfig.Crowdsec.AcquisitionFilePath, backupAcquisition, err)
+		if err = CopyFile(cfg.Crowdsec.AcquisitionFilePath, backupAcquisition); err != nil {
+			return fmt.Errorf("failed copy %s to %s: %s", cfg.Crowdsec.AcquisitionFilePath, backupAcquisition, err)
 		}
 	}
 
@@ -146,10 +148,10 @@ func backupConfigToDirectory(dirPath string) error {
 		return fmt.Errorf("error while creating %s: %s", acquisBackupDir, err)
 	}
 
-	if csConfig.Crowdsec != nil && len(csConfig.Crowdsec.AcquisitionFiles) > 0 {
-		for _, acquisFile := range csConfig.Crowdsec.AcquisitionFiles {
+	if cfg.Crowdsec != nil && len(cfg.Crowdsec.AcquisitionFiles) > 0 {
+		for _, acquisFile := range cfg.Crowdsec.AcquisitionFiles {
 			/*if it was the default one, it was already backup'ed*/
-			if csConfig.Crowdsec.AcquisitionFilePath == acquisFile {
+			if cfg.Crowdsec.AcquisitionFilePath == acquisFile {
 				continue
 			}
 
@@ -175,50 +177,42 @@ func backupConfigToDirectory(dirPath string) error {
 		log.Infof("Saved default yaml to %s", backupMain)
 	}
 
-	if csConfig.API != nil && csConfig.API.Server != nil && csConfig.API.Server.OnlineClient != nil && csConfig.API.Server.OnlineClient.CredentialsFilePath != "" {
+	if cfg.API != nil && cfg.API.Server != nil && cfg.API.Server.OnlineClient != nil && cfg.API.Server.OnlineClient.CredentialsFilePath != "" {
 		backupCAPICreds := fmt.Sprintf("%s/online_api_credentials.yaml", dirPath)
-		if err = CopyFile(csConfig.API.Server.OnlineClient.CredentialsFilePath, backupCAPICreds); err != nil {
-			return fmt.Errorf("failed copy %s to %s: %s", csConfig.API.Server.OnlineClient.CredentialsFilePath, backupCAPICreds, err)
+		if err = CopyFile(cfg.API.Server.OnlineClient.CredentialsFilePath, backupCAPICreds); err != nil {
+			return fmt.Errorf("failed copy %s to %s: %s", cfg.API.Server.OnlineClient.CredentialsFilePath, backupCAPICreds, err)
 		}
 
 		log.Infof("Saved online API credentials to %s", backupCAPICreds)
 	}
 
-	if csConfig.API != nil && csConfig.API.Client != nil && csConfig.API.Client.CredentialsFilePath != "" {
+	if cfg.API != nil && cfg.API.Client != nil && cfg.API.Client.CredentialsFilePath != "" {
 		backupLAPICreds := fmt.Sprintf("%s/local_api_credentials.yaml", dirPath)
-		if err = CopyFile(csConfig.API.Client.CredentialsFilePath, backupLAPICreds); err != nil {
-			return fmt.Errorf("failed copy %s to %s: %s", csConfig.API.Client.CredentialsFilePath, backupLAPICreds, err)
+		if err = CopyFile(cfg.API.Client.CredentialsFilePath, backupLAPICreds); err != nil {
+			return fmt.Errorf("failed copy %s to %s: %s", cfg.API.Client.CredentialsFilePath, backupLAPICreds, err)
 		}
 
 		log.Infof("Saved local API credentials to %s", backupLAPICreds)
 	}
 
-	if csConfig.API != nil && csConfig.API.Server != nil && csConfig.API.Server.ProfilesPath != "" {
+	if cfg.API != nil && cfg.API.Server != nil && cfg.API.Server.ProfilesPath != "" {
 		backupProfiles := fmt.Sprintf("%s/profiles.yaml", dirPath)
-		if err = CopyFile(csConfig.API.Server.ProfilesPath, backupProfiles); err != nil {
-			return fmt.Errorf("failed copy %s to %s: %s", csConfig.API.Server.ProfilesPath, backupProfiles, err)
+		if err = CopyFile(cfg.API.Server.ProfilesPath, backupProfiles); err != nil {
+			return fmt.Errorf("failed copy %s to %s: %s", cfg.API.Server.ProfilesPath, backupProfiles, err)
 		}
 
 		log.Infof("Saved profiles to %s", backupProfiles)
 	}
 
-	if err = backupHub(dirPath); err != nil {
+	if err = cli.backupHub(dirPath); err != nil {
 		return fmt.Errorf("failed to backup hub config: %s", err)
 	}
 
 	return nil
 }
 
-func runConfigBackup(cmd *cobra.Command, args []string) error {
-	if err := backupConfigToDirectory(args[0]); err != nil {
-		return fmt.Errorf("failed to backup config: %w", err)
-	}
-
-	return nil
-}
-
-func NewConfigBackupCmd() *cobra.Command {
-	cmdConfigBackup := &cobra.Command{
+func (cli *cliConfig) newBackupCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   `backup "directory"`,
 		Short: "Backup current config",
 		Long: `Backup the current crowdsec configuration including :
@@ -232,8 +226,14 @@ func NewConfigBackupCmd() *cobra.Command {
 		Example:           `cscli config backup ./my-backup`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE:              runConfigBackup,
+		RunE:              func(_ *cobra.Command, args []string) error {
+			if err := cli.backup(args[0]); err != nil {
+				return fmt.Errorf("failed to backup config: %w", err)
+			}
+
+			return nil
+		},
 	}
 
-	return cmdConfigBackup
+	return cmd
 }
