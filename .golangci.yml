@@ -310,10 +310,6 @@ issues:
     # Will fix,  might be trickier
     #
 
-    - linters:
-        - staticcheck
-      text: "x509.ParseCRL has been deprecated since Go 1.19: Use ParseRevocationList instead"
-
     # https://github.com/pkg/errors/issues/245
     - linters:
         - depguard
