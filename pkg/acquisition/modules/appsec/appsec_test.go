@@ -572,6 +572,8 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 				require.Len(t, events, 2)
 				require.Len(t, responses, 1)
 				require.Equal(t, "foobar", responses[0].Action)
+				require.Equal(t, "foobar", appsecResponse.Action)
+				require.Equal(t, http.StatusForbidden, appsecResponse.HTTPStatus)
 			},
 		},
 	}
@@ -1190,6 +1192,87 @@ func TestAppsecRuleMatches(t *testing.T) {
 				require.Equal(t, http.StatusForbidden, statusCode)
 				require.Equal(t, appsec.BanRemediation, appsecResponse.Action)
 				require.Equal(t, http.StatusTeapot, appsecResponse.HTTPStatus)
+			},
+		},
+		{
+			name:             "no match but try to set remediation to captcha with on_match hook",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule42",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			on_match: []appsec.Hook{
+				{Filter: "IsInBand == true", Apply: []string{"SetRemediation('captcha')"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"bla"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Equal(t, 0, len(events))
+				require.Equal(t, http.StatusOK, statusCode)
+				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
+			},
+		},
+		{
+			name:             "no match but try to set user HTTP code with on_match hook",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule42",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			on_match: []appsec.Hook{
+				{Filter: "IsInBand == true", Apply: []string{"SetReturnCode(418)"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"bla"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Equal(t, 0, len(events))
+				require.Equal(t, http.StatusOK, statusCode)
+				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
+			},
+		},
+		{
+			name:             "no match but try to set  remediation with pre_eval hook",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule42",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			pre_eval: []appsec.Hook{
+				{Filter: "IsInBand == true", Apply: []string{"SetRemediationByName('rule42', 'captcha')"}},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"bla"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Equal(t, 0, len(events))
+				require.Equal(t, http.StatusOK, statusCode)
+				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
 			},
 		},
 	}
