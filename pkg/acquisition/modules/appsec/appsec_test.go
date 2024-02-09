@@ -32,7 +32,9 @@ type appsecRuleTest struct {
 	on_match               []appsec.Hook
 	BouncerBlockedHTTPCode int
 	UserBlockedHTTPCode    int
+	UserPassedHTTPCode     int
 	DefaultRemediation     string
+	DefaultPassAction      string
 	input_request          appsec.ParsedRequest
 	output_asserts         func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int)
 }
@@ -581,7 +583,238 @@ func TestAppsecPreEvalHooks(t *testing.T) {
 	}
 }
 
-func TestAppsecRemediationConfigs(t *testing.T) {
+func TestAppsecRemediationConfigHooks(t *testing.T) {
+
+	tests := []appsecRuleTest{
+		{
+			name:             "Basic matching rule",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Equal(t, appsec.BanRemediation, responses[0].Action)
+				require.Equal(t, http.StatusForbidden, statusCode)
+				require.Equal(t, appsec.BanRemediation, appsecResponse.Action)
+				require.Equal(t, http.StatusForbidden, appsecResponse.HTTPStatus)
+			},
+		},
+		{
+			name:             "SetRemediation",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			on_match: []appsec.Hook{{Apply: []string{"SetRemediation('captcha')"}}}, //rule ID is generated at runtime. If you change rule, it will break the test (:
+
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Equal(t, appsec.CaptchaRemediation, responses[0].Action)
+				require.Equal(t, http.StatusForbidden, statusCode)
+				require.Equal(t, appsec.CaptchaRemediation, appsecResponse.Action)
+				require.Equal(t, http.StatusForbidden, appsecResponse.HTTPStatus)
+			},
+		},
+		{
+			name:             "SetRemediation",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/urllll",
+				Args:       url.Values{"foo": []string{"toto"}},
+			},
+			on_match: []appsec.Hook{{Apply: []string{"SetReturnCode(418)"}}}, //rule ID is generated at runtime. If you change rule, it will break the test (:
+
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Equal(t, appsec.BanRemediation, responses[0].Action)
+				require.Equal(t, http.StatusForbidden, statusCode)
+				require.Equal(t, appsec.BanRemediation, appsecResponse.Action)
+				require.Equal(t, http.StatusTeapot, appsecResponse.HTTPStatus)
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			loadAppSecEngine(test, t)
+		})
+	}
+}
+
+func TestAppsecDefaultPassRemediation(t *testing.T) {
+
+	tests := []appsecRuleTest{
+		{
+			name:             "Basic non-matching rule",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/",
+				Args:       url.Values{"foo": []string{"tutu"}},
+			},
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Equal(t, appsec.AllowRemediation, responses[0].Action)
+				require.Equal(t, http.StatusOK, statusCode)
+				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
+				require.Equal(t, http.StatusOK, appsecResponse.HTTPStatus)
+			},
+		},
+		{
+			name:             "DefaultPassAction: pass",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/",
+				Args:       url.Values{"foo": []string{"tutu"}},
+			},
+			DefaultPassAction: "allow",
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Equal(t, appsec.AllowRemediation, responses[0].Action)
+				require.Equal(t, http.StatusOK, statusCode)
+				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
+				require.Equal(t, http.StatusOK, appsecResponse.HTTPStatus)
+			},
+		},
+		{
+			name:             "DefaultPassAction: captcha",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/",
+				Args:       url.Values{"foo": []string{"tutu"}},
+			},
+			DefaultPassAction: "captcha",
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Equal(t, appsec.CaptchaRemediation, responses[0].Action)
+				require.Equal(t, http.StatusOK, statusCode) //@tko: body is captcha, but as it's 200, captcha won't be showed to user
+				require.Equal(t, appsec.CaptchaRemediation, appsecResponse.Action)
+				require.Equal(t, http.StatusOK, appsecResponse.HTTPStatus)
+			},
+		},
+		{
+			name:             "DefaultPassHTTPCode: 200",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/",
+				Args:       url.Values{"foo": []string{"tutu"}},
+			},
+			UserPassedHTTPCode: 200,
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Equal(t, appsec.AllowRemediation, responses[0].Action)
+				require.Equal(t, http.StatusOK, statusCode)
+				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
+				require.Equal(t, http.StatusOK, appsecResponse.HTTPStatus)
+			},
+		},
+		{
+			name:             "DefaultPassHTTPCode: 200",
+			expected_load_ok: true,
+			inband_rules: []appsec_rule.CustomRule{
+				{
+					Name:      "rule1",
+					Zones:     []string{"ARGS"},
+					Variables: []string{"foo"},
+					Match:     appsec_rule.Match{Type: "regex", Value: "^toto"},
+					Transform: []string{"lowercase"},
+				},
+			},
+			input_request: appsec.ParsedRequest{
+				RemoteAddr: "1.2.3.4",
+				Method:     "GET",
+				URI:        "/",
+				Args:       url.Values{"foo": []string{"tutu"}},
+			},
+			UserPassedHTTPCode: 418,
+			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
+				require.Equal(t, appsec.AllowRemediation, responses[0].Action)
+				require.Equal(t, http.StatusOK, statusCode)
+				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
+				require.Equal(t, http.StatusTeapot, appsecResponse.HTTPStatus)
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			loadAppSecEngine(test, t)
+		})
+	}
+}
+
+func TestAppsecDefaultRemediation(t *testing.T) {
 
 	tests := []appsecRuleTest{
 		{
@@ -936,7 +1169,16 @@ func loadAppSecEngine(test appsecRuleTest, t *testing.T) {
 		outofbandRules = append(outofbandRules, strRule)
 	}
 
-	appsecCfg := appsec.AppsecConfig{Logger: logger, OnLoad: test.on_load, PreEval: test.pre_eval, PostEval: test.post_eval, OnMatch: test.on_match, BouncerBlockedHTTPCode: test.BouncerBlockedHTTPCode, UserBlockedHTTPCode: test.UserBlockedHTTPCode, DefaultRemediation: test.DefaultRemediation}
+	appsecCfg := appsec.AppsecConfig{Logger: logger,
+		OnLoad:                 test.on_load,
+		PreEval:                test.pre_eval,
+		PostEval:               test.post_eval,
+		OnMatch:                test.on_match,
+		BouncerBlockedHTTPCode: test.BouncerBlockedHTTPCode,
+		UserBlockedHTTPCode:    test.UserBlockedHTTPCode,
+		UserPassedHTTPCode:     test.UserPassedHTTPCode,
+		DefaultRemediation:     test.DefaultRemediation,
+		DefaultPassAction:      test.DefaultPassAction}
 	AppsecRuntime, err := appsecCfg.Build()
 	if err != nil {
 		t.Fatalf("unable to build appsec runtime : %s", err)
