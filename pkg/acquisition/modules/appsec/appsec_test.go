@@ -1216,7 +1216,7 @@ func TestAppsecRuleMatches(t *testing.T) {
 				Args:       url.Values{"foo": []string{"bla"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
-				require.Equal(t, 0, len(events))
+				require.Empty(t, events)
 				require.Equal(t, http.StatusOK, statusCode)
 				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
 			},
@@ -1243,7 +1243,7 @@ func TestAppsecRuleMatches(t *testing.T) {
 				Args:       url.Values{"foo": []string{"bla"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
-				require.Equal(t, 0, len(events))
+				require.Empty(t, events)
 				require.Equal(t, http.StatusOK, statusCode)
 				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
 			},
@@ -1270,7 +1270,7 @@ func TestAppsecRuleMatches(t *testing.T) {
 				Args:       url.Values{"foo": []string{"bla"}},
 			},
 			output_asserts: func(events []types.Event, responses []appsec.AppsecTempResponse, appsecResponse appsec.BodyResponse, statusCode int) {
-				require.Equal(t, 0, len(events))
+				require.Empty(t, events)
 				require.Equal(t, http.StatusOK, statusCode)
 				require.Equal(t, appsec.AllowRemediation, appsecResponse.Action)
 			},
