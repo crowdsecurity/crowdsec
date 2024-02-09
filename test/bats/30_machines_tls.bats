@@ -132,7 +132,7 @@ teardown() {
     '
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" 'del(.login,.password)'
     ./instance-crowdsec start
-    rune -0 cscli lapi status
+    rune -1 cscli lapi status
     rune -0 cscli machines list -o json
     assert_output '[]'
 }
@@ -147,6 +147,7 @@ teardown() {
 
     config_set "${CONFIG_DIR}/local_api_credentials.yaml" 'del(.login,.password)'
     ./instance-crowdsec start
+    rune -1 cscli lapi status
     rune -0 cscli machines list -o json
     assert_output '[]'
 }

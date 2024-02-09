@@ -20,7 +20,7 @@ import (
 type TLSAuth struct {
 	AllowedOUs      []string
 	CrlPath         string
-	revokationCache map[string]cacheEntry
+	revocationCache map[string]cacheEntry
 	cacheExpiration time.Duration
 	logger          *log.Entry
 }
@@ -168,14 +168,14 @@ func (ta *TLSAuth) isCRLRevoked(cert *x509.Certificate) (bool, bool) {
 
 func (ta *TLSAuth) isRevoked(cert *x509.Certificate, issuer *x509.Certificate) (bool, error) {
 	sn := cert.SerialNumber.String()
-	if cacheValue, ok := ta.revokationCache[sn]; ok {
+	if cacheValue, ok := ta.revocationCache[sn]; ok {
 		if time.Now().UTC().Sub(cacheValue.timestamp) < ta.cacheExpiration {
 			ta.logger.Debugf("TLSAuth: using cached value for cert %s: %t", sn, cacheValue.revoked)
 			return cacheValue.revoked, nil
 		}
 
 		ta.logger.Debugf("TLSAuth: cached value expired, removing from cache")
-		delete(ta.revokationCache, sn)
+		delete(ta.revocationCache, sn)
 	} else {
 		ta.logger.Tracef("TLSAuth: no cached value for cert %s", sn)
 	}
@@ -187,7 +187,7 @@ func (ta *TLSAuth) isRevoked(cert *x509.Certificate, issuer *x509.Certificate) (
 	revoked := revokedByOCSP || revokedByCRL
 
 	if cacheOCSP && cacheCRL {
-		ta.revokationCache[sn] = cacheEntry{
+		ta.revocationCache[sn] = cacheEntry{
 			revoked:   revoked,
 			timestamp: time.Now().UTC(),
 		}
@@ -267,7 +267,7 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 		revoked, err := ta.isInvalid(clientCert, c.Request.TLS.VerifiedChains[0][1])
 		if err != nil {
 			ta.logger.Errorf("TLSAuth: error checking if client certificate is revoked: %s", err)
-			return false, "", fmt.Errorf("could not check for client certification revokation status: %w", err)
+			return false, "", fmt.Errorf("could not check for client certification revocation status: %w", err)
 		}
 
 		if revoked {
@@ -284,7 +284,7 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 
 func NewTLSAuth(allowedOus []string, crlPath string, cacheExpiration time.Duration, logger *log.Entry) (*TLSAuth, error) {
 	ta := &TLSAuth{
-		revokationCache: map[string]cacheEntry{},
+		revocationCache: map[string]cacheEntry{},
 		cacheExpiration: cacheExpiration,
 		CrlPath:         crlPath,
 		logger:          logger,
