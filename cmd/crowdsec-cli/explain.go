@@ -16,7 +16,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
-func GetLineCountForFile(filepath string) (int, error) {
+func getLineCountForFile(filepath string) (int, error) {
 	f, err := os.Open(filepath)
 	if err != nil {
 		return 0, err
@@ -36,13 +36,29 @@ func GetLineCountForFile(filepath string) (int, error) {
 	return lc, nil
 }
 
-type cliExplain struct{}
-
-func NewCLIExplain() *cliExplain {
-	return &cliExplain{}
+type cliExplain struct{
+	cfg configGetter
+	flags struct {
+		logFile string
+		dsn string
+		logLine string
+		logType string
+		details bool
+		skipOk bool
+		onlySuccessfulParsers bool
+		noClean bool
+		crowdsec string
+		labels string
+	}
 }
 
-func (cli cliExplain) NewCommand() *cobra.Command {
+func NewCLIExplain(cfg configGetter) *cliExplain {
+	return &cliExplain{
+		cfg: cfg,
+	}
+}
+
+func (cli *cliExplain) NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "explain",
 		Short: "Explain log pipeline",
@@ -57,42 +73,22 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 		`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE:              cli.run,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			flags := cmd.Flags()
-
-			logFile, err := flags.GetString("file")
-			if err != nil {
-				return err
-			}
-
-			dsn, err := flags.GetString("dsn")
-			if err != nil {
-				return err
-			}
-
-			logLine, err := flags.GetString("log")
-			if err != nil {
-				return err
-			}
-
-			logType, err := flags.GetString("type")
-			if err != nil {
-				return err
-			}
-
-			if logLine == "" && logFile == "" && dsn == "" {
+		RunE:              func(_ *cobra.Command, _ []string) error {
+			return cli.run()
+		},
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			if cli.flags.logLine == "" && cli.flags.logFile == "" && cli.flags.dsn == "" {
 				printHelp(cmd)
 				fmt.Println()
 				return fmt.Errorf("please provide --log, --file or --dsn flag")
 			}
-			if logType == "" {
+			if cli.flags.logType == "" {
 				printHelp(cmd)
 				fmt.Println()
 				return fmt.Errorf("please provide --type flag")
 			}
 			fileInfo, _ := os.Stdin.Stat()
-			if logFile == "-" && ((fileInfo.Mode() & os.ModeCharDevice) == os.ModeCharDevice) {
+			if cli.flags.logFile == "-" && ((fileInfo.Mode() & os.ModeCharDevice) == os.ModeCharDevice) {
 				return fmt.Errorf("the option -f - is intended to work with pipes")
 			}
 			return nil
@@ -101,74 +97,33 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 
 	flags := cmd.Flags()
 
-	flags.StringP("file", "f", "", "Log file to test")
-	flags.StringP("dsn", "d", "", "DSN to test")
-	flags.StringP("log", "l", "", "Log line to test")
-	flags.StringP("type", "t", "", "Type of the acquisition to test")
-	flags.String("labels", "", "Additional labels to add to the acquisition format (key:value,key2:value2)")
-	flags.BoolP("verbose", "v", false, "Display individual changes")
-	flags.Bool("failures", false, "Only show failed lines")
-	flags.Bool("only-successful-parsers", false, "Only show successful parsers")
-	flags.String("crowdsec", "crowdsec", "Path to crowdsec")
-	flags.Bool("no-clean", false, "Don't clean runtime environment after tests")
+	flags.StringVarP(&cli.flags.logFile, "file", "f", "", "Log file to test")
+	flags.StringVarP(&cli.flags.dsn, "dsn", "d", "", "DSN to test")
+	flags.StringVarP(&cli.flags.logLine, "log", "l", "", "Log line to test")
+	flags.StringVarP(&cli.flags.logType, "type", "t", "", "Type of the acquisition to test")
+	flags.StringVar(&cli.flags.labels, "labels", "", "Additional labels to add to the acquisition format (key:value,key2:value2)")
+	flags.BoolVarP(&cli.flags.details, "verbose", "v", false, "Display individual changes")
+	flags.BoolVar(&cli.flags.skipOk, "failures", false, "Only show failed lines")
+	flags.BoolVar(&cli.flags.onlySuccessfulParsers, "only-successful-parsers", false, "Only show successful parsers")
+	flags.StringVar(&cli.flags.crowdsec, "crowdsec", "crowdsec", "Path to crowdsec")
+	flags.BoolVar(&cli.flags.noClean, "no-clean", false, "Don't clean runtime environment after tests")
 
 	return cmd
 }
 
-func (cli cliExplain) run(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
+func (cli *cliExplain) run() error {
+	logFile := cli.flags.logFile
+	logLine := cli.flags.logLine
+	logType := cli.flags.logType
+	dsn := cli.flags.dsn
+	labels := cli.flags.labels
+	crowdsec := cli.flags.crowdsec
 
-	logFile, err := flags.GetString("file")
-	if err != nil {
-		return err
-	}
 
-	dsn, err := flags.GetString("dsn")
-	if err != nil {
-		return err
-	}
-
-	logLine, err := flags.GetString("log")
-	if err != nil {
-		return err
-	}
-
-	logType, err := flags.GetString("type")
-	if err != nil {
-		return err
-	}
-
-	opts := dumps.DumpOpts{}
-
-	opts.Details, err = flags.GetBool("verbose")
-	if err != nil {
-		return err
-	}
-
-	no_clean, err := flags.GetBool("no-clean")
-	if err != nil {
-		return err
-	}
-
-	opts.SkipOk, err = flags.GetBool("failures")
-	if err != nil {
-		return err
-	}
-
-	opts.ShowNotOkParsers, err = flags.GetBool("only-successful-parsers")
-	opts.ShowNotOkParsers = !opts.ShowNotOkParsers
-	if err != nil {
-		return err
-	}
-
-	crowdsec, err := flags.GetString("crowdsec")
-	if err != nil {
-		return err
-	}
-
-	labels, err := flags.GetString("labels")
-	if err != nil {
-		return err
+	opts := dumps.DumpOpts{
+		Details:            cli.flags.details,
+		SkipOk:             cli.flags.skipOk,
+		ShowNotOkParsers:   !cli.flags.onlySuccessfulParsers,
 	}
 
 	var f *os.File
@@ -179,7 +134,7 @@ func (cli cliExplain) run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("couldn't create a temporary directory to store cscli explain result: %s", err)
 	}
 	defer func() {
-		if no_clean {
+		if cli.flags.noClean {
 			return
 		}
 		if _, err := os.Stat(dir); !os.IsNotExist(err) {
@@ -231,7 +186,7 @@ func (cli cliExplain) run(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("unable to get absolute path of '%s', exiting", logFile)
 		}
 		dsn = fmt.Sprintf("file://%s", absolutePath)
-		lineCount, err := GetLineCountForFile(absolutePath)
+		lineCount, err := getLineCountForFile(absolutePath)
 		if err != nil {
 			return err
 		}
