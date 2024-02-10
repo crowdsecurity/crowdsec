@@ -76,17 +76,7 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 		RunE:              func(_ *cobra.Command, _ []string) error {
 			return cli.run()
 		},
-		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
-			if cli.flags.logLine == "" && cli.flags.logFile == "" && cli.flags.dsn == "" {
-				printHelp(cmd)
-				fmt.Println()
-				return fmt.Errorf("please provide --log, --file or --dsn flag")
-			}
-			if cli.flags.logType == "" {
-				printHelp(cmd)
-				fmt.Println()
-				return fmt.Errorf("please provide --type flag")
-			}
+		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			fileInfo, _ := os.Stdin.Stat()
 			if cli.flags.logFile == "-" && ((fileInfo.Mode() & os.ModeCharDevice) == os.ModeCharDevice) {
 				return fmt.Errorf("the option -f - is intended to work with pipes")
@@ -107,6 +97,9 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 	flags.BoolVar(&cli.flags.onlySuccessfulParsers, "only-successful-parsers", false, "Only show successful parsers")
 	flags.StringVar(&cli.flags.crowdsec, "crowdsec", "crowdsec", "Path to crowdsec")
 	flags.BoolVar(&cli.flags.noClean, "no-clean", false, "Don't clean runtime environment after tests")
+
+	cmd.MarkFlagRequired("type")
+	cmd.MarkFlagsOneRequired("log", "file", "dsn")
 
 	return cmd
 }
