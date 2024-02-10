@@ -9,7 +9,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
 
-func cmdConsoleStatusTable(out io.Writer, csConfig csconfig.Config) {
+func cmdConsoleStatusTable(out io.Writer, consoleCfg csconfig.ConsoleConfig) {
 	t := newTable(out)
 	t.SetRowLines(false)
 
@@ -20,23 +20,23 @@ func cmdConsoleStatusTable(out io.Writer, csConfig csconfig.Config) {
 		activated := string(emoji.CrossMark)
 		switch option {
 		case csconfig.SEND_CUSTOM_SCENARIOS:
-			if *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios {
+			if *consoleCfg.ShareCustomScenarios {
 				activated = string(emoji.CheckMarkButton)
 			}
 		case csconfig.SEND_MANUAL_SCENARIOS:
-			if *csConfig.API.Server.ConsoleConfig.ShareManualDecisions {
+			if *consoleCfg.ShareManualDecisions {
 				activated = string(emoji.CheckMarkButton)
 			}
 		case csconfig.SEND_TAINTED_SCENARIOS:
-			if *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios {
+			if *consoleCfg.ShareTaintedScenarios {
 				activated = string(emoji.CheckMarkButton)
 			}
 		case csconfig.SEND_CONTEXT:
-			if *csConfig.API.Server.ConsoleConfig.ShareContext {
+			if *consoleCfg.ShareContext {
 				activated = string(emoji.CheckMarkButton)
 			}
 		case csconfig.CONSOLE_MANAGEMENT:
-			if *csConfig.API.Server.ConsoleConfig.ConsoleManagement {
+			if *consoleCfg.ConsoleManagement {
 				activated = string(emoji.CheckMarkButton)
 			}
 		}
