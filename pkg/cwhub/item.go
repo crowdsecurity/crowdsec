@@ -7,7 +7,8 @@ import (
 	"slices"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/enescakir/emoji"
+
+	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 )
 
 const (

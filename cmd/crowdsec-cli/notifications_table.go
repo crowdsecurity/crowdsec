@@ -6,7 +6,8 @@ import (
 	"strings"
 
 	"github.com/aquasecurity/table"
-	"github.com/enescakir/emoji"
+
+	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 )
 
 func notificationListTable(out io.Writer, ncfgs map[string]NotificationsCfg) {

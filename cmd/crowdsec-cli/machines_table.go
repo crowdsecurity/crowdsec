@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/aquasecurity/table"
-	"github.com/enescakir/emoji"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 )
 
 func getAgentsTable(out io.Writer, machines []*ent.Machine) {

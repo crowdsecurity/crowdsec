@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/go-cs-lib/maptools"
-	"github.com/enescakir/emoji"
 	"github.com/fatih/color"
 	diff "github.com/r3labs/diff/v2"
 	log "github.com/sirupsen/logrus"

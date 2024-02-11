@@ -13,7 +13,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/enescakir/emoji"
+	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 )
 
 // Upgrade downloads and applies the last version of the item from the hub.

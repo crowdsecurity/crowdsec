@@ -6,9 +6,9 @@ import (
 	"strconv"
 
 	"github.com/aquasecurity/table"
-	"github.com/enescakir/emoji"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 )
 
 func listHubItemTable(out io.Writer, title string, items []*cwhub.Item) {
