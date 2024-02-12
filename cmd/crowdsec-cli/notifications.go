@@ -23,14 +23,13 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type NotificationsCfg struct {
@@ -88,23 +87,27 @@ func (cli *cliNotifications) getPluginConfigs() (map[string]csplugin.PluginConfi
 		if info == nil {
 			return fmt.Errorf("error while traversing directory %s: %w", path, err)
 		}
+
 		name := filepath.Join(cfg.ConfigPaths.NotificationDir, info.Name()) //Avoid calling info.Name() twice
 		if (strings.HasSuffix(name, "yaml") || strings.HasSuffix(name, "yml")) && !(info.IsDir()) {
 			ts, err := csplugin.ParsePluginConfigFile(name)
 			if err != nil {
 				return fmt.Errorf("loading notifification plugin configuration with %s: %w", name, err)
 			}
+
 			for _, t := range ts {
 				csplugin.SetRequiredFields(&t)
 				pcfgs[t.Name] = t
 			}
 		}
+
 		return nil
 	}
 
 	if err := filepath.Walk(cfg.ConfigPaths.NotificationDir, wf); err != nil {
 		return nil, fmt.Errorf("while loading notifification plugin configuration: %w", err)
 	}
+
 	return pcfgs, nil
 }
 
@@ -115,31 +118,37 @@ func (cli *cliNotifications) getProfilesConfigs() (map[string]NotificationsCfg, 
 	if err != nil {
 		return nil, err
 	}
+
 	ncfgs := map[string]NotificationsCfg{}
 	for _, pc := range pcfgs {
 		ncfgs[pc.Name] = NotificationsCfg{
 			Config: pc,
 		}
 	}
+
 	profiles, err := csprofiles.NewProfile(cfg.API.Server.Profiles)
 	if err != nil {
 		return nil, fmt.Errorf("while extracting profiles from configuration: %w", err)
 	}
+
 	for profileID, profile := range profiles {
 		for _, notif := range profile.Cfg.Notifications {
 			pc, ok := pcfgs[notif]
 			if !ok {
 				return nil, fmt.Errorf("notification plugin '%s' does not exist", notif)
 			}
+
 			tmp, ok := ncfgs[pc.Name]
 			if !ok {
 				return nil, fmt.Errorf("notification plugin '%s' does not exist", pc.Name)
 			}
+
 			tmp.Profiles = append(tmp.Profiles, profile.Cfg)
 			tmp.ids = append(tmp.ids, uint(profileID))
 			ncfgs[pc.Name] = tmp
 		}
 	}
+
 	return ncfgs, nil
 }
 
@@ -184,6 +193,7 @@ func (cli *cliNotifications) NewListCmd() *cobra.Command {
 				}
 				csvwriter.Flush()
 			}
+
 			return nil
 		},
 	}
@@ -224,6 +234,7 @@ func (cli *cliNotifications) NewInspectCmd() *cobra.Command {
 				}
 				fmt.Printf("%s", string(x))
 			}
+
 			return nil
 		},
 	}
@@ -237,6 +248,7 @@ func (cli *cliNotifications) NewTestCmd() *cobra.Command {
 		pluginTomb    tomb.Tomb
 		alertOverride string
 	)
+
 	cmd := &cobra.Command{
 		Use:               "test [plugin name]",
 		Short:             "send a generic test alert to notification plugin",
@@ -302,13 +314,16 @@ func (cli *cliNotifications) NewTestCmd() *cobra.Command {
 			if err := yaml.Unmarshal([]byte(alertOverride), alert); err != nil {
 				return fmt.Errorf("failed to unmarshal alert override: %w", err)
 			}
+
 			pluginBroker.PluginChannel <- csplugin.ProfileAlert{
 				ProfileID: uint(0),
 				Alert:     alert,
 			}
+
 			//time.Sleep(2 * time.Second) // There's no mechanism to ensure notification has been sent
 			pluginTomb.Kill(fmt.Errorf("terminating"))
 			pluginTomb.Wait()
+
 			return nil
 		},
 	}
@@ -318,8 +333,10 @@ func (cli *cliNotifications) NewTestCmd() *cobra.Command {
 }
 
 func (cli *cliNotifications) NewReinjectCmd() *cobra.Command {
-	var alertOverride string
-	var alert *models.Alert
+	var (
+		alertOverride string
+		alert         *models.Alert
+	)
 
 	cmd := &cobra.Command{
 		Use:   "reinject",
@@ -338,6 +355,7 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 			if err != nil {
 				return err
 			}
+
 			return nil
 		},
 		RunE: func(_ *cobra.Command, _ []string) error {
@@ -353,6 +371,7 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 					return fmt.Errorf("can't unmarshal data in the alert flag: %w", err)
 				}
 			}
+
 			err := pluginBroker.Init(cfg.PluginConfig, cfg.API.Server.Profiles, cfg.ConfigPaths)
 			if err != nil {
 				return fmt.Errorf("can't initialize plugins: %w", err)
@@ -389,9 +408,9 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 					default:
 						time.Sleep(50 * time.Millisecond)
 						log.Info("sleeping\n")
-
 					}
 				}
+
 				if profile.Cfg.OnSuccess == "break" {
 					log.Infof("The profile %s contains a 'on_success: break' so bailing out", profile.Cfg.Name)
 					break
@@ -400,6 +419,7 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 			//time.Sleep(2 * time.Second) // There's no mechanism to ensure notification has been sent
 			pluginTomb.Kill(fmt.Errorf("terminating"))
 			pluginTomb.Wait()
+
 			return nil
 		},
 	}
@@ -410,14 +430,17 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 
 func (cli *cliNotifications) fetchAlertFromArgString(toParse string) (*models.Alert, error) {
 	cfg := cli.cfg()
+
 	id, err := strconv.Atoi(toParse)
 	if err != nil {
 		return nil, fmt.Errorf("bad alert id %s", toParse)
 	}
+
 	apiURL, err := url.Parse(cfg.API.Client.Credentials.URL)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing the URL of the API: %w", err)
 	}
+
 	client, err := apiclient.NewClient(&apiclient.Config{
 		MachineID:     cfg.API.Client.Credentials.Login,
 		Password:      strfmt.Password(cfg.API.Client.Credentials.Password),
@@ -428,9 +451,11 @@ func (cli *cliNotifications) fetchAlertFromArgString(toParse string) (*models.Al
 	if err != nil {
 		return nil, fmt.Errorf("error creating the client for the API: %w", err)
 	}
+
 	alert, _, err := client.Alerts.GetByID(context.Background(), id)
 	if err != nil {
 		return nil, fmt.Errorf("can't find alert with id %d: %w", id, err)
 	}
+
 	return alert, nil
 }
