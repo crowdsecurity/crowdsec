@@ -52,7 +52,12 @@ func StartRunSvc() error {
 		registerPrometheus(cConfig.Prometheus)
 
 		go servePrometheus(cConfig.Prometheus, dbClient, agentReady)
-	} // XXX: avoid leaking agentReady
+	} else {
+		// avoid leaking the channel
+		go func() {
+			<-agentReady
+		}()
+	}
 
 	return Serve(cConfig, agentReady)
 }
