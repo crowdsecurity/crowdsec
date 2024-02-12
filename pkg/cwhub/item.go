@@ -85,7 +85,7 @@ func (s *ItemState) Text() string {
 }
 
 // Emoji returns the status of the item as an emoji (eg. emoji.Warning).
-func (s *ItemState) Emoji() emoji.Emoji {
+func (s *ItemState) Emoji() string {
 	switch {
 	case s.IsLocal():
 		return emoji.House

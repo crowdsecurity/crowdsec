@@ -19,14 +19,14 @@ func getAgentsTable(out io.Writer, machines []*ent.Machine) {
 	for _, m := range machines {
 		var validated string
 		if m.IsValidated {
-			validated = emoji.CheckMark.String()
+			validated = emoji.CheckMark
 		} else {
-			validated = emoji.Prohibited.String()
+			validated = emoji.Prohibited
 		}
 
 		hb, active := getLastHeartbeat(m)
 		if !active {
-			hb = emoji.Warning.String() + " " + hb
+			hb = emoji.Warning + " " + hb
 		}
 		t.AddRow(m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, hb)
 	}

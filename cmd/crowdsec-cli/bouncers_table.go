@@ -19,9 +19,9 @@ func getBouncersTable(out io.Writer, bouncers []*ent.Bouncer) {
 	for _, b := range bouncers {
 		var revoked string
 		if !b.Revoked {
-			revoked = emoji.CheckMark.String()
+			revoked = emoji.CheckMark
 		} else {
-			revoked = emoji.Prohibited.String()
+			revoked = emoji.Prohibited
 		}
 
 		t.AddRow(b.Name, b.IPAddress, revoked, b.LastPull.Format(time.RFC3339), b.Type, b.Version, b.AuthType)

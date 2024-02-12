@@ -28,9 +28,9 @@ func notificationListTable(out io.Writer, ncfgs map[string]NotificationsCfg) {
 		for _, p := range b.Profiles {
 			profilesList = append(profilesList, p.Name)
 		}
-		active := emoji.CheckMark.String()
+		active := emoji.CheckMark
 		if len(profilesList) == 0 {
-			active = emoji.Prohibited.String()
+			active = emoji.Prohibited
 		}
 		t.AddRow(active, b.Config.Name, b.Config.Type, strings.Join(profilesList, ", "))
 	}
