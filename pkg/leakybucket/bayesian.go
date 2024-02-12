@@ -30,7 +30,7 @@ type BayesianBucket struct {
 	DumbProcessor
 }
 
-func updateProbability(prior, probGivenEvil, ProbGivenBenign float32) float32 {
+func UpdateBayesianProbability(prior, probGivenEvil, ProbGivenBenign float32) float32 {
 	numerator := probGivenEvil * prior
 	denominator := numerator + ProbGivenBenign*(1-prior)
 
@@ -101,7 +101,7 @@ func (b *BayesianEvent) bayesianUpdate(c *BayesianBucket, msg types.Event, l *Le
 	if b.getGuillotineState() {
 		l.logger.Tracef("guillotine already triggered for %s", b.rawCondition.ConditionalFilterName)
 		l.logger.Tracef("condition true updating prior for: %s", b.rawCondition.ConditionalFilterName)
-		c.posterior = updateProbability(c.posterior, b.rawCondition.ProbGivenEvil, b.rawCondition.ProbGivenBenign)
+		c.posterior = UpdateBayesianProbability(c.posterior, b.rawCondition.ProbGivenEvil, b.rawCondition.ProbGivenBenign)
 		l.logger.Tracef("new value of posterior : %v", c.posterior)
 		return nil
 	}
@@ -119,10 +119,10 @@ func (b *BayesianEvent) bayesianUpdate(c *BayesianBucket, msg types.Event, l *Le
 
 	l.logger.Tracef("condition %T updating prior for: %s", condition, b.rawCondition.ConditionalFilterName)
 	if condition {
-		c.posterior = updateProbability(c.posterior, b.rawCondition.ProbGivenEvil, b.rawCondition.ProbGivenBenign)
+		c.posterior = UpdateBayesianProbability(c.posterior, b.rawCondition.ProbGivenEvil, b.rawCondition.ProbGivenBenign)
 		b.triggerGuillotine()
 	} else {
-		c.posterior = updateProbability(c.posterior, 1-b.rawCondition.ProbGivenEvil, 1-b.rawCondition.ProbGivenBenign)
+		c.posterior = UpdateBayesianProbability(c.posterior, 1-b.rawCondition.ProbGivenEvil, 1-b.rawCondition.ProbGivenBenign)
 	}
 	l.logger.Tracef("new value of posterior: %v", c.posterior)
 
