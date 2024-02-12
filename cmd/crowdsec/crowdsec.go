@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -99,13 +100,21 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 	})
 	bucketWg.Wait()
 
+	apiClient, err := AuthenticatedLAPIClient(*cConfig.API.Client.Credentials, hub)
+	if err != nil {
+		return err
+	}
+
+	log.Debugf("Starting HeartBeat service")
+	apiClient.HeartBeat.StartHeartBeat(context.Background(), &outputsTomb)
+
 	outputWg := &sync.WaitGroup{}
 	outputsTomb.Go(func() error {
 		outputWg.Add(1)
 		for i := 0; i < cConfig.Crowdsec.OutputRoutinesCount; i++ {
 			outputsTomb.Go(func() error {
 				defer trace.CatchPanic("crowdsec/runOutput")
-				if err := runOutput(inputEventChan, outputEventChan, buckets, *parsers.Povfwctx, parsers.Povfwnodes, *cConfig.API.Client.Credentials, hub); err != nil {
+				if err := runOutput(inputEventChan, outputEventChan, buckets, *parsers.Povfwctx, parsers.Povfwnodes, apiClient); err != nil {
 					log.Fatalf("starting outputs error : %s", err)
 					return err
 				}
