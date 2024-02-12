@@ -75,6 +75,9 @@ teardown() {
 
     rune -0 ./instance-crowdsec start-pid
     PID="$output"
+
+    sleep .5
+
     assert_file_exists "$log_old"
     assert_file_contains "$log_old" "Starting processing data"
 
