@@ -22,33 +22,37 @@ func getLineCountForFile(filepath string) (int, error) {
 		return 0, err
 	}
 	defer f.Close()
+
 	lc := 0
 	fs := bufio.NewReader(f)
+
 	for {
 		input, err := fs.ReadBytes('\n')
 		if len(input) > 1 {
 			lc++
 		}
+
 		if err != nil && err == io.EOF {
 			break
 		}
 	}
+
 	return lc, nil
 }
 
-type cliExplain struct{
-	cfg configGetter
+type cliExplain struct {
+	cfg   configGetter
 	flags struct {
-		logFile string
-		dsn string
-		logLine string
-		logType string
-		details bool
-		skipOk bool
+		logFile               string
+		dsn                   string
+		logLine               string
+		logType               string
+		details               bool
+		skipOk                bool
 		onlySuccessfulParsers bool
-		noClean bool
-		crowdsec string
-		labels string
+		noClean               bool
+		crowdsec              string
+		labels                string
 	}
 }
 
@@ -73,7 +77,7 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 		`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE:              func(_ *cobra.Command, _ []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return cli.run()
 		},
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
@@ -81,6 +85,7 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 			if cli.flags.logFile == "-" && ((fileInfo.Mode() & os.ModeCharDevice) == os.ModeCharDevice) {
 				return fmt.Errorf("the option -f - is intended to work with pipes")
 			}
+
 			return nil
 		},
 	}
@@ -112,11 +117,10 @@ func (cli *cliExplain) run() error {
 	labels := cli.flags.labels
 	crowdsec := cli.flags.crowdsec
 
-
 	opts := dumps.DumpOpts{
-		Details:            cli.flags.details,
-		SkipOk:             cli.flags.skipOk,
-		ShowNotOkParsers:   !cli.flags.onlySuccessfulParsers,
+		Details:          cli.flags.details,
+		SkipOk:           cli.flags.skipOk,
+		ShowNotOkParsers: !cli.flags.onlySuccessfulParsers,
 	}
 
 	var f *os.File
@@ -124,21 +128,25 @@ func (cli *cliExplain) run() error {
 	// using empty string fallback to /tmp
 	dir, err := os.MkdirTemp("", "cscli_explain")
 	if err != nil {
-		return fmt.Errorf("couldn't create a temporary directory to store cscli explain result: %s", err)
+		return fmt.Errorf("couldn't create a temporary directory to store cscli explain result: %w", err)
 	}
+
 	defer func() {
 		if cli.flags.noClean {
 			return
 		}
+
 		if _, err := os.Stat(dir); !os.IsNotExist(err) {
 			if err := os.RemoveAll(dir); err != nil {
 				log.Errorf("unable to delete temporary directory '%s': %s", dir, err)
 			}
 		}
 	}()
+
 	// we create a  temporary log file if a log line/stdin has been provided
 	if logLine != "" || logFile == "-" {
 		tmpFile := filepath.Join(dir, "cscli_test_tmp.log")
+
 		f, err = os.Create(tmpFile)
 		if err != nil {
 			return err
@@ -168,6 +176,7 @@ func (cli *cliExplain) run() error {
 				log.Warnf("Failed to write %d lines to %s", errCount, tmpFile)
 			}
 		}
+
 		f.Close()
 		// this is the file that was going to be read by crowdsec anyway
 		logFile = tmpFile
@@ -178,15 +187,20 @@ func (cli *cliExplain) run() error {
 		if err != nil {
 			return fmt.Errorf("unable to get absolute path of '%s', exiting", logFile)
 		}
+
 		dsn = fmt.Sprintf("file://%s", absolutePath)
+
 		lineCount, err := getLineCountForFile(absolutePath)
 		if err != nil {
 			return err
 		}
+
 		log.Debugf("file %s has %d lines", absolutePath, lineCount)
+
 		if lineCount == 0 {
 			return fmt.Errorf("the log file is empty: %s", absolutePath)
 		}
+
 		if lineCount > 100 {
 			log.Warnf("%s contains %d lines. This may take a lot of resources.", absolutePath, lineCount)
 		}
@@ -197,15 +211,19 @@ func (cli *cliExplain) run() error {
 	}
 
 	cmdArgs := []string{"-c", ConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", dir, "-no-api"}
+
 	if labels != "" {
 		log.Debugf("adding labels %s", labels)
 		cmdArgs = append(cmdArgs, "-label", labels)
 	}
+
 	crowdsecCmd := exec.Command(crowdsec, cmdArgs...)
+
 	output, err := crowdsecCmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(string(output))
-		return fmt.Errorf("fail to run crowdsec for test: %v", err)
+
+		return fmt.Errorf("fail to run crowdsec for test: %w", err)
 	}
 
 	parserDumpFile := filepath.Join(dir, hubtest.ParserResultFileName)
@@ -213,12 +231,12 @@ func (cli *cliExplain) run() error {
 
 	parserDump, err := dumps.LoadParserDump(parserDumpFile)
 	if err != nil {
-		return fmt.Errorf("unable to load parser dump result: %s", err)
+		return fmt.Errorf("unable to load parser dump result: %w", err)
 	}
 
 	bucketStateDump, err := dumps.LoadBucketPourDump(bucketStateDumpFile)
 	if err != nil {
-		return fmt.Errorf("unable to load bucket dump result: %s", err)
+		return fmt.Errorf("unable to load bucket dump result: %w", err)
 	}
 
 	dumps.DumpTree(*parserDump, *bucketStateDump, opts)
