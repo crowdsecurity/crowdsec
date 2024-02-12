@@ -3,9 +3,6 @@ name: (sub) Bats / Postgres
 on:
   workflow_call:
 
-env:
-  PREFIX_TEST_NAMES_WITH_FILE: true
-
 jobs:
   build:
     name: "Functional tests"
@@ -67,7 +64,7 @@ jobs:
         PGUSER: postgres
 
     - name: "Run tests (DB_BACKEND: pgx)"
-      run: make bats-test
+      run: ./test/run-tests ./test/bats --formatter $(pwd)/test/lib/color-formatter
       env:
         DB_BACKEND: pgx
         PGHOST: 127.0.0.1

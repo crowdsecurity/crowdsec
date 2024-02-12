@@ -4,7 +4,6 @@ on:
   workflow_call:
 
 env:
-  PREFIX_TEST_NAMES_WITH_FILE: true
   TEST_COVERAGE: true
 
 jobs:
@@ -42,7 +41,7 @@ jobs:
         make clean bats-build bats-fixture BUILD_STATIC=1
 
     - name: "Run tests"
-      run: make bats-test
+      run: ./test/run-tests ./test/bats --formatter $(pwd)/test/lib/color-formatter
 
     - name: "Collect coverage data"
       run: |
