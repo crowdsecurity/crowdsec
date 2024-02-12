@@ -73,7 +73,6 @@ func WindowsRun() error {
 
 	log.Infof("Crowdsec %s", version.String())
 
-	apiReady := make(chan bool, 1)
 	agentReady := make(chan bool, 1)
 
 	// Enable profiling early
@@ -89,7 +88,7 @@ func WindowsRun() error {
 			}
 		}
 		registerPrometheus(cConfig.Prometheus)
-		go servePrometheus(cConfig.Prometheus, dbClient, apiReady, agentReady)
+		go servePrometheus(cConfig.Prometheus, dbClient, agentReady)
 	}
-	return Serve(cConfig, apiReady, agentReady)
+	return Serve(cConfig, agentReady)
 }

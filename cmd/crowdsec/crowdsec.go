@@ -139,8 +139,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 	log.Info("Starting processing data")
 
 	if err := acquisition.StartAcquisition(dataSources, inputLineChan, &acquisTomb); err != nil {
-		log.Fatalf("starting acquisition error : %s", err)
-		return err
+		return fmt.Errorf("starting acquisition error: %w", err)
 	}
 
 	return nil
