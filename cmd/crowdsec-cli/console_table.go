@@ -18,6 +18,7 @@ func cmdConsoleStatusTable(out io.Writer, consoleCfg csconfig.ConsoleConfig) {
 
 	for _, option := range csconfig.CONSOLE_CONFIGS {
 		activated := string(emoji.CrossMark)
+
 		switch option {
 		case csconfig.SEND_CUSTOM_SCENARIOS:
 			if *consoleCfg.ShareCustomScenarios {
@@ -40,6 +41,7 @@ func cmdConsoleStatusTable(out io.Writer, consoleCfg csconfig.ConsoleConfig) {
 				activated = string(emoji.CheckMarkButton)
 			}
 		}
+
 		t.AddRow(option, activated, csconfig.CONSOLE_CONFIGS_HELP[option])
 	}
 
