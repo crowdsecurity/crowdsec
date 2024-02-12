@@ -130,38 +130,49 @@ func (n *Node) validate(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	return nil
 }
 
+func (n *Node) processFilter(cachedExprEnv map[string]interface{}, clog *log.Entry) (bool, error) {
+	if n.RunTimeFilter == nil {
+		clog.Tracef("Node has not filter, enter")
+		return true, nil
+	}
+
+	//Evaluate node's filter
+	output, err := exprhelpers.Run(n.RunTimeFilter, cachedExprEnv, clog, n.Debug)
+	if err != nil {
+		clog.Warningf("failed to run filter : %v", err)
+		clog.Debugf("Event leaving node : ko")
+		return false, nil
+	}
+
+	switch out := output.(type) {
+	case bool:
+		if !out {
+			clog.Debugf("Event leaving node : ko (failed filter)")
+			return false, nil
+		}
+	default:
+		clog.Warningf("Expr '%s' returned non-bool, abort : %T", n.Filter, output)
+		clog.Debugf("Event leaving node : ko")
+		return false, nil
+	}
+	return true, nil
+}
+
 func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[string]interface{}) (bool, error) {
-	var NodeState bool
 	var NodeHasOKGrok bool
 	clog := n.Logger
 
 	cachedExprEnv := expressionEnv
 
 	clog.Tracef("Event entering node")
-	if n.RunTimeFilter != nil {
-		//Evaluate node's filter
-		output, err := exprhelpers.Run(n.RunTimeFilter, cachedExprEnv, clog, n.Debug)
-		if err != nil {
-			clog.Warningf("failed to run filter : %v", err)
-			clog.Debugf("Event leaving node : ko")
-			return false, nil
-		}
 
-		switch out := output.(type) {
-		case bool:
-			if !out {
-				clog.Debugf("Event leaving node : ko (failed filter)")
-				return false, nil
-			}
-		default:
-			clog.Warningf("Expr '%s' returned non-bool, abort : %T", n.Filter, output)
-			clog.Debugf("Event leaving node : ko")
-			return false, nil
-		}
-		NodeState = true
-	} else {
-		clog.Tracef("Node has not filter, enter")
-		NodeState = true
+	NodeState, err := n.processFilter(cachedExprEnv, clog)
+	if err != nil {
+		return false, err
+	}
+
+	if !NodeState {
+		return false, nil
 	}
 
 	if n.Name != "" {
