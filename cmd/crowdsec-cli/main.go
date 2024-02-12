@@ -244,7 +244,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	cmd.AddCommand(NewCLILapi(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCompletionCmd())
 	cmd.AddCommand(NewCLIConsole(cli.cfg).NewCommand())
-	cmd.AddCommand(NewCLIExplain().NewCommand())
+	cmd.AddCommand(NewCLIExplain(cli.cfg).NewCommand())
 	cmd.AddCommand(NewCLIHubTest().NewCommand())
 	cmd.AddCommand(NewCLINotifications().NewCommand())
 	cmd.AddCommand(NewCLISupport().NewCommand())
