@@ -120,7 +120,48 @@ teardown() {
     rune -0 jq -c '[. | length, .[0].machineId[0:32], .[0].isValidated, .[0].ipAddress, .[0].auth_type]' <(output)
 
     assert_output '[1,"localhost@127.0.0.1",true,"127.0.0.1","tls"]'
-    cscli machines delete localhost@127.0.0.1
+    rune -0 cscli machines delete localhost@127.0.0.1
+}
+
+@test "a machine can still connect with a unix socket, no TLS" {
+    sock=$(config_get '.api.server.listen_socket')
+    export sock
+
+    ./instance-crowdsec start
+
+    rune -0 cscli machines add with-socket --auto --force
+    rune -0 cscli lapi status
+
+    rune -0 cscli machines list -o json
+    rune -0 jq -c '[. | length, .[0].machineId[0:32], .[0].isValidated, .[0].ipAddress, .[0].auth_type]' <(output)
+    assert_output '[1,"with-socket",true,null,"password"]'
+
+    # TLS cannot be used with a unix socket
+
+    config_set "${CONFIG_DIR}/local_api_credentials.yaml" '
+        .ca_cert_path=strenv(tmpdir) + "/bundle.pem"
+    '
+
+    rune -1 cscli lapi status
+    assert_stderr --partial "loading api client: cannot use TLS with a unix socket"
+
+    config_set "${CONFIG_DIR}/local_api_credentials.yaml" '
+        del(.ca_cert_path) |
+        .key_path=strenv(tmpdir) + "/agent-key.pem"
+    '
+
+    rune -1 cscli lapi status
+    assert_stderr --partial "loading api client: cannot use TLS with a unix socket"
+
+    config_set "${CONFIG_DIR}/local_api_credentials.yaml" '
+        del(.key_path) |
+        .cert_path=strenv(tmpdir) + "/agent.pem"
+    '
+
+    rune -1 cscli lapi status
+    assert_stderr --partial "loading api client: cannot use TLS with a unix socket"
+
+    rune -0 cscli machines delete with-socket
 }
 
 @test "invalid cert for agent" {

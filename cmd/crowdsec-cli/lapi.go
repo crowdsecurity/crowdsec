@@ -101,23 +101,7 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string) e
 
 	password := strfmt.Password(generatePassword(passwordLength))
 
-	if apiURL == "" {
-		if cfg.API.Client == nil || cfg.API.Client.Credentials == nil || cfg.API.Client.Credentials.URL == "" {
-			return fmt.Errorf("no Local API URL. Please provide it in your configuration or with the -u parameter")
-		}
-
-		apiURL = cfg.API.Client.Credentials.URL
-	}
-	/*URL needs to end with /, but user doesn't care*/
-	if !strings.HasSuffix(apiURL, "/") {
-		apiURL += "/"
-	}
-	/*URL needs to start with http://, but user doesn't care*/
-	if !strings.HasPrefix(apiURL, "http://") && !strings.HasPrefix(apiURL, "https://") {
-		apiURL = "http://" + apiURL
-	}
-
-	apiurl, err := url.Parse(apiURL)
+	apiurl, err := prepareAPIURL(cfg.API.Client, apiURL)
 	if err != nil {
 		return fmt.Errorf("parsing api url: %w", err)
 	}
@@ -171,6 +155,27 @@ func (cli *cliLapi) register(apiURL string, outputFile string, machine string) e
 	log.Warning(ReloadMessage())
 
 	return nil
+}
+
+func prepareAPIURL(clientCfg *csconfig.LocalApiClientCfg, apiURL string) (*url.URL, error) {
+	if apiURL == "" {
+		if clientCfg == nil || clientCfg.Credentials == nil || clientCfg.Credentials.URL == "" {
+			return nil, fmt.Errorf("no Local API URL. Please provide it in your configuration or with the -u parameter")
+		}
+		apiURL = clientCfg.Credentials.URL
+	}
+
+	// URL needs to end with /, but user doesn't care
+	if !strings.HasSuffix(apiURL, "/") {
+		apiURL += "/"
+	}
+
+	// URL needs to start with http://, but user doesn't care
+	if !strings.HasPrefix(apiURL, "http://") && !strings.HasPrefix(apiURL, "https://") && !strings.HasPrefix(apiURL, "/") {
+		apiURL = "http://" + apiURL
+	}
+
+	return url.Parse(apiURL)
 }
 
 func (cli *cliLapi) newStatusCmd() *cobra.Command {

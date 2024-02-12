@@ -100,6 +100,7 @@ API Client:
 {{- if .API.Server }}
 Local API Server{{if and .API.Server.Enable (not (ValueBool .API.Server.Enable))}} (disabled){{end}}:
   - Listen URL              : {{.API.Server.ListenURI}}
+  - Listen Socket           : {{.API.Server.ListenSocket}}
   - Profile File            : {{.API.Server.ProfilesPath}}
 
 {{- if .API.Server.TLS }}

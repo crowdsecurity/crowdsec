@@ -22,8 +22,7 @@ def test_missing_key_file(crowdsec, flavor):
     }
 
     with crowdsec(flavor=flavor, environment=env, wait_status=Status.EXITED) as cs:
-        # XXX: this message appears twice, is that normal?
-        cs.wait_for_log("*while starting API server: missing TLS key file*")
+        cs.wait_for_log("*local API server stopped with error: missing TLS key file*")
 
 
 def test_missing_cert_file(crowdsec, flavor):
@@ -35,7 +34,7 @@ def test_missing_cert_file(crowdsec, flavor):
     }
 
     with crowdsec(flavor=flavor, environment=env, wait_status=Status.EXITED) as cs:
-        cs.wait_for_log("*while starting API server: missing TLS cert file*")
+        cs.wait_for_log("*local API server stopped with error: missing TLS cert file*")
 
 
 def test_tls_missing_ca(crowdsec, flavor, certs_dir):
