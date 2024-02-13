@@ -106,6 +106,7 @@ func (c *Controller) NewV1() error {
 		jwtAuth.DELETE("/decisions", c.HandlerV1.DeleteDecisions)
 		jwtAuth.DELETE("/decisions/:decision_id", c.HandlerV1.DeleteDecisionById)
 		jwtAuth.GET("/heartbeat", c.HandlerV1.HeartBeat)
+		jwtAuth.POST("/usage-metrics", c.HandlerV1.UsageMetrics)
 	}
 
 	apiKeyAuth := groupV1.Group("")
@@ -115,6 +116,7 @@ func (c *Controller) NewV1() error {
 		apiKeyAuth.HEAD("/decisions", c.HandlerV1.GetDecision)
 		apiKeyAuth.GET("/decisions/stream", c.HandlerV1.StreamDecision)
 		apiKeyAuth.HEAD("/decisions/stream", c.HandlerV1.StreamDecision)
+//		apiKeyAuth.POST("/usage-metrics", c.HandlerV1.UsageMetrics)
 	}
 
 	return nil

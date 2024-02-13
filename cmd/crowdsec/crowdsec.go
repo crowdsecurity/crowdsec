@@ -23,35 +23,36 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-func initCrowdsec(cConfig *csconfig.Config, hub *cwhub.Hub) (*parser.Parsers, error) {
+func initCrowdsec(cConfig *csconfig.Config, hub *cwhub.Hub) (*parser.Parsers, []acquisition.DataSource, error) {
 	var err error
 
 	if err = alertcontext.LoadConsoleContext(cConfig, hub); err != nil {
-		return nil, fmt.Errorf("while loading context: %w", err)
+		return nil, nil, fmt.Errorf("while loading context: %w", err)
 	}
 
 	// Start loading configs
 	csParsers := parser.NewParsers(hub)
 	if csParsers, err = parser.LoadParsers(cConfig, csParsers); err != nil {
-		return nil, fmt.Errorf("while loading parsers: %w", err)
+		return nil, nil, fmt.Errorf("while loading parsers: %w", err)
 	}
 
 	if err := LoadBuckets(cConfig, hub); err != nil {
-		return nil, fmt.Errorf("while loading scenarios: %w", err)
+		return nil, nil, fmt.Errorf("while loading scenarios: %w", err)
 	}
 
 	if err := appsec.LoadAppsecRules(hub); err != nil {
-		return nil, fmt.Errorf("while loading appsec rules: %w", err)
+		return nil, nil, fmt.Errorf("while loading appsec rules: %w", err)
 	}
 
-	if err := LoadAcquisition(cConfig); err != nil {
-		return nil, fmt.Errorf("while loading acquisition config: %w", err)
+	datasources, err := LoadAcquisition(cConfig)
+	if err != nil {
+		return nil, nil, fmt.Errorf("while loading acquisition config: %w", err)
 	}
 
-	return csParsers, nil
+	return csParsers, datasources, nil
 }
 
-func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.Hub) error {
+func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.Hub, datasources []acquisition.DataSource) error {
 	inputEventChan = make(chan types.Event)
 	inputLineChan = make(chan types.Event)
 
@@ -141,6 +142,12 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 	})
 	outputWg.Wait()
 
+	lpMetricsTomb.Go(func() error {
+		// in case of reload, we send a new startup time
+		// (use crowdsecT0 as a reference for the first startup time)
+		return lpMetrics(apiClient, cConfig.API.Server.ConsoleConfig, datasources)
+	})
+
 	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
 		aggregated := false
 		if cConfig.Prometheus.Level == "aggregated" {
@@ -161,7 +168,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers, hub *cwhub.H
 	return nil
 }
 
-func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config, hub *cwhub.Hub, agentReady chan bool) {
+func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config, hub *cwhub.Hub, datasources []acquisition.DataSource, agentReady chan bool) {
 	crowdsecTomb.Go(func() error {
 		defer trace.CatchPanic("crowdsec/serveCrowdsec")
 
@@ -171,7 +178,7 @@ func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config, hub *cwhub
 			log.Debugf("running agent after %s ms", time.Since(crowdsecT0))
 			agentReady <- true
 
-			if err := runCrowdsec(cConfig, parsers, hub); err != nil {
+			if err := runCrowdsec(cConfig, parsers, hub, datasources); err != nil {
 				log.Fatalf("unable to start crowdsec routines: %s", err)
 			}
 		}()
