@@ -11,7 +11,7 @@ run:
 linters-settings:
   cyclop:
     # lower this after refactoring
-    max-complexity: 70
+    max-complexity: 53
 
   gci:
     sections:
@@ -26,7 +26,7 @@ linters-settings:
 
   gocyclo:
     # lower this after refactoring
-    min-complexity: 70
+    min-complexity: 49
 
   funlen:
     # Checks the number of lines in a function.
@@ -46,7 +46,7 @@ linters-settings:
 
   maintidx:
     # raise this after refactoring
-    under: 9
+    under: 11
 
   misspell:
     locale: US
@@ -262,6 +262,10 @@ issues:
     - linters:
         - perfsprint
       text: "fmt.Sprintf can be replaced .*"
+
+    - linters:
+        - perfsprint
+      text: "fmt.Errorf can be replaced with errors.New"
 
     #
     # Will fix, easy but some neurons required
