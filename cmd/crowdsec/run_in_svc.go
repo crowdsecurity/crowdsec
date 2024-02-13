@@ -45,7 +45,7 @@ func StartRunSvc() error {
 			dbClient, err = database.NewClient(cConfig.DbConfig)
 
 			if err != nil {
-				return fmt.Errorf("unable to create database client: %s", err)
+				return fmt.Errorf("unable to create database client: %w", err)
 			}
 		}
 

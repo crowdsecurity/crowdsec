@@ -42,7 +42,9 @@ func debugHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	if err := leaky.ShutdownAllBuckets(buckets); err != nil {
 		log.Warningf("Failed to shut down routines : %s", err)
 	}
+
 	log.Printf("Shutdown is finished, buckets are in %s", tmpFile)
+
 	return nil
 }
 
@@ -66,8 +68,10 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 	if !cConfig.DisableAPI {
 		if flags.DisableCAPI {
 			log.Warningf("Communication with CrowdSec Central API disabled from args")
+
 			cConfig.API.Server.OnlineClient = nil
 		}
+
 		apiServer, err := initAPIServer(cConfig)
 		if err != nil {
 			return nil, fmt.Errorf("unable to init api server: %w", err)
@@ -109,6 +113,7 @@ func reloadHandler(sig os.Signal) (*csconfig.Config, error) {
 			log.Warningf("Failed to delete temp file (%s) : %s", tmpFile, err)
 		}
 	}
+
 	return cConfig, nil
 }
 
@@ -116,10 +121,12 @@ func ShutdownCrowdsecRoutines() error {
 	var reterr error
 
 	log.Debugf("Shutting down crowdsec sub-routines")
+
 	if len(dataSources) > 0 {
 		acquisTomb.Kill(nil)
 		log.Debugf("waiting for acquisition to finish")
 		drainChan(inputLineChan)
+
 		if err := acquisTomb.Wait(); err != nil {
 			log.Warningf("Acquisition returned error : %s", err)
 			reterr = err
@@ -129,6 +136,7 @@ func ShutdownCrowdsecRoutines() error {
 	log.Debugf("acquisition is finished, wait for parser/bucket/ouputs.")
 	parsersTomb.Kill(nil)
 	drainChan(inputEventChan)
+
 	if err := parsersTomb.Wait(); err != nil {
 		log.Warningf("Parsers returned error : %s", err)
 		reterr = err
@@ -159,6 +167,7 @@ func ShutdownCrowdsecRoutines() error {
 			log.Warningf("Outputs returned error : %s", err)
 			reterr = err
 		}
+
 		log.Debugf("outputs are done")
 	case <-time.After(3 * time.Second):
 		// this can happen if outputs are stuck in a http retry loop
@@ -180,6 +189,7 @@ func shutdownAPI() error {
 	}
 
 	log.Debugf("done")
+
 	return nil
 }
 
@@ -192,6 +202,7 @@ func shutdownCrowdsec() error {
 	}
 
 	log.Debugf("done")
+
 	return nil
 }
 
@@ -291,6 +302,7 @@ func HandleSignals(cConfig *csconfig.Config) error {
 	if err == nil {
 		log.Warning("Crowdsec service shutting down")
 	}
+
 	return err
 }
 
@@ -324,6 +336,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 
 	if cConfig.API.CTI != nil && *cConfig.API.CTI.Enabled {
 		log.Infof("Crowdsec CTI helper enabled")
+
 		if err := exprhelpers.InitCrowdsecCTI(cConfig.API.CTI.Key, cConfig.API.CTI.CacheTimeout, cConfig.API.CTI.CacheSize, cConfig.API.CTI.LogLevel); err != nil {
 			return fmt.Errorf("failed to init crowdsec cti: %w", err)
 		}
@@ -336,6 +349,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 
 		if flags.DisableCAPI {
 			log.Warningf("Communication with CrowdSec Central API disabled from args")
+
 			cConfig.API.Server.OnlineClient = nil
 		}
 
@@ -394,6 +408,7 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 
 	for _, ch := range waitChans {
 		<-ch
+
 		switch ch {
 		case apiTomb.Dead():
 			log.Infof("api shutdown")
@@ -401,5 +416,6 @@ func Serve(cConfig *csconfig.Config, agentReady chan bool) error {
 			log.Infof("crowdsec shutdown")
 		}
 	}
+
 	return nil
 }

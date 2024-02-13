@@ -16,7 +16,6 @@ import (
 )
 
 func dedupAlerts(alerts []types.RuntimeAlert) ([]*models.Alert, error) {
-
 	var dedupCache []*models.Alert
 
 	for idx, alert := range alerts {
@@ -26,16 +25,21 @@ func dedupAlerts(alerts []types.RuntimeAlert) ([]*models.Alert, error) {
 			dedupCache = append(dedupCache, alert.Alert)
 			continue
 		}
+
 		for k, src := range alert.Sources {
 			refsrc := *alert.Alert //copy
+
 			log.Tracef("source[%s]", k)
+
 			refsrc.Source = &src
 			dedupCache = append(dedupCache, &refsrc)
 		}
 	}
+
 	if len(dedupCache) != len(alerts) {
 		log.Tracef("went from %d to %d alerts", len(alerts), len(dedupCache))
 	}
+
 	return dedupCache, nil
 }
 
@@ -46,23 +50,25 @@ func PushAlerts(alerts []types.RuntimeAlert, client *apiclient.ApiClient) error 
 	if err != nil {
 		return fmt.Errorf("failed to transform alerts for api: %w", err)
 	}
+
 	_, _, err = client.Alerts.Add(ctx, alertsToPush)
 	if err != nil {
 		return fmt.Errorf("failed sending alert to LAPI: %w", err)
 	}
+
 	return nil
 }
 
 var bucketOverflows []types.Event
 
-func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky.Buckets,
-	postOverflowCTX parser.UnixParserCtx, postOverflowNodes []parser.Node,
-	client *apiclient.ApiClient) error {
+func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky.Buckets, postOverflowCTX parser.UnixParserCtx,
+	postOverflowNodes []parser.Node, client *apiclient.ApiClient) error {
+	var (
+		cache      []types.RuntimeAlert
+		cacheMutex sync.Mutex
+	)
 
 	ticker := time.NewTicker(1 * time.Second)
-
-	var cache []types.RuntimeAlert
-	var cacheMutex sync.Mutex
 LOOP:
 	for {
 		select {
@@ -90,6 +96,7 @@ LOOP:
 					log.Errorf("while pushing leftovers to api : %s", err)
 				}
 			}
+
 			break LOOP
 		case event := <-overflow:
 			/*if alert is empty and mapKey is present, the overflow is just to cleanup bucket*/
@@ -100,7 +107,7 @@ LOOP:
 			/* process post overflow parser nodes */
 			event, err := parser.Parse(postOverflowCTX, event, postOverflowNodes)
 			if err != nil {
-				return fmt.Errorf("postoverflow failed : %s", err)
+				return fmt.Errorf("postoverflow failed: %w", err)
 			}
 			log.Printf("%s", *event.Overflow.Alert.Message)
 			//if the Alert is nil, it's to signal bucket is ready for GC, don't track this
@@ -130,6 +137,6 @@ LOOP:
 	}
 
 	ticker.Stop()
-	return nil
 
+	return nil
 }

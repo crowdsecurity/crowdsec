@@ -35,10 +35,12 @@ func AuthenticatedLAPIClient(credentials csconfig.ApiCredentialsCfg, hub *cwhub.
 	if err != nil {
 		return nil, fmt.Errorf("parsing api url ('%s'): %w", credentials.URL, err)
 	}
+
 	papiURL, err := url.Parse(credentials.PapiURL)
 	if err != nil {
 		return nil, fmt.Errorf("parsing polling api url ('%s'): %w", credentials.PapiURL, err)
 	}
+
 	password := strfmt.Password(credentials.Password)
 
 	client, err := apiclient.NewClient(&apiclient.Config{
@@ -61,6 +63,7 @@ func AuthenticatedLAPIClient(credentials csconfig.ApiCredentialsCfg, hub *cwhub.
 			ret := make([]string, 0, len(scenarios)+len(appsecRules))
 			ret = append(ret, scenarios...)
 			ret = append(ret, appsecRules...)
+
 			return ret, nil
 		},
 	})
