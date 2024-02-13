@@ -119,7 +119,7 @@ func TestNillClient(t *testing.T) {
 
 	item, err := CrowdsecCTI("1.2.3.4")
 	assert.Equal(t, err, cti.ErrDisabled)
-	assert.Equal(t, item, &cti.CTIObject{})
+	assert.Equal(t, &cti.CTIObject{}, item)
 }
 
 func TestInvalidAuth(t *testing.T) {
@@ -156,7 +156,7 @@ func TestInvalidAuth(t *testing.T) {
 	require.NoError(t, err)
 
 	item, err = CrowdsecCTI("1.2.3.4")
-	assert.Equal(t, item, &cti.CTIObject{})
+	assert.Equal(t, &cti.CTIObject{}, item)
 	assert.False(t, CTIApiEnabled)
 	assert.Equal(t, err, cti.ErrDisabled)
 }
@@ -178,7 +178,7 @@ func TestNoKey(t *testing.T) {
 	require.NoError(t, err)
 
 	item, err := CrowdsecCTI("1.2.3.4")
-	assert.Equal(t, item, &cti.CTIObject{})
+	assert.Equal(t, &cti.CTIObject{}, item)
 	assert.False(t, CTIApiEnabled)
 	assert.Equal(t, err, cti.ErrDisabled)
 }

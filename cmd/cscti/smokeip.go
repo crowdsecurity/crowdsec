@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -36,7 +37,8 @@ func (cli *cliSmokeIP) smokeip(ip string) error {
 		return err
 	}
 
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
 	resp, err := client.GetSmokeIpWithResponse(ctx, ip)
 	if err != nil {
@@ -45,15 +47,15 @@ func (cli *cliSmokeIP) smokeip(ip string) error {
 
 	switch {
 	case resp.JSON404 != nil:
-		return fmt.Errorf("ip not found")
+		return errors.New("ip not found")
 	case resp.JSON403 != nil:
-		return fmt.Errorf("forbidden")
+		return errors.New("forbidden")
 	case resp.JSON500 != nil:
-		return fmt.Errorf("internal server error")
+		return errors.New("internal server error")
 	case resp.JSON429 != nil:
-		return fmt.Errorf("too many requests")
+		return errors.New("too many requests")
 	case resp.JSON400 != nil:
-		return fmt.Errorf("bad request")
+		return errors.New("bad request")
 	case resp.JSON200 == nil:
 		return fmt.Errorf("unexpected error %d", resp.StatusCode())
 	}
