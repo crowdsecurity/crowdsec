@@ -200,7 +200,7 @@ func TestDistanceHelper(t *testing.T) {
 			ret, err := expr.Run(vm, env)
 			if test.valid {
 				require.NoError(t, err)
-				assert.Equal(t, test.dist, ret)
+				assert.InDelta(t, test.dist, ret, 0.000001)
 			} else {
 				require.Error(t, err)
 			}
@@ -592,7 +592,7 @@ func TestAtof(t *testing.T) {
 		require.NoError(t, err)
 		output, err := expr.Run(program, test.env)
 		require.NoError(t, err)
-		require.Equal(t, test.result, output)
+		require.InDelta(t, test.result, output, 0.000001)
 	}
 }
 
