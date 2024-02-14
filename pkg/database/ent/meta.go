@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
@@ -29,7 +30,8 @@ type Meta struct {
 	AlertMetas int `json:"alert_metas,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the MetaQuery when eager-loading is set.
-	Edges MetaEdges `json:"edges"`
+	Edges        MetaEdges `json:"edges"`
+	selectValues sql.SelectValues
 }
 
 // MetaEdges holds the relations/edges for other nodes in the graph.
@@ -66,7 +68,7 @@ func (*Meta) scanValues(columns []string) ([]any, error) {
 		case meta.FieldCreatedAt, meta.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		default:
-			return nil, fmt.Errorf("unexpected column %q for type Meta", columns[i])
+			values[i] = new(sql.UnknownType)
 		}
 	}
 	return values, nil
@@ -118,21 +120,29 @@ func (m *Meta) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				m.AlertMetas = int(value.Int64)
 			}
+		default:
+			m.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
 }
 
+// GetValue returns the ent.Value that was dynamically selected and assigned to the Meta.
+// This includes values selected through modifiers, order, etc.
+func (m *Meta) GetValue(name string) (ent.Value, error) {
+	return m.selectValues.Get(name)
+}
+
 // QueryOwner queries the "owner" edge of the Meta entity.
 func (m *Meta) QueryOwner() *AlertQuery {
-	return (&MetaClient{config: m.config}).QueryOwner(m)
+	return NewMetaClient(m.config).QueryOwner(m)
 }
 
 // Update returns a builder for updating this Meta.
 // Note that you need to call Meta.Unwrap() before calling this method if this Meta
 // was returned from a transaction, and the transaction was committed or rolled back.
 func (m *Meta) Update() *MetaUpdateOne {
-	return (&MetaClient{config: m.config}).UpdateOne(m)
+	return NewMetaClient(m.config).UpdateOne(m)
 }
 
 // Unwrap unwraps the Meta entity that was returned from a transaction after it was closed,
@@ -175,9 +185,3 @@ func (m *Meta) String() string {
 
 // MetaSlice is a parsable slice of Meta.
 type MetaSlice []*Meta
-
-func (m MetaSlice) config(cfg config) {
-	for _i := range m {
-		m[_i].config = cfg
-	}
-}
