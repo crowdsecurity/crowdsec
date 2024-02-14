@@ -1,5 +1,5 @@
 # .github/workflows/build-docker-image.yml
-name: build
+name: Release
 
 on:
   release:
@@ -12,24 +12,20 @@ permissions:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        go-version: ["1.21.4"]
-
     name: Build and upload binary package
     runs-on: ubuntu-latest
     steps:
 
       - name: Check out code into the Go module directory
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           submodules: false
 
-      - name: "Set up Go ${{ matrix.go-version }}"
-        uses: actions/setup-go@v4
+      - name: "Set up Go"
+        uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: "1.21.7"
 
       - name: Build the binaries
         run: |

@@ -60,9 +60,10 @@ func TestLoadCrowdsec(t *testing.T) {
 				ConsoleContextValueLength: 2500,
 				AcquisitionFiles:          []string{acquisFullPath},
 				SimulationFilePath:        "./testdata/simulation.yaml",
-				ContextToSend: map[string][]string{
-					"source_ip": {"evt.Parsed.source_ip"},
-				},
+				// context is loaded in pkg/alertcontext
+//				ContextToSend: map[string][]string{
+//					"source_ip": {"evt.Parsed.source_ip"},
+//				},
 				SimulationConfig: &SimulationConfig{
 					Simulation: ptr.Of(false),
 				},
@@ -98,9 +99,10 @@ func TestLoadCrowdsec(t *testing.T) {
 				OutputRoutinesCount:       1,
 				ConsoleContextValueLength: 0,
 				AcquisitionFiles:          []string{acquisFullPath, acquisInDirFullPath},
-				ContextToSend: map[string][]string{
-					"source_ip": {"evt.Parsed.source_ip"},
-				},
+				// context is loaded in pkg/alertcontext
+//				ContextToSend: map[string][]string{
+//					"source_ip": {"evt.Parsed.source_ip"},
+//				},
 				SimulationFilePath: "./testdata/simulation.yaml",
 				SimulationConfig: &SimulationConfig{
 					Simulation: ptr.Of(false),
@@ -136,9 +138,10 @@ func TestLoadCrowdsec(t *testing.T) {
 				ConsoleContextValueLength: 10,
 				AcquisitionFiles:          []string{},
 				SimulationFilePath:        "",
-				ContextToSend: map[string][]string{
-					"source_ip": {"evt.Parsed.source_ip"},
-				},
+				// context is loaded in pkg/alertcontext
+//				ContextToSend: map[string][]string{
+//					"source_ip": {"evt.Parsed.source_ip"},
+//				},
 				SimulationConfig: &SimulationConfig{
 					Simulation: ptr.Of(false),
 				},

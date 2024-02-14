@@ -21,9 +21,11 @@ var defaultConfigDir = "/etc/crowdsec"
 // defaultDataDir is the base path to all data files, to be overridden in the Makefile */
 var defaultDataDir = "/var/lib/crowdsec/data/"
 
+var globalConfig = Config{}
+
 // Config contains top-level defaults -> overridden by configuration file -> overridden by CLI flags
 type Config struct {
-	//just a path to ourselves :p
+	// just a path to ourselves :p
 	FilePath     *string             `yaml:"-"`
 	Self         []byte              `yaml:"-"`
 	Common       *CommonCfg          `yaml:"common,omitempty"`
@@ -39,13 +41,15 @@ type Config struct {
 	Hub          *LocalHubCfg        `yaml:"-"`
 }
 
-func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool) (*Config, string, error) {
+func NewConfig(configFile string, disableAgent bool, disableAPI bool, inCli bool) (*Config, string, error) {
 	patcher := yamlpatch.NewPatcher(configFile, ".local")
-	patcher.SetQuiet(quiet)
+	patcher.SetQuiet(inCli)
+
 	fcontent, err := patcher.MergedPatchContent()
 	if err != nil {
 		return nil, "", err
 	}
+
 	configData := csstring.StrictExpand(string(fcontent), os.LookupEnv)
 	cfg := Config{
 		FilePath:     &configFile,
@@ -89,7 +93,13 @@ func NewConfig(configFile string, disableAgent bool, disableAPI bool, quiet bool
 		return nil, "", err
 	}
 
+	globalConfig = cfg
+
 	return &cfg, configData, nil
+}
+
+func GetConfig() Config {
+	return globalConfig
 }
 
 func NewDefaultConfig() *Config {

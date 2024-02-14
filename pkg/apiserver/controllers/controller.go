@@ -6,13 +6,14 @@ import (
 	"net/http"
 
 	"github.com/alexliesenfeld/health"
+	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
+
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/gin-gonic/gin"
-	log "github.com/sirupsen/logrus"
 )
 
 type Controller struct {
@@ -54,6 +55,7 @@ func serveHealth() http.HandlerFunc {
 		// no caching required
 		health.WithDisabledCache(),
 	)
+
 	return health.NewHandler(checker)
 }
 
@@ -75,6 +77,7 @@ func (c *Controller) NewV1() error {
 	if err != nil {
 		return err
 	}
+
 	c.Router.GET("/health", gin.WrapF(serveHealth()))
 	c.Router.Use(v1.PrometheusMiddleware())
 	c.Router.HandleMethodNotAllowed = true
@@ -103,7 +106,6 @@ func (c *Controller) NewV1() error {
 		jwtAuth.DELETE("/decisions", c.HandlerV1.DeleteDecisions)
 		jwtAuth.DELETE("/decisions/:decision_id", c.HandlerV1.DeleteDecisionById)
 		jwtAuth.GET("/heartbeat", c.HandlerV1.HeartBeat)
-
 	}
 
 	apiKeyAuth := groupV1.Group("")

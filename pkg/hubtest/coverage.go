@@ -7,9 +7,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
-
+	"github.com/crowdsecurity/crowdsec/pkg/appsec/appsec_rule"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/go-cs-lib/maptools"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
 type Coverage struct {
@@ -18,13 +20,72 @@ type Coverage struct {
 	PresentIn  map[string]bool //poorman's set
 }
 
+func (h *HubTest) GetAppsecCoverage() ([]Coverage, error) {
+	if len(h.HubIndex.GetItemMap(cwhub.APPSEC_RULES)) == 0 {
+		return nil, fmt.Errorf("no appsec rules in hub index")
+	}
+
+	// populate from hub, iterate in alphabetical order
+	pkeys := maptools.SortedKeys(h.HubIndex.GetItemMap(cwhub.APPSEC_RULES))
+	coverage := make([]Coverage, len(pkeys))
+
+	for i, name := range pkeys {
+		coverage[i] = Coverage{
+			Name:       name,
+			TestsCount: 0,
+			PresentIn:  make(map[string]bool),
+		}
+	}
+
+	// parser the expressions a-la-oneagain
+	appsecTestConfigs, err := filepath.Glob(".appsec-tests/*/config.yaml")
+	if err != nil {
+		return nil, fmt.Errorf("while find appsec-tests config: %s", err)
+	}
+
+	for _, appsecTestConfigPath := range appsecTestConfigs {
+		configFileData := &HubTestItemConfig{}
+		yamlFile, err := os.ReadFile(appsecTestConfigPath)
+		if err != nil {
+			log.Printf("unable to open appsec test config file '%s': %s", appsecTestConfigPath, err)
+			continue
+		}
+		err = yaml.Unmarshal(yamlFile, configFileData)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshal: %v", err)
+		}
+
+		for _, appsecRulesFile := range configFileData.AppsecRules {
+			appsecRuleData := &appsec_rule.CustomRule{}
+			yamlFile, err := os.ReadFile(appsecRulesFile)
+			if err != nil {
+				log.Printf("unable to open appsec rule '%s': %s", appsecRulesFile, err)
+			}
+			err = yaml.Unmarshal(yamlFile, appsecRuleData)
+			if err != nil {
+				return nil, fmt.Errorf("unmarshal: %v", err)
+			}
+			appsecRuleName := appsecRuleData.Name
+
+			for idx, cov := range coverage {
+				if cov.Name == appsecRuleName {
+					coverage[idx].TestsCount++
+					coverage[idx].PresentIn[appsecTestConfigPath] = true
+				}
+			}
+		}
+	}
+
+	return coverage, nil
+}
+
 func (h *HubTest) GetParsersCoverage() ([]Coverage, error) {
 	if len(h.HubIndex.GetItemMap(cwhub.PARSERS)) == 0 {
 		return nil, fmt.Errorf("no parsers in hub index")
 	}
 
 	// populate from hub, iterate in alphabetical order
-	pkeys := sortedMapKeys(h.HubIndex.GetItemMap(cwhub.PARSERS))
+	pkeys := maptools.SortedKeys(h.HubIndex.GetItemMap(cwhub.PARSERS))
 	coverage := make([]Coverage, len(pkeys))
 
 	for i, name := range pkeys {
@@ -105,12 +166,12 @@ func (h *HubTest) GetParsersCoverage() ([]Coverage, error) {
 }
 
 func (h *HubTest) GetScenariosCoverage() ([]Coverage, error) {
-	if len(h.HubIndex.GetItemMap(cwhub.SCENARIOS)) == 0  {
+	if len(h.HubIndex.GetItemMap(cwhub.SCENARIOS)) == 0 {
 		return nil, fmt.Errorf("no scenarios in hub index")
 	}
 
 	// populate from hub, iterate in alphabetical order
-	pkeys := sortedMapKeys(h.HubIndex.GetItemMap(cwhub.SCENARIOS))
+	pkeys := maptools.SortedKeys(h.HubIndex.GetItemMap(cwhub.SCENARIOS))
 	coverage := make([]Coverage, len(pkeys))
 
 	for i, name := range pkeys {
@@ -126,7 +187,6 @@ func (h *HubTest) GetScenariosCoverage() ([]Coverage, error) {
 	if err != nil {
 		return nil, fmt.Errorf("while find scenario asserts : %s", err)
 	}
-
 
 	for _, assert := range passerts {
 		file, err := os.Open(assert)

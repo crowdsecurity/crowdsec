@@ -116,7 +116,7 @@ func TestLoadOnlineApiClientCfg(t *testing.T) {
 				CredentialsFilePath: "./testdata/nonexist_online-api-secrets.yaml",
 			},
 			expected:    &ApiCredentialsCfg{},
-			expectedErr: "failed to read api server credentials",
+			expectedErr: "open ./testdata/nonexist_online-api-secrets.yaml: " + cstest.FileNotFoundMessage,
 		},
 	}
 
@@ -219,7 +219,9 @@ func TestLoadAPIServer(t *testing.T) {
 			input: &Config{
 				Self: []byte(configData),
 				API: &APICfg{
-					Server: &LocalApiServerCfg{},
+					Server: &LocalApiServerCfg{
+						ListenURI: "http://crowdsec.api",
+					},
 				},
 				Common: &CommonCfg{
 					LogDir:   "./testdata/",
@@ -238,7 +240,7 @@ func TestLoadAPIServer(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.input.LoadAPIServer()
+			err := tc.input.LoadAPIServer(false)
 			cstest.RequireErrorContains(t, err, tc.expectedErr)
 			if tc.expectedErr != "" {
 				return
@@ -252,6 +254,7 @@ func TestLoadAPIServer(t *testing.T) {
 func mustParseCIDRNet(t *testing.T, s string) *net.IPNet {
 	_, ipNet, err := net.ParseCIDR(s)
 	require.NoError(t, err)
+
 	return ipNet
 }
 

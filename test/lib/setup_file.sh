@@ -242,17 +242,11 @@ export -f assert_stderr_line
 # remove all installed items and data
 hub_purge_all() {
     local CONFIG_DIR
+    local itemtype
     CONFIG_DIR=$(dirname "$CONFIG_YAML")
-    rm -rf \
-        "$CONFIG_DIR"/collections/* \
-        "$CONFIG_DIR"/parsers/*/* \
-        "$CONFIG_DIR"/scenarios/* \
-        "$CONFIG_DIR"/postoverflows/*
-    rm -rf \
-        "$CONFIG_DIR"/hub/collections/* \
-        "$CONFIG_DIR"/hub/parsers/*/* \
-        "$CONFIG_DIR"/hub/scenarios/* \
-        "$CONFIG_DIR"/hub/postoverflows/*
+    for itemtype in $(cscli hub types -o raw); do
+        rm -rf "$CONFIG_DIR"/"${itemtype:?}"/* "$CONFIG_DIR"/hub/"${itemtype:?}"/*
+    done
     local DATA_DIR
     DATA_DIR=$(config_get .config_paths.data_dir)
     # should remove everything except the db (find $DATA_DIR -not -name "crowdsec.db*" -delete),

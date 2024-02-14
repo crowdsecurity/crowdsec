@@ -34,7 +34,12 @@ teardown() {
     rune -0 jq -r '.msg' <(stderr)
     assert_output --partial 'already exists: please remove it, use "--force" or specify a different file with "-f"'
     rune -0 cscli machines add local -a --force
-    assert_stderr --partial "Machine 'local' successfully added to the local API"
+    assert_stderr --partial "Machine 'local' successfully added to the local API."
+}
+
+@test "passwords have a size limit" {
+    rune -1 cscli machines add local --password "$(printf '%73s' '' | tr ' ' x)"
+    assert_stderr --partial "password too long (max 72 characters)"
 }
 
 @test "add a new machine and delete it" {

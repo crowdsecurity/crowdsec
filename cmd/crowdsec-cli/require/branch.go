@@ -56,3 +56,7 @@ func HubBranch(cfg *csconfig.Config) string {
 
 	return branch
 }
+
+func HubURLTemplate(cfg *csconfig.Config) string {
+	return cfg.Cscli.HubURLTemplate
+}

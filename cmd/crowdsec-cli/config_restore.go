@@ -22,7 +22,7 @@ type OldAPICfg struct {
 }
 
 func restoreHub(dirPath string) error {
-	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig))
+	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig), nil)
 	if err != nil {
 		return err
 	}
@@ -35,21 +35,26 @@ func restoreHub(dirPath string) error {
 		}
 		/*restore the upstream items*/
 		upstreamListFN := fmt.Sprintf("%s/upstream-%s.json", itemDirectory, itype)
+
 		file, err := os.ReadFile(upstreamListFN)
 		if err != nil {
 			return fmt.Errorf("error while opening %s : %s", upstreamListFN, err)
 		}
+
 		var upstreamList []string
+
 		err = json.Unmarshal(file, &upstreamList)
 		if err != nil {
 			return fmt.Errorf("error unmarshaling %s : %s", upstreamListFN, err)
 		}
+
 		for _, toinstall := range upstreamList {
 			item := hub.GetItem(itype, toinstall)
 			if item == nil {
 				log.Errorf("Item %s/%s not found in hub", itype, toinstall)
 				continue
 			}
+
 			err := item.Install(false, false)
 			if err != nil {
 				log.Errorf("Error while installing %s : %s", toinstall, err)
@@ -61,23 +66,28 @@ func restoreHub(dirPath string) error {
 		if err != nil {
 			return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory, err)
 		}
+
 		for _, file := range files {
 			//this was the upstream data
 			if file.Name() == fmt.Sprintf("upstream-%s.json", itype) {
 				continue
 			}
+
 			if itype == cwhub.PARSERS || itype == cwhub.POSTOVERFLOWS {
 				//we expect a stage here
 				if !file.IsDir() {
 					continue
 				}
+
 				stage := file.Name()
 				stagedir := fmt.Sprintf("%s/%s/%s/", csConfig.ConfigPaths.ConfigDir, itype, stage)
 				log.Debugf("Found stage %s in %s, target directory : %s", stage, itype, stagedir)
+
 				if err = os.MkdirAll(stagedir, os.ModePerm); err != nil {
 					return fmt.Errorf("error while creating stage directory %s : %s", stagedir, err)
 				}
-				/*find items*/
+
+				// find items
 				ifiles, err := os.ReadDir(itemDirectory + "/" + stage + "/")
 				if err != nil {
 					return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory+"/"+stage, err)
@@ -86,10 +96,12 @@ func restoreHub(dirPath string) error {
 				for _, tfile := range ifiles {
 					log.Infof("Going to restore local/tainted [%s]", tfile.Name())
 					sourceFile := fmt.Sprintf("%s/%s/%s", itemDirectory, stage, tfile.Name())
+
 					destinationFile := fmt.Sprintf("%s%s", stagedir, tfile.Name())
 					if err = CopyFile(sourceFile, destinationFile); err != nil {
 						return fmt.Errorf("failed copy %s %s to %s : %s", itype, sourceFile, destinationFile, err)
 					}
+
 					log.Infof("restored %s to %s", sourceFile, destinationFile)
 				}
 			} else {
@@ -101,9 +113,9 @@ func restoreHub(dirPath string) error {
 				}
 				log.Infof("restored %s to %s", sourceFile, destinationFile)
 			}
-
 		}
 	}
+
 	return nil
 }
 
@@ -134,7 +146,12 @@ func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
 		// Now we have config.yaml, we should regenerate config struct to have rights paths etc
 		ConfigFilePath = fmt.Sprintf("%s/config.yaml", csConfig.ConfigPaths.ConfigDir)
 
-		initConfig()
+		log.Debug("Reloading configuration")
+
+		csConfig, _, err = loadConfigFor("config")
+		if err != nil {
+			return fmt.Errorf("failed to reload configuration: %s", err)
+		}
 
 		backupCAPICreds := fmt.Sprintf("%s/online_api_credentials.yaml", dirPath)
 		if _, err = os.Stat(backupCAPICreds); err == nil {
@@ -215,7 +232,7 @@ func restoreConfigFromDirectory(dirPath string, oldBackup bool) error {
 		}
 	}
 
-	// if there is files in the acquis backup dir, restore them
+	// if there are files in the acquis backup dir, restore them
 	acquisBackupDir := filepath.Join(dirPath, "acquis", "*.yaml")
 	if acquisFiles, err := filepath.Glob(acquisBackupDir); err == nil {
 		for _, acquisFile := range acquisFiles {

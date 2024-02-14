@@ -36,7 +36,7 @@ teardown() {
     rune -0 cscli hub list
     assert_output "No items to display"
     rune -0 cscli hub list -o json
-    assert_json '{parsers:[],scenarios:[],collections:[],postoverflows:[]}'
+    assert_json '{"appsec-configs":[],"appsec-rules":[],parsers:[],scenarios:[],collections:[],contexts:[],postoverflows:[]}'
     rune -0 cscli hub list -o raw
     assert_output 'name,status,version,description,type'
 
@@ -47,6 +47,7 @@ teardown() {
     assert_output --regexp ".*PARSERS.*crowdsecurity/whitelists.*SCENARIOS.*crowdsecurity/telnet-bf.*"
     refute_output --partial 'POSTOVERFLOWS'
     refute_output --partial 'COLLECTIONS'
+
     rune -0 cscli hub list -o json
     rune -0 jq -e '(.parsers | length == 1) and (.scenarios | length == 1)' <(output)
     rune -0 cscli hub list -o raw
@@ -55,14 +56,27 @@ teardown() {
     refute_output --partial 'crowdsecurity/iptables'
 
     # all items
+    mkdir -p "$CONFIG_DIR/contexts"
+    # there are no contexts yet, so we create a local one
+    touch "$CONFIG_DIR/contexts/mycontext.yaml"
     rune -0 cscli hub list -a
-    assert_output --regexp ".*PARSERS.*crowdsecurity/whitelists.*POSTOVERFLOWS.*SCENARIOS.*crowdsecurity/telnet-bf.*COLLECTIONS.*crowdsecurity/iptables.*"
+    assert_output --regexp ".*PARSERS.*crowdsecurity/whitelists.*POSTOVERFLOWS.*SCENARIOS.*crowdsecurity/telnet-bf.*CONTEXTS.*mycontext.yaml.*COLLECTIONS.*crowdsecurity/iptables.*"
     rune -0 cscli hub list -a -o json
     rune -0 jq -e '(.parsers | length > 1) and (.scenarios | length > 1)' <(output)
     rune -0 cscli hub list -a -o raw
     assert_output --partial 'crowdsecurity/whitelists'
     assert_output --partial 'crowdsecurity/telnet-bf'
     assert_output --partial 'crowdsecurity/iptables'
+}
+
+@test "cscli hub list (invalid index)" {
+    new_hub=$(jq <"$INDEX_PATH" '."appsec-rules"."crowdsecurity/vpatch-laravel-debug-mode".version="999"')
+    echo "$new_hub" >"$INDEX_PATH"
+    rune -0 cscli hub list --error
+    assert_stderr --partial "invalid hub item appsec-rules:crowdsecurity/vpatch-laravel-debug-mode: latest version missing from index"
+
+    rune -1 cscli appsec-rules install crowdsecurity/vpatch-laravel-debug-mode --force
+    assert_stderr --partial "error while installing 'crowdsecurity/vpatch-laravel-debug-mode': while downloading crowdsecurity/vpatch-laravel-debug-mode: latest hash missing from index"
 }
 
 @test "missing reference in hub index" {
@@ -79,7 +93,7 @@ teardown() {
     refute_stderr --partial "tainted"
     rune -0 truncate -s0 "$CONFIG_DIR/parsers/s01-parse/sshd-logs.yaml"
     rune -0 cscli hub list
-    assert_stderr --partial "crowdsecurity/sshd is tainted because parsers:crowdsecurity/sshd-logs is tainted"
+    assert_stderr --partial "crowdsecurity/sshd is tainted by parsers:crowdsecurity/sshd-logs"
 }
 
 @test "loading hub reports tainted items (subitem is not installed)" {
@@ -88,7 +102,7 @@ teardown() {
     refute_stderr --partial "tainted"
     rune -0 rm "$CONFIG_DIR/parsers/s01-parse/sshd-logs.yaml"
     rune -0 cscli hub list
-    assert_stderr --partial "crowdsecurity/sshd is tainted because parsers:crowdsecurity/sshd-logs is missing"
+    assert_stderr --partial "crowdsecurity/sshd is tainted by missing parsers:crowdsecurity/sshd-logs"
 }
 
 @test "cscli hub update" {
@@ -107,6 +121,8 @@ teardown() {
     assert_stderr --partial "Upgraded 0 postoverflows"
     assert_stderr --partial "Upgrading scenarios"
     assert_stderr --partial "Upgraded 0 scenarios"
+    assert_stderr --partial "Upgrading contexts"
+    assert_stderr --partial "Upgraded 0 contexts"
     assert_stderr --partial "Upgrading collections"
     assert_stderr --partial "Upgraded 0 collections"
 
@@ -134,10 +150,11 @@ teardown() {
     assert_line "parsers"
     assert_line "postoverflows"
     assert_line "scenarios"
+    assert_line "contexts"
     assert_line "collections"
     rune -0 cscli hub types -o human
     rune -0 yq -o json <(output)
-    assert_json '["parsers","postoverflows","scenarios","collections"]'
+    assert_json '["parsers","postoverflows","scenarios","contexts","appsec-configs","appsec-rules","collections"]'
     rune -0 cscli hub types -o json
-    assert_json '["parsers","postoverflows","scenarios","collections"]'
+    assert_json '["parsers","postoverflows","scenarios","contexts","appsec-configs","appsec-rules","collections"]'
 }

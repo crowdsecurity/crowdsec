@@ -40,15 +40,19 @@ func (f *MockSource) Configure(cfg []byte, logger *log.Entry) error {
 	if err := f.UnmarshalConfig(cfg); err != nil {
 		return err
 	}
+
 	if f.Mode == "" {
 		f.Mode = configuration.CAT_MODE
 	}
+
 	if f.Mode != configuration.CAT_MODE && f.Mode != configuration.TAIL_MODE {
 		return fmt.Errorf("mode %s is not supported", f.Mode)
 	}
+
 	if f.Toto == "" {
 		return fmt.Errorf("expect non-empty toto")
 	}
+
 	return nil
 }
 func (f *MockSource) GetMode() string                                         { return f.Mode }
@@ -77,6 +81,7 @@ func appendMockSource() {
 	if GetDataSourceIface("mock") == nil {
 		AcquisitionSources["mock"] = func() DataSource { return &MockSource{} }
 	}
+
 	if GetDataSourceIface("mock_cant_run") == nil {
 		AcquisitionSources["mock_cant_run"] = func() DataSource { return &MockSourceCantRun{} }
 	}
@@ -84,6 +89,7 @@ func appendMockSource() {
 
 func TestDataSourceConfigure(t *testing.T) {
 	appendMockSource()
+
 	tests := []struct {
 		TestName      string
 		String        string
@@ -185,22 +191,22 @@ wowo: ajsajasjas
 			switch tc.TestName {
 			case "basic_valid_config":
 				mock := (*ds).Dump().(*MockSource)
-				assert.Equal(t, mock.Toto, "test_value1")
-				assert.Equal(t, mock.Mode, "cat")
-				assert.Equal(t, mock.logger.Logger.Level, log.InfoLevel)
-				assert.Equal(t, mock.Labels, map[string]string{"test": "foobar"})
+				assert.Equal(t, "test_value1", mock.Toto)
+				assert.Equal(t, "cat", mock.Mode)
+				assert.Equal(t, log.InfoLevel, mock.logger.Logger.Level)
+				assert.Equal(t, map[string]string{"test": "foobar"}, mock.Labels)
 			case "basic_debug_config":
 				mock := (*ds).Dump().(*MockSource)
-				assert.Equal(t, mock.Toto, "test_value1")
-				assert.Equal(t, mock.Mode, "cat")
-				assert.Equal(t, mock.logger.Logger.Level, log.DebugLevel)
-				assert.Equal(t, mock.Labels, map[string]string{"test": "foobar"})
+				assert.Equal(t, "test_value1", mock.Toto)
+				assert.Equal(t, "cat", mock.Mode)
+				assert.Equal(t, log.DebugLevel, mock.logger.Logger.Level)
+				assert.Equal(t, map[string]string{"test": "foobar"}, mock.Labels)
 			case "basic_tailmode_config":
 				mock := (*ds).Dump().(*MockSource)
-				assert.Equal(t, mock.Toto, "test_value1")
-				assert.Equal(t, mock.Mode, "tail")
-				assert.Equal(t, mock.logger.Logger.Level, log.DebugLevel)
-				assert.Equal(t, mock.Labels, map[string]string{"test": "foobar"})
+				assert.Equal(t, "test_value1", mock.Toto)
+				assert.Equal(t, "tail", mock.Mode)
+				assert.Equal(t, log.DebugLevel, mock.logger.Logger.Level)
+				assert.Equal(t, map[string]string{"test": "foobar"}, mock.Labels)
 			}
 		})
 	}
@@ -208,6 +214,7 @@ wowo: ajsajasjas
 
 func TestLoadAcquisitionFromFile(t *testing.T) {
 	appendMockSource()
+
 	tests := []struct {
 		TestName      string
 		Config        csconfig.CrowdsecServiceCfg
@@ -284,7 +291,6 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 
 			assert.Len(t, dss, tc.ExpectedLen)
 		})
-
 	}
 }
 
@@ -304,9 +310,11 @@ func (f *MockCat) Configure(cfg []byte, logger *log.Entry) error {
 	if f.Mode == "" {
 		f.Mode = configuration.CAT_MODE
 	}
+
 	if f.Mode != configuration.CAT_MODE {
 		return fmt.Errorf("mode %s is not supported", f.Mode)
 	}
+
 	return nil
 }
 
@@ -319,6 +327,7 @@ func (f *MockCat) OneShotAcquisition(out chan types.Event, tomb *tomb.Tomb) erro
 		evt.Line.Src = "test"
 		out <- evt
 	}
+
 	return nil
 }
 func (f *MockCat) StreamingAcquisition(chan types.Event, *tomb.Tomb) error {
@@ -345,9 +354,11 @@ func (f *MockTail) Configure(cfg []byte, logger *log.Entry) error {
 	if f.Mode == "" {
 		f.Mode = configuration.TAIL_MODE
 	}
+
 	if f.Mode != configuration.TAIL_MODE {
 		return fmt.Errorf("mode %s is not supported", f.Mode)
 	}
+
 	return nil
 }
 
@@ -364,6 +375,7 @@ func (f *MockTail) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) erro
 		out <- evt
 	}
 	<-t.Dying()
+
 	return nil
 }
 func (f *MockTail) CanRun() error                            { return nil }
@@ -446,6 +458,7 @@ func (f *MockTailError) StreamingAcquisition(out chan types.Event, t *tomb.Tomb)
 		out <- evt
 	}
 	t.Kill(fmt.Errorf("got error (tomb)"))
+
 	return fmt.Errorf("got error")
 }
 
@@ -499,6 +512,7 @@ func (f *MockSourceByDSN) ConfigureByDSN(dsn string, labels map[string]string, l
 	if dsn != "test_expect" {
 		return fmt.Errorf("unexpected value")
 	}
+
 	return nil
 }
 func (f *MockSourceByDSN) GetUuid() string { return "" }

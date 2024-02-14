@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 
 	"gopkg.in/yaml.v3"
-	"slices"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
@@ -57,13 +58,17 @@ func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item
 	switch csConfig.Cscli.Output {
 	case "human":
 		nothingToDisplay := true
+
 		for _, itemType := range itemTypes {
 			if omitIfEmpty && len(items[itemType]) == 0 {
 				continue
 			}
+
 			listHubItemTable(out, "\n"+strings.ToUpper(itemType), items[itemType])
+
 			nothingToDisplay = false
 		}
+
 		if nothingToDisplay {
 			fmt.Println("No items to display")
 		}
@@ -84,14 +89,14 @@ func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item
 
 			for i, item := range items[itemType] {
 				status := item.State.Text()
-				status_emo := item.State.Emoji()
+				statusEmo := item.State.Emoji()
 				hubStatus[itemType][i] = itemHubStatus{
 					Name:         item.Name,
 					LocalVersion: item.State.LocalVersion,
 					LocalPath:    item.State.LocalPath,
 					Description:  item.Description,
 					Status:       status,
-					UTF8Status:   fmt.Sprintf("%v  %s", status_emo, status),
+					UTF8Status:   fmt.Sprintf("%v  %s", statusEmo, status),
 				}
 			}
 		}
@@ -125,24 +130,25 @@ func listItems(out io.Writer, itemTypes []string, items map[string][]*cwhub.Item
 				if len(itemTypes) > 1 {
 					row = append(row, itemType)
 				}
+
 				if err := csvwriter.Write(row); err != nil {
 					return fmt.Errorf("failed to write raw output: %s", err)
 				}
 			}
 		}
+
 		csvwriter.Flush()
-	default:
-		return fmt.Errorf("unknown output format '%s'", csConfig.Cscli.Output)
 	}
 
 	return nil
 }
 
-func InspectItem(item *cwhub.Item, showMetrics bool) error {
+func inspectItem(item *cwhub.Item, showMetrics bool) error {
 	switch csConfig.Cscli.Output {
 	case "human", "raw":
 		enc := yaml.NewEncoder(os.Stdout)
 		enc.SetIndent(2)
+
 		if err := enc.Encode(item); err != nil {
 			return fmt.Errorf("unable to encode item: %s", err)
 		}
@@ -151,11 +157,23 @@ func InspectItem(item *cwhub.Item, showMetrics bool) error {
 		if err != nil {
 			return fmt.Errorf("unable to marshal item: %s", err)
 		}
+
 		fmt.Print(string(b))
 	}
 
-	if csConfig.Cscli.Output == "human" && showMetrics {
+	if csConfig.Cscli.Output != "human" {
+		return nil
+	}
+
+	if item.State.Tainted {
+		fmt.Println()
+		fmt.Printf(`This item is tainted. Use "%s %s inspect --diff %s" to see why.`, filepath.Base(os.Args[0]), item.Type, item.Name)
+		fmt.Println()
+	}
+
+	if showMetrics {
 		fmt.Printf("\nCurrent metrics: \n")
+
 		if err := ShowMetrics(item); err != nil {
 			return err
 		}

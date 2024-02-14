@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,14 +20,13 @@ import (
 type TLSAuth struct {
 	AllowedOUs      []string
 	CrlPath         string
-	revokationCache map[string]cacheEntry
+	revocationCache map[string]cacheEntry
 	cacheExpiration time.Duration
 	logger          *log.Entry
 }
 
 type cacheEntry struct {
 	revoked   bool
-	err       error
 	timestamp time.Time
 }
 
@@ -36,32 +36,40 @@ func (ta *TLSAuth) ocspQuery(server string, cert *x509.Certificate, issuer *x509
 		ta.logger.Errorf("TLSAuth: error creating OCSP request: %s", err)
 		return nil, err
 	}
+
 	httpRequest, err := http.NewRequest(http.MethodPost, server, bytes.NewBuffer(req))
 	if err != nil {
 		ta.logger.Error("TLSAuth: cannot create HTTP request for OCSP")
 		return nil, err
 	}
+
 	ocspURL, err := url.Parse(server)
 	if err != nil {
 		ta.logger.Error("TLSAuth: cannot parse OCSP URL")
 		return nil, err
 	}
+
 	httpRequest.Header.Add("Content-Type", "application/ocsp-request")
 	httpRequest.Header.Add("Accept", "application/ocsp-response")
 	httpRequest.Header.Add("host", ocspURL.Host)
+
 	httpClient := &http.Client{}
+
 	httpResponse, err := httpClient.Do(httpRequest)
 	if err != nil {
 		ta.logger.Error("TLSAuth: cannot send HTTP request to OCSP")
 		return nil, err
 	}
 	defer httpResponse.Body.Close()
+
 	output, err := io.ReadAll(httpResponse.Body)
 	if err != nil {
 		ta.logger.Error("TLSAuth: cannot read HTTP response from OCSP")
 		return nil, err
 	}
+
 	ocspResponse, err := ocsp.ParseResponseForCert(output, cert, issuer)
+
 	return ocspResponse, err
 }
 
@@ -72,107 +80,127 @@ func (ta *TLSAuth) isExpired(cert *x509.Certificate) bool {
 		ta.logger.Errorf("TLSAuth: client certificate is expired (NotAfter: %s)", cert.NotAfter.UTC())
 		return true
 	}
+
 	if cert.NotBefore.UTC().After(now) {
 		ta.logger.Errorf("TLSAuth: client certificate is not yet valid (NotBefore: %s)", cert.NotBefore.UTC())
 		return true
 	}
+
 	return false
 }
 
-func (ta *TLSAuth) isOCSPRevoked(cert *x509.Certificate, issuer *x509.Certificate) (bool, error) {
-	if cert.OCSPServer == nil || (cert.OCSPServer != nil && len(cert.OCSPServer) == 0) {
+// isOCSPRevoked checks if the client certificate is revoked by any of the OCSP servers present in the certificate.
+// It returns a boolean indicating if the certificate is revoked and a boolean indicating if the OCSP check was successful and could be cached.
+func (ta *TLSAuth) isOCSPRevoked(cert *x509.Certificate, issuer *x509.Certificate) (bool, bool) {
+	if cert.OCSPServer == nil || len(cert.OCSPServer) == 0 {
 		ta.logger.Infof("TLSAuth: no OCSP Server present in client certificate, skipping OCSP verification")
-		return false, nil
+		return false, true
 	}
+
 	for _, server := range cert.OCSPServer {
 		ocspResponse, err := ta.ocspQuery(server, cert, issuer)
 		if err != nil {
 			ta.logger.Errorf("TLSAuth: error querying OCSP server %s: %s", server, err)
 			continue
 		}
+
 		switch ocspResponse.Status {
 		case ocsp.Good:
-			return false, nil
+			return false, true
 		case ocsp.Revoked:
-			return true, fmt.Errorf("client certificate is revoked by server %s", server)
+			ta.logger.Errorf("TLSAuth: client certificate is revoked by server %s", server)
+			return true, true
 		case ocsp.Unknown:
 			log.Debugf("unknow OCSP status for server %s", server)
 			continue
 		}
 	}
+
 	log.Infof("Could not get any valid OCSP response, assuming the cert is revoked")
-	return true, nil
+
+	return true, false
 }
 
-func (ta *TLSAuth) isCRLRevoked(cert *x509.Certificate) (bool, error) {
+// isCRLRevoked checks if the client certificate is revoked by the CRL present in the CrlPath.
+// It returns a boolean indicating if the certificate is revoked and a boolean indicating if the CRL check was successful and could be cached.
+func (ta *TLSAuth) isCRLRevoked(cert *x509.Certificate) (bool, bool) {
 	if ta.CrlPath == "" {
-		ta.logger.Warn("no crl_path, skipping CRL check")
-		return false, nil
+		ta.logger.Info("no crl_path, skipping CRL check")
+		return false, true
 	}
+
 	crlContent, err := os.ReadFile(ta.CrlPath)
 	if err != nil {
-		ta.logger.Warnf("could not read CRL file, skipping check: %s", err)
-		return false, nil
+		ta.logger.Errorf("could not read CRL file, skipping check: %s", err)
+		return false, false
 	}
-	crl, err := x509.ParseCRL(crlContent)
+
+	crlBinary, rest := pem.Decode(crlContent)
+	if len(rest) > 0 {
+		ta.logger.Warn("CRL file contains more than one PEM block, ignoring the rest")
+	}
+
+	crl, err := x509.ParseRevocationList(crlBinary.Bytes)
 	if err != nil {
-		ta.logger.Warnf("could not parse CRL file, skipping check: %s", err)
-		return false, nil
+		ta.logger.Errorf("could not parse CRL file, skipping check: %s", err)
+		return false, false
 	}
-	if crl.HasExpired(time.Now().UTC()) {
+
+	now := time.Now().UTC()
+
+	if now.After(crl.NextUpdate) {
 		ta.logger.Warn("CRL has expired, will still validate the cert against it.")
 	}
-	for _, revoked := range crl.TBSCertList.RevokedCertificates {
+
+	if now.Before(crl.ThisUpdate) {
+		ta.logger.Warn("CRL is not yet valid, will still validate the cert against it.")
+	}
+
+	for _, revoked := range crl.RevokedCertificateEntries {
 		if revoked.SerialNumber.Cmp(cert.SerialNumber) == 0 {
-			return true, fmt.Errorf("client certificate is revoked by CRL")
+			ta.logger.Warn("client certificate is revoked by CRL")
+			return true, true
 		}
 	}
-	return false, nil
+
+	return false, true
 }
 
 func (ta *TLSAuth) isRevoked(cert *x509.Certificate, issuer *x509.Certificate) (bool, error) {
 	sn := cert.SerialNumber.String()
-	if cacheValue, ok := ta.revokationCache[sn]; ok {
+	if cacheValue, ok := ta.revocationCache[sn]; ok {
 		if time.Now().UTC().Sub(cacheValue.timestamp) < ta.cacheExpiration {
-			ta.logger.Debugf("TLSAuth: using cached value for cert %s: %t | %s", sn, cacheValue.revoked, cacheValue.err)
-			return cacheValue.revoked, cacheValue.err
-		} else {
-			ta.logger.Debugf("TLSAuth: cached value expired, removing from cache")
-			delete(ta.revokationCache, sn)
+			ta.logger.Debugf("TLSAuth: using cached value for cert %s: %t", sn, cacheValue.revoked)
+			return cacheValue.revoked, nil
 		}
+
+		ta.logger.Debugf("TLSAuth: cached value expired, removing from cache")
+		delete(ta.revocationCache, sn)
 	} else {
 		ta.logger.Tracef("TLSAuth: no cached value for cert %s", sn)
 	}
-	revoked, err := ta.isOCSPRevoked(cert, issuer)
-	if err != nil {
-		ta.revokationCache[sn] = cacheEntry{
+
+	revokedByOCSP, cacheOCSP := ta.isOCSPRevoked(cert, issuer)
+
+	revokedByCRL, cacheCRL := ta.isCRLRevoked(cert)
+
+	revoked := revokedByOCSP || revokedByCRL
+
+	if cacheOCSP && cacheCRL {
+		ta.revocationCache[sn] = cacheEntry{
 			revoked:   revoked,
-			err:       err,
 			timestamp: time.Now().UTC(),
 		}
-		return true, err
 	}
-	if revoked {
-		ta.revokationCache[sn] = cacheEntry{
-			revoked:   revoked,
-			err:       err,
-			timestamp: time.Now().UTC(),
-		}
-		return true, nil
-	}
-	revoked, err = ta.isCRLRevoked(cert)
-	ta.revokationCache[sn] = cacheEntry{
-		revoked:   revoked,
-		err:       err,
-		timestamp: time.Now().UTC(),
-	}
-	return revoked, err
+
+	return revoked, nil
 }
 
 func (ta *TLSAuth) isInvalid(cert *x509.Certificate, issuer *x509.Certificate) (bool, error) {
 	if ta.isExpired(cert) {
 		return true, nil
 	}
+
 	revoked, err := ta.isRevoked(cert, issuer)
 	if err != nil {
 		//Fail securely, if we can't check the revocation status, let's consider the cert invalid
@@ -189,24 +217,30 @@ func (ta *TLSAuth) SetAllowedOu(allowedOus []string) error {
 		if ou == "" {
 			return fmt.Errorf("empty ou isn't allowed")
 		}
+
 		//drop & warn on duplicate ou
 		ok := true
+
 		for _, validOu := range ta.AllowedOUs {
 			if validOu == ou {
 				ta.logger.Warningf("dropping duplicate ou %s", ou)
+
 				ok = false
 			}
 		}
+
 		if ok {
 			ta.AllowedOUs = append(ta.AllowedOUs, ou)
 		}
 	}
+
 	return nil
 }
 
 func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 	//Checks cert validity, Returns true + CN if client cert matches requested OU
 	var clientCert *x509.Certificate
+
 	if c.Request.TLS == nil || len(c.Request.TLS.PeerCertificates) == 0 {
 		//do not error if it's not TLS or there are no peer certs
 		return false, "", nil
@@ -215,6 +249,7 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 	if len(c.Request.TLS.VerifiedChains) > 0 {
 		validOU := false
 		clientCert = c.Request.TLS.VerifiedChains[0][0]
+
 		for _, ou := range clientCert.Subject.OrganizationalUnit {
 			for _, allowedOu := range ta.AllowedOUs {
 				if allowedOu == ou {
@@ -223,34 +258,42 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 				}
 			}
 		}
+
 		if !validOU {
 			return false, "", fmt.Errorf("client certificate OU (%v) doesn't match expected OU (%v)",
 				clientCert.Subject.OrganizationalUnit, ta.AllowedOUs)
 		}
+
 		revoked, err := ta.isInvalid(clientCert, c.Request.TLS.VerifiedChains[0][1])
 		if err != nil {
 			ta.logger.Errorf("TLSAuth: error checking if client certificate is revoked: %s", err)
-			return false, "", fmt.Errorf("could not check for client certification revokation status: %w", err)
+			return false, "", fmt.Errorf("could not check for client certification revocation status: %w", err)
 		}
+
 		if revoked {
-			return false, "", fmt.Errorf("client certificate is revoked")
+			return false, "", fmt.Errorf("client certificate for CN=%s OU=%s is revoked", clientCert.Subject.CommonName, clientCert.Subject.OrganizationalUnit)
 		}
+
 		ta.logger.Debugf("client OU %v is allowed vs required OU %v", clientCert.Subject.OrganizationalUnit, ta.AllowedOUs)
+
 		return true, clientCert.Subject.CommonName, nil
 	}
+
 	return false, "", fmt.Errorf("no verified cert in request")
 }
 
 func NewTLSAuth(allowedOus []string, crlPath string, cacheExpiration time.Duration, logger *log.Entry) (*TLSAuth, error) {
 	ta := &TLSAuth{
-		revokationCache: map[string]cacheEntry{},
+		revocationCache: map[string]cacheEntry{},
 		cacheExpiration: cacheExpiration,
 		CrlPath:         crlPath,
 		logger:          logger,
 	}
+
 	err := ta.SetAllowedOu(allowedOus)
 	if err != nil {
 		return nil, err
 	}
+
 	return ta, nil
 }

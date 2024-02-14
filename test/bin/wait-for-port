@@ -1,42 +1,64 @@
-#!/usr/bin/env bash
+#!/usr/bin/env python3
 
-set -eu
+import argparse
+import os
+import socket
+import sys
+import time
 
-script_name=$0
+initial_interval = 0.02
+max_interval = 0.5
 
-die() {
-    echo >&2 "$@"
-    exit 1
-}
 
-about() {
-    die "usage: ${script_name} [-q] <port_number>"
-}
+def is_fd_open(fd):
+    try:
+        os.fstat(fd)
+        return True
+    except OSError:
+        return False
 
-[[ $# -lt 1 ]] && about
 
-QUIET=
-if [[ "$1" == "-q" ]]; then
-    QUIET=quiet
-    shift
-fi
+# write to file descriptor 3 if it is open (during bats tests), otherwise stderr
+def write_error(ex):
+    fd = 2
+    if is_fd_open(3):
+        fd = 3
+    os.write(fd, str(ex).encode())
 
-[[ $# -lt 1 ]] && about
 
-port_number=$1
+def wait(host, port, timeout):
+    t0 = time.perf_counter()
+    current_interval = initial_interval
+    while True:
+        try:
+            with socket.create_connection((host, port), timeout=timeout):
+                break
+        except OSError as ex:
+            if time.perf_counter() - t0 >= timeout:
+                raise TimeoutError(f'Timeout waiting for {host}:{port} after {timeout}s') from ex
+            time.sleep(current_interval)
+            current_interval = min(current_interval * 1.5, max_interval)
 
-# 4 seconds may seem long, but the tests must work on embedded, slow arm boxes too
-for _ in $(seq 40); do
-    nc -z localhost "${port_number}" >/dev/null 2>&1 && exit 0
-    sleep .1
-done
 
-# send to &3 if open
-if { true >&3; } 2>/dev/null; then
-    [[ -z "${QUIET}" ]] && echo "Can't connect to port ${port_number}" >&3
-else
-    [[ -z "${QUIET}" ]] && echo "Can't connect to port ${port_number}" >&2
-fi
+def main(argv):
+    parser = argparse.ArgumentParser(description="Check if a port is open.")
+    parser.add_argument("port", type=int, help="Port number to check")
+    parser.add_argument("--host", type=str, default="localhost", help="Host to check")
+    parser.add_argument("-t", "--timeout", type=float, default=10.0, help="Timeout duration in seconds")
+    parser.add_argument("-q", "--quiet", action="store_true", help="Enable quiet mode")
+    args = parser.parse_args(argv)
 
-exit 1
+    try:
+        wait(args.host, args.port, args.timeout)
+    except TimeoutError as ex:
+        if not args.quiet:
+            write_error(ex)
+        sys.exit(1)
+    else:
+        sys.exit(0)
 
+    sys.exit(1)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])

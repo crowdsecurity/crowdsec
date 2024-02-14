@@ -75,6 +75,9 @@ teardown() {
 
     rune -0 ./instance-crowdsec start-pid
     PID="$output"
+
+    sleep .5
+
     assert_file_exists "$log_old"
     assert_file_contains "$log_old" "Starting processing data"
 
@@ -84,7 +87,7 @@ teardown() {
 
     config_disable_agent
 
-    sleep 5
+    sleep 2
 
     rune -0 kill -HUP "$PID"
 
@@ -107,13 +110,13 @@ teardown() {
     assert_file_contains "$log_old" "Bucket routine exiting"
     assert_file_contains "$log_old" "serve: shutting down api server"
 
-    sleep 5
+    sleep 2
 
     assert_file_exists "$log_new"
 
     for ((i=0; i<10; i++)); do
         sleep 1
-        grep -q "Reload is finished" <"$log_old" && break
+        grep -q "Reload is finished" <"$log_new" && break
     done
 
     echo "waited $i seconds"
@@ -232,6 +235,8 @@ teardown() {
     ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
     config_set "$ACQUIS_YAML" 'del(.filenames)'
 
+    # if filenames are missing, it won't be able to detect source type
+    config_set "$ACQUIS_YAML" '.source="file"'
     rune -1 wait-for "${CROWDSEC}"
     assert_stderr --partial "failed to configure datasource file: no filename or filenames configuration provided"
 

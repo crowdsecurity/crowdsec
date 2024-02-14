@@ -2,20 +2,28 @@ package hubtest
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
-	"sort"
+	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
-func sortedMapKeys[V any](m map[string]V) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
+func IsAlive(target string) (bool, error) {
+	start := time.Now()
+	for {
+		conn, err := net.Dial("tcp", target)
+		if err == nil {
+			log.Debugf("'%s' is up after %s", target, time.Since(start))
+			conn.Close()
+			return true, nil
+		}
+		time.Sleep(500 * time.Millisecond)
+		if time.Since(start) > 10*time.Second {
+			return false, fmt.Errorf("took more than 10s for %s to be available", target)
+		}
 	}
-
-	sort.Strings(keys)
-
-	return keys
 }
 
 func Copy(src string, dst string) error {

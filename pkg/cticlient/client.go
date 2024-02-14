@@ -71,7 +71,7 @@ func (c *CrowdsecCTIClient) doRequest(method string, endpoint string, params map
 func (c *CrowdsecCTIClient) GetIPInfo(ip string) (*SmokeItem, error) {
 	body, err := c.doRequest(http.MethodGet, smokeEndpoint+"/"+ip, nil)
 	if err != nil {
-		if err == ErrNotFound {
+		if errors.Is(err, ErrNotFound) {
 			return &SmokeItem{}, nil
 		}
 		return nil, err

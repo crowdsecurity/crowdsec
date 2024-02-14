@@ -63,7 +63,6 @@ architectures.
  - `jq`
  - `nc`
  - `openssl`
- - `openbsd-netcat`
  - `python3`
 
 ## Running all tests

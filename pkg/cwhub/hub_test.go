@@ -12,14 +12,13 @@ import (
 
 func TestInitHubUpdate(t *testing.T) {
 	hub := envSetup(t)
-
 	remote := &RemoteHubCfg{
 		URLTemplate: mockURLTemplate,
 		Branch:      "master",
 		IndexPath:   ".index.json",
 	}
 
-	_, err := NewHub(hub.local, remote, true)
+	_, err := NewHub(hub.local, remote, true, nil)
 	require.NoError(t, err)
 }
 

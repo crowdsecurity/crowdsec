@@ -13,26 +13,32 @@ import (
 
 	"github.com/crowdsecurity/go-cs-lib/version"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
-const CAPIBaseURL string = "https://api.crowdsec.net/"
-const CAPIURLPrefix = "v3"
+const (
+	CAPIBaseURL   = "https://api.crowdsec.net/"
+	CAPIURLPrefix = "v3"
+)
 
-func NewCapiCmd() *cobra.Command {
-	var cmdCapi = &cobra.Command{
+type cliCapi struct{}
+
+func NewCLICapi() *cliCapi {
+	return &cliCapi{}
+}
+
+func (cli cliCapi) NewCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:               "capi [action]",
 		Short:             "Manage interaction with Central API (CAPI)",
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			if err := require.LAPI(csConfig); err != nil {
 				return err
 			}
@@ -45,22 +51,24 @@ func NewCapiCmd() *cobra.Command {
 		},
 	}
 
-	cmdCapi.AddCommand(NewCapiRegisterCmd())
-	cmdCapi.AddCommand(NewCapiStatusCmd())
+	cmd.AddCommand(cli.NewRegisterCmd())
+	cmd.AddCommand(cli.NewStatusCmd())
 
-	return cmdCapi
+	return cmd
 }
 
-func NewCapiRegisterCmd() *cobra.Command {
-	var capiUserPrefix string
-	var outputFile string
+func (cli cliCapi) NewRegisterCmd() *cobra.Command {
+	var (
+		capiUserPrefix string
+		outputFile string
+	)
 
-	var cmdCapiRegister = &cobra.Command{
+	var cmd = &cobra.Command{
 		Use:               "register",
 		Short:             "Register to Central API (CAPI)",
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			var err error
 			capiUser, err := generateID(capiUserPrefix)
 			if err != nil {
@@ -98,21 +106,18 @@ func NewCapiRegisterCmd() *cobra.Command {
 				Password: password.String(),
 				URL:      types.CAPIBaseURL,
 			}
-			if fflag.PapiClient.IsEnabled() {
-				apiCfg.PapiURL = types.PAPIBaseURL
-			}
 			apiConfigDump, err := yaml.Marshal(apiCfg)
 			if err != nil {
 				return fmt.Errorf("unable to marshal api credentials: %w", err)
 			}
 			if dumpFile != "" {
-				err = os.WriteFile(dumpFile, apiConfigDump, 0600)
+				err = os.WriteFile(dumpFile, apiConfigDump, 0o600)
 				if err != nil {
 					return fmt.Errorf("write api credentials in '%s' failed: %w", dumpFile, err)
 				}
 				log.Printf("Central API credentials written to '%s'", dumpFile)
 			} else {
-				fmt.Printf("%s\n", string(apiConfigDump))
+				fmt.Println(string(apiConfigDump))
 			}
 
 			log.Warning(ReloadMessage())
@@ -120,28 +125,26 @@ func NewCapiRegisterCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmdCapiRegister.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
-	cmdCapiRegister.Flags().StringVar(&capiUserPrefix, "schmilblick", "", "set a schmilblick (use in tests only)")
-	if err := cmdCapiRegister.Flags().MarkHidden("schmilblick"); err != nil {
+
+	cmd.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
+	cmd.Flags().StringVar(&capiUserPrefix, "schmilblick", "", "set a schmilblick (use in tests only)")
+
+	if err := cmd.Flags().MarkHidden("schmilblick"); err != nil {
 		log.Fatalf("failed to hide flag: %s", err)
 	}
 
-	return cmdCapiRegister
+	return cmd
 }
 
-func NewCapiStatusCmd() *cobra.Command {
-	var cmdCapiStatus = &cobra.Command{
+func (cli cliCapi) NewStatusCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "status",
 		Short:             "Check status with the Central API (CAPI)",
 		Args:              cobra.MinimumNArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if csConfig.API.Server.OnlineClient == nil {
-				return fmt.Errorf("please provide credentials for the Central API (CAPI) in '%s'", csConfig.API.Server.OnlineClient.CredentialsFilePath)
-			}
-
-			if csConfig.API.Server.OnlineClient.Credentials == nil {
-				return fmt.Errorf("no credentials for Central API (CAPI) in '%s'", csConfig.API.Server.OnlineClient.CredentialsFilePath)
+		RunE: func(_ *cobra.Command, _ []string) error {
+			if err := require.CAPIRegistered(csConfig); err != nil {
+				return err
 			}
 
 			password := strfmt.Password(csConfig.API.Server.OnlineClient.Credentials.Password)
@@ -151,7 +154,7 @@ func NewCapiStatusCmd() *cobra.Command {
 				return fmt.Errorf("parsing api url ('%s'): %w", csConfig.API.Server.OnlineClient.Credentials.URL, err)
 			}
 
-			hub, err := require.Hub(csConfig, nil)
+			hub, err := require.Hub(csConfig, nil, nil)
 			if err != nil {
 				return err
 			}
@@ -189,5 +192,5 @@ func NewCapiStatusCmd() *cobra.Command {
 		},
 	}
 
-	return cmdCapiStatus
+	return cmd
 }

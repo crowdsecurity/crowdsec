@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path"
+	"slices"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
-	"slices"
+	"github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 )
@@ -20,6 +21,7 @@ type Hub struct {
 	local    *csconfig.LocalHubCfg
 	remote   *RemoteHubCfg
 	Warnings []string // Warnings encountered during sync
+	logger   *logrus.Logger
 }
 
 // GetDataDir returns the data directory, where data sets are installed.
@@ -30,14 +32,20 @@ func (h *Hub) GetDataDir() string {
 // NewHub returns a new Hub instance with local and (optionally) remote configuration, and syncs the local state.
 // If updateIndex is true, the local index file is updated from the remote before reading the state of the items.
 // All download operations (including updateIndex) return ErrNilRemoteHub if the remote configuration is not set.
-func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, updateIndex bool) (*Hub, error) {
+func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, updateIndex bool, logger *logrus.Logger) (*Hub, error) {
 	if local == nil {
 		return nil, fmt.Errorf("no hub configuration found")
+	}
+
+	if logger == nil {
+		logger = logrus.New()
+		logger.SetOutput(io.Discard)
 	}
 
 	hub := &Hub{
 		local:  local,
 		remote: remote,
+		logger: logger,
 	}
 
 	if updateIndex {
@@ -46,7 +54,7 @@ func NewHub(local *csconfig.LocalHubCfg, remote *RemoteHubCfg, updateIndex bool)
 		}
 	}
 
-	log.Debugf("loading hub idx %s", local.HubIndexFile)
+	logger.Debugf("loading hub idx %s", local.HubIndexFile)
 
 	if err := hub.parseIndex(); err != nil {
 		return nil, fmt.Errorf("failed to load index: %w", err)
@@ -70,11 +78,11 @@ func (h *Hub) parseIndex() error {
 		return fmt.Errorf("failed to unmarshal index: %w", err)
 	}
 
-	log.Debugf("%d item types in hub index", len(ItemTypes))
+	h.logger.Debugf("%d item types in hub index", len(ItemTypes))
 
 	// Iterate over the different types to complete the struct
 	for _, itemType := range ItemTypes {
-		log.Tracef("%s: %d items", itemType, len(h.GetItemMap(itemType)))
+		h.logger.Tracef("%s: %d items", itemType, len(h.GetItemMap(itemType)))
 
 		for name, item := range h.GetItemMap(itemType) {
 			item.hub = h
@@ -89,6 +97,10 @@ func (h *Hub) parseIndex() error {
 			item.FileName = path.Base(item.RemotePath)
 
 			item.logMissingSubItems()
+
+			if item.latestHash() == "" {
+				h.logger.Errorf("invalid hub item %s: latest version missing from index", item.FQName())
+			}
 		}
 	}
 
@@ -145,10 +157,10 @@ func (h *Hub) updateIndex() error {
 	oldContent, err := os.ReadFile(h.local.HubIndexFile)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			log.Warningf("failed to read hub index: %s", err)
+			h.logger.Warningf("failed to read hub index: %s", err)
 		}
 	} else if bytes.Equal(body, oldContent) {
-		log.Info("hub index is up to date")
+		h.logger.Info("hub index is up to date")
 		return nil
 	}
 
@@ -156,7 +168,7 @@ func (h *Hub) updateIndex() error {
 		return fmt.Errorf("failed to write hub index: %w", err)
 	}
 
-	log.Infof("Wrote index to %s, %d bytes", h.local.HubIndexFile, len(body))
+	h.logger.Infof("Wrote index to %s, %d bytes", h.local.HubIndexFile, len(body))
 
 	return nil
 }
@@ -177,6 +189,28 @@ func (h *Hub) GetItemMap(itemType string) map[string]*Item {
 // GetItem returns an item from hub based on its type and full name (author/name).
 func (h *Hub) GetItem(itemType string, itemName string) *Item {
 	return h.GetItemMap(itemType)[itemName]
+}
+
+// GetItemFQ returns an item from hub based on its type and name (type:author/name).
+func (h *Hub) GetItemFQ(itemFQName string) (*Item, error) {
+	// type and name are separated by a colon
+	parts := strings.Split(itemFQName, ":")
+
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid item name %s", itemFQName)
+	}
+
+	m := h.GetItemMap(parts[0])
+	if m == nil {
+		return nil, fmt.Errorf("invalid item type %s", parts[0])
+	}
+
+	i := m[parts[1]]
+	if i == nil {
+		return nil, fmt.Errorf("item %s not found", parts[1])
+	}
+
+	return i, nil
 }
 
 // GetItemNames returns a slice of (full) item names for a given type

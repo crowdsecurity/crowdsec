@@ -4,18 +4,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"slices"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/enescakir/emoji"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
 	// managed item types.
-	COLLECTIONS   = "collections"
-	PARSERS       = "parsers"
-	POSTOVERFLOWS = "postoverflows"
-	SCENARIOS     = "scenarios"
+	COLLECTIONS    = "collections"
+	PARSERS        = "parsers"
+	POSTOVERFLOWS  = "postoverflows"
+	SCENARIOS      = "scenarios"
+	CONTEXTS       = "contexts"
+	APPSEC_CONFIGS = "appsec-configs"
+	APPSEC_RULES   = "appsec-rules"
 )
 
 const (
@@ -27,7 +30,7 @@ const (
 
 var (
 	// The order is important, as it is used to range over sub-items in collections.
-	ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, COLLECTIONS}
+	ItemTypes = []string{PARSERS, POSTOVERFLOWS, SCENARIOS, CONTEXTS, APPSEC_CONFIGS, APPSEC_RULES, COLLECTIONS}
 )
 
 type HubItems map[string]map[string]*Item
@@ -50,6 +53,7 @@ type ItemState struct {
 	Downloaded           bool     `json:"downloaded"`
 	UpToDate             bool     `json:"up_to_date"`
 	Tainted              bool     `json:"tainted"`
+	TaintedBy            []string `json:"tainted_by,omitempty" yaml:"tainted_by,omitempty"`
 	BelongsToCollections []string `json:"belongs_to_collections,omitempty" yaml:"belongs_to_collections,omitempty"`
 }
 
@@ -118,6 +122,9 @@ type Item struct {
 	PostOverflows []string `json:"postoverflows,omitempty" yaml:"postoverflows,omitempty"`
 	Scenarios     []string `json:"scenarios,omitempty" yaml:"scenarios,omitempty"`
 	Collections   []string `json:"collections,omitempty" yaml:"collections,omitempty"`
+	Contexts      []string `json:"contexts,omitempty" yaml:"contexts,omitempty"`
+	AppsecConfigs []string `json:"appsec-configs,omitempty"   yaml:"appsec-configs,omitempty"`
+	AppsecRules   []string `json:"appsec-rules,omitempty"   yaml:"appsec-rules,omitempty"`
 }
 
 // installPath returns the location of the symlink to the item in the hub, or the path of the item itself if it's local
@@ -227,6 +234,33 @@ func (i *Item) SubItems() []*Item {
 		sub = append(sub, s)
 	}
 
+	for _, name := range i.Contexts {
+		s := i.hub.GetItem(CONTEXTS, name)
+		if s == nil {
+			continue
+		}
+
+		sub = append(sub, s)
+	}
+
+	for _, name := range i.AppsecConfigs {
+		s := i.hub.GetItem(APPSEC_CONFIGS, name)
+		if s == nil {
+			continue
+		}
+
+		sub = append(sub, s)
+	}
+
+	for _, name := range i.AppsecRules {
+		s := i.hub.GetItem(APPSEC_RULES, name)
+		if s == nil {
+			continue
+		}
+
+		sub = append(sub, s)
+	}
+
 	for _, name := range i.Collections {
 		s := i.hub.GetItem(COLLECTIONS, name)
 		if s == nil {
@@ -246,25 +280,43 @@ func (i *Item) logMissingSubItems() {
 
 	for _, subName := range i.Parsers {
 		if i.hub.GetItem(PARSERS, subName) == nil {
-			log.Errorf("can't find %s in %s, required by %s", subName, PARSERS, i.Name)
+			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, PARSERS, i.Name)
 		}
 	}
 
 	for _, subName := range i.Scenarios {
 		if i.hub.GetItem(SCENARIOS, subName) == nil {
-			log.Errorf("can't find %s in %s, required by %s", subName, SCENARIOS, i.Name)
+			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, SCENARIOS, i.Name)
 		}
 	}
 
 	for _, subName := range i.PostOverflows {
 		if i.hub.GetItem(POSTOVERFLOWS, subName) == nil {
-			log.Errorf("can't find %s in %s, required by %s", subName, POSTOVERFLOWS, i.Name)
+			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, POSTOVERFLOWS, i.Name)
+		}
+	}
+
+	for _, subName := range i.Contexts {
+		if i.hub.GetItem(CONTEXTS, subName) == nil {
+			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, CONTEXTS, i.Name)
+		}
+	}
+
+	for _, subName := range i.AppsecConfigs {
+		if i.hub.GetItem(APPSEC_CONFIGS, subName) == nil {
+			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, APPSEC_CONFIGS, i.Name)
+		}
+	}
+
+	for _, subName := range i.AppsecRules {
+		if i.hub.GetItem(APPSEC_RULES, subName) == nil {
+			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, APPSEC_RULES, i.Name)
 		}
 	}
 
 	for _, subName := range i.Collections {
 		if i.hub.GetItem(COLLECTIONS, subName) == nil {
-			log.Errorf("can't find %s in %s, required by %s", subName, COLLECTIONS, i.Name)
+			i.hub.logger.Errorf("can't find %s in %s, required by %s", subName, COLLECTIONS, i.Name)
 		}
 	}
 }
@@ -354,4 +406,49 @@ func (i *Item) versionStatus() int {
 // fileName: the filename (ie. apache2-logs.yaml).
 func (i *Item) validPath(dirName, fileName string) bool {
 	return (dirName+"/"+fileName == i.Name+".yaml") || (dirName+"/"+fileName == i.Name+".yml")
+}
+
+// FQName returns the fully qualified name of the item (ie. parsers:crowdsecurity/apache2-logs).
+func (i *Item) FQName() string {
+	return fmt.Sprintf("%s:%s", i.Type, i.Name)
+}
+
+// addTaint marks the item as tainted, and propagates the taint to the ancestors.
+// sub: the sub-item that caused the taint. May be the item itself!
+func (i *Item) addTaint(sub *Item) {
+	i.State.Tainted = true
+	taintedBy := sub.FQName()
+
+	idx, ok := slices.BinarySearch(i.State.TaintedBy, taintedBy)
+	if ok {
+		return
+	}
+
+	// insert the taintedBy in the slice
+
+	i.State.TaintedBy = append(i.State.TaintedBy, "")
+
+	copy(i.State.TaintedBy[idx+1:], i.State.TaintedBy[idx:])
+
+	i.State.TaintedBy[idx] = taintedBy
+
+	i.hub.logger.Debugf("%s is tainted by %s", i.Name, taintedBy)
+
+	// propagate the taint to the ancestors
+
+	for _, ancestor := range i.Ancestors() {
+		ancestor.addTaint(sub)
+	}
+}
+
+// latestHash() returns the hash of the latest version of the item.
+// if it's missing, the index file has been manually modified or got corrupted.
+func (i *Item) latestHash() string {
+	for k, v := range i.Versions {
+		if k == i.Version {
+			return v.Digest
+		}
+	}
+
+	return ""
 }

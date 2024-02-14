@@ -30,7 +30,7 @@ teardown() {
 
 @test "capi_whitelists: file missing" {
     rune -0 wait-for \
-        --err "capi whitelist file '$CAPI_WHITELISTS_YAML' does not exist" \
+        --err "while opening capi whitelist file: open $CAPI_WHITELISTS_YAML: no such file or directory" \
         "${CROWDSEC}"
 }
 

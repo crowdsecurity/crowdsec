@@ -104,12 +104,12 @@ func CrowdsecCTI(params ...any) (any, error) {
 	ctiResp, err := ctiClient.GetIPInfo(ip)
 	ctiClient.Logger.Debugf("request for %s took %v", ip, time.Since(before))
 	if err != nil {
-		switch err {
-		case cticlient.ErrUnauthorized:
+		switch {
+		case errors.Is(err, cticlient.ErrUnauthorized):
 			CTIApiEnabled = false
 			ctiClient.Logger.Errorf("Invalid API key provided, disabling CTI API")
 			return &cticlient.SmokeItem{}, cticlient.ErrUnauthorized
-		case cticlient.ErrLimit:
+		case errors.Is(err, cticlient.ErrLimit):
 			CTIBackOffUntil = time.Now().Add(CTIBackOffDuration)
 			ctiClient.Logger.Errorf("CTI API is throttled, will try again in %s", CTIBackOffDuration)
 			return &cticlient.SmokeItem{}, cticlient.ErrLimit

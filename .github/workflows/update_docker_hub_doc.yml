@@ -1,4 +1,4 @@
-name: Update Docker Hub README
+name: (push-master) Update Docker Hub README
 
 on:
   push:
@@ -13,7 +13,7 @@ jobs:
     steps:
       -
         name: Check out the repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         if: ${{ github.repository_owner == 'crowdsecurity' }}
       -
         name: Update docker hub README

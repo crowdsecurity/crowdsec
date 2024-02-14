@@ -15,7 +15,7 @@ setup() {
     load "../lib/setup.sh"
     load "../lib/bats-file/load.bash"
     ./instance-data load
-    ./instance-crowdsec start
+    # don't run crowdsec here, not all tests require a running instance
 }
 
 teardown() {
@@ -115,14 +115,17 @@ teardown() {
     assert_output "&false"
 
     # complex type
-    rune -0 cscli config show --key Config.PluginConfig
+    rune -0 cscli config show --key Config.Prometheus
     assert_output - <<-EOT
-	&csconfig.PluginCfg{
-	  User: "nobody",
-	  Group: "nogroup",
+	&csconfig.PrometheusCfg{
+	  Enabled: true,
+	  Level: "full",
+	  ListenAddr: "127.0.0.1",
+	  ListenPort: 6060,
 	}
 	EOT
 }
+
 
 @test "cscli - required configuration paths" {
     config=$(cat "${CONFIG_YAML}")
@@ -204,6 +207,7 @@ teardown() {
 }
 
 @test "cscli lapi status" {
+    rune -0 ./instance-crowdsec start
     rune -0 cscli lapi status
 
     assert_stderr --partial "Loaded credentials from"
@@ -252,27 +256,21 @@ teardown() {
 
 @test "cscli - malformed LAPI url" {
     LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
-    config_set "${LOCAL_API_CREDENTIALS}" '.url="https://127.0.0.1:-80"'
+    config_set "${LOCAL_API_CREDENTIALS}" '.url="http://127.0.0.1:-80"'
 
-    rune -1 cscli lapi status
-    assert_stderr --partial 'parsing api url'
-    assert_stderr --partial 'invalid port \":-80\" after host'
-
-    rune -1 cscli alerts list
-    assert_stderr --partial 'parsing api url'
-    assert_stderr --partial 'invalid port \":-80\" after host'
-
-    rune -1 cscli decisions list
-    assert_stderr --partial 'parsing api url'
-    assert_stderr --partial 'invalid port \":-80\" after host'
+    rune -1 cscli lapi status -o json
+    rune -0 jq -r '.msg' <(stderr)
+    assert_output 'parsing api url: parse "http://127.0.0.1:-80/": invalid port ":-80" after host'
 }
 
-@test "cscli metrics" {
-    rune -0 cscli lapi status
-    rune -0 cscli metrics
-    assert_output --partial "Route"
-    assert_output --partial '/v1/watchers/login'
-    assert_output --partial "Local API Metrics:"
+@test "cscli - bad LAPI password" {
+    rune -0 ./instance-crowdsec start
+    LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
+    config_set "${LOCAL_API_CREDENTIALS}" '.password="meh"'
+
+    rune -1 cscli lapi status -o json
+    rune -0 jq -r '.msg' <(stderr)
+    assert_output 'failed to authenticate to Local API (LAPI): API error: incorrect Username or Password'
 }
 
 @test "'cscli completion' with or without configuration file" {
@@ -296,6 +294,7 @@ teardown() {
 }
 
 @test "cscli explain" {
+    rune -0 ./instance-crowdsec start
     line="Sep 19 18:33:22 scw-d95986 sshd[24347]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=1.2.3.4"
 
     rune -0 cscli parsers install crowdsecurity/syslog-logs
@@ -333,7 +332,7 @@ teardown() {
     cd "$BATS_TEST_TMPDIR"
     rune -1 cscli doc
     refute_output
-    assert_stderr --regexp 'Failed to generate cobra doc: open doc/.*: no such file or directory'
+    assert_stderr --regexp 'failed to generate cobra doc: open doc/.*: no such file or directory'
 
     mkdir -p doc
     rune -0 cscli doc

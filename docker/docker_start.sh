@@ -109,6 +109,8 @@ cscli_if_clean() {
     for obj in $objs; do
         if cscli "$itemtype" inspect "$obj" -o json | yq -e '.tainted // false' >/dev/null 2>&1; then
             echo "Object $itemtype/$obj is tainted, skipping"
+        elif cscli "$itemtype" inspect "$obj" -o json | yq -e '.local // false' >/dev/null 2>&1; then
+            echo "Object $itemtype/$obj is local, skipping"
         else
 #            # Too verbose? Only show errors if not in debug mode
 #            if [ "$DEBUG" != "true" ]; then
@@ -300,11 +302,14 @@ fi
 
 conf_set_if "$PLUGIN_DIR" '.config_paths.plugin_dir = strenv(PLUGIN_DIR)'
 
-## Install collections, parsers, scenarios & postoverflows
-cscli hub update
+## Install hub items
 
-cscli_if_clean collections upgrade crowdsecurity/linux
-cscli_if_clean parsers upgrade crowdsecurity/whitelists
+cscli hub update || true
+
+if isfalse "$NO_HUB_UPGRADE"; then
+    cscli hub upgrade || true
+fi
+
 cscli_if_clean parsers install crowdsecurity/docker-logs
 cscli_if_clean parsers install crowdsecurity/cri-logs
 
@@ -328,6 +333,21 @@ if [ "$POSTOVERFLOWS" != "" ]; then
     cscli_if_clean postoverflows install "$(difference "$POSTOVERFLOWS" "$DISABLE_POSTOVERFLOWS")"
 fi
 
+if [ "$CONTEXTS" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean contexts install "$(difference "$CONTEXTS" "$DISABLE_CONTEXTS")"
+fi
+
+if [ "$APPSEC_CONFIGS" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean appsec-configs install "$(difference "$APPSEC_CONFIGS" "$DISABLE_APPSEC_CONFIGS")"
+fi
+
+if [ "$APPSEC_RULES" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean appsec-rules install "$(difference "$APPSEC_RULES" "$DISABLE_APPSEC_RULES")"
+fi
+
 ## Remove collections, parsers, scenarios & postoverflows
 if [ "$DISABLE_COLLECTIONS" != "" ]; then
     # shellcheck disable=SC2086
@@ -349,6 +369,21 @@ if [ "$DISABLE_POSTOVERFLOWS" != "" ]; then
     cscli_if_clean postoverflows remove "$DISABLE_POSTOVERFLOWS" --force
 fi
 
+if [ "$DISABLE_CONTEXTS" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean contexts remove "$DISABLE_CONTEXTS" --force
+fi
+
+if [ "$DISABLE_APPSEC_CONFIGS" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean appsec-configs remove "$DISABLE_APPSEC_CONFIGS" --force
+fi
+
+if [ "$DISABLE_APPSEC_RULES" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean appsec-rules remove "$DISABLE_APPSEC_RULES" --force
+fi
+
 ## Register bouncers via env
 for BOUNCER in $(compgen -A variable | grep -i BOUNCER_KEY); do
     KEY=$(printf '%s' "${!BOUNCER}")
@@ -357,6 +392,11 @@ for BOUNCER in $(compgen -A variable | grep -i BOUNCER_KEY); do
         register_bouncer "$NAME" "$KEY"
     fi
 done
+
+if [ "$ENABLE_CONSOLE_MANAGEMENT" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli console enable console_management
+fi
 
 ## Register bouncers via secrets (Swarm only)
 shopt -s nullglob extglob

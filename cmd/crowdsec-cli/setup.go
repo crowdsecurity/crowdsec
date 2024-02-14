@@ -11,10 +11,9 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/setup"
-
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 // NewSetupCmd defines the "cscli setup" command.
@@ -305,7 +304,7 @@ func runSetupInstallHub(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("while reading file %s: %w", fromFile, err)
 	}
 
-	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig))
+	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig), log.StandardLogger())
 	if err != nil {
 		return err
 	}

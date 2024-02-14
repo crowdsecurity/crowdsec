@@ -4,13 +4,12 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/gin-gonic/gin"
+
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 )
 
-var (
-	bouncerContextKey = "bouncer_info"
-)
+const bouncerContextKey = "bouncer_info"
 
 func getBouncerFromContext(ctx *gin.Context) (*ent.Bouncer, error) {
 	bouncerInterface, exist := ctx.Get(bouncerContextKey)

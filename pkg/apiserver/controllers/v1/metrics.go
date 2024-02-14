@@ -35,8 +35,11 @@ var LapiBouncerHits = prometheus.NewCounterVec(
 	[]string{"bouncer", "route", "method"},
 )
 
-/* keep track of the number of calls (per bouncer) that lead to nil/non-nil responses.
-while it's not exact, it's a good way to know - when you have a rutpure bouncer - what is the rate of ok/ko answers you got from lapi*/
+/*
+	keep track of the number of calls (per bouncer) that lead to nil/non-nil responses.
+
+while it's not exact, it's a good way to know - when you have a rutpure bouncer - what is the rate of ok/ko answers you got from lapi
+*/
 var LapiNilDecisions = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_lapi_decisions_ko_total",
@@ -90,6 +93,7 @@ func PrometheusMachinesMiddleware() gin.HandlerFunc {
 					"method":  c.Request.Method}).Inc()
 			}
 		}
+
 		c.Next()
 	}
 }
@@ -103,6 +107,7 @@ func PrometheusBouncersMiddleware() gin.HandlerFunc {
 				"route":   c.Request.URL.Path,
 				"method":  c.Request.Method}).Inc()
 		}
+
 		c.Next()
 	}
 }
@@ -110,10 +115,12 @@ func PrometheusBouncersMiddleware() gin.HandlerFunc {
 func PrometheusMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		startTime := time.Now()
+
 		LapiRouteHits.With(prometheus.Labels{
 			"route":  c.Request.URL.Path,
 			"method": c.Request.Method}).Inc()
 		c.Next()
+
 		elapsed := time.Since(startTime)
 		LapiResponseTime.With(prometheus.Labels{"method": c.Request.Method, "endpoint": c.Request.URL.Path}).Observe(elapsed.Seconds())
 	}

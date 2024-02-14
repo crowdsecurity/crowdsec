@@ -18,10 +18,10 @@
 // in feature.yaml. Features cannot be disabled in the file.
 //
 // A feature flag can be deprecated or retired. A deprecated feature flag is
-// still accepted but a warning is logged. A retired feature flag is ignored
-// and an error is logged.
+// still accepted but a warning is logged (only if a deprecation message is provided).
+// A retired feature flag is ignored and an error is logged.
 //
-// A specific deprecation message is used to inform the user of the behavior
+// The message is inteded to inform the user of the behavior
 // that has been decided when the flag is/was finally retired.
 
 package fflag
@@ -176,7 +176,9 @@ func (fr *FeatureRegister) SetFromEnv(logger *logrus.Logger) error {
 			logger.Errorf("Ignored envvar '%s': %s. %s", varName, err, feat.DeprecationMsg)
 			continue
 		case errors.Is(err, ErrFeatureDeprecated):
-			logger.Warningf("Envvar '%s': %s. %s", varName, err, feat.DeprecationMsg)
+			if feat.DeprecationMsg != "" {
+				logger.Warningf("Envvar '%s': %s. %s", varName, err, feat.DeprecationMsg)
+			}
 		case err != nil:
 			return err
 		}

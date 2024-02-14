@@ -1,12 +1,13 @@
 # vim: set ft=dockerfile:
-ARG GOVERSION=1.21.4
+FROM golang:1.21.7-alpine3.18 AS build
 
-FROM golang:${GOVERSION}-alpine AS build
+ARG BUILD_VERSION
 
 WORKDIR /go/src/crowdsec
 
 # We like to choose the release of re2 to use, and Alpine does not ship a static version anyway.
 ENV RE2_VERSION=2023-03-01
+ENV BUILD_VERSION=${BUILD_VERSION}
 
 # wizard.sh requires GNU coreutils
 RUN apk add --no-cache git g++ gcc libc-dev make bash gettext binutils-gold coreutils pkgconfig && \
@@ -15,7 +16,7 @@ RUN apk add --no-cache git g++ gcc libc-dev make bash gettext binutils-gold core
     cd re2-${RE2_VERSION} && \
     make install && \
     echo "githubciXXXXXXXXXXXXXXXXXXXXXXXX" > /etc/machine-id && \
-    go install github.com/mikefarah/yq/v4@v4.34.1
+    go install github.com/mikefarah/yq/v4@v4.40.4
 
 COPY . .
 
@@ -38,25 +39,26 @@ RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/co
     mkdir -p /staging/var/lib/crowdsec && \
     mkdir -p /var/lib/crowdsec/data
 
-COPY --from=build /go/bin/yq /usr/local/bin/yq
+COPY --from=build /go/bin/yq /usr/local/bin/crowdsec /usr/local/bin/cscli /usr/local/bin/
 COPY --from=build /etc/crowdsec /staging/etc/crowdsec
-COPY --from=build /usr/local/bin/crowdsec /usr/local/bin/crowdsec
-COPY --from=build /usr/local/bin/cscli /usr/local/bin/cscli
 COPY --from=build /go/src/crowdsec/docker/docker_start.sh /
 COPY --from=build /go/src/crowdsec/docker/config.yaml /staging/etc/crowdsec/config.yaml
 RUN yq -n '.url="http://0.0.0.0:8080"' | install -m 0600 /dev/stdin /staging/etc/crowdsec/local_api_credentials.yaml
 
-ENTRYPOINT /bin/bash docker_start.sh
+ENTRYPOINT /bin/bash /docker_start.sh
 
 FROM slim as plugins
 
 # Due to the wizard using cp -n, we have to copy the config files directly from the source as -n does not exist in busybox cp
 # The files are here for reference, as users will need to mount a new version to be actually able to use notifications
-COPY --from=build /go/src/crowdsec/cmd/notification-email/email.yaml /staging/etc/crowdsec/notifications/email.yaml
-COPY --from=build /go/src/crowdsec/cmd/notification-http/http.yaml /staging/etc/crowdsec/notifications/http.yaml
-COPY --from=build /go/src/crowdsec/cmd/notification-slack/slack.yaml /staging/etc/crowdsec/notifications/slack.yaml
-COPY --from=build /go/src/crowdsec/cmd/notification-splunk/splunk.yaml /staging/etc/crowdsec/notifications/splunk.yaml
-COPY --from=build /go/src/crowdsec/cmd/notification-sentinel/sentinel.yaml /staging/etc/crowdsec/notifications/sentinel.yaml
+COPY --from=build \
+    /go/src/crowdsec/cmd/notification-email/email.yaml \
+    /go/src/crowdsec/cmd/notification-http/http.yaml \
+    /go/src/crowdsec/cmd/notification-slack/slack.yaml \
+    /go/src/crowdsec/cmd/notification-splunk/splunk.yaml \
+    /go/src/crowdsec/cmd/notification-sentinel/sentinel.yaml \
+    /staging/etc/crowdsec/notifications/
+
 COPY --from=build /usr/local/lib/crowdsec/plugins /usr/local/lib/crowdsec/plugins
 
 FROM slim as geoip

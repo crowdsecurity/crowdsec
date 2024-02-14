@@ -36,6 +36,7 @@ import (
 
 func getDBClient(t *testing.T) *database.Client {
 	t.Helper()
+
 	dbPath, err := os.CreateTemp("", "*sqlite")
 	require.NoError(t, err)
 	dbClient, err := database.NewClient(&csconfig.DatabaseCfg{
@@ -44,12 +45,14 @@ func getDBClient(t *testing.T) *database.Client {
 		DbPath: dbPath.Name(),
 	})
 	require.NoError(t, err)
+
 	return dbClient
 }
 
 func getAPIC(t *testing.T) *apic {
 	t.Helper()
 	dbClient := getDBClient(t)
+
 	return &apic{
 		AlertsAddChan: make(chan []*models.Alert),
 		//DecisionDeleteChan: make(chan []*models.Decision),
@@ -70,10 +73,12 @@ func getAPIC(t *testing.T) *apic {
 	}
 }
 
-func absDiff(a int, b int) (c int) {
-	if c = a - b; c < 0 {
+func absDiff(a int, b int) int {
+	c := a - b
+	if c < 0 {
 		return -1 * c
 	}
+
 	return c
 }
 
@@ -94,6 +99,7 @@ func jsonMarshalX(v interface{}) []byte {
 	if err != nil {
 		panic(err)
 	}
+
 	return data
 }
 
@@ -176,12 +182,12 @@ func TestAPICFetchScenariosListFromDB(t *testing.T) {
 
 			assert.ElementsMatch(t, tc.expectedScenarios, scenarios)
 		})
-
 	}
 }
 
 func TestNewAPIC(t *testing.T) {
 	var testConfig *csconfig.OnlineApiClientCfg
+
 	setConfig := func() {
 		testConfig = &csconfig.OnlineApiClientCfg{
 			Credentials: &csconfig.ApiCredentialsCfg{
@@ -196,6 +202,7 @@ func TestNewAPIC(t *testing.T) {
 		dbClient      *database.Client
 		consoleConfig *csconfig.ConsoleConfig
 	}
+
 	tests := []struct {
 		name        string
 		args        args
@@ -220,6 +227,7 @@ func TestNewAPIC(t *testing.T) {
 			expectedErr: "first path segment in URL cannot contain colon",
 		},
 	}
+
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
@@ -274,7 +282,7 @@ func TestAPICHandleDeletedDecisions(t *testing.T) {
 		Scope:    ptr.Of("IP"),
 	}}, deleteCounters)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, 2, nbDeleted)
 	assert.Equal(t, 2, deleteCounters[types.CAPIOrigin]["all"])
 }
@@ -338,6 +346,7 @@ func TestAPICGetMetrics(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
@@ -369,7 +378,6 @@ func TestAPICGetMetrics(t *testing.T) {
 
 			assert.Equal(t, tc.expectedMetric.Bouncers, foundMetrics.Bouncers)
 			assert.Equal(t, tc.expectedMetric.Machines, foundMetrics.Machines)
-
 		})
 	}
 }
@@ -394,9 +402,11 @@ func TestCreateAlertsForDecision(t *testing.T) {
 		Origin:   ptr.Of(types.CAPIOrigin),
 		Scenario: ptr.Of("crowdsecurity/ssh-bf"),
 	}
+
 	type args struct {
 		decisions []*models.Decision
 	}
+
 	tests := []struct {
 		name string
 		args args
@@ -443,6 +453,7 @@ func TestCreateAlertsForDecision(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
@@ -477,10 +488,12 @@ func TestFillAlertsWithDecisions(t *testing.T) {
 		Scenario: ptr.Of("crowdsecurity/ssh-bf"),
 		Scope:    ptr.Of("ip"),
 	}
+
 	type args struct {
 		alerts    []*models.Alert
 		decisions []*models.Decision
 	}
+
 	tests := []struct {
 		name string
 		args args
@@ -520,6 +533,7 @@ func TestFillAlertsWithDecisions(t *testing.T) {
 			},
 		},
 	}
+
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
@@ -535,24 +549,18 @@ func TestAPICWhitelists(t *testing.T) {
 	api := getAPIC(t)
 	//one whitelist on IP, one on CIDR
 	api.whitelists = &csconfig.CapiWhitelist{}
-	ipwl1 := "9.2.3.4"
-	ip := net.ParseIP(ipwl1)
-	api.whitelists.Ips = append(api.whitelists.Ips, ip)
-	ipwl1 = "7.2.3.4"
-	ip = net.ParseIP(ipwl1)
-	api.whitelists.Ips = append(api.whitelists.Ips, ip)
-	cidrwl1 := "13.2.3.0/24"
-	_, tnet, err := net.ParseCIDR(cidrwl1)
-	if err != nil {
-		t.Fatalf("unable to parse cidr : %s", err)
-	}
+	api.whitelists.Ips = append(api.whitelists.Ips, net.ParseIP("9.2.3.4"), net.ParseIP("7.2.3.4"))
+
+	_, tnet, err := net.ParseCIDR("13.2.3.0/24")
+	require.NoError(t, err)
+
 	api.whitelists.Cidrs = append(api.whitelists.Cidrs, tnet)
-	cidrwl1 = "11.2.3.0/24"
-	_, tnet, err = net.ParseCIDR(cidrwl1)
-	if err != nil {
-		t.Fatalf("unable to parse cidr : %s", err)
-	}
+
+	_, tnet, err = net.ParseCIDR("11.2.3.0/24")
+	require.NoError(t, err)
+
 	api.whitelists.Cidrs = append(api.whitelists.Cidrs, tnet)
+
 	api.dbClient.Ent.Decision.Create().
 		SetOrigin(types.CAPIOrigin).
 		SetType("ban").
@@ -564,6 +572,7 @@ func TestAPICWhitelists(t *testing.T) {
 	assertTotalDecisionCount(t, api.dbClient, 1)
 	assertTotalValidDecisionCount(t, api.dbClient, 1)
 	httpmock.Activate()
+
 	defer httpmock.DeactivateAndReset()
 	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/api/decisions/stream", httpmock.NewBytesResponder(
 		200, jsonMarshalX(
@@ -651,12 +660,15 @@ func TestAPICWhitelists(t *testing.T) {
 			},
 		),
 	))
+
 	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/blocklist1", httpmock.NewStringResponder(
 		200, "1.2.3.6",
 	))
+
 	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/blocklist2", httpmock.NewStringResponder(
 		200, "1.2.3.7",
 	))
+
 	url, err := url.ParseRequestURI("http://api.crowdsec.net/")
 	require.NoError(t, err)
 
@@ -681,33 +693,39 @@ func TestAPICWhitelists(t *testing.T) {
 		AllX(context.Background())
 
 	decisionScenarioFreq := make(map[string]int)
-	decisionIp := make(map[string]int)
+	decisionIP := make(map[string]int)
 
 	alertScenario := make(map[string]int)
 
 	for _, alert := range alerts {
 		alertScenario[alert.SourceScope]++
 	}
-	assert.Equal(t, 3, len(alertScenario))
+
+	assert.Len(t, alertScenario, 3)
 	assert.Equal(t, 1, alertScenario[types.CommunityBlocklistPullSourceScope])
 	assert.Equal(t, 1, alertScenario["lists:blocklist1"])
 	assert.Equal(t, 1, alertScenario["lists:blocklist2"])
 
 	for _, decisions := range validDecisions {
 		decisionScenarioFreq[decisions.Scenario]++
-		decisionIp[decisions.Value]++
+		decisionIP[decisions.Value]++
 	}
-	assert.Equal(t, 1, decisionIp["2.2.3.4"], 1)
-	assert.Equal(t, 1, decisionIp["6.2.3.4"], 1)
-	if _, ok := decisionIp["13.2.3.4"]; ok {
+
+	assert.Equal(t, 1, decisionIP["2.2.3.4"], 1)
+	assert.Equal(t, 1, decisionIP["6.2.3.4"], 1)
+
+	if _, ok := decisionIP["13.2.3.4"]; ok {
 		t.Errorf("13.2.3.4 is whitelisted")
 	}
-	if _, ok := decisionIp["13.2.3.5"]; ok {
+
+	if _, ok := decisionIP["13.2.3.5"]; ok {
 		t.Errorf("13.2.3.5 is whitelisted")
 	}
-	if _, ok := decisionIp["9.2.3.4"]; ok {
+
+	if _, ok := decisionIP["9.2.3.4"]; ok {
 		t.Errorf("9.2.3.4 is whitelisted")
 	}
+
 	assert.Equal(t, 1, decisionScenarioFreq["blocklist1"], 1)
 	assert.Equal(t, 1, decisionScenarioFreq["blocklist2"], 1)
 	assert.Equal(t, 2, decisionScenarioFreq["crowdsecurity/test1"], 2)
@@ -726,6 +744,7 @@ func TestAPICPullTop(t *testing.T) {
 	assertTotalDecisionCount(t, api.dbClient, 1)
 	assertTotalValidDecisionCount(t, api.dbClient, 1)
 	httpmock.Activate()
+
 	defer httpmock.DeactivateAndReset()
 	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/api/decisions/stream", httpmock.NewBytesResponder(
 		200, jsonMarshalX(
@@ -782,12 +801,15 @@ func TestAPICPullTop(t *testing.T) {
 			},
 		),
 	))
+
 	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/blocklist1", httpmock.NewStringResponder(
 		200, "1.2.3.6",
 	))
+
 	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/blocklist2", httpmock.NewStringResponder(
 		200, "1.2.3.7",
 	))
+
 	url, err := url.ParseRequestURI("http://api.crowdsec.net/")
 	require.NoError(t, err)
 
@@ -809,7 +831,8 @@ func TestAPICPullTop(t *testing.T) {
 	alerts := api.dbClient.Ent.Alert.Query().AllX(context.Background())
 	validDecisions := api.dbClient.Ent.Decision.Query().Where(
 		decision.UntilGT(time.Now())).
-		AllX(context.Background())
+		AllX(context.Background(),
+	)
 
 	decisionScenarioFreq := make(map[string]int)
 	alertScenario := make(map[string]int)
@@ -817,7 +840,8 @@ func TestAPICPullTop(t *testing.T) {
 	for _, alert := range alerts {
 		alertScenario[alert.SourceScope]++
 	}
-	assert.Equal(t, 3, len(alertScenario))
+
+	assert.Len(t, alertScenario, 3)
 	assert.Equal(t, 1, alertScenario[types.CommunityBlocklistPullSourceScope])
 	assert.Equal(t, 1, alertScenario["lists:blocklist1"])
 	assert.Equal(t, 1, alertScenario["lists:blocklist2"])
@@ -835,8 +859,10 @@ func TestAPICPullTop(t *testing.T) {
 func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 	// no decision in db, no last modified parameter.
 	api := getAPIC(t)
+
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
+
 	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/api/decisions/stream", httpmock.NewBytesResponder(
 		200, jsonMarshalX(
 			modelscapi.GetDecisionsStreamResponse{
@@ -866,10 +892,12 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 			},
 		),
 	))
+
 	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/blocklist1", func(req *http.Request) (*http.Response, error) {
 		assert.Equal(t, "", req.Header.Get("If-Modified-Since"))
 		return httpmock.NewStringResponse(200, "1.2.3.4"), nil
 	})
+
 	url, err := url.ParseRequestURI("http://api.crowdsec.net/")
 	require.NoError(t, err)
 
@@ -895,6 +923,7 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 		assert.NotEqual(t, "", req.Header.Get("If-Modified-Since"))
 		return httpmock.NewStringResponse(304, ""), nil
 	})
+
 	err = api.PullTop(false)
 	require.NoError(t, err)
 	secondLastPullTimestamp, err := api.dbClient.GetConfigItem(blocklistConfigItemName)
@@ -904,8 +933,10 @@ func TestAPICPullTopBLCacheFirstCall(t *testing.T) {
 
 func TestAPICPullTopBLCacheForceCall(t *testing.T) {
 	api := getAPIC(t)
+
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
+
 	// create a decision about to expire. It should force fetch
 	alertInstance := api.dbClient.Ent.Alert.
 		Create().
@@ -953,10 +984,12 @@ func TestAPICPullTopBLCacheForceCall(t *testing.T) {
 			},
 		),
 	))
+
 	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/blocklist1", func(req *http.Request) (*http.Response, error) {
 		assert.Equal(t, "", req.Header.Get("If-Modified-Since"))
 		return httpmock.NewStringResponse(304, ""), nil
 	})
+
 	url, err := url.ParseRequestURI("http://api.crowdsec.net/")
 	require.NoError(t, err)
 
@@ -975,6 +1008,7 @@ func TestAPICPullTopBLCacheForceCall(t *testing.T) {
 
 func TestAPICPullBlocklistCall(t *testing.T) {
 	api := getAPIC(t)
+
 	httpmock.Activate()
 	defer httpmock.DeactivateAndReset()
 
@@ -982,6 +1016,7 @@ func TestAPICPullBlocklistCall(t *testing.T) {
 		assert.Equal(t, "", req.Header.Get("If-Modified-Since"))
 		return httpmock.NewStringResponse(200, "1.2.3.4"), nil
 	})
+
 	url, err := url.ParseRequestURI("http://api.crowdsec.net/")
 	require.NoError(t, err)
 
@@ -1050,6 +1085,7 @@ func TestAPICPush(t *testing.T) {
 						Source:          &models.Source{},
 					}
 				}
+
 				return alerts
 			}(),
 		},
