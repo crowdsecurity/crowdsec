@@ -9,36 +9,36 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-func (t *HubTestItem) installPostoverflowItem(hubPostOverflow *cwhub.Item) error {
-	postoverflowSource, err := filepath.Abs(filepath.Join(t.HubPath, hubPostOverflow.RemotePath))
+func (t *HubTestItem) installPostoverflowItem(item *cwhub.Item) error {
+	sourcePath, err := filepath.Abs(filepath.Join(t.HubPath, item.RemotePath))
 	if err != nil {
-		return fmt.Errorf("can't get absolute path of '%s': %w", postoverflowSource, err)
+		return fmt.Errorf("can't get absolute path of '%s': %w", sourcePath, err)
 	}
 
-	postoverflowFileName := filepath.Base(postoverflowSource)
+	sourceFilename := filepath.Base(sourcePath)
 
 	// runtime/hub/postoverflows/s00-enrich/crowdsecurity/
-	hubDirPostoverflowDest := filepath.Join(t.RuntimeHubPath, filepath.Dir(hubPostOverflow.RemotePath))
+	hubDirPostoverflowDest := filepath.Join(t.RuntimeHubPath, filepath.Dir(item.RemotePath))
 
 	// runtime/postoverflows/s00-enrich
-	postoverflowDirDest := fmt.Sprintf("%s/postoverflows/%s/", t.RuntimePath, hubPostOverflow.Stage)
+	itemTypeDirDest := fmt.Sprintf("%s/postoverflows/%s/", t.RuntimePath, item.Stage)
 
 	if err := os.MkdirAll(hubDirPostoverflowDest, os.ModePerm); err != nil {
 		return fmt.Errorf("unable to create folder '%s': %w", hubDirPostoverflowDest, err)
 	}
 
-	if err := os.MkdirAll(postoverflowDirDest, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %w", postoverflowDirDest, err)
+	if err := os.MkdirAll(itemTypeDirDest, os.ModePerm); err != nil {
+		return fmt.Errorf("unable to create folder '%s': %w", itemTypeDirDest, err)
 	}
 
 	// runtime/hub/postoverflows/s00-enrich/crowdsecurity/rdns.yaml
-	hubDirPostoverflowPath := filepath.Join(hubDirPostoverflowDest, postoverflowFileName)
-	if err := Copy(postoverflowSource, hubDirPostoverflowPath); err != nil {
-		return fmt.Errorf("unable to copy '%s' to '%s': %w", postoverflowSource, hubDirPostoverflowPath, err)
+	hubDirPostoverflowPath := filepath.Join(hubDirPostoverflowDest, sourceFilename)
+	if err := Copy(sourcePath, hubDirPostoverflowPath); err != nil {
+		return fmt.Errorf("unable to copy '%s' to '%s': %w", sourcePath, hubDirPostoverflowPath, err)
 	}
 
 	// runtime/postoverflows/s00-enrich/rdns.yaml
-	postoverflowDirParserPath := filepath.Join(postoverflowDirDest, postoverflowFileName)
+	postoverflowDirParserPath := filepath.Join(itemTypeDirDest, sourceFilename)
 	if err := os.Symlink(hubDirPostoverflowPath, postoverflowDirParserPath); err != nil {
 		if !os.IsExist(err) {
 			return fmt.Errorf("unable to symlink postoverflow '%s' to '%s': %w", hubDirPostoverflowPath, postoverflowDirParserPath, err)
@@ -66,12 +66,12 @@ func (t *HubTestItem) installPostoverflowCustomFrom(postoverflow string, customP
 		return false, fmt.Errorf("stage '%s' from extracted '%s' doesn't exist in the hub", customPostoverflowStage, hubStagePath)
 	}
 
-	postoverflowDirDest := fmt.Sprintf("%s/postoverflows/%s/", t.RuntimePath, customPostoverflowStage)
-	if err := os.MkdirAll(postoverflowDirDest, os.ModePerm); err != nil {
-		return false, fmt.Errorf("unable to create folder '%s': %w", postoverflowDirDest, err)
+	stageDirDest := fmt.Sprintf("%s/postoverflows/%s/", t.RuntimePath, customPostoverflowStage)
+	if err := os.MkdirAll(stageDirDest, os.ModePerm); err != nil {
+		return false, fmt.Errorf("unable to create folder '%s': %w", stageDirDest, err)
 	}
 
-	customPostoverflowDest := filepath.Join(postoverflowDirDest, customPostoverflowName)
+	customPostoverflowDest := filepath.Join(stageDirDest, customPostoverflowName)
 	// if path to postoverflow exist, copy it
 	if err := Copy(customPostOverflowPath, customPostoverflowDest); err != nil {
 		return false, fmt.Errorf("unable to copy custom parser '%s' to '%s': %w", customPostOverflowPath, customPostoverflowDest, err)
