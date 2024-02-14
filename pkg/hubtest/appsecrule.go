@@ -14,7 +14,7 @@ import (
 func (t *HubTestItem) installAppsecRuleItem(hubAppsecRule *cwhub.Item) error {
 	appsecRuleSource, err := filepath.Abs(filepath.Join(t.HubPath, hubAppsecRule.RemotePath))
 	if err != nil {
-		return fmt.Errorf("can't get absolute path of '%s': %s", appsecRuleSource, err)
+		return fmt.Errorf("can't get absolute path of '%s': %w", appsecRuleSource, err)
 	}
 
 	appsecRuleFilename := filepath.Base(appsecRuleSource)
@@ -26,24 +26,24 @@ func (t *HubTestItem) installAppsecRuleItem(hubAppsecRule *cwhub.Item) error {
 	appsecRuleDirDest := fmt.Sprintf("%s/appsec-rules/", t.RuntimePath)
 
 	if err := os.MkdirAll(hubDirAppsecRuleDest, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %s", hubDirAppsecRuleDest, err)
+		return fmt.Errorf("unable to create folder '%s': %w", hubDirAppsecRuleDest, err)
 	}
 
 	if err := os.MkdirAll(appsecRuleDirDest, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %s", appsecRuleDirDest, err)
+		return fmt.Errorf("unable to create folder '%s': %w", appsecRuleDirDest, err)
 	}
 
 	// runtime/hub/appsec-rules/crowdsecurity/rule.yaml
 	hubDirAppsecRulePath := filepath.Join(appsecRuleDirDest, appsecRuleFilename)
 	if err := Copy(appsecRuleSource, hubDirAppsecRulePath); err != nil {
-		return fmt.Errorf("unable to copy '%s' to '%s': %s", appsecRuleSource, hubDirAppsecRulePath, err)
+		return fmt.Errorf("unable to copy '%s' to '%s': %w", appsecRuleSource, hubDirAppsecRulePath, err)
 	}
 
 	// runtime/appsec-rules/rule.yaml
 	appsecRulePath := filepath.Join(appsecRuleDirDest, appsecRuleFilename)
 	if err := os.Symlink(hubDirAppsecRulePath, appsecRulePath); err != nil {
 		if !os.IsExist(err) {
-			return fmt.Errorf("unable to symlink appsec-rule '%s' to '%s': %s", hubDirAppsecRulePath, appsecRulePath, err)
+			return fmt.Errorf("unable to symlink appsec-rule '%s' to '%s': %w", hubDirAppsecRulePath, appsecRulePath, err)
 		}
 	}
 
@@ -56,24 +56,23 @@ func (t *HubTestItem) installAppsecRuleCustomFrom(appsecrule string, customPath 
 	if _, err := os.Stat(customAppsecRulePath); os.IsNotExist(err) {
 		return false, nil
 	}
+
 	customAppsecRulePathSplit := strings.Split(customAppsecRulePath, "/")
 	customAppsecRuleName := customAppsecRulePathSplit[len(customAppsecRulePathSplit)-1]
 
 	appsecRuleDirDest := fmt.Sprintf("%s/appsec-rules/", t.RuntimePath)
 	if err := os.MkdirAll(appsecRuleDirDest, os.ModePerm); err != nil {
-		return false, fmt.Errorf("unable to create folder '%s': %s", appsecRuleDirDest, err)
+		return false, fmt.Errorf("unable to create folder '%s': %w", appsecRuleDirDest, err)
 	}
 
-	// runtime/appsec-rules/
 	customAppsecRuleDest := fmt.Sprintf("%s/appsec-rules/%s", t.RuntimePath, customAppsecRuleName)
 	// if path to postoverflow exist, copy it
 	if err := Copy(customAppsecRulePath, customAppsecRuleDest); err != nil {
-		return false, fmt.Errorf("unable to copy appsec-rule from '%s' to '%s': %s", customAppsecRulePath, customAppsecRuleDest, err)
+		return false, fmt.Errorf("unable to copy appsec-rule from '%s' to '%s': %w", customAppsecRulePath, customAppsecRuleDest, err)
 	}
 
 	return true, nil
 }
-
 
 func (t *HubTestItem) installAppsecRuleCustom(appsecrule string) error {
 	for _, customPath := range t.CustomItemsLocation {

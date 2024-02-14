@@ -12,7 +12,7 @@ import (
 func (t *HubTestItem) installParserItem(hubParser *cwhub.Item) error {
 	parserSource, err := filepath.Abs(filepath.Join(t.HubPath, hubParser.RemotePath))
 	if err != nil {
-		return fmt.Errorf("can't get absolute path of '%s': %s", parserSource, err)
+		return fmt.Errorf("can't get absolute path of '%s': %w", parserSource, err)
 	}
 
 	parserFileName := filepath.Base(parserSource)
@@ -24,24 +24,24 @@ func (t *HubTestItem) installParserItem(hubParser *cwhub.Item) error {
 	parserDirDest := fmt.Sprintf("%s/parsers/%s/", t.RuntimePath, hubParser.Stage)
 
 	if err := os.MkdirAll(hubDirParserDest, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %s", hubDirParserDest, err)
+		return fmt.Errorf("unable to create folder '%s': %w", hubDirParserDest, err)
 	}
 
 	if err := os.MkdirAll(parserDirDest, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %s", parserDirDest, err)
+		return fmt.Errorf("unable to create folder '%s': %w", parserDirDest, err)
 	}
 
 	// runtime/hub/parsers/s00-raw/crowdsecurity/syslog-logs.yaml
 	hubDirParserPath := filepath.Join(hubDirParserDest, parserFileName)
 	if err := Copy(parserSource, hubDirParserPath); err != nil {
-		return fmt.Errorf("unable to copy '%s' to '%s': %s", parserSource, hubDirParserPath, err)
+		return fmt.Errorf("unable to copy '%s' to '%s': %w", parserSource, hubDirParserPath, err)
 	}
 
 	// runtime/parsers/s00-raw/syslog-logs.yaml
 	parserDirParserPath := filepath.Join(parserDirDest, parserFileName)
 	if err := os.Symlink(hubDirParserPath, parserDirParserPath); err != nil {
 		if !os.IsExist(err) {
-			return fmt.Errorf("unable to symlink parser '%s' to '%s': %s", hubDirParserPath, parserDirParserPath, err)
+			return fmt.Errorf("unable to symlink parser '%s' to '%s': %w", hubDirParserPath, parserDirParserPath, err)
 		}
 	}
 
@@ -57,25 +57,24 @@ func (t *HubTestItem) installParserCustomFrom(parser string, customPath string) 
 
 	customParserPathSplit, customParserName := filepath.Split(customParserPath)
 	// because path is parsers/<stage>/<author>/parser.yaml and we wan't the stage
-	splittedPath := strings.Split(customParserPathSplit, string(os.PathSeparator))
-	customParserStage := splittedPath[len(splittedPath)-3]
+	splitPath := strings.Split(customParserPathSplit, string(os.PathSeparator))
+	customParserStage := splitPath[len(splitPath)-3]
 
 	// check if stage exist
 	hubStagePath := filepath.Join(t.HubPath, fmt.Sprintf("parsers/%s", customParserStage))
-
 	if _, err := os.Stat(hubStagePath); os.IsNotExist(err) {
 		return false, fmt.Errorf("stage '%s' extracted from '%s' doesn't exist in the hub", customParserStage, hubStagePath)
 	}
 
 	parserDirDest := fmt.Sprintf("%s/parsers/%s/", t.RuntimePath, customParserStage)
 	if err := os.MkdirAll(parserDirDest, os.ModePerm); err != nil {
-		return false, fmt.Errorf("unable to create folder '%s': %s", parserDirDest, err)
+		return false, fmt.Errorf("unable to create folder '%s': %w", parserDirDest, err)
 	}
 
 	customParserDest := filepath.Join(parserDirDest, customParserName)
 	// if path to parser exist, copy it
 	if err := Copy(customParserPath, customParserDest); err != nil {
-		return false, fmt.Errorf("unable to copy custom parser '%s' to '%s': %s", customParserPath, customParserDest, err)
+		return false, fmt.Errorf("unable to copy custom parser '%s' to '%s': %w", customParserPath, customParserDest, err)
 	}
 
 	return true, nil

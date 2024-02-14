@@ -23,24 +23,24 @@ func (t *HubTestItem) installScenarioItem(hubScenario *cwhub.Item) error {
 	scenarioDirDest := fmt.Sprintf("%s/scenarios/", t.RuntimePath)
 
 	if err := os.MkdirAll(hubDirScenarioDest, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %s", hubDirScenarioDest, err)
+		return fmt.Errorf("unable to create folder '%s': %w", hubDirScenarioDest, err)
 	}
 
 	if err := os.MkdirAll(scenarioDirDest, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %s", scenarioDirDest, err)
+		return fmt.Errorf("unable to create folder '%s': %w", scenarioDirDest, err)
 	}
 
 	// runtime/hub/scenarios/crowdsecurity/ssh-bf.yaml
 	hubDirScenarioPath := filepath.Join(hubDirScenarioDest, scenarioFileName)
 	if err := Copy(scenarioSource, hubDirScenarioPath); err != nil {
-		return fmt.Errorf("unable to copy '%s' to '%s': %s", scenarioSource, hubDirScenarioPath, err)
+		return fmt.Errorf("unable to copy '%s' to '%s': %w", scenarioSource, hubDirScenarioPath, err)
 	}
 
 	// runtime/scenarios/ssh-bf.yaml
 	scenarioDirParserPath := filepath.Join(scenarioDirDest, scenarioFileName)
 	if err := os.Symlink(hubDirScenarioPath, scenarioDirParserPath); err != nil {
 		if !os.IsExist(err) {
-			return fmt.Errorf("unable to symlink scenario '%s' to '%s': %s", hubDirScenarioPath, scenarioDirParserPath, err)
+			return fmt.Errorf("unable to symlink scenario '%s' to '%s': %w", hubDirScenarioPath, scenarioDirParserPath, err)
 		}
 	}
 
@@ -56,13 +56,14 @@ func (t *HubTestItem) installScenarioCustomFrom(scenario string, customPath stri
 
 	scenarioDirDest := fmt.Sprintf("%s/scenarios/", t.RuntimePath)
 	if err := os.MkdirAll(scenarioDirDest, os.ModePerm); err != nil {
-		return false, fmt.Errorf("unable to create folder '%s': %s", scenarioDirDest, err)
+		return false, fmt.Errorf("unable to create folder '%s': %w", scenarioDirDest, err)
 	}
 
 	scenarioFileName := filepath.Base(customScenarioPath)
+
 	scenarioFileDest := filepath.Join(scenarioDirDest, scenarioFileName)
 	if err := Copy(customScenarioPath, scenarioFileDest); err != nil {
-		return false, fmt.Errorf("unable to copy scenario from '%s' to '%s': %s", customScenarioPath, scenarioFileDest, err)
+		return false, fmt.Errorf("unable to copy scenario from '%s' to '%s': %w", customScenarioPath, scenarioFileDest, err)
 	}
 
 	return true, nil
