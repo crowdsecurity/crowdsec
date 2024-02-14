@@ -19,11 +19,9 @@ import (
 // MachineQuery is the builder for querying Machine entities.
 type MachineQuery struct {
 	config
-	limit      *int
-	offset     *int
-	unique     *bool
-	order      []OrderFunc
-	fields     []string
+	ctx        *QueryContext
+	order      []machine.OrderOption
+	inters     []Interceptor
 	predicates []predicate.Machine
 	withAlerts *AlertQuery
 	// intermediate query (i.e. traversal path).
@@ -37,34 +35,34 @@ func (mq *MachineQuery) Where(ps ...predicate.Machine) *MachineQuery {
 	return mq
 }
 
-// Limit adds a limit step to the query.
+// Limit the number of records to be returned by this query.
 func (mq *MachineQuery) Limit(limit int) *MachineQuery {
-	mq.limit = &limit
+	mq.ctx.Limit = &limit
 	return mq
 }
 
-// Offset adds an offset step to the query.
+// Offset to start from.
 func (mq *MachineQuery) Offset(offset int) *MachineQuery {
-	mq.offset = &offset
+	mq.ctx.Offset = &offset
 	return mq
 }
 
 // Unique configures the query builder to filter duplicate records on query.
 // By default, unique is set to true, and can be disabled using this method.
 func (mq *MachineQuery) Unique(unique bool) *MachineQuery {
-	mq.unique = &unique
+	mq.ctx.Unique = &unique
 	return mq
 }
 
-// Order adds an order step to the query.
-func (mq *MachineQuery) Order(o ...OrderFunc) *MachineQuery {
+// Order specifies how the records should be ordered.
+func (mq *MachineQuery) Order(o ...machine.OrderOption) *MachineQuery {
 	mq.order = append(mq.order, o...)
 	return mq
 }
 
 // QueryAlerts chains the current query on the "alerts" edge.
 func (mq *MachineQuery) QueryAlerts() *AlertQuery {
-	query := &AlertQuery{config: mq.config}
+	query := (&AlertClient{config: mq.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := mq.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -87,7 +85,7 @@ func (mq *MachineQuery) QueryAlerts() *AlertQuery {
 // First returns the first Machine entity from the query.
 // Returns a *NotFoundError when no Machine was found.
 func (mq *MachineQuery) First(ctx context.Context) (*Machine, error) {
-	nodes, err := mq.Limit(1).All(ctx)
+	nodes, err := mq.Limit(1).All(setContextOp(ctx, mq.ctx, "First"))
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +108,7 @@ func (mq *MachineQuery) FirstX(ctx context.Context) *Machine {
 // Returns a *NotFoundError when no Machine ID was found.
 func (mq *MachineQuery) FirstID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = mq.Limit(1).IDs(ctx); err != nil {
+	if ids, err = mq.Limit(1).IDs(setContextOp(ctx, mq.ctx, "FirstID")); err != nil {
 		return
 	}
 	if len(ids) == 0 {
@@ -133,7 +131,7 @@ func (mq *MachineQuery) FirstIDX(ctx context.Context) int {
 // Returns a *NotSingularError when more than one Machine entity is found.
 // Returns a *NotFoundError when no Machine entities are found.
 func (mq *MachineQuery) Only(ctx context.Context) (*Machine, error) {
-	nodes, err := mq.Limit(2).All(ctx)
+	nodes, err := mq.Limit(2).All(setContextOp(ctx, mq.ctx, "Only"))
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +159,7 @@ func (mq *MachineQuery) OnlyX(ctx context.Context) *Machine {
 // Returns a *NotFoundError when no entities are found.
 func (mq *MachineQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = mq.Limit(2).IDs(ctx); err != nil {
+	if ids, err = mq.Limit(2).IDs(setContextOp(ctx, mq.ctx, "OnlyID")); err != nil {
 		return
 	}
 	switch len(ids) {
@@ -186,10 +184,12 @@ func (mq *MachineQuery) OnlyIDX(ctx context.Context) int {
 
 // All executes the query and returns a list of Machines.
 func (mq *MachineQuery) All(ctx context.Context) ([]*Machine, error) {
+	ctx = setContextOp(ctx, mq.ctx, "All")
 	if err := mq.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
-	return mq.sqlAll(ctx)
+	qr := querierAll[[]*Machine, *MachineQuery]()
+	return withInterceptors[[]*Machine](ctx, mq, qr, mq.inters)
 }
 
 // AllX is like All, but panics if an error occurs.
@@ -202,9 +202,12 @@ func (mq *MachineQuery) AllX(ctx context.Context) []*Machine {
 }
 
 // IDs executes the query and returns a list of Machine IDs.
-func (mq *MachineQuery) IDs(ctx context.Context) ([]int, error) {
-	var ids []int
-	if err := mq.Select(machine.FieldID).Scan(ctx, &ids); err != nil {
+func (mq *MachineQuery) IDs(ctx context.Context) (ids []int, err error) {
+	if mq.ctx.Unique == nil && mq.path != nil {
+		mq.Unique(true)
+	}
+	ctx = setContextOp(ctx, mq.ctx, "IDs")
+	if err = mq.Select(machine.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
@@ -221,10 +224,11 @@ func (mq *MachineQuery) IDsX(ctx context.Context) []int {
 
 // Count returns the count of the given query.
 func (mq *MachineQuery) Count(ctx context.Context) (int, error) {
+	ctx = setContextOp(ctx, mq.ctx, "Count")
 	if err := mq.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
-	return mq.sqlCount(ctx)
+	return withInterceptors[int](ctx, mq, querierCount[*MachineQuery](), mq.inters)
 }
 
 // CountX is like Count, but panics if an error occurs.
@@ -238,10 +242,15 @@ func (mq *MachineQuery) CountX(ctx context.Context) int {
 
 // Exist returns true if the query has elements in the graph.
 func (mq *MachineQuery) Exist(ctx context.Context) (bool, error) {
-	if err := mq.prepareQuery(ctx); err != nil {
-		return false, err
+	ctx = setContextOp(ctx, mq.ctx, "Exist")
+	switch _, err := mq.FirstID(ctx); {
+	case IsNotFound(err):
+		return false, nil
+	case err != nil:
+		return false, fmt.Errorf("ent: check existence: %w", err)
+	default:
+		return true, nil
 	}
-	return mq.sqlExist(ctx)
 }
 
 // ExistX is like Exist, but panics if an error occurs.
@@ -261,22 +270,21 @@ func (mq *MachineQuery) Clone() *MachineQuery {
 	}
 	return &MachineQuery{
 		config:     mq.config,
-		limit:      mq.limit,
-		offset:     mq.offset,
-		order:      append([]OrderFunc{}, mq.order...),
+		ctx:        mq.ctx.Clone(),
+		order:      append([]machine.OrderOption{}, mq.order...),
+		inters:     append([]Interceptor{}, mq.inters...),
 		predicates: append([]predicate.Machine{}, mq.predicates...),
 		withAlerts: mq.withAlerts.Clone(),
 		// clone intermediate query.
-		sql:    mq.sql.Clone(),
-		path:   mq.path,
-		unique: mq.unique,
+		sql:  mq.sql.Clone(),
+		path: mq.path,
 	}
 }
 
 // WithAlerts tells the query-builder to eager-load the nodes that are connected to
 // the "alerts" edge. The optional arguments are used to configure the query builder of the edge.
 func (mq *MachineQuery) WithAlerts(opts ...func(*AlertQuery)) *MachineQuery {
-	query := &AlertQuery{config: mq.config}
+	query := (&AlertClient{config: mq.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
@@ -299,16 +307,11 @@ func (mq *MachineQuery) WithAlerts(opts ...func(*AlertQuery)) *MachineQuery {
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (mq *MachineQuery) GroupBy(field string, fields ...string) *MachineGroupBy {
-	grbuild := &MachineGroupBy{config: mq.config}
-	grbuild.fields = append([]string{field}, fields...)
-	grbuild.path = func(ctx context.Context) (prev *sql.Selector, err error) {
-		if err := mq.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		return mq.sqlQuery(ctx), nil
-	}
+	mq.ctx.Fields = append([]string{field}, fields...)
+	grbuild := &MachineGroupBy{build: mq}
+	grbuild.flds = &mq.ctx.Fields
 	grbuild.label = machine.Label
-	grbuild.flds, grbuild.scan = &grbuild.fields, grbuild.Scan
+	grbuild.scan = grbuild.Scan
 	return grbuild
 }
 
@@ -325,15 +328,30 @@ func (mq *MachineQuery) GroupBy(field string, fields ...string) *MachineGroupBy 
 //		Select(machine.FieldCreatedAt).
 //		Scan(ctx, &v)
 func (mq *MachineQuery) Select(fields ...string) *MachineSelect {
-	mq.fields = append(mq.fields, fields...)
-	selbuild := &MachineSelect{MachineQuery: mq}
-	selbuild.label = machine.Label
-	selbuild.flds, selbuild.scan = &mq.fields, selbuild.Scan
-	return selbuild
+	mq.ctx.Fields = append(mq.ctx.Fields, fields...)
+	sbuild := &MachineSelect{MachineQuery: mq}
+	sbuild.label = machine.Label
+	sbuild.flds, sbuild.scan = &mq.ctx.Fields, sbuild.Scan
+	return sbuild
+}
+
+// Aggregate returns a MachineSelect configured with the given aggregations.
+func (mq *MachineQuery) Aggregate(fns ...AggregateFunc) *MachineSelect {
+	return mq.Select().Aggregate(fns...)
 }
 
 func (mq *MachineQuery) prepareQuery(ctx context.Context) error {
-	for _, f := range mq.fields {
+	for _, inter := range mq.inters {
+		if inter == nil {
+			return fmt.Errorf("ent: uninitialized interceptor (forgotten import ent/runtime?)")
+		}
+		if trv, ok := inter.(Traverser); ok {
+			if err := trv.Traverse(ctx, mq); err != nil {
+				return err
+			}
+		}
+	}
+	for _, f := range mq.ctx.Fields {
 		if !machine.ValidColumn(f) {
 			return &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 		}
@@ -396,7 +414,7 @@ func (mq *MachineQuery) loadAlerts(ctx context.Context, query *AlertQuery, nodes
 	}
 	query.withFKs = true
 	query.Where(predicate.Alert(func(s *sql.Selector) {
-		s.Where(sql.InValues(machine.AlertsColumn, fks...))
+		s.Where(sql.InValues(s.C(machine.AlertsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
@@ -409,7 +427,7 @@ func (mq *MachineQuery) loadAlerts(ctx context.Context, query *AlertQuery, nodes
 		}
 		node, ok := nodeids[*fk]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "machine_alerts" returned %v for node %v`, *fk, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "machine_alerts" returned %v for node %v`, *fk, n.ID)
 		}
 		assign(node, n)
 	}
@@ -418,41 +436,22 @@ func (mq *MachineQuery) loadAlerts(ctx context.Context, query *AlertQuery, nodes
 
 func (mq *MachineQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := mq.querySpec()
-	_spec.Node.Columns = mq.fields
-	if len(mq.fields) > 0 {
-		_spec.Unique = mq.unique != nil && *mq.unique
+	_spec.Node.Columns = mq.ctx.Fields
+	if len(mq.ctx.Fields) > 0 {
+		_spec.Unique = mq.ctx.Unique != nil && *mq.ctx.Unique
 	}
 	return sqlgraph.CountNodes(ctx, mq.driver, _spec)
 }
 
-func (mq *MachineQuery) sqlExist(ctx context.Context) (bool, error) {
-	switch _, err := mq.FirstID(ctx); {
-	case IsNotFound(err):
-		return false, nil
-	case err != nil:
-		return false, fmt.Errorf("ent: check existence: %w", err)
-	default:
-		return true, nil
-	}
-}
-
 func (mq *MachineQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := &sqlgraph.QuerySpec{
-		Node: &sqlgraph.NodeSpec{
-			Table:   machine.Table,
-			Columns: machine.Columns,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: machine.FieldID,
-			},
-		},
-		From:   mq.sql,
-		Unique: true,
-	}
-	if unique := mq.unique; unique != nil {
+	_spec := sqlgraph.NewQuerySpec(machine.Table, machine.Columns, sqlgraph.NewFieldSpec(machine.FieldID, field.TypeInt))
+	_spec.From = mq.sql
+	if unique := mq.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
+	} else if mq.path != nil {
+		_spec.Unique = true
 	}
-	if fields := mq.fields; len(fields) > 0 {
+	if fields := mq.ctx.Fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, machine.FieldID)
 		for i := range fields {
@@ -468,10 +467,10 @@ func (mq *MachineQuery) querySpec() *sqlgraph.QuerySpec {
 			}
 		}
 	}
-	if limit := mq.limit; limit != nil {
+	if limit := mq.ctx.Limit; limit != nil {
 		_spec.Limit = *limit
 	}
-	if offset := mq.offset; offset != nil {
+	if offset := mq.ctx.Offset; offset != nil {
 		_spec.Offset = *offset
 	}
 	if ps := mq.order; len(ps) > 0 {
@@ -487,7 +486,7 @@ func (mq *MachineQuery) querySpec() *sqlgraph.QuerySpec {
 func (mq *MachineQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(mq.driver.Dialect())
 	t1 := builder.Table(machine.Table)
-	columns := mq.fields
+	columns := mq.ctx.Fields
 	if len(columns) == 0 {
 		columns = machine.Columns
 	}
@@ -496,7 +495,7 @@ func (mq *MachineQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector = mq.sql
 		selector.Select(selector.Columns(columns...)...)
 	}
-	if mq.unique != nil && *mq.unique {
+	if mq.ctx.Unique != nil && *mq.ctx.Unique {
 		selector.Distinct()
 	}
 	for _, p := range mq.predicates {
@@ -505,12 +504,12 @@ func (mq *MachineQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	for _, p := range mq.order {
 		p(selector)
 	}
-	if offset := mq.offset; offset != nil {
+	if offset := mq.ctx.Offset; offset != nil {
 		// limit is mandatory for offset clause. We start
 		// with default value, and override it below if needed.
 		selector.Offset(*offset).Limit(math.MaxInt32)
 	}
-	if limit := mq.limit; limit != nil {
+	if limit := mq.ctx.Limit; limit != nil {
 		selector.Limit(*limit)
 	}
 	return selector
@@ -518,13 +517,8 @@ func (mq *MachineQuery) sqlQuery(ctx context.Context) *sql.Selector {
 
 // MachineGroupBy is the group-by builder for Machine entities.
 type MachineGroupBy struct {
-	config
 	selector
-	fields []string
-	fns    []AggregateFunc
-	// intermediate query (i.e. traversal path).
-	sql  *sql.Selector
-	path func(context.Context) (*sql.Selector, error)
+	build *MachineQuery
 }
 
 // Aggregate adds the given aggregation functions to the group-by query.
@@ -533,74 +527,77 @@ func (mgb *MachineGroupBy) Aggregate(fns ...AggregateFunc) *MachineGroupBy {
 	return mgb
 }
 
-// Scan applies the group-by query and scans the result into the given value.
+// Scan applies the selector query and scans the result into the given value.
 func (mgb *MachineGroupBy) Scan(ctx context.Context, v any) error {
-	query, err := mgb.path(ctx)
-	if err != nil {
+	ctx = setContextOp(ctx, mgb.build.ctx, "GroupBy")
+	if err := mgb.build.prepareQuery(ctx); err != nil {
 		return err
 	}
-	mgb.sql = query
-	return mgb.sqlScan(ctx, v)
+	return scanWithInterceptors[*MachineQuery, *MachineGroupBy](ctx, mgb.build, mgb, mgb.build.inters, v)
 }
 
-func (mgb *MachineGroupBy) sqlScan(ctx context.Context, v any) error {
-	for _, f := range mgb.fields {
-		if !machine.ValidColumn(f) {
-			return &ValidationError{Name: f, err: fmt.Errorf("invalid field %q for group-by", f)}
-		}
+func (mgb *MachineGroupBy) sqlScan(ctx context.Context, root *MachineQuery, v any) error {
+	selector := root.sqlQuery(ctx).Select()
+	aggregation := make([]string, 0, len(mgb.fns))
+	for _, fn := range mgb.fns {
+		aggregation = append(aggregation, fn(selector))
 	}
-	selector := mgb.sqlQuery()
+	if len(selector.SelectedColumns()) == 0 {
+		columns := make([]string, 0, len(*mgb.flds)+len(mgb.fns))
+		for _, f := range *mgb.flds {
+			columns = append(columns, selector.C(f))
+		}
+		columns = append(columns, aggregation...)
+		selector.Select(columns...)
+	}
+	selector.GroupBy(selector.Columns(*mgb.flds...)...)
 	if err := selector.Err(); err != nil {
 		return err
 	}
 	rows := &sql.Rows{}
 	query, args := selector.Query()
-	if err := mgb.driver.Query(ctx, query, args, rows); err != nil {
+	if err := mgb.build.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
 }
 
-func (mgb *MachineGroupBy) sqlQuery() *sql.Selector {
-	selector := mgb.sql.Select()
-	aggregation := make([]string, 0, len(mgb.fns))
-	for _, fn := range mgb.fns {
-		aggregation = append(aggregation, fn(selector))
-	}
-	// If no columns were selected in a custom aggregation function, the default
-	// selection is the fields used for "group-by", and the aggregation functions.
-	if len(selector.SelectedColumns()) == 0 {
-		columns := make([]string, 0, len(mgb.fields)+len(mgb.fns))
-		for _, f := range mgb.fields {
-			columns = append(columns, selector.C(f))
-		}
-		columns = append(columns, aggregation...)
-		selector.Select(columns...)
-	}
-	return selector.GroupBy(selector.Columns(mgb.fields...)...)
-}
-
 // MachineSelect is the builder for selecting fields of Machine entities.
 type MachineSelect struct {
 	*MachineQuery
 	selector
-	// intermediate query (i.e. traversal path).
-	sql *sql.Selector
+}
+
+// Aggregate adds the given aggregation functions to the selector query.
+func (ms *MachineSelect) Aggregate(fns ...AggregateFunc) *MachineSelect {
+	ms.fns = append(ms.fns, fns...)
+	return ms
 }
 
 // Scan applies the selector query and scans the result into the given value.
 func (ms *MachineSelect) Scan(ctx context.Context, v any) error {
+	ctx = setContextOp(ctx, ms.ctx, "Select")
 	if err := ms.prepareQuery(ctx); err != nil {
 		return err
 	}
-	ms.sql = ms.MachineQuery.sqlQuery(ctx)
-	return ms.sqlScan(ctx, v)
+	return scanWithInterceptors[*MachineQuery, *MachineSelect](ctx, ms.MachineQuery, ms, ms.inters, v)
 }
 
-func (ms *MachineSelect) sqlScan(ctx context.Context, v any) error {
+func (ms *MachineSelect) sqlScan(ctx context.Context, root *MachineQuery, v any) error {
+	selector := root.sqlQuery(ctx)
+	aggregation := make([]string, 0, len(ms.fns))
+	for _, fn := range ms.fns {
+		aggregation = append(aggregation, fn(selector))
+	}
+	switch n := len(*ms.selector.flds); {
+	case n == 0 && len(aggregation) > 0:
+		selector.Select(aggregation...)
+	case n != 0 && len(aggregation) > 0:
+		selector.AppendSelect(aggregation...)
+	}
 	rows := &sql.Rows{}
-	query, args := ms.sql.Query()
+	query, args := selector.Query()
 	if err := ms.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
