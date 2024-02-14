@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"entgo.io/ent"
+	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/configitem"
@@ -17,8 +19,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
-
-	"entgo.io/ent"
 )
 
 const (
@@ -1578,9 +1578,24 @@ func (m *AlertMutation) Where(ps ...predicate.Alert) {
 	m.predicates = append(m.predicates, ps...)
 }
 
+// WhereP appends storage-level predicates to the AlertMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *AlertMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Alert, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
 // Op returns the operation name.
 func (m *AlertMutation) Op() Op {
 	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *AlertMutation) SetOp(op Op) {
+	m.op = op
 }
 
 // Type returns the node type of this mutation (Alert).
@@ -2997,9 +3012,24 @@ func (m *BouncerMutation) Where(ps ...predicate.Bouncer) {
 	m.predicates = append(m.predicates, ps...)
 }
 
+// WhereP appends storage-level predicates to the BouncerMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *BouncerMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Bouncer, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
 // Op returns the operation name.
 func (m *BouncerMutation) Op() Op {
 	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *BouncerMutation) SetOp(op Op) {
+	m.op = op
 }
 
 // Type returns the node type of this mutation (Bouncer).
@@ -3654,9 +3684,24 @@ func (m *ConfigItemMutation) Where(ps ...predicate.ConfigItem) {
 	m.predicates = append(m.predicates, ps...)
 }
 
+// WhereP appends storage-level predicates to the ConfigItemMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ConfigItemMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ConfigItem, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
 // Op returns the operation name.
 func (m *ConfigItemMutation) Op() Op {
 	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ConfigItemMutation) SetOp(op Op) {
+	m.op = op
 }
 
 // Type returns the node type of this mutation (ConfigItem).
@@ -4830,6 +4875,7 @@ func (m *DecisionMutation) SetOwnerID(id int) {
 // ClearOwner clears the "owner" edge to the Alert entity.
 func (m *DecisionMutation) ClearOwner() {
 	m.clearedowner = true
+	m.clearedFields[decision.FieldAlertDecisions] = struct{}{}
 }
 
 // OwnerCleared reports if the "owner" edge to the Alert entity was cleared.
@@ -4866,9 +4912,24 @@ func (m *DecisionMutation) Where(ps ...predicate.Decision) {
 	m.predicates = append(m.predicates, ps...)
 }
 
+// WhereP appends storage-level predicates to the DecisionMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *DecisionMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Decision, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
 // Op returns the operation name.
 func (m *DecisionMutation) Op() Op {
 	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *DecisionMutation) SetOp(op Op) {
+	m.op = op
 }
 
 // Type returns the node type of this mutation (Decision).
@@ -5775,6 +5836,7 @@ func (m *EventMutation) SetOwnerID(id int) {
 // ClearOwner clears the "owner" edge to the Alert entity.
 func (m *EventMutation) ClearOwner() {
 	m.clearedowner = true
+	m.clearedFields[event.FieldAlertEvents] = struct{}{}
 }
 
 // OwnerCleared reports if the "owner" edge to the Alert entity was cleared.
@@ -5811,9 +5873,24 @@ func (m *EventMutation) Where(ps ...predicate.Event) {
 	m.predicates = append(m.predicates, ps...)
 }
 
+// WhereP appends storage-level predicates to the EventMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *EventMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Event, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
 // Op returns the operation name.
 func (m *EventMutation) Op() Op {
 	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *EventMutation) SetOp(op Op) {
+	m.op = op
 }
 
 // Type returns the node type of this mutation (Event).
@@ -6795,9 +6872,24 @@ func (m *MachineMutation) Where(ps ...predicate.Machine) {
 	m.predicates = append(m.predicates, ps...)
 }
 
+// WhereP appends storage-level predicates to the MachineMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *MachineMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Machine, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
 // Op returns the operation name.
 func (m *MachineMutation) Op() Op {
 	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *MachineMutation) SetOp(op Op) {
+	m.op = op
 }
 
 // Type returns the node type of this mutation (Machine).
@@ -7565,6 +7657,7 @@ func (m *MetaMutation) SetOwnerID(id int) {
 // ClearOwner clears the "owner" edge to the Alert entity.
 func (m *MetaMutation) ClearOwner() {
 	m.clearedowner = true
+	m.clearedFields[meta.FieldAlertMetas] = struct{}{}
 }
 
 // OwnerCleared reports if the "owner" edge to the Alert entity was cleared.
@@ -7601,9 +7694,24 @@ func (m *MetaMutation) Where(ps ...predicate.Meta) {
 	m.predicates = append(m.predicates, ps...)
 }
 
+// WhereP appends storage-level predicates to the MetaMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *MetaMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Meta, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
 // Op returns the operation name.
 func (m *MetaMutation) Op() Op {
 	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *MetaMutation) SetOp(op Op) {
+	m.op = op
 }
 
 // Type returns the node type of this mutation (Meta).
