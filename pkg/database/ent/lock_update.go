@@ -55,34 +55,7 @@ func (lu *LockUpdate) Mutation() *LockMutation {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (lu *LockUpdate) Save(ctx context.Context) (int, error) {
-	var (
-		err      error
-		affected int
-	)
-	if len(lu.hooks) == 0 {
-		affected, err = lu.sqlSave(ctx)
-	} else {
-		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-			mutation, ok := m.(*LockMutation)
-			if !ok {
-				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			lu.mutation = mutation
-			affected, err = lu.sqlSave(ctx)
-			mutation.done = true
-			return affected, err
-		})
-		for i := len(lu.hooks) - 1; i >= 0; i-- {
-			if lu.hooks[i] == nil {
-				return 0, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
-			}
-			mut = lu.hooks[i](mut)
-		}
-		if _, err := mut.Mutate(ctx, lu.mutation); err != nil {
-			return 0, err
-		}
-	}
-	return affected, err
+	return withHooks(ctx, lu.sqlSave, lu.mutation, lu.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
@@ -108,16 +81,7 @@ func (lu *LockUpdate) ExecX(ctx context.Context) {
 }
 
 func (lu *LockUpdate) sqlSave(ctx context.Context) (n int, err error) {
-	_spec := &sqlgraph.UpdateSpec{
-		Node: &sqlgraph.NodeSpec{
-			Table:   lock.Table,
-			Columns: lock.Columns,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: lock.FieldID,
-			},
-		},
-	}
+	_spec := sqlgraph.NewUpdateSpec(lock.Table, lock.Columns, sqlgraph.NewFieldSpec(lock.FieldID, field.TypeInt))
 	if ps := lu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -126,18 +90,10 @@ func (lu *LockUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 	}
 	if value, ok := lu.mutation.Name(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: lock.FieldName,
-		})
+		_spec.SetField(lock.FieldName, field.TypeString, value)
 	}
 	if value, ok := lu.mutation.CreatedAt(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: lock.FieldCreatedAt,
-		})
+		_spec.SetField(lock.FieldCreatedAt, field.TypeTime, value)
 	}
 	if n, err = sqlgraph.UpdateNodes(ctx, lu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -147,6 +103,7 @@ func (lu *LockUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		return 0, err
 	}
+	lu.mutation.done = true
 	return n, nil
 }
 
@@ -183,6 +140,12 @@ func (luo *LockUpdateOne) Mutation() *LockMutation {
 	return luo.mutation
 }
 
+// Where appends a list predicates to the LockUpdate builder.
+func (luo *LockUpdateOne) Where(ps ...predicate.Lock) *LockUpdateOne {
+	luo.mutation.Where(ps...)
+	return luo
+}
+
 // Select allows selecting one or more fields (columns) of the returned entity.
 // The default is selecting all fields defined in the entity schema.
 func (luo *LockUpdateOne) Select(field string, fields ...string) *LockUpdateOne {
@@ -192,40 +155,7 @@ func (luo *LockUpdateOne) Select(field string, fields ...string) *LockUpdateOne 
 
 // Save executes the query and returns the updated Lock entity.
 func (luo *LockUpdateOne) Save(ctx context.Context) (*Lock, error) {
-	var (
-		err  error
-		node *Lock
-	)
-	if len(luo.hooks) == 0 {
-		node, err = luo.sqlSave(ctx)
-	} else {
-		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-			mutation, ok := m.(*LockMutation)
-			if !ok {
-				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			luo.mutation = mutation
-			node, err = luo.sqlSave(ctx)
-			mutation.done = true
-			return node, err
-		})
-		for i := len(luo.hooks) - 1; i >= 0; i-- {
-			if luo.hooks[i] == nil {
-				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
-			}
-			mut = luo.hooks[i](mut)
-		}
-		v, err := mut.Mutate(ctx, luo.mutation)
-		if err != nil {
-			return nil, err
-		}
-		nv, ok := v.(*Lock)
-		if !ok {
-			return nil, fmt.Errorf("unexpected node type %T returned from LockMutation", v)
-		}
-		node = nv
-	}
-	return node, err
+	return withHooks(ctx, luo.sqlSave, luo.mutation, luo.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
@@ -251,16 +181,7 @@ func (luo *LockUpdateOne) ExecX(ctx context.Context) {
 }
 
 func (luo *LockUpdateOne) sqlSave(ctx context.Context) (_node *Lock, err error) {
-	_spec := &sqlgraph.UpdateSpec{
-		Node: &sqlgraph.NodeSpec{
-			Table:   lock.Table,
-			Columns: lock.Columns,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: lock.FieldID,
-			},
-		},
-	}
+	_spec := sqlgraph.NewUpdateSpec(lock.Table, lock.Columns, sqlgraph.NewFieldSpec(lock.FieldID, field.TypeInt))
 	id, ok := luo.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Lock.id" for update`)}
@@ -286,18 +207,10 @@ func (luo *LockUpdateOne) sqlSave(ctx context.Context) (_node *Lock, err error) 
 		}
 	}
 	if value, ok := luo.mutation.Name(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: lock.FieldName,
-		})
+		_spec.SetField(lock.FieldName, field.TypeString, value)
 	}
 	if value, ok := luo.mutation.CreatedAt(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: lock.FieldCreatedAt,
-		})
+		_spec.SetField(lock.FieldCreatedAt, field.TypeTime, value)
 	}
 	_node = &Lock{config: luo.config}
 	_spec.Assign = _node.assignValues
@@ -310,5 +223,6 @@ func (luo *LockUpdateOne) sqlSave(ctx context.Context) (_node *Lock, err error) 
 		}
 		return nil, err
 	}
+	luo.mutation.done = true
 	return _node, nil
 }

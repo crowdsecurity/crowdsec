@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/lock"
 )
@@ -19,7 +20,8 @@ type Lock struct {
 	// Name holds the value of the "name" field.
 	Name string `json:"name"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt time.Time `json:"created_at"`
+	CreatedAt    time.Time `json:"created_at"`
+	selectValues sql.SelectValues
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -34,7 +36,7 @@ func (*Lock) scanValues(columns []string) ([]any, error) {
 		case lock.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
 		default:
-			return nil, fmt.Errorf("unexpected column %q for type Lock", columns[i])
+			values[i] = new(sql.UnknownType)
 		}
 	}
 	return values, nil
@@ -66,16 +68,24 @@ func (l *Lock) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				l.CreatedAt = value.Time
 			}
+		default:
+			l.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
+}
+
+// Value returns the ent.Value that was dynamically selected and assigned to the Lock.
+// This includes values selected through modifiers, order, etc.
+func (l *Lock) Value(name string) (ent.Value, error) {
+	return l.selectValues.Get(name)
 }
 
 // Update returns a builder for updating this Lock.
 // Note that you need to call Lock.Unwrap() before calling this method if this Lock
 // was returned from a transaction, and the transaction was committed or rolled back.
 func (l *Lock) Update() *LockUpdateOne {
-	return (&LockClient{config: l.config}).UpdateOne(l)
+	return NewLockClient(l.config).UpdateOne(l)
 }
 
 // Unwrap unwraps the Lock entity that was returned from a transaction after it was closed,
@@ -105,9 +115,3 @@ func (l *Lock) String() string {
 
 // Locks is a parsable slice of Lock.
 type Locks []*Lock
-
-func (l Locks) config(cfg config) {
-	for _i := range l {
-		l[_i].config = cfg
-	}
-}

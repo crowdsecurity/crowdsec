@@ -47,50 +47,8 @@ func (lc *LockCreate) Mutation() *LockMutation {
 
 // Save creates the Lock in the database.
 func (lc *LockCreate) Save(ctx context.Context) (*Lock, error) {
-	var (
-		err  error
-		node *Lock
-	)
 	lc.defaults()
-	if len(lc.hooks) == 0 {
-		if err = lc.check(); err != nil {
-			return nil, err
-		}
-		node, err = lc.sqlSave(ctx)
-	} else {
-		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-			mutation, ok := m.(*LockMutation)
-			if !ok {
-				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			if err = lc.check(); err != nil {
-				return nil, err
-			}
-			lc.mutation = mutation
-			if node, err = lc.sqlSave(ctx); err != nil {
-				return nil, err
-			}
-			mutation.id = &node.ID
-			mutation.done = true
-			return node, err
-		})
-		for i := len(lc.hooks) - 1; i >= 0; i-- {
-			if lc.hooks[i] == nil {
-				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
-			}
-			mut = lc.hooks[i](mut)
-		}
-		v, err := mut.Mutate(ctx, lc.mutation)
-		if err != nil {
-			return nil, err
-		}
-		nv, ok := v.(*Lock)
-		if !ok {
-			return nil, fmt.Errorf("unexpected node type %T returned from LockMutation", v)
-		}
-		node = nv
-	}
-	return node, err
+	return withHooks(ctx, lc.sqlSave, lc.mutation, lc.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
@@ -135,6 +93,9 @@ func (lc *LockCreate) check() error {
 }
 
 func (lc *LockCreate) sqlSave(ctx context.Context) (*Lock, error) {
+	if err := lc.check(); err != nil {
+		return nil, err
+	}
 	_node, _spec := lc.createSpec()
 	if err := sqlgraph.CreateNode(ctx, lc.driver, _spec); err != nil {
 		if sqlgraph.IsConstraintError(err) {
@@ -144,34 +105,22 @@ func (lc *LockCreate) sqlSave(ctx context.Context) (*Lock, error) {
 	}
 	id := _spec.ID.Value.(int64)
 	_node.ID = int(id)
+	lc.mutation.id = &_node.ID
+	lc.mutation.done = true
 	return _node, nil
 }
 
 func (lc *LockCreate) createSpec() (*Lock, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Lock{config: lc.config}
-		_spec = &sqlgraph.CreateSpec{
-			Table: lock.Table,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: lock.FieldID,
-			},
-		}
+		_spec = sqlgraph.NewCreateSpec(lock.Table, sqlgraph.NewFieldSpec(lock.FieldID, field.TypeInt))
 	)
 	if value, ok := lc.mutation.Name(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: lock.FieldName,
-		})
+		_spec.SetField(lock.FieldName, field.TypeString, value)
 		_node.Name = value
 	}
 	if value, ok := lc.mutation.CreatedAt(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: lock.FieldCreatedAt,
-		})
+		_spec.SetField(lock.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
 	}
 	return _node, _spec
@@ -180,11 +129,15 @@ func (lc *LockCreate) createSpec() (*Lock, *sqlgraph.CreateSpec) {
 // LockCreateBulk is the builder for creating many Lock entities in bulk.
 type LockCreateBulk struct {
 	config
+	err      error
 	builders []*LockCreate
 }
 
 // Save creates the Lock entities in the database.
 func (lcb *LockCreateBulk) Save(ctx context.Context) ([]*Lock, error) {
+	if lcb.err != nil {
+		return nil, lcb.err
+	}
 	specs := make([]*sqlgraph.CreateSpec, len(lcb.builders))
 	nodes := make([]*Lock, len(lcb.builders))
 	mutators := make([]Mutator, len(lcb.builders))
@@ -201,8 +154,8 @@ func (lcb *LockCreateBulk) Save(ctx context.Context) ([]*Lock, error) {
 					return nil, err
 				}
 				builder.mutation = mutation
-				nodes[i], specs[i] = builder.createSpec()
 				var err error
+				nodes[i], specs[i] = builder.createSpec()
 				if i < len(mutators)-1 {
 					_, err = mutators[i+1].Mutate(root, lcb.builders[i+1].mutation)
 				} else {

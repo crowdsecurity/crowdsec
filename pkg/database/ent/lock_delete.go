@@ -4,7 +4,6 @@ package ent
 
 import (
 	"context"
-	"fmt"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -28,34 +27,7 @@ func (ld *LockDelete) Where(ps ...predicate.Lock) *LockDelete {
 
 // Exec executes the deletion query and returns how many vertices were deleted.
 func (ld *LockDelete) Exec(ctx context.Context) (int, error) {
-	var (
-		err      error
-		affected int
-	)
-	if len(ld.hooks) == 0 {
-		affected, err = ld.sqlExec(ctx)
-	} else {
-		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-			mutation, ok := m.(*LockMutation)
-			if !ok {
-				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			ld.mutation = mutation
-			affected, err = ld.sqlExec(ctx)
-			mutation.done = true
-			return affected, err
-		})
-		for i := len(ld.hooks) - 1; i >= 0; i-- {
-			if ld.hooks[i] == nil {
-				return 0, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
-			}
-			mut = ld.hooks[i](mut)
-		}
-		if _, err := mut.Mutate(ctx, ld.mutation); err != nil {
-			return 0, err
-		}
-	}
-	return affected, err
+	return withHooks(ctx, ld.sqlExec, ld.mutation, ld.hooks)
 }
 
 // ExecX is like Exec, but panics if an error occurs.
@@ -68,15 +40,7 @@ func (ld *LockDelete) ExecX(ctx context.Context) int {
 }
 
 func (ld *LockDelete) sqlExec(ctx context.Context) (int, error) {
-	_spec := &sqlgraph.DeleteSpec{
-		Node: &sqlgraph.NodeSpec{
-			Table: lock.Table,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: lock.FieldID,
-			},
-		},
-	}
+	_spec := sqlgraph.NewDeleteSpec(lock.Table, sqlgraph.NewFieldSpec(lock.FieldID, field.TypeInt))
 	if ps := ld.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -88,12 +52,19 @@ func (ld *LockDelete) sqlExec(ctx context.Context) (int, error) {
 	if err != nil && sqlgraph.IsConstraintError(err) {
 		err = &ConstraintError{msg: err.Error(), wrap: err}
 	}
+	ld.mutation.done = true
 	return affected, err
 }
 
 // LockDeleteOne is the builder for deleting a single Lock entity.
 type LockDeleteOne struct {
 	ld *LockDelete
+}
+
+// Where appends a list predicates to the LockDelete builder.
+func (ldo *LockDeleteOne) Where(ps ...predicate.Lock) *LockDeleteOne {
+	ldo.ld.mutation.Where(ps...)
+	return ldo
 }
 
 // Exec executes the deletion query.
@@ -111,5 +82,7 @@ func (ldo *LockDeleteOne) Exec(ctx context.Context) error {
 
 // ExecX is like Exec, but panics if an error occurs.
 func (ldo *LockDeleteOne) ExecX(ctx context.Context) {
-	ldo.ld.ExecX(ctx)
+	if err := ldo.Exec(ctx); err != nil {
+		panic(err)
+	}
 }

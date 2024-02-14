@@ -17,11 +17,9 @@ import (
 // LockQuery is the builder for querying Lock entities.
 type LockQuery struct {
 	config
-	limit      *int
-	offset     *int
-	unique     *bool
-	order      []OrderFunc
-	fields     []string
+	ctx        *QueryContext
+	order      []lock.OrderOption
+	inters     []Interceptor
 	predicates []predicate.Lock
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
@@ -34,27 +32,27 @@ func (lq *LockQuery) Where(ps ...predicate.Lock) *LockQuery {
 	return lq
 }
 
-// Limit adds a limit step to the query.
+// Limit the number of records to be returned by this query.
 func (lq *LockQuery) Limit(limit int) *LockQuery {
-	lq.limit = &limit
+	lq.ctx.Limit = &limit
 	return lq
 }
 
-// Offset adds an offset step to the query.
+// Offset to start from.
 func (lq *LockQuery) Offset(offset int) *LockQuery {
-	lq.offset = &offset
+	lq.ctx.Offset = &offset
 	return lq
 }
 
 // Unique configures the query builder to filter duplicate records on query.
 // By default, unique is set to true, and can be disabled using this method.
 func (lq *LockQuery) Unique(unique bool) *LockQuery {
-	lq.unique = &unique
+	lq.ctx.Unique = &unique
 	return lq
 }
 
-// Order adds an order step to the query.
-func (lq *LockQuery) Order(o ...OrderFunc) *LockQuery {
+// Order specifies how the records should be ordered.
+func (lq *LockQuery) Order(o ...lock.OrderOption) *LockQuery {
 	lq.order = append(lq.order, o...)
 	return lq
 }
@@ -62,7 +60,7 @@ func (lq *LockQuery) Order(o ...OrderFunc) *LockQuery {
 // First returns the first Lock entity from the query.
 // Returns a *NotFoundError when no Lock was found.
 func (lq *LockQuery) First(ctx context.Context) (*Lock, error) {
-	nodes, err := lq.Limit(1).All(ctx)
+	nodes, err := lq.Limit(1).All(setContextOp(ctx, lq.ctx, "First"))
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +83,7 @@ func (lq *LockQuery) FirstX(ctx context.Context) *Lock {
 // Returns a *NotFoundError when no Lock ID was found.
 func (lq *LockQuery) FirstID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = lq.Limit(1).IDs(ctx); err != nil {
+	if ids, err = lq.Limit(1).IDs(setContextOp(ctx, lq.ctx, "FirstID")); err != nil {
 		return
 	}
 	if len(ids) == 0 {
@@ -108,7 +106,7 @@ func (lq *LockQuery) FirstIDX(ctx context.Context) int {
 // Returns a *NotSingularError when more than one Lock entity is found.
 // Returns a *NotFoundError when no Lock entities are found.
 func (lq *LockQuery) Only(ctx context.Context) (*Lock, error) {
-	nodes, err := lq.Limit(2).All(ctx)
+	nodes, err := lq.Limit(2).All(setContextOp(ctx, lq.ctx, "Only"))
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +134,7 @@ func (lq *LockQuery) OnlyX(ctx context.Context) *Lock {
 // Returns a *NotFoundError when no entities are found.
 func (lq *LockQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = lq.Limit(2).IDs(ctx); err != nil {
+	if ids, err = lq.Limit(2).IDs(setContextOp(ctx, lq.ctx, "OnlyID")); err != nil {
 		return
 	}
 	switch len(ids) {
@@ -161,10 +159,12 @@ func (lq *LockQuery) OnlyIDX(ctx context.Context) int {
 
 // All executes the query and returns a list of Locks.
 func (lq *LockQuery) All(ctx context.Context) ([]*Lock, error) {
+	ctx = setContextOp(ctx, lq.ctx, "All")
 	if err := lq.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
-	return lq.sqlAll(ctx)
+	qr := querierAll[[]*Lock, *LockQuery]()
+	return withInterceptors[[]*Lock](ctx, lq, qr, lq.inters)
 }
 
 // AllX is like All, but panics if an error occurs.
@@ -177,9 +177,12 @@ func (lq *LockQuery) AllX(ctx context.Context) []*Lock {
 }
 
 // IDs executes the query and returns a list of Lock IDs.
-func (lq *LockQuery) IDs(ctx context.Context) ([]int, error) {
-	var ids []int
-	if err := lq.Select(lock.FieldID).Scan(ctx, &ids); err != nil {
+func (lq *LockQuery) IDs(ctx context.Context) (ids []int, err error) {
+	if lq.ctx.Unique == nil && lq.path != nil {
+		lq.Unique(true)
+	}
+	ctx = setContextOp(ctx, lq.ctx, "IDs")
+	if err = lq.Select(lock.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
@@ -196,10 +199,11 @@ func (lq *LockQuery) IDsX(ctx context.Context) []int {
 
 // Count returns the count of the given query.
 func (lq *LockQuery) Count(ctx context.Context) (int, error) {
+	ctx = setContextOp(ctx, lq.ctx, "Count")
 	if err := lq.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
-	return lq.sqlCount(ctx)
+	return withInterceptors[int](ctx, lq, querierCount[*LockQuery](), lq.inters)
 }
 
 // CountX is like Count, but panics if an error occurs.
@@ -213,10 +217,15 @@ func (lq *LockQuery) CountX(ctx context.Context) int {
 
 // Exist returns true if the query has elements in the graph.
 func (lq *LockQuery) Exist(ctx context.Context) (bool, error) {
-	if err := lq.prepareQuery(ctx); err != nil {
-		return false, err
+	ctx = setContextOp(ctx, lq.ctx, "Exist")
+	switch _, err := lq.FirstID(ctx); {
+	case IsNotFound(err):
+		return false, nil
+	case err != nil:
+		return false, fmt.Errorf("ent: check existence: %w", err)
+	default:
+		return true, nil
 	}
-	return lq.sqlExist(ctx)
 }
 
 // ExistX is like Exist, but panics if an error occurs.
@@ -236,14 +245,13 @@ func (lq *LockQuery) Clone() *LockQuery {
 	}
 	return &LockQuery{
 		config:     lq.config,
-		limit:      lq.limit,
-		offset:     lq.offset,
-		order:      append([]OrderFunc{}, lq.order...),
+		ctx:        lq.ctx.Clone(),
+		order:      append([]lock.OrderOption{}, lq.order...),
+		inters:     append([]Interceptor{}, lq.inters...),
 		predicates: append([]predicate.Lock{}, lq.predicates...),
 		// clone intermediate query.
-		sql:    lq.sql.Clone(),
-		path:   lq.path,
-		unique: lq.unique,
+		sql:  lq.sql.Clone(),
+		path: lq.path,
 	}
 }
 
@@ -262,16 +270,11 @@ func (lq *LockQuery) Clone() *LockQuery {
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (lq *LockQuery) GroupBy(field string, fields ...string) *LockGroupBy {
-	grbuild := &LockGroupBy{config: lq.config}
-	grbuild.fields = append([]string{field}, fields...)
-	grbuild.path = func(ctx context.Context) (prev *sql.Selector, err error) {
-		if err := lq.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		return lq.sqlQuery(ctx), nil
-	}
+	lq.ctx.Fields = append([]string{field}, fields...)
+	grbuild := &LockGroupBy{build: lq}
+	grbuild.flds = &lq.ctx.Fields
 	grbuild.label = lock.Label
-	grbuild.flds, grbuild.scan = &grbuild.fields, grbuild.Scan
+	grbuild.scan = grbuild.Scan
 	return grbuild
 }
 
@@ -288,15 +291,30 @@ func (lq *LockQuery) GroupBy(field string, fields ...string) *LockGroupBy {
 //		Select(lock.FieldName).
 //		Scan(ctx, &v)
 func (lq *LockQuery) Select(fields ...string) *LockSelect {
-	lq.fields = append(lq.fields, fields...)
-	selbuild := &LockSelect{LockQuery: lq}
-	selbuild.label = lock.Label
-	selbuild.flds, selbuild.scan = &lq.fields, selbuild.Scan
-	return selbuild
+	lq.ctx.Fields = append(lq.ctx.Fields, fields...)
+	sbuild := &LockSelect{LockQuery: lq}
+	sbuild.label = lock.Label
+	sbuild.flds, sbuild.scan = &lq.ctx.Fields, sbuild.Scan
+	return sbuild
+}
+
+// Aggregate returns a LockSelect configured with the given aggregations.
+func (lq *LockQuery) Aggregate(fns ...AggregateFunc) *LockSelect {
+	return lq.Select().Aggregate(fns...)
 }
 
 func (lq *LockQuery) prepareQuery(ctx context.Context) error {
-	for _, f := range lq.fields {
+	for _, inter := range lq.inters {
+		if inter == nil {
+			return fmt.Errorf("ent: uninitialized interceptor (forgotten import ent/runtime?)")
+		}
+		if trv, ok := inter.(Traverser); ok {
+			if err := trv.Traverse(ctx, lq); err != nil {
+				return err
+			}
+		}
+	}
+	for _, f := range lq.ctx.Fields {
 		if !lock.ValidColumn(f) {
 			return &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 		}
@@ -338,41 +356,22 @@ func (lq *LockQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Lock, e
 
 func (lq *LockQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := lq.querySpec()
-	_spec.Node.Columns = lq.fields
-	if len(lq.fields) > 0 {
-		_spec.Unique = lq.unique != nil && *lq.unique
+	_spec.Node.Columns = lq.ctx.Fields
+	if len(lq.ctx.Fields) > 0 {
+		_spec.Unique = lq.ctx.Unique != nil && *lq.ctx.Unique
 	}
 	return sqlgraph.CountNodes(ctx, lq.driver, _spec)
 }
 
-func (lq *LockQuery) sqlExist(ctx context.Context) (bool, error) {
-	switch _, err := lq.FirstID(ctx); {
-	case IsNotFound(err):
-		return false, nil
-	case err != nil:
-		return false, fmt.Errorf("ent: check existence: %w", err)
-	default:
-		return true, nil
-	}
-}
-
 func (lq *LockQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := &sqlgraph.QuerySpec{
-		Node: &sqlgraph.NodeSpec{
-			Table:   lock.Table,
-			Columns: lock.Columns,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: lock.FieldID,
-			},
-		},
-		From:   lq.sql,
-		Unique: true,
-	}
-	if unique := lq.unique; unique != nil {
+	_spec := sqlgraph.NewQuerySpec(lock.Table, lock.Columns, sqlgraph.NewFieldSpec(lock.FieldID, field.TypeInt))
+	_spec.From = lq.sql
+	if unique := lq.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
+	} else if lq.path != nil {
+		_spec.Unique = true
 	}
-	if fields := lq.fields; len(fields) > 0 {
+	if fields := lq.ctx.Fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, lock.FieldID)
 		for i := range fields {
@@ -388,10 +387,10 @@ func (lq *LockQuery) querySpec() *sqlgraph.QuerySpec {
 			}
 		}
 	}
-	if limit := lq.limit; limit != nil {
+	if limit := lq.ctx.Limit; limit != nil {
 		_spec.Limit = *limit
 	}
-	if offset := lq.offset; offset != nil {
+	if offset := lq.ctx.Offset; offset != nil {
 		_spec.Offset = *offset
 	}
 	if ps := lq.order; len(ps) > 0 {
@@ -407,7 +406,7 @@ func (lq *LockQuery) querySpec() *sqlgraph.QuerySpec {
 func (lq *LockQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(lq.driver.Dialect())
 	t1 := builder.Table(lock.Table)
-	columns := lq.fields
+	columns := lq.ctx.Fields
 	if len(columns) == 0 {
 		columns = lock.Columns
 	}
@@ -416,7 +415,7 @@ func (lq *LockQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector = lq.sql
 		selector.Select(selector.Columns(columns...)...)
 	}
-	if lq.unique != nil && *lq.unique {
+	if lq.ctx.Unique != nil && *lq.ctx.Unique {
 		selector.Distinct()
 	}
 	for _, p := range lq.predicates {
@@ -425,12 +424,12 @@ func (lq *LockQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	for _, p := range lq.order {
 		p(selector)
 	}
-	if offset := lq.offset; offset != nil {
+	if offset := lq.ctx.Offset; offset != nil {
 		// limit is mandatory for offset clause. We start
 		// with default value, and override it below if needed.
 		selector.Offset(*offset).Limit(math.MaxInt32)
 	}
-	if limit := lq.limit; limit != nil {
+	if limit := lq.ctx.Limit; limit != nil {
 		selector.Limit(*limit)
 	}
 	return selector
@@ -438,13 +437,8 @@ func (lq *LockQuery) sqlQuery(ctx context.Context) *sql.Selector {
 
 // LockGroupBy is the group-by builder for Lock entities.
 type LockGroupBy struct {
-	config
 	selector
-	fields []string
-	fns    []AggregateFunc
-	// intermediate query (i.e. traversal path).
-	sql  *sql.Selector
-	path func(context.Context) (*sql.Selector, error)
+	build *LockQuery
 }
 
 // Aggregate adds the given aggregation functions to the group-by query.
@@ -453,74 +447,77 @@ func (lgb *LockGroupBy) Aggregate(fns ...AggregateFunc) *LockGroupBy {
 	return lgb
 }
 
-// Scan applies the group-by query and scans the result into the given value.
+// Scan applies the selector query and scans the result into the given value.
 func (lgb *LockGroupBy) Scan(ctx context.Context, v any) error {
-	query, err := lgb.path(ctx)
-	if err != nil {
+	ctx = setContextOp(ctx, lgb.build.ctx, "GroupBy")
+	if err := lgb.build.prepareQuery(ctx); err != nil {
 		return err
 	}
-	lgb.sql = query
-	return lgb.sqlScan(ctx, v)
+	return scanWithInterceptors[*LockQuery, *LockGroupBy](ctx, lgb.build, lgb, lgb.build.inters, v)
 }
 
-func (lgb *LockGroupBy) sqlScan(ctx context.Context, v any) error {
-	for _, f := range lgb.fields {
-		if !lock.ValidColumn(f) {
-			return &ValidationError{Name: f, err: fmt.Errorf("invalid field %q for group-by", f)}
-		}
+func (lgb *LockGroupBy) sqlScan(ctx context.Context, root *LockQuery, v any) error {
+	selector := root.sqlQuery(ctx).Select()
+	aggregation := make([]string, 0, len(lgb.fns))
+	for _, fn := range lgb.fns {
+		aggregation = append(aggregation, fn(selector))
 	}
-	selector := lgb.sqlQuery()
+	if len(selector.SelectedColumns()) == 0 {
+		columns := make([]string, 0, len(*lgb.flds)+len(lgb.fns))
+		for _, f := range *lgb.flds {
+			columns = append(columns, selector.C(f))
+		}
+		columns = append(columns, aggregation...)
+		selector.Select(columns...)
+	}
+	selector.GroupBy(selector.Columns(*lgb.flds...)...)
 	if err := selector.Err(); err != nil {
 		return err
 	}
 	rows := &sql.Rows{}
 	query, args := selector.Query()
-	if err := lgb.driver.Query(ctx, query, args, rows); err != nil {
+	if err := lgb.build.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
 }
 
-func (lgb *LockGroupBy) sqlQuery() *sql.Selector {
-	selector := lgb.sql.Select()
-	aggregation := make([]string, 0, len(lgb.fns))
-	for _, fn := range lgb.fns {
-		aggregation = append(aggregation, fn(selector))
-	}
-	// If no columns were selected in a custom aggregation function, the default
-	// selection is the fields used for "group-by", and the aggregation functions.
-	if len(selector.SelectedColumns()) == 0 {
-		columns := make([]string, 0, len(lgb.fields)+len(lgb.fns))
-		for _, f := range lgb.fields {
-			columns = append(columns, selector.C(f))
-		}
-		columns = append(columns, aggregation...)
-		selector.Select(columns...)
-	}
-	return selector.GroupBy(selector.Columns(lgb.fields...)...)
-}
-
 // LockSelect is the builder for selecting fields of Lock entities.
 type LockSelect struct {
 	*LockQuery
 	selector
-	// intermediate query (i.e. traversal path).
-	sql *sql.Selector
+}
+
+// Aggregate adds the given aggregation functions to the selector query.
+func (ls *LockSelect) Aggregate(fns ...AggregateFunc) *LockSelect {
+	ls.fns = append(ls.fns, fns...)
+	return ls
 }
 
 // Scan applies the selector query and scans the result into the given value.
 func (ls *LockSelect) Scan(ctx context.Context, v any) error {
+	ctx = setContextOp(ctx, ls.ctx, "Select")
 	if err := ls.prepareQuery(ctx); err != nil {
 		return err
 	}
-	ls.sql = ls.LockQuery.sqlQuery(ctx)
-	return ls.sqlScan(ctx, v)
+	return scanWithInterceptors[*LockQuery, *LockSelect](ctx, ls.LockQuery, ls, ls.inters, v)
 }
 
-func (ls *LockSelect) sqlScan(ctx context.Context, v any) error {
+func (ls *LockSelect) sqlScan(ctx context.Context, root *LockQuery, v any) error {
+	selector := root.sqlQuery(ctx)
+	aggregation := make([]string, 0, len(ls.fns))
+	for _, fn := range ls.fns {
+		aggregation = append(aggregation, fn(selector))
+	}
+	switch n := len(*ls.selector.flds); {
+	case n == 0 && len(aggregation) > 0:
+		selector.Select(aggregation...)
+	case n != 0 && len(aggregation) > 0:
+		selector.AppendSelect(aggregation...)
+	}
 	rows := &sql.Rows{}
-	query, args := ls.sql.Query()
+	query, args := selector.Query()
 	if err := ls.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}

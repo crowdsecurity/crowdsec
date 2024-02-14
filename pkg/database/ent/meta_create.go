@@ -101,50 +101,8 @@ func (mc *MetaCreate) Mutation() *MetaMutation {
 
 // Save creates the Meta in the database.
 func (mc *MetaCreate) Save(ctx context.Context) (*Meta, error) {
-	var (
-		err  error
-		node *Meta
-	)
 	mc.defaults()
-	if len(mc.hooks) == 0 {
-		if err = mc.check(); err != nil {
-			return nil, err
-		}
-		node, err = mc.sqlSave(ctx)
-	} else {
-		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-			mutation, ok := m.(*MetaMutation)
-			if !ok {
-				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			if err = mc.check(); err != nil {
-				return nil, err
-			}
-			mc.mutation = mutation
-			if node, err = mc.sqlSave(ctx); err != nil {
-				return nil, err
-			}
-			mutation.id = &node.ID
-			mutation.done = true
-			return node, err
-		})
-		for i := len(mc.hooks) - 1; i >= 0; i-- {
-			if mc.hooks[i] == nil {
-				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
-			}
-			mut = mc.hooks[i](mut)
-		}
-		v, err := mut.Mutate(ctx, mc.mutation)
-		if err != nil {
-			return nil, err
-		}
-		nv, ok := v.(*Meta)
-		if !ok {
-			return nil, fmt.Errorf("unexpected node type %T returned from MetaMutation", v)
-		}
-		node = nv
-	}
-	return node, err
+	return withHooks(ctx, mc.sqlSave, mc.mutation, mc.hooks)
 }
 
 // SaveX calls Save and panics if Save returns an error.
@@ -198,6 +156,9 @@ func (mc *MetaCreate) check() error {
 }
 
 func (mc *MetaCreate) sqlSave(ctx context.Context) (*Meta, error) {
+	if err := mc.check(); err != nil {
+		return nil, err
+	}
 	_node, _spec := mc.createSpec()
 	if err := sqlgraph.CreateNode(ctx, mc.driver, _spec); err != nil {
 		if sqlgraph.IsConstraintError(err) {
@@ -207,50 +168,30 @@ func (mc *MetaCreate) sqlSave(ctx context.Context) (*Meta, error) {
 	}
 	id := _spec.ID.Value.(int64)
 	_node.ID = int(id)
+	mc.mutation.id = &_node.ID
+	mc.mutation.done = true
 	return _node, nil
 }
 
 func (mc *MetaCreate) createSpec() (*Meta, *sqlgraph.CreateSpec) {
 	var (
 		_node = &Meta{config: mc.config}
-		_spec = &sqlgraph.CreateSpec{
-			Table: meta.Table,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: meta.FieldID,
-			},
-		}
+		_spec = sqlgraph.NewCreateSpec(meta.Table, sqlgraph.NewFieldSpec(meta.FieldID, field.TypeInt))
 	)
 	if value, ok := mc.mutation.CreatedAt(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: meta.FieldCreatedAt,
-		})
+		_spec.SetField(meta.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = &value
 	}
 	if value, ok := mc.mutation.UpdatedAt(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: meta.FieldUpdatedAt,
-		})
+		_spec.SetField(meta.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = &value
 	}
 	if value, ok := mc.mutation.Key(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: meta.FieldKey,
-		})
+		_spec.SetField(meta.FieldKey, field.TypeString, value)
 		_node.Key = value
 	}
 	if value, ok := mc.mutation.Value(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: meta.FieldValue,
-		})
+		_spec.SetField(meta.FieldValue, field.TypeString, value)
 		_node.Value = value
 	}
 	if nodes := mc.mutation.OwnerIDs(); len(nodes) > 0 {
@@ -261,10 +202,7 @@ func (mc *MetaCreate) createSpec() (*Meta, *sqlgraph.CreateSpec) {
 			Columns: []string{meta.OwnerColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: alert.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(alert.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -279,11 +217,15 @@ func (mc *MetaCreate) createSpec() (*Meta, *sqlgraph.CreateSpec) {
 // MetaCreateBulk is the builder for creating many Meta entities in bulk.
 type MetaCreateBulk struct {
 	config
+	err      error
 	builders []*MetaCreate
 }
 
 // Save creates the Meta entities in the database.
 func (mcb *MetaCreateBulk) Save(ctx context.Context) ([]*Meta, error) {
+	if mcb.err != nil {
+		return nil, mcb.err
+	}
 	specs := make([]*sqlgraph.CreateSpec, len(mcb.builders))
 	nodes := make([]*Meta, len(mcb.builders))
 	mutators := make([]Mutator, len(mcb.builders))
@@ -300,8 +242,8 @@ func (mcb *MetaCreateBulk) Save(ctx context.Context) ([]*Meta, error) {
 					return nil, err
 				}
 				builder.mutation = mutation
-				nodes[i], specs[i] = builder.createSpec()
 				var err error
+				nodes[i], specs[i] = builder.createSpec()
 				if i < len(mutators)-1 {
 					_, err = mutators[i+1].Mutate(root, mcb.builders[i+1].mutation)
 				} else {
