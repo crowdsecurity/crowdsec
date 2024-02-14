@@ -633,6 +633,13 @@ func (a *apic) PullTop(forcePull bool) error {
 		}
 	}
 
+	log.Debug("Acquiring lock for pullCAPI")
+	err = a.dbClient.AcquirePullCAPILock()
+	if a.dbClient.IsLocked(err) {
+		log.Info("PullCAPI is already running, skipping")
+		return nil
+	}
+
 	log.Infof("Starting community-blocklist update")
 
 	data, _, err := a.apiClient.Decisions.GetStreamV3(context.Background(), apiclient.DecisionsStreamOpts{Startup: a.startup})
@@ -682,6 +689,11 @@ func (a *apic) PullTop(forcePull bool) error {
 	// update blocklists
 	if err := a.UpdateBlocklists(data.Links, addCounters, forcePull); err != nil {
 		return fmt.Errorf("while updating blocklists: %w", err)
+	}
+
+	log.Debug("Releasing lock for pullCAPI")
+	if err := a.dbClient.ReleasePullCAPILock(); err != nil {
+		return fmt.Errorf("while releasing lock: %w", err)
 	}
 
 	return nil

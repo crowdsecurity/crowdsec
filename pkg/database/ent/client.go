@@ -20,6 +20,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/configitem"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/lock"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 )
@@ -39,6 +40,8 @@ type Client struct {
 	Decision *DecisionClient
 	// Event is the client for interacting with the Event builders.
 	Event *EventClient
+	// Lock is the client for interacting with the Lock builders.
+	Lock *LockClient
 	// Machine is the client for interacting with the Machine builders.
 	Machine *MachineClient
 	// Meta is the client for interacting with the Meta builders.
@@ -61,6 +64,7 @@ func (c *Client) init() {
 	c.ConfigItem = NewConfigItemClient(c.config)
 	c.Decision = NewDecisionClient(c.config)
 	c.Event = NewEventClient(c.config)
+	c.Lock = NewLockClient(c.config)
 	c.Machine = NewMachineClient(c.config)
 	c.Meta = NewMetaClient(c.config)
 }
@@ -153,6 +157,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		ConfigItem: NewConfigItemClient(cfg),
 		Decision:   NewDecisionClient(cfg),
 		Event:      NewEventClient(cfg),
+		Lock:       NewLockClient(cfg),
 		Machine:    NewMachineClient(cfg),
 		Meta:       NewMetaClient(cfg),
 	}, nil
@@ -179,6 +184,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		ConfigItem: NewConfigItemClient(cfg),
 		Decision:   NewDecisionClient(cfg),
 		Event:      NewEventClient(cfg),
+		Lock:       NewLockClient(cfg),
 		Machine:    NewMachineClient(cfg),
 		Meta:       NewMetaClient(cfg),
 	}, nil
@@ -210,7 +216,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Alert, c.Bouncer, c.ConfigItem, c.Decision, c.Event, c.Machine, c.Meta,
+		c.Alert, c.Bouncer, c.ConfigItem, c.Decision, c.Event, c.Lock, c.Machine,
+		c.Meta,
 	} {
 		n.Use(hooks...)
 	}
@@ -220,7 +227,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Alert, c.Bouncer, c.ConfigItem, c.Decision, c.Event, c.Machine, c.Meta,
+		c.Alert, c.Bouncer, c.ConfigItem, c.Decision, c.Event, c.Lock, c.Machine,
+		c.Meta,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -239,6 +247,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Decision.mutate(ctx, m)
 	case *EventMutation:
 		return c.Event.mutate(ctx, m)
+	case *LockMutation:
+		return c.Lock.mutate(ctx, m)
 	case *MachineMutation:
 		return c.Machine.mutate(ctx, m)
 	case *MetaMutation:
@@ -1009,6 +1019,139 @@ func (c *EventClient) mutate(ctx context.Context, m *EventMutation) (Value, erro
 	}
 }
 
+// LockClient is a client for the Lock schema.
+type LockClient struct {
+	config
+}
+
+// NewLockClient returns a client for the Lock from the given config.
+func NewLockClient(c config) *LockClient {
+	return &LockClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `lock.Hooks(f(g(h())))`.
+func (c *LockClient) Use(hooks ...Hook) {
+	c.hooks.Lock = append(c.hooks.Lock, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `lock.Intercept(f(g(h())))`.
+func (c *LockClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Lock = append(c.inters.Lock, interceptors...)
+}
+
+// Create returns a builder for creating a Lock entity.
+func (c *LockClient) Create() *LockCreate {
+	mutation := newLockMutation(c.config, OpCreate)
+	return &LockCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Lock entities.
+func (c *LockClient) CreateBulk(builders ...*LockCreate) *LockCreateBulk {
+	return &LockCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *LockClient) MapCreateBulk(slice any, setFunc func(*LockCreate, int)) *LockCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &LockCreateBulk{err: fmt.Errorf("calling to LockClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*LockCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &LockCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Lock.
+func (c *LockClient) Update() *LockUpdate {
+	mutation := newLockMutation(c.config, OpUpdate)
+	return &LockUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *LockClient) UpdateOne(l *Lock) *LockUpdateOne {
+	mutation := newLockMutation(c.config, OpUpdateOne, withLock(l))
+	return &LockUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *LockClient) UpdateOneID(id int) *LockUpdateOne {
+	mutation := newLockMutation(c.config, OpUpdateOne, withLockID(id))
+	return &LockUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Lock.
+func (c *LockClient) Delete() *LockDelete {
+	mutation := newLockMutation(c.config, OpDelete)
+	return &LockDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *LockClient) DeleteOne(l *Lock) *LockDeleteOne {
+	return c.DeleteOneID(l.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *LockClient) DeleteOneID(id int) *LockDeleteOne {
+	builder := c.Delete().Where(lock.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &LockDeleteOne{builder}
+}
+
+// Query returns a query builder for Lock.
+func (c *LockClient) Query() *LockQuery {
+	return &LockQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeLock},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Lock entity by its id.
+func (c *LockClient) Get(ctx context.Context, id int) (*Lock, error) {
+	return c.Query().Where(lock.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *LockClient) GetX(ctx context.Context, id int) *Lock {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *LockClient) Hooks() []Hook {
+	return c.hooks.Lock
+}
+
+// Interceptors returns the client interceptors.
+func (c *LockClient) Interceptors() []Interceptor {
+	return c.inters.Lock
+}
+
+func (c *LockClient) mutate(ctx context.Context, m *LockMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&LockCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&LockUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&LockUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&LockDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Lock mutation op: %q", m.Op())
+	}
+}
+
 // MachineClient is a client for the Machine schema.
 type MachineClient struct {
 	config
@@ -1310,9 +1453,10 @@ func (c *MetaClient) mutate(ctx context.Context, m *MetaMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Alert, Bouncer, ConfigItem, Decision, Event, Machine, Meta []ent.Hook
+		Alert, Bouncer, ConfigItem, Decision, Event, Lock, Machine, Meta []ent.Hook
 	}
 	inters struct {
-		Alert, Bouncer, ConfigItem, Decision, Event, Machine, Meta []ent.Interceptor
+		Alert, Bouncer, ConfigItem, Decision, Event, Lock, Machine,
+		Meta []ent.Interceptor
 	}
 )
