@@ -33,7 +33,6 @@ func StartRunSvc() error {
 
 	log.Infof("Crowdsec %s", version.String())
 
-	apiReady := make(chan bool, 1)
 	agentReady := make(chan bool, 1)
 
 	// Enable profiling early
@@ -46,14 +45,19 @@ func StartRunSvc() error {
 			dbClient, err = database.NewClient(cConfig.DbConfig)
 
 			if err != nil {
-				return fmt.Errorf("unable to create database client: %s", err)
+				return fmt.Errorf("unable to create database client: %w", err)
 			}
 		}
 
 		registerPrometheus(cConfig.Prometheus)
 
-		go servePrometheus(cConfig.Prometheus, dbClient, apiReady, agentReady)
+		go servePrometheus(cConfig.Prometheus, dbClient, agentReady)
+	} else {
+		// avoid leaking the channel
+		go func() {
+			<-agentReady
+		}()
 	}
 
-	return Serve(cConfig, apiReady, agentReady)
+	return Serve(cConfig, agentReady)
 }
