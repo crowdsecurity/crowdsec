@@ -221,6 +221,24 @@ var NodesHitsKo = prometheus.NewCounterVec(
 	[]string{"source", "type", "name"},
 )
 
+//
+
+var NodesWlHitsOk = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_node_wl_hits_ok_total",
+		Help: "Total events successfully whitelisted by node.",
+	},
+	[]string{"source", "type", "name", "reason"},
+)
+
+var NodesWlHits = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_node_wl_hits_total",
+		Help: "Total events processed by whitelist node.",
+	},
+	[]string{"source", "type", "name", "reason"},
+)
+
 func stageidx(stage string, stages []string) int {
 	for i, v := range stages {
 		if stage == v {

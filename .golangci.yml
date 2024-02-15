@@ -11,7 +11,7 @@ run:
 linters-settings:
   cyclop:
     # lower this after refactoring
-    max-complexity: 66
+    max-complexity: 53
 
   gci:
     sections:
@@ -26,7 +26,7 @@ linters-settings:
 
   gocyclo:
     # lower this after refactoring
-    min-complexity: 64
+    min-complexity: 49
 
   funlen:
     # Checks the number of lines in a function.
@@ -46,14 +46,14 @@ linters-settings:
 
   maintidx:
     # raise this after refactoring
-    under: 9
+    under: 11
 
   misspell:
     locale: US
 
   nestif:
     # lower this after refactoring
-    min-complexity: 27
+    min-complexity: 28
 
   nlreturn:
     block-size: 4
@@ -263,6 +263,10 @@ issues:
         - perfsprint
       text: "fmt.Sprintf can be replaced .*"
 
+    - linters:
+        - perfsprint
+      text: "fmt.Errorf can be replaced with errors.New"
+
     #
     # Will fix, easy but some neurons required
     #
@@ -309,10 +313,6 @@ issues:
     #
     # Will fix,  might be trickier
     #
-
-    - linters:
-        - staticcheck
-      text: "x509.ParseCRL has been deprecated since Go 1.19: Use ParseRevocationList instead"
 
     # https://github.com/pkg/errors/issues/245
     - linters:

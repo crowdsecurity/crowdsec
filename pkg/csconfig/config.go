@@ -25,7 +25,7 @@ var globalConfig = Config{}
 
 // Config contains top-level defaults -> overridden by configuration file -> overridden by CLI flags
 type Config struct {
-	//just a path to ourselves :p
+	// just a path to ourselves :p
 	FilePath     *string             `yaml:"-"`
 	Self         []byte              `yaml:"-"`
 	Common       *CommonCfg          `yaml:"common,omitempty"`
@@ -44,10 +44,12 @@ type Config struct {
 func NewConfig(configFile string, disableAgent bool, disableAPI bool, inCli bool) (*Config, string, error) {
 	patcher := yamlpatch.NewPatcher(configFile, ".local")
 	patcher.SetQuiet(inCli)
+
 	fcontent, err := patcher.MergedPatchContent()
 	if err != nil {
 		return nil, "", err
 	}
+
 	configData := csstring.StrictExpand(string(fcontent), os.LookupEnv)
 	cfg := Config{
 		FilePath:     &configFile,

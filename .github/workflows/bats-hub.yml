@@ -8,9 +8,6 @@ on:
       GIST_BADGES_ID:
         required: true
 
-env:
-  PREFIX_TEST_NAMES_WITH_FILE: true
-
 jobs:
   build:
     strategy:
@@ -36,7 +33,7 @@ jobs:
     - name: "Set up Go"
       uses: actions/setup-go@v5
       with:
-        go-version: "1.21.6"
+        go-version: "1.21.7"
 
     - name: "Install bats dependencies"
       env:
@@ -50,7 +47,7 @@ jobs:
     - name: "Run hub tests"
       run: |
           ./test/bin/generate-hub-tests
-          ./test/run-tests test/dyn-bats/${{ matrix.test-file }}
+          ./test/run-tests ./test/dyn-bats/${{ matrix.test-file }} --formatter $(pwd)/test/lib/color-formatter
 
     - name: "Collect hub coverage"
       run: ./test/bin/collect-hub-coverage >> $GITHUB_ENV

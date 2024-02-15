@@ -7,9 +7,6 @@ on:
         required: true
         type: string
 
-env:
-  PREFIX_TEST_NAMES_WITH_FILE: true
-
 jobs:
   build:
     name: "Functional tests"
@@ -39,7 +36,7 @@ jobs:
     - name: "Set up Go"
       uses: actions/setup-go@v5
       with:
-        go-version: "1.21.6"
+        go-version: "1.21.7"
 
     - name: "Install bats dependencies"
       env:
@@ -58,7 +55,7 @@ jobs:
         MYSQL_USER: root
 
     - name: "Run tests"
-      run: make bats-test
+      run: ./test/run-tests ./test/bats --formatter $(pwd)/test/lib/color-formatter
       env:
         DB_BACKEND: mysql
         MYSQL_HOST: 127.0.0.1

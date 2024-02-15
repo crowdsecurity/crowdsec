@@ -3,23 +3,23 @@ package main
 import (
 	"fmt"
 	"os"
+	"slices"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
-	"slices"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
-type cliSimulation struct{
+type cliSimulation struct {
 	cfg configGetter
 }
 
-func NewCLISimulation(getconfig configGetter) *cliSimulation {
+func NewCLISimulation(cfg configGetter) *cliSimulation {
 	return &cliSimulation{
-		cfg: getconfig,
+		cfg: cfg,
 	}
 }
 
@@ -38,6 +38,7 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 			if cli.cfg().Cscli.SimulationConfig == nil {
 				return fmt.Errorf("no simulation configured")
 			}
+
 			return nil
 		},
 		PersistentPostRun: func(cmd *cobra.Command, _ []string) {
@@ -211,14 +212,17 @@ func (cli *cliSimulation) enableGlobalSimulation() error {
 
 func (cli *cliSimulation) dumpSimulationFile() error {
 	cfg := cli.cfg()
+
 	newConfigSim, err := yaml.Marshal(cfg.Cscli.SimulationConfig)
 	if err != nil {
 		return fmt.Errorf("unable to marshal simulation configuration: %s", err)
 	}
+
 	err = os.WriteFile(cfg.ConfigPaths.SimulationFilePath, newConfigSim, 0o644)
 	if err != nil {
 		return fmt.Errorf("write simulation config in '%s' failed: %s", cfg.ConfigPaths.SimulationFilePath, err)
 	}
+
 	log.Debugf("updated simulation file %s", cfg.ConfigPaths.SimulationFilePath)
 
 	return nil
@@ -230,16 +234,19 @@ func (cli *cliSimulation) disableGlobalSimulation() error {
 	*cfg.Cscli.SimulationConfig.Simulation = false
 
 	cfg.Cscli.SimulationConfig.Exclusions = []string{}
+
 	newConfigSim, err := yaml.Marshal(cfg.Cscli.SimulationConfig)
 	if err != nil {
 		return fmt.Errorf("unable to marshal new simulation configuration: %s", err)
 	}
+
 	err = os.WriteFile(cfg.ConfigPaths.SimulationFilePath, newConfigSim, 0o644)
 	if err != nil {
-		return fmt.Errorf("unable to write new simulation config in '%s' : %s", cfg.ConfigPaths.SimulationFilePath, err)
+		return fmt.Errorf("unable to write new simulation config in '%s': %s", cfg.ConfigPaths.SimulationFilePath, err)
 	}
 
 	log.Printf("global simulation: disabled")
+
 	return nil
 }
 
@@ -249,10 +256,13 @@ func (cli *cliSimulation) status() {
 		log.Printf("global simulation: disabled (configuration file is missing)")
 		return
 	}
+
 	if *cfg.Cscli.SimulationConfig.Simulation {
 		log.Println("global simulation: enabled")
+
 		if len(cfg.Cscli.SimulationConfig.Exclusions) > 0 {
 			log.Println("Scenarios not in simulation mode :")
+
 			for _, scenario := range cfg.Cscli.SimulationConfig.Exclusions {
 				log.Printf("  - %s", scenario)
 			}

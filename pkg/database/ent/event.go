@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
@@ -29,7 +30,8 @@ type Event struct {
 	AlertEvents int `json:"alert_events,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the EventQuery when eager-loading is set.
-	Edges EventEdges `json:"edges"`
+	Edges        EventEdges `json:"edges"`
+	selectValues sql.SelectValues
 }
 
 // EventEdges holds the relations/edges for other nodes in the graph.
@@ -66,7 +68,7 @@ func (*Event) scanValues(columns []string) ([]any, error) {
 		case event.FieldCreatedAt, event.FieldUpdatedAt, event.FieldTime:
 			values[i] = new(sql.NullTime)
 		default:
-			return nil, fmt.Errorf("unexpected column %q for type Event", columns[i])
+			values[i] = new(sql.UnknownType)
 		}
 	}
 	return values, nil
@@ -118,21 +120,29 @@ func (e *Event) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				e.AlertEvents = int(value.Int64)
 			}
+		default:
+			e.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
 }
 
+// Value returns the ent.Value that was dynamically selected and assigned to the Event.
+// This includes values selected through modifiers, order, etc.
+func (e *Event) Value(name string) (ent.Value, error) {
+	return e.selectValues.Get(name)
+}
+
 // QueryOwner queries the "owner" edge of the Event entity.
 func (e *Event) QueryOwner() *AlertQuery {
-	return (&EventClient{config: e.config}).QueryOwner(e)
+	return NewEventClient(e.config).QueryOwner(e)
 }
 
 // Update returns a builder for updating this Event.
 // Note that you need to call Event.Unwrap() before calling this method if this Event
 // was returned from a transaction, and the transaction was committed or rolled back.
 func (e *Event) Update() *EventUpdateOne {
-	return (&EventClient{config: e.config}).UpdateOne(e)
+	return NewEventClient(e.config).UpdateOne(e)
 }
 
 // Unwrap unwraps the Event entity that was returned from a transaction after it was closed,
@@ -175,9 +185,3 @@ func (e *Event) String() string {
 
 // Events is a parsable slice of Event.
 type Events []*Event
-
-func (e Events) config(cfg config) {
-	for _i := range e {
-		e[_i].config = cfg
-	}
-}

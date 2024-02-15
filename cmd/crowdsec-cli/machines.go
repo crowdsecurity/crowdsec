@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -17,7 +18,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
-	"slices"
 
 	"github.com/crowdsecurity/machineid"
 
@@ -45,6 +45,7 @@ func generatePassword(length int) string {
 		if err != nil {
 			log.Fatalf("failed getting data from prng for password generation : %s", err)
 		}
+
 		buf[i] = charset[rInt.Int64()]
 	}
 
@@ -59,12 +60,14 @@ func generateIDPrefix() (string, error) {
 	if err == nil {
 		return prefix, nil
 	}
+
 	log.Debugf("failed to get machine-id with usual files: %s", err)
 
 	bID, err := uuid.NewRandom()
 	if err == nil {
 		return bID.String(), nil
 	}
+
 	return "", fmt.Errorf("generating machine id: %w", err)
 }
 
@@ -75,11 +78,14 @@ func generateID(prefix string) (string, error) {
 	if prefix == "" {
 		prefix, err = generateIDPrefix()
 	}
+
 	if err != nil {
 		return "", err
 	}
+
 	prefix = strings.ReplaceAll(prefix, "-", "")[:32]
 	suffix := generatePassword(16)
+
 	return prefix + suffix, nil
 }
 
@@ -100,14 +106,14 @@ func getLastHeartbeat(m *ent.Machine) (string, bool) {
 	return hb, true
 }
 
-type cliMachines struct{
-	db *database.Client
+type cliMachines struct {
+	db  *database.Client
 	cfg configGetter
 }
 
-func NewCLIMachines(getconfig configGetter) *cliMachines {
+func NewCLIMachines(cfg configGetter) *cliMachines {
 	return &cliMachines{
-		cfg: getconfig,
+		cfg: cfg,
 	}
 }
 
@@ -130,6 +136,7 @@ Note: This command requires database direct access, so is intended to be run on 
 			if err != nil {
 				return fmt.Errorf("unable to create new database client: %s", err)
 			}
+
 			return nil
 		},
 	}
@@ -243,7 +250,7 @@ cscli machines add -f- --auto > /tmp/mycreds.yaml`,
 
 func (cli *cliMachines) add(args []string, machinePassword string, dumpFile string, apiURL string, interactive bool, autoAdd bool, force bool) error {
 	var (
-		err error
+		err       error
 		machineID string
 	)
 
@@ -289,6 +296,7 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 		if !autoAdd {
 			return fmt.Errorf("please specify a password with --password or use --auto")
 		}
+
 		machinePassword = generatePassword(passwordLength)
 	} else if machinePassword == "" && interactive {
 		qs := &survey.Password{
@@ -328,10 +336,10 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 	}
 
 	if dumpFile != "" && dumpFile != "-" {
-		err = os.WriteFile(dumpFile, apiConfigDump, 0o600)
-		if err != nil {
+		if err = os.WriteFile(dumpFile, apiConfigDump, 0o600); err != nil {
 			return fmt.Errorf("write api credentials in '%s' failed: %s", dumpFile, err)
 		}
+
 		fmt.Fprintf(os.Stderr, "API credentials written to '%s'.\n", dumpFile)
 	} else {
 		fmt.Print(string(apiConfigDump))
@@ -340,7 +348,7 @@ func (cli *cliMachines) add(args []string, machinePassword string, dumpFile stri
 	return nil
 }
 
-func (cli *cliMachines) deleteValid(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+func (cli *cliMachines) deleteValid(_ *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	machines, err := cli.db.ListMachines()
 	if err != nil {
 		cobra.CompError("unable to list machines " + err.Error())
@@ -359,11 +367,11 @@ func (cli *cliMachines) deleteValid(cmd *cobra.Command, args []string, toComplet
 
 func (cli *cliMachines) delete(machines []string) error {
 	for _, machineID := range machines {
-		err := cli.db.DeleteWatcher(machineID)
-		if err != nil {
+		if err := cli.db.DeleteWatcher(machineID); err != nil {
 			log.Errorf("unable to delete machine '%s': %s", machineID, err)
 			return nil
 		}
+
 		log.Infof("machine '%s' deleted successfully", machineID)
 	}
 
@@ -440,9 +448,9 @@ func (cli *cliMachines) prune(duration time.Duration, notValidOnly bool, force b
 
 func (cli *cliMachines) newPruneCmd() *cobra.Command {
 	var (
-		duration       time.Duration
-		notValidOnly   bool
-		force          bool
+		duration     time.Duration
+		notValidOnly bool
+		force        bool
 	)
 
 	const defaultDuration = 10 * time.Minute
@@ -473,6 +481,7 @@ func (cli *cliMachines) validate(machineID string) error {
 	if err := cli.db.ValidateMachine(machineID); err != nil {
 		return fmt.Errorf("unable to validate machine '%s': %s", machineID, err)
 	}
+
 	log.Infof("machine '%s' validated successfully", machineID)
 
 	return nil

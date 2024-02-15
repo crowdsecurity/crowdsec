@@ -324,35 +324,8 @@ func (du *DecisionUpdate) ClearOwner() *DecisionUpdate {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (du *DecisionUpdate) Save(ctx context.Context) (int, error) {
-	var (
-		err      error
-		affected int
-	)
 	du.defaults()
-	if len(du.hooks) == 0 {
-		affected, err = du.sqlSave(ctx)
-	} else {
-		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-			mutation, ok := m.(*DecisionMutation)
-			if !ok {
-				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			du.mutation = mutation
-			affected, err = du.sqlSave(ctx)
-			mutation.done = true
-			return affected, err
-		})
-		for i := len(du.hooks) - 1; i >= 0; i-- {
-			if du.hooks[i] == nil {
-				return 0, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
-			}
-			mut = du.hooks[i](mut)
-		}
-		if _, err := mut.Mutate(ctx, du.mutation); err != nil {
-			return 0, err
-		}
-	}
-	return affected, err
+	return withHooks(ctx, du.sqlSave, du.mutation, du.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
@@ -390,16 +363,7 @@ func (du *DecisionUpdate) defaults() {
 }
 
 func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
-	_spec := &sqlgraph.UpdateSpec{
-		Node: &sqlgraph.NodeSpec{
-			Table:   decision.Table,
-			Columns: decision.Columns,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: decision.FieldID,
-			},
-		},
-	}
+	_spec := sqlgraph.NewUpdateSpec(decision.Table, decision.Columns, sqlgraph.NewFieldSpec(decision.FieldID, field.TypeInt))
 	if ps := du.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -408,198 +372,91 @@ func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 	}
 	if value, ok := du.mutation.CreatedAt(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: decision.FieldCreatedAt,
-		})
+		_spec.SetField(decision.FieldCreatedAt, field.TypeTime, value)
 	}
 	if du.mutation.CreatedAtCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: decision.FieldCreatedAt,
-		})
+		_spec.ClearField(decision.FieldCreatedAt, field.TypeTime)
 	}
 	if value, ok := du.mutation.UpdatedAt(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: decision.FieldUpdatedAt,
-		})
+		_spec.SetField(decision.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if du.mutation.UpdatedAtCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: decision.FieldUpdatedAt,
-		})
+		_spec.ClearField(decision.FieldUpdatedAt, field.TypeTime)
 	}
 	if value, ok := du.mutation.Until(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: decision.FieldUntil,
-		})
+		_spec.SetField(decision.FieldUntil, field.TypeTime, value)
 	}
 	if du.mutation.UntilCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: decision.FieldUntil,
-		})
+		_spec.ClearField(decision.FieldUntil, field.TypeTime)
 	}
 	if value, ok := du.mutation.Scenario(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: decision.FieldScenario,
-		})
+		_spec.SetField(decision.FieldScenario, field.TypeString, value)
 	}
 	if value, ok := du.mutation.GetType(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: decision.FieldType,
-		})
+		_spec.SetField(decision.FieldType, field.TypeString, value)
 	}
 	if value, ok := du.mutation.StartIP(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: decision.FieldStartIP,
-		})
+		_spec.SetField(decision.FieldStartIP, field.TypeInt64, value)
 	}
 	if value, ok := du.mutation.AddedStartIP(); ok {
-		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: decision.FieldStartIP,
-		})
+		_spec.AddField(decision.FieldStartIP, field.TypeInt64, value)
 	}
 	if du.mutation.StartIPCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Column: decision.FieldStartIP,
-		})
+		_spec.ClearField(decision.FieldStartIP, field.TypeInt64)
 	}
 	if value, ok := du.mutation.EndIP(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: decision.FieldEndIP,
-		})
+		_spec.SetField(decision.FieldEndIP, field.TypeInt64, value)
 	}
 	if value, ok := du.mutation.AddedEndIP(); ok {
-		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: decision.FieldEndIP,
-		})
+		_spec.AddField(decision.FieldEndIP, field.TypeInt64, value)
 	}
 	if du.mutation.EndIPCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Column: decision.FieldEndIP,
-		})
+		_spec.ClearField(decision.FieldEndIP, field.TypeInt64)
 	}
 	if value, ok := du.mutation.StartSuffix(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: decision.FieldStartSuffix,
-		})
+		_spec.SetField(decision.FieldStartSuffix, field.TypeInt64, value)
 	}
 	if value, ok := du.mutation.AddedStartSuffix(); ok {
-		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: decision.FieldStartSuffix,
-		})
+		_spec.AddField(decision.FieldStartSuffix, field.TypeInt64, value)
 	}
 	if du.mutation.StartSuffixCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Column: decision.FieldStartSuffix,
-		})
+		_spec.ClearField(decision.FieldStartSuffix, field.TypeInt64)
 	}
 	if value, ok := du.mutation.EndSuffix(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: decision.FieldEndSuffix,
-		})
+		_spec.SetField(decision.FieldEndSuffix, field.TypeInt64, value)
 	}
 	if value, ok := du.mutation.AddedEndSuffix(); ok {
-		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: decision.FieldEndSuffix,
-		})
+		_spec.AddField(decision.FieldEndSuffix, field.TypeInt64, value)
 	}
 	if du.mutation.EndSuffixCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Column: decision.FieldEndSuffix,
-		})
+		_spec.ClearField(decision.FieldEndSuffix, field.TypeInt64)
 	}
 	if value, ok := du.mutation.IPSize(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: decision.FieldIPSize,
-		})
+		_spec.SetField(decision.FieldIPSize, field.TypeInt64, value)
 	}
 	if value, ok := du.mutation.AddedIPSize(); ok {
-		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: decision.FieldIPSize,
-		})
+		_spec.AddField(decision.FieldIPSize, field.TypeInt64, value)
 	}
 	if du.mutation.IPSizeCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Column: decision.FieldIPSize,
-		})
+		_spec.ClearField(decision.FieldIPSize, field.TypeInt64)
 	}
 	if value, ok := du.mutation.Scope(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: decision.FieldScope,
-		})
+		_spec.SetField(decision.FieldScope, field.TypeString, value)
 	}
 	if value, ok := du.mutation.Value(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: decision.FieldValue,
-		})
+		_spec.SetField(decision.FieldValue, field.TypeString, value)
 	}
 	if value, ok := du.mutation.Origin(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: decision.FieldOrigin,
-		})
+		_spec.SetField(decision.FieldOrigin, field.TypeString, value)
 	}
 	if value, ok := du.mutation.Simulated(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeBool,
-			Value:  value,
-			Column: decision.FieldSimulated,
-		})
+		_spec.SetField(decision.FieldSimulated, field.TypeBool, value)
 	}
 	if value, ok := du.mutation.UUID(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: decision.FieldUUID,
-		})
+		_spec.SetField(decision.FieldUUID, field.TypeString, value)
 	}
 	if du.mutation.UUIDCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Column: decision.FieldUUID,
-		})
+		_spec.ClearField(decision.FieldUUID, field.TypeString)
 	}
 	if du.mutation.OwnerCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -609,10 +466,7 @@ func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{decision.OwnerColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: alert.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(alert.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -625,10 +479,7 @@ func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{decision.OwnerColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: alert.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(alert.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -644,6 +495,7 @@ func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		return 0, err
 	}
+	du.mutation.done = true
 	return n, nil
 }
 
@@ -948,6 +800,12 @@ func (duo *DecisionUpdateOne) ClearOwner() *DecisionUpdateOne {
 	return duo
 }
 
+// Where appends a list predicates to the DecisionUpdate builder.
+func (duo *DecisionUpdateOne) Where(ps ...predicate.Decision) *DecisionUpdateOne {
+	duo.mutation.Where(ps...)
+	return duo
+}
+
 // Select allows selecting one or more fields (columns) of the returned entity.
 // The default is selecting all fields defined in the entity schema.
 func (duo *DecisionUpdateOne) Select(field string, fields ...string) *DecisionUpdateOne {
@@ -957,41 +815,8 @@ func (duo *DecisionUpdateOne) Select(field string, fields ...string) *DecisionUp
 
 // Save executes the query and returns the updated Decision entity.
 func (duo *DecisionUpdateOne) Save(ctx context.Context) (*Decision, error) {
-	var (
-		err  error
-		node *Decision
-	)
 	duo.defaults()
-	if len(duo.hooks) == 0 {
-		node, err = duo.sqlSave(ctx)
-	} else {
-		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-			mutation, ok := m.(*DecisionMutation)
-			if !ok {
-				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			duo.mutation = mutation
-			node, err = duo.sqlSave(ctx)
-			mutation.done = true
-			return node, err
-		})
-		for i := len(duo.hooks) - 1; i >= 0; i-- {
-			if duo.hooks[i] == nil {
-				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
-			}
-			mut = duo.hooks[i](mut)
-		}
-		v, err := mut.Mutate(ctx, duo.mutation)
-		if err != nil {
-			return nil, err
-		}
-		nv, ok := v.(*Decision)
-		if !ok {
-			return nil, fmt.Errorf("unexpected node type %T returned from DecisionMutation", v)
-		}
-		node = nv
-	}
-	return node, err
+	return withHooks(ctx, duo.sqlSave, duo.mutation, duo.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
@@ -1029,16 +854,7 @@ func (duo *DecisionUpdateOne) defaults() {
 }
 
 func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err error) {
-	_spec := &sqlgraph.UpdateSpec{
-		Node: &sqlgraph.NodeSpec{
-			Table:   decision.Table,
-			Columns: decision.Columns,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: decision.FieldID,
-			},
-		},
-	}
+	_spec := sqlgraph.NewUpdateSpec(decision.Table, decision.Columns, sqlgraph.NewFieldSpec(decision.FieldID, field.TypeInt))
 	id, ok := duo.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Decision.id" for update`)}
@@ -1064,198 +880,91 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err
 		}
 	}
 	if value, ok := duo.mutation.CreatedAt(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: decision.FieldCreatedAt,
-		})
+		_spec.SetField(decision.FieldCreatedAt, field.TypeTime, value)
 	}
 	if duo.mutation.CreatedAtCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: decision.FieldCreatedAt,
-		})
+		_spec.ClearField(decision.FieldCreatedAt, field.TypeTime)
 	}
 	if value, ok := duo.mutation.UpdatedAt(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: decision.FieldUpdatedAt,
-		})
+		_spec.SetField(decision.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if duo.mutation.UpdatedAtCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: decision.FieldUpdatedAt,
-		})
+		_spec.ClearField(decision.FieldUpdatedAt, field.TypeTime)
 	}
 	if value, ok := duo.mutation.Until(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: decision.FieldUntil,
-		})
+		_spec.SetField(decision.FieldUntil, field.TypeTime, value)
 	}
 	if duo.mutation.UntilCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: decision.FieldUntil,
-		})
+		_spec.ClearField(decision.FieldUntil, field.TypeTime)
 	}
 	if value, ok := duo.mutation.Scenario(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: decision.FieldScenario,
-		})
+		_spec.SetField(decision.FieldScenario, field.TypeString, value)
 	}
 	if value, ok := duo.mutation.GetType(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: decision.FieldType,
-		})
+		_spec.SetField(decision.FieldType, field.TypeString, value)
 	}
 	if value, ok := duo.mutation.StartIP(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: decision.FieldStartIP,
-		})
+		_spec.SetField(decision.FieldStartIP, field.TypeInt64, value)
 	}
 	if value, ok := duo.mutation.AddedStartIP(); ok {
-		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: decision.FieldStartIP,
-		})
+		_spec.AddField(decision.FieldStartIP, field.TypeInt64, value)
 	}
 	if duo.mutation.StartIPCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Column: decision.FieldStartIP,
-		})
+		_spec.ClearField(decision.FieldStartIP, field.TypeInt64)
 	}
 	if value, ok := duo.mutation.EndIP(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: decision.FieldEndIP,
-		})
+		_spec.SetField(decision.FieldEndIP, field.TypeInt64, value)
 	}
 	if value, ok := duo.mutation.AddedEndIP(); ok {
-		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: decision.FieldEndIP,
-		})
+		_spec.AddField(decision.FieldEndIP, field.TypeInt64, value)
 	}
 	if duo.mutation.EndIPCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Column: decision.FieldEndIP,
-		})
+		_spec.ClearField(decision.FieldEndIP, field.TypeInt64)
 	}
 	if value, ok := duo.mutation.StartSuffix(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: decision.FieldStartSuffix,
-		})
+		_spec.SetField(decision.FieldStartSuffix, field.TypeInt64, value)
 	}
 	if value, ok := duo.mutation.AddedStartSuffix(); ok {
-		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: decision.FieldStartSuffix,
-		})
+		_spec.AddField(decision.FieldStartSuffix, field.TypeInt64, value)
 	}
 	if duo.mutation.StartSuffixCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Column: decision.FieldStartSuffix,
-		})
+		_spec.ClearField(decision.FieldStartSuffix, field.TypeInt64)
 	}
 	if value, ok := duo.mutation.EndSuffix(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: decision.FieldEndSuffix,
-		})
+		_spec.SetField(decision.FieldEndSuffix, field.TypeInt64, value)
 	}
 	if value, ok := duo.mutation.AddedEndSuffix(); ok {
-		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: decision.FieldEndSuffix,
-		})
+		_spec.AddField(decision.FieldEndSuffix, field.TypeInt64, value)
 	}
 	if duo.mutation.EndSuffixCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Column: decision.FieldEndSuffix,
-		})
+		_spec.ClearField(decision.FieldEndSuffix, field.TypeInt64)
 	}
 	if value, ok := duo.mutation.IPSize(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: decision.FieldIPSize,
-		})
+		_spec.SetField(decision.FieldIPSize, field.TypeInt64, value)
 	}
 	if value, ok := duo.mutation.AddedIPSize(); ok {
-		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: decision.FieldIPSize,
-		})
+		_spec.AddField(decision.FieldIPSize, field.TypeInt64, value)
 	}
 	if duo.mutation.IPSizeCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Column: decision.FieldIPSize,
-		})
+		_spec.ClearField(decision.FieldIPSize, field.TypeInt64)
 	}
 	if value, ok := duo.mutation.Scope(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: decision.FieldScope,
-		})
+		_spec.SetField(decision.FieldScope, field.TypeString, value)
 	}
 	if value, ok := duo.mutation.Value(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: decision.FieldValue,
-		})
+		_spec.SetField(decision.FieldValue, field.TypeString, value)
 	}
 	if value, ok := duo.mutation.Origin(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: decision.FieldOrigin,
-		})
+		_spec.SetField(decision.FieldOrigin, field.TypeString, value)
 	}
 	if value, ok := duo.mutation.Simulated(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeBool,
-			Value:  value,
-			Column: decision.FieldSimulated,
-		})
+		_spec.SetField(decision.FieldSimulated, field.TypeBool, value)
 	}
 	if value, ok := duo.mutation.UUID(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: decision.FieldUUID,
-		})
+		_spec.SetField(decision.FieldUUID, field.TypeString, value)
 	}
 	if duo.mutation.UUIDCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Column: decision.FieldUUID,
-		})
+		_spec.ClearField(decision.FieldUUID, field.TypeString)
 	}
 	if duo.mutation.OwnerCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -1265,10 +974,7 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err
 			Columns: []string{decision.OwnerColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: alert.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(alert.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -1281,10 +987,7 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err
 			Columns: []string{decision.OwnerColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: alert.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(alert.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -1303,5 +1006,6 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err
 		}
 		return nil, err
 	}
+	duo.mutation.done = true
 	return _node, nil
 }

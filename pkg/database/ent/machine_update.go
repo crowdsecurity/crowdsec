@@ -226,41 +226,8 @@ func (mu *MachineUpdate) RemoveAlerts(a ...*Alert) *MachineUpdate {
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (mu *MachineUpdate) Save(ctx context.Context) (int, error) {
-	var (
-		err      error
-		affected int
-	)
 	mu.defaults()
-	if len(mu.hooks) == 0 {
-		if err = mu.check(); err != nil {
-			return 0, err
-		}
-		affected, err = mu.sqlSave(ctx)
-	} else {
-		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-			mutation, ok := m.(*MachineMutation)
-			if !ok {
-				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			if err = mu.check(); err != nil {
-				return 0, err
-			}
-			mu.mutation = mutation
-			affected, err = mu.sqlSave(ctx)
-			mutation.done = true
-			return affected, err
-		})
-		for i := len(mu.hooks) - 1; i >= 0; i-- {
-			if mu.hooks[i] == nil {
-				return 0, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
-			}
-			mut = mu.hooks[i](mut)
-		}
-		if _, err := mut.Mutate(ctx, mu.mutation); err != nil {
-			return 0, err
-		}
-	}
-	return affected, err
+	return withHooks(ctx, mu.sqlSave, mu.mutation, mu.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
@@ -316,16 +283,10 @@ func (mu *MachineUpdate) check() error {
 }
 
 func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
-	_spec := &sqlgraph.UpdateSpec{
-		Node: &sqlgraph.NodeSpec{
-			Table:   machine.Table,
-			Columns: machine.Columns,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: machine.FieldID,
-			},
-		},
+	if err := mu.check(); err != nil {
+		return n, err
 	}
+	_spec := sqlgraph.NewUpdateSpec(machine.Table, machine.Columns, sqlgraph.NewFieldSpec(machine.FieldID, field.TypeInt))
 	if ps := mu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -334,130 +295,61 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 	}
 	if value, ok := mu.mutation.CreatedAt(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: machine.FieldCreatedAt,
-		})
+		_spec.SetField(machine.FieldCreatedAt, field.TypeTime, value)
 	}
 	if mu.mutation.CreatedAtCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: machine.FieldCreatedAt,
-		})
+		_spec.ClearField(machine.FieldCreatedAt, field.TypeTime)
 	}
 	if value, ok := mu.mutation.UpdatedAt(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: machine.FieldUpdatedAt,
-		})
+		_spec.SetField(machine.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if mu.mutation.UpdatedAtCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: machine.FieldUpdatedAt,
-		})
+		_spec.ClearField(machine.FieldUpdatedAt, field.TypeTime)
 	}
 	if value, ok := mu.mutation.LastPush(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: machine.FieldLastPush,
-		})
+		_spec.SetField(machine.FieldLastPush, field.TypeTime, value)
 	}
 	if mu.mutation.LastPushCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: machine.FieldLastPush,
-		})
+		_spec.ClearField(machine.FieldLastPush, field.TypeTime)
 	}
 	if value, ok := mu.mutation.LastHeartbeat(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: machine.FieldLastHeartbeat,
-		})
+		_spec.SetField(machine.FieldLastHeartbeat, field.TypeTime, value)
 	}
 	if mu.mutation.LastHeartbeatCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: machine.FieldLastHeartbeat,
-		})
+		_spec.ClearField(machine.FieldLastHeartbeat, field.TypeTime)
 	}
 	if value, ok := mu.mutation.MachineId(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: machine.FieldMachineId,
-		})
+		_spec.SetField(machine.FieldMachineId, field.TypeString, value)
 	}
 	if value, ok := mu.mutation.Password(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: machine.FieldPassword,
-		})
+		_spec.SetField(machine.FieldPassword, field.TypeString, value)
 	}
 	if value, ok := mu.mutation.IpAddress(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: machine.FieldIpAddress,
-		})
+		_spec.SetField(machine.FieldIpAddress, field.TypeString, value)
 	}
 	if value, ok := mu.mutation.Scenarios(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: machine.FieldScenarios,
-		})
+		_spec.SetField(machine.FieldScenarios, field.TypeString, value)
 	}
 	if mu.mutation.ScenariosCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Column: machine.FieldScenarios,
-		})
+		_spec.ClearField(machine.FieldScenarios, field.TypeString)
 	}
 	if value, ok := mu.mutation.Version(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: machine.FieldVersion,
-		})
+		_spec.SetField(machine.FieldVersion, field.TypeString, value)
 	}
 	if mu.mutation.VersionCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Column: machine.FieldVersion,
-		})
+		_spec.ClearField(machine.FieldVersion, field.TypeString)
 	}
 	if value, ok := mu.mutation.IsValidated(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeBool,
-			Value:  value,
-			Column: machine.FieldIsValidated,
-		})
+		_spec.SetField(machine.FieldIsValidated, field.TypeBool, value)
 	}
 	if value, ok := mu.mutation.Status(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: machine.FieldStatus,
-		})
+		_spec.SetField(machine.FieldStatus, field.TypeString, value)
 	}
 	if mu.mutation.StatusCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Column: machine.FieldStatus,
-		})
+		_spec.ClearField(machine.FieldStatus, field.TypeString)
 	}
 	if value, ok := mu.mutation.AuthType(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: machine.FieldAuthType,
-		})
+		_spec.SetField(machine.FieldAuthType, field.TypeString, value)
 	}
 	if mu.mutation.AlertsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -467,10 +359,7 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{machine.AlertsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: alert.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(alert.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -483,10 +372,7 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{machine.AlertsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: alert.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(alert.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -502,10 +388,7 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Columns: []string{machine.AlertsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: alert.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(alert.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -521,6 +404,7 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		return 0, err
 	}
+	mu.mutation.done = true
 	return n, nil
 }
 
@@ -727,6 +611,12 @@ func (muo *MachineUpdateOne) RemoveAlerts(a ...*Alert) *MachineUpdateOne {
 	return muo.RemoveAlertIDs(ids...)
 }
 
+// Where appends a list predicates to the MachineUpdate builder.
+func (muo *MachineUpdateOne) Where(ps ...predicate.Machine) *MachineUpdateOne {
+	muo.mutation.Where(ps...)
+	return muo
+}
+
 // Select allows selecting one or more fields (columns) of the returned entity.
 // The default is selecting all fields defined in the entity schema.
 func (muo *MachineUpdateOne) Select(field string, fields ...string) *MachineUpdateOne {
@@ -736,47 +626,8 @@ func (muo *MachineUpdateOne) Select(field string, fields ...string) *MachineUpda
 
 // Save executes the query and returns the updated Machine entity.
 func (muo *MachineUpdateOne) Save(ctx context.Context) (*Machine, error) {
-	var (
-		err  error
-		node *Machine
-	)
 	muo.defaults()
-	if len(muo.hooks) == 0 {
-		if err = muo.check(); err != nil {
-			return nil, err
-		}
-		node, err = muo.sqlSave(ctx)
-	} else {
-		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-			mutation, ok := m.(*MachineMutation)
-			if !ok {
-				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			if err = muo.check(); err != nil {
-				return nil, err
-			}
-			muo.mutation = mutation
-			node, err = muo.sqlSave(ctx)
-			mutation.done = true
-			return node, err
-		})
-		for i := len(muo.hooks) - 1; i >= 0; i-- {
-			if muo.hooks[i] == nil {
-				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
-			}
-			mut = muo.hooks[i](mut)
-		}
-		v, err := mut.Mutate(ctx, muo.mutation)
-		if err != nil {
-			return nil, err
-		}
-		nv, ok := v.(*Machine)
-		if !ok {
-			return nil, fmt.Errorf("unexpected node type %T returned from MachineMutation", v)
-		}
-		node = nv
-	}
-	return node, err
+	return withHooks(ctx, muo.sqlSave, muo.mutation, muo.hooks)
 }
 
 // SaveX is like Save, but panics if an error occurs.
@@ -832,16 +683,10 @@ func (muo *MachineUpdateOne) check() error {
 }
 
 func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err error) {
-	_spec := &sqlgraph.UpdateSpec{
-		Node: &sqlgraph.NodeSpec{
-			Table:   machine.Table,
-			Columns: machine.Columns,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: machine.FieldID,
-			},
-		},
+	if err := muo.check(); err != nil {
+		return _node, err
 	}
+	_spec := sqlgraph.NewUpdateSpec(machine.Table, machine.Columns, sqlgraph.NewFieldSpec(machine.FieldID, field.TypeInt))
 	id, ok := muo.mutation.ID()
 	if !ok {
 		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Machine.id" for update`)}
@@ -867,130 +712,61 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 		}
 	}
 	if value, ok := muo.mutation.CreatedAt(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: machine.FieldCreatedAt,
-		})
+		_spec.SetField(machine.FieldCreatedAt, field.TypeTime, value)
 	}
 	if muo.mutation.CreatedAtCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: machine.FieldCreatedAt,
-		})
+		_spec.ClearField(machine.FieldCreatedAt, field.TypeTime)
 	}
 	if value, ok := muo.mutation.UpdatedAt(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: machine.FieldUpdatedAt,
-		})
+		_spec.SetField(machine.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if muo.mutation.UpdatedAtCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: machine.FieldUpdatedAt,
-		})
+		_spec.ClearField(machine.FieldUpdatedAt, field.TypeTime)
 	}
 	if value, ok := muo.mutation.LastPush(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: machine.FieldLastPush,
-		})
+		_spec.SetField(machine.FieldLastPush, field.TypeTime, value)
 	}
 	if muo.mutation.LastPushCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: machine.FieldLastPush,
-		})
+		_spec.ClearField(machine.FieldLastPush, field.TypeTime)
 	}
 	if value, ok := muo.mutation.LastHeartbeat(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Value:  value,
-			Column: machine.FieldLastHeartbeat,
-		})
+		_spec.SetField(machine.FieldLastHeartbeat, field.TypeTime, value)
 	}
 	if muo.mutation.LastHeartbeatCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeTime,
-			Column: machine.FieldLastHeartbeat,
-		})
+		_spec.ClearField(machine.FieldLastHeartbeat, field.TypeTime)
 	}
 	if value, ok := muo.mutation.MachineId(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: machine.FieldMachineId,
-		})
+		_spec.SetField(machine.FieldMachineId, field.TypeString, value)
 	}
 	if value, ok := muo.mutation.Password(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: machine.FieldPassword,
-		})
+		_spec.SetField(machine.FieldPassword, field.TypeString, value)
 	}
 	if value, ok := muo.mutation.IpAddress(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: machine.FieldIpAddress,
-		})
+		_spec.SetField(machine.FieldIpAddress, field.TypeString, value)
 	}
 	if value, ok := muo.mutation.Scenarios(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: machine.FieldScenarios,
-		})
+		_spec.SetField(machine.FieldScenarios, field.TypeString, value)
 	}
 	if muo.mutation.ScenariosCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Column: machine.FieldScenarios,
-		})
+		_spec.ClearField(machine.FieldScenarios, field.TypeString)
 	}
 	if value, ok := muo.mutation.Version(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: machine.FieldVersion,
-		})
+		_spec.SetField(machine.FieldVersion, field.TypeString, value)
 	}
 	if muo.mutation.VersionCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Column: machine.FieldVersion,
-		})
+		_spec.ClearField(machine.FieldVersion, field.TypeString)
 	}
 	if value, ok := muo.mutation.IsValidated(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeBool,
-			Value:  value,
-			Column: machine.FieldIsValidated,
-		})
+		_spec.SetField(machine.FieldIsValidated, field.TypeBool, value)
 	}
 	if value, ok := muo.mutation.Status(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: machine.FieldStatus,
-		})
+		_spec.SetField(machine.FieldStatus, field.TypeString, value)
 	}
 	if muo.mutation.StatusCleared() {
-		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Column: machine.FieldStatus,
-		})
+		_spec.ClearField(machine.FieldStatus, field.TypeString)
 	}
 	if value, ok := muo.mutation.AuthType(); ok {
-		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeString,
-			Value:  value,
-			Column: machine.FieldAuthType,
-		})
+		_spec.SetField(machine.FieldAuthType, field.TypeString, value)
 	}
 	if muo.mutation.AlertsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -1000,10 +776,7 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 			Columns: []string{machine.AlertsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: alert.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(alert.FieldID, field.TypeInt),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -1016,10 +789,7 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 			Columns: []string{machine.AlertsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: alert.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(alert.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -1035,10 +805,7 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 			Columns: []string{machine.AlertsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: alert.FieldID,
-				},
+				IDSpec: sqlgraph.NewFieldSpec(alert.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -1057,5 +824,6 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 		}
 		return nil, err
 	}
+	muo.mutation.done = true
 	return _node, nil
 }

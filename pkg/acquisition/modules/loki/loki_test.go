@@ -276,10 +276,17 @@ func feedLoki(logger *log.Entry, n int, title string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := http.Post("http://127.0.0.1:3100/loki/api/v1/push", "application/json", bytes.NewBuffer(buff))
+	req, err := http.NewRequest(http.MethodPost, "http://127.0.0.1:3100/loki/api/v1/push", bytes.NewBuffer(buff))
 	if err != nil {
 		return err
 	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Scope-OrgID", "1234")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusNoContent {
 		b, _ := io.ReadAll(resp.Body)
 		logger.Error(string(b))
@@ -306,6 +313,8 @@ mode: cat
 source: loki
 url: http://127.0.0.1:3100
 query: '{server="demo",key="%s"}'
+headers:
+ x-scope-orgid: "1234"
 since: 1h
 `, title),
 		},
@@ -362,26 +371,26 @@ func TestStreamingAcquisition(t *testing.T) {
 	}{
 		{
 			name: "Bad port",
-			config: `
-mode: tail
+			config: `mode: tail
 source: loki
-url: http://127.0.0.1:3101
+url: "http://127.0.0.1:3101"
+headers:
+  x-scope-orgid: "1234"
 query: >
-  {server="demo"}
-`, // No Loki server here
+  {server="demo"}`, // No Loki server here
 			expectedErr:   "",
 			streamErr:     `loki is not ready: context deadline exceeded`,
 			expectedLines: 0,
 		},
 		{
 			name: "ok",
-			config: `
-mode: tail
+			config: `mode: tail
 source: loki
-url: http://127.0.0.1:3100
+url: "http://127.0.0.1:3100"
+headers:
+  x-scope-orgid: "1234"
 query: >
-  {server="demo"}
-`,
+  {server="demo"}`,
 			expectedErr:   "",
 			streamErr:     "",
 			expectedLines: 20,
@@ -456,6 +465,8 @@ func TestStopStreaming(t *testing.T) {
 mode: tail
 source: loki
 url: http://127.0.0.1:3100
+headers:
+  x-scope-orgid: "1234"
 query: >
   {server="demo"}
 `
