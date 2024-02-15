@@ -127,7 +127,7 @@ func metricsToTable(t *table.Table, stats map[string]map[string]int, keys []stri
 }
 
 func (s statBucket) Description() (string, string) {
-	return "Bucket Metrics",
+	return "Scenario Metrics",
 		`Measure events in different scenarios. Current count is the number of buckets during metrics collection. ` +
 			`Overflows are past event-producing buckets, while Expired are the ones that didn’t receive enough events to Overflow.`
 }
@@ -143,13 +143,13 @@ func (s statBucket) Process(bucket, metric string, val int) {
 func (s statBucket) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
-	t.SetHeaders("Bucket", "Current Count", "Overflows", "Instantiated", "Poured", "Expired")
+	t.SetHeaders("Scenario", "Current Count", "Overflows", "Instantiated", "Poured", "Expired")
 	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
 
 	keys := []string{"curr_count", "overflow", "instantiation", "pour", "underflow"}
 
 	if numRows, err := metricsToTable(t, s, keys, noUnit); err != nil {
-		log.Warningf("while collecting bucket stats: %s", err)
+		log.Warningf("while collecting scenario stats: %s", err)
 	} else if numRows > 0 || showEmpty {
 		title, _ := s.Description()
 		renderTableTitle(out, "\n"+title+":")

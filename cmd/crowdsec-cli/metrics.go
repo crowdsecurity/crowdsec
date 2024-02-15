@@ -59,7 +59,7 @@ type metricStore map[string]metricSection
 func NewMetricStore() metricStore {
 	return metricStore{
 		"acquisition":    statAcquis{},
-		"buckets":        statBucket{},
+		"scenarios":      statBucket{},
 		"parsers":        statParser{},
 		"lapi":           statLapi{},
 		"lapi-machine":   statLapiMachine{},
@@ -110,7 +110,7 @@ func (ms metricStore) Fetch(url string) error {
 
 	mAcquis := ms["acquisition"].(statAcquis)
 	mParser := ms["parsers"].(statParser)
-	mBucket := ms["buckets"].(statBucket)
+	mBucket := ms["scenarios"].(statBucket)
 	mLapi := ms["lapi"].(statLapi)
 	mLapiMachine := ms["lapi-machine"].(statLapiMachine)
 	mLapiBouncer := ms["lapi-bouncer"].(statLapiBouncer)
@@ -383,7 +383,7 @@ func (cli *cliMetrics) expandSectionGroups(args []string) []string {
 	for _, section := range args {
 		switch section {
 		case "engine":
-			ret = append(ret, "acquisition", "parsers", "buckets", "stash", "whitelists")
+			ret = append(ret, "acquisition", "parsers", "scenarios", "stash", "whitelists")
 		case "lapi":
 			ret = append(ret, "alerts", "decisions", "lapi", "lapi-bouncer", "lapi-decisions", "lapi-machine")
 		case "appsec":
@@ -413,10 +413,10 @@ cscli metrics show
 cscli metrics show engine
 
 # Show some specific metrics, show empty tables, connect to a different url
-cscli metrics show acquisition parsers buckets stash --url http://lapi.local:6060/metrics
+cscli metrics show acquisition parsers scenarios stash --url http://lapi.local:6060/metrics
 
 # Show metrics in json format
-cscli metrics show acquisition parsers buckets stash -o json`,
+cscli metrics show acquisition parsers scenarios stash -o json`,
 		// Positional args are optional
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, args []string) error {
