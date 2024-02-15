@@ -2,6 +2,7 @@ package loki_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,15 +14,14 @@ import (
 	"testing"
 	"time"
 
-	"context"
+	"github.com/stretchr/testify/assert"
+	log "github.com/sirupsen/logrus"
+	tomb "gopkg.in/tomb.v2"
 
 	"github.com/crowdsecurity/go-cs-lib/cstest"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	log "github.com/sirupsen/logrus"
-	tomb "gopkg.in/tomb.v2"
-	"gotest.tools/v3/assert"
 )
 
 func TestConfiguration(t *testing.T) {
@@ -451,7 +451,7 @@ query: >
 			if err != nil {
 				t.Fatalf("Unexpected error : %s", err)
 			}
-			assert.Equal(t, count, ts.expectedLines)
+			assert.Equal(t, ts.expectedLines, count)
 		})
 	}
 
