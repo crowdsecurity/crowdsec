@@ -44,9 +44,8 @@ type (
 )
 
 var (
-	ErrMissingConfig = errors.New("prometheus section missing, can't show metrics")
+	ErrMissingConfig   = errors.New("prometheus section missing, can't show metrics")
 	ErrMetricsDisabled = errors.New("prometheus is not enabled, can't show metrics")
-
 )
 
 type metricSection interface {
@@ -361,7 +360,7 @@ cscli metrics --url http://lapi.local:6060/metrics show acquisition parsers
 cscli metrics list`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return cli.show(nil, url, noUnit)
 		},
 	}
@@ -470,12 +469,14 @@ func (cli *cliMetrics) list() error {
 		if err != nil {
 			return fmt.Errorf("failed to marshal metric types: %w", err)
 		}
+
 		fmt.Println(string(x))
 	case "raw":
 		x, err := yaml.Marshal(allMetrics)
 		if err != nil {
 			return fmt.Errorf("failed to marshal metric types: %w", err)
 		}
+
 		fmt.Println(string(x))
 	}
 
