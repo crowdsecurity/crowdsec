@@ -415,6 +415,9 @@ cscli metrics show engine
 # Show some specific metrics, show empty tables, connect to a different url
 cscli metrics show acquisition parsers scenarios stash --url http://lapi.local:6060/metrics
 
+# To list available metric types, use "cscli metrics list"
+cscli metrics list; cscli metrics list -o json
+
 # Show metrics in json format
 cscli metrics show acquisition parsers scenarios stash -o json`,
 		// Positional args are optional
