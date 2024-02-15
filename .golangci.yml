@@ -73,6 +73,10 @@ linters-settings:
           - pkg: "github.com/pkg/errors"
             desc: "errors.Wrap() is deprecated in favor of fmt.Errorf()"
 
+  wsl:
+    # Allow blocks to end with comments
+    allow-trailing-comment: true
+
 linters:
   enable-all: true
   disable:
@@ -105,6 +109,7 @@ linters:
     # - durationcheck       # check for two durations multiplied together
     # - errcheck            # Errcheck is a program for checking for unchecked errors in go programs. These unchecked errors can be critical bugs in some cases
     # - errorlint           # errorlint is a linter for that can be used to find code that will cause problems with the error wrapping scheme introduced in Go 1.13.
+    # - execinquery         # execinquery is a linter about query string checker in Query function which reads your Go src files and warning it finds
     # - exportloopref       # checks for pointers to enclosing loop variables
     # - funlen              # Tool for detection of long functions
     # - ginkgolinter        # enforces standards of using ginkgo and gomega
@@ -203,7 +208,6 @@ linters:
     #
     # Too strict / too many false positives (for now?)
     #
-    - execinquery           # execinquery is a linter about query string checker in Query function which reads your Go src files and warning it finds
     - exhaustruct           # Checks if all structure fields are initialized
     - forbidigo             # Forbids identifiers
     - gochecknoglobals      # check that no global variables exist
