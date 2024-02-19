@@ -1,12 +1,14 @@
 # vim: set ft=dockerfile:
-ARG GOVERSION=1.21.3
+ARG GOVERSION=1.21.6
+ARG BUILD_VERSION
 
-FROM golang:${GOVERSION}-alpine AS build
+FROM golang:${GOVERSION}-alpine3.18 AS build
 
 WORKDIR /go/src/crowdsec
 
 # We like to choose the release of re2 to use, and Alpine does not ship a static version anyway.
 ENV RE2_VERSION=2023-03-01
+ENV BUILD_VERSION=${BUILD_VERSION}
 
 # wizard.sh requires GNU coreutils
 RUN apk add --no-cache git g++ gcc libc-dev make bash gettext binutils-gold coreutils pkgconfig && \
@@ -15,7 +17,7 @@ RUN apk add --no-cache git g++ gcc libc-dev make bash gettext binutils-gold core
     cd re2-${RE2_VERSION} && \
     make install && \
     echo "githubciXXXXXXXXXXXXXXXXXXXXXXXX" > /etc/machine-id && \
-    go install github.com/mikefarah/yq/v4@v4.34.1
+    go install github.com/mikefarah/yq/v4@v4.40.4
 
 COPY . .
 
@@ -32,7 +34,7 @@ RUN make clean release DOCKER_BUILD=1 BUILD_STATIC=1 && \
 
 FROM alpine:latest as slim
 
-RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community tzdata bash && \
+RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community tzdata bash rsync && \
     mkdir -p /staging/etc/crowdsec && \
     mkdir -p /staging/etc/crowdsec/acquis.d && \
     mkdir -p /staging/var/lib/crowdsec && \
@@ -46,7 +48,7 @@ COPY --from=build /go/src/crowdsec/docker/docker_start.sh /
 COPY --from=build /go/src/crowdsec/docker/config.yaml /staging/etc/crowdsec/config.yaml
 RUN yq -n '.url="http://0.0.0.0:8080"' | install -m 0600 /dev/stdin /staging/etc/crowdsec/local_api_credentials.yaml
 
-ENTRYPOINT /bin/bash docker_start.sh
+ENTRYPOINT /bin/bash /docker_start.sh
 
 FROM slim as plugins
 

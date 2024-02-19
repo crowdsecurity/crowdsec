@@ -101,19 +101,23 @@ register_bouncer() {
 # $2 can be install, remove, upgrade
 # $3 is a list of object names separated by space
 cscli_if_clean() {
+    local itemtype="$1"
+    local action="$2"
+    local objs=$3
+    shift 3
     # loop over all objects
-    for obj in $3; do
-        if cscli "$1" inspect "$obj" -o json | yq -e '.tainted // false' >/dev/null 2>&1; then
-            echo "Object $1/$obj is tainted, skipping"
+    for obj in $objs; do
+        if cscli "$itemtype" inspect "$obj" -o json | yq -e '.tainted // false' >/dev/null 2>&1; then
+            echo "Object $itemtype/$obj is tainted, skipping"
         else
 #            # Too verbose? Only show errors if not in debug mode
 #            if [ "$DEBUG" != "true" ]; then
 #                error_only=--error
 #            fi
             error_only=""
-            echo "Running: cscli $error_only $1 $2 \"$obj\""
+            echo "Running: cscli $error_only $itemtype $action \"$obj\" $*"
             # shellcheck disable=SC2086
-            cscli $error_only "$1" "$2" "$obj"
+            cscli $error_only "$itemtype" "$action" "$obj" "$@"
         fi
     done
 }
@@ -174,7 +178,7 @@ if [ ! -e "/etc/crowdsec/local_api_credentials.yaml" ] && [ ! -e "/etc/crowdsec/
         mkdir -p /etc/crowdsec/
         # if you change this, check that it still works
         # under alpine and k8s, with and without tls
-        cp -an /staging/etc/crowdsec/* /etc/crowdsec/
+        rsync -av --ignore-existing /staging/etc/crowdsec/* /etc/crowdsec
     fi
 fi
 
@@ -198,7 +202,7 @@ if isfalse "$DISABLE_LOCAL_API"; then
             # if the db is persistent but the credentials are not, we need to
             # delete the old machine to generate new credentials
             cscli machines delete "$CUSTOM_HOSTNAME" >/dev/null 2>&1 || true
-            cscli machines add "$CUSTOM_HOSTNAME" --auto
+            cscli machines add "$CUSTOM_HOSTNAME" --auto --force
         fi
     fi
 
@@ -296,7 +300,7 @@ fi
 
 conf_set_if "$PLUGIN_DIR" '.config_paths.plugin_dir = strenv(PLUGIN_DIR)'
 
-## Install collections, parsers, scenarios & postoverflows
+## Install hub items
 cscli hub update
 
 cscli_if_clean collections upgrade crowdsecurity/linux
@@ -324,25 +328,55 @@ if [ "$POSTOVERFLOWS" != "" ]; then
     cscli_if_clean postoverflows install "$(difference "$POSTOVERFLOWS" "$DISABLE_POSTOVERFLOWS")"
 fi
 
+if [ "$CONTEXTS" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean contexts install "$(difference "$CONTEXTS" "$DISABLE_CONTEXTS")"
+fi
+
+if [ "$APPSEC_CONFIGS" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean appsec-configs install "$(difference "$APPSEC_CONFIGS" "$DISABLE_APPSEC_CONFIGS")"
+fi
+
+if [ "$APPSEC_RULES" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean appsec-rules install "$(difference "$APPSEC_RULES" "$DISABLE_APPSEC_RULES")"
+fi
+
 ## Remove collections, parsers, scenarios & postoverflows
 if [ "$DISABLE_COLLECTIONS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean collections remove "$DISABLE_COLLECTIONS"
+    cscli_if_clean collections remove "$DISABLE_COLLECTIONS" --force
 fi
 
 if [ "$DISABLE_PARSERS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean parsers remove "$DISABLE_PARSERS"
+    cscli_if_clean parsers remove "$DISABLE_PARSERS" --force
 fi
 
 if [ "$DISABLE_SCENARIOS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean scenarios remove "$DISABLE_SCENARIOS"
+    cscli_if_clean scenarios remove "$DISABLE_SCENARIOS" --force
 fi
 
 if [ "$DISABLE_POSTOVERFLOWS" != "" ]; then
     # shellcheck disable=SC2086
-    cscli_if_clean postoverflows remove "$DISABLE_POSTOVERFLOWS"
+    cscli_if_clean postoverflows remove "$DISABLE_POSTOVERFLOWS" --force
+fi
+
+if [ "$DISABLE_CONTEXTS" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean contexts remove "$DISABLE_CONTEXTS" --force
+fi
+
+if [ "$DISABLE_APPSEC_CONFIGS" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean appsec-configs remove "$DISABLE_APPSEC_CONFIGS" --force
+fi
+
+if [ "$DISABLE_APPSEC_RULES" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli_if_clean appsec-rules remove "$DISABLE_APPSEC_RULES" --force
 fi
 
 ## Register bouncers via env
@@ -353,6 +387,11 @@ for BOUNCER in $(compgen -A variable | grep -i BOUNCER_KEY); do
         register_bouncer "$NAME" "$KEY"
     fi
 done
+
+if [ "$ENABLE_CONSOLE_MANAGEMENT" != "" ]; then
+    # shellcheck disable=SC2086
+    cscli console enable console_management
+fi
 
 ## Register bouncers via secrets (Swarm only)
 shopt -s nullglob extglob

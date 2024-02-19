@@ -23,15 +23,10 @@ type CrowdsecServiceCfg struct {
 	BucketsRoutinesCount      int               `yaml:"buckets_routines"`
 	OutputRoutinesCount       int               `yaml:"output_routines"`
 	SimulationConfig          *SimulationConfig `yaml:"-"`
-	LintOnly                  bool              `yaml:"-"`                          // if set to true, exit after loading configs
 	BucketStateFile           string            `yaml:"state_input_file,omitempty"` // if we need to unserialize buckets at start
 	BucketStateDumpDir        string            `yaml:"state_output_dir,omitempty"` // if we need to unserialize buckets on shutdown
 	BucketsGCEnabled          bool              `yaml:"-"`                          // we need to garbage collect buckets when in forensic mode
 
-	HubDir             string              `yaml:"-"`
-	DataDir            string              `yaml:"-"`
-	ConfigDir          string              `yaml:"-"`
-	HubIndexFile       string              `yaml:"-"`
 	SimulationFilePath string              `yaml:"-"`
 	ContextToSend      map[string][]string `yaml:"-"`
 }
@@ -101,11 +96,6 @@ func (c *Config) LoadCrowdsec() error {
 		return fmt.Errorf("load error (simulation): %w", err)
 	}
 
-	c.Crowdsec.ConfigDir = c.ConfigPaths.ConfigDir
-	c.Crowdsec.DataDir = c.ConfigPaths.DataDir
-	c.Crowdsec.HubDir = c.ConfigPaths.HubDir
-	c.Crowdsec.HubIndexFile = c.ConfigPaths.HubIndexFile
-
 	if c.Crowdsec.ParserRoutinesCount <= 0 {
 		c.Crowdsec.ParserRoutinesCount = 1
 	}
@@ -118,8 +108,9 @@ func (c *Config) LoadCrowdsec() error {
 		c.Crowdsec.OutputRoutinesCount = 1
 	}
 
-	var crowdsecCleanup = []*string{
+	crowdsecCleanup := []*string{
 		&c.Crowdsec.AcquisitionFilePath,
+		&c.Crowdsec.ConsoleContextPath,
 	}
 
 	for _, k := range crowdsecCleanup {
@@ -141,40 +132,8 @@ func (c *Config) LoadCrowdsec() error {
 		c.Crowdsec.AcquisitionFiles[i] = f
 	}
 
-	if err := c.LoadAPIClient(); err != nil {
+	if err = c.LoadAPIClient(); err != nil {
 		return fmt.Errorf("loading api client: %s", err)
-	}
-
-	if err := c.LoadHub(); err != nil {
-		return fmt.Errorf("while loading hub: %w", err)
-	}
-
-	c.Crowdsec.ContextToSend = make(map[string][]string, 0)
-	fallback := false
-	if c.Crowdsec.ConsoleContextPath == "" {
-		// fallback to default config file
-		c.Crowdsec.ConsoleContextPath = filepath.Join(c.Crowdsec.ConfigDir, "console", "context.yaml")
-		fallback = true
-	}
-
-	f, err := filepath.Abs(c.Crowdsec.ConsoleContextPath)
-	if err != nil {
-		return fmt.Errorf("fail to get absolute path of %s: %s", c.Crowdsec.ConsoleContextPath, err)
-	}
-
-	c.Crowdsec.ConsoleContextPath = f
-	yamlFile, err := os.ReadFile(c.Crowdsec.ConsoleContextPath)
-	if err != nil {
-		if fallback {
-			log.Debugf("Default context config file doesn't exist, will not use it")
-		} else {
-			return fmt.Errorf("failed to open context file: %s", err)
-		}
-	} else {
-		err = yaml.Unmarshal(yamlFile, c.Crowdsec.ContextToSend)
-		if err != nil {
-			return fmt.Errorf("unmarshaling labels console config file '%s': %s", c.Crowdsec.ConsoleContextPath, err)
-		}
 	}
 
 	return nil
@@ -184,8 +143,14 @@ func (c *CrowdsecServiceCfg) DumpContextConfigFile() error {
 	var out []byte
 	var err error
 
+	// XXX: MakeDirs
+
 	if out, err = yaml.Marshal(c.ContextToSend); err != nil {
 		return fmt.Errorf("while marshaling ConsoleConfig (for %s): %w", c.ConsoleContextPath, err)
+	}
+
+	if err = os.MkdirAll(filepath.Dir(c.ConsoleContextPath), 0700); err != nil {
+		return fmt.Errorf("while creating directories for %s: %w", c.ConsoleContextPath, err)
 	}
 
 	if err := os.WriteFile(c.ConsoleContextPath, out, 0600); err != nil {

@@ -73,7 +73,7 @@ func TestParseIPSources(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			ips := tt.evt.ParseIPSources()
-			assert.Equal(t, ips, tt.expected)
+			assert.Equal(t, tt.expected, ips)
 		})
 	}
 }

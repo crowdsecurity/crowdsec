@@ -37,21 +37,25 @@ func parseDecisionList(content []byte, format string) ([]decisionRaw, error) {
 	switch format {
 	case "values":
 		log.Infof("Parsing values")
+
 		scanner := bufio.NewScanner(bytes.NewReader(content))
 		for scanner.Scan() {
 			value := strings.TrimSpace(scanner.Text())
 			ret = append(ret, decisionRaw{Value: value})
 		}
+
 		if err := scanner.Err(); err != nil {
 			return nil, fmt.Errorf("unable to parse values: '%s'", err)
 		}
 	case "json":
 		log.Infof("Parsing json")
+
 		if err := json.Unmarshal(content, &ret); err != nil {
 			return nil, err
 		}
 	case "csv":
 		log.Infof("Parsing csv")
+
 		if err := csvutil.Unmarshal(content, &ret); err != nil {
 			return nil, fmt.Errorf("unable to parse csv: '%s'", err)
 		}
@@ -63,7 +67,7 @@ func parseDecisionList(content []byte, format string) ([]decisionRaw, error) {
 }
 
 
-func runDecisionsImport(cmd *cobra.Command, args []string) error  {
+func (cli cliDecisions) runImport(cmd *cobra.Command, args []string) error  {
 	flags := cmd.Flags()
 
 	input, err := flags.GetString("input")
@@ -75,6 +79,7 @@ func runDecisionsImport(cmd *cobra.Command, args []string) error  {
 	if err != nil {
 		return err
 	}
+
 	if defaultDuration == "" {
 		return fmt.Errorf("--duration cannot be empty")
 	}
@@ -83,6 +88,7 @@ func runDecisionsImport(cmd *cobra.Command, args []string) error  {
 	if err != nil {
 		return err
 	}
+
 	if defaultScope == "" {
 		return fmt.Errorf("--scope cannot be empty")
 	}
@@ -91,6 +97,7 @@ func runDecisionsImport(cmd *cobra.Command, args []string) error  {
 	if err != nil {
 		return err
 	}
+
 	if defaultReason == "" {
 		return fmt.Errorf("--reason cannot be empty")
 	}
@@ -99,6 +106,7 @@ func runDecisionsImport(cmd *cobra.Command, args []string) error  {
 	if err != nil {
 		return err
 	}
+
 	if defaultType == "" {
 		return fmt.Errorf("--type cannot be empty")
 	}
@@ -152,6 +160,7 @@ func runDecisionsImport(cmd *cobra.Command, args []string) error  {
 	}
 
 	decisions := make([]*models.Decision, len(decisionsListRaw))
+
 	for i, d := range decisionsListRaw {
 		if d.Value == "" {
 			return fmt.Errorf("item %d: missing 'value'", i)
@@ -222,17 +231,19 @@ func runDecisionsImport(cmd *cobra.Command, args []string) error  {
 	}
 
 	log.Infof("Imported %d decisions", len(decisions))
+
 	return nil
 }
 
 
-func NewDecisionsImportCmd() *cobra.Command {
-	var cmdDecisionsImport = &cobra.Command{
+func (cli cliDecisions) NewImportCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "import [options]",
 		Short: "Import decisions from a file or pipe",
 		Long: "expected format:\n" +
 			"csv  : any of duration,reason,scope,type,value, with a header line\n" +
-			`json : {"duration" : "24h", "reason" : "my_scenario", "scope" : "ip", "type" : "ban", "value" : "x.y.z.z"}`,
+			"json :" + "`{" + `"duration" : "24h", "reason" : "my_scenario", "scope" : "ip", "type" : "ban", "value" : "x.y.z.z"` + "}`",
+		Args:	 cobra.NoArgs,
 		DisableAutoGenTag: true,
 		Example: `decisions.csv:
 duration,scope,value
@@ -250,10 +261,10 @@ Raw values, standard input:
 
 $ echo "1.2.3.4" | cscli decisions import -i - --format values
 `,
-		RunE: runDecisionsImport,
+		RunE: cli.runImport,
 	}
 
-	flags := cmdDecisionsImport.Flags()
+	flags := cmd.Flags()
 	flags.SortFlags = false
 	flags.StringP("input", "i", "", "Input file")
 	flags.StringP("duration", "d", "4h", "Decision duration: 1h,4h,30m")
@@ -263,7 +274,7 @@ $ echo "1.2.3.4" | cscli decisions import -i - --format values
 	flags.Int("batch", 0, "Split import in batches of N decisions")
 	flags.String("format", "", "Input format: 'json', 'csv' or 'values' (each line is a value, no headers)")
 
-	cmdDecisionsImport.MarkFlagRequired("input")
+	cmd.MarkFlagRequired("input")
 
-	return cmdDecisionsImport
+	return cmd
 }

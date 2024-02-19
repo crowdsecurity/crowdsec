@@ -3,7 +3,6 @@ package csconfig
 import (
 	"net"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -117,7 +116,7 @@ func TestLoadOnlineApiClientCfg(t *testing.T) {
 				CredentialsFilePath: "./testdata/nonexist_online-api-secrets.yaml",
 			},
 			expected:    &ApiCredentialsCfg{},
-			expectedErr: "failed to read api server credentials",
+			expectedErr: "open ./testdata/nonexist_online-api-secrets.yaml: " + cstest.FileNotFoundMessage,
 		},
 	}
 
@@ -140,9 +139,6 @@ func TestLoadAPIServer(t *testing.T) {
 		ProfilesPath: "./testdata/profiles.yaml",
 	}
 	err := tmpLAPI.LoadProfiles()
-	require.NoError(t, err)
-
-	LogDirFullPath, err := filepath.Abs("./testdata")
 	require.NoError(t, err)
 
 	logLevel := log.InfoLevel
@@ -179,7 +175,7 @@ func TestLoadAPIServer(t *testing.T) {
 					DbPath: "./testdata/test.db",
 				},
 				Common: &CommonCfg{
-					LogDir:   "./testdata/",
+					LogDir:   "./testdata",
 					LogMedia: "stdout",
 				},
 				DisableAPI: false,
@@ -202,7 +198,7 @@ func TestLoadAPIServer(t *testing.T) {
 					ShareContext:          ptr.Of(false),
 					ConsoleManagement:     ptr.Of(false),
 				},
-				LogDir:   LogDirFullPath,
+				LogDir:   "./testdata",
 				LogMedia: "stdout",
 				OnlineClient: &OnlineApiClientCfg{
 					CredentialsFilePath: "./testdata/online-api-secrets.yaml",
@@ -223,7 +219,9 @@ func TestLoadAPIServer(t *testing.T) {
 			input: &Config{
 				Self: []byte(configData),
 				API: &APICfg{
-					Server: &LocalApiServerCfg{},
+					Server: &LocalApiServerCfg{
+						ListenURI: "http://crowdsec.api",
+					},
 				},
 				Common: &CommonCfg{
 					LogDir:   "./testdata/",
@@ -256,6 +254,7 @@ func TestLoadAPIServer(t *testing.T) {
 func mustParseCIDRNet(t *testing.T, s string) *net.IPNet {
 	_, ipNet, err := net.ParseCIDR(s)
 	require.NoError(t, err)
+
 	return ipNet
 }
 

@@ -23,20 +23,24 @@ teardown() {
 
 #----------
 
-@test "can list machines as regular user" {
-    rune -0 cscli machines list
-}
-
 @test "we have exactly one machine" {
     rune -0 cscli machines list -o json
     rune -0 jq -c '[. | length, .[0].machineId[0:32], .[0].isValidated]' <(output)
     assert_output '[1,"githubciXXXXXXXXXXXXXXXXXXXXXXXX",true]'
 }
 
+@test "don't overwrite local credentials by default" {
+    rune -1 cscli machines add local -a -o json
+    rune -0 jq -r '.msg' <(stderr)
+    assert_output --partial 'already exists: please remove it, use "--force" or specify a different file with "-f"'
+    rune -0 cscli machines add local -a --force
+    assert_output --partial "Machine 'local' successfully added to the local API."
+}
+
 @test "add a new machine and delete it" {
     rune -0 cscli machines add -a -f /dev/null CiTestMachine -o human
-    assert_stderr --partial "Machine 'CiTestMachine' successfully added to the local API"
-    assert_stderr --partial "API credentials dumped to '/dev/null'"
+    assert_output --partial "Machine 'CiTestMachine' successfully added to the local API"
+    assert_output --partial "API credentials written to '/dev/null'"
 
     # we now have two machines
     rune -0 cscli machines list -o json
@@ -56,7 +60,7 @@ teardown() {
 @test "register, validate and then remove a machine" {
     rune -0 cscli lapi register --machine CiTestMachineRegister -f /dev/null -o human
     assert_stderr --partial "Successfully registered to Local API (LAPI)"
-    assert_stderr --partial "Local API credentials dumped to '/dev/null'"
+    assert_stderr --partial "Local API credentials written to '/dev/null'"
 
     # the machine is not validated yet
     rune -0 cscli machines list -o json

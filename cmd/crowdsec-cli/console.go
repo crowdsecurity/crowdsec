@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/fatih/color"
 	"github.com/go-openapi/strfmt"
@@ -17,13 +18,11 @@ import (
 	"github.com/crowdsecurity/go-cs-lib/ptr"
 	"github.com/crowdsecurity/go-cs-lib/version"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-
-	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
 func NewConsoleCmd() *cobra.Command {
@@ -49,6 +48,7 @@ func NewConsoleCmd() *cobra.Command {
 	name := ""
 	overwrite := false
 	tags := []string{}
+	opts := []string{}
 
 	cmdEnroll := &cobra.Command{
 		Use:   "enroll [enroll-key]",
@@ -58,10 +58,12 @@ Enroll this instance to https://app.crowdsec.net
 		
 You can get your enrollment key by creating an account on https://app.crowdsec.net.
 After running this command your will need to validate the enrollment in the webapp.`,
-		Example: `cscli console enroll YOUR-ENROLL-KEY
+		Example: fmt.Sprintf(`cscli console enroll YOUR-ENROLL-KEY
 		cscli console enroll --name [instance_name] YOUR-ENROLL-KEY
 		cscli console enroll --name [instance_name] --tags [tag_1] --tags [tag_2] YOUR-ENROLL-KEY
-`,
+		cscli console enroll --enable context,manual YOUR-ENROLL-KEY
+
+		valid options are : %s,all (see 'cscli console status' for details)`, strings.Join(csconfig.CONSOLE_CONFIGS, ",")),
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -71,17 +73,49 @@ After running this command your will need to validate the enrollment in the weba
 				return fmt.Errorf("could not parse CAPI URL: %s", err)
 			}
 
-			if err := require.Hub(csConfig); err != nil {
+			hub, err := require.Hub(csConfig, nil, nil)
+			if err != nil {
 				return err
 			}
 
-			scenarios, err := cwhub.GetInstalledItemsAsString(cwhub.SCENARIOS)
+			scenarios, err := hub.GetInstalledItemNames(cwhub.SCENARIOS)
 			if err != nil {
 				return fmt.Errorf("failed to get installed scenarios: %s", err)
 			}
 
 			if len(scenarios) == 0 {
 				scenarios = make([]string, 0)
+			}
+
+			enable_opts := []string{csconfig.SEND_MANUAL_SCENARIOS, csconfig.SEND_TAINTED_SCENARIOS}
+			if len(opts) != 0 {
+				for _, opt := range opts {
+					valid := false
+					if opt == "all" {
+						enable_opts = csconfig.CONSOLE_CONFIGS
+						break
+					}
+					for _, available_opt := range csconfig.CONSOLE_CONFIGS {
+						if opt == available_opt {
+							valid = true
+							enable := true
+							for _, enabled_opt := range enable_opts {
+								if opt == enabled_opt {
+									enable = false
+									continue
+								}
+							}
+							if enable {
+								enable_opts = append(enable_opts, opt)
+							}
+							break
+						}
+					}
+					if !valid {
+						return fmt.Errorf("option %s doesn't exist", opt)
+
+					}
+				}
 			}
 
 			c, _ := apiclient.NewClient(&apiclient.Config{
@@ -101,11 +135,13 @@ After running this command your will need to validate the enrollment in the weba
 				return nil
 			}
 
-			if err := SetConsoleOpts([]string{csconfig.SEND_MANUAL_SCENARIOS, csconfig.SEND_TAINTED_SCENARIOS}, true); err != nil {
+			if err := SetConsoleOpts(enable_opts, true); err != nil {
 				return err
 			}
 
-			log.Info("Enabled tainted&manual alerts sharing, see 'cscli console status'.")
+			for _, opt := range enable_opts {
+				log.Infof("Enabled %s : %s", opt, csconfig.CONSOLE_CONFIGS_HELP[opt])
+			}
 			log.Info("Watcher successfully enrolled. Visit https://app.crowdsec.net to accept it.")
 			log.Info("Please restart crowdsec after accepting the enrollment.")
 			return nil
@@ -114,6 +150,7 @@ After running this command your will need to validate the enrollment in the weba
 	cmdEnroll.Flags().StringVarP(&name, "name", "n", "", "Name to display in the console")
 	cmdEnroll.Flags().BoolVarP(&overwrite, "overwrite", "", false, "Force enroll the instance")
 	cmdEnroll.Flags().StringSliceVarP(&tags, "tags", "t", tags, "Tags to display in the console")
+	cmdEnroll.Flags().StringSliceVarP(&opts, "enable", "e", opts, "Enable console options")
 	cmdConsole.AddCommand(cmdEnroll)
 
 	var enableAll, disableAll bool
@@ -188,11 +225,11 @@ Disable given information push to the central API.`,
 			case "json":
 				c := csConfig.API.Server.ConsoleConfig
 				out := map[string](*bool){
-					csconfig.SEND_MANUAL_SCENARIOS: c.ShareManualDecisions,
-					csconfig.SEND_CUSTOM_SCENARIOS: c.ShareCustomScenarios,
+					csconfig.SEND_MANUAL_SCENARIOS:  c.ShareManualDecisions,
+					csconfig.SEND_CUSTOM_SCENARIOS:  c.ShareCustomScenarios,
 					csconfig.SEND_TAINTED_SCENARIOS: c.ShareTaintedScenarios,
-					csconfig.SEND_CONTEXT: c.ShareContext,
-					csconfig.CONSOLE_MANAGEMENT: c.ConsoleManagement,
+					csconfig.SEND_CONTEXT:           c.ShareContext,
+					csconfig.CONSOLE_MANAGEMENT:     c.ConsoleManagement,
 				}
 				data, err := json.MarshalIndent(out, "", "  ")
 				if err != nil {
@@ -240,7 +277,7 @@ func dumpConsoleConfig(c *csconfig.LocalApiServerCfg) error {
 		log.Debugf("Empty console_path, defaulting to %s", c.ConsoleConfigPath)
 	}
 
-	if err := os.WriteFile(c.ConsoleConfigPath, out, 0600); err != nil {
+	if err := os.WriteFile(c.ConsoleConfigPath, out, 0o600); err != nil {
 		return fmt.Errorf("while dumping console config to %s: %w", c.ConsoleConfigPath, err)
 	}
 
@@ -251,9 +288,6 @@ func SetConsoleOpts(args []string, wanted bool) error {
 	for _, arg := range args {
 		switch arg {
 		case csconfig.CONSOLE_MANAGEMENT:
-			if !fflag.PapiClient.IsEnabled() {
-				continue
-			}
 			/*for each flag check if it's already set before setting it*/
 			if csConfig.API.Server.ConsoleConfig.ConsoleManagement != nil {
 				if *csConfig.API.Server.ConsoleConfig.ConsoleManagement == wanted {
@@ -266,6 +300,7 @@ func SetConsoleOpts(args []string, wanted bool) error {
 				log.Infof("%s set to %t", csconfig.CONSOLE_MANAGEMENT, wanted)
 				csConfig.API.Server.ConsoleConfig.ConsoleManagement = ptr.Of(wanted)
 			}
+
 			if csConfig.API.Server.OnlineClient.Credentials != nil {
 				changed := false
 				if wanted && csConfig.API.Server.OnlineClient.Credentials.PapiURL == "" {
@@ -275,13 +310,16 @@ func SetConsoleOpts(args []string, wanted bool) error {
 					changed = true
 					csConfig.API.Server.OnlineClient.Credentials.PapiURL = ""
 				}
+
 				if changed {
 					fileContent, err := yaml.Marshal(csConfig.API.Server.OnlineClient.Credentials)
 					if err != nil {
 						return fmt.Errorf("cannot marshal credentials: %s", err)
 					}
+
 					log.Infof("Updating credentials file: %s", csConfig.API.Server.OnlineClient.CredentialsFilePath)
-					err = os.WriteFile(csConfig.API.Server.OnlineClient.CredentialsFilePath, fileContent, 0600)
+
+					err = os.WriteFile(csConfig.API.Server.OnlineClient.CredentialsFilePath, fileContent, 0o600)
 					if err != nil {
 						return fmt.Errorf("cannot write credentials file: %s", err)
 					}

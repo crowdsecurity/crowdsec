@@ -1,3 +1,5 @@
+//go:build linux
+
 package main
 
 import (
@@ -9,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"unicode"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -37,12 +40,18 @@ var (
 
 	forceYes bool
 
-	/*informations needed to setup a random password on user's behalf*/
+	// information needed to set up a random password on user's behalf
 )
 
-func NewDashboardCmd() *cobra.Command {
+type cliDashboard struct{}
+
+func NewCLIDashboard() *cliDashboard {
+	return &cliDashboard{}
+}
+
+func (cli cliDashboard) NewCommand() *cobra.Command {
 	/* ---- UPDATE COMMAND */
-	var cmdDashboard = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "dashboard [command]",
 		Short: "Manage your metabase dashboard container [requires local API]",
 		Long: `Install/Start/Stop/Remove a metabase container exposing dashboard and metrics.
@@ -90,19 +99,19 @@ cscli dashboard remove
 		},
 	}
 
-	cmdDashboard.AddCommand(NewDashboardSetupCmd())
-	cmdDashboard.AddCommand(NewDashboardStartCmd())
-	cmdDashboard.AddCommand(NewDashboardStopCmd())
-	cmdDashboard.AddCommand(NewDashboardShowPasswordCmd())
-	cmdDashboard.AddCommand(NewDashboardRemoveCmd())
+	cmd.AddCommand(cli.NewSetupCmd())
+	cmd.AddCommand(cli.NewStartCmd())
+	cmd.AddCommand(cli.NewStopCmd())
+	cmd.AddCommand(cli.NewShowPasswordCmd())
+	cmd.AddCommand(cli.NewRemoveCmd())
 
-	return cmdDashboard
+	return cmd
 }
 
-func NewDashboardSetupCmd() *cobra.Command {
+func (cli cliDashboard) NewSetupCmd() *cobra.Command {
 	var force bool
 
-	var cmdDashSetup = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:               "setup",
 		Short:             "Setup a metabase container.",
 		Long:              `Perform a metabase docker setup, download standard dashboards, create a fresh user and start the container`,
@@ -136,6 +145,9 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			if err != nil {
 				return err
 			}
+			if err = chownDatabase(dockerGroup.Gid); err != nil {
+				return err
+			}
 			mb, err := metabase.SetupMetabase(csConfig.API.Server.DbConfig, metabaseListenAddress, metabaseListenPort, metabaseUser, metabasePassword, metabaseDbPath, dockerGroup.Gid, metabaseContainerID, metabaseImage)
 			if err != nil {
 				return err
@@ -152,20 +164,20 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			return nil
 		},
 	}
-	cmdDashSetup.Flags().BoolVarP(&force, "force", "f", false, "Force setup : override existing files")
-	cmdDashSetup.Flags().StringVarP(&metabaseDbPath, "dir", "d", "", "Shared directory with metabase container")
-	cmdDashSetup.Flags().StringVarP(&metabaseListenAddress, "listen", "l", metabaseListenAddress, "Listen address of container")
-	cmdDashSetup.Flags().StringVar(&metabaseImage, "metabase-image", metabaseImage, "Metabase image to use")
-	cmdDashSetup.Flags().StringVarP(&metabaseListenPort, "port", "p", metabaseListenPort, "Listen port of container")
-	cmdDashSetup.Flags().BoolVarP(&forceYes, "yes", "y", false, "force  yes")
-	//cmdDashSetup.Flags().StringVarP(&metabaseUser, "user", "u", "crowdsec@crowdsec.net", "metabase user")
-	cmdDashSetup.Flags().StringVar(&metabasePassword, "password", "", "metabase password")
+	cmd.Flags().BoolVarP(&force, "force", "f", false, "Force setup : override existing files")
+	cmd.Flags().StringVarP(&metabaseDbPath, "dir", "d", "", "Shared directory with metabase container")
+	cmd.Flags().StringVarP(&metabaseListenAddress, "listen", "l", metabaseListenAddress, "Listen address of container")
+	cmd.Flags().StringVar(&metabaseImage, "metabase-image", metabaseImage, "Metabase image to use")
+	cmd.Flags().StringVarP(&metabaseListenPort, "port", "p", metabaseListenPort, "Listen port of container")
+	cmd.Flags().BoolVarP(&forceYes, "yes", "y", false, "force  yes")
+	//cmd.Flags().StringVarP(&metabaseUser, "user", "u", "crowdsec@crowdsec.net", "metabase user")
+	cmd.Flags().StringVar(&metabasePassword, "password", "", "metabase password")
 
-	return cmdDashSetup
+	return cmd
 }
 
-func NewDashboardStartCmd() *cobra.Command {
-	var cmdDashStart = &cobra.Command{
+func (cli cliDashboard) NewStartCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "start",
 		Short:             "Start the metabase container.",
 		Long:              `Stats the metabase container using docker.`,
@@ -188,12 +200,13 @@ func NewDashboardStartCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmdDashStart.Flags().BoolVarP(&forceYes, "yes", "y", false, "force  yes")
-	return cmdDashStart
+	cmd.Flags().BoolVarP(&forceYes, "yes", "y", false, "force  yes")
+
+	return cmd
 }
 
-func NewDashboardStopCmd() *cobra.Command {
-	var cmdDashStop = &cobra.Command{
+func (cli cliDashboard) NewStopCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "stop",
 		Short:             "Stops the metabase container.",
 		Long:              `Stops the metabase container using docker.`,
@@ -206,11 +219,12 @@ func NewDashboardStopCmd() *cobra.Command {
 			return nil
 		},
 	}
-	return cmdDashStop
+
+	return cmd
 }
 
-func NewDashboardShowPasswordCmd() *cobra.Command {
-	var cmdDashShowPassword = &cobra.Command{Use: "show-password",
+func (cli cliDashboard) NewShowPasswordCmd() *cobra.Command {
+	cmd := &cobra.Command{Use: "show-password",
 		Short:             "displays password of metabase.",
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
@@ -223,13 +237,14 @@ func NewDashboardShowPasswordCmd() *cobra.Command {
 			return nil
 		},
 	}
-	return cmdDashShowPassword
+
+	return cmd
 }
 
-func NewDashboardRemoveCmd() *cobra.Command {
+func (cli cliDashboard) NewRemoveCmd() *cobra.Command {
 	var force bool
 
-	var cmdDashRemove = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:               "remove",
 		Short:             "removes the metabase container.",
 		Long:              `removes the metabase container using docker.`,
@@ -294,17 +309,19 @@ cscli dashboard remove --force
 			return nil
 		},
 	}
-	cmdDashRemove.Flags().BoolVarP(&force, "force", "f", false, "Remove also the metabase image")
-	cmdDashRemove.Flags().BoolVarP(&forceYes, "yes", "y", false, "force  yes")
+	cmd.Flags().BoolVarP(&force, "force", "f", false, "Remove also the metabase image")
+	cmd.Flags().BoolVarP(&forceYes, "yes", "y", false, "force  yes")
 
-	return cmdDashRemove
+	return cmd
 }
 
 func passwordIsValid(password string) bool {
 	hasDigit := false
+
 	for _, j := range password {
 		if unicode.IsDigit(j) {
 			hasDigit = true
+
 			break
 		}
 	}
@@ -312,8 +329,8 @@ func passwordIsValid(password string) bool {
 	if !hasDigit || len(password) < 6 {
 		return false
 	}
-	return true
 
+	return true
 }
 
 func checkSystemMemory(forceYes *bool) error {
@@ -321,8 +338,10 @@ func checkSystemMemory(forceYes *bool) error {
 	if totMem >= uint64(math.Pow(2, 30)) {
 		return nil
 	}
+
 	if !*forceYes {
 		var answer bool
+
 		prompt := &survey.Confirm{
 			Message: "Metabase requires 1-2GB of RAM, your system is below this requirement continue ?",
 			Default: true,
@@ -330,12 +349,16 @@ func checkSystemMemory(forceYes *bool) error {
 		if err := survey.AskOne(prompt, &answer); err != nil {
 			return fmt.Errorf("unable to ask about RAM check: %s", err)
 		}
+
 		if !answer {
 			return fmt.Errorf("user stated no to continue")
 		}
+
 		return nil
 	}
+
 	log.Warn("Metabase requires 1-2GB of RAM, your system is below this requirement")
+
 	return nil
 }
 
@@ -343,68 +366,95 @@ func warnIfNotLoopback(addr string) {
 	if addr == "127.0.0.1" || addr == "::1" {
 		return
 	}
+
 	log.Warnf("You are potentially exposing your metabase port to the internet (addr: %s), please consider using a reverse proxy", addr)
 }
 
 func disclaimer(forceYes *bool) error {
 	if !*forceYes {
 		var answer bool
+
 		prompt := &survey.Confirm{
 			Message: "CrowdSec takes no responsibility for the security of your metabase instance. Do you accept these responsibilities ?",
 			Default: true,
 		}
+
 		if err := survey.AskOne(prompt, &answer); err != nil {
 			return fmt.Errorf("unable to ask to question: %s", err)
 		}
+
 		if !answer {
 			return fmt.Errorf("user stated no to responsibilities")
 		}
+
 		return nil
 	}
+
 	log.Warn("CrowdSec takes no responsibility for the security of your metabase instance. You used force yes, so you accept this disclaimer")
+
 	return nil
 }
 
 func checkGroups(forceYes *bool) (*user.Group, error) {
-	groupExist := false
 	dockerGroup, err := user.LookupGroup(crowdsecGroup)
 	if err == nil {
-		groupExist = true
+		return dockerGroup, nil
 	}
-	if !groupExist {
-		if !*forceYes {
-			var answer bool
-			prompt := &survey.Confirm{
-				Message: fmt.Sprintf("For metabase docker to be able to access SQLite file we need to add a new group called '%s' to the system, is it ok for you ?", crowdsecGroup),
-				Default: true,
-			}
-			if err := survey.AskOne(prompt, &answer); err != nil {
-				return dockerGroup, fmt.Errorf("unable to ask to question: %s", err)
-			}
-			if !answer {
-				return dockerGroup, fmt.Errorf("unable to continue without creating '%s' group", crowdsecGroup)
-			}
-		}
-		groupAddCmd, err := exec.LookPath("groupadd")
-		if err != nil {
-			return dockerGroup, fmt.Errorf("unable to find 'groupadd' command, can't continue")
+
+	if !*forceYes {
+		var answer bool
+
+		prompt := &survey.Confirm{
+			Message: fmt.Sprintf("For metabase docker to be able to access SQLite file we need to add a new group called '%s' to the system, is it ok for you ?", crowdsecGroup),
+			Default: true,
 		}
 
-		groupAdd := &exec.Cmd{Path: groupAddCmd, Args: []string{groupAddCmd, crowdsecGroup}}
-		if err := groupAdd.Run(); err != nil {
-			return dockerGroup, fmt.Errorf("unable to add group '%s': %s", dockerGroup, err)
+		if err := survey.AskOne(prompt, &answer); err != nil {
+			return dockerGroup, fmt.Errorf("unable to ask to question: %s", err)
 		}
-		dockerGroup, err = user.LookupGroup(crowdsecGroup)
-		if err != nil {
-			return dockerGroup, fmt.Errorf("unable to lookup '%s' group: %+v", dockerGroup, err)
+
+		if !answer {
+			return dockerGroup, fmt.Errorf("unable to continue without creating '%s' group", crowdsecGroup)
 		}
 	}
-	intID, err := strconv.Atoi(dockerGroup.Gid)
+
+	groupAddCmd, err := exec.LookPath("groupadd")
 	if err != nil {
-		return dockerGroup, fmt.Errorf("unable to convert group ID to int: %s", err)
+		return dockerGroup, fmt.Errorf("unable to find 'groupadd' command, can't continue")
 	}
-	if err := os.Chown(csConfig.DbConfig.DbPath, 0, intID); err != nil {
-		return dockerGroup, fmt.Errorf("unable to chown sqlite db file '%s': %s", csConfig.DbConfig.DbPath, err)
+
+	groupAdd := &exec.Cmd{Path: groupAddCmd, Args: []string{groupAddCmd, crowdsecGroup}}
+	if err := groupAdd.Run(); err != nil {
+		return dockerGroup, fmt.Errorf("unable to add group '%s': %s", dockerGroup, err)
 	}
-	return dockerGroup, nil
+
+	return user.LookupGroup(crowdsecGroup)
+}
+
+func chownDatabase(gid string) error {
+	intID, err := strconv.Atoi(gid)
+	if err != nil {
+		return fmt.Errorf("unable to convert group ID to int: %s", err)
+	}
+
+	if stat, err := os.Stat(csConfig.DbConfig.DbPath); !os.IsNotExist(err) {
+		info := stat.Sys()
+		if err := os.Chown(csConfig.DbConfig.DbPath, int(info.(*syscall.Stat_t).Uid), intID); err != nil {
+			return fmt.Errorf("unable to chown sqlite db file '%s': %s", csConfig.DbConfig.DbPath, err)
+		}
+	}
+
+	if csConfig.DbConfig.Type == "sqlite" && csConfig.DbConfig.UseWal != nil && *csConfig.DbConfig.UseWal {
+		for _, ext := range []string{"-wal", "-shm"} {
+			file := csConfig.DbConfig.DbPath + ext
+			if stat, err := os.Stat(file); !os.IsNotExist(err) {
+				info := stat.Sys()
+				if err := os.Chown(file, int(info.(*syscall.Stat_t).Uid), intID); err != nil {
+					return fmt.Errorf("unable to chown sqlite db file '%s': %s", file, err)
+				}
+			}
+		}
+	}
+
+	return nil
 }

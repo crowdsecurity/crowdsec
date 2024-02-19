@@ -1,4 +1,4 @@
-// +build linux freebsd netbsd openbsd solaris !windows
+//go:build !windows
 
 package fileacquisition
 

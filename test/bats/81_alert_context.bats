@@ -20,6 +20,9 @@ teardown_file() {
 setup() {
     load "../lib/setup.sh"
     ./instance-data load
+    cscli collections install crowdsecurity/sshd --error
+    cscli parsers install crowdsecurity/syslog-logs --error
+    cscli parsers install crowdsecurity/dateparse-enrich --error
 }
 
 teardown() {

@@ -28,17 +28,18 @@ var (
 
 func getDBClient(t *testing.T) *database.Client {
 	t.Helper()
+
 	dbPath, err := os.CreateTemp("", "*sqlite")
 	require.NoError(t, err)
 
-	testDbClient, err := database.NewClient(&csconfig.DatabaseCfg{
+	testDBClient, err := database.NewClient(&csconfig.DatabaseCfg{
 		Type:   "sqlite",
 		DbName: "crowdsec",
 		DbPath: dbPath.Name(),
 	})
 	require.NoError(t, err)
 
-	return testDbClient
+	return testDBClient
 }
 
 func TestVisitor(t *testing.T) {
@@ -97,18 +98,11 @@ func TestVisitor(t *testing.T) {
 	}
 
 	log.SetLevel(log.DebugLevel)
-	clog := log.WithFields(log.Fields{
-		"type": "test",
-	})
 
 	for _, test := range tests {
 		compiledFilter, err := expr.Compile(test.filter, GetExprOptions(test.env)...)
 		if err != nil && test.err == nil {
 			log.Fatalf("compile: %s", err)
-		}
-		debugFilter, err := NewDebugger(test.filter, GetExprOptions(test.env)...)
-		if err != nil && test.err == nil {
-			log.Fatalf("debug: %s", err)
 		}
 
 		if compiledFilter != nil {
@@ -116,13 +110,10 @@ func TestVisitor(t *testing.T) {
 			if err != nil && test.err == nil {
 				log.Fatalf("run : %s", err)
 			}
+
 			if isOk := assert.Equal(t, test.result, result); !isOk {
 				t.Fatalf("test '%s' : NOK", test.filter)
 			}
-		}
-
-		if debugFilter != nil {
-			debugFilter.Run(clog, test.result, test.env)
 		}
 	}
 }
@@ -130,6 +121,7 @@ func TestVisitor(t *testing.T) {
 func TestMatch(t *testing.T) {
 	err := Init(nil)
 	require.NoError(t, err)
+
 	tests := []struct {
 		glob string
 		val  string
@@ -159,12 +151,15 @@ func TestMatch(t *testing.T) {
 			"pattern": test.glob,
 			"name":    test.val,
 		}
+
 		vm, err := expr.Compile(test.expr, GetExprOptions(env)...)
 		if err != nil {
 			t.Fatalf("pattern:%s val:%s NOK %s", test.glob, test.val, err)
 		}
+
 		ret, err := expr.Run(vm, env)
-		assert.NoError(t, err)
+		require.NoError(t, err)
+
 		if isOk := assert.Equal(t, test.ret, ret); !isOk {
 			t.Fatalf("pattern:%s val:%s NOK %t !=  %t", test.glob, test.val, ret, test.ret)
 		}
@@ -204,10 +199,10 @@ func TestDistanceHelper(t *testing.T) {
 			}
 			ret, err := expr.Run(vm, env)
 			if test.valid {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 				assert.Equal(t, test.dist, ret)
 			} else {
-				assert.NotNil(t, err)
+				require.Error(t, err)
 			}
 		})
 	}
@@ -293,10 +288,12 @@ func TestRegexpInFile(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
+
 		result, err := expr.Run(compiledFilter, map[string]interface{}{})
 		if err != nil {
 			log.Fatal(err)
 		}
+
 		if isOk := assert.Equal(t, test.result, result); !isOk {
 			t.Fatalf("test '%s' : NOK", test.name)
 		}
@@ -345,28 +342,34 @@ func TestFileInit(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		if test.types == "string" {
+
+		switch test.types {
+		case "string":
 			if _, ok := dataFile[test.filename]; !ok {
 				t.Fatalf("test '%s' : NOK", test.name)
 			}
-			if isOk := assert.Equal(t, test.result, len(dataFile[test.filename])); !isOk {
+
+			if isOk := assert.Len(t, dataFile[test.filename], test.result); !isOk {
 				t.Fatalf("test '%s' : NOK", test.name)
 			}
-		} else if test.types == "regex" {
+		case "regex":
 			if _, ok := dataFileRegex[test.filename]; !ok {
 				t.Fatalf("test '%s' : NOK", test.name)
 			}
-			if isOk := assert.Equal(t, test.result, len(dataFileRegex[test.filename])); !isOk {
+
+			if isOk := assert.Len(t, dataFileRegex[test.filename], test.result); !isOk {
 				t.Fatalf("test '%s' : NOK", test.name)
 			}
-		} else {
+		default:
 			if _, ok := dataFileRegex[test.filename]; ok {
 				t.Fatalf("test '%s' : NOK", test.name)
 			}
+
 			if _, ok := dataFile[test.filename]; ok {
 				t.Fatalf("test '%s' : NOK", test.name)
 			}
 		}
+
 		log.Printf("test '%s' : OK", test.name)
 	}
 }
@@ -418,21 +421,23 @@ func TestFile(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
+
 		result, err := expr.Run(compiledFilter, map[string]interface{}{})
 		if err != nil {
 			log.Fatal(err)
 		}
+
 		if isOk := assert.Equal(t, test.result, result); !isOk {
 			t.Fatalf("test '%s' : NOK", test.name)
 		}
-		log.Printf("test '%s' : OK", test.name)
 
+		log.Printf("test '%s' : OK", test.name)
 	}
 }
 
 func TestIpInRange(t *testing.T) {
 	err := Init(nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	tests := []struct {
 		name   string
 		env    map[string]interface{}
@@ -480,12 +485,11 @@ func TestIpInRange(t *testing.T) {
 		require.Equal(t, test.result, output)
 		log.Printf("test '%s' : OK", test.name)
 	}
-
 }
 
 func TestIpToRange(t *testing.T) {
 	err := Init(nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	tests := []struct {
 		name   string
 		env    map[string]interface{}
@@ -553,13 +557,11 @@ func TestIpToRange(t *testing.T) {
 		require.Equal(t, test.result, output)
 		log.Printf("test '%s' : OK", test.name)
 	}
-
 }
 
 func TestAtof(t *testing.T) {
-
 	err := Init(nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name   string
@@ -603,13 +605,14 @@ func TestUpper(t *testing.T) {
 	}
 
 	err := Init(nil)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	vm, err := expr.Compile("Upper(testStr)", GetExprOptions(env)...)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	out, err := expr.Run(vm, env)
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
+
 	v, ok := out.(string)
 	if !ok {
 		t.Fatalf("Upper() should return a string")
@@ -622,6 +625,7 @@ func TestUpper(t *testing.T) {
 
 func TestTimeNow(t *testing.T) {
 	now, _ := TimeNow()
+
 	ti, err := time.Parse(time.RFC3339, now.(string))
 	if err != nil {
 		t.Fatalf("Error parsing the return value of TimeNow: %s", err)
@@ -630,6 +634,7 @@ func TestTimeNow(t *testing.T) {
 	if -1*time.Until(ti) > time.Second {
 		t.Fatalf("TimeNow func should return time.Now().UTC()")
 	}
+
 	log.Printf("test 'TimeNow()' : OK")
 }
 
@@ -904,15 +909,14 @@ func TestLower(t *testing.T) {
 }
 
 func TestGetDecisionsCount(t *testing.T) {
-	var err error
-	var start_ip, start_sfx, end_ip, end_sfx int64
-	var ip_sz int
 	existingIP := "1.2.3.4"
 	unknownIP := "1.2.3.5"
-	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(existingIP)
+
+	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(existingIP)
 	if err != nil {
 		t.Errorf("unable to convert '%s' to int: %s", existingIP, err)
 	}
+
 	// Add sample data to DB
 	dbClient = getDBClient(t)
 
@@ -931,11 +935,11 @@ func TestGetDecisionsCount(t *testing.T) {
 		SaveX(context.Background())
 
 	if decision == nil {
-		assert.Error(t, errors.Errorf("Failed to create sample decision"))
+		require.Error(t, errors.Errorf("Failed to create sample decision"))
 	}
 
 	err = Init(dbClient)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name   string
@@ -992,12 +996,10 @@ func TestGetDecisionsCount(t *testing.T) {
 	}
 }
 func TestGetDecisionsSinceCount(t *testing.T) {
-	var err error
-	var start_ip, start_sfx, end_ip, end_sfx int64
-	var ip_sz int
 	existingIP := "1.2.3.4"
 	unknownIP := "1.2.3.5"
-	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(existingIP)
+
+	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(existingIP)
 	if err != nil {
 		t.Errorf("unable to convert '%s' to int: %s", existingIP, err)
 	}
@@ -1018,8 +1020,9 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 		SetOrigin("CAPI").
 		SaveX(context.Background())
 	if decision == nil {
-		assert.Error(t, errors.Errorf("Failed to create sample decision"))
+		require.Error(t, errors.Errorf("Failed to create sample decision"))
 	}
+
 	decision2 := dbClient.Ent.Decision.Create().
 		SetCreatedAt(time.Now().AddDate(0, 0, -1)).
 		SetUntil(time.Now().AddDate(0, 0, -1)).
@@ -1034,12 +1037,13 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 		SetValue(existingIP).
 		SetOrigin("CAPI").
 		SaveX(context.Background())
+
 	if decision2 == nil {
-		assert.Error(t, errors.Errorf("Failed to create sample decision"))
+		require.Error(t, errors.Errorf("Failed to create sample decision"))
 	}
 
 	err = Init(dbClient)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	tests := []struct {
 		name   string
@@ -1162,6 +1166,7 @@ func TestIsIp(t *testing.T) {
 	if err := Init(nil); err != nil {
 		log.Fatal(err)
 	}
+
 	tests := []struct {
 		name             string
 		expr             string
@@ -1245,17 +1250,18 @@ func TestIsIp(t *testing.T) {
 			expectedBuildErr: true,
 		},
 	}
+
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			vm, err := expr.Compile(tc.expr, GetExprOptions(map[string]interface{}{"value": tc.value})...)
 			if tc.expectedBuildErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			output, err := expr.Run(vm, map[string]interface{}{"value": tc.value})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.IsType(t, tc.expected, output)
 			assert.Equal(t, tc.expected, output.(bool))
 		})
@@ -1265,6 +1271,7 @@ func TestIsIp(t *testing.T) {
 func TestToString(t *testing.T) {
 	err := Init(nil)
 	require.NoError(t, err)
+
 	tests := []struct {
 		name     string
 		value    interface{}
@@ -1300,9 +1307,9 @@ func TestToString(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			vm, err := expr.Compile(tc.expr, GetExprOptions(map[string]interface{}{"value": tc.value})...)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			output, err := expr.Run(vm, map[string]interface{}{"value": tc.value})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.Equal(t, tc.expected, output)
 		})
 	}
@@ -1348,16 +1355,16 @@ func TestB64Decode(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			vm, err := expr.Compile(tc.expr, GetExprOptions(map[string]interface{}{"value": tc.value})...)
 			if tc.expectedBuildErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			output, err := expr.Run(vm, map[string]interface{}{"value": tc.value})
 			if tc.expectedRuntimeErr {
-				assert.Error(t, err)
+				require.Error(t, err)
 				return
 			}
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			require.Equal(t, tc.expected, output)
 		})
 	}
@@ -1422,9 +1429,9 @@ func TestParseKv(t *testing.T) {
 				"out":   outMap,
 			}
 			vm, err := expr.Compile(tc.expr, GetExprOptions(env)...)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			_, err = expr.Run(vm, env)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, tc.expected, outMap["a"])
 		})
 	}

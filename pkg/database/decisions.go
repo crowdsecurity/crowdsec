@@ -9,6 +9,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/pkg/errors"
 
+	"github.com/crowdsecurity/go-cs-lib/slicetools"
+
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
@@ -23,7 +25,6 @@ type DecisionsByScenario struct {
 }
 
 func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, error) {
-
 	var err error
 	var start_ip, start_sfx, end_ip, end_sfx int64
 	var ip_sz int
@@ -545,55 +546,39 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 
 // BulkDeleteDecisions set the expiration of a bulk of decisions to now() or hard deletes them.
 // We are doing it this way so we can return impacted decisions for sync with CAPI/PAPI
-func (c *Client) BulkDeleteDecisions(DecisionsToDelete []*ent.Decision, softDelete bool) (int, error) {
-	bulkSize := 256 //scientifically proven to be the best value for bulk delete
-	idsToDelete := make([]int, 0, bulkSize)
-	totalUpdates := 0
-	for i := 0; i < len(DecisionsToDelete); i++ {
-		idsToDelete = append(idsToDelete, DecisionsToDelete[i].ID)
-		if len(idsToDelete) == bulkSize {
+func (c *Client) BulkDeleteDecisions(decisionsToDelete []*ent.Decision, softDelete bool) (int, error) {
+	const bulkSize = 256 //scientifically proven to be the best value for bulk delete
 
-			if softDelete {
-				nbUpdates, err := c.Ent.Decision.Update().Where(
-					decision.IDIn(idsToDelete...),
-				).SetUntil(time.Now().UTC()).Save(c.CTX)
-				if err != nil {
-					return totalUpdates, errors.Wrap(err, "soft delete decisions with provided filter")
-				}
-				totalUpdates += nbUpdates
-			} else {
-				nbUpdates, err := c.Ent.Decision.Delete().Where(
-					decision.IDIn(idsToDelete...),
-				).Exec(c.CTX)
-				if err != nil {
-					return totalUpdates, errors.Wrap(err, "hard delete decisions with provided filter")
-				}
-				totalUpdates += nbUpdates
-			}
-			idsToDelete = make([]int, 0, bulkSize)
-		}
+	var (
+		nbUpdates    int
+		err          error
+		totalUpdates = 0
+	)
+
+	idsToDelete := make([]int, len(decisionsToDelete))
+	for i, decision := range decisionsToDelete {
+		idsToDelete[i] = decision.ID
 	}
 
-	if len(idsToDelete) > 0 {
+	for _, chunk := range slicetools.Chunks(idsToDelete, bulkSize) {
 		if softDelete {
-			nbUpdates, err := c.Ent.Decision.Update().Where(
-				decision.IDIn(idsToDelete...),
+			nbUpdates, err = c.Ent.Decision.Update().Where(
+				decision.IDIn(chunk...),
 			).SetUntil(time.Now().UTC()).Save(c.CTX)
 			if err != nil {
-				return totalUpdates, errors.Wrap(err, "soft delete decisions with provided filter")
+				return totalUpdates, fmt.Errorf("soft delete decisions with provided filter: %w", err)
 			}
-			totalUpdates += nbUpdates
 		} else {
-			nbUpdates, err := c.Ent.Decision.Delete().Where(
-				decision.IDIn(idsToDelete...),
+			nbUpdates, err = c.Ent.Decision.Delete().Where(
+				decision.IDIn(chunk...),
 			).Exec(c.CTX)
 			if err != nil {
-				return totalUpdates, errors.Wrap(err, "hard delete decisions with provided filter")
+				return totalUpdates, fmt.Errorf("hard delete decisions with provided filter: %w", err)
 			}
-			totalUpdates += nbUpdates
 		}
-
+		totalUpdates += nbUpdates
 	}
+
 	return totalUpdates, nil
 }
 
@@ -601,6 +586,7 @@ func (c *Client) BulkDeleteDecisions(DecisionsToDelete []*ent.Decision, softDele
 func (c *Client) SoftDeleteDecisionByID(decisionID int) (int, []*ent.Decision, error) {
 	toUpdate, err := c.Ent.Decision.Query().Where(decision.IDEQ(decisionID)).All(c.CTX)
 
+	// XXX: do we want 500 or 404 here?
 	if err != nil || len(toUpdate) == 0 {
 		c.Log.Warningf("SoftDeleteDecisionByID : %v (nb soft deleted: %d)", err, len(toUpdate))
 		return 0, nil, errors.Wrapf(DeleteFail, "decision with id '%d' doesn't exist", decisionID)
@@ -609,6 +595,7 @@ func (c *Client) SoftDeleteDecisionByID(decisionID int) (int, []*ent.Decision, e
 	if len(toUpdate) == 0 {
 		return 0, nil, ItemNotFound
 	}
+
 	count, err := c.BulkDeleteDecisions(toUpdate, true)
 	return count, toUpdate, err
 }
@@ -639,10 +626,7 @@ func (c *Client) CountDecisionsByValue(decisionValue string) (int, error) {
 }
 
 func (c *Client) CountDecisionsSinceByValue(decisionValue string, since time.Time) (int, error) {
-	var err error
-	var start_ip, start_sfx, end_ip, end_sfx int64
-	var ip_sz, count int
-	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(decisionValue)
+	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(decisionValue)
 
 	if err != nil {
 		return 0, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", decisionValue, err)
@@ -652,11 +636,13 @@ func (c *Client) CountDecisionsSinceByValue(decisionValue string, since time.Tim
 	decisions := c.Ent.Decision.Query().Where(
 		decision.CreatedAtGT(since),
 	)
+
 	decisions, err = applyStartIpEndIpFilter(decisions, contains, ip_sz, start_ip, start_sfx, end_ip, end_sfx)
 	if err != nil {
 		return 0, errors.Wrapf(err, "fail to apply StartIpEndIpFilter")
 	}
-	count, err = decisions.Count(c.CTX)
+
+	count, err := decisions.Count(c.CTX)
 	if err != nil {
 		return 0, errors.Wrapf(err, "fail to count decisions")
 	}
@@ -681,7 +667,10 @@ func applyStartIpEndIpFilter(decisions *ent.DecisionQuery, contains bool, ip_sz 
 				decision.IPSizeEQ(int64(ip_sz)),
 			))
 		}
-	} else if ip_sz == 16 {
+		return decisions, nil
+	}
+
+	if ip_sz == 16 {
 		/*decision contains {start_ip,end_ip}*/
 		if contains {
 			decisions = decisions.Where(decision.And(
@@ -733,9 +722,13 @@ func applyStartIpEndIpFilter(decisions *ent.DecisionQuery, contains bool, ip_sz 
 				),
 			))
 		}
-	} else if ip_sz != 0 {
+		return decisions, nil
+	}
+
+	if ip_sz != 0 {
 		return nil, errors.Wrapf(InvalidFilter, "unknown ip size %d", ip_sz)
 	}
+
 	return decisions, nil
 }
 

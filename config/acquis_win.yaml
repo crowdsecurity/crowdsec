@@ -10,7 +10,7 @@ labels:
 ---
 ##Firewall
 filenames:
-  - C:\Windows\System32\LogFiles\Firewall\pfirewall.log
+  - C:\Windows\System32\LogFiles\Firewall\*.log
 labels:
   type: windows-firewall
 ---

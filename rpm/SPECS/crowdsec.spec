@@ -167,23 +167,22 @@ if [ $1 == 1 ]; then
         SILENT=true TMP_ACQUIS_FILE_SKIP=skip genacquisition
         set +e
     fi
-    if [ ! -f "%{_sysconfdir}/crowdsec/online_api_credentials.yaml" ] && [ ! -f "%{_sysconfdir}/crowdsec/local_api_credentials.yaml" ] ; then
-        install -m 600 /dev/null %{_sysconfdir}/crowdsec/online_api_credentials.yaml
-        install -m 600 /dev/null %{_sysconfdir}/crowdsec/local_api_credentials.yaml
-        cscli capi register
-        cscli machines add -a
-    fi
     if [ ! -f "%{_sysconfdir}/crowdsec/online_api_credentials.yaml" ] ; then
-        touch %{_sysconfdir}/crowdsec/online_api_credentials.yaml
-        cscli capi register
+        install -m 600 /dev/null  /etc/crowdsec/online_api_credentials.yaml
+        cscli capi register --error
     fi
     if [ ! -f "%{_sysconfdir}/crowdsec/local_api_credentials.yaml" ] ; then
-        touch %{_sysconfdir}/crowdsec/local_api_credentials.yaml
-        cscli machines add -a
+        install -m 600 /dev/null  /etc/crowdsec/local_api_credentials.yaml
+        cscli machines add -a --force --error
     fi
 
     cscli hub update
     CSCLI_BIN_INSTALLED="/usr/bin/cscli" SILENT=true install_collection
+
+    echo "Get started with CrowdSec:"
+    echo " * Detailed guides are available in our documentation: https://docs.crowdsec.net"
+    echo " * Configuration items created by the community can be found at the Hub: https://hub.crowdsec.net"
+    echo " * Gain insights into your use of CrowdSec with the help of the console https://app.crowdsec.net"
 
 #upgrade
 elif [ $1 == 2 ] && [ -d /var/lib/crowdsec/backup ]; then
@@ -205,7 +204,7 @@ fi
 
 if [ $1 == 1 ]; then
     API=$(cscli config show --key "Config.API.Server")
-    if [ "$API" = "<nil>" ] ; then
+    if [ "$API" = "nil" ] ; then
         LAPI=false
     else
         PORT=$(cscli config show --key "Config.API.Server.ListenURI"|cut -d ":" -f2)

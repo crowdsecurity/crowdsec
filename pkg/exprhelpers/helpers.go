@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -176,6 +177,54 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 	return nil
 }
 
+// Expr helpers
+
+func Distinct(params ...any) (any, error) {
+
+	if rt := reflect.TypeOf(params[0]).Kind(); rt != reflect.Slice && rt != reflect.Array {
+		return nil, nil
+	}
+	array := params[0].([]interface{})
+	if array == nil {
+		return []interface{}{}, nil
+	}
+
+	var exists map[any]bool = make(map[any]bool)
+	var ret []interface{} = make([]interface{}, 0)
+
+	for _, val := range array {
+		if _, ok := exists[val]; !ok {
+			exists[val] = true
+			ret = append(ret, val)
+		}
+	}
+	return ret, nil
+
+}
+
+func FlattenDistinct(params ...any) (any, error) {
+	return Distinct(flatten(nil, reflect.ValueOf(params))) //nolint:asasalint
+}
+
+func Flatten(params ...any) (any, error) {
+	return flatten(nil, reflect.ValueOf(params)), nil
+}
+
+func flatten(args []interface{}, v reflect.Value) []interface{} {
+	if v.Kind() == reflect.Interface {
+		v = v.Elem()
+	}
+
+	if v.Kind() == reflect.Array || v.Kind() == reflect.Slice {
+		for i := 0; i < v.Len(); i++ {
+			args = flatten(args, v.Index(i))
+		}
+	} else {
+		args = append(args, v.Interface())
+	}
+
+	return args
+}
 func existsInFileMaps(filename string, ftype string) (bool, error) {
 	ok := false
 	var err error

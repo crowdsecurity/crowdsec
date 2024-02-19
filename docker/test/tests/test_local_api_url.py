@@ -11,7 +11,7 @@ def test_local_api_url_default(crowdsec, flavor):
     """Test LOCAL_API_URL (default)"""
     with crowdsec(flavor=flavor) as cs:
         cs.wait_for_log([
-            "*CrowdSec Local API listening on 0.0.0.0:8080*",
+            "*CrowdSec Local API listening on *:8080*",
             "*Starting processing data*"
         ])
         cs.wait_for_http(8080, '/health', want_status=HTTPStatus.OK)
@@ -29,7 +29,7 @@ def test_local_api_url(crowdsec, flavor):
     }
     with crowdsec(flavor=flavor, environment=env) as cs:
         cs.wait_for_log([
-            "*CrowdSec Local API listening on 0.0.0.0:8080*",
+            "*CrowdSec Local API listening on *:8080*",
             "*Starting processing data*"
         ])
         cs.wait_for_http(8080, '/health', want_status=HTTPStatus.OK)
@@ -54,7 +54,7 @@ def test_local_api_url_ipv6(crowdsec, flavor):
     with crowdsec(flavor=flavor, environment=env) as cs:
         cs.wait_for_log([
             "*Starting processing data*",
-            "*CrowdSec Local API listening on 0.0.0.0:8080*",
+            "*CrowdSec Local API listening on [::1]:8080*",
         ])
         cs.wait_for_http(8080, '/health', want_status=HTTPStatus.OK)
         res = cs.cont.exec_run('cscli lapi status')

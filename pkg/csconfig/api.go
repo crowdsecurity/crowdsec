@@ -61,36 +61,51 @@ func (a *CTICfg) Load() error {
 	if a.Key == nil {
 		*a.Enabled = false
 	}
+
 	if a.Key != nil && *a.Key == "" {
 		return fmt.Errorf("empty cti key")
 	}
+
 	if a.Enabled == nil {
 		a.Enabled = new(bool)
 		*a.Enabled = true
 	}
+
 	if a.CacheTimeout == nil {
 		a.CacheTimeout = new(time.Duration)
 		*a.CacheTimeout = 10 * time.Minute
 	}
+
 	if a.CacheSize == nil {
 		a.CacheSize = new(int)
 		*a.CacheSize = 100
 	}
+
 	return nil
 }
 
 func (o *OnlineApiClientCfg) Load() error {
 	o.Credentials = new(ApiCredentialsCfg)
+
 	fcontent, err := os.ReadFile(o.CredentialsFilePath)
 	if err != nil {
-		return fmt.Errorf("failed to read api server credentials configuration file '%s': %w", o.CredentialsFilePath, err)
+		return err
 	}
+
 	err = yaml.UnmarshalStrict(fcontent, o.Credentials)
 	if err != nil {
 		return fmt.Errorf("failed unmarshaling api server credentials configuration file '%s': %w", o.CredentialsFilePath, err)
 	}
-	if o.Credentials.Login == "" || o.Credentials.Password == "" || o.Credentials.URL == "" {
-		log.Warningf("can't load CAPI credentials from '%s' (missing field)", o.CredentialsFilePath)
+
+	switch {
+	case o.Credentials.Login == "":
+		log.Warningf("can't load CAPI credentials from '%s' (missing login field)", o.CredentialsFilePath)
+		o.Credentials = nil
+	case o.Credentials.Password == "":
+		log.Warningf("can't load CAPI credentials from '%s' (missing password field)", o.CredentialsFilePath)
+		o.Credentials = nil
+	case o.Credentials.URL == "":
+		log.Warningf("can't load CAPI credentials from '%s' (missing url field)", o.CredentialsFilePath)
 		o.Credentials = nil
 	}
 
@@ -99,14 +114,17 @@ func (o *OnlineApiClientCfg) Load() error {
 
 func (l *LocalApiClientCfg) Load() error {
 	patcher := yamlpatch.NewPatcher(l.CredentialsFilePath, ".local")
+
 	fcontent, err := patcher.MergedPatchContent()
 	if err != nil {
 		return err
 	}
+
 	err = yaml.UnmarshalStrict(fcontent, &l.Credentials)
 	if err != nil {
 		return fmt.Errorf("failed unmarshaling api client credential configuration file '%s': %w", l.CredentialsFilePath, err)
 	}
+
 	if l.Credentials == nil || l.Credentials.URL == "" {
 		return fmt.Errorf("no credentials or URL found in api client configuration '%s'", l.CredentialsFilePath)
 	}
@@ -137,9 +155,11 @@ func (l *LocalApiClientCfg) Load() error {
 		if err != nil {
 			log.Warningf("Error loading system CA certificates: %s", err)
 		}
+
 		if caCertPool == nil {
 			caCertPool = x509.NewCertPool()
 		}
+
 		caCertPool.AppendCertsFromPEM(caCert)
 		apiclient.CaCertPool = caCertPool
 	}
@@ -160,12 +180,15 @@ func (lapiCfg *LocalApiServerCfg) GetTrustedIPs() ([]net.IPNet, error) {
 	trustedIPs := make([]net.IPNet, 0)
 	for _, ip := range lapiCfg.TrustedIPs {
 		cidr := toValidCIDR(ip)
+
 		_, ipNet, err := net.ParseCIDR(cidr)
 		if err != nil {
 			return nil, err
 		}
+
 		trustedIPs = append(trustedIPs, *ipNet)
 	}
+
 	return trustedIPs, nil
 }
 
@@ -177,6 +200,7 @@ func toValidCIDR(ip string) string {
 	if strings.Contains(ip, ":") {
 		return ip + "/128"
 	}
+
 	return ip + "/32"
 }
 
@@ -212,18 +236,6 @@ type LocalApiServerCfg struct {
 	CapiWhitelists                *CapiWhitelist      `yaml:"-"`
 }
 
-type TLSCfg struct {
-	CertFilePath       string         `yaml:"cert_file"`
-	KeyFilePath        string         `yaml:"key_file"`
-	ClientVerification string         `yaml:"client_verification,omitempty"`
-	ServerName         string         `yaml:"server_name"`
-	CACertPath         string         `yaml:"ca_cert_path"`
-	AllowedAgentsOU    []string       `yaml:"agents_allowed_ou"`
-	AllowedBouncersOU  []string       `yaml:"bouncers_allowed_ou"`
-	CRLPath            string         `yaml:"crl_path"`
-	CacheExpiration    *time.Duration `yaml:"cache_expiration,omitempty"`
-}
-
 func (c *Config) LoadAPIServer() error {
 	if c.DisableAPI {
 		log.Warning("crowdsec local API is disabled from flag")
@@ -243,11 +255,14 @@ func (c *Config) LoadAPIServer() error {
 	if !*c.API.Server.Enable {
 		log.Warning("crowdsec local API is disabled because 'enable' is set to false")
 		c.DisableAPI = true
-		return nil
 	}
 
 	if c.DisableAPI {
 		return nil
+	}
+
+	if c.API.Server.ListenURI == "" {
+		return fmt.Errorf("no listen_uri specified")
 	}
 
 	//inherit log level from common, then api->server
@@ -284,10 +299,6 @@ func (c *Config) LoadAPIServer() error {
 
 	if c.API.Server.CapiWhitelistsPath != "" {
 		log.Infof("loaded capi whitelist from %s: %d IPs, %d CIDRs", c.API.Server.CapiWhitelistsPath, len(c.API.Server.CapiWhitelists.Ips), len(c.API.Server.CapiWhitelists.Cidrs))
-	}
-
-	if err := c.LoadCommon(); err != nil {
-		return fmt.Errorf("loading common configuration: %s", err)
 	}
 
 	c.API.Server.LogDir = c.Common.LogDir
@@ -340,24 +351,30 @@ func parseCapiWhitelists(fd io.Reader) (*CapiWhitelist, error) {
 		if errors.Is(err, io.EOF) {
 			return nil, fmt.Errorf("empty file")
 		}
+
 		return nil, err
 	}
+
 	ret := &CapiWhitelist{
 		Ips:   make([]net.IP, len(fromCfg.Ips)),
 		Cidrs: make([]*net.IPNet, len(fromCfg.Cidrs)),
 	}
+
 	for idx, v := range fromCfg.Ips {
 		ip := net.ParseIP(v)
 		if ip == nil {
 			return nil, fmt.Errorf("invalid IP address: %s", v)
 		}
+
 		ret.Ips[idx] = ip
 	}
+
 	for idx, v := range fromCfg.Cidrs {
 		_, tnet, err := net.ParseCIDR(v)
 		if err != nil {
 			return nil, err
 		}
+
 		ret.Cidrs[idx] = tnet
 	}
 
@@ -367,10 +384,6 @@ func parseCapiWhitelists(fd io.Reader) (*CapiWhitelist, error) {
 func (s *LocalApiServerCfg) LoadCapiWhitelists() error {
 	if s.CapiWhitelistsPath == "" {
 		return nil
-	}
-
-	if _, err := os.Stat(s.CapiWhitelistsPath); os.IsNotExist(err) {
-		return fmt.Errorf("capi whitelist file '%s' does not exist", s.CapiWhitelistsPath)
 	}
 
 	fd, err := os.Open(s.CapiWhitelistsPath)

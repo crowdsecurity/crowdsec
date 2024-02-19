@@ -6,7 +6,6 @@ common:
   log_max_size: 20
   compress_logs: true
   log_max_files: 10
-  working_dir: .
 config_paths:
   config_dir: /etc/crowdsec/
   data_dir: /var/lib/crowdsec/data/

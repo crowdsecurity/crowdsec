@@ -15,8 +15,14 @@ import (
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 )
 
-func NewPapiCmd() *cobra.Command {
-	var cmdLapi = &cobra.Command{
+type cliPapi struct {}
+
+func NewCLIPapi() *cliPapi {
+	return &cliPapi{}
+}
+
+func (cli cliPapi) NewCommand() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:               "papi [action]",
 		Short:             "Manage interaction with Polling API (PAPI)",
 		Args:              cobra.MinimumNArgs(1),
@@ -35,14 +41,14 @@ func NewPapiCmd() *cobra.Command {
 		},
 	}
 
-	cmdLapi.AddCommand(NewPapiStatusCmd())
-	cmdLapi.AddCommand(NewPapiSyncCmd())
+	cmd.AddCommand(cli.NewStatusCmd())
+	cmd.AddCommand(cli.NewSyncCmd())
 
-	return cmdLapi
+	return cmd
 }
 
-func NewPapiStatusCmd() *cobra.Command {
-	cmdCapiStatus := &cobra.Command{
+func (cli cliPapi) NewStatusCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "status",
 		Short:             "Get status of the Polling API",
 		Args:              cobra.MinimumNArgs(0),
@@ -87,11 +93,11 @@ func NewPapiStatusCmd() *cobra.Command {
 		},
 	}
 
-	return cmdCapiStatus
+	return cmd
 }
 
-func NewPapiSyncCmd() *cobra.Command {
-	cmdCapiSync := &cobra.Command{
+func (cli cliPapi) NewSyncCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "sync",
 		Short:             "Sync with the Polling API, pulling all non-expired orders for the instance",
 		Args:              cobra.MinimumNArgs(0),
@@ -135,5 +141,5 @@ func NewPapiSyncCmd() *cobra.Command {
 		},
 	}
 
-	return cmdCapiSync
+	return cmd
 }

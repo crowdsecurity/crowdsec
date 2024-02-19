@@ -30,11 +30,6 @@ func (s *SimulationConfig) IsSimulated(scenario string) bool {
 }
 
 func (c *Config) LoadSimulation() error {
-
-	if err := c.LoadConfigurationPaths(); err != nil {
-		return err
-	}
-
 	simCfg := SimulationConfig{}
 	if c.ConfigPaths.SimulationFilePath == "" {
 		c.ConfigPaths.SimulationFilePath = filepath.Clean(c.ConfigPaths.ConfigDir + "/simulation.yaml")

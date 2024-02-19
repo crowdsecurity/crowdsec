@@ -3,9 +3,10 @@ package v1
 import (
 	"net/http"
 
-	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
+
+	"github.com/crowdsecurity/crowdsec/pkg/database"
 )
 
 func (c *Controller) HandleDBErrors(gctx *gin.Context, err error) {

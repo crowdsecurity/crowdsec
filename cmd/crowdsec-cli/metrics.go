@@ -63,6 +63,8 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 	lapi_machine_stats := map[string]map[string]map[string]int{}
 	lapi_bouncer_stats := map[string]map[string]map[string]int{}
 	decisions_stats := map[string]map[string]map[string]int{}
+	appsec_engine_stats := map[string]map[string]int{}
+	appsec_rule_stats := map[string]map[string]map[string]int{}
 	alerts_stats := map[string]int{}
 	stash_stats := map[string]struct {
 		Type  string
@@ -226,10 +228,30 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 					Type  string
 					Count int
 				}{Type: mtype, Count: ival}
+			case "cs_appsec_reqs_total":
+				if _, ok := appsec_engine_stats[metric.Labels["appsec_engine"]]; !ok {
+					appsec_engine_stats[metric.Labels["appsec_engine"]] = make(map[string]int, 0)
+				}
+				appsec_engine_stats[metric.Labels["appsec_engine"]]["processed"] = ival
+			case "cs_appsec_block_total":
+				if _, ok := appsec_engine_stats[metric.Labels["appsec_engine"]]; !ok {
+					appsec_engine_stats[metric.Labels["appsec_engine"]] = make(map[string]int, 0)
+				}
+				appsec_engine_stats[metric.Labels["appsec_engine"]]["blocked"] = ival
+			case "cs_appsec_rule_hits":
+				appsecEngine := metric.Labels["appsec_engine"]
+				ruleID := metric.Labels["rule_name"]
+				if _, ok := appsec_rule_stats[appsecEngine]; !ok {
+					appsec_rule_stats[appsecEngine] = make(map[string]map[string]int, 0)
+				}
+				if _, ok := appsec_rule_stats[appsecEngine][ruleID]; !ok {
+					appsec_rule_stats[appsecEngine][ruleID] = make(map[string]int, 0)
+				}
+				appsec_rule_stats[appsecEngine][ruleID]["triggered"] = ival
 			default:
+				log.Debugf("unknown: %+v", fam.Name)
 				continue
 			}
-
 		}
 	}
 
@@ -244,6 +266,8 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 		decisionStatsTable(out, decisions_stats)
 		alertStatsTable(out, alerts_stats)
 		stashStatsTable(out, stash_stats)
+		appsecMetricsToTable(out, appsec_engine_stats)
+		appsecRulesToTable(out, appsec_rule_stats)
 		return nil
 	}
 
@@ -282,10 +306,21 @@ func FormatPrometheusMetrics(out io.Writer, url string, formatType string) error
 
 var noUnit bool
 
-
 func runMetrics(cmd *cobra.Command, args []string) error {
-	if err := csConfig.LoadPrometheus(); err != nil {
-		return fmt.Errorf("failed to load prometheus config: %w", err)
+	flags := cmd.Flags()
+
+	url, err := flags.GetString("url")
+	if err != nil {
+		return err
+	}
+
+	if url != "" {
+		csConfig.Cscli.PrometheusUrl = url
+	}
+
+	noUnit, err = flags.GetBool("no-unit")
+	if err != nil {
+		return err
 	}
 
 	if csConfig.Prometheus == nil {
@@ -296,21 +331,11 @@ func runMetrics(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("prometheus is not enabled, can't show metrics")
 	}
 
-	if prometheusURL == "" {
-		prometheusURL = csConfig.Cscli.PrometheusUrl
-	}
-
-	if prometheusURL == "" {
-		return fmt.Errorf("no prometheus url, please specify in %s or via -u", *csConfig.FilePath)
-	}
-
-	err := FormatPrometheusMetrics(color.Output, prometheusURL+"/metrics", csConfig.Cscli.Output)
-	if err != nil {
-		return fmt.Errorf("could not fetch prometheus metrics: %w", err)
+	if err = FormatPrometheusMetrics(color.Output, csConfig.Cscli.PrometheusUrl, csConfig.Cscli.Output); err != nil {
+		return err
 	}
 	return nil
 }
-
 
 func NewMetricsCmd() *cobra.Command {
 	cmdMetrics := &cobra.Command{
@@ -319,10 +344,12 @@ func NewMetricsCmd() *cobra.Command {
 		Long:              `Fetch metrics from the prometheus server and display them in a human-friendly way`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE: runMetrics,
+		RunE:              runMetrics,
 	}
-	cmdMetrics.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "", "Prometheus url (http://<ip>:<port>/metrics)")
-	cmdMetrics.PersistentFlags().BoolVar(&noUnit, "no-unit", false, "Show the real number instead of formatted with units")
+
+	flags := cmdMetrics.PersistentFlags()
+	flags.StringP("url", "u", "", "Prometheus url (http://<ip>:<port>/metrics)")
+	flags.Bool("no-unit", false, "Show the real number instead of formatted with units")
 
 	return cmdMetrics
 }

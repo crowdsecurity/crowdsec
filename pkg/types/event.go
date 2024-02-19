@@ -13,6 +13,7 @@ import (
 const (
 	LOG = iota
 	OVFLW
+	APPSEC
 )
 
 // Event is the structure representing a runtime event (log or overflow)
@@ -40,6 +41,7 @@ type Event struct {
 	StrTimeFormat string       `yaml:"StrTimeFormat,omitempty" json:"StrTimeFormat,omitempty"`
 	MarshaledTime string       `yaml:"MarshaledTime,omitempty" json:"MarshaledTime,omitempty"`
 	Process       bool         `yaml:"Process,omitempty" json:"Process,omitempty"` //can be set to false to avoid processing line
+	Appsec        AppsecEvent  `yaml:"Appsec,omitempty" json:"Appsec,omitempty"`
 	/* Meta is the only part that will make it to the API - it should be normalized */
 	Meta map[string]string `yaml:"Meta,omitempty" json:"Meta,omitempty"`
 }

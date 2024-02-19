@@ -353,7 +353,7 @@ func TestUnitFound(t *testing.T) {
 	installed, err := env.UnitFound("crowdsec-setup-detect.service")
 	require.NoError(err)
 
-	require.Equal(true, installed)
+	require.True(installed)
 }
 
 // TODO apply rules to filter a list of Service structs
@@ -566,8 +566,8 @@ func TestDetectForcedUnit(t *testing.T) {
 
 func TestDetectForcedProcess(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("skipping on windows")
 		// while looking for service wizard: rule 'ProcessRunning("foobar")': while looking up running processes: could not get Name: A device attached to the system is not functioning.
+		t.Skip("skipping on windows")
 	}
 
 	require := require.New(t)
@@ -983,6 +983,16 @@ func TestDetectDatasourceValidation(t *testing.T) {
 				      source: kafka`,
 			expected:    setup.Setup{Setup: []setup.ServiceSetup{}},
 			expectedErr: "invalid datasource for foobar: cannot create a kafka reader with an empty list of broker addresses",
+		}, {
+			name: "source loki: required fields",
+			config: `
+				version: 1.0
+				detect:
+				  foobar:
+				    datasource:
+				      source: loki`,
+			expected:    setup.Setup{Setup: []setup.ServiceSetup{}},
+			expectedErr: "invalid datasource for foobar: loki query is mandatory",
 		},
 	}
 

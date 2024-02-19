@@ -29,10 +29,10 @@ jobs:
             VERSION=pr-${{ github.event.number }}
           fi
           TAGS="${DOCKER_IMAGE}:${VERSION},${GHCR_IMAGE}:${VERSION}"
-          TAGS_SLIM="${DOCKER_IMAGE}:${VERSION}-slim"
+          TAGS_SLIM="${DOCKER_IMAGE}:${VERSION}-slim,${GHCR_IMAGE}:${VERSION}-slim"
           if [[ ${{ github.event.action }} == released ]]; then
             TAGS=$TAGS,${DOCKER_IMAGE}:latest,${GHCR_IMAGE}:latest
-            TAGS_SLIM=$TAGS_SLIM,${DOCKER_IMAGE}:slim
+            TAGS_SLIM=$TAGS_SLIM,${DOCKER_IMAGE}:slim,${GHCR_IMAGE}:slim
           fi
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "tags=${TAGS}" >> $GITHUB_OUTPUT

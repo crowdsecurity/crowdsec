@@ -38,6 +38,8 @@ DATA_DIR="${LOCAL_DIR}/${REL_DATA_DIR}"
 export DATA_DIR
 CONFIG_DIR="${LOCAL_DIR}/${REL_CONFIG_DIR}"
 export CONFIG_DIR
+HUB_DIR="${CONFIG_DIR}/hub"
+export HUB_DIR
 
 if [[ $(uname) == "OpenBSD" ]]; then
     TAR=gtar
@@ -52,18 +54,29 @@ remove_init_data() {
 
 # we need a separate function for initializing config when testing package
 # because we want to test the configuration as well
+config_prepare() {
+    # remove trailing slash from CONFIG_DIR
+    # since it's assumed to be missing during the tests
+    yq e -i '
+        .config_paths.config_dir |= sub("/$", "")
+    ' "${CONFIG_DIR}/config.yaml"
+}
+
 make_init_data() {
     ./bin/assert-crowdsec-not-running || die "Cannot create fixture data."
 
+    config_prepare
     ./instance-db config-yaml
     ./instance-db setup
+
+    ./bin/preload-hub-items
 
     # when installed packages are always using sqlite, so no need to regenerate
     # local credz for sqlite
 
-    [[ "${DB_BACKEND}" == "sqlite" ]] || ${CSCLI} machines add --auto
+    [[ "${DB_BACKEND}" == "sqlite" ]] || ${CSCLI} machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto --force
 
-    mkdir -p "${LOCAL_INIT_DIR}"
+    mkdir -p "$LOCAL_INIT_DIR"
 
     ./instance-db dump "${LOCAL_INIT_DIR}/database"
 
@@ -95,7 +108,6 @@ load_init_data() {
 
     ./instance-db restore "${LOCAL_INIT_DIR}/database"
 }
-
 
 # ---------------------------
 
