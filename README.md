@@ -1,4 +1,28 @@
 
+```
+Internal Release notes:
+
+1. Update local fork with upstream:
+    git fetch https://github.com/crowdsecurity/crowdsec.git
+    git checkout master
+    git merge upstream/master
+    git push
+
+2. Update local tags:
+    git fetch --tags https://github.com/crowdsecurity/crowdsec.git
+    git push --tags
+
+3. Update internal-release branch:
+    git checkout internal-release
+    git merge tags/<new_tag>
+    git push
+
+4. Verify any updates to pkg/acquisition/modules/s3/s3.go
+
+5. Build and test the new release.
+```
+
+
 <p align="center">
 <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/crowdsec_logo.png" alt="CrowdSec" title="CrowdSec" width="400" height="260"/>
 </p>
