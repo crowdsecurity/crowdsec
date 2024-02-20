@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -13,7 +14,7 @@ import (
 )
 
 // ErrNilTable means a nil pointer was passed instead of a table instance. This is a programming error.
-var ErrNilTable = fmt.Errorf("nil table")
+var ErrNilTable = errors.New("nil table")
 
 func lapiMetricsToTable(t *table.Table, stats map[string]map[string]map[string]int) int {
 	// stats: machine -> route -> method -> count
@@ -44,6 +45,7 @@ func lapiMetricsToTable(t *table.Table, stats map[string]map[string]map[string]i
 				}
 
 				t.AddRow(row...)
+
 				numRows++
 			}
 		}
@@ -82,6 +84,7 @@ func wlMetricsToTable(t *table.Table, stats map[string]map[string]map[string]int
 			}
 
 			t.AddRow(row...)
+
 			numRows++
 		}
 	}
@@ -120,6 +123,7 @@ func metricsToTable(t *table.Table, stats map[string]map[string]int, keys []stri
 		}
 
 		t.AddRow(row...)
+
 		numRows++
 	}
 
@@ -127,7 +131,7 @@ func metricsToTable(t *table.Table, stats map[string]map[string]int, keys []stri
 }
 
 func (s statBucket) Description() (string, string) {
-	return "Bucket Metrics",
+	return "Scenario Metrics",
 		`Measure events in different scenarios. Current count is the number of buckets during metrics collection. ` +
 			`Overflows are past event-producing buckets, while Expired are the ones that didn’t receive enough events to Overflow.`
 }
@@ -143,13 +147,13 @@ func (s statBucket) Process(bucket, metric string, val int) {
 func (s statBucket) Table(out io.Writer, noUnit bool, showEmpty bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
-	t.SetHeaders("Bucket", "Current Count", "Overflows", "Instantiated", "Poured", "Expired")
+	t.SetHeaders("Scenario", "Current Count", "Overflows", "Instantiated", "Poured", "Expired")
 	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
 
 	keys := []string{"curr_count", "overflow", "instantiation", "pour", "underflow"}
 
 	if numRows, err := metricsToTable(t, s, keys, noUnit); err != nil {
-		log.Warningf("while collecting bucket stats: %s", err)
+		log.Warningf("while collecting scenario stats: %s", err)
 	} else if numRows > 0 || showEmpty {
 		title, _ := s.Description()
 		renderTableTitle(out, "\n"+title+":")
@@ -352,6 +356,7 @@ func (s statStash) Table(out io.Writer, noUnit bool, showEmpty bool) {
 			strconv.Itoa(astats.Count),
 		}
 		t.AddRow(row...)
+
 		numRows++
 	}
 
@@ -400,7 +405,9 @@ func (s statLapi) Table(out io.Writer, noUnit bool, showEmpty bool) {
 				sl,
 				strconv.Itoa(astats[sl]),
 			}
+
 			t.AddRow(row...)
+
 			numRows++
 		}
 	}
@@ -515,6 +522,7 @@ func (s statLapiDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
 			strconv.Itoa(hits.Empty),
 			strconv.Itoa(hits.NonEmpty),
 		)
+
 		numRows++
 	}
 
@@ -560,6 +568,7 @@ func (s statDecision) Table(out io.Writer, noUnit bool, showEmpty bool) {
 					action,
 					strconv.Itoa(hits),
 				)
+
 				numRows++
 			}
 		}
@@ -594,6 +603,7 @@ func (s statAlert) Table(out io.Writer, noUnit bool, showEmpty bool) {
 			scenario,
 			strconv.Itoa(hits),
 		)
+
 		numRows++
 	}
 
