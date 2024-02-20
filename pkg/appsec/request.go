@@ -38,7 +38,7 @@ type ParsedRequest struct {
 	Body                 []byte                  `json:"body,omitempty"`
 	TransferEncoding     []string                `json:"transfer_encoding,omitempty"`
 	UUID                 string                  `json:"uuid,omitempty"`
-	Tx                   ExtendedTransaction     `json:"transaction,omitempty"`
+	Tx                   ExtendedTransaction     `json:"-"`
 	ResponseChannel      chan AppsecTempResponse `json:"-"`
 	IsInBand             bool                    `json:"-"`
 	IsOutBand            bool                    `json:"-"`
@@ -260,12 +260,17 @@ func (r *ReqDumpFilter) ToJSON() error {
 
 	req := r.GetFilteredRequest()
 
-	log.Warningf("dumping : %+v", req)
+	log.Tracef("dumping : %+v", req)
 
 	if err := enc.Encode(req); err != nil {
+		//Don't clobber the temp directory with empty files
+		err2 := os.Remove(fd.Name())
+		if err2 != nil {
+			log.Errorf("while removing temp file %s: %s", fd.Name(), err)
+		}
 		return fmt.Errorf("while encoding request: %w", err)
 	}
-	log.Warningf("request dumped to %s", fd.Name())
+	log.Infof("request dumped to %s", fd.Name())
 	return nil
 }
 
@@ -324,7 +329,7 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 		return ParsedRequest{}, fmt.Errorf("unable to parse url '%s': %s", clientURI, err)
 	}
 
-	remoteAddrNormalized := ""
+	var remoteAddrNormalized string
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		log.Errorf("Invalid appsec remote IP source %v: %s", r.RemoteAddr, err.Error())
@@ -332,7 +337,7 @@ func NewParsedRequestFromRequest(r *http.Request, logger *logrus.Entry) (ParsedR
 	} else {
 		ip := net.ParseIP(host)
 		if ip == nil {
-			log.Errorf("Invalid appsec remote IP address source %v: %s", r.RemoteAddr, err.Error())
+			log.Errorf("Invalid appsec remote IP address source %v", r.RemoteAddr)
 			remoteAddrNormalized = r.RemoteAddr
 		} else {
 			remoteAddrNormalized = ip.String()

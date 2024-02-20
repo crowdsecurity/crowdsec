@@ -115,14 +115,17 @@ teardown() {
     assert_output "&false"
 
     # complex type
-    rune -0 cscli config show --key Config.PluginConfig
+    rune -0 cscli config show --key Config.Prometheus
     assert_output - <<-EOT
-	&csconfig.PluginCfg{
-	  User: "nobody",
-	  Group: "nogroup",
+	&csconfig.PrometheusCfg{
+	  Enabled: true,
+	  Level: "full",
+	  ListenAddr: "127.0.0.1",
+	  ListenPort: 6060,
 	}
 	EOT
 }
+
 
 @test "cscli - required configuration paths" {
     config=$(cat "${CONFIG_YAML}")
@@ -268,15 +271,6 @@ teardown() {
     rune -1 cscli lapi status -o json
     rune -0 jq -r '.msg' <(stderr)
     assert_output 'failed to authenticate to Local API (LAPI): API error: incorrect Username or Password'
-}
-
-@test "cscli metrics" {
-    rune -0 ./instance-crowdsec start
-    rune -0 cscli lapi status
-    rune -0 cscli metrics
-    assert_output --partial "Route"
-    assert_output --partial '/v1/watchers/login'
-    assert_output --partial "Local API Metrics:"
 }
 
 @test "'cscli completion' with or without configuration file" {

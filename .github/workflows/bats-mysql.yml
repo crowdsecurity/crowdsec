@@ -1,4 +1,4 @@
-name: Functional tests (MySQL)
+name: (sub) Bats / MySQL
 
 on:
   workflow_call:
@@ -7,16 +7,9 @@ on:
         required: true
         type: string
 
-env:
-  PREFIX_TEST_NAMES_WITH_FILE: true
-
 jobs:
   build:
-    strategy:
-      matrix:
-        go-version: ["1.21.6"]
-
-    name: "Build + tests"
+    name: "Functional tests"
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
@@ -35,15 +28,15 @@ jobs:
           echo githubciXXXXXXXXXXXXXXXXXXXXXXXX | sudo tee /etc/machine-id
 
     - name: "Check out CrowdSec repository"
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
         submodules: true
 
-    - name: "Set up Go ${{ matrix.go-version }}"
-      uses: actions/setup-go@v4
+    - name: "Set up Go"
+      uses: actions/setup-go@v5
       with:
-        go-version: ${{ matrix.go-version }}
+        go-version: "1.21.7"
 
     - name: "Install bats dependencies"
       env:
@@ -62,7 +55,7 @@ jobs:
         MYSQL_USER: root
 
     - name: "Run tests"
-      run: make bats-test
+      run: ./test/run-tests ./test/bats --formatter $(pwd)/test/lib/color-formatter
       env:
         DB_BACKEND: mysql
         MYSQL_HOST: 127.0.0.1

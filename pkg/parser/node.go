@@ -168,9 +168,9 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		NodesHits.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name}).Inc()
 	}
 	exprErr := error(nil)
-	isWhitelisted := n.CheckIPsWL(p.ParseIPSources())
+	isWhitelisted := n.CheckIPsWL(p)
 	if !isWhitelisted {
-		isWhitelisted, exprErr = n.CheckExprWL(cachedExprEnv)
+		isWhitelisted, exprErr = n.CheckExprWL(cachedExprEnv, p)
 	}
 	if exprErr != nil {
 		// Previous code returned nil if there was an error, so we keep this behavior

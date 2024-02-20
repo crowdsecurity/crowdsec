@@ -221,6 +221,24 @@ var NodesHitsKo = prometheus.NewCounterVec(
 	[]string{"source", "type", "name"},
 )
 
+//
+
+var NodesWlHitsOk = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_node_wl_hits_ok_total",
+		Help: "Total events successfully whitelisted by node.",
+	},
+	[]string{"source", "type", "name", "reason"},
+)
+
+var NodesWlHits = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_node_wl_hits_total",
+		Help: "Total events processed by whitelist node.",
+	},
+	[]string{"source", "type", "name", "reason"},
+)
+
 func stageidx(stage string, stages []string) int {
 	for i, v := range stages {
 		if stage == v {
@@ -319,7 +337,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			}
 			clog.Tracef("node (%s) ret : %v", node.rn, ret)
 			if ParseDump {
-				parserIdxInStage := 0
+				var parserIdxInStage int
 				StageParseMutex.Lock()
 				if len(StageParseCache[stage][node.Name]) == 0 {
 					StageParseCache[stage][node.Name] = make([]dumps.ParserResult, 0)

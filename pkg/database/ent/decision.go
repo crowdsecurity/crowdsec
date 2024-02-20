@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
@@ -51,7 +52,8 @@ type Decision struct {
 	AlertDecisions int `json:"alert_decisions,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the DecisionQuery when eager-loading is set.
-	Edges DecisionEdges `json:"edges"`
+	Edges        DecisionEdges `json:"edges"`
+	selectValues sql.SelectValues
 }
 
 // DecisionEdges holds the relations/edges for other nodes in the graph.
@@ -90,7 +92,7 @@ func (*Decision) scanValues(columns []string) ([]any, error) {
 		case decision.FieldCreatedAt, decision.FieldUpdatedAt, decision.FieldUntil:
 			values[i] = new(sql.NullTime)
 		default:
-			return nil, fmt.Errorf("unexpected column %q for type Decision", columns[i])
+			values[i] = new(sql.UnknownType)
 		}
 	}
 	return values, nil
@@ -209,21 +211,29 @@ func (d *Decision) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				d.AlertDecisions = int(value.Int64)
 			}
+		default:
+			d.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
 }
 
+// GetValue returns the ent.Value that was dynamically selected and assigned to the Decision.
+// This includes values selected through modifiers, order, etc.
+func (d *Decision) GetValue(name string) (ent.Value, error) {
+	return d.selectValues.Get(name)
+}
+
 // QueryOwner queries the "owner" edge of the Decision entity.
 func (d *Decision) QueryOwner() *AlertQuery {
-	return (&DecisionClient{config: d.config}).QueryOwner(d)
+	return NewDecisionClient(d.config).QueryOwner(d)
 }
 
 // Update returns a builder for updating this Decision.
 // Note that you need to call Decision.Unwrap() before calling this method if this Decision
 // was returned from a transaction, and the transaction was committed or rolled back.
 func (d *Decision) Update() *DecisionUpdateOne {
-	return (&DecisionClient{config: d.config}).UpdateOne(d)
+	return NewDecisionClient(d.config).UpdateOne(d)
 }
 
 // Unwrap unwraps the Decision entity that was returned from a transaction after it was closed,
@@ -301,9 +311,3 @@ func (d *Decision) String() string {
 
 // Decisions is a parsable slice of Decision.
 type Decisions []*Decision
-
-func (d Decisions) config(cfg config) {
-	for _i := range d {
-		d[_i].config = cfg
-	}
-}

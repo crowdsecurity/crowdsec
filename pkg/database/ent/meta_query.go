@@ -18,11 +18,9 @@ import (
 // MetaQuery is the builder for querying Meta entities.
 type MetaQuery struct {
 	config
-	limit      *int
-	offset     *int
-	unique     *bool
-	order      []OrderFunc
-	fields     []string
+	ctx        *QueryContext
+	order      []meta.OrderOption
+	inters     []Interceptor
 	predicates []predicate.Meta
 	withOwner  *AlertQuery
 	// intermediate query (i.e. traversal path).
@@ -36,34 +34,34 @@ func (mq *MetaQuery) Where(ps ...predicate.Meta) *MetaQuery {
 	return mq
 }
 
-// Limit adds a limit step to the query.
+// Limit the number of records to be returned by this query.
 func (mq *MetaQuery) Limit(limit int) *MetaQuery {
-	mq.limit = &limit
+	mq.ctx.Limit = &limit
 	return mq
 }
 
-// Offset adds an offset step to the query.
+// Offset to start from.
 func (mq *MetaQuery) Offset(offset int) *MetaQuery {
-	mq.offset = &offset
+	mq.ctx.Offset = &offset
 	return mq
 }
 
 // Unique configures the query builder to filter duplicate records on query.
 // By default, unique is set to true, and can be disabled using this method.
 func (mq *MetaQuery) Unique(unique bool) *MetaQuery {
-	mq.unique = &unique
+	mq.ctx.Unique = &unique
 	return mq
 }
 
-// Order adds an order step to the query.
-func (mq *MetaQuery) Order(o ...OrderFunc) *MetaQuery {
+// Order specifies how the records should be ordered.
+func (mq *MetaQuery) Order(o ...meta.OrderOption) *MetaQuery {
 	mq.order = append(mq.order, o...)
 	return mq
 }
 
 // QueryOwner chains the current query on the "owner" edge.
 func (mq *MetaQuery) QueryOwner() *AlertQuery {
-	query := &AlertQuery{config: mq.config}
+	query := (&AlertClient{config: mq.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := mq.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -86,7 +84,7 @@ func (mq *MetaQuery) QueryOwner() *AlertQuery {
 // First returns the first Meta entity from the query.
 // Returns a *NotFoundError when no Meta was found.
 func (mq *MetaQuery) First(ctx context.Context) (*Meta, error) {
-	nodes, err := mq.Limit(1).All(ctx)
+	nodes, err := mq.Limit(1).All(setContextOp(ctx, mq.ctx, "First"))
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +107,7 @@ func (mq *MetaQuery) FirstX(ctx context.Context) *Meta {
 // Returns a *NotFoundError when no Meta ID was found.
 func (mq *MetaQuery) FirstID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = mq.Limit(1).IDs(ctx); err != nil {
+	if ids, err = mq.Limit(1).IDs(setContextOp(ctx, mq.ctx, "FirstID")); err != nil {
 		return
 	}
 	if len(ids) == 0 {
@@ -132,7 +130,7 @@ func (mq *MetaQuery) FirstIDX(ctx context.Context) int {
 // Returns a *NotSingularError when more than one Meta entity is found.
 // Returns a *NotFoundError when no Meta entities are found.
 func (mq *MetaQuery) Only(ctx context.Context) (*Meta, error) {
-	nodes, err := mq.Limit(2).All(ctx)
+	nodes, err := mq.Limit(2).All(setContextOp(ctx, mq.ctx, "Only"))
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +158,7 @@ func (mq *MetaQuery) OnlyX(ctx context.Context) *Meta {
 // Returns a *NotFoundError when no entities are found.
 func (mq *MetaQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = mq.Limit(2).IDs(ctx); err != nil {
+	if ids, err = mq.Limit(2).IDs(setContextOp(ctx, mq.ctx, "OnlyID")); err != nil {
 		return
 	}
 	switch len(ids) {
@@ -185,10 +183,12 @@ func (mq *MetaQuery) OnlyIDX(ctx context.Context) int {
 
 // All executes the query and returns a list of MetaSlice.
 func (mq *MetaQuery) All(ctx context.Context) ([]*Meta, error) {
+	ctx = setContextOp(ctx, mq.ctx, "All")
 	if err := mq.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
-	return mq.sqlAll(ctx)
+	qr := querierAll[[]*Meta, *MetaQuery]()
+	return withInterceptors[[]*Meta](ctx, mq, qr, mq.inters)
 }
 
 // AllX is like All, but panics if an error occurs.
@@ -201,9 +201,12 @@ func (mq *MetaQuery) AllX(ctx context.Context) []*Meta {
 }
 
 // IDs executes the query and returns a list of Meta IDs.
-func (mq *MetaQuery) IDs(ctx context.Context) ([]int, error) {
-	var ids []int
-	if err := mq.Select(meta.FieldID).Scan(ctx, &ids); err != nil {
+func (mq *MetaQuery) IDs(ctx context.Context) (ids []int, err error) {
+	if mq.ctx.Unique == nil && mq.path != nil {
+		mq.Unique(true)
+	}
+	ctx = setContextOp(ctx, mq.ctx, "IDs")
+	if err = mq.Select(meta.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
@@ -220,10 +223,11 @@ func (mq *MetaQuery) IDsX(ctx context.Context) []int {
 
 // Count returns the count of the given query.
 func (mq *MetaQuery) Count(ctx context.Context) (int, error) {
+	ctx = setContextOp(ctx, mq.ctx, "Count")
 	if err := mq.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
-	return mq.sqlCount(ctx)
+	return withInterceptors[int](ctx, mq, querierCount[*MetaQuery](), mq.inters)
 }
 
 // CountX is like Count, but panics if an error occurs.
@@ -237,10 +241,15 @@ func (mq *MetaQuery) CountX(ctx context.Context) int {
 
 // Exist returns true if the query has elements in the graph.
 func (mq *MetaQuery) Exist(ctx context.Context) (bool, error) {
-	if err := mq.prepareQuery(ctx); err != nil {
-		return false, err
+	ctx = setContextOp(ctx, mq.ctx, "Exist")
+	switch _, err := mq.FirstID(ctx); {
+	case IsNotFound(err):
+		return false, nil
+	case err != nil:
+		return false, fmt.Errorf("ent: check existence: %w", err)
+	default:
+		return true, nil
 	}
-	return mq.sqlExist(ctx)
 }
 
 // ExistX is like Exist, but panics if an error occurs.
@@ -260,22 +269,21 @@ func (mq *MetaQuery) Clone() *MetaQuery {
 	}
 	return &MetaQuery{
 		config:     mq.config,
-		limit:      mq.limit,
-		offset:     mq.offset,
-		order:      append([]OrderFunc{}, mq.order...),
+		ctx:        mq.ctx.Clone(),
+		order:      append([]meta.OrderOption{}, mq.order...),
+		inters:     append([]Interceptor{}, mq.inters...),
 		predicates: append([]predicate.Meta{}, mq.predicates...),
 		withOwner:  mq.withOwner.Clone(),
 		// clone intermediate query.
-		sql:    mq.sql.Clone(),
-		path:   mq.path,
-		unique: mq.unique,
+		sql:  mq.sql.Clone(),
+		path: mq.path,
 	}
 }
 
 // WithOwner tells the query-builder to eager-load the nodes that are connected to
 // the "owner" edge. The optional arguments are used to configure the query builder of the edge.
 func (mq *MetaQuery) WithOwner(opts ...func(*AlertQuery)) *MetaQuery {
-	query := &AlertQuery{config: mq.config}
+	query := (&AlertClient{config: mq.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
@@ -298,16 +306,11 @@ func (mq *MetaQuery) WithOwner(opts ...func(*AlertQuery)) *MetaQuery {
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (mq *MetaQuery) GroupBy(field string, fields ...string) *MetaGroupBy {
-	grbuild := &MetaGroupBy{config: mq.config}
-	grbuild.fields = append([]string{field}, fields...)
-	grbuild.path = func(ctx context.Context) (prev *sql.Selector, err error) {
-		if err := mq.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		return mq.sqlQuery(ctx), nil
-	}
+	mq.ctx.Fields = append([]string{field}, fields...)
+	grbuild := &MetaGroupBy{build: mq}
+	grbuild.flds = &mq.ctx.Fields
 	grbuild.label = meta.Label
-	grbuild.flds, grbuild.scan = &grbuild.fields, grbuild.Scan
+	grbuild.scan = grbuild.Scan
 	return grbuild
 }
 
@@ -324,15 +327,30 @@ func (mq *MetaQuery) GroupBy(field string, fields ...string) *MetaGroupBy {
 //		Select(meta.FieldCreatedAt).
 //		Scan(ctx, &v)
 func (mq *MetaQuery) Select(fields ...string) *MetaSelect {
-	mq.fields = append(mq.fields, fields...)
-	selbuild := &MetaSelect{MetaQuery: mq}
-	selbuild.label = meta.Label
-	selbuild.flds, selbuild.scan = &mq.fields, selbuild.Scan
-	return selbuild
+	mq.ctx.Fields = append(mq.ctx.Fields, fields...)
+	sbuild := &MetaSelect{MetaQuery: mq}
+	sbuild.label = meta.Label
+	sbuild.flds, sbuild.scan = &mq.ctx.Fields, sbuild.Scan
+	return sbuild
+}
+
+// Aggregate returns a MetaSelect configured with the given aggregations.
+func (mq *MetaQuery) Aggregate(fns ...AggregateFunc) *MetaSelect {
+	return mq.Select().Aggregate(fns...)
 }
 
 func (mq *MetaQuery) prepareQuery(ctx context.Context) error {
-	for _, f := range mq.fields {
+	for _, inter := range mq.inters {
+		if inter == nil {
+			return fmt.Errorf("ent: uninitialized interceptor (forgotten import ent/runtime?)")
+		}
+		if trv, ok := inter.(Traverser); ok {
+			if err := trv.Traverse(ctx, mq); err != nil {
+				return err
+			}
+		}
+	}
+	for _, f := range mq.ctx.Fields {
 		if !meta.ValidColumn(f) {
 			return &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 		}
@@ -392,6 +410,9 @@ func (mq *MetaQuery) loadOwner(ctx context.Context, query *AlertQuery, nodes []*
 		}
 		nodeids[fk] = append(nodeids[fk], nodes[i])
 	}
+	if len(ids) == 0 {
+		return nil
+	}
 	query.Where(alert.IDIn(ids...))
 	neighbors, err := query.All(ctx)
 	if err != nil {
@@ -411,47 +432,31 @@ func (mq *MetaQuery) loadOwner(ctx context.Context, query *AlertQuery, nodes []*
 
 func (mq *MetaQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := mq.querySpec()
-	_spec.Node.Columns = mq.fields
-	if len(mq.fields) > 0 {
-		_spec.Unique = mq.unique != nil && *mq.unique
+	_spec.Node.Columns = mq.ctx.Fields
+	if len(mq.ctx.Fields) > 0 {
+		_spec.Unique = mq.ctx.Unique != nil && *mq.ctx.Unique
 	}
 	return sqlgraph.CountNodes(ctx, mq.driver, _spec)
 }
 
-func (mq *MetaQuery) sqlExist(ctx context.Context) (bool, error) {
-	switch _, err := mq.FirstID(ctx); {
-	case IsNotFound(err):
-		return false, nil
-	case err != nil:
-		return false, fmt.Errorf("ent: check existence: %w", err)
-	default:
-		return true, nil
-	}
-}
-
 func (mq *MetaQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := &sqlgraph.QuerySpec{
-		Node: &sqlgraph.NodeSpec{
-			Table:   meta.Table,
-			Columns: meta.Columns,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: meta.FieldID,
-			},
-		},
-		From:   mq.sql,
-		Unique: true,
-	}
-	if unique := mq.unique; unique != nil {
+	_spec := sqlgraph.NewQuerySpec(meta.Table, meta.Columns, sqlgraph.NewFieldSpec(meta.FieldID, field.TypeInt))
+	_spec.From = mq.sql
+	if unique := mq.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
+	} else if mq.path != nil {
+		_spec.Unique = true
 	}
-	if fields := mq.fields; len(fields) > 0 {
+	if fields := mq.ctx.Fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, meta.FieldID)
 		for i := range fields {
 			if fields[i] != meta.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if mq.withOwner != nil {
+			_spec.Node.AddColumnOnce(meta.FieldAlertMetas)
 		}
 	}
 	if ps := mq.predicates; len(ps) > 0 {
@@ -461,10 +466,10 @@ func (mq *MetaQuery) querySpec() *sqlgraph.QuerySpec {
 			}
 		}
 	}
-	if limit := mq.limit; limit != nil {
+	if limit := mq.ctx.Limit; limit != nil {
 		_spec.Limit = *limit
 	}
-	if offset := mq.offset; offset != nil {
+	if offset := mq.ctx.Offset; offset != nil {
 		_spec.Offset = *offset
 	}
 	if ps := mq.order; len(ps) > 0 {
@@ -480,7 +485,7 @@ func (mq *MetaQuery) querySpec() *sqlgraph.QuerySpec {
 func (mq *MetaQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(mq.driver.Dialect())
 	t1 := builder.Table(meta.Table)
-	columns := mq.fields
+	columns := mq.ctx.Fields
 	if len(columns) == 0 {
 		columns = meta.Columns
 	}
@@ -489,7 +494,7 @@ func (mq *MetaQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector = mq.sql
 		selector.Select(selector.Columns(columns...)...)
 	}
-	if mq.unique != nil && *mq.unique {
+	if mq.ctx.Unique != nil && *mq.ctx.Unique {
 		selector.Distinct()
 	}
 	for _, p := range mq.predicates {
@@ -498,12 +503,12 @@ func (mq *MetaQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	for _, p := range mq.order {
 		p(selector)
 	}
-	if offset := mq.offset; offset != nil {
+	if offset := mq.ctx.Offset; offset != nil {
 		// limit is mandatory for offset clause. We start
 		// with default value, and override it below if needed.
 		selector.Offset(*offset).Limit(math.MaxInt32)
 	}
-	if limit := mq.limit; limit != nil {
+	if limit := mq.ctx.Limit; limit != nil {
 		selector.Limit(*limit)
 	}
 	return selector
@@ -511,13 +516,8 @@ func (mq *MetaQuery) sqlQuery(ctx context.Context) *sql.Selector {
 
 // MetaGroupBy is the group-by builder for Meta entities.
 type MetaGroupBy struct {
-	config
 	selector
-	fields []string
-	fns    []AggregateFunc
-	// intermediate query (i.e. traversal path).
-	sql  *sql.Selector
-	path func(context.Context) (*sql.Selector, error)
+	build *MetaQuery
 }
 
 // Aggregate adds the given aggregation functions to the group-by query.
@@ -526,74 +526,77 @@ func (mgb *MetaGroupBy) Aggregate(fns ...AggregateFunc) *MetaGroupBy {
 	return mgb
 }
 
-// Scan applies the group-by query and scans the result into the given value.
+// Scan applies the selector query and scans the result into the given value.
 func (mgb *MetaGroupBy) Scan(ctx context.Context, v any) error {
-	query, err := mgb.path(ctx)
-	if err != nil {
+	ctx = setContextOp(ctx, mgb.build.ctx, "GroupBy")
+	if err := mgb.build.prepareQuery(ctx); err != nil {
 		return err
 	}
-	mgb.sql = query
-	return mgb.sqlScan(ctx, v)
+	return scanWithInterceptors[*MetaQuery, *MetaGroupBy](ctx, mgb.build, mgb, mgb.build.inters, v)
 }
 
-func (mgb *MetaGroupBy) sqlScan(ctx context.Context, v any) error {
-	for _, f := range mgb.fields {
-		if !meta.ValidColumn(f) {
-			return &ValidationError{Name: f, err: fmt.Errorf("invalid field %q for group-by", f)}
-		}
+func (mgb *MetaGroupBy) sqlScan(ctx context.Context, root *MetaQuery, v any) error {
+	selector := root.sqlQuery(ctx).Select()
+	aggregation := make([]string, 0, len(mgb.fns))
+	for _, fn := range mgb.fns {
+		aggregation = append(aggregation, fn(selector))
 	}
-	selector := mgb.sqlQuery()
+	if len(selector.SelectedColumns()) == 0 {
+		columns := make([]string, 0, len(*mgb.flds)+len(mgb.fns))
+		for _, f := range *mgb.flds {
+			columns = append(columns, selector.C(f))
+		}
+		columns = append(columns, aggregation...)
+		selector.Select(columns...)
+	}
+	selector.GroupBy(selector.Columns(*mgb.flds...)...)
 	if err := selector.Err(); err != nil {
 		return err
 	}
 	rows := &sql.Rows{}
 	query, args := selector.Query()
-	if err := mgb.driver.Query(ctx, query, args, rows); err != nil {
+	if err := mgb.build.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
 }
 
-func (mgb *MetaGroupBy) sqlQuery() *sql.Selector {
-	selector := mgb.sql.Select()
-	aggregation := make([]string, 0, len(mgb.fns))
-	for _, fn := range mgb.fns {
-		aggregation = append(aggregation, fn(selector))
-	}
-	// If no columns were selected in a custom aggregation function, the default
-	// selection is the fields used for "group-by", and the aggregation functions.
-	if len(selector.SelectedColumns()) == 0 {
-		columns := make([]string, 0, len(mgb.fields)+len(mgb.fns))
-		for _, f := range mgb.fields {
-			columns = append(columns, selector.C(f))
-		}
-		columns = append(columns, aggregation...)
-		selector.Select(columns...)
-	}
-	return selector.GroupBy(selector.Columns(mgb.fields...)...)
-}
-
 // MetaSelect is the builder for selecting fields of Meta entities.
 type MetaSelect struct {
 	*MetaQuery
 	selector
-	// intermediate query (i.e. traversal path).
-	sql *sql.Selector
+}
+
+// Aggregate adds the given aggregation functions to the selector query.
+func (ms *MetaSelect) Aggregate(fns ...AggregateFunc) *MetaSelect {
+	ms.fns = append(ms.fns, fns...)
+	return ms
 }
 
 // Scan applies the selector query and scans the result into the given value.
 func (ms *MetaSelect) Scan(ctx context.Context, v any) error {
+	ctx = setContextOp(ctx, ms.ctx, "Select")
 	if err := ms.prepareQuery(ctx); err != nil {
 		return err
 	}
-	ms.sql = ms.MetaQuery.sqlQuery(ctx)
-	return ms.sqlScan(ctx, v)
+	return scanWithInterceptors[*MetaQuery, *MetaSelect](ctx, ms.MetaQuery, ms, ms.inters, v)
 }
 
-func (ms *MetaSelect) sqlScan(ctx context.Context, v any) error {
+func (ms *MetaSelect) sqlScan(ctx context.Context, root *MetaQuery, v any) error {
+	selector := root.sqlQuery(ctx)
+	aggregation := make([]string, 0, len(ms.fns))
+	for _, fn := range ms.fns {
+		aggregation = append(aggregation, fn(selector))
+	}
+	switch n := len(*ms.selector.flds); {
+	case n == 0 && len(aggregation) > 0:
+		selector.Select(aggregation...)
+	case n != 0 && len(aggregation) > 0:
+		selector.AppendSelect(aggregation...)
+	}
 	rows := &sql.Rows{}
-	query, args := ms.sql.Query()
+	query, args := selector.Query()
 	if err := ms.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}

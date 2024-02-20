@@ -1,0 +1,47 @@
+name: (push-master) Publish latest Docker images
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - 'pkg/**'
+      - 'cmd/**'
+      - 'mk/**'
+      - 'docker/docker_start.sh'
+      - 'docker/config.yaml'
+      - '.github/workflows/publish-docker-master.yml'
+      - '.github/workflows/publish-docker.yml'
+      - 'Dockerfile'
+      - 'Dockerfile.debian'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Makefile'
+
+jobs:
+  dev-alpine:
+    uses: ./.github/workflows/publish-docker.yml
+    with:
+      platform: linux/amd64
+      crowdsec_version: ""
+      image_version: dev
+      latest: false
+      push: true
+      slim: false
+      debian: false
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+
+  dev-debian:
+    uses: ./.github/workflows/publish-docker.yml
+    with:
+      platform: linux/amd64
+      crowdsec_version: ""
+      image_version: dev
+      latest: false
+      push: true
+      slim: false
+      debian: true
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}

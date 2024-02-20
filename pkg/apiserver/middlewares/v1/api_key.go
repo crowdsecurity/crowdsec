@@ -66,7 +66,7 @@ func (a *APIKey) authTLS(c *gin.Context, logger *log.Entry) *ent.Bouncer {
 
 	validCert, extractedCN, err := a.TlsAuth.ValidateCert(c)
 	if !validCert {
-		logger.Errorf("invalid client certificate: %s", err)
+		logger.Error(err)
 		return nil
 	}
 

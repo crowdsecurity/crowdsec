@@ -118,15 +118,15 @@ jobs:
     steps:
 
     - name: Check out CrowdSec repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
         submodules: false
 
     - name: "Set up Go"
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
-        go-version: "1.21.6"
+        go-version: "1.21.7"
 
     - name: Create localstack streams
       run: |
