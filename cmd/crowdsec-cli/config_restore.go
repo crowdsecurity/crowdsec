@@ -3,16 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 )
 
@@ -50,8 +47,7 @@ func (cli *cliConfig) restoreHub(dirPath string) error {
 				continue
 			}
 
-			err := item.Install(false, false)
-			if err != nil {
+			if err = item.Install(false, false); err != nil {
 				log.Errorf("Error while installing %s : %s", toinstall, err)
 			}
 		}
@@ -125,85 +121,46 @@ func (cli *cliConfig) restoreHub(dirPath string) error {
 - Tainted/local/out-of-date scenarios, parsers, postoverflows and collections
 - Acquisition files (acquis.yaml, acquis.d/*.yaml)
 */
-func (cli *cliConfig) restore(dirPath string, oldBackup bool) error {
+func (cli *cliConfig) restore(dirPath string) error {
 	var err error
 
-	if !oldBackup {
-		backupMain := fmt.Sprintf("%s/config.yaml", dirPath)
-		if _, err = os.Stat(backupMain); err == nil {
-			if csConfig.ConfigPaths != nil && csConfig.ConfigPaths.ConfigDir != "" {
-				if err = CopyFile(backupMain, fmt.Sprintf("%s/config.yaml", csConfig.ConfigPaths.ConfigDir)); err != nil {
-					return fmt.Errorf("failed copy %s to %s : %s", backupMain, csConfig.ConfigPaths.ConfigDir, err)
-				}
+	backupMain := fmt.Sprintf("%s/config.yaml", dirPath)
+	if _, err = os.Stat(backupMain); err == nil {
+		if csConfig.ConfigPaths != nil && csConfig.ConfigPaths.ConfigDir != "" {
+			if err = CopyFile(backupMain, fmt.Sprintf("%s/config.yaml", csConfig.ConfigPaths.ConfigDir)); err != nil {
+				return fmt.Errorf("failed copy %s to %s : %s", backupMain, csConfig.ConfigPaths.ConfigDir, err)
 			}
 		}
+	}
 
-		// Now we have config.yaml, we should regenerate config struct to have rights paths etc
-		ConfigFilePath = fmt.Sprintf("%s/config.yaml", csConfig.ConfigPaths.ConfigDir)
+	// Now we have config.yaml, we should regenerate config struct to have rights paths etc
+	ConfigFilePath = fmt.Sprintf("%s/config.yaml", csConfig.ConfigPaths.ConfigDir)
 
-		log.Debug("Reloading configuration")
+	log.Debug("Reloading configuration")
 
-		csConfig, _, err = loadConfigFor("config")
-		if err != nil {
-			return fmt.Errorf("failed to reload configuration: %s", err)
+	csConfig, _, err = loadConfigFor("config")
+	if err != nil {
+		return fmt.Errorf("failed to reload configuration: %s", err)
+	}
+
+	backupCAPICreds := fmt.Sprintf("%s/online_api_credentials.yaml", dirPath)
+	if _, err = os.Stat(backupCAPICreds); err == nil {
+		if err = CopyFile(backupCAPICreds, csConfig.API.Server.OnlineClient.CredentialsFilePath); err != nil {
+			return fmt.Errorf("failed copy %s to %s : %s", backupCAPICreds, csConfig.API.Server.OnlineClient.CredentialsFilePath, err)
 		}
+	}
 
-		backupCAPICreds := fmt.Sprintf("%s/online_api_credentials.yaml", dirPath)
-		if _, err = os.Stat(backupCAPICreds); err == nil {
-			if err = CopyFile(backupCAPICreds, csConfig.API.Server.OnlineClient.CredentialsFilePath); err != nil {
-				return fmt.Errorf("failed copy %s to %s : %s", backupCAPICreds, csConfig.API.Server.OnlineClient.CredentialsFilePath, err)
-			}
+	backupLAPICreds := fmt.Sprintf("%s/local_api_credentials.yaml", dirPath)
+	if _, err = os.Stat(backupLAPICreds); err == nil {
+		if err = CopyFile(backupLAPICreds, csConfig.API.Client.CredentialsFilePath); err != nil {
+			return fmt.Errorf("failed copy %s to %s : %s", backupLAPICreds, csConfig.API.Client.CredentialsFilePath, err)
 		}
+	}
 
-		backupLAPICreds := fmt.Sprintf("%s/local_api_credentials.yaml", dirPath)
-		if _, err = os.Stat(backupLAPICreds); err == nil {
-			if err = CopyFile(backupLAPICreds, csConfig.API.Client.CredentialsFilePath); err != nil {
-				return fmt.Errorf("failed copy %s to %s : %s", backupLAPICreds, csConfig.API.Client.CredentialsFilePath, err)
-			}
-		}
-
-		backupProfiles := fmt.Sprintf("%s/profiles.yaml", dirPath)
-		if _, err = os.Stat(backupProfiles); err == nil {
-			if err = CopyFile(backupProfiles, csConfig.API.Server.ProfilesPath); err != nil {
-				return fmt.Errorf("failed copy %s to %s : %s", backupProfiles, csConfig.API.Server.ProfilesPath, err)
-			}
-		}
-	} else {
-		var oldAPICfg struct {
-			MachineID string `json:"machine_id"`
-			Password  string `json:"password"`
-		}
-
-		backupOldAPICfg := fmt.Sprintf("%s/api_creds.json", dirPath)
-
-		jsonFile, err := os.Open(backupOldAPICfg)
-		if err != nil {
-			log.Warningf("failed to open %s : %s", backupOldAPICfg, err)
-		} else {
-			byteValue, _ := io.ReadAll(jsonFile)
-			err = json.Unmarshal(byteValue, &oldAPICfg)
-			if err != nil {
-				return fmt.Errorf("failed to load json file %s : %s", backupOldAPICfg, err)
-			}
-
-			apiCfg := csconfig.ApiCredentialsCfg{
-				Login:    oldAPICfg.MachineID,
-				Password: oldAPICfg.Password,
-				URL:      CAPIBaseURL,
-			}
-			apiConfigDump, err := yaml.Marshal(apiCfg)
-			if err != nil {
-				return fmt.Errorf("unable to dump api credentials: %s", err)
-			}
-			apiConfigDumpFile := fmt.Sprintf("%s/online_api_credentials.yaml", csConfig.ConfigPaths.ConfigDir)
-			if csConfig.API.Server.OnlineClient != nil && csConfig.API.Server.OnlineClient.CredentialsFilePath != "" {
-				apiConfigDumpFile = csConfig.API.Server.OnlineClient.CredentialsFilePath
-			}
-			err = os.WriteFile(apiConfigDumpFile, apiConfigDump, 0o600)
-			if err != nil {
-				return fmt.Errorf("write api credentials in '%s' failed: %s", apiConfigDumpFile, err)
-			}
-			log.Infof("Saved API credentials to %s", apiConfigDumpFile)
+	backupProfiles := fmt.Sprintf("%s/profiles.yaml", dirPath)
+	if _, err = os.Stat(backupProfiles); err == nil {
+		if err = CopyFile(backupProfiles, csConfig.API.Server.ProfilesPath); err != nil {
+			return fmt.Errorf("failed copy %s to %s : %s", backupProfiles, csConfig.API.Server.ProfilesPath, err)
 		}
 	}
 
@@ -279,8 +236,6 @@ func (cli *cliConfig) restore(dirPath string, oldBackup bool) error {
 }
 
 func (cli *cliConfig) newRestoreCmd() *cobra.Command {
-	var oldBackup bool
-
 	cmd := &cobra.Command{
 		Use:   `restore "directory"`,
 		Short: `Restore config in backup "directory"`,
@@ -294,19 +249,16 @@ func (cli *cliConfig) newRestoreCmd() *cobra.Command {
 - Backup of API credentials (local API and online API)`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE:              func(cmd *cobra.Command, args []string) error {
+		RunE:              func(_ *cobra.Command, args []string) error {
 			dirPath := args[0]
 
-			if err := cli.restore(dirPath, oldBackup); err != nil {
+			if err := cli.restore(dirPath); err != nil {
 				return fmt.Errorf("failed to restore config from %s: %w", dirPath, err)
 			}
 
 			return nil
 		},
 	}
-
-	flags := cmd.Flags()
-	flags.BoolVarP(&oldBackup, "old-backup", "", false, "To use when you are upgrading crowdsec v0.X to v1.X and you need to restore backup from v0.X")
 
 	return cmd
 }
