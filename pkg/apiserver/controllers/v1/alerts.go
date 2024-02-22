@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
@@ -143,9 +142,7 @@ func normalizeScope(scope string) string {
 func (c *Controller) CreateAlert(gctx *gin.Context) {
 	var input models.AddAlertsRequest
 
-	claims := jwt.ExtractClaims(gctx)
-	// TBD: use defined rather than hardcoded key to find back owner
-	machineID := claims["id"].(string)
+	machineID, _ := getMachineIDFromContext(gctx)
 
 	if err := gctx.ShouldBindJSON(&input); err != nil {
 		gctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})

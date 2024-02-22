@@ -18,9 +18,9 @@ import (
 
 const (
 	APIKeyHeader      = "X-Api-Key"
-	bouncerContextKey = "bouncer_info"
-	// max allowed by bcrypt 72 = 54 bytes in base64
+	BouncerContextKey = "bouncer_info"
 	dummyAPIKeySize = 54
+	// max allowed by bcrypt 72 = 54 bytes in base64
 )
 
 type APIKey struct {
@@ -159,11 +159,6 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 			"name": bouncer.Name,
 		})
 
-		// maybe we want to store the whole bouncer object in the context instead, this would avoid another db query
-		// in StreamDecision
-		c.Set("BOUNCER_NAME", bouncer.Name)
-		c.Set("BOUNCER_HASHED_KEY", bouncer.APIKey)
-
 		if bouncer.IPAddress == "" {
 			if err := a.DbClient.UpdateBouncerIP(c.ClientIP(), bouncer.ID); err != nil {
 				logger.Errorf("Failed to update ip address for '%s': %s\n", bouncer.Name, err)
@@ -203,7 +198,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 			}
 		}
 
-		c.Set(bouncerContextKey, bouncer)
+		c.Set(BouncerContextKey, bouncer)
 		c.Next()
 	}
 }
