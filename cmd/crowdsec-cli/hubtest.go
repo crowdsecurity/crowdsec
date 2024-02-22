@@ -25,13 +25,17 @@ var HubAppsecTests hubtest.HubTest
 var hubPtr *hubtest.HubTest
 var isAppsecTest bool
 
-type cliHubTest struct{}
-
-func NewCLIHubTest() *cliHubTest {
-	return &cliHubTest{}
+type cliHubTest struct{
+	cfg configGetter
 }
 
-func (cli cliHubTest) NewCommand() *cobra.Command {
+func NewCLIHubTest(cfg configGetter) *cliHubTest {
+	return &cliHubTest{
+		cfg: cfg,
+	}
+}
+
+func (cli *cliHubTest) NewCommand() *cobra.Command {
 	var hubPath string
 	var crowdsecPath string
 	var cscliPath string
@@ -79,7 +83,7 @@ func (cli cliHubTest) NewCommand() *cobra.Command {
 	return cmd
 }
 
-func (cli cliHubTest) NewCreateCmd() *cobra.Command {
+func (cli *cliHubTest) NewCreateCmd() *cobra.Command {
 	parsers := []string{}
 	postoverflows := []string{}
 	scenarios := []string{}
@@ -219,7 +223,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 	return cmd
 }
 
-func (cli cliHubTest) NewRunCmd() *cobra.Command {
+func (cli *cliHubTest) NewRunCmd() *cobra.Command {
 	var noClean bool
 	var runAll bool
 	var forceClean bool
@@ -230,6 +234,8 @@ func (cli cliHubTest) NewRunCmd() *cobra.Command {
 		Short:             "run [test_name]",
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg := cli.cfg()
+
 			if !runAll && len(args) == 0 {
 				printHelp(cmd)
 				return fmt.Errorf("please provide test to run or --all flag")
@@ -252,7 +258,7 @@ func (cli cliHubTest) NewRunCmd() *cobra.Command {
 			// set timezone to avoid DST issues
 			os.Setenv("TZ", "UTC")
 			for _, test := range hubPtr.Tests {
-				if csConfig.Cscli.Output == "human" {
+				if cfg.Cscli.Output == "human" {
 					log.Infof("Running test '%s'", test.Name)
 				}
 				err := test.Run()
@@ -264,6 +270,8 @@ func (cli cliHubTest) NewRunCmd() *cobra.Command {
 			return nil
 		},
 		PersistentPostRunE: func(_ *cobra.Command, _ []string) error {
+			cfg := cli.cfg()
+
 			success := true
 			testResult := make(map[string]bool)
 			for _, test := range hubPtr.Tests {
@@ -288,7 +296,7 @@ func (cli cliHubTest) NewRunCmd() *cobra.Command {
 				}
 				testResult[test.Name] = test.Success
 				if test.Success {
-					if csConfig.Cscli.Output == "human" {
+					if cfg.Cscli.Output == "human" {
 						log.Infof("Test '%s' passed successfully (%d assertions)\n", test.Name, test.ParserAssert.NbAssert+test.ScenarioAssert.NbAssert)
 					}
 					if !noClean {
@@ -299,7 +307,7 @@ func (cli cliHubTest) NewRunCmd() *cobra.Command {
 				} else {
 					success = false
 					cleanTestEnv := false
-					if csConfig.Cscli.Output == "human" {
+					if cfg.Cscli.Output == "human" {
 						if len(test.ParserAssert.Fails) > 0 {
 							fmt.Println()
 							log.Errorf("Parser test '%s' failed (%d errors)\n", test.Name, len(test.ParserAssert.Fails))
@@ -343,7 +351,7 @@ func (cli cliHubTest) NewRunCmd() *cobra.Command {
 				}
 			}
 
-			switch csConfig.Cscli.Output {
+			switch cfg.Cscli.Output {
 			case "human":
 				hubTestResultTable(color.Output, testResult)
 			case "json":
@@ -383,7 +391,7 @@ func (cli cliHubTest) NewRunCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli cliHubTest) NewCleanCmd() *cobra.Command {
+func (cli *cliHubTest) NewCleanCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:               "clean",
 		Short:             "clean [test_name]",
@@ -407,7 +415,7 @@ func (cli cliHubTest) NewCleanCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli cliHubTest) NewInfoCmd() *cobra.Command {
+func (cli *cliHubTest) NewInfoCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "info",
 		Short:             "info [test_name]",
@@ -440,17 +448,19 @@ func (cli cliHubTest) NewInfoCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli cliHubTest) NewListCmd() *cobra.Command {
+func (cli *cliHubTest) NewListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "list",
 		Short:             "list",
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
+			cfg := cli.cfg()
+
 			if err := hubPtr.LoadAllTests(); err != nil {
 				return fmt.Errorf("unable to load all tests: %s", err)
 			}
 
-			switch csConfig.Cscli.Output {
+			switch cfg.Cscli.Output {
 			case "human":
 				hubTestListTable(color.Output, hubPtr.Tests)
 			case "json":
@@ -470,7 +480,7 @@ func (cli cliHubTest) NewListCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli cliHubTest) NewCoverageCmd() *cobra.Command {
+func (cli *cliHubTest) NewCoverageCmd() *cobra.Command {
 	var showParserCov bool
 	var showScenarioCov bool
 	var showOnlyPercent bool
@@ -481,6 +491,8 @@ func (cli cliHubTest) NewCoverageCmd() *cobra.Command {
 		Short:             "coverage",
 		DisableAutoGenTag: true,
 		RunE: func(_ *cobra.Command, _ []string) error {
+			cfg := cli.cfg()
+
 			//for this one we explicitly don't do for appsec
 			if err := HubTest.LoadAllTests(); err != nil {
 				return fmt.Errorf("unable to load all tests: %+v", err)
@@ -554,7 +566,7 @@ func (cli cliHubTest) NewCoverageCmd() *cobra.Command {
 				os.Exit(0)
 			}
 
-			switch csConfig.Cscli.Output {
+			switch cfg.Cscli.Output {
 			case "human":
 				if showParserCov || showAll {
 					hubTestParserCoverageTable(color.Output, parserCoverage)
@@ -610,7 +622,7 @@ func (cli cliHubTest) NewCoverageCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli cliHubTest) NewEvalCmd() *cobra.Command {
+func (cli *cliHubTest) NewEvalCmd() *cobra.Command {
 	var evalExpression string
 
 	cmd := &cobra.Command{
@@ -647,7 +659,7 @@ func (cli cliHubTest) NewEvalCmd() *cobra.Command {
 	return cmd
 }
 
-func (cli cliHubTest) NewExplainCmd() *cobra.Command {
+func (cli *cliHubTest) NewExplainCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "explain",
 		Short:             "explain [test_name]",
