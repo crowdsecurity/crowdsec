@@ -58,11 +58,14 @@ Note: This command requires database direct access, so is intended to be run on 
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			var err error
-			if err = require.LAPI(cli.cfg()); err != nil {
+
+			cfg := cli.cfg()
+
+			if err = require.LAPI(cfg); err != nil {
 				return err
 			}
 
-			cli.db, err = database.NewClient(cli.cfg().DbConfig)
+			cli.db, err = database.NewClient(cfg.DbConfig)
 			if err != nil {
 				return fmt.Errorf("can't connect to the database: %s", err)
 			}
