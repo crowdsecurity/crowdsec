@@ -136,8 +136,6 @@ func (t *JWTTransport) needsTokenRefresh() bool {
 
 // prepareRequest returns a copy of the  request with the necessary authentication headers.
 func (t *JWTTransport) prepareRequest(req *http.Request) (*http.Request, error) {
-	req = cloneRequest(req)
-
 	// In a few occasions several goroutines will execute refreshJwtToken concurrently which is useless
 	// and will cause overload on CAPI. We use a mutex to avoid this.
 	t.refreshTokenMutex.Lock()
