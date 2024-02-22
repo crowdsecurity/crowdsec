@@ -14,7 +14,8 @@ import (
 )
 
 func (cli *cliConfig) restoreHub(dirPath string) error {
-	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig), nil)
+	cfg := cli.cfg()
+	hub, err := require.Hub(cfg, require.RemoteHub(cfg), nil)
 	if err != nil {
 		return err
 	}
@@ -71,7 +72,7 @@ func (cli *cliConfig) restoreHub(dirPath string) error {
 				}
 
 				stage := file.Name()
-				stagedir := fmt.Sprintf("%s/%s/%s/", csConfig.ConfigPaths.ConfigDir, itype, stage)
+				stagedir := fmt.Sprintf("%s/%s/%s/", cfg.ConfigPaths.ConfigDir, itype, stage)
 				log.Debugf("Found stage %s in %s, target directory : %s", stage, itype, stagedir)
 
 				if err = os.MkdirAll(stagedir, os.ModePerm); err != nil {
@@ -99,7 +100,7 @@ func (cli *cliConfig) restoreHub(dirPath string) error {
 			} else {
 				log.Infof("Going to restore local/tainted [%s]", file.Name())
 				sourceFile := fmt.Sprintf("%s/%s", itemDirectory, file.Name())
-				destinationFile := fmt.Sprintf("%s/%s/%s", csConfig.ConfigPaths.ConfigDir, itype, file.Name())
+				destinationFile := fmt.Sprintf("%s/%s/%s", cfg.ConfigPaths.ConfigDir, itype, file.Name())
 
 				if err = CopyFile(sourceFile, destinationFile); err != nil {
 					return fmt.Errorf("failed copy %s %s to %s: %w", itype, sourceFile, destinationFile, err)
@@ -126,18 +127,19 @@ func (cli *cliConfig) restoreHub(dirPath string) error {
 */
 func (cli *cliConfig) restore(dirPath string) error {
 	var err error
+	cfg := cli.cfg()
 
 	backupMain := fmt.Sprintf("%s/config.yaml", dirPath)
 	if _, err = os.Stat(backupMain); err == nil {
-		if csConfig.ConfigPaths != nil && csConfig.ConfigPaths.ConfigDir != "" {
-			if err = CopyFile(backupMain, fmt.Sprintf("%s/config.yaml", csConfig.ConfigPaths.ConfigDir)); err != nil {
-				return fmt.Errorf("failed copy %s to %s: %w", backupMain, csConfig.ConfigPaths.ConfigDir, err)
+		if cfg.ConfigPaths != nil && cfg.ConfigPaths.ConfigDir != "" {
+			if err = CopyFile(backupMain, fmt.Sprintf("%s/config.yaml", cfg.ConfigPaths.ConfigDir)); err != nil {
+				return fmt.Errorf("failed copy %s to %s: %w", backupMain, cfg.ConfigPaths.ConfigDir, err)
 			}
 		}
 	}
 
 	// Now we have config.yaml, we should regenerate config struct to have rights paths etc
-	ConfigFilePath = fmt.Sprintf("%s/config.yaml", csConfig.ConfigPaths.ConfigDir)
+	ConfigFilePath = fmt.Sprintf("%s/config.yaml", cfg.ConfigPaths.ConfigDir)
 
 	log.Debug("Reloading configuration")
 
@@ -146,38 +148,40 @@ func (cli *cliConfig) restore(dirPath string) error {
 		return fmt.Errorf("failed to reload configuration: %w", err)
 	}
 
+	cfg = cli.cfg()
+
 	backupCAPICreds := fmt.Sprintf("%s/online_api_credentials.yaml", dirPath)
 	if _, err = os.Stat(backupCAPICreds); err == nil {
-		if err = CopyFile(backupCAPICreds, csConfig.API.Server.OnlineClient.CredentialsFilePath); err != nil {
-			return fmt.Errorf("failed copy %s to %s: %w", backupCAPICreds, csConfig.API.Server.OnlineClient.CredentialsFilePath, err)
+		if err = CopyFile(backupCAPICreds, cfg.API.Server.OnlineClient.CredentialsFilePath); err != nil {
+			return fmt.Errorf("failed copy %s to %s: %w", backupCAPICreds, cfg.API.Server.OnlineClient.CredentialsFilePath, err)
 		}
 	}
 
 	backupLAPICreds := fmt.Sprintf("%s/local_api_credentials.yaml", dirPath)
 	if _, err = os.Stat(backupLAPICreds); err == nil {
-		if err = CopyFile(backupLAPICreds, csConfig.API.Client.CredentialsFilePath); err != nil {
-			return fmt.Errorf("failed copy %s to %s: %w", backupLAPICreds, csConfig.API.Client.CredentialsFilePath, err)
+		if err = CopyFile(backupLAPICreds, cfg.API.Client.CredentialsFilePath); err != nil {
+			return fmt.Errorf("failed copy %s to %s: %w", backupLAPICreds, cfg.API.Client.CredentialsFilePath, err)
 		}
 	}
 
 	backupProfiles := fmt.Sprintf("%s/profiles.yaml", dirPath)
 	if _, err = os.Stat(backupProfiles); err == nil {
-		if err = CopyFile(backupProfiles, csConfig.API.Server.ProfilesPath); err != nil {
-			return fmt.Errorf("failed copy %s to %s: %w", backupProfiles, csConfig.API.Server.ProfilesPath, err)
+		if err = CopyFile(backupProfiles, cfg.API.Server.ProfilesPath); err != nil {
+			return fmt.Errorf("failed copy %s to %s: %w", backupProfiles, cfg.API.Server.ProfilesPath, err)
 		}
 	}
 
 	backupSimulation := fmt.Sprintf("%s/simulation.yaml", dirPath)
 	if _, err = os.Stat(backupSimulation); err == nil {
-		if err = CopyFile(backupSimulation, csConfig.ConfigPaths.SimulationFilePath); err != nil {
-			return fmt.Errorf("failed copy %s to %s: %w", backupSimulation, csConfig.ConfigPaths.SimulationFilePath, err)
+		if err = CopyFile(backupSimulation, cfg.ConfigPaths.SimulationFilePath); err != nil {
+			return fmt.Errorf("failed copy %s to %s: %w", backupSimulation, cfg.ConfigPaths.SimulationFilePath, err)
 		}
 	}
 
 	/*if there is a acquisition dir, restore its content*/
-	if csConfig.Crowdsec.AcquisitionDirPath != "" {
-		if err = os.MkdirAll(csConfig.Crowdsec.AcquisitionDirPath, 0o700); err != nil {
-			return fmt.Errorf("error while creating %s: %w", csConfig.Crowdsec.AcquisitionDirPath, err)
+	if cfg.Crowdsec.AcquisitionDirPath != "" {
+		if err = os.MkdirAll(cfg.Crowdsec.AcquisitionDirPath, 0o700); err != nil {
+			return fmt.Errorf("error while creating %s: %w", cfg.Crowdsec.AcquisitionDirPath, err)
 		}
 	}
 
@@ -186,8 +190,8 @@ func (cli *cliConfig) restore(dirPath string) error {
 	if _, err = os.Stat(backupAcquisition); err == nil {
 		log.Debugf("restoring backup'ed %s", backupAcquisition)
 
-		if err = CopyFile(backupAcquisition, csConfig.Crowdsec.AcquisitionFilePath); err != nil {
-			return fmt.Errorf("failed copy %s to %s: %w", backupAcquisition, csConfig.Crowdsec.AcquisitionFilePath, err)
+		if err = CopyFile(backupAcquisition, cfg.Crowdsec.AcquisitionFilePath); err != nil {
+			return fmt.Errorf("failed copy %s to %s: %w", backupAcquisition, cfg.Crowdsec.AcquisitionFilePath, err)
 		}
 	}
 
@@ -195,7 +199,7 @@ func (cli *cliConfig) restore(dirPath string) error {
 	acquisBackupDir := filepath.Join(dirPath, "acquis", "*.yaml")
 	if acquisFiles, err := filepath.Glob(acquisBackupDir); err == nil {
 		for _, acquisFile := range acquisFiles {
-			targetFname, err := filepath.Abs(csConfig.Crowdsec.AcquisitionDirPath + "/" + filepath.Base(acquisFile))
+			targetFname, err := filepath.Abs(cfg.Crowdsec.AcquisitionDirPath + "/" + filepath.Base(acquisFile))
 			if err != nil {
 				return fmt.Errorf("while saving %s to %s: %w", acquisFile, targetFname, err)
 			}
@@ -208,12 +212,12 @@ func (cli *cliConfig) restore(dirPath string) error {
 		}
 	}
 
-	if csConfig.Crowdsec != nil && len(csConfig.Crowdsec.AcquisitionFiles) > 0 {
-		for _, acquisFile := range csConfig.Crowdsec.AcquisitionFiles {
+	if cfg.Crowdsec != nil && len(cfg.Crowdsec.AcquisitionFiles) > 0 {
+		for _, acquisFile := range cfg.Crowdsec.AcquisitionFiles {
 			log.Infof("backup filepath from dir -> %s", acquisFile)
 
 			// if it was the default one, it has already been backed up
-			if csConfig.Crowdsec.AcquisitionFilePath == acquisFile {
+			if cfg.Crowdsec.AcquisitionFilePath == acquisFile {
 				log.Infof("skip this one")
 				continue
 			}
