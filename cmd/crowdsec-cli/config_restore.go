@@ -30,14 +30,14 @@ func (cli *cliConfig) restoreHub(dirPath string) error {
 
 		file, err := os.ReadFile(upstreamListFN)
 		if err != nil {
-			return fmt.Errorf("error while opening %s : %s", upstreamListFN, err)
+			return fmt.Errorf("error while opening %s: %w", upstreamListFN, err)
 		}
 
 		var upstreamList []string
 
 		err = json.Unmarshal(file, &upstreamList)
 		if err != nil {
-			return fmt.Errorf("error unmarshaling %s : %s", upstreamListFN, err)
+			return fmt.Errorf("error unmarshaling %s: %w", upstreamListFN, err)
 		}
 
 		for _, toinstall := range upstreamList {
@@ -55,17 +55,17 @@ func (cli *cliConfig) restoreHub(dirPath string) error {
 		/*restore the local and tainted items*/
 		files, err := os.ReadDir(itemDirectory)
 		if err != nil {
-			return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory, err)
+			return fmt.Errorf("failed enumerating files of %s: %w", itemDirectory, err)
 		}
 
 		for _, file := range files {
-			//this was the upstream data
+			// this was the upstream data
 			if file.Name() == fmt.Sprintf("upstream-%s.json", itype) {
 				continue
 			}
 
 			if itype == cwhub.PARSERS || itype == cwhub.POSTOVERFLOWS {
-				//we expect a stage here
+				// we expect a stage here
 				if !file.IsDir() {
 					continue
 				}
@@ -75,22 +75,23 @@ func (cli *cliConfig) restoreHub(dirPath string) error {
 				log.Debugf("Found stage %s in %s, target directory : %s", stage, itype, stagedir)
 
 				if err = os.MkdirAll(stagedir, os.ModePerm); err != nil {
-					return fmt.Errorf("error while creating stage directory %s : %s", stagedir, err)
+					return fmt.Errorf("error while creating stage directory %s: %w", stagedir, err)
 				}
 
 				// find items
 				ifiles, err := os.ReadDir(itemDirectory + "/" + stage + "/")
 				if err != nil {
-					return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory+"/"+stage, err)
+					return fmt.Errorf("failed enumerating files of %s: %w", itemDirectory+"/"+stage, err)
 				}
-				//finally copy item
+
+				// finally copy item
 				for _, tfile := range ifiles {
 					log.Infof("Going to restore local/tainted [%s]", tfile.Name())
 					sourceFile := fmt.Sprintf("%s/%s/%s", itemDirectory, stage, tfile.Name())
 
 					destinationFile := fmt.Sprintf("%s%s", stagedir, tfile.Name())
 					if err = CopyFile(sourceFile, destinationFile); err != nil {
-						return fmt.Errorf("failed copy %s %s to %s : %s", itype, sourceFile, destinationFile, err)
+						return fmt.Errorf("failed copy %s %s to %s: %w", itype, sourceFile, destinationFile, err)
 					}
 
 					log.Infof("restored %s to %s", sourceFile, destinationFile)
@@ -99,9 +100,11 @@ func (cli *cliConfig) restoreHub(dirPath string) error {
 				log.Infof("Going to restore local/tainted [%s]", file.Name())
 				sourceFile := fmt.Sprintf("%s/%s", itemDirectory, file.Name())
 				destinationFile := fmt.Sprintf("%s/%s/%s", csConfig.ConfigPaths.ConfigDir, itype, file.Name())
+
 				if err = CopyFile(sourceFile, destinationFile); err != nil {
-					return fmt.Errorf("failed copy %s %s to %s : %s", itype, sourceFile, destinationFile, err)
+					return fmt.Errorf("failed copy %s %s to %s: %w", itype, sourceFile, destinationFile, err)
 				}
+
 				log.Infof("restored %s to %s", sourceFile, destinationFile)
 			}
 		}
@@ -128,7 +131,7 @@ func (cli *cliConfig) restore(dirPath string) error {
 	if _, err = os.Stat(backupMain); err == nil {
 		if csConfig.ConfigPaths != nil && csConfig.ConfigPaths.ConfigDir != "" {
 			if err = CopyFile(backupMain, fmt.Sprintf("%s/config.yaml", csConfig.ConfigPaths.ConfigDir)); err != nil {
-				return fmt.Errorf("failed copy %s to %s : %s", backupMain, csConfig.ConfigPaths.ConfigDir, err)
+				return fmt.Errorf("failed copy %s to %s: %w", backupMain, csConfig.ConfigPaths.ConfigDir, err)
 			}
 		}
 	}
@@ -140,41 +143,41 @@ func (cli *cliConfig) restore(dirPath string) error {
 
 	csConfig, _, err = loadConfigFor("config")
 	if err != nil {
-		return fmt.Errorf("failed to reload configuration: %s", err)
+		return fmt.Errorf("failed to reload configuration: %w", err)
 	}
 
 	backupCAPICreds := fmt.Sprintf("%s/online_api_credentials.yaml", dirPath)
 	if _, err = os.Stat(backupCAPICreds); err == nil {
 		if err = CopyFile(backupCAPICreds, csConfig.API.Server.OnlineClient.CredentialsFilePath); err != nil {
-			return fmt.Errorf("failed copy %s to %s : %s", backupCAPICreds, csConfig.API.Server.OnlineClient.CredentialsFilePath, err)
+			return fmt.Errorf("failed copy %s to %s: %w", backupCAPICreds, csConfig.API.Server.OnlineClient.CredentialsFilePath, err)
 		}
 	}
 
 	backupLAPICreds := fmt.Sprintf("%s/local_api_credentials.yaml", dirPath)
 	if _, err = os.Stat(backupLAPICreds); err == nil {
 		if err = CopyFile(backupLAPICreds, csConfig.API.Client.CredentialsFilePath); err != nil {
-			return fmt.Errorf("failed copy %s to %s : %s", backupLAPICreds, csConfig.API.Client.CredentialsFilePath, err)
+			return fmt.Errorf("failed copy %s to %s: %w", backupLAPICreds, csConfig.API.Client.CredentialsFilePath, err)
 		}
 	}
 
 	backupProfiles := fmt.Sprintf("%s/profiles.yaml", dirPath)
 	if _, err = os.Stat(backupProfiles); err == nil {
 		if err = CopyFile(backupProfiles, csConfig.API.Server.ProfilesPath); err != nil {
-			return fmt.Errorf("failed copy %s to %s : %s", backupProfiles, csConfig.API.Server.ProfilesPath, err)
+			return fmt.Errorf("failed copy %s to %s: %w", backupProfiles, csConfig.API.Server.ProfilesPath, err)
 		}
 	}
 
 	backupSimulation := fmt.Sprintf("%s/simulation.yaml", dirPath)
 	if _, err = os.Stat(backupSimulation); err == nil {
 		if err = CopyFile(backupSimulation, csConfig.ConfigPaths.SimulationFilePath); err != nil {
-			return fmt.Errorf("failed copy %s to %s : %s", backupSimulation, csConfig.ConfigPaths.SimulationFilePath, err)
+			return fmt.Errorf("failed copy %s to %s: %w", backupSimulation, csConfig.ConfigPaths.SimulationFilePath, err)
 		}
 	}
 
 	/*if there is a acquisition dir, restore its content*/
 	if csConfig.Crowdsec.AcquisitionDirPath != "" {
 		if err = os.MkdirAll(csConfig.Crowdsec.AcquisitionDirPath, 0o700); err != nil {
-			return fmt.Errorf("error while creating %s : %s", csConfig.Crowdsec.AcquisitionDirPath, err)
+			return fmt.Errorf("error while creating %s: %w", csConfig.Crowdsec.AcquisitionDirPath, err)
 		}
 	}
 
@@ -184,7 +187,7 @@ func (cli *cliConfig) restore(dirPath string) error {
 		log.Debugf("restoring backup'ed %s", backupAcquisition)
 
 		if err = CopyFile(backupAcquisition, csConfig.Crowdsec.AcquisitionFilePath); err != nil {
-			return fmt.Errorf("failed copy %s to %s : %s", backupAcquisition, csConfig.Crowdsec.AcquisitionFilePath, err)
+			return fmt.Errorf("failed copy %s to %s: %w", backupAcquisition, csConfig.Crowdsec.AcquisitionFilePath, err)
 		}
 	}
 
@@ -200,7 +203,7 @@ func (cli *cliConfig) restore(dirPath string) error {
 			log.Debugf("restoring %s to %s", acquisFile, targetFname)
 
 			if err = CopyFile(acquisFile, targetFname); err != nil {
-				return fmt.Errorf("failed copy %s to %s : %s", acquisFile, targetFname, err)
+				return fmt.Errorf("failed copy %s to %s: %w", acquisFile, targetFname, err)
 			}
 		}
 	}
@@ -221,7 +224,7 @@ func (cli *cliConfig) restore(dirPath string) error {
 			}
 
 			if err = CopyFile(acquisFile, targetFname); err != nil {
-				return fmt.Errorf("failed copy %s to %s : %s", acquisFile, targetFname, err)
+				return fmt.Errorf("failed copy %s to %s: %w", acquisFile, targetFname, err)
 			}
 
 			log.Infof("Saved acquis %s to %s", acquisFile, targetFname)
@@ -229,7 +232,7 @@ func (cli *cliConfig) restore(dirPath string) error {
 	}
 
 	if err = cli.restoreHub(dirPath); err != nil {
-		return fmt.Errorf("failed to restore hub config : %s", err)
+		return fmt.Errorf("failed to restore hub config: %w", err)
 	}
 
 	return nil
@@ -249,7 +252,7 @@ func (cli *cliConfig) newRestoreCmd() *cobra.Command {
 - Backup of API credentials (local API and online API)`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE:              func(_ *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			dirPath := args[0]
 
 			if err := cli.restore(dirPath); err != nil {

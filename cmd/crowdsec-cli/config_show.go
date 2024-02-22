@@ -201,7 +201,7 @@ func (cli *cliConfig) show(key string) error {
 		// pointers in boolean tests. Prefix notation is the cherry on top.
 		funcs := template.FuncMap{
 			// can't use generics here
-			"ValueBool": func(b *bool) bool { return b!=nil && *b },
+			"ValueBool": func(b *bool) bool { return b != nil && *b },
 		}
 
 		tmp, err := template.New("config").Funcs(funcs).Parse(configShowTemplate)
@@ -241,7 +241,7 @@ func (cli *cliConfig) newShowCmd() *cobra.Command {
 		Long:              `Displays the current cli configuration.`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE:              func(_ *cobra.Command, _ []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return cli.show(key)
 		},
 	}

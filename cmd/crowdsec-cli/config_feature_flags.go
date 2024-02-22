@@ -123,7 +123,7 @@ func (cli *cliConfig) newFeatureFlagsCmd() *cobra.Command {
 		Long:              `Displays the supported feature flags and their current status.`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE:              func(_ *cobra.Command, _ []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			return cli.featureFlags(showRetired)
 		},
 	}
