@@ -15,15 +15,9 @@ pool:
 stages:
   - stage: Build
     jobs:
-      - job:
+      - job: Build
         displayName: "Build"
         steps:
-          - task: DotNetCoreCLI@2
-            displayName: "Install SignClient"
-            inputs:
-              command: 'custom'
-              custom: 'tool'
-              arguments: 'install --global SignClient --version 1.3.155'
           - task: GoTool@0
             displayName: "Install Go"
             inputs:
@@ -39,22 +33,7 @@ stages:
               #we are not calling make windows_installer because we want to sign the binaries before they are added to the MSI
               script: |
                 make build BUILD_RE2_WASM=1
-          - task: AzureKeyVault@2
-            inputs:
-              azureSubscription: 'Azure subscription 1(8a93ab40-7e99-445e-ad47-0f6a3e2ef546)'
-              KeyVaultName: 'CodeSigningSecrets'
-              SecretsFilter: 'CodeSigningUser,CodeSigningPassword'
-              RunAsPreJob: false
-
-          - task: DownloadSecureFile@1
-            inputs:
-              secureFile: appsettings.json
-
-          - pwsh: |
-              SignClient.exe Sign --name "crowdsec-binaries" `
-              --input "**/*.exe" --config (Join-Path -Path $(Agent.TempDirectory) -ChildPath "appsettings.json") `
-              --user $(CodeSigningUser) --secret '$(CodeSigningPassword)'
-            displayName: "Sign Crowdsec binaries + plugins"
+      
           - pwsh: |
               $build_version=$env:BUILD_SOURCEBRANCHNAME
               if ($build_version.StartsWith("v"))
@@ -77,12 +56,7 @@ stages:
               .\make_chocolatey.ps1 -version '$(GetCrowdsecVersion.BuildVersion)'
             displayName: "Build Chocolatey nupkg"
 
-          - pwsh: |
-              SignClient.exe Sign --name "crowdsec-msi" `
-              --input "*.msi" --config (Join-Path -Path $(Agent.TempDirectory) -ChildPath "appsettings.json") `
-              --user $(CodeSigningUser) --secret '$(CodeSigningPassword)'
-            displayName: "Sign Crowdsec MSI"
-
+          #TODO: replace with publish short step
           - task: PublishBuildArtifacts@1
             inputs:
               PathtoPublish: '$(Build.Repository.LocalPath)\\crowdsec_$(GetCrowdsecVersion.BuildVersion).msi'
@@ -96,8 +70,51 @@ stages:
               ArtifactName: 'crowdsec.nupkg'
               publishLocation: 'Container'
             displayName: "Upload nupkg artifact"
-  - stage: Publish
+
+  - stage: Sign
     dependsOn: Build
+    condition: succeeded()
+    jobs:
+      - job: Sign
+        displayName: "Sign"
+        steps:
+          - task: DotNetCoreCLI@2
+            displayName: "Install SignTool tool"
+            inputs:
+              command: 'custom'
+              custom: 'tool'
+              arguments: install --global sign --version 0.9.0-beta.23127.3
+          - download: current
+            artifact: crowdsec.msi
+            displayName: "Download build MSI artifact"
+          - download: current
+            artifact: crowdsec.nupkg
+            displayName: "Download build nupkg artifact"
+          - pwsh: |
+              sign code azure-key-vault `
+              "**/*.msi" `
+              --base-directory "$(Pipeline.Workspace)/crowdsec.msi" `
+              --publisher-name "CrowdSec" `
+              --azure-key-vault-tenant-id "$(SignTenantId)" `
+              --azure-key-vault-client-id "$(SignClientId)" `
+              --azure-key-vault-client-secret "$(SignClientSecret)" `
+              --azure-key-vault-certificate "$(SignCertificate)" `
+              --azure-key-vault-url "$(SignKeyVaultUrl)"
+            displayName: "Sign MSI"
+          - pwsh: |
+              sign code azure-key-vault `
+              "**/*.nupkg" `
+              --base-directory "$(Pipeline.Workspace)/crowdsec.msi" `
+              --publisher-name "CrowdSec" `
+              --azure-key-vault-tenant-id "$(SignTenantId)" `
+              --azure-key-vault-client-id "$(SignClientId)" `
+              --azure-key-vault-client-secret "$(SignClientSecret)" `
+              --azure-key-vault-certificate "$(SignCertificate)" `
+              --azure-key-vault-url "$(SignKeyVaultUrl)"
+            displayName: "Sign nupkg"
+            
+  - stage: Publish
+    dependsOn: Sign
     jobs:
       - deployment: "Publish"
         displayName: "Publish to GitHub"
