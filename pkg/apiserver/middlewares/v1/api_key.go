@@ -199,6 +199,5 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 		}
 
 		c.Set(BouncerContextKey, bouncer)
-		c.Next()
 	}
 }
