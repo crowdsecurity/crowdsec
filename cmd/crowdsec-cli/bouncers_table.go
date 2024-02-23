@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/aquasecurity/table"
-	"github.com/enescakir/emoji"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 )
 
 func getBouncersTable(out io.Writer, bouncers []*ent.Bouncer) {
@@ -17,11 +17,9 @@ func getBouncersTable(out io.Writer, bouncers []*ent.Bouncer) {
 	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
 
 	for _, b := range bouncers {
-		var revoked string
-		if !b.Revoked {
-			revoked = emoji.CheckMark.String()
-		} else {
-			revoked = emoji.Prohibited.String()
+		revoked := emoji.CheckMark
+		if b.Revoked {
+			revoked = emoji.Prohibited
 		}
 
 		t.AddRow(b.Name, b.IPAddress, revoked, b.LastPull.Format(time.RFC3339), b.Type, b.Version, b.AuthType)

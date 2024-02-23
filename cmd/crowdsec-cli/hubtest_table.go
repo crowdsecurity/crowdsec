@@ -5,8 +5,8 @@ import (
 	"io"
 
 	"github.com/aquasecurity/table"
-	"github.com/enescakir/emoji"
 
+	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
@@ -17,9 +17,9 @@ func hubTestResultTable(out io.Writer, testResult map[string]bool) {
 	t.SetAlignment(table.AlignLeft)
 
 	for testName, success := range testResult {
-		status := emoji.CheckMarkButton.String()
+		status := emoji.CheckMarkButton
 		if !success {
-			status = emoji.CrossMark.String()
+			status = emoji.CrossMark
 		}
 
 		t.AddRow(testName, status)
@@ -50,11 +50,12 @@ func hubTestParserCoverageTable(out io.Writer, coverage []hubtest.Coverage) {
 	parserTested := 0
 
 	for _, test := range coverage {
-		status := emoji.RedCircle.String()
+		status := emoji.RedCircle
 		if test.TestsCount > 0 {
-			status = emoji.GreenCircle.String()
+			status = emoji.GreenCircle
 			parserTested++
 		}
+
 		t.AddRow(test.Name, status, fmt.Sprintf("%d times (across %d tests)", test.TestsCount, len(test.PresentIn)))
 	}
 
@@ -70,11 +71,12 @@ func hubTestAppsecRuleCoverageTable(out io.Writer, coverage []hubtest.Coverage) 
 	parserTested := 0
 
 	for _, test := range coverage {
-		status := emoji.RedCircle.String()
+		status := emoji.RedCircle
 		if test.TestsCount > 0 {
-			status = emoji.GreenCircle.String()
+			status = emoji.GreenCircle
 			parserTested++
 		}
+
 		t.AddRow(test.Name, status, fmt.Sprintf("%d times (across %d tests)", test.TestsCount, len(test.PresentIn)))
 	}
 
@@ -90,11 +92,12 @@ func hubTestScenarioCoverageTable(out io.Writer, coverage []hubtest.Coverage) {
 	parserTested := 0
 
 	for _, test := range coverage {
-		status := emoji.RedCircle.String()
+		status := emoji.RedCircle
 		if test.TestsCount > 0 {
-			status = emoji.GreenCircle.String()
+			status = emoji.GreenCircle
 			parserTested++
 		}
+
 		t.AddRow(test.Name, status, fmt.Sprintf("%d times (across %d tests)", test.TestsCount, len(test.PresentIn)))
 	}
 
