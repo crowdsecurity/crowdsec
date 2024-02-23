@@ -62,55 +62,50 @@ bats-environment: export ENV:=$(ENV)
 bats-environment:
 	@echo "$${ENV}" > $(TEST_DIR)/.environment.sh
 
-# Verify dependencies and submodules
-bats-check-requirements:
+bats-check-requirements:  ## Check dependencies for functional tests
 	@$(TEST_DIR)/bin/check-requirements
 
-# Install/update some of the tools required to run the tests
-bats-update-tools:
-	# yq v4.34.1
-	GOBIN=$(TEST_DIR)/tools go install github.com/mikefarah/yq/v4@5ef537f3fd1a9437aa3ee44c32c6459a126efdc4
+bats-update-tools:  ## Install/update tools required for functional tests
+	# yq v4.40.4
+	GOBIN=$(TEST_DIR)/tools go install github.com/mikefarah/yq/v4@1c3d55106075bd37df197b4bc03cb4a413fdb903
 	# cfssl v1.6.4
 	GOBIN=$(TEST_DIR)/tools go install github.com/cloudflare/cfssl/cmd/cfssl@b4d0d877cac528f63db39dfb62d5c96cd3a32a0b
 	GOBIN=$(TEST_DIR)/tools go install github.com/cloudflare/cfssl/cmd/cfssljson@b4d0d877cac528f63db39dfb62d5c96cd3a32a0b
 
 # Build and installs crowdsec in a local directory. Rebuilds if already exists.
-bats-build: bats-environment
+bats-build: bats-environment  ## Build binaries for functional tests
 	@$(MKDIR) $(BIN_DIR) $(LOG_DIR) $(PID_DIR) $(BATS_PLUGIN_DIR)
-	@TEST_COVERAGE=$(TEST_COVERAGE) DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR) $(MAKE) build
+	@$(MAKE) build DEBUG=1 TEST_COVERAGE=$(TEST_COVERAGE) DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR)
 	@install -m 0755 cmd/crowdsec/crowdsec cmd/crowdsec-cli/cscli $(BIN_DIR)/
-	@install -m 0755 plugins/notifications/*/notification-* $(BATS_PLUGIN_DIR)/
+	@install -m 0755 cmd/notification-*/notification-* $(BATS_PLUGIN_DIR)/
 
 # Create a reusable package with initial configuration + data
-bats-fixture: bats-check-requirements bats-update-tools
-	@echo "Creating functional test fixture..."
+bats-fixture: bats-check-requirements bats-update-tools  ## Build fixture for functional tests
+	@echo "Creating functional test fixture."
 	@$(TEST_DIR)/instance-data make
 
 # Remove the local crowdsec installation and the fixture config + data
 # Don't remove LOCAL_DIR directly because it could be / or anything else outside the repo
-bats-clean:
+bats-clean:  ## Remove functional test environment
 	@$(RM) $(TEST_DIR)/local $(WIN_IGNORE_ERR)
 	@$(RM) $(LOCAL_INIT_DIR) $(WIN_IGNORE_ERR)
 	@$(RM) $(TEST_DIR)/dyn-bats/*.bats $(WIN_IGNORE_ERR)
 	@$(RM) test/.environment.sh $(WIN_IGNORE_ERR)
 	@$(RM) test/coverage/* $(WIN_IGNORE_ERR)
 
-# Run the test suite
-bats-test: bats-environment
+bats-test: bats-environment  ## Run functional tests
 	$(TEST_DIR)/run-tests $(TEST_DIR)/bats
 
-# Generate dynamic tests
-bats-test-hub: bats-environment bats-check-requirements
+bats-test-hub: bats-environment bats-check-requirements  ## Run all hub tests
 	@$(TEST_DIR)/bin/generate-hub-tests
 	$(TEST_DIR)/run-tests $(TEST_DIR)/dyn-bats
 
-# Static checks for the test scripts.
 # Not failproof but they can catch bugs and improve learning of sh/bash
-bats-lint:
+bats-lint:  ## Static checks for the test scripts.
 	@shellcheck --version >/dev/null 2>&1 || (echo "ERROR: shellcheck is required."; exit 1)
 	@shellcheck -x $(TEST_DIR)/bats/*.bats
 
-bats-test-package: bats-environment
+bats-test-package: bats-environment  ## CI only - test a binary package (deb, rpm, ...)
 	$(TEST_DIR)/instance-data make
 	$(TEST_DIR)/run-tests $(TEST_DIR)/bats
 	$(TEST_DIR)/run-tests $(TEST_DIR)/dyn-bats

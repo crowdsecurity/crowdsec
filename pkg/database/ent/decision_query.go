@@ -18,11 +18,9 @@ import (
 // DecisionQuery is the builder for querying Decision entities.
 type DecisionQuery struct {
 	config
-	limit      *int
-	offset     *int
-	unique     *bool
-	order      []OrderFunc
-	fields     []string
+	ctx        *QueryContext
+	order      []decision.OrderOption
+	inters     []Interceptor
 	predicates []predicate.Decision
 	withOwner  *AlertQuery
 	// intermediate query (i.e. traversal path).
@@ -36,34 +34,34 @@ func (dq *DecisionQuery) Where(ps ...predicate.Decision) *DecisionQuery {
 	return dq
 }
 
-// Limit adds a limit step to the query.
+// Limit the number of records to be returned by this query.
 func (dq *DecisionQuery) Limit(limit int) *DecisionQuery {
-	dq.limit = &limit
+	dq.ctx.Limit = &limit
 	return dq
 }
 
-// Offset adds an offset step to the query.
+// Offset to start from.
 func (dq *DecisionQuery) Offset(offset int) *DecisionQuery {
-	dq.offset = &offset
+	dq.ctx.Offset = &offset
 	return dq
 }
 
 // Unique configures the query builder to filter duplicate records on query.
 // By default, unique is set to true, and can be disabled using this method.
 func (dq *DecisionQuery) Unique(unique bool) *DecisionQuery {
-	dq.unique = &unique
+	dq.ctx.Unique = &unique
 	return dq
 }
 
-// Order adds an order step to the query.
-func (dq *DecisionQuery) Order(o ...OrderFunc) *DecisionQuery {
+// Order specifies how the records should be ordered.
+func (dq *DecisionQuery) Order(o ...decision.OrderOption) *DecisionQuery {
 	dq.order = append(dq.order, o...)
 	return dq
 }
 
 // QueryOwner chains the current query on the "owner" edge.
 func (dq *DecisionQuery) QueryOwner() *AlertQuery {
-	query := &AlertQuery{config: dq.config}
+	query := (&AlertClient{config: dq.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := dq.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -86,7 +84,7 @@ func (dq *DecisionQuery) QueryOwner() *AlertQuery {
 // First returns the first Decision entity from the query.
 // Returns a *NotFoundError when no Decision was found.
 func (dq *DecisionQuery) First(ctx context.Context) (*Decision, error) {
-	nodes, err := dq.Limit(1).All(ctx)
+	nodes, err := dq.Limit(1).All(setContextOp(ctx, dq.ctx, "First"))
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +107,7 @@ func (dq *DecisionQuery) FirstX(ctx context.Context) *Decision {
 // Returns a *NotFoundError when no Decision ID was found.
 func (dq *DecisionQuery) FirstID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = dq.Limit(1).IDs(ctx); err != nil {
+	if ids, err = dq.Limit(1).IDs(setContextOp(ctx, dq.ctx, "FirstID")); err != nil {
 		return
 	}
 	if len(ids) == 0 {
@@ -132,7 +130,7 @@ func (dq *DecisionQuery) FirstIDX(ctx context.Context) int {
 // Returns a *NotSingularError when more than one Decision entity is found.
 // Returns a *NotFoundError when no Decision entities are found.
 func (dq *DecisionQuery) Only(ctx context.Context) (*Decision, error) {
-	nodes, err := dq.Limit(2).All(ctx)
+	nodes, err := dq.Limit(2).All(setContextOp(ctx, dq.ctx, "Only"))
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +158,7 @@ func (dq *DecisionQuery) OnlyX(ctx context.Context) *Decision {
 // Returns a *NotFoundError when no entities are found.
 func (dq *DecisionQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
-	if ids, err = dq.Limit(2).IDs(ctx); err != nil {
+	if ids, err = dq.Limit(2).IDs(setContextOp(ctx, dq.ctx, "OnlyID")); err != nil {
 		return
 	}
 	switch len(ids) {
@@ -185,10 +183,12 @@ func (dq *DecisionQuery) OnlyIDX(ctx context.Context) int {
 
 // All executes the query and returns a list of Decisions.
 func (dq *DecisionQuery) All(ctx context.Context) ([]*Decision, error) {
+	ctx = setContextOp(ctx, dq.ctx, "All")
 	if err := dq.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
-	return dq.sqlAll(ctx)
+	qr := querierAll[[]*Decision, *DecisionQuery]()
+	return withInterceptors[[]*Decision](ctx, dq, qr, dq.inters)
 }
 
 // AllX is like All, but panics if an error occurs.
@@ -201,9 +201,12 @@ func (dq *DecisionQuery) AllX(ctx context.Context) []*Decision {
 }
 
 // IDs executes the query and returns a list of Decision IDs.
-func (dq *DecisionQuery) IDs(ctx context.Context) ([]int, error) {
-	var ids []int
-	if err := dq.Select(decision.FieldID).Scan(ctx, &ids); err != nil {
+func (dq *DecisionQuery) IDs(ctx context.Context) (ids []int, err error) {
+	if dq.ctx.Unique == nil && dq.path != nil {
+		dq.Unique(true)
+	}
+	ctx = setContextOp(ctx, dq.ctx, "IDs")
+	if err = dq.Select(decision.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
@@ -220,10 +223,11 @@ func (dq *DecisionQuery) IDsX(ctx context.Context) []int {
 
 // Count returns the count of the given query.
 func (dq *DecisionQuery) Count(ctx context.Context) (int, error) {
+	ctx = setContextOp(ctx, dq.ctx, "Count")
 	if err := dq.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
-	return dq.sqlCount(ctx)
+	return withInterceptors[int](ctx, dq, querierCount[*DecisionQuery](), dq.inters)
 }
 
 // CountX is like Count, but panics if an error occurs.
@@ -237,10 +241,15 @@ func (dq *DecisionQuery) CountX(ctx context.Context) int {
 
 // Exist returns true if the query has elements in the graph.
 func (dq *DecisionQuery) Exist(ctx context.Context) (bool, error) {
-	if err := dq.prepareQuery(ctx); err != nil {
-		return false, err
+	ctx = setContextOp(ctx, dq.ctx, "Exist")
+	switch _, err := dq.FirstID(ctx); {
+	case IsNotFound(err):
+		return false, nil
+	case err != nil:
+		return false, fmt.Errorf("ent: check existence: %w", err)
+	default:
+		return true, nil
 	}
-	return dq.sqlExist(ctx)
 }
 
 // ExistX is like Exist, but panics if an error occurs.
@@ -260,22 +269,21 @@ func (dq *DecisionQuery) Clone() *DecisionQuery {
 	}
 	return &DecisionQuery{
 		config:     dq.config,
-		limit:      dq.limit,
-		offset:     dq.offset,
-		order:      append([]OrderFunc{}, dq.order...),
+		ctx:        dq.ctx.Clone(),
+		order:      append([]decision.OrderOption{}, dq.order...),
+		inters:     append([]Interceptor{}, dq.inters...),
 		predicates: append([]predicate.Decision{}, dq.predicates...),
 		withOwner:  dq.withOwner.Clone(),
 		// clone intermediate query.
-		sql:    dq.sql.Clone(),
-		path:   dq.path,
-		unique: dq.unique,
+		sql:  dq.sql.Clone(),
+		path: dq.path,
 	}
 }
 
 // WithOwner tells the query-builder to eager-load the nodes that are connected to
 // the "owner" edge. The optional arguments are used to configure the query builder of the edge.
 func (dq *DecisionQuery) WithOwner(opts ...func(*AlertQuery)) *DecisionQuery {
-	query := &AlertQuery{config: dq.config}
+	query := (&AlertClient{config: dq.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
@@ -298,16 +306,11 @@ func (dq *DecisionQuery) WithOwner(opts ...func(*AlertQuery)) *DecisionQuery {
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (dq *DecisionQuery) GroupBy(field string, fields ...string) *DecisionGroupBy {
-	grbuild := &DecisionGroupBy{config: dq.config}
-	grbuild.fields = append([]string{field}, fields...)
-	grbuild.path = func(ctx context.Context) (prev *sql.Selector, err error) {
-		if err := dq.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		return dq.sqlQuery(ctx), nil
-	}
+	dq.ctx.Fields = append([]string{field}, fields...)
+	grbuild := &DecisionGroupBy{build: dq}
+	grbuild.flds = &dq.ctx.Fields
 	grbuild.label = decision.Label
-	grbuild.flds, grbuild.scan = &grbuild.fields, grbuild.Scan
+	grbuild.scan = grbuild.Scan
 	return grbuild
 }
 
@@ -324,15 +327,30 @@ func (dq *DecisionQuery) GroupBy(field string, fields ...string) *DecisionGroupB
 //		Select(decision.FieldCreatedAt).
 //		Scan(ctx, &v)
 func (dq *DecisionQuery) Select(fields ...string) *DecisionSelect {
-	dq.fields = append(dq.fields, fields...)
-	selbuild := &DecisionSelect{DecisionQuery: dq}
-	selbuild.label = decision.Label
-	selbuild.flds, selbuild.scan = &dq.fields, selbuild.Scan
-	return selbuild
+	dq.ctx.Fields = append(dq.ctx.Fields, fields...)
+	sbuild := &DecisionSelect{DecisionQuery: dq}
+	sbuild.label = decision.Label
+	sbuild.flds, sbuild.scan = &dq.ctx.Fields, sbuild.Scan
+	return sbuild
+}
+
+// Aggregate returns a DecisionSelect configured with the given aggregations.
+func (dq *DecisionQuery) Aggregate(fns ...AggregateFunc) *DecisionSelect {
+	return dq.Select().Aggregate(fns...)
 }
 
 func (dq *DecisionQuery) prepareQuery(ctx context.Context) error {
-	for _, f := range dq.fields {
+	for _, inter := range dq.inters {
+		if inter == nil {
+			return fmt.Errorf("ent: uninitialized interceptor (forgotten import ent/runtime?)")
+		}
+		if trv, ok := inter.(Traverser); ok {
+			if err := trv.Traverse(ctx, dq); err != nil {
+				return err
+			}
+		}
+	}
+	for _, f := range dq.ctx.Fields {
 		if !decision.ValidColumn(f) {
 			return &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 		}
@@ -392,6 +410,9 @@ func (dq *DecisionQuery) loadOwner(ctx context.Context, query *AlertQuery, nodes
 		}
 		nodeids[fk] = append(nodeids[fk], nodes[i])
 	}
+	if len(ids) == 0 {
+		return nil
+	}
 	query.Where(alert.IDIn(ids...))
 	neighbors, err := query.All(ctx)
 	if err != nil {
@@ -411,47 +432,31 @@ func (dq *DecisionQuery) loadOwner(ctx context.Context, query *AlertQuery, nodes
 
 func (dq *DecisionQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := dq.querySpec()
-	_spec.Node.Columns = dq.fields
-	if len(dq.fields) > 0 {
-		_spec.Unique = dq.unique != nil && *dq.unique
+	_spec.Node.Columns = dq.ctx.Fields
+	if len(dq.ctx.Fields) > 0 {
+		_spec.Unique = dq.ctx.Unique != nil && *dq.ctx.Unique
 	}
 	return sqlgraph.CountNodes(ctx, dq.driver, _spec)
 }
 
-func (dq *DecisionQuery) sqlExist(ctx context.Context) (bool, error) {
-	switch _, err := dq.FirstID(ctx); {
-	case IsNotFound(err):
-		return false, nil
-	case err != nil:
-		return false, fmt.Errorf("ent: check existence: %w", err)
-	default:
-		return true, nil
-	}
-}
-
 func (dq *DecisionQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := &sqlgraph.QuerySpec{
-		Node: &sqlgraph.NodeSpec{
-			Table:   decision.Table,
-			Columns: decision.Columns,
-			ID: &sqlgraph.FieldSpec{
-				Type:   field.TypeInt,
-				Column: decision.FieldID,
-			},
-		},
-		From:   dq.sql,
-		Unique: true,
-	}
-	if unique := dq.unique; unique != nil {
+	_spec := sqlgraph.NewQuerySpec(decision.Table, decision.Columns, sqlgraph.NewFieldSpec(decision.FieldID, field.TypeInt))
+	_spec.From = dq.sql
+	if unique := dq.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
+	} else if dq.path != nil {
+		_spec.Unique = true
 	}
-	if fields := dq.fields; len(fields) > 0 {
+	if fields := dq.ctx.Fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, decision.FieldID)
 		for i := range fields {
 			if fields[i] != decision.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if dq.withOwner != nil {
+			_spec.Node.AddColumnOnce(decision.FieldAlertDecisions)
 		}
 	}
 	if ps := dq.predicates; len(ps) > 0 {
@@ -461,10 +466,10 @@ func (dq *DecisionQuery) querySpec() *sqlgraph.QuerySpec {
 			}
 		}
 	}
-	if limit := dq.limit; limit != nil {
+	if limit := dq.ctx.Limit; limit != nil {
 		_spec.Limit = *limit
 	}
-	if offset := dq.offset; offset != nil {
+	if offset := dq.ctx.Offset; offset != nil {
 		_spec.Offset = *offset
 	}
 	if ps := dq.order; len(ps) > 0 {
@@ -480,7 +485,7 @@ func (dq *DecisionQuery) querySpec() *sqlgraph.QuerySpec {
 func (dq *DecisionQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(dq.driver.Dialect())
 	t1 := builder.Table(decision.Table)
-	columns := dq.fields
+	columns := dq.ctx.Fields
 	if len(columns) == 0 {
 		columns = decision.Columns
 	}
@@ -489,7 +494,7 @@ func (dq *DecisionQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector = dq.sql
 		selector.Select(selector.Columns(columns...)...)
 	}
-	if dq.unique != nil && *dq.unique {
+	if dq.ctx.Unique != nil && *dq.ctx.Unique {
 		selector.Distinct()
 	}
 	for _, p := range dq.predicates {
@@ -498,12 +503,12 @@ func (dq *DecisionQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	for _, p := range dq.order {
 		p(selector)
 	}
-	if offset := dq.offset; offset != nil {
+	if offset := dq.ctx.Offset; offset != nil {
 		// limit is mandatory for offset clause. We start
 		// with default value, and override it below if needed.
 		selector.Offset(*offset).Limit(math.MaxInt32)
 	}
-	if limit := dq.limit; limit != nil {
+	if limit := dq.ctx.Limit; limit != nil {
 		selector.Limit(*limit)
 	}
 	return selector
@@ -511,13 +516,8 @@ func (dq *DecisionQuery) sqlQuery(ctx context.Context) *sql.Selector {
 
 // DecisionGroupBy is the group-by builder for Decision entities.
 type DecisionGroupBy struct {
-	config
 	selector
-	fields []string
-	fns    []AggregateFunc
-	// intermediate query (i.e. traversal path).
-	sql  *sql.Selector
-	path func(context.Context) (*sql.Selector, error)
+	build *DecisionQuery
 }
 
 // Aggregate adds the given aggregation functions to the group-by query.
@@ -526,74 +526,77 @@ func (dgb *DecisionGroupBy) Aggregate(fns ...AggregateFunc) *DecisionGroupBy {
 	return dgb
 }
 
-// Scan applies the group-by query and scans the result into the given value.
+// Scan applies the selector query and scans the result into the given value.
 func (dgb *DecisionGroupBy) Scan(ctx context.Context, v any) error {
-	query, err := dgb.path(ctx)
-	if err != nil {
+	ctx = setContextOp(ctx, dgb.build.ctx, "GroupBy")
+	if err := dgb.build.prepareQuery(ctx); err != nil {
 		return err
 	}
-	dgb.sql = query
-	return dgb.sqlScan(ctx, v)
+	return scanWithInterceptors[*DecisionQuery, *DecisionGroupBy](ctx, dgb.build, dgb, dgb.build.inters, v)
 }
 
-func (dgb *DecisionGroupBy) sqlScan(ctx context.Context, v any) error {
-	for _, f := range dgb.fields {
-		if !decision.ValidColumn(f) {
-			return &ValidationError{Name: f, err: fmt.Errorf("invalid field %q for group-by", f)}
-		}
+func (dgb *DecisionGroupBy) sqlScan(ctx context.Context, root *DecisionQuery, v any) error {
+	selector := root.sqlQuery(ctx).Select()
+	aggregation := make([]string, 0, len(dgb.fns))
+	for _, fn := range dgb.fns {
+		aggregation = append(aggregation, fn(selector))
 	}
-	selector := dgb.sqlQuery()
+	if len(selector.SelectedColumns()) == 0 {
+		columns := make([]string, 0, len(*dgb.flds)+len(dgb.fns))
+		for _, f := range *dgb.flds {
+			columns = append(columns, selector.C(f))
+		}
+		columns = append(columns, aggregation...)
+		selector.Select(columns...)
+	}
+	selector.GroupBy(selector.Columns(*dgb.flds...)...)
 	if err := selector.Err(); err != nil {
 		return err
 	}
 	rows := &sql.Rows{}
 	query, args := selector.Query()
-	if err := dgb.driver.Query(ctx, query, args, rows); err != nil {
+	if err := dgb.build.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
 }
 
-func (dgb *DecisionGroupBy) sqlQuery() *sql.Selector {
-	selector := dgb.sql.Select()
-	aggregation := make([]string, 0, len(dgb.fns))
-	for _, fn := range dgb.fns {
-		aggregation = append(aggregation, fn(selector))
-	}
-	// If no columns were selected in a custom aggregation function, the default
-	// selection is the fields used for "group-by", and the aggregation functions.
-	if len(selector.SelectedColumns()) == 0 {
-		columns := make([]string, 0, len(dgb.fields)+len(dgb.fns))
-		for _, f := range dgb.fields {
-			columns = append(columns, selector.C(f))
-		}
-		columns = append(columns, aggregation...)
-		selector.Select(columns...)
-	}
-	return selector.GroupBy(selector.Columns(dgb.fields...)...)
-}
-
 // DecisionSelect is the builder for selecting fields of Decision entities.
 type DecisionSelect struct {
 	*DecisionQuery
 	selector
-	// intermediate query (i.e. traversal path).
-	sql *sql.Selector
+}
+
+// Aggregate adds the given aggregation functions to the selector query.
+func (ds *DecisionSelect) Aggregate(fns ...AggregateFunc) *DecisionSelect {
+	ds.fns = append(ds.fns, fns...)
+	return ds
 }
 
 // Scan applies the selector query and scans the result into the given value.
 func (ds *DecisionSelect) Scan(ctx context.Context, v any) error {
+	ctx = setContextOp(ctx, ds.ctx, "Select")
 	if err := ds.prepareQuery(ctx); err != nil {
 		return err
 	}
-	ds.sql = ds.DecisionQuery.sqlQuery(ctx)
-	return ds.sqlScan(ctx, v)
+	return scanWithInterceptors[*DecisionQuery, *DecisionSelect](ctx, ds.DecisionQuery, ds, ds.inters, v)
 }
 
-func (ds *DecisionSelect) sqlScan(ctx context.Context, v any) error {
+func (ds *DecisionSelect) sqlScan(ctx context.Context, root *DecisionQuery, v any) error {
+	selector := root.sqlQuery(ctx)
+	aggregation := make([]string, 0, len(ds.fns))
+	for _, fn := range ds.fns {
+		aggregation = append(aggregation, fn(selector))
+	}
+	switch n := len(*ds.selector.flds); {
+	case n == 0 && len(aggregation) > 0:
+		selector.Select(aggregation...)
+	case n != 0 && len(aggregation) > 0:
+		selector.AppendSelect(aggregation...)
+	}
 	rows := &sql.Rows{}
-	query, args := ds.sql.Query()
+	query, args := selector.Query()
 	if err := ds.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}

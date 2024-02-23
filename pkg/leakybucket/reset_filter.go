@@ -19,14 +19,13 @@ import (
 // Thus, if the bucket receives a request that matches fetching a static resource (here css), it cancels itself
 
 type CancelOnFilter struct {
-	CancelOnFilter      *vm.Program
-	CancelOnFilterDebug *exprhelpers.ExprDebugger
+	CancelOnFilter *vm.Program
+	Debug          bool
 }
 
 var cancelExprCacheLock sync.Mutex
 var cancelExprCache map[string]struct {
-	CancelOnFilter      *vm.Program
-	CancelOnFilterDebug *exprhelpers.ExprDebugger
+	CancelOnFilter *vm.Program
 }
 
 func (u *CancelOnFilter) OnBucketPour(bucketFactory *BucketFactory) func(types.Event, *Leaky) *types.Event {
@@ -34,14 +33,10 @@ func (u *CancelOnFilter) OnBucketPour(bucketFactory *BucketFactory) func(types.E
 		var condition, ok bool
 		if u.CancelOnFilter != nil {
 			leaky.logger.Tracef("running cancel_on filter")
-			output, err := expr.Run(u.CancelOnFilter, map[string]interface{}{"evt": &msg})
+			output, err := exprhelpers.Run(u.CancelOnFilter, map[string]interface{}{"evt": &msg}, leaky.logger, u.Debug)
 			if err != nil {
 				leaky.logger.Warningf("cancel_on error : %s", err)
 				return &msg
-			}
-			//only run debugger expression if condition is false
-			if u.CancelOnFilterDebug != nil {
-				u.CancelOnFilterDebug.Run(leaky.logger, condition, map[string]interface{}{"evt": &msg})
 			}
 			if condition, ok = output.(bool); !ok {
 				leaky.logger.Warningf("cancel_on, unexpected non-bool return : %T", output)
@@ -58,8 +53,8 @@ func (u *CancelOnFilter) OnBucketPour(bucketFactory *BucketFactory) func(types.E
 	}
 }
 
-func (u *CancelOnFilter) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, types.RuntimeAlert, *Queue) (types.RuntimeAlert, *Queue) {
-	return func(leaky *Leaky, alert types.RuntimeAlert, queue *Queue) (types.RuntimeAlert, *Queue) {
+func (u *CancelOnFilter) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, types.RuntimeAlert, *types.Queue) (types.RuntimeAlert, *types.Queue) {
+	return func(leaky *Leaky, alert types.RuntimeAlert, queue *types.Queue) (types.RuntimeAlert, *types.Queue) {
 		return alert, queue
 	}
 }
@@ -73,14 +68,12 @@ func (u *CancelOnFilter) AfterBucketPour(bucketFactory *BucketFactory) func(type
 func (u *CancelOnFilter) OnBucketInit(bucketFactory *BucketFactory) error {
 	var err error
 	var compiledExpr struct {
-		CancelOnFilter      *vm.Program
-		CancelOnFilterDebug *exprhelpers.ExprDebugger
+		CancelOnFilter *vm.Program
 	}
 
 	if cancelExprCache == nil {
 		cancelExprCache = make(map[string]struct {
-			CancelOnFilter      *vm.Program
-			CancelOnFilterDebug *exprhelpers.ExprDebugger
+			CancelOnFilter *vm.Program
 		})
 	}
 
@@ -88,7 +81,6 @@ func (u *CancelOnFilter) OnBucketInit(bucketFactory *BucketFactory) error {
 	if compiled, ok := cancelExprCache[bucketFactory.CancelOnFilter]; ok {
 		cancelExprCacheLock.Unlock()
 		u.CancelOnFilter = compiled.CancelOnFilter
-		u.CancelOnFilterDebug = compiled.CancelOnFilterDebug
 		return nil
 	} else {
 		cancelExprCacheLock.Unlock()
@@ -101,13 +93,7 @@ func (u *CancelOnFilter) OnBucketInit(bucketFactory *BucketFactory) error {
 		}
 		u.CancelOnFilter = compiledExpr.CancelOnFilter
 		if bucketFactory.Debug {
-			compiledExpr.CancelOnFilterDebug, err = exprhelpers.NewDebugger(bucketFactory.CancelOnFilter, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...,
-			)
-			if err != nil {
-				bucketFactory.logger.Errorf("reset_filter debug error : %s", err)
-				return err
-			}
-			u.CancelOnFilterDebug = compiledExpr.CancelOnFilterDebug
+			u.Debug = true
 		}
 		cancelExprCacheLock.Lock()
 		cancelExprCache[bucketFactory.CancelOnFilter] = compiledExpr

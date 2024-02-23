@@ -13,7 +13,7 @@ import (
 func (c *Client) SelectBouncer(apiKeyHash string) (*ent.Bouncer, error) {
 	result, err := c.Ent.Bouncer.Query().Where(bouncer.APIKeyEQ(apiKeyHash)).First(c.CTX)
 	if err != nil {
-		return &ent.Bouncer{}, errors.Wrapf(QueryFail, "select bouncer: %s", err)
+		return nil, err
 	}
 
 	return result, nil
@@ -22,7 +22,7 @@ func (c *Client) SelectBouncer(apiKeyHash string) (*ent.Bouncer, error) {
 func (c *Client) SelectBouncerByName(bouncerName string) (*ent.Bouncer, error) {
 	result, err := c.Ent.Bouncer.Query().Where(bouncer.NameEQ(bouncerName)).First(c.CTX)
 	if err != nil {
-		return &ent.Bouncer{}, errors.Wrapf(QueryFail, "select bouncer: %s", err)
+		return nil, err
 	}
 
 	return result, nil
@@ -31,7 +31,7 @@ func (c *Client) SelectBouncerByName(bouncerName string) (*ent.Bouncer, error) {
 func (c *Client) ListBouncers() ([]*ent.Bouncer, error) {
 	result, err := c.Ent.Bouncer.Query().All(c.CTX)
 	if err != nil {
-		return []*ent.Bouncer{}, errors.Wrapf(QueryFail, "listing bouncer: %s", err)
+		return nil, errors.Wrapf(QueryFail, "listing bouncers: %s", err)
 	}
 	return result, nil
 }
@@ -69,6 +69,18 @@ func (c *Client) DeleteBouncer(name string) error {
 	return nil
 }
 
+func (c *Client) BulkDeleteBouncers(bouncers []*ent.Bouncer) (int, error) {
+	ids := make([]int, len(bouncers))
+	for i, b := range bouncers {
+		ids[i] = b.ID
+	}
+	nbDeleted, err := c.Ent.Bouncer.Delete().Where(bouncer.IDIn(ids...)).Exec(c.CTX)
+	if err != nil {
+		return nbDeleted, fmt.Errorf("unable to delete bouncers: %s", err)
+	}
+	return nbDeleted, nil
+}
+
 func (c *Client) UpdateBouncerLastPull(lastPull time.Time, ID int) error {
 	_, err := c.Ent.Bouncer.UpdateOneID(ID).
 		SetLastPull(lastPull).
@@ -93,4 +105,8 @@ func (c *Client) UpdateBouncerTypeAndVersion(bType string, version string, ID in
 		return fmt.Errorf("unable to update bouncer type and version in database: %s", err)
 	}
 	return nil
+}
+
+func (c *Client) QueryBouncersLastPulltimeLT(t time.Time) ([]*ent.Bouncer, error) {
+	return c.Ent.Bouncer.Query().Where(bouncer.LastPullLT(t)).All(c.CTX)
 }

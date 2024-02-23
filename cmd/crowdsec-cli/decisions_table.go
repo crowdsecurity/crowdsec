@@ -8,13 +8,15 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
 
-func decisionsTable(out io.Writer, alerts *models.GetAlertsResponse, printMachine bool) {
+func (cli *cliDecisions) decisionsTable(out io.Writer, alerts *models.GetAlertsResponse, printMachine bool) {
 	t := newTable(out)
 	t.SetRowLines(false)
+
 	header := []string{"ID", "Source", "Scope:Value", "Reason", "Action", "Country", "AS", "Events", "expiration", "Alert ID"}
 	if printMachine {
 		header = append(header, "Machine")
 	}
+
 	t.SetHeaders(header...)
 
 	for _, alertItem := range *alerts {
@@ -22,6 +24,7 @@ func decisionsTable(out io.Writer, alerts *models.GetAlertsResponse, printMachin
 			if *alertItem.Simulated {
 				*decisionItem.Type = fmt.Sprintf("(simul)%s", *decisionItem.Type)
 			}
+
 			row := []string{
 				strconv.Itoa(int(decisionItem.ID)),
 				*decisionItem.Origin,
@@ -42,5 +45,6 @@ func decisionsTable(out io.Writer, alerts *models.GetAlertsResponse, printMachin
 			t.AddRow(row...)
 		}
 	}
+
 	t.Render()
 }

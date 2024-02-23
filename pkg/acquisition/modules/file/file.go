@@ -21,7 +21,7 @@ import (
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
+	"github.com/crowdsecurity/go-cs-lib/trace"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -487,9 +487,14 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 			}
 			return nil
 		case <-tail.Dying(): //our tailer is dying
-			logger.Warningf("File reader of %s died", tail.Filename)
-			t.Kill(fmt.Errorf("dead reader for %s", tail.Filename))
-			return fmt.Errorf("reader for %s is dead", tail.Filename)
+			err := tail.Err()
+			errMsg := fmt.Sprintf("file reader of %s died", tail.Filename)
+			if err != nil {
+				errMsg = fmt.Sprintf(errMsg+" : %s", err)
+			}
+			logger.Warningf(errMsg)
+			t.Kill(fmt.Errorf(errMsg))
+			return fmt.Errorf(errMsg)
 		case line := <-tail.Lines:
 			if line == nil {
 				logger.Warningf("tail for %s is empty", tail.Filename)

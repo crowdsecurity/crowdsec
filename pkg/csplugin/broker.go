@@ -19,8 +19,8 @@ import (
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/csstring"
-	"github.com/crowdsecurity/go-cs-lib/pkg/slicetools"
+	"github.com/crowdsecurity/go-cs-lib/csstring"
+	"github.com/crowdsecurity/go-cs-lib/slicetools"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -110,7 +110,7 @@ loop:
 			pb.addProfileAlert(profileAlert)
 
 		case pluginName := <-pb.watcher.PluginEvents:
-			// this can be ran in goroutine, but then locks will be needed
+			// this can be run in goroutine, but then locks will be needed
 			pluginMutex.Lock()
 			log.Tracef("going to deliver %d alerts to plugin %s", len(pb.alertsByPluginName[pluginName]), pluginName)
 			tmpAlerts := pb.alertsByPluginName[pluginName]
@@ -139,7 +139,7 @@ loop:
 					pb.Kill()
 					break loop
 				case pluginName := <-pb.watcher.PluginEvents:
-					// this can be ran in goroutine, but then locks will be needed
+					// this can be run in goroutine, but then locks will be needed
 					pluginMutex.Lock()
 					log.Tracef("going to deliver %d alerts to plugin %s", len(pb.alertsByPluginName[pluginName]), pluginName)
 					tmpAlerts := pb.alertsByPluginName[pluginName]
@@ -192,7 +192,7 @@ func (pb *PluginBroker) loadConfig(path string) error {
 			return err
 		}
 		for _, pluginConfig := range pluginConfigs {
-			setRequiredFields(&pluginConfig)
+			SetRequiredFields(&pluginConfig)
 			if _, ok := pb.pluginConfigByName[pluginConfig.Name]; ok {
 				log.Warningf("notification '%s' is defined multiple times", pluginConfig.Name)
 			}
@@ -206,7 +206,7 @@ func (pb *PluginBroker) loadConfig(path string) error {
 	return err
 }
 
-// checks whether every notification in profile has it's own config file
+// checks whether every notification in profile has its own config file
 func (pb *PluginBroker) verifyPluginConfigsWithProfile() error {
 	for _, profileCfg := range pb.profileConfigs {
 		for _, pluginName := range profileCfg.Notifications {
@@ -219,7 +219,7 @@ func (pb *PluginBroker) verifyPluginConfigsWithProfile() error {
 	return nil
 }
 
-// check whether each plugin in profile has it's own binary
+// check whether each plugin in profile has its own binary
 func (pb *PluginBroker) verifyPluginBinaryWithProfile() error {
 	for _, profileCfg := range pb.profileConfigs {
 		for _, pluginName := range profileCfg.Notifications {
@@ -323,7 +323,7 @@ func (pb *PluginBroker) pushNotificationsToPlugin(pluginName string, alerts []*m
 		return nil
 	}
 
-	message, err := formatAlerts(pb.pluginConfigByName[pluginName].Format, alerts)
+	message, err := FormatAlerts(pb.pluginConfigByName[pluginName].Format, alerts)
 	if err != nil {
 		return err
 	}
@@ -376,7 +376,7 @@ func ParsePluginConfigFile(path string) ([]PluginConfig, error) {
 	return parsedConfigs, nil
 }
 
-func setRequiredFields(pluginCfg *PluginConfig) {
+func SetRequiredFields(pluginCfg *PluginConfig) {
 	if pluginCfg.MaxRetry == 0 {
 		pluginCfg.MaxRetry++
 	}
@@ -407,7 +407,7 @@ func getHandshake() (plugin.HandshakeConfig, error) {
 	return handshake, nil
 }
 
-func formatAlerts(format string, alerts []*models.Alert) (string, error) {
+func FormatAlerts(format string, alerts []*models.Alert) (string, error) {
 	template, err := template.New("").Funcs(sprig.TxtFuncMap()).Funcs(funcMap()).Parse(format)
 	if err != nil {
 		return "", err

@@ -1,4 +1,4 @@
-//go:build linux || freebsd || netbsd || openbsd || solaris || !windows
+//go:build linux || freebsd || netbsd || openbsd || solaris || (!windows && !js)
 
 package csplugin
 

@@ -33,7 +33,7 @@ api() {
     # delete community pull
     rune -0 cscli decisions delete --all
     rune -0 cscli decisions list -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "adding decision for range aaaa:2222:3333:4444::/64" {
@@ -69,7 +69,7 @@ api() {
 
 @test "CLI - decisions for ip aaaa:2222:3333:4445:5555:6666:7777:8888" {
     rune -0 cscli decisions list -i 'aaaa:2222:3333:4445:5555:6666:7777:8888' -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "API - decisions for ip aaaa:2222:3333:4445:5555:6666:7777:8888" {
@@ -79,7 +79,7 @@ api() {
 
 @test "CLI - decisions for ip aaa1:2222:3333:4444:5555:6666:7777:8887" {
     rune -0 cscli decisions list -i 'aaa1:2222:3333:4444:5555:6666:7777:8887' -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "API - decisions for ip aaa1:2222:3333:4444:5555:6666:7777:8887" {
@@ -103,7 +103,7 @@ api() {
 
 @test "CLI - decisions for range aaaa:2222:3333:4441:5555::/80" {
     rune -0 cscli decisions list -r 'aaaa:2222:3333:4441:5555::/80' -o json
-    assert_output 'null'
+    assert_json '[]'
 
 }
 
@@ -114,7 +114,7 @@ api() {
 
 @test "CLI - decisions for range aaa1:2222:3333:4444:5555::/80" {
     rune -0 cscli decisions list -r 'aaa1:2222:3333:4444:5555::/80' -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "API - decisions for range aaa1:2222:3333:4444:5555::/80" {
@@ -126,7 +126,7 @@ api() {
 
 @test "CLI - decisions for range aaaa:2222:3333:4444:5555:6666:7777:8888/48" {
     rune -0 cscli decisions list -r 'aaaa:2222:3333:4444:5555:6666:7777:8888/48' -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "API - decisions for range aaaa:2222:3333:4444:5555:6666:7777:8888/48" {
@@ -148,7 +148,7 @@ api() {
 
 @test "CLI - decisions for ip/range in aaaa:2222:3333:4445:5555:6666:7777:8888/48" {
     rune -0 cscli decisions list -r 'aaaa:2222:3333:4445:5555:6666:7777:8888/48' -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "API - decisions for ip/range in aaaa:2222:3333:4445:5555:6666:7777:8888/48" {
@@ -177,7 +177,7 @@ api() {
 
 @test "CLI - decisions for ip bbbb:db8:0000:0000:0000:8fff:ffff:ffff" {
     rune -0 cscli decisions list -o json -i 'bbbb:db8:0000:0000:0000:8fff:ffff:ffff'
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "API - decisions for ip in bbbb:db8:0000:0000:0000:8fff:ffff:ffff" {
@@ -192,7 +192,7 @@ api() {
 
 @test "CLI - decisions for range aaaa:2222:3333:4444::/64 after delete" {
     rune -0 cscli decisions list -o json -r 'aaaa:2222:3333:4444::/64'
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "adding decision for ip bbbb:db8:0000:0000:0000:8fff:ffff:ffff" {

@@ -6,11 +6,12 @@ import (
 	"os"
 	"os/exec"
 
+	goccyyaml "github.com/goccy/go-yaml"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
-	goccyyaml "github.com/goccy/go-yaml"
 
+	"github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli/require"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/setup"
 )
@@ -112,6 +113,20 @@ func runSetupDetect(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	var detectReader *os.File
+
+	switch detectConfigFile {
+	case "-":
+		log.Tracef("Reading detection rules from stdin")
+		detectReader = os.Stdin
+	default:
+		log.Tracef("Reading detection rules: %s", detectConfigFile)
+		detectReader, err = os.Open(detectConfigFile)
+		if err != nil {
+			return err
+		}
+	}
+
 	listSupportedServices, err := flags.GetBool("list-supported-services")
 	if err != nil {
 		return err
@@ -171,7 +186,7 @@ func runSetupDetect(cmd *cobra.Command, args []string) error {
 	}
 
 	if listSupportedServices {
-		supported, err := setup.ListSupported(detectConfigFile)
+		supported, err := setup.ListSupported(detectReader)
 		if err != nil {
 			return err
 		}
@@ -195,7 +210,7 @@ func runSetupDetect(cmd *cobra.Command, args []string) error {
 		SnubSystemd:  snubSystemd,
 	}
 
-	hubSetup, err := setup.Detect(detectConfigFile, opts)
+	hubSetup, err := setup.Detect(detectReader, opts)
 	if err != nil {
 		return fmt.Errorf("detecting services: %w", err)
 	}
@@ -289,7 +304,12 @@ func runSetupInstallHub(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("while reading file %s: %w", fromFile, err)
 	}
 
-	if err = setup.InstallHubItems(csConfig, input, dryRun); err != nil {
+	hub, err := require.Hub(csConfig, require.RemoteHub(csConfig), log.StandardLogger())
+	if err != nil {
+		return err
+	}
+
+	if err = setup.InstallHubItems(hub, input, dryRun); err != nil {
 		return err
 	}
 

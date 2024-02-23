@@ -2,6 +2,7 @@ package longpollclient
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -112,7 +113,7 @@ func (c *LongPollClient) poll() error {
 			var pollResp pollResponse
 			err = decoder.Decode(&pollResp)
 			if err != nil {
-				if err == io.EOF {
+				if errors.Is(err, io.EOF) {
 					logger.Debugf("server closed connection")
 					return nil
 				}
@@ -158,7 +159,7 @@ func (c *LongPollClient) pollEvents() error {
 			err := c.poll()
 			if err != nil {
 				c.logger.Errorf("failed to poll: %s", err)
-				if err == errUnauthorized {
+				if errors.Is(err, errUnauthorized) {
 					c.t.Kill(err)
 					close(c.c)
 					return err
@@ -193,26 +194,32 @@ func (c *LongPollClient) PullOnce(since time.Time) ([]Event, error) {
 	}
 	defer resp.Body.Close()
 	decoder := json.NewDecoder(resp.Body)
-	var pollResp pollResponse
-	err = decoder.Decode(&pollResp)
-	if err != nil {
-		if err == io.EOF {
-			c.logger.Debugf("server closed connection")
-			return nil, nil
+	evts := []Event{}
+	for {
+		var pollResp pollResponse
+		err = decoder.Decode(&pollResp)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				c.logger.Debugf("server closed connection")
+				break
+			}
+			log.Errorf("error decoding poll response: %v", err)
+			break
 		}
-		return nil, fmt.Errorf("error decoding poll response: %v", err)
-	}
 
-	c.logger.Tracef("got response: %+v", pollResp)
+		c.logger.Tracef("got response: %+v", pollResp)
 
-	if len(pollResp.ErrorMessage) > 0 {
-		if pollResp.ErrorMessage == timeoutMessage {
-			c.logger.Debugf("got timeout message")
-			return nil, nil
+		if len(pollResp.ErrorMessage) > 0 {
+			if pollResp.ErrorMessage == timeoutMessage {
+				c.logger.Debugf("got timeout message")
+				break
+			}
+			log.Errorf("longpoll API error message: %s", pollResp.ErrorMessage)
+			break
 		}
-		return nil, fmt.Errorf("longpoll API error message: %s", pollResp.ErrorMessage)
+		evts = append(evts, pollResp.Events...)
 	}
-	return pollResp.Events, nil
+	return evts, nil
 }
 
 func NewLongPollClient(config LongPollClientConfig) (*LongPollClient, error) {

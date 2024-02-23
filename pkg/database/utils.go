@@ -4,6 +4,9 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+	"strconv"
+	"strings"
+	"time"
 )
 
 func IP2Int(ip net.IP) uint32 {
@@ -62,4 +65,24 @@ func GetIpsFromIpRange(host string) (int64, int64, error) {
 	ipEnd = int64(IP2Int(LastAddress(parsedRange)))
 
 	return ipStart, ipEnd, nil
+}
+
+func ParseDuration(d string) (time.Duration, error) {
+	durationStr := d
+	if strings.HasSuffix(d, "d") {
+		days := strings.Split(d, "d")[0]
+		if len(days) == 0 {
+			return 0, fmt.Errorf("'%s' can't be parsed as duration", d)
+		}
+		daysInt, err := strconv.Atoi(days)
+		if err != nil {
+			return 0, err
+		}
+		durationStr = strconv.Itoa(daysInt*24) + "h"
+	}
+	duration, err := time.ParseDuration(durationStr)
+	if err != nil {
+		return 0, err
+	}
+	return duration, nil
 }

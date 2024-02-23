@@ -7,6 +7,7 @@ import (
 	"text/template"
 
 	"github.com/antonmedv/expr"
+	"github.com/sanity-io/litter"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -23,6 +24,7 @@ func showConfigKey(key string) error {
 	opts := []expr.Option{}
 	opts = append(opts, exprhelpers.GetExprOptions(map[string]interface{}{})...)
 	opts = append(opts, expr.Env(Env{}))
+
 	program, err := expr.Compile(key, opts...)
 	if err != nil {
 		return err
@@ -35,13 +37,13 @@ func showConfigKey(key string) error {
 
 	switch csConfig.Cscli.Output {
 	case "human", "raw":
+		// Don't use litter for strings, it adds quotes
+		// that we didn't have before
 		switch output.(type) {
 		case string:
-			fmt.Printf("%s\n", output)
-		case int:
-			fmt.Printf("%d\n", output)
+			fmt.Println(output)
 		default:
-			fmt.Printf("%v\n", output)
+			litter.Dump(output)
 		}
 	case "json":
 		data, err := json.MarshalIndent(output, "", "  ")
@@ -51,13 +53,13 @@ func showConfigKey(key string) error {
 
 		fmt.Printf("%s\n", string(data))
 	}
+
 	return nil
 }
 
 var configShowTemplate = `Global:
 
 {{- if .ConfigPaths }}
-   - Configuration Folder   : {{.ConfigPaths.ConfigDir}}
    - Configuration Folder   : {{.ConfigPaths.ConfigDir}}
    - Data Folder            : {{.ConfigPaths.DataDir}}
    - Hub Folder             : {{.ConfigPaths.HubDir}}
@@ -71,7 +73,7 @@ var configShowTemplate = `Global:
 {{- end }}
 
 {{- if .Crowdsec }}
-Crowdsec:
+Crowdsec{{if and .Crowdsec.Enable (not (ValueBool .Crowdsec.Enable))}} (disabled){{end}}:
   - Acquisition File        : {{.Crowdsec.AcquisitionFilePath}}
   - Parsers routines        : {{.Crowdsec.ParserRoutinesCount}}
 {{- if .Crowdsec.AcquisitionDirPath }}
@@ -83,7 +85,6 @@ Crowdsec:
 cscli:
   - Output                  : {{.Cscli.Output}}
   - Hub Branch              : {{.Cscli.HubBranch}}
-  - Hub Folder              : {{.Cscli.HubDir}}
 {{- end }}
 
 {{- if .API }}
@@ -97,7 +98,7 @@ API Client:
 {{- end }}
 
 {{- if .API.Server }}
-Local API Server:
+Local API Server{{if and .API.Server.Enable (not (ValueBool .API.Server.Enable))}} (disabled){{end}}:
   - Listen URL              : {{.API.Server.ListenURI}}
   - Profile File            : {{.API.Server.ProfilesPath}}
 
@@ -164,6 +165,12 @@ Central API:
       - User                : {{.DbConfig.User}}
       - DB Name             : {{.DbConfig.DbName}}
 {{- end }}
+{{- if .DbConfig.MaxOpenConns }}
+      - Max Open Conns      : {{.DbConfig.MaxOpenConns}}
+{{- end }}
+{{- if ne .DbConfig.DecisionBulkSize 0 }}
+      - Decision Bulk Size  : {{.DbConfig.DecisionBulkSize}}
+{{- end }}
 {{- if .DbConfig.Flush }}
 {{- if .DbConfig.Flush.MaxAge }}
       - Flush age           : {{.DbConfig.Flush.MaxAge}}
@@ -175,63 +182,72 @@ Central API:
 {{- end }}
 `
 
-func runConfigShow(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
+func (cli *cliConfig) show(key string) error {
+	cfg := cli.cfg()
 
-	if err := csConfig.LoadAPIClient(); err != nil {
+	if err := cfg.LoadAPIClient(); err != nil {
 		log.Errorf("failed to load API client configuration: %s", err)
 		// don't return, we can still show the configuration
-	}
-
-	key, err := flags.GetString("key")
-	if err != nil {
-		return err
 	}
 
 	if key != "" {
 		return showConfigKey(key)
 	}
 
-	switch csConfig.Cscli.Output {
+	switch cfg.Cscli.Output {
 	case "human":
-		tmp, err := template.New("config").Parse(configShowTemplate)
+		// The tests on .Enable look funny because the option has a true default which has
+		// not been set yet (we don't really load the LAPI) and go templates don't dereference
+		// pointers in boolean tests. Prefix notation is the cherry on top.
+		funcs := template.FuncMap{
+			// can't use generics here
+			"ValueBool": func(b *bool) bool { return b != nil && *b },
+		}
+
+		tmp, err := template.New("config").Funcs(funcs).Parse(configShowTemplate)
 		if err != nil {
 			return err
 		}
-		err = tmp.Execute(os.Stdout, csConfig)
+
+		err = tmp.Execute(os.Stdout, cfg)
 		if err != nil {
 			return err
 		}
 	case "json":
-		data, err := json.MarshalIndent(csConfig, "", "  ")
+		data, err := json.MarshalIndent(cfg, "", "  ")
 		if err != nil {
 			return fmt.Errorf("failed to marshal configuration: %w", err)
 		}
 
 		fmt.Printf("%s\n", string(data))
 	case "raw":
-		data, err := yaml.Marshal(csConfig)
+		data, err := yaml.Marshal(cfg)
 		if err != nil {
 			return fmt.Errorf("failed to marshal configuration: %w", err)
 		}
 
 		fmt.Printf("%s\n", string(data))
 	}
+
 	return nil
 }
 
-func NewConfigShowCmd() *cobra.Command {
-	cmdConfigShow := &cobra.Command{
+func (cli *cliConfig) newShowCmd() *cobra.Command {
+	var key string
+
+	cmd := &cobra.Command{
 		Use:               "show",
 		Short:             "Displays current config",
 		Long:              `Displays the current cli configuration.`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE:              runConfigShow,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return cli.show(key)
+		},
 	}
 
-	flags := cmdConfigShow.Flags()
-	flags.StringP("key", "", "", "Display only this value (Config.API.Server.ListenURI)")
+	flags := cmd.Flags()
+	flags.StringVarP(&key, "key", "", "", "Display only this value (Config.API.Server.ListenURI)")
 
-	return cmdConfigShow
+	return cmd
 }

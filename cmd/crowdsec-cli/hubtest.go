@@ -2,11 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/enescakir/emoji"
@@ -15,60 +17,91 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
+	"github.com/crowdsecurity/crowdsec/pkg/dumps"
 	"github.com/crowdsecurity/crowdsec/pkg/hubtest"
 )
 
 var (
-	HubTest hubtest.HubTest
+	HubTest        hubtest.HubTest
+	HubAppsecTests hubtest.HubTest
+	hubPtr         *hubtest.HubTest
+	isAppsecTest   bool
 )
 
-func NewHubTestCmd() *cobra.Command {
-	var hubPath string
-	var crowdsecPath string
-	var cscliPath string
+type cliHubTest struct {
+	cfg configGetter
+}
 
-	var cmdHubTest = &cobra.Command{
+func NewCLIHubTest(cfg configGetter) *cliHubTest {
+	return &cliHubTest{
+		cfg: cfg,
+	}
+}
+
+func (cli *cliHubTest) NewCommand() *cobra.Command {
+	var (
+		hubPath      string
+		crowdsecPath string
+		cscliPath    string
+	)
+
+	cmd := &cobra.Command{
 		Use:               "hubtest",
 		Short:             "Run functional tests on hub configurations",
 		Long:              "Run functional tests on hub configurations (parsers, scenarios, collections...)",
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
 			var err error
-			HubTest, err = hubtest.NewHubTest(hubPath, crowdsecPath, cscliPath)
+			HubTest, err = hubtest.NewHubTest(hubPath, crowdsecPath, cscliPath, false)
 			if err != nil {
 				return fmt.Errorf("unable to load hubtest: %+v", err)
+			}
+
+			HubAppsecTests, err = hubtest.NewHubTest(hubPath, crowdsecPath, cscliPath, true)
+			if err != nil {
+				return fmt.Errorf("unable to load appsec specific hubtest: %+v", err)
+			}
+
+			// commands will use the hubPtr, will point to the default hubTest object, or the one dedicated to appsec tests
+			hubPtr = &HubTest
+			if isAppsecTest {
+				hubPtr = &HubAppsecTests
 			}
 
 			return nil
 		},
 	}
-	cmdHubTest.PersistentFlags().StringVar(&hubPath, "hub", ".", "Path to hub folder")
-	cmdHubTest.PersistentFlags().StringVar(&crowdsecPath, "crowdsec", "crowdsec", "Path to crowdsec")
-	cmdHubTest.PersistentFlags().StringVar(&cscliPath, "cscli", "cscli", "Path to cscli")
 
-	cmdHubTest.AddCommand(NewHubTestCreateCmd())
-	cmdHubTest.AddCommand(NewHubTestRunCmd())
-	cmdHubTest.AddCommand(NewHubTestCleanCmd())
-	cmdHubTest.AddCommand(NewHubTestInfoCmd())
-	cmdHubTest.AddCommand(NewHubTestListCmd())
-	cmdHubTest.AddCommand(NewHubTestCoverageCmd())
-	cmdHubTest.AddCommand(NewHubTestEvalCmd())
-	cmdHubTest.AddCommand(NewHubTestExplainCmd())
+	cmd.PersistentFlags().StringVar(&hubPath, "hub", ".", "Path to hub folder")
+	cmd.PersistentFlags().StringVar(&crowdsecPath, "crowdsec", "crowdsec", "Path to crowdsec")
+	cmd.PersistentFlags().StringVar(&cscliPath, "cscli", "cscli", "Path to cscli")
+	cmd.PersistentFlags().BoolVar(&isAppsecTest, "appsec", false, "Command relates to appsec tests")
 
-	return cmdHubTest
+	cmd.AddCommand(cli.NewCreateCmd())
+	cmd.AddCommand(cli.NewRunCmd())
+	cmd.AddCommand(cli.NewCleanCmd())
+	cmd.AddCommand(cli.NewInfoCmd())
+	cmd.AddCommand(cli.NewListCmd())
+	cmd.AddCommand(cli.NewCoverageCmd())
+	cmd.AddCommand(cli.NewEvalCmd())
+	cmd.AddCommand(cli.NewExplainCmd())
+
+	return cmd
 }
 
+func (cli *cliHubTest) NewCreateCmd() *cobra.Command {
+	var (
+		ignoreParsers bool
+		labels        map[string]string
+		logType       string
+	)
 
-func NewHubTestCreateCmd() *cobra.Command {
 	parsers := []string{}
 	postoverflows := []string{}
 	scenarios := []string{}
-	var ignoreParsers bool
-	var labels map[string]string
-	var logType string
 
-	var cmdHubTestCreate = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "create [test_name]",
 		Example: `cscli hubtest create my-awesome-test --type syslog
@@ -76,134 +109,169 @@ cscli hubtest create my-nginx-custom-test --type nginx
 cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios crowdsecurity/http-probing`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			testName := args[0]
-			testPath := filepath.Join(HubTest.HubTestPath, testName)
+			testPath := filepath.Join(hubPtr.HubTestPath, testName)
 			if _, err := os.Stat(testPath); os.IsExist(err) {
 				return fmt.Errorf("test '%s' already exists in '%s', exiting", testName, testPath)
 			}
 
+			if isAppsecTest {
+				logType = "appsec"
+			}
+
 			if logType == "" {
-				return fmt.Errorf("please provide a type (--type) for the test")
+				return errors.New("please provide a type (--type) for the test")
 			}
 
 			if err := os.MkdirAll(testPath, os.ModePerm); err != nil {
 				return fmt.Errorf("unable to create folder '%s': %+v", testPath, err)
 			}
 
-			// create empty log file
-			logFileName := fmt.Sprintf("%s.log", testName)
-			logFilePath := filepath.Join(testPath, logFileName)
-			logFile, err := os.Create(logFilePath)
-			if err != nil {
-				return err
-			}
-			logFile.Close()
-
-			// create empty parser assertion file
-			parserAssertFilePath := filepath.Join(testPath, hubtest.ParserAssertFileName)
-			parserAssertFile, err := os.Create(parserAssertFilePath)
-			if err != nil {
-				return err
-			}
-			parserAssertFile.Close()
-
-			// create empty scenario assertion file
-			scenarioAssertFilePath := filepath.Join(testPath, hubtest.ScenarioAssertFileName)
-			scenarioAssertFile, err := os.Create(scenarioAssertFilePath)
-			if err != nil {
-				return err
-			}
-			scenarioAssertFile.Close()
-
-			parsers = append(parsers, "crowdsecurity/syslog-logs")
-			parsers = append(parsers, "crowdsecurity/dateparse-enrich")
-
-			if len(scenarios) == 0 {
-				scenarios = append(scenarios, "")
-			}
-
-			if len(postoverflows) == 0 {
-				postoverflows = append(postoverflows, "")
-			}
-
-			configFileData := &hubtest.HubTestItemConfig{
-				Parsers:       parsers,
-				Scenarios:     scenarios,
-				PostOVerflows: postoverflows,
-				LogFile:       logFileName,
-				LogType:       logType,
-				IgnoreParsers: ignoreParsers,
-				Labels:        labels,
-			}
-
 			configFilePath := filepath.Join(testPath, "config.yaml")
-			fd, err := os.OpenFile(configFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+
+			configFileData := &hubtest.HubTestItemConfig{}
+			if logType == "appsec" {
+				// create empty nuclei template file
+				nucleiFileName := fmt.Sprintf("%s.yaml", testName)
+				nucleiFilePath := filepath.Join(testPath, nucleiFileName)
+				nucleiFile, err := os.OpenFile(nucleiFilePath, os.O_RDWR|os.O_CREATE, 0755)
+				if err != nil {
+					return err
+				}
+
+				ntpl := template.Must(template.New("nuclei").Parse(hubtest.TemplateNucleiFile))
+				if ntpl == nil {
+					return errors.New("unable to parse nuclei template")
+				}
+				ntpl.ExecuteTemplate(nucleiFile, "nuclei", struct{ TestName string }{TestName: testName})
+				nucleiFile.Close()
+				configFileData.AppsecRules = []string{"./appsec-rules/<author>/your_rule_here.yaml"}
+				configFileData.NucleiTemplate = nucleiFileName
+				fmt.Println()
+				fmt.Printf("  Test name                   :  %s\n", testName)
+				fmt.Printf("  Test path                   :  %s\n", testPath)
+				fmt.Printf("  Config File                 :  %s\n", configFilePath)
+				fmt.Printf("  Nuclei Template             :  %s\n", nucleiFilePath)
+			} else {
+				// create empty log file
+				logFileName := fmt.Sprintf("%s.log", testName)
+				logFilePath := filepath.Join(testPath, logFileName)
+				logFile, err := os.Create(logFilePath)
+				if err != nil {
+					return err
+				}
+				logFile.Close()
+
+				// create empty parser assertion file
+				parserAssertFilePath := filepath.Join(testPath, hubtest.ParserAssertFileName)
+				parserAssertFile, err := os.Create(parserAssertFilePath)
+				if err != nil {
+					return err
+				}
+				parserAssertFile.Close()
+				// create empty scenario assertion file
+				scenarioAssertFilePath := filepath.Join(testPath, hubtest.ScenarioAssertFileName)
+				scenarioAssertFile, err := os.Create(scenarioAssertFilePath)
+				if err != nil {
+					return err
+				}
+				scenarioAssertFile.Close()
+
+				parsers = append(parsers, "crowdsecurity/syslog-logs")
+				parsers = append(parsers, "crowdsecurity/dateparse-enrich")
+
+				if len(scenarios) == 0 {
+					scenarios = append(scenarios, "")
+				}
+
+				if len(postoverflows) == 0 {
+					postoverflows = append(postoverflows, "")
+				}
+				configFileData.Parsers = parsers
+				configFileData.Scenarios = scenarios
+				configFileData.PostOverflows = postoverflows
+				configFileData.LogFile = logFileName
+				configFileData.LogType = logType
+				configFileData.IgnoreParsers = ignoreParsers
+				configFileData.Labels = labels
+				fmt.Println()
+				fmt.Printf("  Test name                   :  %s\n", testName)
+				fmt.Printf("  Test path                   :  %s\n", testPath)
+				fmt.Printf("  Log file                    :  %s (please fill it with logs)\n", logFilePath)
+				fmt.Printf("  Parser assertion file       :  %s (please fill it with assertion)\n", parserAssertFilePath)
+				fmt.Printf("  Scenario assertion file     :  %s (please fill it with assertion)\n", scenarioAssertFilePath)
+				fmt.Printf("  Configuration File          :  %s (please fill it with parsers, scenarios...)\n", configFilePath)
+			}
+
+			fd, err := os.Create(configFilePath)
 			if err != nil {
-				return fmt.Errorf("open: %s", err)
+				return fmt.Errorf("open: %w", err)
 			}
 			data, err := yaml.Marshal(configFileData)
 			if err != nil {
-				return fmt.Errorf("marshal: %s", err)
+				return fmt.Errorf("marshal: %w", err)
 			}
 			_, err = fd.Write(data)
 			if err != nil {
-				return fmt.Errorf("write: %s", err)
+				return fmt.Errorf("write: %w", err)
 			}
 			if err := fd.Close(); err != nil {
-				return fmt.Errorf("close: %s", err)
+				return fmt.Errorf("close: %w", err)
 			}
-			fmt.Println()
-			fmt.Printf("  Test name                   :  %s\n", testName)
-			fmt.Printf("  Test path                   :  %s\n", testPath)
-			fmt.Printf("  Log file                    :  %s (please fill it with logs)\n", logFilePath)
-			fmt.Printf("  Parser assertion file       :  %s (please fill it with assertion)\n", parserAssertFilePath)
-			fmt.Printf("  Scenario assertion file     :  %s (please fill it with assertion)\n", scenarioAssertFilePath)
-			fmt.Printf("  Configuration File          :  %s (please fill it with parsers, scenarios...)\n", configFilePath)
 
 			return nil
 		},
 	}
-	cmdHubTestCreate.PersistentFlags().StringVarP(&logType, "type", "t", "", "Log type of the test")
-	cmdHubTestCreate.Flags().StringSliceVarP(&parsers, "parsers", "p", parsers, "Parsers to add to test")
-	cmdHubTestCreate.Flags().StringSliceVar(&postoverflows, "postoverflows", postoverflows, "Postoverflows to add to test")
-	cmdHubTestCreate.Flags().StringSliceVarP(&scenarios, "scenarios", "s", scenarios, "Scenarios to add to test")
-	cmdHubTestCreate.PersistentFlags().BoolVar(&ignoreParsers, "ignore-parsers", false, "Don't run test on parsers")
 
-	return cmdHubTestCreate
+	cmd.PersistentFlags().StringVarP(&logType, "type", "t", "", "Log type of the test")
+	cmd.Flags().StringSliceVarP(&parsers, "parsers", "p", parsers, "Parsers to add to test")
+	cmd.Flags().StringSliceVar(&postoverflows, "postoverflows", postoverflows, "Postoverflows to add to test")
+	cmd.Flags().StringSliceVarP(&scenarios, "scenarios", "s", scenarios, "Scenarios to add to test")
+	cmd.PersistentFlags().BoolVar(&ignoreParsers, "ignore-parsers", false, "Don't run test on parsers")
+
+	return cmd
 }
 
+func (cli *cliHubTest) NewRunCmd() *cobra.Command {
+	var (
+		noClean          bool
+		runAll           bool
+		forceClean       bool
+		NucleiTargetHost string
+		AppSecHost       string
+	)
 
-func NewHubTestRunCmd() *cobra.Command {
-	var noClean bool
-	var runAll bool
-	var forceClean bool
-
-	var cmdHubTestRun = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:               "run",
 		Short:             "run [test_name]",
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg := cli.cfg()
+
 			if !runAll && len(args) == 0 {
 				printHelp(cmd)
-				return fmt.Errorf("Please provide test to run or --all flag")
+				return errors.New("please provide test to run or --all flag")
 			}
-
+			hubPtr.NucleiTargetHost = NucleiTargetHost
+			hubPtr.AppSecHost = AppSecHost
 			if runAll {
-				if err := HubTest.LoadAllTests(); err != nil {
+				if err := hubPtr.LoadAllTests(); err != nil {
 					return fmt.Errorf("unable to load all tests: %+v", err)
 				}
 			} else {
 				for _, testName := range args {
-					_, err := HubTest.LoadTestItem(testName)
+					_, err := hubPtr.LoadTestItem(testName)
 					if err != nil {
-						return fmt.Errorf("unable to load test '%s': %s", testName, err)
+						return fmt.Errorf("unable to load test '%s': %w", testName, err)
 					}
 				}
 			}
 
-			for _, test := range HubTest.Tests {
-				if csConfig.Cscli.Output == "human" {
+			// set timezone to avoid DST issues
+			os.Setenv("TZ", "UTC")
+			for _, test := range hubPtr.Tests {
+				if cfg.Cscli.Output == "human" {
 					log.Infof("Running test '%s'", test.Name)
 				}
 				err := test.Run()
@@ -214,11 +282,13 @@ func NewHubTestRunCmd() *cobra.Command {
 
 			return nil
 		},
-		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
+		PersistentPostRunE: func(_ *cobra.Command, _ []string) error {
+			cfg := cli.cfg()
+
 			success := true
 			testResult := make(map[string]bool)
-			for _, test := range HubTest.Tests {
-				if test.AutoGen {
+			for _, test := range hubPtr.Tests {
+				if test.AutoGen && !isAppsecTest {
 					if test.ParserAssert.AutoGenAssert {
 						log.Warningf("Assert file '%s' is empty, generating assertion:", test.ParserAssert.File)
 						fmt.Println()
@@ -231,7 +301,7 @@ func NewHubTestRunCmd() *cobra.Command {
 					}
 					if !noClean {
 						if err := test.Clean(); err != nil {
-							return fmt.Errorf("unable to clean test '%s' env: %s", test.Name, err)
+							return fmt.Errorf("unable to clean test '%s' env: %w", test.Name, err)
 						}
 					}
 					fmt.Printf("\nPlease fill your assert file(s) for test '%s', exiting\n", test.Name)
@@ -239,18 +309,18 @@ func NewHubTestRunCmd() *cobra.Command {
 				}
 				testResult[test.Name] = test.Success
 				if test.Success {
-					if csConfig.Cscli.Output == "human" {
+					if cfg.Cscli.Output == "human" {
 						log.Infof("Test '%s' passed successfully (%d assertions)\n", test.Name, test.ParserAssert.NbAssert+test.ScenarioAssert.NbAssert)
 					}
 					if !noClean {
 						if err := test.Clean(); err != nil {
-							return fmt.Errorf("unable to clean test '%s' env: %s", test.Name, err)
+							return fmt.Errorf("unable to clean test '%s' env: %w", test.Name, err)
 						}
 					}
 				} else {
 					success = false
 					cleanTestEnv := false
-					if csConfig.Cscli.Output == "human" {
+					if cfg.Cscli.Output == "human" {
 						if len(test.ParserAssert.Fails) > 0 {
 							fmt.Println()
 							log.Errorf("Parser test '%s' failed (%d errors)\n", test.Name, len(test.ParserAssert.Fails))
@@ -281,21 +351,23 @@ func NewHubTestRunCmd() *cobra.Command {
 								Default: true,
 							}
 							if err := survey.AskOne(prompt, &cleanTestEnv); err != nil {
-								return fmt.Errorf("unable to ask to remove runtime folder: %s", err)
+								return fmt.Errorf("unable to ask to remove runtime folder: %w", err)
 							}
 						}
 					}
 
 					if cleanTestEnv || forceClean {
 						if err := test.Clean(); err != nil {
-							return fmt.Errorf("unable to clean test '%s' env: %s", test.Name, err)
+							return fmt.Errorf("unable to clean test '%s' env: %w", test.Name, err)
 						}
 					}
 				}
 			}
-			if csConfig.Cscli.Output == "human" {
+
+			switch cfg.Cscli.Output {
+			case "human":
 				hubTestResultTable(color.Output, testResult)
-			} else if csConfig.Cscli.Output == "json" {
+			case "json":
 				jsonResult := make(map[string][]string, 0)
 				jsonResult["success"] = make([]string, 0)
 				jsonResult["fail"] = make([]string, 0)
@@ -308,9 +380,11 @@ func NewHubTestRunCmd() *cobra.Command {
 				}
 				jsonStr, err := json.Marshal(jsonResult)
 				if err != nil {
-					return fmt.Errorf("unable to json test result: %s", err)
+					return fmt.Errorf("unable to json test result: %w", err)
 				}
 				fmt.Println(string(jsonStr))
+			default:
+				return errors.New("only human/json output modes are supported")
 			}
 
 			if !success {
@@ -320,28 +394,30 @@ func NewHubTestRunCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmdHubTestRun.Flags().BoolVar(&noClean, "no-clean", false, "Don't clean runtime environment if test succeed")
-	cmdHubTestRun.Flags().BoolVar(&forceClean, "clean", false, "Clean runtime environment if test fail")
-	cmdHubTestRun.Flags().BoolVar(&runAll, "all", false, "Run all tests")
 
-	return cmdHubTestRun
+	cmd.Flags().BoolVar(&noClean, "no-clean", false, "Don't clean runtime environment if test succeed")
+	cmd.Flags().BoolVar(&forceClean, "clean", false, "Clean runtime environment if test fail")
+	cmd.Flags().StringVar(&NucleiTargetHost, "target", hubtest.DefaultNucleiTarget, "Target for AppSec Test")
+	cmd.Flags().StringVar(&AppSecHost, "host", hubtest.DefaultAppsecHost, "Address to expose AppSec for hubtest")
+	cmd.Flags().BoolVar(&runAll, "all", false, "Run all tests")
+
+	return cmd
 }
 
-
-func NewHubTestCleanCmd() *cobra.Command {
-	var cmdHubTestClean = &cobra.Command{
+func (cli *cliHubTest) NewCleanCmd() *cobra.Command {
+	var cmd = &cobra.Command{
 		Use:               "clean",
 		Short:             "clean [test_name]",
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			for _, testName := range args {
-				test, err := HubTest.LoadTestItem(testName)
+				test, err := hubPtr.LoadTestItem(testName)
 				if err != nil {
-					return fmt.Errorf("unable to load test '%s': %s", testName, err)
+					return fmt.Errorf("unable to load test '%s': %w", testName, err)
 				}
 				if err := test.Clean(); err != nil {
-					return fmt.Errorf("unable to clean test '%s' env: %s", test.Name, err)
+					return fmt.Errorf("unable to clean test '%s' env: %w", test.Name, err)
 				}
 			}
 
@@ -349,28 +425,32 @@ func NewHubTestCleanCmd() *cobra.Command {
 		},
 	}
 
-	return cmdHubTestClean
+	return cmd
 }
 
-
-func NewHubTestInfoCmd() *cobra.Command {
-	var cmdHubTestInfo = &cobra.Command{
+func (cli *cliHubTest) NewInfoCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "info",
 		Short:             "info [test_name]",
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			for _, testName := range args {
-				test, err := HubTest.LoadTestItem(testName)
+				test, err := hubPtr.LoadTestItem(testName)
 				if err != nil {
-					return fmt.Errorf("unable to load test '%s': %s", testName, err)
+					return fmt.Errorf("unable to load test '%s': %w", testName, err)
 				}
 				fmt.Println()
 				fmt.Printf("  Test name                   :  %s\n", test.Name)
 				fmt.Printf("  Test path                   :  %s\n", test.Path)
-				fmt.Printf("  Log file                    :  %s\n", filepath.Join(test.Path, test.Config.LogFile))
-				fmt.Printf("  Parser assertion file       :  %s\n", filepath.Join(test.Path, hubtest.ParserAssertFileName))
-				fmt.Printf("  Scenario assertion file     :  %s\n", filepath.Join(test.Path, hubtest.ScenarioAssertFileName))
+				if isAppsecTest {
+					fmt.Printf("  Nuclei Template             :  %s\n", test.Config.NucleiTemplate)
+					fmt.Printf("  Appsec Rules                  :  %s\n", strings.Join(test.Config.AppsecRules, ", "))
+				} else {
+					fmt.Printf("  Log file                    :  %s\n", filepath.Join(test.Path, test.Config.LogFile))
+					fmt.Printf("  Parser assertion file       :  %s\n", filepath.Join(test.Path, hubtest.ParserAssertFileName))
+					fmt.Printf("  Scenario assertion file     :  %s\n", filepath.Join(test.Path, hubtest.ScenarioAssertFileName))
+				}
 				fmt.Printf("  Configuration File          :  %s\n", filepath.Join(test.Path, "config.yaml"))
 			}
 
@@ -378,72 +458,80 @@ func NewHubTestInfoCmd() *cobra.Command {
 		},
 	}
 
-	return cmdHubTestInfo
+	return cmd
 }
 
-
-func NewHubTestListCmd() *cobra.Command {
-	var cmdHubTestList = &cobra.Command{
+func (cli *cliHubTest) NewListCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "list",
 		Short:             "list",
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := HubTest.LoadAllTests(); err != nil {
-				return fmt.Errorf("unable to load all tests: %s", err)
+		RunE: func(_ *cobra.Command, _ []string) error {
+			cfg := cli.cfg()
+
+			if err := hubPtr.LoadAllTests(); err != nil {
+				return fmt.Errorf("unable to load all tests: %w", err)
 			}
 
-			switch csConfig.Cscli.Output {
+			switch cfg.Cscli.Output {
 			case "human":
-				hubTestListTable(color.Output, HubTest.Tests)
+				hubTestListTable(color.Output, hubPtr.Tests)
 			case "json":
-				j, err := json.MarshalIndent(HubTest.Tests, " ", "  ")
+				j, err := json.MarshalIndent(hubPtr.Tests, " ", "  ")
 				if err != nil {
 					return err
 				}
 				fmt.Println(string(j))
 			default:
-				return fmt.Errorf("only human/json output modes are supported")
+				return errors.New("only human/json output modes are supported")
 			}
 
 			return nil
 		},
 	}
 
-	return cmdHubTestList
+	return cmd
 }
 
+func (cli *cliHubTest) NewCoverageCmd() *cobra.Command {
+	var (
+		showParserCov   bool
+		showScenarioCov bool
+		showOnlyPercent bool
+		showAppsecCov   bool
+	)
 
-func NewHubTestCoverageCmd() *cobra.Command {
-	var showParserCov bool
-	var showScenarioCov bool
-	var showOnlyPercent bool
-
-	var cmdHubTestCoverage = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:               "coverage",
 		Short:             "coverage",
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
+			cfg := cli.cfg()
+
+			// for this one we explicitly don't do for appsec
 			if err := HubTest.LoadAllTests(); err != nil {
 				return fmt.Errorf("unable to load all tests: %+v", err)
 			}
 			var err error
-			scenarioCoverage := []hubtest.ScenarioCoverage{}
-			parserCoverage := []hubtest.ParserCoverage{}
+			scenarioCoverage := []hubtest.Coverage{}
+			parserCoverage := []hubtest.Coverage{}
+			appsecRuleCoverage := []hubtest.Coverage{}
 			scenarioCoveragePercent := 0
 			parserCoveragePercent := 0
+			appsecRuleCoveragePercent := 0
 
 			// if both are false (flag by default), show both
-			showAll := !showScenarioCov && !showParserCov
+			showAll := !showScenarioCov && !showParserCov && !showAppsecCov
 
 			if showParserCov || showAll {
 				parserCoverage, err = HubTest.GetParsersCoverage()
 				if err != nil {
-					return fmt.Errorf("while getting parser coverage: %s", err)
+					return fmt.Errorf("while getting parser coverage: %w", err)
 				}
 				parserTested := 0
 				for _, test := range parserCoverage {
 					if test.TestsCount > 0 {
-						parserTested += 1
+						parserTested++
 					}
 				}
 				parserCoveragePercent = int(math.Round((float64(parserTested) / float64(len(parserCoverage)) * 100)))
@@ -452,29 +540,50 @@ func NewHubTestCoverageCmd() *cobra.Command {
 			if showScenarioCov || showAll {
 				scenarioCoverage, err = HubTest.GetScenariosCoverage()
 				if err != nil {
-					return fmt.Errorf("while getting scenario coverage: %s", err)
+					return fmt.Errorf("while getting scenario coverage: %w", err)
 				}
+
 				scenarioTested := 0
 				for _, test := range scenarioCoverage {
 					if test.TestsCount > 0 {
-						scenarioTested += 1
+						scenarioTested++
 					}
 				}
+
 				scenarioCoveragePercent = int(math.Round((float64(scenarioTested) / float64(len(scenarioCoverage)) * 100)))
 			}
 
+			if showAppsecCov || showAll {
+				appsecRuleCoverage, err = HubTest.GetAppsecCoverage()
+				if err != nil {
+					return fmt.Errorf("while getting scenario coverage: %w", err)
+				}
+
+				appsecRuleTested := 0
+				for _, test := range appsecRuleCoverage {
+					if test.TestsCount > 0 {
+						appsecRuleTested++
+					}
+				}
+				appsecRuleCoveragePercent = int(math.Round((float64(appsecRuleTested) / float64(len(appsecRuleCoverage)) * 100)))
+			}
+
 			if showOnlyPercent {
-				if showAll {
-					fmt.Printf("parsers=%d%%\nscenarios=%d%%", parserCoveragePercent, scenarioCoveragePercent)
-				} else if showParserCov {
+				switch {
+				case showAll:
+					fmt.Printf("parsers=%d%%\nscenarios=%d%%\nappsec_rules=%d%%", parserCoveragePercent, scenarioCoveragePercent, appsecRuleCoveragePercent)
+				case showParserCov:
 					fmt.Printf("parsers=%d%%", parserCoveragePercent)
-				} else if showScenarioCov {
+				case showScenarioCov:
 					fmt.Printf("scenarios=%d%%", scenarioCoveragePercent)
+				case showAppsecCov:
+					fmt.Printf("appsec_rules=%d%%", appsecRuleCoveragePercent)
 				}
 				os.Exit(0)
 			}
 
-			if csConfig.Cscli.Output == "human" {
+			switch cfg.Cscli.Output {
+			case "human":
 				if showParserCov || showAll {
 					hubTestParserCoverageTable(color.Output, parserCoverage)
 				}
@@ -482,6 +591,11 @@ func NewHubTestCoverageCmd() *cobra.Command {
 				if showScenarioCov || showAll {
 					hubTestScenarioCoverageTable(color.Output, scenarioCoverage)
 				}
+
+				if showAppsecCov || showAll {
+					hubTestAppsecRuleCoverageTable(color.Output, appsecRuleCoverage)
+				}
+
 				fmt.Println()
 				if showParserCov || showAll {
 					fmt.Printf("PARSERS    : %d%% of coverage\n", parserCoveragePercent)
@@ -489,7 +603,10 @@ func NewHubTestCoverageCmd() *cobra.Command {
 				if showScenarioCov || showAll {
 					fmt.Printf("SCENARIOS  : %d%% of coverage\n", scenarioCoveragePercent)
 				}
-			} else if csConfig.Cscli.Output == "json" {
+				if showAppsecCov || showAll {
+					fmt.Printf("APPSEC RULES  : %d%% of coverage\n", appsecRuleCoveragePercent)
+				}
+			case "json":
 				dump, err := json.MarshalIndent(parserCoverage, "", " ")
 				if err != nil {
 					return err
@@ -500,61 +617,71 @@ func NewHubTestCoverageCmd() *cobra.Command {
 					return err
 				}
 				fmt.Printf("%s", dump)
-			} else {
-				return fmt.Errorf("only human/json output modes are supported")
+				dump, err = json.MarshalIndent(appsecRuleCoverage, "", " ")
+				if err != nil {
+					return err
+				}
+				fmt.Printf("%s", dump)
+			default:
+				return errors.New("only human/json output modes are supported")
 			}
 
 			return nil
 		},
 	}
-	cmdHubTestCoverage.PersistentFlags().BoolVar(&showOnlyPercent, "percent", false, "Show only percentages of coverage")
-	cmdHubTestCoverage.PersistentFlags().BoolVar(&showParserCov, "parsers", false, "Show only parsers coverage")
-	cmdHubTestCoverage.PersistentFlags().BoolVar(&showScenarioCov, "scenarios", false, "Show only scenarios coverage")
 
-	return cmdHubTestCoverage
+	cmd.PersistentFlags().BoolVar(&showOnlyPercent, "percent", false, "Show only percentages of coverage")
+	cmd.PersistentFlags().BoolVar(&showParserCov, "parsers", false, "Show only parsers coverage")
+	cmd.PersistentFlags().BoolVar(&showScenarioCov, "scenarios", false, "Show only scenarios coverage")
+	cmd.PersistentFlags().BoolVar(&showAppsecCov, "appsec", false, "Show only appsec coverage")
+
+	return cmd
 }
 
-
-func NewHubTestEvalCmd() *cobra.Command {
+func (cli *cliHubTest) NewEvalCmd() *cobra.Command {
 	var evalExpression string
-	var cmdHubTestEval = &cobra.Command{
+
+	cmd := &cobra.Command{
 		Use:               "eval",
 		Short:             "eval [test_name]",
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			for _, testName := range args {
-				test, err := HubTest.LoadTestItem(testName)
+				test, err := hubPtr.LoadTestItem(testName)
 				if err != nil {
 					return fmt.Errorf("can't load test: %+v", err)
 				}
+
 				err = test.ParserAssert.LoadTest(test.ParserResultFile)
 				if err != nil {
 					return fmt.Errorf("can't load test results from '%s': %+v", test.ParserResultFile, err)
 				}
+
 				output, err := test.ParserAssert.EvalExpression(evalExpression)
 				if err != nil {
 					return err
 				}
+
 				fmt.Print(output)
 			}
 
 			return nil
 		},
 	}
-	cmdHubTestEval.PersistentFlags().StringVarP(&evalExpression, "expr", "e", "", "Expression to eval")
 
-	return cmdHubTestEval
+	cmd.PersistentFlags().StringVarP(&evalExpression, "expr", "e", "", "Expression to eval")
+
+	return cmd
 }
 
-
-func NewHubTestExplainCmd() *cobra.Command {
-	var cmdHubTestExplain = &cobra.Command{
+func (cli *cliHubTest) NewExplainCmd() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "explain",
 		Short:             "explain [test_name]",
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, args []string) error {
 			for _, testName := range args {
 				test, err := HubTest.LoadTestItem(testName)
 				if err != nil {
@@ -562,34 +689,32 @@ func NewHubTestExplainCmd() *cobra.Command {
 				}
 				err = test.ParserAssert.LoadTest(test.ParserResultFile)
 				if err != nil {
-					err := test.Run()
-					if err != nil {
+					if err = test.Run(); err != nil {
 						return fmt.Errorf("running test '%s' failed: %+v", test.Name, err)
 					}
-					err = test.ParserAssert.LoadTest(test.ParserResultFile)
-					if err != nil {
-						return fmt.Errorf("unable to load parser result after run: %s", err)
+
+					if err = test.ParserAssert.LoadTest(test.ParserResultFile); err != nil {
+						return fmt.Errorf("unable to load parser result after run: %w", err)
 					}
 				}
 
 				err = test.ScenarioAssert.LoadTest(test.ScenarioResultFile, test.BucketPourResultFile)
 				if err != nil {
-					err := test.Run()
-					if err != nil {
+					if err = test.Run(); err != nil {
 						return fmt.Errorf("running test '%s' failed: %+v", test.Name, err)
 					}
-					err = test.ScenarioAssert.LoadTest(test.ScenarioResultFile, test.BucketPourResultFile)
-					if err != nil {
-						return fmt.Errorf("unable to load scenario result after run: %s", err)
+
+					if err = test.ScenarioAssert.LoadTest(test.ScenarioResultFile, test.BucketPourResultFile); err != nil {
+						return fmt.Errorf("unable to load scenario result after run: %w", err)
 					}
 				}
-				opts := hubtest.DumpOpts{}
-				hubtest.DumpTree(*test.ParserAssert.TestData, *test.ScenarioAssert.PourData, opts)
+				opts := dumps.DumpOpts{}
+				dumps.DumpTree(*test.ParserAssert.TestData, *test.ScenarioAssert.PourData, opts)
 			}
 
 			return nil
 		},
 	}
 
-	return cmdHubTestExplain
+	return cmd
 }

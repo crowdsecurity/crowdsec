@@ -8,26 +8,33 @@ import (
 	"entgo.io/ent/dialect"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/ptr"
+	"github.com/crowdsecurity/go-cs-lib/ptr"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var DEFAULT_MAX_OPEN_CONNS = 100
+const (
+	DEFAULT_MAX_OPEN_CONNS  = 100
+	defaultDecisionBulkSize = 1000
+	// we need an upper bound due to the sqlite limit of 32k variables in a query
+	// we have 15 variables per decision, so 32768/15 = 2184.5333
+	maxDecisionBulkSize = 2000
+)
 
 type DatabaseCfg struct {
-	User         string      `yaml:"user"`
-	Password     string      `yaml:"password"`
-	DbName       string      `yaml:"db_name"`
-	Sslmode      string      `yaml:"sslmode"`
-	Host         string      `yaml:"host"`
-	Port         int         `yaml:"port"`
-	DbPath       string      `yaml:"db_path"`
-	Type         string      `yaml:"type"`
-	Flush        *FlushDBCfg `yaml:"flush"`
-	LogLevel     *log.Level  `yaml:"log_level"`
-	MaxOpenConns *int        `yaml:"max_open_conns,omitempty"`
-	UseWal       *bool       `yaml:"use_wal,omitempty"`
+	User             string      `yaml:"user"`
+	Password         string      `yaml:"password"`
+	DbName           string      `yaml:"db_name"`
+	Sslmode          string      `yaml:"sslmode"`
+	Host             string      `yaml:"host"`
+	Port             int         `yaml:"port"`
+	DbPath           string      `yaml:"db_path"`
+	Type             string      `yaml:"type"`
+	Flush            *FlushDBCfg `yaml:"flush"`
+	LogLevel         *log.Level  `yaml:"log_level"`
+	MaxOpenConns     *int        `yaml:"max_open_conns,omitempty"`
+	UseWal           *bool       `yaml:"use_wal,omitempty"`
+	DecisionBulkSize int         `yaml:"decision_bulk_size,omitempty"`
 }
 
 type AuthGCCfg struct {
@@ -46,7 +53,7 @@ type FlushDBCfg struct {
 	AgentsGC   *AuthGCCfg `yaml:"agents_autodelete,omitempty"`
 }
 
-func (c *Config) LoadDBConfig() error {
+func (c *Config) LoadDBConfig(inCli bool) error {
 	if c.DbConfig == nil {
 		return fmt.Errorf("no database configuration provided")
 	}
@@ -63,7 +70,7 @@ func (c *Config) LoadDBConfig() error {
 		c.DbConfig.MaxOpenConns = ptr.Of(DEFAULT_MAX_OPEN_CONNS)
 	}
 
-	if c.DbConfig.Type == "sqlite" {
+	if !inCli && c.DbConfig.Type == "sqlite" {
 		if c.DbConfig.UseWal == nil {
 			dbDir := filepath.Dir(c.DbConfig.DbPath)
 			isNetwork, fsType, err := types.IsNetworkFS(dbDir)
@@ -90,7 +97,16 @@ func (c *Config) LoadDBConfig() error {
 				log.Warnf("database seems to be stored on a network share (%s), but useWal is set to true. Proceed at your own risk.", fsType)
 			}
 		}
+	}
 
+	if c.DbConfig.DecisionBulkSize == 0 {
+		log.Tracef("No decision_bulk_size value provided, using default value of %d", defaultDecisionBulkSize)
+		c.DbConfig.DecisionBulkSize = defaultDecisionBulkSize
+	}
+
+	if c.DbConfig.DecisionBulkSize > maxDecisionBulkSize {
+		log.Warningf("decision_bulk_size too high (%d), setting to the maximum value of %d", c.DbConfig.DecisionBulkSize, maxDecisionBulkSize)
+		c.DbConfig.DecisionBulkSize = maxDecisionBulkSize
 	}
 
 	return nil

@@ -2,14 +2,10 @@ line: Sep 19 18:33:22 scw-d95986 sshd[24347]: pam_unix(sshd:auth): authenticatio
 	├ s00-raw
 	|	└ 🟢 crowdsecurity/syslog-logs (+12 ~9)
 	├ s01-parse
-	|	└ 🟢 crowdsecurity/sshd-logs (+8 ~1)
-	├ s02-enrich
-	|	├ 🟢 crowdsecurity/dateparse-enrich (+2 ~2)
-	|	└ 🟢 crowdsecurity/geoip-enrich (+10)
+	|	└ 🟢 crowdsecurity/sshd-logs (+8)
 	├-------- parser success 🟢
 	├ Scenarios
 		├ 🟢 crowdsecurity/ssh-bf
 		├ 🟢 crowdsecurity/ssh-bf_user-enum
 		├ 🟢 crowdsecurity/ssh-slow-bf
 		└ 🟢 crowdsecurity/ssh-slow-bf_user-enum
-

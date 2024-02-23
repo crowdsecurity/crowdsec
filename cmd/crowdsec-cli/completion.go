@@ -7,8 +7,7 @@ import (
 )
 
 func NewCompletionCmd() *cobra.Command {
-
-	var completionCmd = &cobra.Command{
+	completionCmd := &cobra.Command{
 		Use:   "completion [bash|zsh|powershell|fish]",
 		Short: "Generate completion script",
 		Long: `To load completions:
@@ -82,5 +81,6 @@ func NewCompletionCmd() *cobra.Command {
 			}
 		},
 	}
+
 	return completionCmd
 }

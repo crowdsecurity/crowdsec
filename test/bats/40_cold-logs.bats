@@ -11,9 +11,13 @@ fake_log() {
 
 setup_file() {
     load "../lib/setup_file.sh"
-
     # we reset config and data, and only run the daemon once for all the tests in this file
     ./instance-data load
+
+    cscli collections install crowdsecurity/sshd --error
+    cscli parsers install crowdsecurity/syslog-logs --error
+    cscli parsers install crowdsecurity/dateparse-enrich --error
+
     ./instance-crowdsec start
 }
 
@@ -66,7 +70,7 @@ setup() {
 
 @test "1.1.1.172 has not been banned (range/NOT-contained: -r 1.1.2.0/24)" {
     rune -0 cscli decisions list -r 1.1.2.0/24 -o json
-    assert_output 'null'
+    assert_json '[]'
 }
 
 @test "1.1.1.172 has been banned (exact: -i 1.1.1.172)" {
@@ -77,5 +81,5 @@ setup() {
 
 @test "1.1.1.173 has not been banned (exact: -i 1.1.1.173)" {
     rune -0 cscli decisions list -i 1.1.1.173 -o json
-    assert_output 'null'
+    assert_json '[]'
 }

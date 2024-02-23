@@ -3,12 +3,12 @@ package alertcontext
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strconv"
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/exp/slices"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -63,13 +63,21 @@ func NewAlertContext(contextToSend map[string][]string, valueLength int) error {
 	}
 
 	for key, values := range contextToSend {
-		alertContext.ContextToSendCompiled[key] = make([]*vm.Program, 0)
+		if _, ok := alertContext.ContextToSend[key]; !ok {
+			alertContext.ContextToSend[key] = make([]string, 0)
+		}
+
+		if _, ok := alertContext.ContextToSendCompiled[key]; !ok {
+			alertContext.ContextToSendCompiled[key] = make([]*vm.Program, 0)
+		}
+
 		for _, value := range values {
 			valueCompiled, err := expr.Compile(value, exprhelpers.GetExprOptions(map[string]interface{}{"evt": &types.Event{}})...)
 			if err != nil {
 				return fmt.Errorf("compilation of '%s' context value failed: %v", value, err)
 			}
 			alertContext.ContextToSendCompiled[key] = append(alertContext.ContextToSendCompiled[key], valueCompiled)
+			alertContext.ContextToSend[key] = append(alertContext.ContextToSend[key], value)
 		}
 	}
 

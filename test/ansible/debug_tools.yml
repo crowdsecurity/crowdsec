@@ -14,5 +14,6 @@
           - zsh-autosuggestions
           - zsh-syntax-highlighting
           - zsh-theme-powerlevel9k
+          - silversearcher-ag
       when:
         - ansible_facts.os_family == "Debian"

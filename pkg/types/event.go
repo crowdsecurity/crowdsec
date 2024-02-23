@@ -1,6 +1,7 @@
 package types
 
 import (
+	"net"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -12,6 +13,7 @@ import (
 const (
 	LOG = iota
 	OVFLW
+	APPSEC
 )
 
 // Event is the structure representing a runtime event (log or overflow)
@@ -39,8 +41,25 @@ type Event struct {
 	StrTimeFormat string       `yaml:"StrTimeFormat,omitempty" json:"StrTimeFormat,omitempty"`
 	MarshaledTime string       `yaml:"MarshaledTime,omitempty" json:"MarshaledTime,omitempty"`
 	Process       bool         `yaml:"Process,omitempty" json:"Process,omitempty"` //can be set to false to avoid processing line
+	Appsec        AppsecEvent  `yaml:"Appsec,omitempty" json:"Appsec,omitempty"`
 	/* Meta is the only part that will make it to the API - it should be normalized */
 	Meta map[string]string `yaml:"Meta,omitempty" json:"Meta,omitempty"`
+}
+
+func (e *Event) SetMeta(key string, value string) bool {
+	if e.Meta == nil {
+		e.Meta = make(map[string]string)
+	}
+	e.Meta[key] = value
+	return true
+}
+
+func (e *Event) SetParsed(key string, value string) bool {
+	if e.Parsed == nil {
+		e.Parsed = make(map[string]string)
+	}
+	e.Parsed[key] = value
+	return true
 }
 
 func (e *Event) GetType() string {
@@ -71,6 +90,21 @@ func (e *Event) GetMeta(key string) string {
 		}
 	}
 	return ""
+}
+
+func (e *Event) ParseIPSources() []net.IP {
+	var srcs []net.IP
+	switch e.Type {
+	case LOG:
+		if _, ok := e.Meta["source_ip"]; ok {
+			srcs = append(srcs, net.ParseIP(e.Meta["source_ip"]))
+		}
+	case OVFLW:
+		for k := range e.Overflow.Sources {
+			srcs = append(srcs, net.ParseIP(k))
+		}
+	}
+	return srcs
 }
 
 // Move in leakybuckets

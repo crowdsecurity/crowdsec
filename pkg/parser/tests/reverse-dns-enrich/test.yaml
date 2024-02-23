@@ -1,14 +1,14 @@
 #these are the events we input into parser
 lines:
   - Enriched:
-      IpToResolve: 8.8.8.8
+      IpToResolve: 1.1.1.1
   - Enriched:
       IpToResolve: 1.2.3.4
 #these are the results we expect from the parser
 results:
   - Enriched:
-      reverse_dns: dns.google.
-      IpToResolve: 8.8.8.8
+      reverse_dns: one.one.one.one.
+      IpToResolve: 1.1.1.1
     Meta:
       did_dns_succeeded: yes
     Process: true

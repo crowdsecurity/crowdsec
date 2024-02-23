@@ -3,7 +3,6 @@ common:
   log_media: file
   log_level: info
   log_dir:  C:\ProgramData\CrowdSec\log\
-  working_dir: .
 config_paths:
   config_dir:  C:\ProgramData\CrowdSec\config\
   data_dir:  C:\ProgramData\CrowdSec\data\

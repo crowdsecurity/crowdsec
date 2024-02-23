@@ -26,7 +26,7 @@ func (m *GRPCClient) Notify(ctx context.Context, notification *protobufs.Notific
 	done := make(chan error)
 	go func() {
 		_, err := m.client.Notify(
-			context.Background(), &protobufs.Notification{Text: notification.Text, Name: notification.Name},
+			ctx, &protobufs.Notification{Text: notification.Text, Name: notification.Name},
 		)
 		done <- err
 	}()

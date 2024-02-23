@@ -1,5 +1,5 @@
 
-BUILD_GOVERSION = $(subst go,,$(shell go env GOVERSION))
+BUILD_GOVERSION = $(subst go,,$(shell $(GO) env GOVERSION))
 
 go_major_minor = $(subst ., ,$(BUILD_GOVERSION))
 GO_MAJOR_VERSION = $(word 1, $(go_major_minor))
@@ -9,7 +9,7 @@ GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not suppo
 
 
 .PHONY: goversion
-goversion: $(if $(findstring devel,$(shell go env GOVERSION)),goversion_devel,goversion_check)
+goversion: $(if $(findstring devel,$(shell $(GO) env GOVERSION)),goversion_devel,goversion_check)
 
 
 .PHONY: goversion_devel

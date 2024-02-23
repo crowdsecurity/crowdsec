@@ -21,6 +21,21 @@ var exprFuncs = []exprCustomFunc{
 		},
 	},
 	{
+		name:      "Flatten",
+		function:  Flatten,
+		signature: []interface{}{},
+	},
+	{
+		name:      "Distinct",
+		function:  Distinct,
+		signature: []interface{}{},
+	},
+	{
+		name:      "FlattenDistinct",
+		function:  FlattenDistinct,
+		signature: []interface{}{},
+	},
+	{
 		name:     "Distance",
 		function: Distance,
 		signature: []interface{}{
@@ -417,6 +432,13 @@ var exprFuncs = []exprCustomFunc{
 		function: Hostname,
 		signature: []interface{}{
 			new(func() (string, error)),
+		},
+	},
+	{
+		name:     "FloatApproxEqual",
+		function: FloatApproxEqual,
+		signature: []interface{}{
+			new(func(float64, float64) bool),
 		},
 	},
 }

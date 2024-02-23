@@ -3,7 +3,6 @@
 // license that can be found in the LICENSE file.
 
 //go:build windows
-// +build windows
 
 package main
 
@@ -24,7 +23,7 @@ type crowdsec_winservice struct {
 	config *csconfig.Config
 }
 
-func (m *crowdsec_winservice) Execute(args []string, r <-chan svc.ChangeRequest, changes chan<- svc.Status) (ssec bool, errno uint32) {
+func (m *crowdsec_winservice) Execute(args []string, r <-chan svc.ChangeRequest, changes chan<- svc.Status) (bool, uint32) {
 	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown
 	changes <- svc.Status{State: svc.StartPending}
 	tick := time.Tick(500 * time.Millisecond)
@@ -60,7 +59,8 @@ func (m *crowdsec_winservice) Execute(args []string, r <-chan svc.ChangeRequest,
 	if err != nil {
 		log.Fatal(err)
 	}
-	return
+
+	return false, 0
 }
 
 func runService(name string) error {

@@ -9,8 +9,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/crowdsecurity/go-cs-lib/pkg/trace"
-	"github.com/crowdsecurity/go-cs-lib/pkg/version"
+	"github.com/crowdsecurity/go-cs-lib/trace"
+	"github.com/crowdsecurity/go-cs-lib/version"
 
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/cache"
@@ -114,13 +114,17 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 		}
 
 		decisionsFilters := make(map[string][]string, 0)
+
 		decisions, err := dbClient.QueryDecisionCountByScenario(decisionsFilters)
 		if err != nil {
 			log.Errorf("Error querying decisions for metrics: %v", err)
 			next.ServeHTTP(w, r)
+
 			return
 		}
+
 		globalActiveDecisions.Reset()
+
 		for _, d := range decisions {
 			globalActiveDecisions.With(prometheus.Labels{"reason": d.Scenario, "origin": d.Origin, "action": d.Type}).Set(float64(d.Count))
 		}
@@ -136,6 +140,7 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 		if err != nil {
 			log.Errorf("Error querying alerts for metrics: %v", err)
 			next.ServeHTTP(w, r)
+
 			return
 		}
 
@@ -151,14 +156,6 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 	if !config.Enabled {
 		return
 	}
-	if config.ListenAddr == "" {
-		log.Warning("prometheus is enabled, but the listen address is empty, using '127.0.0.1'")
-		config.ListenAddr = "127.0.0.1"
-	}
-	if config.ListenPort == 0 {
-		log.Warning("prometheus is enabled, but the listen port is empty, using '6060'")
-		config.ListenPort = 6060
-	}
 
 	// Registering prometheus
 	// If in aggregated mode, do not register events associated with a source, to keep the cardinality low
@@ -169,7 +166,8 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 			leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstantiation, leaky.BucketsOverflow,
 			v1.LapiRouteHits,
 			leaky.BucketsCurrentCount,
-			cache.CacheMetrics, exprhelpers.RegexpCacheMetrics)
+			cache.CacheMetrics, exprhelpers.RegexpCacheMetrics, parser.NodesWlHitsOk, parser.NodesWlHits,
+		)
 	} else {
 		log.Infof("Loading prometheus collectors")
 		prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
@@ -177,13 +175,15 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 			globalCsInfo, globalParsingHistogram, globalPourHistogram,
 			v1.LapiRouteHits, v1.LapiMachineHits, v1.LapiBouncerHits, v1.LapiNilDecisions, v1.LapiNonNilDecisions, v1.LapiResponseTime,
 			leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstantiation, leaky.BucketsOverflow, leaky.BucketsCurrentCount,
-			globalActiveDecisions, globalAlerts,
-			cache.CacheMetrics, exprhelpers.RegexpCacheMetrics)
-
+			globalActiveDecisions, globalAlerts, parser.NodesWlHitsOk, parser.NodesWlHits,
+			cache.CacheMetrics, exprhelpers.RegexpCacheMetrics,
+		)
 	}
 }
 
-func servePrometheus(config *csconfig.PrometheusCfg, dbClient *database.Client, apiReady chan bool, agentReady chan bool) {
+func servePrometheus(config *csconfig.PrometheusCfg, dbClient *database.Client, agentReady chan bool) {
+	<-agentReady
+
 	if !config.Enabled {
 		return
 	}
@@ -191,9 +191,8 @@ func servePrometheus(config *csconfig.PrometheusCfg, dbClient *database.Client, 
 	defer trace.CatchPanic("crowdsec/servePrometheus")
 
 	http.Handle("/metrics", computeDynamicMetrics(promhttp.Handler(), dbClient))
-	<-apiReady
-	<-agentReady
 	log.Debugf("serving metrics after %s ms", time.Since(crowdsecT0))
+
 	if err := http.ListenAndServe(fmt.Sprintf("%s:%d", config.ListenAddr, config.ListenPort), nil); err != nil {
 		log.Warningf("prometheus: %s", err)
 	}

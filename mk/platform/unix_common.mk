@@ -8,7 +8,11 @@ MKDIR=mkdir -p
 GOOS ?= $(shell go env GOOS)
 
 # Current versioning information from env
-BUILD_VERSION?=$(shell git describe --tags)
+# The $(or) is used to ignore an empty BUILD_VERSION when it's an envvar,
+# like inside a docker build: docker build --build-arg BUILD_VERSION=1.2.3
+# as opposed to a make parameter: make BUILD_VERSION=1.2.3
+BUILD_VERSION:=$(or $(BUILD_VERSION),$(shell git describe --tags --dirty))
+
 BUILD_TIMESTAMP=$(shell date +%F"_"%T)
 DEFAULT_CONFIGDIR?=/etc/crowdsec
 DEFAULT_DATADIR?=/var/lib/crowdsec/data

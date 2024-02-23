@@ -2,21 +2,16 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/fflag"
 )
 
-func runConfigFeatureFlags(cmd *cobra.Command, args []string) error {
-	flags := cmd.Flags()
-
-	showRetired, err := flags.GetBool("retired")
-	if err != nil {
-		return err
-	}
-
+func (cli *cliConfig) featureFlags(showRetired bool) error {
 	green := color.New(color.FgGreen).SprintFunc()
 	red := color.New(color.FgRed).SprintFunc()
 	yellow := color.New(color.FgYellow).SprintFunc()
@@ -42,6 +37,7 @@ func runConfigFeatureFlags(cmd *cobra.Command, args []string) error {
 		if feat.State == fflag.RetiredState {
 			fmt.Printf("\n  %s %s", magenta("RETIRED"), feat.DeprecationMsg)
 		}
+
 		fmt.Println()
 	}
 
@@ -56,10 +52,12 @@ func runConfigFeatureFlags(cmd *cobra.Command, args []string) error {
 			retired = append(retired, feat)
 			continue
 		}
+
 		if feat.IsEnabled() {
 			enabled = append(enabled, feat)
 			continue
 		}
+
 		disabled = append(disabled, feat)
 	}
 
@@ -87,7 +85,14 @@ func runConfigFeatureFlags(cmd *cobra.Command, args []string) error {
 
 	fmt.Println("To enable a feature you can: ")
 	fmt.Println("  - set the environment variable CROWDSEC_FEATURE_<uppercase_feature_name> to true")
-	fmt.Printf("  - add the line '- <feature_name>' to the file %s/feature.yaml\n", csConfig.ConfigPaths.ConfigDir)
+
+	featurePath, err := filepath.Abs(csconfig.GetFeatureFilePath(ConfigFilePath))
+	if err != nil {
+		// we already read the file, shouldn't happen
+		return err
+	}
+
+	fmt.Printf("  - add the line '- <feature_name>' to the file %s\n", featurePath)
 	fmt.Println()
 
 	if len(enabled) == 0 && len(disabled) == 0 {
@@ -109,18 +114,22 @@ func runConfigFeatureFlags(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func NewConfigFeatureFlagsCmd() *cobra.Command {
-	cmdConfigFeatureFlags := &cobra.Command{
+func (cli *cliConfig) newFeatureFlagsCmd() *cobra.Command {
+	var showRetired bool
+
+	cmd := &cobra.Command{
 		Use:               "feature-flags",
 		Short:             "Displays feature flag status",
 		Long:              `Displays the supported feature flags and their current status.`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		RunE:              runConfigFeatureFlags,
+		RunE: func(_ *cobra.Command, _ []string) error {
+			return cli.featureFlags(showRetired)
+		},
 	}
 
-	flags := cmdConfigFeatureFlags.Flags()
-	flags.Bool("retired", false, "Show retired features")
+	flags := cmd.Flags()
+	flags.BoolVar(&showRetired, "retired", false, "Show retired features")
 
-	return cmdConfigFeatureFlags
+	return cmd
 }

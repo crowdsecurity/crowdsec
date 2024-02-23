@@ -34,50 +34,50 @@ teardown() {
 @test "config.yaml.local - cscli (log_level)" {
     config_set '.common.log_level="warning"'
     rune -0 cscli config show --key Config.Common.LogLevel
-    assert_output "warning"
+    assert_output "&3"
 
     echo "{'common':{'log_level':'debug'}}" >"${CONFIG_YAML}.local"
     rune -0 cscli config show --key Config.Common.LogLevel
-    assert_output "debug"
+    assert_output "&5"
 }
 
 @test "config.yaml.local - cscli (log_level - with envvar)" {
     config_set '.common.log_level="warning"'
     rune -0 cscli config show --key Config.Common.LogLevel
-    assert_output "warning"
+    assert_output "&3"
 
     export CROWDSEC_LOG_LEVEL=debug
     echo "{'common':{'log_level':'${CROWDSEC_LOG_LEVEL}'}}" >"${CONFIG_YAML}.local"
     rune -0 cscli config show --key Config.Common.LogLevel
-    assert_output "debug"
+    assert_output "&5"
 }
 
 @test "config.yaml.local - crowdsec (listen_url)" {
     # disable the agent or we'll need to patch api client credentials too
     rune -0 config_disable_agent
     ./instance-crowdsec start
-    rune -0 ./bin/wait-for-port -q 8080
+    rune -0 wait-for-port -q 8080
     ./instance-crowdsec stop
-    rune -1 ./bin/wait-for-port -q 8080
+    rune -1 wait-for-port -q 8080
 
     echo "{'api':{'server':{'listen_uri':127.0.0.1:8083}}}" >"${CONFIG_YAML}.local"
 
     ./instance-crowdsec start
-    rune -0 ./bin/wait-for-port -q 8083
-    rune -1 ./bin/wait-for-port -q 8080
+    rune -0 wait-for-port -q 8083
+    rune -1 wait-for-port -q 8080
     ./instance-crowdsec stop
 
     rm -f "${CONFIG_YAML}.local"
     ./instance-crowdsec start
-    rune -1 ./bin/wait-for-port -q 8083
-    rune -0 ./bin/wait-for-port -q 8080
+    rune -1 wait-for-port -q 8083
+    rune -0 wait-for-port -q 8080
 }
 
 @test "local_api_credentials.yaml.local" {
     rune -0 config_disable_agent
     echo "{'api':{'server':{'listen_uri':127.0.0.1:8083}}}" >"${CONFIG_YAML}.local"
     ./instance-crowdsec start
-    rune -0 ./bin/wait-for-port -q 8083
+    rune -0 wait-for-port -q 8083
 
     rune -1 cscli decisions list
     echo "{'url':'http://127.0.0.1:8083'}" >"${LOCAL_API_CREDENTIALS}.local"
@@ -126,6 +126,9 @@ teardown() {
     touch "${tmpfile}"
     ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
     echo -e "---\nfilename: ${tmpfile}\nlabels:\n  type: syslog\n" >>"${ACQUIS_YAML}"
+
+    rune -0 cscli collections install crowdsecurity/sshd
+    rune -0 cscli parsers install crowdsecurity/syslog-logs
 
     ./instance-crowdsec start
     sleep .5
