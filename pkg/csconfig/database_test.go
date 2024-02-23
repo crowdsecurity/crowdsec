@@ -31,7 +31,7 @@ func TestLoadDBConfig(t *testing.T) {
 			},
 			expected: &DatabaseCfg{
 				Type:         "sqlite",
-				DbPath:       "./tests/test.db",
+				DbPath:       "./testdata/test.db",
 				MaxOpenConns: ptr.Of(10),
 				UseWal:       ptr.Of(true),
 				DecisionBulkSize: defaultDecisionBulkSize,
