@@ -275,7 +275,7 @@ func waitOnTomb() {
 		case <-acquisTomb.Dead():
 			/*if it's acquisition dying it means that we were in "cat" mode.
 			while shutting down, we need to give time for all buckets to process in flight data*/
-			log.Warning("Acquisition is finished, shutting down")
+			log.Info("Acquisition is finished, shutting down")
 			/*
 				While it might make sense to want to shut-down parser/buckets/etc. as soon as acquisition is finished,
 				we might have some pending buckets: buckets that overflowed, but whose LeakRoutine are still alive because they
