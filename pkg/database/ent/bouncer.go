@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 )
@@ -37,7 +38,8 @@ type Bouncer struct {
 	// LastPull holds the value of the "last_pull" field.
 	LastPull time.Time `json:"last_pull"`
 	// AuthType holds the value of the "auth_type" field.
-	AuthType string `json:"auth_type"`
+	AuthType     string `json:"auth_type"`
+	selectValues sql.SelectValues
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -54,7 +56,7 @@ func (*Bouncer) scanValues(columns []string) ([]any, error) {
 		case bouncer.FieldCreatedAt, bouncer.FieldUpdatedAt, bouncer.FieldUntil, bouncer.FieldLastPull:
 			values[i] = new(sql.NullTime)
 		default:
-			return nil, fmt.Errorf("unexpected column %q for type Bouncer", columns[i])
+			values[i] = new(sql.UnknownType)
 		}
 	}
 	return values, nil
@@ -142,16 +144,24 @@ func (b *Bouncer) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				b.AuthType = value.String
 			}
+		default:
+			b.selectValues.Set(columns[i], values[i])
 		}
 	}
 	return nil
+}
+
+// Value returns the ent.Value that was dynamically selected and assigned to the Bouncer.
+// This includes values selected through modifiers, order, etc.
+func (b *Bouncer) Value(name string) (ent.Value, error) {
+	return b.selectValues.Get(name)
 }
 
 // Update returns a builder for updating this Bouncer.
 // Note that you need to call Bouncer.Unwrap() before calling this method if this Bouncer
 // was returned from a transaction, and the transaction was committed or rolled back.
 func (b *Bouncer) Update() *BouncerUpdateOne {
-	return (&BouncerClient{config: b.config}).UpdateOne(b)
+	return NewBouncerClient(b.config).UpdateOne(b)
 }
 
 // Unwrap unwraps the Bouncer entity that was returned from a transaction after it was closed,
@@ -212,9 +222,3 @@ func (b *Bouncer) String() string {
 
 // Bouncers is a parsable slice of Bouncer.
 type Bouncers []*Bouncer
-
-func (b Bouncers) config(cfg config) {
-	for _i := range b {
-		b[_i].config = cfg
-	}
-}

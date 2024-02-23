@@ -4,6 +4,8 @@ package bouncer
 
 import (
 	"time"
+
+	"entgo.io/ent/dialect/sql"
 )
 
 const (
@@ -81,3 +83,66 @@ var (
 	// DefaultAuthType holds the default value on creation for the "auth_type" field.
 	DefaultAuthType string
 )
+
+// OrderOption defines the ordering options for the Bouncer queries.
+type OrderOption func(*sql.Selector)
+
+// ByID orders the results by the id field.
+func ByID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByCreatedAt orders the results by the created_at field.
+func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByUpdatedAt orders the results by the updated_at field.
+func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
+}
+
+// ByName orders the results by the name field.
+func ByName(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldName, opts...).ToFunc()
+}
+
+// ByAPIKey orders the results by the api_key field.
+func ByAPIKey(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAPIKey, opts...).ToFunc()
+}
+
+// ByRevoked orders the results by the revoked field.
+func ByRevoked(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRevoked, opts...).ToFunc()
+}
+
+// ByIPAddress orders the results by the ip_address field.
+func ByIPAddress(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldIPAddress, opts...).ToFunc()
+}
+
+// ByType orders the results by the type field.
+func ByType(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldType, opts...).ToFunc()
+}
+
+// ByVersion orders the results by the version field.
+func ByVersion(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldVersion, opts...).ToFunc()
+}
+
+// ByUntil orders the results by the until field.
+func ByUntil(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUntil, opts...).ToFunc()
+}
+
+// ByLastPull orders the results by the last_pull field.
+func ByLastPull(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLastPull, opts...).ToFunc()
+}
+
+// ByAuthType orders the results by the auth_type field.
+func ByAuthType(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAuthType, opts...).ToFunc()
+}

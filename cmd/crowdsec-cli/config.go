@@ -4,19 +4,29 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewConfigCmd() *cobra.Command {
-	cmdConfig := &cobra.Command{
+type cliConfig struct {
+	cfg configGetter
+}
+
+func NewCLIConfig(cfg configGetter) *cliConfig {
+	return &cliConfig{
+		cfg: cfg,
+	}
+}
+
+func (cli *cliConfig) NewCommand() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:               "config [command]",
 		Short:             "Allows to view current config",
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 	}
 
-	cmdConfig.AddCommand(NewConfigShowCmd())
-	cmdConfig.AddCommand(NewConfigShowYAMLCmd())
-	cmdConfig.AddCommand(NewConfigBackupCmd())
-	cmdConfig.AddCommand(NewConfigRestoreCmd())
-	cmdConfig.AddCommand(NewConfigFeatureFlagsCmd())
+	cmd.AddCommand(cli.newShowCmd())
+	cmd.AddCommand(cli.newShowYAMLCmd())
+	cmd.AddCommand(cli.newBackupCmd())
+	cmd.AddCommand(cli.newRestoreCmd())
+	cmd.AddCommand(cli.newFeatureFlagsCmd())
 
-	return cmdConfig
+	return cmd
 }
