@@ -17,17 +17,16 @@ func getAgentsTable(out io.Writer, machines []*ent.Machine) {
 	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
 
 	for _, m := range machines {
-		var validated string
+		validated := emoji.Prohibited
 		if m.IsValidated {
 			validated = emoji.CheckMark
-		} else {
-			validated = emoji.Prohibited
 		}
 
 		hb, active := getLastHeartbeat(m)
 		if !active {
 			hb = emoji.Warning + " " + hb
 		}
+
 		t.AddRow(m.MachineId, m.IpAddress, m.UpdatedAt.Format(time.RFC3339), validated, m.Version, m.AuthType, hb)
 	}
 

@@ -55,6 +55,7 @@ func hubTestParserCoverageTable(out io.Writer, coverage []hubtest.Coverage) {
 			status = emoji.GreenCircle
 			parserTested++
 		}
+
 		t.AddRow(test.Name, status, fmt.Sprintf("%d times (across %d tests)", test.TestsCount, len(test.PresentIn)))
 	}
 
@@ -75,6 +76,7 @@ func hubTestAppsecRuleCoverageTable(out io.Writer, coverage []hubtest.Coverage) 
 			status = emoji.GreenCircle
 			parserTested++
 		}
+
 		t.AddRow(test.Name, status, fmt.Sprintf("%d times (across %d tests)", test.TestsCount, len(test.PresentIn)))
 	}
 
@@ -95,6 +97,7 @@ func hubTestScenarioCoverageTable(out io.Writer, coverage []hubtest.Coverage) {
 			status = emoji.GreenCircle
 			parserTested++
 		}
+
 		t.AddRow(test.Name, status, fmt.Sprintf("%d times (across %d tests)", test.TestsCount, len(test.PresentIn)))
 	}
 

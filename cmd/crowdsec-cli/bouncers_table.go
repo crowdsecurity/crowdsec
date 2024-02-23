@@ -17,10 +17,8 @@ func getBouncersTable(out io.Writer, bouncers []*ent.Bouncer) {
 	t.SetAlignment(table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft, table.AlignLeft)
 
 	for _, b := range bouncers {
-		var revoked string
-		if !b.Revoked {
-			revoked = emoji.CheckMark
-		} else {
+		revoked := emoji.CheckMark
+		if b.Revoked {
 			revoked = emoji.Prohibited
 		}
 

@@ -1,6 +1,7 @@
 package dumps
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -8,13 +9,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/emoji"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/crowdsecurity/go-cs-lib/maptools"
 	"github.com/fatih/color"
 	diff "github.com/r3labs/diff/v2"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
+
+	"github.com/crowdsecurity/go-cs-lib/maptools"
+
+	"github.com/crowdsecurity/crowdsec/pkg/emoji"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 type ParserResult struct {
@@ -56,7 +59,7 @@ func LoadParserDump(filepath string) (*ParserResults, error) {
 
 	var lastStage string
 
-	//Loop over stages to find last successful one with at least one parser
+	// Loop over stages to find last successful one with at least one parser
 	for i := len(stages) - 2; i >= 0; i-- {
 		if len(pdump[stages[i]]) != 0 {
 			lastStage = stages[i]
@@ -73,7 +76,7 @@ func LoadParserDump(filepath string) (*ParserResults, error) {
 	sort.Strings(parsers)
 
 	if len(parsers) == 0 {
-		return nil, fmt.Errorf("no parser found. Please install the appropriate parser and retry")
+		return nil, errors.New("no parser found. Please install the appropriate parser and retry")
 	}
 
 	lastParser := parsers[len(parsers)-1]
@@ -90,14 +93,15 @@ func LoadParserDump(filepath string) (*ParserResults, error) {
 }
 
 func DumpTree(parserResults ParserResults, bucketPour BucketPourInfo, opts DumpOpts) {
-	//note : we can use line -> time as the unique identifier (of acquisition)
+	// note : we can use line -> time as the unique identifier (of acquisition)
 	state := make(map[time.Time]map[string]map[string]ParserResult)
 	assoc := make(map[time.Time]string, 0)
 	parser_order := make(map[string][]string)
 
 	for stage, parsers := range parserResults {
-		//let's process parsers in the order according to idx
+		// let's process parsers in the order according to idx
 		parser_order[stage] = make([]string, len(parsers))
+
 		for pname, parser := range parsers {
 			if len(parser) > 0 {
 				parser_order[stage][parser[0].Idx-1] = pname
@@ -128,14 +132,14 @@ func DumpTree(parserResults ParserResults, bucketPour BucketPourInfo, opts DumpO
 				continue
 			}
 
-			//it might be bucket overflow being reprocessed, skip this
+			// it might be bucket overflow being reprocessed, skip this
 			if _, ok := state[evt.Line.Time]; !ok {
 				state[evt.Line.Time] = make(map[string]map[string]ParserResult)
 				assoc[evt.Line.Time] = evt.Line.Raw
 			}
 
-			//there is a trick : to know if an event successfully exit the parsers, we check if it reached the pour() phase
-			//we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
+			// there is a trick : to know if an event successfully exit the parsers, we check if it reached the pour() phase
+			// we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
 			if _, ok := state[evt.Line.Time]["buckets"]; !ok {
 				state[evt.Line.Time]["buckets"] = make(map[string]ParserResult)
 			}
@@ -148,7 +152,7 @@ func DumpTree(parserResults ParserResults, bucketPour BucketPourInfo, opts DumpO
 	red := color.New(color.FgRed).SprintFunc()
 	green := color.New(color.FgGreen).SprintFunc()
 	whitelistReason := ""
-	//get each line
+	// get each line
 	for tstamp, rawstr := range assoc {
 		if opts.SkipOk {
 			if _, ok := state[tstamp]["buckets"]["OK"]; ok {
@@ -161,8 +165,8 @@ func DumpTree(parserResults ParserResults, bucketPour BucketPourInfo, opts DumpO
 		skeys := make([]string, 0, len(state[tstamp]))
 
 		for k := range state[tstamp] {
-			//there is a trick : to know if an event successfully exit the parsers, we check if it reached the pour() phase
-			//we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
+			// there is a trick : to know if an event successfully exit the parsers, we check if it reached the pour() phase
+			// we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
 			if k == "buckets" {
 				continue
 			}
@@ -216,6 +220,7 @@ func DumpTree(parserResults ParserResults, bucketPour BucketPourInfo, opts DumpO
 									whitelistReason = parsers[parser].Evt.WhitelistReason
 								}
 							}
+
 							updated++
 						case "delete":
 							deleted++
@@ -277,7 +282,7 @@ func DumpTree(parserResults ParserResults, bucketPour BucketPourInfo, opts DumpO
 			sep = "├"
 		}
 
-		//did the event enter the bucket pour phase ?
+		// did the event enter the bucket pour phase ?
 		if _, ok := state[tstamp]["buckets"]["OK"]; ok {
 			fmt.Printf("\t%s-------- parser success %s\n", sep, emoji.GreenCircle)
 		} else if whitelistReason != "" {
@@ -286,7 +291,7 @@ func DumpTree(parserResults ParserResults, bucketPour BucketPourInfo, opts DumpO
 			fmt.Printf("\t%s-------- parser failure %s\n", sep, emoji.RedCircle)
 		}
 
-		//now print bucket info
+		// now print bucket info
 		if len(state[tstamp]["buckets"]) > 0 {
 			fmt.Printf("\t├ Scenarios\n")
 		}
@@ -294,8 +299,8 @@ func DumpTree(parserResults ParserResults, bucketPour BucketPourInfo, opts DumpO
 		bnames := make([]string, 0, len(state[tstamp]["buckets"]))
 
 		for k := range state[tstamp]["buckets"] {
-			//there is a trick : to know if an event successfully exit the parsers, we check if it reached the pour() phase
-			//we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
+			// there is a trick : to know if an event successfully exit the parsers, we check if it reached the pour() phase
+			// we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
 			if k == "OK" {
 				continue
 			}

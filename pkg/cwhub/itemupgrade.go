@@ -60,6 +60,7 @@ func (i *Item) Upgrade(force bool) (bool, error) {
 		// TODO: use a better way to communicate this
 		fmt.Printf("updated %s\n", i.Name)
 		i.hub.logger.Infof("%v %s: updated", emoji.Package, i.Name)
+
 		updated = true
 	}
 
@@ -151,7 +152,7 @@ func (i *Item) FetchLatest() ([]byte, string, error) {
 		i.hub.logger.Errorf("Downloaded version doesn't match index, please 'hub update'")
 		i.hub.logger.Debugf("got %s, expected %s", meow, i.Versions[i.Version].Digest)
 
-		return nil, "", fmt.Errorf("invalid download hash")
+		return nil, "", errors.New("invalid download hash")
 	}
 
 	return body, url, nil
