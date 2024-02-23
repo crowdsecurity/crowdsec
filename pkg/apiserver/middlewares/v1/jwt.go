@@ -22,7 +22,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
-var identityKey = "id"
+const MachineIDKey = "id"
 
 type JWT struct {
 	Middleware *jwt.GinJWTMiddleware
@@ -33,7 +33,7 @@ type JWT struct {
 func PayloadFunc(data interface{}) jwt.MapClaims {
 	if value, ok := data.(*models.WatcherAuthRequest); ok {
 		return jwt.MapClaims{
-			identityKey: &value.MachineID,
+			MachineIDKey: &value.MachineID,
 		}
 	}
 
@@ -42,7 +42,7 @@ func PayloadFunc(data interface{}) jwt.MapClaims {
 
 func IdentityHandler(c *gin.Context) interface{} {
 	claims := jwt.ExtractClaims(c)
-	machineID := claims[identityKey].(string)
+	machineID := claims[MachineIDKey].(string)
 
 	return &models.WatcherAuthRequest{
 		MachineID: &machineID,
@@ -307,7 +307,7 @@ func NewJWT(dbClient *database.Client) (*JWT, error) {
 		Key:             secret,
 		Timeout:         time.Hour,
 		MaxRefresh:      time.Hour,
-		IdentityKey:     identityKey,
+		IdentityKey:     MachineIDKey,
 		PayloadFunc:     PayloadFunc,
 		IdentityHandler: IdentityHandler,
 		Authenticator:   jwtMiddleware.Authenticator,

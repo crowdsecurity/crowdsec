@@ -7,7 +7,8 @@ import (
 	"slices"
 
 	"github.com/Masterminds/semver/v3"
-	"github.com/enescakir/emoji"
+
+	"github.com/crowdsecurity/crowdsec/pkg/emoji"
 )
 
 const (
@@ -84,7 +85,7 @@ func (s *ItemState) Text() string {
 }
 
 // Emoji returns the status of the item as an emoji (eg. emoji.Warning).
-func (s *ItemState) Emoji() emoji.Emoji {
+func (s *ItemState) Emoji() string {
 	switch {
 	case s.IsLocal():
 		return emoji.House
