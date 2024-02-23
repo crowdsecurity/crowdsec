@@ -15,6 +15,7 @@ import (
 
 func (cli *cliConfig) restoreHub(dirPath string) error {
 	cfg := cli.cfg()
+
 	hub, err := require.Hub(cfg, require.RemoteHub(cfg), nil)
 	if err != nil {
 		return err
@@ -127,6 +128,7 @@ func (cli *cliConfig) restoreHub(dirPath string) error {
 */
 func (cli *cliConfig) restore(dirPath string) error {
 	var err error
+
 	cfg := cli.cfg()
 
 	backupMain := fmt.Sprintf("%s/config.yaml", dirPath)

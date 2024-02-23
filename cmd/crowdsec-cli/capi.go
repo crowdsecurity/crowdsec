@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -26,7 +27,7 @@ const (
 	CAPIURLPrefix = "v3"
 )
 
-type cliCapi struct{
+type cliCapi struct {
 	cfg configGetter
 }
 
@@ -67,13 +68,16 @@ func (cli *cliCapi) register(capiUserPrefix string, outputFile string) error {
 
 	capiUser, err := generateID(capiUserPrefix)
 	if err != nil {
-		return fmt.Errorf("unable to generate machine id: %s", err)
+		return fmt.Errorf("unable to generate machine id: %w", err)
 	}
+
 	password := strfmt.Password(generatePassword(passwordLength))
+
 	apiurl, err := url.Parse(types.CAPIBaseURL)
 	if err != nil {
 		return fmt.Errorf("unable to parse api url %s: %w", types.CAPIBaseURL, err)
 	}
+
 	_, err = apiclient.RegisterClient(&apiclient.Config{
 		MachineID:     capiUser,
 		Password:      password,
@@ -85,32 +89,38 @@ func (cli *cliCapi) register(capiUserPrefix string, outputFile string) error {
 	if err != nil {
 		return fmt.Errorf("api client register ('%s'): %w", types.CAPIBaseURL, err)
 	}
-	log.Printf("Successfully registered to Central API (CAPI)")
+
+	log.Infof("Successfully registered to Central API (CAPI)")
 
 	var dumpFile string
 
-	if outputFile != "" {
+	switch {
+	case outputFile != "":
 		dumpFile = outputFile
-	} else if cfg.API.Server.OnlineClient.CredentialsFilePath != "" {
+	case cfg.API.Server.OnlineClient.CredentialsFilePath != "":
 		dumpFile = cfg.API.Server.OnlineClient.CredentialsFilePath
-	} else {
+	default:
 		dumpFile = ""
 	}
+
 	apiCfg := csconfig.ApiCredentialsCfg{
 		Login:    capiUser,
 		Password: password.String(),
 		URL:      types.CAPIBaseURL,
 	}
+
 	apiConfigDump, err := yaml.Marshal(apiCfg)
 	if err != nil {
 		return fmt.Errorf("unable to marshal api credentials: %w", err)
 	}
+
 	if dumpFile != "" {
 		err = os.WriteFile(dumpFile, apiConfigDump, 0o600)
 		if err != nil {
 			return fmt.Errorf("write api credentials in '%s' failed: %w", dumpFile, err)
 		}
-		log.Printf("Central API credentials written to '%s'", dumpFile)
+
+		log.Infof("Central API credentials written to '%s'", dumpFile)
 	} else {
 		fmt.Println(string(apiConfigDump))
 	}
@@ -123,7 +133,7 @@ func (cli *cliCapi) register(capiUserPrefix string, outputFile string) error {
 func (cli *cliCapi) newRegisterCmd() *cobra.Command {
 	var (
 		capiUserPrefix string
-		outputFile string
+		outputFile     string
 	)
 
 	cmd := &cobra.Command{
@@ -171,7 +181,7 @@ func (cli *cliCapi) status() error {
 	}
 
 	if len(scenarios) == 0 {
-		return fmt.Errorf("no scenarios installed, abort")
+		return errors.New("no scenarios installed, abort")
 	}
 
 	Client, err = apiclient.NewDefaultClient(apiurl, CAPIURLPrefix, fmt.Sprintf("crowdsec/%s", version.String()), nil)
@@ -192,7 +202,8 @@ func (cli *cliCapi) status() error {
 	if err != nil {
 		return fmt.Errorf("failed to authenticate to Central API (CAPI): %w", err)
 	}
-	log.Infof("You can successfully interact with Central API (CAPI)")
+
+	log.Info("You can successfully interact with Central API (CAPI)")
 
 	return nil
 }

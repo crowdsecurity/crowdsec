@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"slices"
@@ -67,7 +68,7 @@ Note: This command requires database direct access, so is intended to be run on 
 
 			cli.db, err = database.NewClient(cfg.DbConfig)
 			if err != nil {
-				return fmt.Errorf("can't connect to the database: %s", err)
+				return fmt.Errorf("can't connect to the database: %w", err)
 			}
 
 			return nil
@@ -87,7 +88,7 @@ func (cli *cliBouncers) list() error {
 
 	bouncers, err := cli.db.ListBouncers()
 	if err != nil {
-		return fmt.Errorf("unable to list bouncers: %s", err)
+		return fmt.Errorf("unable to list bouncers: %w", err)
 	}
 
 	switch cli.cfg().Cscli.Output {
@@ -149,13 +150,13 @@ func (cli *cliBouncers) add(bouncerName string, key string) error {
 	if key == "" {
 		key, err = middlewares.GenerateAPIKey(keyLength)
 		if err != nil {
-			return fmt.Errorf("unable to generate api key: %s", err)
+			return fmt.Errorf("unable to generate api key: %w", err)
 		}
 	}
 
 	_, err = cli.db.CreateBouncer(bouncerName, "", middlewares.HashSHA512(key), types.ApiKeyAuthType)
 	if err != nil {
-		return fmt.Errorf("unable to create bouncer: %s", err)
+		return fmt.Errorf("unable to create bouncer: %w", err)
 	}
 
 	switch cli.cfg().Cscli.Output {
@@ -168,7 +169,7 @@ func (cli *cliBouncers) add(bouncerName string, key string) error {
 	case "json":
 		j, err := json.Marshal(key)
 		if err != nil {
-			return fmt.Errorf("unable to marshal api key")
+			return errors.New("unable to marshal api key")
 		}
 
 		fmt.Print(string(j))
@@ -194,7 +195,7 @@ cscli bouncers add MyBouncerName --key <random-key>`,
 
 	flags := cmd.Flags()
 	flags.StringP("length", "l", "", "length of the api key")
-	flags.MarkDeprecated("length", "use --key instead")
+	_ = flags.MarkDeprecated("length", "use --key instead")
 	flags.StringVarP(&key, "key", "k", "", "api key for the bouncer")
 
 	return cmd
@@ -221,7 +222,7 @@ func (cli *cliBouncers) delete(bouncers []string) error {
 	for _, bouncerID := range bouncers {
 		err := cli.db.DeleteBouncer(bouncerID)
 		if err != nil {
-			return fmt.Errorf("unable to delete bouncer '%s': %s", bouncerID, err)
+			return fmt.Errorf("unable to delete bouncer '%s': %w", bouncerID, err)
 		}
 
 		log.Infof("bouncer '%s' deleted successfully", bouncerID)
@@ -283,7 +284,7 @@ func (cli *cliBouncers) prune(duration time.Duration, force bool) error {
 
 	deleted, err := cli.db.BulkDeleteBouncers(bouncers)
 	if err != nil {
-		return fmt.Errorf("unable to prune bouncers: %s", err)
+		return fmt.Errorf("unable to prune bouncers: %w", err)
 	}
 
 	fmt.Fprintf(os.Stderr, "Successfully deleted %d bouncers\n", deleted)
